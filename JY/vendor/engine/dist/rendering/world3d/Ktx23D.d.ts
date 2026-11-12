@@ -17,7 +17,7 @@ export interface Ktx2Result3D {
     readonly colorSpace: TextureColorSpace3D;
 }
 export interface Ktx2Options3D {
-    /** Convert a payload this reader cannot use directly into pixels or a supported compressed chain. */
+    /** Convert supercompressed or unknown-format payloads, overriding built-in decompression when provided. */
     readonly transcode?: (info: Ktx2Info3D) => Promise<Ktx2Result3D> | Ktx2Result3D;
 }
 /** True when `bytes` starts with the KTX 2.0 file identifier. */

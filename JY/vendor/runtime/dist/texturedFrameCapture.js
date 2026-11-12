@@ -32,9 +32,10 @@ function admitTree(stage, engine, budget) {
     function enter(node, parent) {
         budget.admitNode();
         checkNode(node, parent, engine, metadata, false);
-        if (visualOf(node).renderEffect !== undefined)
+        const state = visualOf(node);
+        if (state.renderEffect !== undefined)
             throw new EgretError('DISPLAY_EFFECT_UNSUPPORTED');
-        const primitives = visualOf(node).primitives;
+        const primitives = state.primitives;
         budget.admitAuthoringUnits(primitives.length);
         const bitmapOccupied = bitmapCaptureState(node) !== undefined;
         if (bitmapOccupied)
@@ -53,14 +54,11 @@ function admitTree(stage, engine, budget) {
         const textContentBounds = readTextFieldState(node)?.committed?.contentBounds;
         if (textContentBounds !== undefined)
             budget.admitAuthoringUnits(1);
-        // No child is entered until this callback-free metadata admission completes.
-        // The same record supplies identity admission and the two temporary cursors.
-        const admitted = { node, primitives, primitiveCount: primitives.length, bitmapOccupied,
-            meshGeometry, textContentBounds, children: 0, nextChild: 0, visited: false,
-            matrix: undefined, alpha: 0, clips: undefined };
-        metadata.set(node, admitted);
-        admitted.children = childCountOf(node);
-        stack.push(admitted);
+        // A leaf needs admission metadata, but no child traversal cursor.
+        metadata.set(node, { primitives, primitiveCount: primitives.length, bitmapOccupied, meshGeometry, textContentBounds, visited: false });
+        const children = childCountOf(node);
+        if (children !== 0)
+            stack.push({ node, children, nextChild: 0 });
     }
     enter(stage, undefined);
     while (stack.length !== 0) {
@@ -77,8 +75,9 @@ function admitTree(stage, engine, budget) {
     return metadata;
 }
 function checkedMatrix(matrix) {
-    if (![matrix.a, matrix.b, matrix.c, matrix.d, matrix.tx, matrix.ty].every(finite))
+    if (!finite(matrix.a) || !finite(matrix.b) || !finite(matrix.c) || !finite(matrix.d) || !finite(matrix.tx) || !finite(matrix.ty)) {
         throw new EgretError('FRAME_TRANSFORM_INVALID');
+    }
     return Object.freeze(matrix);
 }
 function point(matrix, x, y) {
@@ -97,6 +96,7 @@ function rectangle(matrix, rect) {
     point(matrix, rect.x, bottom);
     return Object.freeze({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
 }
+function unit(value) { return finite(value) && value >= 0 && value <= 1; }
 function referencedTuples(matrix, geometry) {
     // Factory validation already covered all owned components. Per occurrence,
     // evaluate only complete referenced tuples in authored triangle-list order.
@@ -107,7 +107,7 @@ function referencedTuples(matrix, geometry) {
             const u = geometry.uvs[2 * index], v = geometry.uvs[2 * index + 1];
             const red = geometry.lightColors[4 * index], green = geometry.lightColors[4 * index + 1];
             const blue = geometry.lightColors[4 * index + 2], alpha = geometry.lightColors[4 * index + 3];
-            if (![u, v, red, green, blue, alpha].every(value => finite(value) && value >= 0 && value <= 1))
+            if (!unit(u) || !unit(v) || !unit(red) || !unit(green) || !unit(blue) || !unit(alpha))
                 throw new EgretError('FRAME_TRANSFORM_INVALID');
             point(matrix, x, y);
         }
@@ -132,7 +132,10 @@ export function collectTexturedFrameContent(stage) {
     try {
         const commands = [], geometries = [];
         const geometryIndexes = new Map();
-        const images = new CaptureImageBudget(), stack = [];
+        const images = new CaptureImageBudget();
+        const stack = [];
+        let lastFlattenedChain;
+        let lastFlattenedRecords;
         function enter(node, parent, parentMatrix, parentAlpha, inheritedClips) {
             const admitted = checkNode(node, parent, engine, metadata, true), state = visualOf(node);
             if (admitted === undefined || state.primitives !== admitted.primitives || state.primitives.length !== admitted.primitiveCount)
@@ -158,7 +161,16 @@ export function collectTexturedFrameContent(stage) {
             function commandClips() {
                 // Both debits precede output/clip allocation. Every occurrence is charged.
                 budget.admitEmission(clips?.depth ?? 0);
-                const records = cached?.commandClips ?? flattenClips(clips);
+                let records = cached?.commandClips;
+                if (records === undefined) {
+                    // Sibling draws can share the same immutable sequence. Each emission
+                    // still pays its full clip-reference budget before reusing storage.
+                    if (lastFlattenedRecords === undefined || lastFlattenedChain !== clips) {
+                        lastFlattenedChain = clips;
+                        lastFlattenedRecords = flattenClips(clips);
+                    }
+                    records = lastFlattenedRecords;
+                }
                 rememberCaptureClips(draft, records);
                 return records;
             }
@@ -233,13 +245,10 @@ export function collectTexturedFrameContent(stage) {
             if (state.sharedMaterial !== null || state.renderBoundary !== 'none')
                 throw new EgretError('FRAME_PROFILE_METADATA_UNSUPPORTED');
             completeCaptureNode(draft, state);
-            // Runtime contexts can act between passes: reread edges and reset the cursor.
-            admitted.matrix = matrix;
-            admitted.alpha = alpha;
-            admitted.clips = clips;
-            admitted.children = childCountOf(node);
-            admitted.nextChild = 0;
-            stack.push(admitted);
+            // Runtime contexts can act between passes: reread the current child count.
+            const children = childCountOf(node);
+            if (children !== 0)
+                stack.push({ node, children, nextChild: 0, matrix, alpha, clips });
         }
         enter(stage, undefined, { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 }, 1, undefined);
         while (stack.length !== 0) {

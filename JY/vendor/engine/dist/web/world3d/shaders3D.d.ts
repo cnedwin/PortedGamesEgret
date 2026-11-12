@@ -10,6 +10,9 @@ export declare const ATTRIBUTE_LOCATIONS_3D: Readonly<{
     readonly uv1: 7;
     readonly instanceMatrix: 8;
     readonly instanceColor: 12;
+    readonly instanceAnimation: 13;
+    readonly instanceAnimation2: 14;
+    readonly instanceLook: 15;
 }>;
 /** Fixed texture units; samplers are assigned once when a program is linked. */
 export declare const TEXTURE_UNITS_3D: Readonly<{
@@ -24,6 +27,8 @@ export declare const TEXTURE_UNITS_3D: Readonly<{
     readonly morph: 8;
     readonly lightMap: 9;
     readonly sceneColor: 10;
+    readonly reflectionMap: 11;
+    readonly sceneDepth: 12;
 }>;
 export declare const MAX_MORPH_INFLUENCES_3D = 8;
 export interface ShaderSources3D {
@@ -31,7 +36,7 @@ export interface ShaderSources3D {
     readonly fragment: string;
 }
 /** Specialize the material shader pair with a list of preprocessor symbols. */
-export declare function buildMaterialShader3D(defines: readonly string[], customFragment?: string, customVertex?: string): ShaderSources3D;
+export declare function buildMaterialShader3D(defines: readonly string[], customFragment?: string, customVertex?: string, customNormal?: string): ShaderSources3D;
 /** Full-screen triangle that samples a cube map along the view ray; drawn at the far plane. */
 export declare const SKYBOX_SHADER_3D: ShaderSources3D;
 //# sourceMappingURL=shaders3D.d.ts.map

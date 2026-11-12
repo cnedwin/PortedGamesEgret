@@ -40,6 +40,10 @@ export interface GltfDracoRequest3D {
     readonly bytes: Uint8Array;
     /** glTF semantic (POSITION, NORMAL, ...) to Draco attribute id. */
     readonly attributes: Readonly<Record<string, number>>;
+    /** glTF component type (5120 to 5126) each semantic's accessor asks for. */
+    readonly componentTypes: Readonly<Record<string, number>>;
+    /** glTF component type of the index accessor, when the primitive is indexed. */
+    readonly indexComponentType: number | undefined;
 }
 export interface GltfDracoResult3D {
     /** Decoded arrays by glTF semantic, in the component type of the matching accessor. */

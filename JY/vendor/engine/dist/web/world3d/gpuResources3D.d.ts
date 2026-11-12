@@ -1,5 +1,6 @@
 import type { Geometry3D } from '../../rendering/world3d/Geometry3D.js';
 import type { InstancedMesh3D, Skeleton3D } from '../../rendering/world3d/Mesh3D.js';
+import { type AnimationTexture3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 import type { CompressedFormat3D } from '../../rendering/world3d/Texture3D.js';
 import type { CubeTexture3D, Texture3D } from '../../rendering/world3d/Texture3D.js';
@@ -61,6 +62,8 @@ export declare class GpuResources3D {
     instances(mesh: InstancedMesh3D, frame: number): WebGLVertexArrayObject;
     /** Float texture holding one 4x4 matrix per row (four RGBA texels). */
     bones(skeleton: Skeleton3D, frame: number): WebGLTexture;
+    /** Float texture holding every baked frame: four texels per bone matrix, wrapped into rows of 2048. */
+    animations(source: AnimationTexture3D): WebGLTexture;
     private applySampler;
     private image;
     private textureEntry;

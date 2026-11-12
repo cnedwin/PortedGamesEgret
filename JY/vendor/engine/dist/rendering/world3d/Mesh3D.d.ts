@@ -29,6 +29,8 @@ export declare class Mesh3D extends Object3D {
     /** Optional hook the render list calls once per frame before the mesh is culled and sorted. */
     beforeRender?(camera: import('./Camera3D.js').Camera3D): void;
     geometry: Geometry3D;
+    /** false leaves the mesh out of ray picking, as for effects whose drawn shape is not their geometry. */
+    pickable: boolean;
     /** One material, or one per geometry group addressed by materialIndex. */
     material: Material3D | Material3D[];
     /** Weight per geometry morph target; resized automatically to the target count. */
@@ -38,6 +40,12 @@ export declare class Mesh3D extends Object3D {
     readonly bindMatrix: Float32Array;
     constructor(geometry?: Geometry3D, material?: Material3D | Material3D[]);
     get isInstanced(): boolean;
+    /**
+     * True when an instanced draw could stand in for this mesh: it is a plain
+     * Mesh3D without skinning or morphing, and its transform is not mirrored.
+     * The renderer uses it to fold repeated meshes into one draw.
+     */
+    get canInstance(): boolean;
     /** Material for a geometry group index, falling back to the first slot. */
     materialAt(index: number): Material3D;
     /** Keep the weight array the same length as the geometry's morph target list. */
@@ -67,6 +75,8 @@ export declare class InstancedMesh3D extends Mesh3D {
     readonly instanceColorSize: 3 | 4;
     /** Bump after editing instance arrays directly. */
     instanceVersion: number;
+    /** Multiplies each instance's bounding radius, for instances that move beyond the geometry, such as animated ones. */
+    boundsScale: number;
     constructor(geometry: Geometry3D, material: Material3D | Material3D[], capacity: number, instanceColorSize?: 3 | 4);
     get isInstanced(): boolean;
     setMatrixAt(index: number, matrix: ArrayLike<number>): void;

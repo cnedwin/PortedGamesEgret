@@ -13,4 +13,6 @@ export { FlyControls3D, createFlyControls3D } from './FlyControls3D.js';
 export { AudioListener3D, PositionalAudio3D, createAudioListener3D, createPositionalAudio3D } from './Audio3D.js';
 export { captureCubeTexture3D } from './probe3D.js';
 export { TransformControls3D, createTransformControls3D } from './TransformControls3D.js';
+export { FollowControls3D, createFollowControls3D } from './FollowControls3D.js';
+export { Atmosphere3D, createAtmosphere3D } from './atmosphere3D.js';
 //# sourceMappingURL=webgpu.js.map

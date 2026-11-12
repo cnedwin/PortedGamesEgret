@@ -3,7 +3,8 @@
 // Image decoding and external buffer loading are injected so this module
 // stays DOM-free. Supported: meshes, PBR/unlit materials, texture transform,
 // node hierarchies, skins, morph targets, animations, cameras and punctual
-// lights. Compressed geometry or texture extensions are refused explicitly.
+// lights. Meshopt decoding is built in; Draco and Basis use caller-supplied adapters.
+import { decodeMeshopt3D } from './Meshopt3D.js';
 import { AnimationClip3D } from './Animation3D.js';
 import { Camera3D } from './Camera3D.js';
 import { World3DError, requireCount3D } from './core3D.js';
@@ -15,10 +16,10 @@ import { Object3D } from './Object3D.js';
 import { isKtx23D, parseKtx23D } from './Ktx23D.js';
 import { Texture3D, isCompressedPixels3D } from './Texture3D.js';
 import { mat4Compose, mat4Identity } from './math3D.js';
-const SUPPORTED_EXTENSIONS = new Set(['KHR_materials_unlit', 'KHR_materials_emissive_strength', 'KHR_texture_transform', 'KHR_lights_punctual', 'KHR_mesh_quantization', 'KHR_texture_basisu', 'EXT_mesh_gpu_instancing',
+const SUPPORTED_EXTENSIONS = new Set(['KHR_materials_unlit', 'KHR_materials_emissive_strength', 'KHR_texture_transform', 'KHR_lights_punctual', 'KHR_mesh_quantization', 'KHR_texture_basisu', 'EXT_mesh_gpu_instancing', 'EXT_meshopt_compression',
     'KHR_materials_transmission', 'KHR_materials_ior', 'KHR_materials_volume', 'KHR_materials_clearcoat', 'KHR_materials_sheen']);
 /** Extensions accepted only when the caller injects the matching decoder. */
-const DECODER_EXTENSIONS = Object.freeze({ EXT_meshopt_compression: 'decodeMeshopt', KHR_draco_mesh_compression: 'decodeDraco' });
+const DECODER_EXTENSIONS = Object.freeze({ KHR_draco_mesh_compression: 'decodeDraco' });
 const GLTF_LIMITS = Object.freeze({
     maxNodes: 65536, maxAccessors: 262144, maxJsonBytes: 64 * 1024 * 1024,
     maxAccessorBytes: 128 * 1024 * 1024, maxDecodedAccessorBytes: 256 * 1024 * 1024,
@@ -128,9 +129,8 @@ class GltfReader {
         if (packed) {
             let bytes = this.meshoptCache.get(index);
             if (!bytes) {
-                const decode = this.options.decodeMeshopt;
-                if (!decode)
-                    throw new World3DError('WORLD3D_GLTF_UNSUPPORTED', 'EXT_meshopt_compression needs the decodeMeshopt option');
+                // The built-in decoder is used unless the caller supplies a faster one.
+                const decode = this.options.decodeMeshopt ?? ((request) => decodeMeshopt3D(request.source, request.count, request.stride, request.mode, request.filter));
                 const source = this.buffers[packed.buffer] ?? fail('meshopt buffer ' + packed.buffer);
                 const from = packed.byteOffset ?? 0, size = packed.byteLength, count = packed.count, stride = packed.byteStride;
                 if (!Number.isSafeInteger(from) || !Number.isSafeInteger(size) || from < 0 || size < 0 || size > source.byteLength - from)
@@ -398,7 +398,14 @@ class GltfReader {
         if (!decode)
             throw new World3DError('WORLD3D_GLTF_UNSUPPORTED', 'KHR_draco_mesh_compression needs the decodeDraco option');
         const semantics = packed.attributes ?? fail('draco attributes');
-        const result = await decode({ bytes: this.bufferView(packed.bufferView).bytes, attributes: semantics });
+        const componentTypes = {};
+        for (const semantic of Object.keys(semantics)) {
+            const accessor = this.json.accessors?.[primitive.attributes?.[semantic]];
+            if (accessor)
+                componentTypes[semantic] = accessor.componentType;
+        }
+        const indexComponentType = primitive.indices === undefined ? undefined : this.json.accessors?.[primitive.indices]?.componentType;
+        const result = await decode({ bytes: this.bufferView(packed.bufferView).bytes, attributes: semantics, componentTypes, indexComponentType });
         const seed = (accessorIndex, array, label) => {
             const def = this.json.accessors?.[accessorIndex] ?? fail('accessor ' + accessorIndex);
             const itemSize = COMPONENTS[def.type] ?? fail('accessor type');

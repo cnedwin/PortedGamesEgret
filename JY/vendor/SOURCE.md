@@ -1,5 +1,6 @@
 # Vendored browser runtime
 
-- Egret Engine community rebuild, branch `main`, pinned commit [`0348339ca8c24b16223f0e43f2a9696082b714db`](https://github.com/cnedwin/Egret_rebuild/tree/0348339ca8c24b16223f0e43f2a9696082b714db).
-- Build inputs for `engine`, `runtime` and `contracts` were checked against Git tree `a63dc8b1c252b7e2d5337dcc838b5cea241ddd9e`. Compile used Node.js 26.7.0 and TypeScript 7.0.2 via `tsc --build packages/engine/tsconfig.web.json --force`.
-- `robust-predicates` 3.0.3 is the existing vendored WebGL2 dependency. License text is retained next to the package.
+- Egret Engine community rebuild, branch main, pinned commit [20cc6f61796238bd8e792b9a8984ac237331050e](https://github.com/cnedwin/Egret_rebuild/tree/20cc6f61796238bd8e792b9a8984ac237331050e).
+- Engine, runtime and contracts were built from the GitHub commit archive. Each input was checked against its object in Git tree 318601c36e36997cd34f63ac8ed6df4e3e99e1a2.
+- Built with Node.js 26.7.0 and TypeScript 7.0.2 via the upstream browser tsconfig.
+- robust-predicates 3.0.3 is the engine dependency. The original license is retained next to the package.

@@ -2,7 +2,7 @@ import {
   AnimationMixer3D, Object3D, Raycaster3D, Scene3D, colorFromHex, createDirectionalLight3D,
   createHemisphereLight3D, createPerspectiveCamera3D, createSprite3D, vec3TransformMat4,
 } from '@egret/engine/world3d';
-import { createWebGL2Renderer3D, loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
+import { createAtmosphere3D, createWebGL2Renderer3D, loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
 import { createWorldTerrainData, worldMist } from './world-map-data.mjs';
 import { createNativeWorldTerrain } from './native-world-terrain.mjs';
 import { createNativeWorldScenery } from './native-world-scenery.mjs';
@@ -73,7 +73,11 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
   canvas.setAttribute('aria-hidden', 'true');
   const scene = new Scene3D();
   scene.background = mistColor;
-  scene.fog = { kind: 'linear', color: mistColor, near: worldMist.near, far: worldMist.far };
+  const nearFog = { kind: 'linear', color: mistColor, near: worldMist.near, far: worldMist.far };
+  const overviewFog = { ...nearFog, near: worldMist.near + 12 };
+  scene.fog = nearFog;
+  const overviewMist = createAtmosphere3D({ fogColor: worldMist.color, fogDensity: .004,
+    fogHeight: .25, fogFalloff: .085, shaftIntensity: 0 });
   scene.addChild(createHemisphereLight3D({ color: 0xf2eee1, groundColor: 0x79786a, intensity: 1.85 / Math.PI }));
   const sun = scene.addChild(createDirectionalLight3D({ color: 0xffebcb, intensity: 2.85 / Math.PI, castShadow: true }));
   Object.assign(sun.shadow, { extent: shadowSpan / 2, near: .5, far: 90, bias: .0004, normalBias: .018, radius: 1.9 });
@@ -204,7 +208,16 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
     const time = reducedMotion.matches ? 0 : elapsedMs / 1000;
     terrain.tick(time);
     scenery.tick(time);
+    // Height haze is reserved for the overview; the close travel camera keeps the direct path.
+    const post = renderer.postProcess;
+    if (post.enabled !== distant) {
+      post.enabled = distant;
+      post.custom = distant ? overviewMist.post : undefined;
+      scene.fog = distant ? overviewFog : nearFog;
+    }
+    if (distant) overviewMist.update(camera);
     renderer.render(scene, camera);
+    canvas.dataset.haze = distant ? 'height' : 'linear';
     canvas.dataset.sceneReady = 'true';
     canvas.dataset.sailing = String(Boolean(sailing));
     canvas.dataset.wake = String(vessel.wake.visible);

@@ -33,6 +33,9 @@ export function createClipRectangleContext2D(options, budget) {
 export function prepareTexturedDraws2D(admitted, options, budget, cache, containedClipping = false) {
     coordinate(options.pixelRatio);
     const trustedClipping = containedClipping && firstPartyLedger(budget);
+    // The ordinary Host owns both the immutable input and its preparation cache.
+    if (trustedClipping && cache)
+        cache.cache.enableRecurringTexturedKeys(cache);
     const clipContext = trustedClipping ? createClipRectangleContext2D(options, budget) : undefined;
     try {
         const { frame, width, height } = admitted, draws = [];

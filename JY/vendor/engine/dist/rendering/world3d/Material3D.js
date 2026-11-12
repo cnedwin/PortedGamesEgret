@@ -6,13 +6,14 @@ import { colorFromHex } from './math3D.js';
 export function createCustomShader3D(input) {
     if (!input || typeof input.key !== 'string' || input.key.length === 0 || /[\s|/]/.test(input.key))
         throw new World3DError('WORLD3D_INPUT_INVALID', 'shader key');
-    if (input.glsl === undefined && input.wgsl === undefined && input.glslVertex === undefined && input.wgslVertex === undefined)
+    if (input.glsl === undefined && input.wgsl === undefined && input.glslVertex === undefined && input.wgslVertex === undefined && input.glslNormal === undefined && input.wgslNormal === undefined)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'shader source');
     const uniforms = new Float32Array(16);
     if (input.uniforms)
         uniforms.set(Array.from(input.uniforms).slice(0, 16));
     return Object.freeze({ key: input.key, ...(input.glsl === undefined ? {} : { glsl: input.glsl }), ...(input.wgsl === undefined ? {} : { wgsl: input.wgsl }),
-        ...(input.glslVertex === undefined ? {} : { glslVertex: input.glslVertex }), ...(input.wgslVertex === undefined ? {} : { wgslVertex: input.wgslVertex }), uniforms });
+        ...(input.glslVertex === undefined ? {} : { glslVertex: input.glslVertex }), ...(input.wgslVertex === undefined ? {} : { wgslVertex: input.wgslVertex }),
+        ...(input.glslNormal === undefined ? {} : { glslNormal: input.glslNormal }), ...(input.wgslNormal === undefined ? {} : { wgslNormal: input.wgslNormal }), uniforms });
 }
 export function setColor3D(out, input) {
     if (typeof input === 'number')
@@ -69,6 +70,31 @@ export class Material3D extends Resource3D {
      */
     lightMap;
     lightMapIntensity = 1;
+    /**
+     * A mirror image of the scene for a flat reflective surface on a standard
+     * material, normally the texture of a PlanarReflection3D. It is read at
+     * the pixel's own place on screen, so the mesh needs no coordinates for
+     * it, and it takes the place of the environment map's reflection.
+     */
+    reflectionMap;
+    reflectionStrength = 1;
+    /** How far the surface normal pushes the mirror image sideways, as a share of the screen. */
+    reflectionDistortion = 0.02;
+    /**
+     * For blended materials such as particles and haze: the distance over which
+     * the surface fades out where it comes close to the solid geometry behind
+     * it, instead of ending in a hard line. 0 turns the fade off.
+     */
+    softness = 0;
+    /**
+     * Ground layers blended by a weight map, for terrain: up to four tiling
+     * textures, each shown where its channel of `weights` (R, G, B, A) is
+     * strong. Weights are read with the mesh's coordinates as they are and
+     * layers with those coordinates times their `repeat`. The layers take
+     * the texture slots of map, emissiveMap, occlusionMap, metallicRoughnessMap
+     * and lightMap, so leave those unset. Call touch() after assigning.
+     */
+    splat;
     /** Strength, 0 to 1, of a soft rim lobe for cloth and velvet on a standard material. */
     sheen = 0;
     sheenColor = new Float32Array([1, 1, 1]);

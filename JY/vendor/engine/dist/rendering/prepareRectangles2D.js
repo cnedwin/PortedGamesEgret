@@ -44,10 +44,15 @@ export class Preparation {
     budget;
     containedClipping;
     edgeTests = 0;
-    constructor(options, budget, containedClipping = false) {
+    reuseContainedSubjects;
+    constructor(options, budget, containedClipping = false, clipContext) {
         this.options = options;
         this.budget = budget;
         this.containedClipping = containedClipping;
+        // Dispatcher subjects are independently owned before clipping, so no
+        // unchanged step needs to replace the array or its point objects.
+        this.reuseContainedSubjects = containedClipping && budget !== undefined
+            && clipContext?.options === options && clipContext.budget === budget;
     }
     determinant(a, b, c) {
         if (this.edgeTests >= this.options.maxClipEdgeTests)
@@ -58,6 +63,48 @@ export class Preparation {
         if (!Number.isFinite(value))
             fail('precision');
         return value;
+    }
+    /** Intersect only already qualified canonical clip bounds, with the viewport last. */
+    containedClipStackBounds(clips, viewport) {
+        if (!this.reuseContainedSubjects || clips.length < 2)
+            return undefined;
+        let left = -Infinity, top = -Infinity, right = Infinity, bottom = Infinity;
+        for (let index = 0; index <= clips.length; index++) {
+            const clip = index === clips.length ? viewport : clips[index];
+            if (clip.length !== 4)
+                return undefined;
+            const first = clip[0], second = clip[1], third = clip[2], fourth = clip[3];
+            const x = first.x, y = first.y, endX = second.x, endY = third.y;
+            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(endX) || !Number.isFinite(endY)
+                || !(x < endX) || !(y < endY) || second.y !== y || third.x !== endX || fourth.x !== x || fourth.y !== endY)
+                return undefined;
+            left = Math.max(left, x);
+            top = Math.max(top, y);
+            right = Math.min(right, endX);
+            bottom = Math.min(bottom, endY);
+        }
+        return { left, top, right, bottom, count: clips.length + 1 };
+    }
+    /** Charge a wholly contained stack at once without merging any actual cuts. */
+    tryContainedClipStack(subject, bounds, normalization) {
+        if (!this.reuseContainedSubjects || bounds === undefined)
+            return false;
+        const count = subject.length;
+        if (count < 3 || count > (normalization === 'mesh' ? 64 : POLYGON_LIMIT))
+            return false;
+        for (const point of subject) {
+            if (!(point.x >= bounds.left && point.x <= bounds.right && point.y >= bounds.top && point.y <= bounds.bottom))
+                return false;
+        }
+        const predicates = (normalization === 'rectangle' ? 12 : 8) * count * bounds.count;
+        const tuples = normalization === 'mesh' ? 2 * count * (count + 1) * bounds.count : 0;
+        // An atomic refusal leaves the ordered per-clip traversal to report and
+        // charge the same first failure. A successful replay cannot cut a point.
+        if (predicates > this.options.maxClipEdgeTests - this.edgeTests
+            || !tryReplayPreparedStage2D(this.budget, { preparedVertices: 0, predicates, tupleComparisons: tuples }))
+            return false;
+        this.edgeTests += predicates;
+        return true;
     }
     /** Only the ordinary TEXTURED Host enables this for its own normalized polygons and ledger. */
     tryContainedClip(subject, clip, normalization) {
@@ -91,8 +138,9 @@ export class Preparation {
         // Admission is all-or-nothing. A miss leaves local/global counts untouched
         // so the original interleaved traversal still decides its first failure.
         this.edgeTests += predicates;
-        // Preserve final container ownership without recreating discarded rounds
-        // of normalization; required later packing/upload allocations are unchanged.
+        if (this.reuseContainedSubjects)
+            return subject;
+        // Direct helpers still give callers an independently owned container.
         return normalization === 'mesh' ? subject.map(point => ({ ...point })) : subject.slice();
     }
     /** Known first-party normalization may skip one unchanged canonical half-plane. */
@@ -124,8 +172,41 @@ export class Preparation {
             return undefined;
         // An atomic miss leaves the original edge's interleaved first refusal intact.
         this.edgeTests += predicates;
-        // Required output ownership stays outside any fallback catch.
+        if (this.reuseContainedSubjects)
+            return subject;
         return normalization === 'mesh' ? subject.map(point => ({ ...point })) : subject.slice();
+    }
+    /** Use exact comparisons for the classification stage of an owned axis edge. */
+    classifyOwnedAxisEdge(subject, a, b) {
+        if (!this.reuseContainedSubjects)
+            return undefined;
+        const vertical = a.x === b.x, horizontal = a.y === b.y;
+        if (vertical === horizontal)
+            return undefined;
+        const predicates = subject.length;
+        // A refusal keeps the original point-by-point debit and first error.
+        if (predicates > this.options.maxClipEdgeTests - this.edgeTests
+            || !tryReplayPreparedStage2D(this.budget, { preparedVertices: 0, predicates, tupleComparisons: 0 }))
+            return undefined;
+        this.edgeTests += predicates;
+        const boundary = vertical ? a.x : a.y;
+        const higherSign = (vertical ? b.y < a.y : b.x > a.x) ? 1 : -1;
+        const signs = new Array(predicates);
+        let retained = false;
+        for (let index = 0; index < predicates; index++) {
+            // Prepared coordinates are finite and bounded by 2**20; viewport
+            // dimensions can reach uint32. For a nonzero axis extent, the
+            // perpendicular comparison is exact, including either zero.
+            const point = subject[index], position = vertical ? point.x : point.y;
+            const sign = position < boundary ? -higherSign : position > boundary ? higherSign : 0;
+            signs[index] = sign;
+            if (sign >= 0)
+                retained = true;
+        }
+        // All-strictly-outside has no crossing or normalization work to charge.
+        if (!retained)
+            signs.length = 0;
+        return signs;
     }
     sign(a, b, c) {
         // The dependency uses the opposite sign to the conventional algebraic cross product.
@@ -298,7 +379,10 @@ export function clipPolygon2D(preparation, subject, clip, normalize, attach, pol
             }
         }
         const a = clip[edge], b = clip[(edge + 1) % clip.length];
-        const signs = subject.map(point => preparation.sign(a, b, point));
+        const classified = normalization === undefined ? undefined : preparation.classifyOwnedAxisEdge(subject, a, b);
+        if (classified?.length === 0)
+            return [];
+        const signs = classified ?? subject.map(point => preparation.sign(a, b, point));
         const output = [];
         const cache = [];
         const append = (point) => {
@@ -343,7 +427,7 @@ export function clipPolygon2D(preparation, subject, clip, normalize, attach, pol
 export function prepareRectangles2D(frame, width, height, options, budget, commandIndices, cache, sourceCommandIndices, containedClipping = false, clipContext) {
     // A clear-only frame still consumes nominal DPR, so its envelope is unconditional.
     coordinate(options.pixelRatio);
-    const preparation = new Preparation(options, budget, containedClipping);
+    const preparation = new Preparation(options, budget, containedClipping, clipContext);
     const points = [];
     const commands = [];
     const viewport = [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }];
@@ -368,9 +452,12 @@ export function prepareRectangles2D(frame, width, height, options, budget, comma
             let computed = preparation.rectangle(command);
             // Preflight all clips even when an earlier clip or alpha already removes coverage.
             const clips = command.clips.map(clip => preparation.clipRectangle(clip, clipContext));
-            for (const clip of clips)
-                computed = preparation.tryContainedClip(computed, clip, 'rectangle') ?? preparation.intersect(computed, clip, containedClipping);
-            computed = preparation.tryContainedClip(computed, viewport, 'rectangle') ?? preparation.intersect(computed, viewport, containedClipping);
+            const bounds = clipContext && preparation.containedClipStackBounds(clips, viewport);
+            if (bounds === undefined || !preparation.tryContainedClipStack(computed, bounds, 'rectangle')) {
+                for (const clip of clips)
+                    computed = preparation.tryContainedClip(computed, clip, 'rectangle') ?? preparation.intersect(computed, clip, containedClipping);
+                computed = preparation.tryContainedClip(computed, viewport, 'rectangle') ?? preparation.intersect(computed, viewport, containedClipping);
+            }
             polygon = command.alpha === 0 ? [] : computed;
             fanVertices = polygon.length ? (polygon.length - 2) * 3 : 0;
             if (polygon.length) {

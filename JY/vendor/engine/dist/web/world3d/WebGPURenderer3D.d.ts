@@ -78,6 +78,13 @@ export declare class WebGPURenderer3D implements Renderer3D {
      * Draw one frame to the canvas, or into `target` when given. Returns false
      * when the device is lost and nothing was drawn.
      */
+    /**
+     * Draw runs of plain meshes that share a geometry and a material as one
+     * instanced draw each, in the main view and in shadow maps. On by default;
+     * the meshes themselves are untouched.
+     */
+    get autoInstancing(): boolean;
+    set autoInstancing(value: boolean);
     render(scene: Scene3D, camera: Camera3D, target?: RenderTarget3D): boolean;
     /** Draw the scene into the half-float chain target, then post-process into the output. */
     private renderPost;

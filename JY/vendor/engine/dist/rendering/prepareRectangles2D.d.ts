@@ -36,6 +36,13 @@ interface ClipRectanglePreparationEntry2D {
     readonly polygon: readonly PreparedPoint2D[];
     readonly predicates: number;
 }
+interface ContainedClipStackBounds2D {
+    readonly left: number;
+    readonly top: number;
+    readonly right: number;
+    readonly bottom: number;
+    readonly count: number;
+}
 /** Call-local scratch supplied only by the opted-in ordinary TEXTURED dispatcher. */
 export interface ClipRectanglePreparationContext2D {
     readonly options: RectanglePreparationOptions;
@@ -59,12 +66,19 @@ export declare class Preparation {
     private readonly budget?;
     private readonly containedClipping;
     edgeTests: number;
-    constructor(options: RectanglePreparationOptions, budget?: PreparationBudget2D | undefined, containedClipping?: boolean);
+    private readonly reuseContainedSubjects;
+    constructor(options: RectanglePreparationOptions, budget?: PreparationBudget2D | undefined, containedClipping?: boolean, clipContext?: ClipRectanglePreparationContext2D);
     private determinant;
+    /** Intersect only already qualified canonical clip bounds, with the viewport last. */
+    containedClipStackBounds(clips: readonly (readonly PreparedPoint2D[])[], viewport: readonly PreparedPoint2D[]): ContainedClipStackBounds2D | undefined;
+    /** Charge a wholly contained stack at once without merging any actual cuts. */
+    tryContainedClipStack(subject: readonly PreparedPoint2D[], bounds: ContainedClipStackBounds2D | undefined, normalization: 'rectangle' | 'image' | 'mesh'): boolean;
     /** Only the ordinary TEXTURED Host enables this for its own normalized polygons and ledger. */
     tryContainedClip<P extends PreparedPoint2D>(subject: P[], clip: readonly PreparedPoint2D[], normalization: 'rectangle' | 'image' | 'mesh'): P[] | undefined;
     /** Known first-party normalization may skip one unchanged canonical half-plane. */
     tryContainedEdge<P extends PreparedPoint2D>(subject: P[], clip: readonly PreparedPoint2D[], edge: number, normalization: 'rectangle' | 'image' | 'mesh'): P[] | undefined;
+    /** Use exact comparisons for the classification stage of an owned axis edge. */
+    classifyOwnedAxisEdge(subject: readonly PreparedPoint2D[], a: PreparedPoint2D, b: PreparedPoint2D): number[] | undefined;
     sign(a: PreparedPoint2D, b: PreparedPoint2D, c: PreparedPoint2D): number;
     normalize(input: readonly PreparedPoint2D[]): PreparedPoint2D[];
     corners(input: ClipRectangle2D): PreparedPoint2D[];

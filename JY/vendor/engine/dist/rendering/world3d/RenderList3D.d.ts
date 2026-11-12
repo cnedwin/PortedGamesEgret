@@ -13,6 +13,11 @@ export interface RenderItem3D {
     count: number;
     /** View-space distance along the camera axis; larger is farther. */
     depth: number;
+    /** Drawn before blended items, and the mesh's render order: kept on the item so sorting need not look them up. */
+    opaque?: boolean;
+    order?: number;
+    /** What else must match for meshes to share an instanced draw: layers, receiving shadows, being instanceable at all. */
+    group?: number;
 }
 export interface RenderStats3D {
     visited: number;
@@ -32,9 +37,28 @@ export declare class RenderList3D {
     readonly hemisphereSky: Float32Array<ArrayBuffer>;
     readonly hemisphereGround: Float32Array<ArrayBuffer>;
     readonly stats: RenderStats3D;
+    /**
+     * Runs of at least this many plain meshes with the same geometry and
+     * material are drawn as one instanced draw; shadow casters are grouped the
+     * same way. 0 draws every mesh on its own.
+     */
+    autoInstanceThreshold: number;
+    /** How many instanced draws automatic instancing made in the last build, and how many meshes they stand for. */
+    readonly instancing: {
+        batches: number;
+        meshes: number;
+    };
     /** Monotonic frame id, used to update each skeleton once per frame. */
     get frame(): number;
     build(scene: Scene3D, camera: Camera3D): void;
+    /** Copy the sorted opaque items out, replacing each long enough run of like meshes with one instanced item. */
+    private fold;
+    /** Shadow casters that share a geometry and a material are drawn into the shadow maps as one instanced mesh. */
+    private groupCasters;
+    /** The instanced stand-in for a run of meshes, with their world matrices as its instances. */
+    private batch;
+    /** Forget stand-ins that have not been used for a while. */
+    private retire;
     private visit;
     private addLight;
     private addMesh;

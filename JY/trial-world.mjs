@@ -1,7 +1,7 @@
 import {
   Attribute3D, Geometry3D, Mesh3D, Object3D, Scene3D, createBoxGeometry3D, createConeGeometry3D,
   createCylinderGeometry3D, createDirectionalLight3D, createHemisphereLight3D, createOrthographicCamera3D,
-  createRingGeometry3D, createSphereGeometry3D, createStandardMaterial3D, createUnlitMaterial3D,
+  createRingGeometry3D, createSphereGeometry3D, createStandardMaterial3D, createUnlitMaterial3D, createWater3D,
   mat4Invert, setColor3D, vec3TransformMat4,
 } from '@egret/engine/world3d';
 import { createWebGL2Renderer3D } from '@egret/engine/webgl2/world3d';
@@ -70,15 +70,15 @@ export function createTrialWorld(canvas) {
   ground.castShadow = false;
   shape(scene, box, 0x706d51, 5.05, -.48, 9.5, 11.1, .91, 20, false);
   shape(scene, box, 0x706d51, 19.5, -.48, 9.5, 12, .91, 20, false);
-  shape(scene, box, 0x416b67, 12, -.27, 9.5, 3.13, .22, 20.2, false);
-  const ripples = [];
-  for (let index = 0; index < 24; index++) {
-    const x = 10.86 + index % 5 * .53, z = .48 + (index * 29 % 191) / 10;
-    if (z > 8.5 && z < 10.5) continue;
-    const mesh = shape(scene, box, index % 3 ? 0x648e80 : 0x81a191, x, -.148, z,
-      .20 + index % 4 * .10, .007, .046, false);
-    ripples.push({ mesh, x, z });
-  }
+  // The bed provides scene depth for refraction and shore foam.
+  shape(scene, box, 0x435e51, 12, -.415, 9.5, 3.13, .07, 20.2, false);
+  const river = scene.addChild(createWater3D({
+    width: 3.13, depth: 20.2, segments: 24, color: 0x416b67, deepColor: 0x254d48,
+    amplitude: .020, wavelength: 3.6, direction: [.15, 1], speed: .60, steepness: 0,
+    rippleStrength: .10, rippleLength: .65, roughness: .48,
+    clarity: .52, thickness: .18, depthFade: .72, foamWidth: .14, caustics: .18, reflectionSize: 0,
+  }));
+  river.setPosition(12, -.16, 9.5);
   for (let i = 0; i < 16; i++) {
     shape(scene, box, i % 3 === 1 ? 0x9a784f : 0xae8958, 10.01 + i * .268, .076, 9.5, .261, .15, 2.06);
   }
@@ -197,9 +197,7 @@ export function createTrialWorld(canvas) {
     }
     const seconds = reduced.matches ? 0 : now / 1000;
     for (const [index, top] of treeTops.entries()) top.setRotation(.039 * Math.sin(seconds * 1.6 + index), 0, .025 * Math.cos(seconds * 1.3 + index));
-    for (const [index, ripple] of ripples.entries()) {
-      ripple.mesh.setPosition(ripple.x + .05 * Math.sin(seconds + index), -.148, ripple.z + .12 * Math.cos(seconds + index));
-    }
+    river.time = seconds;
     pose(hero, player, seconds);
     pose(keeper, opponent, seconds);
     marker.setPosition(player.x, groundHeight(player.x, player.y) + .017, player.y);

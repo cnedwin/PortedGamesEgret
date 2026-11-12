@@ -4,6 +4,7 @@
 // resources' version counters and are retired through their onDispose hooks,
 // so the scene core never holds a WebGL object.
 import { World3DError } from '../../rendering/world3d/core3D.js';
+import { SkinnedInstancedMesh3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { RenderTarget3D, isCompressedPixels3D, isTexturePixels3D } from '../../rendering/world3d/Texture3D.js';
 import { ATTRIBUTE_LOCATIONS_3D, TEXTURE_UNITS_3D } from './shaders3D.js';
 const ATTRIBUTE_NAMES = ['position', 'normal', 'uv', 'tangent', 'color', 'joints', 'weights', 'uv1'];
@@ -13,6 +14,7 @@ export class GpuResources3D {
     #programs = new Map();
     #geometries = new Map();
     #instances = new Map();
+    #animations = new Map();
     #textures = new Map();
     #bones = new Map();
     #targets = new Map();
@@ -80,7 +82,8 @@ export class GpuResources3D {
         gl.useProgram(program);
         const samplers = {
             uMap: TEXTURE_UNITS_3D.map, uNormalMap: TEXTURE_UNITS_3D.normalMap, uMetallicRoughnessMap: TEXTURE_UNITS_3D.metallicRoughnessMap,
-            uOcclusionMap: TEXTURE_UNITS_3D.occlusionMap, uEmissiveMap: TEXTURE_UNITS_3D.emissiveMap, uLightMap: TEXTURE_UNITS_3D.lightMap, uEnvironment: TEXTURE_UNITS_3D.environment,
+            uOcclusionMap: TEXTURE_UNITS_3D.occlusionMap, uEmissiveMap: TEXTURE_UNITS_3D.emissiveMap, uLightMap: TEXTURE_UNITS_3D.lightMap, uReflectionMap: TEXTURE_UNITS_3D.reflectionMap, uSceneDepth: TEXTURE_UNITS_3D.sceneDepth, uSplatWeights: TEXTURE_UNITS_3D.lightMap, uSplat0: TEXTURE_UNITS_3D.map,
+            uSplat1: TEXTURE_UNITS_3D.emissiveMap, uSplat2: TEXTURE_UNITS_3D.occlusionMap, uSplat3: TEXTURE_UNITS_3D.metallicRoughnessMap, uEnvironment: TEXTURE_UNITS_3D.environment,
             uShadowMap: TEXTURE_UNITS_3D.shadow, uBoneTexture: TEXTURE_UNITS_3D.bones, uMorphTexture: TEXTURE_UNITS_3D.morph, uSceneColor: TEXTURE_UNITS_3D.sceneColor,
         };
         for (const name in samplers)
@@ -300,23 +303,37 @@ export class GpuResources3D {
             this.#instances.set(mesh, entry = { vao, matrices: this.buffer(), colors: undefined, version: -1, layoutVersion: -1, geometryId: -1, capacityBytes: -1, lastFrame: frame });
         }
         entry.lastFrame = frame;
-        const rebind = entry.layoutVersion !== geometry.layoutVersion || entry.geometryId !== geometry.id || (mesh.instanceColors !== undefined && !entry.colors);
+        const crowd = mesh instanceof SkinnedInstancedMesh3D ? mesh : undefined;
+        const matrices = crowd?.drawMatrices ?? mesh.instanceMatrices;
+        const colors = crowd ? crowd.drawColors : mesh.instanceColors;
+        const count = crowd?.drawCount ?? mesh.count;
+        const animated = crowd?.drawAnimation;
+        const rebind = entry.layoutVersion !== geometry.layoutVersion || entry.geometryId !== geometry.id || (mesh.instanceColors !== undefined && !entry.colors) || (animated !== undefined && !entry.animation);
         if (entry.version !== mesh.instanceVersion) {
             gl.bindBuffer(gl.ARRAY_BUFFER, entry.matrices);
-            if (entry.capacityBytes === mesh.instanceMatrices.byteLength)
-                gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.instanceMatrices, 0, mesh.count * 16);
+            if (entry.capacityBytes === matrices.byteLength)
+                gl.bufferSubData(gl.ARRAY_BUFFER, 0, matrices, 0, count * 16);
             else {
-                gl.bufferData(gl.ARRAY_BUFFER, mesh.instanceMatrices, gl.DYNAMIC_DRAW);
-                entry.capacityBytes = mesh.instanceMatrices.byteLength;
+                gl.bufferData(gl.ARRAY_BUFFER, matrices, gl.DYNAMIC_DRAW);
+                entry.capacityBytes = matrices.byteLength;
             }
-            if (mesh.instanceColors) {
+            if (colors) {
                 const created = !entry.colors;
                 entry.colors ??= this.buffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, entry.colors);
                 if (created)
-                    gl.bufferData(gl.ARRAY_BUFFER, mesh.instanceColors, gl.DYNAMIC_DRAW);
+                    gl.bufferData(gl.ARRAY_BUFFER, colors, gl.DYNAMIC_DRAW);
                 else
-                    gl.bufferSubData(gl.ARRAY_BUFFER, 0, mesh.instanceColors, 0, mesh.count * mesh.instanceColorSize);
+                    gl.bufferSubData(gl.ARRAY_BUFFER, 0, colors, 0, count * mesh.instanceColorSize);
+            }
+            if (animated) {
+                const created = !entry.animation;
+                entry.animation ??= this.buffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, entry.animation);
+                if (created)
+                    gl.bufferData(gl.ARRAY_BUFFER, animated, gl.DYNAMIC_DRAW);
+                else
+                    gl.bufferSubData(gl.ARRAY_BUFFER, 0, animated, 0, count * 12);
             }
             entry.version = mesh.instanceVersion;
         }
@@ -335,6 +352,14 @@ export class GpuResources3D {
                 gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS_3D.instanceColor);
                 gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS_3D.instanceColor, mesh.instanceColorSize, gl.FLOAT, false, 0, 0);
                 gl.vertexAttribDivisor(ATTRIBUTE_LOCATIONS_3D.instanceColor, 1);
+            }
+            if (entry.animation) {
+                gl.bindBuffer(gl.ARRAY_BUFFER, entry.animation);
+                for (let part = 0; part < 3; part++) {
+                    gl.enableVertexAttribArray(ATTRIBUTE_LOCATIONS_3D.instanceAnimation + part);
+                    gl.vertexAttribPointer(ATTRIBUTE_LOCATIONS_3D.instanceAnimation + part, 4, gl.FLOAT, false, 48, part * 16);
+                    gl.vertexAttribDivisor(ATTRIBUTE_LOCATIONS_3D.instanceAnimation + part, 1);
+                }
             }
             gl.bindVertexArray(null);
             entry.layoutVersion = geometry.layoutVersion;
@@ -362,6 +387,26 @@ export class GpuResources3D {
             entry.version = skeleton.version;
         }
         return entry.texture;
+    }
+    /** Float texture holding every baked frame: four texels per bone matrix, wrapped into rows of 2048. */
+    animations(source) {
+        let texture = this.#animations.get(source);
+        if (!texture) {
+            const width = 2048, height = Math.max(1, Math.ceil(source.data.length / 4 / width));
+            let data = source.data;
+            if (data.length !== width * height * 4) {
+                data = new Float32Array(width * height * 4);
+                data.set(source.data);
+            }
+            texture = this.dataTexture(width, height, data);
+            this.#animations.set(source, texture);
+            const gl = this.#gl, created = texture;
+            source.onDispose(() => { if (this.#animations.get(source) === created) {
+                gl.deleteTexture(created);
+                this.#animations.delete(source);
+            } });
+        }
+        return texture;
     }
     // ---- textures ----------------------------------------------------------------------
     applySampler(target, texture) {
@@ -590,6 +635,8 @@ export class GpuResources3D {
             gl.deleteBuffer(entry.matrices);
             if (entry.colors)
                 gl.deleteBuffer(entry.colors);
+            if (entry.animation)
+                gl.deleteBuffer(entry.animation);
             gl.deleteVertexArray(entry.vao);
             this.#instances.delete(mesh);
         }
@@ -614,6 +661,7 @@ export class GpuResources3D {
         this.#textures.clear();
         this.#bones.clear();
         this.#targets.clear();
+        this.#animations.clear();
     }
     /** Delete every GPU object owned by this cache. */
     dispose() {
@@ -630,8 +678,13 @@ export class GpuResources3D {
             gl.deleteBuffer(entry.matrices);
             if (entry.colors)
                 gl.deleteBuffer(entry.colors);
+            if (entry.animation)
+                gl.deleteBuffer(entry.animation);
             gl.deleteVertexArray(entry.vao);
         }
+        for (const texture of this.#animations.values())
+            gl.deleteTexture(texture);
+        this.#animations.clear();
         for (const entry of this.#bones.values())
             gl.deleteTexture(entry.texture);
         for (const target of [...this.#targets.keys()]) {

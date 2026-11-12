@@ -40,6 +40,17 @@ export { STATE_MACHINE3D_LIMITS, AnimationStateMachine3D, createAnimationStateMa
 export type { StateParameter3D, StateConditionOperator3D, StateCondition3D, StateBlendEntry3D, StateOptions3D, TransitionOptions3D } from './StateMachine3D.js';
 export { Joint3D } from './Physics3D.js';
 export type { JointType3D, JointOptions3D } from './Physics3D.js';
+export type { CompoundChild3D, PhysicsContact3D, PhysicsShapeCastHit3D } from './Physics3D.js';
+export { Jelly3D, createJelly3D, createJellyShader3D } from './Jelly3D.js';
+export type { JellyOptions3D } from './Jelly3D.js';
+export { RAGDOLL3D_LIMITS, Ragdoll3D, createRagdoll3D } from './Ragdoll3D.js';
+export type { RagdollJoint3D, RagdollOptions3D, RagdollPart3D } from './Ragdoll3D.js';
+export { VEHICLE3D_LIMITS, Vehicle3D, createVehicle3D } from './Vehicle3D.js';
+export type { VehicleOptions3D, Wheel3D, WheelOptions3D } from './Vehicle3D.js';
+export { CLOTH3D_LIMITS, Cloth3D, Rope3D, createCloth3D, createRope3D } from './Cloth3D.js';
+export type { ClothOptions3D, RopeOptions3D, StrandOptions3D } from './Cloth3D.js';
+export { PhysicsClient3D, RemoteBody3D, RemoteJoint3D, connectPhysics3D, servePhysics3D } from './PhysicsRemote3D.js';
+export type { PhysicsPort3D, RemoteBodyOptions3D, RemoteJointOptions3D, RemoteRaycastHit3D, RemoteShape3D } from './PhysicsRemote3D.js';
 export { PHYSICS3D_LIMITS, RigidBody3D, PhysicsWorld3D, CharacterController3D, createPhysicsWorld3D, createCharacterController3D } from './Physics3D.js';
 export type { BodyType3D, ShapeDefinition3D, RigidBodyOptions3D, PhysicsRaycastHit3D, PhysicsWorldOptions3D, CharacterControllerOptions3D, } from './Physics3D.js';
 export { CURVE3D_LIMITS, Curve3D, LineCurve3D, QuadraticBezierCurve3D, CubicBezierCurve3D, CatmullRomCurve3D, CurvePath3D, Path2D3D, Shape3D, signedArea2D, triangulateShape3D, } from './Curves3D.js';
@@ -57,4 +68,20 @@ export { TEXT3D_LIMITS, Font3D, parseTypefaceFont3D, parseTrueTypeFont3D, create
 export type { GlyphOutline3D, FontSource3D, TextLayoutOptions3D, TextGeometryOptions3D } from './Text3D.js';
 export { TransformGizmo3D, createTransformGizmo3D } from './Gizmo3D.js';
 export type { GizmoMode3D, GizmoSpace3D, GizmoHandle3D, TransformGizmoOptions3D } from './Gizmo3D.js';
+export { CharacterMotor3D, FollowCamera3D, createCharacterMotor3D, createFollowCamera3D } from './Character3D.js';
+export type { CharacterMotorOptions3D, FollowCameraOptions3D } from './Character3D.js';
+export { MESHOPT3D_LIMITS, decodeMeshopt3D } from './Meshopt3D.js';
+export type { MeshoptMode3D, MeshoptFilter3D } from './Meshopt3D.js';
+export { COMPRESSION3D_LIMITS, inflate3D, decompressZstd3D } from './Compression3D.js';
+export { createDracoDecoder3D, createBasisTranscoder3D } from './decoders3D.js';
+export type { DracoModule3D, BasisModule3D } from './decoders3D.js';
+export { NAVIGATION3D_LIMITS, NavMesh3D, NavAgent3D, NavCrowd3D, createNavMesh3D, createNavCrowd3D, findGridPath3D } from './Navigation3D.js';
+export type { NavPoint3D, NavMeshOptions3D, NavLocation3D, NavPathOptions3D, NavPath3D, NavAgentOptions3D, GridPathOptions3D } from './Navigation3D.js';
+export { HeightField3D, Terrain3D, TerrainStream3D, createHeightField3D, createHeightFieldFromPixels3D, createTerrain3D, createTerrainMaterial3D, createTerrainStream3D, TERRAIN3D_LIMITS, type HeightFieldOptions3D, type HeightImageOptions3D, type TerrainOptions3D, type TerrainMaterialOptions3D, type TerrainStreamOptions3D, type TerrainTile3D, } from './Terrain3D.js';
+export { PlanarReflection3D, Water3D, createWater3D, createWaterMaterial3D, type ReflectionRenderer3D, type WaterOptions3D, } from './Water3D.js';
+export { AnimationTexture3D, SkinnedInstancedMesh3D, bakeAnimationTexture3D, createSkinnedInstancedMesh3D, ANIMATION_TEXTURE3D_LIMITS, type BakedClip3D, type BakeAnimationOptions3D, type InstanceClipOptions3D, type InstanceBlendOptions3D, } from './AnimationTexture3D.js';
+export { Trail3D, createTrail3D, TRAIL3D_LIMITS, type TrailOptions3D } from './Trail3D.js';
+export { createDecalGeometry3D, createDecal3D, DECAL3D_LIMITS, type DecalOptions3D } from './Decal3D.js';
+export { GpuParticles3D, createGpuParticles3D, type GpuParticlesOptions3D } from './GpuParticles3D.js';
+export { VolumetricFog3D, createVolumetricFog3D, type VolumetricFogOptions3D } from './VolumetricFog3D.js';
 //# sourceMappingURL=index.d.ts.map

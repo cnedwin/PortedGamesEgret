@@ -40,12 +40,23 @@ export interface ShaderFeatures3D {
     readonly customKey?: string;
     readonly customWgsl?: string;
     readonly customVertexWgsl?: string;
+    readonly customNormalWgsl?: string;
+    /** Standard material with a mirror image read at the pixel's place on screen. */
+    readonly reflectionMap?: boolean;
+    /** Instances posed from a table of baked bone matrices. */
+    readonly skinInstancing?: boolean;
+    /** Instance slots hold particle parameters and the vertex stage moves the particles. */
+    readonly gpuParticles?: boolean;
+    /** Blended surface that fades where it nears the solid scene. */
+    readonly softDepth?: boolean;
+    /** Ground layers blended by a weight map; they use the map, emissive, occlusion, metallic-roughness and light map slots. */
+    readonly splat?: boolean;
 }
 export declare const MAX_MORPH_INFLUENCES_WGSL_3D = 8;
 /** Bytes of the per-draw Object uniform block; also its dynamic-offset stride. */
 export declare const OBJECT_BLOCK_BYTES_3D = 256;
 /** Bytes of the per-material uniform block. */
-export declare const MATERIAL_BLOCK_BYTES_3D = 240;
+export declare const MATERIAL_BLOCK_BYTES_3D = 256;
 /** Assemble the complete WGSL module for one material variant. */
 export declare function buildMaterialWgsl3D(features: ShaderFeatures3D): string;
 /** Stable cache key for a feature set. */

@@ -36,6 +36,7 @@ interface SlotOwner {
     readonly cache: PreparedFrameCache2D;
     readonly address: number;
     readonly call: object;
+    readonly allowAlternate: boolean;
     readonly observation: object;
     key: Key | undefined;
     matchedIdentity: number;
@@ -44,6 +45,7 @@ interface SlotOwner {
 /** One Host owns the combined geometry/packing allowance and its terminal clear. */
 export declare class PreparedFrameCache2D {
     private candidates;
+    private alternateCandidates;
     private oldest;
     private newest;
     private entries;
@@ -54,7 +56,9 @@ export declare class PreparedFrameCache2D {
     private nextKeyIdentity;
     constructor();
     context(profile: 0 | 1 | 2 | 3, settings: PreparedCacheSettings2D): PreparedCacheContext2D | undefined;
+    enableRecurringTexturedKeys(context: PreparedCacheContext2D): void;
     slot(context: PreparedCacheContext2D, commands: readonly TexturedRenderCommand2D[], width: number, height: number, image?: ImageData2D, geometry?: TexturedGeometry2D, run?: boolean, ordinal?: number): PreparedCacheSlot2D | undefined;
+    private alternate;
     private find;
     private unlink;
     private append;

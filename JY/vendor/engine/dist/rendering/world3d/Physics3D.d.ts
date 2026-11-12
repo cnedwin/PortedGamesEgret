@@ -5,6 +5,8 @@ export declare const PHYSICS3D_LIMITS: Readonly<{
     readonly maxBodies: 16384;
     readonly maxSubSteps: 8;
     readonly maxContactsPerPair: 8;
+    readonly maxCompoundChildren: 32;
+    readonly maxSolverSteps: 8;
 }>;
 export type BodyType3D = 'static' | 'kinematic' | 'dynamic';
 export type ShapeDefinition3D = {
@@ -33,7 +35,23 @@ export type ShapeDefinition3D = {
  | {
     readonly type: 'mesh';
     readonly mesh: TriangleMeshShape3D;
+}
+/**
+ * Several solid shapes that move as one body, such as a table or an L-shaped block.
+ * The body's position is taken as its center of mass, so place the parts around the origin.
+ */
+ | {
+    readonly type: 'compound';
+    readonly children: readonly CompoundChild3D[];
 };
+/** One part of a compound shape, placed in the body's local frame. */
+export interface CompoundChild3D {
+    readonly shape: Extract<ShapeDefinition3D, {
+        type: 'sphere' | 'box' | 'capsule' | 'convex';
+    }>;
+    readonly position?: readonly [number, number, number];
+    readonly quaternion?: readonly [number, number, number, number];
+}
 export interface RigidBodyOptions3D {
     readonly type?: BodyType3D;
     readonly shape: ShapeDefinition3D;
@@ -58,7 +76,7 @@ export interface RigidBodyOptions3D {
      * the body's center.
      */
     readonly continuous?: boolean;
-    /** Scene node moved with the body after each step; it must not have a transformed parent. */
+    /** Scene node placed at the body when it is added and moved with it after each step; it must not have a transformed parent. */
     readonly node?: Object3D;
     readonly userData?: unknown;
 }
@@ -68,12 +86,38 @@ export interface PhysicsRaycastHit3D {
     readonly normal: [number, number, number];
     readonly distance: number;
 }
+export interface PhysicsShapeCastHit3D {
+    readonly body: RigidBody3D;
+    /** How far the shape travelled before touching. */
+    readonly distance: number;
+    readonly point: readonly [number, number, number];
+    readonly normal: readonly [number, number, number];
+}
+/** What a pair of solid bodies did to each other in one step. The object is reused; copy what you keep. */
+export interface PhysicsContact3D {
+    readonly a: RigidBody3D;
+    readonly b: RigidBody3D;
+    /** Where they touch, averaged over the contact points and weighted by how hard each one pushed. */
+    readonly point: ArrayLike<number>;
+    /** Direction from `a` toward `b`. */
+    readonly normal: ArrayLike<number>;
+    /** Total push along the normal this step; divide by a body's mass for the change of speed it caused. */
+    readonly impulse: number;
+    /** True in the first step the pair touches. */
+    readonly began: boolean;
+}
 export interface PhysicsWorldOptions3D {
     readonly gravity?: readonly [number, number, number];
     /** Length of one simulation step in seconds. */
     readonly fixedStep?: number;
     readonly maxSubSteps?: number;
     readonly iterations?: number;
+    /**
+     * Solve each fixed step in this many smaller slices, finding contacts once. More slices
+     * hold tall stacks, long chains and heavy loads on light links far better than more
+     * iterations do, at about the same cost when `iterations` is lowered to match. Defaults to 1.
+     */
+    readonly solverSteps?: number;
     readonly allowSleep?: boolean;
 }
 type Vec = Float64Array;
@@ -107,7 +151,14 @@ export declare class RigidBody3D {
     /** @internal */ readonly inverseInertiaWorld: Float64Array<ArrayBuffer>;
     /** @internal */ readonly aabb: Float64Array<ArrayBuffer>;
     /** @internal */ sleepTime: number;
+    /** @internal */ slot: number;
     /** @internal */ world: PhysicsWorld3D | undefined;
+    /** @internal Stand-in bodies for the parts of a compound shape, kept at their world poses by refresh(). */
+    readonly parts: RigidBody3D[];
+    /** @internal Local placement of each part: position, then quaternion. */
+    readonly partPoses: Float64Array[];
+    /** @internal Half extents of the box around a compound, used to weigh it. */
+    readonly compoundHalf: Vec;
     constructor(options: RigidBodyOptions3D);
     wake(): void;
     setPosition(x: number, y: number, z: number): this;
@@ -122,7 +173,7 @@ export declare class RigidBody3D {
     /** @internal Recompute the rotation matrix, world inertia and bounds from the pose. */
     refresh(): void;
 }
-export type JointType3D = 'point' | 'hinge' | 'fixed' | 'distance';
+export type JointType3D = 'point' | 'hinge' | 'fixed' | 'distance' | 'slider';
 export interface JointOptions3D {
     readonly type: JointType3D;
     readonly bodyA: RigidBody3D;
@@ -137,15 +188,26 @@ export interface JointOptions3D {
     readonly anchorB?: readonly [number, number, number];
     /**
      * 'hinge': world-space direction of the hinge pin. 'point': the direction
-     * `coneLimit` is measured around. Defaults to +Y.
+     * `coneLimit` is measured around. 'slider': the direction bodyA may travel. Defaults to +Y.
      */
     readonly axis?: readonly [number, number, number];
-    /** 'hinge' only: lowest and highest angle in radians, relative to the pose at creation; both within -PI..PI. */
+    /**
+     * 'hinge': lowest and highest angle in radians, relative to the pose at creation; both within -PI..PI.
+     * 'slider': lowest and highest travel of bodyA along the axis, relative to where it was created.
+     */
     readonly limits?: readonly [number, number];
-    /** 'hinge' only: turning speed in radians per second the motor drives toward. */
+    /** 'hinge': turning speed in radians per second the motor drives toward. 'slider': travel speed along the axis. */
     readonly motorSpeed?: number;
     /** 'hinge' only: strongest torque the motor may use. Zero, the default, turns the motor off. */
     readonly maxMotorTorque?: number;
+    /** 'slider' only: strongest force the motor may use. Zero, the default, turns the motor off. */
+    readonly maxMotorForce?: number;
+    /**
+     * 'distance' only: make the link a spring. `stiffness` is how many times per second it
+     * swings back and forth; `damping` is 0 for no loss and 1 for settling without overshoot.
+     */
+    readonly stiffness?: number;
+    readonly damping?: number;
     /** 'point' only: largest angle in radians bodyB may swing away from `axis`. */
     readonly coneLimit?: number;
     /** 'distance' only: rest length; defaults to the distance between the anchors at creation. */
@@ -175,9 +237,16 @@ export declare class Joint3D {
     rope: boolean;
     /** 'hinge' joints: angle range in radians, or undefined for a free hinge. */
     limits: [number, number] | undefined;
-    /** 'hinge' joints: target speed in radians per second, and the torque available to reach it (0 = off). */
+    /** 'hinge' joints: target speed in radians per second, and the torque available to reach it (0 = off). 'slider' joints: travel speed. */
     motorSpeed: number;
     maxMotorTorque: number;
+    /** 'slider' joints: the force available to reach `motorSpeed` (0 = off). */
+    maxMotorForce: number;
+    /** 'distance' joints: swings per second of the spring (0 = rigid), and how quickly it settles. */
+    stiffness: number;
+    damping: number;
+    /** @internal */ readonly slide: Vec;
+    /** @internal */ slideMass: number;
     /** 'point' joints: largest swing angle in radians, or undefined for none. */
     coneLimit: number | undefined;
     /** @internal */ readonly points: JointPoint[];
@@ -205,6 +274,8 @@ export declare class Joint3D {
      * relative to bodyB or the world, in radians. 'point' joints: how far
      * the two bodies have swung apart, measured between their copies of the axis.
      */
+    /** 'slider' joints: how far bodyA has travelled along the axis since creation, relative to bodyB or the world. */
+    get translation(): number;
     get angle(): number;
 }
 export declare class PhysicsWorld3D {
@@ -213,12 +284,22 @@ export declare class PhysicsWorld3D {
     fixedStep: number;
     maxSubSteps: number;
     iterations: number;
+    solverSteps: number;
     allowSleep: boolean;
     /** Called when two bodies start or stop touching. Triggers report here too. */
     onContactBegin: ((a: RigidBody3D, b: RigidBody3D) => void) | undefined;
     onContactEnd: ((a: RigidBody3D, b: RigidBody3D) => void) | undefined;
+    /**
+     * Called after every step for each pair of solid bodies that pressed on each other, with
+     * where, in which direction and how hard: enough to pick a sound, deal damage or squash a shape.
+     */
+    onContact: ((contact: PhysicsContact3D) => void) | undefined;
     constructor(options?: PhysicsWorldOptions3D);
     get bodies(): readonly RigidBody3D[];
+    /** @internal A static body was repositioned: its place among the others is worked out again. */
+    staticMoved(body: RigidBody3D): void;
+    /** Visit every body whose bounds meet a box: planes, bodies that can move, then static ones. */
+    private near;
     /** Contact points solved in the last step. */
     get contactCount(): number;
     addBody(body: RigidBody3D): RigidBody3D;
@@ -247,11 +328,17 @@ export declare class PhysicsWorld3D {
     private syncNodes;
     private fixedUpdate;
     /**
-     * Share of this step's travel a fast body may make before its center line
-     * meets a surface. It stops just touching, so the next step finds the
-     * contact and answers it with the body's full speed.
+     * Share of this step's travel a fast body may make before its shape meets
+     * a surface it is not already resting on. It stops just touching, so the
+     * next step finds the contact and answers it with the body's full speed.
      */
     private sweep;
+    /**
+     * Walk `probe` along a unit direction and return how far it gets before touching one of
+     * the accepted bodies, or -1. The probe is left where it touched and the body it met in
+     * #castBody. With `skipTouching`, whatever the probe already rests on is not counted.
+     */
+    private cast;
     private findContacts;
     private testPair;
     private pairKey;
@@ -268,6 +355,14 @@ export declare class PhysicsWorld3D {
     raycast(origin: ArrayLike<number>, direction: ArrayLike<number>, maxDistance?: number, mask?: number): PhysicsRaycastHit3D | undefined;
     /** Solid bodies whose shape touches a sphere; triggers are skipped. */
     overlapSphere(center: ArrayLike<number>, radius: number, mask?: number): RigidBody3D[];
+    /**
+     * Move a shape along a unit direction and report the first body it
+     * touches: the distance travelled, the point of contact and the surface
+     * normal facing the shape. The path is walked in steps no longer than the
+     * shape's thinnest half and the touch refined between two steps, so
+     * anything thinner than that step may be passed over. Triggers are ignored.
+     */
+    shapeCast(shape: ShapeDefinition3D, origin: ArrayLike<number>, direction: ArrayLike<number>, maxDistance: number, mask?: number, quaternion?: ArrayLike<number>): PhysicsShapeCastHit3D | undefined;
     /** @internal Contacts of a free-standing shape against the world, for the character controller. */
     probe(body: RigidBody3D, mask: number, visit: (nx: number, ny: number, nz: number, depth: number, other: RigidBody3D) => void): void;
 }
@@ -304,6 +399,10 @@ export declare class CharacterController3D {
     readonly groundNormal: Vec;
     /** Body standing under the capsule, when grounded. */
     groundBody: RigidBody3D | undefined;
+    /** True when the last move was stopped by something overhead. */
+    hitCeiling: boolean;
+    /** Called for every obstacle the capsule is pushed out of during a move; the normal points from the capsule into the obstacle. */
+    onContact: ((body: RigidBody3D, nx: number, ny: number, nz: number, depth: number) => void) | undefined;
     constructor(world: PhysicsWorld3D, options?: CharacterControllerOptions3D);
     /** Move by a world-space displacement, sliding along anything in the way. */
     move(dx: number, dy: number, dz: number): void;

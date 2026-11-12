@@ -14,11 +14,17 @@ JY is an independently developed wuxia browser game demo built with [Egret Rebui
 2. Select your own 4in1 `.7z` archive or the extracted `game` folder.
 3. Select **进入完整版** after the import finishes. Game data and saves stay in the current browser. No local service or additional software is required.
 
+[原项目的 4in1 资源说明 · Original 4in1 resource information](https://github.com/scarsty/kys-cpp#readme)
+
 ## 运行与开发 · Run and develop
 
 游戏使用白鹭原生 World3D 和 WebGL2。角色移动、剧情事件、战斗和存档使用同一套游戏状态。项目内的 `web/` 是浏览器客户端，`src/` 是游戏规则，`tools/` 负责本地资源读取和启动。
 
 The game uses Egret World3D and WebGL2. Movement, story events, combat, and saves share the same game state. The browser client lives in `web/`, the game rules in `src/`, and local launch and data tools in `tools/`.
+
+短篇试玩的河面使用白鹭原生水体，支持减少动态效果设置。完整版大地图的远景镜头使用随高度变化的雾效。
+
+The short scenario uses Egret water with reduced-motion support. The full game uses height-dependent haze in its world map overview.
 
 ### 本地试玩 · Local play
 

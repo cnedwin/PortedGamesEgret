@@ -15,6 +15,13 @@ import type { Texture3D } from './Texture3D.js';
  * Return the new world position. Use only the arguments and the custom
  * parameters; per-frame camera data is not available while drawing shadows.
  * `color` is the vertex color when the material enables vertexColors, else white.
+ *
+ * A normal hook replaces the shading normal of a lit material before any
+ * light is computed, for surfaces whose detail is a formula rather than a
+ * texture, such as ripples on water:
+ *   GLSL:  vec3 customNormal(vec3 normal, vec3 worldPosition, vec2 uv)
+ *   WGSL:  fn customNormal(normal: vec3f, worldPosition: vec3f, uv: vec2f) -> vec3f
+ * The result is normalized for you.
  */
 export interface CustomShader3D {
     /** Identifies the source; materials with the same key share compiled programs. */
@@ -23,6 +30,8 @@ export interface CustomShader3D {
     readonly wgsl?: string;
     readonly glslVertex?: string;
     readonly wgslVertex?: string;
+    readonly glslNormal?: string;
+    readonly wgslNormal?: string;
     /** Four vec4 parameters, written by the application (time, colors, thresholds). */
     readonly uniforms: Float32Array;
 }
@@ -32,6 +41,8 @@ export declare function createCustomShader3D(input: {
     readonly wgsl?: string;
     readonly glslVertex?: string;
     readonly wgslVertex?: string;
+    readonly glslNormal?: string;
+    readonly wgslNormal?: string;
     readonly uniforms?: ArrayLike<number>;
 }): CustomShader3D;
 export type Shading3D = 'unlit' | 'lambert' | 'phong' | 'standard' | 'toon' | 'matcap';
@@ -124,6 +135,35 @@ export declare class Material3D extends Resource3D {
      */
     lightMap: Texture3D | undefined;
     lightMapIntensity: number;
+    /**
+     * A mirror image of the scene for a flat reflective surface on a standard
+     * material, normally the texture of a PlanarReflection3D. It is read at
+     * the pixel's own place on screen, so the mesh needs no coordinates for
+     * it, and it takes the place of the environment map's reflection.
+     */
+    reflectionMap: Texture3D | undefined;
+    reflectionStrength: number;
+    /** How far the surface normal pushes the mirror image sideways, as a share of the screen. */
+    reflectionDistortion: number;
+    /**
+     * For blended materials such as particles and haze: the distance over which
+     * the surface fades out where it comes close to the solid geometry behind
+     * it, instead of ending in a hard line. 0 turns the fade off.
+     */
+    softness: number;
+    /**
+     * Ground layers blended by a weight map, for terrain: up to four tiling
+     * textures, each shown where its channel of `weights` (R, G, B, A) is
+     * strong. Weights are read with the mesh's coordinates as they are and
+     * layers with those coordinates times their `repeat`. The layers take
+     * the texture slots of map, emissiveMap, occlusionMap, metallicRoughnessMap
+     * and lightMap, so leave those unset. Call touch() after assigning.
+     */
+    splat: {
+        readonly weights: Texture3D;
+        readonly layers: readonly Texture3D[];
+        readonly repeat: readonly number[];
+    } | undefined;
     /** Strength, 0 to 1, of a soft rim lobe for cloth and velvet on a standard material. */
     sheen: number;
     readonly sheenColor: Float32Array<ArrayBuffer>;
