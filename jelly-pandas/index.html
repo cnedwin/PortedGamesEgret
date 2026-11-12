@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Jelly Pandas / 果冻熊猫</title>
+  <meta name="description" content="Jelly Pandas, a 3D action game demo built with Egret Rebuild. / 果冻熊猫：基于新白鹭引擎开发的 3D 动作游戏 Demo。">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='4' cy='4' r='3' fill='%231f6b3a'/%3E%3Ccircle cx='12' cy='4' r='3' fill='%231f6b3a'/%3E%3Ccircle cx='8' cy='9' r='6.5' fill='%238fe6a0'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
+        "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="stage" tabindex="0" aria-label="Jelly Pandas: a 3D action game. W A S D to move, mouse to look, Space to jump, Ctrl or Q to slam, Shift or E to roll. / 果冻熊猫：3D 动作游戏。WASD 移动，鼠标转视角，空格跳跃，Ctrl 或 Q 下砸，Shift 或 E 翻滚。"></canvas>
+  <div id="ui"></div>
+  <div id="error" role="alert" hidden></div>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>

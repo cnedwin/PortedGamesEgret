@@ -14,6 +14,12 @@ An independently developed wuxia browser game demo built with Egret Rebuild. Exp
 
 Play the short scenario immediately, or import your own 4in1 archive or extracted `game` folder to play the full game in the browser.
 
+## Jelly Pandas · 果冻熊猫
+
+一款使用新白鹭引擎独立开发的 3D 动作生存游戏 Demo。半透明的果冻熊猫要在玩具岛上抵挡糖果大军十五分钟：十二种自动开火的玩具可以升级和进化，还能用大跳、下砸、肚皮撞和翻滚把敌人撞飞，每五分钟迎战一个 Boss。可单人游玩，也可带上由游戏操控的伙伴。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/jelly-pandas/) · [说明与开发](jelly-pandas/README.md)
+
+An independently developed 3D action survival demo built with Egret Rebuild. See-through jelly pandas hold a toy island for fifteen minutes against a candy horde: twelve self-firing toys level up and evolve, super jumps, slams, belly bumps and rolls send enemies flying, and a boss arrives every five minutes. Play alone or with friends steered by the game. [Play online](https://cnedwin.github.io/PortedGamesEgret/jelly-pandas/) · [Guide and development](jelly-pandas/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)
