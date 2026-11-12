@@ -111,10 +111,16 @@ export class PlanarReflection3D {
         const shown = hidden.map((object) => object.visible);
         for (const object of hidden)
             object.visible = false;
+        // The mirror image is plain; the main view's post-processing reaches it with everything else.
+        const post = renderer.postProcess, processed = post?.enabled ?? false;
+        if (post)
+            post.enabled = false;
         try {
             return renderer.render(scene, this.camera, this.target);
         }
         finally {
+            if (post)
+                post.enabled = processed;
             hidden.forEach((object, i) => { object.visible = shown[i]; });
         }
     }

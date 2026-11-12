@@ -1,3 +1,4 @@
+import { worldRenderSphere3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { LIGHT3D_LIMITS } from '../../rendering/world3d/Light3D.js';
 import { frustumFromMatrix, frustumIntersectsSphere, mat4Invert, mat4LookAt, mat4Multiply, mat4Orthographic, mat4Perspective, vec3TransformMat4 } from '../../rendering/world3d/math3D.js';
 /** Size in floats of the Frame uniform block. */
@@ -34,6 +35,10 @@ export function writeFrameBlock3D(data, scene, camera, list, shadowSlots, output
     data[F.lightCounts] = list.directionalLights.length;
     data[F.lightCounts + 1] = list.pointLights.length;
     data[F.lightCounts + 2] = list.spotLights.length;
+    // What a shader needs to turn stored depth back into distance: two projection terms and whether the view is orthographic.
+    data[F.lightCounts + 3] = camera.projectionMatrix[15] === 1 ? 1 : 0;
+    data[F.pointShadow + 2] = camera.projectionMatrix[10];
+    data[F.pointShadow + 3] = camera.projectionMatrix[14];
     const direction = (light, offset) => {
         // Lights shine along their local negative Z axis.
         const m = light.matrixWorld, x = -m[8], y = -m[9], z = -m[10], length = Math.hypot(x, y, z) || 1;
@@ -103,7 +108,8 @@ export function cascadeSplits3D(near, far, count, lambda) {
  */
 export function planShadows3D(data, list, atlasSize, enabled, flipY, slots, camera) {
     slots.clear();
-    data.fill(0, F.cascadeSplits, F.pointShadow + 4);
+    // The last two floats of pointShadow belong to the camera, written with the rest of the frame.
+    data.fill(0, F.cascadeSplits, F.pointShadow + 2);
     data[F.cascadeInfo] = -1;
     data[F.pointShadow] = -1;
     const plans = [];
@@ -128,9 +134,11 @@ export function planShadows3D(data, list, atlasSize, enabled, flipY, slots, came
         data[F.shadowParams + slot * 4 + 3] = 0;
         const casters = [];
         for (const mesh of list.shadowCasters) {
-            const sphere = mesh.worldBoundingSphere;
-            if (mesh.frustumCulled && sphere[3] >= 0 && !frustumIntersectsSphere(scratchFrustum, sphere))
-                continue;
+            if (mesh.frustumCulled) {
+                const sphere = worldRenderSphere3D(mesh);
+                if (sphere && sphere[3] >= 0 && !frustumIntersectsSphere(scratchFrustum, sphere))
+                    continue;
+            }
             casters.push(mesh);
         }
         plans.push({ light, slot, x, y, tile, matrix, casters });

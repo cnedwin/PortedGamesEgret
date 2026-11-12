@@ -57,6 +57,8 @@ export class Skeleton3D {
 }
 export class Mesh3D extends Object3D {
     geometry;
+    /** false leaves the mesh out of ray picking, as for effects whose drawn shape is not their geometry. */
+    pickable = true;
     /** One material, or one per geometry group addressed by materialIndex. */
     material;
     /** Weight per geometry morph target; resized automatically to the target count. */
@@ -157,6 +159,8 @@ export class InstancedMesh3D extends Mesh3D {
     instanceColorSize;
     /** Bump after editing instance arrays directly. */
     instanceVersion = 1;
+    /** Multiplies each instance's bounding radius, for instances that move beyond the geometry, such as animated ones. */
+    boundsScale = 1;
     #boundsVersion = 0;
     #instanceSphere = new Float32Array(4);
     constructor(geometry, material, capacity, instanceColorSize = 3) {
@@ -206,7 +210,7 @@ export class InstancedMesh3D extends Mesh3D {
                 const o = i * 16, x = base[0], y = base[1], z = base[2];
                 box3ExpandByPoint(box, m[o] * x + m[o + 4] * y + m[o + 8] * z + m[o + 12], m[o + 1] * x + m[o + 5] * y + m[o + 9] * z + m[o + 13], m[o + 2] * x + m[o + 6] * y + m[o + 10] * z + m[o + 14]);
                 const scale = Math.sqrt(Math.max(m[o] ** 2 + m[o + 1] ** 2 + m[o + 2] ** 2, m[o + 4] ** 2 + m[o + 5] ** 2 + m[o + 6] ** 2, m[o + 8] ** 2 + m[o + 9] ** 2 + m[o + 10] ** 2));
-                radius = Math.max(radius, base[3] * scale);
+                radius = Math.max(radius, base[3] * scale * this.boundsScale);
             }
             sphereFromBox(this.localSphere, box);
             if (this.localSphere[3] >= 0)

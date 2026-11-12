@@ -1,3 +1,8 @@
+// SPDX-License-Identifier: Apache-2.0
+// Backend-neutral frame preparation: refresh transforms, cull against the
+// camera frustum, gather lights and produce sorted draw items. Item records
+// are pooled so a steady scene allocates nothing per frame.
+import { worldRenderSphere3D } from './AnimationTexture3D.js';
 import { Lod3D, ScreenLayer3D } from './helpers3D.js';
 import { LIGHT3D_LIMITS, Light3D } from './Light3D.js';
 import { frustumIntersectsSphere } from './math3D.js';
@@ -104,13 +109,15 @@ export class RenderList3D {
             this.shadowCasters.push(mesh);
         if ((mesh.layers & camera.layerMask) === 0)
             return;
-        const sphere = mesh.worldBoundingSphere;
-        if (mesh.frustumCulled && sphere[3] >= 0 && !frustumIntersectsSphere(camera.frustum, sphere)) {
+        const sphere = worldRenderSphere3D(mesh);
+        if (mesh.frustumCulled && sphere && sphere[3] >= 0 && !frustumIntersectsSphere(camera.frustum, sphere)) {
             this.stats.culled++;
             return;
         }
+        // Use the batch origin when no posed bound is available.
+        const sortOrigin = sphere ?? mesh.matrixWorld, offset = sphere ? 0 : 12;
         const view = camera.viewMatrix;
-        const depth = -(view[2] * sphere[0] + view[6] * sphere[1] + view[10] * sphere[2] + view[14]);
+        const depth = -(view[2] * sortOrigin[offset] + view[6] * sortOrigin[offset + 1] + view[10] * sortOrigin[offset + 2] + view[14]);
         const groups = geometry.groups;
         if (Array.isArray(mesh.material) && groups.length > 0) {
             for (let i = 0; i < groups.length; i++) {

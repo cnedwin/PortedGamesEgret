@@ -37,7 +37,7 @@ export class Raycaster3D {
         root.traverse(object => {
             if (!object.visible)
                 return false;
-            if (object instanceof Mesh3D && (object.layers & mask) !== 0)
+            if (object instanceof Mesh3D && object.pickable && (object.layers & mask) !== 0)
                 this.intersectMesh(object, near, far, options.firstHitOnly === true, hits);
             return true;
         });

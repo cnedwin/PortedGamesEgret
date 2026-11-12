@@ -41,3 +41,7 @@ export { createDracoDecoder3D, createBasisTranscoder3D } from './decoders3D.js';
 export { NAVIGATION3D_LIMITS, NavMesh3D, NavAgent3D, NavCrowd3D, createNavMesh3D, createNavCrowd3D, findGridPath3D } from './Navigation3D.js';
 export { HeightField3D, Terrain3D, createHeightField3D, createHeightFieldFromPixels3D, createTerrain3D, TERRAIN3D_LIMITS, } from './Terrain3D.js';
 export { PlanarReflection3D, Water3D, createWater3D, createWaterMaterial3D, } from './Water3D.js';
+export { AnimationTexture3D, SkinnedInstancedMesh3D, bakeAnimationTexture3D, createSkinnedInstancedMesh3D, ANIMATION_TEXTURE3D_LIMITS, } from './AnimationTexture3D.js';
+export { Trail3D, createTrail3D, TRAIL3D_LIMITS } from './Trail3D.js';
+export { createDecalGeometry3D, createDecal3D, DECAL3D_LIMITS } from './Decal3D.js';
+export { GpuParticles3D, createGpuParticles3D } from './GpuParticles3D.js';

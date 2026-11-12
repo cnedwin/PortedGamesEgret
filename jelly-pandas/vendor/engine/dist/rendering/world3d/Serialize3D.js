@@ -85,7 +85,7 @@ function plainData(value, depth = 0) {
     return out;
 }
 const MATERIAL_SCALARS = ['opacity', 'side', 'alphaMode', 'alphaCutoff', 'blending', 'depthTest', 'depthWrite', 'vertexColors', 'fog', 'toneMapped', 'visible',
-    'emissiveIntensity', 'normalScale', 'occlusionStrength', 'flatShading', 'wireframe', 'shininess', 'toonSteps', 'clearcoat', 'clearcoatRoughness', 'lightMapIntensity', 'reflectionStrength', 'reflectionDistortion', 'sheen', 'sheenRoughness', 'transmission', 'ior', 'thickness', 'metallic', 'roughness', 'environmentIntensity', 'billboard',
+    'emissiveIntensity', 'normalScale', 'occlusionStrength', 'flatShading', 'wireframe', 'shininess', 'toonSteps', 'clearcoat', 'clearcoatRoughness', 'lightMapIntensity', 'reflectionStrength', 'reflectionDistortion', 'softness', 'sheen', 'sheenRoughness', 'transmission', 'ior', 'thickness', 'metallic', 'roughness', 'environmentIntensity', 'billboard',
     'screenSpace', 'sizeAttenuation', 'rotation', 'pointSize'];
 const MATERIAL_MAPS = ['map', 'emissiveMap', 'normalMap', 'occlusionMap', 'metallicRoughnessMap', 'lightMap'];
 const NODE_FLAGS = ['visible', 'layers', 'renderOrder', 'castShadow', 'receiveShadow', 'frustumCulled'];
