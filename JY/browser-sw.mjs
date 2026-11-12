@@ -7,11 +7,12 @@ const root = new URL('./', self.location.href);
 const play = new URL('play/', root);
 const library = 'third-party/spessasynth_lib/spessasynth_processor.min.js';
 const rules = new Set(['cifa-opening', 'cifa-trainer', 'cifa-recruit', 'cifa-game',
-  'game-events', 'kys-navigation', 'mode3-battle'].map(name => name + '.mjs'));
+  'game-events', 'kys-navigation', 'classic-battle', 'battle-progression'].map(name => name + '.mjs'));
 let gameImports;
 let active;
 const sessions = new Map();
 
+self.addEventListener('install', event => event.waitUntil(self.skipWaiting()));
 self.addEventListener('activate', event => event.waitUntil(self.clients.claim()));
 self.addEventListener('message', event => {
   if (event.data?.type === 'pack-replaced') active = undefined;

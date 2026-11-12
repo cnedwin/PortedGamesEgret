@@ -38,6 +38,7 @@
       </header>
       <div class="viewport">
         <canvas id="game" width="640" height="360" tabindex="0" aria-label="游戏画面，方向键或 WASD 移动，Enter 对话"></canvas>
+        <canvas id="battle-grid" class="battle-grid" aria-hidden="true" hidden></canvas>
         <div id="notice" class="notice" role="status">正在读取原作地图与贴图…</div>
         <section id="battle-result" class="notice battle-result" aria-labelledby="battle-result-text" hidden>
           <div>
@@ -52,7 +53,7 @@
           <div class="battle-readout" aria-label="戰況">
             <div class="battle-readout-card">
               <div class="battle-readout-heading">
-                <strong data-battle-fighter></strong><span class="battle-readout-state" data-battle-action></span>
+                <strong data-battle-fighter></strong><span class="battle-readout-state" data-battle-action aria-live="polite"></span>
               </div>
               <div class="battle-vitals">
                 <div><span data-battle-hp></span><meter data-battle-meter="hp" min="0" max="1" value="0" aria-label="生命"></meter></div>
@@ -68,24 +69,26 @@
               </div>
             </div>
           </div>
-          <div class="battle-dpad" role="group" aria-label="移動">
-            <button type="button" data-battle-command="KeyW" data-battle-hold aria-label="向上移動" aria-keyshortcuts="W ArrowUp">↑</button>
-            <button type="button" data-battle-command="KeyA" data-battle-hold aria-label="向左移動" aria-keyshortcuts="A ArrowLeft">←</button>
-            <button type="button" data-battle-command="KeyS" data-battle-hold aria-label="向下移動" aria-keyshortcuts="S ArrowDown">↓</button>
-            <button type="button" data-battle-command="KeyD" data-battle-hold aria-label="向右移動" aria-keyshortcuts="D ArrowRight">→</button>
+          <div class="battle-dpad" role="group" aria-label="戰場游標">
+            <button type="button" data-battle-command="KeyW" aria-label="游標上移" aria-keyshortcuts="W ArrowUp">↑</button>
+            <button type="button" data-battle-command="KeyA" aria-label="游標左移" aria-keyshortcuts="A ArrowLeft">←</button>
+            <button type="button" data-battle-command="KeyS" aria-label="游標下移" aria-keyshortcuts="S ArrowDown">↓</button>
+            <button type="button" data-battle-command="KeyD" aria-label="游標右移" aria-keyshortcuts="D ArrowRight">→</button>
           </div>
           <div class="battle-skill" role="group" aria-label="武學">
             <button type="button" data-battle-command="KeyQ" aria-label="上一招武學" aria-keyshortcuts="Q">‹</button>
             <output data-battle-skill></output>
             <button type="button" data-battle-command="KeyF" aria-label="下一招武學" aria-keyshortcuts="F">›</button>
           </div>
-          <div class="battle-actions" role="group" aria-label="指令">
-            <button type="button" class="battle-primary" data-battle-command="KeyI" data-battle-hold aria-keyshortcuts="I">攻擊 <kbd aria-hidden="true">I</kbd></button>
-            <button type="button" data-battle-command="KeyE" data-battle-hold aria-keyshortcuts="E">格擋 <kbd aria-hidden="true">E</kbd></button>
-            <button type="button" data-battle-command="KeyL" data-battle-hold aria-keyshortcuts="L">閃身 <kbd aria-hidden="true">L</kbd></button>
-            <button type="button" data-battle-command="KeyB" aria-keyshortcuts="B">道具 <kbd aria-hidden="true">B</kbd></button>
+          <div class="battle-actions" role="group" aria-label="回合指令">
+            <button type="button" data-battle-command="KeyM" aria-keyshortcuts="M" aria-pressed="false">移動 <kbd aria-hidden="true">M</kbd></button>
+            <button type="button" class="battle-primary" data-battle-command="KeyI" aria-keyshortcuts="I" aria-pressed="false">武學 <kbd aria-hidden="true">I</kbd></button>
+            <button type="button" class="battle-primary" data-battle-command="Enter" aria-keyshortcuts="Enter Space">確定 <kbd aria-hidden="true">Enter</kbd></button>
+            <button type="button" data-battle-command="KeyB" aria-keyshortcuts="B">藥品／暗器 <kbd aria-hidden="true">B</kbd></button>
+            <button type="button" data-battle-command="KeyT" aria-keyshortcuts="T">醫療／用毒 <kbd aria-hidden="true">T</kbd></button>
+            <button type="button" data-battle-command="KeyV" aria-keyshortcuts="V">察看 <kbd aria-hidden="true">V</kbd></button>
+            <button type="button" data-battle-command="KeyL" aria-keyshortcuts="L">休息 <kbd aria-hidden="true">L</kbd></button>
             <button type="button" data-battle-command="Tab" aria-keyshortcuts="Tab" aria-pressed="false">自動 <kbd aria-hidden="true">Tab</kbd></button>
-            <button type="button" data-battle-command="KeyC" aria-keyshortcuts="C" hidden>接管隊友</button>
             <button type="button" data-battle-command="KeyR" aria-keyshortcuts="R">重開</button>
             <button type="button" data-battle-command="Escape" aria-keyshortcuts="Escape">認輸</button>
           </div>

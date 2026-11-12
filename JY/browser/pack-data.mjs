@@ -1,5 +1,5 @@
 import { decodeSubmap, decodeWorldLayers, readIndexedGroup } from '../src/kys-formats.mjs';
-import { resolveBattleTeam } from '../src/mode3-battle.mjs';
+import { resolveClassicTeam } from '../src/classic-battle.mjs';
 import { unpackFlatZip } from './pack-zip.mjs';
 import { openPackSqlite } from './pack-sqlite.mjs';
 
@@ -31,7 +31,7 @@ function readConfig(text) {
     beginY: getInt('constant.begin_sy', 20),
     beginEvent: getInt('constant.begin_event', -1),
     useScript: getInt('game.use_script', 1),
-    battleMode: getInt('game.battle_mode', 0),
+    battleMode: 0,
     zipSave: getInt('game.zip_save', 1),
     tileScale: getInt('game.tile_scale', 1),
     renderWidth: getInt('game.render_width', 640),
@@ -324,10 +324,10 @@ export async function createPackData(store) {
         ? [actor(member, 1, enemyX[index], enemyY[index])]
         : [])),
     ]);
-    const lineup = { party: [...activeParty], fixedTeam, roster, teamPositions: teamX.map((x, index) => [x, teamY[index]]) };
+    const lineup = { party: [...activeParty], fixedTeam, autoTeamMate, roster, teamPositions: teamX.map((x, index) => [x, teamY[index]]) };
     return {
-      id: ordinal, sourceId, name, battlefieldId, exp, music, ...field, team: resolveBattleTeam(lineup),
-      enemy, roles, magics, items, levelUpExp, teamMate, autoTeamMate, ...lineup,
+      id: ordinal, sourceId, name, battlefieldId, exp, music, ...field, team: resolveClassicTeam(lineup),
+      enemy, roles, magics, items, levelUpExp, teamMate, ...lineup,
     };
   }
 

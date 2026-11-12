@@ -25,7 +25,7 @@ function motion(role, tick) {
 }
 
 export async function createBattleView({ engine, cache, spec, width, height, scale, loadArt, bakeGround, json, itemEffectIds,
-  visualStyle, outputAlpha = 'opaque', arena }) {
+  visualStyle, outputAlpha = 'opaque', arena, grid }) {
   const project = (x, y) => [(x - y) * 18 * scale, (x + y) * 9 * scale];
   const floor = [];
   const buildings = [];
@@ -187,13 +187,56 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
       }
     }
 
-    function draw(state) {
+    const gridContext = grid.getContext('2d');
+    grid.width = width;
+    grid.height = height;
+    grid.hidden = false;
+
+    function tileAt(px, py) {
+      const x = (px - root.x) / (18 * scale * root.scaleX);
+      const y = (py - root.y) / (9 * scale * root.scaleY);
+      return { x: Math.round((y + x) / 2), y: Math.round((y - x) / 2) };
+    }
+
+    function drawGrid(state, cursor) {
+      const ctx = gridContext;
+      ctx.clearRect(0, 0, width, height);
+      if (!state.canAct) return;
+      const cells = state.selection?.cells ?? [];
+      const rx = 18 * scale * root.scaleX, ry = 9 * scale * root.scaleY;
+      const moving = state.selection?.type === 'move';
+      for (const { x, y } of cells.length ? cells : [state.turn]) {
+        const [px, py] = project(x, y);
+        const sx = root.x + px * root.scaleX, sy = root.y + py * root.scaleY;
+        if (sx < -rx || sx > width + rx || sy < -ry || sy > height + ry) continue;
+        const selected = cursor?.x === x && cursor?.y === y;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy - ry + 1);
+        ctx.lineTo(sx + rx - 2, sy);
+        ctx.lineTo(sx, sy + ry - 1);
+        ctx.lineTo(sx - rx + 2, sy);
+        ctx.closePath();
+        ctx.lineWidth = selected ? 2 : 1;
+        ctx.strokeStyle = selected || !cells.length ? '#ffe1a3' : moving ? '#8bd5ca' : '#f5a17d';
+        ctx.fillStyle = selected ? '#ffdb9160' : moving ? '#4acdb826' : '#fa775333';
+        if (cells.length) ctx.fill();
+        ctx.stroke();
+      }
+    }
+
+    function draw(state, cursor) {
       const { focus, closeUp, shakeX, shakeY, swordLight, swordLightColor, texts, blood } = state.presentation;
       const zoom = state.presentation.zoom * (closeUp ? 1 : encounterZoom);
       const [cameraX, cameraY] = project(focus.x, focus.y);
       root.scaleX = root.scaleY = zoom;
       root.x = Math.round(width / 2 + (shakeX - cameraX) * zoom);
       root.y = Math.round(height / 2 + (shakeY - cameraY + (closeUp ? 20 * scale : 0)) * zoom);
+      if (cursor && state.selection) {
+        const [px, py] = project(cursor.x, cursor.y);
+        const x = root.x + px * zoom, y = root.y + py * zoom;
+        root.x += Math.min(width * .82, Math.max(width * .18, x)) - x;
+        root.y += Math.min(height * .79, Math.max(height * .21, y)) - y;
+      }
       put(ground, groundNodes, floorOrder);
       const sorted = [...buildings];
       const frames = [];
@@ -262,9 +305,10 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
         flash.y = height / 2 - flash.naturalHeight * flash.scaleY / 2 - 40;
       }
       drawNumbers(texts, zoom);
+      drawGrid(state, cursor);
     }
 
-    return { draw, close() { scope.dispose(); art.clear(); } };
+    return { draw, tileAt, close() { grid.hidden = true; scope.dispose(); art.clear(); } };
   } catch (error) {
     scope.dispose();
     art.clear();

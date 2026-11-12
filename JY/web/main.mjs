@@ -10,7 +10,8 @@ import { createBattleMenu } from './battle-menu.mjs';
 import { attachBattleControls } from './jyx2/ui/battle-controls.mjs';
 import { createBattleMusic } from './battle-music.mjs';
 import { autoSlot, createSaveSlot, manualSlots } from './save-slot.mjs';
-import { canUseGear, createMode3Battle, resolveBattleTeam } from './mode3-battle.mjs';
+import { createClassicBattle, resolveClassicTeam } from './classic-battle.mjs';
+import { canUseGear } from './battle-progression.mjs';
 import { loadTrainer, playTrainer, trainerEventId } from './trainer-event.mjs';
 import { modifySceneEvent } from './cifa-opening.mjs';
 import { parseRecruitScript, runRecruitScript } from './cifa-recruit.mjs';
@@ -26,6 +27,7 @@ import { loadActorArt } from './jyx2/actors/actor-art.mjs';
 import { nativeBattleName } from './jyx2/scene/native-battle-fields.mjs';
 
 const canvas = document.querySelector('#game');
+const battleGrid = document.querySelector('#battle-grid');
 const sceneName = document.querySelector('#scene-name');
 const coordinates = document.querySelector('#coordinates');
 const hint = document.querySelector('#hint');
@@ -45,10 +47,8 @@ const moves = new Map([
 ]);
 const facingOffsets = [[0, -1], [1, 0], [-1, 0], [0, 1]];
 const facingKeys = ['ArrowUp', 'ArrowRight', 'ArrowLeft', 'ArrowDown'];
-const battleControls = new Set([...moves.keys(), 'KeyI', 'KeyE', 'KeyL', 'KeyQ', 'KeyF', 'Tab']);
-const battleHint = matchMedia('(pointer: coarse)').matches
-  ? '按住移動箭頭 · ‹／› 換武學 · 敵招將至時點格擋可彈反'
-  : '方向鍵／WASD 移動 · Q／F 換武學 · 敵招將至時按下格擋可彈反';
+const battleControls = new Set([...moves.keys(), 'KeyM', 'KeyI', 'KeyL', 'KeyQ', 'KeyF', 'KeyB', 'KeyT', 'KeyV', 'KeyR', 'Tab']);
+const battleHint = '選擇移動、武學或其他指令 · 滑鼠／觸控選格，或用方向鍵與 Enter';
 const normalizeEnter = code => code === 'NumpadEnter' ? 'Enter' : code;
 const isConfirm = code => normalizeEnter(code) === 'Enter' || code === 'Space';
 const water = new Set([179, 180, 181, 261, 511, 662, 663, 664, 665, 674]);
@@ -551,8 +551,6 @@ async function openMap(game, destination) {
   let worldCenter = destination;
   const freeMapNodes = [];
   let battle;
-  const battleKeys = new Set();
-  const pointerBattleKeys = new Set();
   const menu = createBattleMenu(battleMenuPanel, canvas, { portraitUrl: id => `/art/${portraitGroup}/${id}.png`, itemIconUrl });
   const music = createBattleMusic(game.sound);
   let mapTrack = isWorld ? game.worldMusic ?? game.save?.flags?.mainMusic : scene.entranceMusic;
@@ -564,14 +562,11 @@ async function openMap(game, destination) {
   let forcedPlayerPicture;
   const openingPoses = new Map();
   const listeners = new AbortController();
-  const battleControlPanel = attachBattleControls(document.querySelector('#battle-controls'), canvas, {
+  attachBattleControls(document.querySelector('#battle-controls'), canvas, {
     signal: listeners.signal,
     getState: () => battle?.model.state,
-    press(code) { if (battle && !menu.active) battleKeyDown(code, false, pointerBattleKeys); },
-    release(code, cancelled) {
-      pointerBattleKeys.delete(code);
-      if (cancelled && !battleKeys.has(code)) battle?.pressed?.delete(code);
-    },
+    getModel: () => battle?.model,
+    press(code) { if (battle && !menu.active) battleKeyDown(code, false); },
   });
   const frameWaiters = [];
   delete canvas.dataset.blocked;
@@ -611,13 +606,6 @@ async function openMap(game, destination) {
     if (mapMusicStarted || !Number.isInteger(mapTrack) || mapTrack < 1) return;
     mapMusicStarted = true;
     void music.play(mapTrack).catch(() => {});
-  }
-
-  function clearBattleKeys() {
-    battleControlPanel.cancel();
-    battleKeys.clear();
-    pointerBattleKeys.clear();
-    battle?.pressed?.clear();
   }
 
   function presentFrame() {
@@ -745,8 +733,7 @@ async function openMap(game, destination) {
     return true;
   }
 
-  async function fight(id, _getExp, inventory, party = game.party, roleState = game.roleState) {
-    if (initial.config.battleMode !== 3) throw new Error(`這份原作使用戰鬥模式 ${initial.config.battleMode}，目前接入的是模式 3。`);
+  async function fight(id, getExp, inventory, party = game.party, roleState = game.roleState) {
     canvas.dataset.trainer = 'loading';
     canvas.dataset.battleId = String(id);
     notice.hidden = false;
@@ -779,6 +766,8 @@ async function openMap(game, destination) {
       delete canvas.dataset.battleItemId;
       delete canvas.dataset.battleItemCount;
       delete canvas.dataset.battleDartHit;
+      delete canvas.dataset.battleCastRole;
+      delete canvas.dataset.battleResult;
       notice.hidden = true;
       hint.textContent = '選擇出戰隊友 · O 確認';
       musicActive = musicLive = game.sound;
@@ -786,13 +775,13 @@ async function openMap(game, destination) {
       void track.catch(() => {
         if (musicLive) canvas.dataset.battleMusic = 'unavailable';
       });
-      const selected = await menu.chooseTeam(roster, listeners.signal);
-      spec.team = resolveBattleTeam(spec, selected);
+      const selected = spec.autoTeamMate[0] >= 0 ? undefined : await menu.chooseTeam(roster, listeners.signal);
+      spec.team = resolveClassicTeam(spec, selected);
       Object.assign(canvas.dataset, { trainer: 'loading', battleTeam: spec.team.map(role => role.id).join(',') });
       notice.hidden = false;
       notice.textContent = '正在讀取原作戰場與人物動畫…';
-      const makeModel = () => createMode3Battle(spec, {
-        inventory, tileWidth: 18 * scale,
+      const makeModel = () => createClassicBattle(spec, {
+        getExp, inventory, tileWidth: 18 * scale,
         onEvent(event) {
           if (event.type === 'cast' || event.type === 'parry') playSound('wave', event.soundId);
           if (event.type === 'cast') canvas.dataset.battleCastRole = String(event.role);
@@ -821,8 +810,11 @@ async function openMap(game, destination) {
       }
       canvas.dataset.battleView = arena?.name ?? '2d';
       canvas.dataset.battleLiveActors = arena?.actors ?? '';
+      const usedItems = new Set([...inventory.keys(), ...spec.enemy.flatMap(role => role.carriedItems.map(item => item.id))]);
+      const itemEffectIds = [0, 30, 36, ...[...usedItems].map(id => spec.items[id]).filter(item => item?.type === 4)
+        .map(item => item.hiddenWeaponEffectId)];
       view = await createBattleView({ engine, cache, spec, width, height, scale, loadArt, bakeGround, json, visualStyle: game.visualStyle, outputAlpha, arena,
-        itemEffectIds: model.listItems().filter(item => item.type === 4).map(item => item.effectId) });
+        itemEffectIds, grid: battleGrid });
       listeners.signal.throwIfAborted();
       // Keep the Egret keyboard target active while the map layers are hidden.
       ground.visible = objects.visible = false;
@@ -830,7 +822,7 @@ async function openMap(game, destination) {
       if (atmosphere) atmosphere.light.visible = false;
       sceneName.textContent = spec.name;
       hint.textContent = battleHint;
-      marker.textContent = '原作戰鬥 · 模式 3';
+      marker.textContent = '經典回合制';
       notice.hidden = true;
       await new Promise((resolve, reject) => {
         battle = { model, makeModel, view, arena, resolve, reject, soundPlayers, lastTime: performance.now() };
@@ -847,8 +839,8 @@ async function openMap(game, destination) {
       if (!closing) startMapMusic();
       Object.assign(canvas.dataset, { battleMusic: 'stopped', battleMusicLevel: 0 });
       for (const audio of soundPlayers.values()) audio.pause();
-      clearBattleKeys();
       battle = undefined;
+      delete canvas.dataset.battleCommandMode;
       view?.close();
       arena?.dispose();
       ground.visible = objects.visible = !map3dView;
@@ -1357,7 +1349,6 @@ async function openMap(game, destination) {
     ].filter(Boolean));
     battleResultText.textContent = [state.result ? '勝利' : '戰敗', experience, ...progress].join(' · ');
     hint.textContent = '點擊「繼續」或按 Enter / 空格返回場景';
-    clearBattleKeys();
     battleResultPanel.hidden = false;
     restoreMapKeyboardFocus();
   }
@@ -1370,65 +1361,163 @@ async function openMap(game, destination) {
     battle.resolve();
   }
 
-  function battleKeyDown(code, repeat, keys = battleKeys) {
-    if (repeat) return;
+  const supportActions = [
+    { label: '醫療', value: 'medicine' },
+    { label: '解毒', value: 'detox' },
+    { label: '用毒', value: 'poison' },
+  ];
+
+  function syncBattleCursor() {
+    const { state } = battle.model;
+    const selection = state.selection;
+    if (battle.selection !== selection) {
+      battle.selection = selection;
+      const cells = selection?.cells ?? [];
+      const enemies = new Set(state.roles.filter(role => role.side !== state.turn?.side && !role.dead)
+        .map(role => role.x + ',' + role.y));
+      battle.cursor = (selection?.type === 'magic' || selection?.type === 'dart' || selection?.type === 'poison')
+        ? cells.find(cell => enemies.has(cell.x + ',' + cell.y)) ?? cells[0] : cells[0];
+      if (selection) canvas.dataset.battleCommandMode = selection.type;
+      else delete canvas.dataset.battleCommandMode;
+      battle.drawnFrame = undefined;
+    }
+  }
+
+  function shiftBattleCursor(code) {
+    const { cursor, model } = battle;
+    if (!cursor) return;
+    const [dx, dy] = moves.get(code);
+    const vector = code === 'ArrowLeft' || code === 'KeyA' ? [-1, 0]
+      : code === 'ArrowRight' || code === 'KeyD' ? [1, 0] : [dx, dy];
+    let best;
+    let distance = Infinity;
+    for (const cell of model.state.selection.cells) {
+      const x = cell.x - cursor.x, y = cell.y - cursor.y;
+      const forward = (x - y) * vector[0] + (x + y) * vector[1];
+      if (forward <= 0) continue;
+      const across = (x - y) * vector[1] - (x + y) * vector[0];
+      const score = forward + Math.abs(across) * 2;
+      if (score < distance) {
+        best = cell;
+        distance = score;
+      }
+    }
+    if (best) {
+      battle.cursor = best;
+      battle.drawnFrame = undefined;
+    }
+  }
+
+  function chooseBattleCell(cell) {
     const { model } = battle;
+    const selection = model.state.selection;
+    if (!cell || !selection || !model.selectCell(cell.x, cell.y)) return;
+    syncBattleCursor();
+    if (selection.type === 'status' && model.state.inspected) {
+      void showCombatantStatus(model.state.inspected).catch(error => { if (!listeners.signal.aborted) fail(error); });
+    }
+  }
+
+  async function showCombatantStatus(role) {
+    const detail = `等級 ${role.level} · 生命 ${role.hp}/${role.maxHp} · 內力 ${role.mp}/${role.maxMp} · 體力 ${role.physicalPower}`
+      + ` · 攻擊 ${role.attack} · 防禦 ${role.defence} · 輕功 ${role.speed} · 中毒 ${role.poison}`;
+    canvas.dataset.battlePrompt = 'status';
+    try {
+      const label = game.visualStyle === 'classic' ? detail + ' · 返回戰鬥' : '返回戰鬥';
+      await menu.choose(role.name, [{ label, value: true }], listeners.signal, 1, { detail });
+    } finally {
+      delete canvas.dataset.battlePrompt;
+    }
+  }
+
+  function pickBattleCell(event) {
+    if (event.button !== 0 || menu.active || canvas.dataset.battlePrompt) return;
+    const bounds = canvas.getBoundingClientRect();
+    const tile = battle.view.tileAt((event.clientX - bounds.left) * width / bounds.width,
+      (event.clientY - bounds.top) * height / bounds.height);
+    canvas.focus({ preventScroll: true });
+    chooseBattleCell(tile);
+  }
+
+  async function chooseSupport(model) {
+    const actions = model.listActions();
+    const choices = supportActions.filter(row => actions.includes(row.value));
+    if (!choices.length) return;
+    canvas.dataset.battlePrompt = 'support';
+    try {
+      const action = await menu.choose('醫療、解毒與用毒', choices, listeners.signal);
+      if (action) model.selectAction(action);
+      syncBattleCursor();
+    } finally {
+      delete canvas.dataset.battlePrompt;
+    }
+  }
+
+  function battleKeyDown(code, repeat) {
+    if (repeat && !moves.has(code)) return;
+    const { model } = battle;
+    const { state } = model;
     const prompt = canvas.dataset.battlePrompt;
-    if (model.state.result !== null) {
+    if (state.result !== null) {
       if (isConfirm(code)) continueBattle();
-    } else if (prompt === 'surrender' || prompt === 'restart') {
+      return;
+    }
+    if (prompt === 'surrender' || prompt === 'restart') {
       if (isConfirm(code)) {
-        if (prompt === 'surrender') {
-          model.surrender();
-          showBattleResult(model.state);
-        } else {
-          clearBattleKeys();
+        if (prompt === 'surrender') model.surrender();
+        else {
           for (const audio of battle.soundPlayers.values()) audio.pause();
           battle.model = battle.makeModel();
           battle.drawnFrame = undefined;
           battle.lastTime = performance.now();
           Object.assign(canvas.dataset, { battleCue: '', battleCueCount: 0 });
           for (const key of ['battleDartHit', 'battleItemId', 'battleItemCount', 'battleCastRole']) delete canvas.dataset[key];
-          delete canvas.dataset.battlePrompt;
-          notice.hidden = true;
-          hint.textContent = battleHint;
         }
-      } else if (code === 'Escape') {
-        delete canvas.dataset.battlePrompt;
-        notice.hidden = true;
-      }
-    } else if (code === 'KeyB' && model.state.pendingResult === null) {
-      clearBattleKeys();
-      if (model.state.canTakeControl) model.takeControl();
-      canvas.dataset.battlePrompt = 'items';
-      hint.textContent = '選擇一個藥品或暗器';
-      const resume = () => {
-        menu.close();
-        delete canvas.dataset.battlePrompt;
-        hint.textContent = battleHint;
-      };
-      menu.showItems(model.listItems(), id => {
-        if (!model.useItem(id)) {
-          hint.textContent = '當前動作中無法使用，請返回戰鬥再試';
-          return;
-        }
-        resume();
-      }, resume);
-    } else if ((code === 'Escape' || code === 'KeyR') && model.state.pendingResult === null) {
-      clearBattleKeys();
+      } else if (code !== 'Escape') return;
+      delete canvas.dataset.battlePrompt;
+      notice.hidden = true;
+      syncBattleCursor();
+      return;
+    }
+    if (prompt || state.pendingResult !== null) return;
+    if (code === 'Escape' && state.selection) model.cancelSelection();
+    else if (code === 'Escape' || code === 'KeyR') {
       canvas.dataset.battlePrompt = code === 'KeyR' ? 'restart' : 'surrender';
       notice.textContent = code === 'KeyR' ? '使用同一隊伍重開本場戰鬥？Enter 確認 · Esc 取消' : '放棄本場戰鬥？Enter 確認 · Esc 取消';
       notice.hidden = false;
-    } else if (code === 'KeyC' && model.state.canTakeControl) {
-      const allies = model.state.roles.filter(role => role.side === 0 && !role.dead);
-      const current = allies.indexOf(model.state.controlled);
-      if (allies.length && model.takeControl?.(allies[(current + 1) % allies.length].id)) clearBattleKeys();
-    } else if (code === 'Tab') {
-      if (model.state.pendingResult === null) model.toggleAutomatic();
-    } else if (battleControls.has(code)) {
-      keys.add(code);
-      (battle.pressed ??= new Set()).add(code);
+    } else if (code === 'Tab') model.toggleAutomatic();
+    else if (!state.canAct) return;
+    else if (moves.has(code)) {
+      if (!state.selection) {
+        model.selectAction('move');
+        syncBattleCursor();
+        if (state.selection) battle.cursor = { x: state.turn.x, y: state.turn.y };
+      }
+      shiftBattleCursor(code);
+    } else if (isConfirm(code)) chooseBattleCell(battle.cursor);
+    else if (code === 'KeyM') model.selectAction('move');
+    else if (code === 'KeyI') model.selectAction('magic');
+    else if (code === 'KeyL') model.rest();
+    else if (code === 'KeyV') model.selectAction('status');
+    else if (code === 'KeyQ' || code === 'KeyF') model.selectMagic(code === 'KeyQ' ? -1 : 1);
+    else if (code === 'KeyT') {
+      void chooseSupport(model).catch(error => { if (!listeners.signal.aborted) fail(error); });
+    } else if (code === 'KeyB') {
+      const items = model.listItems().filter(item => model.canUseItem(item.id));
+      if (!items.length) return;
+      canvas.dataset.battlePrompt = 'items';
+      hint.textContent = '選擇藥品或暗器';
+      const resume = () => {
+        menu.close();
+        delete canvas.dataset.battlePrompt;
+      };
+      menu.showItems(items, id => {
+        if (!model.useItem(id)) return;
+        resume();
+        syncBattleCursor();
+      }, resume);
     }
+    syncBattleCursor();
   }
 
   function switchTo(next) {
@@ -1613,33 +1702,26 @@ async function openMap(game, destination) {
       const state = model.state;
       battle.lastTime = now;
       if (state.result === null && !canvas.dataset.battlePrompt) {
-        const frame = state.frame;
-        const keys = battle.pressed?.size || pointerBattleKeys.size
-          ? new Set([...battleKeys, ...pointerBattleKeys, ...(battle.pressed ?? [])]) : battleKeys;
-        // Keep the horizontal arrows for movement while Q/F switch the equipped skill.
-        let input = keys;
-        if (keys.has('ArrowLeft') || keys.has('ArrowRight')) {
-          input = new Set(keys);
-          if (input.delete('ArrowLeft')) input.add('KeyA');
-          if (input.delete('ArrowRight')) input.add('KeyD');
-        }
-        model.step(now - lastTime, input);
-        if (state.frame !== frame) battle.pressed?.clear();
-        if (state.result !== null) showBattleResult(state);
+        model.step(now - lastTime);
+        syncBattleCursor();
       }
-      const player = state.controlled ?? state.player;
-      const status = `剩餘敵人 ${state.remainingEnemies}/${state.totalEnemies}${state.auto ? ' · 自動戰鬥' : ''}`;
+      if (state.result !== null && !battle.resultShown) {
+        battle.resultShown = true;
+        showBattleResult(state);
+      }
+      const player = state.turn ?? state.player;
+      const status = `第 ${state.round} 回合 · 剩餘敵人 ${state.remainingEnemies}/${state.totalEnemies}${state.auto ? ' · 自動戰鬥' : ''}`;
       if (coordinates.textContent !== status) coordinates.textContent = status;
-      Object.assign(canvas.dataset, { battleTick: state.frame, battleHp: player.hp, battleMaxHp: player.maxHp,
-        battleMp: player.mp, battleAction: player.action, battleAuto: state.auto,
-        battleControlled: player.id, battleStranded: Boolean(state.stranded) });
+      Object.assign(canvas.dataset, { battleTick: state.frame, battleRound: state.round,
+        battleHp: player.hp, battleMaxHp: player.maxHp, battleMp: player.mp, battleAction: player.action,
+        battleAuto: state.auto, battleControlled: player.id, battleTurnSide: player.side });
       if (state.result === null && !canvas.dataset.battlePrompt) {
-        const nextHint = state.stranded ? `存活隊伍被地形隔開 · ${state.canTakeControl ? 'C 接管隊友 · ' : ''}R 重開 · Esc 認輸`
-          : state.canTakeControl ? '主角已倒下 · C 接管存活隊友 · R 重開 · Esc 退出' : battleHint;
+        const nextHint = state.selection ? '點選高亮格子 · 方向鍵選格 · Enter 確認 · Esc 取消'
+          : state.canAct ? battleHint : state.auto ? '自動戰鬥中 · Tab 恢復手動' : '等待行動完成';
         if (hint.textContent !== nextHint) hint.textContent = nextHint;
       }
       if (host.getStatus().pendingFrames === 0 && battle.drawnFrame !== state.frame) {
-        view.draw(state);
+        view.draw(state, battle.cursor);
         submitFrame();
         Object.assign(canvas.dataset, { battleZoom: state.presentation.zoom, battleEffectCount: state.effects.length,
           battleFreeze: state.presentation.freeze, battleBloodCount: state.presentation.blood.length });
@@ -1807,7 +1889,7 @@ async function openMap(game, destination) {
         consume();
         return;
       }
-      if (battleControls.has(code) || isConfirm(code) || ['Escape', 'KeyB', 'KeyC', 'KeyR'].includes(code)) consume();
+      if (battleControls.has(code) || isConfirm(code) || code === 'Escape') consume();
       if (battle) battleKeyDown(code, repeat);
       else if (!repeat && code === 'Escape') dialogue.skip();
       else if (!repeat && isConfirm(code)) dialogue.confirm();
@@ -1843,13 +1925,12 @@ async function openMap(game, destination) {
   }, { signal: scope.signal });
   engine.stage.on(keyboard.events.keyUp, event => {
     const code = normalizeEnter(event.payload.code);
-    battleKeys.delete(code);
     if (menu.handleKey(code, true)) return;
     if (held !== code) return;
     held = undefined;
     dirty = true;
   }, { signal: scope.signal });
-  engine.stage.on(keyboard.events.cancel, () => { clearBattleKeys(); held = undefined; dirty = true; }, { signal: scope.signal });
+  engine.stage.on(keyboard.events.cancel, () => { held = undefined; dirty = true; }, { signal: scope.signal });
   attachGamepadInput(canvas, { keyboard, signal: listeners.signal, getMode() {
     if (closing) return undefined;
     if (canvas.dataset.trainer === 'team' && menu.active) return 'team';
@@ -1877,7 +1958,10 @@ async function openMap(game, destination) {
     event.preventDefault();
     if (!event.repeat) continueBattle();
   }, { signal: listeners.signal });
-  canvas.addEventListener('pointerdown', clickToWalk, { signal: listeners.signal });
+  canvas.addEventListener('pointerdown', event => {
+    if (battle) pickBattleCell(event);
+    else clickToWalk(event);
+  }, { signal: listeners.signal });
   addEventListener('pagehide', event => { if (!event.persisted) void close(); }, { signal: listeners.signal });
   if (wantsGpuGround) {
     canvas.dataset.groundMode = 'canvas';

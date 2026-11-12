@@ -29,7 +29,7 @@ function readConfig(text) {
     beginY: getInt('constant.begin_sy', 20),
     beginEvent: getInt('constant.begin_event', -1),
     useScript: getInt('game.use_script', 1),
-    battleMode: getInt('game.battle_mode', 0),
+    battleMode: 0,
     zipSave: getInt('game.zip_save', 1),
     tileScale: getInt('game.tile_scale', 1),
     renderWidth: getInt('game.render_width', 640),

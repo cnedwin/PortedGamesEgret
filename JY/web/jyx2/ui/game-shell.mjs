@@ -180,7 +180,7 @@ export function showTitle({ initial, baseline, autoSave, save, preferences, sear
       help() {
         showPanel('操作說明',
           paragraph('探索時用方向鍵或 WASD 移動，也可點擊地圖。Enter 對話或確認，B 開背包，Esc 開江湖選單。'),
-          paragraph('戰鬥時 I 攻擊、E 格擋、L 閃身、Q / F 切換武學，Tab 切換自動戰鬥。觸控可使用畫面按鈕。'),
+          paragraph('回合中按 M 選擇移動、I 選擇武學，使用方向鍵選格並按 Enter 確定，也可直接點選戰場。B 使用藥品或暗器，T 選擇醫療或用毒，V 查看人物狀態，L 休息並結束回合，Q / F 切換武學，Tab 切換自動戰鬥。'),
           paragraph('標準手柄可用方向鍵或左搖杆移動。A 確認，B 返回，Start 開啟選單。'));
       },
     };

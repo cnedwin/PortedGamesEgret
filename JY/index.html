@@ -4,84 +4,40 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#171f1b">
-  <title>山驿试剑</title>
+  <title>JY · 金庸群侠传致敬 Demo</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./trial.css">
-  <script type="importmap">
-    {
-      "imports": {
-        "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
-        "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
-        "@egret/runtime": "./vendor/runtime/dist/index.js",
-        "@egret/contracts": "./vendor/contracts/dist/index.js",
-        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
-        "robust-predicates": "./vendor/robust-predicates/index.js"
-      }
-    }
-  </script>
 </head>
 <body>
-  <main class="play">
+  <main class="play launcher">
     <header class="masthead">
       <div>
-        <p class="engine">白鹭 World3D 试玩</p>
-        <h1>山驿试剑</h1>
+        <p class="engine">新白鹭引擎 · World3D</p>
+        <h1>金庸群侠传</h1>
+        <p class="launcher-intro">探索江湖、招募队友，以经典回合制迎战群侠。</p>
       </div>
-      <button id="reset" type="button" class="quiet">重开试玩</button>
     </header>
     <section id="4in1" class="pack-entry" aria-labelledby="pack-heading">
-      <div>
-        <h2 id="pack-heading">完整版 · 导入 4in1</h2>
-        <p>选择你自备的 4in1 压缩包或解压后的 <code>game</code> 文件夹。文件和进度保存在当前浏览器。 <a href="https://github.com/scarsty/kys-cpp#readme">原项目资源说明</a></p>
-      </div>
+      <h2 id="pack-heading">完整版</h2>
       <div class="pack-actions">
-        <button id="jy-choose-archive" type="button">选择 4in1 压缩包</button>
-        <button id="jy-choose-folder" type="button" class="quiet">选择文件夹</button>
         <button id="jy-play-full" type="button" hidden>进入完整版</button>
-        <button id="jy-cancel-import" type="button" class="quiet" hidden>取消导入</button>
-        <input id="jy-archive" type="file" accept=".7z" hidden>
-        <input id="jy-folder" type="file" webkitdirectory multiple hidden>
+        <button id="jy-cancel-import" type="button" class="quiet" hidden>取消</button>
       </div>
-      <p id="jy-import-status" class="pack-status" role="status" aria-live="polite"></p>
-      <progress id="jy-import-progress" aria-label="4in1 导入进度" hidden></progress>
+      <p id="jy-import-status" class="pack-status" role="status" aria-live="polite">正在检查游戏数据…</p>
+      <progress id="jy-import-progress" aria-label="游戏数据准备进度" hidden></progress>
+      <details id="jy-local-import" open>
+        <summary>从本机导入</summary>
+        <p>请选择自备的 4in1 压缩包或解压后的 <code>game</code> 文件夹。 <a href="https://github.com/scarsty/kys-cpp#readme">原项目资源说明</a></p>
+        <div class="pack-actions">
+          <button id="jy-choose-archive" type="button">选择 4in1 压缩包</button>
+          <button id="jy-choose-folder" type="button" class="quiet">选择文件夹</button>
+          <input id="jy-archive" type="file" accept=".7z" hidden>
+          <input id="jy-folder" type="file" webkitdirectory multiple hidden>
+        </div>
+      </details>
     </section>
-    <section class="board" aria-label="山驿试剑游戏">
-      <div class="board-top">
-        <strong>青渡 · 山驿</strong>
-        <span id="objective">正在绘制山驿…</span>
-      </div>
-      <div class="stage" id="stage" data-phase="loading">
-        <canvas id="world" aria-label="山驿三维场景" tabindex="0"></canvas>
-        <button id="mentor" type="button" class="marker" hidden>青衣守驿人</button>
-        <div id="battle-hud" class="battle-hud" hidden>
-          <div><label for="hero-hp">行旅者</label><progress id="hero-hp" max="100" value="100"></progress></div>
-          <div><label for="mentor-hp">青衣守驿人</label><progress id="mentor-hp" max="100" value="100"></progress></div>
-        </div>
-        <div id="dialogue" class="dialogue" role="dialog" aria-labelledby="speaker" hidden>
-          <h2 id="speaker"></h2>
-          <p id="speech"></p>
-          <button id="next" type="button">继续</button>
-        </div>
-        <p id="error" class="error" role="alert" hidden></p>
-      </div>
-      <div class="controls">
-        <div class="directions" aria-label="移动">
-          <button data-key="ArrowLeft" type="button" aria-label="向左移动">←</button>
-          <button data-key="ArrowUp" type="button" aria-label="向上移动">↑</button>
-          <button data-key="ArrowDown" type="button" aria-label="向下移动">↓</button>
-          <button data-key="ArrowRight" type="button" aria-label="向右移动">→</button>
-        </div>
-        <div class="actions">
-          <button id="talk" type="button">与守驿人交谈 <kbd>Enter</kbd></button>
-          <button id="attack" data-key="KeyI" type="button" hidden>出剑 <kbd>I</kbd></button>
-          <button id="guard" data-key="KeyE" type="button" hidden>格挡 <kbd>E</kbd></button>
-          <button id="auto" type="button" aria-pressed="false" hidden>自动切磋 <kbd>Tab</kbd></button>
-        </div>
-      </div>
-    </section>
-    <footer><p id="save-status" aria-live="polite">进度保存在当前浏览器。</p><a href="./SOURCES.md">源码与素材</a></footer>
+    <footer><p>游戏数据和存档保存在当前浏览器。</p><a href="./ASSETS.md">素材与版权</a></footer>
   </main>
-  <script type="module" src="./trial.mjs"></script>
   <script type="module" src="./browser/import-ui.mjs"></script>
 </body>
 </html>

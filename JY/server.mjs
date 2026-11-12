@@ -258,7 +258,7 @@ const server = createServer(async (request, response) => {
       const audio = await readOptional(join(game, 'sound', name));
       return audio ? send(200, mime['.wav'], audio) : send(204, mime['.wav']);
     }
-    const program = /^\/(cifa-opening|cifa-trainer|cifa-recruit|cifa-game|game-events|kys-navigation|mode3-battle)\.mjs$/.exec(path);
+    const program = /^\/(cifa-opening|cifa-trainer|cifa-recruit|cifa-game|game-events|kys-navigation|classic-battle|battle-progression)\.mjs$/.exec(path);
     if (program) {
       return send(200, mime['.mjs'], await readFile(join(portRoot, 'src', `${program[1]}.mjs`)));
     }

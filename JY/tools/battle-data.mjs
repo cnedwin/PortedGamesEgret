@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { promisify } from 'node:util';
 import { readIndexedGroup } from '../src/kys-formats.mjs';
-import { resolveBattleTeam } from '../src/mode3-battle.mjs';
+import { resolveClassicTeam } from '../src/classic-battle.mjs';
 
 const run = promisify(execFile);
 const recordBytes = 186;
@@ -197,9 +197,9 @@ export async function openBattleData(gameRoot, initialSaveRoot) {
       Promise.all([...new Set([...activeParty, ...fixedTeam])].map(member => actor(member, 0))),
       Promise.all(enemies.flatMap((member, index) => roles[member] ? [actor(member, 1, enemyX[index], enemyY[index])] : [])),
     ]);
-    const lineup = { party: [...activeParty], fixedTeam, roster, teamPositions: teamX.map((x, index) => [x, teamY[index]]) };
-    return { id: ordinal, sourceId, name, battlefieldId, exp, music, ...field, team: resolveBattleTeam(lineup),
-      enemy, roles, magics, items, levelUpExp, teamMate, autoTeamMate, ...lineup };
+    const lineup = { party: [...activeParty], fixedTeam, autoTeamMate, roster, teamPositions: teamX.map((x, index) => [x, teamY[index]]) };
+    return { id: ordinal, sourceId, name, battlefieldId, exp, music, ...field, team: resolveClassicTeam(lineup),
+      enemy, roles, magics, items, levelUpExp, teamMate, ...lineup };
   }
 
   return { inventory, items, roles, magics, party, loadBattle, count: records.length };

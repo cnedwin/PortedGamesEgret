@@ -1,8 +1,8 @@
 # 素材来源与许可 · Asset sources and licenses
 
-本项目向《金庸群侠传》、智冠公司和金庸先生致敬。原作、美术和第三方组件的权利归各自权利人所有。短篇试玩使用本项目自制数据。完整版从玩家自备的 4in1 读取地图、剧情、原始图像和音乐。浏览器导入的数据保留在浏览器中。
+本项目向《金庸群侠传》、智冠公司和金庸先生致敬。原作、美术和第三方组件的权利归各自权利人所有。完整版使用原版游戏数据中的地图、剧情、原始图像和音乐。玩家可以导入自备的 4in1，或使用站点提供的已获分发许可的数据。游戏数据保存在浏览器中。
 
-This project pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. The original works, artwork, and third-party components remain the property of their respective rights holders. The short demo uses original assets created for this project. The full game reads maps, story content, original artwork, and music from user-supplied 4in1 data. Browser imports stay in the browser.
+This project pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. The original works, artwork, and third-party components remain the property of their respective rights holders. The full game reads maps, story content, original artwork, and music from the original game data. Players can import their own 4in1 data or use hosted data licensed for distribution when available. Game data stays in the browser.
 
 - [美术社区许可 · Artwork community license](web/jyx2/COMMUNITY_LICENSE_FOR_JYX2.md)
 - [角色动画 · Character animation](web/jyx2/actors/SOURCE.md) · [角色模型 · Character models](web/jyx2/actors/story-models.json)

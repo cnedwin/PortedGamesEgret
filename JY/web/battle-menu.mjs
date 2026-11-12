@@ -195,36 +195,39 @@ export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait,
   function chooseTeam(roles, signal) {
     return new Promise((resolve, reject) => {
       signal.throwIfAborted();
-      const selected = new Set([0]);
+      const lead = roles.find(role => role.id === 0) ?? roles[0];
+      const selected = new Set(lead ? [lead.id] : []);
       const abort = () => { close(); reject(signal.reason); };
       const rows = roles.map(role => ({
-        label: `${role.name} · ${role.level} 級${role.id === 0 ? '（必選）' : ''}`,
+        label: `${role.name} · ${role.level} 級`,
         title: role.name,
-        detail: [`${role.level} 級`, Number.isFinite(role.hp) ? `生命 ${role.hp}/${role.maxHp}` : '', role.id === 0 ? '必選' : '']
+        detail: [`${role.level} 級`, Number.isFinite(role.hp) ? `生命 ${role.hp}/${role.maxHp}` : '']
           .filter(Boolean).join(' · '),
         icon: portraitUrl(role.headId), headId: role.headId, portrait: true, dataset: { roleId: role.id },
         select() {
-          if (role.id !== 0 && !selected.delete(role.id)) selected.add(role.id);
+          if (!selected.delete(role.id)) selected.add(role.id);
           refresh();
         },
       }));
       rows.push({ label: '全選 / 取消', dataset: { teamAll: '' }, select() {
         const all = roles.every(role => selected.has(role.id));
-        for (const role of roles) if (role.id !== 0) {
+        for (const role of roles) {
           if (all) selected.delete(role.id);
           else selected.add(role.id);
         }
         refresh();
       } });
       rows.push({ label: '確定出戰', dataset: { teamConfirm: '' }, select() {
+        if (!selected.size) return;
         signal.removeEventListener('abort', abort);
         close();
         resolve(selected);
       } });
-      const buttons = open('選擇出戰隊友', rows, '方向鍵選擇 · Enter 確認選項 · A 全選 · O 出戰', 2, undefined, { variant: 'team' });
+      const buttons = open('選擇出戰隊友', rows, '至少選擇一位角色 · Enter 切換選擇 · A 全選 · O 出戰', 2, undefined, { variant: 'team' });
       menu.team = true;
       function refresh() {
         roles.forEach((role, index) => buttons[index].setAttribute('aria-pressed', String(selected.has(role.id))));
+        buttons.at(-1).disabled = selected.size === 0;
       }
       refresh();
       signal.addEventListener('abort', abort, { once: true });

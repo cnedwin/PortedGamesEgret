@@ -7,7 +7,7 @@ const defaultButtons = {
   map: { 0: 'Enter', 1: 'Escape', 9: 'Escape' },
   menu: { 0: 'Enter', 1: 'Escape', 9: 'Enter' },
   team: { 0: 'Enter', 1: 'Escape', 2: 'KeyA', 9: 'KeyO' },
-  battle: { 0: 'KeyL', 1: 'KeyB', 2: 'KeyE', 3: 'KeyI', 4: 'KeyE', 5: 'KeyI',
+  battle: { 0: 'Enter', 1: 'KeyB', 2: 'KeyL', 3: 'KeyI', 4: 'KeyM', 5: 'KeyI', 6: 'KeyQ', 7: 'KeyF', 10: 'KeyT', 11: 'KeyV',
     8: 'Tab', 9: 'Escape', 12: 'KeyW', 13: 'KeyS', 14: 'ArrowLeft', 15: 'ArrowRight' },
 };
 

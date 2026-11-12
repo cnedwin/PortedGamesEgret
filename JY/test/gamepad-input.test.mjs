@@ -51,16 +51,19 @@ test('standard pad sends dominant map direction, then release and confirmation t
   assert.equal(pad.frames.size, 0);
 });
 
-test('battle maps both stick axes and native actions, and a held bag button cannot cancel its own menu', () => {
+test('battle maps cursor movement and turn actions, and a held bag button cannot cancel its own menu', () => {
   const pad = setup('battle', { mapping: { battle: { 5: null, 6: 'KeyI' } } });
   pad.pad.axes = [-0.9, 0.7];
+  pad.button(0, true);
   pad.button(2, true);
+  pad.button(4, true);
   pad.button(5, true);
   pad.button(6, true);
   pad.button(8, true);
   pad.poll();
   assert.deepEqual(pad.events, [
-    ['down', 'KeyA'], ['down', 'KeyS'], ['down', 'KeyE'], ['down', 'KeyI'], ['down', 'Tab'],
+    ['down', 'KeyA'], ['down', 'KeyS'], ['down', 'Enter'], ['down', 'KeyL'],
+    ['down', 'KeyM'], ['down', 'KeyI'], ['down', 'Tab'],
   ]);
   pad.button(6, false);
   pad.poll();

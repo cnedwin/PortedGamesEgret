@@ -66,3 +66,14 @@ a { color: #e0c797; text-underline-offset: 3px; }
 .pack-entry progress { width: min(100%, 23rem); }
 .pack-entry button:disabled { opacity: .58; cursor: default; }
 .pack-entry [hidden] { display: none; }
+.launcher { width: min(740px, calc(100% - 32px)); padding-top: clamp(40px, 13svh, 140px); }
+.launcher .masthead { margin-bottom: 24px; }
+.launcher-intro { margin: .8rem 0 0; color: var(--quiet); }
+.launcher .pack-entry { padding: clamp(1rem, 4vw, 1.7rem); gap: .85rem; }
+.launcher .pack-entry h2 { margin: 0; }
+.launcher .pack-actions:has(> #jy-play-full[hidden] + #jy-cancel-import[hidden]) { display: none; }
+.launcher #jy-play-full { background: #d9ba7c; color: #24251c; border-color: #e5c68c; font-weight: 600; }
+.launcher #jy-play-full:hover { background: #ecd096; }
+.launcher details { border-top: 1px solid #71664b; padding-top: .65rem; }
+.launcher summary { color: #e5d8b7; cursor: pointer; }
+.launcher details p { margin: .65rem 0; }
