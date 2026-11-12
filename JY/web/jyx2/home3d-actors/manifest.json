@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "revision": "773f3e76492f4af277e8c93ced2c8d18ba516f6c",
+  "actors": {
+    "0": {
+      "name": "小蝦米",
+      "exactModel": true,
+      "asset": "0.glb",
+      "bytes": 1028980,
+      "sha256": "2239112d9c584015ea6e259e50aa83653e206341365b8e5ef1896c4fca70571a",
+      "clips": {
+        "walk": {
+          "seconds": 0.7000000476837158,
+          "tracks": 20
+        },
+        "hit": {
+          "seconds": 1,
+          "tracks": 20
+        },
+        "idle": {
+          "seconds": 1.3333333730697632,
+          "tracks": 20
+        },
+        "attack": {
+          "seconds": 0.47999998927116394,
+          "tracks": 20
+        },
+        "wake": {
+          "seconds": 1,
+          "tracks": 16,
+          "kind": "authored-from-kys-frames"
+        },
+        "inspect": {
+          "seconds": 1,
+          "tracks": 16,
+          "kind": "authored-from-kys-frames"
+        },
+        "look": {
+          "seconds": 1,
+          "tracks": 16,
+          "kind": "authored-from-kys-frames"
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Zhujue-mixamo-Running.fbx",
+          "gitBlob": "7f8cd3173034e90bdfdff96c2f13d51709ca16c2",
+          "bytes": 598304
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Tex2.png",
+          "gitBlob": "b19e2d6337ed36534a019635eaedf69349e9f7b3",
+          "bytes": 88683
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/ZhuJue1 1.mat",
+          "gitBlob": "10dfa5c1a54e7f7e9b3b1c1b6780d4c340493b84",
+          "bytes": 2357
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Zhujue-mixamo-Running.fbx.meta",
+          "gitBlob": "b3399c4eeae7f9bab128da5b4a071a75912d0a95",
+          "bytes": 33295
+        }
+      ]
+    },
+    "doll": {
+      "name": "軟體娃娃",
+      "exactModel": true,
+      "asset": "doll.glb",
+      "bytes": 1285596,
+      "sha256": "27487fee386493b2eda8d65dc6da6d947145afc15e71ca5f8162ce67460fad0c",
+      "clips": {
+        "idle": {
+          "seconds": 1,
+          "tracks": 1
+        },
+        "appear": {
+          "seconds": 4,
+          "tracks": 3,
+          "kind": "jyx2-timeline-source"
+        },
+        "address": {
+          "seconds": 0.9833333333333333,
+          "tracks": 9,
+          "kind": "jyx2-timeline-source"
+        }
+      },
+      "sourceBounds": [
+        [
+          -29.62216022320443,
+          -0.00789438252092366,
+          -16.436693817966347
+        ],
+        [
+          29.622160333555566,
+          63.34614311218263,
+          16.43669406289221
+        ]
+      ],
+      "sources": [
+        {
+          "file": "Doll_1.fbx",
+          "gitBlob": "cbb56d08edf48a9fa6094a41deeee34d8e3e626f",
+          "bytes": 79344
+        },
+        {
+          "file": "Doll_1.png",
+          "gitBlob": "f6b948ef5deacdf94f02eb47313742c4a4eb0c5a",
+          "bytes": 760490
+        },
+        {
+          "file": "Doll_jump.fbx",
+          "gitBlob": "6eb3b1a630a49c580d738bf853d65e90e214527e",
+          "bytes": 98384
+        },
+        {
+          "file": "Doll_hello.fbx",
+          "gitBlob": "8fa007c6d5baca757dce85dfd425159edbbb0cc7",
+          "bytes": 120608
+        }
+      ]
+    }
+  }
+}

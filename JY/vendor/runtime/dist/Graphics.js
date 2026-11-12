@@ -1,0 +1,40 @@
+import { EgretError } from "./EgretError.js";
+import { assertVisualMutable, color, unit, copyRect, visualOf, recordVisualChange, VISUAL_CONTENT } from "./displayVisualState.js";
+/** Drawing state belongs to one node; every primitive snapshots its fill. */
+export class Graphics {
+    owner;
+    fill;
+    constructor(owner) {
+        this.owner = owner;
+    }
+    beginFill(value, alpha = 1) {
+        assertVisualMutable(this.owner);
+        if (!color(value) || !unit(alpha))
+            throw new EgretError("GRAPHICS_VALUE_INVALID");
+        this.fill = { color: value, alpha };
+        return this;
+    }
+    drawRect(x, y, width, height) {
+        assertVisualMutable(this.owner);
+        const rect = copyRect({ x, y, width, height }, "GRAPHICS_VALUE_INVALID");
+        if (!this.fill)
+            throw new EgretError("GRAPHICS_FILL_REQUIRED");
+        visualOf(this.owner).primitives.push({ rect, ...this.fill });
+        recordVisualChange(this.owner, VISUAL_CONTENT);
+        return this;
+    }
+    endFill() {
+        assertVisualMutable(this.owner);
+        this.fill = undefined;
+        return this;
+    }
+    clear() {
+        assertVisualMutable(this.owner);
+        const state = visualOf(this.owner), changed = state.primitives.length !== 0;
+        state.primitives = [];
+        this.fill = undefined;
+        if (changed)
+            recordVisualChange(this.owner, VISUAL_CONTENT);
+    }
+}
+//# sourceMappingURL=Graphics.js.map

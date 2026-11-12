@@ -1,0 +1,306 @@
+{
+  "version": 1,
+  "revision": "773f3e76492f4af277e8c93ced2c8d18ba516f6c",
+  "coordinates": [
+    "kys-x",
+    "up",
+    "kys-y"
+  ],
+  "footOrigin": [
+    0,
+    0,
+    0
+  ],
+  "actors": {
+    "0": {
+      "asset": "0.glb",
+      "name": "小蝦米",
+      "exactModel": true,
+      "height": 1.66,
+      "bytes": 972088,
+      "sha256": "9402fff4712be9dd5ffa9892f6e02913d73fd40889b562c355d029ac06be9f73",
+      "bones": 51,
+      "sourceBoneNodes": 65,
+      "skinnedMeshes": 1,
+      "clips": {
+        "walk": {
+          "name": "walk",
+          "seconds": 0.70000005,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "gitBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "bytes": 473751
+          }
+        },
+        "hit": {
+          "name": "hit",
+          "seconds": 1,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "bytes": 482968
+          }
+        },
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/主角动作/Mainrolestand_loop.anim",
+            "gitBlob": "83088ec7b22841cac33b74ad8089cb3f30722b7e",
+            "bytes": 147452
+          }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/PingyizhiAttack.anim",
+            "gitBlob": "568a4e289d1709c1f0e5e52d8f3259aaf8746179",
+            "bytes": 690506
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Zhujue-mixamo-Running.fbx",
+          "gitBlob": "7f8cd3173034e90bdfdff96c2f13d51709ca16c2",
+          "bytes": 598304
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Tex2.png",
+          "gitBlob": "b19e2d6337ed36534a019635eaedf69349e9f7b3",
+          "bytes": 88683
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/ZhuJue1 1.mat",
+          "gitBlob": "10dfa5c1a54e7f7e9b3b1c1b6780d4c340493b84",
+          "bytes": 2357
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Zhujue-mixamo-Running.fbx.meta",
+          "gitBlob": "b3399c4eeae7f9bab128da5b4a071a75912d0a95",
+          "bytes": 33295
+        }
+      ]
+    },
+    "53": {
+      "asset": "53.glb",
+      "name": "段譽",
+      "exactModel": true,
+      "height": 1.72,
+      "bytes": 722164,
+      "sha256": "95c3c43c41969778edfa232bf7471798d5ad90128d58a5b67b91041df06981cc",
+      "bones": 22,
+      "sourceBoneNodes": 22,
+      "skinnedMeshes": 1,
+      "seatedPelvisHeight": 0.6141314960399997,
+      "clips": {
+        "walk": {
+          "name": "walk",
+          "seconds": 0.70000005,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "gitBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "bytes": 473751
+          }
+        },
+        "hit": {
+          "name": "hit",
+          "seconds": 1,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "gitBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "bytes": 482968
+          }
+        },
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/DuanyuStand.anim",
+            "gitBlob": "f1686c5fc204b097bf6b59d8ca04f2e04a589053",
+            "bytes": 145829
+          }
+        },
+        "attack": {
+          "name": "attack",
+          "seconds": 0.48,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/Liumaishenjian.anim",
+            "gitBlob": "ef36f2d817c1c1ef606e578c400024558617d586",
+            "bytes": 860589
+          }
+        },
+        "sit": {
+          "name": "sit",
+          "seconds": 1,
+          "tracks": 41,
+          "kind": "captured-bone-pose",
+          "frame": 336794
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/段誉/DuanYu.fbx",
+          "gitBlob": "c671e0eda4e4424ac77c4d660ab0f36fe0e89f11",
+          "bytes": 544864
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/段誉/Purple.jpg",
+          "gitBlob": "840baf7d4d9df261695a43f48a2715860e230933",
+          "bytes": 193356
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/段誉/GJ4_mat.mat",
+          "gitBlob": "27228f44ecb8a4db70244d826a700736707d066d",
+          "bytes": 2788
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/段誉/DuanYu.fbx.meta",
+          "gitBlob": "390ba492505e8b1037fd935c0bd196dfa68a41f6",
+          "bytes": 17208
+        }
+      ]
+    },
+    "staff": {
+      "asset": "staff.glb",
+      "name": "客栈职员替代",
+      "exactModel": false,
+      "height": 1.6,
+      "bytes": 732380,
+      "sha256": "71a918200f37d820ad529c61d44e769bbd4391a1301bf832269cd25846ecf3df",
+      "bones": 52,
+      "sourceBoneNodes": 65,
+      "skinnedMeshes": 1,
+      "clips": {
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/主角动作/Mainrolestand_loop.anim",
+            "gitBlob": "83088ec7b22841cac33b74ad8089cb3f30722b7e",
+            "bytes": 147452
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/厨子/ChuShi.fbx",
+          "gitBlob": "c88ad46a2f5613b150becc65c617f95c942eb701",
+          "bytes": 287280
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/厨子/common_color.png",
+          "gitBlob": "e2c1e795fb0e44bf9558cb6a0486fa0a14ee2123",
+          "bytes": 20348
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/厨子/Chuzi.mat",
+          "gitBlob": "fa338f0b57b84ffebdaab04457110d8142b36f22",
+          "bytes": 2374
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/厨子/ChuShi.fbx.meta",
+          "gitBlob": "1e14de7c69f031104d7d11ad5f604a59232ac81a",
+          "bytes": 2742
+        }
+      ]
+    },
+    "guest": {
+      "asset": "guest.glb",
+      "name": "客栈宾客替代",
+      "exactModel": false,
+      "height": 1.64,
+      "bytes": 526960,
+      "sha256": "1b160aa1261f0ff770a76b16b622543f84168a5ed43bd267003068b4331fef59",
+      "bones": 52,
+      "sourceBoneNodes": 65,
+      "skinnedMeshes": 1,
+      "seatedPelvisHeight": 0.5244187179826896,
+      "clips": {
+        "idle": {
+          "name": "idle",
+          "seconds": 1.3333334,
+          "tracks": 20,
+          "source": {
+            "path": "jyx2/Assets/BuildSource/Animations/主角动作/Mainrolestand_loop.anim",
+            "gitBlob": "83088ec7b22841cac33b74ad8089cb3f30722b7e",
+            "bytes": 147452
+          }
+        },
+        "sit": {
+          "name": "sit",
+          "seconds": 2.5,
+          "tracks": 20,
+          "kind": "local-bone-pose"
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/侠客弟子/XkeDiZi.fbx",
+          "gitBlob": "62e7e3012cbbc69de3e867fd046ea80b7507a790",
+          "bytes": 247808
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/侠客弟子/common_color.png",
+          "gitBlob": "e2c1e795fb0e44bf9558cb6a0486fa0a14ee2123",
+          "bytes": 20348
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/侠客弟子/XkeDiZi.mat",
+          "gitBlob": "0a590b7dae7b5f6726725eac7d686413199545f1",
+          "bytes": 2374
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/侠客弟子/XkeDiZi.fbx.meta",
+          "gitBlob": "b1f56a226120023d731050d4123a32a5c0423f4f",
+          "bytes": 31695
+        }
+      ]
+    },
+    "weixiaobao": {
+      "asset": "weixiaobao.glb",
+      "name": "韋小寶",
+      "exactModel": true,
+      "height": 1.64,
+      "bytes": 720936,
+      "sha256": "9a8ed6f8dbfb57219d1e5d42679701c04b403d977e6505155d640dbd277e8b97",
+      "bones": 44,
+      "skinnedMeshes": 2,
+      "clips": {
+        "idle": {
+          "name": "idle",
+          "seconds": 2,
+          "tracks": 132,
+          "sourceClip": "Take 001",
+          "source": {
+            "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/韦小宝/weixiaobao_stand.FBX",
+            "gitBlob": "fb5a153a282bc043e3ef045b4d43e5984e3ab569",
+            "bytes": 730368
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/韦小宝/weixiaobao_stand.FBX",
+          "gitBlob": "fb5a153a282bc043e3ef045b4d43e5984e3ab569",
+          "bytes": 730368
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/韦小宝/WeiXiaoBao_color.png",
+          "gitBlob": "78c4860445e55b1b474568d934a9dc87505a387f",
+          "bytes": 36461
+        }
+      ]
+    }
+  }
+}

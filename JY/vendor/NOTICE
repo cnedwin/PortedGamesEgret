@@ -1,0 +1,21 @@
+First-party code and documentation: Apache-2.0; see LICENSE.
+
+robust-predicates 3.0.3 by Vladimir Agafonkin
+https://github.com/mourner/robust-predicates
+License: Unlicense. The unmodified license text is retained in
+third-party/robust-predicates-3.0.3.LICENSE and the installed package.
+Used through its public package root for orient2d in private DOM-free
+rectangle preparation. This dependency does not establish native GPU,
+browser bundle-size, performance or complete-engine acceptance.
+
+jsonc-parser 3.3.1 by Microsoft Corporation
+https://github.com/microsoft/node-jsonc-parser
+License: MIT. The unmodified Microsoft copyright and permission notice is
+retained in third-party/jsonc-parser-3.3.1.LICENSE and the installed package.
+Only createScanner and visit are used through its public package root in
+the private headless project adapters. First-party schema generation,
+validation, canonical bytes, transactions and history are independently authored.
+The 0.14.0 engineering preview has bounded headless implementation evidence;
+editor, migration, browser/bundler, Native SDK and performance remain unaccepted.
+Native Node public-root CJS interoperability is separate from the shipped
+ESM entry's extensionless-import limitation.

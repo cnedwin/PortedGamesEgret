@@ -1,0 +1,1 @@
+{"version":3,"file":"startEngine.d.ts","sourceRoot":"","sources":["../src/startEngine.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,wBAAwB,EAAE,MAAM,EAAE,aAAa,EAAE,MAAM,aAAa,CAAC;AAEnF,OAAO,KAAK,EAAE,wBAAwB,EAAE,MAAM,gBAAgB,CAAC;AAG/D,kFAAkF;AAClF,wBAAsB,WAAW,CAAC,OAAO,EAAE,aAAa,EAAE,SAAS,EAAE,MAAM,EAAE,KAAK,EAAE,wBAAwB,EAAE,YAAY,EAAE,wBAAwB,GAAG,OAAO,CAAC,MAAM,CAAC,CAmBrK"}

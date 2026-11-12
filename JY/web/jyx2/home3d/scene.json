@@ -1,0 +1,393 @@
+{
+  "scene": 70,
+  "format": 1,
+  "revision": "773f3e76492f4af277e8c93ced2c8d18ba516f6c",
+  "sourceBlob": "a8d0276c5716345300da13d4d824566df68d81d7",
+  "asset": "scene.glb",
+  "assetSha256": "745d56d8ea13a8b453f3e568d42e2c3085c81888e8d6bc489baf65f9c879ab57",
+  "layout": [
+    0,
+    0,
+    0.94,
+    22.38,
+    0,
+    0.89,
+    0,
+    0,
+    0.88,
+    0,
+    0,
+    25.73,
+    0,
+    0,
+    0,
+    1
+  ],
+  "groundY": 0,
+  "groundNames": [
+    "Unity_home_foundation",
+    "Unity_Terrain_513x513"
+  ],
+  "camera": {
+    "verticalFov": 50,
+    "sourceRotation": [
+      0.14006117,
+      -0.86009586,
+      0.3594714,
+      0.333764
+    ],
+    "sourceOffset": [
+      7,
+      10,
+      8
+    ],
+    "serializedOffset": [
+      4.5,
+      7,
+      4.5
+    ],
+    "offset": [
+      7.52,
+      8.9,
+      6.16
+    ],
+    "direction": [
+      -0.5409003862127573,
+      -0.7027500725292537,
+      -0.4621353781685823
+    ],
+    "up": [
+      -0.547108047829394,
+      0.6931491683597211,
+      -0.469272857091199
+    ],
+    "near": 0.1,
+    "far": 5000,
+    "steamReference": {
+      "position": [
+        8.059999466,
+        10.006245613,
+        23.380001068
+      ],
+      "rotation": [
+        0.14006117,
+        -0.860095859,
+        0.359471411,
+        0.333763987
+      ],
+      "fov": 50,
+      "referenceTile": [
+        37,
+        27
+      ]
+    }
+  },
+  "lights": [
+    {
+      "name": "Main Light (1)",
+      "color": [
+        0.8537736,
+        0.89926624,
+        1
+      ],
+      "intensity": 0.6,
+      "direction": [
+        0.15924052956027643,
+        0.6586600477068094,
+        -0.7353974403682857
+      ],
+      "sourceDirection": [
+        -0.7401601914890814,
+        0.6554772097075964,
+        0.15004172249341277
+      ],
+      "castShadow": false,
+      "shadowStrength": 1
+    },
+    {
+      "name": "Main Light",
+      "color": [
+        1,
+        0.92281306,
+        0.7877358
+      ],
+      "intensity": 1.3,
+      "direction": [
+        -0.25447644348065207,
+        0.6570488025525681,
+        0.7095974991343155
+      ],
+      "sourceDirection": [
+        0.7159438631592996,
+        0.6554765938178105,
+        -0.24036393190647187
+      ],
+      "castShadow": true,
+      "shadowStrength": 1
+    }
+  ],
+  "ambient": {
+    "mode": 3,
+    "color": [
+      0.212,
+      0.227,
+      0.259
+    ],
+    "intensity": 1
+  },
+  "lightFocus": [
+    19,
+    0,
+    23
+  ],
+  "postEffects": {
+    "globalVolumeActive": false
+  },
+  "anchors": {
+    "opening": {
+      "tile": [
+        19,
+        20
+      ],
+      "source": [
+        -5.221,
+        0.07,
+        -2.778
+      ],
+      "position": [
+        19.76868,
+        0.06230000000000001,
+        21.13552
+      ]
+    },
+    "training": {
+      "tile": [
+        19,
+        18
+      ],
+      "source": [
+        -8.725,
+        0.5,
+        -3.602
+      ],
+      "position": [
+        18.99412,
+        0.445,
+        18.052
+      ]
+    },
+    "exit": {
+      "tile": [
+        45,
+        29
+      ],
+      "source": [
+        1.06,
+        0.5,
+        15.38
+      ],
+      "position": [
+        36.837199999999996,
+        0.445,
+        26.6628
+      ]
+    },
+    "doll": {
+      "source": [
+        -8.969,
+        1.105,
+        -3.575
+      ],
+      "position": [
+        19.0195,
+        0.98345,
+        17.83728
+      ],
+      "sourceRotation": [
+        0,
+        0.7071068,
+        0,
+        0.7071068
+      ],
+      "sourceScale": [
+        1.5,
+        1.5,
+        1.5
+      ]
+    }
+  },
+  "counts": {
+    "Sark_1": 4,
+    "Box_2": 1,
+    "Box_3": 2,
+    "Box_1": 1,
+    "Grass_01": 253,
+    "Wall_23_3": 10,
+    "Langan_06": 35,
+    "Flowers_01": 4,
+    "flowers_t_01": 33,
+    "Wall_23_1": 41,
+    "flowers_t_02": 29,
+    "Tree_10_2": 8,
+    "Zawu_31": 1,
+    "Grass_02_2": 8,
+    "Chair_02": 4,
+    "Wall_23_2": 14,
+    "Zawu_30": 4,
+    "Grass_03": 10,
+    "Tree_09": 2,
+    "Flowers_02": 2,
+    "Coat_1": 1,
+    "Desk_03": 1,
+    "Wood_1": 3,
+    "Tree_12": 1,
+    "Pot_3": 1,
+    "Bed_3": 1,
+    "Tree_08": 2,
+    "Desk_02": 1,
+    "Zawu_22": 1,
+    "Tree_14": 1
+  },
+  "props": [
+    {
+      "slot": 2,
+      "model": "Sark_1",
+      "node": "HomeChest_2",
+      "lid": "HomeChest_2_Lid",
+      "openAxis": "z",
+      "openAngle": 1.6580627893946132,
+      "position": [
+        15.7624,
+        0.0901650189,
+        17.6428
+      ]
+    },
+    {
+      "slot": 3,
+      "model": "Sark_1",
+      "node": "HomeChest_3",
+      "lid": "HomeChest_3_Lid",
+      "openAxis": "z",
+      "openAngle": 1.6580627893946132,
+      "position": [
+        21.891199999999998,
+        0.08900000000000001,
+        17.64456
+      ]
+    },
+    {
+      "slot": 4,
+      "model": "Sark_1",
+      "node": "HomeChest_4",
+      "lid": "HomeChest_4_Lid",
+      "openAxis": "z",
+      "openAngle": 1.6580627893946132,
+      "position": [
+        22.960619434999998,
+        0.08900000000000001,
+        17.646878800000003
+      ]
+    },
+    {
+      "slot": 5,
+      "model": "Sark_1",
+      "node": "HomeChest_5",
+      "lid": "HomeChest_5_Lid",
+      "openAxis": "z",
+      "openAngle": 1.6580627893946132,
+      "position": [
+        24.030038964,
+        0.08900000000000001,
+        17.64919672
+      ]
+    },
+    {
+      "slot": 6,
+      "model": "Box_2",
+      "node": "HomeChest_6",
+      "lid": "HomeChest_6_Lid",
+      "openAxis": "y",
+      "openAngle": 2.2689280275926285,
+      "position": [
+        27.41088,
+        0.13172,
+        17.65864
+      ]
+    },
+    {
+      "slot": 7,
+      "model": "Box_3",
+      "node": "HomeChest_7",
+      "lid": "HomeChest_7_Lid",
+      "openAxis": "y",
+      "openAngle": 2.2689280275926285,
+      "position": [
+        25.858939999999997,
+        0.14863,
+        17.854
+      ]
+    },
+    {
+      "slot": 8,
+      "model": "Box_3",
+      "node": "HomeChest_8",
+      "lid": "HomeChest_8_Lid",
+      "openAxis": "y",
+      "openAngle": 2.2689280275926285,
+      "position": [
+        15.70318,
+        0.13261,
+        26.830000000000002
+      ]
+    },
+    {
+      "slot": 9,
+      "model": "Box_1",
+      "node": "HomeChest_9",
+      "lid": "HomeChest_9_Lid",
+      "openAxis": "x",
+      "openAngle": 2.443460952792061,
+      "position": [
+        15.47852,
+        0.0934500712,
+        28.28904
+      ]
+    }
+  ],
+  "terrain": {
+    "source": "70_xiaoxiamiju.asset",
+    "sourceBlob": "5d0df542fa1eb6acf9698a8c6781bbaa9ecf94d1",
+    "width": 513,
+    "height": 513,
+    "meshVertices": 4,
+    "layerMapSize": 512,
+    "materials": [
+      {
+        "texture": "Tex_Ground_15.png",
+        "repeat": [
+          8,
+          8
+        ]
+      },
+      {
+        "texture": "Tex_Ground_29.png",
+        "repeat": [
+          16,
+          16
+        ]
+      },
+      {
+        "texture": "Tex_Ground_35.png",
+        "repeat": [
+          8,
+          8
+        ]
+      }
+    ],
+    "position": [
+      -15.690000000000001,
+      0,
+      -12.110000000000003
+    ]
+  }
+}

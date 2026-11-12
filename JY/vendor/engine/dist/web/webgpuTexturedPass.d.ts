@@ -1,0 +1,3 @@
+/** First-party XY/UV/straight-light ABI; the sole host owns scopes, methods and resources. */
+export declare function createWebGPUTexturedPipeline(shader: (descriptor: GPUShaderModuleDescriptor) => GPUShaderModule, pipeline: (descriptor: GPURenderPipelineDescriptor) => Promise<GPURenderPipeline>, format: 'rgba8unorm' | 'bgra8unorm'): Promise<GPURenderPipeline>;
+//# sourceMappingURL=webgpuTexturedPass.d.ts.map

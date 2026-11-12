@@ -1,0 +1,1363 @@
+{
+  "version": 1,
+  "sourceCommit": "773f3e76492f4af277e8c93ced2c8d18ba516f6c",
+  "actors": {
+    "0": {
+      "name": "小蝦米",
+      "sheets": {
+        "idle": {
+          "image": "0-idle.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 6,
+          "duration": 1.3333334,
+          "fps": 4.5,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/主角动作/Mainrolestand_loop.anim",
+            "sourceBlob": "83088ec7b22841cac33b74ad8089cb3f30722b7e",
+            "sourceDuration": 1.3333334
+          }
+        },
+        "walk": {
+          "image": "0-walk.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 8,
+          "duration": 0.70000005,
+          "fps": 11.429,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005
+          }
+        },
+        "attack": {
+          "image": "0-attack.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 12,
+          "duration": 0.48,
+          "fps": 22.917,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/PingyizhiAttack.anim",
+            "sourceBlob": "568a4e289d1709c1f0e5e52d8f3259aaf8746179",
+            "sourceDuration": 2.3333335
+          }
+        },
+        "guard": {
+          "image": "0-guard.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 6,
+          "duration": 0.5,
+          "fps": 10,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/PingyizhiStand.anim",
+            "sourceBlob": "a5a7341b34bb6cb66ba4e1e3df3bd257caeaf7a5",
+            "sourceDuration": 1.3333334,
+            "variant": "guard"
+          }
+        },
+        "dodge": {
+          "image": "0-dodge.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 8,
+          "duration": 0.55,
+          "fps": 12.727,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005,
+            "variant": "dodge"
+          }
+        },
+        "hit": {
+          "image": "0-hit.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 8,
+          "duration": 1,
+          "fps": 7,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1
+          }
+        },
+        "defeat": {
+          "image": "0-defeat.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 8,
+          "duration": 0.72,
+          "fps": 9.722,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1,
+            "variant": "defeat"
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Zhujue-mixamo-Running.fbx",
+          "sha": "7f8cd3173034e90bdfdff96c2f13d51709ca16c2",
+          "bytes": 598304
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Tex2.png",
+          "sha": "b19e2d6337ed36534a019635eaedf69349e9f7b3",
+          "bytes": 88683
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/ZhuJue1 1.mat",
+          "sha": "10dfa5c1a54e7f7e9b3b1c1b6780d4c340493b84",
+          "bytes": 2357
+        },
+        {
+          "path": "jyx2/Assets/BuildSource/ModelCharacters/Player/Zhujue.prefab",
+          "sha": "790e4e173da68aaa25f8e2b509cd7a844ee68098",
+          "bytes": 67664
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/ZhuJue/Zhujue-mixamo-Running.fbx.meta",
+          "sha": "b3399c4eeae7f9bab128da5b4a071a75912d0a95",
+          "bytes": 33295
+        },
+        {
+          "path": "jyx2/Assets/Mods/JYX2/Skills/野球拳.asset",
+          "sha": "b3d84f2a42ed2d899e9f33f774bdfa7169679ff3",
+          "bytes": 1536
+        }
+      ]
+    },
+    "7": {
+      "name": "何太沖",
+      "sheets": {
+        "idle": {
+          "image": "7-idle.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 1.3333334,
+          "fps": 4.5,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/Lianyijianfastand.anim",
+            "sourceBlob": "a1cf0c2363518261380b193167bea6a3317a0808",
+            "sourceDuration": 1.3333334
+          }
+        },
+        "walk": {
+          "image": "7-walk.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.70000005,
+          "fps": 11.429,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005
+          }
+        },
+        "attack": {
+          "image": "7-attack.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 12,
+          "duration": 0.48,
+          "fps": 22.917,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/Lianyijianfa.anim",
+            "sourceBlob": "c838ec8f18f9db3616aab1bfe09b4f00b5c96077",
+            "sourceDuration": 1.6666667
+          }
+        },
+        "guard": {
+          "image": "7-guard.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 0.5,
+          "fps": 10,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/Lianyijianfastand.anim",
+            "sourceBlob": "a1cf0c2363518261380b193167bea6a3317a0808",
+            "sourceDuration": 1.3333334,
+            "variant": "guard"
+          }
+        },
+        "dodge": {
+          "image": "7-dodge.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.55,
+          "fps": 12.727,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005,
+            "variant": "dodge"
+          }
+        },
+        "hit": {
+          "image": "7-hit.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 1,
+          "fps": 7,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1
+          }
+        },
+        "defeat": {
+          "image": "7-defeat.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.72,
+          "fps": 9.722,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1,
+            "variant": "defeat"
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/何太冲/HeTaiCho.fbx",
+          "sha": "595ded01abc7570a7c31e75ec93143574928b4cf",
+          "bytes": 503968
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/何太冲/HeTaiCho_color.png",
+          "sha": "c740b37c672d58a3d0cfac673f503b90f437bb52",
+          "bytes": 20590
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/何太冲/New Material.mat",
+          "sha": "f466bf7dcbebb1a842275ae4a8bdc8922dbd93b8",
+          "bytes": 2798
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/何太冲/HeTaiCho.fbx.meta",
+          "sha": "0e32350c3674a03a727de0b4bc2b2430a4841eb4",
+          "bytes": 24822
+        }
+      ]
+    },
+    "8": {
+      "name": "唐文亮",
+      "sheets": {
+        "idle": {
+          "image": "8-idle.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 1.3333334,
+          "fps": 4.5,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/PingyizhiStand.anim",
+            "sourceBlob": "a5a7341b34bb6cb66ba4e1e3df3bd257caeaf7a5",
+            "sourceDuration": 1.3333334
+          }
+        },
+        "walk": {
+          "image": "8-walk.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.70000005,
+          "fps": 11.429,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005
+          }
+        },
+        "attack": {
+          "image": "8-attack.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 12,
+          "duration": 0.48,
+          "fps": 22.917,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/PingyizhiAttack.anim",
+            "sourceBlob": "568a4e289d1709c1f0e5e52d8f3259aaf8746179",
+            "sourceDuration": 2.3333335
+          }
+        },
+        "guard": {
+          "image": "8-guard.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 0.5,
+          "fps": 10,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/PingyizhiStand.anim",
+            "sourceBlob": "a5a7341b34bb6cb66ba4e1e3df3bd257caeaf7a5",
+            "sourceDuration": 1.3333334,
+            "variant": "guard"
+          }
+        },
+        "dodge": {
+          "image": "8-dodge.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.55,
+          "fps": 12.727,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005,
+            "variant": "dodge"
+          }
+        },
+        "hit": {
+          "image": "8-hit.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 1,
+          "fps": 7,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1
+          }
+        },
+        "defeat": {
+          "image": "8-defeat.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.72,
+          "fps": 9.722,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1,
+            "variant": "defeat"
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/唐文亮和白眉鹰王/TangWenLiang.fbx",
+          "sha": "5caa1acba46af018f63ad0f2a361a9d5fd6f56c1",
+          "bytes": 336096
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/唐文亮和白眉鹰王/TangWenLiang_color.png",
+          "sha": "e259a15d97bc23d2b8ab175d9818464688f4c91c",
+          "bytes": 37668
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/唐文亮和白眉鹰王/TangWenLiang_mat.mat",
+          "sha": "4fa213661338265eb1ab91a84574c1d6b8de82e7",
+          "bytes": 2798
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/唐文亮和白眉鹰王/TangWenLiang.fbx.meta",
+          "sha": "7f1e6ec466e47ddeed6253039f9fb5f31c092bc2",
+          "bytes": 17351
+        }
+      ]
+    },
+    "19": {
+      "name": "岳不群",
+      "sheets": {
+        "idle": {
+          "image": "19-idle.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 1.3333334,
+          "fps": 4.5,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/SongfengjianfaStand.anim",
+            "sourceBlob": "384af491e1d7dd82067be2ce04776e35787277c6",
+            "sourceDuration": 1.3333334
+          }
+        },
+        "walk": {
+          "image": "19-walk.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.70000005,
+          "fps": 11.429,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005
+          }
+        },
+        "attack": {
+          "image": "19-attack.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 12,
+          "duration": 0.48,
+          "fps": 22.917,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/Songfengjianfa.anim",
+            "sourceBlob": "cab8c617734f45509f464545bffe6c87267f4494",
+            "sourceDuration": 2
+          }
+        },
+        "guard": {
+          "image": "19-guard.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 0.5,
+          "fps": 10,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/SongfengjianfaStand.anim",
+            "sourceBlob": "384af491e1d7dd82067be2ce04776e35787277c6",
+            "sourceDuration": 1.3333334,
+            "variant": "guard"
+          }
+        },
+        "dodge": {
+          "image": "19-dodge.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.55,
+          "fps": 12.727,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005,
+            "variant": "dodge"
+          }
+        },
+        "hit": {
+          "image": "19-hit.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 1,
+          "fps": 7,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1
+          }
+        },
+        "defeat": {
+          "image": "19-defeat.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.72,
+          "fps": 9.722,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1,
+            "variant": "defeat"
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/岳不群/YueBuQun.fbx",
+          "sha": "42831a6b6a4ff54e08a37cf97baa5f01b6d58762",
+          "bytes": 437824
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/岳不群/YueBuQun_color.png",
+          "sha": "a86c7f138e0af5e18e5eb26ba7fa4b011904d354",
+          "bytes": 23623
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/岳不群/New Material 1.mat",
+          "sha": "8a37c6e3e862ebb7cfe4cff968ef7c3aa632b634",
+          "bytes": 2794
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/岳不群/YueBuQun.fbx.meta",
+          "sha": "fc04cff27225542a5db25c304c9838ca7e41891a",
+          "bytes": 24053
+        }
+      ]
+    },
+    "36": {
+      "name": "林平之",
+      "sheets": {
+        "idle": {
+          "image": "36-idle.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 1.3333334,
+          "fps": 4.5,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/SongfengjianfaStand.anim",
+            "sourceBlob": "384af491e1d7dd82067be2ce04776e35787277c6",
+            "sourceDuration": 1.3333334
+          }
+        },
+        "walk": {
+          "image": "36-walk.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.70000005,
+          "fps": 11.429,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005
+          }
+        },
+        "attack": {
+          "image": "36-attack.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 12,
+          "duration": 0.48,
+          "fps": 22.917,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/Songfengjianfa.anim",
+            "sourceBlob": "cab8c617734f45509f464545bffe6c87267f4494",
+            "sourceDuration": 2
+          }
+        },
+        "guard": {
+          "image": "36-guard.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 0.5,
+          "fps": 10,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/SongfengjianfaStand.anim",
+            "sourceBlob": "384af491e1d7dd82067be2ce04776e35787277c6",
+            "sourceDuration": 1.3333334,
+            "variant": "guard"
+          }
+        },
+        "dodge": {
+          "image": "36-dodge.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.55,
+          "fps": 12.727,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005,
+            "variant": "dodge"
+          }
+        },
+        "hit": {
+          "image": "36-hit.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 1,
+          "fps": 7,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1
+          }
+        },
+        "defeat": {
+          "image": "36-defeat.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.72,
+          "fps": 9.722,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1,
+            "variant": "defeat"
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/林平之/LinPingZhi.fbx",
+          "sha": "3597e7307c51f0df60d425b26888f1e2764ecabc",
+          "bytes": 662000
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/林平之/linpingzhi.png",
+          "sha": "1879ed46d54140d34de345338fba5084820c8e0c",
+          "bytes": 50922
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/林平之/LinPingZhi_mat.mat",
+          "sha": "1be598d8a9aaf1c022389d4cd1fc3dd5bb30f864",
+          "bytes": 2798
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/林平之/LinPingZhi.fbx.meta",
+          "sha": "8414e0c788c8939895141ff343daefba8f2e0ad0",
+          "bytes": 19438
+        }
+      ]
+    },
+    "51": {
+      "name": "慕容復",
+      "sheets": {
+        "idle": {
+          "image": "51-idle.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 1.3333334,
+          "fps": 4.5,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/Lianyijianfastand.anim",
+            "sourceBlob": "a1cf0c2363518261380b193167bea6a3317a0808",
+            "sourceDuration": 1.3333334
+          }
+        },
+        "walk": {
+          "image": "51-walk.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.70000005,
+          "fps": 11.429,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005
+          }
+        },
+        "attack": {
+          "image": "51-attack.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 12,
+          "duration": 0.48,
+          "fps": 22.917,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/MurongSword.anim",
+            "sourceBlob": "deb6df2af075ed1b6bb2fb0852d4e93d1c778f18",
+            "sourceDuration": 1.6666667
+          }
+        },
+        "guard": {
+          "image": "51-guard.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 6,
+          "duration": 0.5,
+          "fps": 10,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/Lianyijianfastand.anim",
+            "sourceBlob": "a1cf0c2363518261380b193167bea6a3317a0808",
+            "sourceDuration": 1.3333334,
+            "variant": "guard"
+          }
+        },
+        "dodge": {
+          "image": "51-dodge.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.55,
+          "fps": 12.727,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005,
+            "variant": "dodge"
+          }
+        },
+        "hit": {
+          "image": "51-hit.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 1,
+          "fps": 7,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1
+          }
+        },
+        "defeat": {
+          "image": "51-defeat.png",
+          "cellWidth": 128,
+          "cellHeight": 128,
+          "anchorX": 64,
+          "anchorY": 89,
+          "frames": 8,
+          "duration": 0.72,
+          "fps": 9.722,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1,
+            "variant": "defeat"
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/慕容复/MuRongFu.fbx",
+          "sha": "864168694c7145288cb5c03c3f4a79f533d8477d",
+          "bytes": 508560
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/慕容复/Yellow.jpg",
+          "sha": "32a7478657a2f762ff39808ad91532dc95f258f8",
+          "bytes": 201359
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/慕容复/GJ2_mat.mat",
+          "sha": "5d441971118665d9085cd19cbd83aa6e514270ce",
+          "bytes": 2791
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/慕容复/MuRongFu.fbx.meta",
+          "sha": "82b4e1dccf9ae577929eee35a38f82f7593a9790",
+          "bytes": 17067
+        }
+      ]
+    },
+    "53": {
+      "name": "段譽",
+      "sheets": {
+        "idle": {
+          "image": "53-idle.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 6,
+          "duration": 1.3333334,
+          "fps": 4.5,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/DuanyuStand.anim",
+            "sourceBlob": "f1686c5fc204b097bf6b59d8ca04f2e04a589053",
+            "sourceDuration": 1.3333334
+          }
+        },
+        "walk": {
+          "image": "53-walk.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 8,
+          "duration": 0.70000005,
+          "fps": 11.429,
+          "loop": true,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005
+          }
+        },
+        "attack": {
+          "image": "53-attack.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 12,
+          "duration": 0.48,
+          "fps": 22.917,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/Liumaishenjian.anim",
+            "sourceBlob": "ef36f2d817c1c1ef606e578c400024558617d586",
+            "sourceDuration": 2
+          }
+        },
+        "guard": {
+          "image": "53-guard.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 6,
+          "duration": 0.5,
+          "fps": 10,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/Liumaishenjianstand.anim",
+            "sourceBlob": "b6493ab7090320b68649a4b229d3ab4062b783c4",
+            "sourceDuration": 1.3333334,
+            "variant": "guard"
+          }
+        },
+        "dodge": {
+          "image": "53-dodge.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 8,
+          "duration": 0.55,
+          "fps": 12.727,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/map_Mainrolemove.anim",
+            "sourceBlob": "84a996196dc25b94dc9da3d46c786e4a72ed0aa5",
+            "sourceDuration": 0.70000005,
+            "variant": "dodge"
+          }
+        },
+        "hit": {
+          "image": "53-hit.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 8,
+          "duration": 1,
+          "fps": 7,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "jyx2-humanoid-retarget",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1
+          }
+        },
+        "defeat": {
+          "image": "53-defeat.png",
+          "cellWidth": 96,
+          "cellHeight": 112,
+          "anchorX": 48,
+          "anchorY": 81,
+          "frames": 8,
+          "duration": 0.72,
+          "fps": 9.722,
+          "loop": false,
+          "directions": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "provenance": {
+            "kind": "local-variant",
+            "source": "jyx2/Assets/BuildSource/Animations/StandardBeaten.anim",
+            "sourceBlob": "76cf73aae79bae43d562688d42c540d746cf5261",
+            "sourceDuration": 1,
+            "variant": "defeat"
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/段誉/DuanYu.fbx",
+          "sha": "c671e0eda4e4424ac77c4d660ab0f36fe0e89f11",
+          "bytes": 544864
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/段誉/Purple.jpg",
+          "sha": "840baf7d4d9df261695a43f48a2715860e230933",
+          "bytes": 193356
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/段誉/GJ4_mat.mat",
+          "sha": "27228f44ecb8a4db70244d826a700736707d066d",
+          "bytes": 2788
+        },
+        {
+          "path": "jyx2/Assets/BuildSource/ModelCharacters/BattleNpc/Duanyu.prefab",
+          "sha": "0832496db0c701d50f89a8fa3f6e285a6f236b93",
+          "bytes": 27168
+        },
+        {
+          "path": "jyx2/Assets/3D/Jyx2RoleModels/Models/段誉/DuanYu.fbx.meta",
+          "sha": "390ba492505e8b1037fd935c0bd196dfa68a41f6",
+          "bytes": 17208
+        },
+        {
+          "path": "jyx2/Assets/Mods/JYX2/Skills/六脉神剑.asset",
+          "sha": "e61149de1cc70665cb00bc8e237cf16f650b9100",
+          "bytes": 1516
+        }
+      ]
+    }
+  }
+}

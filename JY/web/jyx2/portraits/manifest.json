@@ -1,0 +1,2351 @@
+{
+  "version": 2,
+  "source": {
+    "style": "Hong Kong wuxia manhua",
+    "art": "original generated adaptations of the identified KYS and JYX2 portraits",
+    "jyx2": {
+      "repository": "cnedwin/jynew",
+      "upstream": "jynew/jynew",
+      "revision": "773f3e76492f4af277e8c93ced2c8d18ba516f6c",
+      "portraitDirectory": "jyx2/Assets/BuildSource/head",
+      "roleConfig": {
+        "path": "jyx2/Assets/Mods/JYX2/Configs/人物.xlsx",
+        "gitBlob": "0d84be01839456c2ceeca3bb11ad880fcd2c0908"
+      }
+    },
+    "originalPackSha256": "9c4d352cfefce3abf31609f24a0a80425e5828811ff3aa5c08df2c7a6d821ece"
+  },
+  "mapping": {
+    "roles": 320,
+    "originals": 116,
+    "used": 114,
+    "covered": 116,
+    "sharedRoleHeadIds": [
+      79,
+      80
+    ],
+    "spareHeadIds": [
+      103,
+      115
+    ],
+    "textOnly": [
+      200
+    ]
+  },
+  "atlases": [
+    {
+      "file": "00-core-redraw.png",
+      "references": "00-core-roles.png",
+      "sha256": "ea17a7c4898e2fd2462eaaddc6b201343e906c26e9c1e48996b4922549b6eb10",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        362,
+        724,
+        1086
+      ]
+    },
+    {
+      "file": "01-redraw.png",
+      "references": "01-roster.png",
+      "sha256": "f03ddf0fd7858c14557f6e65fb1efe11d547f7172180a53b45159b3e3afe3994",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        358,
+        721,
+        1086
+      ]
+    },
+    {
+      "file": "02-redraw.png",
+      "references": "02-roster.png",
+      "sha256": "4e9c933b76adb7b4d337ba4cf0ec3f11599f18f698ad75b7dc477649be7b45cc",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        355,
+        718,
+        1086
+      ]
+    },
+    {
+      "file": "03-redraw.png",
+      "references": "03-roster.png",
+      "sha256": "08772d73f31c404159becb7c4cb51aac8905f3a5e8e7b26cd3daeec811d3ad60",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        358,
+        720,
+        1086
+      ]
+    },
+    {
+      "file": "04-redraw.png",
+      "references": "04-roster.png",
+      "sha256": "669af093b3aef88ff0c6c6b13139ee5bd54ab01ac54bdf87a554d0ff032a510e",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        358,
+        721,
+        1086
+      ]
+    },
+    {
+      "file": "05-roster-redraw.png",
+      "references": "05-roster.png",
+      "sha256": "59676464813ddbb6014ad5813347c379bbcd2658839c972fa7e7d5d3c0ae5e25",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        362,
+        724,
+        1086
+      ]
+    },
+    {
+      "file": "06-roster-redraw.png",
+      "references": "06-roster.png",
+      "sha256": "c13b94314f842234544f541afce0c0662089908f49afa1454bd2c815cb4201c9",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        362,
+        724,
+        1086
+      ]
+    },
+    {
+      "file": "07-roster-redraw.png",
+      "references": "07-roster.png",
+      "sha256": "888e39c13dd5ac5dc487e5cb6a65d3404c75adc593ead7994de0cb722b9c8375",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        362,
+        724,
+        1086
+      ]
+    },
+    {
+      "file": "08-roster-redraw.png",
+      "references": "08-roster.png",
+      "sha256": "9f64bfedef052f6ed931e70a85e755c77c41d022f069212409666495b2e91118",
+      "columns": 4,
+      "rows": 3,
+      "width": 1448,
+      "height": 1086,
+      "rowEdges": [
+        0,
+        362,
+        724,
+        1086
+      ]
+    },
+    {
+      "file": "09-roster-redraw.png",
+      "references": "09-roster.png",
+      "sha256": "1506a6821ad81983da5063b0db0bac5f7086ca8a9531b0102100110d04e407f8",
+      "columns": 4,
+      "rows": 2,
+      "width": 1774,
+      "height": 887,
+      "rowEdges": [
+        0,
+        444,
+        887
+      ]
+    }
+  ],
+  "portraits": [
+    {
+      "headId": 0,
+      "name": "小蝦米",
+      "kysRoleIds": [
+        0
+      ],
+      "used": true,
+      "file": "0.png",
+      "sha256": "593bbf7c51855562a0c6d10dff8f60e9b768d4ce397e64d6dbe7a9882d8c4c2d",
+      "bytes": 261260,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.477
+    },
+    {
+      "headId": 1,
+      "name": "胡斐",
+      "kysRoleIds": [
+        1
+      ],
+      "used": true,
+      "file": "1.png",
+      "sha256": "e6ecd938aac2c54bb89c90ea6e9e99f941a1360f98b04daa18787b92adab64b7",
+      "bytes": 282831,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.56
+    },
+    {
+      "headId": 2,
+      "name": "程靈素",
+      "kysRoleIds": [
+        2
+      ],
+      "used": true,
+      "file": "2.png",
+      "sha256": "b17acbc3cb70e4de09b2093098baa9cef384c176284f01f27844cc3502942ac3",
+      "bytes": 275202,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.523
+    },
+    {
+      "headId": 3,
+      "name": "苗人鳳",
+      "kysRoleIds": [
+        3
+      ],
+      "used": true,
+      "file": "3.png",
+      "sha256": "2cfb1d3da06827ccc5ec5e3133eca5a42c0bc35643f0eced0d5e2fe928859691",
+      "bytes": 234009,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.522
+    },
+    {
+      "headId": 4,
+      "name": "閻基",
+      "kysRoleIds": [
+        4
+      ],
+      "used": true,
+      "file": "4.png",
+      "sha256": "d295173faaeaa5776624744ef8792318b36a988b94e9e22e477c40094f6accea",
+      "bytes": 378667,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.728
+    },
+    {
+      "headId": 5,
+      "name": "張三丰",
+      "kysRoleIds": [
+        5
+      ],
+      "used": true,
+      "file": "5.png",
+      "sha256": "7c368bf79edfd55eb439d64ee61bd4b87290058b3b31b1ba57d615c37df08de4",
+      "bytes": 275730,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.494
+    },
+    {
+      "headId": 6,
+      "name": "滅絕",
+      "kysRoleIds": [
+        6
+      ],
+      "used": true,
+      "file": "6.png",
+      "sha256": "779283e8a7f0b9fd86045efb243fb419fcaac3219287eddb2e8c6fcfe19c1c23",
+      "bytes": 324010,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.62
+    },
+    {
+      "headId": 7,
+      "name": "何太沖",
+      "kysRoleIds": [
+        7
+      ],
+      "used": true,
+      "file": "7.png",
+      "sha256": "01d85bed449442b40e9b4d126240c63b444fff533eed73011d2201b73154be6b",
+      "bytes": 250425,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.509
+    },
+    {
+      "headId": 8,
+      "name": "唐文亮",
+      "kysRoleIds": [
+        8
+      ],
+      "used": true,
+      "file": "8.png",
+      "sha256": "5e6f080c783afa28c7e96708cdd3654a4181f5d5b3a6fc0f7c129c01e6846993",
+      "bytes": 303891,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.591
+    },
+    {
+      "headId": 9,
+      "name": "張無忌",
+      "kysRoleIds": [
+        9
+      ],
+      "used": true,
+      "file": "9.png",
+      "sha256": "3162d2cb661ee9791f85bf39dba7196e3c24ab893c15e2b83ea934b618da5656",
+      "bytes": 296777,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.637
+    },
+    {
+      "headId": 10,
+      "name": "范遙",
+      "kysRoleIds": [
+        10
+      ],
+      "used": true,
+      "file": "10.png",
+      "sha256": "cd8af895c143478895848944af2d51c5e19fe0a5a7c360c79d3668816854a80b",
+      "bytes": 375124,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.752
+    },
+    {
+      "headId": 11,
+      "name": "楊逍",
+      "kysRoleIds": [
+        11
+      ],
+      "used": true,
+      "file": "11.png",
+      "sha256": "9edab6607e189007ac48b9bf372e8d6d87fb35793442d087997730529137ab62",
+      "bytes": 356241,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.71
+    },
+    {
+      "headId": 12,
+      "name": "殷天正",
+      "kysRoleIds": [
+        12
+      ],
+      "used": true,
+      "file": "12.png",
+      "sha256": "3a7f11a2701c500c18e37cd7f1cda0a997abc20111d04d4d2bddedaad008df8b",
+      "bytes": 364166,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.675
+    },
+    {
+      "headId": 13,
+      "name": "謝遜",
+      "kysRoleIds": [
+        13
+      ],
+      "used": true,
+      "file": "13.png",
+      "sha256": "0787146c5ac32f0f99cef1a18c038913710143a2857e6ffa51d34d1c7f57026b",
+      "bytes": 420987,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.789
+    },
+    {
+      "headId": 14,
+      "name": "韋一笑",
+      "kysRoleIds": [
+        14
+      ],
+      "used": true,
+      "file": "14.png",
+      "sha256": "a18d6ca52acc9d22d11fccae6c662fcfab97c6406a1ef1e4d58e1b959f0bf58e",
+      "bytes": 339063,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.632
+    },
+    {
+      "headId": 15,
+      "name": "金花婆婆",
+      "kysRoleIds": [
+        15
+      ],
+      "used": true,
+      "file": "15.png",
+      "sha256": "768df294fd252ff2d451f6bf6857abd25fb63ae3ffcd1ba2f1321c4d94eadbc7",
+      "bytes": 332541,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.627
+    },
+    {
+      "headId": 16,
+      "name": "胡青牛",
+      "kysRoleIds": [
+        16
+      ],
+      "used": true,
+      "file": "16.png",
+      "sha256": "747f06a8fb47ae188207df96f5034c39906ffe51389732baacdceb76b7b2303d",
+      "bytes": 347648,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "01-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.645
+    },
+    {
+      "headId": 17,
+      "name": "王難姑",
+      "kysRoleIds": [
+        17
+      ],
+      "used": true,
+      "file": "17.png",
+      "sha256": "041c5624f71cebae0fb8ddb3292a99e0a6b83b013f474f6fed6c0885cce39032",
+      "bytes": 264207,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.531
+    },
+    {
+      "headId": 18,
+      "name": "成崑",
+      "kysRoleIds": [
+        18
+      ],
+      "used": true,
+      "file": "18.png",
+      "sha256": "bef776b30cc046cdf1302c31e75cf4d3dcf3835155f6fe15c2ba149a31f54ae4",
+      "bytes": 294776,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.602
+    },
+    {
+      "headId": 19,
+      "name": "岳不群",
+      "kysRoleIds": [
+        19
+      ],
+      "used": true,
+      "file": "19.png",
+      "sha256": "f9c97c227a40f0bde29c4b9e7043afe6068b6af99af35ead4f1d8147fcc4c86d",
+      "bytes": 259613,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.505
+    },
+    {
+      "headId": 20,
+      "name": "莫大",
+      "kysRoleIds": [
+        20
+      ],
+      "used": true,
+      "file": "20.png",
+      "sha256": "678f20a059c692eb591920ce789b9215ec5f96ac675f5a59f33fb4bfd5862e1e",
+      "bytes": 305474,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.552
+    },
+    {
+      "headId": 21,
+      "name": "定閒",
+      "kysRoleIds": [
+        21
+      ],
+      "used": true,
+      "file": "21.png",
+      "sha256": "0c68dc91d6f4154250f72443e6c2d0934a1a985e9ad758f3a4b63d58f973e25c",
+      "bytes": 265349,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.527
+    },
+    {
+      "headId": 22,
+      "name": "左冷禪",
+      "kysRoleIds": [
+        22
+      ],
+      "used": true,
+      "file": "22.png",
+      "sha256": "499c862d25eefbce9e9e454b14e81e42aff9ae9207f97d503aeb26845bf60e21",
+      "bytes": 266729,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.499
+    },
+    {
+      "headId": 23,
+      "name": "天門",
+      "kysRoleIds": [
+        23
+      ],
+      "used": true,
+      "file": "23.png",
+      "sha256": "93f66b37a36f6d4245b410fbb2053d52b76ac50b35779a132cf75001bb7f4cd2",
+      "bytes": 309672,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.59
+    },
+    {
+      "headId": 24,
+      "name": "余滄海",
+      "kysRoleIds": [
+        24
+      ],
+      "used": true,
+      "file": "24.png",
+      "sha256": "9988c6682e2e9a865a48ac66f4266640e29d6ebcecb2e54a543c1b1d9f28f1ca",
+      "bytes": 285299,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.578
+    },
+    {
+      "headId": 25,
+      "name": "藍鳳凰",
+      "kysRoleIds": [
+        25
+      ],
+      "used": true,
+      "file": "25.png",
+      "sha256": "0d76832ce7ad492c987e8a395c026fd3c05103f1f19fb9f8df6f32fe7901273c",
+      "bytes": 316345,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.573
+    },
+    {
+      "headId": 26,
+      "name": "任我行",
+      "kysRoleIds": [
+        26
+      ],
+      "used": true,
+      "file": "26.png",
+      "sha256": "165560f6cd5fe02ea00de4304aef5245e29ad2c904672fbaa7ddf10f438d9075",
+      "bytes": 339645,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.635
+    },
+    {
+      "headId": 27,
+      "name": "東方不敗",
+      "kysRoleIds": [
+        27
+      ],
+      "used": true,
+      "file": "27.png",
+      "sha256": "1803627550490499234cdf5e54ce9dd885d10ecc0b30982c696a28d6a1af7dce",
+      "bytes": 328725,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.618
+    },
+    {
+      "headId": 28,
+      "name": "平一指",
+      "kysRoleIds": [
+        28
+      ],
+      "used": true,
+      "file": "28.png",
+      "sha256": "7c8cf0a95f40eaf95566a003b87987d13301b7a59b029e8d8a5e6d6ee72fd977",
+      "bytes": 293387,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "02-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.529
+    },
+    {
+      "headId": 29,
+      "name": "田伯光",
+      "kysRoleIds": [
+        29
+      ],
+      "used": true,
+      "file": "29.png",
+      "sha256": "9a0396d7fa7c5efc14782786ed12f4d23a03121bf1d908e451efd7874d466224",
+      "bytes": 290479,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.55
+    },
+    {
+      "headId": 30,
+      "name": "風清揚",
+      "kysRoleIds": [
+        30
+      ],
+      "used": true,
+      "file": "30.png",
+      "sha256": "0a46bf9027388003a1a56fbe24c1dcfd3019f54d74edf08fce04f4708ac8c782",
+      "bytes": 359639,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.68
+    },
+    {
+      "headId": 31,
+      "name": "丹青生",
+      "kysRoleIds": [
+        31
+      ],
+      "used": true,
+      "file": "31.png",
+      "sha256": "8a318ddf7c682d4d5a25e1c1ad04c1a7301c622f6bd2f973befe7898ec732cb6",
+      "bytes": 244649,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.488
+    },
+    {
+      "headId": 32,
+      "name": "禿筆翁",
+      "kysRoleIds": [
+        32
+      ],
+      "used": true,
+      "file": "32.png",
+      "sha256": "87eb6ed036b0cf0995742f2bcafb1b95c9489ff9ed44b0b53a596f545685b613",
+      "bytes": 245523,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.472
+    },
+    {
+      "headId": 33,
+      "name": "黑白子",
+      "kysRoleIds": [
+        33
+      ],
+      "used": true,
+      "file": "33.png",
+      "sha256": "ba3e23e8cbee91025ca3b93c658053fc5075cac9750458010ce138da6c357356",
+      "bytes": 314331,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.618
+    },
+    {
+      "headId": 34,
+      "name": "黃鐘公",
+      "kysRoleIds": [
+        34
+      ],
+      "used": true,
+      "file": "34.png",
+      "sha256": "67d8b17351d153e6d9d8319bfcd365d3bda9c1007b43834e9f904f89cba53396",
+      "bytes": 305743,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.563
+    },
+    {
+      "headId": 35,
+      "name": "令狐沖",
+      "kysRoleIds": [
+        35
+      ],
+      "used": true,
+      "file": "35.png",
+      "sha256": "428d0d4ade98ec5f2617c2119f028ca20c7d7e57e55e3e3ec7e3835005d5ac35",
+      "bytes": 250200,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.534
+    },
+    {
+      "headId": 36,
+      "name": "林平之",
+      "kysRoleIds": [
+        36
+      ],
+      "used": true,
+      "file": "36.png",
+      "sha256": "a7c3045fa7b095d406b86489b9af7a7fcde4255470a464348016e66d97530877",
+      "bytes": 337925,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.668
+    },
+    {
+      "headId": 37,
+      "name": "狄雲",
+      "kysRoleIds": [
+        37
+      ],
+      "used": true,
+      "file": "37.png",
+      "sha256": "b9b3e92977457bbd3864d2793579605d5939926fce23b58bc6f15f66a1fbb6ed",
+      "bytes": 294593,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.574
+    },
+    {
+      "headId": 38,
+      "name": "石破天",
+      "kysRoleIds": [
+        38
+      ],
+      "used": true,
+      "file": "38.png",
+      "sha256": "fda524d959f8dbcfc4ff2dec77184c89e0193db7ccdd62435f445b4b34b060b3",
+      "bytes": 329750,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.631
+    },
+    {
+      "headId": 39,
+      "name": "龍島主",
+      "kysRoleIds": [
+        39
+      ],
+      "used": true,
+      "file": "39.png",
+      "sha256": "9e965c5f67c227905397ad7da18289fdae94865d297f541e988091dc1835cf29",
+      "bytes": 391276,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.691
+    },
+    {
+      "headId": 40,
+      "name": "木島主",
+      "kysRoleIds": [
+        40
+      ],
+      "used": true,
+      "file": "40.png",
+      "sha256": "34c53c0ccc3ae08b280c2129cd296ad37268a37e7206ede7dadbd36458e51534",
+      "bytes": 392534,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.703
+    },
+    {
+      "headId": 41,
+      "name": "張三",
+      "kysRoleIds": [
+        41
+      ],
+      "used": true,
+      "file": "41.png",
+      "sha256": "a932d525ab38fc468571bd5c5e5ee9bea3da28d8cb088e39a6c6db3e957f7897",
+      "bytes": 341911,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "03-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.644
+    },
+    {
+      "headId": 42,
+      "name": "李四",
+      "kysRoleIds": [
+        42
+      ],
+      "used": true,
+      "file": "42.png",
+      "sha256": "7c57ba48747fdf18c432b3987efe9563afcf6488c080963cd0196d10417a647a",
+      "bytes": 378362,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.727
+    },
+    {
+      "headId": 43,
+      "name": "白萬劍",
+      "kysRoleIds": [
+        43
+      ],
+      "used": true,
+      "file": "43.png",
+      "sha256": "6ca2362229d7eaadddaf4b8d9a4d28203a2fba6cd9ed94764fd2089e03e77869",
+      "bytes": 332017,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.671
+    },
+    {
+      "headId": 44,
+      "name": "岳老三",
+      "kysRoleIds": [
+        44
+      ],
+      "used": true,
+      "file": "44.png",
+      "sha256": "c4d83d9f76926ae15e666ea623787ff54bd535d678def98977c1a2c5b5f3ad8f",
+      "bytes": 307323,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.624
+    },
+    {
+      "headId": 45,
+      "name": "薛慕華",
+      "kysRoleIds": [
+        45
+      ],
+      "used": true,
+      "file": "45.png",
+      "sha256": "fb3a32c454b53714a91f40384f3ffc0419677a7c410867db0b1fb941549e9bd6",
+      "bytes": 347573,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.664
+    },
+    {
+      "headId": 46,
+      "name": "丁春秋",
+      "kysRoleIds": [
+        46
+      ],
+      "used": true,
+      "file": "46.png",
+      "sha256": "a758127fa6cf5d47a184d34c14135359efb398ad25a51a7939f6bba144ba9fbc",
+      "bytes": 403483,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.776
+    },
+    {
+      "headId": 47,
+      "name": "阿紫",
+      "kysRoleIds": [
+        47
+      ],
+      "used": true,
+      "file": "47.png",
+      "sha256": "735fceb988b45d6639a3322dd2275e066466df18ed5ca5a8ad3b4c8011ab3f21",
+      "bytes": 337542,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.648
+    },
+    {
+      "headId": 48,
+      "name": "游坦之",
+      "kysRoleIds": [
+        48
+      ],
+      "used": true,
+      "file": "48.png",
+      "sha256": "585ba2b929feea59b4e28d6e2080a72c6cf1d6ad0dd0dcec08479c3d23ddde62",
+      "bytes": 307037,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.583
+    },
+    {
+      "headId": 49,
+      "name": "虛竹",
+      "kysRoleIds": [
+        49
+      ],
+      "used": true,
+      "file": "49.png",
+      "sha256": "3be68a68e7654819fd6ba7910035979d62265412e12ca8cde474333b949599aa",
+      "bytes": 264388,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.559
+    },
+    {
+      "headId": 50,
+      "name": "喬峰",
+      "kysRoleIds": [
+        50
+      ],
+      "used": true,
+      "file": "50.png",
+      "sha256": "b10433b68c33cbaa8a3fc87dcc5c610739e183699e5c284b2a05bc8e6b4e9b91",
+      "bytes": 308522,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.625
+    },
+    {
+      "headId": 51,
+      "name": "慕容復",
+      "kysRoleIds": [
+        51
+      ],
+      "used": true,
+      "file": "51.png",
+      "sha256": "61caf796e2792933da07f5ecffda9e30919398121b69656c3a14e731ee62c1de",
+      "bytes": 306177,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.593
+    },
+    {
+      "headId": 52,
+      "name": "蘇星河",
+      "kysRoleIds": [
+        52
+      ],
+      "used": true,
+      "file": "52.png",
+      "sha256": "df7fe22d774791ec7767fa26010ded7cf4d085d37c7abca90472bac54730477b",
+      "bytes": 376113,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.706
+    },
+    {
+      "headId": 53,
+      "name": "段譽",
+      "kysRoleIds": [
+        53
+      ],
+      "used": true,
+      "file": "53.png",
+      "sha256": "9e6cef594b000c35dd1cb5384185979f2cd7797265ecf93501c6819ea36db868",
+      "bytes": 260245,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.478
+    },
+    {
+      "headId": 54,
+      "name": "袁承志",
+      "kysRoleIds": [
+        54
+      ],
+      "used": true,
+      "file": "54.png",
+      "sha256": "de37fb871b6e479dea5befe813a70ad635dcf83297b907a78aac9959d299b7da",
+      "bytes": 340907,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.652
+    },
+    {
+      "headId": 55,
+      "name": "郭靖",
+      "kysRoleIds": [
+        55
+      ],
+      "used": true,
+      "file": "55.png",
+      "sha256": "cb46bb8be80d6fc9c933f00ca17620b7e7b178ed3c6ca7c2891aa1750fe8c6aa",
+      "bytes": 306386,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.59
+    },
+    {
+      "headId": 56,
+      "name": "黃蓉",
+      "kysRoleIds": [
+        56
+      ],
+      "used": true,
+      "file": "56.png",
+      "sha256": "9b202e4dc107f8cf02515e4edd43862d85b1e82c9da9759044da217117f16b55",
+      "bytes": 260150,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.496
+    },
+    {
+      "headId": 57,
+      "name": "黃藥師",
+      "kysRoleIds": [
+        57
+      ],
+      "used": true,
+      "file": "57.png",
+      "sha256": "fe1c670a1ef234423e8f628c787cf620d238f92a995a456083ca13a1506d79df",
+      "bytes": 355198,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "04-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.685
+    },
+    {
+      "headId": 58,
+      "name": "楊過",
+      "kysRoleIds": [
+        58
+      ],
+      "used": true,
+      "file": "58.png",
+      "sha256": "3a492215b29f09de1946d6f25500b3d8670e5f39bc8efd3f069b38a9d24caf25",
+      "bytes": 329646,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.634
+    },
+    {
+      "headId": 59,
+      "name": "小龍女",
+      "kysRoleIds": [
+        59
+      ],
+      "used": true,
+      "file": "59.png",
+      "sha256": "77e73029d84932fc9626b5df6c390cc3f130f7ffba440496f0b8ef1b72d5735c",
+      "bytes": 261638,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.498
+    },
+    {
+      "headId": 60,
+      "name": "歐陽鋒",
+      "kysRoleIds": [
+        60
+      ],
+      "used": true,
+      "file": "60.png",
+      "sha256": "9c1c0f87bd99fa6dd6727a71b7728e39884766126e6671b3995da12ccdbda4c8",
+      "bytes": 408852,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.756
+    },
+    {
+      "headId": 61,
+      "name": "歐陽克",
+      "kysRoleIds": [
+        61
+      ],
+      "used": true,
+      "file": "61.png",
+      "sha256": "1cd81b279685e150b37a3365f16c026e4f8bed0cfcaeef50a85f76525d65fdf0",
+      "bytes": 322702,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.606
+    },
+    {
+      "headId": 62,
+      "name": "金輪法王",
+      "kysRoleIds": [
+        62
+      ],
+      "used": true,
+      "file": "62.png",
+      "sha256": "b55f2dd65fa01de89438984d7408fa36e62ae2c7e465b8adfcdd35dea05c0865",
+      "bytes": 310787,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.605
+    },
+    {
+      "headId": 63,
+      "name": "程英",
+      "kysRoleIds": [
+        63
+      ],
+      "used": true,
+      "file": "63.png",
+      "sha256": "a57bf21544259253316fed08706a84579b27ed208d489f810ce015d245abcd68",
+      "bytes": 327268,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.624
+    },
+    {
+      "headId": 64,
+      "name": "周伯通",
+      "kysRoleIds": [
+        64
+      ],
+      "used": true,
+      "file": "64.png",
+      "sha256": "bc65881857fcf14e15ed67c374d1a07659673e31b5891ea082c3e01e152cb5a8",
+      "bytes": 335547,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.573
+    },
+    {
+      "headId": 65,
+      "name": "一燈",
+      "kysRoleIds": [
+        65
+      ],
+      "used": true,
+      "file": "65.png",
+      "sha256": "2aab64be47d82c8a2695170312ef265cd95ddcc0d8f0f796894c01977c0016e2",
+      "bytes": 294142,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.54
+    },
+    {
+      "headId": 66,
+      "name": "瑛姑",
+      "kysRoleIds": [
+        66
+      ],
+      "used": true,
+      "file": "66.png",
+      "sha256": "7967297d32a67dcb10d09b437a7281ce665342a462b84ff819dcbfb148269df1",
+      "bytes": 355233,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.647
+    },
+    {
+      "headId": 67,
+      "name": "裘千仞",
+      "kysRoleIds": [
+        67
+      ],
+      "used": true,
+      "file": "67.png",
+      "sha256": "0a34200ecced4e3a6e9f2280ea7e8897cf38764ca764f49e89ed7074445a33fb",
+      "bytes": 378990,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.674
+    },
+    {
+      "headId": 68,
+      "name": "丘處機",
+      "kysRoleIds": [
+        68
+      ],
+      "used": true,
+      "file": "68.png",
+      "sha256": "67b43b55842487e55bc73d4a645f21dea377e95b1b20b99fe92a847615540392",
+      "bytes": 287073,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.569
+    },
+    {
+      "headId": 69,
+      "name": "洪七公",
+      "kysRoleIds": [
+        69
+      ],
+      "used": true,
+      "file": "69.png",
+      "sha256": "cb93f1988d73bdb89a616207faae97e7d024ca55e8bc3be184a07a98ca198330",
+      "bytes": 359199,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "05-roster-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.643
+    },
+    {
+      "headId": 70,
+      "name": "玄慈",
+      "kysRoleIds": [
+        70
+      ],
+      "used": true,
+      "file": "70.png",
+      "sha256": "b0033c42597d420b37ec7c1ed4a1aacebe5ca882ce389b69fcc079bf6b264a77",
+      "bytes": 295017,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.565
+    },
+    {
+      "headId": 71,
+      "name": "洪教主",
+      "kysRoleIds": [
+        71
+      ],
+      "used": true,
+      "file": "71.png",
+      "sha256": "f64c6ea2228681064431f3effb2974d2417040935c9bc4a911382fa812ee650c",
+      "bytes": 339533,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.675
+    },
+    {
+      "headId": 72,
+      "name": "孔八拉",
+      "kysRoleIds": [
+        72
+      ],
+      "used": true,
+      "file": "72.png",
+      "sha256": "51164318338fad1abcb7539e70e3573e507cf870573b4284724c599b8b19e2ce",
+      "bytes": 322778,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.622
+    },
+    {
+      "headId": 73,
+      "name": "南賢",
+      "kysRoleIds": [
+        73
+      ],
+      "used": true,
+      "file": "73.png",
+      "sha256": "cc13c27f9369b538d387a66c2b726f43072ccc8de4f1020e0212c83b4f26af95",
+      "bytes": 319786,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.611
+    },
+    {
+      "headId": 74,
+      "name": "北丑",
+      "kysRoleIds": [
+        74
+      ],
+      "used": true,
+      "file": "74.png",
+      "sha256": "957cb7c0ff7ce611fb59273c69008cba51f0c831beba0fcb1a9db993336d3fcb",
+      "bytes": 423272,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.796
+    },
+    {
+      "headId": 75,
+      "name": "廚師",
+      "kysRoleIds": [
+        75
+      ],
+      "used": true,
+      "file": "75.png",
+      "sha256": "860289caca10890e33ea8929ad389fadcedf931033897e30ef0b2fffb8bdf0e0",
+      "bytes": 310882,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.65
+    },
+    {
+      "headId": 76,
+      "name": "武當弟子",
+      "kysRoleIds": [
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140
+      ],
+      "used": true,
+      "file": "76.png",
+      "sha256": "f8d232d4d27f4b276194935b24030bd6f5c9e0a0cac7e309f4e6facd7d82762a",
+      "bytes": 250631,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.49
+    },
+    {
+      "headId": 77,
+      "name": "峨嵋弟子",
+      "kysRoleIds": [
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150
+      ],
+      "used": true,
+      "file": "77.png",
+      "sha256": "9fcb598868a86b8a4af06c0c6a7fc7dd19d1e0409096e2352124dc5f2e57b0a8",
+      "bytes": 313926,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.595
+    },
+    {
+      "headId": 78,
+      "name": "崑崙弟子",
+      "kysRoleIds": [
+        91,
+        92,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100
+      ],
+      "used": true,
+      "file": "78.png",
+      "sha256": "bc4bda7372d1556ec3ee703a0b0218b695458658ca47212ae5ddc41f44412e98",
+      "bytes": 344013,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.628
+    },
+    {
+      "headId": 79,
+      "name": "廚師／崆峒弟子",
+      "kysRoleIds": [
+        79,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160
+      ],
+      "used": true,
+      "file": "79.png",
+      "sha256": "87d130cd36f85180170e02c393db071dda0093c60c47788dcaaebf9c389e42da",
+      "bytes": 307433,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.63
+    },
+    {
+      "headId": 80,
+      "name": "廚師／明教弟子",
+      "kysRoleIds": [
+        80,
+        301,
+        302,
+        303,
+        304,
+        305,
+        306,
+        307,
+        308,
+        309,
+        310
+      ],
+      "used": true,
+      "file": "80.png",
+      "sha256": "aabda7163fadb5dfe10ffbde212742b01a8e3a068351c9a0c9d98ab8a9e64838",
+      "bytes": 385279,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.752
+    },
+    {
+      "headId": 81,
+      "name": "華山弟子",
+      "kysRoleIds": [
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170
+      ],
+      "used": true,
+      "file": "81.png",
+      "sha256": "3ba5e415c26b6c6659dcf4baa3f7cbef1cf7c9b78ddd2e91795178093cc1e5d8",
+      "bytes": 297565,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "06-roster-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.551
+    },
+    {
+      "headId": 82,
+      "name": "衡山弟子",
+      "kysRoleIds": [
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180
+      ],
+      "used": true,
+      "file": "82.png",
+      "sha256": "a29155980e6cfe2908bad1e553623c0841499d19dd3cc10487c1ee5b352a0ea0",
+      "bytes": 236433,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.459
+    },
+    {
+      "headId": 83,
+      "name": "恆山弟子",
+      "kysRoleIds": [
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190
+      ],
+      "used": true,
+      "file": "83.png",
+      "sha256": "dc136212549bc8a5cb14b9a8de9e75cb30e2b401b84a021ad2fbad989e83ccd6",
+      "bytes": 234433,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.472
+    },
+    {
+      "headId": 84,
+      "name": "嵩山弟子",
+      "kysRoleIds": [
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200
+      ],
+      "used": true,
+      "file": "84.png",
+      "sha256": "e65be96717346069b69944f801e1efa246175426433d92c2c71b9639a4143baf",
+      "bytes": 327601,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.661
+    },
+    {
+      "headId": 85,
+      "name": "泰山弟子",
+      "kysRoleIds": [
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210
+      ],
+      "used": true,
+      "file": "85.png",
+      "sha256": "10cb99f9c60cd6d13f6414d0565ba8a96e518f432cb5175b36991161d7b1a23a",
+      "bytes": 307920,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.574
+    },
+    {
+      "headId": 86,
+      "name": "青城弟子",
+      "kysRoleIds": [
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220
+      ],
+      "used": true,
+      "file": "86.png",
+      "sha256": "5bbb8e4d1634b6a29a9e7aee4dc6080c9da3c6e5bdf83f85297cf5dd25ddf0bd",
+      "bytes": 329054,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.591
+    },
+    {
+      "headId": 87,
+      "name": "五毒教徒",
+      "kysRoleIds": [
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230
+      ],
+      "used": true,
+      "file": "87.png",
+      "sha256": "982bc6d99da15fe66cdeeb562fdd9e3851be758064842bbf8b4c12ce903fbbb7",
+      "bytes": 350734,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.662
+    },
+    {
+      "headId": 88,
+      "name": "日月教徒",
+      "kysRoleIds": [
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240
+      ],
+      "used": true,
+      "file": "88.png",
+      "sha256": "958dc246a1719f21369a757e56ff7a535a57de04ac3f80b46256221658d36c90",
+      "bytes": 318944,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.636
+    },
+    {
+      "headId": 89,
+      "name": "白駝山侍女",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "89.png",
+      "sha256": "8bf93150c13802c74806e132a3fe9d03c0731cbf57b1832dbad119d63d9d2e54",
+      "bytes": 307548,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.611
+    },
+    {
+      "headId": 90,
+      "name": "雪山弟子",
+      "kysRoleIds": [
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250
+      ],
+      "used": true,
+      "file": "90.png",
+      "sha256": "d47053d4ff6aa813ff665efe85bcf91d10acc8f5315eb423c9f0715d43b9940a",
+      "bytes": 396566,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.738
+    },
+    {
+      "headId": 91,
+      "name": "番僧",
+      "kysRoleIds": [
+        251,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        259,
+        260
+      ],
+      "used": true,
+      "file": "91.png",
+      "sha256": "fe85a5990779c734240986f5daf64d770cccab53a9fbc6b606f451aed5ab00da",
+      "bytes": 271427,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.534
+    },
+    {
+      "headId": 92,
+      "name": "星宿門人",
+      "kysRoleIds": [
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270
+      ],
+      "used": true,
+      "file": "92.png",
+      "sha256": "a80abdfcc0875d1cdf45d9502a05ee6cec97be960d959844e411a63c35d4aa84",
+      "bytes": 350872,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.661
+    },
+    {
+      "headId": 93,
+      "name": "丐幫弟子",
+      "kysRoleIds": [
+        271,
+        272,
+        273,
+        274,
+        275,
+        276,
+        277,
+        278,
+        279,
+        280
+      ],
+      "used": true,
+      "file": "93.png",
+      "sha256": "4706f5600e316e2558e750411cf1d99fdffca47f7d9343769e73ec2335ad3971",
+      "bytes": 326686,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "07-roster-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.595
+    },
+    {
+      "headId": 94,
+      "name": "鐵掌幫眾",
+      "kysRoleIds": [
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290
+      ],
+      "used": true,
+      "file": "94.png",
+      "sha256": "fe46df1fe48e8bbe7ed18733153e18596d4140558b4edcb42359da4f6a648ad5",
+      "bytes": 330162,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.645
+    },
+    {
+      "headId": 95,
+      "name": "全真教徒",
+      "kysRoleIds": [
+        291,
+        292,
+        293,
+        294,
+        295,
+        296,
+        297,
+        298,
+        299,
+        300
+      ],
+      "used": true,
+      "file": "95.png",
+      "sha256": "bf3ff04a69c0ad3e3d68579cc21a1e00eeba72533e7a69280cc5e048f385a372",
+      "bytes": 260544,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.471
+    },
+    {
+      "headId": 96,
+      "name": "少林弟子",
+      "kysRoleIds": [
+        81,
+        82,
+        83,
+        84,
+        85,
+        86,
+        87,
+        88,
+        89,
+        90
+      ],
+      "used": true,
+      "file": "96.png",
+      "sha256": "cea969b6a2075b538ab8fc0d8330945a8b056fd14db0406da1c2cbcee2f7c965",
+      "bytes": 250405,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.488
+    },
+    {
+      "headId": 97,
+      "name": "神龍教徒",
+      "kysRoleIds": [
+        101,
+        102,
+        103,
+        104,
+        105,
+        106,
+        107,
+        108,
+        109,
+        110
+      ],
+      "used": true,
+      "file": "97.png",
+      "sha256": "439195e53c4a89b4189c7a4446876fe6173ddaf7af1cb0be8271ee43c6461063",
+      "bytes": 315030,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.633
+    },
+    {
+      "headId": 98,
+      "name": "巨蟒",
+      "kysRoleIds": [
+        77
+      ],
+      "used": true,
+      "file": "98.png",
+      "sha256": "6c7ad7312866a7152951933b882938b9c8173e69b8e3aca47de157e0dd55d85b",
+      "bytes": 302841,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.575
+    },
+    {
+      "headId": 99,
+      "name": "大雪怪",
+      "kysRoleIds": [
+        111,
+        112,
+        113,
+        114,
+        115,
+        116,
+        117,
+        118,
+        119,
+        120
+      ],
+      "used": true,
+      "file": "99.png",
+      "sha256": "2e1ed12efaa68d26b977cbf738f9d4e39344ec0646548419ec5859f68dd7d5f6",
+      "bytes": 347831,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.702
+    },
+    {
+      "headId": 100,
+      "name": "大鱷魚",
+      "kysRoleIds": [
+        311,
+        312,
+        313,
+        314,
+        315,
+        316,
+        317,
+        318,
+        319
+      ],
+      "used": true,
+      "file": "100.png",
+      "sha256": "f08d5d87b818ad8620216f267ac2d2d151ee7d0542f90fb23e0a16bb0a990334",
+      "bytes": 330653,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.61
+    },
+    {
+      "headId": 101,
+      "name": "大蜘蛛",
+      "kysRoleIds": [
+        121,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130
+      ],
+      "used": true,
+      "file": "101.png",
+      "sha256": "926d82437dcc0e17b0783852d86f9209e902d7bb0f287b460abfbd5ff9b12d63",
+      "bytes": 264165,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.442
+    },
+    {
+      "headId": 102,
+      "name": "蟒牯朱蛤",
+      "kysRoleIds": [
+        78
+      ],
+      "used": true,
+      "file": "102.png",
+      "sha256": "51d9a9d27167d5b1d2b8dc8fbe5af436b7b42efff51144cc17e3d21634e5f137",
+      "bytes": 332508,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 3,
+      "column": 1,
+      "alphaCoverage": 0.596
+    },
+    {
+      "headId": 103,
+      "name": "未引用備用頭像",
+      "kysRoleIds": [],
+      "used": false,
+      "file": "103.png",
+      "sha256": "cbad8e42b70c4d8254adab03c0e2200052d246aaad26d4aaf9aa02856fe69a86",
+      "bytes": 344101,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 3,
+      "column": 2,
+      "alphaCoverage": 0.612
+    },
+    {
+      "headId": 104,
+      "name": "神鵰",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "104.png",
+      "sha256": "d0d7743693159ee7d58b504066b961695c9f3ab696ad14d9a8105649fb3dcf04",
+      "bytes": 364405,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.688
+    },
+    {
+      "headId": 105,
+      "name": "客棧掌櫃",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "105.png",
+      "sha256": "1f106adeb033d2f3cc94f12cddb8f7d100a909effaab3d26e9d6089e4709e42b",
+      "bytes": 269266,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "08-roster-redraw.png",
+      "row": 3,
+      "column": 4,
+      "alphaCoverage": 0.507
+    },
+    {
+      "headId": 106,
+      "name": "店小二",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "106.png",
+      "sha256": "22171becc561caa5351de927e858ecb3744813398f5d00a978991106bb2d844c",
+      "bytes": 258438,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "09-roster-redraw.png",
+      "row": 1,
+      "column": 1,
+      "alphaCoverage": 0.486
+    },
+    {
+      "headId": 107,
+      "name": "陽頂天（遺書）",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "107.png",
+      "sha256": "b378f36a541a6ba62ed7e03d1dc88816a13680c22c9900f0437d6ffc609b4ae6",
+      "bytes": 246849,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "09-roster-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.513
+    },
+    {
+      "headId": 108,
+      "name": "崑崙大夫",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "108.png",
+      "sha256": "aca5b85638becfa15c782daf951d528414566b6ce2fca9771344c75f0706a84c",
+      "bytes": 286236,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "09-roster-redraw.png",
+      "row": 1,
+      "column": 3,
+      "alphaCoverage": 0.555
+    },
+    {
+      "headId": 109,
+      "name": "王語嫣",
+      "kysRoleIds": [
+        76
+      ],
+      "used": true,
+      "file": "109.png",
+      "sha256": "781b1578d6ca2bba63ea78178f10e430b6c24fc6d0bf7ae149a4b609aeadb742",
+      "bytes": 284343,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 3,
+      "column": 3,
+      "alphaCoverage": 0.533
+    },
+    {
+      "headId": 110,
+      "name": "少林掃地僧",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "110.png",
+      "sha256": "834513806e55e207d1a05f93259c64afc1d96c4bf0123aa178f8e5c9a56fe02b",
+      "bytes": 289648,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "09-roster-redraw.png",
+      "row": 1,
+      "column": 4,
+      "alphaCoverage": 0.559
+    },
+    {
+      "headId": 111,
+      "name": "韋小寶",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "111.png",
+      "sha256": "f7343eb0673ab31350fb3600921d878913cba3d41f0c4de8efcd444b6d72b9a9",
+      "bytes": 313634,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "09-roster-redraw.png",
+      "row": 2,
+      "column": 1,
+      "alphaCoverage": 0.6
+    },
+    {
+      "headId": 112,
+      "name": "霍青桐",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "112.png",
+      "sha256": "536b17c6ed6d740015e575c00ff40b847c37358ecba18e53e93d71f14cbbb72c",
+      "bytes": 297777,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "09-roster-redraw.png",
+      "row": 2,
+      "column": 2,
+      "alphaCoverage": 0.652
+    },
+    {
+      "headId": 113,
+      "name": "回族族人",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "113.png",
+      "sha256": "dae860d45f7e356498f0a2190c8c0ec9144f5db66c9f739ed56cdcd9c34a594c",
+      "bytes": 305986,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "09-roster-redraw.png",
+      "row": 2,
+      "column": 3,
+      "alphaCoverage": 0.587
+    },
+    {
+      "headId": 114,
+      "name": "黑帝斯",
+      "kysRoleIds": [],
+      "used": true,
+      "file": "114.png",
+      "sha256": "045aa7c3719e6e314d3693e06eb03bf9a431423cd51fbd5a2734844598ad3da6",
+      "bytes": 235178,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "00-core-redraw.png",
+      "row": 1,
+      "column": 2,
+      "alphaCoverage": 0.482
+    },
+    {
+      "headId": 115,
+      "name": "未引用備用頭像",
+      "kysRoleIds": [],
+      "used": false,
+      "file": "115.png",
+      "sha256": "318159410a5a2ef326dbead0277dfdcb27ad7d23a77fa44524edf8c01f41bed6",
+      "bytes": 323289,
+      "width": 384,
+      "height": 384,
+      "sourceAtlas": "09-roster-redraw.png",
+      "row": 2,
+      "column": 4,
+      "alphaCoverage": 0.653
+    }
+  ]
+}

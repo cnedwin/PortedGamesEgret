@@ -1,0 +1,481 @@
+{
+  "format": 1,
+  "scene": 61,
+  "revision": "773f3e76492f4af277e8c93ced2c8d18ba516f6c",
+  "sourceBlob": "f919bae5f9af8451e286b5308a27630b1ed41f92",
+  "asset": "scene.glb",
+  "layout": [
+    0,
+    0,
+    0.94,
+    8.3,
+    0,
+    0.84,
+    0,
+    -4.332,
+    0.79,
+    0,
+    0,
+    30.22,
+    0,
+    0,
+    0,
+    1
+  ],
+  "groundY": 0,
+  "camera": {
+    "focus": [
+      23,
+      0,
+      49
+    ],
+    "position": [
+      30.52,
+      8.4,
+      54.53
+    ],
+    "target": [
+      23.31867888297022,
+      -0.27882283709484845,
+      49.006386297744754
+    ],
+    "verticalFov": 40,
+    "near": 0.1,
+    "far": 5000,
+    "offset": [
+      7.52,
+      8.4,
+      5.530000000000001
+    ],
+    "direction": [
+      -0.573466839970489,
+      -0.6911255624030961,
+      -0.43986502526032434
+    ],
+    "up": [
+      -0.5704241116474127,
+      0.6940302490205599,
+      -0.43924747727871993
+    ],
+    "sourceOffset": [
+      7,
+      10,
+      8
+    ],
+    "serializedOffset": [
+      5.55,
+      8.34,
+      6.1400023
+    ],
+    "sourcePosition": [
+      21.34,
+      13.34,
+      20.280003
+    ],
+    "sourceRotation": [
+      0.13861296,
+      -0.86164606,
+      0.35573944,
+      0.334368
+    ],
+    "sourceAnchors": {
+      "entrance": [
+        15.69,
+        5.5,
+        14.05
+      ],
+      "recruit": [
+        -14.53,
+        5.5,
+        11.94
+      ]
+    },
+    "checkpoints": {
+      "entrance": {
+        "focus": [
+          23,
+          0,
+          49
+        ],
+        "position": [
+          30.52,
+          8.4,
+          54.53
+        ],
+        "target": [
+          23.31867888297022,
+          -0.27882283709484845,
+          49.006386297744754
+        ],
+        "verticalFov": 40
+      },
+      "recruit": {
+        "focus": [
+          19,
+          0,
+          19
+        ],
+        "position": [
+          26.52,
+          8.4,
+          24.53
+        ],
+        "target": [
+          19.31867888297022,
+          -0.27882283709484845,
+          19.006386297744754
+        ],
+        "verticalFov": 40
+      }
+    },
+    "steamReference": {
+      "position": [
+        -7.634630203,
+        15.195168495,
+        18.468765259
+      ],
+      "rotation": [
+        0.138612956,
+        -0.861646056,
+        0.355739444,
+        0.33436799
+      ],
+      "fov": 40,
+      "referenceTile": [
+        19,
+        19
+      ],
+      "follow": {
+        "position": [
+          -14.634630203,
+          5.195168495,
+          10.468766212
+        ],
+        "rotation": [
+          0,
+          -0.923417032,
+          0,
+          0.383798182
+        ],
+        "name": "Player"
+      }
+    }
+  },
+  "lights": [
+    {
+      "name": "Main Light (1)",
+      "color": [
+        0.8537736,
+        0.89926624,
+        1
+      ],
+      "intensity": 0.6,
+      "towards": [
+        -0.5057607977142199,
+        0.6522258135674772,
+        0.5646304132897185
+      ],
+      "direction": [
+        -0.5057607977142199,
+        0.6522258135674772,
+        0.5646304132897185
+      ],
+      "shadows": false,
+      "sourceDirection": [
+        0.6033596331650629,
+        0.6554774750468125,
+        -0.4542096793037066
+      ]
+    },
+    {
+      "name": "Main Light",
+      "color": [
+        1,
+        0.8749254,
+        0.6556604
+      ],
+      "intensity": 1.5,
+      "towards": [
+        0.5776354172140855,
+        0.6441119493856138,
+        -0.501455004400768
+      ],
+      "direction": [
+        0.5776354172140855,
+        0.6441119493856138,
+        -0.501455004400768
+      ],
+      "shadows": true,
+      "sourceDirection": [
+        -0.5426011645880087,
+        0.6554776878513621,
+        0.525293229460241
+      ]
+    }
+  ],
+  "ambient": {
+    "sky": [
+      0.212,
+      0.227,
+      0.259
+    ],
+    "ground": [
+      0.047,
+      0.043,
+      0.035
+    ],
+    "intensity": 1
+  },
+  "counts": {
+    "instances": 616,
+    "meshCount": 250
+  },
+  "terrain": {
+    "kind": "unity-heightmap-and-splat",
+    "originalGuid": "977ebf54c6b415c4aab85dee16ab8de4",
+    "originalBlob": "8936fcd8352c26b950e416c9aa680ed2470d5abc",
+    "resolution": [
+      65,
+      65
+    ],
+    "textureLayers": 4
+  },
+  "sources": {
+    "jyx2/Assets/Mods/JYX2/Maps/GameMaps/61_gaoshengkezhan.unity": {
+      "bytes": 2759838,
+      "gitBlob": "f919bae5f9af8451e286b5308a27630b1ed41f92"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Mesh/Chair_02.FBX": {
+      "bytes": 45824,
+      "gitBlob": "841579ef185b149ba518851ff6f74de59386a8b9"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Textures/Tex_Chair_02-Edit.png": {
+      "bytes": 296626,
+      "gitBlob": "9d78c6bc1f8b825993bede299a4cc9b987a5f08f"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Mesh/Desk_02.FBX": {
+      "bytes": 33584,
+      "gitBlob": "3ee0f6ecc135e922105c0b5079066b3c08bd3d87"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Mesh/Desk_03.FBX": {
+      "bytes": 74592,
+      "gitBlob": "e640aa912c0de2a302b1d25b04217b47253dc581"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Textures/Tex_Desk_03-Edit.png": {
+      "bytes": 74807,
+      "gitBlob": "9a9e5959deb321d2d1c678dc6842b56b954df5d0"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Mesh/Chuang_01.FBX": {
+      "bytes": 53328,
+      "gitBlob": "efac1f4ee3d1e6e4b95f88f1757f437e5fddc668"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Materials/Chuang_01.mat": {
+      "bytes": 3767,
+      "gitBlob": "98fc302cd45a876f26aa29236edbc47b61a4848c"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Textures/Tex_Chuang_01-Edit.png": {
+      "bytes": 293599,
+      "gitBlob": "4b37f8717156927c8c38b3bd347ca50ae59ddb46"
+    },
+    "jyx2/Assets/3DScene/Model/Common/mode_01/Mess/Drwa_1.FBX": {
+      "bytes": 23696,
+      "gitBlob": "f935c55a0b65e7b6402192574c79da312a599231"
+    },
+    "jyx2/Assets/3DScene/Model/Common/mode_01/Materials/Draw_1.mat": {
+      "bytes": 3055,
+      "gitBlob": "c64b9a90ee1993fd9ee113093240eada573c5a5c"
+    },
+    "jyx2/Assets/3DScene/Model/Common/mode_01/Tex/Draw_1.png": {
+      "bytes": 319548,
+      "gitBlob": "17162ec35dc23c1684881cfd3238ca7b76bb56c6"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Mesh/KZ2_Guitai.FBX": {
+      "bytes": 26592,
+      "gitBlob": "81aa14fc3a3d45d7b9f457cf754952479929c7c0"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Materials/KZ_Guitai.mat": {
+      "bytes": 4131,
+      "gitBlob": "66a314a3027331a5f58345e532b59ba99d95d7b3"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Textures/Tex_KZ2_Guitai.png": {
+      "bytes": 77279,
+      "gitBlob": "f29dfd92c4b68c570b797dd1a57fdd40987976ac"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Mesh/Door_01.FBX": {
+      "bytes": 27520,
+      "gitBlob": "af7c9d34e61bb09ae96aa082ddd2dd00d1fa5676"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Materials/Door_01_1.mat": {
+      "bytes": 17053,
+      "gitBlob": "86c4618661758de2367f0afe00a97d7469dc4d2b"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Textures/Tex_Door_01-Edit.png": {
+      "bytes": 45984,
+      "gitBlob": "88a33d14a43104f0fb9b3dbce5eede8d7820c96b"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Mesh/Window_02.FBX": {
+      "bytes": 25728,
+      "gitBlob": "22e6e18cd2c38be6a2847678030944ddfe5614fa"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Langan_Zhuzi/Zhuzi/Mesh/Zhuzi_01.FBX": {
+      "bytes": 23104,
+      "gitBlob": "88c539013e6bd84438ba8b0e3fac69876018ca9b"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Langan_Zhuzi/Zhuzi/Materials/Zhuzi_08.mat": {
+      "bytes": 3124,
+      "gitBlob": "ed1317c9b7254c4b13ac2b06b8fd7abb1fffd275"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Langan_Zhuzi/Zhuzi/Textures/Tex_Zhuzi_04.png": {
+      "bytes": 311008,
+      "gitBlob": "005b0e5cb7ecdd574ffd78c0123fa14fb170a6b3"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Langan_Zhuzi/Langan/Mesh/Langan_04.fbx": {
+      "bytes": 29152,
+      "gitBlob": "f67bfe01b2a8a800d974ca6e3a41f20018f5307f"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Langan_Zhuzi/Langan/Materials/Langan_04.mat": {
+      "bytes": 4507,
+      "gitBlob": "08e88138c85e0fa6b8e739caa19205afdc862bcb"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Langan_Zhuzi/Langan/Textures/Tex_Langan_04-Edit.png": {
+      "bytes": 255786,
+      "gitBlob": "6454524b43e6755934fe4be5787664ce407c7fc2"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Tree/Mesh/Tree_10_2.FBX": {
+      "bytes": 50768,
+      "gitBlob": "adae774d6f65ff479b584f03d5e4e07d893247c5"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Tree/Materials/Tree_10_2.mat": {
+      "bytes": 6332,
+      "gitBlob": "8b1754642bf2970b97e3c67faf9ce71211074d2f"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Tree/Textures/Tex_Tree_10_2_3.png": {
+      "bytes": 135536,
+      "gitBlob": "28b4d79332b08e3bce3134fd17508c2b521deff0"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Tree/Materials/Tree_10_1.mat": {
+      "bytes": 7281,
+      "gitBlob": "071f966c1cb0f04649e5da244120d4f346d78ea6"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Tree/Textures/Tex_Tree_10_1-Edit.png": {
+      "bytes": 160652,
+      "gitBlob": "dbdfcd42f824a108dd28250626b4e32131458561"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Grass/Mesh/Grass_01.FBX": {
+      "bytes": 24048,
+      "gitBlob": "66208071321c2307d6ddc5cf99af994be774285d"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Grass/Materials/Grass_01.mat": {
+      "bytes": 3420,
+      "gitBlob": "c553dfe5fb62c54e27d03e63e137a36de983999a"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Grass/Textures/Tex_Grass_01.png": {
+      "bytes": 56414,
+      "gitBlob": "a1699b44029ab90164a82471b359f0bca7973145"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Rock/Ruins/_source/models/Ancient_Stones5.fbx": {
+      "bytes": 37616,
+      "gitBlob": "af9800d2833e214e3730f194e741b68a18a804aa"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Rock/Ruins/_source/models/R1_debris2.fbx": {
+      "bytes": 37568,
+      "gitBlob": "d8ca750ce841e0ae4107b5d612fc0994638f4964"
+    },
+    "jyx2/Assets/3DScene/Model/Common/mode_01/Mess/Shipai_1.FBX": {
+      "bytes": 40640,
+      "gitBlob": "0627bfe4798a766f4243a81cc3378c7f3be7c5c9"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Buildings/Wall/Materials/KZ_Wall_2_R.mat": {
+      "bytes": 4342,
+      "gitBlob": "868b2b3639fc93eb32cea6b3f6e45cfad51e6498"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Buildings/Wall/Textures/Plane_DefaultMaterial_BaseColor.png": {
+      "bytes": 557478,
+      "gitBlob": "33df08ae2307ded57147d0d3a282d51600705fc6"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Buildings/Wall/Materials/KZ_Wall_3_R.mat": {
+      "bytes": 4352,
+      "gitBlob": "649ce6d18dfed2be79514239aad84552df834718"
+    },
+    "jyx2/Assets/3DScene/Model/Common/mode_01/Prefab/Drwa_1.prefab": {
+      "bytes": 2412,
+      "gitBlob": "3001d8067c7a56636a5f40b82da6a46548342f65"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Shinei/Window_06.prefab": {
+      "bytes": 5234,
+      "gitBlob": "b94f937cc6a3aff663b0111933c204105be5ae32"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Langan_Zhuzi/Zhuzi/Zhuzi_08.prefab": {
+      "bytes": 5901,
+      "gitBlob": "d6d2087e7343df98f067e634369facc78583e21b"
+    },
+    "jyx2/Assets/3DScene/Model/Common/BuildingParts/Langan_Zhuzi/Langan/Langan_04.prefab": {
+      "bytes": 2373,
+      "gitBlob": "7e7bdcdd0a77c74dec937fe47bcb1e1e34e0f6c9"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Plant/Grass/Grass_01.prefab": {
+      "bytes": 2449,
+      "gitBlob": "d1845ce4a196363e37bc405ea9416f78fb4ed96a"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Rock/Ruins/Ancient_Stones5.prefab": {
+      "bytes": 2693,
+      "gitBlob": "f0de0c1df0639e7816cfffceaf41a9735df4843e"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Rock/Ruins/R1_debris2.prefab": {
+      "bytes": 2259,
+      "gitBlob": "5c73fd380126fd0bab96e9d0e8254c2eed5f09ad"
+    },
+    "jyx2/Assets/3DScene/Model/Common/mode_01/Prefab/Shipai_1.prefab": {
+      "bytes": 2402,
+      "gitBlob": "677d11a2963adcc8c70c5f230f9f87b08542d313"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/Materials/YWML2_Ground_02_3.mat": {
+      "bytes": 4763,
+      "gitBlob": "3e72bc86588448cf929d92cb3e97118d6a55b28a"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/Textures/Plane_DefaultMaterial_BaseColor.png": {
+      "bytes": 545991,
+      "gitBlob": "b218608689c83991915d4c0379d7d84e1dbaba2e"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/Textures/Plane_DefaultMaterial_Normal.png": {
+      "bytes": 716798,
+      "gitBlob": "b28134be3a2c0357ecdab4e8298b6a99fa9f8567"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/terrain/JYX2/61_gaoshengkezhan.asset": {
+      "bytes": 1520076,
+      "gitBlob": "8936fcd8352c26b950e416c9aa680ed2470d5abc"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/GroundLayer/Layer_34_3(5,5).terrainlayer": {
+      "bytes": 789,
+      "gitBlob": "fb2419478c779754829837effed2966ef95908be"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/GroundLayer/Layer_35(3,3).terrainlayer": {
+      "bytes": 788,
+      "gitBlob": "4a07109f4f95a565fc92486c3a96cc25818bfa06"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/GroundLayer/Layer_06(6,6).terrainlayer": {
+      "bytes": 787,
+      "gitBlob": "29eb92f37b3c4bbd5aaf6b742345f77505ea2c45"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/GroundLayer/Layer_29(15,15).terrainlayer": {
+      "bytes": 788,
+      "gitBlob": "7e56ceffd9fc85570fc75c0f004ddf8083d21465"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/Textures/Tex_Ground_15.png": {
+      "bytes": 261359,
+      "gitBlob": "ef7a5d71c0b7efaa703675776bc514daf2e32fe0"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/Textures/Tex_Ground_35.png": {
+      "bytes": 260700,
+      "gitBlob": "30f2ea08cb19d0525a54dc7042967c00259a525b"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/Textures/Tex_Ground_02-Edit.png": {
+      "bytes": 223139,
+      "gitBlob": "0293f685a697fd08bcf4c460330b901e8d5a7d9e"
+    },
+    "jyx2/Assets/3DScene/Model/Common/Ground/Ground/Textures/Plane_DefaultMaterial_BaseColor 3.png": {
+      "bytes": 1199772,
+      "gitBlob": "310eec3d8932fa7f0afc44b2a12e70ea43b5103e"
+    }
+  }
+}

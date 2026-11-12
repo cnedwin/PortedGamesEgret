@@ -1,0 +1,1 @@
+{"version":3,"file":"webgpuSharedResolvePass.d.ts","sourceRoot":"","sources":["../../web/webgpuSharedResolvePass.ts"],"names":[],"mappings":"AAAA,gGAAgG;AAChG,wBAAgB,2BAA2B,CAAC,MAAM,EAAE,CAAC,CAAC,EAAE,yBAAyB,KAAK,eAAe,EACjG,QAAQ,EAAE,CAAC,CAAC,EAAE,2BAA2B,KAAK,OAAO,CAAC,iBAAiB,CAAC,EAAE,MAAM,EAAE,YAAY,GAAG,YAAY,EAAE,MAAM,EAAE,OAAO,GAAG,OAAO,CAAC,iBAAiB,CAAC,CAgB9J"}
