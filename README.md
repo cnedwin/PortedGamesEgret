@@ -6,13 +6,13 @@ A collection of browser game demos built with [Egret Rebuild](https://github.com
 
 ## JY · 金庸群侠传致敬 Demo
 
-一款使用新白鹭引擎独立开发的武侠网页游戏 Demo。玩家可以探索江湖、与人物交谈、招募队友并组队出战。作品向《金庸群侠传》、智冠公司与金庸先生致敬。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/JY/) · [完整本地版](JY/README.md)
+一款使用新白鹭引擎独立开发的武侠网页游戏 Demo。玩家可以探索江湖、与人物交谈、招募队友并组队出战。作品向《金庸群侠传》、智冠公司与金庸先生致敬。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/JY/) · [完整版使用说明](JY/README.md)
 
-An independently developed wuxia browser game demo built with Egret Rebuild. Explore the martial world, meet its characters, recruit companions, and take your party into battle. This demo pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. [Play online](https://cnedwin.github.io/PortedGamesEgret/JY/) · [Full local edition](JY/README.md)
+An independently developed wuxia browser game demo built with Egret Rebuild. Explore the martial world, meet its characters, recruit companions, and take your party into battle. This demo pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. [Play online](https://cnedwin.github.io/PortedGamesEgret/JY/) · [Full game guide](JY/README.md)
 
-在线试玩提供独立的短篇关卡。完整本地版使用玩家自备的 4in1 数据。
+打开试玩页可直接游玩《山驿试剑》，也可以导入自备的 4in1 压缩包或解压后的 `game` 文件夹，在同一浏览器体验完整版。
 
-The online demo is a short standalone scenario. The full local edition uses a player-supplied 4in1 data set.
+Play the short scenario immediately, or import your own 4in1 archive or extracted `game` folder to play the full game in the browser.
 
 ## 参与维护 · Contributing
 

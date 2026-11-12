@@ -17,9 +17,11 @@ export function createBattleMusic(enabled = true) {
   }
 
   async function prepare(audioContext) {
+    const processor = document.querySelector('meta[name=jy-music-processor]')?.content
+      ?? '/music-lib/spessasynth_lib/spessasynth_processor.min.js';
     const [{ Sequencer, WorkletSynthesizer }, soundBank] = await Promise.all([
       import('spessasynth_lib'), readBinary('/audio/midi/mid.sf2'),
-      audioContext.audioWorklet.addModule('/music-lib/spessasynth_lib/spessasynth_processor.min.js'),
+      audioContext.audioWorklet.addModule(processor),
     ]);
     const synth = new WorkletSynthesizer(audioContext);
     const analyser = audioContext.createAnalyser();

@@ -4,6 +4,16 @@ JY 是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_reb
 
 JY is an independently developed wuxia browser game demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). It pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. The demo features exploration, story dialogue, companion recruitment, party combat, and browser saves.
 
+## 浏览器完整版 · Full browser game
+
+1. 打开[试玩页](https://cnedwin.github.io/PortedGamesEgret/JY/)。
+2. 选择玩家自备的 4in1 `.7z` 压缩包，或选择解压后的 `game` 文件夹。
+3. 导入完成后点「进入完整版」。资源和存档保存在当前浏览器，无需安装软件或启动本地服务。
+
+1. Open the [play page](https://cnedwin.github.io/PortedGamesEgret/JY/).
+2. Select your own 4in1 `.7z` archive or the extracted `game` folder.
+3. Select **进入完整版** after the import finishes. Game data and saves stay in the current browser. No local service or additional software is required.
+
 ## 运行与开发 · Run and develop
 
 游戏使用白鹭原生 World3D 和 WebGL2。角色移动、剧情事件、战斗和存档使用同一套游戏状态。项目内的 `web/` 是浏览器客户端，`src/` 是游戏规则，`tools/` 负责本地资源读取和启动。

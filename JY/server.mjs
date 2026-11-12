@@ -10,6 +10,7 @@ import { openGameData, packMap } from './tools/game-data.mjs';
 import { isBattleParty, openBattleData } from './tools/battle-data.mjs';
 import { createNativeSaveCodec } from './tools/native-save.mjs';
 import { tar } from './tools/archiver.mjs';
+import { enginePackages, makeGameImports, musicPackages } from './src/browser-imports.mjs';
 
 const exec = promisify(execFile);
 const portRoot = fileURLToPath(new URL('.', import.meta.url));
@@ -118,22 +119,9 @@ const start = {
   saveIdentity: createHash('sha256').update(initialArchive).digest('hex'),
 };
 
-const imports = {};
-const musicPackages = ['spessasynth_lib', 'spessasynth_core', 'fflate', 'stb-vorbis'];
-for (const name of musicPackages) imports[name] = `/music-lib/${name}/index.js`;
-for (const folder of ['engine', 'runtime', 'contracts', 'robust-predicates']) {
-  const manifest = JSON.parse(await readFile(join(vendorRoot, folder, 'package.json'), 'utf8'));
-  const url = target => `/vendor/${folder}/${target.slice(2)}`;
-  if (typeof manifest.exports === 'string') imports[manifest.name] = url(manifest.exports);
-  else {
-    for (const [key, entry] of Object.entries(manifest.exports)) {
-      if (entry.import) imports[manifest.name + (key === '.' ? '' : key.slice(1))] = url(entry.import);
-    }
-  }
-  for (const [key, entry] of Object.entries(manifest.imports ?? {})) {
-    if (entry.import) imports[key] = url(entry.import);
-  }
-}
+const manifests = await Promise.all(enginePackages.map(async folder =>
+  [folder, JSON.parse(await readFile(join(vendorRoot, folder, 'package.json'), 'utf8'))]));
+const imports = makeGameImports(manifests, (folder, name) => `/vendor/${folder}/${name}`, name => `/music-lib/${name}/index.js`);
 
 const engineSource = await readOptional(join(vendorRoot, 'SOURCE.md'), 'utf8');
 const world3dGltf = await readOptional(join(vendorRoot, 'engine', 'dist', 'rendering', 'world3d', 'Gltf3D.js'));

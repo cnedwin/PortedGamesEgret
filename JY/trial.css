@@ -57,3 +57,12 @@ a { color: #e0c797; text-underline-offset: 3px; }
   .directions button { min-width: 32px; }
   kbd { display: none; }
 }
+
+.pack-entry { display: grid; gap: .7rem; margin-block: 0 1rem; padding: .9rem 1rem; border: 1px solid #71664b; border-radius: .45rem; background: #202922; }
+.pack-entry h2 { margin: 0 0 .3rem; font-size: 1.05rem; }
+.pack-entry p { margin: 0; font-size: .88rem; }
+.pack-actions { display: flex; flex-wrap: wrap; gap: .5rem; }
+.pack-status:empty { display: none; }
+.pack-entry progress { width: min(100%, 23rem); }
+.pack-entry button:disabled { opacity: .58; cursor: default; }
+.pack-entry [hidden] { display: none; }

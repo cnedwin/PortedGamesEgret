@@ -1,0 +1,54 @@
+{
+  "name": "sevenzip-wasm",
+  "version": "26.3.0",
+  "wasmSource": {
+    "url": "https://github.com/arktronic/sevenzip-wasm/tree/b4406198ad5399dc277cc13ab288f54b676aa411",
+    "commit": "b4406198ad5399dc277cc13ab288f54b676aa411"
+  },
+  "upstream": {
+    "url": "https://github.com/ip7z/7zip/tree/0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17",
+    "commit": "0766b733fe3e06dd2a7f9a3cfbf2108ac73abd17"
+  },
+  "registry": {
+    "tarball": "https://registry.npmjs.org/sevenzip-wasm/-/sevenzip-wasm-26.3.0.tgz",
+    "integrity": "sha512-COSwj3184A07oMGjrbhQyNrjqL49aTA1CLjLh1aDQqBc2kexnPB7jNpo+UIDj6ziRoU36Um34kPW3ETvpchulA=="
+  },
+  "license": "GNU LGPL 2.1 with unRAR license restriction",
+  "files": [
+    {
+      "path": "sevenzip-wasm.js",
+      "bytes": 81048,
+      "sha256": "e1071c49c4079391150f60de548139ee0871db5e62f481d338b924030fd678ea"
+    },
+    {
+      "path": "sevenzip-wasm.wasm",
+      "bytes": 1168202,
+      "sha256": "3e66bc5e4cc16bff63851957c45e5377d723f0ad1cbe429b753227ffabcb9ccd"
+    },
+    {
+      "path": "LICENSE",
+      "bytes": 6288,
+      "sha256": "bbc7b2904d894e2d36d2c3a0ad75a3b39c019ae26c9b1afb01c2c689972c1608"
+    },
+    {
+      "path": "README.md",
+      "bytes": 2337,
+      "sha256": "0e685067bab391db0681abb2ae2df6d81a3453355a7c5af07be0d19ee1f4baaf"
+    },
+    {
+      "path": "7zip-source.tar.gz",
+      "bytes": 2248604,
+      "sha256": "89064277b294844caa8a6edacd8a2d7fb03fb7d75c0425d378cc79b42fd035ef"
+    },
+    {
+      "path": "sevenzip-wasm-source.tar.gz",
+      "bytes": 1302749,
+      "sha256": "1798c772baf1944ca8df2d2af0874e7c702a072edfa8a7afdf430da4958e4abc"
+    },
+    {
+      "path": "LGPL-2.1.txt",
+      "bytes": 26419,
+      "sha256": "20e50fe7aae3e56378ebf0417d9de904f55a0e61e4df315333e632a4d3555d95"
+    }
+  ]
+}
