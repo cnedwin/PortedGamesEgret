@@ -599,3 +599,93 @@ h2 {
     animation-duration: 0.01s;
   }
 }
+
+/* ---- feedback: hurt flash, low-health pulse, boss warning, card entrance ---- */
+.vignette {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, #e0103cb0 100%);
+}
+.vignette.low {
+  animation: throb 0.9s ease-in-out infinite;
+}
+.vignette.hit {
+  animation: sting 0.45s ease-out;
+}
+.vignette.low.hit {
+  animation:
+    sting 0.45s ease-out,
+    throb 0.9s ease-in-out 0.45s infinite;
+}
+@keyframes sting {
+  from {
+    opacity: 0.95;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@keyframes throb {
+  0%,
+  100% {
+    opacity: 0.15;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+.timer.warn {
+  color: #ff8a9b;
+  animation: beat 0.5s ease-in-out infinite alternate;
+}
+@keyframes beat {
+  to {
+    transform: scale(1.12);
+  }
+}
+.cards h2 {
+  animation: drop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+.card {
+  animation: deal 0.4s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+}
+.card:nth-child(2) {
+  animation-delay: 0.07s;
+}
+.card:nth-child(3) {
+  animation-delay: 0.14s;
+}
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * 6)) rotate(-4deg) scale(0.8);
+  }
+}
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(calc(var(--u) * -4)) scale(1.4);
+  }
+}
+.announce.on {
+  animation: punch 0.35s cubic-bezier(0.2, 1.8, 0.4, 1);
+}
+@keyframes punch {
+  from {
+    transform: scale(1.6);
+  }
+}
+.chip {
+  animation: deal 0.3s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .vignette.low,
+  .timer.warn,
+  .card,
+  .cards h2,
+  .announce.on,
+  .chip {
+    animation: none;
+  }
+}

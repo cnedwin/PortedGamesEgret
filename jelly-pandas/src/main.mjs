@@ -21,7 +21,7 @@ import { createView } from './view.mjs';
 //   ?backend=webgpu  draw with WebGPU instead of WebGL2
 //   ?lang=en|zh      interface language (defaults to the browser's)
 //   ?jelly=0         plain glossy pandas instead of see-through ones
-//   ?post=0          no bloom, colour grading or FXAA
+//   ?post=0          no bloom, colour grading or FXAA      ?ssao=0  no contact shading
 //   ?shadows=0       no shadows          ?shadowSize=1024  smaller shadow maps
 //   ?reflect=0       no mirror image on the water
 //   ?ratio=1         cap on the device pixel ratio (default 1.5)
@@ -47,7 +47,7 @@ function fail(cause) {
 // ---- saved choices --------------------------------------------------------------------
 const SETTINGS_KEY = 'jelly-pandas';
 function loadSettings() {
-  const defaults = { skin: 0, party: 1, muted: false, jelly: params.get('jelly') !== '0' };
+  const defaults = { skin: 0, party: 1, muted: false, quality: 'high' };
   try {
     return { ...defaults, ...JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') };
   } catch {
@@ -76,28 +76,41 @@ async function main() {
       })
     : backend.createWebGL2Renderer3D({ canvas, antialias: true, toneMapping: 'aces' });
   scope.use(renderer);
-  if (params.get('post') !== '0')
-    Object.assign(renderer.postProcess, {
-      enabled: true,
-      bloom: true,
-      bloomThreshold: 1.3,
-      bloomIntensity: 0.35,
-      fxaa: true,
-      saturation: 1.1,
-      vignette: 0.15,
-    });
-  if (params.get('shadows') === '0') renderer.shadowsEnabled = false;
+  Object.assign(renderer.postProcess, {
+    bloom: true,
+    bloomThreshold: 1.3,
+    bloomIntensity: 0.35,
+    fxaa: true,
+    saturation: 1.12,
+    contrast: 1.04,
+    vignette: 0.16,
+    ssaoRadius: 0.7,
+    ssaoIntensity: 0.9,
+  });
 
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 55, near: 0.3, far: 400 });
   scene.addChild(camera);
 
   const settings = loadSettings();
-  const view = createView(scene, {
-    jelly: settings.jelly,
-    shadowSize: Number(params.get('shadowSize')) || 2048,
-    reflect: params.get('reflect') !== '0',
-  });
+  const view = createView(scene, { shadowSize: Number(params.get('shadowSize')) || 2048 });
+  /**
+   * Picture quality. High: see-through pandas, contact shading, water mirror.
+   * Medium: drops the contact shading and the mirror. Low: also drops
+   * post-processing and shadows and draws plain glossy pandas. The address
+   * options can switch single features off on top of that.
+   */
+  function applyQuality() {
+    const high = settings.quality === 'high',
+      low = settings.quality === 'low',
+      off = (name) => params.get(name) === '0';
+    renderer.postProcess.enabled = !low && !off('post');
+    renderer.postProcess.ssao = high && !off('ssao');
+    renderer.shadowsEnabled = !low && !off('shadows');
+    view.setReflect(high && !off('reflect'));
+    view.jelly = !low && !off('jelly');
+  }
+  applyQuality();
   // One island geometry serves the drawn mesh and every game's collision shape.
   const islandGeometry = createIslandGeometry();
   view.attachIsland(islandGeometry);
@@ -123,6 +136,7 @@ async function main() {
   const simInput = { moveX: 0, moveZ: 0, jump: false, slam: false, roll: false };
 
   // ---- game flow: title -> play <-> paused -> over ----------------------------------------
+  let hitStop = 0;
   let mode = 'title',
     game,
     human,
@@ -140,7 +154,7 @@ async function main() {
   function newGame(party, seed) {
     game = createGame({ party, seed, islandGeometry });
     human = game.pandas.find((panda) => panda.human) ?? game.pandas[0];
-    view.jelly = settings.jelly;
+    applyQuality();
     view.attach(game);
     target[0] = human.x;
     target[1] = human.y;
@@ -268,9 +282,16 @@ async function main() {
 
   // ---- one frame ---------------------------------------------------------------------------
   function frame(deltaSeconds) {
-    const dt = Math.min(deltaSeconds, 1 / 20);
-    now += dt;
+    const real = Math.min(deltaSeconds, 1 / 20);
+    now += real;
     status.frames++;
+    // Hit-stop: after a heavy blow the world almost holds still for a few frames.
+    if (view.freeze > 0) {
+      hitStop = Math.max(hitStop, view.freeze);
+      view.freeze = 0;
+    }
+    const dt = hitStop > 0 && mode === 'play' ? real * 0.08 : real;
+    hitStop = Math.max(0, hitStop - real);
 
     // 1. Input: the mouse or right stick turns the camera in every mode.
     const pad = input.poll();
@@ -279,7 +300,7 @@ async function main() {
     follow.distance += pad.zoom * 1.2;
 
     // 2. Rules.
-    if (mode === 'title') follow.yaw += dt * 0.2;
+    if (mode === 'title') follow.yaw += real * 0.2;
     else if (mode === 'play') {
       if (game.state === 'play' && game.waitingForChoice()) {
         if (!cardsShown) openCards();
@@ -324,11 +345,20 @@ async function main() {
     //    On the title the panda stands left of centre, clear of the panel.
     const watched = human.down ? (game.pandas.find((panda) => !panda.down) ?? human) : human;
     const aside = mode === 'title' ? 2.3 : 0,
-      ease = Math.min(1, dt * 12);
-    target[0] += (watched.x + Math.cos(follow.yaw) * aside - target[0]) * ease;
-    target[2] += (watched.z - Math.sin(follow.yaw) * aside - target[2]) * ease;
-    target[1] += (watched.y - target[1]) * Math.min(1, dt * 5);
-    follow.update(dt);
+      ease = Math.min(1, real * 12),
+      // Look a little ahead of a moving panda so more of what is coming is in view.
+      lead = mode === 'play' && !watched.down ? Math.min(1.6, watched.speedNow * 0.14) : 0;
+    target[0] += (watched.x + watched.headingX * lead + Math.cos(follow.yaw) * aside - target[0]) * ease;
+    target[2] += (watched.z + watched.headingZ * lead - Math.sin(follow.yaw) * aside - target[2]) * ease;
+    target[1] += (watched.y - target[1]) * Math.min(1, real * 5);
+    follow.update(real);
+    // The view widens with speed: rolling, diving and big jumps feel faster.
+    const rush =
+      mode === 'play' && !watched.down
+        ? (watched.rolling ? 7 : 0) + (watched.slamming ? 10 : 0) + Math.min(6, Math.max(0, watched.speedNow - 8) * 0.8)
+        : 0;
+    camera.fov += (55 + rush - camera.fov) * Math.min(1, real * 7);
+    camera.updateProjectionMatrix();
     if (view.shake > 0) {
       const p = camera.position,
         k = view.shake * view.shake * 0.35;
@@ -338,8 +368,9 @@ async function main() {
     camera.updateViewMatrices();
     view.renderReflection(renderer, camera);
 
-    // 6. Page.
+    // 6. Page and music. The tune is calm on the title and picks up for surges and bosses.
     if (mode !== 'title') hud.update(game, project, now, input.captured);
+    audio.music(mode === 'title' || mode === 'over' ? 0 : game.boss || game.t < game.surgeUntil ? 2 : 1);
   }
 
   // The Engine clock calls `frame`, then the view draws the scene.

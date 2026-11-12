@@ -136,6 +136,13 @@ export class WebGL2Renderer3D {
      * Draw one frame to the canvas, or into `target` when given. Returns false
      * when the context is lost and nothing was drawn.
      */
+    /**
+     * Draw runs of plain meshes that share a geometry and a material as one
+     * instanced draw each, in the main view and in shadow maps. On by default;
+     * the meshes themselves are untouched.
+     */
+    get autoInstancing() { return this.#list.autoInstanceThreshold > 1; }
+    set autoInstancing(value) { this.#list.autoInstanceThreshold = value ? 8 : 0; }
     render(scene, camera, target) {
         if (this.#disposed)
             throw new World3DError('WORLD3D_DISPOSED', 'renderer');
@@ -564,6 +571,8 @@ export class WebGL2Renderer3D {
             if (has(V.mapFromTarget))
                 defines.push('MAP_FROM_TARGET');
         }
+        if (uv && material.splat && !depthOnly)
+            defines.push('USE_SPLAT');
         if (material.alphaMode === 'mask')
             defines.push('ALPHA_MASK');
         if (material.alphaMode === 'blend') {
@@ -690,6 +699,17 @@ export class WebGL2Renderer3D {
             resources.bindTexture(TEXTURE_UNITS_3D.lightMap, material.lightMap);
         if (u['uReflectionMap'] && material.reflectionMap)
             resources.bindTexture(TEXTURE_UNITS_3D.reflectionMap, material.reflectionMap);
+        const splat = material.splat;
+        if (u['uSplatRepeat'] && splat) {
+            // Layers borrow the units of the maps they stand in for; a missing layer reads the first.
+            const layer = (i) => splat.layers[i] ?? splat.layers[0];
+            resources.bindTexture(TEXTURE_UNITS_3D.map, layer(0));
+            resources.bindTexture(TEXTURE_UNITS_3D.emissiveMap, layer(1));
+            resources.bindTexture(TEXTURE_UNITS_3D.occlusionMap, layer(2));
+            resources.bindTexture(TEXTURE_UNITS_3D.metallicRoughnessMap, layer(3));
+            resources.bindTexture(TEXTURE_UNITS_3D.lightMap, splat.weights);
+            gl.uniform4f(u['uSplatRepeat'], splat.repeat[0] ?? 1, splat.repeat[1] ?? 1, splat.repeat[2] ?? 1, splat.repeat[3] ?? 1);
+        }
         if (u['uSoftness'])
             gl.uniform1f(u['uSoftness'], material.softness);
         if (u['uReflection'])
@@ -771,9 +791,11 @@ export class WebGL2Renderer3D {
         let variant = depthOnly ? V.depthOnly : frameFlags;
         if (geometry.getAttribute('normal'))
             variant |= V.normal;
-        if (geometry.getAttribute('tangent'))
+        // Baked instances already fill the vertex inputs both backends can count on; they do without tangents, vertex colors and second coordinates.
+        const baked = mesh instanceof SkinnedInstancedMesh3D && mesh.skeleton === undefined;
+        if (geometry.getAttribute('tangent') && !baked)
             variant |= V.tangent;
-        if (geometry.getAttribute('uv1')) {
+        if (geometry.getAttribute('uv1') && !baked) {
             variant |= V.uv1;
             // A texture's coordinate set can change without changing the material version.
             if (!depthOnly && material.occlusionMap?.channel === 1)
@@ -789,7 +811,7 @@ export class WebGL2Renderer3D {
             if (!depthOnly && material.map?.source instanceof RenderTarget3D)
                 variant |= V.mapFromTarget;
         }
-        if (material.vertexColors && geometry.getAttribute('color'))
+        if (material.vertexColors && geometry.getAttribute('color') && !baked)
             variant |= V.color;
         if (skinned)
             variant |= V.skin;
@@ -854,11 +876,14 @@ export class WebGL2Renderer3D {
         }
         if (gpu.morph)
             this.applyMorph(program, mesh, gpu);
+        // Baked instances take their morph weights from the table; the shader only needs to know how many targets to read.
+        if (gpu.morph && crowd && u['uMorphCount'])
+            gl.uniform1i(u['uMorphCount'], Math.min(MAX_MORPH_INFLUENCES_3D, crowd.animations.morphCount, geometry.morphTargets.length));
         const wire = material.wireframe && !shadow && geometry.topology === 'triangles' ? resources.wireframe(geometry) : undefined;
         gl.bindVertexArray(wire ? wire.vao : instanced ? resources.instances(mesh, frame) : gpu.vao);
         const topology = geometry.topology;
         const mode = wire ? gl.LINES : topology === 'triangles' ? gl.TRIANGLES : topology === 'lines' ? gl.LINES : topology === 'line-strip' ? gl.LINE_STRIP : gl.POINTS;
-        const instances = instanced ? mesh.count : 1;
+        const instances = mesh instanceof SkinnedInstancedMesh3D ? mesh.drawCount : instanced ? mesh.count : 1;
         if (instances <= 0)
             return;
         if (wire) {

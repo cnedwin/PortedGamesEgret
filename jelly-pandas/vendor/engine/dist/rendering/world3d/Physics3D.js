@@ -8,7 +8,7 @@
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { ConvexHullShape3D } from './PhysicsHull3D.js';
 import { TriangleMeshShape3D } from './PhysicsMesh3D.js';
-export const PHYSICS3D_LIMITS = Object.freeze({ maxBodies: 16384, maxSubSteps: 8, maxContactsPerPair: 8 });
+export const PHYSICS3D_LIMITS = Object.freeze({ maxBodies: 16384, maxSubSteps: 8, maxContactsPerPair: 8, maxCompoundChildren: 32, maxSolverSteps: 8 });
 const v3 = (x = 0, y = 0, z = 0) => new Float64Array([x, y, z]);
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 function cross(out, a, b) {
@@ -50,7 +50,14 @@ export class RigidBody3D {
     /** @internal */ inverseInertiaWorld = new Float64Array(9);
     /** @internal */ aabb = new Float64Array(6);
     /** @internal */ sleepTime = 0;
+    /** @internal */ slot = 0;
     /** @internal */ world;
+    /** @internal Stand-in bodies for the parts of a compound shape, kept at their world poses by refresh(). */
+    parts = [];
+    /** @internal Local placement of each part: position, then quaternion. */
+    partPoses = [];
+    /** @internal Half extents of the box around a compound, used to weigh it. */
+    compoundHalf = v3();
     constructor(options) {
         const shape = options?.shape;
         if (!shape)
@@ -73,6 +80,29 @@ export class RigidBody3D {
         else if (shape.type === 'convex') {
             if (!(shape.hull instanceof ConvexHullShape3D))
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'convex shape');
+        }
+        else if (shape.type === 'compound') {
+            if (!Array.isArray(shape.children) || shape.children.length === 0 || shape.children.length > PHYSICS3D_LIMITS.maxCompoundChildren)
+                throw new World3DError('WORLD3D_INPUT_INVALID', 'compound children');
+            const half = this.compoundHalf;
+            for (const child of shape.children) {
+                const kind = child?.shape?.type;
+                if (kind !== 'sphere' && kind !== 'box' && kind !== 'capsule' && kind !== 'convex')
+                    throw new World3DError('WORLD3D_INPUT_INVALID', 'compound parts are spheres, boxes, capsules or convex hulls');
+                const at = child.position ?? [0, 0, 0], turn = child.quaternion ?? [0, 0, 0, 1], size = Math.hypot(turn[0], turn[1], turn[2], turn[3]);
+                for (const value of at)
+                    requireFinite3D(value, 'compound child position');
+                if (!(size > 0))
+                    throw new World3DError('WORLD3D_INPUT_INVALID', 'compound child quaternion');
+                // The part is validated by building it; it never joins a world of its own.
+                const part = new RigidBody3D({ type: 'kinematic', shape: child.shape, position: at, quaternion: [turn[0] / size, turn[1] / size, turn[2] / size, turn[3] / size] });
+                this.parts.push(part);
+                this.partPoses.push(new Float64Array([at[0], at[1], at[2], turn[0] / size, turn[1] / size, turn[2] / size, turn[3] / size]));
+                const box = part.aabb;
+                half[0] = Math.max(half[0], Math.abs(box[0]), Math.abs(box[3]));
+                half[1] = Math.max(half[1], Math.abs(box[1]), Math.abs(box[4]));
+                half[2] = Math.max(half[2], Math.abs(box[2]), Math.abs(box[5]));
+            }
         }
         else if (shape.type !== 'plane')
             throw new World3DError('WORLD3D_INPUT_INVALID', 'shape type');
@@ -104,9 +134,9 @@ export class RigidBody3D {
             let ix, iy, iz;
             if (shape.type === 'sphere')
                 ix = iy = iz = 0.4 * m * shape.radius * shape.radius;
-            else if (shape.type === 'box' || shape.type === 'convex') {
-                // A hull is weighed like the box around it.
-                const [x, y, z] = shape.type === 'box' ? shape.halfExtents : shape.hull.halfExtents;
+            else if (shape.type === 'box' || shape.type === 'convex' || shape.type === 'compound') {
+                // A hull or a compound is weighed like the box around it.
+                const [x, y, z] = shape.type === 'box' ? shape.halfExtents : shape.type === 'convex' ? shape.hull.halfExtents : this.compoundHalf;
                 ix = m / 3 * (y * y + z * z);
                 iy = m / 3 * (x * x + z * z);
                 iz = m / 3 * (x * x + y * y);
@@ -122,7 +152,7 @@ export class RigidBody3D {
         this.refresh();
     }
     wake() { this.isSleeping = false; this.sleepTime = 0; }
-    setPosition(x, y, z) { this.position[0] = x; this.position[1] = y; this.position[2] = z; this.wake(); this.refresh(); return this; }
+    setPosition(x, y, z) { this.position[0] = x; this.position[1] = y; this.position[2] = z; this.wake(); this.refresh(); this.world?.staticMoved(this); return this; }
     setQuaternion(x, y, z, w) {
         const length = Math.hypot(x, y, z, w) || 1;
         this.quaternion[0] = x / length;
@@ -131,6 +161,7 @@ export class RigidBody3D {
         this.quaternion[3] = w / length;
         this.wake();
         this.refresh();
+        this.world?.staticMoved(this);
         return this;
     }
     setLinearVelocity(x, y, z) { this.linearVelocity[0] = x; this.linearVelocity[1] = y; this.linearVelocity[2] = z; this.wake(); return this; }
@@ -178,6 +209,29 @@ export class RigidBody3D {
             world.fill(0);
         const p = this.position, box = this.aabb, shape = this.shape;
         let ex, ey, ez;
+        if (shape.type === 'compound') {
+            // Each part follows the body; the bounds are the union of theirs.
+            box[0] = box[1] = box[2] = Infinity;
+            box[3] = box[4] = box[5] = -Infinity;
+            for (let i = 0; i < this.parts.length; i++) {
+                const part = this.parts[i], pose = this.partPoses[i], lx = pose[0], ly = pose[1], lz = pose[2], a = pose[3], b = pose[4], c = pose[5], d = pose[6];
+                part.position[0] = p[0] + r[0] * lx + r[1] * ly + r[2] * lz;
+                part.position[1] = p[1] + r[3] * lx + r[4] * ly + r[5] * lz;
+                part.position[2] = p[2] + r[6] * lx + r[7] * ly + r[8] * lz;
+                const q = part.quaternion;
+                q[0] = w * a + x * d + y * c - z * b;
+                q[1] = w * b - x * c + y * d + z * a;
+                q[2] = w * c + x * b - y * a + z * d;
+                q[3] = w * d - x * a - y * b - z * c;
+                part.refresh();
+                const other = part.aabb;
+                for (let k = 0; k < 3; k++) {
+                    box[k] = Math.min(box[k], other[k]);
+                    box[k + 3] = Math.max(box[k + 3], other[k + 3]);
+                }
+            }
+            return;
+        }
         if (shape.type === 'sphere')
             ex = ey = ez = shape.radius;
         else if (shape.type === 'convex')
@@ -444,7 +498,7 @@ function boxPlane(m, box, plane) {
             m.add(corner[0] - nx * distance * 0.5, corner[1] - ny * distance * 0.5, corner[2] - nz * distance * 0.5, -nx, -ny, -nz, -distance);
     }
 }
-const axisScratch = v3(), bestAxis = v3();
+const axisScratch = v3(), bestAxis = v3(), faceA = new Float64Array(32), faceB = new Float64Array(32);
 function boxProjection(box, axis) {
     const r = box.rotation, h = box.shape.halfExtents;
     return Math.abs(axis[0] * r[0] + axis[1] * r[3] + axis[2] * r[6]) * h[0] + Math.abs(axis[0] * r[1] + axis[1] * r[4] + axis[2] * r[7]) * h[1]
@@ -458,9 +512,9 @@ function insideBox(box, point, tolerance) {
 }
 function boxBox(m, a, b) {
     const ra = a.rotation, rb = b.rotation, d = [b.position[0] - a.position[0], b.position[1] - a.position[1], b.position[2] - a.position[2]];
-    let best = Infinity, bestDepth = 0;
+    let best = Infinity, bestDepth = 0, bestIndex = -1;
     // Separating-axis test over the 6 face normals and 9 edge cross products.
-    const test = (x, y, z, bias) => {
+    const test = (x, y, z, bias, index) => {
         const length = Math.hypot(x, y, z);
         if (length < 1e-6)
             return true;
@@ -475,16 +529,18 @@ function boxBox(m, a, b) {
             best = overlap * bias;
             bestAxis.set(axisScratch);
             bestDepth = overlap;
+            bestIndex = index;
         }
         return true;
     };
+    // The first box's faces win near-ties, so two parallel faces do not swap roles from step to step.
     for (let i = 0; i < 3; i++)
-        if (!test(ra[i], ra[3 + i], ra[6 + i], 1) || !test(rb[i], rb[3 + i], rb[6 + i], 1))
+        if (!test(ra[i], ra[3 + i], ra[6 + i], 1, i) || !test(rb[i], rb[3 + i], rb[6 + i], 1.02, 3 + i))
             return;
     for (let i = 0; i < 3; i++)
         for (let j = 0; j < 3; j++) {
             const ax = ra[i], ay = ra[3 + i], az = ra[6 + i], bx = rb[j], by = rb[3 + j], bz = rb[6 + j];
-            if (!test(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx, 1.05))
+            if (!test(ay * bz - az * by, az * bx - ax * bz, ax * by - ay * bx, 1.05, 6))
                 return;
         }
     if (dot(bestAxis, d) < 0) {
@@ -494,6 +550,78 @@ function boxBox(m, a, b) {
     }
     const nx = bestAxis[0], ny = bestAxis[1], nz = bestAxis[2], extentA = boxProjection(a, bestAxis), extentB = boxProjection(b, bestAxis);
     const before = m.count;
+    if (bestIndex < 6) {
+        // Face against face, edge or corner: the part of the other box's nearest face that lies over this face.
+        const onA = bestIndex < 3, reference = onA ? a : b, incident = onA ? b : a, rr = reference.rotation, ri = incident.rotation, axis = bestIndex % 3;
+        const hr = reference.shape.halfExtents, hi = incident.shape.halfExtents;
+        // Outward normal of the reference face, toward the incident box.
+        const fx = onA ? nx : -nx, fy = onA ? ny : -ny, fz = onA ? nz : -nz;
+        // The incident face is the one that most squarely faces the reference face.
+        let facing = 0, turned = 0;
+        for (let j = 0; j < 3; j++) {
+            const along = ri[j] * fx + ri[3 + j] * fy + ri[6 + j] * fz;
+            if (Math.abs(along) > Math.abs(turned)) {
+                turned = along;
+                facing = j;
+            }
+        }
+        const side = turned > 0 ? -1 : 1, p1 = (facing + 1) % 3, p2 = (facing + 2) % 3, ip = incident.position, rp = reference.position;
+        const cx = ip[0] + ri[facing] * side * hi[facing], cy = ip[1] + ri[3 + facing] * side * hi[facing], cz = ip[2] + ri[6 + facing] * side * hi[facing];
+        let count = 4;
+        for (let k = 0; k < 4; k++) {
+            const s1 = (k === 0 || k === 3 ? -1 : 1) * hi[p1], s2 = (k < 2 ? -1 : 1) * hi[p2];
+            faceA[k * 4] = cx + ri[p1] * s1 + ri[p2] * s2;
+            faceA[k * 4 + 1] = cy + ri[3 + p1] * s1 + ri[3 + p2] * s2;
+            faceA[k * 4 + 2] = cz + ri[6 + p1] * s1 + ri[6 + p2] * s2;
+            faceA[k * 4 + 3] = k;
+        }
+        // Cut the incident face by the four sides of the reference face.
+        let from = faceA, to = faceB;
+        for (let plane = 0; plane < 4 && count > 0; plane++) {
+            // A hair of slack keeps corners that sit exactly on the rim from being cut away one step and kept the next.
+            const across = (axis + 1 + (plane >> 1)) % 3, sign = plane & 1 ? -1 : 1, limit = hr[across] + 1e-3;
+            const ux = rr[across] * sign, uy = rr[3 + across] * sign, uz = rr[6 + across] * sign;
+            let kept = 0;
+            for (let k = 0; k < count; k++) {
+                const o = k * 4, next = ((k + 1) % count) * 4;
+                const d0 = (from[o] - rp[0]) * ux + (from[o + 1] - rp[1]) * uy + (from[o + 2] - rp[2]) * uz - limit;
+                const d1 = (from[next] - rp[0]) * ux + (from[next + 1] - rp[1]) * uy + (from[next + 2] - rp[2]) * uz - limit;
+                if (d0 <= 0 && kept < 8) {
+                    to[kept * 4] = from[o];
+                    to[kept * 4 + 1] = from[o + 1];
+                    to[kept * 4 + 2] = from[o + 2];
+                    to[kept * 4 + 3] = from[o + 3];
+                    kept++;
+                }
+                if ((d0 < 0) !== (d1 < 0) && d0 !== 0 && d1 !== 0 && kept < 8) {
+                    const t = d0 / (d0 - d1);
+                    to[kept * 4] = from[o] + (from[next] - from[o]) * t;
+                    to[kept * 4 + 1] = from[o + 1] + (from[next + 1] - from[o + 1]) * t;
+                    to[kept * 4 + 2] = from[o + 2] + (from[next + 2] - from[o + 2]) * t;
+                    // A cut point is named after the edge it lies on and the side that cut it.
+                    to[kept * 4 + 3] = 4 + plane * 4 + (from[o + 3] & 3);
+                    kept++;
+                }
+            }
+            count = kept;
+            const swap = from;
+            from = to;
+            to = swap;
+        }
+        const reach = hr[axis];
+        for (let k = 0; k < count; k++) {
+            const o = k * 4, x = from[o], y = from[o + 1], z = from[o + 2];
+            // How far the point sits below the reference face.
+            const depth = reach - ((x - rp[0]) * fx + (y - rp[1]) * fy + (z - rp[2]) * fz);
+            if (depth <= -MARGIN)
+                continue;
+            m.feature = bestIndex * 32 + from[o + 3];
+            // Report the point halfway between the two surfaces.
+            m.add(x + fx * depth * 0.5, y + fy * depth * 0.5, z + fz * depth * 0.5, nx, ny, nz, depth);
+        }
+        if (m.count > before)
+            return;
+    }
     for (let i = 0; i < 8; i++) {
         boxCorner(corner, b, i);
         m.feature = i;
@@ -936,9 +1064,35 @@ function solidMesh(m, solid, meshBody) {
     });
     emitMeshContacts(m, meshBody);
 }
-const ORDER = { sphere: 0, capsule: 1, box: 2, convex: 3, plane: 4, mesh: 5 };
+const ORDER = { sphere: 0, capsule: 1, box: 2, convex: 3, plane: 4, mesh: 5, compound: 6 };
+const partManifold = new Manifold();
 /** Fill `m` with the contacts between two bodies; returns false when they do not touch. */
 function collide(m, first, second) {
+    if (first.parts.length === 0 && second.parts.length === 0)
+        return collideSimple(m, first, second);
+    // A compound meets the other body part by part; the contacts are gathered under the whole bodies.
+    m.count = 0;
+    m.feature = 0;
+    const inner = partManifold, as = first.parts, bs = second.parts, countA = as.length || 1, countB = bs.length || 1;
+    for (let i = 0; i < countA; i++) {
+        const a = as.length ? as[i] : first, box = a.aabb;
+        for (let j = 0; j < countB; j++) {
+            const b = bs.length ? bs[j] : second, other = b.aabb;
+            if (box[0] > other[3] || box[3] < other[0] || box[1] > other[4] || box[4] < other[1] || box[2] > other[5] || box[5] < other[2])
+                continue;
+            if (!collideSimple(inner, a, b))
+                continue;
+            for (let k = 0; k < inner.count; k++) {
+                const c = inner.contacts[k];
+                // Keep contacts of different parts apart when impulses are matched across steps.
+                m.feature = ((i * 32 + j) * 61 + c.feature) & 32767;
+                m.addDeep(c.px, c.py, c.pz, c.nx, c.ny, c.nz, c.depth);
+            }
+        }
+    }
+    return m.count > 0;
+}
+function collideSimple(m, first, second) {
     m.count = 0;
     m.feature = 0;
     // Dispatch on an ordered pair so each combination is written once.
@@ -1023,9 +1177,16 @@ export class Joint3D {
     rope = false;
     /** 'hinge' joints: angle range in radians, or undefined for a free hinge. */
     limits;
-    /** 'hinge' joints: target speed in radians per second, and the torque available to reach it (0 = off). */
+    /** 'hinge' joints: target speed in radians per second, and the torque available to reach it (0 = off). 'slider' joints: travel speed. */
     motorSpeed = 0;
     maxMotorTorque = 0;
+    /** 'slider' joints: the force available to reach `motorSpeed` (0 = off). */
+    maxMotorForce = 0;
+    /** 'distance' joints: swings per second of the spring (0 = rigid), and how quickly it settles. */
+    stiffness = 0;
+    damping = 0;
+    /** @internal */ slide = v3();
+    /** @internal */ slideMass = 0;
     /** 'point' joints: largest swing angle in radians, or undefined for none. */
     coneLimit;
     /** @internal */ points = [];
@@ -1051,7 +1212,7 @@ export class Joint3D {
         const a = options?.bodyA, b = options.bodyB;
         if (!(a instanceof RigidBody3D) || (b !== undefined && !(b instanceof RigidBody3D)) || a === b)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'joint bodies');
-        if (!['point', 'hinge', 'fixed', 'distance'].includes(options.type))
+        if (!['point', 'hinge', 'fixed', 'distance', 'slider'].includes(options.type))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'joint type');
         this.type = options.type;
         this.bodyA = a;
@@ -1068,8 +1229,16 @@ export class Joint3D {
             if (!(this.length >= 0))
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'joint length');
             this.rope = options.rope ?? false;
+            this.stiffness = requireFinite3D(options.stiffness ?? 0, 'joint stiffness');
+            this.damping = requireFinite3D(options.damping ?? 0, 'joint damping');
+            if (this.stiffness < 0 || this.damping < 0)
+                throw new World3DError('WORLD3D_INPUT_INVALID', 'joint stiffness and damping');
         }
-        if (this.type === 'hinge' || this.type === 'point') {
+        else if (options.stiffness !== undefined || options.damping !== undefined)
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'springs need a distance joint');
+        if (options.maxMotorForce !== undefined && this.type !== 'slider')
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'maxMotorForce needs a slider joint');
+        if (this.type === 'hinge' || this.type === 'point' || this.type === 'slider') {
             const axis = options.axis ?? [0, 1, 0], size = Math.hypot(axis[0], axis[1], axis[2]);
             if (!(size > 0))
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'joint axis');
@@ -1096,7 +1265,7 @@ export class Joint3D {
             turn(a, this.sideA, side[0], side[1], side[2]);
             turn(b, this.sideB, side[0], side[1], side[2]);
             if (options.limits) {
-                if (this.type !== 'hinge' || !(options.limits[0] <= options.limits[1]) || options.limits[0] < -Math.PI || options.limits[1] > Math.PI)
+                if (this.type === 'point' || !(options.limits[0] <= options.limits[1]) || (this.type === 'hinge' && (options.limits[0] < -Math.PI || options.limits[1] > Math.PI)))
                     throw new World3DError('WORLD3D_INPUT_INVALID', 'joint limits');
                 this.limits = [options.limits[0], options.limits[1]];
             }
@@ -1107,8 +1276,11 @@ export class Joint3D {
             }
             this.motorSpeed = requireFinite3D(options.motorSpeed ?? 0, 'joint motorSpeed');
             this.maxMotorTorque = requireFinite3D(options.maxMotorTorque ?? 0, 'joint maxMotorTorque');
-            if (this.maxMotorTorque < 0)
+            if (this.maxMotorTorque < 0 || (this.maxMotorTorque > 0 && this.type !== 'hinge'))
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'joint maxMotorTorque');
+            this.maxMotorForce = requireFinite3D(options.maxMotorForce ?? 0, 'joint maxMotorForce');
+            if (this.maxMotorForce < 0)
+                throw new World3DError('WORLD3D_INPUT_INVALID', 'joint maxMotorForce');
         }
         else if (options.limits || options.coneLimit !== undefined || options.maxMotorTorque)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'limits and motors need a hinge or point joint');
@@ -1136,6 +1308,19 @@ export class Joint3D {
      * relative to bodyB or the world, in radians. 'point' joints: how far
      * the two bodies have swung apart, measured between their copies of the axis.
      */
+    /** 'slider' joints: how far bodyA has travelled along the axis since creation, relative to bodyB or the world. */
+    get translation() {
+        if (this.type !== 'slider')
+            return 0;
+        const a = this.bodyA, b = this.bodyB, point = this.points[0], n = rotateInto(v3(), a, this.axisA);
+        rotateInto(jointA, a, point.localA);
+        if (b)
+            rotateInto(jointB, b, point.localB);
+        let travel = 0;
+        for (let i = 0; i < 3; i++)
+            travel += (a.position[i] + jointA[i] - (b ? b.position[i] + jointB[i] : point.localB[i])) * n[i];
+        return travel;
+    }
     get angle() {
         const a = this.bodyA, b = this.bodyB;
         if (this.type === 'point') {
@@ -1170,6 +1355,10 @@ function rotateInto(out, body, local) {
     return out;
 }
 const jointA = v3(), jointB = v3(), jointC = v3(), jointK = new Float64Array(9), JOINT_BAUMGARTE = 0.2;
+/** u^T K v for a 3x3 matrix. */
+function quadratic(k, u, v) {
+    return u[0] * (k[0] * v[0] + k[1] * v[1] + k[2] * v[2]) + u[1] * (k[3] * v[0] + k[4] * v[1] + k[5] * v[2]) + u[2] * (k[6] * v[0] + k[7] * v[1] + k[8] * v[2]);
+}
 /** Add one body's contribution to the 3x3 effective-mass matrix of a pivot at offset r. */
 function addPivotMass(k, body, r) {
     if (body.type !== 'dynamic' || body.isSleeping)
@@ -1216,16 +1405,182 @@ function pivotVelocity(out, body, r) {
     out[2] += body.linearVelocity[2];
     return out;
 }
+// ---- static bodies --------------------------------------------------------------
+/**
+ * Bodies that never move, kept in a hierarchy of boxes so that a moving body, a ray or a
+ * sweep only looks at the ones nearby. It is rebuilt when a static body is added, removed or moved.
+ */
+class StaticTree {
+    bodies = [];
+    #boxes = new Float64Array(0);
+    /** Two numbers per node: an inner node holds its children; a leaf holds -(first body + 1) and a count. */
+    #links = new Int32Array(0);
+    #count = 0;
+    #dirty = false;
+    #stack = new Int32Array(64);
+    #busy = false;
+    add(body) { this.bodies.push(body); this.#dirty = true; }
+    remove(body) { const at = this.bodies.indexOf(body); if (at >= 0) {
+        this.bodies.splice(at, 1);
+        this.#dirty = true;
+    } }
+    touch() { this.#dirty = true; }
+    build() {
+        this.#dirty = false;
+        this.#count = 0;
+        const bodies = this.bodies, most = Math.max(2 * bodies.length, 1);
+        if (this.#links.length < most * 2) {
+            this.#boxes = new Float64Array(most * 6);
+            this.#links = new Int32Array(most * 2);
+        }
+        if (bodies.length > 0)
+            this.split(0, bodies.length);
+    }
+    split(first, end) {
+        const bodies = this.bodies, node = this.#count++, box = this.#boxes, at = node * 6;
+        let lx = Infinity, ly = Infinity, lz = Infinity, hx = -Infinity, hy = -Infinity, hz = -Infinity;
+        let cx0 = Infinity, cy0 = Infinity, cz0 = Infinity, cx1 = -Infinity, cy1 = -Infinity, cz1 = -Infinity;
+        for (let i = first; i < end; i++) {
+            const b = bodies[i].aabb, cx = b[0] + b[3], cy = b[1] + b[4], cz = b[2] + b[5];
+            lx = Math.min(lx, b[0]);
+            ly = Math.min(ly, b[1]);
+            lz = Math.min(lz, b[2]);
+            hx = Math.max(hx, b[3]);
+            hy = Math.max(hy, b[4]);
+            hz = Math.max(hz, b[5]);
+            cx0 = Math.min(cx0, cx);
+            cy0 = Math.min(cy0, cy);
+            cz0 = Math.min(cz0, cz);
+            cx1 = Math.max(cx1, cx);
+            cy1 = Math.max(cy1, cy);
+            cz1 = Math.max(cz1, cz);
+        }
+        box[at] = lx;
+        box[at + 1] = ly;
+        box[at + 2] = lz;
+        box[at + 3] = hx;
+        box[at + 4] = hy;
+        box[at + 5] = hz;
+        const count = end - first, sx = cx1 - cx0, sy = cy1 - cy0, sz = cz1 - cz0, axis = sx >= sy && sx >= sz ? 0 : sy >= sz ? 1 : 2;
+        // A handful of bodies, or bodies stacked at one place, stay together in a leaf.
+        if (count <= 4 || !(Math.max(sx, sy, sz) > 0)) {
+            this.#links[node * 2] = -(first + 1);
+            this.#links[node * 2 + 1] = count;
+            return node;
+        }
+        const part = bodies.slice(first, end).sort((a, b) => a.aabb[axis] + a.aabb[axis + 3] - b.aabb[axis] - b.aabb[axis + 3]);
+        for (let i = 0; i < count; i++)
+            bodies[first + i] = part[i];
+        const middle = first + (count >> 1);
+        const left = this.split(first, middle), right = this.split(middle, end);
+        this.#links[node * 2] = left;
+        this.#links[node * 2 + 1] = right;
+        return node;
+    }
+    /** Call `visit` for every static body whose bounds meet the box. */
+    query(lx, ly, lz, hx, hy, hz, visit) {
+        if (this.#dirty)
+            this.build();
+        if (this.#count === 0)
+            return;
+        const box = this.#boxes, links = this.#links, bodies = this.bodies, shared = !this.#busy;
+        // A visitor may ask again while this walk is under way; it then gets a list of its own.
+        let stack = shared ? this.#stack : new Int32Array(64), top = 0;
+        if (shared)
+            this.#busy = true;
+        stack[top++] = 0;
+        try {
+            while (top > 0) {
+                const node = stack[--top], at = node * 6;
+                if (box[at] > hx || box[at + 3] < lx || box[at + 1] > hy || box[at + 4] < ly || box[at + 2] > hz || box[at + 5] < lz)
+                    continue;
+                const link = links[node * 2];
+                if (link < 0) {
+                    for (let i = -link - 1, end = i + links[node * 2 + 1]; i < end; i++) {
+                        const b = bodies[i].aabb;
+                        if (b[0] > hx || b[3] < lx || b[1] > hy || b[4] < ly || b[2] > hz || b[5] < lz)
+                            continue;
+                        visit(bodies[i]);
+                    }
+                    continue;
+                }
+                if (top + 2 > stack.length) {
+                    const grown = new Int32Array(stack.length * 2);
+                    grown.set(stack);
+                    stack = grown;
+                }
+                stack[top++] = link;
+                stack[top++] = links[node * 2 + 1];
+            }
+        }
+        finally {
+            if (shared)
+                this.#busy = false;
+        }
+    }
+    /** Call `visit` for static bodies whose bounds the ray crosses within the distance `visit` returns. */
+    ray(o, d, limit, visit) {
+        if (this.#dirty)
+            this.build();
+        if (this.#count === 0)
+            return;
+        const box = this.#boxes, links = this.#links, bodies = this.bodies, stack = [0];
+        const reaches = (b, at) => {
+            let near = 0, far = limit;
+            for (let i = 0; i < 3; i++) {
+                const low = b[at + i], high = b[at + i + 3], from = o[i], way = d[i];
+                if (Math.abs(way) < 1e-12) {
+                    if (from < low || from > high)
+                        return false;
+                    continue;
+                }
+                let t1 = (low - from) / way, t2 = (high - from) / way;
+                if (t1 > t2) {
+                    const swap = t1;
+                    t1 = t2;
+                    t2 = swap;
+                }
+                if (t1 > near)
+                    near = t1;
+                if (t2 < far)
+                    far = t2;
+                if (near > far)
+                    return false;
+            }
+            return true;
+        };
+        while (stack.length > 0) {
+            const node = stack.pop();
+            if (!reaches(box, node * 6))
+                continue;
+            const link = links[node * 2];
+            if (link < 0) {
+                for (let i = -link - 1, end = i + links[node * 2 + 1]; i < end; i++)
+                    if (reaches(bodies[i].aabb, 0))
+                        limit = visit(bodies[i], limit);
+            }
+            else
+                stack.push(link, links[node * 2 + 1]);
+        }
+    }
+}
 const SLOP = 0.01, BAUMGARTE = 0.15, SLEEP_LINEAR = 0.15, SLEEP_ANGULAR = 0.2, SLEEP_DELAY = 0.5;
 export class PhysicsWorld3D {
     gravity = v3(0, -9.81, 0);
     fixedStep;
     maxSubSteps;
     iterations;
+    solverSteps;
     allowSleep;
     /** Called when two bodies start or stop touching. Triggers report here too. */
     onContactBegin;
     onContactEnd;
+    /**
+     * Called after every step for each pair of solid bodies that pressed on each other, with
+     * where, in which direction and how hard: enough to pick a sound, deal damage or squash a shape.
+     */
+    onContact;
+    #report = { a: undefined, b: undefined, point: v3(), normal: v3(), impulse: 0, began: false };
     #bodies = [];
     #manifold = new Manifold();
     #contacts = [];
@@ -1233,8 +1588,10 @@ export class PhysicsWorld3D {
     #touching = new Map();
     #previousTouching = new Map();
     #accumulator = 0;
+    /** Bodies that can move, kept sorted along x from step to step. */
     #sorted = [];
     #planes = [];
+    #statics = new StaticTree();
     #joints = [];
     #jointPairs = new Map();
     #warm = new Map();
@@ -1247,9 +1604,25 @@ export class PhysicsWorld3D {
         this.fixedStep = requirePositive3D(options.fixedStep ?? 1 / 60, 'fixedStep');
         this.maxSubSteps = Math.min(Math.max(Math.floor(options.maxSubSteps ?? 4), 1), PHYSICS3D_LIMITS.maxSubSteps);
         this.iterations = Math.min(Math.max(Math.floor(options.iterations ?? 8), 1), 64);
+        this.solverSteps = Math.min(Math.max(Math.floor(options.solverSteps ?? 1), 1), PHYSICS3D_LIMITS.maxSolverSteps);
         this.allowSleep = options.allowSleep ?? true;
     }
     get bodies() { return this.#bodies; }
+    /** @internal A static body was repositioned: its place among the others is worked out again. */
+    staticMoved(body) { if (body.type === 'static')
+        this.#statics.touch(); }
+    /** Visit every body whose bounds meet a box: planes, bodies that can move, then static ones. */
+    near(lx, ly, lz, hx, hy, hz, visit) {
+        for (const plane of this.#planes)
+            visit(plane);
+        for (const body of this.#sorted) {
+            const b = body.aabb;
+            if (b[0] > hx || b[3] < lx || b[1] > hy || b[4] < ly || b[2] > hz || b[5] < lz)
+                continue;
+            visit(body);
+        }
+        this.#statics.query(lx, ly, lz, hx, hy, hz, visit);
+    }
     /** Contact points solved in the last step. */
     get contactCount() { return this.#contactCount; }
     addBody(body) {
@@ -1259,7 +1632,12 @@ export class PhysicsWorld3D {
             throw new World3DError('WORLD3D_BUDGET', 'bodies');
         body.world = this;
         this.#bodies.push(body);
-        (body.shape.type === 'plane' ? this.#planes : this.#sorted).push(body);
+        if (body.shape.type === 'plane')
+            this.#planes.push(body);
+        else if (body.type === 'static')
+            this.#statics.add(body);
+        else
+            this.#sorted.push(body);
         // Static bodies never move, so their node is placed once, here.
         const node = body.node;
         if (node) {
@@ -1317,6 +1695,20 @@ export class PhysicsWorld3D {
             joint.motorImpulse = 0;
             joint.rowMass = 0;
             joint.rowLow = joint.rowHigh = NaN;
+            joint.slideMass = 0;
+            const sliding = joint.type === 'slider' && joint.enabled;
+            if (sliding) {
+                rotateInto(joint.slide, a, joint.axisA);
+                joint.current = joint.translation;
+                if (joint.limits) {
+                    joint.rowLow = joint.current - joint.limits[0];
+                    joint.rowHigh = joint.current - joint.limits[1];
+                }
+                if (joint.maxMotorForce > 0 && joint.motorSpeed !== 0) {
+                    a.wake();
+                    b?.wake();
+                }
+            }
             const motor = joint.type === 'hinge' && joint.maxMotorTorque > 0;
             if (joint.enabled && (motor || joint.limits || joint.coneLimit !== undefined)) {
                 // One rotational equation: about the pin for a hinge, about the swing direction for a cone.
@@ -1373,6 +1765,31 @@ export class PhysicsWorld3D {
                 addPivotMass(k, a, point.ra);
                 if (b)
                     addPivotMass(k, b, point.rb);
+                if (sliding) {
+                    // Hold the pivot only across the rail: solve in the two directions at right angles to it.
+                    const n = joint.slide, inverse = point.inverse;
+                    if (point === joint.points[0]) {
+                        const along = quadratic(k, n, n);
+                        joint.slideMass = along > 1e-12 ? 1 / along : 0;
+                    }
+                    cross(jointA, n, Math.abs(n[0]) < 0.57 ? [1, 0, 0] : [0, 1, 0]);
+                    const size = Math.hypot(jointA[0], jointA[1], jointA[2]);
+                    jointA[0] /= size;
+                    jointA[1] /= size;
+                    jointA[2] /= size;
+                    cross(jointB, n, jointA);
+                    const k11 = quadratic(k, jointA, jointA), k12 = quadratic(k, jointA, jointB), k22 = quadratic(k, jointB, jointB), det = k11 * k22 - k12 * k12;
+                    if (Math.abs(det) < 1e-12) {
+                        inverse.fill(0);
+                        continue;
+                    }
+                    const i11 = k22 / det, i12 = -k12 / det, i22 = k11 / det;
+                    for (let row = 0; row < 3; row++)
+                        for (let column = 0; column < 3; column++) {
+                            inverse[row * 3 + column] = jointA[row] * (i11 * jointA[column] + i12 * jointB[column]) + jointB[row] * (i12 * jointA[column] + i22 * jointB[column]);
+                        }
+                    continue;
+                }
                 // Invert the symmetric 3x3 by cofactors.
                 const c0 = k[4] * k[8] - k[5] * k[7], c1 = k[5] * k[6] - k[3] * k[8], c2 = k[3] * k[7] - k[4] * k[6], determinant = k[0] * c0 + k[1] * c1 + k[2] * c2, inverse = point.inverse;
                 if (Math.abs(determinant) < 1e-12) {
@@ -1501,6 +1918,34 @@ export class PhysicsWorld3D {
                 joint.limitImpulseHigh = total;
             }
         }
+        if (joint.slideMass > 0) {
+            // Along the rail: a motor, and stops at both ends of the travel.
+            const n = joint.slide, point = joint.points[0], mass = joint.slideMass;
+            const push = (impulse) => {
+                if (impulse === 0)
+                    return;
+                applyPivotImpulse(a, point.ra, n[0] * impulse, n[1] * impulse, n[2] * impulse, 1);
+                if (b)
+                    applyPivotImpulse(b, point.rb, n[0] * impulse, n[1] * impulse, n[2] * impulse, -1);
+            };
+            const speed = () => { const va = pivotVelocity(scratchC, a, point.ra), vb = pivotVelocity(scratchD, b, point.rb); return (va[0] - vb[0]) * n[0] + (va[1] - vb[1]) * n[1] + (va[2] - vb[2]) * n[2]; };
+            if (joint.maxMotorForce > 0) {
+                const most = joint.maxMotorForce * dt, total = clamp(joint.motorImpulse + (joint.motorSpeed - speed()) * mass, -most, most);
+                push(total - joint.motorImpulse);
+                joint.motorImpulse = total;
+            }
+            const low = joint.rowLow, high = joint.rowHigh;
+            if (low === low) {
+                const total = Math.max(joint.limitImpulse + (-speed() - (low > 0 ? low : low * JOINT_BAUMGARTE) / dt) * mass, 0);
+                push(total - joint.limitImpulse);
+                joint.limitImpulse = total;
+            }
+            if (high === high) {
+                const total = Math.min(joint.limitImpulseHigh + (-speed() - (high < 0 ? high : high * JOINT_BAUMGARTE) / dt) * mass, 0);
+                push(total - joint.limitImpulseHigh);
+                joint.limitImpulseHigh = total;
+            }
+        }
         for (const point of joint.points) {
             const va = pivotVelocity(scratchC, a, point.ra), vb = pivotVelocity(scratchD, b, point.rb);
             const dx = vb[0] - va[0], dy = vb[1] - va[1], dz = vb[2] - va[2];
@@ -1527,6 +1972,21 @@ export class PhysicsWorld3D {
                 }
                 if (mass <= 0)
                     continue;
+                if (joint.stiffness > 0) {
+                    // A spring: the link gives way in proportion to how hard it is pulled, and loses energy as it moves.
+                    const weight = 1 / mass, omega = 2 * Math.PI * joint.stiffness, spring = weight * omega * omega, loss = 2 * weight * joint.damping * omega;
+                    const gamma = 1 / (dt * (loss + dt * spring)), beta = dt * spring * gamma;
+                    let soft = -(dx * nx + dy * ny + dz * nz + beta * (length - joint.length) + gamma * joint.accumulated) / (mass + gamma);
+                    if (joint.rope) {
+                        const total = Math.min(joint.accumulated + soft, 0);
+                        soft = total - joint.accumulated;
+                    }
+                    joint.accumulated += soft;
+                    applyPivotImpulse(a, point.ra, nx * soft, ny * soft, nz * soft, -1);
+                    if (b)
+                        applyPivotImpulse(b, point.rb, nx * soft, ny * soft, nz * soft, 1);
+                    continue;
+                }
                 let lambda = -(dx * nx + dy * ny + dz * nz + (length - joint.length) * JOINT_BAUMGARTE / dt) / mass;
                 if (joint.rope) {
                     // A rope only pulls: the running total may never push the ends apart.
@@ -1554,8 +2014,12 @@ export class PhysicsWorld3D {
                 this.removeJoint(joint);
         body.world = undefined;
         this.#bodies.splice(this.#bodies.indexOf(body), 1);
-        const list = body.shape.type === 'plane' ? this.#planes : this.#sorted;
-        list.splice(list.indexOf(body), 1);
+        if (body.shape.type !== 'plane' && body.type === 'static')
+            this.#statics.remove(body);
+        else {
+            const list = body.shape.type === 'plane' ? this.#planes : this.#sorted;
+            list.splice(list.indexOf(body), 1);
+        }
         // After a step the pairs that were touching live in the previous-step map.
         for (const [key, pair] of this.#previousTouching) {
             if (pair[0] !== body && pair[1] !== body)
@@ -1596,46 +2060,96 @@ export class PhysicsWorld3D {
         }
     }
     fixedUpdate(dt) {
-        const bodies = this.#bodies, g = this.gravity;
-        for (const body of bodies) {
-            if (body.type !== 'dynamic' || body.isSleeping)
-                continue;
-            const v = body.linearVelocity, w = body.angularVelocity;
-            v[0] += (g[0] + body.force[0] * body.inverseMass) * dt;
-            v[1] += (g[1] + body.force[1] * body.inverseMass) * dt;
-            v[2] += (g[2] + body.force[2] * body.inverseMass) * dt;
-            applyInverseInertia(scratchA, body.inverseInertiaWorld, body.torque);
-            w[0] += scratchA[0] * dt;
-            w[1] += scratchA[1] * dt;
-            w[2] += scratchA[2] * dt;
-            const linear = 1 / (1 + body.linearDamping * dt), angular = 1 / (1 + body.angularDamping * dt);
-            v[0] *= linear;
-            v[1] *= linear;
-            v[2] *= linear;
-            w[0] *= angular;
-            w[1] *= angular;
-            w[2] *= angular;
-        }
+        // Static bodies and planes take no part in what follows; only the bodies that can move are walked.
+        const bodies = this.#sorted, g = this.gravity, joints = this.#joints, contacts = this.#contacts;
+        const slices = Math.min(Math.max(Math.floor(this.solverSteps), 1), PHYSICS3D_LIMITS.maxSolverSteps), h = dt / slices;
         this.#stamp++;
-        this.findContacts(dt);
-        const contacts = this.#contacts, count = this.#contactCount;
-        // Warm start: re-apply last step's impulses so stacks begin close to equilibrium.
-        for (let i = 0; i < count; i++) {
-            const c = contacts[i];
-            if (c.normalImpulse !== 0)
-                this.applyRow(c, 0, c.normalImpulse);
-            if (c.tangentImpulse1 !== 0)
-                this.applyRow(c, 15, c.tangentImpulse1);
-            if (c.tangentImpulse2 !== 0)
-                this.applyRow(c, 30, c.tangentImpulse2);
-        }
-        this.prepareJoints(dt);
-        const joints = this.#joints;
-        for (let iteration = 0; iteration < this.iterations; iteration++) {
+        let count = 0;
+        for (let slice = 0; slice < slices; slice++) {
+            for (const body of bodies) {
+                if (body.type !== 'dynamic' || body.isSleeping)
+                    continue;
+                const v = body.linearVelocity, w = body.angularVelocity;
+                v[0] += (g[0] + body.force[0] * body.inverseMass) * h;
+                v[1] += (g[1] + body.force[1] * body.inverseMass) * h;
+                v[2] += (g[2] + body.force[2] * body.inverseMass) * h;
+                applyInverseInertia(scratchA, body.inverseInertiaWorld, body.torque);
+                w[0] += scratchA[0] * h;
+                w[1] += scratchA[1] * h;
+                w[2] += scratchA[2] * h;
+                const linear = 1 / (1 + body.linearDamping * h), angular = 1 / (1 + body.angularDamping * h);
+                v[0] *= linear;
+                v[1] *= linear;
+                v[2] *= linear;
+                w[0] *= angular;
+                w[1] *= angular;
+                w[2] *= angular;
+            }
+            if (slice === 0) {
+                this.findContacts(h);
+                count = this.#contactCount;
+            }
+            else {
+                // Contacts are found once per step; later slices only correct what is left of each overlap.
+                for (let i = 0; i < count; i++) {
+                    const c = contacts[i];
+                    c.bias = c.depth < 0 ? c.depth / h : BAUMGARTE / h * Math.max(c.depth - SLOP, 0);
+                    c.bounce = false;
+                }
+            }
+            // Warm start: re-apply the last impulses so stacks begin close to equilibrium.
+            for (let i = 0; i < count; i++) {
+                const c = contacts[i];
+                if (c.normalImpulse !== 0)
+                    this.applyRow(c, 0, c.normalImpulse);
+                if (c.tangentImpulse1 !== 0)
+                    this.applyRow(c, 15, c.tangentImpulse1);
+                if (c.tangentImpulse2 !== 0)
+                    this.applyRow(c, 30, c.tangentImpulse2);
+            }
+            this.prepareJoints(h);
+            for (let iteration = 0; iteration < this.iterations; iteration++) {
+                for (let i = 0; i < count; i++)
+                    this.solve(contacts[i]);
+                for (let i = 0; i < joints.length; i++)
+                    this.solveJoint(joints[i], h);
+            }
+            for (let i = 0; i < count; i++) {
+                const c = contacts[i];
+                c.total += c.normalImpulse;
+                // Moving apart along the normal leaves less overlap for the next slice.
+                if (slices > 1)
+                    c.depth -= this.rowVelocity(c, 0) * h;
+            }
+            for (const body of bodies) {
+                if (body.type === 'static' || body.isSleeping)
+                    continue;
+                const v = body.linearVelocity, w = body.angularVelocity, p = body.position, q = body.quaternion;
+                const reach = body.continuous && body.type === 'dynamic' ? this.sweep(body, h) : 1;
+                p[0] += v[0] * h * reach;
+                p[1] += v[1] * h * reach;
+                p[2] += v[2] * h * reach;
+                if (!body.fixedRotation && (w[0] !== 0 || w[1] !== 0 || w[2] !== 0)) {
+                    // q += 0.5 * h * (w, 0) * q
+                    const x = q[0], y = q[1], z = q[2], r = q[3], half = 0.5 * h;
+                    q[0] = x + half * (w[0] * r + w[1] * z - w[2] * y);
+                    q[1] = y + half * (w[1] * r + w[2] * x - w[0] * z);
+                    q[2] = z + half * (w[2] * r + w[0] * y - w[1] * x);
+                    q[3] = r - half * (w[0] * x + w[1] * y + w[2] * z);
+                    const length = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
+                    q[0] /= length;
+                    q[1] /= length;
+                    q[2] /= length;
+                    q[3] /= length;
+                }
+                body.refresh();
+            }
+            // The push that separated overlapping bodies has done its work in the move above. Solving once
+            // more without it takes that speed back out, so a resting pile is not kept simmering.
+            this.#relaxing = true;
             for (let i = 0; i < count; i++)
                 this.solve(contacts[i]);
-            for (let i = 0; i < joints.length; i++)
-                this.solveJoint(joints[i], dt);
+            this.#relaxing = false;
         }
         for (let i = 0; i < count; i++) {
             const c = contacts[i], at = c.slot * 3;
@@ -1647,40 +2161,81 @@ export class PhysicsWorld3D {
             for (const [key, entry] of this.#warm)
                 if (entry.stamp !== this.#stamp)
                     this.#warm.delete(key);
+        if (this.onContact) {
+            // The contacts of one pair sit next to each other; report each pair once.
+            const report = this.#report, point = report.point, normal = report.normal;
+            for (let i = 0; i < count;) {
+                const first = contacts[i], a = first.a, b = first.b;
+                let total = 0, px = 0, py = 0, pz = 0, weight = 0, last = i;
+                for (; last < count && contacts[last].a === a && contacts[last].b === b; last++) {
+                    const c = contacts[last], share = c.total + 1e-9;
+                    total += c.total;
+                    weight += share;
+                    px += (a.position[0] + c.ra[0]) * share;
+                    py += (a.position[1] + c.ra[1]) * share;
+                    pz += (a.position[2] + c.ra[2]) * share;
+                }
+                i = last;
+                report.a = a;
+                report.b = b;
+                report.impulse = total;
+                report.began = !this.#previousTouching.has(this.pairKey(a, b));
+                point[0] = px / weight;
+                point[1] = py / weight;
+                point[2] = pz / weight;
+                normal[0] = first.nx;
+                normal[1] = first.ny;
+                normal[2] = first.nz;
+                this.onContact(report);
+            }
+        }
+        // Bodies joined by contacts or joints rest and wake together: a pile sleeps only once all of it is still.
+        const parent = this.#islands.length >= bodies.length ? this.#islands : (this.#islands = new Int32Array(bodies.length * 2));
+        const rest = this.#islandRest.length >= bodies.length ? this.#islandRest : (this.#islandRest = new Float64Array(bodies.length * 2));
+        for (let i = 0; i < bodies.length; i++) {
+            bodies[i].slot = i;
+            parent[i] = i;
+        }
+        const root = (index) => { while (parent[index] !== index) {
+            parent[index] = parent[parent[index]];
+            index = parent[index];
+        } return index; };
+        const join = (a, b) => {
+            if (!b || a.type !== 'dynamic' || b.type !== 'dynamic' || a.isSleeping || b.isSleeping)
+                return;
+            const ra = root(a.slot), rb = root(b.slot);
+            if (ra !== rb)
+                parent[ra] = rb;
+        };
+        if (this.allowSleep) {
+            for (let i = 0; i < count; i++)
+                join(contacts[i].a, contacts[i].b);
+            for (const joint of joints)
+                if (joint.enabled)
+                    join(joint.bodyA, joint.bodyB);
+        }
+        for (let i = 0; i < bodies.length; i++)
+            rest[i] = Infinity;
         for (const body of bodies) {
             body.force.fill(0);
             body.torque.fill(0);
-            if (body.type === 'static' || body.isSleeping)
+            if (body.type !== 'dynamic' || body.isSleeping || !this.allowSleep)
                 continue;
-            const v = body.linearVelocity, w = body.angularVelocity, p = body.position, q = body.quaternion;
-            const reach = body.continuous && body.type === 'dynamic' ? this.sweep(body, dt) : 1;
-            p[0] += v[0] * dt * reach;
-            p[1] += v[1] * dt * reach;
-            p[2] += v[2] * dt * reach;
-            if (!body.fixedRotation && (w[0] !== 0 || w[1] !== 0 || w[2] !== 0)) {
-                // q += 0.5 * dt * (w, 0) * q
-                const x = q[0], y = q[1], z = q[2], s = q[3], half = 0.5 * dt;
-                q[0] = x + half * (w[0] * s + w[1] * z - w[2] * y);
-                q[1] = y + half * (w[1] * s + w[2] * x - w[0] * z);
-                q[2] = z + half * (w[2] * s + w[0] * y - w[1] * x);
-                q[3] = s - half * (w[0] * x + w[1] * y + w[2] * z);
-                const length = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
-                q[0] /= length;
-                q[1] /= length;
-                q[2] /= length;
-                q[3] /= length;
-            }
-            body.refresh();
-            if (body.type === 'dynamic' && this.allowSleep) {
-                const slow = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] < SLEEP_LINEAR * SLEEP_LINEAR && w[0] * w[0] + w[1] * w[1] + w[2] * w[2] < SLEEP_ANGULAR * SLEEP_ANGULAR;
-                body.sleepTime = slow ? body.sleepTime + dt : 0;
-                if (body.sleepTime >= SLEEP_DELAY) {
-                    body.isSleeping = true;
-                    v.fill(0);
-                    w.fill(0);
-                }
-            }
+            const v = body.linearVelocity, w = body.angularVelocity;
+            const slow = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] < SLEEP_LINEAR * SLEEP_LINEAR && w[0] * w[0] + w[1] * w[1] + w[2] * w[2] < SLEEP_ANGULAR * SLEEP_ANGULAR;
+            body.sleepTime = slow ? body.sleepTime + dt : 0;
+            const island = root(body.slot);
+            if (body.sleepTime < rest[island])
+                rest[island] = body.sleepTime;
         }
+        if (this.allowSleep)
+            for (const body of bodies) {
+                if (body.type !== 'dynamic' || body.isSleeping || rest[root(body.slot)] < SLEEP_DELAY)
+                    continue;
+                body.isSleeping = true;
+                body.linearVelocity.fill(0);
+                body.angularVelocity.fill(0);
+            }
         // Contact events compare this step's touching pairs with the previous step's.
         const now = this.#touching, before = this.#previousTouching;
         if (this.onContactBegin)
@@ -1696,37 +2251,89 @@ export class PhysicsWorld3D {
         before.clear();
     }
     /**
-     * Share of this step's travel a fast body may make before its center line
-     * meets a surface. It stops just touching, so the next step finds the
-     * contact and answers it with the body's full speed.
+     * Share of this step's travel a fast body may make before its shape meets
+     * a surface it is not already resting on. It stops just touching, so the
+     * next step finds the contact and answers it with the body's full speed.
      */
     sweep(body, dt) {
-        const v = body.linearVelocity, speed = Math.hypot(v[0], v[1], v[2]), travel = speed * dt, shape = body.shape;
-        const inner = shape.type === 'sphere' || shape.type === 'capsule' ? shape.radius : shape.type === 'box' ? Math.min(shape.halfExtents[0], shape.halfExtents[1], shape.halfExtents[2]) : shape.type === 'convex' ? shape.hull.innerRadius : 0;
+        const v = body.linearVelocity, speed = Math.hypot(v[0], v[1], v[2]), travel = speed * dt, inner = thinnestHalf(body.shape);
         // Slow enough that the ordinary overlap test cannot miss anything.
         if (travel <= inner * 0.5 || travel === 0)
             return 1;
-        const d = [v[0] / speed, v[1] / speed, v[2] / speed], o = [body.position[0], body.position[1], body.position[2]], normal = [0, 0, 0];
-        let limit = travel + inner, allowed = travel;
-        for (const other of this.#bodies) {
-            if (other === body || other.isTrigger || (body.layer & other.mask) === 0 || (other.layer & body.mask) === 0)
-                continue;
-            if (this.#jointPairs.size > 0 && this.#jointPairs.has(this.pairKey(body, other)))
-                continue;
-            const box = other.aabb;
-            // Skip bodies whose bounds the swept line cannot reach.
-            if (Math.min(o[0], o[0] + d[0] * limit) - inner > box[3] || Math.max(o[0], o[0] + d[0] * limit) + inner < box[0] || Math.min(o[1], o[1] + d[1] * limit) - inner > box[4]
-                || Math.max(o[1], o[1] + d[1] * limit) + inner < box[1] || Math.min(o[2], o[2] + d[2] * limit) - inner > box[5] || Math.max(o[2], o[2] + d[2] * limit) + inner < box[2])
-                continue;
-            const distance = rayShape(other, o, d, limit, normal);
-            if (distance < 0 || distance > limit)
-                continue;
-            // A round body meets a slanted surface before its center line does.
-            const facing = Math.max(-(d[0] * normal[0] + d[1] * normal[1] + d[2] * normal[2]), 0.2);
-            limit = distance;
-            allowed = Math.min(allowed, Math.max(distance - inner / facing + SLOP, 0));
+        const p = body.position, ox = p[0], oy = p[1], oz = p[2];
+        const distance = this.cast(body, v[0] / speed, v[1] / speed, v[2] / speed, travel, inner, (other) => other !== body && (body.layer & other.mask) !== 0 && (other.layer & body.mask) !== 0
+            && !(this.#jointPairs.size > 0 && this.#jointPairs.has(this.pairKey(body, other))), true);
+        p[0] = ox;
+        p[1] = oy;
+        p[2] = oz;
+        body.refresh();
+        return distance < 0 ? 1 : distance / travel;
+    }
+    #castNear = [];
+    #castBody;
+    /**
+     * Walk `probe` along a unit direction and return how far it gets before touching one of
+     * the accepted bodies, or -1. The probe is left where it touched and the body it met in
+     * #castBody. With `skipTouching`, whatever the probe already rests on is not counted.
+     */
+    cast(probe, dx, dy, dz, reach, thin, accept, skipTouching) {
+        const m = this.#manifold, ox = probe.position[0], oy = probe.position[1], oz = probe.position[2], near = this.#castNear;
+        near.length = 0;
+        this.#castBody = undefined;
+        // Only bodies whose bounds meet the swept bounds of the shape can be touched.
+        const from = probe.aabb;
+        this.near(from[0] + Math.min(dx * reach, 0), from[1] + Math.min(dy * reach, 0), from[2] + Math.min(dz * reach, 0), from[3] + Math.max(dx * reach, 0), from[4] + Math.max(dy * reach, 0), from[5] + Math.max(dz * reach, 0), (body) => { if (!body.isTrigger && accept(body))
+            near.push(body); });
+        if (near.length === 0)
+            return -1;
+        const pressing = (body) => {
+            if (!collide(m, probe, body))
+                return false;
+            for (let i = 0; i < m.count; i++)
+                if (m.contacts[i].depth > (skipTouching ? SLOP : 0))
+                    return true;
+            return false;
+        };
+        // Whatever the body already touches, however lightly, is the solver's business, not the sweep's.
+        if (skipTouching)
+            for (let i = near.length - 1; i >= 0; i--)
+                if (collide(m, probe, near[i]))
+                    near.splice(i, 1);
+        const touches = (t) => {
+            probe.position[0] = ox + dx * t;
+            probe.position[1] = oy + dy * t;
+            probe.position[2] = oz + dz * t;
+            probe.refresh();
+            for (const body of near)
+                if (pressing(body)) {
+                    this.#castBody = body;
+                    return true;
+                }
+            return false;
+        };
+        let clear = 0, hit = -1;
+        if (touches(0))
+            hit = 0;
+        else
+            for (let t = Math.min(thin, reach);; t = Math.min(t + thin, reach)) {
+                if (touches(t)) {
+                    hit = t;
+                    break;
+                }
+                clear = t;
+                if (t >= reach)
+                    return -1;
+            }
+        // Narrow the first touch down between the last clear place and the first touching one.
+        for (let i = 0; i < 20 && hit - clear > 1e-5; i++) {
+            const middle = (clear + hit) / 2;
+            if (touches(middle))
+                hit = middle;
+            else
+                clear = middle;
         }
-        return allowed / travel;
+        touches(hit);
+        return hit;
     }
     findContacts(dt) {
         this.#contactCount = 0;
@@ -1741,8 +2348,10 @@ export class PhysicsWorld3D {
             }
             sorted[j + 1] = body;
         }
+        this.#pairStep = dt;
         for (let i = 0; i < sorted.length; i++) {
             const a = sorted[i], box = a.aabb, maxX = box[3];
+            this.#pairBody = a;
             for (let j = i + 1; j < sorted.length; j++) {
                 const b = sorted[j], other = b.aabb;
                 if (other[0] > maxX)
@@ -1753,8 +2362,15 @@ export class PhysicsWorld3D {
             }
             for (const plane of planes)
                 this.testPair(a, plane, dt);
+            this.#statics.query(box[0], box[1], box[2], box[3], box[4], box[5], this.#againstStatic);
         }
     }
+    #relaxing = false;
+    #islands = new Int32Array(0);
+    #islandRest = new Float64Array(0);
+    #pairBody;
+    #pairStep = 0;
+    #againstStatic = (other) => this.testPair(this.#pairBody, other, this.#pairStep);
     testPair(a, b, dt) {
         if ((a.layer & b.mask) === 0 || (b.layer & a.mask) === 0)
             return;
@@ -1807,7 +2423,7 @@ export class PhysicsWorld3D {
             const source = m.contacts[i];
             let c = this.#contacts[this.#contactCount];
             if (!c)
-                c = this.#contacts[this.#contactCount] = { a, b, nx: 0, ny: 0, nz: 0, t1: v3(), t2: v3(), ra: v3(), rb: v3(), normalMass: 0, tangentMass1: 0, tangentMass2: 0, bias: 0, friction: 0, normalImpulse: 0, tangentImpulse1: 0, tangentImpulse2: 0, warm, slot: 0, ima: 0, imb: 0, rows: new Float64Array(45) };
+                c = this.#contacts[this.#contactCount] = { a, b, nx: 0, ny: 0, nz: 0, t1: v3(), t2: v3(), ra: v3(), rb: v3(), normalMass: 0, tangentMass1: 0, tangentMass2: 0, bias: 0, friction: 0, depth: 0, total: 0, bounce: false, normalImpulse: 0, tangentImpulse1: 0, tangentImpulse2: 0, warm, slot: 0, ima: 0, imb: 0, rows: new Float64Array(45) };
             this.#contactCount++;
             c.a = a;
             c.b = b;
@@ -1851,6 +2467,9 @@ export class PhysicsWorld3D {
             // A real impact bounces; a resting or slow contact is pushed out of penetration instead.
             // Doing both in one step would add the correction speed to the bounce.
             c.bias = source.depth < 0 ? source.depth / dt : approach < -1 && restitution > 0 ? -restitution * approach : BAUMGARTE / dt * Math.max(source.depth - SLOP, 0);
+            c.depth = source.depth;
+            c.total = 0;
+            c.bounce = source.depth >= 0 && approach < -1 && restitution > 0;
         }
     }
     pairKey(a, b) { return a.id < b.id ? a.id * 4194304 + b.id : b.id * 4194304 + a.id; }
@@ -1921,7 +2540,8 @@ export class PhysicsWorld3D {
     }
     solve(c) {
         // Normal: accumulate and clamp so contacts only ever push.
-        let delta = (c.bias - this.rowVelocity(c, 0)) * c.normalMass;
+        const bias = this.#relaxing && !c.bounce && c.bias > 0 ? 0 : c.bias;
+        let delta = (bias - this.rowVelocity(c, 0)) * c.normalMass;
         const total = Math.max(c.normalImpulse + delta, 0);
         delta = total - c.normalImpulse;
         c.normalImpulse = total;
@@ -1950,43 +2570,91 @@ export class PhysicsWorld3D {
         const d = [direction[0] / length, direction[1] / length, direction[2] / length], o = [origin[0], origin[1], origin[2]];
         let best, limit = maxDistance;
         const normal = [0, 0, 0];
-        for (const body of this.#bodies) {
+        const test = (body, within) => {
             if ((body.layer & mask) === 0 || body.isTrigger)
-                continue;
-            const distance = rayShape(body, o, d, limit, normal);
-            if (distance < 0 || distance > limit)
-                continue;
-            limit = distance;
+                return within;
+            const distance = rayShape(body, o, d, within, normal);
+            if (distance < 0 || distance > within)
+                return within;
             best = { body, distance, point: [o[0] + d[0] * distance, o[1] + d[1] * distance, o[2] + d[2] * distance], normal: [normal[0], normal[1], normal[2]] };
-        }
+            return distance;
+        };
+        for (const body of this.#planes)
+            limit = test(body, limit);
+        for (const body of this.#sorted)
+            limit = test(body, limit);
+        this.#statics.ray(o, d, limit, test);
         return best;
     }
     /** Solid bodies whose shape touches a sphere; triggers are skipped. */
     overlapSphere(center, radius, mask = -1) {
         const probe = probeBody(center, { type: 'sphere', radius: requirePositive3D(radius, 'radius') }), found = [];
-        for (const body of this.#bodies)
-            if ((body.layer & mask) !== 0 && !body.isTrigger && collide(this.#manifold, probe, body))
-                found.push(body);
+        const box = probe.aabb;
+        this.near(box[0], box[1], box[2], box[3], box[4], box[5], (body) => { if ((body.layer & mask) !== 0 && !body.isTrigger && collide(this.#manifold, probe, body))
+            found.push(body); });
         return found;
+    }
+    /**
+     * Move a shape along a unit direction and report the first body it
+     * touches: the distance travelled, the point of contact and the surface
+     * normal facing the shape. The path is walked in steps no longer than the
+     * shape's thinnest half and the touch refined between two steps, so
+     * anything thinner than that step may be passed over. Triggers are ignored.
+     */
+    shapeCast(shape, origin, direction, maxDistance, mask = -1, quaternion) {
+        const dx = requireFinite3D(direction[0], 'direction'), dy = requireFinite3D(direction[1], 'direction'), dz = requireFinite3D(direction[2], 'direction');
+        if (Math.abs(Math.hypot(dx, dy, dz) - 1) > 1e-3)
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'direction must have unit length');
+        const reach = requireFinite3D(maxDistance, 'maxDistance');
+        if (!(reach >= 0))
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'maxDistance');
+        if (shape?.type === 'plane' || shape?.type === 'mesh')
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'only solid shapes can be cast');
+        const probe = probeBody(origin, shape);
+        if (quaternion)
+            probe.setQuaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3]);
+        const m = this.#manifold, hit = this.cast(probe, dx, dy, dz, reach, Math.max(thinnestHalf(shape), 0.02), (body) => (body.layer & mask) !== 0, false);
+        if (hit < 0)
+            return undefined;
+        const body = this.#castBody;
+        collide(m, probe, body);
+        let best = m.contacts[0];
+        for (let i = 1; i < m.count; i++)
+            if (m.contacts[i].depth > best.depth)
+                best = m.contacts[i];
+        // Whichever way the pair was ordered, report the normal that faces back along the cast.
+        const facing = best.nx * dx + best.ny * dy + best.nz * dz > 0 ? -1 : 1;
+        return { body, distance: hit, point: [best.px, best.py, best.pz], normal: [best.nx * facing, best.ny * facing, best.nz * facing] };
     }
     /** @internal Contacts of a free-standing shape against the world, for the character controller. */
     probe(body, mask, visit) {
         const m = this.#manifold, box = body.aabb;
-        for (const other of this.#bodies) {
-            if (other === body || other.isTrigger || (other.layer & mask) === 0)
-                continue;
-            const b = other.aabb;
-            if (box[0] > b[3] || box[3] < b[0] || box[1] > b[4] || box[4] < b[1] || box[2] > b[5] || box[5] < b[2])
-                continue;
-            if (!collide(m, body, other))
-                continue;
+        this.near(box[0], box[1], box[2], box[3], box[4], box[5], (other) => {
+            if (other === body || other.isTrigger || (other.layer & mask) === 0 || !collide(m, body, other))
+                return;
             for (let i = 0; i < m.count; i++) {
                 const c = m.contacts[i];
                 if (c.depth > 0)
                     visit(c.nx, c.ny, c.nz, c.depth, other);
             }
-        }
+        });
     }
+}
+/** Half the thinnest extent of a solid shape; zero for planes and meshes. */
+function thinnestHalf(shape) {
+    if (shape.type === 'sphere' || shape.type === 'capsule')
+        return shape.radius;
+    if (shape.type === 'box')
+        return Math.min(shape.halfExtents[0], shape.halfExtents[1], shape.halfExtents[2]);
+    if (shape.type === 'convex')
+        return shape.hull.innerRadius;
+    if (shape.type === 'compound') {
+        let least = Infinity;
+        for (const child of shape.children)
+            least = Math.min(least, thinnestHalf(child.shape));
+        return least;
+    }
+    return 0;
 }
 function probeBody(position, shape) {
     return new RigidBody3D({ type: 'kinematic', shape, position: [position[0], position[1], position[2]] });
@@ -1994,6 +2662,22 @@ function probeBody(position, shape) {
 /** Distance along a unit ray to a body, or -1. Writes the surface normal at the hit. */
 function rayShape(body, o, d, limit, normal) {
     const shape = body.shape, p = body.position, r = body.rotation;
+    if (shape.type === 'compound') {
+        let best = -1, bx = 0, by = 0, bz = 0;
+        for (const part of body.parts) {
+            const distance = rayShape(part, o, d, best < 0 ? limit : best, normal);
+            if (distance < 0 || (best >= 0 && distance >= best))
+                continue;
+            best = distance;
+            bx = normal[0];
+            by = normal[1];
+            bz = normal[2];
+        }
+        normal[0] = bx;
+        normal[1] = by;
+        normal[2] = bz;
+        return best;
+    }
     const raySphere = (cx, cy, cz, radius) => {
         const mx = o[0] - cx, my = o[1] - cy, mz = o[2] - cz, b = mx * d[0] + my * d[1] + mz * d[2], c = mx * mx + my * my + mz * mz - radius * radius;
         if (c > 0 && b > 0)

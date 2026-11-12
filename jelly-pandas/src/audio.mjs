@@ -96,6 +96,7 @@ export function createAudio() {
     pop: [0.06, () => tone(900, 300, 0.07, 0.12)],
     popper: [0.08, () => hiss(3000, 0.12, 0.16, 'highpass')],
     bite: [0.07, () => tone(1200, 600, 0.03, 0.06, 'square')],
+    bonk: [0.06, () => tone(420 + Math.random() * 120, 160, 0.08, 0.1, 'triangle')],
     thud: [0.08, () => hiss(260, 0.12, 0.2)],
     levelup: [0.3, () => [523, 659, 784, 1047].forEach((f, i) => tone(f, f, 0.16, 0.14, 'triangle', i * 0.07))],
     evolve: [0.5, () => [392, 523, 659, 784, 1047, 1319].forEach((f, i) => tone(f, f * 1.01, 0.22, 0.14, 'triangle', i * 0.08))],
@@ -142,8 +143,95 @@ export function createAudio() {
       /* a sound that cannot play is not worth stopping the game for */
     }
   };
+  // ---- music ---------------------------------------------------------------------------
+  // A short tune made of notes scheduled a little ahead of time: bass, a plucked
+  // melody and light drums. `level` 0 is the calm title mix, 1 the run, 2 adds
+  // drive for surges and bosses.
+  const SCALE = [0, 2, 4, 7, 9]; // major pentatonic
+  const BASS = [0, 0, 5, 5, 3, 3, 4, 4]; // one root per bar, as scale degrees of C major
+  const ROOTS = [130.81, 146.83, 164.81, 174.61, 196.0, 220.0, 246.94];
+  const TUNE = [0, 2, 4, 2, 3, 4, 2, 0, 1, 2, 4, 3, 2, 1, 0, -1, 0, 2, 4, 5, 4, 2, 3, 1, 2, 4, 3, 2, 1, 0, 1, -1];
+  let musicGain,
+    musicLevel = -1,
+    nextStep = 0,
+    step = 0;
+  const pitch = (degree, octave) =>
+    261.63 * Math.pow(2, octave + (SCALE[((degree % 5) + 5) % 5] + 12 * Math.floor(degree / 5)) / 12);
+  const note = (frequency, at, seconds, volume, type) => {
+    const oscillator = context.createOscillator(),
+      gain = context.createGain();
+    oscillator.type = type;
+    oscillator.frequency.value = frequency;
+    gain.gain.setValueAtTime(0.0001, at);
+    gain.gain.exponentialRampToValueAtTime(volume, at + 0.012);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+    oscillator.connect(gain).connect(musicGain);
+    oscillator.start(at);
+    oscillator.stop(at + seconds + 0.03);
+  };
+  const drum = (at, frequency, seconds, volume, kind) => {
+    const source = context.createBufferSource(),
+      filter = context.createBiquadFilter(),
+      gain = context.createGain();
+    source.buffer = noise;
+    filter.type = kind;
+    filter.frequency.value = frequency;
+    gain.gain.setValueAtTime(volume, at);
+    gain.gain.exponentialRampToValueAtTime(0.0001, at + seconds);
+    source.connect(filter).connect(gain).connect(musicGain);
+    source.start(at);
+    source.stop(at + seconds);
+  };
+  /** Keep the tune playing at the given level; call every frame. A level below 0 lets it fall silent. */
+  audio.music = (level) => {
+    if (!context || context.state !== 'running') return;
+    if (!musicGain) {
+      musicGain = context.createGain();
+      musicGain.gain.value = 0;
+      musicGain.connect(master);
+    }
+    if (level !== musicLevel) {
+      musicLevel = level;
+      musicGain.gain.setTargetAtTime(audio.muted || level < 0 ? 0 : level === 0 ? 0.35 : 0.5, context.currentTime, 0.4);
+    }
+    if (level < 0 || audio.muted) return;
+    // Sixteenth notes; the tempo rises with the level.
+    const beat = 60 / (level === 2 ? 148 : level === 1 ? 126 : 96) / 4,
+      now = context.currentTime;
+    if (nextStep < now) nextStep = now + 0.05;
+    while (nextStep < now + 0.25) {
+      const bar = Math.floor(step / 16) % BASS.length,
+        inBar = step % 16,
+        at = nextStep;
+      if (inBar % 4 === 0) note(ROOTS[BASS[bar]] / 2, at, beat * 3.6, 0.2, 'triangle');
+      if (level > 0 && inBar % 4 === 2) note(ROOTS[BASS[bar]], at, beat * 1.5, 0.07, 'triangle');
+      if (inBar % 2 === 0) {
+        const degree = TUNE[(step / 2) % TUNE.length] + (BASS[bar] % 2);
+        if (degree >= 0)
+          note(
+            pitch(degree, level === 0 ? 0 : 1),
+            at,
+            beat * (level === 0 ? 3.5 : 1.8),
+            level === 0 ? 0.06 : 0.07,
+            level === 0 ? 'sine' : 'square',
+          );
+      }
+      if (level > 0) {
+        if (inBar % 8 === 0) {
+          note(110, at, 0.14, 0.3, 'sine');
+          drum(at, 140, 0.12, 0.25, 'lowpass');
+        }
+        if (inBar % 8 === 4) drum(at, 1800, 0.1, 0.12, 'bandpass');
+        if (level === 2 || inBar % 4 === 2) drum(at, 7000, 0.03, 0.05, 'highpass');
+      }
+      nextStep += beat;
+      step++;
+    }
+  };
+
   audio.setMuted = (muted) => {
     audio.muted = muted;
+    musicLevel = -2; // the next music() call applies the new volume
   };
   return audio;
 }

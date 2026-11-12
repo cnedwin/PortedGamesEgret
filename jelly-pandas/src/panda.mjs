@@ -7,6 +7,7 @@ import {
   Texture3D,
   createGeometry3D,
   createGlassMaterial3D,
+  createJelly3D,
   createSphereGeometry3D,
   createStandardMaterial3D,
   createUnlitMaterial3D,
@@ -129,6 +130,10 @@ function patternTexture(skin) {
 
 const ball = createSphereGeometry3D({ radius: 1, widthSegments: 28, heightSegments: 18 });
 const smallBall = createSphereGeometry3D({ radius: 1, widthSegments: 14, heightSegments: 10 });
+// How strongly the body glows at rest.
+const GLOW = 0.12;
+const cheekPink = createUnlitMaterial3D({ color: 0xff9fb5, opacity: 0.75, alphaMode: 'blend', depthWrite: false }),
+  shine = createUnlitMaterial3D({ color: 0xffffff, opacity: 0.5, alphaMode: 'blend', depthWrite: false });
 const eyeWhite = createUnlitMaterial3D({ color: 0xffffff }),
   eyeDark = createStandardMaterial3D({ color: 0x14141c, roughness: 0.2 });
 
@@ -144,21 +149,21 @@ export function createPanda(skin, jelly = true) {
     ? createGlassMaterial3D({
         color: skin.body,
         map,
-        roughness: 0.16,
+        roughness: 0.14,
         thickness: 0.7,
         ior: 1.3,
         transmission: 0.85,
-        environmentIntensity: 1.3,
+        environmentIntensity: 1.4,
       })
     : createStandardMaterial3D({ color: skin.body, map, roughness: 0.25, opacity: 0.9, alphaMode: 'blend' });
   const headMaterial = jelly
     ? createGlassMaterial3D({
         color: skin.body,
-        roughness: 0.16,
+        roughness: 0.14,
         thickness: 0.6,
         ior: 1.3,
         transmission: 0.85,
-        environmentIntensity: 1.3,
+        environmentIntensity: 1.4,
       })
     : createStandardMaterial3D({ color: skin.body, roughness: 0.25 });
   const patchMaterial = jelly
@@ -171,26 +176,29 @@ export function createPanda(skin, jelly = true) {
         environmentIntensity: 1.2,
       })
     : createStandardMaterial3D({ color: skin.patch, roughness: 0.3 });
-  if (jelly)
+  if (jelly) {
     for (const material of [bodyMaterial, headMaterial]) {
       material.attenuationColor.set(tint);
       material.attenuationDistance = 1.1;
     }
-  if (jelly) {
     patchMaterial.attenuationColor.set(patchTint);
     patchMaterial.attenuationDistance = 0.5;
   }
   // A faint glow keeps the jelly bright in shade.
-  bodyMaterial.setEmissive(tint);
-  bodyMaterial.emissiveIntensity = 0.12;
-  headMaterial.setEmissive(tint);
-  headMaterial.emissiveIntensity = 0.12;
+  for (const material of [bodyMaterial, headMaterial]) {
+    material.setEmissive(tint);
+    material.emissiveIntensity = GLOW;
+  }
 
+  // root: where the panda stands and which way it faces.
+  // pose: slow, held shapes (crouching to charge a jump, lying down).
+  // pivot: the middle of the body, so a roll spins around it.
   const root = new Object3D(),
-    wobble = new Object3D(),
+    pose = new Object3D(),
     pivot = new Object3D();
-  root.addChild(wobble);
-  wobble.addChild(pivot);
+  root.addChild(pose);
+  pose.addChild(pivot);
+  pivot.setPosition(0, 0.78, 0);
   /** Add one scaled ball to the panda. */
   const piece = (geometry, material, x, y, z, sx, sy = sx, sz = sx, parent = pivot) => {
     const mesh = new Mesh3D(geometry, material);
@@ -200,22 +208,37 @@ export function createPanda(skin, jelly = true) {
     parent.addChild(mesh);
     return mesh;
   };
-  // The pivot sits at the middle of the body so a roll spins around it.
-  pivot.setPosition(0, 0.78, 0);
-  const body = piece(ball, bodyMaterial, 0, -0.14, 0, 0.64, 0.6, 0.58);
+  const detail = (...args) => {
+    const mesh = piece(...args);
+    mesh.castShadow = false;
+    return mesh;
+  };
+  const glowing = [piece(ball, bodyMaterial, 0, -0.14, 0, 0.64, 0.6, 0.58)];
   const head = new Object3D();
   head.setPosition(0, 0.56, 0.04);
   pivot.addChild(head);
-  piece(ball, headMaterial, 0, 0, 0, 0.5, 0.46, 0.46, head);
+  glowing.push(piece(ball, headMaterial, 0, 0, 0, 0.5, 0.46, 0.46, head));
   const earL = piece(smallBall, patchMaterial, -0.36, 0.36, -0.02, 0.17, 0.17, 0.1, head),
     earR = piece(smallBall, patchMaterial, 0.36, 0.36, -0.02, 0.17, 0.17, 0.1, head);
+  // Face: eye patches, eyes that blink, a nose, a small mouth and rosy cheeks.
+  const eyes = [];
   for (const side of [-1, 1]) {
-    const patch = piece(smallBall, patchMaterial, side * 0.19, 0.04, 0.38, 0.13, 0.17, 0.07, head);
+    const patch = piece(smallBall, patchMaterial, side * 0.19, 0.04, 0.38, 0.14, 0.18, 0.07, head);
     patch.setRotation(0, side * 0.35, side * -0.35);
-    piece(smallBall, eyeWhite, side * 0.19, 0.06, 0.445, 0.055, 0.055, 0.03, head).castShadow = false;
-    piece(smallBall, eyeDark, side * 0.185, 0.055, 0.468, 0.03, 0.03, 0.015, head).castShadow = false;
+    const eye = new Object3D();
+    eye.setPosition(side * 0.19, 0.06, 0.445);
+    head.addChild(eye);
+    detail(smallBall, eyeWhite, 0, 0, 0, 0.068, 0.068, 0.03, eye);
+    detail(smallBall, eyeDark, side * -0.006, -0.004, 0.022, 0.04, 0.04, 0.016, eye);
+    detail(smallBall, eyeWhite, side * -0.02, 0.018, 0.036, 0.013, 0.013, 0.006, eye); // catch-light
+    eyes.push(eye);
+    detail(smallBall, cheekPink, side * 0.3, -0.09, 0.36, 0.07, 0.045, 0.02, head);
   }
-  piece(smallBall, eyeDark, 0, -0.07, 0.455, 0.06, 0.04, 0.035, head).castShadow = false; // nose
+  detail(smallBall, eyeDark, 0, -0.06, 0.458, 0.055, 0.036, 0.032, head); // nose
+  const mouth = detail(smallBall, eyeDark, 0, -0.135, 0.44, 0.045, 0.014, 0.012, head);
+  // A soft highlight on the brow and the belly sells the wet, glossy surface.
+  detail(smallBall, shine, -0.17, 0.26, 0.3, 0.1, 0.05, 0.03, head).setRotation(-0.6, -0.4, 0.4);
+  detail(smallBall, shine, -0.24, 0.12, 0.42, 0.13, 0.07, 0.03).setRotation(-0.4, -0.5, 0.5);
   const armL = new Object3D(),
     armR = new Object3D(),
     legL = new Object3D(),
@@ -229,78 +252,95 @@ export function createPanda(skin, jelly = true) {
   piece(smallBall, patchMaterial, 0, -0.14, 0, 0.16, 0.26, 0.16, armR);
   piece(smallBall, patchMaterial, 0, -0.1, 0.03, 0.2, 0.17, 0.24, legL);
   piece(smallBall, patchMaterial, 0, -0.1, 0.03, 0.2, 0.17, 0.24, legR);
-  piece(smallBall, headMaterial, 0, -0.3, -0.55, 0.13); // tail
+  glowing.push(piece(smallBall, headMaterial, 0, -0.3, -0.55, 0.13)); // tail
+
+  // The engine's jelly reshapes every mesh under the panda: it flattens along
+  // each knock, springs back and lets the head trail behind sudden moves.
+  const wobble = createJelly3D(root, {
+    stiffness: 3.1,
+    damping: 0.2,
+    squash: 0.45,
+    sensitivity: 0.035,
+    wobble: 0.05,
+    height: 1.75,
+    base: 0,
+    idle: 0.018,
+    idleRate: 0.55,
+  });
+  // The jelly gave each mesh its own material; these are the ones that flash when hurt.
+  const glowMaterials = glowing.map((mesh) => mesh.material);
+  const UP = [0, 1, 0],
+    knock = [0, 0, 0];
 
   const panda = {
     node: root,
     skin,
-    body,
-    materials: [bodyMaterial, headMaterial, patchMaterial],
-    // Spring state: `squash` is the vertical stretch, 1 at rest.
-    squash: 1,
-    squashV: 0,
-    lean: 0,
-    leanV: 0,
+    jelly: wobble,
+    // Held pose: vertical stretch, 1 at rest.
+    stretch: 1,
     roll: 0,
     step: 0,
     lie: 0,
     yaw: 0,
-    lastY: 0,
-    lastVy: 0,
-    /** Push the jelly: positive stretches it tall, negative flattens it. */
+    blink: 2 + Math.random() * 3,
+    /** Knock the jelly up (positive) or down (negative); `amount` is a change of speed in metres per second. */
     kick(amount) {
-      this.squashV += amount;
+      wobble.impact(UP, amount);
+    },
+    /** Knock the jelly along the ground, away from a blow at (fromX, fromZ). */
+    shove(fromX, fromZ, x, z, amount) {
+      knock[0] = x - fromX;
+      knock[2] = z - fromZ;
+      if (knock[0] || knock[2]) wobble.impact(knock, amount);
     },
     /**
      * Follow a simulated panda. `state` carries x, y, z, facing, speedNow,
      * grounded, rolling, slamming, charge, down, hurtFlash and iframe.
      */
     update(dt, state, time) {
-      const vy = (state.y - this.lastY) / Math.max(dt, 1e-3);
-      this.lastY = state.y;
-      // Rest shape: flattened while charging a jump, stretched by fast vertical motion.
-      let rest = 1 - Math.min(0.38, state.charge * 0.5) + Math.max(-0.22, Math.min(0.3, vy * 0.018));
-      if (state.slamming) rest = 1.3;
-      if (state.down) rest = 0.55;
-      const stiffness = 190,
-        damping = 9;
-      this.squashV += ((rest - this.squash) * stiffness - this.squashV * damping) * dt;
-      // A sudden stop (landing) or start (jump) kicks the spring.
-      const jolt = vy - this.lastVy;
-      if (Math.abs(jolt) > 6) this.squashV -= Math.sign(jolt) * Math.min(4.5, Math.abs(jolt) * 0.16);
-      this.lastVy = vy;
-      this.squash = Math.min(1.6, Math.max(0.45, this.squash + this.squashV * dt));
-      const wide = 1 / Math.sqrt(this.squash);
-      wobble.setScale(wide, this.squash, wide);
+      // Held shapes ease in; everything springy is left to the jelly.
+      const rest = state.down ? 0.6 : state.slamming ? 1.28 : 1 - Math.min(0.4, state.charge * 0.55);
+      this.stretch += (rest - this.stretch) * Math.min(1, dt * 16);
+      const wide = 1 / Math.sqrt(this.stretch);
+      pose.setScale(wide, this.stretch, wide);
       // Turn toward the heading the short way round.
       let turn = state.facing - this.yaw;
       turn = Math.atan2(Math.sin(turn), Math.cos(turn));
       this.yaw += turn * Math.min(1, dt * 14);
       root.setPosition(state.x, state.y, state.z);
+      root.setRotation(0, this.yaw, 0);
       const moving = state.grounded && state.speedNow > 0.8 && !state.down;
       this.step += dt * (moving ? 6 + state.speedNow * 0.9 : 0);
       const swing = moving ? Math.sin(this.step) : 0,
-        sway = moving ? Math.sin(this.step) * 0.07 : Math.sin(time * 1.8) * 0.02;
+        sway = moving ? Math.sin(this.step) * 0.07 : Math.sin(time * 1.8) * 0.02,
+        bob = moving ? Math.abs(Math.cos(this.step)) * 0.06 : 0;
       this.lie += ((state.down ? 1 : 0) - this.lie) * Math.min(1, dt * 6);
       if (state.rolling) this.roll += dt * state.speedNow * 1.6;
       else this.roll *= Math.max(0, 1 - dt * 12);
-      root.setRotation(0, this.yaw, 0);
-      pivot.setRotation(this.roll + this.lie * -1.45, 0, sway);
-      pivot.setPosition(0, 0.78 - this.lie * 0.42, 0);
-      head.setRotation(Math.sin(time * 2.3) * 0.04 - (state.charge > 0.1 ? 0.2 : 0), 0, -sway * 1.5);
+      // Lean into the run and tip forward for a dive.
+      const lean = state.slamming ? 0.5 : moving ? Math.min(0.22, state.speedNow * 0.022) : 0;
+      pivot.setRotation(this.roll + lean + this.lie * -1.45, 0, sway);
+      pivot.setPosition(0, 0.78 + bob - this.lie * 0.42, 0);
+      head.setRotation(Math.sin(time * 2.3) * 0.04 - (state.charge > 0.1 ? 0.2 : 0) - lean * 0.6, 0, -sway * 1.5);
       const reach = state.slamming ? -2.6 : state.grounded ? 0 : -1.3;
       armL.setRotation(swing * 0.8 + reach, 0, -0.25 - (state.grounded ? 0 : 0.6));
       armR.setRotation(-swing * 0.8 + reach, 0, 0.25 + (state.grounded ? 0 : 0.6));
       legL.setRotation(-swing * 0.7, 0, 0);
       legR.setRotation(swing * 0.7, 0, 0);
-      earL.setRotation(0, 0, 0.2 + this.squashV * 0.05);
-      earR.setRotation(0, 0, -0.2 - this.squashV * 0.05);
-      // Flash while hurt, blink while briefly untouchable, fade when down.
-      const flash = state.hurtFlash > 0 ? 1.4 : 0.12,
-        hidden = !state.down && state.iframe > 0.5 && Math.floor(time * 14) % 2 === 0;
-      bodyMaterial.emissiveIntensity = flash;
-      headMaterial.emissiveIntensity = flash;
-      root.visible = !hidden;
+      earL.setRotation(0, 0, 0.2 + wobble.amount * 0.8);
+      earR.setRotation(0, 0, -0.2 - wobble.amount * 0.8);
+      // Eyes: a blink every few seconds, squeezed shut while hurt or down, wide open in the air.
+      this.blink -= dt;
+      if (this.blink < -0.12) this.blink = 2 + Math.random() * 4;
+      const shut = state.down || state.hurtFlash > 0 || this.blink < 0,
+        open = shut ? 0.12 : state.grounded ? 1 : 1.2;
+      for (const eye of eyes) eye.setScale(1, open, 1);
+      mouth.setScale(state.grounded && !shut ? 0.045 : 0.035, state.grounded && !shut ? 0.014 : 0.035, 0.012);
+      // Flash while hurt, blink while briefly untouchable.
+      const glow = state.hurtFlash > 0 ? 1.4 : GLOW;
+      for (const material of glowMaterials) material.emissiveIntensity = glow;
+      root.visible = state.down || !(state.iframe > 0.5 && Math.floor(time * 14) % 2 === 0);
+      if (dt > 0) wobble.update(dt);
     },
   };
   return panda;

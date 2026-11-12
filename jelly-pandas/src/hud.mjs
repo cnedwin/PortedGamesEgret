@@ -53,6 +53,8 @@ export function createHud(root, options = {}) {
     bossName = el('span', '', bossBar),
     bossTrack = el('div', 'track', bossBar),
     bossFill = el('i', '', bossTrack);
+  // A red edge that flashes when the player is hurt and pulses while health is low.
+  const vignette = el('div', 'vignette', play);
   const announce = el('div', 'announce', play);
   const party = el('div', 'party', play),
     toyRow = el('div', 'toys', play),
@@ -147,15 +149,11 @@ export function createHud(root, options = {}) {
       handlers.onChange?.();
       hud.showTitle(state, handlers);
     });
-    const jelly = el(
-      'button',
-      'pill',
-      foot,
-      (zh() ? '果冻质感：' : 'Jelly look: ') + (state.jelly ? (zh() ? '开' : 'on') : zh() ? '关' : 'off'),
-    );
-    jelly.type = 'button';
-    jelly.addEventListener('click', () => {
-      state.jelly = !state.jelly;
+    // Picture quality cycles high, medium, low; lower settings run faster.
+    const quality = el('button', 'pill', foot, `${t('quality')}${t('quality_' + state.quality)}`);
+    quality.type = 'button';
+    quality.addEventListener('click', () => {
+      state.quality = { high: 'medium', medium: 'low', low: 'high' }[state.quality] ?? 'high';
       handlers.onChange?.();
       hud.showTitle(state, handlers);
     });
@@ -284,6 +282,10 @@ export function createHud(root, options = {}) {
     xpFill.style.width = `${Math.min(100, (game.xp / game.xpNeed) * 100)}%`;
     levelText.textContent = `${t('level')} ${game.level}`;
     hint.classList.toggle('hidden', captured || game.t > 6);
+    vignette.classList.toggle('low', !human.down && human.hp < human.maxHp * 0.3);
+    // The clock turns red in the ten seconds before a boss.
+    const untilBoss = RUN.bossTimes[game.bossIndex] - game.t;
+    timer.classList.toggle('warn', untilBoss > 0 && untilBoss < 10);
     // Party bars are rebuilt only when the line-up changes.
     const signature = game.pandas.map((panda) => panda.skin).join(',') + lang;
     if (signature !== partySignature) {
@@ -380,6 +382,13 @@ export function createHud(root, options = {}) {
           if (event.key === 'bossIncoming') say(`${name(event.name)} ${t('bossIncoming')}`, now, 3.5, 'danger');
           else if (event.key === 'bossDown') say(`${name(event.name)} ✔`, now, 3, 'good');
           else say(t(event.key), now, 2.6, event.key === 'surge' ? 'danger' : '');
+          break;
+        case 'hurt':
+          if (game.pandas[event.panda].human) {
+            vignette.classList.remove('hit');
+            void vignette.offsetWidth;
+            vignette.classList.add('hit');
+          }
           break;
         case 'down':
           say(`${name(SKINS[game.pandas[event.panda].skin])} ${t('down')}`, now, 3, 'danger');

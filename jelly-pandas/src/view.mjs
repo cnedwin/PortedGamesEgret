@@ -4,6 +4,7 @@
 import {
   InstancedMesh3D,
   Mesh3D,
+  Object3D,
   Texture3D,
   createAmbientLight3D,
   createBoxGeometry3D,
@@ -16,6 +17,7 @@ import {
   createHemisphereLight3D,
   createOctahedronGeometry3D,
   createParticleEmitter3D,
+  createTrail3D,
   createWater3D,
   createPlaneGeometry3D,
   createRingGeometry3D,
@@ -204,7 +206,8 @@ function dotTexture() {
  */
 export function createView(scene, options = {}) {
   const jelly = options.jelly ?? true;
-  const view = { pandas: [], bossNodes: new Map(), rings: [], time: 0, shake: 0, jelly };
+  // `shake` and `freeze` are requests to the frame loop: camera shake strength and seconds of hit-stop.
+  const view = { pandas: [], bossNodes: new Map(), rings: [], time: 0, shake: 0, freeze: 0, jelly };
 
   // ---- sky, light, island, sea -------------------------------------------------------
   const sky = createGradientCubeTexture3D([60, 140, 250], [185, 225, 255], [70, 170, 150], 64);
@@ -239,11 +242,14 @@ export function createView(scene, options = {}) {
   const mirror = sea.reflection?.texture;
   sea.setPosition(0, ISLAND.sea, 0);
   scene.addChild(sea);
-  view.reflect = options.reflect ?? true;
-  if (!view.reflect) {
-    sea.material.reflectionMap = undefined;
+  view.reflect = true;
+  /** Turn the water's mirror image on or off. */
+  view.setReflect = (on) => {
+    if (view.reflect === on) return;
+    view.reflect = on;
+    sea.material.reflectionMap = on ? mirror : undefined;
     sea.material.touch();
-  }
+  };
   /** Draw the mirror image the water shows; call before the main view is drawn. */
   view.renderReflection = (renderer, camera) => {
     if (view.reflect && mirror) sea.renderReflection(renderer, scene, camera);
@@ -319,6 +325,122 @@ export function createView(scene, options = {}) {
     (i) => [...shore(i, 10, 38, 2.0), 0.9 + (i % 3) * 0.35, i * 0.9],
     (i) => blockColors[i % 5],
   );
+
+  // Grass tufts, flowers, rocks and clouds: small things that make the island feel lived in.
+  // Their places come from a fixed sequence so the island looks the same every visit.
+  let seed = 12345;
+  const chance = () => {
+    seed = (seed * 1664525 + 1013904223) >>> 0;
+    return seed / 4294967296;
+  };
+  /** A random spot on dry land within `reach` of the middle, as [x, z]. */
+  const onLand = (reach, least = 0.25) => {
+    for (;;) {
+      const angle = chance() * 6.283,
+        distance = Math.sqrt(chance()) * reach,
+        x = Math.cos(angle) * distance,
+        z = Math.sin(angle) * distance;
+      if (groundHeight(x, z) > least) return [x, z];
+    }
+  };
+  const tuftShape = buildShape(
+    [0, 1, 2, 3, 4].map((i) => [
+      cone,
+      [Math.cos(i * 1.3) * 0.09, 0.16, Math.sin(i * 1.3) * 0.09],
+      [0.035, 0.32 + (i % 3) * 0.08, 0.035],
+      WHITE,
+      [Math.sin(i * 1.3) * 0.35, 0, -Math.cos(i * 1.3) * 0.35],
+    ]),
+  );
+  const flowerShape = buildShape([
+    [cylinder, [0, 0.13, 0], [0.015, 0.26, 0.015], [0.35, 0.7, 0.3]],
+    ...[0, 1, 2, 3, 4].map((i) => [
+      sphere,
+      [Math.cos(i * 1.257) * 0.07, 0.28, Math.sin(i * 1.257) * 0.07],
+      [0.055, 0.025, 0.055],
+      WHITE,
+    ]),
+    [sphere, [0, 0.29, 0], 0.04, [1, 0.85, 0.2]],
+  ]);
+  const rockShape = buildShape([
+    [sphere, [0, 0.25, 0], [0.6, 0.38, 0.5], [0.62, 0.62, 0.66]],
+    [sphere, [0.4, 0.15, 0.2], [0.3, 0.22, 0.28], [0.55, 0.55, 0.6]],
+  ]);
+  const cloudShape = buildShape([
+    [sphere, [0, 0, 0], [5, 2.2, 3], WHITE],
+    [sphere, [3.8, -0.3, 0.6], [3.4, 1.6, 2.4], WHITE],
+    [sphere, [-3.6, -0.2, -0.4], [3.6, 1.8, 2.6], WHITE],
+    [sphere, [1, 1.2, 0], [2.8, 1.6, 2.2], WHITE],
+  ]);
+  const scatter = (shape, material, count, fill, shadow = false) => {
+    const mesh = new InstancedMesh3D(shape, material, count);
+    mesh.castShadow = shadow;
+    mesh.frustumCulled = false;
+    for (let i = 0; i < count; i++) fill(mesh, i);
+    mesh.count = count;
+    scene.addChild(mesh);
+    return mesh;
+  };
+  const leafy = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.9 });
+  scatter(tuftShape, leafy, 1300, (mesh, i) => {
+    const [x, z] = onLand(36.5),
+      shade = 0.85 + chance() * 0.4;
+    mesh.setTransformAt(i, [x, groundHeight(x, z) - 0.02, z], yawQuat(chance() * 6.28), 0.55 + chance() * 0.6);
+    mesh.setColorAt(i, linear(0.36) * shade, linear(0.78) * shade, linear(0.32) * shade);
+  });
+  const petals = [
+    [1, 1, 1],
+    [1, 0.7, 0.8],
+    [1, 0.9, 0.4],
+    [0.75, 0.7, 1],
+    [1, 0.55, 0.5],
+  ].map(lin);
+  scatter(flowerShape, leafy, 320, (mesh, i) => {
+    const [x, z] = onLand(35),
+      petal = petals[i % petals.length];
+    mesh.setTransformAt(i, [x, groundHeight(x, z) - 0.02, z], yawQuat(chance() * 6.28), 0.9 + chance() * 0.7);
+    mesh.setColorAt(i, petal[0], petal[1], petal[2]);
+  });
+  scatter(
+    rockShape,
+    createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.85, flatShading: true }),
+    16,
+    (mesh, i) => {
+      const [x, z] = shore(i, 16, 37.4, 0.7);
+      mesh.setTransformAt(i, [x, groundHeight(x, z) - 0.1, z], yawQuat(i * 2.3), 0.8 + (i % 4) * 0.35);
+    },
+    true,
+  );
+  // Clouds ride a slowly turning ring far above the sea.
+  const sky3 = new Object3D();
+  scene.addChild(sky3);
+  const clouds = new InstancedMesh3D(
+    cloudShape,
+    createUnlitMaterial3D({
+      color: 0xffffff,
+      vertexColors: true,
+      opacity: 0.92,
+      alphaMode: 'blend',
+      depthWrite: false,
+      fog: false,
+    }),
+    18,
+  );
+  clouds.castShadow = false;
+  clouds.frustumCulled = false;
+  for (let i = 0; i < 18; i++) {
+    const angle = (i / 18) * 6.283 + chance(),
+      distance = 90 + chance() * 110;
+    clouds.setTransformAt(
+      i,
+      [Math.cos(angle) * distance, 34 + chance() * 30, Math.sin(angle) * distance],
+      yawQuat(angle + 1.57),
+      1.6 + chance() * 2.4,
+    );
+  }
+  clouds.count = 18;
+  sky3.addChild(clouds);
+  view.sky = sky3;
 
   // ---- candy horde: one instanced mesh per kind -------------------------------------------
   const shapes = enemyShapes(),
@@ -525,6 +647,73 @@ export function createView(scene, options = {}) {
   const party = (x, y, z, count) => {
     for (let i = 0; i < 3; i++) burst(confetti[pick++ % confetti.length], x, y, z, Math.ceil(count / 3), 0.4);
   };
+  // Squashed candy bursts into blobs of its own colour.
+  const goo = ENEMIES.map((def) =>
+    emitter({
+      capacity: 400,
+      startColor: def.color,
+      endColor: def.color,
+      startSize: 0.34,
+      endSize: 0.1,
+      lifetime: [0.45, 0.95],
+      speed: [3, 8],
+      gravity: [0, -18, 0],
+      drag: 0.6,
+      direction: [0, 1, 0],
+      spread: 1.2,
+    }),
+  );
+  const stars = emitter({
+    startColor: 0xffffff,
+    endColor: 0xfff1a8,
+    blending: 'additive',
+    startSize: 0.5,
+    endSize: 0.02,
+    lifetime: [0.2, 0.45],
+    speed: [6, 14],
+    gravity: [0, 0, 0],
+    drag: 3,
+  });
+
+  // ---- trails behind fast things --------------------------------------------------------------
+  // A trail is claimed by whatever is moving (a shot, a flail ball, a panda) and
+  // goes back to the pool once its owner is gone and the ribbon has faded.
+  const trails = [],
+    trailOf = new Map();
+  const trailFor = (owner, color, width, lifetime) => {
+    let entry = trailOf.get(owner);
+    if (!entry) {
+      entry = trails.find((candidate) => !candidate.owner && candidate.trail.pointCount === 0);
+      if (!entry) {
+        if (trails.length >= 40) return undefined;
+        const trail = createTrail3D({ points: 40, minDistance: 0.12, blending: 'additive', opacity: 0.75, endOpacity: 0 });
+        trail.frustumCulled = false;
+        trail.castShadow = false;
+        scene.addChild(trail);
+        entry = { trail, owner: undefined, seen: false };
+        trails.push(entry);
+      }
+      entry.owner = owner;
+      entry.trail.clear();
+      entry.trail.color.set(color);
+      entry.trail.endColor.set(color);
+      entry.trail.width = width;
+      entry.trail.lifetime = lifetime;
+      trailOf.set(owner, entry);
+    }
+    entry.seen = true;
+    return entry.trail;
+  };
+  const TRAIL = Object.fromEntries(
+    Object.entries({
+      rocket: [1, 0.55, 0.2],
+      bowl: [0.25, 0.35, 0.5],
+      yoyo: [0.3, 1, 0.95],
+      top: [1, 0.85, 0.3],
+      flail: [1, 0.5, 0.75],
+      bullet: [1, 0.25, 0.6],
+    }).map(([key, color]) => [key, lin(color)]),
+  );
 
   // ---- props follow their rigid bodies ---------------------------------------------------------
   const stripes = ['#ff5f6d', '#ffffff', '#3fa7ff', '#ffffff', '#ffd23f', '#ffffff'].map((css) =>
@@ -572,7 +761,7 @@ export function createView(scene, options = {}) {
       scene.addChild(model.node);
       gameNodes.push(model.node);
       view.pandas.push(model);
-      model.lastY = panda.y;
+      model.tint = rgb(SKINS[panda.skin].body);
       model.yaw = panda.facing;
     }
     for (const prop of game.props) {
@@ -617,6 +806,7 @@ export function createView(scene, options = {}) {
     view.time += dt;
     const time = view.time;
     sea.update(dt);
+    view.sky.setRotation(0, time * 0.006, 0);
     game.pandas.forEach((panda, index) => view.pandas[index]?.update(dt, panda, time));
 
     // The horde: hop along, tumble in the air, flash white when hit.
@@ -638,9 +828,11 @@ export function createView(scene, options = {}) {
       position[0] = e.x;
       position[1] = e.y + hop * 0.22 * size;
       position[2] = e.z;
-      scale[0] = scale[2] = (size / Math.sqrt(squash)) * (e.mode === 1 ? 1 + Math.sin(time * 40) * 0.08 : 1);
-      scale[1] = size * squash;
-      if (e.air && !e.trapped) {
+      // A hit squeezes the candy wide and flat for an instant.
+      const punch = e.flash > 0 ? 1 + e.flash * 2.6 : 1;
+      scale[0] = scale[2] = (size / Math.sqrt(squash)) * (e.mode === 1 ? 1 + Math.sin(time * 40) * 0.08 : 1) * punch;
+      scale[1] = (size * squash) / punch;
+      if ((e.air || e.knockT > 0.12) && !e.trapped) {
         const spin = time * 9 + e.phase;
         quat[0] = Math.sin(spin / 2);
         quat[1] = 0;
@@ -702,15 +894,20 @@ export function createView(scene, options = {}) {
       switch (shot.kind) {
         case 'glob':
         case 'bomblet':
-        case 'bowl':
           putBall(shot.x, shot.y, shot.z, shot.r, SHOT_COLORS[shot.kind]);
+          break;
+        case 'bowl':
+          putBall(shot.x, shot.y, shot.z, shot.r, SHOT_COLORS.bowl);
+          trailFor(shot, TRAIL.bowl, shot.r * 0.9, 0.22)?.push(shot.x, shot.y, shot.z);
           break;
         case 'rocket':
           putBall(shot.x, shot.y, shot.z, 0.22, SHOT_COLORS.rocket, 2.6);
+          trailFor(shot, TRAIL.rocket, 0.45, 0.5)?.push(shot.x, shot.y, shot.z);
           if (Math.random() < 0.6) burst(sparks, shot.x, shot.y - 0.3, shot.z, 1, 0.1);
           break;
         case 'yoyo':
           putBall(shot.x, shot.y, shot.z, shot.phase === 1 ? 0.7 : shot.r, SHOT_COLORS.yoyo);
+          trailFor(shot, TRAIL.yoyo, 0.4, 0.22)?.push(shot.x, shot.y, shot.z);
           chain(shot.panda.x, shot.panda.y + 0.9, shot.panda.z, shot.x, shot.y, shot.z, 0.55, 0.06, WHITE);
           break;
         case 'pellet':
@@ -764,6 +961,7 @@ export function createView(scene, options = {}) {
             position[1] = shot.y;
             position[2] = shot.z;
             tops.setTransformAt(topCount++, position, yawQuat(time * 25 + shot.id), shot.r);
+            trailFor(shot, TRAIL.top, shot.r * 0.9, 0.25)?.push(shot.x, shot.y + 0.3, shot.z);
           }
           break;
         default:
@@ -775,10 +973,33 @@ export function createView(scene, options = {}) {
         if (toy.key !== 'flail' || !toy.balls || panda.down) continue;
         for (const ball of toy.balls) {
           putBall(ball.x, ball.y, ball.z, ball.r, FLAIL);
+          trailFor(ball, TRAIL.flail, ball.r * 1.6, 0.22)?.push(ball.x, ball.y, ball.z);
           chain(panda.x, panda.y + 0.9, panda.z, ball.x, ball.y, ball.z, 0.4, 0.09, CHAIN);
         }
       }
-    for (const bullet of game.bullets) putBall(bullet.x, bullet.y, bullet.z, 0.34, BULLET);
+    for (const bullet of game.bullets) {
+      putBall(bullet.x, bullet.y, bullet.z, 0.34, BULLET);
+      trailFor(bullet, TRAIL.bullet, 0.45, 0.25)?.push(bullet.x, bullet.y, bullet.z);
+    }
+    // Pandas streak when they roll, dive or fly high.
+    game.pandas.forEach((panda, index) => {
+      if (
+        panda.down ||
+        !(panda.rolling || panda.slamming || (!panda.grounded && panda.speedNow + Math.abs(panda.motor.velocity[1]) > 11))
+      )
+        return;
+      trailFor(panda, view.pandas[index].tint, 0.95, 0.3)?.push(panda.x, panda.y + 0.8, panda.z);
+    });
+    // Trails whose owner is gone fade out and return to the pool.
+    for (const entry of trails) {
+      if (entry.owner && !entry.seen) {
+        trailOf.delete(entry.owner);
+        entry.owner = undefined;
+      }
+      entry.seen = false;
+      entry.trail.update(dt);
+      entry.trail.visible = entry.trail.pointCount > 1;
+    }
     balls.count = ballCount;
     bubbles.count = bubbleCount;
     puddles.count = puddleCount;
@@ -859,40 +1080,58 @@ export function createView(scene, options = {}) {
 
   /** Turn the simulation's events into effects. Returns nothing; sound and text are handled elsewhere. */
   view.consume = (events) => {
-    let hits = 0;
+    let hits = 0,
+      deaths = 0;
     for (const event of events) {
       const { x, y, z } = event;
       switch (event.type) {
         case 'hit':
-          if (hits++ < 10) burst(sparks, x, y - 0.3, z, event.crit ? 5 : 2, 0.2);
+          if (hits++ < 10) burst(event.crit || event.big ? stars : sparks, x, y - 0.3, z, event.crit ? 6 : 2, 0.2);
+          break;
+        case 'bonk':
+          burst(stars, x, y, z, 3, 0.2);
           break;
         case 'death':
-          party(x, y, z, event.boss ? 240 : 9);
           if (event.boss) {
+            party(x, y, z, 240);
             ring(x, y, z, 14, 0.9, [1, 0.9, 0.5]);
+            ring(x, y, z, 22, 1.4, [1, 1, 1]);
             view.shake = 1;
+            view.freeze = Math.max(view.freeze, 0.3);
+          } else {
+            // Blobs of the candy's own colour fly the way it was moving.
+            const blobs = goo[event.kind];
+            blobs.direction[0] = event.vx * 0.15;
+            blobs.direction[1] = 1;
+            blobs.direction[2] = event.vz * 0.15;
+            burst(blobs, x, y, z, 7 + event.radius * 8, event.radius * 0.6);
+            if (deaths++ < 3) party(x, y, z, 3);
           }
           break;
         case 'slam':
           ring(x, y, z, event.radius, 0.45, [1, 1, 1]);
-          burst(dust, x, y + 0.2, z, 26, event.radius * 0.5);
-          view.shake = Math.max(view.shake, 0.55);
-          view.pandas[event.panda]?.kick(-3);
+          ring(x, y, z, event.radius * 0.6, 0.3, [1, 0.95, 0.6], 0.2);
+          burst(dust, x, y + 0.2, z, 30, event.radius * 0.5);
+          burst(stars, x, y + 0.3, z, 14, event.radius * 0.3);
+          view.shake = Math.max(view.shake, 0.6);
+          view.freeze = Math.max(view.freeze, 0.07);
+          view.pandas[event.panda]?.kick(-10);
           break;
         case 'land':
           burst(dust, x, y + 0.1, z, 6, 0.5);
           break;
         case 'jump':
           burst(dust, x, y + 0.1, z, 4 + event.power * 10, 0.4);
-          view.pandas[event.panda]?.kick(2 + event.power * 3);
+          view.pandas[event.panda]?.kick(4 + event.power * 6);
           break;
         case 'bump':
           burst(dust, x, y + 0.4, z, 8, 0.4);
-          view.pandas[event.panda]?.kick(2.5);
+          view.pandas[event.panda]?.kick(4);
           break;
         case 'hurt':
-          view.pandas[event.panda]?.kick(-4);
-          view.shake = Math.max(view.shake, 0.3);
+          view.pandas[event.panda]?.kick(-7);
+          view.shake = Math.max(view.shake, 0.35);
+          view.freeze = Math.max(view.freeze, 0.05);
           break;
         case 'splash':
           burst(spray, x, y, z, 26, event.radius * 0.4);
@@ -910,7 +1149,7 @@ export function createView(scene, options = {}) {
           break;
         case 'ring':
           ring(x, y, z, event.radius, event.radius / event.speed, event.lift ? [1, 0.8, 0.3] : [0.6, 0.9, 1], 0.5);
-          view.pandas[event.panda ?? 0]?.kick(3);
+          view.pandas[event.panda ?? 0]?.kick(5);
           break;
         case 'inhale':
           ring(x, y, z, 0.6, 0.4, [0.7, 1, 0.9], event.radius);
@@ -919,6 +1158,7 @@ export function createView(scene, options = {}) {
           ring(x, y, z, event.radius, 0.5, [1, 0.5, 0.3]);
           burst(dust, x, y + 0.2, z, 40, 2.5);
           view.shake = 1;
+          view.freeze = Math.max(view.freeze, 0.1);
           break;
         case 'spring':
           ring(x, y, z, event.radius, 0.3, [1, 0.9, 0.3]);

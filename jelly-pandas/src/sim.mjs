@@ -13,6 +13,11 @@ import { BOSSES, CHARMS, CHARM_BY_KEY, ENEMIES, RUN, SKINS, TOYS, TOY_BY_KEY, ex
 import { ISLAND, clampToLand, createIslandGeometry, groundHeight, isWater } from './island.mjs';
 import { fireToy, updateShots, updateToyState } from './toys.mjs';
 
+// Collision layers: pandas walk through the horde, everything else collides.
+const LAYER_GROUND = 1,
+  LAYER_PROP = 2,
+  LAYER_ENEMY = 4,
+  ENEMY_MASK = LAYER_GROUND | LAYER_PROP | LAYER_ENEMY;
 const GRAVITY = 24,
   PANDA_RADIUS = 0.62,
   PANDA_HEIGHT = 1.7;
@@ -41,7 +46,12 @@ export function createGame(options = {}) {
   const random = createRandom(options.seed ?? 20261112);
   const world = createPhysicsWorld3D({ gravity: [0, -GRAVITY, 0] });
   const islandGeometry = options.islandGeometry ?? createIslandGeometry();
-  world.createBody({ type: 'static', shape: { type: 'mesh', mesh: createMeshShape3D(islandGeometry) }, friction: 0.9 });
+  world.createBody({
+    type: 'static',
+    shape: { type: 'mesh', mesh: createMeshShape3D(islandGeometry) },
+    friction: 0.9,
+    layer: LAYER_GROUND,
+  });
 
   const game = {
     random,
@@ -164,8 +174,9 @@ export function createGame(options = {}) {
       gravity: GRAVITY,
       acceleration: 70,
       airControl: 0.35,
-      pushForce: 30,
+      pushForce: 70,
       stepHeight: 0.35,
+      mask: LAYER_GROUND | LAYER_PROP,
     });
     const skin = SKINS[member.skin % SKINS.length];
     const panda = {
@@ -376,30 +387,44 @@ export function createGame(options = {}) {
   game.addExperience = addExperience;
 
   // ---- enemies ----------------------------------------------------------------------
+  // Every enemy is a rigid sphere in the physics world, so the horde piles up,
+  // gets shoved by props and by each other, and flies when it is thrown. The
+  // game steers a body by nudging its speed and reads back where it ended up.
+  /** Put an enemy on the island. `more` may mark it elite, make it a boss or drop it from the air. */
   function spawnEnemy(kind, x, z, more = {}) {
     const def = more.boss ?? ENEMIES[kind],
       scale = 1 + (game.t / 60) * 0.32 + (game.pandas.length - 1) * 0.4;
     const elite = !!more.elite,
-      hp = def.hp * (more.boss ? 1 + (game.pandas.length - 1) * 1.5 : scale * (elite ? 14 : 1));
+      hp = def.hp * (more.boss ? 1 + (game.pandas.length - 1) * 1.5 : scale * (elite ? 14 : 1)),
+      radius = def.radius * (elite ? 1.7 : 1),
+      mass = def.mass * (elite ? 4 : 1),
+      y = more.y ?? groundHeight(x, z);
     const enemy = {
       id: game.nextId++,
       kind,
       def,
       boss: more.boss,
       elite,
+      // Position of the feet and current speed, copied from the body every step.
       x,
-      y: more.y ?? groundHeight(x, z),
+      y,
       z,
       vx: 0,
       vy: more.vy ?? 0,
       vz: 0,
       hp,
       maxHp: hp,
-      r: def.radius * (elite ? 1.7 : 1),
-      mass: def.mass * (elite ? 4 : 1),
+      r: radius,
+      mass,
       speed: def.speed * (0.9 + random() * 0.2),
       touch: def.touch * (1 + (game.t / 900) * 0.8) * (elite ? 1.6 : 1),
+      // `air` is true from the moment it is thrown until it comes to rest.
       air: !!more.vy,
+      airT: 0,
+      fall: 0,
+      knockT: 0,
+      bowlT: 0,
+      wasTrapped: false,
       stun: 0,
       slow: 0,
       attackCd: 0.4,
@@ -419,11 +444,53 @@ export function createGame(options = {}) {
       rollT: 0,
       yaw: 0,
       summoned: false,
+      body: undefined,
     };
+    enemy.body = world.createBody({
+      shape: { type: 'sphere', radius },
+      position: [x, y + radius, z],
+      mass,
+      friction: 0.1,
+      restitution: more.boss ? 0 : 0.3,
+      fixedRotation: true,
+      layer: LAYER_ENEMY,
+      mask: ENEMY_MASK,
+      userData: enemy,
+    });
+    if (more.vy) enemy.body.setLinearVelocity(0, more.vy, 0);
     game.enemies.push(enemy);
     return enemy;
   }
   game.spawnEnemy = spawnEnemy;
+
+  /** Change an enemy's speed by (dvx, dvz) and let it slide for a moment before it steers again. */
+  game.shove = (enemy, dvx, dvz, hold = 0.15) => {
+    if (enemy.dead || enemy.trapped) return;
+    const body = enemy.body,
+      v = body.linearVelocity;
+    body.wake();
+    body.setLinearVelocity(v[0] + dvx, v[1], v[2] + dvz);
+    enemy.knockT = Math.max(enemy.knockT, hold);
+  };
+  /** Throw an enemy upward; it counts as in the air until it comes to rest. */
+  function launch(enemy, speed) {
+    const body = enemy.body,
+      v = body.linearVelocity;
+    body.wake();
+    body.setLinearVelocity(v[0], Math.max(v[1], speed), v[2]);
+    enemy.air = true;
+    enemy.airT = 0;
+    enemy.fall = 0;
+  }
+  /** Let go of an enemy a bubble was carrying; it drops from where it is. */
+  game.release = (enemy) => {
+    enemy.trapped = undefined;
+    if (enemy.dead) return;
+    enemy.body.mask = ENEMY_MASK;
+    enemy.body.setPosition(enemy.x, enemy.y + enemy.r, enemy.z);
+    enemy.wasTrapped = false;
+    launch(enemy, -2);
+  };
 
   /** Hurt an enemy; `kx`, `kz` push it along the ground and `up` throws it into the air. */
   game.damage = (enemy, amount, panda, kx = 0, kz = 0, up = 0) => {
@@ -437,14 +504,15 @@ export function createGame(options = {}) {
     enemy.flash = 0.14;
     enemy.lastHitBy = panda;
     game.damageDealt += amount;
-    if (amount >= 1) emit('hit', enemy.x, enemy.y + enemy.r * 1.6, enemy.z, { amount: Math.round(amount), crit });
-    const weight = enemy.mass;
-    enemy.vx += kx / weight;
-    enemy.vz += kz / weight;
-    if (up > 0 && !enemy.boss && !enemy.trapped) {
-      enemy.vy = Math.max(enemy.vy, up / Math.sqrt(weight));
-      enemy.air = true;
-    }
+    if (amount >= 1)
+      emit('hit', enemy.x, enemy.y + enemy.r * 1.6, enemy.z, {
+        amount: Math.round(amount),
+        crit,
+        big: amount >= enemy.maxHp * 0.5,
+      });
+    // Heavier candy moves less for the same push.
+    if (kx || kz) game.shove(enemy, kx / enemy.mass, kz / enemy.mass, 0.3);
+    if (up > 0 && !enemy.boss && !enemy.trapped) launch(enemy, up / Math.sqrt(enemy.mass));
     if (enemy.hp <= 0) kill(enemy, panda);
   };
   /** Remove an enemy from play and leave its rewards behind. `quiet` skips the sprinkle drop. */
@@ -458,11 +526,19 @@ export function createGame(options = {}) {
       held.splice(held.indexOf(enemy), 1);
       enemy.trapped = undefined;
     }
+    world.removeBody(enemy.body);
     const def = enemy.def;
-    emit('death', enemy.x, enemy.y + enemy.r, enemy.z, { color: def.color, radius: enemy.r, boss: !!enemy.boss });
+    emit('death', enemy.x, enemy.y + enemy.r, enemy.z, {
+      color: def.color,
+      radius: enemy.r,
+      boss: !!enemy.boss,
+      kind: enemy.kind,
+      vx: enemy.vx,
+      vz: enemy.vz,
+    });
     if (enemy.boss) {
       for (let i = 0; i < 40; i++) dropGem(enemy.x + (random() - 0.5) * 8, enemy.z + (random() - 0.5) * 8, 5);
-      game.pickups.push({ kind: 'chest', x: enemy.x, y: enemy.y, z: enemy.z, t: 0 });
+      game.pickups.push({ kind: 'chest', x: enemy.x, y: groundHeight(enemy.x, enemy.z), z: enemy.z, t: 0 });
       game.boss = undefined;
       emit('announce', 0, 0, 0, { key: 'bossDown', name: def });
       if (game.bossIndex >= BOSSES.length && enemy.final) {
@@ -472,15 +548,14 @@ export function createGame(options = {}) {
       return;
     }
     if (!quiet) dropGem(enemy.x, enemy.z, def.gem * (enemy.elite ? 12 : 1));
-    if (enemy.elite) game.pickups.push({ kind: 'chest', x: enemy.x, y: enemy.y, z: enemy.z, t: 0 });
+    if (enemy.elite) game.pickups.push({ kind: 'chest', x: enemy.x, y: groundHeight(enemy.x, enemy.z), z: enemy.z, t: 0 });
     else if (random() < 0.004 && game.pickups.length < 12)
-      game.pickups.push({ kind: 'heart', x: enemy.x, y: enemy.y, z: enemy.z, t: 0 });
+      game.pickups.push({ kind: 'heart', x: enemy.x, y: groundHeight(enemy.x, enemy.z), z: enemy.z, t: 0 });
     if (def.split && !enemy.summoned)
       for (let i = 0; i < 2; i++) {
         const child = spawnEnemy(1, enemy.x + (random() - 0.5), enemy.z + (random() - 0.5), { vy: 6, y: enemy.y + 0.5 });
         child.summoned = true;
-        child.vx = (random() - 0.5) * 6;
-        child.vz = (random() - 0.5) * 6;
+        child.body.setLinearVelocity((random() - 0.5) * 6, 6, (random() - 0.5) * 6);
       }
   }
   /** Leave a sprinkle worth `value` experience on the ground. */
@@ -567,21 +642,23 @@ export function createGame(options = {}) {
         ? {
             shape: { type: 'sphere', radius: 0.95 },
             position: [x, groundHeight(x, z) + 1.2, z],
-            mass: 0.7,
+            mass: 2.5,
             restitution: 0.75,
             friction: 0.5,
-            linearDamping: 0.25,
+            linearDamping: 0.2,
             angularDamping: 0.3,
+            layer: LAYER_PROP,
           }
         : {
             shape: { type: 'convex', hull: barrelHull },
             position: [x, groundHeight(x, z) + 1, z],
             quaternion: [Math.SQRT1_2, 0, 0, Math.SQRT1_2],
-            mass: 3,
+            mass: 7,
             restitution: 0.2,
             friction: 0.6,
-            linearDamping: 0.15,
+            linearDamping: 0.12,
             angularDamping: 0.2,
+            layer: LAYER_PROP,
           },
     );
     game.props.push({ kind: ball ? 'ball' : 'barrel', body, r: ball ? 0.95 : 0.75, color: i });
@@ -613,12 +690,10 @@ export function createGame(options = {}) {
         if (enemy.propT > game.t || Math.abs(enemy.y - (p[1] - prop.r)) > 2.2) return;
         enemy.propT = game.t + 0.5;
         struck++;
-        game.damage(enemy, power * 1.6 + game.level, prop.owner, v[0] * 0.9, v[2] * 0.9, 5 + speed * 0.3);
+        // The collision itself shoves the enemy; the hit adds damage and a hop.
+        game.damage(enemy, power * 1.6 + game.level, prop.owner, 0, 0, 3 + speed * 0.25);
       });
-      if (struck) {
-        body.setLinearVelocity(v[0] * 0.86, v[1], v[2] * 0.86);
-        emit('thud', p[0], p[1], p[2], { power });
-      }
+      if (struck) emit('thud', p[0], p[1], p[2], { power });
     }
   }
 
@@ -708,6 +783,7 @@ export function createGame(options = {}) {
   /** Run a boss's attack pattern. Returns 0 while an attack holds it in place, 1 while it may walk. */
   function updateBoss(enemy, dt, target) {
     const def = enemy.def,
+      body = enemy.body,
       dx = target.x - enemy.x,
       dz = target.z - enemy.z,
       d = Math.hypot(dx, dz) || 1;
@@ -724,17 +800,14 @@ export function createGame(options = {}) {
       return 0;
     }
     if (enemy.mode === 2) {
-      // charging in a straight line
+      // charging in a straight line, ploughing through its own horde
       enemy.modeT -= dt;
-      enemy.x += enemy.dirX * 16 * dt;
-      enemy.z += enemy.dirZ * 16 * dt;
-      if (enemy.modeT <= 0 || isWater(enemy.x, enemy.z)) {
+      body.wake();
+      body.setLinearVelocity(enemy.dirX * 16, body.linearVelocity[1], enemy.dirZ * 16);
+      enemy.knockT = 0.1;
+      if (enemy.modeT <= 0 || isWater(enemy.x + enemy.dirX * 2, enemy.z + enemy.dirZ * 2)) {
         enemy.mode = 0;
-        const r = Math.hypot(enemy.x, enemy.z);
-        if (r > ISLAND.playRadius) {
-          enemy.x *= ISLAND.playRadius / r;
-          enemy.z *= ISLAND.playRadius / r;
-        }
+        body.setLinearVelocity(0, body.linearVelocity[1], 0);
       }
       return 0;
     }
@@ -744,10 +817,11 @@ export function createGame(options = {}) {
         // Leap at the target; the landing sends out a ring that a jump clears.
         const flight = 1.1,
           reach = Math.min(d, 14);
-        enemy.vx = ((dx / d) * reach) / flight;
-        enemy.vz = ((dz / d) * reach) / flight;
-        enemy.vy = (GRAVITY * flight) / 2;
+        body.wake();
+        body.setLinearVelocity(((dx / d) * reach) / flight, (GRAVITY * flight) / 2, ((dz / d) * reach) / flight);
         enemy.air = true;
+        enemy.airT = 0;
+        enemy.fall = 0;
         enemy.leap = true;
         enemy.timer = 3.4;
       } else if (attack === 'charge') {
@@ -756,7 +830,7 @@ export function createGame(options = {}) {
         enemy.timer = 5.5;
         emit('telegraph', enemy.x, enemy.y, enemy.z, { boss: true });
         for (let i = 0; i < 4; i++) {
-          const minion = spawnEnemy(1, enemy.x + (random() - 0.5) * 4, enemy.z + (random() - 0.5) * 4);
+          const minion = spawnEnemy(1, enemy.x + (random() - 0.5) * 6, enemy.z + (random() - 0.5) * 6);
           minion.summoned = true;
         }
       } else {
@@ -778,7 +852,7 @@ export function createGame(options = {}) {
         enemy.timer = 2.6;
         if (enemy.hp < enemy.maxHp * 0.5 && random() < 0.5)
           for (let i = 0; i < 3; i++) {
-            const minion = spawnEnemy(3, enemy.x + (random() - 0.5) * 6, enemy.z + (random() - 0.5) * 6);
+            const minion = spawnEnemy(3, enemy.x + (random() - 0.5) * 8, enemy.z + (random() - 0.5) * 8);
             minion.summoned = true;
           }
       }
@@ -786,17 +860,83 @@ export function createGame(options = {}) {
     return 1;
   }
 
-  /** Move every enemy: chase, fly and land, special behaviours, bites, then keep them from overlapping. */
+  // Hard knocks between enemies, noted during the physics step and dealt with after it.
+  const collisions = [];
+  world.onContact = (contact) => {
+    if (!contact.began || contact.impulse < 5 || collisions.length >= 64) return;
+    const a = contact.a.userData,
+      b = contact.b.userData;
+    if (a?.def && b?.def) collisions.push(a, b, contact.impulse);
+  };
+  /** A thrown or shoved enemy that slams into another hurts it and passes the knock on. */
+  function settleCollisions() {
+    for (let i = 0; i < collisions.length; i += 3) {
+      const a = collisions[i],
+        b = collisions[i + 1],
+        impulse = collisions[i + 2];
+      if (a.dead || b.dead) continue;
+      const aFlying = a.air || a.knockT > 0,
+        bFlying = b.air || b.knockT > 0;
+      if (aFlying === bFlying) continue;
+      const flying = aFlying ? a : b,
+        struck = aFlying ? b : a;
+      if (struck.bowlT > game.t || struck.boss || flying.boss) continue;
+      struck.bowlT = game.t + 0.5;
+      struck.knockT = Math.max(struck.knockT, 0.25);
+      game.damage(struck, Math.min(40, impulse * 0.6) * (1 + game.level * 0.04), flying.lastHitBy);
+      emit('bonk', struck.x, struck.y + struck.r, struck.z, { power: impulse });
+    }
+    collisions.length = 0;
+  }
+
+  /** Read every enemy back from its body, then decide how it moves next: chase, fly and land, special behaviours and bites. */
   function updateEnemies(dt) {
     const list = game.enemies,
-      pandas = game.pandas;
+      pandas = game.pandas,
+      steer = Math.min(1, dt * 12);
+    settleCollisions();
     for (let i = 0; i < list.length; i++) {
       const e = list[i];
       if (e.dead) continue;
+      const body = e.body;
       if (e.flash > 0) e.flash -= dt;
       if (e.attackCd > 0) e.attackCd -= dt;
       if (e.slow > 0) e.slow -= dt;
-      if (e.trapped) continue; // a bubble is carrying it
+      if (e.knockT > 0) e.knockT -= dt;
+      if (e.trapped) {
+        // A bubble is carrying it: the body follows without touching anything.
+        if (!e.wasTrapped) {
+          e.wasTrapped = true;
+          body.mask = 0;
+        }
+        body.wake();
+        body.setPosition(e.x, e.y + e.r, e.z);
+        body.setLinearVelocity(0, 0, 0);
+        continue;
+      }
+      const p = body.position,
+        v = body.linearVelocity;
+      e.x = p[0];
+      e.y = p[1] - e.r;
+      e.z = p[2];
+      e.vx = v[0];
+      e.vy = v[1];
+      e.vz = v[2];
+      const ground = groundHeight(e.x, e.z);
+      // Anything that ends up in the water is gone; bosses wade back out.
+      if (e.y < ISLAND.sea - 0.35) {
+        if (!e.boss) {
+          emit('splash', e.x, ISLAND.sea, e.z, { radius: e.r * 2 });
+          kill(e, e.lastHitBy);
+          continue;
+        }
+        const r = Math.hypot(e.x, e.z) || 1,
+          k = (ISLAND.playRadius - 2) / r;
+        body.setPosition(e.x * k, groundHeight(e.x * k, e.z * k) + e.r + 0.5, e.z * k);
+        body.setLinearVelocity(0, 0, 0);
+        e.mode = 0;
+        continue;
+      }
       // Chase the nearest panda that is still standing.
       e.retarget -= dt;
       if (e.retarget <= 0 || !e.target || e.target.down) {
@@ -814,42 +954,35 @@ export function createGame(options = {}) {
       }
       const target = e.target;
       if (e.air) {
-        e.vy -= GRAVITY * dt;
-        e.x += e.vx * dt;
-        e.y += e.vy * dt;
-        e.z += e.vz * dt;
-        const ground = groundHeight(e.x, e.z);
-        if (e.y <= ground && e.vy <= 0) {
-          const impact = -e.vy;
-          e.y = ground;
-          e.air = false;
-          e.vy = 0;
-          e.stun = Math.max(e.stun, 0.35);
-          if (e.boss) {
-            if (e.leap) {
-              e.leap = false;
-              e.vx = 0;
-              e.vz = 0;
-              shockwave(e, 7.5, e.def.touch);
-            } else emit('thud', e.x, e.y, e.z, { power: 30 });
-          } else {
-            e.vx *= 0.5;
-            e.vz *= 0.5;
-            if (ground < ISLAND.sea - 0.25) {
-              emit('splash', e.x, ISLAND.sea, e.z, { radius: e.r * 2 });
-              kill(e, e.lastHitBy);
-              continue;
-            }
-            if (impact > 10) game.damage(e, (impact - 10) * 2.5 * (1 + game.level * 0.06), e.lastHitBy);
-          }
+        // Thrown: physics carries it. It has landed once it is slow and near something solid.
+        e.airT += dt;
+        e.fall = Math.max(e.fall, -e.vy);
+        const resting = e.airT > 0.15 && Math.abs(e.vy) < 1.2 && (e.y - ground < 0.2 || e.airT > 0.5);
+        if (!resting) {
+          if (e.airT > 6) e.air = false;
+          continue;
         }
-        continue;
+        e.air = false;
+        e.stun = Math.max(e.stun, 0.35);
+        if (e.boss) {
+          if (e.leap) {
+            e.leap = false;
+            body.setLinearVelocity(0, 0, 0);
+            shockwave(e, 7.5, e.def.touch);
+          } else emit('thud', e.x, e.y, e.z, { power: 30 });
+        } else if (e.fall > 10) {
+          emit('land', e.x, e.y, e.z, { fall: 1 });
+          game.damage(e, (e.fall - 10) * 2.5 * (1 + game.level * 0.06), e.lastHitBy);
+          if (e.dead) continue;
+        }
       }
       if (!target) continue;
-      let dx = target.x - e.x,
+      const dx = target.x - e.x,
         dz = target.z - e.z,
-        d = Math.hypot(dx, dz) || 1,
-        pace = e.speed * (e.slow > 0 ? 0.5 : 1);
+        d = Math.hypot(dx, dz) || 1;
+      let pace = e.speed * (e.slow > 0 ? 0.5 : 1),
+        dirX = dx / d,
+        dirZ = dz / d;
       if (e.stun > 0) {
         e.stun -= dt;
         pace = 0;
@@ -861,8 +994,8 @@ export function createGame(options = {}) {
         if (e.mode === 0 && e.timer <= 0 && d < 10) {
           e.mode = 1;
           e.modeT = 0.55;
-          e.dirX = dx / d;
-          e.dirZ = dz / d;
+          e.dirX = dirX;
+          e.dirZ = dirZ;
         } else if (e.mode === 1) {
           pace = 0;
           e.modeT -= dt;
@@ -871,9 +1004,9 @@ export function createGame(options = {}) {
             e.modeT = 0.55;
           }
         } else if (e.mode === 2) {
-          pace = 0;
-          e.x += e.dirX * 13 * dt;
-          e.z += e.dirZ * 13 * dt;
+          pace = 13;
+          dirX = e.dirX;
+          dirZ = e.dirZ;
           e.modeT -= dt;
           if (e.modeT <= 0) {
             e.mode = 0;
@@ -894,87 +1027,41 @@ export function createGame(options = {}) {
             for (const panda of pandas)
               if (Math.hypot(panda.x - e.x, panda.z - e.z) < 3.2 && Math.abs(panda.y - e.y) < 2.5)
                 hurt(panda, e.touch * 2.2, e.x, e.z, 9);
+            // The blast throws its neighbours too.
+            game.eachEnemyNear(e.x, e.z, 3.2, (other, gap) => {
+              if (other !== e) game.shove(other, ((other.x - e.x) / (gap || 1)) * 6, ((other.z - e.z) / (gap || 1)) * 6, 0.4);
+            });
             kill(e, undefined);
             continue;
           }
         }
       }
-      // Walk, slide with any knock-back, and keep to dry land unless thrown.
-      const kx = e.vx,
-        kz = e.vz,
-        knocked = Math.hypot(kx, kz);
-      let nx = e.x + ((dx / d) * pace + kx) * dt,
-        nz = e.z + ((dz / d) * pace + kz) * dt;
-      const decay = Math.exp(-5 * dt);
-      e.vx *= decay;
-      e.vz *= decay;
-      if (pace > 0) e.yaw = Math.atan2(dx, dz);
-      const ground = groundHeight(nx, nz);
-      if (ground < ISLAND.sea - 0.25) {
-        if (knocked > 2.5 && !e.boss) {
-          e.x = nx;
-          e.z = nz;
-          e.y = ground;
-          emit('splash', nx, ISLAND.sea, nz, { radius: e.r * 2 });
-          kill(e, e.lastHitBy);
-          continue;
-        }
-        nx = e.x;
-        nz = e.z;
-        e.vx = 0;
-        e.vz = 0;
-      }
-      e.x = nx;
-      e.z = nz;
-      e.y = groundHeight(nx, nz);
-      // Touch a panda: bite it, and never stand inside it.
+      // Bite a panda in reach, and stop walking once touching it.
+      const reach = e.r + PANDA_RADIUS;
       for (const panda of pandas) {
         if (panda.down) continue;
-        const px = e.x - panda.x,
-          pz = e.z - panda.z,
-          gap = Math.hypot(px, pz),
-          reach = e.r + PANDA_RADIUS;
+        const gap = Math.hypot(e.x - panda.x, e.z - panda.z);
         if (gap >= reach + 0.25 || Math.abs(panda.y - e.y) > 1.6 + e.r) continue;
         if (e.attackCd <= 0 && e.stun <= 0) {
           e.attackCd = 0.8;
           hurt(panda, e.touch * (e.mode === 2 ? 1.5 : 1), e.x, e.z, e.boss ? 14 : e.mode === 2 ? 7 : 0);
         }
-        if (gap < reach && gap > 1e-3 && !e.boss) {
-          e.x = panda.x + (px / gap) * reach;
-          e.z = panda.z + (pz / gap) * reach;
-        }
       }
+      if (d < reach && e.mode !== 2) pace = 0;
+      if (pace > 0) e.yaw = Math.atan2(dirX, dirZ);
+      // A knock carries the enemy for a moment; after that it steers again.
+      if (e.knockT > 0 || (e.boss && e.mode === 2)) continue;
+      let wantX = dirX * pace,
+        wantZ = dirZ * pace;
+      // Stay out of the sea unless thrown in.
+      if (isWater(e.x + wantX * 0.4, e.z + wantZ * 0.4)) {
+        wantX = 0;
+        wantZ = 0;
+      }
+      body.wake();
+      body.setLinearVelocity(e.vx + (wantX - e.vx) * steer, e.vy, e.vz + (wantZ - e.vz) * steer);
     }
-    // Enemies shoulder each other apart so the horde spreads around its prey.
     rebuildGrid();
-    for (let i = 0; i < list.length; i++) {
-      const e = list[i];
-      if (e.dead || e.air || e.trapped) continue;
-      let px = 0,
-        pz = 0;
-      game.eachEnemyNear(e.x, e.z, e.r * 0.9, (other, d) => {
-        if (other === e || other.air || other.trapped) return;
-        const overlap = e.r + other.r - d;
-        if (overlap <= 0) return;
-        const share = other.boss ? 1 : e.boss ? 0 : other.mass / (e.mass + other.mass);
-        if (d > 1e-3) {
-          px += ((e.x - other.x) / d) * overlap * share;
-          pz += ((e.z - other.z) / d) * overlap * share;
-        } else {
-          px += (random() - 0.5) * 0.2;
-          pz += (random() - 0.5) * 0.2;
-        }
-      });
-      if (px || pz) {
-        const nx = e.x + px * 0.5,
-          nz = e.z + pz * 0.5;
-        if (!isWater(nx, nz)) {
-          e.x = nx;
-          e.z = nz;
-          e.y = groundHeight(nx, nz);
-        }
-      }
-    }
     // Drop the dead from the list every couple of seconds, keeping the order of the living.
     if (game.t - (game.lastSweep ?? 0) > 2) {
       game.lastSweep = game.t;

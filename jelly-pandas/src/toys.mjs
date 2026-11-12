@@ -102,8 +102,7 @@ export function fireToy(game, panda, toy) {
       game.eachEnemyNear(px, pz, reach, (enemy, d) => {
         any = true;
         if (!enemy.boss && d > 1.5) {
-          enemy.vx += (((px - enemy.x) / d) * 7) / enemy.mass;
-          enemy.vz += (((pz - enemy.z) / d) * 7) / enemy.mass;
+          game.shove(enemy, (((px - enemy.x) / d) * 7) / enemy.mass, (((pz - enemy.z) / d) * 7) / enemy.mass, 0.35);
         }
       });
       if (!any) return false;
@@ -370,9 +369,7 @@ function explodeRocket(game, shot) {
 function popBubble(game, shot) {
   const s = shot.s;
   for (const enemy of shot.held.slice()) {
-    enemy.trapped = undefined;
-    enemy.air = true;
-    enemy.vy = -2;
+    game.release(enemy);
     game.damage(enemy, s.damage + s.extra, shot.panda);
   }
   shot.held.length = 0;
@@ -737,8 +734,7 @@ export function updateShots(game, dt) {
             shot.pullT = 0.15;
             game.eachEnemyNear(shot.x, shot.z, 4, (enemy, d) => {
               if (!enemy.boss && d > 0.8) {
-                enemy.vx += (((shot.x - enemy.x) / d) * 2.2) / enemy.mass;
-                enemy.vz += (((shot.z - enemy.z) / d) * 2.2) / enemy.mass;
+                game.shove(enemy, (((shot.x - enemy.x) / d) * 2.2) / enemy.mass, (((shot.z - enemy.z) / d) * 2.2) / enemy.mass);
               }
             });
           }

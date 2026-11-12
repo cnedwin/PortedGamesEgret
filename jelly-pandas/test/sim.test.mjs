@@ -129,6 +129,24 @@ test('a lone panda that falls ends the run; a friend can revive one', () => {
   assert.equal(first.down, false, `revived (friend at ${Math.hypot(second.x - first.x, second.z - first.z).toFixed(1)} m)`);
 });
 
+test('enemies are rigid bodies: they rest on the ground, stack instead of overlapping and leave the world when squashed', () => {
+  const game = friends(1, 4);
+  const bodies = game.world.bodies.length;
+  const crowd = Array.from({ length: 12 }, (_, i) => game.spawnEnemy(0, 10 + (i % 4) * 0.2, 10 + Math.floor(i / 4) * 0.2));
+  assert.equal(game.world.bodies.length, bodies + 12);
+  run(game, 1.5);
+  const living = crowd.filter((enemy) => !enemy.dead);
+  for (const a of living) {
+    assert.ok(a.y > groundHeight(a.x, a.z) - 0.2, 'no enemy sinks into the ground');
+    for (const b of living)
+      if (a !== b) assert.ok(Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) > (a.r + b.r) * 0.7, 'bodies push each other apart');
+  }
+  const before = game.world.bodies.length;
+  game.damage(living[0], 1e6, game.pandas[0]);
+  assert.equal(living[0].dead, true);
+  assert.equal(game.world.bodies.length, before - 1);
+});
+
 test('thrown enemies that land in the sea are gone', () => {
   const game = friends(1, 2);
   const enemy = game.spawnEnemy(0, ISLAND.playRadius - 1, 0);

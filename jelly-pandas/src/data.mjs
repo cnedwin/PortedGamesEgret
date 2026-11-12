@@ -644,5 +644,9 @@ export const TEXT = {
     zh: 'WASD 移动 · 鼠标转视角 · 空格跳跃（长按蓄力大跳）· Ctrl / 左键 / Q 空中下砸、地面肚皮撞 · Shift / 右键 / E 翻滚 · 1-3 选卡 · R 重抽 · Esc 菜单',
   },
   chest: { en: 'Treasure! Free upgrade', zh: '宝箱！免费升级' },
+  quality: { en: 'Quality: ', zh: '画质：' },
+  quality_high: { en: 'high', zh: '高' },
+  quality_medium: { en: 'medium', zh: '中' },
+  quality_low: { en: 'low', zh: '低' },
   toyMax: { en: 'MAX', zh: '满级' },
 };
