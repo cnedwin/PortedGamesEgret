@@ -32,6 +32,12 @@ An independently developed 3D kart racing demo built with Egret Rebuild. Eight r
 
 An independently developed 2D campus romance and dress-up demo built with Egret Rebuild. A first-year student takes an elective with a single assignment: before the Star Festival thirty days away, truly get to know one person and tell her how you feel. Seven seniors with very different personalities each have four branching story chapters and two endings; every day has four parts for classes, training, part-time work, tasks and presents, and for learning how close each of them likes you to stand. The wardrobe holds forty pieces, each freely dyeable, and the seniors can be dressed too. Layered parallax scenes give a pseudo-2.5D sense of depth, with Chinese and English text and mouse or touch controls. [Play online](https://cnedwin.github.io/PortedGamesEgret/LoveElective/) · [Guide and development](LoveElective/README.md)
 
+## Wulin · 武林天下
+
+一款为新白鹭引擎独立开发的武侠门派经营游戏 Demo。从十二个门派里择一而掌：建山门、收弟子、排差事、练武学，与各派或战或和，直到一统江湖或被推为武林盟主。目前为开发中的版本，规则、数值、存档和修改器已可用，画面暂为文字面板，引擎绘制的 3D 场景还在制作。 [试玩](https://cnedwin.github.io/PortedGamesEgret/Wulin/) · [说明](Wulin/README.md)
+
+An independently developed wuxia sect management demo being built for Egret Rebuild. Take charge of one of twelve sects: build its seat, take in and train disciples, and fight or befriend the other sects until you rule the martial world or are named its leader. A work in progress: the rules, numbers, saves and editor work, the game is shown as text panels for now, and the 3D scenes drawn with the engine are still being made. [Play](https://cnedwin.github.io/PortedGamesEgret/Wulin/) · [Guide](Wulin/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)

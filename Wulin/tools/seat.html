@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>武林天下 · 山门查看 / Wulin seat viewer</title>
+  <style>html, body { margin: 0; height: 100%; background: #222; } canvas { width: 100%; height: 100%; display: block; touch-action: none; }</style>
+  <!-- A developer's page: one stronghold on its own. Add ?sect=shaolin&quality=low to the address to change what is shown. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/engine": "../vendor/engine/dist/index.js",
+        "@egret/engine/world3d": "../vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/engine/webgl2/world3d": "../vendor/engine/dist/web/world3d/index.js",
+        "@egret/engine/webgpu/world3d": "../vendor/engine/dist/web/world3d/webgpu.js",
+        "@egret/runtime": "../vendor/runtime/dist/index.js",
+        "@egret/contracts": "../vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "../vendor/contracts/dist/resources/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <script type="module">
+    import { createWorld } from '../src/core/world.mjs';
+    import { SECT_BY_ID } from '../src/data/sects.mjs';
+    import { createSeat } from '../src/view/seat.mjs';
+    import { createStage } from '../src/view/stage.mjs';
+
+    const params = new URLSearchParams(location.search);
+    const status = (globalThis.__seat = { error: '', frames: 0 });
+    const world = createWorld({ seed: 7, playerSect: params.get('sect') ?? 'huashan', autoPlayer: true });
+    const stage = await createStage(document.querySelector('#stage'), { onError: (cause) => (status.error = String(cause?.stack ?? cause)) });
+    const seat = createSeat(stage, () => world, SECT_BY_ID[world.playerSect].seat);
+    stage.show(seat);
+    Object.assign(status, { stage, seat, world });
+    setInterval(() => (status.frames = stage.frames), 200);
+  </script>
+</body>
+</html>

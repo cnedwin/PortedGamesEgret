@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>武林天下 / Wulin</title>
+  <meta name="description" content="武林天下：为新白鹭引擎开发的武侠门派经营游戏 Demo。 / Wulin, a wuxia sect management demo for Egret Rebuild.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='3' fill='%23a8322e'/%3E%3Cpath d='M3 5h10M8 3v10M4 9h8M5 13h6' stroke='%23f4e4bc' stroke-width='1.4' fill='none'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
+        "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="head"></div>
+  <!-- The 3D picture: the sect's seat while managing, the field during a fight. -->
+  <div id="view" hidden>
+    <canvas id="stage"></canvas>
+    <div id="layer"></div>
+    <div id="hud"></div>
+  </div>
+  <div id="app"></div>
+  <div id="error" role="alert" hidden></div>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>

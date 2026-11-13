@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>武林天下 · 模型查看 / Wulin model viewer</title>
+  <style>html, body { margin: 0; height: 100%; background: #222; } canvas { width: 100%; height: 100%; display: block; }</style>
+  <!-- A developer's page: every figure action side by side. Open it through a static server from the Wulin folder. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/engine": "../vendor/engine/dist/index.js",
+        "@egret/engine/world3d": "../vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/engine/webgl2/world3d": "../vendor/engine/dist/web/world3d/index.js",
+        "@egret/engine/webgpu/world3d": "../vendor/engine/dist/web/world3d/webgpu.js",
+        "@egret/runtime": "../vendor/runtime/dist/index.js",
+        "@egret/contracts": "../vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "../vendor/contracts/dist/resources/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <script type="module">
+    import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
+    import { SECTS } from '../src/data/sects.mjs';
+    import { ACTION_NAMES, createFigure } from '../src/view/figure.mjs';
+    import { BOX, hexOf, model } from '../src/view/shapes.mjs';
+    import { createStage, lightScene } from '../src/view/stage.mjs';
+
+    const status = (globalThis.__models = { error: '', frames: 0 });
+    const stage = await createStage(document.querySelector('#stage'), { onError: (cause) => (status.error = String(cause?.stack ?? cause)) });
+    const scene = new Scene3D();
+    const camera = createPerspectiveCamera3D({ fov: 38, near: 0.3, far: 300 });
+    scene.addChild(camera);
+    lightScene(scene, 'day', stage.quality);
+    scene.addChild(model([[BOX, [0, -0.05, 0], [40, 0.1, 20], 0xb9ab8c]]));
+    const weapons = ['sword', 'saber', 'spear', 'staff', 'glove', 'stylus', 'dart', null];
+    const figures = ACTION_NAMES.map((action, i) => {
+      const sect = SECTS[i % SECTS.length];
+      const figure = createFigure({ color: hexOf(sect.color), female: i % 3 === 1, rank: i % 6, weapon: weapons[i % weapons.length], monk: sect.id === 'shaolin', seed: i + 1 });
+      figure.node.setPosition((i % 8 - 3.5) * 1.5, 0, i < 8 ? -1.2 : 1.6);
+      scene.addChild(figure.node);
+      figure.play(action);
+      return { figure, action };
+    });
+    camera.setPosition(0, 3.2, 11.5);
+    camera.lookAt(0, 0.9, 0);
+    stage.show({
+      scene, camera,
+      update(dt) {
+        status.frames = stage.frames;
+        for (const { figure, action } of figures) {
+          if (!figure.busy && figure.action !== action && action !== 'down') figure.play(action);
+          figure.update(dt);
+        }
+      },
+    });
+  </script>
+</body>
+</html>
