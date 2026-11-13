@@ -676,6 +676,44 @@ body[data-art="jyx2"] .jyx2-member-portrait {
   .battle-skill { grid-area: 3 / 1 / 4 / -1; justify-content: center; }
 }
 
+/* Keep the map and complete touch command set visible on short screens. */
+@media (max-width: 380px) and (orientation: portrait), (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  .battle-controls-phase[data-battle-controls-phase="active"]:not([hidden]) {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 4px;
+    padding: 4px;
+  }
+  .battle-readout, .battle-dpad, .battle-skill, .battle-actions { grid-area: auto; }
+  .battle-dpad { grid-template-columns: repeat(4, minmax(44px, 1fr)); }
+  .battle-dpad button[data-battle-command] { grid-area: auto; }
+  .battle-actions { grid-template-columns: repeat(5, minmax(44px, 1fr)); }
+  .battle-actions button { padding-inline: 4px; }
+}
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  main:has(#game:is([data-trainer="battle"], [data-trainer="result"])) { padding-block: 6px; }
+  #play-screen:has(#game:is([data-trainer="battle"], [data-trainer="result"])) > .masthead { display: none; }
+  #play-screen:has(#game[data-trainer="battle"]) .screen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) clamp(246px, 38vw, 320px);
+    grid-template-rows: auto auto 1fr;
+    align-items: start;
+  }
+  #play-screen:has(#game[data-trainer="battle"]) .screen > header { grid-column: 1 / -1; }
+  #play-screen:has(#game[data-trainer="battle"]) .screen > .viewport { grid-area: 2 / 1; }
+  #play-screen:has(#game[data-trainer="battle"]) .screen > footer { grid-area: 3 / 1; }
+  #play-screen:has(#game[data-trainer="battle"]) #battle-controls {
+    grid-area: 2 / 2 / 4 / 3;
+    border-block-start: 0;
+    border-inline-start: 1px solid var(--battle-border);
+  }
+  #play-screen:has(#game[data-trainer="battle"]) .viewport { max-width: calc((100svh - 80px) * 1.7778); }
+  #play-screen:has(#game[data-trainer="result"]) .screen {
+    max-width: calc((100svh - 92px) * 1.7778);
+    margin-inline: auto;
+  }
+}
+
 @media (max-width: 680px), (pointer: coarse) {
   #play-screen:has(#battle-menu:not([hidden])) > .controls { visibility: hidden; }
   .viewport:has(> .battle-menu:not([hidden]))::after {
