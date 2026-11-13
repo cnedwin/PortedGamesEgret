@@ -29,6 +29,7 @@ import {
 import { ENEMIES, SKINS } from './data.mjs';
 import { ISLAND, groundHeight } from './island.mjs';
 import { buildShape, createPanda, linear } from './panda.mjs';
+import { createWind } from './wind.mjs';
 
 const rgb = (hex) => [linear(((hex >> 16) & 255) / 255), linear(((hex >> 8) & 255) / 255), linear((hex & 255) / 255)];
 const lin = (color) => color.map(linear);
@@ -288,13 +289,13 @@ export function createView(scene, options = {}) {
     [box, [0, 1.3, 0], [0.6, 0.6, 0.6], [1, 0.9, 0.6]],
   ]);
   /** Scatter `count` copies of a shape; `place(i)` returns [x, z, size, turn]. */
-  const decor = (shape, count, place, tint) => {
-    const mesh = new InstancedMesh3D(
-      shape,
-      createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.8 }),
-      count,
-    );
+  const wind = createWind();
+  const decor = (shape, count, place, tint, sway) => {
+    const material = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.8 });
+    if (sway) wind.apply(material, sway);
+    const mesh = new InstancedMesh3D(shape, material, count);
     mesh.castShadow = true;
+    mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     for (let i = 0; i < count; i++) {
       const [x, z, size, turn] = place(i);
@@ -310,8 +311,17 @@ export function createView(scene, options = {}) {
       r = reach + Math.sin(i * 7.3) * 1.2;
     return [Math.cos(a) * r, Math.sin(a) * r];
   };
-  decor(palmShape, 11, (i) => [...shore(i, 11, 37.2, 0.3), 0.9 + (i % 3) * 0.18, i * 1.7]);
-  decor(bambooShape, 9, (i) => [...shore(i, 9, 36.6, 1.1), 1 + (i % 2) * 0.3, i * 2.1]);
+  // Palms and bamboo are too big to push over, but they lean with the wind.
+  decor(palmShape, 11, (i) => [...shore(i, 11, 37.2, 0.3), 0.9 + (i % 3) * 0.18, i * 1.7], undefined, {
+    height: 4.2,
+    strength: 0.32,
+    radius: 0,
+  });
+  decor(bambooShape, 9, (i) => [...shore(i, 9, 36.6, 1.1), 1 + (i % 2) * 0.3, i * 2.1], undefined, {
+    height: 3.8,
+    strength: 0.45,
+    radius: 0,
+  });
   const blockColors = [
     [1, 0.4, 0.4],
     [0.4, 0.7, 1],
@@ -375,14 +385,26 @@ export function createView(scene, options = {}) {
   const scatter = (shape, material, count, fill, shadow = false) => {
     const mesh = new InstancedMesh3D(shape, material, count);
     mesh.castShadow = shadow;
+    // Plants take the shadows of whatever passes over them.
+    mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     for (let i = 0; i < count; i++) fill(mesh, i);
     mesh.count = count;
     scene.addChild(mesh);
     return mesh;
   };
-  const leafy = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.9 });
-  scatter(tuftShape, leafy, 1300, (mesh, i) => {
+  // Grass and flowers sway, and part around anything walking through them.
+  const grassy = wind.apply(createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.9 }), {
+    height: 0.48,
+    strength: 0.13,
+    radius: 1.5,
+  });
+  const flowery = wind.apply(createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.9 }), {
+    height: 0.32,
+    strength: 0.09,
+    radius: 1.5,
+  });
+  scatter(tuftShape, grassy, 1300, (mesh, i) => {
     const [x, z] = onLand(36.5),
       shade = 0.85 + chance() * 0.4;
     mesh.setTransformAt(i, [x, groundHeight(x, z) - 0.02, z], yawQuat(chance() * 6.28), 0.55 + chance() * 0.6);
@@ -395,7 +417,7 @@ export function createView(scene, options = {}) {
     [0.75, 0.7, 1],
     [1, 0.55, 0.5],
   ].map(lin);
-  scatter(flowerShape, leafy, 320, (mesh, i) => {
+  scatter(flowerShape, flowery, 320, (mesh, i) => {
     const [x, z] = onLand(35),
       petal = petals[i % petals.length];
     mesh.setTransformAt(i, [x, groundHeight(x, z) - 0.02, z], yawQuat(chance() * 6.28), 0.9 + chance() * 0.7);
@@ -441,6 +463,27 @@ export function createView(scene, options = {}) {
   clouds.count = 18;
   sky3.addChild(clouds);
   view.sky = sky3;
+  // Butterflies circle over the flowers; each keeps to its own patch.
+  const wingShape = buildShape([
+    [box, [-0.07, 0, 0], [0.13, 0.008, 0.1], WHITE, [0, 0.3, 0]],
+    [box, [0.07, 0, 0], [0.13, 0.008, 0.1], WHITE, [0, -0.3, 0]],
+    [box, [0, 0, 0], [0.02, 0.02, 0.12], DARK],
+  ]);
+  const butterflies = scatter(
+    wingShape,
+    createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.6, side: 'double' }),
+    14,
+    (mesh, i) => {
+      const wing = petals[(i * 3 + 1) % petals.length];
+      mesh.setColorAt(i, wing[0], wing[1], wing[2]);
+    },
+  );
+  butterflies.receiveShadow = false;
+  const flights = Array.from({ length: 14 }, () => {
+    const [x, z] = onLand(30);
+    return { x, z, reach: 1.5 + chance() * 3, pace: 0.4 + chance() * 0.5, phase: chance() * 6.28 };
+  });
+  const pushers = [];
 
   // ---- candy horde: one instanced mesh per kind -------------------------------------------
   const shapes = enemyShapes(),
@@ -807,6 +850,34 @@ export function createView(scene, options = {}) {
     const time = view.time;
     sea.update(dt);
     view.sky.setRotation(0, time * 0.006, 0);
+    // Plants part around pandas on the ground, a boss, and props that are rolling.
+    pushers.length = 0;
+    for (const panda of game.pandas) if (panda.y - groundHeight(panda.x, panda.z) < 1.2) pushers.push(panda.x, panda.z);
+    if (game.boss && !game.boss.air) pushers.push(game.boss.x, game.boss.z);
+    for (const prop of game.props) {
+      if (pushers.length >= 12) break;
+      const at = prop.body.position,
+        speed = prop.body.linearVelocity;
+      if (Math.hypot(speed[0], speed[2]) > 1 && at[1] - groundHeight(at[0], at[2]) < 1.6) pushers.push(at[0], at[2]);
+    }
+    wind.update(time, pushers);
+    flights.forEach((flight, i) => {
+      const turn = time * flight.pace + flight.phase,
+        x = flight.x + Math.cos(turn) * flight.reach,
+        z = flight.z + Math.sin(turn * 1.3) * flight.reach;
+      position[0] = x;
+      position[1] = Math.max(groundHeight(x, z), ISLAND.sea) + 0.9 + Math.sin(turn * 2.1) * 0.35;
+      position[2] = z;
+      // Wings beat by squeezing the shape sideways.
+      scale[0] = 0.25 + Math.abs(Math.sin(time * 14 + flight.phase)) * 0.9;
+      scale[1] = scale[2] = 1;
+      butterflies.setTransformAt(
+        i,
+        position,
+        yawQuat(Math.atan2(-Math.sin(turn) * flight.reach, Math.cos(turn * 1.3) * 1.3 * flight.reach)),
+        scale,
+      );
+    });
     game.pandas.forEach((panda, index) => view.pandas[index]?.update(dt, panda, time));
 
     // The horde: hop along, tumble in the air, flash white when hit.

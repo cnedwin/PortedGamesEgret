@@ -45,6 +45,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 | 果冻身体 · Jelly bodies | `createGlassMaterial3D` + 程序生成的花纹纹理 · generated pattern textures |
 | 果冻抖动 · Jelly wobble | `createJelly3D` |
 | 拖尾 · Trails | `createTrail3D` |
+| 植被随风摆动、被角色拨开 · Plants swaying in the wind and parting around characters | `createCustomShader3D` 顶点钩子 · vertex hook |
 | 敌群、弹丸、糖粒、树木 · Horde, shots, sprinkles, trees | `InstancedMesh3D` 逐实例颜色 · per-instance colour |
 | 海面 · The sea | `createWater3D` 波浪与倒影 · waves and reflection |
 | 特效 · Effects | `createParticleEmitter3D` |
@@ -65,7 +66,7 @@ All models, textures and sounds are generated in code; the project contains no i
 | `src/sim.mjs`, `src/toys.mjs` | 游戏规则，不依赖页面 · the rules, no page needed |
 | `src/data.mjs` | 熊猫、玩具、护符、敌人、Boss 和双语文字 · pandas, toys, charms, enemies, bosses and text in both languages |
 | `src/island.mjs` | 绘制与碰撞共用的岛屿高度网格 · the island height grid shared by drawing and collision |
-| `src/view.mjs`, `src/panda.mjs` | 3D 画面 · everything drawn in 3D |
+| `src/view.mjs`, `src/panda.mjs`, `src/wind.mjs` | 3D 画面与植被的风 · everything drawn in 3D, and the wind in the plants |
 | `src/hud.mjs`, `src/input.mjs`, `src/audio.mjs` | 界面、输入、音效 · interface, input, sound |
 | `tools/`, `test/` | 无页面运行与规则测试 · headless run and rule tests |
 | `vendor/` | 引擎运行时副本 · the engine runtime copy |

@@ -260,8 +260,8 @@ export function createPanda(skin, jelly = true) {
     stiffness: 3.1,
     damping: 0.2,
     squash: 0.45,
-    sensitivity: 0.035,
-    wobble: 0.05,
+    sensitivity: 0.032,
+    wobble: 0.024,
     height: 1.75,
     base: 0,
     idle: 0.018,
@@ -283,6 +283,9 @@ export function createPanda(skin, jelly = true) {
     lie: 0,
     yaw: 0,
     blink: 2 + Math.random() * 3,
+    lastX: 0,
+    lastY: 0,
+    lastZ: 0,
     /** Knock the jelly up (positive) or down (negative); `amount` is a change of speed in metres per second. */
     kick(amount) {
       wobble.impact(UP, amount);
@@ -307,6 +310,11 @@ export function createPanda(skin, jelly = true) {
       let turn = state.facing - this.yaw;
       turn = Math.atan2(Math.sin(turn), Math.cos(turn));
       this.yaw += turn * Math.min(1, dt * 14);
+      // A jump in position (a restart, being tossed out of the sea) is not a knock.
+      if (Math.hypot(state.x - this.lastX, state.y - this.lastY, state.z - this.lastZ) > 2.5) wobble.reset();
+      this.lastX = state.x;
+      this.lastY = state.y;
+      this.lastZ = state.z;
       root.setPosition(state.x, state.y, state.z);
       root.setRotation(0, this.yaw, 0);
       const moving = state.grounded && state.speedNow > 0.8 && !state.down;
