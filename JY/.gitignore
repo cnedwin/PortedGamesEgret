@@ -2,3 +2,4 @@
 /.kys-cache/
 /kys-cpp-4in1.7z
 /data/*.7z
+!/data/jy-original.7z

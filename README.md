@@ -10,9 +10,9 @@ A collection of browser game demos built with [Egret Rebuild](https://github.com
 
 An independently developed wuxia browser game demo built with Egret Rebuild. Explore the martial world, meet its characters, recruit companions, and take your party into battle. This demo pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. [Play online](https://cnedwin.github.io/PortedGamesEgret/JY/) · [Full game guide](JY/README.md)
 
-试玩页提供经典回合制完整版入口。当前可导入自备的 4in1 压缩包或其中的 `game` 文件夹。站点配置在线数据后即可直接开始。
+打开试玩页即可进入经典回合制完整版，首次启动自动加载已获授权的原版运行数据。
 
-The play page opens the full classic turn-based game. Import your own 4in1 archive or its `game` folder. Direct play will be available once hosted data is configured.
+Play the full classic turn-based game in your browser. The first launch automatically loads the original runtime data authorized for this demo.
 
 ## Jelly Pandas · 果冻熊猫
 

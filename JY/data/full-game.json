@@ -1,4 +1,6 @@
 {
   "version": 1,
-  "enabled": false
+  "enabled": true,
+  "archive": "./jy-original.7z",
+  "bytes": 37440245
 }

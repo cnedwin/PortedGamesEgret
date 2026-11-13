@@ -6,13 +6,9 @@ JY is an independently developed wuxia browser game demo built with [Egret Rebui
 
 ## 浏览器完整版 · Full browser game
 
-打开[试玩页](https://cnedwin.github.io/PortedGamesEgret/JY/)后，点「进入完整版」即可使用站点提供的数据或当前浏览器已有的数据游玩。首次在线加载时，网页会下载并检查原版游戏数据，完成后自动进入游戏。若站点暂未提供在线数据，可从本机导入自备的 4in1 `.7z` 压缩包或其中的 `game` 文件夹。游戏数据和存档保存在当前浏览器，无需安装软件或启动本地服务。
+打开试玩页，点击「进入完整版」即可游玩原版经典回合制。首次启动会自动下载并检查约 37.4 MB 的原版运行数据，回访时直接使用浏览器里的数据和存档。页面也支持导入自备的 4in1 `.7z` 压缩包或其中的 `game` 文件夹。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/JY/)
 
-Open the [play page](https://cnedwin.github.io/PortedGamesEgret/JY/) and select **进入完整版** to play with the hosted data or data already saved in your browser. The first online launch downloads and validates the original game data before opening the game automatically. If the site has no hosted data, import your own 4in1 `.7z` archive or the extracted `game` folder. Game data and saves stay in your browser. No local service or additional software is required.
-
-当前公开部署使用本机导入。
-
-The current public deployment uses local imports.
+Open the play page and select **进入完整版** to start the full classic turn-based game. The first launch automatically downloads and validates about 37.4 MB of original runtime data. Returning players use the game data and saves stored in their browser. You can also import your own 4in1 `.7z` archive or its `game` folder. [Play online](https://cnedwin.github.io/PortedGamesEgret/JY/)
 
 [原项目的 4in1 资源说明 · Original 4in1 resource information](https://github.com/scarsty/kys-cpp#readme)
 
@@ -37,7 +33,7 @@ Build a `.7z` archive from original game data licensed for public distribution, 
   "version": 1,
   "enabled": true,
   "archive": "./jy-original.7z",
-  "bytes": 123456789
+  "bytes": 37440245
 }
 ```
 
