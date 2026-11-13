@@ -63,3 +63,4 @@
   .roster-table { min-width: 520px; }
 }
 .map-roads line { stroke: #3d3320; stroke-opacity: 0.7; stroke-width: 1.2; }
+#layer .seat-tag { pointer-events: auto; font-size: 11px; padding: 3px 6px; }

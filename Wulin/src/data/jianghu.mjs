@@ -47,21 +47,21 @@ export const HOUSE_RULES = {
  */
 export const FORMATIONS = {
   line: { name: '长蛇阵', does: '寻常阵势', width: 5 },
-  wedge: { name: '锋矢阵', does: '攻势加八分，防御减半成', width: 3, attack: 0.08, defense: -0.05 },
+  wedge: { name: '锋矢阵', does: '攻势加三分，防御减六分，阵形收窄', width: 4, attack: 0.03, defense: -0.06 },
   circle: { name: '方圆阵', does: '防御加一成，攻势减四分', width: 5, defense: 0.1, attack: -0.04 },
-  crane: { name: '鹤翼阵', does: '两翼展开，攻势加四分', width: 7, attack: 0.04 },
+  crane: { name: '鹤翼阵', does: '两翼展开包抄，防御减两分', width: 6, defense: -0.02 },
   shaolin: { name: '罗汉阵', sect: 'shaolin', does: '防御加一成二', width: 5, defense: 0.12 },
   wudang: { name: '真武阵', sect: 'wudang', does: '防御加六分，气力回复加快', width: 5, defense: 0.06, regen: 0.002 },
-  emei: { name: '金顶剑阵', sect: 'emei', does: '攻势加八分', width: 5, attack: 0.08 },
-  huashan: { name: '两仪阵', sect: 'huashan', does: '攻势加一成，防御减两分', width: 4, attack: 0.1, defense: -0.02 },
+  emei: { name: '金顶剑阵', sect: 'emei', does: '攻势加六分', width: 5, attack: 0.06 },
+  huashan: { name: '两仪阵', sect: 'huashan', does: '攻势加八分，防御减两分', width: 5, attack: 0.08, defense: -0.02 },
   gaibang: { name: '莲花阵', sect: 'gaibang', does: '攻守各加半成', width: 6, attack: 0.05, defense: 0.05 },
-  mingjiao: { name: '圣火阵', sect: 'mingjiao', does: '攻势加九分', width: 5, attack: 0.09 },
-  kunlun: { name: '雪岭冲阵', sect: 'kunlun', does: '攻势加一成，防御减三分', width: 3, attack: 0.1, defense: -0.03 },
+  mingjiao: { name: '圣火阵', sect: 'mingjiao', does: '攻势加七分', width: 5, attack: 0.07 },
+  kunlun: { name: '雪岭冲阵', sect: 'kunlun', does: '攻势加六分，防御减三分，阵形收窄', width: 4, attack: 0.06, defense: -0.03 },
   caobang: { name: '分水阵', sect: 'caobang', does: '防御加半成，攻势加四分', width: 6, defense: 0.05, attack: 0.04 },
-  yaowang: { name: '回春阵', sect: 'yaowang', does: '气力回复大为加快', width: 5, regen: 0.004 },
-  chongsheng: { name: '三塔阵', sect: 'chongsheng', does: '防御加九分', width: 5, defense: 0.09 },
-  quanzhen: { name: '北斗阵', sect: 'quanzhen', does: '攻势加四分，气力回复加快', width: 7, attack: 0.04, regen: 0.002 },
-  tangmen: { name: '雁翅阵', sect: 'tangmen', does: '攻势加一成', width: 7, attack: 0.1 },
+  yaowang: { name: '回春阵', sect: 'yaowang', does: '防御加六分，气力回复大为加快', width: 5, defense: 0.06, regen: 0.004 },
+  chongsheng: { name: '三塔阵', sect: 'chongsheng', does: '防御加七分', width: 5, defense: 0.07 },
+  quanzhen: { name: '北斗阵', sect: 'quanzhen', does: '攻势加半成，气力回复加快', width: 5, attack: 0.05, regen: 0.002 },
+  tangmen: { name: '雁翅阵', sect: 'tangmen', does: '两翼展开，攻势加六分', width: 6, attack: 0.06 },
 };
 
 /**

@@ -64,8 +64,9 @@ function field(colors, random) {
  * @param options.layer   an element over the canvas for numbers and names
  * @param options.onEvent called with every event of the battle as it is played
  * @param options.onEnd   called once, a moment after the fight is decided
+ * @param options.playerSide which side the player commands: 0 attacks, 1 defends
  */
-export function createArena(stage, battle, { colors, layer, onEvent = () => {}, onEnd = () => {} }) {
+export function createArena(stage, battle, { colors, layer, onEvent = () => {}, onEnd = () => {}, playerSide = 0 }) {
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 40, near: 0.5, far: 500 });
   scene.addChild(camera);
@@ -74,7 +75,7 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
   const random = scatter(battle.units.length * 977 + 13);
   scene.addChild(field(colors, random));
 
-  const fillMaterial = [glow(0x58c06a, 1), glow(0xd8503c, 1)],
+  const fillMaterial = playerSide ? [glow(0xd8503c, 1), glow(0x58c06a, 1)] : [glow(0x58c06a, 1), glow(0xd8503c, 1)],
     backMaterial = glow(0x1c1a18, 1);
   const cast = battle.units.map((unit) => {
     const person = unit.person;
@@ -127,7 +128,7 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
       if (!to) return;
       if (event.type === 'miss') return float(to, '闪', 'miss');
       to.figure.play('hit', { base: 'guard' });
-      float(to, String(event.damage), event.crit ? 'crit' : to.unit.side ? 'dealt' : 'taken');
+      float(to, String(event.damage), event.crit ? 'crit' : to.unit.side !== playerSide ? 'dealt' : 'taken');
       const spark = sparks[nextSpark++ % sparks.length];
       spark.life = 0.22;
       spark.mesh.visible = true;
@@ -166,12 +167,12 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
         let best = null,
           nearest = 46;
         for (const actor of cast) {
-          if (actor.unit.side !== 1 || actor.unit.down || actor.unit.fled) continue;
+          if (actor.unit.side === playerSide || actor.unit.down || actor.unit.fled) continue;
           const at = stage.orbit.project(actor.x, 1, actor.z);
           const gap = at ? Math.hypot(at.x - x, at.y - y) : Infinity;
           if (gap < nearest) (nearest = gap), (best = actor);
         }
-        if (best) battle.focus(0, battle.orders[0].focus === best.unit.id ? null : best.unit.id);
+        if (best) battle.focus(playerSide, battle.orders[playerSide].focus === best.unit.id ? null : best.unit.id);
       };
     },
     leave() {
@@ -222,7 +223,7 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
         actor.fill.setScale(Math.max(0.001, actor.shown), 1, 1);
         actor.fill.setPosition(-(1 - actor.shown) / 2, 0, 0);
       }
-      const marked = byId.get(battle.orders[0].focus);
+      const marked = byId.get(battle.orders[playerSide].focus);
       ring.visible = !!marked && !marked.unit.down && !marked.unit.fled;
       if (ring.visible) ring.setPosition(marked.x, 0, marked.z), ring.setScale(1 + 0.08 * Math.sin(battle.time * 6 + clock * 20));
       for (const spark of sparks) {
@@ -255,7 +256,7 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
         }
         if (!actor.tag) {
           actor.tag = document.createElement('span');
-          actor.tag.className = 'nametag side' + actor.unit.side;
+          actor.tag.className = 'nametag side' + (actor.unit.side === playerSide ? 0 : 1);
           actor.tag.textContent = actor.unit.name;
           layer.append(actor.tag);
         }

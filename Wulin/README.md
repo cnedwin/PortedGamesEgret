@@ -4,9 +4,9 @@
 
 Wulin is an independently developed wuxia sect management demo being built for [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). In the Chenghe years of the Zhao dynasty the court bans the carrying of arms, and the martial world stirs. Take charge of one of twelve sects: build its seat, take in disciples, set their work, train them in the arts, and fight or befriend the other sects until you rule them all, or until the Summit names you its leader. [Play online](https://cnedwin.github.io/PortedGamesEgret/Wulin/)
 
-> 规则、数值、存档和修改器齐备；界面、立绘和场景画来自 `art-handoff/`，山门与战斗用引擎以 3D 绘制（模型由代码生成）。设备画不了 3D 时，山门以画卷示意，战斗以文字结算。探子与卧底、MOD 数据包和配音尚未制作。
+> 规则、数值、存档和修改器齐备；界面、立绘和场景画来自 `art-handoff/`，山门与战斗用引擎以 3D 绘制（模型由代码生成）。设备画不了 3D 时，山门以画卷示意，战斗以文字结算。尚未制作：配音、3D 沙盘大地图、分舵间的运输与商路。
 >
-> The rules, numbers, saves and the editor are in place. The interface, portraits and scene paintings come from `art-handoff/`, and the sect's seat and its fights are drawn in 3D with the engine from models made in code. Where a device cannot draw 3D, a painting stands in for the seat and fights are settled in writing. Spies, data packs for mods and voices are not made yet.
+> The rules, numbers, saves and the editor are in place. The interface, portraits and scene paintings come from `art-handoff/`, and the sect's seat and its fights are drawn in 3D with the engine from models made in code. Where a device cannot draw 3D, a painting stands in for the seat and fights are settled in writing. Not made yet: voices, a 3D map of the realm, and transport and trade between branches.
 
 ## 玩法 · How to play
 
@@ -31,6 +31,10 @@ Wulin is an independently developed wuxia sect management demo being built for [
 - **Events and wanderers**: matters come to the leader's door with several answers and different ends. Thirty wanderers may visit; one who joins brings a talent that helps the whole sect.
 - **Formations, house rules and shops**: pick a formation before a fight (a sect's own needs an elder or the leader in the party); a house rule trades training, loyalty, attack and craft against each other; shops in the town below bring silver every ten days.
 - **The court**: under the ban on arms, a sect at odds with the court is raided, and one in its favour has a third way to win: standing of eighty with the court and renown of five hundred at a year's end.
+
+- **更多可做的事 · More to do**：为弟子打造兵甲、赐予神兵、炼丹服药；任命舵主、堂主与长老；著写秘笈、自创武学、打通经脉、下山历练；给分舵定专精、迁建建筑；安插卧底；登擂单挑。他派来犯时可亲自守城，交手中可下号令、换攻守。开局可选四种局面、对手强弱，也可自立门户另起名号。设置里可装载数据包（MOD）。
+
+- **More to do**: fit disciples out, hand down named weapons, make and take pills; appoint wardens, hall masters and elders; write manuals, found an art, open meridians, send someone travelling; give a branch a speciality and move its buildings; plant a spy; fight on the duelling stage. An attack on you can be met in person, and in a fight you can call a rally and lean to attack or defence. A game can begin in four ways, against weaker or stronger sects, or under a name of your own, and a data pack can be loaded from the settings.
 
 ### 门派 · Sects
 
@@ -63,6 +67,7 @@ node --test                     # 规则与场景测试 · rule and scene tests
 node tools/headless.mjs 20 7    # 无界面推演二十年 · play twenty years without a page
 node tools/balance.mjs          # 战斗时长与门派胜率 · fight length and sect win rates
 node tools/balance.mjs --tune   # 重新校准门派强度 · re-tune the sects' strength
+node tools/formations.mjs        # 各阵法对长蛇阵的胜率 · each formation's win rate against a plain line
 node tools/vendor.mjs <path>    # 从引擎仓库更新 vendor/ · refresh vendor/ from an engine checkout
 ```
 

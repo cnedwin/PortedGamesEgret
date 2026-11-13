@@ -192,6 +192,25 @@ export function openMeridian(state, personId, choice) {
   return done();
 }
 
+/** How many plots a stronghold's yard is laid out in; see view/seat.mjs. */
+export const PLOT_COUNT = 24;
+/**
+ * Moves a building to a plot of the player's choosing, or back to where the
+ * game would put it (`plot` null). Whatever stood on that plot changes places with it.
+ */
+export function movePlot(state, sectId, placeId, index, plot) {
+  const place = state.places[placeId],
+    building = place?.buildings[index];
+  if (place?.owner !== sectId || !building) return refuse('无此建筑');
+  if (building.kind === 'hall' || building.kind === 'gate') return refuse('正殿与山门的位置是定下的');
+  if (plot === null) return delete building.plot, done();
+  if (!(plot >= 0 && plot < PLOT_COUNT)) return refuse('没有这块地');
+  const other = place.buildings.find((b) => b !== building && b.plot === plot);
+  if (other) building.plot === undefined ? delete other.plot : (other.plot = building.plot);
+  building.plot = plot;
+  return done();
+}
+
 // ---- branches and spies --------------------------------------------------------------------------------
 
 /** Gives a stronghold over to one kind of work. Needs a hall of the second level. */

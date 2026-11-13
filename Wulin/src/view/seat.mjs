@@ -24,7 +24,7 @@ const YARD = 42;
  * at the front; the rest fill the plots either side of the path between
  * them, nearest the middle first.
  */
-function plots() {
+export function plots() {
   const list = [];
   for (const z of [-17, -6, 5, 16]) for (const column of [1, 2, 3]) for (const side of [-1, 1]) list.push({ x: side * (column * (PLOT - 1) - 1), z, column });
   return list.sort((a, b) => a.column - b.column || Math.abs(a.z + 4) - Math.abs(b.z + 4));
@@ -117,8 +117,10 @@ const weaponSlotOf = (person) => person.gear?.weapon?.slot ?? null;
  * @param stage  the stage from stage.mjs
  * @param world  the world; read, never changed
  * @param placeId which stronghold to show
+ * @param options.layer   an element over the canvas for the buildings' name tags
+ * @param options.nameOf  gives a building kind its name
  */
-export function createSeat(stage, world, placeId) {
+export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind) => kind } = {}) {
   const spec = PLACE_BY_ID[placeId];
   const random = scatter(spec.id.length * 7919 + spec.at.x * 31 + spec.at.y);
   const scene = new Scene3D();
@@ -136,6 +138,9 @@ export function createSeat(stage, world, placeId) {
   scene.addChild(built);
   /** Where each kind of building ended up, for sending people to work. */
   let sites = {};
+  /** Name tags over the buildings: the element, the spot it marks and the building's place in the list. */
+  let tags = [];
+  const clearTags = () => (tags.forEach((tag) => tag.element.remove()), (tags = []));
   /** Figures by person id. */
   const cast = new Map();
 
@@ -144,10 +149,14 @@ export function createSeat(stage, world, placeId) {
     built = new Object3D();
     scene.addChild(built);
     sites = {};
-    const free = plots();
+    clearTags();
+    // Buildings the player has placed keep their plots; the rest take what is left, the busiest kinds nearest the path.
+    const all = plots();
     const sorted = place.buildings.map((b, index) => ({ ...b, index })).sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
+    const taken = new Set(sorted.filter((b) => all[b.plot] && b.kind !== 'hall' && b.kind !== 'gate').map((b) => b.plot));
+    const free = all.filter((_, i) => !taken.has(i));
     for (const building of sorted) {
-      const at = building.kind === 'hall' ? HALL_AT : building.kind === 'gate' ? GATE_AT : free.shift();
+      const at = building.kind === 'hall' ? HALL_AT : building.kind === 'gate' ? GATE_AT : all[building.plot] && taken.delete(building.plot) ? all[building.plot] : free.shift();
       if (!at) continue;
       const node = createBuilding(building.kind, building.level);
       node.setPosition(at.x, 0, at.z);
@@ -156,6 +165,14 @@ export function createSeat(stage, world, placeId) {
       if (building.kind === 'hall') node.setScale(1.35);
       built.addChild(node);
       sites[building.kind] ??= { x: at.x, z: at.z + (building.kind === 'hall' ? 8 : 0) };
+      if (layer) {
+        const element = document.createElement('button');
+        element.className = 'scene-pin seat-tag';
+        element.dataset.act = 'building';
+        element.dataset.index = building.index;
+        element.textContent = `${nameOf(building.kind)}${building.level > 1 ? ' ' + building.level : ''}`;
+        tags.push({ element, x: at.x, y: building.kind === 'hall' ? 9 : building.kind === 'tower' ? 9 : 5, z: at.z });
+      }
     }
   }
 
@@ -167,7 +184,7 @@ export function createSeat(stage, world, placeId) {
       dressing = surroundings(land.height, scatter(spec.at.x * 131 + spec.at.y), owner ? hexOf(SECT_BY_ID[owner].color) : 0x8a8474);
       scene.addChild(dressing);
     }
-    const now = place.buildings.map((b) => b.kind + b.level).join();
+    const now = place.buildings.map((b) => b.kind + b.level + (b.plot ?? '')).join();
     if (now !== signature) (signature = now), layBuildings(place);
 
     // Leaders and elders are always shown; the rest fill the remaining places.
@@ -235,7 +252,8 @@ export function createSeat(stage, world, placeId) {
   }
 
   refresh();
-  return {
+  const scene3 = {
+    showTags: true,
     scene,
     camera,
     placeId,
@@ -246,6 +264,19 @@ export function createSeat(stage, world, placeId) {
     update(dt) {
       for (const actor of cast.values()) direct(actor, dt);
       stage.orbit.apply(camera, dt);
+      // The name tags follow their buildings; they are shown only while `showTags` is on.
+      for (const tag of tags) {
+        const at = scene3.showTags ? stage.orbit.project(tag.x, tag.y, tag.z) : null;
+        if (!at) {
+          tag.element.remove();
+          continue;
+        }
+        if (!tag.element.isConnected) layer.append(tag.element);
+        tag.element.style.left = at.x.toFixed(1) + 'px';
+        tag.element.style.top = at.y.toFixed(1) + 'px';
+      }
     },
+    leave: () => tags.forEach((tag) => tag.element.remove()),
   };
+  return scene3;
 }
