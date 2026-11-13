@@ -11,6 +11,9 @@
 //   core/persons.mjs  people and how they grow
 //   core/save.mjs     saves, in the browser and as files
 //   core/editor.mjs   the built-in editor (F8 twice)
+//   view/stage.mjs    the 3D picture: view/seat.mjs a stronghold, view/arena.mjs a fight
+// The 3D modules are loaded only once a game starts, and the game carries on
+// with its panels alone where the device cannot draw them.
 import { ART_BY_ID, ARTS, levelOf } from './data/arts.mjs';
 import { BUILDINGS } from './data/goods.mjs';
 import { PLACES, PLACE_BY_ID, RESOURCE_NAMES, RESOURCES } from './data/places.mjs';
@@ -25,15 +28,18 @@ import {
   relocate, residents, setJob, setMaster, settle, settleAssault, strength, upgrade, usedCells,
 } from './core/world.mjs';
 
-const app = document.querySelector('#app');
+const app = document.querySelector('#app'),
+  head = document.querySelector('#head'),
+  viewBox = document.querySelector('#view'),
+  hud = document.querySelector('#hud');
 const slots = createSlots(localStorage);
 
 /** What the page is showing; the world itself is in `world`. */
-const ui = { tab: 'sect', speed: 0, sheet: null, message: '', taps: 0, tapAt: 0 };
+const ui = { tab: 'sect', speed: 0, sheet: null, message: '', taps: 0, tapAt: 0, place: null, fight: null, tall: false };
 let world = null;
 const editor = createEditor(() => world, (next) => (world = next));
 /** State for the browser console and for automated checks; the game never reads it. */
-globalThis.__wulin = { get world() { return world; }, ui };
+globalThis.__wulin = { get world() { return world; }, ui, get picture() { return picture; } };
 
 function fail(cause) {
   const box = document.querySelector('#error');
@@ -45,6 +51,56 @@ window.addEventListener('error', (event) => fail(event.error ?? event.message));
 /** Makes text safe to place in markup; names can be typed by the player. */
 const esc = (text) => String(text).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const me = () => world.playerSect;
+
+// ---- the 3D picture ----------------------------------------------------------------------------------
+
+/** `stage` is null until a game starts, and stays null where 3D cannot be drawn. */
+const picture = { stage: null, seat: null, tried: false, modules: null };
+const storedQuality = () => {
+  try {
+    return localStorage.getItem('wulin-quality');
+  } catch {
+    return null;
+  }
+};
+
+async function startPicture() {
+  if (picture.tried) return;
+  picture.tried = true;
+  try {
+    const [stageModule, seatModule, arenaModule] = await Promise.all([import('./view/stage.mjs'), import('./view/seat.mjs'), import('./view/arena.mjs')]);
+    picture.modules = { ...stageModule, ...seatModule, ...arenaModule };
+    viewBox.hidden = false;
+    const quality = picture.modules.pickQuality(undefined, storedQuality());
+    picture.stage = await picture.modules.createStage(document.querySelector('#stage'), { quality, onError: (cause) => console.warn('3D:', cause) });
+  } catch (cause) {
+    console.warn('3D unavailable:', cause);
+  }
+  render();
+}
+
+/** Keeps the picture in step with the page: which stronghold is shown, and whether it is in sight. */
+function syncPicture() {
+  const { stage } = picture;
+  const wanted = !!stage && !!world && (ui.fight || ui.tab === 'sect');
+  viewBox.hidden = !wanted;
+  viewBox.classList.toggle('tall', ui.tall);
+  document.body.classList.toggle('fighting', !!ui.fight);
+  if (!stage) return;
+  stage.sleep(!wanted);
+  if (!wanted || ui.fight) return;
+  const mine = placesOf(world, me());
+  if (!mine.includes(ui.place)) ui.place = mine.includes(SECT_BY_ID[me()].seat) ? SECT_BY_ID[me()].seat : mine[0];
+  if (!ui.place) return;
+  if (picture.seat?.placeId !== ui.place || picture.seat.world !== world) {
+    picture.seat = picture.modules.createSeat(stage, () => world, ui.place);
+    picture.seat.world = world;
+    stage.show(picture.seat);
+  } else {
+    if (stage.current !== picture.seat) stage.show(picture.seat);
+    picture.seat.refresh();
+  }
+}
 const say = (result, okText = '') => (ui.message = result.ok ? okText : result.why);
 
 // ---- title ---------------------------------------------------------------------------------------
@@ -95,7 +151,8 @@ function sectView() {
       const place = world.places[placeId],
         spec = PLACE_BY_ID[placeId];
       const options = Object.entries(BUILDINGS).map(([kind, b]) => `<option value="${kind}">${b.name}（${b.cost}两，占${b.cells}格）</option>`).join('');
-      return `<div class="card mine"><h2>${spec.name}</h2>
+      const look = picture.stage && placeId !== ui.place ? ` <button data-act="look" data-place="${placeId}">观看</button>` : '';
+      return `<div class="card mine"><h2>${spec.name}${look}</h2>
         <div class="muted">${spec.note} · 建地 ${usedCells(world, placeId)}/${spec.cells} · 住 ${residents(world, placeId).length}/${beds(world, placeId)}</div>
         <div class="muted">${RESOURCES.map((key) => `${RESOURCE_NAMES[key]}${'★'.repeat(spec.resources[key]) || '无'}`).join(' ')}</div>
         <div class="row">${place.buildings
@@ -188,6 +245,8 @@ function saveView() {
       <div class="row">${slot === 'auto' ? '' : `<button data-act="save" data-slot="${slot}">保存</button>`}<button data-act="load" data-slot="${slot}" ${saved[slot] ? '' : 'disabled'}>读取</button></div></div>`)
     .join('')}</div>
     <div class="row" style="margin-top:12px"><button class="primary" data-act="export">导出存档文件</button><button data-act="import">导入存档文件</button><button data-act="quit">回到标题</button></div>
+    <div class="row"><span>画质</span><select data-change="quality">${[['', '自动'], ['high', '高'], ['medium', '中'], ['low', '低（省电）']].map(([value, label]) => `<option value="${value}" ${(storedQuality() ?? '') === value ? 'selected' : ''}>${label}</option>`).join('')}</select>
+      <span class="muted">${picture.stage ? '改动后会重新载入页面，进度先自动保存。' : '这台设备画不了 3D，游戏以文字面板进行。'}</span></div>
     <p class="muted">存档保存在这个浏览器里；清除浏览器数据会一并清掉，重要的进度请导出为文件。${world.flags.editorUsed ? '<br>此存档使用过修改器。' : ''}</p>`;
 }
 
@@ -227,17 +286,55 @@ function editorSheet() {
 
 // ---- drawing -------------------------------------------------------------------------------------------
 
+/** The bars over a fight: both sides' strength, the clock, and the player's orders. */
+function hudView() {
+  if (!ui.fight) {
+    if (!picture.stage || !world) return '';
+    return `<div></div><div class="corner"><button data-act="tall">${ui.tall ? '收起' : '展开'}</button></div>`;
+  }
+  const { arena, title } = ui.fight,
+    battle = arena.battle;
+  const side = (index) => {
+    const units = battle.units.filter((unit) => unit.side === index),
+      left = units.filter((unit) => !unit.down && !unit.fled);
+    const share = units.reduce((sum, unit) => sum + (unit.down || unit.fled ? 0 : unit.hp), 0) / units.reduce((sum, unit) => sum + unit.hpMax, 0);
+    return `<div class="side ${index ? 'right' : ''}"><b>${SECT_BY_ID[ui.fight.sects[index]].name}</b> ${left.length}/${units.length}<div class="meter"><i style="width:${Math.round(share * 100)}%"></i></div></div>`;
+  };
+  const speed = (value) => `<button data-act="fight-speed" data-speed="${value}" class="${arena.speed === value && !arena.paused ? 'on' : ''}">${value}×</button>`;
+  const marked = battle.units.find((unit) => unit.id === battle.orders[0].focus && !unit.down);
+  return `<div class="fightbar">${side(0)}<div>${esc(title)}<br><span class="muted" style="color:#ddd">${battle.time.toFixed(0)} 秒</span></div>${side(1)}</div>
+    <div class="orders"><div class="hint">${battle.done ? '胜负已分' : marked ? `集火：${esc(marked.name)}（再点一次取消）` : arena.paused ? '已暂停。点敌人可下令集火，拖动可转视角。' : '点敌人可下令集火'}</div>
+      <button data-act="fight-pause" class="${arena.paused ? 'on' : ''}">${arena.paused ? '继续' : '暂停'}</button>${speed(1)}${speed(2)}${speed(4)}
+      <button data-act="fight-skip">速决</button><button data-act="fight-retreat" ${battle.orders[0].retreat ? 'disabled' : ''}>撤退</button></div>`;
+}
+
 function render() {
-  if (!world) return void (app.innerHTML = titleView());
+  syncPicture();
+  hud.innerHTML = hudView();
+  if (!world) return void ((head.innerHTML = ''), (app.innerHTML = titleView()));
   const views = { sect: sectView, people: peopleView, world: worldView, log: logView, save: saveView };
   const end = world.outcome ? `<div class="card" style="margin-bottom:10px"><b>${{ 'won-conquest': '一统江湖！', 'won-summit': '武林大会推举你为盟主！', lost: '本门已不复存在。' }[world.outcome.result] ?? ''}</b></div>` : '';
   const sheet = ui.sheet?.kind === 'fight' ? fightSheet(ui.sheet) : ui.sheet?.kind === 'editor' ? editorSheet() : '';
-  app.innerHTML = `${barView()}<main>${end}${ui.message && !ui.sheet ? `<p class="warn">${esc(ui.message)}</p>` : ''}${views[ui.tab]()}</main>${sheet}`;
+  head.innerHTML = barView();
+  app.innerHTML = `<main>${end}${ui.message && !ui.sheet ? `<p class="warn">${esc(ui.message)}</p>` : ''}${views[ui.tab]()}</main>${sheet}`;
 }
 
 // ---- what the player does ---------------------------------------------------------------------------------
 
-/** Fights for a stronghold with the sect's ten best, and tells the story of it. */
+/** One line of a fight's account, or nothing for an event not worth telling. */
+function tell(event, name) {
+  if (event.type === 'hit' && (event.crit || event.flank > 1))
+    return `${event.time.toFixed(0)}秒 ${name(event.from)}以${event.art ?? ''}「${event.move}」${event.flank > 1.2 ? '背袭' : event.flank > 1 ? '侧击' : ''}${event.crit ? '重创' : '击中'}${name(event.to)}，伤 ${event.damage}`;
+  if (event.type === 'down') return `${event.time.toFixed(0)}秒 ${name(event.id)}倒下`;
+  if (event.type === 'fled') return `${event.time.toFixed(0)}秒 ${name(event.id)}脱离战场`;
+  return '';
+}
+
+/**
+ * Fights for a stronghold with the sect's ten best. With the 3D picture the
+ * fight is played out and the player can give orders; without it the fight is
+ * settled at once. Either way it ends in a written account.
+ */
 function march(placeId) {
   const party = membersOf(world, me()).filter((p) => p.wounds < 0.3).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
   const prepared = assaultSides(world, me(), placeId, party.map((p) => p.id));
@@ -247,21 +344,36 @@ function march(placeId) {
   const battle = createBattle({ sides: prepared.sides, formations: prepared.formations, seed: rng.int(1, 1e9) });
   const name = (id) => world.persons[id]?.name ?? '？';
   const lines = [];
-  while (!battle.done) {
-    battle.update();
-    for (const event of battle.events) {
-      if (event.type === 'hit' && (event.crit || event.flank > 1) && lines.length < 60)
-        lines.push(`${event.time.toFixed(0)}秒 ${name(event.from)}以${event.art ?? ''}「${event.move}」${event.flank > 1.2 ? '背袭' : event.flank > 1 ? '侧击' : ''}${event.crit ? '重创' : '击中'}${name(event.to)}，伤 ${event.damage}`);
-      if (event.type === 'down') lines.push(`${event.time.toFixed(0)}秒 ${name(event.id)}倒下`);
-    }
-    battle.events.length = 0;
-  }
-  const summary = { winner: battle.winner, time: battle.time, fighters: battle.units.map((u) => ({ id: u.id, side: u.side, down: u.down, fled: u.fled, hpLeft: u.hp / u.hpMax, dealt: u.dealt, xp: Math.round(u.dealt) })) };
-  const target = PLACE_BY_ID[placeId].name;
-  const outcome = settleAssault(world, me(), placeId, summary, rng);
-  world.rng = rng.state;
-  ui.sheet = { kind: 'fight', title: `攻打${target}`, verdict: `${outcome.won ? '得胜' : '败退'}，历时 ${battle.time.toFixed(0)} 秒。${outcome.fallen.length ? '战殁：' + outcome.fallen.join('、') : ''}`, lines };
+  const note = (event) => {
+    const line = tell(event, name);
+    if (line && (event.type !== 'hit' || lines.length < 60)) lines.push(line);
+  };
+  const title = `攻打${PLACE_BY_ID[placeId].name}`;
+  const finish = () => {
+    const summary = { winner: battle.winner, time: battle.time, fighters: battle.units.map((u) => ({ id: u.id, side: u.side, down: u.down, fled: u.fled, hpLeft: u.hp / u.hpMax, dealt: u.dealt, xp: Math.round(u.dealt) })) };
+    const outcome = settleAssault(world, me(), placeId, summary, rng);
+    world.rng = rng.state;
+    ui.fight = null;
+    ui.sheet = { kind: 'fight', title, verdict: `${outcome.won ? '得胜' : '败退'}，历时 ${battle.time.toFixed(0)} 秒。${outcome.fallen.length ? '战殁：' + outcome.fallen.join('、') : ''}`, lines };
+  };
   ui.speed = 0;
+  if (!picture.stage) {
+    while (!battle.done) {
+      battle.update();
+      battle.events.forEach(note);
+      battle.events.length = 0;
+    }
+    return finish();
+  }
+  const sects = [me(), prepared.defender];
+  const arena = picture.modules.createArena(picture.stage, battle, {
+    colors: sects.map((id) => parseInt(SECT_BY_ID[id].color.slice(1), 16)),
+    layer: document.querySelector('#layer'),
+    onEvent: note,
+    onEnd: () => (finish(), render()),
+  });
+  ui.fight = { arena, title, sects };
+  picture.stage.show(arena);
 }
 
 function download(name, text) {
@@ -280,7 +392,7 @@ function importFile() {
     const file = input.files?.[0];
     if (!file) return;
     const loaded = deserialize(await file.text());
-    if (loaded.ok) (world = loaded.state), (ui.message = '已读入存档。'), (ui.tab = 'sect');
+    if (loaded.ok) (world = loaded.state), (ui.message = '已读入存档。'), (ui.tab = 'sect'), startPicture();
     else ui.message = loaded.why;
     render();
   };
@@ -288,7 +400,7 @@ function importFile() {
 }
 
 function openEditor() {
-  if (!world || ui.sheet?.kind === 'editor') return;
+  if (!world || ui.fight || ui.sheet?.kind === 'editor') return;
   editor.open();
   ui.sheet = { kind: 'editor', sect: me(), person: undefined };
   ui.speed = 0;
@@ -301,10 +413,11 @@ const actions = {
     world = createWorld({ seed: (Date.now() % 1e9) + 1, playerSect: data.sect, succession: document.querySelector('#succession')?.checked ?? false });
     ui.tab = 'sect';
     ui.message = '';
+    startPicture();
   },
   load(data) {
     const loaded = slots.read(data.slot);
-    if (loaded.ok) (world = loaded.state), (ui.message = '');
+    if (loaded.ok) (world = loaded.state), (ui.message = ''), startPicture();
     else ui.message = loaded.why;
   },
   save: (data) => (ui.message = slots.write(data.slot, world, `${SECT_BY_ID[me()].name} ${dateText(world)}`) ? '已保存。' : '浏览器拒绝了保存，请改用导出文件。'),
@@ -313,6 +426,7 @@ const actions = {
   quit() {
     world = null;
     ui.speed = 0;
+    ui.fight = null;
   },
   tab: (data) => ((ui.tab = data.tab), (ui.message = '')),
   speed: (data) => (ui.speed = Number(data.speed)),
@@ -322,6 +436,12 @@ const actions = {
   promote: (data) => say(promote(world, Number(data.id)), '已晋升。'),
   settle: (data) => say(settle(world, me(), data.place), '分舵已立。'),
   assault: (data) => march(data.place),
+  look: (data) => (ui.place = data.place),
+  tall: () => (ui.tall = !ui.tall),
+  'fight-pause': () => (ui.fight.arena.paused = !ui.fight.arena.paused),
+  'fight-speed': (data) => ((ui.fight.arena.speed = Number(data.speed)), (ui.fight.arena.paused = false)),
+  'fight-skip': () => ui.fight.arena.skip(),
+  'fight-retreat': () => (ui.fight.arena.battle.retreat(0), (ui.fight.arena.paused = false)),
   gift: (data) => say(gift(world, me(), data.sect, 500), '礼已送到。'),
   close() {
     if (ui.sheet?.kind === 'editor') editor.close();
@@ -355,6 +475,15 @@ const changes = {
   },
   master: (data, value) => value && say(setMaster(world, Number(data.id), Number(value)), '已拜师。'),
   move: (data, value) => value && say(relocate(world, Number(data.id), value)),
+  quality(_, value) {
+    slots.write('auto', world, `${SECT_BY_ID[me()].name} ${dateText(world)}`);
+    try {
+      value ? localStorage.setItem('wulin-quality', value) : localStorage.removeItem('wulin-quality');
+    } catch {
+      return;
+    }
+    location.reload();
+  },
   'ed-sect': (_, value) => ((ui.sheet.sect = value), (ui.sheet.person = undefined)),
   'ed-person': (_, value) => (ui.sheet.person = Number(value)),
   'ed-silver': (_, value) => editor.setSilver(ui.sheet.sect, Number(value)),
@@ -372,7 +501,7 @@ const changes = {
 };
 const edited = () => world.persons[ui.sheet.person] ?? membersOf(world, ui.sheet.sect)[0];
 
-app.addEventListener('click', (event) => {
+document.body.addEventListener('click', (event) => {
   const target = event.target.closest('[data-act]');
   if (!target || target.disabled) return;
   try {
@@ -382,7 +511,7 @@ app.addEventListener('click', (event) => {
   }
   if (target.dataset.act !== 'date' && target.dataset.act !== 'import') render();
 });
-app.addEventListener('change', (event) => {
+document.body.addEventListener('change', (event) => {
   const target = event.target.closest('[data-change]');
   if (!target) return;
   try {
@@ -396,11 +525,14 @@ app.addEventListener('change', (event) => {
 });
 window.addEventListener('keydown', doublePress('F8', () => (ui.sheet?.kind === 'editor' ? (actions.close(), render()) : openEditor())));
 window.addEventListener('keydown', (event) => event.key === 'Escape' && ui.sheet && (actions.close(), render()));
+// Space holds and releases a fight.
+window.addEventListener('keydown', (event) => event.key === ' ' && ui.fight && (event.preventDefault(), actions['fight-pause'](), render()));
 
 // ---- time ---------------------------------------------------------------------------------------------------
 
 /** Days pass while the game is running and nothing is open over the page. */
 setInterval(() => {
+  if (ui.fight) return void (hud.innerHTML = hudView());
   if (!world || !ui.speed || ui.sheet || world.outcome) return;
   // Leave the page alone while the player has a list open, so it does not close under them.
   if (document.activeElement?.tagName === 'SELECT' || document.activeElement?.tagName === 'INPUT') return;
