@@ -1,0 +1,53 @@
+/* The page is only a dark frame around the game canvas, which keeps a 16:9 shape. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #14122a;
+  overflow: hidden;
+  overscroll-behavior: none;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+#stage {
+  display: block;
+  outline: none;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+}
+
+#error {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  max-width: min(90vw, 720px);
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.96);
+  color: #2b2a4a;
+  font:
+    15px/1.5 system-ui,
+    sans-serif;
+  white-space: pre-wrap;
+}
+
+/* Phones held upright: ask for landscape by rotating the game. */
+@media (orientation: portrait) and (max-width: 720px) {
+  body::after {
+    content: '请横屏游玩 · Please rotate your device';
+    position: fixed;
+    inset: auto 0 8% 0;
+    text-align: center;
+    color: #ffd9e6;
+    font:
+      15px system-ui,
+      sans-serif;
+  }
+}

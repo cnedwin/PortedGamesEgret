@@ -1,0 +1,8 @@
+Egret Engine community rebuild
+https://github.com/cnedwin/Egret_rebuild
+
+First-party code and documentation: Apache-2.0; see LICENSE.
+
+robust-predicates 3.0.3 by Vladimir Agafonkin
+https://github.com/mourner/robust-predicates
+License: Unlicense; see robust-predicates/LICENSE. Used by the engine.

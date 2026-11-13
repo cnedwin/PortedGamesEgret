@@ -26,6 +26,12 @@ An independently developed 3D action survival demo built with Egret Rebuild. See
 
 An independently developed 3D kart racing demo built with Egret Rebuild. Eight racers (a lion dancer, a panda, the Monkey King, the Jade Rabbit, the Azure Dragon, a terracotta warrior, a Peking opera mask and a child in a tiger hat) race the Mountain and Water Circuit past a ceremonial gate, a stone bridge, pagodas and the long wall: drift for boosts, collect coins, thread cloud gates and use slipstreams, steer round mud, stone lions and rolling drums, and fight for places with twelve items, from firecrackers, cuju balls and kites to a golden bell, a thunder drum and a somersault cloud. Three classes over 1, 3 or 5 laps, with keyboard, gamepad and touch controls. [Play online](https://cnedwin.github.io/PortedGamesEgret/Rally/) · [Guide and development](Rally/README.md)
 
+## Love Elective · 心动选修课
+
+一款使用新白鹭引擎独立开发的 2D 校园恋爱养成游戏 Demo。大一新生选了一门只有一份作业的选修课：三十天后的星空祭之前，真正认识一个人，并把心意告诉她。七位性格各异的学姐各有四章带分支的故事和两种结局；每天分四段时间去上课、训练、打工、做任务、买礼物，摸清每个人喜欢的相处距离。衣橱里有四十件服饰，每件都能自由染色，也能为学姐搭配。分层视差的场景带来伪 2.5D 的纵深感，支持中英文、鼠标和触屏。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/LoveElective/) · [说明与开发](LoveElective/README.md)
+
+An independently developed 2D campus romance and dress-up demo built with Egret Rebuild. A first-year student takes an elective with a single assignment: before the Star Festival thirty days away, truly get to know one person and tell her how you feel. Seven seniors with very different personalities each have four branching story chapters and two endings; every day has four parts for classes, training, part-time work, tasks and presents, and for learning how close each of them likes you to stand. The wardrobe holds forty pieces, each freely dyeable, and the seniors can be dressed too. Layered parallax scenes give a pseudo-2.5D sense of depth, with Chinese and English text and mouse or touch controls. [Play online](https://cnedwin.github.io/PortedGamesEgret/LoveElective/) · [Guide and development](LoveElective/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)
