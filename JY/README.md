@@ -6,9 +6,9 @@ JY is an independently developed wuxia browser game demo built with [Egret Rebui
 
 ## 浏览器完整版 · Full browser game
 
-打开试玩页，点击「进入完整版」即可游玩原版经典回合制。首次启动会自动下载并检查约 37.4 MB 的原版运行数据，回访时直接使用浏览器里的数据和存档。页面也支持导入自备的 4in1 `.7z` 压缩包或其中的 `game` 文件夹。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/JY/)
+打开试玩页，游戏会自动启动。首次启动会下载并检查约 37.4 MB 的原版运行数据，回访时直接使用浏览器里的数据和存档。如果在线数据不可用，可以导入自备的 4in1 `.7z` 压缩包或其中的 `game` 文件夹。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/JY/)
 
-Open the play page and select **进入完整版** to start the full classic turn-based game. The first launch automatically downloads and validates about 37.4 MB of original runtime data. Returning players use the game data and saves stored in their browser. You can also import your own 4in1 `.7z` archive or its `game` folder. [Play online](https://cnedwin.github.io/PortedGamesEgret/JY/)
+Open the play page to launch the game automatically. The first launch downloads and validates about 37.4 MB of original runtime data. Returning players use the game data and saves stored in their browser. If hosted data is unavailable, import your own 4in1 `.7z` archive or its `game` folder. [Play online](https://cnedwin.github.io/PortedGamesEgret/JY/)
 
 [原项目的 4in1 资源说明 · Original 4in1 resource information](https://github.com/scarsty/kys-cpp#readme)
 

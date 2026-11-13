@@ -42,7 +42,8 @@ export function showTitle({ initial, baseline, autoSave, save, preferences, sear
   const status = document.querySelector('#title-status');
   const dialog = document.querySelector('#title-dialog');
   const choices = [...title.querySelectorAll('[data-title-action]')];
-  const resume = choices[0];
+  const resume = title.querySelector('[data-title-action="continue"]');
+  const newGame = title.querySelector('[data-title-action="new"]');
   const listeners = new AbortController();
   const { signal } = listeners;
   let busy = false;
@@ -53,7 +54,7 @@ export function showTitle({ initial, baseline, autoSave, save, preferences, sear
   play.hidden = true;
   title.ownerDocument.querySelector('#game').dataset.phase = 'title';
   resume.disabled = !save;
-  (save ? resume : choices[1]).focus({ preventScroll: true });
+  (save ? resume : newGame).focus({ preventScroll: true });
 
   function button(label, action, primary = false) {
     const element = document.createElement('button');
@@ -179,7 +180,7 @@ export function showTitle({ initial, baseline, autoSave, save, preferences, sear
       settings: showSettings,
       help() {
         showPanel('操作說明',
-          paragraph('探索時用方向鍵或 WASD 移動，也可點擊地圖。Enter 對話或確認，B 開背包，Esc 開江湖選單。'),
+          paragraph('探索時可點選地圖尋路，或用方向鍵、WASD 與觸屏方向鍵移動。可點「對話」、「背包」、「江湖選單」，也可按 Enter、B、Esc。'),
           paragraph('回合中按 M 選擇移動、I 選擇武學，使用方向鍵選格並按 Enter 確定，也可直接點選戰場。B 使用藥品或暗器，T 選擇醫療或用毒，V 查看人物狀態，L 休息並結束回合，Q / F 切換武學，Tab 切換自動戰鬥。'),
           paragraph('標準手柄可用方向鍵或左搖杆移動。A 確認，B 返回，Start 開啟選單。'));
       },

@@ -6,6 +6,10 @@ import { RenderTarget3D } from './Texture3D.js';
 /** Anything that can draw a scene into a render target: both first-party renderers qualify. */
 export interface ReflectionRenderer3D {
     render(scene: Scene3D, camera: Camera3D, target?: RenderTarget3D): boolean;
+    /** Allows renderers to label mirror draws separately in application-frame metrics. */
+    renderReflection?(scene: Scene3D, camera: Camera3D, target: RenderTarget3D): boolean;
+    /** Allows the renderer to verify and record reuse of the previous mirror result. */
+    reuseReflection?(target: RenderTarget3D): boolean;
     /** When present, post-processing is switched off while the mirror image is drawn. */
     readonly postProcess?: {
         enabled: boolean;

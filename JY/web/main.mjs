@@ -38,6 +38,9 @@ const battleContinue = document.querySelector('#battle-continue');
 const marker = document.querySelector('#event-marker');
 const menuToggle = document.querySelector('#open-menu');
 const exploreControls = document.querySelector('#explore-controls');
+const exploreDpad = document.querySelector('#explore-dpad');
+const mapInteract = exploreControls.querySelector('[data-map-command="Enter"]');
+const touchExploration = matchMedia('(pointer: coarse)');
 const battleMenuPanel = document.querySelector('#battle-menu');
 const moves = new Map([
   ['ArrowUp', [0, -1, 0]], ['KeyW', [0, -1, 0]],
@@ -630,7 +633,8 @@ async function openMap(game, destination) {
     onPage({ text, head, style, voice, page, pages }) {
       Object.assign(canvas.dataset, { talkText: text, talkHead: head, talkStyle: style, talkVoice: voice, talkPage: page, talkPages: pages });
       if (openingActive) canvas.dataset.opening = 'talk';
-      hint.textContent = `點擊畫面 / Enter 繼續 · ${page}/${pages}`;
+      updateExploreControls();
+      hint.textContent = `${touchExploration.matches ? '點畫面或按繼續' : '點擊畫面 / Enter 繼續'} · ${page}/${pages}`;
     },
   });
 
@@ -663,7 +667,15 @@ async function openMap(game, destination) {
     return !(tile > 0 && tile < 9999) && !water.has(pictureId(scene.layers.earth[index])) && !eventAt(tx, ty)?.cannotWalk;
   }
 
+  function updateExploreControls() {
+    const reading = openingActive || trainerActive || recruitActive || eventActive;
+    const canMove = !reading && !worldMenuActive && !eventEnded && !battle;
+    exploreDpad.hidden = !canMove;
+    mapInteract.textContent = reading ? '繼續' : '對話';
+  }
+
   function showCell() {
+    updateExploreControls();
     canvas.dataset.x = String(x);
     canvas.dataset.y = String(y);
     coordinates.textContent = `格点 ${x} · ${y}`;
@@ -671,7 +683,8 @@ async function openMap(game, destination) {
     marker.textContent = event?.event3 > 0 ? `经过事件 ${event.event3}` : '';
     hint.textContent = eventEnded ? '劇情完成 · 在江湖選單可返回主選單' : facingEvent() ? 'Enter / 空格與 NPC 對話'
       : scene.exits?.some(([ex, ey]) => x === ex && y === ey) ? '已到达原作出口'
-      : isWorld && map3dView ? '方向鍵 / WASD 移動 · 點擊地名進入' : '方向键或 WASD 移动';
+      : touchExploration.matches ? '點選地圖尋路，或使用方向鍵移動'
+        : isWorld && map3dView ? '方向鍵 / WASD 移動 · 點擊地名進入' : '方向鍵或 WASD 移動';
   }
 
   function maybePlayOpening() {
@@ -679,6 +692,7 @@ async function openMap(game, destination) {
     openingActive = true;
     menuToggle.disabled = true;
     held = move = undefined;
+    updateExploreControls();
     canvas.dataset.opening = 'running';
     canvas.dataset.animationFrames = '0';
     const slot = scene.layers.eventIndex[indexOf(x, y)];
@@ -1938,11 +1952,34 @@ async function openMap(game, destination) {
     return openingActive || trainerActive || recruitActive || eventActive || worldMenuActive ? 'menu' : 'map';
   } });
 
+  let touchDirection;
+  function releaseTouchDirection(event) {
+    if (touchDirection?.pointerId !== event.pointerId) return;
+    const { command } = touchDirection;
+    touchDirection = undefined;
+    if (held === command) held = undefined;
+  }
+  exploreDpad.addEventListener('pointerdown', event => {
+    const button = event.target.closest('button');
+    const command = button?.dataset.mapCommand;
+    if (event.button !== 0 || !moves.has(command) || touchDirection || closing || battle || menu.active || exploreDpad.hidden) return;
+    touchDirection = { pointerId: event.pointerId, command };
+    button.setPointerCapture(event.pointerId);
+    pressGameKey(command, false);
+  }, { signal: listeners.signal });
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) {
+    exploreDpad.addEventListener(type, releaseTouchDirection, { signal: listeners.signal });
+  }
+  addEventListener('blur', () => {
+    if (touchDirection) releaseTouchDirection(touchDirection);
+  }, { signal: listeners.signal });
   exploreControls.addEventListener('click', event => {
     const command = event.target.closest('button')?.dataset.mapCommand;
     if (!command || closing || battle || menu.active) return;
+    if (moves.has(command) && event.detail !== 0) return;
     canvas.focus({ preventScroll: true });
     pressGameKey(command, false);
+    if (moves.has(command)) held = undefined;
   }, { signal: listeners.signal });
   function restoreMapKeyboardFocus() {
     if (document.activeElement === canvas && document.visibilityState === 'visible') keyboard.focus('map');

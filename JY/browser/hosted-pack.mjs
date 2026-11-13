@@ -3,9 +3,10 @@ import { maxArchiveBytes } from './pack-format.mjs';
 const manifestUrl = new URL('../data/full-game.json', import.meta.url);
 const requestOptions = { credentials: 'omit', redirect: 'error' };
 
-export async function findHostedPack() {
+export async function findHostedPack(signal) {
+  const timeout = AbortSignal.timeout(8000);
   const response = await fetch(manifestUrl, {
-    ...requestOptions, cache: 'no-cache', signal: AbortSignal.timeout(8000),
+    ...requestOptions, cache: 'no-cache', signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
   });
   if (response.status === 404) return;
   if (!response.ok) throw Error('暂时无法获取在线游戏数据。');

@@ -2,15 +2,22 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>JY 完整版</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>金庸群侠传 · JY</title>
   <link rel="stylesheet" href="../trial.css">
 </head>
 <body>
-  <main class="play">
-    <h1>JY 完整版</h1>
-    <p>请从游戏首页进入完整版。</p>
-    <a href="../#4in1">打开游戏首页</a>
+  <main class="boot">
+    <h1>金庸群侠传</h1>
+    <p><a id="jy-boot-link" href="../">启动游戏</a></p>
   </main>
+  <script>
+    const home = new URL('../', location.href);
+    home.search = location.search;
+    home.searchParams.delete('pack');
+    document.querySelector('#jy-boot-link').href = home.href;
+    // A pack parameter means this tab already attempted to load the game.
+    if (!new URLSearchParams(location.search).has('pack')) location.replace(home);
+  </script>
 </body>
 </html>

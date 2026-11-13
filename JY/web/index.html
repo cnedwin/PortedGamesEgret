@@ -10,14 +10,18 @@
 <body>
   <main>
     <section id="title-screen" class="title-screen" aria-labelledby="title-logo" hidden>
+      <picture class="title-landscape" aria-hidden="true">
+        <img class="title-art" src="./title-art/wuxia-dawn.webp" alt="" width="1536" height="1024" fetchpriority="high">
+      </picture>
       <div class="title-content">
-        <h1 id="title-logo"><img src="./jyx2/ui/title-logo.png" alt="金庸群俠傳" width="1256" height="308"></h1>
+        <h1 id="title-logo">金庸群俠傳</h1>
+        <p class="title-edition">白鷺引擎 · 武俠遊戲 Demo</p>
         <nav class="title-actions" aria-label="主選單">
-          <button type="button" data-title-action="continue">繼續遊戲</button>
-          <button type="button" data-title-action="new">開始新遊戲</button>
-          <button type="button" data-title-action="load">讀取存檔</button>
-          <button type="button" data-title-action="settings">設定</button>
-          <button type="button" data-title-action="help">操作說明</button>
+          <button type="button" class="title-journey" data-title-action="continue"><span>繼續遊戲</span><span aria-hidden="true">›</span></button>
+          <button type="button" class="title-journey" data-title-action="new"><span>開始新遊戲</span><span aria-hidden="true">›</span></button>
+          <button type="button" class="title-library" data-title-action="load">讀取存檔</button>
+          <button type="button" class="title-library" data-title-action="settings">設定</button>
+          <button type="button" class="title-library" data-title-action="help">操作說明</button>
         </nav>
         <p id="title-status" class="title-status" role="status"></p>
       </div>
@@ -103,6 +107,12 @@
     <footer class="controls">
       <span class="keyboard-guide"><kbd>方向鍵</kbd> <kbd>WASD</kbd> 移動 · <kbd>Enter</kbd> 對話 · <kbd>B</kbd> 背包 · <kbd>Esc</kbd> 選單</span>
       <div id="explore-controls" class="explore-controls">
+        <div id="explore-dpad" class="explore-dpad" role="group" aria-label="移動方向">
+          <button type="button" data-map-command="ArrowUp" aria-label="向上移動">↑</button>
+          <button type="button" data-map-command="ArrowLeft" aria-label="向左移動">←</button>
+          <button type="button" data-map-command="ArrowDown" aria-label="向下移動">↓</button>
+          <button type="button" data-map-command="ArrowRight" aria-label="向右移動">→</button>
+        </div>
         <button type="button" data-map-command="Enter" aria-keyshortcuts="Enter">對話</button>
         <button type="button" data-map-command="KeyB" aria-keyshortcuts="B">背包</button>
         <button type="button" id="open-menu" data-map-command="Escape" aria-keyshortcuts="Escape" disabled>江湖選單</button>

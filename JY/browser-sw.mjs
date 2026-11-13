@@ -53,7 +53,10 @@ function responseText(message, status) {
 async function gameShell(url, clientId) {
   const pack = await openActivePack();
   if (!pack || url.searchParams.has('pack') && url.searchParams.get('pack') !== pack.id) {
-    return Response.redirect(new URL('#4in1', root), 302);
+    const target = new URL(root);
+    target.search = url.search;
+    target.searchParams.delete('pack');
+    return Response.redirect(target, 302);
   }
   if (!url.searchParams.has('pack')) {
     url.searchParams.set('pack', pack.id);
@@ -128,7 +131,7 @@ self.addEventListener('fetch', event => {
     }
     if (privateData) {
       const pack = await sessionPack(event.clientId, request);
-      if (!pack) return responseText('请从试玩首页导入 4in1，再进入完整版。', 409);
+      if (!pack) return responseText('请重新打开游戏，准备浏览器中的游戏数据。', 409);
       const serve = await packHandler(pack);
       // Original data and save bodies are resolved here without a network fallback.
       return serve('/' + route + url.search, request);
@@ -137,6 +140,6 @@ self.addEventListener('fetch', event => {
     return shippedResponse(route, request);
   })().catch(error => {
     console.error('JY browser runtime', error);
-    return responseText('读取游戏数据失败。请回到试玩首页检查导入的 4in1。', 500);
+    return responseText('读取游戏数据失败。请重新打开游戏检查浏览器中的游戏数据。', 500);
   }));
 });

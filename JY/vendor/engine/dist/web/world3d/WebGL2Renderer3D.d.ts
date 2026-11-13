@@ -4,6 +4,7 @@ import { RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 import type { CompressedFormat3D } from '../../rendering/world3d/Texture3D.js';
 import type { PostProcessSettings3D } from './post3D.js';
 import type { Renderer3D, Renderer3DInfo, ToneMapping3D } from './frame3D.js';
+import type { World3DFrameMetrics } from './webGL2FrameMetrics3D.js';
 export interface WebGL2Renderer3DOptions {
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;
     readonly antialias?: boolean;
@@ -49,7 +50,19 @@ export declare class WebGL2Renderer3D implements Renderer3D {
      */
     get autoInstancing(): boolean;
     set autoInstancing(value: boolean);
+    /** Measure the WebGL2 renderer calls made synchronously by one application frame. */
+    measureFrame(draw: () => void, options?: {
+        readonly gpuTiming?: boolean;
+    }): World3DFrameMetrics;
+    /** Resolve ready GPU samples without waiting. Call from a later browser turn. */
+    pollFrameTimings(): void;
     render(scene: Scene3D, camera: Camera3D, target?: RenderTarget3D): boolean;
+    /** Draw the view prepared by PlanarReflection3D and identify it in frame metrics. */
+    renderReflection(scene: Scene3D, camera: Camera3D, target: RenderTarget3D): boolean;
+    /** The retained mirror image must still belong to the live WebGL2 context. */
+    reuseReflection(target: RenderTarget3D): boolean;
+    private renderMeasuredView;
+    private renderView;
     /** Draw the scene into the half-float chain target, then post-process into the output. */
     private renderPost;
     /** Copy the output drawn so far into a texture on the scene-color unit. */
@@ -58,7 +71,7 @@ export declare class WebGL2Renderer3D implements Renderer3D {
     /** std140 blocks stay active even when unused, so the buffer must be bound before the shadow pass. */
     private bindFrameBlock;
     private uploadFrameBlock;
-    private ensureShadowAtlas;
+    private createShadowAtlas;
     private renderShadows;
     /** Draw the depth of the opaque scene, as the camera sees it, into a texture of the output's size. */
     private renderSceneDepth;
