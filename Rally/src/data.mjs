@@ -33,6 +33,19 @@ export const DRIVE = {
   shrinkSeconds: 5,
   shrinkSpeed: 0.74,
   countdown: 3,
+  // Coins: each one adds a little top speed, up to a full purse.
+  coinLimit: 10,
+  coinSpeed: 0.006,
+  // Slipstream: seconds spent close behind another kart before the tow gives a boost.
+  draftSeconds: 1.3,
+  // Mud: share of the top speed kept, and how much grip is left.
+  mudFactor: 0.58,
+  mudGrip: 0.45,
+  inkSeconds: 4.5,
+  cloudSeconds: 3.2,
+  cloudSpeed: 60,
+  jadeSeconds: 25,
+  gongRadius: 14,
 };
 
 /**
@@ -177,6 +190,26 @@ export const ITEMS = {
     name: { zh: '窜天猴', en: 'Sky Rocket' },
     chances: [0, 2, 6, 10, 14, 16, 18, 20],
   },
+  jade: {
+    icon: '💠',
+    name: { zh: '护身玉', en: 'Jade Charm' },
+    chances: [22, 16, 10, 8, 6, 4, 2, 2],
+  },
+  gong: {
+    icon: '🛎️',
+    name: { zh: '铜锣', en: 'Bronze Gong' },
+    chances: [6, 12, 14, 12, 10, 8, 6, 4],
+  },
+  ink: {
+    icon: '🖌️',
+    name: { zh: '墨汁', en: 'Ink Splash' },
+    chances: [0, 6, 10, 12, 12, 12, 10, 8],
+  },
+  cloud: {
+    icon: '☁️',
+    name: { zh: '筋斗云', en: 'Somersault Cloud' },
+    chances: [0, 0, 0, 2, 6, 10, 16, 20],
+  },
 };
 export const ITEM_KEYS = Object.keys(ITEMS);
 
@@ -233,8 +266,20 @@ export const TEXT = {
     qualities: { high: '高', medium: '中', low: '低' },
     language: 'English',
     help: 'W/↑ 油门　S/↓ 刹车　A D/← → 转向　空格 小跳与漂移　E 使用道具　C 回头看　Esc 暂停',
-    tip: '漂移时火花由蓝变橙再变紫，松开即可加速；倒数到“2”之后再踩油门可以弹射起步。',
+    tip: '漂移时火花由蓝变橙再变紫，松开即可加速；倒数到“2”之后再踩油门可以弹射起步。捡铜钱提高极速，穿过祥云门加速，紧跟前车可借尾流；绕开泥潭、石狮和滚动的大鼓。',
     kmh: '公里/时',
+    coins: '铜钱',
+    popups: {
+      start: '弹射起步！',
+      turbo: ['小喷！', '大喷！', '极限喷射！'],
+      trick: '腾空特技！',
+      draft: '尾流加速！',
+      gate: '祥云助力！',
+      overtake: '超越！',
+      purse: '钱袋满了！',
+      blocked: '玉佩挡下！',
+      mud: '陷入泥潭',
+    },
   },
   en: {
     title: 'Jinxiu Rally',
@@ -274,7 +319,19 @@ export const TEXT = {
     qualities: { high: 'High', medium: 'Medium', low: 'Low' },
     language: '中文',
     help: 'W/↑ accelerate   S/↓ brake   A D/← → steer   Space hop and drift   E use item   C look back   Esc pause',
-    tip: 'Drift sparks turn blue, orange, then purple: let go for a boost. Press the accelerator after the count reaches 2 for a rocket start.',
+    tip: 'Drift sparks turn blue, orange, then purple: let go for a boost. Press the accelerator after the count reaches 2 for a rocket start. Coins raise your top speed, cloud gates give a boost and so does tucking in behind another kart; steer round mud, stone lions and rolling drums.',
     kmh: 'km/h',
+    coins: 'Coins',
+    popups: {
+      start: 'Rocket start!',
+      turbo: ['Mini-turbo!', 'Super turbo!', 'Ultra turbo!'],
+      trick: 'Air trick!',
+      draft: 'Slipstream!',
+      gate: 'Cloud gate!',
+      overtake: 'Overtake!',
+      purse: 'Purse full!',
+      blocked: 'Jade blocked it!',
+      mud: 'Stuck in the mud',
+    },
   },
 };

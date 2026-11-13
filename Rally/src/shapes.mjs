@@ -86,6 +86,36 @@ export function build(parts) {
   return createGeometry3D({ positions, normals, colors, indices });
 }
 
+/**
+ * Flat textured rectangles in one geometry, for badges and signs. Each is
+ * `[centre, right, up]`: `right` and `up` are half-size vectors along the
+ * texture's u and v; the face looks along right x up.
+ */
+export function quads(list) {
+  const positions = [],
+    normals = [],
+    uvs = [],
+    indices = [];
+  for (const [c, r, u] of list) {
+    const base = positions.length / 3,
+      n = [r[1] * u[2] - r[2] * u[1], r[2] * u[0] - r[0] * u[2], r[0] * u[1] - r[1] * u[0]],
+      length = Math.hypot(n[0], n[1], n[2]) || 1;
+    for (const [sr, su] of [
+      [-1, -1],
+      [1, -1],
+      [1, 1],
+      [-1, 1],
+    ]) {
+      positions.push(c[0] + r[0] * sr + u[0] * su, c[1] + r[1] * sr + u[1] * su, c[2] + r[2] * sr + u[2] * su);
+      normals.push(n[0] / length, n[1] / length, n[2] / length);
+      // Pixel row 0 is the top of the picture.
+      uvs.push((sr + 1) / 2, (1 - su) / 2);
+    }
+    indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+  return createGeometry3D({ positions, normals, uvs, indices });
+}
+
 /** A quaternion turning by `angle` around the Y axis, written into a shared array. */
 const yawScratch = [0, 0, 0, 1];
 export const yawQuat = (angle) => {

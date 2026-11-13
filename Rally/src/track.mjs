@@ -57,6 +57,56 @@ const BOOST_PADS = [
 const RAMPS = [0.275, 0.69];
 const BOX_ROWS = [0.05, 0.16, 0.3, 0.47, 0.585, 0.72, 0.84, 0.955];
 const BOXES_PER_ROW = 4;
+/** Lines of coins: [start fraction, how many, offset at the first coin, offset at the last]. */
+const COIN_LINES = [
+  [0.02, 6, -4, -4],
+  [0.105, 7, 5, -3],
+  [0.185, 6, -5, -5],
+  [0.235, 6, 0, 5],
+  [0.345, 7, -5, 4],
+  [0.4, 6, 5, 5],
+  [0.52, 8, -4, 4],
+  [0.635, 6, 4, -4],
+  [0.76, 7, 5, -5],
+  [0.805, 6, -5, -2],
+  [0.875, 6, 4, 0],
+  [0.97, 5, 4, 4],
+];
+/** Cloud gates to drive through for a boost: [fraction, offset]. */
+const GATES = [
+  [0.125, -5],
+  [0.31, 4.5],
+  [0.455, -4],
+  [0.565, 0],
+  [0.71, 4.5],
+  [0.9, -4.5],
+];
+/** Mud patches that bog a kart down: [fraction, offset, radius]. */
+const MUD = [
+  [0.07, 4.5, 3.2],
+  [0.215, -1, 3.4],
+  [0.365, -3, 3],
+  [0.425, -4.5, 3.2],
+  [0.665, -2, 3.4],
+  [0.79, 1, 3],
+  [0.935, -3, 3.2],
+];
+/** Stone lions standing on the road: [fraction, offset]. */
+const LIONS = [
+  [0.145, 0],
+  [0.262, -6.7],
+  [0.262, 6.7],
+  [0.49, 0],
+  [0.73, -4.5],
+  [0.757, -1],
+  [0.985, 0],
+];
+/** Festival drums that roll from side to side across the road: [fraction, seconds per crossing, phase]. */
+const DRUMS = [
+  [0.175, 3.6, 0],
+  [0.385, 3, 1.3],
+  [0.857, 3.3, 2.1],
+];
 
 const TAU = Math.PI * 2;
 /** Bring an angle into (-PI, PI]. */
@@ -246,6 +296,21 @@ export function createTrack() {
       return place(fraction, -reach + (2 * reach * k) / (BOXES_PER_ROW - 1));
     }),
   );
+  /** Coins to collect; a full purse raises the top speed. */
+  track.coins = COIN_LINES.flatMap(([fraction, number, from, to]) =>
+    Array.from({ length: number }, (_, k) =>
+      place(fraction + (k * 4.2) / length, from + ((to - from) * k) / Math.max(1, number - 1)),
+    ),
+  );
+  /** Cloud gates: drive through the middle for a boost. */
+  track.gates = GATES.map(([fraction, lateral]) => ({ ...place(fraction, lateral), halfWidth: 2.7 }));
+  /** Mud patches, stone lions and rolling drums. A drum's `reach` is how far it rolls either side of the centre line. */
+  track.mud = MUD.map(([fraction, lateral, radius]) => ({ ...place(fraction, lateral), radius }));
+  track.lions = LIONS.map(([fraction, lateral]) => ({ ...place(fraction, lateral), radius: 1.05 }));
+  track.drums = DRUMS.map(([fraction, period, phase]) => {
+    const at = place(fraction, 0);
+    return { ...at, period, phase, radius: 1.25, reach: track.locate(at.x, at.z, -1, {}).halfWidth - 1.6 };
+  });
   /** Grid slot `index` (0 is pole): two staggered columns behind the start line. */
   track.gridSlot = (index) => place(-(9 + index * 5.2) / length, index % 2 ? 3.2 : -3.2);
 

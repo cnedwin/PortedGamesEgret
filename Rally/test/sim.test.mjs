@@ -107,7 +107,8 @@ test('a kart accelerates to its top speed and steering right turns right', () =>
   const { race, me, controls } = started({ klass: 2 });
   controls.throttle = 1;
   run(race, controls, 4);
-  const top = me.tuning.topSpeed * CLASSES[2].speed;
+  // Coins picked up on the way raise the top speed a little.
+  const top = me.tuning.topSpeed * CLASSES[2].speed * (1 + DRIVE.coinSpeed * me.coins);
   assert.ok(me.speed > top * 0.9 && me.speed <= top + 0.5, `speed ${me.speed} of ${top}`);
   const heading = me.heading,
     lateral = me.lateral;

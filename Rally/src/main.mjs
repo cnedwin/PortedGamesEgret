@@ -244,12 +244,22 @@ async function main() {
     const me = race.human;
     for (const event of events) {
       if (event.type === 'count' || event.type === 'go' || event.type === 'thunder') audio.play(event.type);
-      else if (event.type === 'pop' || event.type === 'explosion') {
+      else if (event.type === 'pop' || event.type === 'explosion' || event.type === 'gong') {
         if (me && Math.hypot(event.x - me.x, event.z - me.z) < 90)
-          audio.play(event.kind === 'firecracker' || event.type === 'explosion' ? event.type : 'land');
+          audio.play(event.type === 'pop' && event.kind !== 'firecracker' ? 'land' : event.type);
+      } else if (event.type === 'ink') {
+        if (me && (event.kart === me.index || event.targets.includes(me.index))) audio.play('ink');
       } else if (!me || (event.kart !== me.index && event.other !== me.index)) continue;
       else if (event.type === 'lap') audio.play(event.final ? 'final' : 'lap');
-      else audio.play(event.type, event);
+      else if (event.type === 'boost') audio.play(event.source === 'gate' || event.source === 'draft' ? event.source : 'boost');
+      else if (event.type === 'use') audio.play(event.item === 'cloud' || event.item === 'jade' ? event.item : 'use');
+      else {
+        audio.play(event.type, event);
+        // Knocks are felt in the hands too.
+        if (event.type === 'hit') input.rumble(1, 0.5);
+        else if (event.type === 'wall' || event.type === 'thud' || event.type === 'bump') input.rumble(0.5, 0.15);
+        else if (event.type === 'turbo') input.rumble(0.3, 0.2);
+      }
     }
   }
 
@@ -308,7 +318,17 @@ async function main() {
     const me = race.human;
     if (me && mode !== 'select') hud.update(race, view, dt, mode === 'race' ? audio : undefined);
     const driving = Boolean(me) && (mode === 'race' || mode === 'intro') && !me.finished;
-    audio.drive(me ? Math.abs(me.speed) / 50 : 0, me?.throttle ?? 0, me?.drifting ? me.driftLevel : -1, driving);
+    // The crowd is heard near the grandstand, and roars once the player is home.
+    const nearStand = me ? Math.max(0, 1 - Math.abs(track.delta(me.s, 30)) / 140) : 0;
+    audio.drive({
+      speed: me ? Math.abs(me.speed) / 50 : 0,
+      throttle: me?.throttle ?? 0,
+      drift: me?.drifting ? me.driftLevel : -1,
+      rough: Boolean(me && (me.grass || me.mud)),
+      boost: Boolean(me && (me.boost > 0 || me.cloud > 0)),
+      cheer: mode === 'paused' ? 0 : me?.finished ? 1 : mode === 'title' ? 0.35 : nearStand * 0.8,
+      active: driving,
+    });
     audio.music(
       mode === 'title' || mode === 'select' || mode === 'results'
         ? 'menu'

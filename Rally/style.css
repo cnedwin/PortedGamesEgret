@@ -613,3 +613,149 @@ button {
     padding: 2px 8px;
   }
 }
+
+/* ---- coins, drift meter, cheers, ink and knocks ---- */
+.coins {
+  position: absolute;
+  top: 108px;
+  left: max(18px, env(safe-area-inset-left));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px 4px 6px;
+  border-radius: 999px;
+  border: 2px solid rgba(242, 194, 48, 0.7);
+  background: rgba(23, 26, 34, 0.6);
+  font-size: 16px;
+}
+.coins.full {
+  border-color: var(--gold);
+  box-shadow: 0 0 14px rgba(242, 194, 48, 0.8);
+  color: var(--gold);
+}
+/* An old cash coin: round, with a square hole. */
+.coin {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffe680, #e0a516);
+  border: 2px solid #b8860b;
+  position: relative;
+}
+.coin::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  background: #5a3a10;
+}
+.place.bump {
+  animation: bump 0.4s cubic-bezier(0.2, 1.8, 0.4, 1);
+}
+@keyframes bump {
+  from {
+    transform: scale(1.6);
+  }
+}
+.drift {
+  position: absolute;
+  left: 50%;
+  bottom: 16%;
+  width: min(240px, 40vw);
+  height: 12px;
+  margin-left: calc(min(240px, 40vw) / -2);
+  border-radius: 8px;
+  border: 2px solid rgba(246, 239, 224, 0.75);
+  background: rgba(23, 26, 34, 0.55);
+  overflow: hidden;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.drift.on {
+  opacity: 1;
+}
+.drift i {
+  display: block;
+  height: 100%;
+  background: #f2f2f2;
+}
+.drift.level1 i {
+  background: #4fb8ff;
+}
+.drift.level2 i {
+  background: #ff9a2e;
+}
+.drift.level3 i {
+  background: #c86bff;
+  box-shadow: 0 0 12px #c86bff;
+}
+.popups {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 22%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.popup {
+  font: 900 clamp(20px, 3.6vw, 34px) var(--serif);
+  letter-spacing: 0.06em;
+  color: var(--paper);
+  -webkit-text-stroke: 1px rgba(23, 26, 34, 0.5);
+  animation: rise 1.25s ease-out forwards;
+}
+.popup.gold {
+  color: var(--gold);
+}
+.popup.green {
+  color: #7bf08c;
+}
+.popup.brown {
+  color: #c9a071;
+}
+.popup.level1 {
+  color: #7fcaff;
+}
+.popup.level2 {
+  color: #ffb45e;
+}
+.popup.level3 {
+  color: #d99aff;
+}
+@keyframes rise {
+  0% {
+    transform: translateY(18px) scale(0.6);
+    opacity: 0;
+  }
+  18% {
+    transform: translateY(0) scale(1.15);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-46px) scale(1);
+    opacity: 0;
+  }
+}
+.ink {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+.ink i {
+  position: absolute;
+  margin: -8vmin;
+  border-radius: 46% 54% 60% 40% / 52% 44% 56% 48%;
+  background: radial-gradient(circle at 40% 40%, #1b1b22 55%, rgba(17, 17, 24, 0.85) 68%, transparent 72%);
+  filter: blur(1px);
+}
+.hurt {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  background: radial-gradient(ellipse at center, transparent 45%, rgba(216, 38, 44, 0.7));
+}

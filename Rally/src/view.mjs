@@ -3,9 +3,12 @@
 // and turns its events into effects; it never changes the race.
 import {
   InstancedMesh3D,
+  Mesh3D,
   createParticleEmitter3D,
+  createRingGeometry3D,
   createStandardMaterial3D,
   createTrail3D,
+  createUnlitMaterial3D,
   quatFromEuler,
 } from '@egret/engine/world3d';
 import { createKartModel } from './racers.mjs';
@@ -119,6 +122,78 @@ export function createView(scene, camera, track, options = {}) {
       8,
     ),
   };
+
+  // ---- coins and rolling drums ---------------------------------------------------------------
+  // An old cash coin: a bright disc with a square hole.
+  const coins = pool(
+    build([
+      [CYLINDER, [0, 0, 0], [0.62, 0.62, 0.1], [1.7, 1.25, 0.3], [Math.PI / 2, 0, 0]],
+      [CYLINDER, [0, 0, 0], [0.66, 0.66, 0.05], [1.9, 1.5, 0.5], [Math.PI / 2, 0, 0]],
+      [BOX, [0, 0, 0], [0.34, 0.34, 0.14], 0x7a4a10],
+      ...[0, 1, 2, 3].map((k) => [BOX, [Math.cos(k * 1.571) * 0.37, Math.sin(k * 1.571) * 0.37, 0], [0.1, 0.1, 0.13], 0xb8860b]),
+    ]),
+    track.coins.length,
+  );
+  coins.castShadow = false;
+  // A festival drum on its side: red lacquer, hide ends and gold studs.
+  const drums = pool(
+    build([
+      [CYLINDER, [0, 0, 0], [1.25, 2.1, 1.25], 0xc8221e, [Math.PI / 2, 0, 0]],
+      [CYLINDER, [0, 0, 0], [1.32, 0.5, 1.32], 0xb01a18, [Math.PI / 2, 0, 0]],
+      [CYLINDER, [0, 0, 1.06], [1.18, 0.05, 1.18], 0xf3e6c4, [Math.PI / 2, 0, 0]],
+      [CYLINDER, [0, 0, -1.06], [1.18, 0.05, 1.18], 0xf3e6c4, [Math.PI / 2, 0, 0]],
+      ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].flatMap((k) => {
+        const a = (k / 12) * Math.PI * 2;
+        return [
+          [SPHERE, [Math.cos(a) * 1.25, Math.sin(a) * 1.25, 0.86], 0.07, 0xf2c230],
+          [SPHERE, [Math.cos(a) * 1.25, Math.sin(a) * 1.25, -0.86], 0.07, 0xf2c230],
+        ];
+      }),
+    ]),
+    Math.max(1, track.drums.length),
+  );
+  // Expanding rings on the ground: the gong's wave, a boost's kick, a hard landing.
+  const ringGeometry = createRingGeometry3D({ innerRadius: 0.8, outerRadius: 1, thetaSegments: 48 });
+  const rings = Array.from({ length: 8 }, () => {
+    const mesh = new Mesh3D(
+      ringGeometry,
+      createUnlitMaterial3D({
+        color: 0xffffff,
+        opacity: 0,
+        alphaMode: 'blend',
+        blending: 'additive',
+        depthWrite: false,
+        side: 'double',
+      }),
+    );
+    mesh.setRotation(-Math.PI / 2, 0, 0);
+    mesh.visible = false;
+    mesh.castShadow = false;
+    scene.addChild(mesh);
+    return { mesh, age: 1, life: 1, from: 0, to: 1 };
+  });
+  /** Start a ring growing from radius `from` to `to` over `life` seconds, reusing the one nearest its end. */
+  const ring = (x, y, z, from, to, life, color) => {
+    const slot = rings.reduce((a, b) => (a.age / a.life >= b.age / b.life ? a : b));
+    Object.assign(slot, { age: 0, life, from, to });
+    slot.mesh.material.setColor(color);
+    slot.mesh.setPosition(x, y + 0.15, z);
+    slot.mesh.visible = true;
+  };
+  // Thunderbolts: a jagged column of light that stands on a kart for an instant.
+  const boltShape = build(
+    [0, 1, 2, 3, 4, 5, 6, 7].map((k) => [
+      BOX,
+      [Math.sin(k * 2.3) * 0.9, 2 + k * 4, Math.cos(k * 1.7) * 0.9],
+      [0.35, 4.6, 0.35],
+      [1, 1, 1],
+      [Math.cos(k * 1.7) * 0.4, 0, Math.sin(k * 2.3) * 0.4],
+    ]),
+  );
+  const bolts = pool(boltShape, 8, createUnlitMaterial3D({ color: [3, 3, 2.2], fog: false }));
+  bolts.castShadow = false;
+  let boltTime = 0,
+    boltTargets = [];
 
   // ---- particles -------------------------------------------------------------------------
   const dot = dotTexture();
@@ -239,13 +314,125 @@ export function createView(scene, camera, track, options = {}) {
     node.burst(Math.max(1, Math.round(count)));
   };
   const confetti = (x, y, z, count) => paper.forEach((node) => burst(node, x, y, z, count / paper.length, 0.6));
+  const mudSpray = emitter({
+    startColor: 0x6b4a2c,
+    endColor: 0x4a3320,
+    startSize: 0.42,
+    endSize: 0.18,
+    lifetime: [0.4, 0.8],
+    speed: [3, 8],
+    direction: [0, 1, 0],
+    spread: 1,
+    gravity: [0, -16, 0],
+    drag: 0.6,
+  });
+  const ink = emitter({
+    startColor: 0x111118,
+    endColor: 0x111118,
+    startSize: 0.7,
+    endSize: 0.25,
+    lifetime: [0.5, 1.1],
+    speed: [2, 7],
+    gravity: [0, -8, 0],
+    drag: 1.5,
+  });
+  const puffs = emitter({
+    startColor: 0xffffff,
+    endColor: 0xf2f6ff,
+    startSize: 0.9,
+    endSize: 1.9,
+    startOpacity: 0.85,
+    lifetime: [0.5, 1],
+    speed: [1, 4],
+    gravity: [0, 0.6, 0],
+    drag: 2,
+  });
+  const exhaust = emitter({
+    capacity: 600,
+    startColor: 0xe8e8e8,
+    endColor: 0x9a9a9a,
+    startSize: 0.18,
+    endSize: 0.7,
+    startOpacity: 0.4,
+    lifetime: [0.35, 0.7],
+    speed: [0.5, 1.6],
+    gravity: [0, 1.4, 0],
+    drag: 1.5,
+  });
+  const jade = emitter({
+    startColor: 0x7ff0c0,
+    endColor: 0x1f9a6a,
+    blending: 'additive',
+    startSize: 0.4,
+    endSize: 0.05,
+    lifetime: [0.4, 0.8],
+    speed: [4, 10],
+    gravity: [0, -6, 0],
+    drag: 2,
+  });
+  // Streaks of air flowing past a kart in another's tow.
+  const wind = emitter({
+    startColor: 0xffffff,
+    endColor: 0xbfe6ff,
+    blending: 'additive',
+    startSize: 0.16,
+    endSize: 0.03,
+    startOpacity: 0.7,
+    lifetime: [0.2, 0.4],
+    speed: [0.2, 1],
+    gravity: [0, 0, 0],
+    drag: 0,
+  });
+  // Fireworks: a shell of sparks high over the grandstand, in festival colours.
+  const fireworks = [0xff5a4a, 0xffd23f, 0x7bf08c, 0x6ac8ff, 0xff8ae0].map((color) =>
+    emitter({
+      capacity: 400,
+      startColor: color,
+      endColor: color,
+      blending: 'additive',
+      startSize: 1.5,
+      endSize: 0.1,
+      lifetime: [0.9, 1.7],
+      speed: [10, 22],
+      gravity: [0, -7, 0],
+      drag: 1.6,
+    }),
+  );
+  let fireworkWait = 2,
+    fireworkPick = 0;
+  // Blossom drifting on the breeze around the camera.
+  const petals = createParticleEmitter3D({
+    capacity: 260,
+    rate: 26,
+    map: dot,
+    space: 'world',
+    shape: 'box',
+    extents: [34, 5, 34],
+    direction: [0.6, -1, 0.2],
+    spread: 0.5,
+    gravity: [0, -0.5, 0],
+    drag: 0.4,
+    lifetime: [4, 7],
+    speed: [1, 2.4],
+    startSize: 0.17,
+    endSize: 0.12,
+    startColor: 0xffd0e0,
+    endColor: 0xf7a8c4,
+    startOpacity: 0.95,
+    endOpacity: 0,
+  });
+  petals.frustumCulled = false;
+  petals.castShadow = false;
+  scene.addChild(petals);
 
   // ---- karts -----------------------------------------------------------------------------
-  let trails = [];
+  let trails = [],
+    skids = [];
   /** Build the karts of a race, dropping those of the previous one. */
   view.attach = (race) => {
     for (const model of view.models) model.node.removeFromParent();
     for (const pair of trails) for (const trail of pair) trail.removeFromParent();
+    for (const pair of skids) for (const trail of pair) trail.removeFromParent();
     view.showcase(undefined);
     view.models = race.karts.map((kart) => {
       const model = createKartModel(kart.racer);
@@ -273,6 +460,28 @@ export function createView(scene, camera, track, options = {}) {
         return trail;
       }),
     );
+    // Tyre marks laid down by the rear wheels in a drift.
+    skids = race.karts.map(() =>
+      [0, 1].map(() => {
+        const trail = createTrail3D({
+          points: 60,
+          minDistance: 0.5,
+          lifetime: 2.6,
+          width: 0.3,
+          endWidth: 0.3,
+          color: 0x15151a,
+          endColor: 0x15151a,
+          blending: 'normal',
+          opacity: 0.55,
+          endOpacity: 0,
+        });
+        trail.frustumCulled = false;
+        trail.castShadow = false;
+        trail.renderOrder = 4;
+        scene.addChild(trail);
+        return trail;
+      }),
+    );
     rig.yaw = undefined;
   };
 
@@ -291,22 +500,32 @@ export function createView(scene, camera, track, options = {}) {
   };
 
   // ---- camera ----------------------------------------------------------------------------
-  const rig = { yaw: undefined, x: 0, y: 0, z: 0, fov: 60, orbit: 0 };
+  // `kick` is a burst of extra field of view when a boost starts; `side` slides the camera out in a drift;
+  // `dip` is the bob after a landing.
+  const rig = { yaw: undefined, x: 0, y: 0, z: 0, fov: 60, orbit: 0, kick: 0, side: 0, dip: 0, dipSpeed: 0, back: 6.4 };
   function chase(kart, dt, lookBack) {
     if (rig.yaw === undefined) rig.yaw = kart.heading;
     // The camera swings round behind the kart a little late, which shows off the drift.
-    rig.yaw += wrapAngle(kart.heading + (kart.drifting ? -kart.driftDir * 0.18 : 0) - rig.yaw) * Math.min(1, dt * 5.5);
+    rig.yaw += wrapAngle(kart.heading + (kart.drifting ? -kart.driftDir * 0.2 : 0) - rig.yaw) * Math.min(1, dt * 5.5);
     const yaw = lookBack ? rig.yaw + Math.PI : rig.yaw,
       fx = Math.sin(yaw),
       fz = Math.cos(yaw),
       fast = Math.min(1, Math.abs(kart.speed) / 45),
-      distance = 6.4 + fast * 1.4 - (kart.boost > 0 ? 0.6 : 0);
-    rig.x = kart.x - fx * distance;
-    rig.z = kart.z - fz * distance;
-    rig.y += (kart.y + 3.1 - rig.y) * Math.min(1, dt * 8);
-    camera.setPosition(rig.x, Math.max(rig.y, track.terrainHeight(rig.x, rig.z) + 0.6), rig.z);
-    camera.lookAt(kart.x + fx * 5, kart.y + 1.3, kart.z + fz * 5);
-    rig.fovTarget = 62 + fast * 9 + (kart.boost > 0 ? 9 : 0);
+      pushed = kart.boost > 0 || kart.cloud > 0;
+    // Under a boost the kart pulls away from the camera, then the camera catches up.
+    rig.back += (6.2 + fast * 1.5 + (pushed ? 1.5 : 0) - rig.back) * Math.min(1, dt * (pushed ? 7 : 2.5));
+    // In a drift the camera slides to the outside, so the corner opens up ahead.
+    rig.side += ((kart.drifting ? kart.driftDir * 1.3 : 0) + kart.steer * 0.5 - rig.side) * Math.min(1, dt * 3);
+    rig.dipSpeed += (-rig.dip * 120 - rig.dipSpeed * 12) * dt;
+    rig.dip += rig.dipSpeed * dt;
+    const height = 3.1 - fast * 0.35 + (kart.cloud > 0 ? 1.4 : 0);
+    rig.x = kart.x - fx * rig.back + fz * rig.side;
+    rig.z = kart.z - fz * rig.back - fx * rig.side;
+    rig.y += (kart.y + height - rig.y) * Math.min(1, dt * 8);
+    camera.setPosition(rig.x, Math.max(rig.y + rig.dip, track.terrainHeight(rig.x, rig.z) + 0.6), rig.z);
+    camera.lookAt(kart.x + fx * 6, kart.y + 1.3 + rig.dip * 0.5, kart.z + fz * 6);
+    rig.kick = Math.max(0, rig.kick - dt * 14);
+    rig.fovTarget = 62 + fast * 10 + (pushed ? 8 : 0) + rig.kick;
   }
   /** Circle a point: used on the title, the choosing screen and the sweep before the start. */
   function orbit(x, y, z, angle, distance, height) {
@@ -318,7 +537,8 @@ export function createView(scene, camera, track, options = {}) {
   // ---- one frame -------------------------------------------------------------------------
   const position = [0, 0, 0],
     turn = [0, 0, 0, 1],
-    at = {};
+    at = {},
+    spot = {};
   let dustTick = 0;
   /**
    * Draw the state of `race`. `shot` picks the camera: 'title' follows a
@@ -366,6 +586,33 @@ export function createView(scene, camera, track, options = {}) {
       if (puff && kart.grass && !kart.airborne && Math.abs(kart.speed) > 6)
         burst(dust, kart.x - fx, kart.y + 0.2, kart.z - fz, 2, 0.5);
       if (puff && kart.bell > 0) burst(stars, kart.x, kart.y + 1.2, kart.z, 2, 1.2);
+      if (puff && kart.cloud > 0) burst(puffs, kart.x - fx * 1.6, kart.y + 0.8, kart.z - fz * 1.6, 2, 0.7);
+      if (puff && kart.mud && Math.abs(kart.speed) > 4) burst(mudSpray, kart.x - fx, kart.y + 0.2, kart.z - fz, 3, 0.5);
+      if (puff && kart.inked > 0) burst(ink, kart.x, kart.y + 1.7, kart.z, 1, 0.3);
+      // A wisp from the exhausts when pulling away.
+      if (puff && kart.throttle > 0 && kart.speed < 22 && kart.boost <= 0)
+        burst(exhaust, kart.x - fx * 1.55, kart.y + 0.74, kart.z - fz * 1.55, 1, 0.12);
+      if (kart.draft > 0.3)
+        burst(
+          wind,
+          kart.x + fx * (2 + Math.random() * 3) + fz * (Math.random() * 3 - 1.5),
+          kart.y + 0.4 + Math.random() * 1.2,
+          kart.z + fz * (2 + Math.random() * 3) - fx * (Math.random() * 3 - 1.5),
+          1,
+          0.05,
+        );
+    });
+    // Tyre marks follow the rear wheels while a drift is held.
+    race.karts.forEach((kart, index) => {
+      const fx = Math.sin(kart.heading),
+        fz = Math.cos(kart.heading);
+      skids[index]?.forEach((trail, side) => {
+        const across = side ? 0.82 : -0.82;
+        if (kart.drifting && !kart.airborne && !shown)
+          trail.push(kart.x - fx * 0.86 - fz * across, kart.y + 0.05, kart.z - fz * 0.86 + fx * across);
+        trail.update(dt);
+        trail.visible = trail.pointCount > 1 && !shown;
+      });
     });
 
     // Item boxes turn and bob; taken ones are hidden until they return.
@@ -378,6 +625,56 @@ export function createView(scene, camera, track, options = {}) {
       boxes.setTransformAt(n++, position, quatFromEuler(turn, 0.3, time * 1.4 + box.index, 0.2), 1);
     }
     boxes.count = n;
+
+    // Coins spin on the spot; drums roll across the road.
+    n = 0;
+    for (const coin of race.coins) {
+      if (coin.timer > 0) continue;
+      position[0] = coin.x;
+      position[1] = coin.y + 1.05 + Math.sin(time * 3 + coin.index * 0.7) * 0.08;
+      position[2] = coin.z;
+      coins.setTransformAt(n++, position, yawQuat(time * 3.2 + coin.index * 0.5), 1);
+    }
+    coins.count = n;
+    race.drums.forEach((drum, index) => {
+      position[0] = drum.x;
+      position[1] = drum.y + drum.radius;
+      position[2] = drum.z;
+      drums.setTransformAt(index, position, quatFromEuler(turn, 0, drum.heading, -drum.roll), 1);
+    });
+    drums.count = race.drums.length;
+
+    // Rings widen and fade; thunderbolts flicker out.
+    for (const slot of rings) {
+      if (!slot.mesh.visible) continue;
+      slot.age += dt;
+      const k = Math.min(1, slot.age / slot.life);
+      slot.mesh.setScale(slot.from + (slot.to - slot.from) * (1 - (1 - k) * (1 - k)));
+      slot.mesh.material.opacity = (1 - k) * 0.9;
+      if (k >= 1) slot.mesh.visible = false;
+    }
+    boltTime = Math.max(0, boltTime - dt);
+    bolts.count = boltTime > 0 && Math.floor(boltTime * 30) % 2 === 0 ? boltTargets.length : 0;
+    boltTargets.forEach((index, slot) => {
+      const kart = race.karts[index];
+      position[0] = kart.x;
+      position[1] = kart.y;
+      position[2] = kart.z;
+      bolts.setTransformAt(slot, position, yawQuat(index + Math.floor(boltTime * 20)), 1);
+    });
+
+    // Blossom drifts where the camera is; fireworks go up over the grandstand on the title and after the flag.
+    petals.setPosition(
+      camera.position[0] + Math.sin(rig.yaw ?? 0) * 16,
+      camera.position[1] + 7,
+      camera.position[2] + Math.cos(rig.yaw ?? 0) * 16,
+    );
+    fireworkWait -= dt;
+    if (fireworkWait <= 0 && (shot === 'title' || watched.finished)) {
+      fireworkWait = 0.5 + Math.random() * 1.1;
+      const at = track.sample(20 + Math.random() * 60, -(26 + Math.random() * 30), spot);
+      burst(fireworks[fireworkPick++ % fireworks.length], at.x, at.y + 30 + Math.random() * 16, at.z, 90, 0.5);
+    }
 
     // Items in play.
     const counts = { firecracker: 0, cuju: 0, kite: 0, rocket: 0 };
@@ -446,7 +743,39 @@ export function createView(scene, camera, track, options = {}) {
       } else if (event.type === 'bump') {
         burst(stars, (kart.x + race.karts[event.other].x) / 2, kart.y + 0.7, (kart.z + race.karts[event.other].z) / 2, 6, 0.3);
         if (event.kart === mine || event.other === mine) view.shake = Math.max(view.shake, 0.3);
-      } else if (event.type === 'land') burst(dust, kart.x, kart.y + 0.2, kart.z, 12, 0.8);
+      } else if (event.type === 'land') {
+        burst(dust, kart.x, kart.y + 0.2, kart.z, event.ramp ? 22 : 8, 0.8);
+        if (event.ramp) ring(kart.x, kart.y, kart.z, 0.8, 4, 0.4, [1, 0.95, 0.8]);
+        if (event.kart === mine) rig.dipSpeed -= event.ramp ? 5 : 2;
+      } else if (event.type === 'boost') {
+        // A kick of speed: the view widens and a ring flares under the kart.
+        if (event.kart === mine) rig.kick = event.source === 'turbo' || event.source === 'draft' ? 7 : 11;
+        ring(kart.x, kart.y, kart.z, 0.6, 3.2, 0.35, event.source === 'gate' ? [1.2, 1.2, 1.3] : [1.4, 0.9, 0.3]);
+        if (event.source === 'gate') burst(puffs, kart.x, kart.y + 1.6, kart.z, 16, 1.4);
+      } else if (event.type === 'coin') {
+        const coin = race.coins[event.coin];
+        burst(stars, coin.x, coin.y + 1.1, coin.z, 7, 0.2);
+      } else if (event.type === 'mud') burst(mudSpray, kart.x, kart.y + 0.3, kart.z, 26, 0.9);
+      else if (event.type === 'thud') {
+        burst(stars, kart.x, kart.y + 0.8, kart.z, 10, 0.4);
+        burst(dust, kart.x, kart.y + 0.4, kart.z, 8, 0.6);
+        if (event.kart === mine) view.shake = Math.max(view.shake, event.hard ? 0.7 : 0.4);
+      } else if (event.type === 'blocked') {
+        burst(jade, kart.x, kart.y + 1, kart.z, 40, 0.8);
+        ring(kart.x, kart.y + 0.8, kart.z, 1, 4.5, 0.45, [0.4, 1.3, 0.9]);
+      } else if (event.type === 'gong') {
+        ring(event.x, event.y, event.z, 1, 14, 0.5, [1.6, 1.2, 0.4]);
+        ring(event.x, event.y + 0.6, event.z, 0.5, 10, 0.65, [1.6, 1.4, 0.8]);
+        burst(stars, event.x, event.y + 1, event.z, 40, 1.5);
+        view.shake = Math.max(
+          view.shake,
+          Math.hypot(event.x - (race.human?.x ?? 1e6), event.z - (race.human?.z ?? 1e6)) < 30 ? 0.8 : 0,
+        );
+      } else if (event.type === 'ink') {
+        for (const index of event.targets)
+          burst(ink, race.karts[index].x, race.karts[index].y + 1.4, race.karts[index].z, 30, 0.8);
+      } else if (event.type === 'use' && event.item === 'cloud') burst(puffs, kart.x, kart.y + 0.6, kart.z, 30, 1.2);
+      else if (event.type === 'trick') burst(stars, kart.x, kart.y + 1, kart.z, 16, 0.6);
       else if (event.type === 'turbo') burst(sparks[event.level], kart.x, kart.y + 0.4, kart.z, 24, 0.6);
       else if (event.type === 'box') {
         const box = race.boxes[event.box];
@@ -463,6 +792,8 @@ export function createView(scene, camera, track, options = {}) {
         confetti(event.x, event.y + 2, event.z, 80);
         view.shake = Math.max(view.shake, 1.1);
       } else if (event.type === 'thunder') {
+        boltTime = 0.45;
+        boltTargets = race.karts.filter((other) => other.index !== event.kart && other.shrink > 0).map((other) => other.index);
         view.flash = 1;
         view.shake = Math.max(view.shake, 0.7);
       } else if (event.type === 'finish') confetti(kart.x, kart.y + 3, kart.z, event.kart === mine ? 200 : 60);

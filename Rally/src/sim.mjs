@@ -46,6 +46,11 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
     /** Firecrackers, balls, kites and rockets in play. */
     things: [],
     boxes: track.boxes.map((box, index) => ({ ...box, index, timer: 0 })),
+    coins: track.coins.map((coin, index) => ({ ...coin, index, timer: 0 })),
+    /** Rolling drums; `offset` is where each one is across the road right now. */
+    drums: track.drums.map((drum, index) => ({ ...drum, index, offset: 0, roll: 0 })),
+    /** Seconds since the race was created; it runs through the countdown too and moves the drums. */
+    clock: 0,
     /** What happened in the last update; the caller empties it. */
     events: [],
     human: undefined,
@@ -124,6 +129,15 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
       wallWait: 0,
       bumpWait: 0,
       wrongTime: 0,
+      // Coins, slipstream, hazards and the newer items.
+      coins: 0,
+      draft: 0, // seconds spent in another kart's tow
+      mud: false,
+      inked: 0,
+      cloud: 0,
+      jade: 0,
+      gateWait: 0,
+      thudWait: 0,
       stuck: 0,
       driftHeld: false,
       itemHeld: false,
@@ -169,7 +183,14 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
 
   /** Hit a kart: 'spin', 'tumble' or 'shrink'. Returns whether it took effect. */
   function hit(kart, kind) {
-    if (kart.bell > 0 || kart.finished) return false;
+    if (kart.bell > 0 || kart.cloud > 0 || kart.finished) return false;
+    // A jade charm takes the blow and breaks.
+    if (kart.jade > 0) {
+      kart.jade = 0;
+      kart.safe = Math.max(kart.safe, 1.2);
+      emit('blocked', { kart: kart.index });
+      return false;
+    }
     if (kind === 'shrink') {
       kart.shrink = DRIVE.shrinkSeconds;
       kart.item = undefined;
@@ -188,7 +209,10 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
     kart.boost = 0;
     if (kind === 'tumble') spinOut(kart, 'tumble', DRIVE.tumbleSeconds, 0.12);
     else spinOut(kart, 'spin', DRIVE.spinSeconds, 0.45);
-    emit('hit', { kart: kart.index, kind });
+    // A knock spills a few coins.
+    const lost = Math.min(3, kart.coins);
+    kart.coins -= lost;
+    emit('hit', { kart: kart.index, kind, lost });
     return true;
   }
   function spinOut(kart, kind, seconds, keep) {
@@ -201,7 +225,9 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
 
   /** Put a kart back on the centre line, facing the right way. */
   function rescue(kart) {
-    const at = track.sample(kart.s, 0, {});
+    // Beside the centre line if a stone lion stands on it just here.
+    const blocked = track.lions.some((lion) => Math.abs(track.delta(kart.s, lion.s)) < 14 && Math.abs(lion.lateral) < 3);
+    const at = track.sample(kart.s, blocked ? 4.5 : 0, {});
     kart.x = at.x;
     kart.z = at.z;
     kart.y = at.y;
@@ -319,6 +345,25 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
     } else if (item === 'thunder') {
       emit('thunder', { kart: kart.index });
       for (const other of race.karts) if (other !== kart) hit(other, 'shrink');
+    } else if (item === 'jade') kart.jade = DRIVE.jadeSeconds;
+    else if (item === 'gong') {
+      // A ring of sound: spins nearby karts, clears nearby items and gives a push.
+      emit('gong', { kart: kart.index, x: kart.x, y: kart.y, z: kart.z });
+      for (const other of race.karts)
+        if (other !== kart && Math.hypot(other.x - kart.x, other.z - kart.z) < DRIVE.gongRadius) hit(other, 'spin');
+      for (const thing of race.things) if (Math.hypot(thing.x - kart.x, thing.z - kart.z) < DRIVE.gongRadius) thing.life = 0;
+      boost(kart, 0.6, 0.7, 'gong');
+    } else if (item === 'ink') {
+      // Everyone ahead gets ink in the face.
+      const targets = race.karts.filter(
+        (other) => other.place < kart.place && !other.finished && other.bell <= 0 && other.cloud <= 0,
+      );
+      for (const other of targets) other.inked = DRIVE.inkSeconds;
+      emit('ink', { kart: kart.index, targets: targets.map((other) => other.index) });
+    } else if (item === 'cloud') {
+      kart.cloud = DRIVE.cloudSeconds;
+      kart.shrink = kart.spin = kart.inked = 0;
+      endDrift(kart, false);
     }
   }
 
@@ -453,6 +498,26 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
       const gap = track.delta(kart.s, pad.s);
       if (gap > 4 && gap < 40 && Math.abs(pad.lateral - lateral) < 4 * skill) lateral = pad.lateral;
     }
+    // Cloud gates and, until the purse is full, coins are worth a small detour.
+    for (const gate of track.gates) {
+      const gap = track.delta(kart.s, gate.s);
+      if (gap > 4 && gap < 42 && Math.abs(gate.lateral - lateral) < 4.5 * skill) lateral = gate.lateral;
+    }
+    if (kart.coins < DRIVE.coinLimit)
+      for (const coin of race.coins) {
+        const gap = track.delta(kart.s, coin.s);
+        if (coin.timer <= 0 && gap > 3 && gap < 20 && Math.abs(coin.lateral - lateral) < 2.2) lateral = coin.lateral;
+      }
+    // Go around mud, stone lions and rolling drums.
+    // The side to pass on is the side the kart is already on, so it does not change its mind half-way.
+    const dodge = (gap, offset, room) => {
+      if (gap < -2 || gap > 38 || ai.nerve > 0.4 + skill * 0.75) return;
+      if (Math.abs(offset - lateral) < room || (gap < 16 && Math.abs(offset - kart.lateral) < room))
+        lateral = offset + (kart.lateral >= offset ? room + 0.5 : -room - 0.5);
+    };
+    for (const mud of track.mud) dodge(track.delta(kart.s, mud.s), mud.lateral, mud.radius + 0.9);
+    for (const lion of track.lions) dodge(track.delta(kart.s, lion.s), lion.lateral, lion.radius + 1.9);
+    for (const drum of race.drums) dodge(track.delta(kart.s, drum.s) * 1.5, drum.offset, drum.radius + 2.4);
     // Go around firecrackers.
     for (const thing of race.things) {
       if (thing.kind !== 'firecracker') continue;
@@ -468,6 +533,8 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
       off = wrapAngle(wanted - kart.heading);
     // A larger heading is a turn to the left, and positive steering turns right.
     controls.steer = clamp(-off * 2.8, -1, 1);
+    // Ink in the eyes: the line wanders.
+    if (kart.inked > 0) controls.steer = clamp(controls.steer + Math.sin(race.clock * 6 + kart.index * 2) * 0.4, -1, 1);
     controls.throttle = brake ? 0 : 1;
     controls.brake = brake ? 1 : 0;
     // Pointing the wrong way after a spin: back up and turn.
@@ -517,6 +584,11 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
               ));
         else if (kart.item === 'kite' || kart.item === 'rocket' || kart.item === 'thunder')
           use = kart.place > 1 || ai.itemAge > 12;
+        else if (kart.item === 'ink') use = kart.place > 1 || ai.itemAge > 10;
+        else if (kart.item === 'cloud') use = kart.place > 2 || ai.itemAge > 6;
+        else if (kart.item === 'gong')
+          use =
+            ai.itemAge > 8 || race.karts.some((other) => other !== kart && Math.hypot(other.x - kart.x, other.z - kart.z) < 11);
         else use = true;
         if (use) {
           controls.item = true;
@@ -531,14 +603,33 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
   function stepKart(kart, controls, dt) {
     const tuning = kart.tuning,
       racing = race.state === 'race';
-    for (const key of ['boost', 'bell', 'shrink', 'spin', 'safe', 'stall', 'hop', 'padWait', 'rampWait', 'wallWait', 'bumpWait'])
+    const riding = kart.cloud > 0;
+    for (const key of [
+      'boost',
+      'bell',
+      'shrink',
+      'spin',
+      'safe',
+      'stall',
+      'hop',
+      'padWait',
+      'rampWait',
+      'wallWait',
+      'bumpWait',
+      'inked',
+      'cloud',
+      'jade',
+      'gateWait',
+      'thudWait',
+    ])
       if (kart[key] > 0) kart[key] = Math.max(0, kart[key] - dt);
     if (kart.roulette > 0) {
       kart.roulette -= dt;
       if (kart.roulette <= 0) rollItem(kart);
     }
 
-    const free = racing && kart.spin <= 0 && kart.stall <= 0;
+    if (riding && kart.cloud <= 0) boost(kart, 0.7, 0.8, 'cloud'); // stepping off the cloud
+    const free = racing && kart.spin <= 0 && kart.stall <= 0 && !riding;
     const throttle = free ? controls.throttle : 0,
       brake = free ? controls.brake : 0,
       steer = free ? controls.steer : 0;
@@ -556,8 +647,12 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
     // ---- speed along the heading ----
     let top = tuning.topSpeed * rules.speed * kart.pace;
     if (kart.shrink > 0) top *= DRIVE.shrinkSpeed;
-    const pushed = kart.boost > 0 || kart.bell > 0;
+    top *= 1 + DRIVE.coinSpeed * kart.coins;
+    if (kart.inked > 0 && !kart.human) top *= 0.92;
+    const pushed = kart.boost > 0 || kart.bell > 0 || riding;
     if (kart.grass && !pushed) top *= DRIVE.grassFactor;
+    if (kart.mud && !pushed) top *= DRIVE.mudFactor;
+    if (riding) top = Math.max(top, DRIVE.cloudSpeed);
     if (kart.bell > 0) top += DRIVE.bellBonus;
     if (kart.boost > 0) top += DRIVE.boostBonus * kart.boostStrength;
     let speed = kart.speed;
@@ -578,8 +673,10 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
 
     // ---- hop and drift ----
     if (driftPressed) {
-      if (kart.airborne) kart.trick = kart.fromRamp;
-      else {
+      if (kart.airborne) {
+        if (kart.fromRamp && !kart.trick) emit('trick', { kart: kart.index });
+        kart.trick = kart.fromRamp;
+      } else {
         kart.hop = 0.28;
         emit('hop', { kart: kart.index });
       }
@@ -623,6 +720,12 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
       yaw = steer * tuning.turnRate * authority * (speed < -0.5 ? -1 : 1);
     }
     if (kart.airborne) yaw *= 0.45;
+    // On the somersault cloud the kart flies itself down the middle of the road.
+    if (riding) {
+      const point = track.sample(kart.s + 16, kart.lateral * 0.6, at);
+      yaw = clamp(-wrapAngle(Math.atan2(point.x - kart.x, point.z - kart.z) - kart.heading) * 8, -4, 4);
+      speed = Math.min(DRIVE.cloudSpeed, speed + 70 * dt);
+    }
     // World velocity before the turn, measured again along the new heading.
     let fx = Math.sin(kart.heading),
       fz = Math.cos(kart.heading);
@@ -635,7 +738,9 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
     let slip = vx * -fz + vz * fx;
     // Grip kills the sideways part; most of that speed carries into the new direction.
     const before = Math.hypot(speed, slip),
-      grip = kart.airborne ? DRIVE.airGrip : kart.drifting ? DRIVE.driftGrip : DRIVE.grip;
+      grip =
+        (kart.airborne ? DRIVE.airGrip : kart.drifting ? DRIVE.driftGrip : DRIVE.grip) *
+        (kart.mud && !riding ? DRIVE.mudGrip : 1);
     slip *= Math.exp(-grip * dt);
     const after = Math.hypot(speed, slip);
     if (after > 0.01 && !kart.airborne) {
@@ -693,8 +798,8 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
       if (kart.y <= kart.ground) {
         kart.y = kart.ground;
         kart.airborne = false;
-        emit('land', { kart: kart.index });
-        if (kart.fromRamp && kart.trick) boost(kart, 0.7, 0.8, 'trick');
+        emit('land', { kart: kart.index, ramp: kart.fromRamp });
+        if (kart.fromRamp && kart.trick) boost(kart, 0.9, 0.85, 'trick');
         kart.fromRamp = kart.trick = false;
       }
     } else kart.y = kart.ground;
@@ -720,6 +825,36 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
             break;
           }
     }
+
+    // ---- cloud gates, coins, mud, stone lions and drums ----
+    if (kart.gateWait <= 0)
+      for (const gate of track.gates)
+        if (
+          track.delta(previous, gate.s) > 0 &&
+          track.delta(kart.s, gate.s) <= 0 &&
+          Math.abs(kart.lateral - gate.lateral) < gate.halfWidth
+        ) {
+          kart.gateWait = 1;
+          boost(kart, 0.9, 0.85, 'gate');
+          break;
+        }
+    for (const coin of race.coins) {
+      if (
+        coin.timer > 0 ||
+        Math.abs(kart.x - coin.x) > 2 ||
+        Math.hypot(kart.x - coin.x, kart.z - coin.z) > 2 ||
+        kart.y - kart.ground > 2.5
+      )
+        continue;
+      coin.timer = 9;
+      if (kart.coins < DRIVE.coinLimit) kart.coins++;
+      emit('coin', { kart: kart.index, coin: coin.index, full: kart.coins === DRIVE.coinLimit });
+    }
+    const inMud = !kart.airborne && track.mud.some((mud) => Math.hypot(kart.x - mud.x, kart.z - mud.z) < mud.radius);
+    if (inMud && !kart.mud && Math.abs(kart.speed) > 8) emit('mud', { kart: kart.index });
+    kart.mud = inMud;
+    for (const lion of track.lions) bounceOff(kart, lion.x, lion.z, lion.radius, false);
+    for (const drum of race.drums) if (bounceOff(kart, drum.x, drum.z, drum.radius, true) && !riding) hit(kart, 'spin');
 
     // ---- item boxes ----
     for (const box of race.boxes) {
@@ -761,6 +896,36 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
     }
   }
 
+  /**
+   * Keep a kart out of a round obstacle at (x, z). Returns whether they touched.
+   * A stone lion costs most of the kart's speed; a `soft` one (a drum) only shoves it aside.
+   */
+  function bounceOff(kart, x, z, radius, soft) {
+    const dx = kart.x - x,
+      dz = kart.z - z,
+      distance = Math.hypot(dx, dz),
+      reach = radius + DRIVE.radius * 0.85;
+    if (distance >= reach || distance < 1e-4 || kart.y - kart.ground > 2.2) return false;
+    const nx = dx / distance,
+      nz = dz / distance;
+    kart.x += nx * (reach - distance);
+    kart.z += nz * (reach - distance);
+    const into = -(kart.vx * nx + kart.vz * nz);
+    if (into > 0) {
+      shove(kart, nx * into * 1.5, nz * into * 1.5);
+      if (!soft) {
+        kart.speed *= 0.6;
+        kart.slip *= 0.6;
+        if (kart.drifting) endDrift(kart, false);
+      }
+      if (into > 4 && kart.thudWait <= 0) {
+        kart.thudWait = 0.4;
+        emit('thud', { kart: kart.index, hard: into > 12, drum: soft });
+      }
+    }
+    return true;
+  }
+
   /** Push overlapping karts apart; the heavier one gives way less. */
   function collide() {
     const karts = race.karts;
@@ -794,7 +959,10 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
           }
         }
         // A golden bell knocks others spinning, and a full-size kart flattens a shrunken one.
-        if (a.bell > 0 && b.bell <= 0) hit(b, 'spin');
+        // The somersault cloud bowls others over.
+        if (a.cloud > 0 && b.cloud <= 0) hit(b, 'tumble');
+        else if (b.cloud > 0 && a.cloud <= 0) hit(a, 'tumble');
+        else if (a.bell > 0 && b.bell <= 0) hit(b, 'spin');
         else if (b.bell > 0 && a.bell <= 0) hit(a, 'spin');
         else if (a.shrink > 0 && b.shrink <= 0) hit(a, 'spin');
         else if (b.shrink > 0 && a.shrink <= 0) hit(b, 'spin');
@@ -813,8 +981,31 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
   function rank() {
     const order = race.karts.filter((kart) => !kart.finished).sort((a, b) => b.total - a.total);
     order.forEach((kart, index) => {
-      kart.place = race.finishedCount + index + 1;
+      const place = race.finishedCount + index + 1;
+      // Tell the player when they move up.
+      if (kart.human && place < kart.place && race.time > 2) emit('overtake', { kart: kart.index, place });
+      kart.place = place;
     });
+  }
+
+  /** Tucking in behind another kart builds a tow that turns into a boost. */
+  function slipstream(dt) {
+    for (const kart of race.karts) {
+      const towed =
+        !kart.airborne &&
+        kart.speed > 22 &&
+        kart.boost <= 0 &&
+        race.karts.some((other) => {
+          if (other === kart || other.finished !== kart.finished) return false;
+          const gap = track.delta(kart.s, other.s);
+          return gap > 3 && gap < 16 && Math.abs(other.lateral - kart.lateral) < 2.4;
+        });
+      kart.draft = towed ? kart.draft + dt : Math.max(0, kart.draft - dt * 2);
+      if (kart.draft >= DRIVE.draftSeconds) {
+        kart.draft = 0;
+        boost(kart, 1.1, 0.7, 'draft');
+      }
+    }
   }
 
   function step(dt, humanControls) {
@@ -838,6 +1029,17 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
         }
       }
     } else if (race.state === 'race') race.time += dt;
+    race.clock += dt;
+    // Drums roll from one side of the road to the other and back.
+    for (const drum of race.drums) {
+      const swing = (race.clock / drum.period) * Math.PI + drum.phase,
+        offset = Math.sin(swing) * drum.reach,
+        at = track.sample(drum.s, offset, spot);
+      drum.roll += (offset - drum.offset) / drum.radius;
+      drum.offset = offset;
+      drum.x = at.x;
+      drum.z = at.z;
+    }
     if (thunderWait > 0) thunderWait -= dt;
     if (rocketWait > 0) rocketWait -= dt;
 
@@ -862,7 +1064,9 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
     }
     collide();
     updateThings(dt);
+    if (race.state === 'race') slipstream(dt);
     for (const box of race.boxes) if (box.timer > 0) box.timer -= dt;
+    for (const coin of race.coins) if (coin.timer > 0) coin.timer -= dt;
     if (race.state === 'race') {
       rank();
       // The race ends when everyone is home, or a while after the player is.

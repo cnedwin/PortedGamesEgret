@@ -1,7 +1,7 @@
 // The page around the canvas: title, racer choice, the in-race display
 // (place, lap, clock, item, speed, map, banners), the pause menu and the
 // results. Text comes from data.mjs in the chosen language.
-import { CLASSES, ITEMS, ITEM_KEYS, LAP_CHOICES, RACERS, TEXT } from './data.mjs';
+import { CLASSES, DRIVE, ITEMS, ITEM_KEYS, LAP_CHOICES, RACERS, TEXT } from './data.mjs';
 
 const css = (hex) => '#' + hex.toString(16).padStart(6, '0');
 /** 83.456 seconds as 1:23.45. */
@@ -164,6 +164,30 @@ export function createHud(root, track, options = {}) {
     time = el('div', 'clock'),
     itemIcon = el('span', 'item-icon'),
     itemCount = el('span', 'item-count'),
+    coinCount = el('strong'),
+    coins = el('div', 'coins', undefined, [el('span', 'coin'), coinCount]),
+    driftFill = el('i'),
+    drift = el('div', 'drift', undefined, [driftFill]),
+    popups = el('div', 'popups'),
+    // Ink thrown by a rival: blots that cover part of the view until they fade.
+    inkBlots = el(
+      'div',
+      'ink',
+      undefined,
+      [
+        [18, 30, 34],
+        [62, 22, 40],
+        [40, 58, 46],
+        [78, 62, 30],
+        [12, 70, 26],
+        [52, 36, 22],
+      ].map(([left, top, size]) => {
+        const blot = el('i');
+        blot.style.cssText = `left:${left}%;top:${top}%;width:${size}vmin;height:${size}vmin`;
+        return blot;
+      }),
+    ),
+    hurt = el('div', 'hurt'),
     item = el('div', 'item', undefined, [itemIcon, itemCount]),
     speedValue = el('strong'),
     speedUnit = el('span'),
@@ -184,7 +208,23 @@ export function createHud(root, track, options = {}) {
     node.dataset.touch = name;
     return node;
   }
-  race.append(lines, flash, place, el('div', 'top', undefined, [lap, time]), item, speed, map, banner, wrong, touch);
+  race.append(
+    lines,
+    hurt,
+    inkBlots,
+    flash,
+    place,
+    el('div', 'top', undefined, [lap, time]),
+    item,
+    coins,
+    speed,
+    map,
+    drift,
+    popups,
+    banner,
+    wrong,
+    touch,
+  );
   /** The element holding the touch buttons, for the input module. */
   hud.touchRoot = touch;
 
@@ -253,7 +293,25 @@ export function createHud(root, track, options = {}) {
     const kart = game.human;
     if (!kart) return;
     place.textContent = t().place[kart.place - 1];
+    if (place.dataset.place !== String(kart.place)) {
+      // The place jumps when it changes.
+      place.classList.remove('bump');
+      void place.offsetWidth;
+      place.classList.add('bump');
+    }
     place.dataset.place = kart.place;
+    coinCount.textContent = `${kart.coins}/${DRIVE.coinLimit}`;
+    coins.className = kart.coins >= DRIVE.coinLimit ? 'coins full' : 'coins';
+    // The drift meter fills toward the next mini-turbo and takes its colour.
+    drift.className = kart.drifting ? `drift on level${kart.driftLevel}` : 'drift';
+    if (kart.drifting) {
+      const levels = DRIVE.driftLevels,
+        from = kart.driftLevel ? levels[kart.driftLevel - 1] : 0,
+        to = levels[Math.min(kart.driftLevel, levels.length - 1)];
+      driftFill.style.width = `${kart.driftLevel >= levels.length ? 100 : Math.min(100, ((kart.driftCharge - from) / (to - from)) * 100)}%`;
+    }
+    inkBlots.style.opacity = Math.min(1, kart.inked / 0.8);
+    hurt.style.opacity = Math.max(0, Number(hurt.style.opacity || 0) - dt * 1.6);
     lap.textContent = `${t().lap} ${Math.max(1, kart.lap)}/${game.laps}`;
     time.textContent = clock(kart.finished ? kart.finishTime : game.time);
     const kmh = Math.round(Math.abs(kart.speed) * 3.6);
@@ -283,7 +341,7 @@ export function createHud(root, track, options = {}) {
 
     wrong.textContent = kart.wrongWay ? t().wrongWay : '';
     flash.style.opacity = view.flash;
-    lines.style.opacity = kart.boost > 0 ? 0.55 : 0;
+    lines.style.opacity = kart.boost > 0 || kart.cloud > 0 ? 0.6 : kart.draft > 0.3 ? 0.25 : 0;
     if (bannerUntil && now > bannerUntil) {
       banner.className = 'banner';
       bannerUntil = 0;
@@ -304,6 +362,14 @@ export function createHud(root, track, options = {}) {
   };
 
   /** Banners for what just happened to the player. */
+  /** A short cheer that floats up and fades: `kind` picks its colour. */
+  const popup = (text, kind = '') => {
+    const node = el('div', 'popup ' + kind, text);
+    popups.append(node);
+    node.addEventListener('animationend', () => node.remove());
+    while (popups.children.length > 4) popups.firstChild.remove();
+  };
+
   hud.consume = (events, game) => {
     const mine = game.human?.index;
     for (const event of events) {
@@ -314,6 +380,13 @@ export function createHud(root, track, options = {}) {
       else if (event.type === 'lap') announce(`${t().lap} ${event.lap}/${game.laps}`, 1.6);
       else if (event.type === 'finish') announce(t().finish, 3, 'go');
       else if (event.type === 'item') announce(ITEMS[event.item].name[hud.lang], 1.1, 'small');
+      else if (event.type === 'turbo') popup(t().popups.turbo[event.level - 1], 'level' + event.level);
+      else if (event.type === 'boost' && t().popups[event.source]) popup(t().popups[event.source], 'gold');
+      else if (event.type === 'overtake') popup(`${t().popups.overtake} ${t().place[event.place - 1]}`, 'green');
+      else if (event.type === 'coin' && event.full) popup(t().popups.purse, 'gold');
+      else if (event.type === 'blocked') popup(t().popups.blocked, 'green');
+      else if (event.type === 'mud') popup(t().popups.mud, 'brown');
+      else if (event.type === 'hit') hurt.style.opacity = 1;
     }
   };
 

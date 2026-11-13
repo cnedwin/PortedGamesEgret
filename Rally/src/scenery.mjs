@@ -17,6 +17,7 @@ import {
   createHemisphereLight3D,
   createPlaneGeometry3D,
   createStandardMaterial3D,
+  createTorusGeometry3D,
   createUnlitMaterial3D,
   createWater3D,
 } from '@egret/engine/world3d';
@@ -105,6 +106,9 @@ function ribbon(track, profileAt, uv = 0) {
   return createGeometry3D({ positions, normals, colors, uvs, indices });
 }
 
+/** A flat disc facing along Z, for the sun. */
+const sunShape = () => build([[CYLINDER, [0, 0, 0], [1, 0.01, 1], [1, 1, 1], [Math.PI / 2, 0, 0]]]);
+
 /** Tarmac with edge lines and a dashed centre line; u runs across the road. */
 function roadTexture() {
   let seed = 7;
@@ -174,6 +178,11 @@ export function createScenery(scene, track, options = {}) {
   scenery.aimSun = (x, y, z) => {
     sun.setPosition(x + 60, y + 95, z - 45);
     sun.lookAt(x, y, z);
+    // The disc stays far off in the light's direction and faces the watcher.
+    if (scenery.sunDisc) {
+      scenery.sunDisc.setPosition(x + 60 * 9, y + 95 * 9, z - 45 * 9);
+      scenery.sunDisc.lookAt(x, y, z);
+    }
   };
   scenery.aimSun(0, 0, 0);
 
@@ -212,6 +221,7 @@ export function createScenery(scene, track, options = {}) {
       nz = Math.round((z1 - z0) / cell);
     const positions = [],
       colors = [],
+      uvs = [],
       indices = [];
     const grass = rgb(0x7fb85a),
       meadow = rgb(0x5f9c4a),
@@ -225,6 +235,7 @@ export function createScenery(scene, track, options = {}) {
           y = ground(x, z),
           shore = track.lakeDistance(x, z);
         positions.push(x, y, z);
+        uvs.push(x / 14, z / 14);
         // Sand round the lake, light grass by the road, darker meadow and rock on the hills.
         let color = y > 15 ? rock : y > 7 ? meadow : grass;
         if (shore < 1.2 && y < 1.6) color = y < TRACK.waterLevel - 0.3 ? bed : sand;
@@ -239,9 +250,25 @@ export function createScenery(scene, track, options = {}) {
           d = c + 1;
         indices.push(a, c, b, b, c, d);
       }
-    const geometry = createGeometry3D({ positions, colors, indices });
+    const geometry = createGeometry3D({ positions, colors, uvs, indices });
     geometry.computeNormals();
-    add(geometry, lit({ roughness: 0.95 }), false);
+    // A mottled texture breaks up the flat colour: patches of lighter and darker turf.
+    let seed = 99;
+    const noise = () => {
+      seed = (seed * 1664525 + 1013904223) >>> 0;
+      return seed / 4294967296;
+    };
+    const turf = paintTexture(
+      256,
+      256,
+      (x, y) => {
+        const patch = Math.sin(x * 0.049) * Math.sin(y * 0.049) * 14 + Math.sin((x + y) * 0.098) * 8,
+          v = 214 + patch + noise() * 30;
+        return [v - 8, v, v - 20, 255];
+      },
+      { wrapS: 'repeat', wrapT: 'repeat', anisotropy: 8 },
+    );
+    add(geometry, lit({ roughness: 0.95, map: turf }), false);
   }
 
   // ---- road, kerbs, walls and bridge ---------------------------------------------------
@@ -477,6 +504,24 @@ export function createScenery(scene, track, options = {}) {
       parts.push([OCTAGON, [0, y + 2.35, 0], [r + 0.08, 0.5, r + 0.08], VERMILION]);
       parts.push([EAVE, [0, y + 3.35, 0], [r + 2, 1.3, r + 2], TILE]);
       parts.push([CYLINDER, [0, y + 2.78, 0], [r + 2.05, 0.14, r + 2.05], GOLD]);
+      // Upturned tips at the eight corners, each with a bell.
+      for (let c = 0; c < 8; c++) {
+        const a = (c / 8) * Math.PI * 2,
+          reach = r + 2.05;
+        parts.push([
+          SPIKE,
+          [Math.cos(a) * reach, y + 3.05, Math.sin(a) * reach],
+          [0.22, 0.9, 0.22],
+          TILE,
+          [Math.sin(a) * 0.9, 0, -Math.cos(a) * 0.9],
+        ]);
+        parts.push([BALL, [Math.cos(a) * (reach + 0.1), y + 2.5, Math.sin(a) * (reach + 0.1)], 0.12, GOLD]);
+      }
+      // Dark window openings on alternate faces.
+      for (let c = 0; c < 4; c++) {
+        const a = (c / 4) * Math.PI * 2 + Math.PI / 8;
+        parts.push([BOX, [Math.cos(a) * r * 0.84, y + 1.3, Math.sin(a) * r * 0.84], [0.7, 1.3, 0.7], 0x3a2a20, [0, -a, 0]]);
+      }
       y += 3.5;
     }
     parts.push([CONE, [0, y + 1.6, 0], [0.5, 3.6, 0.5], GOLD]);
@@ -817,13 +862,462 @@ export function createScenery(scene, track, options = {}) {
     add(build(parts), lit({ roughness: 0.8 }));
   }
 
+  // ---- cloud gates, mud and stone lions on the road ------------------------------------------
+  /** A guardian lion on a plinth; also stands either side of the start gate. */
+  const lionShape = build([
+    [BOX, [0, 0.3, 0], [1.5, 0.6, 1.9], 0x9a958a],
+    [BOX, [0, 0.66, 0], [1.3, 0.14, 1.7], 0xb9b4a6],
+    [SPHERE, [0, 1.25, -0.25], [0.52, 0.6, 0.62], STONE],
+    [SPHERE, [0, 1.95, 0.25], [0.5, 0.48, 0.48], STONE],
+    [SPHERE, [0, 1.86, 0.62], [0.3, 0.24, 0.24], 0xc9c4b6],
+    ...[-1, 1].flatMap((side) => [
+      [CYLINDER, [side * 0.3, 1.0, 0.42], [0.15, 0.7, 0.15], STONE],
+      [SPHERE, [side * 0.3, 0.8, 0.52], [0.18, 0.12, 0.24], 0xc9c4b6],
+      [SPHERE, [side * 0.36, 2.34, 0.1], 0.13, STONE],
+      [SPHERE, [side * 0.18, 2.03, 0.66], 0.06, 0x2a2a2a],
+    ]),
+    // Curls of the mane and the ball under one paw.
+    ...[0, 1, 2, 3, 4, 5, 6].map((k) => [BALL, [Math.cos(k * 0.9) * 0.44, 2.0 + Math.sin(k * 0.9) * 0.4, -0.05], 0.15, 0xa8a396]),
+    [SPHERE, [0.3, 0.86, 0.72], 0.2, [1.3, 0.2, 0.14]],
+    [SPHERE, [0, 1.78, 0.84], [0.1, 0.06, 0.06], 0x2a2a2a],
+  ]);
+  copies(lionShape, [
+    ...track.lions.map((lion) => [lion.x, lion.y, lion.z, lion.heading + Math.PI, 0.95]),
+    ...[-1, 1].map((side) => {
+      const at = beside(0, side * (span + 3.4));
+      return [at.x, at.y, at.z, at.heading + Math.PI, 1.5];
+    }),
+  ]);
+  {
+    // Mud: a glossy brown pool with a darker rim, lying just above the tarmac.
+    const pool = build([
+      [CYLINDER, [0, 0.02, 0], [1, 0.03, 1], 0x4a3320],
+      [CYLINDER, [0, 0.035, 0], [0.86, 0.03, 0.86], 0x6b4a2c],
+      [CYLINDER, [0.2, 0.05, -0.1], [0.5, 0.02, 0.42], 0x7d5a38],
+      [BALL, [0.95, 0.03, 0.3], [0.3, 0.05, 0.24], 0x4a3320],
+      [BALL, [-0.8, 0.03, -0.6], [0.36, 0.05, 0.3], 0x4a3320],
+      [BALL, [-0.3, 0.03, 0.98], [0.26, 0.05, 0.22], 0x4a3320],
+    ]);
+    const pools = copies(
+      pool,
+      track.mud.map((mud, k) => [mud.x, mud.y + 0.04, mud.z, k * 1.9, mud.radius]),
+      lit({ roughness: 0.18 }),
+      false,
+    );
+    pools.renderOrder = 3;
+
+    // Cloud gates: two red posts and an arch of gold-edged cloud to drive under.
+    const arch = createTorusGeometry3D({ radius: 1, tube: 0.09, radialSegments: 8, tubularSegments: 28 });
+    const puffs = [];
+    for (let k = 0; k <= 10; k++) {
+      const a = (k / 10) * Math.PI,
+        x = Math.cos(a) * 2.9,
+        y = 0.4 + Math.sin(a) * 3.3;
+      puffs.push([BALL, [x, y, 0], [0.62, 0.5, 0.42], [1.25, 1.25, 1.3]]);
+      puffs.push([BALL, [x * 1.05, y + 0.25, 0.12], [0.36, 0.3, 0.3], [1.3, 1.3, 1.3]]);
+    }
+    const gateShape = build([
+      ...puffs,
+      [arch, [0, 0.4, 0], [2.9, 3.3, 1.6], [1.6, 1.15, 0.3]],
+      ...[-1, 1].flatMap((side) => [
+        [CYLINDER, [side * 2.95, 0.5, 0], [0.16, 1.2, 0.16], VERMILION],
+        [BOX, [side * 2.95, 0.08, 0], [0.6, 0.16, 0.6], STONE],
+        [BALL, [side * 2.95, 1.2, 0], 0.26, GOLD],
+      ]),
+    ]);
+    copies(
+      gateShape,
+      track.gates.map((gate) => [gate.x, gate.y, gate.z, gate.heading, 1]),
+      lit({ roughness: 0.6 }),
+      false,
+    );
+  }
+
+  // ---- banners and strings of lanterns over the road ---------------------------------------------
+  /** A holder standing on the road at `fraction`, turned to face along it. */
+  const astride = (fraction) => {
+    const at = beside(fraction, 0),
+      holder = new Object3D();
+    holder.setPosition(at.x, at.y, at.z);
+    holder.setRotation(0, at.heading, 0);
+    scene.addChild(holder);
+    return { holder, reach: track.limit[at.index] + 1 };
+  };
+  for (const [fraction, words] of [
+    [0.2, '一 路 顺 风'],
+    [0.635, '马 到 成 功'],
+    [0.885, '风 驰 电 掣'],
+  ]) {
+    const { holder, reach } = astride(fraction);
+    const frame = new Mesh3D(
+      build([
+        ...[-1, 1].flatMap((side) => [
+          [CYLINDER, [side * reach, 4.6, 0], [0.3, 9.2, 0.3], VERMILION],
+          [BOX, [side * reach, 0.4, 0], [1.1, 0.8, 1.1], STONE],
+          [SPIKE, [side * reach, 9.6, 0], [0.5, 0.9, 0.5], GOLD],
+        ]),
+        [CYLINDER, [0, 8.7, 0], [0.16, reach * 2 + 1.5, 0.16], 0x3a2a20, [0, 0, Math.PI / 2]],
+        [BOX, [0, 7.35, 0], [15, 2.5, 0.08], 0xb81a20],
+        [BOX, [0, 8.55, 0], [15.4, 0.18, 0.14], GOLD],
+        [BOX, [0, 6.15, 0], [15.4, 0.18, 0.14], GOLD],
+        // Tassels along the bottom edge.
+        ...[-6, -3, 0, 3, 6].map((x) => [CYLINDER, [x, 5.8, 0], [0.07, 0.6, 0.07], GOLD]),
+      ]),
+      lit({ roughness: 0.6 }),
+    );
+    frame.castShadow = true;
+    holder.addChild(frame);
+    const cloth = canvasTexture(1024, 160, (c, w, h) => {
+      c.fillStyle = '#b81a20';
+      c.fillRect(0, 0, w, h);
+      c.fillStyle = '#f7d560';
+      c.font = '900 118px "Noto Serif SC", "Songti SC", "SimSun", "KaiTi", serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(words, w / 2, h / 2 + 6);
+    });
+    for (const facing of [0, Math.PI]) {
+      const sign = new Mesh3D(
+        createPlaneGeometry3D({ width: 14.4, height: 2.25 }),
+        createStandardMaterial3D({ color: 0xffffff, map: cloth, roughness: 0.7 }),
+      );
+      sign.setPosition(0, 7.35, facing ? -0.06 : 0.06);
+      sign.setRotation(0, facing, 0);
+      sign.castShadow = false;
+      holder.addChild(sign);
+    }
+  }
+  for (const fraction of [0.045, 0.1, 0.33, 0.44, 0.69, 0.81, 0.955]) {
+    const { holder, reach } = astride(fraction);
+    const parts = [];
+    for (const side of [-1, 1])
+      parts.push([ROD, [side * reach, 3.7, 0], [0.12, 7.4, 0.12], 0x3a2a20], [BALL, [side * reach, 7.5, 0], 0.2, GOLD]);
+    // The rope sags in the middle; a lantern hangs every couple of metres.
+    const lanterns = Math.floor(reach / 1.4) * 2 + 1,
+      sag = (t) => 7.2 - Math.sin(t * Math.PI) * 1.1;
+    for (let k = 0; k < lanterns; k++) {
+      const t = k / (lanterns - 1),
+        x = (t * 2 - 1) * reach,
+        y = sag(t);
+      parts.push([BALL, [x, y - 0.5, 0], [0.34, 0.4, 0.34], k % 2 ? [1.6, 0.2, 0.12] : [1.6, 1.0, 0.2]]);
+      parts.push([ROD, [x, y - 0.12, 0], [0.16, 0.08, 0.16], GOLD], [ROD, [x, y - 0.88, 0], [0.16, 0.08, 0.16], GOLD]);
+      parts.push([ROD, [x, y - 1.12, 0], [0.03, 0.4, 0.03], [1.3, 0.75, 0.1]]);
+      if (k) {
+        // A length of rope back to the lantern before.
+        const before = (k - 1) / (lanterns - 1),
+          px = (before * 2 - 1) * reach,
+          py = sag(before);
+        parts.push([
+          ROD,
+          [(x + px) / 2, (y + py) / 2, 0],
+          [0.025, Math.hypot(x - px, y - py), 0.025],
+          0x222222,
+          [0, 0, Math.atan2(px - x, y - py)],
+        ]);
+      }
+    }
+    const string = new Mesh3D(build(parts), lit({ roughness: 0.5 }));
+    string.castShadow = false;
+    holder.addChild(string);
+  }
+
+  // ---- a hall, willows, maples and the roadside verge ------------------------------------------------
+  {
+    // A temple hall with a double-eaved roof.
+    const hall = build([
+      [BOX, [0, 0.6, 0], [22, 1.2, 13], STONE],
+      [BOX, [0, 1.3, 5.8], [8, 0.3, 2.4], 0xa8a396],
+      [BOX, [0, 3.6, 0], [17, 4.8, 8.5], CREAM],
+      ...[-7.5, -4.5, -1.5, 1.5, 4.5, 7.5].flatMap((x) => [
+        [CYLINDER, [x, 3.6, 4.6], [0.34, 4.8, 0.34], VERMILION],
+        [CYLINDER, [x, 3.6, -4.6], [0.34, 4.8, 0.34], VERMILION],
+      ]),
+      [BOX, [0, 3.2, 4.3], [2.6, 3.8, 0.2], 0x7a1a14],
+      ...[-5.2, 5.2].map((x) => [BOX, [x, 3.6, 4.3], [2.4, 2.2, 0.2], 0x7a1a14]),
+      [BOX, [0, 6.2, 0], [18, 0.5, 9.6], 0x1f6f8a],
+      [BOX, [0, 6.8, 0], [21.5, 0.5, 13], TILE],
+      [BOX, [0, 7.3, 0], [19, 0.6, 10.4], 0x39594f],
+      [BOX, [0, 8.4, 0], [13, 1.8, 6], CREAM],
+      [BOX, [0, 9.5, 0], [16.5, 0.5, 9.6], TILE],
+      [BOX, [0, 10.1, 0], [13.5, 0.7, 6.4], 0x39594f],
+      [BOX, [0, 10.8, 0], [10.5, 0.7, 2.6], TILE],
+      [BOX, [0, 11.3, 0], [10.8, 0.4, 0.6], GOLD],
+      ...[-1, 1].flatMap((sx) => [
+        [SPIKE, [sx * 5.6, 11.9, 0], [0.4, 1.1, 0.4], GOLD],
+        ...[-1, 1].flatMap((sz) => [
+          [SPIKE, [sx * 10.9, 7.5, sz * 6.6], [0.5, 1.8, 0.5], TILE, [sz * 0.8, 0, -sx * 0.8]],
+          [SPIKE, [sx * 8.4, 10.2, sz * 4.9], [0.4, 1.4, 0.4], TILE, [sz * 0.8, 0, -sx * 0.8]],
+        ]),
+      ]),
+    ]);
+    // Its doors face the road.
+    const halls = [...site(0.975, 62, 1), ...site(0.6, 70, 0.8)].map(([x, y, z, turn, size]) => {
+      const at = track.locate(x, z, -1, here);
+      return [x, y, z, turn + (at.lateral > 0 ? Math.PI / 2 : -Math.PI / 2), size];
+    });
+    copies(hall, halls, lit({ roughness: 0.65 }));
+
+    // Willows trail their branches by the water; maples add red and gold to the hills.
+    const willow = build([
+      [ROD, [0, 1.8, 0], [0.3, 3.6, 0.3], 0x5a4a32, [0, 0, 0.08]],
+      [BALL, [0.1, 4.3, 0], [2.1, 1.3, 2.1], 0x8fbf5a],
+      ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => {
+        const a = k * 0.63,
+          r = 1.5 + (k % 3) * 0.35;
+        return [
+          SPIKE,
+          [Math.cos(a) * r, 2.9 - (k % 2) * 0.3, Math.sin(a) * r],
+          [0.34, 2.9 + (k % 3) * 0.5, 0.34],
+          k % 2 ? 0x9fcf6a : 0x7fb04a,
+          [Math.PI, 0, 0],
+        ];
+      }),
+    ]);
+    const maple = build([
+      [ROD, [0, 1.3, 0], [0.24, 2.6, 0.24], 0x5a3a28],
+      [BALL, [0, 3.5, 0], [1.7, 1.4, 1.7], 0xd9542a],
+      [BALL, [1.1, 3, 0.3], [1.1, 0.9, 1.1], 0xf2a81d],
+      [BALL, [-1, 3.1, -0.4], [1.2, 1, 1.2], 0xc8321e],
+      [BALL, [0.2, 4.4, -0.2], [1, 0.8, 1], 0xf07a1a],
+    ]);
+    const willows = [],
+      maples = [];
+    for (let n = 0; n < 1400; n++) {
+      const x = -450 + chance() * 900,
+        z = -320 + chance() * 660,
+        shore = track.lakeDistance(x, z),
+        size = 0.9 + chance() * 0.6,
+        tone = 0.85 + chance() * 0.3;
+      if (shore > 1.16 && shore < 1.5 && willows.length < 46 && clear(x, z, 3))
+        willows.push([x, ground(x, z) - 0.15, z, chance() * 6.28, size * 1.2, [tone, tone, tone]]);
+      else if (shore > 1.5 && chance() < 0.16 && maples.length < 110 && clear(x, z, 12))
+        maples.push([x, ground(x, z) - 0.15, z, chance() * 6.28, size * 1.1, [tone, tone, tone]]);
+    }
+    copies(willow, willows);
+    copies(maple, maples);
+
+    // Tufts of grass and wild flowers on the verge between the kerb and the wall.
+    // Blades are four-sided so thousands of them stay cheap to draw.
+    const tuft = build(
+      [0, 1, 2].map((k) => [
+        PYRAMID,
+        [Math.cos(k * 2.1) * 0.12, 0.22, Math.sin(k * 2.1) * 0.12],
+        [0.07, 0.46 + k * 0.1, 0.07],
+        [1, 1, 1],
+        [Math.sin(k * 2.1) * 0.4, 0, -Math.cos(k * 2.1) * 0.4],
+      ]),
+    );
+    const bloom = build([
+      [PYRAMID, [0, 0.16, 0], [0.025, 0.32, 0.025], 0x4f9440],
+      ...[0, 1, 2, 3, 4].map((k) => [
+        PYRAMID,
+        [Math.cos(k * 1.257) * 0.09, 0.34, Math.sin(k * 1.257) * 0.09],
+        [0.09, 0.04, 0.09],
+        [1, 1, 1],
+      ]),
+      [PYRAMID, [0, 0.36, 0], [0.05, 0.05, 0.05], 0xf2c230],
+    ]);
+    const tufts = [],
+      blooms = [],
+      petals = [0xffffff, 0xf7a8c4, 0xffe08a, 0xc9b6f0, 0xff8a70].map(rgb),
+      green = rgb(0x5fa646);
+    for (let i = 0; i < track.count; i++) {
+      if (track.bridge[i]) continue;
+      for (let n = 0; n < 5; n++) {
+        const side = chance() < 0.5 ? -1 : 1,
+          lateral = side * (track.halfWidth[i] + 1.2 + chance() * (track.limit[i] - track.halfWidth[i] - 1.8)),
+          at = track.sample((i + chance()) * track.step, lateral, {}),
+          tone = 0.75 + chance() * 0.5;
+        if (n < 4)
+          tufts.push([
+            at.x,
+            at.y - 0.05,
+            at.z,
+            chance() * 6.28,
+            0.7 + chance() * 0.8,
+            [green[0] * tone, green[1] * tone, green[2] * tone],
+          ]);
+        else
+          blooms.push([
+            at.x,
+            at.y - 0.05,
+            at.z,
+            chance() * 6.28,
+            1 + chance() * 0.8,
+            petals[Math.floor(chance() * petals.length)],
+          ]);
+      }
+    }
+    copies(tuft, tufts, lit({ roughness: 0.9 }), false);
+    copies(bloom, blooms, lit({ roughness: 0.8 }), false);
+
+    // Piers along the white walls, each under its own little tiled cap.
+    const pier = build([
+      [BOX, [0, 0.75, 0], [0.9, 1.9, 0.9], 0xf2efe6],
+      [PYRAMID, [0, 2.0, 0], [0.85, 0.6, 0.85], TILE, [0, Math.PI / 4, 0]],
+      [BALL, [0, 2.36, 0], 0.13, GOLD],
+    ]);
+    const piers = [];
+    for (let i = 0; i < track.count; i += 5) {
+      if (track.bridge[i] || track.bridge[(i + 5) % track.count] || track.bridge[(i + track.count - 5) % track.count]) continue;
+      for (const side of [-1, 1]) {
+        const at = track.sample(i * track.step, side * (track.limit[i] + 0.3), {});
+        piers.push([at.x, at.y - 0.2, at.z, at.heading, 1]);
+      }
+    }
+    copies(pier, piers);
+  }
+
+  // ---- life: boats, cranes, kites, sky lanterns and the sun -------------------------------------------
+  const boats = [],
+    cranes = [],
+    kites = [],
+    skyLanterns = [];
+  {
+    // Black-awning boats drift on the lake.
+    const boat = build([
+      [SPHERE, [0, 0.1, 0], [0.9, 0.4, 2.6], 0x5a3a22],
+      [BOX, [0, 0.36, 0], [1.5, 0.08, 4.2], 0x7a5230],
+      [CYLINDER, [0, 0.75, -0.2], [0.8, 2.2, 0.8], 0x1c1c22, [Math.PI / 2, 0, 0]],
+      [ROD, [0.3, 1.4, 1.9], [0.04, 2.6, 0.04], 0x8a6a40, [0.5, 0, 0.1]],
+      [BALL, [0, 1.0, 1.6], [0.22, 0.34, 0.2], 0x1f6f8a],
+      [SPIKE, [0, 1.42, 1.6], [0.42, 0.22, 0.42], 0xd9c79a],
+    ]);
+    for (let n = 0; n < 200 && boats.length < 5; n++) {
+      const x = lake.x + (chance() * 2 - 1) * lake.rx * 0.8,
+        z = lake.z + (chance() * 2 - 1) * lake.rz * 0.8,
+        at = track.locate(x, z, -1, here);
+      if (track.lakeDistance(x, z) < 0.8 && Math.abs(at.lateral) > at.limit + 12)
+        boats.push({ x, z, turn: chance() * 6.28, phase: chance() * 6.28 });
+    }
+    scenery.boats = copies(
+      boat,
+      boats.map((b) => [b.x, TRACK.waterLevel, b.z, b.turn, 1]),
+      lit({ roughness: 0.7 }),
+    );
+
+    // Cranes circle high over the lake.
+    const crane = build([
+      [SPHERE, [0, 0, 0], [0.22, 0.2, 0.7], 0xfbfbf6],
+      [ROD, [0, 0.1, 0.8], [0.05, 0.9, 0.05], 0xfbfbf6, [1.2, 0, 0]],
+      [BALL, [0, 0.26, 1.22], [0.09, 0.09, 0.12], 0xd8262c],
+      [SPIKE, [0, 0.24, 1.42], [0.03, 0.3, 0.03], 0x3a3a3a, [Math.PI / 2, 0, 0]],
+      [ROD, [0, -0.05, -0.95], [0.02, 0.9, 0.02], 0x3a3a3a, [Math.PI / 2, 0, 0]],
+      [BOX, [0.9, 0.05, 0], [1.7, 0.03, 0.55], 0xfbfbf6],
+      [BOX, [-0.9, 0.05, 0], [1.7, 0.03, 0.55], 0xfbfbf6],
+      [BOX, [1.55, 0.05, -0.1], [0.5, 0.035, 0.5], 0x1c1c22],
+      [BOX, [-1.55, 0.05, -0.1], [0.5, 0.035, 0.5], 0x1c1c22],
+    ]);
+    for (let k = 0; k < 9; k++)
+      cranes.push({ lag: k * 0.09 + (k % 2) * 0.03, out: (k % 2 ? 1 : -1) * Math.ceil(k / 2) * 2.4, phase: chance() * 6.28 });
+    scenery.cranes = copies(
+      crane,
+      cranes.map(() => [0, 60, 0, 0, 1.6]),
+      lit({ roughness: 0.7, side: 'double' }),
+      false,
+    );
+
+    // Kites fly over the infield and paper lanterns rise in the distance.
+    const kite = build([
+      [BOX, [0, 0, 0], [2.4, 2.4, 0.04], [1, 1, 1], [0, 0, Math.PI / 4]],
+      [BOX, [0, 0, 0.03], [0.1, 3.2, 0.04], 0x3a2a20],
+      [BOX, [0, 0, 0.03], [3.2, 0.1, 0.04], 0x3a2a20],
+      ...[1, 2, 3, 4, 5].map((k) => [
+        BOX,
+        [Math.sin(k * 1.3) * 0.25, -1.7 - k * 0.7, 0],
+        [0.5, 0.26, 0.03],
+        k % 2 ? 0xf2c230 : 0xd8262c,
+        [0, 0, Math.sin(k) * 0.5],
+      ]),
+    ]);
+    const kiteColors = [0xd8262c, 0xf2c230, 0x2e8b57, 0x1f6f8a, 0xf07a1a, 0xb9a4e8].map(rgb);
+    for (let k = 0; k < 6; k++)
+      kites.push({
+        x: -60 + chance() * 260,
+        z: -110 + chance() * 150,
+        y: 55 + chance() * 30,
+        phase: chance() * 6.28,
+        color: kiteColors[k],
+      });
+    scenery.kites = copies(
+      kite,
+      kites.map((k) => [k.x, k.y, k.z, 0, 2.2, k.color]),
+      lit({ roughness: 0.7, side: 'double' }),
+      false,
+    );
+
+    const skyLantern = build([
+      [
+        createCylinderGeometry3D({ radiusTop: 1, radiusBottom: 0.7, height: 1, radialSegments: 8 }),
+        [0, 0, 0],
+        [1, 1.5, 1],
+        [1.7, 0.9, 0.3],
+      ],
+      [BALL, [0, -0.6, 0], 0.35, [2.6, 2.0, 0.8]],
+    ]);
+    for (let k = 0; k < 26; k++)
+      skyLanterns.push({
+        x: -380 + chance() * 760,
+        z: -260 + chance() * 560,
+        speed: 1.2 + chance() * 1.6,
+        phase: chance() * 120,
+        sway: chance() * 6.28,
+      });
+    scenery.skyLanterns = copies(
+      skyLantern,
+      skyLanterns.map((l) => [l.x, 40, l.z, 0, 1.6]),
+      createUnlitMaterial3D({ color: 0xffffff, vertexColors: true, fog: false }),
+      false,
+    );
+
+    // The sun: a bright disc on the side the light comes from.
+    const disc = new Mesh3D(sunShape(), createUnlitMaterial3D({ color: [3.2, 2.6, 1.7], fog: false, side: 'double' }));
+    disc.castShadow = false;
+    disc.frustumCulled = false;
+    disc.setScale(46);
+    scene.addChild(disc);
+    scenery.sunDisc = disc;
+  }
+
   // ---- what moves ----------------------------------------------------------------------------
-  const position = [0, 0, 0];
+  const position = [0, 0, 0],
+    flap = [1, 1, 1];
   /** Advance the water, drift the clouds, scroll the boost pads and let the crowd bounce; `excitement` is 0 to 1. */
   scenery.update = (dt, time, excitement = 0.3) => {
     water.update(dt);
     scenery.clouds.setRotation(0, time * 0.004, 0);
     arrows.offset[1] = -(time * 1.6) % 1;
+    // Boats bob and turn slowly; cranes fly a wide circle in a V.
+    boats.forEach((boat, i) => {
+      position[0] = boat.x + Math.sin(time * 0.05 + boat.phase) * 6;
+      position[1] = TRACK.waterLevel + Math.sin(time * 1.1 + boat.phase) * 0.06;
+      position[2] = boat.z + Math.cos(time * 0.04 + boat.phase) * 5;
+      scenery.boats.setTransformAt(i, position, yawQuat(boat.turn + Math.sin(time * 0.07 + boat.phase) * 0.6), 1);
+    });
+    cranes.forEach((crane, i) => {
+      const a = time * 0.11 - crane.lag,
+        radius = 150 + crane.out;
+      position[0] = lake.x + 60 + Math.cos(a) * radius;
+      position[1] = 62 + Math.sin(time * 0.4 + crane.phase) * 1.5 - Math.abs(crane.out) * 0.2;
+      position[2] = lake.z - 120 + Math.sin(a) * radius * 0.8;
+      // Wings beat by stretching the model's height.
+      flap[0] = 1.6;
+      flap[1] = 1.6 * (1 + Math.sin(time * 5 + crane.phase) * 2.5);
+      flap[2] = 1.6;
+      scenery.cranes.setTransformAt(i, position, yawQuat(-a), flap);
+    });
+    kites.forEach((kite, i) => {
+      position[0] = kite.x + Math.sin(time * 0.5 + kite.phase) * 5;
+      position[1] = kite.y + Math.sin(time * 0.8 + kite.phase) * 3;
+      position[2] = kite.z + Math.cos(time * 0.37 + kite.phase) * 4;
+      scenery.kites.setTransformAt(i, position, yawQuat(0.6 + Math.sin(time * 0.4 + kite.phase) * 0.5), 2.2);
+    });
+    skyLanterns.forEach((lantern, i) => {
+      position[0] = lantern.x + Math.sin(time * 0.2 + lantern.sway) * 4;
+      position[1] = 20 + ((time * lantern.speed + lantern.phase) % 130);
+      position[2] = lantern.z;
+      scenery.skyLanterns.setTransformAt(i, position, yawQuat(lantern.sway), 1.6);
+    });
     const turn = yawQuat(scenery.crowdTurn);
     for (let i = 0; i < fans.length; i++) {
       const fan = fans[i];

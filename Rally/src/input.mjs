@@ -36,6 +36,13 @@ export function createInput(touchRoot) {
     touch = new Set(),
     padHeld = new Set();
   const input = { onCommand: undefined, touch: false };
+  let rumblePad;
+  /** Shake the gamepad, where it can: `strength` 0 to 1 for `seconds`. */
+  input.rumble = (strength, seconds) => {
+    rumblePad?.vibrationActuator
+      ?.playEffect?.('dual-rumble', { duration: seconds * 1000, strongMagnitude: strength, weakMagnitude: strength * 0.6 })
+      ?.catch?.(() => {});
+  };
   const controls = { throttle: 0, brake: 0, steer: 0, drift: false, item: false, lookBack: false };
   const held = (name) => KEYS[name].some((code) => down.has(code));
   let keySteer = 0;
@@ -105,6 +112,7 @@ export function createInput(touchRoot) {
         else padHeld.delete(index);
       }
     }
+    rumblePad = pad;
     return controls;
   };
   return input;
