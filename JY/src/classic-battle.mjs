@@ -268,7 +268,6 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     const lost = Math.min(target.hp, hurt);
     target.hp -= lost;
     target.hitFrame = state.frame;
-    actor.expGot += details.itemId !== undefined ? hurt : lost + (target.hp === 0 ? Math.trunc(lost / 2) : 0);
     floatText(target, '-' + lost, 0xff6868);
     const style = visualId % bloodFrames.length;
     presentation.blood.push({ key: visualId++, group: 'eft/bld00' + style, x: target.x, y: target.y, z: 0,
@@ -380,14 +379,37 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     const learned = actor.learnedMagics.find(skill => skill.id === id);
     const cells = magicEffects(actor, target, magic, rank(learned));
     const area = new Set(cells.map(cell => indexOf(cell.x, cell.y)));
-    let strikes = actor.attackTwice > 0 ? 2 : 1;
+    const opponents = roles.filter(role => active(role) && role.side !== actor.side && area.has(indexOf(role.x, role.y)));
+    const details = { magicId: id, effectId: magic.effectId, soundId: magic.soundId };
+    const strikes = [];
+    const count = actor.attackTwice > 0 ? 2 : 1;
     actor.selectedMagicId = state.selectedMagicId = id;
     face(actor, target.x, target.y);
-    function strike() {
-      const level = rank(learned);
-      const details = { magicId: id, effectId: magic.effectId, soundId: magic.soundId };
+    // Native combat computes both strikes against pre-animation HP, then removes knockouts between animations.
+    for (let i = 0; i < count; i++) {
       actor.physicalPower = Math.max(0, actor.physicalPower - 3);
-      actor.mp = Math.max(0, actor.mp - manaCost(magic, level));
+      actor.mp = Math.max(0, actor.mp - manaCost(magic, rank(learned)));
+      const impacts = [];
+      for (const opponent of opponents) {
+        const amount = damage(actor, opponent, magic);
+        if (amount <= 0) continue;
+        if (magic.hurtType === 1) {
+          const lost = Math.min(opponent.mp, amount);
+          opponent.mp -= lost;
+          actor.mp = Math.min(actor.maxMp, actor.mp + amount);
+          actor.expGot += Math.trunc(lost / 2);
+          impacts.push({ opponent, amount: lost });
+        } else {
+          const lost = Math.min(opponent.hp, amount);
+          actor.expGot += lost + (lost === opponent.hp ? Math.trunc(lost / 2) : 0);
+          impacts.push({ opponent, amount });
+        }
+      }
+      strikes.push(impacts);
+      learned.level = Math.min(999, (learned.level ?? 0) + 1 + randInt(2));
+      learned.levelIndex = rank(learned);
+    }
+    function strike(index) {
       actor.action = 'attack';
       actor.actType = magic.magicType ?? 0;
       actor.actFrame = 0;
@@ -395,27 +417,21 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
       animate(actor, 570, {
         impact() {
           markEffect(actor, cells, details);
-          for (const opponent of roles) {
-            if (!active(opponent) || opponent.side === actor.side || !area.has(indexOf(opponent.x, opponent.y))) continue;
-            const amount = damage(actor, opponent, magic);
-            if (amount <= 0) continue;
-            if (magic.hurtType !== 1) hit(actor, opponent, amount, details);
-            else {
-              const lost = Math.min(opponent.mp, amount);
-              opponent.mp -= lost;
-              actor.mp = Math.min(actor.maxMp, actor.mp + amount);
-              actor.expGot += Math.trunc(lost / 2);
-              floatText(opponent, '-' + lost, 0xb68bfa);
-              emit('hit', opponent, { attacker: actor.id, mpHurt: lost, ...details });
-            }
+          for (const { opponent, amount } of strikes[index]) {
+            if (!active(opponent)) continue;
+            if (magic.hurtType === 1) {
+              floatText(opponent, '-' + amount, 0xb68bfa);
+              emit('hit', opponent, { attacker: actor.id, mpHurt: amount, ...details });
+            } else hit(actor, opponent, amount, details);
           }
-          learned.level = Math.min(999, (learned.level ?? 0) + 1 + randInt(2));
-          learned.levelIndex = rank(learned);
         },
-        done() { if (--strikes > 0) strike(); else finishTurn(actor); },
+        done() {
+          if (index + 1 < strikes.length) strike(index + 1);
+          else finishTurn(actor);
+        },
       });
     }
-    strike();
+    strike(0);
   }
 
   function performSupport(actor, target, type) {
@@ -466,7 +482,11 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
       impact() {
         markEffect(actor, [target], details);
         const opponent = roles.find(role => active(role) && role.side !== actor.side && sameCell(role, target));
-        if (opponent) hit(actor, opponent, dartDamage(actor, opponent, item), details);
+        if (opponent) {
+          const hurt = dartDamage(actor, opponent, item);
+          actor.expGot += hurt;
+          hit(actor, opponent, hurt, details);
+        }
       },
       done: () => finishTurn(actor),
     });

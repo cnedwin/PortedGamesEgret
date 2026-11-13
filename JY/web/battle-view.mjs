@@ -101,6 +101,10 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
     const flash = overlays.addChild(scope.use(new Bitmap(leases.get(artKey('title', 203)))));
     flash.visible = false;
     const numberNodes = new Map();
+    scope.use({ dispose() {
+      for (const number of numberNodes.values()) number.scope.dispose();
+      numberNodes.clear();
+    } });
     const groundNodes = new Map();
     const objectNodes = new Map();
     const gaugeNodes = new Map();
@@ -163,6 +167,30 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
       if (posture) g.beginFill(0xe2bb58).drawRect(0, 5, posture, 2).endFill();
     }
 
+    let preparingNumbers = false;
+
+    async function prepareNumbers() {
+      if (preparingNumbers) return;
+      preparingNumbers = true;
+      try {
+        // An area attack can submit more distinct numbers than the text cache can rasterize at once.
+        for (const number of numberNodes.values()) {
+          if (number.prepared || number.scope.signal.aborted) continue;
+          try {
+            await number.node.prepare();
+            number.prepared = true;
+          } catch (error) {
+            if (number.scope.signal.aborted) continue;
+            if (error.code === 'TEXT_CACHE_BUDGET') break; // Retry on the next frame if the shared cache is busy.
+            number.prepared = true;
+            console.warn(error);
+          }
+        }
+      } finally {
+        preparingNumbers = false;
+      }
+    }
+
     function drawNumbers(texts, zoom) {
       const active = new Set(texts.map(text => text.key));
       for (const [key, number] of numberNodes) if (!active.has(key)) {
@@ -172,19 +200,19 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
       for (const entry of texts) {
         let number = numberNodes.get(entry.key);
         if (!number) {
-          const owned = scope.use(engine.createScope());
+          const owned = engine.createScope();
           const node = overlays.addChild(createTextField(engine, owned, cache));
           node.setRequest({ text: entry.text, fontFamily: 'Microsoft YaHei', fontSize: entry.size,
             lineHeight: entry.size + 4, fontWeight: 700, fontStyle: 'normal', locale: 'zh-TW',
             direction: 'ltr', density: 1, fillColor: entry.color });
           number = { node, scope: owned };
           numberNodes.set(entry.key, number);
-          void node.prepare().catch(error => { if (!owned.signal.aborted) console.warn(error); });
         }
         const [px, py] = project(entry.x, entry.y);
         number.node.x = Math.round(root.x + px * zoom);
         number.node.y = Math.round(root.y + py * zoom);
       }
+      void prepareNumbers();
     }
 
     const gridContext = grid.getContext('2d');

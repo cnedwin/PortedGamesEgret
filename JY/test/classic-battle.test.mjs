@@ -140,3 +140,18 @@ test('a hidden weapon targets a tile, costs stamina and uses the original item e
   assert.deepEqual(model.state.inventoryDelta, [[4, -1]]);
   assert.equal(model.state.effects[0].effectId, 13);
 });
+
+
+test('both strikes award original experience before a knockout removes the target', () => {
+  const casts = [];
+  const model = create(spec({
+    team: [role(0, 2, 2, { attackTwice: 1 })],
+    enemy: [role(4, 3, 2, { speed: 1, hp: 20, maxHp: 20 })],
+  }), { onEvent: event => { if (event.type === 'cast') casts.push(event); } });
+  assert.equal(model.attackAt(3, 2), true);
+  advance(model, () => model.state.result !== null);
+  const [hero] = model.state.settlement;
+  assert.equal(casts.length, 2);
+  assert.equal(hero.expGot, 160);
+  assert.equal(hero.mp, 90);
+});
