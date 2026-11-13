@@ -16,16 +16,18 @@
 import { artUrl, loadArt, portraitUrl } from '../art-handoff/assets.mjs';
 import { ART_BY_ID, ARTS, CLASSES, levelOf, unmetNeeds } from './data/arts.mjs';
 import { BUILDINGS, ECONOMY } from './data/goods.mjs';
+import { FORMATIONS, HOUSE_RULES, TALENTS } from './data/jianghu.mjs';
 import { PLACES, PLACE_BY_ID, RESOURCE_NAMES, RESOURCES } from './data/places.mjs';
 import { RANKS, SECTS, SECT_BY_ID } from './data/sects.mjs';
 import { createBattle } from './core/battle.mjs';
 import { createEditor, describeItem, doublePress } from './core/editor.mjs';
+import { formationsFor, pendingView, resolvePending, setRule } from './core/jianghu.mjs';
 import { APT_NAMES, STAT_KEYS, STAT_NAMES, hpMax, learnableArts, prowess } from './core/persons.mjs';
 import { createRng } from './core/rng.mjs';
 import { createSlots, deserialize, saveFileName, serialize } from './core/save.mjs';
 import {
-  advanceDay, assaultSides, beds, build, createWorld, dateText, gift, ledger, membersOf, placesOf, promote, recruit,
-  relocate, residents, setJob, setMaster, settle, settleAssault, strength, upgrade, usedCells,
+  SHOP_LIMIT, advanceDay, assaultSides, beds, build, createWorld, dateText, gift, ledger, membersOf, openShop, placesOf, promote,
+  recruit, relocate, residents, setJob, setMaster, settle, settleAssault, strength, upgrade, usedCells,
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
 
@@ -270,6 +272,8 @@ function seatScreen() {
         <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>全派薪俸</span><b>${row.wages}<small> 两</small></b></div><div><span>朝廷关系</span><b>${Math.round(books().court)}</b></div></div>
         <div class="terrain-list">${RESOURCES.map((key) => `<span>${RESOURCE_NAMES[key]} <strong>${dots(spec.resources[key])}</strong></span>`).join('')}</div>
         <div class="stock-line">库存：${RESOURCES.map((key) => `${RESOURCE_NAMES[key]} ${Math.round(books().res[key])}`).join(' · ')}</div>
+        <div class="stock-line button-group"><span>山下店铺 ${place.shops} / ${SHOP_LIMIT}（每间每旬入银 ${ECONOMY.shopIncome.join('–')} 两）</span>${btn(`开设店铺（${num(ECONOMY.shopCost)}两）`, 'shop', {}, 'outline', '', place.shops >= SHOP_LIMIT)}</div>
+        <div class="stock-line button-group"><span>门规</span><select data-change="rule">${options(Object.entries(HOUSE_RULES).map(([id, rule]) => [id, `${rule.name}：${rule.does}`]), books().rule ?? 'plain')}</select></div>
       </section>
       <section class="panel building-panel">${panelTitle('建筑管理', tag(`${place.buildings.length} 座`))}
         <div class="building-switch" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>
@@ -347,7 +351,7 @@ function disciplesScreen() {
       <section class="panel person-detail" data-region="person">
         <div class="person-visual">${sceneImage('title')}${face(person, 'detail-avatar', 'full')}<div class="leader-shade"></div><div class="person-caption">${tag(RANKS[person.rank].name, 'dark-tag')}<h2>${esc(person.name)}</h2><p>${esc(person.origin)} · ${person.female ? '女' : '男'} · ${person.age} 岁 · ${person.level} 级</p></div></div>
         <dl class="person-stats">${fact('气血', `${meter((1 - (person.wounds ?? 0)) * 100, 'health', '气血')} <b>${hpMax(person)}</b>`)}${fact('忠诚', `${meter(person.loyalty, 'morale', '忠诚')} <b>${Math.round(person.loyalty)}</b>`)}${fact('战力', `<b>${prowess(person)}</b>`)}${fact('差事', esc(jobText(person)))}${fact('所长', esc(bestArtText(person)))}${fact('师承', esc(master?.name ?? '无'))}</dl>
-        <div class="person-facts"><div>${STAT_KEYS.map((key) => `${STAT_NAMES[key]} <b>${Math.round(person.stats[key])}</b>`).join('　')}</div><div>资质：${Object.entries(person.apt).map(([key, value]) => `${APT_NAMES[key]} <b>${value}</b>`).join('　')}</div>
+        <div class="person-facts"><div>${STAT_KEYS.map((key) => `${STAT_NAMES[key]} <b>${Math.round(person.stats[key])}</b>`).join('　')}</div>${person.talent ? `<div>天赋：<b>${TALENTS[person.talent].name}</b>（${TALENTS[person.talent].does}）</div>` : ''}<div>资质：${Object.entries(person.apt).map(([key, value]) => `${APT_NAMES[key]} <b>${value}</b>`).join('　')}</div>
           <div>武学：${Object.entries(person.arts).sort((a, b) => ART_BY_ID[b[0]].tier - ART_BY_ID[a[0]].tier).slice(0, 8).map(([id, points]) => `${ART_BY_ID[id].name} <b>${levelOf(points)}</b>重`).join('　') || '尚未习武'}</div></div>
         <div class="detail-actions">${btn('改派差事', 'sheet', { kind: 'job' }, 'primary', 'scroll')}${btn('出招次序', 'sheet', { kind: 'wheel' }, 'outline')}${person.rank < 4 ? btn('晋升', 'promote', { id: person.id }, 'outline') : ''}${person.rank < 4 && elders.length ? btn('拜师', 'sheet', { kind: 'master' }, 'outline') : ''}${many ? btn('调往', 'sheet', { kind: 'move' }, 'outline') : ''}</div>
       </section>
@@ -607,8 +611,19 @@ const SHEETS = {
       owner = SECT_BY_ID[world.places[place].owner];
     return ['商议出兵', `<p>进攻${esc(owner.name)}的${esc(PLACE_BY_ID[place].name)}。</p>
       <dl class="facts">${fact('我方出战', `${party.length} 人 · 战力 ${num(strength(party))}`)}${fact('对方守卫', `${guard.length} 人 · 战力 ${num(strength(guard))}`)}${fact('两派关系', String(Math.round(books().relations[owner.id])))}</dl>
-      <p class="caption">出战者取全派战力最高的十人，伤重者留守。得胜则据点易主；开战后两派交恶。</p>`, closeBtn() + btn('出兵', 'march', { place }, 'primary', 'swords', !party.length)];
+      ${formRow('阵法', `<select id="formation">${options(formationsFor(me(), party).map((id) => [id, `${FORMATIONS[id].name}：${FORMATIONS[id].does}`]), books().formation ?? 'line')}</select>`)}
+      <p class="caption">出战者取全派战力最高的十人，伤重者留守。本派阵法需有长老或掌门在阵中。得胜则据点易主；开战后两派交恶。</p>`, closeBtn() + btn('出兵', 'march', { place }, 'primary', 'swords', !party.length)];
   },
+  event() {
+    const view = pendingView(world);
+    if (!view) return ['江湖', '<p>此事已了。</p>', closeBtn('关闭')];
+    ui.sheet.title = view.title;
+    const person = view.portraitId ? { portraitId: view.portraitId, name: view.title.split(' · ')[1], school: me() } : null;
+    const choices = `<div class="choice-list">${view.choices.map((choice, index) => `<button type="button" class="button outline" data-act="answer" data-index="${index}" ${choice.why ? 'disabled' : ''}><span>${esc(choice.label)}<small>${esc(choice.why || choice.hint)}</small></span></button>`).join('')}</div>`;
+    const url = person && art ? portraitUrl(art, person, { view: 'full' }) : undefined;
+    return [view.title, url ? `<div class="encounter"><div class="encounter-portrait"><img src="${esc(url)}" alt="${esc(person.name)}"></div><div>${tag('江湖奇人', 'positive')}<p style="margin-top:8px">${esc(view.text)}</p>${choices}</div></div>` : `<p>${esc(view.text)}</p>${choices}`, ''];
+  },
+  outcome: ({ title, text }) => [title ?? '江湖', `<p>${esc(text)}</p>`, btn('知道了', 'close', {}, 'primary')],
   retreat: () => ['确认撤退', '<p>撤退即认负。跑得出战场的弟子可以保全，来不及的仍会倒下。</p>', closeBtn('继续作战') + btn('确认撤退', 'fight-retreat', {}, 'danger')],
   fight() {
     const last = ui.lastFight;
@@ -695,6 +710,8 @@ function download(name, text) {
 /** Takes a world as the one being played. */
 function enter(next, text = '') {
   world = next;
+  // Someone is watching this world, so its events wait for an answer.
+  world.options.interactive = true;
   Object.assign(ui, { page: 'seat', sheet: null, place: null, building: 0, person: null, mapPlace: null, fight: null, lastFight: null, speed: 0, notice: '' });
   ui.batch.clear();
   toast(text);
@@ -818,7 +835,19 @@ const actions = {
   mapzoom: (data) => (data.dir === 'reset' ? ((ui.map = { zoom: 1, x: 0, y: 0 }), placeMap()) : zoomMap(data.dir === 'in' ? 1.3 : 1 / 1.3)),
   settle: (data) => say(settle(world, me(), data.place), '分舵已立。') && (ui.sheet = null),
   gift: (data) => say(gift(world, me(), data.sect, 500), `已向${SECT_BY_ID[data.sect].name}馈赠。`),
-  march: (data) => march(data.place),
+  march(data) {
+    books().formation = pick('#formation') || books().formation;
+    march(data.place);
+  },
+  shop: () => say(openShop(world, me(), ui.place), '店铺开张了。'),
+  answer(data) {
+    const rng = createRng(1);
+    rng.state = world.rng;
+    const result = resolvePending(world, Number(data.index), rng);
+    world.rng = rng.state;
+    if (!result.ok) return toast(result.why);
+    ui.sheet = { kind: 'outcome', title: ui.sheet.title, text: result.text };
+  },
   'log-filter': (data) => (ui.logFilter = data.filter),
 
   'fight-pause': () => ui.fight && (ui.fight.arena.paused = !ui.fight.arena.paused),
@@ -847,6 +876,7 @@ const changes = {
     }
     location.reload();
   },
+  rule: (_, value) => void say(setRule(world, me(), value), `门规改为「${HOUSE_RULES[value]?.name}」。`),
   'ed-sect': (_, value) => ((ui.sheet.sect = value), (ui.sheet.person = undefined)),
   'ed-person': (_, value) => (ui.sheet.person = Number(value)),
   'ed-silver': (_, value) => editor.setSilver(ui.sheet.sect, Number(value)),
@@ -932,11 +962,13 @@ app.addEventListener('wheel', (event) => event.target.closest('.map-panel') && (
 
 /** Days pass while the game is running and nothing is open over the page. */
 setInterval(() => {
+  // Something at the door is answered before time moves on.
+  if (world?.pending && !ui.sheet && !ui.fight) return void ((ui.sheet = { kind: 'event' }), (ui.speed = 0), render());
   if (!world || !ui.speed || ui.sheet || ui.fight || world.outcome) return;
   // Leave the page alone while the player has a list open, so it does not close under them.
   if (document.activeElement?.tagName === 'SELECT') return;
   const before = world.log.length;
-  for (let i = 0; i < ui.speed; i++) advanceDay(world);
+  for (let i = 0; i < ui.speed && !world.pending; i++) advanceDay(world);
   if (world.day % 30 < ui.speed) slots.write('auto', world, autoLabel());
   const news = world.log.slice(before).filter((entry) => entry.sect === me()).at(-1);
   if (news) ui.notice = news.text;

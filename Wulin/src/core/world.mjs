@@ -10,6 +10,7 @@ import { ART_BY_ID, CLASSES, commonArt, levelOf, sectArts, unmetNeeds } from '..
 import { BUILDINGS, DAYS_PER_XUN, DAYS_PER_YEAR, ECONOMY, GRADES, PILLS, WATCHES_PER_DAY } from '../data/goods.mjs';
 import { PLACE_BY_ID, PLACES, RESOURCES } from '../data/places.mjs';
 import { ELDERS, OFFICES, RANKS, SECT_BY_ID, SECTS } from '../data/sects.mjs';
+import { formationOf, modsOf, xunOfJianghu, yearOfJianghu } from './jianghu.mjs';
 import { resolveBattle } from './battle.mjs';
 import { TRAITS, autoWheel, equipFor, gainXp, growTo, hpMax, learnableArts, makeLeader, practise, prowess, rollPerson, trainingRate } from './persons.mjs';
 import { clamp, createRng } from './rng.mjs';
@@ -17,6 +18,9 @@ import { clamp, createRng } from './rng.mjs';
 export const SAVE_VERSION = 1;
 const WORK_WATCHES = 8;
 const LOG_LIMIT = 300;
+/** Shops one stronghold's town has room for. */
+export const SHOP_LIMIT = 4;
+
 /** Mastery points a manual adds per day, and how far below its author it stops. */
 const MANUAL_POINTS = 30;
 
@@ -324,8 +328,21 @@ export function assaultSides(state, attackerId, placeId, partyIds) {
   if (!party.length) return refuse('无人出战');
   const guard = residents(state, placeId).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
   // Gates and towers stand with the defenders.
-  const bonus = { defense: 0.04 * buildingLevel(state, placeId, 'gate'), attack: 0.03 * buildingLevel(state, placeId, 'tower') };
-  return done({ sides: [party, guard], formations: [undefined, { bonus }], defender: place.owner });
+  // Each side stands in its formation; talents and house rules add to it, and gates and towers stand with the defenders.
+  const attack = formationOf(state, attackerId, party, { attack: modsOf(state, attackerId).attack });
+  const defend = formationOf(state, place.owner, guard, { defense: 0.04 * buildingLevel(state, placeId, 'gate') + modsOf(state, place.owner).defense, attack: 0.03 * buildingLevel(state, placeId, 'tower') });
+  return done({ sides: [party, guard], formations: [attack, defend], defender: place.owner });
+}
+
+/** Opens a shop in the town below a stronghold; each brings in silver every ten days. */
+export function openShop(state, sectId, placeId) {
+  const place = state.places[placeId];
+  if (place.owner !== sectId) return refuse('非本派据点');
+  if (place.shops >= SHOP_LIMIT) return refuse('此地店铺已满');
+  if (state.sects[sectId].silver < ECONOMY.shopCost) return refuse('银两不足');
+  state.sects[sectId].silver -= ECONOMY.shopCost;
+  place.shops++;
+  return done();
 }
 
 /** Applies a finished fight for a stronghold to the world. */
@@ -519,7 +536,8 @@ function workDay(state, person, rng) {
   const sectId = person.school,
     books = state.sects[sectId],
     placeId = person.place;
-  if (person.wounds > 0) person.wounds = Math.max(0, person.wounds - 0.02 - 0.01 * buildingLevel(state, placeId, 'clinic'));
+  const mods = modsOf(state, sectId);
+  if (person.wounds > 0) person.wounds = Math.max(0, person.wounds - 0.02 - mods.heal - 0.01 * buildingLevel(state, placeId, 'clinic'));
   const job = person.job ?? { kind: 'rest' };
   job.days = (job.days ?? 0) + 1;
   const diligence = person.traits.reduce((sum, key) => sum + (TRAITS[key]?.train ?? 0), 0) + (person.loyalty < 30 ? -0.5 : 0);
@@ -528,7 +546,7 @@ function workDay(state, person, rng) {
     if (!art || unmetNeeds(person, art).length) return void (person.job = { kind: 'rest' });
     const master = state.persons[person.master];
     const tutor = master ? Math.min(0.3, levelOf(master.arts[art.id] ?? 0) * 0.03) : 0;
-    const boost = officeBoost(state, sectId, placeId, 'train') + diligence;
+    const boost = officeBoost(state, sectId, placeId, 'train') + diligence + mods.train;
     let points = trainingRate(person, art, siteLevel(state, placeId, art.klass), tutor, boost) * WORK_WATCHES;
     // A manual in the library speeds the art it describes.
     const manual = books.manuals[art.id];
@@ -538,7 +556,7 @@ function workDay(state, person, rng) {
   } else if (job.kind === 'seclude') {
     const art = ART_BY_ID[job.art];
     if (!art || person.insights.includes(art.id)) return void (person.job = { kind: 'rest' });
-    const chance = person.stats.wit / 2000 + (job.pill ? PILLS.breach.effect.insight : 0);
+    const chance = (person.stats.wit / 2000) * (1 + mods.insight) + (job.pill ? PILLS.breach.effect.insight : 0);
     if (job.days >= 60 || rng.chance(chance)) {
       person.insights.push(art.id);
       person.job = { kind: 'train', art: art.id, days: 0 };
@@ -548,7 +566,7 @@ function workDay(state, person, rng) {
     const grade = PLACE_BY_ID[placeId].resources[job.res] ?? 0;
     const pit = state.places[placeId].buildings.find((b) => BUILDINGS[b.kind].yields === job.res);
     if (!pit || !grade) return void (person.job = { kind: 'rest' });
-    const boost = officeBoost(state, sectId, placeId, 'gather') + diligence;
+    const boost = officeBoost(state, sectId, placeId, 'gather') + diligence + mods.gather;
     books.res[job.res] += (ECONOMY.gatherPerXun / DAYS_PER_XUN) * (grade / 2) * (1 + 0.1 * (pit.level - 1)) * (1 + boost);
     person.used.arm = (person.used.arm ?? 0) + 4;
     gainXp(person, 4);
@@ -558,7 +576,7 @@ function workDay(state, person, rng) {
     const feed = job.make === 'pill' ? 'herb' : job.make === 'weapon' ? 'iron' : 'wood';
     const used = Math.min(books.res[feed], 3);
     books.res[feed] -= used;
-    const worth = used * ECONOMY.craftMarkup * (1 + officeBoost(state, sectId, placeId, job.make === 'pill' ? 'pill' : 'forge') + diligence);
+    const worth = used * ECONOMY.craftMarkup * (1 + officeBoost(state, sectId, placeId, job.make === 'pill' ? 'pill' : 'forge') + diligence + mods.craft);
     shop.xp += worth;
     // Goods not earmarked for the sect's own use are sold as they are finished.
     books.silver += worth;
@@ -577,7 +595,7 @@ function endOfXun(state, rng) {
     if (!books.alive) continue;
     const members = membersOf(state, sectId);
     // Wages and grain. Short pay hurts loyalty below.
-    const wages = members.reduce((sum, person) => sum + RANKS[person.rank].pay, 0);
+    const wages = Math.round(members.reduce((sum, person) => sum + RANKS[person.rank].pay, 0) * (1 - modsOf(state, sectId).wages));
     const paid = books.silver >= wages;
     books.silver = Math.max(0, books.silver - wages);
     const grain = members.length * ECONOMY.grainPerXun;
@@ -617,12 +635,13 @@ function endOfXun(state, rng) {
       if (!buildingLevel(state, placeId, 'board')) continue;
       place.applicants = place.applicants.filter(() => rng.chance(0.6));
       const quality = 40 + books.renown / 25 + Math.abs(books.virtue) / 50;
-      const arrivals = rng.chance(0.15 + books.renown / 3000) ? 1 + (rng.chance(0.2) ? 1 : 0) : 0;
+      const arrivals = rng.chance(0.15 + books.renown / 3000 + modsOf(state, sectId).recruit) ? 1 + (rng.chance(0.2) ? 1 : 0) : 0;
       for (let i = 0; i < arrivals && place.applicants.length < 4; i++) place.applicants.push(rollPerson(rng, { quality, lean: PLACE_BY_ID[placeId].lean, place: placeId }));
     }
     for (const other of Object.keys(books.relations)) books.relations[other] += Math.sign(SECT_BY_ID[sectId].standing * SECT_BY_ID[other].standing * 20 - books.relations[other]) * 0.5;
   }
   for (const sect of SECTS) if (state.sects[sect.id].alive) runSect(state, sect.id, rng);
+  xunOfJianghu(state, rng);
 }
 
 function endOfYear(state, rng) {
@@ -636,6 +655,7 @@ function endOfYear(state, rng) {
       if (wasLeader) succeed(state, person.school);
     }
   }
+  yearOfJianghu(state);
   // Every fourth year the sects meet; one known and liked widely enough is named leader of them all.
   if (year(state) % 4 === 1 && year(state) > 1) {
     for (const sect of SECTS) {

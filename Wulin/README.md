@@ -4,9 +4,9 @@
 
 Wulin is an independently developed wuxia sect management demo being built for [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). In the Chenghe years of the Zhao dynasty the court bans the carrying of arms, and the martial world stirs. Take charge of one of twelve sects: build its seat, take in disciples, set their work, train them in the arts, and fight or befriend the other sects until you rule them all, or until the Summit names you its leader. [Play online](https://cnedwin.github.io/PortedGamesEgret/Wulin/)
 
-> 目前是开发中的版本：规则、数值、存档和修改器已经可用，山门与战斗已用引擎以 3D 绘制（模型全部由代码生成）；江湖事件、奇人、阵法和人物立绘还在制作。设备画不了 3D 时，游戏以文字面板照常进行。
+> 规则、数值、存档和修改器齐备；界面、立绘和场景画来自 `art-handoff/`，山门与战斗用引擎以 3D 绘制（模型由代码生成）。设备画不了 3D 时，山门以画卷示意，战斗以文字结算。探子与卧底、MOD 数据包和配音尚未制作。
 >
-> This is a work in progress. The rules, numbers, saves and the editor work, and the sect's seat and its fights are drawn in 3D with the engine, from models made entirely in code. Events, special characters, formations and character art are still being made. Where a device cannot draw 3D the game carries on with its text panels.
+> The rules, numbers, saves and the editor are in place. The interface, portraits and scene paintings come from `art-handoff/`, and the sect's seat and its fights are drawn in 3D with the engine from models made in code. Where a device cannot draw 3D, a painting stands in for the seat and fights are settled in writing. Spies, data packs for mods and voices are not made yet.
 
 ## 玩法 · How to play
 
@@ -23,6 +23,14 @@ Wulin is an independently developed wuxia sect management demo being built for [
 - **Time**: paused or one of three speeds. Every ten days wages are paid, grain is eaten, loyalty is reckoned and the other sects make their moves.
 - **Saves**: three slots and an automatic one are kept in the browser; a save can be exported as a file and imported again.
 - **Editor**: press F8 twice (without a keyboard, tap the date in the top bar five times). It changes sect, character and item data, and one button puts everything back as it was.
+
+- **江湖事件与奇人 · Events and wanderers**：时有事端找上门来，各有几种应对，后果不同；三十位江湖奇人会来访，延揽入门后各带一项惠及全派的天赋。
+- **阵法、门规与店铺 · Formations, house rules and shops**：出兵前择阵，本派阵法需长老或掌门在阵中；门规在修练、忠诚、攻势与制造之间取舍；山下可开店铺，每旬入银。
+- **朝廷 · The court**：《禁武令》之下，与朝廷交恶会招来官兵，交好则另有一条结局：朝廷关系至八十、威望至五百，年终受封。
+
+- **Events and wanderers**: matters come to the leader's door with several answers and different ends. Thirty wanderers may visit; one who joins brings a talent that helps the whole sect.
+- **Formations, house rules and shops**: pick a formation before a fight (a sect's own needs an elder or the leader in the party); a house rule trades training, loyalty, attack and craft against each other; shops in the town below bring silver every ten days.
+- **The court**: under the ban on arms, a sect at odds with the court is raided, and one in its favour has a third way to win: standing of eighty with the court and renown of five hundred at a year's end.
 
 ### 门派 · Sects
 
@@ -55,10 +63,11 @@ node --test                     # 规则与场景测试 · rule and scene tests
 node tools/headless.mjs 20 7    # 无界面推演二十年 · play twenty years without a page
 node tools/balance.mjs          # 战斗时长与门派胜率 · fight length and sect win rates
 node tools/balance.mjs --tune   # 重新校准门派强度 · re-tune the sects' strength
+node tools/vendor.mjs <path>    # 从引擎仓库更新 vendor/ · refresh vendor/ from an engine checkout
 ```
 
-用任意静态文件服务器打开本目录即可运行，例如 `npx serve .`。规则都在 `src/core`，数据都在 `src/data`，两处都不依赖页面；`src/view` 是 3D 画面，`tools/models.html` 和 `tools/seat.html` 可单独查看人物动作与山门。地址后加 `?quality=low`（或 `medium`、`high`）可指定画质。
+用任意静态文件服务器打开本目录即可运行，例如 `npx serve .`。规则都在 `src/core`，数据都在 `src/data`，两处都不依赖页面；`src/ui` 与 `src/main.mjs` 是界面，`src/view` 是 3D 画面，`art-handoff/` 是立绘、场景画与界面样式，`tools/models.html` 和 `tools/seat.html` 可单独查看人物动作与山门。地址后加 `?quality=low`（或 `medium`、`high`）可指定画质。
 
-Serve this folder with any static file server to run it, for example `npx serve .`. The rules are in `src/core` and the data in `src/data`; neither needs a page. `src/view` is the 3D picture, and `tools/models.html` and `tools/seat.html` show the figures' actions and a seat on their own. Add `?quality=low` (or `medium`, `high`) to the address to choose the picture quality.
+Serve this folder with any static file server to run it, for example `npx serve .`. The rules are in `src/core` and the data in `src/data`; neither needs a page. `src/ui` and `src/main.mjs` are the interface, `src/view` is the 3D picture, `art-handoff/` holds the portraits, scene paintings and interface styles, and `tools/models.html` and `tools/seat.html` show the figures' actions and a seat on their own. Add `?quality=low` (or `medium`, `high`) to the address to choose the picture quality.
 
 素材来源见 [ASSETS.md](ASSETS.md)。 · Asset sources are listed in [ASSETS.md](ASSETS.md).

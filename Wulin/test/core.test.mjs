@@ -264,3 +264,58 @@ test('every person in a default wheel throws moves they know', () => {
   const state = createWorld({ seed: 9 });
   for (const person of Object.values(state.persons)) for (const slot of autoWheel(person)) assert.ok(ART_BY_ID[slot.art].moves[slot.move]);
 });
+
+// ---- the wider martial world ---------------------------------------------------------------------------
+
+const { formationsFor, join, modsOf, pendingView, resolvePending, setRule } = await import('../src/core/jianghu.mjs');
+const { EVENTS, FORMATIONS, TALENTS, WANDERERS } = await import('../src/data/jianghu.mjs');
+const { openShop } = await import('../src/core/world.mjs');
+
+test('wanderers, talents and formations are well formed', () => {
+  assert.equal(WANDERERS.length, 30);
+  for (const w of WANDERERS) assert.ok(TALENTS[w.talent], w.name);
+  for (const sect of SECTS) assert.equal(FORMATIONS[sect.id].sect, sect.id);
+  for (const event of EVENTS) assert.ok(event.choices.length >= 2 && event.choices.every((c) => c.text && c.gives), event.id);
+});
+
+test('a wanderer who joins brings a talent, and a house rule adds to it', () => {
+  const world = createWorld({ seed: 11, playerSect: 'wudang' });
+  const rng = createRng(5);
+  assert.equal(modsOf(world, 'wudang').train, 0);
+  const person = join(world, 'wudang', WANDERERS.find((w) => w.talent === 'teach').id, rng);
+  assert.equal(person.school, 'wudang');
+  assert.ok(Math.abs(modsOf(world, 'wudang').train - 0.1) < 1e-9);
+  assert.ok(setRule(world, 'wudang', 'strict').ok);
+  assert.ok(Math.abs(modsOf(world, 'wudang').train - 0.2) < 1e-9);
+  assert.ok(!setRule(world, 'wudang', 'nonsense').ok);
+});
+
+test('an event waits for the player in a watched world and resolves itself otherwise', () => {
+  const watched = createWorld({ seed: 21, playerSect: 'emei' });
+  watched.options.interactive = true;
+  for (let day = 0; day < 400 && !watched.pending; day++) advanceDay(watched);
+  const view = pendingView(watched);
+  assert.ok(view && view.choices.length >= 2);
+  const index = view.choices.findIndex((choice) => !choice.why);
+  const rng = createRng(1);
+  rng.state = watched.rng;
+  assert.ok(resolvePending(watched, index, rng).ok);
+  assert.equal(watched.pending, null);
+
+  const alone = createWorld({ seed: 21, playerSect: 'emei' });
+  for (let day = 0; day < 720; day++) advanceDay(alone);
+  assert.ok(!alone.pending);
+  assert.ok(alone.log.some((entry) => entry.type === 'event' || entry.type === 'join') || Object.keys(alone.met ?? {}).length > 0);
+});
+
+test('a sect formation needs an elder, and a shop costs silver', () => {
+  const world = createWorld({ seed: 4, playerSect: 'shaolin' });
+  const people = Object.values(world.persons).filter((p) => p.school === 'shaolin');
+  assert.ok(formationsFor('shaolin', people).includes('shaolin'));
+  assert.ok(!formationsFor('shaolin', people.filter((p) => p.rank < 4)).includes('shaolin'));
+  assert.ok(!formationsFor('shaolin', people).includes('wudang'));
+  const before = world.sects.shaolin.silver;
+  assert.ok(openShop(world, 'shaolin', 'songshan').ok);
+  assert.ok(world.sects.shaolin.silver < before);
+  assert.equal(world.places.songshan.shops, 1);
+});
