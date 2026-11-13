@@ -1,0 +1,275 @@
+{
+  "method": "built-in image generation",
+  "fullBodyOrder": "row-major, 3 columns × 2 rows",
+  "expressionOrder": [
+    "happy",
+    "determined",
+    "worried"
+  ],
+  "sheets": [
+    {
+      "sheet": "base-00",
+      "prompt": "Use case: illustration-story. Asset type: a full-body 2D character sprite sheet for an original Chinese wuxia strategy game called Wulin. PORTRAIT image with a precise 3-column by 2-row REGULAR grid of six separate full-body character illustrations, all on fully transparent background, absolutely no words, lines, scenery, logos, numbers, panels, or overlapping pixels. Every character stands entirely within their own cell from head to toes, with safe empty margins in each cell. Equal height and proportional adult anatomy, heads centered on each cell center x. A 20px clear gutter at row split; do not cut off topknots, hands, hems, feet or weapons. Strong Hong Kong martial-arts comics ink linework and angular hatching with sophisticated contemporary anime color design and cel shading, elegant Chinese robes, historical fantasy, book-cover quality, serious confident faces. Clear front or slight 3/4 pose facing camera, clean readable eye area. Apply a disciplined muted palette and subtle mineral textures, quiet ivory highlights, charcoal ink blacks, and moderate contrast. Six canon sect leaders. TOP LEFT: 71-year-old Shaolin abbot Huideng, bald elderly Chinese monk, long graying brows and short goatee, ochre and antique-gold patchwork kasaya, heavy wooden prayer beads, plain staff close to body. TOP CENTER: 66-year-old Wudang grandmaster Songhe, weathered Chinese man with long straight silver beard, high Daoist topknot, slate blue and ivory multilayer robes, sheathed straight sword upright. TOP RIGHT: 34-year-old Emei head Shen Qingshuang, adult Chinese swordswoman with composed almond eyes, long black tied hair with jade hairpin, celadon and bone white refined robes, thin sheathed straight sword. BOTTOM LEFT: 41-year-old Huashan head Lu Guzhou, lean middle-aged Chinese man, dark hair in high knot, narrow face and slight stubble, deep blue-gray traveling robes, slim longsword close to body. BOTTOM CENTER: 52-year-old Beggar chief He Jiujin, strong weathered Chinese man with coarse beard and tied black hair, patched brown and beige robes, simple green bamboo cane and small gourd. BOTTOM RIGHT: 47-year-old Mingjiao head Li Qianqiu, intense middle-aged Chinese man, black loose hair with crimson cord, deep vermilion over charcoal layered robes, old brass sun clasp and short curved sheathed blade. Use six unmistakable faces, 6 separate silhouettes. Transparent background.",
+      "ids": [
+        "leader-shaolin",
+        "leader-wudang",
+        "leader-emei",
+        "leader-huashan",
+        "leader-gaibang",
+        "leader-mingjiao"
+      ]
+    },
+    {
+      "sheet": "base-01",
+      "prompt": "Use case: illustration-story. Full-body 2D character asset sheet for an original Chinese wuxia strategy game. PORTRAIT image, exact 3-column by 2-row REGULAR grid, six separate adult character silhouettes from crown to soles on fully transparent background. No writing or panel lines. Leave safe empty margins, never overlap adjacent tiles; preserve toes, weapons and hats. All characters roughly equal height, front or slight 3/4. Contemporary anime color and cel shading with Hong Kong martial-arts comic ink, strong precise edge linework, refined dynamic Chinese historical fantasy outfits, subtle mineral colors, crisp angular shadows, premium illustrated RPG. TOP LEFT: Kunlun lord Tuoba Lie, 45 male broad sturdy northern Chinese man, weathered tan face and pulled-back black hair, icy blue-grey fur collar mountain coat, dark iron gloves. TOP CENTER: Jiang Wanzhou, 29 female Canal Guild leader, heroic and sharp-eyed with short loose braid and side swept black hair, teal canal captain jacket, salt-white split long robe, bronze belt and single oar-like staff. TOP RIGHT: Baishu Weng, 68 male Medicine Valley chief, sage and soft smile, white beard and green head cloth, muted sage and ochre doctor’s robe with medicine satchel, thin root staff. BOTTOM LEFT: Tanshao Shangren, 59 male Chongsheng temple abbot, shaved skull, austere clean-shaven lean face, rich warm rust and tangerine ochre robes, vertical dark mala, one hand raised near chest. BOTTOM CENTER: Guiyun Zi, 55 male Quanzhen patriarch, dignified long salt-black beard, deep muted violet charcoal Daoist robe with fog gray layers, high simple topknot and fly whisk. BOTTOM RIGHT: Tang Wanyue, 26 female Tang clan leader, adult Chinese woman with sharp intelligent eyes, black pinned-up hair, plum violet and midnight split robe with narrow cuffs, wooden mechanism case near waist, dignified practical silhouette. Six different and clearly readable faces, no scenery or captions.",
+      "ids": [
+        "leader-kunlun",
+        "leader-caobang",
+        "leader-yaowang",
+        "leader-chongsheng",
+        "leader-quanzhen",
+        "leader-tangmen"
+      ]
+    },
+    {
+      "sheet": "base-02",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Man 63, bald, kind round eyes and white crescent brows; saffron patchwork kasaya, broad sleeves, vertical nine-ring staff.\nTOP CENTER: Man 48, bald, angular jaw and cleft lip; charcoal-ochre fitted monastic layers, compact shoulder wrap, rope-bound wooden discipline tablet.\nTOP RIGHT: Woman 57, silver high knot, sharp eyes and long nose; cloud-blue Taoist robe, white horsehair whisk in right hand.\nBOTTOM LEFT: Man 43, square face and black goatee; steel-blue long coat with tied sleeves, cinched waist, plain sheathed straight sword.\nBOTTOM CENTER: Woman 61, gray swept knot, soft oblong face and faint smile; pale jade and white robe, dark paired piercing daggers.\nBOTTOM RIGHT: Woman 38, long black braid, narrow brows and poised chin; muted jade training tunic, ivory wrap skirt, slim jade-tasseled sword.",
+      "ids": [
+        "elder-shaolin-teaching",
+        "elder-shaolin-discipline",
+        "elder-wudang-teaching",
+        "elder-wudang-discipline",
+        "elder-emei-teaching",
+        "elder-emei-discipline"
+      ]
+    },
+    {
+      "sheet": "base-03",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Man 54, aquiline nose, weathered face, diagonal gray fringe; slate-blue scholar swordsman robe with split hem, tied practice manuals.\nTOP CENTER: Woman 40, windburned cheeks, muscular forearms and cropped fringe; slate and gray mountain leathers, coiled climbing rope and scabbard.\nTOP RIGHT: Woman 55, broad smile, laugh lines and frayed gray braids; ochre patched travel robes, knot-heavy belt, worn bamboo cane.\nBOTTOM LEFT: Man 47, big belly and bald crown, wary eyes; patched brown padded jacket, wide sash, nested ceramic rice bowls.\nBOTTOM CENTER: Woman 50, sharp arched brows, stern face and silver temples; wine-red mantle, black silk layers, bronze flame-shaped lamp.\nBOTTOM RIGHT: Man 42, deep-set eyes and shaved sides, heavy shoulders; crimson leather lamellar vest and black trousers, sheathed crescent saber.",
+      "ids": [
+        "elder-huashan-teaching",
+        "elder-huashan-discipline",
+        "elder-gaibang-teaching",
+        "elder-gaibang-discipline",
+        "elder-mingjiao-teaching",
+        "elder-mingjiao-discipline"
+      ]
+    },
+    {
+      "sheet": "base-04",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Woman 52, copper complexion, low gray braids and stern eyes; frost-blue fur-trim coat, wrapped boots, short wooden training spear.\nTOP CENTER: Man 39, wide nose, bundled dark braids, powerful legs; glacier-gray quilted cavalry silhouette, ice-blue shoulder wrap, long spear.\nTOP RIGHT: Man 58, sun-dark round face and thin silver mustache; indigo-teal sleeveless river vest over linen, wood tide board.\nBOTTOM LEFT: Woman 43, square chin and tight black headscarf; deep teal split river coat, cream sleeves, heavy rope with bronze hook.\nBOTTOM CENTER: Woman 65, round spectacles, delicate wrinkles and white bun; moss-green quilted robe, little herb satchel and ceramic mortar.\nBOTTOM RIGHT: Man 49, broad nose and neatly braided beard; olive hemp coat, leather apron, tall medicinal root basket and small knife.",
+      "ids": [
+        "elder-kunlun-teaching",
+        "elder-kunlun-discipline",
+        "elder-caobang-teaching",
+        "elder-caobang-discipline",
+        "elder-yaowang-teaching",
+        "elder-yaowang-discipline"
+      ]
+    },
+    {
+      "sheet": "base-05",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Man 67, shaved head and warm smile, long earlobes; burnished orange and cream layered kasaya, large wooden prayer beads.\nTOP CENTER: Man 44, shaven head, angular cheekbones and sharp dark eyes; orange-and-black short monastic coat, raised two-finger training gesture.\nTOP RIGHT: Woman 60, high silver knot and long cheek creases; violet-indigo Taoist layers, wide cinnabar sash, folding star chart.\nBOTTOM LEFT: Man 46, long oval face, tapered beard and low tied hair; muted plum uniform with white piping, small seven-star sword.\nBOTTOM CENTER: Woman 56, deeply lined eyes, salt-and-pepper temple locks; blackberry silk work robe and fitted gloves, lacquered case of tiny tools.\nBOTTOM RIGHT: Man 38, clipped hair, raven eyes and lean profile; aubergine and black travel layers, compact silver dart bracer.",
+      "ids": [
+        "elder-chongsheng-teaching",
+        "elder-chongsheng-discipline",
+        "elder-quanzhen-teaching",
+        "elder-quanzhen-discipline",
+        "elder-tangmen-teaching",
+        "elder-tangmen-discipline"
+      ]
+    },
+    {
+      "sheet": "base-06",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Woman 32, round face, freckles, braided topknot; warm sand river jacket over deep cyan trousers, rolled navigation map and compass.\nTOP CENTER: Man 56, callused broad hands, bushy eyebrows and square gray beard; charcoal leather apron over rust clothes, small cast-bronze bell.\nTOP RIGHT: Woman 44, windburned narrow face and silver-streak braid; oxblood winter cape, tan boots, bundled courier flag and sheathed saber.\nBOTTOM LEFT: Woman 35, soft round cheeks and neat low bun; pale apricot and fern-green hemp layers, ceramic medicine infuser and wrapped tea.\nBOTTOM CENTER: Man 63, deep smile lines and silver stubble; faded ink-blue fisher coat, broad straw hat, lantern hung from short pole.\nBOTTOM RIGHT: Man 29, fine-boned face and ink-stained hands, short knotted hair; auburn scholar tunic, indigo apron, print block with flower relief.",
+      "ids": [
+        "wanderer-river-cartographer",
+        "wanderer-bronze-bellmaker",
+        "wanderer-ridge-escort",
+        "wanderer-tea-physician",
+        "wanderer-night-ferryman",
+        "wanderer-travelling-printmaker"
+      ]
+    },
+    {
+      "sheet": "base-07",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Woman 49, long oval face, thick silver braid; purple-brown layered artisan robe, compact wooden lute held diagonally.\nTOP CENTER: Man 36, wide nose, strong cheekbones, frost-tipped cropped beard; ivory fur-trim coat over umber leggings, snowshoe and narrow bow.\nTOP RIGHT: Woman 25, short dark hair tied in twin loops, focused eyes; fitted sky-blue scouting coat, orange scarf, wound climbing cord.\nBOTTOM LEFT: Man 41, warm brown skin, uneven eyebrows and trimmed mustache; maroon wrap coat, woven belt, saffron paper lantern.\nBOTTOM CENTER: Man 50, heavyset and bald, merry gaze; brick-red rolled sleeves, olive kitchen apron, blackened iron spatula and pouch of spices.\nBOTTOM RIGHT: Woman 58, square glasses, gray forelock and reassuring expression; bark-brown cloak over moss dress, carved herb box on sling.",
+      "ids": [
+        "wanderer-thunder-luthier",
+        "wanderer-snow-tracker",
+        "wanderer-cloud-scout",
+        "wanderer-lantern-keeper",
+        "wanderer-iron-cook",
+        "wanderer-deepwood-medic"
+      ]
+    },
+    {
+      "sheet": "base-08",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Woman 39, long eyes and dark high crown braids; broad gold and plum silk sleeves, jade weighing scale and fabric swatches.\nTOP CENTER: Man 69, hawk nose, long white beard and heavy eyelids; chalk-gray padded coat, plain cap, brass folding survey rod.\nTOP RIGHT: Woman 31, cropped fringe, lean weathered face and dark skin; reed-green layered vest and mud-brown boots, compact hunting crossbow.\nBOTTOM LEFT: Man 48, shaved cheeks and ochre sun marks; cream layered desert cloth with cobalt sash, small sealed sack of salt.\nBOTTOM CENTER: Woman 46, lively rounded eyes and silver bob knot; plum-and-amber performer layers, small wooden fish puppet with thread.\nBOTTOM RIGHT: Man 61, gaunt face, long straight white locks; night-blue star-embroidered robe, bone bead bracelet and bronze armillary disc.",
+      "ids": [
+        "wanderer-silk-merchant",
+        "wanderer-old-surveyor",
+        "wanderer-marsh-hunter",
+        "wanderer-salt-caravaner",
+        "wanderer-loach-puppeteer",
+        "wanderer-wandering-astrologer"
+      ]
+    },
+    {
+      "sheet": "base-09",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Woman 37, broad cheekbones, short black hair tied at nape; rust riding coat, buckskin apron, herb wrap and folded horseshoe.\nTOP CENTER: Man 35, clear angular jaw, side-tied black hair; river-gray robe with peach undercoat, miniature wooden arch and bamboo rule.\nTOP RIGHT: Woman 28, tattoo-free copper face and high ponytail; russet festival jacket with teal cuffs, compact round painted hand drum.\nBOTTOM LEFT: Man 34, tall spare figure and small chin beard, melancholy eyes; black ink-wash cloak with white collar, brush case and sheathed sword.\nBOTTOM CENTER: Woman 53, pale straight brows and gray pinned hair; faded blue-grey scholar vest, geometric sleeves, cord-bound bamboo court records.\nBOTTOM RIGHT: Man 44, dark freckles and broad jaw under cropped beard; olive mountain cape and layered gray boots, padded falconer glove.",
+      "ids": [
+        "wanderer-horseshoe-healer",
+        "wanderer-bridge-architect",
+        "wanderer-lake-drummers",
+        "wanderer-ink-swordsman",
+        "wanderer-courthouse-archivist",
+        "wanderer-migrating-trapper"
+      ]
+    },
+    {
+      "sheet": "base-10",
+      "prompt": "Use case: illustration-story. Create six full-body character assets for an original Chinese wuxia strategy RPG set in an invented Chinese dynasty. Exactly SIX isolated transparent-background silhouettes, arranged row-major in a regular 3 columns x 2 rows grid on a 1024x1536 PORTRAIT canvas. Each character stands head to toe at an equal scale completely within a separate grid cell; preserve clear transparent gutters between characters and rows, hands, heads, toes and small props never cut off. Front or slight three-quarter view and all face areas clear. Sophisticated Hong Kong martial-arts comics ink linework and angular hatching with contemporary anime color design and cel shadows. Historical fantasy Chinese layered handwoven cloth, precise clean outlines, muted mineral tones, readable silhouette at small size, directional highlights. No text, panels, logos, effects, people besides these six, or scenery. Strict reading order:\nTOP LEFT: Woman 62, tall with sharp pale eyes and gray braid crown; snow-white shawl over muted violet work skirt, wooden weaving shuttle.\nTOP CENTER: Man 27, strong rounded shoulders and soft youthful adult face; stone-gray layered work coat, red sash, short carrying yoke.\nTOP RIGHT: Woman 33, intense amber eyes and half-up loose hair; sea-green pleated poet robe, white feathered fan and blank scroll.\nBOTTOM LEFT: Man 40, round face and sly tilted eyebrows, tied black hair; cinnamon and indigo market robes, cloth purse and scale.\nBOTTOM CENTER: Woman 55, fine wrinkles and steel-gray slanted bangs; sage high-collared robe, burgundy shawl, inkstone and bamboo tally slips.\nBOTTOM RIGHT: Man 65, tall bald ascetic with soft tired eyes; gray-beige travel kasaya and faded plum cloak, wooden sandals and plain gourd.",
+      "ids": [
+        "wanderer-frost-weaver",
+        "wanderer-mountain-porter",
+        "wanderer-river-poet",
+        "wanderer-market-broker",
+        "wanderer-bamboo-scribe",
+        "wanderer-trail-monk"
+      ]
+    },
+    {
+      "sheet": "exp-00",
+      "prompt": "Use case illustration-story, production asset: create a clean transparent RGBA game dialogue EXPRESSION SPRITE SHEET faithfully based on the six character designs in the reference. The reference has six full bodies ordered reading order (top left, top center, top right, bottom left, bottom center, bottom right). REFORMAT the canvas to a STRICT evenly spaced grid of THREE columns and SIX rows on a tall portrait canvas. EACH ROW belongs to ONE character in that same reading order. In each row, draw THREE separate FACE-and-shoulders busts of that EXACT SAME person, front or slight three-quarter, with the same hair, costume colors, age and face as the reference: left = warm small smile, middle = decisive furrow-brow determination, right = worried and downcast. Keep silhouettes isolated, in their own cell, with wide fully transparent gutters. Each head including hair and shoulders must fit entirely within the cell. Consistent camera at eye level, keep nose center and eye height stable within each row. Match reference HK ink linework, delicate hatching, restrained mineral colors and sharp anime cel shading. No letters, outlines framing cells, ambient shadows or backgrounds. Required exactly 18 busts, three per row, six rows. Rows 慧灯禅师 / 松鹤真人 / 沈清霜 / 陆孤舟 / 贺九斤 / 厉千秋 in order.",
+      "ids": [
+        "leader-shaolin",
+        "leader-wudang",
+        "leader-emei",
+        "leader-huashan",
+        "leader-gaibang",
+        "leader-mingjiao"
+      ]
+    },
+    {
+      "sheet": "exp-01",
+      "prompt": "Use case illustration-story, production asset: create a clean transparent RGBA game dialogue EXPRESSION SPRITE SHEET faithfully based on the six character designs in the reference. The reference has six full bodies ordered reading order (top left, top center, top right, bottom left, bottom center, bottom right). REFORMAT the canvas to a STRICT evenly spaced grid of THREE columns and SIX rows on a tall portrait canvas. EACH ROW belongs to ONE character in that same reading order. In each row, draw THREE separate FACE-and-shoulders busts of that EXACT SAME person, front or slight three-quarter, with the same hair, costume colors, age and face as the reference: left = warm small smile, middle = decisive furrow-brow determination, right = worried and downcast. Keep silhouettes isolated, in their own cell, with wide fully transparent gutters. Each head including hair and shoulders must fit entirely within the cell. Consistent camera at eye level, keep nose center and eye height stable within each row. Match reference HK ink linework, delicate hatching, restrained mineral colors and sharp anime cel shading. No letters, outlines framing cells, ambient shadows or backgrounds. Required exactly 18 busts, three per row, six rows. Rows 拓跋烈 / 江晚舟 / 白术翁 / 昙照上人 / 归云子 / 唐挽月 in order.",
+      "ids": [
+        "leader-kunlun",
+        "leader-caobang",
+        "leader-yaowang",
+        "leader-chongsheng",
+        "leader-quanzhen",
+        "leader-tangmen"
+      ]
+    },
+    {
+      "sheet": "exp-02",
+      "prompt": "Use case: identity-preserve. Asset type: transparent game portrait expression sprite atlas. The input reference has six original Chinese martial world characters, arranged 3 across by 2 down. REFORMAT output portrait canvas to a STRICT evenly spaced grid of THREE columns and SIX rows, eighteen isolated shoulders-up busts total. EACH ROW belongs to ONE reference character, ordered from reference reading order top-left to bottom-right. In reading order, the subjects are the older cheerful bald ochre-robed monk holding a bronze ringed staff; the austere younger bald monk in charcoal and ochre with a scripture; the elegant gray-haired Daoist woman in embroidered cloud-blue with white whisk; the dark-bearded Daoist man in midnight blue; the mature gray-haired woman in pale green brocade; and the younger serious swordwoman in moss green. Retain monk age differences and the women's distinct hairstyles. For each row exactly: LEFT happy (small genuine warm smile with open eyes, elegant and restrained), MIDDLE determined (looking straight ahead, strong focused brows), RIGHT worried (slightly downcast eyes, worried eyebrows and mouth). Consistent scale and framing across all 18 busts. Each head, shoulders and hair must fit completely inside its own uniform cell including inner clear margin; graceful chest crop with edge fading only if needed, no weapons or handheld objects crossing cells. Keep facial structure, hair, age, gender, ethnicity, garments, necklines and palette identical within each row and faithful to input. Same premium historical Chinese wuxia hand-painted ink and mineral-pigment realism, delicate linework, warm ivory accents, restrained dark borders. All faces clean and expressive, natural proportions. Truly transparent alpha background. Strict 3x6 grid, fully visible 18 entries, evenly spaced. No labels, no borders, no letters, no background.",
+      "ids": [
+        "elder-shaolin-teaching",
+        "elder-shaolin-discipline",
+        "elder-wudang-teaching",
+        "elder-wudang-discipline",
+        "elder-emei-teaching",
+        "elder-emei-discipline"
+      ]
+    },
+    {
+      "sheet": "exp-03",
+      "prompt": "Use case: identity-preserve. Asset type: transparent game portrait expression sprite atlas. The input reference has six original Chinese martial world characters, arranged 3 across by 2 down. REFORMAT output portrait canvas to a STRICT evenly spaced grid of THREE columns and SIX rows, eighteen isolated shoulders-up busts total. EACH ROW belongs to ONE reference character, ordered from reference reading order top-left to bottom-right. In reading order, the subjects are the salt-and-pepper navy-robed elder with embroidered bamboo and book; the young dark-haired male in grey roughspun with coils of rope; the elderly smiling gray-braided beggar woman in ochre patchwork; the stocky bearded beggar man in patched brown with three ceramic bowls; the silver-streaked red-cloaked dignified woman holding a brass lamp; and the muscular dark-bearded man in dark-red lamellar armor. Retain subtle age, face shape, hair, fabric layers and visible ornaments. For each row exactly: LEFT happy (small genuine warm smile with open eyes, elegant and restrained), MIDDLE determined (looking straight ahead, strong focused brows), RIGHT worried (slightly downcast eyes, worried eyebrows and mouth). Consistent scale and framing across all 18 busts. Each head, shoulders and hair must fit completely inside its own uniform cell including inner clear margin; graceful chest crop with edge fading only if needed, no weapons or handheld objects crossing cells. Keep facial structure, hair, age, gender, ethnicity, garments, necklines and palette identical within each row and faithful to input. Same premium historical Chinese wuxia hand-painted ink and mineral-pigment realism, delicate linework, warm ivory accents, restrained dark borders. All faces clean and expressive, natural proportions. Truly transparent alpha background. Strict 3x6 grid, fully visible 18 entries, evenly spaced. No labels, no borders, no letters, no background.",
+      "ids": [
+        "elder-huashan-teaching",
+        "elder-huashan-discipline",
+        "elder-gaibang-teaching",
+        "elder-gaibang-discipline",
+        "elder-mingjiao-teaching",
+        "elder-mingjiao-discipline"
+      ]
+    },
+    {
+      "sheet": "exp-04",
+      "prompt": "Use case: identity-preserve. Asset type: transparent game portrait expression sprite atlas. The input reference has six original Chinese martial world characters, arranged 3 across by 2 down. REFORMAT output portrait canvas to a STRICT evenly spaced grid of THREE columns and SIX rows, eighteen isolated shoulders-up busts total. EACH ROW belongs to ONE reference character, ordered from reference reading order top-left to bottom-right. The six identities in reading order are silver-streaked mature man with fur-trimmed pale blue robe and northern spear; broad-shouldered dark-haired warrior with pale blue shoulder mantle and grey quilted armor; gray-mustached sturdy older river guild man in teal and cream holding a wooden navigation board; fit younger female rope rigging specialist with black headwrap and teal fastened jacket; silver-haired elderly female healer with tiny round glasses in moss olive clothes holding a white ceramic mortar; and black-bearded sturdy middle-aged herb gatherer with a basket and olive brown clothes. Preserve distinct sexes, facial hair, glasses, age, and collar motifs. For each row exactly: LEFT happy (small genuine warm smile with open eyes, elegant and restrained), MIDDLE determined (looking straight ahead, strong focused brows), RIGHT worried (slightly downcast eyes, worried eyebrows and mouth). Consistent scale and framing across all 18 busts. Each head, shoulders and hair must fit inside its own uniform cell with a 4% clear margin around it; no weapons or handheld objects crossing cells. Keep facial structure, hair, age, gender, ethnicity, garments, necklines and palette identical within each row and faithful to input. Same premium historical Chinese wuxia hand-painted ink and mineral-pigment realism, delicate linework, warm ivory accents, restrained dark borders. All faces clean and expressive, natural proportions. Truly transparent alpha background. Strict 3x6 grid, fully visible 18 entries, evenly spaced. No labels, no borders, no letters, no background.",
+      "ids": [
+        "elder-kunlun-teaching",
+        "elder-kunlun-discipline",
+        "elder-caobang-teaching",
+        "elder-caobang-discipline",
+        "elder-yaowang-teaching",
+        "elder-yaowang-discipline"
+      ]
+    },
+    {
+      "sheet": "exp-05",
+      "prompt": "Use case: identity-preserve. Asset type: transparent game portrait expression sprite atlas. The input reference has six original Chinese martial world characters, arranged 3 across by 2 down. REFORMAT output portrait canvas to a STRICT evenly spaced grid of THREE columns and SIX rows, eighteen isolated shoulders-up busts total. EACH ROW belongs to ONE reference character, ordered from reference reading order top-left to bottom-right. The six identities in reading order are an older shaved bald monk with warm face, big dark prayer beads, cream left shoulder and orange plaid gold silk on right; a younger stern bald martial monk with flame orange robe, charcoal chest panel and wrists wrapped in cloth; an elderly gray-haired regal woman in violet robes with subtle violet floral silk and hair ornaments, holding indigo fan; a serious mature dark-haired man with pointed goatee and dark plum uniform with silver fasteners; a middle-aged silver-streak-haired mature woman in plum brocade carrying a small wooden needle box; and a handsome slim younger dark-haired man in charcoal maroon hooded cloak and silver bracers. Preserve distinct ages, faces, expressions, garments, collar shape and colors. For each row exactly: LEFT happy (small genuine warm smile with open eyes, elegant and restrained), MIDDLE determined (looking straight ahead, strong focused brows), RIGHT worried (slightly downcast eyes, worried eyebrows and mouth). Consistent scale and framing across all 18 busts. Each head, shoulders and hair must fit inside its own uniform cell with a 4% clear margin around it; no weapons or handheld objects crossing cells. Keep facial structure, hair, age, gender, ethnicity, garments, necklines and palette identical within each row and faithful to input. Same premium historical Chinese wuxia hand-painted ink and mineral-pigment realism, delicate linework, warm ivory accents, restrained dark borders. All faces clean and expressive, natural proportions. Truly transparent alpha background. Strict 3x6 grid, fully visible 18 entries, evenly spaced. No labels, no borders, no letters, no background.",
+      "ids": [
+        "elder-chongsheng-teaching",
+        "elder-chongsheng-discipline",
+        "elder-quanzhen-teaching",
+        "elder-quanzhen-discipline",
+        "elder-tangmen-teaching",
+        "elder-tangmen-discipline"
+      ]
+    },
+    {
+      "sheet": "exp-06",
+      "prompt": "Use case illustration-story. Transparent 18-cell dialogue expression sprite sheet based faithfully on attached six adult game characters, which are ordered in two rows of three. Make a STRICT regular grid THREE columns × SIX rows, exactly 18 isolated face-and-shoulder cutouts on actual transparency. Rows follow reference reading order, one exact identity per row. Columns are warm restrained smile, decisive furrowed determination, worried downcast. Same face, hair, clothing colors, silhouette and age as each reference. Match Hong Kong wuxia black ink lines and sharp cel shadow, restrained mineral colors. Avoid frames, captions, text, props blocking face, scenery. Transparent clear margins and gutters; keep complete head and shoulders in each cell. Character order Woman 32, round face, freckles, braided topknot; warm sand river jacket over deep cyan trousers, rolled navigation map and compass. / Man 56, callused broad hands, bushy eyebrows and square gray beard; charcoal leather apron over rust clothes, small cast-bronze bell. / Woman 44, windburned narrow face and silver-streak braid; oxblood winter cape, tan boots, bundled courier flag and sheathed saber. / Woman 35, soft round cheeks and neat low bun; pale apricot and fern-green hemp layers, ceramic medicine infuser and wrapped tea. / Man 63, deep smile lines and silver stubble; faded ink-blue fisher coat, broad straw hat, lantern hung from short pole. / Man 29, fine-boned face and ink-stained hands, short knotted hair; auburn scholar tunic, indigo apron, print block with flower relief..",
+      "ids": [
+        "wanderer-river-cartographer",
+        "wanderer-bronze-bellmaker",
+        "wanderer-ridge-escort",
+        "wanderer-tea-physician",
+        "wanderer-night-ferryman",
+        "wanderer-travelling-printmaker"
+      ]
+    },
+    {
+      "sheet": "exp-07",
+      "prompt": "Use case illustration-story. Transparent 18-cell dialogue expression sprite sheet based faithfully on attached six adult game characters, which are ordered in two rows of three. Make a STRICT regular grid THREE columns × SIX rows, exactly 18 isolated face-and-shoulder cutouts on actual transparency. Rows follow reference reading order, one exact identity per row. Columns are warm restrained smile, decisive furrowed determination, worried downcast. Same face, hair, clothing colors, silhouette and age as each reference. Match Hong Kong wuxia black ink lines and sharp cel shadow, restrained mineral colors. Avoid frames, captions, text, props blocking face, scenery. Transparent clear margins and gutters; keep complete head and shoulders in each cell.",
+      "ids": [
+        "wanderer-thunder-luthier",
+        "wanderer-snow-tracker",
+        "wanderer-cloud-scout",
+        "wanderer-lantern-keeper",
+        "wanderer-iron-cook",
+        "wanderer-deepwood-medic"
+      ]
+    },
+    {
+      "sheet": "exp-08",
+      "prompt": "Use case illustration-story. Transparent 18-cell dialogue expression sprite sheet based faithfully on attached six adult game characters, which are ordered in two rows of three. Make a STRICT regular grid THREE columns × SIX rows, exactly 18 isolated face-and-shoulder cutouts on actual transparency. Rows follow reference reading order, one exact identity per row. Columns are warm restrained smile, decisive furrowed determination, worried downcast. Same face, hair, clothing colors, silhouette and age as each reference. Match Hong Kong wuxia black ink lines and sharp cel shadow, restrained mineral colors. Avoid frames, captions, text, props blocking face, scenery. Transparent clear margins and gutters; keep complete head and shoulders in each cell.",
+      "ids": [
+        "wanderer-silk-merchant",
+        "wanderer-old-surveyor",
+        "wanderer-marsh-hunter",
+        "wanderer-salt-caravaner",
+        "wanderer-loach-puppeteer",
+        "wanderer-wandering-astrologer"
+      ]
+    },
+    {
+      "sheet": "exp-09",
+      "prompt": "Use case illustration-story. Transparent 18-cell dialogue expression sprite sheet based faithfully on attached six adult game characters, which are ordered in two rows of three. Make a STRICT regular grid THREE columns × SIX rows, exactly 18 isolated face-and-shoulder cutouts on actual transparency. Rows follow reference reading order, one exact identity per row. Columns are warm restrained smile, decisive furrowed determination, worried downcast. Same face, hair, clothing colors, silhouette and age as each reference. Match Hong Kong wuxia black ink lines and sharp cel shadow, restrained mineral colors. Avoid frames, captions, text, props blocking face, scenery. Transparent clear margins and gutters; keep complete head and shoulders in each cell.",
+      "ids": [
+        "wanderer-horseshoe-healer",
+        "wanderer-bridge-architect",
+        "wanderer-lake-drummers",
+        "wanderer-ink-swordsman",
+        "wanderer-courthouse-archivist",
+        "wanderer-migrating-trapper"
+      ]
+    },
+    {
+      "sheet": "exp-10",
+      "prompt": "Use case illustration-story. Transparent 18-cell dialogue expression sprite sheet based faithfully on attached six adult game characters, which are ordered in two rows of three. Make a STRICT regular grid THREE columns × SIX rows, exactly 18 isolated face-and-shoulder cutouts on actual transparency. Rows follow reference reading order, one exact identity per row. Columns are warm restrained smile, decisive furrowed determination, worried downcast. Same face, hair, clothing colors, silhouette and age as each reference. Match Hong Kong wuxia black ink lines and sharp cel shadow, restrained mineral colors. Avoid frames, captions, text, props blocking face, scenery. Transparent clear margins and gutters; keep complete head and shoulders in each cell.",
+      "ids": [
+        "wanderer-frost-weaver",
+        "wanderer-mountain-porter",
+        "wanderer-river-poet",
+        "wanderer-market-broker",
+        "wanderer-bamboo-scribe",
+        "wanderer-trail-monk"
+      ]
+    }
+  ]
+}

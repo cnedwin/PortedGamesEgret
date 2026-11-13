@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#1d221f">
+<title>武林天下 · 立绘图鉴</title>
+<link rel="stylesheet" href="./gallery.css">
+</head>
+<body>
+<header class="masthead">
+  <a class="brand" href="./index.html" aria-label="武林天下立绘图鉴首页"><span class="seal">武</span> 武林天下</a>
+  <a class="home-link" href="../ui/index.html">界面样板 <span aria-hidden="true">↗</span></a>
+</header>
+<main>
+  <section class="intro">
+    <div class="frame-mark" aria-hidden="true"></div>
+    <div><p class="kicker">角色美术</p><h1>立绘图鉴</h1><p class="subtitle">掌门、长老与江湖奇人</p></div>
+    <dl class="metrics" aria-label="资源数量">
+      <div><dt>全身立绘</dt><dd id="full-count">—</dd></div>
+      <div><dt>半身立绘</dt><dd id="bust-count">—</dd></div>
+      <div><dt>表情差分</dt><dd id="expression-count">—</dd></div>
+    </dl>
+  </section>
+  <section aria-label="角色筛选">
+    <div class="toolbar">
+      <div class="tabs" id="roles" role="group" aria-label="按身份筛选"></div>
+      <label class="search"><span aria-hidden="true">⌕</span><input id="search" type="search" placeholder="搜索角色或门派" aria-label="搜索角色或门派" autocomplete="off"></label>
+    </div>
+    <p id="status" class="status" aria-live="polite"></p>
+    <div id="cards" class="cards"></div>
+    <noscript><p>请启用浏览器 JavaScript 查看角色立绘。</p></noscript>
+  </section>
+</main>
+<footer><span>武林天下</span><span>角色立绘资源</span></footer>
+<dialog id="portrait-dialog">
+  <form method="dialog"><button class="close" aria-label="关闭立绘预览">×</button></form>
+  <div id="dialog-content"></div>
+</dialog>
+<script type="module" src="./gallery.mjs"></script>
+</body>
+</html>

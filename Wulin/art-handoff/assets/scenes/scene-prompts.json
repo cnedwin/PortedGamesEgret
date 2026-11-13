@@ -1,0 +1,33 @@
+{
+  "generator": "OpenAI ImageGen (built-in)",
+  "assets": [
+    {
+      "id": "title",
+      "src": "title.webp",
+      "width": 1600,
+      "height": 900,
+      "prompt": "Use case: illustration-story. Asset type: main menu full-bleed game backdrop. Premium game environment illustration for 《武林天下》, original fictional Zhao dynasty, classical Chinese historical wuxia with plausible Song/Ming architecture, elegantly hand-painted semi-realistic 3D depth, accomplished contemporary Chinese game concept art, refined restrained mineral pigments, pine green and ink teal, ivory limestone, subtle old vermilion and antique brass. Clearly designed focal hierarchy and rich but selective detail, realistic soft atmospheric light. Wide landscape 16:9 composition. No letters, text, inscriptions, labels, HUD, borders, watermark or branding. Cinematic high-mountain vista in the first hours after dawn, overlooking a quiet martial monastery of wood, stone and charcoal tile on a mist-covered cliff on the right, a stairway and pines lead the eye from bottom right into the complex. A solitary tiny robed traveler with dark hair seen from behind, near the right third foreground, a subtle dark cinnabar pennant. Far ridges and cloud ocean in the distance. The left half is an elegantly sparse sheet of pale ivory mountain fog and very soft distant mountains, suitable for adding large very dark Chinese title over it; no major contrasting object at left. Strong contrast on the right, rising light behind ridge, graceful weathered pine forms, controlled muted gold and teal. Authentic landscape, introspective, no fantasy glowing effects. Keep meaningful elements away from outer 5%."
+    },
+    {
+      "id": "seat",
+      "src": "seat.webp",
+      "width": 1600,
+      "height": 900,
+      "prompt": "Use case: stylized-concept. Asset type: game headquarters scene behind functional HTML overlays. Premium game environment illustration for 《武林天下》, original fictional Zhao dynasty, classical Chinese historical wuxia with plausible Song/Ming architecture, elegantly hand-painted semi-realistic 3D depth, accomplished contemporary Chinese game concept art, refined restrained mineral pigments, pine green and ink teal, ivory limestone, subtle old vermilion and antique brass. Clearly designed focal hierarchy and rich but selective detail, realistic soft atmospheric light. Wide landscape 16:9 composition. No letters, text, inscriptions, labels, HUD, borders, watermark or branding. Close high-oblique camera about 40 degrees down, game-world architectural visualization. A compact Shaolin-inspired monastery courtyard on a mountainside, showcasing actionable building areas, distinct clean organized architecture. Main tiled martial hall near center x45%,y38%, smaller timber hall at x68%,y58%, training platform and disciples at x31%,y67%. Irregular stone terraces, steps, planted old pines, an exterior arched mountain gate and upper rock face give credible spatial depth. Four to eight very small visible disciples sparring or working. Details visible on tiles and plants but ground and paths clean, large readable surfaces with space for floating game labels. Upper left dawn shade and a warm thin mist along hill. Natural pale limestone center, cool pine at outer edges, hints of lacquered red doors. Keep bottom area useful for subtle HUD. No written signs."
+    },
+    {
+      "id": "battle",
+      "src": "battle.webp",
+      "width": 1600,
+      "height": 900,
+      "prompt": "Use case: illustration-story. Asset type: battle preview widescreen in-game scene. Premium game environment illustration for 《武林天下》, original fictional Zhao dynasty, classical Chinese historical wuxia with plausible Song/Ming architecture, elegantly hand-painted semi-realistic 3D depth, accomplished contemporary Chinese game concept art, refined restrained mineral pigments, pine green and ink teal, ivory limestone, subtle old vermilion and antique brass. Clearly designed focal hierarchy and rich but selective detail, realistic soft atmospheric light. Wide landscape 16:9 composition. No letters, text, inscriptions, labels, HUD, borders, watermark or branding. Visually specific grounded martial sect sparring at a stone terrace, high-oblique near eye-level camera (look down about 25 degrees), broad readable flat stone clearing. Two groups of three or four adult martial artists face each other around x28% and x70%, near middle foreground. One fighter in dark sage swings a long staff with realistic restraint opposite a white-grey robed swordsman with low guard. Wuxia action appears through realistic body posture, dramatic cloth movement and scant dust, no fantasy energy, no visible injuries. Far backdrop stone bridge, timber eaves, pine mountain cliffs, overcast over warm rim light. Full bodies in frame with natural proportions, avoid closeup, center area readable for status bars and position indicators. Keep lower edges clear for controls. Sophisticated earthy sage versus quiet umber distinction."
+    },
+    {
+      "id": "world",
+      "src": "world.webp",
+      "width": 1600,
+      "height": 900,
+      "prompt": "Use case: stylized-concept. Asset type: interactive atlas terrain background for a classical Chinese martial sect strategy game, no interface. Premium game environment illustration for 《武林天下》, original fictional Zhao dynasty, classical Chinese historical wuxia with plausible Song/Ming architecture, elegantly hand-painted semi-realistic 3D depth, accomplished contemporary Chinese game concept art, refined restrained mineral pigments, pine green and ink teal, ivory limestone, subtle old vermilion and antique brass. Clearly designed focal hierarchy and rich but selective detail, realistic soft atmospheric light. Wide landscape 16:9 composition. No letters, text, inscriptions, labels, HUD, borders, watermark or branding. Atlas with convincing continuous relief, aerial oblique orthographic terrain of a coherent stylized China-like fictional continent, north mountains, central river forks with river plains and lightly discernible tiny roads and settlements, east coastline, south lakes and hills. Background has fine rice-paper granularity and restrained mineral washes. Distinct locations distributed across ALL four quadrants, leave enough low-detail foothills or plains for overlaid map nodes. A cartographic illustration reading immediately as mountains, valleys, flat plains, ocean and braided rivers. No individual buildings close-up, no concentric icons or obvious placeholder pins, no banners, no labels, no typography, no black vignettes. Edge-to-edge map with the lighter paper and medium tones kept legible in the corners."
+    }
+  ]
+}

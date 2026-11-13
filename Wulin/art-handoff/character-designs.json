@@ -1,0 +1,380 @@
+[
+  {
+    "id": "elder-shaolin-teaching",
+    "name": "悟砚",
+    "role": "elder",
+    "sect": "shaolin",
+    "design": "Man 63, bald, kind round eyes and white crescent brows; saffron patchwork kasaya, broad sleeves, vertical nine-ring staff."
+  },
+  {
+    "id": "elder-shaolin-discipline",
+    "name": "戒铎",
+    "role": "elder",
+    "sect": "shaolin",
+    "design": "Man 48, bald, angular jaw and cleft lip; charcoal-ochre fitted monastic layers, compact shoulder wrap, rope-bound wooden discipline tablet."
+  },
+  {
+    "id": "elder-wudang-teaching",
+    "name": "栖微子",
+    "role": "elder",
+    "sect": "wudang",
+    "design": "Woman 57, silver high knot, sharp eyes and long nose; cloud-blue Taoist robe, white horsehair whisk in right hand."
+  },
+  {
+    "id": "elder-wudang-discipline",
+    "name": "崔寒砥",
+    "role": "elder",
+    "sect": "wudang",
+    "design": "Man 43, square face and black goatee; steel-blue long coat with tied sleeves, cinched waist, plain sheathed straight sword."
+  },
+  {
+    "id": "elder-emei-teaching",
+    "name": "叶静筠",
+    "role": "elder",
+    "sect": "emei",
+    "design": "Woman 61, gray swept knot, soft oblong face and faint smile; pale jade and white robe, dark paired piercing daggers."
+  },
+  {
+    "id": "elder-emei-discipline",
+    "name": "温裁雪",
+    "role": "elder",
+    "sect": "emei",
+    "design": "Woman 38, long black braid, narrow brows and poised chin; muted jade training tunic, ivory wrap skirt, slim jade-tasseled sword."
+  },
+  {
+    "id": "elder-huashan-teaching",
+    "name": "许砚危",
+    "role": "elder",
+    "sect": "huashan",
+    "design": "Man 54, aquiline nose, weathered face, diagonal gray fringe; slate-blue scholar swordsman robe with split hem, tied practice manuals."
+  },
+  {
+    "id": "elder-huashan-discipline",
+    "name": "岑迭峰",
+    "role": "elder",
+    "sect": "huashan",
+    "design": "Woman 40, windburned cheeks, muscular forearms and cropped fringe; slate and gray mountain leathers, coiled climbing rope and scabbard."
+  },
+  {
+    "id": "elder-gaibang-teaching",
+    "name": "朱百结",
+    "role": "elder",
+    "sect": "gaibang",
+    "design": "Woman 55, broad smile, laugh lines and frayed gray braids; ochre patched travel robes, knot-heavy belt, worn bamboo cane."
+  },
+  {
+    "id": "elder-gaibang-discipline",
+    "name": "罗七碗",
+    "role": "elder",
+    "sect": "gaibang",
+    "design": "Man 47, big belly and bald crown, wary eyes; patched brown padded jacket, wide sash, nested ceramic rice bowls."
+  },
+  {
+    "id": "elder-mingjiao-teaching",
+    "name": "炎绡",
+    "role": "elder",
+    "sect": "mingjiao",
+    "design": "Woman 50, sharp arched brows, stern face and silver temples; wine-red mantle, black silk layers, bronze flame-shaped lamp."
+  },
+  {
+    "id": "elder-mingjiao-discipline",
+    "name": "段晦沙",
+    "role": "elder",
+    "sect": "mingjiao",
+    "design": "Man 42, deep-set eyes and shaved sides, heavy shoulders; crimson leather lamellar vest and black trousers, sheathed crescent saber."
+  },
+  {
+    "id": "elder-kunlun-teaching",
+    "name": "乌兰策",
+    "role": "elder",
+    "sect": "kunlun",
+    "design": "Woman 52, copper complexion, low gray braids and stern eyes; frost-blue fur-trim coat, wrapped boots, short wooden training spear."
+  },
+  {
+    "id": "elder-kunlun-discipline",
+    "name": "贺兰锋",
+    "role": "elder",
+    "sect": "kunlun",
+    "design": "Man 39, wide nose, bundled dark braids, powerful legs; glacier-gray quilted cavalry silhouette, ice-blue shoulder wrap, long spear."
+  },
+  {
+    "id": "elder-caobang-teaching",
+    "name": "邵闻汐",
+    "role": "elder",
+    "sect": "caobang",
+    "design": "Man 58, sun-dark round face and thin silver mustache; indigo-teal sleeveless river vest over linen, wood tide board."
+  },
+  {
+    "id": "elder-caobang-discipline",
+    "name": "柳绳青",
+    "role": "elder",
+    "sect": "caobang",
+    "design": "Woman 43, square chin and tight black headscarf; deep teal split river coat, cream sleeves, heavy rope with bronze hook."
+  },
+  {
+    "id": "elder-yaowang-teaching",
+    "name": "桑知露",
+    "role": "elder",
+    "sect": "yaowang",
+    "design": "Woman 65, round spectacles, delicate wrinkles and white bun; moss-green quilted robe, little herb satchel and ceramic mortar."
+  },
+  {
+    "id": "elder-yaowang-discipline",
+    "name": "杜照圃",
+    "role": "elder",
+    "sect": "yaowang",
+    "design": "Man 49, broad nose and neatly braided beard; olive hemp coat, leather apron, tall medicinal root basket and small knife."
+  },
+  {
+    "id": "elder-chongsheng-teaching",
+    "name": "澄铜",
+    "role": "elder",
+    "sect": "chongsheng",
+    "design": "Man 67, shaved head and warm smile, long earlobes; burnished orange and cream layered kasaya, large wooden prayer beads."
+  },
+  {
+    "id": "elder-chongsheng-discipline",
+    "name": "法楹",
+    "role": "elder",
+    "sect": "chongsheng",
+    "design": "Man 44, shaven head, angular cheekbones and sharp dark eyes; orange-and-black short monastic coat, raised two-finger training gesture."
+  },
+  {
+    "id": "elder-quanzhen-teaching",
+    "name": "玄芷姑",
+    "role": "elder",
+    "sect": "quanzhen",
+    "design": "Woman 60, high silver knot and long cheek creases; violet-indigo Taoist layers, wide cinnabar sash, folding star chart."
+  },
+  {
+    "id": "elder-quanzhen-discipline",
+    "name": "阮守朴",
+    "role": "elder",
+    "sect": "quanzhen",
+    "design": "Man 46, long oval face, tapered beard and low tied hair; muted plum uniform with white piping, small seven-star sword."
+  },
+  {
+    "id": "elder-tangmen-teaching",
+    "name": "唐蕴棠",
+    "role": "elder",
+    "sect": "tangmen",
+    "design": "Woman 56, deeply lined eyes, salt-and-pepper temple locks; blackberry silk work robe and fitted gloves, lacquered case of tiny tools."
+  },
+  {
+    "id": "elder-tangmen-discipline",
+    "name": "唐逐鸦",
+    "role": "elder",
+    "sect": "tangmen",
+    "design": "Man 38, clipped hair, raven eyes and lean profile; aubergine and black travel layers, compact silver dart bracer."
+  },
+  {
+    "id": "wanderer-river-cartographer",
+    "name": "宋折汐",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 32, round face, freckles, braided topknot; warm sand river jacket over deep cyan trousers, rolled navigation map and compass."
+  },
+  {
+    "id": "wanderer-bronze-bellmaker",
+    "name": "莫问铎",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 56, callused broad hands, bushy eyebrows and square gray beard; charcoal leather apron over rust clothes, small cast-bronze bell."
+  },
+  {
+    "id": "wanderer-ridge-escort",
+    "name": "祝凌驿",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 44, windburned narrow face and silver-streak braid; oxblood winter cape, tan boots, bundled courier flag and sheathed saber."
+  },
+  {
+    "id": "wanderer-tea-physician",
+    "name": "舒眠蘅",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 35, soft round cheeks and neat low bun; pale apricot and fern-green hemp layers, ceramic medicine infuser and wrapped tea."
+  },
+  {
+    "id": "wanderer-night-ferryman",
+    "name": "田照渡",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 63, deep smile lines and silver stubble; faded ink-blue fisher coat, broad straw hat, lantern hung from short pole."
+  },
+  {
+    "id": "wanderer-travelling-printmaker",
+    "name": "闻刻舟",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 29, fine-boned face and ink-stained hands, short knotted hair; auburn scholar tunic, indigo apron, print block with flower relief."
+  },
+  {
+    "id": "wanderer-thunder-luthier",
+    "name": "聂远音",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 49, long oval face, thick silver braid; purple-brown layered artisan robe, compact wooden lute held diagonally."
+  },
+  {
+    "id": "wanderer-snow-tracker",
+    "name": "庞白麓",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 36, wide nose, strong cheekbones, frost-tipped cropped beard; ivory fur-trim coat over umber leggings, snowshoe and narrow bow."
+  },
+  {
+    "id": "wanderer-cloud-scout",
+    "name": "晏飞岑",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 25, short dark hair tied in twin loops, focused eyes; fitted sky-blue scouting coat, orange scarf, wound climbing cord."
+  },
+  {
+    "id": "wanderer-lantern-keeper",
+    "name": "汪拾焰",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 41, warm brown skin, uneven eyebrows and trimmed mustache; maroon wrap coat, woven belt, saffron paper lantern."
+  },
+  {
+    "id": "wanderer-iron-cook",
+    "name": "屈锅山",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 50, heavyset and bald, merry gaze; brick-red rolled sleeves, olive kitchen apron, blackened iron spatula and pouch of spices."
+  },
+  {
+    "id": "wanderer-deepwood-medic",
+    "name": "樊木息",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 58, square glasses, gray forelock and reassuring expression; bark-brown cloak over moss dress, carved herb box on sling."
+  },
+  {
+    "id": "wanderer-silk-merchant",
+    "name": "卓连城",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 39, long eyes and dark high crown braids; broad gold and plum silk sleeves, jade weighing scale and fabric swatches."
+  },
+  {
+    "id": "wanderer-old-surveyor",
+    "name": "许定圭",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 69, hawk nose, long white beard and heavy eyelids; chalk-gray padded coat, plain cap, brass folding survey rod."
+  },
+  {
+    "id": "wanderer-marsh-hunter",
+    "name": "俞伏苇",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 31, cropped fringe, lean weathered face and dark skin; reed-green layered vest and mud-brown boots, compact hunting crossbow."
+  },
+  {
+    "id": "wanderer-salt-caravaner",
+    "name": "柏行盐",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 48, shaved cheeks and ochre sun marks; cream layered desert cloth with cobalt sash, small sealed sack of salt."
+  },
+  {
+    "id": "wanderer-loach-puppeteer",
+    "name": "阮栖槐",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 46, lively rounded eyes and silver bob knot; plum-and-amber performer layers, small wooden fish puppet with thread."
+  },
+  {
+    "id": "wanderer-wandering-astrologer",
+    "name": "谈井宿",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 61, gaunt face, long straight white locks; night-blue star-embroidered robe, bone bead bracelet and bronze armillary disc."
+  },
+  {
+    "id": "wanderer-horseshoe-healer",
+    "name": "宁抚辔",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 37, broad cheekbones, short black hair tied at nape; rust riding coat, buckskin apron, herb wrap and folded horseshoe."
+  },
+  {
+    "id": "wanderer-bridge-architect",
+    "name": "邢梁安",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 35, clear angular jaw, side-tied black hair; river-gray robe with peach undercoat, miniature wooden arch and bamboo rule."
+  },
+  {
+    "id": "wanderer-lake-drummers",
+    "name": "姬鸣沼",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 28, tattoo-free copper face and high ponytail; russet festival jacket with teal cuffs, compact round painted hand drum."
+  },
+  {
+    "id": "wanderer-ink-swordsman",
+    "name": "梁挽墨",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 34, tall spare figure and small chin beard, melancholy eyes; black ink-wash cloak with white collar, brush case and sheathed sword."
+  },
+  {
+    "id": "wanderer-courthouse-archivist",
+    "name": "戚听简",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 53, pale straight brows and gray pinned hair; faded blue-grey scholar vest, geometric sleeves, cord-bound bamboo court records."
+  },
+  {
+    "id": "wanderer-migrating-trapper",
+    "name": "蒋留隼",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 44, dark freckles and broad jaw under cropped beard; olive mountain cape and layered gray boots, padded falconer glove."
+  },
+  {
+    "id": "wanderer-frost-weaver",
+    "name": "尹裁寒",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 62, tall with sharp pale eyes and gray braid crown; snow-white shawl over muted violet work skirt, wooden weaving shuttle."
+  },
+  {
+    "id": "wanderer-mountain-porter",
+    "name": "方捧岩",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 27, strong rounded shoulders and soft youthful adult face; stone-gray layered work coat, red sash, short carrying yoke."
+  },
+  {
+    "id": "wanderer-river-poet",
+    "name": "荆晚蓼",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 33, intense amber eyes and half-up loose hair; sea-green pleated poet robe, white feathered fan and blank scroll."
+  },
+  {
+    "id": "wanderer-market-broker",
+    "name": "程走街",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 40, round face and sly tilted eyebrows, tied black hair; cinnamon and indigo market robes, cloth purse and scale."
+  },
+  {
+    "id": "wanderer-bamboo-scribe",
+    "name": "石简秋",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Woman 55, fine wrinkles and steel-gray slanted bangs; sage high-collared robe, burgundy shawl, inkstone and bamboo tally slips."
+  },
+  {
+    "id": "wanderer-trail-monk",
+    "name": "明琮",
+    "role": "wanderer",
+    "sect": null,
+    "design": "Man 65, tall bald ascetic with soft tired eyes; gray-beige travel kasaya and faded plum cloak, wooden sandals and plain gourd."
+  }
+]
