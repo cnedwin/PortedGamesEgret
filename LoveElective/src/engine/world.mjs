@@ -6,7 +6,8 @@ import { W, H } from './stage.mjs';
 import { ambient, SCENE_W, SCENE_H } from '../art/scenes.mjs';
 import { loadCampusScene, paintCampusScene } from '../art/campus-art.mjs';
 import { hasLayeredHead, hasStoryPortrait, paintStoryCharacter } from '../art/character-art.mjs';
-import { drawFigure, FIGURE_W, FIGURE_H } from '../art/figure.mjs';
+import { drawFigure, FIGURE_W, FIGURE_H, FIGURE_TOP } from '../art/figure.mjs';
+import { footAnchor, metrics } from '../art/body.mjs';
 import { heart, star, ellipse, rgba } from '../art/draw.mjs';
 
 /** How far each layer shifts with the pointer, and how much it is enlarged so its edges never show. */
@@ -15,7 +16,7 @@ const DEPTH = { far: { shift: 10, zoom: 1.03 }, mid: { shift: 24, zoom: 1.06 }, 
 const LAYER_RES = { far: 0.5, mid: 0.8, near: 0.48 };
 
 /** The part of the figure redrawn for a blink: [x, y, w, h] in figure units. */
-const EYES = [126, 158, 148, 76];
+const EYES = [126, 146, 148, 92];
 
 const PARTICLES = {
   petal: {
@@ -160,15 +161,22 @@ export function createWorld(stage) {
         g.scale(scale, scale);
         g.translate(-cx, -cy);
         if (full && !blink) {
-          const shadow = g.createRadialGradient(200, 979, 4, 200, 979, 68);
-          shadow.addColorStop(0, rgba('#38252f', .42));
-          shadow.addColorStop(1, rgba('#38252f', 0));
+          const body = metrics(spec.sex);
+          const feet = [-1, 1].map(side => footAnchor(body, side));
+          const floor = feet[0].ground + FIGURE_TOP;
+          // A broad floor shadow plus contact shadow beneath each sole.
           g.save();
-          g.translate(200, 979);
-          g.scale(1, .22);
-          g.translate(-200, -979);
-          g.fillStyle = shadow;
-          g.fillRect(130, 909, 140, 140);
+          g.translate(FIGURE_W / 2, floor);
+          g.scale(1, .2);
+          const shadow = (x, size, opacity) => {
+            const fade = g.createRadialGradient(x, 0, 2, x, 0, size);
+            fade.addColorStop(0, rgba('#32232c', opacity));
+            fade.addColorStop(1, rgba('#32232c', 0));
+            g.fillStyle = fade;
+            g.fillRect(x - size, -size, size * 2, size * 2);
+          };
+          shadow(0, 97, .32);
+          feet.forEach(({ x, toe }, i) => shadow(x - FIGURE_W / 2 + (i ? 1 : -1) * toe * .28, 34, .43));
           g.restore();
         }
         if (!portrait || !paintStoryCharacter(g, spec)) drawFigure(g, spec, { blink });
@@ -302,14 +310,15 @@ export function createWorld(stage) {
     const a = world.actor;
     if (a) {
       a.t += dt;
-      const breathe = Math.sin(a.t * 1.7) * 0.004,
+      const breathe = a.full ? 0 : Math.sin(a.t * 1.7) * 0.004,
         hop = a.hop !== undefined && a.hop < 1 ? -Math.sin(a.hop * Math.PI) * 26 : 0;
       const z = world.zoom,
         g = a.group;
       g.scaleX = z;
       g.scaleY = z * (1 + breathe);
-      g.x = a.x - (a.w * z) / 2 + (a.offset ?? 0) - cam.x * DEPTH.actor.shift;
-      g.y = a.baseY - (z - 1) * a.h * 0.3 - breathe * a.h + hop - cam.y * DEPTH.actor.shift * 0.4;
+      const parallax = a.full ? 0 : DEPTH.actor.shift;
+      g.x = a.x - (a.w * z) / 2 + (a.offset ?? 0) - cam.x * parallax;
+      g.y = a.baseY - (z - 1) * a.h * 0.3 - breathe * a.h + hop - cam.y * parallax * 0.4;
       // Blinking: swap in the closed-eye patch for a moment every few seconds.
       a.nextBlink -= dt;
       if (a.nextBlink <= 0) {

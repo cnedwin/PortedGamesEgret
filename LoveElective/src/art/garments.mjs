@@ -1,7 +1,7 @@
 // Garment and accessory painters. Each entry draws one wearable piece on a
 // body of either build, in two dye colours (c1 main, c2 trim). The catalogue
 // data that goes with each id (name, price, style) lives in src/data/items.mjs.
-import { CX, halfWidth, torsoPoints, sleevePoints, legLine, metrics } from './body.mjs';
+import { CX, halfWidth, torsoPoints, sleevePoints, legLine, footAnchor, footOutline, metrics } from './body.mjs';
 import { drawCatalogueArt } from './catalogue-art.mjs';
 import { smooth, sym, tube, poly, paint, stroke, shade, mix, rgba, ellipse, rrect, star } from './draw.mjs';
 
@@ -75,40 +75,85 @@ function torso(g, B, c, opt, paintOpt = {}) {
   return path;
 }
 
-function sleeves(g, B, c, len, ease, cuff = 0, band) {
+function sleeves(g, B, c, len, ease, cuff = 0, band, contrast = false) {
   for (const s of [-1, 1]) {
-    const path = smooth(sleevePoints(B, s, len, ease, cuff));
-    const end = 268 + 244 * len;
-    const centre = CX + s * (B.sh + 1);
-    const edge = B.armU + ease + 7;
-    paint(g, path, c, { y0: 250, y1: end, top: shade(c, 0.12), bottom: shade(c, -0.18), x0: centre - edge, x1: centre + edge });
-    tailoredVolume(g, path, c, { left: centre - edge, right: centre + edge, top: 254, bottom: end });
+    const outline = sleevePoints(B, s, len, ease, cuff);
+    const n = outline.length / 2;
+    const left = outline.slice(0, n);
+    const right = outline.slice(n).reverse();
+    const outer = s < 0 ? left : right;
+    const inner = s < 0 ? right : left;
+    // Carry the cloth from the shoulder slope into the sleeve. The inside
+    // edge at the shoulder is a construction seam, so it has no outline.
+    outer.splice(0, 1,
+      [CX + s * (B.sh - 12 + ease * 0.45), 250],
+      [CX + s * (B.sh + 1 + ease * 0.67), 265],
+    );
+    inner[0] = [CX + s * (B.sh - 22), 253];
+    if (len === 1) {
+      outer.at(-1)[1] -= 5;
+      inner.at(-1)[1] -= 5;
+    }
+    const outerCuff = outer.at(-1);
+    const innerCuff = inner.at(-1);
+    const end = (outerCuff[1] + innerCuff[1]) / 2;
+    const cuffX = (outerCuff[0] + innerCuff[0]) / 2;
+    const cuffEdge = [cuffX, end + 1];
+    const path = smooth([...outer, cuffEdge, ...inner.slice().reverse()], true, 0.48);
+    const edge = shade(c, -0.43);
+    const xs = [...outer, ...inner].map(p => p[0]);
+    paint(g, path, c, {
+      line: 0, side: 0, y0: 237, y1: 470,
+      top: shade(c, 0.17), bottom: shade(c, -0.17),
+    });
+
+    g.save();
+    g.clip(path);
+    const fold = g.createLinearGradient(Math.min(...xs), 0, Math.max(...xs), 0);
+    fold.addColorStop(0, rgba(edge, s < 0 ? 0.25 : 0.38));
+    fold.addColorStop(s < 0 ? 0.26 : 0.36, rgba('#fff8ef', 0.12));
+    fold.addColorStop(s < 0 ? 0.64 : 0.74, rgba(c, 0));
+    fold.addColorStop(1, rgba(edge, s < 0 ? 0.28 : 0.2));
+    g.fillStyle = fold;
+    g.fillRect(Math.min(...xs), 245, Math.max(...xs) - Math.min(...xs), end - 237);
     if (band) {
-      // Coloured band at the end of the sleeve.
-      const y = 262 + 250 * len;
-      g.save();
-      g.clip(path);
+      const bandDepth = len < 0.5 ? 9 : 14;
       g.fillStyle = band;
-      g.fillRect(CX + s * 40 - 60, y - 12, 120, 30);
-      g.restore();
-      stroke(g, path, shade(c, -0.45), 1.6);
+      g.fillRect(0, end - bandDepth, 400, bandDepth + 6);
+      stroke(g, poly([[0, end - bandDepth], [400, end - bandDepth]], false), shade(band, -0.32), 1.1, 0.65);
+    } else if (len === 1) {
+      const at = ([x, y]) => [x, y - 11];
+      stroke(g, poly([at(outerCuff), at(innerCuff)], false), edge, 1.1, 0.64);
+    }
+    stroke(g, smooth([
+      [cuffX - s * 11, end - 40],
+      [cuffX - s * 5, end - 29],
+      [cuffX + s * 4, end - 23],
+    ], false), edge, 1.25, 0.48);
+    g.restore();
+
+    // Only the part below the armpit is exposed next to the torso.
+    const exposedInner = inner.slice(2).reverse();
+    if (len === 1) exposedInner.push([CX + s * (B.sh - 10), 339]);
+    stroke(g, smooth([...outer, cuffEdge, ...exposedInner], false, 0.48), edge, 1.45, 0.84);
+    if (contrast) {
+      stroke(g, smooth([outer[0], inner[0], inner[1], ...inner.slice(2, 3)], false), edge, 1.2, 0.74);
     }
   }
 }
 
-/** Skin showing at a neckline. depth is the lowest point of the opening. */
+/** Skin showing at a neckline, measured from the base of the neck. */
 function neckline(g, B, skin, depth, wide = 0) {
-  const p = smooth(
-    sym(
-      [
-        [CX - B.nw - 2 - wide, 233],
-        [CX - B.nw + 2 - wide * 0.4, 236 + (depth - 236) * 0.55],
-        [CX, depth, depth > 270 ? 1 : 0],
-      ],
-      CX,
-    ),
-  );
-  paint(g, p, skin, { y0: 225, y1: depth, side: 0, top: shade(skin, -0.12), bottom: skin, line: 1.3 });
+  const width = B.nw + 1 + wide;
+  const points = sym([
+    [CX - width, 235],
+    [CX - width * 0.81, 238 + (depth - 238) * 0.38],
+    [CX - width * 0.46, depth - 4],
+    [CX, depth, depth > 270 ? 1 : 0],
+  ], CX);
+  const path = smooth(points, true, 0.47);
+  paint(g, path, skin, { y0: 235, y1: depth, side: 0, top: shade(skin, -0.14), bottom: skin, line: 0 });
+  stroke(g, smooth(points, false, 0.47), shade(skin, -0.38), 1.1, 0.8);
 }
 
 function buttons(g, x, y0, y1, n, c) {
@@ -144,25 +189,31 @@ function rib(g, path, y0, y1, c) {
 // ------------------------------------------------------------ trousers and skirts
 
 function trousers(g, B, c, { w = 5, end = 892, taper = 0 } = {}) {
-  const half = [
-    [CX - B.waist - 2, 388, 1],
-    [CX - halfWidth(B, 430) - 2 - w * 0.3, 430],
-    [CX - B.hip - 2 - w * 0.5, 470],
-  ];
-  const ys = [560, 700, 785].filter(y => y < end - 20);
-  const width = y => legAt(B, -1, y)[1] + w - taper * Math.max(0, (y - 700) / 200);
-  for (const y of ys) half.push([legAt(B, -1, y)[0] - width(y), y]);
-  half.push([legAt(B, -1, end)[0] - width(end), end, 1], [legAt(B, -1, end)[0] + width(end) * 0.92, end, 1]);
-  for (const y of ys.reverse()) half.push([legAt(B, -1, y)[0] + width(y) * 0.9, y]);
-  half.push([CX - 1.5, 518, 1]);
-  const path = smooth(sym(half, CX), true, 0.4);
+  const ys = [535, 586, 682, 765, 839].filter(y => y < end - 18);
+  const width = (w0, y) => w0 + w - taper * Math.max(0, (y - 682) / 213);
+  const outline = s => {
+    const point = (y, side, corner) => {
+      const [x, radius] = legAt(B, s, y);
+      return [x + s * side * width(radius, y), y, corner];
+    };
+    return [
+      [CX + s * (B.waist + 2), 388, 1],
+      [CX + s * (halfWidth(B, 430) + 2 + w * 0.3), 430],
+      [CX + s * (B.hip + 2 + w * 0.5), 470],
+      ...ys.map(y => point(y, 1)),
+      point(end, 1, 1),
+      point(end, -1, 1),
+      ...ys.slice().reverse().map(y => point(y, -0.97)),
+    ];
+  };
+  const path = smooth([...outline(-1), [CX, 518, 1], ...outline(1).reverse()], true, 0.4);
   paint(g, path, c, { y0: 388, y1: end, top: shade(c, 0.13), bottom: shade(c, -0.19) });
   g.save();
   g.clip(path);
   for (const s of [-1, 1]) {
     const cx = y => legAt(B, s, Math.min(y, end))[0];
     const hemY = end - 10;
-    const knee = Math.min(hemY - 24, 698);
+    const knee = Math.min(hemY - 24, 682);
     const thigh = Math.min(knee - 18, 548);
     const side = smooth([[CX + s * (B.hip - 3), 445], [cx(thigh) + s * 10, thigh], [cx(knee) + s * 8, knee], [cx(hemY) + s * 4, hemY]], false);
     stroke(g, side, shade(c, -0.45), 1.8, 0.63);
@@ -268,8 +319,9 @@ function jacket(g, B, c, { ease = 6, hem = 478, open = 12, breakY = 0, flare = 0
   for (const s of [-1, 1]) {
     const pts = [
       [CX + s * (B.nw + 5), 234],
-      [CX + s * B.sh * 0.64, 242],
-      [CX + s * (B.sh + ease * 0.6), 257],
+      [CX + s * B.sh * 0.46, 244],
+      [CX + s * (B.sh * 0.79 + ease * 0.45), 257],
+      [CX + s * (B.sh + ease * 0.7), 272],
     ];
     for (const y of [292, 320, 396, 462, 560, 660])
       if (y < hem - 8) pts.push([CX + s * (halfWidth(B, Math.min(y, 506), ease) + (y > 470 ? (flare * (y - 470)) / 250 : 0)), y]);
@@ -301,73 +353,68 @@ function lapels(g, B, c, breakY, width = 26) {
 
 // ------------------------------------------------------------ shoes and legwear
 
-function shoe(g, B, s, c, { top = 888, sole, toe = 20, heel = 0, soleH = 6 }) {
-  const x = CX + s * B.hip * 0.42;
-  const pts = [
-    [x - s * 10, top, 1],
-    [x - s * 12, 934 - heel * 0.3],
-    [x - s * 9, 941],
-    [x + s * toe, 942],
-    [x + s * (toe + 3), 934],
-    [x + s * 10, 906],
-    [x + s * 10, top, 1],
-  ];
-  const path = smooth(pts, true, 0.45);
-  paint(g, path, c, { y0: top, y1: 944, top: shade(c, 0.15), bottom: shade(c, -0.25), side: 0.2 });
+function shoe(g, B, s, c, { top, sole, soleH, pointed = false, shaft = false }) {
+  const { x, y: ankleY, ankle, ground, toe } = footAnchor(B, s);
+  const at = (dx, y, corner) => [x + s * dx, y, corner];
+  const tip = toe + (pointed ? 4 : 3);
+  const cuff = shaft ? [top, top + 28, ankleY - 31, ankleY - 9] : [top];
+  const rim = side => cuff.map(y => {
+    const [lx, w] = legAt(B, s, y);
+    return [lx + s * side * (w + (shaft ? 3.4 : 2.7)), y, y === top ? 1 : 0];
+  });
+  const path = smooth([
+    ...rim(-1),
+    at(-ankle - 2.2, ankleY + 19),
+    at(-ankle + 0.4, ground - 2.1),
+    at(-0.5, ground + 0.9),
+    at(tip - 6, ground + 0.3),
+    at(tip + 0.9, ground - 4.5),
+    at(tip + (pointed ? 0.6 : -0.8), ground - 10.5),
+    at(tip - 8, ground - (pointed ? 15.5 : 17)),
+    at(ankle + 1, ankleY + 11),
+    ...rim(1).reverse(),
+  ], true, 0.56);
+  paint(g, path, c, {
+    y0: top, y1: ground, x0: x - 30, x1: x + 30, side: 0.21, line: 1.4,
+    top: shade(c, 0.16), bottom: shade(c, -0.18),
+  });
   g.save();
   g.clip(path);
-  stroke(g, smooth([[x - s * 7, 922], [x + s * 3, 925], [x + s * (toe - 2), 930]], false), shade(c, 0.42), 2.3, 0.63);
-  stroke(g, smooth([[x - s * 12, 936], [x + s * 4, 938], [x + s * toe, 937]], false), shade(c, -0.58), 1.2, 0.5);
+  const welt = [
+    at(-ankle - 5, ground - soleH - 4),
+    at(0, ground - soleH),
+    at(tip - 8, ground - soleH),
+    at(tip + 5, ground - soleH - 4),
+  ];
+  fill(g, smooth([...welt, at(tip + 6, ground + 8, 1), at(-ankle - 6, ground + 8, 1)], true, 0.32), sole);
+  stroke(g, smooth(welt, false, 0.32), shade(c, 0.32), 1, 0.64);
+  stroke(g, smooth([
+    at(-ankle + 1, ankleY + 18),
+    at(ankle - 3, ground - 19),
+    at(tip - 4, ground - 12),
+  ], false), shade(c, 0.52), 1.45, 0.65);
   g.restore();
-  if (sole) {
-    g.save();
-    g.clip(path);
-    g.fillStyle = sole;
-    g.fillRect(x - 40, 942 - soleH, 80, soleH + 4);
-    g.restore();
-    stroke(g, path, shade(c, -0.45), 1.6);
-  }
-  if (heel) {
-    g.fillStyle = shade(c, -0.3);
-    g.fill(
-      poly([
-        [x - s * 11, 930],
-        [x - s * 7, 930],
-        [x - s * 9, 944 + heel],
-        [x - s * 11, 944 + heel],
-      ]),
-    );
-  }
-  return x;
+  return { ankleY, ground, tip, at };
 }
 
 function legwear(g, B, c, from, alpha = 1, band) {
   g.save();
   g.globalAlpha = alpha;
   for (const s of [-1, 1]) {
-    const line = legLine(B, s).map(([x, y, w]) => [x, y, w + 0.8]);
-    const path = smooth(tube(line));
+    const line = legLine(B, s).slice(0, -1).map(([x, y, w]) => [x, y, w + 0.75]);
+    const outline = tube(line);
+    const left = outline.slice(0, line.length);
+    const right = outline.slice(line.length).reverse();
+    const [inner, outer] = s < 0 ? [right, left] : [left, right];
+    const column = footAnchor(B, s).x;
+    const foot = footOutline(B, s).map(([x, y]) => [x + Math.sign(x - column) * 0.7, y]);
+    const path = smooth([...inner, ...foot, ...outer.reverse()], true, 0.38);
     g.save();
     g.beginPath();
     g.rect(0, from, 400, 1000);
     g.clip();
-    paint(g, path, c, { y0: from, y1: 900, top: shade(c, 0.09), bottom: shade(c, -0.17) });
-    const column = CX + s * B.hip * 0.46;
-    tailoredVolume(g, path, c, { left: column - 20, right: column + 20, top: from, bottom: 900 });
-    const x = CX + s * B.hip * 0.42;
-    paint(
-      g,
-      smooth([
-        [x - 9, 892],
-        [x - 11, 925],
-        [x - 4, 940],
-        [x + s * 16, 940],
-        [x + s * 18, 930],
-        [x + 9, 898],
-      ]),
-      c,
-      { y0: 890, y1: 945, side: 0, line: 0 },
-    );
+    paint(g, path, c, { y0: from, y1: 942, top: shade(c, 0.09), bottom: shade(c, -0.17) });
+    tailoredVolume(g, path, c, { left: column - 24, right: column + 24, top: from, bottom: 940 });
     if (band) {
       g.fillStyle = band;
       g.save();
@@ -1204,7 +1251,7 @@ export const GARMENTS = {
       g.fillText('E', CX - B.bust + 14, 330);
     },
     sleeves(g, B, c1, c2) {
-      sleeves(g, B, c2, 1, 7.5, -3, c1);
+      sleeves(g, B, c2, 1, 7.5, -3, c1, true);
     },
   },
   trench: {
@@ -1297,33 +1344,11 @@ export const GARMENTS = {
     c: ['#ffffff', '#ff6b7a'],
     shoes(g, B, c1, c2) {
       for (const s of [-1, 1]) {
-        const x = shoe(g, B, s, c1, { top: 884, sole: shade(c1, -0.12), toe: 21, soleH: 7 });
-        stroke(
-          g,
-          smooth(
-            [
-              [x - s * 4, 912],
-              [x + s * 6, 922],
-              [x + s * 15, 920],
-            ],
-            false,
-          ),
-          c2,
-          3.2,
-        );
-        for (const d of [0, 6])
-          stroke(
-            g,
-            poly(
-              [
-                [x - s * 2, 894 + d],
-                [x + s * 7, 897 + d],
-              ],
-              false,
-            ),
-            shade(c1, -0.4),
-            1,
-          );
+        const { at, ankleY, ground, tip } = shoe(g, B, s, c1, { top: 882, sole: shade(c1, -0.16), soleH: 8 });
+        stroke(g, smooth([at(-5, ankleY + 16), at(5, ground - 21), at(tip - 7, ground - 16)], false), c2, 3.3);
+        for (const step of [1, 8, 15]) {
+          stroke(g, poly([at(-4, ankleY + step), at(7 + step * 0.22, ankleY + step + 2)], false), shade(c1, -0.42), 1.05);
+        }
       }
     },
   },
@@ -1332,19 +1357,9 @@ export const GARMENTS = {
     c: ['#5a3a2e', '#e8c25a'],
     shoes(g, B, c1, c2) {
       for (const s of [-1, 1]) {
-        const x = shoe(g, B, s, c1, { top: 900, sole: shade(c1, -0.4), toe: 19, soleH: 4 });
-        stroke(
-          g,
-          poly(
-            [
-              [x + s * 2, 914],
-              [x + s * 13, 918],
-            ],
-            false,
-          ),
-          c2,
-          3,
-        );
+        const { at, ankleY, ground, tip } = shoe(g, B, s, c1, { top: 895, sole: shade(c1, -0.45), soleH: 4.5 });
+        stroke(g, smooth([at(1, ankleY + 13), at(13, ground - 22), at(tip - 3, ground - 11)], false), shade(c1, 0.31), 1.3);
+        stroke(g, poly([at(2, ankleY + 18), at(12, ankleY + 21)], false), c2, 2.8);
       }
     },
   },
@@ -1353,25 +1368,12 @@ export const GARMENTS = {
     c: ['#3a3340', '#8a7f94'],
     shoes(g, B, c1, c2) {
       for (const s of [-1, 1]) {
-        const line = legLine(B, s)
-          .filter(p => p[1] > 760)
-          .map(([x, y, w]) => [x, y, w + 3]);
-        const [tx, tw] = legAt(B, s, 800);
-        paint(g, smooth(tube([[tx, 800, tw + 3], ...line])), c1, { y0: 800, y1: 900 });
-        const x = shoe(g, B, s, c1, { top: 880, sole: shade(c1, -0.5), toe: 20, soleH: 7 });
-        for (let y = 820; y < 900; y += 14)
-          stroke(
-            g,
-            poly(
-              [
-                [x - 4, y],
-                [x + 4, y + 3],
-              ],
-              false,
-            ),
-            c2,
-            1.4,
-          );
+        const { at, ankleY, ground, tip } = shoe(g, B, s, c1, { top: 800, sole: shade(c1, -0.51), soleH: 7, shaft: true });
+        stroke(g, smooth([at(7, 811), at(7, 853), at(6, ankleY + 3), at(tip - 5, ground - 15)], false), shade(c1, 0.37), 1.2, 0.83);
+        for (let y = 820; y < ankleY + 3; y += 12) {
+          const [x] = legAt(B, s, Math.min(y, ankleY));
+          stroke(g, poly([[x - s * 4, y], [x + s * 5, y + 2]], false), c2, 1.5, 0.86);
+        }
       }
     },
   },
@@ -1379,21 +1381,13 @@ export const GARMENTS = {
     slot: 'shoes',
     c: ['#d94a6a', '#ffffff'],
     only: 'f',
-    shoes(g, B, c1) {
+    shoes(g, B, c1, c2) {
       for (const s of [-1, 1]) {
-        const x = shoe(g, B, s, c1, { top: 916, toe: 20, heel: 4 });
-        stroke(
-          g,
-          poly(
-            [
-              [x - s * 9, 902],
-              [x + s * 9, 904],
-            ],
-            false,
-          ),
-          c1,
-          2.4,
-        );
+        const { at, ankleY, ground, tip } = shoe(g, B, s, c1, { top: 896, sole: shade(c1, -0.43), soleH: 3.8, pointed: true });
+        stroke(g, smooth([at(-7, ankleY + 5), at(1, ankleY + 7), at(9, ankleY + 10)], false), shade(c1, -0.45), 2.3);
+        const [buckleX, buckleY] = at(8, ankleY + 9);
+        metal(g, buckleX, buckleY, 1.7, c2);
+        stroke(g, smooth([at(9, ground - 15), at(tip - 7, ground - 12), at(tip, ground - 9)], false), shade(c1, 0.48), 1.4, 0.7);
       }
     },
   },

@@ -12,6 +12,17 @@ const headAnchors = {
   "bailu": [276, 498, 0.394],
   "hero": [237, 505, 0.367]
 };
+// Eye centre relative to each neck cutout, measured in the source image.
+const eyeOffsets = {
+  qingge: -214, linxia: -201, wanqing: -220, xinglan: -214,
+  zhiwei: -209, tangmi: -212, bailu: -229, hero: -226,
+};
+const NECK_Y = 237;
+const crownHeights = {
+  qingge: 74, linxia: 63, wanqing: 69, xinglan: 77,
+  zhiwei: 78, tangmi: 84, bailu: 60, hero: 75,
+};
+
 const coverUrl = new URL('../../assets/characters/cover.webp', import.meta.url);
 let cover;
 let coverPromise;
@@ -64,11 +75,40 @@ export function hasLayeredHead(spec) {
   return sameHair(spec, look);
 }
 
+function headScale(spec, authoredScale) {
+  return authoredScale * (spec.id === 'hero' ? .88 : .91);
+}
+
+export function layeredCrownY(spec) {
+  return crownHeights[spec.id];
+}
+
+export function layeredEyeY(spec) {
+  return NECK_Y + eyeOffsets[spec.id] * headScale(spec, headAnchors[spec.id][2]);
+}
+
 export function paintLayeredHead(g, spec) {
   const image = heads.get(spec.id);
   const [cx, neck, authoredScale] = headAnchors[spec.id];
-  const scale = authoredScale * (spec.id === 'hero' ? .9 : .93);
-  g.drawImage(image, 200 - cx * scale, 245 - neck * scale, image.naturalWidth * scale, image.naturalHeight * scale);
+  const scale = headScale(spec, authoredScale);
+  g.save();
+  if (spec.id === 'hero') {
+    // The portrait cutout includes part of the old neck. Trim that
+    // wider section under the jaw into the continuous neck of the new rig.
+    const cut = new Path2D();
+    cut.moveTo(0, 0);
+    cut.lineTo(400, 0);
+    cut.lineTo(400, 211);
+    cut.quadraticCurveTo(225, 211, 217, 218);
+    cut.quadraticCurveTo(214, 225, 213, 239);
+    cut.lineTo(187, 239);
+    cut.quadraticCurveTo(186, 225, 183, 218);
+    cut.quadraticCurveTo(175, 211, 0, 211);
+    cut.closePath();
+    g.clip(cut);
+  }
+  g.drawImage(image, 200 - cx * scale, NECK_Y - neck * scale, image.naturalWidth * scale, image.naturalHeight * scale);
+  g.restore();
 }
 
 function samePiece(current, base) {

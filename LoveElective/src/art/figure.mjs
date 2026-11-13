@@ -3,107 +3,90 @@
 // their expression), in a 400 x 1000 drawing space with the feet near y = 940.
 import { smooth, sym, tube, paint, stroke, shade, mix, rgba, ellipse } from './draw.mjs';
 import { GARMENTS } from './garments.mjs';
-import { hasLayeredHead, paintLayeredHead } from './character-art.mjs';
+import { hasLayeredHead, paintLayeredHead, layeredEyeY, layeredCrownY } from './character-art.mjs';
 
-import { CX, metrics, torsoPoints, armLine, legLine } from './body.mjs';
+import { CX, metrics, torsoPoints, armLine, legLine, footOutline } from './body.mjs';
 export { CX, FIGURE_W, FIGURE_H, metrics } from './body.mjs';
 
-/** Enlargement of the head, and the space left above it so hats fit in the picture. */
-export const HEAD_SCALE = 1.17;
+// Leave room above the crown for hairstyles and hats.
+export const HEAD_SCALE = 1.05;
 export const FIGURE_TOP = 44;
 
 // ---------------------------------------------------------------- body
 
+// Replace the flat end of a limb with its hand or foot so the wrist and
+// ankle stay continuous on bare skin as well as under a cuff.
+function limbWithEnd(line, end, s) {
+  const outline = tube(line);
+  const split = line.length;
+  return smooth([
+    ...outline.slice(0, split - 1),
+    ...(s > 0 ? end : end.slice().reverse()),
+    ...outline.slice(split + 1),
+  ], true, .38);
+}
+
 function drawLegs(g, B, skin) {
   for (const s of [-1, 1]) {
-    paint(g, smooth(tube(legLine(B, s))), skin, { y0: 470, y1: 900, side: 0.14 });
-    // Bare foot, normally hidden by shoes.
-    const x = CX + s * B.hip * 0.42;
-    paint(
-      g,
-      smooth([
-        [x - 9, 892],
-        [x - 11, 925],
-        [x - 4, 940],
-        [x + s * 16, 940],
-        [x + s * 18, 930],
-        [x + 9, 898],
-      ]),
-      skin,
-      { y0: 890, y1: 945, side: 0 },
-    );
+    const line = legLine(B, s);
+    const [x] = line.at(-1);
+    paint(g, limbWithEnd(line, footOutline(B, s), s), skin, {
+      y0: 470, y1: 942, x0: x - 27, x1: x + 27, side: .19, line: 1.2,
+      stroke: mix(skin, '#68465b', .48),
+    });
   }
 }
 
 function drawTorsoSkin(g, B, skin) {
-  // Neck first, then the torso over it.
-  paint(
-    g,
-    smooth(
-      sym(
-        [
-          [CX - B.nw, 196],
-          [CX - B.nw + 1, 232],
-          [CX - B.nw - 6, 248, 1],
-        ],
-        CX,
-      ),
-    ),
-    skin,
-    { y0: 190, y1: 250, side: 0.1, bottom: shade(skin, -0.14) },
-  );
-  paint(g, smooth(torsoPoints(B)), skin, { y0: 236, y1: 506, side: 0.14 });
-  // Collar-bone hints.
-  for (const s of [-1, 1])
-    stroke(
-      g,
-      smooth(
-        [
-          [CX + s * 8, 252],
-          [CX + s * 26, 249],
-          [CX + s * 40, 253],
-        ],
-        false,
-      ),
-      shade(skin, -0.3),
-      1.1,
-      0.5,
-    );
+  const n = B.nw;
+  const neck = smooth(sym([
+    [CX - n * .88, 203],
+    [CX - n * .85, 221],
+    [CX - n, 234],
+    [CX - n - 5, 243],
+    [CX - n - 12, 252],
+  ], CX), true, .37);
+  const shadow = mix(skin, '#8a526b', .47);
+  paint(g, neck, skin, { y0: 209, y1: 251, top: shadow, bottom: shade(skin, .07), line: 0, side: .22, x0: CX - n, x1: CX + n });
+  paint(g, smooth(torsoPoints(B)), skin, {
+    y0: 238, y1: 506, side: .22, x0: CX - B.sh, x1: CX + B.sh, line: 1.2,
+    stroke: mix(skin, '#68465b', .48),
+  });
+  for (const s of [-1, 1]) {
+    stroke(g, smooth([
+      [CX + s * 5, 253],
+      [CX + s * 19, 248],
+      [CX + s * 36, 252],
+    ], false), shadow, 1.1, .66);
+  }
 }
 
 function drawArms(g, B, skin) {
-  for (const s of [-1, 1]) paint(g, smooth(tube(armLine(B, s))), skin, { y0: 250, y1: 520, side: 0.12 });
-}
-
-function drawHands(g, B, skin) {
   for (const s of [-1, 1]) {
-    const [x, , w] = armLine(B, s).at(-1);
-    const pts = [
-      [-w, 507],
-      [-w - 3, 520],
-      [-w - 2, 534],
-      [-w + 2, 531],
-      [-w + 2, 545],
-      [1, 555],
-      [w - 1, 551],
-      [w + 2, 537],
-      [w + 1, 520],
-      [w, 507],
-    ].map(([dx, y]) => [x + s * dx, y]);
-    paint(g, smooth(pts), skin, { y0: 505, y1: 560, side: 0.1 });
-    stroke(
-      g,
-      smooth(
-        [
-          [x - s * 1.6, 537],
-          [x + s * .5, 549],
-        ],
-        false,
-      ),
-      shade(skin, -0.35),
-      1,
-      0.6,
-    );
+    const line = armLine(B, s);
+    const [x, y, w] = line.at(-1);
+    // The palm tapers into bent fingers. The thumb sits on the inside of
+    // the relaxed hand, with a crease between it and the forefinger.
+    const hand = [
+      [-w, -3], [-w - 1, 8], [-w - 5, 16], [-w - 4, 22],
+      [-w - 1, 21], [-w + 2, 15], [-w + 1, 28],
+      [-w + 3, 34], [-1, 38], [w - 2, 35], [w + 1, 28],
+      [w + 2, 17], [w + 1, 8], [w, -3],
+    ].map(([dx, dy]) => [x + s * dx, y + dy]);
+    const path = limbWithEnd(line, hand, s);
+    const shadeLine = mix(skin, '#68465b', .5);
+    paint(g, path, skin, {
+      y0: 250, y1: y + 38, x0: x - 20, x1: x + 21, side: .25,
+      top: shade(skin, .1), bottom: mix(skin, '#b97576', .22), line: 1.25, stroke: shadeLine,
+    });
+    const creases = [
+      [[-w + 2, 16], [-w + 4, 22], [-w + 3, 26]],
+      [[0, 25], [-1, 31], [0, 35]],
+      [[w - 3, 25], [w - 3, 31], [w - 2, 33]],
+    ];
+    for (const crease of creases) {
+      stroke(g, smooth(crease.map(([dx, dy]) => [x + s * dx, y + dy]), false), shadeLine, .88, .75);
+    }
   }
 }
 
@@ -865,6 +848,26 @@ function worn(spec, slot) {
   return { def, c: [w.c?.[0] ?? def.c[0], w.c?.[1] ?? def.c[1]] };
 }
 
+// Match hatbands to the crown and keep the ear cups at the sides of the face.
+function fitHeadwear(g, id, crown, illustrated) {
+  switch (id) {
+    case 'beret':
+      g.translate(0, crown - 53);
+      break;
+    case 'cap':
+      g.translate(0, illustrated ? crown - 69 : -5);
+      break;
+    case 'bow':
+      g.translate(illustrated ? -10 : -5, crown - 27);
+      break;
+    case 'headphones':
+      g.translate(0, 153);
+      g.scale(1, (156 - crown) / 127);
+      g.translate(0, -153);
+      break;
+  }
+}
+
 function part(g, B, item, name, spec) {
   if (item && item.def[name]) item.def[name](g, B, item.c[0], item.c[1], spec);
 }
@@ -885,11 +888,10 @@ export function drawFigure(g, spec, { blink = false } = {}) {
     shoes = worn(spec, 'shoes'),
     legs = worn(spec, 'legs');
   const acc = (spec.wear?.acc ?? [])
-    .map(a => ({ def: GARMENTS[a.id], c: [a.c?.[0] ?? GARMENTS[a.id]?.c[0], a.c?.[1] ?? GARMENTS[a.id]?.c[1]] }))
+    .map(a => ({ id: a.id, def: GARMENTS[a.id], c: [a.c?.[0] ?? GARMENTS[a.id]?.c[0], a.c?.[1] ?? GARMENTS[a.id]?.c[1]] }))
     .filter(a => a.def);
 
-  // The head is drawn a little larger than life around the chin, as in anime
-  // proportions; `head` applies that enlargement to everything attached to it.
+  // Use the same scale and pivot for the head, hair and attached accessories.
   const head = draw => {
     g.save();
     g.translate(CX, 216);
@@ -898,11 +900,17 @@ export function drawFigure(g, spec, { blink = false } = {}) {
     draw();
     g.restore();
   };
-  const accessories = layer => {
-    for (const a of acc) if (a.def.layer === layer) a.def.draw(g, B, a.c[0], a.c[1], spec);
-  };
-
   const illustrated = hasLayeredHead(spec);
+  const crown = illustrated ? layeredCrownY(spec) : 44;
+  const accessories = layer => {
+    for (const a of acc) {
+      if (a.def.layer !== layer) continue;
+      g.save();
+      if (layer === 'head') fitHeadwear(g, a.id, crown, illustrated);
+      a.def.draw(g, B, a.c[0], a.c[1], spec);
+      g.restore();
+    }
+  };
   g.save();
   g.translate(0, FIGURE_TOP);
   if (!illustrated) head(() => drawHairBack(g, spec.hair));
@@ -910,8 +918,8 @@ export function drawFigure(g, spec, { blink = false } = {}) {
   drawLegs(g, B, spec.skin);
   part(g, B, legs, 'legs', spec);
   part(g, B, shoes, 'shoes', spec);
-  drawTorsoSkin(g, B, spec.skin);
   drawArms(g, B, spec.skin);
+  drawTorsoSkin(g, B, spec.skin);
   const tucked = top && top.def.tuck && !dress;
   if (tucked) part(g, B, top, 'torso', spec);
   if (!dress) part(g, B, bottom, 'bottom', spec);
@@ -923,12 +931,14 @@ export function drawFigure(g, spec, { blink = false } = {}) {
   accessories('neck');
   part(g, B, outer, 'torso', spec);
   part(g, B, outer, 'sleeves', spec);
-  drawHands(g, B, spec.skin);
   accessories('body');
   head(() => {
     if (illustrated) paintLayeredHead(g, spec);
     else drawHead(g, spec, e, blink);
+    g.save();
+    if (illustrated) g.translate(0, layeredEyeY(spec) - 160);
     accessories('face');
+    g.restore();
     if (!illustrated) drawHairFront(g, spec.hair);
     accessories('head');
   });
@@ -944,7 +954,6 @@ export function drawMannequin(g, sex) {
   drawLegs(g, B, c);
   drawTorsoSkin(g, B, c);
   drawArms(g, B, c);
-  drawHands(g, B, c);
   paint(
     g,
     smooth(
