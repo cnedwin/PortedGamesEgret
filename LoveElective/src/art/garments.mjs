@@ -439,7 +439,7 @@ export const GARMENTS = {
     slot: 'top',
     c: ['#f6ecdc', '#cc755d'],
     torso(g, B, c1, c2, spec) {
-      const p = torso(g, B, c1, { ease: 4, hem: 448 });
+      const p = torso(g, B, c1, { ease: 5, hem: 464 });
       g.save();
       g.clip(p);
       // Screen-printed campus silhouette with transparent cloth folds beneath.
@@ -472,7 +472,7 @@ export const GARMENTS = {
       );
     },
     sleeves(g, B, c1, c2) {
-      sleeves(g, B, c1, .3, 5.5, 1);
+      sleeves(g, B, c1, .29, 3.2);
     },
   },
   hoodie: {

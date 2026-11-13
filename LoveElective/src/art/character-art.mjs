@@ -66,7 +66,8 @@ export function hasLayeredHead(spec) {
 
 export function paintLayeredHead(g, spec) {
   const image = heads.get(spec.id);
-  const [cx, neck, scale] = headAnchors[spec.id];
+  const [cx, neck, authoredScale] = headAnchors[spec.id];
+  const scale = authoredScale * (spec.id === 'hero' ? .9 : .93);
   g.drawImage(image, 200 - cx * scale, 245 - neck * scale, image.naturalWidth * scale, image.naturalHeight * scale);
 }
 

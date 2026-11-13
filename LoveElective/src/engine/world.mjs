@@ -159,6 +159,18 @@ export function createWorld(stage) {
       stage.canvas(cw * scale, ch * scale, res, g => {
         g.scale(scale, scale);
         g.translate(-cx, -cy);
+        if (full && !blink) {
+          const shadow = g.createRadialGradient(200, 979, 4, 200, 979, 68);
+          shadow.addColorStop(0, rgba('#38252f', .42));
+          shadow.addColorStop(1, rgba('#38252f', 0));
+          g.save();
+          g.translate(200, 979);
+          g.scale(1, .22);
+          g.translate(-200, -979);
+          g.fillStyle = shadow;
+          g.fillRect(130, 909, 140, 140);
+          g.restore();
+        }
         if (!portrait || !paintStoryCharacter(g, spec)) drawFigure(g, spec, { blink });
       });
     const body = paintFigure(false, [0, 0, FIGURE_W, crop]);

@@ -9,8 +9,8 @@ export const CX = 200;
 /** Body measurements (half widths) for the two builds. */
 export function metrics(sex) {
   return sex === 'm'
-    ? { sex, nw: 15, sh: 69, bust: 50, waist: 43, hip: 46, armU: 15, armL: 12, wrist: 9, thigh: 23, knee: 16, calf: 17, ankle: 10 }
-    : { sex, nw: 12, sh: 55, bust: 43, waist: 31, hip: 49, armU: 12, armL: 9.5, wrist: 7.5, thigh: 24.5, knee: 14.5, calf: 15, ankle: 8.5 };
+    ? { sex, nw: 16, sh: 82, bust: 62, waist: 51, hip: 54, armU: 17, armL: 13, wrist: 9, thigh: 27, knee: 18, calf: 19, ankle: 12 }
+    : { sex, nw: 13, sh: 64, bust: 48, waist: 35, hip: 53, armU: 13, armL: 10, wrist: 7.5, thigh: 26, knee: 16, calf: 16, ankle: 9.5 };
 }
 
 const PROFILE_Y = [254, 292, 320, 396, 462, 506];
@@ -45,8 +45,8 @@ export function armLine(B, s) {
   return [
     [CX + s * (B.sh - 12), 252, B.armU - 2],
     [CX + s * (B.sh - 5), 268, B.armU],
-    [CX + s * (B.sh + 5), 392, (B.armU + B.armL) / 2],
-    [CX + s * (B.sh + 10), 512, B.wrist],
+    [CX + s * (B.sh + 2), 390, (B.armU + B.armL) / 2],
+    [CX + s * (B.sh + 4), 512, B.wrist],
   ];
 }
 

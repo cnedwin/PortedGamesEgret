@@ -77,24 +77,26 @@ function drawArms(g, B, skin) {
 
 function drawHands(g, B, skin) {
   for (const s of [-1, 1]) {
-    const x = CX + s * (B.sh + 11),
-      w = B.wrist;
+    const [x, , w] = armLine(B, s).at(-1);
     const pts = [
-      [x - w, 508],
-      [x - w - 3, 532],
-      [x - w + 1, 552],
-      [x + s * 2, 560],
-      [x + w + 1, 548],
-      [x + w + 2, 528],
-      [x + w, 508],
-    ];
+      [-w, 507],
+      [-w - 3, 520],
+      [-w - 2, 534],
+      [-w + 2, 531],
+      [-w + 2, 545],
+      [1, 555],
+      [w - 1, 551],
+      [w + 2, 537],
+      [w + 1, 520],
+      [w, 507],
+    ].map(([dx, y]) => [x + s * dx, y]);
     paint(g, smooth(pts), skin, { y0: 505, y1: 560, side: 0.1 });
     stroke(
       g,
       smooth(
         [
-          [x - 2, 540],
-          [x - 1, 556],
+          [x - s * 1.6, 537],
+          [x + s * .5, 549],
         ],
         false,
       ),
