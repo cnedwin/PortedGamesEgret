@@ -176,5 +176,13 @@ export const EVENTS = [
     { label: '出兵剿灭', hint: '正邪 +20，威望 +12，银 +100；或有人受伤', gives: { virtue: 20, renown: 12, silver: 100 }, risk: { chance: 0.2, gives: { virtue: 10, wound: 0.3 }, text: '山贼凭险顽抗，本派高手负了伤才将其击溃。' }, text: '贼寨一把火烧了，缴获的财物分了一半给苦主。' },
     { label: '收编为外围', hint: '银 +200，正邪 −30', gives: { silver: 200, virtue: -30 }, text: '山贼头子献上孝敬，从此打着本派的旗号行事。' },
     { label: '严守山门，不去理会', hint: '无事', gives: {}, text: '山贼望着山门上的弓弩，没敢上来。' }] },
+  { id: 'relic', title: '神兵现世', text: '传闻一处古墓塌了半边，露出一口刻着铭文的石匣。几路人马都在往那里赶。', choices: [
+    { label: '派高手去取', hint: '或得神兵；高手或有损伤', gives: { relic: true, renown: 10 }, risk: { chance: 0.4, gives: { wound: 0.3 }, text: '去晚了一步，石匣已空，还与人动了手。' }, text: '本派高手带回一件神兵，可在弟子页赐予合用之人。' },
+    { label: '重金向得主收购', hint: '银 −800，必得神兵', cost: 800, gives: { relic: true }, text: '银货两讫，神兵入库。' },
+    { label: '不凑这个热闹', hint: '无事', gives: {}, text: '听说为那口石匣死了不少人。' }] },
+  { id: 'pirates', title: '海寇', text: '沿海传来急报：海寇的船队在近海游弋，已有渔村被焚。本派在海边的据点首当其冲。', when: (books, state) => ['yangzhou', 'quanzhou', 'lingnan', 'tiantai'].some((id) => state.places[id].owner === state.playerSect), choices: [
+    { label: '整兵迎击', hint: '威望 +20，正邪 +15，朝廷 +8；高手或有损伤', gives: { renown: 20, virtue: 15, court: 8, wound: 0.3 }, text: '海寇在滩头丢下十几条船，退回了海上。' },
+    { label: '出钱请官军', hint: '银 −300，朝廷 +5', cost: 300, gives: { court: 5 }, text: '官军的战船到了，海寇闻风而遁。' },
+    { label: '坚壁清野', hint: '银 −150，粮 −20', gives: { silver: -150, grain: -20 }, text: '海寇抢走了来不及运走的粮货。' }] },
 ];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((event) => [event.id, event]));

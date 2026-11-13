@@ -1,6 +1,8 @@
 // Saving and loading. A save is the world written as text, wrapped with a
 // version and a checksum. The page keeps saves in the browser and can also
 // hand one to the player as a file, or take one back.
+import { applyIdentity } from '../data/sects.mjs';
+import { registerCustom } from './extras.mjs';
 import { SAVE_VERSION } from './world.mjs';
 
 const MAGIC = 'wulin-save';
@@ -49,6 +51,9 @@ export function deserialize(text) {
     if (!step) return { ok: false, why: `无法升级第 ${state.version} 版存档` };
     step(state);
   }
+  // A world carries the arts its sects founded and, perhaps, a sect's own name; make them known.
+  registerCustom(state);
+  applyIdentity(state.options?.custom);
   return { ok: true, state, label: file.label ?? '' };
 }
 

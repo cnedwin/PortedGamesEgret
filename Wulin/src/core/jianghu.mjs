@@ -7,6 +7,7 @@
 import { commonArt } from '../data/arts.mjs';
 import { EVENT_BY_ID, EVENTS, FORMATIONS, HOUSE_RULES, TALENTS, WANDERER_BY_ID, WANDERERS } from '../data/jianghu.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
+import { findRelic } from './extras.mjs';
 import { autoWheel, equipFor, growTo, prowess, rollPerson } from './persons.mjs';
 import { clamp } from './rng.mjs';
 
@@ -29,6 +30,8 @@ export function modsOf(state, sectId) {
   const sources = [HOUSE_RULES[state.sects[sectId]?.rule ?? 'plain'] ?? HOUSE_RULES.plain];
   for (const key of new Set(members(state, sectId).map((person) => person.talent).filter(Boolean))) if (TALENTS[key]) sources.push(TALENTS[key]);
   for (const source of sources) for (const [key, value] of Object.entries(source.mods)) total[key] += value;
+  // A wanderer whose wish was granted gives their talent twice over.
+  for (const person of members(state, sectId)) if (person.talentDeep && TALENTS[person.talent]) for (const [key, value] of Object.entries(TALENTS[person.talent].mods)) total[key] += value;
   return (kept.bySect[sectId] = total);
 }
 /** Call after changing who is in a sect or its rule within a day. */
@@ -94,7 +97,7 @@ export function join(state, sectId, wandererId, rng) {
     books = state.sects[sectId];
   const place = state.persons[books.leaderId]?.place ?? Object.keys(state.places).find((id) => state.places[id].owner === sectId);
   const person = rollPerson(rng, { quality: 74, lean: wanderer.aptitude, school: sectId, place, female: wanderer.female });
-  Object.assign(person, { name: wanderer.name, age: wanderer.age, portraitId: wanderer.id, talent: wanderer.talent, origin: '江湖奇人', rank: 3, loyalty: 75 });
+  Object.assign(person, { name: wanderer.name, age: wanderer.age, portraitId: wanderer.id, talent: wanderer.talent, origin: '江湖奇人', rank: 3, loyalty: 75, joined: state.day });
   growTo(person, wanderer.level);
   const klass = { fist: 'fist', blade: 'sword', pole: 'staff', dart: 'dart', inner: 'palm' }[wanderer.aptitude];
   for (const tier of [1, 2, 3]) for (const k of [klass, 'inner']) person.arts[commonArt(k, tier).id] = tier === 3 ? 500 : 800;
@@ -118,6 +121,15 @@ export function pendingView(state) {
     for (const [key, amount] of Object.entries(choice.needs ?? {})) if (books[key] < amount) return { grain: '粮草不足', renown: '威望不足' }[key] ?? '条件不足';
     return '';
   };
+  if (pending.kind === 'siege') return null;
+  if (pending.kind === 'wish') {
+    const person = state.persons[pending.person];
+    if (!person) return (state.pending = null);
+    const cost = 150 + person.level * 10;
+    return { kind: 'wish', title: `心愿 · ${person.name}`, portraitId: person.portraitId, expression: 'worried', text: `${person.name}入门已有时日，这天来见掌门，说起一桩放不下的旧事：故人所托未了，需要些盘缠和人手。若能了此心愿，此人愿倾囊相授。`, choices: [
+      { label: '倾力相助', hint: `银 −${cost}，其天赋之效加倍，忠诚 +20`, cost, why: check({ cost }) },
+      { label: '好言宽慰', hint: '忠诚 −5', why: '' }] };
+  }
   if (pending.kind === 'visit') {
     const w = WANDERER_BY_ID[pending.who],
       talent = TALENTS[w.talent];
@@ -142,6 +154,20 @@ export function resolvePending(state, index, rng) {
   const pending = state.pending;
   state.pending = null;
   let text;
+  if (pending.kind === 'wish') {
+    const person = state.persons[pending.person];
+    if (index === 0) {
+      books.silver -= view.choices[0].cost;
+      person.talentDeep = true;
+      person.loyalty = clamp(person.loyalty + 20, 0, 100);
+      forgetMods();
+      log(state, 'event', `${person.name}心愿得偿，自此倾囊相授。`, sectId);
+      return { ok: true, text: `${person.name}了却旧事归来，长揖到地：“此身此艺，尽付本派。”`, expression: 'happy', portraitId: person.portraitId };
+    }
+    person.loyalty = clamp(person.loyalty - 5, 0, 100);
+    person.wished = true;
+    return { ok: true, text: `${person.name}默然良久，告退而去。` };
+  }
   if (pending.kind === 'visit') {
     const w = WANDERER_BY_ID[pending.who];
     if (index === 0) (books.silver -= hireCost(w)), join(state, sectId, w.id, rng), (text = `${w.name}收下聘礼，留了下来。`);
@@ -155,6 +181,7 @@ export function resolvePending(state, index, rng) {
   if (choice.cost) books.silver -= choice.cost;
   const risky = choice.risk && rng.chance(choice.risk.chance);
   apply(state, sectId, risky ? choice.risk.gives : choice.gives);
+  if (choice.gives.relic && !risky) findRelic(state, sectId, rng);
   if (choice.gives.applicant && !risky) {
     const placeId = state.persons[books.leaderId]?.place;
     if (placeId) state.places[placeId].applicants.unshift(rollPerson(rng, { quality: choice.gives.applicant, place: placeId }));
@@ -179,10 +206,18 @@ export function xunOfJianghu(state, rng) {
   const books = state.sects[state.playerSect];
   if (!books?.alive || state.pending || state.options.autoPlayer) return;
   if (!rng.chance(0.14)) return;
+  // Someone who came in from the road may, after half a year, speak of what they left undone.
+  const wishful = members(state, state.playerSect).find((person) => person.talent && !person.talentDeep && !person.wished && state.day - (person.joined ?? state.day) > 180);
+  if (wishful && rng.chance(0.5)) {
+    wishful.wished = true;
+    state.pending = { kind: 'wish', person: wishful.id };
+    if (!state.options.interactive) resolvePending(state, 1, rng);
+    return;
+  }
   const unmet = WANDERERS.filter((w) => !state.met?.[w.id]);
   if (unmet.length && rng.chance(0.35)) state.pending = { kind: 'visit', who: rng.pick(unmet).id };
   else {
-    const fitting = EVENTS.filter((event) => event.id !== state.lastEvent && (!event.when || event.when(books)));
+    const fitting = EVENTS.filter((event) => event.id !== state.lastEvent && (!event.when || event.when(books, state)));
     // Trouble with the court does not wait its turn.
     const urgent = fitting.filter((event) => event.when);
     const event = urgent.length && rng.chance(0.5) ? rng.pick(urgent) : rng.pick(fitting);
@@ -192,7 +227,7 @@ export function xunOfJianghu(state, rng) {
   if (!state.options.interactive) {
     // Nobody is watching: invite a visitor without spending, and meet an event with its last, most cautious answer.
     const view = pendingView(state);
-    const index = view.kind === 'visit' ? 1 : view.choices.findLastIndex((choice) => !choice.why);
+    const index = !view ? -1 : view.kind === 'visit' ? 1 : view.choices.findLastIndex((choice) => !choice.why);
     if (index < 0) state.pending = null;
     else resolvePending(state, index, rng);
   }

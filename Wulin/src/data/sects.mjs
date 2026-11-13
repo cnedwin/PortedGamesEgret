@@ -78,3 +78,21 @@ export const OFFICES = {
   alchemy: { name: '丹房长老', scope: 'sect', boosts: ['pill'], amount: 0.2 },
   forge: { name: '器房长老', scope: 'sect', boosts: ['forge'], amount: 0.2 },
 };
+
+/** The sects as designed, kept so a world's own names can be put on and taken off again. */
+const DESIGNED = Object.fromEntries(SECTS.map((sect) => [sect.id, { name: sect.name, leader: { ...sect.leader } }]));
+
+/**
+ * A player may found a sect of their own: it takes over one of the twelve
+ * (its seat, arts and colour) under a new name and a new leader. The world
+ * records that as `{ sect, name, leader, female }`; this puts those names on,
+ * and takes off whatever an earlier world had put on. Call it when a world
+ * starts or loads.
+ */
+export function applyIdentity(custom) {
+  for (const sect of SECTS) Object.assign(sect, { name: DESIGNED[sect.id].name, leader: { ...DESIGNED[sect.id].leader } });
+  const sect = SECT_BY_ID[custom?.sect];
+  if (!sect) return;
+  if (custom.name) sect.name = String(custom.name).slice(0, 6);
+  if (custom.leader) sect.leader = { ...sect.leader, name: String(custom.leader).slice(0, 6), female: !!custom.female, age: 30 };
+}
