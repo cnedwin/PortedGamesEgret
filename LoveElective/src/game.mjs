@@ -2,11 +2,13 @@
 // current save, language, and the small pieces all screens use (top bar,
 // pop-up messages, portraits, fades).
 import { createStage, W, H } from './engine/stage.mjs';
-import { createUI, THEME } from './engine/ui.mjs';
+import { createUI, THEME, SERIF } from './engine/ui.mjs';
 import { createWorld } from './engine/world.mjs';
 import { createAudio } from './audio.mjs';
 import { drawFigure, FIGURE_TOP } from './art/figure.mjs';
-import { rgba, ellipse } from './art/draw.mjs';
+import { paintPortrait } from './art/character-art.mjs';
+import { loadItemArt } from './art/icons.mjs';
+import { rgba, ellipse, rrect, poly } from './art/draw.mjs';
 import { HEROINES, HERO } from './data/cast.mjs';
 import { SLOTS_OF_DAY, WEEKDAYS, DAYS_IN_TERM } from './data/places.mjs';
 import * as sim from './sim.mjs';
@@ -30,11 +32,11 @@ function writeStorage(key, value) {
 }
 
 export async function createGame(canvas, options) {
-  const stage = await createStage(canvas, options);
+  const [stage] = await Promise.all([createStage(canvas, options), loadItemArt()]);
   const world = createWorld(stage);
   const uiLayer = stage.group();
   const ui = createUI(stage, uiLayer);
-  const curtain = stage.rect(stage.root, 0x14122a);
+  const curtain = stage.rect(stage.root, 0x1d192a);
   curtain.alpha = 1;
   const audio = createAudio();
   ui.onTap = () => audio.play('tap');
@@ -82,8 +84,8 @@ export async function createGame(canvas, options) {
   /** The description the character painter needs for the hero or a senior, as currently dressed. */
   game.spec = (who, expr = 'normal') => {
     const s = game.state;
-    if (who === 'hero') return { ...HERO.look, hair: s?.hero.hair ?? HERO.look.hair, wear: s?.hero.wear ?? HERO.wear, expr };
-    return { ...HEROINES[who].look, wear: s?.girls[who].wear ?? HEROINES[who].outfits.uniform, expr };
+    if (who === 'hero') return { ...HERO.look, id: who, hair: s?.hero.hair ?? HERO.look.hair, wear: s?.hero.wear ?? HERO.wear, expr };
+    return { ...HEROINES[who].look, id: who, wear: s?.girls[who].wear ?? HEROINES[who].outfits.uniform, expr };
   };
 
   const faces = new Map();
@@ -106,15 +108,21 @@ export async function createGame(canvas, options) {
     return c;
   };
 
-  /** Draw a round portrait with a coloured ring into a panel painter. */
+  /** Draw a character portrait in a compact paper frame. */
   game.avatar = (p, who, x, y, size, { ring, expr } = {}) => {
     const g = p.g;
-    g.fillStyle = rgba(ring ?? (who === 'hero' ? THEME.sky : HEROINES[who].color), 0.25);
-    g.fill(ellipse(x + size / 2, y + size / 2, size / 2, size / 2));
-    p.image(game.face(who, expr), x, y, size, size, { r: size / 2 });
-    g.lineWidth = Math.max(2, size * 0.06);
-    g.strokeStyle = ring ?? (who === 'hero' ? THEME.sky : HEROINES[who].color);
-    g.stroke(ellipse(x + size / 2, y + size / 2, size / 2 - 1, size / 2 - 1));
+    const tint = ring ?? (who === 'hero' ? THEME.sky : HEROINES[who].color);
+    const radius = Math.round(size * .23);
+    const frame = rrect(x, y, size, size, radius);
+    g.save();
+    g.clip(frame);
+    g.fillStyle = rgba(tint, .22);
+    g.fillRect(x, y, size, size);
+    if (!paintPortrait(g, who, x, y, size, size)) p.image(game.face(who, expr), x, y, size, size);
+    g.restore();
+    g.lineWidth = Math.max(1.5, size * .045);
+    g.strokeStyle = tint;
+    g.stroke(frame);
   };
 
   // ---- fades
@@ -132,7 +140,7 @@ export async function createGame(canvas, options) {
     const panel = ui.panel({ x: (W - 620) / 2, y: 92 + toasts.length * 58, w: 620, h: 52, res: 1.25 });
     panel.paint(p => {
       const w = Math.min(600, p.measure(text, 19, 700) + 56);
-      p.card((620 - w) / 2, 4, w, 42, { r: 21, fill: rgba('#ffffff', 0.95), shadow: 0.25 });
+      p.card((620 - w) / 2, 4, w, 42, { r: 21, fill: rgba(THEME.paper, 0.96), shadow: 0.25 });
       p.g.fillStyle = color;
       p.g.fill(ellipse((620 - w) / 2 + 22, 25, 6, 6));
       p.text(text, 310 + 8, 13, { size: 19, weight: 700, color: THEME.ink, align: 'center' });
@@ -159,25 +167,33 @@ export async function createGame(canvas, options) {
     hud ??= ui.panel({ x: 0, y: 0, w: W, h: 76, res: 1.25 });
     if (onPhone !== undefined) hud.onPhone = onPhone;
     hud.paint(p => {
-      p.card(18, 12, 396, 52, { r: 26, fill: rgba('#ffffff', 0.92) });
-      p.chip(L(['第', 'Day ']) + c.day + L([' 天', '']) + ' / ' + DAYS_IN_TERM, 28, 24, { color: THEME.rose, size: 15, h: 28 });
-      p.text(`${L(WEEKDAYS[c.weekday])} · ${L(SLOTS_OF_DAY[c.slot].name)}`, 168, 25, { size: 19, weight: 700 });
+      const g = p.g;
+      const dark = { fill: rgba('#221d32', .92), stroke: '#5a485e', shadow: .24, r: 12 };
+      const color = '#fff6e9', secondary = '#ead6dc';
+      p.card(22, 12, 347, 52, dark);
+      p.text(L(['第', 'Day ']) + c.day + L([' 天', '']) + ' / ' + DAYS_IN_TERM, 42, 24, { size: 18, weight: 800, color });
+      g.fillStyle = '#786379';
+      g.fillRect(158, 24, 1, 28);
+      p.text(L(WEEKDAYS[c.weekday]) + ' · ' + L(SLOTS_OF_DAY[c.slot].name), 173, 25, { size: 17, weight: 700, color: secondary });
       const light = SLOTS_OF_DAY[c.slot].light;
-      // A small sun, sunset or moon for the time of day.
-      p.g.fillStyle = light === 'night' ? '#8fa6ff' : light === 'dusk' ? THEME.warn : THEME.gold;
-      p.g.fill(ellipse(386, 38, 11, 11));
+      g.fillStyle = light === 'night' ? '#b8b5ef' : light === 'dusk' ? '#efa683' : '#f6c384';
+      g.fill(ellipse(342, 38, 10, 10));
       if (light === 'night') {
-        p.g.fillStyle = '#ffffff';
-        p.g.fill(ellipse(381, 34, 9, 9));
+        g.fillStyle = '#262039';
+        g.fill(ellipse(338, 34, 8, 8));
       }
-      p.card(428, 12, 250, 52, { r: 26, fill: rgba('#ffffff', 0.92) });
-      p.text(L(['体力', 'Energy']), 446, 27, { size: 15, weight: 700, color: THEME.soft });
-      p.bar(508, 31, 110, 14, s.energy, 100, { color: s.energy < 25 ? THEME.warn : THEME.mint, color2: s.energy < 25 ? THEME.gold : THEME.sky });
-      p.text(String(s.energy), 628, 25, { size: 18, weight: 800 });
-      p.card(692, 12, 150, 52, { r: 26, fill: rgba('#ffffff', 0.92) });
-      p.text('¥', 712, 23, { size: 22, weight: 800, color: THEME.gold });
-      p.text(String(s.money), 736, 24, { size: 20, weight: 800 });
-      if (hud.onPhone) p.button(W - 176, 12, 158, 52, L(['手机', 'Phone']), hud.onPhone, { kind: 'primary', size: 19 });
+      p.card(380, 12, 239, 52, dark);
+      p.text(L(['体力', 'Energy']), 398, 26, { size: 15, weight: 750, color: secondary });
+      p.bar(459, 32, 96, 10, s.energy, 100, { color: s.energy < 25 ? '#e29a73' : '#7ebaa3', color2: '#adc5d8', back: '#514358' });
+      p.text(String(s.energy), 568, 24, { size: 18, weight: 800, color });
+      p.card(630, 12, 146, 52, dark);
+      p.text('¥', 650, 23, { size: 21, weight: 800, color: '#f5c68e', family: SERIF });
+      p.text(String(s.money), 677, 23, { size: 20, weight: 800, color });
+      if (hud.onPhone) {
+        p.button(W - 178, 12, 156, 52, L(['手机', 'Phone']), hud.onPhone, { kind: 'primary', size: 19 });
+        g.fillStyle = '#f1bbac';
+        g.fill(poly([[W - 48, 33], [W - 44, 38], [W - 48, 43], [W - 52, 38]]));
+      }
     });
     hud.node.visible = true;
   };

@@ -1,6 +1,9 @@
 // Item icons, painted in a 100 x 100 box. Each kind takes the item's main colour.
 import { rrect, ellipse, poly, smooth, star, heart, shade, rgba, paint, stroke } from './draw.mjs';
 
+import { drawCollectibleArt } from './catalogue-art.mjs';
+export { loadItemArt } from './catalogue-art.mjs';
+
 const P = (g, path, c, opt = {}) => paint(g, path, c, { y0: 0, y1: 100, x0: 0, x1: 100, line: 2, side: 0.14, ...opt });
 
 const KINDS = {
@@ -520,6 +523,7 @@ const KINDS = {
 
 /** Paint the icon of a gift or supply at (x, y) with the given size. `icon` is [kind, colour]. */
 export function drawItemIcon(g, icon, x, y, size) {
+  if (drawCollectibleArt(g, icon, x, y, size)) return;
   const [kind, color] = icon;
   g.save();
   g.translate(x, y);

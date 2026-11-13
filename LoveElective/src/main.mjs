@@ -6,6 +6,7 @@ import { playScript } from './screens/story.mjs';
 import { campus } from './screens/campus.mjs';
 import { finale } from './screens/finale.mjs';
 import { PROLOGUE } from './story/scenes.mjs';
+import { preloadCharacterArt } from './art/character-art.mjs';
 
 const canvas = document.getElementById('stage');
 const errorBox = document.getElementById('error');
@@ -33,6 +34,7 @@ addEventListener('resize', fit);
 fit();
 
 async function start() {
+  await preloadCharacterArt();
   // WebGL2 by default; ?backend=webgpu draws with WebGPU where the browser has it.
   let backend = params.get('backend') === 'webgpu' && navigator.gpu ? 'webgpu' : 'webgl2';
   const pixelRatio = Math.min(2, Math.max(1, Number(params.get('ratio')) || Math.min(devicePixelRatio || 1, 1.5)));

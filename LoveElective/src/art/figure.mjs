@@ -3,6 +3,7 @@
 // their expression), in a 400 x 1000 drawing space with the feet near y = 940.
 import { smooth, sym, tube, paint, stroke, shade, mix, rgba, ellipse } from './draw.mjs';
 import { GARMENTS } from './garments.mjs';
+import { hasLayeredHead, paintLayeredHead } from './character-art.mjs';
 
 import { CX, metrics, torsoPoints, armLine, legLine } from './body.mjs';
 export { CX, FIGURE_W, FIGURE_H, metrics } from './body.mjs';
@@ -119,13 +120,27 @@ const EXPRESSIONS = {
 };
 export const EXPRESSION_NAMES = Object.keys(EXPRESSIONS);
 
+const FEATURES = {
+  hero: { eye: .87, brow: -2, tilt: -2, jaw: 2 },
+  qingge: { eye: .91, brow: -1, tilt: -3, jaw: -1 },
+  linxia: { eye: .96, brow: -2, tilt: 1, jaw: 2 },
+  wanqing: { eye: 1, brow: 1, tilt: 3, jaw: -2 },
+  xinglan: { eye: .87, brow: 1, tilt: -4, jaw: 0 },
+  zhiwei: { eye: .92, brow: 1, tilt: -2, jaw: -2 },
+  tangmi: { eye: 1, brow: -1, tilt: 2, jaw: 1 },
+  bailu: { eye: .9, brow: 1, tilt: 1, jaw: -1 },
+};
+const defaultFeatures = { eye: 1, brow: 0, tilt: 0, jaw: 0 };
+
 function drawEye(g, s, spec, e, blink) {
-  const ex = CX + s * 26,
-    ey = 160,
+  const feature = FEATURES[spec.id] ?? defaultFeatures;
+  const ex = CX + s * 25,
+    ey = 159,
     lash = shade(spec.hair.color, -0.72);
   g.save();
   g.translate(ex, ey);
   g.scale(s, 1); // local +x now points towards the ear on both sides
+  g.transform(1, feature.tilt / 36, 0, 1, 0, 0);
   if (blink || e.closed) {
     const happy = e.closed === 'happy' && !blink;
     const lid = happy
@@ -161,7 +176,7 @@ function drawEye(g, s, spec, e, blink) {
           1.4,
         );
   } else {
-    const k = (e.open ?? 1) * (spec.sex === 'm' ? 0.88 : 1);
+    const k = (e.open ?? 1) * feature.eye * (spec.sex === 'm' ? .92 : 1);
     g.save();
     g.scale(1, k);
     const white = smooth([
@@ -174,7 +189,11 @@ function drawEye(g, s, spec, e, blink) {
       [2, 13],
       [-9, 10],
     ]);
-    g.fillStyle = '#ffffff';
+    const sclera = g.createLinearGradient(0, -12, 0, 12);
+    sclera.addColorStop(0, '#b0a9bd');
+    sclera.addColorStop(.5, '#faf1eb');
+    sclera.addColorStop(1, '#fff8ee');
+    g.fillStyle = sclera;
     g.fill(white);
     g.save();
     g.clip(white);
@@ -188,7 +207,20 @@ function drawEye(g, s, spec, e, blink) {
     grad.addColorStop(0.5, spec.eye);
     grad.addColorStop(1, shade(spec.eye, 0.5));
     g.fillStyle = grad;
-    g.fill(ellipse(ix, 0.5, 10.6 * ir, 13.2 * ir));
+    g.fill(ellipse(ix, .5, 9.8 * ir, 12.3 * ir));
+    g.save();
+    g.clip(ellipse(ix, .5, 9.2 * ir, 11.9 * ir));
+    for (let i = 0; i < 11; i++) {
+      const a = Math.PI * (.17 + i * .065);
+      const dx = Math.cos(a) * ir, dy = Math.sin(a) * ir;
+      g.beginPath();
+      g.moveTo(ix + dx * 6.4, dy * 7.9);
+      g.lineTo(ix + dx * 9.4, dy * 11.1);
+      g.strokeStyle = rgba(shade(spec.eye, i % 3 ? .55 : -.28), .52);
+      g.lineWidth = .48;
+      g.stroke();
+    }
+    g.restore();
     g.fillStyle = shade(spec.eye, -0.8);
     g.fill(ellipse(ix, 0, 4.6 * ir, 6.4 * ir));
     // Bright crescent at the bottom of the iris.
@@ -200,8 +232,8 @@ function drawEye(g, s, spec, e, blink) {
     g.restore();
     // Highlights stay on the same side of both eyes, so undo the mirroring.
     g.fillStyle = '#ffffff';
-    g.fill(ellipse(ix + s * -4, -6, 3.6, 4.4));
-    g.fill(ellipse(ix + s * 4.5, 5.5, 1.7, 2));
+    g.fill(ellipse(ix - s * 3.6, -5.2, 2.55, 3.05, -.3));
+    g.fill(ellipse(ix + s * 3.6, 4.5, 1.15, 1.45));
     g.restore();
     // Upper lash line with a small wing, and a short lower lash.
     const top = e.half ? -9 : -13.5;
@@ -247,7 +279,7 @@ function drawEye(g, s, spec, e, blink) {
     );
   }
   // Eyebrow.
-  const up = -(e.browUp ?? 0);
+  const up = feature.brow - (e.browUp ?? 0);
   const brow = smooth(
     [
       [-14, -27 + (e.browIn ?? 0) + up],
@@ -337,7 +369,7 @@ function drawMouth(g, kind, skin) {
 function drawHead(g, spec, e, blink) {
   const { skin } = spec,
     m = spec.sex === 'm';
-  const jaw = m ? 3 : 0;
+  const jaw = (m ? 3 : 0) + (FEATURES[spec.id] ?? defaultFeatures).jaw;
   // Ears sit behind the face.
   for (const s of [-1, 1]) paint(g, ellipse(CX + s * 55, 158, 7, 13, s * 0.15), skin, { y0: 140, y1: 175, side: 0 });
   const face = smooth(
@@ -355,7 +387,18 @@ function drawHead(g, spec, e, blink) {
       CX,
     ),
   );
-  paint(g, face, skin, { y0: 60, y1: 216, side: 0.1, bottom: shade(skin, -0.05) });
+  paint(g, face, skin, { y0: 60, y1: 216, side: .11, bottom: shade(skin, -.04) });
+  g.save();
+  g.clip(face);
+  const light = g.createLinearGradient(CX - 55, 144, CX + 61, 191);
+  light.addColorStop(0, rgba('#fff1d2', .58));
+  light.addColorStop(.5, rgba('#fff1d2', 0));
+  light.addColorStop(1, rgba('#876082', .27));
+  g.fillStyle = light;
+  g.fillRect(CX - 66, 61, 132, 160);
+  g.fillStyle = rgba('#b77585', .12);
+  g.fill(smooth([[CX - 60, 126], [CX - 14, 135], [CX + 37, 128], [CX + 58, 131], [CX + 49, 150], [CX - 52, 147]]));
+  g.restore();
   // Blush.
   if (e.blush) {
     for (const s of [-1, 1]) {
@@ -758,18 +801,23 @@ function drawHairFront(g, hair) {
       0.35,
     );
   // Glossy band across the crown.
-  const gloss = smooth(
-    [
-      [CX - 56, 100],
-      [CX - 26, 84],
-      [CX + 6, 80],
-      [CX + 36, 86],
-      [CX + 58, 102],
-    ],
-    false,
-  );
-  stroke(g, gloss, shade(c, 0.55), 9, 0.42);
-  stroke(g, gloss, shade(c, 0.85), 3, 0.5);
+  const glow = g.createRadialGradient(CX - 32, 70, 0, CX - 32, 70, 102);
+  glow.addColorStop(0, rgba('#ffdbbd', .31));
+  glow.addColorStop(.56, rgba('#c1baff', .12));
+  glow.addColorStop(1, rgba(c, 0));
+  g.fillStyle = glow;
+  g.fillRect(CX - 94, 18, 188, 170);
+  for (let i = 0; i < 20; i++) {
+    const x = -55 + i * 5.7;
+    const tip = 96 + Math.abs(x) * .28 + Math.sin(i * 2.4) * 12;
+    const strand = smooth([[CX + x * .32 - 14, 56], [CX + x * .82 - 8, 74], [CX + x, tip]], false);
+    stroke(g, strand, shade(c, i % 3 === 0 ? .62 : .34), i % 4 === 0 ? 2.15 : .72, .34);
+  }
+  for (let i = 0; i < 7; i++) {
+    const x = -47 + i * 5;
+    const strand = smooth([[CX + x * .67 - 7, 66], [CX + x * .87, 82], [CX + x, 105 + i % 4 * 5]], false);
+    stroke(g, strand, '#ffe4cc', .85, .31);
+  }
   g.restore();
   if (hair.streak) {
     g.save();
@@ -852,9 +900,10 @@ export function drawFigure(g, spec, { blink = false } = {}) {
     for (const a of acc) if (a.def.layer === layer) a.def.draw(g, B, a.c[0], a.c[1], spec);
   };
 
+  const illustrated = hasLayeredHead(spec);
   g.save();
   g.translate(0, FIGURE_TOP);
-  head(() => drawHairBack(g, spec.hair));
+  if (!illustrated) head(() => drawHairBack(g, spec.hair));
   part(g, B, outer, 'back', spec);
   drawLegs(g, B, spec.skin);
   part(g, B, legs, 'legs', spec);
@@ -875,9 +924,10 @@ export function drawFigure(g, spec, { blink = false } = {}) {
   drawHands(g, B, spec.skin);
   accessories('body');
   head(() => {
-    drawHead(g, spec, e, blink);
+    if (illustrated) paintLayeredHead(g, spec);
+    else drawHead(g, spec, e, blink);
     accessories('face');
-    drawHairFront(g, spec.hair);
+    if (!illustrated) drawHairFront(g, spec.hair);
     accessories('head');
   });
   g.restore();

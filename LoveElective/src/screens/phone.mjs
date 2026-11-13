@@ -48,7 +48,7 @@ export function openPhone(game, tab = 'girls') {
           const h = HEROINES[id],
             g = s.girls[id],
             y = 96 + i * 72;
-          p.card(26, y, 928, 64, { r: 18, fill: '#faf8ff', shadow: 0.08 });
+          p.card(26, y, 928, 64, { r: 18, fill: '#f9f1ec', shadow: 0.08 });
           if (!g.met) {
             p.g.fillStyle = rgba('#2b2a4a', 0.7);
             p.g.fill(ellipse(60, y + 32, 25, 25));
@@ -94,7 +94,7 @@ export function openPhone(game, tab = 'girls') {
         view.page = Math.min(view.page, total - 1);
         list.slice(view.page * QUESTS_PER_PAGE, (view.page + 1) * QUESTS_PER_PAGE).forEach(({ q, state }, i) => {
           const y = 96 + i * 90;
-          p.card(26, y, 928, 80, { r: 18, fill: state === 'done' ? '#f3f2f8' : '#faf8ff', shadow: 0.08 });
+          p.card(26, y, 928, 80, { r: 18, fill: state === 'done' ? '#f0eaee' : '#f9f1ec', shadow: 0.08 });
           if (q.girl) game.avatar(p, q.girl, 40, y + 14, 52);
           else {
             p.g.fillStyle = p.gradient(40, 52, THEME.gold, THEME.warn);
@@ -167,7 +167,8 @@ export function openPhone(game, tab = 'girls') {
           const x = 30 + (i % 6) * 154,
             y = 96 + Math.floor(i / 6) * 160,
             def = GIFTS[id] ?? SUPPLIES[id] ?? CLOTHES[id];
-          p.card(x, y, 144, 150, { r: 18, fill: '#faf8ff', shadow: 0.08 });
+          p.card(x, y, 144, 150, { r: 18, fill: '#f9f1ec', shadow: 0.08 });
+          p.well(x + 8, y + 6, 128, 75, { active: !!SUPPLIES[id] });
           if (CLOTHES[id]) {
             p.g.save();
             p.g.translate(x + 34, y + 6);
@@ -296,8 +297,8 @@ export function openPhone(game, tab = 'girls') {
         });
         p.text(
           L([
-            '基于新白鹭引擎开发的游戏 Demo。画面、音乐与音效全部由程序生成。',
-            'A game demo built with Egret Rebuild. All pictures, music and sound are generated in code.',
+            '基于新白鹭引擎开发的校园恋爱养成 Demo。',
+            'A campus romance demo built with Egret Rebuild.',
           ]),
           520,
           200,
@@ -307,26 +308,15 @@ export function openPhone(game, tab = 'girls') {
     };
 
     function paint(p) {
-      p.card(0, 0, 980, 612, { r: 30 });
+      p.sheet(0, 0, 980, 612, { accent: THEME.violet });
       TABS.forEach(([id, label], i) => {
-        const x = 26 + i * 132,
-          on = view.tab === id;
-        p.g.fillStyle = on ? p.gradient(x, 122) : rgba('#2b2a4a', 0.06);
-        p.g.fill(rrect(x, 26, 122, 46, 23));
-        p.text(L(label), x + 61, 37, { size: 18, weight: 800, color: on ? '#ffffff' : THEME.soft, align: 'center' });
-        p.hit(
-          x,
-          26,
-          122,
-          46,
-          () => {
-            view.tab = id;
-            view.page = 0;
-            view.confirm = false;
-            repaint();
-          },
-          { r: 23 },
-        );
+        const x = 26 + i * 132;
+        p.segment(x, 26, 122, 46, L(label), view.tab === id, () => {
+          view.tab = id;
+          view.page = 0;
+          view.confirm = false;
+          repaint();
+        }, { size: 18 });
       });
       const ready = sim.visibleQuests(s).filter(x => x.state === 'ready').length;
       if (ready) p.chip(String(ready), 26 + 132 + 96, 20, { color: THEME.rose, size: 12, h: 20, padX: 7 });

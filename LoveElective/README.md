@@ -82,6 +82,16 @@ Money from work buys clothes, presents and supplies (energy drinks and books tha
 
 On the night of the Star Festival you may confess to any senior at 55 affection or more. With all four of her chapters read and 88 affection, you reach her love ending; otherwise the answer waits for another term. You may also tell no one. Each senior has two endings, and there is one for going alone.
 
+## 美术与画面 · Art direction
+
+封面、九位角色的剧情立绘、校园地图、场景、前景装饰和商品图采用为本 Demo 生成的插画。对白使用角色的默认造型插画。换装预览将独立绘制的角色头部与衣服、配饰分层组合，染色和换发型也能即时显示。场景把背景、人物和前景放在不同深度，保留昼夜色调与视差。
+
+The cover, nine character portraits, campus map, locations, foreground props, and catalogue art were generated for this demo. Dialogue uses the illustrated default looks. The dress-up system layers illustrated heads with clothing and accessories and updates dyes and hairstyles live. Background, characters, and foreground sit on different depth planes with parallax and time-of-day lighting.
+
+手机使用横屏可完整观看舞台式界面。
+
+On phones, landscape gives the stage layout its full viewing area.
+
 ## 引擎用法 · How it uses the engine
 
 游戏使用白鹭的共享帧 2D 配置，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
@@ -93,17 +103,17 @@ The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. 
 | 启动与每帧提交 · Start-up and frame submission | `createEngineForProfile(…, 'egret.shared-frame2d/1')`，`createSharedWebGL2Host` 或 `createSharedWebGPUHost`，`renderSharedFrame`；上一帧完成后才提交下一帧 · the next frame is submitted only when the host has finished the last |
 | 立绘、背景、界面的贴图 · Textures for characters, backgrounds and interface | 画布绘制的像素经 `createImageData2D`、`createTexture` 成为贴图，由 `engine.assets` 以租约管理，换图时释放旧租约 · canvas pixels become textures, held as leases through `engine.assets` and released when a picture is replaced |
 | 画面层次 · Display tree | `DisplayObjectContainer`、`Bitmap`、`Sprite` 的位置、缩放、旋转、透明度和锚点 · position, scale, rotation, alpha and anchors |
-| 伪 2.5D 纵深 · Pseudo-2.5D depth | 远景、中景、角色、近景和粒子各在一层，随指针以不同幅度平移并整体推近；地图与地图标签分两层 · far, middle, character, near and particle layers shift by different amounts with the pointer and zoom together; the map and its labels are separate layers |
+| 伪 2.5D 纵深 · Pseudo-2.5D depth | 背景、角色、近景和粒子分层，以不同幅度平移并整体推近。地图与地点标签分别移动 · background, character, foreground and particle planes shift by different amounts and zoom together. The map and its pins move independently |
 | 昼夜光线 · Time-of-day light | `createSharedMaterial2D` 的线性光色为角色染上黄昏或夜色，并统一使用线性过滤 · the light colour of a shared material tints characters for dusk and night, with linear filtering throughout |
 | 对话逐字显示 · Text writing itself out | 同一张文字贴图放进两个带 `clipRect` 的容器：一个显示已完成的行，一个显示正在出现的行 · one text texture in two containers with `clipRect`: finished lines in one, the growing line in the other |
-| 眨眼 · Blinking | 只重绘眼部的小贴图，定时叠在立绘上 · a small texture of the eyes alone, laid over the figure at intervals |
+| 眨眼 · Blinking | 分层换装人物使用独立的眨眼贴图 · layered dress-up figures use a separate blink texture |
 | 点击判定 · Tap detection | `globalToLocal`、`localToGlobal` 把指针换算到面板坐标 · convert the pointer into panel coordinates |
 | 动画与计时 · Animation and timing | `engine.advanceTime` 驱动 `engine.clock.onTick`，补间、粒子和打字效果都挂在这一个时钟上 · tweens, particles and text all run from this one clock |
 | 淡入淡出、悬停高亮 · Fades and hover highlight | `Sprite.graphics` 的纯色矩形 · solid rectangles |
 
-人物、四十件服饰、十一个场景的三个时段、校园地图、道具图标和全部界面都由代码绘制，音乐与音效由 Web Audio 合成，项目不含图片或音频文件。玩法规则（时间、属性、好感、拉扯、任务、结局）是独立的一层，不依赖页面，可以在 Node 中玩完整个学期。
+音乐和音效由 Web Audio 合成。时间、属性、好感、拉扯、任务和结局规则可脱离页面运行，在 Node 中玩完整个学期。
 
-The characters, the forty garments, eleven places at three times of day, the campus map, the item icons and the whole interface are painted in code; music and sound are synthesised with Web Audio. The project contains no image or audio files. The rules (time, stats, affection, push-and-pull, tasks, endings) are a separate layer that needs no page and can play a whole term in Node.
+Music and sound are synthesised with Web Audio. The time, stats, affection, push-and-pull, task and ending rules can run a whole term in Node without a page.
 
 ## 目录 · Layout
 
@@ -114,7 +124,8 @@ The characters, the forty garments, eleven places at three times of day, the cam
 | `src/sim.mjs` | 玩法规则，不依赖页面 · the rules, no page needed |
 | `src/engine/` | 引擎接入（`stage`）、分层场景（`world`）、界面面板（`ui`） · the engine connection, the layered scene and the interface panels |
 | `src/screens/` | 标题、剧情、校园、衣橱、商店、手机、结局 · title, story, campus, wardrobe, shops, phone, finale |
-| `src/art/` | 人物、服饰、场景、地图和图标的绘制 · painters for characters, garments, places, the map and icons |
+| `src/art/` | 人物组合绘制与素材接入 · character compositing and asset loading |
+| `assets/` | 封面、角色、校园、前景装饰、服装和道具插画 · cover, cast, campus, foreground, fashion and item illustrations |
 | `src/data/` | 学姐、服饰与道具、地点、任务 · seniors, clothes and items, places, tasks |
 | `src/story/` | 序章、各章剧情、日常台词、结局（中英双语） · prologue, chapters, everyday lines and endings, in Chinese and English |
 | `src/audio.mjs` | 音乐与音效 · music and sound |

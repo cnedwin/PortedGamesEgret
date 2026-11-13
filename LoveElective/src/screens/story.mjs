@@ -1,15 +1,16 @@
 // Plays a story script (see src/story/chapters.mjs for the step format):
 // backgrounds, a senior on screen, the dialogue box with text that writes
 // itself out, choices, and the effects of those choices on the save.
+import { hasStoryPortrait } from '../art/character-art.mjs';
 import { W } from '../engine/stage.mjs';
-import { THEME, FONT, wrapText } from '../engine/ui.mjs';
-import { rgba, rrect } from '../art/draw.mjs';
+import { THEME, FONT, SERIF, wrapText } from '../engine/ui.mjs';
+import { rgba, rrect, poly } from '../art/draw.mjs';
 import { HEROINES } from '../data/cast.mjs';
 import { SLOTS_OF_DAY } from '../data/places.mjs';
 import * as sim from '../sim.mjs';
 
-const BOX = { x: 50, y: 500, w: 1180, h: 204 };
-const TEXT = { x: 96, y: 62, w: 968, size: 25, lineH: 40 };
+const BOX = { x: 58, y: 506, w: 1164, h: 198 };
+const TEXT = { x: 58, y: 62, w: 1010, size: 25, lineH: 40 };
 /** How fast text writes itself out, in game units per second. */
 const REVEAL_SPEED = 1150;
 
@@ -48,39 +49,24 @@ export async function playScript(game, script, { girl = null, keepActor = false,
 
   function paintBox(name, color) {
     box.paint(p => {
-      p.card(0, 26, BOX.w, BOX.h - 30, { r: 26, fill: rgba('#ffffff', 0.9), shadow: 0.28 });
-      p.g.fillStyle = p.gradient(40, 220, rgba(color ?? THEME.violet, 0.9), rgba(color ?? THEME.violet, 0));
-      p.g.fill(rrect(40, 30, BOX.w - 80, 4, 2));
+      const g = p.g;
+      const accent = color ?? THEME.violet;
+      p.sheet(0, 26, BOX.w, BOX.h - 32, { accent });
+      g.strokeStyle = '#e3ccd5';
+      g.stroke(rrect(8, 34, BOX.w - 16, BOX.h - 48, 10));
       if (name) {
-        const w = Math.max(150, p.measure(name, 23, 800) + 60);
-        p.g.save();
-        p.g.shadowColor = rgba('#3a2a6a', 0.25);
-        p.g.shadowBlur = 10;
-        p.g.shadowOffsetY = 4;
-        p.g.fillStyle = p.gradient(36, w, color ?? THEME.violet, rgba(color ?? THEME.violet, 0.78));
-        p.g.fill(rrect(36, 0, w, 48, 24));
-        p.g.restore();
-        p.text(name, 36 + w / 2, 9, { size: 23, weight: 800, color: '#ffffff', align: 'center' });
+        const w = Math.max(156, p.measure(name, 22, 750, SERIF) + 52);
+        p.card(34, 2, w, 44, { r: 10, fill: '#39304d', stroke: '#756179', shadow: .24 });
+        g.fillStyle = accent;
+        g.fill(rrect(34, 8, 3, 32, 2));
+        p.text(name, 34 + w / 2, 9, { size: 22, weight: 750, family: SERIF, color: THEME.light, align: 'center' });
       }
-      p.button(
-        BOX.w - 132,
-        36,
-        96,
-        34,
-        L(['跳过', 'Skip']),
-        () => {
-          skipping = true;
-          advance?.();
-        },
-        { kind: 'plain', size: 15 },
-      );
-      // A small arrow that invites the next tap.
-      p.g.fillStyle = color ?? THEME.violet;
-      p.g.beginPath();
-      p.g.moveTo(BOX.w - 64, BOX.h - 40);
-      p.g.lineTo(BOX.w - 44, BOX.h - 40);
-      p.g.lineTo(BOX.w - 54, BOX.h - 26);
-      p.g.fill();
+      p.button(BOX.w - 122, 36, 96, 38, L(['跳过', 'Skip']), () => {
+        skipping = true;
+        advance?.();
+      }, { kind: 'plain', size: 15 });
+      g.fillStyle = accent;
+      g.fill(poly([[BOX.w - 64, BOX.h - 42], [BOX.w - 47, BOX.h - 42], [BOX.w - 55.5, BOX.h - 30]]));
     });
   }
 
@@ -183,11 +169,11 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       panel.paint(p =>
         options.forEach((o, i) => {
           const y = 10 + i * 78;
-          p.card(0, y, pw, 62, { r: 31, fill: rgba('#ffffff', 0.95), shadow: 0.25 });
-          p.chip(String(i + 1), 14, y + 16, { color: THEME.pink, size: 16, h: 30, padX: 11 });
+          p.card(0, y, pw, 62, { r: 12, fill: rgba('#fff8ed', .96), stroke: '#e4ccd9', shadow: .25 });
+          p.chip(String(i + 1), 14, y + 16, { color: THEME.rose, size: 16, h: 30, padX: 11 });
           const size = p.measure(L(o.t), 21, 600) > pw - 90 ? 16 : 21;
           p.text(L(o.t), 62, y + (size === 21 ? 17 : 12), { size, weight: 600, maxW: pw - 90, lineH: 20 });
-          p.hit(0, y, pw, 62, () => choose(o), { r: 31 });
+          p.hit(0, y, pw, 62, () => choose(o), { r: 12 });
         }),
       );
       panel.node.alpha = 0;
@@ -200,6 +186,10 @@ export async function playScript(game, script, { girl = null, keepActor = false,
     for (const step of steps) {
       const [op, a, b, c] = step;
       if (op === 'bg') {
+        if (shownActor === 'professor') {
+          shownActor = null;
+          await world.hideActor();
+        }
         await world.setScene(a, b ?? lightNow());
       } else if (op === 'in') {
         shownActor = a;
@@ -220,6 +210,10 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       } else if (op === 'th') {
         await say(L(['我', 'Me']), THEME.sky, `（${L([a, b])}）`, { color: THEME.soft, italic: game.lang !== 'zh' });
       } else if (op === 'pf') {
+        if (!skipping && shownActor !== 'professor' && hasStoryPortrait({ id: 'professor' })) {
+          shownActor = 'professor';
+          await world.showActor({ id: 'professor' }, { view: 'bust', x: W / 2 });
+        }
         await say(L(['温教授', 'Professor Wen']), '#8a6fd0', L([a, b]));
       } else if (op === 'pick') {
         const option = await pick(a);

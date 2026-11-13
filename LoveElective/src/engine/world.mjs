@@ -3,14 +3,16 @@
 // particles in front, and a few stage effects. This is what gives the flat
 // paintings their sense of depth.
 import { W, H } from './stage.mjs';
-import { drawScene, ambient, SCENE_W, SCENE_H } from '../art/scenes.mjs';
+import { ambient, SCENE_W, SCENE_H } from '../art/scenes.mjs';
+import { loadCampusScene, paintCampusScene } from '../art/campus-art.mjs';
+import { hasLayeredHead, hasStoryPortrait, paintStoryCharacter } from '../art/character-art.mjs';
 import { drawFigure, FIGURE_W, FIGURE_H } from '../art/figure.mjs';
 import { heart, star, ellipse, rgba } from '../art/draw.mjs';
 
 /** How far each layer shifts with the pointer, and how much it is enlarged so its edges never show. */
 const DEPTH = { far: { shift: 10, zoom: 1.03 }, mid: { shift: 24, zoom: 1.06 }, actor: { shift: 34 }, near: { shift: 58, zoom: 1.14 } };
 /** Painting resolution of each layer: distant and blurred layers need fewer pixels. */
-const LAYER_RES = { far: 0.5, mid: 0.8, near: 0.42 };
+const LAYER_RES = { far: 0.5, mid: 0.8, near: 0.48 };
 
 /** The part of the figure redrawn for a blink: [x, y, w, h] in figure units. */
 const EYES = [126, 158, 148, 76];
@@ -64,7 +66,7 @@ const PARTICLES = {
 /** Which drifting particles suit each place and time of day. */
 function particlesFor(scene, light) {
   if (scene === 'gate') return 'petal';
-  if (light === 'night' && (scene === 'rooftop' || scene === 'field')) return 'spark';
+  if (light === 'night' && (scene === 'rooftop' || scene === 'field' || scene === 'festival')) return 'spark';
   return scene === 'street' || scene === 'field' || scene === 'rooftop' ? null : 'dust';
 }
 
@@ -102,14 +104,21 @@ export function createWorld(stage) {
     world.light = light;
     if (!first) await stage.tween(root, { alpha: 0 }, 0.22, { ease: 'in' });
     if (token !== sceneToken) return;
+    const art = await loadCampusScene(scene);
+    if (token !== sceneToken) return;
     await Promise.all(
       ['far', 'mid', 'near'].map(name => {
+        if ((name === 'far' && art) || (name === 'near' && art && !art.prop)) {
+          layers[name].clear();
+          return;
+        }
         const key = `scene:${scene}:${light}:${name}`;
-        const canvas = stage.canvas(SCENE_W, SCENE_H, LAYER_RES[name], g => drawScene(g, scene, name, light));
+        const canvas = stage.canvas(SCENE_W, SCENE_H, LAYER_RES[name], g => paintCampusScene(g, scene, name, light, art));
         stage.keep(canvas, key, 9);
         return layers[name].show(canvas, canvas.res, key);
       }),
     );
+    if (token !== sceneToken) return;
     world.setParticles(particlesFor(scene, light));
     if (world.actor) tintActor();
     stage.tween(root, { alpha: 1 }, 0.3);
@@ -130,7 +139,8 @@ export function createWorld(stage) {
     const scale = full ? 0.665 : 1.24,
       crop = full ? FIGURE_H : 600;
     const res = full ? 1.5 : 1.0;
-    const id = key ?? JSON.stringify(spec) + view;
+    const portrait = !full && hasStoryPortrait(spec);
+    const id = portrait ? `portrait:${key ?? spec.id}` : `figure:${key ?? JSON.stringify(spec) + view}`;
     if (!world.actor) {
       const group = stage.group(actorGroup);
       world.actor = { group, pic: stage.pic(group), blink: stage.pic(group), id: null, x, nextBlink: 2, blinkLeft: 0, t: 0 };
@@ -142,18 +152,27 @@ export function createWorld(stage) {
     if (a.id === id && a.x === x) return;
     a.id = id;
     a.full = full;
+    a.usesPortrait = portrait;
+    a.illustratedHead = !portrait && hasLayeredHead(spec);
     a.scale = scale;
     const paintFigure = (blink, [cx, cy, cw, ch]) =>
       stage.canvas(cw * scale, ch * scale, res, g => {
         g.scale(scale, scale);
         g.translate(-cx, -cy);
-        drawFigure(g, spec, { blink });
+        if (!portrait || !paintStoryCharacter(g, spec)) drawFigure(g, spec, { blink });
       });
     const body = paintFigure(false, [0, 0, FIGURE_W, crop]);
-    const eyes = paintFigure(true, EYES);
-    a.blink.node.x = EYES[0] * scale;
-    a.blink.node.y = EYES[1] * scale;
-    await Promise.all([a.pic.show(body, body.res, 'actor:' + id), a.blink.show(eyes, eyes.res, 'blink:' + id)]);
+    const ready = a.pic.show(body, body.res, 'actor:' + id);
+    if (portrait || a.illustratedHead) {
+      a.blink.clear();
+      a.blink.node.visible = false;
+      await ready;
+    } else {
+      const eyes = paintFigure(true, EYES);
+      a.blink.node.x = EYES[0] * scale;
+      a.blink.node.y = EYES[1] * scale;
+      await Promise.all([ready, a.blink.show(eyes, eyes.res, 'blink:' + id)]);
+    }
     tintActor();
     a.w = FIGURE_W * scale;
     a.h = crop * scale;
@@ -286,7 +305,7 @@ export function createWorld(stage) {
         a.nextBlink = 2.4 + Math.random() * 3.2;
       }
       a.blinkLeft -= dt;
-      a.blink.node.visible = a.blinkLeft > 0;
+      a.blink.node.visible = !a.usesPortrait && !a.illustratedHead && a.blinkLeft > 0;
     }
 
     for (const p of particles) {

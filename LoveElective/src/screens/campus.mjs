@@ -1,9 +1,9 @@
 // Daily life on campus: the map, a visit to a place, and time with a senior
 // (chatting with push-and-pull, presents, dates, picking her outfit).
 import { W, H } from '../engine/stage.mjs';
-import { THEME } from '../engine/ui.mjs';
-import { rgba, ellipse, rrect, star } from '../art/draw.mjs';
-import { drawCampusMap } from '../art/map.mjs';
+import { THEME, SERIF } from '../engine/ui.mjs';
+import { rgba, ellipse, rrect, star, poly } from '../art/draw.mjs';
+import { loadCampusMap, paintCampusMap } from '../art/campus-art.mjs';
 import { drawItemIcon } from '../art/icons.mjs';
 import { drawGarmentIcon } from '../art/garments.mjs';
 import { drawMannequin } from '../art/figure.mjs';
@@ -46,11 +46,15 @@ function mapScreen(game) {
       pinLayer = stage.group(group);
     const pins = ui.panel({ x: 0, y: 0, w: W, h: H, res: 1, parent: pinLayer });
     let light = null;
+    const mapImage = loadCampusMap();
 
-    function paintMap() {
-      if (light === lightOf(s)) return;
-      light = lightOf(s);
-      map.paint(W, H, 0.8, g => drawCampusMap(g, light), 'map:' + light);
+    async function paintMap() {
+      const nextLight = lightOf(s);
+      if (light === nextLight) return;
+      light = nextLight;
+      const image = await mapImage;
+      if (leaving || light !== nextLight) return;
+      map.paint(W, H, 1, g => paintCampusMap(g, nextLight, image), 'map:' + nextLight);
     }
 
     function paintPins() {
@@ -63,31 +67,24 @@ function mapScreen(game) {
           // Seniors already met are shown wherever they are; one not met yet only at her usual place.
           const here = open ? sim.girlsAt(s, id).filter(girl => s.girls[girl].met || HEROINES[girl].home === id) : [];
           const name = L(place.name),
-            nameW = p.measure(name, 16, 800);
-          const w = nameW + 36 + here.length * 38,
+            nameW = p.measure(name, 17, 750);
+          const w = nameW + 42 + here.length * 37,
             py = y - place.pin,
             left = x - w / 2;
-          p.card(left, py, w, 40, { r: 20, fill: open ? rgba('#ffffff', 0.95) : rgba('#d9d6ea', 0.9), shadow: 0.3 });
-          p.text(name, left + 18, py + 9, { size: 16, weight: 800, color: open ? THEME.ink : THEME.soft });
-          g.fillStyle = open ? '#ffffff' : '#d9d6ea';
-          g.beginPath();
-          g.moveTo(x - 7, py + 39);
-          g.lineTo(x + 7, py + 39);
-          g.lineTo(x, py + 48);
-          g.fill();
+          const fill = open ? rgba('#272038', .94) : rgba('#493e51', .9);
+          p.card(left, py, w, 42, { r: 11, fill, stroke: open ? '#be8f9f' : '#746273', shadow: .36 });
+          g.fillStyle = open ? '#eab7a5' : '#bca4b6';
+          g.fill(poly([[left + 12, py + 20], [left + 16, py + 16], [left + 20, py + 20], [left + 16, py + 24]]));
+          p.text(name, left + 27, py + 10, { size: 17, weight: 750, color: open ? '#fff8eb' : '#d8c9d3' });
+          g.fillStyle = fill;
+          g.fill(poly([[x - 7, py + 41], [x + 7, py + 41], [x, py + 49]]));
           if (!open) {
-            p.text(L(['夜间关闭', 'Closed at night']), x, py + 52, {
-              size: 13,
-              weight: 700,
-              color: '#ffffff',
-              align: 'center',
-              stroke: [rgba('#2b2a4a', 0.6), 3],
-            });
+            p.chip(L(['夜间关闭', 'Closed at night']), x - 33, py + 51, { size: 11, h: 18, color: '#433849' });
             continue;
           }
           here.forEach((girl, i) => {
-            const ax = left + nameW + 26 + i * 38,
-              ay = py + 3;
+            const ax = left + nameW + 34 + i * 37,
+              ay = py + 5;
             if (s.girls[girl].met) game.avatar(p, girl, ax, ay, 34);
             else {
               g.fillStyle = rgba('#2b2a4a', 0.75);
@@ -104,9 +101,9 @@ function mapScreen(game) {
           });
           p.hit(Math.min(left, x - 80), py - 4, Math.max(w, 160), place.pin + 20, () => go(id), { r: 20 });
         }
-        p.card(W / 2 - 300, H - 58, 600, 42, { r: 21, fill: rgba('#2b2a4a', 0.72), stroke: null, shadow: 0 });
-        p.text(L(['选择要去的地方 · 金色星星表示有新的故事', 'Choose where to go · a gold star marks a new story']), W / 2, H - 48, {
-          size: 16,
+        p.card(W / 2 - 285, H - 53, 570, 36, { r: 11, fill: rgba('#272038', .9), stroke: '#77586d', shadow: .2 });
+        p.text(L(['选择要去的地方 · 金色星星表示有新的故事', 'Choose where to go · a gold star marks a new story']), W / 2, H - 45, {
+          size: 15,
           weight: 600,
           color: '#ffffff',
           align: 'center',
@@ -268,7 +265,7 @@ function placeMenu(game, placeId) {
     });
 
     function paint(p) {
-      p.card(0, 0, 430, h - 8, { r: 26 });
+      p.sheet(0, 0, 430, h - 8);
       p.title(L(place.name), 28, 22, { size: 28 });
       p.text(L(['在这里的人', 'Who is here']), 28, 84, { size: 15, weight: 700, color: THEME.soft });
       let y = 110;
@@ -429,7 +426,7 @@ function girlMenu(game, girl) {
     panel.paint(p => {
       const c = p.g,
         lv = sim.level(g.aff);
-      p.card(0, 0, 540, 592, { r: 26 });
+      p.sheet(0, 0, 540, 592, { accent: h.color });
       p.text(L(h.name), 30, 22, { size: 32, weight: 800, color: h.color });
       p.text(L(h.role), 30, 68, { size: 15, color: THEME.soft });
       p.chip(L(LEVELS[lv].name), 510 - p.measure(L(LEVELS[lv].name), 15, 700) - 24, 28, { color: h.color, size: 15, h: 30, padX: 12 });
@@ -542,7 +539,7 @@ function giftPicker(game) {
     };
     panel.dismiss = () => done(null);
     panel.paint(p => {
-      p.card(0, 0, 800, 462, { r: 26 });
+      p.sheet(0, 0, 800, 462);
       p.title(L(['送什么好呢', 'What to give']), 30, 22);
       if (!items.length)
         p.text(
@@ -558,7 +555,7 @@ function giftPicker(game) {
         const x = 30 + (i % 5) * 150,
           y = 92 + Math.floor(i / 5) * 150,
           def = GIFTS[id] ?? CLOTHES[id];
-        p.card(x, y, 138, 138, { r: 18, fill: '#faf8ff', shadow: 0.1 });
+        p.card(x, y, 138, 138, { r: 18, fill: '#fffaf1', shadow: 0.1 });
         if (GIFTS[id]) drawItemIcon(p.g, def.icon, x + 31, y + 8, 76);
         else {
           p.g.save();
@@ -587,7 +584,7 @@ function datePicker(game) {
     };
     panel.dismiss = () => done(null);
     panel.paint(p => {
-      p.card(0, 0, 500, 412, { r: 26 });
+      p.sheet(0, 0, 500, 412);
       p.title(L(['去哪里呢', 'Where to']), 30, 22);
       DATE_SPOTS.forEach((spot, i) => {
         const closed = !PLACES[spot.id].night && s.slot >= 3,

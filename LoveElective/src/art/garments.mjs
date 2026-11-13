@@ -2,11 +2,57 @@
 // body of either build, in two dye colours (c1 main, c2 trim). The catalogue
 // data that goes with each id (name, price, style) lives in src/data/items.mjs.
 import { CX, halfWidth, torsoPoints, sleevePoints, legLine, metrics } from './body.mjs';
+import { drawCatalogueArt } from './catalogue-art.mjs';
 import { smooth, sym, tube, poly, paint, stroke, shade, mix, rgba, ellipse, rrect, star } from './draw.mjs';
 
 // ------------------------------------------------------------ shared pieces
 
 const lerp = (a, b, t) => a + (b - a) * t;
+
+function fill(g, path, color) {
+  g.fillStyle = color;
+  g.fill(path);
+}
+
+/** The broad soft reflection and hard folds read at both dialogue and wardrobe sizes. */
+function tailoredVolume(g, path, color, { left, right, top, bottom }) {
+  const width = right - left, height = bottom - top;
+  const at = (u, v) => [left + u * width, top + v * height];
+  const seam = points => smooth(points.map(([u, v]) => at(u, v)), false, 0.45);
+  g.save();
+  g.clip(path);
+  const sheen = g.createLinearGradient(left, top, right, top + height * 0.22);
+  sheen.addColorStop(0, rgba(shade(color, -0.6), 0.12));
+  sheen.addColorStop(0.26, rgba('#fff8f1', 0.2));
+  sheen.addColorStop(0.55, rgba('#fff8f1', 0));
+  sheen.addColorStop(0.82, rgba(shade(color, -0.55), 0.09));
+  sheen.addColorStop(1, rgba(shade(color, -0.8), 0.31));
+  g.fillStyle = sheen;
+  g.fillRect(left, top, width, height);
+  fill(g, smooth([at(0.97, 0.16), at(0.88, 0.39), at(0.91, 0.72), at(0.99, 0.88), at(1.16, 1.05), at(1.14, 0.15)]), rgba(shade(color, -0.65), 0.25));
+  stroke(g, seam([[0.04, 0.58], [0.22, 0.69], [0.35, 0.76]]), shade(color, -0.38), 1.35, 0.52);
+  stroke(g, seam([[0.08, 0.63], [0.23, 0.74], [0.31, 0.76]]), '#fff7ef', 1.4, 0.5);
+  stroke(g, seam([[0.99, 0.55], [0.81, 0.68], [0.68, 0.71]]), shade(color, -0.46), 1.3, 0.58);
+  stroke(g, seam([[0.95, 0.78], [0.8, 0.84], [0.74, 0.85]]), '#fff7ef', 1.2, 0.55);
+  stroke(g, seam([[0.06, 0.95], [0.34, 0.972], [0.63, 0.98], [0.93, 0.94]]), shade(color, -0.35), 1.15, 0.55);
+  g.restore();
+}
+
+function dressHem(g, path, color, trim, y, flare) {
+  g.save();
+  g.clip(path);
+  const hem = smooth([[CX - flare, y - 8], [CX - flare * 0.4, y + 2], [CX, y - 3], [CX + flare * 0.4, y + 2], [CX + flare, y - 8]], false);
+  stroke(g, hem, shade(color, -0.36), 5.2, 0.28);
+  stroke(g, hem, shade(trim, 0.38), 1.55, 0.73);
+  g.restore();
+}
+
+function metal(g, x, y, radius, color) {
+  paint(g, ellipse(x, y, radius, radius), color, {
+    top: shade(color, 0.56), bottom: shade(color, -0.31), y0: y - radius, y1: y + radius, side: 0, line: 0.85,
+  });
+  fill(g, ellipse(x - radius * 0.29, y - radius * 0.39, radius * 0.32, radius * 0.19), rgba('#fff7e3', 0.86));
+}
 
 /** Leg centre x and half width at height y. */
 function legAt(B, s, y) {
@@ -22,14 +68,21 @@ function legAt(B, s, y) {
 
 function torso(g, B, c, opt, paintOpt = {}) {
   const path = smooth(torsoPoints(B, opt));
-  paint(g, path, c, { y0: 236, y1: opt.hem ?? 506, ...paintOpt });
+  const hem = opt.hem ?? 506;
+  const width = B.sh + (opt.ease ?? 0);
+  paint(g, path, c, { top: shade(c, 0.19), bottom: shade(c, -0.17), y0: 236, y1: hem, ...paintOpt });
+  tailoredVolume(g, path, c, { left: CX - width, right: CX + width, top: 238, bottom: hem });
   return path;
 }
 
 function sleeves(g, B, c, len, ease, cuff = 0, band) {
   for (const s of [-1, 1]) {
     const path = smooth(sleevePoints(B, s, len, ease, cuff));
-    paint(g, path, c, { y0: 250, y1: 250 + 270 * len, x0: s < 0 ? CX - 110 : CX + 30, x1: s < 0 ? CX - 30 : CX + 110 });
+    const end = 268 + 244 * len;
+    const centre = CX + s * (B.sh + 1);
+    const edge = B.armU + ease + 7;
+    paint(g, path, c, { y0: 250, y1: end, top: shade(c, 0.12), bottom: shade(c, -0.18), x0: centre - edge, x1: centre + edge });
+    tailoredVolume(g, path, c, { left: centre - edge, right: centre + edge, top: 254, bottom: end });
     if (band) {
       // Coloured band at the end of the sleeve.
       const y = 262 + 250 * len;
@@ -61,9 +114,7 @@ function neckline(g, B, skin, depth, wide = 0) {
 function buttons(g, x, y0, y1, n, c) {
   for (let i = 0; i < n; i++) {
     const y = lerp(y0, y1, n === 1 ? 0 : i / (n - 1));
-    g.fillStyle = c;
-    g.fill(ellipse(x, y, 2.6, 2.6));
-    stroke(g, ellipse(x, y, 2.6, 2.6), shade(c, -0.5), 0.8);
+    metal(g, x, y, 2.8, c);
   }
 }
 
@@ -105,7 +156,22 @@ function trousers(g, B, c, { w = 5, end = 892, taper = 0 } = {}) {
   for (const y of ys.reverse()) half.push([legAt(B, -1, y)[0] + width(y) * 0.9, y]);
   half.push([CX - 1.5, 518, 1]);
   const path = smooth(sym(half, CX), true, 0.4);
-  paint(g, path, c, { y0: 388, y1: end });
+  paint(g, path, c, { y0: 388, y1: end, top: shade(c, 0.13), bottom: shade(c, -0.19) });
+  g.save();
+  g.clip(path);
+  for (const s of [-1, 1]) {
+    const cx = y => legAt(B, s, Math.min(y, end))[0];
+    const hemY = end - 10;
+    const knee = Math.min(hemY - 24, 698);
+    const thigh = Math.min(knee - 18, 548);
+    const side = smooth([[CX + s * (B.hip - 3), 445], [cx(thigh) + s * 10, thigh], [cx(knee) + s * 8, knee], [cx(hemY) + s * 4, hemY]], false);
+    stroke(g, side, shade(c, -0.45), 1.8, 0.63);
+    const crease = smooth([[CX + s * B.waist * 0.45, 426], [cx(thigh), thigh], [cx(knee) - s * 2, knee], [cx(hemY), hemY]], false);
+    stroke(g, crease, shade(c, 0.39), 1.9, 0.6);
+    stroke(g, smooth([[cx(knee) - 11, knee - 15], [cx(knee), knee - 6], [cx(knee) + 12, knee - 7]], false), shade(c, -0.38), 1.3, 0.63);
+    stroke(g, poly([[cx(hemY) - 22, hemY], [cx(hemY) + 22, hemY]], false), shade(c, 0.29), 1.2, 0.72);
+  }
+  g.restore();
   // Fly and waistband.
   stroke(
     g,
@@ -157,7 +223,10 @@ function skirt(g, B, c, { hem = 560, flare = 26 } = {}) {
     true,
     0.4,
   );
-  paint(g, path, c, { y0: 388, y1: hem });
+  const edge = B.hip + flare;
+  paint(g, path, c, { y0: 388, y1: hem, top: shade(c, 0.16), bottom: shade(c, -0.15) });
+  tailoredVolume(g, path, c, { left: CX - edge, right: CX + edge, top: 388, bottom: hem });
+  dressHem(g, path, c, c, hem - 6, edge);
   return path;
 }
 
@@ -208,7 +277,9 @@ function jacket(g, B, c, { ease = 6, hem = 478, open = 12, breakY = 0, flare = 0
     if (breakY) pts.push([CX + s * 1, hem, 1], [CX + s * 1, breakY, 1]);
     else pts.push([CX + s * open, hem, 1], [CX + s * open, 300], [CX + s * (open - 2), 262]);
     const path = smooth(pts, true, 0.4);
-    paint(g, path, c, { y0: 236, y1: hem });
+    const extent = Math.max(B.sh + ease, B.hip + ease + flare);
+    paint(g, path, c, { y0: 236, y1: hem, top: shade(c, 0.16), bottom: shade(c, -0.18) });
+    tailoredVolume(g, path, c, { left: CX - extent, right: CX + extent, top: 236, bottom: hem });
     paths.push(path);
   }
   return paths;
@@ -242,7 +313,12 @@ function shoe(g, B, s, c, { top = 888, sole, toe = 20, heel = 0, soleH = 6 }) {
     [x + s * 10, top, 1],
   ];
   const path = smooth(pts, true, 0.45);
-  paint(g, path, c, { y0: top, y1: 944, side: 0.1 });
+  paint(g, path, c, { y0: top, y1: 944, top: shade(c, 0.15), bottom: shade(c, -0.25), side: 0.2 });
+  g.save();
+  g.clip(path);
+  stroke(g, smooth([[x - s * 7, 922], [x + s * 3, 925], [x + s * (toe - 2), 930]], false), shade(c, 0.42), 2.3, 0.63);
+  stroke(g, smooth([[x - s * 12, 936], [x + s * 4, 938], [x + s * toe, 937]], false), shade(c, -0.58), 1.2, 0.5);
+  g.restore();
   if (sole) {
     g.save();
     g.clip(path);
@@ -275,7 +351,9 @@ function legwear(g, B, c, from, alpha = 1, band) {
     g.beginPath();
     g.rect(0, from, 400, 1000);
     g.clip();
-    paint(g, path, c, { y0: from, y1: 900 });
+    paint(g, path, c, { y0: from, y1: 900, top: shade(c, 0.09), bottom: shade(c, -0.17) });
+    const column = CX + s * B.hip * 0.46;
+    tailoredVolume(g, path, c, { left: column - 20, right: column + 20, top: from, bottom: 900 });
     const x = CX + s * B.hip * 0.42;
     paint(
       g,
@@ -359,15 +437,20 @@ export const GARMENTS = {
   },
   tee: {
     slot: 'top',
-    c: ['#f4f6fb', '#ff8a5c'],
+    c: ['#f6ecdc', '#cc755d'],
     torso(g, B, c1, c2, spec) {
       const p = torso(g, B, c1, { ease: 4, hem: 448 });
       g.save();
       g.clip(p);
-      g.fillStyle = c2;
-      g.fillRect(0, 306, 400, 20);
-      g.fillStyle = rgba(c2, 0.5);
-      g.fillRect(0, 331, 400, 5);
+      // Screen-printed campus silhouette with transparent cloth folds beneath.
+      const ink = rgba(c2, .79);
+      g.fillStyle = ink;
+      g.fill(rrect(CX - 31, 304, 62, 36, 5));
+      g.fillStyle = rgba(c1, .84);
+      g.fill(ellipse(CX + 16, 314, 4, 4));
+      g.fill(poly([[CX - 27, 331], [CX - 15, 317], [CX - 8, 325], [CX + 1, 314], [CX + 16, 332]]));
+      g.fillRect(CX - 23, 335, 46, 1.1);
+
       g.restore();
       stroke(g, p, shade(c1, -0.45), 1.6);
       neckline(g, B, spec.skin, 256, 3);
@@ -389,7 +472,7 @@ export const GARMENTS = {
       );
     },
     sleeves(g, B, c1, c2) {
-      sleeves(g, B, c1, 0.3, 5.5, 1, c2);
+      sleeves(g, B, c1, .3, 5.5, 1);
     },
   },
   hoodie: {
@@ -921,7 +1004,9 @@ export const GARMENTS = {
           shade(c1, -0.12),
           5,
         );
-      paint(g, p, c1, { y0: 268, y1: 660 });
+      paint(g, p, c1, { y0: 268, y1: 660, top: shade(c1, 0.17), bottom: shade(c1, -0.19) });
+      tailoredVolume(g, p, c1, { left: CX - 96, right: CX + 96, top: 270, bottom: 664 });
+      dressHem(g, p, c1, c2, 653, 94);
       g.save();
       g.clip(p);
       for (const t of [-0.75, -0.4, 0, 0.4, 0.75])
@@ -972,7 +1057,9 @@ export const GARMENTS = {
         [CX - B.hip - 34, 926, 1],
       ];
       const p = smooth(sym(half, CX), true, 0.4);
-      paint(g, p, c1, { y0: 236, y1: 926 });
+      paint(g, p, c1, { y0: 236, y1: 926, top: shade(c1, 0.22), bottom: shade(c1, -0.22) });
+      tailoredVolume(g, p, c1, { left: CX - 85, right: CX + 85, top: 237, bottom: 927 });
+      dressHem(g, p, c1, c2, 921, 84);
       g.save();
       g.clip(p);
       // A scatter of sequins that thickens towards the hem.
@@ -1353,9 +1440,21 @@ export const GARMENTS = {
     draw(g, B, c1) {
       for (const s of [-1, 1]) {
         const lens = rrect(CX + s * 26 - 17, 147, 34, 26, 9);
-        g.fillStyle = rgba('#ffffff', 0.14);
+        const reflection = g.createLinearGradient(0, 147, 0, 173);
+        reflection.addColorStop(0, rgba('#e5f4ff', 0.44));
+        reflection.addColorStop(0.5, rgba('#fff4ef', 0.08));
+        reflection.addColorStop(1, rgba('#c5c4f1', 0.17));
+        g.fillStyle = reflection;
         g.fill(lens);
-        stroke(g, lens, c1, 2.3);
+        g.save();
+        g.clip(lens);
+        const x = CX + s * 26;
+        stroke(g, poly([[x - 20, 168], [x + 12, 146]], false), '#fff7ef', 2.4, 0.66);
+        stroke(g, poly([[x - 14, 171], [x + 18, 149]], false), '#fff7ef', 0.85, 0.69);
+        g.restore();
+        stroke(g, lens, shade(c1, -0.16), 2.7);
+        stroke(g, smooth([[x - 12, 151], [x - 6, 148], [x + 8, 148]], false), shade(c1, 0.57), 0.9, 0.85);
+        metal(g, CX + s * 42, 155, 1.7, shade(c1, 0.52));
         stroke(
           g,
           poly(
@@ -1409,7 +1508,14 @@ export const GARMENTS = {
         g.globalAlpha = 0.92;
         g.fill(lens);
         g.globalAlpha = 1;
+        g.save();
+        g.clip(lens);
+        const x = CX + s * 28;
+        stroke(g, smooth([[x - 20, 165], [x - 3, 157], [x + 18, 148]], false), shade(c2, 0.69), 1.8, 0.67);
+        stroke(g, poly([[x - 8, 167], [x + 6, 160]], false), shade(c2, 0.43), 0.8, 0.55);
+        g.restore();
         stroke(g, lens, shade(c1, -0.3), 1.8);
+        metal(g, CX + s * 43, 150, 1.45, shade(c1, 0.67));
         stroke(
           g,
           poly(
@@ -1456,8 +1562,10 @@ export const GARMENTS = {
           [CX - 30, 84],
         ]),
         c1,
-        { y0: 20, y1: 95, x0: CX - 80, x1: CX + 80 },
+        { y0: 20, y1: 95, x0: CX - 80, x1: CX + 80, top: shade(c1, 0.3), bottom: shade(c1, -0.23) },
       );
+      stroke(g, smooth([[CX - 55, 53], [CX - 25, 31], [CX + 9, 27], [CX + 43, 39]], false), shade(c1, 0.58), 2.7, 0.42);
+      stroke(g, smooth([[CX + 67, 54], [CX + 56, 66], [CX + 29, 72], [CX - 16, 72]], false), shade(c1, -0.5), 2, 0.56);
       stroke(
         g,
         smooth(
@@ -1519,8 +1627,10 @@ export const GARMENTS = {
         c1,
         { y0: 30, y1: 110, x0: CX - 70, x1: CX + 70 },
       );
-      g.fillStyle = c2;
-      g.fill(star(CX + 6, 70, 11, 4.6));
+      stroke(g, smooth([[CX + 13, 34], [CX + 20, 58], [CX + 29, 81], [CX + 37, 99]], false), shade(c1, -0.42), 1.4, 0.78);
+      stroke(g, smooth([[CX - 35, 48], [CX - 46, 70], [CX - 51, 102]], false), shade(c1, 0.44), 1.25, 0.61);
+      stroke(g, smooth([[CX - 20, 116], [CX + 47, 109], [CX + 91, 116]], false), shade(c2, 0.35), 1.4, 0.76);
+      paint(g, star(CX + 6, 70, 11, 4.6), c2, { y0: 61, y1: 80, side: 0, line: 0.85 });
     },
   },
   bow: {
@@ -1555,7 +1665,11 @@ export const GARMENTS = {
           { y0: y, y1: y + 40, side: 0 },
         );
       }
-      paint(g, ellipse(x, y, 7, 8), shade(c1, 0.12), { y0: y - 8, y1: y + 8, side: 0 });
+      for (const s of [-1, 1]) {
+        stroke(g, smooth([[x + s * 5, y], [x + s * 18, y - 8], [x + s * 28, y - 11]], false), shade(c1, 0.48), 1.8, 0.66);
+        stroke(g, smooth([[x + s * 3, y + 3], [x + s * 14, y + 5], [x + s * 24, y + 13]], false), shade(c1, -0.56), 1.35, 0.67);
+      }
+      paint(g, ellipse(x, y, 7, 8), shade(c1, 0.12), { top: shade(c1, 0.36), y0: y - 8, y1: y + 8, side: 0 });
     },
   },
   headphones: {
@@ -1596,8 +1710,10 @@ export const GARMENTS = {
       );
       for (const s of [-1, 1]) {
         paint(g, rrect(CX + s * 66 - 13, 128, 26, 50, 11), c1, { y0: 128, y1: 178, side: 0.08, x0: CX + s * 66 - 13, x1: CX + s * 66 + 13 });
-        g.fillStyle = c2;
-        g.fill(ellipse(CX + s * 68, 153, 4, 13));
+        const x = CX + s * 68;
+        paint(g, ellipse(x, 153, 7, 16), shade(c1, 0.13), { y0: 137, y1: 169, side: 0.05, line: 0.7 });
+        stroke(g, smooth([[x - 2, 140], [x + 2, 150], [x - 1, 164]], false), c2, 2.7, 0.93);
+        metal(g, x - s * 7, 169, 1.45, shade(c1, 0.62));
       }
     },
   },
@@ -1608,8 +1724,9 @@ export const GARMENTS = {
     c: ['#ffd76a', '#ffffff'],
     draw(g, B, c1, c2) {
       paint(g, star(CX - 46, 118, 11, 4.8), c1, { y0: 106, y1: 130, side: 0, line: 1.1 });
-      g.fillStyle = c2;
-      g.fill(ellipse(CX - 48, 115, 2, 2));
+      metal(g, CX - 48, 115, 2.8, c2);
+      metal(g, CX - 43, 121, 1.45, c2);
+      stroke(g, poly([[CX - 54, 126], [CX - 40, 129]], false), shade(c1, 0.56), 1.3, 0.82);
       paint(g, star(CX - 34, 132, 5.5, 2.4), c1, { y0: 126, y1: 138, side: 0, line: 0.9 });
     },
   },
@@ -1634,7 +1751,9 @@ export const GARMENTS = {
         c1,
         1.6,
       );
-      paint(g, star(CX, 273, 6.5, 2.8, 4), c2, { y0: 266, y1: 280, side: 0, line: 0.9, stroke: shade(c1, -0.3) });
+      metal(g, CX, 266, 1.7, c1);
+      paint(g, star(CX, 274, 7.8, 3, 4), c2, { top: shade(c2, 0.56), bottom: shade(c2, -0.31), y0: 265, y1: 282, side: 0, line: 1, stroke: shade(c1, -0.3) });
+      stroke(g, poly([[CX - 3, 274], [CX, 273], [CX + 2, 270]], false), '#fff9e8', 0.9, 0.89);
     },
   },
   tie: {
@@ -1784,7 +1903,14 @@ export const GARMENTS = {
         shade(c1, -0.1),
         { y0: y, y1: y + 34, side: 0.05 },
       );
-      paint(g, rrect(x + 21, y + 26, 10, 12, 2), '#ffd76a', { y0: y + 26, y1: y + 38, side: 0, line: 1 });
+      g.save();
+      g.setLineDash([2, 2]);
+      stroke(g, smooth([[x + 4, y + 7], [x + 6, y + 25], [x + 26, y + 32], [x + 46, y + 25], [x + 48, y + 7]], false), shade(c1, 0.5), 1, 0.83);
+      stroke(g, smooth([[x + 5, y + 37], [x + 7, y + 50], [x + 27, y + 52], [x + 45, y + 49], [x + 47, y + 37]], false), shade(c1, 0.49), 0.9, 0.72);
+      g.restore();
+      paint(g, rrect(x + 21, y + 26, 10, 12, 2), '#d5a96e', { top: '#ffe5ad', bottom: '#a87847', y0: y + 26, y1: y + 38, side: 0, line: 1 });
+      fill(g, rrect(x + 23.5, y + 28.5, 5, 6, 1), shade(c2, -0.27));
+      metal(g, x + 26, y + 35, 1.6, '#f2cf8c');
     },
   },
 };
@@ -1808,6 +1934,8 @@ const ICON_FRAME = {
 export function drawGarmentIcon(g, id, size, colors, mannequin) {
   const def = GARMENTS[id];
   if (!def) return;
+  if ((!colors || colors.every((color, channel) => !color || color.toLowerCase() === def.c[channel].toLowerCase()))
+    && drawCatalogueArt(g, id, 0, 0, size)) return;
   const sex = def.only ?? 'f',
     B = metrics(sex);
   const [x, y, w, h] = ICON_FRAME[def.slot === 'acc' ? def.zone : def.slot];

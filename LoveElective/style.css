@@ -1,9 +1,8 @@
-/* The page is only a dark frame around the game canvas, which keeps a 16:9 shape. */
-html,
-body {
+:root { color-scheme: dark; background: #1a1728; }
+
+html, body {
   margin: 0;
   height: 100%;
-  background: #14122a;
   overflow: hidden;
   overscroll-behavior: none;
 }
@@ -12,6 +11,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  background: radial-gradient(ellipse at 65% 28%, #3a2a43, #1a1728 72%);
 }
 
 #stage {
@@ -20,7 +20,10 @@ body {
   touch-action: none;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
+  box-shadow: 0 18px 64px #100e1e88;
 }
+
+#stage:focus-visible { outline: 2px solid #ecc6b5; outline-offset: -3px; }
 
 #error {
   position: fixed;
@@ -29,25 +32,53 @@ body {
   transform: translateX(-50%);
   max-width: min(90vw, 720px);
   padding: 14px 18px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #2b2a4a;
-  font:
-    15px/1.5 system-ui,
-    sans-serif;
+  border: 1px solid #e8cedb;
+  border-radius: 10px;
+  background: #fff8ed;
+  color: #2d253c;
+  font: 15px/1.5 system-ui, sans-serif;
   white-space: pre-wrap;
 }
 
-/* Phones held upright: ask for landscape by rotating the game. */
+.portrait-title, .portrait-controls { display: none; }
+
 @media (orientation: portrait) and (max-width: 720px) {
-  body::after {
-    content: '请横屏游玩 · Please rotate your device';
-    position: fixed;
-    inset: auto 0 8% 0;
-    text-align: center;
-    color: #ffd9e6;
-    font:
-      15px system-ui,
-      sans-serif;
+  body {
+    flex-direction: column;
+    justify-content: center;
+    gap: 24px;
+    background:
+      linear-gradient(180deg, #241b37b3 0%, #21182eec 40%, #1a1728 78%),
+      url("./assets/characters/cover.webp") 64% top / auto 68% no-repeat,
+      #1a1728;
   }
+  .portrait-title, .portrait-controls { display: block; }
+  .portrait-title {
+    padding-inline: 20px;
+    color: #fff3e6;
+    text-align: center;
+    font-family: "Noto Serif SC", "Songti SC", "Microsoft YaHei", Georgia, serif;
+  }
+  .portrait-title p { margin: 0 0 6px; font-size: clamp(27px, 7vw, 42px); font-weight: 750; }
+  .portrait-title span { color: #f3b7c0; font-size: 22px; }
+  #stage { flex: 0 0 auto; box-shadow: 0 10px 32px #100e1ecc; }
+  .portrait-controls {
+    box-sizing: border-box;
+    max-width: min(100% - 32px, 340px);
+    padding-bottom: env(safe-area-inset-bottom);
+    text-align: center;
+    color: #f2dbe2;
+    font: 15px/1.55 system-ui, sans-serif;
+  }
+  .portrait-controls p { margin: 0 0 12px; }
+  .portrait-controls button {
+    min-height: 44px;
+    padding: 8px 24px;
+    border: 1px solid #e0a8b9;
+    border-radius: 9px;
+    background: #663950;
+    color: #fff4e9;
+    font: 650 16px system-ui, sans-serif;
+  }
+  html[lang="zh-CN"] .portrait-en, html[lang="en"] .portrait-zh { display: none; }
 }

@@ -51,7 +51,7 @@ export const PROLOGUE = [
 
 /** The last night, before the hero chooses whom to speak to. */
 export const FINALE_INTRO = [
-  ['bg', 'rooftop'],
+  ['bg', 'festival', 'night'],
   [
     'n',
     '第三十天，星空祭。整座校园熄了灯，只留下摊位的灯笼和头顶的银河。',

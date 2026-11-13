@@ -1,5 +1,5 @@
 // A shop on the shopping street: clothes, presents, supplies or hairstyles.
-import { THEME } from '../engine/ui.mjs';
+import { THEME, SERIF } from '../engine/ui.mjs';
 import { rgba } from '../art/draw.mjs';
 import { drawItemIcon } from '../art/icons.mjs';
 import { drawGarmentIcon } from '../art/garments.mjs';
@@ -60,7 +60,7 @@ export function openShop(game, shopId) {
     }
 
     function paint(p) {
-      p.card(0, 0, 1020, 618, { r: 28 });
+      p.sheet(0, 0, 1020, 618, { accent: THEME.rose });
       p.title(L(shop.name), 34, 24, { size: 28 });
       p.text('¥', 800, 28, { size: 24, weight: 800, color: THEME.gold });
       p.text(String(s.money), 826, 29, { size: 22, weight: 800 });
@@ -73,13 +73,14 @@ export function openShop(game, shopId) {
         const owned = sim.owns(s, shop.kind, id),
           picked = view.selected === id;
         p.card(x, y, 180, 174, {
-          r: 18,
-          fill: picked ? '#fff4f8' : '#faf8ff',
+          r: 12,
+          fill: picked ? '#fff6ec' : '#faf4ef',
           shadow: 0.1,
           stroke: picked ? THEME.rose : THEME.line,
           lineW: picked ? 3 : 1.5,
         });
-        drawIcon(p, id, x + 42, y + 8, 96);
+        p.well(x + 8, y + 8, 164, 93, { active: picked, accent: THEME.rose });
+        drawIcon(p, id, x + 42, y + 7, 96);
         p.text(L(def.name), x + 90, y + 108, { size: 15, weight: 700, align: 'center' });
         if (owned) p.chip(L(['已拥有', 'Owned']), x + 56, y + 138, { color: THEME.mint, size: 13 });
         else
@@ -132,8 +133,8 @@ export function openShop(game, shopId) {
       // The selected item in detail, with the buy button.
       const id = view.selected,
         def = table[id];
-      p.card(34, 518, 952, 84, { r: 18, fill: rgba('#2b2a4a', 0.05), shadow: 0, stroke: null });
-      p.text(L(def.name), 54, 528, { size: 20, weight: 800 });
+      p.card(34, 518, 952, 84, { r: 12, fill: rgba('#4b3b63', .065), shadow: 0, stroke: '#e1d4df' });
+      p.text(L(def.name), 54, 528, { size: 21, weight: 750, family: SERIF });
       p.text(describe(id), 54, 556, { size: 14, color: THEME.soft, maxW: 660, lineH: 19 });
       const owned = sim.owns(s, shop.kind, id),
         poor = s.money < def.price;

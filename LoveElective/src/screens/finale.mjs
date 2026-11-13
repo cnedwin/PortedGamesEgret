@@ -2,7 +2,6 @@
 // summary of the thirty days.
 import { W } from '../engine/stage.mjs';
 import { THEME, SERIF } from '../engine/ui.mjs';
-import { rgba } from '../art/draw.mjs';
 import { HEROINES, HEROINE_IDS, LEVELS, STATS } from '../data/cast.mjs';
 import { FINALE_INTRO, ENDINGS, ENDING_SOLO } from '../story/scenes.mjs';
 import * as sim from '../sim.mjs';
@@ -41,7 +40,7 @@ function chooseSomeone(game) {
       resolve(id);
     };
     panel.paint(p => {
-      p.card(0, 0, w, 392, { r: 28 });
+      p.sheet(0, 0, w, 392, { accent: THEME.violet });
       p.text(L(['把心意告诉谁？', 'Whom will you tell?']), w / 2, 26, { size: 28, weight: 800, align: 'center', family: SERIF });
       if (!list.length)
         p.text(L(['这学期，还没有谁走进你的心里。', 'This term, nobody has yet found a way into your heart.']), w / 2, 150, {
@@ -76,7 +75,7 @@ function summary(game, girl, result) {
           ? ['心意已经送到。答案，留给下一个学期。', 'Your feelings have been delivered. The answer waits for next term.']
           : ['这门课允许重修。', 'This course may be retaken.'];
     panel.paint(p => {
-      p.card(0, 0, 880, 612, { r: 30, fill: rgba('#ffffff', 0.96) });
+      p.sheet(0, 0, 880, 612, { accent: result === 'love' ? THEME.rose : THEME.violet });
       p.text(L(title), 440, 30, { size: 44, weight: 800, family: SERIF, align: 'center', color: result === 'love' ? THEME.rose : THEME.ink });
       if (girl) p.text(L(HEROINES[girl].name), 440, 92, { size: 22, weight: 700, color: HEROINES[girl].color, align: 'center' });
       p.text(L(line), 440, 128, { size: 17, color: THEME.soft, align: 'center' });

@@ -2,24 +2,16 @@
 // picture, shown through the engine as a bitmap, and remembers which
 // rectangles of it can be tapped. Painter holds the game's visual style.
 import { W, H } from './stage.mjs';
-import { rrect, rgba, shade, heart, star } from '../art/draw.mjs';
+import { rrect, rgba, shade, heart, star, poly } from '../art/draw.mjs';
 
 export const FONT = '"PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", "Source Han Sans SC", system-ui, sans-serif';
-export const SERIF = '"Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", "STSong", Georgia, serif';
+export const SERIF = '"Noto Serif SC", "Songti SC", "Noto Serif CJK SC", "Source Han Serif SC", "STSong", Georgia, serif';
 
 export const THEME = {
-  ink: '#2b2a4a',
-  soft: '#6b6a8c',
-  faint: '#a9a8c4',
-  line: '#e6e2f3',
-  paper: '#ffffff',
-  pink: '#ff7fa8',
-  rose: '#ff5c8d',
-  violet: '#9b8cff',
-  sky: '#6fc3ff',
-  gold: '#f2c14e',
-  mint: '#5fd3b0',
-  warn: '#ff8a5c',
+  ink: '#27263d', soft: '#575469', faint: '#736f83', line: '#e2d9e0',
+  paper: '#fff9ee', canvas: '#181627', night: '#211c32', light: '#fff9ef',
+  pink: '#e97984', rose: '#ab3656', violet: '#6554a6', sky: '#426c93',
+  gold: '#a07135', mint: '#397e6c', warn: '#b85c3e',
 };
 
 /** Break text into lines no wider than maxW: CJK may break anywhere, Latin words stay whole. */
@@ -79,13 +71,13 @@ export class Painter {
     return this.g.measureText(str).width;
   }
 
-  /** A soft white card with a drop shadow. */
-  card(x, y, w, h, { r = 20, fill = rgba('#ffffff', 0.93), stroke = rgba('#ffffff', 0.9), shadow = 0.22, lineW = 1.5 } = {}) {
-    const g = this.g,
-      p = rrect(x, y, w, h, r);
+  /** A raised paper surface. */
+  card(x, y, w, h, { r = 14, fill = rgba(THEME.paper, 0.97), stroke = THEME.line, shadow = 0.16, lineW = 1.25 } = {}) {
+    const g = this.g;
+    const p = rrect(x, y, w, h, Math.min(r, 18));
     g.save();
     if (shadow) {
-      g.shadowColor = rgba('#3a2a6a', shadow);
+      g.shadowColor = rgba(THEME.night, shadow);
       g.shadowBlur = 22;
       g.shadowOffsetY = 8;
     }
@@ -97,6 +89,42 @@ export class Painter {
       g.strokeStyle = stroke;
       g.stroke(p);
     }
+  }
+
+  /** Full panel with a warm paper surface and a structured top edge. */
+  sheet(x, y, w, h, { accent = THEME.rose, dark = false } = {}) {
+    const g = this.g;
+    const wash = g.createLinearGradient(x, y, x + w * .75, y + h);
+    wash.addColorStop(0, dark ? '#302641' : '#fffbf1');
+    wash.addColorStop(1, dark ? '#201a31' : '#f3ebed');
+    this.card(x, y, w, h, { fill: wash, stroke: dark ? '#5b4a64' : '#e9d9dc', shadow: .28, r: 16 });
+    g.save();
+    g.clip(rrect(x, y, w, h, 16));
+    g.fillStyle = this.gradient(x, Math.min(210, w * .5), accent, rgba(accent, 0));
+    g.fillRect(x, y, w, 3);
+    g.restore();
+  }
+
+  /** A recessed well for item art, lit from above. */
+  well(x, y, w, h, { active = false, accent = THEME.violet } = {}) {
+    const g = this.g;
+    const fill = g.createRadialGradient(x + w * .52, y + h * .38, 6, x + w * .5, y + h * .52, w * .72);
+    fill.addColorStop(0, active ? '#fff8ef' : '#fffbf3');
+    fill.addColorStop(1, rgba(accent, active ? .14 : .09));
+    this.card(x, y, w, h, { fill, shadow: 0, stroke: active ? rgba(accent, .36) : '#e7dee6', r: 10 });
+  }
+
+  /** Shared segmented control used in the wardrobe and phone. */
+  segment(x, y, w, h, label, on, tap, { size = 16 } = {}) {
+    const g = this.g;
+    g.fillStyle = on ? '#34304c' : '#ede5eb';
+    g.fill(rrect(x, y, w, h, 9));
+    this.text(label, x + w / 2, y + (h - size * 1.22) / 2, { size, weight: 750, color: on ? THEME.light : THEME.soft, align: 'center' });
+    if (on) {
+      g.fillStyle = '#eda4ad';
+      g.fill(rrect(x + w / 2 - 11, y + h - 3, 22, 2, 1));
+    }
+    this.hit(x, y, w, h, tap, { r: 9 });
   }
 
   /** Left-to-right gradient fill for accents. */
@@ -112,59 +140,47 @@ export class Painter {
     this.panel.hits.push({ x, y, w, h, tap, hover, r });
   }
 
-  /** kind: 'primary' (gradient), 'plain' (white), 'ghost' (outlined), 'dark'. */
-  button(x, y, w, h, label, tap, { kind = 'plain', disabled = false, size = 18, sub, icon, r = h / 2, color } = {}) {
-    const g = this.g,
-      p = rrect(x, y, w, h, Math.min(r, h / 2));
+  /** Button styles used by titles, dialogue and transaction panels. */
+  button(x, y, w, h, label, tap, { kind = 'plain', disabled = false, size = 18, sub, icon, r = 10, color } = {}) {
+    const g = this.g;
+    const radius = Math.min(r, h / 2, 12);
+    const path = rrect(x, y, w, h, radius);
     g.save();
-    if (disabled) g.globalAlpha = 0.45;
-    if (kind !== 'ghost') {
-      g.shadowColor = rgba('#3a2a6a', 0.2);
-      g.shadowBlur = 10;
+    if (disabled) g.globalAlpha = .54;
+    if (kind === 'primary') {
+      g.shadowColor = rgba(color ?? '#ac3e61', .30);
+      g.shadowBlur = 14;
       g.shadowOffsetY = 4;
     }
-    g.fillStyle =
-      kind === 'primary'
-        ? this.gradient(x, w, color ?? THEME.pink, color ? shade(color, -0.2) : THEME.violet)
-        : kind === 'dark'
-          ? rgba('#2b2a4a', 0.82)
-          : kind === 'ghost'
-            ? rgba('#ffffff', 0.35)
-            : '#ffffff';
-    g.fill(p);
-    g.restore();
-    g.save();
-    if (disabled) g.globalAlpha = 0.45;
-    if (kind === 'ghost' || kind === 'plain') {
-      g.lineWidth = 1.5;
-      g.strokeStyle = kind === 'ghost' ? rgba('#ffffff', 0.9) : THEME.line;
-      g.stroke(p);
-    }
+    g.fillStyle = kind === 'primary'
+      ? this.gradient(x, w, color ? shade(color, -.17) : '#a93758', color ? shade(color, -.33) : '#754477')
+      : kind === 'dark' ? '#322d48' : kind === 'ghost' ? rgba('#211c34', .45) : '#fffbf3';
+    g.fill(path);
+    g.shadowColor = 'transparent';
     if (kind === 'primary') {
-      g.save();
-      g.clip(p);
-      g.fillStyle = rgba('#ffffff', 0.18);
-      g.fillRect(x, y, w, h * 0.5);
-      g.restore();
+      g.strokeStyle = rgba('#fff0e8', .52);
+      g.lineWidth = 1;
+      g.stroke(rrect(x + 2, y + 2, w - 4, h - 4, Math.max(1, radius - 2)));
+    } else {
+      g.strokeStyle = kind === 'ghost' ? rgba('#ffe5d9', .52) : kind === 'dark' ? '#514968' : '#dfd4df';
+      g.lineWidth = 1;
+      g.stroke(path);
     }
-    const ink = kind === 'primary' || kind === 'dark' ? '#ffffff' : kind === 'ghost' ? '#ffffff' : THEME.ink;
-    const tx = icon ? x + w / 2 + size * 0.6 : x + w / 2;
-    if (icon)
-      this.text(icon, tx - this.measure(label, size, 700) / 2 - size * 1.3, y + (h - size * 1.2) / 2 - (sub ? 9 : 0), {
-        size: size * 1.05,
-        color: ink,
-      });
-    this.text(label, tx, y + (h - size * 1.25) / 2 - (sub ? 9 : 0), { size, weight: 700, color: ink, align: 'center' });
-    if (sub) this.text(sub, x + w / 2, y + h / 2 + 5, { size: size * 0.68, color: ink, align: 'center', alpha: 0.75 });
+    const ink = kind === 'plain' ? THEME.ink : THEME.light;
+    const tx = icon ? x + w / 2 + size * .55 : x + w / 2;
+    const top = y + (h - size * 1.22) / 2 - (sub ? 9 : 0);
+    if (icon) this.text(icon, tx - this.measure(label, size, 700) / 2 - size * 1.3, top, { size: size * 1.05, color: ink });
+    this.text(label, tx, top, { size, weight: 750, color: ink, align: 'center' });
+    if (sub) this.text(sub, x + w / 2, y + h / 2 + 5, { size: size * .68, color: ink, align: 'center', alpha: .82 });
     g.restore();
-    if (!disabled && tap) this.hit(x, y, w, h, tap, { r: Math.min(r, h / 2) });
+    if (!disabled && tap) this.hit(x, y, w, h, tap, { r: radius });
   }
 
   /** A small rounded label. */
   chip(str, x, y, { color = THEME.violet, size = 13, ink = '#ffffff', padX = 10, h = 24 } = {}) {
     const w = this.measure(str, size, 700) + padX * 2;
     this.g.fillStyle = color;
-    this.g.fill(rrect(x, y, w, h, h / 2));
+    this.g.fill(rrect(x, y, w, h, Math.min(7, h / 2)));
     this.text(str, x + w / 2, y + (h - size * 1.25) / 2, { size, weight: 700, color: ink, align: 'center' });
     return w;
   }
@@ -190,11 +206,14 @@ export class Painter {
     this.g.fill(star(x, y, s, s * 0.45));
   }
 
-  /** Heading with a short gradient underline. */
-  title(str, x, y, { size = 26, color = THEME.ink } = {}) {
-    this.text(str, x, y, { size, weight: 800, color });
-    this.g.fillStyle = this.gradient(x, 46);
-    this.g.fill(rrect(x, y + size * 1.45, 46, 5, 2.5));
+  /** Section heading with a small editorial rule. */
+  title(str, x, y, { size = 29, color = THEME.ink } = {}) {
+    this.text(str, x, y, { size, weight: 750, family: SERIF, color });
+    const base = y + size * 1.34;
+    this.g.fillStyle = THEME.rose;
+    this.g.fill(poly([[x, base], [x + 3, base - 3], [x + 6, base], [x + 3, base + 3]]));
+    this.g.fillStyle = this.gradient(x + 11, 50, '#bd637e', rgba('#bd637e', 0));
+    this.g.fillRect(x + 11, base - .5, 52, 1);
   }
 
   /** Draw another canvas (a portrait, an icon) into the panel, optionally inside a rounded frame. */

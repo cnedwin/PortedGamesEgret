@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>心动选修课 / Love Elective</title>
   <meta name="description" content="心动选修课：基于新白鹭引擎开发的校园恋爱养成游戏 Demo。 / Love Elective, a campus romance and dress-up demo built with Egret Rebuild.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath d='M8 14C2 9 1 6 3 3.5 5 1.5 7.4 3 8 4.6 8.6 3 11 1.5 13 3.5 15 6 14 9 8 14Z' fill='%23ff5c8d'/%3E%3C/svg%3E">
@@ -24,8 +24,20 @@
   </script>
 </head>
 <body>
+  <header class="portrait-title">
+    <p>心动选修课</p>
+    <span>Love Elective</span>
+  </header>
   <canvas id="stage" width="1280" height="720" tabindex="0" aria-label="心动选修课：校园恋爱养成游戏。点击或轻触进行操作，空格或回车继续对话。 / Love Elective: a campus romance game. Click or tap to play; Space or Enter continues the dialogue."></canvas>
+  <section class="portrait-controls" aria-label="屏幕方向 / Screen orientation">
+    <p class="portrait-zh">横屏时，校园地图和换装界面会更清楚。</p>
+    <p class="portrait-en">Rotate your phone for a clearer view of the campus and wardrobe.</p>
+    <button id="fullscreen" type="button" hidden>
+      <span class="portrait-zh">进入全屏</span><span class="portrait-en">Play fullscreen</span>
+    </button>
+  </section>
   <div id="error" role="alert" hidden></div>
   <script type="module" src="./src/main.mjs"></script>
+  <script type="module" src="./src/screens/fullscreen.mjs"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 // The wardrobe: dress the hero (or a senior who trusts his taste), piece by
 // piece, and dye either colour of anything worn.
-import { THEME } from '../engine/ui.mjs';
+import { THEME, SERIF } from '../engine/ui.mjs';
 import { rgba, rrect, hsl } from '../art/draw.mjs';
 import { drawGarmentIcon, GARMENTS } from '../art/garments.mjs';
 import { drawMannequin } from '../art/figure.mjs';
@@ -18,7 +18,7 @@ export function openWardrobe(game, who) {
     hero = who === 'hero';
   return new Promise(resolve => {
     const tabs = hero ? ['top', 'bottom', 'outer', 'shoes', 'legs', 'acc', 'hair'] : ['top', 'bottom', 'dress', 'outer', 'shoes', 'legs', 'acc'];
-    const view = { tab: 'top', page: 0, selected: null, channel: 0 };
+    const view = { tab: 'top', page: 0, selected: sim.wearOf(s, who).top?.id ?? null, channel: 0 };
     const panel = ui.panel({ x: 560, y: 86, w: 690, h: 624, res: 1.25 });
     const stylePanel = ui.panel({ x: 22, y: 86, w: 236, h: 330, res: 1.25 });
     game.showHud(null);
@@ -37,10 +37,11 @@ export function openWardrobe(game, who) {
     function paintStyle(p) {
       const styles = sim.outfitStyles(wear()),
         entries = Object.entries(styles).sort((a, b) => b[1] - a[1]);
-      p.card(0, 0, 236, 322, { r: 22, fill: rgba('#ffffff', 0.9) });
+      p.sheet(0, 0, 236, 322, { accent: hero ? THEME.violet : HEROINES[who].color });
       p.text(hero ? L(['穿搭风格', 'Outfit style']) : L(HEROINES[who].name), 20, 16, {
-        size: 18,
-        weight: 800,
+        size: 21,
+        weight: 750,
+        family: SERIF,
         color: hero ? THEME.ink : HEROINES[who].color,
       });
       p.text(`${L(['魅力加成', 'Charm bonus'])} +${sim.outfitCharm(wear())}`, 20, 44, { size: 15, weight: 700, color: THEME.rose });
@@ -66,27 +67,17 @@ export function openWardrobe(game, who) {
 
     function paint(p) {
       const g = p.g;
-      p.card(0, 0, 690, 616, { r: 26 });
+      p.sheet(0, 0, 690, 616, { accent: THEME.violet });
       // Tabs.
       tabs.forEach((tab, i) => {
-        const x = 20 + i * 93,
-          on = tab === view.tab;
-        g.fillStyle = on ? p.gradient(x, 87) : rgba('#2b2a4a', 0.06);
-        g.fill(rrect(x, 18, 87, 38, 19));
-        p.text(L(SLOTS[tab]), x + 43.5, 26, { size: 15, weight: 700, color: on ? '#ffffff' : THEME.soft, align: 'center' });
-        p.hit(
-          x,
-          18,
-          87,
-          38,
-          () => {
-            view.tab = tab;
-            view.page = 0;
-            view.selected = null;
-            refresh(false);
-          },
-          { r: 19 },
-        );
+        const x = 20 + i * 93;
+        p.segment(x, 18, 87, 38, L(SLOTS[tab]), tab === view.tab, () => {
+          view.tab = tab;
+          view.page = 0;
+          view.selected = (tab === 'acc' ? wear().acc?.[0] : wear()[tab])?.id ?? null;
+          view.channel = 0;
+          refresh(false);
+        }, { size: 15 });
       });
 
       // Items of this kind.
@@ -106,14 +97,15 @@ export function openWardrobe(game, who) {
           on = isHair ? s.hero.hair.bangs === id : !!worn(id),
           picked = view.selected === id;
         p.card(x, y, 153, 148, {
-          r: 18,
-          fill: on ? '#fff4f8' : '#faf8ff',
-          shadow: 0.1,
+          r: 12,
+          fill: on ? '#fff6ec' : '#faf4ef',
+          shadow: .10,
           stroke: picked ? THEME.rose : on ? THEME.pink : THEME.line,
           lineW: picked ? 3 : 1.5,
         });
+        p.well(x + 9, y + 7, 135, 93, { active: on });
         if (isHair) {
-          p.image(game.face('hero', 'smile', { hair: { ...s.hero.hair, bangs: id } }), x + 34, y + 8, 86, 86, { r: 43 });
+          p.image(game.face('hero', 'smile', { hair: { ...s.hero.hair, bangs: id } }), x + 34, y + 8, 86, 86, { r: 14 });
           p.text(L(HAIRSTYLES[id].name), x + 76, y + 104, { size: 14, weight: 700, align: 'center' });
         } else {
           g.save();
@@ -136,9 +128,17 @@ export function openWardrobe(game, who) {
             }
             refresh();
           },
-          { r: 18 },
+          { r: 12 },
         );
       });
+      if (view.selected && CLOTHES[view.selected] && items.length <= 4) {
+        const selected = CLOTHES[view.selected];
+        p.card(22, 240, 646, 126, { fill: '#f5eaf0', stroke: '#e3d7e1', shadow: 0 });
+        p.text(L(selected.name), 42, 256, { size: 24, weight: 750, family: SERIF });
+        p.text(`${L(['魅力', 'Charm'])} +${selected.charm}`, 44, 295, { size: 16, weight: 750, color: THEME.rose });
+        const style = Object.entries(selected.styles).map(([tag, score]) => `${L(STYLES[tag])} +${score}`).join('  ·  ');
+        if (style) p.text(style, 44, 326, { size: 15, weight: 650, color: THEME.soft, maxW: 592 });
+      }
       if (pages > 1) {
         p.button(
           560,
@@ -169,12 +169,12 @@ export function openWardrobe(game, who) {
       // Dye.
       const dyeing = view.tab === 'hair' ? 'hair' : view.selected && worn(view.selected) ? view.selected : null;
       g.fillStyle = THEME.line;
-      g.fillRect(22, 392, 520, 1.5);
+      g.fillRect(22, 392, 520, 1);
       if (!dyeing)
-        p.text(L(['点选一件穿着中的服饰，就可以给它染色。', 'Tap something being worn to dye it.']), 22, 408, { size: 16, color: THEME.faint });
+        p.text(L(['选中要染色的服饰。', 'Select a worn piece to dye it.']), 22, 408, { size: 16, color: THEME.faint });
       else {
         const name = dyeing === 'hair' ? L(['发色', 'Hair colour']) : L(CLOTHES[dyeing].name);
-        p.text(`${L(['染色', 'Dye'])} · ${name}`, 22, 404, { size: 17, weight: 800 });
+        p.text(`${L(['染色', 'Dye'])} · ${name}`, 22, 404, { size: 18, weight: 750, family: SERIF });
         if (dyeing !== 'hair')
           [
             ['主色', 'Main'],
