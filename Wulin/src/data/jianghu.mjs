@@ -49,7 +49,7 @@ export const FORMATIONS = {
   line: { name: '长蛇阵', does: '寻常阵势', width: 5 },
   wedge: { name: '锋矢阵', does: '攻势加三分，防御减六分，阵形收窄', width: 4, attack: 0.03, defense: -0.06 },
   circle: { name: '方圆阵', does: '防御加一成，攻势减四分', width: 5, defense: 0.1, attack: -0.04 },
-  crane: { name: '鹤翼阵', does: '两翼展开包抄，防御减两分', width: 6, defense: -0.02 },
+  crane: { name: '鹤翼阵', does: '两翼展开包抄，攻势加两分', width: 6, attack: 0.02 },
   shaolin: { name: '罗汉阵', sect: 'shaolin', does: '防御加一成二', width: 5, defense: 0.12 },
   wudang: { name: '真武阵', sect: 'wudang', does: '防御加六分，气力回复加快', width: 5, defense: 0.06, regen: 0.002 },
   emei: { name: '金顶剑阵', sect: 'emei', does: '攻势加六分', width: 5, attack: 0.06 },
