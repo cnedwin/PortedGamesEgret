@@ -36,6 +36,7 @@ export function newGame() {
       dates: 0,
       lastDay: 1,
       wear: clone(HEROINES[id].outfits.uniform),
+      dyes: {},
       gifted: [],
     };
   }
@@ -48,7 +49,7 @@ export function newGame() {
     energy: 100,
     money: 300,
     stats: { intellect: 10, fitness: 10, art: 10, charm: 10, eq: 10 },
-    hero: { hair: clone(HERO.look.hair), hairs: { swept: true }, wear: clone(HERO.wear), owned },
+    hero: { hair: clone(HERO.look.hair), hairs: { swept: true }, wear: clone(HERO.wear), dyes: {}, owned },
     girls,
     bag: {},
     counters: {},
@@ -109,11 +110,16 @@ export function sleep(s) {
 
 // ------------------------------------------------------------------ outfits and stats
 
-/** Every piece in a `wear` description, as { id, c } entries. */
-export function pieces(wear) {
+function outfitPieces(wear) {
   const list = [];
   for (const slot of ['top', 'bottom', 'dress', 'outer', 'shoes', 'legs']) if (wear[slot]) list.push(wear[slot]);
   for (const a of wear.acc ?? []) list.push(a);
+  return list;
+}
+
+/** Pieces visible in an outfit, as { id, c } entries. */
+export function pieces(wear) {
+  const list = outfitPieces(wear);
   return wear.dress ? list.filter(p => !['top', 'bottom'].includes(CLOTHES[p.id]?.slot)) : list;
 }
 
@@ -401,32 +407,50 @@ export function closet(s, who) {
   return [...ids];
 }
 
-export const wearOf = (s, who) => (who === 'hero' ? s.hero.wear : s.girls[who].wear);
+const wardrobeOwner = (s, who) => (who === 'hero' ? s.hero : s.girls[who]);
+export const wearOf = (s, who) => wardrobeOwner(s, who).wear;
 
 /** The colours a senior's own pieces come in, so they keep their look when put back on. */
 function defaultColors(who, id) {
   if (who === 'hero') return undefined;
   for (const outfit of Object.values(HEROINES[who].outfits))
-    for (const p of [...pieces(outfit), outfit.top, outfit.bottom]) if (p?.id === id && p.c) return [...p.c];
+    for (const p of outfitPieces(outfit)) if (p.id === id && p.c) return [...p.c];
   return undefined;
+}
+
+/** Overlay hand-dyed channels on the defaults for this outfit. */
+function applyDyes(actor, piece) {
+  const colors = actor.dyes?.[piece.id];
+  if (colors) {
+    colors.forEach((color, channel) => {
+      // JSON stores an untouched channel before a dyed one as null.
+      if (typeof color !== 'string') return;
+      piece.c ??= [];
+      piece.c[channel] = color;
+    });
+  }
+  return piece;
+}
+
+function equipPiece(actor, who, id) {
+  const c = defaultColors(who, id);
+  return applyDyes(actor, c ? { id, c } : { id });
 }
 
 /** Put a piece on, or take it off if it is already worn. Accessories stack, one per zone of the body. */
 export function toggleWear(s, who, id) {
-  const wear = wearOf(s, who),
+  const actor = wardrobeOwner(s, who),
+    wear = actor.wear,
     def = CLOTHES[id];
   if (!def || !closet(s, who).includes(id)) return false;
   if (who === 'hero' && def.only === 'f') return false;
-  const piece = { id },
-    c = defaultColors(who, id);
-  if (c) piece.c = c;
   if (def.slot === 'acc') {
     wear.acc ??= [];
     const at = wear.acc.findIndex(a => a.id === id);
     if (at >= 0) wear.acc.splice(at, 1);
     else {
       wear.acc = wear.acc.filter(a => CLOTHES[a.id].zone !== def.zone);
-      wear.acc.push(piece);
+      wear.acc.push(equipPiece(actor, who, id));
     }
     return true;
   }
@@ -435,7 +459,7 @@ export function toggleWear(s, who, id) {
     if (['outer', 'legs'].includes(def.slot)) delete wear[def.slot];
     return true;
   }
-  wear[def.slot] = piece;
+  wear[def.slot] = equipPiece(actor, who, id);
   if (def.slot === 'dress') {
     delete wear.top;
     delete wear.bottom;
@@ -445,11 +469,7 @@ export function toggleWear(s, who, id) {
     const have = closet(s, who),
       other = def.slot === 'top' ? 'bottom' : 'top';
     const spare = have.find(x => CLOTHES[x].slot === other);
-    if (spare && !wear[other]) {
-      wear[other] = { id: spare };
-      const sc = defaultColors(who, spare);
-      if (sc) wear[other].c = sc;
-    }
+    if (spare && !wear[other]) wear[other] = equipPiece(actor, who, spare);
   }
   return true;
 }
@@ -457,9 +477,11 @@ export function toggleWear(s, who, id) {
 /** Dye a supported colour channel of a worn piece. */
 export function dye(s, who, id, channel, color) {
   if (channel !== 0 && (channel !== 1 || CLOTHES[id]?.singleDye)) return false;
-  const wear = wearOf(s, who);
-  const piece = [...pieces(wear), wear.top, wear.bottom].find(p => p?.id === id);
+  const actor = wardrobeOwner(s, who);
+  const piece = outfitPieces(actor.wear).find(p => p.id === id);
   if (!piece) return false;
+  const colors = ((actor.dyes ??= {})[id] ??= []);
+  colors[channel] = color;
   piece.c ??= [];
   piece.c[channel] = color;
   return true;
@@ -469,6 +491,7 @@ export function wearPreset(s, girl, name) {
   const g = s.girls[girl];
   if (name !== 'uniform' && g.aff < (name === 'casual' ? DRESS_AFFECTION : 60)) return false;
   g.wear = clone(HEROINES[girl].outfits[name]);
+  for (const piece of outfitPieces(g.wear)) applyDyes(g, piece);
   return true;
 }
 
@@ -527,10 +550,36 @@ export function confess(s, girl) {
 
 export const serialize = s => JSON.stringify(s);
 
+/** Old saves carry colours on equipped pieces only. Infer overrides from the
+ * active preset, or from the known defaults when the outfit has been mixed. */
+function recoverLegacyDyes(actor, presets) {
+  if (!actor?.wear || actor.dyes) return;
+  actor.dyes = {};
+  const equipped = outfitPieces(actor.wear);
+  const signature = items => items.map(p => p.id).sort().join(',');
+  const current = signature(equipped);
+  const defaults = presets.map(outfitPieces);
+  const matched = defaults.find(items => signature(items) === current);
+  const reference = matched ? [matched] : defaults;
+  for (const { id, c } of equipped) {
+    if (!CLOTHES[id] || !Array.isArray(c)) continue;
+    const channels = CLOTHES[id].singleDye ? 1 : 2;
+    const original = reference.flatMap(items => items.filter(p => p.id === id));
+    for (let channel = 0; channel < channels; channel++) {
+      const color = c[channel];
+      if (typeof color !== 'string' || original.some(p => p.c?.[channel] === color)) continue;
+      (actor.dyes[id] ??= [])[channel] = color;
+    }
+  }
+}
+
 export function deserialize(text) {
   try {
     const s = JSON.parse(text);
-    return s && s.version === SAVE_VERSION && s.girls && s.hero ? s : null;
+    if (!s || s.version !== SAVE_VERSION || !s.girls || !s.hero) return null;
+    recoverLegacyDyes(s.hero, [HERO.wear]);
+    for (const id of HEROINE_IDS) recoverLegacyDyes(s.girls[id], Object.values(HEROINES[id].outfits));
+    return s;
   } catch {
     return null;
   }

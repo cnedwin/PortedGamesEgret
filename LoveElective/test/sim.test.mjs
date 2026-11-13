@@ -201,6 +201,65 @@ test('dye applies only to supported colour channels and survives a save', () => 
   assert.deepEqual(restored.hero.wear.top.c, ['#551144', '#ff0066']);
 });
 
+test('dyes are remembered per character after swapping, unequipping and loading', () => {
+  const s = sim.newGame();
+  s.hero.owned.glasses = true;
+  s.hero.owned.shades = true;
+  s.girls.wanqing.gifted.push('glasses');
+  assert.ok(sim.toggleWear(s, 'hero', 'glasses'));
+  assert.ok(sim.toggleWear(s, 'wanqing', 'glasses'));
+  assert.ok(sim.dye(s, 'hero', 'glasses', 1, '#ff0066'));
+  assert.ok(sim.dye(s, 'wanqing', 'glasses', 1, '#00aa88'));
+  assert.ok(sim.toggleWear(s, 'hero', 'shades'));
+  assert.ok(sim.toggleWear(s, 'hero', 'glasses'));
+  assert.equal(s.hero.wear.acc[0].c?.[1], '#ff0066');
+  assert.ok(sim.toggleWear(s, 'hero', 'glasses'));
+  assert.ok(sim.toggleWear(s, 'wanqing', 'glasses'));
+
+  const restored = sim.deserialize(sim.serialize(s));
+  assert.ok(sim.toggleWear(restored, 'hero', 'glasses'));
+  assert.ok(sim.toggleWear(restored, 'wanqing', 'glasses'));
+  assert.equal(restored.hero.wear.acc[0].c?.[1], '#ff0066');
+  assert.equal(restored.girls.wanqing.wear.acc.find(p => p.id === 'glasses').c?.[1], '#00aa88');
+});
+
+test('dyes follow a garment across presets while untouched channels use the preset defaults', () => {
+  const s = sim.newGame();
+  const girl = s.girls.wanqing;
+  girl.aff = 60;
+  const { casual, date } = HEROINES.wanqing.outfits;
+  assert.ok(sim.dye(s, 'wanqing', 'sweater', 0, '#336644'));
+  assert.ok(sim.wearPreset(s, 'wanqing', 'casual'));
+  assert.ok(sim.dye(s, 'wanqing', 'cardigan', 1, '#cc0055'));
+
+  const restored = sim.deserialize(sim.serialize(s));
+  assert.ok(sim.wearPreset(restored, 'wanqing', 'date'));
+  assert.deepEqual(restored.girls.wanqing.wear.outer.c, [date.outer.c[0], '#cc0055']);
+  assert.ok(sim.toggleWear(restored, 'wanqing', 'jeans'));
+  assert.equal(restored.girls.wanqing.wear.top.id, 'sweater');
+  assert.equal(restored.girls.wanqing.wear.top.c?.[0], '#336644');
+  assert.ok(sim.wearPreset(restored, 'wanqing', 'uniform'));
+  assert.ok(sim.wearPreset(restored, 'wanqing', 'casual'));
+  assert.deepEqual(restored.girls.wanqing.wear.outer.c, [casual.outer.c[0], '#cc0055']);
+  assert.equal(casual.outer.c[1], '#7cc47a');
+});
+
+test('legacy saves recover equipped dyes without locking in an untouched preset palette', () => {
+  const legacy = sim.newGame();
+  legacy.hero.wear.top.c = [null, '#cc0055'];
+  legacy.girls.wanqing.aff = 60;
+  legacy.girls.wanqing.wear = structuredClone(HEROINES.wanqing.outfits.date);
+  legacy.girls.wanqing.wear.outer.c[1] = '#00aa88';
+  for (const actor of [legacy.hero, ...Object.values(legacy.girls)]) delete actor.dyes;
+
+  const restored = sim.deserialize(sim.serialize(legacy));
+  assert.ok(sim.toggleWear(restored, 'hero', 'shirt'));
+  assert.ok(sim.toggleWear(restored, 'hero', 'tee'));
+  assert.equal(restored.hero.wear.top.c?.[1], '#cc0055');
+  assert.ok(sim.wearPreset(restored, 'wanqing', 'casual'));
+  assert.deepEqual(restored.girls.wanqing.wear.outer.c, [HEROINES.wanqing.outfits.casual.outer.c[0], '#00aa88']);
+});
+
 test('a save survives being written and read back', () => {
   const s = sim.newGame();
   sim.enter(s, 'field');
