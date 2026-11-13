@@ -20,6 +20,12 @@ Play the full classic turn-based game in your browser. The first launch automati
 
 An independently developed 3D action survival demo built with Egret Rebuild. See-through jelly pandas hold a toy island for fifteen minutes against a candy horde: twelve self-firing toys level up and evolve, super jumps, slams, belly bumps and rolls send enemies flying, and a boss arrives every five minutes. Play alone or with friends steered by the game. [Play online](https://cnedwin.github.io/PortedGamesEgret/jelly-pandas/) · [Guide and development](jelly-pandas/README.md)
 
+## Jinxiu Rally · 锦绣飞车
+
+一款使用新白鹭引擎独立开发的 3D 赛车游戏 Demo。醒狮、熊猫、美猴王、玉兔、青龙、秦俑、京剧花脸和虎头娃八位车手，在有牌楼、石桥、宝塔和长城的“山水环道”上竞速：漂移攒出加速，冲过加速带、飞越木坡道，再用爆竹、蹴鞠、纸鸢、金钟罩、雷公鼓和窜天猴争夺名次。三个级别，可选 1、3 或 5 圈，支持键盘、手柄和触屏。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/Rally/) · [说明与开发](Rally/README.md)
+
+An independently developed 3D kart racing demo built with Egret Rebuild. Eight racers (a lion dancer, a panda, the Monkey King, the Jade Rabbit, the Azure Dragon, a terracotta warrior, a Peking opera mask and a child in a tiger hat) race the Mountain and Water Circuit past a ceremonial gate, a stone bridge, pagodas and the long wall: drift for boosts, hit the boost strips, fly off the wooden ramps, and fight for places with firecrackers, cuju balls, kites, a golden bell, a thunder drum and sky rockets. Three classes over 1, 3 or 5 laps, with keyboard, gamepad and touch controls. [Play online](https://cnedwin.github.io/PortedGamesEgret/Rally/) · [Guide and development](Rally/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)

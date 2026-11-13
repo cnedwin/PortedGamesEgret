@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>锦绣飞车 / Jinxiu Rally</title>
+  <meta name="description" content="锦绣飞车：基于新白鹭引擎开发的 3D 赛车游戏 Demo。 / Jinxiu Rally, a 3D kart racing demo built with Egret Rebuild.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect x='1' y='3' width='14' height='11' rx='3' fill='%23d8262c'/%3E%3Crect x='1' y='3' width='14' height='2.5' fill='%23f2c230'/%3E%3Crect x='1' y='11.5' width='14' height='2.5' fill='%23f2c230'/%3E%3Crect x='7' y='0' width='2' height='3' fill='%233a2a20'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
+        "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="stage" tabindex="0" aria-label="锦绣飞车：3D 赛车游戏。W 或上箭头加速，S 或下箭头刹车，A D 或左右箭头转向，空格漂移，E 使用道具。 / Jinxiu Rally: a 3D kart racing game. W or Up to accelerate, S or Down to brake, A D or Left Right to steer, Space to drift, E to use an item."></canvas>
+  <div id="ui"></div>
+  <div id="error" role="alert" hidden></div>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>
