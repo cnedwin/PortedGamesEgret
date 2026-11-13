@@ -666,7 +666,8 @@ export function createRace({ track, entries, klass = 1, laps = 3, seed = 1 }) {
         else if (throttle <= 0) speed = Math.max(-DRIVE.reverseSpeed, speed - tuning.acceleration * 0.7 * brake * dt);
       }
       if (throttle <= 0 && brake <= 0 && kart.boost <= 0) speed -= sign(speed) * Math.min(Math.abs(speed), DRIVE.coasting * dt);
-      if (speed > top) speed -= Math.min(speed - top, (kart.grass && !pushed ? 48 : 16) * dt);
+      // Grass and mud drag a fast kart down hard; on tarmac extra speed bleeds off gently.
+      if (speed > top) speed -= Math.min(speed - top, ((kart.grass || kart.mud) && !pushed ? 48 : 16) * dt);
       // Hills: slower up, faster down.
       speed -= kart.slope * DRIVE.gravity * 0.35 * dt;
     }

@@ -707,7 +707,7 @@ export function createView(scene, camera, track, options = {}) {
     if (shot === 'select' && shown) orbit(shown.at.x, shown.at.y, shown.at.z, shown.at.heading + 2.6 + time * 0.35, 5.4, 1.9);
     else if (shot === 'title') {
       rig.orbit += dt * 0.12;
-      orbit(watched.x, watched.y, watched.z, watched.heading + Math.PI + Math.sin(rig.orbit) * 1.2, 9, 3.2);
+      orbit(watched.x, watched.y, watched.z, watched.heading + Math.PI + Math.sin(rig.orbit) * 1.3, 11.5, 4.2);
     } else if (shot === 'intro') {
       // From high in front of the grid round to the chase position.
       const ease = sweep * sweep * (3 - 2 * sweep);

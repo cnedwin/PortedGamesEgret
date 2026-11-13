@@ -1,8 +1,8 @@
 # Jinxiu Rally · 锦绣飞车
 
-锦绣飞车是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 3D 赛车游戏 Demo。八位带着中国元素的车手在“山水环道”上同场竞速：过牌楼、上山坡、穿 S 弯、跨石桥、绕发卡弯，漂移攒出加速，再用爆竹、蹴鞠、纸鸢和窜天猴扭转名次。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/Rally/)
+锦绣飞车是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 3D 赛车游戏 Demo。八位带着中国元素的车手在“山水环道”上同场竞速：过牌楼、上山坡、穿 S 弯、跨石桥、绕发卡弯，漂移攒出加速，捡铜钱、穿祥云门、借前车尾流，绕开泥潭、石狮和滚动的大鼓，再用爆竹、蹴鞠、纸鸢、筋斗云和窜天猴扭转名次。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/Rally/)
 
-Jinxiu Rally is an independently developed 3D kart racing demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Eight racers drawn from Chinese tradition share the Mountain and Water Circuit: under the ceremonial gate, up the hill, through the S-bend, over the stone bridge and round the hairpin, drifting for boosts and turning the order around with firecrackers, cuju balls, kites and sky rockets. [Play online](https://cnedwin.github.io/PortedGamesEgret/Rally/)
+Jinxiu Rally is an independently developed 3D kart racing demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Eight racers drawn from Chinese tradition share the Mountain and Water Circuit: under the ceremonial gate, up the hill, through the S-bend, over the stone bridge and round the hairpin, drifting for boosts, collecting coins, threading cloud gates and tucking into slipstreams, steering round mud, stone lions and rolling drums, and turning the order around with firecrackers, cuju balls, kites, a somersault cloud and sky rockets. [Play online](https://cnedwin.github.io/PortedGamesEgret/Rally/)
 
 ## 玩法 · How to play
 
@@ -25,11 +25,13 @@ Touch screens get on-screen buttons, and the kart accelerates by itself.
 - 倒数到“2”之后再踩油门可以弹射起步；踩得太早会熄火。
 - 冲过发光的加速带、从木坡道起跳并在空中按漂移键，都能加速；草地会让车慢下来。
 - 撞开红灯笼获得道具，名次越靠后越容易拿到强力道具。
+- 屏幕下方的漂移条显示离下一级加速还差多少；超车、加速和特技都会有提示。
 
 - Hold drift while steering through a corner: the sparks turn blue, orange, then purple, and letting go gives a boost to match.
 - Press the accelerator after the count reaches 2 for a rocket start; too early and the engine stalls.
 - Glowing strips give a boost, and so does pressing drift in the air off a wooden ramp; grass slows a kart down.
 - Drive through a red lantern for an item. The further back a kart is, the stronger the items it tends to get.
+- The drift bar at the bottom shows how close the next boost level is; overtakes, boosts and tricks are called out on screen.
 
 ### 车手 · Racers
 
@@ -55,6 +57,23 @@ Touch screens get on-screen buttons, and the kart accelerates by itself.
 | 金钟罩 · Golden Bell | 一段时间内不受攻击并提速 · nothing can hit you for a while, and you go faster |
 | 雷公鼓 · Thunder Drum | 其他车手全部缩小减速 · shrinks and slows everyone else |
 | 窜天猴 · Sky Rocket | 飞向第一名并爆炸 · flies to the leader and goes off |
+| 护身玉 · Jade Charm | 挡下一次攻击 · takes one hit for you |
+| 铜锣 · Bronze Gong | 震翻身边的车并清掉附近的道具 · spins the karts around you and clears items nearby |
+| 墨汁 · Ink Splash | 泼向前面所有车手，遮住视线 · splashes everyone ahead and covers their view |
+| 筋斗云 · Somersault Cloud | 腾云自动飞驰一段，撞开挡路的车 · carries you down the road by itself, bowling others over |
+
+### 赛道上 · On the track
+
+| | 效果 · Effect |
+|---|---|
+| 铜钱 · Coins | 每枚略微提高极速，最多十枚；被击中会掉三枚 · each adds a little top speed, up to ten; a hit spills three |
+| 祥云门 · Cloud gates | 从门中间穿过获得加速 · drive through the middle for a boost |
+| 尾流 · Slipstream | 紧跟前车一会儿获得加速 · stay close behind another kart for a moment and get a boost |
+| 加速带、木坡道 · Boost strips, ramps | 加速；腾空时按漂移键做特技，落地再加速 · a boost; press drift in the air for a trick and another on landing |
+| 泥潭 · Mud | 明显减速并打滑 · slows a kart sharply and makes it slide |
+| 石狮 · Stone lions | 撞上会被弹开并损失大半速度 · a bump throws the kart back and costs most of its speed |
+| 滚鼓 · Rolling drums | 在路面来回滚动，撞上会打转 · roll from side to side across the road and spin whatever they meet |
+| 草地 · Grass | 减速 · slows a kart down |
 
 三个级别（闲庭信步、策马奔腾、追风逐电）决定车速和对手的水平，可选 1、3 或 5 圈。标题界面可以切换画质（高、中、低）和语言，帧率不足时请调低画质。
 
@@ -70,14 +89,16 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 |---|---|
 | 赛道中心线 · The circuit's centre line | `CatmullRomCurve3D` 闭合曲线，等距取样 · closed curve, sampled at equal distances |
 | 路面、路肩、围墙、桥面 · Road, kerbs, walls, bridge deck | `createGeometry3D` 沿赛道生成的带状网格 · strips generated along the track |
-| 车手与座驾、建筑 · Racers, karts and buildings | 基本体合并为带顶点色的单个网格 · primitives merged into single vertex-coloured meshes |
-| 树木、灯笼、旌旗、观众、长城、群山 · Trees, lanterns, banners, crowd, long wall, mountains | `InstancedMesh3D` 逐实例变换与颜色 · per-instance transform and colour |
-| 道具箱与飞行中的道具 · Item boxes and items in flight | 每帧重填的 `InstancedMesh3D` · refilled every frame |
+| 车手与座驾、建筑 · Racers, karts and buildings | 基本体合并为带顶点色的网格；车漆用清漆层，金属件用金属度，衣物用绒面光泽 · primitives merged into vertex-coloured meshes; clearcoat for the paint, metalness for the fittings, sheen for cloth |
+| 轮胎 · Tyres | `createLatheGeometry3D` 旋转成形 · spun from an outline |
+| 树木、花草、灯笼、旌旗、观众、仙鹤、长城、群山 · Trees, verge plants, lanterns, banners, crowd, cranes, long wall, mountains | `InstancedMesh3D` 逐实例变换与颜色 · per-instance transform and colour |
+| 道具箱、铜钱、滚鼓与飞行中的道具 · Item boxes, coins, drums and items in flight | 每帧重填的 `InstancedMesh3D` · refilled every frame |
 | 湖面 · The lake | `createWater3D` 波浪与倒影 · waves and reflection |
 | 金钟罩 · The golden bell | `createGlassMaterial3D` |
-| 漂移火花、尾焰、尘土、爆炸、纸屑 · Drift sparks, flames, dust, explosions, paper | `createParticleEmitter3D` |
-| 加速拖尾 · Boost trails | `createTrail3D` |
-| 路面、牌匾等贴图 · Road, plaque and other textures | 由像素或画布生成的 `Texture3D` · made from pixels or a canvas |
+| 漂移火花、尾焰、尘土、泥浆、花瓣、烟花 · Drift sparks, flames, dust, mud, petals, fireworks | `createParticleEmitter3D` |
+| 加速拖尾、漂移胎痕 · Boost trails, drift tyre marks | `createTrail3D` |
+| 冲击波光环 · Shock rings | `createRingGeometry3D` + 叠加混合 · additive blending |
+| 路面、草地、牌匾、横幅、车徽贴图 · Road, turf, plaque, banner and badge textures | 由像素或画布生成的 `Texture3D` · made from pixels or a canvas |
 | 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
 | 画面 · Look | 级联阴影、天空环境光、雾、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, fog, ambient occlusion, bloom, FXAA |
 

@@ -286,3 +286,141 @@ test('laps are counted for a kart driven by the player', () => {
   assert.ok(me.finishTime > 35, `lap time ${me.finishTime}`);
   assert.ok(me.total >= track.length);
 });
+
+/** Put a kart on the road at a feature, facing along the track, at `speed`. */
+function placeAt(race, kart, s, lateral, speed = 0) {
+  const at = track.sample(s, lateral, {});
+  Object.assign(kart, { x: at.x, z: at.z, y: at.y, heading: at.heading, speed, slip: 0, station: -1 });
+  const found = track.locate(kart.x, kart.z, -1, {});
+  kart.station = found.index;
+  kart.s = found.s;
+  kart.lateral = found.lateral;
+}
+
+test('coins fill the purse, raise the top speed and spill when hit', () => {
+  const { race, me, controls } = started();
+  const coin = race.coins[0];
+  placeAt(race, me, coin.s - 1, coin.lateral, 10);
+  controls.throttle = 1;
+  run(race, controls, 0.15);
+  assert.ok(me.coins >= 1);
+  assert.ok(coin.timer > 0, 'the coin is gone for a while');
+  me.coins = DRIVE.coinLimit;
+  race.hit(me, 'spin');
+  assert.equal(me.coins, DRIVE.coinLimit - 3);
+});
+
+test('a cloud gate boosts a kart that drives through the middle, and only there', () => {
+  const gate = track.gates[0];
+  let { race, me, controls } = started();
+  placeAt(race, me, gate.s - 3, gate.lateral, 20);
+  controls.throttle = 1;
+  run(race, controls, 0.4);
+  assert.ok(me.boost > 0, 'through the gate');
+  ({ race, me, controls } = started());
+  placeAt(race, me, gate.s - 3, gate.lateral + gate.halfWidth + 2.5, 20);
+  controls.throttle = 1;
+  run(race, controls, 0.4);
+  assert.equal(me.boost, 0, 'past the side of it');
+});
+
+test('mud slows a kart and stone lions stop it going through', () => {
+  const mud = track.mud[0];
+  let { race, me, controls } = started();
+  placeAt(race, me, mud.s - mud.radius - 12, mud.lateral, 30);
+  controls.throttle = 1;
+  let slowest = Infinity,
+    bogged = false;
+  for (let i = 0; i < 50; i++) {
+    race.update(1 / 60, controls);
+    bogged ||= me.mud;
+    slowest = Math.min(slowest, me.speed);
+  }
+  assert.ok(bogged, 'drove into the mud');
+  assert.ok(slowest < 26, `slowed to ${slowest}`);
+
+  const lion = track.lions[0];
+  ({ race, me, controls } = started());
+  placeAt(race, me, lion.s - 8, lion.lateral, 30);
+  controls.throttle = 1;
+  for (let i = 0; i < 60; i++) {
+    race.update(1 / 60, controls);
+    assert.ok(Math.hypot(me.x - lion.x, me.z - lion.z) >= lion.radius + DRIVE.radius * 0.85 - 0.05, 'never inside the lion');
+  }
+  assert.ok(race.events.some((event) => event.type === 'thud' && event.kart === me.index));
+});
+
+test('a rolling drum spins the kart it meets', () => {
+  const { race, me, controls } = started();
+  const drum = race.drums[0];
+  race.update(1 / 60, controls);
+  placeAt(race, me, drum.s, drum.offset, 0);
+  race.update(1 / 60, controls);
+  assert.ok(me.spin > 0);
+});
+
+test('the newer items do what they say', () => {
+  // Jade charm: takes one hit, then is gone.
+  let { race, me, controls } = started();
+  race.give(me, 'jade');
+  controls.item = true;
+  race.update(1 / 60, controls);
+  assert.ok(me.jade > 0);
+  assert.equal(race.hit(me, 'tumble'), false);
+  assert.equal(me.jade, 0);
+  assert.equal(me.spin, 0);
+
+  // Bronze gong: spins the karts close by and pushes the user on.
+  ({ race, me, controls } = started());
+  const near = race.karts[1],
+    far = race.karts[7];
+  placeAt(race, near, me.s + 6, me.lateral);
+  placeAt(race, far, me.s + 120, 0);
+  race.give(me, 'gong');
+  controls.item = true;
+  race.update(1 / 60, controls);
+  assert.ok(near.spin > 0 && far.spin === 0);
+  assert.ok(me.boost > 0);
+
+  // Ink: only the karts ahead are splashed.
+  ({ race, me, controls } = started());
+  placeAt(race, me, track.length - 80, 0); // well behind the whole grid
+  me.total = -80;
+  race.update(1 / 60, controls);
+  race.give(me, 'ink');
+  controls.item = true;
+  race.update(1 / 60, controls);
+  assert.equal(me.inked, 0);
+  assert.ok(race.karts.every((kart) => kart === me || kart.inked > 0));
+
+  // Somersault cloud: carries the kart down the road by itself, faster than it can drive.
+  ({ race, me, controls } = started());
+  race.give(me, 'cloud');
+  controls.item = true;
+  race.update(1 / 60, controls);
+  controls.item = false;
+  const from = me.total;
+  run(race, controls, 2);
+  assert.ok(me.total - from > 90, `covered ${me.total - from} m in two seconds`);
+  assert.equal(race.hit(me, 'spin'), false);
+  run(race, controls, DRIVE.cloudSeconds);
+  assert.equal(me.cloud, 0);
+});
+
+test('tucking in behind another kart earns a slipstream boost', () => {
+  const { race, me, controls } = started();
+  const leader = race.karts[1];
+  // Park everyone else out of the way, then follow one kart closely at speed.
+  race.karts.forEach((kart, index) => {
+    if (kart !== me && kart !== leader) placeAt(race, kart, 600 + index * 30, 0);
+  });
+  controls.throttle = 1;
+  let boosted = false;
+  for (let i = 0; i < 60 * 3 && !boosted; i++) {
+    placeAt(race, leader, me.s + 8, me.lateral, 30);
+    me.speed = Math.max(me.speed, 30);
+    race.update(1 / 60, controls);
+    boosted = race.events.some((event) => event.type === 'boost' && event.source === 'draft' && event.kart === me.index);
+  }
+  assert.ok(boosted);
+});

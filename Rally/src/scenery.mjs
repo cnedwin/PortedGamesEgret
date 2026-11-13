@@ -120,7 +120,9 @@ function roadTexture() {
     512,
     256,
     (x, y) => {
-      const grain = 58 + noise() * 26,
+      // Fine grit, with the faint darker bands that tyres leave either side of the centre.
+      const worn = Math.exp(-(((x - 140) / 46) ** 2)) + Math.exp(-(((x - 372) / 46) ** 2)),
+        grain = 66 + noise() * 22 - worn * 9,
         edge = x < 12 || x > 499,
         dash = Math.abs(x - 255.5) < 4 && y < 128;
       if (edge) return [236, 232, 220, 255];
@@ -163,14 +165,14 @@ export function createScenery(scene, track, options = {}) {
   const beside = (fraction, lateral) => track.sample(fraction * track.length, lateral, {});
 
   // ---- sky and light -----------------------------------------------------------------
-  const sky = createGradientCubeTexture3D([64, 128, 224], [246, 226, 204], [128, 150, 128], 64);
+  const sky = createGradientCubeTexture3D([38, 108, 222], [214, 232, 250], [120, 150, 120], 64);
   scene.background = sky;
   scene.environment = sky;
-  scene.environmentIntensity = 0.5;
-  scene.fog = { kind: 'linear', color: [linear(0.86), linear(0.84), linear(0.82)], near: 240, far: 1500 };
-  scene.addChild(createHemisphereLight3D({ color: 0xdcecff, groundColor: 0x8a9a6a, intensity: 0.55 }));
-  scene.addChild(createAmbientLight3D({ intensity: 0.08 }));
-  const sun = createDirectionalLight3D({ color: 0xfff0d2, intensity: 1.6, castShadow: true });
+  scene.environmentIntensity = 0.6;
+  scene.fog = { kind: 'linear', color: [linear(0.8), linear(0.88), linear(0.96)], near: 260, far: 1500 };
+  scene.addChild(createHemisphereLight3D({ color: 0xcfe4ff, groundColor: 0x86a25e, intensity: 0.5 }));
+  scene.addChild(createAmbientLight3D({ intensity: 0.05 }));
+  const sun = createDirectionalLight3D({ color: 0xffeccc, intensity: 2.1, castShadow: true });
   Object.assign(sun.shadow, { cascades: 3, cascadeDistance: 110, mapSize: options.shadowSize ?? 2048 });
   scene.addChild(sun);
   scenery.sun = sun;
@@ -223,8 +225,8 @@ export function createScenery(scene, track, options = {}) {
       colors = [],
       uvs = [],
       indices = [];
-    const grass = rgb(0x7fb85a),
-      meadow = rgb(0x5f9c4a),
+    const grass = rgb(0x86c552),
+      meadow = rgb(0x5a9e44),
       rock = rgb(0x8b8f7c),
       sand = rgb(0xd9c79a),
       bed = rgb(0x6d8a7a);
@@ -761,11 +763,37 @@ export function createScenery(scene, track, options = {}) {
 
   // ---- mountains and clouds ----------------------------------------------------------------
   {
+    // A peak in bands: forest below, bare rock, then snow, with a shoulder to break the outline.
+    const cone = (sides) => createConeGeometry3D({ radius: 1, height: 1, radialSegments: sides });
     const peak = build([
-      [createConeGeometry3D({ radius: 1, height: 1, radialSegments: 7 }), [0, 0.5, 0], [1, 1, 1], 0x6f8fa8],
-      [createConeGeometry3D({ radius: 1, height: 1, radialSegments: 7 }), [0, 0.86, 0], [0.3, 0.3, 0.3], 0xf4f6f8],
-      [createConeGeometry3D({ radius: 1, height: 1, radialSegments: 6 }), [0.55, 0.3, 0.2], [0.7, 0.6, 0.7], 0x7f9cb0],
+      [cone(9), [0, 0.5, 0], [1, 1, 1], 0x4f7f6a],
+      [cone(9), [0, 0.62, 0], [0.78, 0.76, 0.78], 0x6f8fa8],
+      [cone(9), [0, 0.84, 0], [0.34, 0.33, 0.34], 0xf4f6f8],
+      [cone(7), [0.55, 0.3, 0.2], [0.7, 0.6, 0.7], 0x5a8a70],
+      [cone(7), [0.6, 0.42, 0.22], [0.42, 0.37, 0.42], 0x7f9cb0],
+      [cone(6), [-0.5, 0.22, -0.3], [0.6, 0.44, 0.6], 0x4f7f6a],
     ]);
+    // Rounded green foothills stand between the circuit and the peaks.
+    const hill = build([
+      [BALL, [0, 0, 0], [1, 0.34, 1], 0x5f9c4a],
+      [BALL, [0.7, -0.02, 0.3], [0.7, 0.26, 0.7], 0x6aa852],
+      [BALL, [-0.6, -0.03, -0.4], [0.8, 0.22, 0.8], 0x528f42],
+    ]);
+    const foothills = [];
+    for (let k = 0; k < 26; k++) {
+      const angle = (k / 26) * 6.283 + chance() * 0.2,
+        distance = 560 + chance() * 150,
+        tone = 0.8 + chance() * 0.35;
+      foothills.push([
+        Math.cos(angle) * distance,
+        -6,
+        Math.sin(angle) * distance,
+        chance() * 6.28,
+        110 + chance() * 90,
+        [tone, tone, tone],
+      ]);
+    }
+    copies(hill, foothills, lit({ roughness: 1 }), false);
     const peaks = [];
     for (let k = 0; k < 34; k++) {
       const angle = (k / 34) * 6.283 + chance() * 0.12,
@@ -781,7 +809,7 @@ export function createScenery(scene, track, options = {}) {
         [tone, tone, tone],
       ]);
     }
-    copies(peak, peaks, lit({ roughness: 1, flatShading: true }), false);
+    copies(peak, peaks, lit({ roughness: 1 }), false);
 
     const cloud = build([
       [SPHERE, [0, 0, 0], [16, 5, 9], [1, 1, 1]],
