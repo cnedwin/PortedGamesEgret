@@ -23,6 +23,8 @@ export function createOrbit(canvas) {
     reach: 40,
     /** Radians a second the camera drifts round while nobody touches it. */
     drift: 0,
+    /** On a map a plain drag slides the view and the right button turns it; elsewhere it is the other way round. */
+    dragPans: false,
     /** Called with page coordinates when the player taps without dragging. */
     onTap: null,
     position: [0, 0, 0],
@@ -104,7 +106,7 @@ export function createOrbit(canvas) {
       if (pinch) orbit.distance = clamp((orbit.distance * pinch) / Math.max(1, gap), orbit.minDistance, orbit.maxDistance);
       pinch = gap;
       slide(dx / 2, dy / 2);
-    } else if (last.button === 2 || event.shiftKey) slide(dx, dy);
+    } else if ((last.button === 2 || event.shiftKey) !== !!orbit.dragPans) slide(dx, dy);
     else {
       orbit.yaw -= dx * 0.006;
       orbit.pitch = clamp(orbit.pitch + dy * 0.005, orbit.minPitch, orbit.maxPitch);

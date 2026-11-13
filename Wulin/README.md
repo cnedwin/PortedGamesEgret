@@ -4,9 +4,9 @@
 
 Wulin is an independently developed wuxia sect management demo being built for [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). In the Chenghe years of the Zhao dynasty the court bans the carrying of arms, and the martial world stirs. Take charge of one of twelve sects: build its seat, take in disciples, set their work, train them in the arts, and fight or befriend the other sects until you rule them all, or until the Summit names you its leader. [Play online](https://cnedwin.github.io/PortedGamesEgret/Wulin/)
 
-> 规则、数值、存档和修改器齐备；界面、立绘和场景画来自 `art-handoff/`，山门与战斗用引擎以 3D 绘制（模型由代码生成）。设备画不了 3D 时，山门以画卷示意，战斗以文字结算。尚未制作：配音、3D 沙盘大地图、分舵间的运输与商路。
+> 规则、数值、存档和修改器齐备；界面、立绘和场景画来自 `art-handoff/`，山门与战斗用引擎以 3D 绘制（模型由代码生成）。设备画不了 3D 时，山门以画卷示意，战斗以文字结算。江湖页的大地图是一座 3D 沙盘：山川、两条大河、湖与海、城池与山门、道路、森林、农田和边墙，各派疆域按门派颜色晕染（`tools/realm.html` 可单独查看）。尚未制作：配音、分舵间的运输与商路。
 >
-> The rules, numbers, saves and the editor are in place. The interface, portraits and scene paintings come from `art-handoff/`, and the sect's seat and its fights are drawn in 3D with the engine from models made in code. Where a device cannot draw 3D, a painting stands in for the seat and fights are settled in writing. Not made yet: voices, a 3D map of the realm, and transport and trade between branches.
+> The rules, numbers, saves and the editor are in place. The interface, portraits and scene paintings come from `art-handoff/`, and the sect's seat and its fights are drawn in 3D with the engine from models made in code. Where a device cannot draw 3D, a painting stands in for the seat and fights are settled in writing. The map of the realm is a 3D model: mountains, two great rivers, a lake and the sea, walled cities and mountain seats, roads, forests, farmland and a frontier wall, with each sect's lands tinted in its colour (`tools/realm.html` shows it on its own). Not made yet: voices, and transport and trade between branches.
 
 ## 玩法 · How to play
 

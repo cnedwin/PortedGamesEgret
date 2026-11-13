@@ -73,6 +73,8 @@ const ui = {
   lastFight: null,
   taps: 0,
   tapAt: 0,
+  /** Whether the map is shown as a 3D model, where the device can draw one. */
+  map3d: true,
   /** How a new game is to begin, and whether the seat's buildings are named. */
   scenario: 'many',
   difficulty: 1,
@@ -134,7 +136,7 @@ const leaderOf = (sectId) => world.persons[world.sects[sectId].leaderId];
 // ---- the 3D picture ----------------------------------------------------------------------------------
 
 /** `stage` is null until a game starts, and stays null where 3D cannot be drawn. */
-const picture = { stage: null, seat: null, tried: false, modules: null };
+const picture = { stage: null, seat: null, realm: null, tried: false, modules: null };
 const storedQuality = () => {
   try {
     return localStorage.getItem('wulin-quality');
@@ -147,8 +149,8 @@ async function startPicture() {
   if (picture.tried) return;
   picture.tried = true;
   try {
-    const [stageModule, seatModule, arenaModule] = await Promise.all([import('./view/stage.mjs'), import('./view/seat.mjs'), import('./view/arena.mjs')]);
-    picture.modules = { ...stageModule, ...seatModule, ...arenaModule };
+    const [stageModule, seatModule, arenaModule, realmModule] = await Promise.all([import('./view/stage.mjs'), import('./view/seat.mjs'), import('./view/arena.mjs'), import('./view/realm.mjs')]);
+    picture.modules = { ...stageModule, ...seatModule, ...arenaModule, ...realmModule };
     const quality = picture.modules.pickQuality(undefined, storedQuality());
     picture.stage = await picture.modules.createStage(document.querySelector('#stage'), { quality, onError: (cause) => console.warn('3D:', cause) });
   } catch (cause) {
@@ -169,6 +171,18 @@ function syncPicture() {
   if (viewBox.parentElement !== slot) slot.append(viewBox);
   stage.sleep(false);
   if (slot.dataset.stage === 'battle') return void (stage.current !== ui.fight?.arena && ui.fight && stage.show(ui.fight.arena));
+  if (slot.dataset.stage === 'realm') {
+    // The model of the realm is built once for a world and repainted as strongholds change hands.
+    if (picture.realm?.world !== world) {
+      picture.realm = picture.modules.createRealm(stage, () => world, { layer: document.querySelector('#layer') });
+      picture.realm.world = world;
+      picture.realm.select(ui.mapPlace, false);
+    }
+    if (stage.current !== picture.realm) stage.show(picture.realm);
+    picture.realm.refresh();
+    picture.realm.select(ui.mapPlace);
+    return;
+  }
   if (picture.seat?.placeId !== ui.place || picture.seat.world !== world) {
     picture.seat = picture.modules.createSeat(stage, () => world, ui.place, { layer: document.querySelector('#layer'), nameOf: (kind) => BUILDINGS[kind].name });
     picture.seat.world = world;
@@ -433,13 +447,18 @@ function worldScreen() {
     open: btn(`开设分舵（${num(ECONOMY.settleCost ?? 1500)}两）`, 'sheet', { kind: 'settle', place: spec.id }, 'primary', 'pin'),
     foe: btn('商议出兵', 'sheet', { kind: 'march', place: spec.id }, 'primary', 'swords') + btn('馈赠 500 两', 'gift', { sect: place.owner }, 'outline'),
   }[deal.kind];
-  return `${screenHead('江湖', '天下舆图', '沿道路查看据点、邻派关系与可行的出兵路线。拖动可平移，滚轮或按钮可缩放。', btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'outline', 'banner'))}
+  return `${screenHead('江湖', '天下舆图', '沙盘上各派疆域以本派颜色晕染，交界处有界线。点据点名牌查看详情与可行之事。', btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'outline', 'banner'))}
     <div class="world-layout">
-      <section class="scene-panel map-panel" aria-label="天下舆图"><div class="scene-viewport"><div class="scene-stage map-stage">${sceneImage('world')}<div class="region" data-region="map">${mapMarks()}</div></div></div>
+      ${picture.stage && ui.map3d ? `<section class="scene-panel map-panel is-model" aria-label="天下沙盘"><div class="stage-slot" data-stage="realm">${sceneImage('world')}</div>
+        <div class="map-label"><span>大昭疆域</span><small>拖动平移 · 右键或 Shift 拖动旋转 · 滚轮缩放</small></div>
+        <div class="scene-zoom map-zoom"><button data-act="zoom" data-dir="in" aria-label="拉近">${icon('plus')}</button><button data-act="zoom" data-dir="out" aria-label="拉远">${icon('minus')}</button><button data-act="zoom" data-dir="reset" aria-label="恢复全景">${icon('frame')}</button></div>
+        <div class="scene-bottom"><button class="scene-overlay-button" data-act="mapmode">改看画卷</button><span></span></div>
+      </section>` : `<section class="scene-panel map-panel" aria-label="天下舆图"><div class="scene-viewport"><div class="scene-stage map-stage">${sceneImage('world')}<div class="region" data-region="map">${mapMarks()}</div></div></div>
         <div class="map-label"><span>大昭疆域</span><small>二十据点</small></div>
         <div class="map-key"><span><i class="legend-home" style="--marker:${SECT_BY_ID[me()].color}"></i> 本派</span><span><i class="legend-faction"></i> 他派（按门派着色）</span><span><i></i> 无主</span></div>
         <div class="scene-zoom map-zoom"><button data-act="mapzoom" data-dir="in" aria-label="放大舆图">${icon('plus')}</button><button data-act="mapzoom" data-dir="out" aria-label="缩小舆图">${icon('minus')}</button><button data-act="mapzoom" data-dir="reset" aria-label="重置舆图">${icon('frame')}</button></div>
-      </section>
+        ${picture.stage ? `<div class="scene-bottom"><button class="scene-overlay-button" data-act="mapmode">改看沙盘</button><span></span></div>` : ''}
+      </section>`}
       <aside class="world-side" data-region="world-side">
         <section class="panel place-card">${panelTitle(spec.name, tag(owner?.name ?? '无主', owner ? 'positive' : 'plain'))}<p>${esc(spec.note)}</p>
           <dl class="facts">${fact('地块容量', `${spec.cells} 格`)}${fact('物产', RESOURCES.filter((key) => spec.resources[key] >= 2).map((key) => RESOURCE_NAMES[key]).join('、') || '平平')}
@@ -817,7 +836,7 @@ function render() {
     const gone = !membersOf(world, me()).length;
     if (gone && !['chronicle', 'saves'].includes(ui.page)) ui.page = 'chronicle';
     html = shell(SCREENS[ui.page]());
-    key = [ui.page, ui.page === 'battle' && !!ui.fight, ui.tall, !!picture.stage].join();
+    key = [ui.page, ui.page === 'battle' && !!ui.fight, ui.tall, !!picture.stage, ui.map3d].join();
   }
   // The key carries whether the paintings have loaded, so the still pictures appear when they arrive.
   if (mount(app, html, key + (art ? ':art' : ''))) window.scrollTo(0, 0);
@@ -949,10 +968,11 @@ const actions = {
     if (data.go) ui.page = 'seat';
   },
   tall: () => (ui.tall = !ui.tall),
+  mapmode: () => (ui.map3d = !ui.map3d),
   zoom(data) {
     const orbit = picture.stage?.orbit;
     if (!orbit) return;
-    orbit.distance = data.dir === 'reset' ? 50 : Math.max(orbit.minDistance, Math.min(orbit.maxDistance, orbit.distance * (data.dir === 'in' ? 0.78 : 1.28)));
+    orbit.distance = data.dir === 'reset' ? (ui.page === 'world' ? 150 : 50) : Math.max(orbit.minDistance, Math.min(orbit.maxDistance, orbit.distance * (data.dir === 'in' ? 0.78 : 1.28)));
   },
   building: (data) => (ui.building = Number(data.index)),
   build: () => say(build(world, me(), ui.place, pick('#build-kind')), '动工了。') && ((ui.building = world.places[ui.place].buildings.length - 1), (ui.sheet = null)),
@@ -1146,7 +1166,7 @@ window.addEventListener('keydown', (event) => event.key === ' ' && ui.fight && !
 const mapTouches = new Map();
 let pinch = 0;
 app.addEventListener('pointerdown', (event) => {
-  if (!event.target.closest('.map-panel') || event.target.closest('.scene-zoom')) return;
+  if (!event.target.closest('.map-panel:not(.is-model)') || event.target.closest('.scene-zoom')) return;
   mapTouches.set(event.pointerId, { x: event.clientX, y: event.clientY, moved: 0 });
   pinch = 0;
 });
@@ -1167,7 +1187,7 @@ window.addEventListener('pointermove', (event) => {
 const liftMap = (event) => mapTouches.delete(event.pointerId) && ((pinch = 0), setTimeout(() => (mapDragged = false), 0));
 window.addEventListener('pointerup', liftMap);
 window.addEventListener('pointercancel', liftMap);
-app.addEventListener('wheel', (event) => event.target.closest('.map-panel') && (event.preventDefault(), zoomMap(Math.exp(-event.deltaY * 0.0015))), { passive: false });
+app.addEventListener('wheel', (event) => event.target.closest('.map-panel:not(.is-model)') && (event.preventDefault(), zoomMap(Math.exp(-event.deltaY * 0.0015))), { passive: false });
 
 // ---- time ---------------------------------------------------------------------------------------------------
 

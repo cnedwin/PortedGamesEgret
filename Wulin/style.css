@@ -64,3 +64,18 @@
 }
 .map-roads line { stroke: #3d3320; stroke-opacity: 0.7; stroke-width: 1.2; }
 #layer .seat-tag { pointer-events: auto; font-size: 11px; padding: 3px 6px; }
+
+/* Name tags over the strongholds of the 3D map. */
+.map-panel.is-model { cursor: default; }
+.realm-tag { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 5px; padding: 3px 8px 3px 5px; border: 1px solid #1d2a25; border-radius: 4px; background: rgba(250, 244, 228, 0.93); color: var(--ink); font-size: 12px; font-weight: 650; white-space: nowrap; pointer-events: auto; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28); }
+.realm-tag i { width: 10px; height: 10px; border-radius: 2px; background: var(--marker); border: 1px solid rgba(0, 0, 0, 0.35); }
+.realm-tag small { font-weight: 500; color: var(--muted); }
+.realm-tag::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 14px; background: #1d2a25; }
+.realm-tag.is-active { background: #2f5a48; color: #fff; border-color: #f2d98a; }
+.realm-tag.is-active small { color: #d9e6dc; }
+.realm-tag.is-small { padding: 1px 5px 1px 3px; font-size: 11px; }
+.realm-tag.is-small small { display: none; }
+.map-panel.is-model .map-label { padding: 6px 12px; border-radius: 4px; background: rgba(250, 244, 228, 0.88); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); }
+.map-panel.is-model .map-label span { font-size: 18px; }
+.map-panel.is-model .scene-bottom { justify-content: flex-start; }
+@media (max-width: 575px) { .map-panel.is-model .map-label small { display: none; } .realm-tag small { display: none; } }
