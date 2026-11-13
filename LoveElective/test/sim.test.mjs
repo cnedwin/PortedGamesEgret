@@ -184,6 +184,23 @@ test('the confession succeeds only when her story is complete and affection is h
   assert.equal(sim.confess(s, 'bailu'), 'love');
 });
 
+test('dye applies only to supported colour channels and survives a save', () => {
+  const s = sim.newGame();
+  assert.ok(sim.toggleWear(s, 'hero', 'slacks'));
+  assert.ok(sim.dye(s, 'hero', 'slacks', 0, '#334455'));
+  assert.equal(sim.dye(s, 'hero', 'slacks', 1, '#ff0066'), false);
+
+  s.money = 1000;
+  assert.ok(sim.buy(s, 'boutique', 'turtleneck'));
+  assert.ok(sim.toggleWear(s, 'hero', 'turtleneck'));
+  assert.ok(sim.dye(s, 'hero', 'turtleneck', 0, '#551144'));
+  assert.ok(sim.dye(s, 'hero', 'turtleneck', 1, '#ff0066'));
+
+  const restored = sim.deserialize(sim.serialize(s));
+  assert.deepEqual(restored.hero.wear.bottom.c, ['#334455']);
+  assert.deepEqual(restored.hero.wear.top.c, ['#551144', '#ff0066']);
+});
+
 test('a save survives being written and read back', () => {
   const s = sim.newGame();
   sim.enter(s, 'field');

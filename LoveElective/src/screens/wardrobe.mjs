@@ -1,5 +1,5 @@
 // The wardrobe: dress the hero (or a senior who trusts his taste), piece by
-// piece, and dye either colour of anything worn.
+// piece, and dye the available colours on each garment.
 import { THEME, SERIF } from '../engine/ui.mjs';
 import { rgba, rrect, hsl } from '../art/draw.mjs';
 import { drawGarmentIcon, GARMENTS } from '../art/garments.mjs';
@@ -110,7 +110,8 @@ export function openWardrobe(game, who) {
         } else {
           g.save();
           g.translate(x + 30, y + 6);
-          drawGarmentIcon(g, id, 94, worn(id)?.c, drawMannequin);
+          const colors = worn(id)?.c;
+          drawGarmentIcon(g, id, 94, CLOTHES[id].singleDye ? colors?.slice(0, 1) : colors, drawMannequin);
           g.restore();
           p.text(L(CLOTHES[id].name), x + 76, y + 104, { size: 14, weight: 700, align: 'center' });
         }
@@ -124,7 +125,9 @@ export function openWardrobe(game, who) {
             if (isHair) s.hero.hair.bangs = id;
             else {
               sim.toggleWear(s, who, id);
-              view.selected = worn(id) ? id : null;
+              const selected = worn(id) ? id : null;
+              if (selected !== view.selected) view.channel = 0;
+              view.selected = selected;
             }
             refresh();
           },
@@ -175,12 +178,13 @@ export function openWardrobe(game, who) {
       else {
         const name = dyeing === 'hair' ? L(['发色', 'Hair colour']) : L(CLOTHES[dyeing].name);
         p.text(`${L(['染色', 'Dye'])} · ${name}`, 22, 404, { size: 18, weight: 750, family: SERIF });
-        if (dyeing !== 'hair')
+        const hasTrim = dyeing !== 'hair' && !CLOTHES[dyeing].singleDye;
+        if (hasTrim)
           [
             ['主色', 'Main'],
             ['辅色', 'Trim'],
           ].forEach((label, i) => {
-            const x = 420 + i * 84,
+            const x = 396 + i * 84,
               on = view.channel === i;
             g.fillStyle = on ? THEME.ink : rgba('#2b2a4a', 0.08);
             g.fill(rrect(x, 400, 78, 30, 15));

@@ -40,7 +40,7 @@ export const CLOTHES = {
   sailor: { name: ['水手服上衣', 'Sailor Top'], slot: 'top', price: 240, charm: 3, styles: { preppy: 2, cute: 2 }, only: 'f' },
   blouse: { name: ['蝴蝶结衬衫', 'Ribbon Blouse'], slot: 'top', price: 220, charm: 3, styles: { cute: 2, elegant: 2 }, only: 'f' },
 
-  slacks: { name: ['修身西裤', 'Slim Slacks'], slot: 'bottom', price: 0, charm: 2, styles: { preppy: 2, elegant: 1 } },
+  slacks: { name: ['修身西裤', 'Slim Slacks'], slot: 'bottom', singleDye: true, price: 0, charm: 2, styles: { preppy: 2, elegant: 1 } },
   jeans: { name: ['水洗牛仔裤', 'Washed Jeans'], slot: 'bottom', price: 0, charm: 1, styles: { fresh: 2, street: 1 } },
   cargo: { name: ['工装裤', 'Cargo Trousers'], slot: 'bottom', price: 190, charm: 2, styles: { street: 3, cool: 1 } },
   shorts: { name: ['运动短裤', 'Track Shorts'], slot: 'bottom', price: 90, charm: 1, styles: { sporty: 3, fresh: 1 } },
@@ -64,7 +64,7 @@ export const CLOTHES = {
   socks: { name: ['短袜', 'Ankle Socks'], slot: 'legs', price: 20, charm: 0, styles: { fresh: 1 } },
   kneesocks: { name: ['及膝袜', 'Knee Socks'], slot: 'legs', price: 60, charm: 1, styles: { preppy: 1, cute: 1 }, only: 'f' },
   thighhighs: { name: ['过膝袜', 'Thigh-highs'], slot: 'legs', price: 80, charm: 2, styles: { cute: 2 }, only: 'f' },
-  tights: { name: ['连裤袜', 'Tights'], slot: 'legs', price: 70, charm: 2, styles: { elegant: 2 }, only: 'f' },
+  tights: { name: ['连裤袜', 'Tights'], slot: 'legs', singleDye: true, price: 70, charm: 2, styles: { elegant: 2 }, only: 'f' },
 
   glasses: { zone: 'face', name: ['圆框眼镜', 'Round Glasses'], slot: 'acc', price: 120, charm: 2, styles: { preppy: 1, artsy: 2 } },
   shades: { zone: 'face', name: ['渐变墨镜', 'Gradient Shades'], slot: 'acc', price: 180, charm: 2, styles: { cool: 3 } },

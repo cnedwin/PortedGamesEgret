@@ -640,7 +640,7 @@ export const GARMENTS = {
   turtleneck: {
     slot: 'top',
     c: ['#3b3f58', '#8088b0'],
-    torso(g, B, c1) {
+    torso(g, B, c1, c2) {
       torso(g, B, c1, { ease: 3.5, hem: 452 });
       const neck = smooth(
         sym(
@@ -652,25 +652,11 @@ export const GARMENTS = {
           CX,
         ),
       );
-      paint(g, neck, c1, { y0: 208, y1: 250, side: 0.08 });
-      for (let y = 218; y < 248; y += 7)
-        stroke(
-          g,
-          smooth(
-            [
-              [CX - B.nw - 3, y],
-              [CX, y + 2],
-              [CX + B.nw + 3, y],
-            ],
-            false,
-          ),
-          shade(c1, -0.4),
-          0.9,
-          0.5,
-        );
+      paint(g, neck, c2, { y0: 208, y1: 250, side: 0.12 });
+      rib(g, neck, 213, 249, c2);
     },
-    sleeves(g, B, c1) {
-      sleeves(g, B, c1, 1, 3.5, 0);
+    sleeves(g, B, c1, c2) {
+      sleeves(g, B, c1, 1, 3.5, 0, c2);
     },
   },
   jersey: {
@@ -1431,7 +1417,7 @@ export const GARMENTS = {
     zone: 'face',
     layer: 'face',
     c: ['#3a3340', '#ffffff'],
-    draw(g, B, c1) {
+    draw(g, B, c1, c2) {
       for (const s of [-1, 1]) {
         const lens = rrect(CX + s * 26 - 17, 147, 34, 26, 9);
         const reflection = g.createLinearGradient(0, 147, 0, 173);
@@ -1447,8 +1433,8 @@ export const GARMENTS = {
         stroke(g, poly([[x - 14, 171], [x + 18, 149]], false), '#fff7ef', 0.85, 0.69);
         g.restore();
         stroke(g, lens, shade(c1, -0.16), 2.7);
-        stroke(g, smooth([[x - 12, 151], [x - 6, 148], [x + 8, 148]], false), shade(c1, 0.57), 0.9, 0.85);
-        metal(g, CX + s * 42, 155, 1.7, shade(c1, 0.52));
+        stroke(g, smooth([[x - 14, 151], [x - 8, 147.6], [x + 8, 147.6], [x + 14, 151]], false), c2, 1.65);
+        metal(g, CX + s * 42, 155, 2.5, c2);
         stroke(
           g,
           poly(
@@ -1633,7 +1619,7 @@ export const GARMENTS = {
     layer: 'head',
     c: ['#e8455f', '#ffffff'],
     only: 'f',
-    draw(g, B, c1) {
+    draw(g, B, c1, c2) {
       const x = CX + 46,
         y = 58;
       for (const s of [-1, 1]) {
@@ -1655,7 +1641,7 @@ export const GARMENTS = {
             [x + s * 16, y + 40],
             [x + s * 4, y + 34],
           ]),
-          shade(c1, -0.08),
+          shade(c2, -0.12),
           { y0: y, y1: y + 40, side: 0 },
         );
       }
@@ -1663,7 +1649,7 @@ export const GARMENTS = {
         stroke(g, smooth([[x + s * 5, y], [x + s * 18, y - 8], [x + s * 28, y - 11]], false), shade(c1, 0.48), 1.8, 0.66);
         stroke(g, smooth([[x + s * 3, y + 3], [x + s * 14, y + 5], [x + s * 24, y + 13]], false), shade(c1, -0.56), 1.35, 0.67);
       }
-      paint(g, ellipse(x, y, 7, 8), shade(c1, 0.12), { top: shade(c1, 0.36), y0: y - 8, y1: y + 8, side: 0 });
+      paint(g, ellipse(x, y, 7, 8), c2, { top: shade(c2, 0.24), y0: y - 8, y1: y + 8, side: 0 });
     },
   },
   headphones: {

@@ -454,8 +454,9 @@ export function toggleWear(s, who, id) {
   return true;
 }
 
-/** Dye one of the two colours of a worn piece. */
+/** Dye a supported colour channel of a worn piece. */
 export function dye(s, who, id, channel, color) {
+  if (channel !== 0 && (channel !== 1 || CLOTHES[id]?.singleDye)) return false;
   const wear = wearOf(s, who);
   const piece = [...pieces(wear), wear.top, wear.bottom].find(p => p?.id === id);
   if (!piece) return false;
