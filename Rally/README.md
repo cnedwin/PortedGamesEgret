@@ -17,9 +17,9 @@ Jinxiu Rally is an independently developed 3D kart racing demo built with [Egret
 | 暂停 · Pause | Esc / P | Start |
 | 静音 · Mute | M | |
 
-触屏设备会显示屏幕按键，并自动踩住油门。
+触屏设备会显示屏幕按键，并自动踩住油门。比赛中可点小地图下方的暂停键。
 
-Touch screens get on-screen buttons, and the kart accelerates by itself.
+Touch screens get on-screen buttons, and the kart accelerates by itself. Tap the pause button below the minimap during a race.
 
 - 转向时按住漂移键过弯，火花由蓝变橙再变紫，松开后获得相应强度的加速。
 - 倒数到“2”之后再踩油门可以弹射起步；踩得太早会熄火。

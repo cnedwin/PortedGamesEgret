@@ -20,7 +20,6 @@ body {
   font-family: var(--sans);
   -webkit-user-select: none;
   user-select: none;
-  touch-action: none;
 }
 #stage {
   position: fixed;
@@ -29,6 +28,7 @@ body {
   height: 100%;
   display: block;
   outline: none;
+  touch-action: none;
 }
 #ui {
   position: fixed;
@@ -85,6 +85,51 @@ body {
 }
 .select {
   width: min(820px, 100%);
+}
+/* The selection preview and the controls occupy separate areas of the same screen. */
+.select-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 540px);
+  align-items: center;
+  gap: clamp(16px, 3vw, 36px);
+  width: min(1200px, 100%);
+  margin: auto;
+}
+.select-preview {
+  position: relative;
+  overflow: hidden;
+  aspect-ratio: 4 / 3;
+  border: 1px solid rgba(242, 194, 48, 0.6);
+  border-radius: 14px;
+  background: var(--ink);
+}
+.select-preview #stage {
+  position: absolute;
+  touch-action: pan-y;
+}
+.select-layout .select {
+  width: 100%;
+}
+.select-layout .cards {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.select-layout .card-name {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 760px) {
+  .select-layout {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 540px;
+  }
+  .select-preview {
+    aspect-ratio: 16 / 9;
+  }
+  .select-layout .card {
+    flex-direction: column;
+    min-width: 0;
+    padding-inline: 3px;
+    text-align: center;
+  }
 }
 .panel.wide {
   width: min(720px, 100%);
@@ -325,6 +370,8 @@ button {
 
 /* ---- in the race ---- */
 .race {
+  --race-map-size: 168px;
+  --race-map-top: max(12px, env(safe-area-inset-top));
   position: absolute;
   inset: 0;
   font-variant-numeric: tabular-nums;
@@ -433,10 +480,10 @@ button {
 }
 .map {
   position: absolute;
-  top: 12px;
+  top: var(--race-map-top);
   right: max(12px, env(safe-area-inset-right));
-  width: 168px;
-  height: 168px;
+  width: var(--race-map-size);
+  height: var(--race-map-size);
 }
 .banner {
   position: absolute;
@@ -513,37 +560,67 @@ button {
   mask-image: radial-gradient(ellipse at 50% 55%, transparent 38%, #000 82%);
 }
 
-/* touch buttons, only where there is no mouse */
+/* Touch controls and pause are shown on devices with a coarse primary pointer. */
 .touch {
+  --touch-left: max(12px, env(safe-area-inset-left));
+  --touch-right: max(12px, env(safe-area-inset-right));
+  --touch-gap: clamp(6px, 2vw, 12px);
+  /* Five buttons share the viewport after both insets and four gaps. */
+  --touch-size: min(74px, calc((100vw - var(--touch-left) - var(--touch-right) - 4 * var(--touch-gap)) / 5));
   display: none;
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 110px;
-  padding: 0 max(16px, env(safe-area-inset-left));
+  left: var(--touch-left);
+  right: var(--touch-right);
+  bottom: max(110px, calc(env(safe-area-inset-bottom) + 90px));
+  gap: var(--touch-gap);
   justify-content: space-between;
   pointer-events: none;
 }
 .touch-side {
   display: flex;
-  gap: 12px;
+  gap: var(--touch-gap);
   align-items: flex-end;
 }
-.touch-button {
-  width: 74px;
-  height: 74px;
+.touch-button,
+.race-pause {
+  display: grid;
+  place-items: center;
+  padding: 0;
   border-radius: 50%;
   border: 2px solid rgba(246, 239, 224, 0.7);
-  background: rgba(23, 26, 34, 0.45);
-  font-size: 28px;
+  background: rgba(23, 26, 34, 0.65);
   pointer-events: auto;
+}
+.touch-button {
+  flex: none;
+  width: var(--touch-size);
+  height: var(--touch-size);
+  font-size: clamp(18px, 4.5vw, 28px);
+  touch-action: none;
 }
 .touch-button.held {
   background: rgba(242, 194, 48, 0.6);
 }
+.race-pause {
+  display: none;
+  position: absolute;
+  top: calc(var(--race-map-top) + var(--race-map-size) + 8px);
+  right: max(12px, env(safe-area-inset-right));
+  width: 44px;
+  height: 44px;
+  touch-action: manipulation;
+}
+.pause-icon {
+  width: 12px;
+  height: 16px;
+  border-inline: 4px solid currentColor;
+}
 @media (pointer: coarse) {
   .touch {
     display: flex;
+  }
+  .race-pause {
+    display: grid;
   }
 }
 @media (max-width: 640px) {
@@ -557,14 +634,52 @@ button {
   .detail {
     grid-template-columns: 1fr;
   }
-  .map {
-    width: 112px;
-    height: 112px;
+  .select-layout h2 {
+    margin-bottom: 10px;
+    font-size: 24px;
+  }
+  .select-layout .detail {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+  }
+  .select-layout .who {
+    gap: 6px;
+  }
+  .select-layout .detail .seal {
+    width: 32px;
+    height: 32px;
+    font-size: 17px;
+  }
+  .select-layout .who strong {
+    font-size: 16px;
+  }
+  .select-layout .stat {
+    gap: 4px;
+  }
+  .select-layout .bar {
+    gap: 3px;
+  }
+  .select-layout .bar i {
+    width: clamp(7px, 2.3vw, 12px);
+  }
+  .race {
+    --race-map-size: 112px;
   }
   .title,
   .select,
   .panel {
     padding: 16px 14px;
+  }
+}
+
+@media (pointer: coarse) and (max-height: 420px) {
+  .race {
+    --race-map-size: 88px;
+  }
+  .touch {
+    --touch-size: min(58px, calc((100vw - var(--touch-left) - var(--touch-right) - 4 * var(--touch-gap)) / 5));
+    bottom: max(94px, calc(env(safe-area-inset-bottom) + 74px));
   }
 }
 

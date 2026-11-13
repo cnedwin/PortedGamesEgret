@@ -450,6 +450,8 @@ export function createScenery(scene, track, options = {}) {
   });
   water.setPosition(lake.x, TRACK.waterLevel, lake.z);
   scene.addChild(water);
+  // Keep the last mirror image between updates to avoid rendering the lake on every frame.
+  if (water.reflection) water.reflection.interval = 3;
   const mirror = water.reflection?.texture;
   let reflect = true;
   /** Turn the lake's mirror image on or off. */

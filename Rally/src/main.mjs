@@ -106,7 +106,11 @@ async function main() {
   const settings = loadSettings();
   const track = createTrack();
   const view = createView(scene, camera, track);
-  const hud = createHud(document.querySelector('#ui'), track, { lang: settings.lang });
+  const hud = createHud(document.querySelector('#ui'), track, {
+    lang: settings.lang,
+    stage: canvas,
+    onPause: () => setPaused(true),
+  });
   const input = createInput(hud.touchRoot);
   const audio = createAudio();
   audio.setMuted(settings.muted);
@@ -139,6 +143,7 @@ async function main() {
   const setMode = (next) => {
     mode = next;
     status.mode = next;
+    hud.setRacePauseAvailable(next === 'race');
   };
   const seed = () => Number(params.get('seed')) || Date.now() & 0xffffff || 1;
 

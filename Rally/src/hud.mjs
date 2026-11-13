@@ -40,8 +40,11 @@ export function createHud(root, track, options = {}) {
   const race = el('div', 'race');
   race.hidden = true;
   root.append(race, screen);
-  /** Replace the menu layer; nothing hides it. */
+  const stage = options.stage;
+  const preview = stage ? el('div', 'select-preview') : undefined;
+  const selection = preview ? el('div', 'select-layout', undefined, [preview]) : undefined;
   const show = (...nodes) => {
+    if (preview && stage.parentElement === preview) root.before(stage);
     screen.replaceChildren(...nodes);
     screen.hidden = nodes.length === 0;
   };
@@ -119,43 +122,50 @@ export function createHud(root, track, options = {}) {
           }),
         ),
       ]);
-    show(
-      el('div', 'select', undefined, [
-        el('h2', undefined, t().choose),
-        el('div', 'cards', undefined, cards),
-        el('div', 'detail', undefined, [
-          el('div', 'who', undefined, [
-            seal(racer),
-            el('div', undefined, undefined, [
-              el('strong', undefined, racer.name[hud.lang]),
-              el('p', undefined, racer.blurb[hud.lang]),
-            ]),
-          ]),
-          el('div', 'stats', undefined, [
-            stat(t().speed, racer.stats.speed),
-            stat(t().accel, racer.stats.accel),
-            stat(t().handling, racer.stats.handling),
-            stat(t().weight, racer.stats.weight),
+    const panel = el('div', 'select', undefined, [
+      el('h2', undefined, t().choose),
+      el('div', 'cards', undefined, cards),
+      el('div', 'detail', undefined, [
+        el('div', 'who', undefined, [
+          seal(racer),
+          el('div', undefined, undefined, [
+            el('strong', undefined, racer.name[hud.lang]),
+            el('p', undefined, racer.blurb[hud.lang]),
           ]),
         ]),
-        choice(
-          t().klass,
-          CLASSES,
-          settings.klass,
-          (value) => value.name[hud.lang],
-          (index) => (settings.klass = index),
-        ),
-        choice(
-          t().laps,
-          LAP_CHOICES,
-          LAP_CHOICES.indexOf(settings.laps),
-          (value) => String(value),
-          (index) => (settings.laps = LAP_CHOICES[index]),
-        ),
-        el('div', 'row', undefined, [button('ghost', t().back, handlers.onBack), button('primary', t().race, handlers.onRace)]),
-        el('p', 'help', t().tip),
+        el('div', 'stats', undefined, [
+          stat(t().speed, racer.stats.speed),
+          stat(t().accel, racer.stats.accel),
+          stat(t().handling, racer.stats.handling),
+          stat(t().weight, racer.stats.weight),
+        ]),
       ]),
-    );
+      choice(
+        t().klass,
+        CLASSES,
+        settings.klass,
+        (value) => value.name[hud.lang],
+        (index) => (settings.klass = index),
+      ),
+      choice(
+        t().laps,
+        LAP_CHOICES,
+        LAP_CHOICES.indexOf(settings.laps),
+        (value) => String(value),
+        (index) => (settings.laps = LAP_CHOICES[index]),
+      ),
+      el('div', 'row', undefined, [button('ghost', t().back, handlers.onBack), button('primary', t().race, handlers.onRace)]),
+      el('p', 'help', t().tip),
+    ]);
+    if (!selection) return show(panel);
+    if (screen.firstElementChild === selection) {
+      selection.lastElementChild.replaceWith(panel);
+    } else {
+      selection.replaceChildren(preview, panel);
+      show(selection);
+      preview.append(stage);
+      screen.scrollTop = 0;
+    }
   };
 
   // ---- in the race -----------------------------------------------------------------------
@@ -198,6 +208,7 @@ export function createHud(root, track, options = {}) {
     wrong = el('div', 'wrong'),
     flash = el('div', 'flash'),
     lines = el('div', 'lines'),
+    pause = button('race-pause', undefined, options.onPause),
     touch = el('div', 'touch', undefined, [
       el('div', 'touch-side', undefined, [touchButton('left', '◀'), touchButton('right', '▶')]),
       el('div', 'touch-side', undefined, [touchButton('brake', '▼'), touchButton('item', '★'), touchButton('drift', '⤴')]),
@@ -208,6 +219,17 @@ export function createHud(root, track, options = {}) {
     node.dataset.touch = name;
     return node;
   }
+  pause.hidden = true;
+  pause.append(el('span', 'pause-icon'));
+  const labelRaceControls = () => {
+    pause.setAttribute('aria-label', t().pause);
+    for (const control of touch.querySelectorAll('[data-touch]')) {
+      control.setAttribute('aria-label', t().touchControls[control.dataset.touch]);
+    }
+  };
+  hud.setRacePauseAvailable = (available) => {
+    pause.hidden = !available;
+  };
   race.append(
     lines,
     hurt,
@@ -224,6 +246,7 @@ export function createHud(root, track, options = {}) {
     banner,
     wrong,
     touch,
+    pause,
   );
   /** The element holding the touch buttons, for the input module. */
   hud.touchRoot = touch;
@@ -285,6 +308,7 @@ export function createHud(root, track, options = {}) {
     banner.className = 'banner';
     bannerUntil = 0;
     speedUnit.textContent = t().kmh;
+    labelRaceControls();
   };
 
   /** Refresh the display from the race; `view` supplies the screen flash. */
@@ -396,6 +420,7 @@ export function createHud(root, track, options = {}) {
     const redraw = () => {
       handlers.onChange();
       speedUnit.textContent = t().kmh;
+      labelRaceControls();
       hud.showPause(true, settings, handlers);
     };
     show(
