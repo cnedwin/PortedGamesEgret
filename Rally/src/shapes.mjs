@@ -108,8 +108,7 @@ export function quads(list) {
     ]) {
       positions.push(c[0] + r[0] * sr + u[0] * su, c[1] + r[1] * sr + u[1] * su, c[2] + r[2] * sr + u[2] * su);
       normals.push(n[0] / length, n[1] / length, n[2] / length);
-      // Pixel row 0 is the top of the picture.
-      uvs.push((sr + 1) / 2, (1 - su) / 2);
+      uvs.push((sr + 1) / 2, (su + 1) / 2);
     }
     indices.push(base, base + 1, base + 2, base, base + 2, base + 3);
   }
@@ -145,8 +144,11 @@ export function canvasTexture(width, height, draw, options) {
   canvas.height = height;
   const context = canvas.getContext('2d');
   draw(context, width, height);
-  const pixels = context.getImageData(0, 0, width, height);
-  return new Texture3D({ width, height, data: new Uint8Array(pixels.data.buffer) }, options);
+  // A canvas counts rows from the top and a texture from the bottom, so the rows are copied in reverse.
+  const pixels = context.getImageData(0, 0, width, height).data,
+    data = new Uint8Array(pixels.length);
+  for (let y = 0; y < height; y++) data.set(pixels.subarray(y * width * 4, (y + 1) * width * 4), (height - 1 - y) * width * 4);
+  return new Texture3D({ width, height, data }, options);
 }
 
 /** A repeatable random source for placing scenery, so the circuit looks the same on every visit. */
