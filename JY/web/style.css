@@ -447,6 +447,7 @@ body[data-art="jyx2"] .battle-menu button img.menu-portrait {
 }
 
 body[data-art="jyx2"] .battle-menu :is(button[data-role-id], button[data-menu-role]) {
+  min-height: clamp(36px, 7.5vw, 80px);
   border: 0;
   padding: 3px;
   background: #050505;
@@ -470,8 +471,9 @@ body[data-art="jyx2"] .battle-menu[data-menu-variant="team"] button[aria-pressed
   background: url('/jyx2/ui/checkmark.png') center / contain no-repeat;
 }
 
-body[data-art="jyx2"] .jyx2-team-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
-body[data-art="jyx2"] .battle-menu :is(button[data-team-all], button[data-team-confirm]) { justify-content: center; }
+.battle-menu-team-actions { display: grid; flex: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.battle-menu-team-actions button, .battle-menu-footer .battle-menu-back { justify-content: center; }
+.battle-menu .battle-menu-footer .battle-menu-touch-back, .battle-menu-touch-guide { display: none; }
 body[data-art="jyx2"] .battle-menu button[data-team-confirm] { color: var(--jyx2-orange); background: transparent; }
 body[data-art="jyx2"] .menu-option-detail { color: #ddd; }
 body[data-art="jyx2"] .menu-option-trailing { color: var(--jyx2-orange); }
@@ -672,4 +674,77 @@ body[data-art="jyx2"] .jyx2-member-portrait {
   .battle-dpad [data-battle-command="KeyD"] { grid-area: 2 / 3; }
   .battle-actions { display: grid; grid-area: 2 / 2; grid-template-columns: repeat(auto-fit, minmax(44px, 1fr)); }
   .battle-skill { grid-area: 3 / 1 / 4 / -1; justify-content: center; }
+}
+
+@media (max-width: 680px), (pointer: coarse) {
+  #play-screen:has(#battle-menu:not([hidden])) > .controls { visibility: hidden; }
+  .viewport:has(> .battle-menu:not([hidden]))::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    z-index: 2;
+    background: #080b09b8;
+    touch-action: none;
+  }
+  body .viewport .battle-menu:not([hidden]) {
+    position: fixed;
+    inset: 50% auto auto 50%;
+    z-index: 3;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 8px;
+    width: min(460px, calc(100% - 24px));
+    max-height: min(calc(100svh - 24px), 560px);
+    padding: 12px;
+    overflow: hidden;
+    transform: translate(-50%, -50%);
+    border: 1px solid #89724c;
+    border-radius: 5px;
+    box-shadow: 0 8px 26px #030603af;
+  }
+  .battle-menu > :is(.battle-menu-header, .battle-menu-team-actions, .battle-menu-footer) { flex: none; }
+  body .viewport .battle-menu-header h2 { margin: 0; font-size: 20px; }
+  body .viewport .battle-menu-header p { font-size: 13px; }
+  body .viewport .battle-menu-options {
+    min-height: 0;
+    margin: 0;
+    padding: 2px;
+    gap: 6px;
+    overflow: auto;
+    overscroll-behavior: contain;
+  }
+  body .viewport .battle-menu:not([hidden]) button {
+    min-height: 44px;
+    padding: 4px 8px;
+    font-size: 14px;
+    overflow-wrap: anywhere;
+    touch-action: manipulation;
+  }
+  body .viewport .battle-menu:not([hidden]) button[data-role-id] { min-height: 52px; }
+  body .viewport .battle-menu:not([hidden]) img.menu-portrait { width: 36px; height: 42px; }
+  body[data-art="jyx2"] .viewport .battle-menu button[data-role-id] { padding-right: 22px; }
+  body .viewport .battle-menu button[data-team-confirm] { font-size: 16px; font-weight: 700; }
+  .battle-menu-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+  }
+  .battle-menu-footer:not(:has(.battle-menu-back, .battle-menu-touch-guide)),
+  .battle-menu-footer .battle-menu-controls { display: none; }
+  .battle-menu-footer .battle-menu-touch-guide {
+    display: block;
+    margin: 0;
+    font-size: 13px;
+  }
+  .battle-menu .battle-menu-footer .battle-menu-back { display: flex; min-width: 80px; margin-inline-start: auto; }
+  body[data-art="jyx2"] .jyx2-bag-content {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-rows: minmax(0, 1fr) auto;
+  }
+  body[data-art="jyx2"] .jyx2-bag-grid { grid-row: 1; }
+  body[data-art="jyx2"] .jyx2-bag-details { max-height: 110px; }
+  body[data-art="jyx2"] .jyx2-bag-filters { flex: none; }
+  body .viewport .battle-menu:not([hidden]) .jyx2-bag-grid button[data-item-id] { padding: 1px; }
 }

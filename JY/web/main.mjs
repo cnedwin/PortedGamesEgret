@@ -51,7 +51,9 @@ const moves = new Map([
 const facingOffsets = [[0, -1], [1, 0], [-1, 0], [0, 1]];
 const facingKeys = ['ArrowUp', 'ArrowRight', 'ArrowLeft', 'ArrowDown'];
 const battleControls = new Set([...moves.keys(), 'KeyM', 'KeyI', 'KeyL', 'KeyQ', 'KeyF', 'KeyB', 'KeyT', 'KeyV', 'KeyR', 'Tab']);
-const battleHint = '選擇移動、武學或其他指令 · 滑鼠／觸控選格，或用方向鍵與 Enter';
+const battleHint = () => touchExploration.matches
+  ? '點選移動、武學或其他回合指令'
+  : '選擇移動、武學或其他指令 · 滑鼠選格，或用方向鍵與 Enter';
 const normalizeEnter = code => code === 'NumpadEnter' ? 'Enter' : code;
 const isConfirm = code => normalizeEnter(code) === 'Enter' || code === 'Space';
 const water = new Set([179, 180, 181, 261, 511, 662, 663, 664, 665, 674]);
@@ -681,7 +683,8 @@ async function openMap(game, destination) {
     coordinates.textContent = `格点 ${x} · ${y}`;
     const event = eventAt(x, y);
     marker.textContent = event?.event3 > 0 ? `经过事件 ${event.event3}` : '';
-    hint.textContent = eventEnded ? '劇情完成 · 在江湖選單可返回主選單' : facingEvent() ? 'Enter / 空格與 NPC 對話'
+    hint.textContent = eventEnded ? '劇情完成 · 在江湖選單可返回主選單'
+      : facingEvent() ? (touchExploration.matches ? '點「對話」與面前人物交談' : 'Enter / 空格與 NPC 對話')
       : scene.exits?.some(([ex, ey]) => x === ex && y === ey) ? '已到达原作出口'
       : touchExploration.matches ? '點選地圖尋路，或使用方向鍵移動'
         : isWorld && map3dView ? '方向鍵 / WASD 移動 · 點擊地名進入' : '方向鍵或 WASD 移動';
@@ -783,7 +786,7 @@ async function openMap(game, destination) {
       delete canvas.dataset.battleCastRole;
       delete canvas.dataset.battleResult;
       notice.hidden = true;
-      hint.textContent = '選擇出戰隊友 · O 確認';
+      hint.textContent = touchExploration.matches ? '點選隊友，再點「確定出戰」' : '選擇出戰隊友 · O 確認';
       musicActive = musicLive = game.sound;
       const track = music.play(spec.music);
       void track.catch(() => {
@@ -835,7 +838,7 @@ async function openMap(game, destination) {
       map3dView?.setVisible(false);
       if (atmosphere) atmosphere.light.visible = false;
       sceneName.textContent = spec.name;
-      hint.textContent = battleHint;
+      hint.textContent = battleHint();
       marker.textContent = '經典回合制';
       notice.hidden = true;
       await new Promise((resolve, reject) => {
@@ -1280,6 +1283,7 @@ async function openMap(game, destination) {
     held = undefined;
     pointerWalk = undefined;
     menuToggle.disabled = true;
+    updateExploreControls();
     try {
       await showWorldMenu({ menu, signal: listeners.signal, game, catalog, bagOnly, canUseGear, actions: {
         useQuestItem(itemId) {
@@ -1497,7 +1501,8 @@ async function openMap(game, destination) {
     if (code === 'Escape' && state.selection) model.cancelSelection();
     else if (code === 'Escape' || code === 'KeyR') {
       canvas.dataset.battlePrompt = code === 'KeyR' ? 'restart' : 'surrender';
-      notice.textContent = code === 'KeyR' ? '使用同一隊伍重開本場戰鬥？Enter 確認 · Esc 取消' : '放棄本場戰鬥？Enter 確認 · Esc 取消';
+      const question = code === 'KeyR' ? '使用同一隊伍重開本場戰鬥？' : '放棄本場戰鬥？';
+      notice.textContent = touchExploration.matches ? question : question + 'Enter 確認 · Esc 取消';
       notice.hidden = false;
     } else if (code === 'Tab') model.toggleAutomatic();
     else if (!state.canAct) return;
@@ -1563,6 +1568,7 @@ async function openMap(game, destination) {
     const target = exit ? { x: exit[0], y: exit[1] } : hit;
     if (!target || !fits(scene, target.x, target.y)) return;
     held = undefined;
+    pointerWalk = undefined;
     const npc = eventAt(target.x, target.y);
     const canTalk = npc?.event1 > 0 && initial.config.useScript && catalog.eventIds.has(npc.event1);
     const entrance = isWorld ? entranceAt(target.x, target.y) : undefined;
@@ -1640,7 +1646,9 @@ async function openMap(game, destination) {
         return;
       }
       canvas.dataset.blocked = `${tx},${ty}`;
-      hint.textContent = facingEvent() ? 'Enter / 空格與 NPC 對話' : `无法通行 · ${tx}, ${ty}`;
+      hint.textContent = facingEvent()
+        ? (touchExploration.matches ? '點「對話」與面前人物交談' : 'Enter / 空格與 NPC 對話')
+        : `無法通行 · ${tx}, ${ty}`;
       return;
     }
     delete canvas.dataset.blocked;
@@ -1730,8 +1738,11 @@ async function openMap(game, destination) {
         battleHp: player.hp, battleMaxHp: player.maxHp, battleMp: player.mp, battleAction: player.action,
         battleAuto: state.auto, battleControlled: player.id, battleTurnSide: player.side });
       if (state.result === null && !canvas.dataset.battlePrompt) {
-        const nextHint = state.selection ? '點選高亮格子 · 方向鍵選格 · Enter 確認 · Esc 取消'
-          : state.canAct ? battleHint : state.auto ? '自動戰鬥中 · Tab 恢復手動' : '等待行動完成';
+        const nextHint = state.selection
+          ? (touchExploration.matches ? '點高亮格直接選取，或用方向鍵選格後點「確定」' : '點選高亮格子 · 方向鍵選格 · Enter 確認 · Esc 取消')
+          : state.canAct ? battleHint()
+            : state.auto ? (touchExploration.matches ? '自動戰鬥中 · 再點「自動」恢復手動' : '自動戰鬥中 · Tab 恢復手動')
+              : '等待行動完成';
         if (hint.textContent !== nextHint) hint.textContent = nextHint;
       }
       if (host.getStatus().pendingFrames === 0 && battle.drawnFrame !== state.frame) {
@@ -1995,7 +2006,7 @@ async function openMap(game, destination) {
     event.preventDefault();
     if (!event.repeat) continueBattle();
   }, { signal: listeners.signal });
-  canvas.addEventListener('pointerdown', event => {
+  canvas.addEventListener('click', event => {
     if (battle) pickBattleCell(event);
     else clickToWalk(event);
   }, { signal: listeners.signal });

@@ -31,7 +31,17 @@ export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait,
     const button = menu.buttons[index];
     if (button) canvas.setAttribute('aria-activedescendant', button.id);
     else canvas.removeAttribute('aria-activedescendant');
-    button?.scrollIntoView({ block: 'nearest' });
+    if (button) {
+      const list = button.closest('.battle-menu-options');
+      const scrollable = list && list.scrollHeight > list.clientHeight ? list : panel;
+      // Keep keyboard focus visible without scrolling the page behind the menu.
+      if (scrollable.scrollHeight > scrollable.clientHeight) {
+        const option = button.getBoundingClientRect();
+        const area = scrollable.getBoundingClientRect();
+        if (option.top < area.top) scrollable.scrollTop -= area.top - option.top;
+        else if (option.bottom > area.bottom) scrollable.scrollTop += option.bottom - area.bottom;
+      }
+    }
     menu.onFocus?.(index);
   }
 
@@ -117,6 +127,32 @@ export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait,
     const controls = document.createElement('p');
     controls.className = 'battle-menu-controls';
     controls.textContent = footer;
+    const menuFooter = document.createElement('footer');
+    menuFooter.className = 'battle-menu-footer';
+    menuFooter.append(controls);
+    if (options.variant === 'team' || inventory) {
+      const guide = document.createElement('p');
+      guide.className = 'battle-menu-touch-guide';
+      guide.textContent = inventory ? '點選道具或切換分類。' : '點選隊友，再按確定出戰。';
+      menuFooter.append(guide);
+    }
+    if (options.returnOption) {
+      const back = buttons.at(-1);
+      back.className = 'battle-menu-back';
+      back.dataset.menuCancel = '';
+      menuFooter.append(back);
+    } else if (onCancel && options.showBack !== false) {
+      const back = document.createElement('button');
+      back.type = 'button';
+      back.className = 'battle-menu-back battle-menu-touch-back';
+      back.dataset.menuCancel = '';
+      back.textContent = '返回';
+      back.addEventListener('click', () => {
+        onCancel();
+        canvas.focus({ preventScroll: true });
+      });
+      menuFooter.append(back);
+    }
     menu = { buttons, index: 0, columns, onCancel, keys: new Set() };
     if (inventory) {
       const filters = document.createElement('nav');
@@ -166,7 +202,7 @@ export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait,
       };
       menu.cycleFilter = offset => setFilter((menu.filterIndex + offset + tabs.length) % tabs.length);
       controls.textContent += ' · [ / ] 分類';
-      panel.replaceChildren(header, content, controls);
+      panel.replaceChildren(header, content, menuFooter);
       panel.hidden = false;
       setFilter(0);
     } else {
@@ -179,13 +215,13 @@ export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait,
         portrait.src = portraitUrl(options.member.headId);
         portrait.addEventListener('error', () => { portrait.src = `/art/head/${options.member.headId}.png`; }, { once: true });
         content.append(portrait, list);
-        panel.replaceChildren(header, content, controls);
-      } else if (jyx2 && options.variant === 'team') {
+        panel.replaceChildren(header, content, menuFooter);
+      } else if (options.variant === 'team') {
         const actions = document.createElement('div');
-        actions.className = 'jyx2-team-actions';
+        actions.className = 'battle-menu-team-actions';
         actions.append(...buttons.slice(-2));
-        panel.replaceChildren(header, list, actions, controls);
-      } else panel.replaceChildren(header, list, controls);
+        panel.replaceChildren(header, list, actions, menuFooter);
+      } else panel.replaceChildren(header, list, menuFooter);
       panel.hidden = false;
       focus(0);
     }
@@ -241,10 +277,10 @@ export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait,
       select() { use(item.id); },
     }));
     rows.push({ label: '返回戰鬥', select: cancel });
-    open('藥品與暗器', rows, '方向鍵選擇 · Enter 使用 · Esc 返回', 1, cancel, { variant: 'inventory' });
+    open('藥品與暗器', rows, '方向鍵選擇 · Enter 使用 · Esc 返回', 1, cancel, { variant: 'inventory', returnOption: true });
   }
 
-  function choose(title, choices, signal, columns = 1, options) {
+  function choose(title, choices, signal, columns = 1, options = {}) {
     return new Promise((resolve, reject) => {
       signal.throwIfAborted();
       const abort = () => { close(); reject(signal.reason); };
@@ -255,7 +291,9 @@ export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait,
       }
       const rows = choices.map(row => ({ ...row, select: () => answer(row.value) }));
       if (!rows.length) rows.push({ label: '返回', select: () => answer(undefined) });
-      open(title, rows, '方向鍵選擇 · Enter 確認 · Esc 取消', columns, () => answer(undefined), options);
+      const showBack = options.showBack !== false && choices.length > 0
+        && !(rows.length === 1 && rows[0].label.endsWith('返回戰鬥'));
+      open(title, rows, '方向鍵選擇 · Enter 確認 · Esc 取消', columns, () => answer(undefined), { ...options, showBack });
       signal.addEventListener('abort', abort, { once: true });
     });
   }
@@ -264,7 +302,7 @@ export function createBattleMenu(panel, canvas, { portraitUrl: enhancedPortrait,
     return choose(title, [
       { label: '是', dataset: { recruitChoice: 'yes' }, value: true },
       { label: '否', dataset: { recruitChoice: 'no' }, value: false },
-    ], signal, 2);
+    ], signal, 2, { showBack: false });
   }
 
   function handleKey(code, release) {
