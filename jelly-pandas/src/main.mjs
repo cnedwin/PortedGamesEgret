@@ -115,9 +115,9 @@ async function main() {
   const islandGeometry = createIslandGeometry();
   view.attachIsland(islandGeometry);
 
-  const input = createInput(canvas);
   const audio = createAudio();
   const hud = createHud(document.querySelector('#ui'), { lang: params.get('lang') ?? undefined });
+  const input = createInput(canvas, hud.touch);
   audio.setMuted(settings.muted);
 
   // The camera orbits a point that eases toward the watched panda.
@@ -143,12 +143,24 @@ async function main() {
     cardsShown = false,
     endAt = 0,
     now = 0;
+  function syncTouchControls() {
+    const active = input.touchMode && mode === 'play' && !cardsShown && game?.state === 'play';
+    input.setTouchEnabled(active);
+    hud.setTouchControls(active, input.touchMode);
+  }
+  input.onJumpCancel = () => {
+    human.jumpHeld = false;
+    human.charge = 0;
+  };
+  hud.touch.pause.addEventListener('click', () => input.onCommand?.('menu'));
+
   const setMode = (next) => {
     mode = next;
     status.mode = next;
+    syncTouchControls();
   };
   const capturePointer = () => {
-    canvas.requestPointerLock?.()?.catch?.(() => {});
+    if (!input.touchMode) canvas.requestPointerLock?.()?.catch?.(() => {});
   };
 
   function newGame(party, seed) {
@@ -167,7 +179,7 @@ async function main() {
       Array.from({ length: settings.party }, (_, index) => ({ skin: (settings.skin + index) % 8, human: index === 0 })),
       1,
     );
-    follow.distance = 7.5;
+    follow.distance = canvas.inert ? 6 : 7.5;
     follow.pitch = 0.32;
   }
   function showTitle() {
@@ -196,8 +208,8 @@ async function main() {
       human: index === 0,
     }));
     newGame(party, Number(params.get('seed')) || Date.now() & 0xffffff);
-    setMode('play');
     cardsShown = false;
+    setMode('play');
     endAt = 0;
     follow.distance = 12;
     follow.pitch = 0.5;
@@ -209,11 +221,13 @@ async function main() {
   // Level-up cards: the run waits while the player chooses.
   function openCards() {
     cardsShown = true;
+    syncTouchControls();
     input.release();
     hud.showCards(human, { onPick: pickCard, onReroll: rerollCards });
   }
   function closeCards() {
     cardsShown = false;
+    syncTouchControls();
     hud.hideCards();
     capturePointer();
   }
@@ -259,7 +273,7 @@ async function main() {
   };
   // The browser releases the pointer on Esc before the key reaches the page, so losing capture mid-run opens the menu.
   document.addEventListener('pointerlockchange', () => {
-    if (!input.captured && mode === 'play' && !cardsShown && game?.state === 'play' && game.t > 0.5 && document.hasFocus())
+    if (!input.touchMode && !input.captured && mode === 'play' && !cardsShown && game?.state === 'play' && game.t > 0.5 && document.hasFocus())
       setPaused(true);
   });
   canvas.addEventListener('pointerdown', () => audio.unlock());
@@ -316,6 +330,7 @@ async function main() {
       }
       // A moment after the run ends, show the result.
       if (game.state !== 'play' && !endAt) {
+        syncTouchControls();
         endAt = now + 1.6;
         audio.play(game.state === 'won' ? 'won' : 'lost');
       }
@@ -342,9 +357,9 @@ async function main() {
     view.update(mode === 'paused' ? 0 : dt, game);
 
     // 5. Camera: follow the player, or a standing friend while the player is down.
-    //    On the title the panda stands left of centre, clear of the panel.
+    //    Leave room for the title panel when it overlays the full-screen canvas.
     const watched = human.down ? (game.pandas.find((panda) => !panda.down) ?? human) : human;
-    const aside = mode === 'title' ? 2.3 : 0,
+    const aside = mode === 'title' && !canvas.inert ? 2.3 : 0,
       ease = Math.min(1, real * 12),
       // Look a little ahead of a moving panda so more of what is coming is in view.
       lead = mode === 'play' && !watched.down ? Math.min(1.6, watched.speedNow * 0.14) : 0;
@@ -369,7 +384,7 @@ async function main() {
     view.renderReflection(renderer, camera);
 
     // 6. Page and music. The tune is calm on the title and picks up for surges and bosses.
-    if (mode !== 'title') hud.update(game, project, now, input.captured);
+    if (mode !== 'title') hud.update(game, project, now, input.captured || input.touchMode);
     audio.music(mode === 'title' || mode === 'over' ? 0 : game.boss || game.t < game.surgeUntil ? 2 : 1);
   }
 
@@ -381,6 +396,9 @@ async function main() {
     maxPixelRatio: Number(params.get('ratio')) || 1.5,
     onUpdate: frame,
     onError: fail,
+  });
+  hud.setTitlePreview(canvas, (embedded) => {
+    if (mode === 'title') follow.distance = embedded ? 6 : 7.5;
   });
   showTitle();
   startWorld3DLoop(engine, fail);

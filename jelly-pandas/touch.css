@@ -1,0 +1,101 @@
+/* The play layer lets touches through except on its visible controls. */
+.touch {
+  --touch-control: clamp(48px, 13vmin, 64px);
+  --touch-pad: clamp(86px, 24vmin, 110px);
+  --touch-bottom: max(52px, calc(env(safe-area-inset-bottom) + 48px));
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.touch-joystick,
+.touch-button {
+  display: grid;
+  place-items: center;
+  margin: 0;
+  padding: 0;
+  color: #fff6e4;
+  border: 2px solid #d7b5f0b8;
+  border-radius: 50%;
+  background: #211134b8;
+  box-shadow: inset 0 1px 3px #e6c2ff3b, 0 3px 8px #14082442;
+  touch-action: none;
+  pointer-events: auto;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-joystick {
+  position: absolute;
+  left: max(12px, env(safe-area-inset-left));
+  bottom: var(--touch-bottom);
+  width: var(--touch-pad);
+  height: var(--touch-pad);
+}
+
+.touch-stick {
+  width: 39%;
+  height: 39%;
+  border-radius: 50%;
+  border: 2px solid #e8c5ff;
+  background: #c59afa;
+  transform: translate(var(--stick-x, 0px), var(--stick-y, 0px));
+  pointer-events: none;
+}
+
+.touch-actions {
+  position: absolute;
+  right: max(12px, env(safe-area-inset-right));
+  bottom: var(--touch-bottom);
+  display: flex;
+  gap: clamp(6px, 2vmin, 12px);
+  align-items: flex-end;
+}
+
+.touch-button {
+  width: var(--touch-control);
+  height: var(--touch-control);
+  font-size: clamp(12px, 3.6vmin, 16px);
+  font-weight: 800;
+}
+
+.touch-button.held,
+.touch-joystick.held {
+  background: #53376fed;
+  border-color: #ffe29d;
+}
+
+.touch-button[data-touch="pause"] {
+  position: absolute;
+  top: max(42px, calc(env(safe-area-inset-top) + 34px));
+  left: max(12px, env(safe-area-inset-left));
+  width: 54px;
+  height: 44px;
+  border-radius: 16px;
+  touch-action: manipulation;
+}
+
+/* Keep a four-member party clear of the left thumb, with the build below the controls. */
+.play.touch-play .party {
+  top: max(92px, calc(env(safe-area-inset-top) + 84px));
+  left: max(12px, env(safe-area-inset-left));
+  bottom: auto;
+}
+
+.play.touch-play .toys {
+  bottom: max(9px, env(safe-area-inset-bottom));
+  max-width: calc(100% - 24px);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+@media (max-height: 430px) and (orientation: landscape) {
+  .touch {
+    --touch-bottom: max(42px, calc(env(safe-area-inset-bottom) + 38px));
+    --touch-pad: clamp(70px, 20vmin, 86px);
+  }
+  .play.touch-play .party {
+    left: auto;
+    right: max(12px, env(safe-area-inset-right));
+    top: max(42px, calc(env(safe-area-inset-top) + 34px));
+  }
+}

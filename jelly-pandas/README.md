@@ -6,15 +6,15 @@ Jelly Pandas is an independently developed 3D action survival demo built with [E
 
 ## 玩法 · How to play
 
-| | 键盘和鼠标 · Keyboard and mouse | 手柄 · Gamepad |
-|---|---|---|
-| 移动 · Move | W A S D / ↑ ↓ ← → | 左摇杆 · left stick |
-| 视角 · Look | 鼠标 · mouse | 右摇杆 · right stick |
-| 跳跃，长按蓄力大跳 · Jump, hold for a super jump | Space | A |
-| 空中下砸，地面肚皮撞 · Slam in the air, belly bump on the ground | Ctrl / 左键 left click / Q | B |
-| 翻滚 · Roll | Shift / 右键 right click / E | X |
-| 选卡，重抽 · Pick a card, reroll | 1 2 3，R | 方向键 ← ↑ → · direction pad，Y |
-| 菜单 · Menu | Esc / P | Start |
+| | 键盘和鼠标 · Keyboard and mouse | 手柄 · Gamepad | 触屏 · Touch |
+|---|---|---|---|
+| 移动 · Move | W A S D / ↑ ↓ ← → | 左摇杆 · left stick | 左侧屏幕摇杆 · left on-screen stick |
+| 视角 · Look | 鼠标 · mouse | 右摇杆 · right stick | 拖动右侧空白处 · drag an open area on the right |
+| 跳跃，长按蓄力大跳 · Jump, hold for a super jump | Space | A | 跳跃 · Jump |
+| 空中下砸，地面肚皮撞 · Slam in the air, belly bump on the ground | Ctrl / 左键 left click / Q | B | 下砸 · Slam |
+| 翻滚 · Roll | Shift / 右键 right click / E | X | 移动时按住翻滚 · hold Roll while moving |
+| 选卡，重抽 · Pick a card, reroll | 1 2 3，R | 方向键 ← ↑ → · direction pad，Y | 点卡片或重抽 · tap the card or Reroll |
+| 菜单 · Menu | Esc / P | Start | 暂停 · Pause |
 
 - 八只熊猫，颜色、肚皮花纹和初始玩具各不相同。可单人游玩，也可带一到三位由游戏操控的伙伴；站到倒下的熊猫身边可以把它救起。
 - 十二种玩具，各有八级和一次进化（升到满级并拥有对应护符）；十二种护符，各有五级。
@@ -26,9 +26,9 @@ Jelly Pandas is an independently developed 3D action survival demo built with [E
 - Seven kinds of candy, crowned elites, timed surges and three bosses.
 - Every enemy is a physics body: they pile up, get thrown, hurt each other when they collide, take fall damage and drown in the sea; beach balls and barrels can be shoved into the crowd.
 
-游戏面向桌面浏览器，使用键盘鼠标或手柄；音乐和音效都由 Web Audio 实时生成。标题界面可以切换画质（高、中、低），帧率不足时请调低。
+游戏支持键鼠、手柄和手机触屏。音乐和音效都由 Web Audio 实时生成。标题界面可以切换画质（高、中、低），帧率不足时请调低。
 
-The game is made for desktop browsers with a keyboard and mouse or a gamepad. Music and sound effects are generated with Web Audio. The title screen has a quality setting (high, medium, low); lower it if the frame rate drops.
+The game supports keyboard and mouse, gamepad, and mobile touch controls. Music and sound effects are generated with Web Audio. The title screen has a quality setting (high, medium, low); lower it if the frame rate drops.
 
 ## 引擎用法 · How it uses the engine
 

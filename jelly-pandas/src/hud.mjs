@@ -34,6 +34,8 @@ export function createHud(root, options = {}) {
   const t = (key) => TEXT[key]?.[lang] ?? key;
   const name = (def) => def[lang] ?? def.en;
   const describe = (def) => (zh() ? def.dzh : def.den);
+  let touchMode = window.matchMedia('(pointer: coarse)').matches;
+  const controlGuide = () => t(touchMode ? 'touchControls' : 'controls');
   const hud = {
     get lang() {
       return lang;
@@ -69,6 +71,33 @@ export function createHud(root, options = {}) {
     partySignature = '';
   const partyRows = [];
 
+  const touch = el('div', 'touch hidden', play);
+  const joystick = el('div', 'touch-joystick', touch);
+  joystick.dataset.touch = 'move';
+  joystick.setAttribute('role', 'group');
+  el('span', 'touch-stick', joystick).setAttribute('aria-hidden', 'true');
+  const actionRow = el('div', 'touch-actions', touch);
+  const touchButton = (action, parent) => {
+    const button = el('button', 'touch-button', parent);
+    button.type = 'button';
+    button.dataset.touch = action;
+    return button;
+  };
+  const actions = Object.fromEntries(['jump', 'slam', 'roll'].map((action) => [action, touchButton(action, actionRow)]));
+  const pause = touchButton('pause', touch);
+  hud.touch = { joystick, actions, pause };
+  hud.setTouchControls = (active, onTouchDevice) => {
+    touchMode = onTouchDevice;
+    play.classList.toggle('touch-play', active);
+    touch.classList.toggle('hidden', !active);
+    if (active) {
+      joystick.setAttribute('aria-label', t('touchMove'));
+      for (const [action, button] of Object.entries({ ...actions, pause })) {
+        button.textContent = t(action);
+      }
+    }
+  };
+
   // ---- overlays ---------------------------------------------------------------------------
   const cards = el('div', 'layer cards hidden', root),
     title = el('div', 'layer title', root),
@@ -85,14 +114,38 @@ export function createHud(root, options = {}) {
   };
 
   // ---- title -------------------------------------------------------------------------------
+  const portraitTitle = matchMedia('(orientation: portrait) and (max-width: 760px)');
+  const preview = el('div', 'title-preview hidden', title);
+  let titlePanel, previewCanvas, previewLayoutChanged;
+  function updateTitlePreview() {
+    if (!previewCanvas) return;
+    const embedded = portraitTitle.matches && !title.classList.contains('hidden');
+    show(preview, embedded);
+    title.classList.toggle('portrait-preview', embedded);
+    if (embedded) {
+      if (previewCanvas.parentElement !== preview) preview.append(previewCanvas);
+    } else if (previewCanvas.parentElement === preview) {
+      root.before(previewCanvas);
+    }
+    if (previewCanvas.inert !== embedded) {
+      previewCanvas.inert = embedded;
+      previewLayoutChanged(embedded);
+    }
+  }
+  hud.setTitlePreview = (canvas, onLayoutChange) => {
+    previewCanvas = canvas;
+    previewLayoutChanged = onLayoutChange;
+    portraitTitle.addEventListener('change', updateTitlePreview);
+  };
   hud.showTitle = (state, handlers) => {
-    title.textContent = '';
     show(title, true);
     show(play, false);
     show(end, false);
     show(menu, false);
     show(cards, false);
-    const panel = el('div', 'panel', title);
+    updateTitlePreview();
+    titlePanel?.remove();
+    const panel = (titlePanel = el('div', 'panel', title));
     el('h1', '', panel, t('title'));
     el('p', 'tag', panel, t('tagline'));
     el('h2', '', panel, t('pick'));
@@ -133,7 +186,7 @@ export function createHud(root, options = {}) {
     const go = el('button', 'go', panel, t('play'));
     go.type = 'button';
     go.addEventListener('click', () => handlers.onPlay());
-    el('p', 'controls', panel, t('controls'));
+    el('p', 'controls', panel, controlGuide());
     const foot = el('div', 'row foot', panel);
     const language = el('button', 'pill', foot, zh() ? 'English' : '中文');
     language.type = 'button';
@@ -161,6 +214,7 @@ export function createHud(root, options = {}) {
   /** Switch from the title to the in-game layer. */
   hud.startPlay = () => {
     show(title, false);
+    updateTitlePreview();
     show(end, false);
     show(menu, false);
     show(cards, false);
@@ -168,7 +222,7 @@ export function createHud(root, options = {}) {
     toySignature = '';
     partySignature = '';
     announce.textContent = '';
-    hint.textContent = t('clickToPlay');
+    hint.textContent = touchMode ? '' : t('clickToPlay');
   };
 
   // ---- cards ---------------------------------------------------------------------------------
@@ -239,7 +293,7 @@ export function createHud(root, options = {}) {
       button.type = 'button';
       button.addEventListener('click', action);
     }
-    el('p', 'controls', panel, t('controls'));
+    el('p', 'controls', panel, controlGuide());
   };
   /** Show the result of a finished run with the player's build. */
   hud.showEnd = (game, handlers) => {

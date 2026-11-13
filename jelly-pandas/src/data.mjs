@@ -639,6 +639,15 @@ export const TEXT = {
   bonus: { en: 'Sprinkle shower', zh: '糖粒雨' },
   bonusDesc: { en: 'A burst of experience', zh: '获得一批经验' },
   clickToPlay: { en: 'Click to capture the mouse', zh: '点击画面锁定鼠标' },
+  touchMove: { en: 'Move joystick', zh: '移动摇杆' },
+  jump: { en: 'Jump', zh: '跳跃' },
+  slam: { en: 'Slam', zh: '下砸' },
+  roll: { en: 'Roll', zh: '翻滚' },
+  pause: { en: 'Pause', zh: '暂停' },
+  touchControls: {
+    en: 'Left stick to move · Drag the right side to look · Hold Jump to charge · Hold Roll while moving · Slam in the air or bump on the ground',
+    zh: '左侧摇杆移动 · 拖动右侧空白处转视角 · 长按跳跃蓄力 · 移动时按住翻滚 · 空中下砸，地面肚皮撞',
+  },
   controls: {
     en: 'WASD move · Mouse look · Space jump (hold: super jump) · Ctrl / Left click / Q slam in the air, belly-bump on the ground · Shift / Right click / E roll · 1-3 pick a card · R reroll · Esc menu',
     zh: 'WASD 移动 · 鼠标转视角 · 空格跳跃（长按蓄力大跳）· Ctrl / 左键 / Q 空中下砸、地面肚皮撞 · Shift / 右键 / E 翻滚 · 1-3 选卡 · R 重抽 · Esc 菜单',

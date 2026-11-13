@@ -386,6 +386,66 @@ button:focus-visible {
   text-align: center;
   box-sizing: border-box;
 }
+.title-preview {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border: 2px solid var(--ink);
+  border-radius: 16px;
+  background: #0d1b2a;
+}
+.title-preview #stage {
+  position: absolute;
+  touch-action: pan-y;
+  pointer-events: none;
+}
+.title.portrait-preview {
+  --u: clamp(5.2px, 1.65vw, 7px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-right))
+    max(18px, env(safe-area-inset-bottom)) max(10px, env(safe-area-inset-left));
+  overflow-y: auto;
+  background: radial-gradient(ellipse at top, #382347, #11091e 75%);
+  font-size: clamp(12px, 3.3vw, 15px);
+}
+.portrait-preview .title-preview,
+.portrait-preview .panel {
+  flex: none;
+  width: min(100%, 520px);
+  box-sizing: border-box;
+}
+.portrait-preview .title-preview {
+  height: clamp(136px, 27svh, 230px);
+}
+@media (max-height: 700px) {
+  .portrait-preview .title-preview {
+    height: clamp(128px, 25svh, 175px);
+  }
+}
+.portrait-preview h1 {
+  font-size: clamp(26px, 8.5vw, 40px);
+}
+.portrait-preview .panel {
+  max-height: none;
+  padding: 12px;
+  overflow: visible;
+}
+.portrait-preview .skins {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  overflow-wrap: anywhere;
+}
+.portrait-preview .skin small {
+  font-size: clamp(10px, 2.7vw, 12px);
+}
+.portrait-preview .go {
+  min-height: 48px;
+  min-width: min(100%, 140px);
+  font-size: max(18px, calc(var(--u) * 3));
+}
 .panel.small {
   width: min(92vw, calc(var(--u) * 44));
   display: grid;
