@@ -160,7 +160,7 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
       for (const actor of cast) if (actor.unit.down) actor.figure.play('down');
     },
     enter() {
-      stage.orbit.set({ target: [0, 0.8, 0], yaw: 0, pitch: 0.62, distance: 30, minDistance: 7, maxDistance: 70, minPitch: 0.15, maxPitch: 1.35, reach: 24, drift: 0 });
+      stage.orbit.set({ target: [0, 0.8, 0], yaw: 0, pitch: 0.6, distance: 24, minDistance: 7, maxDistance: 70, minPitch: 0.15, maxPitch: 1.35, reach: 24, drift: 0 });
       // A tap on an enemy sets the player's side on them; a second tap lets them choose for themselves again.
       stage.orbit.onTap = (x, y) => {
         let best = null,
