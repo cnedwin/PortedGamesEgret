@@ -9,7 +9,7 @@
 import { ART_BY_ID, CLASSES, commonArt, levelOf, sectArts, unmetNeeds } from '../data/arts.mjs';
 import { BUILDINGS, DAYS_PER_XUN, DAYS_PER_YEAR, ECONOMY, GRADES, PILLS, WATCHES_PER_DAY } from '../data/goods.mjs';
 import { PLACE_BY_ID, PLACES, RESOURCES } from '../data/places.mjs';
-import { OFFICES, RANKS, SECT_BY_ID, SECTS } from '../data/sects.mjs';
+import { ELDERS, OFFICES, RANKS, SECT_BY_ID, SECTS } from '../data/sects.mjs';
 import { resolveBattle } from './battle.mjs';
 import { TRAITS, autoWheel, equipFor, gainXp, growTo, hpMax, learnableArts, makeLeader, practise, prowess, rollPerson, trainingRate } from './persons.mjs';
 import { clamp, createRng } from './rng.mjs';
@@ -101,8 +101,12 @@ export function createWorld({ seed = 1, playerSect = 'huashan', succession = fal
       [1, 4, 44],
       [1, 3, 44],
     ];
+    const elders = [...(ELDERS[sect.id] ?? [])];
     for (const [rank, level, quality] of starters) {
-      const person = rollPerson(rng, { quality, lean: PLACE_BY_ID[sect.seat].lean, school: sect.id, place: sect.seat });
+      // The two elders are people in their own right, with a name and a face.
+      const known = rank >= 4 ? elders.shift() : undefined;
+      const person = rollPerson(rng, { quality, lean: PLACE_BY_ID[sect.seat].lean, school: sect.id, place: sect.seat, female: known?.female });
+      if (known) Object.assign(person, { name: known.name, age: known.age, portraitId: known.portraitId, origin: '长老' });
       person.rank = rank;
       growTo(person, level);
       const tiers = rank >= 4 ? 3 : rank >= 2 ? 2 : 1;
