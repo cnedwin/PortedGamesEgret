@@ -34,6 +34,8 @@ export const RULES = {
   timeLimit: 300,
   /** What one move hands the next on the wheel. */
   links: { hit: 0.15, crit: 0.1, power: 0.2, thrift: 0.3 },
+  rallySeconds: 12,
+  rallyBonus: 0.25,
   poisonSeconds: 8,
   poisonShare: 0.005,
 };
@@ -96,7 +98,9 @@ function enlist(person, side, index) {
 
 /** Stands a side in ranks: short reach in front, long reach behind. */
 function deploy(units, side, formation) {
-  const order = [...units].sort((a, b) => a.range - b.range);
+  // Whoever was told to stand in front or behind does so; the rest go by reach.
+  const rowOf = (unit) => ({ front: -10, back: 10 })[unit.person.row] ?? 0;
+  const order = [...units].sort((a, b) => rowOf(a) + a.range - (rowOf(b) + b.range));
   const perRank = formation?.width ?? 5;
   order.forEach((unit, i) => {
     const rank = Math.floor(i / perRank),
@@ -151,7 +155,37 @@ export function createBattle({ sides, seed = 1, formations = [] }) {
       battle.orders[side].retreat = true;
     },
     alive: (side) => units.filter((unit) => unit.side === side && !unit.down && !unit.fled),
+    /** Until when each side's rallying cry lasts, and whether it has been used. */
+    rallied: [0, 0],
+    stances: ['even', 'even'],
+    /** Once a fight, a side's leader calls and everyone strikes a quarter harder for a while. */
+    rally(side) {
+      if (battle.rallied[side]) return false;
+      battle.rallied[side] = battle.time + RULES.rallySeconds;
+      for (const unit of units) if (unit.side === side) unit.attackBonus += RULES.rallyBonus;
+      battle.events.push({ type: 'rally', time: battle.time, side });
+      return true;
+    },
+    /** Leans a side towards attack or defence, or back to even. */
+    stance(side, next) {
+      const lean = { attack: [0.1, -0.1], defend: [-0.1, 0.1], even: [0, 0] };
+      if (!lean[next] || battle.stances[side] === next) return false;
+      const [a0, d0] = lean[battle.stances[side]],
+        [a1, d1] = lean[next];
+      for (const unit of units) if (unit.side === side) (unit.attackBonus += a1 - a0), (unit.defense *= (1 + d1) / (1 + d0));
+      battle.stances[side] = next;
+      return true;
+    },
   };
+
+  /** Ends a rallying cry when its time is up. */
+  function settleRally() {
+    for (const side of [0, 1])
+      if (battle.rallied[side] > 0 && battle.time >= battle.rallied[side]) {
+        battle.rallied[side] = -1;
+        for (const unit of units) if (unit.side === side) unit.attackBonus -= RULES.rallyBonus;
+      }
+  }
 
   function pickTarget(unit) {
     const foes = battle.alive(1 - unit.side);
@@ -198,7 +232,7 @@ export function createBattle({ sides, seed = 1, formations = [] }) {
     const attribute = klass.attrs.reduce((sum, key) => sum + unit.person.stats[key], 0) / klass.attrs.length;
     const mastery = art ? levelOf(unit.person.arts[art.id] ?? 0) : 0;
     // A weapon only helps the arts made for it.
-    const weapon = art && unit.weapon && unit.weapon.slot === klass.weapon ? GRADES[unit.weapon.grade].attack : 0;
+    const weapon = art && unit.weapon && unit.weapon.slot === klass.weapon ? (unit.weapon.power ?? GRADES[unit.weapon.grade].attack) : 0;
     let counter = 1;
     if (klass.family && foe.family) {
       if (BEATS[klass.family] === foe.family) counter = RULES.counterStrong;
@@ -243,6 +277,7 @@ export function createBattle({ sides, seed = 1, formations = [] }) {
   function update(dt = RULES.step) {
     if (battle.done) return;
     battle.time += dt;
+    settleRally();
     for (const unit of units) {
       if (unit.down || unit.fled) continue;
       const regen = RULES.regen + unit.regenBonus;

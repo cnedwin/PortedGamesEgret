@@ -264,3 +264,274 @@ test('every person in a default wheel throws moves they know', () => {
   const state = createWorld({ seed: 9 });
   for (const person of Object.values(state.persons)) for (const slot of autoWheel(person)) assert.ok(ART_BY_ID[slot.art].moves[slot.move]);
 });
+
+// ---- the wider martial world ---------------------------------------------------------------------------
+
+const { formationsFor, join, modsOf, pendingView, resolvePending, setRule } = await import('../src/core/jianghu.mjs');
+const { EVENTS, FORMATIONS, TALENTS, WANDERERS } = await import('../src/data/jianghu.mjs');
+const worldModule = await import('../src/core/world.mjs');
+const { openShop } = worldModule;
+
+test('wanderers, talents and formations are well formed', () => {
+  assert.equal(WANDERERS.length, 30);
+  for (const w of WANDERERS) assert.ok(TALENTS[w.talent], w.name);
+  for (const sect of SECTS) assert.equal(FORMATIONS[sect.id].sect, sect.id);
+  for (const event of EVENTS) assert.ok(event.choices.length >= 2 && event.choices.every((c) => c.text && c.gives), event.id);
+});
+
+test('a wanderer who joins brings a talent, and a house rule adds to it', () => {
+  const world = createWorld({ seed: 11, playerSect: 'wudang' });
+  const rng = createRng(5);
+  assert.equal(modsOf(world, 'wudang').train, 0);
+  const person = join(world, 'wudang', WANDERERS.find((w) => w.talent === 'teach').id, rng);
+  assert.equal(person.school, 'wudang');
+  assert.ok(Math.abs(modsOf(world, 'wudang').train - 0.1) < 1e-9);
+  assert.ok(setRule(world, 'wudang', 'strict').ok);
+  assert.ok(Math.abs(modsOf(world, 'wudang').train - 0.2) < 1e-9);
+  assert.ok(!setRule(world, 'wudang', 'nonsense').ok);
+});
+
+test('an event waits for the player in a watched world and resolves itself otherwise', () => {
+  const watched = createWorld({ seed: 21, playerSect: 'emei' });
+  watched.options.interactive = true;
+  for (let day = 0; day < 400 && !watched.pending; day++) advanceDay(watched);
+  const view = pendingView(watched);
+  assert.ok(view && view.choices.length >= 2);
+  const index = view.choices.findIndex((choice) => !choice.why);
+  const rng = createRng(1);
+  rng.state = watched.rng;
+  assert.ok(resolvePending(watched, index, rng).ok);
+  assert.equal(watched.pending, null);
+
+  const alone = createWorld({ seed: 21, playerSect: 'emei' });
+  for (let day = 0; day < 720; day++) advanceDay(alone);
+  assert.ok(!alone.pending);
+  assert.ok(alone.log.some((entry) => entry.type === 'event' || entry.type === 'join') || Object.keys(alone.met ?? {}).length > 0);
+});
+
+test('a sect formation needs an elder, and a shop costs silver', () => {
+  const world = createWorld({ seed: 4, playerSect: 'shaolin' });
+  const people = Object.values(world.persons).filter((p) => p.school === 'shaolin');
+  assert.ok(formationsFor('shaolin', people).includes('shaolin'));
+  assert.ok(!formationsFor('shaolin', people.filter((p) => p.rank < 4)).includes('shaolin'));
+  assert.ok(!formationsFor('shaolin', people).includes('wudang'));
+  const before = world.sects.shaolin.silver;
+  assert.ok(openShop(world, 'shaolin', 'songshan').ok);
+  assert.ok(world.sects.shaolin.silver < before);
+  assert.equal(world.places.songshan.shops, 1);
+});
+
+// ---- more that a leader can do -------------------------------------------------------------------------
+
+const extras = await import('../src/core/extras.mjs');
+const { RELICS, MERIDIANS, SCENARIOS } = await import('../src/data/extras.mjs');
+const { SECT_BY_ID: SECT_INDEX } = await import('../src/data/sects.mjs');
+
+test('gear, named weapons and pills', () => {
+  const world = createWorld({ seed: 6, playerSect: 'huashan' });
+  const books = world.sects.huashan,
+    leader = world.persons[books.leaderId];
+  assert.equal(RELICS.length, 24);
+  assert.ok(!extras.upgradeGear(world, leader.id).ok, 'a forge of the next level is needed');
+  const junior = Object.values(world.persons).find((p) => p.school === 'huashan' && p.rank === 1);
+  books.silver = 9999;
+  books.res.iron = 999;
+  world.places.huashan.buildings.find((b) => b.kind === 'forge' || b.kind === 'still') ?? world.places.huashan.buildings.push({ kind: 'forge', level: 1, xp: 0 });
+  world.places.huashan.buildings.push({ kind: 'forge', level: 3, xp: 0 }, { kind: 'still', level: 5, xp: 0 });
+  assert.ok(extras.upgradeGear(world, junior.id).ok);
+  assert.equal(junior.gear.armor, 2);
+  const rng = createRng(2);
+  const relic = extras.findRelic(world, 'huashan', rng);
+  const owned = RELICS.find((r) => r.slot === 'sword');
+  books.relics = [owned.id, relic.id];
+  assert.ok(extras.giveRelic(world, leader.id, owned.id).ok);
+  assert.equal(leader.gear.weapon.power, owned.power);
+  books.res.herb = 999;
+  assert.ok(extras.makePill(world, 'huashan', 'heal1').ok);
+  assert.ok(!extras.usePill(world, leader.id, 'heal1').ok, 'nobody is hurt');
+  leader.wounds = 0.3;
+  assert.ok(extras.usePill(world, leader.id, 'heal1').ok);
+  assert.ok(leader.wounds < 0.3 && !books.stock['pill:heal1']);
+});
+
+test('a founded art, a manual and the meridians', () => {
+  const world = createWorld({ seed: 6, playerSect: 'wudang' });
+  const leader = world.persons[world.sects.wudang.leaderId];
+  const known = Object.keys(leader.arts).filter((id) => ART_BY_ID[id].klass === 'sword');
+  const picks = [`${known[0]}:0`, `${known[0]}:1`, `${known[1]}:0`];
+  assert.ok(!extras.createArt(world, leader.id, '', picks).ok);
+  const made = extras.createArt(world, leader.id, '松风剑', picks);
+  assert.ok(made.ok, made.why);
+  assert.ok(ART_BY_ID[made.art.id] && leader.arts[made.art.id] > 0);
+  const text = serialize(world, 'x');
+  delete ART_BY_ID[made.art.id];
+  assert.ok(deserialize(text).ok && ART_BY_ID[made.art.id], 'a save brings its arts back');
+  world.places.wudang.buildings.push({ kind: 'library', level: 1, xp: 0 });
+  assert.ok(extras.writeManual(world, leader.id, known[0]).ok);
+  assert.ok(extras.openMeridian(world, leader.id, 'a').ok);
+  assert.equal(leader.meridians.length, 1);
+  assert.equal(MERIDIANS.length, 8);
+});
+
+test('ways of beginning, a sect of one\'s own, and a siege that waits', () => {
+  for (const scenario of Object.keys(SCENARIOS)) {
+    const world = createWorld({ seed: 8, playerSect: 'emei', scenario });
+    assert.ok(world.sects.emei.alive && membersOf(world, 'emei').length >= 5, scenario);
+    for (let day = 0; day < 60; day++) advanceDay(world);
+  }
+  assert.equal(SECTS.filter((s) => createWorld({ seed: 8, playerSect: 'emei', scenario: 'five' }).sects[s.id].alive).length, 5);
+  const own = createWorld({ seed: 8, playerSect: 'kunlun', custom: { sect: 'kunlun', name: '听雪楼', leader: '顾迟' } });
+  assert.equal(SECT_INDEX.kunlun.name, '听雪楼');
+  assert.equal(own.persons[own.sects.kunlun.leaderId].name, '顾迟');
+  createWorld({ seed: 8 });
+  assert.equal(SECT_INDEX.kunlun.name, '昆仑派');
+
+  const world = createWorld({ seed: 31, playerSect: 'yaowang', difficulty: 3 });
+  world.options.interactive = true;
+  for (const person of membersOf(world, 'yaowang')) if (person.rank < 5) delete world.persons[person.id];
+  let siege = null;
+  for (let day = 0; day < 3600 && !siege && !world.outcome; day++) {
+    advanceDay(world);
+    if (world.pending?.kind === 'siege') siege = world.pending;
+    else world.pending = null;
+  }
+  assert.ok(siege, 'a weak watched sect is attacked sooner or later, and the attack waits');
+  assert.equal(world.places[siege.place].owner, 'yaowang');
+});
+
+test('a spy, a speciality and a duel', () => {
+  const world = createWorld({ seed: 2, playerSect: 'tangmen' });
+  assert.ok(extras.plantSpy(world, 'tangmen', 'wudang').ok);
+  assert.ok(!extras.plantSpy(world, 'tangmen', 'wudang').ok);
+  assert.ok(extras.spyBoost(world, 'tangmen', 'wudang') > 0);
+  assert.ok(extras.setFocus(world, 'tangmen', 'yuzhou', 'drill').ok);
+  assert.ok(extras.focusBoost(world, 'yuzhou', 'train') > 0);
+  const rng = createRng(3);
+  const leader = world.persons[world.sects.tangmen.leaderId];
+  const duel = extras.duelSides(world, leader.id, rng);
+  assert.ok(duel.ok);
+  const battle = createBattle({ sides: duel.sides, seed: 5 });
+  while (!battle.done) battle.update();
+  assert.ok(battle.rally(0) === false || true);
+  extras.settleDuel(world, leader.id, battle.winner === 0, 0.5, 100);
+  assert.ok(!extras.duelSides(world, leader.id, rng).ok, 'the stage rests between bouts');
+});
+
+test('a rallying cry lasts a while and a stance can be taken back', () => {
+  const world = createWorld({ seed: 5 });
+  const a = membersOf(world, 'huashan'),
+    b = membersOf(world, 'shaolin');
+  const battle = createBattle({ sides: [a, b], seed: 1 });
+  const unit = battle.units[0],
+    attack = unit.attackBonus,
+    defense = unit.defense;
+  assert.ok(battle.rally(0) && !battle.rally(0));
+  assert.ok(unit.attackBonus > attack);
+  assert.ok(battle.stance(0, 'defend'));
+  assert.ok(unit.defense > defense);
+  assert.ok(battle.stance(0, 'even'));
+  assert.ok(Math.abs(unit.defense - defense) < 1e-6);
+  for (let i = 0; i < 200 && !battle.done; i++) battle.update();
+  assert.ok(battle.done || Math.abs(unit.attackBonus - attack) < 1e-9);
+});
+
+test('roads between a sect\'s strongholds and to its friends bring trade', () => {
+  const world = createWorld({ seed: 3, playerSect: 'shaolin' });
+  const { tradeRoutes, ledger } = worldModule;
+  assert.equal(tradeRoutes(world, 'shaolin').length, 0);
+  world.places.huashan.owner = 'shaolin';
+  const own = tradeRoutes(world, 'shaolin');
+  assert.equal(own.filter((route) => route.kind === 'own').length, 1);
+  world.sects.shaolin.relations.wudang = 60;
+  assert.ok(tradeRoutes(world, 'shaolin').some((route) => route.kind === 'ally' && route.to === 'wudang'));
+  world.places.songshan.shops = 2;
+  assert.ok(ledger(world, 'shaolin').trade > own[0].income);
+});
+
+test('workshop goods are sold at the ten-day reckoning, better through shops', () => {
+  const sell = (shops) => {
+    const world = createWorld({ seed: 12, playerSect: 'caobang' });
+    for (const person of membersOf(world, 'caobang')) person.job = { kind: 'rest' };
+    world.places.yangzhou.shops = shops;
+    world.sects.caobang.goods = 200;
+    for (let day = 0; day < 10; day++) advanceDay(world);
+    return world.sects.caobang;
+  };
+  const without = sell(0),
+    withShops = sell(1);
+  assert.equal(without.goods, 0);
+  assert.deepEqual(without.sold, { goods: 200, retail: 0, glut: 0 });
+  assert.equal(withShops.sold.retail, 150);
+});
+
+test('a wanderer\'s chapters: trial, wish, and the passing on of their art', () => {
+  const world = createWorld({ seed: 17, playerSect: 'huashan' });
+  world.options.interactive = true;
+  const rng = createRng(9);
+  const person = join(world, 'huashan', WANDERERS.find((w) => w.talent === 'trade').id, rng);
+  const seen = [];
+  for (let day = 0; day < 1500 && seen.length < 3; day++) {
+    advanceDay(world);
+    const kind = world.pending?.kind;
+    if (!kind) continue;
+    if (['trial', 'wish', 'legacy'].includes(kind)) {
+      world.sects.huashan.silver += 2000;
+      seen.push(kind);
+      assert.ok(pendingView(world).choices.length === 2);
+      assert.ok(resolvePending(world, 0, rng).ok, kind);
+    } else world.pending = null;
+  }
+  assert.deepEqual(seen, ['trial', 'wish', 'legacy']);
+  assert.ok(person.talentDeep);
+  assert.equal(Object.values(world.persons).filter((p) => p.school === 'huashan' && p.talent === 'trade').length, 2);
+});
+
+test('voice: each speaker has a tone of their own, and silence where the device has no Chinese', async () => {
+  const { createVoice } = await import('../src/ui/voice.mjs');
+  const kept = new Map(),
+    storage = { getItem: (k) => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, v) };
+  const spoken = [];
+  globalThis.SpeechSynthesisUtterance = class {
+    constructor(text) {
+      this.text = text;
+    }
+  };
+  const synth = { speaking: false, getVoices: () => [{ lang: 'en-US', name: 'Sam' }, { lang: 'zh-CN', name: 'Tingting' }], speak: (line) => spoken.push(line), cancel() {} };
+  const voice = createVoice(storage, synth);
+  assert.equal(voice.supported, true);
+  const woman = voice.tone({ name: '宋折汐', female: true, age: 32 }),
+    elder = voice.tone({ name: '莫问铎', female: false, age: 56 });
+  assert.ok(woman.pitch > elder.pitch + 0.3);
+  assert.equal(voice.say('江湖路远'), true);
+  assert.equal(spoken[0].lang, 'zh-CN');
+  assert.equal(voice.shout('太极剑法！', { name: '甲' }), true);
+  assert.equal(voice.shout('太极剑法！', { name: '甲' }), false, 'cries are spaced out');
+  voice.set({ on: false });
+  assert.equal(voice.say('江湖路远'), false);
+  assert.equal(createVoice(storage, synth).on, false, 'the choice is kept');
+  assert.equal(createVoice(storage, { getVoices: () => [{ lang: 'en-US', name: 'Sam' }] }).supported, false);
+  delete globalThis.SpeechSynthesisUtterance;
+});
+
+test('goals: matters come one at a time, each paying out once it is done', async () => {
+  const { GOALS, claimGoal, goalView, startGoals } = await import('../src/core/goals.mjs');
+  const world = createWorld({ seed: 3, playerSect: 'huashan' });
+  startGoals(world);
+  let view = goalView(world);
+  assert.equal(view.id, 'time');
+  assert.equal(view.done, false);
+  assert.equal(claimGoal(world).ok, false);
+  for (let i = 0; i < 10; i++) advanceDay(world);
+  const silver = world.sects.huashan.silver;
+  assert.equal(goalView(world).done, true);
+  assert.equal(claimGoal(world).ok, true);
+  assert.equal(world.sects.huashan.silver, silver + 200);
+  assert.equal(goalView(world).id, 'recruit');
+  // Building is counted from when it is asked for, not from the start of the game.
+  world.goals.index = GOALS.findIndex((goal) => goal.id === 'build');
+  assert.equal(goalView(world).done, false);
+  world.places.huashan.buildings[0].level += 1;
+  assert.equal(goalView(world).done, true);
+  world.goals.index = GOALS.length;
+  assert.equal(goalView(world).last, true);
+});

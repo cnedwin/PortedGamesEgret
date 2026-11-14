@@ -1,0 +1,1003 @@
+{
+  "version": 1,
+  "title": "武林天下",
+  "assets": {
+    "title": "assets/scenes/title.webp",
+    "seat": "assets/scenes/seat.webp",
+    "world": "assets/scenes/world.webp",
+    "battle": "assets/scenes/battle.webp"
+  },
+  "portraits": {
+    "leader-shaolin": {
+      "name": "慧灯禅师",
+      "role": "leader",
+      "sect": "shaolin",
+      "age": 71,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-shaolin/full.webp",
+      "full": "assets/portraits/leader-shaolin/full.webp",
+      "bust": "assets/portraits/leader-shaolin/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-shaolin/expression-happy.webp",
+        "determined": "assets/portraits/leader-shaolin/expression-determined.webp",
+        "worried": "assets/portraits/leader-shaolin/expression-worried.webp"
+      }
+    },
+    "leader-wudang": {
+      "name": "松鹤真人",
+      "role": "leader",
+      "sect": "wudang",
+      "age": 66,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-wudang/full.webp",
+      "full": "assets/portraits/leader-wudang/full.webp",
+      "bust": "assets/portraits/leader-wudang/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-wudang/expression-happy.webp",
+        "determined": "assets/portraits/leader-wudang/expression-determined.webp",
+        "worried": "assets/portraits/leader-wudang/expression-worried.webp"
+      }
+    },
+    "leader-emei": {
+      "name": "沈清霜",
+      "role": "leader",
+      "sect": "emei",
+      "age": 34,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-emei/full.webp",
+      "full": "assets/portraits/leader-emei/full.webp",
+      "bust": "assets/portraits/leader-emei/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-emei/expression-happy.webp",
+        "determined": "assets/portraits/leader-emei/expression-determined.webp",
+        "worried": "assets/portraits/leader-emei/expression-worried.webp"
+      }
+    },
+    "leader-huashan": {
+      "name": "陆孤舟",
+      "role": "leader",
+      "sect": "huashan",
+      "age": 41,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-huashan/full.webp",
+      "full": "assets/portraits/leader-huashan/full.webp",
+      "bust": "assets/portraits/leader-huashan/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-huashan/expression-happy.webp",
+        "determined": "assets/portraits/leader-huashan/expression-determined.webp",
+        "worried": "assets/portraits/leader-huashan/expression-worried.webp"
+      }
+    },
+    "leader-gaibang": {
+      "name": "贺九斤",
+      "role": "leader",
+      "sect": "gaibang",
+      "age": 52,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-gaibang/full.webp",
+      "full": "assets/portraits/leader-gaibang/full.webp",
+      "bust": "assets/portraits/leader-gaibang/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-gaibang/expression-happy.webp",
+        "determined": "assets/portraits/leader-gaibang/expression-determined.webp",
+        "worried": "assets/portraits/leader-gaibang/expression-worried.webp"
+      }
+    },
+    "leader-mingjiao": {
+      "name": "厉千秋",
+      "role": "leader",
+      "sect": "mingjiao",
+      "age": 47,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-mingjiao/full.webp",
+      "full": "assets/portraits/leader-mingjiao/full.webp",
+      "bust": "assets/portraits/leader-mingjiao/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-mingjiao/expression-happy.webp",
+        "determined": "assets/portraits/leader-mingjiao/expression-determined.webp",
+        "worried": "assets/portraits/leader-mingjiao/expression-worried.webp"
+      }
+    },
+    "leader-kunlun": {
+      "name": "拓跋烈",
+      "role": "leader",
+      "sect": "kunlun",
+      "age": 45,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-kunlun/full.webp",
+      "full": "assets/portraits/leader-kunlun/full.webp",
+      "bust": "assets/portraits/leader-kunlun/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-kunlun/expression-happy.webp",
+        "determined": "assets/portraits/leader-kunlun/expression-determined.webp",
+        "worried": "assets/portraits/leader-kunlun/expression-worried.webp"
+      }
+    },
+    "leader-caobang": {
+      "name": "江晚舟",
+      "role": "leader",
+      "sect": "caobang",
+      "age": 29,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-caobang/full.webp",
+      "full": "assets/portraits/leader-caobang/full.webp",
+      "bust": "assets/portraits/leader-caobang/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-caobang/expression-happy.webp",
+        "determined": "assets/portraits/leader-caobang/expression-determined.webp",
+        "worried": "assets/portraits/leader-caobang/expression-worried.webp"
+      }
+    },
+    "leader-yaowang": {
+      "name": "白术翁",
+      "role": "leader",
+      "sect": "yaowang",
+      "age": 68,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-yaowang/full.webp",
+      "full": "assets/portraits/leader-yaowang/full.webp",
+      "bust": "assets/portraits/leader-yaowang/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-yaowang/expression-happy.webp",
+        "determined": "assets/portraits/leader-yaowang/expression-determined.webp",
+        "worried": "assets/portraits/leader-yaowang/expression-worried.webp"
+      }
+    },
+    "leader-chongsheng": {
+      "name": "昙照上人",
+      "role": "leader",
+      "sect": "chongsheng",
+      "age": 59,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-chongsheng/full.webp",
+      "full": "assets/portraits/leader-chongsheng/full.webp",
+      "bust": "assets/portraits/leader-chongsheng/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-chongsheng/expression-happy.webp",
+        "determined": "assets/portraits/leader-chongsheng/expression-determined.webp",
+        "worried": "assets/portraits/leader-chongsheng/expression-worried.webp"
+      }
+    },
+    "leader-quanzhen": {
+      "name": "归云子",
+      "role": "leader",
+      "sect": "quanzhen",
+      "age": 55,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-quanzhen/full.webp",
+      "full": "assets/portraits/leader-quanzhen/full.webp",
+      "bust": "assets/portraits/leader-quanzhen/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-quanzhen/expression-happy.webp",
+        "determined": "assets/portraits/leader-quanzhen/expression-determined.webp",
+        "worried": "assets/portraits/leader-quanzhen/expression-worried.webp"
+      }
+    },
+    "leader-tangmen": {
+      "name": "唐挽月",
+      "role": "leader",
+      "sect": "tangmen",
+      "age": 26,
+      "origin": "runtime",
+      "src": "assets/portraits/leader-tangmen/full.webp",
+      "full": "assets/portraits/leader-tangmen/full.webp",
+      "bust": "assets/portraits/leader-tangmen/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/leader-tangmen/expression-happy.webp",
+        "determined": "assets/portraits/leader-tangmen/expression-determined.webp",
+        "worried": "assets/portraits/leader-tangmen/expression-worried.webp"
+      }
+    },
+    "elder-shaolin-teaching": {
+      "name": "悟砚",
+      "role": "elder",
+      "sect": "shaolin",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-shaolin-teaching/full.webp",
+      "full": "assets/portraits/elder-shaolin-teaching/full.webp",
+      "bust": "assets/portraits/elder-shaolin-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-shaolin-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-shaolin-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-shaolin-teaching/expression-worried.webp"
+      }
+    },
+    "elder-shaolin-discipline": {
+      "name": "戒铎",
+      "role": "elder",
+      "sect": "shaolin",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-shaolin-discipline/full.webp",
+      "full": "assets/portraits/elder-shaolin-discipline/full.webp",
+      "bust": "assets/portraits/elder-shaolin-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-shaolin-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-shaolin-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-shaolin-discipline/expression-worried.webp"
+      }
+    },
+    "elder-wudang-teaching": {
+      "name": "栖微子",
+      "role": "elder",
+      "sect": "wudang",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-wudang-teaching/full.webp",
+      "full": "assets/portraits/elder-wudang-teaching/full.webp",
+      "bust": "assets/portraits/elder-wudang-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-wudang-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-wudang-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-wudang-teaching/expression-worried.webp"
+      }
+    },
+    "elder-wudang-discipline": {
+      "name": "崔寒砥",
+      "role": "elder",
+      "sect": "wudang",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-wudang-discipline/full.webp",
+      "full": "assets/portraits/elder-wudang-discipline/full.webp",
+      "bust": "assets/portraits/elder-wudang-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-wudang-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-wudang-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-wudang-discipline/expression-worried.webp"
+      }
+    },
+    "elder-emei-teaching": {
+      "name": "叶静筠",
+      "role": "elder",
+      "sect": "emei",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-emei-teaching/full.webp",
+      "full": "assets/portraits/elder-emei-teaching/full.webp",
+      "bust": "assets/portraits/elder-emei-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-emei-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-emei-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-emei-teaching/expression-worried.webp"
+      }
+    },
+    "elder-emei-discipline": {
+      "name": "温裁雪",
+      "role": "elder",
+      "sect": "emei",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-emei-discipline/full.webp",
+      "full": "assets/portraits/elder-emei-discipline/full.webp",
+      "bust": "assets/portraits/elder-emei-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-emei-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-emei-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-emei-discipline/expression-worried.webp"
+      }
+    },
+    "elder-huashan-teaching": {
+      "name": "许砚危",
+      "role": "elder",
+      "sect": "huashan",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-huashan-teaching/full.webp",
+      "full": "assets/portraits/elder-huashan-teaching/full.webp",
+      "bust": "assets/portraits/elder-huashan-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-huashan-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-huashan-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-huashan-teaching/expression-worried.webp"
+      }
+    },
+    "elder-huashan-discipline": {
+      "name": "岑迭峰",
+      "role": "elder",
+      "sect": "huashan",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-huashan-discipline/full.webp",
+      "full": "assets/portraits/elder-huashan-discipline/full.webp",
+      "bust": "assets/portraits/elder-huashan-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-huashan-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-huashan-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-huashan-discipline/expression-worried.webp"
+      }
+    },
+    "elder-gaibang-teaching": {
+      "name": "朱百结",
+      "role": "elder",
+      "sect": "gaibang",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-gaibang-teaching/full.webp",
+      "full": "assets/portraits/elder-gaibang-teaching/full.webp",
+      "bust": "assets/portraits/elder-gaibang-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-gaibang-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-gaibang-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-gaibang-teaching/expression-worried.webp"
+      }
+    },
+    "elder-gaibang-discipline": {
+      "name": "罗七碗",
+      "role": "elder",
+      "sect": "gaibang",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-gaibang-discipline/full.webp",
+      "full": "assets/portraits/elder-gaibang-discipline/full.webp",
+      "bust": "assets/portraits/elder-gaibang-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-gaibang-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-gaibang-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-gaibang-discipline/expression-worried.webp"
+      }
+    },
+    "elder-mingjiao-teaching": {
+      "name": "炎绡",
+      "role": "elder",
+      "sect": "mingjiao",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-mingjiao-teaching/full.webp",
+      "full": "assets/portraits/elder-mingjiao-teaching/full.webp",
+      "bust": "assets/portraits/elder-mingjiao-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-mingjiao-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-mingjiao-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-mingjiao-teaching/expression-worried.webp"
+      }
+    },
+    "elder-mingjiao-discipline": {
+      "name": "段晦沙",
+      "role": "elder",
+      "sect": "mingjiao",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-mingjiao-discipline/full.webp",
+      "full": "assets/portraits/elder-mingjiao-discipline/full.webp",
+      "bust": "assets/portraits/elder-mingjiao-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-mingjiao-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-mingjiao-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-mingjiao-discipline/expression-worried.webp"
+      }
+    },
+    "elder-kunlun-teaching": {
+      "name": "乌兰策",
+      "role": "elder",
+      "sect": "kunlun",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-kunlun-teaching/full.webp",
+      "full": "assets/portraits/elder-kunlun-teaching/full.webp",
+      "bust": "assets/portraits/elder-kunlun-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-kunlun-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-kunlun-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-kunlun-teaching/expression-worried.webp"
+      }
+    },
+    "elder-kunlun-discipline": {
+      "name": "贺兰锋",
+      "role": "elder",
+      "sect": "kunlun",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-kunlun-discipline/full.webp",
+      "full": "assets/portraits/elder-kunlun-discipline/full.webp",
+      "bust": "assets/portraits/elder-kunlun-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-kunlun-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-kunlun-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-kunlun-discipline/expression-worried.webp"
+      }
+    },
+    "elder-caobang-teaching": {
+      "name": "邵闻汐",
+      "role": "elder",
+      "sect": "caobang",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-caobang-teaching/full.webp",
+      "full": "assets/portraits/elder-caobang-teaching/full.webp",
+      "bust": "assets/portraits/elder-caobang-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-caobang-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-caobang-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-caobang-teaching/expression-worried.webp"
+      }
+    },
+    "elder-caobang-discipline": {
+      "name": "柳绳青",
+      "role": "elder",
+      "sect": "caobang",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-caobang-discipline/full.webp",
+      "full": "assets/portraits/elder-caobang-discipline/full.webp",
+      "bust": "assets/portraits/elder-caobang-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-caobang-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-caobang-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-caobang-discipline/expression-worried.webp"
+      }
+    },
+    "elder-yaowang-teaching": {
+      "name": "桑知露",
+      "role": "elder",
+      "sect": "yaowang",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-yaowang-teaching/full.webp",
+      "full": "assets/portraits/elder-yaowang-teaching/full.webp",
+      "bust": "assets/portraits/elder-yaowang-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-yaowang-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-yaowang-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-yaowang-teaching/expression-worried.webp"
+      }
+    },
+    "elder-yaowang-discipline": {
+      "name": "杜照圃",
+      "role": "elder",
+      "sect": "yaowang",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-yaowang-discipline/full.webp",
+      "full": "assets/portraits/elder-yaowang-discipline/full.webp",
+      "bust": "assets/portraits/elder-yaowang-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-yaowang-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-yaowang-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-yaowang-discipline/expression-worried.webp"
+      }
+    },
+    "elder-chongsheng-teaching": {
+      "name": "澄铜",
+      "role": "elder",
+      "sect": "chongsheng",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-chongsheng-teaching/full.webp",
+      "full": "assets/portraits/elder-chongsheng-teaching/full.webp",
+      "bust": "assets/portraits/elder-chongsheng-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-chongsheng-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-chongsheng-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-chongsheng-teaching/expression-worried.webp"
+      }
+    },
+    "elder-chongsheng-discipline": {
+      "name": "法楹",
+      "role": "elder",
+      "sect": "chongsheng",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-chongsheng-discipline/full.webp",
+      "full": "assets/portraits/elder-chongsheng-discipline/full.webp",
+      "bust": "assets/portraits/elder-chongsheng-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-chongsheng-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-chongsheng-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-chongsheng-discipline/expression-worried.webp"
+      }
+    },
+    "elder-quanzhen-teaching": {
+      "name": "玄芷姑",
+      "role": "elder",
+      "sect": "quanzhen",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-quanzhen-teaching/full.webp",
+      "full": "assets/portraits/elder-quanzhen-teaching/full.webp",
+      "bust": "assets/portraits/elder-quanzhen-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-quanzhen-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-quanzhen-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-quanzhen-teaching/expression-worried.webp"
+      }
+    },
+    "elder-quanzhen-discipline": {
+      "name": "阮守朴",
+      "role": "elder",
+      "sect": "quanzhen",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-quanzhen-discipline/full.webp",
+      "full": "assets/portraits/elder-quanzhen-discipline/full.webp",
+      "bust": "assets/portraits/elder-quanzhen-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-quanzhen-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-quanzhen-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-quanzhen-discipline/expression-worried.webp"
+      }
+    },
+    "elder-tangmen-teaching": {
+      "name": "唐蕴棠",
+      "role": "elder",
+      "sect": "tangmen",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-tangmen-teaching/full.webp",
+      "full": "assets/portraits/elder-tangmen-teaching/full.webp",
+      "bust": "assets/portraits/elder-tangmen-teaching/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-tangmen-teaching/expression-happy.webp",
+        "determined": "assets/portraits/elder-tangmen-teaching/expression-determined.webp",
+        "worried": "assets/portraits/elder-tangmen-teaching/expression-worried.webp"
+      }
+    },
+    "elder-tangmen-discipline": {
+      "name": "唐逐鸦",
+      "role": "elder",
+      "sect": "tangmen",
+      "origin": "proposal",
+      "src": "assets/portraits/elder-tangmen-discipline/full.webp",
+      "full": "assets/portraits/elder-tangmen-discipline/full.webp",
+      "bust": "assets/portraits/elder-tangmen-discipline/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/elder-tangmen-discipline/expression-happy.webp",
+        "determined": "assets/portraits/elder-tangmen-discipline/expression-determined.webp",
+        "worried": "assets/portraits/elder-tangmen-discipline/expression-worried.webp"
+      }
+    },
+    "wanderer-river-cartographer": {
+      "name": "宋折汐",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-river-cartographer/full.webp",
+      "full": "assets/portraits/wanderer-river-cartographer/full.webp",
+      "bust": "assets/portraits/wanderer-river-cartographer/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-river-cartographer/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-river-cartographer/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-river-cartographer/expression-worried.webp"
+      }
+    },
+    "wanderer-bronze-bellmaker": {
+      "name": "莫问铎",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-bronze-bellmaker/full.webp",
+      "full": "assets/portraits/wanderer-bronze-bellmaker/full.webp",
+      "bust": "assets/portraits/wanderer-bronze-bellmaker/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-bronze-bellmaker/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-bronze-bellmaker/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-bronze-bellmaker/expression-worried.webp"
+      }
+    },
+    "wanderer-ridge-escort": {
+      "name": "祝凌驿",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-ridge-escort/full.webp",
+      "full": "assets/portraits/wanderer-ridge-escort/full.webp",
+      "bust": "assets/portraits/wanderer-ridge-escort/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-ridge-escort/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-ridge-escort/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-ridge-escort/expression-worried.webp"
+      }
+    },
+    "wanderer-tea-physician": {
+      "name": "舒眠蘅",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-tea-physician/full.webp",
+      "full": "assets/portraits/wanderer-tea-physician/full.webp",
+      "bust": "assets/portraits/wanderer-tea-physician/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-tea-physician/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-tea-physician/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-tea-physician/expression-worried.webp"
+      }
+    },
+    "wanderer-night-ferryman": {
+      "name": "田照渡",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-night-ferryman/full.webp",
+      "full": "assets/portraits/wanderer-night-ferryman/full.webp",
+      "bust": "assets/portraits/wanderer-night-ferryman/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-night-ferryman/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-night-ferryman/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-night-ferryman/expression-worried.webp"
+      }
+    },
+    "wanderer-travelling-printmaker": {
+      "name": "闻刻舟",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-travelling-printmaker/full.webp",
+      "full": "assets/portraits/wanderer-travelling-printmaker/full.webp",
+      "bust": "assets/portraits/wanderer-travelling-printmaker/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-travelling-printmaker/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-travelling-printmaker/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-travelling-printmaker/expression-worried.webp"
+      }
+    },
+    "wanderer-thunder-luthier": {
+      "name": "聂远音",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-thunder-luthier/full.webp",
+      "full": "assets/portraits/wanderer-thunder-luthier/full.webp",
+      "bust": "assets/portraits/wanderer-thunder-luthier/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-thunder-luthier/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-thunder-luthier/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-thunder-luthier/expression-worried.webp"
+      }
+    },
+    "wanderer-snow-tracker": {
+      "name": "庞白麓",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-snow-tracker/full.webp",
+      "full": "assets/portraits/wanderer-snow-tracker/full.webp",
+      "bust": "assets/portraits/wanderer-snow-tracker/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-snow-tracker/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-snow-tracker/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-snow-tracker/expression-worried.webp"
+      }
+    },
+    "wanderer-cloud-scout": {
+      "name": "晏飞岑",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-cloud-scout/full.webp",
+      "full": "assets/portraits/wanderer-cloud-scout/full.webp",
+      "bust": "assets/portraits/wanderer-cloud-scout/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-cloud-scout/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-cloud-scout/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-cloud-scout/expression-worried.webp"
+      }
+    },
+    "wanderer-lantern-keeper": {
+      "name": "汪拾焰",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-lantern-keeper/full.webp",
+      "full": "assets/portraits/wanderer-lantern-keeper/full.webp",
+      "bust": "assets/portraits/wanderer-lantern-keeper/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-lantern-keeper/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-lantern-keeper/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-lantern-keeper/expression-worried.webp"
+      }
+    },
+    "wanderer-iron-cook": {
+      "name": "屈锅山",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-iron-cook/full.webp",
+      "full": "assets/portraits/wanderer-iron-cook/full.webp",
+      "bust": "assets/portraits/wanderer-iron-cook/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-iron-cook/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-iron-cook/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-iron-cook/expression-worried.webp"
+      }
+    },
+    "wanderer-deepwood-medic": {
+      "name": "樊木息",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-deepwood-medic/full.webp",
+      "full": "assets/portraits/wanderer-deepwood-medic/full.webp",
+      "bust": "assets/portraits/wanderer-deepwood-medic/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-deepwood-medic/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-deepwood-medic/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-deepwood-medic/expression-worried.webp"
+      }
+    },
+    "wanderer-silk-merchant": {
+      "name": "卓连城",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-silk-merchant/full.webp",
+      "full": "assets/portraits/wanderer-silk-merchant/full.webp",
+      "bust": "assets/portraits/wanderer-silk-merchant/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-silk-merchant/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-silk-merchant/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-silk-merchant/expression-worried.webp"
+      }
+    },
+    "wanderer-old-surveyor": {
+      "name": "许定圭",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-old-surveyor/full.webp",
+      "full": "assets/portraits/wanderer-old-surveyor/full.webp",
+      "bust": "assets/portraits/wanderer-old-surveyor/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-old-surveyor/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-old-surveyor/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-old-surveyor/expression-worried.webp"
+      }
+    },
+    "wanderer-marsh-hunter": {
+      "name": "俞伏苇",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-marsh-hunter/full.webp",
+      "full": "assets/portraits/wanderer-marsh-hunter/full.webp",
+      "bust": "assets/portraits/wanderer-marsh-hunter/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-marsh-hunter/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-marsh-hunter/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-marsh-hunter/expression-worried.webp"
+      }
+    },
+    "wanderer-salt-caravaner": {
+      "name": "柏行盐",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-salt-caravaner/full.webp",
+      "full": "assets/portraits/wanderer-salt-caravaner/full.webp",
+      "bust": "assets/portraits/wanderer-salt-caravaner/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-salt-caravaner/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-salt-caravaner/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-salt-caravaner/expression-worried.webp"
+      }
+    },
+    "wanderer-loach-puppeteer": {
+      "name": "阮栖槐",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-loach-puppeteer/full.webp",
+      "full": "assets/portraits/wanderer-loach-puppeteer/full.webp",
+      "bust": "assets/portraits/wanderer-loach-puppeteer/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-loach-puppeteer/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-loach-puppeteer/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-loach-puppeteer/expression-worried.webp"
+      }
+    },
+    "wanderer-wandering-astrologer": {
+      "name": "谈井宿",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-wandering-astrologer/full.webp",
+      "full": "assets/portraits/wanderer-wandering-astrologer/full.webp",
+      "bust": "assets/portraits/wanderer-wandering-astrologer/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-wandering-astrologer/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-wandering-astrologer/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-wandering-astrologer/expression-worried.webp"
+      }
+    },
+    "wanderer-horseshoe-healer": {
+      "name": "宁抚辔",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-horseshoe-healer/full.webp",
+      "full": "assets/portraits/wanderer-horseshoe-healer/full.webp",
+      "bust": "assets/portraits/wanderer-horseshoe-healer/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-horseshoe-healer/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-horseshoe-healer/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-horseshoe-healer/expression-worried.webp"
+      }
+    },
+    "wanderer-bridge-architect": {
+      "name": "邢梁安",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-bridge-architect/full.webp",
+      "full": "assets/portraits/wanderer-bridge-architect/full.webp",
+      "bust": "assets/portraits/wanderer-bridge-architect/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-bridge-architect/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-bridge-architect/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-bridge-architect/expression-worried.webp"
+      }
+    },
+    "wanderer-lake-drummers": {
+      "name": "姬鸣沼",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-lake-drummers/full.webp",
+      "full": "assets/portraits/wanderer-lake-drummers/full.webp",
+      "bust": "assets/portraits/wanderer-lake-drummers/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-lake-drummers/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-lake-drummers/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-lake-drummers/expression-worried.webp"
+      }
+    },
+    "wanderer-ink-swordsman": {
+      "name": "梁挽墨",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-ink-swordsman/full.webp",
+      "full": "assets/portraits/wanderer-ink-swordsman/full.webp",
+      "bust": "assets/portraits/wanderer-ink-swordsman/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-ink-swordsman/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-ink-swordsman/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-ink-swordsman/expression-worried.webp"
+      }
+    },
+    "wanderer-courthouse-archivist": {
+      "name": "戚听简",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-courthouse-archivist/full.webp",
+      "full": "assets/portraits/wanderer-courthouse-archivist/full.webp",
+      "bust": "assets/portraits/wanderer-courthouse-archivist/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-courthouse-archivist/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-courthouse-archivist/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-courthouse-archivist/expression-worried.webp"
+      }
+    },
+    "wanderer-migrating-trapper": {
+      "name": "蒋留隼",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-migrating-trapper/full.webp",
+      "full": "assets/portraits/wanderer-migrating-trapper/full.webp",
+      "bust": "assets/portraits/wanderer-migrating-trapper/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-migrating-trapper/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-migrating-trapper/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-migrating-trapper/expression-worried.webp"
+      }
+    },
+    "wanderer-frost-weaver": {
+      "name": "尹裁寒",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-frost-weaver/full.webp",
+      "full": "assets/portraits/wanderer-frost-weaver/full.webp",
+      "bust": "assets/portraits/wanderer-frost-weaver/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-frost-weaver/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-frost-weaver/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-frost-weaver/expression-worried.webp"
+      }
+    },
+    "wanderer-mountain-porter": {
+      "name": "方捧岩",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-mountain-porter/full.webp",
+      "full": "assets/portraits/wanderer-mountain-porter/full.webp",
+      "bust": "assets/portraits/wanderer-mountain-porter/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-mountain-porter/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-mountain-porter/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-mountain-porter/expression-worried.webp"
+      }
+    },
+    "wanderer-river-poet": {
+      "name": "荆晚蓼",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-river-poet/full.webp",
+      "full": "assets/portraits/wanderer-river-poet/full.webp",
+      "bust": "assets/portraits/wanderer-river-poet/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-river-poet/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-river-poet/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-river-poet/expression-worried.webp"
+      }
+    },
+    "wanderer-market-broker": {
+      "name": "程走街",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-market-broker/full.webp",
+      "full": "assets/portraits/wanderer-market-broker/full.webp",
+      "bust": "assets/portraits/wanderer-market-broker/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-market-broker/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-market-broker/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-market-broker/expression-worried.webp"
+      }
+    },
+    "wanderer-bamboo-scribe": {
+      "name": "石简秋",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-bamboo-scribe/full.webp",
+      "full": "assets/portraits/wanderer-bamboo-scribe/full.webp",
+      "bust": "assets/portraits/wanderer-bamboo-scribe/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-bamboo-scribe/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-bamboo-scribe/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-bamboo-scribe/expression-worried.webp"
+      }
+    },
+    "wanderer-trail-monk": {
+      "name": "明琮",
+      "role": "wanderer",
+      "sect": null,
+      "origin": "proposal",
+      "src": "assets/portraits/wanderer-trail-monk/full.webp",
+      "full": "assets/portraits/wanderer-trail-monk/full.webp",
+      "bust": "assets/portraits/wanderer-trail-monk/bust.webp",
+      "expressions": {
+        "happy": "assets/portraits/wanderer-trail-monk/expression-happy.webp",
+        "determined": "assets/portraits/wanderer-trail-monk/expression-determined.webp",
+        "worried": "assets/portraits/wanderer-trail-monk/expression-worried.webp"
+      }
+    }
+  },
+  "sects": {
+    "shaolin": {
+      "name": "少林寺",
+      "color": "#c9a227"
+    },
+    "wudang": {
+      "name": "武当派",
+      "color": "#3f6f8f"
+    },
+    "emei": {
+      "name": "峨嵋派",
+      "color": "#8fb9a8"
+    },
+    "huashan": {
+      "name": "华山派",
+      "color": "#5b6c8a"
+    },
+    "gaibang": {
+      "name": "丐帮",
+      "color": "#7a5c3a"
+    },
+    "mingjiao": {
+      "name": "明教",
+      "color": "#a8322e"
+    },
+    "kunlun": {
+      "name": "昆仑派",
+      "color": "#9fb7c9"
+    },
+    "caobang": {
+      "name": "漕帮",
+      "color": "#2f7f7b"
+    },
+    "yaowang": {
+      "name": "药王谷",
+      "color": "#6f9a4a"
+    },
+    "chongsheng": {
+      "name": "崇圣寺",
+      "color": "#d08a3c"
+    },
+    "quanzhen": {
+      "name": "全真教",
+      "color": "#4a4a6a"
+    },
+    "tangmen": {
+      "name": "唐门",
+      "color": "#5a2d6e"
+    }
+  },
+  "roles": {
+    "leader": "掌门",
+    "elder": "长老",
+    "wanderer": "江湖奇人"
+  }
+}

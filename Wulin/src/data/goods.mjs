@@ -24,6 +24,20 @@ export const ECONOMY = {
   /** Raw resources a sect keeps of each kind; the rest is sold at one silver a unit. */
   reserve: 60,
   shopCost: 2000,
+  /** Silver every ten days from a road between two of a sect's own strongholds, more for each shop at either end; and from a road to a friendly sect's stronghold. */
+  routeIncome: 14,
+  routeShopBonus: 4,
+  allyRouteIncome: 8,
+  allyRelation: 40,
+  /** The worth of goods one shop can sell in ten days, and the share it gets over the price at the gate. */
+  /** Goods sold at the gate in ten days fetch full price up to this worth, and this share of it beyond. */
+  marketDepth: 500,
+  glutPrice: 0.35,
+  /** What one act of giving costs, and the renown it earns. */
+  donation: 1000,
+  donationRenown: 2,
+  shopMoves: 150,
+  shopPremium: 0.25,
   shopIncome: [80, 150],
 };
 

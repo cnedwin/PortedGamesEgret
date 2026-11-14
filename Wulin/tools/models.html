@@ -45,8 +45,11 @@
       figure.play(action);
       return { figure, action };
     });
-    camera.setPosition(0, 3.2, 11.5);
-    camera.lookAt(0, 0.9, 0);
+    // ?x=&y=&z= moves the camera and ?lx=&ly=&lz= what it looks at, for a closer look at one figure.
+    const view = new URLSearchParams(location.search),
+      at = (key, fallback) => (view.has(key) ? Number(view.get(key)) : fallback);
+    camera.setPosition(at('x', 0), at('y', 3.2), at('z', 11.5));
+    camera.lookAt(at('lx', 0), at('ly', 0.9), at('lz', 0));
     stage.show({
       scene, camera,
       update(dt) {

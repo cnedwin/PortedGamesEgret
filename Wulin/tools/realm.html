@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="zh">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>武林天下 · 沙盘查看 / Wulin realm viewer</title>
+  <link rel="stylesheet" href="../art-handoff/ui/tokens.css">
+  <link rel="stylesheet" href="../style.css">
+  <style>html, body { margin: 0; height: 100%; background: #222; } #view { position: fixed; inset: 0; }</style>
+  <!-- A developer's page: the model of the realm on its own. Add ?quality=low, ?yaw=, ?pitch=, ?distance= and ?at=<place id> to the address. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/engine": "../vendor/engine/dist/index.js",
+        "@egret/engine/world3d": "../vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/engine/webgl2/world3d": "../vendor/engine/dist/web/world3d/index.js",
+        "@egret/engine/webgpu/world3d": "../vendor/engine/dist/web/world3d/webgpu.js",
+        "@egret/runtime": "../vendor/runtime/dist/index.js",
+        "@egret/contracts": "../vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "../vendor/contracts/dist/resources/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="view"><canvas id="stage"></canvas><div id="layer"></div></div>
+  <script type="module">
+    import { createWorld } from '../src/core/world.mjs';
+    import { createRealm } from '../src/view/realm.mjs';
+    import { createStage } from '../src/view/stage.mjs';
+    import { loadFlora } from '../src/view/flora.mjs';
+    loadFlora(new URL('../assets/flora/', location.href));
+
+    const params = new URLSearchParams(location.search);
+    const status = (globalThis.__realm = { error: '', frames: 0 });
+    const world = createWorld({ seed: 7 });
+    const stage = await createStage(document.querySelector('#stage'), { onError: (cause) => (status.error = String(cause?.stack ?? cause)) });
+    const realm = createRealm(stage, () => world, { layer: document.querySelector('#layer') });
+    realm.select(params.get('at') ?? 'songshan', false);
+    stage.show(realm);
+    for (const key of ['yaw', 'pitch', 'distance']) if (params.has(key)) stage.orbit[key] = Number(params.get(key));
+    Object.assign(status, { stage, realm, world });
+    setInterval(() => (status.frames = stage.frames), 200);
+  </script>
+</body>
+</html>

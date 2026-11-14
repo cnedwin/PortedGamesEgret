@@ -1,11 +1,20 @@
-// A person in 3D: a jointed figure in a sect's robe, moved by code.
+// A person in 3D: one skinned body in a sect's robe on a skeleton of twelve
+// bones (hips, chest, head, two arms with elbows, two legs with knees, and
+// the grip of the weapon hand).
 //
-// The figure is a small tree of joints (hips, chest, head, two arms with
-// elbows, two legs with knees). An action is a function from time to joint
-// angles; the figure eases towards whatever the action asks, so one action
-// flows into the next. No animation files are loaded.
-import { Object3D } from '@egret/engine/world3d';
-import { BALL, BOX, ROD, SPIKE, TAPER, mix, model, shade } from './shapes.mjs';
+// The body, its sleeves, skirt and legs are a single surface whose points
+// follow the bones nearest them, so cloth bends at the waist, elbows and
+// knees and the skirt swings with the legs. The head, hands, feet, weapon
+// and ornaments are rigid pieces carried by their bones.
+//
+// An action is written as a function from time to joint angles and is baked
+// once into an animation clip; a figure plays clips through a mixer, which
+// fades one into the next. No model or animation files are loaded.
+import { AnimationMixer3D, Attribute3D, Bone3D, Mesh3D, Skeleton3D, Object3D, createAnimationClip3D, createGeometry3D, quatFromEuler } from '@egret/engine/world3d';
+import { BALL, BOX, ORB, ROD, SPIKE, mix, model, rgb, shade, toon } from './shapes.mjs';
+
+/** People wear woven cloth: a finer grain than stone or timber. */
+const CLOTH = toon({ grain: 'woven' });
 
 const SKIN = 0xf2cfa8,
   HAIR = 0x1d1a1a,
@@ -29,24 +38,24 @@ const swing = (t, peak = 0.45) => (t < peak ? ease(t / peak) : ease(1 - (t - pea
 /**
  * The actions. Each takes the seconds since it began and returns the joints
  * that differ from standing at ease. `length` is how long a one-off lasts;
- * actions without it repeat until another is asked for.
+ * actions without it repeat every `period` seconds until another is asked for.
  */
 const ACTIONS = {
-  idle: { pose: (t) => ({ bob: Math.sin(t * 1.6) * 0.012, armL: 0.1 + Math.sin(t * 1.6) * 0.03, armR: 0.1 - Math.sin(t * 1.6) * 0.03 }) },
-  walk: {
+  idle: { period: (Math.PI * 2) / 1.6, pose: (t) => ({ bob: Math.sin(t * 1.6) * 0.012, armL: 0.1 + Math.sin(t * 1.6) * 0.03, armR: 0.1 - Math.sin(t * 1.6) * 0.03 }) },
+  walk: { period: (Math.PI * 2) / 7,
     pose(t) {
       const s = Math.sin(t * 7);
       return { legL: s * 0.6, legR: -s * 0.6, kneeL: Math.max(0, -s) * 0.7, kneeR: Math.max(0, s) * 0.7, armL: -s * 0.5, armR: s * 0.5, bob: Math.abs(Math.cos(t * 7)) * 0.03, lean: 0.06 };
     },
   },
-  run: {
+  run: { period: (Math.PI * 2) / 11,
     pose(t) {
       const s = Math.sin(t * 11);
       return { legL: s * 0.95, legR: -s * 0.95, kneeL: Math.max(0, -s) * 1.2, kneeR: Math.max(0, s) * 1.2, armL: -s * 0.9, armR: s * 0.9, elbowL: 1.2, elbowR: 1.2, bob: Math.abs(Math.cos(t * 11)) * 0.06, lean: 0.28 };
     },
   },
   /** Ready to fight: knees bent, weapon hand forward. */
-  guard: { pose: (t) => ({ legL: 0.35, legR: -0.3, kneeL: 0.4, kneeR: 0.35, bob: -0.07 + Math.sin(t * 3) * 0.01, armR: -0.9, elbowR: 0.9, armL: -0.5, elbowL: 1.3, twist: -0.25, lean: 0.08 }) },
+  guard: { period: (Math.PI * 2) / 3, pose: (t) => ({ legL: 0.35, legR: -0.3, kneeL: 0.4, kneeR: 0.35, bob: -0.07 + Math.sin(t * 3) * 0.01, armR: -0.9, elbowR: 0.9, armL: -0.5, elbowL: 1.3, twist: -0.25, lean: 0.08 }) },
   /** A downward cut with a blade. */
   slash: {
     length: 0.62,
@@ -120,19 +129,62 @@ const ACTIONS = {
     },
   },
   /** Swinging a tool: mining, hoeing, forging. */
-  work: {
+  work: { period: (Math.PI * 2) / 4,
     pose(t) {
       const k = (Math.sin(t * 4) + 1) / 2;
       return { armR: -2.2 + k * 1.9, armL: -2.0 + k * 1.8, elbowR: 0.5, elbowL: 0.6, lean: 0.1 + k * 0.4, kneeL: 0.25, kneeR: 0.25, bob: -0.05 - k * 0.05 };
     },
   },
   /** Seated in meditation. */
-  sit: { pose: (t) => ({ bob: -0.5 + Math.sin(t * 1.2) * 0.008, legL: -1.5, legR: -1.5, kneeL: 2.3, kneeR: 2.3, spreadL: 0.7, spreadR: 0.7, armL: -0.5, armR: -0.5, elbowL: 1.2, elbowR: 1.2, sideL: 0.25, sideR: 0.25 }) },
+  sit: { period: (Math.PI * 2) / 1.2, pose: (t) => ({ bob: -0.5 + Math.sin(t * 1.2) * 0.008, legL: -1.5, legR: -1.5, kneeL: 2.3, kneeR: 2.3, spreadL: 0.7, spreadR: 0.7, armL: -0.5, armR: -0.5, elbowL: 1.2, elbowR: 1.2, sideL: 0.25, sideR: 0.25 }) },
 };
 export const ACTION_NAMES = Object.keys(ACTIONS);
 
 /** The strike that suits a class of martial art. */
 export const STRIKE_OF = { fist: 'punch', palm: 'palm', leg: 'kick', point: 'point', saber: 'slash', sword: 'slash', spear: 'thrust', staff: 'sweep', dart: 'throw' };
+
+/** How long one action takes to give way to the next. */
+const FADE = 0.12;
+const RATE = 30;
+const clips = new Map();
+/**
+ * The clip for an action: its joint angles sampled thirty times a second and
+ * written as a turn for every bone and a height for the hips. Baked the first
+ * time the action is wanted and shared by every figure.
+ */
+function clipOf(name) {
+  if (clips.has(name)) return clips.get(name);
+  const action = ACTIONS[name],
+    // A one-off is held a little past its end, so that it is still playing when the next action fades in.
+    span = action.length ?? action.period,
+    count = Math.ceil((span + (action.length === undefined ? 0 : 0.3)) * RATE);
+  const times = [],
+    turns = {},
+    heights = [],
+    q = new Float32Array(4);
+  const turn = (bone, x, y, z) => (turns[bone] ??= []).push(...quatFromEuler(q, x, y, z));
+  for (let k = 0; k <= count; k++) {
+    const t = action.length === undefined ? (k / count) * span : k / RATE;
+    times.push(t);
+    const pose = { ...REST, ...action.pose(Math.min(t, span)) };
+    heights.push(0, 0.92 + pose.bob, 0);
+    turn('hips', pose.lean + pose.tilt, pose.twist, 0);
+    turn('chest', pose.lean * 0.5, pose.twist * 0.6, 0);
+    turn('head', pose.head - pose.lean * 0.6, pose.headTurn - pose.twist * 0.8, 0);
+    turn('shoulderL', pose.armL, 0, pose.sideL);
+    turn('shoulderR', pose.armR, 0, -pose.sideR);
+    turn('elbowL', -pose.elbowL, 0, 0);
+    turn('elbowR', -pose.elbowR, 0, 0);
+    turn('grip', -1.35 + pose.wrist, 0, 0);
+    turn('legL', -pose.legL, 0, pose.spreadL);
+    turn('legR', -pose.legR, 0, -pose.spreadR);
+    turn('kneeL', pose.kneeL, 0, 0);
+    turn('kneeR', pose.kneeR, 0, 0);
+  }
+  const clip = createAnimationClip3D({ name, tracks: [{ targetName: 'hips', path: 'position', times, values: heights }, ...Object.entries(turns).map(([targetName, values]) => ({ targetName, path: 'quaternion', times, values }))] });
+  clips.set(name, clip);
+  return clip;
+}
 
 /** The weapon carried in the right hand, by slot. The grip is at the origin and the weapon points up. */
 function weaponParts(slot) {
@@ -159,102 +211,264 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
   const robe = rank === 0 ? mix(color, 0x9a9484, 0.6) : color,
     dark = shade(robe, 0.62),
     trim = rank >= 3 ? 0xd9b04a : rank >= 2 ? WHITE : shade(robe, 1.35),
-    skin = shade(SKIN, 1 + vary(1) * 0.08),
+    skinTone = shade(SKIN, 1 + vary(1) * 0.08),
     hair = rank >= 4 && !female ? 0xd8d8d8 : HAIR;
   const w = female ? 0.86 : 1,
     tall = 1 + vary(2) * 0.04;
 
   const node = new Object3D();
-  const body = new Object3D();
-  const chest = new Object3D();
-  const head = new Object3D();
-  node.addChild(body);
-  body.setPosition(0, 0.92, 0);
+  // ---- the skeleton, standing at ease with its arms hanging -------------------------------------------------
+  const bones = [];
+  const bone = (name, parent, x, y, z) => {
+    const made = new Bone3D();
+    made.name = name;
+    made.setPosition(x, y, z);
+    made.index = bones.length;
+    bones.push(made);
+    parent?.addChild(made);
+    return made;
+  };
+  const body = bone('hips', null, 0, 0.92, 0),
+    chest = bone('chest', body, 0, 0.1, 0),
+    head = bone('head', chest, 0, 0.5, 0);
+  const armL = { shoulder: bone('shoulderL', chest, 0.2 * w, 0.4, 0) },
+    armR = { shoulder: bone('shoulderR', chest, -0.2 * w, 0.4, 0) };
+  armL.elbow = bone('elbowL', armL.shoulder, 0, -0.29, 0);
+  armR.elbow = bone('elbowR', armR.shoulder, 0, -0.29, 0);
+  const grip = bone('grip', armR.elbow, 0, -0.31, 0.02);
+  const legL = { hip: bone('legL', body, 0.09 * w, -0.02, 0) },
+    legR = { hip: bone('legR', body, -0.09 * w, -0.02, 0) };
+  legL.knee = bone('kneeL', legL.hip, 0, -0.45, 0);
+  legR.knee = bone('kneeR', legR.hip, 0, -0.45, 0);
+
+  // ---- the skin: tubes of rings, each point weighted to the bones it follows --------------------------------
+  const skin = { p: [], n: [], c: [], u: [], j: [], w: [], i: [] };
+  const AROUND = 18;
+  /**
+   * Adds a tube to the skin. A ring is [x, y, z, radiusX, radiusZ, colour, weights]; the colour may be a
+   * function of the angle round the ring (0 at the front), and the weights a function of how far to the
+   * left a point is, from -1 to 1. Weights are [[bone, share], ...]. `closed` caps the two ends.
+   */
+  const tube = (rings, closed = true) => {
+    const start = skin.p.length / 3;
+    rings.forEach(([x, y, z, rx, rz, colour, weights], r) => {
+      for (let k = 0; k < AROUND; k++) {
+        const angle = (k / AROUND) * Math.PI * 2,
+          sx = Math.sin(angle),
+          cz = Math.cos(angle);
+        skin.p.push(x + sx * rx, y, z + cz * rz);
+        skin.u.push((k / AROUND) * Math.max(1, Math.round(rx * 14)), y * 2.6);
+        // Outward, and tipped up or down where the tube widens or narrows.
+        const before = rings[Math.max(0, r - 1)],
+          after = rings[Math.min(rings.length - 1, r + 1)],
+          slope = after[1] === before[1] ? 0 : -(after[3] - before[3]) / (after[1] - before[1]);
+        const nx = sx / Math.max(rx, 0.001),
+          nz = cz / Math.max(rz, 0.001),
+          flat = Math.hypot(nx, nz) || 1,
+          length = Math.hypot(1, slope);
+        skin.n.push(nx / flat / length, slope / length, nz / flat / length);
+        skin.c.push(...rgb(typeof colour === 'function' ? colour(angle > Math.PI ? angle - Math.PI * 2 : angle) : colour));
+        const shares = (typeof weights === 'function' ? weights(sx) : weights).filter(([, share]) => share > 0.001).slice(0, 4),
+          total = shares.reduce((sum, [, share]) => sum + share, 0);
+        for (let q = 0; q < 4; q++) skin.j.push(shares[q]?.[0].index ?? 0), skin.w.push((shares[q]?.[1] ?? 0) / total);
+        if (r) {
+          const a = start + (r - 1) * AROUND + k,
+            b = start + (r - 1) * AROUND + ((k + 1) % AROUND),
+            c = a + AROUND,
+            d = b + AROUND;
+          // Rings may be listed upwards or downwards; the faces look outwards either way.
+          if (rings[r][1] >= rings[r - 1][1]) skin.i.push(a, b, c, b, d, c);
+          else skin.i.push(a, c, b, b, c, d);
+        }
+      }
+    });
+    if (!closed) return;
+    for (const r of [0, rings.length - 1]) {
+      const [x, y, z, , , colour, weights] = rings[r],
+        centre = skin.p.length / 3,
+        up = (r === 0) === rings[0][1] > rings[rings.length - 1][1];
+      skin.p.push(x, y, z);
+      skin.u.push(0.5, y * 2.6);
+      skin.n.push(0, up ? 1 : -1, 0);
+      skin.c.push(...rgb(typeof colour === 'function' ? colour(0) : colour));
+      const shares = typeof weights === 'function' ? weights(0) : weights,
+        total = shares.reduce((sum, [, share]) => sum + share, 0);
+      for (let q = 0; q < 4; q++) skin.j.push(shares[q]?.[0].index ?? 0), skin.w.push((shares[q]?.[1] ?? 0) / total);
+      for (let k = 0; k < AROUND; k++) {
+        const a = start + r * AROUND + k,
+          b = start + r * AROUND + ((k + 1) % AROUND);
+        if (up) skin.i.push(centre, a, b);
+        else skin.i.push(centre, b, a);
+      }
+    }
+  };
+  const sash = rank >= 4 ? 0x7a2f28 : rank >= 2 ? shade(robe, 0.5) : 0x4a4038;
+  // Cloth hangs in folds: a little lighter on the crests and darker in the hollows round the body.
+  const folds = (colour, count = 5, depth = 0.09) => (angle) => shade(colour, 1 + depth * Math.sin(angle * count + seed));
+  const cloth = folds(robe),
+    // The inner collar shows as a white V at the throat, widening upwards.
+    collar = (open) => (angle) => (Math.abs(angle) < open ? WHITE : Math.abs(angle) < open + 0.2 ? trim : cloth(angle)),
+    // Those of standing wear a patterned band at hem and cuff.
+    band = (angle) => (rank >= 3 ? (Math.round((angle + Math.PI) * 5.1) % 2 ? trim : shade(trim, 0.62)) : trim);
+  // The trunk, from under the sash to the base of the neck; the waist turns between hips and chest.
+  tube([
+    [0, 0.93, 0, 0.165 * w, 0.135 * w, robe, [[body, 1]]],
+    [0, 0.99, 0, 0.15 * w, 0.118 * w, robe, [[body, 0.75], [chest, 0.25]]],
+    [0, 1.05, 0, 0.148 * w, 0.112 * w, robe, [[body, 0.4], [chest, 0.6]]],
+    [0, 1.12, 0, 0.16 * w, 0.126 * w, cloth, [[body, 0.1], [chest, 0.9]]],
+    [0, 1.28, 0, 0.188 * w, 0.137 * w, cloth, [[chest, 1]]],
+    [0, 1.38, 0, 0.198 * w, 0.14 * w, cloth, [[chest, 1]]],
+    [0, 1.41, 0, 0.2 * w, 0.14 * w, collar(0.16), [[chest, 1]]],
+    [0, 1.46, 0, 0.13 * w, 0.105 * w, collar(0.42), [[chest, 1]]],
+    [0, 1.49, 0, 0.07, 0.066, WHITE, [[chest, 1]]],
+  ]);
+  // The skirt of the robe: held at the hips, and lower down drawn along by whichever leg is nearer.
+  // A paler panel runs down its front.
+  const panel = (angle) => (Math.abs(angle) < 0.62 ? shade(robe, 1.18) : folds(robe, 7, 0.12)(angle));
+  const drawn = (legs) => (side) => {
+    const left = Math.max(0, Math.min(1, 0.5 + side * 0.9));
+    return [[body, 1 - legs], [legL.hip, legs * left], [legR.hip, legs * (1 - left)]];
+  };
+  tube(
+    [
+      [0, 1.0, 0, 0.158 * w, 0.126 * w, robe, [[body, 1]]],
+      [0, 0.9, 0, 0.19 * w, 0.158 * w, panel, drawn(0.15)],
+      [0, 0.78, 0, 0.215 * w, 0.178 * w, panel, drawn(0.5)],
+      [0, 0.64, 0, 0.238 * w, 0.196 * w, panel, drawn(0.72)],
+      [0, 0.52, 0, 0.256 * w, 0.21 * w, panel, drawn(0.82)],
+      [0, 0.5, 0, 0.262 * w, 0.215 * w, (angle) => (Math.abs(angle) < 0.62 ? trim : rank >= 3 ? band(angle) : dark), drawn(0.84)],
+      [0, 0.46, 0, 0.268 * w, 0.22 * w, (angle) => (Math.abs(angle) < 0.62 ? trim : rank >= 3 ? band(angle) : dark), drawn(0.86)],
+      [0, 0.47, 0, 0.2 * w, 0.16 * w, shade(dark, 0.6), drawn(0.86)],
+    ],
+    false,
+  );
+  // Arms: the upper arm, an elbow that bends, and a wide sleeve open at the wrist over a bound forearm.
+  for (const { shoulder, elbow, x } of [{ ...armL, x: 0.2 * w }, { ...armR, x: -0.2 * w }]) {
+    const wrap = rank <= 1 ? 0x4a4038 : WHITE;
+    tube([
+      [x, 1.45, 0, 0.05, 0.05, robe, [[chest, 0.5], [shoulder, 0.5]]],
+      [x, 1.42, 0, 0.074, 0.074, robe, [[chest, 0.3], [shoulder, 0.7]]],
+      [x, 1.34, 0, 0.07, 0.07, robe, [[shoulder, 1]]],
+      [x, 1.2, 0, 0.064, 0.064, robe, [[shoulder, 1]]],
+      [x, 1.165, 0, 0.064, 0.064, robe, [[shoulder, 0.75], [elbow, 0.25]]],
+      [x, 1.13, 0, 0.066, 0.066, robe, [[shoulder, 0.5], [elbow, 0.5]]],
+      [x, 1.095, 0, 0.068, 0.068, robe, [[shoulder, 0.25], [elbow, 0.75]]],
+      [x, 1.0, 0, 0.082, 0.082, folds(robe, 4, 0.1), [[elbow, 1]]],
+      [x, 0.89, 0, 0.098, 0.098, folds(robe, 4, 0.12), [[elbow, 1]]],
+      [x, 0.885, 0, 0.102, 0.102, band, [[elbow, 1]]],
+      [x, 0.86, 0, 0.104, 0.104, band, [[elbow, 1]]],
+      [x, 0.87, 0, 0.045, 0.045, shade(dark, 0.6), [[elbow, 1]]],
+      [x, 0.87, 0, 0.04, 0.04, wrap, [[elbow, 1]]],
+      [x, 0.81, 0, 0.036, 0.036, wrap, [[elbow, 1]]],
+    ]);
+  }
+  // Legs: trousers to the knee, gathered into a tall boot.
+  for (const { hip, knee, x } of [{ ...legL, x: 0.09 * w }, { ...legR, x: -0.09 * w }]) {
+    tube([
+      [x, 0.93, 0, 0.074, 0.074, dark, [[body, 0.5], [hip, 0.5]]],
+      [x, 0.84, 0, 0.076, 0.076, dark, [[hip, 1]]],
+      [x, 0.56, 0, 0.07, 0.07, dark, [[hip, 1]]],
+      [x, 0.5, 0, 0.068, 0.068, dark, [[hip, 0.75], [knee, 0.25]]],
+      [x, 0.45, 0, 0.07, 0.07, dark, [[hip, 0.5], [knee, 0.5]]],
+      [x, 0.4, 0, 0.068, 0.068, dark, [[hip, 0.25], [knee, 0.75]]],
+      [x, 0.27, 0, 0.064, 0.064, dark, [[knee, 1]]],
+      [x, 0.265, 0, 0.066, 0.068, trim, [[knee, 1]]],
+      [x, 0.24, 0, 0.066, 0.068, trim, [[knee, 1]]],
+      [x, 0.235, 0, 0.06, 0.063, 0x2a2420, [[knee, 1]]],
+      [x, 0.05, 0, 0.056, 0.06, 0x2a2420, [[knee, 1]]],
+    ]);
+  }
+  const geometry = createGeometry3D({ positions: skin.p, normals: skin.n, colors: skin.c, uvs: skin.u, indices: skin.i });
+  geometry.setAttribute('joints', new Attribute3D(new Uint16Array(skin.j), 4));
+  geometry.setAttribute('weights', new Attribute3D(new Float32Array(skin.w), 4));
+  const mesh = new Mesh3D(geometry, CLOTH);
+  mesh.castShadow = true;
+  mesh.receiveShadow = true;
+  node.addChild(mesh);
+  mesh.addChild(body);
+  mesh.updateWorldMatrices();
+  mesh.bind(new Skeleton3D(bones));
   node.setScale(tall);
 
-  // Hips and the skirt of the robe, which hides the tops of the legs.
-  body.addChild(
-    model([
-      [TAPER, [0, -0.2, 0], [0.24 * w, 0.52, 0.2 * w], robe],
-      [ROD, [0, 0.07, 0], [0.19 * w, 0.07, 0.15 * w], trim],
-    ]),
-  );
-  body.addChild(chest);
-  chest.setPosition(0, 0.1, 0);
-  chest.addChild(
-    model([
-      [TAPER, [0, 0.22, 0], [0.2 * w, 0.44, 0.14 * w], robe, [Math.PI, 0, 0]],
-      [BOX, [0, 0.27, 0.105 * w], [0.05, 0.3, 0.02], trim, [0, 0, 0.35]],
-      [BOX, [0, 0.27, 0.105 * w], [0.05, 0.3, 0.02], trim, [0, 0, -0.35]],
-      // A monk's sash runs from one shoulder to the opposite hip, front and back.
-      ...(monk ? [[BOX, [0, 0.24, 0.1 * w], [0.44 * w, 0.09, 0.03], 0xb9502a, [0, 0, 0.75]], [BOX, [0, 0.24, -0.1 * w], [0.44 * w, 0.09, 0.03], 0xb9502a, [0, 0, -0.75]]] : []),
-    ]),
-  );
-  chest.addChild(head);
-  head.setPosition(0, 0.5, 0);
+  // ---- rigid pieces, each carried by one bone ---------------------------------------------------------------
+  const hipParts = [
+    [ROD, [0, 0.07, 0], [0.2 * w, 0.085, 0.16 * w], sash],
+    [BALL, [0.06 * w, 0.06, 0.155 * w], [0.035, 0.03, 0.02], sash],
+    [BOX, [0.05 * w, -0.08, 0.17 * w], [0.028, 0.24, 0.01], sash, [-0.06, 0, 0.1]],
+    [BOX, [0.085 * w, -0.06, 0.17 * w], [0.028, 0.2, 0.01], sash, [-0.06, 0, -0.14]],
+  ];
+  if (rank >= 2) hipParts.push([ROD, [-0.08 * w, -0.03, 0.17 * w], [0.004, 0.12, 0.004], 0xb08a2e], [BALL, [-0.08 * w, -0.11, 0.172 * w], [0.026, 0.032, 0.01], 0x8fc7a0], [SPIKE, [-0.08 * w, -0.19, 0.172 * w], [0.012, 0.09, 0.008], 0xc0282a, [Math.PI, 0, 0]]);
+  // Whoever fights with a blade carries its scabbard at the hip.
+  if (weapon === 'sword' || weapon === 'saber') hipParts.push([BOX, [0.2 * w, -0.12, -0.04], [0.03, 0.62, 0.05], 0x2c2420, [0.5, 0, 0.12]], [BOX, [0.2 * w, 0.13, 0.09], [0.034, 0.05, 0.054], 0xb08a2e, [0.5, 0, 0.12]]);
+  body.addChild(model(hipParts));
+  const chestParts = [
+    // A monk's sash runs from one shoulder to the opposite hip, front and back.
+    ...(monk ? [[BOX, [0, 0.22, 0.131 * w], [0.34 * w, 0.1, 0.01], 0xb9502a, [-0.04, 0, 0.75]], [BOX, [0, 0.22, -0.131 * w], [0.34 * w, 0.1, 0.01], 0xb9502a, [0.04, 0, -0.75]], [ROD, [0, 0.4, 0.02], [0.13, 0.03, 0.11], 0x5a3a22]] : []),
+  ];
+  // Elders wear a sleeveless over-robe; the head of a sect a cloak that falls to the calves.
+  if (rank >= 4 && !monk) chestParts.push([BOX, [0.12 * w, 0.2, 0.128 * w], [0.07, 0.42, 0.012], dark, [-0.05, 0, 0]], [BOX, [-0.12 * w, 0.2, 0.128 * w], [0.07, 0.42, 0.012], dark, [-0.05, 0, 0]], [BOX, [0, 0.2, -0.125 * w], [0.36 * w, 0.44, 0.02], dark]);
+  if (rank >= 5) chestParts.push([BOX, [0, -0.12, -0.2 * w], [0.44 * w, 1.05, 0.02], shade(robe, 0.45), [0.13, 0, 0]], [BOX, [0, 0.4, -0.13 * w], [0.4 * w, 0.06, 0.06], 0xd9b04a]);
+  if (chestParts.length) chest.addChild(model(chestParts, CLOTH));
+  const blush = mix(skinTone, 0xe89a90, 0.45);
   const headParts = [
-    [BALL, [0, 0.13, 0], [0.115, 0.13, 0.12], skin],
-    [ROD, [0, 0, 0], [0.05, 0.08, 0.05], skin],
-    [BALL, [0.045, 0.14, 0.105], [0.016, 0.02, 0.01], HAIR],
-    [BALL, [-0.045, 0.14, 0.105], [0.016, 0.02, 0.01], HAIR],
+    [ORB, [0, 0.13, 0], [0.112, 0.128, 0.118], skinTone],
+    [ORB, [0, 0.078, 0.018], [0.092, 0.088, 0.096], skinTone],
+    [ROD, [0, 0, 0], [0.048, 0.08, 0.048], shade(skinTone, 0.94)],
+    // Eyes: the white, a dark iris, a point of light, and a lid; brows over them.
+    ...[-1, 1].flatMap((sx) => [
+      [ORB, [sx * 0.044, 0.138, 0.1], [0.024, 0.019, 0.014], 0xf7f4ee],
+      [ORB, [sx * 0.044, 0.136, 0.108], [0.014, 0.016, 0.009], 0x2a1c14],
+      [ORB, [sx * 0.039, 0.142, 0.115], 0.0042, 0xffffff],
+      [BOX, [sx * 0.044, 0.156, 0.107], [0.05, 0.007, 0.012], hair === HAIR ? 0x1a1614 : 0x6a6a6a, [0, 0, sx * (female ? -0.1 : 0.08)]],
+      [BOX, [sx * 0.046, 0.176, 0.104], [0.046, female ? 0.006 : 0.011, 0.01], hair, [0, 0, sx * (female ? -0.16 : 0.2)]],
+      ...(female ? [[ORB, [sx * 0.068, 0.098, 0.074], [0.024, 0.015, 0.012], blush]] : []),
+      [ORB, [sx * 0.112, 0.125, 0], [0.014, 0.03, 0.022], skinTone],
+    ]),
+    [ORB, [0, 0.108, 0.118], [0.013, 0.02, 0.014], shade(skinTone, 0.95)],
+    [ORB, [0, 0.068, 0.108], [female ? 0.017 : 0.021, 0.0075, 0.008], female ? 0xc4504e : shade(skinTone, 0.72)],
   ];
   if (!monk) {
-    headParts.push([BALL, [0, 0.17, -0.02], [0.125, 0.115, 0.13], hair]);
-    if (female) headParts.push([BALL, [0, 0.02, -0.1], [0.09, 0.2, 0.06], hair], [BALL, [0, 0.31, -0.03], [0.05, 0.05, 0.05], hair], [ROD, [0, 0.31, -0.03], [0.008, 0.012, 0.16], 0xd9b04a, [0, 0, Math.PI / 2]]);
-    else headParts.push([BALL, [0, 0.3, -0.02], [0.045, 0.055, 0.045], hair], [ROD, [0, 0.27, -0.02], [0.03, 0.03, 0.03], trim]);
-    if (rank >= 4 && !female) headParts.push([SPIKE, [0, 0.0, 0.09], [0.05, 0.2, 0.03], 0xe4e4e4, [Math.PI, 0, 0]]);
-  }
-  head.addChild(model(headParts));
-
-  // Arms: shoulder → upper arm → elbow → forearm and hand.
-  const arm = (side) => {
-    const shoulder = new Object3D(),
-      elbow = new Object3D();
-    chest.addChild(shoulder);
-    shoulder.setPosition(side * 0.2 * w, 0.4, 0);
-    shoulder.addChild(model([[TAPER, [0, -0.14, 0], [0.065, 0.3, 0.065], robe, [Math.PI, 0, 0]]]));
-    shoulder.addChild(elbow);
-    elbow.setPosition(0, -0.29, 0);
-    elbow.addChild(
-      model([
-        [TAPER, [0, -0.12, 0], [0.085, 0.26, 0.085], robe],
-        [ROD, [0, -0.25, 0], [0.088, 0.03, 0.088], trim],
-        [BALL, [0, -0.3, 0], [0.042, 0.05, 0.042], skin],
-      ]),
-    );
-    return { shoulder, elbow };
-  };
-  const armL = arm(1),
-    armR = arm(-1);
-  const grip = new Object3D();
-  armR.elbow.addChild(grip);
-  grip.setPosition(0, -0.31, 0.02);
+    // Hair over the crown and down behind the ears, with locks at the temples.
+    headParts.push([ORB, [0, 0.175, -0.02], [0.124, 0.112, 0.13], hair], [BOX, [0.1, 0.1, -0.02], [0.02, 0.13, 0.07], hair], [BOX, [-0.1, 0.1, -0.02], [0.02, 0.13, 0.07], hair], [BALL, [0, 0.215, 0.085], [0.09, 0.03, 0.04], hair]);
+    if (female) {
+      // Long hair down the back, a knot on the crown with a pin through it, and a flower at the temple.
+      headParts.push([BALL, [0, -0.02, -0.105], [0.085, 0.24, 0.055], hair], [BALL, [0, 0.31, -0.03], [0.055, 0.05, 0.055], hair], [BALL, [0.05, 0.28, -0.05], [0.04, 0.04, 0.04], hair], [ROD, [0, 0.31, -0.03], [0.007, 0.01, 0.2], 0xd9b04a, [0, 0, Math.PI / 2]], [BALL, [0.105, 0.2, 0.05], [0.022, 0.022, 0.014], rank >= 3 ? 0xd9b04a : 0xe7a3a8]);
+      if (rank >= 3) headParts.push([SPIKE, [0.11, 0.13, 0.05], [0.008, 0.07, 0.008], 0xd9b04a, [Math.PI, 0, 0]]);
+    } else {
+      // A topknot bound with a band whose two ends hang behind; elders pin theirs with a small crown.
+      headParts.push([BALL, [0, 0.3, -0.02], [0.045, 0.058, 0.045], hair], [ROD, [0, 0.265, -0.02], [0.034, 0.03, 0.034], rank >= 4 ? 0xd9b04a : trim], [BOX, [0.02, 0.17, -0.135], [0.022, 0.2, 0.008], rank >= 4 ? 0xd9b04a : trim, [0.2, 0, 0.1]], [BOX, [-0.02, 0.16, -0.135], [0.022, 0.22, 0.008], rank >= 4 ? 0xd9b04a : trim, [0.2, 0, -0.1]]);
+      if (rank >= 4) headParts.push([SPIKE, [0, 0.0, 0.09], [0.05, 0.22, 0.03], 0xe4e4e4, [Math.PI, 0, 0]], [BOX, [0.03, 0.078, 0.11], [0.04, 0.012, 0.01], 0xe4e4e4, [0, 0, -0.5]], [BOX, [-0.03, 0.078, 0.11], [0.04, 0.012, 0.01], 0xe4e4e4, [0, 0, 0.5]], [ROD, [0, 0.33, -0.02], [0.006, 0.008, 0.13], 0xd9b04a, [0, 0, Math.PI / 2]]);
+      // The lowest ranks tie a cloth round the brow instead.
+      else if (rank <= 1) headParts.push([ROD, [0, 0.195, 0], [0.118, 0.022, 0.124], shade(robe, 0.7)]);
+    }
+  } else headParts.push([BALL, [0, 0.21, 0.04], [0.01, 0.006, 0.01], 0x9a6a50], [BALL, [0.03, 0.215, 0.02], [0.01, 0.006, 0.01], 0x9a6a50], [BALL, [-0.03, 0.215, 0.02], [0.01, 0.006, 0.01], 0x9a6a50]);
+  head.addChild(model(headParts, CLOTH));
+  for (const arm of [armL, armR]) arm.elbow.addChild(model([[BALL, [0, -0.3, 0], [0.04, 0.05, 0.03], skinTone], [BALL, [0, -0.355, 0.004], [0.036, 0.034, 0.02], skinTone], ...[-0.022, -0.007, 0.008, 0.023].map((dx) => [ROD, [dx, -0.385, 0.006], [0.0075, 0.04, 0.0075], skinTone]), [ROD, [arm === armL ? 0.04 : -0.04, -0.325, 0.016], [0.009, 0.04, 0.009], skinTone, [0, 0, arm === armL ? 0.7 : -0.7]]], CLOTH));
   const blade = weaponParts(weapon);
   if (blade) grip.addChild(model(blade));
+  // A boot with a pale sole and an upturned toe.
+  for (const leg of [legL, legR]) leg.knee.addChild(model([[BOX, [0, -0.42, 0.04], [0.1, 0.075, 0.22], 0x2a2420], [BOX, [0, -0.462, 0.04], [0.105, 0.02, 0.23], 0xd8cfb8], [SPIKE, [0, -0.4, 0.15], [0.04, 0.05, 0.03], 0x2a2420, [0.9, 0, 0]]]));
 
-  // Legs: hip → thigh → knee → shin and boot.
-  const leg = (side) => {
-    const hip = new Object3D(),
-      knee = new Object3D();
-    body.addChild(hip);
-    hip.setPosition(side * 0.09 * w, -0.02, 0);
-    hip.addChild(model([[ROD, [0, -0.22, 0], [0.075, 0.44, 0.075], dark]]));
-    hip.addChild(knee);
-    knee.setPosition(0, -0.45, 0);
-    knee.addChild(
-      model([
-        [ROD, [0, -0.2, 0], [0.062, 0.4, 0.062], dark],
-        [BOX, [0, -0.42, 0.04], [0.1, 0.09, 0.22], 0x24201c],
-      ]),
-    );
-    return { hip, knee };
+  // ---- playing clips ----------------------------------------------------------------------------------------
+  const mixer = new AnimationMixer3D(node);
+  let playing = null;
+  const start = (name) => {
+    const spec = ACTIONS[name],
+      next = mixer.clipAction(clipOf(name));
+    next.loop = spec.length === undefined ? 'repeat' : 'once';
+    next.clampWhenFinished = true;
+    if (!playing || playing === next || playing.paused) {
+      // Nothing to fade from, the same action again, or one that has ended and is held: begin at once.
+      if (playing && playing !== next) playing.stop();
+      next.reset().play();
+    } else playing.crossFadeTo(next, FADE);
+    playing = next;
   };
-  const legL = leg(1),
-    legR = leg(-1);
-
-  const pose = { ...REST };
   const figure = {
     node,
+    /** The skinned body and the bones under it, for anything that wants to look. */
+    mesh,
+    bones,
     action: 'idle',
     time: 0,
     /** Another action to return to when a one-off finishes. */
@@ -267,37 +481,23 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
       if (ACTIONS[name].length === undefined) figure.base = name;
       figure.action = name;
       figure.time = 0;
+      start(name);
     },
     get busy() {
       return ACTIONS[figure.action].length !== undefined && figure.time < ACTIONS[figure.action].length;
     },
     update(dt) {
       figure.time += dt;
-      let action = ACTIONS[figure.action];
+      const action = ACTIONS[figure.action];
       if (action.length !== undefined && figure.time >= action.length && !action.stay) {
         figure.action = figure.base;
         figure.time = 0;
-        action = ACTIONS[figure.action];
+        start(figure.action);
       }
-      const target = { ...REST, ...action.pose(action.stay ? Math.min(figure.time, action.length) : figure.time) };
-      // Ease every joint towards where the action wants it.
-      const k = 1 - Math.exp(-dt * 18);
-      for (const key in pose) pose[key] += (target[key] - pose[key]) * k;
-      body.setPosition(0, 0.92 + pose.bob, 0);
-      body.setRotation(pose.lean + pose.tilt, pose.twist, 0);
-      chest.setRotation(pose.lean * 0.5, pose.twist * 0.6, 0);
-      head.setRotation(pose.head - pose.lean * 0.6, pose.headTurn - pose.twist * 0.8, 0);
-      armL.shoulder.setRotation(pose.armL, 0, pose.sideL);
-      armR.shoulder.setRotation(pose.armR, 0, -pose.sideR);
-      armL.elbow.setRotation(-pose.elbowL, 0, 0);
-      armR.elbow.setRotation(-pose.elbowR, 0, 0);
-      grip.setRotation(-1.35 + pose.wrist, 0, 0);
-      legL.hip.setRotation(-pose.legL, 0, pose.spreadL);
-      legR.hip.setRotation(-pose.legR, 0, -pose.spreadR);
-      legL.knee.setRotation(pose.kneeL, 0, 0);
-      legR.knee.setRotation(pose.kneeR, 0, 0);
+      mixer.update(dt);
     },
   };
-  figure.update(0);
+  start('idle');
+  mixer.update(0);
   return figure;
 }

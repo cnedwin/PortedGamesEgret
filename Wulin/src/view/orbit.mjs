@@ -23,6 +23,8 @@ export function createOrbit(canvas) {
     reach: 40,
     /** Radians a second the camera drifts round while nobody touches it. */
     drift: 0,
+    /** On a map a plain drag slides the view and the right button turns it; elsewhere it is the other way round. */
+    dragPans: false,
     /** Called with page coordinates when the player taps without dragging. */
     onTap: null,
     position: [0, 0, 0],
@@ -75,7 +77,8 @@ export function createOrbit(canvas) {
 
   const pointers = new Map();
   let moved = 0,
-    pinch = 0;
+    pinch = 0,
+    twist = null;
   const slide = (dx, dy) => {
     const k = orbit.distance / Math.max(300, canvas.clientHeight);
     const cos = Math.cos(orbit.yaw),
@@ -88,6 +91,7 @@ export function createOrbit(canvas) {
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, button: event.button });
     if (pointers.size === 1) moved = 0;
     pinch = 0;
+    twist = null;
     idle = 0;
   });
   canvas.addEventListener('pointermove', (event) => {
@@ -103,8 +107,12 @@ export function createOrbit(canvas) {
       const gap = Math.hypot(a.x - b.x, a.y - b.y);
       if (pinch) orbit.distance = clamp((orbit.distance * pinch) / Math.max(1, gap), orbit.minDistance, orbit.maxDistance);
       pinch = gap;
+      // Turning two fingers about each other turns the view.
+      const angle = Math.atan2(b.y - a.y, b.x - a.x);
+      if (twist !== null) orbit.yaw -= Math.atan2(Math.sin(angle - twist), Math.cos(angle - twist));
+      twist = angle;
       slide(dx / 2, dy / 2);
-    } else if (last.button === 2 || event.shiftKey) slide(dx, dy);
+    } else if ((last.button === 2 || event.shiftKey) !== !!orbit.dragPans) slide(dx, dy);
     else {
       orbit.yaw -= dx * 0.006;
       orbit.pitch = clamp(orbit.pitch + dy * 0.005, orbit.minPitch, orbit.maxPitch);
@@ -113,6 +121,7 @@ export function createOrbit(canvas) {
   const lift = (event) => {
     if (!pointers.delete(event.pointerId)) return;
     pinch = 0;
+    twist = null;
     if (event.type === 'pointerup' && moved < 8 && !pointers.size) {
       const box = canvas.getBoundingClientRect();
       orbit.onTap?.(event.clientX - box.left, event.clientY - box.top);

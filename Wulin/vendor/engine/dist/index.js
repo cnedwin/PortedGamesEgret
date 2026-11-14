@@ -7,7 +7,6 @@ export { Sprite, Graphics } from '@egret/runtime';
 export { IMAGE_LIMITS_2D, createImageData2D, isImageData2D, copyImageData2DPixels } from '@egret/contracts';
 export { createTexturedGeometry2D, isTexturedGeometry2D } from '@egret/contracts';
 export { createSharedMaterial2D, createSharedGeometry2D } from '@egret/contracts';
-export { TEXTURED_FRAME_PROFILE_2D } from '@egret/contracts';
 export { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 export { Texture, createTexture, createTextureView, isTexture, Bitmap, Mesh2D } from '@egret/runtime';
 export { createSequenceClip, SequencePlayer } from '@egret/runtime';

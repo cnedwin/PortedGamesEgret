@@ -38,6 +38,25 @@ export const SECTS = ROWS.map(
 
 export const SECT_BY_ID = Object.fromEntries(SECTS.map((sect) => [sect.id, sect]));
 
+/**
+ * The two elders each sect starts with: name, whether a woman, age, and the
+ * portrait that goes with them (see art-handoff/manifest.json).
+ */
+export const ELDERS = {
+  shaolin: [{ name: '悟砚', female: false, age: 63, portraitId: 'elder-shaolin-teaching' }, { name: '戒铎', female: false, age: 48, portraitId: 'elder-shaolin-discipline' }],
+  wudang: [{ name: '栖微子', female: true, age: 57, portraitId: 'elder-wudang-teaching' }, { name: '崔寒砥', female: false, age: 43, portraitId: 'elder-wudang-discipline' }],
+  emei: [{ name: '叶静筠', female: true, age: 61, portraitId: 'elder-emei-teaching' }, { name: '温裁雪', female: true, age: 38, portraitId: 'elder-emei-discipline' }],
+  huashan: [{ name: '许砚危', female: false, age: 54, portraitId: 'elder-huashan-teaching' }, { name: '岑迭峰', female: true, age: 40, portraitId: 'elder-huashan-discipline' }],
+  gaibang: [{ name: '朱百结', female: true, age: 55, portraitId: 'elder-gaibang-teaching' }, { name: '罗七碗', female: false, age: 47, portraitId: 'elder-gaibang-discipline' }],
+  mingjiao: [{ name: '炎绡', female: true, age: 50, portraitId: 'elder-mingjiao-teaching' }, { name: '段晦沙', female: false, age: 42, portraitId: 'elder-mingjiao-discipline' }],
+  kunlun: [{ name: '乌兰策', female: true, age: 52, portraitId: 'elder-kunlun-teaching' }, { name: '贺兰锋', female: false, age: 39, portraitId: 'elder-kunlun-discipline' }],
+  caobang: [{ name: '邵闻汐', female: false, age: 58, portraitId: 'elder-caobang-teaching' }, { name: '柳绳青', female: true, age: 43, portraitId: 'elder-caobang-discipline' }],
+  yaowang: [{ name: '桑知露', female: true, age: 65, portraitId: 'elder-yaowang-teaching' }, { name: '杜照圃', female: false, age: 49, portraitId: 'elder-yaowang-discipline' }],
+  chongsheng: [{ name: '澄铜', female: false, age: 67, portraitId: 'elder-chongsheng-teaching' }, { name: '法楹', female: false, age: 44, portraitId: 'elder-chongsheng-discipline' }],
+  quanzhen: [{ name: '玄芷姑', female: true, age: 60, portraitId: 'elder-quanzhen-teaching' }, { name: '阮守朴', female: false, age: 46, portraitId: 'elder-quanzhen-discipline' }],
+  tangmen: [{ name: '唐蕴棠', female: true, age: 56, portraitId: 'elder-tangmen-teaching' }, { name: '唐逐鸦', female: false, age: 38, portraitId: 'elder-tangmen-discipline' }],
+};
+
 /** A disciple's standing inside a sect. */
 export const RANKS = [
   { name: '杂役', pay: 3, slots: 0 },
@@ -59,3 +78,21 @@ export const OFFICES = {
   alchemy: { name: '丹房长老', scope: 'sect', boosts: ['pill'], amount: 0.2 },
   forge: { name: '器房长老', scope: 'sect', boosts: ['forge'], amount: 0.2 },
 };
+
+/** The sects as designed, kept so a world's own names can be put on and taken off again. */
+const DESIGNED = Object.fromEntries(SECTS.map((sect) => [sect.id, { name: sect.name, leader: { ...sect.leader } }]));
+
+/**
+ * A player may found a sect of their own: it takes over one of the twelve
+ * (its seat, arts and colour) under a new name and a new leader. The world
+ * records that as `{ sect, name, leader, female }`; this puts those names on,
+ * and takes off whatever an earlier world had put on. Call it when a world
+ * starts or loads.
+ */
+export function applyIdentity(custom) {
+  for (const sect of SECTS) Object.assign(sect, { name: DESIGNED[sect.id].name, leader: { ...DESIGNED[sect.id].leader } });
+  const sect = SECT_BY_ID[custom?.sect];
+  if (!sect) return;
+  if (custom.name) sect.name = String(custom.name).slice(0, 6);
+  if (custom.leader) sect.leader = { ...sect.leader, name: String(custom.leader).slice(0, 6), female: !!custom.female, age: 30 };
+}

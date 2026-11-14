@@ -9,7 +9,10 @@
 import { ART_BY_ID, CLASSES, commonArt, levelOf, sectArts, unmetNeeds } from '../data/arts.mjs';
 import { BUILDINGS, DAYS_PER_XUN, DAYS_PER_YEAR, ECONOMY, GRADES, PILLS, WATCHES_PER_DAY } from '../data/goods.mjs';
 import { PLACE_BY_ID, PLACES, RESOURCES } from '../data/places.mjs';
-import { OFFICES, RANKS, SECT_BY_ID, SECTS } from '../data/sects.mjs';
+import { ELDERS, OFFICES, RANKS, SECT_BY_ID, SECTS, applyIdentity } from '../data/sects.mjs';
+import { DIFFICULTIES, ROAD } from '../data/extras.mjs';
+import { focusBoost, gearOffer, giveRelic, innerLevels, meridianNeed, openMeridian, spyBoost, upgradeGear, xunOfSpies } from './extras.mjs';
+import { formationOf, modsOf, xunOfJianghu, yearOfJianghu } from './jianghu.mjs';
 import { resolveBattle } from './battle.mjs';
 import { TRAITS, autoWheel, equipFor, gainXp, growTo, hpMax, learnableArts, makeLeader, practise, prowess, rollPerson, trainingRate } from './persons.mjs';
 import { clamp, createRng } from './rng.mjs';
@@ -17,6 +20,9 @@ import { clamp, createRng } from './rng.mjs';
 export const SAVE_VERSION = 1;
 const WORK_WATCHES = 8;
 const LOG_LIMIT = 300;
+/** Shops one stronghold's town has room for. */
+export const SHOP_LIMIT = 4;
+
 /** Mastery points a manual adds per day, and how far below its author it stops. */
 const MANUAL_POINTS = 30;
 
@@ -49,7 +55,8 @@ function startingBuildings(place, sect) {
  * @param options.succession  optional rule: people age and leaders must hand over
  * @param options.autoPlayer  let the game run the player's sect too (for unattended runs)
  */
-export function createWorld({ seed = 1, playerSect = 'huashan', succession = false, autoPlayer = false } = {}) {
+export function createWorld({ seed = 1, playerSect = 'huashan', succession = false, autoPlayer = false, scenario = 'many', difficulty = 1, custom = null } = {}) {
+  applyIdentity(custom);
   const rng = createRng(seed);
   const state = {
     version: SAVE_VERSION,
@@ -57,7 +64,7 @@ export function createWorld({ seed = 1, playerSect = 'huashan', succession = fal
     rng: 0,
     day: 0,
     playerSect,
-    options: { succession, autoPlayer },
+    options: { succession, autoPlayer, scenario, difficulty, custom },
     sects: {},
     places: {},
     persons: {},
@@ -101,8 +108,12 @@ export function createWorld({ seed = 1, playerSect = 'huashan', succession = fal
       [1, 4, 44],
       [1, 3, 44],
     ];
+    const elders = [...(ELDERS[sect.id] ?? [])];
     for (const [rank, level, quality] of starters) {
-      const person = rollPerson(rng, { quality, lean: PLACE_BY_ID[sect.seat].lean, school: sect.id, place: sect.seat });
+      // The two elders are people in their own right, with a name and a face.
+      const known = rank >= 4 ? elders.shift() : undefined;
+      const person = rollPerson(rng, { quality, lean: PLACE_BY_ID[sect.seat].lean, school: sect.id, place: sect.seat, female: known?.female });
+      if (known) Object.assign(person, { name: known.name, age: known.age, portraitId: known.portraitId, origin: '长老' });
       person.rank = rank;
       growTo(person, level);
       const tiers = rank >= 4 ? 3 : rank >= 2 ? 2 : 1;
@@ -117,9 +128,57 @@ export function createWorld({ seed = 1, playerSect = 'huashan', succession = fal
     }
     planJobs(state, sect.id);
   }
+  shape(state, scenario, rng);
   state.rng = rng.state;
   note(state, 'start', `承和元年，${SECT_BY_ID[playerSect].name}立派于${PLACE_BY_ID[SECT_BY_ID[playerSect].seat].name}。`);
   return state;
+}
+
+/** Rearranges a new world for the way of beginning that was chosen; see SCENARIOS in data/extras.mjs. */
+function shape(state, scenario, rng) {
+  const player = state.playerSect;
+  const recruits = (sectId, count, level) => {
+    for (let i = 0; i < count; i++) {
+      const person = rollPerson(rng, { quality: 50, school: sectId, place: SECT_BY_ID[sectId].seat });
+      person.rank = 1;
+      growTo(person, level);
+      for (const klass of new Set([SECT_BY_ID[sectId].main, 'inner'])) person.arts[commonArt(klass, 1).id] = 500;
+      equipFor(person, 1);
+      person.wheel = autoWheel(person);
+      adopt(state, person);
+    }
+  };
+  const take = (sectId, count) => {
+    for (let i = 0; i < count; i++) {
+      const mine = placesOf(state, sectId);
+      const next = mine.flatMap((id) => PLACE_BY_ID[id].roads).find((id) => !state.places[id].owner);
+      if (!next) return;
+      state.places[next].owner = sectId;
+      state.places[next].buildings = [['hall', 1], ['board', 1], ['dorm', 1]].map(([kind, level]) => ({ kind, level, xp: 0 }));
+    }
+  };
+  if (scenario === 'sides') {
+    for (const sect of SECTS) {
+      if (sect.standing < 0) take(sect.id, 1), recruits(sect.id, 5, 8);
+      for (const other of SECTS) if (other.id !== sect.id && sect.standing > 0 && other.standing > 0) state.sects[sect.id].relations[other.id] = 60;
+    }
+  } else if (scenario === 'five') {
+    // The player's sect and the four strongest seats nearest the middle of the map stay; the rest give way.
+    const keep = new Set([player, ...['shaolin', 'wudang', 'gaibang', 'mingjiao', 'kunlun'].filter((id) => id !== player).slice(0, 4)]);
+    for (const sect of SECTS) {
+      if (keep.has(sect.id)) continue;
+      state.sects[sect.id].alive = false;
+      for (const person of membersOf(state, sect.id)) delete state.persons[person.id];
+      for (const id of placesOf(state, sect.id)) Object.assign(state.places[id], { owner: null, buildings: [], applicants: [] });
+    }
+    for (const id of keep) take(id, 2), recruits(id, 6, 8);
+  } else if (scenario === 'lone') {
+    const books = state.sects[player];
+    books.silver = Math.round(books.silver / 2);
+    const mine = membersOf(state, player).sort((a, b) => b.rank - a.rank || b.level - a.level);
+    for (const person of mine.slice(5)) delete state.persons[person.id];
+  }
+  for (const sect of SECTS) if (state.sects[sect.id].alive) planJobs(state, sect.id);
 }
 
 function adopt(state, person) {
@@ -320,8 +379,35 @@ export function assaultSides(state, attackerId, placeId, partyIds) {
   if (!party.length) return refuse('无人出战');
   const guard = residents(state, placeId).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
   // Gates and towers stand with the defenders.
-  const bonus = { defense: 0.04 * buildingLevel(state, placeId, 'gate'), attack: 0.03 * buildingLevel(state, placeId, 'tower') };
-  return done({ sides: [party, guard], formations: [undefined, { bonus }], defender: place.owner });
+  // Each side stands in its formation; talents and house rules add to it, and gates and towers stand with the defenders.
+  const attack = formationOf(state, attackerId, party, { attack: modsOf(state, attackerId).attack + spyBoost(state, attackerId, place.owner) });
+  const defend = formationOf(state, place.owner, guard, { defense: 0.04 * buildingLevel(state, placeId, 'gate') + modsOf(state, place.owner).defense + focusBoost(state, placeId, 'defense'), attack: 0.03 * buildingLevel(state, placeId, 'tower') });
+  return done({ sides: [party, guard], formations: [attack, defend], defender: place.owner });
+}
+
+/**
+ * Gives silver away in the sect's name: alms, bridges and schools for an
+ * upright sect, largesse to its followers for any other. Renown rises, and a
+ * sect's name for good or ill deepens the way it already leans.
+ */
+export function donate(state, sectId) {
+  const books = state.sects[sectId];
+  if (books.silver < ECONOMY.donation) return refuse('银两不足');
+  books.silver -= ECONOMY.donation;
+  books.renown = clamp(books.renown + ECONOMY.donationRenown, 0, 1000);
+  books.virtue = clamp(books.virtue + (books.virtue < 0 ? -10 : 10), -1000, 1000);
+  return done();
+}
+
+/** Opens a shop in the town below a stronghold; each brings in silver every ten days. */
+export function openShop(state, sectId, placeId) {
+  const place = state.places[placeId];
+  if (place.owner !== sectId) return refuse('非本派据点');
+  if (place.shops >= SHOP_LIMIT) return refuse('此地店铺已满');
+  if (state.sects[sectId].silver < ECONOMY.shopCost) return refuse('银两不足');
+  state.sects[sectId].silver -= ECONOMY.shopCost;
+  place.shops++;
+  return done();
 }
 
 /** Applies a finished fight for a stronghold to the world. */
@@ -501,8 +587,18 @@ function runSect(state, sectId, rng) {
     const foe = state.places[target].owner;
     // Ambition grows with the years: in time a sect turns even on those it is on fair terms with.
     if (books.relations[foe] > 20 - sect.temper.expand * 10 + year(state) * 3 || (books.truce?.[foe] ?? 0) > state.day) continue;
+    // A player is left in peace for the first years, fewer the harder the game.
+    if (foe === state.playerSect && !state.options.autoPlayer && state.day < (DIFFICULTIES[state.options.difficulty ?? 1]?.peace ?? 3) * DAYS_PER_YEAR) continue;
     const guard = residents(state, target).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
     if (strength(army) > strength(guard) * (1.6 - sect.temper.expand * 0.08)) {
+      // Where the column set out from, for whoever is watching the map.
+      const from = PLACE_BY_ID[target].roads.find((id) => state.places[id].owner === sectId);
+      state.marches = [...(state.marches ?? []).slice(-5), { day: state.day, by: sectId, from, to: target }];
+      // A player who is watching defends in person; the attack waits at the gate for them.
+      if (foe === state.playerSect && state.options.interactive && !state.options.autoPlayer) {
+        if (!state.pending) state.pending = { kind: 'siege', attacker: sectId, place: target, party: army.map((person) => person.id) };
+        return;
+      }
       assault(state, sectId, target, army.map((person) => person.id), rng);
       return;
     }
@@ -515,7 +611,8 @@ function workDay(state, person, rng) {
   const sectId = person.school,
     books = state.sects[sectId],
     placeId = person.place;
-  if (person.wounds > 0) person.wounds = Math.max(0, person.wounds - 0.02 - 0.01 * buildingLevel(state, placeId, 'clinic'));
+  const mods = modsOf(state, sectId);
+  if (person.wounds > 0) person.wounds = Math.max(0, person.wounds - 0.02 - mods.heal - 0.01 * buildingLevel(state, placeId, 'clinic'));
   const job = person.job ?? { kind: 'rest' };
   job.days = (job.days ?? 0) + 1;
   const diligence = person.traits.reduce((sum, key) => sum + (TRAITS[key]?.train ?? 0), 0) + (person.loyalty < 30 ? -0.5 : 0);
@@ -524,7 +621,7 @@ function workDay(state, person, rng) {
     if (!art || unmetNeeds(person, art).length) return void (person.job = { kind: 'rest' });
     const master = state.persons[person.master];
     const tutor = master ? Math.min(0.3, levelOf(master.arts[art.id] ?? 0) * 0.03) : 0;
-    const boost = officeBoost(state, sectId, placeId, 'train') + diligence;
+    const boost = officeBoost(state, sectId, placeId, 'train') + diligence + mods.train + focusBoost(state, placeId, 'train');
     let points = trainingRate(person, art, siteLevel(state, placeId, art.klass), tutor, boost) * WORK_WATCHES;
     // A manual in the library speeds the art it describes.
     const manual = books.manuals[art.id];
@@ -534,7 +631,7 @@ function workDay(state, person, rng) {
   } else if (job.kind === 'seclude') {
     const art = ART_BY_ID[job.art];
     if (!art || person.insights.includes(art.id)) return void (person.job = { kind: 'rest' });
-    const chance = person.stats.wit / 2000 + (job.pill ? PILLS.breach.effect.insight : 0);
+    const chance = (person.stats.wit / 2000) * (1 + mods.insight) + (job.pill ? PILLS.breach.effect.insight : 0);
     if (job.days >= 60 || rng.chance(chance)) {
       person.insights.push(art.id);
       person.job = { kind: 'train', art: art.id, days: 0 };
@@ -544,7 +641,7 @@ function workDay(state, person, rng) {
     const grade = PLACE_BY_ID[placeId].resources[job.res] ?? 0;
     const pit = state.places[placeId].buildings.find((b) => BUILDINGS[b.kind].yields === job.res);
     if (!pit || !grade) return void (person.job = { kind: 'rest' });
-    const boost = officeBoost(state, sectId, placeId, 'gather') + diligence;
+    const boost = officeBoost(state, sectId, placeId, 'gather') + diligence + mods.gather + focusBoost(state, placeId, 'gather');
     books.res[job.res] += (ECONOMY.gatherPerXun / DAYS_PER_XUN) * (grade / 2) * (1 + 0.1 * (pit.level - 1)) * (1 + boost);
     person.used.arm = (person.used.arm ?? 0) + 4;
     gainXp(person, 4);
@@ -554,11 +651,21 @@ function workDay(state, person, rng) {
     const feed = job.make === 'pill' ? 'herb' : job.make === 'weapon' ? 'iron' : 'wood';
     const used = Math.min(books.res[feed], 3);
     books.res[feed] -= used;
-    const worth = used * ECONOMY.craftMarkup * (1 + officeBoost(state, sectId, placeId, job.make === 'pill' ? 'pill' : 'forge') + diligence);
+    const worth = used * ECONOMY.craftMarkup * (1 + officeBoost(state, sectId, placeId, job.make === 'pill' ? 'pill' : 'forge') + diligence + mods.craft + focusBoost(state, placeId, 'craft'));
     shop.xp += worth;
-    // Goods not earmarked for the sect's own use are sold as they are finished.
-    books.silver += worth;
+    // What the workshops finish is kept as goods until the ten-day reckoning, when it is sold.
+    books.goods = (books.goods ?? 0) + worth;
     gainXp(person, 4);
+  } else if (job.kind === 'travel') {
+    // On the road: quick to learn from, with a chance of a wound or a find, and home again after a month.
+    gainXp(person, ROAD.xp);
+    if (rng.chance(ROAD.hurt)) person.wounds = clamp((person.wounds ?? 0) + 0.2, 0, 0.8);
+    if (rng.chance(ROAD.find)) {
+      const key = rng.pick(['arm', 'waist', 'leg', 'nei', 'agi']);
+      person.stats[key] = Math.min(300, person.stats[key] + 2);
+      books.silver += 20;
+    }
+    if (job.days >= ROAD.days) person.job = { kind: 'rest' };
   } else if (job.kind === 'patrol' || job.kind === 'extort') {
     const sign = job.kind === 'patrol' ? 1 : -1;
     if (rng.chance(0.2)) books.virtue = clamp(books.virtue + 2 * sign, -1000, 1000);
@@ -573,18 +680,43 @@ function endOfXun(state, rng) {
     if (!books.alive) continue;
     const members = membersOf(state, sectId);
     // Wages and grain. Short pay hurts loyalty below.
-    const wages = members.reduce((sum, person) => sum + RANKS[person.rank].pay, 0);
+    const wages = Math.round(members.reduce((sum, person) => sum + RANKS[person.rank].pay, 0) * (1 - modsOf(state, sectId).wages));
     const paid = books.silver >= wages;
     books.silver = Math.max(0, books.silver - wages);
     const grain = members.length * ECONOMY.grainPerXun;
     const villages = placesOf(state, sectId).reduce((sum, id) => sum + PLACE_BY_ID[id].villages, 0);
     books.grain += villages * ECONOMY.villageGrain - grain;
     // Villages pay tribute, admirers send offerings, and raw goods beyond a reserve are sold.
-    books.silver += villages * ECONOMY.villageTribute + books.renown * ECONOMY.offeringPerRenown;
+    // The sects the game runs are better or worse off by the difficulty chosen.
+    const ease = sectId === state.playerSect && !state.options.autoPlayer ? 1 : 1 + (DIFFICULTIES[state.options.difficulty ?? 1]?.income ?? 0);
+    books.silver += (villages * ECONOMY.villageTribute + books.renown * ECONOMY.offeringPerRenown) * ease;
     for (const key of RESOURCES)
       if (books.res[key] > ECONOMY.reserve) (books.silver += books.res[key] - ECONOMY.reserve), (books.res[key] = ECONOMY.reserve);
     if (books.grain < 0) (books.silver = Math.max(0, books.silver + books.grain * ECONOMY.grainPrice)), (books.grain = 0);
     for (const placeId of placesOf(state, sectId)) books.silver += state.places[placeId].shops * rng.int(...ECONOMY.shopIncome);
+    books.silver += tradeRoutes(state, sectId).reduce((sum, route) => sum + route.income, 0);
+    // Raw stuff becomes goods in the workshops, and goods become silver: at the gate for what they are
+    // worth, or through the sect's own shops, each of which can move so much and gets a better price.
+    const goods = books.goods ?? 0,
+      shops = placesOf(state, sectId).reduce((sum, placeId) => sum + state.places[placeId].shops, 0),
+      retail = Math.min(goods, shops * ECONOMY.shopMoves);
+    // A market can take only so much: what a sect sells at the gate beyond that fetches less.
+    const atGate = goods - retail,
+      glut = Math.max(0, atGate - ECONOMY.marketDepth);
+    books.silver += goods + retail * ECONOMY.shopPremium - glut * (1 - ECONOMY.glutPrice);
+    books.sold = { goods: Math.round(goods), retail: Math.round(retail), glut: Math.round(glut) };
+    books.goods = 0;
+
+    // A stronghold holds only so many. When a sect that has lost ground crowds into what it has left,
+    // those with the least standing are sent on their way.
+    for (const placeId of placesOf(state, sectId)) {
+      const here = residents(state, placeId);
+      const excess = here.length - ECONOMY.headcountCap;
+      if (excess <= 0) continue;
+      const leaving = here.filter((person) => person.id !== books.leaderId).sort((a, b) => a.rank - b.rank || a.loyalty - b.loyalty).slice(0, excess);
+      for (const person of leaving) delete state.persons[person.id];
+      note(state, 'desert', `${PLACE_BY_ID[placeId].name}人满为患，${SECT_BY_ID[sectId].name}遣散了 ${leaving.length} 人。`, { sect: sectId, place: placeId });
+    }
 
     for (const person of members) {
       if (person.id === books.leaderId) continue;
@@ -613,12 +745,14 @@ function endOfXun(state, rng) {
       if (!buildingLevel(state, placeId, 'board')) continue;
       place.applicants = place.applicants.filter(() => rng.chance(0.6));
       const quality = 40 + books.renown / 25 + Math.abs(books.virtue) / 50;
-      const arrivals = rng.chance(0.15 + books.renown / 3000) ? 1 + (rng.chance(0.2) ? 1 : 0) : 0;
+      const arrivals = rng.chance(0.15 + books.renown / 3000 + modsOf(state, sectId).recruit) ? 1 + (rng.chance(0.2) ? 1 : 0) : 0;
       for (let i = 0; i < arrivals && place.applicants.length < 4; i++) place.applicants.push(rollPerson(rng, { quality, lean: PLACE_BY_ID[placeId].lean, place: placeId }));
     }
     for (const other of Object.keys(books.relations)) books.relations[other] += Math.sign(SECT_BY_ID[sectId].standing * SECT_BY_ID[other].standing * 20 - books.relations[other]) * 0.5;
   }
   for (const sect of SECTS) if (state.sects[sect.id].alive) runSect(state, sect.id, rng);
+  xunOfSpies(state, rng);
+  xunOfJianghu(state, rng);
 }
 
 function endOfYear(state, rng) {
@@ -631,6 +765,33 @@ function endOfYear(state, rng) {
       delete state.persons[person.id];
       if (wasLeader) succeed(state, person.school);
     }
+  }
+  yearOfJianghu(state);
+  revive(state, rng);
+  // The sects the game runs keep their people fitted out and their meridians open as the player can,
+  // so that what a player builds up over the years is matched and not simply out of reach.
+  for (const sect of SECTS) {
+    const books = state.sects[sect.id];
+    if (!books.alive || (sect.id === state.playerSect && !state.options.autoPlayer)) continue;
+    for (const person of membersOf(state, sect.id).sort((a, b) => b.rank - a.rank)) {
+      const offer = gearOffer(state, person.id);
+      if (offer.ok && books.silver > offer.silver * 4 + ECONOMY.reserve * 10 && books.res.iron >= offer.iron) upgradeGear(state, person.id);
+      if (innerLevels(person) >= meridianNeed(person)) openMeridian(state, person.id, rng.chance(0.5) ? 'a' : 'b');
+    }
+    // A named weapon in the armoury goes to the highest of them who can wield it.
+    for (const relicId of books.relics ?? []) {
+      if (Object.values(state.persons).some((person) => person.gear.weapon?.relic === relicId)) continue;
+      for (const person of membersOf(state, sect.id).sort((a, b) => b.rank - a.rank)) if (!person.gear.weapon?.relic && giveRelic(state, person.id, relicId).ok) break;
+    }
+  }
+  // A sect with silver to spare opens a shop where it has room for one.
+  for (const sect of SECTS) {
+    const books = state.sects[sect.id];
+    if (!books.alive || (sect.id === state.playerSect && !state.options.autoPlayer) || books.silver < ECONOMY.shopCost * 3) continue;
+    const room = placesOf(state, sect.id).find((placeId) => state.places[placeId].shops < SHOP_LIMIT);
+    if (room) openShop(state, sect.id, room);
+    // What it still cannot use, it gives away for its name's sake.
+    while (books.silver > ECONOMY.donation * 12) donate(state, sect.id);
   }
   // Every fourth year the sects meet; one known and liked widely enough is named leader of them all.
   if (year(state) % 4 === 1 && year(state) > 1) {
@@ -645,6 +806,38 @@ function endOfYear(state, rng) {
       }
     }
   }
+}
+
+/**
+ * Late in a game a fallen sect's survivors may gather again on open ground,
+ * so the map does not empty as the years go by.
+ */
+function revive(state, rng) {
+  if (year(state) < 6 || !rng.chance(0.25)) return;
+  const fallen = SECTS.filter((sect) => !state.sects[sect.id].alive && sect.id !== state.playerSect);
+  const open = PLACES.filter((place) => !state.places[place.id].owner);
+  if (!fallen.length || !open.length) return;
+  const sect = rng.pick(fallen),
+    home = rng.pick(open),
+    books = state.sects[sect.id];
+  Object.assign(books, { alive: true, silver: 1500, grain: 60, renown: 60, offices: {} });
+  const place = state.places[home.id];
+  place.owner = sect.id;
+  place.buildings = [['hall', 1], ['board', 1], ['dorm', 1], ['dorm', 1], ['yard', 1]].map(([kind, level]) => ({ kind, level, xp: 0 }));
+  const level = 10 + year(state);
+  for (let i = 0; i < 8; i++) {
+    const person = rollPerson(rng, { quality: 55, lean: home.lean, school: sect.id, place: home.id });
+    person.rank = i === 0 ? 5 : i < 3 ? 4 : 2;
+    growTo(person, Math.min(40, level + (i === 0 ? 8 : i < 3 ? 4 : 0)));
+    for (const klass of new Set([sect.main, 'inner'])) for (let tier = 1; tier <= 3; tier++) person.arts[commonArt(klass, tier).id] = 600;
+    if (i < 3) for (const art of sectArts(sect.id).filter((a) => a.tier === 4 && CLASSES[a.klass].combat)) person.arts[art.id] = 400;
+    equipFor(person, 3);
+    person.wheel = autoWheel(person);
+    adopt(state, person);
+    if (i === 0) books.leaderId = person.id;
+  }
+  planJobs(state, sect.id);
+  note(state, 'start', `${sect.name}残部在${home.name}重立山门。`, { sect: sect.id, place: home.id });
 }
 
 /** Moves the world on by one day. */
@@ -663,6 +856,23 @@ export function advanceDay(state) {
 }
 
 /** A sect's books in one line each, for the ledger screen and for checks. */
+/**
+ * The roads a sect trades along: those joining two of its own strongholds,
+ * and those leading to the stronghold of a sect it is on good terms with.
+ * Each is `{ from, to, kind: 'own' | 'ally', income }`, income being silver every ten days.
+ */
+export function tradeRoutes(state, sectId) {
+  const routes = [];
+  for (const from of placesOf(state, sectId))
+    for (const to of PLACE_BY_ID[from].roads) {
+      const owner = state.places[to].owner;
+      if (owner === sectId) {
+        if (from < to) routes.push({ from, to, kind: 'own', income: ECONOMY.routeIncome + ECONOMY.routeShopBonus * (state.places[from].shops + state.places[to].shops) });
+      } else if (owner && state.sects[sectId].relations[owner] >= ECONOMY.allyRelation) routes.push({ from, to, kind: 'ally', income: ECONOMY.allyRouteIncome });
+    }
+  return routes;
+}
+
 export function ledger(state, sectId) {
   const members = membersOf(state, sectId);
   return {
@@ -670,6 +880,7 @@ export function ledger(state, sectId) {
     places: placesOf(state, sectId).length,
     silver: Math.round(state.sects[sectId].silver),
     wages: members.reduce((sum, person) => sum + RANKS[person.rank].pay, 0),
+    trade: tradeRoutes(state, sectId).reduce((sum, route) => sum + route.income, 0),
     strength: strength(members),
     renown: Math.round(state.sects[sectId].renown),
     virtue: Math.round(state.sects[sectId].virtue),

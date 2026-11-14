@@ -71,3 +71,38 @@ test('an arena plays a battle to its end', () => {
   assert.equal(again.winner, battle.winner);
   assert.equal(again.time, battle.time);
 });
+
+test('a figure is one skinned body: every point follows its bones in full, and the bones move', () => {
+  const figure = createFigure({ female: true, rank: 4, seed: 5 });
+  assert.equal(figure.mesh.skeleton.bones.length, 12);
+  const weights = figure.mesh.geometry.getAttribute('weights').data,
+    joints = figure.mesh.geometry.getAttribute('joints').data;
+  for (let i = 0; i < weights.length; i += 4) assert.ok(Math.abs(weights[i] + weights[i + 1] + weights[i + 2] + weights[i + 3] - 1) < 1e-5);
+  assert.ok(joints.every((index) => index < 12));
+  const elbow = figure.bones.find((bone) => bone.name === 'elbowR'),
+    before = [...elbow.quaternion];
+  figure.play('punch', { base: 'guard' });
+  for (let i = 0; i < 6; i++) figure.update(0.05);
+  assert.ok(before.some((value, i) => Math.abs(value - elbow.quaternion[i]) > 0.05));
+  // A one-off gives way to the stance it came from.
+  for (let i = 0; i < 20; i++) figure.update(0.05);
+  assert.equal(figure.action, 'guard');
+});
+
+test('flora: a model file is read into a shape one unit tall, coloured by this game', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { FLORA_FILES, addFlora, floraGeometry, readGlb } = await import('../src/view/flora.mjs');
+  for (const name of FLORA_FILES) {
+    const file = await readFile(new URL(`../assets/flora/${name}.glb`, import.meta.url));
+    const buffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+    const shape = readGlb(buffer);
+    assert.ok(shape.indices.length >= 30 && shape.indices.length % 3 === 0, name);
+    assert.ok(shape.indices.every((index) => index < shape.positions.length / 3), name);
+    addFlora(name, buffer);
+  }
+  const tree = floraGeometry('common_tree_1', 'maple');
+  const box = tree.boundingBox;
+  assert.ok(Math.abs(box[1]) < 1e-5 && Math.abs(box[4] - 1) < 1e-5);
+  assert.equal(floraGeometry('common_tree_1', 'maple'), tree);
+  assert.equal(floraGeometry('no_such_tree'), null);
+});

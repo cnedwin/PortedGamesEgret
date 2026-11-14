@@ -155,6 +155,13 @@ export function unmetNeeds(person, art) {
   const needs = [];
   const mastery = (id) => levelOf(person.arts[id] ?? 0);
   if (art.sect && art.sect !== person.school) needs.push('非本门武学');
+  // An art a sect made for itself asks for the third tier of its class and inner standing.
+  if (art.custom) {
+    const below = commonArt(art.klass, Math.min(3, art.tier - 1));
+    if (below && mastery(below.id) < 5) needs.push(`${below.name}需达五重`);
+    if (person.rank < 2) needs.push('需为内门弟子');
+    return needs;
+  }
   if (art.tier > 1 && art.tier <= 3) {
     const below = commonArt(art.klass, art.tier - 1);
     if (mastery(below.id) < 5) needs.push(`${below.name}需达五重`);
@@ -241,3 +248,13 @@ export const SECT_TUNING = {
   quanzhen: 1.04,
   tangmen: 0.89,
 };
+
+/**
+ * Adds an art a sect made for itself to the lists, so everything that looks an
+ * art up by id finds it. A save carries its own; they are added when it loads.
+ */
+export function registerArt(art) {
+  if (ART_BY_ID[art.id]) return;
+  ARTS.push(art);
+  ART_BY_ID[art.id] = art;
+}
