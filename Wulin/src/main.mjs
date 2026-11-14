@@ -60,6 +60,7 @@ const voice = createVoice(localStorage, undefined, { clips, onSpeaking(active) {
   combatAudio.duck(active);
 } });
 const recordedArts = new Map(ARTS.filter(art => CLASSES[art.klass]?.combat).map(art => [art.name, art.id]));
+const recordedArtIds = new Set(recordedArts.values());
 const prologueVoice = ['prologue-decree', 'prologue-gate', 'prologue-seal'];
 
 /** What the page is showing; the world itself is in `world`. */
@@ -623,6 +624,7 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
     combatAudio.contact(cue);
   };
   const finish = () => {
+    voice.endBattle();
     const summary = { winner: battle.winner, time: battle.time, fighters: battle.units.map((u) => ({ id: u.id, side: u.side, down: u.down, fled: u.fled, hpLeft: u.hp / u.hpMax, dealt: u.dealt, xp: Math.round(u.dealt) })) };
     const result = settleFight(summary, rng);
     world.rng = rng.state;
@@ -642,6 +644,15 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
     }
     return finish();
   }
+  const artIds = [];
+  const maxMoves = Math.max(0, ...battle.units.map(unit => unit.wheel.length));
+  for (let slot = 0; slot < maxMoves; slot++) {
+    for (const unit of battle.units) {
+      const id = unit.wheel[slot]?.art;
+      if (recordedArtIds.has(id)) artIds.push(id);
+    }
+  }
+  voice.prepareBattle(artIds);
   const arena = picture.modules.createArena(picture.stage, battle, {
     colors, layer: document.querySelector('#layer'), onEvent: note, onContact: contact,
     onClearSounds: combatAudio.silence, onEnd: () => (finish(), render()), playerSide: side,

@@ -519,6 +519,29 @@ test('voice: prefers a Taiwan Mandarin woman for generated text and remembers mu
   }
 });
 
+test('voice: warms distinct lineup calls four at a time and stops loading after battle', async () => {
+  const { createVoice } = await import('../src/ui/voice.mjs');
+  const requested = [];
+  const ready = [];
+  const clips = {
+    ready: true,
+    load(url) {
+      requested.push(url.pathname.split('/').at(-1));
+      return new Promise(resolve => ready.push(resolve));
+    },
+  };
+  const voice = createVoice(null, null, { clips });
+  voice.prepareBattle(['saber1', 'palm1', 'saber1', 'spear1', 'staff1', 'dart1', 'fist1']);
+  assert.deepEqual(requested, ['art-saber1.mp3', 'art-palm1.mp3', 'art-spear1.mp3', 'art-staff1.mp3']);
+  ready[0]();
+  await Promise.resolve();
+  assert.equal(requested.at(-1), 'art-dart1.mp3');
+  voice.endBattle();
+  ready.forEach(resolve => resolve());
+  await Promise.resolve();
+  assert.equal(requested.length, 5);
+});
+
 test('goals: matters come one at a time, each paying out once it is done', async () => {
   const { GOALS, claimGoal, goalView, startGoals } = await import('../src/core/goals.mjs');
   const world = createWorld({ seed: 3, playerSect: 'huashan' });

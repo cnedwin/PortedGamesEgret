@@ -2,6 +2,7 @@ import { clampVolume } from './soundtrack.mjs';
 
 const KEY = 'wulin-voice';
 const VOICE_DIR = new URL('../../assets/audio/voice/', import.meta.url);
+const clipUrl = (clip) => new URL(clip + '.mp3', VOICE_DIR);
 const knownFemale = /female|女|hanhan|yating|hsiao|xiaoxiao|xiaoyi|yaoyao|huihui|mei[- ]?jia|ting[- ]?ting/i;
 const knownMale = /\bmale|男|zhiwei|yunxi|yunyang|kangkang/i;
 const locale = voice => voice.lang.toLowerCase().replaceAll('_', '-');
@@ -29,6 +30,7 @@ export function createVoice(storage, synth = globalThis.speechSynthesis, { clips
   synth?.addEventListener?.('voiceschanged', loadVoices);
   let active;
   let shouted = -Infinity;
+  let preloadBatch;
 
   function stop() {
     const line = active;
@@ -67,7 +69,7 @@ export function createVoice(storage, synth = globalThis.speechSynthesis, { clips
 
   async function playClip(line, clip) {
     try {
-      const buffer = await clips.load(new URL(clip + '.mp3', VOICE_DIR));
+      const buffer = await clips.load(clipUrl(clip));
       if (active !== line) return;
       const context = clips.context;
       const source = context.createBufferSource();
@@ -115,6 +117,22 @@ export function createVoice(storage, synth = globalThis.speechSynthesis, { clips
       else if (active?.gain) active.gain.gain.setTargetAtTime(settings.volume, clips.context.currentTime, .04);
     },
     say,
+    /** Warm only the current lineup's calls, without delaying entry or filling the network queue. */
+    prepareBattle(artIds) {
+      if (!settings.on || !settings.volume || !clips?.ready) return;
+      const batch = {};
+      preloadBatch = batch;
+      const queue = [...new Set(artIds)];
+      async function warm() {
+        while (preloadBatch === batch && settings.on && settings.volume && queue.length) {
+          const id = queue.shift();
+          try { await clips.load(clipUrl('art-' + id)); } catch { /* Retry on demand. */ }
+        }
+      }
+      const workers = Math.min(4, queue.length);
+      for (let i = 0; i < workers; i++) void warm();
+    },
+    endBattle() { preloadBatch = undefined; },
     shout(text, clip) {
       const now = Date.now();
       if (active || now - shouted < 2600) return false;
