@@ -403,7 +403,7 @@ const weaponSlotOf = (person) => person.gear?.weapon?.slot ?? null;
  * @param options.layer   an element over the canvas for the buildings' name tags
  * @param options.nameOf  gives a building kind its name
  */
-export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind) => kind } = {}) {
+export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind) => kind, onHour = () => {} } = {}) {
   const spec = PLACE_BY_ID[placeId];
   const random = scatter(spec.id.length * 7919 + spec.at.x * 31 + spec.at.y);
   const scene = new Scene3D();
@@ -616,6 +616,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       // The day moves on, quicker through the night; shadows follow whatever the camera is looking at.
       hour = (hour + dt * (light.night ? 0.3 : 0.075)) % 24;
       light.setHour(hour);
+      onHour(light.hour);
       light.aim(stage.orbit.target?.[0] ?? 0, 0, stage.orbit.target?.[2] ?? 0);
       // Banners stir in the wind.
       dressing?.banners.forEach((flag, i) => flag.setRotation(0, 0.35 * Math.sin(clock * 1.7 + i * 1.3) + 0.12 * Math.sin(clock * 4.1 + i), 0.05 * Math.sin(clock * 2.3 + i)));
