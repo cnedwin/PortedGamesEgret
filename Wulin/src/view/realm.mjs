@@ -163,12 +163,10 @@ export function createRealm(stage, world, { layer = null } = {}) {
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 38, near: 4, far: 1400 });
   scene.addChild(camera);
-  const light = lightScene(scene, 'day', stage.quality);
+  // The whole model is seen from above in full sun, so the lights are turned down a little.
+  const light = lightScene(scene, 'day', stage.quality, { sun: 0.76, fill: 0.72 });
   scene.fog = { ...scene.fog, near: 330, far: 1100 };
   if (light.sun.shadow) light.sun.shadow.cascadeDistance = 300;
-  // The whole model is seen from above in full sun, so the lights are turned down a little.
-  light.sun.intensity = 1.2;
-  scene.environmentIntensity = 0.28;
   const random = scatter(20261114);
 
   // ---- the land: heights once, colours whenever lands change hands ----------------------------------------
@@ -533,6 +531,58 @@ export function createRealm(stage, world, { layer = null } = {}) {
     const tall = 2.5 + random() * 3.5;
     fixed.push([TAPER, [x, groundAt(x, z) + tall / 2, z], [0.9 + random() * 0.5, tall, 0.9 + random() * 0.5], mix(0x7f8f6a, 0x8a8577, random())], [BALL, [x, groundAt(x, z) + tall, z], [0.75, 0.5, 0.75], 0x5f8a4e]);
   }
+  // Hamlets beside the roads, each a few houses and a field or two.
+  for (const path of Object.values(roadPaths)) {
+    for (const share of path.length > 30 ? [0.35, 0.68] : [0.5]) {
+      const [px, , pz] = path[Math.floor(path.length * share)];
+      const cx = px + (random() - 0.5) * 7,
+        cz = pz + (random() - 0.5) * 7,
+        cy = groundAt(cx, cz);
+      if (cy < 0.9 || cy > 5 || Object.values(sites).some((site) => Math.hypot(cx - site.x, cz - site.z) < 12)) continue;
+      for (let i = 0; i < 3 + Math.floor(random() * 3); i++) house(cx + (random() - 0.5) * 3.4, cz + (random() - 0.5) * 3.4, 0.5 + random() * 0.2, random() * 3.14, 0xd8cdb4, random() < 0.5 ? 0x4a4f55 : 0x7a5a3e);
+      fixed.push([BOX, [cx + 2.6, cy + 0.06, cz + 1.2], [2.2, 0.06, 1.6], 0x8fa85a, [0, random(), 0]], [BOX, [cx - 2.4, cy + 0.06, cz - 1.6], [1.8, 0.06, 2.0], 0xb9a85a, [0, random(), 0]]);
+    }
+  }
+  // Pagodas on the hills, tier upon tier; a pavilion by the lake; beacons along the coast.
+  const pagoda = (x, z, scale) => {
+    const y = groundAt(x, z);
+    for (let tier = 0; tier < 5; tier++) {
+      const w = (1.0 - tier * 0.14) * scale;
+      fixed.push([ROD, [x, y + (0.35 + tier * 0.62) * scale, z], [w * 0.55, 0.5 * scale, w * 0.55], 0xe4dcc8], [SPIKE, [x, y + (0.72 + tier * 0.62) * scale, z], [w, 0.3 * scale, w], 0x4a4f55]);
+    }
+    fixed.push([SPIKE, [x, y + 3.75 * scale, z], [0.12 * scale, 0.9 * scale, 0.12 * scale], 0xd9b04a]);
+  };
+  for (let tries = 0, made = 0; tries < 400 && made < 9; tries++) {
+    const u = 12 + random() * 76,
+      v = 16 + random() * 70,
+      x = (u - 50) * S,
+      z = (v - 50) * S,
+      y = groundAt(x, z);
+    if (y < 4 || y > 10 || Object.values(sites).some((site) => Math.hypot(x - site.x, z - site.z) < 14)) continue;
+    pagoda(x, z, 0.8 + random() * 0.35);
+    made++;
+  }
+  {
+    const x = (LAKE[0] + LAKE[2] + 1.2 - 50) * S,
+      z = (LAKE[1] - 1.5 - 50) * S,
+      y = groundAt(x, z);
+    fixed.push([ROD, [x, y + 0.2, z], [1.0, 0.4, 1.0], 0xbdb7a6], ...[0, 1.57, 3.14, 4.71].map((a) => [ROD, [x + Math.cos(a) * 0.7, y + 0.9, z + Math.sin(a) * 0.7], [0.07, 1.0, 0.07], 0x9c2f24]), [SPIKE, [x, y + 1.75, z], [1.3, 0.8, 1.3], 0x3f6a55]);
+  }
+  // Rice paddies in squares on the low wet ground of the south, each a little pool between banks.
+  const paddies = [];
+  for (const site of Object.values(sites)) {
+    if (site.kind === 'mountain' || site.z < -10) continue;
+    for (let i = 0; i < 26; i++) {
+      const gx = Math.round((random() - 0.5) * 9) * 1.5,
+        gz = Math.round((random() - 0.5) * 9) * 1.5,
+        x = site.x + gx,
+        z = site.z + gz,
+        y = groundAt(x, z);
+      if (Math.hypot(gx, gz) < 6.6 || y < 0.6 || y > 2.6) continue;
+      paddies.push([x, y, z, random()]);
+    }
+  }
+  for (const [x, y, z, tone] of paddies) fixed.push([BOX, [x, y + 0.03, z], [1.42, 0.08, 1.42], 0x6f6a48], [BOX, [x, y + 0.05, z], [1.22, 0.08, 1.22], mix(0x5f8f7a, 0x8fb86a, tone)]);
   scene.addChild(model(fixed));
   {
     const turned = new Float32Array(4);
@@ -555,8 +605,23 @@ export function createRealm(stage, world, { layer = null } = {}) {
   {
     const pine = build([[TAPER, [0, 0.25, 0], [0.09, 0.5, 0.09], 0x6e4a2b], [SPIKE, [0, 0.95, 0], [0.42, 1.1, 0.42], 0x263f2b], [SPIKE, [0, 1.45, 0], [0.3, 0.8, 0.3], 0x304b32]]),
       leafy = build([[TAPER, [0, 0.25, 0], [0.09, 0.5, 0.09], 0x6e4a2b], [BALL, [0, 0.85, 0], [0.5, 0.45, 0.5], 0x3a5632], [BALL, [0.18, 1.1, 0.05], [0.34, 0.3, 0.34], 0x46653a]]);
-    const spots = [[], []];
+    const maple = build([[TAPER, [0, 0.25, 0], [0.08, 0.5, 0.08], 0x5a3a24], [BALL, [0, 0.85, 0], [0.48, 0.42, 0.48], 0xb0502a], [BALL, [0.16, 1.08, 0.04], [0.32, 0.28, 0.32], 0xcf7a2a]]),
+      blossom = build([[TAPER, [0, 0.22, 0], [0.07, 0.44, 0.07], 0x4a3428], [BALL, [0, 0.74, 0], [0.44, 0.36, 0.44], 0xf0b4c4], [BALL, [0.18, 0.92, 0.06], [0.3, 0.24, 0.3], 0xf7d2da]]),
+      bamboo = build([[ROD, [0, 0.7, 0], [0.035, 1.4, 0.035], 0x7aa04a], [ROD, [0.14, 0.6, 0.08], [0.03, 1.2, 0.03], 0x86ac52], [ROD, [-0.1, 0.55, -0.1], [0.03, 1.1, 0.03], 0x6f9644], [BALL, [0, 1.4, 0], [0.34, 0.3, 0.34], 0x5f9a3f], [BALL, [0.16, 1.2, 0.1], [0.26, 0.24, 0.26], 0x79b04f]]),
+      reed = build([[SPIKE, [0, 0.3, 0], [0.05, 0.6, 0.05], 0x9aa85a], [SPIKE, [0.1, 0.26, 0.05], [0.05, 0.52, 0.05], 0x8a9a4e], [SPIKE, [-0.08, 0.24, -0.06], [0.05, 0.48, 0.05], 0xa6b062]]),
+      boulder = build([[BALL, [0, 0.14, 0], [0.5, 0.34, 0.42], 0x8d8a80], [BALL, [0.3, 0.08, 0.2], [0.26, 0.2, 0.24], 0x7d7a70]]);
+    const spots = [[], [], [], [], [], [], []];
     const towns = Object.values(sites);
+    // Reeds stand at the water's edge and boulders lie on the high ground.
+    for (let i = 0; i < detail.trees * 0.5; i++) {
+      const u = 50 - SPAN / 2 + random() * SPAN,
+        v = 50 - SPAN / 2 + random() * SPAN,
+        x = (u - 50) * S,
+        z = (v - 50) * S,
+        y = groundAt(x, z);
+      if (y > 0.12 && y < 0.6 && inland(u, v) > 3) spots[5].push([x, y, z]);
+      else if (y > 7.5 && y < 17 && random() < 0.5) spots[6].push([x, y, z]);
+    }
     for (let tries = 0; tries < detail.trees * 4 && spots[0].length + spots[1].length < detail.trees; tries++) {
       const u = 50 - SPAN / 2 + random() * SPAN,
         v = 50 - SPAN / 2 + random() * SPAN,
@@ -568,18 +633,21 @@ export function createRealm(stage, world, { layer = null } = {}) {
       const thick = noise(u * 0.23 + 4, v * 0.23 + 9) * (0.55 + smooth((v - 30) / 40) * 0.5 + smooth((y - 2.5) / 4) * 0.35) * (1 - 0.8 * smooth((30 - u) / 22));
       if (random() > thick * 1.7 - 0.3) continue;
       if (towns.some((site) => Math.hypot(x - site.x, z - site.z) < 6.5)) continue;
-      spots[v > 46 + random() * 14 && y < 6 ? 1 : 0].push([x, y, z]);
+      // Blossom round the towns, bamboo in the warm south, maples turning red across the middle of the land.
+      const near = towns.some((site) => Math.hypot(x - site.x, z - site.z) < 13);
+      const kind = near && random() < 0.32 ? 3 : v > 66 && y < 4.5 && random() < 0.45 ? 4 : v > 26 && v < 50 && random() < 0.2 ? 2 : v > 46 + random() * 14 && y < 6 ? 1 : 0;
+      spots[kind].push([x, y, z]);
     }
     const turned = new Float32Array(4);
-    [pine, leafy].forEach((geometry, kind) => {
+    [pine, leafy, maple, blossom, bamboo, reed, boulder].forEach((geometry, kind) => {
       if (!spots[kind].length) return;
       const trees = new InstancedMesh3D(geometry, TOON, spots[kind].length);
       spots[kind].forEach(([x, y, z], i) => {
         trees.setTransformAt(i, [x, y - 0.05, z], quatFromEuler(turned, 0, random() * 6.28, 0), 0.75 + random() * 0.6);
-        const tone = 0.7 + random() * 0.3;
-        trees.setColorAt(i, tone, tone, tone * 0.9);
+        const tone = (kind > 1 ? 0.82 : 0.7) + random() * (kind > 1 ? 0.18 : 0.3);
+        trees.setColorAt(i, tone, tone, tone * (kind > 1 ? 1 : 0.9));
       });
-      trees.castShadow = stage.quality === 'high';
+      trees.castShadow = stage.quality === 'high' && kind < 5;
       scene.addChild(trees);
     });
   }
@@ -589,6 +657,34 @@ export function createRealm(stage, world, { layer = null } = {}) {
   const fleet = Array.from({ length: stage.quality === 'low' ? 6 : 14 }, (_, i) => ({ path: SAILS[i % 3 === 2 ? 1 : 0], t: random(), pace: (0.004 + random() * 0.004) * (random() < 0.5 ? 1 : -1) }));
   const boats = new InstancedMesh3D(boatShape, TOON, fleet.length);
   scene.addChild(boats);
+  // Water that moves: pale streaks carried down each river, surf that comes and goes along the shore,
+  // and a fall where the long river drops out of the western hills.
+  const foam = createStandardMaterial3D({ color: 0xe8f4f8, roughness: 0.6, metallic: 0, opacity: 0.5, alphaMode: 'blend' });
+  const streakShape = build([[BOX, [0, 0, 0], [0.16, 0.02, 1.5], 0xffffff]]);
+  const flow = RIVERS.flatMap((river, r) => Array.from({ length: stage.quality === 'low' ? 26 : 70 }, () => ({ river, t: random(), off: (random() - 0.5) * 1.1, pace: 0.02 + random() * 0.012 + r * 0.004 })));
+  const streaks = new InstancedMesh3D(streakShape, foam, flow.length);
+  streaks.castShadow = false;
+  scene.addChild(streaks);
+  const shore = [];
+  for (let tries = 0; tries < 6000 && shore.length < (stage.quality === 'low' ? 60 : 170); tries++) {
+    const u = 50 - SPAN / 2 + random() * SPAN,
+      v = 50 - SPAN / 2 + random() * SPAN,
+      d = inland(u, v);
+    if (d > -0.4 || d < -3.2) continue;
+    // Which way the land lies, so that the surf runs along the shore and rolls towards it.
+    const gu = inland(u + 0.5, v) - inland(u - 0.5, v),
+      gv = inland(u, v + 0.5) - inland(u, v - 0.5),
+      g = Math.hypot(gu, gv) || 1;
+    shore.push({ x: (u - 50) * S, z: (v - 50) * S, nx: gu / g, nz: gv / g, phase: random() * 6.283, long: 1.4 + random() * 2 });
+  }
+  const surf = new InstancedMesh3D(build([[BOX, [0, 0, 0], [1.5, 0.02, 0.2], 0xffffff]]), foam, shore.length);
+  surf.castShadow = false;
+  scene.addChild(surf);
+  // Flights of birds cross the land in arrowheads.
+  const flights = Array.from({ length: stage.quality === 'low' ? 1 : 3 }, (_, i) => ({ x: (random() - 0.5) * 300, z: (random() - 0.5) * 240, heading: random() * 6.283, y: 20 + i * 4 }));
+  const flock = new InstancedMesh3D(build([[BOX, [0.22, 0, 0], [0.44, 0.03, 0.16], 0x2a2a30, [0, 0.5, 0]], [BOX, [-0.22, 0, 0], [0.44, 0.03, 0.16], 0x2a2a30, [0, -0.5, 0]]]), TOON, flights.length * 7);
+  flock.castShadow = false;
+  scene.addChild(flock);
   const cloudMaterial = createStandardMaterial3D({ color: 0xffffff, roughness: 1, opacity: 0.3, alphaMode: 'blend' });
   const clouds = Array.from({ length: stage.quality === 'low' ? 0 : 9 }, () => {
     const node = model([[BALL, [0, 0, 0], [9 + random() * 8, 1.6, 5 + random() * 4], 0xffffff], [BALL, [4, 0.6, 1], [5, 1.4, 3.5], 0xffffff]], cloudMaterial, false);
@@ -735,7 +831,36 @@ export function createRealm(stage, world, { layer = null } = {}) {
         orbit.pitch = Math.min(orbit.maxPitch, orbit.pitch + 0.04);
         orbit.apply(camera, 0);
       }
+      // The light swings from morning to evening and back; the map is never left in the dark.
+      light.setHour(12.2 + 5.6 * Math.sin(clock / 75));
       light.aim(orbit.target[0], 0, orbit.target[2]);
+      flow.forEach((streak, i) => {
+        streak.t = (streak.t + streak.pace * dt) % 1;
+        const at = along(streak.river, streak.t),
+          side = streak.off * S,
+          x = (at.u - 50) * S + Math.cos(at.heading) * side,
+          z = (at.v - 50) * S - Math.sin(at.heading) * side;
+        // A streak shows only where there is water under it, and fades in and out along its run.
+        const wet = groundAt(x, z) < -0.05 ? Math.sin(((streak.t * 9) % 1) * Math.PI) : 0;
+        streaks.setTransformAt(i, [x, 0.05, z], quatFromEuler(turned, 0, at.heading, 0), [1, 1, 0.2 + wet]);
+      });
+      shore.forEach((wave, i) => {
+        const roll = (clock * 0.22 + wave.phase) % 1,
+          reach = (1 - roll) * 3.4;
+        surf.setTransformAt(i, [wave.x - wave.nx * reach * 0 + wave.nx * (1.2 - reach), 0.05, wave.z + wave.nz * (1.2 - reach)], quatFromEuler(turned, 0, Math.atan2(wave.nx, wave.nz), 0), [wave.long * (0.4 + roll), 1, 0.5 + roll * 1.2]);
+      });
+      flights.forEach((flight, f) => {
+        flight.x += Math.sin(flight.heading) * 7 * dt;
+        flight.z += Math.cos(flight.heading) * 7 * dt;
+        if (Math.abs(flight.x) > 210 || Math.abs(flight.z) > 210) (flight.heading += Math.PI * (0.8 + 0.4 * Math.sin(clock + f))), (flight.x *= 0.98), (flight.z *= 0.98);
+        for (let k = 0; k < 7; k++) {
+          const row = Math.ceil(k / 2),
+            wing = k % 2 ? 1 : -1;
+          const bx = -row * 1.3,
+            bz = wing * row * 1.1;
+          flock.setTransformAt(f * 7 + k, [flight.x + Math.sin(flight.heading) * bx + Math.cos(flight.heading) * bz, flight.y + Math.sin(clock * 2 + k) * 0.3, flight.z + Math.cos(flight.heading) * bx - Math.sin(flight.heading) * bz], quatFromEuler(turned, 0, flight.heading + Math.PI / 2, Math.sin(clock * 8 + k) * 0.5), 1.5);
+        }
+      });
       fleet.forEach((boat, i) => {
         boat.t = (boat.t + boat.pace * dt + 1) % 1;
         const at = along(boat.path, boat.t);
