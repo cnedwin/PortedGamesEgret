@@ -124,6 +124,18 @@ export function heightSurface(width, depth, nx, nz, height, colour) {
   return createGeometry3D({ positions, normals, colors, indices });
 }
 
+/**
+ * A part for `build`: a rod of a thickness and colour running from one point to another.
+ * Ridge beams, rails, ropes and anything else that does not stand upright.
+ */
+export function beam(a, b, thickness, colour, geometry = ROD) {
+  const dx = b[0] - a[0],
+    dy = b[1] - a[1],
+    dz = b[2] - a[2],
+    length = Math.hypot(dx, dy, dz) || 1;
+  return [geometry, [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2], [thickness, length, thickness], colour, [0, Math.atan2(dz, -dx), Math.acos(Math.max(-1, Math.min(1, dy / length)))]];
+}
+
 /** The cel-shaded material every model shares: colour comes from the vertices. */
 export const toon = (more) => createToonMaterial3D({ color: 0xffffff, vertexColors: true, steps: 3, ...more });
 export const TOON = toon();

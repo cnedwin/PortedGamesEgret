@@ -34,6 +34,8 @@
     const stage = await createStage(document.querySelector('#stage'), { onError: (cause) => (status.error = String(cause?.stack ?? cause)) });
     const seat = createSeat(stage, () => world, SECT_BY_ID[world.playerSect].seat);
     stage.show(seat);
+    if (params.has('hour')) seat.setHour(Number(params.get('hour')));
+    for (const key of ['yaw', 'pitch', 'distance']) if (params.has(key)) stage.orbit[key] = Number(params.get(key));
     Object.assign(status, { stage, seat, world });
     setInterval(() => (status.frames = stage.frames), 200);
   </script>
