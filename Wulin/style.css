@@ -201,3 +201,98 @@ html:has(.shell.game), html:has(.shell.game) body { height: 100%; overflow: hidd
 }
 .battle-report.is-floating p { color: #efe6cf; border: 0; padding: 0; }
 .battle-report.is-floating::before { display: none; }
+
+/* ---- the picture's middle keeps clear of the panel of orders ---- */
+.backdrop.has-command .stage-slot { left: -360px; }
+@media (max-width: 760px) { .backdrop.has-command .stage-slot { left: 0; top: -38%; } }
+
+/* ---- name plates: the same wherever people are listed ---- */
+.member-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 8px; padding: 12px; }
+.member-card { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid #d5c6a3; border-radius: 6px; background: #fffaf0; color: var(--ink); text-align: left; cursor: pointer; transition: transform .12s, box-shadow .12s, border-color .12s; }
+.member-card:hover { transform: translateY(-1px); border-color: #8b6f3c; box-shadow: 0 4px 12px #5b4a2330; }
+.member-card.is-picked { border-color: #2f5a48; background: #e6eedd; box-shadow: inset 0 0 0 1px #2f5a48; }
+.member-card .member-face, .member-card > .avatar, .member-card > img { width: 46px; height: 46px; border-radius: 5px; object-fit: cover; object-position: top; }
+.member-main, .member-side { display: grid; gap: 1px; min-width: 0; }
+.member-main b { font: 700 15px var(--serif); }
+.member-main b i { font: 600 11px var(--sans); font-style: normal; }
+.member-main small, .member-side small { color: var(--muted); font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.member-side { justify-items: end; width: 86px; }
+.member-side em { font: 700 14px Georgia, var(--serif); font-style: normal; }
+.member-side .meter { width: 100%; }
+.batch-toolbar { display: flex; align-items: center; gap: 8px; }
+.batch-toolbar > span { margin-right: auto; }
+.face-row { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 15px 12px; }
+.face-row button { width: 38px; height: 38px; padding: 0; border: 1px solid #cdbb97; border-radius: 5px; background: #efe5cc; overflow: hidden; cursor: pointer; }
+.face-row button > * { width: 100%; height: 100%; object-fit: cover; object-position: top; display: grid; place-items: center; }
+.face-row .more { font-size: 11px; color: var(--muted); }
+.for-whom { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--muted); }
+.for-whom select { min-height: 37px; background: #fffaf0; border: 1px solid #cdbb97; border-radius: 4px; padding: 5px 9px; font: inherit; color: var(--ink); }
+
+/* ---- a person's panel ---- */
+dialog[data-kind="person"] { width: min(860px, calc(100% - 24px)); }
+.person-sheet { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 16px; }
+.person-sheet .person-visual { border-radius: 6px; overflow: hidden; }
+.person-sheet .person-facts { display: grid; gap: 7px; font-size: 13px; line-height: 1.7; }
+.person-sheet .detail-actions { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; margin-top: 14px; padding: 0; }
+.person-sheet .detail-actions .button { justify-content: center; }
+@media (max-width: 760px) { .person-sheet { grid-template-columns: minmax(0, 1fr); } .person-sheet .person-visual { max-height: 210px; } }
+dialog[data-kind="duel"] { width: min(760px, calc(100% - 24px)); }
+dialog[data-kind="duel"] .member-grid { padding: 10px 0 0; }
+
+/* ---- the annals ---- */
+.annals .annal-year { display: block; margin: 14px 0 4px; padding: 0 0 4px; border-bottom: 1px solid #cdbd9c; }
+.annals .annal-year b { font: 700 17px var(--serif); letter-spacing: .12em; color: #8b3a2f; }
+.annals li.is-great p { font: 600 15px var(--serif); }
+.annals li:not(.is-great):not(.annal-year) { opacity: .82; }
+.annals li.is-mine > div { border-left: 3px solid #2f5a48; padding-left: 8px; }
+
+/* ---- the season's report ---- */
+.season-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.season-grid > div { display: grid; gap: 2px; padding: 9px 10px; border: 1px solid #d5c6a3; border-radius: 6px; background: #fffaf0; }
+.season-grid span { font-size: 11px; color: var(--muted); }
+.season-grid b { font: 700 18px Georgia, var(--serif); }
+.season-grid small { font: 500 11px var(--sans); color: var(--muted); }
+.season-grid em { font-size: 12px; font-style: normal; color: var(--muted); }
+.season-grid em.good { color: #2f5a48; } .season-grid em.bad { color: #a23a2c; }
+.season-head { margin: 14px 0 6px; font: 700 14px var(--serif); letter-spacing: .14em; color: #8b3a2f; }
+.season-list { display: grid; gap: 6px; list-style: none; padding: 0; margin: 0 0 6px; }
+.season-list li { display: flex; gap: 8px; align-items: baseline; font-size: 13px; }
+@media (max-width: 760px) { .season-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* ---- a great matter announced ---- */
+dialog[data-kind="herald"] { width: min(560px, calc(100% - 24px)); background: #1f2925; color: #f3ead2; border-color: #a58d5e; }
+dialog[data-kind="herald"] .sheet-title { display: none; }
+dialog[data-kind="herald"]::backdrop { background: #0c1210cc; }
+.herald { display: grid; justify-items: center; gap: 18px; padding: 34px 20px 14px; text-align: center; }
+.herald-seal { padding: 10px 26px; border: 2px solid #c9a55a; border-radius: 4px; color: #f0d893; font: 700 34px var(--serif); letter-spacing: .3em; text-indent: .3em; animation: seal-in .5s cubic-bezier(.2, 1.4, .4, 1) both; }
+.herald p { font: 500 18px/1.8 var(--serif); max-width: 26em; animation: rise-in .5s .25s both; }
+@keyframes seal-in { from { opacity: 0; transform: scale(1.6); } to { opacity: 1; transform: none; } }
+
+/* ---- things arrive rather than appear ---- */
+@keyframes rise-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+@keyframes slide-in { from { opacity: 0; transform: translateX(18px); } to { opacity: 1; transform: none; } }
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+.shell.game .main.is-window { animation: rise-in .22s ease-out both; }
+.command { animation: slide-in .24s ease-out both; }
+.main.is-staged .scene-top, .main.is-staged > [data-region="goal"] { animation: fade-in .3s ease-out both; }
+dialog.sheet[open] { animation: rise-in .2s ease-out both; }
+dialog.sheet::backdrop { animation: fade-in .2s ease-out both; }
+.button, .nav-button, .pill, .command-tabs button { transition: background-color .12s, color .12s, border-color .12s, transform .08s; }
+.button:active, .member-card:active { transform: translateY(1px); }
+@media (prefers-reduced-motion: reduce) { .shell.game *, dialog.sheet, dialog.sheet::backdrop { animation: none !important; transition: none !important; } }
+.person-sheet { grid-template-areas: 'visual actions' 'stats facts'; grid-template-rows: auto 1fr; }
+.person-sheet-side, .person-sheet-main { display: contents; }
+.person-sheet .person-visual { grid-area: visual; }
+.person-sheet .person-stats { grid-area: stats; }
+.person-sheet .person-facts { grid-area: facts; align-content: start; padding: 0; }
+.person-sheet .detail-actions { grid-area: actions; margin: 0; align-content: start; }
+@media (max-width: 760px) { .person-sheet { grid-template-areas: 'visual' 'actions' 'stats' 'facts'; grid-template-rows: none; } }
+@media (max-width: 760px) {
+  .screen-head { flex-wrap: wrap; align-items: start; }
+  .screen-head > div:first-child { flex: 1 1 100%; }
+  .screen-actions { flex-wrap: wrap; }
+  .main.is-window .goal { grid-template-columns: auto minmax(0, 1fr) auto; padding: 6px 9px; }
+  .main.is-window .goal-copy span, .main.is-window .goal-copy small, .main.is-window .goal-count { display: none; }
+  .main.is-window .goal-side { grid-column: auto; }
+  .member-grid { grid-template-columns: minmax(0, 1fr); padding: 8px; }
+}
