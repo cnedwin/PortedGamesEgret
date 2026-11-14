@@ -145,7 +145,7 @@ export function pendingView(state) {
     const person = state.persons[pending.person];
     if (!person) return (state.pending = null);
     const cost = 150 + person.level * 10;
-    return { kind: 'wish', title: `心愿 · ${person.name}`, portraitId: person.portraitId, expression: 'worried', text: `${person.name}入门已有时日，这天来见掌门，说起一桩放不下的旧事：故人所托未了，需要些盘缠和人手。若能了此心愿，此人愿倾囊相授。`, choices: [
+    return { kind: 'wish', title: `心愿 · ${person.name}`, portraitId: person.portraitId, expression: 'worried', text: `${person.name}入门已有时日，这天来见掌门，说起一桩放不下的旧事：${WANDERER_BY_ID[person.portraitId]?.wish ?? '故人所托未了'}。此去需要些盘缠和人手；若能了此心愿，此人愿倾囊相授。`, choices: [
       { label: '倾力相助', hint: `银 −${cost}，其天赋之效加倍，忠诚 +20`, cost, why: check({ cost }) },
       { label: '好言宽慰', hint: '忠诚 −5', why: '' }] };
   }
