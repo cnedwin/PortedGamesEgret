@@ -5,8 +5,14 @@ export interface KeyboardRow {
     readonly content: DisplayObjectContainer;
     readonly visible: boolean;
 }
-/** Owns registrations only. The application retains the channel and its native bridge. */
-export declare function createUiKeyboardFocus(input: KeyboardInput, prefix: string): Readonly<{
+/**
+ * Owns registrations only. The application retains the channel and its native bridge.
+ *
+ * Without `tabStop` every row that shows is a stop of its own, in the order of the rows. With it
+ * the rows are one stop of that index: Tab enters at the row that last held the focus, or at the
+ * first that shows, and leaves the list from there.
+ */
+export declare function createUiKeyboardFocus(input: KeyboardInput, prefix: string, tabStop?: number): Readonly<{
     validate: (keys: Iterable<string>) => void;
     getFocus: () => Readonly<{
         key: string | undefined;

@@ -125,7 +125,8 @@ export class PlanarReflection3D {
         const scheduled = this.#calls === 0;
         this.#calls = (this.#calls + 1) % interval;
         const drawn = this.#drawn;
-        if (!scheduled && drawn?.renderer === renderer && drawn.scene === scene && drawn.version === this.target.version)
+        if (!scheduled && drawn?.renderer === renderer && drawn.scene === scene && drawn.version === this.target.version
+            && (renderer.reuseReflection?.(this.target) ?? true))
             return true;
         this.#drawn = undefined;
         const shadowsEnabled = renderer.shadowsEnabled, post = renderer.postProcess, postEnabled = post?.enabled;
@@ -146,7 +147,9 @@ export class PlanarReflection3D {
                 touchedPost = true;
                 post.enabled = false;
             }
-            result = renderer.render(scene, this.camera, this.target);
+            result = renderer.renderReflection
+                ? renderer.renderReflection(scene, this.camera, this.target)
+                : renderer.render(scene, this.camera, this.target);
         }
         catch (cause) {
             primary = { cause };

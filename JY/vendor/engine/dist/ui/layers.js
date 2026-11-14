@@ -145,7 +145,7 @@ export function createUiLayerManager(options) {
                     const parent = byEntry.get(entry.anchor.parent), box = entry.anchor.parent.port.anchor(entry.anchor.target);
                     if (parent === undefined || !parent.visible || box === undefined)
                         return undefined;
-                    x = parent.x + box.x;
+                    x = parent.x + box.x + (entry.anchor.align === 'start' ? 0 : (box.width - size.width) / (entry.anchor.align === 'end' ? 1 : 2));
                     const below = parent.y + box.y + box.height + entry.anchor.gap, above = parent.y + box.y - size.height - entry.anchor.gap;
                     y = entry.anchor.placement === 'below' ? below : above;
                     if (y + size.height > viewport.y + viewport.height && above >= viewport.y)
@@ -308,12 +308,12 @@ export function createUiLayerManager(options) {
                 if (rawAnchor !== undefined) {
                     if (!object(rawAnchor) || !object(rawAnchor.target))
                         fail('UI_VALUE_INVALID');
-                    const parentRoot = rawAnchor.root, placement = rawAnchor.placement ?? 'below', gap = number(rawAnchor.gap ?? 4, 0, 4096), target = rawAnchor.target;
+                    const parentRoot = rawAnchor.root, placement = rawAnchor.placement ?? 'below', align = rawAnchor.align ?? 'start', gap = number(rawAnchor.gap ?? 4, 0, 4096), target = rawAnchor.target;
                     const parent = [...entries.values()].find(value => value.root === parentRoot);
-                    if (parent === undefined || !['above', 'below'].includes(placement))
+                    if (parent === undefined || !['above', 'below'].includes(placement) || !['start', 'center', 'end'].includes(align))
                         fail('UI_LAYER_ANCHOR_INVALID');
                     const captured = target.kind === 'leaf' ? Object.freeze({ kind: 'leaf', id: id(target.id) }) : target.kind === 'row' ? Object.freeze({ kind: 'row', listId: id(target.listId), key: id(target.key) }) : fail('UI_LAYER_ANCHOR_INVALID');
-                    anchor = Object.freeze({ parent, target: captured, placement, gap });
+                    anchor = Object.freeze({ parent, target: captured, placement, align, gap });
                 }
                 const initialFocus = rawFocus === undefined ? undefined : Object.freeze({ listId: id(rawFocus.listId), key: id(rawFocus.key) });
                 open();

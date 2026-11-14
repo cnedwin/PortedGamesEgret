@@ -1,1 +1,0 @@
-{"version":3,"file":"RectangleFrame2D.d.ts","sourceRoot":"","sources":["../../rendering/RectangleFrame2D.ts"],"names":[],"mappings":"AAAA,OAAO,KAAK,EAAE,aAAa,EAAE,kBAAkB,EAAE,MAAM,kBAAkB,CAAC;AAE1E,kFAAkF;AAClF,MAAM,MAAM,gBAAgB,GAAG,IAAI,CAAC,aAAa,EAAE,UAAU,GAAG,QAAQ,CAAC,GAAG;IACxE,QAAQ,CAAC,QAAQ,EAAE,SAAS,kBAAkB,EAAE,CAAC;CACpD,CAAC"}

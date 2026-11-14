@@ -1,5 +1,5 @@
 import { EgretError } from '@egret/runtime';
-import type { WebGL2HostErrorCode } from './webgl2Types.js';
+import type { SharedWebGL2TimingPhase, WebGL2HostErrorCode } from './webgl2Types.js';
 import type { NativeUnknownDiagnostics } from './sharedRetentionLedger.js';
 export interface GLNativeResourceDiagnostics {
     pageBytes: number;
@@ -32,6 +32,7 @@ export declare class GLNativeSession {
     readonly context: WebGL2RenderingContext;
     private readonly gate;
     private readonly diagnostics?;
+    private readonly timing?;
     readonly gl: WebGL2RenderingContext;
     readonly owners: Set<GLNativeOwner>;
     invalidated: boolean;
@@ -39,8 +40,13 @@ export declare class GLNativeSession {
         readonly cause: unknown;
     } | undefined;
     recordOwners: GLNativeOwner[] | undefined;
+    timingSerial: number | null;
     private readonly calls;
-    constructor(context: WebGL2RenderingContext, gate: () => void, diagnostics?: GLNativeResourceDiagnostics | undefined);
+    private readonly qualifiedColorTargets;
+    private readonly qualifiedDepthTargets;
+    constructor(context: WebGL2RenderingContext, gate: () => void, diagnostics?: GLNativeResourceDiagnostics | undefined, timing?: ((phase: SharedWebGL2TimingPhase, started: number, serial: number | null) => void) | undefined);
+    startTiming(): number | undefined;
+    finishTiming(phase: SharedWebGL2TimingPhase, start: number | undefined): void;
     /** Observe original owner transitions; established unknown remains a once-only obligation. */
     observeResource(owner: GLNativeOwner): void;
     create(kind: GLNativeKind, bytes?: number, parameter?: number, page?: {
@@ -55,7 +61,8 @@ export declare class GLNativeSession {
     };
     check(): void;
     program(vertex: string, fragment: string): WebGLProgram;
-    block(program: WebGLProgram, name: string, members: readonly string[], bytes: number): void;
+    block(program: WebGLProgram, name: string, members: readonly string[], bytes: number, binding?: number): void;
+    workingAttachment(color: WebGLTexture, depth: WebGLRenderbuffer | null): void;
     attachment(working: boolean): void;
     reset(width: number, height: number): void;
     texture(owner: GLNativeOwner, width: number, height: number, working: boolean): void;

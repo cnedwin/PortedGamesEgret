@@ -1,5 +1,5 @@
 import type { SequenceRegion } from './sequenceClip.js';
-import type { TextureRegion2D } from "@egret/contracts";
+import type { ImageData2D, TextureRegion2D } from "@egret/contracts";
 import { AssetLease } from "./AssetLease.js";
 import { DisplayObject } from "./DisplayObject.js";
 import type { BitmapCaptureState } from "./bitmapDisplayState.js";
@@ -30,6 +30,11 @@ export declare function bitmapCaptureState(node: DisplayObject): BitmapCaptureSt
 export declare function readBitmapBinding(node: Bitmap): BitmapCaptureState | undefined;
 /** Exact entitlement precedes value/live checks; public value getters are not authority. */
 export declare function readBitmapImage(lease: AssetLease<Texture>): TextureSnapshot2D;
+/**
+ * The image of a lease that `readBitmapImage` has admitted before: the same entitlement, value and live
+ * checks with the same refusals, and no record made. A lease stays a lease, so that one check is not repeated.
+ */
+export declare function readBitmapSource(lease: AssetLease<Texture>): ImageData2D;
 /** Private complete-frame bridge; public crop setters deliberately ignore layout. */
 export declare function applyBitmapAtlasFrame(bitmap: Bitmap, region: SequenceRegion): void;
 //# sourceMappingURL=Bitmap.d.ts.map

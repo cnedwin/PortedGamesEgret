@@ -29,16 +29,21 @@ export class GLNativeSession {
     context;
     gate;
     diagnostics;
+    timing;
     gl;
     owners = new Set();
     invalidated = false;
     cleanupFailure;
     recordOwners;
+    timingSerial = null;
     calls = new Map();
-    constructor(context, gate, diagnostics) {
+    qualifiedColorTargets = new WeakSet();
+    qualifiedDepthTargets = new WeakMap();
+    constructor(context, gate, diagnostics, timing) {
         this.context = context;
         this.gate = gate;
         this.diagnostics = diagnostics;
+        this.timing = timing;
         const captured = Object.create(null);
         // Capture only the finite methods used by this executor. Never enumerate a native context.
         for (const name of [...METHODS, ...KINDS.flatMap(kind => [kind === 'Sync' ? 'fenceSync' : 'create' + kind, 'delete' + kind])]) {
@@ -46,8 +51,18 @@ export class GLNativeSession {
             gate();
             if (typeof candidate !== 'function')
                 throw new TypeError(name);
-            const call = candidate.bind(context);
-            this.calls.set(name, call);
+            const raw = candidate.bind(context);
+            this.calls.set(name, raw);
+            // Specialize once so ordinary native draws and binds never read the clock.
+            const call = timing && name === 'texSubImage2D' ? (...args) => {
+                const start = this.recordOwners ? this.startTiming() : undefined;
+                try {
+                    return raw(...args);
+                }
+                finally {
+                    this.finishTiming('texture-upload', start);
+                }
+            } : raw;
             Object.defineProperty(captured, name, { value: (...args) => {
                     gate();
                     const value = call(...args);
@@ -92,6 +107,25 @@ export class GLNativeSession {
         };
         Object.assign(captured, constants);
         this.gl = captured;
+    }
+    startTiming() {
+        if (!this.timing)
+            return undefined;
+        try {
+            const value = performance.now();
+            return Number.isFinite(value) ? value : undefined;
+        }
+        catch {
+            return undefined;
+        }
+    }
+    finishTiming(phase, start) {
+        // Optional observations never alter the native result or resource ownership.
+        if (start !== undefined)
+            try {
+                this.timing(phase, start, this.timingSerial);
+            }
+            catch { }
     }
     /** Observe original owner transitions; established unknown remains a once-only obligation. */
     observeResource(owner) {
@@ -170,7 +204,19 @@ export class GLNativeSession {
         try {
             this.calls.get('delete' + owner.kind)(owner.value);
             const lost = this.calls.get('isContextLost')();
-            const error = this.calls.get('getError')();
+            const query = this.calls.get('getError');
+            let error;
+            if (this.timing && owner.kind === 'Sync') {
+                const start = this.startTiming();
+                try {
+                    error = query();
+                }
+                finally {
+                    this.finishTiming('sync-delete-error-query', start);
+                }
+            }
+            else
+                error = query();
             if (lost === true) {
                 this.invalidated = true;
                 owner.outcome = 'context-invalidated';
@@ -242,7 +288,7 @@ export class GLNativeSession {
             throw glFailure('WEBGL2_CLOSE_UNSAFE', this.cleanupFailure?.cause);
         return program;
     }
-    block(program, name, members, bytes) {
+    block(program, name, members, bytes, binding = 0) {
         const gl = this.gl, index = gl.getUniformBlockIndex(program, name);
         if (index === gl.INVALID_INDEX || gl.getActiveUniformBlockParameter(program, index, gl.UNIFORM_BLOCK_DATA_SIZE) !== bytes)
             throw glFailure('WEBGL2_CONTEXT_LIMIT');
@@ -252,20 +298,48 @@ export class GLNativeSession {
         const offsets = gl.getActiveUniforms(program, indices, gl.UNIFORM_OFFSET);
         if (offsets.length !== members.length || offsets.some((value, i) => value !== i * 16))
             throw glFailure('WEBGL2_CONTEXT_LIMIT');
-        gl.uniformBlockBinding(program, index, 0);
+        gl.uniformBlockBinding(program, index, binding);
+    }
+    workingAttachment(color, depth) {
+        // The host owns level-zero immutable color storage and allocates depth once per owner.
+        // Weak keys keep the proof in this generation without retaining released targets.
+        if (depth === null) {
+            if (this.qualifiedColorTargets.has(color)) {
+                this.check();
+                return;
+            }
+            this.attachment(true);
+            this.qualifiedColorTargets.add(color);
+            return;
+        }
+        let qualified = this.qualifiedDepthTargets.get(color);
+        if (qualified?.has(depth)) {
+            this.check();
+            return;
+        }
+        this.attachment(true);
+        if (!qualified)
+            this.qualifiedDepthTargets.set(color, qualified = new WeakSet());
+        qualified.add(depth);
     }
     attachment(working) {
         const gl = this.gl, attachment = working ? gl.COLOR_ATTACHMENT0 : gl.BACK;
-        for (const [name, expected] of [
-            [gl.FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, working ? gl.SRGB : gl.LINEAR],
-            [gl.FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, gl.UNSIGNED_NORMALIZED],
-            [gl.FRAMEBUFFER_ATTACHMENT_RED_SIZE, 8], [gl.FRAMEBUFFER_ATTACHMENT_GREEN_SIZE, 8],
-            [gl.FRAMEBUFFER_ATTACHMENT_BLUE_SIZE, 8], [gl.FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, 8],
-        ])
-            if (gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, attachment, name) !== expected)
+        const start = this.recordOwners ? this.startTiming() : undefined;
+        try {
+            for (const [name, expected] of [
+                [gl.FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, working ? gl.SRGB : gl.LINEAR],
+                [gl.FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, gl.UNSIGNED_NORMALIZED],
+                [gl.FRAMEBUFFER_ATTACHMENT_RED_SIZE, 8], [gl.FRAMEBUFFER_ATTACHMENT_GREEN_SIZE, 8],
+                [gl.FRAMEBUFFER_ATTACHMENT_BLUE_SIZE, 8], [gl.FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, 8],
+            ])
+                if (gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, attachment, name) !== expected)
+                    throw glFailure('WEBGL2_FORMAT_UNSUPPORTED');
+            if (working && gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
                 throw glFailure('WEBGL2_FORMAT_UNSUPPORTED');
-        if (working && gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE)
-            throw glFailure('WEBGL2_FORMAT_UNSUPPORTED');
+        }
+        finally {
+            this.finishTiming(working ? 'working-framebuffer-validation' : 'default-framebuffer-validation', start);
+        }
         this.check();
     }
     reset(width, height) {

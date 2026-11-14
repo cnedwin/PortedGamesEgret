@@ -28,7 +28,7 @@ export interface TextureRegion2D {
 }
 export declare const IMAGE_LIMITS_2D: Readonly<{
     readonly maxSourceEdge: 4096;
-    readonly maxSourcePixels: 1048576;
+    readonly maxSourcePixels: 4194304;
     readonly maxImagesPerFrame: 64;
     readonly maxViewsPerFrame: 128;
     readonly maxImageTableBytes: 16777216;

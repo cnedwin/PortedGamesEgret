@@ -17,9 +17,6 @@ interface SharedHostResourceCurrent {
         readonly readbackCreditBytes: number;
         readonly geometryCreditBytes: number;
         readonly colorCreditBytes: number;
-        readonly sceneCreditBytes: number;
-        readonly uniformCreditBytes: number;
-        readonly depthCreditBytes: number;
     };
     readonly cpu: {
         readonly canonicalBytes: number;

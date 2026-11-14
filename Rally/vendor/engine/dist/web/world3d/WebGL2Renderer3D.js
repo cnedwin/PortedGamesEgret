@@ -7,6 +7,7 @@ import { CubeTexture3D, RenderTarget3D } from '../../rendering/world3d/Texture3D
 import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, planShadows3D, writeFrameBlock3D } from './frame3D.js';
 import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D } from './post3D.js';
 import { PostChainWebGL23D } from './postWebGL23D.js';
+import { WebGL2FrameMetrics3D } from './webGL2FrameMetrics3D.js';
 import { GpuResources3D } from './gpuResources3D.js';
 import { MAX_MORPH_INFLUENCES_3D, SKYBOX_SHADER_3D, TEXTURE_UNITS_3D, buildMaterialShader3D } from './shaders3D.js';
 // Program variant bits contributed by geometry, mesh and frame state.
@@ -27,7 +28,11 @@ export class WebGL2Renderer3D {
     viewport;
     autoClear = true;
     #post;
-    #inPost = false;
+    #frameMetrics;
+    #viewKind = 'main';
+    #reflectionTarget;
+    #validReflections = new WeakSet();
+    #viewIndex = -1;
     #frameToneMapping = 'none';
     info = { frame: 0, drawCalls: 0, triangles: 0, visited: 0, culled: 0, shadowMaps: 0, programs: 0, geometries: 0, textures: 0 };
     #gl;
@@ -39,11 +44,10 @@ export class WebGL2Renderer3D {
     #resources;
     #frameBuffer = null;
     #emptyVao = null;
-    #shadowTexture = null;
-    #shadowFramebuffer = null;
+    #shadowAtlas;
+    #shadowFallback;
     #sceneDepth;
     #sceneDepthReady = false;
-    #shadowSize = 0;
     #shadowAtlasSize;
     #shadowCount = 0;
     #lost = false;
@@ -77,6 +81,7 @@ export class WebGL2Renderer3D {
             throw new World3DError('WORLD3D_CONTEXT_UNAVAILABLE', 'webgl2');
         this.canvas = canvas;
         this.#gl = gl;
+        this.#frameMetrics = new WebGL2FrameMetrics3D(gl);
         this.toneMapping = options.toneMapping ?? 'aces';
         this.exposure = options.exposure ?? 1;
         this.shadowsEnabled = options.shadows ?? true;
@@ -86,6 +91,8 @@ export class WebGL2Renderer3D {
             // Without preventDefault the browser never restores the context.
             event.preventDefault();
             this.#lost = true;
+            this.#frameMetrics.reset(true);
+            this.#validReflections = new WeakSet();
             options.onContextLost?.();
         };
         this.#onRestored = () => {
@@ -94,11 +101,11 @@ export class WebGL2Renderer3D {
             this.#post?.dispose(true);
             this.#post = undefined;
             this.clearMaterialPrograms();
-            this.#frameBuffer = this.#emptyVao = this.#shadowTexture = this.#shadowFramebuffer = null;
+            this.#frameBuffer = this.#emptyVao = null;
+            this.#shadowAtlas = this.#shadowFallback = undefined;
             this.#sceneDepth = undefined;
             this.#sceneDepthReady = false;
             this.#grab = undefined;
-            this.#shadowSize = 0;
             this.resetState();
             this.#lost = false;
             options.onContextRestored?.();
@@ -143,13 +150,63 @@ export class WebGL2Renderer3D {
      */
     get autoInstancing() { return this.#list.autoInstanceThreshold > 1; }
     set autoInstancing(value) { this.#list.autoInstanceThreshold = value ? 8 : 0; }
+    /** Measure the WebGL2 renderer calls made synchronously by one application frame. */
+    measureFrame(draw, options) {
+        if (this.#disposed)
+            throw new World3DError('WORLD3D_DISPOSED', 'renderer');
+        return this.#frameMetrics.capture(draw, options?.gpuTiming === true);
+    }
+    /** Resolve ready GPU samples without waiting. Call from a later browser turn. */
+    pollFrameTimings() { this.#frameMetrics.poll(); }
     render(scene, camera, target) {
+        return this.renderMeasuredView(scene, camera, target, target !== undefined && this.#reflectionTarget === target ? 'reflection' : target ? 'offscreen' : 'main');
+    }
+    /** Draw the view prepared by PlanarReflection3D and identify it in frame metrics. */
+    renderReflection(scene, camera, target) {
+        const saved = this.#reflectionTarget;
+        this.#reflectionTarget = target;
+        try {
+            const rendered = this.render(scene, camera, target);
+            if (rendered) {
+                this.#validReflections.add(target);
+                this.#frameMetrics.recordReflection('rendered');
+            }
+            return rendered;
+        }
+        finally {
+            this.#reflectionTarget = saved;
+        }
+    }
+    /** The retained mirror image must still belong to the live WebGL2 context. */
+    reuseReflection(target) {
+        if (this.#disposed || this.isContextLost || !this.#validReflections.has(target))
+            return false;
+        this.#frameMetrics.recordReflection('reused');
+        return true;
+    }
+    renderMeasuredView(scene, camera, target, kind) {
         if (this.#disposed)
             throw new World3DError('WORLD3D_DISPOSED', 'renderer');
         if (this.isContextLost)
             return false;
-        if (this.postProcess.enabled && !this.#inPost)
-            return this.renderPost(scene, camera, target);
+        const viewIndex = this.#frameMetrics.beginView();
+        if (viewIndex < 0)
+            return this.postProcess.enabled ? this.renderPost(scene, camera, target) : this.renderView(scene, camera, target);
+        const start = performance.now(), oldIndex = this.#viewIndex, oldKind = this.#viewKind;
+        this.#viewIndex = viewIndex;
+        this.#viewKind = kind;
+        try {
+            return this.postProcess.enabled ? this.renderPost(scene, camera, target) : this.renderView(scene, camera, target);
+        }
+        finally {
+            this.#viewIndex = oldIndex;
+            this.#viewKind = oldKind;
+            this.#frameMetrics.endView(start);
+        }
+    }
+    renderView(scene, camera, target, passKind = 'color') {
+        if (target?.isDisposed)
+            throw new World3DError('WORLD3D_DISPOSED', 'render target');
         const gl = this.#gl, list = this.#list, info = this.info;
         // Half-float targets keep scene-referred light; tone mapping happens when they are displayed.
         const toneMapping = this.#frameToneMapping = target?.format === 'rgba16f' ? 'none' : this.toneMapping;
@@ -160,69 +217,73 @@ export class WebGL2Renderer3D {
         info.culled = list.stats.culled;
         this.resetState();
         this.bindFrameBlock();
-        this.ensureShadowAtlas();
         this.renderShadows(camera);
         // Surfaces that fade near solid geometry read its depth, drawn once up front.
         this.#sceneDepthReady = list.transparent.some(item => item.material.softness > 0) && this.renderSceneDepth(camera, target);
-        if (target) {
-            if (target.isDisposed)
-                throw new World3DError('WORLD3D_DISPOSED', 'render target');
-            const entry = this.#resources.target(target);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, entry.framebuffer);
-            gl.viewport(0, 0, target.width, target.height);
-        }
-        else {
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-            gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
-        }
-        this.#linearOutput = target !== undefined;
-        const background = scene.background;
-        gl.depthMask(true);
-        this.#depthWrite = true;
-        // sRGB targets encode on write, so they are cleared with linear values.
-        const encode = target ? (value) => value : linearToSrgb;
-        if (Array.isArray(background))
-            gl.clearColor(encode(background[0]), encode(background[1]), encode(background[2]), 1);
-        else
-            gl.clearColor(0, 0, 0, (target || this.#alpha) && !background ? 0 : 1);
-        gl.clear(this.autoClear ? gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT : gl.DEPTH_BUFFER_BIT);
-        const view = this.viewport;
-        if (view) {
-            const fullWidth = target ? target.width : gl.drawingBufferWidth, fullHeight = target ? target.height : gl.drawingBufferHeight;
-            const x = Math.round(view[0] * fullWidth), y = Math.round(view[1] * fullHeight), w = Math.max(Math.round(view[2] * fullWidth), 1), h = Math.max(Math.round(view[3] * fullHeight), 1);
-            gl.viewport(x, y, w, h);
-            gl.enable(gl.SCISSOR_TEST);
-            gl.scissor(x, y, w, h);
-        }
-        let environmentMaxMip = 0;
-        this.#lastEnvironment = scene.environment;
-        if (scene.environment)
-            environmentMaxMip = this.#resources.bindCube(TEXTURE_UNITS_3D.environment, scene.environment);
-        writeFrameBlock3D(this.#frameData, scene, camera, list, this.#shadowSlots, { exposure: this.exposure, toneMapping, environmentMaxMip });
-        this.#frameData[FRAME_OFFSETS_3D.clipInfo + 2] = view ? view[2] : 1;
-        this.#frameData[FRAME_OFFSETS_3D.clipInfo + 3] = view ? view[3] : 1;
-        this.uploadFrameBlock();
-        const flags = (scene.fog ? V.fog : 0) | (toneMapping !== 'none' ? V.toneMapped : 0) | (scene.environment ? V.environment : 0)
-            | (target ? V.linearOutput : 0);
-        for (const item of list.opaque)
-            this.draw(item, flags);
-        if (background instanceof CubeTexture3D)
-            this.drawSkybox(background, scene.backgroundIntensity, camera);
-        // See-through surfaces read a copy of everything drawn so far.
-        this.#grabbed = false;
-        for (const item of list.transparent)
-            if (item.material.transmission > 0 && item.material.shading === 'standard') {
-                this.#grabbed = this.grabScene(target);
-                break;
+        const view = this.viewport, width = target?.width ?? gl.drawingBufferWidth, height = target?.height ?? gl.drawingBufferHeight;
+        const viewWidth = view ? Math.max(Math.round(view[2] * width), 1) : width;
+        const viewHeight = view ? Math.max(Math.round(view[3] * height), 1) : height;
+        const pass = this.#frameMetrics.begin(this.#viewKind, this.#viewIndex, passKind, width, height);
+        try {
+            if (target) {
+                const entry = this.#resources.target(target);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, entry.framebuffer);
+                gl.viewport(0, 0, target.width, target.height);
             }
-        for (const item of list.transparent)
-            this.draw(item, flags);
-        this.#grabbed = false;
-        gl.bindVertexArray(null);
-        if (view)
-            gl.disable(gl.SCISSOR_TEST);
-        if (target)
-            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            else {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+                gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+            }
+            this.#linearOutput = target !== undefined;
+            const background = scene.background;
+            gl.depthMask(true);
+            this.#depthWrite = true;
+            // sRGB targets encode on write, so they are cleared with linear values.
+            const encode = target ? (value) => value : linearToSrgb;
+            if (Array.isArray(background))
+                gl.clearColor(encode(background[0]), encode(background[1]), encode(background[2]), 1);
+            else
+                gl.clearColor(0, 0, 0, (target || this.#alpha) && !background ? 0 : 1);
+            gl.clear(this.autoClear ? gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT : gl.DEPTH_BUFFER_BIT);
+            if (view) {
+                const x = Math.round(view[0] * width), y = Math.round(view[1] * height);
+                gl.viewport(x, y, viewWidth, viewHeight);
+                gl.enable(gl.SCISSOR_TEST);
+                gl.scissor(x, y, viewWidth, viewHeight);
+            }
+            let environmentMaxMip = 0;
+            this.#lastEnvironment = scene.environment;
+            if (scene.environment)
+                environmentMaxMip = this.#resources.bindCube(TEXTURE_UNITS_3D.environment, scene.environment);
+            writeFrameBlock3D(this.#frameData, scene, camera, list, this.#shadowSlots, { exposure: this.exposure, toneMapping, environmentMaxMip });
+            this.#frameData[FRAME_OFFSETS_3D.clipInfo + 2] = view ? view[2] : 1;
+            this.#frameData[FRAME_OFFSETS_3D.clipInfo + 3] = view ? view[3] : 1;
+            this.uploadFrameBlock();
+            const flags = (scene.fog ? V.fog : 0) | (toneMapping !== 'none' ? V.toneMapped : 0) | (scene.environment ? V.environment : 0)
+                | (target ? V.linearOutput : 0);
+            for (const item of list.opaque)
+                this.draw(item, flags);
+            if (background instanceof CubeTexture3D)
+                this.drawSkybox(background, scene.backgroundIntensity, camera);
+            // See-through surfaces read a copy of everything drawn so far.
+            this.#grabbed = false;
+            for (const item of list.transparent)
+                if (item.material.transmission > 0 && item.material.shading === 'standard') {
+                    this.#grabbed = this.grabScene(target);
+                    break;
+                }
+            for (const item of list.transparent)
+                this.draw(item, flags);
+            this.#grabbed = false;
+            gl.bindVertexArray(null);
+            if (view)
+                gl.disable(gl.SCISSOR_TEST);
+            if (target)
+                gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+        }
+        finally {
+            this.#frameMetrics.end(pass);
+        }
         this.#resources.prune(list.frame);
         const counts = this.#resources.counts;
         info.programs = counts.programs;
@@ -239,14 +300,8 @@ export class WebGL2Renderer3D {
         const width = target ? target.width : gl.drawingBufferWidth, height = target ? target.height : gl.drawingBufferHeight;
         const post = this.#post ??= new PostChainWebGL23D(gl, this.#resources);
         post.scene.setSize(Math.max(width, 1), Math.max(height, 1));
-        this.#inPost = true;
-        try {
-            if (!this.render(scene, camera, post.scene))
-                return false;
-        }
-        finally {
-            this.#inPost = false;
-        }
+        if (this.isContextLost || !this.renderView(scene, camera, post.scene))
+            return false;
         const output = target ? this.#resources.target(target).framebuffer : null;
         // 8-bit targets encode sRGB on write and half-float targets store linear light; only the canvas needs encoded values.
         // Outlined objects are drawn once more, flat white, into a mask the composite traces.
@@ -258,15 +313,13 @@ export class WebGL2Renderer3D {
             scene.overrideMaterial = post.maskMaterial;
             scene.background = [0, 0, 0];
             this.shadowsEnabled = false;
-            this.#inPost = true;
-            // The counters describe the scene, not this helper pass.
+            // Legacy scene counters exclude the helper pass, which frame metrics include.
             const counted = { ...this.info };
             try {
-                if (this.render(scene, camera, post.mask))
+                if (!this.isContextLost && this.renderView(scene, camera, post.mask, 'outline-mask'))
                     maskTexture = this.#resources.target(post.mask).color;
             }
             finally {
-                this.#inPost = false;
                 camera.layerMask = saved.layerMask;
                 scene.overrideMaterial = saved.override;
                 scene.background = saved.background;
@@ -275,7 +328,15 @@ export class WebGL2Renderer3D {
             }
         }
         const sceneEntry = this.#resources.target(post.scene);
-        this.info.drawCalls += post.run(sceneEntry.color, sceneEntry.depthTexture, maskTexture, postViewFromCamera3D(camera), width, height, output, target !== undefined, this.postProcess, target?.format === 'rgba16f' ? 'none' : this.toneMapping, this.#emptyVao ??= gl.createVertexArray());
+        const postPass = this.#frameMetrics.begin(this.#viewKind, this.#viewIndex, 'postprocess', width, height);
+        try {
+            const draws = post.run(sceneEntry.color, sceneEntry.depthTexture, maskTexture, postViewFromCamera3D(camera), width, height, output, target !== undefined, this.postProcess, target?.format === 'rgba16f' ? 'none' : this.toneMapping, this.#emptyVao ??= gl.createVertexArray());
+            this.info.drawCalls += draws;
+            this.#frameMetrics.record(draws, draws);
+        }
+        finally {
+            this.#frameMetrics.end(postPass);
+        }
         this.resetState();
         return true;
     }
@@ -372,20 +433,19 @@ export class WebGL2Renderer3D {
     }
     // ---- shadows -------------------------------------------------------------
     #shadowSlots = new Map();
-    ensureShadowAtlas() {
+    createShadowAtlas(size) {
         const gl = this.#gl;
-        // A 1x1 atlas keeps the comparison sampler complete when shadows are off.
-        const wanted = this.shadowsEnabled ? this.#shadowAtlasSize : 1;
-        if (this.#shadowTexture && this.#shadowSize === wanted)
-            return;
-        if (this.#shadowTexture)
-            gl.deleteTexture(this.#shadowTexture);
-        if (this.#shadowFramebuffer)
-            gl.deleteFramebuffer(this.#shadowFramebuffer);
         const texture = gl.createTexture(), framebuffer = gl.createFramebuffer();
+        if (!texture || !framebuffer) {
+            if (texture)
+                gl.deleteTexture(texture);
+            if (framebuffer)
+                gl.deleteFramebuffer(framebuffer);
+            throw new World3DError('WORLD3D_CONTEXT_LOST', 'shadow atlas');
+        }
         gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.shadow);
         gl.bindTexture(gl.TEXTURE_2D, texture);
-        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, wanted, wanted);
+        gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, size, size);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
@@ -400,103 +460,119 @@ export class WebGL2Renderer3D {
         gl.depthMask(true);
         gl.clear(gl.DEPTH_BUFFER_BIT);
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        this.#shadowTexture = texture;
-        this.#shadowFramebuffer = framebuffer;
-        this.#shadowSize = wanted;
+        return { texture, framebuffer, size };
     }
     renderShadows(camera) {
-        const gl = this.#gl;
+        const gl = this.#gl, enabled = this.shadowsEnabled;
+        // A shadow-free reflection can run before the main view. Keep its comparison sampler complete
+        // without replacing the full atlas needed by the next pass.
+        const atlas = enabled
+            ? (this.#shadowAtlas ??= this.createShadowAtlas(this.#shadowAtlasSize))
+            : (this.#shadowFallback ??= this.createShadowAtlas(1));
         this.#shadowCount = 0;
         gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.shadow);
-        gl.bindTexture(gl.TEXTURE_2D, this.#shadowTexture);
-        const plans = planShadows3D(this.#frameData, this.#list, this.#shadowSize, this.shadowsEnabled, false, this.#shadowSlots, camera);
+        gl.bindTexture(gl.TEXTURE_2D, atlas.texture);
+        const plans = planShadows3D(this.#frameData, this.#list, atlas.size, enabled, false, this.#shadowSlots, camera);
         if (plans.length === 0)
             return;
-        const size = this.#shadowSize;
-        // Unbind the atlas while rendering into it to avoid a feedback loop.
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, this.#shadowFramebuffer);
-        gl.viewport(0, 0, size, size);
-        gl.depthMask(true);
-        this.#depthWrite = true;
-        gl.clear(gl.DEPTH_BUFFER_BIT);
-        gl.enable(gl.SCISSOR_TEST);
-        gl.enable(gl.POLYGON_OFFSET_FILL);
-        gl.polygonOffset(1.5, 4);
-        gl.colorMask(false, false, false, false);
-        for (const plan of plans) {
-            gl.viewport(plan.x, plan.y, plan.tile, plan.tile);
-            gl.scissor(plan.x, plan.y, plan.tile, plan.tile);
-            this.#lightMatrix = plan.matrix;
-            for (const mesh of plan.casters)
-                this.drawDepth(mesh);
+        const pass = this.#viewIndex < 0 ? undefined : this.#frameMetrics.begin(this.#viewKind, this.#viewIndex, 'shadow', atlas.size, atlas.size, plans.map(plan => plan.tile));
+        try {
+            // Unbind the atlas while rendering into it to avoid a feedback loop.
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, atlas.framebuffer);
+            gl.viewport(0, 0, atlas.size, atlas.size);
+            gl.depthMask(true);
+            this.#depthWrite = true;
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            gl.enable(gl.SCISSOR_TEST);
+            gl.enable(gl.POLYGON_OFFSET_FILL);
+            gl.polygonOffset(1.5, 4);
+            gl.colorMask(false, false, false, false);
+            for (const plan of plans) {
+                gl.viewport(plan.x, plan.y, plan.tile, plan.tile);
+                gl.scissor(plan.x, plan.y, plan.tile, plan.tile);
+                this.#lightMatrix = plan.matrix;
+                for (const mesh of plan.casters)
+                    this.drawDepth(mesh);
+            }
+            gl.colorMask(true, true, true, true);
+            gl.disable(gl.SCISSOR_TEST);
+            gl.disable(gl.POLYGON_OFFSET_FILL);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.shadow);
+            gl.bindTexture(gl.TEXTURE_2D, atlas.texture);
+            this.#shadowCount = plans.length;
+            this.#program = undefined;
+            this.#appliedProgram = undefined;
         }
-        gl.colorMask(true, true, true, true);
-        gl.disable(gl.SCISSOR_TEST);
-        gl.disable(gl.POLYGON_OFFSET_FILL);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.shadow);
-        gl.bindTexture(gl.TEXTURE_2D, this.#shadowTexture);
-        this.#shadowCount = plans.length;
-        this.#program = undefined;
-        this.#appliedProgram = undefined;
+        finally {
+            this.#frameMetrics.end(pass);
+        }
     }
     /** Draw the depth of the opaque scene, as the camera sees it, into a texture of the output's size. */
     renderSceneDepth(camera, target) {
         const gl = this.#gl, width = target ? target.width : gl.drawingBufferWidth, height = target ? target.height : gl.drawingBufferHeight;
-        let entry = this.#sceneDepth;
-        if (!entry || entry.width !== width || entry.height !== height) {
-            if (entry) {
-                gl.deleteTexture(entry.texture);
-                gl.deleteFramebuffer(entry.framebuffer);
-                this.#sceneDepth = undefined;
-            }
-            const texture = gl.createTexture(), framebuffer = gl.createFramebuffer();
-            if (!texture || !framebuffer) {
-                if (texture)
-                    gl.deleteTexture(texture);
-                if (framebuffer)
-                    gl.deleteFramebuffer(framebuffer);
-                return false;
-            }
-            gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.sceneDepth);
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, width, height);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
-            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, texture, 0);
-            gl.drawBuffers([gl.NONE]);
-            gl.readBuffer(gl.NONE);
-            entry = this.#sceneDepth = { texture, framebuffer, width, height };
-        }
-        // The texture must not be bound for reading while it is drawn into.
-        gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.sceneDepth);
-        gl.bindTexture(gl.TEXTURE_2D, null);
-        gl.bindFramebuffer(gl.FRAMEBUFFER, entry.framebuffer);
         const view = this.viewport;
-        if (view)
-            gl.viewport(Math.round(view[0] * width), Math.round(view[1] * height), Math.max(Math.round(view[2] * width), 1), Math.max(Math.round(view[3] * height), 1));
-        else
-            gl.viewport(0, 0, width, height);
-        gl.depthMask(true);
-        this.#depthWrite = true;
-        gl.clearDepth(1);
-        gl.clear(gl.DEPTH_BUFFER_BIT);
-        this.#lightMatrix = camera.viewProjectionMatrix;
-        // Keep the camera view's face culling and material offset.
-        for (const item of this.#list.opaque) {
-            if (item.geometry.topology === 'triangles' && item.material.depthWrite && !item.material.billboard && !item.material.screenSpace)
-                this.draw(item, 0, 'scene');
+        const viewWidth = view ? Math.max(Math.round(view[2] * width), 1) : width;
+        const viewHeight = view ? Math.max(Math.round(view[3] * height), 1) : height;
+        const pass = this.#frameMetrics.begin(this.#viewKind, this.#viewIndex, 'depth-prepass', width, height);
+        try {
+            let entry = this.#sceneDepth;
+            if (!entry || entry.width !== width || entry.height !== height) {
+                if (entry) {
+                    gl.deleteTexture(entry.texture);
+                    gl.deleteFramebuffer(entry.framebuffer);
+                    this.#sceneDepth = undefined;
+                }
+                const texture = gl.createTexture(), framebuffer = gl.createFramebuffer();
+                if (!texture || !framebuffer) {
+                    if (texture)
+                        gl.deleteTexture(texture);
+                    if (framebuffer)
+                        gl.deleteFramebuffer(framebuffer);
+                    return false;
+                }
+                gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.sceneDepth);
+                gl.bindTexture(gl.TEXTURE_2D, texture);
+                gl.texStorage2D(gl.TEXTURE_2D, 1, gl.DEPTH_COMPONENT24, width, height);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.bindFramebuffer(gl.FRAMEBUFFER, framebuffer);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, texture, 0);
+                gl.drawBuffers([gl.NONE]);
+                gl.readBuffer(gl.NONE);
+                entry = this.#sceneDepth = { texture, framebuffer, width, height };
+            }
+            // The texture must not be bound for reading while it is drawn into.
+            gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.sceneDepth);
+            gl.bindTexture(gl.TEXTURE_2D, null);
+            gl.bindFramebuffer(gl.FRAMEBUFFER, entry.framebuffer);
+            if (view)
+                gl.viewport(Math.round(view[0] * width), Math.round(view[1] * height), viewWidth, viewHeight);
+            else
+                gl.viewport(0, 0, width, height);
+            gl.depthMask(true);
+            this.#depthWrite = true;
+            gl.clearDepth(1);
+            gl.clear(gl.DEPTH_BUFFER_BIT);
+            this.#lightMatrix = camera.viewProjectionMatrix;
+            // Keep the camera view's face culling and material offset.
+            for (const item of this.#list.opaque) {
+                if (item.geometry.topology === 'triangles' && item.material.depthWrite && !item.material.billboard && !item.material.screenSpace)
+                    this.draw(item, 0, 'scene');
+            }
+            gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+            gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.sceneDepth);
+            gl.bindTexture(gl.TEXTURE_2D, entry.texture);
+            this.#program = undefined;
+            this.#appliedProgram = undefined;
+            return true;
         }
-        gl.bindFramebuffer(gl.FRAMEBUFFER, null);
-        gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.sceneDepth);
-        gl.bindTexture(gl.TEXTURE_2D, entry.texture);
-        this.#program = undefined;
-        this.#appliedProgram = undefined;
-        return true;
+        finally {
+            this.#frameMetrics.end(pass);
+        }
     }
     depthItem = { mesh: undefined, geometry: undefined, material: undefined, start: 0, count: 0, depth: 0 };
     drawDepth(mesh) {
@@ -904,6 +980,8 @@ export class WebGL2Renderer3D {
             gl.drawArraysInstanced(mode, item.start, item.count, instances);
         else
             gl.drawArrays(mode, item.start, item.count);
+        if (this.#viewIndex >= 0)
+            this.#frameMetrics.record(1, mode === gl.TRIANGLES ? Math.floor(item.count / 3) * instances : 0);
         if (!depthOnly) {
             this.info.drawCalls++;
             if (mode === gl.TRIANGLES)
@@ -968,6 +1046,8 @@ export class WebGL2Renderer3D {
         this.#depthWrite = false;
         gl.bindVertexArray(this.#emptyVao ??= gl.createVertexArray());
         gl.drawArrays(gl.TRIANGLES, 0, 3);
+        if (this.#viewIndex >= 0)
+            this.#frameMetrics.record(1, 1);
         this.info.drawCalls++;
         // Restore the scene environment binding the skybox may have replaced.
         const environment = this.#lastEnvironment;
@@ -1028,6 +1108,7 @@ export class WebGL2Renderer3D {
         if (this.#disposed)
             return;
         this.#disposed = true;
+        this.#frameMetrics.reset(this.isContextLost);
         const gl = this.#gl;
         this.canvas.removeEventListener('webglcontextlost', this.#onLost);
         this.canvas.removeEventListener('webglcontextrestored', this.#onRestored);
@@ -1046,10 +1127,13 @@ export class WebGL2Renderer3D {
             gl.deleteBuffer(this.#frameBuffer);
         if (this.#emptyVao)
             gl.deleteVertexArray(this.#emptyVao);
-        if (this.#shadowTexture)
-            gl.deleteTexture(this.#shadowTexture);
-        if (this.#shadowFramebuffer)
-            gl.deleteFramebuffer(this.#shadowFramebuffer);
+        for (const atlas of [this.#shadowAtlas, this.#shadowFallback]) {
+            if (!atlas)
+                continue;
+            gl.deleteTexture(atlas.texture);
+            gl.deleteFramebuffer(atlas.framebuffer);
+        }
+        this.#shadowAtlas = this.#shadowFallback = undefined;
         if (this.#grab) {
             gl.deleteTexture(this.#grab.texture);
             gl.deleteFramebuffer(this.#grab.framebuffer);

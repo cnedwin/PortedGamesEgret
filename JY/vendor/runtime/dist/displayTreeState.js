@@ -1,6 +1,5 @@
 import { EgretError } from "./EgretError.js";
 import { recordVisualChange, VISUAL_STRUCTURE } from "./displayVisualState.js";
-import { invalidateCaptureNode, clearCaptureStage } from "./frameCaptureCache.js";
 // Read at call time only; ownership imports this module for its own tree operations.
 import { engineOf } from "./ownership.js";
 // Internal state authority: validation/commit never uses overridable getters
@@ -138,10 +137,6 @@ export function setNodeIndex(parent, child, index) {
 }
 export function terminateNode(node) {
     terminated.add(node);
-    // Retire derived values before listener cleanup can reenter; no resource cleanup is owned here.
-    invalidateCaptureNode(node);
-    if (readStageRoot(node))
-        clearCaptureStage(node);
     recordVisualChange(node, VISUAL_STRUCTURE);
     detachNode(node);
 }

@@ -1,6 +1,4 @@
 import type { ClipRectangle2D } from '@egret/contracts';
-import type { RectangleFrame2D } from './RectangleFrame2D.js';
-import type { PreparedCacheContext2D, PreparedStageCost2D } from './preparedFrameCache2D.js';
 export interface PreparedPoint2D {
     readonly x: number;
     readonly y: number;
@@ -18,14 +16,11 @@ export interface PolygonClipPolicy2D<P extends PreparedPoint2D> {
     sameTuple(first: P, second: P): boolean;
     assertAppend(currentLength: number): void;
 }
-export interface PreparedRectangles2D {
-    readonly points: readonly PreparedPoint2D[];
-    readonly commands: readonly {
-        readonly pointIndices: readonly number[];
-        readonly color: number;
-        readonly alpha: number;
-    }[];
-    readonly edgeTests: number;
+/** What a clip already prepared in this call would have cost; replaying it charges the same budget. */
+export interface PreparedStageCost2D {
+    readonly preparedVertices: number;
+    readonly predicates: number;
+    readonly tupleComparisons: number;
 }
 export interface RectanglePreparationOptions {
     readonly pixelRatio: number;
@@ -93,6 +88,5 @@ export declare function finishPolygonWinding2D<P extends PreparedPoint2D>(prepar
 export type CrossingAttributes<P extends PreparedPoint2D> = (p: P, q: P, weight: number, complementary: boolean, x: number, y: number) => P;
 /** Shared traversal preserves determinant order; callers own attribute normalization. */
 export declare function clipPolygon2D<P extends PreparedPoint2D>(preparation: Preparation, subject: P[], clip: readonly PreparedPoint2D[], normalize: (preparation: Preparation, input: readonly P[]) => P[], attach: CrossingAttributes<P>, policy?: PolygonClipPolicy2D<P>, normalization?: 'rectangle' | 'image' | 'mesh'): P[];
-export declare function prepareRectangles2D(frame: RectangleFrame2D, width: number, height: number, options: RectanglePreparationOptions, budget?: PreparationBudget2D, commandIndices?: number[], cache?: PreparedCacheContext2D, sourceCommandIndices?: readonly number[], containedClipping?: boolean, clipContext?: ClipRectanglePreparationContext2D): PreparedRectangles2D;
 export {};
 //# sourceMappingURL=prepareRectangles2D.d.ts.map

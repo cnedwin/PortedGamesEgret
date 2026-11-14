@@ -1,0 +1,1 @@
+{"version":3,"file":"semanticTree.d.ts","sourceRoot":"","sources":["../src/semanticTree.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,aAAa,EAAE,MAAM,gBAAgB,CAAC;AACpD,OAAO,KAAK,EACM,cAAc,EACyE,WAAW,EAAE,kBAAkB,EACvI,MAAM,oBAAoB,CAAC;AAgE5B;;;GAGG;AACH,wBAAgB,gBAAgB,CAAC,MAAM,EAAE,aAAa,GAAG,cAAc,CAKtE;AAED,yGAAyG;AACzG,wBAAgB,iBAAiB,CAAC,OAAO,GAAE,kBAAuB,GAAG,WAAW,CA4M/E"}

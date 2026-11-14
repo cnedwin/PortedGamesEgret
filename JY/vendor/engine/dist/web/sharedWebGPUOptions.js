@@ -4,12 +4,15 @@ const DEFAULTS = Object.freeze({
     maxPendingUploadBytes: 67108864, maxPendingFrames: 2, maxReadbackBytes: 67108864, enableReadback: false,
     maxSourceTriangles: 65536, maxFrameGeometryBytes: 16777216, maxPendingGeometryBytes: 33554432, maxTupleComparisons: 1048576,
 });
+const PAGE_LIMITS = Object.freeze({ maxFrameRegions: 4096, maxFramePageBytes: 67108864, maxReadyPageBytes: 134217728 });
+const PAGE_KEYS = ['maxFrameRegions', 'maxFramePageBytes', 'maxReadyPageBytes'];
 const KEYS = ['canvas', 'device', 'onDiagnostic', 'pixelRatio', 'maxBackingPixels', 'maxCommands', 'maxClipRectangles',
     'maxPreparedVertices', 'maxClipEdgeTests', 'maxUploadBytes', 'maxPendingUploadBytes', 'maxPendingFrames',
-    'maxReadbackBytes', 'enableReadback', 'maxSourceTriangles', 'maxFrameGeometryBytes', 'maxPendingGeometryBytes', 'maxTupleComparisons', 'outputAlpha', 'recovery', 'enableEffects'];
+    'maxReadbackBytes', 'enableReadback', 'maxSourceTriangles', 'maxFrameGeometryBytes', 'maxPendingGeometryBytes', 'maxTupleComparisons', 'outputAlpha', 'recovery', 'enableEffects',
+    ...PAGE_KEYS];
 function object(value) { return typeof value === 'object' && value !== null; }
 /** Snapshot every top-level read, then the selected policy reads, before any semantic refusal. */
-export function admitSharedWebGPUOptions(input, scene) {
+export function admitSharedWebGPUOptions(input) {
     if (!object(input))
         throw new TypeError('options');
     const captured = {};
@@ -60,10 +63,20 @@ export function admitSharedWebGPUOptions(input, scene) {
     const enableEffects = captured.enableEffects ?? false;
     if (typeof enableEffects !== 'boolean')
         throw new TypeError('enableEffects');
-    const outputAlpha = captured.outputAlpha === undefined && !scene ? 'premultiplied' : captured.outputAlpha;
-    if ((outputAlpha !== 'premultiplied' && outputAlpha !== 'opaque') || (scene && outputAlpha !== 'opaque'))
+    const outputAlpha = captured.outputAlpha === undefined ? 'premultiplied' : captured.outputAlpha;
+    if (outputAlpha !== 'premultiplied' && outputAlpha !== 'opaque')
         throw new TypeError('outputAlpha');
-    return { surface: captured.canvas, configuration: Object.freeze({ ...configuration, enableEffects, outputAlpha, recovery }),
+    // Judged last, so their arrival changes no earlier refusal.
+    const pages = {};
+    for (const key of PAGE_KEYS) {
+        const value = captured[key] === undefined ? PAGE_LIMITS[key] : captured[key];
+        if (typeof value !== 'number' || !Number.isSafeInteger(value))
+            throw new TypeError(key);
+        if (value <= 0 || value > PAGE_LIMITS[key])
+            throw new RangeError(key);
+        pages[key] = value;
+    }
+    return { surface: captured.canvas, configuration: Object.freeze({ ...configuration, enableEffects, outputAlpha, recovery, ...pages }),
         borrowed: kind === 'borrow' ? borrowed : undefined,
         callback: captured.onDiagnostic };
 }

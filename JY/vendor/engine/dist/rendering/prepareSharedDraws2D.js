@@ -12,6 +12,8 @@ export class SharedPreparationError extends Error {
     }
 }
 export function sharedFailure(reason) { throw noteOwnedPreparationFailure(new SharedPreparationError(reason)); }
+/** What one shared frame may hold at most, whatever a Host is configured to admit. */
+export const SHARED_FRAME_REGIONS_2D = 4096, SHARED_FRAME_PAGE_BYTES_2D = 67108864;
 const ATTRS = ['u', 'v', 'r', 'g', 'b', 'a', 'dr', 'dg', 'db'];
 function unit(value) { if (!Number.isFinite(value) || value < 0 || value > 1)
     sharedFailure('precision'); return value === 0 ? 0 : value; }
@@ -107,12 +109,18 @@ function transform(p, m, ratio) {
 }
 const ORIGIN = { x: 0, y: 0 };
 const NO_CLIPS = [];
-/** Authentic completion is checked by Host; this cold helper still defends all table references. */
-export function prepareSharedDraws2D(frame, width, height, options) {
+/**
+ * Authentic completion is checked by Host; this helper still defends all table references. With `retention`,
+ * a draw whose every input is the same as in the last frame takes the geometry kept for it, once the charges
+ * recorded with that geometry fit what is left of the budget; any other draw is prepared here and kept.
+ * The frame's tables, every command's own numbers and every frame-wide charge are checked for every frame.
+ */
+export function prepareSharedDraws2D(frame, width, height, options, retention) {
     if (frame.profile !== 'egret.shared-frame2d/1' || frame.colorRecipe !== 'egret.linear-srgb-pma/1' || frame.targetRepresentation !== 'egret.srgb-pma8-target/1')
         sharedFailure('profile');
-    if (frame.commands.length > options.maxCommands || frame.commands.length > 65536 || frame.pages.length > 64 || frame.regions.length > 128 || frame.materials.length > 256 || frame.geometries.length > 128)
+    if (frame.commands.length > options.maxCommands || frame.commands.length > 65536 || frame.pages.length > 64 || frame.regions.length > Math.min(SHARED_FRAME_REGIONS_2D, options.maxFrameRegions ?? SHARED_FRAME_REGIONS_2D) || frame.materials.length > 256 || frame.geometries.length > 128)
         sharedFailure('budget');
+    const pageLimit = Math.min(SHARED_FRAME_PAGE_BYTES_2D, options.maxFramePageBytes ?? SHARED_FRAME_PAGE_BYTES_2D);
     const effects = prepareEffects2D(frame, options.pixelRatio, options.enableEffects === true);
     const budget = new TexturedPreparationBudget2D(options);
     let geometryBytes = 0, pageBytes = 0, clipsCount = 0;
@@ -122,7 +130,7 @@ export function prepareSharedDraws2D(frame, width, height, options) {
     for (const page of frame.pages) {
         if (!isImageData2D(page.source) || page.sourceRepresentation !== 'egret.srgb-straight-rgba8/1' || page.canonicalRepresentation !== 'egret.alpha8-capped-srgb-pma8/1')
             sharedFailure('frame');
-        pageBytes = add(pageBytes, page.source.byteLength, 16777216);
+        pageBytes = add(pageBytes, page.source.byteLength, pageLimit);
     }
     for (const material of frame.materials) {
         if (!isSharedMaterial2D(material))
@@ -164,6 +172,8 @@ export function prepareSharedDraws2D(frame, width, height, options) {
     }
     const entries = [];
     let upload = 0;
+    const retained = retention ? [] : undefined;
+    retention?.begin(frame.commands.length, width, height, options.pixelRatio, options);
     // One clip policy and one predicate ledger serve every command; the ledger's per-command count restarts at each draw.
     // The inactive context only states that every polygon handed to clipping is owned by this call, so a
     // step that leaves a polygon unchanged returns it instead of a copy. No clip rectangle is cached.
@@ -212,73 +222,101 @@ export function prepareSharedDraws2D(frame, width, height, options) {
         vertexReservation += count;
         polygons.push(polygon);
     };
-    for (const entry of frame.commands) {
-        if (entry.kind === 'barrier') {
-            entries.push({ kind: 'barrier', ordinal: entry.ordinal, occurrenceId: entry.occurrenceId });
-            continue;
-        }
-        command = entry;
-        const material = frame.materials[command.materialIndex], region = command.kind === 'rect' ? undefined : frame.regions[command.regionIndex], pageIndex = region?.pageIndex;
-        preparation.edgeTests = 0;
-        m = command.matrix;
-        ratio = coordinate(options.pixelRatio);
-        coordinate(m.a);
-        coordinate(m.b);
-        coordinate(m.c);
-        coordinate(m.d);
-        coordinate(m.tx);
-        coordinate(m.ty);
-        unit(command.opacity);
-        clips = command.clips.length === 0 ? NO_CLIPS : command.clips.map(clip => preparation.rectangle(clip));
-        // The viewport corners are the same for every command; they are checked when the first draw reaches them.
-        viewport ??= [{ x: 0, y: 0 }, { x: coordinate(width), y: 0 }, { x: coordinate(width), y: coordinate(height) }, { x: 0, y: coordinate(height) }];
-        polygons = [];
-        vertexReservation = 0;
-        descriptor = { region, material, pageIndex };
-        if (command.kind === 'mesh') {
-            const g = frame.geometries[command.geometryIndex], shared = isSharedGeometry2D(g);
-            for (let i = 0; i < g.indexCount; i += 3) {
+    try {
+        for (const entry of frame.commands) {
+            if (entry.kind === 'barrier') {
+                entries.push({ kind: 'barrier', ordinal: entry.ordinal, occurrenceId: entry.occurrenceId });
+                retained?.push(undefined);
+                continue;
+            }
+            command = entry;
+            const material = frame.materials[command.materialIndex], region = command.kind === 'rect' ? undefined : frame.regions[command.regionIndex], pageIndex = region?.pageIndex;
+            preparation.edgeTests = 0;
+            m = command.matrix;
+            ratio = coordinate(options.pixelRatio);
+            coordinate(m.a);
+            coordinate(m.b);
+            coordinate(m.c);
+            coordinate(m.d);
+            coordinate(m.tx);
+            coordinate(m.ty);
+            unit(command.opacity);
+            // A kept draw with these inputs gives its geometry, if its charges fit. Otherwise the draw is prepared below, as without retention.
+            const page = pageIndex === undefined ? undefined : frame.pages[pageIndex].source, geometry = command.kind === 'mesh' ? frame.geometries[command.geometryIndex] : undefined;
+            const found = retention?.find(command.ordinal, command, material, region, page, geometry);
+            if (found !== undefined && found.polygons !== undefined && budget.tryReplayStageCost(found.geometryCost)) {
+                // The record of the last frame is given again while it would be the same in every field that is read.
+                let kept = retention.rest(found, command, pageIndex);
+                if (kept === undefined) {
+                    kept = { kind: 'draw', command, material, region, pageIndex, polygons: found.polygons, vertexReservation: found.vertexReservation };
+                    retention.give(found, kept);
+                }
+                retention.carry(command.ordinal, found, command, region);
+                retained.push(found);
+                upload = add(upload, 52 * found.vertexReservation + 128, Number.MAX_SAFE_INTEGER);
+                entries.push(kept);
+                continue;
+            }
+            const verticesBefore = budget.preparedVerticesCharged, predicatesBefore = budget.predicatesCharged, tuplesBefore = budget.tupleComparisonsCharged;
+            clips = command.clips.length === 0 ? NO_CLIPS : command.clips.map(clip => preparation.rectangle(clip));
+            // The viewport corners are the same for every command; they are checked when the first draw reaches them.
+            viewport ??= [{ x: 0, y: 0 }, { x: coordinate(width), y: 0 }, { x: coordinate(width), y: coordinate(height) }, { x: 0, y: coordinate(height) }];
+            polygons = [];
+            vertexReservation = 0;
+            descriptor = { region, material, pageIndex };
+            if (command.kind === 'mesh') {
+                const g = frame.geometries[command.geometryIndex], shared = isSharedGeometry2D(g);
+                for (let i = 0; i < g.indexCount; i += 3) {
+                    const points = [];
+                    for (let k = 0; k < 3; k++) {
+                        const n = g.indices[i + k], p = 2 * n, c = 4 * n, d = 3 * n;
+                        points.push({ x: coordinate(g.positions[p]), y: coordinate(g.positions[p + 1]), u: uv(g.uvs[p]), v: uv(g.uvs[p + 1]), r: unit(g.lightColors[c]), g: unit(g.lightColors[c + 1]), b: unit(g.lightColors[c + 2]), a: unit(g.lightColors[c + 3]), dr: shared ? unit(g.darkColors[d]) : 0, dg: shared ? unit(g.darkColors[d + 1]) : 0, db: shared ? unit(g.darkColors[d + 2]) : 0 });
+                    }
+                    accept(points);
+                }
+            }
+            else {
+                const rect = command.rect, right = coordinate(rect.x + rect.width), bottom = coordinate(rect.y + rect.height);
+                coordinate(rect.x);
+                coordinate(rect.y);
+                coordinate(rect.width);
+                coordinate(rect.height);
+                const color = command.kind === 'rect' ? command.fillColor : 0xffffff, a = command.kind === 'rect' ? unit(command.fillAlpha) : 1;
+                // Decoding is a pure function of the colour; consecutive draws of one colour decode it once.
+                if (color !== lastColor) {
+                    red = decodeSharedSRGB(((color >>> 16) & 255) / 255);
+                    green = decodeSharedSRGB(((color >>> 8) & 255) / 255);
+                    blue = decodeSharedSRGB((color & 255) / 255);
+                    lastColor = color;
+                }
                 const points = [];
-                for (let k = 0; k < 3; k++) {
-                    const n = g.indices[i + k], p = 2 * n, c = 4 * n, d = 3 * n;
-                    points.push({ x: coordinate(g.positions[p]), y: coordinate(g.positions[p + 1]), u: uv(g.uvs[p]), v: uv(g.uvs[p + 1]), r: unit(g.lightColors[c]), g: unit(g.lightColors[c + 1]), b: unit(g.lightColors[c + 2]), a: unit(g.lightColors[c + 3]), dr: shared ? unit(g.darkColors[d]) : 0, dg: shared ? unit(g.darkColors[d + 1]) : 0, db: shared ? unit(g.darkColors[d + 2]) : 0 });
+                for (let corner = 0; corner < 4; corner++) {
+                    // Corner order: top-left, top-right, bottom-right, bottom-left.
+                    let u = corner === 1 || corner === 2 ? 1 : 0, v = corner >= 2 ? 1 : 0;
+                    if (region && material.samplingDomain === 'page') {
+                        const p = region.packed, odd = region.quarterTurn === 1 || region.quarterTurn === 3, w = odd ? p.height : p.width, h = odd ? p.width : p.height, s = u * w, t = v * h;
+                        const x = region.quarterTurn === 1 ? h - t : region.quarterTurn === 2 ? w - s : region.quarterTurn === 3 ? t : s;
+                        const y = region.quarterTurn === 1 ? s : region.quarterTurn === 2 ? h - t : region.quarterTurn === 3 ? w - s : t;
+                        const page = frame.pages[pageIndex].source;
+                        u = (p.x + x) / page.width;
+                        v = (p.y + y) / page.height;
+                    }
+                    points.push({ x: corner === 1 || corner === 2 ? right : rect.x, y: corner >= 2 ? bottom : rect.y, u, v, r: red, g: green, b: blue, a, dr: 0, dg: 0, db: 0 });
                 }
                 accept(points);
             }
+            upload = add(upload, 52 * vertexReservation + 128, Number.MAX_SAFE_INTEGER);
+            const made = { kind: 'draw', command, material, region, pageIndex, polygons, vertexReservation };
+            entries.push(made);
+            retained?.push(retention.keep(command.ordinal, found, command, material, region, page, geometry, made, budget.preparedVerticesCharged - verticesBefore, budget.predicatesCharged - predicatesBefore, budget.tupleComparisonsCharged - tuplesBefore));
         }
-        else {
-            const rect = command.rect, right = coordinate(rect.x + rect.width), bottom = coordinate(rect.y + rect.height);
-            coordinate(rect.x);
-            coordinate(rect.y);
-            coordinate(rect.width);
-            coordinate(rect.height);
-            const color = command.kind === 'rect' ? command.fillColor : 0xffffff, a = command.kind === 'rect' ? unit(command.fillAlpha) : 1;
-            // Decoding is a pure function of the colour; consecutive draws of one colour decode it once.
-            if (color !== lastColor) {
-                red = decodeSharedSRGB(((color >>> 16) & 255) / 255);
-                green = decodeSharedSRGB(((color >>> 8) & 255) / 255);
-                blue = decodeSharedSRGB((color & 255) / 255);
-                lastColor = color;
-            }
-            const points = [];
-            for (let corner = 0; corner < 4; corner++) {
-                // Corner order: top-left, top-right, bottom-right, bottom-left.
-                let u = corner === 1 || corner === 2 ? 1 : 0, v = corner >= 2 ? 1 : 0;
-                if (region && material.samplingDomain === 'page') {
-                    const p = region.packed, odd = region.quarterTurn === 1 || region.quarterTurn === 3, w = odd ? p.height : p.width, h = odd ? p.width : p.height, s = u * w, t = v * h;
-                    const x = region.quarterTurn === 1 ? h - t : region.quarterTurn === 2 ? w - s : region.quarterTurn === 3 ? t : s;
-                    const y = region.quarterTurn === 1 ? s : region.quarterTurn === 2 ? h - t : region.quarterTurn === 3 ? w - s : t;
-                    const page = frame.pages[pageIndex].source;
-                    u = (p.x + x) / page.width;
-                    v = (p.y + y) / page.height;
-                }
-                points.push({ x: corner === 1 || corner === 2 ? right : rect.x, y: corner >= 2 ? bottom : rect.y, u, v, r: red, g: green, b: blue, a, dr: 0, dg: 0, db: 0 });
-            }
-            accept(points);
-        }
-        upload = add(upload, 44 * vertexReservation + 128, Number.MAX_SAFE_INTEGER);
-        entries.push({ kind: 'draw', command, material, region, pageIndex, polygons, vertexReservation });
     }
-    return { effects, frame, width, height, entries, budget, geometryBytes, pageBytes, upload: upload + effects.uniformBytes };
+    catch (cause) {
+        retention?.abandon();
+        throw cause;
+    }
+    retention?.commit();
+    // The region table is uploaded with the frame: 48 bytes for each of its regions.
+    return { effects, frame, width, height, entries, budget, geometryBytes, pageBytes, upload: upload + 48 * frame.regions.length + effects.uniformBytes, ...(retention ? { retention, retained: retained } : {}) };
 }
 //# sourceMappingURL=prepareSharedDraws2D.js.map

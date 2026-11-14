@@ -81,6 +81,7 @@ export interface RemoteRaycastHit3D {
     readonly point: readonly [number, number, number];
     readonly normal: readonly [number, number, number];
 }
+declare const ownsBody: unique symbol;
 /**
  * Run a physics world on this end of a port and answer the messages of a
  * PhysicsClient3D. In a worker this is the whole script:
@@ -145,6 +146,7 @@ export declare class PhysicsClient3D {
     constructor(port: PhysicsPort3D, options?: PhysicsWorldOptions3D);
     get bodies(): IterableIterator<RemoteBody3D>;
     /** @internal */ post(message: Record<string, unknown>): void;
+    [ownsBody](body: unknown): body is RemoteBody3D;
     /** @internal */ forget(body: RemoteBody3D): void;
     createBody(options: RemoteBodyOptions3D): RemoteBody3D;
     createJoint(options: RemoteJointOptions3D): RemoteJoint3D;
@@ -168,4 +170,5 @@ export declare class PhysicsClient3D {
     dispose(): void;
 }
 export declare function connectPhysics3D(port: PhysicsPort3D, options?: PhysicsWorldOptions3D): PhysicsClient3D;
+export {};
 //# sourceMappingURL=PhysicsRemote3D.d.ts.map

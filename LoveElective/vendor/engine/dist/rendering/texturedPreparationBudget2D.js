@@ -39,6 +39,10 @@ export class TexturedPreparationBudget2D {
     admitTupleComparison() {
         this.#tupleComparisonsCharged = admit(1, this.#tupleComparisonsCharged, this.#limits.maxTupleComparisons);
     }
+    /** The three charges a stage replays, as they stand; a stage's cost is their difference across it. */
+    get preparedVerticesCharged() { return this.#preparedVerticesCharged; }
+    get predicatesCharged() { return this.#predicatesCharged; }
+    get tupleComparisonsCharged() { return this.#tupleComparisonsCharged; }
     /** A rejected replay changes no dimension; the original stage then decides its first error. */
     tryReplayStageCost(cost) {
         const vertices = cost.preparedVertices, predicates = cost.predicates, tuples = cost.tupleComparisons;

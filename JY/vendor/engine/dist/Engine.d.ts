@@ -1,6 +1,6 @@
 import type { DisplaySubtreeTicket } from './displaySubtreeTicket.js';
 import type { DisplayObject, DisplayObjectContainer } from '@egret/runtime';
-import type { FrameOptions2D, RenderFrame2D, TexturedFrameProfile2D, TexturedRenderFrame2D, SharedFrameProfile2D, SharedFrameOptions2D, SharedRenderFrame2D } from '@egret/contracts';
+import type { SharedFrameProfile2D, SharedFrameOptions2D, SharedRenderFrame2D } from '@egret/contracts';
 import type { DiagnosticHandler, HostAdapter } from "@egret/contracts";
 import type { AssetManager, AssetRef, Scope, Stage } from "@egret/runtime";
 import type { BitmapResourceSlot } from './bitmapResourceSlot.js';
@@ -20,11 +20,8 @@ export interface EngineOptions {
     readonly clock?: GameClockOptions;
 }
 export interface CapturedEngineFramePorts {
-    readonly legacy: ((frame: RenderFrame2D) => unknown) | undefined;
-    readonly textured: ((frame: TexturedRenderFrame2D) => unknown) | undefined;
-    readonly profile: TexturedFrameProfile2D | undefined;
-    readonly shared?: ((frame: SharedRenderFrame2D) => unknown) | undefined;
-    readonly sharedProfile?: SharedFrameProfile2D | undefined;
+    readonly shared: ((frame: SharedRenderFrame2D) => unknown) | undefined;
+    readonly sharedProfile: SharedFrameProfile2D | undefined;
 }
 export declare let constructEngine: (options: EngineOptions, timeoutMs: number, surface: object, releaseSurface: () => void, ports: CapturedEngineFramePorts, clockOptions: AdmittedGameClockOptions) => Engine;
 /** One headless run. Construct with createEngine(), not directly. */
@@ -34,9 +31,7 @@ export declare class Engine {
     private nextFrameId;
     private frameIdle;
     private releaseFrame;
-    private readonly renderer;
     private readonly sharedRenderer;
-    private readonly texturedRenderer;
     private readonly scopes;
     private readonly cleanupErrors;
     private closePromise;
@@ -47,14 +42,9 @@ export declare class Engine {
     readonly stage: Stage;
     readonly assets: AssetManager;
     readonly sharedFrameProfile: SharedFrameProfile2D | undefined;
-    readonly texturedFrameProfile: TexturedFrameProfile2D | undefined;
     readonly clock: GameClock;
     private constructor();
     advanceTime(sourceSeconds: number): GameClockTick | undefined;
-    captureFrame(options: FrameOptions2D): RenderFrame2D;
-    renderFrame(options: FrameOptions2D): RenderFrame2D;
-    captureTexturedFrame(options: FrameOptions2D): TexturedRenderFrame2D;
-    renderTexturedFrame(options: FrameOptions2D): TexturedRenderFrame2D;
     captureSharedFrame(options: SharedFrameOptions2D): SharedRenderFrame2D;
     /** Capture a prepared binding view without publishing it to the live scene. */
     capturePreparedSharedFrame(ticket: BitmapBindingTicket, options: SharedFrameOptions2D): SharedRenderFrame2D;
@@ -67,10 +57,8 @@ export declare class Engine {
     /** Immutable candidate snapshot; the live Stage remains unchanged. */
     capturePreparedDisplaySharedFrame(ticket: DisplaySubtreeTicket, options: SharedFrameOptions2D): SharedRenderFrame2D;
     renderSharedFrame(options: SharedFrameOptions2D): SharedRenderFrame2D;
-    /** Share the existing lifecycle barrier and ID sequence without changing old options. */
-    private executeSharedFrame;
     /** Busy precedes all external reads; cleanup waits for the finally barrier. */
-    private executeFrame;
+    private executeSharedFrame;
     createScope(): Scope;
     createTween(scope: Scope, options: TweenOptions): Tween;
     /** Create an idle, Scope-owned sequence controller without rendering or ticking. */

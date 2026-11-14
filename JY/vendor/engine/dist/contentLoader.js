@@ -199,7 +199,7 @@ export function createContentLoader(engine, manifest, factory) {
                     for (const e of ordered) {
                         if (e.resourceKind === 'image') {
                             const lease = raw.get(bindings.get(e.id)), value = lease.value;
-                            if (value.width > 4096 || value.height > 4096 || value.width * value.height > 1048576)
+                            if (value.width > 4096 || value.height > 4096 || value.width * value.height > 4194304)
                                 throw contentFault('IMAGE', e.id);
                             images.set(e.id, lease);
                         }
