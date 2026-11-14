@@ -28,6 +28,8 @@ const MANUAL_POINTS = 30;
 
 // ---- making a world -----------------------------------------------------------------------------
 
+const uniqueBuildings = new Set(['hall', 'gate', 'board', 'mess', 'store', 'library', 'clinic', 'council']);
+
 /** The buildings a sect's seat starts with. */
 function startingBuildings(place, sect) {
   const list = [
@@ -245,17 +247,24 @@ export function setJob(state, personId, job) {
   return done();
 }
 
-export function build(state, sectId, placeId, kind) {
+export function buildAvailability(state, sectId, placeId, kind) {
   const spec = BUILDINGS[kind],
     place = state.places[placeId],
     sect = state.sects[sectId];
   if (!spec) return refuse('没有这种建筑');
   if (place.owner !== sectId) return refuse('不是本派据点');
   if (kind !== 'hall' && !buildingLevel(state, placeId, 'hall')) return refuse('需先建正殿');
-  if (['hall', 'gate', 'board', 'mess', 'store', 'library', 'clinic', 'council'].includes(kind) && buildingLevel(state, placeId, kind)) return refuse('已有此建筑');
+  if (uniqueBuildings.has(kind) && buildingLevel(state, placeId, kind)) return refuse('已有此建筑');
   if (usedCells(state, placeId) + spec.cells > PLACE_BY_ID[placeId].cells) return refuse('建地不足');
   if (sect.silver < spec.cost) return refuse('银两不足');
-  sect.silver -= spec.cost;
+  return done();
+}
+
+export function build(state, sectId, placeId, kind) {
+  const availability = buildAvailability(state, sectId, placeId, kind);
+  if (!availability.ok) return availability;
+  const place = state.places[placeId], sect = state.sects[sectId];
+  sect.silver -= BUILDINGS[kind].cost;
   place.buildings.push({ kind, level: 1, xp: 0 });
   return done();
 }

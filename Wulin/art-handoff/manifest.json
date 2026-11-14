@@ -5,7 +5,10 @@
     "title": "assets/scenes/title.webp",
     "seat": "assets/scenes/seat.webp",
     "world": "assets/scenes/world.webp",
-    "battle": "assets/scenes/battle.webp"
+    "battle": "assets/scenes/battle.webp",
+    "gate-night": "assets/scenes/gate-night.webp",
+    "decree": "assets/scenes/decree.webp",
+    "seal": "assets/scenes/seal.webp"
   },
   "portraits": {
     "leader-shaolin": {
@@ -943,6 +946,166 @@
         "determined": "assets/portraits/wanderer-trail-monk/expression-determined.webp",
         "worried": "assets/portraits/wanderer-trail-monk/expression-worried.webp"
       }
+    },
+    "founder-female": {
+      "name": "开山掌门",
+      "role": "archetype",
+      "src": "assets/portraits/founder-female/full.webp",
+      "full": "assets/portraits/founder-female/full.webp",
+      "bust": "assets/portraits/founder-female/bust.webp",
+      "expressions": {}
+    },
+    "founder-male": {
+      "name": "开山掌门",
+      "role": "archetype",
+      "src": "assets/portraits/founder-male/full.webp",
+      "full": "assets/portraits/founder-male/full.webp",
+      "bust": "assets/portraits/founder-male/bust.webp",
+      "expressions": {}
+    },
+    "disciple-female": {
+      "name": "门人",
+      "role": "archetype",
+      "src": "assets/portraits/disciple-female/full.webp",
+      "full": "assets/portraits/disciple-female/full.webp",
+      "bust": "assets/portraits/disciple-female/bust.webp",
+      "expressions": {}
+    },
+    "disciple-male": {
+      "name": "门人",
+      "role": "archetype",
+      "src": "assets/portraits/disciple-male/full.webp",
+      "full": "assets/portraits/disciple-male/full.webp",
+      "bust": "assets/portraits/disciple-male/bust.webp",
+      "expressions": {}
+    },
+    "prologue-courier": {
+      "name": "传令官",
+      "role": "prologue",
+      "src": "assets/portraits/prologue-courier/full.webp",
+      "full": "assets/portraits/prologue-courier/full.webp",
+      "bust": "assets/portraits/prologue-courier/bust.webp",
+      "expressions": {}
+    },
+    "prologue-messenger": {
+      "name": "信使",
+      "role": "prologue",
+      "src": "assets/portraits/prologue-messenger/full.webp",
+      "full": "assets/portraits/prologue-messenger/full.webp",
+      "bust": "assets/portraits/prologue-messenger/bust.webp",
+      "expressions": {}
+    },
+    "prologue-elder": {
+      "name": "守印长老",
+      "role": "prologue",
+      "src": "assets/portraits/prologue-elder/full.webp",
+      "full": "assets/portraits/prologue-elder/full.webp",
+      "bust": "assets/portraits/prologue-elder/bust.webp",
+      "expressions": {}
+    },
+    "prologue-guardian": {
+      "name": "山门弟子",
+      "role": "prologue",
+      "src": "assets/portraits/prologue-guardian/full.webp",
+      "full": "assets/portraits/prologue-guardian/full.webp",
+      "bust": "assets/portraits/prologue-guardian/bust.webp",
+      "expressions": {}
+    },
+    "common-male-1": {
+      "name": "门人·男1",
+      "role": "archetype",
+      "src": "assets/portraits/common-male-1/full.webp",
+      "full": "assets/portraits/common-male-1/full.webp",
+      "bust": "assets/portraits/common-male-1/bust.webp",
+      "expressions": {}
+    },
+    "common-male-2": {
+      "name": "门人·男2",
+      "role": "archetype",
+      "src": "assets/portraits/common-male-2/full.webp",
+      "full": "assets/portraits/common-male-2/full.webp",
+      "bust": "assets/portraits/common-male-2/bust.webp",
+      "expressions": {}
+    },
+    "common-male-3": {
+      "name": "门人·男3",
+      "role": "archetype",
+      "src": "assets/portraits/common-male-3/full.webp",
+      "full": "assets/portraits/common-male-3/full.webp",
+      "bust": "assets/portraits/common-male-3/bust.webp",
+      "expressions": {}
+    },
+    "common-male-4": {
+      "name": "门人·男4",
+      "role": "archetype",
+      "src": "assets/portraits/common-male-4/full.webp",
+      "full": "assets/portraits/common-male-4/full.webp",
+      "bust": "assets/portraits/common-male-4/bust.webp",
+      "expressions": {}
+    },
+    "common-male-5": {
+      "name": "门人·男5",
+      "role": "archetype",
+      "src": "assets/portraits/common-male-5/full.webp",
+      "full": "assets/portraits/common-male-5/full.webp",
+      "bust": "assets/portraits/common-male-5/bust.webp",
+      "expressions": {}
+    },
+    "common-male-6": {
+      "name": "门人·男6",
+      "role": "archetype",
+      "src": "assets/portraits/common-male-6/full.webp",
+      "full": "assets/portraits/common-male-6/full.webp",
+      "bust": "assets/portraits/common-male-6/bust.webp",
+      "expressions": {}
+    },
+    "common-female-1": {
+      "name": "门人·女1",
+      "role": "archetype",
+      "src": "assets/portraits/common-female-1/full.webp",
+      "full": "assets/portraits/common-female-1/full.webp",
+      "bust": "assets/portraits/common-female-1/bust.webp",
+      "expressions": {}
+    },
+    "common-female-2": {
+      "name": "门人·女2",
+      "role": "archetype",
+      "src": "assets/portraits/common-female-2/full.webp",
+      "full": "assets/portraits/common-female-2/full.webp",
+      "bust": "assets/portraits/common-female-2/bust.webp",
+      "expressions": {}
+    },
+    "common-female-3": {
+      "name": "门人·女3",
+      "role": "archetype",
+      "src": "assets/portraits/common-female-3/full.webp",
+      "full": "assets/portraits/common-female-3/full.webp",
+      "bust": "assets/portraits/common-female-3/bust.webp",
+      "expressions": {}
+    },
+    "common-female-4": {
+      "name": "门人·女4",
+      "role": "archetype",
+      "src": "assets/portraits/common-female-4/full.webp",
+      "full": "assets/portraits/common-female-4/full.webp",
+      "bust": "assets/portraits/common-female-4/bust.webp",
+      "expressions": {}
+    },
+    "common-female-5": {
+      "name": "门人·女5",
+      "role": "archetype",
+      "src": "assets/portraits/common-female-5/full.webp",
+      "full": "assets/portraits/common-female-5/full.webp",
+      "bust": "assets/portraits/common-female-5/bust.webp",
+      "expressions": {}
+    },
+    "common-female-6": {
+      "name": "门人·女6",
+      "role": "archetype",
+      "src": "assets/portraits/common-female-6/full.webp",
+      "full": "assets/portraits/common-female-6/full.webp",
+      "bust": "assets/portraits/common-female-6/bust.webp",
+      "expressions": {}
     }
   },
   "sects": {
@@ -998,6 +1161,8 @@
   "roles": {
     "leader": "掌门",
     "elder": "长老",
-    "wanderer": "江湖奇人"
+    "wanderer": "江湖奇人",
+    "archetype": "通用人物",
+    "prologue": "序章角色"
   }
 }

@@ -25,6 +25,7 @@ const GLYPHS = {
   close: '<path d="m6 6 12 12M18 6 6 18"/>',
   target: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2"/><path d="M12 3v3m0 12v3m-9-9h3m12 0h3"/>',
   layers: '<path d="m12 3 9 5-9 5-9-5 9-5Zm-9 9 9 5 9-5m-18 4 9 5 9-5"/>',
+  sound: '<path d="M3 9v6h4l5 4V5L7 9H3Zm12 0a4 4 0 0 1 0 6m2-9a8 8 0 0 1 0 12"/>',
   info: '<circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/>',
 };
 

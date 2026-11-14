@@ -77,20 +77,21 @@ function ground(spec, random) {
     const front = z > 0 ? Math.max(0.15, 1 - Math.exp(-((x / 26) ** 2))) : 1;
     return Math.min(60, far * far * 0.012 * (0.6 + lift) * steep * front);
   };
-  const grass = spec.resources.herb >= 2 ? 0x5c8546 : 0x6f8a4e;
+  // Pine ink grades into slate along the mountains, with warm clay confined to the court.
+  const grass = spec.resources.herb >= 2 ? 0x344d42 : 0x495d49;
   const colour = (x, z, y) => {
-    if (y > 26) return mix(0x8d8a80, 0xf2f4f6, Math.min(1, (y - 26) / 16));
-    if (y > 0.2) return mix(grass, 0x7d7a66, Math.min(1, y / 26));
+    if (y > 26) return mix(0x65747a, 0xdce3e5, Math.min(1, (y - 26) / 16));
+    if (y > 0.2) return mix(grass, 0x69756e, Math.min(1, y / 26));
     const inside = Math.abs(x) < YARD - 6 && Math.abs(z) < YARD - 6;
     // The avenue from the gate to the hall is paved in slabs with a darker kerb, and widens into a court before the hall.
     const half = z < HALL_AT.z + 15 && z > HALL_AT.z + 5 ? 9 : 2.8;
-    if (Math.abs(x) < half && z > HALL_AT.z && z < 62) return Math.abs(x) > half - 0.35 ? 0x7f7a6c : (Math.round(x / 1.4) + Math.round(z / 1.4)) % 2 ? 0xa39c8a : 0x9a9382;
+    if (Math.abs(x) < half && z > HALL_AT.z && z < 62) return Math.abs(x) > half - 0.35 ? 0x596868 : (Math.round(x / 1.4) + Math.round(z / 1.4)) % 2 ? 0x8b938b : 0x79827c;
     if (inside) {
       // Lanes of beaten earth run between the rows of buildings; the rest is rough grass, worn thin where people walk.
       const lane = [-11.5, -0.5, 10.5].some((row) => Math.abs(z - row) < 1.1);
-      if (lane) return (Math.round(x * 1.3) + Math.round(z * 1.3)) % 3 ? 0x97896a : 0x8f8263;
+      if (lane) return (Math.round(x * 1.3) + Math.round(z * 1.3)) % 3 ? 0x827560 : 0x786d59;
       const patch = Math.sin(x * 0.9) * Math.cos(z * 0.8) + Math.sin(x * 0.31 + z * 0.27);
-      return patch > 0.5 ? mix(grass, 0x8f8263, 0.35) : patch > -0.4 ? 0x94866a : 0x8c7f62;
+      return patch > 0.5 ? mix(grass, 0x786d59, 0.35) : patch > -0.4 ? 0x7d705e : 0x716759;
     }
     return shade(grass, 0.92 + 0.16 * Math.abs(Math.sin(x * 0.7) * Math.cos(z * 0.6)));
   };
@@ -133,21 +134,21 @@ function landmark(sectId, x, z, random) {
     // A round terrace laid out as the two fishes of yin and yang, with a bronze censer on it.
     wudang: () => [[ROD, [x, 0.2, z], [4.2, 0.4, 4.2], stone], [ROD, [x, 0.41, z], [3.9, 0.02, 3.9], 0xf1eee6], [ROD, [x - 0.01, 0.42, z + 1.95], [1.95, 0.02, 1.95], 0x2a2a2e], [ROD, [x, 0.43, z - 1.95], [1.95, 0.02, 1.95], 0xf1eee6], [ROD, [x, 0.44, z + 1.95], [0.5, 0.02, 0.5], 0xf1eee6], [ROD, [x, 0.44, z - 1.95], [0.5, 0.02, 0.5], 0x2a2a2e], ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => [BOX, [x + Math.cos(i * 0.785) * 4.6, 0.6, z + Math.sin(i * 0.785) * 4.6], [0.3, 1.2, 0.3], stone])],
     // A bell tower: a great bronze bell under a roof on four posts.
-    emei: () => [[BOX, [x, 0.3, z], [5, 0.6, 5], stone], ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => [ROD, [x + sx * 1.9, 2.4, z + sz * 1.9], [0.18, 3.6, 0.18], 0x6a3a26])), [BOX, [x, 4.2, z], [4.6, 0.3, 4.6], 0x5e4028], [SPIKE, [x, 5.2, z], [3.8, 1.8, 3.8], 0xb99a3a, [0, Math.PI / 4, 0]], [BALL, [x, 6.2, z], 0.2, 0xd9b04a], [TAPER, [x, 2.6, z], [0.95, 1.8, 0.95], 0x8a7440], [ROD, [x, 1.72, z], [1.0, 0.1, 1.0], 0x6a5a34], [BALL, [x, 3.5, z], [0.6, 0.3, 0.6], 0x8a7440], beam([x - 2.4, 2.6, z + 1.0], [x - 0.9, 2.6, z + 0.2], 0.1, 0x6a4428)],
+    emei: () => [[BOX, [x, 0.3, z], [5, 0.6, 5], stone], ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => [ROD, [x + sx * 1.9, 2.4, z + sz * 1.9], [0.18, 3.6, 0.18], 0x6a3a26])), [BOX, [x, 4.2, z], [4.6, 0.3, 4.6], 0x5e4028], [SPIKE, [x, 5.2, z], [3.8, 1.8, 3.8], 0xb99a3a, [0, Math.PI / 4, 0]], [BALL, [x, 6.2, z], 0.2, 0xc59e5b], [TAPER, [x, 2.6, z], [0.95, 1.8, 0.95], 0x8a7440], [ROD, [x, 1.72, z], [1.0, 0.1, 1.0], 0x6a5a34], [BALL, [x, 3.5, z], [0.6, 0.3, 0.6], 0x8a7440], beam([x - 2.4, 2.6, z + 1.0], [x - 0.9, 2.6, z + 0.2], 0.1, 0x6a4428)],
     // Swords of stone set point down in a rock, and a tablet cut with the sect's rule.
-    huashan: () => [[BALL, [x, 0.7, z], [3.4, 1.4, 2.6], 0x8d8a80], [BALL, [x + 2.4, 0.4, z + 1.2], [1.6, 0.8, 1.3], 0x7d7a70], ...[[-1.6, 0.2, 0.2], [0, -0.3, -0.12], [1.4, 0.3, 0.16], [0.4, 1.0, -0.3]].flatMap(([dx, dz, lean]) => [[BOX, [x + dx, 3.0, z + dz], [0.16, 3.4, 0.05], 0xcfd3da, [0, 0, lean]], [BOX, [x + dx - Math.sin(lean) * 1.8, 4.75, z + dz], [0.6, 0.1, 0.1], 0x8a7440, [0, 0, lean]], [ROD, [x + dx - Math.sin(lean) * 2.1, 5.1, z + dz], [0.05, 0.6, 0.05], 0x3a2418, [0, 0, lean]]]), ...stele(x - 4.6, z + 1.6, 2.4, 0.3)],
+    huashan: () => [[BALL, [x, 0.7, z], [3.4, 1.4, 2.6], 0x65747a], [BALL, [x + 2.4, 0.4, z + 1.2], [1.6, 0.8, 1.3], 0x7d7a70], ...[[-1.6, 0.2, 0.2], [0, -0.3, -0.12], [1.4, 0.3, 0.16], [0.4, 1.0, -0.3]].flatMap(([dx, dz, lean]) => [[BOX, [x + dx, 3.0, z + dz], [0.16, 3.4, 0.05], 0xcfd3da, [0, 0, lean]], [BOX, [x + dx - Math.sin(lean) * 1.8, 4.75, z + dz], [0.6, 0.1, 0.1], 0x8a7440, [0, 0, lean]], [ROD, [x + dx - Math.sin(lean) * 2.1, 5.1, z + dz], [0.05, 0.6, 0.05], 0x3a2418, [0, 0, lean]]]), ...stele(x - 4.6, z + 1.6, 2.4, 0.3)],
     // A camp: patched tents, a fire with a pot over it, bowls and sticks.
     gaibang: () => [...[[-3.6, -1.4, 0x8a7a5a], [3.4, -1.8, 0x7a6a52], [0.4, -3.4, 0x9a8a62]].flatMap(([dx, dz, cloth]) => [[SPIKE, [x + dx, 1.1, z + dz], [1.9, 2.2, 1.9], cloth, [0, Math.PI / 4, 0]], [BOX, [x + dx + 0.5, 0.9, z + dz + 0.9], [0.5, 0.5, 0.04], shade(cloth, 0.7), [0.6, 0.6, 0]], [ROD, [x + dx, 2.3, z + dz], [0.04, 0.5, 0.04], 0x5e4228]]), [ROD, [x, 0.1, z + 1], [0.9, 0.2, 0.9], 0x5a5653], ...[0, 2.1, 4.2].map((a) => beam([x + Math.cos(a) * 0.9, 0, z + 1 + Math.sin(a) * 0.9], [x, 1.7, z + 1], 0.04, 0x5e4228)), [BALL, [x, 0.95, z + 1], [0.4, 0.34, 0.4], 0x2e2e33], ...flame(x, 0.3, z + 1, 0.45), ...[0, 1, 2, 3].map((i) => [ROD, [x + 1.6 + (i % 2) * 0.4, 0.08, z + 2 + i * 0.3], [0.16, 0.1, 0.16], 0x8a6a48]), ...[0, 1, 2].map((i) => [ROD, [x - 2 + i * 0.25, 0.8, z + 2.6], [0.03, 1.6, 0.03], 0x7a9a4a, [0.2, 0, 0.3 - i * 0.2]])],
     // The sacred fire on a stepped altar of stone, with lesser fires at its corners.
     mingjiao: () => [...[0, 1, 2].map((i) => [BOX, [x, 0.3 + i * 0.6, z], [6 - i * 1.6, 0.6, 6 - i * 1.6], shade(0xb9b3a4, 1 - i * 0.05)]), [TAPER, [x, 2.3, z], [1.1, 0.8, 1.1], 0x8a7440, [Math.PI, 0, 0]], ...flame(x, 2.8, z, 1.5), ...[-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => brazier(x + sx * 3.6, z + sz * 3.6, 1.2)))],
     // A cairn of carved stones, a tall pole, and lines of prayer flags running out from it.
-    kunlun: () => [[ROD, [x, 0.5, z], [2.2, 1.0, 2.2], 0xeeeae0], [ROD, [x, 1.3, z], [1.6, 0.6, 1.6], 0xeeeae0], [BALL, [x, 2.0, z], [1.1, 0.9, 1.1], 0xeeeae0], [ROD, [x, 2.9, z], [0.5, 0.5, 0.5], 0xd9b04a], [SPIKE, [x, 4.0, z], [0.36, 1.8, 0.36], 0xd9b04a], [ROD, [x, 1.02, z], [2.24, 0.14, 2.24], 0x7a2a26], ...[0, 1, 2, 3].flatMap((k) => { const a = k * 1.571 + 0.5, ex = x + Math.cos(a) * 7, ez = z + Math.sin(a) * 5; return [beam([x, 4.6, z], [ex, 1.2, ez], 0.012, 0x3a3836), [ROD, [ex, 0.6, ez], [0.05, 1.2, 0.05], 0x5e4228], ...[0.15, 0.27, 0.39, 0.51, 0.63, 0.75, 0.87].map((t, i) => [BOX, [x + (ex - x) * t, 4.6 + (1.2 - 4.6) * t - 0.2, z + (ez - z) * t], [0.3, 0.36, 0.02], [0x3f6fbf, 0xf1eee6, 0xc0282a, 0x4f9a4a, 0xe8c23a][i % 5], [0, -a, 0]])]; })],
+    kunlun: () => [[ROD, [x, 0.5, z], [2.2, 1.0, 2.2], 0xeeeae0], [ROD, [x, 1.3, z], [1.6, 0.6, 1.6], 0xeeeae0], [BALL, [x, 2.0, z], [1.1, 0.9, 1.1], 0xeeeae0], [ROD, [x, 2.9, z], [0.5, 0.5, 0.5], 0xc59e5b], [SPIKE, [x, 4.0, z], [0.36, 1.8, 0.36], 0xc59e5b], [ROD, [x, 1.02, z], [2.24, 0.14, 2.24], 0x7a2a26], ...[0, 1, 2, 3].flatMap((k) => { const a = k * 1.571 + 0.5, ex = x + Math.cos(a) * 7, ez = z + Math.sin(a) * 5; return [beam([x, 4.6, z], [ex, 1.2, ez], 0.012, 0x3a3836), [ROD, [ex, 0.6, ez], [0.05, 1.2, 0.05], 0x5e4228], ...[0.15, 0.27, 0.39, 0.51, 0.63, 0.75, 0.87].map((t, i) => [BOX, [x + (ex - x) * t, 4.6 + (1.2 - 4.6) * t - 0.2, z + (ez - z) * t], [0.3, 0.36, 0.02], [0x3f6fbf, 0xf1eee6, 0xc0282a, 0x4f9a4a, 0xe8c23a][i % 5], [0, -a, 0]])]; })],
     // A quay with bollards, cargo stacked on it, and a boat hauled out for mending.
     caobang: () => [[BOX, [x, 0.25, z], [9, 0.5, 4], 0x8a7a62], ...[-4, -2, 0, 2, 4].map((dx) => [ROD, [x + dx, 0.75, z + 1.8], [0.14, 0.6, 0.14], 0x4a3a2e]), ...boatParts(x - 1, 0.9, z - 0.4, 1.5, 0.2), ...[[2.6, -1], [3.3, -0.4], [3.0, 0.9], [3.8, 0.6]].flatMap(([dx, dz], i) => [[BOX, [x + dx, 0.8 + (i === 1 ? 0.6 : 0), z + dz], [0.6, 0.6, 0.6], i % 2 ? 0x8a6a48 : 0x7a5632, [0, i * 0.4, 0]]]), ...[0, 1, 2].map((i) => [ROD, [x + 1.7, 0.75 + i * 0.0, z + 1.1 - i * 0.6], [0.28, 0.5, 0.28], 0x7a5632]), beam([x - 4, 1.0, z + 1.8], [x + 4, 1.0, z + 1.8], 0.03, 0xb39a62)],
     // A great cauldron for decoctions, racks of herbs drying, and jars in rows.
     yaowang: () => [[ROD, [x, 0.3, z], [1.8, 0.6, 1.8], stone], [BALL, [x, 1.4, z], [1.3, 1.1, 1.3], 0x6a5a34], [ROD, [x, 2.2, z], [1.34, 0.12, 1.34], 0x8a7440], ...[0, 2.1, 4.2].map((a) => [ROD, [x + Math.cos(a) * 0.9, 0.9, z + Math.sin(a) * 0.9], [0.12, 0.6, 0.12], 0x6a5a34]), ...flame(x, 0.6, z, 0.4), ...[-5, 4].flatMap((dx) => [[ROD, [x + dx, 0.9, z - 1.2], [0.05, 1.8, 0.05], 0x5e4228], [ROD, [x + dx + 1.6, 0.9, z - 1.2], [0.05, 1.8, 0.05], 0x5e4228], ...[0.7, 1.2, 1.7].flatMap((py, i) => [[BOX, [x + dx + 0.8, py, z - 1.2], [1.7, 0.05, 0.8], 0xb39a62], [BALL, [x + dx + 0.8, py + 0.06, z - 1.2], [0.7, 0.06, 0.3], [0x6f9a4a, 0xb9a23a, 0x8a5a3a][i]]])]), ...[0, 1, 2, 3, 4, 5].map((i) => [ROD, [x - 2.4 + i * 0.9, 0.35, z + 2.6], [0.26, 0.7, 0.26], i % 2 ? 0x7a5a3a : 0x5a6a5a])],
     // Three pagodas: one tall in front, two shorter behind.
-    chongsheng: () => [[0, 0.6, 1.5], [-3.6, -2.2, 1], [3.6, -2.2, 1]].flatMap(([dx, dz, big]) => [[BOX, [x + dx, 0.3, z + dz], [2.4 * big, 0.6, 2.4 * big], stone], ...Array.from({ length: big > 1 ? 9 : 6 }, (_, i) => [[BOX, [x + dx, 1.0 + i * 0.9 * big * 0.75, z + dz], [(1.5 - i * 0.07) * big, 0.66 * big * 0.75, (1.5 - i * 0.07) * big], 0xf1ece0], [BOX, [x + dx, 1.36 + i * 0.9 * big * 0.75, z + dz], [(1.8 - i * 0.07) * big, 0.1, (1.8 - i * 0.07) * big], 0x9a9488]]).flat(), [SPIKE, [x + dx, 1.3 + (big > 1 ? 9 : 6) * 0.9 * big * 0.75, z + dz], [0.3 * big, 1.4 * big, 0.3 * big], 0xd9b04a]]),
+    chongsheng: () => [[0, 0.6, 1.5], [-3.6, -2.2, 1], [3.6, -2.2, 1]].flatMap(([dx, dz, big]) => [[BOX, [x + dx, 0.3, z + dz], [2.4 * big, 0.6, 2.4 * big], stone], ...Array.from({ length: big > 1 ? 9 : 6 }, (_, i) => [[BOX, [x + dx, 1.0 + i * 0.9 * big * 0.75, z + dz], [(1.5 - i * 0.07) * big, 0.66 * big * 0.75, (1.5 - i * 0.07) * big], 0xf1ece0], [BOX, [x + dx, 1.36 + i * 0.9 * big * 0.75, z + dz], [(1.8 - i * 0.07) * big, 0.1, (1.8 - i * 0.07) * big], 0x9a9488]]).flat(), [SPIKE, [x + dx, 1.3 + (big > 1 ? 9 : 6) * 0.9 * big * 0.75, z + dz], [0.3 * big, 1.4 * big, 0.3 * big], 0xc59e5b]]),
     // A forest of tablets, and cranes of bronze among them.
     quanzhen: () => [...[[-4, -1, 2.6, 0.2], [-2, 1, 2.0, -0.1], [0, -1.6, 3.0, 0], [2, 0.8, 2.2, 0.15], [4, -1.2, 2.6, -0.2], [-0.6, 2.6, 1.6, 0.3]].flatMap(([dx, dz, tall, turn]) => stele(x + dx, z + dz, tall, turn)), ...[[-3, 2.6], [3.4, 2.4]].flatMap(([dx, dz]) => [[ROD, [x + dx, 0.5, z + dz], [0.03, 1.0, 0.03], 0x6a5a34], [BALL, [x + dx, 1.2, z + dz], [0.2, 0.26, 0.4], 0x8a7440], [ROD, [x + dx, 1.7, z + dz + 0.3], [0.03, 0.8, 0.03], 0x8a7440, [0.4, 0, 0]], [SPIKE, [x + dx, 2.06, z + dz + 0.62], [0.03, 0.3, 0.03], 0x8a7440, [1.6, 0, 0]]])],
     // A proving ground for hidden weapons: scaffolds of bamboo, swinging targets and a wall bristling with darts.
@@ -173,8 +174,8 @@ export function boatParts(x, y, z, size = 1, turn = 0) {
     beam(at(-1.2, 0.5, 0.3), at(-2.3, 0.05, 0.6), 0.025 * size, 0x8a6a48),
   ];
 }
-const WATER = createStandardMaterial3D({ color: 0x3f7f8f, roughness: 0.25, metallic: 0, opacity: 0.86, alphaMode: 'blend' });
-const SMOKE = createStandardMaterial3D({ color: 0xbdbbb4, roughness: 1, metallic: 0, opacity: 0.26, alphaMode: 'blend' });
+const WATER = createStandardMaterial3D({ color: 0x3b6d73, roughness: 0.25, metallic: 0, opacity: 0.86, alphaMode: 'blend' });
+const SMOKE = createStandardMaterial3D({ color: 0xc4d2ca, roughness: 1, metallic: 0, opacity: 0.26, alphaMode: 'blend' });
 const CLOUD = createStandardMaterial3D({ color: 0xffffff, roughness: 1, metallic: 0, opacity: 0.8, alphaMode: 'blend' });
 /** Where the pond lies, in the front corner west of the gate. */
 const POND = { x: -22, z: 29, rx: 7.5, rz: 3.6 };
@@ -191,22 +192,22 @@ function surroundings(height, random, sectColor, sectId = null) {
     greens = [],
     lit = [];
   const edge = YARD - 6;
-  const wall = (x, z, w, d) => parts.push([BOX, [x, 1.3, z], [w, 2.6, d], 0xe4dcc8], [BOX, [x, 0.3, z], [w + 0.12, 0.6, d + 0.12], 0xb9b3a2], [BOX, [x, 2.75, z], [w + 0.6, 0.3, d + 0.6], 0x3f4a52], [BOX, [x, 2.96, z], [w + 0.2, 0.16, d + 0.2], 0x353e45]);
+  const wall = (x, z, w, d) => parts.push([BOX, [x, 1.3, z], [w, 2.6, d], 0xd1c6ad], [BOX, [x, 0.3, z], [w + 0.12, 0.6, d + 0.12], 0x9f9e92], [BOX, [x, 2.75, z], [w + 0.6, 0.3, d + 0.6], 0x364953], [BOX, [x, 2.96, z], [w + 0.2, 0.16, d + 0.2], 0x293941]);
   wall(0, -edge, edge * 2, 0.7);
   wall(-edge, 0, 0.7, edge * 2);
   wall(edge, 0, 0.7, edge * 2);
   for (const sx of [-1, 1]) wall(sx * (edge / 2 + 3.6), edge, edge - 7.2, 0.7);
   // The avenue and the court before the hall are laid in stone, with a kerb; lanes of beaten earth run between the rows.
-  parts.push([BOX, [0, 0.03, 9.5], [5.6, 0.06, 53], 0xa8a18f], [BOX, [0, 0.036, 9.5], [4.9, 0.06, 53], 0xb5ae9c], [BOX, [0, 0.03, HALL_AT.z + 10.5], [19, 0.06, 8], 0xa8a18f], [BOX, [0, 0.036, HALL_AT.z + 10.5], [18.3, 0.06, 7.3], 0xb5ae9c]);
-  for (let z = -16; z < 36; z += 2.6) parts.push([BOX, [0, 0.07, z], [4.9, 0.012, 0.06], 0x9a9382]);
-  for (const row of [-11.5, -0.5, 10.5]) for (const sx of [-1, 1]) parts.push([BOX, [sx * 18.4, 0.02, row], [31, 0.04, 2.2], 0x9c8e6e]);
+  parts.push([BOX, [0, 0.03, 9.5], [5.6, 0.06, 53], 0x7a8582], [BOX, [0, 0.036, 9.5], [4.9, 0.06, 53], 0x929a90], [BOX, [0, 0.03, HALL_AT.z + 10.5], [19, 0.06, 8], 0x7a8582], [BOX, [0, 0.036, HALL_AT.z + 10.5], [18.3, 0.06, 7.3], 0x929a90]);
+  for (let z = -16; z < 36; z += 2.6) parts.push([BOX, [0, 0.07, z], [4.9, 0.012, 0.06], 0x79827c]);
+  for (const row of [-11.5, -0.5, 10.5]) for (const sx of [-1, 1]) parts.push([BOX, [sx * 18.4, 0.02, row], [31, 0.04, 2.2], 0x857861]);
   // A turret at each corner of the wall.
-  for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push([BOX, [sx * edge, 1.9, sz * edge], [2.4, 3.8, 2.4], 0xd8d0bc], [BOX, [sx * edge, 3.9, sz * edge], [3.0, 0.24, 3.0], 0x3f4a52], [SPIKE, [sx * edge, 4.7, sz * edge], [2.0, 1.5, 2.0], 0x3f4a52, [0, Math.PI / 4, 0]], [BALL, [sx * edge, 5.5, sz * edge], 0.16, 0xd9b04a]);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push([BOX, [sx * edge, 1.9, sz * edge], [2.4, 3.8, 2.4], 0xbdb8a6], [BOX, [sx * edge, 3.9, sz * edge], [3.0, 0.24, 3.0], 0x364953], [SPIKE, [sx * edge, 4.7, sz * edge], [2.0, 1.5, 2.0], 0x364953, [0, Math.PI / 4, 0]], [BALL, [sx * edge, 5.5, sz * edge], 0.16, 0xc59e5b]);
   // The terrace the hall stands on, with broad steps down to the court.
-  parts.push([BOX, [0, 0.3, HALL_AT.z - 1], [22, 0.6, 15], 0xbdb7a6], [BOX, [0, 0.58, HALL_AT.z - 1], [22.4, 0.08, 15.4], 0xcbc5b4]);
-  for (let i = 0; i < 3; i++) parts.push([BOX, [0, 0.5 - i * 0.2, HALL_AT.z + 6.8 + i * 0.45], [9, 0.2, 0.5], i % 2 ? 0xb3ad9c : 0xbdb7a6]);
-  for (const sx of [-1, 1]) for (let i = 0; i < 6; i++) parts.push([BOX, [sx * (5 + i * 1.2), 0.9, HALL_AT.z + 6.4], [0.14, 0.7, 0.14], 0xbdb7a6], [BALL, [sx * (5 + i * 1.2), 1.3, HALL_AT.z + 6.4], 0.1, 0xcbc5b4]);
-  for (const sx of [-1, 1]) parts.push(beam([sx * 5, 1.1, HALL_AT.z + 6.4], [sx * 11, 1.1, HALL_AT.z + 6.4], 0.05, 0xb3ad9c));
+  parts.push([BOX, [0, 0.3, HALL_AT.z - 1], [22, 0.6, 15], 0xa9ad9f], [BOX, [0, 0.58, HALL_AT.z - 1], [22.4, 0.08, 15.4], 0xb9bcb1]);
+  for (let i = 0; i < 3; i++) parts.push([BOX, [0, 0.5 - i * 0.2, HALL_AT.z + 6.8 + i * 0.45], [9, 0.2, 0.5], i % 2 ? 0xa2a89d : 0xa9ad9f]);
+  for (const sx of [-1, 1]) for (let i = 0; i < 6; i++) parts.push([BOX, [sx * (5 + i * 1.2), 0.9, HALL_AT.z + 6.4], [0.14, 0.7, 0.14], 0xa9ad9f], [BALL, [sx * (5 + i * 1.2), 1.3, HALL_AT.z + 6.4], 0.1, 0xb9bcb1]);
+  for (const sx of [-1, 1]) parts.push(beam([sx * 5, 1.1, HALL_AT.z + 6.4], [sx * 11, 1.1, HALL_AT.z + 6.4], 0.05, 0xa2a89d));
   // A bronze censer in the court before the hall.
   const censer = [0, 0, HALL_AT.z + 11.5];
   parts.push([BOX, [0, 0.2, censer[2]], [1.6, 0.4, 1.6], 0x8f8a7c], [BALL, [0, 1.0, censer[2]], [0.7, 0.55, 0.7], 0x6a5a34], [ROD, [0, 1.36, censer[2]], [0.74, 0.08, 0.74], 0x8a7440], ...[0, 2.1, 4.2].map((a) => [ROD, [Math.sin(a) * 0.5, 0.52, censer[2] + Math.cos(a) * 0.5], [0.07, 0.36, 0.07], 0x6a5a34]), ...[-1, 1].map((sx) => [BOX, [sx * 0.76, 1.3, censer[2]], [0.08, 0.36, 0.3], 0x8a7440]));
@@ -223,7 +224,7 @@ function surroundings(height, random, sectColor, sectId = null) {
   for (const z of [0, 8, 16, 24])
     for (const sx of [-1, 1]) {
       parts.push([BOX, [sx * 4.3, 0.1, z], [1.1, 0.2, 3.2], 0x8f8a7c], [BOX, [sx * 4.3, 0.2, z], [0.86, 0.1, 2.96], 0x5e4a30]);
-      for (let i = 0; i < 7; i++) parts.push([BALL, [sx * 4.3 + (random() - 0.5) * 0.6, 0.38, z + (i - 3) * 0.42], [0.2, 0.18, 0.2], [0xd8566a, 0xf2c14e, 0xf6f0e4, 0xb866c8, 0x5f9a4a, 0x7ab85a][Math.floor(random() * 6)]]);
+      for (let i = 0; i < 7; i++) parts.push([BALL, [sx * 4.3 + (random() - 0.5) * 0.6, 0.38, z + (i - 3) * 0.42], [0.2, 0.18, 0.2], [0xbb625f, 0xd4a358, 0xe6dbc7, 0xa2778c, 0x6c8971, 0x849e7a][Math.floor(random() * 6)]]);
     }
   // What the sect is known by stands in the back corner east of the hall; tables and benches are set out in the west one.
   for (const part of landmark(sectId, 24, HALL_AT.z - 5, random)) (part.lit ? lit : parts).push(part.lit ?? part);
@@ -239,7 +240,7 @@ function surroundings(height, random, sectColor, sectId = null) {
       r = Math.sqrt(random()) * 0.8;
     const x = POND.x + Math.cos(a) * POND.rx * r,
       z = POND.z + Math.sin(a) * POND.rz * r;
-    parts.push([ROD, [x, 0.075, z], [0.34, 0.02, 0.34], i % 3 ? 0x4f8a3f : 0x67a04d]);
+    parts.push([ROD, [x, 0.075, z], [0.34, 0.02, 0.34], i % 3 ? 0x506f5b : 0x698270]);
     if (i % 3 === 0) parts.push([BALL, [x + 0.1, 0.16, z], [0.13, 0.1, 0.13], 0xf2a8c0], [SPIKE, [x + 0.1, 0.22, z], [0.07, 0.12, 0.07], 0xf7d0d8]);
   }
   for (let i = 0; i < 14; i++) {
@@ -258,7 +259,7 @@ function surroundings(height, random, sectColor, sectId = null) {
   // East of the gate: a bamboo grove with a stone table and stools, and a rockery.
   for (let i = 0; i < 9; i++) for (const part of treeParts(15 + random() * 15, 26 + random() * 7, 0.9 + random() * 0.5, 'bamboo')) greens.push(part);
   parts.push([ROD, [20, 0.4, 25.5], [0.9, 0.12, 0.9], 0xa9a69c], [ROD, [20, 0.2, 25.5], [0.3, 0.4, 0.3], 0x8f8a7c], ...[0, 1.57, 3.14, 4.71].map((a) => [ROD, [20 + Math.cos(a) * 1.4, 0.2, 25.5 + Math.sin(a) * 1.4], [0.26, 0.4, 0.26], 0x9a978d]));
-  for (let i = 0; i < 5; i++) parts.push([BALL, [10 + i * 0.9 + random(), 0.5 + random() * 0.8, 30 + random() * 2], [0.7 + random() * 0.6, 0.9 + random() * 1.3, 0.6 + random() * 0.5], shade(0x8d8a80, 0.8 + random() * 0.35)]);
+  for (let i = 0; i < 5; i++) parts.push([BALL, [10 + i * 0.9 + random(), 0.5 + random() * 0.8, 30 + random() * 2], [0.7 + random() * 0.6, 0.9 + random() * 1.3, 0.6 + random() * 0.5], shade(0x65747a, 0.8 + random() * 0.35)]);
   // Things grown from model files are set out here and drawn together, each kind in one go.
   const planted = new Map();
   const set = (name, variant, x, z, tall, sink = 0) => {
@@ -312,7 +313,7 @@ function surroundings(height, random, sectColor, sectId = null) {
       sx = random() < 0.5 ? -1 : 1;
     const [x, z] = random() < 0.6 ? [sx * (edge - 1.2), along] : [along, -(edge - 1.2)];
     if (set(pick('bush', 5), 'plain', x, z, 0.8 + random() * 0.7, 0.05)) continue;
-    greens.push([BALL, [x, 0.35, z], [0.6 + random() * 0.5, 0.45 + random() * 0.3, 0.6 + random() * 0.5], grad(shade(0x4f7f3f, 0.8 + random() * 0.4), 0.6, 1.15)]);
+    greens.push([BALL, [x, 0.35, z], [0.6 + random() * 0.5, 0.45 + random() * 0.3, 0.6 + random() * 0.5], grad(shade(0x416450, 0.8 + random() * 0.4), 0.6, 1.15)]);
   }
   // Outside: forest on the slopes, thicker lower down, with rocks and scrub among it.
   for (let i = 0; i < 230; i++) {
@@ -333,11 +334,11 @@ function surroundings(height, random, sectColor, sectId = null) {
       y = height(x, z);
     if (Math.abs(x) < 5 && z > 0) continue;
     if (i % 3 === 0 ? set(pick('stone', 5), random() < 0.4 ? 'moss' : 'plain', x, z, 0.7 + random() * 1.9, 0.15) : set(i % 11 === 0 ? 'dead_tree_1' : pick('bush', 5), 'plain', x, z, i % 11 === 0 ? 3 + random() * 2 : 0.9 + random() * 1.1, 0.05)) continue;
-    if (i % 3 === 0) parts.push([BALL, [x, y + 0.3, z], [0.8 + random() * 1.6, 0.6 + random() * 1.2, 0.8 + random() * 1.4], shade(0x8d8a80, 0.8 + random() * 0.4)]);
-    else greens.push([BALL, [x, y + 0.4, z], [0.9 + random(), 0.6 + random() * 0.5, 0.9 + random()], grad(shade(0x4a7a3c, 0.75 + random() * 0.5), 0.6, 1.15)]);
+    if (i % 3 === 0) parts.push([BALL, [x, y + 0.3, z], [0.8 + random() * 1.6, 0.6 + random() * 1.2, 0.8 + random() * 1.4], shade(0x65747a, 0.8 + random() * 0.4)]);
+    else greens.push([BALL, [x, y + 0.4, z], [0.9 + random(), 0.6 + random() * 0.5, 0.9 + random()], grad(shade(0x365b4c, 0.75 + random() * 0.5), 0.6, 1.15)]);
   }
   // Far ranges ring the valley, each paler than the one before it as the haze takes them.
-  for (const [radius, tall, tone] of [[210, 60, 0x6f8478], [265, 88, 0x8499a0], [320, 120, 0xa3b3bd]])
+  for (const [radius, tall, tone] of [[210, 60, 0x496362], [265, 88, 0x6c8389], [320, 120, 0x96a8b1]])
     for (let i = 0; i < 22; i++) {
       const a = (i / 22) * 6.283 + random() * 0.2,
         wide = 34 + random() * 30,
@@ -349,9 +350,9 @@ function surroundings(height, random, sectColor, sectId = null) {
   // Poles for the banners; the cloth itself is hung separately so that it can move.
   const banners = [];
   const flags = [...[-6, 8, 22].flatMap((z) => [-1, 1].map((sx) => [sx * 5.4, z])), [-6.5, edge + 0.5], [6.5, edge + 0.5]];
-  const cloth = build([[BOX, [0.5, 0, 0], [1.0, 2.0, 0.04], sectColor], [BOX, [0.5, 0.86, 0.001], [1.0, 0.16, 0.05], shade(sectColor, 0.6)], [BOX, [0.5, -0.9, 0.001], [1.0, 0.12, 0.05], 0xd9b04a]]);
+  const cloth = build([[BOX, [0.5, 0, 0], [1.0, 2.0, 0.04], sectColor], [BOX, [0.5, 0.86, 0.001], [1.0, 0.16, 0.05], shade(sectColor, 0.6)], [BOX, [0.5, -0.9, 0.001], [1.0, 0.12, 0.05], 0xc59e5b]]);
   for (const [x, z] of flags) {
-    parts.push([ROD, [x, 2.6, z], [0.06, 5.2, 0.06], 0x5a4632], [BALL, [x, 5.25, z], 0.11, 0xd9b04a], [BOX, [x, 0.15, z], [0.5, 0.3, 0.5], 0x8f8a7c]);
+    parts.push([ROD, [x, 2.6, z], [0.06, 5.2, 0.06], 0x5a4632], [BALL, [x, 5.25, z], 0.11, 0xc59e5b], [BOX, [x, 0.15, z], [0.5, 0.3, 0.5], 0x8f8a7c]);
     const flag = new Mesh3D(cloth, TOON);
     flag.castShadow = true;
     flag.setPosition(x + 0.05, 4.0, z);

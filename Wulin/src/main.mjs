@@ -19,7 +19,7 @@ import { DIFFICULTIES, FOCUSES, MERIDIANS, RELIC_BY_ID, SCENARIOS } from './data
 import { BUILDINGS, ECONOMY, PILLS, armorName, weaponName } from './data/goods.mjs';
 import { FORMATIONS, HOUSE_RULES, TALENTS } from './data/jianghu.mjs';
 import { PLACES, PLACE_BY_ID, RESOURCE_NAMES, RESOURCES } from './data/places.mjs';
-import { OFFICES, RANKS, SECTS, SECT_BY_ID } from './data/sects.mjs';
+import { OFFICES, RANKS, SECTS, SECT_BY_ID, applyIdentity } from './data/sects.mjs';
 import { createBattle } from './core/battle.mjs';
 import { createEditor, describeItem, doublePress } from './core/editor.mjs';
 import {
@@ -32,11 +32,13 @@ import { APT_NAMES, STAT_KEYS, STAT_NAMES, hpMax, learnableArts, prowess } from 
 import { createRng } from './core/rng.mjs';
 import { createSlots, deserialize, saveFileName, serialize } from './core/save.mjs';
 import {
-  SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, donate, beds, build, createWorld, dateText, gift, ledger, membersOf, openShop, placesOf, promote,
+  SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, donate, beds, build, buildAvailability, createWorld, dateText, gift, ledger, membersOf, openShop, placesOf, promote,
   recruit, relocate, residents, setJob, setMaster, settle, settleAssault, strength, tradeRoutes, upgrade, usedCells,
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
 import { createVoice } from './ui/voice.mjs';
+import { createFeedbackAudio } from './ui/feedback-audio.mjs';
+import { legacyScreen, prologue, prologueScreen, sectScreen } from './ui/opening.mjs';
 import { claimGoal, goalView, startGoals } from './core/goals.mjs';
 
 const app = document.querySelector('#app'),
@@ -46,6 +48,7 @@ const app = document.querySelector('#app'),
   announcement = document.querySelector('#announcement');
 const slots = createSlots(localStorage);
 const voice = createVoice(localStorage);
+const feedbackAudio = createFeedbackAudio(localStorage);
 
 /** What the page is showing; the world itself is in `world`. */
 const ui = {
@@ -70,6 +73,7 @@ const ui = {
   picking: false,
   /** Which of the seat's panels is open. */
   seatTab: 'build',
+  commandCollapsed: false,
   /** The roster: who is picked, the filter, the search and the ticked rows. */
   person: null,
   rank: '全部',
@@ -91,6 +95,9 @@ const ui = {
   /** How a new game is to begin, and whether the seat's buildings are named. */
   scenario: 'many',
   difficulty: 1,
+  founding: false,
+  prologue: 0,
+  succession: false,
   ownName: '',
   ownLeader: '',
   tags: true,
@@ -115,15 +122,25 @@ const books = () => world.sects[me()];
 const autoLabel = () => `${SECT_BY_ID[me()].name} ${dateText(world)}`;
 const dayText = (day) => `承和${1 + Math.floor(day / 360)}年${1 + Math.floor((day % 360) / 30)}月${1 + (day % 30)}日`;
 
-function toast(text) {
+function toast(text, tone = 'notice') {
   if (!text) return;
-  announcement.textContent = text;
+  const marker = { success: '✓', warning: '!', notice: '◆' }[tone];
+  announcement.dataset.tone = tone;
+  announcement.innerHTML = `<span class="toast-mark" aria-hidden="true">${marker}</span><span class="toast-copy">${esc(text)}</span>`;
   announcement.hidden = false;
+  feedbackAudio.play({ success: 'confirm', warning: 'reject', notice: 'notice' }[tone]);
+  toast.sheet = ui.sheet;
   clearTimeout(toast.timer);
-  toast.timer = setTimeout(() => (announcement.hidden = true), 3600);
+  toast.timer = setTimeout(() => {
+    announcement.hidden = true;
+    const inline = dialog.querySelector('.sheet-feedback');
+    if (inline) inline.hidden = true;
+    toast.sheet = null;
+  }, tone === 'warning' ? 4800 : 3200);
 }
-/** Reports the result of an action: the reason when refused, `okText` when done. */
-const say = (result, okText = '') => (toast(result.ok ? okText : result.why), result.ok);
+
+/** Reports the reason when a command is refused and confirms completed orders. */
+const say = (result, okText = '') => (toast(result.ok ? okText : result.why, result.ok ? 'success' : 'warning'), result.ok);
 
 // ---- portraits and paintings ---------------------------------------------------------------------------
 
@@ -143,7 +160,7 @@ function face(person, css = 'avatar-small', view = 'bust') {
   return `<span class="portrait ${css}" style="--portrait-base:${color}"><span class="portrait-fallback">${initial}</span><img src="${esc(url)}" alt="" loading="lazy" decoding="async" onerror="this.hidden=true"></span>`;
 }
 /** The founding leader of a sect, for screens shown before a world exists. */
-const founder = (sect) => ({ school: sect.id, name: sect.leader.name, origin: '掌门' });
+const founder = (sect) => ({ school: sect.id, name: sect.leader.name, female: sect.leader.female, origin: '掌门' });
 const leaderOf = (sectId) => world.persons[world.sects[sectId].leaderId];
 
 // ---- the 3D picture ----------------------------------------------------------------------------------
@@ -217,37 +234,9 @@ function syncPicture() {
 // ---- before a game: the title and the choice of sect ----------------------------------------------------
 
 function titleScreen() {
-  return `<main class="title-screen" style="${sceneStyle('title')}">
-    <div class="title-nav"><span class="seal"><span>武</span><span>林</span></span></div>
-    <div class="title-copy"><p class="title-era">大昭 · 承和元年</p><h1>武林<span>天下</span></h1><p>禁武令既下，江湖风雨欲来。<br>择一门派，兴建山门，教养弟子，问鼎武林。</p>
-      <div class="title-actions">${btn('开创新局', 'page', { page: 'sects' }, 'gold-button', 'arrow')}${btn('载入存档', 'sheet', { kind: 'load' }, 'on-dark', 'box')}</div>
-    </div>
-    <div class="title-version">为新白鹭引擎开发的 Demo</div>
-  </main>`;
-}
-
-function sectScreen() {
-  const sect = SECT_BY_ID[ui.chosen];
-  const standing = ['邪', '中立', '正'][sect.standing + 1];
-  return `<main class="sect-screen">
-    <div class="sect-screen-head">${btn('返回标题', 'page', { page: 'title' }, 'ghost', 'back')}<span class="seal"><span>武</span><span>林</span></span></div>
-    <div class="sect-select-layout">
-      <section><h1>择一门派</h1><p class="subtitle">从十二门派中择一执掌。各派据点、武学和经营路数有所不同。</p>
-      <div class="sect-grid" data-region="sect-grid">${SECTS.map((s) => `<button class="sect-choice ${s.id === sect.id ? 'is-active' : ''}" data-act="choose-sect" data-sect="${s.id}" aria-pressed="${s.id === sect.id}">
-        ${face(founder(s), 'sect-thumb')}<span><b>${esc(s.name)}</b><small>${esc(PLACE_BY_ID[s.seat].name)}</small></span></button>`).join('')}</div></section>
-      <div class="region" data-region="sect-feature"><article class="sect-feature" style="--sect-accent:${sect.color}">
-        <div class="sect-feature-art">${sceneImage('title')}${face(founder(sect), 'sect-hero', 'full')}<div class="sect-feature-shade"></div></div>
-        <div class="sect-feature-copy"><div class="line-between">${tag(standing, standing === '正' ? 'positive' : 'plain')}<span class="caption">${esc(PLACE_BY_ID[sect.seat].name)} · 总舵</span></div>
-          <h2>${esc(sect.name)}</h2><p class="sect-master">掌门 · ${esc(sect.leader.name)}（${sect.leader.age} 岁）</p><p>${esc(sect.role)}。${esc(PLACE_BY_ID[sect.seat].note)}。</p>
-          <p class="caption">主修${CLASSES[sect.main].name}，兼修${CLASSES[sect.second].name}</p>
-          ${formRow('开局', `<select data-change="scenario">${options(Object.entries(SCENARIOS).map(([id, sc]) => [id, `${sc.name}：${sc.does}`]), ui.scenario)}</select>`)}
-          ${formRow('对手', `<select data-change="difficulty">${options(DIFFICULTIES.map((d, i) => [i, `${d.name}（头 ${d.peace} 年无人来犯）`]), ui.difficulty)}</select>`)}
-          ${formRow('自立门户', `<input id="own-name" maxlength="6" placeholder="门派新名（可不填）" value="${esc(ui.ownName)}">`)}
-          ${formRow('掌门姓名', `<input id="own-leader" maxlength="6" placeholder="沿用原掌门（可不填）" value="${esc(ui.ownLeader)}">`)}
-          <label class="check-row"><input type="checkbox" id="succession" ${ui.succession ? 'checked' : ''}> 世代更替（人物会老去，掌门需传位）</label>
-          ${btn('入主山门', 'new', { sect: sect.id }, 'primary', 'arrow')}
-        </div>
-      </article></div>
+  return `<main class="title-screen title-ink" style="${sceneStyle('title')}">
+    <div class="title-copy"><p class="title-era">大昭 · 承和元年</p><h1>武林<span>天下</span></h1><p>禁武令已下。山门未闭。</p>
+      <div class="title-actions">${btn('开创新局', 'page', { page: 'prologue' }, 'gold-button', 'arrow')}${btn('载入存档', 'sheet', { kind: 'load' }, 'on-dark', 'box')}</div>
     </div>
   </main>`;
 }
@@ -264,7 +253,7 @@ function shell(content) {
   const end = world.outcome ? `<div class="notice">${{ 'won-conquest': '一统江湖！', 'won-summit': '武林大会推举你为盟主！', 'won-court': '朝廷封你为武林都指挥使，禁武令自此废除。', lost: '本门已不复存在。' }[world.outcome.result] ?? ''}</div>` : '';
   // The picture fills the screen behind everything: the realm on its page, the field in a fight, the seat otherwise.
   const scene = stagedScene();
-  return `<div class="shell game">
+  return `<div class="shell game" data-page="${ui.page}">
     <div class="backdrop ${isStaged() ? '' : 'is-dimmed'} ${isStaged() && scene !== 'battle' ? 'has-command' : ''}"><div class="stage-slot" data-stage="${scene}">${sceneImage({ realm: 'world', battle: 'battle', seat: 'seat' }[scene])}</div></div>
     <aside class="nav" aria-label="主要功能">
       <button class="nav-logo" data-act="page" data-page="saves" aria-label="存档"><span class="seal"><span>武</span><span>林</span></span></button>
@@ -274,7 +263,7 @@ function shell(content) {
     <header class="topbar" data-region="top">
       <div class="top-identity"><span class="sect-stamp" style="background:${sect.color}">${esc(sect.name[0])}</span><div><strong>${esc(sect.name)}</strong><button class="date-button" data-act="date" title="日期">${dateText(world)}</button></div></div>
       <div class="resources">${resource('coin', '银两', b.silver, '两')}${resource('grain', '粮草', b.grain, '石')}${resource('banner', '威望', b.renown)}${resource('balance', '正邪', b.virtue)}</div>
-      <div class="speeds" role="group" aria-label="时间速度">${[[0, '暂停', 'pause'], [1, '行'], [4, '快'], [16, '疾']].map(speed).join('')}</div>
+      <div class="time-controls"><span class="time-state" data-paused="${ui.speed === 0}">${ui.speed ? '行进中' : '已暂停'}</span><div class="speeds" role="group" aria-label="时间速度">${[[0, '暂停', 'pause'], [1, '行'], [4, '快'], [16, '疾']].map(speed).join('')}</div></div>
     </header>
     <main class="main ${isStaged() ? 'is-staged' : 'is-window'}" id="main"><div class="region" data-region="goal">${goalStrip()}</div><div class="region" data-region="notice">${end}${ui.notice ? `<div class="notice">${esc(ui.notice)}</div>` : ''}</div>${content}</main>
   </div>`;
@@ -284,15 +273,18 @@ function shell(content) {
 const stagedScene = () => (ui.page === 'battle' && ui.fight ? 'battle' : ui.page === 'world' && picture.stage && ui.map3d ? 'realm' : 'seat');
 /** Whether the screen is the picture itself with panels over it, rather than a window in front of it. */
 const isStaged = () => ui.page === 'seat' || (ui.page === 'battle' && !!ui.fight) || (ui.page === 'world' && !!picture.stage && ui.map3d);
+const canFoldCommand = () => ui.page === 'seat' || (ui.page === 'world' && !!picture.stage && ui.map3d);
+const commandToggle = (label) => `<button type="button" class="button on-dark ui-command-toggle" data-act="command-toggle" aria-controls="scene-command" aria-expanded="${!ui.commandCollapsed}">${icon(ui.commandCollapsed ? 'layers' : 'frame')}${ui.commandCollapsed ? label : '观景'}</button>`;
 
 /** The matter in hand, shown above every screen: what to do, how far along, and where to go to do it. */
 function goalStrip() {
   const goal = goalView(world);
   // A fight has the whole screen to itself.
   if (!goal || world.outcome || ui.fight) return '';
-  if (goal.last) return `<section class="goal is-last"><div class="goal-mark">${icon('banner')}</div><div class="goal-copy"><b>${esc(goal.title)}</b><span>${esc(goal.text)}</span></div></section>`;
+  const open = btn('要务', 'goal-open', {}, 'on-dark goal-open', 'banner');
+  if (goal.last) return `${open}<section class="goal is-last"><div class="goal-mark">${icon('banner')}</div><div class="goal-copy"><b>${esc(goal.title)}</b><span>${esc(goal.text)}</span></div></section>`;
   const reward = Object.entries(goal.gives).map(([key, amount]) => `${{ silver: '银两', grain: '粮草', renown: '威望' }[key]} +${num(amount)}`).join('　');
-  return `<section class="goal ${goal.done ? 'is-done' : ''}">
+  return `${open}<section class="goal ${goal.done ? 'is-done' : ''}">
     <div class="goal-mark"><small>要务</small><b>${goal.step}<i>/${goal.steps}</i></b></div>
     <div class="goal-copy"><b>${esc(goal.title)}</b><span>${esc(goal.done ? '此事已成，可以领赏了。' : goal.text)}</span>${goal.done ? '' : `<small>${icon('pin')}${esc(goal.how)}</small>`}</div>
     <div class="goal-side"><div class="goal-count"><span>${num(goal.now)} / ${num(goal.wanted)}</span>${meter(goal.now / goal.wanted)}</div>
@@ -331,7 +323,7 @@ function seatScreen() {
           <div class="building-switch ${picture.stage ? 'is-folded' : ''}" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>
         <div class="panel-foot">${btn('兴建建筑', 'sheet', { kind: 'build' }, 'primary', 'plus')}</div></section>`,
     recruit: () => `<section class="panel recruit-panel">${panelTitle('招贤榜', tag(place.applicants.length ? `${place.applicants.length} 人求见` : '无人求见', place.applicants.length ? 'positive' : 'plain'))}
-          <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content"><div class="recruit-avatar">${icon('people')}</div><div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
+          <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content">${face(p, 'recruit-avatar')}<div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
         </section>`,
     here: () => `<section class="panel">${panelTitle('此地', `<button class="text-link" data-act="page" data-page="disciples">驻此 ${here.length} 人 · 全派 ${row.members} 人 ${icon('arrow')}</button>`)}
         <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>山下店铺</span><b>${place.shops}<small> / ${SHOP_LIMIT}</small></b></div><div><span>掌门</span><b class="is-text">${leader?.place === placeId ? '在此' : esc(PLACE_BY_ID[leader?.place]?.name ?? '在外')}</b></div></div>
@@ -355,12 +347,12 @@ function seatScreen() {
   }[ui.seatTab]();
   return `<section class="scene-panel seat-panel" aria-label="山门">
       <div class="region" data-region="seat-over">
-        <div class="scene-top"><div class="scene-chip">${icon('pin')}<span>${esc(spec.name)}${seat}</span><small>${status}</small></div>${picture.stage ? `<div class="scene-chip hour-chip">${icon('banner')}<span id="hour-chip">${hourText()}</span></div>` : ''}${switcher}</div>
+        <div class="scene-top"><div class="scene-chip">${icon('pin')}<span>${esc(spec.name)}${seat}</span><small>${status}</small></div>${picture.stage ? `<div class="scene-chip hour-chip">${icon('banner')}<span id="hour-chip">${hourText()}</span></div>` : ''}${switcher}${commandToggle('山门指令')}</div>
         ${picture.stage ? `<div class="scene-zoom" role="group" aria-label="山门视角"><button data-act="zoom" data-dir="in" aria-label="拉近">${icon('plus')}</button><button data-act="zoom" data-dir="out" aria-label="拉远">${icon('minus')}</button><button data-act="zoom" data-dir="reset" aria-label="恢复全景">${icon('frame')}</button></div>
         <div class="scene-bottom"><span>${icon('layers')} 拖动转视角，滚轮或双指缩放</span><span><button class="scene-overlay-button" data-act="tags">${ui.tags ? '隐藏建筑名' : '显示建筑名'}</button></span></div>` : ''}
       </div>
     </section>
-    <aside class="command" data-region="seat-side">
+    <aside class="command" id="scene-command" data-region="seat-side">
       <div class="command-tabs" role="tablist">${tabs.map(([id, label]) => `<button role="tab" data-act="seat-tab" data-tab="${id}" class="${ui.seatTab === id ? 'is-active' : ''}" aria-selected="${ui.seatTab === id}">${label}</button>`).join('')}</div>
       <div class="command-body">${tabPanel}</div>
     </aside>`;
@@ -510,16 +502,15 @@ function worldScreen() {
   return `${model ? '' : screenHead('江湖', '天下舆图', '点据点查看详情与可行之事。', btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'outline', 'banner'))}
     <div class="world-layout ${model ? 'is-model' : ''}">
       ${model ? `<section class="scene-panel map-panel is-model" aria-label="天下沙盘">
-        <div class="scene-top"><div class="scene-chip">${icon('map')}<span>大昭疆域</span><small>拖动平移 · 右键拖动旋转 · 滚轮缩放</small></div>${btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'on-dark', 'banner')}</div>
+        <div class="scene-top"><div class="scene-chip">${icon('map')}<span>大昭疆域</span><small>拖动平移 · 滚轮缩放</small></div>${commandToggle('据点详情')}${btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'on-dark', 'banner')}${btn('画卷', 'mapmode', {}, 'on-dark', 'map')}</div>
         <div class="scene-zoom map-zoom"><button data-act="zoom" data-dir="in" aria-label="拉近">${icon('plus')}</button><button data-act="zoom" data-dir="out" aria-label="拉远">${icon('minus')}</button><button data-act="zoom" data-dir="reset" aria-label="恢复全景">${icon('frame')}</button></div>
-        <div class="scene-bottom"><button class="scene-overlay-button" data-act="mapmode">改看画卷</button><span></span></div>
       </section>` : `<section class="scene-panel map-panel" aria-label="天下舆图"><div class="scene-viewport"><div class="scene-stage map-stage">${sceneImage('world')}<div class="region" data-region="map">${mapMarks()}</div></div></div>
         <div class="map-label"><span>大昭疆域</span><small>二十据点</small></div>
         <div class="map-key"><span><i class="legend-home" style="--marker:${SECT_BY_ID[me()].color}"></i> 本派</span><span><i class="legend-faction"></i> 他派（按门派着色）</span><span><i></i> 无主</span></div>
         <div class="scene-zoom map-zoom"><button data-act="mapzoom" data-dir="in" aria-label="放大舆图">${icon('plus')}</button><button data-act="mapzoom" data-dir="out" aria-label="缩小舆图">${icon('minus')}</button><button data-act="mapzoom" data-dir="reset" aria-label="重置舆图">${icon('frame')}</button></div>
         ${picture.stage ? `<div class="scene-bottom"><button class="scene-overlay-button" data-act="mapmode">改看沙盘</button><span></span></div>` : ''}
       </section>`}
-      <aside class="world-side ${model ? 'command' : ''}" data-region="world-side">
+      <aside class="world-side ${model ? 'command' : ''}" ${model ? 'id="scene-command"' : ''} data-region="world-side">
         <section class="panel place-card">${panelTitle(spec.name, tag(owner?.name ?? '无主', owner ? 'positive' : 'plain'))}<p>${esc(spec.note)}</p>
           <dl class="facts">${fact('地块容量', `${spec.cells} 格`)}${fact('物产', RESOURCES.filter((key) => spec.resources[key] >= 2).map((key) => RESOURCE_NAMES[key]).join('、') || '平平')}
             ${owner ? fact('守卫', `${guard.length} 人 · 战力 ${num(strength(guard))}`) : ''}${relation !== null ? fact('与本派关系', `<span class="${relation < 0 ? 'bad' : relation >= 40 ? 'good' : ''}">${relation}</span>`) : ''}
@@ -620,6 +611,7 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
     world.rng = rng.state;
     ui.fight = null;
     ui.lastFight = { title, won: result.won, verdict: `${result.verdict}历时 ${battle.time.toFixed(0)} 秒。`, lines };
+    feedbackAudio.play(result.won ? 'victory' : 'defeat');
     ui.sheet = { kind: 'fight' };
   };
   ui.resume ||= ui.speed;
@@ -727,19 +719,39 @@ const pillText = (pill) => { const e = pill.effect; return e.hp ? '疗伤' : e.n
 
 /** The sheets, by kind: each gives a title, a body and the buttons at its foot. */
 const SHEETS = {
+  goal() {
+    const goal = goalView(world);
+    if (!goal) return ['要务', '<p>眼下暂无待办要务。</p>', closeBtn('返回')];
+    const reward = !goal.last && Object.entries(goal.gives).map(([key, amount]) => `${{ silver: '银两', grain: '粮草', renown: '威望' }[key]} +${num(amount)}`).join('　');
+    const next = goal.done ? btn('领取赏赐', 'goal-claim', {}, 'primary') : goal.go ? btn('前往', 'goal-go', {}, 'primary', 'arrow') : '';
+    return [goal.title, `<div class="goal-detail"><p>${esc(goal.text)}</p>${goal.last ? '' : `<p>${esc(goal.how)}</p><p>${num(goal.now)} / ${num(goal.wanted)}${meter(goal.now / goal.wanted)}</p><p>${esc(reward)}</p>`}</div>`, closeBtn('返回') + next];
+  },
   load() {
     const saves = slots.list();
     return ['载入存档', `${saves.length ? `<div class="choice-list">${saves.map((s) => btn(`${s.slot === 'auto' ? '自动存档' : '存档位 ' + s.slot} · ${s.label ?? ''}`, 'load', { slot: s.slot }, 'outline', 'box')).join('')}</div>` : '<p>这个浏览器里还没有存档。</p>'}`, btn('导入存档文件', 'import', {}, 'outline', 'plus') + closeBtn('关闭')];
   },
   build() {
-    const spec = PLACE_BY_ID[ui.place],
-      free = spec.cells - usedCells(world, ui.place);
-    return ['兴建建筑', `${formRow('建筑', `<select id="build-kind">${options(Object.entries(BUILDINGS).map(([kind, b]) => [kind, `${b.name} · ${b.cost}两 · ${b.cells}格 · ${b.does}`]))}</select>`)}<p class="caption">${esc(spec.name)}尚余建地 ${free} 格，库中有银 ${num(books().silver)} 两。</p>`, closeBtn() + btn('兴建', 'build', {}, 'primary')];
+    const spec = PLACE_BY_ID[ui.place];
+    const free = spec.cells - usedCells(world, ui.place);
+    const selected = ui.sheet.buildKind ?? Object.keys(BUILDINGS).find(kind => buildAvailability(world, me(), ui.place, kind).ok) ?? 'dorm';
+    const availability = buildAvailability(world, me(), ui.place, selected);
+    const cards = Object.entries(BUILDINGS).map(([kind, b]) => {
+      const status = buildAvailability(world, me(), ui.place, kind);
+      return `<button type="button" class="build-card" data-act="build-kind" data-kind="${kind}" aria-pressed="${selected === kind}">
+        <span class="build-card-head">${icon(b.makes ? 'settings' : b.trains ? 'swords' : b.yields ? 'layers' : 'gate')}<b>${esc(b.name)}</b></span>
+        <span>${esc(b.does)}</span><small>${num(b.cost)} 两 · ${b.cells} 格</small>
+        ${status.ok ? '' : `<small class="bad">${esc(status.why)}</small>`}</button>`;
+    }).join('');
+    return ['兴建建筑', `<div class="build-budget"><span>${icon('pin')}${esc(spec.name)} · 余地 ${free} 格</span><span>${icon('coin')}${num(books().silver)} 两</span></div>
+      <div class="build-catalog" role="group" aria-label="建筑">${cards}</div>
+      <input type="hidden" id="build-kind" value="${selected}">
+      ${availability.ok ? '' : `<p class="build-reason bad">${esc(availability.why)}</p>`}`,
+      closeBtn() + btn(`兴建${BUILDINGS[selected].name}`, 'build', {}, 'primary', 'plus', !availability.ok)];
   },
   applicant({ index }) {
     const p = world.places[ui.place].applicants[index];
     if (!p) return ['招贤榜', '<p>此人已经离去。</p>', closeBtn('关闭')];
-    return [`招贤榜 · ${p.name}`, `<div class="applicant"><span class="person-monogram">${esc(p.name[0])}</span><div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.female ? '女' : '男'} · ${p.age} 岁</p></div></div>
+    return [`招贤榜 · ${p.name}`, `<div class="applicant">${face(p, 'applicant-portrait')}<div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.female ? '女' : '男'} · ${p.age} 岁</p></div></div>
       <p>资质：${Object.entries(p.apt).map(([key, value]) => `${APT_NAMES[key]} ${value}`).join('　')}</p><p>根骨：${STAT_KEYS.map((key) => `${STAT_NAMES[key]} ${Math.round(p.stats[key])}`).join('　')}</p>
       <p class="caption">入门时交束修 ${p.fee} 两。收录需掌门在此，且厢房有空铺。</p>`, closeBtn('暂不收录') + btn('收录弟子', 'recruit', { index }, 'primary')];
   },
@@ -887,7 +899,12 @@ const SHEETS = {
       <p class="caption">${picture.stage ? '改动画质后会重新载入页面，进度先自动保存。' : '这台设备画不了 3D，山门以画卷示意，战斗以文字结算。'}</p>
       ${formRow('配音', `<select data-change="voice">${options([['on', '开'], ['off', '关']], voice.on ? 'on' : 'off')}</select>`)}
       ${formRow('季报', `<select data-change="season">${options([['on', '每季一报'], ['off', '不报']], localStorage.getItem('wulin-season') ?? 'on')}</select>`)}
-      ${formRow('音量', `<input type="range" min="0" max="1" step="0.05" data-change="voice-volume" value="${voice.volume}">`)}
+      ${formRow('配音音量', `<input type="range" min="0" max="1" step="0.05" data-change="voice-volume" value="${voice.volume}">`)}
+      <section class="audio-settings"><h3>${icon('sound')} 操作音效</h3>
+        ${formRow('反馈音效', `<select data-change="feedback-sound">${options([['on', '开启'], ['off', '静音']], feedbackAudio.on ? 'on' : 'off')}</select>`)}
+        ${formRow('音效音量', `<input type="range" min="0" max="1" step="0.05" data-change="feedback-volume" value="${feedbackAudio.volume}">`)}
+        ${btn('试听音效', 'feedback-test', {}, 'outline', 'sound')}
+      </section>
       <p class="caption">${voice.supported ? '奇遇、来犯与战报由旁白念出；交战中打出重手的人会喊出武学的名字，男女老少嗓音各不相同。声音由这台设备自带的中文语音合成，各设备听感不同。' : '这台设备没有中文语音，配音暂时发不出声；装上系统的中文语音后即可使用。'}</p>
       ${voice.supported ? `<div class="button-group">${btn('试听', 'voice-test', {}, 'outline')}</div>` : ''}
       <p class="caption">连按两次 F8，或连续点击顶栏日期五次，可打开修改器。</p>
@@ -916,13 +933,29 @@ const SHEETS = {
   },
 };
 
+let renderedSheet = '';
 function renderSheet() {
   if (!ui.sheet || !SHEETS[ui.sheet.kind]) return void (dialog.open && dialog.close());
   const [title, body, foot] = SHEETS[ui.sheet.kind](ui.sheet);
-  dialog.innerHTML = `<article class="sheet-inner"><div class="sheet-title"><h2 id="dialog-title">${esc(title)}</h2><button data-act="close" aria-label="关闭">${icon('close')}</button></div><div class="sheet-body">${body}</div>${foot ? `<div class="sheet-footer">${foot}</div>` : ''}</article>`;
+  const previous = dialog.dataset.kind;
+  const scrolled = previous === ui.sheet.kind ? dialog.querySelector('.sheet-body')?.scrollTop ?? 0 : 0;
+  const focus = dialog.contains(document.activeElement) ? document.activeElement : null;
+  const html = `<article class="sheet-inner"><div class="sheet-title"><h2 id="dialog-title" tabindex="-1">${esc(title)}</h2><button data-act="close" aria-label="关闭">${icon('close')}</button></div><div class="sheet-body">${body}</div><p class="sheet-feedback" role="status" hidden></p>${foot ? `<div class="sheet-footer">${foot}</div>` : ''}</article>`;
+  if (html !== renderedSheet) {
+    dialog.innerHTML = html;
+    renderedSheet = html;
+  }
+  const inline = dialog.querySelector('.sheet-feedback');
+  inline.hidden = announcement.hidden || toast.sheet !== ui.sheet;
+  inline.textContent = inline.hidden ? '' : announcement.querySelector('.toast-copy')?.textContent ?? '';
+  inline.dataset.tone = inline.hidden ? '' : announcement.dataset.tone;
   dialog.setAttribute('aria-labelledby', 'dialog-title');
   dialog.dataset.kind = ui.sheet.kind;
-  if (!dialog.open) dialog.showModal();
+  dialog.querySelector('.sheet-body').scrollTop = scrolled;
+  const wasOpen = dialog.open;
+  if (!wasOpen) dialog.showModal();
+  if (!wasOpen || previous !== ui.sheet.kind) dialog.querySelector('#dialog-title').focus({ preventScroll: true });
+  else if (focus && !focus.isConnected) restoreControl(dialog, focus);
 }
 /** Has the narrator read a sheet aloud the first time it is shown. */
 function speakSheet() {
@@ -938,6 +971,7 @@ function speakSheet() {
   else if (sheet?.kind === 'siege' && world.pending?.kind === 'siege') text = `${SECT_BY_ID[world.pending.attacker].name}来犯${PLACE_BY_ID[world.pending.place].name}！`;
   const key = text && sheet.kind + ':' + text;
   if (key === ui.spoken) return;
+  if (key && sheet.kind !== 'fight') feedbackAudio.play('notice');
   // Leaving a sheet that was being read stops the reading.
   if (ui.spoken && !key) voice.stop();
   ui.spoken = key;
@@ -950,12 +984,26 @@ dialog.addEventListener('close', () => ui.sheet && (actions.close(), render()));
 
 const SCREENS = { seat: seatScreen, disciples: disciplesScreen, arts: artsScreen, world: worldScreen, battle: battleScreen, chronicle: chronicleScreen, saves: savesScreen };
 
+function restoreControl(root, control) {
+  const match = control.id ? root.querySelector(`#${CSS.escape(control.id)}`)
+    : [...root.querySelectorAll('[data-act], [data-change]')].find(candidate =>
+      candidate.tagName === control.tagName && Object.keys(control.dataset).length &&
+      Object.entries(control.dataset).every(([key, value]) => candidate.dataset[key] === value));
+  match?.focus({ preventScroll: true });
+}
+
 function render() {
   let html, key;
   if (!world) {
-    if (ui.page !== 'sects') ui.page = 'title';
-    html = ui.page === 'sects' ? sectScreen() : titleScreen();
     key = ui.page;
+    if (ui.page === 'prologue') {
+      html = prologueScreen(ui.prologue, sceneStyle, face);
+      key += ':' + ui.prologue;
+    } else if (ui.page === 'sects') {
+      html = sectScreen(ui, sceneStyle, (sect, css, view) => face(founder(sect), css, view), face);
+      key += ':' + ui.founding;
+    } else if (ui.page === 'legacy') html = legacyScreen(ui, sceneStyle);
+    else html = titleScreen();
   } else {
     if (!SCREENS[ui.page]) ui.page = 'seat';
     if (ui.fight) ui.page = 'battle';
@@ -969,7 +1017,13 @@ function render() {
     key = [ui.page, ui.page === 'battle' && !!ui.fight, !!picture.stage, ui.map3d].join();
   }
   // The key carries whether the paintings have loaded, so the still pictures appear when they arrive.
-  if (mount(app, html, key + (art ? ':art' : ''))) window.scrollTo(0, 0);
+  const focused = document.activeElement;
+  if (mount(app, html, key + (art ? ':art' : ''))) {
+    window.scrollTo(0, 0);
+    app.querySelector('.opening-stage h1')?.focus({ preventScroll: true });
+  } else if (!focused.isConnected && focused.matches('[data-act], [data-change]')) restoreControl(app, focused);
+  const shellNode = app.querySelector('.shell.game');
+  if (shellNode) shellNode.dataset.commandCollapsed = String(canFoldCommand() && ui.commandCollapsed);
   syncPicture();
   placeMap();
   renderSheet();
@@ -1039,7 +1093,7 @@ function importFile() {
     if (!file) return;
     const loaded = deserialize(await file.text());
     if (loaded.ok) enter(loaded.state, '已读入存档。');
-    else toast(loaded.why);
+    else toast(loaded.why, 'warning');
     render();
   };
   input.click();
@@ -1057,8 +1111,13 @@ const pick = (selector) => dialog.querySelector(selector)?.value ?? '';
 
 const actions = {
   page(data) {
-    if (ui.fight && data.page !== 'battle') return toast('战事未了。');
-    if (world && !membersOf(world, me()).length && !['chronicle', 'saves'].includes(data.page)) return toast('本门已不复存在。');
+    if (ui.fight && data.page !== 'battle') return toast('战事未了。', 'warning');
+    if (world && !membersOf(world, me()).length && !['chronicle', 'saves'].includes(data.page)) return toast('本门已不复存在。', 'warning');
+    if (!world && data.page === 'prologue' && ui.page === 'title') {
+      applyIdentity(null);
+      Object.assign(ui, { chosen: 'shaolin', founding: false, prologue: 0, succession: false, scenario: 'many', difficulty: 1, ownName: '', ownLeader: '' });
+    }
+    if (ui.page !== data.page) ui.commandCollapsed = false;
     ui.page = data.page;
     ui.sheet = null;
     ui.notice = '';
@@ -1073,18 +1132,37 @@ const actions = {
     // Time takes up the pace it had before something stopped it.
     if (ui.resume && world && !world.pending && !ui.fight && !ui.heralds.length) (ui.speed = ui.resume), (ui.resume = 0);
   },
+  'prologue-next'() {
+    if (ui.prologue < prologue.length - 1) ui.prologue++;
+    else ui.page = 'sects';
+  },
+  'skip-prologue': () => (ui.page = 'sects'),
+  'choose-founding': (data) => (ui.founding = data.own === 'true'),
   'choose-sect': (data) => (ui.chosen = data.sect),
-  new(data) {
-    // A new name or leader makes the sect the player's own; it keeps the seat, arts and colour of the one it is founded on.
-    const custom = ui.ownName.trim() || ui.ownLeader.trim() ? { sect: data.sect, name: ui.ownName.trim(), leader: ui.ownLeader.trim() } : null;
-    enter(createWorld({ seed: (Date.now() % 1e9) + 1, playerSect: data.sect, succession: !!ui.succession, scenario: ui.scenario, difficulty: Number(ui.difficulty), custom }));
+  'sect-next'() {
+    if (ui.founding && (!ui.ownName.trim() || !ui.ownLeader.trim())) {
+      toast('请为门派和掌门定下名号。', 'warning');
+      app.querySelector(ui.ownName.trim() ? '#own-leader' : '#own-name').focus();
+      return;
+    }
+    ui.page = 'legacy';
+  },
+  'sect-back': () => (ui.page = 'sects'),
+  succession: (data) => (ui.succession = data.enabled === 'true'),
+  new() {
+    const sect = ui.chosen;
+    const custom = ui.founding ? { sect, name: ui.ownName.trim(), leader: ui.ownLeader.trim() } : null;
+    enter(createWorld({ seed: (Date.now() % 1e9) + 1, playerSect: sect, succession: ui.succession, scenario: ui.scenario, difficulty: ui.difficulty, custom }));
   },
   load(data) {
     const loaded = slots.read(data.slot);
     if (loaded.ok) enter(loaded.state, '已读取存档。');
-    else toast(loaded.why);
+    else toast(loaded.why, 'warning');
   },
-  save: (data) => toast(slots.write(data.slot, world, autoLabel()) ? `已保存到存档位 ${data.slot}。` : '浏览器拒绝了保存，请改用导出文件。'),
+  save(data) {
+    const saved = slots.write(data.slot, world, autoLabel());
+    toast(saved ? `进度已存入卷宗 ${data.slot}。` : '无法保存，请导出存档文件。', saved ? 'success' : 'warning');
+  },
   export: () => download(saveFileName(world, SECT_BY_ID[me()].name), serialize(world, autoLabel())),
   import: importFile,
   quit() {
@@ -1104,17 +1182,25 @@ const actions = {
   look(data) {
     ui.place = data.place;
     ui.building = 0;
+    ui.commandCollapsed = false;
     if (data.go) ui.page = 'seat';
   },
   'seat-tab': (data) => (ui.seatTab = data.tab),
-  mapmode: () => (ui.map3d = !ui.map3d),
+  'command-toggle': () => (ui.commandCollapsed = !ui.commandCollapsed),
+  mapmode: () => ((ui.map3d = !ui.map3d), (ui.commandCollapsed = false)),
   zoom(data) {
     const orbit = picture.stage?.orbit;
     if (!orbit) return;
     orbit.distance = data.dir === 'reset' ? (ui.page === 'world' ? 150 : 50) : Math.max(orbit.minDistance, Math.min(orbit.maxDistance, orbit.distance * (data.dir === 'in' ? 0.78 : 1.28)));
   },
-  building: (data) => ((ui.building = Number(data.index)), (ui.seatTab = 'build')),
-  build: () => say(build(world, me(), ui.place, pick('#build-kind')), '动工了。') && ((ui.building = world.places[ui.place].buildings.length - 1), (ui.sheet = null)),
+  building: (data) => ((ui.building = Number(data.index)), (ui.seatTab = 'build'), (ui.commandCollapsed = false)),
+  'build-kind': ({ kind }) => (ui.sheet.buildKind = kind),
+  build() {
+    const kind = pick('#build-kind');
+    if (!say(build(world, me(), ui.place, kind), `${BUILDINGS[kind]?.name ?? '建筑'}已建成。`)) return;
+    ui.building = world.places[ui.place].buildings.length - 1;
+    ui.sheet = null;
+  },
   upgrade: (data) => say(upgrade(world, me(), ui.place, Number(data.index)), '扩建完成。'),
   recruit: (data) => say(recruit(world, me(), ui.place, Number(data.index)), '收入门墙。') && (ui.sheet = null),
 
@@ -1158,7 +1244,7 @@ const actions = {
   art: (data) => (ui.art = data.id),
   'train-art': (data) => say(setJob(world, picked().id, { kind: ART_BY_ID[data.id].tier === 5 ? 'seclude' : 'train', art: data.id }), `${picked().name}已开始修练。`),
 
-  place: (data) => (ui.mapPlace = data.place),
+  place: (data) => ((ui.mapPlace = data.place), (ui.commandCollapsed = false)),
   mapzoom: (data) => (data.dir === 'reset' ? ((ui.map = { zoom: 1, x: 0, y: 0 }), placeMap()) : zoomMap(data.dir === 'in' ? 1.3 : 1 / 1.3)),
   settle: (data) => say(settle(world, me(), data.place), '分舵已立。') && (ui.sheet = null),
   gift: (data) => say(gift(world, me(), data.sect, 500), `已向${SECT_BY_ID[data.sect].name}馈赠。`),
@@ -1174,6 +1260,7 @@ const actions = {
     }
     march(data.place);
   },
+  'goal-open': () => (ui.sheet = { kind: 'goal' }),
   'goal-go'() {
     const go = goalView(world)?.go;
     if (!go) return;
@@ -1182,9 +1269,10 @@ const actions = {
   },
   'goal-claim'() {
     const result = claimGoal(world);
-    if (!result.ok) return toast(result.why);
+    if (!result.ok) return toast(result.why, 'warning');
     const next = goalView(world);
-    toast(`「${result.title}」已成。`);
+    if (ui.sheet?.kind === 'goal') ui.sheet = null;
+    toast(`「${result.title}」已成。`, 'success');
     voice.say(`${result.title}，已成。${next?.last ? '' : '下一件：' + next.title + '。'}`);
   },
   shop: () => say(openShop(world, me(), ui.place), '店铺开张了。'),
@@ -1227,6 +1315,7 @@ const actions = {
     if (world) slots.write('auto', world, autoLabel());
     location.reload();
   },
+  'feedback-test': () => feedbackAudio.play('confirm', { preview: true }),
   'voice-test': () => voice.say('江湖路远，各位保重。', membersOf(world, me()).find((person) => person.id === books().leaderId)),
   'fight-rally': () => (voice.shout('众弟子听令，随我上！', ui.fight.heads?.[ui.fight.side]?.person), ui.fight.arena.battle.rally(ui.fight.side)),
   'fight-stance': (data) => ui.fight.arena.battle.stance(ui.fight.side, data.stance),
@@ -1235,7 +1324,7 @@ const actions = {
     rng.state = world.rng;
     const result = resolvePending(world, Number(data.index), rng);
     world.rng = rng.state;
-    if (!result.ok) return toast(result.why);
+    if (!result.ok) return toast(result.why, 'warning');
     ui.sheet = { kind: 'outcome', title: ui.sheet.title, text: result.text };
   },
   'log-filter': (data) => (ui.logFilter = data.filter),
@@ -1261,6 +1350,8 @@ const changes = {
   season: (_, value) => localStorage.setItem('wulin-season', value),
   voice: (_, value) => voice.set({ on: value === 'on' }),
   'voice-volume': (_, value) => voice.set({ volume: Number(value) }),
+  'feedback-sound': (_, value) => feedbackAudio.set({ on: value === 'on' }),
+  'feedback-volume': (_, value) => feedbackAudio.set({ volume: Number(value) }),
   quality(_, value) {
     slots.write('auto', world, autoLabel());
     try {
@@ -1271,8 +1362,8 @@ const changes = {
     location.reload();
   },
   plot: (_, value) => void say(movePlot(world, me(), ui.place, ui.building, value === '' ? null : Number(value)), '已迁建。'),
-  scenario: (_, value) => (ui.scenario = value),
-  difficulty: (_, value) => (ui.difficulty = Number(value)),
+  scenario: (_, value) => { if (Object.hasOwn(SCENARIOS, value)) ui.scenario = value; },
+  difficulty: (_, value) => { if (Object.hasOwn(DIFFICULTIES, value)) ui.difficulty = Number(value); },
   focus: (_, value) => void say(setFocus(world, me(), ui.place, value), `此处专精改为「${FOCUSES[value]?.name}」。`),
   office: (data, value) => void (value ? say(appoint(world, me(), data.office, ui.place, Number(value)), '已任命。') : delete books().offices[OFFICES[data.office].scope === 'place' ? `${data.office}@${ui.place}` : data.office]),
   rule: (_, value) => void say(setRule(world, me(), value), `门规改为「${HOUSE_RULES[value]?.name}」。`),
@@ -1299,23 +1390,37 @@ const changes = {
 /** True for a moment after the map has been dragged, so the drag does not also pick a stronghold. */
 let mapDragged = false;
 
+const navigationActions = new Set(['page', 'sheet', 'close', 'prologue-next', 'skip-prologue', 'sect-next', 'sect-back', 'command-toggle', 'goal-open', 'mapmode']);
+const selectionActions = new Set(['choose-sect', 'choose-founding', 'succession', 'building', 'build-kind', 'place', 'look', 'rank', 'seat-tab', 'person', 'picking', 'batch-toggle', 'art', 'art-tier', 'speed', 'fight-pause', 'fight-speed', 'fight-stance', 'log-filter']);
+const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fight-retreat', 'siege-fight', 'answer']);
+
 document.body.addEventListener('click', (event) => {
   const target = event.target.closest('[data-act]');
   if (!target || target.disabled) return;
-  if (mapDragged && target.dataset.act === 'place') return;
+  const { act } = target.dataset;
+  if (mapDragged && act === 'place') return;
+  feedbackAudio.unlock(event);
   try {
-    actions[target.dataset.act]?.(target.dataset, event);
+    const sheet = ui.sheet;
+    const beforeToast = toast.timer;
+    actions[act]?.(target.dataset, event);
+    if (sheet && toast.timer !== beforeToast && toast.sheet === sheet) toast.sheet = ui.sheet;
+    if (event.isTrusted) {
+      if (navigationActions.has(act)) feedbackAudio.play('nav');
+      else if (selectionActions.has(act)) feedbackAudio.play('pick');
+      else if (confirmationActions.has(act)) feedbackAudio.play('confirm');
+    }
   } catch (cause) {
     fail(cause);
   }
-  if (!['date', 'import', 'zoom', 'mapzoom', 'mod-load'].includes(target.dataset.act)) render();
+  if (!['date', 'import', 'zoom', 'mapzoom', 'mod-load', 'feedback-test', 'voice-test'].includes(act)) render();
 });
 document.body.addEventListener('change', (event) => {
   const target = event.target;
-  if (target.id === 'succession') return void (ui.succession = target.checked);
   if (target.dataset.batch) return void ((target.checked ? ui.batch.add(Number(target.dataset.batch)) : ui.batch.delete(Number(target.dataset.batch))), render());
   if (target.id === 'batch-all') return void (roster().forEach((p) => (target.checked ? ui.batch.add(p.id) : ui.batch.delete(p.id))), render());
   if (!target.dataset.change) return;
+  feedbackAudio.unlock(event);
   try {
     const result = changes[target.dataset.change]?.(target.dataset, target.value);
     // A value outside the usual range still applies; the field is tinted so the player knows.
@@ -1342,6 +1447,8 @@ window.addEventListener('keydown', (event) => {
   const pace = event.key === ' ' ? (ui.speed ? 0 : 1) : { 1: 1, 2: 4, 3: 16, '`': 0 }[event.key];
   if (pace === undefined) return;
   event.preventDefault();
+  feedbackAudio.unlock(event);
+  feedbackAudio.play('pick');
   actions.speed({ speed: pace });
   render();
 });

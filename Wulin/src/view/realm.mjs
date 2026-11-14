@@ -135,12 +135,12 @@ function heightOf(u, v) {
 /** The colour of the land before any sect's tint: by height, by how far north or west, with fields round the towns. */
 function landColour(u, v, y) {
   const speckle = noise(u * 1.7, v * 1.7);
-  if (y < -0.05) return mix(0x6f907e, 0x3d6470, Math.min(1, -y / 2.5));
-  if (y < 0.45) return mix(0xb3a981, 0xa59a72, speckle);
+  if (y < -0.05) return mix(0x597b70, 0x2f4f66, Math.min(1, -y / 2.5));
+  if (y < 0.45) return mix(0xa39675, 0x8f876e, speckle);
   const snowLine = 19.5 - Math.max(0, 30 - v) * 0.32 + speckle * 1.6;
-  if (y > snowLine) return mix(0xe6ebee, 0xffffff, speckle);
+  if (y > snowLine) return mix(0xd1dce0, 0xffffff, speckle);
   const dry = smooth((30 - u) / 22) * 0.85 + smooth((24 - v) / 20) * 0.45;
-  let grass = mix(mix(0x66784a, 0x4b6443, smooth((v - 40) / 40)), 0x8a7d5c, Math.min(1, dry));
+  let grass = mix(mix(0x607262, 0x3d5b51, smooth((v - 40) / 40)), 0x7f7866, Math.min(1, dry));
   grass = shade(grass, 0.88 + speckle * 0.24);
   // Fields in strips and squares on the low ground near towns and cities.
   let near = 99;
@@ -148,9 +148,9 @@ function landColour(u, v, y) {
   if (y < 2.6 && near < 7.5 && near > 1.6) {
     const patch = Math.sin(Math.floor(u * 1.4) * 12.9898 + Math.floor(v * 1.4) * 78.233) * 43758.5453;
     const pick = patch - Math.floor(patch);
-    grass = mix(grass, pick < 0.3 ? 0x9c9156 : pick < 0.6 ? 0x76874a : pick < 0.8 ? 0x5f7341 : 0x8c7d56, 0.75 * smooth((7.5 - near) / 2));
+    grass = mix(grass, pick < 0.3 ? 0x938266 : pick < 0.6 ? 0x66765d : pick < 0.8 ? 0x566d60 : 0x807461, 0.75 * smooth((7.5 - near) / 2));
   }
-  if (y > 7.5) return mix(grass, mix(0x7b7668, 0x625e56, speckle), smooth((y - 7.5) / 6));
+  if (y > 7.5) return mix(grass, mix(0x697678, 0x4d5b61, speckle), smooth((y - 7.5) / 6));
   return grass;
 }
 
@@ -199,7 +199,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
       normals.push(-dx / length, 1 / length, -dz / length);
       // Steep ground shows its rock.
       const colour = landColour(gridU(i), gridU(j), y);
-      base.push(y > 0.5 && length > 1.45 ? mix(colour, 0x6b675c, Math.min(0.85, (length - 1.45) * 1.6)) : colour);
+      base.push(y > 0.5 && length > 1.45 ? mix(colour, 0x556167, Math.min(0.85, (length - 1.45) * 1.6)) : colour);
     }
   for (let j = 0; j < n; j++)
     for (let i = 0; i < n; i++) {
@@ -249,7 +249,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
   }
 
   // The water is one sheet at sea level; the rivers and the lake are where the land dips under it.
-  const water = new Mesh3D(createGeometry3D({ positions: [-900, 0, -900, 900, 0, -900, -900, 0, 900, 900, 0, 900], normals: [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], indices: [0, 2, 1, 1, 2, 3] }), createStandardMaterial3D({ color: 0x2c6488, roughness: 0.4, metallic: 0, opacity: 0.9, alphaMode: 'blend' }));
+  const water = new Mesh3D(createGeometry3D({ positions: [-900, 0, -900, 900, 0, -900, -900, 0, 900, 900, 0, 900], normals: [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], indices: [0, 2, 1, 1, 2, 3] }), createStandardMaterial3D({ color: 0x2e566e, roughness: 0.4, metallic: 0, opacity: 0.9, alphaMode: 'blend' }));
   scene.addChild(water);
 
   /** Adds a flat ribbon along `points` ([x, y, z] each) to the lists of a mesh being built. */
@@ -294,7 +294,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
             return [x, k === 0 ? -0.35 : k === 3 ? ground - 0.25 : Math.max(ground + 0.1, k === 1 ? 0.1 : 0.34), z];
           });
         });
-        const tones = [0x6f8a78, 0xb7ab84, 0x9d9a6c, 0x71804f];
+        const tones = [0x527e72, 0xa1977d, 0x888c73, 0x64735e];
         // Where the stream meets the sea there is no bank to model.
         const dry = line.map(([u, v]) => inland(u, v) > 2.5);
         const start = out.p.length / 3;
@@ -424,7 +424,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
           points.push([x, Math.max(groundAt(x, z), 0.55) + 0.32, z]);
         }
         roadPaths[place.id + '|' + other] = points;
-        strip(points, 0.6, (y) => (y < 0.9 ? 0x7a5c3e : 0xbfae84));
+        strip(points, 0.6, (y) => (y < 0.9 ? 0x6b5140 : 0xab9874));
       }
     // The frontier wall follows the ridges.
     const wallPoints = [];
@@ -530,7 +530,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
       z = (76 - 50 + (random() - 0.5) * 12) * S;
     if (Math.hypot(x - sites.guilin.x, z - sites.guilin.z) < 7) continue;
     const tall = 2.5 + random() * 3.5;
-    fixed.push([TAPER, [x, groundAt(x, z) + tall / 2, z], [0.9 + random() * 0.5, tall, 0.9 + random() * 0.5], mix(0x7f8f6a, 0x8a8577, random())], [BALL, [x, groundAt(x, z) + tall, z], [0.75, 0.5, 0.75], 0x5f8a4e]);
+    fixed.push([TAPER, [x, groundAt(x, z) + tall / 2, z], [0.9 + random() * 0.5, tall, 0.9 + random() * 0.5], mix(0x7f8f6a, 0x8a8577, random())], [BALL, [x, groundAt(x, z) + tall, z], [0.75, 0.5, 0.75], 0x4e7563]);
   }
   // Hamlets beside the roads, each a few houses and a field or two.
   for (const path of Object.values(roadPaths)) {
@@ -541,7 +541,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
         cy = groundAt(cx, cz);
       if (cy < 0.9 || cy > 5 || Object.values(sites).some((site) => Math.hypot(cx - site.x, cz - site.z) < 12)) continue;
       for (let i = 0; i < 3 + Math.floor(random() * 3); i++) house(cx + (random() - 0.5) * 3.4, cz + (random() - 0.5) * 3.4, 0.5 + random() * 0.2, random() * 3.14, 0xd8cdb4, random() < 0.5 ? 0x4a4f55 : 0x7a5a3e);
-      fixed.push([BOX, [cx + 2.6, cy + 0.06, cz + 1.2], [2.2, 0.06, 1.6], 0x8fa85a, [0, random(), 0]], [BOX, [cx - 2.4, cy + 0.06, cz - 1.6], [1.8, 0.06, 2.0], 0xb9a85a, [0, random(), 0]]);
+      fixed.push([BOX, [cx + 2.6, cy + 0.06, cz + 1.2], [2.2, 0.06, 1.6], 0x76866a, [0, random(), 0]], [BOX, [cx - 2.4, cy + 0.06, cz - 1.6], [1.8, 0.06, 2.0], 0x988963, [0, random(), 0]]);
     }
   }
   // Pagodas on the hills, tier upon tier; a pavilion by the lake; beacons along the coast.
@@ -583,7 +583,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
       paddies.push([x, y, z, random()]);
     }
   }
-  for (const [x, y, z, tone] of paddies) fixed.push([BOX, [x, y + 0.03, z], [1.42, 0.08, 1.42], 0x6f6a48], [BOX, [x, y + 0.05, z], [1.22, 0.08, 1.22], mix(0x5f8f7a, 0x8fb86a, tone)]);
+  for (const [x, y, z, tone] of paddies) fixed.push([BOX, [x, y + 0.03, z], [1.42, 0.08, 1.42], 0x686b51], [BOX, [x, y + 0.05, z], [1.22, 0.08, 1.22], mix(0x5d7e73, 0x879872, tone)]);
   scene.addChild(model(fixed));
   {
     const turned = new Float32Array(4);
@@ -604,13 +604,13 @@ export function createRealm(stage, world, { layer = null } = {}) {
 
   // ---- forests ------------------------------------------------------------------------------------------------
   {
-    const pine = build([[TAPER, [0, 0.25, 0], [0.09, 0.5, 0.09], 0x6e4a2b], [SPIKE, [0, 0.95, 0], [0.42, 1.1, 0.42], 0x263f2b], [SPIKE, [0, 1.45, 0], [0.3, 0.8, 0.3], 0x304b32]]),
-      leafy = build([[TAPER, [0, 0.25, 0], [0.09, 0.5, 0.09], 0x6e4a2b], [BALL, [0, 0.85, 0], [0.5, 0.45, 0.5], 0x3a5632], [BALL, [0.18, 1.1, 0.05], [0.34, 0.3, 0.34], 0x46653a]]);
-    const maple = build([[TAPER, [0, 0.25, 0], [0.08, 0.5, 0.08], 0x5a3a24], [BALL, [0, 0.85, 0], [0.48, 0.42, 0.48], 0xb0502a], [BALL, [0.16, 1.08, 0.04], [0.32, 0.28, 0.32], 0xcf7a2a]]),
-      blossom = build([[TAPER, [0, 0.22, 0], [0.07, 0.44, 0.07], 0x4a3428], [BALL, [0, 0.74, 0], [0.44, 0.36, 0.44], 0xf0b4c4], [BALL, [0.18, 0.92, 0.06], [0.3, 0.24, 0.3], 0xf7d2da]]),
-      bamboo = build([[ROD, [0, 0.7, 0], [0.035, 1.4, 0.035], 0x7aa04a], [ROD, [0.14, 0.6, 0.08], [0.03, 1.2, 0.03], 0x86ac52], [ROD, [-0.1, 0.55, -0.1], [0.03, 1.1, 0.03], 0x6f9644], [BALL, [0, 1.4, 0], [0.34, 0.3, 0.34], 0x5f9a3f], [BALL, [0.16, 1.2, 0.1], [0.26, 0.24, 0.26], 0x79b04f]]),
-      reed = build([[SPIKE, [0, 0.3, 0], [0.05, 0.6, 0.05], 0x9aa85a], [SPIKE, [0.1, 0.26, 0.05], [0.05, 0.52, 0.05], 0x8a9a4e], [SPIKE, [-0.08, 0.24, -0.06], [0.05, 0.48, 0.05], 0xa6b062]]),
-      boulder = build([[BALL, [0, 0.14, 0], [0.5, 0.34, 0.42], 0x8d8a80], [BALL, [0.3, 0.08, 0.2], [0.26, 0.2, 0.24], 0x7d7a70]]);
+    const pine = build([[TAPER, [0, 0.25, 0], [0.09, 0.5, 0.09], 0x6e4a2b], [SPIKE, [0, 0.95, 0], [0.42, 1.1, 0.42], 0x203b35], [SPIKE, [0, 1.45, 0], [0.3, 0.8, 0.3], 0x294841]]),
+      leafy = build([[TAPER, [0, 0.25, 0], [0.09, 0.5, 0.09], 0x6e4a2b], [BALL, [0, 0.85, 0], [0.5, 0.45, 0.5], 0x315045], [BALL, [0.18, 1.1, 0.05], [0.34, 0.3, 0.34], 0x3f5e52]]);
+    const maple = build([[TAPER, [0, 0.25, 0], [0.08, 0.5, 0.08], 0x5a3a24], [BALL, [0, 0.85, 0], [0.48, 0.42, 0.48], 0xa34b3a], [BALL, [0.16, 1.08, 0.04], [0.32, 0.28, 0.32], 0xba684d]]),
+      blossom = build([[TAPER, [0, 0.22, 0], [0.07, 0.44, 0.07], 0x4a3428], [BALL, [0, 0.74, 0], [0.44, 0.36, 0.44], 0xc58b94], [BALL, [0.18, 0.92, 0.06], [0.3, 0.24, 0.3], 0xe1b9b2]]),
+      bamboo = build([[ROD, [0, 0.7, 0], [0.035, 1.4, 0.035], 0x647f63], [ROD, [0.14, 0.6, 0.08], [0.03, 1.2, 0.03], 0x728a67], [ROD, [-0.1, 0.55, -0.1], [0.03, 1.1, 0.03], 0x597659], [BALL, [0, 1.4, 0], [0.34, 0.3, 0.34], 0x50765d], [BALL, [0.16, 1.2, 0.1], [0.26, 0.24, 0.26], 0x63846c]]),
+      reed = build([[SPIKE, [0, 0.3, 0], [0.05, 0.6, 0.05], 0x82906b], [SPIKE, [0.1, 0.26, 0.05], [0.05, 0.52, 0.05], 0x6e7e5b], [SPIKE, [-0.08, 0.24, -0.06], [0.05, 0.48, 0.05], 0x8f9677]]),
+      boulder = build([[BALL, [0, 0.14, 0], [0.5, 0.34, 0.42], 0x737b79], [BALL, [0.3, 0.08, 0.2], [0.26, 0.2, 0.24], 0x636a6b]]);
     const spots = [[], [], [], [], [], [], []];
     const towns = Object.values(sites);
     // Reeds stand at the water's edge and boulders lie on the high ground.
@@ -662,7 +662,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
   scene.addChild(boats);
   // Water that moves: pale streaks carried down each river, surf that comes and goes along the shore,
   // and a fall where the long river drops out of the western hills.
-  const foam = createStandardMaterial3D({ color: 0xe8f4f8, roughness: 0.6, metallic: 0, opacity: 0.5, alphaMode: 'blend' });
+  const foam = createStandardMaterial3D({ color: 0xc9dcd9, roughness: 0.6, metallic: 0, opacity: 0.5, alphaMode: 'blend' });
   const streakShape = build([[BOX, [0, 0, 0], [0.16, 0.02, 1.5], 0xffffff]]);
   const flow = RIVERS.flatMap((river, r) => Array.from({ length: stage.quality === 'low' ? 26 : 70 }, () => ({ river, t: random(), off: (random() - 0.5) * 1.1, pace: 0.02 + random() * 0.012 + r * 0.004 })));
   const streaks = new InstancedMesh3D(streakShape, foam, flow.length);
@@ -901,7 +901,9 @@ export function createRealm(stage, world, { layer = null } = {}) {
           const { arrived } = marching;
           marching = null;
           troop.visible = false;
+          // The arrival callback can switch scenes and remove these map labels.
           arrived();
+          return;
         }
       }
       const site = sites[chosen];
