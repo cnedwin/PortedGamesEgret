@@ -194,6 +194,8 @@
 .title-ink .title-copy p:not(.title-era) { color: #e3d2af; font-size: clamp(16px, 2vw, 23px); letter-spacing: .15em; }
 .title-ink .title-actions { margin-top: 38px; }
 .title-ink .title-actions .button { min-height: 48px; min-width: 132px; }
+.title-sound { margin-top: 12px; }
+.title-sound .button { min-height: 40px; }
 .opening-stage {
   --opening-ink: #f0e5cf;
   --opening-muted: #d2c5a8;

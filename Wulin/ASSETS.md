@@ -7,8 +7,14 @@ Every third-party asset shipped with the game is listed here: where it came from
 | 素材 · Asset | 来源 · Source | 授权 · Licence | 可商用 · Commercial use | 用途 · Used for |
 |---|---|---|---|---|
 | 立绘、场景画、界面样式 · portraits, scene paintings, interface styles (`art-handoff/`) | 为本项目生成和整理，见 `art-handoff/ART-DIRECTION.md`、`art-handoff/portrait-prompts.json` 与 `art-handoff/assets/scenes/scene-prompts.json` · generated and prepared for this project | 本项目所有 · owned by the project | 可 · yes | 界面与人物 · interface and characters |
+| 原创配乐和操作音效 · original score and UI sounds (`assets/audio/music/`, `src/ui/feedback-audio.mjs`) | 本项目编曲和合成 · composed and synthesized for the game | 本项目原创 · original | 可 · yes | 标题与序章、山门与江湖、战斗、操作反馈 · title and prologue, exploration, combat, interaction |
 | 引擎构建 · engine build (`vendor/`) | [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)，见 `vendor/SOURCE.md` | Apache-2.0 | 可 · yes | 3D 绘制 · 3D rendering |
 | 树木、灌木、石块、草与花的模型 28 件 · 28 models of trees, shrubs, stones, grass and flowers (`assets/flora/*.glb`) | [flo-bit/low-poly-asset-packs](https://github.com/flo-bit/low-poly-asset-packs) 的 nature pack，取自提交 `61bbdb0`，文件未改动 · the nature pack, taken at commit `61bbdb0`, files unchanged | CC0 1.0 | 可 · yes | 山门内外的植被；只取形状，颜色由本项目设定 · vegetation in and round a seat; only the shapes are used, the colours are this project's |
+| 台湾国语女声配音 · Taiwanese Mandarin female voice (`assets/audio/voice/*.mp3`) | 本项目原创台词，使用 [PrimeTTS v2.1](https://huggingface.co/Luigi/PrimeTTS) 的 Xinran 合成，模型与注音表取自 [PrismVoice-TW](https://huggingface.co/PrismLive/PrismVoice-TW/tree/f2ce751) · original game lines synthesized offline with Xinran | 模型 Apache-2.0，注音表源自 McBopomofo（MIT） · Apache-2.0 model, MIT McBopomofo-derived lexicon | 可 · yes | 序章、战报与提示、55 种交战武学报招 · prologue, reports and cues, callouts for 55 combat arts |
+
+台湾国语音频为 AI 合成。发布包只包含最终音频和武学编号清单。模型与注音表仅用于制作环节。
+
+The Taiwanese Mandarin audio is AI-generated. The release includes the finished clips and a list of art IDs. Model weights and pronunciation data are used only during production.
 
 除以上各项外，没有随游戏分发的第三方素材。3D 的人物、建筑、船只和陈设都由 `src/view` 中的代码生成；游戏中的文字、数据、界面和代码均为本项目原创。
 
