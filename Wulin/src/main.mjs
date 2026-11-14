@@ -38,6 +38,7 @@ import {
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
 import { createVoice } from './ui/voice.mjs';
 import { createFeedbackAudio } from './ui/feedback-audio.mjs';
+import { createClipAudio, createSoundtrack } from './ui/soundtrack.mjs';
 import { legacyScreen, prologue, prologueScreen, sectScreen } from './ui/opening.mjs';
 import { claimGoal, goalView, startGoals } from './core/goals.mjs';
 
@@ -47,8 +48,12 @@ const app = document.querySelector('#app'),
   dialog = document.querySelector('#dialog'),
   announcement = document.querySelector('#announcement');
 const slots = createSlots(localStorage);
-const voice = createVoice(localStorage);
+const clips = createClipAudio();
+const music = createSoundtrack(localStorage, clips);
+const voice = createVoice(localStorage, undefined, { clips, onSpeaking: music.duck });
 const feedbackAudio = createFeedbackAudio(localStorage);
+const recordedArts = new Map(ARTS.filter(art => CLASSES[art.klass]?.combat).map(art => [art.name, art.id]));
+const prologueVoice = ['prologue-decree', 'prologue-gate', 'prologue-seal'];
 
 /** What the page is showing; the world itself is in `world`. */
 const ui = {
@@ -237,6 +242,7 @@ function titleScreen() {
   return `<main class="title-screen title-ink" style="${sceneStyle('title')}">
     <div class="title-copy"><p class="title-era">大昭 · 承和元年</p><h1>武林<span>天下</span></h1><p>禁武令已下。山门未闭。</p>
       <div class="title-actions">${btn('开创新局', 'page', { page: 'prologue' }, 'gold-button', 'arrow')}${btn('载入存档', 'sheet', { kind: 'load' }, 'on-dark', 'box')}</div>
+      <div class="title-sound">${btn(music.on && music.unlocked ? '静音背景音乐' : '开启背景音乐', 'title-music', {}, 'on-dark', 'sound')}</div>
     </div>
   </main>`;
 }
@@ -598,10 +604,11 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
   const names = new Map(sides.flat().map((person) => [person.id, person.name]));
   const name = (id) => names.get(id) ?? '？';
   const lines = [];
-  const people = new Map(sides.flat().map((person) => [person.id, person]));
   const note = (event) => {
-    // Whoever lands a telling blow calls out the art it came from.
-    if (ui.fight && event.type === 'hit' && event.crit && event.art) voice.shout(event.art + '！', people.get(event.from));
+    if (ui.fight && event.type === 'hit' && event.crit && event.art) {
+      const art = recordedArts.get(event.art);
+      voice.shout(event.art + '！', art ? 'art-' + art : undefined);
+    }
     const line = tell(event, name);
     if (line && (event.type !== 'hit' || lines.length < 80)) lines.push(line);
   };
@@ -897,16 +904,18 @@ const SHEETS = {
   settings() {
     return ['游戏设置', `${formRow('画质', `<select data-change="quality">${options([['', '自动'], ['high', '高'], ['medium', '中'], ['low', '低（省电）']], storedQuality() ?? '')}</select>`)}
       <p class="caption">${picture.stage ? '改动画质后会重新载入页面，进度先自动保存。' : '这台设备画不了 3D，山门以画卷示意，战斗以文字结算。'}</p>
-      ${formRow('配音', `<select data-change="voice">${options([['on', '开'], ['off', '关']], voice.on ? 'on' : 'off')}</select>`)}
       ${formRow('季报', `<select data-change="season">${options([['on', '每季一报'], ['off', '不报']], localStorage.getItem('wulin-season') ?? 'on')}</select>`)}
-      ${formRow('配音音量', `<input type="range" min="0" max="1" step="0.05" data-change="voice-volume" value="${voice.volume}">`)}
-      <section class="audio-settings"><h3>${icon('sound')} 操作音效</h3>
+      <section class="audio-settings"><h3>${icon('sound')} 音乐与声音</h3>
+        ${formRow('背景音乐', `<select data-change="music">${options([['on', '开启'], ['off', '静音']], music.on ? 'on' : 'off')}</select>`)}
+        ${formRow('音乐音量', `<input type="range" min="0" max="1" step="0.05" data-change="music-volume" value="${music.volume}">`)}
         ${formRow('反馈音效', `<select data-change="feedback-sound">${options([['on', '开启'], ['off', '静音']], feedbackAudio.on ? 'on' : 'off')}</select>`)}
         ${formRow('音效音量', `<input type="range" min="0" max="1" step="0.05" data-change="feedback-volume" value="${feedbackAudio.volume}">`)}
         ${btn('试听音效', 'feedback-test', {}, 'outline', 'sound')}
+        ${formRow('中文播报', `<select data-change="voice">${options([['on', '开启'], ['off', '静音']], voice.on ? 'on' : 'off')}</select>`)}
+        ${formRow('播报音量', `<input type="range" min="0" max="1" step="0.05" data-change="voice-volume" value="${voice.volume}">`)}
+        ${btn('试听女声', 'voice-test', {}, 'outline', 'sound')}
+        <p class="caption">序章、战报提示和招式采用合成的台湾国语女声。设备有台湾国语语音时，也可朗读即时详情。</p>
       </section>
-      <p class="caption">${voice.supported ? '奇遇、来犯与战报由旁白念出；交战中打出重手的人会喊出武学的名字，男女老少嗓音各不相同。声音由这台设备自带的中文语音合成，各设备听感不同。' : '这台设备没有中文语音，配音暂时发不出声；装上系统的中文语音后即可使用。'}</p>
-      ${voice.supported ? `<div class="button-group">${btn('试听', 'voice-test', {}, 'outline')}</div>` : ''}
       <p class="caption">连按两次 F8，或连续点击顶栏日期五次，可打开修改器。</p>
       <p class="caption">数据包（MOD）：${esc(modNote() || '未装载')}。数据包是一个 JSON 文件，可改经济与建筑数值、门派配色、武学名称与威力，并添加事件；格式见 src/core/mod.mjs。装载或卸下后会重新载入页面。</p>
       <div class="button-group">${btn('装载数据包', 'mod-load', {}, 'outline', 'plus')}${btn('卸下数据包', 'mod-clear', {}, 'outline', '', !modNote())}</div>`, btn('修改器', 'editor', {}, 'outline') + btn('完成', 'close', {}, 'primary')];
@@ -961,21 +970,31 @@ function renderSheet() {
 function speakSheet() {
   const sheet = ui.sheet;
   let text = '',
-    who = null;
+    clip;
   if (sheet?.kind === 'event') {
     const view = pendingView(world);
     text = view?.text ?? '';
-  } else if (sheet?.kind === 'outcome' || sheet?.kind === 'herald') text = sheet.text;
-  else if (sheet?.kind === 'season') text = sheet.title.replace(' · ', '，') + '。';
-  else if (sheet?.kind === 'fight') text = `${ui.lastFight.won ? '此战告捷。' : '此战失利。'}${ui.lastFight.verdict}`;
-  else if (sheet?.kind === 'siege' && world.pending?.kind === 'siege') text = `${SECT_BY_ID[world.pending.attacker].name}来犯${PLACE_BY_ID[world.pending.place].name}！`;
+    clip = 'event';
+  } else if (sheet?.kind === 'outcome' || sheet?.kind === 'herald') {
+    text = sheet.text;
+    clip = 'outcome';
+  } else if (sheet?.kind === 'season') {
+    text = sheet.title.replace(' · ', '，') + '。';
+    clip = 'season';
+  } else if (sheet?.kind === 'fight') {
+    text = `${ui.lastFight.won ? '此战告捷。' : '此战失利。'}${ui.lastFight.verdict}`;
+    clip = ui.lastFight.won ? 'victory' : 'defeat';
+  } else if (sheet?.kind === 'siege' && world.pending?.kind === 'siege') {
+    text = `${SECT_BY_ID[world.pending.attacker].name}来犯${PLACE_BY_ID[world.pending.place].name}！`;
+    clip = 'siege';
+  }
   const key = text && sheet.kind + ':' + text;
   if (key === ui.spoken) return;
   if (key && sheet.kind !== 'fight') feedbackAudio.play('notice');
   // Leaving a sheet that was being read stops the reading.
   if (ui.spoken && !key) voice.stop();
   ui.spoken = key;
-  if (key) voice.say(text, who);
+  if (key) voice.say(text, { clip, preferSystem: true });
 }
 // Escape closes a sheet through the browser; the page's own state follows.
 dialog.addEventListener('close', () => ui.sheet && (actions.close(), render()));
@@ -992,6 +1011,7 @@ function restoreControl(root, control) {
   match?.focus({ preventScroll: true });
 }
 
+let spokenPrologue = null;
 function render() {
   let html, key;
   if (!world) {
@@ -1026,6 +1046,13 @@ function render() {
   if (shellNode) shellNode.dataset.commandCollapsed = String(canFoldCommand() && ui.commandCollapsed);
   syncPicture();
   placeMap();
+  music.select(ui.fight ? 'battle' : world ? 'explore' : 'title');
+  const beat = !world && ui.page === 'prologue' ? ui.prologue : null;
+  if (beat !== spokenPrologue) {
+    if (spokenPrologue !== null) voice.stop();
+    spokenPrologue = beat;
+    if (beat !== null) voice.say(prologue[beat].line, { clip: prologueVoice[beat] });
+  }
   renderSheet();
   speakSheet();
 }
@@ -1273,7 +1300,7 @@ const actions = {
     const next = goalView(world);
     if (ui.sheet?.kind === 'goal') ui.sheet = null;
     toast(`「${result.title}」已成。`, 'success');
-    voice.say(`${result.title}，已成。${next?.last ? '' : '下一件：' + next.title + '。'}`);
+    voice.say(`${result.title}，已成。${next?.last ? '' : '下一件：' + next.title + '。'}`, { clip: 'goal', preferSystem: true });
   },
   shop: () => say(openShop(world, me(), ui.place), '店铺开张了。'),
   donate: () => say(donate(world, me()), '银两散出，本派声名更著。'),
@@ -1316,8 +1343,9 @@ const actions = {
     location.reload();
   },
   'feedback-test': () => feedbackAudio.play('confirm', { preview: true }),
-  'voice-test': () => voice.say('江湖路远，各位保重。', membersOf(world, me()).find((person) => person.id === books().leaderId)),
-  'fight-rally': () => (voice.shout('众弟子听令，随我上！', ui.fight.heads?.[ui.fight.side]?.person), ui.fight.arena.battle.rally(ui.fight.side)),
+  'voice-test': () => voice.say('江湖路远，各位保重。', { clip: 'preview' }),
+  'title-music': () => music.set({ on: !music.unlocked || !music.on }),
+  'fight-rally': () => (voice.shout('众弟子听令，随我上！', 'rally'), ui.fight.arena.battle.rally(ui.fight.side)),
   'fight-stance': (data) => ui.fight.arena.battle.stance(ui.fight.side, data.stance),
   answer(data) {
     const rng = createRng(1);
@@ -1350,6 +1378,8 @@ const changes = {
   season: (_, value) => localStorage.setItem('wulin-season', value),
   voice: (_, value) => voice.set({ on: value === 'on' }),
   'voice-volume': (_, value) => voice.set({ volume: Number(value) }),
+  music: (_, value) => music.set({ on: value === 'on' }),
+  'music-volume': (_, value) => music.set({ volume: Number(value) }),
   'feedback-sound': (_, value) => feedbackAudio.set({ on: value === 'on' }),
   'feedback-volume': (_, value) => feedbackAudio.set({ volume: Number(value) }),
   quality(_, value) {
@@ -1394,16 +1424,23 @@ const navigationActions = new Set(['page', 'sheet', 'close', 'prologue-next', 's
 const selectionActions = new Set(['choose-sect', 'choose-founding', 'succession', 'building', 'build-kind', 'place', 'look', 'rank', 'seat-tab', 'person', 'picking', 'batch-toggle', 'art', 'art-tier', 'speed', 'fight-pause', 'fight-speed', 'fight-stance', 'log-filter']);
 const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fight-retreat', 'siege-fight', 'answer']);
 
+document.addEventListener('visibilitychange', () => {
+  music.setHidden(document.hidden);
+  if (document.hidden) voice.stop();
+});
+
 document.body.addEventListener('click', (event) => {
   const target = event.target.closest('[data-act]');
   if (!target || target.disabled) return;
   const { act } = target.dataset;
   if (mapDragged && act === 'place') return;
+  if (act !== 'title-music') music.unlock(event);
   feedbackAudio.unlock(event);
   try {
     const sheet = ui.sheet;
     const beforeToast = toast.timer;
     actions[act]?.(target.dataset, event);
+    if (act === 'title-music' && music.on) music.unlock(event);
     if (sheet && toast.timer !== beforeToast && toast.sheet === sheet) toast.sheet = ui.sheet;
     if (event.isTrusted) {
       if (navigationActions.has(act)) feedbackAudio.play('nav');
@@ -1420,6 +1457,7 @@ document.body.addEventListener('change', (event) => {
   if (target.dataset.batch) return void ((target.checked ? ui.batch.add(Number(target.dataset.batch)) : ui.batch.delete(Number(target.dataset.batch))), render());
   if (target.id === 'batch-all') return void (roster().forEach((p) => (target.checked ? ui.batch.add(p.id) : ui.batch.delete(p.id))), render());
   if (!target.dataset.change) return;
+  music.unlock(event);
   feedbackAudio.unlock(event);
   try {
     const result = changes[target.dataset.change]?.(target.dataset, target.value);
@@ -1447,6 +1485,7 @@ window.addEventListener('keydown', (event) => {
   const pace = event.key === ' ' ? (ui.speed ? 0 : 1) : { 1: 1, 2: 4, 3: 16, '`': 0 }[event.key];
   if (pace === undefined) return;
   event.preventDefault();
+  music.unlock(event);
   feedbackAudio.unlock(event);
   feedbackAudio.play('pick');
   actions.speed({ speed: pace });

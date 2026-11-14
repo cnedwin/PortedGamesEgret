@@ -486,7 +486,7 @@ test('a wanderer\'s chapters: trial, wish, and the passing on of their art', () 
   assert.equal(Object.values(world.persons).filter((p) => p.school === 'huashan' && p.talent === 'trade').length, 2);
 });
 
-test('voice: each speaker has a tone of their own, and silence where the device has no Chinese', async () => {
+test('voice: prefers a Taiwan Mandarin woman for generated text and remembers mute', async () => {
   const { createVoice } = await import('../src/ui/voice.mjs');
   const kept = new Map(),
     storage = { getItem: (k) => kept.get(k) ?? null, setItem: (k, v) => kept.set(k, v) };
@@ -496,21 +496,27 @@ test('voice: each speaker has a tone of their own, and silence where the device 
       this.text = text;
     }
   };
-  const synth = { speaking: false, getVoices: () => [{ lang: 'en-US', name: 'Sam' }, { lang: 'zh-CN', name: 'Tingting' }], speak: (line) => spoken.push(line), cancel() {} };
-  const voice = createVoice(storage, synth);
-  assert.equal(voice.supported, true);
-  const woman = voice.tone({ name: '宋折汐', female: true, age: 32 }),
-    elder = voice.tone({ name: '莫问铎', female: false, age: 56 });
-  assert.ok(woman.pitch > elder.pitch + 0.3);
-  assert.equal(voice.say('江湖路远'), true);
-  assert.equal(spoken[0].lang, 'zh-CN');
-  assert.equal(voice.shout('太极剑法！', { name: '甲' }), true);
-  assert.equal(voice.shout('太极剑法！', { name: '甲' }), false, 'cries are spaced out');
-  voice.set({ on: false });
-  assert.equal(voice.say('江湖路远'), false);
-  assert.equal(createVoice(storage, synth).on, false, 'the choice is kept');
-  assert.equal(createVoice(storage, { getVoices: () => [{ lang: 'en-US', name: 'Sam' }] }).supported, false);
-  delete globalThis.SpeechSynthesisUtterance;
+  const available = [
+    { lang: 'en-US', name: 'Sam' },
+    { lang: 'zh-CN', name: 'Tingting' },
+    { lang: 'zh-TW', name: 'Zhiwei' },
+    { lang: 'zh_TW', name: 'Hanhan' },
+  ];
+  const synth = { getVoices: () => available, speak: (line) => spoken.push(line), cancel() {} };
+  try {
+    const voice = createVoice(storage, synth);
+    assert.equal(voice.say('江湖路远'), true);
+    assert.equal(spoken[0].voice.name, 'Hanhan');
+    spoken[0].onend();
+    assert.equal(voice.shout('太极剑法！'), true);
+    assert.equal(voice.shout('太极剑法！'), false, 'cries are spaced out');
+    voice.set({ on: false });
+    assert.equal(voice.say('江湖路远'), false);
+    assert.equal(createVoice(storage, synth).on, false, 'the choice is kept');
+    assert.equal(createVoice(null, { getVoices: () => [available[0]] }).say('江湖路远'), false);
+  } finally {
+    delete globalThis.SpeechSynthesisUtterance;
+  }
 });
 
 test('goals: matters come one at a time, each paying out once it is done', async () => {
