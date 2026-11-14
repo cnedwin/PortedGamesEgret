@@ -36,6 +36,13 @@ export declare class DisplayObject extends EventDispatcher {
     /** A complete material value overrides the nearest inherited value. */
     get sharedMaterial(): SharedMaterial2D | null;
     set sharedMaterial(value: SharedMaterial2D | null);
+    /**
+     * How what this object and its children draw is combined with what is under it, by Egret's names: `add` brightens,
+     * `multiply` darkens, `screen` lightens softly and `erase` takes away by its alpha. It is the blend of `sharedMaterial`:
+     * setting it keeps the material's tints and replaces only its blend, and a child with a material of its own keeps that.
+     */
+    get blendMode(): 'normal' | 'add' | 'multiply' | 'screen' | 'erase';
+    set blendMode(value: 'normal' | 'add' | 'multiply' | 'screen' | 'erase');
     /** Shared backends execute effects; legacy captures explicitly refuse them. */
     get renderEffect(): RenderEffect2D | undefined;
     set renderEffect(value: RenderEffect2D | undefined);

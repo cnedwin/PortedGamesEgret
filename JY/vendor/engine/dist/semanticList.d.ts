@@ -45,12 +45,21 @@ export interface SemanticListSource {
     };
 }
 export interface SemanticListRow {
-    /** What the row is called. An option needs a name; a list item may leave it to the nodes inside it. */
+    /** What the row is called. An option and a menu item need a name; a list item may leave it to the nodes inside it. */
     readonly name?: string;
-    /** Options only. An option that does not say is not selected. */
+    /** Options, where one that does not say is not selected, and the rows of a grid and the items of a tree, where saying it means that they are what is selected. */
     readonly selected?: boolean;
-    /** Options only. */
+    /** Options, menu items, the rows of a grid and the items of a tree. */
     readonly disabled?: boolean;
+    /** The items of a tree, which need it: how deep the item is, from one. */
+    readonly level?: number;
+    /** The items of a tree: whether what is under the item shows. One with nothing under it does not say. */
+    readonly expanded?: boolean;
+    /** The items of a tree: where the item stands among those under the same item, which is not where its row stands in the list. */
+    readonly position?: {
+        readonly index: number;
+        readonly size: number;
+    };
 }
 export interface UiListSemanticsOptions {
     readonly semantics: UiSemantics;
@@ -61,9 +70,19 @@ export interface UiListSemanticsOptions {
     readonly id?: string;
     /** The node the list is inside. */
     readonly parent?: string;
-    /** A 'list' of list items, which may hold other nodes, or a 'listbox' of options. Defaults to 'list'. */
-    readonly role?: 'list' | 'listbox';
+    /**
+     * A 'list' of list items, which may hold other nodes, a 'listbox' of options, a 'menu' of menu items, a 'grid'
+     * whose rows are the rows of the list and hold the cells the application adds, or a 'tree' whose items are the
+     * rows that show, each at the depth it says. Defaults to 'list'.
+     */
+    readonly role?: 'list' | 'listbox' | 'menu' | 'grid' | 'tree';
     readonly name?: string;
+    /** A list box, a grid or a tree only: several of its options, rows or items may be selected at once. Each still says whether it is. Defaults to false. */
+    readonly multiple?: boolean;
+    /** A grid only, which needs it: how many columns it has. */
+    readonly columns?: number;
+    /** A grid only: how many rows the application publishes above the first row of the list, such as a row of headers. Defaults to 0. */
+    readonly rowOffset?: number;
     /**
      * Read at each publication. A list that says it is hidden is left out with its rows: the list of a
      * popup or a modal layer while that layer is closed. Its rows are then not asked.
@@ -82,6 +101,8 @@ export interface UiListSemantics {
     readonly id: string;
     /** The id of the node of a row, whether or not the row shows now. */
     rowId(key: string): string;
+    /** The part of a row that the list shows, on the stage, as of the last synchronization: what a cell inside it is measured from. Nothing for a row that does not show. */
+    rowBounds(key: string): SemanticBounds | undefined;
     /**
      * Brings the nodes to the rows of the last commit: removes those that no longer show, moves those
      * that stayed, adds those that show now. Returns the committed revision, which is what `publish`

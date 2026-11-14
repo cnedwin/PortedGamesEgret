@@ -18,6 +18,16 @@ function nodeCapture() {
 const is = Object.is;
 const freeze = Object.freeze;
 const defaultMaterial = createSharedMaterial2D({});
+const glows = new WeakMap();
+function effectGlow(settings) {
+    if (glows.has(settings))
+        return glows.get(settings);
+    const g = settings.glow, o = settings.outline;
+    const value = g !== undefined ? freeze({ kind: 'glow', color: g.color, alpha: g.alpha ?? 1, spread: g.blur ?? 6, strength: g.strength ?? 2, inner: g.inner === true, knockout: g.knockout === true, offsetX: g.offsetX ?? 0, offsetY: g.offsetY ?? 0 })
+        : o !== undefined ? freeze({ kind: 'outline', color: o.color, alpha: o.alpha ?? 1, spread: o.width, strength: 1, inner: false, knockout: false, offsetX: 0, offsetY: 0 }) : undefined;
+    glows.set(settings, value);
+    return value;
+}
 const identity = freeze({ a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 });
 function debit(used, count, limit, code = 'FRAME_BUDGET_EXCEEDED') {
     if (!Number.isSafeInteger(count) || count < 0 || count > limit - used)
@@ -134,7 +144,8 @@ function point(matrix, x, y) {
         || !finite(matrix.b * x + matrix.d * y + matrix.ty))
         throw new EgretError('FRAME_TRANSFORM_INVALID');
 }
-function rectangle(matrix, rect) {
+/** The checks of `rectangle`: the four corners of `rect` placed by `matrix` are finite. */
+function checkRectangle(matrix, rect) {
     const right = rect.x + rect.width, bottom = rect.y + rect.height;
     if (!finite(right) || !finite(bottom))
         throw new EgretError('FRAME_TRANSFORM_INVALID');
@@ -142,6 +153,9 @@ function rectangle(matrix, rect) {
     point(matrix, right, rect.y);
     point(matrix, right, bottom);
     point(matrix, rect.x, bottom);
+}
+function rectangle(matrix, rect) {
+    checkRectangle(matrix, rect);
     return freeze({ x: rect.x, y: rect.y, width: rect.width, height: rect.height });
 }
 function referencedTuples(matrix, geometry) {
@@ -431,9 +445,11 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
                 maskPageIndex = regions[regionIndex(image, region)].pageIndex;
             }
             effect = { occurrenceId: nextOccurrence++, boundaryId: nextBoundary++ };
+            const glow = effectGlow(settings);
             budget.emission(undefined, true);
             budget.metadataBytes(128 + 80 * (clips?.depth ?? 0));
-            commands.push(freeze({ kind: 'barrier', ordinal: commands.length, ...effect, reason: 'effect-enter', effect: freeze({ blurRadius: settings.blurRadius ?? 0, maskPageIndex, maskRect: settings.maskRect, matrix, clips: flattenClips(clips) }) }));
+            commands.push(freeze({ kind: 'barrier', ordinal: commands.length, ...effect, reason: 'effect-enter', effect: freeze({ blurRadius: settings.blurRadius ?? 0, maskPageIndex, maskRect: settings.maskRect, matrix, clips: flattenClips(clips),
+                    ...(settings.colorMatrix === undefined ? {} : { colorMatrix: settings.colorMatrix }), ...(glow === undefined ? {} : { glow }) }) }));
             // Parent clips apply to the composited result, not intermediate blur taps.
             clips = undefined;
         }
@@ -442,12 +458,17 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
         // The places in the tables of the material and the region of its draws.
         let usedMaterial = -1, usedRegion = -1;
         let rects;
+        // A rectangle's value is its primitive's own; only its checks depend on the matrix. The kept values of the same
+        // primitives are given again, each checked under a matrix it was not checked under.
+        let rectsChecked = true;
         if (kept !== undefined && primitiveCount !== 0) {
-            if (kept.primitives !== primitives || kept.rectsMatrix !== matrix) {
+            if (kept.primitives !== primitives) {
                 kept.primitives = primitives;
                 kept.rectsMatrix = matrix;
                 kept.rects = [];
             }
+            else if (kept.rectsMatrix !== matrix)
+                rectsChecked = false;
             rects = kept.rects;
         }
         for (let index = 0; index < primitiveCount; index++) {
@@ -458,6 +479,8 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
                 if (rects !== undefined)
                     rects[index] = rect;
             }
+            else if (!rectsChecked)
+                checkRectangle(matrix, rect);
             const effective = alpha * primitive.alpha;
             if (rect.width === 0 || rect.height === 0 || effective === 0) {
                 empty(occurrenceId);
@@ -479,11 +502,20 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
             }
             given++;
         }
+        // Only once every kept rectangle has been checked under it does the matrix become theirs.
+        if (!rectsChecked)
+            kept.rectsMatrix = matrix;
         if (bitmap !== undefined) {
             const occurrenceId = nextOccurrence++;
             let rect;
             if (kept !== undefined && kept.bitmap === bitmap && kept.bitmapMatrix === matrix && kept.bitmapDomain === material.samplingDomain)
                 rect = kept.bitmapRect;
+            else if (kept !== undefined && kept.bitmap === bitmap && kept.bitmapDomain === material.samplingDomain && kept.bitmapRect !== undefined) {
+                // The same bitmap in the same domain has the same rectangle; it is checked under the new matrix.
+                rect = kept.bitmapRect;
+                checkRectangle(matrix, rect);
+                kept.bitmapMatrix = matrix;
+            }
             else {
                 rect = rectangle(matrix, bitmapRect(bitmap, material));
                 if (kept !== undefined) {

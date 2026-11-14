@@ -1,3 +1,6 @@
+import { decodeSRGBByte } from './srgbBytes.js';
+/** The bytes of one group's uniform: 36 vectors of four floats. */
+export const EFFECT_UNIFORM_BYTES = 576;
 function fail() { throw new RangeError('Shared effect limits or geometry are unsupported'); }
 function inverse(m, rect, ratio) {
     const det = m.a * m.d - m.b * m.c;
@@ -25,9 +28,39 @@ export function prepareEffects2D(frame, ratio, enabled) {
             const e = command.effect, radius = Math.min(16, Math.ceil(e.blurRadius * ratio));
             if (!Number.isInteger(radius) || radius < 0 || radius > 16 || e.clips.length > 8)
                 fail();
-            const uniform = new Float32Array(112);
+            const uniform = new Float32Array(EFFECT_UNIFORM_BYTES / 4);
             uniform[0] = radius;
             uniform[2] = e.clips.length;
+            let spread = 0;
+            // Vector 28: whether there is a colour matrix, the kind of spread, its radius and its strength; 29: its colour in linear
+            // light and its alpha; 30: its offset in backing pixels, inner and knockout; 31-35: the matrix, by rows, and its offsets.
+            if (e.colorMatrix !== undefined) {
+                if (e.colorMatrix.length !== 20 || e.colorMatrix.some(v => !Number.isFinite(v)))
+                    fail();
+                uniform[112] = 1;
+                for (let row = 0; row < 4; row++) {
+                    for (let k = 0; k < 4; k++)
+                        uniform[124 + row * 4 + k] = e.colorMatrix[row * 5 + k];
+                    uniform[140 + row] = e.colorMatrix[row * 5 + 4] / 255;
+                }
+            }
+            if (e.glow !== undefined) {
+                const g = e.glow;
+                spread = g.kind === 'outline' ? Math.min(16, Math.max(1, Math.round(g.spread * ratio))) : Math.min(16, Math.ceil(g.spread * ratio));
+                if (!Number.isInteger(spread) || spread < 0 || !Number.isInteger(g.color) || g.color < 0 || g.color > 0xffffff)
+                    fail();
+                uniform[113] = g.kind === 'outline' ? 2 : 1;
+                uniform[114] = spread;
+                uniform[115] = g.strength;
+                uniform[116] = decodeSRGBByte(g.color >> 16);
+                uniform[117] = decodeSRGBByte(g.color >> 8);
+                uniform[118] = decodeSRGBByte(g.color);
+                uniform[119] = g.alpha;
+                uniform[120] = Math.round(g.offsetX * ratio);
+                uniform[121] = Math.round(g.offsetY * ratio);
+                uniform[122] = g.inner ? 1 : 0;
+                uniform[123] = g.knockout ? 1 : 0;
+            }
             if (e.maskPageIndex !== undefined) {
                 if (!Number.isInteger(e.maskPageIndex) || !frame.pages[e.maskPageIndex] || !e.maskRect)
                     fail();
@@ -39,7 +72,7 @@ export function prepareEffects2D(frame, ratio, enabled) {
                 uniform.set(inverse(clip.matrix, clip.rect, ratio), 16 + i * 12);
             }
             const index = groups.length;
-            groups.push({ enter: command.ordinal, exit: -1, depth: stack.length + 1, maskPageIndex: e.maskPageIndex, radius, uniform });
+            groups.push({ enter: command.ordinal, exit: -1, depth: stack.length + 1, maskPageIndex: e.maskPageIndex, radius, spread: e.glow === undefined ? -1 : spread, uniform });
             stack.push({ id: command.boundaryId, index });
             depth = Math.max(depth, stack.length);
         }
@@ -54,6 +87,6 @@ export function prepareEffects2D(frame, ratio, enabled) {
     }
     if (stack.length)
         fail();
-    return { groups, depth, targetCount: 2 * depth, uniformBytes: groups.length * 448 };
+    return { groups, depth, targetCount: 2 * depth, uniformBytes: groups.length * EFFECT_UNIFORM_BYTES };
 }
 //# sourceMappingURL=sharedEffects2D.js.map

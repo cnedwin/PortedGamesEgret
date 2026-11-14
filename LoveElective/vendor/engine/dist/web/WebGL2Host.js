@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-import { sharedEffectGLSL, EFFECT_PASSES } from './sharedEffectShaders.js';
+import { sharedEffectGLSL, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedEffectShaders.js';
 import { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 import { readOwnedSharedFrame } from '#egret-textured-frame-state';
 import { admitSharedWebGL2Options } from './sharedWebGL2Options.js';
@@ -9,7 +9,7 @@ import { GeometryPreparationError } from '../rendering/prepareRectangles2D.js';
 import { packSharedDraws2D, packSharedRegions2D, SHARED_BATCH_PAGES_2D, SHARED_REGION_WINDOW_BYTES_2D } from '../rendering/packSharedDraws2D.js';
 import { PreparedBatchScratch2D } from '../rendering/preparedBatches2D.js';
 import { prepareSharedBatches2D } from '../rendering/preparedSharedBatches2D.js';
-import { decodeSharedSRGB } from '../rendering/sharedColor2D.js';
+import { decodeSharedSRGBByte } from '../rendering/sharedColor2D.js';
 import { runOwnedPreparationScope } from '../rendering/ownedPreparationFailure2D.js';
 import { planSharedStorageFees2D, withSharedReadbackLayout2D, checkSharedCapacity2D, materializeSharedPages2D, SharedStorageError2D } from './sharedSubmissionStorage2D.js';
 import { planSharedWebGL2Arenas, checkSharedWebGL2ArenaCapacity, qualifySharedWebGL2Alignment } from './sharedWebGL2Arena.js';
@@ -1660,7 +1660,7 @@ class SharedGLHost {
         native.workingAttachment(colorTexture, null);
         gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
         const c = frame.clearColor, a = frame.clearAlpha;
-        gl.clearColor(a * decodeSharedSRGB(((c >>> 16) & 255) / 255), a * decodeSharedSRGB(((c >>> 8) & 255) / 255), a * decodeSharedSRGB((c & 255) / 255), a);
+        gl.clearColor(a * decodeSharedSRGBByte(c >>> 16), a * decodeSharedSRGBByte(c >>> 8), a * decodeSharedSRGBByte(c), a);
         gl.clear(gl.COLOR_BUFFER_BIT);
         // The program and the window of the region table that are current; both change only between batches.
         let program, bound = -1;
@@ -1726,7 +1726,7 @@ class SharedGLHost {
             } };
             const groups = record.storage.prepared.effects.groups, enters = new Map(groups.map(g => [g.enter, g])), exits = new Map(groups.map(g => [g.exit, g]));
             const ranges = new Map(arena.sharedRanges.map(range => [range.draw.prepared.command.ordinal, range]));
-            const effectPass = (group, mode, target, source) => {
+            const effectPass = (group, mode, target, source, glow) => {
                 setTarget(target, mode !== 'composite');
                 const program = this.effectPrograms.get(mode);
                 gl.useProgram(program);
@@ -1739,14 +1739,20 @@ class SharedGLHost {
                     gl.bindSampler(1, null);
                     gl.bindTexture(gl.TEXTURE_2D, group.maskPageIndex === undefined ? source : pageTextures.get(group.maskPageIndex).native.value);
                     gl.uniform1i(gl.getUniformLocation(program, 'maskTexture'), 1);
+                    gl.activeTexture(gl.TEXTURE0 + 2);
+                    gl.bindSampler(2, null);
+                    gl.bindTexture(gl.TEXTURE_2D, glow ?? source);
+                    gl.uniform1i(gl.getUniformLocation(program, 'glowTexture'), 2);
                     gl.activeTexture(gl.TEXTURE0);
                     gl.enable(gl.BLEND);
                     gl.blendFuncSeparate(gl.ONE, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
                 }
                 else
                     gl.disable(gl.BLEND);
-                gl.bindBufferRange(gl.UNIFORM_BUFFER, 0, record.leases[layout.effectUniforms[groups.indexOf(group)]].handle.resource.value, 0, 448);
+                gl.bindBufferRange(gl.UNIFORM_BUFFER, 0, record.leases[layout.effectUniforms[groups.indexOf(group)]].handle.resource.value, 0, EFFECT_UNIFORM_BYTES);
                 gl.drawArrays(gl.TRIANGLES, 0, 3);
+                gl.activeTexture(gl.TEXTURE0 + 2);
+                gl.bindTexture(gl.TEXTURE_2D, null);
                 gl.activeTexture(gl.TEXTURE1);
                 gl.bindTexture(gl.TEXTURE_2D, null);
                 gl.activeTexture(gl.TEXTURE0);
@@ -1764,8 +1770,11 @@ class SharedGLHost {
                         effectPass(exit, 'horizontal', scratch, source);
                         effectPass(exit, 'vertical', source, scratch);
                     }
+                    // A glow or outline: the group's alpha spread across into the scratch target; the composite spreads it down.
+                    if (exit.spread >= 0)
+                        effectPass(exit, 'spread', scratch, source);
                     const parent = exit.depth === 1 ? colorTexture : targets[(exit.depth - 2) * 2];
-                    effectPass(exit, 'composite', parent, source);
+                    effectPass(exit, 'composite', parent, source, scratch);
                     bindDraw();
                 }
                 else {

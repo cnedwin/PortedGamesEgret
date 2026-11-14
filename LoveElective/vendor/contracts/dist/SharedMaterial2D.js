@@ -119,7 +119,7 @@ export function createSharedMaterial2D(input) {
     const dark = color(darkValues, 3);
     const blend = blendInput === undefined ? 'normal' : blendInput;
     if (blend !== 'normal' && blend !== 'add-accumulate' && blend !== 'add-preserve' &&
-        blend !== 'multiply-factor' && blend !== 'screen')
+        blend !== 'multiply-factor' && blend !== 'screen' && blend !== 'erase')
         throw new TypeFault('Shared material option is unsupported');
     const samplingDomain = domainInput === undefined ? 'region' : domainInput;
     if (samplingDomain !== 'page' && samplingDomain !== 'region')

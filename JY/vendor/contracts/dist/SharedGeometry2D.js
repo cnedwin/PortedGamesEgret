@@ -8,7 +8,8 @@ const Bytes = Uint8Array;
 const Numbers = Array;
 const apply = Reflect.apply;
 const freeze = Object.freeze;
-const arrayFrom = Numbers.from;
+const setPrototypeOf = Object.setPrototypeOf;
+const arrayPrototype = Numbers.prototype;
 const TypeFault = TypeError;
 const RangeFault = RangeError;
 const finite = Number.isFinite;
@@ -78,9 +79,10 @@ function copyPayload(source, tag, length) {
     return copy;
 }
 function canonical(source, length, kind, vertexCount) {
-    // Native Array.from creates own indices. The private array-like has no inherited hooks.
-    const input = { __proto__: null, length };
-    const convert = (_unused, index) => {
+    // Fill private own indices without inherited setters, then expose a normal frozen array.
+    const output = [];
+    setPrototypeOf(output, null);
+    for (let index = 0; index < length; index++) {
         const value = source[index];
         if (!finite(value) ||
             (kind === 'unit' && (value < 0 || value > 1)) ||
@@ -94,9 +96,10 @@ function canonical(source, length, kind, vertexCount) {
             throw new RangeFault('Shared geometry numeric range is invalid');
         }
         // Equality with zero converts both signed zeros to positive zero.
-        return rounded === 0 ? 0 : rounded;
-    };
-    return freeze(apply(arrayFrom, Numbers, [input, convert]));
+        output[index] = rounded === 0 ? 0 : rounded;
+    }
+    setPrototypeOf(output, arrayPrototype);
+    return freeze(output);
 }
 export function createSharedGeometry2D(input) {
     if (typeof input !== 'object' || input === null)

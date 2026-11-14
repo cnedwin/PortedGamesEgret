@@ -43,5 +43,5 @@ export type { NineSliceBitmapOptions } from "./NineSliceBitmap.js";
 export { createSpriteSheet } from "./spriteSheet.js";
 export type { SpriteSheet, SpriteSheetFrameInput } from "./spriteSheet.js";
 export type { AtlasFrameLayout } from './atlasFrameLayout.js';
-export type { RenderEffect2D } from './renderEffect.js';
+export type { RenderEffect2D, RenderGlow2D, RenderOutline2D } from './renderEffect.js';
 //# sourceMappingURL=index.d.ts.map

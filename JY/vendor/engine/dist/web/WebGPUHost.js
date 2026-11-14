@@ -5,9 +5,9 @@ import { SharedPreparationRetention2D } from '../rendering/sharedPreparationRete
 import { planSharedSubmission2D, packSharedSubmission2D, packSharedRegionWindows2D, SHARED_REGION_WINDOW_STRIDE_2D, SHARED_REGION_WINDOW_BYTES_2D, materializeSharedPages2D, checkSharedCapacity2D, SharedStorageError2D } from './prepareSharedSubmission2D.js';
 import { SHARED_BATCH_PAGES_2D } from '../rendering/packSharedDraws2D.js';
 import { prepareSharedBatches2D } from '../rendering/preparedSharedBatches2D.js';
-import { decodeSharedSRGB } from '../rendering/sharedColor2D.js';
+import { decodeSharedSRGBByte } from '../rendering/sharedColor2D.js';
 import { createSharedWebGPUPipeline, SHARED_BLENDS, SHARED_PIPELINE_KINDS } from './webgpuSharedPass.js';
-import { createSharedEffectPipeline, EFFECT_PASSES } from './sharedEffectShaders.js';
+import { createSharedEffectPipeline, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedEffectShaders.js';
 import { createSharedResolvePipeline } from './webgpuSharedResolvePass.js';
 import { createWebGPURetentionPool } from './webgpuRetentionPool.js';
 import { readOwnedSharedFrame } from '#egret-textured-frame-state';
@@ -753,7 +753,7 @@ class WebGPUHostImplementation {
             gate();
             if (captured['maxVertexBuffers'] < 1 || captured['maxVertexAttributes'] < 5 || captured['maxVertexBufferArrayStride'] < 52 || captured['maxColorAttachments'] < 1 || captured['maxColorAttachmentBytesPerSample'] < 4 || captured['maxBindGroups'] < 2 || captured['maxBindingsPerBindGroup'] < 2 + SHARED_BATCH_PAGES_2D || captured['maxSampledTexturesPerShaderStage'] < SHARED_BATCH_PAGES_2D || captured['maxSamplersPerShaderStage'] < 1 || captured['maxUniformBuffersPerShaderStage'] < 2 || captured['maxUniformBufferBindingSize'] < SHARED_REGION_WINDOW_BYTES_2D || captured['maxBindGroupsPlusVertexBuffers'] < 3 || captured['maxInterStageShaderVariables'] < 8)
                 throw new ClassifiedWebGPUFailure('WEBGPU_DEVICE_LIMIT');
-            if (SHARED_OPTIONS.get(this)?.enableEffects && (captured['maxUniformBufferBindingSize'] < 448 || captured['maxSampledTexturesPerShaderStage'] < 2))
+            if (SHARED_OPTIONS.get(this)?.enableEffects && (captured['maxUniformBufferBindingSize'] < EFFECT_UNIFORM_BYTES || captured['maxSampledTexturesPerShaderStage'] < 3))
                 throw new ClassifiedWebGPUFailure('WEBGPU_DEVICE_LIMIT');
             this.limits = { maxTextureDimension2D: captured['maxTextureDimension2D'], maxBufferSize: captured['maxBufferSize'] };
             const scopes = [];
@@ -2091,9 +2091,9 @@ class WebGPUHostImplementation {
             const bindings = new Map(), source = effectTargets[(group.depth - 1) * 2], scratch = effectTargets[(group.depth - 1) * 2 + 1];
             for (const mode of EFFECT_PASSES) {
                 const role = this.effectPipelines.get(mode);
-                const entries = [{ binding: 0, resource: { buffer: effectUniforms.get(group).buffer, offset: 0, size: 448 } }, { binding: 1, resource: (mode === 'vertical' ? scratch : source).view }];
+                const entries = [{ binding: 0, resource: { buffer: effectUniforms.get(group).buffer, offset: 0, size: EFFECT_UNIFORM_BYTES } }, { binding: 1, resource: (mode === 'vertical' ? scratch : source).view }];
                 if (mode === 'composite')
-                    entries.push({ binding: 2, resource: group.maskPageIndex === undefined ? source.view : realized.get(group.maskPageIndex).view });
+                    entries.push({ binding: 2, resource: group.maskPageIndex === undefined ? source.view : realized.get(group.maskPageIndex).view }, { binding: 3, resource: scratch.view });
                 const binding = record.owner.native.bindGroup({ layout: role.layout, entries });
                 record.bindings.push(binding);
                 gate();
@@ -2118,7 +2118,7 @@ class WebGPUHostImplementation {
         gate();
         const begin = this.method(encoder, 'beginRenderPass', gate), finish = this.method(encoder, 'finish', gate), copy = ticket ? this.method(encoder, 'copyTextureToBuffer', gate) : undefined;
         const c = frame.clearColor, a = frame.clearAlpha;
-        const attachment = { view: color.view, loadOp: 'clear', storeOp: 'store', clearValue: { r: a * decodeSharedSRGB(((c >>> 16) & 255) / 255), g: a * decodeSharedSRGB(((c >>> 8) & 255) / 255), b: a * decodeSharedSRGB((c & 255) / 255), a } };
+        const attachment = { view: color.view, loadOp: 'clear', storeOp: 'store', clearValue: { r: a * decodeSharedSRGBByte(c >>> 16), g: a * decodeSharedSRGBByte(c >>> 8), b: a * decodeSharedSRGBByte(c), a } };
         const capture = (pass, keys) => { const captured = {}; for (const key of keys) {
             const method = this.method(pass, key, gate);
             Object.defineProperty(captured, key, { value: (...args) => { gate(); const result = method(...args); gate(); return result; } });
@@ -2173,6 +2173,8 @@ class WebGPUHostImplementation {
                         effectPass(exit, 'horizontal', scratch.view, true);
                         effectPass(exit, 'vertical', source.view, true);
                     }
+                    if (exit.spread >= 0)
+                        effectPass(exit, 'spread', scratch.view, true);
                     const parent = exit.depth === 1 ? color : recipe.effectTargets[(exit.depth - 2) * 2];
                     effectPass(exit, 'composite', parent.view, false);
                     active = openPass(parent.view, false);
