@@ -59,7 +59,8 @@ const ui = {
   /** The stronghold on the seat screen and the building picked there. */
   place: null,
   building: 0,
-  tall: false,
+  /** Which of the seat's panels is open. */
+  seatTab: 'build',
   /** The roster: who is picked, the filter, the search and the ticked rows. */
   person: null,
   rank: '全部',
@@ -250,7 +251,10 @@ function shell(content) {
   const speed = ([value, label, glyph]) => `<button data-act="speed" data-speed="${value}" class="${ui.speed === value ? 'is-active' : ''}" aria-pressed="${ui.speed === value}" title="${label}">${glyph ? icon(glyph) : label}</button>`;
   const current = ui.page === 'arts' ? 'disciples' : ui.page;
   const end = world.outcome ? `<div class="notice">${{ 'won-conquest': '一统江湖！', 'won-summit': '武林大会推举你为盟主！', 'won-court': '朝廷封你为武林都指挥使，禁武令自此废除。', lost: '本门已不复存在。' }[world.outcome.result] ?? ''}</div>` : '';
-  return `<div class="shell">
+  // The picture fills the screen behind everything: the realm on its page, the field in a fight, the seat otherwise.
+  const scene = stagedScene();
+  return `<div class="shell game">
+    <div class="backdrop ${isStaged() ? '' : 'is-dimmed'}"><div class="stage-slot" data-stage="${scene}">${sceneImage({ realm: 'world', battle: 'battle', seat: 'seat' }[scene])}</div></div>
     <aside class="nav" aria-label="主要功能">
       <button class="nav-logo" data-act="page" data-page="saves" aria-label="存档"><span class="seal"><span>武</span><span>林</span></span></button>
       <nav class="nav-list" data-region="nav">${TABS.map(([id, label, glyph]) => `<button class="nav-button ${current === id ? 'is-active' : ''}" data-act="page" data-page="${id}" ${current === id ? 'aria-current="page"' : ''}>${icon(glyph)}<span>${label}</span></button>`).join('')}</nav>
@@ -261,14 +265,20 @@ function shell(content) {
       <div class="resources">${resource('coin', '银两', b.silver, '两')}${resource('grain', '粮草', b.grain, '石')}${resource('banner', '威望', b.renown)}${resource('balance', '正邪', b.virtue)}</div>
       <div class="speeds" role="group" aria-label="时间速度">${[[0, '暂停', 'pause'], [1, '行'], [4, '快'], [16, '疾']].map(speed).join('')}</div>
     </header>
-    <main class="main" id="main"><div class="region" data-region="goal">${goalStrip()}</div><div class="region" data-region="notice">${end}${ui.notice ? `<div class="notice">${esc(ui.notice)}</div>` : ''}</div>${content}</main>
+    <main class="main ${isStaged() ? 'is-staged' : 'is-window'}" id="main"><div class="region" data-region="goal">${goalStrip()}</div><div class="region" data-region="notice">${end}${ui.notice ? `<div class="notice">${esc(ui.notice)}</div>` : ''}</div>${content}</main>
   </div>`;
 }
+
+/** Which scene the picture behind the screen shows. */
+const stagedScene = () => (ui.page === 'battle' && ui.fight ? 'battle' : ui.page === 'world' && picture.stage && ui.map3d ? 'realm' : 'seat');
+/** Whether the screen is the picture itself with panels over it, rather than a window in front of it. */
+const isStaged = () => ui.page === 'seat' || (ui.page === 'battle' && !!ui.fight) || (ui.page === 'world' && !!picture.stage && ui.map3d);
 
 /** The matter in hand, shown above every screen: what to do, how far along, and where to go to do it. */
 function goalStrip() {
   const goal = goalView(world);
-  if (!goal || world.outcome) return '';
+  // A fight has the whole screen to itself.
+  if (!goal || world.outcome || ui.fight) return '';
   if (goal.last) return `<section class="goal is-last"><div class="goal-mark">${icon('banner')}</div><div class="goal-copy"><b>${esc(goal.title)}</b><span>${esc(goal.text)}</span></div></section>`;
   const reward = Object.entries(goal.gives).map(([key, amount]) => `${{ silver: '银两', grain: '粮草', renown: '威望' }[key]} +${num(amount)}`).join('　');
   return `<section class="goal ${goal.done ? 'is-done' : ''}">
@@ -300,38 +310,27 @@ function seatScreen() {
   const seat = spec.id === sect.seat ? '总舵' : '分舵';
   const status = b_status(place, here);
   const switcher = mine.length > 1 ? `<div class="place-switch">${mine.map((id) => pill(PLACE_BY_ID[id].name, 'look', { place: id }, id === placeId)).join('')}</div>` : '';
-  return `<div class="region" data-region="seat-head">${screenHead('山门', spec.name, `${sect.name}${seat} · ${spec.note}`, switcher + btn('兴建建筑', 'sheet', { kind: 'build' }, 'primary', 'plus'))}</div>
-    <div class="seat-layout">
-      <section class="scene-panel seat-panel ${ui.tall ? 'is-tall' : ''}" aria-label="山门">
-        <div class="stage-slot" data-stage="seat">${sceneImage('seat')}</div>
-        <div class="region" data-region="seat-over">
-          <div class="scene-top"><div class="scene-chip">${icon('pin')}<span>${esc(spec.name)}${seat}</span></div><div class="scene-status"><span></span>${status}</div></div>
-          ${picture.stage ? `<div class="scene-zoom" role="group" aria-label="山门视角"><button data-act="zoom" data-dir="in" aria-label="拉近">${icon('plus')}</button><button data-act="zoom" data-dir="out" aria-label="拉远">${icon('minus')}</button><button data-act="zoom" data-dir="reset" aria-label="恢复全景">${icon('frame')}</button></div>` : ''}
-          <div class="scene-bottom"><span>${icon('layers')} ${picture.stage ? '拖动转视角，滚轮或双指缩放' : '山门全景'}</span><span>${picture.stage ? `<button class="scene-overlay-button" data-act="tags">${ui.tags ? '隐藏建筑名' : '显示建筑名'}</button> ` : ''}<button class="scene-overlay-button" data-act="tall">${ui.tall ? '收起画面' : '展开画面'}</button></span></div>
-        </div>
-      </section>
-      <aside class="seat-side" data-region="seat-side">
-        <section class="panel building-panel">${panelTitle(kind.name, tag(`${picked.level} 级`))}
+  const tabs = [['build', '建筑'], ['recruit', `招贤${place.applicants.length ? ' ' + place.applicants.length : ''}`], ['here', '此地'], ['affairs', '事务']];
+  if (!tabs.some(([id]) => id === ui.seatTab)) ui.seatTab = 'build';
+  const tabPanel = {
+    build: () => `<section class="panel building-panel">${panelTitle(kind.name, tag(`${picked.level} 级`))}
           <div class="building-detail"><p>${esc(kind.does)} · 占地 ${kind.cells} 格</p>${picked.level < kind.max ? btn(`升至 ${picked.level + 1} 级　${num(cost)} 两`, 'upgrade', { index: ui.building }, 'outline') : tag('已满级', 'positive')}</div>
           ${picked.kind === 'hall' || picked.kind === 'gate' ? '' : formRow('位置', `<select data-change="plot">${options([['', '由管事安排'], ...Array.from({ length: PLOT_COUNT }, (_, i) => [i, `第 ${i + 1} 块地（${i % 2 ? '东' : '西'}侧，离中路${['近', '中', '远'][Math.floor((i % 6) / 2)]}）`])], picked.plot ?? '')}</select>`)}
           ${picture.stage ? '<p class="caption building-hint">点画面上的建筑名，可查看别的建筑。</p>' : ''}
           <div class="building-switch ${picture.stage ? 'is-folded' : ''}" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>
-        </section>
-        <section class="panel recruit-panel">${panelTitle('招贤榜', tag(place.applicants.length ? `${place.applicants.length} 人求见` : '无人求见', place.applicants.length ? 'positive' : 'plain'))}
+        <div class="panel-foot">${btn('兴建建筑', 'sheet', { kind: 'build' }, 'primary', 'plus')}</div></section>`,
+    recruit: () => `<section class="panel recruit-panel">${panelTitle('招贤榜', tag(place.applicants.length ? `${place.applicants.length} 人求见` : '无人求见', place.applicants.length ? 'positive' : 'plain'))}
           <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content"><div class="recruit-avatar">${icon('people')}</div><div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
-        </section>
-      </aside>
-    </div>
-    <div class="seat-bottom" data-region="seat-bottom">
-      <section class="panel">${panelTitle('此地', `<button class="text-link" data-act="page" data-page="disciples">驻此 ${here.length} 人 · 全派 ${row.members} 人 ${icon('arrow')}</button>`)}
+        </section>`,
+    here: () => `<section class="panel">${panelTitle('此地', `<button class="text-link" data-act="page" data-page="disciples">驻此 ${here.length} 人 · 全派 ${row.members} 人 ${icon('arrow')}</button>`)}
         <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>山下店铺</span><b>${place.shops}<small> / ${SHOP_LIMIT}</small></b></div><div><span>掌门</span><b class="is-text">${leader?.place === placeId ? '在此' : esc(PLACE_BY_ID[leader?.place]?.name ?? '在外')}</b></div></div>
         <div class="terrain-list">${RESOURCES.map((key) => `<span>${RESOURCE_NAMES[key]} <strong>${dots(spec.resources[key])}</strong></span>`).join('')}</div>
         <div class="affairs">
           ${affair('此处专精', '一处据点只专一事', `<select data-change="focus">${options(Object.entries(FOCUSES).map(([id, f]) => [id, `${f.name}：${f.does}`]), place.focus ?? 'none')}</select>`)}
           ${affair('开设店铺', `每间每旬入银 ${ECONOMY.shopIncome.join('–')} 两，并代售门中出产`, btn(`${num(ECONOMY.shopCost)} 两`, 'shop', {}, 'outline', '', place.shops >= SHOP_LIMIT))}
         </div>
-      </section>
-      <section class="panel">${panelTitle('门派事务', '<span class="caption">每旬结算</span>')}
+      </section>`,
+    affairs: () => `<section class="panel">${panelTitle('门派事务', '<span class="caption">每旬结算</span>')}
         <div class="stat-grid"><div><span>全派薪俸</span><b>${row.wages}<small> 两</small></b></div><div><span>商路进项</span><b>${row.trade}<small> 两</small></b></div><div><span>上旬售货</span><b>${num(books().sold?.goods ?? 0)}<small> 两</small></b></div><div><span>朝廷关系</span><b>${Math.round(books().court)}</b></div></div>
         <div class="stock-line">库存　${RESOURCES.map((key) => `${RESOURCE_NAMES[key]} ${Math.round(books().res[key])}`).join(' · ')}</div>
         <div class="affairs">
@@ -340,8 +339,19 @@ function seatScreen() {
           ${affair('丹房', '炼药、服药', btn('入内', 'sheet', { kind: 'pills' }, 'outline'))}
           ${affair('布施', `散银 ${num(ECONOMY.donation)} 两，威望 +${ECONOMY.donationRenown}`, btn('布施', 'donate', {}, 'outline'))}
         </div>
-      </section>
-    </div>`;
+      </section>`,
+  }[ui.seatTab]();
+  return `<section class="scene-panel seat-panel" aria-label="山门">
+      <div class="region" data-region="seat-over">
+        <div class="scene-top"><div class="scene-chip">${icon('pin')}<span>${esc(spec.name)}${seat}</span><small>${status}</small></div>${switcher}</div>
+        ${picture.stage ? `<div class="scene-zoom" role="group" aria-label="山门视角"><button data-act="zoom" data-dir="in" aria-label="拉近">${icon('plus')}</button><button data-act="zoom" data-dir="out" aria-label="拉远">${icon('minus')}</button><button data-act="zoom" data-dir="reset" aria-label="恢复全景">${icon('frame')}</button></div>
+        <div class="scene-bottom"><span>${icon('layers')} 拖动转视角，滚轮或双指缩放</span><span><button class="scene-overlay-button" data-act="tags">${ui.tags ? '隐藏建筑名' : '显示建筑名'}</button></span></div>` : ''}
+      </div>
+    </section>
+    <aside class="command" data-region="seat-side">
+      <div class="command-tabs" role="tablist">${tabs.map(([id, label]) => `<button role="tab" data-act="seat-tab" data-tab="${id}" class="${ui.seatTab === id ? 'is-active' : ''}" aria-selected="${ui.seatTab === id}">${label}</button>`).join('')}</div>
+      <div class="command-body">${tabPanel}</div>
+    </aside>`;
 }
 
 /** One line of things to be done: what it is, a word about it, and the control that does it. */
@@ -478,10 +488,11 @@ function worldScreen() {
     open: btn(`开设分舵（${num(ECONOMY.settleCost ?? 1500)}两）`, 'sheet', { kind: 'settle', place: spec.id }, 'primary', 'pin'),
     foe: btn('商议出兵', 'sheet', { kind: 'march', place: spec.id }, 'primary', 'swords') + btn('馈赠 500 两', 'gift', { sect: place.owner }, 'outline'),
   }[deal.kind];
-  return `${screenHead('江湖', '天下舆图', '沙盘上各派疆域以本派颜色晕染，交界处有界线。点据点名牌查看详情与可行之事。', btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'outline', 'banner'))}
-    <div class="world-layout">
-      ${picture.stage && ui.map3d ? `<section class="scene-panel map-panel is-model" aria-label="天下沙盘"><div class="stage-slot" data-stage="realm">${sceneImage('world')}</div>
-        <div class="map-label"><span>大昭疆域</span><small>拖动平移 · 右键或 Shift 拖动旋转 · 滚轮缩放</small></div>
+  const model = picture.stage && ui.map3d;
+  return `${model ? '' : screenHead('江湖', '天下舆图', '点据点查看详情与可行之事。', btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'outline', 'banner'))}
+    <div class="world-layout ${model ? 'is-model' : ''}">
+      ${model ? `<section class="scene-panel map-panel is-model" aria-label="天下沙盘">
+        <div class="scene-top"><div class="scene-chip">${icon('map')}<span>大昭疆域</span><small>拖动平移 · 右键拖动旋转 · 滚轮缩放</small></div>${btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'on-dark', 'banner')}</div>
         <div class="scene-zoom map-zoom"><button data-act="zoom" data-dir="in" aria-label="拉近">${icon('plus')}</button><button data-act="zoom" data-dir="out" aria-label="拉远">${icon('minus')}</button><button data-act="zoom" data-dir="reset" aria-label="恢复全景">${icon('frame')}</button></div>
         <div class="scene-bottom"><button class="scene-overlay-button" data-act="mapmode">改看画卷</button><span></span></div>
       </section>` : `<section class="scene-panel map-panel" aria-label="天下舆图"><div class="scene-viewport"><div class="scene-stage map-stage">${sceneImage('world')}<div class="region" data-region="map">${mapMarks()}</div></div></div>
@@ -490,7 +501,7 @@ function worldScreen() {
         <div class="scene-zoom map-zoom"><button data-act="mapzoom" data-dir="in" aria-label="放大舆图">${icon('plus')}</button><button data-act="mapzoom" data-dir="out" aria-label="缩小舆图">${icon('minus')}</button><button data-act="mapzoom" data-dir="reset" aria-label="重置舆图">${icon('frame')}</button></div>
         ${picture.stage ? `<div class="scene-bottom"><button class="scene-overlay-button" data-act="mapmode">改看沙盘</button><span></span></div>` : ''}
       </section>`}
-      <aside class="world-side" data-region="world-side">
+      <aside class="world-side ${model ? 'command' : ''}" data-region="world-side">
         <section class="panel place-card">${panelTitle(spec.name, tag(owner?.name ?? '无主', owner ? 'positive' : 'plain'))}<p>${esc(spec.note)}</p>
           <dl class="facts">${fact('地块容量', `${spec.cells} 格`)}${fact('物产', RESOURCES.filter((key) => spec.resources[key] >= 2).map((key) => RESOURCE_NAMES[key]).join('、') || '平平')}
             ${owner ? fact('守卫', `${guard.length} 人 · 战力 ${num(strength(guard))}`) : ''}${relation !== null ? fact('与本派关系', `<span class="${relation < 0 ? 'bad' : relation >= 40 ? 'good' : ''}">${relation}</span>`) : ''}
@@ -539,11 +550,9 @@ function battleScreen() {
   const marked = battle.units.find((unit) => unit.id === battle.orders[mine].focus && !unit.down);
   const clock = `${String(Math.floor(battle.time / 60)).padStart(2, '0')}:${String(Math.floor(battle.time % 60)).padStart(2, '0')}`;
   const stance = battle.stances[mine];
-  return `${screenHead('战阵', title, '点选敌方下令集火，随时可暂停（空格）、调速或撤退。暂停时显示各人姓名。')}
-    <section class="scene-panel battle-panel" aria-label="战斗场景">
-      <div class="stage-slot" data-stage="battle">${sceneImage('battle')}</div>
+  return `<section class="scene-panel battle-panel" aria-label="战斗场景">
       <div class="region" data-region="battle-over">
-        <div class="battle-top">${side(0)}<div class="fight-clock"><b>${clock}</b><small>${battle.done ? '胜负已分' : arena.paused ? '已暂停' : '交战中'}</small></div>${side(1)}</div>
+        <div class="battle-top">${side(0)}<div class="fight-clock"><em>${esc(title)}</em><b>${clock}</b><small>${battle.done ? '胜负已分' : arena.paused ? '已暂停' : '交战中'}</small></div>${side(1)}</div>
         <div class="battle-bottom"><span class="battle-hint">${icon(marked ? 'target' : 'info')} ${marked ? `集火：${esc(marked.name)}（再点一次取消）` : '点选敌人下令集火'}</span>
           <div class="battle-orders">${btn(arena.paused ? '继续' : '暂停', 'fight-pause', {}, 'on-dark', arena.paused ? 'play' : 'pause')}
             <div class="speeds dark-speeds" role="group" aria-label="战斗速度">${[1, 2, 4].map((s) => `<button data-act="fight-speed" data-speed="${s}" class="${s === arena.speed && !arena.paused ? 'is-active' : ''}">${s}×</button>`).join('')}</div>
@@ -552,7 +561,7 @@ function battleScreen() {
             ${btn('速决', 'fight-skip', {}, 'on-dark')}${btn('撤退', 'sheet', { kind: 'retreat' }, 'danger', '', battle.orders[mine].retreat)}</div></div>
       </div>
     </section>
-    <section class="panel battle-report" data-region="battle-log">${panelTitle('交战记录')}${lines.slice(-6).reverse().map((line) => `<p>${icon('swords')}${esc(line)}</p>`).join('') || '<p>两军正在接近。</p>'}</section>`;
+    <section class="battle-report is-floating" data-region="battle-log">${lines.slice(-6).reverse().map((line) => `<p>${icon('swords')}${esc(line)}</p>`).join('') || '<p>两军正在接近。</p>'}</section>`;
 }
 
 /** One line of a fight's account, or nothing for an event not worth telling. */
@@ -892,7 +901,7 @@ function render() {
     const gone = !membersOf(world, me()).length;
     if (gone && !['chronicle', 'saves'].includes(ui.page)) ui.page = 'chronicle';
     html = shell(SCREENS[ui.page]());
-    key = [ui.page, ui.page === 'battle' && !!ui.fight, ui.tall, !!picture.stage, ui.map3d].join();
+    key = [ui.page, ui.page === 'battle' && !!ui.fight, !!picture.stage, ui.map3d].join();
   }
   // The key carries whether the paintings have loaded, so the still pictures appear when they arrive.
   if (mount(app, html, key + (art ? ':art' : ''))) window.scrollTo(0, 0);
@@ -1026,14 +1035,14 @@ const actions = {
     ui.building = 0;
     if (data.go) ui.page = 'seat';
   },
-  tall: () => (ui.tall = !ui.tall),
+  'seat-tab': (data) => (ui.seatTab = data.tab),
   mapmode: () => (ui.map3d = !ui.map3d),
   zoom(data) {
     const orbit = picture.stage?.orbit;
     if (!orbit) return;
     orbit.distance = data.dir === 'reset' ? (ui.page === 'world' ? 150 : 50) : Math.max(orbit.minDistance, Math.min(orbit.maxDistance, orbit.distance * (data.dir === 'in' ? 0.78 : 1.28)));
   },
-  building: (data) => (ui.building = Number(data.index)),
+  building: (data) => ((ui.building = Number(data.index)), (ui.seatTab = 'build')),
   build: () => say(build(world, me(), ui.place, pick('#build-kind')), '动工了。') && ((ui.building = world.places[ui.place].buildings.length - 1), (ui.sheet = null)),
   upgrade: (data) => say(upgrade(world, me(), ui.place, Number(data.index)), '扩建完成。'),
   recruit: (data) => say(recruit(world, me(), ui.place, Number(data.index)), '收入门墙。') && (ui.sheet = null),
@@ -1245,6 +1254,18 @@ document.body.addEventListener('input', (event) => {
 window.addEventListener('keydown', doublePress('F8', () => (ui.sheet?.kind === 'editor' ? (actions.close(), render()) : openEditor())));
 // Space holds and releases a fight.
 window.addEventListener('keydown', (event) => event.key === ' ' && ui.fight && !ui.sheet && event.target === document.body && (event.preventDefault(), actions['fight-pause'](), render()));
+
+// Outside a fight, Space holds and releases time and the number keys set its pace.
+window.addEventListener('keydown', (event) => {
+  if (!world || ui.fight || ui.sheet || event.target !== document.body || event.ctrlKey || event.metaKey || event.altKey) return;
+  const pace = event.key === ' ' ? (ui.speed ? 0 : 1) : { 1: 1, 2: 4, 3: 16, '`': 0 }[event.key];
+  if (pace === undefined) return;
+  event.preventDefault();
+  actions.speed({ speed: pace });
+  render();
+});
+// The picture is not a page: no menu of the browser's over it.
+window.addEventListener('contextmenu', (event) => event.target.closest('.shell.game') && !event.target.closest('input, textarea') && event.preventDefault());
 
 // The map is dragged with a pointer and zoomed with the wheel or two fingers.
 const mapTouches = new Map();
