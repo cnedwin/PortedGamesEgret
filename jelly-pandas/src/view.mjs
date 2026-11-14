@@ -567,8 +567,10 @@ export function createView(scene, options = {}) {
   ]);
   const tops = instanced(topShape, glossy, 48, true);
   const gems = instanced(
-    createOctahedronGeometry3D({ radius: 0.2 }),
-    createStandardMaterial3D({ color: 0xffffff, roughness: 0.2, flatShading: true }),
+    // Keep the octahedron's face normals and use the horde's vertex layout
+    // so the first gem can reuse the already compiled instanced shaders.
+    buildShape([[createOctahedronGeometry3D({ radius: 0.2, smooth: false }), [0, 0, 0], 1, WHITE]]),
+    createStandardMaterial3D({ color: 0xffffff, roughness: 0.2, vertexColors: true }),
     560,
   );
   gems.material.setEmissive([1, 1, 1]);

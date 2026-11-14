@@ -50,7 +50,7 @@ export function registerVisual(node) {
         structureRevision: 0, transformRevision: 0, appearanceRevision: 0, contentRevision: 0, bindingRevision: 0,
         x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, alpha: 1,
         anchorOffsetX: 0, anchorOffsetY: 0,
-        visible: true, renderEffect: undefined, sharedMaterial: null, renderBoundary: 'none', clipRect: undefined, primitives: [],
+        visible: true, renderEffect: undefined, sharedMaterial: null, renderBoundary: 'none', clipRect: undefined, primitives: [], shape: undefined,
         sharedCapture: undefined, changes: 0, seenBy: 0,
     });
 }

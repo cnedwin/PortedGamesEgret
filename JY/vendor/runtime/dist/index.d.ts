@@ -1,5 +1,7 @@
 export { CancellationController } from "./CancellationController.js";
 export { EgretError } from "./EgretError.js";
+export { describeErrorCode, setErrorLanguage, getErrorLanguage } from "./errorHelp.js";
+export type { ErrorLanguage } from "./errorHelp.js";
 export type { EgretErrorOptions } from "./EgretError.js";
 export { Scope, createScope } from "./Scope.js";
 export type { ScopeState } from "./Scope.js";
@@ -23,6 +25,7 @@ export { createAssetType, createAssetRef } from "./AssetRef.js";
 export type { AssetType, AssetRef } from "./AssetRef.js";
 export { Sprite } from './Sprite.js';
 export { Graphics } from './Graphics.js';
+export type { LineStyleOptions, GradientColorStop, GradientBoxMatrix } from './Graphics.js';
 export { collectSharedFrameContent } from './sharedFrameCapture.js';
 export type { CapturedSharedContent2D } from './sharedFrameCapture.js';
 export { Texture, createTexture, createTextureView, isTexture } from './Texture.js';
