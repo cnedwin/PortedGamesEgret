@@ -60,7 +60,7 @@ test('an arena plays a battle to its end', () => {
   let cleared = 0;
   let ended = 0;
   const arena = createArena(stage, battle, {
-    colors: [0x4466aa, 0xccaa33], layer: null, onEvent: (event) => events.push(event.type),
+    colors: [0x4466aa, 0xccaa33], layer: null, onEvent: (event) => events.push(event),
     onContact: (cue) => contacts.push(cue), onEnd: () => ended++,
   });
   arena.enter();
@@ -68,8 +68,10 @@ test('an arena plays a battle to its end', () => {
   for (let i = 0; i < 20000 && !ended; i++) arena.update(0.05);
   assert.ok(battle.done);
   assert.equal(ended, 1);
-  assert.ok(events.includes('hit') && events.at(-1) === 'end');
+  assert.ok(events.some(event => event.type === 'hit') && events.at(-1).type === 'end');
   assert.ok(contacts.some(cue => cue.type === 'hit' && cue.klass && Number.isFinite(cue.x)));
+  const criticalArts = new Set(events.filter(event => event.type === 'hit' && event.crit && event.art).map(event => event.art));
+  assert.ok(contacts.some(cue => cue.type === 'hit' && cue.critical && criticalArts.has(cue.art)));
 
   // Skipping gives the same result as watching.
   const again = createBattle({ sides: prepared.sides, formations: prepared.formations, seed: 4 });

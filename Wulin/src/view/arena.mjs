@@ -136,7 +136,7 @@ export function createArena(stage, battle, {
         continue;
       }
       const { event, klass, from, to } = cue;
-      onContact({ type: event.type, klass, x: to.x, critical: !!event.crit });
+      onContact({ type: event.type, klass, art: event.art, x: to.x, critical: !!event.crit });
       if (event.type === 'miss') {
         if (!to.unit.down && !to.figure.busy) to.figure.play('evade', { base: 'guard' });
         float(to, '闪', 'miss');
