@@ -23,37 +23,63 @@
 <body>
   <canvas id="stage"></canvas>
   <script type="module">
-    import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
+    import { AnimationMixer3D, Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
     import { SECTS } from '../src/data/sects.mjs';
     import { ACTION_NAMES, createFigure } from '../src/view/figure.mjs';
+    import { STRIKE_CONTACT, clipOf } from '../src/view/figure-motion.mjs';
     import { BOX, hexOf, model } from '../src/view/shapes.mjs';
     import { createStage, lightScene } from '../src/view/stage.mjs';
 
-    const status = (globalThis.__models = { error: '', frames: 0 });
+    const view = new URLSearchParams(location.search);
+    const requestedAction = view.get('action');
+    const selected = ACTION_NAMES.includes(requestedAction) ? requestedAction : null;
+    const actions = selected ? [selected] : ACTION_NAMES;
+    const phase = view.get('phase');
+    const frame = selected && phase !== null
+      ? (phase === 'contact' ? STRIKE_CONTACT[selected] : Number(phase)) : undefined;
+    const fixed = Number.isFinite(frame);
+    const status = (globalThis.__models = { error: '', frames: 0, actions, phase: fixed ? frame : null });
     const stage = await createStage(document.querySelector('#stage'), { onError: (cause) => (status.error = String(cause?.stack ?? cause)) });
     const scene = new Scene3D();
     const camera = createPerspectiveCamera3D({ fov: 38, near: 0.3, far: 300 });
     scene.addChild(camera);
     lightScene(scene, 'day', stage.quality);
     scene.addChild(model([[BOX, [0, -0.05, 0], [40, 0.1, 20], 0xb9ab8c]]));
-    const weapons = ['sword', 'saber', 'spear', 'staff', 'glove', 'stylus', 'dart', null];
-    const figures = ACTION_NAMES.map((action, i) => {
-      const sect = SECTS[i % SECTS.length];
-      const figure = createFigure({ color: hexOf(sect.color), female: i % 3 === 1, rank: i % 6, weapon: weapons[i % weapons.length], monk: sect.id === 'shaolin', seed: i + 1 });
-      figure.node.setPosition((i % 8 - 3.5) * 1.5, 0, i < 8 ? -1.2 : 1.6);
+    const weapons = { sword: 'sword', slash: 'saber', thrust: 'spear', sweep: 'staff', point: 'stylus', throw: 'dart' };
+    const schools = { punch: 'shaolin', palm: 'emei', kick: 'gaibang', slash: 'mingjiao', sword: 'huashan',
+      thrust: 'caobang', sweep: 'shaolin', point: 'chongsheng', throw: 'tangmen', mend: 'yaowang' };
+    const figures = actions.map((action, i) => {
+      const school = view.get('sect') ?? schools[action];
+      const sect = SECTS.find(candidate => candidate.id === school) ?? SECTS[i % SECTS.length];
+      const rank = selected ? 5 : i % 6;
+      const female = view.has('female') ? view.get('female') === '1' : rank === 5 ? sect.leader.female : sect.id === 'emei';
+      const figure = createFigure({ color: hexOf(sect.color), female,
+        rank, weapon: weapons[action] ?? (['guard', 'run', 'down'].includes(action) ? 'sword' : null),
+        school: sect.id, portraitId: rank === 5 ? 'leader-' + sect.id : undefined,
+        age: rank === 5 ? sect.leader.age : 29 + rank * 6, quality: stage.quality, seed: i + 1 });
+      const row = Math.floor(i / 7);
+      const width = Math.min(7, actions.length - row * 7);
+      figure.node.setPosition((i % 7 - (width - 1) / 2) * 2, 0, selected ? 0 : (row - 1) * 2.8);
       scene.addChild(figure.node);
-      figure.play(action);
+      if (fixed) {
+        const mixer = new AnimationMixer3D(figure.node);
+        const pose = mixer.clipAction(clipOf(action)).play();
+        pose.loop = 'once';
+        pose.time = frame;
+        mixer.update(0);
+      } else figure.play(action);
       return { figure, action };
     });
-    // ?x=&y=&z= moves the camera and ?lx=&ly=&lz= what it looks at, for a closer look at one figure.
-    const view = new URLSearchParams(location.search),
-      at = (key, fallback) => (view.has(key) ? Number(view.get(key)) : fallback);
-    camera.setPosition(at('x', 0), at('y', 3.2), at('z', 11.5));
+    // ?action=sword&phase=contact shows a single strike pose. x/y/z and lx/ly/lz adjust the camera and aim.
+    const at = (key, fallback) => (view.has(key) ? Number(view.get(key)) : fallback);
+    const distance = selected ? 4.65 : Math.max(13.5, 11.5 / (innerWidth / innerHeight));
+    camera.setPosition(at('x', selected ? 2.8 : 0), at('y', selected ? 2.35 : 6.5), at('z', distance));
     camera.lookAt(at('lx', 0), at('ly', 0.9), at('lz', 0));
     stage.show({
       scene, camera,
       update(dt) {
         status.frames = stage.frames;
+        if (fixed) return;
         for (const { figure, action } of figures) {
           if (!figure.busy && figure.action !== action && action !== 'down') figure.play(action);
           figure.update(dt);

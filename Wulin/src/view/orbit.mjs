@@ -27,6 +27,8 @@ export function createOrbit(canvas) {
     dragPans: false,
     /** Called with page coordinates when the player taps without dragging. */
     onTap: null,
+    /** Increments on manual camera gestures, so a scene can yield automatic framing. */
+    gestureVersion: 0,
     position: [0, 0, 0],
     set(view) {
       Object.assign(orbit, view);
@@ -101,6 +103,7 @@ export function createOrbit(canvas) {
       dy = event.clientY - last.y;
     (last.x = event.clientX), (last.y = event.clientY);
     moved += Math.abs(dx) + Math.abs(dy);
+    if (moved >= 8 || pointers.size >= 2) orbit.gestureVersion++;
     idle = 0;
     if (pointers.size >= 2) {
       const [a, b] = [...pointers.values()];
@@ -134,6 +137,7 @@ export function createOrbit(canvas) {
     (event) => {
       event.preventDefault();
       orbit.distance = clamp(orbit.distance * Math.exp(event.deltaY * 0.0012), orbit.minDistance, orbit.maxDistance);
+      orbit.gestureVersion++;
       idle = 0;
     },
     { passive: false },
