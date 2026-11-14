@@ -12,6 +12,7 @@ import { InstancedMesh3D, Mesh3D, Object3D, Scene3D, createGeometry3D, createPer
 import { PLACES, PLACE_BY_ID } from '../data/places.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
 import { createBuilding } from './buildings.mjs';
+import { boatParts } from './seat.mjs';
 import { BALL, BOX, PYRAMID, ROD, SPIKE, TAPER, TOON, build, hexOf, mix, model, rgb, scatter, shade } from './shapes.mjs';
 import { lightScene } from './stage.mjs';
 
@@ -459,7 +460,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
     sites[place.id] = { x: cx, y, z: cz, kind };
     const put = (what, dx, dz, scale, turn = 0) => {
       if (detail.towns < 2 && what !== 'hall') return;
-      const node = createBuilding(what, what === 'hall' ? 3 : 2);
+      const node = createBuilding(what, what === 'hall' ? 3 : 2, world().places[place.id].owner);
       node.setPosition(cx + dx, groundAt(cx + dx, cz + dz), cz + dz);
       node.setScale(scale);
       node.setRotation(0, turn, 0);
@@ -653,7 +654,9 @@ export function createRealm(stage, world, { layer = null } = {}) {
   }
 
   // ---- boats, clouds, banners and the mark on the chosen stronghold -------------------------------------------
-  const boatShape = build([[BOX, [0, 0.12, 0], [0.5, 0.24, 1.5], 0x6e4a2b], [ROD, [0, 0.9, 0.1], [0.04, 1.5, 0.04], 0x4a3a2a], [BOX, [0, 1.0, 0.12], [0.9, 1.0, 0.04], 0xe9e1cf]]);
+  // A river junk: a hull high at bow and stern, a cabin under matting, and two sails of brown matting stiffened with battens.
+  const sail = (z, tall, wide) => [[ROD, [0, tall / 2 + 0.2, z], [0.03, tall + 0.3, 0.03], 0x4a3a2a], [BOX, [0, tall / 2 + 0.36, z + 0.03], [wide, tall * 0.84, 0.03], 0xb5884a, [0, 0.25, 0]], ...[0.2, 0.4, 0.6, 0.8].map((k) => [BOX, [0, 0.36 + tall * 0.84 * k + tall * 0.08 - tall * 0.42 + tall / 2 - tall * 0.08, z + 0.05], [wide + 0.06, 0.025, 0.035], 0x6a4a2a, [0, 0.25, 0]])];
+  const boatShape = build([...boatParts(0, 0, 0, 0.62).slice(0, 6), ...sail(0.35, 1.5, 0.95), ...sail(-0.75, 1.0, 0.66), [BOX, [0, 0.3, -1.02], [0.05, 0.3, 0.3], 0x5a4632]]);
   const fleet = Array.from({ length: stage.quality === 'low' ? 6 : 14 }, (_, i) => ({ path: SAILS[i % 3 === 2 ? 1 : 0], t: random(), pace: (0.004 + random() * 0.004) * (random() < 0.5 ? 1 : -1) }));
   const boats = new InstancedMesh3D(boatShape, TOON, fleet.length);
   scene.addChild(boats);

@@ -100,6 +100,79 @@ function ground(spec, random) {
 }
 
 const LAMP = glow(0xffb45a, 1.5);
+
+/** A low table with a tea set, and a stool on each side of it. */
+const teaTable = (x, z) => [[BOX, [x, 0.42, z], [1.2, 0.08, 0.8], 0x6a4428], ...[-0.5, 0.5].flatMap((dx) => [-0.3, 0.3].map((dz) => [ROD, [x + dx, 0.2, z + dz], [0.04, 0.4, 0.04], 0x5a3a22])), [ROD, [x, 0.52, z], [0.1, 0.12, 0.1], 0x8a5a3a], [SPIKE, [x + 0.12, 0.54, z], [0.02, 0.1, 0.02], 0x8a5a3a, [0, 0, -1.2]], ...[-0.28, 0.3].map((dx) => [ROD, [x + dx, 0.49, z + 0.16], [0.045, 0.05, 0.045], 0xe9e1cf]), ...[-0.95, 0.95].map((dx) => [ROD, [x + dx, 0.22, z], [0.2, 0.44, 0.2], 0x7a5632])];
+/** A long table with a bench down each side: where a sect eats when the weather is kind. */
+const longTable = (x, z) => [[BOX, [x, 0.72, z], [3.2, 0.1, 0.9], 0x7a5632], ...[-1.4, 1.4].flatMap((dx) => [[BOX, [x + dx, 0.36, z], [0.1, 0.7, 0.7], 0x5e4228]]), ...[-0.75, 0.75].flatMap((dz) => [[BOX, [x, 0.42, z + dz], [3.0, 0.07, 0.3], 0x6a4a2e], ...[-1.3, 1.3].map((dx) => [BOX, [x + dx, 0.2, z + dz], [0.08, 0.4, 0.26], 0x5e4228])]), ...[-1, -0.3, 0.5, 1.1].map((dx, i) => [ROD, [x + dx, 0.8, z + (i % 2 ? 0.15 : -0.15)], [0.11, 0.06, 0.11], i % 2 ? 0xe9e1cf : 0x8fa8b0])];
+/** A rack of spears and halberds standing upright. */
+const armsRack = (x, z) => [[BOX, [x, 0.14, z], [2.2, 0.28, 0.5], 0x5e4228], [BOX, [x, 1.3, z], [2.2, 0.1, 0.16], 0x5e4228], ...[-1, 1].map((dx) => [BOX, [x + dx, 0.75, z], [0.1, 1.5, 0.14], 0x5e4228]), ...[-0.7, -0.35, 0, 0.35, 0.7].flatMap((dx, i) => [[ROD, [x + dx, 1.2, z], [0.025, 2.2, 0.025], 0x7a4f2a], i % 2 ? [SPIKE, [x + dx, 2.42, z], [0.05, 0.3, 0.02], 0xcfd3da] : [BOX, [x + dx, 2.3, z + 0.02], [0.03, 0.3, 0.2], 0xcfd3da], [BALL, [x + dx, 2.2, z], [0.06, 0.05, 0.06], 0xc0282a]])];
+/** A great drum on a stand. */
+const drum = (x, z) => [[ROD, [x, 1.2, z], [0.7, 0.7, 0.7], 0x8a2f24, [Math.PI / 2, 0, 0]], [ROD, [x, 1.2, z + 0.36], [0.66, 0.02, 0.66], 0xe9dcb6, [Math.PI / 2, 0, 0]], [ROD, [x, 1.2, z - 0.36], [0.66, 0.02, 0.66], 0xe9dcb6, [Math.PI / 2, 0, 0]], ...[-0.6, 0.6].flatMap((dx) => [[BOX, [x + dx, 0.6, z], [0.1, 1.2, 0.5], 0x5e4228], [BOX, [x + dx, 0.06, z], [0.16, 0.12, 0.9], 0x5e4228]])];
+
+/** Tables and benches in the open, a tea table under a shade, a drum and racks of arms. */
+function furnishings(x, z) {
+  return [...longTable(x - 3, z + 1.5), ...longTable(x + 2.5, z + 1.5), ...teaTable(x - 4, z - 3), ...teaTable(x + 0.5, z - 3.4), ...armsRack(x + 6, z - 3.6), ...drum(x + 6.4, z + 1.6),
+    // A shade of oiled paper on a post over the tea tables.
+    [ROD, [x - 1.8, 1.5, z - 3.2], [0.05, 3, 0.05], 0x6a4428], [SPIKE, [x - 1.8, 3.0, z - 3.2], [2.6, 0.6, 2.6], 0xb9502a], [ROD, [x - 1.8, 2.74, z - 3.2], [2.6, 0.03, 2.6], 0x8a3a22]];
+}
+
+/**
+ * The thing a sect is known by, built in the back corner of its seat. Parts that give their own
+ * light (flames, lamps) come as `{ lit: part }`.
+ */
+function landmark(sectId, x, z, random) {
+  const stone = 0xa9a69c;
+  const stupa = (px, pz, tall) => [[BOX, [px, 0.25, pz], [1.1, 0.5, 1.1], stone], ...Array.from({ length: Math.round(tall) }, (_, i) => [[BOX, [px, 0.75 + i * 0.5, pz], [0.8 - i * 0.07, 0.4, 0.8 - i * 0.07], shade(stone, 1.05)], [BOX, [px, 0.98 + i * 0.5, pz], [1.0 - i * 0.07, 0.08, 1.0 - i * 0.07], shade(stone, 0.8)]]).flat(), [SPIKE, [px, 0.9 + tall * 0.5, pz], [0.2, 0.6, 0.2], shade(stone, 0.8)]];
+  const stele = (px, pz, tall, turn = 0) => [[BOX, [px, 0.2, pz], [1.0, 0.4, 0.6], shade(stone, 0.8), [0, turn, 0]], [BOX, [px, 0.4 + tall / 2, pz], [0.7, tall, 0.2], stone, [0, turn, 0]], [BALL, [px, 0.4 + tall, pz], [0.36, 0.18, 0.12], shade(stone, 0.9), [0, turn, 0]]];
+  const flame = (px, py, pz, size = 0.4) => [{ lit: [SPIKE, [px, py + size * 0.7, pz], [size * 0.6, size * 1.6, size * 0.6], 0xffffff] }, { lit: [BALL, [px, py, pz], [size * 0.7, size * 0.5, size * 0.7], 0xffffff] }];
+  const brazier = (px, pz, size = 1) => [[ROD, [px, 0.5 * size, pz], [0.12 * size, 1.0 * size, 0.12 * size], 0x3a3836], [TAPER, [px, 1.1 * size, pz], [0.5 * size, 0.3 * size, 0.5 * size], 0x4a4744, [Math.PI, 0, 0]], ...flame(px, 1.35 * size, pz, 0.4 * size)];
+  const set = {
+    // A forest of stone stupas over the ashes of abbots.
+    shaolin: () => [[-4, -1, 3], [-1.6, 1.2, 5], [0.6, -1.4, 4], [2.8, 0.8, 6], [5, -0.8, 3], [-2.6, -2.6, 2], [3.6, -2.8, 2]].flatMap(([dx, dz, tall]) => stupa(x + dx, z + dz, tall)),
+    // A round terrace laid out as the two fishes of yin and yang, with a bronze censer on it.
+    wudang: () => [[ROD, [x, 0.2, z], [4.2, 0.4, 4.2], stone], [ROD, [x, 0.41, z], [3.9, 0.02, 3.9], 0xf1eee6], [ROD, [x - 0.01, 0.42, z + 1.95], [1.95, 0.02, 1.95], 0x2a2a2e], [ROD, [x, 0.43, z - 1.95], [1.95, 0.02, 1.95], 0xf1eee6], [ROD, [x, 0.44, z + 1.95], [0.5, 0.02, 0.5], 0xf1eee6], [ROD, [x, 0.44, z - 1.95], [0.5, 0.02, 0.5], 0x2a2a2e], ...[0, 1, 2, 3, 4, 5, 6, 7].map((i) => [BOX, [x + Math.cos(i * 0.785) * 4.6, 0.6, z + Math.sin(i * 0.785) * 4.6], [0.3, 1.2, 0.3], stone])],
+    // A bell tower: a great bronze bell under a roof on four posts.
+    emei: () => [[BOX, [x, 0.3, z], [5, 0.6, 5], stone], ...[-1, 1].flatMap((sx) => [-1, 1].map((sz) => [ROD, [x + sx * 1.9, 2.4, z + sz * 1.9], [0.18, 3.6, 0.18], 0x6a3a26])), [BOX, [x, 4.2, z], [4.6, 0.3, 4.6], 0x5e4028], [SPIKE, [x, 5.2, z], [3.8, 1.8, 3.8], 0xb99a3a, [0, Math.PI / 4, 0]], [BALL, [x, 6.2, z], 0.2, 0xd9b04a], [TAPER, [x, 2.6, z], [0.95, 1.8, 0.95], 0x8a7440], [ROD, [x, 1.72, z], [1.0, 0.1, 1.0], 0x6a5a34], [BALL, [x, 3.5, z], [0.6, 0.3, 0.6], 0x8a7440], beam([x - 2.4, 2.6, z + 1.0], [x - 0.9, 2.6, z + 0.2], 0.1, 0x6a4428)],
+    // Swords of stone set point down in a rock, and a tablet cut with the sect's rule.
+    huashan: () => [[BALL, [x, 0.7, z], [3.4, 1.4, 2.6], 0x8d8a80], [BALL, [x + 2.4, 0.4, z + 1.2], [1.6, 0.8, 1.3], 0x7d7a70], ...[[-1.6, 0.2, 0.2], [0, -0.3, -0.12], [1.4, 0.3, 0.16], [0.4, 1.0, -0.3]].flatMap(([dx, dz, lean]) => [[BOX, [x + dx, 3.0, z + dz], [0.16, 3.4, 0.05], 0xcfd3da, [0, 0, lean]], [BOX, [x + dx - Math.sin(lean) * 1.8, 4.75, z + dz], [0.6, 0.1, 0.1], 0x8a7440, [0, 0, lean]], [ROD, [x + dx - Math.sin(lean) * 2.1, 5.1, z + dz], [0.05, 0.6, 0.05], 0x3a2418, [0, 0, lean]]]), ...stele(x - 4.6, z + 1.6, 2.4, 0.3)],
+    // A camp: patched tents, a fire with a pot over it, bowls and sticks.
+    gaibang: () => [...[[-3.6, -1.4, 0x8a7a5a], [3.4, -1.8, 0x7a6a52], [0.4, -3.4, 0x9a8a62]].flatMap(([dx, dz, cloth]) => [[SPIKE, [x + dx, 1.1, z + dz], [1.9, 2.2, 1.9], cloth, [0, Math.PI / 4, 0]], [BOX, [x + dx + 0.5, 0.9, z + dz + 0.9], [0.5, 0.5, 0.04], shade(cloth, 0.7), [0.6, 0.6, 0]], [ROD, [x + dx, 2.3, z + dz], [0.04, 0.5, 0.04], 0x5e4228]]), [ROD, [x, 0.1, z + 1], [0.9, 0.2, 0.9], 0x5a5653], ...[0, 2.1, 4.2].map((a) => beam([x + Math.cos(a) * 0.9, 0, z + 1 + Math.sin(a) * 0.9], [x, 1.7, z + 1], 0.04, 0x5e4228)), [BALL, [x, 0.95, z + 1], [0.4, 0.34, 0.4], 0x2e2e33], ...flame(x, 0.3, z + 1, 0.45), ...[0, 1, 2, 3].map((i) => [ROD, [x + 1.6 + (i % 2) * 0.4, 0.08, z + 2 + i * 0.3], [0.16, 0.1, 0.16], 0x8a6a48]), ...[0, 1, 2].map((i) => [ROD, [x - 2 + i * 0.25, 0.8, z + 2.6], [0.03, 1.6, 0.03], 0x7a9a4a, [0.2, 0, 0.3 - i * 0.2]])],
+    // The sacred fire on a stepped altar of stone, with lesser fires at its corners.
+    mingjiao: () => [...[0, 1, 2].map((i) => [BOX, [x, 0.3 + i * 0.6, z], [6 - i * 1.6, 0.6, 6 - i * 1.6], shade(0xb9b3a4, 1 - i * 0.05)]), [TAPER, [x, 2.3, z], [1.1, 0.8, 1.1], 0x8a7440, [Math.PI, 0, 0]], ...flame(x, 2.8, z, 1.5), ...[-1, 1].flatMap((sx) => [-1, 1].flatMap((sz) => brazier(x + sx * 3.6, z + sz * 3.6, 1.2)))],
+    // A cairn of carved stones, a tall pole, and lines of prayer flags running out from it.
+    kunlun: () => [[ROD, [x, 0.5, z], [2.2, 1.0, 2.2], 0xeeeae0], [ROD, [x, 1.3, z], [1.6, 0.6, 1.6], 0xeeeae0], [BALL, [x, 2.0, z], [1.1, 0.9, 1.1], 0xeeeae0], [ROD, [x, 2.9, z], [0.5, 0.5, 0.5], 0xd9b04a], [SPIKE, [x, 4.0, z], [0.36, 1.8, 0.36], 0xd9b04a], [ROD, [x, 1.02, z], [2.24, 0.14, 2.24], 0x7a2a26], ...[0, 1, 2, 3].flatMap((k) => { const a = k * 1.571 + 0.5, ex = x + Math.cos(a) * 7, ez = z + Math.sin(a) * 5; return [beam([x, 4.6, z], [ex, 1.2, ez], 0.012, 0x3a3836), [ROD, [ex, 0.6, ez], [0.05, 1.2, 0.05], 0x5e4228], ...[0.15, 0.27, 0.39, 0.51, 0.63, 0.75, 0.87].map((t, i) => [BOX, [x + (ex - x) * t, 4.6 + (1.2 - 4.6) * t - 0.2, z + (ez - z) * t], [0.3, 0.36, 0.02], [0x3f6fbf, 0xf1eee6, 0xc0282a, 0x4f9a4a, 0xe8c23a][i % 5], [0, -a, 0]])]; })],
+    // A quay with bollards, cargo stacked on it, and a boat hauled out for mending.
+    caobang: () => [[BOX, [x, 0.25, z], [9, 0.5, 4], 0x8a7a62], ...[-4, -2, 0, 2, 4].map((dx) => [ROD, [x + dx, 0.75, z + 1.8], [0.14, 0.6, 0.14], 0x4a3a2e]), ...boatParts(x - 1, 0.9, z - 0.4, 1.5, 0.2), ...[[2.6, -1], [3.3, -0.4], [3.0, 0.9], [3.8, 0.6]].flatMap(([dx, dz], i) => [[BOX, [x + dx, 0.8 + (i === 1 ? 0.6 : 0), z + dz], [0.6, 0.6, 0.6], i % 2 ? 0x8a6a48 : 0x7a5632, [0, i * 0.4, 0]]]), ...[0, 1, 2].map((i) => [ROD, [x + 1.7, 0.75 + i * 0.0, z + 1.1 - i * 0.6], [0.28, 0.5, 0.28], 0x7a5632]), beam([x - 4, 1.0, z + 1.8], [x + 4, 1.0, z + 1.8], 0.03, 0xb39a62)],
+    // A great cauldron for decoctions, racks of herbs drying, and jars in rows.
+    yaowang: () => [[ROD, [x, 0.3, z], [1.8, 0.6, 1.8], stone], [BALL, [x, 1.4, z], [1.3, 1.1, 1.3], 0x6a5a34], [ROD, [x, 2.2, z], [1.34, 0.12, 1.34], 0x8a7440], ...[0, 2.1, 4.2].map((a) => [ROD, [x + Math.cos(a) * 0.9, 0.9, z + Math.sin(a) * 0.9], [0.12, 0.6, 0.12], 0x6a5a34]), ...flame(x, 0.6, z, 0.4), ...[-5, 4].flatMap((dx) => [[ROD, [x + dx, 0.9, z - 1.2], [0.05, 1.8, 0.05], 0x5e4228], [ROD, [x + dx + 1.6, 0.9, z - 1.2], [0.05, 1.8, 0.05], 0x5e4228], ...[0.7, 1.2, 1.7].flatMap((py, i) => [[BOX, [x + dx + 0.8, py, z - 1.2], [1.7, 0.05, 0.8], 0xb39a62], [BALL, [x + dx + 0.8, py + 0.06, z - 1.2], [0.7, 0.06, 0.3], [0x6f9a4a, 0xb9a23a, 0x8a5a3a][i]]])]), ...[0, 1, 2, 3, 4, 5].map((i) => [ROD, [x - 2.4 + i * 0.9, 0.35, z + 2.6], [0.26, 0.7, 0.26], i % 2 ? 0x7a5a3a : 0x5a6a5a])],
+    // Three pagodas: one tall in front, two shorter behind.
+    chongsheng: () => [[0, 0.6, 1.5], [-3.6, -2.2, 1], [3.6, -2.2, 1]].flatMap(([dx, dz, big]) => [[BOX, [x + dx, 0.3, z + dz], [2.4 * big, 0.6, 2.4 * big], stone], ...Array.from({ length: big > 1 ? 9 : 6 }, (_, i) => [[BOX, [x + dx, 1.0 + i * 0.9 * big * 0.75, z + dz], [(1.5 - i * 0.07) * big, 0.66 * big * 0.75, (1.5 - i * 0.07) * big], 0xf1ece0], [BOX, [x + dx, 1.36 + i * 0.9 * big * 0.75, z + dz], [(1.8 - i * 0.07) * big, 0.1, (1.8 - i * 0.07) * big], 0x9a9488]]).flat(), [SPIKE, [x + dx, 1.3 + (big > 1 ? 9 : 6) * 0.9 * big * 0.75, z + dz], [0.3 * big, 1.4 * big, 0.3 * big], 0xd9b04a]]),
+    // A forest of tablets, and cranes of bronze among them.
+    quanzhen: () => [...[[-4, -1, 2.6, 0.2], [-2, 1, 2.0, -0.1], [0, -1.6, 3.0, 0], [2, 0.8, 2.2, 0.15], [4, -1.2, 2.6, -0.2], [-0.6, 2.6, 1.6, 0.3]].flatMap(([dx, dz, tall, turn]) => stele(x + dx, z + dz, tall, turn)), ...[[-3, 2.6], [3.4, 2.4]].flatMap(([dx, dz]) => [[ROD, [x + dx, 0.5, z + dz], [0.03, 1.0, 0.03], 0x6a5a34], [BALL, [x + dx, 1.2, z + dz], [0.2, 0.26, 0.4], 0x8a7440], [ROD, [x + dx, 1.7, z + dz + 0.3], [0.03, 0.8, 0.03], 0x8a7440, [0.4, 0, 0]], [SPIKE, [x + dx, 2.06, z + dz + 0.62], [0.03, 0.3, 0.03], 0x8a7440, [1.6, 0, 0]]])],
+    // A proving ground for hidden weapons: scaffolds of bamboo, swinging targets and a wall bristling with darts.
+    tangmen: () => [[BOX, [x - 4, 1.6, z - 2], [0.4, 3.2, 5], 0x4a3a34], ...Array.from({ length: 14 }, () => [SPIKE, [x - 3.7, 0.6 + random() * 2.4, z - 4 + random() * 4], [0.04, 0.4, 0.04], 0xcfd3da, [0, 0, -Math.PI / 2]]), ...[-1, 1].flatMap((sx) => [beam([x + 1 + sx * 2.6, 0, z - 2.4], [x + 1 + sx * 2.6, 4.4, z - 2.4], 0.07, 0x7aa04a), beam([x + 1 + sx * 2.6, 0, z + 1.6], [x + 1 + sx * 2.6, 4.4, z + 1.6], 0.07, 0x7aa04a)]), beam([x - 1.6, 4.2, z - 2.4], [x + 3.6, 4.2, z - 2.4], 0.06, 0x7aa04a), beam([x - 1.6, 4.2, z + 1.6], [x + 3.6, 4.2, z + 1.6], 0.06, 0x7aa04a), beam([x + 1, 4.2, z - 2.4], [x + 1, 4.2, z + 1.6], 0.06, 0x7aa04a), ...[-1.2, 1, 3].flatMap((dx, i) => [beam([x + dx, 4.2, z - 0.4], [x + dx, 2.4 - i * 0.2, z - 0.4], 0.015, 0x3a3836), [ROD, [x + dx, 2.1 - i * 0.2, z - 0.4], [0.4, 0.06, 0.4], 0xd9c79a, [Math.PI / 2, 0, 0]], [ROD, [x + dx, 2.1 - i * 0.2, z - 0.36], [0.16, 0.06, 0.16], 0x5a2d6e, [Math.PI / 2, 0, 0]]])],
+  }[sectId];
+  // A place nobody holds has only a tablet to say whose it was.
+  return set ? set() : stele(x, z, 2.2);
+}
+
+/** A boat as parts for `build`: a hull that rises at bow and stern, a deck, a cabin with a mat roof, and an oar. */
+export function boatParts(x, y, z, size = 1, turn = 0) {
+  const c = Math.cos(turn),
+    s = Math.sin(turn),
+    at = (along, up, side = 0) => [x + s * along * size + c * side * size, y + up * size, z + c * along * size - s * side * size];
+  const hull = 0x6a4a30;
+  return [
+    [BOX, at(0, 0.14), [0.9 * size, 0.28 * size, 2.6 * size], hull, [0, turn, 0]],
+    [BOX, at(1.5, 0.26), [0.7 * size, 0.26 * size, 0.7 * size], hull, [-0.4, turn, 0]],
+    [BOX, at(-1.5, 0.3), [0.74 * size, 0.3 * size, 0.7 * size], hull, [0.5, turn, 0]],
+    [BOX, at(0, 0.3), [0.8 * size, 0.04 * size, 2.5 * size], 0xa9875a, [0, turn, 0]],
+    [ROD, at(-0.2, 0.62), [0.4 * size, 1.2 * size, 0.36 * size], 0xb39a62, [Math.PI / 2, turn, 0]],
+    [BOX, at(-0.2, 0.38), [0.78 * size, 0.14 * size, 1.2 * size], shade(hull, 0.8), [0, turn, 0]],
+    beam(at(-1.2, 0.5, 0.3), at(-2.3, 0.05, 0.6), 0.025 * size, 0x8a6a48),
+  ];
+}
 const WATER = createStandardMaterial3D({ color: 0x3f7f8f, roughness: 0.25, metallic: 0, opacity: 0.86, alphaMode: 'blend' });
 const SMOKE = createStandardMaterial3D({ color: 0xbdbbb4, roughness: 1, metallic: 0, opacity: 0.26, alphaMode: 'blend' });
 const CLOUD = createStandardMaterial3D({ color: 0xffffff, roughness: 1, metallic: 0, opacity: 0.8, alphaMode: 'blend' });
@@ -112,7 +185,7 @@ const POND = { x: -22, z: 29, rx: 7.5, rz: 3.6 };
  * with a stone table, beds of flowers, and the trees, shrubs and rocks inside and outside the wall.
  * @returns `{ node, lamps, banners, censer }`: the model, and the things in it that move or smoke
  */
-function surroundings(height, random, sectColor) {
+function surroundings(height, random, sectColor, sectId = null) {
   const node = new Object3D();
   const parts = [],
     greens = [],
@@ -152,6 +225,9 @@ function surroundings(height, random, sectColor) {
       parts.push([BOX, [sx * 4.3, 0.1, z], [1.1, 0.2, 3.2], 0x8f8a7c], [BOX, [sx * 4.3, 0.2, z], [0.86, 0.1, 2.96], 0x5e4a30]);
       for (let i = 0; i < 7; i++) parts.push([BALL, [sx * 4.3 + (random() - 0.5) * 0.6, 0.38, z + (i - 3) * 0.42], [0.2, 0.18, 0.2], [0xd8566a, 0xf2c14e, 0xf6f0e4, 0xb866c8, 0x5f9a4a, 0x7ab85a][Math.floor(random() * 6)]]);
     }
+  // What the sect is known by stands in the back corner east of the hall; tables and benches are set out in the west one.
+  for (const part of landmark(sectId, 24, HALL_AT.z - 5, random)) (part.lit ? lit : parts).push(part.lit ?? part);
+  for (const part of furnishings(-24, HALL_AT.z - 5)) parts.push(part);
   // The pond: a rim of rocks, lily pads, reeds, and a bridge arched over its narrow end.
   for (let i = 0; i < 22; i++) {
     const a = (i / 22) * 6.283,
@@ -412,7 +488,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
     for (const building of sorted) {
       const at = building.kind === 'hall' ? HALL_AT : building.kind === 'gate' ? GATE_AT : all[building.plot] && taken.delete(building.plot) ? all[building.plot] : choose(building.kind);
       if (!at) continue;
-      const node = createBuilding(building.kind, building.level);
+      const node = createBuilding(building.kind, building.level, place.owner);
       // The hall stands on its terrace. Buildings beside the avenue face it; those behind them face south.
       const turn = at.column === 1 ? -Math.sign(at.x) * (Math.PI / 2) : 0,
         scale = building.kind === 'hall' ? 1.35 : 1;
@@ -440,7 +516,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
     if (place.owner !== owner) {
       owner = place.owner;
       if (dressing) scene.removeChild(dressing.node);
-      dressing = surroundings(land.height, scatter(spec.at.x * 131 + spec.at.y), owner ? hexOf(SECT_BY_ID[owner].color) : 0x8a8474);
+      dressing = surroundings(land.height, scatter(spec.at.x * 131 + spec.at.y), owner ? hexOf(SECT_BY_ID[owner].color) : 0x8a8474, owner);
       scene.addChild(dressing.node);
     }
     const now = place.buildings.map((b) => b.kind + b.level + (b.plot ?? '')).join();

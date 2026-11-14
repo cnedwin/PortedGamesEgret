@@ -14,7 +14,8 @@ import { BALL, BOX, ROD, SPIKE, TAPER, beam, glow, grad, heightSurface, model, s
 /** The ground one building stands on, in metres; seat.mjs lays plots out in a grid. */
 export const PLOT = 11;
 
-const STONE = 0xbdb7a6,
+/** The palette a building is drawn in. It is set from the sect's style before each building is made. */
+let STONE = 0xbdb7a6,
   STONE_DARK = 0x8f8a7c,
   COLUMN = 0x9c2f24,
   WALL = 0xe9e1cf,
@@ -22,10 +23,69 @@ const STONE = 0xbdb7a6,
   TILE = 0x3f4a52,
   TILE_GREEN = 0x3f6a55,
   TILE_GOLD = 0xc49a2c,
-  EARTH = 0x9b8a66,
+  BEAM = 0x2f6f73,
+  BEAM_2 = 0x2f4f8f;
+const EARTH = 0x9b8a66,
   LEAF = 0x4f7f3f,
   GOLD = 0xd9b04a,
   PAPER = 0xf1e3b8;
+/** How the roof is made (see `roof`) and how far its corners turn up. */
+let ROOF = 'hip',
+  CURL = 1;
+
+/**
+ * The manner each sect builds in, after the part of the country it comes from and what it is.
+ *   roof   'hip'    curved eaves turned up at the corners, as temples and halls have
+ *          'gable'  two straight slopes between end walls, as houses have
+ *          'steps'  the same, between end walls that rise in steps above the roof
+ *          'thatch' a heavy cap of straw
+ *          'flat'   a flat roof behind a parapet, as on the high plateau
+ *   curl   how sharply a hipped roof's corners turn up: gentle in the north, sharp in the south
+ *   hall   the tiles of the main hall, where they differ from the rest
+ */
+export const STYLES = {
+  // A northern monastery: red-ochre walls, grey tiles, the great hall in imperial yellow.
+  shaolin: { wall: 0xb85c40, column: 0x8f2a20, tile: 0x4a4f52, hall: 0xc49a2c, beam: 0x2f6f73, beam2: 0x2f4f8f, curl: 0.7 },
+  // A Daoist mountain: deep red walls under dark green glaze.
+  wudang: { wall: 0xa8483a, column: 0x7a2a22, tile: 0x2f4a42, hall: 0x2f6a52, beam: 0x24504a, beam2: 0x2a3f6a, curl: 0.9 },
+  // Timber halls in the mist of a southern mountain, the summit hall gilded.
+  emei: { wall: 0x8a6444, column: 0x6a3a26, tile: 0x4a5052, hall: 0xb99a3a, wood: 0x5e4028, beam: 0x3a5a4a, beam2: 0x6a4a2a, curl: 1.25 },
+  // Plain stone and blue-grey tile on a bare peak.
+  huashan: { wall: 0xcfd2d0, column: 0x4f5f78, tile: 0x4a5a70, hall: 0x4a5a70, stone: 0xa9aaa4, beam: 0x3f5068, beam2: 0x55627a, curl: 0.8 },
+  // Whatever keeps the rain off: mud walls, rough posts, thatch.
+  gaibang: { wall: 0xb39a6e, column: 0x6e5236, tile: 0xb59a52, hall: 0xb59a52, stone: 0x9a917c, beam: 0x6e5236, beam2: 0x5a4630, roof: 'thatch' },
+  // The red brick and swallow-tailed ridges of the southern coast, with stone below.
+  mingjiao: { wall: 0xb5553a, column: 0x8a2f24, tile: 0xb4553a, hall: 0x9a3a2a, stone: 0xb9b3a4, beam: 0x7a2a22, beam2: 0xd9b04a, curl: 1.5 },
+  // White walls leaning inwards, a dark red band under a flat roof, gilt on top.
+  kunlun: { wall: 0xeeeae0, column: 0x7a2a26, tile: 0x7a2a26, hall: 0xd9b04a, stone: 0xcfcabb, beam: 0x7a2a26, beam2: 0xd9b04a, roof: 'flat' },
+  // White walls, black tiles and stepped gables by the water.
+  caobang: { wall: 0xf1eee6, column: 0x3a3836, tile: 0x33373a, hall: 0x33373a, wood: 0x4a3a2e, beam: 0x3a3836, beam2: 0x55585a, roof: 'steps' },
+  // Log houses under heavy roofs in the northern forest.
+  yaowang: { wall: 0x7a5a3c, column: 0x5e4228, tile: 0x5a5046, hall: 0x4f6a4a, wood: 0x6a4a2e, stone: 0x9a968a, beam: 0x5e4228, beam2: 0x6f9a4a, roof: 'gable' },
+  // White walls with painted grey borders and soaring eaves in the far south-west.
+  chongsheng: { wall: 0xf3efe6, column: 0x8a3a26, tile: 0x5a5f66, hall: 0xc88a34, stone: 0xc9c5b8, beam: 0x55606e, beam2: 0xc88a34, curl: 1.4 },
+  // Grey brick and grey tile: a cloister of ascetics.
+  quanzhen: { wall: 0x8f9496, column: 0x5a3a36, tile: 0x4f565c, hall: 0x3f4a66, stone: 0xa9aaa6, beam: 0x3f4a66, beam2: 0x55606e, curl: 0.8 },
+  // Dark timber frames filled with white, under black tiles, in the river towns of the west.
+  tangmen: { wall: 0xe6e0d2, column: 0x3a2a26, tile: 0x2f2f33, hall: 0x4a2f5a, wood: 0x3f2c24, beam: 0x3a2a26, beam2: 0x5a2d6e, roof: 'gable' },
+};
+const PLAIN = { wall: 0xe9e1cf, column: 0x9c2f24, tile: 0x3f4a52, hall: 0x3f6a55, stone: 0xbdb7a6, wood: 0x6e4a2b, beam: 0x2f6f73, beam2: 0x2f4f8f, roof: 'hip', curl: 1 };
+/** Sets the palette and the roof for the buildings that follow. */
+function dress(style) {
+  const look = { ...PLAIN, ...(STYLES[style] ?? {}) };
+  WALL = look.wall;
+  COLUMN = look.column;
+  TILE = look.tile;
+  TILE_GREEN = look.hall;
+  TILE_GOLD = look.roof === 'thatch' ? look.hall : 0xc49a2c;
+  STONE = look.stone;
+  STONE_DARK = shade(look.stone, 0.76);
+  WOOD = look.wood;
+  BEAM = look.beam;
+  BEAM_2 = look.beam2;
+  ROOF = look.roof;
+  CURL = look.curl;
+}
 
 const ROOF_MATERIAL = toon({ grain: 'tiled' });
 const LANTERN = glow(0xff7a3a, 1.5),
@@ -37,6 +97,7 @@ const LANTERN = glow(0xff7a3a, 1.5),
  * the eaves, `rise` the height of the ridge above them.
  */
 function roof(w, d, rise, tile, y) {
+  if (ROOF !== 'hip') return plainRoof(w, d, rise, tile, y);
   const hw = w / 2,
     hd = d / 2;
   const ridge = Math.max(0, hw - hd) * 0.9;
@@ -47,7 +108,7 @@ function roof(w, d, rise, tile, y) {
       inward = Math.max(0, Math.min(fx, fz));
     // A concave sweep, with the corners lifted.
     const corner = Math.pow(Math.abs(x) / hw, 6) * Math.pow(Math.abs(z) / hd, 6);
-    return rise * Math.pow(inward, 0.62) + corner * rise * 0.55;
+    return rise * Math.pow(inward, 0.62) + corner * rise * 0.55 * CURL;
   };
   // Rows of tiles run down the slope: lighter crowns and darker gutters, and a pale line along the eaves.
   const tiles = (x, z, h) => {
@@ -76,10 +137,62 @@ function roof(w, d, rise, tile, y) {
     parts.push([BOX, [sx * (ridge + 0.34), top + 0.3, 0], [0.22, 0.5, 0.3], dark], [SPIKE, [sx * (ridge + 0.2), top + 0.66, 0], [0.16, 0.36, 0.16], dark, [0, 0, sx * 0.5]]);
     for (const sz of [-1, 1]) {
       // A ridge runs down to each corner, where a row of small beasts sits and the tip turns up.
-      const tip = [sx * hw * 0.985, y + rise * 0.55 + 0.04, sz * hd * 0.985];
+      const tip = [sx * hw * 0.985, y + rise * 0.55 * CURL + 0.04, sz * hd * 0.985];
       parts.push(beam([sx * ridge, top + 0.02, 0], tip, 0.065, shade(tile, 0.74)));
       for (const k of [0.7, 0.8, 0.9]) parts.push([BALL, [sx * (ridge + (hw - ridge) * k), top + (tip[1] - top) * k + 0.13, sz * hd * k], [0.07, 0.1, 0.07], dark]);
       parts.push([SPIKE, [tip[0], tip[1] + 0.16, tip[2]], [0.07, 0.34, 0.07], dark, [sz * -0.5, 0, sx * 0.5]]);
+    }
+  }
+  node.addChild(model(parts));
+  return node;
+}
+
+const STRAW = toon();
+/** The roofs that are not hipped: two straight slopes (plain, or between stepped end walls), thatch, or flat. */
+function plainRoof(w, d, rise, tile, y) {
+  const hw = w / 2,
+    hd = d / 2,
+    node = new Object3D();
+  const parts = [];
+  if (ROOF === 'flat') {
+    // A slab behind a parapet with a dark band, and a gilded ornament at each corner and in the middle.
+    parts.push([BOX, [0, y + 0.1, 0], [w * 0.86, 0.2, d * 0.86], shade(WALL, 0.9)], [BOX, [0, y + 0.42, 0], [w * 0.9, 0.5, d * 0.9], tile], [BOX, [0, y + 0.72, 0], [w * 0.93, 0.12, d * 0.93], shade(WALL, 1.02)], [BOX, [0, y + 0.2, 0], [w * 0.91, 0.07, d * 0.91], GOLD]);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1]) parts.push([ROD, [sx * hw * 0.84, y + 1.1, sz * hd * 0.84], [0.1, 0.7, 0.1], GOLD], [SPIKE, [sx * hw * 0.84, y + 1.6, sz * hd * 0.84], [0.14, 0.34, 0.14], GOLD]);
+    if (w > 7) parts.push([ROD, [0, y + 1.1, 0], [0.5, 0.6, 0.5], GOLD], [SPIKE, [0, y + 1.9, 0], [0.5, 1.0, 0.5], GOLD], [BALL, [0, y + 2.5, 0], 0.14, GOLD]);
+    node.addChild(model(parts));
+    return node;
+  }
+  const thatch = ROOF === 'thatch';
+  const height = (x, z) => {
+    const fz = Math.max(0, (hd - Math.abs(z)) / hd);
+    // Thatch is thick and rounded and comes down at the ends too; tiles lie in two straight slopes.
+    return thatch ? rise * 1.15 * Math.pow(Math.min(fz, Math.max(0, (hw - Math.abs(x)) / (hw * 0.5))), 0.5) : rise * 1.1 * fz;
+  };
+  const colour = thatch ? (x, z, h) => shade(tile, 0.78 + 0.34 * (h / rise) + (Math.round((x + z * 0.3) * 5) % 2 ? 0.07 : -0.03)) : (x, z, h) => (hd - Math.abs(z) < 0.16 ? shade(tile, 1.45) : shade(tile, 0.82 + 0.28 * (h / rise) + (Math.round(x * 3.2) % 2 ? 0.1 : -0.04)));
+  const span = ROOF === 'steps' ? w * 0.9 : w;
+  const surface = new Mesh3D(heightSurface(span, d, 18, 14, height, colour), thatch ? STRAW : ROOF_MATERIAL);
+  surface.castShadow = true;
+  surface.receiveShadow = true;
+  surface.setPosition(0, y, 0);
+  node.addChild(surface);
+  const top = y + rise * 1.1;
+  if (thatch) parts.push(beam([-hw * 0.5, top + 0.12, 0], [hw * 0.5, top + 0.12, 0], 0.16, shade(tile, 0.7)), ...[-0.4, 0, 0.4].map((k) => [BOX, [hw * k, top + 0.14, 0], [0.12, 0.2, 0.7], shade(WOOD, 0.9)]));
+  else {
+    parts.push([BOX, [0, top + 0.06, 0], [span + 0.2, 0.22, 0.3], shade(tile, 0.62)], [BOX, [0, y - 0.06, 0], [span * 0.96, 0.1, d * 0.94], shade(WOOD, 0.8)]);
+    for (const sx of [-1, 1]) {
+      if (ROOF === 'steps') {
+        // The end wall climbs in three steps above the roof, each capped with tiles and tipped up at the front.
+        for (let step = 0; step < 3; step++) {
+          const reach = hd * (1 - step * 0.3),
+            lift = rise * 1.1 * (0.42 + step * 0.34);
+          parts.push([BOX, [sx * hw * 0.93, y + lift / 2 - 0.3, 0], [0.3, lift + 0.6, reach * 2], WALL], [BOX, [sx * hw * 0.93, y + lift + 0.06, 0], [0.46, 0.14, reach * 2 + 0.3], tile]);
+          for (const sz of [-1, 1]) parts.push([SPIKE, [sx * hw * 0.93, y + lift + 0.3, sz * (reach + 0.1)], [0.1, 0.36, 0.1], tile, [sz * -0.5, 0, 0]]);
+        }
+      } else {
+        // A plain gable: the wall carried up under the slopes, with a timber frame showing.
+        for (let k = 0; k < 4; k++) parts.push([BOX, [sx * hw * 0.9, y + rise * 1.1 * (k + 0.5) * 0.24, 0], [0.16, rise * 1.1 * 0.25, d * 0.9 * (1 - (k + 0.5) / 4.2)], WALL]);
+        parts.push([BOX, [sx * hw * 0.905, y + rise * 0.5, 0], [0.18, rise, 0.14], WOOD], [BOX, [sx * hw * 0.905, y + rise * 0.36, 0], [0.18, 0.12, d * 0.5], WOOD]);
+      }
     }
   }
   node.addChild(model(parts));
@@ -141,7 +254,7 @@ function hall({ w, d, h, tile = TILE, storeys = 1, platform = 0.5, open = false,
   const cols = Math.max(2, Math.round(w / 2.2)) + 1;
   for (let i = 0; i < cols; i++) {
     const x = (i / (cols - 1) - 0.5) * w;
-    for (const z of [front, -front]) parts.push([ROD, [x, platform + h / 2, z], [0.16, h, 0.16], grad(COLUMN, 0.7, 1.08)], [BOX, [x, platform + 0.07, z], [0.44, 0.14, 0.44], STONE_DARK], [BOX, [x, top - 0.34, z], [0.36, 0.1, 0.36], 0x2f6f73]);
+    for (const z of [front, -front]) parts.push([ROD, [x, platform + h / 2, z], [0.16, h, 0.16], grad(COLUMN, 0.7, 1.08)], [BOX, [x, platform + 0.07, z], [0.44, 0.14, 0.44], STONE_DARK], [BOX, [x, top - 0.34, z], [0.36, 0.1, 0.36], BEAM]);
     // A lantern hangs from the beam between the front columns.
     if (lamps && i > 0 && (cols < 5 || i % 2 === 1) && !(Math.abs(x - w / (cols - 1) / 2) < 1.2 && cols % 2 === 0)) {
       const lx = x - w / (cols - 1) / 2;
@@ -154,6 +267,9 @@ function hall({ w, d, h, tile = TILE, storeys = 1, platform = 0.5, open = false,
   if (!open) {
     const wallZ = front - 0.8;
     parts.push([BOX, [0, platform + h / 2, -0.25], [w - 0.4, h, d - 1.1], grad(WALL, 0.8, 1.04)], [BOX, [0, platform + 0.3, -0.25], [w - 0.34, 0.6, d - 1.04], shade(STONE, 0.9)]);
+    // Where houses are framed in timber, the frame shows dark against the infill.
+    if (ROOF === 'gable' || ROOF === 'steps')
+      for (let i = 0; i <= Math.round(w / 1.8); i++) parts.push([BOX, [(i / Math.round(w / 1.8) - 0.5) * (w - 0.5), platform + h / 2, front - 0.54], [0.1, h, 0.06], WOOD]);
     // Double doors with a frame, studs and ring handles.
     const dh = h * 0.84;
     parts.push([BOX, [0, platform + dh / 2, wallZ], [1.9, dh + 0.14, 0.1], shade(WOOD, 0.7)]);
@@ -174,10 +290,10 @@ function hall({ w, d, h, tile = TILE, storeys = 1, platform = 0.5, open = false,
       }
   }
   // The beam over the columns, and the band of painted brackets that carries the eaves.
-  for (const z of [front, -front]) parts.push([BOX, [0, top - 0.14, z], [w + 0.3, 0.28, 0.22], 0x2f6f73], [BOX, [0, top - 0.02, z], [w + 0.34, 0.05, 0.26], GOLD]);
-  for (const x of [w / 2, -w / 2]) parts.push([BOX, [x, top - 0.14, 0], [0.22, 0.28, d + 0.3], 0x2f6f73]);
+  for (const z of [front, -front]) parts.push([BOX, [0, top - 0.14, z], [w + 0.3, 0.28, 0.22], BEAM], [BOX, [0, top - 0.02, z], [w + 0.34, 0.05, 0.26], GOLD]);
+  for (const x of [w / 2, -w / 2]) parts.push([BOX, [x, top - 0.14, 0], [0.22, 0.28, d + 0.3], BEAM]);
   const brackets = Math.round(w / 0.7);
-  for (let i = 0; i <= brackets; i++) for (const z of [front + 0.2, -front - 0.2]) parts.push([BOX, [(i / brackets - 0.5) * (w + 0.2), top + 0.12, z], [0.2, 0.24, 0.34], i % 2 ? 0x2f6f73 : 0x2f4f8f]);
+  for (let i = 0; i <= brackets; i++) for (const z of [front + 0.2, -front - 0.2]) parts.push([BOX, [(i / brackets - 0.5) * (w + 0.2), top + 0.12, z], [0.2, 0.24, 0.34], i % 2 ? BEAM : BEAM_2]);
   node.addChild(model(parts));
   if (glass.length) node.addChild(model(glass, WINDOW, false));
   if (lit.length) node.addChild(model(lit, LANTERN, false));
@@ -203,7 +319,7 @@ function yard(inside, floor = EARTH) {
   for (let i = -2; i <= 2; i++) parts.push([ROD, [i * 2, 0.45, -half], [0.07, 0.9, 0.07], WOOD]);
   parts.push([BOX, [0, 0.7, -half], [half * 2, 0.06, 0.05], WOOD], [BOX, [0, 0.4, -half], [half * 2, 0.06, 0.05], WOOD]);
   for (const side of [-1, 1]) parts.push([ROD, [side * 1.4, 0.9, half], [0.1, 1.8, 0.1], COLUMN]);
-  parts.push([BOX, [0, 1.75, half], [3.4, 0.14, 0.16], 0x2f6f73]);
+  parts.push([BOX, [0, 1.75, half], [3.4, 0.14, 0.16], BEAM]);
   return model([...parts, ...inside]);
 }
 
@@ -250,8 +366,8 @@ const KINDS = {
   gate(level) {
     const node = new Object3D();
     const parts = [
-      ...[-2.6, 2.6].flatMap((x) => [[ROD, [x, 2.1, 0], [0.26, 4.2, 0.26], COLUMN], [BOX, [x, 0.25, 0], [0.84, 0.5, 0.84], STONE_DARK], [BOX, [x, 3.5, 0], [0.5, 0.14, 0.5], 0x2f6f73]]),
-      [BOX, [0, 3.72, 0], [6.4, 0.36, 0.32], 0x2f6f73],
+      ...[-2.6, 2.6].flatMap((x) => [[ROD, [x, 2.1, 0], [0.26, 4.2, 0.26], COLUMN], [BOX, [x, 0.25, 0], [0.84, 0.5, 0.84], STONE_DARK], [BOX, [x, 3.5, 0], [0.5, 0.14, 0.5], BEAM]]),
+      [BOX, [0, 3.72, 0], [6.4, 0.36, 0.32], BEAM],
       [BOX, [0, 3.92, 0], [6.5, 0.06, 0.38], GOLD],
       [BOX, [0, 3.2, 0], [2.6, 0.72, 0.12], GOLD],
       [BOX, [0, 3.2, 0.04], [2.36, 0.52, 0.1], 0x1f2a44],
@@ -348,7 +464,7 @@ const KINDS = {
     return node;
   },
   yard: () => yard([dummy(-2.2, -1.5), dummy(0, -2.6), dummy(2.2, -1.5), [[BOX, [0, 0.1, 1.2], [4, 0.04, 3], 0xcbbd98], [BOX, [0, 0.105, 1.2], [3.6, 0.04, 2.6], 0xd6c8a2], [ROD, [-3.4, 0.5, 2.8], [0.5, 0.5, 0.5], 0x8a2f24], [ROD, [-3.4, 0.76, 2.8], [0.52, 0.04, 0.52], 0xe9dcb6], ...[0.3, -0.3].map((dx) => [ROD, [-3.4 + dx, 0.2, 2.8], [0.04, 0.5, 0.04], WOOD, [0, 0, dx]])], ...[1.2, 2.0, 2.8].map((z) => [[ROD, [3.3, 0.14, z], [0.2, 0.28, 0.2], STONE_DARK]])].flat()),
-  range: () => yard([...rack(-2.2, -3), ...rack(2.2, -3), ...[-1.4, 1.4, 3].map((x) => [[ROD, [x, 0.9, 1.5], [0.6, 0.12, 0.6], 0xd9c79a, [Math.PI / 2, 0, 0]], [ROD, [x, 0.9, 1.57], [0.4, 0.05, 0.4], 0x2f4f8f, [Math.PI / 2, 0, 0]], [ROD, [x, 0.9, 1.6], [0.2, 0.05, 0.2], 0xc0282a, [Math.PI / 2, 0, 0]], [ROD, [x - 0.3, 0.45, 1.3], [0.05, 0.9, 0.05], WOOD, [0.2, 0, 0]], [ROD, [x + 0.3, 0.45, 1.3], [0.05, 0.9, 0.05], WOOD, [0.2, 0, 0]]]).flat()]),
+  range: () => yard([...rack(-2.2, -3), ...rack(2.2, -3), ...[-1.4, 1.4, 3].map((x) => [[ROD, [x, 0.9, 1.5], [0.6, 0.12, 0.6], 0xd9c79a, [Math.PI / 2, 0, 0]], [ROD, [x, 0.9, 1.57], [0.4, 0.05, 0.4], BEAM_2, [Math.PI / 2, 0, 0]], [ROD, [x, 0.9, 1.6], [0.2, 0.05, 0.2], 0xc0282a, [Math.PI / 2, 0, 0]], [ROD, [x - 0.3, 0.45, 1.3], [0.05, 0.9, 0.05], WOOD, [0.2, 0, 0]], [ROD, [x + 0.3, 0.45, 1.3], [0.05, 0.9, 0.05], WOOD, [0.2, 0, 0]]]).flat()]),
   goldPit: () => model([...rocks(0x9c8a5a), ...pitMouth(-2.2), [BALL, [-0.6, 1.0, 0.7], [0.25, 0.2, 0.25], 0xe8c23a], [BALL, [1.1, 0.75, -0.3], [0.2, 0.16, 0.2], 0xe8c23a], [BALL, [0.2, 0.5, 1.5], [0.14, 0.1, 0.14], 0xe8c23a], [BOX, [3.0, 0.2, -0.4], [1.4, 0.3, 0.5], WOOD, [0, 0.4, 0]], [BOX, [3.0, 0.32, -0.4], [1.2, 0.08, 0.36], 0x5c7f8a, [0, 0.4, 0]]]),
   quarry: () => model([...rocks(0xa9a69c), [BOX, [2.4, 0.3, 1.6], [0.9, 0.6, 0.9], 0xc9c5b8], [BOX, [2.9, 0.75, 1.7], [0.7, 0.5, 0.7], 0xc9c5b8], [BOX, [2.0, 0.26, 0.5], [1.2, 0.5, 0.6], 0xd4d0c2, [0, 0.3, 0]], [BOX, [0, 1.3, -2.6], [5, 2.6, 0.9], 0x9a978d], [BOX, [-1.4, 2.0, -2.2], [1.6, 1.2, 0.5], 0xb3b0a6], [BOX, [1.6, 0.9, -2.1], [1.4, 1.8, 0.5], 0xa5a298]]),
   ironPit: () => model([...rocks(0x5c5a60), ...pitMouth(-2.2), [BOX, [0, 1.3, -2.6], [4.4, 2.6, 0.6], 0x3a3836], beam([-0.4, 0.08, -1.8], [-0.4, 0.08, 3], 0.04, 0x55585e), beam([0.4, 0.08, -1.8], [0.4, 0.08, 3], 0.04, 0x55585e), [BOX, [0, 0.45, 1.6], [0.9, 0.5, 1.2], shade(WOOD, 0.8)], [BALL, [0, 0.76, 1.6], [0.36, 0.2, 0.5], 0x4a4850]]),
@@ -407,9 +523,11 @@ const KINDS = {
 
 /**
  * A building of one of the game's kinds at a level, standing on the origin and facing +z.
+ * `style` is the sect whose manner it is built in (see STYLES); without one it is built plainly.
  * A building with a fire burning in it carries `smoke`: where its smoke rises from, as [x, y, z].
  */
-export function createBuilding(kind, level = 1) {
+export function createBuilding(kind, level = 1, style = null) {
+  dress(style);
   return (KINDS[kind] ?? KINDS.dorm)(level);
 }
 
