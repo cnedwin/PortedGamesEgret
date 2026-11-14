@@ -32,7 +32,7 @@ import { APT_NAMES, STAT_KEYS, STAT_NAMES, hpMax, learnableArts, prowess } from 
 import { createRng } from './core/rng.mjs';
 import { createSlots, deserialize, saveFileName, serialize } from './core/save.mjs';
 import {
-  SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, beds, build, createWorld, dateText, gift, ledger, membersOf, openShop, placesOf, promote,
+  SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, donate, beds, build, createWorld, dateText, gift, ledger, membersOf, openShop, placesOf, promote,
   recruit, relocate, residents, setJob, setMaster, settle, settleAssault, strength, tradeRoutes, upgrade, usedCells,
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
@@ -302,12 +302,12 @@ function seatScreen() {
     </div>
     <div class="seat-bottom" data-region="seat-bottom">
       <section class="panel"><div class="panel-title"><h2>据点总览</h2><span class="caption">每旬结算</span></div>
-        <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>全派薪俸</span><b>${row.wages}<small> 两</small></b></div><div><span>朝廷关系</span><b>${Math.round(books().court)}</b></div><div><span>商路进项</span><b>${row.trade}<small> 两</small></b></div></div>
+        <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>全派薪俸</span><b>${row.wages}<small> 两</small></b></div><div><span>朝廷关系</span><b>${Math.round(books().court)}</b></div><div><span>商路进项</span><b>${row.trade}<small> 两</small></b></div><div><span>上旬售货</span><b>${num(books().sold?.goods ?? 0)}<small> 两，经店铺 ${num(books().sold?.retail ?? 0)}${books().sold?.glut ? `，滞销折价 ${num(books().sold.glut)}` : ''}</small></b></div></div>
         <div class="terrain-list">${RESOURCES.map((key) => `<span>${RESOURCE_NAMES[key]} <strong>${dots(spec.resources[key])}</strong></span>`).join('')}</div>
         <div class="stock-line">库存：${RESOURCES.map((key) => `${RESOURCE_NAMES[key]} ${Math.round(books().res[key])}`).join(' · ')}</div>
-        <div class="stock-line button-group"><span>山下店铺 ${place.shops} / ${SHOP_LIMIT}（每间每旬入银 ${ECONOMY.shopIncome.join('–')} 两）</span>${btn(`开设店铺（${num(ECONOMY.shopCost)}两）`, 'shop', {}, 'outline', '', place.shops >= SHOP_LIMIT)}</div>
+        <div class="stock-line button-group"><span>山下店铺 ${place.shops} / ${SHOP_LIMIT}（每间每旬入银 ${ECONOMY.shopIncome.join('–')} 两，并可代售 ${ECONOMY.shopMoves} 两的货物，售价高 ${ECONOMY.shopPremium * 100}%）</span>${btn(`开设店铺（${num(ECONOMY.shopCost)}两）`, 'shop', {}, 'outline', '', place.shops >= SHOP_LIMIT)}</div>
         <div class="stock-line button-group"><span>此处专精</span><select data-change="focus">${options(Object.entries(FOCUSES).map(([id, f]) => [id, `${f.name}：${f.does}`]), place.focus ?? 'none')}</select></div>
-        <div class="stock-line button-group">${btn('任命职位', 'sheet', { kind: 'offices' }, 'outline', 'people')}${btn('丹房', 'sheet', { kind: 'pills' }, 'outline')}</div>
+        <div class="stock-line button-group">${btn('任命职位', 'sheet', { kind: 'offices' }, 'outline', 'people')}${btn(`布施（${num(ECONOMY.donation)}两，威望 +${ECONOMY.donationRenown}）`, 'donate', {}, 'outline')}${btn('丹房', 'sheet', { kind: 'pills' }, 'outline')}</div>
         <div class="stock-line button-group"><span>门规</span><select data-change="rule">${options(Object.entries(HOUSE_RULES).map(([id, rule]) => [id, `${rule.name}：${rule.does}`]), books().rule ?? 'plain')}</select></div>
       </section>
       <section class="panel building-panel">${panelTitle('建筑管理', tag(`${place.buildings.length} 座`))}
@@ -1035,6 +1035,7 @@ const actions = {
     march(data.place);
   },
   shop: () => say(openShop(world, me(), ui.place), '店铺开张了。'),
+  donate: () => say(donate(world, me()), '银两散出，本派声名更著。'),
   tags: () => (ui.tags = !ui.tags),
   'gear-up': () => say(upgradeGear(world, picked().id), '新兵器与护具已送到。'),
   relic: (data) => say(giveRelic(world, picked().id, data.id), `已将${RELIC_BY_ID[data.id].name}赐予${picked().name}。`),

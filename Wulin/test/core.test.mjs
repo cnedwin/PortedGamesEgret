@@ -447,3 +447,19 @@ test('roads between a sect\'s strongholds and to its friends bring trade', () =>
   world.places.songshan.shops = 2;
   assert.ok(ledger(world, 'shaolin').trade > own[0].income);
 });
+
+test('workshop goods are sold at the ten-day reckoning, better through shops', () => {
+  const sell = (shops) => {
+    const world = createWorld({ seed: 12, playerSect: 'caobang' });
+    for (const person of membersOf(world, 'caobang')) person.job = { kind: 'rest' };
+    world.places.yangzhou.shops = shops;
+    world.sects.caobang.goods = 200;
+    for (let day = 0; day < 10; day++) advanceDay(world);
+    return world.sects.caobang;
+  };
+  const without = sell(0),
+    withShops = sell(1);
+  assert.equal(without.goods, 0);
+  assert.deepEqual(without.sold, { goods: 200, retail: 0, glut: 0 });
+  assert.equal(withShops.sold.retail, 150);
+});

@@ -44,6 +44,9 @@ export function setRule(state, sectId, rule) {
   return { ok: true };
 }
 
+/** The most a formation, talents, a house rule, a spy and a stronghold's works may add up to for one side. */
+export const BONUS_CAP = { attack: 0.2, defense: 0.25 };
+
 // ---- formations ----------------------------------------------------------------------------------------
 
 /** The formations a party may take: the common ones, and its sect's own if an elder or the leader is in it. */
@@ -63,7 +66,8 @@ export function formationOf(state, sectId, party, extra = {}) {
   const id = allowed.includes(wanted) ? wanted : 'line';
   const f = FORMATIONS[id],
     mods = modsOf(state, sectId);
-  return { id, width: f.width, bonus: { attack: (f.attack ?? 0) + (extra.attack ?? 0), defense: (f.defense ?? 0) + (extra.defense ?? 0), regen: f.regen ?? 0 }, mods };
+  // However much is piled up, a side gains no more than a fifth in attack and a quarter in defence from all of it together.
+  return { id, width: f.width, bonus: { attack: Math.min(BONUS_CAP.attack, (f.attack ?? 0) + (extra.attack ?? 0)), defense: Math.min(BONUS_CAP.defense, (f.defense ?? 0) + (extra.defense ?? 0)), regen: f.regen ?? 0 }, mods };
 }
 
 // ---- events and visitors -------------------------------------------------------------------------------

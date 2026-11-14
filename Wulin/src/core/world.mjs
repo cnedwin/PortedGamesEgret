@@ -11,7 +11,7 @@ import { BUILDINGS, DAYS_PER_XUN, DAYS_PER_YEAR, ECONOMY, GRADES, PILLS, WATCHES
 import { PLACE_BY_ID, PLACES, RESOURCES } from '../data/places.mjs';
 import { ELDERS, OFFICES, RANKS, SECT_BY_ID, SECTS, applyIdentity } from '../data/sects.mjs';
 import { DIFFICULTIES, ROAD } from '../data/extras.mjs';
-import { focusBoost, spyBoost, xunOfSpies } from './extras.mjs';
+import { focusBoost, gearOffer, innerLevels, meridianNeed, openMeridian, spyBoost, upgradeGear, xunOfSpies } from './extras.mjs';
 import { formationOf, modsOf, xunOfJianghu, yearOfJianghu } from './jianghu.mjs';
 import { resolveBattle } from './battle.mjs';
 import { TRAITS, autoWheel, equipFor, gainXp, growTo, hpMax, learnableArts, makeLeader, practise, prowess, rollPerson, trainingRate } from './persons.mjs';
@@ -385,6 +385,20 @@ export function assaultSides(state, attackerId, placeId, partyIds) {
   return done({ sides: [party, guard], formations: [attack, defend], defender: place.owner });
 }
 
+/**
+ * Gives silver away in the sect's name: alms, bridges and schools for an
+ * upright sect, largesse to its followers for any other. Renown rises, and a
+ * sect's name for good or ill deepens the way it already leans.
+ */
+export function donate(state, sectId) {
+  const books = state.sects[sectId];
+  if (books.silver < ECONOMY.donation) return refuse('银两不足');
+  books.silver -= ECONOMY.donation;
+  books.renown = clamp(books.renown + ECONOMY.donationRenown, 0, 1000);
+  books.virtue = clamp(books.virtue + (books.virtue < 0 ? -10 : 10), -1000, 1000);
+  return done();
+}
+
 /** Opens a shop in the town below a stronghold; each brings in silver every ten days. */
 export function openShop(state, sectId, placeId) {
   const place = state.places[placeId];
@@ -636,8 +650,8 @@ function workDay(state, person, rng) {
     books.res[feed] -= used;
     const worth = used * ECONOMY.craftMarkup * (1 + officeBoost(state, sectId, placeId, job.make === 'pill' ? 'pill' : 'forge') + diligence + mods.craft + focusBoost(state, placeId, 'craft'));
     shop.xp += worth;
-    // Goods not earmarked for the sect's own use are sold as they are finished.
-    books.silver += worth;
+    // What the workshops finish is kept as goods until the ten-day reckoning, when it is sold.
+    books.goods = (books.goods ?? 0) + worth;
     gainXp(person, 4);
   } else if (job.kind === 'travel') {
     // On the road: quick to learn from, with a chance of a wound or a find, and home again after a month.
@@ -678,6 +692,28 @@ function endOfXun(state, rng) {
     if (books.grain < 0) (books.silver = Math.max(0, books.silver + books.grain * ECONOMY.grainPrice)), (books.grain = 0);
     for (const placeId of placesOf(state, sectId)) books.silver += state.places[placeId].shops * rng.int(...ECONOMY.shopIncome);
     books.silver += tradeRoutes(state, sectId).reduce((sum, route) => sum + route.income, 0);
+    // Raw stuff becomes goods in the workshops, and goods become silver: at the gate for what they are
+    // worth, or through the sect's own shops, each of which can move so much and gets a better price.
+    const goods = books.goods ?? 0,
+      shops = placesOf(state, sectId).reduce((sum, placeId) => sum + state.places[placeId].shops, 0),
+      retail = Math.min(goods, shops * ECONOMY.shopMoves);
+    // A market can take only so much: what a sect sells at the gate beyond that fetches less.
+    const atGate = goods - retail,
+      glut = Math.max(0, atGate - ECONOMY.marketDepth);
+    books.silver += goods + retail * ECONOMY.shopPremium - glut * (1 - ECONOMY.glutPrice);
+    books.sold = { goods: Math.round(goods), retail: Math.round(retail), glut: Math.round(glut) };
+    books.goods = 0;
+
+    // A stronghold holds only so many. When a sect that has lost ground crowds into what it has left,
+    // those with the least standing are sent on their way.
+    for (const placeId of placesOf(state, sectId)) {
+      const here = residents(state, placeId);
+      const excess = here.length - ECONOMY.headcountCap;
+      if (excess <= 0) continue;
+      const leaving = here.filter((person) => person.id !== books.leaderId).sort((a, b) => a.rank - b.rank || a.loyalty - b.loyalty).slice(0, excess);
+      for (const person of leaving) delete state.persons[person.id];
+      note(state, 'desert', `${PLACE_BY_ID[placeId].name}人满为患，${SECT_BY_ID[sectId].name}遣散了 ${leaving.length} 人。`, { sect: sectId, place: placeId });
+    }
 
     for (const person of members) {
       if (person.id === books.leaderId) continue;
@@ -729,6 +765,26 @@ function endOfYear(state, rng) {
   }
   yearOfJianghu(state);
   revive(state, rng);
+  // The sects the game runs keep their people fitted out and their meridians open as the player can,
+  // so that what a player builds up over the years is matched and not simply out of reach.
+  for (const sect of SECTS) {
+    const books = state.sects[sect.id];
+    if (!books.alive || (sect.id === state.playerSect && !state.options.autoPlayer)) continue;
+    for (const person of membersOf(state, sect.id).sort((a, b) => b.rank - a.rank)) {
+      const offer = gearOffer(state, person.id);
+      if (offer.ok && books.silver > offer.silver * 4 + ECONOMY.reserve * 10 && books.res.iron >= offer.iron) upgradeGear(state, person.id);
+      if (innerLevels(person) >= meridianNeed(person)) openMeridian(state, person.id, rng.chance(0.5) ? 'a' : 'b');
+    }
+  }
+  // A sect with silver to spare opens a shop where it has room for one.
+  for (const sect of SECTS) {
+    const books = state.sects[sect.id];
+    if (!books.alive || (sect.id === state.playerSect && !state.options.autoPlayer) || books.silver < ECONOMY.shopCost * 3) continue;
+    const room = placesOf(state, sect.id).find((placeId) => state.places[placeId].shops < SHOP_LIMIT);
+    if (room) openShop(state, sect.id, room);
+    // What it still cannot use, it gives away for its name's sake.
+    while (books.silver > ECONOMY.donation * 12) donate(state, sect.id);
+  }
   // Every fourth year the sects meet; one known and liked widely enough is named leader of them all.
   if (year(state) % 4 === 1 && year(state) > 1) {
     for (const sect of SECTS) {

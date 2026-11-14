@@ -68,6 +68,7 @@ node tools/headless.mjs 20 7    # 无界面推演二十年 · play twenty years 
 node tools/balance.mjs          # 战斗时长与门派胜率 · fight length and sect win rates
 node tools/balance.mjs --tune   # 重新校准门派强度 · re-tune the sects' strength
 node tools/formations.mjs        # 各阵法对长蛇阵的胜率 · each formation's win rate against a plain line
+node tools/stacking.mjs          # 装备、神兵、经脉、加成各值几级 · what gear, named weapons, meridians and bonuses are worth in levels
 node tools/vendor.mjs <path>    # 从引擎仓库更新 vendor/ · refresh vendor/ from an engine checkout
 ```
 
