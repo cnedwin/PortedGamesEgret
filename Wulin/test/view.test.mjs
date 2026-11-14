@@ -56,18 +56,29 @@ test('an arena plays a battle to its end', () => {
   assert.ok(prepared.ok, prepared.why);
   const battle = createBattle({ sides: prepared.sides, formations: prepared.formations, seed: 4 });
   const events = [];
+  const contacts = [];
+  let cleared = 0;
   let ended = 0;
-  const arena = createArena(stage, battle, { colors: [0x4466aa, 0xccaa33], layer: null, onEvent: (event) => events.push(event.type), onEnd: () => ended++ });
+  const arena = createArena(stage, battle, {
+    colors: [0x4466aa, 0xccaa33], layer: null, onEvent: (event) => events.push(event.type),
+    onContact: (cue) => contacts.push(cue), onEnd: () => ended++,
+  });
   arena.enter();
   arena.speed = 4;
   for (let i = 0; i < 20000 && !ended; i++) arena.update(0.05);
   assert.ok(battle.done);
   assert.equal(ended, 1);
   assert.ok(events.includes('hit') && events.at(-1) === 'end');
+  assert.ok(contacts.some(cue => cue.type === 'hit' && cue.klass && Number.isFinite(cue.x)));
 
   // Skipping gives the same result as watching.
   const again = createBattle({ sides: prepared.sides, formations: prepared.formations, seed: 4 });
-  createArena(stage, again, { colors: [1, 2], layer: null }).skip();
+  createArena(stage, again, {
+    colors: [1, 2], layer: null,
+    onContact: () => assert.fail('Fast resolution should not play contact audio'),
+    onClearSounds: () => cleared++,
+  }).skip();
+  assert.equal(cleared, 1);
   assert.equal(again.winner, battle.winner);
   assert.equal(again.time, battle.time);
 });
