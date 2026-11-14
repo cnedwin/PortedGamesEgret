@@ -36,6 +36,8 @@ export const mix = (a, b, t) => {
 // Unit-sized primitives; parts scale them into place. They are coarse on
 // purpose: a figure is seen small and there may be forty on screen.
 export const BALL = createSphereGeometry3D({ radius: 1, widthSegments: 10, heightSegments: 7 });
+/** A rounder ball, for heads and anything else looked at closely. */
+export const ORB = createSphereGeometry3D({ radius: 1, widthSegments: 18, heightSegments: 12 });
 export const ROD = createCylinderGeometry3D({ radiusTop: 1, radiusBottom: 1, height: 1, radialSegments: 8 });
 /** A cylinder narrower at the top: sleeves, robes, tree trunks. */
 export const TAPER = createCylinderGeometry3D({ radiusTop: 0.6, radiusBottom: 1, height: 1, radialSegments: 8 });

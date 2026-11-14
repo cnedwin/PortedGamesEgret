@@ -644,7 +644,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
       const trees = new InstancedMesh3D(geometry, TOON, spots[kind].length);
       spots[kind].forEach(([x, y, z], i) => {
         trees.setTransformAt(i, [x, y - 0.05, z], quatFromEuler(turned, 0, random() * 6.28, 0), 0.75 + random() * 0.6);
-        const tone = (kind > 1 ? 0.82 : 0.7) + random() * (kind > 1 ? 0.18 : 0.3);
+        const tone = kind === 4 ? 0.5 + random() * 0.2 : (kind > 1 ? 0.82 : 0.7) + random() * (kind > 1 ? 0.18 : 0.3);
         trees.setColorAt(i, tone, tone, tone * (kind > 1 ? 1 : 0.9));
       });
       trees.castShadow = stage.quality === 'high' && kind < 5;
@@ -670,7 +670,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
     const u = 50 - SPAN / 2 + random() * SPAN,
       v = 50 - SPAN / 2 + random() * SPAN,
       d = inland(u, v);
-    if (d > -0.4 || d < -3.2) continue;
+    if (d > -0.3 || d < -1.5) continue;
     // Which way the land lies, so that the surf runs along the shore and rolls towards it.
     const gu = inland(u + 0.5, v) - inland(u - 0.5, v),
       gv = inland(u, v + 0.5) - inland(u, v - 0.5),
@@ -846,8 +846,8 @@ export function createRealm(stage, world, { layer = null } = {}) {
       });
       shore.forEach((wave, i) => {
         const roll = (clock * 0.22 + wave.phase) % 1,
-          reach = (1 - roll) * 3.4;
-        surf.setTransformAt(i, [wave.x - wave.nx * reach * 0 + wave.nx * (1.2 - reach), 0.05, wave.z + wave.nz * (1.2 - reach)], quatFromEuler(turned, 0, Math.atan2(wave.nx, wave.nz), 0), [wave.long * (0.4 + roll), 1, 0.5 + roll * 1.2]);
+          reach = (1 - roll) * 1.6;
+        surf.setTransformAt(i, [wave.x + wave.nx * (1.0 - reach), 0.05, wave.z + wave.nz * (1.0 - reach)], quatFromEuler(turned, 0, Math.atan2(wave.nx, wave.nz), 0), [wave.long * (0.3 + roll * 0.5), 1, 0.4 + roll * 0.8]);
       });
       flights.forEach((flight, f) => {
         flight.x += Math.sin(flight.heading) * 7 * dt;

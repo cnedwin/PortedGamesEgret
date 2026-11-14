@@ -11,7 +11,10 @@
 // once into an animation clip; a figure plays clips through a mixer, which
 // fades one into the next. No model or animation files are loaded.
 import { AnimationMixer3D, Attribute3D, Bone3D, Mesh3D, Skeleton3D, Object3D, createAnimationClip3D, createGeometry3D, quatFromEuler } from '@egret/engine/world3d';
-import { BALL, BOX, ROD, SPIKE, TOON, mix, model, rgb, shade } from './shapes.mjs';
+import { BALL, BOX, ORB, ROD, SPIKE, mix, model, rgb, shade, toon } from './shapes.mjs';
+
+/** People are shaded in more steps than buildings are, so cloth and faces round off softly. */
+const CLOTH = toon({ steps: 5 });
 
 const SKIN = 0xf2cfa8,
   HAIR = 0x1d1a1a,
@@ -240,7 +243,7 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
 
   // ---- the skin: tubes of rings, each point weighted to the bones it follows --------------------------------
   const skin = { p: [], n: [], c: [], j: [], w: [], i: [] };
-  const AROUND = 12;
+  const AROUND = 18;
   /**
    * Adds a tube to the skin. A ring is [x, y, z, radiusX, radiusZ, colour, weights]; the colour may be a
    * function of the angle round the ring (0 at the front), and the weights a function of how far to the
@@ -298,20 +301,28 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
     }
   };
   const sash = rank >= 4 ? 0x7a2f28 : rank >= 2 ? shade(robe, 0.5) : 0x4a4038;
+  // Cloth hangs in folds: a little lighter on the crests and darker in the hollows round the body.
+  const folds = (colour, count = 5, depth = 0.09) => (angle) => shade(colour, 1 + depth * Math.sin(angle * count + seed));
+  const cloth = folds(robe),
+    // The inner collar shows as a white V at the throat, widening upwards.
+    collar = (open) => (angle) => (Math.abs(angle) < open ? WHITE : Math.abs(angle) < open + 0.2 ? trim : cloth(angle)),
+    // Those of standing wear a patterned band at hem and cuff.
+    band = (angle) => (rank >= 3 ? (Math.round((angle + Math.PI) * 5.1) % 2 ? trim : shade(trim, 0.62)) : trim);
   // The trunk, from under the sash to the base of the neck; the waist turns between hips and chest.
   tube([
     [0, 0.93, 0, 0.165 * w, 0.135 * w, robe, [[body, 1]]],
     [0, 0.99, 0, 0.15 * w, 0.118 * w, robe, [[body, 0.75], [chest, 0.25]]],
     [0, 1.05, 0, 0.148 * w, 0.112 * w, robe, [[body, 0.4], [chest, 0.6]]],
-    [0, 1.12, 0, 0.16 * w, 0.126 * w, robe, [[body, 0.1], [chest, 0.9]]],
-    [0, 1.28, 0, 0.188 * w, 0.137 * w, robe, [[chest, 1]]],
-    [0, 1.41, 0, 0.2 * w, 0.14 * w, robe, [[chest, 1]]],
-    [0, 1.46, 0, 0.13 * w, 0.105 * w, robe, [[chest, 1]]],
+    [0, 1.12, 0, 0.16 * w, 0.126 * w, cloth, [[body, 0.1], [chest, 0.9]]],
+    [0, 1.28, 0, 0.188 * w, 0.137 * w, cloth, [[chest, 1]]],
+    [0, 1.38, 0, 0.198 * w, 0.14 * w, cloth, [[chest, 1]]],
+    [0, 1.41, 0, 0.2 * w, 0.14 * w, collar(0.16), [[chest, 1]]],
+    [0, 1.46, 0, 0.13 * w, 0.105 * w, collar(0.42), [[chest, 1]]],
     [0, 1.49, 0, 0.07, 0.066, WHITE, [[chest, 1]]],
   ]);
   // The skirt of the robe: held at the hips, and lower down drawn along by whichever leg is nearer.
   // A paler panel runs down its front.
-  const panel = (angle) => (Math.abs(angle) < 0.62 ? shade(robe, 1.18) : robe);
+  const panel = (angle) => (Math.abs(angle) < 0.62 ? shade(robe, 1.18) : folds(robe, 7, 0.12)(angle));
   const drawn = (legs) => (side) => {
     const left = Math.max(0, Math.min(1, 0.5 + side * 0.9));
     return [[body, 1 - legs], [legL.hip, legs * left], [legR.hip, legs * (1 - left)]];
@@ -323,8 +334,8 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
       [0, 0.78, 0, 0.215 * w, 0.178 * w, panel, drawn(0.5)],
       [0, 0.64, 0, 0.238 * w, 0.196 * w, panel, drawn(0.72)],
       [0, 0.52, 0, 0.256 * w, 0.21 * w, panel, drawn(0.82)],
-      [0, 0.5, 0, 0.262 * w, 0.215 * w, (angle) => (Math.abs(angle) < 0.62 ? trim : dark), drawn(0.84)],
-      [0, 0.46, 0, 0.268 * w, 0.22 * w, (angle) => (Math.abs(angle) < 0.62 ? trim : dark), drawn(0.86)],
+      [0, 0.5, 0, 0.262 * w, 0.215 * w, (angle) => (Math.abs(angle) < 0.62 ? trim : rank >= 3 ? band(angle) : dark), drawn(0.84)],
+      [0, 0.46, 0, 0.268 * w, 0.22 * w, (angle) => (Math.abs(angle) < 0.62 ? trim : rank >= 3 ? band(angle) : dark), drawn(0.86)],
       [0, 0.47, 0, 0.2 * w, 0.16 * w, shade(dark, 0.6), drawn(0.86)],
     ],
     false,
@@ -340,10 +351,10 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
       [x, 1.165, 0, 0.064, 0.064, robe, [[shoulder, 0.75], [elbow, 0.25]]],
       [x, 1.13, 0, 0.066, 0.066, robe, [[shoulder, 0.5], [elbow, 0.5]]],
       [x, 1.095, 0, 0.068, 0.068, robe, [[shoulder, 0.25], [elbow, 0.75]]],
-      [x, 1.0, 0, 0.082, 0.082, robe, [[elbow, 1]]],
-      [x, 0.89, 0, 0.098, 0.098, robe, [[elbow, 1]]],
-      [x, 0.885, 0, 0.102, 0.102, trim, [[elbow, 1]]],
-      [x, 0.86, 0, 0.104, 0.104, trim, [[elbow, 1]]],
+      [x, 1.0, 0, 0.082, 0.082, folds(robe, 4, 0.1), [[elbow, 1]]],
+      [x, 0.89, 0, 0.098, 0.098, folds(robe, 4, 0.12), [[elbow, 1]]],
+      [x, 0.885, 0, 0.102, 0.102, band, [[elbow, 1]]],
+      [x, 0.86, 0, 0.104, 0.104, band, [[elbow, 1]]],
       [x, 0.87, 0, 0.045, 0.045, shade(dark, 0.6), [[elbow, 1]]],
       [x, 0.87, 0, 0.04, 0.04, wrap, [[elbow, 1]]],
       [x, 0.81, 0, 0.036, 0.036, wrap, [[elbow, 1]]],
@@ -368,7 +379,7 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
   const geometry = createGeometry3D({ positions: skin.p, normals: skin.n, colors: skin.c, indices: skin.i });
   geometry.setAttribute('joints', new Attribute3D(new Uint16Array(skin.j), 4));
   geometry.setAttribute('weights', new Attribute3D(new Float32Array(skin.w), 4));
-  const mesh = new Mesh3D(geometry, TOON);
+  const mesh = new Mesh3D(geometry, CLOTH);
   mesh.castShadow = true;
   mesh.receiveShadow = true;
   node.addChild(mesh);
@@ -389,33 +400,34 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
   if (weapon === 'sword' || weapon === 'saber') hipParts.push([BOX, [0.2 * w, -0.12, -0.04], [0.03, 0.62, 0.05], 0x2c2420, [0.5, 0, 0.12]], [BOX, [0.2 * w, 0.13, 0.09], [0.034, 0.05, 0.054], 0xb08a2e, [0.5, 0, 0.12]]);
   body.addChild(model(hipParts));
   const chestParts = [
-    // The robe crosses left over right, with the white of an inner collar showing at the neck.
-    [BOX, [0.03, 0.25, 0.129 * w], [0.05, 0.3, 0.012], trim, [-0.05, 0, 0.38]],
-    [BOX, [-0.03, 0.25, 0.126 * w], [0.05, 0.3, 0.012], shade(trim, 0.85), [-0.05, 0, -0.38]],
     // A monk's sash runs from one shoulder to the opposite hip, front and back.
-    ...(monk ? [[BOX, [0, 0.24, 0.128 * w], [0.3 * w, 0.09, 0.014], 0xb9502a, [0, 0, 0.75]], [BOX, [0, 0.24, -0.128 * w], [0.3 * w, 0.09, 0.014], 0xb9502a, [0, 0, -0.75]], [ROD, [0, 0.4, 0.02], [0.13, 0.03, 0.11], 0x5a3a22]] : []),
+    ...(monk ? [[BOX, [0, 0.22, 0.131 * w], [0.34 * w, 0.1, 0.01], 0xb9502a, [-0.04, 0, 0.75]], [BOX, [0, 0.22, -0.131 * w], [0.34 * w, 0.1, 0.01], 0xb9502a, [0.04, 0, -0.75]], [ROD, [0, 0.4, 0.02], [0.13, 0.03, 0.11], 0x5a3a22]] : []),
   ];
   // Elders wear a sleeveless over-robe; the head of a sect a cloak that falls to the calves.
-  if (rank >= 4 && !monk) chestParts.push([BOX, [0.13 * w, 0.2, 0.09 * w], [0.07, 0.42, 0.02], dark], [BOX, [-0.13 * w, 0.2, 0.09 * w], [0.07, 0.42, 0.02], dark], [BOX, [0, 0.2, -0.125 * w], [0.36 * w, 0.44, 0.02], dark]);
+  if (rank >= 4 && !monk) chestParts.push([BOX, [0.12 * w, 0.2, 0.128 * w], [0.07, 0.42, 0.012], dark, [-0.05, 0, 0]], [BOX, [-0.12 * w, 0.2, 0.128 * w], [0.07, 0.42, 0.012], dark, [-0.05, 0, 0]], [BOX, [0, 0.2, -0.125 * w], [0.36 * w, 0.44, 0.02], dark]);
   if (rank >= 5) chestParts.push([BOX, [0, -0.12, -0.2 * w], [0.44 * w, 1.05, 0.02], shade(robe, 0.45), [0.13, 0, 0]], [BOX, [0, 0.4, -0.13 * w], [0.4 * w, 0.06, 0.06], 0xd9b04a]);
-  chest.addChild(model(chestParts));
+  if (chestParts.length) chest.addChild(model(chestParts, CLOTH));
+  const blush = mix(skinTone, 0xe89a90, 0.45);
   const headParts = [
-    [BALL, [0, 0.13, 0], [0.112, 0.128, 0.118], skinTone],
-    [BALL, [0, 0.075, 0.02], [0.09, 0.085, 0.095], skinTone],
-    [ROD, [0, 0, 0], [0.05, 0.08, 0.05], skinTone],
-    // Eyes with brows over them, a nose, a mouth and ears.
-    [BALL, [0.045, 0.14, 0.105], [0.017, 0.016, 0.01], 0x1a1614],
-    [BALL, [-0.045, 0.14, 0.105], [0.017, 0.016, 0.01], 0x1a1614],
-    [BOX, [0.046, 0.168, 0.106], [0.04, 0.008, 0.01], hair, [0, 0, female ? 0.08 : -0.16]],
-    [BOX, [-0.046, 0.168, 0.106], [0.04, 0.008, 0.01], hair, [0, 0, female ? -0.08 : 0.16]],
-    [SPIKE, [0, 0.105, 0.118], [0.014, 0.045, 0.02], shade(skinTone, 0.93)],
-    [BOX, [0, 0.066, 0.108], [0.034, 0.007, 0.008], female ? 0xc4605a : shade(skinTone, 0.7)],
-    [BALL, [0.112, 0.125, 0], [0.014, 0.03, 0.022], skinTone],
-    [BALL, [-0.112, 0.125, 0], [0.014, 0.03, 0.022], skinTone],
+    [ORB, [0, 0.13, 0], [0.112, 0.128, 0.118], skinTone],
+    [ORB, [0, 0.078, 0.018], [0.092, 0.088, 0.096], skinTone],
+    [ROD, [0, 0, 0], [0.048, 0.08, 0.048], shade(skinTone, 0.94)],
+    // Eyes: the white, a dark iris, a point of light, and a lid; brows over them.
+    ...[-1, 1].flatMap((sx) => [
+      [ORB, [sx * 0.044, 0.138, 0.1], [0.024, 0.019, 0.014], 0xf7f4ee],
+      [ORB, [sx * 0.044, 0.136, 0.108], [0.014, 0.016, 0.009], 0x2a1c14],
+      [ORB, [sx * 0.039, 0.142, 0.115], 0.0042, 0xffffff],
+      [BOX, [sx * 0.044, 0.156, 0.107], [0.05, 0.007, 0.012], hair === HAIR ? 0x1a1614 : 0x6a6a6a, [0, 0, sx * (female ? -0.1 : 0.08)]],
+      [BOX, [sx * 0.046, 0.176, 0.104], [0.046, female ? 0.006 : 0.011, 0.01], hair, [0, 0, sx * (female ? -0.16 : 0.2)]],
+      ...(female ? [[ORB, [sx * 0.068, 0.098, 0.074], [0.024, 0.015, 0.012], blush]] : []),
+      [ORB, [sx * 0.112, 0.125, 0], [0.014, 0.03, 0.022], skinTone],
+    ]),
+    [ORB, [0, 0.108, 0.118], [0.013, 0.02, 0.014], shade(skinTone, 0.95)],
+    [ORB, [0, 0.068, 0.108], [female ? 0.017 : 0.021, 0.0075, 0.008], female ? 0xc4504e : shade(skinTone, 0.72)],
   ];
   if (!monk) {
     // Hair over the crown and down behind the ears, with locks at the temples.
-    headParts.push([BALL, [0, 0.175, -0.02], [0.124, 0.112, 0.13], hair], [BOX, [0.1, 0.1, -0.02], [0.02, 0.13, 0.07], hair], [BOX, [-0.1, 0.1, -0.02], [0.02, 0.13, 0.07], hair], [BALL, [0, 0.215, 0.085], [0.09, 0.03, 0.04], hair]);
+    headParts.push([ORB, [0, 0.175, -0.02], [0.124, 0.112, 0.13], hair], [BOX, [0.1, 0.1, -0.02], [0.02, 0.13, 0.07], hair], [BOX, [-0.1, 0.1, -0.02], [0.02, 0.13, 0.07], hair], [BALL, [0, 0.215, 0.085], [0.09, 0.03, 0.04], hair]);
     if (female) {
       // Long hair down the back, a knot on the crown with a pin through it, and a flower at the temple.
       headParts.push([BALL, [0, -0.02, -0.105], [0.085, 0.24, 0.055], hair], [BALL, [0, 0.31, -0.03], [0.055, 0.05, 0.055], hair], [BALL, [0.05, 0.28, -0.05], [0.04, 0.04, 0.04], hair], [ROD, [0, 0.31, -0.03], [0.007, 0.01, 0.2], 0xd9b04a, [0, 0, Math.PI / 2]], [BALL, [0.105, 0.2, 0.05], [0.022, 0.022, 0.014], rank >= 3 ? 0xd9b04a : 0xe7a3a8]);
@@ -428,8 +440,8 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
       else if (rank <= 1) headParts.push([ROD, [0, 0.195, 0], [0.118, 0.022, 0.124], shade(robe, 0.7)]);
     }
   } else headParts.push([BALL, [0, 0.21, 0.04], [0.01, 0.006, 0.01], 0x9a6a50], [BALL, [0.03, 0.215, 0.02], [0.01, 0.006, 0.01], 0x9a6a50], [BALL, [-0.03, 0.215, 0.02], [0.01, 0.006, 0.01], 0x9a6a50]);
-  head.addChild(model(headParts));
-  for (const arm of [armL, armR]) arm.elbow.addChild(model([[BALL, [0, -0.3, 0], [0.04, 0.05, 0.034], skinTone], [BOX, [0, -0.34, 0.006], [0.05, 0.035, 0.022], skinTone]]));
+  head.addChild(model(headParts, CLOTH));
+  for (const arm of [armL, armR]) arm.elbow.addChild(model([[BALL, [0, -0.3, 0], [0.04, 0.05, 0.03], skinTone], [BALL, [0, -0.355, 0.004], [0.036, 0.034, 0.02], skinTone], ...[-0.022, -0.007, 0.008, 0.023].map((dx) => [ROD, [dx, -0.385, 0.006], [0.0075, 0.04, 0.0075], skinTone]), [ROD, [arm === armL ? 0.04 : -0.04, -0.325, 0.016], [0.009, 0.04, 0.009], skinTone, [0, 0, arm === armL ? 0.7 : -0.7]]], CLOTH));
   const blade = weaponParts(weapon);
   if (blade) grip.addChild(model(blade));
   // A boot with a pale sole and an upturned toe.
