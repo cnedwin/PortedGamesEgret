@@ -6,6 +6,12 @@ const COURTYARD = new URL('courtyard.mp3', WORLD_AUDIO);
 const STRIKES = ['sword', 'saber', 'fist', 'palm', 'kick', 'point', 'spear', 'staff', 'dart'];
 const EFFECTS = [...STRIKES, 'hit', 'heal', 'miss'];
 const STRIKE_LIMIT = 3;
+// These offsets skip the quiet lead-in of the decoded samples. Attack character stays in the clip.
+const ATTACK_OFFSET = {
+  sword: .024, saber: .028, fist: .017, palm: .056, kick: .019, point: .007,
+  spear: .022, staff: .028, dart: .017, hit: 0, heal: .043, miss: .028,
+};
+const HIT_TAIL = .16;
 
 /** Wind, bamboo and birds belong to the visible seat. Settings can be adjusted while it plays. */
 export function createCourtyardAudio(storage, clips) {
@@ -78,7 +84,7 @@ export function createCourtyardAudio(storage, clips) {
   };
 }
 
-/** Three weapon voices and a reserved hit voice. A faster battle never queues extra audio. */
+/** Three strike voices and one reserved impact voice. A faster battle never queues extra audio. */
 export function createCombatAudio(clips, settings) {
   let engaged = false;
   let hidden = globalThis.document?.hidden ?? false;
@@ -88,6 +94,7 @@ export function createCombatAudio(clips, settings) {
   const active = new Set();
   const lastCue = new Map();
   let hitActive = false;
+  let detailActive = false;
   let loaded = false;
 
   function mix() {
@@ -95,8 +102,8 @@ export function createCombatAudio(clips, settings) {
     const now = clips.context.currentTime;
     const gain = bus.gain;
     gain.cancelScheduledValues(now);
-    const level = settings.on && !hidden ? settings.volume * .46 : 0;
-    gain.setTargetAtTime(level * (ducked ? .20 : 1), now, ducked ? .025 : .10);
+    const level = settings.on && !hidden ? settings.volume * .54 : 0;
+    gain.setTargetAtTime(level * (ducked ? .22 : 1), now, ducked ? .015 : .10);
   }
 
   function prepare() {
@@ -114,20 +121,23 @@ export function createCombatAudio(clips, settings) {
       if (voice.stopping) continue;
       voice.stopping = true;
       const { source, gain } = voice;
+      gain.gain.cancelScheduledValues(now);
       gain.gain.setTargetAtTime(0, now, .008);
       source.stop(now + .04);
     }
   }
 
-  function emit(cue, pan, level, delay = 0) {
+  function emit(cue, pan, level) {
     const buffer = buffers.get(cue);
     if (!buffer) return;
     const context = clips.context;
     const now = context.currentTime;
-    if (now - (lastCue.get(cue) ?? -Infinity) < (cue === 'hit' ? .12 : .095)) return;
+    if (now - (lastCue.get(cue) ?? -Infinity) < .095) return;
     // Keep room for one material impact when a whole line attacks on the same frame.
     const hit = cue === 'hit';
-    if (hit ? hitActive : active.size - Number(hitActive) >= STRIKE_LIMIT) return;
+    const detail = cue === 'miss' || cue === 'heal';
+    const strikes = active.size - Number(hitActive);
+    if (hit ? hitActive : strikes >= STRIKE_LIMIT || (detail && (detailActive || strikes >= STRIKE_LIMIT - 1))) return;
     if (!bus) {
       bus = context.createGain();
       bus.gain.value = 0;
@@ -138,7 +148,13 @@ export function createCombatAudio(clips, settings) {
     const gain = context.createGain();
     const spatial = context.createStereoPanner?.();
     source.buffer = buffer;
-    gain.gain.value = level;
+    // A short ramp avoids a click when starting from a nonzero sample.
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(level, now + .004);
+    if (hit) {
+      gain.gain.setValueAtTime(level, now + HIT_TAIL - .04);
+      gain.gain.linearRampToValueAtTime(0, now + HIT_TAIL);
+    }
     source.connect(gain);
     if (spatial) {
       spatial.pan.value = pan;
@@ -146,15 +162,19 @@ export function createCombatAudio(clips, settings) {
     } else gain.connect(bus);
     const voice = { source, gain, stopping: false };
     if (hit) hitActive = true;
+    if (detail) detailActive = true;
     active.add(voice);
     source.onended = () => {
       active.delete(voice);
       if (hit) hitActive = false;
+      if (detail) detailActive = false;
       source.disconnect();
       gain.disconnect();
       spatial?.disconnect();
     };
-    source.start(now + delay);
+    const offset = Math.min(ATTACK_OFFSET[cue], Math.max(0, buffer.duration - .01));
+    if (hit) source.start(now, offset, HIT_TAIL);
+    else source.start(now, offset);
     lastCue.set(cue, now);
   }
 
@@ -179,8 +199,10 @@ export function createCombatAudio(clips, settings) {
       if (type === 'miss' || type === 'heal') {
         emit(type, pan, type === 'miss' ? .38 : .58);
       } else {
-        emit(STRIKES.includes(klass) ? klass : 'fist', pan, critical ? .88 : .72);
-        emit('hit', pan, critical ? .65 : .46, .055);
+        const strike = STRIKES.includes(klass) ? klass : 'fist';
+        const level = strike === 'dart' || strike === 'point' ? 1.22 : 1;
+        emit(strike, pan, level * (critical ? .88 : .72));
+        emit('hit', pan, critical ? .65 : .46);
       }
     },
   };

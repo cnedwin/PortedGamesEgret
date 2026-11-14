@@ -612,12 +612,15 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
   const name = (id) => names.get(id) ?? '？';
   const lines = [];
   const note = (event) => {
-    if (ui.fight && !ui.fight.arena.skipping && event.type === 'hit' && event.crit && event.art) {
-      const art = recordedArts.get(event.art);
-      voice.shout(event.art + '！', art ? 'art-' + art : undefined);
-    }
     const line = tell(event, name);
     if (line && (event.type !== 'hit' || lines.length < 80)) lines.push(line);
+  };
+  const contact = (cue) => {
+    if (cue.type === 'hit' && cue.critical && cue.art) {
+      const art = recordedArts.get(cue.art);
+      voice.shout(cue.art + '！', art ? 'art-' + art : undefined);
+    }
+    combatAudio.contact(cue);
   };
   const finish = () => {
     const summary = { winner: battle.winner, time: battle.time, fighters: battle.units.map((u) => ({ id: u.id, side: u.side, down: u.down, fled: u.fled, hpLeft: u.hp / u.hpMax, dealt: u.dealt, xp: Math.round(u.dealt) })) };
@@ -640,7 +643,7 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
     return finish();
   }
   const arena = picture.modules.createArena(picture.stage, battle, {
-    colors, layer: document.querySelector('#layer'), onEvent: note, onContact: combatAudio.contact,
+    colors, layer: document.querySelector('#layer'), onEvent: note, onContact: contact,
     onClearSounds: combatAudio.silence, onEnd: () => (finish(), render()), playerSide: side,
   });
   ui.fight = { arena, title, heads, lines, side };
