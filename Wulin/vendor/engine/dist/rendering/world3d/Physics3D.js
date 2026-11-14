@@ -8,6 +8,7 @@
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { ConvexHullShape3D } from './PhysicsHull3D.js';
 import { TriangleMeshShape3D } from './PhysicsMesh3D.js';
+export const raycastExcludingBody3D = Symbol('physics raycast excluding one body');
 export const PHYSICS3D_LIMITS = Object.freeze({ maxBodies: 16384, maxSubSteps: 8, maxContactsPerPair: 8, maxCompoundChildren: 32, maxSolverSteps: 8 });
 const v3 = (x = 0, y = 0, z = 0) => new Float64Array([x, y, z]);
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
@@ -2564,6 +2565,10 @@ export class PhysicsWorld3D {
     // ---- queries ----------------------------------------------------------------
     /** Nearest solid body hit by a ray; triggers are skipped. `direction` need not be normalized. */
     raycast(origin, direction, maxDistance = Infinity, mask = -1) {
+        return this[raycastExcludingBody3D](origin, direction, maxDistance, mask);
+    }
+    /** @internal Skip one body before selecting the nearest hit. */
+    [raycastExcludingBody3D](origin, direction, maxDistance, mask, excluded) {
         const length = Math.hypot(direction[0], direction[1], direction[2]);
         if (!(length > 0))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'ray direction');
@@ -2571,7 +2576,7 @@ export class PhysicsWorld3D {
         let best, limit = maxDistance;
         const normal = [0, 0, 0];
         const test = (body, within) => {
-            if ((body.layer & mask) === 0 || body.isTrigger)
+            if (body === excluded || (body.layer & mask) === 0 || body.isTrigger)
                 return within;
             const distance = rayShape(body, o, d, within, normal);
             if (distance < 0 || distance > within)

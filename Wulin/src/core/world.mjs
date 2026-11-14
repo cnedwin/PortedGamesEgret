@@ -11,7 +11,7 @@ import { BUILDINGS, DAYS_PER_XUN, DAYS_PER_YEAR, ECONOMY, GRADES, PILLS, WATCHES
 import { PLACE_BY_ID, PLACES, RESOURCES } from '../data/places.mjs';
 import { ELDERS, OFFICES, RANKS, SECT_BY_ID, SECTS, applyIdentity } from '../data/sects.mjs';
 import { DIFFICULTIES, ROAD } from '../data/extras.mjs';
-import { focusBoost, gearOffer, innerLevels, meridianNeed, openMeridian, spyBoost, upgradeGear, xunOfSpies } from './extras.mjs';
+import { focusBoost, gearOffer, giveRelic, innerLevels, meridianNeed, openMeridian, spyBoost, upgradeGear, xunOfSpies } from './extras.mjs';
 import { formationOf, modsOf, xunOfJianghu, yearOfJianghu } from './jianghu.mjs';
 import { resolveBattle } from './battle.mjs';
 import { TRAITS, autoWheel, equipFor, gainXp, growTo, hpMax, learnableArts, makeLeader, practise, prowess, rollPerson, trainingRate } from './persons.mjs';
@@ -774,6 +774,11 @@ function endOfYear(state, rng) {
       const offer = gearOffer(state, person.id);
       if (offer.ok && books.silver > offer.silver * 4 + ECONOMY.reserve * 10 && books.res.iron >= offer.iron) upgradeGear(state, person.id);
       if (innerLevels(person) >= meridianNeed(person)) openMeridian(state, person.id, rng.chance(0.5) ? 'a' : 'b');
+    }
+    // A named weapon in the armoury goes to the highest of them who can wield it.
+    for (const relicId of books.relics ?? []) {
+      if (Object.values(state.persons).some((person) => person.gear.weapon?.relic === relicId)) continue;
+      for (const person of membersOf(state, sect.id).sort((a, b) => b.rank - a.rank)) if (!person.gear.weapon?.relic && giveRelic(state, person.id, relicId).ok) break;
     }
   }
   // A sect with silver to spare opens a shop where it has room for one.

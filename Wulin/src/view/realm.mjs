@@ -28,17 +28,31 @@ const kindOf = (id) => (CITIES.has(id) ? 'city' : TOWNS.has(id) ? 'town' : 'moun
 /** The height each kind of stronghold stands at. */
 const GROUND = { city: 1.5, town: 1.8, mountain: 6.5 };
 
+/** Rounds the corners of a path of straight pieces, keeping its two ends. */
+function rounded(path, times = 3) {
+  for (let pass = 0; pass < times; pass++) {
+    const next = [path[0]];
+    for (let i = 0; i < path.length - 1; i++) {
+      const [ax, ay] = path[i],
+        [bx, by] = path[i + 1];
+      next.push([ax * 0.75 + bx * 0.25, ay * 0.75 + by * 0.25], [ax * 0.25 + bx * 0.75, ay * 0.25 + by * 0.75]);
+    }
+    next.push(path[path.length - 1]);
+    path = next;
+  }
+  return path;
+}
 /** The two great rivers, as points on the map's grid, from source to sea. */
 const RIVERS = [
   [[8, 49], [20, 53], [30, 62], [37, 60.5], [43, 60.5], [50, 63], [57, 65.5], [63, 64], [68, 57], [73, 52.5], [78, 48.5], [84, 47.5], [96, 46]],
   [[6, 27], [18, 29], [28, 24], [38, 21], [44, 26], [47.5, 32], [53, 35], [61, 34], [68, 29], [78, 27.5], [96, 25]],
-];
+].map((path) => rounded(path));
 /** The lake beside Dongting, as [u, v, radius]. */
 const LAKE = [61.5, 65.5, 3.4];
 /** The frontier wall, west to east. */
 const WALL = [[30, 15], [40, 12], [50, 14], [60, 11.5], [70, 13], [80, 10.5]];
 /** Where boats sail: down the long river, and along the coast. */
-const SAILS = [RIVERS[0].slice(3), [[93, 40], [92, 55], [90, 68], [85, 80], [72, 92], [60, 94]]];
+const SAILS = [RIVERS[0].slice(Math.floor(RIVERS[0].length * 0.24)), [[93, 40], [92, 55], [90, 68], [85, 80], [72, 92], [60, 94]]];
 
 const smooth = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const lerp = (a, b, t) => a + (b - a) * t;
@@ -216,10 +230,11 @@ export function createRealm(stage, world, { layer = null } = {}) {
             if (d < d1) (second = first), (d2 = d1), (first = place), (d1 = d);
             else if (d < d2) (second = place), (d2 = d);
           }
-          if (first.owner && d1 < 15) {
+          if (first.owner && d1 < 14.6) {
             const tint = hexOf(SECT_BY_ID[first.owner].color);
-            const edge = second && second.owner !== first.owner && d2 - d1 < 0.7 ? 0.75 : d1 > 14.2 ? 0.6 : 0;
-            colour = mix(colour, shade(tint, 0.85), Math.max(edge, 0.22 * smooth((15 - d1) / 6)));
+            // Stronger toward the edge of the claim, like a wash laid inside a drawn line.
+            const edge = second && second.owner !== first.owner ? 0.2 * smooth(1 - (d2 - d1) / 3) : 0.2 * smooth((d1 - 11) / 3.6);
+            colour = mix(colour, shade(tint, 0.9), 0.2 + edge);
           }
         }
         const c = rgb(colour);
@@ -237,6 +252,138 @@ export function createRealm(stage, world, { layer = null } = {}) {
   // The water is one sheet at sea level; the rivers and the lake are where the land dips under it.
   const water = new Mesh3D(createGeometry3D({ positions: [-900, 0, -900, 900, 0, -900, -900, 0, 900, 900, 0, 900], normals: [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], indices: [0, 2, 1, 1, 2, 3] }), createStandardMaterial3D({ color: 0x2c6488, roughness: 0.4, metallic: 0, opacity: 0.9, alphaMode: 'blend' }));
   scene.addChild(water);
+
+  /** Adds a flat ribbon along `points` ([x, y, z] each) to the lists of a mesh being built. */
+  const ribbon = (out, points, width, colourOf) => {
+    const start = out.p.length / 3;
+    points.forEach(([x, y, z], i) => {
+      const [ax, , az] = points[Math.max(0, i - 1)],
+        [bx, , bz] = points[Math.min(points.length - 1, i + 1)];
+      const length = Math.hypot(bx - ax, bz - az) || 1,
+        ox = (-(bz - az) / length) * width,
+        oz = ((bx - ax) / length) * width;
+      out.p.push(x - ox, y, z - oz, x + ox, y, z + oz);
+      out.n.push(0, 1, 0, 0, 1, 0);
+      const c = rgb(colourOf(y, i));
+      out.c.push(...c, ...c);
+      if (i) out.i.push(start + i * 2 - 2, start + i * 2 - 1, start + i * 2, start + i * 2 - 1, start + i * 2 + 1, start + i * 2);
+    });
+  };
+  const meshOf = (out, material) => new Mesh3D(createGeometry3D({ positions: out.p, normals: out.n, colors: out.c, indices: out.i }), material);
+
+  // ---- river banks: the grid is too coarse to cut a clean shore, so each bank is modelled along the stream ---
+  {
+    const out = { p: [], n: [], c: [], i: [] };
+    for (const river of RIVERS) {
+      // Finer points along the stream than the path itself has.
+      const line = [];
+      for (let i = 0; i < river.length - 1; i++)
+        for (let k = 0; k < 4; k++) line.push([lerp(river[i][0], river[i + 1][0], k / 4), lerp(river[i][1], river[i + 1][1], k / 4)]);
+      line.push(river[river.length - 1]);
+      for (const side of [-1, 1]) {
+        const rows = line.map(([u, v], i) => {
+          const [au, av] = line[Math.max(0, i - 1)],
+            [bu, bv] = line[Math.min(line.length - 1, i + 1)];
+          const length = Math.hypot(bu - au, bv - av) || 1,
+            nu = (-(bv - av) / length) * side,
+            nv = ((bu - au) / length) * side;
+          // From under the water, up over the shoreline, and down into the land behind it.
+          return [0.55, 0.95, 1.3, 1.75].map((d, k) => {
+            const x = (u + nu * d - 50) * S,
+              z = (v + nv * d - 50) * S,
+              ground = groundAt(x, z);
+            return [x, k === 0 ? -0.35 : k === 3 ? ground - 0.25 : Math.max(ground + 0.1, k === 1 ? 0.1 : 0.34), z];
+          });
+        });
+        const tones = [0x6f8a78, 0xb7ab84, 0x9d9a6c, 0x71804f];
+        // Where the stream meets the sea there is no bank to model.
+        const dry = line.map(([u, v]) => inland(u, v) > 2.5);
+        const start = out.p.length / 3;
+        rows.forEach((row, i) => {
+          row.forEach(([x, y, z], k) => {
+            out.p.push(x, y, z);
+            out.n.push(0, 1, 0);
+            out.c.push(...rgb(tones[k]));
+          });
+          if (i && dry[i] && dry[i - 1])
+            for (let k = 0; k < 3; k++) {
+              const a = start + (i - 1) * 4 + k,
+                b = start + i * 4 + k;
+              if (side > 0) out.i.push(a, a + 1, b, a + 1, b + 1, b);
+              else out.i.push(a, b, a + 1, a + 1, b, b + 1);
+            }
+        });
+      }
+    }
+    const banks = meshOf(out, landMaterial);
+    banks.receiveShadow = true;
+    scene.addChild(banks);
+  }
+
+  // ---- borders: a clean line wherever two sects' lands meet, and round the rim of each sect's reach --------
+  const borderMaterial = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.8, metallic: 0 });
+  let borders = null;
+  function drawBorders() {
+    const owned = PLACES.map((place) => ({ u: place.at.x, v: place.at.y, owner: world().places[place.id].owner }));
+    const out = { p: [], n: [], c: [], i: [] };
+    /** Whether a point belongs to this stronghold's claim: on land, and no other stronghold nearer. */
+    const nearest = (u, v, mine, also = null) => {
+      const d = Math.hypot(u - mine.u, v - mine.v);
+      return owned.every((other) => other === mine || other === also || Math.hypot(u - other.u, v - other.v) >= d - 0.001);
+    };
+    const lay = (points, colour) => {
+      // Cut the line wherever it leaves the claim or runs into water.
+      let run = [];
+      const flush = () => {
+        if (run.length > 1) ribbon(out, run, 0.34, () => colour);
+        run = [];
+      };
+      for (const point of points) {
+        if (!point) flush();
+        else run.push(point);
+      }
+      flush();
+    };
+    const lift = (u, v) => {
+      const x = (u - 50) * S,
+        z = (v - 50) * S,
+        y = groundAt(x, z);
+      return y > 0.3 ? [x, y + 0.3, z] : null;
+    };
+    for (const mine of owned) {
+      if (!mine.owner) continue;
+      const colour = shade(hexOf(SECT_BY_ID[mine.owner].color), 1.05);
+      // The rim of its reach, where nobody else's claim comes first.
+      const rim = [];
+      for (let k = 0; k <= 120; k++) {
+        const angle = (k / 120) * Math.PI * 2,
+          u = mine.u + Math.sin(angle) * 14.6,
+          v = mine.v + Math.cos(angle) * 14.6;
+        rim.push(nearest(u, v, mine) ? lift(u, v) : null);
+      }
+      lay(rim, colour);
+      // The line half way to each neighbour of another allegiance; each side draws its own, a little apart.
+      for (const other of owned) {
+        if (other === mine || other.owner === mine.owner) continue;
+        const gap = Math.hypot(other.u - mine.u, other.v - mine.v);
+        if (gap > 29.2) continue;
+        const du = (other.u - mine.u) / gap,
+          dv = (other.v - mine.v) / gap,
+          reach = Math.sqrt(Math.max(0, 14.6 * 14.6 - (gap / 2) ** 2));
+        const line = [];
+        for (let k = 0; k <= 60; k++) {
+          const t = (k / 60) * 2 - 1,
+            u = mine.u + du * (gap / 2 - 0.16) - dv * t * reach,
+            v = mine.v + dv * (gap / 2 - 0.16) + du * t * reach;
+          line.push(nearest(u, v, mine, other) ? lift(u, v) : null);
+        }
+        lay(line, colour);
+      }
+    }
+    if (borders) scene.removeChild(borders);
+    borders = out.i.length ? meshOf(out, borderMaterial) : null;
+    if (borders) scene.addChild(borders);
+  }
 
   /** The line each road takes, by the ids of the two strongholds it joins. */
   const roadPaths = {};
@@ -492,6 +639,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
     if (now === signature) return;
     signature = now;
     paintLand();
+    drawBorders();
     scene.removeChild(banners);
     const parts = [];
     for (const place of PLACES) {
