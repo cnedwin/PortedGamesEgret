@@ -68,7 +68,8 @@ function field(colors, random) {
  */
 export function createArena(stage, battle, { colors, layer, onEvent = () => {}, onEnd = () => {}, playerSide = 0 }) {
   const scene = new Scene3D();
-  const camera = createPerspectiveCamera3D({ fov: 40, near: 0.5, far: 500 });
+  const fov = 40;
+  const camera = createPerspectiveCamera3D({ fov, near: 0.5, far: 500 });
   scene.addChild(camera);
   // A fight is fought in the light of the hour it falls at: morning, noon, afternoon or dusk.
   const light = lightScene(scene, 'day', stage.quality);
@@ -95,6 +96,16 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
     return actor;
   });
   const byId = new Map(cast.map((actor) => [actor.unit.id, actor]));
+  // Frame both starting lines on a narrow canvas while keeping manual zoom relative to the framing.
+  const startingWidth = Math.max(0, ...cast.map((actor) => Math.abs(actor.x))) * 2 + 5;
+  const startingDepth = Math.max(0, ...cast.map((actor) => actor.z));
+  let fit = 24;
+  function fitDistance() {
+    if (!stage.canvas?.clientHeight || !stage.canvas.clientWidth) return 24;
+    const aspect = stage.canvas.clientWidth / stage.canvas.clientHeight;
+    const halfAngle = Math.tan(fov * Math.PI / 360) * Math.max(0.3, aspect);
+    return Math.min(85, Math.max(24, startingWidth / (2 * halfAngle) + startingDepth));
+  }
 
   // A ring under whoever the player's side has been set on.
   const ring = model([[ROD, [0, 0.03, 0], [0.75, 0.03, 0.75], 0xffffff]], glow(0xe8503c, 1.4), false);
@@ -165,7 +176,8 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
       for (const actor of cast) if (actor.unit.down) actor.figure.play('down');
     },
     enter() {
-      stage.orbit.set({ target: [0, 0.8, 0], yaw: 0, pitch: 0.6, distance: 24, minDistance: 7, maxDistance: 70, minPitch: 0.15, maxPitch: 1.35, reach: 24, drift: 0 });
+      fit = fitDistance();
+      stage.orbit.set({ target: [0, 0.8, 0], yaw: 0, pitch: 0.6, distance: fit, minDistance: 7, maxDistance: Math.max(70, fit + 12), minPitch: 0.15, maxPitch: 1.35, reach: 24, drift: 0 });
       // A tap on an enemy sets the player's side on them; a second tap lets them choose for themselves again.
       stage.orbit.onTap = (x, y) => {
         let best = null,
@@ -235,6 +247,12 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
         spark.life -= dt;
         spark.mesh.setScale(spark.size * (1.2 - spark.life / 0.22));
         if (spark.life <= 0) spark.mesh.visible = false;
+      }
+      const nextFit = fitDistance();
+      if (Math.abs(nextFit - fit) > 0.5) {
+        stage.orbit.maxDistance = Math.max(70, nextFit + 12);
+        stage.orbit.distance = Math.min(stage.orbit.maxDistance, Math.max(stage.orbit.minDistance, stage.orbit.distance + nextFit - fit));
+        fit = nextFit;
       }
       stage.orbit.apply(camera, dt);
 
