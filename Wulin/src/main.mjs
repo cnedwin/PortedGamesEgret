@@ -36,6 +36,7 @@ import {
   recruit, relocate, residents, setJob, setMaster, settle, settleAssault, strength, tradeRoutes, upgrade, usedCells,
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
+import { createVoice } from './ui/voice.mjs';
 
 const app = document.querySelector('#app'),
   park = document.querySelector('#park'),
@@ -43,6 +44,7 @@ const app = document.querySelector('#app'),
   dialog = document.querySelector('#dialog'),
   announcement = document.querySelector('#announcement');
 const slots = createSlots(localStorage);
+const voice = createVoice(localStorage);
 
 /** What the page is showing; the world itself is in `world`. */
 const ui = {
@@ -554,7 +556,10 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
   const names = new Map(sides.flat().map((person) => [person.id, person.name]));
   const name = (id) => names.get(id) ?? '？';
   const lines = [];
+  const people = new Map(sides.flat().map((person) => [person.id, person]));
   const note = (event) => {
+    // Whoever lands a telling blow calls out the art it came from.
+    if (ui.fight && event.type === 'hit' && event.crit && event.art) voice.shout(event.art + '！', people.get(event.from));
     const line = tell(event, name);
     if (line && (event.type !== 'hit' || lines.length < 80)) lines.push(line);
   };
@@ -785,6 +790,10 @@ const SHEETS = {
   settings() {
     return ['游戏设置', `${formRow('画质', `<select data-change="quality">${options([['', '自动'], ['high', '高'], ['medium', '中'], ['low', '低（省电）']], storedQuality() ?? '')}</select>`)}
       <p class="caption">${picture.stage ? '改动画质后会重新载入页面，进度先自动保存。' : '这台设备画不了 3D，山门以画卷示意，战斗以文字结算。'}</p>
+      ${formRow('配音', `<select data-change="voice">${options([['on', '开'], ['off', '关']], voice.on ? 'on' : 'off')}</select>`)}
+      ${formRow('音量', `<input type="range" min="0" max="1" step="0.05" data-change="voice-volume" value="${voice.volume}">`)}
+      <p class="caption">${voice.supported ? '奇遇、来犯与战报由旁白念出；交战中打出重手的人会喊出武学的名字，男女老少嗓音各不相同。声音由这台设备自带的中文语音合成，各设备听感不同。' : '这台设备没有中文语音，配音暂时发不出声；装上系统的中文语音后即可使用。'}</p>
+      ${voice.supported ? `<div class="button-group">${btn('试听', 'voice-test', {}, 'outline')}</div>` : ''}
       <p class="caption">连按两次 F8，或连续点击顶栏日期五次，可打开修改器。</p>
       <p class="caption">数据包（MOD）：${esc(modNote() || '未装载')}。数据包是一个 JSON 文件，可改经济与建筑数值、门派配色、武学名称与威力，并添加事件；格式见 src/core/mod.mjs。装载或卸下后会重新载入页面。</p>
       <div class="button-group">${btn('装载数据包', 'mod-load', {}, 'outline', 'plus')}${btn('卸下数据包', 'mod-clear', {}, 'outline', '', !modNote())}</div>`, btn('修改器', 'editor', {}, 'outline') + btn('完成', 'close', {}, 'primary')];
@@ -818,6 +827,24 @@ function renderSheet() {
   dialog.setAttribute('aria-labelledby', 'dialog-title');
   if (!dialog.open) dialog.showModal();
 }
+/** Has the narrator read a sheet aloud the first time it is shown. */
+function speakSheet() {
+  const sheet = ui.sheet;
+  let text = '',
+    who = null;
+  if (sheet?.kind === 'event') {
+    const view = pendingView(world);
+    text = view?.text ?? '';
+  } else if (sheet?.kind === 'outcome') text = sheet.text;
+  else if (sheet?.kind === 'fight') text = `${ui.lastFight.won ? '此战告捷。' : '此战失利。'}${ui.lastFight.verdict}`;
+  else if (sheet?.kind === 'siege' && world.pending?.kind === 'siege') text = `${SECT_BY_ID[world.pending.attacker].name}来犯${PLACE_BY_ID[world.pending.place].name}！`;
+  const key = text && sheet.kind + ':' + text;
+  if (key === ui.spoken) return;
+  // Leaving a sheet that was being read stops the reading.
+  if (ui.spoken && !key) voice.stop();
+  ui.spoken = key;
+  if (key) voice.say(text, who);
+}
 // Escape closes a sheet through the browser; the page's own state follows.
 dialog.addEventListener('close', () => ui.sheet && (actions.close(), render()));
 
@@ -848,6 +875,7 @@ function render() {
   syncPicture();
   placeMap();
   renderSheet();
+  speakSheet();
 }
 
 // ---- what the player does ---------------------------------------------------------------------------------
@@ -1072,7 +1100,8 @@ const actions = {
     if (world) slots.write('auto', world, autoLabel());
     location.reload();
   },
-  'fight-rally': () => ui.fight.arena.battle.rally(ui.fight.side),
+  'voice-test': () => voice.say('江湖路远，各位保重。', membersOf(world, me()).find((person) => person.id === books().leaderId)),
+  'fight-rally': () => (voice.shout('众弟子听令，随我上！', ui.fight.heads?.[ui.fight.side]?.person), ui.fight.arena.battle.rally(ui.fight.side)),
   'fight-stance': (data) => ui.fight.arena.battle.stance(ui.fight.side, data.stance),
   answer(data) {
     const rng = createRng(1);
@@ -1101,6 +1130,8 @@ const actions = {
 };
 
 const changes = {
+  voice: (_, value) => voice.set({ on: value === 'on' }),
+  'voice-volume': (_, value) => voice.set({ volume: Number(value) }),
   quality(_, value) {
     slots.write('auto', world, autoLabel());
     try {
