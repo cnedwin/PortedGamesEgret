@@ -3,7 +3,7 @@ import { prepareEffects2D } from './sharedEffects2D.js';
 import { Preparation, coordinate, clipPolygon2D, finishPolygonWinding2D } from './prepareRectangles2D.js';
 import { TexturedPreparationBudget2D } from './texturedPreparationBudget2D.js';
 import { noteOwnedPreparationFailure } from './ownedPreparationFailure2D.js';
-import { decodeSharedSRGB } from './sharedColor2D.js';
+import { decodeSharedSRGBByte } from './sharedColor2D.js';
 export class SharedPreparationError extends Error {
     reason;
     constructor(reason) {
@@ -23,14 +23,23 @@ function add(used, value, limit) { if (!Number.isSafeInteger(value) || value < 0
     sharedFailure('budget'); return used + value; }
 /** Address qualification follows f32 preparation and never clamps/modulos authored vertices. */
 export function qualifySharedUV(point, draw, frame) {
+    const domain = sharedUVDomain(draw, frame);
+    if (domain !== undefined)
+        qualifySharedUVIn(point.u, point.v, domain);
+}
+/** Undefined for a draw without a page, whose corners are not qualified. */
+export function sharedUVDomain(draw, frame) {
     if (draw.pageIndex === undefined)
-        return;
+        return undefined;
     const region = draw.region, page = frame.pages[draw.pageIndex].source, material = draw.material;
     const width = material.samplingDomain === 'page' ? page.width : region.logicalWidth;
     const height = material.samplingDomain === 'page' ? page.height : region.logicalHeight;
     const periodic = material.samplingDomain === 'page' && (material.addressU !== 'clamp-to-edge' || material.addressV !== 'clamp-to-edge');
-    const limit = periodic ? 8192 : 1048576;
-    const u = Math.fround(point.u), v = Math.fround(point.v), x = Math.fround(u * width), y = Math.fround(v * height);
+    return { width, height, limit: periodic ? 8192 : 1048576 };
+}
+/** `qualifySharedUV` of one corner's two texture coordinates, with the draw's domain already found. */
+export function qualifySharedUVIn(pointU, pointV, domain) {
+    const limit = domain.limit, u = Math.fround(pointU), v = Math.fround(pointV), x = Math.fround(u * domain.width), y = Math.fround(v * domain.height);
     if (!Number.isFinite(u) || !Number.isFinite(v) || !Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > limit || Math.abs(y) > limit)
         sharedFailure('precision');
 }
@@ -184,37 +193,102 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
     let viewport, ratio = 0;
     // The state of the command being prepared, read by `accept` below.
     let command, m, clips = NO_CLIPS, polygons = [], vertexReservation = 0;
-    let descriptor;
+    // What the corners of the command's texture coordinates are qualified against; undefined for a draw without a page.
+    let uvDomain;
     // Both SHARED Hosts authenticate the frame before this private helper owns its budget.
     // Shared polygons retain attributed corners and charge the same XY comparisons as TEXTURED meshes.
     const intersect = (polygon, clip) => preparation.tryContainedClip(polygon, clip, 'mesh') ?? clipPolygon2D(preparation, polygon, clip, normalize, attach, policy, 'mesh');
+    // A quad of a matrix without rotation or shear, whose corners stay apart once placed, needs none of the general
+    // path's tests to be known: its three signs agree and its four corners are distinct, so normalizing keeps them in
+    // order, reversed when the placed winding is negative. The general path's charges for those tests (seven predicates
+    // and ten corner comparisons) are made at once; when they do not fit, or anything else differs, the general path runs
+    // instead and decides the first failure itself. The result is the same polygon, made of the same corner objects.
+    const QUAD_COST = { preparedVertices: 0, predicates: 7, tupleComparisons: 10 };
+    const axisQuad = (points) => {
+        if (m.b !== 0 || m.c !== 0 || m.a === 0 || m.d === 0)
+            return undefined;
+        const p0 = points[0], p1 = points[1], p2 = points[2], p3 = points[3];
+        // The corners as the rectangle path makes them: top-left, top-right, bottom-right, bottom-left, with x<right and y<bottom.
+        if (!(p0.x < p1.x) || p1.x !== p2.x || p3.x !== p0.x || !(p0.y < p2.y) || p1.y !== p0.y || p3.y !== p2.y)
+            return undefined;
+        if (QUAD_COST.predicates > options.maxClipEdgeTests - preparation.edgeTests)
+            return undefined;
+        // Placed, the corners keep the same x for the same authored x and the same y for the same authored y.
+        // A corner placed out of range is left to the general path, which reports it after the charges it makes first.
+        let x0, x1, y0, y1;
+        try {
+            x0 = placeX(p0.x);
+            x1 = placeX(p1.x);
+            y0 = placeY(p0.y);
+            y1 = placeY(p2.y);
+        }
+        catch {
+            return undefined;
+        }
+        if (x0 === x1 || y0 === y1)
+            return undefined;
+        const sign = (x1 > x0) === (y1 > y0) ? 1 : -1, rank = (m.a > 0) === (m.d > 0) ? 1 : -1;
+        if (sign !== rank || !budget.tryReplayStageCost(QUAD_COST))
+            return undefined;
+        preparation.edgeTests += QUAD_COST.predicates;
+        p0.x = x0;
+        p0.y = y0;
+        p1.x = x1;
+        p1.y = y0;
+        p2.x = x1;
+        p2.y = y1;
+        p3.x = x0;
+        p3.y = y1;
+        for (const q of points) {
+            q.x = coordinate(q.x);
+            q.y = coordinate(q.y);
+            q.u = uv(q.u);
+            q.v = uv(q.v);
+            q.r = unit(q.r);
+            q.g = unit(q.g);
+            q.b = unit(q.b);
+            q.a = unit(q.a);
+            q.dr = unit(q.dr);
+            q.dg = unit(q.dg);
+            q.db = unit(q.db);
+        }
+        return sign < 0 ? [p3, p2, p1, p0] : [p0, p1, p2, p3];
+    };
+    // The same steps as `transform` for a matrix without rotation or shear: the cross terms are zero.
+    const placeX = (x) => coordinate(coordinate(coordinate(coordinate(m.a * x) + coordinate(m.c * 0)) + m.tx) * ratio);
+    const placeY = (y) => coordinate(coordinate(coordinate(coordinate(m.b * 0) + coordinate(m.d * y)) + m.ty) * ratio);
     // `points` are fresh authored corners; they become the backing-space corners in place.
     const accept = (points) => {
-        for (const p of points)
-            qualifySharedUV(p, descriptor, frame);
-        const authored = preparation.sign(points[0], points[1], points[2]);
-        if (authored === 0)
-            return;
-        axisX.x = m.a;
-        axisX.y = m.b;
-        axisY.x = m.c;
-        axisY.y = m.d;
-        const rank = preparation.sign(ORIGIN, axisX, axisY);
-        if (rank === 0)
-            return;
-        for (const p of points)
-            transform(p, m, ratio);
-        const sign = preparation.sign(points[0], points[1], points[2]);
-        if (sign === 0)
-            return;
-        if (sign !== authored * rank)
-            sharedFailure('precision');
-        let polygon = normalizeOwned(preparation, points);
+        if (uvDomain !== undefined)
+            for (const p of points)
+                qualifySharedUVIn(p.u, p.v, uvDomain);
+        let polygon = points.length === 4 ? axisQuad(points) : undefined;
+        if (polygon === undefined) {
+            const authored = preparation.sign(points[0], points[1], points[2]);
+            if (authored === 0)
+                return;
+            axisX.x = m.a;
+            axisX.y = m.b;
+            axisY.x = m.c;
+            axisY.y = m.d;
+            const rank = preparation.sign(ORIGIN, axisX, axisY);
+            if (rank === 0)
+                return;
+            for (const p of points)
+                transform(p, m, ratio);
+            const sign = preparation.sign(points[0], points[1], points[2]);
+            if (sign === 0)
+                return;
+            if (sign !== authored * rank)
+                sharedFailure('precision');
+            polygon = normalizeOwned(preparation, points);
+        }
         for (const clip of clips)
             polygon = intersect(polygon, clip);
         polygon = intersect(polygon, viewport);
-        for (const p of polygon)
-            qualifySharedUV(p, descriptor, frame);
+        if (uvDomain !== undefined)
+            for (const p of polygon)
+                qualifySharedUVIn(p.u, p.v, uvDomain);
         if (polygon.length < 3 || command.opacity === 0)
             return;
         const count = (polygon.length - 2) * 3;
@@ -263,7 +337,7 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
             viewport ??= [{ x: 0, y: 0 }, { x: coordinate(width), y: 0 }, { x: coordinate(width), y: coordinate(height) }, { x: 0, y: coordinate(height) }];
             polygons = [];
             vertexReservation = 0;
-            descriptor = { region, material, pageIndex };
+            uvDomain = sharedUVDomain({ region, material, pageIndex }, frame);
             if (command.kind === 'mesh') {
                 const g = frame.geometries[command.geometryIndex], shared = isSharedGeometry2D(g);
                 for (let i = 0; i < g.indexCount; i += 3) {
@@ -284,9 +358,9 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
                 const color = command.kind === 'rect' ? command.fillColor : 0xffffff, a = command.kind === 'rect' ? unit(command.fillAlpha) : 1;
                 // Decoding is a pure function of the colour; consecutive draws of one colour decode it once.
                 if (color !== lastColor) {
-                    red = decodeSharedSRGB(((color >>> 16) & 255) / 255);
-                    green = decodeSharedSRGB(((color >>> 8) & 255) / 255);
-                    blue = decodeSharedSRGB((color & 255) / 255);
+                    red = decodeSharedSRGBByte(color >>> 16);
+                    green = decodeSharedSRGBByte(color >>> 8);
+                    blue = decodeSharedSRGBByte(color);
                     lastColor = color;
                 }
                 const points = [];

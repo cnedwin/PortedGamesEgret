@@ -70,6 +70,16 @@ export interface PreparedSharedFrame2D {
 }
 /** Address qualification follows f32 preparation and never clamps/modulos authored vertices. */
 export declare function qualifySharedUV(point: SharedPoint2D, draw: Pick<PreparedSharedDraw2D, 'region' | 'material' | 'pageIndex'>, frame: SharedRenderFrame2D): void;
+/** What address qualification reads of a draw: the same for each of its corners, so it is found once a draw. */
+export interface SharedUVDomain2D {
+    readonly width: number;
+    readonly height: number;
+    readonly limit: number;
+}
+/** Undefined for a draw without a page, whose corners are not qualified. */
+export declare function sharedUVDomain(draw: Pick<PreparedSharedDraw2D, 'region' | 'material' | 'pageIndex'>, frame: SharedRenderFrame2D): SharedUVDomain2D | undefined;
+/** `qualifySharedUV` of one corner's two texture coordinates, with the draw's domain already found. */
+export declare function qualifySharedUVIn(pointU: number, pointV: number, domain: SharedUVDomain2D): void;
 /**
  * Authentic completion is checked by Host; this helper still defends all table references. With `retention`,
  * a draw whose every input is the same as in the last frame takes the geometry kept for it, once the charges

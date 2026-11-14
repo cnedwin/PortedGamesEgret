@@ -1,4 +1,4 @@
-export const SHARED_BLENDS = ['normal', 'add-accumulate', 'add-preserve', 'multiply-factor', 'screen'];
+export const SHARED_BLENDS = ['normal', 'add-accumulate', 'add-preserve', 'multiply-factor', 'screen', 'erase'];
 // The 128-byte block holds what is the same for every draw of a batch. `pageUnits0` and `pageUnits1` name the
 // pages of the eight texture units: the index of the page in the frame, or 0xffffffff for a unit without one.
 // The last two values of `viewport`, the first three of `domain` and the first two of `pageExecution` are zero:
@@ -137,6 +137,9 @@ function blendState(blend) {
     const alpha = { operation: 'add', srcFactor: 'one', dstFactor: 'one-minus-src-alpha' };
     if (blend === 'add-accumulate')
         return { color: { operation: 'add', srcFactor: 'one', dstFactor: 'one' }, alpha: { operation: 'add', srcFactor: 'one', dstFactor: 'one' } };
+    // What is drawn takes away from what is there, by its alpha, and adds nothing.
+    if (blend === 'erase')
+        return { color: { operation: 'add', srcFactor: 'zero', dstFactor: 'one-minus-src-alpha' }, alpha: { operation: 'add', srcFactor: 'zero', dstFactor: 'one-minus-src-alpha' } };
     if (blend === 'add-preserve')
         return { color: { operation: 'add', srcFactor: 'one', dstFactor: 'one' }, alpha: { operation: 'add', srcFactor: 'zero', dstFactor: 'one' } };
     return { color: { operation: 'add', srcFactor: blend === 'multiply-factor' ? 'dst' : 'one',

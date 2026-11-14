@@ -16,12 +16,16 @@ const optional = (value, type) => value === undefined || typeof value === type;
 export function createUiListSemantics(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_SEMANTICS_OPTIONS');
-    const { semantics, root, list, parent, role = 'list', name, hidden, describeRow, onActivateRow, focusable = false, onRowAdded } = options;
+    const { semantics, root, list, parent, role = 'list', name, multiple, columns, rowOffset = 0, hidden, describeRow, onActivateRow, focusable = false, onRowAdded } = options;
     if (semantics === null || typeof semantics !== 'object' || typeof semantics.add !== 'function' || root === null || typeof root !== 'object' || typeof root.snapshot !== 'function'
-        || typeof root.list !== 'function' || !text(list) || (role !== 'list' && role !== 'listbox') || !optional(name, 'string') || !optional(parent, 'string')
+        || typeof root.list !== 'function' || !text(list) || (role !== 'list' && role !== 'listbox' && role !== 'menu' && role !== 'grid' && role !== 'tree') || !optional(name, 'string') || !optional(parent, 'string')
         || !optional(hidden, 'function') || !optional(describeRow, 'function') || !optional(onActivateRow, 'function') || !optional(onRowAdded, 'function') || typeof focusable !== 'boolean'
-        // An option is read as one thing and needs a name of its own.
-        || (role === 'listbox' && describeRow === undefined))
+        // An option and a menu item are read as one thing and need a name of their own.
+        || ((role === 'listbox' || role === 'menu' || role === 'tree') && describeRow === undefined)
+        // Only a list box, a grid and a tree have a selection for there to be several of.
+        || !optional(multiple, 'boolean') || (multiple !== undefined && role !== 'listbox' && role !== 'grid' && role !== 'tree')
+        // A grid says how many columns it has, and nothing else has columns or rows above its own.
+        || (role === 'grid' ? !Number.isSafeInteger(columns) || columns < 1 || !Number.isSafeInteger(rowOffset) || rowOffset < 0 : columns !== undefined || options.rowOffset !== undefined))
         throw new EgretError('UI_SEMANTICS_OPTIONS');
     const id = options.id ?? root.id + '/' + list;
     if (!text(id))
@@ -36,13 +40,17 @@ export function createUiListSemantics(options) {
         const x = Math.max(box.x, frame.x), y = Math.max(box.y, frame.y);
         return { x, y, width: Math.max(0, Math.min(box.x + box.width, frame.x + frame.width) - x), height: Math.max(0, Math.min(box.y + box.height, frame.y + frame.height) - y) };
     }
-    const node = semantics.add({ id, role, ...(parent === undefined ? {} : { parent }), describe: () => ({ bounds: frame, ...(name === undefined ? {} : { name }), ...(hidden === undefined ? {} : { hidden: hidden() }) }) });
+    const node = semantics.add({ id, role, ...(parent === undefined ? {} : { parent }), describe: () => ({ bounds: frame, ...(name === undefined ? {} : { name }), ...(hidden === undefined ? {} : { hidden: hidden() }), ...(multiple === true ? { multiple } : {}),
+            // A grid with no row at all has no extent to speak of.
+            ...(role === 'grid' && size + rowOffset > 0 ? { extent: { rows: size + rowOffset, columns: columns } } : {}) }) });
     function addRow(key, index, box) {
         const row = { index, box, node: semantics.add({
-                id: rowId(key), role: role === 'list' ? 'listitem' : 'option', parent: id,
+                id: rowId(key), role: role === 'list' ? 'listitem' : role === 'listbox' ? 'option' : role === 'menu' ? 'menuitem' : role === 'grid' ? 'row' : 'treeitem', parent: id,
                 describe: () => {
                     const described = describeRow?.(key, row.index) ?? {};
-                    return { ...described, ...(role === 'listbox' ? { selected: described.selected ?? false } : {}), bounds: visiblePart(row.box), position: { index: row.index + 1, size }, focused: handle.getFocus().key === key, order: row.index };
+                    return { ...described, ...(role === 'listbox' ? { selected: described.selected ?? false } : {}), bounds: visiblePart(row.box),
+                        // The place of an item of a tree is among the items under the same item, which only the application knows.
+                        ...(role === 'tree' ? {} : { position: { index: row.index + 1 + rowOffset, size: size + rowOffset } }), focused: handle.getFocus().key === key, order: row.index };
                 },
                 ...(onActivateRow === undefined ? {} : { onActivate: () => onActivateRow(key) }),
                 ...(focusable ? { onFocus: () => handle.focus(key, { visible: true }) } : {}),
@@ -90,6 +98,7 @@ export function createUiListSemantics(options) {
     }
     return Object.freeze({
         id, rowId, sync,
+        rowBounds(key) { const row = rows.get(key); return row === undefined ? undefined : Object.freeze(visiblePart(row.box)); },
         dispose() {
             if (closed)
                 return;

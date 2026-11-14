@@ -104,6 +104,50 @@
       "types": "./dist/web/hover.d.ts",
       "import": "./dist/web/hover.js"
     },
+    "./input/gamepad": {
+      "types": "./dist/gamepad.d.ts",
+      "import": "./dist/gamepad.js"
+    },
+    "./web/gamepad": {
+      "types": "./dist/web/gamepad.d.ts",
+      "import": "./dist/web/gamepad.js"
+    },
+    "./camera": {
+      "types": "./dist/camera.d.ts",
+      "import": "./dist/camera.js"
+    },
+    "./tilemap": {
+      "types": "./dist/tilemap.d.ts",
+      "import": "./dist/tilemap.js"
+    },
+    "./particles": {
+      "types": "./dist/particles.d.ts",
+      "import": "./dist/particles.js"
+    },
+    "./physics2d": {
+      "types": "./dist/physics2d.d.ts",
+      "import": "./dist/physics2d.js"
+    },
+    "./bitmapfont": {
+      "types": "./dist/bitmapfont.d.ts",
+      "import": "./dist/bitmapfont.js"
+    },
+    "./video": {
+      "types": "./dist/video.d.ts",
+      "import": "./dist/video.js"
+    },
+    "./web/video": {
+      "types": "./dist/web/video.d.ts",
+      "import": "./dist/web/video.js"
+    },
+    "./audio": {
+      "types": "./dist/audio.d.ts",
+      "import": "./dist/audio.js"
+    },
+    "./web/audio": {
+      "types": "./dist/web/audio.d.ts",
+      "import": "./dist/web/audio.js"
+    },
     "./ui/semantics": {
       "types": "./dist/semantics.d.ts",
       "import": "./dist/semantics.js"

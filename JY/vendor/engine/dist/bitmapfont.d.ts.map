@@ -1,0 +1,1 @@
+{"version":3,"file":"bitmapfont.d.ts","sourceRoot":"","sources":["../src/bitmapfont.ts"],"names":[],"mappings":"AACA,sHAAsH;AACtH,OAAO,EAAE,eAAe,EAAE,MAAM,sBAAsB,CAAC;AACvD,OAAO,EAAE,gBAAgB,EAAE,gBAAgB,EAAE,MAAM,iBAAiB,CAAC;AACrE,YAAY,EACV,UAAU,EAAE,WAAW,EAAE,UAAU,EAAE,eAAe,EAAE,gBAAgB,EAAE,uBAAuB,EAAE,cAAc,EAAE,iBAAiB,GACnI,MAAM,sBAAsB,CAAC"}

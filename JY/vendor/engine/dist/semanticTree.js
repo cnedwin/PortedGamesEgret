@@ -9,21 +9,37 @@ const rules = Object.freeze({
     switch: { leaf: true, named: true, fields: ['disabled', 'checked'] },
     radiogroup: { leaf: false, named: false, fields: ['disabled'] },
     radio: { leaf: true, named: true, inside: 'radiogroup', fields: ['disabled', 'checked', 'position'] },
-    listbox: { leaf: false, named: false, fields: ['disabled'] },
+    listbox: { leaf: false, named: false, fields: ['disabled', 'multiple'] },
     option: { leaf: true, named: true, inside: 'listbox', fields: ['disabled', 'selected', 'position'] },
     list: { leaf: false, named: false, fields: [] },
     listitem: { leaf: false, named: false, inside: 'list', fields: ['position'] },
     scrollbar: { leaf: true, named: true, fields: ['disabled', 'range', 'orientation', 'controls'] },
     slider: { leaf: true, named: true, fields: ['disabled', 'range', 'orientation'] },
+    spinbutton: { leaf: true, named: true, fields: ['disabled', 'range'] },
     progressbar: { leaf: true, named: true, fields: ['range'] },
     tablist: { leaf: false, named: false, fields: ['disabled', 'orientation'] },
     tab: { leaf: true, named: true, inside: 'tablist', fields: ['disabled', 'selected', 'position', 'controls'] },
     tabpanel: { leaf: false, named: true, fields: [] },
+    menu: { leaf: false, named: false, fields: ['disabled', 'orientation'] },
+    menuitem: { leaf: true, named: true, inside: 'menu', fields: ['disabled', 'position'] },
     dialog: { leaf: false, named: true, fields: ['modal'] },
     textbox: { leaf: true, named: true, fields: ['disabled', 'value', 'multiline'] },
+    // A message that is said when it changes. Its name is the message, and it is there, empty, before the first one.
+    status: { leaf: true, named: false, fields: [] },
+    alert: { leaf: true, named: false, fields: [] },
+    // Cells in rows and columns. A row is which row it is, and a cell which column it is in.
+    grid: { leaf: false, named: false, fields: ['disabled', 'multiple', 'extent'] },
+    // Rows are what is selected in a table, and cells in a board: either says so where it is the one.
+    row: { leaf: false, named: false, inside: 'grid', fields: ['disabled', 'selected', 'position'], loose: ['selected'] },
+    gridcell: { leaf: true, named: true, inside: 'row', fields: ['disabled', 'selected', 'position'], loose: ['selected'] },
+    columnheader: { leaf: true, named: true, inside: 'row', fields: ['disabled', 'position', 'sort'] },
+    // The items of a tree are all inside the tree itself: how deep one is, is said by its level, so that the items of a list can be a tree.
+    tree: { leaf: false, named: false, fields: ['disabled', 'multiple'] },
+    treeitem: { leaf: true, named: true, inside: 'tree', fields: ['disabled', 'selected', 'expanded', 'position', 'level'], loose: ['selected'] },
+    heading: { leaf: true, named: true, fields: ['level'] },
 });
 /** State that belongs to some roles only. A description that sets one its role does not have is refused. */
-const particular = ['disabled', 'checked', 'selected', 'expanded', 'modal', 'multiline', 'range', 'orientation', 'controls', 'position', 'value'];
+const particular = ['disabled', 'checked', 'selected', 'expanded', 'modal', 'multiline', 'multiple', 'extent', 'sort', 'level', 'range', 'orientation', 'controls', 'position', 'value'];
 const offers = Object.freeze({
     '': Object.freeze([]), a: Object.freeze(['activate']), f: Object.freeze(['focus']), af: Object.freeze(['activate', 'focus']),
 });
@@ -33,10 +49,11 @@ const identifier = (value) => typeof value === 'string' && value.length >= 1 && 
 function sameNode(a, b) {
     return a.id === b.id && a.role === b.role && a.parent === b.parent && a.name === b.name && a.disabled === b.disabled && a.focused === b.focused
         && a.inert === b.inert && a.actions === b.actions && a.value === b.value && a.checked === b.checked && a.selected === b.selected
-        && a.expanded === b.expanded && a.modal === b.modal && a.multiline === b.multiline && a.orientation === b.orientation && a.controls === b.controls
+        && a.expanded === b.expanded && a.modal === b.modal && a.multiline === b.multiline && a.multiple === b.multiple && a.orientation === b.orientation && a.controls === b.controls
         && a.bounds.x === b.bounds.x && a.bounds.y === b.bounds.y && a.bounds.width === b.bounds.width && a.bounds.height === b.bounds.height
         && a.range?.now === b.range?.now && a.range?.min === b.range?.min && a.range?.max === b.range?.max
-        && a.position?.index === b.position?.index && a.position?.size === b.position?.size;
+        && a.position?.index === b.position?.index && a.position?.size === b.position?.size
+        && a.extent?.rows === b.extent?.rows && a.extent?.columns === b.extent?.columns && a.sort === b.sort && a.level === b.level;
 }
 /**
  * The rectangle on the stage that encloses a display object and what it holds, for the bounds of
@@ -125,7 +142,7 @@ export function createUiSemantics(options = {}) {
         if (described === null || typeof described !== 'object' || Array.isArray(described))
             throw refuse('description');
         const rule = rules[entry.role];
-        const { bounds, name = '', hidden, focused, order = 0, disabled, checked, selected, expanded, modal, multiline, range, orientation, controls, position, value } = described;
+        const { bounds, name = '', hidden, focused, order = 0, disabled, checked, selected, expanded, modal, multiline, multiple, extent, sort, level, range, orientation, controls, position, value } = described;
         if (!flag(hidden))
             throw refuse('hidden');
         if (hidden === true)
@@ -150,18 +167,28 @@ export function createUiSemantics(options = {}) {
             throw refuse('modal');
         if (!flag(multiline))
             throw refuse('multiline');
+        if (!flag(multiple))
+            throw refuse('multiple');
         const checkable = rule.fields.includes('checked');
         if (checkable ? typeof checked !== 'boolean' && !(checked === 'mixed' && entry.role === 'checkbox') : checked !== undefined)
             throw refuse('checked');
-        if (rule.fields.includes('selected') ? typeof selected !== 'boolean' : selected !== undefined)
+        if (rule.fields.includes('selected') ? typeof selected !== 'boolean' && !(selected === undefined && rule.loose?.includes('selected') === true) : selected !== undefined)
             throw refuse('selected');
+        if (sort !== undefined && sort !== 'ascending' && sort !== 'descending' && sort !== 'none')
+            throw refuse('sort');
+        // An item of a tree is at some depth. A heading has one of six ranks, or does not say.
+        if (entry.role === 'treeitem' || level !== undefined ? !Number.isSafeInteger(level) || level < 1 || (entry.role === 'heading' && level > 6) : false)
+            throw refuse('level');
         if (value !== undefined && (typeof value !== 'string' || value.length > 16384))
             throw refuse('value');
-        // A scroll bar and a slider are somewhere in their range. A progress bar without one shows work of unknown length.
-        const ranged = entry.role === 'scrollbar' || entry.role === 'slider';
+        // A scroll bar, a slider and a spin button are somewhere in their range. A progress bar without one shows work of unknown length.
+        const ranged = entry.role === 'scrollbar' || entry.role === 'slider' || entry.role === 'spinbutton';
         if (ranged || range !== undefined ? (range === null || typeof range !== 'object' || !finite(range.now) || !finite(range.min) || !finite(range.max)
             || range.min > range.now || range.now > range.max) : false)
             throw refuse('range');
+        if (extent !== undefined && (extent === null || typeof extent !== 'object' || !Number.isSafeInteger(extent.rows) || !Number.isSafeInteger(extent.columns)
+            || extent.rows < 1 || extent.columns < 1))
+            throw refuse('extent');
         if (orientation !== undefined && orientation !== 'horizontal' && orientation !== 'vertical')
             throw refuse('orientation');
         if (controls !== undefined && (!identifier(controls) || controls === entry.id))
@@ -180,9 +207,12 @@ export function createUiSemantics(options = {}) {
                 checked: checked, selected, expanded,
                 modal: entry.role === 'dialog' ? modal === true : undefined,
                 multiline: entry.role === 'textbox' ? multiline === true : undefined,
+                multiple: rule.fields.includes('multiple') ? multiple === true : undefined,
+                extent: extent === undefined ? undefined : Object.freeze({ rows: extent.rows, columns: extent.columns }),
+                sort: sort, level,
                 range: range === undefined ? undefined : Object.freeze({ now: range.now, min: range.min, max: range.max }),
-                // A scroll bar stands beside what it scrolls; a slider and a row of tabs lie along the line they are read in.
-                orientation: rule.fields.includes('orientation') ? (orientation ?? (entry.role === 'scrollbar' ? 'vertical' : 'horizontal')) : undefined,
+                // A scroll bar stands beside what it scrolls and a menu lists its items downward; a slider and a row of tabs lie along the line they are read in.
+                orientation: rule.fields.includes('orientation') ? (orientation ?? (entry.role === 'scrollbar' || entry.role === 'menu' ? 'vertical' : 'horizontal')) : undefined,
                 controls,
                 position: position === undefined ? undefined : Object.freeze({ index: position.index, size: position.size }),
             },

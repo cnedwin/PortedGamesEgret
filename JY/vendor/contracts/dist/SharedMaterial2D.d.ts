@@ -1,5 +1,5 @@
 declare const sharedMaterial2DBrand: unique symbol;
-type Blend = 'normal' | 'add-accumulate' | 'add-preserve' | 'multiply-factor' | 'screen';
+type Blend = 'normal' | 'add-accumulate' | 'add-preserve' | 'multiply-factor' | 'screen' | 'erase';
 type Domain = 'page' | 'region';
 type Filter = 'nearest' | 'linear';
 type Address = 'clamp-to-edge' | 'repeat' | 'mirror-repeat';

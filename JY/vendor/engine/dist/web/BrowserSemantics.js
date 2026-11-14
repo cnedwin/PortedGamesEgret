@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
 /** Roles a native button carries well: it is activated by a click from any assistive technology. */
-const pressable = ['button', 'checkbox', 'switch', 'radio', 'option', 'tab'];
+const pressable = ['button', 'checkbox', 'switch', 'radio', 'option', 'tab', 'menuitem', 'gridcell', 'columnheader', 'treeitem'];
 const aria = {
     group: 'group', image: 'img', checkbox: 'checkbox', switch: 'switch', radiogroup: 'radiogroup', radio: 'radio', listbox: 'listbox',
-    option: 'option', list: 'list', listitem: 'listitem', scrollbar: 'scrollbar', slider: 'slider', progressbar: 'progressbar', tablist: 'tablist', tab: 'tab', tabpanel: 'tabpanel', dialog: 'dialog', textbox: 'textbox',
+    option: 'option', list: 'list', listitem: 'listitem', scrollbar: 'scrollbar', slider: 'slider', spinbutton: 'spinbutton', progressbar: 'progressbar', tablist: 'tablist', tab: 'tab', tabpanel: 'tabpanel', menu: 'menu', menuitem: 'menuitem', dialog: 'dialog', textbox: 'textbox', status: 'status', alert: 'alert', grid: 'grid', row: 'row', gridcell: 'gridcell', columnheader: 'columnheader', tree: 'tree', treeitem: 'treeitem', heading: 'heading',
 };
+/** Roles whose name is their content: a reader reads the text, and says a message when the text changes. */
+const worded = ['text', 'status', 'alert', 'heading'];
 const ownedSurfaces = new WeakSet();
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
 let containers = 0;
@@ -127,8 +129,11 @@ export function createBrowserSemantics(options) {
     function create(node) {
         const native = pressable.includes(node.role), element = page.createElement(native ? 'button' : 'div');
         element.id = container.id + '-' + ++elements;
-        if (native)
+        // A native button is a stop of the Tab key unless it says otherwise, and no element here is one: the canvas keeps the keyboard.
+        if (native) {
             element.setAttribute('type', 'button');
+            element.setAttribute('tabindex', '-1');
+        }
         const role = aria[node.role];
         if (role !== undefined)
             element.setAttribute('role', role);
@@ -161,7 +166,7 @@ export function createBrowserSemantics(options) {
             const { bounds } = node;
             write(item, 'style', 'position:absolute;box-sizing:border-box;margin:0;padding:0;border:0;left:' + (bounds.x - (parent?.bounds.x ?? 0)) + 'px;top:'
                 + (bounds.y - (parent?.bounds.y ?? 0)) + 'px;width:' + bounds.width + 'px;height:' + bounds.height + 'px');
-            if (node.role === 'text')
+            if (worded.includes(node.role))
                 write(item, 'text', node.name);
             else {
                 write(item, 'aria-label', node.name === '' ? undefined : node.name);
@@ -174,16 +179,26 @@ export function createBrowserSemantics(options) {
             write(item, 'aria-expanded', text(node.expanded));
             write(item, 'aria-modal', node.modal === true ? 'true' : undefined);
             write(item, 'aria-multiline', node.multiline === true ? 'true' : undefined);
+            write(item, 'aria-multiselectable', node.multiple === true ? 'true' : undefined);
             write(item, 'aria-valuenow', text(node.range?.now));
             write(item, 'aria-valuemin', text(node.range?.min));
             write(item, 'aria-valuemax', text(node.range?.max));
             write(item, 'aria-orientation', node.orientation);
-            write(item, 'aria-posinset', text(node.position?.index));
-            write(item, 'aria-setsize', text(node.position?.size));
+            // A row says which row of the grid it is and a cell which column it is in; the grid says how many there are. Elsewhere a position is a place in a set.
+            const placed = node.role === 'row' ? 'aria-rowindex' : node.role === 'gridcell' || node.role === 'columnheader' ? 'aria-colindex' : undefined;
+            write(item, 'aria-posinset', placed === undefined ? text(node.position?.index) : undefined);
+            write(item, 'aria-setsize', placed === undefined ? text(node.position?.size) : undefined);
+            if (placed !== undefined)
+                write(item, placed, text(node.position?.index));
+            write(item, 'aria-rowcount', text(node.extent?.rows));
+            write(item, 'aria-colcount', text(node.extent?.columns));
+            write(item, 'aria-sort', node.sort);
+            write(item, 'aria-level', text(node.level));
             // Set on the outermost inert element: the page then keeps everything under it away from every user.
             write(item, 'inert', node.inert && parent?.inert !== true ? '' : undefined);
-            // Reachable by a request of assistive technology, never by the Tab key: the canvas keeps the keyboard.
-            write(item, 'tabindex', node.actions.includes('focus') && !node.disabled ? '-1' : undefined);
+            // Reachable by a request of assistive technology, never by the Tab key. A native button says so from the start, whatever it can do.
+            if (!pressable.includes(node.role))
+                write(item, 'tabindex', node.actions.includes('focus') && !node.disabled ? '-1' : undefined);
         }
         // A relation is written once every element it can name exists.
         for (const node of snapshot.nodes)
