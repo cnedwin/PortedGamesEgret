@@ -298,3 +298,12 @@ dialog.sheet::backdrop { animation: fade-in .2s ease-out both; }
   .main.is-window .goal-side { grid-column: auto; }
   .member-grid { grid-template-columns: minmax(0, 1fr); padding: 8px; }
 }
+
+/* ---- finding arts: the pedlar of books, and what is still to be found ---- */
+.arts-seek { margin-top: 14px; }
+.seek-note { padding: 0 15px 14px; }
+.seek-list { display: grid; gap: 8px; padding: 12px 15px 16px; }
+.seek-list > div { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.seek-list b { min-width: 3em; font: 700 14px var(--serif); }
+.seek-list span { padding: 3px 8px; border: 1px dashed #c3b28c; border-radius: 4px; color: var(--muted); font-size: 12px; }
+.seek-list span.is-held { border-style: solid; border-color: #2f5a48; color: #2f5a48; background: #e6eedd; }

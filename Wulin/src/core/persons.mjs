@@ -215,8 +215,12 @@ export function practise(person, art, points) {
   return after > before ? after : 0;
 }
 
-/** Experience needed to leave a level. */
-export const xpToNext = (level) => Math.round(100 * level ** 1.5);
+/**
+ * Experience needed to leave a level. Set so that someone who trains steadily under a master is fit
+ * to be taken as a personal disciple (level 20) in about five years and to sit as an elder (level 30)
+ * in about twelve: within a game, not beyond it.
+ */
+export const xpToNext = (level) => Math.round(100 * level ** 1.35);
 
 /** Adds experience and applies any levels gained; returns how many. */
 export function gainXp(person, amount) {
@@ -238,9 +242,12 @@ export function gainXp(person, amount) {
   return gained;
 }
 
-/** The arts a person could start now, for menus and for the game's own sects. */
-export function learnableArts(person) {
-  return ARTS.filter((art) => levelOf(person.arts[art.id] ?? 0) < MAX_LEVEL && unmetNeeds(person, art).length === 0);
+/**
+ * The arts a person could start now, for menus and for the game's own sects.
+ * @param held the arts their sect can teach; left out, every art is taken to be on offer
+ */
+export function learnableArts(person, held = null) {
+  return ARTS.filter((art) => levelOf(person.arts[art.id] ?? 0) < MAX_LEVEL && unmetNeeds(person, art, held).length === 0);
 }
 
 /** A rough single number for how dangerous a person is in a fight. */

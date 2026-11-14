@@ -8,6 +8,7 @@ import { commonArt } from '../data/arts.mjs';
 import { EVENT_BY_ID, EVENTS, FORMATIONS, HOUSE_RULES, TALENTS, TRIALS, WANDERER_BY_ID, WANDERERS } from '../data/jianghu.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
 import { findRelic } from './extras.mjs';
+import { findManual } from './library.mjs';
 import { autoWheel, equipFor, growTo, prowess, rollPerson } from './persons.mjs';
 import { clamp } from './rng.mjs';
 
@@ -229,11 +230,14 @@ export function resolvePending(state, index, rng) {
   const risky = choice.risk && rng.chance(choice.risk.chance);
   apply(state, sectId, risky ? choice.risk.gives : choice.gives);
   if (choice.gives.relic && !risky) findRelic(state, sectId, rng);
+  // A manual that is won is one the sect lacks; the outcome names it.
+  const found = choice.gives.manual && !risky ? findManual(state, sectId, rng) : null;
   if (choice.gives.applicant && !risky) {
     const placeId = state.persons[books.leaderId]?.place;
     if (placeId) state.places[placeId].applicants.unshift(rollPerson(rng, { quality: choice.gives.applicant, place: placeId }));
   }
   text = risky ? choice.risk.text : choice.text;
+  if (found) text += `得《${found.name}》，已入藏经阁。`;
   log(state, 'event', `${EVENT_BY_ID[pending.id].title}：${text}`, sectId);
   return { ok: true, text };
 }

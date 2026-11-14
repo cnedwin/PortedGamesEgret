@@ -13,7 +13,7 @@ export const ECONOMY = {
   craftMarkup: 2,
   /** Grain one person eats in a xun, and what a shi of grain costs. */
   grainPerXun: 1,
-  grainPrice: 2,
+  grainPrice: 4,
   /** Nobody more than this may live in one stronghold. */
   headcountCap: 40,
   /** What each village sends its stronghold every xun. */
@@ -35,7 +35,12 @@ export const ECONOMY = {
   glutPrice: 0.35,
   /** What one act of giving costs, and the renown it earns. */
   donation: 1000,
-  donationRenown: 2,
+  donationRenown: 5,
+  /** Giving raises renown no higher than this. */
+  donationCeiling: 400,
+  /** Each year a sect loses this share of the renown it has above the level at which a name rests. */
+  renownRest: 300,
+  renownFade: 0.06,
   shopMoves: 150,
   shopPremium: 0.25,
   shopIncome: [80, 150],

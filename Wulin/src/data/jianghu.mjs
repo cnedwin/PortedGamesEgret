@@ -176,6 +176,14 @@ export const EVENTS = [
     { label: '出兵剿灭', hint: '正邪 +20，威望 +12，银 +100；或有人受伤', gives: { virtue: 20, renown: 12, silver: 100 }, risk: { chance: 0.2, gives: { virtue: 10, wound: 0.3 }, text: '山贼凭险顽抗，本派高手负了伤才将其击溃。' }, text: '贼寨一把火烧了，缴获的财物分了一半给苦主。' },
     { label: '收编为外围', hint: '银 +200，正邪 −30', gives: { silver: 200, virtue: -30 }, text: '山贼头子献上孝敬，从此打着本派的旗号行事。' },
     { label: '严守山门，不去理会', hint: '无事', gives: {}, text: '山贼望着山门上的弓弩，没敢上来。' }] },
+  { id: 'scroll', title: '残卷', text: '一个落魄书生在山门外摆开包袱，里头是半箱虫蛀的旧书。他说是祖上传下来的拳经剑谱，自己看不懂，只求换几两盘缠回乡。', choices: [
+    { label: '照价买下', hint: '银 −200，得一部本派没有的秘笈', cost: 200, gives: { manual: true }, text: '翻检半日，果然拣出一部真东西，其余只合引火。' },
+    { label: '请入山中，细细誊抄', hint: '银 −60，多半抄得一部；也可能是伪书', cost: 60, gives: { manual: true, virtue: 5 }, risk: { chance: 0.35, gives: { virtue: 5 }, text: '抄了三日，才看出全是坊间伪作。书生倒是吃胖了些。' }, text: '书生在山上住了半月，誊出一部干净的抄本，千恩万谢地下山去了。' },
+    { label: '不必了', hint: '无事', gives: {}, text: '书生收起包袱，往下一处山门去了。' }] },
+  { id: 'duelbook', title: '以武换艺', text: '一位路过的武师在演武场外看了半晌，说贵派功夫有可观之处，愿与本派高手切磋一场：他若输了，便把自家看家的本事写下来。', choices: [
+    { label: '派高手下场', hint: '多半得胜，得一部秘笈，威望 +8；也可能负伤', gives: { manual: true, renown: 8 }, risk: { chance: 0.35, gives: { wound: 0.25, renown: -5 }, text: '来人深藏不露，本派高手败下阵来。他拱手一笑，飘然而去。' }, text: '五十招后来人认输，当场默写出一部拳谱，一字不苟。' },
+    { label: '奉茶论武，不动手', hint: '威望 +3', gives: { renown: 3 }, text: '两边坐谈半日，各有所得，只是谁也没把真东西拿出来。' },
+    { label: '婉言谢绝', hint: '无事', gives: {}, text: '武师也不勉强，喝了碗水便走了。' }] },
   { id: 'relic', title: '神兵现世', text: '传闻一处古墓塌了半边，露出一口刻着铭文的石匣。几路人马都在往那里赶。', choices: [
     { label: '派高手去取', hint: '或得神兵；高手或有损伤', gives: { relic: true, renown: 10 }, risk: { chance: 0.4, gives: { wound: 0.3 }, text: '去晚了一步，石匣已空，还与人动了手。' }, text: '本派高手带回一件神兵，可在弟子页赐予合用之人。' },
     { label: '重金向得主收购', hint: '银 −800，必得神兵', cost: 800, gives: { relic: true }, text: '银货两讫，神兵入库。' },

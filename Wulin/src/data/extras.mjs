@@ -55,4 +55,4 @@ export const DIFFICULTIES = [
 ];
 
 /** Travel: what a day on the road may bring, as [chance, what]. */
-export const ROAD = { xp: 14, hurt: 0.015, find: 0.02, days: 30 };
+export const ROAD = { xp: 36, hurt: 0.015, find: 0.02, days: 30 };
