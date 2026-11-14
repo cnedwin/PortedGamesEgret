@@ -13,8 +13,8 @@
 import { AnimationMixer3D, Attribute3D, Bone3D, Mesh3D, Skeleton3D, Object3D, createAnimationClip3D, createGeometry3D, quatFromEuler } from '@egret/engine/world3d';
 import { BALL, BOX, ORB, ROD, SPIKE, mix, model, rgb, shade, toon } from './shapes.mjs';
 
-/** People are shaded in more steps than buildings are, so cloth and faces round off softly. */
-const CLOTH = toon({ steps: 5 });
+/** People wear woven cloth: a finer grain than stone or timber. */
+const CLOTH = toon({ grain: 'woven' });
 
 const SKIN = 0xf2cfa8,
   HAIR = 0x1d1a1a,
@@ -242,7 +242,7 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
   legR.knee = bone('kneeR', legR.hip, 0, -0.45, 0);
 
   // ---- the skin: tubes of rings, each point weighted to the bones it follows --------------------------------
-  const skin = { p: [], n: [], c: [], j: [], w: [], i: [] };
+  const skin = { p: [], n: [], c: [], u: [], j: [], w: [], i: [] };
   const AROUND = 18;
   /**
    * Adds a tube to the skin. A ring is [x, y, z, radiusX, radiusZ, colour, weights]; the colour may be a
@@ -257,6 +257,7 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
           sx = Math.sin(angle),
           cz = Math.cos(angle);
         skin.p.push(x + sx * rx, y, z + cz * rz);
+        skin.u.push((k / AROUND) * Math.max(1, Math.round(rx * 14)), y * 2.6);
         // Outward, and tipped up or down where the tube widens or narrows.
         const before = rings[Math.max(0, r - 1)],
           after = rings[Math.min(rings.length - 1, r + 1)],
@@ -287,6 +288,7 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
         centre = skin.p.length / 3,
         up = (r === 0) === rings[0][1] > rings[rings.length - 1][1];
       skin.p.push(x, y, z);
+      skin.u.push(0.5, y * 2.6);
       skin.n.push(0, up ? 1 : -1, 0);
       skin.c.push(...rgb(typeof colour === 'function' ? colour(0) : colour));
       const shares = typeof weights === 'function' ? weights(0) : weights,
@@ -376,7 +378,7 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
       [x, 0.05, 0, 0.056, 0.06, 0x2a2420, [[knee, 1]]],
     ]);
   }
-  const geometry = createGeometry3D({ positions: skin.p, normals: skin.n, colors: skin.c, indices: skin.i });
+  const geometry = createGeometry3D({ positions: skin.p, normals: skin.n, colors: skin.c, uvs: skin.u, indices: skin.i });
   geometry.setAttribute('joints', new Attribute3D(new Uint16Array(skin.j), 4));
   geometry.setAttribute('weights', new Attribute3D(new Float32Array(skin.w), 4));
   const mesh = new Mesh3D(geometry, CLOTH);

@@ -9,7 +9,7 @@
 // gain a second roof. Anything that glows (lanterns, a forge's fire) is a
 // second mesh in a material that ignores the light, so it shines after dark.
 import { Mesh3D, Object3D } from '@egret/engine/world3d';
-import { BALL, BOX, ROD, SPIKE, TAPER, beam, glow, heightSurface, model, shade, toon } from './shapes.mjs';
+import { BALL, BOX, ROD, SPIKE, TAPER, beam, glow, grad, heightSurface, model, shade, toon } from './shapes.mjs';
 
 /** The ground one building stands on, in metres; seat.mjs lays plots out in a grid. */
 export const PLOT = 11;
@@ -27,7 +27,7 @@ const STONE = 0xbdb7a6,
   GOLD = 0xd9b04a,
   PAPER = 0xf1e3b8;
 
-const ROOF_MATERIAL = toon({ steps: 4 });
+const ROOF_MATERIAL = toon({ grain: 'tiled' });
 const LANTERN = glow(0xff7a3a, 1.5),
   FIRE = glow(0xffa040, 1.9),
   WINDOW = glow(0xffd98a, 0.95);
@@ -106,7 +106,7 @@ function hall({ w, d, h, tile = TILE, storeys = 1, platform = 0.5, open = false,
   const front = d / 2,
     top = platform + h;
   const parts = [
-    [BOX, [0, platform / 2, 0], [w + 1.2, platform, d + 1.2], STONE],
+    [BOX, [0, platform / 2, 0], [w + 1.2, platform, d + 1.2], grad(STONE, 0.78, 1.02)],
     [BOX, [0, platform - 0.04, 0], [w + 1.36, 0.1, d + 1.36], shade(STONE, 1.08)],
   ];
   const glass = [],
@@ -141,7 +141,7 @@ function hall({ w, d, h, tile = TILE, storeys = 1, platform = 0.5, open = false,
   const cols = Math.max(2, Math.round(w / 2.2)) + 1;
   for (let i = 0; i < cols; i++) {
     const x = (i / (cols - 1) - 0.5) * w;
-    for (const z of [front, -front]) parts.push([ROD, [x, platform + h / 2, z], [0.16, h, 0.16], COLUMN], [BOX, [x, platform + 0.07, z], [0.44, 0.14, 0.44], STONE_DARK], [BOX, [x, top - 0.34, z], [0.36, 0.1, 0.36], 0x2f6f73]);
+    for (const z of [front, -front]) parts.push([ROD, [x, platform + h / 2, z], [0.16, h, 0.16], grad(COLUMN, 0.7, 1.08)], [BOX, [x, platform + 0.07, z], [0.44, 0.14, 0.44], STONE_DARK], [BOX, [x, top - 0.34, z], [0.36, 0.1, 0.36], 0x2f6f73]);
     // A lantern hangs from the beam between the front columns.
     if (lamps && i > 0 && (cols < 5 || i % 2 === 1) && !(Math.abs(x - w / (cols - 1) / 2) < 1.2 && cols % 2 === 0)) {
       const lx = x - w / (cols - 1) / 2;
@@ -153,7 +153,7 @@ function hall({ w, d, h, tile = TILE, storeys = 1, platform = 0.5, open = false,
   }
   if (!open) {
     const wallZ = front - 0.8;
-    parts.push([BOX, [0, platform + h / 2, -0.25], [w - 0.4, h, d - 1.1], WALL], [BOX, [0, platform + 0.3, -0.25], [w - 0.34, 0.6, d - 1.04], shade(STONE, 0.9)]);
+    parts.push([BOX, [0, platform + h / 2, -0.25], [w - 0.4, h, d - 1.1], grad(WALL, 0.8, 1.04)], [BOX, [0, platform + 0.3, -0.25], [w - 0.34, 0.6, d - 1.04], shade(STONE, 0.9)]);
     // Double doors with a frame, studs and ring handles.
     const dh = h * 0.84;
     parts.push([BOX, [0, platform + dh / 2, wallZ], [1.9, dh + 0.14, 0.1], shade(WOOD, 0.7)]);
@@ -414,12 +414,12 @@ export function createBuilding(kind, level = 1) {
 }
 
 const TREES = {
-  pine: (x, z, s) => [[TAPER, [x, 0.7 * s, z], [0.18 * s, 1.4 * s, 0.18 * s], WOOD], [SPIKE, [x, 2.0 * s, z], [1.15 * s, 2.0 * s, 1.15 * s], shade(LEAF, 0.78)], [SPIKE, [x, 2.9 * s, z], [0.9 * s, 1.8 * s, 0.9 * s], shade(LEAF, 0.9)], [SPIKE, [x, 3.7 * s, z], [0.62 * s, 1.5 * s, 0.62 * s], LEAF]],
-  round: (x, z, s) => [[TAPER, [x, 0.9 * s, z], [0.2 * s, 1.8 * s, 0.2 * s], WOOD], [BALL, [x, 2.5 * s, z], [1.3 * s, 1.2 * s, 1.3 * s], LEAF], [BALL, [x + 0.5 * s, 3.1 * s, z + 0.2], [0.9 * s, 0.8 * s, 0.9 * s], shade(LEAF, 1.15)], [BALL, [x - 0.6 * s, 2.9 * s, z - 0.3 * s], [0.8 * s, 0.7 * s, 0.8 * s], shade(LEAF, 0.9)]],
-  maple: (x, z, s) => [[TAPER, [x, 0.9 * s, z], [0.18 * s, 1.8 * s, 0.18 * s], shade(WOOD, 0.8)], [BALL, [x, 2.4 * s, z], [1.2 * s, 1.0 * s, 1.2 * s], 0xc2552a], [BALL, [x + 0.5 * s, 2.9 * s, z], [0.8 * s, 0.7 * s, 0.8 * s], 0xd9792a], [BALL, [x - 0.5 * s, 2.8 * s, z + 0.3 * s], [0.7 * s, 0.6 * s, 0.7 * s], 0xa8402a]],
-  blossom: (x, z, s) => [[TAPER, [x, 0.7 * s, z], [0.14 * s, 1.4 * s, 0.14 * s], 0x4a3428], [ROD, [x + 0.3 * s, 1.5 * s, z], [0.05 * s, 0.9 * s, 0.05 * s], 0x4a3428, [0, 0, -0.7]], [BALL, [x, 2.0 * s, z], [1.0 * s, 0.8 * s, 1.0 * s], 0xf2b8c6], [BALL, [x + 0.6 * s, 2.2 * s, z + 0.2 * s], [0.7 * s, 0.55 * s, 0.7 * s], 0xf7d0d8], [BALL, [x - 0.5 * s, 2.3 * s, z - 0.2 * s], [0.6 * s, 0.5 * s, 0.6 * s], 0xe89ab0]],
-  willow: (x, z, s) => [[TAPER, [x, 1.0 * s, z], [0.22 * s, 2.0 * s, 0.22 * s], 0x5a4632], [BALL, [x, 2.5 * s, z], [1.3 * s, 0.8 * s, 1.3 * s], 0x7fae5a], ...[0, 1, 2, 3, 4, 5].map((i) => [TAPER, [x + Math.cos(i * 1.05) * 1.05 * s, 1.75 * s, z + Math.sin(i * 1.05) * 1.05 * s], [0.3 * s, 1.5 * s, 0.3 * s], i % 2 ? 0x8fbf66 : 0x7fae5a, [Math.PI, 0, 0]])],
-  bamboo: (x, z, s) => [0, 1, 2, 3, 4].flatMap((i) => { const dx = Math.cos(i * 2.4) * 0.35 * s, dz = Math.sin(i * 2.4) * 0.35 * s, h = (3 + (i % 3) * 0.7) * s; return [[ROD, [x + dx, h / 2, z + dz], [0.05 * s, h, 0.05 * s], 0x7aa04a, [dz * 0.1, 0, -dx * 0.1]], [BALL, [x + dx * 1.3, h * 0.92, z + dz * 1.3], [0.45 * s, 0.5 * s, 0.45 * s], i % 2 ? 0x5f9a3f : 0x79b04f]]; }),
+  pine: (x, z, s) => [[TAPER, [x, 0.7 * s, z], [0.18 * s, 1.4 * s, 0.18 * s], grad(WOOD)], [SPIKE, [x, 2.0 * s, z], [1.15 * s, 2.0 * s, 1.15 * s], grad(shade(LEAF, 0.78))], [SPIKE, [x, 2.9 * s, z], [0.9 * s, 1.8 * s, 0.9 * s], grad(shade(LEAF, 0.9))], [SPIKE, [x, 3.7 * s, z], [0.62 * s, 1.5 * s, 0.62 * s], grad(LEAF)]],
+  round: (x, z, s) => [[TAPER, [x, 0.9 * s, z], [0.2 * s, 1.8 * s, 0.2 * s], grad(WOOD)], [BALL, [x, 2.5 * s, z], [1.3 * s, 1.2 * s, 1.3 * s], grad(LEAF)], [BALL, [x + 0.5 * s, 3.1 * s, z + 0.2], [0.9 * s, 0.8 * s, 0.9 * s], grad(shade(LEAF, 1.15))], [BALL, [x - 0.6 * s, 2.9 * s, z - 0.3 * s], [0.8 * s, 0.7 * s, 0.8 * s], grad(shade(LEAF, 0.9))]],
+  maple: (x, z, s) => [[TAPER, [x, 0.9 * s, z], [0.18 * s, 1.8 * s, 0.18 * s], grad(shade(WOOD, 0.8))], [BALL, [x, 2.4 * s, z], [1.2 * s, 1.0 * s, 1.2 * s], grad(0xc2552a)], [BALL, [x + 0.5 * s, 2.9 * s, z], [0.8 * s, 0.7 * s, 0.8 * s], grad(0xd9792a)], [BALL, [x - 0.5 * s, 2.8 * s, z + 0.3 * s], [0.7 * s, 0.6 * s, 0.7 * s], grad(0xa8402a)]],
+  blossom: (x, z, s) => [[TAPER, [x, 0.7 * s, z], [0.14 * s, 1.4 * s, 0.14 * s], grad(0x4a3428)], [ROD, [x + 0.3 * s, 1.5 * s, z], [0.05 * s, 0.9 * s, 0.05 * s], 0x4a3428, [0, 0, -0.7]], [BALL, [x, 2.0 * s, z], [1.0 * s, 0.8 * s, 1.0 * s], grad(0xf2b8c6)], [BALL, [x + 0.6 * s, 2.2 * s, z + 0.2 * s], [0.7 * s, 0.55 * s, 0.7 * s], grad(0xf7d0d8)], [BALL, [x - 0.5 * s, 2.3 * s, z - 0.2 * s], [0.6 * s, 0.5 * s, 0.6 * s], grad(0xe89ab0)]],
+  willow: (x, z, s) => [[TAPER, [x, 1.0 * s, z], [0.22 * s, 2.0 * s, 0.22 * s], grad(0x5a4632)], [BALL, [x, 2.5 * s, z], [1.3 * s, 0.8 * s, 1.3 * s], grad(0x7fae5a)], ...[0, 1, 2, 3, 4, 5].map((i) => [TAPER, [x + Math.cos(i * 1.05) * 1.05 * s, 1.75 * s, z + Math.sin(i * 1.05) * 1.05 * s], [0.3 * s, 1.5 * s, 0.3 * s], grad(i % 2 ? 0x8fbf66 : 0x7fae5a), [Math.PI, 0, 0]])],
+  bamboo: (x, z, s) => [0, 1, 2, 3, 4].flatMap((i) => { const dx = Math.cos(i * 2.4) * 0.35 * s, dz = Math.sin(i * 2.4) * 0.35 * s, h = (3 + (i % 3) * 0.7) * s; return [[ROD, [x + dx, h / 2, z + dz], [0.05 * s, h, 0.05 * s], 0x7aa04a, [dz * 0.1, 0, -dx * 0.1]], [BALL, [x + dx * 1.3, h * 0.92, z + dz * 1.3], [0.45 * s, 0.5 * s, 0.45 * s], grad(i % 2 ? 0x5f9a3f : 0x79b04f)]]; }),
 };
 /** The kinds of tree there are to plant. */
 export const TREE_KINDS = Object.keys(TREES);

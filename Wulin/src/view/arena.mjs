@@ -70,8 +70,10 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 40, near: 0.5, far: 500 });
   scene.addChild(camera);
-  const { aim } = lightScene(scene, 'dusk', stage.quality);
-  aim(0, 0, 0);
+  // A fight is fought in the light of the hour it falls at: morning, noon, afternoon or dusk.
+  const light = lightScene(scene, 'day', stage.quality);
+  light.setHour([7.2, 10.5, 15.5, 17.9][battle.units.length % 4]);
+  light.aim(0, 0, 0);
   const random = scatter(battle.units.length * 977 + 13);
   scene.addChild(field(colors, random));
 
@@ -144,6 +146,8 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
   const arena = {
     scene,
     camera,
+    light,
+    mist: 0.0014,
     battle,
     paused: false,
     /** Game seconds for each real second. */

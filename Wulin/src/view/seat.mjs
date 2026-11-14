@@ -10,7 +10,7 @@ import { PLACE_BY_ID } from '../data/places.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
 import { PLOT, TREE_KINDS, createBuilding, treeParts } from './buildings.mjs';
 import { STRIKE_OF, createFigure } from './figure.mjs';
-import { BALL, BOX, ROD, SPIKE, TAPER, TOON, beam, build, glow, heightSurface, hexOf, mix, model, scatter, shade } from './shapes.mjs';
+import { BALL, BOX, FOLIAGE, ROD, SPIKE, TAPER, TOON, grad, beam, build, glow, heightSurface, hexOf, mix, model, scatter, shade } from './shapes.mjs';
 import { lightScene } from './stage.mjs';
 
 /** How many people are shown at once, by picture quality. */
@@ -114,6 +114,7 @@ const POND = { x: -22, z: 29, rx: 7.5, rz: 3.6 };
 function surroundings(height, random, sectColor) {
   const node = new Object3D();
   const parts = [],
+    greens = [],
     lit = [];
   const edge = YARD - 6;
   const wall = (x, z, w, d) => parts.push([BOX, [x, 1.3, z], [w, 2.6, d], 0xe4dcc8], [BOX, [x, 0.3, z], [w + 0.12, 0.6, d + 0.12], 0xb9b3a2], [BOX, [x, 2.75, z], [w + 0.6, 0.3, d + 0.6], 0x3f4a52], [BOX, [x, 2.96, z], [w + 0.2, 0.16, d + 0.2], 0x353e45]);
@@ -178,13 +179,13 @@ function surroundings(height, random, sectColor) {
   pond.receiveShadow = true;
   node.addChild(pond);
   // East of the gate: a bamboo grove with a stone table and stools, and a rockery.
-  for (let i = 0; i < 9; i++) for (const part of treeParts(15 + random() * 15, 26 + random() * 7, 0.9 + random() * 0.5, 'bamboo')) parts.push(part);
+  for (let i = 0; i < 9; i++) for (const part of treeParts(15 + random() * 15, 26 + random() * 7, 0.9 + random() * 0.5, 'bamboo')) greens.push(part);
   parts.push([ROD, [20, 0.4, 25.5], [0.9, 0.12, 0.9], 0xa9a69c], [ROD, [20, 0.2, 25.5], [0.3, 0.4, 0.3], 0x8f8a7c], ...[0, 1.57, 3.14, 4.71].map((a) => [ROD, [20 + Math.cos(a) * 1.4, 0.2, 25.5 + Math.sin(a) * 1.4], [0.26, 0.4, 0.26], 0x9a978d]));
   for (let i = 0; i < 5; i++) parts.push([BALL, [10 + i * 0.9 + random(), 0.5 + random() * 0.8, 30 + random() * 2], [0.7 + random() * 0.6, 0.9 + random() * 1.3, 0.6 + random() * 0.5], shade(0x8d8a80, 0.8 + random() * 0.35)]);
   // Trees inside the wall, along it and in the corners; blossom and maple nearest the hall.
   const plant = (x, z, size, kind) => {
     const y = height(x, z);
-    for (const part of treeParts(x, z, size, kind)) parts.push([part[0], [part[1][0], part[1][1] + y, part[1][2]], part[2], part[3], part[4]]);
+    for (const part of treeParts(x, z, size, kind)) greens.push([part[0], [part[1][0], part[1][1] + y, part[1][2]], part[2], part[3], part[4]]);
   };
   for (const sx of [-1, 1]) {
     plant(sx * 13.5, HALL_AT.z + 4.5, 1.25, 'blossom');
@@ -198,7 +199,7 @@ function surroundings(height, random, sectColor) {
     const along = (random() - 0.5) * 2 * (edge - 2),
       sx = random() < 0.5 ? -1 : 1;
     const [x, z] = random() < 0.6 ? [sx * (edge - 1.2), along] : [along, -(edge - 1.2)];
-    parts.push([BALL, [x, 0.35, z], [0.6 + random() * 0.5, 0.45 + random() * 0.3, 0.6 + random() * 0.5], shade(0x4f7f3f, 0.8 + random() * 0.4)]);
+    greens.push([BALL, [x, 0.35, z], [0.6 + random() * 0.5, 0.45 + random() * 0.3, 0.6 + random() * 0.5], grad(shade(0x4f7f3f, 0.8 + random() * 0.4), 0.6, 1.15)]);
   }
   // Outside: forest on the slopes, thicker lower down, with rocks and scrub among it.
   for (let i = 0; i < 230; i++) {
@@ -219,8 +220,16 @@ function surroundings(height, random, sectColor) {
       y = height(x, z);
     if (Math.abs(x) < 5 && z > 0) continue;
     if (i % 3 === 0) parts.push([BALL, [x, y + 0.3, z], [0.8 + random() * 1.6, 0.6 + random() * 1.2, 0.8 + random() * 1.4], shade(0x8d8a80, 0.8 + random() * 0.4)]);
-    else parts.push([BALL, [x, y + 0.4, z], [0.9 + random(), 0.6 + random() * 0.5, 0.9 + random()], shade(0x4a7a3c, 0.75 + random() * 0.5)]);
+    else greens.push([BALL, [x, y + 0.4, z], [0.9 + random(), 0.6 + random() * 0.5, 0.9 + random()], grad(shade(0x4a7a3c, 0.75 + random() * 0.5), 0.6, 1.15)]);
   }
+  // Far ranges ring the valley, each paler than the one before it as the haze takes them.
+  for (const [radius, tall, tone] of [[210, 60, 0x6f8478], [265, 88, 0x8499a0], [320, 120, 0xa3b3bd]])
+    for (let i = 0; i < 22; i++) {
+      const a = (i / 22) * 6.283 + random() * 0.2,
+        wide = 34 + random() * 30,
+        high = tall * (0.55 + random() * 0.6);
+      parts.push([SPIKE, [Math.cos(a) * radius, high / 2 - 8, Math.sin(a) * radius], [wide, high, wide * (0.7 + random() * 0.5)], grad(tone, 0.82, 1.18), [0, random() * 3, 0]]);
+    }
   // The road out of the gate, with milestones.
   for (const z of [44, 54, 64]) for (const sx of [-1, 1]) parts.push([BOX, [sx * 3.4, height(sx * 3.4, z) + 0.4, z], [0.4, 0.8, 0.3], 0x9a978d]);
   // Poles for the banners; the cloth itself is hung separately so that it can move.
@@ -236,6 +245,7 @@ function surroundings(height, random, sectColor) {
     banners.push(flag);
   }
   node.addChild(model(parts));
+  node.addChild(model(greens, FOLIAGE));
   node.addChild(model(lit, LAMP, false));
   return { node, lamps, banners, censer: [censer[0], 1.5, censer[2]] };
 }
@@ -276,7 +286,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
   scene.addChild(camera);
   const light = lightScene(scene, 'day', stage.quality);
   light.aim(0, 0, 0);
-  // The day turns in six minutes; it begins at a different hour in every place.
+  // The day turns in about four minutes; it begins at a different hour in every place.
   let hour = 7 + ((spec.at.x * 7 + spec.at.y * 3) % 9);
   const land = ground(spec, random);
   scene.addChild(land.mesh);
@@ -461,6 +471,8 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
   refresh();
   const scene3 = {
     showTags: true,
+    /** The light of this place, for whoever wants to know the hour. */
+    light,
     /** Sets the hour of the day, 0 to 24, for looking at the place in a given light. */
     setHour: (value) => (hour = value),
     scene,
@@ -475,7 +487,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       stage.orbit.apply(camera, dt);
       clock += dt;
       // The day moves on, quicker through the night; shadows follow whatever the camera is looking at.
-      hour = (hour + dt * (light.night ? 0.2 : 0.055)) % 24;
+      hour = (hour + dt * (light.night ? 0.3 : 0.075)) % 24;
       light.setHour(hour);
       light.aim(stage.orbit.target?.[0] ?? 0, 0, stage.orbit.target?.[2] ?? 0);
       // Banners stir in the wind.

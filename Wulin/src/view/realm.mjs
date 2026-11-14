@@ -778,6 +778,9 @@ export function createRealm(stage, world, { layer = null } = {}) {
   const realm = {
     scene,
     camera,
+    light,
+    /** Thin air: the land is seen from far above. */
+    mist: 0.0005,
     refresh,
     setTrade,
     /**

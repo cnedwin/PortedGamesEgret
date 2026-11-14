@@ -353,7 +353,7 @@ function seatScreen() {
   }[ui.seatTab]();
   return `<section class="scene-panel seat-panel" aria-label="山门">
       <div class="region" data-region="seat-over">
-        <div class="scene-top"><div class="scene-chip">${icon('pin')}<span>${esc(spec.name)}${seat}</span><small>${status}</small></div>${switcher}</div>
+        <div class="scene-top"><div class="scene-chip">${icon('pin')}<span>${esc(spec.name)}${seat}</span><small>${status}</small></div>${picture.stage ? `<div class="scene-chip hour-chip">${icon('banner')}<span id="hour-chip">${hourText()}</span></div>` : ''}${switcher}</div>
         ${picture.stage ? `<div class="scene-zoom" role="group" aria-label="山门视角"><button data-act="zoom" data-dir="in" aria-label="拉近">${icon('plus')}</button><button data-act="zoom" data-dir="out" aria-label="拉远">${icon('minus')}</button><button data-act="zoom" data-dir="reset" aria-label="恢复全景">${icon('frame')}</button></div>
         <div class="scene-bottom"><span>${icon('layers')} 拖动转视角，滚轮或双指缩放</span><span><button class="scene-overlay-button" data-act="tags">${ui.tags ? '隐藏建筑名' : '显示建筑名'}</button></span></div>` : ''}
       </div>
@@ -366,6 +366,19 @@ function seatScreen() {
 
 /** One line of things to be done: what it is, a word about it, and the control that does it. */
 const affair = (name, about, control) => `<div class="affair"><div><b>${esc(name)}</b><small>${esc(about)}</small></div>${control}</div>`;
+
+/** The hour in the seat's picture, by the old twelve-hour clock, with the part of the day it falls in. */
+function hourText() {
+  const hour = picture.seat?.light?.hour;
+  if (hour === undefined) return '';
+  const part = hour < 5 || hour >= 19.4 ? '夜' : hour < 8 ? '晨' : hour < 11 ? '上午' : hour < 13 ? '正午' : hour < 17 ? '午后' : '黄昏';
+  return `${'子丑寅卯辰巳午未申酉戌亥'[Math.floor(((hour + 1) % 24) / 2)]}时 · ${part}`;
+}
+// The hour moves on its own, whether or not the days are passing.
+setInterval(() => {
+  const chip = document.querySelector('#hour-chip');
+  if (chip) chip.textContent = hourText();
+}, 2000);
 
 /** One line on how a stronghold is doing. */
 function b_status(place, here) {
