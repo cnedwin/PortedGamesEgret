@@ -830,15 +830,15 @@ body[data-art="jyx2"] .jyx2-member-portrait {
     flex: 1;
     grid-template-rows: 1fr auto auto auto auto auto;
   }
-  #play-screen:has(.mobile-dialogue:not([hidden])) .screen {
-    --native-viewport-height: clamp(calc(var(--play-width) * .5625), calc(100dvh - 320px), var(--play-width));
-  }
   #play-screen .screen > header { grid-row: 2; }
   #play-screen .screen > .viewport { grid-row: 3; }
   #play-screen .screen > .mobile-dialogue { grid-row: 4; }
   #play-screen .screen > .battle-controls { grid-row: 5; }
   #play-screen .screen > footer { grid-row: 6; }
-  #play-screen .viewport > #game { height: var(--native-viewport-height, auto); }
+  #play-screen .viewport > #game { height: var(--native-dialogue-height, var(--native-viewport-height, auto)); }
+  #play-screen:has(.mobile-dialogue:not([hidden])) .screen {
+    --native-dialogue-height: clamp(calc(var(--play-width) * .5625), calc(100dvh - var(--dialogue-space, 320px)), var(--play-width));
+  }
   #play-screen > .controls {
     margin-block-start: auto;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
@@ -903,9 +903,7 @@ body[data-art="jyx2"] .jyx2-member-portrait {
   }
   #play-screen:has(.viewport > .native-world3d-canvas:not([hidden])) > .controls { margin-block-start: 0; }
   @media (max-width: 360px) {
-    #play-screen:has(.mobile-dialogue:not([hidden])) .screen {
-      --native-viewport-height: clamp(calc(var(--play-width) * .5625), calc(100dvh - 355px), var(--play-width));
-    }
+    #play-screen { --dialogue-space: 355px; }
     .mobile-dialogue:not([hidden]) { gap: 9px; padding: 10px 12px 12px; }
     .mobile-dialogue-copy p { line-height: 1.45; }
   }
