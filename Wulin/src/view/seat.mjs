@@ -535,7 +535,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       let actor = cast.get(person.id);
       if (actor && actor.gearKey !== `${person.rank}|${weaponSlotOf(person)}`) scene.removeChild(actor.figure.node), (actor = null);
       if (!actor) {
-        const figure = createFigure({ color: hexOf(SECT_BY_ID[person.school].color), female: person.female, rank: person.rank, weapon: weaponSlotOf(person), monk: person.school === 'shaolin' || person.school === 'chongsheng', seed: person.id });
+        const figure = createFigure({ color: hexOf(SECT_BY_ID[person.school].color), school: person.school, female: person.female, rank: person.rank, weapon: weaponSlotOf(person), seed: person.id, portraitId: person.portraitId, age: person.age, quality: stage.quality });
         actor = { figure, gearKey: `${person.rank}|${weaponSlotOf(person)}`, x: (random() - 0.5) * 8, z: GATE_AT.z + random() * 4, heading: Math.PI, wait: random() * 2, step: 0 };
         scene.addChild(figure.node);
         cast.set(person.id, actor);

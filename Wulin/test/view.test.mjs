@@ -72,13 +72,18 @@ test('an arena plays a battle to its end', () => {
   assert.equal(again.time, battle.time);
 });
 
-test('a figure is one skinned body: every point follows its bones in full, and the bones move', () => {
-  const figure = createFigure({ female: true, rank: 4, seed: 5 });
-  assert.equal(figure.mesh.skeleton.bones.length, 12);
+test('a figure is one skinned body: even the weapon and robe panels follow the rig', () => {
+  const figure = createFigure({ school: 'emei', female: true, rank: 4, seed: 5, weapon: 'sword' });
+  assert.equal(figure.mesh.skeleton.bones.length, 14);
+  assert.equal(figure.node.children.length, 1);
   const weights = figure.mesh.geometry.getAttribute('weights').data,
     joints = figure.mesh.geometry.getAttribute('joints').data;
   for (let i = 0; i < weights.length; i += 4) assert.ok(Math.abs(weights[i] + weights[i + 1] + weights[i + 2] + weights[i + 3] - 1) < 1e-5);
-  assert.ok(joints.every((index) => index < 12));
+  assert.ok(joints.every((index) => index < figure.bones.length));
+  for (const name of ['grip', 'clothFront', 'clothBack']) {
+    const joint = figure.bones.find((bone) => bone.name === name).index;
+    assert.ok(joints.some((index, at) => index === joint && weights[at] > 0), name);
+  }
   const elbow = figure.bones.find((bone) => bone.name === 'elbowR'),
     before = [...elbow.quaternion];
   figure.play('punch', { base: 'guard' });

@@ -84,4 +84,6 @@ node tools/vendor.mjs <path>    # 从引擎仓库更新 vendor/ · refresh vendo
 
 Serve this folder with any static file server to run it, for example `npx serve .`. The rules are in `src/core` and the data in `src/data`; neither needs a page. `src/ui` and `src/main.mjs` are the interface, `src/view` is the 3D picture, `art-handoff/` holds the portraits, scene paintings and interface styles, and `tools/models.html` and `tools/seat.html` show the figures' actions and a seat on their own. Add `?quality=low` (or `medium`, `high`) to the address to choose the picture quality.
 
+动作预览可用 `tools/models.html?action=sword&phase=contact` 查看单个招式的命中姿势。去掉 `phase` 参数即可循环演练。 · Use `tools/models.html?action=sword&phase=contact` to inspect a move at its contact frame. Omit `phase` to loop the action.
+
 素材来源见 [ASSETS.md](ASSETS.md)。 · Asset sources are listed in [ASSETS.md](ASSETS.md).

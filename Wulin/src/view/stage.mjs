@@ -71,6 +71,7 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
     show(next) {
       current.leave?.();
       current = next ?? blank;
+      viewOptions.maxPixelRatio = quality === 'high' ? 1.5 : quality === 'low' ? current.lowPixelRatio ?? 1 : 1;
       view.scene = current.scene;
       view.camera = current.camera;
       stage.orbit.onTap = null;
@@ -84,7 +85,7 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
       return current;
     },
   };
-  const view = backend.createWorld3DView(engine, scope, {
+  const viewOptions = {
     renderer,
     scene: blank.scene,
     camera: blank.camera,
@@ -102,7 +103,8 @@ export async function createStage(canvas, { onError = () => {}, quality = pickQu
       } else if (air) (air.fogDensity = 0), (air.shaftIntensity = 0), air.update(current.camera);
     },
     onError,
-  });
+  };
+  const view = backend.createWorld3DView(engine, scope, viewOptions);
   backend.startWorld3DLoop(engine, onError);
   return stage;
 }
