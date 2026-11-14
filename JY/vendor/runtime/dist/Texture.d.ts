@@ -22,6 +22,8 @@ export interface TextureSnapshot2D {
     readonly sourceRect: TextureRegion2D;
     readonly viewRegion: TextureViewRegion2D | null;
 }
+/** The image alone, under the checks of `readTextureSnapshot` and without a record of its own. */
+export declare function readTextureImage(texture: Texture): ImageData2D;
 /** Runtime-private authority; never consult subclass-overridable getters. */
 export declare function readTextureSnapshot(texture: Texture): TextureSnapshot2D;
 //# sourceMappingURL=Texture.d.ts.map

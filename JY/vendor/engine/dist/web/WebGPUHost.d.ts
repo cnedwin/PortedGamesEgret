@@ -1,12 +1,8 @@
 import type { SharedDeviceSessionStatus, SharedHostResourceStatus } from './sharedDeviceSession.js';
 import type { SharedFrameUploadOptions, SharedFrameUpload } from './sharedFrameUpload.js';
 import type { SharedRenderFrame2D, SharedRenderHostAdapter } from '@egret/contracts';
-import type { SharedWebGPUHostOptions, SharedSceneWebGPUHostOptions } from './sharedWebGPUOptions.js';
-export type { SharedWebGPUHostOptions, SharedSceneWebGPUHostOptions } from './sharedWebGPUOptions.js';
-import type { RenderFrame2D, RenderHostAdapter, TexturedRenderHostAdapter } from '@egret/contracts';
-import type { B1BuiltinProtocol, B1WebGPUHost, TexturedB1WebGPUHost } from './b1.js';
-import type { TexturedWebGPUHostOptions } from './texturedWebGPUOptions.js';
-export type { TexturedWebGPUHostOptions } from './texturedWebGPUOptions.js';
+import type { SharedWebGPUHostOptions } from './sharedWebGPUOptions.js';
+export type { SharedWebGPUHostOptions } from './sharedWebGPUOptions.js';
 export type WebGPUHostState = 'new' | 'starting' | 'active' | 'stopped' | 'failed' | 'closing' | 'closed';
 export type WebGPUHostErrorCode = 'WEBGPU_OPTIONS_INVALID' | 'WEBGPU_UNAVAILABLE' | 'WEBGPU_ADAPTER_UNAVAILABLE' | 'WEBGPU_DEVICE_FAILED' | 'WEBGPU_CONTEXT_UNAVAILABLE' | 'WEBGPU_FORMAT_UNSUPPORTED' | 'WEBGPU_START_FAILED' | 'WEBGPU_START_CANCELLED' | 'WEBGPU_NOT_STARTED' | 'WEBGPU_STOPPED' | 'WEBGPU_CLOSED' | 'WEBGPU_FAILED' | 'WEBGPU_REENTRANT' | 'WEBGPU_FRAME_PROFILE_UNSUPPORTED' | 'WEBGPU_FRAME_INVALID' | 'WEBGPU_BACKING_LIMIT' | 'WEBGPU_GEOMETRY_RANGE' | 'WEBGPU_PRECISION_UNSUPPORTED' | 'WEBGPU_FRAME_BUDGET' | 'WEBGPU_BACKPRESSURE' | 'WEBGPU_DEVICE_LIMIT' | 'WEBGPU_SERIAL_EXHAUSTED' | 'WEBGPU_RENDER_FAILED' | 'WEBGPU_VALIDATION' | 'WEBGPU_OUT_OF_MEMORY' | 'WEBGPU_INTERNAL' | 'WEBGPU_SCOPE_FAILED' | 'WEBGPU_QUEUE_FAILED' | 'WEBGPU_DEVICE_LOST' | 'WEBGPU_UNCAPTURED_ERROR' | 'WEBGPU_READBACK_DISABLED' | 'WEBGPU_READBACK_PENDING' | 'WEBGPU_READBACK_FAILED' | 'WEBGPU_DIAGNOSTIC_CALLBACK_FAILED' | 'WEBGPU_CLOSE_UNSAFE' | 'WEBGPU_UPLOAD_INVALID' | 'WEBGPU_UPLOAD_OPTIONS_INVALID' | 'WEBGPU_UPLOAD_NOT_READY' | 'WEBGPU_UPLOAD_USED' | 'WEBGPU_UPLOAD_DISPOSED' | 'WEBGPU_UPLOAD_ABORTED' | 'WEBGPU_UPLOAD_EXPIRED' | 'WEBGPU_UPLOAD_STALE' | 'WEBGPU_RECOVERY_DISABLED' | 'WEBGPU_RECOVERY_STATE_INVALID' | 'WEBGPU_RECOVERY_DEVICE_INVALID' | 'WEBGPU_RECOVERY_TIMEOUT' | 'WEBGPU_RECOVERY_FAILED' | 'WEBGPU_RECOVERY_LIMIT' | 'WEBGPU_GENERATION_EXHAUSTED';
 export interface WebGPUHostFailure {
@@ -61,24 +57,6 @@ export interface WebGPUHostStatus {
     readonly lastCallbackFailure: WebGPUHostFailure | null;
     readonly cleanupOutcome: 'not-started' | 'pending' | 'safe' | 'unsafe';
 }
-export interface WebGPUHost extends RenderHostAdapter {
-    readonly surface: HTMLCanvasElement;
-    start(): Promise<void>;
-    stop(): void;
-    close(): Promise<void>;
-    renderFrame(frame: RenderFrame2D): undefined;
-    whenIdle(): Promise<void>;
-    requestReadback(): Promise<WebGPUReadback>;
-    getStatus(): WebGPUHostStatus;
-    setTimeout(callback: () => void, delayMs: number): () => void;
-}
-export interface TexturedWebGPUHostStatus {
-    readonly host: WebGPUHostStatus;
-    readonly pendingGeometryBytes: number;
-}
-export interface TexturedWebGPUHost extends WebGPUHost, Pick<TexturedRenderHostAdapter, 'texturedFrameProfile' | 'renderTexturedFrame'> {
-    getTexturedStatus(): TexturedWebGPUHostStatus;
-}
 export interface SharedWebGPUReadback extends Omit<WebGPUReadback, 'alphaMode'> {
     readonly alphaMode: 'premultiplied' | 'opaque';
     readonly generation: number;
@@ -90,7 +68,14 @@ export interface SharedWebGPUHostStatus {
     readonly pendingCanonicalBytes: number;
     readonly resources: SharedHostResourceStatus;
 }
-export interface SharedWebGPUHost extends Pick<WebGPUHost, 'surface' | 'start' | 'stop' | 'close' | 'whenIdle' | 'getStatus' | 'setTimeout'>, Pick<SharedRenderHostAdapter, 'sharedFrameProfile' | 'renderSharedFrame'> {
+export interface SharedWebGPUHost extends Pick<SharedRenderHostAdapter, 'sharedFrameProfile' | 'renderSharedFrame'> {
+    readonly surface: HTMLCanvasElement;
+    start(): Promise<void>;
+    stop(): void;
+    close(): Promise<void>;
+    whenIdle(): Promise<void>;
+    getStatus(): WebGPUHostStatus;
+    setTimeout(callback: () => void, delayMs: number): () => void;
     getSessionStatus(): SharedDeviceSessionStatus<WebGPUHostFailure>;
     whenReady(): Promise<void>;
     recover(device?: GPUDevice): Promise<void>;
@@ -98,25 +83,5 @@ export interface SharedWebGPUHost extends Pick<WebGPUHost, 'surface' | 'start' |
     requestReadback(): Promise<SharedWebGPUReadback>;
     getSharedStatus(): SharedWebGPUHostStatus;
 }
-export interface SharedSceneWebGPUHost extends SharedWebGPUHost {
-    renderSceneSharedFrame(scene: SceneValue, overlay: SharedRenderFrame2D): undefined;
-    stageSceneSharedFrame(scene: SceneValue, overlay: SharedRenderFrame2D, options?: SharedFrameUploadOptions): SharedFrameUpload;
-    getSceneStatus(): {
-        readonly host: WebGPUHostStatus;
-        readonly pendingSceneBytes: number;
-        readonly pendingUniformBytes: number;
-        readonly pendingDepthBytes: number;
-    };
-}
-type BuiltinFunctions = Omit<B1BuiltinProtocol, 'version' | 'createWebGPUMeshPipeline'> & {
-    createWebGPUMeshPipeline(shader: (d: GPUShaderModuleDescriptor) => GPUShaderModule, pipeline: (d: GPURenderPipelineDescriptor) => Promise<GPURenderPipeline>, format: 'rgba8unorm' | 'bgra8unorm' | 'rgba8unorm-srgb'): Promise<GPURenderPipeline>;
-};
-type SceneValue = ReturnType<BuiltinFunctions['createSceneFrame3D']>;
-export declare function createWebGPUHost(options: WebGPUHostOptions): WebGPUHost;
-/** Opt-in factory; runtime identity comes exclusively from completed Engine captures. */
-export declare function createTexturedWebGPUHost(options: TexturedWebGPUHostOptions): TexturedWebGPUHost;
-export declare function createB1WebGPUHostInternal(options: WebGPUHostOptions): B1WebGPUHost;
-export declare function createTexturedB1WebGPUHostInternal(options: TexturedWebGPUHostOptions): TexturedB1WebGPUHost;
 export declare function createSharedWebGPUHost(options: SharedWebGPUHostOptions): SharedWebGPUHost;
-export declare function createSharedSceneWebGPUHostInternal(options: SharedSceneWebGPUHostOptions): SharedSceneWebGPUHost;
 //# sourceMappingURL=WebGPUHost.d.ts.map

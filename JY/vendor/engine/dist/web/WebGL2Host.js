@@ -4,17 +4,18 @@ import { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 import { readOwnedSharedFrame } from '#egret-textured-frame-state';
 import { admitSharedWebGL2Options } from './sharedWebGL2Options.js';
 import { prepareSharedDraws2D, SharedPreparationError } from '../rendering/prepareSharedDraws2D.js';
+import { SharedPreparationRetention2D } from '../rendering/sharedPreparationRetention2D.js';
 import { GeometryPreparationError } from '../rendering/prepareRectangles2D.js';
-import { packSharedDraws2D } from '../rendering/packSharedDraws2D.js';
+import { packSharedDraws2D, packSharedRegions2D, SHARED_BATCH_PAGES_2D, SHARED_REGION_WINDOW_BYTES_2D } from '../rendering/packSharedDraws2D.js';
 import { PreparedBatchScratch2D } from '../rendering/preparedBatches2D.js';
 import { prepareSharedBatches2D } from '../rendering/preparedSharedBatches2D.js';
 import { decodeSharedSRGB } from '../rendering/sharedColor2D.js';
 import { runOwnedPreparationScope } from '../rendering/ownedPreparationFailure2D.js';
-import { attachSharedSceneSources2D, planSharedStorageFees2D, withSharedReadbackLayout2D, checkSharedCapacity2D, materializeSharedPages2D, SharedStorageError2D } from './sharedSubmissionStorage2D.js';
+import { planSharedStorageFees2D, withSharedReadbackLayout2D, checkSharedCapacity2D, materializeSharedPages2D, SharedStorageError2D } from './sharedSubmissionStorage2D.js';
 import { planSharedWebGL2Arenas, checkSharedWebGL2ArenaCapacity, qualifySharedWebGL2Alignment } from './sharedWebGL2Arena.js';
 import { createRetentionLedger } from './sharedRetentionLedger.js';
 import { GLNativeSession, glFailure, isGLFailure } from './webgl2Native.js';
-import { sharedWebGL2VertexSource, sharedWebGL2FragmentSource, sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragmentSource, sharedWebGL2BlendFactors, sharedWebGL2LayerVertexSource, sharedWebGL2LayerFragmentSource, sharedWebGL2LayerEffectFragmentSource } from './sharedWebGL2Shaders.js';
+import { sharedWebGL2VertexSource, sharedWebGL2FragmentSource, sharedWebGL2PagedFragmentSource, sharedWebGL2SolidVertexSource, sharedWebGL2SolidFragmentSource, sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragmentSource, sharedWebGL2BlendFactors, sharedWebGL2LayerVertexSource, sharedWebGL2LayerFragmentSource, sharedWebGL2LayerEffectFragmentSource } from './sharedWebGL2Shaders.js';
 function deferred() {
     let resolve, reject;
     const promise = new Promise((a, b) => { resolve = a; reject = b; });
@@ -24,12 +25,19 @@ function deferred() {
 const schedule = globalThis.setTimeout.bind(globalThis), cancel = globalThis.clearTimeout.bind(globalThis);
 const invoke = Reflect.apply;
 const clock = () => performance.now();
+const TIMING_CAPACITY = 2048;
+const TIMING_PHASES = ['texture-prepare', 'texture-upload', 'working-framebuffer-validation', 'default-framebuffer-validation', 'submit', 'fence-poll',
+    'completion-error-query', 'retire', 'sync-delete-error-query'];
+function createFrameTiming() {
+    const totals = Object.fromEntries(TIMING_PHASES.map(phase => [phase, { count: 0, totalMs: 0, maxMs: 0 }]));
+    return { totals, samples: [], next: 0, dropped: 0 };
+}
 const ATTRIBUTES = Object.freeze({ alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false });
 const MAX_LAYER_HANDLES = 512;
 const MAX_LAYER_EXTENT = 2048;
 const MAX_LAYER_BYTES = 32 * 1024 * 1024;
+const DRAW_UNIFORM_MEMBERS = ['viewport', 'materialLight', 'materialDark', 'pageUnits0', 'pageUnits1', 'domain', 'samplerPolicy', 'pageExecution'];
 class SharedGLHost {
-    sceneMode;
     surface;
     sharedFrameProfile = SHARED_FRAME_PROFILE_2D;
     options;
@@ -56,10 +64,11 @@ class SharedGLHost {
     context;
     lostNative;
     // Fixed-size observations only; original records/native owners still authorize every transition.
+    frameTiming;
     resourceCpu = { canonicalBytes: 0, scratchBytes: 0, highCanonicalBytes: 0, highScratchBytes: 0, highTemporaryBytes: 0, saturated: false };
     resourceUnknown = { knownLogicalBytes: 0, objects: 0, highKnownLogicalBytes: 0, highObjects: 0, saturated: false };
     resourceReuse = { current: { idleBytes: 0, idleEntries: 0, leasedBytes: 0, leasedEntries: 0, reservedBytes: 0, reservedEntries: 0, detachedBytes: 0, detachedEntries: 0, unknownBytes: 0, unknownEntries: 0 }, highWater: { idleBytes: 0, idleEntries: 0, leasedBytes: 0, leasedEntries: 0, reservedBytes: 0, reservedEntries: 0, detachedBytes: 0, detachedEntries: 0, unknownBytes: 0, unknownEntries: 0 }, saturated: false, unknownNative: this.resourceUnknown };
-    resourceHighPending = { frames: 0, uploadCreditBytes: 0, pageCreditBytes: 0, readbackCreditBytes: 0, geometryCreditBytes: 0, colorCreditBytes: 0, sceneCreditBytes: 0, uniformCreditBytes: 0, depthCreditBytes: 0 };
+    resourceHighPending = { frames: 0, uploadCreditBytes: 0, pageCreditBytes: 0, readbackCreditBytes: 0, geometryCreditBytes: 0, colorCreditBytes: 0 };
     resourceHighImages = { readyBytes: 0, readyEntries: 0, pinnedReadyBytes: 0, pinnedReadyEntries: 0, allocatedLogicalBytes: 0, reservedCreditBytes: 0 };
     resourceTotals = { pageWriteCalls: 0, pageWriteBytes: 0, readyCapacityEvictions: 0 };
     resourceSaturated = false;
@@ -69,6 +78,8 @@ class SharedGLHost {
     resourceNative = { pageBytes: 0, highPageBytes: 0, reservedPageBytes: 0, highReservedPageBytes: 0, unknown: this.resourceUnknown, totals: this.resourceTotals, saturated: false };
     pool = createRetentionLedger(this.token, this.resourceReuse);
     scratch = new PreparedBatchScratch2D();
+    /** The prepared draws of the last ordinary frame. A Host that is not active keeps none. */
+    retention = new SharedPreparationRetention2D();
     records = new Set();
     settledHandles = new WeakSet();
     pages = new Map();
@@ -81,16 +92,12 @@ class SharedGLHost {
     limits;
     framebuffer;
     program;
+    solidProgram;
+    pagedProgram;
     effectPrograms = new Map();
     resolveProgram;
     drawVAO;
     resolveVAO;
-    sceneVAO;
-    sceneProgram;
-    sceneCardProgram;
-    sceneTextureProgram;
-    sceneLambertProgram;
-    sceneFunctions;
     pump;
     restoreTimer;
     restoreDeadline = 0;
@@ -99,26 +106,43 @@ class SharedGLHost {
     unsafe = false;
     retiredUnknownBytes = 0;
     retiredUnknownObjects = 0;
-    constructor(input, sceneMode = false) {
-        this.sceneMode = sceneMode;
+    constructor(input) {
         try {
-            const admitted = admitSharedWebGL2Options(input, sceneMode);
+            const admitted = admitSharedWebGL2Options(input);
             this.surface = admitted.surface;
             this.options = admitted.configuration;
             this.callback = admitted.callback;
+            this.frameTiming = admitted.measureSharedFrames ? createFrameTiming() : undefined;
         }
         catch (cause) {
             throw glFailure('WEBGL2_OPTIONS_INVALID', cause);
         }
         Object.defineProperty(this, 'surface', { writable: false, configurable: false });
         Object.defineProperty(this, 'sharedFrameProfile', { writable: false, configurable: false });
-        if (sceneMode)
-            Object.defineProperties(this, {
-                renderSceneSharedFrame: { value: (scene, overlay) => this.renderOwned(overlay, scene, true), enumerable: true },
-                stageSceneSharedFrame: { value: (scene, overlay, options) => this.stageOwned(overlay, scene, true, options), enumerable: true },
-                getSceneStatus: { value: () => { const owner = this.snapshot(); return Object.freeze({ host: this.getStatus(), pendingSceneBytes: owner.pendingSceneBytes, pendingUniformBytes: owner.pendingUniformBytes, pendingDepthBytes: owner.pendingDepthBytes }); }, enumerable: true },
-            });
         this.cpu.resolve();
+    }
+    recordTiming(phase, startMs, generation, serial) {
+        const timing = this.frameTiming, durationMs = clock() - startMs, total = timing.totals[phase];
+        if (!Number.isFinite(durationMs) || durationMs < 0)
+            return;
+        if (total.count < Number.MAX_SAFE_INTEGER) {
+            total.count++;
+            total.totalMs += durationMs;
+            total.maxMs = Math.max(total.maxMs, durationMs);
+        }
+        if (timing.samples.length === TIMING_CAPACITY)
+            timing.dropped = Math.min(timing.dropped + 1, Number.MAX_SAFE_INTEGER);
+        timing.samples[timing.next] = { phase, startMs, durationMs, generation, serial };
+        timing.next = (timing.next + 1) % TIMING_CAPACITY;
+    }
+    getSharedFrameTiming() {
+        const timing = this.frameTiming;
+        if (!timing)
+            return null;
+        const first = timing.samples.length === TIMING_CAPACITY ? timing.next : 0;
+        const recent = Array.from({ length: timing.samples.length }, (_, index) => Object.freeze({ ...timing.samples[(first + index) % TIMING_CAPACITY] }));
+        const totals = Object.fromEntries(TIMING_PHASES.map(phase => [phase, Object.freeze({ ...timing.totals[phase] })]));
+        return Object.freeze({ totals: Object.freeze(totals), recent: Object.freeze(recent), dropped: timing.dropped });
     }
     reservePageDiagnostics(record) {
         this.resourceNative.reservedPageBytes += record.reservedPageBytes;
@@ -141,9 +165,6 @@ class SharedGLHost {
         this.resourceHighPending.readbackCreditBytes = Math.max(this.resourceHighPending.readbackCreditBytes, owner.pendingReadbackBytes);
         this.resourceHighPending.geometryCreditBytes = Math.max(this.resourceHighPending.geometryCreditBytes, owner.pendingGeometryBytes);
         this.resourceHighPending.colorCreditBytes = Math.max(this.resourceHighPending.colorCreditBytes, owner.pendingColorBytes);
-        this.resourceHighPending.sceneCreditBytes = Math.max(this.resourceHighPending.sceneCreditBytes, owner.pendingSceneBytes);
-        this.resourceHighPending.uniformCreditBytes = Math.max(this.resourceHighPending.uniformCreditBytes, owner.pendingUniformBytes);
-        this.resourceHighPending.depthCreditBytes = Math.max(this.resourceHighPending.depthCreditBytes, owner.pendingDepthBytes);
     }
     sampleResourceImages() {
         this.resourceHighImages.readyBytes = Math.max(this.resourceHighImages.readyBytes, this.resourceReadyBytes);
@@ -167,7 +188,7 @@ class SharedGLHost {
         const owner = this.snapshot();
         return Object.freeze({
             current: Object.freeze({
-                pending: Object.freeze({ frames: owner.pendingFrames, uploadCreditBytes: owner.pendingUploadBytes, pageCreditBytes: owner.pendingTextureBytes, readbackCreditBytes: owner.pendingReadbackBytes, geometryCreditBytes: owner.pendingGeometryBytes, colorCreditBytes: owner.pendingColorBytes, sceneCreditBytes: owner.pendingSceneBytes, uniformCreditBytes: owner.pendingUniformBytes, depthCreditBytes: owner.pendingDepthBytes }),
+                pending: Object.freeze({ frames: owner.pendingFrames, uploadCreditBytes: owner.pendingUploadBytes, pageCreditBytes: owner.pendingTextureBytes, readbackCreditBytes: owner.pendingReadbackBytes, geometryCreditBytes: owner.pendingGeometryBytes, colorCreditBytes: owner.pendingColorBytes }),
                 cpu: Object.freeze({ canonicalBytes: this.resourceCpu.canonicalBytes, scratchBytes: this.resourceCpu.scratchBytes, temporaryBytes: this.resourceCpu.canonicalBytes + this.resourceCpu.scratchBytes }),
                 images: Object.freeze({ readyBytes: this.resourceReadyBytes, readyEntries: this.pages.size, pinnedReadyBytes: this.resourcePinnedBytes, pinnedReadyEntries: this.resourcePinnedEntries, allocatedLogicalBytes: this.resourceNative.pageBytes, reservedCreditBytes: this.resourceNative.reservedPageBytes }),
                 reusable: Object.freeze({ ...this.resourceReuse.current }),
@@ -189,8 +210,10 @@ class SharedGLHost {
             this.state === 'stopped' ? 'WEBGL2_STOPPED' : this.state === 'closing' || this.state === 'closed' ? 'WEBGL2_CLOSED' : this.state === 'failed' ? 'WEBGL2_FAILED' : 'WEBGL2_NOT_STARTED';
         return glFailure(code, this.generationFailure?.cause);
     }
-    active() { if (this.state !== 'active')
-        throw this.stateError(); }
+    active() { if (this.state !== 'active') {
+        this.retention.clear();
+        throw this.stateError();
+    } }
     generationState(token) {
         if (token !== this.token || this.state === 'lost' || this.state === 'closed')
             throw this.stateError();
@@ -416,27 +439,20 @@ class SharedGLHost {
             // Fixed native handles never cross a context generation, including partial startup.
             this.framebuffer = undefined;
             this.program = undefined;
+            this.solidProgram = undefined;
+            this.pagedProgram = undefined;
             this.resolveProgram = undefined;
             this.layerProgram = undefined;
             this.layerEffectProgram = undefined;
             this.effectPrograms.clear();
             this.drawVAO = undefined;
             this.resolveVAO = undefined;
-            this.sceneVAO = undefined;
-            this.sceneProgram = undefined;
-            this.sceneCardProgram = undefined;
-            this.sceneTextureProgram = undefined;
-            this.sceneLambertProgram = undefined;
             this.limits = undefined;
             this.native = undefined;
             this.generation++;
             this.token = {};
             const token = this.token;
             this.pool = createRetentionLedger(token, this.resourceReuse);
-            if (this.sceneMode) {
-                this.sceneFunctions = await import('./sharedWebGL2Scene.js');
-                this.generationGate(token);
-            }
             const context = this.surface.getContext('webgl2', ATTRIBUTES);
             if (!context)
                 throw glFailure('WEBGL2_CONTEXT_UNAVAILABLE');
@@ -445,7 +461,8 @@ class SharedGLHost {
             this.generationGate(token);
             if (!restoring)
                 this.bindListeners();
-            const native = new GLNativeSession(context, () => this.generationGate(token), this.resourceNative);
+            const generation = this.generation;
+            const native = new GLNativeSession(context, () => this.generationGate(token), this.resourceNative, this.frameTiming ? (phase, started, serial) => this.recordTiming(phase, started, generation, serial) : undefined);
             this.native = native;
             const gl = native.gl, attrs = gl.getContextAttributes();
             if (context.canvas !== this.surface || !attrs || Object.entries(ATTRIBUTES).some(([key, value]) => attrs[key] !== value))
@@ -466,12 +483,13 @@ class SharedGLHost {
             catch (cause) {
                 throw glFailure('WEBGL2_CONTEXT_LIMIT', cause);
             }
-            integer(gl.MAX_UNIFORM_BLOCK_SIZE, this.options.enableEffects ? 448 : 128);
-            integer(gl.MAX_UNIFORM_BUFFER_BINDINGS, 1);
-            integer(gl.MAX_VERTEX_UNIFORM_BLOCKS, 1);
+            // The vertex stage of a sampled draw reads a second block: one window of the region table.
+            integer(gl.MAX_UNIFORM_BLOCK_SIZE, SHARED_REGION_WINDOW_BYTES_2D);
+            integer(gl.MAX_UNIFORM_BUFFER_BINDINGS, 2);
+            integer(gl.MAX_VERTEX_UNIFORM_BLOCKS, 2);
             integer(gl.MAX_FRAGMENT_UNIFORM_BLOCKS, 1);
-            integer(gl.MAX_TEXTURE_IMAGE_UNITS, this.options.enableEffects ? 2 : 1);
-            integer(gl.MAX_VERTEX_ATTRIBS, 4);
+            integer(gl.MAX_TEXTURE_IMAGE_UNITS, SHARED_BATCH_PAGES_2D);
+            integer(gl.MAX_VERTEX_ATTRIBS, 5);
             const dims = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
             if (!dims || dims.length !== 2 || ![dims[0], dims[1]].every(n => n !== undefined && Number.isSafeInteger(n) && n > 0))
                 throw glFailure('WEBGL2_CONTEXT_LIMIT');
@@ -495,7 +513,10 @@ class SharedGLHost {
             if (!native.cleanup(target))
                 throw glFailure('WEBGL2_CLOSE_UNSAFE', native.cleanupFailure?.cause);
             this.program = native.program(sharedWebGL2VertexSource, sharedWebGL2FragmentSource);
-            native.block(this.program, 'DrawUniform', ['viewportOpacity', 'materialLight', 'materialDark', 'logicalTrim', 'contentOrigin', 'packedTurnDomain', 'samplerPolicy', 'pageExecution'], 128);
+            native.block(this.program, 'DrawUniform', DRAW_UNIFORM_MEMBERS, 128);
+            native.block(this.program, 'RegionWindow', ['regions'], SHARED_REGION_WINDOW_BYTES_2D, 1);
+            this.solidProgram = native.program(sharedWebGL2SolidVertexSource, sharedWebGL2SolidFragmentSource);
+            native.block(this.solidProgram, 'DrawUniform', DRAW_UNIFORM_MEMBERS, 128);
             this.resolveProgram = native.program(sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragmentSource);
             if (this.options.enableEffects)
                 for (const mode of EFFECT_PASSES) {
@@ -506,16 +527,16 @@ class SharedGLHost {
                     gl.uniformBlockBinding(program, index, 0);
                     this.effectPrograms.set(mode, program);
                 }
+            // The program of a batch of several pages. Its eight page samplers name the eight units once, here.
+            this.pagedProgram = native.program(sharedWebGL2VertexSource, sharedWebGL2PagedFragmentSource);
+            native.block(this.pagedProgram, 'DrawUniform', DRAW_UNIFORM_MEMBERS, 128);
+            native.block(this.pagedProgram, 'RegionWindow', ['regions'], SHARED_REGION_WINDOW_BYTES_2D, 1);
+            gl.useProgram(this.pagedProgram);
+            for (let unit = 0; unit < SHARED_BATCH_PAGES_2D; unit++)
+                gl.uniform1i(gl.getUniformLocation(this.pagedProgram, 'page' + unit), unit);
+            gl.useProgram(null);
             this.drawVAO = native.create('VertexArray').value;
             this.resolveVAO = native.create('VertexArray').value;
-            if (this.sceneFunctions) {
-                this.sceneProgram = native.program(this.sceneFunctions.SHARED_GL_SCENE_VERTEX, this.sceneFunctions.SHARED_GL_SCENE_FRAGMENT);
-                native.block(this.sceneProgram, 'SceneDraw', ['uMVP'], 64);
-                const index = gl.getUniformIndices(this.sceneProgram, ['uMVP']);
-                if (gl.getActiveUniforms(this.sceneProgram, index, 35389)[0] !== 16 || gl.getActiveUniforms(this.sceneProgram, index, 35390)[0] !== false)
-                    throw glFailure('WEBGL2_CONTEXT_LIMIT');
-                this.sceneVAO = native.create('VertexArray').value;
-            }
             native.check();
             this.generationGate(token);
             this.state = 'active';
@@ -545,7 +566,7 @@ class SharedGLHost {
         }
     }
     snapshot() {
-        const owner = { pendingFrames: this.records.size, pendingUploadBytes: 0, pendingReadbackBytes: 0, pendingTextureBytes: 0, pendingGeometryBytes: 0, pendingColorBytes: 0, pendingCanonicalBytes: 0, pendingSceneBytes: 0, pendingUniformBytes: 0, pendingDepthBytes: 0, serial: this.serial };
+        const owner = { pendingFrames: this.records.size, pendingUploadBytes: 0, pendingReadbackBytes: 0, pendingTextureBytes: 0, pendingGeometryBytes: 0, pendingColorBytes: 0, pendingCanonicalBytes: 0, serial: this.serial };
         // At most two accepted records; counters derive from their still-owned immutable fees.
         const mutable = owner;
         for (const r of this.records) {
@@ -555,17 +576,14 @@ class SharedGLHost {
             mutable.pendingGeometryBytes += r.storage.prepared.geometryBytes;
             mutable.pendingColorBytes += r.storage.colorBytes + r.storage.effectBytes;
             mutable.pendingCanonicalBytes += r.canonicalBytes;
-            mutable.pendingSceneBytes += r.scene?.sceneBytes ?? 0;
-            mutable.pendingUniformBytes += r.scene?.uniformBytes ?? 0;
-            mutable.pendingDepthBytes += r.scene?.depthBytes ?? 0;
         }
         return owner;
     }
     arenaOwner() {
         let pendingVertexArenaBytes = 0, pendingUniformArenaBytes = 0;
         for (const r of this.records) {
-            pendingVertexArenaBytes += r.arena.vertexBytes;
-            pendingUniformArenaBytes += r.arena.uniformBytes;
+            pendingVertexArenaBytes += r.vertexArenaBytes;
+            pendingUniformArenaBytes += r.uniformArenaBytes;
         }
         return { pendingVertexArenaBytes, pendingUniformArenaBytes };
     }
@@ -602,7 +620,7 @@ class SharedGLHost {
         return Object.freeze({ readyLayers, pendingLayers, residentBytes: this.layerBytes });
     }
     renderSharedFrameWithLayers(frame, layers) {
-        return this.renderOwned(frame, undefined, false, undefined, { placements: layers });
+        return this.renderOwned(frame, undefined, { placements: layers });
     }
     updateLayer(slot, frame) {
         const done = deferred();
@@ -616,7 +634,7 @@ class SharedGLHost {
             if (slot.pending)
                 throw glFailure('WEBGL2_LAYER_PENDING');
             slot.pending = write;
-            this.renderOwned(frame, undefined, false, undefined, { write });
+            this.renderOwned(frame, undefined, { write });
         }
         catch (cause) {
             if (!write.submitted && slot.pending === write)
@@ -793,15 +811,15 @@ class SharedGLHost {
         return this.renderOwned(input);
     }
     stageSharedFrame(input, options) {
-        return this.stageOwned(input, undefined, false, options);
+        return this.stageOwned(input, options);
     }
-    stageOwned(input, scene, withScene, options) {
+    stageOwned(input, options) {
         this.active();
         if (this.busy)
             throw glFailure('WEBGL2_REENTRANT');
-        return this.renderOwned(input, scene, withScene, { options, token: this.token, end: clock() + 10000, signal: undefined });
+        return this.renderOwned(input, { options, token: this.token, end: clock() + 10000, signal: undefined });
     }
-    renderOwned(input, sceneInput, withScene = false, staging, layerInput) {
+    renderOwned(input, staging, layerInput) {
         this.active();
         if (this.busy)
             throw glFailure('WEBGL2_REENTRANT');
@@ -818,8 +836,6 @@ class SharedGLHost {
                     const frame = readOwnedSharedFrame(input);
                     if (!frame)
                         throw glFailure('WEBGL2_FRAME_PROFILE_UNSUPPORTED');
-                    if (withScene && (!this.sceneFunctions || !this.sceneFunctions.isSceneFrame3D(sceneInput)))
-                        throw glFailure('WEBGL2_FRAME_INVALID');
                     if (staging)
                         staging.signal = this.captureSignal(staging.options, staging.token);
                     const layerWrite = layerInput && 'write' in layerInput ? layerInput.write : undefined;
@@ -842,19 +858,15 @@ class SharedGLHost {
                     const width = Math.ceil(frame.width * options.pixelRatio), height = Math.ceil(frame.height * options.pixelRatio);
                     if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0 || width > 4294967295 || height > 4294967295 || width > Math.floor(options.maxBackingPixels / height))
                         throw glFailure('WEBGL2_BACKING_LIMIT');
-                    const sceneFees = withScene ? this.sceneFunctions.admitSharedGLScene(sceneInput, width, height) : undefined;
-                    const overlay = prepareSharedDraws2D(frame, width, height, options);
-                    const attached = sceneFees ? attachSharedSceneSources2D(overlay, sceneFees.frame.cards ?? [], sceneFees.frame.draws) : undefined;
-                    const prepared = attached?.prepared ?? overlay, cardViews = attached?.cardViews ?? [];
+                    // A frame baked into a layer is another sequence of frames; it neither takes nor replaces what the ordinary frames keep.
+                    const prepared = prepareSharedDraws2D(frame, width, height, options, layerWrite ? undefined : this.retention);
                     const ticket = !layerWrite && !staging && this.ticket && !this.ticket.bound ? this.ticket : undefined;
                     const reserve = staging ? options.enableReadback : !!ticket;
-                    const fees = planSharedStorageFees2D(prepared, options, sceneFees), layout = withSharedReadbackLayout2D(fees, { rowPitch: reserve ? 4 * width : 0, staging: reserve ? fees.colorBytes : 0, output: reserve ? fees.colorBytes : 0 });
+                    const fees = planSharedStorageFees2D(prepared, options), layout = withSharedReadbackLayout2D(fees, { rowPitch: reserve ? 4 * width : 0, staging: reserve ? fees.colorBytes : 0, output: reserve ? fees.colorBytes : 0 });
                     const limits = this.limits;
                     if (width > limits.texture || height > limits.texture || width > limits.viewportWidth || height > limits.viewportHeight)
                         throw glFailure('WEBGL2_CONTEXT_LIMIT');
-                    if (withScene && (width > limits.renderbuffer || height > limits.renderbuffer))
-                        throw glFailure('WEBGL2_CONTEXT_LIMIT');
-                    const projectionPlan = attached?.projectionPlan ?? {
+                    const projectionPlan = {
                         views: frame.pages.map(({ source: image }) => ({ image, region: { x: 0, y: 0, width: image.width, height: image.height }, byteLength: image.byteLength })),
                         commandViews: [], projectionBytes: prepared.pageBytes, scratchBytes: 0,
                     };
@@ -862,8 +874,6 @@ class SharedGLHost {
                         throw glFailure('WEBGL2_CONTEXT_LIMIT');
                     const storage = { ...layout, projectionPlan };
                     checkSharedCapacity2D(storage, this.snapshot());
-                    const scene = withScene ? this.sceneFunctions.prepareSharedGLScene(sceneInput, width, height, cardViews, attached?.textureViews) : undefined;
-                    this.active();
                     const packed = packSharedDraws2D(prepared);
                     this.active();
                     const cold = new Set(), hits = new Map();
@@ -882,19 +892,23 @@ class SharedGLHost {
                     for (const group of prepared.effects.groups)
                         if (group.maskPageIndex !== undefined)
                             trackPage(group.maskPageIndex);
-                    for (const index of cardViews)
-                        trackPage(index);
-                    for (const index of attached?.textureViews.values() ?? [])
-                        trackPage(index);
-                    const pages = materializeSharedPages2D(storage, cold, this.snapshot(), this.resourceCpu);
+                    const timingNative = cold.size ? this.native : undefined, started = timingNative?.startTiming();
+                    let pages;
+                    try {
+                        pages = materializeSharedPages2D(storage, cold, this.snapshot(), this.resourceCpu);
+                    }
+                    finally {
+                        timingNative?.finishTiming('texture-prepare', started);
+                    }
                     materialized = pages.canonicalBytes;
                     this.active();
                     checkSharedCapacity2D(storage, this.snapshot(), pages.canonicalBytes);
-                    batch = prepareSharedBatches2D(packed, options.maxUploadBytes, this.scratch);
+                    // A staged frame writes its rows after later frames are prepared, so it is given batches of its own.
+                    batch = prepareSharedBatches2D(packed, options.maxUploadBytes, this.scratch, staging ? undefined : prepared.retention);
                     this.active();
-                    const arena = planSharedWebGL2Arenas(batch.draws, scene?.uniforms ?? [], limits.alignment);
+                    const arena = planSharedWebGL2Arenas(batch.draws, limits.alignment, batch.draws.some(draw => draw.regionWindow >= 0) ? packSharedRegions2D(frame) : undefined);
                     checkSharedWebGL2ArenaCapacity(arena, this.arenaOwner());
-                    return { storage, arena, batch, ...pages, ticket, hits, scene, layerWrite, layerReads };
+                    return { storage, arena, batch, ...pages, ticket, hits, layerWrite, layerReads };
                 }, failure => { owned = failure; });
             }
             catch (cause) {
@@ -911,8 +925,6 @@ class SharedGLHost {
                         throw glFailure(cause.reason === 'device' ? 'WEBGL2_CONTEXT_LIMIT' : cause.reason === 'backpressure' ? 'WEBGL2_BACKPRESSURE' : cause.reason === 'serial' ? 'WEBGL2_SERIAL_EXHAUSTED' : 'WEBGL2_FRAME_BUDGET', cause);
                     if (cause instanceof GeometryPreparationError)
                         throw glFailure('WEBGL2_GEOMETRY_RANGE', cause);
-                    if (this.sceneFunctions && cause instanceof this.sceneFunctions.SharedGLScenePreparationError)
-                        throw glFailure(cause.reason === 'budget' ? 'WEBGL2_FRAME_BUDGET' : cause.reason === 'precision' ? 'WEBGL2_PRECISION_UNSUPPORTED' : cause.reason === 'backing' ? 'WEBGL2_BACKING_LIMIT' : 'WEBGL2_FRAME_INVALID', cause);
                 }
                 throw glFailure('WEBGL2_FRAME_INVALID', cause);
             }
@@ -935,16 +947,15 @@ class SharedGLHost {
         const requests = [];
         const add = (role, byteLength) => {
             const id = requests.length;
-            const target = role === 'color' || role === 'depth';
+            const target = role === 'color';
             const request = Object.freeze({ id, role, byteLength, width: target ? width : 0, height: target ? height : 0 });
             requests.push({ request, key: role + ':' + byteLength + ':' + request.width + ':' + request.height });
             return id;
         };
         const vertex = p.arena.vertexBytes ? add('vertex', p.arena.vertexBytes) : -1, uniform = p.arena.uniformBytes ? add('uniform', p.arena.uniformBytes) : -1, color = p.layerWrite ? -1 : add('color', p.storage.colorBytes);
+        const regions = p.arena.regionTable ? add('uniform', p.arena.regionTable.bytes) : -1;
         const effectTargets = Array.from({ length: p.storage.prepared.effects.targetCount }, () => add('color', p.storage.colorBytes));
         const effectUniforms = p.storage.prepared.effects.groups.map(group => add('uniform', group.uniform.byteLength));
-        const depth = p.scene ? add('depth', p.scene.depthBytes) : -1;
-        const meshes = p.scene?.meshes.map(mesh => ({ mesh, vertex: mesh.vertexBytes ? add('vertex', mesh.vertexBytes) : -1, index: mesh.indexBytes ? add('index', mesh.indexBytes) : -1 })) ?? [];
         const plan = this.pool.plan(requests);
         this.active();
         checkSharedCapacity2D(p.storage, this.snapshot(), p.canonicalBytes);
@@ -952,7 +963,7 @@ class SharedGLHost {
         for (const [index, hit] of p.hits)
             if (this.pages.get(p.storage.projectionPlan.views[index].image) !== hit || !hit.ready)
                 throw glFailure('WEBGL2_FRAME_INVALID');
-        return { requests, plan, layout: { vertex, uniform, color, depth, meshes, effectTargets, effectUniforms, pageTextures: new Map() } };
+        return { requests, plan, layout: { vertex, uniform, regions, color, effectTargets, effectUniforms, pageTextures: new Map() } };
     }
     stageLife(token) {
         this.active();
@@ -1124,10 +1135,10 @@ class SharedGLHost {
         const { requests, plan, layout } = this.planRecord(p), native = this.native;
         const control = { token: input.token, generation: this.generation, frameId: p.storage.prepared.frame.frameId, end: input.end,
             ready: deferred(), record: undefined, signal: input.signal, timer: undefined, phase: 'admitted', transferred: false, revoked: false, failure: undefined };
-        const record = { serial: 0, generation: this.generation, storage: p.storage, arena: p.arena, batch: p.batch,
+        const record = { serial: 0, generation: this.generation, storage: p.storage, vertexArenaBytes: p.arena.vertexBytes, uniformArenaBytes: p.arena.uniformBytes,
             canonicalBytes: p.canonicalBytes, reservedPageBytes: p.canonicalBytes, projections: p.projections, done: deferred(), leases: [], pages: [], native, pool: this.pool,
-            scene: p.scene, rawOwners: [], readback: undefined, ticket: undefined, pbo: undefined, sync: undefined, failure: undefined, retired: false, deadline: 0 };
-        record.upload = { control, requests, plan, layout, writes: [], claimed: false, allocated: false, writeIndex: 0 };
+            rawOwners: [], readback: undefined, ticket: undefined, pbo: undefined, sync: undefined, failure: undefined, retired: false, deadline: 0 };
+        record.upload = { control, requests, plan, layout, arena: p.arena, batch: p.batch, writes: [], claimed: false, allocated: false, writeIndex: 0 };
         control.record = record;
         this.records.add(record);
         p.batch.transferred = true;
@@ -1205,18 +1216,14 @@ class SharedGLHost {
         for (const entry of work.requests) {
             if (record.leases[entry.request.id])
                 continue;
-            const request = entry.request, owner = native.create(request.role === 'color' ? 'Texture' : request.role === 'depth' ? 'Renderbuffer' : 'Buffer', request.byteLength);
+            const request = entry.request, owner = native.create(request.role === 'color' ? 'Texture' : 'Buffer', request.byteLength);
             const lease = record.pool.registerCreated(entry, owner);
             record.leases[request.id] = lease;
             owner.accounting = 'retention';
             if (request.role === 'color')
                 native.texture(owner, width, height, true);
-            else if (request.role === 'depth') {
-                gl.bindRenderbuffer(gl.RENDERBUFFER, owner.value);
-                gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT32F, width, height);
-            }
             else {
-                const target = request.role === 'vertex' ? gl.ARRAY_BUFFER : request.role === 'index' ? gl.ELEMENT_ARRAY_BUFFER : gl.UNIFORM_BUFFER;
+                const target = request.role === 'vertex' ? gl.ARRAY_BUFFER : gl.UNIFORM_BUFFER;
                 gl.bindBuffer(target, owner.value);
                 gl.bufferData(target, request.byteLength, gl.DYNAMIC_DRAW);
             }
@@ -1236,19 +1243,13 @@ class SharedGLHost {
             if (data.byteLength)
                 work.writes.push({ kind: 'buffer', target, lease, offset, data, unit, cursor: 0 });
         };
-        const { vertex, uniform, meshes } = work.layout;
-        for (const range of record.arena.sharedRanges) {
-            buffer(gl.ARRAY_BUFFER, vertex, range.vertexOffset, range.draw.data, 44);
+        const { vertex, uniform, regions } = work.layout;
+        for (const range of work.arena.sharedRanges) {
+            buffer(gl.ARRAY_BUFFER, vertex, range.vertexOffset, range.draw.data, 52);
             buffer(gl.UNIFORM_BUFFER, uniform, range.uniformOffset, range.draw.uniform, 128);
         }
-        for (const range of record.arena.sceneRanges)
-            buffer(gl.UNIFORM_BUFFER, uniform, range.uniformOffset, range.uniform, range.uniformSize);
-        for (const item of meshes) {
-            if (item.vertex >= 0)
-                buffer(gl.ARRAY_BUFFER, item.vertex, 0, item.mesh.vertices, 24);
-            if (item.index >= 0)
-                buffer(gl.ELEMENT_ARRAY_BUFFER, item.index, 0, item.mesh.indices, 4);
-        }
+        for (const part of work.arena.regionTable?.windows ?? [])
+            buffer(gl.UNIFORM_BUFFER, regions, part.offset, part.data, 48);
         for (let i = 0; i < record.storage.prepared.effects.groups.length; i++)
             buffer(gl.UNIFORM_BUFFER, work.layout.effectUniforms[i], 0, record.storage.prepared.effects.groups[i].uniform, 16);
         work.allocated = true;
@@ -1380,6 +1381,7 @@ class SharedGLHost {
         if (this.serial >= Number.MAX_SAFE_INTEGER)
             throw glFailure('WEBGL2_SERIAL_EXHAUSTED');
         const record = control.record, work = record.upload, native = record.native;
+        const submitted = native.startTiming();
         this.busy = true;
         this.cpu = deferred();
         this.phase = 'render';
@@ -1387,6 +1389,8 @@ class SharedGLHost {
             this.generationGate(control.token);
             const ticket = this.ticket && !this.ticket.bound ? this.ticket : undefined;
             record.serial = ++this.serial;
+            if (this.frameTiming)
+                native.timingSerial = record.serial;
             record.ticket = ticket;
             if (ticket)
                 ticket.bound = true;
@@ -1405,7 +1409,7 @@ class SharedGLHost {
                 this.generationGate(control.token);
                 issued = true;
                 this.prepareSurface(record);
-                this.drawRecord(record, work.layout);
+                this.drawRecord(record, work.layout, work.arena);
             }
             catch (cause) {
                 record.failure ??= !issued && isGLFailure(cause) ? cause : this.note(isGLFailure(cause) ? cause.code : 'WEBGL2_RENDER_FAILED', isGLFailure(cause) ? cause.cause : cause, 'frame', record.serial);
@@ -1428,6 +1432,10 @@ class SharedGLHost {
             return Object.freeze({ generation: record.generation, frameId: control.frameId, serial: record.serial, completed: record.completion.promise });
         }
         finally {
+            if (submitted !== undefined) {
+                native.finishTiming('submit', submitted);
+                native.timingSerial = null;
+            }
             native.recordOwners = undefined;
             this.phase = undefined;
             this.busy = false;
@@ -1437,8 +1445,8 @@ class SharedGLHost {
     }
     submit(p) {
         const native = this.native, gl = native.gl, { width, height } = p.storage.prepared;
-        const { requests, plan, layout } = this.planRecord(p), { vertex, uniform, depth, meshes } = layout;
-        const record = { serial: this.serial + 1, generation: this.generation, storage: p.storage, arena: p.arena, batch: p.batch, canonicalBytes: p.canonicalBytes, reservedPageBytes: p.canonicalBytes, projections: p.projections, done: deferred(), leases: [], pages: [], native, pool: this.pool, scene: p.scene, rawOwners: [], readback: undefined, ticket: p.ticket, pbo: undefined, sync: undefined, failure: undefined, retired: false, deadline: clock() + 30000 };
+        const { requests, plan, layout } = this.planRecord(p), { vertex, uniform, regions } = layout;
+        const record = { serial: this.serial + 1, generation: this.generation, storage: p.storage, vertexArenaBytes: p.arena.vertexBytes, uniformArenaBytes: p.arena.uniformBytes, canonicalBytes: p.canonicalBytes, reservedPageBytes: p.canonicalBytes, projections: p.projections, done: deferred(), leases: [], pages: [], native, pool: this.pool, rawOwners: [], readback: undefined, ticket: p.ticket, pbo: undefined, sync: undefined, failure: undefined, retired: false, deadline: clock() + 30000 };
         for (const lease of plan.leases)
             record.leases[lease.requestId] = lease;
         this.records.add(record);
@@ -1457,6 +1465,9 @@ class SharedGLHost {
                 read.revision.pins++;
         }
         native.recordOwners = record.rawOwners;
+        const submitted = native.startTiming();
+        if (submitted !== undefined)
+            native.timingSerial = record.serial;
         try {
             this.pool.claim(plan);
             for (const victim of plan.victims)
@@ -1466,18 +1477,14 @@ class SharedGLHost {
             for (const entry of requests) {
                 if (record.leases[entry.request.id])
                     continue;
-                const owner = native.create(entry.request.role === 'color' ? 'Texture' : entry.request.role === 'depth' ? 'Renderbuffer' : 'Buffer', entry.request.byteLength);
+                const owner = native.create(entry.request.role === 'color' ? 'Texture' : 'Buffer', entry.request.byteLength);
                 const lease = this.pool.registerCreated(entry, owner);
                 record.leases[entry.request.id] = lease;
                 owner.accounting = 'retention';
                 if (entry.request.role === 'color')
                     native.texture(owner, width, height, true);
-                else if (entry.request.role === 'depth') {
-                    gl.bindRenderbuffer(gl.RENDERBUFFER, owner.value);
-                    gl.renderbufferStorage(gl.RENDERBUFFER, gl.DEPTH_COMPONENT32F, width, height);
-                }
                 else {
-                    const target = entry.request.role === 'vertex' ? gl.ARRAY_BUFFER : entry.request.role === 'index' ? gl.ELEMENT_ARRAY_BUFFER : gl.UNIFORM_BUFFER;
+                    const target = entry.request.role === 'vertex' ? gl.ARRAY_BUFFER : gl.UNIFORM_BUFFER;
                     gl.bindBuffer(target, owner.value);
                     gl.bufferData(target, entry.request.byteLength, gl.DYNAMIC_DRAW);
                 }
@@ -1519,24 +1526,17 @@ class SharedGLHost {
                 gl.bindBuffer(gl.UNIFORM_BUFFER, record.leases[uniform].handle.resource.value);
                 for (const range of p.arena.sharedRanges)
                     gl.bufferSubData(gl.UNIFORM_BUFFER, range.uniformOffset, range.draw.uniform);
-                for (const range of p.arena.sceneRanges)
-                    gl.bufferSubData(gl.UNIFORM_BUFFER, range.uniformOffset, range.uniform);
             }
-            for (const item of meshes) {
-                if (item.vertex >= 0) {
-                    gl.bindBuffer(gl.ARRAY_BUFFER, record.leases[item.vertex].handle.resource.value);
-                    gl.bufferSubData(gl.ARRAY_BUFFER, 0, item.mesh.vertices);
-                }
-                if (item.index >= 0) {
-                    gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, record.leases[item.index].handle.resource.value);
-                    gl.bufferSubData(gl.ELEMENT_ARRAY_BUFFER, 0, item.mesh.indices);
-                }
+            if (regions >= 0) {
+                gl.bindBuffer(gl.UNIFORM_BUFFER, record.leases[regions].handle.resource.value);
+                for (const part of p.arena.regionTable.windows)
+                    gl.bufferSubData(gl.UNIFORM_BUFFER, part.offset, part.data);
             }
             for (let i = 0; i < record.storage.prepared.effects.groups.length; i++) {
                 gl.bindBuffer(gl.UNIFORM_BUFFER, record.leases[layout.effectUniforms[i]].handle.resource.value);
                 gl.bufferSubData(gl.UNIFORM_BUFFER, 0, record.storage.prepared.effects.groups[i].uniform);
             }
-            this.drawRecord(record, layout);
+            this.drawRecord(record, layout, p.arena);
         }
         catch (cause) {
             record.failure = this.note(isGLFailure(cause) ? cause.code : 'WEBGL2_RENDER_FAILED', isGLFailure(cause) ? cause.cause : cause, 'frame', record.serial);
@@ -1544,6 +1544,10 @@ class SharedGLHost {
                 this.state = 'failed';
                 this.revokeUploads(record.failure);
             }
+        }
+        finally {
+            // bufferSubData has copied the CPU rows. Only the native leases and their fence remain pending.
+            this.scratch.release(p.batch);
         }
         // Even a partially issued draw owns a completion proof before resources can be reused.
         if (!native.invalidated) {
@@ -1566,6 +1570,10 @@ class SharedGLHost {
             finally {
                 this.phase = old;
             }
+        }
+        if (submitted !== undefined) {
+            native.finishTiming('submit', submitted);
+            native.timingSerial = null;
         }
         native.recordOwners = undefined;
         if (native.invalidated)
@@ -1642,190 +1650,63 @@ class SharedGLHost {
             this.layerProgram = variant;
         return variant;
     }
-    getSceneCardProgram(native) {
-        if (this.sceneCardProgram)
-            return this.sceneCardProgram;
-        const functions = this.sceneFunctions, gl = native.gl, owners = native.recordOwners;
-        // Programs belong to the context generation, including when first used by a staged frame.
-        native.recordOwners = undefined;
-        try {
-            const program = native.program(functions.SHARED_GL_SCENE_CARD_VERTEX, functions.SHARED_GL_SCENE_CARD_FRAGMENT);
-            const block = gl.getUniformBlockIndex(program, 'SceneCard');
-            if (block === gl.INVALID_INDEX || gl.getActiveUniformBlockParameter(program, block, gl.UNIFORM_BLOCK_DATA_SIZE) !== 112)
-                throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            const indices = gl.getUniformIndices(program, ['uCardMVP', 'uCardBounds', 'uCardRegion', 'uCardCutoff']);
-            if (!indices || indices.length !== 4 || indices.some(index => index === gl.INVALID_INDEX))
-                throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            const offsets = gl.getActiveUniforms(program, indices, gl.UNIFORM_OFFSET);
-            if (offsets.length !== 4 || offsets.some((value, i) => value !== [0, 64, 80, 96][i]))
-                throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            if (gl.getActiveUniforms(program, [indices[0]], 35389)[0] !== 16 || gl.getActiveUniforms(program, [indices[0]], 35390)[0] !== false)
-                throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            const page = gl.getUniformLocation(program, 'uCardPage');
-            if (!page)
-                throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            gl.uniformBlockBinding(program, block, 0);
-            const variant = { program, page };
-            this.sceneCardProgram = variant;
-            return variant;
-        }
-        finally {
-            native.recordOwners = owners;
-        }
-    }
-    getSceneTextureProgram(native, lambert) {
-        const existing = lambert ? this.sceneLambertProgram : this.sceneTextureProgram;
-        if (existing)
-            return existing;
-        const functions = this.sceneFunctions, gl = native.gl, owners = native.recordOwners;
-        // The linked program belongs to the context, independently of the frame that first uses it.
-        native.recordOwners = undefined;
-        try {
-            const program = lambert
-                ? native.program(functions.SHARED_GL_SCENE_LAMBERT_VERTEX, functions.SHARED_GL_SCENE_LAMBERT_FRAGMENT)
-                : native.program(functions.SHARED_GL_SCENE_TEXTURE_VERTEX, functions.SHARED_GL_SCENE_TEXTURE_FRAGMENT);
-            const names = lambert ? ['uMVP', 'uNormal0', 'uNormal1', 'uNormal2', 'uLight'] : ['uMVP'];
-            const indices = gl.getUniformIndices(program, names);
-            if (!indices || indices.some(index => index === gl.INVALID_INDEX))
-                throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            if (lambert) {
-                const block = gl.getUniformBlockIndex(program, 'SceneLambert');
-                if (block === gl.INVALID_INDEX || gl.getActiveUniformBlockParameter(program, block, gl.UNIFORM_BLOCK_DATA_SIZE) !== 128) {
-                    throw glFailure('WEBGL2_CONTEXT_LIMIT');
-                }
-                const offsets = gl.getActiveUniforms(program, indices, gl.UNIFORM_OFFSET);
-                if (offsets.length !== names.length || offsets.some((offset, i) => offset !== [0, 64, 80, 96, 112][i])) {
-                    throw glFailure('WEBGL2_CONTEXT_LIMIT');
-                }
-                gl.uniformBlockBinding(program, block, 0);
-            }
-            else
-                native.block(program, 'SceneDraw', names, 64);
-            if (gl.getActiveUniforms(program, [indices[0]], 35389)[0] !== 16
-                || gl.getActiveUniforms(program, [indices[0]], 35390)[0] !== false) {
-                throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            }
-            const page = gl.getUniformLocation(program, 'uScenePage');
-            if (!page)
-                throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            const result = { program, page };
-            if (lambert)
-                this.sceneLambertProgram = result;
-            else
-                this.sceneTextureProgram = result;
-            return result;
-        }
-        finally {
-            native.recordOwners = owners;
-        }
-    }
-    drawRecord(record, layout) {
+    drawRecord(record, layout, arena) {
         const native = record.native, gl = native.gl, { width, height, frame } = record.storage.prepared;
-        const { vertex, uniform, color, depth, meshes, pageTextures } = layout;
+        const { vertex, uniform, regions, color, pageTextures } = layout;
         const colorTexture = (record.layerWrite?.revision?.owner ?? record.leases[color].handle.resource).value;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
-        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, depth >= 0 ? record.leases[depth].handle.resource.value : null);
-        native.attachment(true);
+        gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null);
+        native.workingAttachment(colorTexture, null);
         gl.drawBuffers([gl.COLOR_ATTACHMENT0]);
         const c = frame.clearColor, a = frame.clearAlpha;
         gl.clearColor(a * decodeSharedSRGB(((c >>> 16) & 255) / 255), a * decodeSharedSRGB(((c >>> 8) & 255) / 255), a * decodeSharedSRGB((c & 255) / 255), a);
         gl.clear(gl.COLOR_BUFFER_BIT);
-        if (record.scene) {
-            gl.enable(gl.DEPTH_TEST);
-            gl.depthMask(true);
-            gl.depthFunc(gl.GREATER);
-            gl.clearDepth(0);
-            gl.clear(gl.DEPTH_BUFFER_BIT);
-            gl.useProgram(this.sceneProgram);
-            gl.bindVertexArray(this.sceneVAO);
-            let activeSceneRole = 'plain';
-            for (let i = 0; i < record.scene.draws.length; i++) {
-                const draw = record.scene.draws[i];
-                if (!draw.mesh.indexCount)
-                    continue;
-                const item = meshes.find(value => value.mesh === draw.mesh);
-                const pageIndex = draw.pageIndex;
-                const textured = pageIndex !== undefined;
-                const role = draw.lambert ? 'lambert' : textured ? 'texture' : 'plain';
-                if (activeSceneRole !== role) {
-                    if (activeSceneRole === 'lambert')
-                        gl.disableVertexAttribArray(3);
-                    activeSceneRole = role;
-                    if (textured) {
-                        if (draw.lambert)
-                            gl.frontFace(gl.CCW);
-                        const variant = this.getSceneTextureProgram(native, draw.lambert === true);
-                        gl.useProgram(variant.program);
-                        gl.activeTexture(gl.TEXTURE0);
-                        gl.uniform1i(variant.page, 0);
-                    }
-                    else {
-                        gl.disableVertexAttribArray(2);
-                        gl.useProgram(this.sceneProgram);
-                    }
-                }
-                gl.bindBuffer(gl.ARRAY_BUFFER, record.leases[item.vertex].handle.resource.value);
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, record.leases[item.index].handle.resource.value);
-                const stride = draw.lambert ? 44 : textured ? 32 : 24;
-                for (const [index, offset] of [[0, 0], [1, 12]]) {
-                    gl.enableVertexAttribArray(index);
-                    gl.vertexAttribPointer(index, 3, gl.FLOAT, false, stride, offset);
-                    gl.vertexAttribDivisor(index, 0);
-                }
-                if (pageIndex !== undefined) {
-                    gl.enableVertexAttribArray(2);
-                    gl.vertexAttribPointer(2, 2, gl.FLOAT, false, stride, 24);
-                    gl.vertexAttribDivisor(2, 0);
-                    gl.bindTexture(gl.TEXTURE_2D, pageTextures.get(pageIndex).native.value);
-                }
-                if (draw.lambert) {
-                    gl.enableVertexAttribArray(3);
-                    gl.vertexAttribPointer(3, 3, gl.FLOAT, false, stride, 32);
-                    gl.vertexAttribDivisor(3, 0);
-                }
-                const range = record.arena.sceneRanges[i];
-                gl.bindBufferRange(gl.UNIFORM_BUFFER, 0, record.leases[uniform].handle.resource.value, range.uniformOffset, range.uniformSize);
-                gl.drawElements(gl.TRIANGLES, draw.mesh.indexCount, gl.UNSIGNED_INT, 0);
-            }
-            if (activeSceneRole === 'lambert')
-                gl.disableVertexAttribArray(3);
-            if (activeSceneRole !== 'plain')
-                gl.disableVertexAttribArray(2);
-            if (record.scene.cards.length) {
-                const variant = this.getSceneCardProgram(native);
-                gl.useProgram(variant.program);
-                gl.bindVertexArray(this.resolveVAO);
-                gl.activeTexture(gl.TEXTURE0);
-                gl.uniform1i(variant.page, 0);
-                for (let i = 0; i < record.scene.cards.length; i++) {
-                    const card = record.scene.cards[i], range = record.arena.sceneRanges[record.scene.draws.length + i];
-                    gl.bindTexture(gl.TEXTURE_2D, pageTextures.get(card.pageIndex).native.value);
-                    gl.bindBufferRange(gl.UNIFORM_BUFFER, 0, record.leases[uniform].handle.resource.value, range.uniformOffset, range.uniformSize);
-                    gl.drawArrays(gl.TRIANGLES, 0, 6);
-                }
-            }
-            gl.disable(gl.DEPTH_TEST);
-            gl.depthMask(false);
-        }
+        // The program and the window of the region table that are current; both change only between batches.
+        let program, bound = -1;
+        // The page each texture unit after the first holds. A unit keeps its page until a batch needs another there.
+        const units = [];
+        const table = arena.regionTable;
         const bindDraw = () => {
+            program = this.program;
+            bound = -1;
             gl.activeTexture(gl.TEXTURE0);
-            gl.useProgram(this.program);
+            gl.useProgram(program);
             gl.bindVertexArray(this.drawVAO);
             if (vertex >= 0) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, record.leases[vertex].handle.resource.value);
-                for (const [index, size, offset] of [[0, 2, 0], [1, 2, 8], [2, 4, 16], [3, 3, 32]]) {
+                for (const [index, size, offset] of [[0, 2, 0], [1, 2, 8], [2, 4, 16], [3, 3, 32], [4, 2, 44]]) {
                     gl.enableVertexAttribArray(index);
-                    gl.vertexAttribPointer(index, size, gl.FLOAT, false, 44, offset);
+                    gl.vertexAttribPointer(index, size, gl.FLOAT, false, 52, offset);
                     gl.vertexAttribDivisor(index, 0);
                 }
             }
             gl.uniform1i(gl.getUniformLocation(this.program, 'page'), 0);
+            // An effect pass in between has used the units for its own textures.
+            units.length = 0;
             gl.enable(gl.BLEND);
         };
         const drawOne = (range) => {
             const draw = range.draw, page = draw.prepared.pageIndex;
-            gl.bindTexture(gl.TEXTURE_2D, page === undefined ? null : pageTextures.get(page).native.value);
+            const wanted = page === undefined ? this.solidProgram : draw.pages.length > 1 ? this.pagedProgram : this.program;
+            if (wanted !== program) {
+                gl.useProgram(wanted);
+                program = wanted;
+            }
+            if (draw.regionWindow >= 0 && draw.regionWindow !== bound) {
+                bound = draw.regionWindow;
+                gl.bindBufferRange(gl.UNIFORM_BUFFER, 1, record.leases[regions].handle.resource.value, bound * table.stride, SHARED_REGION_WINDOW_BYTES_2D);
+            }
+            gl.bindTexture(gl.TEXTURE_2D, page === undefined ? null : pageTextures.get(draw.pages[0]).native.value);
+            for (let unit = 1; unit < draw.pages.length; unit++) {
+                const index = draw.pages[unit];
+                if (units[unit] === index)
+                    continue;
+                gl.activeTexture(gl.TEXTURE0 + unit);
+                gl.bindTexture(gl.TEXTURE_2D, pageTextures.get(index).native.value);
+                gl.activeTexture(gl.TEXTURE0);
+                units[unit] = index;
+            }
             gl.bindBufferRange(gl.UNIFORM_BUFFER, 0, record.leases[uniform].handle.resource.value, range.uniformOffset, 128);
             const blend = sharedWebGL2BlendFactors(draw.prepared.material.blend);
             gl.blendFuncSeparate(...blend);
@@ -1834,17 +1715,17 @@ class SharedGLHost {
         this.drawLayers(record, width, height);
         bindDraw();
         if (record.storage.prepared.effects.groups.length === 0) {
-            for (const range of record.arena.sharedRanges)
+            for (const range of arena.sharedRanges)
                 drawOne(range);
         }
         else {
             const targets = layout.effectTargets.map(id => record.leases[id].handle.resource.value);
-            const setTarget = (target, clear) => { gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null); native.attachment(true); if (clear) {
+            const setTarget = (target, clear) => { gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null); native.workingAttachment(target, null); if (clear) {
                 gl.clearColor(0, 0, 0, 0);
                 gl.clear(gl.COLOR_BUFFER_BIT);
             } };
             const groups = record.storage.prepared.effects.groups, enters = new Map(groups.map(g => [g.enter, g])), exits = new Map(groups.map(g => [g.exit, g]));
-            const ranges = new Map(record.arena.sharedRanges.map(range => [range.draw.prepared.command.ordinal, range]));
+            const ranges = new Map(arena.sharedRanges.map(range => [range.draw.prepared.command.ordinal, range]));
             const effectPass = (group, mode, target, source) => {
                 setTarget(target, mode !== 'composite');
                 const program = this.effectPrograms.get(mode);
@@ -1894,6 +1775,13 @@ class SharedGLHost {
                 }
             }
         }
+        // No page stays bound to a unit only a batch of several pages uses.
+        for (let unit = 1; unit < units.length; unit++)
+            if (units[unit] !== undefined) {
+                gl.activeTexture(gl.TEXTURE0 + unit);
+                gl.bindTexture(gl.TEXTURE_2D, null);
+                gl.activeTexture(gl.TEXTURE0);
+            }
         if (record.layerWrite) {
             native.check();
             return;
@@ -1941,7 +1829,7 @@ class SharedGLHost {
     detachContainers(native) {
         const gl = native.gl;
         // Zero offsets explicitly clear fixed VAO references without a placeholder buffer.
-        for (const [vao, layout] of [[this.drawVAO, [[0, 2], [1, 2], [2, 4], [3, 3]]], [this.sceneVAO, [[0, 3], [1, 3]]]]) {
+        for (const [vao, layout] of [[this.drawVAO, [[0, 2], [1, 2], [2, 4], [3, 3], [4, 2]]]]) {
             if (!vao)
                 continue;
             gl.bindVertexArray(vao);
@@ -1957,6 +1845,7 @@ class SharedGLHost {
         gl.bindBuffer(gl.ARRAY_BUFFER, null);
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, null);
         gl.bindBufferRange(gl.UNIFORM_BUFFER, 0, null, 0, 128);
+        gl.bindBufferRange(gl.UNIFORM_BUFFER, 1, null, 0, SHARED_REGION_WINDOW_BYTES_2D);
         gl.bindBuffer(gl.UNIFORM_BUFFER, null);
         if (this.options.enableEffects) {
             gl.activeTexture(gl.TEXTURE1);
@@ -2007,7 +1896,16 @@ class SharedGLHost {
                 try {
                     if (clock() >= record.deadline)
                         throw glFailure('WEBGL2_SYNC_TIMEOUT');
-                    const gl = record.native.gl, result = gl.clientWaitSync(record.sync.value, 0, 0);
+                    const native = record.native, gl = native.gl, started = native.startTiming();
+                    let result;
+                    if (started !== undefined)
+                        native.timingSerial = record.serial || null;
+                    try {
+                        result = gl.clientWaitSync(record.sync.value, 0, 0);
+                    }
+                    finally {
+                        native.finishTiming('fence-poll', started);
+                    }
                     if (result === gl.TIMEOUT_EXPIRED) {
                         if (clock() < record.deadline)
                             continue;
@@ -2015,7 +1913,13 @@ class SharedGLHost {
                     }
                     if (result !== gl.ALREADY_SIGNALED && result !== gl.CONDITION_SATISFIED)
                         throw glFailure('WEBGL2_SYNC_FAILED', result);
-                    record.native.check();
+                    const checked = native.startTiming();
+                    try {
+                        native.check();
+                    }
+                    finally {
+                        native.finishTiming('completion-error-query', checked);
+                    }
                     if (clock() >= record.deadline)
                         throw glFailure('WEBGL2_SYNC_TIMEOUT');
                     if (work && !work.control.transferred) {
@@ -2079,6 +1983,10 @@ class SharedGLHost {
                         this.revokeUploads(record.failure);
                     }
                 }
+                finally {
+                    if (this.frameTiming)
+                        record.native.timingSerial = null;
+                }
                 this.retire(record);
             }
         }
@@ -2127,6 +2035,9 @@ class SharedGLHost {
             return;
         record.retired = true;
         const native = record.native, work = record.upload;
+        const started = native.startTiming(), previousSerial = native.timingSerial;
+        if (started !== undefined)
+            native.timingSerial = record.serial || null;
         if (work) {
             work.control.phase = 'retired';
             this.clearUploadAdmission(work.control);
@@ -2175,7 +2086,7 @@ class SharedGLHost {
                     for (const current of this.pages.values())
                         bytes += current.source.byteLength;
                     for (const [key, victim] of this.pages) {
-                        if ((this.pages.size < 256 && bytes + page.source.byteLength <= 33554432) || victim.pins > 0)
+                        if ((this.pages.size < 256 && bytes + page.source.byteLength <= this.options.maxReadyPageBytes) || victim.pins > 0)
                             continue;
                         this.pages.delete(key);
                         bytes -= victim.source.byteLength;
@@ -2185,7 +2096,7 @@ class SharedGLHost {
                         if (!native.cleanup(victim.native))
                             this.unsafe = true;
                     }
-                    if (!this.unsafe && this.pages.size < 256 && bytes + page.source.byteLength <= 33554432) {
+                    if (!this.unsafe && this.pages.size < 256 && bytes + page.source.byteLength <= this.options.maxReadyPageBytes) {
                         page.ready = true;
                         this.pages.set(page.source, page);
                         this.resourceReadyBytes += page.source.byteLength;
@@ -2241,7 +2152,8 @@ class SharedGLHost {
             this.resourceNative.reservedPageBytes -= record.reservedPageBytes;
             record.reservedPageBytes = 0;
             record.projections = [];
-            this.scratch.release(record.batch);
+            if (work)
+                this.scratch.release(work.batch);
             this.records.delete(record);
             if (record.ticket) {
                 if (record.failure)
@@ -2273,6 +2185,10 @@ class SharedGLHost {
                 work.writes.length = 0;
                 work.layout.pageTextures.clear();
             }
+            if (started !== undefined) {
+                native.finishTiming('retire', started);
+                native.timingSerial = previousSerial;
+            }
         }
     }
     close() {
@@ -2283,6 +2199,7 @@ class SharedGLHost {
         this.state = 'closing';
         this.cleanupOutcome = 'pending';
         this.cancelRestore();
+        this.retention.clear();
         const failure = glFailure('WEBGL2_CLOSED');
         this.ready?.reject(failure);
         this.rejectUnbound(failure);
@@ -2356,6 +2273,4 @@ class SharedGLHost {
 }
 /** Explicit compatibility backend; the Engine retains the original shared-frame contract. */
 export function createSharedWebGL2Host(options) { return new SharedGLHost(options); }
-/** Internal fixed scene assembly, reached only from the separate package entry. */
-export function createSharedSceneWebGL2HostInternal(options) { return new SharedGLHost(options, true); }
 //# sourceMappingURL=WebGL2Host.js.map

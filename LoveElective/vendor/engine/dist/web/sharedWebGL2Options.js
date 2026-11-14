@@ -5,17 +5,20 @@ const DEFAULTS = Object.freeze({
     enableReadback: false, enableEffects: false, maxSourceTriangles: 65536, maxFrameGeometryBytes: 16777216,
     maxPendingGeometryBytes: 33554432, maxTupleComparisons: 1048576,
     outputAlpha: 'premultiplied', restoreTimeoutMs: 10000,
+    // Read and judged after every earlier option, so their arrival changes no earlier refusal.
+    maxFrameRegions: 4096, maxFramePageBytes: 67108864, maxReadyPageBytes: 134217728,
 });
 const KEYS = ['canvas', 'onDiagnostic', 'pixelRatio', 'maxBackingPixels', 'maxCommands',
     'maxClipRectangles', 'maxPreparedVertices', 'maxClipEdgeTests', 'maxUploadBytes',
     'maxPendingUploadBytes', 'maxPendingFrames', 'maxReadbackBytes', 'enableReadback',
     'maxSourceTriangles', 'maxFrameGeometryBytes', 'maxPendingGeometryBytes',
-    'maxTupleComparisons', 'enableEffects', 'outputAlpha', 'restoreTimeoutMs'];
+    'maxTupleComparisons', 'enableEffects', 'outputAlpha', 'restoreTimeoutMs', 'measureSharedFrames',
+    'maxFrameRegions', 'maxFramePageBytes', 'maxReadyPageBytes'];
 function object(value) {
     return typeof value === 'object' && value !== null;
 }
 /** Capture all successful reads before semantics; preserve the first thrown getter value. */
-export function admitSharedWebGL2Options(input, scene) {
+export function admitSharedWebGL2Options(input) {
     if (!object(input))
         throw new TypeError('options');
     const captured = {};
@@ -25,6 +28,8 @@ export function admitSharedWebGL2Options(input, scene) {
         throw new TypeError('canvas');
     if (captured.onDiagnostic !== undefined && typeof captured.onDiagnostic !== 'function')
         throw new TypeError('diagnostic callback');
+    if (captured.measureSharedFrames !== undefined && typeof captured.measureSharedFrames !== 'boolean')
+        throw new TypeError('measureSharedFrames');
     const configuration = {};
     for (const key of Object.keys(DEFAULTS)) {
         const value = captured[key] === undefined ? DEFAULTS[key] : captured[key];
@@ -33,7 +38,7 @@ export function admitSharedWebGL2Options(input, scene) {
                 throw new TypeError(key);
         }
         else if (key === 'outputAlpha') {
-            if ((value !== 'premultiplied' && value !== 'opaque') || (scene && value !== 'opaque'))
+            if (value !== 'premultiplied' && value !== 'opaque')
                 throw new TypeError(key);
         }
         else {
@@ -49,5 +54,6 @@ export function admitSharedWebGL2Options(input, scene) {
         surface: captured.canvas,
         configuration: Object.freeze(configuration),
         callback: captured.onDiagnostic,
+        measureSharedFrames: captured.measureSharedFrames === true,
     };
 }

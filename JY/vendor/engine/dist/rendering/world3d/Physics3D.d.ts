@@ -1,6 +1,7 @@
 import type { Object3D } from './Object3D.js';
 import { ConvexHullShape3D } from './PhysicsHull3D.js';
 import { TriangleMeshShape3D } from './PhysicsMesh3D.js';
+export declare const raycastExcludingBody3D: unique symbol;
 export declare const PHYSICS3D_LIMITS: Readonly<{
     readonly maxBodies: 16384;
     readonly maxSubSteps: 8;
@@ -353,6 +354,8 @@ export declare class PhysicsWorld3D {
     private solve;
     /** Nearest solid body hit by a ray; triggers are skipped. `direction` need not be normalized. */
     raycast(origin: ArrayLike<number>, direction: ArrayLike<number>, maxDistance?: number, mask?: number): PhysicsRaycastHit3D | undefined;
+    /** @internal Skip one body before selecting the nearest hit. */
+    [raycastExcludingBody3D](origin: ArrayLike<number>, direction: ArrayLike<number>, maxDistance: number, mask: number, excluded?: RigidBody3D): PhysicsRaycastHit3D | undefined;
     /** Solid bodies whose shape touches a sphere; triggers are skipped. */
     overlapSphere(center: ArrayLike<number>, radius: number, mask?: number): RigidBody3D[];
     /**

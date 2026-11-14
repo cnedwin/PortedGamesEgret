@@ -4,6 +4,7 @@
 // spring and a damper where the ray meets the ground, and pushes at that point
 // to drive, brake and resist sliding sideways. DOM-free and backend-independent.
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
+import { raycastExcludingBody3D } from './Physics3D.js';
 export const VEHICLE3D_LIMITS = Object.freeze({ maxWheels: 16 });
 const down = new Float64Array(3), forward = new Float64Array(3), side = new Float64Array(3), from = new Float64Array(3), v = new Float64Array(3), w = new Float64Array(3), grip = new Float64Array(3);
 /**
@@ -95,10 +96,7 @@ export class Vehicle3D {
             from[1] = p[1] + r[3] * a[0] + r[4] * a[1] + r[5] * a[2];
             from[2] = p[2] + r[6] * a[0] + r[7] * a[1] + r[8] * a[2];
             const reach = wheel.restLength + wheel.travel + wheel.radius;
-            let hit = this.world.raycast(from, down, reach, this.mask);
-            // The chassis is no ground for its own wheels.
-            if (hit && hit.body === body)
-                hit = undefined;
+            const hit = this.world[raycastExcludingBody3D](from, down, reach, this.mask, body);
             wheel.grounded = hit !== undefined;
             wheel.ground = hit?.body;
             wheel.load = 0;

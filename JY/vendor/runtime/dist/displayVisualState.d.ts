@@ -26,6 +26,12 @@ export interface VisualState {
     renderEffect: RenderEffect2D | undefined;
     clipRect: Rectangle2D | undefined;
     primitives: Primitive[];
+    /** What the shared capture keeps of this node between frames; the capture alone reads and writes it. */
+    sharedCapture: object | undefined;
+    /** How many changes were recorded for this node, of any kind. It only grows. */
+    changes: number;
+    /** The last capture that visited this node; a capture visits a node once. The captures alone read and write it. */
+    seenBy: number;
 }
 export declare const VISUAL_STRUCTURE = 1;
 export declare const VISUAL_TRANSFORM = 2;

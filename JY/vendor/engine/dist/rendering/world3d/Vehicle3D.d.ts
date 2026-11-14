@@ -1,5 +1,5 @@
 import type { Object3D } from './Object3D.js';
-import type { PhysicsWorld3D, RigidBody3D } from './Physics3D.js';
+import { type PhysicsWorld3D, type RigidBody3D } from './Physics3D.js';
 export declare const VEHICLE3D_LIMITS: Readonly<{
     readonly maxWheels: 16;
 }>;

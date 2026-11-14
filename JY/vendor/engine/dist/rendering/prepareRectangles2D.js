@@ -1,6 +1,12 @@
 import { noteOwnedPreparationFailure } from './ownedPreparationFailure2D.js';
 import { orient2d } from 'robust-predicates';
-import { readPreparedStage2D, tryReplayPreparedStage2D, acceptPreparedStage2D, publishPreparedStage2D } from './preparedFrameCache2D.js';
+function tryReplayPreparedStage2D(budget, cost) {
+    if (!Number.isSafeInteger(cost.preparedVertices) || cost.preparedVertices < 0
+        || !Number.isSafeInteger(cost.predicates) || cost.predicates < 0
+        || !Number.isSafeInteger(cost.tupleComparisons) || cost.tupleComparisons < 0)
+        return false;
+    return budget === undefined || budget.tryReplayStageCost?.(cost) === true;
+}
 const clearClipEntries = Map.prototype.clear;
 /** Drop all clip references before packing, including on an original preparation failure. */
 export function clearClipRectangleContext2D(context) {
@@ -423,63 +429,5 @@ export function clipPolygon2D(preparation, subject, clip, normalize, attach, pol
         subject = normalize(preparation, output);
     }
     return subject;
-}
-export function prepareRectangles2D(frame, width, height, options, budget, commandIndices, cache, sourceCommandIndices, containedClipping = false, clipContext) {
-    // A clear-only frame still consumes nominal DPR, so its envelope is unconditional.
-    coordinate(options.pixelRatio);
-    const preparation = new Preparation(options, budget, containedClipping, clipContext);
-    const points = [];
-    const commands = [];
-    const viewport = [{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }];
-    let vertices = 0;
-    for (let commandIndex = 0; commandIndex < frame.commands.length; commandIndex++) {
-        const command = frame.commands[commandIndex];
-        const slot = cache?.cache.slot(cache, [command], width, height, undefined, undefined, false, sourceCommandIndices?.[commandIndex] ?? commandIndex);
-        const cached = readPreparedStage2D(slot, 'geometry');
-        const previousPredicates = preparation.edgeTests;
-        let polygon, fanVertices, hit = false;
-        if (cached && cached.cost.predicates <= options.maxClipEdgeTests - preparation.edgeTests
-            && cached.cost.preparedVertices <= options.maxPreparedVertices - vertices
-            && cached.cost.preparedVertices <= 4294967295 - vertices
-            && tryReplayPreparedStage2D(budget, cached.cost)) {
-            polygon = cached.value.polygon;
-            fanVertices = cached.cost.preparedVertices;
-            preparation.edgeTests += cached.cost.predicates;
-            hit = true;
-            acceptPreparedStage2D(slot);
-        }
-        else {
-            let computed = preparation.rectangle(command);
-            // Preflight all clips even when an earlier clip or alpha already removes coverage.
-            const clips = command.clips.map(clip => preparation.clipRectangle(clip, clipContext));
-            const bounds = clipContext && preparation.containedClipStackBounds(clips, viewport);
-            if (bounds === undefined || !preparation.tryContainedClipStack(computed, bounds, 'rectangle')) {
-                for (const clip of clips)
-                    computed = preparation.tryContainedClip(computed, clip, 'rectangle') ?? preparation.intersect(computed, clip, containedClipping);
-                computed = preparation.tryContainedClip(computed, viewport, 'rectangle') ?? preparation.intersect(computed, viewport, containedClipping);
-            }
-            polygon = command.alpha === 0 ? [] : computed;
-            fanVertices = polygon.length ? (polygon.length - 2) * 3 : 0;
-            if (polygon.length) {
-                if (fanVertices > options.maxPreparedVertices - vertices || fanVertices > 4294967295 - vertices)
-                    fail('budget');
-                budget?.admitPreparedVertices(fanVertices);
-            }
-        }
-        vertices += fanVertices;
-        if (polygon.length) {
-            const pointIndices = [];
-            for (const point of polygon) {
-                pointIndices.push(points.length);
-                points.push(point);
-            }
-            commands.push({ pointIndices, color: command.color, alpha: command.alpha });
-            // Retain the actual source ordinal, including holes from empty commands.
-            commandIndices?.push(commandIndex);
-        }
-        if (!hit)
-            publishPreparedStage2D(slot, 'geometry', { polygon }, { preparedVertices: fanVertices, predicates: preparation.edgeTests - previousPredicates, tupleComparisons: 0 });
-    }
-    return { points, commands, edgeTests: preparation.edgeTests };
 }
 //# sourceMappingURL=prepareRectangles2D.js.map

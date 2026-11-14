@@ -1,19 +1,12 @@
 import { EgretError } from "@egret/runtime";
 import { startEngine } from './startEngine.js';
 import { admitGameClockOptions } from './gameClock.js';
-/** Reserve the surface before startup; failed startup uses the normal close path. */
+/**
+ * An Engine without a render port: it captures frames and does not render them.
+ * Reserve the surface before startup; failed startup uses the normal close path.
+ */
 export async function createEngine(options) {
     const host = options.host;
-    let renderer;
-    try {
-        const port = host.renderFrame;
-        if (port !== undefined && typeof port !== "function")
-            throw new EgretError("INVALID_RENDERER");
-        renderer = port;
-    }
-    catch (cause) {
-        throw new EgretError("INVALID_RENDERER", { cause });
-    }
     const diagnostic = options.onDiagnostic;
     const stableOptions = { host, ...(diagnostic === undefined ? {} : { onDiagnostic: diagnostic }) };
     const timeoutMs = options.shutdownTimeoutMs ?? 1000;
@@ -27,6 +20,6 @@ export async function createEngine(options) {
         throw new EgretError('CLOCK_OPTIONS_INVALID', { cause });
     }
     const clockOptions = admitGameClockOptions(clockValue);
-    return startEngine(stableOptions, timeoutMs, { legacy: renderer, textured: undefined, profile: undefined }, clockOptions);
+    return startEngine(stableOptions, timeoutMs, { shared: undefined, sharedProfile: undefined }, clockOptions);
 }
 //# sourceMappingURL=createEngine.js.map

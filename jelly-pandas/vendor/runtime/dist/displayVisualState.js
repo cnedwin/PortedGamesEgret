@@ -2,7 +2,6 @@ import { assertManagedMutable } from './ui/managedState.js';
 import { assertLive, isDisplayNode } from "./displayTreeState.js";
 import { engineOf } from "./ownership.js";
 import { EgretError } from "./EgretError.js";
-import { invalidateCaptureNode } from "./frameCaptureCache.js";
 // Authoritative per-node visual state excludes overridable public accessors.
 const states = new WeakMap();
 const readRevisionState = states.get.bind(states);
@@ -23,12 +22,12 @@ export function recordVisualChange(node, changes) {
     const state = readRevisionState(node);
     if (state === undefined)
         return;
+    state.changes++;
     if (((changes & VISUAL_STRUCTURE) !== 0 && state.structureRevision >= REVISION_RESTART)
         || ((changes & VISUAL_TRANSFORM) !== 0 && state.transformRevision >= REVISION_RESTART)
         || ((changes & VISUAL_APPEARANCE) !== 0 && state.appearanceRevision >= REVISION_RESTART)
         || ((changes & VISUAL_CONTENT) !== 0 && state.contentRevision >= REVISION_RESTART)
         || ((changes & VISUAL_BINDING) !== 0 && state.bindingRevision >= REVISION_RESTART)) {
-        invalidateCaptureNode(node);
         state.structureRevision = 0;
         state.transformRevision = 0;
         state.appearanceRevision = 0;
@@ -52,6 +51,7 @@ export function registerVisual(node) {
         x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, alpha: 1,
         anchorOffsetX: 0, anchorOffsetY: 0,
         visible: true, renderEffect: undefined, sharedMaterial: null, renderBoundary: 'none', clipRect: undefined, primitives: [],
+        sharedCapture: undefined, changes: 0, seenBy: 0,
     });
 }
 export function visualOf(node) {

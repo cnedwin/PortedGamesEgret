@@ -42,7 +42,7 @@ export function parseAtlasPagesArtifact(text, id, dependencyCount) {
     let frameCount = 0, nameUnits = 0;
     for (let index = 0; index < dependencyCount; index++) {
         const page = object(value.pages[index], ['name', 'pageDependency', 'width', 'height', 'frames'], id), pageName = name(page.name, id);
-        if (pageNames.has(pageName) || page.pageDependency !== index || !integer(page.width, 1, 4096) || !integer(page.height, 1, 4096) || page.width * page.height > 1048576
+        if (pageNames.has(pageName) || page.pageDependency !== index || !integer(page.width, 1, 4096) || !integer(page.height, 1, 4096) || page.width * page.height > 4194304
             || !Array.isArray(page.frames) || !integer(page.frames.length, 1, 1024))
             return fail(id);
         pageNames.add(pageName);
