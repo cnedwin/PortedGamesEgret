@@ -1,6 +1,7 @@
 import type { Rectangle2D, SharedMaterial2D } from "@egret/contracts";
 import type { DisplayObject } from "./DisplayObject.js";
 import type { RenderEffect2D } from './renderEffect.js';
+import type { ShapeState } from './graphicsShape.js';
 export interface Primitive {
     readonly rect: Rectangle2D;
     readonly color: number;
@@ -26,6 +27,8 @@ export interface VisualState {
     renderEffect: RenderEffect2D | undefined;
     clipRect: Rectangle2D | undefined;
     primitives: Primitive[];
+    /** What the node draws besides filled rectangles: triangles and a path, which Graphics alone writes. */
+    shape: ShapeState | undefined;
     /** What the shared capture keeps of this node between frames; the capture alone reads and writes it. */
     sharedCapture: object | undefined;
     /** How many changes were recorded for this node, of any kind. It only grows. */

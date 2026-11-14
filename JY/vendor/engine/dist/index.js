@@ -1,6 +1,7 @@
 export { Engine } from "./Engine.js";
 export { createEngine } from "./createEngine.js";
 export { createEngineForProfile } from './createEngineForProfile.js';
+export { describeErrorCode, setErrorLanguage, getErrorLanguage } from "@egret/runtime";
 export { CancellationController, EgretError, Event, createEventType, EventDispatcher, DisplayObject, DisplayObjectContainer, Scope, Stage } from "@egret/runtime";
 export { AssetManager, AssetLease, createAssetType, createAssetRef } from "@egret/runtime";
 export { Sprite, Graphics } from '@egret/runtime';
