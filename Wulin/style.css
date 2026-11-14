@@ -79,3 +79,4 @@
 .map-panel.is-model .map-label span { font-size: 18px; }
 .map-panel.is-model .scene-bottom { justify-content: flex-start; }
 @media (max-width: 575px) { .map-panel.is-model .map-label small { display: none; } .realm-tag small { display: none; } }
+.stat-grid { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }

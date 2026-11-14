@@ -33,7 +33,7 @@ import { createRng } from './core/rng.mjs';
 import { createSlots, deserialize, saveFileName, serialize } from './core/save.mjs';
 import {
   SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, beds, build, createWorld, dateText, gift, ledger, membersOf, openShop, placesOf, promote,
-  recruit, relocate, residents, setJob, setMaster, settle, settleAssault, strength, upgrade, usedCells,
+  recruit, relocate, residents, setJob, setMaster, settle, settleAssault, strength, tradeRoutes, upgrade, usedCells,
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
 
@@ -180,6 +180,8 @@ function syncPicture() {
     }
     if (stage.current !== picture.realm) stage.show(picture.realm);
     picture.realm.refresh();
+    // Carts run on every road that some sect trades along.
+    picture.realm.setTrade(SECTS.filter((sect) => world.sects[sect.id].alive).flatMap((sect) => tradeRoutes(world, sect.id)));
     picture.realm.select(ui.mapPlace);
     return;
   }
@@ -300,7 +302,7 @@ function seatScreen() {
     </div>
     <div class="seat-bottom" data-region="seat-bottom">
       <section class="panel"><div class="panel-title"><h2>据点总览</h2><span class="caption">每旬结算</span></div>
-        <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>全派薪俸</span><b>${row.wages}<small> 两</small></b></div><div><span>朝廷关系</span><b>${Math.round(books().court)}</b></div></div>
+        <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>全派薪俸</span><b>${row.wages}<small> 两</small></b></div><div><span>朝廷关系</span><b>${Math.round(books().court)}</b></div><div><span>商路进项</span><b>${row.trade}<small> 两</small></b></div></div>
         <div class="terrain-list">${RESOURCES.map((key) => `<span>${RESOURCE_NAMES[key]} <strong>${dots(spec.resources[key])}</strong></span>`).join('')}</div>
         <div class="stock-line">库存：${RESOURCES.map((key) => `${RESOURCE_NAMES[key]} ${Math.round(books().res[key])}`).join(' · ')}</div>
         <div class="stock-line button-group"><span>山下店铺 ${place.shops} / ${SHOP_LIMIT}（每间每旬入银 ${ECONOMY.shopIncome.join('–')} 两）</span>${btn(`开设店铺（${num(ECONOMY.shopCost)}两）`, 'shop', {}, 'outline', '', place.shops >= SHOP_LIMIT)}</div>
@@ -775,7 +777,7 @@ const SHEETS = {
       const row = ledger(world, s.id),
         relation = Math.round(books().relations[s.id]);
       return `<div>${face(leaderOf(s.id) ?? founder(s))}<span><strong>${esc(s.name)}</strong> ${tag(['邪', '中立', '正'][s.standing + 1])}<br><small class="muted">${row.members} 人 · ${row.places} 处 · 战力 ${num(row.strength)}</small></span><b class="${relation < 0 ? 'bad' : relation >= 40 ? 'good' : ''}">${relation}</b><span class="button-group">${btn('馈赠 500 两', 'gift', { sect: s.id }, 'outline')}${s.id in (books().spies ?? {}) ? tag('卧底在内', 'positive') : btn(`安插卧底（${SPY_COST}两）`, 'spy', { sect: s.id }, 'outline')}</span></div>`;
-    }).join('')}</div><p class="caption">关系高的门派不易来犯，馈赠可以改善关系。有卧底在内的门派，与之交手时我方攻势加八分；卧底每旬有小概率败露，败露则两派交恶。</p>`, closeBtn('关闭')];
+    }).join('')}</div><p class="caption">关系到 ${ECONOMY.allyRelation} 的门派，与本派据点相邻的道路即成商路，每旬各得 ${ECONOMY.allyRouteIncome} 两；本派两处据点之间的道路每旬得 ${ECONOMY.routeIncome} 两，两端每有一间店铺再加 ${ECONOMY.routeShopBonus} 两。</p><p class="caption">关系高的门派不易来犯，馈赠可以改善关系。有卧底在内的门派，与之交手时我方攻势加八分；卧底每旬有小概率败露，败露则两派交恶。</p>`, closeBtn('关闭')];
   },
   settings() {
     return ['游戏设置', `${formRow('画质', `<select data-change="quality">${options([['', '自动'], ['high', '高'], ['medium', '中'], ['low', '低（省电）']], storedQuality() ?? '')}</select>`)}
@@ -1022,6 +1024,14 @@ const actions = {
   gift: (data) => say(gift(world, me(), data.sect, 500), `已向${SECT_BY_ID[data.sect].name}馈赠。`),
   march(data) {
     books().formation = pick('#formation') || books().formation;
+    // On the 3D map the column is seen marching up the road before the fight begins.
+    const from = PLACE_BY_ID[data.place].roads.find((id) => world.places[id].owner === me());
+    if (picture.realm && picture.stage?.current === picture.realm && from && !ui.marching) {
+      ui.marching = true;
+      ui.sheet = null;
+      ui.speed = 0;
+      return picture.realm.march(from, data.place, colorOf(me()), () => ((ui.marching = false), march(data.place), render()));
+    }
     march(data.place);
   },
   shop: () => say(openShop(world, me(), ui.place), '店铺开张了。'),

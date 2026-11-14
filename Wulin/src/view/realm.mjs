@@ -238,6 +238,8 @@ export function createRealm(stage, world, { layer = null } = {}) {
   const water = new Mesh3D(createGeometry3D({ positions: [-900, 0, -900, 900, 0, -900, -900, 0, 900, 900, 0, 900], normals: [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0], indices: [0, 2, 1, 1, 2, 3] }), createStandardMaterial3D({ color: 0x2c6488, roughness: 0.4, metallic: 0, opacity: 0.9, alphaMode: 'blend' }));
   scene.addChild(water);
 
+  /** The line each road takes, by the ids of the two strongholds it joins. */
+  const roadPaths = {};
   // ---- roads, with a bridge wherever one crosses water ------------------------------------------------------
   {
     const p = [],
@@ -275,6 +277,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
           // Over water the road is a bridge, held level above it.
           points.push([x, Math.max(groundAt(x, z), 0.55) + 0.32, z]);
         }
+        roadPaths[place.id + '|' + other] = points;
         strip(points, 0.6, (y) => (y < 0.9 ? 0x7a5c3e : 0xbfae84));
       }
     // The frontier wall follows the ridges.
@@ -457,6 +460,26 @@ export function createRealm(stage, world, { layer = null } = {}) {
   const ring = new Mesh3D(createGeometry3D(band), createStandardMaterial3D({ color: 0xf6dc8c, emissive: 0xf6dc8c, roughness: 1 }));
   scene.addChild(ring);
 
+  // Carts on the roads that are traded along, and a column of fighters when someone marches.
+  const cartShape = build([[BOX, [0, 0.32, 0], [0.5, 0.3, 0.9], 0x8a6a48], [BOX, [0, 0.62, 0], [0.56, 0.3, 0.7], 0xe9e1cf], [BOX, [0, 0.3, 0.75], [0.22, 0.36, 0.5], 0x5a4632]]);
+  const CARTS = stage.quality === 'low' ? 12 : 36;
+  const carts = new InstancedMesh3D(cartShape, TOON, CARTS);
+  scene.addChild(carts);
+  let trade = [];
+  /** The road between two strongholds, from the first to the second. */
+  const roadBetween = (from, to) => roadPaths[from + '|' + to] ?? [...(roadPaths[to + '|' + from] ?? [])].reverse();
+  const spotOn = (path, t) => {
+    const f = Math.max(0, Math.min(path.length - 1.001, t * (path.length - 1))),
+      i = Math.floor(f),
+      a = path[i],
+      b = path[i + 1];
+    return { x: lerp(a[0], b[0], f - i), y: lerp(a[1], b[1], f - i), z: lerp(a[2], b[2], f - i), heading: Math.atan2(b[0] - a[0], b[2] - a[2]) };
+  };
+  const troop = new Object3D();
+  troop.visible = false;
+  scene.addChild(troop);
+  let marching = null;
+
   let banners = new Object3D(),
     signature = '',
     chosen = null,
@@ -491,6 +514,12 @@ export function createRealm(stage, world, { layer = null } = {}) {
     banners = model(parts);
     scene.addChild(banners);
   }
+  /** Tells the model which roads are traded along: `[{ from, to }]`. Carts are shared out among them. */
+  function setTrade(routes) {
+    const paths = routes.map((route) => roadBetween(route.from, route.to)).filter((path) => path.length > 1);
+    trade = paths.length ? Array.from({ length: Math.min(CARTS, paths.length * 2) }, (_, i) => ({ path: paths[i % paths.length], t: random(), pace: (0.02 + random() * 0.015) * (i % 2 ? 1 : -1) })) : [];
+    carts.count = trade.length;
+  }
   refresh();
 
   const turned = new Float32Array(4);
@@ -499,6 +528,21 @@ export function createRealm(stage, world, { layer = null } = {}) {
     scene,
     camera,
     refresh,
+    setTrade,
+    /**
+     * Shows a column marching from one stronghold to its neighbour under a
+     * banner, then calls `arrived`. The camera follows it.
+     */
+    march(from, to, colour, arrived) {
+      const path = roadBetween(from, to);
+      if (path.length < 2) return arrived();
+      for (const child of [...(troop.children ?? [])]) troop.removeChild(child);
+      const parts = [[ROD, [0, 1.6, 0], [0.06, 3.2, 0.06], 0x4a3a2a], [BOX, [0.5, 2.6, 0], [0.9, 1.1, 0.05], colour]];
+      for (let i = 0; i < 10; i++) parts.push([TAPER, [((i % 2) - 0.5) * 0.7, 0.45, -0.6 - Math.floor(i / 2) * 0.7], [0.2, 0.9, 0.2], colour], [BALL, [((i % 2) - 0.5) * 0.7, 1.0, -0.6 - Math.floor(i / 2) * 0.7], 0.17, 0xe2b48c]);
+      troop.addChild(model(parts));
+      troop.visible = true;
+      marching = { path, t: 0, arrived, began: performance.now() };
+    },
     /** Marks a stronghold as the one being looked at, and brings the camera over to it. */
     select(placeId, move = true) {
       if (placeId === chosen) return;
@@ -539,6 +583,26 @@ export function createRealm(stage, world, { layer = null } = {}) {
         cloud.x = ((cloud.x + dt * (1.2 + (i % 4) * 0.4) + 260) % 520) - 260;
         cloud.node.setPosition(cloud.x, cloud.y, cloud.z);
       });
+      trade.forEach((cart, i) => {
+        cart.t = (cart.t + cart.pace * dt + 1) % 1;
+        const at = spotOn(cart.path, cart.t);
+        carts.setTransformAt(i, [at.x, at.y, at.z], quatFromEuler(turned, 0, at.heading + (cart.pace < 0 ? Math.PI : 0), 0), 1.3);
+      });
+      if (marching) {
+        // By the clock, not by frames, so a slow device does not hold the fight up.
+        marching.t = (performance.now() - marching.began) / 2600;
+        const at = spotOn(marching.path, Math.min(1, marching.t));
+        troop.setPosition(at.x, at.y, at.z);
+        troop.setRotation(0, at.heading, 0);
+        troop.setScale(1.6);
+        glide = at;
+        if (marching.t >= 1) {
+          const { arrived } = marching;
+          marching = null;
+          troop.visible = false;
+          arrived();
+        }
+      }
       const site = sites[chosen];
       ring.visible = !!site;
       if (site) ring.setPosition(site.x, site.y + 0.9, site.z), ring.setScale(1 + 0.05 * Math.sin(clock * 3));

@@ -269,7 +269,8 @@ test('every person in a default wheel throws moves they know', () => {
 
 const { formationsFor, join, modsOf, pendingView, resolvePending, setRule } = await import('../src/core/jianghu.mjs');
 const { EVENTS, FORMATIONS, TALENTS, WANDERERS } = await import('../src/data/jianghu.mjs');
-const { openShop } = await import('../src/core/world.mjs');
+const worldModule = await import('../src/core/world.mjs');
+const { openShop } = worldModule;
 
 test('wanderers, talents and formations are well formed', () => {
   assert.equal(WANDERERS.length, 30);
@@ -432,4 +433,17 @@ test('a rallying cry lasts a while and a stance can be taken back', () => {
   assert.ok(Math.abs(unit.defense - defense) < 1e-6);
   for (let i = 0; i < 200 && !battle.done; i++) battle.update();
   assert.ok(battle.done || Math.abs(unit.attackBonus - attack) < 1e-9);
+});
+
+test('roads between a sect\'s strongholds and to its friends bring trade', () => {
+  const world = createWorld({ seed: 3, playerSect: 'shaolin' });
+  const { tradeRoutes, ledger } = worldModule;
+  assert.equal(tradeRoutes(world, 'shaolin').length, 0);
+  world.places.huashan.owner = 'shaolin';
+  const own = tradeRoutes(world, 'shaolin');
+  assert.equal(own.filter((route) => route.kind === 'own').length, 1);
+  world.sects.shaolin.relations.wudang = 60;
+  assert.ok(tradeRoutes(world, 'shaolin').some((route) => route.kind === 'ally' && route.to === 'wudang'));
+  world.places.songshan.shops = 2;
+  assert.ok(ledger(world, 'shaolin').trade > own[0].income);
 });

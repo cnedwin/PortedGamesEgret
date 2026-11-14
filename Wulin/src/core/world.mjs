@@ -675,6 +675,7 @@ function endOfXun(state, rng) {
       if (books.res[key] > ECONOMY.reserve) (books.silver += books.res[key] - ECONOMY.reserve), (books.res[key] = ECONOMY.reserve);
     if (books.grain < 0) (books.silver = Math.max(0, books.silver + books.grain * ECONOMY.grainPrice)), (books.grain = 0);
     for (const placeId of placesOf(state, sectId)) books.silver += state.places[placeId].shops * rng.int(...ECONOMY.shopIncome);
+    books.silver += tradeRoutes(state, sectId).reduce((sum, route) => sum + route.income, 0);
 
     for (const person of members) {
       if (person.id === books.leaderId) continue;
@@ -789,6 +790,23 @@ export function advanceDay(state) {
 }
 
 /** A sect's books in one line each, for the ledger screen and for checks. */
+/**
+ * The roads a sect trades along: those joining two of its own strongholds,
+ * and those leading to the stronghold of a sect it is on good terms with.
+ * Each is `{ from, to, kind: 'own' | 'ally', income }`, income being silver every ten days.
+ */
+export function tradeRoutes(state, sectId) {
+  const routes = [];
+  for (const from of placesOf(state, sectId))
+    for (const to of PLACE_BY_ID[from].roads) {
+      const owner = state.places[to].owner;
+      if (owner === sectId) {
+        if (from < to) routes.push({ from, to, kind: 'own', income: ECONOMY.routeIncome + ECONOMY.routeShopBonus * (state.places[from].shops + state.places[to].shops) });
+      } else if (owner && state.sects[sectId].relations[owner] >= ECONOMY.allyRelation) routes.push({ from, to, kind: 'ally', income: ECONOMY.allyRouteIncome });
+    }
+  return routes;
+}
+
 export function ledger(state, sectId) {
   const members = membersOf(state, sectId);
   return {
@@ -796,6 +814,7 @@ export function ledger(state, sectId) {
     places: placesOf(state, sectId).length,
     silver: Math.round(state.sects[sectId].silver),
     wages: members.reduce((sum, person) => sum + RANKS[person.rank].pay, 0),
+    trade: tradeRoutes(state, sectId).reduce((sum, route) => sum + route.income, 0),
     strength: strength(members),
     renown: Math.round(state.sects[sectId].renown),
     virtue: Math.round(state.sects[sectId].virtue),
