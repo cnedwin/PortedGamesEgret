@@ -1403,7 +1403,10 @@ document.body.addEventListener('click', (event) => {
   if (mapDragged && act === 'place') return;
   feedbackAudio.unlock(event);
   try {
+    const sheet = ui.sheet;
+    const beforeToast = toast.timer;
     actions[act]?.(target.dataset, event);
+    if (sheet && toast.timer !== beforeToast && toast.sheet === sheet) toast.sheet = ui.sheet;
     if (event.isTrusted) {
       if (navigationActions.has(act)) feedbackAudio.play('nav');
       else if (selectionActions.has(act)) feedbackAudio.play('pick');
