@@ -39,7 +39,7 @@ import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, res
 import { createVoice } from './ui/voice.mjs';
 import { createFeedbackAudio } from './ui/feedback-audio.mjs';
 import { createClipAudio, createSoundtrack } from './ui/soundtrack.mjs';
-import { createCombatAudio, createCourtyardAudio } from './ui/world-audio.mjs';
+import { courtyardTrack, createCombatAudio, createWorldAmbience } from './ui/world-audio.mjs';
 import { legacyScreen, prologue, prologueScreen, sectScreen } from './ui/opening.mjs';
 import { claimGoal, goalView, startGoals } from './core/goals.mjs';
 
@@ -52,11 +52,11 @@ const slots = createSlots(localStorage);
 const clips = createClipAudio();
 const music = createSoundtrack(localStorage, clips);
 const feedbackAudio = createFeedbackAudio(localStorage);
-const courtyardAudio = createCourtyardAudio(localStorage, clips);
+const worldAmbience = createWorldAmbience(localStorage, clips);
 const combatAudio = createCombatAudio(clips, feedbackAudio);
 const voice = createVoice(localStorage, undefined, { clips, onSpeaking(active) {
   music.duck(active);
-  courtyardAudio.duck(active);
+  worldAmbience.duck(active);
   combatAudio.duck(active);
 } });
 const recordedArts = new Map(ARTS.filter(art => CLASSES[art.klass]?.combat).map(art => [art.name, art.id]));
@@ -234,7 +234,9 @@ function syncPicture() {
     return;
   }
   if (picture.seat?.placeId !== ui.place || picture.seat.world !== world) {
-    picture.seat = picture.modules.createSeat(stage, () => world, ui.place, { layer: document.querySelector('#layer'), nameOf: (kind) => BUILDINGS[kind].name });
+    picture.seat = picture.modules.createSeat(stage, () => world, ui.place, {
+      layer: document.querySelector('#layer'), nameOf: (kind) => BUILDINGS[kind].name, onHour: syncSeatAmbience,
+    });
     picture.seat.world = world;
     stage.show(picture.seat);
   } else {
@@ -242,6 +244,26 @@ function syncPicture() {
     picture.seat.refresh();
   }
   picture.seat.showTags = ui.tags;
+}
+
+let lastSeatTrack;
+function syncSeatAmbience(hour) {
+  if (ui.page !== 'seat') return;
+  const track = courtyardTrack(hour);
+  if (track === lastSeatTrack) return;
+  lastSeatTrack = track;
+  worldAmbience.select(track);
+}
+
+function syncAmbience() {
+  if (world && ui.page === 'seat' && !ui.fight) {
+    lastSeatTrack = courtyardTrack(picture.seat?.light.hour ?? 12);
+    worldAmbience.select(lastSeatTrack);
+  } else {
+    lastSeatTrack = undefined;
+    const realm = world && ui.page === 'world' && !ui.fight;
+    worldAmbience.select(realm ? 'realm' : undefined, !!(realm && ui.map3d && picture.stage && picture.stage.current === picture.realm && picture.realm?.isMarching));
+  }
 }
 
 // ---- before a game: the title and the choice of sect ----------------------------------------------------
@@ -935,8 +957,8 @@ const SHEETS = {
         ${formRow('操作与战斗音效', `<select data-change="feedback-sound">${options([['on', '开启'], ['off', '静音']], feedbackAudio.on ? 'on' : 'off')}</select>`)}
         ${formRow('音效音量', `<input type="range" min="0" max="1" step="0.05" data-change="feedback-volume" value="${feedbackAudio.volume}">`)}
         ${btn('试听音效', 'feedback-test', {}, 'outline', 'sound')}
-        ${formRow('山门环境声', `<select data-change="ambience">${options([['on', '开启'], ['off', '静音']], courtyardAudio.on ? 'on' : 'off')}</select>`)}
-        ${formRow('环境音量', `<input type="range" min="0" max="1" step="0.05" data-change="ambience-volume" value="${courtyardAudio.volume}">`)}
+        ${formRow('场景环境声', `<select data-change="ambience">${options([['on', '开启'], ['off', '静音']], worldAmbience.on ? 'on' : 'off')}</select>`)}
+        ${formRow('环境音量', `<input type="range" min="0" max="1" step="0.05" data-change="ambience-volume" value="${worldAmbience.volume}">`)}
         ${formRow('中文播报', `<select data-change="voice">${options([['on', '开启'], ['off', '静音']], voice.on ? 'on' : 'off')}</select>`)}
         ${formRow('播报音量', `<input type="range" min="0" max="1" step="0.05" data-change="voice-volume" value="${voice.volume}">`)}
         ${btn('试听女声', 'voice-test', {}, 'outline', 'sound')}
@@ -1073,7 +1095,7 @@ function render() {
   syncPicture();
   placeMap();
   music.select(ui.fight ? 'battle' : world ? 'explore' : 'title');
-  courtyardAudio.select(!!world && ui.page === 'seat');
+  syncAmbience();
   combatAudio.setEngaged(!!ui.fight);
   const beat = !world && ui.page === 'prologue' ? ui.prologue : null;
   if (beat !== spokenPrologue) {
@@ -1415,8 +1437,8 @@ const changes = {
   'music-volume': (_, value) => music.set({ volume: Number(value) }),
   'feedback-sound': (_, value) => { feedbackAudio.set({ on: value === 'on' }); combatAudio.settingsChanged(); },
   'feedback-volume': (_, value) => { feedbackAudio.set({ volume: Number(value) }); combatAudio.settingsChanged(); },
-  ambience: (_, value) => courtyardAudio.set({ on: value === 'on' }),
-  'ambience-volume': (_, value) => courtyardAudio.set({ volume: Number(value) }),
+  ambience: (_, value) => worldAmbience.set({ on: value === 'on' }),
+  'ambience-volume': (_, value) => worldAmbience.set({ volume: Number(value) }),
   quality(_, value) {
     slots.write('auto', world, autoLabel());
     try {
@@ -1461,7 +1483,7 @@ const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fig
 
 document.addEventListener('visibilitychange', () => {
   music.setHidden(document.hidden);
-  courtyardAudio.setHidden(document.hidden);
+  worldAmbience.setHidden(document.hidden);
   combatAudio.setHidden(document.hidden);
   if (document.hidden) voice.stop();
 });

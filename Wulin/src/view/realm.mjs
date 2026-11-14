@@ -725,6 +725,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
   troop.visible = false;
   scene.addChild(troop);
   let marching = null;
+  const marchDuration = 2600;
   /** Columns of other sects on the move, shown but not followed. */
   let parades = [];
   const columnOf = (colour) => {
@@ -786,6 +787,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
     mist: 0.0005,
     refresh,
     setTrade,
+    get isMarching() { return !!marching && performance.now() - marching.began < marchDuration; },
     /**
      * Shows a column marching from one stronghold to its neighbour under a
      * banner, then calls `arrived`. The camera follows it.
@@ -891,7 +893,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
       if (parades.some((parade) => parade.done)) parades = parades.filter((parade) => !parade.done);
       if (marching) {
         // By the clock, not by frames, so a slow device does not hold the fight up.
-        marching.t = (performance.now() - marching.began) / 2600;
+        marching.t = (performance.now() - marching.began) / marchDuration;
         const at = spotOn(marching.path, Math.min(1, marching.t));
         troop.setPosition(at.x, at.y, at.z);
         troop.setRotation(0, at.heading, 0);

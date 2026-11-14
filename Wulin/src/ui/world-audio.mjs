@@ -2,7 +2,9 @@ import { clampVolume } from './soundtrack.mjs';
 
 const AMBIENCE_KEY = 'wulin-ambience';
 const WORLD_AUDIO = new URL('../../assets/audio/world/', import.meta.url);
-const COURTYARD = new URL('courtyard.mp3', WORLD_AUDIO);
+const LOOP_LEVELS = {
+  courtyard: 1, 'courtyard-dusk': .94, 'courtyard-night': .90, realm: .94, march: 1,
+};
 const STRIKES = ['sword', 'saber', 'fist', 'palm', 'kick', 'point', 'spear', 'staff', 'dart'];
 const EFFECTS = [...STRIKES, 'hit', 'heal', 'miss'];
 const STRIKE_LIMIT = 3;
@@ -13,11 +15,89 @@ const ATTACK_OFFSET = {
 };
 const HIT_TAIL = .16;
 
-/** Wind, bamboo and birds belong to the visible seat. Settings can be adjusted while it plays. */
-export function createCourtyardAudio(storage, clips) {
+/** Match the seat's visual clock, including the twilight before sunrise. */
+export function courtyardTrack(hour) {
+  if (hour < 5.1 || hour >= 19.4) return 'courtyard-night';
+  if (hour < 6.8 || hour >= 17) return 'courtyard-dusk';
+  return 'courtyard';
+}
+
+function createLoopLayer(clips, fadeSeconds, getLevel) {
+  let wanted, pending, playing, retiring;
+  let retryAfter = 0;
+
+  function retire() {
+    if (!playing) return;
+    const now = clips.context.currentTime;
+    if (retiring) retiring.source.stop(now);
+    const { source, gain } = playing;
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setTargetAtTime(0, now, fadeSeconds / 4);
+    source.stop(now + fadeSeconds);
+    retiring = playing;
+    playing = undefined;
+  }
+
+  function select(track) {
+    if (wanted !== track) retryAfter = 0;
+    wanted = track;
+    if (!track) {
+      pending = undefined;
+      retire();
+      return;
+    }
+    if (playing?.track === track || pending?.track === track || clips.context.currentTime < retryAfter) return;
+    const request = { track };
+    pending = request;
+    void clips.load(new URL(track + '.mp3', WORLD_AUDIO)).then(buffer => {
+      if (request !== pending || wanted !== track) return;
+      const context = clips.context;
+      const source = context.createBufferSource();
+      const gain = context.createGain();
+      const now = context.currentTime;
+      source.buffer = buffer;
+      source.loop = true;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.setTargetAtTime(getLevel(track), now, fadeSeconds / 4);
+      source.connect(gain).connect(context.destination);
+      retire();
+      const entry = { source, gain, track };
+      playing = entry;
+      source.onended = () => {
+        if (retiring === entry) retiring = undefined;
+        source.disconnect();
+        gain.disconnect();
+      };
+      source.start();
+    }).catch(() => {
+      if (pending === request) retryAfter = clips.context.currentTime + 2;
+    }).finally(() => {
+      if (pending === request) pending = undefined;
+    });
+  }
+
+  function mix() {
+    const now = clips.context.currentTime;
+    if (playing) {
+      playing.gain.gain.cancelScheduledValues(now);
+      playing.gain.gain.setTargetAtTime(getLevel(playing.track), now, .075);
+    }
+    if (retiring) {
+      const param = retiring.gain.gain;
+      param.cancelScheduledValues(now);
+      param.setTargetAtTime(Math.min(param.value, getLevel(retiring.track)), now, .025);
+      param.setTargetAtTime(0, now + .035, fadeSeconds / 4);
+    }
+  }
+
+  return { select, mix };
+}
+
+/** Keep scene beds separate from the short march overlay and from the combat mixer. */
+export function createWorldAmbience(storage, clips) {
   let on = true, volume = .36, ducked = false;
-  let inSeat = false, hidden = globalThis.document?.hidden ?? false;
-  let buffer, pending, active;
+  let sceneTrack, marching = false, hidden = globalThis.document?.hidden ?? false;
+  let marchWarm;
   try {
     const saved = JSON.parse(storage?.getItem(AMBIENCE_KEY) ?? 'null');
     if (typeof saved?.on === 'boolean') on = saved.on;
@@ -25,47 +105,22 @@ export function createCourtyardAudio(storage, clips) {
   } catch {
     // Play with the defaults when settings storage is unavailable.
   }
-  const enabled = () => clips.ready && on && volume > 0 && inSeat && !hidden;
-  const level = () => volume * (ducked ? .38 : 1);
+  const sceneLayer = createLoopLayer(clips, .85, track => volume * LOOP_LEVELS[track] * (ducked ? .38 : 1));
+  const marchLayer = createLoopLayer(clips, .23, track => volume * LOOP_LEVELS[track] * (ducked ? .25 : 1));
 
   function sync() {
-    if (!enabled()) {
-      if (!active) return;
-      const { source, gain } = active;
-      const now = clips.context.currentTime;
-      gain.gain.cancelScheduledValues(now);
-      gain.gain.setTargetAtTime(0, now, .12);
-      source.stop(now + .55);
-      active = undefined;
-      return;
+    const enabled = clips.ready && on && volume > 0 && !hidden;
+    sceneLayer.select(enabled ? sceneTrack : undefined);
+    marchLayer.select(enabled && sceneTrack === 'realm' && marching ? 'march' : undefined);
+    if (enabled && sceneTrack === 'realm' && !marchWarm) {
+      marchWarm = clips.load(new URL('march.mp3', WORLD_AUDIO)).catch(() => { marchWarm = undefined; });
     }
-    if (active) return;
-    if (!buffer) {
-      pending ??= clips.load(COURTYARD).then(decoded => { buffer = decoded; }).catch(() => {}).finally(() => {
-        pending = undefined;
-        if (buffer) sync();
-      });
-      return;
-    }
-    const context = clips.context;
-    const source = context.createBufferSource();
-    const gain = context.createGain();
-    const now = context.currentTime;
-    source.buffer = buffer;
-    source.loop = true;
-    gain.gain.setValueAtTime(0, now);
-    gain.gain.setTargetAtTime(level(), now, .20);
-    source.connect(gain).connect(context.destination);
-    source.onended = () => { source.disconnect(); gain.disconnect(); };
-    active = { source, gain };
-    source.start();
   }
 
   function mix() {
-    if (!active) return;
-    const now = clips.context.currentTime;
-    active.gain.gain.cancelScheduledValues(now);
-    active.gain.gain.setTargetAtTime(level(), now, .075);
+    if (!clips.context) return;
+    sceneLayer.mix();
+    marchLayer.mix();
   }
 
   return {
@@ -78,7 +133,7 @@ export function createCourtyardAudio(storage, clips) {
       sync();
       mix();
     },
-    select(seat) { inSeat = seat; sync(); },
+    select(track, march = false) { sceneTrack = track; marching = march; sync(); },
     setHidden(value) { hidden = value; sync(); },
     duck(value) { ducked = value; mix(); },
   };
