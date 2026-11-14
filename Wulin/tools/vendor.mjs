@@ -6,19 +6,24 @@
 import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const source = path.resolve(process.argv[2] ?? '');
 if (!fs.existsSync(path.join(source, 'packages/engine/dist/index.js'))) throw new Error('give the path of a built Egret_rebuild checkout');
-const vendor = new URL('../vendor/', import.meta.url).pathname;
+const vendor = fileURLToPath(new URL('../vendor/', import.meta.url));
+const resolvedVendor = fs.realpathSync(vendor);
 
-/** The entries of the page's import map, by package. */
+/** Bare imports exposed by the game's import map. */
 const ENTRIES = {
-  engine: ['index.js', 'rendering/world3d/index.js', 'web/world3d/index.js', 'web/world3d/webgpu.js', 'web/textInput.js'],
-  runtime: ['index.js'],
-  contracts: ['index.js', 'resources/index.js'],
+  '@egret/engine': ['engine', 'index.js'],
+  '@egret/engine/world3d': ['engine', 'rendering/world3d/index.js'],
+  '@egret/engine/webgl2/world3d': ['engine', 'web/world3d/index.js'],
+  '@egret/engine/webgpu/world3d': ['engine', 'web/world3d/webgpu.js'],
+  '@egret/engine/web/text-input': ['engine', 'web/textInput.js'],
+  '@egret/runtime': ['runtime', 'index.js'],
+  '@egret/contracts': ['contracts', 'index.js'],
+  '@egret/contracts/resources': ['contracts', 'resources/index.js'],
 };
-/** How a bare import names a file of another package. */
-const BARE = { '@egret/runtime': ['runtime', 'index.js'], '@egret/contracts': ['contracts', 'index.js'], '@egret/contracts/resources': ['contracts', 'resources/index.js'] };
 
 const wanted = new Set();
 function follow(pack, file) {
@@ -26,14 +31,30 @@ function follow(pack, file) {
   if (wanted.has(key)) return;
   wanted.add(key);
   const text = fs.readFileSync(path.join(source, 'packages', pack, 'dist', file), 'utf8');
-  for (const [, , spec] of text.matchAll(/(from|import)\s*\(?\s*['"]([^'"]+)['"]/g)) {
+  const imports = text.matchAll(/^\s*(?:import|export)\s+(?:[^'";]*?\bfrom\s+)?['"]([^'"\r\n]+)['"]|\bimport\(\s*['"]([^'"\r\n]+)['"]\s*\)/gm);
+  for (const [, staticImport, dynamicImport] of imports) {
+    const spec = staticImport ?? dynamicImport;
     if (spec.startsWith('.')) follow(pack, path.posix.normalize(path.posix.join(path.posix.dirname(file), spec)));
-    else if (BARE[spec]) follow(...BARE[spec]);
+    else if (Object.hasOwn(ENTRIES, spec)) follow(...ENTRIES[spec]);
+    else throw new Error(`unmapped import ${spec} in ${key}`);
   }
 }
-for (const [pack, files] of Object.entries(ENTRIES)) for (const file of files) follow(pack, file);
+for (const entry of Object.values(ENTRIES)) follow(...entry);
 
-for (const pack of Object.keys(ENTRIES)) fs.rmSync(path.join(vendor, pack), { recursive: true, force: true });
+const commit = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+// Remove obsolete JavaScript only within the three distribution directories.
+for (const pack of new Set(Object.values(ENTRIES).map(([name]) => name))) {
+  const dist = path.join(vendor, pack, 'dist');
+  if (!fs.existsSync(dist)) continue;
+  if (path.relative(resolvedVendor, fs.realpathSync(dist)) !== path.join(pack, 'dist')) throw new Error(`distribution directory outside ${vendor}`);
+  for (const file of fs.readdirSync(dist, { recursive: true, withFileTypes: true })) {
+    if (!file.isFile() || !file.name.endsWith('.js')) continue;
+    const filePath = path.join(file.parentPath, file.name);
+    const relative = path.relative(dist, filePath);
+    if (relative.startsWith('..') || path.isAbsolute(relative)) throw new Error(`file outside ${dist}`);
+    if (!wanted.has(pack + '/' + relative.split(path.sep).join('/'))) fs.unlinkSync(filePath);
+  }
+}
 for (const key of wanted) {
   const [pack, ...rest] = key.split('/');
   const to = path.join(vendor, pack, 'dist', ...rest);
@@ -41,5 +62,4 @@ for (const key of wanted) {
   fs.writeFileSync(to, fs.readFileSync(path.join(source, 'packages', pack, 'dist', ...rest), 'utf8').replace(/\n\/\/# sourceMappingURL=.*\s*$/, '\n'));
 }
 for (const name of ['LICENSE', 'NOTICE']) if (fs.existsSync(path.join(source, name))) fs.copyFileSync(path.join(source, name), path.join(vendor, name));
-const commit = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 console.log(`${wanted.size} files from ${commit}`);

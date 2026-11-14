@@ -1,85 +1,89 @@
-/* The live game's chrome shares the opening's ink, brass and paper palette. */
+/* Runtime materials. The archived hand-off remains a standalone preview. */
+body:has(.shell.game) {
+  --ink: #f2e7d3;
+  --muted: #c5c0ab;
+  --faint: #a9ab96;
+  --paper: #111c1a;
+  --panel: #192622;
+  --panel-strong: #22332d;
+  --wash: #24352e;
+  --line: #605b43;
+  --gold: #deb77c;
+  --gold-light: #f0d49f;
+  --accent: #c16d57;
+  --accent-hover: #ab5c49;
+  --green: #7cab99;
+  --dark: #15241f;
+  --dark-deep: #111b19;
+  --on-dark: #f6ead1;
+  --on-dark-muted: #c5c0ab;
+  --shadow: 0 10px 25px #08110c4a;
+  --radius: 3px;
+  color-scheme: dark;
+  background: #111a19;
+}
+
 .shell.game {
-  --hud-ink: #f4e7c9;
-  --hud-muted: #d0c3a5;
-  --hud-gold: #dbba79;
-  --hud-edge: #9d8250;
-  --hud-deep: #15201c;
-  --hud-green: #22352c;
-  --hud-paper: #f4ecd9;
-  --hud-window: #f8f0df;
+  --hud-ink: #f5e8ce;
+  --hud-muted: #c8c0a8;
+  --hud-gold: #dfbb7f;
+  --hud-edge: #8b7351;
+  --hud-deep: #101b19;
+  --hud-green: #203831;
   --hud-command-width: 346px;
-  --topbar: 64px;
-  --nav-width: 80px;
+  --game-line: #7c6c4b89;
+  --game-trim: #b29060;
+  --game-muted: #c1bcaa;
+  --game-wash: #1d2d27;
+  --game-wash-hover: #293d34;
+  --game-select: #264245;
+  --game-select-edge: #78a3a3;
+  --topbar: 65px;
+  --nav-width: 78px;
   background: var(--hud-deep);
 }
 
-/* Shared control focus remains visible against both paper and dark chrome. */
 .shell.game :is(.nav, .topbar, .goal, .command, .scene-chip, .scene-zoom, .battle-orders) :focus-visible,
 body:has(.shell.game) dialog.sheet .sheet-title button:focus-visible {
-  outline: 2px solid var(--hud-gold, #e1bd77);
+  outline: 2px solid #f0cf8b;
   outline-offset: -3px;
 }
 
-/* Brass-framed navigation and a single ledger for the simulation's time. */
+/* A shallow inlay on the iron navigation rail. */
 .shell.game .nav {
-  background: linear-gradient(158deg, #293a30, #1d2b24 45%, #15211c);
-  border-right: 1px solid #8b7956;
+  background: linear-gradient(145deg, #26362c 0%, #182824 40%, #101d1b 100%);
+  border-right: 1px solid #8c7854;
   padding: 10px 7px max(10px, env(safe-area-inset-bottom));
-  box-shadow: 5px 0 18px #111c1a40;
+  box-shadow: inset -3px 0 0 #0b17147a, 5px 0 20px #0d1b1a75;
 }
-
-.shell.game .nav-logo {
-  min-height: 49px;
-  margin: 0 0 13px;
-  padding: 0;
-}
-
-.shell.game .nav-logo .seal {
-  width: 38px;
-  height: 41px;
-  transform: rotate(-3deg);
-}
-
-.shell.game .nav-list { gap: 4px; }
-
+.shell.game .nav-logo { min-height: 49px; margin: 0 0 15px; padding: 0; }
+.shell.game .nav-logo .seal { width: 38px; height: 41px; transform: rotate(-3deg); }
+.shell.game .nav-list { gap: 5px; }
 .shell.game .nav-button {
-  min-height: 53px;
-  color: #d9ceb3;
+  min-height: 55px;
+  color: #e0d4b8;
   border-radius: 3px;
   letter-spacing: .08em;
 }
-
-.shell.game .nav-button .icon { color: #cdb182; }
-
-.shell.game .nav-button:hover {
-  color: #fff5db;
-  background: #cbad701a;
-}
-
+.shell.game .nav-button .icon { color: #d0b27d; }
+.shell.game .nav-button:hover { color: #fff3d9; background: #c5a66a21; }
 .shell.game .nav-button.is-active {
-  color: #fff2cd;
-  border-color: #c3a66880;
-  background: linear-gradient(110deg, #9b7b4147, #bc9a5a24);
-  box-shadow: inset 0 0 0 1px #1b2826;
+  color: #fff2cf;
+  border-color: #cfad738a;
+  background: linear-gradient(104deg, #5f5134, #3e4736 80%);
+  box-shadow: inset 0 0 0 2px #18251e98;
 }
-
-.shell.game .nav-button.is-active .icon { color: #f2d492; }
-
+.shell.game .nav-button.is-active .icon { color: #f5d89b; }
 .shell.game .nav-button.is-active::after {
   width: 2px;
-  height: 24px;
+  height: 25px;
   inset: calc(50% - 12px) auto auto -8px;
-  background: #e5c174;
-  box-shadow: 0 0 8px #dcb36c55;
+  background: #ebc887;
+  box-shadow: 0 0 9px #edba655f;
 }
+.shell.game .nav-bottom { margin-top: auto; border-top-color: #b7a07341; border-radius: 0; }
 
-.shell.game .nav-bottom {
-  margin-top: auto;
-  border-top-color: #b6a17538;
-  border-radius: 0;
-}
-
+/* Status reads as one ledger over the world, with resources in a separate rhythm. */
 .shell.game .topbar {
   display: grid;
   grid-template-columns: minmax(152px, 1fr) minmax(0, 2.25fr) auto;
@@ -87,18 +91,12 @@ body:has(.shell.game) dialog.sheet .sheet-title button:focus-visible {
   gap: clamp(12px, 2vw, 32px);
   padding: 0 clamp(14px, 2.1vw, 34px);
   color: var(--hud-ink);
-  background: linear-gradient(105deg, #273a30, #1c2a24 52%, #17231e);
-  border-bottom: 1px solid #a68a53;
-  box-shadow: inset 0 -4px 0 #0d171528, 0 5px 20px #13201849;
+  background: linear-gradient(105deg, #293a2e, #1d3029 37%, #142421 76%);
+  border-bottom: 1px solid #a98b57;
+  box-shadow: inset 0 -4px 0 #0d171552, 0 5px 20px #13201865;
 }
-
-.shell.game .top-identity {
-  min-width: 0;
-  padding-right: 8px;
-}
-
+.shell.game .top-identity { min-width: 0; padding-right: 8px; }
 .shell.game .top-identity > div { min-width: 0; }
-
 .shell.game .top-identity strong {
   overflow: hidden;
   color: #fff1d2;
@@ -106,7 +104,6 @@ body:has(.shell.game) dialog.sheet .sheet-title button:focus-visible {
   white-space: nowrap;
   letter-spacing: .09em;
 }
-
 .shell.game .sect-stamp {
   flex: 0 0 36px;
   width: 36px;
@@ -117,416 +114,157 @@ body:has(.shell.game) dialog.sheet .sheet-title button:focus-visible {
   box-shadow: inset 0 0 0 2px #e8cd8545, 0 2px 6px #0c161749;
   text-shadow: 0 1px 3px #18211b;
 }
-
-.shell.game .date-button {
-  max-width: 100%;
-  color: var(--hud-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
+.shell.game .date-button { max-width: 100%; color: var(--hud-muted); overflow: hidden; text-overflow: ellipsis; }
 .shell.game .date-button:hover { color: #fff1c6; }
-
-.shell.game .resources {
-  justify-content: center;
-  gap: 0;
-  min-width: 0;
-}
-
-.shell.game .resource {
-  padding: 0 clamp(8px, 1.3vw, 20px);
-  border-inline-start: 1px solid #a5956b46;
-}
-
+.shell.game .resources { justify-content: center; gap: 0; min-width: 0; }
+.shell.game .resource { padding: 0 clamp(8px, 1.3vw, 20px); border-inline-start: 1px solid #a5956b46; }
 .shell.game .resource:first-child { border-inline-start: 0; }
 .shell.game .resource > .icon { color: var(--hud-gold); }
 .shell.game .resource span, .shell.game .resource small { color: var(--hud-muted); }
-
-.shell.game .resource b {
-  color: #fff3d7;
-  font-size: clamp(15px, 1.3vw, 18px);
-  letter-spacing: .035em;
-}
-
-.shell.game .topbar .speeds {
+.shell.game .resource b { color: #fff3d7; font-size: clamp(15px, 1.3vw, 18px); letter-spacing: .035em; }
+.shell.game .time-controls { display: flex; justify-content: flex-end; align-items: center; gap: 9px; min-width: 0; white-space: nowrap; }
+.shell.game .time-state { display: inline-flex; align-items: center; gap: 6px; color: var(--hud-muted); font-size: 11px; letter-spacing: .06em; }
+.shell.game .time-state::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: #abd1b4; box-shadow: 0 0 7px #b9cc8570; }
+.shell.game .time-state[data-paused="true"]::before { background: #e5bf72; box-shadow: 0 0 7px #e5bf725c; }
+.shell.game .speeds {
   padding: 2px;
   gap: 2px;
-  border-color: #b399635d;
+  border-color: #b3996369;
   border-radius: 3px;
-  background: #101a16ad;
+  background: #111c18ed;
   box-shadow: inset 0 1px 3px #07100b7a;
 }
-
-.shell.game .topbar .speeds button {
-  min-width: 37px;
-  min-height: 33px;
-  border-radius: 2px;
-  color: #e3d5b6;
-  font: 700 14px var(--serif);
-}
-
-.shell.game .topbar .speeds button:hover:not(.is-active) { color: #fff1cf; background: #76684050; }
-
-.shell.game .topbar .speeds button.is-active {
-  color: #252519;
+.shell.game .speeds button { min-width: 37px; min-height: 33px; border-radius: 2px; color: #e3d5b6; font: 700 14px var(--serif); }
+.shell.game .speeds button:hover:not(.is-active) { color: #fff1cf; background: #76684050; }
+.shell.game .speeds button.is-active {
+  color: #2b271a;
   background: linear-gradient(#f1d396, #d1aa62);
   border-color: #e3be78;
   box-shadow: inset 0 0 0 1px #9e774d55;
 }
 
-/* The task, side panel and scroll window frame the world without drawing over it. */
+/* Backlit window frame and compact scene-side command console. */
 .shell.game .main.is-window {
   color: var(--ink);
-  border-color: #bb9f66;
+  border-color: #9f8656;
   border-radius: 4px;
-  background: linear-gradient(140deg, #faf2e0fb, #efe3cafa);
-  box-shadow: inset 0 0 0 3px #fbf2dd92, 0 16px 45px #070f0ba3;
-  scrollbar-color: #b29a6d #e9dfc7;
+  background:
+    linear-gradient(#bca06b6b 0 0) left 4px top 4px/16px 1px no-repeat,
+    linear-gradient(#bca06b6b 0 0) left 4px top 4px/1px 16px no-repeat,
+    linear-gradient(#bca06b6b 0 0) right 4px bottom 4px/16px 1px no-repeat,
+    linear-gradient(#bca06b6b 0 0) right 4px bottom 4px/1px 16px no-repeat,
+    radial-gradient(ellipse at 5% -18%, #4050416b, transparent 62%),
+    linear-gradient(135deg, #192723f7, #111c1af9 67%);
+  box-shadow: inset 0 0 0 2px #14201c, 0 18px 46px #06100da3;
+  scrollbar-color: #8d7b54 #182820;
 }
-
 .shell.game .command {
   width: var(--hud-command-width);
   bottom: auto;
   max-height: calc(100% - 28px);
-  border: 1px solid #ae945f;
+  border: 1px solid #a58a59;
   border-radius: 4px;
-  background: var(--hud-paper);
-  box-shadow: inset 0 0 0 3px #f9f1dc96, 0 10px 36px #0e1813ae;
+  background: linear-gradient(135deg, #293a30, #182923 54%, #15221e);
+  box-shadow: inset 0 0 0 2px #121e1c, 0 10px 36px #0b1613a6;
 }
-
 .shell.game .command-tabs {
   flex: 0 0 auto;
-  gap: 1px;
-  padding: 3px 4px 0;
-  border-bottom: 1px solid #9d8351;
-  background: linear-gradient(104deg, #2e4033, #223129);
+  gap: 2px;
+  padding: 4px 4px 0;
+  border-bottom: 1px solid #8f764f;
+  background: #101c1a;
 }
-
-.shell.game .command-tabs button {
-  position: relative;
-  min-width: 0;
-  min-height: 42px;
-  padding: 5px 3px;
-  color: #e4d8bb;
-  letter-spacing: .06em;
-  white-space: nowrap;
-}
-
+.shell.game .command-tabs button { position: relative; min-width: 0; min-height: 43px; padding: 5px 3px; color: #d8ccb0; letter-spacing: .07em; white-space: nowrap; }
 .shell.game .command-tabs button:hover:not(.is-active) { color: #fff1c9; background: #b8a16a30; }
-
 .shell.game .command-tabs button.is-active {
-  color: #2b2c21;
+  color: #fff0c8;
   border-radius: 2px 2px 0 0;
-  background: linear-gradient(#ebcb88, #d8b676);
-  box-shadow: inset 0 0 0 1px #f9e3aa73;
+  background: linear-gradient(110deg, #4c5140, #2d4237);
+  box-shadow: inset 0 2px 0 #d9b374, inset 1px 0 #c7a67745, inset -1px 0 #c7a67745;
 }
-
-.shell.game .command-body {
-  scrollbar-color: #b09a71 transparent;
-  scrollbar-width: thin;
-}
-
-.shell.game .command .panel-title {
-  min-height: 48px;
-  border-bottom: 1px solid #dacbad;
-  background: linear-gradient(110deg, #e9dcc1, #f6eedb 77%);
-}
-
+.shell.game .command-body { scrollbar-color: #8c7d5a transparent; scrollbar-width: thin; }
+.shell.game .command .panel + .panel { border-color: var(--game-line); }
+.shell.game .command .panel-title { min-height: 48px; border-color: var(--game-line); background: linear-gradient(110deg, #3e473693, #23382d60 79%); }
 .shell.game .command .panel-title h2 { font-size: 16px; }
-
 .shell.game .goal {
   position: relative;
-  border: 1px solid #ab925b;
-  border-left: 3px solid #c29959;
-  border-radius: 4px;
-  background: linear-gradient(104deg, #1c2b24fa, #293a2df2);
-  box-shadow: inset 0 0 0 2px #8a764631, 0 5px 18px #12201855;
   color: var(--hud-ink);
+  border: 1px solid #ad945e;
+  border-left: 3px solid #bd8d55;
+  border-radius: 4px;
+  background: linear-gradient(102deg, #21342aed, #142820f4 75%);
+  box-shadow: inset 0 0 0 2px #78683d3b, 0 5px 18px #12201875;
 }
-
-.shell.game .goal.is-done, .shell.game .goal.is-last {
-  border-left-color: #afbd82;
-  background: linear-gradient(110deg, #20362bf9, #334a36ed);
-}
-
+.shell.game .goal.is-done, .shell.game .goal.is-last { border-left-color: #acc38d; background: linear-gradient(110deg, #233d30f9, #2d4939f3); }
 .shell.game .goal-mark, .shell.game .goal.is-done .goal-mark, .shell.game .goal.is-last .goal-mark { color: var(--hud-gold); }
 .shell.game .goal-mark { padding: 1px 7px 1px 1px; border-right: 1px solid #ad945960; }
 .shell.game .goal-mark small { letter-spacing: .12em; }
 .shell.game .goal-copy b { color: #fff0ce; letter-spacing: .05em; }
 .shell.game .goal-copy span { color: var(--hud-ink); }
-
 .shell.game .goal :is(.goal-mark i, .goal-copy small, .goal-count, .caption) { color: var(--hud-muted); }
-.shell.game .goal-side .meter { width: 100%; background: #716746; }
+.shell.game .goal-side .meter { width: 100%; background: #5e5b42; }
 .shell.game .goal-side .meter i { background: #d3ac62; }
-.shell.game .goal-side .button.outline {
-  color: #f6e7c6;
-  border-color: #be9f658f;
-  background: #45533b;
-}
-.shell.game .goal-side .button.outline:hover { background: #5a684a; }
-.shell.game .goal-side .button.primary {
-  color: #292316;
-  border-color: #d7b46d;
-  background: linear-gradient(#f0d396, #cba35c);
-  box-shadow: inset 0 0 0 1px #98744644;
-}
+.shell.game .goal-side .button.primary { color: #292316; border-color: #d7b46d; background: linear-gradient(#f0d396, #cba35c); box-shadow: inset 0 0 0 1px #98744644; }
 
-/* Scene HUD uses compact, edge-lit plaques. */
-.shell.game .scene-chip,
-.shell.game .scene-overlay-button,
-.shell.game .ui-command-toggle {
+/* World-facing labels keep the environment and the tactical silhouettes legible. */
+.shell.game :is(.scene-chip, .scene-overlay-button, .ui-command-toggle, [data-act="goal-open"]) {
   color: var(--hud-ink);
-  border: 1px solid #c0a76eac;
+  border: 1px solid #bd9e68ae;
   border-radius: 3px;
-  background: linear-gradient(115deg, #192a23ed, #263930db);
-  box-shadow: inset 0 0 0 1px #1d2b20, 0 2px 8px #101b1850;
+  background: linear-gradient(115deg, #152824f2, #263c34ee);
+  box-shadow: inset 0 0 0 1px #192b23, 0 3px 9px #101b1870;
   white-space: nowrap;
 }
-
-.shell.game .ui-command-toggle {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  min-height: 37px;
-  padding: 6px 10px;
-  font-weight: 650;
-}
-
-.shell.game :is(.scene-overlay-button, .ui-command-toggle):hover { background: #44553e; }
-.shell.game :is(.scene-chip, .ui-command-toggle) .icon { color: var(--hud-gold); }
-
+.shell.game :is(.ui-command-toggle, [data-act="goal-open"]) { align-items: center; justify-content: center; gap: 6px; min-height: 37px; padding: 6px 10px; font-weight: 650; }
+.shell.game :is(.scene-overlay-button, .ui-command-toggle, [data-act="goal-open"]):hover { background: #3b5749; }
+.shell.game :is(.scene-chip, .ui-command-toggle, [data-act="goal-open"]) .icon { color: var(--hud-gold); }
+.shell.game [data-act="goal-open"] .icon { width: 15px; height: 15px; }
 .shell.game[data-command-collapsed="true"] .command { display: none; }
+.shell.game[data-command-collapsed="true"] .backdrop.has-command .stage-slot { left: 0; top: 0; }
+.shell.game[data-command-collapsed="true"] .main.is-staged :is(.scene-top, .scene-bottom, .scene-zoom) { right: 14px; }
+.shell.game[data-command-collapsed="true"] .main.is-staged > [data-region="goal"] { width: min(430px, calc(100% - 28px)); }
+.shell.game .scene-zoom { gap: 1px; border-color: #c0a76eac; border-radius: 3px; background: #b89d6675; box-shadow: 0 3px 8px #13201863; }
+.shell.game .scene-zoom button { width: 37px; height: 36px; background: #1b3028ef; color: #f6e5c0; }
+.shell.game .scene-zoom button:hover { background: #445c49; }
 
-.shell.game[data-command-collapsed="true"] .backdrop.has-command .stage-slot {
-  left: 0;
-  top: 0;
-}
-
-.shell.game[data-command-collapsed="true"] .main.is-staged :is(.scene-top, .scene-bottom, .scene-zoom) {
-  right: 14px;
-}
-
-.shell.game[data-command-collapsed="true"] .main.is-staged > [data-region="goal"] {
-  width: min(430px, calc(100% - 28px));
-}
-
-.shell.game .scene-zoom {
-  gap: 1px;
-  border-color: #c0a76eac;
-  border-radius: 3px;
-  background: #b89d6675;
-  box-shadow: 0 3px 8px #13201863;
-}
-
-.shell.game .scene-zoom button { width: 37px; height: 36px; background: #1b2923ed; color: #f6e5c0; }
-.shell.game .scene-zoom button:hover { background: #44553e; }
-
+/* The battle timer and order plates carry the same mineral accents. */
 .shell.game .battle-top .army {
   border: 1px solid #bca36a94;
-  background: #17251dea;
+  background: linear-gradient(100deg, #1c342cf5, #15241fed);
   box-shadow: inset 0 0 0 2px #b4965a33, 0 2px 8px #15251c66;
 }
-
+.shell.game .battle-top .army-1 { background: linear-gradient(100deg, #2e241fef, #4b3028f2); }
 .shell.game .battle-top .fight-clock {
+  min-width: 0;
+  align-content: center;
+  justify-content: stretch;
   padding: 5px 8px;
   border: 1px solid #b59b63a6;
   border-radius: 3px;
-  background: #202e25e3;
+  background: #202f28ed;
 }
-
+.shell.game .battle-top .fight-clock em { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .shell.game .battle-top .fight-clock b { color: #ffebba; }
-.shell.game .battle-orders .button { min-height: 36px; }
-.shell.game .battle-orders .dark-speeds { border-color: #b79b61ab; background: #1c2a22ef; }
+.shell.game .battle-orders .button, .shell.game .battle-orders .dark-speeds button { min-height: 44px; }
+.shell.game .battle-orders .dark-speeds { border-color: #b79b61ab; background: #1b2d26ef; }
+.shell.game .notice { border-color: #ad945fb5; border-radius: 3px; background: #23382dee; color: #fff0d0; box-shadow: 0 3px 12px #12201855; }
+.shell.game .notice.is-bad { border-color: #ba7d68; color: #fff0d8; background: #6b392fef; }
 
-.shell.game .notice {
-  border-color: #ad945fb5;
-  border-radius: 3px;
-  background: #23382dee;
-  color: #fff0d0;
-  box-shadow: 0 3px 12px #12201855;
-}
-
-.shell.game .notice.is-bad {
-  border-color: #ba7d68;
-  color: #fff0d8;
-  background: #6b392fef;
-}
-
-body:has(.shell.game) #announcement {
+/* Shared dismissible sheets and lightweight, state-specific messages. */
+body:has(.shell.game) #announcement:not([hidden]) {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 10px 13px;
   border-color: #b0975f;
   border-radius: 3px;
   background: linear-gradient(105deg, #273c30, #1d3026);
   color: #fff0ce;
   box-shadow: inset 0 0 0 2px #a78b5533, 0 8px 22px #14221c7a;
 }
-
-body:has(.shell.game) dialog.sheet {
-  max-width: calc(100% - 24px);
-  max-height: calc(100dvh - 24px);
-  padding: 0;
-  border: 1px solid #b89a60;
-  border-radius: 4px;
-  background: #f8efdc;
-  box-shadow: inset 0 0 0 3px #e6d4ab6b, 0 20px 64px #0a1511a0;
-  scrollbar-color: #b29b70 #eee3ca;
-}
-
-body:has(.shell.game) dialog.sheet::backdrop { background: #0d1814b0; backdrop-filter: blur(3px); }
-
-body:has(.shell.game) dialog.sheet .sheet-title {
-  position: sticky;
-  z-index: 2;
-  top: 0;
-  color: #fff0cc;
-  border-bottom: 1px solid #b69a60;
-  background: linear-gradient(103deg, #2c4134, #1e3026);
-}
-
-body:has(.shell.game) dialog.sheet .sheet-title h2 { letter-spacing: .055em; }
-
-body:has(.shell.game) dialog.sheet .sheet-title button {
-  flex: 0 0 auto;
-  width: 37px;
-  height: 37px;
-  color: #f3dbad;
-  border-color: #b397627f;
-  border-radius: 3px;
-  background: #14231b75;
-}
-
-body:has(.shell.game) dialog.sheet .sheet-title button:hover { background: #576143; }
-body:has(.shell.game) dialog.sheet .sheet-footer { background: #efe4ca; }
-
-body:has(.shell.game) dialog.sheet[data-kind="herald"] {
-  color: #f3ead2;
-  background: #1f2925;
-}
-
-body:has(.shell.game) dialog.sheet[data-kind="herald"] .sheet-footer { background: transparent; }
-
-/* Keep the top ledger compact at intermediate desktop widths. */
-@media (min-width: 761px) and (max-width: 1040px) {
-  .shell.game { --nav-width: 68px; }
-  .shell.game .topbar { grid-template-columns: minmax(110px, .85fr) minmax(0, 2fr) auto; gap: 10px; padding: 0 14px; }
-  .shell.game .resource { padding-inline: 9px; }
-  .shell.game .resource > .icon { width: 16px; height: 16px; }
-  .shell.game .topbar .speeds button { min-width: 32px; }
-}
-
-/* Horizontal touch navigation applies at the same breakpoint as the stage. */
-@media (max-width: 760px) {
-  .shell.game .nav {
-    grid-template-columns: minmax(0, 1fr) minmax(44px, auto);
-    display: grid;
-    gap: 0;
-    height: auto;
-    padding: 3px max(2px, env(safe-area-inset-right)) max(3px, env(safe-area-inset-bottom)) max(2px, env(safe-area-inset-left));
-    border: 0;
-    border-top: 1px solid #ad925d;
-    box-shadow: 0 -4px 16px #0d19165f;
-  }
-
-  .shell.game .nav-logo { display: none; }
-  .shell.game .nav-list { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; }
-  .shell.game .nav-button { min-width: 0; min-height: 47px; padding: 4px 1px; gap: 4px; font-size: 11px; }
-  .shell.game .nav-button .icon { width: 18px; height: 18px; }
-  .shell.game .nav-button.is-active::after { width: 50%; height: 2px; inset: -4px 25% auto; }
-  .shell.game .nav-bottom { margin: 0; border-top-color: transparent; border-left-color: #b6a17538; }
-
-  .shell.game .topbar {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-rows: minmax(36px, auto) auto;
-    gap: 2px 6px;
-    padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 3px max(8px, env(safe-area-inset-left));
-  }
-
-  .shell.game .top-identity { gap: 7px; }
-  .shell.game .top-identity strong { font-size: 15px; }
-  .shell.game .sect-stamp { width: 29px; height: 30px; flex-basis: 29px; font-size: 14px; }
-  .shell.game .date-button { padding-top: 2px; font-size: 10px; }
-  .shell.game .topbar .speeds button { min-width: 30px; min-height: 31px; font-size: 12px; }
-
-  .shell.game .resources {
-    grid-area: 2/1/3/3;
-    justify-content: space-between;
-    min-height: 25px;
-    padding: 2px 0 0;
-    border-top: 1px solid #a993625e;
-  }
-
-  .shell.game .resource { gap: 4px; padding-inline: 5px; }
-  .shell.game .resource > div { display: flex; align-items: center; gap: 4px; }
-  .shell.game .resource > .icon { width: 14px; height: 14px; }
-  .shell.game .resource span { font-size: 10px; }
-  .shell.game .resource b { font-size: 13px; }
-  .shell.game .resource small { display: none; }
-
-  .shell.game .command { width: auto; top: auto; bottom: 6px; max-height: 47%; }
-  .shell.game .command-tabs button { min-height: 38px; font-size: 12px; }
-  .shell.game .command .panel-title { min-height: 39px; }
-  .shell.game .command .panel-title h2 { font-size: 15px; }
-
-  .shell.game .goal-mark { min-width: 34px; }
-  .shell.game .goal-mark b { font-size: 16px; }
-  .shell.game .goal-copy b { font-size: 14px; }
-  .shell.game .ui-command-toggle { min-height: 35px; padding-inline: 7px; }
-  .shell.game .scene-zoom button { width: 36px; height: 36px; }
-
-  .shell.game[data-command-collapsed="true"] .main.is-staged :is(.scene-top, .scene-bottom, .scene-zoom) { right: 8px; }
-  .shell.game[data-command-collapsed="true"] .main.is-staged > [data-region="goal"] { width: auto; }
-
-  body:has(.shell.game) dialog.sheet .sheet-title { padding: 9px 10px; }
-}
-
-@media (max-width: 365px) {
-  .shell.game .resource { padding-inline: 3px; }
-  .shell.game .resource > .icon { width: 12px; height: 12px; }
-  .shell.game .topbar .speeds button { min-width: 27px; }
-}
-
-.shell.game .time-controls {
-  display: flex;
-  justify-content: flex-end;
-  align-items: center;
-  gap: 9px;
-  min-width: 0;
-  white-space: nowrap;
-}
-
-.shell.game .time-state {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--hud-muted);
-  font-size: 11px;
-  letter-spacing: .06em;
-}
-
-.shell.game .time-state::before {
-  content: '';
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: #a3b988;
-  box-shadow: 0 0 7px #b9cc8570;
-}
-
-.shell.game .time-state[data-paused="true"]::before {
-  background: #e5bf72;
-  box-shadow: 0 0 7px #e5bf725c;
-}
-
-body:has(.shell.game) #announcement:not([hidden]) {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  padding: 10px 13px;
-}
-
+body:has(.shell.game[data-page="battle"]) #announcement:not([hidden]) { bottom: 75px; }
 body:has(.shell.game) #announcement[data-tone="warning"] { border-color: #d09b77; background: #673b30; }
-body:has(.shell.game) #announcement[data-tone="notice"] { border-color: #bba370; background: #4d4630; }
-
+body:has(.shell.game) #announcement[data-tone="notice"] { border-color: #bba370; background: #3c4436; }
 body:has(.shell.game) #announcement .toast-mark {
   display: grid;
   place-items: center;
@@ -537,20 +275,134 @@ body:has(.shell.game) #announcement .toast-mark {
   color: #ffe3a9;
   background: #182a234a;
 }
-
 body:has(.shell.game) #announcement .toast-mark .icon { width: 15px; height: 15px; }
 body:has(.shell.game) #announcement .toast-copy { overflow-wrap: anywhere; }
-.shell.game .battle-orders .button,
-.shell.game .battle-orders .dark-speeds button { min-height: 44px; }
+
+body:has(.shell.game) dialog.sheet {
+  --game-line: #7c6c4b89;
+  --game-wash: #1d2d27;
+  --game-wash-hover: #293d34;
+  --game-select: #264245;
+  --game-select-edge: #78a3a3;
+  max-width: calc(100% - 24px);
+  max-height: calc(100dvh - 24px);
+  padding: 0;
+  border: 1px solid #b89a60;
+  border-radius: 4px;
+  background: linear-gradient(146deg, #263831, #182a25 68%);
+  color: #f2e7d3;
+  box-shadow: inset 0 0 0 2px #111d1b, 0 20px 64px #0a1511a0;
+  scrollbar-color: #998254 #1e3029;
+}
+body:has(.shell.game) dialog.sheet::backdrop { background: #0a1714c4; backdrop-filter: blur(3px); }
+body:has(.shell.game) dialog.sheet .sheet-title {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  color: #fff0cc;
+  border-bottom: 1px solid #b69a60;
+  background: linear-gradient(103deg, #32453a, #233831 70%, #1a3028);
+  box-shadow: inset 0 3px 0 #a17e484a;
+}
+body:has(.shell.game) dialog.sheet .sheet-title h2 { letter-spacing: .075em; }
+body:has(.shell.game) dialog.sheet .sheet-title button {
+  flex: 0 0 auto;
+  width: 37px;
+  height: 37px;
+  color: #f3dbad;
+  border-color: #b397627f;
+  border-radius: 3px;
+  background: #14231b75;
+}
+body:has(.shell.game) dialog.sheet .sheet-title button:hover { background: #576143; }
+body:has(.shell.game) dialog.sheet .sheet-footer { border-color: var(--game-line); background: #152520c9; }
+body:has(.shell.game) dialog.sheet input[type="range"] { accent-color: #cbab73; }
+body:has(.shell.game) dialog.sheet[data-kind="herald"] { color: #f3ead2; background: #172821; }
+body:has(.shell.game) dialog.sheet[data-kind="herald"] .sheet-footer { background: transparent; }
 
 @media (max-width: 960px) { .shell.game .time-controls .time-state { display: none; } }
+
+@media (min-width: 761px) and (max-width: 1040px) {
+  .shell.game { --nav-width: 68px; }
+  .shell.game .topbar { grid-template-columns: minmax(110px, .85fr) minmax(0, 2fr) auto; gap: 10px; padding: 0 14px; }
+  .shell.game .resource { padding-inline: 9px; }
+  .shell.game .resource > .icon { width: 16px; height: 16px; }
+  .shell.game .topbar .speeds button { min-width: 32px; }
+  .shell.game[data-page="world"] .main.is-staged > [data-region="goal"] { top: 101px; }
+}
+
 @media (max-width: 760px) {
+  .shell.game .nav {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(44px, auto);
+    gap: 0;
+    height: auto;
+    padding: 3px max(2px, env(safe-area-inset-right)) max(3px, env(safe-area-inset-bottom)) max(2px, env(safe-area-inset-left));
+    border: 0;
+    border-top: 1px solid #ad925d;
+    box-shadow: 0 -4px 16px #0d19165f;
+  }
+  .shell.game .nav-logo { display: none; }
+  .shell.game .nav-list { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 1px; }
+  .shell.game .nav-button { min-width: 0; min-height: 47px; padding: 4px 1px; gap: 4px; font-size: 11px; }
+  .shell.game .nav-button .icon { width: 18px; height: 18px; }
+  .shell.game .nav-button.is-active::after { width: 50%; height: 2px; inset: -4px 25% auto; }
+  .shell.game .nav-bottom { margin: 0; border-top-color: transparent; border-left-color: #b6a17538; }
+  .shell.game .topbar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: minmax(36px, auto) auto;
+    gap: 2px 6px;
+    padding: max(4px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) 3px max(8px, env(safe-area-inset-left));
+  }
+  .shell.game .top-identity { gap: 7px; }
+  .shell.game .top-identity strong { font-size: 15px; }
+  .shell.game .sect-stamp { width: 29px; height: 30px; flex-basis: 29px; font-size: 14px; }
+  .shell.game .date-button { padding-top: 2px; font-size: 10px; }
+  .shell.game .topbar .speeds button { min-width: 30px; min-height: 31px; font-size: 12px; }
+  .shell.game .resources { grid-area: 2/1/3/3; justify-content: space-between; min-height: 25px; padding: 2px 0 0; border-top: 1px solid #a993625e; }
+  .shell.game .resource { gap: 4px; padding-inline: 5px; }
+  .shell.game .resource > div { display: flex; align-items: center; gap: 4px; }
+  .shell.game .resource > .icon { width: 14px; height: 14px; }
+  .shell.game .resource span { font-size: 10px; }
+  .shell.game .resource b { font-size: 13px; }
+  .shell.game .resource small { display: none; }
+  .shell.game .command { width: auto; top: auto; bottom: 6px; max-height: 47%; }
+  .shell.game .command-tabs button { min-height: 40px; font-size: 12px; }
+  .shell.game .command .panel-title { min-height: 39px; }
+  .shell.game .command .panel-title h2 { font-size: 15px; }
+  .shell.game .goal-mark { min-width: 34px; }
+  .shell.game .goal-mark b { font-size: 16px; }
+  .shell.game .goal-copy b { font-size: 14px; }
+  .shell.game .ui-command-toggle { min-height: 36px; padding-inline: 7px; }
+  .shell.game .scene-zoom button { width: 36px; height: 36px; }
+  .shell.game[data-command-collapsed="true"] .main.is-staged :is(.scene-top, .scene-bottom, .scene-zoom) { right: 8px; }
+  .shell.game[data-command-collapsed="true"] .main.is-staged > [data-region="goal"] { width: auto; }
+  .shell.game .main.is-staged .scene-top { justify-content: start; }
+  .shell.game .main.is-staged .scene-top .ui-command-toggle { margin-left: auto; }
+  .shell.game .main.is-staged .scene-top .hour-chip { display: none; }
+  .shell.game .main.is-staged .goal-mark small { font-size: 9px; }
+  .shell.game[data-page="world"] .main.is-staged > [data-region="goal"] { top: 98px; }
+  .shell.game[data-page="world"] .main.is-staged .scene-zoom { top: 146px; }
+  .shell.game[data-page="seat"] .main.is-staged .scene-zoom { top: 107px; }
+  .shell.game .battle-top { grid-template-columns: minmax(0, 1fr) minmax(79px, 24%) minmax(0, 1fr); }
+  .shell.game .battle-top .fight-clock { padding: 4px 3px; }
+  .shell.game .battle-top .fight-clock em { font-size: 10px; line-height: 1.25; letter-spacing: 0; }
+  .shell.game .battle-top .fight-clock small { margin-top: 2px; }
+  .shell.game .battle-top .army-name { flex-wrap: wrap; }
+  .shell.game .battle-top .army-name b { overflow: hidden; text-overflow: ellipsis; }
   .shell.game .main.is-staged .battle-bottom { align-items: end; display: flex; flex-wrap: wrap; row-gap: 5px; }
   .shell.game .battle-orders { flex-wrap: wrap; gap: 4px; }
   .shell.game .battle-orders .button { min-height: 44px; padding-inline: 7px; }
   .shell.game .battle-orders .dark-speeds button { min-height: 40px; min-width: 28px; }
-  .shell.game .ui-command-toggle { min-height: 36px; }
+  body:has(.shell.game) dialog.sheet .sheet-title { padding: 9px 10px; }
   body:has(.shell.game) #announcement:not([hidden]) { bottom: calc(62px + env(safe-area-inset-bottom)); }
+  body:has(.shell.game[data-page="battle"]) #announcement:not([hidden]) { bottom: calc(184px + env(safe-area-inset-bottom)); }
+}
+
+@media (max-width: 365px) {
+  .shell.game .resource { padding-inline: 3px; }
+  .shell.game .resource > .icon { width: 12px; height: 12px; }
+  .shell.game .topbar .speeds button { min-width: 27px; }
 }
 
 @media (max-height: 500px) and (min-width: 761px) {
@@ -560,62 +412,8 @@ body:has(.shell.game) #announcement .toast-copy { overflow-wrap: anywhere; }
   .shell.game .nav-list { gap: 1px; }
   .shell.game .nav-button { min-height: 40px; gap: 2px; }
   .shell.game .nav-button .icon { height: 16px; width: 16px; }
-}
-
-.shell.game [data-act="goal-open"] {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 36px;
-  padding: 5px 9px;
-  color: var(--hud-ink);
-  background: #25362ded;
-  border: 1px solid #b5965cc7;
-  border-radius: 3px;
-  box-shadow: inset 0 0 0 1px #c7a4672f;
-}
-
-.shell.game [data-act="goal-open"]:hover { background: #435440; }
-.shell.game [data-act="goal-open"] .icon { color: var(--hud-gold); width: 15px; height: 15px; }
-
-@media (max-width: 760px) {
-  .shell.game .main.is-staged .scene-top { justify-content: start; }
-  .shell.game .main.is-staged .scene-top .ui-command-toggle { margin-left: auto; }
-  .shell.game .main.is-staged .scene-top .hour-chip { display: none; }
-  .shell.game .main.is-staged .goal-mark small { font-size: 9px; }
-}
-
-body:has(.shell.game) dialog.sheet input[type="range"] { accent-color: #806537; }
-
-/* Keep the camera controls clear of the compact task plate and wrapped realm controls. */
-@media (max-width: 760px) {
-  .shell.game[data-page="world"] .main.is-staged > [data-region="goal"] { top: 98px; }
-  .shell.game[data-page="world"] .main.is-staged .scene-zoom { top: 146px; }
-  .shell.game[data-page="seat"] .main.is-staged .scene-zoom { top: 107px; }
-}
-
-@media (min-width: 761px) and (max-width: 1040px) {
-  .shell.game[data-page="world"] .main.is-staged > [data-region="goal"] { top: 101px; }
-}
-
-@media (max-height: 500px) and (min-width: 761px) {
   .shell.game .main.is-staged > [data-region="goal"]:not(:empty) { top: 58px; }
   .shell.game[data-page="world"] .main.is-staged > [data-region="goal"]:not(:empty) { top: 100px; }
   .shell.game .main.is-staged > [data-region="goal"] > .goal-open { display: inline-flex; }
   .shell.game .main.is-staged > [data-region="goal"] > .goal { display: none; }
-}
-
-/* Keep the encounter title on one line and notices clear of combat commands. */
-.shell.game .battle-top .fight-clock { min-width: 0; align-content: center; justify-content: stretch; }
-.shell.game .battle-top .fight-clock em { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-body:has(.shell.game[data-page="battle"]) #announcement:not([hidden]) { bottom: 75px; }
-
-@media (max-width: 760px) {
-  .shell.game .battle-top { grid-template-columns: minmax(0, 1fr) minmax(79px, 24%) minmax(0, 1fr); }
-  .shell.game .battle-top .fight-clock { padding: 4px 3px; }
-  .shell.game .battle-top .fight-clock em { font-size: 10px; line-height: 1.25; letter-spacing: 0; }
-  .shell.game .battle-top .fight-clock small { margin-top: 2px; }
-  .shell.game .battle-top .army-name { flex-wrap: wrap; }
-  .shell.game .battle-top .army-name b { overflow: hidden; text-overflow: ellipsis; }
-  body:has(.shell.game[data-page="battle"]) #announcement:not([hidden]) { bottom: calc(184px + env(safe-area-inset-bottom)); }
 }

@@ -173,3 +173,96 @@
 @media (prefers-reduced-motion: reduce) {
   .opening-stage .opening-painting, .opening-story-copy, .opening-hero { animation: none; }
 }
+
+/* Opening uses painted shots, with typography and active colors from the in-game HUD. */
+.title-screen.title-ink {
+  padding-inline: clamp(24px, 8vw, 144px);
+  background-color: #10201e;
+  background-image: linear-gradient(90deg, #0c1614f0 0%, #101c19a6 35%, #10191400 68%),
+    linear-gradient(0deg, #0b1414e3, transparent 58%), var(--scene-image, none);
+  background-position: center, center, center 48%;
+}
+.title-ink .title-copy h1 {
+  margin-block: 10px 18px;
+  color: #f2e5cc;
+  font-family: var(--serif);
+  font-size: clamp(58px, 11vw, 168px);
+  letter-spacing: .08em;
+  text-shadow: 0 8px 25px #081010d9;
+}
+.title-ink .title-copy h1 span { color: #e8be80; }
+.title-ink .title-copy p:not(.title-era) { color: #e3d2af; font-size: clamp(16px, 2vw, 23px); letter-spacing: .15em; }
+.title-ink .title-actions { margin-top: 38px; }
+.title-ink .title-actions .button { min-height: 48px; min-width: 132px; }
+.opening-stage {
+  --opening-ink: #f0e5cf;
+  --opening-muted: #d2c5a8;
+  --opening-gold: #dfbb7f;
+  background: #101b19;
+}
+.opening-stage::after {
+  background: linear-gradient(90deg, #0d1715eb, #13221ed9 38%, #15272a18 82%),
+    linear-gradient(0deg, #0b1514ef, transparent 65%);
+}
+.opening-cinematic::after {
+  background: linear-gradient(0deg, #0a1415ed 0%, #0a141590 24%, transparent 65%),
+    linear-gradient(90deg, #0c161870, transparent 64%);
+}
+.opening-cinematic .opening-painting { animation: opening-shot 5.6s cubic-bezier(.18,.72,.42,1) both; }
+.opening-cinematic .opening-story {
+  position: relative;
+  width: min(860px, 100%);
+  padding: 24px 30px 18px clamp(132px, 18vw, 230px);
+  margin-bottom: clamp(0px, 4vh, 36px);
+  border-block: 1px solid #c0a367bb;
+  background: linear-gradient(115deg, #121e1cee, #13221eda 73%, #12211e94);
+  box-shadow: 0 16px 40px #0006;
+}
+.opening-story-portrait {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: clamp(120px, 17vw, 218px);
+  height: 105%;
+  background: transparent;
+  pointer-events: none;
+  animation: opening-reveal .42s ease-out both;
+}
+.opening-story-portrait img { object-fit: contain; object-position: center bottom; }
+.opening-story-portrait:has(img:not([hidden])) .portrait-fallback { visibility: hidden; }
+.opening-speaker { margin: 13px 0 0; color: #dfbb7f; font-family: var(--serif); font-size: 15px; font-weight: 700; }
+.opening-cinematic h1 { font-size: clamp(30px, 4.8vw, 58px); }
+.opening-cinematic .opening-line { margin: 5px 0 20px; font-size: clamp(15px, 1.8vw, 21px); }
+.opening-story-steps { display: flex; gap: 9px; margin-left: 4px; }
+.opening-story-steps i { width: 6px; height: 6px; border: 1px solid #d1ad74; transform: rotate(45deg); }
+.opening-story-steps .is-current { background: #dfbb7f; }
+.opening-choice { background: linear-gradient(110deg, #162522e8, #182825d9); }
+.opening-choice[aria-pressed="true"] { background: linear-gradient(105deg, #28464b, #23362e); }
+.opening-stage .gold-button { color: #211d15; background: linear-gradient(140deg, #eed2a0, #ca9e60); }
+.opening-stage .gold-button:hover { background: #edd4a4; }
+
+@keyframes opening-shot {
+  from { transform: scale(1.075) translateX(-.6%); opacity: .68; }
+  to { transform: scale(1) translateX(0); opacity: 1; }
+}
+@media (max-width: 800px) {
+  .title-screen.title-ink {
+    padding-inline: 18px;
+    background-image: linear-gradient(0deg, #0c1515 0%, #0e1919bd 32%, #131c1b12 76%),
+      linear-gradient(90deg, #0b151d7a, transparent), var(--scene-image, none);
+    background-position: center, center, 63% center;
+  }
+  .title-ink .title-copy h1 { font-size: clamp(54px, 14vw, 90px); }
+  .title-ink .title-actions { margin-top: 22px; }
+  .title-ink .title-actions .button { min-width: 0; }
+  .opening-stage::after { background: linear-gradient(0deg, #0b1513ed, #152623cc 56%, #111c2130); }
+  .opening-cinematic .opening-story { padding: 13px 14px 13px; }
+  .opening-cinematic .opening-story-copy { padding-right: clamp(0px, 20vw, 92px); }
+  .opening-story-portrait { width: min(27%, 112px); height: 80%; left: auto; right: 0; bottom: 61px; }
+  .opening-story-portrait img { mask-image: linear-gradient(90deg, transparent, #000 25%); }
+  .opening-cinematic .opening-story .opening-line { margin-block: 5px 12px; }
+  .opening-cinematic .opening-story .opening-actions { position: relative; padding-top: 9px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .opening-cinematic .opening-painting, .opening-story-portrait { animation: none; }
+}

@@ -5,9 +5,9 @@ import { SECT_BY_ID, SECTS } from '../data/sects.mjs';
 import { btn, esc, icon } from './kit.mjs';
 
 export const prologue = [
-  { scene: 'title', chapter: '禁武令', line: '承和元年，禁武令从京师发出。官军封演武场，缴兵刃，连山间的讲武堂也不许再收徒。' },
-  { scene: 'world', chapter: '山河未静', line: '有人闭门护徒，有人结盟自保。往日只传书信的山道，如今传着各派求援的消息。' },
-  { scene: 'seat', chapter: '山门待启', line: '天亮前，你已走到山门外。是接过一方门派的印信，还是亲手立起自己的旗号？' },
+  { scene: 'decree', speaker: '传令官', portrait: 'prologue-courier', chapter: '禁武令', line: '承和元年，城门未开，官军已封了演武场。铁匠交刀，武师交名册。明日日出前，未交兵刃的山门，一并查封。' },
+  { scene: 'gate-night', speaker: '山门信使', portrait: 'prologue-messenger', chapter: '山河未静', line: '山下的渡口封了。我绕了两座山，才把这封信送上来。各派都在问，明日官兵上山，还有谁肯替门中的弟子开门？' },
+  { scene: 'seal', speaker: '守印长老', portrait: 'prologue-elder', chapter: '山门待启', line: '这枚印，盖过拜师帖，也盖过送行帖。你若接下，山门里每一个人都要有个去处。若要另立门户，天亮后，便让江湖记住你的旗号。' },
 ];
 
 const legacyRules = [
@@ -15,14 +15,14 @@ const legacyRules = [
   { enabled: true, title: '世代传承', text: '年迈的门人可能离世，掌门离世后由门中后继者继任。', glyph: 'scroll' },
 ];
 
-function openingScene(scene, sceneStyle, content) {
-  return `<main class="opening-stage" style="${sceneStyle(scene)}">
+function openingScene(scene, sceneStyle, content, kind = '') {
+  return `<main class="opening-stage ${kind}" style="${sceneStyle(scene)}">
     <div class="opening-painting" aria-hidden="true"></div>
     ${content}
   </main>`;
 }
 
-export function prologueScreen(index, sceneStyle) {
+export function prologueScreen(index, sceneStyle, portrait) {
   const chapter = prologue[index];
   const last = index === prologue.length - 1;
   return openingScene(chapter.scene, sceneStyle, `<nav class="opening-nav" aria-label="序章操作">
@@ -30,16 +30,18 @@ export function prologueScreen(index, sceneStyle) {
     ${btn('跳过序章', 'skip-prologue', {}, 'on-dark')}
   </nav>
   <section class="opening-story">
+    ${portrait({ portraitId: chapter.portrait, name: chapter.speaker }, 'opening-story-portrait', 'bust')}
     <div class="opening-story-copy">
       <p class="opening-caption">大昭 · 承和元年</p>
       <h1 tabindex="-1">${chapter.chapter}</h1>
+      <p class="opening-speaker">${chapter.speaker}</p>
       <p class="opening-line">${chapter.line}</p>
     </div>
     <div class="opening-actions">
-      <span class="opening-caption" aria-label="序章进度">${index + 1} / ${prologue.length}</span>
+      <span class="opening-story-steps" aria-label="第 ${index + 1} 幕，共 ${prologue.length} 幕">${prologue.map((_, i) => `<i class="${i === index ? 'is-current' : ''}"></i>`).join('')}</span>
       ${btn(last ? '踏入江湖' : '继续', 'prologue-next', {}, 'gold-button', 'arrow')}
     </div>
-  </section>`);
+  </section>`, 'opening-cinematic');
 }
 
 function choice(act, data, selected, title, detail, decoration = '') {
@@ -48,7 +50,7 @@ function choice(act, data, selected, title, detail, decoration = '') {
   </button>`;
 }
 
-export function sectScreen(ui, sceneStyle, portrait) {
+export function sectScreen(ui, sceneStyle, portrait, avatar) {
   const sect = SECT_BY_ID[ui.chosen];
   const seat = PLACE_BY_ID[sect.seat];
   const own = ui.founding;
@@ -75,7 +77,7 @@ export function sectScreen(ui, sceneStyle, portrait) {
     </section>
     <section data-region="sect-feature" class="opening-feature">
       <div class="opening-feature-inner" style="--sect-color:${accent}">
-        ${!own ? portrait(sect, 'opening-hero', 'full') : ''}
+        ${own ? avatar({ portraitId: 'founder-male', name: '开山掌门' }, 'opening-hero', 'full') : portrait(sect, 'opening-hero', 'full')}
         <div class="opening-feature-copy">
           <p class="opening-caption">${esc(seat.name)} · ${own ? '立派之地' : '总舵'}</p>
           <h2>${esc(own ? seat.name : sect.name)}</h2>

@@ -1,97 +1,230 @@
-/* The in-game book, orders, and records use the same edge and selection cues. */
+/* Materials for books, orders and sheets. Layout stays with the existing screens. */
 .shell.game .main.is-window { padding-block: 12px 24px; }
 .shell.game .main.is-window .screen-head {
+  position: relative;
   align-items: end;
-  margin: 4px 0 13px;
-  padding: 10px 14px 14px;
-  border-bottom: 1px solid #b49b66;
-  background: linear-gradient(90deg, #d9c59659, transparent 72%);
+  margin: 4px 0 15px;
+  padding: 12px 14px 16px 19px;
+  border-bottom: 1px solid #aa8a5f;
+  background: linear-gradient(90deg, #4d574045, #2f403045 39%, transparent 82%);
+}
+.shell.game .main.is-window .screen-head::before {
+  position: absolute;
+  inset: 13px auto 15px 5px;
+  width: 3px;
+  content: '';
+  background: linear-gradient(#bc735b, #9b5c44a6 65%, transparent);
 }
 .shell.game .screen-head h1 {
+  margin-bottom: 4px;
+  color: #fff0cb;
   font-family: var(--serif);
-  font-size: clamp(25px, 3.2vw, 42px);
-  color: #2c3829;
+  font-size: clamp(26px, 3.3vw, 44px);
+  letter-spacing: .06em;
 }
+.shell.game .screen-head p { color: var(--muted); }
+.shell.game .breadcrumb { color: #c3a67a; }
 .shell.game .main.is-window .panel {
-  background: #fbf4e4;
-  border-color: #bfa97b;
+  background: linear-gradient(145deg, #24352df0, #172621f5 63%);
+  border-color: var(--game-line);
   border-radius: 3px;
-  box-shadow: inset 0 0 0 2px #fffaedb3, 0 4px 12px #48351d13;
+  box-shadow: inset 0 0 0 1px #c1a1681c, 0 5px 12px #0d171641;
 }
 .shell.game .main.is-window .panel-title {
-  background: linear-gradient(110deg, #e9d9b4, #f5ead3 76%);
-  border-color: #cdb990;
+  background: linear-gradient(110deg, #43503d, #2b3d32 72%);
+  border-color: var(--game-line);
 }
-.shell.game .main.is-window .panel-title h2::before { background: #9f6d3c; }
-.shell.game :is(.member-card, .art-button, .route-list button, .map-pin, .save-card) {
+.shell.game :is(.main.is-window, .command) .panel-title h2 { color: #f7e8c5; font-weight: 750; letter-spacing: .08em; }
+.shell.game :is(.main.is-window, .command) .panel-title h2::before { background: linear-gradient(#d89a76, #a6553f); }
+.shell.game :is(.main.is-window, .command) .panel-title .caption { color: #d2bd97; }
+
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .button {
   border-radius: 3px;
+  font-weight: 650;
 }
-.shell.game .member-card {
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .button.primary {
+  color: #fff1d8;
+  border-color: #c28b62;
+  background: linear-gradient(145deg, #a65240, #80392e);
+  box-shadow: inset 0 0 0 2px #edbd7e28, 0 3px 8px #0a15143d;
+}
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .button.primary:hover { background: linear-gradient(145deg, #ba6650, #934638); }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .button.outline {
+  color: #f1e3c6;
+  border-color: #9a8155;
+  background: linear-gradient(120deg, #324337, #22352c);
+}
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .button.outline:hover { background: #415949; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .button.ghost { color: #e3c99e; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .button.ghost:hover { background: #6f67483d; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .button:disabled {
+  color: #a49e8a;
+  background: #2b3229;
+  border-color: #665c48;
+  box-shadow: none;
+}
+
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .tag {
+  color: #e8c793;
+  background: #443d2bbf;
+  border-color: #8a7451;
+}
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .tag.plain { color: #e2cda3; background: #373d2c; border-color: #73644a; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .tag.positive { color: #d2e3bb; background: #314837; border-color: #71805d; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .tag.dark-tag { color: #ffe3b0; background: #252f23e5; border-color: #9f895f; }
+
+.shell.game .pill { color: #dfd5b9; background: #283a30; border-color: #72664b; }
+.shell.game .pill:hover { background: #394f41; }
+.shell.game .pill.is-active { color: #eaf1dc; background: #2f5153; border-color: #7a9b92; box-shadow: inset 0 -2px 0 #c9aa6d81; }
+
+:is(.shell.game, body:has(.shell.game) dialog.sheet) :is(.member-card, .art-button, .route-list button, .save-card) { border-radius: 3px; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .member-card {
   min-height: 74px;
-  border-color: #cebc93;
-  background: linear-gradient(120deg, #fbf4e4, #f1e6cd);
+  color: #f5e9d0;
+  border-color: var(--game-line);
+  background: linear-gradient(124deg, #344337, #23372f 45%, #192b25);
 }
-.shell.game .member-card:hover { border-color: #997d4a; }
-.shell.game .member-card.is-picked {
-  border-color: #556b45;
-  background: #e4ead4;
-  box-shadow: inset 3px 0 #698257;
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .member-card:hover { border-color: #c2a574; box-shadow: 0 4px 12px #101b16aa; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .member-card.is-picked {
+  border-color: #82a6a0;
+  background: linear-gradient(120deg, #3c5752, #294144);
+  box-shadow: inset 3px 0 #c7ae78;
 }
-.shell.game .member-face { border-radius: 3px; border: 1px solid #ac9366; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .member-face { border-radius: 3px; border: 1px solid #aa9064; background-color: #405044; }
 .shell.game .member-main b { font-family: var(--serif); font-size: 16px; }
-.shell.game .batch-toolbar { border-block: 1px solid #d9c9a6; background: #ece1c8; }
-.shell.game .search-wrap input { min-height: 40px; border-color: #b39d70; }
-.shell.game .route-list button { min-height: 43px; background: #f7eed9; border-color: #cfbc91; }
-.shell.game .route-list button:hover, .shell.game .art-button:hover { background: #eee2c2; }
-.shell.game .route-list button > span { min-width: 0; }
-.shell.game .art-button.is-active { box-shadow: inset 3px 0 #698257; }
-.shell.game .save-card {
-  padding: 14px;
-  border-top: 3px solid #947747;
+.shell.game .member-side em { color: #f2d29a; }
+.shell.game .batch-toolbar { color: #d4c8a6; border-color: var(--game-line); background: #22382e; }
+.shell.game .member-grid .empty { padding: 14px 7px; }
+
+:is(.shell.game, body:has(.shell.game) dialog.sheet) :is(.search-wrap input, .form-row select, .form-row input:not([type="checkbox"],[type="range"]), .affair select, .sheet-body select, .sheet-body input:not([type="checkbox"],[type="range"]), .for-whom select) {
+  min-width: 0;
+  min-height: 39px;
+  color: #f1e6cd;
+  border-color: #8d7852;
+  border-radius: 3px;
+  background: #182a24;
+  color-scheme: dark;
 }
-.shell.game .save-card h2 { font-family: var(--serif); color: #344132; }
-.shell.game .annals li.is-great { border-inline-start: 3px solid #a08353; padding-inline-start: 12px; }
-.shell.game .annal-year { color: #6e5128; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) input::placeholder { color: #acae9a; opacity: 1; }
+body:has(.shell.game) .sheet .form-row.is-unusual input { color: #ffebc0; background: #504327; border-color: #cba364; }
+.shell.game .route-list button,
+.shell.game .art-button {
+  min-height: 43px;
+  color: #f2e4c7;
+  border-color: var(--game-line);
+  background: linear-gradient(116deg, #314439, #25392f);
+}
+.shell.game .route-list button:hover, .shell.game .art-button:hover { border-color: #ae9260; background: #425548; }
+.shell.game .route-list button > span { min-width: 0; }
+.shell.game .art-button.is-active { background: #2d4a4b; border-color: #87a5a0; box-shadow: inset 3px 0 #c0a66c; }
+.shell.game .save-card { padding: 14px; border-top: 2px solid #b6935d; }
+.shell.game .save-card h2 { font-family: var(--serif); color: #f0d7a6; }
+.shell.game .save-emblem { color: #e9c78b; background: #405040; border-color: #897354; }
+.shell.game .annals li.is-great { border-inline-start: 3px solid #ab8a55; padding-inline-start: 12px; }
+.shell.game .annals li.is-mine > div { border-left-color: #74a591; }
+.shell.game .annals li:not(.is-great):not(.annal-year) { opacity: .92; }
+.shell.game .annals .annal-year, .shell.game .timeline li { border-color: var(--game-line); }
+.shell.game :is(.annals .annal-year b, .timeline time) { color: #e0bc83; }
+
+:is(.shell.game, body:has(.shell.game) dialog.sheet) :is(.person-stats > div, .facts > div, .affair, .recruit-list .recruit-content, .diplomacy-list > div) {
+  border-color: var(--game-line);
+}
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .bad { color: #f29b87; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .good { color: #b0d49d; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .meter { background: #585743; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .meter.health { --meter-color:#8ab796; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .meter.enemy { --meter-color:#d38468; }
+:is(.shell.game, body:has(.shell.game) dialog.sheet) .meter.morale { --meter-color:#d0a96b; }
+.shell.game .terrain-list strong { color: #dbb479; }
+.shell.game .terrain-list i { color: #baad8e; }
+.shell.game :is(.recruit-avatar, .face-row button),
+body:has(.shell.game) dialog.sheet .person-monogram,
+.shell.game .member-card .person-monogram {
+  color: #e9cf9a;
+  border-color: #947b51;
+  background-color: #465444;
+}
+.shell.game .map-pin {
+  border-radius: 3px;
+  border-color: #d2b788b2;
+  background: #26382eea;
+  color: #fff0ce;
+  box-shadow: 0 2px 6px #0b19185e;
+}
+.shell.game .map-pin.is-active { color: #fff4d7; background: #375c56; border-color: #ffe0a0; }
+.shell.game .map-pin.is-home { box-shadow: 0 0 0 2px #6e9a83bd; }
+.shell.game .map-roads line { stroke: #3c4030; stroke-width: 1.1; stroke-opacity: .69; }
+.shell.game .map-key {
+  color: #fff0ce;
+  background: #182a25ed;
+  border-color: #b39662;
+}
+.shell.game .map-label { color: #fff2cf; background: #21342bd9; padding: 7px 10px; border: 1px solid #a68c5b; border-radius: 3px; }
+.shell.game .map-label span { font-size: 20px; }
+
+/* Sheets share the same dark material as the side commands. */
+body:has(.shell.game) dialog.sheet :is(.panel, .editor-grid section) {
+  background: #20362d;
+  border-color: var(--game-line);
+}
+body:has(.shell.game) dialog.sheet :is(.fight-lines, .season-grid > div, .audio-settings) {
+  color: #f0e5cf;
+  border-color: var(--game-line);
+  background: #1b3027;
+}
+body:has(.shell.game) dialog.sheet :is(.audio-settings h3, .season-head) { color: #e8c68f; }
+body:has(.shell.game) dialog.sheet .audio-settings input[type="range"] { accent-color: #d0ac73; }
+body:has(.shell.game) dialog.sheet .season-grid em.good { color: #b4daab; }
+body:has(.shell.game) dialog.sheet .season-grid em.bad { color: #f09a83; }
+body:has(.shell.game) dialog.sheet .battle-result { color: #b8d7a4; }
+body:has(.shell.game) dialog.sheet .encounter-portrait { border-color: #a28858; background: radial-gradient(ellipse at 60% 34%, #52706b, #233a32 55%, #14251f); }
+
+body:has(.shell.game) dialog.sheet .build-budget { color: #e4cda0; }
+body:has(.shell.game) dialog.sheet :is(.build-budget .icon, .build-card-head .icon) { color: #dbb37e; }
+body:has(.shell.game) dialog.sheet .build-card {
+  color: #f2e7ce;
+  border-color: var(--game-line);
+  background: linear-gradient(132deg, #34463b, #21362d);
+}
+body:has(.shell.game) dialog.sheet .build-card:hover { border-color: #a89060; }
+body:has(.shell.game) dialog.sheet .build-card[aria-pressed="true"] {
+  border-color: #82a5a0;
+  box-shadow: inset 3px 0 #d4b780;
+  background: #2d4e4d;
+}
+body:has(.shell.game) dialog.sheet .build-card :is(span:not(.build-card-head), small) { color: #cfc7ad; }
+body:has(.shell.game) dialog.sheet .build-card small.bad { color: #efaa90; }
+
+body:has(.shell.game) dialog.sheet .sheet-feedback:not([hidden]) { color: #e3e8c3; background: #344c36; border-color: #8cab70; }
+body:has(.shell.game) dialog.sheet .sheet-feedback[data-tone="warning"]:not([hidden]) { color: #ffe3cb; background: #604032; border-color: #ce876d; }
+
 .shell.game .goal-open { display: none; }
 .goal-detail .meter { margin-top: 8px; width: 100%; }
 .sheet :is(.sheet-title, .sheet-footer) { flex-shrink: 0; }
 .sheet .sheet-title h2:focus { outline: none; }
 .sheet[data-kind="build"] { width: min(820px, calc(100% - 24px)); }
-.build-budget { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 11px; color: #5d4727; font-weight: 650; }
+.build-budget { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 11px; font-weight: 650; }
 .build-budget span, .build-card-head { display: flex; align-items: center; gap: 7px; }
-.build-budget .icon, .build-card-head .icon { flex: none; width: 16px; height: 16px; color: #825a2c; }
+.build-budget .icon, .build-card-head .icon { flex: none; width: 16px; height: 16px; }
 .build-catalog { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 6px; }
-.build-card {
-  display: flex;
-  flex-direction: column;
-  align-items: start;
-  gap: 5px;
-  min-width: 0;
-  min-height: 88px;
-  padding: 9px;
-  border: 1px solid #c3ae83;
-  border-radius: 3px;
-  background: #fbf4e3;
-  color: #3c4131;
-  text-align: left;
-  cursor: pointer;
-}
+.build-card { display: flex; flex-direction: column; align-items: start; gap: 5px; min-width: 0; min-height: 88px; padding: 9px; border: 1px solid; border-radius: 3px; text-align: left; cursor: pointer; }
 .build-card b { font-family: var(--serif); font-size: 15px; }
-.build-card > span:not(.build-card-head), .build-card small { font-size: 12px; color: #695b40; }
-.build-card small.bad { color: #8e3d30; }
-.build-card[aria-pressed="true"] { border-color: #556b45; box-shadow: inset 3px 0 #698257; background: #e8ebd7; }
-.build-card:hover { border-color: #8c733f; }
+.build-card :is(span:not(.build-card-head), small) { font-size: 12px; }
 .build-reason { margin-top: 10px; }
-.audio-settings { display: grid; gap: 4px; padding: 12px; margin-block: 10px; border: 1px solid #bca97b; background: #f0e6d0; }
-.audio-settings h3 { margin: 0 0 5px; color: #374232; }
+.audio-settings { display: grid; gap: 4px; padding: 12px; margin-block: 10px; border: 1px solid; }
+.audio-settings h3 { margin: 0 0 5px; }
 .audio-settings .button { justify-self: start; }
-.audio-settings input[type="range"] { width: 100%; padding: 0; accent-color: #5b754b; }
+.audio-settings input[type="range"] { width: 100%; padding: 0; }
+.sheet-feedback:not([hidden]) { margin: 0 12px 8px; padding: 8px 10px; border-inline-start: 3px solid; }
 .shell.game :is(.main.is-window, .command) :is(button, select, input):focus-visible,
-.sheet :is(button, select, input):focus-visible { outline: 2px solid #855d26; outline-offset: -2px; }
+body:has(.shell.game) .sheet :is(button, select, input):focus-visible { outline: 2px solid #e2b976; outline-offset: -2px; }
 
 @media (max-width: 760px) {
   .shell.game .main.is-window { padding-block: 4px 13px; }
-  .shell.game .main.is-window .screen-head { padding: 7px 7px 10px; margin-bottom: 8px; }
+  .shell.game .main.is-window .screen-head { padding: 8px 8px 10px 14px; margin-bottom: 8px; }
+  .shell.game .main.is-window .roster-header .pill { min-height: 38px; }
+  .shell.game .main.is-window .member-card { min-height: 66px; padding-block: 6px; }
+  .shell.game .main.is-window .screen-head::before { inset: 10px auto 11px 3px; }
   .shell.game .screen-head h1 { font-size: 26px; }
   .shell.game .main.is-window .panel-title { padding-inline: 8px; }
   .shell.game .goal-open { display: inline-flex; min-height: 44px; }
@@ -105,5 +238,4 @@
   .build-catalog { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
-.sheet-feedback:not([hidden]) { margin: 0 12px 8px; padding: 8px 10px; border-inline-start: 3px solid #68804e; background: #e3ead4; color: #354330; }
-.sheet-feedback[data-tone="warning"]:not([hidden]) { border-color: #a4573d; background: #f2ddcf; color: #703d2b; }
+.sheet .applicant-portrait { width: 58px; height: 70px; flex: none; border: 1px solid #a58a59; }

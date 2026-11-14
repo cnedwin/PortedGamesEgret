@@ -22,7 +22,7 @@ let STONE = 0xbdb7a6,
   WOOD = 0x6e4a2b,
   TILE = 0x3f4a52,
   TILE_GREEN = 0x3f6a55,
-  TILE_GOLD = 0xc49a2c,
+  TILE_GOLD = 0xad9053,
   BEAM = 0x2f6f73,
   BEAM_2 = 0x2f4f8f;
 const EARTH = 0x9b8a66,
@@ -44,12 +44,12 @@ let ROOF = 'hip',
  *   hall   the tiles of the main hall, where they differ from the rest
  */
 export const STYLES = {
-  // A northern monastery: red-ochre walls, grey tiles, the great hall in imperial yellow.
-  shaolin: { wall: 0xb85c40, column: 0x8f2a20, tile: 0x4a4f52, hall: 0xc49a2c, beam: 0x2f6f73, beam2: 0x2f4f8f, curl: 0.7 },
+  // A northern monastery: cinnabar walls, ink tiles and pale brass on the great hall.
+  shaolin: { wall: 0xa85b48, column: 0x85382c, tile: 0x44515b, hall: 0xa88b52, beam: 0x365e63, beam2: 0x3b506c, curl: 0.7 },
   // A Daoist mountain: deep red walls under dark green glaze.
   wudang: { wall: 0xa8483a, column: 0x7a2a22, tile: 0x2f4a42, hall: 0x2f6a52, beam: 0x24504a, beam2: 0x2a3f6a, curl: 0.9 },
   // Timber halls in the mist of a southern mountain, the summit hall gilded.
-  emei: { wall: 0x8a6444, column: 0x6a3a26, tile: 0x4a5052, hall: 0xb99a3a, wood: 0x5e4028, beam: 0x3a5a4a, beam2: 0x6a4a2a, curl: 1.25 },
+  emei: { wall: 0x8a6444, column: 0x6a3a26, tile: 0x4a5052, hall: 0xa48b54, wood: 0x5e4028, beam: 0x3a5a4a, beam2: 0x6a4a2a, curl: 1.25 },
   // Plain stone and blue-grey tile on a bare peak.
   huashan: { wall: 0xcfd2d0, column: 0x4f5f78, tile: 0x4a5a70, hall: 0x4a5a70, stone: 0xa9aaa4, beam: 0x3f5068, beam2: 0x55627a, curl: 0.8 },
   // Whatever keeps the rain off: mud walls, rough posts, thatch.
@@ -57,13 +57,13 @@ export const STYLES = {
   // The red brick and swallow-tailed ridges of the southern coast, with stone below.
   mingjiao: { wall: 0xb5553a, column: 0x8a2f24, tile: 0xb4553a, hall: 0x9a3a2a, stone: 0xb9b3a4, beam: 0x7a2a22, beam2: 0xd9b04a, curl: 1.5 },
   // White walls leaning inwards, a dark red band under a flat roof, gilt on top.
-  kunlun: { wall: 0xeeeae0, column: 0x7a2a26, tile: 0x7a2a26, hall: 0xd9b04a, stone: 0xcfcabb, beam: 0x7a2a26, beam2: 0xd9b04a, roof: 'flat' },
+  kunlun: { wall: 0xeeeae0, column: 0x7a2a26, tile: 0x7a2a26, hall: 0xbb9b60, stone: 0xcfcabb, beam: 0x7a2a26, beam2: 0xd9b04a, roof: 'flat' },
   // White walls, black tiles and stepped gables by the water.
   caobang: { wall: 0xf1eee6, column: 0x3a3836, tile: 0x33373a, hall: 0x33373a, wood: 0x4a3a2e, beam: 0x3a3836, beam2: 0x55585a, roof: 'steps' },
   // Log houses under heavy roofs in the northern forest.
   yaowang: { wall: 0x7a5a3c, column: 0x5e4228, tile: 0x5a5046, hall: 0x4f6a4a, wood: 0x6a4a2e, stone: 0x9a968a, beam: 0x5e4228, beam2: 0x6f9a4a, roof: 'gable' },
   // White walls with painted grey borders and soaring eaves in the far south-west.
-  chongsheng: { wall: 0xf3efe6, column: 0x8a3a26, tile: 0x5a5f66, hall: 0xc88a34, stone: 0xc9c5b8, beam: 0x55606e, beam2: 0xc88a34, curl: 1.4 },
+  chongsheng: { wall: 0xf3efe6, column: 0x8a3a26, tile: 0x5a5f66, hall: 0xae854e, stone: 0xc9c5b8, beam: 0x55606e, beam2: 0xc88a34, curl: 1.4 },
   // Grey brick and grey tile: a cloister of ascetics.
   quanzhen: { wall: 0x8f9496, column: 0x5a3a36, tile: 0x4f565c, hall: 0x3f4a66, stone: 0xa9aaa6, beam: 0x3f4a66, beam2: 0x55606e, curl: 0.8 },
   // Dark timber frames filled with white, under black tiles, in the river towns of the west.
@@ -77,7 +77,7 @@ function dress(style) {
   COLUMN = look.column;
   TILE = look.tile;
   TILE_GREEN = look.hall;
-  TILE_GOLD = look.roof === 'thatch' ? look.hall : 0xc49a2c;
+  TILE_GOLD = look.roof === 'thatch' ? look.hall : 0xad9053;
   STONE = look.stone;
   STONE_DARK = shade(look.stone, 0.76);
   WOOD = look.wood;

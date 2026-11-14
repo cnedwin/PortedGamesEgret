@@ -11,8 +11,10 @@
 .float, .nametag { position: absolute; left: 0; top: 0; white-space: nowrap; font-weight: 700; text-shadow: 0 0 3px #000, 0 1px 2px #000; will-change: transform; }
 .float { font-size: 17px; color: #fff; }
 .float.taken { color: #ff8d7a; } .float.crit { color: #ffd84a; font-size: 24px; } .float.heal { color: #8be29a; } .float.miss { color: #cfd6de; font-size: 14px; }
-.nametag { font-size: 12px; color: #fff; padding: 0 4px; border-radius: 3px; background: rgba(32, 45, 39, 0.7); }
-.nametag.side1 { background: rgba(128, 60, 49, 0.8); }
+.nametag { font-size: 12px; color: #fff1cd; padding: 0 5px; border: 1px solid #b39c6f75; border-radius: 2px; background: #1c352be8; }
+.nametag.side1 { border-color: #d7a0807a; background: #613b31ec; }
+.nametag.is-compact { min-width: 16px; padding: 0 2px; text-align: center; font-size: 9px; line-height: 13px; font-variant-numeric: tabular-nums; }
+.nametag.is-inspected { z-index: 2; border-color: #f0c88a; }
 
 /* Scene panels keep to their column at every width. */
 .seat-panel, .map-panel, .battle-panel { aspect-ratio: auto; width: 100%; }
@@ -67,15 +69,15 @@
 
 /* Name tags over the strongholds of the 3D map. */
 .map-panel.is-model { cursor: default; }
-.realm-tag { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 5px; padding: 3px 8px 3px 5px; border: 1px solid #1d2a25; border-radius: 4px; background: rgba(250, 244, 228, 0.93); color: var(--ink); font-size: 12px; font-weight: 650; white-space: nowrap; pointer-events: auto; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28); }
+.realm-tag { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); display: flex; align-items: center; gap: 5px; padding: 3px 8px 3px 5px; border: 1px solid #bea374bd; border-radius: 3px; background: #22372eea; color: #f9edcf; font-size: 12px; font-weight: 650; white-space: nowrap; pointer-events: auto; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28); }
 .realm-tag i { width: 10px; height: 10px; border-radius: 2px; background: var(--marker); border: 1px solid rgba(0, 0, 0, 0.35); }
-.realm-tag small { font-weight: 500; color: var(--muted); }
-.realm-tag::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 14px; background: #1d2a25; }
-.realm-tag.is-active { background: #2f5a48; color: #fff; border-color: #f2d98a; }
+.realm-tag small { font-weight: 500; color: #dfd0ab; }
+.realm-tag::after { content: ''; position: absolute; left: 50%; top: 100%; width: 1px; height: 14px; background: #a68b54d1; }
+.realm-tag.is-active { background: #315856; color: #fff0c9; border-color: #e4bd7b; }
 .realm-tag.is-active small { color: #d9e6dc; }
 .realm-tag.is-small { padding: 1px 5px 1px 3px; font-size: 11px; }
 .realm-tag.is-small small { display: none; }
-.map-panel.is-model .map-label { padding: 6px 12px; border-radius: 4px; background: rgba(250, 244, 228, 0.88); box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2); }
+.map-panel.is-model .map-label { padding: 6px 12px; border-radius: 4px; background: #22352ee3; box-shadow: 0 2px 6px #0717125c; }
 .map-panel.is-model .map-label span { font-size: 18px; }
 .map-panel.is-model .scene-bottom { justify-content: flex-start; }
 @media (max-width: 575px) { .map-panel.is-model .map-label small { display: none; } .realm-tag small { display: none; } }

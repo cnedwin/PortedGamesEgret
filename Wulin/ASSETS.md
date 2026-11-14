@@ -6,7 +6,7 @@ Every third-party asset shipped with the game is listed here: where it came from
 
 | 素材 · Asset | 来源 · Source | 授权 · Licence | 可商用 · Commercial use | 用途 · Used for |
 |---|---|---|---|---|
-| 立绘、场景画、界面样式 · portraits, scene paintings, interface styles (`art-handoff/`) | 本项目自制，绘制提示见 `art-handoff/portrait-prompts.json` 与 `assets/scenes/scene-prompts.json` · made for this project | 本项目所有 · owned by the project | 可 · yes | 界面与人物 · interface and characters |
+| 立绘、场景画、界面样式 · portraits, scene paintings, interface styles (`art-handoff/`) | 为本项目生成和整理，见 `art-handoff/ART-DIRECTION.md`、`art-handoff/portrait-prompts.json` 与 `art-handoff/assets/scenes/scene-prompts.json` · generated and prepared for this project | 本项目所有 · owned by the project | 可 · yes | 界面与人物 · interface and characters |
 | 引擎构建 · engine build (`vendor/`) | [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)，见 `vendor/SOURCE.md` | Apache-2.0 | 可 · yes | 3D 绘制 · 3D rendering |
 | 树木、灌木、石块、草与花的模型 28 件 · 28 models of trees, shrubs, stones, grass and flowers (`assets/flora/*.glb`) | [flo-bit/low-poly-asset-packs](https://github.com/flo-bit/low-poly-asset-packs) 的 nature pack，取自提交 `61bbdb0`，文件未改动 · the nature pack, taken at commit `61bbdb0`, files unchanged | CC0 1.0 | 可 · yes | 山门内外的植被；只取形状，颜色由本项目设定 · vegetation in and round a seat; only the shapes are used, the colours are this project's |
 

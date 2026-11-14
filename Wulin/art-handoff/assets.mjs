@@ -21,9 +21,15 @@ export const artUrl = path => path ? new URL(path, manifestUrl).href : undefined
 export function portraitFor(art, person) {
   const custom = art.portraits[person.portraitId];
   if (custom) return custom;
-  if (person.origin !== '掌门') return undefined;
-  const leader = art.portraits['leader-' + person.school];
-  return leader?.name === person.name ? leader : undefined;
+  const gender = person.female ? 'female' : 'male';
+  if (person.origin === '掌门') {
+    const leader = art.portraits['leader-' + person.school];
+    return leader?.name === person.name ? leader : art.portraits['founder-' + gender];
+  }
+  // Give generated disciples a stable face without changing the world RNG or save data.
+  let hash = 0;
+  for (const char of `${person.name}:${person.id ?? ''}`) hash = (Math.imul(31, hash) + char.codePointAt(0)) >>> 0;
+  return art.portraits[`common-${gender}-${hash % 6 + 1}`] ?? art.portraits['disciple-' + gender];
 }
 
 export function portraitUrl(art, person, { view = 'bust', expression } = {}) {

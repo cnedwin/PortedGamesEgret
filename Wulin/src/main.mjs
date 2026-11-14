@@ -160,7 +160,7 @@ function face(person, css = 'avatar-small', view = 'bust') {
   return `<span class="portrait ${css}" style="--portrait-base:${color}"><span class="portrait-fallback">${initial}</span><img src="${esc(url)}" alt="" loading="lazy" decoding="async" onerror="this.hidden=true"></span>`;
 }
 /** The founding leader of a sect, for screens shown before a world exists. */
-const founder = (sect) => ({ school: sect.id, name: sect.leader.name, origin: '掌门' });
+const founder = (sect) => ({ school: sect.id, name: sect.leader.name, female: sect.leader.female, origin: '掌门' });
 const leaderOf = (sectId) => world.persons[world.sects[sectId].leaderId];
 
 // ---- the 3D picture ----------------------------------------------------------------------------------
@@ -234,12 +234,10 @@ function syncPicture() {
 // ---- before a game: the title and the choice of sect ----------------------------------------------------
 
 function titleScreen() {
-  return `<main class="title-screen" style="${sceneStyle('title')}">
-    <div class="title-nav"><span class="seal"><span>武</span><span>林</span></span></div>
-    <div class="title-copy"><p class="title-era">大昭 · 承和元年</p><h1>武林<span>天下</span></h1><p>禁武令既下，江湖风雨欲来。<br>择一门派，兴建山门，教养弟子，问鼎武林。</p>
+  return `<main class="title-screen title-ink" style="${sceneStyle('title')}">
+    <div class="title-copy"><p class="title-era">大昭 · 承和元年</p><h1>武林<span>天下</span></h1><p>禁武令已下。山门未闭。</p>
       <div class="title-actions">${btn('开创新局', 'page', { page: 'prologue' }, 'gold-button', 'arrow')}${btn('载入存档', 'sheet', { kind: 'load' }, 'on-dark', 'box')}</div>
     </div>
-    <div class="title-version">为新白鹭引擎开发的 Demo</div>
   </main>`;
 }
 
@@ -325,7 +323,7 @@ function seatScreen() {
           <div class="building-switch ${picture.stage ? 'is-folded' : ''}" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>
         <div class="panel-foot">${btn('兴建建筑', 'sheet', { kind: 'build' }, 'primary', 'plus')}</div></section>`,
     recruit: () => `<section class="panel recruit-panel">${panelTitle('招贤榜', tag(place.applicants.length ? `${place.applicants.length} 人求见` : '无人求见', place.applicants.length ? 'positive' : 'plain'))}
-          <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content"><div class="recruit-avatar">${icon('people')}</div><div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
+          <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content">${face(p, 'recruit-avatar')}<div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
         </section>`,
     here: () => `<section class="panel">${panelTitle('此地', `<button class="text-link" data-act="page" data-page="disciples">驻此 ${here.length} 人 · 全派 ${row.members} 人 ${icon('arrow')}</button>`)}
         <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>山下店铺</span><b>${place.shops}<small> / ${SHOP_LIMIT}</small></b></div><div><span>掌门</span><b class="is-text">${leader?.place === placeId ? '在此' : esc(PLACE_BY_ID[leader?.place]?.name ?? '在外')}</b></div></div>
@@ -753,7 +751,7 @@ const SHEETS = {
   applicant({ index }) {
     const p = world.places[ui.place].applicants[index];
     if (!p) return ['招贤榜', '<p>此人已经离去。</p>', closeBtn('关闭')];
-    return [`招贤榜 · ${p.name}`, `<div class="applicant"><span class="person-monogram">${esc(p.name[0])}</span><div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.female ? '女' : '男'} · ${p.age} 岁</p></div></div>
+    return [`招贤榜 · ${p.name}`, `<div class="applicant">${face(p, 'applicant-portrait')}<div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.female ? '女' : '男'} · ${p.age} 岁</p></div></div>
       <p>资质：${Object.entries(p.apt).map(([key, value]) => `${APT_NAMES[key]} ${value}`).join('　')}</p><p>根骨：${STAT_KEYS.map((key) => `${STAT_NAMES[key]} ${Math.round(p.stats[key])}`).join('　')}</p>
       <p class="caption">入门时交束修 ${p.fee} 两。收录需掌门在此，且厢房有空铺。</p>`, closeBtn('暂不收录') + btn('收录弟子', 'recruit', { index }, 'primary')];
   },
@@ -999,10 +997,10 @@ function render() {
   if (!world) {
     key = ui.page;
     if (ui.page === 'prologue') {
-      html = prologueScreen(ui.prologue, sceneStyle);
+      html = prologueScreen(ui.prologue, sceneStyle, face);
       key += ':' + ui.prologue;
     } else if (ui.page === 'sects') {
-      html = sectScreen(ui, sceneStyle, (sect, css, view) => face(founder(sect), css, view));
+      html = sectScreen(ui, sceneStyle, (sect, css, view) => face(founder(sect), css, view), face);
       key += ':' + ui.founding;
     } else if (ui.page === 'legacy') html = legacyScreen(ui, sceneStyle);
     else html = titleScreen();
