@@ -25,10 +25,14 @@ const HALF_W = RULES.width / 2,
  * @param options.colors  the two sides' colours, 0xRRGGBB
  * @param options.layer   an element over the canvas for numbers and names
  * @param options.onEvent called with every event of the battle as it is played
+ * @param options.onContact called when a move reaches its visible contact frame
+ * @param options.onClearSounds called when contact sounds should stop
  * @param options.onEnd   called once, a moment after the fight is decided
  * @param options.playerSide which side the player commands: 0 attacks, 1 defends
  */
-export function createArena(stage, battle, { colors, layer, onEvent = () => {}, onEnd = () => {}, playerSide = 0 }) {
+export function createArena(stage, battle, {
+  colors, layer, onEvent = () => {}, onContact = () => {}, onClearSounds = () => {}, onEnd = () => {}, playerSide = 0,
+}) {
   const scene = new Scene3D();
   const fov = 40;
   const camera = createPerspectiveCamera3D({ fov, near: 0.5, far: 500 });
@@ -132,6 +136,7 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
         continue;
       }
       const { event, klass, from, to } = cue;
+      onContact({ type: event.type, klass, x: to.x, critical: !!event.crit });
       if (event.type === 'miss') {
         if (!to.unit.down && !to.figure.busy) to.figure.play('evade', { base: 'guard' });
         float(to, '闪', 'miss');
@@ -168,6 +173,7 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
       arena.skipping = true;
       effects.clear();
       contacts.length = 0;
+      onClearSounds();
       while (!battle.done) {
         battle.update();
         for (const event of battle.events) play(event);
@@ -206,6 +212,7 @@ export function createArena(stage, battle, { colors, layer, onEvent = () => {}, 
       };
     },
     leave() {
+      onClearSounds();
       for (const floater of floaters) floater.element.remove();
       for (const actor of cast) actor.tag?.remove();
       floaters.length = 0;

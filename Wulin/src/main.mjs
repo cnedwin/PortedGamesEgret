@@ -39,6 +39,7 @@ import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, res
 import { createVoice } from './ui/voice.mjs';
 import { createFeedbackAudio } from './ui/feedback-audio.mjs';
 import { createClipAudio, createSoundtrack } from './ui/soundtrack.mjs';
+import { createCombatAudio, createCourtyardAudio } from './ui/world-audio.mjs';
 import { legacyScreen, prologue, prologueScreen, sectScreen } from './ui/opening.mjs';
 import { claimGoal, goalView, startGoals } from './core/goals.mjs';
 
@@ -50,8 +51,14 @@ const app = document.querySelector('#app'),
 const slots = createSlots(localStorage);
 const clips = createClipAudio();
 const music = createSoundtrack(localStorage, clips);
-const voice = createVoice(localStorage, undefined, { clips, onSpeaking: music.duck });
 const feedbackAudio = createFeedbackAudio(localStorage);
+const courtyardAudio = createCourtyardAudio(localStorage, clips);
+const combatAudio = createCombatAudio(clips, feedbackAudio);
+const voice = createVoice(localStorage, undefined, { clips, onSpeaking(active) {
+  music.duck(active);
+  courtyardAudio.duck(active);
+  combatAudio.duck(active);
+} });
 const recordedArts = new Map(ARTS.filter(art => CLASSES[art.klass]?.combat).map(art => [art.name, art.id]));
 const prologueVoice = ['prologue-decree', 'prologue-gate', 'prologue-seal'];
 
@@ -605,7 +612,7 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
   const name = (id) => names.get(id) ?? '？';
   const lines = [];
   const note = (event) => {
-    if (ui.fight && event.type === 'hit' && event.crit && event.art) {
+    if (ui.fight && !ui.fight.arena.skipping && event.type === 'hit' && event.crit && event.art) {
       const art = recordedArts.get(event.art);
       voice.shout(event.art + '！', art ? 'art-' + art : undefined);
     }
@@ -632,7 +639,10 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
     }
     return finish();
   }
-  const arena = picture.modules.createArena(picture.stage, battle, { colors, layer: document.querySelector('#layer'), onEvent: note, onEnd: () => (finish(), render()), playerSide: side });
+  const arena = picture.modules.createArena(picture.stage, battle, {
+    colors, layer: document.querySelector('#layer'), onEvent: note, onContact: combatAudio.contact,
+    onClearSounds: combatAudio.silence, onEnd: () => (finish(), render()), playerSide: side,
+  });
   ui.fight = { arena, title, heads, lines, side };
   ui.page = 'battle';
 }
@@ -908,9 +918,11 @@ const SHEETS = {
       <section class="audio-settings"><h3>${icon('sound')} 音乐与声音</h3>
         ${formRow('背景音乐', `<select data-change="music">${options([['on', '开启'], ['off', '静音']], music.on ? 'on' : 'off')}</select>`)}
         ${formRow('音乐音量', `<input type="range" min="0" max="1" step="0.05" data-change="music-volume" value="${music.volume}">`)}
-        ${formRow('反馈音效', `<select data-change="feedback-sound">${options([['on', '开启'], ['off', '静音']], feedbackAudio.on ? 'on' : 'off')}</select>`)}
+        ${formRow('操作与战斗音效', `<select data-change="feedback-sound">${options([['on', '开启'], ['off', '静音']], feedbackAudio.on ? 'on' : 'off')}</select>`)}
         ${formRow('音效音量', `<input type="range" min="0" max="1" step="0.05" data-change="feedback-volume" value="${feedbackAudio.volume}">`)}
         ${btn('试听音效', 'feedback-test', {}, 'outline', 'sound')}
+        ${formRow('山门环境声', `<select data-change="ambience">${options([['on', '开启'], ['off', '静音']], courtyardAudio.on ? 'on' : 'off')}</select>`)}
+        ${formRow('环境音量', `<input type="range" min="0" max="1" step="0.05" data-change="ambience-volume" value="${courtyardAudio.volume}">`)}
         ${formRow('中文播报', `<select data-change="voice">${options([['on', '开启'], ['off', '静音']], voice.on ? 'on' : 'off')}</select>`)}
         ${formRow('播报音量', `<input type="range" min="0" max="1" step="0.05" data-change="voice-volume" value="${voice.volume}">`)}
         ${btn('试听女声', 'voice-test', {}, 'outline', 'sound')}
@@ -1047,6 +1059,8 @@ function render() {
   syncPicture();
   placeMap();
   music.select(ui.fight ? 'battle' : world ? 'explore' : 'title');
+  courtyardAudio.select(!!world && ui.page === 'seat');
+  combatAudio.setEngaged(!!ui.fight);
   const beat = !world && ui.page === 'prologue' ? ui.prologue : null;
   if (beat !== spokenPrologue) {
     if (spokenPrologue !== null) voice.stop();
@@ -1357,7 +1371,12 @@ const actions = {
   },
   'log-filter': (data) => (ui.logFilter = data.filter),
 
-  'fight-pause': () => ui.fight && (ui.fight.arena.paused = !ui.fight.arena.paused),
+  'fight-pause'() {
+    if (!ui.fight) return;
+    const arena = ui.fight.arena;
+    arena.paused = !arena.paused;
+    if (arena.paused) combatAudio.silence();
+  },
   'fight-speed': (data) => ((ui.fight.arena.speed = Number(data.speed)), (ui.fight.arena.paused = false)),
   'fight-skip': () => ui.fight.arena.skip(),
   'fight-retreat': () => (ui.fight.arena.battle.retreat(ui.fight.side), (ui.fight.arena.paused = false), (ui.sheet = null)),
@@ -1380,8 +1399,10 @@ const changes = {
   'voice-volume': (_, value) => voice.set({ volume: Number(value) }),
   music: (_, value) => music.set({ on: value === 'on' }),
   'music-volume': (_, value) => music.set({ volume: Number(value) }),
-  'feedback-sound': (_, value) => feedbackAudio.set({ on: value === 'on' }),
-  'feedback-volume': (_, value) => feedbackAudio.set({ volume: Number(value) }),
+  'feedback-sound': (_, value) => { feedbackAudio.set({ on: value === 'on' }); combatAudio.settingsChanged(); },
+  'feedback-volume': (_, value) => { feedbackAudio.set({ volume: Number(value) }); combatAudio.settingsChanged(); },
+  ambience: (_, value) => courtyardAudio.set({ on: value === 'on' }),
+  'ambience-volume': (_, value) => courtyardAudio.set({ volume: Number(value) }),
   quality(_, value) {
     slots.write('auto', world, autoLabel());
     try {
@@ -1426,6 +1447,8 @@ const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fig
 
 document.addEventListener('visibilitychange', () => {
   music.setHidden(document.hidden);
+  courtyardAudio.setHidden(document.hidden);
+  combatAudio.setHidden(document.hidden);
   if (document.hidden) voice.stop();
 });
 
