@@ -289,7 +289,7 @@ const server = createServer(async (request, response) => {
       if (!manifest) return send(204, mime['.json']);
     }
     const isWeb = /^\/(?:index\.html|main\.mjs|opening-(?:dialogue|event)\.mjs|battle-(?:view|music|menu)\.mjs|world-menu\.mjs|scene-atmosphere\.mjs|gamepad-input\.mjs|trainer-event\.mjs|save-slot\.mjs|style\.css)$/.test(asset)
-      || /^\/jyx2\/(?:ui|scene|effects|actors|inn3d|inn3d-actors|home3d|home3d-actors)\/[a-z0-9][a-z0-9_.-]*\.(?:mjs|json|png|webp|jpg|bin|glb)$/i.test(asset);
+      || /^\/jyx2\/(?:ui|scene|effects|actors|inn3d|inn3d-actors|home3d|home3d-actors)\/[a-z0-9][a-z0-9_.-]*\.(?:mjs|css|json|png|webp|jpg|bin|glb)$/i.test(asset);
     const isVendor = /^\/vendor\/(?:engine|runtime|contracts|robust-predicates)\/[a-z0-9_./-]+\.js$/i.test(asset);
     if (!isWeb && !isVendor) return missing();
     const root = isWeb ? webRoot : vendorRoot;

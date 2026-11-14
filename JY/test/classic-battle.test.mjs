@@ -37,6 +37,12 @@ test('movement stops in enemy control and spends one movement and two stamina', 
   const model = create(spec({ team: [role(0, 2, 2, { speed: 90 })], enemy: [role(4, 4, 2, { speed: 1 })] }));
   assert.equal(model.selectAction('move'), true);
   assert.equal(model.state.selection.cells.find(cell => cell.x === 3 && cell.y === 2)?.x, 3);
+  assert.equal(model.previewCell(4, 2), null);
+  const preview = model.previewCell(2, 4);
+  assert.deepEqual(preview.path, [{ x: 2, y: 3 }, { x: 2, y: 4 }]);
+  assert.equal(preview.stamina, 2);
+  assert.equal(model.state.turn.physicalPower, 100);
+  assert.equal(model.state.turn.moved, false);
   assert.equal(model.selectCell(4, 2), false);
   assert.equal(model.selectCell(3, 2), true);
   advance(model, () => model.state.canAct);
@@ -120,6 +126,13 @@ test('a line attack follows the chosen direction and never hits allies', () => {
     team: [role(0, 3, 3, { speed: 70 }), role(1, 5, 3)],
     enemy: [role(4, 4, 3), role(5, 6, 3), role(6, 2, 3), role(7, 4, 4)],
   }));
+  assert.equal(model.selectAction('magic', 1), true);
+  const preview = model.previewCell(4, 3);
+  assert.deepEqual(preview.cells, [{ x: 4, y: 3 }, { x: 5, y: 3 }, { x: 6, y: 3 }]);
+  assert.deepEqual(preview.targets.map(entry => entry.id), [4, 5]);
+  assert.equal(preview.mp, 5);
+  assert.equal(preview.stamina, 3);
+  assert.equal(model.state.turn.mp, 100);
   assert.equal(model.attackAt(4, 4), false);
   assert.equal(model.attackAt(4, 3), true);
   model.step(250);
@@ -127,12 +140,18 @@ test('a line attack follows the chosen direction and never hits allies', () => {
 });
 
 test('a hidden weapon targets a tile, costs stamina and uses the original item effect', () => {
-  const darts = { id: 4, type: 4, hp: -25, hiddenWeaponEffectId: 13 };
+  const darts = { id: 4, name: '飛鏢', type: 4, hp: -25, hiddenWeaponEffectId: 13 };
   const model = create(spec({
     items: { 4: darts }, team: [role(0, 2, 2, { hiddenWeapon: 30 })],
   }), { inventory: [[4, 2]] });
   assert.equal(model.useItem(4), true);
   assert.equal(model.state.selection.type, 'dart');
+  const preview = model.previewCell(3, 2);
+  assert.deepEqual(preview.targets.map(entry => entry.id), [4]);
+  assert.equal(preview.name, '飛鏢');
+  assert.equal(preview.stock, 2);
+  assert.equal(preview.stamina, 5);
+  assert.deepEqual(model.state.inventoryDelta, []);
   assert.equal(model.selectCell(3, 2), true);
   model.step(250);
   assert.equal(model.state.roles[1].hp, 45);

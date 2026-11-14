@@ -170,7 +170,10 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
     if (!visible || lost || disposed) return;
     canvas.style.opacity = opacity;
     const bounds = overlay.getBoundingClientRect();
-    const ratio = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+    // A taller view changes the camera aspect while keeping the landscape pixel budget.
+    const aspect = Math.max(1, bounds.width) / Math.max(1, bounds.height);
+    const pixelScale = aspect < 1.6 ? Math.sqrt(aspect / (16 / 9)) : 1;
+    const ratio = Math.min(2, Math.max(1, window.devicePixelRatio || 1)) * pixelScale;
     const nextWidth = Math.max(1, Math.round(bounds.width * ratio));
     const nextHeight = Math.max(1, Math.round(bounds.height * ratio));
     if (nextWidth !== width || nextHeight !== height) {
@@ -178,7 +181,7 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
       height = nextHeight;
       renderer.setSize(width, height);
       camera.aspect = width / height;
-      camera.fov = camera.aspect < 1.1 ? 44 : 39;
+      camera.fov = aspect < 1.6 ? 2 * Math.atan(Math.tan(39 * Math.PI / 360) * (16 / 9) / camera.aspect) * 180 / Math.PI : 39;
       camera.updateProjectionMatrix();
     } else if (elapsedMs - lastDraw < 30) return;
     const delta = Number.isFinite(lastDraw) ? Math.max(0, Math.min(.1, (elapsedMs - lastDraw) / 1000)) : 0;
@@ -232,6 +235,7 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
     canvas.dataset.wind = String(scenery.windEnabled);
     canvas.dataset.actors = 'hero';
     canvas.dataset.actorClips = 'hero:' + clip;
+    return true;
   }
 
   function pick(u, v) {
@@ -254,6 +258,16 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
       if (candidate && (!hit || candidate.distance < hit.distance)) hit = candidate;
     }
     if (hit) return { x: Math.round(hit.point[0]), y: Math.round(hit.point[2]) };
+  }
+
+  function projectTile(x, y) {
+    if (!visible || disposed || lost) return;
+    const point = [x, data.heightAt(x, y) + .065, y];
+    vec3TransformMat4(cameraSpace, point, camera.viewMatrix);
+    if (-cameraSpace[2] <= camera.near) return;
+    camera.worldToScreenPoint(projected, point);
+    if (projected[2] < -1 || projected[2] > 1) return;
+    return [(projected[0] + 1) / 2, (1 - projected[1]) / 2];
   }
 
   function dispose() {
@@ -280,6 +294,6 @@ export async function createNativeWorldView(viewport, overlay, { world, places, 
     dispose();
     throw error;
   }
-  return { update, pick, propSlots: [], dispose,
+  return { update, pick, projectTile, propSlots: [], dispose,
     setVisible(value) { visible = value; canvas.hidden = overview.hidden = !value; } };
 }

@@ -141,12 +141,17 @@ export async function createNativeSubmapView(viewport, overlay, { map, textures 
     canvas.style.opacity = opacity;
     const bounds = overlay.getBoundingClientRect();
     const w = Math.max(1, Math.round(bounds.width)), h = Math.max(1, Math.round(bounds.height));
-    const pixelRatio = Math.min(1.6, Math.max(1, devicePixelRatio));
+    const tall = w / h < 1.6;
+    const pixelScale = tall ? Math.sqrt(Math.min(1, (w / h) / (width / height))) : 1;
+    const pixelRatio = Math.min(1.6, Math.max(1, devicePixelRatio)) * pixelScale;
     const size = w + 'x' + h + '@' + pixelRatio;
     if (size !== previousSize) {
       previousSize = size;
       renderer.setSize(w, h, pixelRatio);
-      if (preservePerspective) camera.aspect = w / h;
+      camera.aspect = preservePerspective || tall ? w / h : width / height;
+      if (preservePerspective) camera.fov = tall
+        ? 2 * Math.atan(Math.tan(38 * Math.PI / 360) * (width / height) / camera.aspect) * 180 / Math.PI : 38;
+      else camera.orthographicHeight = (tall ? width / camera.aspect : height) / units;
     } else if (!force && elapsedMs - lastDraw < 28) return;
     const delta = Number.isFinite(lastDraw) ? Math.min(.10, Math.max(0, (elapsedMs - lastDraw) / 1000)) : 0;
     lastDraw = elapsedMs;
