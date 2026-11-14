@@ -215,8 +215,12 @@ export function practise(person, art, points) {
   return after > before ? after : 0;
 }
 
-/** Experience needed to leave a level. */
-export const xpToNext = (level) => Math.round(100 * level ** 1.5);
+/**
+ * Experience needed to leave a level. Set so that someone who trains steadily under a master is fit
+ * to be taken as a personal disciple (level 20) in about five years and to sit as an elder (level 30)
+ * in about twelve: within a game, not beyond it.
+ */
+export const xpToNext = (level) => Math.round(100 * level ** 1.35);
 
 /** Adds experience and applies any levels gained; returns how many. */
 export function gainXp(person, amount) {

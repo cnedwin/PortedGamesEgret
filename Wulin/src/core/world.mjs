@@ -20,6 +20,8 @@ import { clamp, createRng } from './rng.mjs';
 
 export const SAVE_VERSION = 1;
 const WORK_WATCHES = 8;
+/** How much more a day's training teaches for each tier of the art above the first, and under a master. */
+const TRAIN_XP = { perTier: 0.2, master: 0.25 };
 const LOG_LIMIT = 300;
 /** Shops one stronghold's town has room for. */
 export const SHOP_LIMIT = 4;
@@ -303,7 +305,11 @@ export function recruit(state, sectId, placeId, index) {
   return done({ person });
 }
 
+/** The renown a sect needs before the summit will hear of making it leader of them all. */
+export const SUMMIT_RENOWN = 700;
 const PERSONAL_LIMIT = 5;
+/** Elders a sect may seat before counting its strongholds. */
+const ELDER_SEATS = 3;
 export function promote(state, personId) {
   const person = state.persons[personId];
   if (!person) return refuse('查无此人');
@@ -314,7 +320,12 @@ export function promote(state, personId) {
     if (person.level < 20 || !person.master) return refuse('需二十级并已拜师');
     if (membersOf(state, person.school).filter((p) => p.rank === 3).length >= PERSONAL_LIMIT) return refuse('亲传名额已满');
   }
-  if (person.rank === 3 && person.level < 30) return refuse('需三十级');
+  if (person.rank === 3) {
+    if (person.level < 30) return refuse('需三十级');
+    // A sect seats only so many elders: a few at the head of it and one more for each stronghold it holds.
+    const seats = ELDER_SEATS + placesOf(state, person.school).length;
+    if (membersOf(state, person.school).filter((p) => p.rank === 4).length >= seats) return refuse(`长老之位已满（${seats} 席）`);
+  }
   if (person.rank >= 4) return refuse('已是长老');
   person.rank++;
   person.loyalty = clamp(person.loyalty + 8, 0, 100);
@@ -406,7 +417,8 @@ export function donate(state, sectId) {
   const books = state.sects[sectId];
   if (books.silver < ECONOMY.donation) return refuse('银两不足');
   books.silver -= ECONOMY.donation;
-  books.renown = clamp(books.renown + ECONOMY.donationRenown, 0, 1000);
+  // Giving makes a good name, but only so good a name: past that, renown has to be earned by deeds.
+  if (books.renown < ECONOMY.donationCeiling) books.renown = Math.min(ECONOMY.donationCeiling, books.renown + ECONOMY.donationRenown);
   books.virtue = clamp(books.virtue + (books.virtue < 0 ? -10 : 10), -1000, 1000);
   return done();
 }
@@ -642,7 +654,8 @@ function workDay(state, person, rng) {
     const manual = books.manuals[art.id];
     if (manual && buildingLevel(state, placeId, 'library') && levelOf(person.arts[art.id] ?? 0) < manual - 2) points += MANUAL_POINTS / art.tier;
     practise(person, art, points);
-    gainXp(person, 2 * WORK_WATCHES);
+    // Harder arts teach more, and a master's eye more again.
+    gainXp(person, 2 * WORK_WATCHES * (1 + TRAIN_XP.perTier * (art.tier - 1)) * (master ? 1 + TRAIN_XP.master : 1));
   } else if (job.kind === 'seclude') {
     const art = ART_BY_ID[job.art];
     if (!art || person.insights.includes(art.id)) return void (person.job = { kind: 'rest' });
@@ -792,6 +805,8 @@ function endOfYear(state, rng) {
   }
   yearOfJianghu(state);
   revive(state, rng);
+  // A name fades unless deeds keep it up: each year a sect loses a share of what it has above the ordinary.
+  for (const books of Object.values(state.sects)) if (books.alive && books.renown > ECONOMY.renownRest) books.renown -= (books.renown - ECONOMY.renownRest) * ECONOMY.renownFade;
   // The sects the game runs keep their people fitted out and their meridians open as the player can,
   // so that what a player builds up over the years is matched and not simply out of reach.
   for (const sect of SECTS) {
@@ -828,7 +843,7 @@ function endOfYear(state, rng) {
   if (year(state) % 4 === 1 && year(state) > 1) {
     for (const sect of SECTS) {
       const books = state.sects[sect.id];
-      if (!books.alive || books.renown < 800) continue;
+      if (!books.alive || books.renown < SUMMIT_RENOWN) continue;
       const others = SECTS.filter((other) => other.id !== sect.id && state.sects[other.id].alive);
       const backers = others.filter((other) => state.sects[other.id].relations[sect.id] >= 40).length;
       if (others.length && backers >= Math.ceil((others.length * 2) / 3)) {

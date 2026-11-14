@@ -355,7 +355,7 @@ function seatScreen() {
           ${affair('门规', '全派上下一体遵行', `<select data-change="rule">${options(Object.entries(HOUSE_RULES).map(([id, rule]) => [id, `${rule.name}：${rule.does}`]), books().rule ?? 'plain')}</select>`)}
           ${affair('职位', '总管、教头、护法各司其职', btn('任命', 'sheet', { kind: 'offices' }, 'outline'))}
           ${affair('丹房', '炼药、服药', btn('入内', 'sheet', { kind: 'pills' }, 'outline'))}
-          ${affair('布施', `散银 ${num(ECONOMY.donation)} 两，威望 +${ECONOMY.donationRenown}`, btn('布施', 'donate', {}, 'outline'))}
+          ${affair('布施', `散银 ${num(ECONOMY.donation)} 两，威望 +${ECONOMY.donationRenown}（至 ${ECONOMY.donationCeiling} 为止）`, btn('布施', 'donate', {}, 'outline'))}
         </div>
       </section>`,
   }[ui.seatTab]();
