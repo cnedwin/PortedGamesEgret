@@ -223,7 +223,7 @@ function sectScreen() {
           <h2>${esc(sect.name)}</h2><p class="sect-master">掌门 · ${esc(sect.leader.name)}（${sect.leader.age} 岁）</p><p>${esc(sect.role)}。${esc(PLACE_BY_ID[sect.seat].note)}。</p>
           <p class="caption">主修${CLASSES[sect.main].name}，兼修${CLASSES[sect.second].name}</p>
           ${formRow('开局', `<select data-change="scenario">${options(Object.entries(SCENARIOS).map(([id, sc]) => [id, `${sc.name}：${sc.does}`]), ui.scenario)}</select>`)}
-          ${formRow('对手', `<select data-change="difficulty">${options(DIFFICULTIES.map((d, i) => [i, d.name]), ui.difficulty)}</select>`)}
+          ${formRow('对手', `<select data-change="difficulty">${options(DIFFICULTIES.map((d, i) => [i, `${d.name}（头 ${d.peace} 年无人来犯）`]), ui.difficulty)}</select>`)}
           ${formRow('自立门户', `<input id="own-name" maxlength="6" placeholder="门派新名（可不填）" value="${esc(ui.ownName)}">`)}
           ${formRow('掌门姓名', `<input id="own-leader" maxlength="6" placeholder="沿用原掌门（可不填）" value="${esc(ui.ownLeader)}">`)}
           <label class="check-row"><input type="checkbox" id="succession" ${ui.succession ? 'checked' : ''}> 世代更替（人物会老去，掌门需传位）</label>

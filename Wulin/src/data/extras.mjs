@@ -46,12 +46,12 @@ export const SCENARIOS = {
   lone: { name: '孤峰独立', does: '本派开局只有掌门与四名弟子，银两减半。' },
 };
 
-/** How well off the sects the game runs are: a share of income added or taken away. */
+/** How hard the sects the game runs press the player: a share of income added or taken away, and the years they leave the player in peace. */
 export const DIFFICULTIES = [
-  { name: '从容', income: -0.25 },
-  { name: '寻常', income: 0 },
-  { name: '艰难', income: 0.3 },
-  { name: '绝境', income: 0.7 },
+  { name: '从容', income: -0.25, peace: 5 },
+  { name: '寻常', income: 0, peace: 3 },
+  { name: '艰难', income: 0.3, peace: 2 },
+  { name: '绝境', income: 0.7, peace: 1 },
 ];
 
 /** Travel: what a day on the road may bring, as [chance, what]. */

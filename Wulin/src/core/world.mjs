@@ -573,6 +573,8 @@ function runSect(state, sectId, rng) {
     const foe = state.places[target].owner;
     // Ambition grows with the years: in time a sect turns even on those it is on fair terms with.
     if (books.relations[foe] > 20 - sect.temper.expand * 10 + year(state) * 3 || (books.truce?.[foe] ?? 0) > state.day) continue;
+    // A player is left in peace for the first years, fewer the harder the game.
+    if (foe === state.playerSect && !state.options.autoPlayer && state.day < (DIFFICULTIES[state.options.difficulty ?? 1]?.peace ?? 3) * DAYS_PER_YEAR) continue;
     const guard = residents(state, target).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
     if (strength(army) > strength(guard) * (1.6 - sect.temper.expand * 0.08)) {
       // A player who is watching defends in person; the attack waits at the gate for them.
