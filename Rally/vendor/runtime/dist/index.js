@@ -1,5 +1,6 @@
 export { CancellationController } from "./CancellationController.js";
 export { EgretError } from "./EgretError.js";
+export { describeErrorCode, setErrorLanguage, getErrorLanguage } from "./errorHelp.js";
 export { Scope, createScope } from "./Scope.js";
 export { Event, createEventType } from "./Event.js";
 export { EventDispatcher } from "./EventDispatcher.js";

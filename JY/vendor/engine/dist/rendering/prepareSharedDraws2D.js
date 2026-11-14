@@ -127,7 +127,7 @@ const NO_CLIPS = [];
 export function prepareSharedDraws2D(frame, width, height, options, retention) {
     if (frame.profile !== 'egret.shared-frame2d/1' || frame.colorRecipe !== 'egret.linear-srgb-pma/1' || frame.targetRepresentation !== 'egret.srgb-pma8-target/1')
         sharedFailure('profile');
-    if (frame.commands.length > options.maxCommands || frame.commands.length > 65536 || frame.pages.length > 64 || frame.regions.length > Math.min(SHARED_FRAME_REGIONS_2D, options.maxFrameRegions ?? SHARED_FRAME_REGIONS_2D) || frame.materials.length > 256 || frame.geometries.length > 128)
+    if (frame.commands.length > options.maxCommands || frame.commands.length > 65536 || frame.pages.length > 64 || frame.regions.length > Math.min(SHARED_FRAME_REGIONS_2D, options.maxFrameRegions ?? SHARED_FRAME_REGIONS_2D) || frame.materials.length > 256 || frame.geometries.length > 4096)
         sharedFailure('budget');
     const pageLimit = Math.min(SHARED_FRAME_PAGE_BYTES_2D, options.maxFramePageBytes ?? SHARED_FRAME_PAGE_BYTES_2D);
     const effects = prepareEffects2D(frame, options.pixelRatio, options.enableEffects === true);

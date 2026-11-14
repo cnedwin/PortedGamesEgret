@@ -5,6 +5,7 @@ import { finite, visualOf } from './displayVisualState.js';
 import { composeDisplayTransform } from './displayTransform.js';
 import { bitmapCaptureState, readBitmapImage, readBitmapSource } from './Bitmap.js';
 import { readMeshState } from './meshDisplayState.js';
+import { SHAPE_PAGE, SHAPE_REGION, resolveShape } from './graphicsShape.js';
 import { readMeshCaptureImage } from './meshCaptureSnapshot.js';
 import { assertTextFieldScope, readTextFieldState } from './textDisplayState.js';
 import { EgretError } from './EgretError.js';
@@ -18,6 +19,16 @@ function nodeCapture() {
 const is = Object.is;
 const freeze = Object.freeze;
 const defaultMaterial = createSharedMaterial2D({});
+// The material of a shape's image fill: the node's own, sampling the image as a whole page that repeats or is held at its edge.
+const shapeFillMaterials = new WeakMap();
+function shapeFillMaterial(base, repeat) {
+    let pair = shapeFillMaterials.get(base);
+    if (pair === undefined)
+        shapeFillMaterials.set(base, pair = [undefined, undefined]);
+    const address = repeat ? 'repeat' : 'clamp-to-edge';
+    return pair[repeat ? 0 : 1] ??= createSharedMaterial2D({ light: base.light, dark: base.dark, blend: base.blend, samplingDomain: 'page', filter: base.filter,
+        addressU: address, addressV: address, minFilter: base.minFilter, magFilter: base.magFilter });
+}
 const glows = new WeakMap();
 function effectGlow(settings) {
     if (glows.has(settings))
@@ -62,7 +73,8 @@ class CaptureBudget {
         this.triangles = debit(this.triangles, value.triangleCount, 65536);
         if (this.geometryOwners.has(value))
             return;
-        debit(this.geometryOwners.size, 1, 128);
+        // A frame's table of geometries is as long as its table of regions. What they cost is held by the triangles and bytes above.
+        debit(this.geometryOwners.size, 1, 4096);
         this.geometryBytes = debit(this.geometryBytes, value.logicalByteLength, 16777216);
         this.geometryOwners.add(value);
     }
@@ -373,7 +385,7 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
         stack.push({ node, children: tree.count(node), nextChild: 0, drawn, matrix, alpha, clips, material, explicit, clip, effect });
     }
     /** The commands of one drawn node. Returns false when the node and everything below it are not drawn. */
-    function draw(node, state, primitives, primitiveCount, bitmap, mesh, text, parentMatrix, parentAlpha, inheritedClips, inheritedMaterial) {
+    function draw(node, state, primitives, primitiveCount, bitmap, mesh, text, shape, parentMatrix, parentAlpha, inheritedClips, inheritedMaterial) {
         const firstOrdinal = commands.length, firstOccurrence = nextOccurrence;
         const explicit = state.renderBoundary === 'isolate' ? open('explicit-enter') : undefined;
         const alpha = parentAlpha * state.alpha;
@@ -454,7 +466,7 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
             clips = undefined;
         }
         // The place of the next command among those this node gives, and whether it has given draws alone.
-        let given = 0, plain = explicit === undefined && clip === undefined && effect === undefined && mesh === undefined && text === undefined;
+        let given = 0, plain = explicit === undefined && clip === undefined && effect === undefined && mesh === undefined && text === undefined && shape === undefined;
         // The places in the tables of the material and the region of its draws.
         let usedMaterial = -1, usedRegion = -1;
         let rects;
@@ -505,6 +517,25 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
         // Only once every kept rectangle has been checked under it does the matrix become theirs.
         if (!rectsChecked)
             kept.rectsMatrix = matrix;
+        if (shape !== undefined)
+            for (const part of shape.parts) {
+                // A node's shapes are geometries of coloured triangles in the place of its rectangles, each over the one white
+                // pixel or over the image it is filled with. An image is sampled as a whole page, repeating or held at its edge.
+                const occurrenceId = nextOccurrence++, fill = part.bitmap;
+                referencedTuples(matrix, part.geometry);
+                let image = SHAPE_PAGE, region = SHAPE_REGION, drawn = material;
+                if (fill !== undefined) {
+                    const snapshot = readMeshCaptureImage({ lease: fill.lease });
+                    image = snapshot.image;
+                    region = plainRegion(snapshot.sourceRect);
+                    drawn = shapeFillMaterial(material, fill.repeat);
+                }
+                budget.source(image);
+                const sharedRegionIndex = regionIndex(image, region), sharedGeometryIndex = geometryIndex(part.geometry);
+                budget.emission(clips, false);
+                commands.push(freeze({ kind: 'mesh', ordinal: commands.length, occurrenceId, materialIndex: materialIndex(drawn), matrix, opacity: alpha,
+                    clips: flattenClips(clips), regionIndex: sharedRegionIndex, geometryIndex: sharedGeometryIndex }));
+            }
         if (bitmap !== undefined) {
             const occurrenceId = nextOccurrence++;
             let rect;
@@ -672,6 +703,7 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
         }
         const primitives = state.primitives, primitiveCount = primitives.length;
         const bitmap = readBitmap(node), mesh = resting ? undefined : readMeshState(node), text = resting ? undefined : readTextFieldState(node);
+        const shape = state.shape === undefined ? undefined : resolveShape(state.shape);
         if (!resting) {
             budget.authoring(primitiveCount);
             if (bitmap !== undefined)
@@ -680,12 +712,17 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
                 budget.authoring(1);
                 budget.geometry(mesh.geometry);
             }
+            if (shape !== undefined)
+                for (const part of shape.parts) {
+                    budget.authoring(1);
+                    budget.geometry(part.geometry);
+                }
             if (text?.committed !== undefined)
                 budget.authoring(1);
         }
         if (drawn && !refused) {
             try {
-                if (draw(node, state, primitives, primitiveCount, bitmap, mesh, text, parentMatrix, parentAlpha, inheritedClips, inheritedMaterial))
+                if (draw(node, state, primitives, primitiveCount, bitmap, mesh, text, shape, parentMatrix, parentAlpha, inheritedClips, inheritedMaterial))
                     return;
             }
             catch (cause) {

@@ -1,3 +1,4 @@
+import { resolveShape } from './graphicsShape.js';
 import { readBitmapState } from './bitmapDisplayState.js';
 import { readMeshState } from './meshDisplayState.js';
 import { assertTextFieldScope, readTextFieldState } from './textDisplayState.js';
@@ -100,6 +101,11 @@ export function queryDisplayBounds(receiver, options) {
             admitItem();
             const rect = primitives[index].rect;
             rectangle(matrix, rect.x, rect.y, rect.width, rect.height);
+        }
+        const shapeState = visualOf(current).shape, shape = shapeState === undefined ? undefined : resolveShape(shapeState);
+        if (shape !== undefined) {
+            admitItem();
+            rectangle(matrix, shape.bounds.x, shape.bounds.y, shape.bounds.width, shape.bounds.height);
         }
         const bitmap = readBitmapState(current);
         if (bitmap !== undefined) {
