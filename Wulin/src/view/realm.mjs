@@ -626,6 +626,13 @@ export function createRealm(stage, world, { layer = null } = {}) {
   troop.visible = false;
   scene.addChild(troop);
   let marching = null;
+  /** Columns of other sects on the move, shown but not followed. */
+  let parades = [];
+  const columnOf = (colour) => {
+    const parts = [[ROD, [0, 1.6, 0], [0.06, 3.2, 0.06], 0x4a3a2a], [BOX, [0.5, 2.6, 0], [0.9, 1.1, 0.05], colour]];
+    for (let i = 0; i < 10; i++) parts.push([TAPER, [((i % 2) - 0.5) * 0.7, 0.45, -0.6 - Math.floor(i / 2) * 0.7], [0.2, 0.9, 0.2], colour], [BALL, [((i % 2) - 0.5) * 0.7, 1.0, -0.6 - Math.floor(i / 2) * 0.7], 0.17, 0xe2b48c]);
+    return model(parts);
+  };
 
   let banners = new Object3D(),
     signature = '',
@@ -685,11 +692,18 @@ export function createRealm(stage, world, { layer = null } = {}) {
       const path = roadBetween(from, to);
       if (path.length < 2) return arrived();
       for (const child of [...(troop.children ?? [])]) troop.removeChild(child);
-      const parts = [[ROD, [0, 1.6, 0], [0.06, 3.2, 0.06], 0x4a3a2a], [BOX, [0.5, 2.6, 0], [0.9, 1.1, 0.05], colour]];
-      for (let i = 0; i < 10; i++) parts.push([TAPER, [((i % 2) - 0.5) * 0.7, 0.45, -0.6 - Math.floor(i / 2) * 0.7], [0.2, 0.9, 0.2], colour], [BALL, [((i % 2) - 0.5) * 0.7, 1.0, -0.6 - Math.floor(i / 2) * 0.7], 0.17, 0xe2b48c]);
-      troop.addChild(model(parts));
+      troop.addChild(columnOf(colour));
       troop.visible = true;
       marching = { path, t: 0, arrived, began: performance.now() };
+    },
+    /** Shows another sect's column going from one stronghold to its neighbour; the camera stays where it is. */
+    parade(from, to, colour) {
+      const path = roadBetween(from, to);
+      if (path.length < 2 || parades.length > 5) return;
+      const node = columnOf(colour);
+      node.setScale(1.6);
+      scene.addChild(node);
+      parades.push({ path, node, began: performance.now() });
     },
     /** Marks a stronghold as the one being looked at, and brings the camera over to it. */
     select(placeId, move = true) {
@@ -736,6 +750,14 @@ export function createRealm(stage, world, { layer = null } = {}) {
         const at = spotOn(cart.path, cart.t);
         carts.setTransformAt(i, [at.x, at.y, at.z], quatFromEuler(turned, 0, at.heading + (cart.pace < 0 ? Math.PI : 0), 0), 1.3);
       });
+      for (const parade of parades) {
+        const t = (performance.now() - parade.began) / 6000,
+          at = spotOn(parade.path, Math.min(1, t));
+        parade.node.setPosition(at.x, at.y, at.z);
+        parade.node.setRotation(0, at.heading, 0);
+        if (t >= 1) scene.removeChild(parade.node), (parade.done = true);
+      }
+      if (parades.some((parade) => parade.done)) parades = parades.filter((parade) => !parade.done);
       if (marching) {
         // By the clock, not by frames, so a slow device does not hold the fight up.
         marching.t = (performance.now() - marching.began) / 2600;

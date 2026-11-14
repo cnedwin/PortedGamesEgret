@@ -591,6 +591,9 @@ function runSect(state, sectId, rng) {
     if (foe === state.playerSect && !state.options.autoPlayer && state.day < (DIFFICULTIES[state.options.difficulty ?? 1]?.peace ?? 3) * DAYS_PER_YEAR) continue;
     const guard = residents(state, target).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
     if (strength(army) > strength(guard) * (1.6 - sect.temper.expand * 0.08)) {
+      // Where the column set out from, for whoever is watching the map.
+      const from = PLACE_BY_ID[target].roads.find((id) => state.places[id].owner === sectId);
+      state.marches = [...(state.marches ?? []).slice(-5), { day: state.day, by: sectId, from, to: target }];
       // A player who is watching defends in person; the attack waits at the gate for them.
       if (foe === state.playerSect && state.options.interactive && !state.options.autoPlayer) {
         if (!state.pending) state.pending = { kind: 'siege', attacker: sectId, place: target, party: army.map((person) => person.id) };

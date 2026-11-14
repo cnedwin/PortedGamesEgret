@@ -182,6 +182,9 @@ function syncPicture() {
     picture.realm.refresh();
     // Carts run on every road that some sect trades along.
     picture.realm.setTrade(SECTS.filter((sect) => world.sects[sect.id].alive).flatMap((sect) => tradeRoutes(world, sect.id)));
+    // Columns that set out since the map was last looked at are seen on the road.
+    for (const move of world.marches ?? []) if (move.day > (picture.realm.seen ?? world.day - 10) && move.from) picture.realm.parade(move.from, move.to, colorOf(move.by));
+    picture.realm.seen = world.day;
     picture.realm.select(ui.mapPlace);
     return;
   }
