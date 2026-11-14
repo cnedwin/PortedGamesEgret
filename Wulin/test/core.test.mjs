@@ -541,3 +541,51 @@ test('goals: matters come one at a time, each paying out once it is done', async
   world.goals.index = GOALS.length;
   assert.equal(goalView(world).last, true);
 });
+
+test('library: a sect teaches only what it has, and finds the rest', async () => {
+  const lib = await import('../src/core/library.mjs');
+  const { ARTS, ART_BY_ID, commonArt, unmetNeeds } = await import('../src/data/arts.mjs');
+  const { learnableArts } = await import('../src/core/persons.mjs');
+  const world = createWorld({ seed: 11, playerSect: 'huashan' });
+  const held = lib.heldArts(world, 'huashan');
+  // Its own arts and its masters' lines, and nothing of anyone else's.
+  assert.ok(ARTS.filter((art) => art.sect === 'huashan').every((art) => held.has(art.id)));
+  assert.ok(held.has(commonArt('sword', 3).id) && held.has(commonArt('inner', 1).id));
+  assert.ok(!held.has(commonArt('spear', 1).id) && !held.has(commonArt('dart', 1).id));
+  assert.ok(lib.lackingArts(world, 'huashan').length >= 15, 'most of what is common is still to be found');
+  const novice = Object.values(world.persons).find((p) => p.school === 'huashan' && p.rank === 1);
+  const spear = commonArt('spear', 1);
+  assert.ok(unmetNeeds(novice, spear, held).length > 0);
+  assert.equal(setJob(world, novice.id, { kind: 'train', art: spear.id }).ok, false);
+  assert.ok(learnableArts(novice, held).every((art) => held.has(art.id)));
+  // A manual opens the art to everyone; so does someone who knows it well enough to teach.
+  lib.addManual(world, 'huashan', spear.id);
+  assert.equal(setJob(world, novice.id, { kind: 'train', art: spear.id }).ok, true);
+  const dart = commonArt('dart', 1);
+  novice.arts[dart.id] = lib.TEACH_LEVEL * 100;
+  assert.ok(lib.heldArts(world, 'huashan').has(dart.id));
+  // The pedlar's list holds still through a season and through a purchase, and changes with the next.
+  const offers = lib.bookOffers(world, 'huashan');
+  assert.ok(offers.length > 0 && offers.length <= 3);
+  assert.deepEqual(lib.bookOffers(world, 'huashan'), offers);
+  world.sects.huashan.silver = 10000;
+  assert.equal(lib.buyManual(world, 'huashan', offers[0].id).ok, true);
+  assert.equal(world.sects.huashan.silver, 10000 - offers[0].price);
+  assert.deepEqual(lib.bookOffers(world, 'huashan'), offers.slice(1));
+  assert.equal(lib.buyManual(world, 'huashan', offers[0].id).ok, false);
+  // A friendly sect teaches what is common, for silver and goodwill; an unfriendly one does not.
+  const other = 'shaolin',
+    wanted = lib.teachingOffers(world, 'huashan', other)[0];
+  assert.ok(wanted && !ART_BY_ID[wanted.id].sect);
+  world.sects.huashan.relations[other] = 0;
+  assert.equal(lib.askTeaching(world, 'huashan', other, wanted.id).ok, false);
+  world.sects.huashan.relations[other] = 90;
+  assert.equal(lib.askTeaching(world, 'huashan', other, wanted.id).ok, true);
+  assert.equal(world.sects.huashan.relations[other], 90 - lib.TEACHING.goodwill);
+  assert.ok(lib.heldArts(world, 'huashan').has(wanted.id));
+  // What is taken from a fallen library is new to the taker.
+  const before = lib.heldArts(world, 'huashan').size;
+  const rng = { int: (a) => a };
+  assert.equal(lib.lootManuals(world, 'huashan', 'tangmen', rng).length, lib.LOOT_COUNT);
+  assert.equal(lib.heldArts(world, 'huashan').size, before + lib.LOOT_COUNT);
+});

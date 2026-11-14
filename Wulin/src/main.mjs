@@ -14,7 +14,7 @@
 // The 3D modules are loaded once a game starts, and where a device cannot draw
 // them the scene paintings stand in and fights are settled in writing.
 import { artUrl, loadArt, portraitUrl } from '../art-handoff/assets.mjs';
-import { ART_BY_ID, ARTS, CLASSES, levelOf, unmetNeeds } from './data/arts.mjs';
+import { ART_BY_ID, ARTS, CLASSES, CLASS_KEYS, levelOf, unmetNeeds } from './data/arts.mjs';
 import { DIFFICULTIES, FOCUSES, MERIDIANS, RELIC_BY_ID, SCENARIOS } from './data/extras.mjs';
 import { BUILDINGS, ECONOMY, PILLS, armorName, weaponName } from './data/goods.mjs';
 import { FORMATIONS, HOUSE_RULES, TALENTS } from './data/jianghu.mjs';
@@ -29,6 +29,7 @@ import {
 import { formationsFor, pendingView, resolvePending, setRule } from './core/jianghu.mjs';
 import { applyMod } from './core/mod.mjs';
 import { APT_NAMES, STAT_KEYS, STAT_NAMES, hpMax, learnableArts, prowess } from './core/persons.mjs';
+import { BOOK_LEVEL, TEACHING, TEACH_LEVEL, askTeaching, bookOffers, buyManual, commonArts, heldArts, teachingOffers } from './core/library.mjs';
 import { createRng } from './core/rng.mjs';
 import { createSlots, deserialize, saveFileName, serialize } from './core/save.mjs';
 import {
@@ -414,7 +415,7 @@ const bestArtText = (person) => {
 /** The jobs a person may be given, as [value, label]; the value is read back by `jobOf`. */
 function jobChoices(person) {
   return [
-    ...learnableArts(person).filter((a) => a.tier < 5).map((a) => [`train:${a.id}`, `修练 ${a.name}（${levelOf(person.arts[a.id] ?? 0)}重）`]),
+    ...learnableArts(person, heldArts(world, me())).filter((a) => a.tier < 5).map((a) => [`train:${a.id}`, `修练 ${a.name}（${levelOf(person.arts[a.id] ?? 0)}重）`]),
     ...ARTS.filter((a) => a.tier === 5 && a.sect === person.school && !person.insights.includes(a.id) && person.rank >= 3).map((a) => [`seclude:${a.id}`, `闭关悟 ${a.name}`]),
     ...COMMON_JOBS,
   ];
@@ -459,21 +460,48 @@ function memberCard(p, { act = 'person', on = false, where = false, data = '' } 
 
 // ---- the arts ------------------------------------------------------------------------------------------
 
+/** Where the sect has an art from, in a few words: its own, a teacher, a manual, or the first lessons anyone can give. */
+function artSource(art) {
+  if (art.sect === me() || art.custom) return '本门绝学';
+  const teacher = membersOf(world, me()).filter((p) => levelOf(p.arts[art.id] ?? 0) >= TEACH_LEVEL).sort((a, b) => (b.arts[art.id] ?? 0) - (a.arts[art.id] ?? 0))[0];
+  const copy = books().manuals[art.id];
+  if (teacher && copy) return `${teacher.name}可授 · 抄本 ${copy} 重`;
+  if (teacher) return `${teacher.name}可授`;
+  if (copy) return `抄本 ${copy} 重`;
+  return '入门功夫';
+}
+
 function artsScreen() {
-  const list = ARTS.filter((a) => ui.artTier === '全部' || a.tier === Number(ui.artTier));
-  const chosen = ART_BY_ID[ui.art] ?? list[0],
+  const held = heldArts(world, me()),
     person = picked();
-  const needs = chosen ? unmetNeeds(person, chosen).filter((need) => !(chosen.tier === 5 && need === '需闭关领悟')) : [];
+  // What is on the shelves is what the sect can teach, and whatever the person looked at has learned elsewhere.
+  const shelf = ARTS.filter((a) => held.has(a.id) || person.arts[a.id] > 0);
+  const list = shelf.filter((a) => ui.artTier === '全部' || a.tier === Number(ui.artTier));
+  const chosen = shelf.find((a) => a.id === ui.art) ?? list[0] ?? shelf[0];
+  const needs = chosen ? unmetNeeds(person, chosen, held).filter((need) => !(chosen.tier === 5 && need === '需闭关领悟')) : [];
   const klass = chosen ? CLASSES[chosen.klass] : null;
-  return `${screenHead('弟子', '武学名录', '十二类武学，五阶七十二门。一至三阶各派通用，四阶五阶为门派专属。', `<label class="for-whom"><span>为谁择艺</span><select data-change="arts-person">${options(membersOf(world, me()).sort((a, b) => b.rank - a.rank || b.level - a.level).map((p) => [p.id, `${p.name}（${RANKS[p.rank].name}）`]), person.id)}</select></label>` + btn('返回弟子', 'page', { page: 'disciples' }, 'outline', 'back'))}
-    <div class="arts-layout"><section class="panel">${panelTitle('藏经阁', `<div class="button-group" data-region="art-tier">${['全部', 1, 2, 3, 4, 5].map((t) => pill(t === '全部' ? t : `${t}阶`, 'art-tier', { tier: t }, String(ui.artTier) === String(t))).join('')}</div>`)}
-      <div class="arts-grid" data-region="arts">${list.map((a) => `<button class="art-button ${a.id === chosen?.id ? 'is-active' : ''}" data-act="art" data-id="${a.id}">${icon('scroll')}<span>${esc(a.name)}<small>${CLASSES[a.klass].name} · ${a.tier}阶${a.sect ? ' · ' + SECT_BY_ID[a.sect].name : ''}</small></span></button>`).join('')}</div></section>
-      <section class="panel art-detail" data-region="art">${panelTitle(chosen?.name ?? '武学')}${chosen ? `<dl class="facts">${fact('阶位', `${chosen.tier}阶`)}${fact('类别', klass.name)}${fact('归属', esc(SECT_BY_ID[chosen.sect]?.name ?? '通用'))}${fact('倚重', klass.attrs.map((key) => STAT_NAMES[key]).join('、'))}${fact(`${esc(person.name)}已练`, `${levelOf(person.arts[chosen.id] ?? 0)} 重`)}</dl>
+  const common = commonArts(),
+    got = common.filter((a) => held.has(a.id)).length;
+  const offers = bookOffers(world, me());
+  // The arts still to be found, class by class: known by name, as rumour has them.
+  const missing = CLASS_KEYS.map((key) => [key, common.filter((a) => a.klass === key)]).filter(([, arts]) => arts.some((a) => !held.has(a.id)));
+  return `${screenHead('弟子', '藏经阁', `通用武学已得 ${got} / ${common.length} 门，本门绝学 ${ARTS.filter((a) => a.sect === me() || (a.custom && held.has(a.id))).length} 门。未得之艺，要从江湖上寻来。`, `<label class="for-whom"><span>为谁择艺</span><select data-change="arts-person">${options(membersOf(world, me()).sort((a, b) => b.rank - a.rank || b.level - a.level).map((p) => [p.id, `${p.name}（${RANKS[p.rank].name}）`]), person.id)}</select></label>` + btn('返回弟子', 'page', { page: 'disciples' }, 'outline', 'back'))}
+    <div class="arts-layout"><section class="panel">${panelTitle('阁中所藏', `<div class="button-group" data-region="art-tier">${['全部', 1, 2, 3, 4, 5].map((t) => pill(t === '全部' ? t : `${t}阶`, 'art-tier', { tier: t }, String(ui.artTier) === String(t))).join('')}</div>`)}
+      <div class="arts-grid" data-region="arts">${list.map((a) => `<button class="art-button ${a.id === chosen?.id ? 'is-active' : ''}" data-act="art" data-id="${a.id}">${icon('scroll')}<span>${esc(a.name)}<small>${CLASSES[a.klass].name} · ${a.tier}阶 · ${held.has(a.id) ? esc(artSource(a)) : `${esc(person.name)}自带`}</small></span></button>`).join('') || '<p class="empty">这一阶阁中尚无所藏。</p>'}</div></section>
+      <section class="panel art-detail" data-region="art">${panelTitle(chosen?.name ?? '武学')}${chosen ? `<dl class="facts">${fact('阶位', `${chosen.tier}阶`)}${fact('类别', klass.name)}${fact('来历', esc(held.has(chosen.id) ? artSource(chosen) : `${person.name}自带，尚不能传授`))}${fact('倚重', klass.attrs.map((key) => STAT_NAMES[key]).join('、'))}${fact(`${esc(person.name)}已练`, `${levelOf(person.arts[chosen.id] ?? 0)} 重`)}</dl>
         <ol class="moves">${chosen.moves.map((move) => `<li>${esc(move.name)}：威力 ${Math.round(move.power)}，耗内力 ${move.nei}（${move.level} 重解锁）</li>`).join('')}</ol>
         ${needs.length ? `<p class="moves bad">${esc(person.name)}尚不能修练：${esc(needs.join('、'))}</p>` : ''}
         ${btn(chosen.tier === 5 ? `让${person.name}闭关领悟` : `让${person.name}修练`, 'train-art', { id: chosen.id }, 'primary', 'scroll', needs.length > 0)}
         ${btn(`由${person.name}著成秘笈`, 'manual', { id: chosen.id }, 'outline', '', levelOf(person.arts[chosen.id] ?? 0) < 7)}
-        <p class="moves">${chosen.custom ? `${esc(chosen.founder)}所创。` : ''}${books().manuals[chosen.id] ? `藏经阁有 ${books().manuals[chosen.id]} 重抄本，在有藏经阁之处修练此艺更快。` : '练至七重者可著成秘笈，藏于阁中供后学研读。'}</p>` : ''}</section></div>`;
+        <p class="moves">${chosen.custom ? `${esc(chosen.founder)}所创。` : ''}${books().manuals[chosen.id] ? `藏经阁有 ${books().manuals[chosen.id]} 重抄本，在有藏经阁之处修练此艺更快。` : `练到 ${TEACH_LEVEL} 重便能传授他人；练至七重可著成秘笈，人不在了书还在。`}</p>` : ''}</section></div>
+    <div class="arts-layout arts-seek"><section class="panel">${panelTitle('书贩', '<span class="caption">每季换一批</span>')}
+      <div class="affairs" data-region="book-offers">${offers.map((offer) => {
+        const art = ART_BY_ID[offer.id];
+        return affair(`《${art.name}》`, `${CLASSES[art.klass].name} · ${art.tier}阶 · 抄本 ${BOOK_LEVEL} 重`, btn(`${num(offer.price)} 两`, 'buy-book', { id: art.id }, 'outline', '', books().silver < offer.price));
+      }).join('') || '<p class="empty">这一季书贩手里没有本派用得上的书。</p>'}</div>
+      <p class="caption seek-note">别的门路：友好门派肯代为传授（江湖 · 门派往来 · 求授）；攻下有藏经阁的据点能带走几部；带艺投师的人练到 ${TEACH_LEVEL} 重即可授徒；江湖奇遇偶有所得。</p></section>
+      <section class="panel">${panelTitle('未得之艺', `<span class="caption">尚缺 ${common.length - got} 门</span>`)}
+      <div class="seek-list" data-region="seek">${missing.map(([key, arts]) => `<div><b>${CLASSES[key].name}</b>${arts.map((a) => `<span class="${held.has(a.id) ? 'is-held' : ''}">${a.tier}阶 ${esc(a.name)}</span>`).join('')}</div>`).join('') || '<p class="empty">天下通用的武学，本派已尽数收齐。</p>'}</div></section></div>`;
 }
 
 // ---- the map -------------------------------------------------------------------------------------------
@@ -908,8 +936,17 @@ const SHEETS = {
       if (!theirs.alive) return `<div>${face(founder(s))}<strong>${esc(s.name)}</strong><span class="muted">已除名</span><span></span></div>`;
       const row = ledger(world, s.id),
         relation = Math.round(books().relations[s.id]);
-      return `<div>${face(leaderOf(s.id) ?? founder(s))}<span><strong>${esc(s.name)}</strong> ${tag(['邪', '中立', '正'][s.standing + 1])}<br><small class="muted">${row.members} 人 · ${row.places} 处 · 战力 ${num(row.strength)}</small></span><b class="${relation < 0 ? 'bad' : relation >= 40 ? 'good' : ''}">${relation}</b><span class="button-group">${btn('馈赠 500 两', 'gift', { sect: s.id }, 'outline')}${s.id in (books().spies ?? {}) ? tag('卧底在内', 'positive') : btn(`安插卧底（${SPY_COST}两）`, 'spy', { sect: s.id }, 'outline')}</span></div>`;
+      return `<div>${face(leaderOf(s.id) ?? founder(s))}<span><strong>${esc(s.name)}</strong> ${tag(['邪', '中立', '正'][s.standing + 1])}<br><small class="muted">${row.members} 人 · ${row.places} 处 · 战力 ${num(row.strength)}</small></span><b class="${relation < 0 ? 'bad' : relation >= 40 ? 'good' : ''}">${relation}</b><span class="button-group">${btn('馈赠 500 两', 'gift', { sect: s.id }, 'outline')}${btn('求授武学', 'sheet', { kind: 'teaching', sect: s.id }, 'outline', 'scroll')}${s.id in (books().spies ?? {}) ? tag('卧底在内', 'positive') : btn(`安插卧底（${SPY_COST}两）`, 'spy', { sect: s.id }, 'outline')}</span></div>`;
     }).join('')}</div><p class="caption">关系到 ${ECONOMY.allyRelation} 的门派，与本派据点相邻的道路即成商路，每旬各得 ${ECONOMY.allyRouteIncome} 两；本派两处据点之间的道路每旬得 ${ECONOMY.routeIncome} 两，两端每有一间店铺再加 ${ECONOMY.routeShopBonus} 两。</p><p class="caption">关系高的门派不易来犯，馈赠可以改善关系。有卧底在内的门派，与之交手时我方攻势加八分；卧底每旬有小概率败露，败露则两派交恶。</p>`, closeBtn('关闭')];
+  },
+  teaching({ sect }) {
+    const offers = teachingOffers(world, me(), sect),
+      relation = Math.round(books().relations[sect]);
+    return [`向${SECT_BY_ID[sect].name}求授`, `<p class="caption">眼下交情 ${relation}。对方肯教的，是它自家能授、而本派尚无的通用武学；各派的绝学概不外传。每求一门，耗交情 ${TEACHING.goodwill}。</p>
+      <div class="affairs">${offers.map((offer) => {
+        const art = ART_BY_ID[offer.id];
+        return affair(`《${art.name}》`, `${CLASSES[art.klass].name} · ${art.tier}阶${offer.open ? '' : ` · 需交情 ${offer.relation}`}`, btn(`${num(offer.silver)} 两`, 'ask-teaching', { sect, id: art.id }, 'outline', '', !offer.open || books().silver < offer.silver));
+      }).join('') || '<p class="empty">它会的，本派都已有了。</p>'}</div>`, closeBtn('关闭')];
   },
   settings() {
     return ['游戏设置', `${formRow('画质', `<select data-change="quality">${options([['', '自动'], ['high', '高'], ['medium', '中'], ['low', '低（省电）']], storedQuality() ?? '')}</select>`)}
@@ -1255,9 +1292,10 @@ const actions = {
   'batch-job'() {
     const value = pick('#job-select');
     let done = 0;
+    const held = heldArts(world, me());
     for (const id of ui.batch) {
       const person = world.persons[id];
-      const best = learnableArts(person).filter((a) => a.tier < 5).sort((a, b) => b.tier - a.tier)[0];
+      const best = learnableArts(person, held).filter((a) => a.tier < 5).sort((a, b) => b.tier - a.tier)[0];
       const job = value === 'auto' ? (best ? { kind: 'train', art: best.id } : { kind: 'rest' }) : jobOf(value);
       if (setJob(world, id, job).ok) done++;
     }
@@ -1283,6 +1321,17 @@ const actions = {
   move: () => say(relocate(world, picked().id, pick('#move-select')), '已启程。') && (ui.sheet = { kind: 'person' }),
   'art-tier': (data) => ((ui.artTier = data.tier), (ui.art = null)),
   art: (data) => (ui.art = data.id),
+  'buy-book'(data) {
+    const result = buyManual(world, me(), data.id);
+    if (!result.ok) return toast(result.why);
+    ui.art = data.id;
+    toast(`《${result.art.name}》已入藏经阁。`);
+  },
+  'ask-teaching'(data) {
+    const result = askTeaching(world, me(), data.sect, data.id);
+    if (!result.ok) return toast(result.why);
+    toast(`${SECT_BY_ID[data.sect].name}送来《${result.art.name}》抄本。`);
+  },
   'train-art': (data) => say(setJob(world, picked().id, { kind: ART_BY_ID[data.id].tier === 5 ? 'seclude' : 'train', art: data.id }), `${picked().name}已开始修练。`),
 
   place: (data) => ((ui.mapPlace = data.place), (ui.commandCollapsed = false)),

@@ -6,7 +6,7 @@
 //
 // A day: everyone works their job. Every ten days (a xun): wages, grain,
 // loyalty, newcomers at the gate, and the other sects make their moves.
-import { ART_BY_ID, CLASSES, commonArt, levelOf, sectArts, unmetNeeds } from '../data/arts.mjs';
+import { ART_BY_ID, CLASSES, CLASS_KEYS, commonArt, levelOf, sectArts, unmetNeeds } from '../data/arts.mjs';
 import { BUILDINGS, DAYS_PER_XUN, DAYS_PER_YEAR, ECONOMY, GRADES, PILLS, WATCHES_PER_DAY } from '../data/goods.mjs';
 import { PLACE_BY_ID, PLACES, RESOURCES } from '../data/places.mjs';
 import { ELDERS, OFFICES, RANKS, SECT_BY_ID, SECTS, applyIdentity } from '../data/sects.mjs';
@@ -15,6 +15,7 @@ import { focusBoost, gearOffer, giveRelic, innerLevels, meridianNeed, openMeridi
 import { formationOf, modsOf, xunOfJianghu, yearOfJianghu } from './jianghu.mjs';
 import { resolveBattle } from './battle.mjs';
 import { TRAITS, autoWheel, equipFor, gainXp, growTo, hpMax, learnableArts, makeLeader, practise, prowess, rollPerson, trainingRate } from './persons.mjs';
+import { BOOK_PRICE, addManual, heldArts, lackingArts, lootManuals } from './library.mjs';
 import { clamp, createRng } from './rng.mjs';
 
 export const SAVE_VERSION = 1;
@@ -28,6 +29,8 @@ const MANUAL_POINTS = 30;
 
 // ---- making a world -----------------------------------------------------------------------------
 
+/** The share of applicants who arrive already knowing an art. */
+const GIFTED_CHANCE = 0.125;
 const uniqueBuildings = new Set(['hall', 'gate', 'board', 'mess', 'store', 'library', 'clinic', 'council']);
 
 /** The buildings a sect's seat starts with. */
@@ -240,7 +243,7 @@ export function setJob(state, personId, job) {
   if (job.kind === 'train' || job.kind === 'seclude') {
     const art = ART_BY_ID[job.art];
     if (!art) return refuse('没有这门武学');
-    const needs = unmetNeeds(person, art).filter((need) => !(job.kind === 'seclude' && need === '需闭关领悟'));
+    const needs = unmetNeeds(person, art, heldArts(state, person.school)).filter((need) => !(job.kind === 'seclude' && need === '需闭关领悟'));
     if (needs.length) return refuse(needs.join('；'));
   }
   person.job = { ...job, days: 0 };
@@ -454,7 +457,9 @@ export function settleAssault(state, attackerId, placeId, summary, rng) {
     for (const fighter of party.slice(0, Math.ceil(party.length / 2))) state.persons[fighter.id].place = placeId;
     attacker.renown = clamp(attacker.renown + 60, 0, 1000);
     defender.renown = clamp(defender.renown - 40, 0, 1000);
-    note(state, 'conquer', `${SECT_BY_ID[attackerId].name}攻下${PLACE_BY_ID[placeId].name}。`, { sect: attackerId, place: placeId });
+    // Where there was a library, some of its books go with the victors.
+    const looted = buildingLevel(state, placeId, 'library') ? lootManuals(state, attackerId, defenderId, rng) : [];
+    note(state, 'conquer', `${SECT_BY_ID[attackerId].name}攻下${PLACE_BY_ID[placeId].name}${looted.length ? `，得秘笈${looted.map((art) => `《${art.name}》`).join('')}` : ''}。`, { sect: attackerId, place: placeId });
   } else {
     defender.renown = clamp(defender.renown + 30, 0, 1000);
     note(state, 'repel', `${SECT_BY_ID[defenderId].name}在${PLACE_BY_ID[placeId].name}击退${SECT_BY_ID[attackerId].name}。`, { sect: defenderId, place: placeId });
@@ -505,6 +510,7 @@ export function assault(state, attackerId, placeId, partyIds, rng) {
 
 /** Gives everyone in a sect something sensible to do. */
 export function planJobs(state, sectId) {
+  const held = heldArts(state, sectId);
   const sect = SECT_BY_ID[sectId];
   for (const placeId of placesOf(state, sectId)) {
     const people = residents(state, placeId).sort((a, b) => b.rank - a.rank || prowess(b) - prowess(a));
@@ -526,7 +532,7 @@ export function planJobs(state, sectId) {
         continue;
       }
       // Everyone else trains: their sect's classes first, then inner strength.
-      const options = learnableArts(person).filter((art) => art.tier < 5);
+      const options = learnableArts(person, held).filter((art) => art.tier < 5);
       const wanted =
         options.filter((art) => art.sect).sort((a, b) => b.tier - a.tier)[0] ??
         options.filter((art) => art.klass === sect.main).sort((a, b) => b.tier - a.tier)[0] ??
@@ -755,7 +761,16 @@ function endOfXun(state, rng) {
       place.applicants = place.applicants.filter(() => rng.chance(0.6));
       const quality = 40 + books.renown / 25 + Math.abs(books.virtue) / 50;
       const arrivals = rng.chance(0.15 + books.renown / 3000 + modsOf(state, sectId).recruit) ? 1 + (rng.chance(0.2) ? 1 : 0) : 0;
-      for (let i = 0; i < arrivals && place.applicants.length < 4; i++) place.applicants.push(rollPerson(rng, { quality, lean: PLACE_BY_ID[placeId].lean, place: placeId }));
+      for (let i = 0; i < arrivals && place.applicants.length < 4; i++) {
+        const comer = rollPerson(rng, { quality, lean: PLACE_BY_ID[placeId].lean, place: placeId });
+        // One in eight comes already trained in something, and a few of those well enough to teach it.
+        if (rng.chance(GIFTED_CHANCE)) {
+          const art = commonArt(rng.pick(CLASS_KEYS), rng.chance(0.25) ? 2 : 1);
+          if (art.tier === 2) comer.arts[commonArt(art.klass, 1).id] = 600;
+          comer.arts[art.id] = rng.int(3, 7) * 100;
+        }
+        place.applicants.push(comer);
+      }
     }
     for (const other of Object.keys(books.relations)) books.relations[other] += Math.sign(SECT_BY_ID[sectId].standing * SECT_BY_ID[other].standing * 20 - books.relations[other]) * 0.5;
   }
@@ -782,6 +797,13 @@ function endOfYear(state, rng) {
   for (const sect of SECTS) {
     const books = state.sects[sect.id];
     if (!books.alive || (sect.id === state.playerSect && !state.options.autoPlayer)) continue;
+    // They collect arts as a player does, a book a year when they can afford it: their second class first.
+    const lacking = lackingArts(state, sect.id);
+    const wanted = lacking.find((art) => art.klass === sect.second) ?? lacking.find((art) => art.tier === 1) ?? lacking[0];
+    if (wanted && wanted.tier <= 3 && books.silver > BOOK_PRICE[wanted.tier] * 3 + ECONOMY.reserve * 10) {
+      books.silver -= BOOK_PRICE[wanted.tier];
+      addManual(state, sect.id, wanted.id);
+    }
     for (const person of membersOf(state, sect.id).sort((a, b) => b.rank - a.rank)) {
       const offer = gearOffer(state, person.id);
       if (offer.ok && books.silver > offer.silver * 4 + ECONOMY.reserve * 10 && books.res.iron >= offer.iron) upgradeGear(state, person.id);

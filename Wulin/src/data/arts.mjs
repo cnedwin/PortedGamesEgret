@@ -150,10 +150,13 @@ export const levelOf = (points) => Math.min(MAX_LEVEL, Math.floor(points / POINT
 /**
  * What a person must already have to start an art, as a list of unmet needs
  * (empty when they may start). `person` is described in persons.mjs.
+ * @param held the arts the person's sect can teach (see core/library.mjs); left out, nothing is asked on that score
  */
-export function unmetNeeds(person, art) {
+export function unmetNeeds(person, art, held = null) {
   const needs = [];
   const mastery = (id) => levelOf(person.arts[id] ?? 0);
+  // An art must be had from somewhere: a teacher, a manual, or what one already knows of it.
+  if (held && !held.has(art.id) && !(person.arts[art.id] > 0)) needs.push('本门无人能授，阁中亦无秘笈');
   if (art.sect && art.sect !== person.school) needs.push('非本门武学');
   // An art a sect made for itself asks for the third tier of its class and inner standing.
   if (art.custom) {

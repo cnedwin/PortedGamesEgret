@@ -238,9 +238,12 @@ export function gainXp(person, amount) {
   return gained;
 }
 
-/** The arts a person could start now, for menus and for the game's own sects. */
-export function learnableArts(person) {
-  return ARTS.filter((art) => levelOf(person.arts[art.id] ?? 0) < MAX_LEVEL && unmetNeeds(person, art).length === 0);
+/**
+ * The arts a person could start now, for menus and for the game's own sects.
+ * @param held the arts their sect can teach; left out, every art is taken to be on offer
+ */
+export function learnableArts(person, held = null) {
+  return ARTS.filter((art) => levelOf(person.arts[art.id] ?? 0) < MAX_LEVEL && unmetNeeds(person, art, held).length === 0);
 }
 
 /** A rough single number for how dangerous a person is in a fight. */
