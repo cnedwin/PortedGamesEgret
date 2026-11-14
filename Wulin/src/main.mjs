@@ -19,7 +19,7 @@ import { DIFFICULTIES, FOCUSES, MERIDIANS, RELIC_BY_ID, SCENARIOS } from './data
 import { BUILDINGS, ECONOMY, PILLS, armorName, weaponName } from './data/goods.mjs';
 import { FORMATIONS, HOUSE_RULES, TALENTS } from './data/jianghu.mjs';
 import { PLACES, PLACE_BY_ID, RESOURCE_NAMES, RESOURCES } from './data/places.mjs';
-import { OFFICES, RANKS, SECTS, SECT_BY_ID } from './data/sects.mjs';
+import { OFFICES, RANKS, SECTS, SECT_BY_ID, applyIdentity } from './data/sects.mjs';
 import { createBattle } from './core/battle.mjs';
 import { createEditor, describeItem, doublePress } from './core/editor.mjs';
 import {
@@ -37,6 +37,7 @@ import {
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
 import { createVoice } from './ui/voice.mjs';
+import { legacyScreen, prologue, prologueScreen, sectScreen } from './ui/opening.mjs';
 import { claimGoal, goalView, startGoals } from './core/goals.mjs';
 
 const app = document.querySelector('#app'),
@@ -91,6 +92,9 @@ const ui = {
   /** How a new game is to begin, and whether the seat's buildings are named. */
   scenario: 'many',
   difficulty: 1,
+  founding: false,
+  prologue: 0,
+  succession: false,
   ownName: '',
   ownLeader: '',
   tags: true,
@@ -220,35 +224,9 @@ function titleScreen() {
   return `<main class="title-screen" style="${sceneStyle('title')}">
     <div class="title-nav"><span class="seal"><span>武</span><span>林</span></span></div>
     <div class="title-copy"><p class="title-era">大昭 · 承和元年</p><h1>武林<span>天下</span></h1><p>禁武令既下，江湖风雨欲来。<br>择一门派，兴建山门，教养弟子，问鼎武林。</p>
-      <div class="title-actions">${btn('开创新局', 'page', { page: 'sects' }, 'gold-button', 'arrow')}${btn('载入存档', 'sheet', { kind: 'load' }, 'on-dark', 'box')}</div>
+      <div class="title-actions">${btn('开创新局', 'page', { page: 'prologue' }, 'gold-button', 'arrow')}${btn('载入存档', 'sheet', { kind: 'load' }, 'on-dark', 'box')}</div>
     </div>
     <div class="title-version">为新白鹭引擎开发的 Demo</div>
-  </main>`;
-}
-
-function sectScreen() {
-  const sect = SECT_BY_ID[ui.chosen];
-  const standing = ['邪', '中立', '正'][sect.standing + 1];
-  return `<main class="sect-screen">
-    <div class="sect-screen-head">${btn('返回标题', 'page', { page: 'title' }, 'ghost', 'back')}<span class="seal"><span>武</span><span>林</span></span></div>
-    <div class="sect-select-layout">
-      <section><h1>择一门派</h1><p class="subtitle">从十二门派中择一执掌。各派据点、武学和经营路数有所不同。</p>
-      <div class="sect-grid" data-region="sect-grid">${SECTS.map((s) => `<button class="sect-choice ${s.id === sect.id ? 'is-active' : ''}" data-act="choose-sect" data-sect="${s.id}" aria-pressed="${s.id === sect.id}">
-        ${face(founder(s), 'sect-thumb')}<span><b>${esc(s.name)}</b><small>${esc(PLACE_BY_ID[s.seat].name)}</small></span></button>`).join('')}</div></section>
-      <div class="region" data-region="sect-feature"><article class="sect-feature" style="--sect-accent:${sect.color}">
-        <div class="sect-feature-art">${sceneImage('title')}${face(founder(sect), 'sect-hero', 'full')}<div class="sect-feature-shade"></div></div>
-        <div class="sect-feature-copy"><div class="line-between">${tag(standing, standing === '正' ? 'positive' : 'plain')}<span class="caption">${esc(PLACE_BY_ID[sect.seat].name)} · 总舵</span></div>
-          <h2>${esc(sect.name)}</h2><p class="sect-master">掌门 · ${esc(sect.leader.name)}（${sect.leader.age} 岁）</p><p>${esc(sect.role)}。${esc(PLACE_BY_ID[sect.seat].note)}。</p>
-          <p class="caption">主修${CLASSES[sect.main].name}，兼修${CLASSES[sect.second].name}</p>
-          ${formRow('开局', `<select data-change="scenario">${options(Object.entries(SCENARIOS).map(([id, sc]) => [id, `${sc.name}：${sc.does}`]), ui.scenario)}</select>`)}
-          ${formRow('对手', `<select data-change="difficulty">${options(DIFFICULTIES.map((d, i) => [i, `${d.name}（头 ${d.peace} 年无人来犯）`]), ui.difficulty)}</select>`)}
-          ${formRow('自立门户', `<input id="own-name" maxlength="6" placeholder="门派新名（可不填）" value="${esc(ui.ownName)}">`)}
-          ${formRow('掌门姓名', `<input id="own-leader" maxlength="6" placeholder="沿用原掌门（可不填）" value="${esc(ui.ownLeader)}">`)}
-          <label class="check-row"><input type="checkbox" id="succession" ${ui.succession ? 'checked' : ''}> 世代更替（人物会老去，掌门需传位）</label>
-          ${btn('入主山门', 'new', { sect: sect.id }, 'primary', 'arrow')}
-        </div>
-      </article></div>
-    </div>
   </main>`;
 }
 
@@ -953,9 +931,15 @@ const SCREENS = { seat: seatScreen, disciples: disciplesScreen, arts: artsScreen
 function render() {
   let html, key;
   if (!world) {
-    if (ui.page !== 'sects') ui.page = 'title';
-    html = ui.page === 'sects' ? sectScreen() : titleScreen();
     key = ui.page;
+    if (ui.page === 'prologue') {
+      html = prologueScreen(ui.prologue, sceneStyle);
+      key += ':' + ui.prologue;
+    } else if (ui.page === 'sects') {
+      html = sectScreen(ui, sceneStyle, (sect, css, view) => face(founder(sect), css, view));
+      key += ':' + ui.founding;
+    } else if (ui.page === 'legacy') html = legacyScreen(ui, sceneStyle);
+    else html = titleScreen();
   } else {
     if (!SCREENS[ui.page]) ui.page = 'seat';
     if (ui.fight) ui.page = 'battle';
@@ -969,7 +953,14 @@ function render() {
     key = [ui.page, ui.page === 'battle' && !!ui.fight, !!picture.stage, ui.map3d].join();
   }
   // The key carries whether the paintings have loaded, so the still pictures appear when they arrive.
-  if (mount(app, html, key + (art ? ':art' : ''))) window.scrollTo(0, 0);
+  const focused = document.activeElement;
+  if (mount(app, html, key + (art ? ':art' : ''))) {
+    window.scrollTo(0, 0);
+    app.querySelector('.opening-stage h1')?.focus({ preventScroll: true });
+  } else if (!focused.isConnected && focused.matches('.opening-choice')) {
+    [...app.querySelectorAll('.opening-choice')].find(button =>
+      Object.entries(focused.dataset).every(([key, value]) => button.dataset[key] === value))?.focus({ preventScroll: true });
+  }
   syncPicture();
   placeMap();
   renderSheet();
@@ -1059,6 +1050,10 @@ const actions = {
   page(data) {
     if (ui.fight && data.page !== 'battle') return toast('战事未了。');
     if (world && !membersOf(world, me()).length && !['chronicle', 'saves'].includes(data.page)) return toast('本门已不复存在。');
+    if (!world && data.page === 'prologue' && ui.page === 'title') {
+      applyIdentity(null);
+      Object.assign(ui, { chosen: 'shaolin', founding: false, prologue: 0, succession: false, scenario: 'many', difficulty: 1, ownName: '', ownLeader: '' });
+    }
     ui.page = data.page;
     ui.sheet = null;
     ui.notice = '';
@@ -1073,11 +1068,27 @@ const actions = {
     // Time takes up the pace it had before something stopped it.
     if (ui.resume && world && !world.pending && !ui.fight && !ui.heralds.length) (ui.speed = ui.resume), (ui.resume = 0);
   },
+  'prologue-next'() {
+    if (ui.prologue < prologue.length - 1) ui.prologue++;
+    else ui.page = 'sects';
+  },
+  'skip-prologue': () => (ui.page = 'sects'),
+  'choose-founding': (data) => (ui.founding = data.own === 'true'),
   'choose-sect': (data) => (ui.chosen = data.sect),
-  new(data) {
-    // A new name or leader makes the sect the player's own; it keeps the seat, arts and colour of the one it is founded on.
-    const custom = ui.ownName.trim() || ui.ownLeader.trim() ? { sect: data.sect, name: ui.ownName.trim(), leader: ui.ownLeader.trim() } : null;
-    enter(createWorld({ seed: (Date.now() % 1e9) + 1, playerSect: data.sect, succession: !!ui.succession, scenario: ui.scenario, difficulty: Number(ui.difficulty), custom }));
+  'sect-next'() {
+    if (ui.founding && (!ui.ownName.trim() || !ui.ownLeader.trim())) {
+      toast('请为门派和掌门定下名号。');
+      app.querySelector(ui.ownName.trim() ? '#own-leader' : '#own-name').focus();
+      return;
+    }
+    ui.page = 'legacy';
+  },
+  'sect-back': () => (ui.page = 'sects'),
+  succession: (data) => (ui.succession = data.enabled === 'true'),
+  new() {
+    const sect = ui.chosen;
+    const custom = ui.founding ? { sect, name: ui.ownName.trim(), leader: ui.ownLeader.trim() } : null;
+    enter(createWorld({ seed: (Date.now() % 1e9) + 1, playerSect: sect, succession: ui.succession, scenario: ui.scenario, difficulty: ui.difficulty, custom }));
   },
   load(data) {
     const loaded = slots.read(data.slot);
@@ -1271,8 +1282,8 @@ const changes = {
     location.reload();
   },
   plot: (_, value) => void say(movePlot(world, me(), ui.place, ui.building, value === '' ? null : Number(value)), '已迁建。'),
-  scenario: (_, value) => (ui.scenario = value),
-  difficulty: (_, value) => (ui.difficulty = Number(value)),
+  scenario: (_, value) => { if (Object.hasOwn(SCENARIOS, value)) ui.scenario = value; },
+  difficulty: (_, value) => { if (Object.hasOwn(DIFFICULTIES, value)) ui.difficulty = Number(value); },
   focus: (_, value) => void say(setFocus(world, me(), ui.place, value), `此处专精改为「${FOCUSES[value]?.name}」。`),
   office: (data, value) => void (value ? say(appoint(world, me(), data.office, ui.place, Number(value)), '已任命。') : delete books().offices[OFFICES[data.office].scope === 'place' ? `${data.office}@${ui.place}` : data.office]),
   rule: (_, value) => void say(setRule(world, me(), value), `门规改为「${HOUSE_RULES[value]?.name}」。`),
@@ -1312,7 +1323,6 @@ document.body.addEventListener('click', (event) => {
 });
 document.body.addEventListener('change', (event) => {
   const target = event.target;
-  if (target.id === 'succession') return void (ui.succession = target.checked);
   if (target.dataset.batch) return void ((target.checked ? ui.batch.add(Number(target.dataset.batch)) : ui.batch.delete(Number(target.dataset.batch))), render());
   if (target.id === 'batch-all') return void (roster().forEach((p) => (target.checked ? ui.batch.add(p.id) : ui.batch.delete(p.id))), render());
   if (!target.dataset.change) return;
