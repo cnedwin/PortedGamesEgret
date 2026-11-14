@@ -1,7 +1,7 @@
 // The twelve toys. Each fires on its own timer and most leave something in
 // `game.shots` that lives for a while: a rolling ball, a bubble, a puddle.
 // Stats come from `toy.s`, already scaled by level, charms and evolution.
-import { ISLAND, groundHeight, groundSlope, isWater } from './island.mjs';
+import { ISLAND, groundHeight, groundSlope, isWater, span } from './island.mjs';
 
 const GRAVITY = 24;
 const slope = [0, 0];
@@ -35,7 +35,7 @@ function nearestFew(game, x, z, count, maxDistance) {
   const found = [];
   for (const e of game.enemies) {
     if (e.dead || e.trapped) continue;
-    const d = Math.hypot(e.x - x, e.z - z);
+    const d = span(e.x - x, e.z - z);
     if (d < maxDistance) found.push([d, e]);
   }
   found.sort((a, b) => a[0] - b[0]);
@@ -52,7 +52,7 @@ function aimAt(game, panda, range) {
   }
   const dx = target.x - panda.x,
     dz = target.z - panda.z,
-    d = Math.hypot(dx, dz) || 1;
+    d = span(dx, dz) || 1;
   aimScratch[0] = dx / d;
   aimScratch[1] = dz / d;
   return aimScratch;
@@ -146,7 +146,7 @@ export function fireToy(game, panda, toy) {
         const target = targets[i % targets.length];
         let dx = target.x - px,
           dz = target.z - pz;
-        const d = Math.hypot(dx, dz) || 1,
+        const d = span(dx, dz) || 1,
           turn = i >= targets.length ? (random() - 0.5) * 1.4 : 0,
           c = Math.cos(turn),
           n = Math.sin(turn);
@@ -479,7 +479,7 @@ export function updateShots(game, dt) {
           shot.dead = true;
           break;
         }
-        const speed = Math.hypot(shot.vx, shot.vz) || 1;
+        const speed = span(shot.vx, shot.vz) || 1;
         game.eachEnemyNear(shot.x, shot.z, shot.r, (enemy) => {
           if (shot.hits.has(enemy.id) || Math.abs(enemy.y - (shot.y - shot.r)) > 2) return;
           shot.hits.set(enemy.id, 1);
@@ -525,7 +525,7 @@ export function updateShots(game, dt) {
         } else {
           const dx = panda.x - shot.x,
             dz = panda.z - shot.z,
-            d = Math.hypot(dx, dz);
+            d = span(dx, dz);
           if (d < speed * dt + 0.6) {
             shot.dead = true;
             break;
@@ -554,7 +554,7 @@ export function updateShots(game, dt) {
           shot.stringT = 0.3;
           const sx = shot.x - panda.x,
             sz = shot.z - panda.z,
-            length = Math.hypot(sx, sz);
+            length = span(sx, sz);
           for (let k = 1.2; k < length - 0.8; k += 1.3)
             game.eachEnemyNear(panda.x + (sx / length) * k, panda.z + (sz / length) * k, 0.3, (enemy) => {
               game.damage(enemy, s.extra, panda);
@@ -597,7 +597,7 @@ export function updateShots(game, dt) {
           if (target && !target.boss) {
             const dx = target.x - shot.x,
               dz = target.z - shot.z,
-              d = Math.hypot(dx, dz) || 1;
+              d = span(dx, dz) || 1;
             shot.vx += ((dx / d) * s.speed - shot.vx) * Math.min(1, dt * 3);
             shot.vz += ((dz / d) * s.speed - shot.vz) * Math.min(1, dt * 3);
           }
@@ -639,7 +639,7 @@ export function updateShots(game, dt) {
         if (target) {
           const dx = target.x - shot.x,
             dz = target.z - shot.z,
-            d = Math.hypot(dx, dz) || 1,
+            d = span(dx, dz) || 1,
             reach = shot.r + target.r + 0.3;
           if (d > reach) {
             shot.x += (dx / d) * s.speed * dt;
@@ -682,7 +682,7 @@ export function updateShots(game, dt) {
         shot.x += shot.vx * dt;
         shot.z += shot.vz * dt;
         shot.y = Math.max(shot.y, groundHeight(shot.x, shot.z) + 0.5);
-        const speed = Math.hypot(shot.vx, shot.vz) || 1;
+        const speed = span(shot.vx, shot.vz) || 1;
         game.eachEnemyNear(shot.x, shot.z, shot.r, (enemy) => {
           if (shot.dead || shot.hits.has(enemy.id) || Math.abs(enemy.y - shot.y) > 2.2 + enemy.r) return;
           shot.hits.add(enemy.id);
@@ -700,7 +700,7 @@ export function updateShots(game, dt) {
         if (shot.seek) {
           const dx = shot.seek.x - shot.x,
             dz = shot.seek.z - shot.z,
-            d = Math.hypot(dx, dz) || 1;
+            d = span(dx, dz) || 1;
           shot.vx += ((dx / d) * s.speed - shot.vx) * Math.min(1, dt * 5);
           shot.vz += ((dz / d) * s.speed - shot.vz) * Math.min(1, dt * 5);
         }

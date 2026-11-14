@@ -749,3 +749,22 @@ h2 {
     animation: none;
   }
 }
+
+/* ---- ?stats=1: frame timings ---- */
+.frame-stats {
+  position: fixed;
+  left: 8px;
+  top: 56px;
+  margin: 0;
+  padding: 6px 10px;
+  font:
+    12px/1.45 ui-monospace,
+    Menlo,
+    Consolas,
+    monospace;
+  color: #d9ffe0;
+  background: #000a;
+  border-radius: 6px;
+  pointer-events: none;
+  z-index: 8;
+}

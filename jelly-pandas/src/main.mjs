@@ -15,6 +15,7 @@ import { createHud } from './hud.mjs';
 import { createInput } from './input.mjs';
 import { createIslandGeometry } from './island.mjs';
 import { createGame } from './sim.mjs';
+import { createStats } from './stats.mjs';
 import { createView } from './view.mjs';
 
 // ---- address options ----------------------------------------------------------------
@@ -26,6 +27,7 @@ import { createView } from './view.mjs';
 //   ?reflect=0       no mirror image on the water
 //   ?ratio=1         cap on the device pixel ratio (default 1.5)
 //   ?seed=123        replay the same run
+//   ?stats=1         show frame timings and what was drawn
 const params = new URLSearchParams(location.search);
 const useWebGPU = params.get('backend') === 'webgpu';
 const backend = await (useWebGPU ? import('@egret/engine/webgpu/world3d') : import('@egret/engine/webgl2/world3d'));
@@ -87,6 +89,10 @@ async function main() {
     ssaoRadius: 0.7,
     ssaoIntensity: 0.9,
   });
+
+  // Frame timings; ?stats=1 shows them on the page.
+  const stats = createStats(renderer, params.get('stats') === '1');
+  status.stats = stats;
 
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 55, near: 0.3, far: 400 });
@@ -273,7 +279,15 @@ async function main() {
   };
   // The browser releases the pointer on Esc before the key reaches the page, so losing capture mid-run opens the menu.
   document.addEventListener('pointerlockchange', () => {
-    if (!input.touchMode && !input.captured && mode === 'play' && !cardsShown && game?.state === 'play' && game.t > 0.5 && document.hasFocus())
+    if (
+      !input.touchMode &&
+      !input.captured &&
+      mode === 'play' &&
+      !cardsShown &&
+      game?.state === 'play' &&
+      game.t > 0.5 &&
+      document.hasFocus()
+    )
       setPaused(true);
   });
   canvas.addEventListener('pointerdown', () => audio.unlock());
@@ -296,6 +310,7 @@ async function main() {
 
   // ---- one frame ---------------------------------------------------------------------------
   function frame(deltaSeconds) {
+    stats.begin();
     const real = Math.min(deltaSeconds, 1 / 20);
     now += real;
     status.frames++;
@@ -342,6 +357,8 @@ async function main() {
       }
     }
 
+    stats.lap('rules');
+
     // 3. Effects, text and sound for what just happened.
     const events = game.events;
     if (events.length) {
@@ -381,11 +398,15 @@ async function main() {
     }
     camera.updateWorldMatrix();
     camera.updateViewMatrices();
-    view.renderReflection(renderer, camera);
 
     // 6. Page and music. The tune is calm on the title and picks up for surges and bosses.
     if (mode !== 'title') hud.update(game, project, now, input.captured || input.touchMode);
     audio.music(mode === 'title' || mode === 'over' ? 0 : game.boss || game.t < game.surgeUntil ? 2 : 1);
+    stats.lap('view');
+
+    // 7. Drawing starts here: the water's mirror image now, the main view as soon as this function returns.
+    stats.end(game.aliveCount ?? 0);
+    view.renderReflection(renderer, camera);
   }
 
   // The Engine clock calls `frame`, then the view draws the scene.
@@ -400,6 +421,12 @@ async function main() {
   hud.setTitlePreview(canvas, (embedded) => {
     if (mode === 'title') follow.distance = embedded ? 6 : 7.5;
   });
+  // For the console and automated checks: draw one extra frame and return what each pass cost (WebGL2 only).
+  stats.measure = () =>
+    renderer.measureFrame?.(() => {
+      view.renderReflection(renderer, camera);
+      renderer.render(scene, camera);
+    });
   showTitle();
   startWorld3DLoop(engine, fail);
 }

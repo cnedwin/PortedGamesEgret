@@ -91,6 +91,7 @@ npx serve .
 | `?post=0` / `?ssao=0` / `?shadows=0` / `?reflect=0` | 关闭后处理、环境遮蔽、阴影、水面倒影 · turn off post-processing, ambient occlusion, shadows, water reflection |
 | `?ratio=1` | 限制像素比以提高帧率 · cap the pixel ratio for a higher frame rate |
 | `?seed=123` | 固定随机种子 · fix the random seed |
+| `?stats=1` | 显示帧率、各阶段耗时、绘制次数与三角形数 · show the frame rate, the time each part of a frame takes, draw calls and triangles |
 
 ### 测试 · Tests
 

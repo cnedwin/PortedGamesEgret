@@ -10,7 +10,7 @@ import {
   createPhysicsWorld3D,
 } from '@egret/engine/world3d';
 import { BOSSES, CHARMS, CHARM_BY_KEY, ENEMIES, RUN, SKINS, TOYS, TOY_BY_KEY, experienceFor } from './data.mjs';
-import { ISLAND, clampToLand, createIslandGeometry, groundHeight, isWater } from './island.mjs';
+import { ISLAND, clampToLand, createIslandGeometry, groundHeight, isWater, span } from './island.mjs';
 import { fireToy, updateShots, updateToyState } from './toys.mjs';
 
 // Collision layers: pandas walk through the horde, everything else collides.
@@ -113,18 +113,43 @@ export function createGame(options = {}) {
         for (let i = cellHead[cz * GRID + cx]; i >= 0; i = gridNext[i]) {
           const e = list[i];
           if (!e || e.dead) continue;
-          const d = Math.hypot(e.x - x, e.z - z);
+          const d = span(e.x - x, e.z - z);
           if (d <= radius + e.r) visit(e, d);
         }
       }
   };
   /** The living, uncaptured enemy closest to a point, or undefined when none is within `maxDistance`. */
   game.nearestEnemy = (x, z, maxDistance = 60, skip) => {
+    const list = game.enemies,
+      reach = maxDistance + 3.4;
+    const x0 = cellOf(x - reach),
+      x1 = cellOf(x + reach),
+      z0 = cellOf(z - reach),
+      z1 = cellOf(z + reach);
     let best,
-      bestD = maxDistance;
-    for (const e of game.enemies) {
+      bestD = maxDistance,
+      bestIndex = -1;
+    // A short search looks only at the grid cells in reach; a long one is quicker over the whole list.
+    if ((x1 - x0 + 1) * (z1 - z0 + 1) < list.length) {
+      for (let cz = z0; cz <= z1; cz++)
+        for (let cx = x0; cx <= x1; cx++)
+          for (let i = cellHead[cz * GRID + cx]; i >= 0; i = gridNext[i]) {
+            const e = list[i];
+            if (!e || e.dead || e.trapped || e === skip) continue;
+            const d = span(e.x - x, e.z - z) - e.r;
+            // On a tie the earlier enemy wins, as it does in the scan below.
+            if (d < bestD || (d === bestD && i < bestIndex)) {
+              bestD = d;
+              best = e;
+              bestIndex = i;
+            }
+          }
+      return best;
+    }
+    for (let i = 0; i < list.length; i++) {
+      const e = list[i];
       if (e.dead || e.trapped || e === skip) continue;
-      const d = Math.hypot(e.x - x, e.z - z) - e.r;
+      const d = span(e.x - x, e.z - z) - e.r;
       if (d < bestD) {
         bestD = d;
         best = e;
@@ -139,7 +164,7 @@ export function createGame(options = {}) {
       bestScore = -1;
     for (let k = 0; k < 14 && list.length; k++) {
       const e = list[(random() * list.length) | 0];
-      if (e.dead || Math.hypot(e.x - x, e.z - z) > maxDistance) continue;
+      if (e.dead || span(e.x - x, e.z - z) > maxDistance) continue;
       let score = e.boss ? 6 : 0;
       game.eachEnemyNear(e.x, e.z, 3.5, () => {
         score++;
@@ -583,7 +608,7 @@ export function createGame(options = {}) {
     if (shove > 0) {
       const dx = panda.x - fromX,
         dz = panda.z - fromZ,
-        d = Math.hypot(dx, dz) || 1,
+        d = span(dx, dz) || 1,
         v = panda.motor.velocity;
       v[0] += (dx / d) * shove;
       v[2] += (dz / d) * shove;
@@ -596,7 +621,7 @@ export function createGame(options = {}) {
       panda.offer = undefined;
       // A panda that falls in the water washes ashore, where friends can reach it.
       if (isWater(panda.x, panda.z)) {
-        const r = Math.hypot(panda.x, panda.z) || 1,
+        const r = span(panda.x, panda.z) || 1,
           k = Math.min(1, (ISLAND.playRadius - 3) / r),
           x = panda.x * k,
           z = panda.z * k;
@@ -619,7 +644,7 @@ export function createGame(options = {}) {
       const p = prop.body.position,
         dx = p[0] - x,
         dz = p[2] - z,
-        d = Math.hypot(dx, dz);
+        d = span(dx, dz);
       if (d > radius + prop.r) continue;
       const k = (impulse * prop.body.mass) / (d || 1);
       prop.body.wake();
@@ -669,8 +694,8 @@ export function createGame(options = {}) {
       const body = prop.body,
         p = body.position,
         v = body.linearVelocity,
-        speed = Math.hypot(v[0], v[2]);
-      if (p[1] < ISLAND.sea - 2 || Math.hypot(p[0], p[2]) > ISLAND.half) {
+        speed = span(v[0], v[2]);
+      if (p[1] < ISLAND.sea - 2 || span(p[0], p[2]) > ISLAND.half) {
         // Washed away: a fresh one drops from the sky somewhere on the island.
         const angle = random() * 6.28,
           reach = 6 + random() * 22,
@@ -708,7 +733,7 @@ export function createGame(options = {}) {
       out[2] = near.z + Math.sin(angle) * reach;
       clampToLand(out, ISLAND.playRadius + 1.5);
       // Never right on top of a panda.
-      if (game.pandas.every((panda) => Math.hypot(panda.x - out[0], panda.z - out[2]) > 11)) break;
+      if (game.pandas.every((panda) => span(panda.x - out[0], panda.z - out[2]) > 11)) break;
     }
     return out;
   }
@@ -786,7 +811,7 @@ export function createGame(options = {}) {
       body = enemy.body,
       dx = target.x - enemy.x,
       dz = target.z - enemy.z,
-      d = Math.hypot(dx, dz) || 1;
+      d = span(dx, dz) || 1;
     enemy.timer -= dt;
     if (enemy.mode === 1) {
       // winding up a charge
@@ -930,7 +955,7 @@ export function createGame(options = {}) {
           kill(e, e.lastHitBy);
           continue;
         }
-        const r = Math.hypot(e.x, e.z) || 1,
+        const r = span(e.x, e.z) || 1,
           k = (ISLAND.playRadius - 2) / r;
         body.setPosition(e.x * k, groundHeight(e.x * k, e.z * k) + e.r + 0.5, e.z * k);
         body.setLinearVelocity(0, 0, 0);
@@ -979,7 +1004,7 @@ export function createGame(options = {}) {
       if (!target) continue;
       const dx = target.x - e.x,
         dz = target.z - e.z,
-        d = Math.hypot(dx, dz) || 1;
+        d = span(dx, dz) || 1;
       let pace = e.speed * (e.slow > 0 ? 0.5 : 1),
         dirX = dx / d,
         dirZ = dz / d;
@@ -1025,7 +1050,7 @@ export function createGame(options = {}) {
           if (e.modeT <= 0) {
             emit('boom', e.x, e.y + 0.5, e.z, { radius: 3.2, hostile: true });
             for (const panda of pandas)
-              if (Math.hypot(panda.x - e.x, panda.z - e.z) < 3.2 && Math.abs(panda.y - e.y) < 2.5)
+              if (span(panda.x - e.x, panda.z - e.z) < 3.2 && Math.abs(panda.y - e.y) < 2.5)
                 hurt(panda, e.touch * 2.2, e.x, e.z, 9);
             // The blast throws its neighbours too.
             game.eachEnemyNear(e.x, e.z, 3.2, (other, gap) => {
@@ -1040,7 +1065,7 @@ export function createGame(options = {}) {
       const reach = e.r + PANDA_RADIUS;
       for (const panda of pandas) {
         if (panda.down) continue;
-        const gap = Math.hypot(e.x - panda.x, e.z - panda.z);
+        const gap = span(e.x - panda.x, e.z - panda.z);
         if (gap >= reach + 0.25 || Math.abs(panda.y - e.y) > 1.6 + e.r) continue;
         if (e.attackCd <= 0 && e.stun <= 0) {
           e.attackCd = 0.8;
@@ -1079,7 +1104,7 @@ export function createGame(options = {}) {
     emit('shock', enemy.x, enemy.y, enemy.z, { radius });
     for (const panda of game.pandas) {
       // Pandas in the air are above the ring.
-      if (!panda.grounded || Math.hypot(panda.x - enemy.x, panda.z - enemy.z) > radius) continue;
+      if (!panda.grounded || span(panda.x - enemy.x, panda.z - enemy.z) > radius) continue;
       hurt(panda, power * 1.1, enemy.x, enemy.z, 11);
     }
     game.pushProps(enemy.x, enemy.z, radius, 8, 5);
@@ -1097,7 +1122,7 @@ export function createGame(options = {}) {
       let alive = b.t > 0 && !isWater(b.x, b.z);
       if (alive)
         for (const panda of game.pandas) {
-          if (panda.down || Math.hypot(panda.x - b.x, panda.z - b.z) > 1 || panda.y - b.y > 0.9) continue;
+          if (panda.down || span(panda.x - b.x, panda.z - b.z) > 1 || panda.y - b.y > 0.9) continue;
           if (hurt(panda, b.damage, b.x - b.vx, b.z - b.vz, 5)) {
             alive = false;
             emit('pop', b.x, b.y, b.z, { color: 0xff5577 });
@@ -1130,7 +1155,7 @@ export function createGame(options = {}) {
     if (fallen) {
       gx = fallen.x;
       gz = fallen.z;
-      urgent = Math.hypot(gx - panda.x, gz - panda.z) > 1.6;
+      urgent = span(gx - panda.x, gz - panda.z) > 1.6;
       if (!urgent) return out;
     } else {
       brain.t -= dt;
@@ -1158,7 +1183,7 @@ export function createGame(options = {}) {
     }
     let ax = gx - panda.x,
       az = gz - panda.z;
-    const far = Math.hypot(ax, az);
+    const far = span(ax, az);
     if (far > 0.6) {
       ax /= far;
       az /= far;
@@ -1176,19 +1201,19 @@ export function createGame(options = {}) {
       fz += (panda.z - enemy.z) * k;
       if (d < 4.5) crowd++;
     });
-    const flee = Math.hypot(fx, fz);
+    const flee = span(fx, fz);
     const fear = Math.min(3, 0.8 + crowd * 0.45) * (panda.hp < panda.maxHp * 0.45 ? 2 : 1);
     if (flee > 0 && !urgent) {
       ax += (fx / flee) * fear;
       az += (fz / flee) * fear;
     }
     // Stay off the beach.
-    const r = Math.hypot(panda.x, panda.z);
+    const r = span(panda.x, panda.z);
     if (r > ISLAND.playRadius - 6) {
       ax -= (panda.x / r) * 2;
       az -= (panda.z / r) * 2;
     }
-    const size = Math.hypot(ax, az);
+    const size = span(ax, az);
     if (size > 0.05) {
       out.moveX = ax / size;
       out.moveZ = az / size;
@@ -1207,7 +1232,7 @@ export function createGame(options = {}) {
     if (crowd > 0 && crowd <= 3 && panda.grounded && panda.bumpCd <= 0 && !urgent) {
       const close = game.nearestEnemy(panda.x, panda.z, 2.6);
       if (close && !close.boss) {
-        const d = Math.hypot(close.x - panda.x, close.z - panda.z) || 1;
+        const d = span(close.x - panda.x, close.z - panda.z) || 1;
         out.moveX = (close.x - panda.x) / d;
         out.moveZ = (close.z - panda.z) / d;
         out.slam = true;
@@ -1230,7 +1255,7 @@ export function createGame(options = {}) {
     if (panda.down) {
       motor.update(dt, 0, 0, false);
       syncPanda(panda);
-      const helper = game.pandas.some((other) => !other.down && Math.hypot(other.x - panda.x, other.z - panda.z) < 2.8);
+      const helper = game.pandas.some((other) => !other.down && span(other.x - panda.x, other.z - panda.z) < 2.8);
       panda.revive = helper ? panda.revive + dt : Math.max(0, panda.revive - dt * 0.5);
       if (panda.revive >= 3.5) {
         panda.down = false;
@@ -1248,7 +1273,7 @@ export function createGame(options = {}) {
     panda.hp = Math.min(panda.maxHp, panda.hp + (0.5 + stats.regen) * dt);
     let mx = input.moveX,
       mz = input.moveZ;
-    const size = Math.hypot(mx, mz);
+    const size = span(mx, mz);
     if (size > 1) {
       mx /= size;
       mz /= size;
@@ -1315,7 +1340,7 @@ export function createGame(options = {}) {
     }
     motor.update(dt, wx, wz, jump);
     syncPanda(panda);
-    panda.speedNow = Math.hypot(v[0], v[2]);
+    panda.speedNow = span(v[0], v[2]);
     panda.grounded = motor.isGrounded;
     if (!panda.grounded) panda.peakY = wasGrounded ? panda.y : Math.max(panda.peakY, panda.y);
     else if (!wasGrounded) {
@@ -1360,7 +1385,7 @@ export function createGame(options = {}) {
     if (panda.y < ISLAND.sea - 0.55) {
       panda.iframe = 0;
       hurt(panda, 8, panda.x * 2, panda.z * 2);
-      const r = Math.hypot(panda.x, panda.z) || 1;
+      const r = span(panda.x, panda.z) || 1;
       v[0] = (-panda.x / r) * 11;
       v[2] = (-panda.z / r) * 11;
       v[1] = 14;
@@ -1428,8 +1453,7 @@ export function createGame(options = {}) {
       pickup.t += dt;
       let taken = false;
       for (const panda of game.pandas) {
-        if (panda.down || Math.hypot(panda.x - pickup.x, panda.z - pickup.z) > 1.5 || Math.abs(panda.y - pickup.y) > 2.5)
-          continue;
+        if (panda.down || span(panda.x - pickup.x, panda.z - pickup.z) > 1.5 || Math.abs(panda.y - pickup.y) > 2.5) continue;
         taken = true;
         if (pickup.kind === 'heart') {
           for (const other of game.pandas) if (!other.down) other.hp = Math.min(other.maxHp, other.hp + other.maxHp * 0.3);

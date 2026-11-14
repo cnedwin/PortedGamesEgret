@@ -135,3 +135,9 @@ export function createIslandGeometry() {
     }
   return createGeometry3D({ positions, colors, uvs, indices });
 }
+
+/**
+ * Length of the flat vector (x, z). The rules ask for this thousands of times
+ * a step, and it is several times quicker than Math.hypot.
+ */
+export const span = (x, z) => Math.sqrt(x * x + z * z);

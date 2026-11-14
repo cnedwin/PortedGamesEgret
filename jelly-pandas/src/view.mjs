@@ -44,6 +44,8 @@ const yawQuat = (angle) => {
   return quat;
 };
 const IDENTITY = [0, 0, 0, 1];
+/** Layer for small things that are left out of the water's mirror image. */
+const DETAIL = 2;
 
 // Shared low-detail primitives the shapes below are assembled from.
 const sphere = createSphereGeometry3D({ radius: 1, widthSegments: 12, heightSegments: 8 });
@@ -51,16 +53,23 @@ const fineSphere = createSphereGeometry3D({ radius: 1, widthSegments: 20, height
 const cylinder = createCylinderGeometry3D({ radiusTop: 1, radiusBottom: 1, height: 1, radialSegments: 14 });
 const cone = createConeGeometry3D({ radius: 1, height: 1, radialSegments: 12 });
 const box = createBoxGeometry3D({ width: 1, height: 1, depth: 1 });
+// Coarser versions for things only ever seen small: eyes, petals, grass blades, stems, shots.
+const bead = createSphereGeometry3D({ radius: 1, widthSegments: 7, heightSegments: 4 });
+const petal = createSphereGeometry3D({ radius: 1, widthSegments: 5, heightSegments: 3 });
+const puff = createSphereGeometry3D({ radius: 1, widthSegments: 10, heightSegments: 6 });
+const shot = createSphereGeometry3D({ radius: 1, widthSegments: 9, heightSegments: 6 });
+const blade = createConeGeometry3D({ radius: 1, height: 1, radialSegments: 3 });
+const stem = createCylinderGeometry3D({ radiusTop: 1, radiusBottom: 1, height: 1, radialSegments: 5 });
 const torus = createTorusGeometry3D({ radius: 1, tube: 0.42, radialSegments: 10, tubularSegments: 20 });
 const WHITE = [1, 1, 1],
   DARK = [0.06, 0.06, 0.09],
   PINK = [1, 0.55, 0.65];
 /** Two eyes on a face that looks along +Z. */
 const eyes = (y, z, gap, size) => [
-  [sphere, [-gap, y, z], [size, size * 1.2, size * 0.6], WHITE],
-  [sphere, [gap, y, z], [size, size * 1.2, size * 0.6], WHITE],
-  [sphere, [-gap, y, z + size * 0.45], size * 0.55, DARK],
-  [sphere, [gap, y, z + size * 0.45], size * 0.55, DARK],
+  [bead, [-gap, y, z], [size, size * 1.2, size * 0.6], WHITE],
+  [bead, [gap, y, z], [size, size * 1.2, size * 0.6], WHITE],
+  [bead, [-gap, y, z + size * 0.45], size * 0.55, DARK],
+  [bead, [gap, y, z + size * 0.45], size * 0.55, DARK],
 ];
 
 /** One shape per candy kind, sized for a radius of 0.5 and standing on y = 0. */
@@ -93,17 +102,17 @@ function enemyShapes() {
       ...eyes(0.5, 0.42, 0.15, 0.09),
     ]),
     pop: buildShape([
-      [cylinder, [0, 0.35, 0], [0.06, 0.7, 0.06], [0.95, 0.95, 0.95]],
+      [stem, [0, 0.35, 0], [0.06, 0.7, 0.06], [0.95, 0.95, 0.95]],
       [cylinder, [0, 1.05, 0], [0.55, 0.2, 0.55], WHITE, [Math.PI / 2, 0, 0]],
       [torus, [0, 1.05, 0.1], [0.3, 0.3, 0.12], [1, 1, 0.7]],
       ...eyes(1.1, 0.14, 0.2, 0.1),
     ]),
     floss: buildShape([
       [cone, [0, 0.22, 0], [0.12, 0.5, 0.12], [0.9, 0.85, 0.7], [Math.PI, 0, 0]],
-      [sphere, [0, 0.72, 0], 0.42, WHITE],
-      [sphere, [0.3, 0.6, 0.05], 0.3, WHITE],
-      [sphere, [-0.3, 0.62, 0], 0.3, WHITE],
-      [sphere, [0.05, 1, -0.05], 0.3, WHITE],
+      [puff, [0, 0.72, 0], 0.42, WHITE],
+      [puff, [0.3, 0.6, 0.05], 0.3, WHITE],
+      [puff, [-0.3, 0.62, 0], 0.3, WHITE],
+      [puff, [0.05, 1, -0.05], 0.3, WHITE],
       ...eyes(0.72, 0.36, 0.15, 0.09),
     ]),
     mint: buildShape([
@@ -119,11 +128,11 @@ function enemyShapes() {
     ]),
     mallow: buildShape([
       [cylinder, [0, 0.5, 0], [0.5, 0.78, 0.5], WHITE],
-      [sphere, [0, 0.9, 0], [0.5, 0.16, 0.5], WHITE],
-      [sphere, [0, 0.12, 0], [0.5, 0.16, 0.5], WHITE],
+      [puff, [0, 0.9, 0], [0.5, 0.16, 0.5], WHITE],
+      [puff, [0, 0.12, 0], [0.5, 0.16, 0.5], WHITE],
       ...eyes(0.6, 0.47, 0.17, 0.08),
-      [sphere, [-0.3, 0.45, 0.42], [0.08, 0.05, 0.03], PINK],
-      [sphere, [0.3, 0.45, 0.42], [0.08, 0.05, 0.03], PINK],
+      [bead, [-0.3, 0.45, 0.42], [0.08, 0.05, 0.03], PINK],
+      [bead, [0.3, 0.45, 0.42], [0.08, 0.05, 0.03], PINK],
     ]),
   };
 }
@@ -132,8 +141,8 @@ function bossShapes() {
   const candles = [0, 1, 2, 3, 4].flatMap((i) => {
     const a = (i / 5) * 6.28;
     return [
-      [cylinder, [Math.cos(a) * 0.25, 1.78, Math.sin(a) * 0.25], [0.035, 0.24, 0.035], [0.5, 0.8, 1]],
-      [sphere, [Math.cos(a) * 0.25, 1.94, Math.sin(a) * 0.25], [0.05, 0.08, 0.05], [3, 1.6, 0.3]],
+      [stem, [Math.cos(a) * 0.25, 1.78, Math.sin(a) * 0.25], [0.035, 0.24, 0.035], [0.5, 0.8, 1]],
+      [bead, [Math.cos(a) * 0.25, 1.94, Math.sin(a) * 0.25], [0.05, 0.08, 0.05], [3, 1.6, 0.3]],
     ];
   });
   return {
@@ -220,7 +229,7 @@ export function createView(scene, options = {}) {
   scene.addChild(createAmbientLight3D({ intensity: 0.06 }));
   const sun = createDirectionalLight3D({ color: 0xfff3d8, intensity: 1.5, castShadow: true });
   sun.setPosition(22, 34, 14).lookAt(0, 0, 0);
-  Object.assign(sun.shadow, { cascades: 3, cascadeDistance: 55, mapSize: options.shadowSize ?? 2048 });
+  Object.assign(sun.shadow, { cascades: 2, cascadeDistance: 48, mapSize: options.shadowSize ?? 2048 });
   scene.addChild(sun);
 
   /** Add the island mesh; the same geometry is the collision shape in the simulation. */
@@ -241,6 +250,11 @@ export function createView(scene, options = {}) {
     reflectionSize: options.reflectionSize ?? 512,
   });
   const mirror = sea.reflection?.texture;
+  if (sea.reflection) {
+    // The mirror image is small and rippled: it needs neither shadows nor the island's small details.
+    sea.reflection.shadows = false;
+    sea.reflection.layerMask = ~DETAIL;
+  }
   sea.setPosition(0, ISLAND.sea, 0);
   scene.addChild(sea);
   view.reflect = true;
@@ -355,7 +369,7 @@ export function createView(scene, options = {}) {
   };
   const tuftShape = buildShape(
     [0, 1, 2, 3, 4].map((i) => [
-      cone,
+      blade,
       [Math.cos(i * 1.3) * 0.09, 0.16, Math.sin(i * 1.3) * 0.09],
       [0.035, 0.32 + (i % 3) * 0.08, 0.035],
       WHITE,
@@ -363,14 +377,14 @@ export function createView(scene, options = {}) {
     ]),
   );
   const flowerShape = buildShape([
-    [cylinder, [0, 0.13, 0], [0.015, 0.26, 0.015], [0.35, 0.7, 0.3]],
+    [stem, [0, 0.13, 0], [0.015, 0.26, 0.015], [0.35, 0.7, 0.3]],
     ...[0, 1, 2, 3, 4].map((i) => [
-      sphere,
+      petal,
       [Math.cos(i * 1.257) * 0.07, 0.28, Math.sin(i * 1.257) * 0.07],
       [0.055, 0.025, 0.055],
       WHITE,
     ]),
-    [sphere, [0, 0.29, 0], 0.04, [1, 0.85, 0.2]],
+    [bead, [0, 0.29, 0], 0.04, [1, 0.85, 0.2]],
   ]);
   const rockShape = buildShape([
     [sphere, [0, 0.25, 0], [0.6, 0.38, 0.5], [0.62, 0.62, 0.66]],
@@ -387,6 +401,7 @@ export function createView(scene, options = {}) {
     mesh.castShadow = shadow;
     // Plants take the shadows of whatever passes over them.
     mesh.receiveShadow = true;
+    if (!shadow) mesh.layers = DETAIL;
     mesh.frustumCulled = false;
     for (let i = 0; i < count; i++) fill(mesh, i);
     mesh.count = count;
@@ -492,6 +507,7 @@ export function createView(scene, options = {}) {
   const horde = ENEMIES.map((def) => {
     const mesh = new InstancedMesh3D(shapes[def.key], hordeMaterial, 320);
     mesh.castShadow = true;
+    mesh.layers = DETAIL;
     mesh.frustumCulled = false;
     mesh.count = 0;
     mesh.setColorAt(0, 1, 1, 1);
@@ -511,6 +527,7 @@ export function createView(scene, options = {}) {
   const instanced = (geometry, material, capacity, shadow = false) => {
     const mesh = new InstancedMesh3D(geometry, material, capacity);
     mesh.castShadow = shadow;
+    mesh.layers = DETAIL;
     mesh.frustumCulled = false;
     mesh.count = 0;
     mesh.setColorAt(0, 1, 1, 1);
@@ -526,7 +543,7 @@ export function createView(scene, options = {}) {
   );
 
   // ---- shots, sprinkles and pickups -------------------------------------------------------
-  const balls = instanced(sphere, plain, 900, true);
+  const balls = instanced(shot, plain, 900, true);
   const bubbleMaterial = createStandardMaterial3D({
     color: 0xcdefff,
     roughness: 0.05,
@@ -644,6 +661,7 @@ export function createView(scene, options = {}) {
       ...more,
     });
     node.frustumCulled = false;
+    node.layers = DETAIL;
     scene.addChild(node);
     return node;
   };
