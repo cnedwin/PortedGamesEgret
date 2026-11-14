@@ -10,6 +10,7 @@ import { PLACE_BY_ID } from '../data/places.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
 import { PLOT, TREE_KINDS, createBuilding, treeParts } from './buildings.mjs';
 import { STRIKE_OF, createFigure } from './figure.mjs';
+import { floraGeometry, hasFlora, whenFlora } from './flora.mjs';
 import { BALL, BOX, FOLIAGE, ROD, SPIKE, TAPER, TOON, grad, beam, build, glow, heightSurface, hexOf, mix, model, scatter, shade } from './shapes.mjs';
 import { lightScene } from './stage.mjs';
 
@@ -182,11 +183,46 @@ function surroundings(height, random, sectColor) {
   for (let i = 0; i < 9; i++) for (const part of treeParts(15 + random() * 15, 26 + random() * 7, 0.9 + random() * 0.5, 'bamboo')) greens.push(part);
   parts.push([ROD, [20, 0.4, 25.5], [0.9, 0.12, 0.9], 0xa9a69c], [ROD, [20, 0.2, 25.5], [0.3, 0.4, 0.3], 0x8f8a7c], ...[0, 1.57, 3.14, 4.71].map((a) => [ROD, [20 + Math.cos(a) * 1.4, 0.2, 25.5 + Math.sin(a) * 1.4], [0.26, 0.4, 0.26], 0x9a978d]));
   for (let i = 0; i < 5; i++) parts.push([BALL, [10 + i * 0.9 + random(), 0.5 + random() * 0.8, 30 + random() * 2], [0.7 + random() * 0.6, 0.9 + random() * 1.3, 0.6 + random() * 0.5], shade(0x8d8a80, 0.8 + random() * 0.35)]);
+  // Things grown from model files are set out here and drawn together, each kind in one go.
+  const planted = new Map();
+  const set = (name, variant, x, z, tall, sink = 0) => {
+    if (!hasFlora(name)) return false;
+    const key = name + '|' + variant;
+    if (!planted.has(key)) planted.set(key, []);
+    planted.get(key).push([x, height(x, z) - sink, z, tall, random() * 6.283]);
+    return true;
+  };
+  const pick = (stem, count) => `${stem}_${1 + Math.floor(random() * count)}`;
   // Trees inside the wall, along it and in the corners; blossom and maple nearest the hall.
   const plant = (x, z, size, kind) => {
+    const modelled = { pine: () => set(pick('pine_tree', 3), 'pine', x, z, size * 5.4, 0.1), round: () => set(pick('common_tree', 3), 'plain', x, z, size * 4.6, 0.1), maple: () => set(pick('common_tree', 3), random() < 0.3 ? 'ginkgo' : 'maple', x, z, size * 4.4, 0.1), blossom: () => set('common_tree_2', 'blossom', x, z, size * 3.3, 0.1) }[kind];
+    if (modelled?.()) return;
     const y = height(x, z);
     for (const part of treeParts(x, z, size, kind)) greens.push([part[0], [part[1][0], part[1][1] + y, part[1][2]], part[2], part[3], part[4]]);
   };
+  /** Whether a spot in the yard is open ground: not paved, not built on, not water. */
+  const open = (x, z) => Math.abs(x) > 3.6 && !(Math.abs(x) < 12 && z < HALL_AT.z + 15) && ![-11.5, -0.5, 10.5].some((row) => Math.abs(z - row) < 1.4) && !plots().some((plot) => Math.abs(x - plot.x) < 5.4 && Math.abs(z - plot.z) < 5.4) && ((x - POND.x) / (POND.rx + 1)) ** 2 + ((z - POND.z) / (POND.rz + 1)) ** 2 > 1;
+  // Grass in tufts, wild flowers and leafy plants wherever the yard is left alone, and thicker outside the wall.
+  for (let i = 0; i < 520; i++) {
+    const x = (random() - 0.5) * 2 * (edge - 1),
+      z = (random() - 0.5) * 2 * (edge - 1);
+    if (!open(x, z)) continue;
+    const roll = random();
+    if (roll < 0.72) set(pick('grass', 4), 'plain', x, z, 0.35 + random() * 0.4);
+    else if (roll < 0.86) set(pick('flower', 3), ['plain', 'white', 'pink'][Math.floor(random() * 3)], x, z, 0.4 + random() * 0.25);
+    else set(pick('plant', 3), 'plain', x, z, 0.45 + random() * 0.4);
+  }
+  for (let i = 0; i < 380; i++) {
+    const angle = random() * 6.283,
+      radius = YARD + 1 + random() * 46,
+      x = Math.cos(angle) * radius,
+      z = Math.sin(angle) * radius;
+    if ((Math.abs(x) < 4 && z > 0) || height(x, z) > 14) continue;
+    const roll = random();
+    if (roll < 0.7) set(pick('grass', 4), 'plain', x, z, 0.5 + random() * 0.6);
+    else if (roll < 0.9) set(pick('flower', 3), ['plain', 'white', 'pink'][Math.floor(random() * 3)], x, z, 0.5 + random() * 0.3);
+    else set(random() < 0.5 ? 'tree_stump_1' : pick('plant', 3), 'plain', x, z, 0.5 + random() * 0.4);
+  }
   for (const sx of [-1, 1]) {
     plant(sx * 13.5, HALL_AT.z + 4.5, 1.25, 'blossom');
     plant(sx * 15.5, HALL_AT.z - 6, 1.5, 'maple');
@@ -199,6 +235,7 @@ function surroundings(height, random, sectColor) {
     const along = (random() - 0.5) * 2 * (edge - 2),
       sx = random() < 0.5 ? -1 : 1;
     const [x, z] = random() < 0.6 ? [sx * (edge - 1.2), along] : [along, -(edge - 1.2)];
+    if (set(pick('bush', 5), 'plain', x, z, 0.8 + random() * 0.7, 0.05)) continue;
     greens.push([BALL, [x, 0.35, z], [0.6 + random() * 0.5, 0.45 + random() * 0.3, 0.6 + random() * 0.5], grad(shade(0x4f7f3f, 0.8 + random() * 0.4), 0.6, 1.15)]);
   }
   // Outside: forest on the slopes, thicker lower down, with rocks and scrub among it.
@@ -219,6 +256,7 @@ function surroundings(height, random, sectColor) {
       z = Math.sin(angle) * radius,
       y = height(x, z);
     if (Math.abs(x) < 5 && z > 0) continue;
+    if (i % 3 === 0 ? set(pick('stone', 5), random() < 0.4 ? 'moss' : 'plain', x, z, 0.7 + random() * 1.9, 0.15) : set(i % 11 === 0 ? 'dead_tree_1' : pick('bush', 5), 'plain', x, z, i % 11 === 0 ? 3 + random() * 2 : 0.9 + random() * 1.1, 0.05)) continue;
     if (i % 3 === 0) parts.push([BALL, [x, y + 0.3, z], [0.8 + random() * 1.6, 0.6 + random() * 1.2, 0.8 + random() * 1.4], shade(0x8d8a80, 0.8 + random() * 0.4)]);
     else greens.push([BALL, [x, y + 0.4, z], [0.9 + random(), 0.6 + random() * 0.5, 0.9 + random()], grad(shade(0x4a7a3c, 0.75 + random() * 0.5), 0.6, 1.15)]);
   }
@@ -245,7 +283,17 @@ function surroundings(height, random, sectColor) {
     banners.push(flag);
   }
   node.addChild(model(parts));
-  node.addChild(model(greens, FOLIAGE));
+  if (greens.length) node.addChild(model(greens, FOLIAGE));
+  const turned = new Float32Array(4);
+  for (const [key, spots] of planted) {
+    const [name, variant] = key.split('|');
+    const grown = new InstancedMesh3D(floraGeometry(name, variant), /stone|stump|dead/.test(name) ? TOON : FOLIAGE, spots.length);
+    spots.forEach(([x, y, z, tall, turn], i) => grown.setTransformAt(i, [x, y, z], quatFromEuler(turned, 0, turn, 0), tall));
+    // Grass and flowers are too small to be worth a shadow.
+    grown.castShadow = !/grass|flower|plant/.test(name);
+    grown.receiveShadow = true;
+    node.addChild(grown);
+  }
   node.addChild(model(lit, LAMP, false));
   return { node, lamps, banners, censer: [censer[0], 1.5, censer[2]] };
 }
@@ -469,6 +517,8 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
   }
 
   refresh();
+  // When the model files arrive, the grounds are planted again from them.
+  whenFlora(() => ((owner = undefined), (signature = ''), refresh()));
   const scene3 = {
     showTags: true,
     /** The light of this place, for whoever wants to know the hour. */

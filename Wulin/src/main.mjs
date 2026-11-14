@@ -164,6 +164,8 @@ async function startPicture() {
   try {
     const [stageModule, seatModule, arenaModule, realmModule] = await Promise.all([import('./view/stage.mjs'), import('./view/seat.mjs'), import('./view/arena.mjs'), import('./view/realm.mjs')]);
     picture.modules = { ...stageModule, ...seatModule, ...arenaModule, ...realmModule };
+    // Trees and plants come from model files; scenes are planted from them when they arrive.
+    import('./view/flora.mjs').then((flora) => flora.loadFlora(new URL('./assets/flora/', location.href)));
     const quality = picture.modules.pickQuality(undefined, storedQuality());
     picture.stage = await picture.modules.createStage(document.querySelector('#stage'), { quality, onError: (cause) => console.warn('3D:', cause) });
   } catch (cause) {

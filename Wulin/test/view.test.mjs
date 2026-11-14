@@ -88,3 +88,21 @@ test('a figure is one skinned body: every point follows its bones in full, and t
   for (let i = 0; i < 20; i++) figure.update(0.05);
   assert.equal(figure.action, 'guard');
 });
+
+test('flora: a model file is read into a shape one unit tall, coloured by this game', async () => {
+  const { readFile } = await import('node:fs/promises');
+  const { FLORA_FILES, addFlora, floraGeometry, readGlb } = await import('../src/view/flora.mjs');
+  for (const name of FLORA_FILES) {
+    const file = await readFile(new URL(`../assets/flora/${name}.glb`, import.meta.url));
+    const buffer = file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength);
+    const shape = readGlb(buffer);
+    assert.ok(shape.indices.length >= 30 && shape.indices.length % 3 === 0, name);
+    assert.ok(shape.indices.every((index) => index < shape.positions.length / 3), name);
+    addFlora(name, buffer);
+  }
+  const tree = floraGeometry('common_tree_1', 'maple');
+  const box = tree.boundingBox;
+  assert.ok(Math.abs(box[1]) < 1e-5 && Math.abs(box[4] - 1) < 1e-5);
+  assert.equal(floraGeometry('common_tree_1', 'maple'), tree);
+  assert.equal(floraGeometry('no_such_tree'), null);
+});
