@@ -48,6 +48,23 @@ const RIVERS = [
   [[8, 49], [20, 53], [30, 62], [37, 60.5], [43, 60.5], [50, 63], [57, 65.5], [63, 64], [68, 57], [73, 52.5], [78, 48.5], [84, 47.5], [96, 46]],
   [[6, 27], [18, 29], [28, 24], [38, 21], [44, 26], [47.5, 32], [53, 35], [61, 34], [68, 29], [78, 27.5], [96, 25]],
 ].map((path) => rounded(path));
+
+function closestRiverPoint(x, z) {
+  const u = x / S + 50, v = z / S + 50;
+  let best = Infinity, nearU, nearV;
+  for (const river of RIVERS) for (let i = 0; i < river.length - 1; i++) {
+    const a = river[i], b = river[i + 1];
+    const dx = b[0] - a[0], dz = b[1] - a[1];
+    const t = Math.max(0, Math.min(1, ((u - a[0]) * dx + (v - a[1]) * dz) / (dx * dx + dz * dz)));
+    const px = a[0] + dx * t, pz = a[1] + dz * t;
+    const distance = (u - px) ** 2 + (v - pz) ** 2;
+    if (distance >= best) continue;
+    best = distance;
+    nearU = px;
+    nearV = pz;
+  }
+  return { kind: 'river', x: (nearU - 50) * S, y: 0, z: (nearV - 50) * S };
+}
 /** The lake beside Dongting, as [u, v, radius]. */
 const LAKE = [61.5, 65.5, 3.4];
 /** The frontier wall, west to east. */
@@ -159,7 +176,7 @@ function landColour(u, v, y) {
  * @param world  gives the world; read, never changed
  * @param options.layer  an element over the canvas for the strongholds' name tags
  */
-export function createRealm(stage, world, { layer = null } = {}) {
+export function createRealm(stage, world, { layer = null, onAudio } = {}) {
   const detail = DETAIL[stage.quality] ?? DETAIL.medium;
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: 38, near: 4, far: 1400 });
@@ -712,6 +729,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
   const carts = new InstancedMesh3D(cartShape, TOON, CARTS);
   scene.addChild(carts);
   let trade = [];
+  let tradeSignature, heardCart;
   /** The road between two strongholds, from the first to the second. */
   const roadBetween = (from, to) => roadPaths[from + '|' + to] ?? [...(roadPaths[to + '|' + from] ?? [])].reverse();
   const spotOn = (path, t) => {
@@ -771,9 +789,14 @@ export function createRealm(stage, world, { layer = null } = {}) {
   }
   /** Tells the model which roads are traded along: `[{ from, to }]`. Carts are shared out among them. */
   function setTrade(routes) {
+    // Refreshing an overlay should leave moving carts and their sound positions intact.
+    const signature = routes.map(({ from, to }) => from + '|' + to).join(',');
+    if (signature === tradeSignature) return;
+    tradeSignature = signature;
     const paths = routes.map((route) => roadBetween(route.from, route.to)).filter((path) => path.length > 1);
     trade = paths.length ? Array.from({ length: Math.min(CARTS, paths.length * 2) }, (_, i) => ({ path: paths[i % paths.length], t: random(), pace: (0.02 + random() * 0.015) * (i % 2 ? 1 : -1) })) : [];
     carts.count = trade.length;
+    heardCart = undefined;
   }
   refresh();
 
@@ -787,6 +810,28 @@ export function createRealm(stage, world, { layer = null } = {}) {
     mist: 0.0005,
     refresh,
     setTrade,
+    soundSources() {
+      const [x, , z] = stage.orbit.target;
+      const river = closestRiverPoint(x, z);
+      const sources = [river];
+      let nearest;
+      let distance = Infinity;
+      for (const cart of trade) {
+        if (!cart.at) continue;
+        const d = Math.hypot(cart.at.x - x, cart.at.z - z);
+        if (d >= distance) continue;
+        nearest = cart;
+        distance = d;
+      }
+      // Keep tracking the same cart unless another is clearly nearer.
+      if (heardCart?.at && Math.hypot(heardCart.at.x - x, heardCart.at.z - z) <= distance + 8) nearest = heardCart;
+      heardCart = nearest;
+      if (nearest) {
+        const { x, y, z } = nearest.at;
+        sources.push({ kind: 'caravan', x, y: y + .5, z });
+      }
+      return sources;
+    },
     get isMarching() { return !!marching && performance.now() - marching.began < marchDuration; },
     /**
      * Shows a column marching from one stronghold to its neighbour under a
@@ -881,6 +926,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
       trade.forEach((cart, i) => {
         cart.t = (cart.t + cart.pace * dt + 1) % 1;
         const at = spotOn(cart.path, cart.t);
+        cart.at = at;
         carts.setTransformAt(i, [at.x, at.y, at.z], quatFromEuler(turned, 0, at.heading + (cart.pace < 0 ? Math.PI : 0), 0), 1.3);
       });
       for (const parade of parades) {
@@ -908,6 +954,7 @@ export function createRealm(stage, world, { layer = null } = {}) {
           return;
         }
       }
+      onAudio?.(realm, dt);
       const site = sites[chosen];
       ring.visible = !!site;
       if (site) ring.setPosition(site.x, site.y + 0.9, site.z), ring.setScale(1 + 0.05 * Math.sin(clock * 3));

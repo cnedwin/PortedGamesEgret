@@ -31,7 +31,8 @@ export function plots() {
   return list.sort((a, b) => a.column - b.column || Math.abs(a.z + 4) - Math.abs(b.z + 4));
 }
 const HALL_AT = { x: 0, z: -24 },
-  GATE_AT = { x: 0, z: YARD - 6 };
+  GATE_AT = { x: 0, z: YARD - 6 },
+  LANDMARK_AT = { x: 24, z: HALL_AT.z - 5 };
 /** People and buildings are drawn larger than life so they read from above. */
 const FIGURE_SCALE = 1.5;
 
@@ -227,7 +228,7 @@ function surroundings(height, random, sectColor, sectId = null) {
       for (let i = 0; i < 7; i++) parts.push([BALL, [sx * 4.3 + (random() - 0.5) * 0.6, 0.38, z + (i - 3) * 0.42], [0.2, 0.18, 0.2], [0xbb625f, 0xd4a358, 0xe6dbc7, 0xa2778c, 0x6c8971, 0x849e7a][Math.floor(random() * 6)]]);
     }
   // What the sect is known by stands in the back corner east of the hall; tables and benches are set out in the west one.
-  for (const part of landmark(sectId, 24, HALL_AT.z - 5, random)) (part.lit ? lit : parts).push(part.lit ?? part);
+  for (const part of landmark(sectId, LANDMARK_AT.x, LANDMARK_AT.z, random)) (part.lit ? lit : parts).push(part.lit ?? part);
   for (const part of furnishings(-24, HALL_AT.z - 5)) parts.push(part);
   // The pond: a rim of rocks, lily pads, reeds, and a bridge arched over its narrow end.
   for (let i = 0; i < 22; i++) {
@@ -403,7 +404,7 @@ const weaponSlotOf = (person) => person.gear?.weapon?.slot ?? null;
  * @param options.layer   an element over the canvas for the buildings' name tags
  * @param options.nameOf  gives a building kind its name
  */
-export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind) => kind, onHour = () => {} } = {}) {
+export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind) => kind, onHour = () => {}, onAudio } = {}) {
   const spec = PLACE_BY_ID[placeId];
   const random = scatter(spec.id.length * 7919 + spec.at.x * 31 + spec.at.y);
   const scene = new Scene3D();
@@ -460,6 +461,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
 
   /** Where each kind of building ended up, for sending people to work. */
   let sites = {};
+  let drillActivity = 0, forgeActivity = 0;
   /** Name tags over the buildings: the element, the spot it marks and the building's place in the list. */
   let tags = [];
   const clearTags = () => (tags.forEach((tag) => tag.element.remove()), (tags = []));
@@ -528,6 +530,12 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       .filter((person) => person.place === placeId && person.school === place.owner)
       .sort((a, b) => b.rank - a.rank || a.id - b.id)
       .slice(0, CROWD[stage.quality] ?? 12);
+    drillActivity = .76;
+    forgeActivity = .76;
+    for (const { job } of here) {
+      if (job?.kind === 'train' && CLASSES[ART_BY_ID[job.art]?.klass]?.combat) drillActivity += .10;
+      if (job?.kind === 'craft' && job.make === 'weapon') forgeActivity += .12;
+    }
     const wanted = new Set(here.map((person) => person.id));
     for (const [id, actor] of cast) if (!wanted.has(id)) scene.removeChild(actor.figure.node), cast.delete(id);
     for (const person of here) {
@@ -606,6 +614,16 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
     camera,
     placeId,
     refresh,
+    soundSources() {
+      const yard = sites.yard ?? sites.range;
+      const quietHours = light.night ? .32 : 1;
+      const sources = [];
+      if (yard) sources.push({ kind: 'drill', x: yard.x, y: 1.2, z: yard.z, activity: Math.min(1, drillActivity) * quietHours });
+      const forge = sites.forge;
+      if (forge) sources.push({ kind: 'forge', x: forge.x, y: 1.6, z: forge.z, activity: Math.min(1, forgeActivity) * quietHours });
+      if (owner === 'emei') sources.push({ kind: 'bell', ...LANDMARK_AT, y: 2.6 });
+      return sources;
+    },
     enter() {
       stage.orbit.set({ target: [0, 1, -2], yaw: 0.45, pitch: 0.55, distance: 50, minDistance: 14, maxDistance: 120, minPitch: 0.2, maxPitch: 1.3, reach: 38, drift: 0.02 });
     },
@@ -617,6 +635,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       hour = (hour + dt * (light.night ? 0.3 : 0.075)) % 24;
       light.setHour(hour);
       onHour(light.hour);
+      onAudio?.(scene3, dt);
       light.aim(stage.orbit.target?.[0] ?? 0, 0, stage.orbit.target?.[2] ?? 0);
       // Banners stir in the wind.
       dressing?.banners.forEach((flag, i) => flag.setRotation(0, 0.35 * Math.sin(clock * 1.7 + i * 1.3) + 0.12 * Math.sin(clock * 4.1 + i), 0.05 * Math.sin(clock * 2.3 + i)));

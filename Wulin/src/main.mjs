@@ -41,6 +41,7 @@ import { createVoice } from './ui/voice.mjs';
 import { createFeedbackAudio } from './ui/feedback-audio.mjs';
 import { createClipAudio, createSoundtrack } from './ui/soundtrack.mjs';
 import { courtyardTrack, createCombatAudio, createWorldAmbience } from './ui/world-audio.mjs';
+import { createSpatialAudio } from './ui/spatial-audio.mjs';
 import { legacyScreen, prologue, prologueScreen, sectScreen } from './ui/opening.mjs';
 import { claimGoal, goalView, startGoals } from './core/goals.mjs';
 
@@ -54,10 +55,12 @@ const clips = createClipAudio();
 const music = createSoundtrack(localStorage, clips);
 const feedbackAudio = createFeedbackAudio(localStorage);
 const worldAmbience = createWorldAmbience(localStorage, clips);
+const spatialAudio = createSpatialAudio(clips, worldAmbience);
 const combatAudio = createCombatAudio(clips, feedbackAudio);
 const voice = createVoice(localStorage, undefined, { clips, onSpeaking(active) {
   music.duck(active);
   worldAmbience.duck(active);
+  spatialAudio.duck(active);
   combatAudio.duck(active);
 } });
 const recordedArts = new Map(ARTS.filter(art => CLASSES[art.klass]?.combat).map(art => [art.name, art.id]));
@@ -220,7 +223,7 @@ function syncPicture() {
   if (slot.dataset.stage === 'realm') {
     // The model of the realm is built once for a world and repainted as strongholds change hands.
     if (picture.realm?.world !== world) {
-      picture.realm = picture.modules.createRealm(stage, () => world, { layer: document.querySelector('#layer') });
+      picture.realm = picture.modules.createRealm(stage, () => world, { layer: document.querySelector('#layer'), onAudio: updateSpatialAudio });
       picture.realm.world = world;
       picture.realm.select(ui.mapPlace, false);
     }
@@ -236,7 +239,7 @@ function syncPicture() {
   }
   if (picture.seat?.placeId !== ui.place || picture.seat.world !== world) {
     picture.seat = picture.modules.createSeat(stage, () => world, ui.place, {
-      layer: document.querySelector('#layer'), nameOf: (kind) => BUILDINGS[kind].name, onHour: syncSeatAmbience,
+      layer: document.querySelector('#layer'), nameOf: (kind) => BUILDINGS[kind].name, onHour: syncSeatAmbience, onAudio: updateSpatialAudio,
     });
     picture.seat.world = world;
     stage.show(picture.seat);
@@ -248,6 +251,26 @@ function syncPicture() {
 }
 
 let lastSeatTrack;
+let spatialScene, spatialElapsed = 0;
+
+function updateSpatialAudio(scene, dt) {
+  if (scene !== spatialScene) return;
+  spatialElapsed += dt;
+  if (spatialElapsed < .10) return;
+  spatialElapsed = 0;
+  spatialAudio.update(picture.stage.orbit);
+}
+
+function syncSpatialAudio() {
+  const current = picture.stage?.current;
+  const next = world && !ui.fight && (ui.page === 'seat' && current === picture.seat || ui.page === 'world' && ui.map3d && current === picture.realm)
+    ? current : undefined;
+  if (spatialScene === next) return;
+  spatialScene = next;
+  spatialElapsed = .10;
+  spatialAudio.select(next);
+}
+
 function syncSeatAmbience(hour) {
   if (ui.page !== 'seat') return;
   const track = courtyardTrack(hour);
@@ -1130,6 +1153,7 @@ function render() {
   const shellNode = app.querySelector('.shell.game');
   if (shellNode) shellNode.dataset.commandCollapsed = String(canFoldCommand() && ui.commandCollapsed);
   syncPicture();
+  syncSpatialAudio();
   placeMap();
   music.select(ui.fight ? 'battle' : world ? 'explore' : 'title');
   syncAmbience();
@@ -1486,8 +1510,8 @@ const changes = {
   'music-volume': (_, value) => music.set({ volume: Number(value) }),
   'feedback-sound': (_, value) => { feedbackAudio.set({ on: value === 'on' }); combatAudio.settingsChanged(); },
   'feedback-volume': (_, value) => { feedbackAudio.set({ volume: Number(value) }); combatAudio.settingsChanged(); },
-  ambience: (_, value) => worldAmbience.set({ on: value === 'on' }),
-  'ambience-volume': (_, value) => worldAmbience.set({ volume: Number(value) }),
+  ambience: (_, value) => { worldAmbience.set({ on: value === 'on' }); spatialAudio.settingsChanged(); },
+  'ambience-volume': (_, value) => { worldAmbience.set({ volume: Number(value) }); spatialAudio.settingsChanged(); },
   quality(_, value) {
     slots.write('auto', world, autoLabel());
     try {
@@ -1533,6 +1557,7 @@ const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fig
 document.addEventListener('visibilitychange', () => {
   music.setHidden(document.hidden);
   worldAmbience.setHidden(document.hidden);
+  spatialAudio.setHidden(document.hidden);
   combatAudio.setHidden(document.hidden);
   if (document.hidden) voice.stop();
 });
