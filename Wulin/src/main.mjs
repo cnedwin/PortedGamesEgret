@@ -37,6 +37,7 @@ import {
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
 import { createVoice } from './ui/voice.mjs';
+import { claimGoal, goalView, startGoals } from './core/goals.mjs';
 
 const app = document.querySelector('#app'),
   park = document.querySelector('#park'),
@@ -260,8 +261,22 @@ function shell(content) {
       <div class="resources">${resource('coin', '银两', b.silver, '两')}${resource('grain', '粮草', b.grain, '石')}${resource('banner', '威望', b.renown)}${resource('balance', '正邪', b.virtue)}</div>
       <div class="speeds" role="group" aria-label="时间速度">${[[0, '暂停', 'pause'], [1, '行'], [4, '快'], [16, '疾']].map(speed).join('')}</div>
     </header>
-    <main class="main" id="main"><div class="region" data-region="notice">${end}${ui.notice ? `<div class="notice">${esc(ui.notice)}</div>` : ''}</div>${content}</main>
+    <main class="main" id="main"><div class="region" data-region="goal">${goalStrip()}</div><div class="region" data-region="notice">${end}${ui.notice ? `<div class="notice">${esc(ui.notice)}</div>` : ''}</div>${content}</main>
   </div>`;
+}
+
+/** The matter in hand, shown above every screen: what to do, how far along, and where to go to do it. */
+function goalStrip() {
+  const goal = goalView(world);
+  if (!goal || world.outcome) return '';
+  if (goal.last) return `<section class="goal is-last"><div class="goal-mark">${icon('banner')}</div><div class="goal-copy"><b>${esc(goal.title)}</b><span>${esc(goal.text)}</span></div></section>`;
+  const reward = Object.entries(goal.gives).map(([key, amount]) => `${{ silver: '银两', grain: '粮草', renown: '威望' }[key]} +${num(amount)}`).join('　');
+  return `<section class="goal ${goal.done ? 'is-done' : ''}">
+    <div class="goal-mark"><small>要务</small><b>${goal.step}<i>/${goal.steps}</i></b></div>
+    <div class="goal-copy"><b>${esc(goal.title)}</b><span>${esc(goal.done ? '此事已成，可以领赏了。' : goal.text)}</span>${goal.done ? '' : `<small>${icon('pin')}${esc(goal.how)}</small>`}</div>
+    <div class="goal-side"><div class="goal-count"><span>${num(goal.now)} / ${num(goal.wanted)}</span>${meter(goal.now / goal.wanted)}</div>
+      ${goal.done ? btn(`领赏　${reward}`, 'goal-claim', {}, 'primary') : goal.go ? btn('前往', 'goal-go', {}, 'outline', 'arrow') : `<span class="caption">${reward}</span>`}</div>
+  </section>`;
 }
 
 // ---- the seat ------------------------------------------------------------------------------------------
@@ -296,9 +311,11 @@ function seatScreen() {
         </div>
       </section>
       <aside class="seat-side" data-region="seat-side">
-        <section class="panel leader-panel">
-          <div class="leader-visual">${sceneImage('title')}${face(leader, 'leader-image', 'full')}<div class="leader-shade"></div><div class="leader-copy">${tag(leader?.place === placeId ? '掌门在位' : `掌门在${PLACE_BY_ID[leader?.place]?.name ?? '外'}`, 'dark-tag')}<h2>${esc(leader?.name ?? '')}</h2><p>${esc(sect.role.split('，')[0])}</p></div></div>
-          <div class="leader-footer"><div><span>驻此弟子</span><b>${here.length}<small> 人</small></b></div><div><span>全派</span><b>${row.members}<small> 人</small></b></div><button class="icon-link" data-act="page" data-page="disciples" aria-label="查看弟子">${icon('arrow')}</button></div>
+        <section class="panel building-panel">${panelTitle(kind.name, tag(`${picked.level} 级`))}
+          <div class="building-detail"><p>${esc(kind.does)} · 占地 ${kind.cells} 格</p>${picked.level < kind.max ? btn(`升至 ${picked.level + 1} 级　${num(cost)} 两`, 'upgrade', { index: ui.building }, 'outline') : tag('已满级', 'positive')}</div>
+          ${picked.kind === 'hall' || picked.kind === 'gate' ? '' : formRow('位置', `<select data-change="plot">${options([['', '由管事安排'], ...Array.from({ length: PLOT_COUNT }, (_, i) => [i, `第 ${i + 1} 块地（${i % 2 ? '东' : '西'}侧，离中路${['近', '中', '远'][Math.floor((i % 6) / 2)]}）`])], picked.plot ?? '')}</select>`)}
+          ${picture.stage ? '<p class="caption building-hint">点画面上的建筑名，可查看别的建筑。</p>' : ''}
+          <div class="building-switch ${picture.stage ? 'is-folded' : ''}" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>
         </section>
         <section class="panel recruit-panel">${panelTitle('招贤榜', tag(place.applicants.length ? `${place.applicants.length} 人求见` : '无人求见', place.applicants.length ? 'positive' : 'plain'))}
           <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content"><div class="recruit-avatar">${icon('people')}</div><div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
@@ -306,22 +323,29 @@ function seatScreen() {
       </aside>
     </div>
     <div class="seat-bottom" data-region="seat-bottom">
-      <section class="panel"><div class="panel-title"><h2>据点总览</h2><span class="caption">每旬结算</span></div>
-        <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>全派薪俸</span><b>${row.wages}<small> 两</small></b></div><div><span>朝廷关系</span><b>${Math.round(books().court)}</b></div><div><span>商路进项</span><b>${row.trade}<small> 两</small></b></div><div><span>上旬售货</span><b>${num(books().sold?.goods ?? 0)}<small> 两，经店铺 ${num(books().sold?.retail ?? 0)}${books().sold?.glut ? `，滞销折价 ${num(books().sold.glut)}` : ''}</small></b></div></div>
+      <section class="panel">${panelTitle('此地', `<button class="text-link" data-act="page" data-page="disciples">驻此 ${here.length} 人 · 全派 ${row.members} 人 ${icon('arrow')}</button>`)}
+        <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>山下店铺</span><b>${place.shops}<small> / ${SHOP_LIMIT}</small></b></div><div><span>掌门</span><b class="is-text">${leader?.place === placeId ? '在此' : esc(PLACE_BY_ID[leader?.place]?.name ?? '在外')}</b></div></div>
         <div class="terrain-list">${RESOURCES.map((key) => `<span>${RESOURCE_NAMES[key]} <strong>${dots(spec.resources[key])}</strong></span>`).join('')}</div>
-        <div class="stock-line">库存：${RESOURCES.map((key) => `${RESOURCE_NAMES[key]} ${Math.round(books().res[key])}`).join(' · ')}</div>
-        <div class="stock-line button-group"><span>山下店铺 ${place.shops} / ${SHOP_LIMIT}（每间每旬入银 ${ECONOMY.shopIncome.join('–')} 两，并可代售 ${ECONOMY.shopMoves} 两的货物，售价高 ${ECONOMY.shopPremium * 100}%）</span>${btn(`开设店铺（${num(ECONOMY.shopCost)}两）`, 'shop', {}, 'outline', '', place.shops >= SHOP_LIMIT)}</div>
-        <div class="stock-line button-group"><span>此处专精</span><select data-change="focus">${options(Object.entries(FOCUSES).map(([id, f]) => [id, `${f.name}：${f.does}`]), place.focus ?? 'none')}</select></div>
-        <div class="stock-line button-group">${btn('任命职位', 'sheet', { kind: 'offices' }, 'outline', 'people')}${btn(`布施（${num(ECONOMY.donation)}两，威望 +${ECONOMY.donationRenown}）`, 'donate', {}, 'outline')}${btn('丹房', 'sheet', { kind: 'pills' }, 'outline')}</div>
-        <div class="stock-line button-group"><span>门规</span><select data-change="rule">${options(Object.entries(HOUSE_RULES).map(([id, rule]) => [id, `${rule.name}：${rule.does}`]), books().rule ?? 'plain')}</select></div>
+        <div class="affairs">
+          ${affair('此处专精', '一处据点只专一事', `<select data-change="focus">${options(Object.entries(FOCUSES).map(([id, f]) => [id, `${f.name}：${f.does}`]), place.focus ?? 'none')}</select>`)}
+          ${affair('开设店铺', `每间每旬入银 ${ECONOMY.shopIncome.join('–')} 两，并代售门中出产`, btn(`${num(ECONOMY.shopCost)} 两`, 'shop', {}, 'outline', '', place.shops >= SHOP_LIMIT))}
+        </div>
       </section>
-      <section class="panel building-panel">${panelTitle('建筑管理', tag(`${place.buildings.length} 座`))}
-        <div class="building-switch" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>
-        <div class="building-detail"><div><h3>${esc(kind.name)} ${tag(`${picked.level}级`)}</h3><p>${esc(kind.does)} · 占地 ${kind.cells} 格</p></div>${picked.level < kind.max ? btn(`升至${picked.level + 1}级（${num(cost)}两）`, 'upgrade', { index: ui.building }, 'outline') : tag('已满级', 'positive')}</div>
-        ${picked.kind === 'hall' || picked.kind === 'gate' ? '' : `<div class="stock-line button-group"><span>位置</span><select data-change="plot">${options([['', '由管事安排'], ...Array.from({ length: PLOT_COUNT }, (_, i) => [i, `第 ${i + 1} 块地（${i % 2 ? '东' : '西'}侧，离中路${['近', '中', '远'][Math.floor((i % 6) / 2)]}）`])], picked.plot ?? '')}</select></div>`}
+      <section class="panel">${panelTitle('门派事务', '<span class="caption">每旬结算</span>')}
+        <div class="stat-grid"><div><span>全派薪俸</span><b>${row.wages}<small> 两</small></b></div><div><span>商路进项</span><b>${row.trade}<small> 两</small></b></div><div><span>上旬售货</span><b>${num(books().sold?.goods ?? 0)}<small> 两</small></b></div><div><span>朝廷关系</span><b>${Math.round(books().court)}</b></div></div>
+        <div class="stock-line">库存　${RESOURCES.map((key) => `${RESOURCE_NAMES[key]} ${Math.round(books().res[key])}`).join(' · ')}</div>
+        <div class="affairs">
+          ${affair('门规', '全派上下一体遵行', `<select data-change="rule">${options(Object.entries(HOUSE_RULES).map(([id, rule]) => [id, `${rule.name}：${rule.does}`]), books().rule ?? 'plain')}</select>`)}
+          ${affair('职位', '总管、教头、护法各司其职', btn('任命', 'sheet', { kind: 'offices' }, 'outline'))}
+          ${affair('丹房', '炼药、服药', btn('入内', 'sheet', { kind: 'pills' }, 'outline'))}
+          ${affair('布施', `散银 ${num(ECONOMY.donation)} 两，威望 +${ECONOMY.donationRenown}`, btn('布施', 'donate', {}, 'outline'))}
+        </div>
       </section>
     </div>`;
 }
+
+/** One line of things to be done: what it is, a word about it, and the control that does it. */
+const affair = (name, about, control) => `<div class="affair"><div><b>${esc(name)}</b><small>${esc(about)}</small></div>${control}</div>`;
 
 /** One line on how a stronghold is doing. */
 function b_status(place, here) {
@@ -893,6 +917,8 @@ function enter(next, text = '') {
   world = next;
   // Someone is watching this world, so its events wait for an answer.
   world.options.interactive = true;
+  // A world from before there was a list of matters in hand begins one now.
+  if (!world.goals) startGoals(world);
   Object.assign(ui, { page: 'seat', sheet: null, place: null, building: 0, person: null, mapPlace: null, fight: null, lastFight: null, speed: 0, notice: '' });
   ui.batch.clear();
   toast(text);
@@ -1064,6 +1090,19 @@ const actions = {
       return picture.realm.march(from, data.place, colorOf(me()), () => ((ui.marching = false), march(data.place), render()));
     }
     march(data.place);
+  },
+  'goal-go'() {
+    const go = goalView(world)?.go;
+    if (!go) return;
+    actions.page({ page: go.page });
+    if (go.sheet) ui.sheet = { kind: go.sheet };
+  },
+  'goal-claim'() {
+    const result = claimGoal(world);
+    if (!result.ok) return toast(result.why);
+    const next = goalView(world);
+    toast(`「${result.title}」已成。`);
+    voice.say(`${result.title}，已成。${next?.last ? '' : '下一件：' + next.title + '。'}`);
   },
   shop: () => say(openShop(world, me(), ui.place), '店铺开张了。'),
   donate: () => say(donate(world, me()), '银两散出，本派声名更著。'),

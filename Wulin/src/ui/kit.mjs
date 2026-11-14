@@ -58,7 +58,7 @@ export const meter = (share, css = '', title = '进度') => {
 export const panelTitle = (title, extra = '') => `<div class="panel-title"><h2>${esc(title)}</h2>${extra}</div>`;
 
 export const screenHead = (trail, title, about, actions = '') =>
-  `<header class="screen-head"><div><div class="breadcrumb">武林天下 ${icon('arrow')} ${esc(trail)}</div><h1>${esc(title)}</h1><p>${esc(about)}</p></div><div class="screen-actions">${actions}</div></header>`;
+  `<header class="screen-head"><div><h1>${esc(title)}</h1><p>${esc(about)}</p></div><div class="screen-actions">${actions}</div></header>`;
 
 const NUMBER = new Intl.NumberFormat('zh-CN');
 export const num = (value) => NUMBER.format(Math.round(value));

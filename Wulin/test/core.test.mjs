@@ -512,3 +512,26 @@ test('voice: each speaker has a tone of their own, and silence where the device 
   assert.equal(createVoice(storage, { getVoices: () => [{ lang: 'en-US', name: 'Sam' }] }).supported, false);
   delete globalThis.SpeechSynthesisUtterance;
 });
+
+test('goals: matters come one at a time, each paying out once it is done', async () => {
+  const { GOALS, claimGoal, goalView, startGoals } = await import('../src/core/goals.mjs');
+  const world = createWorld({ seed: 3, playerSect: 'huashan' });
+  startGoals(world);
+  let view = goalView(world);
+  assert.equal(view.id, 'time');
+  assert.equal(view.done, false);
+  assert.equal(claimGoal(world).ok, false);
+  for (let i = 0; i < 10; i++) advanceDay(world);
+  const silver = world.sects.huashan.silver;
+  assert.equal(goalView(world).done, true);
+  assert.equal(claimGoal(world).ok, true);
+  assert.equal(world.sects.huashan.silver, silver + 200);
+  assert.equal(goalView(world).id, 'recruit');
+  // Building is counted from when it is asked for, not from the start of the game.
+  world.goals.index = GOALS.findIndex((goal) => goal.id === 'build');
+  assert.equal(goalView(world).done, false);
+  world.places.huashan.buildings[0].level += 1;
+  assert.equal(goalView(world).done, true);
+  world.goals.index = GOALS.length;
+  assert.equal(goalView(world).last, true);
+});

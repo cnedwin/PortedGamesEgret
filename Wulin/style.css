@@ -80,3 +80,43 @@
 .map-panel.is-model .scene-bottom { justify-content: flex-start; }
 @media (max-width: 575px) { .map-panel.is-model .map-label small { display: none; } .realm-tag small { display: none; } }
 .stat-grid { grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); }
+
+/* ---- the matter in hand, above every screen ---- */
+.goal { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 14px; margin-top: 14px; padding: 10px 14px; border: 1px solid #cdbd9c; border-left: 4px solid #8b3a2f; border-radius: var(--radius); background: linear-gradient(90deg, #f3e7cb, #f9f2e2 60%); }
+.goal.is-done { border-left-color: #2f5a48; background: linear-gradient(90deg, #dfe9d6, #f9f2e2 70%); }
+.goal-mark { display: grid; justify-items: center; min-width: 46px; color: #8b3a2f; }
+.goal.is-done .goal-mark, .goal.is-last .goal-mark { color: #2f5a48; }
+.goal-mark small { font-size: 10px; letter-spacing: .2em; }
+.goal-mark b { font: 700 20px Georgia, var(--serif); }
+.goal-mark i { font: 500 11px var(--sans); color: var(--muted); font-style: normal; }
+.goal-copy { display: grid; gap: 2px; min-width: 0; }
+.goal-copy b { font: 700 17px var(--serif); letter-spacing: .06em; }
+.goal-copy span { color: var(--ink); font-size: 13px; }
+.goal-copy small { display: flex; align-items: center; gap: 4px; color: var(--muted); font-size: 11px; }
+.goal-copy small .icon { width: 12px; height: 12px; }
+.goal-side { display: flex; align-items: center; gap: 14px; }
+.goal-count { display: grid; gap: 4px; min-width: 96px; font-size: 11px; color: var(--muted); text-align: right; }
+@media (max-width: 760px) { .goal { grid-template-columns: auto minmax(0, 1fr); gap: 8px 10px; margin-top: 8px; padding: 8px 10px; } .goal-side { grid-column: 1 / -1; justify-content: space-between; } .goal-copy b { font-size: 15px; } .goal-copy span { font-size: 12px; } }
+
+/* ---- screens open with a line, not a page title ---- */
+.screen-head { min-height: 0; align-items: center; padding: 14px 0 12px; }
+.screen-head h1 { font-size: clamp(22px, 2.2vw, 30px); margin: 0 0 2px; }
+.screen-head p { font-size: 12px; }
+@media (max-width: 760px) { .screen-head { min-height: 0; padding: 9px 0 8px; } .screen-head h1 { font-size: 21px; } }
+
+/* ---- things to be done, one to a line ---- */
+.affairs { display: grid; padding: 4px 15px 12px; }
+.affair { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 9px 0; border-top: 1px solid #e3d6ba; }
+.affair > div { display: grid; gap: 1px; min-width: 0; }
+.affair b { font-size: 14px; }
+.affair small { color: var(--muted); font-size: 11px; }
+.affair select { max-width: min(46vw, 300px); }
+.affair .button { min-width: 84px; justify-content: center; }
+.stat-grid b.is-text { font: 700 16px var(--serif); }
+.text-link { display: inline-flex; align-items: center; gap: 4px; border: 0; background: none; color: var(--muted); font-size: 12px; cursor: pointer; }
+.text-link .icon { width: 12px; height: 12px; }
+.building-panel .building-detail { display: grid; gap: 10px; padding: 12px 15px; }
+.building-panel .form-row { padding: 0 15px 10px; }
+.building-hint { padding: 0 15px 12px; }
+.building-switch.is-folded { display: none; }
+.affair select { min-height: 37px; color: var(--ink); background: #fffaf0; border: 1px solid #cdbb97; border-radius: 4px; padding: 5px 9px; font: inherit; font-size: 13px; }
