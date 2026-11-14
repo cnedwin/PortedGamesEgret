@@ -2,10 +2,11 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>金庸群侠传 · 白鹭 Web Demo</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./jyx2/ui/world-navigation.css">
 </head>
 <body>
   <main>
@@ -52,6 +53,13 @@
         </section>
         <section id="battle-menu" class="battle-menu" aria-label="戰鬥選單" hidden></section>
       </div>
+      <section id="mobile-dialogue" class="mobile-dialogue" aria-label="劇情對話" hidden>
+        <img class="mobile-dialogue-portrait" alt="" hidden>
+        <div class="mobile-dialogue-copy">
+          <header><strong class="mobile-dialogue-speaker"></strong><span class="mobile-dialogue-page"></span></header>
+          <p aria-live="polite"></p>
+        </div>
+      </section>
       <section id="battle-controls" class="battle-controls" aria-label="戰鬥操作" hidden>
         <div class="battle-controls-phase" data-battle-controls-phase="active" hidden>
           <div class="battle-readout" aria-label="戰況">

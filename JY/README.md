@@ -18,6 +18,10 @@ Open the play page to launch the game automatically. The first launch downloads 
 
 The game uses Egret World3D and WebGL2. Movement, story events, combat, and saves share the same game state. The browser client lives in `web/`, the game rules in `src/`, and local launch and data tools in `tools/`.
 
+大地图上点地面或地标即可寻路。路线和终点会显示在画面上，点另一处可以改道。战斗中，手机点高亮格可预览移动路线、武学范围或暗器目标，再按「确定」执行。PC 可悬停预览移动、单击执行，武学和暗器点选后按 Enter 确认。
+
+Select terrain or a landmark on the world map to see your route and destination. Select another point to reroute. In combat, tap a highlighted tile to preview movement, a skill area, or a thrown-weapon target, then confirm. On PC, hover to preview movement and click to move. Select a skill or thrown-weapon target and press Enter to confirm.
+
 大地图的远景镜头使用随高度变化的雾效。
 
 The world map overview uses height-dependent haze.

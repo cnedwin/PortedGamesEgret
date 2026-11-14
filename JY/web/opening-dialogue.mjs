@@ -2,7 +2,7 @@ import { Bitmap, NineSliceBitmap, Sprite, createAssetRef, createAssetType, creat
 import { createTextField } from '@egret/engine/text';
 
 // KYS Talk uses forty width units per line and four lines per page.
-export function paginateDialogue(text) {
+export function paginateDialogue(text, lineSeparator = '\n') {
   const lines = [];
   let line = '';
   let units = 0;
@@ -19,7 +19,7 @@ export function paginateDialogue(text) {
 
   const pages = [];
   for (let index = 0; index < lines.length; index += 4) {
-    pages.push(lines.slice(index, index + 4).join('\n'));
+    pages.push(lines.slice(index, index + 4).join(lineSeparator));
   }
   return pages;
 }
@@ -69,7 +69,7 @@ async function createJyx2Skin(engine, owned, panel, scale, panelWidth, panelHeig
 }
 
 export function createOpeningDialogue({
-  engine, scope, cache, width, height, requestFrame, presentFrame, loadPortrait, speakerName, onPage, density = 1, bottomDocked,
+  engine, scope, cache, width, height, requestFrame, presentFrame, loadPortrait, speakerName, portraitUrl, onPage, density = 1, bottomDocked,
 }) {
   const owned = scope.use(engine.createScope());
   const panel = engine.stage.addChild(owned.use(new Sprite()));
@@ -104,14 +104,50 @@ export function createOpeningDialogue({
   panel.x = margin;
   panel.visible = false;
 
+  const dock = globalThis.document?.getElementById('mobile-dialogue');
+  // Keep the gameplay view's aspect ratio while giving dialogue its own space on portrait screens.
+  const portraitLayout = dock && globalThis.matchMedia?.('(max-width: 680px) and (orientation: portrait)');
+  const dockPortrait = dock?.querySelector('img');
+  const dockSpeaker = dock?.querySelector('.mobile-dialogue-speaker');
+  const dockCounter = dock?.querySelector('.mobile-dialogue-page');
+  const dockText = dock?.querySelector('p');
+  let dockPage;
   let portrait;
   let waiter;
   let active = false;
   let closed = false;
   const closedError = new DOMException('Dialogue closed', 'AbortError');
 
+  function closeDock() {
+    if (!dockPage) return;
+    dockPage = undefined;
+    dock.hidden = true;
+  }
+
+  function updateDock() {
+    dock.hidden = !dockPage || !portraitLayout.matches;
+    if (dock.hidden) return;
+    const { url, heading, counter, body } = dockPage;
+    dockPortrait.hidden = !url;
+    if (url && dockPortrait.getAttribute('src') !== url) dockPortrait.src = url;
+    dockSpeaker.textContent = heading;
+    dockCounter.textContent = counter;
+    dockText.textContent = body;
+  }
+
+  function resizeDialogue() {
+    if (!dockPage) return;
+    updateDock();
+    panel.visible = !portraitLayout.matches;
+    requestFrame();
+  }
+
+  portraitLayout?.addEventListener('change', resizeDialogue);
+
   function abortWait() {
     closed = true;
+    portraitLayout?.removeEventListener('change', resizeDialogue);
+    closeDock();
     const current = waiter;
     waiter = undefined;
     current?.reject(closedError);
@@ -242,17 +278,23 @@ export function createOpeningDialogue({
       }
       if (heading) await prepareLabel(name, heading, jyx2 ? 15 : 17, 22, jyx2 ? 400 : 700, jyx2 ? 0xffffff : 0xe9c78c);
       const pages = paginateDialogue(content);
+      const dockPages = portraitLayout && !item && paginateDialogue(content, '');
+      const url = dockPages && hasPortrait && portraitUrl?.(head);
       for (let index = 0; index < pages.length; index++) {
         const pageText = pages[index];
         await prepareLabel(text, pageText, textSize, textSize + (enhanced ? 5 : 8), 400, jyx2 ? 0xffffff : enhanced ? 0xf9ecd0 : 0xfff4dc);
         if (closed) throw closedError;
-        panel.visible = true;
+        panel.visible = !dockPages || !portraitLayout.matches;
         requestFrame();
         await presentFrame();
         if (closed) throw closedError;
         try {
           const skipped = await new Promise((resolve, reject) => {
             waiter = { resolve, reject };
+            if (dockPages) {
+              dockPage = { url, heading: heading ?? '', counter: pages.length > 1 ? `${index + 1}/${pages.length}` : '', body: dockPages[index] };
+              updateDock();
+            }
             onPage?.({ text: pageText, head, style, voice, page: index + 1, pages: pages.length });
           });
           if (skipped) break;
@@ -262,6 +304,7 @@ export function createOpeningDialogue({
       }
     } finally {
       active = false;
+      closeDock();
       if (!closed) {
         panel.visible = false;
         requestFrame();

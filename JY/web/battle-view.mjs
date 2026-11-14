@@ -226,33 +226,51 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
       return { x: Math.round((y + x) / 2), y: Math.round((y - x) / 2) };
     }
 
-    function drawGrid(state, cursor) {
+    function drawGrid(state, cursor, preview) {
       const ctx = gridContext;
       ctx.clearRect(0, 0, width, height);
       if (!state.canAct) return;
       const cells = state.selection?.cells ?? [];
       const rx = 18 * scale * root.scaleX, ry = 9 * scale * root.scaleY;
       const moving = state.selection?.type === 'move';
-      for (const { x, y } of cells.length ? cells : [state.turn]) {
+      function diamond({ x, y }, stroke, fill, lineWidth = 1) {
         const [px, py] = project(x, y);
         const sx = root.x + px * root.scaleX, sy = root.y + py * root.scaleY;
-        if (sx < -rx || sx > width + rx || sy < -ry || sy > height + ry) continue;
-        const selected = cursor?.x === x && cursor?.y === y;
+        if (sx < -rx || sx > width + rx || sy < -ry || sy > height + ry) return;
         ctx.beginPath();
         ctx.moveTo(sx, sy - ry + 1);
         ctx.lineTo(sx + rx - 2, sy);
         ctx.lineTo(sx, sy + ry - 1);
         ctx.lineTo(sx - rx + 2, sy);
         ctx.closePath();
-        ctx.lineWidth = selected ? 2 : 1;
-        ctx.strokeStyle = selected || !cells.length ? '#ffe1a3' : moving ? '#8bd5ca' : '#f5a17d';
-        ctx.fillStyle = selected ? '#ffdb9160' : moving ? '#4acdb826' : '#fa775333';
-        if (cells.length) ctx.fill();
+        ctx.lineWidth = lineWidth;
+        ctx.strokeStyle = stroke;
+        if (fill) {
+          ctx.fillStyle = fill;
+          ctx.fill();
+        }
+        ctx.stroke();
+      }
+      if (cells.length) {
+        for (const cell of cells) diamond(cell, moving ? '#8bd5ca' : '#f5a17d', moving ? '#4acdb826' : '#fa775333');
+      } else diamond(state.turn, '#ffe1a3');
+      if (!preview) return;
+      for (const cell of preview.path ?? []) diamond(cell, '#c9fff1', '#49d9bc88', 2);
+      for (const cell of preview.cells ?? []) diamond(cell, '#ffd8a4', '#ee7d5480', 2);
+      diamond(cursor, '#fff0be', '#ffdb9170', 3);
+      for (const target of preview.targets ?? []) {
+        const [px, py] = project(target.x, target.y);
+        ctx.beginPath();
+        ctx.arc(root.x + px * root.scaleX, root.y + py * root.scaleY, Math.max(3, ry * .32), 0, 2 * Math.PI);
+        ctx.fillStyle = target.side === state.turn.side ? '#c9fff1' : '#ffad85';
+        ctx.fill();
+        ctx.strokeStyle = '#302119';
+        ctx.lineWidth = 2;
         ctx.stroke();
       }
     }
 
-    function draw(state, cursor) {
+    function draw(state, cursor, preview) {
       const { focus, closeUp, shakeX, shakeY, swordLight, swordLightColor, texts, blood } = state.presentation;
       const zoom = state.presentation.zoom * (closeUp ? 1 : encounterZoom);
       const [cameraX, cameraY] = project(focus.x, focus.y);
@@ -333,7 +351,7 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
         flash.y = height / 2 - flash.naturalHeight * flash.scaleY / 2 - 40;
       }
       drawNumbers(texts, zoom);
-      drawGrid(state, cursor);
+      drawGrid(state, cursor, preview);
     }
 
     return { draw, tileAt, close() { grid.hidden = true; scope.dispose(); art.clear(); } };

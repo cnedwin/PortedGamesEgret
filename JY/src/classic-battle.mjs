@@ -8,6 +8,9 @@ const supportActions = {
   detox: { stat: 'detoxification', minimum: 30, cost: 5, effectId: 36, allied: true },
   medicine: { stat: 'medicine', minimum: 10, cost: 5, effectId: 0, allied: true },
 };
+const moveStamina = 2;
+const magicStamina = 3;
+const dartStamina = 5;
 const bloodFrames = [13, 11, 14, 12, 10];
 const frameMs = 1000 / 60;
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
@@ -216,6 +219,17 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     return [target];
   }
 
+  function magicArea(actor, target, magic, level) {
+    const cells = magicEffects(actor, target, magic, level);
+    const area = new Set(cells.map(cell => indexOf(cell.x, cell.y)));
+    const targets = roles.filter(role => active(role) && role.side !== actor.side && area.has(indexOf(role.x, role.y)));
+    return { cells, targets };
+  }
+
+  function recipientAt(actor, target, allied) {
+    return roles.find(role => active(role) && (role.side === actor.side) === allied && sameCell(role, target));
+  }
+
   function rangeCells(origin, stat) {
     const range = actionRange(stat);
     return cellsIn(origin.x, origin.y, range, cell => distance(origin, cell) <= range);
@@ -344,12 +358,19 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     animation = { actor, duration, elapsed: 0, ...options };
   }
 
-  function performMove(actor, destination, reachable) {
+  function pathTo(destination, reachable) {
     const path = [];
-    for (let cursor = reachable.get(indexOf(destination.x, destination.y)); cursor?.previous; cursor = cursor.previous) path.unshift(cursor);
+    for (let cell = reachable.get(indexOf(destination.x, destination.y)); cell?.previous; cell = cell.previous) {
+      path.push({ x: cell.x, y: cell.y });
+    }
+    return path.reverse();
+  }
+
+  function performMove(actor, destination, reachable) {
+    const path = pathTo(destination, reachable);
     if (!path.length) return false;
     actor.moved = true;
-    actor.physicalPower = Math.max(0, actor.physicalPower - 2);
+    actor.physicalPower = Math.max(0, actor.physicalPower - moveStamina);
     actor.expGot++;
     actor.action = 'walk';
     actor.walkFrames = 0;
@@ -377,9 +398,7 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
   function performMagic(actor, target, id) {
     const magic = magicAt(id);
     const learned = actor.learnedMagics.find(skill => skill.id === id);
-    const cells = magicEffects(actor, target, magic, rank(learned));
-    const area = new Set(cells.map(cell => indexOf(cell.x, cell.y)));
-    const opponents = roles.filter(role => active(role) && role.side !== actor.side && area.has(indexOf(role.x, role.y)));
+    const { cells, targets: opponents } = magicArea(actor, target, magic, rank(learned));
     const details = { magicId: id, effectId: magic.effectId, soundId: magic.soundId };
     const strikes = [];
     const count = actor.attackTwice > 0 ? 2 : 1;
@@ -387,7 +406,7 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     face(actor, target.x, target.y);
     // Native combat computes both strikes against pre-animation HP, then removes knockouts between animations.
     for (let i = 0; i < count; i++) {
-      actor.physicalPower = Math.max(0, actor.physicalPower - 3);
+      actor.physicalPower = Math.max(0, actor.physicalPower - magicStamina);
       actor.mp = Math.max(0, actor.mp - manaCost(magic, rank(learned)));
       const impacts = [];
       for (const opponent of opponents) {
@@ -443,7 +462,7 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     animate(actor, 420, {
       impact() {
         markEffect(actor, [target], { effectId: action.effectId });
-        const recipient = roles.find(role => active(role) && (role.side === actor.side) === action.allied && sameCell(role, target));
+        const recipient = recipientAt(actor, target, action.allied);
         if (!recipient) return;
         let amount;
         if (type === 'medicine') {
@@ -475,13 +494,13 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     }
     const details = { itemId: id, effectId: item.hiddenWeaponEffectId };
     face(actor, target.x, target.y);
-    actor.physicalPower = Math.max(0, actor.physicalPower - 5);
+    actor.physicalPower = Math.max(0, actor.physicalPower - dartStamina);
     actor.action = 'attack';
     actor.actType = 0;
     animate(actor, 450, {
       impact() {
         markEffect(actor, [target], details);
-        const opponent = roles.find(role => active(role) && role.side !== actor.side && sameCell(role, target));
+        const opponent = recipientAt(actor, target, false);
         if (opponent) {
           const hurt = dartDamage(actor, opponent, item);
           actor.expGot += hurt;
@@ -542,10 +561,38 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     return true;
   }
 
-  function selectCell(x, y) {
-    const selection = state.selection;
+  function isSelectable(target) {
+    return state.canAct && state.selection?.cells.some(cell => sameCell(cell, target));
+  }
+
+  function previewCell(x, y) {
     const target = { x, y };
-    if (!state.canAct || !selection?.cells.some(cell => sameCell(cell, target))) return false;
+    if (!isSelectable(target)) return null;
+    const actor = state.turn;
+    const { type, id } = state.selection;
+    if (type === 'move') return { type, path: pathTo(target, selectedPath), stamina: moveStamina };
+    if (type === 'magic') {
+      const magic = magicAt(id);
+      const level = rank(actor.learnedMagics.find(skill => skill.id === id));
+      // The second strike can use a different MP cost if the first raises the skill rank.
+      return { type, name: magic.name, ...magicArea(actor, target, magic, level), mp: manaCost(magic, level),
+        stamina: magicStamina, strikes: actor.attackTwice > 0 ? 2 : 1 };
+    }
+    const action = supportActions[type];
+    const recipient = type === 'status' ? roles.find(role => active(role) && sameCell(role, target))
+      : recipientAt(actor, target, action?.allied ?? false);
+    const targets = recipient ? [recipient] : [];
+    if (type === 'status') return { type, targets };
+    if (type === 'dart') {
+      return { type, name: itemAt(id).name, cells: [target], targets, stamina: dartStamina, stock: stock(actor, id) };
+    }
+    return { type, cells: [target], targets, stamina: action.cost };
+  }
+
+  function selectCell(x, y) {
+    const target = { x, y };
+    if (!isSelectable(target)) return false;
+    const selection = state.selection;
     const actor = state.turn;
     const path = selectedPath;
     cancelSelection();
@@ -749,7 +796,7 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
   else finish(Boolean(allies.length));
 
   return {
-    state, listActions: actions, listMagics: magicOptions, listItems, selectAction, selectCell, cancelSelection,
+    state, listActions: actions, listMagics: magicOptions, listItems, selectAction, selectCell, previewCell, cancelSelection,
     selectMagic, canUseItem, useItem, setAuto, step,
     toggleAutomatic: () => setAuto(!state.auto),
     moveTo: (x, y) => (state.selection?.type === 'move' || selectAction('move')) && selectCell(x, y),

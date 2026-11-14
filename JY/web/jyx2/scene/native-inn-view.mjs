@@ -231,6 +231,7 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
   const transform = sceneMatrix(spec.layout);
   const camera = createPerspectiveCamera3D({ fov: reference?.fov ?? spec.camera.verticalFov, aspect: width / height,
     near: spec.camera.near ?? .1, far: Math.min(spec.camera.far ?? 120, 140) });
+  const wideFov = camera.fov;
   canvas.dataset.fov = String(camera.fov);
   const correction = orientCamera(camera, spec, transform);
   const customProjection = 'customProjection' in camera ? matrix() : undefined;
@@ -336,8 +337,14 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
   }
 
   function resize() {
-    const w = viewport.clientWidth >= 760 ? 1920 : 1280;
-    const h = Math.round(w * (overlay.clientHeight && overlay.clientWidth ? overlay.clientHeight / overlay.clientWidth : height / width));
+    const viewportAspect = overlay.clientHeight && overlay.clientWidth ? overlay.clientWidth / overlay.clientHeight : width / height;
+    const wideWidth = viewport.clientWidth >= 760 ? 1920 : 1280;
+    // Preserve the landscape pixel budget when the portrait view gets taller.
+    const tall = viewportAspect < 1.6;
+    const pixelScale = tall ? Math.sqrt(Math.min(1, viewportAspect / (width / height))) : 1;
+    const widthLimit = pixelScale < 1 ? overlay.clientWidth * (globalThis.devicePixelRatio || 1) : wideWidth;
+    const w = Math.max(1, Math.round(Math.min(wideWidth * pixelScale, widthLimit)));
+    const h = Math.max(1, Math.round(w / viewportAspect));
     const size = w + 'x' + h;
     if (previousSize === size) return;
     previousSize = size;
@@ -345,6 +352,8 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
     const aspect = w / h;
     if (aspect !== previousAspect) {
       previousAspect = camera.aspect = aspect;
+      if (tall) camera.fov = 2 * Math.atan(Math.tan(wideFov * Math.PI / 360) * (width / height) / aspect) * 180 / Math.PI;
+      else camera.fov = wideFov;
       if (customProjection) camera.customProjection = undefined;
       camera.updateProjectionMatrix();
       if (customProjection) {

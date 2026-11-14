@@ -20,6 +20,7 @@ import { applyScenePatch, playGameEvent } from './game-events.mjs';
 import { showWorldMenu } from './world-menu.mjs';
 import { attachGamepadInput } from './gamepad-input.mjs';
 import { nativeSaveRequest, pickNativeSave, readPreferences, returnToTitle, showTitle } from './jyx2/ui/game-shell.mjs';
+import { createWorldNavigation } from './jyx2/ui/world-navigation.mjs';
 import { findTilePath, screenToTile } from './kys-navigation.mjs';
 import { createSceneAtmosphere } from './scene-atmosphere.mjs';
 import { hasJyx2Scene, loadJyx2Scene } from './jyx2/scene/home.mjs';
@@ -567,10 +568,23 @@ async function openMap(game, destination) {
   let forcedPlayerPicture;
   const openingPoses = new Map();
   const listeners = new AbortController();
+  const worldNavigation = isWorld && createWorldNavigation(canvas.parentElement, {
+    signal: listeners.signal,
+    cancel() {
+      cancelWorldRoute();
+      canvas.focus({ preventScroll: true });
+    },
+  });
+  const projectWorldTile = (x, y) => {
+    if (map3dView) return map3dView.projectTile?.(x, y);
+    const [px, py] = project(x, y);
+    return [(px + root.x) / width, (py + root.y) / height];
+  };
   attachBattleControls(document.querySelector('#battle-controls'), canvas, {
     signal: listeners.signal,
     getState: () => battle?.model.state,
     getModel: () => battle?.model,
+    getPreview: () => battle?.preview,
     press(code) { if (battle && !menu.active) battleKeyDown(code, false); },
   });
   const frameWaiters = [];
@@ -632,6 +646,7 @@ async function openMap(game, destination) {
     density: wantsMap3d ? 3 : 1,
     bottomDocked: () => Boolean(map3dView),
     loadPortrait, speakerName: head => speakerNames.get(head),
+    portraitUrl: id => `/art/${portraitGroup}/${id}.png`,
     onPage({ text, head, style, voice, page, pages }) {
       Object.assign(canvas.dataset, { talkText: text, talkHead: head, talkStyle: style, talkVoice: voice, talkPage: page, talkPages: pages });
       if (openingActive) canvas.dataset.opening = 'talk';
@@ -858,6 +873,7 @@ async function openMap(game, destination) {
       for (const audio of soundPlayers.values()) audio.pause();
       battle = undefined;
       delete canvas.dataset.battleCommandMode;
+      delete canvas.dataset.battlePreview;
       view?.close();
       arena?.dispose();
       ground.visible = objects.visible = !map3dView;
@@ -1282,6 +1298,7 @@ async function openMap(game, destination) {
     worldMenuActive = true;
     held = undefined;
     pointerWalk = undefined;
+    if (worldNavigation) worldNavigation.hide();
     menuToggle.disabled = true;
     updateExploreControls();
     try {
@@ -1385,6 +1402,18 @@ async function openMap(game, destination) {
     { label: '用毒', value: 'poison' },
   ];
 
+  function setBattleCursor(cell, preview = true) {
+    battle.cursor = cell;
+    battle.preview = cell && preview ? battle.model.previewCell(cell.x, cell.y) : null;
+    if (battle.preview) canvas.dataset.battlePreview = battle.preview.type;
+    else delete canvas.dataset.battlePreview;
+    battle.drawnFrame = undefined;
+  }
+
+  function needsBattleConfirmation(type, touch) {
+    return type === 'magic' || type === 'dart' || touch && type === 'move';
+  }
+
   function syncBattleCursor() {
     const { state } = battle.model;
     const selection = state.selection;
@@ -1393,11 +1422,11 @@ async function openMap(game, destination) {
       const cells = selection?.cells ?? [];
       const enemies = new Set(state.roles.filter(role => role.side !== state.turn?.side && !role.dead)
         .map(role => role.x + ',' + role.y));
-      battle.cursor = (selection?.type === 'magic' || selection?.type === 'dart' || selection?.type === 'poison')
+      const cell = (selection?.type === 'magic' || selection?.type === 'dart' || selection?.type === 'poison')
         ? cells.find(cell => enemies.has(cell.x + ',' + cell.y)) ?? cells[0] : cells[0];
+      setBattleCursor(cell, !touchExploration.matches || !needsBattleConfirmation(selection?.type, true));
       if (selection) canvas.dataset.battleCommandMode = selection.type;
       else delete canvas.dataset.battleCommandMode;
-      battle.drawnFrame = undefined;
     }
   }
 
@@ -1420,16 +1449,13 @@ async function openMap(game, destination) {
         distance = score;
       }
     }
-    if (best) {
-      battle.cursor = best;
-      battle.drawnFrame = undefined;
-    }
+    if (best) setBattleCursor(best);
   }
 
   function chooseBattleCell(cell) {
     const { model } = battle;
     const selection = model.state.selection;
-    if (!cell || !selection || !model.selectCell(cell.x, cell.y)) return;
+    if (!cell || !selection || canvas.dataset.battlePreview === 'invalid' || !model.selectCell(cell.x, cell.y)) return;
     syncBattleCursor();
     if (selection.type === 'status' && model.state.inspected) {
       void showCombatantStatus(model.state.inspected).catch(error => { if (!listeners.signal.aborted) fail(error); });
@@ -1448,13 +1474,28 @@ async function openMap(game, destination) {
     }
   }
 
-  function pickBattleCell(event) {
-    if (event.button !== 0 || menu.active || canvas.dataset.battlePrompt) return;
+  function battleCellAt(event, selection) {
     const bounds = canvas.getBoundingClientRect();
     const tile = battle.view.tileAt((event.clientX - bounds.left) * width / bounds.width,
       (event.clientY - bounds.top) * height / bounds.height);
+    return selection.cells.find(cell => cell.x === tile.x && cell.y === tile.y);
+  }
+
+  function pickBattleCell(event) {
+    if (event.button !== 0 || menu.active || canvas.dataset.battlePrompt) return;
+    const { state } = battle.model;
+    if (!state.canAct || !state.selection) return;
+    const selectable = battleCellAt(event, state.selection);
     canvas.focus({ preventScroll: true });
-    chooseBattleCell(tile);
+    if (!selectable) {
+      setBattleCursor(battle.cursor, false);
+      canvas.dataset.battlePreview = 'invalid';
+      return;
+    }
+    setBattleCursor(selectable);
+    const touch = event.pointerType === 'touch' || touchExploration.matches;
+    if (needsBattleConfirmation(state.selection.type, touch)) return;
+    chooseBattleCell(selectable);
   }
 
   async function chooseSupport(model) {
@@ -1510,7 +1551,7 @@ async function openMap(game, destination) {
       if (!state.selection) {
         model.selectAction('move');
         syncBattleCursor();
-        if (state.selection) battle.cursor = { x: state.turn.x, y: state.turn.y };
+        if (state.selection) setBattleCursor({ x: state.turn.x, y: state.turn.y }, false);
       }
       shiftBattleCursor(code);
     } else if (isConfirm(code)) chooseBattleCell(battle.cursor);
@@ -1553,6 +1594,12 @@ async function openMap(game, destination) {
     switchTo({ id: entrance.id, x: entrance.entrance[0], y: entrance.entrance[1], facing });
   }
 
+  function cancelWorldRoute() {
+    const name = pointerWalk?.destination?.name;
+    pointerWalk = undefined;
+    if (name) worldNavigation.show('cancelled', name, '已取消尋路');
+  }
+
   function clickToWalk(event) {
     canvas.focus({ preventScroll: true });
     if (event.button !== 0 || closing || battle || eventEnded) return;
@@ -1566,7 +1613,13 @@ async function openMap(game, destination) {
     const hit = map3dView ? map3dView.pick(u, v) : screenToTile(u * width, v * height, root.x, root.y, scale);
     const exit = hit?.exit && scene.exits?.[0];
     const target = exit ? { x: exit[0], y: exit[1] } : hit;
-    if (!target || !fits(scene, target.x, target.y)) return;
+    if (!target || !fits(scene, target.x, target.y)) {
+      if (worldNavigation) {
+        held = pointerWalk = undefined;
+        worldNavigation.show('unreachable', '無法到達', '請點選可通行的地面或地標');
+      }
+      return;
+    }
     held = undefined;
     pointerWalk = undefined;
     const npc = eventAt(target.x, target.y);
@@ -1575,18 +1628,36 @@ async function openMap(game, destination) {
     const goals = canTalk || entrance ? facingOffsets.map(([dx, dy]) => ({ x: target.x - dx, y: target.y - dy })) : [target];
     const start = move ?? { x, y };
     const path = findTilePath(start, goals, canWalk);
-    if (!path) return;
-    pointerWalk = { path, target: canTalk || entrance ? target : undefined, entrance };
+    const destination = isWorld ? { ...target, name: entrance?.name ?? '地圖落點' } : undefined;
+    if (!path) {
+      if (destination) worldNavigation.show('unreachable', destination.name, '找不到可通行的路線，請改點附近地面');
+      return;
+    }
+    pointerWalk = { path, target: canTalk || entrance ? target : undefined, entrance, destination };
+    if (destination) worldNavigation.show('walking', destination.name, '沿路前往 · 點地面可改道');
+  }
+
+  function drawWorldRoute(x, y) {
+    const route = pointerWalk;
+    if (!route?.destination) return;
+    const steps = move ? [move, ...route.path.slice(0, 13)] : route.path;
+    worldNavigation.draw(projectWorldTile, { x, y }, steps, route.destination);
   }
 
   function advancePointerWalk(now) {
     const step = pointerWalk.path.shift();
     if (step) {
+      if (pointerWalk.destination && !canWalk(step.x, step.y)) {
+        worldNavigation.show('unreachable', pointerWalk.destination.name, '路線已受阻，請重新選擇目的地');
+        pointerWalk = undefined;
+        return;
+      }
       tryMove(facingKeys[step.facing], now);
       return;
     }
-    const { target, entrance } = pointerWalk;
+    const { target, entrance, destination } = pointerWalk;
     pointerWalk = undefined;
+    if (destination) worldNavigation.show('arrived', destination.name, '已到達');
     if (!target) return;
     const direction = facingOffsets.findIndex(([dx, dy]) => x + dx === target.x && y + dy === target.y);
     if (direction < 0) return;
@@ -1739,14 +1810,16 @@ async function openMap(game, destination) {
         battleAuto: state.auto, battleControlled: player.id, battleTurnSide: player.side });
       if (state.result === null && !canvas.dataset.battlePrompt) {
         const nextHint = state.selection
-          ? (touchExploration.matches ? '點高亮格直接選取，或用方向鍵選格後點「確定」' : '點選高亮格子 · 方向鍵選格 · Enter 確認 · Esc 取消')
+          ? (canvas.dataset.battlePreview === 'invalid' ? '這格不在可選範圍 · 請選高亮格'
+            : touchExploration.matches ? '點高亮格選擇 · 預覽後點「確定」'
+              : '點選高亮格子 · 方向鍵選格 · Enter 確認 · Esc 取消')
           : state.canAct ? battleHint()
             : state.auto ? (touchExploration.matches ? '自動戰鬥中 · 再點「自動」恢復手動' : '自動戰鬥中 · Tab 恢復手動')
               : '等待行動完成';
         if (hint.textContent !== nextHint) hint.textContent = nextHint;
       }
       if (host.getStatus().pendingFrames === 0 && battle.drawnFrame !== state.frame) {
-        view.draw(state, battle.cursor);
+        view.draw(state, battle.cursor, battle.preview);
         submitFrame();
         Object.assign(canvas.dataset, { battleZoom: state.presentation.zoom, battleEffectCount: state.effects.length,
           battleFreeze: state.presentation.freeze, battleBloodCount: state.presentation.blood.length });
@@ -1787,11 +1860,13 @@ async function openMap(game, destination) {
         pendingScene3d = undefined;
         const stageEvent = openingActive ? openingEventId : recruitActive ? Number(canvas.dataset.eventId) : undefined;
         const props = map3dView.propSlots.flatMap(slot => displayedEvents[slot] ? [{ slot, ...displayedEvents[slot] }] : []);
-        map3dView.update({ x: tx, y: ty, direction: facing, moving: walking, hidden: hiddenPlayer,
+        const updated = map3dView.update({ x: tx, y: ty, direction: facing, moving: walking, hidden: hiddenPlayer,
           people, props, opacity: root.alpha, elapsedMs: now, cameraFocus: cameraOverride,
           stageEvent, heroAnimation: openingPoses.get(-1), sailing, sceneEvents: displayedEvents,
           animationTick, animateEvents: !openingActive && !trainerActive && !recruitActive && !eventActive,
           heroPicture: forcedPlayerPicture, force: Boolean(refresh || frameWaiters.length) });
+        // Project against the camera used for the displayed World3D frame.
+        if (updated) drawWorldRoute(tx, ty);
         if (dirty && host.getStatus().pendingFrames === 0) submitFrame();
         return;
       } catch (error) {
@@ -1822,6 +1897,7 @@ async function openMap(game, destination) {
     const interpolated = move ? elevation + (elevationAt(move.x, move.y) - elevation) * progress : elevation;
     root.x = Math.round(width / 2 - camera[0]);
     root.y = Math.round(height / 2 - camera[1]);
+    drawWorldRoute(tx, ty);
     const frameIndex = move || held ? stride : 0;
     const actorId = sailing ? 3715 + facing * 4 + frameIndex % 4 : 2501 + facing * 7 + frameIndex;
     player.id = forcedPlayerPicture ?? heroArt ?? (textures.has(actorId) ? actorId : 2501 + facing * 7);
@@ -1941,7 +2017,7 @@ async function openMap(game, destination) {
     if (!moves.has(code)) return;
     consume();
     if (repeat) return;
-    pointerWalk = undefined;
+    cancelWorldRoute();
     held = code;
     tryMove(code, performance.now());
   }
@@ -2005,6 +2081,13 @@ async function openMap(game, destination) {
     if (!isConfirm(event.code) && event.key !== 'Enter' && event.key !== ' ') return;
     event.preventDefault();
     if (!event.repeat) continueBattle();
+  }, { signal: listeners.signal });
+  canvas.addEventListener('pointermove', event => {
+    const state = battle?.model.state;
+    if (event.pointerType !== 'mouse' || !state?.canAct || state.selection?.type !== 'move'
+      || menu.active || canvas.dataset.battlePrompt) return;
+    const cell = battleCellAt(event, state.selection);
+    if (cell && (cell !== battle.cursor || !battle.preview)) setBattleCursor(cell);
   }, { signal: listeners.signal });
   canvas.addEventListener('click', event => {
     if (battle) pickBattleCell(event);
