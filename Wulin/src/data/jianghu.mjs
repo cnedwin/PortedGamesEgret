@@ -186,3 +186,23 @@ export const EVENTS = [
     { label: '坚壁清野', hint: '银 −150，粮 −20', gives: { silver: -150, grain: -20 }, text: '海寇抢走了来不及运走的粮货。' }] },
 ];
 export const EVENT_BY_ID = Object.fromEntries(EVENTS.map((event) => [event.id, event]));
+
+/**
+ * What a wanderer does in their first months, by talent: the scene when they
+ * first show what they can do, and what the sect gains if they are given a
+ * free hand (an effect as for events).
+ */
+export const TRIALS = {
+  teach: { text: '在演武场看了三日，忽然叫停晨课，说本派的桩功站错了二十年，要从头教起。', gives: { loyalty: 3, renown: 4 } },
+  heal: { text: '嫌医馆的药柜乱，把百十个抽屉全倒出来重排，又要添置一批没人听过的药材。', gives: { loyalty: 2, virtue: 8 } },
+  trade: { text: '拿着本派的账本看了一夜，天亮时说有三笔买卖亏得冤，想亲自下山去重谈。', gives: { silver: 220 } },
+  craft: { text: '把工坊里的炉子拆了，说风口开得不对，要照自己的法子重砌。', gives: { res: { iron: 30, wood: 30 }, renown: 3 } },
+  gather: { text: '带着两个杂役进山七日，回来时画了一张图，说后山还有三处没人动过的好地方。', gives: { res: { stone: 30, herb: 30, wood: 20 } } },
+  guard: { text: '绕着山门走了一圈，说有四处能摸上来，要调人手连夜设卡。', gives: { renown: 6, loyalty: 1 } },
+  vanguard: { text: '看过弟子对练后直摇头，要挑十个人跟自己进山，说不见血练不出胆。', gives: { renown: 8, wound: 0.1 } },
+  scout: { text: '下山转了半月，带回一本册子，方圆三百里有根骨的少年都记在上面。', gives: { applicant: 72 } },
+  sage: { text: '在藏经阁抄书时停了笔，说有一卷的注解从根上就错了，想聚众讲一次。', gives: { loyalty: 3, renown: 5 } },
+  steward: { text: '查了库房，说每月有一成的米面不知去向，要立一套出入的规矩。', gives: { grain: 20, silver: 80 } },
+  cheer: { text: '说山上太闷，想在中秋办一场灯会，请山下的乡亲都来。', gives: { loyalty: 4, virtue: 6, silver: -60 } },
+  court: { text: '说靖武司新来的主事是旧识，想备一份薄礼去走动走动。', gives: { court: 8, silver: -80 } },
+};

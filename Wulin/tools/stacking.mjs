@@ -53,4 +53,4 @@ console.log('attack +10%        ', rate(() => {}, stand(0.1)));
 console.log('attack +20%        ', rate(() => {}, stand(0.2)));
 console.log('attack +30%        ', rate(() => {}, stand(0.3)));
 console.log('defence +15%       ', rate(() => {}, stand(0, 0.15)));
-console.log('everything at once ', rate((people) => (gear(6)(people), relics(people), meridians(people)), stand(0.28, 0.1)));
+console.log('everything at once ', rate((people) => (gear(6)(people), relics(people), meridians(people)), stand(0.2, 0.1)));

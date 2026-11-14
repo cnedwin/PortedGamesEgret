@@ -172,38 +172,71 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
   body.setPosition(0, 0.92, 0);
   node.setScale(tall);
 
-  // Hips and the skirt of the robe, which hides the tops of the legs.
-  body.addChild(
-    model([
-      [TAPER, [0, -0.2, 0], [0.24 * w, 0.52, 0.2 * w], robe],
-      [ROD, [0, 0.07, 0], [0.19 * w, 0.07, 0.15 * w], trim],
-    ]),
-  );
+  // Hips and the skirt of the robe, which hides the tops of the legs: an outer skirt, a front panel
+  // over it, a broad sash with its knot and hanging ends, and a pendant for those of standing.
+  const sash = rank >= 4 ? 0x7a2f28 : rank >= 2 ? shade(robe, 0.5) : 0x4a4038;
+  const hipParts = [
+    [TAPER, [0, -0.2, 0], [0.24 * w, 0.52, 0.2 * w], robe],
+    [TAPER, [0, -0.44, 0], [0.275 * w, 0.06, 0.225 * w], dark],
+    [BOX, [0, -0.2, 0.19 * w], [0.15 * w, 0.46, 0.012], shade(robe, 1.18), [-0.09, 0, 0]],
+    [BOX, [0, -0.42, 0.205 * w], [0.15 * w, 0.03, 0.014], trim, [-0.09, 0, 0]],
+    [ROD, [0, 0.07, 0], [0.2 * w, 0.085, 0.16 * w], sash],
+    [BALL, [0.06 * w, 0.06, 0.155 * w], [0.035, 0.03, 0.02], sash],
+    [BOX, [0.05 * w, -0.08, 0.17 * w], [0.028, 0.24, 0.01], sash, [-0.06, 0, 0.1]],
+    [BOX, [0.085 * w, -0.06, 0.17 * w], [0.028, 0.2, 0.01], sash, [-0.06, 0, -0.14]],
+  ];
+  if (rank >= 2) hipParts.push([ROD, [-0.08 * w, -0.03, 0.17 * w], [0.004, 0.12, 0.004], 0xb08a2e], [BALL, [-0.08 * w, -0.11, 0.172 * w], [0.026, 0.032, 0.01], 0x8fc7a0], [SPIKE, [-0.08 * w, -0.19, 0.172 * w], [0.012, 0.09, 0.008], 0xc0282a, [Math.PI, 0, 0]]);
+  // Whoever fights with a blade carries its scabbard at the hip.
+  if (weapon === 'sword' || weapon === 'saber') hipParts.push([BOX, [0.2 * w, -0.12, -0.04], [0.03, 0.62, 0.05], 0x2c2420, [0.5, 0, 0.12]], [BOX, [0.2 * w, 0.13, 0.09], [0.034, 0.05, 0.054], 0xb08a2e, [0.5, 0, 0.12]]);
+  body.addChild(model(hipParts));
   body.addChild(chest);
   chest.setPosition(0, 0.1, 0);
-  chest.addChild(
-    model([
-      [TAPER, [0, 0.22, 0], [0.2 * w, 0.44, 0.14 * w], robe, [Math.PI, 0, 0]],
-      [BOX, [0, 0.27, 0.105 * w], [0.05, 0.3, 0.02], trim, [0, 0, 0.35]],
-      [BOX, [0, 0.27, 0.105 * w], [0.05, 0.3, 0.02], trim, [0, 0, -0.35]],
-      // A monk's sash runs from one shoulder to the opposite hip, front and back.
-      ...(monk ? [[BOX, [0, 0.24, 0.1 * w], [0.44 * w, 0.09, 0.03], 0xb9502a, [0, 0, 0.75]], [BOX, [0, 0.24, -0.1 * w], [0.44 * w, 0.09, 0.03], 0xb9502a, [0, 0, -0.75]]] : []),
-    ]),
-  );
+  const chestParts = [
+    [TAPER, [0, 0.22, 0], [0.2 * w, 0.44, 0.14 * w], robe, [Math.PI, 0, 0]],
+    // The robe crosses left over right, with the white of an inner collar showing at the neck.
+    [BOX, [0.03, 0.27, 0.105 * w], [0.055, 0.34, 0.02], trim, [0, 0, 0.38]],
+    [BOX, [-0.03, 0.27, 0.1 * w], [0.055, 0.34, 0.016], shade(trim, 0.85), [0, 0, -0.38]],
+    [ROD, [0, 0.455, 0], [0.075, 0.035, 0.07], WHITE],
+    [BALL, [0.2 * w, 0.41, 0], [0.085, 0.05, 0.085], robe],
+    [BALL, [-0.2 * w, 0.41, 0], [0.085, 0.05, 0.085], robe],
+    // A monk's sash runs from one shoulder to the opposite hip, front and back.
+    ...(monk ? [[BOX, [0, 0.24, 0.1 * w], [0.44 * w, 0.09, 0.03], 0xb9502a, [0, 0, 0.75]], [BOX, [0, 0.24, -0.1 * w], [0.44 * w, 0.09, 0.03], 0xb9502a, [0, 0, -0.75]], [ROD, [0, 0.4, 0.02], [0.13, 0.03, 0.11], 0x5a3a22]] : []),
+  ];
+  // Elders wear a sleeveless over-robe; the head of a sect a cloak that falls to the calves.
+  if (rank >= 4 && !monk) chestParts.push([BOX, [0.13 * w, 0.2, 0.09 * w], [0.07, 0.42, 0.02], dark], [BOX, [-0.13 * w, 0.2, 0.09 * w], [0.07, 0.42, 0.02], dark], [BOX, [0, 0.2, -0.125 * w], [0.36 * w, 0.44, 0.02], dark]);
+  if (rank >= 5) chestParts.push([BOX, [0, -0.12, -0.2 * w], [0.44 * w, 1.05, 0.02], shade(robe, 0.45), [0.13, 0, 0]], [BOX, [0, 0.4, -0.13 * w], [0.4 * w, 0.06, 0.06], 0xd9b04a]);
+  chest.addChild(model(chestParts));
   chest.addChild(head);
   head.setPosition(0, 0.5, 0);
   const headParts = [
-    [BALL, [0, 0.13, 0], [0.115, 0.13, 0.12], skin],
+    [BALL, [0, 0.13, 0], [0.112, 0.128, 0.118], skin],
+    [BALL, [0, 0.075, 0.02], [0.09, 0.085, 0.095], skin],
     [ROD, [0, 0, 0], [0.05, 0.08, 0.05], skin],
-    [BALL, [0.045, 0.14, 0.105], [0.016, 0.02, 0.01], HAIR],
-    [BALL, [-0.045, 0.14, 0.105], [0.016, 0.02, 0.01], HAIR],
+    // Eyes with brows over them, a nose, a mouth and ears.
+    [BALL, [0.045, 0.14, 0.105], [0.017, 0.016, 0.01], 0x1a1614],
+    [BALL, [-0.045, 0.14, 0.105], [0.017, 0.016, 0.01], 0x1a1614],
+    [BOX, [0.046, 0.168, 0.106], [0.04, 0.008, 0.01], hair, [0, 0, female ? 0.08 : -0.16]],
+    [BOX, [-0.046, 0.168, 0.106], [0.04, 0.008, 0.01], hair, [0, 0, female ? -0.08 : 0.16]],
+    [SPIKE, [0, 0.105, 0.118], [0.014, 0.045, 0.02], shade(skin, 0.93)],
+    [BOX, [0, 0.066, 0.108], [0.034, 0.007, 0.008], female ? 0xc4605a : shade(skin, 0.7)],
+    [BALL, [0.112, 0.125, 0], [0.014, 0.03, 0.022], skin],
+    [BALL, [-0.112, 0.125, 0], [0.014, 0.03, 0.022], skin],
   ];
   if (!monk) {
-    headParts.push([BALL, [0, 0.17, -0.02], [0.125, 0.115, 0.13], hair]);
-    if (female) headParts.push([BALL, [0, 0.02, -0.1], [0.09, 0.2, 0.06], hair], [BALL, [0, 0.31, -0.03], [0.05, 0.05, 0.05], hair], [ROD, [0, 0.31, -0.03], [0.008, 0.012, 0.16], 0xd9b04a, [0, 0, Math.PI / 2]]);
-    else headParts.push([BALL, [0, 0.3, -0.02], [0.045, 0.055, 0.045], hair], [ROD, [0, 0.27, -0.02], [0.03, 0.03, 0.03], trim]);
-    if (rank >= 4 && !female) headParts.push([SPIKE, [0, 0.0, 0.09], [0.05, 0.2, 0.03], 0xe4e4e4, [Math.PI, 0, 0]]);
-  }
+    // Hair over the crown and down behind the ears, with locks at the temples.
+    headParts.push([BALL, [0, 0.175, -0.02], [0.124, 0.112, 0.13], hair], [BOX, [0.1, 0.1, -0.02], [0.02, 0.13, 0.07], hair], [BOX, [-0.1, 0.1, -0.02], [0.02, 0.13, 0.07], hair], [BALL, [0, 0.215, 0.085], [0.09, 0.03, 0.04], hair]);
+    if (female) {
+      // Long hair down the back, a knot on the crown with a pin through it, and a flower at the temple.
+      headParts.push([BALL, [0, -0.02, -0.105], [0.085, 0.24, 0.055], hair], [BALL, [0, 0.31, -0.03], [0.055, 0.05, 0.055], hair], [BALL, [0.05, 0.28, -0.05], [0.04, 0.04, 0.04], hair], [ROD, [0, 0.31, -0.03], [0.007, 0.01, 0.2], 0xd9b04a, [0, 0, Math.PI / 2]], [BALL, [0.105, 0.2, 0.05], [0.022, 0.022, 0.014], rank >= 3 ? 0xd9b04a : 0xe7a3a8]);
+      if (rank >= 3) headParts.push([SPIKE, [0.11, 0.13, 0.05], [0.008, 0.07, 0.008], 0xd9b04a, [Math.PI, 0, 0]]);
+    } else {
+      // A topknot bound with a band whose two ends hang behind; elders pin theirs with a small crown.
+      headParts.push([BALL, [0, 0.3, -0.02], [0.045, 0.058, 0.045], hair], [ROD, [0, 0.265, -0.02], [0.034, 0.03, 0.034], rank >= 4 ? 0xd9b04a : trim], [BOX, [0.02, 0.17, -0.135], [0.022, 0.2, 0.008], rank >= 4 ? 0xd9b04a : trim, [0.2, 0, 0.1]], [BOX, [-0.02, 0.16, -0.135], [0.022, 0.22, 0.008], rank >= 4 ? 0xd9b04a : trim, [0.2, 0, -0.1]]);
+      if (rank >= 4) headParts.push([SPIKE, [0, 0.0, 0.09], [0.05, 0.22, 0.03], 0xe4e4e4, [Math.PI, 0, 0]], [BOX, [0.03, 0.078, 0.11], [0.04, 0.012, 0.01], 0xe4e4e4, [0, 0, -0.5]], [BOX, [-0.03, 0.078, 0.11], [0.04, 0.012, 0.01], 0xe4e4e4, [0, 0, 0.5]], [ROD, [0, 0.33, -0.02], [0.006, 0.008, 0.13], 0xd9b04a, [0, 0, Math.PI / 2]]);
+      // The lowest ranks tie a cloth round the brow instead.
+      else if (rank <= 1) headParts.push([ROD, [0, 0.195, 0], [0.118, 0.022, 0.124], shade(robe, 0.7)]);
+    }
+  } else headParts.push([BALL, [0, 0.21, 0.04], [0.01, 0.006, 0.01], 0x9a6a50], [BALL, [0.03, 0.215, 0.02], [0.01, 0.006, 0.01], 0x9a6a50], [BALL, [-0.03, 0.215, 0.02], [0.01, 0.006, 0.01], 0x9a6a50]);
   head.addChild(model(headParts));
 
   // Arms: shoulder → upper arm → elbow → forearm and hand.
@@ -217,9 +250,12 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
     elbow.setPosition(0, -0.29, 0);
     elbow.addChild(
       model([
-        [TAPER, [0, -0.12, 0], [0.085, 0.26, 0.085], robe],
-        [ROD, [0, -0.25, 0], [0.088, 0.03, 0.088], trim],
-        [BALL, [0, -0.3, 0], [0.042, 0.05, 0.042], skin],
+        // A wide sleeve that hangs open at the wrist, its cuff turned back, over a bound forearm and the hand.
+        [TAPER, [0, -0.12, 0], [0.1, 0.27, 0.1], robe],
+        [ROD, [0, -0.255, 0], [0.104, 0.03, 0.104], trim],
+        [ROD, [0, -0.2, 0], [0.04, 0.12, 0.04], rank <= 1 ? 0x4a4038 : WHITE],
+        [BALL, [0, -0.3, 0], [0.04, 0.05, 0.034], skin],
+        [BOX, [0, -0.34, 0.006], [0.05, 0.035, 0.022], skin],
       ]),
     );
     return { shoulder, elbow };
@@ -243,8 +279,13 @@ export function createFigure({ color = 0x5b6c8a, female = false, rank = 1, weapo
     knee.setPosition(0, -0.45, 0);
     knee.addChild(
       model([
-        [ROD, [0, -0.2, 0], [0.062, 0.4, 0.062], dark],
-        [BOX, [0, -0.42, 0.04], [0.1, 0.09, 0.22], 0x24201c],
+        // Trousers gathered into a tall boot with a pale sole and an upturned toe.
+        [ROD, [0, -0.13, 0], [0.066, 0.26, 0.066], dark],
+        [ROD, [0, -0.3, 0], [0.058, 0.2, 0.062], 0x2a2420],
+        [ROD, [0, -0.2, 0], [0.062, 0.025, 0.066], trim],
+        [BOX, [0, -0.42, 0.04], [0.1, 0.075, 0.22], 0x2a2420],
+        [BOX, [0, -0.462, 0.04], [0.105, 0.02, 0.23], 0xd8cfb8],
+        [SPIKE, [0, -0.4, 0.15], [0.04, 0.05, 0.03], 0x2a2420, [0.9, 0, 0]],
       ]),
     );
     return { hip, knee };

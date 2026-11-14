@@ -5,7 +5,7 @@
 // An event waits in `state.pending` until the player answers it. A world
 // that nobody is watching (`options.interactive` unset) answers for itself.
 import { commonArt } from '../data/arts.mjs';
-import { EVENT_BY_ID, EVENTS, FORMATIONS, HOUSE_RULES, TALENTS, WANDERER_BY_ID, WANDERERS } from '../data/jianghu.mjs';
+import { EVENT_BY_ID, EVENTS, FORMATIONS, HOUSE_RULES, TALENTS, TRIALS, WANDERER_BY_ID, WANDERERS } from '../data/jianghu.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
 import { findRelic } from './extras.mjs';
 import { autoWheel, equipFor, growTo, prowess, rollPerson } from './persons.mjs';
@@ -95,6 +95,9 @@ const hireCost = (wanderer) => 200 + wanderer.level * 15;
 /** The chance that a wanderer accepts an invitation with no silver behind it. */
 const inviteChance = (books, wanderer) => clamp(0.2 + books.renown / 700 + Math.abs(books.virtue) / 2500 - wanderer.level / 120, 0.1, 0.9);
 
+/** Whom a wanderer would pass their talent to: the most loyal inner disciple or better who has none. */
+const heirOf = (state, person) => members(state, person.school).filter((other) => other.id !== person.id && !other.talent && other.rank >= 2 && other.rank < 5).sort((a, b) => b.loyalty - a.loyalty)[0];
+
 /** Brings a wanderer into a sect as a personal disciple with their own talent and face. */
 export function join(state, sectId, wandererId, rng) {
   const wanderer = WANDERER_BY_ID[wandererId],
@@ -126,6 +129,18 @@ export function pendingView(state) {
     return '';
   };
   if (pending.kind === 'siege') return null;
+  if (pending.kind === 'trial' || pending.kind === 'legacy') {
+    const person = state.persons[pending.person];
+    if (!person) return (state.pending = null);
+    if (pending.kind === 'trial')
+      return { kind: 'trial', title: `初试 · ${person.name}`, portraitId: person.portraitId, expression: 'neutral', text: `${person.name}入门不久，${TRIALS[person.talent].text}`, choices: [
+        { label: '放手让其施为', hint: '其忠诚 +10，本派多少有些进益', why: '' },
+        { label: '按本派的规矩来', hint: '其忠诚 −6', why: '' }] };
+    const heir = heirOf(state, person);
+    return { kind: 'legacy', title: `托付 · ${person.name}`, portraitId: person.portraitId, expression: 'happy', text: `${person.name}在本派已逾一年，这天说起身后事：一身本事不想带进土里，愿在门中择一人倾囊相授，或是著书留给后来人。`, choices: [
+      { label: heir ? `传于${heir.name}` : '门中尚无合适的传人', hint: '传人习得同样的天赋，此艺不因一人去留而断', why: heir ? '' : '需有内门以上、尚无天赋的弟子' },
+      { label: '著书立说', hint: '威望 +20，全派忠诚 +2', why: '' }] };
+  }
   if (pending.kind === 'wish') {
     const person = state.persons[pending.person];
     if (!person) return (state.pending = null);
@@ -158,6 +173,34 @@ export function resolvePending(state, index, rng) {
   const pending = state.pending;
   state.pending = null;
   let text;
+  if (pending.kind === 'trial') {
+    const person = state.persons[pending.person];
+    if (index === 0) {
+      apply(state, sectId, TRIALS[person.talent].gives);
+      if (TRIALS[person.talent].gives.applicant) {
+        const placeId = state.persons[books.leaderId]?.place;
+        if (placeId) state.places[placeId].applicants.unshift(rollPerson(rng, { quality: TRIALS[person.talent].gives.applicant, place: placeId }));
+      }
+      person.loyalty = clamp(person.loyalty + 10, 0, 100);
+      return { ok: true, text: `${person.name}说到做到，门中上下都看在眼里。` };
+    }
+    person.loyalty = clamp(person.loyalty - 6, 0, 100);
+    return { ok: true, text: `${person.name}没有再提，只是此后话少了些。` };
+  }
+  if (pending.kind === 'legacy') {
+    const person = state.persons[pending.person];
+    if (index === 0) {
+      const heir = heirOf(state, person);
+      heir.talent = person.talent;
+      heir.loyalty = clamp(heir.loyalty + 10, 0, 100);
+      forgetMods();
+      log(state, 'event', `${person.name}将「${TALENTS[person.talent].name}」之艺传于${heir.name}。`, sectId);
+      return { ok: true, text: `${heir.name}行了大礼。${person.name}说：“往后本派这门本事，就看你的了。”` };
+    }
+    apply(state, sectId, { renown: 20, loyalty: 2 });
+    log(state, 'event', `${person.name}著书一部，传抄江湖。`, sectId);
+    return { ok: true, text: `书成之日，求抄本的人从山门排到了山脚。` };
+  }
   if (pending.kind === 'wish') {
     const person = state.persons[pending.person];
     if (index === 0) {
@@ -210,8 +253,20 @@ export function xunOfJianghu(state, rng) {
   const books = state.sects[state.playerSect];
   if (!books?.alive || state.pending || state.options.autoPlayer) return;
   if (!rng.chance(0.14)) return;
+  // A wanderer's time in the sect has its chapters: a first trial of what they can do after two months,
+  // a wish after half a year (below), and after a year, if the wish was granted, the passing on of their art.
+  for (const person of members(state, state.playerSect)) {
+    if (!person.talent || person.origin !== '江湖奇人') continue;
+    const days = state.day - (person.joined ?? state.day);
+    const kind = !person.tried && days > 60 ? 'trial' : person.talentDeep && !person.bequeathed && days > 360 ? 'legacy' : null;
+    if (!kind || !rng.chance(0.5)) continue;
+    person[kind === 'trial' ? 'tried' : 'bequeathed'] = true;
+    state.pending = { kind, person: person.id };
+    if (!state.options.interactive) resolvePending(state, kind === 'trial' ? 0 : 1, rng);
+    return;
+  }
   // Someone who came in from the road may, after half a year, speak of what they left undone.
-  const wishful = members(state, state.playerSect).find((person) => person.talent && !person.talentDeep && !person.wished && state.day - (person.joined ?? state.day) > 180);
+  const wishful = members(state, state.playerSect).find((person) => person.talent && person.origin === '江湖奇人' && person.tried && !person.talentDeep && !person.wished && state.day - (person.joined ?? state.day) > 180);
   if (wishful && rng.chance(0.5)) {
     wishful.wished = true;
     state.pending = { kind: 'wish', person: wishful.id };

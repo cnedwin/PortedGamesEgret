@@ -463,3 +463,25 @@ test('workshop goods are sold at the ten-day reckoning, better through shops', (
   assert.deepEqual(without.sold, { goods: 200, retail: 0, glut: 0 });
   assert.equal(withShops.sold.retail, 150);
 });
+
+test('a wanderer\'s chapters: trial, wish, and the passing on of their art', () => {
+  const world = createWorld({ seed: 17, playerSect: 'huashan' });
+  world.options.interactive = true;
+  const rng = createRng(9);
+  const person = join(world, 'huashan', WANDERERS.find((w) => w.talent === 'trade').id, rng);
+  const seen = [];
+  for (let day = 0; day < 1500 && seen.length < 3; day++) {
+    advanceDay(world);
+    const kind = world.pending?.kind;
+    if (!kind) continue;
+    if (['trial', 'wish', 'legacy'].includes(kind)) {
+      world.sects.huashan.silver += 2000;
+      seen.push(kind);
+      assert.ok(pendingView(world).choices.length === 2);
+      assert.ok(resolvePending(world, 0, rng).ok, kind);
+    } else world.pending = null;
+  }
+  assert.deepEqual(seen, ['trial', 'wish', 'legacy']);
+  assert.ok(person.talentDeep);
+  assert.equal(Object.values(world.persons).filter((p) => p.school === 'huashan' && p.talent === 'trade').length, 2);
+});
