@@ -40,6 +40,9 @@ export const TEXT = {
     fov: '视野',
     language: '语言',
     fullscreen: '全屏',
+    enterFullscreen: '进入全屏',
+    exitFullscreen: '退出全屏',
+    fullscreenFailed: '浏览器未能切换全屏，可以继续在当前窗口游玩。',
     keys: [
       ['W A S D', '移动'],
       ['鼠标', '转动视角'],
@@ -183,6 +186,9 @@ export const TEXT = {
     fov: 'Field of view',
     language: 'Language',
     fullscreen: 'Fullscreen',
+    enterFullscreen: 'Enter fullscreen',
+    exitFullscreen: 'Exit fullscreen',
+    fullscreenFailed: 'The browser could not switch fullscreen. You can keep playing in this window.',
     keys: [
       ['W A S D', 'Move'],
       ['Mouse', 'Look'],

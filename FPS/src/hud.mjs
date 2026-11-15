@@ -25,7 +25,7 @@ const el = (tag, className, html) => {
  * when a menu button is pressed: deploy, resume, restart, and `changed(key)`
  * after a setting moved.
  */
-export function createHud(root, settings, actions) {
+export function createHud(root, gameArea, settings, actions) {
   let t = TEXT[settings.lang] ?? TEXT.en;
   const hud = { screen: 'title', touch: undefined };
 
@@ -111,6 +111,10 @@ export function createHud(root, settings, actions) {
   // ---- menus -------------------------------------------------------------------------------
   const menu = el('div', 'menu');
   root.appendChild(menu);
+  let changingFullscreen = false;
+  let fullscreenFailed = false;
+  const fullscreenButton = (classes = '') =>
+    `<button type="button" class="btn fullscreen-toggle ${classes}" data-act="fullscreen">${t.enterFullscreen}</button>`;
   function buildMenu() {
     const keys = t.keys.map(([key, what]) => `<li><kbd>${key}</kbd><span>${what}</span></li>`).join('');
     const seg = (name, options, labels) =>
@@ -120,12 +124,12 @@ export function createHud(root, settings, actions) {
         <div class="m-eyebrow"><span>${t.eyebrow}</span><span class="m-dim">${t.place}</span></div>
         <h1 class="m-word">${t.title}</h1>
         <p class="m-premise">${t.premise}</p>
-        <div class="m-actions"><button class="btn primary" data-act="deploy">${t.deploy}</button><button class="btn" data-act="settings">${t.settings}</button><button class="btn" data-act="controls">${t.controls}</button></div>
+        <div class="m-actions"><button class="btn primary" data-act="deploy">${t.deploy}</button><button class="btn" data-act="settings">${t.settings}</button><button class="btn" data-act="controls">${t.controls}</button>${fullscreenButton()}</div>
         <p class="m-note">${t.note}</p>
       </section>
       <section class="m-screen m-card" data-s="pause">
         <div class="m-k">${t.paused}</div><h2>${t.title}</h2>
-        <div class="m-actions col"><button class="btn primary" data-act="resume">${t.resume}</button><button class="btn" data-act="settings">${t.settings}</button><button class="btn" data-act="controls">${t.controls}</button><button class="btn" data-act="restart">${t.restart}</button></div>
+        <div class="m-actions col"><button class="btn primary" data-act="resume">${t.resume}</button>${fullscreenButton()}<button class="btn" data-act="settings">${t.settings}</button><button class="btn" data-act="controls">${t.controls}</button><button class="btn" data-act="restart">${t.restart}</button></div>
       </section>
       <section class="m-screen m-card" data-s="dead">
         <div class="m-k bad">${t.deadSub}</div><h2>${t.dead}</h2>
@@ -149,17 +153,51 @@ export function createHud(root, settings, actions) {
           <label><span>${t.volume}</span><input type="range" data-set="volume" min="0" max="1" step="0.05"><output data-o="volume"></output></label>
           <label><span>${t.invert}</span>${seg('invertY', ['off', 'on'], { off: t.off, on: t.on })}</label>
           <label><span>${t.language}</span>${seg('lang', ['zh', 'en'], { zh: '中文', en: 'English' })}</label>
-          <label><span>${t.fullscreen}</span><button class="btn small" data-act="fullscreen">⛶</button></label>
+          <label><span>${t.fullscreen}</span>${fullscreenButton('small')}</label>
         </div>
         <div class="panel-b" data-pane="controls" hidden><ul class="keys">${keys}</ul><p class="m-note">${t.touchHelp}</p></div>
-      </div>`;
+      </div>
+      <p class="fullscreen-status" role="status" hidden></p>`;
     menu.dataset.screen = hud.screen;
     syncSettings();
+    syncFullscreen();
     q('.a-name').textContent = '';
     cache.weapon = '';
     cache.objective = '';
   }
   const field = (name) => menu.querySelector(`[data-f="${name}"]`);
+  function syncFullscreen() {
+    const active = document.fullscreenElement === gameArea;
+    const available = document.fullscreenEnabled && gameArea.requestFullscreen && document.exitFullscreen;
+    for (const button of menu.querySelectorAll('[data-act="fullscreen"]')) {
+      button.textContent = active ? t.exitFullscreen : t.enterFullscreen;
+      button.disabled = changingFullscreen || !available;
+    }
+    const message = menu.querySelector('.fullscreen-status');
+    message.hidden = !fullscreenFailed;
+    message.textContent = fullscreenFailed ? t.fullscreenFailed : '';
+  }
+
+  async function toggleFullscreen() {
+    if (changingFullscreen) return;
+    changingFullscreen = true;
+    fullscreenFailed = false;
+    syncFullscreen();
+    try {
+      if (document.fullscreenElement === gameArea) await document.exitFullscreen();
+      else await gameArea.requestFullscreen();
+    } catch {
+      fullscreenFailed = true;
+    } finally {
+      changingFullscreen = false;
+      syncFullscreen();
+    }
+  }
+  document.addEventListener('fullscreenchange', () => {
+    fullscreenFailed = false;
+    syncFullscreen();
+  });
+
   function syncSettings() {
     for (const group of menu.querySelectorAll('.seg')) {
       const key = group.dataset.seg,
@@ -201,10 +239,8 @@ export function createHud(root, settings, actions) {
     const act = button.dataset.act;
     if (act === 'settings' || act === 'controls') openPanel(act);
     else if (act === 'close') menu.querySelector('.panel').hidden = true;
-    else if (act === 'fullscreen') {
-      if (document.fullscreenElement) document.exitFullscreen?.();
-      else document.documentElement.requestFullscreen?.().catch(() => {});
-    } else actions[act]?.();
+    else if (act === 'fullscreen') void toggleFullscreen();
+    else actions[act]?.();
   });
   menu.addEventListener('input', (event) => {
     const key = event.target.dataset?.set;
