@@ -1,4 +1,13 @@
-/* The play layer lets touches through except on its visible controls. */
+/* Stop viewport boundary gestures during a touch round, leaving the title and
+   menus free to scroll. The play layer only receives input on its controls. */
+html.touch-game-active {
+  overscroll-behavior: none;
+}
+
+.play.touch-play {
+  touch-action: none;
+}
+
 .touch {
   --touch-control: clamp(48px, 13vmin, 64px);
   --touch-pad: clamp(86px, 24vmin, 110px);
@@ -71,7 +80,6 @@
   width: 54px;
   height: 44px;
   border-radius: 16px;
-  touch-action: manipulation;
 }
 
 /* Keep a four-member party clear of the left thumb, with the build below the controls. */
