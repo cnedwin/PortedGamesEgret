@@ -33,7 +33,7 @@ import { formationsFor, pendingView, resolvePending, setRule } from './core/jian
 import { applyMod } from './core/mod.mjs';
 import { APT_NAMES, STAT_KEYS, STAT_NAMES, TRAITS, hpMax, learnableArts, prowess } from './core/persons.mjs';
 import { QUALITIES, RANKINGS, TRAIT_NOTES, aptitudeScore, attention, qualityOf, rankingLabel, rankingValue, ranked, recommendJobs, wordsOf } from './core/disciples.mjs';
-import { TOURNEY, enterTourney, nextTourney, settleBout, tourneyBout, tourneyField } from './core/tourney.mjs';
+import { TOURNEY, boutWinner, eligible as tourneyEligible, enterTourney, nextTourney, settleBout, tourneyBout, tourneyField } from './core/tourney.mjs';
 import { checkUnlocks, isOpen, openAll, startUnlocks, stillToCome } from './core/unlocks.mjs';
 import { BOOK_LEVEL, TEACHING, TEACH_LEVEL, askTeaching, bookOffers, buyManual, commonArts, heldArts, teachingOffers } from './core/library.mjs';
 import { createRng } from './core/rng.mjs';
@@ -541,8 +541,8 @@ function disciplesScreen() {
   const ranking = ui.sortKey !== 'rank';
   const sorter = `<label class="sort-wrap"><span>排行</span><select data-change="sort">${options([['rank', '按身份'], ...RANKINGS.map(([key, label]) => [key, '按' + label])], ui.sortKey)}</select></label>${ranking ? btn(ui.sortUp ? '低 → 高' : '高 → 低', 'sort-dir', {}, 'outline') : ''}`;
   const cards = () => rows.map((p, i) => memberCard(p, { act: ui.picking ? 'batch-toggle' : 'person', on: ui.picking && ui.batch.has(p.id), where: many, nth: ranking ? i + 1 : 0 })).join('') || '<p class="empty">暂无符合条件的弟子。</p>';
-  const head = (key) => `<th class="${ui.sortKey === key ? 'is-sorted' : ''}"><button type="button" data-act="sort" data-key="${key}" title="按${rankingLabel(key)}排行">${rankingLabel(key)}${ui.sortKey === key ? (ui.sortUp ? ' ▲' : ' ▼') : ''}</button></th>`;
-  const table = () => `<div class="rank-table-wrap"><table class="rank-table"><thead><tr><th>名次</th><th>弟子</th>${TABLE_KEYS.map(head).join('')}</tr></thead><tbody>${rows.map((p, i) => `<tr data-act="person" data-id="${p.id}" class="${ranking && i < 3 ? 'is-top' : ''}"><td>${i + 1}</td><td class="rank-name">${qualityTag(p)}<b>${esc(p.name)}</b><small>${RANKS[p.rank].name}</small></td>${TABLE_KEYS.map((key) => `<td class="${ui.sortKey === key ? 'is-sorted' : ''}">${num(rankingValue(p, key))}</td>`).join('')}</tr>`).join('')}</tbody></table>${rows.length ? '' : '<p class="empty">暂无符合条件的弟子。</p>'}</div>`;
+  const head = (key) => `<th ${ui.sortKey === key ? `class="is-sorted" aria-sort="${ui.sortUp ? 'ascending' : 'descending'}"` : ''}><button type="button" data-act="sort" data-key="${key}" title="按${rankingLabel(key)}排行">${rankingLabel(key)}${ui.sortKey === key ? (ui.sortUp ? ' ▲' : ' ▼') : ''}</button></th>`;
+  const table = () => `<div class="rank-table-wrap"><table class="rank-table"><thead><tr><th>名次</th><th class="rank-name">弟子</th>${TABLE_KEYS.map(head).join('')}</tr></thead><tbody>${rows.map((p, i) => `<tr data-act="person" data-id="${p.id}" class="${ranking && i < 3 ? 'is-top' : ''}"><td>${i + 1}</td><td class="rank-name">${qualityTag(p)}<button type="button" class="rank-profile" data-act="person" data-id="${p.id}">${esc(p.name)}</button><small>${RANKS[p.rank].name}</small></td>${TABLE_KEYS.map((key) => `<td class="${ui.sortKey === key ? 'is-sorted' : ''}">${num(rankingValue(p, key))}</td>`).join('')}</tr>`).join('')}</tbody></table>${rows.length ? '' : '<p class="empty">暂无符合条件的弟子。</p>'}</div>`;
   return `${screenHead('弟子', '门中弟子', `在册 ${all.length} 人 · 点一人查看详情、安排差事与武学`, btn('一键安排差事', 'sheet', { kind: 'assign' }, 'primary', 'people') + btn('武学名录', 'page', { page: 'arts' }, 'outline', 'scroll'))}
     <div class="attention" data-region="attention">${chips.map(([key, label, people]) => pill(`${label} ${people.length} 人`, 'only', { only: key }, ui.only === key)).join('') || '<span class="caption">门中诸事停当，无人待你发落。</span>'}${ui.only === 'promotable' ? btn('全部晋升', 'promote-all', {}, 'primary') : ''}${ui.only === 'idle' ? btn('为他们安排差事', 'sheet', { kind: 'assign', idle: true }, 'primary') : ''}</div>
     <section class="panel disciple-roster">
@@ -690,7 +690,7 @@ function battleScreen() {
     const targets = PLACES.filter((spec) => placeDeal(spec.id).kind === 'foe');
     const last = ui.lastFight;
     const meetNext = nextTourney(world),
-      hopeful = membersOf(world, me()).filter((p) => p.rank <= TOURNEY.rank && !p.talent).sort((a, b) => prowess(b) - prowess(a))[0];
+      hopeful = tourneyEligible(world, me())[0];
     return `${screenHead('战阵', '眼下无战事', '可出兵攻打与本派据点相邻的他派据点。出战最多十人，伤重者不上阵。')}
       <section class="panel"><div data-region="targets">${panelTitle('可攻之敌', tag(`我方可战 ${marchParty().length} 人 · 战力 ${num(strength(marchParty()))}`))}
         <div class="route-list">${targets.map((spec) => `<button data-act="sheet" data-kind="march" data-place="${spec.id}">${icon('swords')}<span>${esc(spec.name)} <small class="muted">${esc(SECT_BY_ID[world.places[spec.id].owner].name)} · 守 ${residents(world, spec.id).length} 人 · 战力 ${num(strength(residents(world, spec.id)))}</small></span>${icon('arrow')}</button>`).join('') || '<p class="muted" style="padding:6px">四邻皆无他派据点。</p>'}</div></div></section>
@@ -744,10 +744,10 @@ function tell(event, name) {
  * @param fight.side    which side the player commands
  * @param fight.settle  applies the result to the world: (summary, rng) => { won, verdict }
  */
-function startFight({ sides, formations = [], title, heads, colors, side = 0, saveAfter = false, settle: settleFight }) {
+function startFight({ sides, formations = [], title, heads, colors, side = 0, seed, saveAfter = false, settle: settleFight }) {
   const rng = createRng(1);
   rng.state = world.rng;
-  const battle = createBattle({ sides, formations, seed: rng.int(1, 1e9) });
+  const battle = createBattle({ sides, formations, seed: seed ?? rng.int(1, 1e9) });
   const names = new Map(sides.flat().map((person) => [person.id, person.name]));
   const name = (id) => names.get(id) ?? '？';
   const lines = [];
@@ -770,7 +770,7 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, sa
     queueOutcome();
     if (saveAfter) slots.write('auto', world, autoLabel());
     ui.fight = null;
-    ui.lastFight = { title, won: result.won, fellBack: result.fellBack, verdict: `${result.verdict}历时 ${battle.time.toFixed(0)} 秒。`, lines };
+    ui.lastFight = { title, won: result.won, fellBack: result.fellBack, tourney: result.tourney, verdict: `${result.verdict}历时 ${battle.time.toFixed(0)} 秒。`, lines };
     feedbackAudio.play(result.won ? 'victory' : 'defeat');
     ui.sheet = { kind: 'fight' };
   };
@@ -863,15 +863,17 @@ function duel() {
 function tourneyFight() {
   const bout = tourneyBout(world);
   if (!bout) return;
-  const { mine, rival, round } = bout;
+  const { mine, rival, round, side, seed } = bout;
+  const fighters = side === 0 ? [mine, rival] : [rival, mine];
   startFight({
-    sides: [[mine], [rival]], title: `论剑${round}`, heads: [{ name: mine.name, person: mine }, { name: rival.name, person: rival }], colors: [colorOf(me()), colorOf(rival.school)],
+    sides: fighters.map((person) => [person]), title: `论剑${round}`, heads: fighters.map((person) => ({ name: person.name, person })),
+    colors: fighters.map((person) => colorOf(person.school)), side, seed, saveAfter: true,
     settle(summary) {
-      const won = summary.winner === 0;
+      const won = boutWinner(fighters[0], fighters[1], summary.winner) === side;
       settleBout(world, won);
       // The meet may have ended with this bout; its honours are read out once the fight's report is closed.
       if (!world.tourney) ui.heralds.push({ kind: 'tourney' });
-      return { won, verdict: won ? `${mine.name}胜${rival.name}，${world.tourney ? '晋级下一轮。' : '夺得魁首！'}` : `${mine.name}不敌${rival.name}，止步${round}。` };
+      return { won, tourney: true, verdict: won ? `${mine.name}胜${rival.name}，${world.tourney ? '晋级下一轮。' : '夺得魁首！'}` : `${mine.name}不敌${rival.name}，止步${round}。` };
     },
   });
 }
@@ -1090,7 +1092,7 @@ const SHEETS = {
     const plan = recommendJobs(world, me(), { idleOnly });
     const count = (kind) => plan.filter(({ job }) => job.kind === kind).length;
     const summary = [['train', '修练'], ['gather', '采集'], ['craft', '制造'], ['patrol', '行侠']].filter(([kind]) => count(kind)).map(([kind, label]) => `${label} ${count(kind)} 人`).join(' · ');
-    return ['一键安排差事', `<p class="caption">${idleOnly ? '只为眼下闲着的人安排。' : '全派重新安排；闭关、历练中的人不动。'}资质好的去修练最合适的武学，资质平平的杂役和外门弟子里抽三成去采集、制造。</p>
+    return ['一键安排差事', `<p class="caption">${idleOnly ? '按「闲着」名单安排差事。' : '全派重新安排；闭关、历练或重伤中的人保留差事。'}资质好的去修练最合适的武学，资质平平的杂役和外门弟子里抽三成去采集、制造。</p>
       <p>${plan.length ? `将改派 <b>${plan.length}</b> 人：${summary}。` : '各人差事已是最合适的了，不必再动。'}</p>
       <ul class="plan-list">${plan.slice(0, 40).map(({ person, job, why }) => `<li>${qualityTag(person)}<b>${esc(person.name)}</b><span>${esc(jobName(job))}</span><small>${esc(why)}</small></li>`).join('')}</ul>`,
     btn(idleOnly ? '改为全派重排' : '只排闲着的人', 'sheet', { kind: 'assign', idle: !idleOnly }, 'outline') + closeBtn() + btn(`照此安排`, 'assign', { idle: idleOnly }, 'primary', '', !plan.length)];
@@ -1198,7 +1200,7 @@ const SHEETS = {
   retreat: () => ['确认撤退', '<p>撤退即认负。跑得出战场的弟子可以保全，来不及的仍会倒下。</p>', closeBtn('继续作战') + btn('确认撤退', 'fight-retreat', {}, 'danger')],
   fight() {
     const last = ui.lastFight;
-    const [label, page] = world.outcome?.result === 'lost' ? ['查看纪事', 'chronicle'] : last.fellBack ? ['返回山门', 'seat'] : ['返回江湖', 'world'];
+    const [label, page] = last.tourney ? ['返回论剑', 'battle'] : world.outcome?.result === 'lost' ? ['查看纪事', 'chronicle'] : last.fellBack ? ['返回山门', 'seat'] : ['返回江湖', 'world'];
     return [`战报 · ${last.title}`, `<p class="battle-result ${last.won ? '' : 'bad'}">${last.won ? '此战告捷' : '此战失利'}</p><p>${esc(last.verdict)}</p><div class="fight-lines">${last.lines.map((line) => `<div>${esc(line)}</div>`).join('') || '两军未及交手。'}</div>`, btn(label, 'page', { page }, 'primary', 'arrow')];
   },
   diplomacy() {
@@ -1360,10 +1362,12 @@ function render() {
   }
   // The key carries whether the paintings have loaded, so the still pictures appear when they arrive.
   const focused = document.activeElement;
+  const rankScroll = ui.page === 'disciples' && app.querySelector('.rank-table-wrap')?.scrollLeft;
   if (mount(app, html, key + (art ? ':art' : ''))) {
     window.scrollTo(0, 0);
     app.querySelector('.opening-stage h1')?.focus({ preventScroll: true });
   } else if (!focused.isConnected && focused.matches('[data-act], [data-change]')) restoreControl(app, focused);
+  if (rankScroll) app.querySelector('.rank-table-wrap')?.scrollTo(rankScroll, 0);
   const shellNode = app.querySelector('.shell.game');
   if (shellNode) shellNode.dataset.commandCollapsed = String(canFoldCommand() && ui.commandCollapsed);
   syncPicture();
@@ -1777,14 +1781,19 @@ const actions = {
   'tourney-enter'(data) {
     const result = enterTourney(world, Number(data.id));
     if (!result.ok) return toast(result.why, 'warning');
+    slots.write('auto', world, autoLabel());
     ui.sheet = { kind: 'tourney' };
   },
   'tourney-skip'() {
-    enterTourney(world, null);
+    const result = enterTourney(world, null);
+    if (!result.ok) return toast(result.why, 'warning');
+    slots.write('auto', world, autoLabel());
     ui.sheet = { kind: 'tourney' };
   },
   'tourney-auto'() {
-    settleBout(world, null);
+    const result = settleBout(world, null);
+    if (!result.ok) return toast(result.why, 'warning');
+    slots.write('auto', world, autoLabel());
     ui.sheet = { kind: 'tourney' };
   },
   'tourney-fight': () => tourneyFight(),

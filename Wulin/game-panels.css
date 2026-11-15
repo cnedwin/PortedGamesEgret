@@ -299,8 +299,10 @@ body:has(.shell.game) .sheet :is(button, select, input):focus-visible { outline:
 .rank-table tbody tr:hover { background: #394f4180; }
 .rank-table tr.is-top td:first-child { color: #f2bd4e; font: 700 15px var(--serif); }
 .rank-table .rank-name { position: sticky; left: 0; background: #20362d; }
+.rank-table thead .rank-name { z-index: 1; background: #22382e; }
 .rank-table tbody tr:hover .rank-name { background: #2c4439; }
-.rank-name b { font-family: var(--serif); font-size: 15px; }
+.rank-profile { padding: 2px 3px; border: 0; color: inherit; background: none; font: 700 15px var(--serif); cursor: pointer; }
+.rank-profile:is(:hover, :focus-visible) { color: #f2d29a; text-decoration: underline; }
 .rank-name small { margin-inline-start: 6px; color: #b9ae90; }
 
 .life { display: grid; gap: 5px; max-height: 190px; margin: 0; padding: 0; overflow-y: auto; list-style: none; font-size: 13px; }
