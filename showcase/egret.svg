@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- An egret in flight: two long swept wings, a folded neck and a pointed beak, over still water. -->
+  <rect width="64" height="64" rx="14" fill="#0c1d22"/>
+  <path d="M8 30c8-1 15 1 21 6 2-6 7-12 14-15 4-2 9-2 13-1-6 1-11 4-14 9-3 4-4 8-4 12-3-2-7-3-11-3-8-1-14-3-19-8z" fill="#f6f8f6"/>
+  <path d="M44 30c3-2 6-2 8 0l5-1-5 3c-2 2-5 2-8 1z" fill="#f6f8f6"/>
+  <path d="M57 29l4-1" stroke="#e8c879" stroke-width="2" stroke-linecap="round"/>
+  <path d="M14 50h36M22 55h20" stroke="#5f8f8a" stroke-width="2" stroke-linecap="round"/>
+</svg>

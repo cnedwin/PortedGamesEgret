@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#0c1d22">
+  <title>新白鹭引擎游戏 Demo</title>
+  <meta name="description" content="基于新白鹭引擎 Egret Rebuild 开发的网页游戏 Demo：断流行动、金庸群侠传、武林天下、锦绣飞车、果冻熊猫、心动选修课。">
+  <link rel="icon" href="showcase/egret.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="showcase/site.css">
+</head>
+<body>
+  <header class="bar">
+    <a class="brand" href="#/" aria-label="返回全部游戏">
+      <img src="showcase/egret.svg" alt="" width="34" height="34">
+      <span class="brand-name" data-t="brand">新白鹭引擎游戏 Demo</span>
+    </a>
+    <nav class="bar-links">
+      <a href="https://github.com/cnedwin/Egret_rebuild" data-t="engine">引擎源码</a>
+      <button class="lang" type="button" data-act="lang" aria-label="Switch to English">EN</button>
+    </nav>
+  </header>
+
+  <!-- The front page: every game in a strip, then a word about the engine. -->
+  <main id="home" class="home">
+    <h1 class="sr-only" data-t="brand">新白鹭引擎游戏 Demo</h1>
+    <section class="strip" aria-label="全部游戏" data-t-label="all"></section>
+    <section class="engine">
+      <h2 data-t="engineTitle">同一个引擎，六种玩法</h2>
+      <p data-t="engineText"></p>
+      <ul class="engine-facts" data-t-list="engineFacts"></ul>
+    </section>
+  </main>
+
+  <!-- One game: filled in when its address is opened. -->
+  <main id="game" class="game" hidden></main>
+
+  <dialog class="viewer" aria-label="截图">
+    <img alt="">
+    <button type="button" class="viewer-close" data-act="close" aria-label="关闭">×</button>
+    <button type="button" class="viewer-step prev" data-act="prev" aria-label="上一张">‹</button>
+    <button type="button" class="viewer-step next" data-act="next" aria-label="下一张">›</button>
+  </dialog>
+
+  <footer class="foot">
+    <p data-t="foot"></p>
+    <p><a href="https://github.com/cnedwin/PortedGamesEgret" data-t="repo">游戏源码</a></p>
+  </footer>
+
+  <script type="module" src="showcase/site.js"></script>
+</body>
+</html>

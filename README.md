@@ -1,8 +1,8 @@
 # PortedGamesEgret
 
-基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)开发的网页游戏 Demo 集合。每个游戏位于自己的目录，独立运行和维护。
+基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)开发的网页游戏 Demo 集合。每个游戏位于自己的目录，独立运行和维护。 [进入展示站](https://cnedwin.github.io/PortedGamesEgret/)
 
-A collection of browser game demos built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Each game lives in its own directory and can be run and maintained independently.
+A collection of browser game demos built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Each game lives in its own directory and can be run and maintained independently. [Visit the showcase](https://cnedwin.github.io/PortedGamesEgret/)
 
 ## JY · 金庸群侠传致敬 Demo
 
