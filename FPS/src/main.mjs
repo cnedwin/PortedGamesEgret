@@ -255,7 +255,7 @@ async function main() {
       });
     }
     atmosphere.update(camera, SUNLIGHT);
-    audio.update(dt, game, view.helicopter);
+    audio.update(dt, game, view.helicopter, mode);
     stats.lap('view');
     stats.end(game.aliveCount());
   }

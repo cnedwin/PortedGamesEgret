@@ -2,8 +2,12 @@
 // are shaped noise, clicks and thumps; the valley wind, the generators' hum
 // and the helicopter are loops built from filtered noise and a few tones.
 
+import { createMusic } from './music.mjs';
+
 export function createAudio() {
-  let context, master, noiseBuffer, ambience;
+  let context, master, noiseBuffer, ambience, rooms, music;
+  let inside = false,
+    chirpIn = 3;
   let volume = 0.8;
   const audio = { ready: false };
 
@@ -22,6 +26,9 @@ export function createAudio() {
     noiseBuffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
     const data = noiseBuffer.getChannelData(0);
     for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    // Two rooms to send sounds into: the open valley, and the hard walls indoors.
+    rooms = { valley: room(2.8, 0.55), hall: room(1.0, 0.25) };
+    music = createMusic(context, master);
     ambience = startAmbience();
     audio.ready = true;
     return true;
@@ -37,6 +44,33 @@ export function createAudio() {
   audio.setPaused = (paused) => {
     if (ambience) ambience.out.gain.setTargetAtTime(paused ? 0.25 : 1, context.currentTime, 0.2);
   };
+
+  /** A reverberant space: `seconds` of fading noise used as an impulse response; a larger `dull` loses its highs sooner. */
+  function room(seconds, dull) {
+    const length = Math.floor(context.sampleRate * seconds),
+      impulse = context.createBuffer(2, length, context.sampleRate);
+    for (let channel = 0; channel < 2; channel++) {
+      const data = impulse.getChannelData(channel);
+      let last = 0;
+      for (let i = 0; i < length; i++) {
+        const fade = (1 - i / length) ** 2.6;
+        // A one-pole low-pass whose weight grows along the tail, so the echo darkens as it dies.
+        last += (Math.random() * 2 - 1 - last) * (1 - dull * (0.4 + (0.6 * i) / length));
+        data[i] = last * fade;
+      }
+    }
+    const convolver = context.createConvolver(),
+      level = context.createGain();
+    convolver.buffer = impulse;
+    level.gain.value = 0.9;
+    convolver.connect(level).connect(master);
+    return convolver;
+  }
+  function echoSend(node, amount) {
+    const send = context.createGain();
+    send.gain.value = amount;
+    node.connect(send).connect(inside ? rooms.hall : rooms.valley);
+  }
 
   // ---- building blocks -----------------------------------------------------------------------
   const out = (pan) => {
@@ -58,6 +92,7 @@ export function createAudio() {
     attack = 0.002,
     pan = 0,
     rate = 1,
+    wet = 0,
   }) {
     if (!audio.ready) return;
     const t = context.currentTime + at,
@@ -75,11 +110,12 @@ export function createAudio() {
     level.gain.exponentialRampToValueAtTime(gain, t + attack);
     level.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     source.connect(filter).connect(level).connect(out(pan));
+    if (wet) echoSend(level, wet);
     source.start(t, Math.random() * 1.5);
     source.stop(t + dur + 0.05);
   }
   /** A note that may glide from `freq` to `to`. */
-  function tone({ at = 0, dur = 0.1, freq = 440, to, type = 'sine', gain = 0.3, attack = 0.003, pan = 0 }) {
+  function tone({ at = 0, dur = 0.1, freq = 440, to, type = 'sine', gain = 0.3, attack = 0.003, pan = 0, wet = 0 }) {
     if (!audio.ready) return;
     const t = context.currentTime + at,
       osc = context.createOscillator(),
@@ -91,6 +127,7 @@ export function createAudio() {
     level.gain.exponentialRampToValueAtTime(gain, t + attack);
     level.gain.exponentialRampToValueAtTime(0.0001, t + dur);
     osc.connect(level).connect(out(pan));
+    if (wet) echoSend(level, wet);
     osc.start(t);
     osc.stop(t + dur + 0.05);
   }
@@ -154,7 +191,7 @@ export function createAudio() {
   }
   let heartbeat = 0;
   /** Follow the game each frame: where the operator is, how hot the fight is, how near the helicopter. */
-  audio.update = (dt, game, helicopter) => {
+  audio.update = (dt, game, helicopter, mode) => {
     if (!audio.ready) return;
     const p = game.player,
       now = context.currentTime,
@@ -173,7 +210,34 @@ export function createAudio() {
     ambience.rotorLow.gain.setTargetAtTime(helicopter * 0.12, now, 0.2);
     let hunting = 0;
     for (const enemy of game.enemies) if (!enemy.dead && enemy.aware) hunting++;
-    ambience.bed.gain.setTargetAtTime(game.state === 'play' ? Math.min(0.11, hunting * 0.022) : 0, now, 1.2);
+    ambience.bed.gain.setTargetAtTime(0, now, 0.5);
+    // Music follows the fight: quiet while unnoticed, driving once hunted, urgent when it is time to leave.
+    const leaving = game.terminalsDone === game.terminals.length;
+    music.update(
+      dt,
+      mode === 'title' ? 'title' : mode !== 'play' ? 'menu' : leaving ? 'extract' : 'field',
+      mode === 'play' && game.state === 'play' ? Math.min(1, hunting * 0.22 + (leaving ? 0.35 : 0)) : 0,
+    );
+    inside = indoors;
+    // Birds at first light, when nobody is shooting.
+    chirpIn -= dt;
+    if (chirpIn <= 0) {
+      chirpIn = 1.5 + Math.random() * 5;
+      if (!indoors && hunting === 0) {
+        const pitch = 2600 + Math.random() * 2200,
+          side = Math.random() * 2 - 1;
+        for (let i = 0; i < 2 + Math.floor(Math.random() * 4); i++)
+          tone({
+            at: i * 0.11,
+            freq: pitch * (1 + (i % 2) * 0.12),
+            to: pitch * 1.25,
+            dur: 0.07,
+            gain: 0.018,
+            pan: side,
+            wet: 0.5,
+          });
+      }
+    }
     // A heartbeat when badly hurt.
     if (game.state === 'play' && p.health < 30) {
       heartbeat -= dt;
@@ -188,9 +252,11 @@ export function createAudio() {
   // ---- one-shot sounds -----------------------------------------------------------------------
   function gunshot(kind, indoors) {
     const rifle = kind === 'rifle';
-    noise({ dur: rifle ? 0.11 : 0.08, freq: rifle ? 2100 : 2800, to: 320, q: 0.6, gain: 0.95, rate: jitter(0.08) });
+    noise({ dur: rifle ? 0.11 : 0.08, freq: rifle ? 2100 : 2800, to: 320, q: 0.6, gain: 0.95, rate: jitter(0.08), wet: 0.5 });
+    // The action cycling: a small metallic clack just after the shot.
+    noise({ at: 0.05, dur: 0.025, freq: 3400, q: 4, gain: 0.16 });
     noise({ dur: 0.03, freq: 5200, type: 'highpass', gain: 0.5 });
-    tone({ freq: rifle ? 165 : 210, to: 48, dur: rifle ? 0.1 : 0.07, gain: 0.85 });
+    tone({ freq: rifle ? 165 : 210, to: 48, dur: rifle ? 0.1 : 0.07, gain: 0.85, wet: 0.35 });
     // The report rolling round the valley, or slapping off the walls indoors.
     noise({
       at: 0.03,
@@ -220,6 +286,36 @@ export function createAudio() {
     switch (event.type) {
       case 'shot':
         gunshot(event.weapon, game.isIndoors(p.x, p.z));
+        // The spent case rings on the ground a moment later.
+        for (const [i, delay] of [0.42, 0.5, 0.56].entries())
+          tone({
+            at: delay + Math.random() * 0.05,
+            freq: 3600 + Math.random() * 1400,
+            dur: 0.05,
+            gain: 0.035 / (i + 1),
+            pan: 0.4,
+          });
+        if (event.surface) {
+          // What the round hit: steel rings, everything else thuds.
+          const w = where(event.toX, event.toZ),
+            delay = Math.min(0.3, w.distance / 340),
+            steel =
+              ['container', 'generator', 'roof', 'transformer', 'barrel', 'tank', 'penstock', 'cabinet', 'server'].includes(
+                event.surface,
+              ) || event.surface.startsWith('truck');
+          if (steel)
+            tone({
+              at: delay,
+              freq: 1900 + Math.random() * 1600,
+              to: 1500,
+              dur: 0.18,
+              type: 'triangle',
+              gain: 0.22 * w.near,
+              pan: w.pan,
+              wet: 0.3,
+            });
+          noise({ at: delay, dur: 0.06, freq: steel ? 4200 : 900, q: 1.2, gain: 0.3 * w.near, pan: w.pan, wet: 0.2 });
+        }
         if (event.enemy) {
           tone({ at: 0.02, freq: event.head ? 2300 : 1500, dur: 0.045, type: 'square', gain: 0.1 });
           if (event.killed) {
@@ -238,6 +334,7 @@ export function createAudio() {
           to: 260,
           q: 0.6,
           gain: 0.75 * w.near + 0.05,
+          wet: 0.6,
           pan: w.pan,
         });
         tone({ at: delay, freq: 130, to: 50, dur: 0.08, gain: 0.5 * w.near, pan: w.pan });
@@ -251,6 +348,7 @@ export function createAudio() {
         noise({ dur: 0.12, freq: event.armor ? 2600 : 700, q: 1.5, gain: 0.35 });
         break;
       case 'playerDown':
+        music.sting('dead');
         tone({ freq: 220, to: 40, dur: 1.1, type: 'sawtooth', gain: 0.25 });
         break;
       case 'reload': {
@@ -288,7 +386,7 @@ export function createAudio() {
         break;
       case 'explosion': {
         const w = where(event.x, event.z);
-        noise({ dur: 1.3, freq: 1400, to: 70, type: 'lowpass', gain: 1.1 * (0.35 + w.near), pan: w.pan * 0.6 });
+        noise({ dur: 1.3, freq: 1400, to: 70, type: 'lowpass', gain: 1.1 * (0.35 + w.near), pan: w.pan * 0.6, wet: 0.7 });
         tone({ freq: 80, to: 28, dur: 0.9, gain: 0.9 * (0.3 + w.near) });
         noise({ at: 0.35, dur: 1.6, freq: 500, to: 120, type: 'lowpass', gain: 0.22 });
         break;
@@ -319,6 +417,7 @@ export function createAudio() {
         break;
       }
       case 'terminal':
+        music.sting('terminal');
         for (const [i, semitone] of [0, 7, 12].entries())
           tone({ at: i * 0.1, freq: 660 * 2 ** (semitone / 12), dur: 0.3, type: 'triangle', gain: 0.16 });
         break;
@@ -332,6 +431,7 @@ export function createAudio() {
         break;
       }
       case 'won':
+        music.sting('won');
         for (const [i, semitone] of [0, 4, 7, 12].entries())
           tone({ at: 0.3 + i * 0.16, freq: 440 * 2 ** (semitone / 12), dur: 0.6, type: 'triangle', gain: 0.16 });
         break;

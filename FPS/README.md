@@ -55,13 +55,13 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 | 晨雾与光柱 · Morning mist and light shafts | `createAtmosphere3D`，接入后期处理的自定义通道 · through the custom post-processing pass |
 | 曳光弹、弹孔 · Tracers, bullet holes | `InstancedMesh3D` |
 | 枪口火光、尘土、火花、爆炸、水雾 · Muzzle flash, dust, sparks, blasts, mist | `createParticleEmitter3D`，`createPointLight3D` |
-| 天空与雾 · Sky and haze | `createGradientCubeTexture3D`，线性雾 · linear fog |
+| 天空与雾 · Sky and haze | 程序绘制的 `CubeTexture3D`（云、日晕），线性雾 · a painted `CubeTexture3D` (clouds, sun glow), linear fog |
 | 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
 | 画面 · Look | 级联阴影、环境遮蔽、泛光、FXAA、ACES 色调映射 · cascaded shadows, ambient occlusion, bloom, FXAA, ACES tone mapping |
 
-所有模型、纹理和音效都由代码生成，项目不含图片或音频文件。
+所有模型、纹理、音效和配乐都由代码生成，项目不含图片或音频文件。枪声经过程序生成的混响（室外山谷、室内厂房各一套），配乐由一个小型音序器实时演奏，敌人逼近时逐层加入贝斯和鼓。
 
-All models, textures and sounds are generated in code; the project contains no image or audio files.
+All models, textures, sounds and music are generated in code; the project contains no image or audio files. Gunfire is sent through generated reverbs (one for the open valley, one for indoors), and the score is played live by a small step sequencer that brings in bass and drums as enemies close in.
 
 ## 目录 · Layout
 
@@ -77,7 +77,7 @@ All models, textures and sounds are generated in code; the project contains no i
 | `src/soldier.mjs`，`src/gun.mjs` | 敌人模型与动画、手中的武器 · enemy models and animation, the weapon in hand |
 | `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |
 | `src/hud.mjs`，`src/text.mjs` | 界面与中英文文字 · interface and its Chinese and English text |
-| `src/input.mjs`，`src/audio.mjs` | 键鼠与触屏、合成音效 · keyboard, mouse and touch; synthesised sound |
+| `src/input.mjs`，`src/audio.mjs`，`src/music.mjs` | 键鼠与触屏、合成音效、随战况变化的配乐 · keyboard, mouse and touch; synthesised sound; a score that follows the fight |
 | `src/stats.mjs` | `?stats=1` 的性能读数 · the performance readout for `?stats=1` |
 | `test/`，`tools/` | 规则测试、无页面整局试玩 · tests of the rules, whole runs without a page |
 | `vendor/` | 引擎运行时副本，来源见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |

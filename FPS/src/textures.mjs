@@ -1,7 +1,7 @@
 // Surfaces painted by code. Each one is described by a height function and a
 // colour function over a square that tiles; from them come a colour map and a
 // normal map, so walls catch the light as if they had relief.
-import { Texture3D } from '@egret/engine/world3d';
+import { CubeTexture3D, Texture3D } from '@egret/engine/world3d';
 
 const fract = (v) => v - Math.floor(v);
 const mix = (a, b, t) => a + (b - a) * t;
@@ -195,6 +195,129 @@ export function createSurfaces() {
       4,
     ),
   };
+}
+
+/**
+ * The sky at first light, painted onto the six faces of a cube: a gradient
+ * from a warm horizon to a cool zenith, a glow round the sun, and broken
+ * cloud lit pink on the sun's side. `sun` is the direction towards the sun.
+ */
+export function skyTexture(sun, size = 256) {
+  const length = Math.hypot(sun[0], sun[1], sun[2]),
+    sx = sun[0] / length,
+    sy = sun[1] / length,
+    sz = sun[2] / length;
+  const faces = [];
+  for (let face = 0; face < 6; face++) {
+    const data = new Uint8Array(size * size * 4);
+    for (let y = 0; y < size; y++)
+      for (let x = 0; x < size; x++) {
+        // The direction through this texel, in the cube-map face layout the renderer reads.
+        const s = ((x + 0.5) / size) * 2 - 1,
+          t = ((y + 0.5) / size) * 2 - 1;
+        let d;
+        if (face === 0) d = [1, -t, -s];
+        else if (face === 1) d = [-1, -t, s];
+        else if (face === 2) d = [s, 1, t];
+        else if (face === 3) d = [s, -1, -t];
+        else if (face === 4) d = [s, -t, 1];
+        else d = [-s, -t, -1];
+        const l = Math.hypot(d[0], d[1], d[2]),
+          dx = d[0] / l,
+          dy = d[1] / l,
+          dz = d[2] / l;
+        const towardSun = Math.max(0, dx * sx + dy * sy + dz * sz),
+          up = Math.max(0, dy),
+          rise = Math.pow(up, 0.55);
+        // Gradient: peach at the horizon (warmer under the sun), slate blue overhead.
+        let r = mix(0.9, 0.2, rise) + towardSun ** 3 * 0.25,
+          g = mix(0.68, 0.3, rise) + towardSun ** 3 * 0.12,
+          b = mix(0.52, 0.46, rise);
+        // The sun's glow.
+        const glow = towardSun ** 40 * 0.9 + towardSun ** 400 * 3;
+        r += glow;
+        g += glow * 0.8;
+        b += glow * 0.55;
+        if (dy > 0.015) {
+          // Cloud: noise on a flat layer overhead, thinning to haze at the horizon.
+          const reach = 0.35 / (dy + 0.12),
+            u = dx * reach + 0.31,
+            v = dz * reach + 0.67,
+            body = cloud(fract(u * 0.5), fract(v * 0.5), 4, 71, 5),
+            wisp = cloud(fract(u * 1.3), fract(v * 1.3), 6, 83, 4),
+            cover = clamp01((body * 0.7 + wisp * 0.3 - 0.47) * 4.5) * clamp01(dy * 9) * 0.92;
+          const lit = 0.35 + towardSun * 0.9,
+            under = clamp01((body - 0.5) * 4);
+          r = mix(r, mix(0.95, 0.42, under) * (0.75 + lit * 0.35), cover);
+          g = mix(g, mix(0.72, 0.4, under) * (0.72 + lit * 0.22), cover);
+          b = mix(b, mix(0.66, 0.46, under) * (0.8 + lit * 0.1), cover);
+        } else if (dy < 0) {
+          // Below the horizon: the ground's own dull colour, for light bounced up onto things.
+          const k = Math.min(1, -dy * 4);
+          r = mix(r, 0.24, k);
+          g = mix(g, 0.24, k);
+          b = mix(b, 0.23, k);
+        }
+        data.set([clamp01(r) * 255, clamp01(g) * 255, clamp01(b) * 255, 255], (y * size + x) * 4);
+      }
+    faces.push({ width: size, height: size, data });
+  }
+  return new CubeTexture3D(faces, { mipmaps: true });
+}
+
+let details;
+/**
+ * Small surfaces for things seen close up: `gunmetal` (a fine parkerised
+ * grain), `polymer` (moulded stipple), `camo` (a field pattern for uniforms)
+ * and `webbing` (woven nylon for vests and packs). Built once.
+ */
+export function createDetails() {
+  if (details) return details;
+  const blotch = (u, v, cells, seed, cut) => (cloud(u, v, cells, seed, 3) > cut ? 1 : 0);
+  details = {
+    gunmetal: paint(
+      128,
+      (u, v) => noise(u, v, 64, 11) * 0.7 + noise(u, v, 16, 12) * 0.3,
+      (u, v, h) => {
+        const wear = cloud(u, v, 6, 14, 3);
+        return tint([1, 1, 1], 0.78 + h * 0.16 + (wear > 0.7 ? 0.14 : 0));
+      },
+      1.4,
+    ),
+    polymer: paint(
+      128,
+      (u, v) => (lattice(Math.floor(u * 64), Math.floor(v * 64), 64, 5) > 0.5 ? 1 : 0.35),
+      (u, v, h) => tint([1, 1, 1], 0.8 + h * 0.14),
+      2.2,
+    ),
+    camo: paint(
+      256,
+      (u, v) => {
+        const weave = Math.sin(u * 256 * 1.57) * Math.sin(v * 256 * 1.57);
+        return 0.5 + weave * 0.5;
+      },
+      (u, v, h) => {
+        // Four tones laid over each other in soft-edged patches.
+        let tone = [0.78, 0.74, 0.58];
+        if (blotch(u, v, 5, 21, 0.52)) tone = [0.52, 0.56, 0.38];
+        if (blotch(u + 0.37, v + 0.11, 6, 33, 0.56)) tone = [0.36, 0.33, 0.25];
+        if (blotch(u + 0.71, v + 0.53, 9, 47, 0.62)) tone = [0.9, 0.86, 0.72];
+        return tint(tone, 1.25 * (0.92 + h * 0.08));
+      },
+      1.6,
+    ),
+    webbing: paint(
+      128,
+      (u, v) => {
+        const row = Math.abs(fract(v * 16) - 0.5) * 2,
+          column = Math.abs(fract(u * 32 + (Math.floor(v * 16) % 2) * 0.5) - 0.5) * 2;
+        return Math.min(1, row * 0.7 + column * 0.5);
+      },
+      (u, v, h) => tint([1, 1, 1], 0.72 + h * 0.26),
+      3,
+    ),
+  };
+  return details;
 }
 
 /** A soft round dot for sparks, smoke and glows. */

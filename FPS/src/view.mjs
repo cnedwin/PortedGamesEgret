@@ -8,7 +8,6 @@ import {
   createAmbientLight3D,
   createBoxGeometry3D,
   createDirectionalLight3D,
-  createGradientCubeTexture3D,
   createHemisphereLight3D,
   createParticleEmitter3D,
   createPointLight3D,
@@ -23,7 +22,7 @@ import { createGun } from './gun.mjs';
 import { PLACES } from './level.mjs';
 import { buildScenery } from './scenery.mjs';
 import { createSoldierFactory } from './soldier.mjs';
-import { canvasTexture, createSurfaces, dotTexture } from './textures.mjs';
+import { canvasTexture, createSurfaces, dotTexture, skyTexture } from './textures.mjs';
 
 /** Colours for the six rarities of loot, common to rarest, as [r, g, b] in 0..1. */
 export const RARITY_COLOURS = [
@@ -42,7 +41,7 @@ export function createView(scene, camera, options = {}) {
   const view = { shake: 0, flash: 0 };
 
   // ---- sky and light: first light over the valley ------------------------------------------
-  const sky = createGradientCubeTexture3D([52, 78, 118], [226, 176, 138], [58, 60, 62], 64);
+  const sky = skyTexture([0.72, 0.4, 0.56]);
   scene.background = sky;
   scene.environment = sky;
   scene.environmentIntensity = 0.34;
