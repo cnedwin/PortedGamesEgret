@@ -102,6 +102,7 @@ export function createHud(root, options = {}) {
   hud.touch = { joystick, actions, pause };
   hud.setTouchControls = (active, onTouchDevice) => {
     touchMode = onTouchDevice;
+    document.documentElement.classList.toggle('touch-game-active', active);
     play.classList.toggle('touch-play', active);
     touch.classList.toggle('hidden', !active);
     if (active) {

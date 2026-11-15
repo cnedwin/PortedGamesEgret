@@ -50,42 +50,48 @@ export function createInput(canvas, touch) {
     touchRight = 0,
     touchLookX = 0,
     touchLookY = 0,
+    releasedLookX = 0,
+    releasedLookY = 0,
     sampledTouchJump = false;
   const touchPressed = new Set(), touchTaps = new Set();
-  const releaseTouch = [];
+  const contacts = new Map();
 
   /** Each control owns a single contact, so a second finger can use another control. */
   function bindTouch(element, start, move, finish) {
     let pointer;
-    const release = (canceled) => {
+    const release = (canceled, event) => {
       if (pointer === undefined) return;
       const id = pointer;
       pointer = undefined;
-      finish?.(canceled);
-      if (element.hasPointerCapture(id)) element.releasePointerCapture(id);
+      contacts.delete(id);
+      finish?.(canceled, event);
+      if (element.hasPointerCapture?.(id)) {
+        try {
+          element.releasePointerCapture?.(id);
+        } catch {
+          // The browser may already have released the native contact.
+        }
+      }
     };
+    const owner = { move, release };
     on(element, 'pointerdown', (event) => {
-      if (!touchEnabled || pointer !== undefined || event.button !== 0 || !start(event)) return;
+      if (!touchEnabled || pointer !== undefined || contacts.has(event.pointerId) || event.button !== 0 || !start(event)) return;
       pointer = event.pointerId;
-      element.setPointerCapture(pointer);
+      contacts.set(pointer, owner);
+      try {
+        element.setPointerCapture?.(pointer);
+      } catch {
+        // The window still routes this contact by ID if explicit capture is unavailable.
+      }
       event.preventDefault();
     });
-    on(element, 'pointermove', (event) => {
-      if (event.pointerId === pointer) move?.(event);
+    on(element, 'lostpointercapture', (event) => {
+      if (event.pointerId === pointer && event.target === element) release(true, event);
     });
-    on(element, 'pointerup', (event) => {
-      if (event.pointerId === pointer) release(false);
-    });
-    for (const type of ['pointercancel', 'lostpointercapture']) {
-      on(element, type, (event) => {
-        if (event.pointerId === pointer) release(true);
-      });
-    }
-    releaseTouch.push(() => release(true));
   }
 
   if (touch) {
-    const { joystick, actions } = touch;
+    const { joystick, actions, pause } = touch;
     let centerX, centerY, radius;
     const moveStick = (event) => {
       const x = event.clientX - centerX, y = event.clientY - centerY;
@@ -126,6 +132,27 @@ export function createInput(canvas, touch) {
         }
       });
     }
+    if (pause) {
+      let startX, startY, swiped;
+      const outsideSlop = (event) => Math.hypot(event.clientX - startX, event.clientY - startY) > 12;
+      // Browsers may not synthesize click for a second finger while the stick is held.
+      bindTouch(pause, (event) => {
+        if (event.pointerType === 'mouse') return false;
+        startX = event.clientX;
+        startY = event.clientY;
+        swiped = false;
+        pause.classList.add('held');
+        return true;
+      }, (event) => {
+        swiped ||= outsideSlop(event);
+      }, (canceled, event) => {
+        pause.classList.remove('held');
+        if (canceled || swiped || outsideSlop(event)) return;
+        const { left, top, width, height } = pause.getBoundingClientRect();
+        const { clientX: x, clientY: y } = event;
+        if (x >= left && x < left + width && y >= top && y < top + height) input.onCommand?.('menu');
+      });
+    }
 
     let lastX, lastY;
     bindTouch(canvas, (event) => {
@@ -139,6 +166,12 @@ export function createInput(canvas, touch) {
       touchLookY += event.clientY - lastY;
       lastX = event.clientX;
       lastY = event.clientY;
+    }, (canceled) => {
+      if (!canceled) {
+        releasedLookX += touchLookX;
+        releasedLookY += touchLookY;
+      }
+      touchLookX = touchLookY = 0;
     });
   }
 
@@ -146,9 +179,10 @@ export function createInput(canvas, touch) {
     // A pause or canceled gesture must not release a charged jump into the next run.
     if (sampledTouchJump || touchTaps.has('jump')) input.onJumpCancel?.();
     sampledTouchJump = false;
-    for (const release of releaseTouch) release();
+    for (const contact of contacts.values()) contact.release(true);
     touchTaps.clear();
     touchLookX = touchLookY = 0;
+    releasedLookX = releasedLookY = 0;
   }
   input.setTouchEnabled = (enabled) => {
     if (touchEnabled && !enabled) clearTouch();
@@ -189,15 +223,20 @@ export function createInput(canvas, touch) {
     else if (event.button === 2) mouseRoll = true;
   });
   on(window, 'pointerup', (event) => {
+    const contact = contacts.get(event.pointerId);
+    if (contact) return contact.release(false, event);
     if (event.pointerType === 'touch') return;
     dragging = false;
     if (event.button === 2) mouseRoll = false;
   });
   on(window, 'pointermove', (event) => {
+    const contact = contacts.get(event.pointerId);
+    if (contact) return contact.move?.(event);
     if (!input.enabled || event.pointerType === 'touch' || !(input.captured || dragging)) return;
     lookX += event.movementX;
     lookY += event.movementY;
   });
+  on(window, 'pointercancel', (event) => contacts.get(event.pointerId)?.release(true, event));
   on(
     canvas,
     'wheel',
@@ -251,9 +290,10 @@ export function createInput(canvas, touch) {
     input.jump = jump;
     input.roll = roll;
     input.slam = slam;
-    input.lookX = lookX + touchLookX;
-    input.lookY = lookY + touchLookY;
+    input.lookX = lookX + touchLookX + releasedLookX;
+    input.lookY = lookY + touchLookY + releasedLookY;
     touchLookX = touchLookY = 0;
+    releasedLookX = releasedLookY = 0;
     input.zoom = zoom;
     lookX = 0;
     lookY = 0;
