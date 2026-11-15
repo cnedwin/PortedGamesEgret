@@ -63,6 +63,18 @@ export const SKINS = [
   { key: 'mint', start: 'ripple', en: 'Mint', zh: '薄荷', body: 0x9ff2e0, patch: 0x0f7a72, pattern: 'swirl', accent: 0xeafffb },
 ];
 
+// Reads from the starting toy's actual behaviour and is shared by both title languages.
+export const PLAY_STYLES = {
+  bamboo: { en: 'Roll heavy balls downhill into a line of candy.', zh: '借斜坡把保龄球滚进成排的糖果。' },
+  peach: { en: 'Bubble up the front line and slip past under it.', zh: '把前排糖果用泡泡托起，趁空隙溜过去。' },
+  ocean: { en: 'Keep a water jet between you and the nearest mob.', zh: '用持续水柱把靠近的一团糖果顶开。' },
+  mango: { en: 'Lead the crowd back through your sticky jam.', zh: '绕个圈，把追来的糖果带回果酱滩。' },
+  grape: { en: 'Circle nearby candy so the yo-yo sweeps through.', zh: '绕着近处的糖果跑，让悠悠球扫过去。' },
+  classic: { en: 'Skim the edge of a crowd with the orbiting flail.', zh: '贴着敌群外沿走，用绕身的流星锤扫过去。' },
+  cherry: { en: 'Pull candy together for a close confetti burst.', zh: '把糖果引成一团，再用近距离礼炮打散。' },
+  mint: { en: 'Draw candy close, then push it out with a belly beat.', zh: '用肚皮鼓把糖果吸近，再一拍震开。' },
+};
+
 /**
  * Toys fire on their own. `base` holds the starting numbers; each entry of
  * `levels` adds to them for levels 2 to 8. `charm` names the charm that lets
@@ -618,6 +630,15 @@ export const TEXT = {
   reroll: { en: 'Reroll (R)', zh: '重抽 (R)' },
   newToy: { en: 'New toy', zh: '新玩具' },
   newCharm: { en: 'New charm', zh: '新护符' },
+  starterUpgrade: { en: 'Upgrade your starter', zh: '强化初始玩具' },
+  starterEvolution: { en: 'Evolution partner', zh: '进化搭配' },
+  starterReroll: { en: 'Reroll replaces the new toy.', zh: '首轮重抽只更换新玩具。' },
+  trickTitle: { en: 'Jelly hat trick', zh: '果冻三连' },
+  trickGoal: { en: 'Hit candy with each move to earn XP.', zh: '用三种动作各命中一次，赢经验。' },
+  trickSlam: { en: 'Air slam', zh: '空中下砸' },
+  trickBump: { en: 'Belly bump', zh: '肚皮撞' },
+  trickRoll: { en: 'Roll', zh: '翻滚' },
+  trickReward: { en: 'Jelly hat trick!', zh: '果冻三连完成！' },
   evolve: { en: 'EVOLVE', zh: '进化' },
   level: { en: 'Lv', zh: '等级' },
   paused: { en: 'Paused', zh: '已暂停' },
@@ -653,6 +674,7 @@ export const TEXT = {
     zh: 'WASD 移动 · 鼠标转视角 · 空格跳跃（长按蓄力大跳）· Ctrl / 左键 / Q 空中下砸、地面肚皮撞 · Shift / 右键 / E 翻滚 · 1-3 选卡 · R 重抽 · Esc 菜单',
   },
   chest: { en: 'Treasure! Free upgrade', zh: '宝箱！免费升级' },
+  chestXp: { en: 'Treasure! Bonus XP', zh: '宝箱！额外经验' },
   quality: { en: 'Quality: ', zh: '画质：' },
   quality_high: { en: 'high', zh: '高' },
   quality_medium: { en: 'medium', zh: '中' },

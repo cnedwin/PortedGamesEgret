@@ -87,6 +87,9 @@
   flex-wrap: wrap;
   justify-content: center;
 }
+.play.touch-play .island-challenge {
+  top: max(91px, calc(env(safe-area-inset-top) + 83px));
+}
 
 @media (max-height: 430px) and (orientation: landscape) {
   .touch {
@@ -97,5 +100,11 @@
     left: auto;
     right: max(12px, env(safe-area-inset-right));
     top: max(42px, calc(env(safe-area-inset-top) + 34px));
+  }
+  .play.touch-play .island-challenge {
+    left: 50%;
+    right: auto;
+    top: 46px;
+    transform: translateX(-50%);
   }
 }

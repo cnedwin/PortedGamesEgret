@@ -119,7 +119,11 @@ export function createAudio() {
     ],
     announce: [
       0.5,
-      () => {
+      ({ key }) => {
+        if (key === 'trickReward') {
+          [659, 784, 1047].forEach((f, i) => tone(f, f, 0.16, 0.14, 'triangle', i * 0.075));
+          return;
+        }
         tone(392, 392, 0.14, 0.12, 'square');
         tone(523, 523, 0.2, 0.12, 'square', 0.15);
       },

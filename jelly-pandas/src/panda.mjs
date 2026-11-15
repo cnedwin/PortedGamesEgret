@@ -68,44 +68,47 @@ export function buildShape(parts) {
 }
 
 // ---- belly patterns, painted into a small texture ---------------------------------
+const ellipse = (x, y, rx, ry) => (x / rx) ** 2 + (y / ry) ** 2 < 1;
 const fract = (v) => v - Math.floor(v);
 const PATTERNS = {
-  // Each returns how strongly the pattern colour shows at a point of the unwrapped body, 0 to 1.
-  spots: (u, v) => {
-    const x = fract(u * 8) - 0.5,
-      y = fract(v * 5 + Math.floor(u * 8) * 0.5) - 0.5;
-    return x * x + y * y < 0.07 ? 1 : 0;
+  // Each returns the ink strength in local coordinates on the belly, from 0 to 1.
+  spots: (x, y) =>
+    Number(
+      ellipse(x, y - 0.32, 0.14, 0.16) ||
+      ellipse(Math.abs(x) - 0.39, y - 0.06, 0.15, 0.16) ||
+      ellipse(Math.abs(x) - 0.22, y + 0.3, 0.14, 0.15)
+    ),
+  stripes: (x, y) => Number(Math.abs(x) < 0.68 && Math.abs(Math.abs(y - x * 0.12) - 0.21) < 0.1),
+  checks: (x, y) => {
+    if (Math.abs(x) >= 0.66 || Math.abs(y) >= 0.45) return 0;
+    return (Math.floor((x + 0.66) / 0.33) + Math.floor((y + 0.45) / 0.3)) % 2 ? 1 : 0.26;
   },
-  stripes: (u, v) => (fract(v * 6) < 0.42 ? 1 : 0),
-  checks: (u, v) => ((Math.floor(u * 10) + Math.floor(v * 6)) & 1 ? 1 : 0),
-  waves: (u, v) => (fract(v * 5 + Math.sin(u * Math.PI * 8) * 0.12) < 0.35 ? 1 : 0),
-  swirl: (u, v) => (fract(u * 4 + v * 3) < 0.4 ? 1 : 0),
-  hearts: (u, v) => {
-    const x = (fract(u * 7) - 0.5) * 2.6,
-      y = (0.5 - fract(v * 4.5 + Math.floor(u * 7) * 0.5)) * 2.6 + 0.2,
-      a = x * x + y * y - 1;
-    return a * a * a - x * x * y * y * y < 0 ? 1 : 0;
+  waves: (x, y) =>
+    Number(Math.abs(x) < 0.66 && Math.abs(Math.abs(y - Math.sin(x * 6) * 0.11) - 0.19) < 0.092),
+  swirl: (x, y) => {
+    const radius = Math.hypot(x, y);
+    if (radius < 0.09 || radius > 0.68) return 0;
+    const turn = fract(Math.atan2(y, x) / (Math.PI * 2) + 2 - radius * 2.15);
+    return Number(Math.abs(turn - 0.5) < 0.125);
   },
-  stars: (u, v) => {
-    const x = fract(u * 7) - 0.5,
-      y = fract(v * 4.5 + Math.floor(u * 7) * 0.5) - 0.5,
-      angle = Math.atan2(y, x),
-      reach = 0.2 + 0.13 * Math.cos(angle * 5);
-    return Math.hypot(x, y) < reach ? 1 : 0;
+  hearts: (x, y) => {
+    const hx = x * 1.6,
+      hy = y * 1.85 + 0.12,
+      a = hx * hx + hy * hy - 1;
+    return Number(a * a * a - hx * hx * hy * hy * hy < 0);
   },
-  leaves: (u, v) => {
-    const cell = Math.floor(u * 6),
-      x = fract(u * 6) - 0.5,
-      y = fract(v * 4 + cell * 0.37) - 0.5,
-      turn = cell * 1.9,
-      c = Math.cos(turn),
-      n = Math.sin(turn),
-      lx = x * c - y * n,
-      ly = x * n + y * c;
-    return (lx * lx) / 0.14 + (ly * ly) / 0.018 < 1 ? 1 : 0;
+  stars: (x, y) => {
+    const angle = Math.atan2(x, y),
+      reach = 0.46 + 0.18 * Math.cos(angle * 5);
+    return Number(Math.hypot(x, y) < reach);
+  },
+  leaves: (x, y) => {
+    const large = ellipse(x + 0.19, y - 0.17 - (x + 0.19) * 1.03, 0.37, 0.15);
+    const small = ellipse(x - 0.33, y + 0.21 - (x - 0.33) * 0.92, 0.23, 0.11);
+    return large ? 1 : small ? 0.85 : 0;
   },
 };
-/** Paint the skin's belly pattern into a texture that wraps around the body. */
+/** Paint a large belly mark and a softer matching mark visible from behind. */
 function patternTexture(skin) {
   const width = 256,
     height = 128,
@@ -114,11 +117,11 @@ function patternTexture(skin) {
     ink = [((skin.patch >> 16) & 255) / 255, ((skin.patch >> 8) & 255) / 255, (skin.patch & 255) / 255];
   for (let y = 0; y < height; y++)
     for (let x = 0; x < width; x++) {
-      const u = x / width,
-        v = y / height;
-      // The pattern fades out toward the poles, where the unwrapped body pinches.
-      const fade = Math.min(1, Math.sin(v * Math.PI) * 1.6),
-        mark = paint(u, v) * fade * 0.72,
+      // The sphere faces +Z at u = 1/4 and -Z at u = 3/4.
+      const front = x < width / 2,
+        u = (x / width - (front ? 0.25 : 0.75)) * (front ? 7.4 : 8.6),
+        v = (y / height - (front ? 0.48 : 0.56)) * 4.8;
+      const mark = Math.abs(u) < 0.9 && Math.abs(v) < 0.85 ? paint(u, v) * (front ? 0.84 : 0.47) : 0,
         o = (y * width + x) * 4;
       data[o] = 255 * (1 + (ink[0] - 1) * mark);
       data[o + 1] = 255 * (1 + (ink[1] - 1) * mark);
@@ -127,6 +130,18 @@ function patternTexture(skin) {
     }
   return new Texture3D({ width, height, data }, { wrapS: 'repeat', wrapT: 'clamp' });
 }
+
+// The portraits' expressions also read in 3D through ear shape, eyes and posture.
+const FEATURES = {
+  bamboo: { earTilt: 0.3, eyeOpen: 0.7, eyeTilt: 0.21, bellyWidth: 0.65 },
+  peach: { earSize: 1.07, earY: 0.39, earTilt: 0.13, eyeOpen: 0.56, eyeTilt: -0.13, headTilt: 0.08, smile: 0.022 },
+  ocean: { earSpan: 0.39, earTilt: 0.37, eyeOpen: 0.92, eyeTilt: 0.18, headTilt: -0.06, smile: 0.017 },
+  mango: { earSize: 1.04, earTilt: 0.05, eyeOpen: 0.52, eyeTilt: -0.19, headTilt: -0.07, bellyWidth: 0.68 },
+  grape: { earY: 0.41, earTilt: 0.12, eyeOpen: 1.08, wink: 1, headTilt: 0.12, bellyWidth: 0.62, smile: 0.024 },
+  classic: { earSpan: 0.4, earSize: 1.08, eyeOpen: 1.08, headTilt: -0.03, bellyWidth: 0.67 },
+  cherry: { earSpan: 0.37, earTilt: 0.24, eyeOpen: 1.08, wink: -1, headTilt: -0.11, smile: 0.021 },
+  mint: { earSpan: 0.38, earY: 0.38, earTilt: 0.17, eyeOpen: 0.57, eyeTilt: -0.14, bellyWidth: 0.67, smile: 0.024 },
+};
 
 const ball = createSphereGeometry3D({ radius: 1, widthSegments: 28, heightSegments: 18 });
 const smallBall = createSphereGeometry3D({ radius: 1, widthSegments: 14, heightSegments: 10 });
@@ -142,6 +157,18 @@ const eyeWhite = createUnlitMaterial3D({ color: 0xffffff }),
  * for devices where the see-through pass is too slow.
  */
 export function createPanda(skin, jelly = true) {
+  const {
+    bellyWidth = 0.64,
+    earSpan = 0.36,
+    earY = 0.36,
+    earSize = 1,
+    earTilt = 0.2,
+    eyeOpen = 1,
+    eyeTilt = 0,
+    headTilt = 0,
+    smile = 0.014,
+    wink = 0,
+  } = FEATURES[skin.key] ?? {};
   const tint = rgb(skin.body),
     patchTint = rgb(skin.patch),
     map = patternTexture(skin);
@@ -213,25 +240,28 @@ export function createPanda(skin, jelly = true) {
     mesh.castShadow = false;
     return mesh;
   };
-  const glowing = [piece(ball, bodyMaterial, 0, -0.14, 0, 0.64, 0.6, 0.58)];
+  const glowing = [piece(ball, bodyMaterial, 0, -0.14, 0, bellyWidth, 0.6, 0.58)];
   const head = new Object3D();
   head.setPosition(0, 0.56, 0.04);
   pivot.addChild(head);
-  glowing.push(piece(ball, headMaterial, 0, 0, 0, 0.5, 0.46, 0.46, head));
-  const earL = piece(smallBall, patchMaterial, -0.36, 0.36, -0.02, 0.17, 0.17, 0.1, head),
-    earR = piece(smallBall, patchMaterial, 0.36, 0.36, -0.02, 0.17, 0.17, 0.1, head);
+  glowing.push(piece(ball, headMaterial, 0, 0, 0, 0.52, 0.46, 0.46, head));
+  const makeEar = (side) =>
+    piece(smallBall, patchMaterial, side * earSpan, earY, -0.02, 0.18 * earSize, 0.17 * earSize, 0.12, head);
+  const earL = makeEar(-1),
+    earR = makeEar(1);
   // Face: eye patches, eyes that blink, a nose, a small mouth and rosy cheeks.
   const eyes = [];
   for (const side of [-1, 1]) {
     const patch = piece(smallBall, patchMaterial, side * 0.19, 0.04, 0.38, 0.14, 0.18, 0.07, head);
-    patch.setRotation(0, side * 0.35, side * -0.35);
+    patch.setRotation(0, side * 0.35, side * (-0.35 + eyeTilt * 0.6));
     const eye = new Object3D();
     eye.setPosition(side * 0.19, 0.06, 0.445);
+    eye.setRotation(0, 0, side * eyeTilt);
     head.addChild(eye);
     detail(smallBall, eyeWhite, 0, 0, 0, 0.068, 0.068, 0.03, eye);
     detail(smallBall, eyeDark, side * -0.006, -0.004, 0.022, 0.04, 0.04, 0.016, eye);
     detail(smallBall, eyeWhite, side * -0.02, 0.018, 0.036, 0.013, 0.013, 0.006, eye); // catch-light
-    eyes.push(eye);
+    eyes.push({ eye, winks: side === wink });
     detail(smallBall, cheekPink, side * 0.3, -0.09, 0.36, 0.07, 0.045, 0.02, head);
   }
   detail(smallBall, eyeDark, 0, -0.06, 0.458, 0.055, 0.036, 0.032, head); // nose
@@ -329,21 +359,28 @@ export function createPanda(skin, jelly = true) {
       const lean = state.slamming ? 0.5 : moving ? Math.min(0.22, state.speedNow * 0.022) : 0;
       pivot.setRotation(this.roll + lean + this.lie * -1.45, 0, sway);
       pivot.setPosition(0, 0.78 + bob - this.lie * 0.42, 0);
-      head.setRotation(Math.sin(time * 2.3) * 0.04 - (state.charge > 0.1 ? 0.2 : 0) - lean * 0.6, 0, -sway * 1.5);
+      head.setRotation(
+        Math.sin(time * 2.3) * 0.04 - (state.charge > 0.1 ? 0.2 : 0) - lean * 0.6,
+        0,
+        -sway * 1.5 + (moving ? headTilt * 0.5 : headTilt),
+      );
       const reach = state.slamming ? -2.6 : state.grounded ? 0 : -1.3;
       armL.setRotation(swing * 0.8 + reach, 0, -0.25 - (state.grounded ? 0 : 0.6));
       armR.setRotation(-swing * 0.8 + reach, 0, 0.25 + (state.grounded ? 0 : 0.6));
       legL.setRotation(-swing * 0.7, 0, 0);
       legR.setRotation(swing * 0.7, 0, 0);
-      earL.setRotation(0, 0, 0.2 + wobble.amount * 0.8);
-      earR.setRotation(0, 0, -0.2 - wobble.amount * 0.8);
+      const earRoll = earTilt + wobble.amount * 0.8;
+      earL.setRotation(0, -earTilt * 0.5, earRoll);
+      earR.setRotation(0, earTilt * 0.5, -earRoll);
       // Eyes: a blink every few seconds, squeezed shut while hurt or down, wide open in the air.
       this.blink -= dt;
       if (this.blink < -0.12) this.blink = 2 + Math.random() * 4;
       const shut = state.down || state.hurtFlash > 0 || this.blink < 0,
-        open = shut ? 0.12 : state.grounded ? 1 : 1.2;
-      for (const eye of eyes) eye.setScale(1, open, 1);
-      mouth.setScale(state.grounded && !shut ? 0.045 : 0.035, state.grounded && !shut ? 0.014 : 0.035, 0.012);
+        open = state.grounded ? eyeOpen : 1.2;
+      for (const { eye, winks } of eyes) {
+        eye.setScale(1, shut || (winks && state.grounded && !moving) ? 0.12 : open, 1);
+      }
+      mouth.setScale(state.grounded && !shut ? 0.045 : 0.035, state.grounded && !shut ? smile : 0.035, 0.012);
       // Flash while hurt, blink while briefly untouchable.
       const glow = state.hurtFlash > 0 ? 1.4 : GLOW;
       for (const material of glowMaterials) material.emissiveIntensity = glow;
