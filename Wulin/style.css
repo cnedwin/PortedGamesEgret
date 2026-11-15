@@ -66,6 +66,10 @@
 }
 .map-roads line { stroke: #3d3320; stroke-opacity: 0.7; stroke-width: 1.2; }
 #layer .seat-tag { pointer-events: auto; font-size: 11px; padding: 3px 6px; }
+#layer .seat-tag { z-index: 3; }
+#layer .seat-plot { --pin: #223e35e8; pointer-events: auto; justify-content: center; min-width: 28px; min-height: 28px; padding: 2px; border-color: #c6ac758f; color: #f3dc9e; font-size: 17px; }
+#layer .seat-plot::after { display: none; }
+#layer :is(.seat-tag, .seat-plot):is(.is-selected, :focus-visible) { --pin: #e4c789; color: #322a1c; outline: 2px solid #f5dfa8; outline-offset: 2px; z-index: 4; }
 
 /* Name tags over the strongholds of the 3D map. */
 .map-panel.is-model { cursor: default; }
@@ -120,7 +124,6 @@
 .building-panel .building-detail { display: grid; gap: 10px; padding: 12px 15px; }
 .building-panel .form-row { padding: 0 15px 10px; }
 .building-hint { padding: 0 15px 12px; }
-.building-switch.is-folded { display: none; }
 .affair select { min-height: 37px; color: var(--ink); background: #fffaf0; border: 1px solid #cdbb97; border-radius: 4px; padding: 5px 9px; font: inherit; font-size: 13px; }
 
 /* ==== one screen, not a page: the picture fills it and everything else sits over the picture ==== */
@@ -129,7 +132,7 @@ html:has(.shell.game), html:has(.shell.game) body { height: 100%; overflow: hidd
 .shell.game input, .shell.game textarea { user-select: text; -webkit-user-select: text; }
 .shell.game .nav { position: relative; height: auto; z-index: 3; }
 .shell.game .topbar { position: relative; z-index: 3; background: #f9f2e2f2; }
-.backdrop { grid-area: 2/2/3/3; position: relative; min-width: 0; min-height: 0; overflow: hidden; background: #2b3530; }
+.backdrop { grid-area: 2/2/3/3; position: relative; isolation: isolate; min-width: 0; min-height: 0; overflow: hidden; background: #2b3530; }
 .backdrop .scene-image { position: absolute; inset: 0; background-size: cover; background-position: center; }
 .backdrop::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: #1f2925; opacity: 0; transition: opacity .25s; }
 .backdrop.is-dimmed::after { opacity: .62; }
@@ -170,7 +173,6 @@ html:has(.shell.game), html:has(.shell.game) body { height: 100%; overflow: hidd
 .command .panel + .panel { border-top: 1px solid #cdbd9c; }
 .command .stat-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 .command .affair select { max-width: 170px; }
-.command .building-switch.is-folded { display: none; }
 .panel-foot { padding: 4px 15px 16px; }
 .panel-foot .button { width: 100%; justify-content: center; }
 .world-side.command { display: block; overflow: auto; }

@@ -4,7 +4,8 @@ const engines = new WeakMap();
 export function registerTextFieldEngine(engine, assertOpen, isEngineScope) {
     const caches = new WeakMap();
     const port = Object.freeze({
-        assertOpen, isEngineScope,
+        assertOpen,
+        isEngineScope,
         registerCache(cache, construct, kind = 'explicit-lines') {
             assertOpen();
             caches.set(cache, { construct, kind });
@@ -17,7 +18,7 @@ export function registerTextFieldEngine(engine, assertOpen, isEngineScope) {
             if (registered === undefined || registered.kind !== kind)
                 throw new EgretError('TEXT_FIELD_INVALID');
             return registered.construct(scope);
-        },
+        }
     });
     engines.set(engine, port);
     return port;

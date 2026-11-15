@@ -14,12 +14,18 @@ import { InstancedMesh3D, Mesh3D } from './Mesh3D.js';
 function compareOpaque(a, b) {
     // Group by material, then geometry, to minimize state changes; draw near
     // objects first within a group so early depth rejection saves shading.
-    return a.order - b.order || a.material.id - b.material.id || a.geometry.id - b.geometry.id || a.start - b.start || a.depth - b.depth;
+    return (a.order - b.order ||
+        a.material.id - b.material.id ||
+        a.geometry.id - b.geometry.id ||
+        a.start - b.start ||
+        a.depth - b.depth);
 }
 function compareTransparent(a, b) {
     return a.mesh.renderOrder - b.mesh.renderOrder || b.depth - a.depth || a.mesh.id - b.mesh.id;
 }
-function foldable(material) { return !material.billboard && !material.screenSpace && !material.wireframe; }
+function foldable(material) {
+    return !material.billboard && !material.screenSpace && !material.wireframe;
+}
 export class RenderList3D {
     opaque = [];
     transparent = [];
@@ -57,7 +63,9 @@ export class RenderList3D {
     #used = 0;
     #frame = 0;
     /** Monotonic frame id, used to update each skeleton once per frame. */
-    get frame() { return this.#frame; }
+    get frame() {
+        return this.#frame;
+    }
     build(scene, camera) {
         this.#override = scene.overrideMaterial && !scene.overrideMaterial.isDisposed ? scene.overrideMaterial : undefined;
         this.#frame++;
@@ -105,7 +113,11 @@ export class RenderList3D {
             let end = i + 1;
             while (end < sorted.length) {
                 const next = sorted[end];
-                if (next.material !== first.material || next.geometry !== first.geometry || next.start !== first.start || next.count !== first.count || next.order !== first.order)
+                if (next.material !== first.material ||
+                    next.geometry !== first.geometry ||
+                    next.start !== first.start ||
+                    next.count !== first.count ||
+                    next.order !== first.order)
                     break;
                 end++;
             }
@@ -139,13 +151,23 @@ export class RenderList3D {
                         members.push(sorted[k].mesh);
                         lead ??= sorted[k];
                     }
-                const batch = this.batch(first.geometry, first.material, lead.mesh.receiveShadow ? 1 : 0, members.length, (k) => members[k]);
+                const batch = this.batch(first.geometry, first.material, lead.mesh.receiveShadow ? 1 : 0, members.length, k => members[k]);
                 // Layers travel with the stand-in: outlines and masks select meshes by them.
                 batch.mesh.castShadow = false;
                 batch.mesh.layers = lead.mesh.layers;
                 let item = this.#batchItems[this.#batchItemsUsed];
                 if (!item)
-                    this.#batchItems[this.#batchItemsUsed] = item = { mesh: batch.mesh, geometry: first.geometry, material: first.material, start: first.start, count: first.count, depth: lead.depth, opaque: true, order: first.order, group };
+                    this.#batchItems[this.#batchItemsUsed] = item = {
+                        mesh: batch.mesh,
+                        geometry: first.geometry,
+                        material: first.material,
+                        start: first.start,
+                        count: first.count,
+                        depth: lead.depth,
+                        opaque: true,
+                        order: first.order,
+                        group
+                    };
                 else {
                     item.mesh = batch.mesh;
                     item.geometry = first.geometry;
@@ -193,7 +215,7 @@ export class RenderList3D {
             const key = mesh.geometry.id * 4194304 + material.id;
             let list = groups.get(key);
             if (!list)
-                groups.set(key, list = []);
+                groups.set(key, (list = []));
             list.push(mesh);
         }
         for (const list of groups.values()) {
@@ -204,21 +226,24 @@ export class RenderList3D {
                     out.push(list[i]);
                 continue;
             }
-            const batch = this.batch(list[0].geometry, list[0].material, 2, list.length, (k) => list[k]);
+            const batch = this.batch(list[0].geometry, list[0].material, 2, list.length, k => list[k]);
             batch.mesh.castShadow = true;
             out.push(batch.mesh);
         }
     }
     /** The instanced stand-in for a run of meshes, with their world matrices as its instances. */
     batch(geometry, material, role, count, at) {
-        const key = geometry.id * 4194304 + material.id % 4194304;
+        const key = geometry.id * 4194304 + (material.id % 4194304);
         let slots = this.#batches.get(key);
         if (!slots)
-            this.#batches.set(key, slots = []);
+            this.#batches.set(key, (slots = []));
         // One stand-in per role (receiving shadows or not, casting) and per run within a frame.
         let found;
         for (const slot of slots)
-            if (slot.role === role && slot.frame !== this.#frame && slot.material === material && slot.geometry === geometry) {
+            if (slot.role === role &&
+                slot.frame !== this.#frame &&
+                slot.material === material &&
+                slot.geometry === geometry) {
                 found = slot;
                 break;
             }
@@ -233,7 +258,7 @@ export class RenderList3D {
                 found.stamp = -1;
             }
             else
-                slots.push(found = { mesh, geometry, material, role, frame: 0, stamp: -1 });
+                slots.push((found = { mesh, geometry, material, role, frame: 0, stamp: -1 }));
         }
         found.frame = this.#frame;
         const mesh = found.mesh;
@@ -335,7 +360,10 @@ export class RenderList3D {
         // Use the batch origin when no posed bound is available.
         const sortOrigin = sphere ?? mesh.matrixWorld, offset = sphere ? 0 : 12;
         const view = camera.viewMatrix;
-        const depth = -(view[2] * sortOrigin[offset] + view[6] * sortOrigin[offset + 1] + view[10] * sortOrigin[offset + 2] + view[14]);
+        const depth = -(view[2] * sortOrigin[offset] +
+            view[6] * sortOrigin[offset + 1] +
+            view[10] * sortOrigin[offset + 2] +
+            view[14]);
         const groups = geometry.groups;
         if (Array.isArray(mesh.material) && groups.length > 0) {
             for (let i = 0; i < groups.length; i++) {
@@ -364,7 +392,14 @@ export class RenderList3D {
             this.#same = false;
         }
         else {
-            if (item.mesh !== mesh || item.material !== material || item.geometry !== geometry || item.start !== start || item.count !== count || item.opaque !== opaque || item.order !== order || item.group !== group)
+            if (item.mesh !== mesh ||
+                item.material !== material ||
+                item.geometry !== geometry ||
+                item.start !== start ||
+                item.count !== count ||
+                item.opaque !== opaque ||
+                item.order !== order ||
+                item.group !== group)
                 this.#same = false;
             item.mesh = mesh;
             item.geometry = geometry;

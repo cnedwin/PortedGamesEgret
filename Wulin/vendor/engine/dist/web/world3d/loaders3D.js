@@ -28,7 +28,11 @@ async function decode(blob, url, flipY = false) {
     // Decode without color-space conversion or premultiplication: the renderer handles both.
     // Rows are flipped here because WebGL ignores its unpack flip flag for ImageBitmap sources.
     try {
-        return await createImageBitmap(blob, { colorSpaceConversion: 'none', premultiplyAlpha: 'none', imageOrientation: flipY ? 'flipY' : 'from-image' });
+        return await createImageBitmap(blob, {
+            colorSpaceConversion: 'none',
+            premultiplyAlpha: 'none',
+            imageOrientation: flipY ? 'flipY' : 'from-image'
+        });
     }
     catch (cause) {
         throw new World3DError('WORLD3D_RESOURCE_FAILED', 'image decode: ' + url, cause);
@@ -48,7 +52,13 @@ export async function loadTexture3D(url, options = {}) {
         // KTX2 rows are stored top-down and cannot be flipped once block-compressed.
         const parsed = await parseKtx23D(bytes, options.transcodeKtx2 ? { transcode: options.transcodeKtx2 } : {});
         const levels = 'levels' in parsed.source ? parsed.source.levels.length : 1;
-        return new Texture3D(parsed.source, { ...textureOptions(options), colorSpace: options.colorSpace ?? parsed.colorSpace, flipY: false, mipmaps: levels > 1, name: options.name ?? url });
+        return new Texture3D(parsed.source, {
+            ...textureOptions(options),
+            colorSpace: options.colorSpace ?? parsed.colorSpace,
+            flipY: false,
+            mipmaps: levels > 1,
+            name: options.name ?? url
+        });
     }
     const bitmap = await decode(new Blob([bytes]), url, options.flipY ?? true);
     // The bitmap is already oriented, so the texture itself must not flip again.
@@ -61,8 +71,8 @@ export async function loadTexture3D(url, options = {}) {
 export async function loadCubeTexture3D(urls, options = {}) {
     if (!Array.isArray(urls) || urls.length !== 6)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'cube urls');
-    const settled = await Promise.allSettled(urls.map(async (url) => decode(new Blob([await fetchBytes(url, options)]), url)));
-    const bitmaps = settled.flatMap(result => result.status === 'fulfilled' ? [result.value] : []);
+    const settled = await Promise.allSettled(urls.map(async (url) => decode(new Blob([(await fetchBytes(url, options))]), url)));
+    const bitmaps = settled.flatMap(result => (result.status === 'fulfilled' ? [result.value] : []));
     const failure = settled.find(result => result.status === 'rejected');
     if (failure) {
         for (const bitmap of bitmaps)
@@ -70,8 +80,10 @@ export async function loadCubeTexture3D(urls, options = {}) {
         throw failure.reason;
     }
     const texture = new CubeTexture3D(bitmaps, { ...options, name: options.name ?? urls[0] });
-    texture.onDispose(() => { for (const bitmap of bitmaps)
-        bitmap.close(); });
+    texture.onDispose(() => {
+        for (const bitmap of bitmaps)
+            bitmap.close();
+    });
     return texture;
 }
 /** Load a .glb or .gltf file; relative buffer and image URIs resolve against `url`. */
@@ -80,10 +92,12 @@ export async function loadGltfFromUrl3D(url, options = {}) {
     const resolve = (uri) => new URL(uri, base).href;
     const bitmaps = [];
     let abandoned = false;
-    const closeBitmaps = () => { for (const bitmap of bitmaps.splice(0))
-        bitmap.close(); };
+    const closeBitmaps = () => {
+        for (const bitmap of bitmaps.splice(0))
+            bitmap.close();
+    };
     const decodeImage = async (request) => {
-        const bytes = request.bytes ?? await fetchBytes(resolve(request.uri ?? ''), options);
+        const bytes = request.bytes ?? (await fetchBytes(resolve(request.uri ?? ''), options));
         const bitmap = await decode(new Blob([bytes], request.mimeType ? { type: request.mimeType } : {}), request.uri ?? 'embedded image ' + request.index);
         // A sibling decode can reject before this ImageBitmap becomes available.
         if (abandoned) {
@@ -95,18 +109,25 @@ export async function loadGltfFromUrl3D(url, options = {}) {
     };
     try {
         const asset = await loadGltf3D(await fetchBytes(base.href, options), {
-            decodeImage, loadBuffer: uri => fetchBytes(resolve(uri), options),
-            ...(options.transcodeKtx2 ? { transcodeKtx2: options.transcodeKtx2 } : {}), ...(options.decodeMeshopt ? { decodeMeshopt: options.decodeMeshopt } : {}),
-            ...(options.decodeDraco ? { decodeDraco: options.decodeDraco } : {}),
+            decodeImage,
+            loadBuffer: uri => fetchBytes(resolve(uri), options),
+            ...(options.transcodeKtx2 ? { transcodeKtx2: options.transcodeKtx2 } : {}),
+            ...(options.decodeMeshopt ? { decodeMeshopt: options.decodeMeshopt } : {}),
+            ...(options.decodeDraco ? { decodeDraco: options.decodeDraco } : {})
         });
         const dispose = asset.dispose.bind(asset);
         // Close decoded bitmaps together with the rest of the asset.
-        return { ...asset, dispose: () => { try {
-                dispose();
+        return {
+            ...asset,
+            dispose: () => {
+                try {
+                    dispose();
+                }
+                finally {
+                    closeBitmaps();
+                }
             }
-            finally {
-                closeBitmaps();
-            } } };
+        };
     }
     catch (cause) {
         abandoned = true;

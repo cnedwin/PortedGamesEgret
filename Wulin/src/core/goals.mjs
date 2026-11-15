@@ -13,14 +13,14 @@ const levels = (state, sectId) => placesOf(state, sectId).reduce((sum, id) => su
  */
 export const GOALS = [
   { id: 'time', title: '开门立派', text: '日子不走，万事不动。让时间流转起来，过完头一旬。', how: '点右上角的「行」', count: (s) => [Math.min(10, s.day), 10], gives: { silver: 200 } },
-  { id: 'recruit', title: '广纳门徒', text: '招贤榜前常有人求见。会一会他们，把门下添到十二人。', how: '山门 · 招贤榜 · 会见', go: { page: 'seat' }, count: (s, id) => [membersOf(s, id).length, 12], gives: { silver: 300, grain: 40 } },
-  { id: 'build', title: '大兴土木', text: '新建一座建筑，或把现有的升上一级。', how: '山门 · 兴建建筑，或点画面上的建筑名', go: { page: 'seat', sheet: 'build' }, count: (s, id) => [Math.max(0, levels(s, id) - (s.goals.base ?? 0)), 1], gives: { silver: 400 } },
+  { id: 'recruit', title: '广纳门徒', text: '招贤榜前常有人求见。会一会他们，把门下添到十二人。', how: '山门 · 招贤榜 · 会见', go: { page: 'seat', tab: 'recruit' }, count: (s, id) => [membersOf(s, id).length, 12], gives: { silver: 300, grain: 40 } },
+  { id: 'build', title: '大兴土木', text: '新建一座建筑，或把现有的升上一级。', how: '山门 · 点建筑扩建，点空地兴建', go: { page: 'seat', tab: 'build', sheet: 'build' }, count: (s, id) => [Math.max(0, levels(s, id) - (s.goals.base ?? 0)), 1], gives: { silver: 400 } },
   { id: 'master', title: '因材施教', text: '让一名弟子拜在长老或掌门门下，练功事半功倍。', how: '弟子 · 选一人 · 拜师', go: { page: 'disciples' }, count: (s, id) => [membersOf(s, id).some((p) => p.master) ? 1 : 0, 1], gives: { renown: 15 } },
-  { id: 'shop', title: '开源', text: '在山下开一间店铺，每旬有银两进账，还能代售门中出产。', how: '山门 · 此地 · 开设店铺', go: { page: 'seat' }, count: (s, id) => [placesOf(s, id).reduce((sum, p) => sum + s.places[p].shops, 0), 1], gives: { silver: 500 } },
+  { id: 'shop', title: '开源', text: '在山下开一间店铺，每旬有银两进账，还能代售门中出产。', how: '山门 · 此地 · 开设店铺', go: { page: 'seat', tab: 'here' }, count: (s, id) => [placesOf(s, id).reduce((sum, p) => sum + s.places[p].shops, 0), 1], gives: { silver: 500 } },
   { id: 'renown', title: '威名初显', text: '威望到二百。布施、登擂、处置奇遇得当，名声自然传开。', how: '战阵 · 擂台，或山门 · 布施', go: { page: 'battle' }, count: (s, id) => [Math.floor(s.sects[id].renown), 200], gives: { silver: 500, grain: 60 } },
   { id: 'second', title: '开枝散叶', text: '再占一处据点：无主之地可以直接开设分舵，有主的要打下来。', how: '江湖 · 点相邻的据点', go: { page: 'world' }, count: (s, id) => [placesOf(s, id).length, 2], gives: { silver: 800, renown: 20 } },
   { id: 'friend', title: '远交', text: '与一个门派把关系处到四十，两家之间的路就成了商路。', how: '江湖 · 门派往来 · 馈赠', go: { page: 'world', sheet: 'diplomacy' }, count: (s, id) => [Math.max(0, Math.floor(Math.max(...Object.values(s.sects[id].relations ?? { x: 0 })))), 40], gives: { silver: 600 } },
-  { id: 'many', title: '门下济济', text: '门人到二十。厢房不够就添，粮草要跟得上。', how: '山门 · 招贤榜；厢房决定住得下多少人', go: { page: 'seat' }, count: (s, id) => [membersOf(s, id).length, 20], gives: { silver: 800, grain: 80 } },
+  { id: 'many', title: '门下济济', text: '门人到二十。厢房不够就添，粮草要跟得上。', how: '山门 · 招贤榜；厢房决定住得下多少人', go: { page: 'seat', tab: 'recruit' }, count: (s, id) => [membersOf(s, id).length, 20], gives: { silver: 800, grain: 80 } },
   { id: 'realm', title: '三分天下', text: '手握四处据点，便是一方之雄。', how: '江湖 · 出兵或开设分舵', go: { page: 'world' }, count: (s, id) => [placesOf(s, id).length, 4], gives: { silver: 1500, renown: 40 } },
   { id: 'fame', title: '威震江湖', text: '威望到五百。到了这一步，武林大会上便有人推举你了。', how: '多行义举，多打胜仗', go: { page: 'chronicle' }, count: (s, id) => [Math.floor(s.sects[id].renown), 500], gives: { silver: 2000 } },
 ];

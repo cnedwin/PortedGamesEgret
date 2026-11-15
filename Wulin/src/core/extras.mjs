@@ -7,8 +7,12 @@
 import { ART_BY_ID, CLASSES, MOVE_LEVELS, levelOf, registerArt } from '../data/arts.mjs';
 import { FOCUSES, MERIDIANS, RELIC_BY_ID, RELICS } from '../data/extras.mjs';
 import { GRADES, PILLS } from '../data/goods.mjs';
+import { SECT_BY_ID } from '../data/sects.mjs';
 import { STAT_CAP, autoWheel, bestCombatArt, equipFor, gainXp, growTo, rollPerson } from './persons.mjs';
 import { clamp } from './rng.mjs';
+import { PLOT_COUNT, seatLayout } from './seat-layout.mjs';
+
+export { PLOT_COUNT };
 
 const refuse = (why) => ({ ok: false, why });
 const done = (more = {}) => ({ ok: true, ...more });
@@ -192,8 +196,6 @@ export function openMeridian(state, personId, choice) {
   return done();
 }
 
-/** How many plots a stronghold's yard is laid out in; see view/seat.mjs. */
-export const PLOT_COUNT = 24;
 /**
  * Moves a building to a plot of the player's choosing, or back to where the
  * game would put it (`plot` null). Whatever stood on that plot changes places with it.
@@ -204,9 +206,14 @@ export function movePlot(state, sectId, placeId, index, plot) {
   if (place?.owner !== sectId || !building) return refuse('无此建筑');
   if (building.kind === 'hall' || building.kind === 'gate') return refuse('正殿与山门的位置是定下的');
   if (plot === null) return delete building.plot, done();
-  if (!(plot >= 0 && plot < PLOT_COUNT)) return refuse('没有这块地');
-  const other = place.buildings.find((b) => b !== building && b.plot === plot);
-  if (other) building.plot === undefined ? delete other.plot : (other.plot = building.plot);
+  if (!Number.isInteger(plot) || plot < 0 || plot >= PLOT_COUNT) return refuse('没有这块地');
+  const { placements } = seatLayout(place.buildings);
+  const current = placements.find((entry) => entry.index === index);
+  const other = placements.find((entry) => entry.index !== index && entry.plot === plot)?.building;
+  if (other) {
+    if (current?.plot != null) other.plot = current.plot;
+    else delete other.plot;
+  }
   building.plot = plot;
   return done();
 }
@@ -237,18 +244,63 @@ export function plantSpy(state, sectId, targetId) {
 }
 /** The share added to a sect's attack when it fights one it has a spy in. */
 export const spyBoost = (state, sectId, targetId) => (targetId in (state.sects[sectId].spies ?? {}) ? 0.08 : 0);
+
+function intelligenceReport(playerSect, day, incidents) {
+  const outgoing = new Set(), incoming = new Set();
+  let unknownTargets = 0;
+  for (const { by, target } of incidents) {
+    if (by !== playerSect) incoming.add(by);
+    else if (target) outgoing.add(target);
+    else unknownTargets++;
+  }
+  const names = (ids) => [...ids].map((id) => SECT_BY_ID[id]?.name ?? id).join('、');
+  const sentences = [];
+  if (outgoing.size) sentences.push(`本派派往${names(outgoing)}的卧底败露。`);
+  if (unknownTargets) sentences.push(`本派${unknownTargets === 1 ? '一名' : `${unknownTargets} 名`}外派卧底败露。`);
+  if (incoming.size) sentences.push(`本派查获${names(incoming)}安插的卧底。`);
+  return { day, type: 'intel', sect: playerSect, text: sentences.join(''), incidents };
+}
+
 /** Every ten days a spy may be found out, which costs standing with that sect. */
 export function xunOfSpies(state, rng) {
+  const incidents = [];
   for (const [sectId, books] of Object.entries(state.sects))
     for (const targetId of Object.keys(books.spies ?? {})) {
-      if (!state.sects[targetId].alive) delete books.spies[targetId];
+      const target = state.sects[targetId];
+      if (!target?.alive) delete books.spies[targetId];
       else if (rng.chance(0.04)) {
         delete books.spies[targetId];
         books.relations[targetId] = clamp(books.relations[targetId] - 25, -100, 100);
-        state.sects[targetId].relations[sectId] = clamp(state.sects[targetId].relations[sectId] - 25, -100, 100);
-        note(state, 'event', `安插在${targetId === state.playerSect ? '本派' : '他派'}的卧底败露。`, sectId);
+        target.relations[sectId] = clamp(target.relations[sectId] - 25, -100, 100);
+        if (sectId === state.playerSect || targetId === state.playerSect) incidents.push({ by: sectId, target: targetId });
       }
     }
+  if (incidents.length) state.log.push(intelligenceReport(state.playerSect, state.day, incidents));
+}
+
+/** Display only the player's intelligence from pre-category chronicles. The old saves remain intact. */
+export function chronicleEntries(state) {
+  const records = [], legacyReports = new Map();
+  for (const entry of state.log) {
+    const inbound = entry.type === 'event' && entry.text === '安插在本派的卧底败露。';
+    const outbound = entry.type === 'event' && entry.text === '安插在他派的卧底败露。';
+    if (!inbound && !outbound) {
+      records.push(entry);
+      continue;
+    }
+    const mine = entry.sect === state.playerSect;
+    if (inbound ? mine || !entry.sect : !mine) continue;
+    let report = legacyReports.get(entry.day);
+    if (!report) {
+      report = { day: entry.day, incidents: [] };
+      legacyReports.set(entry.day, report);
+      records.push(report);
+    }
+    report.incidents.push({ by: entry.sect, target: inbound ? state.playerSect : null });
+  }
+  return records.map((entry) => legacyReports.get(entry.day) === entry
+    ? intelligenceReport(state.playerSect, entry.day, entry.incidents)
+    : entry);
 }
 
 // ---- the duelling stage --------------------------------------------------------------------------------

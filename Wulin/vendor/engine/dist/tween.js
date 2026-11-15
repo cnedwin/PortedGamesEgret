@@ -40,8 +40,7 @@ function admitOptions(context, scope, options) {
     const easingValue = readOption(options, 'easing', context, scope);
     const onUpdate = readOption(options, 'onUpdate', context, scope);
     const onComplete = readOption(options, 'onComplete', context, scope);
-    if (typeof from !== 'number' || !Number.isFinite(from)
-        || typeof to !== 'number' || !Number.isFinite(to))
+    if (typeof from !== 'number' || !Number.isFinite(from) || typeof to !== 'number' || !Number.isFinite(to))
         throw new EgretError('TWEEN_OPTIONS_INVALID');
     const normalizedFrom = from === 0 ? 0 : from;
     const normalizedTo = to === 0 ? 0 : to;
@@ -60,15 +59,25 @@ function admitOptions(context, scope, options) {
     return {
         scalars: Object.freeze({ from: normalizedFrom, to: normalizedTo, difference, durationSeconds, easing }),
         onUpdate: onUpdate,
-        onComplete: onComplete,
+        onComplete: onComplete
     };
 }
 function makeRecord(context, scope, admitted) {
     return {
-        context, scalars: admitted.scalars, scope, owner: undefined, subscription: undefined,
-        onUpdate: admitted.onUpdate, onComplete: admitted.onComplete,
-        state: 'idle', elapsedSeconds: 0, progress: 0, value: admitted.scalars.from,
-        anchor: 0, runBase: 0, callbackBusy: false,
+        context,
+        scalars: admitted.scalars,
+        scope,
+        owner: undefined,
+        subscription: undefined,
+        onUpdate: admitted.onUpdate,
+        onComplete: admitted.onComplete,
+        state: 'idle',
+        elapsedSeconds: 0,
+        progress: 0,
+        value: admitted.scalars.from,
+        anchor: 0,
+        runBase: 0,
+        callbackBusy: false
     };
 }
 function isTerminal(state) {
@@ -92,8 +101,7 @@ function retire(record, terminal) {
 }
 function scopeIsOpen(record) {
     const scope = record.scope;
-    return scope !== undefined && record.context.isEngineScope(scope)
-        && Reflect.apply(scopeState, scope, []) === 'open';
+    return scope !== undefined && record.context.isEngineScope(scope) && Reflect.apply(scopeState, scope, []) === 'open';
 }
 /** Forbidden asynchronous results are observed without becoming an idle barrier. */
 function observeRejectedResult(result) {
@@ -105,7 +113,9 @@ function observeRejectedResult(result) {
         try {
             void Promise.resolve(result).then(undefined, ignoreRejection);
         }
-        catch { /* Observation cannot replace TWEEN_CALLBACK_RETURN_INVALID. */ }
+        catch {
+            /* Observation cannot replace TWEEN_CALLBACK_RETURN_INVALID. */
+        }
     }
 }
 function invokeCallback(callback, args, code) {
@@ -125,10 +135,14 @@ function invokeCallback(callback, args, code) {
 }
 function easedProgress(progress, easing) {
     switch (easing) {
-        case 'linear': return progress;
-        case 'quadIn': return progress * progress;
-        case 'quadOut': return progress * (2 - progress);
-        case 'quadInOut': return progress < 0.5 ? 2 * progress * progress : 1 - 2 * (1 - progress) * (1 - progress);
+        case 'linear':
+            return progress;
+        case 'quadIn':
+            return progress * progress;
+        case 'quadOut':
+            return progress * (2 - progress);
+        case 'quadInOut':
+            return progress < 0.5 ? 2 * progress * progress : 1 - 2 * (1 - progress) * (1 - progress);
     }
 }
 function advanceTween(record, tick) {
@@ -239,16 +253,46 @@ function makeHandle(record) {
             throw new EgretError('TWEEN_INVALID');
     }
     const tween = Object.freeze({
-        get state() { assertReceiver(this); return record.state; },
-        get isDisposed() { assertReceiver(this); return isTerminal(record.state); },
-        get elapsedSeconds() { assertReceiver(this); return record.elapsedSeconds; },
-        get progress() { assertReceiver(this); return record.progress; },
-        get value() { assertReceiver(this); return record.value; },
-        start() { assertReceiver(this); startTween(record); },
-        pause() { assertReceiver(this); pauseTween(record); },
-        resume() { assertReceiver(this); resumeTween(record); },
-        stop() { assertReceiver(this); retire(record, 'stopped'); },
-        dispose() { assertReceiver(this); retire(record, 'stopped'); },
+        get state() {
+            assertReceiver(this);
+            return record.state;
+        },
+        get isDisposed() {
+            assertReceiver(this);
+            return isTerminal(record.state);
+        },
+        get elapsedSeconds() {
+            assertReceiver(this);
+            return record.elapsedSeconds;
+        },
+        get progress() {
+            assertReceiver(this);
+            return record.progress;
+        },
+        get value() {
+            assertReceiver(this);
+            return record.value;
+        },
+        start() {
+            assertReceiver(this);
+            startTween(record);
+        },
+        pause() {
+            assertReceiver(this);
+            pauseTween(record);
+        },
+        resume() {
+            assertReceiver(this);
+            resumeTween(record);
+        },
+        stop() {
+            assertReceiver(this);
+            retire(record, 'stopped');
+        },
+        dispose() {
+            assertReceiver(this);
+            retire(record, 'stopped');
+        }
     });
     return tween;
 }
@@ -279,6 +323,6 @@ export function createTweenOwner(context) {
             // handles. Its existing clock/frame barriers own later resource cleanup.
             for (const record of records)
                 retire(record, 'stopped');
-        },
+        }
     });
 }

@@ -8,7 +8,12 @@ export function createCustomPost3D(input) {
     const uniforms = new Float32Array(16);
     if (input.uniforms)
         uniforms.set(Array.from(input.uniforms).slice(0, 16));
-    return Object.freeze({ key: input.key, ...(input.glsl === undefined ? {} : { glsl: input.glsl }), ...(input.wgsl === undefined ? {} : { wgsl: input.wgsl }), uniforms });
+    return Object.freeze({
+        key: input.key,
+        ...(input.glsl === undefined ? {} : { glsl: input.glsl }),
+        ...(input.wgsl === undefined ? {} : { wgsl: input.wgsl }),
+        uniforms
+    });
 }
 export function postViewFromCamera3D(camera) {
     // Oblique projections encode X and Y in clip depth. Unproject the full
@@ -19,7 +24,9 @@ export function postViewFromCamera3D(camera) {
     return { inverseProjection };
 }
 /** True when the settings ask for outlines. */
-export function outlineActive3D(settings) { return settings.outlineLayers !== 0 && settings.outlineThickness > 0; }
+export function outlineActive3D(settings) {
+    return settings.outlineLayers !== 0 && settings.outlineThickness > 0;
+}
 /** Post uniform layout: a, b, flags, custom[4], outline and inverse projection. */
 export const POST_PARAMS_FLOATS_3D = 48;
 export function writePostParams3D(out, a, b, view, aoEnabled, width, height, custom, outline) {
@@ -39,9 +46,31 @@ export function writePostParams3D(out, a, b, view, aoEnabled, width, height, cus
 }
 export const POST3D_LIMITS = Object.freeze({ maxBloomLevels: 8 });
 export function createPostProcessSettings3D() {
-    return { enabled: false, bloom: true, bloomThreshold: 1, bloomKnee: 0.5, bloomIntensity: 0.6, bloomLevels: 5, fxaa: true, saturation: 1, contrast: 1, brightness: 1, vignette: 0,
-        ssao: false, ssaoRadius: 0.5, ssaoIntensity: 1, ssaoBias: 0.025, dof: false, dofFocus: 10, dofRange: 3, dofRadius: 6, custom: undefined,
-        outlineLayers: 0, outlineColor: [1, 0.6, 0.1], outlineThickness: 2 };
+    return {
+        enabled: false,
+        bloom: true,
+        bloomThreshold: 1,
+        bloomKnee: 0.5,
+        bloomIntensity: 0.6,
+        bloomLevels: 5,
+        fxaa: true,
+        saturation: 1,
+        contrast: 1,
+        brightness: 1,
+        vignette: 0,
+        ssao: false,
+        ssaoRadius: 0.5,
+        ssaoIntensity: 1,
+        ssaoBias: 0.025,
+        dof: false,
+        dofFocus: 10,
+        dofRange: 3,
+        dofRadius: 6,
+        custom: undefined,
+        outlineLayers: 0,
+        outlineColor: [1, 0.6, 0.1],
+        outlineThickness: 2
+    };
 }
 /** Number of bloom levels that fit the output size. */
 export function bloomLevelCount3D(settings, width, height) {
@@ -99,7 +128,9 @@ vec3 unprojectDepth(vec2 uv, float depth) {
 float sceneDepth(vec2 uv) { return -unprojectDepth(uv, rawDepth(uv)).z; }
 `;
 /** uA: radius, intensity, bias. Writes occlusion (1 = open) to every channel. */
-export const POST_SSAO_GLSL_3D = GLSL_HEAD + GLSL_DEPTH + /* glsl */ `
+export const POST_SSAO_GLSL_3D = GLSL_HEAD +
+    GLSL_DEPTH +
+    /* glsl */ `
 vec3 viewPosition(vec2 uv) {
     return unprojectDepth(uv, rawDepth(uv));
 }
@@ -127,7 +158,8 @@ void main() {
     outColor = vec4(vec3(open), 1.0);
 }`;
 /** uA: xy source texel, z threshold, w knee. uB.x: 1 applies the brightness prefilter. */
-export const POST_DOWN_GLSL_3D = GLSL_HEAD + /* glsl */ `
+export const POST_DOWN_GLSL_3D = GLSL_HEAD +
+    /* glsl */ `
 void main() {
     vec3 c = texture(uSource, vUv).rgb * 4.0;
     c += texture(uSource, vUv + uA.xy).rgb + texture(uSource, vUv - uA.xy).rgb;
@@ -144,7 +176,8 @@ void main() {
     outColor = vec4(c, 1.0);
 }`;
 /** uA.xy: source texel. Drawn with additive blending onto the next larger level. */
-export const POST_UP_GLSL_3D = GLSL_HEAD + /* glsl */ `
+export const POST_UP_GLSL_3D = GLSL_HEAD +
+    /* glsl */ `
 void main() {
     vec2 h = uA.xy;
     vec3 c = texture(uSource, vUv + vec2(-2.0 * h.x, 0.0)).rgb + texture(uSource, vUv + vec2(2.0 * h.x, 0.0)).rgb
@@ -154,7 +187,9 @@ void main() {
     outColor = vec4(c / 12.0, 1.0);
 }`;
 /** uA: focus distance, sharp half-range, largest radius in pixels. Blurs by distance from the focused zone. */
-export const POST_DOF_GLSL_3D = GLSL_HEAD + GLSL_DEPTH + /* glsl */ `
+export const POST_DOF_GLSL_3D = GLSL_HEAD +
+    GLSL_DEPTH +
+    /* glsl */ `
 float blurRadius(vec2 uv) { return clamp((abs(sceneDepth(uv) - uA.x) - uA.y) / max(uA.y, 0.001), 0.0, 1.0) * uA.z; }
 void main() {
     vec4 center = texture(uSource, vUv);
@@ -176,7 +211,9 @@ void main() {
 }`;
 /** uA: bloom scale, tone mapping, sRGB encode, vignette. uB: saturation, contrast, brightness. */
 export function postCompositeGlsl3D(customPost) {
-    return GLSL_HEAD.replace('#version 300 es\n', '#version 300 es\n' + (customPost === undefined ? '' : '#define CUSTOM_POST\n')) + GLSL_DEPTH + /* glsl */ `
+    return (GLSL_HEAD.replace('#version 300 es\n', '#version 300 es\n' + (customPost === undefined ? '' : '#define CUSTOM_POST\n')) +
+        GLSL_DEPTH +
+        /* glsl */ `
 uniform sampler2D uBloom;
 uniform sampler2D uAo;
 uniform sampler2D uMask;
@@ -215,10 +252,11 @@ void main() {
     }
     if (uA.z > 0.5) c = mix(c * 12.92, 1.055 * pow(c, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), c));
     outColor = vec4(c, scene.a);
-}`;
+}`);
 }
 /** uA.xy: source texel; uA.z: 1 converts the sRGB-encoded result back to linear for an encoding target. */
-export const POST_FXAA_GLSL_3D = GLSL_HEAD + /* glsl */ `
+export const POST_FXAA_GLSL_3D = GLSL_HEAD +
+    /* glsl */ `
 float luma(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
 void main() {
     vec2 t = uA.xy;
@@ -281,7 +319,8 @@ fn unprojectDepth(uv: vec2f, depth: f32) -> vec3f {
 /** Distance from the camera plane, in world units. */
 fn sceneDepth(uv: vec2f) -> f32 { return -unprojectDepth(uv, rawDepth(uv)).z; }
 `;
-export const POST_SSAO_WGSL_3D = WGSL_HEAD + /* wgsl */ `
+export const POST_SSAO_WGSL_3D = WGSL_HEAD +
+    /* wgsl */ `
 fn viewPosition(uv: vec2f) -> vec3f {
     return unprojectDepth(uv, rawDepth(uv));
 }
@@ -308,7 +347,8 @@ fn viewPosition(uv: vec2f) -> vec3f {
     if (depth >= 0.99999) { open = 1.0; }
     return vec4f(vec3f(open), 1.0);
 }`;
-export const POST_DOWN_WGSL_3D = WGSL_HEAD + /* wgsl */ `
+export const POST_DOWN_WGSL_3D = WGSL_HEAD +
+    /* wgsl */ `
 @fragment fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
     let o = params.a.xy;
     var c = tap(input.uv) * 4.0 + tap(input.uv + o) + tap(input.uv - o) + tap(input.uv + vec2f(o.x, -o.y)) + tap(input.uv + vec2f(-o.x, o.y));
@@ -323,7 +363,8 @@ export const POST_DOWN_WGSL_3D = WGSL_HEAD + /* wgsl */ `
     }
     return vec4f(c, 1.0);
 }`;
-export const POST_UP_WGSL_3D = WGSL_HEAD + /* wgsl */ `
+export const POST_UP_WGSL_3D = WGSL_HEAD +
+    /* wgsl */ `
 @fragment fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
     let h = params.a.xy;
     let uv = input.uv;
@@ -331,7 +372,8 @@ export const POST_UP_WGSL_3D = WGSL_HEAD + /* wgsl */ `
     c += 2.0 * (tap(uv + vec2f(-h.x, h.y)) + tap(uv + vec2f(h.x, h.y)) + tap(uv + vec2f(h.x, -h.y)) + tap(uv + vec2f(-h.x, -h.y)));
     return vec4f(c / 12.0, 1.0);
 }`;
-export const POST_DOF_WGSL_3D = WGSL_HEAD + /* wgsl */ `
+export const POST_DOF_WGSL_3D = WGSL_HEAD +
+    /* wgsl */ `
 fn blurRadius(uv: vec2f) -> f32 { return clamp((abs(sceneDepth(uv) - params.a.x) - params.a.y) / max(params.a.y, 0.001), 0.0, 1.0) * params.a.z; }
 @fragment fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
     let center = textureSampleLevel(source, linearSampler, input.uv, 0.0);
@@ -352,7 +394,9 @@ fn blurRadius(uv: vec2f) -> f32 { return clamp((abs(sceneDepth(uv) - params.a.x)
     return vec4f(sum / weight, center.a);
 }`;
 export function postCompositeWgsl3D(customPost) {
-    return WGSL_HEAD + (customPost ?? '') + /* wgsl */ `
+    return (WGSL_HEAD +
+        (customPost ?? '') +
+        /* wgsl */ `
 fn occlusionTap(uv: vec2f) -> f32 { return textureSampleLevel(aoTexture, linearSampler, uv, 0.0).r; }
 fn maskAt(uv: vec2f) -> f32 { return textureSampleLevel(maskTexture, linearSampler, uv, 0.0).r; }
 @fragment fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
@@ -383,9 +427,10 @@ fn maskAt(uv: vec2f) -> f32 { return textureSampleLevel(maskTexture, linearSampl
     }
     if (params.a.z > 0.5) { c = mix(c * 12.92, 1.055 * pow(c, vec3f(1.0 / 2.4)) - 0.055, step(vec3f(0.0031308), c)); }
     return vec4f(c, scene.a);
-}`;
+}`);
 }
-export const POST_FXAA_WGSL_3D = WGSL_HEAD + /* wgsl */ `
+export const POST_FXAA_WGSL_3D = WGSL_HEAD +
+    /* wgsl */ `
 fn luma(c: vec3f) -> f32 { return dot(c, vec3f(0.299, 0.587, 0.114)); }
 @fragment fn fragmentMain(input: VertexOutput) -> @location(0) vec4f {
     let t = params.a.xy;

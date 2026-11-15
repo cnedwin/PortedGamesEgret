@@ -17,6 +17,7 @@ import { resolveBattle } from './battle.mjs';
 import { TRAITS, autoWheel, equipFor, gainXp, growTo, hpMax, learnableArts, makeLeader, practise, prowess, rollPerson, trainingRate } from './persons.mjs';
 import { BOOK_PRICE, addManual, heldArts, lackingArts, lootManuals } from './library.mjs';
 import { clamp, createRng } from './rng.mjs';
+import { availablePlots } from './seat-layout.mjs';
 
 export const SAVE_VERSION = 1;
 const WORK_WATCHES = 8;
@@ -33,7 +34,15 @@ const MANUAL_POINTS = 30;
 
 /** The share of applicants who arrive already knowing an art. */
 const GIFTED_CHANCE = 0.125;
+const OPENING_PEACE_YEARS = [6, 5, 4, 3];
+const OPENING_APPLICANTS = 2;
+const OPENING_APPLICANT_DAYS = 90;
 const uniqueBuildings = new Set(['hall', 'gate', 'board', 'mess', 'store', 'library', 'clinic', 'council']);
+
+/** Maximum opening truce for a new game at the selected difficulty. */
+export function openingPeaceYears(difficulty) {
+  return OPENING_PEACE_YEARS[difficulty] ?? OPENING_PEACE_YEARS[1];
+}
 
 /** The buildings a sect's seat starts with. */
 function startingBuildings(place, sect) {
@@ -137,8 +146,29 @@ export function createWorld({ seed = 1, playerSect = 'huashan', succession = fal
   }
   shape(state, scenario, rng);
   state.rng = rng.state;
+  if (!autoPlayer) prepareOpening(state, createRng(rng.state ^ 0x277a482d));
   note(state, 'start', `承和元年，${SECT_BY_ID[playerSect].name}立派于${PLACE_BY_ID[SECT_BY_ID[playerSect].seat].name}。`);
   return state;
+}
+
+/** Prepares the player's seat without changing the challenge scenario's roster. */
+function prepareOpening(state, rng) {
+  const sectId = state.playerSect;
+  const { seat } = SECT_BY_ID[sectId];
+  const place = state.places[seat];
+  state.opening = { until: openingPeaceYears(state.options.difficulty) * DAYS_PER_YEAR, provoked: [] };
+
+  // Some scenarios put reinforcements at the seat. Furnish only enough extra beds for the first applicants.
+  const needed = residents(state, seat).length + OPENING_APPLICANTS;
+  for (const dorm of place.buildings) {
+    if (beds(state, seat) >= needed) break;
+    if (dorm.kind === 'dorm' && dorm.level < BUILDINGS.dorm.max) dorm.level++;
+  }
+  for (let i = 0; i < OPENING_APPLICANTS; i++) {
+    const person = rollApplicant(state, sectId, seat, rng);
+    person.boardUntil = OPENING_APPLICANT_DAYS;
+    place.applicants.push(person);
+  }
 }
 
 /** Rearranges a new world for the way of beginning that was chosen; see SCENARIOS in data/extras.mjs. */
@@ -189,6 +219,7 @@ function shape(state, scenario, rng) {
 }
 
 function adopt(state, person) {
+  if (person.boardUntil !== undefined) delete person.boardUntil;
   person.id = state.nextId++;
   state.persons[person.id] = person;
   return person;
@@ -252,53 +283,73 @@ export function setJob(state, personId, job) {
   return done();
 }
 
-export function buildAvailability(state, sectId, placeId, kind) {
+export function buildAvailability(state, sectId, placeId, kind, plot = null) {
   const spec = BUILDINGS[kind],
     place = state.places[placeId],
     sect = state.sects[sectId];
   if (!spec) return refuse('没有这种建筑');
-  if (place.owner !== sectId) return refuse('不是本派据点');
+  if (place?.owner !== sectId || !sect) return refuse('不是本派据点');
   if (kind !== 'hall' && !buildingLevel(state, placeId, 'hall')) return refuse('需先建正殿');
   if (uniqueBuildings.has(kind) && buildingLevel(state, placeId, kind)) return refuse('已有此建筑');
+  if (plot !== null) {
+    if (kind === 'hall' || kind === 'gate') return refuse('正殿与山门有固定位置');
+    if (!availablePlots(place.buildings).includes(plot)) return refuse('这块地已被占用或不可建造');
+  }
   if (usedCells(state, placeId) + spec.cells > PLACE_BY_ID[placeId].cells) return refuse('建地不足');
   if (sect.silver < spec.cost) return refuse('银两不足');
   return done();
 }
 
-export function build(state, sectId, placeId, kind) {
-  const availability = buildAvailability(state, sectId, placeId, kind);
+export function build(state, sectId, placeId, kind, plot = null) {
+  const availability = buildAvailability(state, sectId, placeId, kind, plot);
   if (!availability.ok) return availability;
   const place = state.places[placeId], sect = state.sects[sectId];
   sect.silver -= BUILDINGS[kind].cost;
-  place.buildings.push({ kind, level: 1, xp: 0 });
+  const building = { kind, level: 1, xp: 0 };
+  if (plot !== null) building.plot = plot;
+  place.buildings.push(building);
   return done();
 }
 
-export function upgrade(state, sectId, placeId, index) {
+export function upgradeAvailability(state, sectId, placeId, index) {
   const place = state.places[placeId],
-    building = place.buildings[index],
+    building = place?.buildings[index],
     sect = state.sects[sectId];
-  if (place.owner !== sectId || !building) return refuse('没有这座建筑');
+  if (place?.owner !== sectId || !building || !sect) return refuse('没有这座建筑');
   const spec = BUILDINGS[building.kind];
   if (building.level >= spec.max) return refuse('已是最高等级');
   const cost = spec.cost * (building.level + 1);
   // Workshops also need practice before they can grow.
   if (spec.makes && building.xp < 400 * building.level) return refuse('生产经验不足');
   if (sect.silver < cost) return refuse('银两不足');
-  sect.silver -= cost;
-  building.level++;
+  return done({ cost });
+}
+
+export function upgrade(state, sectId, placeId, index) {
+  const availability = upgradeAvailability(state, sectId, placeId, index);
+  if (!availability.ok) return availability;
+  state.sects[sectId].silver -= availability.cost;
+  state.places[placeId].buildings[index].level++;
   return done();
 }
 
-/** Takes in one of the people waiting at a stronghold's board. */
-export function recruit(state, sectId, placeId, index) {
+/** Whether the current head can admit the given candidate at this stronghold. */
+export function recruitAvailability(state, sectId, placeId, index) {
   const place = state.places[placeId];
-  if (place.owner !== sectId) return refuse('不是本派据点');
+  if (place?.owner !== sectId) return refuse('不是本派据点');
   const person = place.applicants[index];
   if (!person) return refuse('此人已离去');
   if (state.persons[state.sects[sectId].leaderId]?.place !== placeId) return refuse('需掌门亲至面试');
   if (residents(state, placeId).length >= Math.min(beds(state, placeId), ECONOMY.headcountCap)) return refuse('厢房已满');
-  place.applicants.splice(index, 1);
+  return done({ person });
+}
+
+/** Takes in one of the people waiting at a stronghold's board. */
+export function recruit(state, sectId, placeId, index) {
+  const availability = recruitAvailability(state, sectId, placeId, index);
+  if (!availability.ok) return availability;
+  const { person } = availability;
+  state.places[placeId].applicants.splice(index, 1);
   Object.assign(person, { school: sectId, place: placeId });
   adopt(state, person);
   state.sects[sectId].silver += person.fee;
@@ -390,6 +441,19 @@ export function settle(state, sectId, placeId) {
 
 // ---- fighting over a stronghold ---------------------------------------------------------------------
 
+/** The new campaign's grace period and the factions it no longer covers, for the map and chronicles. */
+export function openingProtection(state) {
+  const opening = state.opening;
+  if (!opening) return null;
+  const daysLeft = Math.max(0, opening.until - state.day);
+  return { active: daysLeft > 0, daysLeft, until: opening.until, provoked: [...opening.provoked] };
+}
+
+function openingProtectsFrom(state, sectId) {
+  const opening = state.opening;
+  return !!opening && state.day < opening.until && !opening.provoked.includes(sectId);
+}
+
 /**
  * Who meets whom when a sect attacks a stronghold: the chosen party against
  * everyone the owner has there (at most ten a side).
@@ -398,6 +462,7 @@ export function assaultSides(state, attackerId, placeId, partyIds) {
   const place = state.places[placeId];
   if (!place.owner || place.owner === attackerId) return refuse('无可攻之敌');
   if (!PLACE_BY_ID[placeId].roads.some((id) => state.places[id].owner === attackerId)) return refuse('需与本派据点相邻');
+  if (place.owner === state.playerSect && openingProtectsFrom(state, attackerId)) return refuse('开局休战期内，本门暂不受该派攻打');
   const party = partyIds.map((id) => state.persons[id]).filter((person) => person?.school === attackerId).slice(0, 10);
   if (!party.length) return refuse('无人出战');
   const guard = residents(state, placeId).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
@@ -406,6 +471,16 @@ export function assaultSides(state, attackerId, placeId, partyIds) {
   const attack = formationOf(state, attackerId, party, { attack: modsOf(state, attackerId).attack + spyBoost(state, attackerId, place.owner) });
   const defend = formationOf(state, place.owner, guard, { defense: 0.04 * buildingLevel(state, placeId, 'gate') + modsOf(state, place.owner).defense + focusBoost(state, placeId, 'defense'), attack: 0.03 * buildingLevel(state, placeId, 'tower') });
   return done({ sides: [party, guard], formations: [attack, defend], defender: place.owner });
+}
+
+/** Launches the chosen assault. Inspecting a formation alone never breaks the opening truce. */
+export function beginAssault(state, attackerId, placeId, partyIds) {
+  const prepared = assaultSides(state, attackerId, placeId, partyIds);
+  if (prepared.ok && attackerId === state.playerSect && openingProtectsFrom(state, prepared.defender)) {
+    state.opening.provoked.push(prepared.defender);
+    note(state, 'hostilities', `本门向${SECT_BY_ID[prepared.defender].name}出兵，该派与本门提前结束开局休战。`, { sect: attackerId, place: placeId });
+  }
+  return prepared;
 }
 
 /**
@@ -512,7 +587,7 @@ function dissolve(state, sectId, byId) {
 
 /** The whole of an attack settled at once, for the game's own sects and for quick fights. */
 export function assault(state, attackerId, placeId, partyIds, rng) {
-  const prepared = assaultSides(state, attackerId, placeId, partyIds);
+  const prepared = beginAssault(state, attackerId, placeId, partyIds);
   if (!prepared.ok) return prepared;
   const summary = resolveBattle({ sides: prepared.sides, formations: prepared.formations, seed: rng.int(1, 1e9) });
   return done({ summary, ...settleAssault(state, attackerId, placeId, summary, rng) });
@@ -614,8 +689,13 @@ function runSect(state, sectId, rng) {
     const foe = state.places[target].owner;
     // Ambition grows with the years: in time a sect turns even on those it is on fair terms with.
     if (books.relations[foe] > 20 - sect.temper.expand * 10 + year(state) * 3 || (books.truce?.[foe] ?? 0) > state.day) continue;
-    // A player is left in peace for the first years, fewer the harder the game.
-    if (foe === state.playerSect && !state.options.autoPlayer && state.day < (DIFFICULTIES[state.options.difficulty ?? 1]?.peace ?? 3) * DAYS_PER_YEAR) continue;
+    if (foe === state.playerSect && !state.options.autoPlayer) {
+      // Earlier saves keep their original grace period.
+      const protectedFromAttack = state.opening
+        ? openingProtectsFrom(state, sectId)
+        : state.day < (DIFFICULTIES[state.options.difficulty]?.peace ?? 3) * DAYS_PER_YEAR;
+      if (protectedFromAttack) continue;
+    }
     const guard = residents(state, target).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
     if (strength(army) > strength(guard) * (1.6 - sect.temper.expand * 0.08)) {
       // Where the column set out from, for whoever is watching the map.
@@ -703,6 +783,19 @@ function workDay(state, person, rng) {
   }
 }
 
+function rollApplicant(state, sectId, placeId, rng) {
+  const books = state.sects[sectId];
+  const quality = 40 + books.renown / 25 + Math.abs(books.virtue) / 50;
+  const comer = rollPerson(rng, { quality, lean: PLACE_BY_ID[placeId].lean, place: placeId });
+  // One in eight comes already trained in something, and a few of those well enough to teach it.
+  if (rng.chance(GIFTED_CHANCE)) {
+    const art = commonArt(rng.pick(CLASS_KEYS), rng.chance(0.25) ? 2 : 1);
+    if (art.tier === 2) comer.arts[commonArt(art.klass, 1).id] = 600;
+    comer.arts[art.id] = rng.int(3, 7) * 100;
+  }
+  return comer;
+}
+
 function endOfXun(state, rng) {
   for (const [sectId, books] of Object.entries(state.sects)) {
     if (!books.alive) continue;
@@ -771,19 +864,9 @@ function endOfXun(state, rng) {
     for (const placeId of placesOf(state, sectId)) {
       const place = state.places[placeId];
       if (!buildingLevel(state, placeId, 'board')) continue;
-      place.applicants = place.applicants.filter(() => rng.chance(0.6));
-      const quality = 40 + books.renown / 25 + Math.abs(books.virtue) / 50;
+      place.applicants = place.applicants.filter(person => state.day < (person.boardUntil ?? 0) || rng.chance(0.6));
       const arrivals = rng.chance(0.15 + books.renown / 3000 + modsOf(state, sectId).recruit) ? 1 + (rng.chance(0.2) ? 1 : 0) : 0;
-      for (let i = 0; i < arrivals && place.applicants.length < 4; i++) {
-        const comer = rollPerson(rng, { quality, lean: PLACE_BY_ID[placeId].lean, place: placeId });
-        // One in eight comes already trained in something, and a few of those well enough to teach it.
-        if (rng.chance(GIFTED_CHANCE)) {
-          const art = commonArt(rng.pick(CLASS_KEYS), rng.chance(0.25) ? 2 : 1);
-          if (art.tier === 2) comer.arts[commonArt(art.klass, 1).id] = 600;
-          comer.arts[art.id] = rng.int(3, 7) * 100;
-        }
-        place.applicants.push(comer);
-      }
+      for (let i = 0; i < arrivals && place.applicants.length < 4; i++) place.applicants.push(rollApplicant(state, sectId, placeId, rng));
     }
     for (const other of Object.keys(books.relations)) books.relations[other] += Math.sign(SECT_BY_ID[sectId].standing * SECT_BY_ID[other].standing * 20 - books.relations[other]) * 0.5;
   }

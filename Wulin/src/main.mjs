@@ -23,7 +23,7 @@ import { OFFICES, RANKS, SECTS, SECT_BY_ID, applyIdentity } from './data/sects.m
 import { createBattle } from './core/battle.mjs';
 import { createEditor, describeItem, doublePress } from './core/editor.mjs';
 import {
-  CUSTOM_ART_LIMIT, PLOT_COUNT, SPY_COST, createArt, movePlot, duelSides, gearOffer, giveRelic, innerLevels, makePill, meridianNeed, openMeridian, plantSpy,
+  CUSTOM_ART_LIMIT, SPY_COST, chronicleEntries, createArt, movePlot, duelSides, gearOffer, giveRelic, innerLevels, makePill, meridianNeed, openMeridian, plantSpy,
   setFocus, settleDuel, upgradeGear, usePill, writeManual,
 } from './core/extras.mjs';
 import { formationsFor, pendingView, resolvePending, setRule } from './core/jianghu.mjs';
@@ -32,9 +32,10 @@ import { APT_NAMES, STAT_KEYS, STAT_NAMES, hpMax, learnableArts, prowess } from 
 import { BOOK_LEVEL, TEACHING, TEACH_LEVEL, askTeaching, bookOffers, buyManual, commonArts, heldArts, teachingOffers } from './core/library.mjs';
 import { createRng } from './core/rng.mjs';
 import { createSlots, deserialize, saveFileName, serialize } from './core/save.mjs';
+import { SEAT_PLOTS, availablePlots } from './core/seat-layout.mjs';
 import {
-  SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, donate, beds, build, buildAvailability, createWorld, dateText, gift, ledger, membersOf, openShop, placesOf, promote,
-  recruit, relocate, residents, setJob, setMaster, settle, settleAssault, strength, tradeRoutes, upgrade, usedCells,
+  SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, beginAssault, donate, beds, build, buildAvailability, createWorld, dateText, gift, ledger, membersOf, openShop, openingProtection, placesOf, promote,
+  recruit, recruitAvailability, relocate, residents, setJob, setMaster, settle, settleAssault, strength, tradeRoutes, upgrade, upgradeAvailability, usedCells,
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
 import { createVoice } from './ui/voice.mjs';
@@ -79,6 +80,7 @@ const ui = {
   /** The stronghold on the seat screen and the building picked there. */
   place: null,
   building: 0,
+  buildPlot: null,
   /** Great matters waiting to be announced, the season last reported, and the strongholds held when last looked. */
   heralds: [],
   /** The pace time had before a sheet stopped it. */
@@ -240,6 +242,14 @@ function syncPicture() {
   if (picture.seat?.placeId !== ui.place || picture.seat.world !== world) {
     picture.seat = picture.modules.createSeat(stage, () => world, ui.place, {
       layer: document.querySelector('#layer'), nameOf: (kind) => BUILDINGS[kind].name, onHour: syncSeatAmbience, onAudio: updateSpatialAudio,
+      canBuild: () => ui.page === 'seat' && ui.seatTab === 'build' && !ui.commandCollapsed,
+      onSelect(selection) {
+        if (ui.page !== 'seat' || ui.sheet) return;
+        if (selection.kind === 'building') actions.building(selection);
+        else if (selection.kind === 'plot') actions['build-plot'](selection);
+        feedbackAudio.play('pick');
+        render();
+      },
     });
     picture.seat.world = world;
     stage.show(picture.seat);
@@ -248,6 +258,8 @@ function syncPicture() {
     picture.seat.refresh();
   }
   picture.seat.showTags = ui.tags;
+  picture.seat.selectedBuilding = ui.buildPlot === null ? ui.building : null;
+  picture.seat.selectedPlot = ui.buildPlot;
 }
 
 let lastSeatTrack;
@@ -356,6 +368,7 @@ function goalStrip() {
 
 const dots = (grade) => `${'●'.repeat(grade)}${'<i>○</i>'.repeat(3 - grade)}`;
 const topAptitude = (person) => Object.entries(person.apt).sort((a, b) => b[1] - a[1])[0];
+const plotLabel = (plot) => `第 ${plot + 1} 块地 · ${SEAT_PLOTS[plot].x < 0 ? '西侧' : '东侧'}`;
 
 function seatScreen() {
   const placeId = ui.place,
@@ -370,19 +383,25 @@ function seatScreen() {
   const picked = place.buildings[ui.building],
     kind = BUILDINGS[picked.kind];
   const cost = kind.cost * (picked.level + 1);
+  const expansion = upgradeAvailability(world, me(), placeId, ui.building);
+  const protection = openingProtection(world);
+  const lodging = Math.min(beds(world, placeId), ECONOMY.headcountCap);
   const seat = spec.id === sect.seat ? '总舵' : '分舵';
   const status = b_status(place, here);
   const switcher = mine.length > 1 ? `<div class="place-switch">${mine.map((id) => pill(PLACE_BY_ID[id].name, 'look', { place: id }, id === placeId)).join('')}</div>` : '';
+  const buildingList = `<div class="building-switch" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>`;
   const tabs = [['build', '建筑'], ['recruit', `招贤${place.applicants.length ? ' ' + place.applicants.length : ''}`], ['here', '此地'], ['affairs', '事务']];
   if (!tabs.some(([id]) => id === ui.seatTab)) ui.seatTab = 'build';
   const tabPanel = {
     build: () => `<section class="panel building-panel">${panelTitle(kind.name, tag(`${picked.level} 级`))}
-          <div class="building-detail"><p>${esc(kind.does)} · 占地 ${kind.cells} 格</p>${picked.level < kind.max ? btn(`升至 ${picked.level + 1} 级　${num(cost)} 两`, 'upgrade', { index: ui.building }, 'outline') : tag('已满级', 'positive')}</div>
-          ${picked.kind === 'hall' || picked.kind === 'gate' ? '' : formRow('位置', `<select data-change="plot">${options([['', '由管事安排'], ...Array.from({ length: PLOT_COUNT }, (_, i) => [i, `第 ${i + 1} 块地（${i % 2 ? '东' : '西'}侧，离中路${['近', '中', '远'][Math.floor((i % 6) / 2)]}）`])], picked.plot ?? '')}</select>`)}
-          ${picture.stage ? '<p class="caption building-hint">点画面上的建筑名，可查看别的建筑。</p>' : ''}
-          <div class="building-switch ${picture.stage ? 'is-folded' : ''}" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>
+          <div class="building-detail"><p>${esc(kind.does)} · 占地 ${kind.cells} 格</p>${picked.level < kind.max ? btn(`升至 ${picked.level + 1} 级　${num(cost)} 两`, 'upgrade', { index: ui.building }, 'primary', '', !expansion.ok) : tag('已满级', 'positive')}</div>
+          ${picked.level < kind.max && !expansion.ok ? `<p class="caption building-hint">${esc(expansion.why)}</p>` : ''}
+          ${picked.kind === 'hall' || picked.kind === 'gate' ? '' : formRow('迁建', `<select data-change="plot">${options([['', '由管事安排'], ...SEAT_PLOTS.map((_, i) => [i, plotLabel(i)])], picked.plot ?? '')}</select>`)}
+          ${picture.stage ? '<p class="caption building-hint">点建筑可扩建，点空地上的「＋」可兴建。</p>' : ''}
+          ${picture.stage ? `<details class="building-list"><summary>现有建筑</summary>${buildingList}</details>` : buildingList}
         <div class="panel-foot">${btn('兴建建筑', 'sheet', { kind: 'build' }, 'primary', 'plus')}</div></section>`,
     recruit: () => `<section class="panel recruit-panel">${panelTitle('招贤榜', tag(place.applicants.length ? `${place.applicants.length} 人求见` : '无人求见', place.applicants.length ? 'positive' : 'plain'))}
+          <p class="caption recruit-status">${leader ? `你是掌门「${esc(leader.name)}」${leader.place === placeId ? '，可在此面试' : `，现驻 ${esc(PLACE_BY_ID[leader.place]?.name ?? '外地')}`}` : '掌门暂缺'} · 空铺 ${Math.max(0, lodging - here.length)} 张</p>
           <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content">${face(p, 'recruit-avatar')}<div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
         </section>`,
     here: () => `<section class="panel">${panelTitle('此地', `<button class="text-link" data-act="page" data-page="disciples">驻此 ${here.length} 人 · 全派 ${row.members} 人 ${icon('arrow')}</button>`)}
@@ -414,7 +433,7 @@ function seatScreen() {
     </section>
     <aside class="command" id="scene-command" data-region="seat-side">
       <div class="command-tabs" role="tablist">${tabs.map(([id, label]) => `<button role="tab" data-act="seat-tab" data-tab="${id}" class="${ui.seatTab === id ? 'is-active' : ''}" aria-selected="${ui.seatTab === id}">${label}</button>`).join('')}</div>
-      <div class="command-body">${tabPanel}</div>
+      <div class="command-body"><div class="seat-journal">${btn('掌门手札', 'guide-open', {}, 'outline', 'scroll')}${protection?.active ? tag(`立足期余 ${num(protection.daysLeft)} 日`, 'positive') : ''}</div>${tabPanel}</div>
     </aside>`;
 }
 
@@ -739,7 +758,7 @@ const fallenText = (outcome) => (outcome.fallen.length ? `战殁：${outcome.fal
 
 /** Marches on a stronghold with the sect's ten best. */
 function march(placeId) {
-  const prepared = assaultSides(world, me(), placeId, marchParty().map((p) => p.id));
+  const prepared = beginAssault(world, me(), placeId, marchParty().map((p) => p.id));
   if (!prepared.ok) return say(prepared);
   startFight({
     ...prepared, title: `攻打${PLACE_BY_ID[placeId].name}`, heads: [headOf(me()), headOf(prepared.defender)], colors: [colorOf(me()), colorOf(prepared.defender)],
@@ -785,10 +804,10 @@ function duel() {
 
 // ---- the chronicle and the saves -----------------------------------------------------------------------
 
-const LOG_TYPES = { start: '立派', conquer: '征伐', repel: '守御', fall: '覆灭', settle: '分舵', death: '讣告', desert: '叛离', insight: '领悟', succession: '传位', summit: '大会', event: '奇遇', court: '朝廷', join: '来投' };
+const LOG_TYPES = { start: '立派', conquer: '征伐', repel: '守御', fall: '覆灭', settle: '分舵', death: '讣告', desert: '叛离', insight: '领悟', succession: '传位', summit: '大会', event: '奇遇', intel: '情报', hostilities: '交战', court: '朝廷', join: '来投' };
 
 function chronicleScreen() {
-  const records = world.log.filter((r) => ui.logFilter === '全部' || (ui.logFilter === '本派') === (r.sect === me() || r.type === 'start')).slice(-160).reverse();
+  const records = chronicleEntries(world).filter((r) => ui.logFilter === '全部' || (ui.logFilter === '本派') === (r.sect === me() || r.type === 'start')).slice(-160).reverse();
   // The record reads as annals: a heading for each year, the great matters set apart from the small.
   const GREAT = new Set(['start', 'conquer', 'fall', 'succession', 'summit', 'settle']);
   let lastYear = null;
@@ -823,12 +842,28 @@ const pillText = (pill) => { const e = pill.effect; return e.hp ? '疗伤' : e.n
 
 /** The sheets, by kind: each gives a title, a body and the buttons at its foot. */
 const SHEETS = {
+  guide() {
+    const home = world.places[ui.place];
+    if (!home) return ['掌门手札', '<p>据点已失，可在纪事查看局势。</p>', closeBtn('合上手札')];
+    const leader = leaderOf(me());
+    const free = Math.max(0, Math.min(beds(world, ui.place), ECONOMY.headcountCap) - residents(world, ui.place).length);
+    const protection = openingProtection(world);
+    const steps = [
+      ['先点一座建筑', `这里还有 ${free} 张空铺。厢房满了就扩建，空地可用来兴建。`, 'build', '查看山门'],
+      ['再见一位求师者', `招贤榜前有 ${home.applicants.length} 人。掌门在此、有空铺，就能当场收录。`, 'recruit', '走访招贤榜'],
+      ['给山门留一笔进项', '店铺每旬进账。安排好住处与弟子，再点「行」过一旬，回来看粮草和薪俸。', 'here', '查看山下店铺'],
+    ];
+    return ['掌门手札', `<p class="guide-lead">${leader ? `你已接掌本派，现任掌门是${esc(leader.name)}。` : '本派暂缺掌门。'}先把山门安顿好，再决定何时出山。</p>
+      ${protection?.active ? `<p class="guide-truce">立足期余 <b>${num(protection.daysLeft)}</b> 日。此期他派不会主动来攻。若你先对某派出兵，那一派可立即反击。</p>` : ''}
+      <ol class="guide-steps">${steps.map(([title, text, tab, label]) => `<li><div><b>${esc(title)}</b><p>${esc(text)}</p></div>${btn(label, 'guide-go', { tab }, 'outline', 'arrow')}</li>`).join('')}</ol>`,
+    closeBtn('合上手札')];
+  },
   goal() {
     const goal = goalView(world);
     if (!goal) return ['要务', '<p>眼下暂无待办要务。</p>', closeBtn('返回')];
     const reward = !goal.last && Object.entries(goal.gives).map(([key, amount]) => `${{ silver: '银两', grain: '粮草', renown: '威望' }[key]} +${num(amount)}`).join('　');
     const next = goal.done ? btn('领取赏赐', 'goal-claim', {}, 'primary') : goal.go ? btn('前往', 'goal-go', {}, 'primary', 'arrow') : '';
-    return [goal.title, `<div class="goal-detail"><p>${esc(goal.text)}</p>${goal.last ? '' : `<p>${esc(goal.how)}</p><p>${num(goal.now)} / ${num(goal.wanted)}${meter(goal.now / goal.wanted)}</p><p>${esc(reward)}</p>`}</div>`, closeBtn('返回') + next];
+    return [goal.title, `<div class="goal-detail"><p>${esc(goal.text)}</p>${goal.last ? '' : `<p>${esc(goal.how)}</p><p>${num(goal.now)} / ${num(goal.wanted)}${meter(goal.now / goal.wanted)}</p><p>${esc(reward)}</p>`}</div>`, btn('掌门手札', 'guide-open', {}, 'outline', 'scroll') + closeBtn('返回') + next];
   },
   load() {
     const saves = slots.list();
@@ -836,17 +871,21 @@ const SHEETS = {
   },
   build() {
     const spec = PLACE_BY_ID[ui.place];
-    const free = spec.cells - usedCells(world, ui.place);
-    const selected = ui.sheet.buildKind ?? Object.keys(BUILDINGS).find(kind => buildAvailability(world, me(), ui.place, kind).ok) ?? 'dorm';
-    const availability = buildAvailability(world, me(), ui.place, selected);
+    const free = Math.max(0, spec.cells - usedCells(world, ui.place));
+    const plot = ui.buildPlot;
+    const empty = availablePlots(world.places[ui.place].buildings);
+    const check = (kind) => buildAvailability(world, me(), ui.place, kind, plot);
+    const selected = ui.sheet.buildKind ?? Object.keys(BUILDINGS).find((kind) => check(kind).ok) ?? 'dorm';
+    const availability = check(selected);
     const cards = Object.entries(BUILDINGS).map(([kind, b]) => {
-      const status = buildAvailability(world, me(), ui.place, kind);
+      const status = check(kind);
       return `<button type="button" class="build-card" data-act="build-kind" data-kind="${kind}" aria-pressed="${selected === kind}">
         <span class="build-card-head">${icon(b.makes ? 'settings' : b.trains ? 'swords' : b.yields ? 'layers' : 'gate')}<b>${esc(b.name)}</b></span>
         <span>${esc(b.does)}</span><small>${num(b.cost)} 两 · ${b.cells} 格</small>
         ${status.ok ? '' : `<small class="bad">${esc(status.why)}</small>`}</button>`;
     }).join('');
-    return ['兴建建筑', `<div class="build-budget"><span>${icon('pin')}${esc(spec.name)} · 余地 ${free} 格</span><span>${icon('coin')}${num(books().silver)} 两</span></div>
+    return [plot === null ? '兴建建筑' : `在第 ${plot + 1} 块地兴建`, `<div class="build-budget"><span>${icon('pin')}${esc(spec.name)} · 余地 ${free} 格</span><span>${icon('coin')}${num(books().silver)} 两</span></div>
+      ${empty.length ? formRow('建筑位置', `<select data-change="build-location">${options([['', '由管事安排'], ...empty.map((i) => [i, plotLabel(i)])], plot ?? '')}</select>`) : ''}
       <div class="build-catalog" role="group" aria-label="建筑">${cards}</div>
       <input type="hidden" id="build-kind" value="${selected}">
       ${availability.ok ? '' : `<p class="build-reason bad">${esc(availability.why)}</p>`}`,
@@ -855,9 +894,10 @@ const SHEETS = {
   applicant({ index }) {
     const p = world.places[ui.place].applicants[index];
     if (!p) return ['招贤榜', '<p>此人已经离去。</p>', closeBtn('关闭')];
+    const availability = recruitAvailability(world, me(), ui.place, index);
     return [`招贤榜 · ${p.name}`, `<div class="applicant">${face(p, 'applicant-portrait')}<div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.female ? '女' : '男'} · ${p.age} 岁</p></div></div>
       <p>资质：${Object.entries(p.apt).map(([key, value]) => `${APT_NAMES[key]} ${value}`).join('　')}</p><p>根骨：${STAT_KEYS.map((key) => `${STAT_NAMES[key]} ${Math.round(p.stats[key])}`).join('　')}</p>
-      <p class="caption">入门时交束修 ${p.fee} 两。收录需掌门在此，且厢房有空铺。</p>`, closeBtn('暂不收录') + btn('收录弟子', 'recruit', { index }, 'primary')];
+      <p class="caption">入门时交束修 ${p.fee} 两。${availability.ok ? '掌门在此，厢房有空铺。' : esc(availability.why) + '。'}</p>`, closeBtn('暂不收录') + btn('收录弟子', 'recruit', { index }, 'primary', '', !availability.ok)];
   },
   job() {
     const person = picked();
@@ -890,7 +930,9 @@ const SHEETS = {
     const party = marchParty(),
       guard = residents(world, place).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10),
       owner = SECT_BY_ID[world.places[place].owner];
+    const protection = openingProtection(world);
     return ['商议出兵', `<p>进攻${esc(owner.name)}的${esc(PLACE_BY_ID[place].name)}。</p>
+      ${protection?.active && !protection.provoked.includes(owner.id) ? `<p class="guide-truce">立足期仍在。此时出兵，${esc(owner.name)}日后可反击本派。</p>` : ''}
       <dl class="facts">${fact('我方出战', `${party.length} 人 · 战力 ${num(strength(party))}`)}${fact('对方守卫', `${guard.length} 人 · 战力 ${num(strength(guard))}`)}${fact('两派关系', String(Math.round(books().relations[owner.id])))}</dl>
       ${formRow('阵法', `<select id="formation">${options(formationsFor(me(), party).map((id) => [id, `${FORMATIONS[id].name}：${FORMATIONS[id].does}`]), books().formation ?? 'line')}</select>`)}
       <p class="caption">出战者取全派战力最高的十人，伤重者留守。本派阵法需有长老或掌门在阵中。得胜则据点易主；开战后两派交恶。</p>`, closeBtn() + btn('出兵', 'march', { place }, 'primary', 'swords', !party.length)];
@@ -1179,13 +1221,17 @@ function download(name, text) {
 }
 
 /** Takes a world as the one being played. */
-function enter(next, text = '') {
+function enter(next, text = '', { guide = false } = {}) {
   world = next;
   // Someone is watching this world, so its events wait for an answer.
   world.options.interactive = true;
   // A world from before there was a list of matters in hand begins one now.
   if (!world.goals) startGoals(world);
-  Object.assign(ui, { page: 'seat', sheet: null, place: null, building: 0, person: null, mapPlace: null, fight: null, lastFight: null, speed: 0, notice: '' });
+  Object.assign(ui, {
+    page: 'seat', sheet: guide ? { kind: 'guide' } : null, place: null, building: 0, buildPlot: null,
+    seatTab: 'build', commandCollapsed: false, person: books().leaderId, mapPlace: null,
+    fight: null, lastFight: null, speed: 0, resume: 0, notice: '',
+  });
   ui.batch.clear();
   Object.assign(ui, { heralds: [], season: takeStock(), held: placesOf(world, me()), ended: !!world.outcome, picking: false });
   toast(text);
@@ -1260,7 +1306,10 @@ const actions = {
     ui.sheet = null;
     ui.notice = '';
   },
-  sheet: (data) => (ui.sheet = { ...data, index: data.index === undefined ? undefined : Number(data.index) }),
+  sheet(data) {
+    if (data.kind === 'build') ui.buildPlot = null;
+    ui.sheet = { ...data, index: data.index === undefined ? undefined : Number(data.index) };
+  },
   close() {
     if (ui.sheet?.kind === 'editor') editor.close();
     // What was opened from a person's panel goes back to it; a report that stopped the clock starts it again.
@@ -1290,7 +1339,7 @@ const actions = {
   new() {
     const sect = ui.chosen;
     const custom = ui.founding ? { sect, name: ui.ownName.trim(), leader: ui.ownLeader.trim() } : null;
-    enter(createWorld({ seed: (Date.now() % 1e9) + 1, playerSect: sect, succession: ui.succession, scenario: ui.scenario, difficulty: ui.difficulty, custom }));
+    enter(createWorld({ seed: (Date.now() % 1e9) + 1, playerSect: sect, succession: ui.succession, scenario: ui.scenario, difficulty: ui.difficulty, custom }), '', { guide: true });
   },
   load(data) {
     const loaded = slots.read(data.slot);
@@ -1320,6 +1369,7 @@ const actions = {
   look(data) {
     ui.place = data.place;
     ui.building = 0;
+    ui.buildPlot = null;
     ui.commandCollapsed = false;
     if (data.go) ui.page = 'seat';
   },
@@ -1331,12 +1381,20 @@ const actions = {
     if (!orbit) return;
     orbit.distance = data.dir === 'reset' ? (ui.page === 'world' ? 150 : 50) : Math.max(orbit.minDistance, Math.min(orbit.maxDistance, orbit.distance * (data.dir === 'in' ? 0.78 : 1.28)));
   },
-  building: (data) => ((ui.building = Number(data.index)), (ui.seatTab = 'build'), (ui.commandCollapsed = false)),
+  building(data) {
+    Object.assign(ui, { building: Number(data.index), buildPlot: null, seatTab: 'build', commandCollapsed: false });
+  },
+  'build-plot'(data) {
+    const plot = Number(data.plot);
+    if (!availablePlots(world.places[ui.place].buildings).includes(plot)) return toast('这块地已被占用或不可建造。', 'warning');
+    Object.assign(ui, { buildPlot: plot, seatTab: 'build', commandCollapsed: false, sheet: { kind: 'build' } });
+  },
   'build-kind': ({ kind }) => (ui.sheet.buildKind = kind),
   build() {
     const kind = pick('#build-kind');
-    if (!say(build(world, me(), ui.place, kind), `${BUILDINGS[kind]?.name ?? '建筑'}已建成。`)) return;
+    if (!say(build(world, me(), ui.place, kind, ui.buildPlot), `${BUILDINGS[kind]?.name ?? '建筑'}已建成。`)) return;
     ui.building = world.places[ui.place].buildings.length - 1;
+    ui.buildPlot = null;
     ui.sheet = null;
   },
   upgrade: (data) => say(upgrade(world, me(), ui.place, Number(data.index)), '扩建完成。'),
@@ -1411,11 +1469,22 @@ const actions = {
     march(data.place);
   },
   'goal-open': () => (ui.sheet = { kind: 'goal' }),
+  'guide-open': () => (ui.sheet = { kind: 'guide' }),
+  'guide-go'(data) {
+    actions.page({ page: 'seat' });
+    ui.commandCollapsed = false;
+    ui.seatTab = data.tab;
+    if (data.tab === 'build') {
+      const dorm = world.places[ui.place]?.buildings.findIndex((building) => building.kind === 'dorm');
+      if (dorm >= 0) actions.building({ index: dorm });
+    }
+  },
   'goal-go'() {
     const go = goalView(world)?.go;
     if (!go) return;
     actions.page({ page: go.page });
-    if (go.sheet) ui.sheet = { kind: go.sheet };
+    if (go.tab) ui.seatTab = go.tab;
+    if (go.sheet) actions.sheet({ kind: go.sheet });
   },
   'goal-claim'() {
     const result = claimGoal(world);
@@ -1522,6 +1591,10 @@ const changes = {
     location.reload();
   },
   plot: (_, value) => void say(movePlot(world, me(), ui.place, ui.building, value === '' ? null : Number(value)), '已迁建。'),
+  'build-location'(_, value) {
+    ui.buildPlot = value === '' ? null : Number(value);
+    delete ui.sheet.buildKind;
+  },
   scenario: (_, value) => { if (Object.hasOwn(SCENARIOS, value)) ui.scenario = value; },
   difficulty: (_, value) => { if (Object.hasOwn(DIFFICULTIES, value)) ui.difficulty = Number(value); },
   focus: (_, value) => void say(setFocus(world, me(), ui.place, value), `此处专精改为「${FOCUSES[value]?.name}」。`),
@@ -1550,8 +1623,8 @@ const changes = {
 /** True for a moment after the map has been dragged, so the drag does not also pick a stronghold. */
 let mapDragged = false;
 
-const navigationActions = new Set(['page', 'sheet', 'close', 'prologue-next', 'skip-prologue', 'sect-next', 'sect-back', 'command-toggle', 'goal-open', 'mapmode']);
-const selectionActions = new Set(['choose-sect', 'choose-founding', 'succession', 'building', 'build-kind', 'place', 'look', 'rank', 'seat-tab', 'person', 'picking', 'batch-toggle', 'art', 'art-tier', 'speed', 'fight-pause', 'fight-speed', 'fight-stance', 'log-filter']);
+const navigationActions = new Set(['page', 'sheet', 'close', 'prologue-next', 'skip-prologue', 'sect-next', 'sect-back', 'command-toggle', 'goal-open', 'guide-open', 'guide-go', 'mapmode']);
+const selectionActions = new Set(['choose-sect', 'choose-founding', 'succession', 'building', 'build-kind', 'build-plot', 'place', 'look', 'rank', 'seat-tab', 'person', 'picking', 'batch-toggle', 'art', 'art-tier', 'speed', 'fight-pause', 'fight-speed', 'fight-stance', 'log-filter']);
 const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fight-retreat', 'siege-fight', 'answer']);
 
 document.addEventListener('visibilitychange', () => {
@@ -1664,7 +1737,7 @@ function openSeason() {
     now = takeStock();
   ui.season = now;
   if (!was || localStorage.getItem('wulin-season') === 'off' || !membersOf(world, me()).length) return;
-  const since = world.log.filter((r) => r.day >= was.day);
+  const since = chronicleEntries(world).filter((r) => r.day >= was.day);
   ui.sheet = {
     kind: 'season', was, now, pace: ui.speed,
     title: `承和 ${1 + Math.floor((world.day - 1) / 360)} 年 · ${'春夏秋冬'[Math.floor(((world.day - 1) % 360) / 90) % 4]}季报`,
@@ -1682,12 +1755,16 @@ setInterval(() => {
   if (!world || !ui.speed || ui.sheet || ui.fight || world.outcome) return;
   // Leave the page alone while the player has a list open, so it does not close under them.
   if (document.activeElement?.tagName === 'SELECT') return;
-  const before = world.log.length;
+  const before = world.day;
+  const protection = openingProtection(world);
   for (let i = 0; i < ui.speed && !world.pending; i++) advanceDay(world);
   if (world.day % 30 < ui.speed) slots.write('auto', world, autoLabel());
-  const fresh = world.log.slice(before);
+  const fresh = world.log.filter((entry) => entry.day > before);
   const news = fresh.filter((entry) => entry.sect === me()).at(-1);
   if (news) ui.notice = news.text;
+  if (protection?.active && before < protection.until - 30 && world.day >= protection.until - 30) {
+    ui.heralds.push({ kind: 'herald', label: '立足期将尽', text: `立足期还剩 ${protection.until - world.day} 日。届时他派可能来攻，可先整备守军或改善邻派关系。` });
+  }
   // Great matters are announced one at a time, each on a sheet of its own.
   for (const entry of fresh) {
     const mine = entry.sect === me(),

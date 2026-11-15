@@ -40,7 +40,9 @@ function observeRejectedResult(result) {
         try {
             void Promise.resolve(result).then(undefined, ignoreRejection);
         }
-        catch { /* Observation cannot replace CLOCK_CALLBACK_RETURN_INVALID. */ }
+        catch {
+            /* Observation cannot replace CLOCK_CALLBACK_RETURN_INVALID. */
+        }
     }
 }
 /** Private owner; public facades supply observation and receiver-checked service. */
@@ -73,10 +75,22 @@ export function createGameClockOwner(context, options) {
             throw new EgretError('CLOCK_INVALID');
     }
     const clock = Object.freeze({
-        get state() { assertClock(this); return state; },
-        get elapsedSeconds() { assertClock(this); return elapsedSeconds; },
-        get tickId() { assertClock(this); return tickId; },
-        get maxDeltaSeconds() { assertClock(this); return options.maxDeltaSeconds; },
+        get state() {
+            assertClock(this);
+            return state;
+        },
+        get elapsedSeconds() {
+            assertClock(this);
+            return elapsedSeconds;
+        },
+        get tickId() {
+            assertClock(this);
+            return tickId;
+        },
+        get maxDeltaSeconds() {
+            assertClock(this);
+            return options.maxDeltaSeconds;
+        },
         onTick(scope, handler) {
             assertClock(this);
             context.assertOpen();
@@ -102,7 +116,7 @@ export function createGameClockOwner(context, options) {
                     if (this !== subscription)
                         throw new EgretError('CLOCK_SUBSCRIPTION_INVALID');
                     retire(record);
-                },
+                }
             });
             try {
                 Reflect.apply(scopeUse, scope, [subscription]);
@@ -132,7 +146,7 @@ export function createGameClockOwner(context, options) {
                 state = 'running';
                 anchor = undefined;
             }
-        },
+        }
     });
     return Object.freeze({
         clock,
@@ -169,8 +183,12 @@ export function createGameClockOwner(context, options) {
                 throw new EgretError('CLOCK_TICK_ID_EXHAUSTED');
             const tick = Object.freeze({ tickId: nextTickId, elapsedSeconds: nextElapsed, deltaSeconds });
             // Snapshot identities, not slot numbers: reuse cannot substitute a new handler.
-            const candidates = slots.filter((record) => record !== undefined).sort((a, b) => a.sequence - b.sequence);
-            idle = new Promise(resolve => { releaseIdle = resolve; });
+            const candidates = slots
+                .filter((record) => record !== undefined)
+                .sort((a, b) => a.sequence - b.sequence);
+            idle = new Promise(resolve => {
+                releaseIdle = resolve;
+            });
             busy = true;
             // Commit before callbacks: failure never rolls back time or replays candidates.
             acceptedSource = source;
@@ -217,7 +235,11 @@ export function createGameClockOwner(context, options) {
                 if (record !== undefined)
                     retire(record);
         },
-        isBusy() { return busy; },
-        whenIdle() { return idle ?? Promise.resolve(); },
+        isBusy() {
+            return busy;
+        },
+        whenIdle() {
+            return idle ?? Promise.resolve();
+        }
     });
 }

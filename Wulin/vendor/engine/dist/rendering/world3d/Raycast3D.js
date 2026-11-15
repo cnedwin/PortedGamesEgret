@@ -90,8 +90,17 @@ export class Raycaster3D {
             worldPoint[2] = this.origin[2] + this.direction[2] * distance;
             const u = hit[1], v = hit[2], w = 1 - u - v;
             const record = {
-                distance, point: [worldPoint[0], worldPoint[1], worldPoint[2]], object: mesh, faceIndex: face, instanceId,
-                uv: uvs ? [uvs[a * 2] * w + uvs[b * 2] * u + uvs[c * 2] * v, uvs[a * 2 + 1] * w + uvs[b * 2 + 1] * u + uvs[c * 2 + 1] * v] : undefined,
+                distance,
+                point: [worldPoint[0], worldPoint[1], worldPoint[2]],
+                object: mesh,
+                faceIndex: face,
+                instanceId,
+                uv: uvs
+                    ? [
+                        uvs[a * 2] * w + uvs[b * 2] * u + uvs[c * 2] * v,
+                        uvs[a * 2 + 1] * w + uvs[b * 2 + 1] * u + uvs[c * 2 + 1] * v
+                    ]
+                    : undefined
             };
             if (firstOnly)
                 best = record;
@@ -148,7 +157,9 @@ export class Raycaster3D {
 }
 function mat4DeterminantSign(m) {
     // Sign of the upper 3x3 determinant: negative means a mirrored transform.
-    return m[0] * (m[5] * m[10] - m[6] * m[9]) - m[4] * (m[1] * m[10] - m[2] * m[9]) + m[8] * (m[1] * m[6] - m[2] * m[5]);
+    return (m[0] * (m[5] * m[10] - m[6] * m[9]) -
+        m[4] * (m[1] * m[10] - m[2] * m[9]) +
+        m[8] * (m[1] * m[6] - m[2] * m[5]));
 }
 const PICK_TREE_MINIMUM = 512, pickStack = new Int32Array(96);
 const pickTrees = new WeakMap();
@@ -219,7 +230,16 @@ function pickTree(geometry, faceCount) {
         count[child + 1] = size - leftSize;
         pending.push(child, child + 1);
     }
-    const tree = { key, positions: p, index, bounds: bounds.slice(0, used * 6), left: left.slice(0, used), start: start.slice(0, used), count: count.slice(0, used), faces };
+    const tree = {
+        key,
+        positions: p,
+        index,
+        bounds: bounds.slice(0, used * 6),
+        left: left.slice(0, used),
+        start: start.slice(0, used),
+        count: count.slice(0, used),
+        faces
+    };
     pickTrees.set(geometry, tree);
     return tree;
 }

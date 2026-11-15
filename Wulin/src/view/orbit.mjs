@@ -80,7 +80,8 @@ export function createOrbit(canvas) {
   const pointers = new Map();
   let moved = 0,
     pinch = 0,
-    twist = null;
+    twist = null,
+    canTap = false;
   const slide = (dx, dy) => {
     const k = orbit.distance / Math.max(300, canvas.clientHeight);
     const cos = Math.cos(orbit.yaw),
@@ -92,6 +93,7 @@ export function createOrbit(canvas) {
     canvas.setPointerCapture?.(event.pointerId);
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY, button: event.button });
     if (pointers.size === 1) moved = 0;
+    canTap = pointers.size === 1 && event.button === 0 && !event.shiftKey;
     pinch = 0;
     twist = null;
     idle = 0;
@@ -125,7 +127,8 @@ export function createOrbit(canvas) {
     if (!pointers.delete(event.pointerId)) return;
     pinch = 0;
     twist = null;
-    if (event.type === 'pointerup' && moved < 8 && !pointers.size) {
+    if (event.type === 'pointercancel') canTap = false;
+    if (event.type === 'pointerup' && canTap && moved < 8 && !pointers.size) {
       const box = canvas.getBoundingClientRect();
       orbit.onTap?.(event.clientX - box.left, event.clientY - box.top);
     }
@@ -136,6 +139,7 @@ export function createOrbit(canvas) {
     'wheel',
     (event) => {
       event.preventDefault();
+      canTap = false;
       orbit.distance = clamp(orbit.distance * Math.exp(event.deltaY * 0.0012), orbit.minDistance, orbit.maxDistance);
       orbit.gestureVersion++;
       idle = 0;

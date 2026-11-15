@@ -9,10 +9,11 @@
 // gain a second roof. Anything that glows (lanterns, a forge's fire) is a
 // second mesh in a material that ignores the light, so it shines after dark.
 import { Mesh3D, Object3D } from '@egret/engine/world3d';
+import { PLOT } from '../core/seat-layout.mjs';
 import { BALL, BOX, ROD, SPIKE, TAPER, beam, glow, grad, heightSurface, model, shade, toon } from './shapes.mjs';
 
 /** The ground one building stands on, in metres; seat.mjs lays plots out in a grid. */
-export const PLOT = 11;
+export { PLOT };
 
 /** The palette a building is drawn in. It is set from the sect's style before each building is made. */
 let STONE = 0xbdb7a6,
