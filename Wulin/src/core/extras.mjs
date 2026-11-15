@@ -10,6 +10,7 @@ import { GRADES, PILLS } from '../data/goods.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
 import { STAT_CAP, autoWheel, bestCombatArt, equipFor, gainXp, growTo, rollPerson } from './persons.mjs';
 import { clamp } from './rng.mjs';
+import { grow, remember } from './disciples.mjs';
 import { PLOT_COUNT, seatLayout } from './seat-layout.mjs';
 
 export { PLOT_COUNT };
@@ -66,6 +67,7 @@ export function giveRelic(state, personId, relicId) {
   // Whoever held it before goes back to an ordinary weapon.
   for (const other of Object.values(state.persons)) if (other.gear.weapon?.relic === relicId) other.gear.weapon = { slot: relic.slot, grade: other.gear.armor || 1 };
   person.gear.weapon = { slot: relic.slot, grade: 7, power: relic.power, relic: relicId };
+  remember(state, person, `获赐神兵「${relic.name}」`);
   return done();
 }
 
@@ -193,6 +195,7 @@ export function openMeridian(state, personId, choice) {
     else person.stats[key] = Math.min(STAT_CAP[key], person.stats[key] + amount);
   }
   (person.meridians ??= []).push(choice);
+  remember(state, person, `打通${node.name}（${gift.label}）`);
   return done();
 }
 
@@ -327,7 +330,12 @@ export function settleDuel(state, personId, won, hpLeft, dealt) {
   const person = state.persons[personId],
     books = state.sects[person.school];
   books.duelDay = state.day;
-  gainXp(person, dealt);
+  grow(state, person, dealt);
+  if (won) {
+    // The first win on the stage is told; the rest are counted.
+    person.duels = (person.duels ?? 0) + 1;
+    remember(state, person, person.duels === 1 ? '初次登擂便得胜' : `登擂得胜，已胜 ${person.duels} 场`, { moment: person.duels === 1 });
+  }
   person.wounds = clamp(1 - hpLeft, 0, 1) * 0.3;
   if (won) books.renown = clamp(books.renown + 6, 0, 1000);
   note(state, 'event', `${person.name}登擂${won ? '获胜，本派威望有增' : '落败'}。`, person.school);

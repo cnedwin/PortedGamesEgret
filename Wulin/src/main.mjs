@@ -6,6 +6,9 @@
 //   core/world.mjs     what a day does (no page needed)
 //   core/battle.mjs    a fight (no page needed)
 //   core/persons.mjs   people and how they grow
+//   core/disciples.mjs grades of gift, rankings, each disciple's record and pleas, one-step work
+//   core/tourney.mjs   the Sword Meet, held every third year
+//   core/unlocks.mjs   which of a sect's affairs a new leader is shown yet
 //   core/save.mjs      saves, in the browser and as files
 //   core/editor.mjs    the built-in editor (F8 twice)
 //   ui/kit.mjs         buttons, tags and the other small pieces of a screen
@@ -15,9 +18,9 @@
 // them the scene paintings stand in and fights are settled in writing.
 import { artUrl, loadArt, portraitUrl } from '../art-handoff/assets.mjs';
 import { ART_BY_ID, ARTS, CLASSES, CLASS_KEYS, levelOf, unmetNeeds } from './data/arts.mjs';
-import { DIFFICULTIES, FOCUSES, MERIDIANS, RELIC_BY_ID, SCENARIOS } from './data/extras.mjs';
+import { DIFFICULTIES, FOCUSES, MERIDIANS, RELIC_BY_ID, RELICS, SCENARIOS } from './data/extras.mjs';
 import { BUILDINGS, ECONOMY, PILLS, armorName, weaponName } from './data/goods.mjs';
-import { FORMATIONS, HOUSE_RULES, TALENTS } from './data/jianghu.mjs';
+import { FORMATIONS, HOUSE_RULES, TALENTS, WANDERERS } from './data/jianghu.mjs';
 import { PLACES, PLACE_BY_ID, RESOURCE_NAMES, RESOURCES } from './data/places.mjs';
 import { OFFICES, RANKS, SECTS, SECT_BY_ID, applyIdentity } from './data/sects.mjs';
 import { createBattle } from './core/battle.mjs';
@@ -28,7 +31,10 @@ import {
 } from './core/extras.mjs';
 import { formationsFor, pendingView, resolvePending, setRule } from './core/jianghu.mjs';
 import { applyMod } from './core/mod.mjs';
-import { APT_NAMES, STAT_KEYS, STAT_NAMES, hpMax, learnableArts, prowess } from './core/persons.mjs';
+import { APT_NAMES, STAT_KEYS, STAT_NAMES, TRAITS, hpMax, learnableArts, prowess } from './core/persons.mjs';
+import { QUALITIES, RANKINGS, TRAIT_NOTES, aptitudeScore, attention, qualityOf, rankingLabel, rankingValue, ranked, recommendJobs, wordsOf } from './core/disciples.mjs';
+import { TOURNEY, enterTourney, nextTourney, settleBout, tourneyBout, tourneyField } from './core/tourney.mjs';
+import { checkUnlocks, isOpen, openAll, startUnlocks, stillToCome } from './core/unlocks.mjs';
 import { BOOK_LEVEL, TEACHING, TEACH_LEVEL, askTeaching, bookOffers, buyManual, commonArts, heldArts, teachingOffers } from './core/library.mjs';
 import { createRng } from './core/rng.mjs';
 import { createSlots, deserialize, saveFileName, serialize } from './core/save.mjs';
@@ -98,6 +104,14 @@ const ui = {
   rank: '全部',
   search: '',
   batch: new Set(),
+  /** How the roster is shown ('cards' or 'table'), what it is ranked by ('rank' is by standing), and which way. */
+  rosterView: 'cards',
+  sortKey: 'rank',
+  sortUp: false,
+  /** Shows only those who need the leader's eye: '', 'idle', 'promotable', 'unhappy' or 'wounded'. */
+  only: '',
+  /** Which book of the chronicle is open: 'annals', 'arts', 'wanderers' or 'relics'. */
+  book: 'annals',
   /** The map: the stronghold picked and how the map is moved and zoomed. */
   mapPlace: null,
   map: { zoom: 1, x: 0, y: 0 },
@@ -138,6 +152,8 @@ window.addEventListener('error', (event) => fail(event.error ?? event.message));
 
 const me = () => world.playerSect;
 const books = () => world.sects[me()];
+/** Whether a part of the game is on show yet (see core/unlocks.mjs). */
+const open = (id) => isOpen(world, id);
 const autoLabel = () => `${SECT_BY_ID[me()].name} ${dateText(world)}`;
 const dayText = (day) => `承和${1 + Math.floor(day / 360)}年${1 + Math.floor((day % 360) / 30)}月${1 + (day % 30)}日`;
 
@@ -329,7 +345,7 @@ function shell(content) {
     <div class="backdrop ${isStaged() ? '' : 'is-dimmed'} ${isStaged() && scene !== 'battle' ? 'has-command' : ''}"><div class="stage-slot" data-stage="${scene}">${sceneImage({ realm: 'world', battle: 'battle', seat: 'seat' }[scene])}</div></div>
     <aside class="nav" aria-label="主要功能">
       <button class="nav-logo" data-act="page" data-page="saves" aria-label="存档"><span class="seal"><span>武</span><span>林</span></span></button>
-      <nav class="nav-list" data-region="nav">${TABS.map(([id, label, glyph]) => `<button class="nav-button ${current === id ? 'is-active' : ''}" data-act="page" data-page="${id}" ${current === id ? 'aria-current="page"' : ''}>${icon(glyph)}<span>${label}</span></button>`).join('')}</nav>
+      <nav class="nav-list" data-region="nav">${TABS.filter(([id]) => open(id)).map(([id, label, glyph]) => `<button class="nav-button ${current === id ? 'is-active' : ''}" data-act="page" data-page="${id}" ${current === id ? 'aria-current="page"' : ''}>${icon(glyph)}<span>${label}</span></button>`).join('')}</nav>
       <button class="nav-button nav-bottom" data-act="sheet" data-kind="settings">${icon('settings')}<span>设置</span></button>
     </aside>
     <header class="topbar" data-region="top">
@@ -366,6 +382,13 @@ function goalStrip() {
 
 // ---- the seat ------------------------------------------------------------------------------------------
 
+/** A person's grade of gift as a small coloured mark; the colour is the same wherever people are listed. */
+function qualityTag(person) {
+  const grade = qualityOf(person);
+  return `<span class="quality q-${grade}" title="${QUALITIES[grade].about} · 资质评分 ${aptitudeScore(person)}">${QUALITIES[grade].name}</span>`;
+}
+const traitText = (person) => (person.traits ?? []).map((key) => `<b>${TRAITS[key]?.name ?? key}</b>（${TRAIT_NOTES[key] ?? ''}）`).join('　') || '平和';
+
 const dots = (grade) => `${'●'.repeat(grade)}${'<i>○</i>'.repeat(3 - grade)}`;
 const topAptitude = (person) => Object.entries(person.apt).sort((a, b) => b[1] - a[1])[0];
 const plotLabel = (plot) => `第 ${plot + 1} 块地 · ${SEAT_PLOTS[plot].x < 0 ? '西侧' : '东侧'}`;
@@ -390,7 +413,7 @@ function seatScreen() {
   const status = b_status(place, here);
   const switcher = mine.length > 1 ? `<div class="place-switch">${mine.map((id) => pill(PLACE_BY_ID[id].name, 'look', { place: id }, id === placeId)).join('')}</div>` : '';
   const buildingList = `<div class="building-switch" role="group" aria-label="现有建筑">${place.buildings.map((b, i) => pill(`${BUILDINGS[b.kind].name}${b.level > 1 ? ' ' + b.level : ''}`, 'building', { index: i }, i === ui.building)).join('')}</div>`;
-  const tabs = [['build', '建筑'], ['recruit', `招贤${place.applicants.length ? ' ' + place.applicants.length : ''}`], ['here', '此地'], ['affairs', '事务']];
+  const tabs = [['build', '建筑'], ['recruit', `招贤${place.applicants.length ? ' ' + place.applicants.length : ''}`], ['here', '此地'], ['affairs', '事务']].filter(([id]) => open(id));
   if (!tabs.some(([id]) => id === ui.seatTab)) ui.seatTab = 'build';
   const tabPanel = {
     build: () => `<section class="panel building-panel">${panelTitle(kind.name, tag(`${picked.level} 级`))}
@@ -402,7 +425,7 @@ function seatScreen() {
         <div class="panel-foot">${btn('兴建建筑', 'sheet', { kind: 'build' }, 'primary', 'plus')}</div></section>`,
     recruit: () => `<section class="panel recruit-panel">${panelTitle('招贤榜', tag(place.applicants.length ? `${place.applicants.length} 人求见` : '无人求见', place.applicants.length ? 'positive' : 'plain'))}
           <p class="caption recruit-status">${leader ? `你是掌门「${esc(leader.name)}」${leader.place === placeId ? '，可在此面试' : `，现驻 ${esc(PLACE_BY_ID[leader.place]?.name ?? '外地')}`}` : '掌门暂缺'} · 空铺 ${Math.max(0, lodging - here.length)} 张</p>
-          <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content">${face(p, 'recruit-avatar')}<div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
+          <div class="recruit-list">${place.applicants.slice(0, 4).map((p, i) => `<div class="recruit-content">${face(p, 'recruit-avatar')}<div><h3>${esc(p.name)} ${qualityTag(p)}</h3><p>${esc(p.origin)} · ${p.age}岁 · ${APT_NAMES[topAptitude(p)[0]]}资质 ${topAptitude(p)[1]}</p></div>${btn('会见', 'sheet', { kind: 'applicant', index: i }, 'outline')}</div>`).join('') || '<div class="recruit-content"><p>榜前无人。威望越高，来投的人越多、资质越好。</p></div>'}</div>
         </section>`,
     here: () => `<section class="panel">${panelTitle('此地', `<button class="text-link" data-act="page" data-page="disciples">驻此 ${here.length} 人 · 全派 ${row.members} 人 ${icon('arrow')}</button>`)}
         <div class="stat-grid"><div><span>建筑用地</span><b>${usedCells(world, placeId)}<small> / ${spec.cells}</small></b></div><div><span>厢房床位</span><b>${here.length}<small> / ${beds(world, placeId)}</small></b></div><div><span>山下店铺</span><b>${place.shops}<small> / ${SHOP_LIMIT}</small></b></div><div><span>掌门</span><b class="is-text">${leader?.place === placeId ? '在此' : esc(PLACE_BY_ID[leader?.place]?.name ?? '在外')}</b></div></div>
@@ -464,8 +487,8 @@ function b_status(place, here) {
 
 // ---- the roster ----------------------------------------------------------------------------------------
 
-function jobText(person) {
-  const job = person.job ?? { kind: 'rest' };
+const jobText = (person) => jobName(person.job ?? { kind: 'rest' });
+function jobName(job) {
   if (job.kind === 'train') return '修练 ' + (ART_BY_ID[job.art]?.name ?? '');
   if (job.kind === 'seclude') return `闭关悟 ${ART_BY_ID[job.art]?.name ?? ''}`;
   if (job.kind === 'gather') return '采集' + RESOURCE_NAMES[job.res];
@@ -493,23 +516,39 @@ function jobOf(value) {
 
 const weaponText = (person) => (person.gear.weapon?.relic ? `神兵·${RELIC_BY_ID[person.gear.weapon.relic].name}` : person.gear.weapon ? weaponName(person.gear.weapon.slot, person.gear.weapon.grade) : '空手');
 const RANK_FILTERS = ['全部', '掌门', '长老', '亲传', '内门', '外门', '杂役'];
+/** The people the leader should look at, by what they are waiting for: `[key, label, people]`. */
+function waiting() {
+  const watch = attention(world, me());
+  return [['idle', '闲着', watch.idle], ['promotable', '可晋升', watch.promotable], ['unhappy', '想走', watch.unhappy], ['wounded', '带伤', watch.wounded]];
+}
 function roster() {
-  return membersOf(world, me())
-    .filter((p) => (ui.rank === '全部' || RANKS[p.rank].name === ui.rank) && (!ui.search || [p.name, jobText(p), bestArtText(p), PLACE_BY_ID[p.place].name].join(' ').includes(ui.search)))
-    .sort((a, b) => b.rank - a.rank || b.level - a.level || a.id - b.id);
+  const only = ui.only ? new Set(waiting().find(([key]) => key === ui.only)?.[2].map((p) => p.id)) : null;
+  const list = membersOf(world, me()).filter((p) => (!only || only.has(p.id)) && (ui.rank === '全部' || RANKS[p.rank].name === ui.rank) && (!ui.search || [p.name, jobText(p), bestArtText(p), PLACE_BY_ID[p.place].name].join(' ').includes(ui.search)));
+  return ui.sortKey === 'rank' ? list.sort((a, b) => b.rank - a.rank || b.level - a.level || a.id - b.id) : ranked(list, ui.sortKey, ui.sortUp);
 }
 const picked = () => world.persons[ui.person]?.school === me() ? world.persons[ui.person] : leaderOf(me()) ?? membersOf(world, me())[0];
+
+/** The columns of the ranking table: the grade of gift, then RANKINGS less the five single aptitudes and age. */
+const TABLE_KEYS = RANKINGS.map(([key]) => key).filter((key) => !key.startsWith('apt:') && key !== 'age');
 
 function disciplesScreen() {
   const all = membersOf(world, me()),
     rows = roster();
   for (const id of ui.batch) if (world.persons[id]?.school !== me()) ui.batch.delete(id);
   const many = placesOf(world, me()).length > 1;
-  return `${screenHead('弟子', '门中弟子', `在册 ${all.length} 人 · 点一人查看详情、安排差事与武学`, btn('武学名录', 'page', { page: 'arts' }, 'outline', 'scroll'))}
+  const chips = waiting().filter(([, , people]) => people.length);
+  if (ui.only && !chips.some(([key]) => key === ui.only)) ui.only = '';
+  const ranking = ui.sortKey !== 'rank';
+  const sorter = `<label class="sort-wrap"><span>排行</span><select data-change="sort">${options([['rank', '按身份'], ...RANKINGS.map(([key, label]) => [key, '按' + label])], ui.sortKey)}</select></label>${ranking ? btn(ui.sortUp ? '低 → 高' : '高 → 低', 'sort-dir', {}, 'outline') : ''}`;
+  const cards = () => rows.map((p, i) => memberCard(p, { act: ui.picking ? 'batch-toggle' : 'person', on: ui.picking && ui.batch.has(p.id), where: many, nth: ranking ? i + 1 : 0 })).join('') || '<p class="empty">暂无符合条件的弟子。</p>';
+  const head = (key) => `<th class="${ui.sortKey === key ? 'is-sorted' : ''}"><button type="button" data-act="sort" data-key="${key}" title="按${rankingLabel(key)}排行">${rankingLabel(key)}${ui.sortKey === key ? (ui.sortUp ? ' ▲' : ' ▼') : ''}</button></th>`;
+  const table = () => `<div class="rank-table-wrap"><table class="rank-table"><thead><tr><th>名次</th><th>弟子</th>${TABLE_KEYS.map(head).join('')}</tr></thead><tbody>${rows.map((p, i) => `<tr data-act="person" data-id="${p.id}" class="${ranking && i < 3 ? 'is-top' : ''}"><td>${i + 1}</td><td class="rank-name">${qualityTag(p)}<b>${esc(p.name)}</b><small>${RANKS[p.rank].name}</small></td>${TABLE_KEYS.map((key) => `<td class="${ui.sortKey === key ? 'is-sorted' : ''}">${num(rankingValue(p, key))}</td>`).join('')}</tr>`).join('')}</tbody></table>${rows.length ? '' : '<p class="empty">暂无符合条件的弟子。</p>'}</div>`;
+  return `${screenHead('弟子', '门中弟子', `在册 ${all.length} 人 · 点一人查看详情、安排差事与武学`, btn('一键安排差事', 'sheet', { kind: 'assign' }, 'primary', 'people') + btn('武学名录', 'page', { page: 'arts' }, 'outline', 'scroll'))}
+    <div class="attention" data-region="attention">${chips.map(([key, label, people]) => pill(`${label} ${people.length} 人`, 'only', { only: key }, ui.only === key)).join('') || '<span class="caption">门中诸事停当，无人待你发落。</span>'}${ui.only === 'promotable' ? btn('全部晋升', 'promote-all', {}, 'primary') : ''}${ui.only === 'idle' ? btn('为他们安排差事', 'sheet', { kind: 'assign', idle: true }, 'primary') : ''}</div>
     <section class="panel disciple-roster">
       <div class="panel-title roster-header"><div class="button-group" data-region="rank-filter">${RANK_FILTERS.map((rank) => pill(rank, 'rank', { rank }, ui.rank === rank)).join('')}</div><label class="search-wrap"><span class="sr-only">查找弟子</span><input type="search" id="search-person" value="${esc(ui.search)}" placeholder="查找弟子" autocomplete="off"></label></div>
-      <div class="batch-toolbar" data-region="batch">${ui.picking ? `<span>已选 ${ui.batch.size} 人 · 点名牌增减</span>${btn('全选所列', 'batch-all', {}, 'ghost')}${btn('改派差事', 'sheet', { kind: 'batch' }, 'primary', '', !ui.batch.size)}${btn('完成', 'picking', {}, 'outline')}` : `<span>${rows.length} 人</span>${btn('多选改派', 'picking', {}, 'outline')}`}</div>
-      <div class="member-grid" data-region="roster">${rows.map((p) => memberCard(p, { act: ui.picking ? 'batch-toggle' : 'person', on: ui.picking && ui.batch.has(p.id), where: many })).join('') || '<p class="empty">暂无符合条件的弟子。</p>'}</div>
+      <div class="batch-toolbar" data-region="batch">${ui.picking ? `<span>已选 ${ui.batch.size} 人 · 点名牌增减</span>${btn('全选所列', 'batch-all', {}, 'ghost')}${btn('改派差事', 'sheet', { kind: 'batch' }, 'primary', '', !ui.batch.size)}${btn('完成', 'picking', {}, 'outline')}` : `<span>${rows.length} 人</span><span class="roster-tools">${pill('名牌', 'roster-view', { view: 'cards' }, ui.rosterView === 'cards')}${pill('榜单', 'roster-view', { view: 'table' }, ui.rosterView === 'table')}${sorter}${btn('多选改派', 'picking', {}, 'outline')}</span>`}</div>
+      <div data-region="roster">${ui.rosterView === 'table' && !ui.picking ? `<div class="rank-board">${table()}</div>` : `<div class="member-grid">${cards()}</div>`}</div>
     </section>`;
 }
 
@@ -517,10 +556,12 @@ function disciplesScreen() {
  * A person's name plate, the same wherever people are listed: face, name,
  * standing, what they are best at, what they are doing and how loyal they are.
  */
-function memberCard(p, { act = 'person', on = false, where = false, data = '' } = {}) {
-  return `<button class="member-card ${on ? 'is-picked' : ''}" data-act="${act}" data-id="${p.id}" ${data}>${face(p, 'member-face')}
-    <span class="member-main"><b>${esc(p.name)}${p.wounds > 0.05 ? ' <i class="bad">伤</i>' : ''}</b><small>${RANKS[p.rank].name} · ${p.level} 级${where ? ' · ' + esc(PLACE_BY_ID[p.place].name) : ''}</small><small>${esc(bestArtText(p))}</small></span>
-    <span class="member-side"><em>${num(prowess(p))}</em><small>${esc(jobText(p))}</small>${meter(p.loyalty, p.loyalty < 30 ? 'enemy' : 'morale', '忠诚')}</span></button>`;
+function memberCard(p, { act = 'person', on = false, where = false, data = '', nth = 0 } = {}) {
+  // When the roster is ranked, the plate carries the place and the number it was ranked by.
+  const ranking = nth && ui.sortKey !== 'rank' && ui.sortKey !== 'prowess' ? `<small class="member-rank">${rankingLabel(ui.sortKey)} ${num(rankingValue(p, ui.sortKey))}</small>` : '';
+  return `<button class="member-card q-${qualityOf(p)} ${on ? 'is-picked' : ''}" data-act="${act}" data-id="${p.id}" ${data}>${nth ? `<i class="member-nth">${nth}</i>` : ''}${face(p, 'member-face')}
+    <span class="member-main"><b>${esc(p.name)} ${qualityTag(p)}${p.wounds > 0.05 ? ' <i class="bad">伤</i>' : ''}</b><small>${RANKS[p.rank].name} · ${p.level} 级${where ? ' · ' + esc(PLACE_BY_ID[p.place].name) : ''}</small><small>${esc(bestArtText(p))}</small></span>
+    <span class="member-side"><em>${num(prowess(p))}</em>${ranking}<small>${esc(jobText(p))}</small>${meter(p.loyalty, p.loyalty < 30 ? 'enemy' : 'morale', '忠诚')}</span></button>`;
 }
 
 // ---- the arts ------------------------------------------------------------------------------------------
@@ -605,10 +646,10 @@ function worldScreen() {
     foe: btn('商议出兵', 'sheet', { kind: 'march', place: spec.id }, 'primary', 'swords') + btn('馈赠 500 两', 'gift', { sect: place.owner }, 'outline'),
   }[deal.kind];
   const model = picture.stage && ui.map3d;
-  return `${model ? '' : screenHead('江湖', '天下舆图', '点据点查看详情与可行之事。', btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'outline', 'banner'))}
+  return `${model ? '' : screenHead('江湖', '天下舆图', '点据点查看详情与可行之事。', open('diplomacy') ? btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'outline', 'banner') : '')}
     <div class="world-layout ${model ? 'is-model' : ''}">
       ${model ? `<section class="scene-panel map-panel is-model" aria-label="天下沙盘">
-        <div class="scene-top"><div class="scene-chip">${icon('map')}<span>大昭疆域</span><small>拖动平移 · 滚轮缩放</small></div>${commandToggle('据点详情')}${btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'on-dark', 'banner')}${btn('画卷', 'mapmode', {}, 'on-dark', 'map')}</div>
+        <div class="scene-top"><div class="scene-chip">${icon('map')}<span>大昭疆域</span><small>拖动平移 · 滚轮缩放</small></div>${commandToggle('据点详情')}${open('diplomacy') ? btn('门派往来', 'sheet', { kind: 'diplomacy' }, 'on-dark', 'banner') : ''}${btn('画卷', 'mapmode', {}, 'on-dark', 'map')}</div>
         <div class="scene-zoom map-zoom"><button data-act="zoom" data-dir="in" aria-label="拉近">${icon('plus')}</button><button data-act="zoom" data-dir="out" aria-label="拉远">${icon('minus')}</button><button data-act="zoom" data-dir="reset" aria-label="恢复全景">${icon('frame')}</button></div>
       </section>` : `<section class="scene-panel map-panel" aria-label="天下舆图"><div class="scene-viewport"><div class="scene-stage map-stage">${sceneImage('world')}<div class="region" data-region="map">${mapMarks()}</div></div></div>
         <div class="map-label"><span>大昭疆域</span><small>二十据点</small></div>
@@ -648,10 +689,16 @@ function battleScreen() {
   if (!ui.fight) {
     const targets = PLACES.filter((spec) => placeDeal(spec.id).kind === 'foe');
     const last = ui.lastFight;
+    const meetNext = nextTourney(world),
+      hopeful = membersOf(world, me()).filter((p) => p.rank <= TOURNEY.rank && !p.talent).sort((a, b) => prowess(b) - prowess(a))[0];
     return `${screenHead('战阵', '眼下无战事', '可出兵攻打与本派据点相邻的他派据点。出战最多十人，伤重者不上阵。')}
       <section class="panel"><div data-region="targets">${panelTitle('可攻之敌', tag(`我方可战 ${marchParty().length} 人 · 战力 ${num(strength(marchParty()))}`))}
         <div class="route-list">${targets.map((spec) => `<button data-act="sheet" data-kind="march" data-place="${spec.id}">${icon('swords')}<span>${esc(spec.name)} <small class="muted">${esc(SECT_BY_ID[world.places[spec.id].owner].name)} · 守 ${residents(world, spec.id).length} 人 · 战力 ${num(strength(residents(world, spec.id)))}</small></span>${icon('arrow')}</button>`).join('') || '<p class="muted" style="padding:6px">四邻皆无他派据点。</p>'}</div></div></section>
       <section class="panel" style="margin-top:16px" data-region="duel">${panelTitle('擂台', tag('每三十日一开'))}<p class="moves" style="padding-top:10px">让一名弟子登擂，与过路的好手单打独斗。胜则扬名，负则带伤。</p><div class="detail-actions">${btn('选人登擂', 'duel', {}, 'primary', 'swords')}</div></section>
+      <section class="panel" style="margin-top:16px" data-region="tourney">${panelTitle('论剑大会', tag(`每${'零一二三四五'[TOURNEY.every]}年一届`))}
+        <p class="moves" style="padding-top:10px">第 ${meetNext.edition} 届定于${dayText(meetNext.day)}，还有 <b>${num(meetNext.day - world.day)}</b> 日。各派遣一名弟子出战（亲传及以下，掌门、长老与江湖奇人不得下场），夺魁者门派威望 +${TOURNEY.renown[0]}、得银 ${num(TOURNEY.silver[0])} 两，另赠一部本派所缺的秘笈。</p>
+        ${hopeful ? `<p class="moves">眼下门中最有望者：<b>${esc(hopeful.name)}</b>（${RANKS[hopeful.rank].name} · 战力 ${num(prowess(hopeful))}）。</p>` : ''}
+        ${(world.tourneys ?? []).length ? `<ul class="season-list" style="padding:6px 0 10px">${[...world.tourneys].reverse().map((r) => `<li>${tag(`第 ${r.edition} 届`)}<span>魁首 ${esc(SECT_BY_ID[r.champion.sect].name)} ${esc(r.champion.name)}${r.mine ? ` · 本派 ${esc(r.mine.name)}：${r.mine.place}` : ' · 本派未出战'}</span></li>`).join('')}</ul>` : ''}</section>
       ${last ? `<section class="panel battle-report" data-region="last-fight">${panelTitle('上一战 · ' + last.title)}<p>${esc(last.verdict)}</p>${last.lines.slice(-8).map((line) => `<p>${icon('swords')}${esc(line)}</p>`).join('')}</section>` : ''}`;
   }
   const { arena, title, heads, lines, side: mine } = ui.fight,
@@ -812,9 +859,33 @@ function duel() {
   });
 }
 
+/** Fights the player's bout at the Sword Meet in person. */
+function tourneyFight() {
+  const bout = tourneyBout(world);
+  if (!bout) return;
+  const { mine, rival, round } = bout;
+  startFight({
+    sides: [[mine], [rival]], title: `论剑${round}`, heads: [{ name: mine.name, person: mine }, { name: rival.name, person: rival }], colors: [colorOf(me()), colorOf(rival.school)],
+    settle(summary) {
+      const won = summary.winner === 0;
+      settleBout(world, won);
+      // The meet may have ended with this bout; its honours are read out once the fight's report is closed.
+      if (!world.tourney) ui.heralds.push({ kind: 'tourney' });
+      return { won, verdict: won ? `${mine.name}胜${rival.name}，${world.tourney ? '晋级下一轮。' : '夺得魁首！'}` : `${mine.name}不敌${rival.name}，止步${round}。` };
+    },
+  });
+}
+
+/** Tells the player of whatever has newly come into their hands. */
+function announceUnlocks() {
+  if (!world?.unlocks || world.outcome) return;
+  const features = checkUnlocks(world);
+  if (features.length) ui.heralds.push({ kind: 'unlock', features });
+}
+
 // ---- the chronicle and the saves -----------------------------------------------------------------------
 
-const LOG_TYPES = { start: '立派', conquer: '征伐', repel: '守御', fallback: '退守', fall: '覆灭', settle: '分舵', death: '讣告', desert: '叛离', insight: '领悟', succession: '传位', summit: '大会', event: '奇遇', intel: '情报', hostilities: '交战', court: '朝廷', join: '来投' };
+const LOG_TYPES = { moment: '弟子', tourney: '论剑', 'tourney-call': '论剑', start: '立派', conquer: '征伐', repel: '守御', fallback: '退守', fall: '覆灭', settle: '分舵', death: '讣告', desert: '叛离', insight: '领悟', succession: '传位', summit: '大会', event: '奇遇', intel: '情报', hostilities: '交战', court: '朝廷', join: '来投' };
 
 function chronicleScreen() {
   const records = chronicleEntries(world).filter((r) => ui.logFilter === '全部' || (ui.logFilter === '本派') === (r.sect === me() || r.type === 'start')).slice(-160).reverse();
@@ -827,10 +898,27 @@ function chronicleScreen() {
     lastYear = y;
     return `${head}<li class="${GREAT.has(r.type) ? 'is-great' : ''} ${r.sect === me() ? 'is-mine' : ''}"><time>${dayText(r.day).replace(/^承和\d+年/, '')}</time><div>${tag(LOG_TYPES[r.type] ?? '江湖', r.sect === me() ? 'positive' : 'plain')}<p>${esc(r.text)}</p></div></li>`;
   });
-  return `${screenHead('纪事', '门派纪事', '年年岁岁，山门与江湖的大小事。')}
-    <section class="panel chronicle-panel">${panelTitle('编年', `<div class="button-group" data-region="log-filter">${['全部', '本派', '江湖'].map((t) => pill(t, 'log-filter', { filter: t }, ui.logFilter === t)).join('')}</div>`)}
+  const held = heldArts(world, me()),
+    shelf = ARTS.filter((a) => !a.sect || a.sect === me() || (a.custom && held.has(a.id)));
+  const met = world.met ?? {},
+    relicHome = (id) => Object.entries(world.sects).find(([, b]) => b.relics?.includes(id))?.[0];
+  const counts = { arts: `${shelf.filter((a) => held.has(a.id)).length} / ${shelf.length}`, wanderers: `${WANDERERS.filter((w) => met[w.id] === 'joined').length} / ${WANDERERS.length}`, relics: `${RELICS.filter((r) => relicHome(r.id) === me()).length} / ${RELICS.length}` };
+  const BOOKS = [['annals', '编年'], ['arts', `武学谱 ${counts.arts}`], ['wanderers', `奇人录 ${counts.wanderers}`], ['relics', `神兵谱 ${counts.relics}`]];
+  const tabs = `<div class="button-group book-tabs" data-region="book-tabs">${BOOKS.map(([id, label]) => pill(label, 'book', { book: id }, ui.book === id)).join('')}</div>`;
+  const entry = (got, title, about, extra = '') => `<li class="${got ? 'is-got' : ''}"><b>${got ? esc(title) : '？？？'}</b><span>${esc(about)}</span>${extra}</li>`;
+  const book = {
+    annals: () => `<section class="panel chronicle-panel">${panelTitle('编年', `<div class="button-group" data-region="log-filter">${['全部', '本派', '江湖'].map((t) => pill(t, 'log-filter', { filter: t }, ui.logFilter === t)).join('')}</div>`)}
       <ol class="timeline annals" data-region="log">${lines.join('') || '<li><p>暂无记录。</p></li>'}</ol>
-    </section>`;
+    </section>`,
+    // Every art the sect could hold: its own, and the common ones. A name not yet held is known only by its class and tier.
+    arts: () => `<section class="panel">${panelTitle('武学谱', `<span class="caption">已得 ${counts.arts}</span>`)}<div data-region="book">${CLASS_KEYS.filter((key) => shelf.some((a) => a.klass === key)).map((key) => `<h3 class="season-head">${CLASSES[key].name}</h3><ul class="book-list">${shelf.filter((a) => a.klass === key).sort((a, b) => a.tier - b.tier).map((a) => (held.has(a.id) ? entry(true, a.name, `${a.tier}阶 · ${artSource(a)}`) : `<li><b>${a.tier}阶 ${esc(a.name)}</b><span>未得 · ${a.tier <= 3 ? '书贩、求授、攻下藏经阁、奇遇或论剑夺魁可得' : '须有人带艺来投'}</span></li>`)).join('')}</ul>`).join('')}</div></section>`,
+    wanderers: () => `<section class="panel">${panelTitle('奇人录', `<span class="caption">已入门 ${counts.wanderers}</span>`)}<p class="caption" style="padding:8px 12px 0">三十位江湖奇人各怀一项惠及全派的天赋。威望越高，来访越勤；以诚相邀或重金延揽，方可留下。</p><ul class="book-list" data-region="book">${WANDERERS.map((w) => (met[w.id] === 'joined' ? entry(true, w.name, `已入门 · ${TALENTS[w.talent].name}：${TALENTS[w.talent].does}`) : met[w.id] ? entry(true, w.name, `曾来访，未能留下 · 身负「${TALENTS[w.talent].name}」`) : entry(false, '', '尚未谋面'))).join('')}</ul></section>`,
+    relics: () => `<section class="panel">${panelTitle('神兵谱', `<span class="caption">本派所藏 ${counts.relics}</span>`)}<p class="caption" style="padding:8px 12px 0">神兵不可打造，只在江湖事件中现世；得了之后，可赐予所长武学用得上的弟子。</p><ul class="book-list" data-region="book">${RELICS.map((r) => {
+      const home = relicHome(r.id);
+      return home === me() ? entry(true, r.name, `${r.tale} · 攻 ${r.power}`) : home ? entry(true, r.name, `已现世，现藏于${SECT_BY_ID[home].name}`) : entry(false, '', '尚未现世');
+    }).join('')}</ul></section>`,
+  }[ui.book in { annals: 1, arts: 1, wanderers: 1, relics: 1 } ? ui.book : 'annals']();
+  return `${screenHead('纪事', '门派纪事', '年年岁岁，山门与江湖的大小事；所得的武学、奇人与神兵，也都记在这里。')}${tabs}${book}`;
 }
 
 function savesScreen() {
@@ -864,9 +952,12 @@ const SHEETS = {
       ['给山门留一笔进项', '店铺每旬进账。安排好住处与弟子，再点「行」过一旬，回来看粮草和薪俸。', 'here', '查看山下店铺'],
       ['把新弟子编入练功队伍', '新弟子入门后在休息。先安排一门能学的武艺，学成后检查出招次序。', 'train', '安排练功'],
     ];
+    const later = stillToCome(world);
+    const shown = steps.filter(([, , tab]) => tab !== 'here' || open('here'));
     return ['掌门手札', `<p class="guide-lead">${leader ? `你已接掌本派，现任掌门是${esc(leader.name)}。` : '本派暂缺掌门。'}先把山门安顿好，再决定何时出山。</p>
       ${protection?.active ? `<p class="guide-truce">立足期余 <b>${num(protection.daysLeft)}</b> 日。若你先对某派出兵，会提前结束和对方的开局休战。</p>` : ''}
-      <ol class="guide-steps">${steps.map(([title, text, tab, label]) => `<li><div><b>${esc(title)}</b><p>${esc(text)}</p></div>${btn(label, 'guide-go', { tab }, 'outline', 'arrow')}</li>`).join('')}</ol>`,
+      <ol class="guide-steps">${shown.map(([title, text, tab, label]) => `<li><div><b>${esc(title)}</b><p>${esc(text)}</p></div>${btn(label, 'guide-go', { tab }, 'outline', 'arrow')}</li>`).join('')}</ol>
+      ${later.length ? `<h3 class="season-head">日后开放</h3><p class="caption">山门立稳之后，这些事会一样一样交到你手上。</p><ul class="to-come">${later.map((feature) => `<li><b>${esc(feature.name)}</b><span>${esc(feature.hint)}</span></li>`).join('')}</ul>` : ''}`,
     btn('守山门准备', 'prepare-defense', {}, 'outline', 'gate') + closeBtn('合上手札')];
   },
   guard() {
@@ -921,7 +1012,8 @@ const SHEETS = {
     const p = world.places[ui.place].applicants[index];
     if (!p) return ['招贤榜', '<p>此人已经离去。</p>', closeBtn('关闭')];
     const availability = recruitAvailability(world, me(), ui.place, index);
-    return [`招贤榜 · ${p.name}`, `<div class="applicant">${face(p, 'applicant-portrait')}<div><h3>${esc(p.name)}</h3><p>${esc(p.origin)} · ${p.female ? '女' : '男'} · ${p.age} 岁</p></div></div>
+    return [`招贤榜 · ${p.name}`, `<div class="applicant">${face(p, 'applicant-portrait')}<div><h3>${esc(p.name)} ${qualityTag(p)}</h3><p>${esc(p.origin)} · ${p.female ? '女' : '男'} · ${p.age} 岁</p></div></div>
+      <p>品评：${QUALITIES[qualityOf(p)].about}（资质评分 ${aptitudeScore(p)}）</p><p>性情：${traitText(p)}</p>
       <p>资质：${Object.entries(p.apt).map(([key, value]) => `${APT_NAMES[key]} ${value}`).join('　')}</p><p>根骨：${STAT_KEYS.map((key) => `${STAT_NAMES[key]} ${Math.round(p.stats[key])}`).join('　')}</p>
       <p class="caption">入门时交束修 ${p.fee} 两。${availability.ok ? '掌门在此，厢房有空铺。' : esc(availability.why) + '。'}</p>`, closeBtn('暂不收录') + btn('收录弟子', 'recruit', { index }, 'primary', '', !availability.ok)];
   },
@@ -967,6 +1059,11 @@ const SHEETS = {
     const view = pendingView(world);
     if (!view) return ['江湖', '<p>此事已了。</p>', closeBtn('关闭')];
     ui.sheet.title = view.title;
+    if (view.kind === 'plea') {
+      const who = view.person;
+      return [view.title, `<div class="applicant">${face(who, 'applicant-portrait')}<div><h3>${esc(who.name)} ${qualityTag(who)}</h3><p>${RANKS[who.rank].name} · ${who.level} 级 · ${traitText(who)}</p></div></div>
+        <p style="margin-top:10px">${esc(view.text)}</p><div class="choice-list">${view.choices.map((choice, index) => `<button type="button" class="button outline" data-act="answer" data-index="${index}" ${choice.why ? 'disabled' : ''}><span>${esc(choice.label)}<small>${esc(choice.why || choice.hint)}</small></span></button>`).join('')}</div>`, ''];
+    }
     const person = view.portraitId ? { portraitId: view.portraitId, name: view.title.split(' · ')[1], school: me() } : null;
     const choices = `<div class="choice-list">${view.choices.map((choice, index) => `<button type="button" class="button outline" data-act="answer" data-index="${index}" ${choice.why ? 'disabled' : ''}><span>${esc(choice.label)}<small>${esc(choice.why || choice.hint)}</small></span></button>`).join('')}</div>`;
     const url = person && art ? portraitUrl(art, person, { view: 'full', expression: view.expression }) : undefined;
@@ -979,26 +1076,70 @@ const SHEETS = {
     const elders = all.filter((p) => p.rank >= 4 && p.id !== person.id);
     const master = world.persons[person.master];
     return [person.name, `<div class="person-sheet"><div class="person-sheet-side">
-      <div class="person-visual">${sceneImage('title')}${face(person, 'detail-avatar', 'full')}<div class="leader-shade"></div><div class="person-caption">${tag(RANKS[person.rank].name, 'dark-tag')}<h2>${esc(person.name)}</h2><p>${esc(person.origin)} · ${person.female ? '女' : '男'} · ${person.age} 岁 · ${person.level} 级</p></div></div>
+      <div class="person-visual">${sceneImage('title')}${face(person, 'detail-avatar', 'full')}<div class="leader-shade"></div><div class="person-caption">${tag(RANKS[person.rank].name, 'dark-tag')}${qualityTag(person)}${person.laurels ? tag(`论剑魁首${person.laurels > 1 ? ' ×' + person.laurels : ''}`, 'positive') : ''}<h2>${esc(person.name)}</h2><p>${esc(person.origin)} · ${person.female ? '女' : '男'} · ${person.age} 岁 · ${person.level} 级</p></div></div>
         <dl class="person-stats">${fact('气血', `${meter((1 - (person.wounds ?? 0)) * 100, 'health', '气血')} <b>${hpMax(person)}</b>`)}${fact('忠诚', `${meter(person.loyalty, 'morale', '忠诚')} <b>${Math.round(person.loyalty)}</b>`)}${fact('战力', `<b>${prowess(person)}</b>`)}${fact('差事', esc(jobText(person)))}${fact('所长', esc(bestArtText(person)))}${fact('师承', esc(master?.name ?? '无'))}</dl>
-        <div class="person-facts"><div>${STAT_KEYS.map((key) => `${STAT_NAMES[key]} <b>${Math.round(person.stats[key])}</b>`).join('　')}</div><div>兵器：<b>${esc(weaponText(person))}</b>　护具：<b>${esc(armorName(person.gear.armor || 1))}</b>　经脉：<b>${person.meridians?.length ?? 0}</b> / 8</div>${person.talent ? `<div>天赋：<b>${TALENTS[person.talent].name}</b>（${TALENTS[person.talent].does}${person.talentDeep ? '，心愿已了，其效加倍' : ''}）</div>` : ''}<div>资质：${Object.entries(person.apt).map(([key, value]) => `${APT_NAMES[key]} <b>${value}</b>`).join('　')}</div>
-          <div>武学：${Object.entries(person.arts).sort((a, b) => ART_BY_ID[b[0]].tier - ART_BY_ID[a[0]].tier).slice(0, 8).map(([id, points]) => `${ART_BY_ID[id].name} <b>${levelOf(points)}</b>重`).join('　') || '尚未习武'}</div></div>
+        <div class="person-facts"><div>${STAT_KEYS.map((key) => `${STAT_NAMES[key]} <b>${Math.round(person.stats[key])}</b>`).join('　')}</div><div>兵器：<b>${esc(weaponText(person))}</b>　护具：<b>${esc(armorName(person.gear.armor || 1))}</b>　经脉：<b>${person.meridians?.length ?? 0}</b> / 8</div>${person.talent ? `<div>天赋：<b>${TALENTS[person.talent].name}</b>（${TALENTS[person.talent].does}${person.talentDeep ? '，心愿已了，其效加倍' : ''}）</div>` : ''}<div>资质：${Object.entries(person.apt).map(([key, value]) => `${APT_NAMES[key]} <b>${value}</b>`).join('　')}　评 <b>${aptitudeScore(person)}</b>（${QUALITIES[qualityOf(person)].name}）</div><div>性情：${traitText(person)}</div>
+          <div>武学：${Object.entries(person.arts).sort((a, b) => ART_BY_ID[b[0]].tier - ART_BY_ID[a[0]].tier).slice(0, 8).map(([id, points]) => `${ART_BY_ID[id].name} <b>${levelOf(points)}</b>重`).join('　') || '尚未习武'}</div><div class="person-life"><h3 class="season-head">生平</h3><ol class="life">${(person.life ?? []).slice(-12).reverse().map((entry) => `<li><time>${dayText(entry.day)}</time><span>${esc(entry.text)}</span></li>`).join('') || `<li><span class="caption">${person.rank >= 4 ? '入门已久，旧事不必细表。' : '入门时日尚浅，还没有值得一记的事。'}</span></li>`}</ol></div></div>
       </div><div class="person-sheet-main">
-        <div class="detail-actions">${btn('修练武学', 'page', { page: 'arts' }, 'primary', 'scroll')}${btn('改派差事', 'sheet', { kind: 'job' }, 'outline')}${btn('出招与站位', 'sheet', { kind: 'wheel' }, 'outline')}${btn('装备丹药', 'sheet', { kind: 'gear' }, 'outline')}${btn('经脉', 'sheet', { kind: 'meridian' }, 'outline')}${person.rank >= 3 ? btn('自创武学', 'sheet', { kind: 'create' }, 'outline') : ''}${person.rank < 4 ? btn('晋升', 'promote', { id: person.id }, 'outline') : ''}${person.rank < 4 && elders.length ? btn('拜师', 'sheet', { kind: 'master' }, 'outline') : ''}${many ? btn('调往', 'sheet', { kind: 'move' }, 'outline') : ''}</div>
+        <div class="detail-actions">${btn('修练武学', 'page', { page: 'arts' }, 'primary', 'scroll')}${btn('改派差事', 'sheet', { kind: 'job' }, 'outline')}${open('wheel') ? btn('出招与站位', 'sheet', { kind: 'wheel' }, 'outline') : ''}${open('gear') ? btn('装备丹药', 'sheet', { kind: 'gear' }, 'outline') : ''}${open('meridian') ? btn('经脉', 'sheet', { kind: 'meridian' }, 'outline') : ''}${person.rank >= 3 ? btn('自创武学', 'sheet', { kind: 'create' }, 'outline') : ''}${person.rank < 4 ? btn('晋升', 'promote', { id: person.id }, 'outline') : ''}${person.rank < 4 && elders.length && open('master') ? btn('拜师', 'sheet', { kind: 'master' }, 'outline') : ''}${many ? btn('调往', 'sheet', { kind: 'move' }, 'outline') : ''}</div>
       </div></div>`, closeBtn('关闭')];
+  },
+  assign({ idle }) {
+    // Opened from the page's head, it starts with the idle if there are any, and with everyone otherwise.
+    const idleOnly = idle === undefined ? attention(world, me()).idle.length > 0 : String(idle) === 'true';
+    const plan = recommendJobs(world, me(), { idleOnly });
+    const count = (kind) => plan.filter(({ job }) => job.kind === kind).length;
+    const summary = [['train', '修练'], ['gather', '采集'], ['craft', '制造'], ['patrol', '行侠']].filter(([kind]) => count(kind)).map(([kind, label]) => `${label} ${count(kind)} 人`).join(' · ');
+    return ['一键安排差事', `<p class="caption">${idleOnly ? '只为眼下闲着的人安排。' : '全派重新安排；闭关、历练中的人不动。'}资质好的去修练最合适的武学，资质平平的杂役和外门弟子里抽三成去采集、制造。</p>
+      <p>${plan.length ? `将改派 <b>${plan.length}</b> 人：${summary}。` : '各人差事已是最合适的了，不必再动。'}</p>
+      <ul class="plan-list">${plan.slice(0, 40).map(({ person, job, why }) => `<li>${qualityTag(person)}<b>${esc(person.name)}</b><span>${esc(jobName(job))}</span><small>${esc(why)}</small></li>`).join('')}</ul>`,
+    btn(idleOnly ? '改为全派重排' : '只排闲着的人', 'sheet', { kind: 'assign', idle: !idleOnly }, 'outline') + closeBtn() + btn(`照此安排`, 'assign', { idle: idleOnly }, 'primary', '', !plan.length)];
+  },
+  moment({ person: id, text }) {
+    const person = world.persons[id];
+    return ['弟子长进', `<div class="moment">${person ? face(person, 'applicant-portrait') : ''}<div><p>${esc(text)}</p>${person ? `<p class="moment-words">${esc(wordsOf(person))}</p>` : ''}</div></div>`,
+      (person ? btn('看看此人', 'person', { id: person.id }, 'outline') : '') + btn('甚好', 'close', {}, 'primary')];
+  },
+  unlock: ({ features }) => ['山门日盛', `<p class="caption">门派有了些根基，新的事务交到你手上：</p><ul class="unlock-list">${features.map((feature) => `<li><b>${esc(feature.name)}</b><span>${esc(feature.about)}</span></li>`).join('')}</ul>`, btn('知道了', 'close', {}, 'primary')],
+  tourney() {
+    const meet = world.tourney;
+    const sectOf = (person) => SECT_BY_ID[person.school]?.name ?? '';
+    const row = (person) => `<li>${face(person)}<span><b>${esc(person.name)}</b> ${qualityTag(person)}<small>${esc(sectOf(person))} · ${RANKS[person.rank].name} · ${person.level} 级</small></span><em>${num(prowess(person))}</em></li>`;
+    if (!meet) {
+      const last = world.tourneys?.at(-1);
+      if (!last) return ['论剑大会', '<p>大会已散。</p>', closeBtn('关闭')];
+      const mine = last.mine && last.champion.sect === me() && last.mine.place === '魁首';
+      return [`第 ${last.edition} 届论剑大会 · 落幕`, `<div class="herald"><div class="herald-seal">${mine ? '夺魁' : '论剑'}</div><p>魁首：<b>${esc(SECT_BY_ID[last.champion.sect].name)} ${esc(last.champion.name)}</b>${last.runner ? `；亚军：${esc(SECT_BY_ID[last.runner.sect].name)} ${esc(last.runner.name)}` : ''}。</p>
+        <p>${last.mine ? `本派 <b>${esc(last.mine.name)}</b>：${last.mine.place}。` : '本派未遣人出战。'}${last.prize ? `魁首门派得赠《${esc(last.prize)}》抄本。` : ''}</p>
+        <p class="caption">魁首门派威望 +${TOURNEY.renown[0]}、银 ${num(TOURNEY.silver[0])} 两；亚军威望 +${TOURNEY.renown[1]}；四强威望 +${TOURNEY.renown[2]}。下一届在三年之后。</p></div>`, btn('知道了', 'close', {}, 'primary')];
+    }
+    if (meet.stage === 'call') {
+      const field = tourneyField(world);
+      return [`第 ${meet.edition} 届论剑大会`, `<p>三年一度的论剑大会今日开擂。各派遣一名弟子出战，掌门、长老与江湖奇人不得下场，比的是各家亲手调教出来的后辈。</p>
+        <h3 class="season-head">各派来人</h3><ul class="bout-list">${field.others.map(row).join('')}</ul>
+        <h3 class="season-head">本派遣谁出战</h3><div class="member-grid">${field.own.slice(0, 8).map((p) => memberCard(p, { act: 'tourney-enter' })).join('') || '<p class="empty">门中没有可出战的弟子（需无重伤、已习得拳脚兵刃）。</p>'}</div>`,
+      btn('本届不参加', 'tourney-skip', {}, 'outline')];
+    }
+    const bout = tourneyBout(world);
+    if (!bout) return [`第 ${meet.edition} 届论剑大会`, '<p>本轮轮空，直接晋级。</p>', btn('继续', 'tourney-auto', {}, 'primary')];
+    return [`论剑大会 · ${bout.round}`, `<p>还剩 ${meet.alive.length} 人。这一场：</p><ul class="bout-list is-versus">${row(bout.mine)}${row(bout.rival)}</ul>
+      <p class="caption">上场可亲自观战、下令；也可交由弟子自行应战，当即见分晓。落败者只受些轻伤。</p>`, btn('交由弟子应战', 'tourney-auto', {}, 'outline') + btn('上场', 'tourney-fight', {}, 'primary', 'swords')];
   },
   duel() {
     const able = membersOf(world, me()).filter((p) => p.wounds <= 0.3).sort((a, b) => prowess(b) - prowess(a));
     return ['登擂', `<p class="caption">点一人登擂，与过路的好手单打独斗。胜则扬名，负则带伤。伤重者不在此列。</p><div class="member-grid">${able.map((p) => memberCard(p, { act: 'duel' })).join('') || '<p class="empty">无人可战。</p>'}</div>`, closeBtn()];
   },
   season() {
-    const { was, now, mine, abroad, title } = ui.sheet;
+    const { was, now, mine, abroad, title, growth = [] } = ui.sheet;
+    const todo = waiting().filter(([, , people]) => people.length);
     const row = (label, key, unit = '') => {
       const change = Math.round(now[key] - was[key]);
       return `<div><span>${label}</span><b>${num(now[key])}<small>${unit}</small></b><em class="${change < 0 ? 'bad' : change > 0 ? 'good' : ''}">${change > 0 ? '+' : ''}${change ? num(change) : '—'}</em></div>`;
     };
     const list = (entries, none) => entries.map((r) => `<li>${tag(LOG_TYPES[r.type] ?? '江湖')}<span>${esc(r.text)}</span></li>`).join('') || `<li><span class="caption">${none}</span></li>`;
     return [title, `<div class="season-grid">${row('银两', 'silver', '两')}${row('粮草', 'grain', '石')}${row('威望', 'renown')}${row('门人', 'members', '人')}${row('据点', 'places', '处')}</div>
+      <h3 class="season-head">弟子长进</h3><ul class="season-list">${growth.map(([name, text]) => `<li>${tag('弟子')}<span><b>${esc(name)}</b>${esc(text)}</span></li>`).join('') || '<li><span class="caption">这一季无人有大长进。</span></li>'}</ul>
+      ${todo.length ? `<h3 class="season-head">待你定夺</h3><div class="attention">${todo.map(([key, label, people]) => btn(`${label} ${people.length} 人`, 'only-go', { only: key }, 'outline')).join('')}</div>` : ''}
       <h3 class="season-head">本派</h3><ul class="season-list">${list(mine, '这一季山门无事。')}</ul>
       <h3 class="season-head">江湖</h3><ul class="season-list">${list(abroad, '这一季江湖平静。')}</ul>
       <p class="caption">季报可在设置里关掉。</p>`, btn('继续', 'close', {}, 'primary')];
@@ -1066,7 +1207,7 @@ const SHEETS = {
       if (!theirs.alive) return `<div>${face(founder(s))}<strong>${esc(s.name)}</strong><span class="muted">已除名</span><span></span></div>`;
       const row = ledger(world, s.id),
         relation = Math.round(books().relations[s.id]);
-      return `<div>${face(leaderOf(s.id) ?? founder(s))}<span><strong>${esc(s.name)}</strong> ${tag(['邪', '中立', '正'][s.standing + 1])}<br><small class="muted">${row.members} 人 · ${row.places} 处 · 战力 ${num(row.strength)}</small></span><b class="${relation < 0 ? 'bad' : relation >= 40 ? 'good' : ''}">${relation}</b><span class="button-group">${btn('馈赠 500 两', 'gift', { sect: s.id }, 'outline')}${btn('求授武学', 'sheet', { kind: 'teaching', sect: s.id }, 'outline', 'scroll')}${s.id in (books().spies ?? {}) ? tag('卧底在内', 'positive') : btn(`安插卧底（${SPY_COST}两）`, 'spy', { sect: s.id }, 'outline')}</span></div>`;
+      return `<div>${face(leaderOf(s.id) ?? founder(s))}<span><strong>${esc(s.name)}</strong> ${tag(['邪', '中立', '正'][s.standing + 1])}<br><small class="muted">${row.members} 人 · ${row.places} 处 · 战力 ${num(row.strength)}</small></span><b class="${relation < 0 ? 'bad' : relation >= 40 ? 'good' : ''}">${relation}</b><span class="button-group">${btn('馈赠 500 两', 'gift', { sect: s.id }, 'outline')}${btn('求授武学', 'sheet', { kind: 'teaching', sect: s.id }, 'outline', 'scroll')}${s.id in (books().spies ?? {}) ? tag('卧底在内', 'positive') : open('spy') ? btn(`安插卧底（${SPY_COST}两）`, 'spy', { sect: s.id }, 'outline') : ''}</span></div>`;
     }).join('')}</div><p class="caption">关系到 ${ECONOMY.allyRelation} 的门派，与本派据点相邻的道路即成商路，每旬各得 ${ECONOMY.allyRouteIncome} 两；本派两处据点之间的道路每旬得 ${ECONOMY.routeIncome} 两，两端每有一间店铺再加 ${ECONOMY.routeShopBonus} 两。</p><p class="caption">关系高的门派不易来犯，馈赠可以改善关系。有卧底在内的门派，与之交手时我方攻势加八分；卧底每旬有小概率败露，败露则两派交恶。</p>`, closeBtn('关闭')];
   },
   teaching({ sect }) {
@@ -1095,6 +1236,7 @@ const SHEETS = {
         ${btn('试听女声', 'voice-test', {}, 'outline', 'sound')}
         <p class="caption">序章、战报提示和招式采用合成的台湾国语女声。设备有台湾国语语音时，也可朗读即时详情。</p>
       </section>
+      ${world && stillToCome(world).length ? `<p class="caption">功能随门派壮大逐步开放，尚有 ${stillToCome(world).length} 项未开。老手可以一次全开。</p><div class="button-group">${btn('开放全部功能', 'open-all', {}, 'outline')}</div>` : ''}
       <p class="caption">连按两次 F8，或连续点击顶栏日期五次，可打开修改器。</p>
       <p class="caption">数据包（MOD）：${esc(modNote() || '未装载')}。数据包是一个 JSON 文件，可改经济与建筑数值、门派配色、武学名称与威力，并添加事件；格式见 src/core/mod.mjs。装载或卸下后会重新载入页面。</p>
       <div class="button-group">${btn('装载数据包', 'mod-load', {}, 'outline', 'plus')}${btn('卸下数据包', 'mod-clear', {}, 'outline', '', !modNote())}</div>`, btn('修改器', 'editor', {}, 'outline') + btn('完成', 'close', {}, 'primary')];
@@ -1213,7 +1355,8 @@ function render() {
     const gone = !membersOf(world, me()).length;
     if (gone && !['chronicle', 'saves'].includes(ui.page)) ui.page = 'chronicle';
     html = shell(SCREENS[ui.page]());
-    key = [ui.page, ui.page === 'battle' && !!ui.fight, !!picture.stage, ui.map3d].join();
+    // Besides the page, the key carries what changes the parts of a screen that are not redrawn piecemeal.
+    key = [ui.page, ui.page === 'battle' && !!ui.fight, !!picture.stage, ui.map3d, ui.page === 'chronicle' && ui.book, Object.keys(world.unlocks ?? {}).length].join();
   }
   // The key carries whether the paintings have loaded, so the still pictures appear when they arrive.
   const focused = document.activeElement;
@@ -1256,10 +1399,12 @@ function enter(next, text = '', { guide = false } = {}) {
   world.options.interactive = true;
   // A world from before there was a list of matters in hand begins one now.
   if (!world.goals) startGoals(world);
+  // A new sect is handed its affairs a few at a time; a world from before that keeps everything open.
+  if (guide && !world.unlocks) (startUnlocks(world), checkUnlocks(world));
   Object.assign(ui, {
     page: 'seat', sheet: guide ? { kind: 'guide' } : null, place: null, building: 0, buildPlot: null,
     seatTab: 'build', commandCollapsed: false, person: books().leaderId, mapPlace: null,
-    fight: null, lastFight: null, speed: 0, resume: 0, notice: '',
+    fight: null, lastFight: null, speed: 0, resume: 0, notice: '', only: '', book: 'annals',
   });
   ui.batch.clear();
   Object.assign(ui, { heralds: [], season: takeStock(), held: placesOf(world, me()), ended: !!world.outcome, picking: false });
@@ -1327,6 +1472,7 @@ const pick = (selector) => dialog.querySelector(selector)?.value ?? '';
 const actions = {
   page(data) {
     if (ui.fight && data.page !== 'battle') return toast('战事未了。', 'warning');
+    if (world && !open(data.page)) return toast('此处尚未开放。', 'warning');
     if (world && !membersOf(world, me()).length && !['chronicle', 'saves'].includes(data.page)) return toast('本门已不复存在。', 'warning');
     if (!world && data.page === 'prologue' && ui.page === 'title') {
       applyIdentity(null);
@@ -1598,6 +1744,50 @@ const actions = {
     ui.sheet = { kind: 'outcome', title: ui.sheet.title, text: result.text };
   },
   'log-filter': (data) => (ui.logFilter = data.filter),
+  book: (data) => (ui.book = data.book),
+
+  // The roster: who to show, and in what order.
+  only: (data) => (ui.only = ui.only === data.only ? '' : data.only),
+  'only-go'(data) {
+    actions.page({ page: 'disciples' });
+    Object.assign(ui, { only: data.only, rank: '全部', search: '' });
+  },
+  sort(data) {
+    if (ui.sortKey === data.key) ui.sortUp = !ui.sortUp;
+    else Object.assign(ui, { sortKey: data.key, sortUp: false });
+  },
+  'sort-dir': () => (ui.sortUp = !ui.sortUp),
+  'roster-view': (data) => (ui.rosterView = data.view),
+  'promote-all'() {
+    const raised = attention(world, me()).promotable.filter((person) => promote(world, person.id).ok);
+    toast(raised.length ? `${raised.length} 人晋升：${raised.slice(0, 4).map((person) => person.name).join('、')}${raised.length > 4 ? ' 等' : ''}。` : '眼下无人可晋升。', raised.length ? 'success' : 'warning');
+  },
+  assign(data) {
+    const plan = recommendJobs(world, me(), { idleOnly: data.idle === 'true' });
+    const done = plan.filter(({ person, job }) => setJob(world, person.id, job).ok);
+    ui.sheet = null;
+    toast(done.length ? `已为 ${done.length} 人安排差事。` : '各人差事未动。', done.length ? 'success' : 'notice');
+  },
+  'open-all'() {
+    openAll(world);
+    toast('各项事务已全部开放。', 'success');
+  },
+
+  // The Sword Meet.
+  'tourney-enter'(data) {
+    const result = enterTourney(world, Number(data.id));
+    if (!result.ok) return toast(result.why, 'warning');
+    ui.sheet = { kind: 'tourney' };
+  },
+  'tourney-skip'() {
+    enterTourney(world, null);
+    ui.sheet = { kind: 'tourney' };
+  },
+  'tourney-auto'() {
+    settleBout(world, null);
+    ui.sheet = { kind: 'tourney' };
+  },
+  'tourney-fight': () => tourneyFight(),
 
   'fight-pause'() {
     if (!ui.fight) return;
@@ -1622,6 +1812,7 @@ const actions = {
 
 const changes = {
   'arts-person': (_, value) => (ui.person = Number(value)),
+  sort: (_, value) => Object.assign(ui, { sortKey: value, sortUp: false }),
   season: (_, value) => localStorage.setItem('wulin-season', value),
   voice: (_, value) => voice.set({ on: value === 'on' }),
   'voice-volume': (_, value) => voice.set({ volume: Number(value) }),
@@ -1674,8 +1865,8 @@ const changes = {
 let mapDragged = false;
 
 const navigationActions = new Set(['page', 'sheet', 'close', 'prologue-next', 'skip-prologue', 'sect-next', 'sect-back', 'command-toggle', 'goal-open', 'guide-open', 'guide-go', 'prepare-defense', 'guard-gate', 'mapmode']);
-const selectionActions = new Set(['choose-sect', 'choose-founding', 'succession', 'building', 'build-kind', 'build-plot', 'place', 'look', 'rank', 'seat-tab', 'person', 'picking', 'batch-toggle', 'art', 'art-tier', 'speed', 'fight-pause', 'fight-speed', 'fight-stance', 'log-filter']);
-const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fight-retreat', 'siege-fight', 'answer']);
+const selectionActions = new Set(['choose-sect', 'choose-founding', 'succession', 'building', 'build-kind', 'build-plot', 'place', 'look', 'rank', 'seat-tab', 'person', 'picking', 'batch-toggle', 'art', 'art-tier', 'speed', 'fight-pause', 'fight-speed', 'fight-stance', 'log-filter', 'book', 'only', 'sort', 'sort-dir', 'roster-view']);
+const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fight-retreat', 'siege-fight', 'answer', 'assign', 'promote-all', 'tourney-enter', 'tourney-fight']);
 
 document.addEventListener('visibilitychange', () => {
   music.setHidden(document.hidden);
@@ -1696,6 +1887,7 @@ document.body.addEventListener('click', (event) => {
     const sheet = ui.sheet;
     const beforeToast = toast.timer;
     actions[act]?.(target.dataset, event);
+    announceUnlocks();
     if (act === 'title-music' && music.on) music.unlock(event);
     if (sheet && toast.timer !== beforeToast && toast.sheet === sheet) toast.sheet = ui.sheet;
     if (event.isTrusted) {
@@ -1801,9 +1993,16 @@ function openSeason() {
     now = takeStock();
   ui.season = now;
   if (!was || localStorage.getItem('wulin-season') === 'off' || !membersOf(world, me()).length) return;
-  const since = chronicleEntries(world).filter((r) => r.day >= was.day);
+  const since = chronicleEntries(world).filter((r) => r.day >= was.day && r.type !== 'moment');
+  // Who came on this season: the days worth remembering first, then the latest of the rest.
+  const told = new Set(world.log.filter((r) => r.type === 'moment' && r.day >= was.day).map((r) => r.text));
+  const growth = membersOf(world, me())
+    .flatMap((person) => (person.life ?? []).filter((entry) => entry.day >= was.day).map((entry) => ({ ...entry, name: person.name, big: told.has(`${person.name}${entry.text}。`) })))
+    .sort((a, b) => b.big - a.big || b.day - a.day)
+    .slice(0, 6)
+    .map((entry) => [entry.name, entry.text]);
   ui.sheet = {
-    kind: 'season', was, now, pace: ui.speed,
+    kind: 'season', was, now, growth, pace: ui.speed,
     title: `承和 ${1 + Math.floor((world.day - 1) / 360)} 年 · ${'春夏秋冬'[Math.floor(((world.day - 1) % 360) / 90) % 4]}季报`,
     mine: since.filter((r) => r.sect === me()).slice(-6),
     abroad: since.filter((r) => r.sect !== me() && ['conquer', 'fall', 'summit', 'settle', 'succession'].includes(r.type)).slice(-5),
@@ -1817,6 +2016,8 @@ setInterval(() => {
   if (world && ui.heralds.length && !ui.sheet && !ui.fight) return void ((ui.sheet = ui.heralds.shift()), render());
   if (world?.pending && !world.outcome && !ui.sheet && !ui.fight) return void ((ui.sheet = { kind: world.pending.kind === 'siege' ? 'siege' : 'event' }), (ui.resume ||= ui.speed), (ui.speed = 0), render());
   if (!world || ui.sheet || ui.fight || world.outcome) return;
+  // The Sword Meet holds the calendar until it is over.
+  if (world.tourney) return void ((ui.sheet = { kind: 'tourney' }), (ui.resume ||= ui.speed), (ui.speed = 0), render());
   if (Math.floor(world.day / 90) !== ui.season?.index) {
     openSeason();
     if (ui.sheet) return void render();
@@ -1828,7 +2029,7 @@ setInterval(() => {
   const protection = openingProtection(world);
   const warningDay = protection?.active ? protection.until - 30 : -1;
   const seasonReport = localStorage.getItem('wulin-season') !== 'off';
-  for (let i = 0; i < ui.speed && !world.pending && !world.outcome; i++) {
+  for (let i = 0; i < ui.speed && !world.pending && !world.outcome && !world.tourney; i++) {
     advanceDay(world);
     if (world.day === warningDay || seasonReport && world.day % 90 === 0) break;
   }
@@ -1842,7 +2043,10 @@ setInterval(() => {
       lost = entry.type === 'conquer' && !mine && ui.held?.includes(entry.place);
     const label = entry.type === 'fall' ? '除名' : entry.type === 'summit' ? '武林大会' : entry.type === 'succession' && mine ? '传位' : entry.type === 'conquer' && mine ? '克城' : lost ? '失地' : entry.type === 'repel' && mine ? '守御' : null;
     if (label) ui.heralds.push({ kind: 'herald', label, text: entry.text });
+    else if (entry.type === 'tourney-call') ui.heralds.push({ kind: 'herald', label: '论剑', text: entry.text });
+    else if (entry.type === 'moment' && mine) ui.heralds.push({ kind: 'moment', person: entry.person, text: entry.text });
   }
+  announceUnlocks();
   ui.held = placesOf(world, me());
   queueOutcome();
   if (Math.floor(world.day / 30) > Math.floor(before / 30) || world.outcome) slots.write('auto', world, autoLabel());
