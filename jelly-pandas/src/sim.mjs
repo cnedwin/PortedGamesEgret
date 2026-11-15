@@ -629,7 +629,7 @@ export function createGame(options = {}) {
     panda.hp -= amount;
     panda.iframe = 0.5;
     panda.hurtFlash = 0.3;
-    emit('hurt', panda.x, panda.y + 1, panda.z, { panda: panda.index, amount: Math.round(amount) });
+    emit('hurt', panda.x, panda.y + 1, panda.z, { panda: panda.index, amount: Math.round(amount), fromX, fromZ });
     if (shove > 0) {
       const dx = panda.x - fromX,
         dz = panda.z - fromZ,
@@ -1403,7 +1403,7 @@ export function createGame(options = {}) {
         });
         if (hit) markTrick(panda, 'slam');
         game.pushProps(panda.x, panda.z, radius, 9, 6);
-        emit('slam', panda.x, panda.y, panda.z, { panda: panda.index, radius });
+        emit('slam', panda.x, panda.y, panda.z, { panda: panda.index, radius, fall });
       } else if (fall > 1) emit('land', panda.x, panda.y, panda.z, { panda: panda.index, fall });
       panda.slamming = false;
     }

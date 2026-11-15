@@ -28,3 +28,16 @@ Read left to right, top row first. The eye patches, belly stamps and starter toy
 - The picker and party use the same head crops. The selected panda also shows full-body art and a practical starter-toy tip. Toys use their normal combat effects in play.
 - The chase camera usually sees the panda from behind, so the 3D models carry a faded version of their stamp on the back. The existing jelly rig drives movement and landings. Ear, eye and body proportions shape each silhouette.
 - This original concept atlas was made with generative illustration. The interface uses regions of one 1536 × 1024 WebP.
+
+## 果冻动作 · Jelly motion
+
+| 动作 · Move | 画面表现 · On-screen motion |
+|---|---|
+| 跑动和转向 · Run and turn | 随步点压缩，转弯时侧倾，头和耳朵稍后跟上 · Squash on footfalls, bank into turns, and let the head and ears follow |
+| 蓄力和起跳 · Charge and takeoff | 蓄力时压低，离地后立刻拉长 · Crouch into the charge and stretch on release |
+| 落地和下砸 · Land and slam | 触地先压扁，然后回弹，落差和下砸决定幅度 · Compress on contact, then rebound, with more travel after a hard fall or slam |
+| 受击和翻滚 · Hit and roll | 朝远离撞击的方向偏斜，短暂发光后恢复。翻滚时收紧，停下后沿最短路径回正 · Bend away from impact and fade back to the usual glow. Tuck during a roll and use the shortest rotation back to upright |
+
+变形只作用在视觉模型上。角色碰撞、动作时机和攻击数值沿用游戏规则。
+
+Deformation lives in the visual rig. Collision, move timing and attack values follow the game rules.

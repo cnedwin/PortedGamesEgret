@@ -152,6 +152,17 @@ const cheekPink = createUnlitMaterial3D({ color: 0xff9fb5, opacity: 0.75, alphaM
 const eyeWhite = createUnlitMaterial3D({ color: 0xffffff }),
   eyeDark = createStandardMaterial3D({ color: 0x14141c, roughness: 0.2 });
 
+const TURN = 2 * Math.PI;
+const RESTED = 0.62;
+const ease = (rate, dt) => 1 - Math.exp(-rate * dt);
+
+/** The contact pose reads for roughly one frame, then the gel springs through rest. */
+function rebound(age, frequency, damping) {
+  if (age >= RESTED) return 0;
+  const recovery = Math.max(0, age - 0.025);
+  return Math.exp(-damping * recovery) * Math.cos(TURN * frequency * recovery);
+}
+
 /**
  * Build one panda. With `jelly` false the body uses a plain glossy material,
  * for devices where the see-through pass is too slow.
@@ -302,6 +313,20 @@ export function createPanda(skin, jelly = true) {
   const UP = [0, 1, 0],
     knock = [0, 0, 0];
 
+  let seen = false,
+    wasGrounded = true,
+    gait = 0,
+    forwardLean = 0,
+    turnBank = 0,
+    takeoffAge = RESTED,
+    takeoffStretch = 0,
+    landingAge = RESTED,
+    landingSquash = 0,
+    hurtAge = RESTED,
+    hurtStrength = 0,
+    hurtX = 0,
+    hurtZ = 0;
+
   const panda = {
     node: root,
     skin,
@@ -326,50 +351,124 @@ export function createPanda(skin, jelly = true) {
       knock[2] = z - fromZ;
       if (knock[0] || knock[2]) wobble.impact(knock, amount);
     },
+    /** Release a loaded jump into a short, taller silhouette. */
+    launch(power) {
+      const charge = Math.min(1, Math.max(0, power));
+      takeoffAge = 0;
+      takeoffStretch = 0.14 + 0.09 * charge;
+      landingAge = RESTED;
+      this.stretch = Math.max(this.stretch, 1);
+      wobble.impact(UP, -2.5 - charge * 2);
+    },
+    /** Ground contact compresses the body before it rebounds. */
+    land(fall, slammed = false) {
+      landingAge = 0;
+      landingSquash = slammed ? 0.36 + Math.min(0.05, fall * 0.012) : Math.min(0.32, 0.16 + fall * 0.035);
+      takeoffAge = RESTED;
+      this.stretch = Math.min(this.stretch, 1);
+      wobble.impact(UP, slammed ? 4 : Math.min(3.4, 1.5 + fall * 0.65));
+    },
+    /** Briefly bend away from a hit, using its world-space direction. */
+    hurt(dx, dz, amount) {
+      const speed = Math.hypot(dx, dz);
+      hurtAge = 0;
+      hurtStrength = 0.58 + Math.min(0.42, amount / 60);
+      hurtX = speed > 0 ? dx / speed : 0;
+      hurtZ = speed > 0 ? dz / speed : 0;
+      if (speed > 0) this.shove(0, 0, hurtX, hurtZ, 4 + hurtStrength * 2.6);
+      else wobble.impact(UP, 2.6);
+    },
     /**
      * Follow a simulated panda. `state` carries x, y, z, facing, speedNow,
      * grounded, rolling, slamming, charge, down, hurtFlash and iframe.
      */
     update(dt, state, time) {
-      // Held shapes ease in; everything springy is left to the jelly.
-      const rest = state.down ? 0.6 : state.slamming ? 1.28 : 1 - Math.min(0.4, state.charge * 0.55);
-      this.stretch += (rest - this.stretch) * Math.min(1, dt * 16);
-      const wide = 1 / Math.sqrt(this.stretch);
-      pose.setScale(wide, this.stretch, wide);
       // Turn toward the heading the short way round.
       let turn = state.facing - this.yaw;
       turn = Math.atan2(Math.sin(turn), Math.cos(turn));
-      this.yaw += turn * Math.min(1, dt * 14);
-      // A jump in position (a restart, being tossed out of the sea) is not a knock.
-      if (Math.hypot(state.x - this.lastX, state.y - this.lastY, state.z - this.lastZ) > 2.5) wobble.reset();
+      this.yaw += turn * ease(14, dt);
+      // Teleports clear the previous movement rather than giving the rig an artificial collision.
+      if (seen && Math.hypot(state.x - this.lastX, state.y - this.lastY, state.z - this.lastZ) > 2.5) {
+        wobble.reset();
+        takeoffAge = landingAge = hurtAge = RESTED;
+        gait = forwardLean = turnBank = this.roll = 0;
+        wasGrounded = state.grounded;
+      }
+      seen = true;
       this.lastX = state.x;
       this.lastY = state.y;
       this.lastZ = state.z;
       root.setPosition(state.x, state.y, state.z);
       root.setRotation(0, this.yaw, 0);
-      const moving = state.grounded && state.speedNow > 0.8 && !state.down;
-      this.step += dt * (moving ? 6 + state.speedNow * 0.9 : 0);
-      const swing = moving ? Math.sin(this.step) : 0,
-        sway = moving ? Math.sin(this.step) * 0.07 : Math.sin(time * 1.8) * 0.02,
-        bob = moving ? Math.abs(Math.cos(this.step)) * 0.06 : 0;
-      this.lie += ((state.down ? 1 : 0) - this.lie) * Math.min(1, dt * 6);
-      if (state.rolling) this.roll += dt * state.speedNow * 1.6;
-      else this.roll *= Math.max(0, 1 - dt * 12);
-      // Lean into the run and tip forward for a dive.
-      const lean = state.slamming ? 0.5 : moving ? Math.min(0.22, state.speedNow * 0.022) : 0;
-      pivot.setRotation(this.roll + lean + this.lie * -1.45, 0, sway);
-      pivot.setPosition(0, 0.78 + bob - this.lie * 0.42, 0);
+
+      const moving = state.grounded && state.speedNow > 0.8 && !state.down,
+        stepping = moving && !state.rolling,
+        pace = Math.min(1, state.speedNow / 6.8),
+        loading = state.grounded && state.charge > 0,
+        dive = state.slamming && !state.down;
+      const motionEase = ease(16, dt);
+      gait += ((stepping ? pace : 0) - gait) * motionEase;
+      this.step = (this.step + dt * gait * (6 + state.speedNow * 0.9)) % TURN;
+      const swing = Math.sin(this.step) * gait,
+        footfall = Math.cos(this.step * 2);
+      forwardLean += ((dive ? 0.5 : moving ? pace * 0.3 : 0) - forwardLean) * motionEase;
+      turnBank += ((moving ? -Math.max(-0.3, Math.min(0.3, turn * 0.28)) * pace : 0) - turnBank) * motionEase;
+      this.lie += ((state.down ? 1 : 0) - this.lie) * ease(6, dt);
+      if (state.rolling && !state.down) this.roll = ((this.roll + dt * state.speedNow * 1.6 + Math.PI) % TURN) - Math.PI;
+      else this.roll *= Math.exp(-9.5 * dt);
+
+      takeoffAge = Math.min(RESTED, takeoffAge + dt);
+      landingAge = Math.min(RESTED, landingAge + dt);
+      hurtAge = Math.min(RESTED, hurtAge + dt);
+      if (state.grounded && !wasGrounded && !state.down && landingAge > 0.15) {
+        // Short drops below the game's landing-SFX threshold still touch down softly.
+        landingAge = 0;
+        landingSquash = 0.11;
+        takeoffAge = RESTED;
+      }
+      wasGrounded = state.grounded;
+
+      const takeoff = takeoffStretch * rebound(takeoffAge, 3.7, 11.5),
+        landing = -landingSquash * rebound(landingAge, 5.4, 9.8),
+        flinch = hurtStrength * rebound(hurtAge, 4.2, 10.5);
+      const rising = Math.max(0, state.motor?.velocity[1] ?? 0);
+      const rest = state.down
+        ? 0.6
+        : dive
+          ? 1.28
+          : state.rolling
+            ? 0.82
+            : loading
+              ? 1 - Math.min(0.41, state.charge * 0.56)
+              : state.grounded
+                ? 1 - 0.018 * gait
+                : 1 + Math.min(0.1, rising * 0.008);
+      this.stretch += (rest - this.stretch) * motionEase;
+      const stride = gait * (loading ? 0.017 : 0.066),
+        height = Math.max(0.55, Math.min(1.42, this.stretch - stride * footfall + takeoff + landing - flinch * 0.11)),
+        wide = 1 / Math.sqrt(height);
+      pose.setScale(wide, height, wide);
+
+      const cosYaw = Math.cos(this.yaw),
+        sinYaw = Math.sin(this.yaw),
+        awaySide = hurtX * cosYaw - hurtZ * sinYaw,
+        awayForward = hurtX * sinYaw + hurtZ * cosYaw,
+        pitch = forwardLean + awayForward * flinch * 0.34,
+        sway = swing * 0.1 + (1 - gait) * Math.sin(time * 1.8) * 0.02 + turnBank - awaySide * flinch * 0.34,
+        bob = gait * (1 - footfall) * 0.028;
+      pivot.setRotation(this.roll + pitch - this.lie * 1.45, 0, sway);
+      pivot.setPosition(0, 0.78 + bob + landing * 0.07 - this.lie * 0.42, 0);
       head.setRotation(
-        Math.sin(time * 2.3) * 0.04 - (state.charge > 0.1 ? 0.2 : 0) - lean * 0.6,
+        Math.sin(time * 2.3) * 0.04 - (state.charge > 0.1 ? 0.2 : 0) - pitch * 0.56 + landing * 0.38 - takeoff * 0.4,
         0,
         -sway * 1.5 + (moving ? headTilt * 0.5 : headTilt),
       );
-      const reach = state.slamming ? -2.6 : state.grounded ? 0 : -1.3;
+      const reach = dive ? -2.6 : state.grounded ? 0 : -1.3;
       armL.setRotation(swing * 0.8 + reach, 0, -0.25 - (state.grounded ? 0 : 0.6));
       armR.setRotation(-swing * 0.8 + reach, 0, 0.25 + (state.grounded ? 0 : 0.6));
       legL.setRotation(-swing * 0.7, 0, 0);
       legR.setRotation(swing * 0.7, 0, 0);
-      const earRoll = earTilt + wobble.amount * 0.8;
+      const earRoll = earTilt + wobble.amount * 0.8 - landing * 0.45 + takeoff * 0.3;
       earL.setRotation(0, -earTilt * 0.5, earRoll);
       earR.setRotation(0, earTilt * 0.5, -earRoll);
       // Eyes: a blink every few seconds, squeezed shut while hurt or down, wide open in the air.
@@ -381,8 +480,9 @@ export function createPanda(skin, jelly = true) {
         eye.setScale(1, shut || (winks && state.grounded && !moving) ? 0.12 : open, 1);
       }
       mouth.setScale(state.grounded && !shut ? 0.045 : 0.035, state.grounded && !shut ? smile : 0.035, 0.012);
-      // Flash while hurt, blink while briefly untouchable.
-      const glow = state.hurtFlash > 0 ? 1.4 : GLOW;
+      // A quick bloom follows the hit without obscuring the recovery or the face.
+      const flash = Math.max(0, 1 - hurtAge / 0.22);
+      const glow = GLOW + 0.88 * hurtStrength * flash * flash;
       for (const material of glowMaterials) material.emissiveIntensity = glow;
       root.visible = state.down || !(state.iframe > 0.5 && Math.floor(time * 14) % 2 === 0);
       if (dt > 0) wobble.update(dt);
