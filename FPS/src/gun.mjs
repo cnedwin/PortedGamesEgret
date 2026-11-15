@@ -13,7 +13,7 @@ import { SWITCH_TIME } from './data.mjs';
 import { createBuilder, orient, rgb } from './build.mjs';
 import { createDetails, flashTexture } from './textures.mjs';
 
-const STEEL = rgb(0x62686f),
+const STEEL = rgb(0x5f6874),
   DARK = rgb(0x3d4046),
   TAN = rgb(0x6f6349),
   SLEEVE = rgb(0xb0b0a0),
@@ -257,17 +257,17 @@ function pistolShapes() {
 
 /** Add the weapons under `camera` and return the object that animates them. */
 export function createGun(camera) {
-  // The weapon is often in a wall's shadow; extra sky light keeps its shape readable there.
   const details = createDetails();
-  // The weapon is often in a wall's shadow; extra sky light keeps its shape readable there.
+  // Keep the gun legible in deep shadow without turning the warm sunrise into a gold finish.
   const metal = createStandardMaterial3D({
     color: 0xffffff,
     vertexColors: true,
     map: details.gunmetal.map,
     normalMap: details.gunmetal.normalMap,
-    roughness: 0.46,
-    metallic: 0.3,
-    environmentIntensity: 2.6,
+    normalScale: 0.46,
+    roughness: 0.63,
+    metallic: 0.16,
+    environmentIntensity: 1.15,
     // A little light of its own, so the weapon keeps its shape in deep shadow.
     emissive: 0x4a5058,
     emissiveIntensity: 0.1,
@@ -277,8 +277,9 @@ export function createGun(camera) {
     vertexColors: true,
     map: details.camo.map,
     normalMap: details.camo.normalMap,
+    normalScale: 0.62,
     roughness: 0.92,
-    environmentIntensity: 2,
+    environmentIntensity: 1.2,
   });
   const rig = new Object3D();
   rig.setScale(RIG_SCALE);

@@ -10,6 +10,9 @@ export const BOUNDS = { minX: -38, maxX: 38, minZ: -30, maxZ: 32 };
 /** Side of one walking-grid cell, and how far obstacles are grown so soldiers keep off walls. */
 export const CELL = 0.5;
 const CLEARANCE = 0.35;
+// NavCrowd also narrows the internal triangle portals by the agent's diameter.
+// The grid already has obstacle clearance, so its navigation radius must fit a grid edge.
+export const CROWD_RADIUS = CELL * 0.44;
 
 /**
  * Every box of the map: centre `x, y, z`, size `w` (along X), `h` (up), `d`
@@ -21,11 +24,11 @@ export const BOXES = [];
 /** Named places the rules and the view both need. */
 export const PLACES = {
   spawn: { x: 0, z: 28.5, yaw: 0 },
-  /** The three data terminals. `facing` is the yaw the screen looks along, towards whoever uses it. */
+  /** The terminal screen's yaw and two positions used to check the signal in each sector. */
   terminals: [
-    { key: 'yard', x: -32.6, z: 8, facing: -Math.PI / 2 },
-    { key: 'plant', x: 4, z: -24.6, facing: Math.PI },
-    { key: 'office', x: 34.4, z: -18, facing: Math.PI / 2 },
+    { key: 'yard', x: -32.6, z: 8, facing: -Math.PI / 2, relays: [{ x: -26.8, z: 7.5 }, { x: -25.5, z: 14.4 }] },
+    { key: 'plant', x: 4, z: -24.6, facing: Math.PI, relays: [{ x: -1, z: -20.5 }, { x: 10.7, z: -21 }] },
+    { key: 'office', x: 34.4, z: -18, facing: Math.PI / 2, relays: [{ x: 30, z: -16.4 }, { x: 27.9, z: -11 }] },
   ],
   helipad: { x: 27, z: 21, radius: 5.5 },
   /** Where guards stand at the start: [x, z, kind]. */

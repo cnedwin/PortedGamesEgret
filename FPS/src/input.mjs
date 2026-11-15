@@ -40,8 +40,8 @@ export function createInput(canvas, touchRoot, options = {}) {
   const input = {
     sensitivity: 1,
     invertY: false,
-    /** True once a finger has been used; the HUD then shows the touch controls. */
-    touchMode: false,
+    /** Handheld browsers start with controls. A touchscreen can still take over on hybrids. */
+    touchMode: matchMedia('(pointer: coarse)').matches,
     get locked() {
       return document.pointerLockElement === canvas;
     },
@@ -64,7 +64,9 @@ export function createInput(canvas, touchRoot, options = {}) {
       if (!on) {
         for (const key of Object.keys(held)) held[key] = false;
         fire = aim = false;
-        touchState.moveX = touchState.moveZ = 0;
+        resetTouchMotion();
+        lookX = lookY = 0;
+        weapon = '';
         for (const key of Object.keys(touchHeld)) touchHeld[key] = false;
       }
     },
@@ -173,6 +175,12 @@ export function createInput(canvas, touchRoot, options = {}) {
     options.onTouch?.();
   };
   const stickNub = () => touchRoot?.querySelector('.stick i');
+  function resetTouchMotion() {
+    stickId = lookId = -1;
+    touchState.moveX = touchState.moveZ = 0;
+    const nub = stickNub();
+    if (nub) nub.style.transform = '';
+  }
   canvas.addEventListener(
     'touchstart',
     (event) => {
@@ -231,11 +239,15 @@ export function createInput(canvas, touchRoot, options = {}) {
       (event) => {
         startTouch();
         const button = event.target.closest('button');
-        if (!button) return;
+        if (!button || !enabled) return;
         const name = button.dataset.t;
         if (name === 'pause') options.onPause?.();
-        else if (name === 'aim') button.classList.toggle('on', (touchState.aim = !touchState.aim));
-        else if (name === 'crouch') button.classList.toggle('on', (touchState.crouch = !touchState.crouch));
+        else if (name === 'bag') options.onBag?.();
+        else if (name === 'aim' || name === 'crouch') {
+          const pressed = (touchState[name] = !touchState[name]);
+          button.classList.toggle('on', pressed);
+          button.setAttribute('aria-pressed', String(pressed));
+        }
         else if (name === 'swap') weapon = 'swap';
         else touchHeld[name] = true;
         if (name === 'fire' && lookId < 0) {

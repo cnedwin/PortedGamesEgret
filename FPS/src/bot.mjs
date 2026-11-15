@@ -16,8 +16,10 @@ export function createBot(game, { skill = 1 } = {}) {
     goalKey = '',
     stuck = 0;
   /** Where to go next: [x, z, what]. */
-  function goal() {
+  function goal(active) {
     const p = game.player;
+    if (active?.relay) return [active.relay.x, active.relay.z, active];
+    if (active) return [active.x - Math.sin(active.facing) * 1.3, active.z - Math.cos(active.facing) * 1.3, active];
     let best;
     for (const terminal of game.terminals) {
       if (terminal.done) continue;
@@ -51,6 +53,9 @@ export function createBot(game, { skill = 1 } = {}) {
         }
       }
       const weapon = game.weapons[p.weapon];
+      const rifle = game.weapons.rifle;
+      if (p.weapon === 'rifle' && rifle.ammo + rifle.reserve === 0) input.weapon = 'pistol';
+      else if (p.weapon === 'pistol' && !foe && rifle.ammo + rifle.reserve > 0) input.weapon = 'rifle';
       let wantYaw, wantPitch;
       if (foe) {
         const aimY = foe.ducked
@@ -65,7 +70,9 @@ export function createBot(game, { skill = 1 } = {}) {
       }
 
       // Otherwise walk the path to the goal.
-      const [gx, gz, terminal] = goal();
+      const active = game.transfer();
+      const relay = active?.relay;
+      const [gx, gz, terminal] = goal(active);
       const key = gx + ',' + gz;
       pathIn -= dt;
       if (pathIn <= 0 || key !== goalKey) {
@@ -99,14 +106,16 @@ export function createBot(game, { skill = 1 } = {}) {
       if (foe) {
         const onTarget = Math.abs(turn) < 0.02 + 0.25 / foeDistance && Math.abs(tilt) < 0.03 + 0.25 / foeDistance;
         input.aim = foeDistance > 8;
-        input.fire = onTarget && weapon.ammo > 0;
+        input.fire = onTarget && weapon.ammo > 0 && (weapon.def.auto || (!weapon.triggerHeld && weapon.cooldown <= dt));
         input.crouch = foeDistance > 12 && p.health < 70;
       }
       if (weapon.ammo === 0 || (!foe && weapon.ammo < weapon.mag * 0.4)) input.reload = true;
       if (p.health < 50 && p.bandages > 0 && (!foe || p.health < 25)) input.heal = true;
 
       // Keep moving unless busy shooting from a good spot.
-      const hold = (foe && foeDistance < 28 && p.health > 30) || (terminal && toGoal < 0.5) || (!terminal && toGoal < 2);
+      const hold = relay
+        ? toGoal < 0.6
+        : (active?.inRange || (foe && foeDistance < 28 && p.health > 30) || (terminal && toGoal < 0.5) || (!terminal && toGoal < 2));
       if (!hold) {
         const sin = Math.sin(p.yaw),
           cos = Math.cos(p.yaw);
