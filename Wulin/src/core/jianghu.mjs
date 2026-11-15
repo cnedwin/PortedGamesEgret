@@ -10,7 +10,11 @@ import { SECT_BY_ID } from '../data/sects.mjs';
 import { findRelic } from './extras.mjs';
 import { findManual } from './library.mjs';
 import { autoWheel, equipFor, growTo, prowess, rollPerson } from './persons.mjs';
-import { clamp } from './rng.mjs';
+import { clamp, createRng } from './rng.mjs';
+import { pleaFor, pleaView, remember, resolvePlea } from './disciples.mjs';
+
+/** The chance, every ten days, that a disciple brings something to the leader: about three a year. */
+const PLEA_CHANCE = 0.08;
 
 const members = (state, sectId) => Object.values(state.persons).filter((person) => person.school === sectId);
 const log = (state, type, text, sect) => state.log.push({ day: state.day, type, text, sect });
@@ -114,6 +118,7 @@ export function join(state, sectId, wandererId, rng) {
   person.id = state.nextId++;
   state.persons[person.id] = person;
   (state.met ??= {})[wandererId] = 'joined';
+  remember(state, person, `应邀投入${SECT_BY_ID[sectId].name}`);
   forgetMods();
   log(state, 'join', `${wanderer.name}投入${SECT_BY_ID[sectId].name}门下（${TALENTS[wanderer.talent].name}：${TALENTS[wanderer.talent].does}）。`, sectId);
   return person;
@@ -130,6 +135,7 @@ export function pendingView(state) {
     return '';
   };
   if (pending.kind === 'siege') return null;
+  if (pending.kind === 'plea') return pleaView(state, pending) ?? (state.pending = null);
   if (pending.kind === 'trial' || pending.kind === 'legacy') {
     const person = state.persons[pending.person];
     if (!person) return (state.pending = null);
@@ -173,6 +179,7 @@ export function resolvePending(state, index, rng) {
   if (view.choices[index].why) return { ok: false, why: view.choices[index].why };
   const pending = state.pending;
   state.pending = null;
+  if (pending.kind === 'plea') return resolvePlea(state, pending, index);
   let text;
   if (pending.kind === 'trial') {
     const person = state.persons[pending.person];
@@ -256,6 +263,13 @@ export function xunOfJianghu(state, rng) {
   }
   const books = state.sects[state.playerSect];
   if (!books?.alive || state.pending || state.options.autoPlayer) return;
+  // A disciple with something on their mind comes first. Only a watched world has these, and they draw
+  // on a source of their own, so the rest of the world runs the same with or without them.
+  if (state.options.interactive) {
+    const own = createRng((state.seed ^ (state.day * 2654435761)) >>> 0 || 1);
+    const plea = own.chance(PLEA_CHANCE) ? pleaFor(state, own) : null;
+    if (plea) return void (state.pending = plea);
+  }
   if (!rng.chance(0.14)) return;
   // A wanderer's time in the sect has its chapters: a first trial of what they can do after two months,
   // a wish after half a year (below), and after a year, if the wish was granted, the passing on of their art.

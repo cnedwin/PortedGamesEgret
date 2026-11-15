@@ -54,6 +54,24 @@ A new game opens as the edict reaches the mountain gates. The three skippable sc
 
 - **More to do**: fit disciples out, hand down named weapons, make and take pills; appoint wardens, hall masters and elders; write manuals, found an art, open meridians, send someone travelling; give a branch a speciality and move its buildings; plant a spy; fight on the duelling stage. An attack on you can be met in person, and in a fight you can call a rally and lean to attack or defence. A game can begin in four ways, against weaker or stronger sects, or under a name of your own, and a data pack can be loaded from the settings.
 
+### 育徒 · Raising disciples
+
+- **品质 · Grades**：每名弟子按资质分五品——凡品、良品、上品、极品、绝世。评分以最强的一项资质为主、次强与五项均值为辅，资质决定练功快慢，所以品质说的是这个人能被带到多高。名牌、招贤榜与榜单上都标着品质。
+- **排行 · Rankings**：弟子页可切到「榜单」，按战力、资质、等级、臂力、腰力、腿力、内力、身法、悟性、暗器、五项资质、忠诚或年龄排行，升降序任选；点表头即可换一项来排。
+- **性情与生平 · Tempers and records**：性情不只是数值：弟子会按各自的性情来找掌门说事，怎么答复各有得失。入门、晋升、拜师、武学练到三重、六重、十重、登擂、出征、论剑，都记在各人的生平里；头一回登擂得胜、头一门武学圆满这样的日子，会单独告知。
+- **论剑大会 · The Sword Meet**：每三年九月初一开擂，各派遣一名弟子出战，掌门、长老与江湖奇人不得下场。可亲自上场指挥，也可交由弟子应战。夺魁者门派威望大增、得银千两，另赠一部本派所缺的秘笈，本人留名「论剑魁首」。
+- **一键安排 · One-step work**：「一键安排差事」按资质给全派（或只给闲着的人）排差事：资质好的修练最合适的武学，资质平平的杂役与外门里抽三成去采集、制造。确认前可逐条过目。弟子页顶上列着待你定夺的事：闲着的、可晋升的、想走的、带伤的。
+- **逐步开放 · Affairs open in turn**：新局先只有山门、弟子、纪事与存档；江湖、拜师、店铺、事务、战阵、装备、往来、经脉、卧底随门派立稳依次开放，每开一项有一句说明，掌门手札里列着尚未开放的各项。老手可在设置里一次全开；旧存档不受影响。
+- **图鉴 · Collection books**：纪事页另有武学谱、奇人录、神兵谱，记着已得与未得。
+
+- **Grades**: every disciple has one of five grades by aptitude: ordinary, fair, fine, rare and peerless. The score leans on the best aptitude, then the second and the run of all five; aptitude sets how fast an art is learned, so the grade says how far a person can be brought on. It is shown on name plates, at the recruiting board and in the ranking table.
+- **Rankings**: the disciples page has a table that ranks the roster by prowess, grade, level, any of the seven stats or five aptitudes, loyalty or age, upward or downward; a column heading re-ranks by that column.
+- **Tempers and records**: a temper is more than a number. Disciples bring matters to the leader by their temper, and each answer has its price. Joining, promotion, taking a master, an art reaching its third, sixth and tenth level, the duelling stage, campaigns and the Sword Meet are written into each person's record, and the days worth remembering (a first win on the stage, a first art completed) are told as they happen.
+- **The Sword Meet**: on the first of the ninth month every third year each sect sends one disciple; leaders, elders and wanderers stay home. Fight each bout in person or leave it to the disciple. The winner's sect gains renown, a thousand silver and a manual it lacks, and the winner keeps the title.
+- **One-step work**: one button sets work for the whole sect, or only for those idle, by aptitude: the gifted practise the art that suits them best, and about a third of the plainer junior disciples gather and craft. Every line can be read before it is applied. The top of the disciples page lists what is waiting on the leader: the idle, those ready for promotion, those thinking of leaving, the wounded.
+- **Affairs open in turn**: a new game starts with the seat, the disciples, the chronicle and the saves. The map, masters, shops, sect affairs, the field, gear, diplomacy, meridians and spies open as the sect finds its feet, each with a line on what it is for, and the handbook lists what is still to come. The settings can open everything at once, and saves from before are unaffected.
+- **Collection books**: the chronicle keeps books of arts, wanderers and named weapons, held and not yet held.
+
 ### 门派 · Sects
 
 | 门派 · Sect | 总舵 · Seat | 掌门 · Leader | 路数 · Style |

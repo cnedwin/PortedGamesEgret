@@ -13,6 +13,8 @@ import { ELDERS, OFFICES, RANKS, SECT_BY_ID, SECTS, applyIdentity } from '../dat
 import { DIFFICULTIES, ROAD } from '../data/extras.mjs';
 import { focusBoost, gearOffer, giveRelic, innerLevels, meridianNeed, openMeridian, spyBoost, upgradeGear, xunOfSpies } from './extras.mjs';
 import { formationOf, modsOf, xunOfJianghu, yearOfJianghu } from './jianghu.mjs';
+import { grow, remember, rememberArt } from './disciples.mjs';
+import { dayOfTourney } from './tourney.mjs';
 import { resolveBattle } from './battle.mjs';
 import { TRAITS, autoWheel, equipFor, gainXp, growTo, hpMax, learnableArts, makeLeader, practise, prowess, rollPerson, trainingRate } from './persons.mjs';
 import { BOOK_PRICE, addManual, heldArts, lackingArts, lootManuals } from './library.mjs';
@@ -355,6 +357,7 @@ export function recruit(state, sectId, placeId, index) {
   Object.assign(person, { school: sectId, place: placeId });
   adopt(state, person);
   state.sects[sectId].silver += person.fee;
+  remember(state, person, `拜入${SECT_BY_ID[sectId].name}门下`);
   return done({ person });
 }
 
@@ -382,6 +385,7 @@ export function promote(state, personId) {
   if (person.rank >= 4) return refuse('已是长老');
   person.rank++;
   person.loyalty = clamp(person.loyalty + 8, 0, 100);
+  remember(state, person, `晋为${RANKS[person.rank].name}`, { moment: person.rank >= 3 });
   return done();
 }
 
@@ -390,6 +394,7 @@ export function setMaster(state, personId, masterId) {
     master = state.persons[masterId];
   if (!person || !master || master.school !== person.school || master.rank < 4) return refuse('师父须是本门长老或掌门');
   person.master = masterId;
+  remember(state, person, `拜${master.name}为师`);
   return done();
 }
 
@@ -534,7 +539,7 @@ export function settleAssault(state, attackerId, placeId, summary, rng) {
   for (const fighter of summary.fighters) {
     const person = state.persons[fighter.id];
     if (!person) continue;
-    gainXp(person, fighter.xp);
+    grow(state, person, fighter.xp);
     person.wounds = clamp(1 - fighter.hpLeft, 0, 1) * 0.5;
     // One in seven of those struck down does not get up again.
     if (fighter.down && rng.chance(0.15)) fallen.push(person);
@@ -571,12 +576,14 @@ export function settleAssault(state, attackerId, placeId, summary, rng) {
     // Half of the party stays to hold what it took.
     const party = summary.fighters.filter((fighter) => fighter.side === 0 && !fighter.down && state.persons[fighter.id]);
     for (const fighter of party.slice(0, Math.ceil(party.length / 2))) state.persons[fighter.id].place = placeId;
+    for (const fighter of party) remember(state, state.persons[fighter.id], `随军攻下${PLACE_BY_ID[placeId].name}`);
     // Where there was a library, some of its books go with the victors.
     const looted = buildingLevel(state, placeId, 'library') ? lootManuals(state, attackerId, defenderId, rng) : [];
     note(state, 'conquer', `${SECT_BY_ID[attackerId].name}攻下${PLACE_BY_ID[placeId].name}${looted.length ? `，得秘笈${looted.map((art) => `《${art.name}》`).join('')}` : ''}。`, { sect: attackerId, place: placeId });
   } else {
     defender.renown = clamp(defender.renown + 30, 0, 1000);
     note(state, 'repel', `${SECT_BY_ID[defenderId].name}在${PLACE_BY_ID[placeId].name}击退${SECT_BY_ID[attackerId].name}。`, { sect: defenderId, place: placeId });
+    for (const fighter of summary.fighters) if (fighter.side === 1 && !fighter.down) remember(state, state.persons[fighter.id], `在${PLACE_BY_ID[placeId].name}击退${SECT_BY_ID[attackerId].name}`);
   }
   for (const person of fallen) bury(state, person);
   if (!placesOf(state, defenderId).length) dissolve(state, defenderId, attackerId);
@@ -762,9 +769,10 @@ function workDay(state, person, rng) {
     // A manual in the library speeds the art it describes.
     const manual = books.manuals[art.id];
     if (manual && buildingLevel(state, placeId, 'library') && levelOf(person.arts[art.id] ?? 0) < manual - 2) points += MANUAL_POINTS / art.tier;
-    practise(person, art, points);
+    const reached = practise(person, art, points);
+    if (reached) rememberArt(state, person, art, reached);
     // Harder arts teach more, and a master's eye more again.
-    gainXp(person, 2 * WORK_WATCHES * (1 + TRAIN_XP.perTier * (art.tier - 1)) * (master ? 1 + TRAIN_XP.master : 1));
+    grow(state, person, 2 * WORK_WATCHES * (1 + TRAIN_XP.perTier * (art.tier - 1)) * (master ? 1 + TRAIN_XP.master : 1));
   } else if (job.kind === 'seclude') {
     const art = ART_BY_ID[job.art];
     if (!art || person.insights.includes(art.id)) return void (person.job = { kind: 'rest' });
@@ -773,6 +781,7 @@ function workDay(state, person, rng) {
       person.insights.push(art.id);
       person.job = { kind: 'train', art: art.id, days: 0 };
       note(state, 'insight', `${person.name}闭关${job.days}日，悟出${art.name}。`, { sect: sectId, person: person.id });
+      remember(state, person, `闭关${job.days}日，悟出${art.name}`);
     }
   } else if (job.kind === 'gather') {
     const grade = PLACE_BY_ID[placeId].resources[job.res] ?? 0;
@@ -781,7 +790,7 @@ function workDay(state, person, rng) {
     const boost = officeBoost(state, sectId, placeId, 'gather') + diligence + mods.gather + focusBoost(state, placeId, 'gather');
     books.res[job.res] += (ECONOMY.gatherPerXun / DAYS_PER_XUN) * (grade / 2) * (1 + 0.1 * (pit.level - 1)) * (1 + boost);
     person.used.arm = (person.used.arm ?? 0) + 4;
-    gainXp(person, 4);
+    grow(state, person, 4);
   } else if (job.kind === 'craft') {
     const shop = state.places[placeId].buildings.find((b) => BUILDINGS[b.kind].makes === job.make);
     if (!shop) return void (person.job = { kind: 'rest' });
@@ -792,23 +801,26 @@ function workDay(state, person, rng) {
     shop.xp += worth;
     // What the workshops finish is kept as goods until the ten-day reckoning, when it is sold.
     books.goods = (books.goods ?? 0) + worth;
-    gainXp(person, 4);
+    grow(state, person, 4);
   } else if (job.kind === 'travel') {
     // On the road: quick to learn from, with a chance of a wound or a find, and home again after a month.
-    gainXp(person, ROAD.xp);
+    grow(state, person, ROAD.xp);
     if (rng.chance(ROAD.hurt)) person.wounds = clamp((person.wounds ?? 0) + 0.2, 0, 0.8);
     if (rng.chance(ROAD.find)) {
       const key = rng.pick(['arm', 'waist', 'leg', 'nei', 'agi']);
       person.stats[key] = Math.min(300, person.stats[key] + 2);
       books.silver += 20;
     }
-    if (job.days >= ROAD.days) person.job = { kind: 'rest' };
+    if (job.days >= ROAD.days) {
+      person.job = { kind: 'rest' };
+      remember(state, person, `下山历练${ROAD.days}日归来`);
+    }
   } else if (job.kind === 'patrol' || job.kind === 'extort') {
     const sign = job.kind === 'patrol' ? 1 : -1;
     if (rng.chance(0.2)) books.virtue = clamp(books.virtue + 2 * sign, -1000, 1000);
     if (sign < 0) books.silver += 4;
     books.renown = clamp(books.renown + 0.05, 0, 1000);
-    gainXp(person, 6);
+    grow(state, person, 6);
   }
 }
 
@@ -1007,6 +1019,7 @@ export function advanceDay(state) {
   for (const person of Object.values(state.persons)) workDay(state, person, rng);
   if (state.day % DAYS_PER_XUN === 0) endOfXun(state, rng);
   if (state.day % DAYS_PER_YEAR === 0) endOfYear(state, rng);
+  dayOfTourney(state);
   const alive = SECTS.filter((sect) => state.sects[sect.id].alive);
   if (!state.outcome && alive.length === 1) state.outcome = { result: alive[0].id === state.playerSect ? 'won-conquest' : 'lost', day: state.day, by: alive[0].id };
   state.rng = rng.state;
