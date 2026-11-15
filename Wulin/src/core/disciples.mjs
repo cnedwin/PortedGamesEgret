@@ -303,6 +303,9 @@ export function bestArtFor(person, held) {
   return options.sort((a, b) => worth(b) - worth(a))[0];
 }
 
+const badlyWounded = (person) => (person.wounds ?? 0) >= 0.3;
+const idleDisciple = (person, leader) => person.id !== leader && (person.job?.kind ?? 'rest') === 'rest' && !badlyWounded(person);
+
 /**
  * Work for everyone in a sect, by what each is good for. The gifted and the
  * senior train; of the rest, enough are sent to the pits and workshops their
@@ -313,6 +316,7 @@ export function bestArtFor(person, held) {
  */
 export function recommendJobs(state, sectId, { idleOnly = false } = {}) {
   const held = heldArts(state, sectId);
+  const leader = state.sects[sectId]?.leaderId;
   const plan = [];
   const byPlace = new Map();
   for (const person of members(state, sectId)) {
@@ -323,7 +327,9 @@ export function recommendJobs(state, sectId, { idleOnly = false } = {}) {
     const buildings = state.places[placeId]?.buildings ?? [];
     const pits = buildings.filter((b) => BUILDINGS[b.kind].yields && (PLACE_BY_ID[placeId].resources[BUILDINGS[b.kind].yields] ?? 0) > 0);
     const workshops = buildings.filter((b) => BUILDINGS[b.kind].makes);
-    const free = people.filter((person) => !['seclude', 'travel'].includes(person.job?.kind) && (!idleOnly || (person.job?.kind ?? 'rest') === 'rest'));
+    const free = people.filter((person) => idleOnly
+      ? idleDisciple(person, leader)
+      : !badlyWounded(person) && !['seclude', 'travel'].includes(person.job?.kind));
     // About a third of the junior disciples keep the stronghold supplied, where there is work for them.
     const juniors = free.filter((person) => person.rank <= 1).sort((a, b) => aptitudeScore(a) - aptitudeScore(b));
     const hands = pits.length + workshops.length ? Math.min(juniors.length, Math.max(1, Math.round(people.filter((person) => person.rank <= 1).length / 3))) : 0;
@@ -376,10 +382,10 @@ export function attention(state, sectId) {
   const all = members(state, sectId),
     leader = state.sects[sectId].leaderId;
   return {
-    idle: all.filter((person) => person.id !== leader && (person.job?.kind ?? 'rest') === 'rest' && (person.wounds ?? 0) < 0.3),
+    idle: all.filter((person) => idleDisciple(person, leader)),
     promotable: all.filter((person) => promotable(state, person)),
     unhappy: all.filter((person) => person.id !== leader && person.loyalty < 30),
-    wounded: all.filter((person) => (person.wounds ?? 0) >= 0.3),
+    wounded: all.filter(badlyWounded),
     callers: Object.values(state.places).filter((place) => place.owner === sectId).reduce((sum, place) => sum + place.applicants.length, 0),
     masterless: all.filter((person) => person.rank < 4 && !person.master && all.some((elder) => elder.rank >= 4)),
   };

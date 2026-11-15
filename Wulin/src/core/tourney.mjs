@@ -37,7 +37,8 @@ const HISTORY = 6;
 export function nextTourney(state) {
   const span = TOURNEY.every * DAYS_PER_YEAR,
     first = span - DAYS_PER_YEAR + TOURNEY.dayOfYear;
-  const edition = Math.max(1, Math.ceil((state.day - first) / span) + 1);
+  const nextEdition = (state.tourneys?.at(-1)?.edition ?? 0) + 1;
+  const edition = Math.max(nextEdition, Math.ceil((state.day - first) / span) + 1);
   return { edition, day: first + (edition - 1) * span };
 }
 
@@ -120,17 +121,25 @@ function pairsOf(alive) {
 }
 
 /**
- * The player's bout in the round about to be fought: `{ mine, rival, round }`
- * as people and a name, or null when their disciple is out, has a bye, or the
- * meet is over.
+ * The player's bout in the round about to be fought, or null for a bye.
+ * The draw fixes both sides and the seed for live and delegated fights.
  */
 export function tourneyBout(state) {
   const meet = state.tourney;
   if (!meet || meet.stage !== 'bouts' || meet.mine === null) return null;
-  const pair = pairsOf(meet.alive).pairs.find((two) => two.includes(meet.mine));
-  if (!pair) return null;
-  return { mine: state.persons[meet.mine], rival: state.persons[pair.find((id) => id !== meet.mine)], round: roundName(meet.alive.length) };
+  const { pairs } = pairsOf(meet.alive);
+  const index = pairs.findIndex((pair) => pair.includes(meet.mine));
+  if (index < 0) return null;
+  const pair = pairs[index], side = pair[0] === meet.mine ? 0 : 1;
+  const rng = createRng(1);
+  rng.state = meet.rng;
+  // Looking ahead never consumes the round's random sequence.
+  for (let i = 0; i < index; i++) rng.int(1, 1e9);
+  return { mine: state.persons[meet.mine], rival: state.persons[pair[1 - side]], round: roundName(meet.alive.length), side, seed: rng.int(1, 1e9) };
 }
+
+/** A bout called level goes to the stronger on paper, with the draw order breaking ties. */
+export const boutWinner = (a, b, winner) => winner === -1 ? Number(prowess(a) < prowess(b)) : winner;
 
 /**
  * Fights one round. `mineWon` is how the player's own bout went, when they
@@ -145,13 +154,13 @@ export function settleBout(state, mineWon) {
   const { pairs, bye } = pairsOf(meet.alive);
   const next = [];
   for (const [a, b] of pairs) {
+    const seed = rng.int(1, 1e9);
     let winner;
     if (mineWon !== null && (a === meet.mine || b === meet.mine)) winner = mineWon ? meet.mine : a === meet.mine ? b : a;
     else {
       const sides = [[state.persons[a]], [state.persons[b]]];
-      const result = resolveBattle({ sides, seed: rng.int(1, 1e9) }).winner;
-      // A bout called level goes to the stronger on paper.
-      winner = result === 0 ? a : result === 1 ? b : prowess(sides[0][0]) >= prowess(sides[1][0]) ? a : b;
+      const result = resolveBattle({ sides, seed }).winner;
+      winner = boutWinner(sides[0][0], sides[1][0], result) === 0 ? a : b;
     }
     meet.out.push({ id: winner === a ? b : a, left: meet.alive.length });
     for (const id of [a, b]) meet.fought[id] = (meet.fought[id] ?? 0) + 1;

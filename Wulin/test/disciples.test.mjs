@@ -5,12 +5,13 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import { DAYS_PER_YEAR } from '../src/data/goods.mjs';
+import { resolveBattle } from '../src/core/battle.mjs';
 import { PLEAS, QUALITIES, RANKINGS, aptitudeScore, attention, grow, pleaFor, pleaView, promotable, qualityOf, ranked, rankingValue, recommendJobs, remember, resolvePlea } from '../src/core/disciples.mjs';
 import { pendingView, resolvePending } from '../src/core/jianghu.mjs';
 import { TRAITS, prowess } from '../src/core/persons.mjs';
 import { createRng } from '../src/core/rng.mjs';
 import { deserialize, serialize } from '../src/core/save.mjs';
-import { TOURNEY, eligible, enterTourney, nextTourney, settleBout, tourneyBout, tourneyField } from '../src/core/tourney.mjs';
+import { TOURNEY, dayOfTourney, eligible, enterTourney, nextTourney, settleBout, tourneyBout, tourneyField } from '../src/core/tourney.mjs';
 import { FEATURES, checkUnlocks, isOpen, openAll, startUnlocks, stillToCome } from '../src/core/unlocks.mjs';
 import { advanceDay, createWorld, membersOf, promote, setJob } from '../src/core/world.mjs';
 
@@ -97,6 +98,21 @@ test('one step puts everyone to work that suits them, and changes nothing until 
   const one = people.find((person) => person.id !== world.sects.wudang.leaderId);
   one.job = { kind: 'rest' };
   assert.deepEqual(recommendJobs(world, 'wudang', { idleOnly: true }).map(({ person }) => person.id), [one.id]);
+});
+
+test('assigning idle disciples matches the attention list and leaves badly wounded people alone', () => {
+  const world = watchedWorld();
+  const leader = world.persons[world.sects.wudang.leaderId];
+  const [wounded, idle] = membersOf(world, 'wudang').filter((person) => person.rank <= 1);
+  for (const person of [leader, wounded, idle]) person.job = { kind: 'rest' };
+  wounded.wounds = 0.3;
+
+  assert.deepEqual(attention(world, 'wudang').idle.map((person) => person.id), [idle.id]);
+  assert.deepEqual(recommendJobs(world, 'wudang', { idleOnly: true }).map(({ person }) => person.id), [idle.id]);
+  const fullPlan = recommendJobs(world, 'wudang').map(({ person }) => person.id);
+  assert.ok(fullPlan.includes(leader.id), 'a healthy leader can join a full reassignment');
+  assert.ok(fullPlan.includes(idle.id));
+  assert.ok(!fullPlan.includes(wounded.id), 'a full reassignment also leaves badly wounded people alone');
 });
 
 test('what waits on the leader is listed, and the promotable can be promoted', () => {
@@ -200,6 +216,7 @@ test('the Sword Meet falls on the first of the ninth month every third year', ()
   const first = 2 * DAYS_PER_YEAR + TOURNEY.dayOfYear;
   assert.deepEqual(nextTourney({ day: 0 }), { edition: 1, day: first });
   assert.deepEqual(nextTourney({ day: first }), { edition: 1, day: first });
+  assert.deepEqual(nextTourney({ day: first, tourneys: [{ edition: 1, day: first }] }), { edition: 2, day: first + 3 * DAYS_PER_YEAR });
   assert.deepEqual(nextTourney({ day: first + 1 }), { edition: 2, day: first + 3 * DAYS_PER_YEAR });
   assert.deepEqual(nextTourney({ day: first + 3 * DAYS_PER_YEAR + 1 }), { edition: 3, day: first + 6 * DAYS_PER_YEAR });
 });
@@ -225,6 +242,36 @@ function worldAtMeet(seed = 7) {
   days(world, day);
   return world;
 }
+
+test('fighting a drawn bout uses the delegated seed and leaves the same bracket and RNG', () => {
+  const world = watchedWorld({ seed: 1 });
+  world.day = nextTourney(world).day;
+  dayOfTourney(world);
+  const mine = tourneyField(world).own[0];
+  assert.ok(enterTourney(world, mine.id).ok);
+  const { alive, rng: meetRng } = world.tourney;
+  const index = alive.indexOf(mine.id);
+  assert.ok(index > 1 && index % 2 === 1, 'the player is on side one beyond the first pairing');
+  const rng = createRng(1);
+  rng.state = meetRng;
+  const pairSeeds = Array.from({ length: Math.floor(alive.length / 2) }, () => rng.int(1, 1e9));
+  const drawn = tourneyBout(world);
+  assert.equal(drawn.side, 1);
+  assert.equal(drawn.seed, pairSeeds[Math.floor(index / 2)]);
+  const sides = [[drawn.rival], [drawn.mine]];
+  const result = resolveBattle({ sides, seed: drawn.seed });
+  assert.equal(result.winner, drawn.side, 'the disciple wins this bout and reaches the next round');
+
+  const delegated = structuredClone(world);
+  const worldRng = world.rng;
+  assert.ok(settleBout(world, result.winner === drawn.side).ok);
+  assert.ok(settleBout(delegated, null).ok);
+  assert.ok(world.tourney, 'the meet has another round');
+  assert.equal(world.tourney.rng, rng.state);
+  assert.deepEqual(world.tourney, delegated.tourney);
+  assert.equal(world.rng, worldRng);
+  assert.equal(delegated.rng, worldRng);
+});
 
 test('a watched world stops for the meet; the player picks who goes and fights each round', () => {
   const world = worldAtMeet();
