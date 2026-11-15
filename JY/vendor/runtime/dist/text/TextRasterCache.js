@@ -7,7 +7,7 @@ import { beginTextCacheCreation, commitTextCacheLifetime, requireAssetManagerOwn
 import { commitBinding } from '../ownership.js';
 import { createTexture, isTexture, readTextureSnapshot, Texture } from '../Texture.js';
 import { TextBudget, TEXT_BUDGET_DEFAULTS, TEXT_BUDGET_MINIMA } from './budget.js';
-import { closeTextValueInvocation, createOwnedTextRasterRequest, createTextFieldRequestInput, createTextValueFailure, createTextValueInvocation, matchesTextRasterRequestSummary, snapshotTextRasterRequest, summarizeTextRasterRequest, takeTextValueFailure, } from './request.js';
+import { closeTextValueInvocation, createOwnedTextRasterRequest, createTextFieldRequestInput, createTextValueFailure, createTextValueInvocation, matchesTextRasterRequestSummary, snapshotTextRasterRequest, summarizeTextRasterRequest, takeTextValueFailure } from './request.js';
 import { createTextFieldLeaf } from './TextField.js';
 import { closeTextRasterPlanIssuer, createTextRasterPlanIssuer, readIssuedTextRasterPlan, requireIssuedTextRasterPlan } from './plan.js';
 const APPLY = Reflect.apply;
@@ -17,16 +17,30 @@ const WEAK_SET = WeakMap.prototype.set;
 const SAFE_INTEGER = Number.isSafeInteger;
 const REGEXP_EXEC = RegExp.prototype.exec;
 const PROVIDER_IDENTITY = /^[A-Za-z0-9._-]{1,64}$/;
-const LIMIT_KEYS = FREEZE(['maxGenerations', 'maxPendingJobs', 'maxWaiters', 'maxCallerLeases',
-    'maxResidentEntries', 'maxMetadataBytes', 'maxLogicalImageBytes', 'maxPendingRasterBytes']);
+const LIMIT_KEYS = FREEZE([
+    'maxGenerations',
+    'maxPendingJobs',
+    'maxWaiters',
+    'maxCallerLeases',
+    'maxResidentEntries',
+    'maxMetadataBytes',
+    'maxLogicalImageBytes',
+    'maxPendingRasterBytes'
+]);
 const ABORT = CancellationController.prototype.abort;
 const RELEASE_LEASE = AssetLease.prototype.release;
 const DISPOSE_TEXTURE = Texture.prototype.dispose;
 const PROFILE = 'canvas-explicit-lines-v1';
 const LIMITS = FREEZE({
-    maxSourceCodeUnits: 8192, maxLines: 64, maxFontFamilyCodeUnits: 256,
-    maxLocaleCodeUnits: 64, maxProviderIdentityCodeUnits: 64, maxSourceEdge: 4096,
-    maxSourcePixels: 1048576, maxMetricMagnitude: 1048576, antialiasGuardPixels: 2,
+    maxSourceCodeUnits: 8192,
+    maxLines: 64,
+    maxFontFamilyCodeUnits: 256,
+    maxLocaleCodeUnits: 64,
+    maxProviderIdentityCodeUnits: 64,
+    maxSourceEdge: 4096,
+    maxSourcePixels: 1048576,
+    maxMetricMagnitude: 1048576,
+    antialiasGuardPixels: 2
 });
 const states = new WeakMap();
 function stateOf(value) {
@@ -90,11 +104,21 @@ function controller(state) {
         state.owner.context.report(diagnostic);
     });
 }
-function abort(value, reason) { APPLY(ABORT, value, [reason]); }
-function release(lease) { APPLY(RELEASE_LEASE, lease, []); }
+function abort(value, reason) {
+    APPLY(ABORT, value, [reason]);
+}
+function release(lease) {
+    APPLY(RELEASE_LEASE, lease, []);
+}
 function collect(state, generation) {
-    if (generation.current || generation.actors !== 0 || generation.callers !== 0 || generation.resident ||
-        generation.image !== undefined || generation.reservedBytes !== 0 || generation.scratchBytes !== 0 || generation.quarantined)
+    if (generation.current ||
+        generation.actors !== 0 ||
+        generation.callers !== 0 ||
+        generation.resident ||
+        generation.image !== undefined ||
+        generation.reservedBytes !== 0 ||
+        generation.scratchBytes !== 0 ||
+        generation.quarantined)
         return;
     if (state.generations.delete(generation))
         state.budget.commit({ retiredGenerations: -1, metadataBytes: -generation.metadata });
@@ -111,7 +135,10 @@ function settleIdle(state) {
             waiter.resolve();
     }
 }
-function beginActor(state, generation) { state.actors += 1; generation.actors += 1; }
+function beginActor(state, generation) {
+    state.actors += 1;
+    generation.actors += 1;
+}
 function endActor(state, generation) {
     generation.actors -= 1;
     state.actors -= 1;
@@ -162,9 +189,11 @@ function quarantine(state, generation) {
     if (generation.quarantined)
         return;
     generation.quarantined = true;
-    state.budget.commit({ quarantinedGenerations: 1,
+    state.budget.commit({
+        quarantinedGenerations: 1,
         quarantinedImageBytes: generation.imageBytes + generation.reservedBytes,
-        quarantinedRasterBytes: generation.scratchBytes });
+        quarantinedRasterBytes: generation.scratchBytes
+    });
 }
 function detach(state, waiter) {
     if (waiter.installing || !waiter.listening || waiter.signal === undefined)
@@ -180,7 +209,9 @@ function detach(state, waiter) {
     }
 }
 function associate(error, causes) {
-    return causes.length === 0 ? error : new EgretError(error.code, { cause: error.cause, cleanupErrors: [...error.cleanupErrors, ...causes] });
+    return causes.length === 0
+        ? error
+        : new EgretError(error.code, { cause: error.cause, cleanupErrors: [...error.cleanupErrors, ...causes] });
 }
 function rejectInert(state, waiter) {
     if (waiter.installing || waiter.error === undefined)
@@ -202,8 +233,9 @@ function failWaiter(state, waiter, error) {
         return;
     makeInert(state, waiter, error);
     const generation = waiter.generation;
-    if (generation.waiters.size === 0 && (generation.kind === 'loading' ||
-        (generation.callers === 0 && !generation.resident && !generation.residencyPending))) {
+    if (generation.waiters.size === 0 &&
+        (generation.kind === 'loading' ||
+            (generation.callers === 0 && !generation.resident && !generation.residencyPending))) {
         retireRoute(state, generation);
         abort(generation.controller, error);
     }
@@ -306,7 +338,11 @@ function commitCaller(state, waiter, lease) {
     state.budget.commit({ pendingWaiters: -1, activeCallerLeases: 1, metadataBytes: -128 });
 }
 function reserveResidency(state, generation) {
-    if (state.closed || !generation.current || generation.resident || generation.residencyPending || state.budget.limits.maxResidentEntries === 0)
+    if (state.closed ||
+        !generation.current ||
+        generation.resident ||
+        generation.residencyPending ||
+        state.budget.limits.maxResidentEntries === 0)
         return false;
     assertOpen(state);
     if (state.residentLru.length >= state.budget.limits.maxResidentEntries) {
@@ -359,14 +395,16 @@ function pinResidency(state, generation, caller) {
         // This intrinsic acquire joins the ready entry while the verified caller is live.
         beginActor(state, generation);
         const promise = state.owner.acquire(generation.slot.ref);
-        void Promise.resolve(promise).then(lease => {
+        void Promise.resolve(promise)
+            .then(lease => {
             generation.residencyPending = false;
             if (state.closed || !generation.current) {
                 state.budget.commit({ residentEntries: -1, metadataBytes: -64 });
                 release(lease);
                 return;
             }
-            if (readAssetLeaseValue(lease) !== generation.texture || lease.resourceGeneration !== generation.resourceGeneration) {
+            if (readAssetLeaseValue(lease) !== generation.texture ||
+                lease.resourceGeneration !== generation.resourceGeneration) {
                 release(lease);
                 throw new EgretError('TEXT_RESOURCE_FAILED');
             }
@@ -381,11 +419,15 @@ function pinResidency(state, generation, caller) {
             generation.residentLease = lease;
             state.budget.commit({ residentBytes: generation.imageBytes });
             state.residentLru.push(generation);
-        }).catch(cause => {
+        })
+            .catch(cause => {
             generation.residencyPending = false;
             state.budget.commit({ residentEntries: -1, metadataBytes: -64 });
             recordCleanup(state, cause, 'TEXT_RESOURCE_FAILED');
-        }).finally(() => { endActor(state, generation); });
+        })
+            .finally(() => {
+            endActor(state, generation);
+        });
     }
     catch (cause) {
         recordCleanup(state, cause, 'TEXT_RESOURCE_FAILED');
@@ -431,7 +473,8 @@ function deliverImage(state, waiter) {
         return;
     }
     state.staged.delete(generation.slot.ref);
-    void Promise.resolve(promise).then(lease => {
+    void Promise.resolve(promise)
+        .then(lease => {
         if (!waiter.pending) {
             release(lease);
             return;
@@ -460,9 +503,13 @@ function deliverImage(state, waiter) {
         }
         waiter.resolve(FREEZE({ kind: 'image', request: generation.request, metrics: generation.metrics, lease }));
         pinResidency(state, generation, lease);
-    }).catch(cause => {
+    })
+        .catch(cause => {
         failWaiter(state, waiter, new EgretError('TEXT_RESOURCE_FAILED', { cause }));
-    }).finally(() => { endActor(state, generation); });
+    })
+        .finally(() => {
+        endActor(state, generation);
+    });
 }
 function deliver(state, generation) {
     for (const waiter of [...generation.waiters]) {
@@ -517,8 +564,15 @@ async function runJob(state, generation) {
     try {
         let returned;
         try {
-            returned = await Promise.resolve(APPLY(state.provider.measure, state.provider.receiver, [generation.request,
-                FREEZE({ signal: generation.controller.signal, fontGeneration: generation.request.fontGeneration, limits: LIMITS, createPlan: issuer.createPlan })]));
+            returned = await Promise.resolve(APPLY(state.provider.measure, state.provider.receiver, [
+                generation.request,
+                FREEZE({
+                    signal: generation.controller.signal,
+                    fontGeneration: generation.request.fontGeneration,
+                    limits: LIMITS,
+                    createPlan: issuer.createPlan
+                })
+            ]));
         }
         catch (cause) {
             const own = takeTextValueFailure(invocation, cause);
@@ -538,7 +592,11 @@ async function runJob(state, generation) {
         }
         plan ??= readIssuedTextRasterPlan(issuer);
         closeTextValueInvocation(invocation);
-        if (primary === undefined && plan !== undefined && generation.current && generation.waiters.size !== 0 && !state.closed) {
+        if (primary === undefined &&
+            plan !== undefined &&
+            generation.current &&
+            generation.waiters.size !== 0 &&
+            !state.closed) {
             // Engine closing can precede its automatic manager-close hook at a frame barrier.
             try {
                 assertOpen(state);
@@ -564,9 +622,16 @@ async function runJob(state, generation) {
                 if (primary === undefined) {
                     let image;
                     try {
-                        image = await Promise.resolve(APPLY(state.provider.rasterize, state.provider.receiver, [plan,
-                            FREEZE({ signal: generation.controller.signal, fontGeneration: generation.request.fontGeneration, limits: LIMITS,
-                                reservedImageBytes: bytes, reservedScratchBytes: 2 * bytes })]));
+                        image = await Promise.resolve(APPLY(state.provider.rasterize, state.provider.receiver, [
+                            plan,
+                            FREEZE({
+                                signal: generation.controller.signal,
+                                fontGeneration: generation.request.fontGeneration,
+                                limits: LIMITS,
+                                reservedImageBytes: bytes,
+                                reservedScratchBytes: 2 * bytes
+                            })
+                        ]));
                     }
                     catch (cause) {
                         lateProviderRejected = !generation.current || generation.waiters.size === 0;
@@ -579,8 +644,12 @@ async function runJob(state, generation) {
                         }
                         else if (!isImageData2D(image))
                             primary = new EgretError('TEXT_RASTER_RESULT_INVALID');
-                        else if (image.width !== plan.metrics.raster.width || image.height !== plan.metrics.raster.height ||
-                            image.format !== 'rgba8unorm' || image.colorSpace !== 'srgb' || image.alphaMode !== 'straight' || image.origin !== 'top-left') {
+                        else if (image.width !== plan.metrics.raster.width ||
+                            image.height !== plan.metrics.raster.height ||
+                            image.format !== 'rgba8unorm' ||
+                            image.colorSpace !== 'srgb' ||
+                            image.alphaMode !== 'straight' ||
+                            image.origin !== 'top-left') {
                             primary = new EgretError('TEXT_RASTER_RESULT_INVALID');
                         }
                         else
@@ -607,7 +676,8 @@ async function runJob(state, generation) {
                 generation.quarantinedPlan = plan;
                 recordCleanup(state, cause, 'TEXT_PLAN_RELEASE_FAILED');
                 quarantine(state, generation);
-                primary = primary === undefined ? new EgretError('TEXT_PLAN_RELEASE_FAILED', { cause }) : associate(primary, [cause]);
+                primary =
+                    primary === undefined ? new EgretError('TEXT_PLAN_RELEASE_FAILED', { cause }) : associate(primary, [cause]);
             }
         }
         if (primary !== undefined) {
@@ -663,7 +733,11 @@ async function runJob(state, generation) {
         closeTextValueInvocation(invocation);
         if (!generation.quarantined && generation.texture === undefined) {
             generation.image = undefined;
-            state.budget.commit({ reservedImageBytes: -generation.reservedBytes, liveImageBytes: -generation.imageBytes, pendingRasterBytes: -generation.scratchBytes });
+            state.budget.commit({
+                reservedImageBytes: -generation.reservedBytes,
+                liveImageBytes: -generation.imageBytes,
+                pendingRasterBytes: -generation.scratchBytes
+            });
             generation.reservedBytes = 0;
             generation.imageBytes = 0;
             generation.scratchBytes = 0;
@@ -724,16 +798,45 @@ function acquire(input, options) {
                 if (slot === undefined)
                     throw createTextValueFailure(invocation, 'TEXT_CACHE_BUDGET');
                 const sequence = increment(slot.sequence);
-                state.budget.check({ pendingWaiters: 1, callerLeaseSlots: 1, occupiedSlots: 1, currentGenerations: 1,
-                    pendingJobs: 1, metadataBytes: summary.metadataBytes + 192 }, (code, cause) => createTextValueFailure(invocation, code, cause));
+                state.budget.check({
+                    pendingWaiters: 1,
+                    callerLeaseSlots: 1,
+                    occupiedSlots: 1,
+                    currentGenerations: 1,
+                    pendingJobs: 1,
+                    metadataBytes: summary.metadataBytes + 192
+                }, (code, cause) => createTextValueFailure(invocation, code, cause));
                 // Owned source-line arrays are covered before their first allocation.
                 state.budget.commit({ metadataBytes: summary.metadataBytes });
                 try {
                     const request = createOwnedTextRasterRequest(summary, invocation);
-                    generation = { slot, sequence, request, metadata: summary.metadataBytes, controller: controller(state), waiters: new Set(),
-                        current: true, kind: 'loading', actors: 0, jobCharged: true, workSettled: false, quarantined: false, quarantinedPlan: undefined,
-                        callers: 0, metrics: undefined, image: undefined, texture: undefined, imageBytes: 0, reservedBytes: 0,
-                        scratchBytes: 0, resourceGeneration: undefined, taskId: undefined, resident: false, residentLease: undefined, residencyPending: false };
+                    generation = {
+                        slot,
+                        sequence,
+                        request,
+                        metadata: summary.metadataBytes,
+                        controller: controller(state),
+                        waiters: new Set(),
+                        current: true,
+                        kind: 'loading',
+                        actors: 0,
+                        jobCharged: true,
+                        workSettled: false,
+                        quarantined: false,
+                        quarantinedPlan: undefined,
+                        callers: 0,
+                        metrics: undefined,
+                        image: undefined,
+                        texture: undefined,
+                        imageBytes: 0,
+                        reservedBytes: 0,
+                        scratchBytes: 0,
+                        resourceGeneration: undefined,
+                        taskId: undefined,
+                        resident: false,
+                        residentLease: undefined,
+                        residencyPending: false
+                    };
                     // A free route may still have real callers from a retired manager generation.
                     state.owner.invalidate(slot.ref);
                 }
@@ -758,8 +861,17 @@ function acquire(input, options) {
             const ownedState = state;
             const ownedGeneration = generation;
             constructingWaiter = true;
-            waiter = { generation, signal: binding, controller: controller(state), pending: true, installing: false, listening: false,
-                error: undefined, resolve, reject, listener: () => {
+            waiter = {
+                generation,
+                signal: binding,
+                controller: controller(state),
+                pending: true,
+                installing: false,
+                listening: false,
+                error: undefined,
+                resolve,
+                reject,
+                listener: () => {
                     if (!waiter.pending)
                         return;
                     let reason;
@@ -771,7 +883,8 @@ function acquire(input, options) {
                         return;
                     }
                     failWaiter(ownedState, waiter, new EgretError('TEXT_ACQUIRE_CANCELLED', { cause: reason }));
-                } };
+                }
+            };
             constructingWaiter = false;
             state.budget.commit({ pendingWaiters: 1, callerLeaseSlots: 1, metadataBytes: 192 });
             generation.waiters.add(waiter);
@@ -875,7 +988,9 @@ function close(state) {
     }
     settleIdle(state);
 }
-function dispose() { close(stateOf(this)); }
+function dispose() {
+    close(stateOf(this));
+}
 function getStatus() {
     const state = stateOf(this);
     return FREEZE({ closed: state.closed, fontGeneration: state.fontGeneration, ...state.budget.snapshot() });
@@ -914,7 +1029,8 @@ export function createTextRasterCache(assets, options) {
     }
     catch (cause) {
         // The authentic lifetime seam supplies these exact synchronous guard failures.
-        if (cause instanceof EgretError && (cause.code === 'TEXT_CACHE_ALREADY_CREATED' || cause.code === 'TEXT_CACHE_REENTRANT'))
+        if (cause instanceof EgretError &&
+            (cause.code === 'TEXT_CACHE_ALREADY_CREATED' || cause.code === 'TEXT_CACHE_REENTRANT'))
             throw cause;
         throw new EgretError('TEXT_CACHE_CLOSED', { cause });
     }
@@ -923,8 +1039,17 @@ export function createTextRasterCache(assets, options) {
         try {
             if (options === null || typeof options !== 'object')
                 throw new TypeError('Text cache options required');
-            values = [options.provider, options.maxGenerations, options.maxPendingJobs, options.maxWaiters, options.maxCallerLeases,
-                options.maxResidentEntries, options.maxMetadataBytes, options.maxLogicalImageBytes, options.maxPendingRasterBytes];
+            values = [
+                options.provider,
+                options.maxGenerations,
+                options.maxPendingJobs,
+                options.maxWaiters,
+                options.maxCallerLeases,
+                options.maxResidentEntries,
+                options.maxMetadataBytes,
+                options.maxLogicalImageBytes,
+                options.maxPendingRasterBytes
+            ];
         }
         catch (cause) {
             try {
@@ -958,9 +1083,15 @@ export function createTextRasterCache(assets, options) {
             throw new EgretError('TEXT_CACHE_CLOSED', { cause });
         }
         const [identity, profile, measure, rasterize, releasePlan] = providerValues;
-        const match = typeof identity === 'string' ? APPLY(REGEXP_EXEC, PROVIDER_IDENTITY, [identity]) : null;
-        if (match === null || match[0].length !== identity.length || profile !== PROFILE ||
-            typeof measure !== 'function' || typeof rasterize !== 'function' || typeof releasePlan !== 'function')
+        const match = typeof identity === 'string'
+            ? APPLY(REGEXP_EXEC, PROVIDER_IDENTITY, [identity])
+            : null;
+        if (match === null ||
+            match[0].length !== identity.length ||
+            profile !== PROFILE ||
+            typeof measure !== 'function' ||
+            typeof rasterize !== 'function' ||
+            typeof releasePlan !== 'function')
             throw new EgretError('TEXT_PROVIDER_INVALID');
         const limits = { ...TEXT_BUDGET_DEFAULTS };
         const mutable = limits;
@@ -968,24 +1099,56 @@ export function createTextRasterCache(assets, options) {
         for (const key of LIMIT_KEYS) {
             const supplied = values[index++];
             const value = supplied === undefined ? TEXT_BUDGET_DEFAULTS[key] : supplied;
-            if (typeof value !== 'number' || !SAFE_INTEGER(value) || value < TEXT_BUDGET_MINIMA[key] || value > TEXT_BUDGET_DEFAULTS[key])
+            if (typeof value !== 'number' ||
+                !SAFE_INTEGER(value) ||
+                value < TEXT_BUDGET_MINIMA[key] ||
+                value > TEXT_BUDGET_DEFAULTS[key])
                 throw new EgretError('TEXT_CACHE_OPTIONS_INVALID');
             mutable[key] = value === 0 ? 0 : value;
         }
         const type = createAssetType('egret.text-raster.t1.texture', isTexture);
         const slots = FREEZE(Array.from({ length: 32 }, (_, index) => ({
-            ref: createAssetRef(type, `egret.text-raster.t1.slot.${String(index).padStart(2, '0')}`), sequence: 0, current: undefined,
+            ref: createAssetRef(type, `egret.text-raster.t1.slot.${String(index).padStart(2, '0')}`),
+            sequence: 0,
+            current: undefined
         })));
-        const state = { owner, provider: FREEZE({ receiver, identity: identity,
-                measure: measure, rasterize: rasterize, release: releasePlan }),
-            budget: new TextBudget(FREEZE(limits)), slots, generations: new Set(), lru: [], residentLru: [], staged: new Map(), textures: new WeakMap(),
-            idle: new Set(), closed: false, busy: false, fontGeneration: 1, actors: 0, hasCleanupFailure: false, firstCleanupCause: undefined };
+        const state = {
+            owner,
+            provider: FREEZE({
+                receiver,
+                identity: identity,
+                measure: measure,
+                rasterize: rasterize,
+                release: releasePlan
+            }),
+            budget: new TextBudget(FREEZE(limits)),
+            slots,
+            generations: new Set(),
+            lru: [],
+            residentLru: [],
+            staged: new Map(),
+            textures: new WeakMap(),
+            idle: new Set(),
+            closed: false,
+            busy: false,
+            fontGeneration: 1,
+            actors: 0,
+            hasCleanupFailure: false,
+            firstCleanupCause: undefined
+        };
         const cache = FREEZE({ profile: PROFILE, acquire, invalidate, getStatus, whenIdle, dispose });
         APPLY(WEAK_SET, states, [cache, state]);
         commitBinding([cache], owner.context);
-        commitTextCacheLifetime(assets, () => { close(state); });
+        commitTextCacheLifetime(assets, () => {
+            close(state);
+        });
         try {
-            owner.register(type, { load: (ref, context) => loadTexture(state, ref, context), dispose: texture => { disposeTexture(state, texture); } });
+            owner.register(type, {
+                load: (ref, context) => loadTexture(state, ref, context),
+                dispose: texture => {
+                    disposeTexture(state, texture);
+                }
+            });
             for (const slot of slots)
                 owner.invalidate(slot.ref);
         }
@@ -996,7 +1159,9 @@ export function createTextRasterCache(assets, options) {
         // Only the genuine manager's hidden context can register this exact cache.
         owner.context.registerTextFieldCache?.(cache, scope => createTextFieldLeaf(scope, FREEZE({
             context: owner.context,
-            assertOpen: () => { assertOpen(state); },
+            assertOpen: () => {
+                assertOpen(state);
+            },
             adopt: (input, revalidate) => {
                 const invocation = createTextValueInvocation();
                 try {
@@ -1015,7 +1180,7 @@ export function createTextRasterCache(assets, options) {
                     closeTextValueInvocation(invocation);
                 }
             },
-            acquire: (input, signal) => APPLY(acquire, cache, [input, { signal }]),
+            acquire: (input, signal) => APPLY(acquire, cache, [input, { signal }])
         })));
         return cache;
     }

@@ -5,9 +5,32 @@ import { frustumFromMatrix, frustumIntersectsSphere, mat4Invert, mat4LookAt, mat
 export const FRAME_BLOCK_FLOATS_3D = 352;
 /** Offsets, in floats, of the Frame block members. */
 export const FRAME_OFFSETS_3D = Object.freeze({
-    viewProjection: 0, view: 16, cameraPosition: 32, fogColor: 36, fogParams: 40, ambient: 44, hemisphereSky: 48, hemisphereGround: 52,
-    lightCounts: 56, directionalDirection: 60, directionalColor: 76, pointPosition: 92, pointColor: 124, spotPosition: 156,
-    spotDirection: 172, spotColor: 188, spotCone: 204, shadowMatrix: 220, shadowRect: 284, shadowParams: 300, output: 316, cascadeSplits: 320, cascadeInfo: 324, pointShadow: 328, clipPlanes: 332, clipInfo: 348,
+    viewProjection: 0,
+    view: 16,
+    cameraPosition: 32,
+    fogColor: 36,
+    fogParams: 40,
+    ambient: 44,
+    hemisphereSky: 48,
+    hemisphereGround: 52,
+    lightCounts: 56,
+    directionalDirection: 60,
+    directionalColor: 76,
+    pointPosition: 92,
+    pointColor: 124,
+    spotPosition: 156,
+    spotDirection: 172,
+    spotColor: 188,
+    spotCone: 204,
+    shadowMatrix: 220,
+    shadowRect: 284,
+    shadowParams: 300,
+    output: 316,
+    cascadeSplits: 320,
+    cascadeInfo: 324,
+    pointShadow: 328,
+    clipPlanes: 332,
+    clipInfo: 348
 });
 const F = FRAME_OFFSETS_3D;
 /** Fill camera, fog, light and output members. Shadow members are written by planShadows3D. */
@@ -87,9 +110,14 @@ const scratchInverse = new Float32Array(16), scratchCorners = new Float32Array(2
 const NDC_CORNERS = [-1, -1, 1, -1, -1, 1, 1, 1];
 const K = 1 / Math.sqrt(3);
 /** Outward face directions of a regular tetrahedron; the shaders pick the face a direction is closest to. */
-const TETRAHEDRON_FACES = [[K, K, K], [-K, -K, K], [-K, K, -K], [K, -K, -K]];
+const TETRAHEDRON_FACES = [
+    [K, K, K],
+    [-K, -K, K],
+    [-K, K, -K],
+    [K, -K, -K]
+];
 // Each face's region reaches 70.53 degrees from its axis; a little more leaves room for filtering.
-const TETRAHEDRON_FOV = 144 * Math.PI / 180;
+const TETRAHEDRON_FOV = (144 * Math.PI) / 180;
 /** View-space far distance of each cascade, blending uniform and logarithmic spacing. */
 export function cascadeSplits3D(near, far, count, lambda) {
     const splits = [], blend = Math.min(Math.max(lambda, 0), 1);
@@ -168,7 +196,11 @@ export function planShadows3D(data, list, atlasSize, enabled, flipY, slots, came
         // Pick an up vector that is not parallel to the light direction.
         const up = Math.abs(m[9]) > 0.99 * Math.hypot(m[8], m[9], m[10]) ? FORWARD_UP : UP;
         const cascades = Math.min(Math.max(Math.floor(shadow.cascades) || 1, 1), remaining);
-        if (light.lightType === 'directional' && cascades > 1 && !cascaded && camera && mat4Invert(scratchInverse, camera.viewProjectionMatrix)) {
+        if (light.lightType === 'directional' &&
+            cascades > 1 &&
+            !cascaded &&
+            camera &&
+            mat4Invert(scratchInverse, camera.viewProjectionMatrix)) {
             cascaded = true;
             slots.set(light, plans.length);
             const length = Math.hypot(m[8], m[9], m[10]) || 1, dx = -m[8] / length, dy = -m[9] / length, dz = -m[10] / length;
@@ -184,7 +216,8 @@ export function planShadows3D(data, list, atlasSize, enabled, flipY, slots, came
                 }
             }
             const splits = camera.projectionKind === 'orthographic'
-                ? cascadeSplits3D(near, far, cascades, 0) : cascadeSplits3D(near, far, cascades, shadow.cascadeLambda);
+                ? cascadeSplits3D(near, far, cascades, 0)
+                : cascadeSplits3D(near, far, cascades, shadow.cascadeLambda);
             // Rotation-only light frame used to snap cascade centers to whole texels.
             mat4LookAt(scratchWorld, ORIGIN, [dx, dy, dz], up);
             mat4Invert(scratchView, scratchWorld);
@@ -209,7 +242,7 @@ export function planShadows3D(data, list, atlasSize, enabled, flipY, slots, came
                 // A bounding sphere keeps the volume size constant while the camera turns;
                 // rounding its radius and snapping its center stop shadow edges from crawling.
                 radius = Math.ceil(radius * 16) / 16;
-                const texel = radius * 2 / tile;
+                const texel = (radius * 2) / tile;
                 vec3TransformMat4(scratchCenter, scratchCenter, inverseRotation);
                 scratchCenter[0] = Math.floor(scratchCenter[0] / texel) * texel;
                 scratchCenter[1] = Math.floor(scratchCenter[1] / texel) * texel;

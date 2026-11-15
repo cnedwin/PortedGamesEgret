@@ -25,12 +25,14 @@ function retire(record) {
     record.abort = undefined;
     record.association = undefined;
     const failures = [];
-    const attempt = (action) => { try {
-        action();
-    }
-    catch (cause) {
-        failures.push(cause);
-    } };
+    const attempt = (action) => {
+        try {
+            action();
+        }
+        catch (cause) {
+            failures.push(cause);
+        }
+    };
     if (input !== undefined && association !== undefined)
         attempt(() => input.remove(association));
     if (scope !== undefined && abort !== undefined)
@@ -48,11 +50,15 @@ function reportCleanup(owner, errors) {
     try {
         owner.captureCleanup(cause);
     }
-    catch { /* A cleanup observer cannot replace the selected cause. */ }
+    catch {
+        /* A cleanup observer cannot replace the selected cause. */
+    }
     try {
         owner.report({ code: 'BITMAP_BUTTON_CLEANUP_FAILED', phase: 'engine', severity: 'error', cause });
     }
-    catch { /* Continue retiring the remaining controls. */ }
+    catch {
+        /* Continue retiring the remaining controls. */
+    }
 }
 /** Getters synchronize terminal dependencies, but never repair semantic mutations. */
 function syncTerminal(record) {
@@ -67,7 +73,8 @@ function syncTerminal(record) {
             record.input.assertOpen();
         }
         catch (cause) {
-            if (!(cause instanceof EgretError) || !['ENGINE_CLOSED', 'SCOPE_CLOSED', 'BITMAP_BUTTON_INPUT_CLOSED'].includes(cause.code))
+            if (!(cause instanceof EgretError) ||
+                !['ENGINE_CLOSED', 'SCOPE_CLOSED', 'BITMAP_BUTTON_INPUT_CLOSED'].includes(cause.code))
                 throw cause;
             terminal = true;
         }
@@ -81,12 +88,18 @@ function assertLife(record) {
     record.input.assertOpen();
 }
 function equalRect(first, second) {
-    return first !== undefined && second !== undefined && first.x === second.x && first.y === second.y
-        && first.width === second.width && first.height === second.height;
+    return (first !== undefined &&
+        second !== undefined &&
+        first.x === second.x &&
+        first.y === second.y &&
+        first.width === second.width &&
+        first.height === second.height);
 }
 function assertSettings(record) {
-    if (original.lease(record.display) === record.lease && equalRect(original.crop(record.display), record.crop)
-        && equalRect(original.hit(record.display), record.hit) && original.touch(record.display) === record.touch)
+    if (original.lease(record.display) === record.lease &&
+        equalRect(original.crop(record.display), record.crop) &&
+        equalRect(original.hit(record.display), record.hit) &&
+        original.touch(record.display) === record.touch)
         return;
     const failures = retire(record);
     throw new EgretError('BITMAP_BUTTON_SKIN_INVALID', { cleanupErrors: failures });
@@ -138,7 +151,9 @@ function setEnabled(record, value) {
 function createAssociation(record) {
     return Object.freeze({
         target: record.display,
-        syncTerminal() { syncTerminal(record); },
+        syncTerminal() {
+            syncTerminal(record);
+        },
         beforeBegin(token) {
             if (!active(record) || !record.enabled)
                 return;
@@ -165,36 +180,62 @@ function createAssociation(record) {
             record.gesture = undefined;
             const callback = record.callback, owner = record.owner;
             const returned = original.invoke(callback, payload);
-            if (returned !== null && (typeof returned === 'object' || typeof returned === 'function')
-                && 'then' in returned && typeof returned.then === 'function') {
+            if (returned !== null &&
+                (typeof returned === 'object' || typeof returned === 'function') &&
+                'then' in returned &&
+                typeof returned.then === 'function') {
                 void Promise.resolve(returned).catch((cause) => {
                     owner.report({ code: 'ASYNC_EVENT_HANDLER_REJECTED', phase: 'engine', severity: 'error', cause });
                 });
                 throw new EgretError('ASYNC_EVENT_HANDLER');
             }
         },
-        finish(token) { if (record.gesture === token)
-            record.gesture = undefined; },
-        retire() { return retire(record); },
+        finish(token) {
+            if (record.gesture === token)
+                record.gesture = undefined;
+        },
+        retire() {
+            return retire(record);
+        }
     });
 }
 function createAbort(record) {
-    return () => { const owner = record.owner; reportCleanup(owner, retire(record)); };
+    return () => {
+        const owner = record.owner;
+        reportCleanup(owner, retire(record));
+    };
 }
 function createFacade(record) {
-    function exact(receiver) { if (receiver !== facade)
-        throw new EgretError('BITMAP_BUTTON_INVALID'); }
+    function exact(receiver) {
+        if (receiver !== facade)
+            throw new EgretError('BITMAP_BUTTON_INVALID');
+    }
     const facade = Object.freeze({
-        get display() { exact(this); syncTerminal(record); return record.display; },
-        get state() { exact(this); syncTerminal(record); return record.state; },
-        get enabled() { exact(this); syncTerminal(record); return record.enabled; },
-        set enabled(value) { exact(this); setEnabled(record, value); },
+        get display() {
+            exact(this);
+            syncTerminal(record);
+            return record.display;
+        },
+        get state() {
+            exact(this);
+            syncTerminal(record);
+            return record.state;
+        },
+        get enabled() {
+            exact(this);
+            syncTerminal(record);
+            return record.enabled;
+        },
+        set enabled(value) {
+            exact(this);
+            setEnabled(record, value);
+        },
         dispose() {
             exact(this);
             const failures = retire(record);
             if (failures.length !== 0)
                 throw cleanupError(failures);
-        },
+        }
     });
     return facade;
 }
@@ -220,7 +261,8 @@ function recordShape(value) {
     }
 }
 function retainOriginalError(primary, errors) {
-    if (primary instanceof EgretError && /^(BITMAP_BUTTON_|SPRITE_SHEET_|BITMAP_|ASSET_LEASE_|TEXTURE_|ENGINE_|SCOPE_|MOUSE_INPUT_|OWNERSHIP_|DISPLAY_|HIT_TEST_)/.test(primary.code)) {
+    if (primary instanceof EgretError &&
+        /^(BITMAP_BUTTON_|SPRITE_SHEET_|BITMAP_|ASSET_LEASE_|TEXTURE_|ENGINE_|SCOPE_|MOUSE_INPUT_|OWNERSHIP_|DISPLAY_|HIT_TEST_)/.test(primary.code)) {
         if (errors.length === 0)
             throw primary;
         throw new EgretError(primary.code, { cause: primary.cause, cleanupErrors: [...primary.cleanupErrors, ...errors] });
@@ -241,10 +283,17 @@ export function createBitmapButton(options) {
     const requestedScope = read(() => options.scope, () => owner.assertReady());
     assertBitmapButtonScopeOrigin(requestedScope, engine);
     const scope = owner.scope(requestedScope);
-    const ownerLife = () => { owner.assertReady(); scope.assertOpen(); };
+    const ownerLife = () => {
+        owner.assertReady();
+        scope.assertOpen();
+    };
     const requestedInput = read(() => options.input, ownerLife);
     const input = requireBitmapButtonInput(requestedInput, engine);
-    const life = () => { owner.assertReady(); scope.assertOpen(); input.assertOpen(); };
+    const life = () => {
+        owner.assertReady();
+        scope.assertOpen();
+        input.assertOpen();
+    };
     const lease = read(() => options.textureLease, life);
     const requestedSkins = read(() => options.skins, life);
     const requestedEnabled = read(() => options.enabled, life);
@@ -266,11 +315,21 @@ export function createBitmapButton(options) {
         throw new EgretError('BITMAP_BUTTON_OPTIONS_INVALID');
     let sheet, display, record;
     try {
-        sheet = createSpriteSheet(lease, [{ name: 'up', ...stagedUp }, { name: 'pressed', ...stagedPressed }, { name: 'disabled', ...stagedDisabled }]);
+        sheet = createSpriteSheet(lease, [
+            { name: 'up', ...stagedUp },
+            { name: 'pressed', ...stagedPressed },
+            { name: 'disabled', ...stagedDisabled }
+        ]);
         life();
-        const skins = Object.freeze({ up: sheet.getRegion('up'), pressed: sheet.getRegion('pressed'), disabled: sheet.getRegion('disabled') });
-        if (skins.up.width !== skins.pressed.width || skins.up.width !== skins.disabled.width
-            || skins.up.height !== skins.pressed.height || skins.up.height !== skins.disabled.height)
+        const skins = Object.freeze({
+            up: sheet.getRegion('up'),
+            pressed: sheet.getRegion('pressed'),
+            disabled: sheet.getRegion('disabled')
+        });
+        if (skins.up.width !== skins.pressed.width ||
+            skins.up.width !== skins.disabled.width ||
+            skins.up.height !== skins.pressed.height ||
+            skins.up.height !== skins.disabled.height)
             throw new EgretError('BITMAP_BUTTON_SKIN_INVALID');
         // Scope acceptance authenticates the borrowed lease's Engine without rebinding it.
         scope.use(sheet);
@@ -285,9 +344,22 @@ export function createBitmapButton(options) {
         original.setTouch(display, enabled);
         life();
         record = {
-            display, state: enabled ? 'up' : 'disabled', enabled, owner, scope, input, sheet, lease, skins,
-            crop: original.crop(display), hit: original.hit(display), touch: enabled, gesture: undefined,
-            callback, association: undefined, abort: undefined,
+            display,
+            state: enabled ? 'up' : 'disabled',
+            enabled,
+            owner,
+            scope,
+            input,
+            sheet,
+            lease,
+            skins,
+            crop: original.crop(display),
+            hit: original.hit(display),
+            touch: enabled,
+            gesture: undefined,
+            callback,
+            association: undefined,
+            abort: undefined
         };
         const facade = createFacade(record);
         record.association = createAssociation(record);

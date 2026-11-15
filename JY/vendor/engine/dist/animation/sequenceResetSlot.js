@@ -12,8 +12,12 @@ const count = Object.getOwnPropertyDescriptor(DisplayObjectContainer.prototype, 
 const child = DisplayObjectContainer.prototype.getChildAt;
 const parent = Object.getOwnPropertyDescriptor(DisplayObject.prototype, 'parent').get;
 const claims = new WeakMap();
-function fault(code, cause) { return new EgretError('SEQUENCE_RESET_' + code, { cause }); }
-function label(value, max = 128) { return typeof value === 'string' && value.length > 0 && value.length <= max; }
+function fault(code, cause) {
+    return new EgretError('SEQUENCE_RESET_' + code, { cause });
+}
+function label(value, max = 128) {
+    return typeof value === 'string' && value.length > 0 && value.length <= max;
+}
 function record(value, keys, check) {
     if (!value || typeof value !== 'object' || Array.isArray(value))
         throw fault('OPTIONS_INVALID');
@@ -40,7 +44,12 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
     const row = captureInput(port, () => record(initial, ['version', 'bitmap', 'controller'], owner.assertOpen));
     if (!label(row.version))
         throw fault('OPTIONS_INVALID');
-    let active = freeze({ version: row.version, bitmap: row.bitmap, controller: row.controller, ownership: 'borrowed' });
+    let active = freeze({
+        version: row.version,
+        bitmap: row.bitmap,
+        controller: row.controller,
+        ownership: 'borrowed'
+    });
     requireResetController(active.controller, port, active.bitmap);
     function topology() {
         if (apply(count, target, []) !== 1 || apply(child, target, [0]) !== active.bitmap)
@@ -60,18 +69,29 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
         throw fault('TARGET_CLAIMED');
     let disposed = false, busy = false, intent = 0, activeScope;
     let pending;
-    function open() { if (disposed)
-        throw fault('DISPOSED'); owner.assertOpen(); }
-    function idle() { open(); assertNotCapturing(port); if (busy || mustQueue(port))
-        throw fault('REENTRANT'); }
-    function cleanup(actions) { const errors = []; for (const action of actions)
-        try {
-            action();
-        }
-        catch (cause) {
-            errors.push(cause);
-            port.captureCleanup(cause);
-        } return errors; }
+    function open() {
+        if (disposed)
+            throw fault('DISPOSED');
+        owner.assertOpen();
+    }
+    function idle() {
+        open();
+        assertNotCapturing(port);
+        if (busy || mustQueue(port))
+            throw fault('REENTRANT');
+    }
+    function cleanup(actions) {
+        const errors = [];
+        for (const action of actions)
+            try {
+                action();
+            }
+            catch (cause) {
+                errors.push(cause);
+                port.captureCleanup(cause);
+            }
+        return errors;
+    }
     function requestReplacement(request, preserve) {
         idle();
         busy = true;
@@ -82,7 +102,10 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
             const admitted = captureInput(port, () => {
                 const keys = ['version', 'loader', 'imageId', 'sequenceId'];
                 const r = record(request, preserve ? keys : [...keys, 'policy', 'playback'], open);
-                if ((!preserve && r.policy !== 'reset') || !label(r.version) || !label(r.imageId, 512) || !label(r.sequenceId, 512))
+                if ((!preserve && r.policy !== 'reset') ||
+                    !label(r.version) ||
+                    !label(r.imageId, 512) ||
+                    !label(r.sequenceId, 512))
                     throw fault('OPTIONS_INVALID');
                 // Validate all caller-owned descriptors before replacing valid intent. Actual
                 // clip-dependent duration/marker checks repeat after genuine group readiness.
@@ -106,10 +129,17 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
             let publishPreserved;
             let paused;
             let resolve, reject;
-            const ready = new Promise((yes, no) => { resolve = yes; reject = no; });
+            const ready = new Promise((yes, no) => {
+                resolve = yes;
+                reject = no;
+            });
             void ready.catch(() => { });
-            function current() { open(); if (id !== intent || state === 'cancelled' || state === 'failed' || state === 'committed')
-                throw fault('RETIRED'); owned.assertOpen(); }
+            function current() {
+                open();
+                if (id !== intent || state === 'cancelled' || state === 'failed' || state === 'committed')
+                    throw fault('RETIRED');
+                owned.assertOpen();
+            }
             function restore() {
                 const old = paused;
                 paused = undefined;
@@ -124,7 +154,12 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
                     }
                 }
             }
-            function release() { const captured = tree; tree = undefined; publishPreserved = undefined; return cleanup([() => captured?.dispose(), restore, () => owned.dispose()]); }
+            function release() {
+                const captured = tree;
+                tree = undefined;
+                publishPreserved = undefined;
+                return cleanup([() => captured?.dispose(), restore, () => owned.dispose()]);
+            }
             function cancel() {
                 if (state === 'committed' || state === 'cancelled' || state === 'failed')
                     return;
@@ -149,7 +184,12 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
             const demand = { cancel };
             pending = demand;
             const ticket = freeze({
-                get ready() { return ready; }, get state() { return state; },
+                get ready() {
+                    return ready;
+                },
+                get state() {
+                    return state;
+                },
                 capture(options) {
                     idle();
                     current();
@@ -162,7 +202,12 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
                         if (preserve)
                             requireSequencePreserveSource(active.controller, port, active.bitmap);
                         const running = active.controller.getStatus().state === 'running';
-                        const transition = { controller: active.controller, revision, at: running ? {} : revision(), resume: running };
+                        const transition = {
+                            controller: active.controller,
+                            revision,
+                            at: running ? {} : revision(),
+                            resume: running
+                        };
                         try {
                             if (running)
                                 pauseSequenceForReplacement(active.controller, port, active.bitmap, transition.at);
@@ -224,7 +269,9 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
                         busy = false;
                     }
                 },
-                dispose() { cancel(); },
+                dispose() {
+                    cancel();
+                }
             });
             spare = undefined;
             try {
@@ -244,9 +291,13 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
                         owned.use(bitmap);
                         let visible = false;
                         const controller = createSequenceController(engine, owned.scope, bitmap, clip, {
-                            profile: 'egret.sequence-control/1', rate: 0, totalPlays: playback.totalPlays,
-                            markers: [...playback.markers].sort((a, b) => a.markerIndex - b.markerIndex).map(m => ({ id: m.id, timeSeconds: m.timeSeconds })),
-                            onEvent: event => visible ? admitted.playback?.listener?.(event) : undefined,
+                            profile: 'egret.sequence-control/1',
+                            rate: 0,
+                            totalPlays: playback.totalPlays,
+                            markers: [...playback.markers]
+                                .sort((a, b) => a.markerIndex - b.markerIndex)
+                                .map(m => ({ id: m.id, timeSeconds: m.timeSeconds })),
+                            onEvent: event => (visible ? admitted.playback?.listener?.(event) : undefined)
                         });
                         if (admitted.playback) {
                             controller.start();
@@ -275,8 +326,13 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
         }
     }
     const slot = freeze({
-        get isDisposed() { return disposed; },
-        getActive() { open(); return active; },
+        get isDisposed() {
+            return disposed;
+        },
+        getActive() {
+            open();
+            return active;
+        },
         dispose() {
             if (disposed)
                 return;
@@ -290,8 +346,12 @@ export function createSequenceResetSlot(engine, scope, target, initial) {
             if (errors.length)
                 throw fault('CLEANUP_FAILED', errors);
         },
-        request(request) { return requestReplacement(request, false); },
-        requestPreserving(request) { return requestReplacement(request, true); },
+        request(request) {
+            return requestReplacement(request, false);
+        },
+        requestPreserving(request) {
+            return requestReplacement(request, true);
+        }
     });
     claims.set(target, slot);
     try {

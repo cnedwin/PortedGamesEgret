@@ -8,7 +8,11 @@ const record = (value) => value !== null && typeof value === 'object' && !Array.
 function range(value, otherwise, least = -Infinity) {
     if (value === undefined)
         return otherwise;
-    const pair = typeof value === 'number' ? [value, value] : Array.isArray(value) && value.length === 2 ? [value[0], value[1]] : undefined;
+    const pair = typeof value === 'number'
+        ? [value, value]
+        : Array.isArray(value) && value.length === 2
+            ? [value[0], value[1]]
+            : undefined;
     if (pair === undefined || !finite(pair[0]) || !finite(pair[1]) || pair[0] > pair[1] || pair[0] < least)
         throw new EgretError('PARTICLE_OPTIONS_INVALID');
     return pair;
@@ -35,8 +39,16 @@ export function createParticleEmitter(options) {
         throw new EgretError('PARTICLE_OPTIONS_INVALID');
     const o = options;
     const maxParticles = o.maxParticles ?? 512, rate = o.rate ?? 50, drag = o.drag ?? 0, seed0 = o.seed ?? 1, running0 = o.running ?? true, duration = o.duration;
-    if (!Number.isSafeInteger(maxParticles) || maxParticles < 1 || maxParticles > 16384 || !finite(rate) || rate < 0 || !finite(drag) || drag < 0 || !Number.isSafeInteger(seed0)
-        || typeof running0 !== 'boolean' || (duration !== undefined && (!finite(duration) || duration <= 0)))
+    if (!Number.isSafeInteger(maxParticles) ||
+        maxParticles < 1 ||
+        maxParticles > 16384 ||
+        !finite(rate) ||
+        rate < 0 ||
+        !finite(drag) ||
+        drag < 0 ||
+        !Number.isSafeInteger(seed0) ||
+        typeof running0 !== 'boolean' ||
+        (duration !== undefined && (!finite(duration) || duration <= 0)))
         throw new EgretError('PARTICLE_OPTIONS_INVALID');
     const lifetime = range(o.lifetime, [1, 1], Number.MIN_VALUE), speed = range(o.speed, [100, 100]), angle = range(o.angle, [0, 360]);
     const startScale = range(o.startScale, [1, 1], 0), endScale = range(o.endScale, [1, 1], 0), rotation0 = range(o.rotation, [0, 0]), spin = range(o.spin, [0, 0]);
@@ -48,8 +60,17 @@ export function createParticleEmitter(options) {
     if (!finite(width) || !finite(height) || width <= 0 || height <= 0)
         throw new EgretError('PARTICLE_OPTIONS_INVALID');
     const shape = o.shape ?? { kind: 'point' };
-    if (!record(shape) || !(shape.kind === 'point' || (shape.kind === 'rectangle' && finite(shape.width) && finite(shape.height) && shape.width >= 0 && shape.height >= 0)
-        || (shape.kind === 'circle' && finite(shape.radius) && shape.radius >= 0 && (shape.edge === undefined || typeof shape.edge === 'boolean'))))
+    if (!record(shape) ||
+        !(shape.kind === 'point' ||
+            (shape.kind === 'rectangle' &&
+                finite(shape.width) &&
+                finite(shape.height) &&
+                shape.width >= 0 &&
+                shape.height >= 0) ||
+            (shape.kind === 'circle' &&
+                finite(shape.radius) &&
+                shape.radius >= 0 &&
+                (shape.edge === undefined || typeof shape.edge === 'boolean'))))
         throw new EgretError('PARTICLE_OPTIONS_INVALID');
     const lease = o.texture;
     // A particle is a row of these columns: place, speed, age, life, and what it was born with.
@@ -58,8 +79,13 @@ export function createParticleEmitter(options) {
     let alive = 0, born = 0, refused = 0, time = 0, debt = 0, running = running0, closed = false, x = 0, y = 0;
     let state = seed0 | 0 || 1;
     /** A seeded generator: the same seed, the same particles. */
-    const random = () => { state = (state + 0x6d2b79f5) | 0; let t = Math.imul(state ^ (state >>> 15), 1 | state); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
-    const pick = (pair) => pair[0] === pair[1] ? pair[0] : mix(pair[0], pair[1], random());
+    const random = () => {
+        state = (state + 0x6d2b79f5) | 0;
+        let t = Math.imul(state ^ (state >>> 15), 1 | state);
+        t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+        return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+    };
+    const pick = (pair) => (pair[0] === pair[1] ? pair[0] : mix(pair[0], pair[1], random()));
     const display = new DisplayObjectContainer();
     let mesh;
     function spawn(count) {
@@ -79,7 +105,7 @@ export function createParticleEmitter(options) {
                 px += Math.cos(a) * r;
                 py += Math.sin(a) * r;
             }
-            const direction = pick(angle) * Math.PI / 180, v = pick(speed), at = alive * STRIDE;
+            const direction = (pick(angle) * Math.PI) / 180, v = pick(speed), at = alive * STRIDE;
             data[at + X] = px;
             data[at + Y] = py;
             data[at + VX] = Math.cos(direction) * v;
@@ -97,8 +123,17 @@ export function createParticleEmitter(options) {
     function view(at) {
         const t = Math.min(1, data[at + AGE] / data[at + LIFE]);
         const r = mix(channel(startColor, 16), channel(endColor, 16), t), g = mix(channel(startColor, 8), channel(endColor, 8), t), b = mix(channel(startColor, 0), channel(endColor, 0), t);
-        return Object.freeze({ x: data[at + X], y: data[at + Y], vx: data[at + VX], vy: data[at + VY], age: t, scale: mix(data[at + S0], data[at + S1], t), alpha: mix(startAlpha, endAlpha, t),
-            color: (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255), rotation: data[at + R0] + data[at + SPIN] * data[at + AGE] });
+        return Object.freeze({
+            x: data[at + X],
+            y: data[at + Y],
+            vx: data[at + VX],
+            vy: data[at + VY],
+            age: t,
+            scale: mix(data[at + S0], data[at + S1], t),
+            alpha: mix(startAlpha, endAlpha, t),
+            color: (Math.round(r * 255) << 16) | (Math.round(g * 255) << 8) | Math.round(b * 255),
+            rotation: data[at + R0] + data[at + SPIN] * data[at + AGE]
+        });
     }
     /** The mesh is built again from the particles alive; with none it is hidden and keeps what it had. */
     function draw() {
@@ -109,9 +144,17 @@ export function createParticleEmitter(options) {
         }
         const positions = new Float64Array(alive * 8), uvs = new Float64Array(alive * 8), lightColors = new Float64Array(alive * 16), indices = new Uint32Array(alive * 6);
         for (let i = 0; i < alive; i++) {
-            const p = view(i * STRIDE), hw = width * p.scale / 2, hh = height * p.scale / 2, a = p.rotation * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a);
-            const corners = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
-            corners.forEach(([cx, cy], k) => { positions[i * 8 + k * 2] = p.x + cx * cos - cy * sin; positions[i * 8 + k * 2 + 1] = p.y + cx * sin + cy * cos; });
+            const p = view(i * STRIDE), hw = (width * p.scale) / 2, hh = (height * p.scale) / 2, a = (p.rotation * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a);
+            const corners = [
+                [-hw, -hh],
+                [hw, -hh],
+                [hw, hh],
+                [-hw, hh]
+            ];
+            corners.forEach(([cx, cy], k) => {
+                positions[i * 8 + k * 2] = p.x + cx * cos - cy * sin;
+                positions[i * 8 + k * 2 + 1] = p.y + cx * sin + cy * cos;
+            });
             uvs.set([0, 0, 1, 0, 1, 1, 0, 1], i * 8);
             // The colour as it is seen, in the linear light the renderer multiplies a texture by, so that white shows as the colour given.
             const r = linear((p.color >> 16) & 255), g = linear((p.color >> 8) & 255), b = linear(p.color & 255);
@@ -129,19 +172,45 @@ export function createParticleEmitter(options) {
             mesh.visible = true;
         }
     }
-    const open = () => { if (closed)
-        throw new EgretError('PARTICLE_CLOSED'); };
-    function place(value) { if (!finite(value))
-        throw new EgretError('PARTICLE_OPTIONS_INVALID'); return value; }
+    const open = () => {
+        if (closed)
+            throw new EgretError('PARTICLE_CLOSED');
+    };
+    function place(value) {
+        if (!finite(value))
+            throw new EgretError('PARTICLE_OPTIONS_INVALID');
+        return value;
+    }
     return Object.freeze({
-        get state() { return closed ? 'closed' : 'active'; },
+        get state() {
+            return closed ? 'closed' : 'active';
+        },
         display,
-        get x() { return x; }, set x(value) { x = place(value); },
-        get y() { return y; }, set y(value) { y = place(value); },
-        get running() { return running; },
-        get alive() { return alive; },
-        start() { open(); running = true; },
-        stop() { running = false; },
+        get x() {
+            return x;
+        },
+        set x(value) {
+            x = place(value);
+        },
+        get y() {
+            return y;
+        },
+        set y(value) {
+            y = place(value);
+        },
+        get running() {
+            return running;
+        },
+        get alive() {
+            return alive;
+        },
+        start() {
+            open();
+            running = true;
+        },
+        stop() {
+            running = false;
+        },
         burst(count) {
             if (!Number.isSafeInteger(count) || count < 0)
                 throw new EgretError('PARTICLE_OPTIONS_INVALID');
@@ -149,7 +218,12 @@ export function createParticleEmitter(options) {
             spawn(count);
             draw();
         },
-        clear() { open(); alive = 0; debt = 0; draw(); },
+        clear() {
+            open();
+            alive = 0;
+            debt = 0;
+            draw();
+        },
         update(seconds) {
             if (!finite(seconds) || seconds < 0)
                 throw new EgretError('PARTICLE_OPTIONS_INVALID');
@@ -184,8 +258,12 @@ export function createParticleEmitter(options) {
             time += seconds;
             draw();
         },
-        particles() { return Object.freeze(Array.from({ length: alive }, (_, i) => view(i * STRIDE))); },
-        snapshot() { return Object.freeze({ alive, born, refused, running, time }); },
+        particles() {
+            return Object.freeze(Array.from({ length: alive }, (_, i) => view(i * STRIDE)));
+        },
+        snapshot() {
+            return Object.freeze({ alive, born, refused, running, time });
+        },
         dispose() {
             if (closed)
                 return;
@@ -208,7 +286,7 @@ export function createParticleEmitter(options) {
             mesh = undefined;
             if (failures.length > 0)
                 throw new EgretError('PARTICLE_CLEANUP_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
-        },
+        }
     });
 }
 //# sourceMappingURL=particleEmitter.js.map

@@ -1,12 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '../EgretError.js';
 const CAP = 1048576;
-const allowed = ['id', 'kind', 'explicitWidth', 'explicitHeight', 'minWidth', 'minHeight', 'maxWidth', 'maxHeight', 'padding', 'gap', 'crossAlign', 'children', 'measure', 'fill', 'source', 'initialScrollOffset'];
-function invalid() { throw new EgretError('UI_INVALID'); }
-function finite(value, min = 0, max = CAP) { if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
-    invalid(); return value === 0 ? 0 : value; }
-function integer(value, max) { const n = finite(value, 0, max); if (!Number.isInteger(n))
-    invalid(); return n; }
+const allowed = [
+    'id',
+    'kind',
+    'explicitWidth',
+    'explicitHeight',
+    'minWidth',
+    'minHeight',
+    'maxWidth',
+    'maxHeight',
+    'padding',
+    'gap',
+    'crossAlign',
+    'children',
+    'measure',
+    'fill',
+    'source',
+    'initialScrollOffset'
+];
+function invalid() {
+    throw new EgretError('UI_INVALID');
+}
+function finite(value, min = 0, max = CAP) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
+        invalid();
+    return value === 0 ? 0 : value;
+}
+function integer(value, max) {
+    const n = finite(value, 0, max);
+    if (!Number.isInteger(n))
+        invalid();
+    return n;
+}
 function fields(value, names) {
     if (value === null || typeof value !== 'object')
         invalid();
@@ -31,10 +57,24 @@ function arrayCount(value, max) {
         throw new EgretError('UI_LIMIT');
     return count === 0 ? 0 : count;
 }
-function id(value) { if (typeof value !== 'string' || !value.length || value.length > 128)
-    invalid(); return value; }
+function id(value) {
+    if (typeof value !== 'string' || !value.length || value.length > 128)
+        invalid();
+    return value;
+}
 function readonlyMap(map) {
-    return Object.freeze({ get size() { return map.size; }, get: (key) => map.get(key), has: (key) => map.has(key), entries: () => map.entries(), keys: () => map.keys(), values: () => map.values(), [Symbol.iterator]: () => map[Symbol.iterator](), forEach: (cb, thisArg) => map.forEach((value, key) => cb.call(thisArg, value, key, readonlyMap(map))) });
+    return Object.freeze({
+        get size() {
+            return map.size;
+        },
+        get: (key) => map.get(key),
+        has: (key) => map.has(key),
+        entries: () => map.entries(),
+        keys: () => map.keys(),
+        values: () => map.values(),
+        [Symbol.iterator]: () => map[Symbol.iterator](),
+        forEach: (cb, thisArg) => map.forEach((value, key) => cb.call(thisArg, value, key, readonlyMap(map)))
+    });
 }
 const capturedTrees = new WeakSet();
 /** Bounded capture reads each authored property once and retains no mutable child arrays. */
@@ -62,16 +102,32 @@ export function captureUiLayout(tree, limits = {}) {
         if (minWidth > maxWidth || minHeight > maxHeight)
             invalid();
         const explicitWidth = raw.explicitWidth === undefined ? undefined : finite(raw.explicitWidth), explicitHeight = raw.explicitHeight === undefined ? undefined : finite(raw.explicitHeight);
-        if (explicitWidth !== undefined && (explicitWidth < minWidth || explicitWidth > maxWidth) || explicitHeight !== undefined && (explicitHeight < minHeight || explicitHeight > maxHeight))
+        if ((explicitWidth !== undefined && (explicitWidth < minWidth || explicitWidth > maxWidth)) ||
+            (explicitHeight !== undefined && (explicitHeight < minHeight || explicitHeight > maxHeight)))
             invalid();
         const padding = raw.padding === undefined ? 0 : finite(raw.padding), gap = raw.gap === undefined ? 0 : finite(raw.gap), crossAlign = raw.crossAlign ?? 'start';
         if (!['start', 'center', 'end', 'stretch'].includes(crossAlign))
             invalid();
-        const base = { id: name, kind, minWidth, minHeight, maxWidth, maxHeight, padding, gap, crossAlign: crossAlign, ...(explicitWidth === undefined ? {} : { explicitWidth }), ...(explicitHeight === undefined ? {} : { explicitHeight }) };
+        const base = {
+            id: name,
+            kind,
+            minWidth,
+            minHeight,
+            maxWidth,
+            maxHeight,
+            padding,
+            gap,
+            crossAlign: crossAlign,
+            ...(explicitWidth === undefined ? {} : { explicitWidth }),
+            ...(explicitHeight === undefined ? {} : { explicitHeight })
+        };
         nodes.set(name, base);
         let result;
         if (kind === 'row' || kind === 'column') {
-            if (raw.measure !== undefined || raw.fill !== undefined || raw.source !== undefined || raw.initialScrollOffset !== undefined)
+            if (raw.measure !== undefined ||
+                raw.fill !== undefined ||
+                raw.source !== undefined ||
+                raw.initialScrollOffset !== undefined)
                 invalid();
             const count = arrayCount(raw.children, maxNodes), authoredChildren = raw.children;
             // Index reads are bounded; holes are refused by visit rather than skipped.
@@ -88,18 +144,31 @@ export function captureUiLayout(tree, limits = {}) {
             let fill;
             if (raw.fill !== undefined) {
                 const f = fields(raw.fill, ['color', 'alpha']);
-                fill = Object.freeze({ color: integer(f.color, 0xffffff), alpha: f.alpha === undefined ? 1 : finite(f.alpha, 0, 1) });
+                fill = Object.freeze({
+                    color: integer(f.color, 0xffffff),
+                    alpha: f.alpha === undefined ? 1 : finite(f.alpha, 0, 1)
+                });
             }
-            result = { ...base, ...(raw.measure === undefined ? {} : { measure: raw.measure }), ...(fill === undefined ? {} : { fill }) };
+            result = {
+                ...base,
+                ...(raw.measure === undefined ? {} : { measure: raw.measure }),
+                ...(fill === undefined ? {} : { fill })
+            };
         }
         else {
             if (++lists > 1)
                 throw new EgretError('UI_LIMIT');
-            if (raw.children !== undefined || raw.measure !== undefined || raw.fill !== undefined || padding !== 0 || gap !== 0)
+            if (raw.children !== undefined ||
+                raw.measure !== undefined ||
+                raw.fill !== undefined ||
+                padding !== 0 ||
+                gap !== 0)
                 invalid();
             if (raw.source === undefined)
                 invalid();
-            const initialScrollOffset = raw.initialScrollOffset === undefined ? 0 : finite(raw.initialScrollOffset, -Number.MAX_VALUE, Number.MAX_VALUE);
+            const initialScrollOffset = raw.initialScrollOffset === undefined
+                ? 0
+                : finite(raw.initialScrollOffset, -Number.MAX_VALUE, Number.MAX_VALUE);
             result = { ...base, source: raw.source, initialScrollOffset };
         }
         result = Object.freeze(result);
@@ -111,9 +180,23 @@ export function captureUiLayout(tree, limits = {}) {
     return result;
 }
 const caches = new WeakMap();
-function sameLeaf(a, b) { return a.kind === b.kind && a.measure === b.measure && a.explicitWidth === b.explicitWidth && a.explicitHeight === b.explicitHeight && a.minWidth === b.minWidth && a.minHeight === b.minHeight && a.maxWidth === b.maxWidth && a.maxHeight === b.maxHeight && a.padding === b.padding; }
-function bounded(value) { return finite(value); }
-function resolve(intrinsic, explicit, min, max) { return bounded(explicit ?? Math.max(min, Math.min(max, intrinsic))); }
+function sameLeaf(a, b) {
+    return (a.kind === b.kind &&
+        a.measure === b.measure &&
+        a.explicitWidth === b.explicitWidth &&
+        a.explicitHeight === b.explicitHeight &&
+        a.minWidth === b.minWidth &&
+        a.minHeight === b.minHeight &&
+        a.maxWidth === b.maxWidth &&
+        a.maxHeight === b.maxHeight &&
+        a.padding === b.padding);
+}
+function bounded(value) {
+    return finite(value);
+}
+function resolve(intrinsic, explicit, min, max) {
+    return bounded(explicit ?? Math.max(min, Math.min(max, intrinsic)));
+}
 /** One postorder measure and preorder arrange. No convergence callbacks or live scene writes. */
 export function planUiLayout(tree, viewport, density, previous, dirty) {
     if (!capturedTrees.has(tree))
@@ -137,17 +220,39 @@ export function planUiLayout(tree, viewport, density, previous, dirty) {
         const children = [];
         if (node.kind === 'leaf') {
             const prior = before?.get(node.id);
-            if (!dirtyMeasure && prior && (!node.measure || explicitW !== undefined && explicitH !== undefined || prior.contentMeasured) && sameLeaf(prior.node, node) && prior.availableWidth === aw && prior.availableHeight === ah && prior.density === density) {
+            if (!dirtyMeasure &&
+                prior &&
+                (!node.measure || (explicitW !== undefined && explicitH !== undefined) || prior.contentMeasured) &&
+                sameLeaf(prior.node, node) &&
+                prior.availableWidth === aw &&
+                prior.availableHeight === ah &&
+                prior.density === density) {
                 measuredWidth = prior.intrinsicWidth;
                 measuredHeight = prior.intrinsicHeight;
                 dependencyRevision = prior.dependencyRevision;
                 reusedMeasurements++;
-                const result = { node, intrinsicWidth: measuredWidth, intrinsicHeight: measuredHeight, contentMeasured: prior.contentMeasured, width: resolve(measuredWidth, explicitW, minW, maxW), height: resolve(measuredHeight, explicitH, minH, maxH), dependencyRevision, availableWidth: aw, availableHeight: ah, density, children };
+                const result = {
+                    node,
+                    intrinsicWidth: measuredWidth,
+                    intrinsicHeight: measuredHeight,
+                    contentMeasured: prior.contentMeasured,
+                    width: resolve(measuredWidth, explicitW, minW, maxW),
+                    height: resolve(measuredHeight, explicitH, minH, maxH),
+                    dependencyRevision,
+                    availableWidth: aw,
+                    availableHeight: ah,
+                    density,
+                    children
+                };
                 next.set(node.id, result);
                 return result;
             }
             if (node.measure && (explicitW === undefined || explicitH === undefined)) {
-                const raw = fields(node.measure(Object.freeze({ availableWidth: aw, availableHeight: ah, density })), ['width', 'height', 'dependencyRevision']);
+                const raw = fields(node.measure(Object.freeze({ availableWidth: aw, availableHeight: ah, density })), [
+                    'width',
+                    'height',
+                    'dependencyRevision'
+                ]);
                 measurementCalls++;
                 contentMeasured = true;
                 measuredWidth = finite(raw.width) + pad * 2;
@@ -172,7 +277,11 @@ export function planUiLayout(tree, viewport, density, previous, dirty) {
             if (stretch && (row ? explicitH : explicitW) === undefined)
                 throw new EgretError('UI_LAYOUT_CYCLE');
             for (const child of node.children) {
-                const forcedW = !row && stretch && child.explicitWidth === undefined ? resolve(aw, undefined, child.minWidth, child.maxWidth) : undefined, forcedH = row && stretch && child.explicitHeight === undefined ? resolve(ah, undefined, child.minHeight, child.maxHeight) : undefined;
+                const forcedW = !row && stretch && child.explicitWidth === undefined
+                    ? resolve(aw, undefined, child.minWidth, child.maxWidth)
+                    : undefined, forcedH = row && stretch && child.explicitHeight === undefined
+                    ? resolve(ah, undefined, child.minHeight, child.maxHeight)
+                    : undefined;
                 children.push(measure(child, aw, ah, forcedW, forcedH, dirtyMeasure));
             }
             let main = 0, cross = 0;
@@ -185,7 +294,19 @@ export function planUiLayout(tree, viewport, density, previous, dirty) {
             measuredWidth = (row ? main : cross) + pad * 2;
             measuredHeight = (row ? cross : main) + pad * 2;
         }
-        const result = { node, intrinsicWidth: measuredWidth, intrinsicHeight: measuredHeight, contentMeasured, width: resolve(measuredWidth, explicitW, minW, maxW), height: resolve(measuredHeight, explicitH, minH, maxH), dependencyRevision, availableWidth: aw, availableHeight: ah, density, children };
+        const result = {
+            node,
+            intrinsicWidth: measuredWidth,
+            intrinsicHeight: measuredHeight,
+            contentMeasured,
+            width: resolve(measuredWidth, explicitW, minW, maxW),
+            height: resolve(measuredHeight, explicitH, minH, maxH),
+            dependencyRevision,
+            availableWidth: aw,
+            availableHeight: ah,
+            density,
+            children
+        };
         next.set(node.id, result);
         return result;
     }
@@ -196,7 +317,21 @@ export function planUiLayout(tree, viewport, density, previous, dirty) {
         finite(x + m.width, -CAP, CAP);
         finite(y + m.height, -CAP, CAP);
         const node = m.node, pad = node.padding, innerX = x + pad, innerY = y + pad, innerWidth = Math.max(0, m.width - pad * 2), innerHeight = Math.max(0, m.height - pad * 2);
-        boxes.push(Object.freeze({ id: node.id, parentId, order, x: x === 0 ? 0 : x, y: y === 0 ? 0 : y, width: m.width, height: m.height, innerX, innerY, innerWidth, innerHeight, clip: node.kind === 'virtualList', dependencyRevision: m.dependencyRevision }));
+        boxes.push(Object.freeze({
+            id: node.id,
+            parentId,
+            order,
+            x: x === 0 ? 0 : x,
+            y: y === 0 ? 0 : y,
+            width: m.width,
+            height: m.height,
+            innerX,
+            innerY,
+            innerWidth,
+            innerHeight,
+            clip: node.kind === 'virtualList',
+            dependencyRevision: m.dependencyRevision
+        }));
         const row = node.kind === 'row';
         let cursor = 0;
         for (let i = 0; i < m.children.length; i++) {

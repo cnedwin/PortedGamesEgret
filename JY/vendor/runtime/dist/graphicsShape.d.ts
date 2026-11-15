@@ -18,11 +18,13 @@ export interface ShapeBitmap {
     readonly tx: number;
     readonly ty: number;
 }
+/** `feather` is how far, in the node's units, the edge of what is painted fades to nothing; none when it is not there. */
 export interface ShapePaint {
     readonly color: number;
     readonly alpha: number;
     readonly gradient?: ShapeGradient | undefined;
     readonly bitmap?: ShapeBitmap | undefined;
+    readonly feather?: number | undefined;
 }
 export type LineCaps = 'none' | 'round' | 'square';
 export type LineJoints = 'miter' | 'round' | 'bevel';
@@ -111,7 +113,7 @@ export declare function fillPolygon(target: Target, outline: readonly number[], 
  * A gradient is given as the colours of the corners, with triangles cut until that is close enough.
  * False when the fill would take more triangles than one fill may.
  */
-export declare function fillOutlines(target: Target, outlines: readonly (readonly number[])[], convex: boolean, color: ShapePaint): boolean;
+export declare function fillOutlines(target: Target, outlines: readonly (readonly number[])[], convex: boolean, color: ShapePaint, edge?: boolean): boolean;
 /**
  * A line of a width along points. Two pieces meet at a corner in one point on its inside, so a translucent line is not
  * darker there; its outside is a mitre, cut to a bevel when longer than `miterLimit` half-widths, a bevel or an arc.

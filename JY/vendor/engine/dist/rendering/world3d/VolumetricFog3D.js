@@ -107,7 +107,14 @@ export class VolumetricFog3D extends Mesh3D {
     #uniforms;
     #basis = new Float32Array(16);
     constructor(options = {}) {
-        const material = createLambertMaterial3D({ color: 0x000000, alphaMode: 'blend', depthTest: false, depthWrite: false, fog: false, side: 'double' });
+        const material = createLambertMaterial3D({
+            color: 0x000000,
+            alphaMode: 'blend',
+            depthTest: false,
+            depthWrite: false,
+            fog: false,
+            side: 'double'
+        });
         const shader = createCustomShader3D({ key: 'world3d-volumetric-fog', glsl: GLSL, wgsl: WGSL });
         material.shader = shader;
         // Asks for the depth image; next to the camera the fade it also brings is always complete.
@@ -131,28 +138,66 @@ export class VolumetricFog3D extends Mesh3D {
         this.lightStrength = options.lightStrength ?? 1;
         this.beforeRender = (camera) => this.face(camera);
     }
-    get density() { return this.#uniforms[3]; }
-    set density(value) { this.#uniforms[3] = this.amount(value, 'density'); }
-    get falloff() { return this.#uniforms[4]; }
-    set falloff(value) { this.#uniforms[4] = this.amount(value, 'falloff'); }
-    get height() { return this.#uniforms[5]; }
-    set height(value) { this.#uniforms[5] = requireFinite3D(value, 'height'); }
-    get distance() { return this.#uniforms[6]; }
-    set distance(value) { this.#uniforms[6] = this.amount(value, 'distance'); }
-    get anisotropy() { return this.#uniforms[7]; }
-    set anisotropy(value) { if (!(Math.abs(requireFinite3D(value, 'anisotropy')) < 1))
-        throw new World3DError('WORLD3D_INPUT_INVALID', 'anisotropy'); this.#uniforms[7] = value; }
-    get sunStrength() { return this.#uniforms[8]; }
-    set sunStrength(value) { this.#uniforms[8] = this.amount(value, 'sunStrength'); }
-    get ambientStrength() { return this.#uniforms[9]; }
-    set ambientStrength(value) { this.#uniforms[9] = this.amount(value, 'ambientStrength'); }
-    get lightStrength() { return this.#uniforms[10]; }
-    set lightStrength(value) { this.#uniforms[10] = this.amount(value, 'lightStrength'); }
+    get density() {
+        return this.#uniforms[3];
+    }
+    set density(value) {
+        this.#uniforms[3] = this.amount(value, 'density');
+    }
+    get falloff() {
+        return this.#uniforms[4];
+    }
+    set falloff(value) {
+        this.#uniforms[4] = this.amount(value, 'falloff');
+    }
+    get height() {
+        return this.#uniforms[5];
+    }
+    set height(value) {
+        this.#uniforms[5] = requireFinite3D(value, 'height');
+    }
+    get distance() {
+        return this.#uniforms[6];
+    }
+    set distance(value) {
+        this.#uniforms[6] = this.amount(value, 'distance');
+    }
+    get anisotropy() {
+        return this.#uniforms[7];
+    }
+    set anisotropy(value) {
+        if (!(Math.abs(requireFinite3D(value, 'anisotropy')) < 1))
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'anisotropy');
+        this.#uniforms[7] = value;
+    }
+    get sunStrength() {
+        return this.#uniforms[8];
+    }
+    set sunStrength(value) {
+        this.#uniforms[8] = this.amount(value, 'sunStrength');
+    }
+    get ambientStrength() {
+        return this.#uniforms[9];
+    }
+    set ambientStrength(value) {
+        this.#uniforms[9] = this.amount(value, 'ambientStrength');
+    }
+    get lightStrength() {
+        return this.#uniforms[10];
+    }
+    set lightStrength(value) {
+        this.#uniforms[10] = this.amount(value, 'lightStrength');
+    }
     /** Linear RGB fog color. */
-    setColor(color) { setColor3D(this.#uniforms.subarray(0, 3), color); }
+    setColor(color) {
+        setColor3D(this.#uniforms.subarray(0, 3), color);
+    }
     /** Release the geometry and the material. */
-    dispose() { this.geometry.dispose(); if (!Array.isArray(this.material))
-        this.material.dispose(); }
+    dispose() {
+        this.geometry.dispose();
+        if (!Array.isArray(this.material))
+            this.material.dispose();
+    }
     /** Stand just beyond the camera's near plane, turned as it is and large enough to cover its view. */
     face(camera) {
         camera.updateWorldMatrix();
@@ -166,7 +211,7 @@ export class VolumetricFog3D extends Mesh3D {
         quatFromRotationMatrix(this.quaternion, basis);
         // Twice the near distance keeps clear of the near plane; the projection's scale terms say how wide the view is there.
         const perspective = p[15] === 0, away = perspective ? Math.max(camera.near * 2, 1e-3) : camera.near + (camera.far - camera.near) * 0.01;
-        const halfWidth = (perspective ? away : 1) * (1 + Math.abs(p[8])) / Math.max(Math.abs(p[0]), 1e-6), halfHeight = (perspective ? away : 1) * (1 + Math.abs(p[9])) / Math.max(Math.abs(p[5]), 1e-6);
+        const halfWidth = ((perspective ? away : 1) * (1 + Math.abs(p[8]))) / Math.max(Math.abs(p[0]), 1e-6), halfHeight = ((perspective ? away : 1) * (1 + Math.abs(p[9]))) / Math.max(Math.abs(p[5]), 1e-6);
         this.setPosition(eye[12] - basis[8] * away, eye[13] - basis[9] * away, eye[14] - basis[10] * away);
         this.setScale(halfWidth * 2.2, halfHeight * 2.2, 1);
         this.markTransformDirty();
@@ -178,5 +223,7 @@ export class VolumetricFog3D extends Mesh3D {
         return value;
     }
 }
-export function createVolumetricFog3D(options = {}) { return new VolumetricFog3D(options); }
+export function createVolumetricFog3D(options = {}) {
+    return new VolumetricFog3D(options);
+}
 //# sourceMappingURL=VolumetricFog3D.js.map

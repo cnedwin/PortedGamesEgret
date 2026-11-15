@@ -1,8 +1,8 @@
 import type { DisplaySubtreeTicket } from './displaySubtreeTicket.js';
 import type { DisplayObject, DisplayObjectContainer } from '@egret/runtime';
 import type { SharedFrameProfile2D, SharedFrameOptions2D, SharedRenderFrame2D } from '@egret/contracts';
-import type { DiagnosticHandler, HostAdapter } from "@egret/contracts";
-import type { AssetManager, AssetRef, Scope, Stage } from "@egret/runtime";
+import type { DiagnosticHandler, HostAdapter } from '@egret/contracts';
+import type { AssetManager, AssetRef, Scope, Stage } from '@egret/runtime';
 import type { BitmapResourceSlot } from './bitmapResourceSlot.js';
 import type { BitmapBindingTicket } from './bitmapBindingTicket.js';
 import type { AdmittedGameClockOptions } from './gameClock.js';

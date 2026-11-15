@@ -43,7 +43,10 @@ export class AnimationTexture3D extends Resource3D {
         this.fps = requirePositive3D(fps, 'fps');
         this.stride = this.boneCount + 1;
         this.morphCount = requireCount3D(morphCount, 'morphCount', 16);
-        if (this.boneCount < 1 || !(data instanceof Float32Array) || data.length < this.stride * 32 || data.length % (this.stride * 16) !== 0)
+        if (this.boneCount < 1 ||
+            !(data instanceof Float32Array) ||
+            data.length < this.stride * 32 ||
+            data.length % (this.stride * 16) !== 0)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'animation texture data');
         if (data.length / 16 > ANIMATION_TEXTURE3D_LIMITS.maxMatrices)
             throw new World3DError('WORLD3D_BUDGET', 'animation texture matrices');
@@ -51,14 +54,21 @@ export class AnimationTexture3D extends Resource3D {
         this.frameCount = data.length / (this.stride * 16);
         requireCount3D(clips.length, 'clips', ANIMATION_TEXTURE3D_LIMITS.maxClips);
         for (const clip of clips) {
-            if (!Number.isSafeInteger(clip.start) || !Number.isSafeInteger(clip.frames) || clip.start < 1 || clip.frames < 1 || clip.start + clip.frames > this.frameCount || !(clip.duration >= 0))
+            if (!Number.isSafeInteger(clip.start) ||
+                !Number.isSafeInteger(clip.frames) ||
+                clip.start < 1 ||
+                clip.frames < 1 ||
+                clip.start + clip.frames > this.frameCount ||
+                !(clip.duration >= 0))
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'baked clip range');
         }
-        this.clips = Object.freeze(clips.map((clip) => Object.freeze({ name: clip.name, start: clip.start, frames: clip.frames, duration: clip.duration })));
+        this.clips = Object.freeze(clips.map(clip => Object.freeze({ name: clip.name, start: clip.start, frames: clip.frames, duration: clip.duration })));
         this.reach = requirePositive3D(reach, 'reach');
     }
     /** Index of the clip with this name, or -1. */
-    clipIndex(name) { return this.clips.findIndex((clip) => clip.name === name); }
+    clipIndex(name) {
+        return this.clips.findIndex(clip => clip.name === name);
+    }
     /**
      * The two table frames around a time in a clip and the blend between
      * them, written to `out` as [first, second, blend].
@@ -78,7 +88,7 @@ export class AnimationTexture3D extends Resource3D {
             }
             else
                 t = t < 0 ? 0 : t > baked.duration ? baked.duration : t;
-            at = t / baked.duration * last;
+            at = (t / baked.duration) * last;
         }
         const first = Math.min(Math.floor(at), last);
         out[offset] = baked.start + first;
@@ -105,8 +115,10 @@ export function bakeAnimationTexture3D(root, mesh, clips, options = {}) {
         throw new World3DError('WORLD3D_BUDGET', 'fps');
     const bones = skeleton.bones, boneCount = bones.length;
     const names = new Map();
-    root.traverse((object) => { if (object.name && !names.has(object.name))
-        names.set(object.name, object); });
+    root.traverse(object => {
+        if (object.name && !names.has(object.name))
+            names.set(object.name, object);
+    });
     const baked = [];
     // Frame 0 holds the bones' turning points; poses start at 1.
     let frameCount = 1;
@@ -159,7 +171,7 @@ export function bakeAnimationTexture3D(root, mesh, clips, options = {}) {
             for (let frame = 0; frame < entry.frames; frame++) {
                 // Every clip starts from the rest pose, so a track missing from one clip does not inherit another's.
                 restore();
-                const time = entry.frames > 1 ? frame / (entry.frames - 1) * clip.duration : 0;
+                const time = entry.frames > 1 ? (frame / (entry.frames - 1)) * clip.duration : 0;
                 const weights = data.subarray(((entry.start + frame) * stride + boneCount) * 16, ((entry.start + frame) * stride + boneCount + 1) * 16);
                 weights.fill(0);
                 weights.set(restWeights);
@@ -179,7 +191,11 @@ export function bakeAnimationTexture3D(root, mesh, clips, options = {}) {
                     }
                     hint.index = 0;
                     sampleAnimationTrack3D(track, time, scratch, hint);
-                    const to = track.path === 'position' ? target.position : track.path === 'quaternion' ? target.quaternion : target.scale;
+                    const to = track.path === 'position'
+                        ? target.position
+                        : track.path === 'quaternion'
+                            ? target.quaternion
+                            : target.scale;
                     for (let i = 0; i < to.length; i++)
                         to[i] = scratch[i];
                     target.markTransformDirty();
@@ -233,16 +249,28 @@ export class SkinnedInstancedMesh3D extends InstancedMesh3D {
         return this.#legacyAnimation;
     }
     /** Alias for the active instance count. */
-    get total() { return this.count; }
-    set total(value) { this.count = value; }
+    get total() {
+        return this.count;
+    }
+    set total(value) {
+        this.count = value;
+    }
     /** Number of entries prepared for the current draw. */
-    get drawCount() { return this.#drawCount; }
+    get drawCount() {
+        return this.#drawCount;
+    }
     /** Draw matrices in the prepared instance order. */
-    get drawMatrices() { return this.#compacting ? this.#compactMatrices : this.instanceMatrices; }
+    get drawMatrices() {
+        return this.#compacting ? this.#compactMatrices : this.instanceMatrices;
+    }
     /** Draw colors in the prepared instance order. */
-    get drawColors() { return this.#compacting && this.instanceColors ? this.#compactColors : this.instanceColors; }
+    get drawColors() {
+        return this.#compacting && this.instanceColors ? this.#compactColors : this.instanceColors;
+    }
     /** Packed GPU animation data in the prepared instance order. */
-    get drawAnimation() { return this.#compacting ? this.#compactAnimation : this.#animation; }
+    get drawAnimation() {
+        return this.#compacting ? this.#compactAnimation : this.#animation;
+    }
     /** Enables view culling when a conservative posed radius is available. */
     cullInstances = true;
     /** Extra radius multiples retained around the view. Default 3. */
@@ -252,7 +280,9 @@ export class SkinnedInstancedMesh3D extends InstancedMesh3D {
      * A sphere about the instance origin covering every used skin, morph and bone pose.
      * Without this authored bound, drawing keeps all instances.
      */
-    get cullRadius() { return this.#cullRadius; }
+    get cullRadius() {
+        return this.#cullRadius;
+    }
     set cullRadius(value) {
         this.#cullRadius = value === undefined ? undefined : requirePositive3D(value, 'posed crowd culling radius');
     }
@@ -303,7 +333,9 @@ export class SkinnedInstancedMesh3D extends InstancedMesh3D {
         this.beforeRender = (camera) => this.compact(this.cullInstances ? camera : undefined);
     }
     /** The bone that per-instance rotations apply to, or -1. Vertices weighted to it turn about its joint; bones below it do not follow. */
-    get lookBone() { return this.#lookBone; }
+    get lookBone() {
+        return this.#lookBone;
+    }
     set lookBone(bone) {
         if (!Number.isSafeInteger(bone) || bone < -1 || bone >= this.animations.boneCount)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'lookBone');
@@ -375,16 +407,35 @@ export class SkinnedInstancedMesh3D extends InstancedMesh3D {
         this.#fadeRate[index] = 0;
         this.write(index);
     }
-    clipAt(index) { this.check(index); return this.#clip[index]; }
-    timeAt(index) { this.check(index); return this.#time[index]; }
+    clipAt(index) {
+        this.check(index);
+        return this.#clip[index];
+    }
+    timeAt(index) {
+        this.check(index);
+        return this.#time[index];
+    }
     /** Weight of the instance's second clip, 0 when it has none. */
-    blendAt(index) { this.check(index); return this.#clipB[index] < 0 ? 0 : this.#weightB[index]; }
-    setTimeAt(index, seconds) { this.check(index); this.#time[index] = requireFinite3D(seconds, 'time'); this.write(index); }
-    setSpeedAt(index, speed) { this.check(index); this.#speed[index] = requireFinite3D(speed, 'speed'); }
+    blendAt(index) {
+        this.check(index);
+        return this.#clipB[index] < 0 ? 0 : this.#weightB[index];
+    }
+    setTimeAt(index, seconds) {
+        this.check(index);
+        this.#time[index] = requireFinite3D(seconds, 'time');
+        this.write(index);
+    }
+    setSpeedAt(index, speed) {
+        this.check(index);
+        this.#speed[index] = requireFinite3D(speed, 'speed');
+    }
     /** True once a clip that does not loop has reached its end. */
     isFinishedAt(index) {
         this.check(index);
-        return this.#loop[index] === 0 && (this.#speed[index] >= 0 ? this.#time[index] >= this.animations.clips[this.#clip[index]].duration : this.#time[index] <= 0);
+        return (this.#loop[index] === 0 &&
+            (this.#speed[index] >= 0
+                ? this.#time[index] >= this.animations.clips[this.#clip[index]].duration
+                : this.#time[index] <= 0));
     }
     /** Advance every instance by a time step in seconds. */
     update(deltaSeconds) {
@@ -412,7 +463,7 @@ export class SkinnedInstancedMesh3D extends InstancedMesh3D {
                 const other = clips[second].duration, flags = this.#flagsB[i];
                 // A synced clip sits at the same share of its length as the first.
                 if (flags & 2)
-                    this.#timeB[i] = duration > 0 ? this.#time[i] / duration * other : 0;
+                    this.#timeB[i] = duration > 0 ? (this.#time[i] / duration) * other : 0;
                 else
                     this.#timeB[i] = step(this.#timeB[i], dt * this.#speedB[i], other, (flags & 1) === 1);
                 if (this.#fadeRate[i] > 0) {

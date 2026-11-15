@@ -1,7 +1,25 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
 /** The standard layout: the place of each named button, and the two axes of each stick. */
-const NAMES = ['a', 'b', 'x', 'y', 'l1', 'r1', 'l2', 'r2', 'select', 'start', 'l3', 'r3', 'up', 'down', 'left', 'right', 'home'];
+const NAMES = [
+    'a',
+    'b',
+    'x',
+    'y',
+    'l1',
+    'r1',
+    'l2',
+    'r2',
+    'select',
+    'start',
+    'l3',
+    'r3',
+    'up',
+    'down',
+    'left',
+    'right',
+    'home'
+];
 const STICKS = { left: 0, right: 2 };
 const NONE = Object.freeze({ x: 0, y: 0 });
 const LET_GO = Object.freeze({ pressed: false, value: 0 });
@@ -13,8 +31,10 @@ export function createGamepadInput(options = {}) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('GAMEPAD_OPTIONS_INVALID');
     const { deadZone = 0.15, maxPads = 4, onButton, onConnection } = options;
-    if (!within(deadZone, 0, 0.9) || !whole(maxPads, 1, 8) || (onButton !== undefined && typeof onButton !== 'function')
-        || (onConnection !== undefined && typeof onConnection !== 'function'))
+    if (!within(deadZone, 0, 0.9) ||
+        !whole(maxPads, 1, 8) ||
+        (onButton !== undefined && typeof onButton !== 'function') ||
+        (onConnection !== undefined && typeof onConnection !== 'function'))
         throw new EgretError('GAMEPAD_OPTIONS_INVALID');
     const pads = new Map();
     const buttonListeners = new Set();
@@ -29,11 +49,21 @@ export function createGamepadInput(options = {}) {
     }
     function makePad(sample) {
         const pad = {
-            index: sample.index, id: sample.id, standard: sample.mapping === 'standard', buttons: [], axes: [],
+            index: sample.index,
+            id: sample.id,
+            standard: sample.mapping === 'standard',
+            buttons: [],
+            axes: [],
             face: Object.freeze({
-                index: sample.index, id: sample.id, standard: sample.mapping === 'standard',
-                get buttonCount() { return pad.buttons.length; },
-                get axisCount() { return pad.axes.length; },
+                index: sample.index,
+                id: sample.id,
+                standard: sample.mapping === 'standard',
+                get buttonCount() {
+                    return pad.buttons.length;
+                },
+                get axisCount() {
+                    return pad.axes.length;
+                },
                 pressed: (button) => pad.buttons[place(pad, button)]?.pressed ?? false,
                 value: (button) => pad.buttons[place(pad, button)]?.value ?? 0,
                 axis(index) {
@@ -52,8 +82,8 @@ export function createGamepadInput(options = {}) {
                     // What is left of the travel outside the dead zone, stretched to reach 1 and held there.
                     const scale = Math.min(1, (length - deadZone) / (1 - deadZone)) / length;
                     return Object.freeze({ x: x * scale, y: y * scale });
-                },
-            }),
+                }
+            })
         };
         return pad;
     }
@@ -62,7 +92,13 @@ export function createGamepadInput(options = {}) {
         if (!record(sample))
             throw new EgretError('GAMEPAD_SAMPLE');
         const { index, id, mapping, buttons, axes } = sample;
-        if (!whole(index, 0, 31) || typeof id !== 'string' || typeof mapping !== 'string' || !Array.isArray(buttons) || buttons.length > 64 || !Array.isArray(axes) || axes.length > 16)
+        if (!whole(index, 0, 31) ||
+            typeof id !== 'string' ||
+            typeof mapping !== 'string' ||
+            !Array.isArray(buttons) ||
+            buttons.length > 64 ||
+            !Array.isArray(axes) ||
+            axes.length > 16)
             throw new EgretError('GAMEPAD_SAMPLE');
         const held = [], pushed = [];
         for (const button of buttons) {
@@ -91,15 +127,24 @@ export function createGamepadInput(options = {}) {
         }
     }
     function change(pad, index, button, timestamp, failures) {
-        const told = Object.freeze({ pad: pad.index, index, name: pad.standard ? NAMES[index] : undefined, pressed: button.pressed, value: button.value, timestamp });
+        const told = Object.freeze({
+            pad: pad.index,
+            index,
+            name: pad.standard ? NAMES[index] : undefined,
+            pressed: button.pressed,
+            value: button.value,
+            timestamp
+        });
         tell([onButton, ...buttonListeners], told, failures);
     }
     function letGo(pad, timestamp, failures) {
         const before = pad.buttons;
         pad.buttons = before.map(() => LET_GO);
         pad.axes = pad.axes.map(() => 0);
-        before.forEach((button, index) => { if (button.pressed)
-            change(pad, index, LET_GO, timestamp, failures); });
+        before.forEach((button, index) => {
+            if (button.pressed)
+                change(pad, index, LET_GO, timestamp, failures);
+        });
     }
     function connection(pad, connected, timestamp, failures) {
         tell([onConnection], Object.freeze({ pad: pad.index, id: pad.id, connected, standard: pad.standard, timestamp }), failures);
@@ -137,8 +182,12 @@ export function createGamepadInput(options = {}) {
             throw new EgretError('GAMEPAD_LISTENER_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
     }
     return Object.freeze({
-        get state() { return closed ? 'closed' : 'active'; },
-        get pads() { return faces; },
+        get state() {
+            return closed ? 'closed' : 'active';
+        },
+        get pads() {
+            return faces;
+        },
         pad: (index) => pads.get(index)?.face,
         sample(samples, timestamp) {
             if (!Array.isArray(samples) || samples.length > 32 || !within(timestamp, last, Number.MAX_VALUE))
@@ -193,8 +242,10 @@ export function createGamepadInput(options = {}) {
         release() {
             if (closed)
                 return;
-            exclusive(failures => { for (const pad of ordered())
-                letGo(pad, last, failures); });
+            exclusive(failures => {
+                for (const pad of ordered())
+                    letGo(pad, last, failures);
+            });
         },
         subscribe(listener) {
             if (typeof listener !== 'function')
@@ -202,7 +253,9 @@ export function createGamepadInput(options = {}) {
             if (closed)
                 throw new EgretError('GAMEPAD_CLOSED');
             buttonListeners.add(listener);
-            return () => { buttonListeners.delete(listener); };
+            return () => {
+                buttonListeners.delete(listener);
+            };
         },
         onSample(listener) {
             if (typeof listener !== 'function')
@@ -210,7 +263,9 @@ export function createGamepadInput(options = {}) {
             if (closed)
                 throw new EgretError('GAMEPAD_CLOSED');
             sampleListeners.add(listener);
-            return () => { sampleListeners.delete(listener); };
+            return () => {
+                sampleListeners.delete(listener);
+            };
         },
         dispose() {
             if (closed)
@@ -220,7 +275,7 @@ export function createGamepadInput(options = {}) {
                 return;
             }
             exclusive(close);
-        },
+        }
     });
 }
 //# sourceMappingURL=gamepadInput.js.map

@@ -14,9 +14,16 @@ export function createAudioMixer(options) {
     if (!record(options))
         throw new EgretError('AUDIO_OPTIONS_INVALID');
     const { backend, buses: busOptions = ['music', 'effects'], volume = 1, muted = false, locked: startLocked = false, maxVoices = 32, maxSounds = 256, maxDecodedBytes = 128 * MIB } = options;
-    if (!callable(backend, ['decode', 'createBus', 'start', 'suspend', 'resume', 'close']) || !Array.isArray(busOptions) || busOptions.length < 1 || busOptions.length > 16
-        || !within(volume, 0, 1) || typeof muted !== 'boolean' || typeof startLocked !== 'boolean'
-        || !whole(maxVoices, 1, 256) || !whole(maxSounds, 1, 4096) || !whole(maxDecodedBytes, 1, Number.MAX_SAFE_INTEGER))
+    if (!callable(backend, ['decode', 'createBus', 'start', 'suspend', 'resume', 'close']) ||
+        !Array.isArray(busOptions) ||
+        busOptions.length < 1 ||
+        busOptions.length > 16 ||
+        !within(volume, 0, 1) ||
+        typeof muted !== 'boolean' ||
+        typeof startLocked !== 'boolean' ||
+        !whole(maxVoices, 1, 256) ||
+        !whole(maxSounds, 1, 4096) ||
+        !whole(maxDecodedBytes, 1, Number.MAX_SAFE_INTEGER))
         throw new EgretError('AUDIO_OPTIONS_INVALID');
     const wanted = [];
     for (const item of busOptions) {
@@ -24,7 +31,11 @@ export function createAudioMixer(options) {
         if (!record(bus))
             throw new EgretError('AUDIO_OPTIONS_INVALID');
         const { name, volume: level = 1, muted: quiet = false } = bus;
-        if (!named(name) || name === 'master' || wanted.some(other => other.name === name) || !within(level, 0, 1) || typeof quiet !== 'boolean')
+        if (!named(name) ||
+            name === 'master' ||
+            wanted.some(other => other.name === name) ||
+            !within(level, 0, 1) ||
+            typeof quiet !== 'boolean')
             throw new EgretError('AUDIO_OPTIONS_INVALID');
         wanted.push({ name, volume: level, muted: quiet });
     }
@@ -65,14 +76,26 @@ export function createAudioMixer(options) {
         const raw = guard(() => backend.createBus(parent));
         if (!callable(raw, ['setGain', 'release']))
             throw new EgretError('AUDIO_BACKEND_FAILED');
-        const apply = (seconds) => { guard(() => raw.setGain(bus.muted ? 0 : bus.volume, seconds)); };
+        const apply = (seconds) => {
+            guard(() => raw.setGain(bus.muted ? 0 : bus.volume, seconds));
+        };
         const bus = {
-            name, volume: level, muted: quiet, voices: 0, backend: raw,
+            name,
+            volume: level,
+            muted: quiet,
+            voices: 0,
+            backend: raw,
             face: Object.freeze({
                 name,
-                get volume() { return bus.volume; },
-                get muted() { return bus.muted; },
-                get voices() { return name === 'master' ? voices.size : bus.voices; },
+                get volume() {
+                    return bus.volume;
+                },
+                get muted() {
+                    return bus.muted;
+                },
+                get voices() {
+                    return name === 'master' ? voices.size : bus.voices;
+                },
                 setVolume(value, fade) {
                     const seconds = fadeOf(fade);
                     if (!within(value, 0, 1))
@@ -89,8 +112,8 @@ export function createAudioMixer(options) {
                         return;
                     bus.muted = value;
                     apply(0);
-                },
-            }),
+                }
+            })
         };
         try {
             apply(0);
@@ -99,7 +122,9 @@ export function createAudioMixer(options) {
             try {
                 raw.release();
             }
-            catch { /* the first failure is the one told */ }
+            catch {
+                /* the first failure is the one told */
+            }
             throw cause;
         }
         return bus;
@@ -115,7 +140,9 @@ export function createAudioMixer(options) {
             try {
                 bus.backend.release();
             }
-            catch { /* the first failure is the one told */ }
+            catch {
+                /* the first failure is the one told */
+            }
         throw cause;
     }
     const faces = Object.freeze(buses.map(bus => bus.face));
@@ -181,7 +208,9 @@ export function createAudioMixer(options) {
             try {
                 voice.anchorPosition = positionOf(voice);
             }
-            catch { /* the last position known stays */ }
+            catch {
+                /* the last position known stays */
+            }
         voice.state = 'ended';
         voice.reason = reason;
         voice.backend = undefined;
@@ -198,7 +227,9 @@ export function createAudioMixer(options) {
         voice.settle = undefined;
         settle?.(reason);
         if (halt && raw !== undefined)
-            guard(() => { raw.stop(0); });
+            guard(() => {
+                raw.stop(0);
+            });
     }
     function launch(voice, offset, fadeIn) {
         const at = now(), token = {};
@@ -206,7 +237,14 @@ export function createAudioMixer(options) {
         let raw;
         try {
             raw = guard(() => backend.start(Object.freeze({
-                sound: voice.sound.backend, bus: voice.bus.backend, offset, loop: voice.loop, rate: voice.rate, gain: voice.volume, pan: voice.pan, fadeIn,
+                sound: voice.sound.backend,
+                bus: voice.bus.backend,
+                offset,
+                loop: voice.loop,
+                rate: voice.rate,
+                gain: voice.volume,
+                pan: voice.pan,
+                fadeIn
             }), () => {
                 if (voice.token === token)
                     end(voice, voice.state === 'stopping' ? 'stopped' : 'finished', false);
@@ -240,28 +278,53 @@ export function createAudioMixer(options) {
         if (music === voice)
             music = undefined;
         try {
-            guard(() => { raw.setGain(0, fade); raw.stop(fade); });
+            guard(() => {
+                raw.setGain(0, fade);
+                raw.stop(fade);
+            });
         }
         catch (cause) {
             // A host that could not fade is not waited for.
             try {
                 end(voice, 'stopped', true);
             }
-            catch { /* the first failure is the one told */ }
+            catch {
+                /* the first failure is the one told */
+            }
             throw cause;
         }
     }
     function faceOf(voice) {
         return Object.freeze({
-            id: voice.id, sound: voice.sound.face, bus: voice.bus.name, loop: voice.loop,
-            get state() { return voice.state; },
-            get endReason() { return voice.reason; },
-            get volume() { return voice.volume; },
-            get rate() { return voice.rate; },
-            get pan() { return voice.pan; },
-            get position() { return positionOf(voice); },
+            id: voice.id,
+            sound: voice.sound.face,
+            bus: voice.bus.name,
+            loop: voice.loop,
+            get state() {
+                return voice.state;
+            },
+            get endReason() {
+                return voice.reason;
+            },
+            get volume() {
+                return voice.volume;
+            },
+            get rate() {
+                return voice.rate;
+            },
+            get pan() {
+                return voice.pan;
+            },
+            get position() {
+                return positionOf(voice);
+            },
             get ended() {
-                voice.promise ??= voice.reason !== undefined ? Promise.resolve(voice.reason) : new Promise(resolve => { voice.settle = resolve; });
+                voice.promise ??=
+                    voice.reason !== undefined
+                        ? Promise.resolve(voice.reason)
+                        : new Promise(resolve => {
+                            voice.settle = resolve;
+                        });
                 return voice.promise;
             },
             setVolume(value, fade) {
@@ -273,7 +336,9 @@ export function createAudioMixer(options) {
                 voice.volume = value;
                 const raw = voice.backend;
                 if (raw !== undefined && voice.state === 'playing')
-                    guard(() => { raw.setGain(value, seconds); });
+                    guard(() => {
+                        raw.setGain(value, seconds);
+                    });
             },
             setRate(value) {
                 if (!within(value, 0.25, 4))
@@ -283,7 +348,9 @@ export function createAudioMixer(options) {
                 const raw = voice.backend;
                 if (raw !== undefined) {
                     const position = positionOf(voice), at = now();
-                    guard(() => { raw.setRate(value); });
+                    guard(() => {
+                        raw.setRate(value);
+                    });
                     voice.anchorPosition = position;
                     voice.anchorTime = at;
                 }
@@ -296,7 +363,9 @@ export function createAudioMixer(options) {
                     return;
                 const raw = voice.backend;
                 if (raw !== undefined)
-                    guard(() => { raw.setPan(value); });
+                    guard(() => {
+                        raw.setPan(value);
+                    });
                 voice.pan = value;
             },
             pause() {
@@ -312,7 +381,9 @@ export function createAudioMixer(options) {
                 voice.backend = undefined;
                 voice.token = undefined;
                 voice.anchorPosition = position;
-                guard(() => { raw.stop(0); });
+                guard(() => {
+                    raw.stop(0);
+                });
             },
             resume() {
                 if (voice.state !== 'paused')
@@ -321,7 +392,9 @@ export function createAudioMixer(options) {
                 if (voice.backend !== undefined)
                     voice.state = 'playing';
             },
-            stop(fade) { stopVoice(voice, fadeOf(fade)); },
+            stop(fade) {
+                stopVoice(voice, fadeOf(fade));
+            }
         });
     }
     function soundOf(value) {
@@ -336,24 +409,45 @@ export function createAudioMixer(options) {
         if (value !== undefined && !record(value))
             throw new EgretError('AUDIO_PLAY_OPTIONS');
         const given = value ?? {};
-        const pick = (key, otherwise) => given[key] === undefined ? otherwise : given[key];
+        const pick = (key, otherwise) => (given[key] === undefined ? otherwise : given[key]);
         const bus = given['bus'], level = pick('volume', 1), loop = pick('loop', forMusic), offset = pick('offset', 0), fadeIn = pick(forMusic ? 'fade' : 'fadeIn', 0);
         // Music is one voice at its own speed in the middle; it waits for the output instead of being dropped.
         const rate = forMusic ? 1 : pick('rate', 1), pan = forMusic ? 0 : pick('pan', 0), maxInstances = forMusic ? undefined : given['maxInstances'];
         const whileSilent = forMusic ? 'start' : pick('whileSilent', 'drop'), restart = forMusic ? given['restart'] : undefined;
-        if ((bus !== undefined && typeof bus !== 'string') || !within(level, 0, 1) || !within(rate, 0.25, 4) || !within(pan, -1, 1) || typeof loop !== 'boolean'
-            || !within(offset, 0, sound.backend.duration) || offset === sound.backend.duration || !within(fadeIn, 0, 60)
-            || (maxInstances !== undefined && !whole(maxInstances, 1, 256)) || (whileSilent !== 'drop' && whileSilent !== 'start')
-            || (restart !== undefined && typeof restart !== 'boolean'))
+        if ((bus !== undefined && typeof bus !== 'string') ||
+            !within(level, 0, 1) ||
+            !within(rate, 0.25, 4) ||
+            !within(pan, -1, 1) ||
+            typeof loop !== 'boolean' ||
+            !within(offset, 0, sound.backend.duration) ||
+            offset === sound.backend.duration ||
+            !within(fadeIn, 0, 60) ||
+            (maxInstances !== undefined && !whole(maxInstances, 1, 256)) ||
+            (whileSilent !== 'drop' && whileSilent !== 'start') ||
+            (restart !== undefined && typeof restart !== 'boolean'))
             throw new EgretError('AUDIO_PLAY_OPTIONS');
         return { bus, volume: level, rate, pan, loop, offset, fadeIn, maxInstances, whileSilent };
     }
     function start(sound, request, forMusic) {
         const bus = request.bus === undefined ? (forMusic ? melody : effects) : busOf(request.bus);
         const voice = {
-            id: ++ids, sound, bus, loop: request.loop, music: forMusic, state: 'playing', reason: undefined,
-            volume: request.volume, rate: request.rate, pan: request.pan, backend: undefined, token: undefined,
-            anchorTime: 0, anchorPosition: request.offset, promise: undefined, settle: undefined, face: undefined,
+            id: ++ids,
+            sound,
+            bus,
+            loop: request.loop,
+            music: forMusic,
+            state: 'playing',
+            reason: undefined,
+            volume: request.volume,
+            rate: request.rate,
+            pan: request.pan,
+            backend: undefined,
+            token: undefined,
+            anchorTime: 0,
+            anchorPosition: request.offset,
+            promise: undefined,
+            settle: undefined,
+            face: undefined
         };
         voice.face = faceOf(voice);
         if (request.whileSilent === 'drop' && current() !== 'running') {
@@ -414,7 +508,9 @@ export function createAudioMixer(options) {
                 try {
                     raw.stop(0);
                 }
-                catch { /* the first failure is the one told */ }
+                catch {
+                    /* the first failure is the one told */
+                }
             throw cause;
         }
         started++;
@@ -433,8 +529,12 @@ export function createAudioMixer(options) {
                 }
             throw new EgretError(code, { cleanupErrors });
         };
-        if (!record(raw) || typeof raw.release !== 'function' || !within(raw.duration, Number.MIN_VALUE, 86400) || !whole(raw.channels, 1, 32)
-            || !within(raw.sampleRate, 1, 768000) || (raw.streamed === true) !== streamed)
+        if (!record(raw) ||
+            typeof raw.release !== 'function' ||
+            !within(raw.duration, Number.MIN_VALUE, 86400) ||
+            !whole(raw.channels, 1, 32) ||
+            !within(raw.sampleRate, 1, 768000) ||
+            (raw.streamed === true) !== streamed)
             return discard('AUDIO_BACKEND_FAILED');
         const size = streamed ? 0 : Math.ceil(raw.duration * raw.sampleRate) * raw.channels * 4;
         if (closed)
@@ -442,18 +542,27 @@ export function createAudioMixer(options) {
         if (decodedBytes + size > maxDecodedBytes)
             return discard('AUDIO_BUDGET');
         const sound = {
-            backend: raw, bytes: size, voices: new Set(), released: false,
+            backend: raw,
+            bytes: size,
+            voices: new Set(),
+            released: false,
             face: Object.freeze({
-                duration: raw.duration, channels: raw.channels, sampleRate: raw.sampleRate, decodedBytes: size, streamed,
-                get state() { return sound.released ? 'released' : 'ready'; },
+                duration: raw.duration,
+                channels: raw.channels,
+                sampleRate: raw.sampleRate,
+                decodedBytes: size,
+                streamed,
+                get state() {
+                    return sound.released ? 'released' : 'ready';
+                },
                 release() {
                     if (sound.released)
                         return;
                     const failures = retire(sound, 'released');
                     if (failures.length > 0)
                         throw new EgretError('AUDIO_BACKEND_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
-                },
-            }),
+                }
+            })
         };
         sounds.add(sound);
         known.set(sound.face, sound);
@@ -524,10 +633,14 @@ export function createAudioMixer(options) {
     }
     const picture = (bus) => Object.freeze({ name: bus.name, volume: bus.volume, muted: bus.muted, voices: bus.face.voices });
     return Object.freeze({
-        get state() { return current(); },
+        get state() {
+            return current();
+        },
         master: master.face,
         buses: faces,
-        get music() { return music?.face; },
+        get music() {
+            return music?.face;
+        },
         bus: (name) => busOf(name).face,
         decode,
         stream,
@@ -581,7 +694,9 @@ export function createAudioMixer(options) {
             if (suspendedBy.length >= 8)
                 throw new EgretError('AUDIO_REASON_LIMIT');
             if (suspendedBy.length === 0)
-                guard(() => { backend.suspend(); });
+                guard(() => {
+                    backend.suspend();
+                });
             suspendedBy.push(reason);
             announce();
         },
@@ -592,7 +707,9 @@ export function createAudioMixer(options) {
             if (closed || index < 0)
                 return;
             if (suspendedBy.length === 1)
-                guard(() => { backend.resume(); });
+                guard(() => {
+                    backend.resume();
+                });
             suspendedBy.splice(index, 1);
             announce();
         },
@@ -609,11 +726,22 @@ export function createAudioMixer(options) {
                 throw new EgretError('AUDIO_OPTIONS_INVALID');
             open();
             listeners.add(listener);
-            return () => { listeners.delete(listener); };
+            return () => {
+                listeners.delete(listener);
+            };
         },
         snapshot: () => Object.freeze({
-            state: current(), locked, suspendedBy: Object.freeze([...suspendedBy]), master: picture(master), buses: Object.freeze(buses.map(picture)),
-            voices: voices.size, sounds: sounds.size, decodedBytes, music: music?.id, started, dropped: Object.freeze({ ...dropped }),
+            state: current(),
+            locked,
+            suspendedBy: Object.freeze([...suspendedBy]),
+            master: picture(master),
+            buses: Object.freeze(buses.map(picture)),
+            voices: voices.size,
+            sounds: sounds.size,
+            decodedBytes,
+            music: music?.id,
+            started,
+            dropped: Object.freeze({ ...dropped })
         }),
         dispose() {
             if (closed)
@@ -651,7 +779,7 @@ export function createAudioMixer(options) {
             listeners.clear();
             if (failures.length > 0)
                 throw new EgretError('AUDIO_CLEANUP_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
-        },
+        }
     });
 }
 //# sourceMappingURL=audioMixer.js.map

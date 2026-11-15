@@ -1,6 +1,6 @@
 import { DisplayObjectContainer } from "./DisplayObjectContainer.js";
-import type { DisplayObject } from './DisplayObject.js';
-import type { HitTestOptions } from './displayHitTest.js';
+import type { DisplayObject } from "./DisplayObject.js";
+import type { HitTestOptions } from "./displayHitTest.js";
 import { ASSERT_ATTACHABLE } from "./ownership.js";
 import type { EngineContext } from "./ownership.js";
 export declare let createStage: (engine: EngineContext) => Stage;

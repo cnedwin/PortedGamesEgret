@@ -54,7 +54,7 @@ export class Camera3D extends Object3D {
             const fov = requirePositive3D(this.fov, 'camera.fov');
             if (fov >= 180 || near <= 0)
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'camera.fov/near');
-            const zoomed = 2 * Math.atan(Math.tan(fov * Math.PI / 360) / zoom);
+            const zoomed = 2 * Math.atan(Math.tan((fov * Math.PI) / 360) / zoom);
             mat4Perspective(this.projectionMatrix, zoomed, aspect, near, far);
         }
         else {

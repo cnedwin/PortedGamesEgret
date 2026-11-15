@@ -10,12 +10,22 @@ class Refusal extends Error {
         this.pointer = pointer;
     }
 }
-function fail(code, pointer) { throw new Refusal(code, pointer); }
+function fail(code, pointer) {
+    throw new Refusal(code, pointer);
+}
 const escape = (text) => text.replaceAll('~', '~0').replaceAll('/', '~1');
-function success(value) { return Object.freeze({ ok: true, value, diagnostics: Object.freeze([]) }); }
+function success(value) {
+    return Object.freeze({ ok: true, value, diagnostics: Object.freeze([]) });
+}
 function rejection(error) {
-    const known = error instanceof Refusal ? error : new Refusal(error instanceof RangeError ? 'RESOURCE_LIMIT_EXCEEDED' : 'RESOURCE_INPUT_INVALID', '');
-    const diagnostic = Object.freeze({ code: known.code, pointer: known.pointer, message: known.code.replaceAll('_', ' ') + '.' });
+    const known = error instanceof Refusal
+        ? error
+        : new Refusal(error instanceof RangeError ? 'RESOURCE_LIMIT_EXCEEDED' : 'RESOURCE_INPUT_INVALID', '');
+    const diagnostic = Object.freeze({
+        code: known.code,
+        pointer: known.pointer,
+        message: known.code.replaceAll('_', ' ') + '.'
+    });
     return Object.freeze({ ok: false, diagnostics: Object.freeze([diagnostic]) });
 }
 // A complete descriptor-only copy precedes semantic work. Accessors never run,
@@ -23,8 +33,11 @@ function rejection(error) {
 function capture(input) {
     let bytes = 0;
     const ancestors = new Set();
-    const charge = (amount, pointer) => { bytes += amount; if (bytes > MAX_BYTES)
-        fail('RESOURCE_LIMIT_EXCEEDED', pointer); };
+    const charge = (amount, pointer) => {
+        bytes += amount;
+        if (bytes > MAX_BYTES)
+            fail('RESOURCE_LIMIT_EXCEEDED', pointer);
+    };
     function copy(value, pointer, depth) {
         if (depth > 32)
             fail('RESOURCE_LIMIT_EXCEEDED', pointer);
@@ -54,14 +67,16 @@ function capture(input) {
             if (keys.length !== length + 1)
                 fail('RESOURCE_INPUT_INVALID', pointer);
         }
-        const out = array ? [] : Object.create(null);
+        const out = array
+            ? []
+            : Object.create(null);
         charge(2, pointer);
         ancestors.add(value);
         let index = 0;
         for (const key of keys) {
             if (array && key === 'length')
                 continue;
-            if (typeof key !== 'string' || array && key !== String(index))
+            if (typeof key !== 'string' || (array && key !== String(index)))
                 fail('RESOURCE_INPUT_INVALID', pointer);
             // Refuse raw oversized keys before diagnostic escaping can expand them.
             if (key.length > MAX_BYTES)
@@ -94,7 +109,12 @@ function canonical(value) {
     if (Array.isArray(value))
         return '[' + value.map(canonical).join(',') + ']';
     const record = value;
-    return '{' + Object.keys(record).sort().map(key => JSON.stringify(key) + ':' + canonical(record[key])).join(',') + '}';
+    return ('{' +
+        Object.keys(record)
+            .sort()
+            .map(key => JSON.stringify(key) + ':' + canonical(record[key]))
+            .join(',') +
+        '}');
 }
 function record(value, pointer) {
     if (value === null || typeof value !== 'object' || Array.isArray(value))
@@ -108,7 +128,10 @@ function exact(value, keys, pointer) {
     return result;
 }
 function text(value, pointer, maximum = 128) {
-    if (typeof value !== 'string' || value.length === 0 || utf8ByteLength(value) > maximum || /[\u0000-\u001f\u007f]/u.test(value))
+    if (typeof value !== 'string' ||
+        value.length === 0 ||
+        utf8ByteLength(value) > maximum ||
+        /[\u0000-\u001f\u007f]/u.test(value))
         fail('RESOURCE_INPUT_INVALID', pointer);
     return value;
 }
@@ -118,8 +141,11 @@ function identity(value, prefix, pointer) {
         fail('RESOURCE_INPUT_INVALID', pointer);
     return result;
 }
-function array(value, pointer) { if (!Array.isArray(value))
-    fail('RESOURCE_INPUT_INVALID', pointer); return value; }
+function array(value, pointer) {
+    if (!Array.isArray(value))
+        fail('RESOURCE_INPUT_INVALID', pointer);
+    return value;
+}
 function digest(value, pointer) {
     if (typeof value !== 'string' || !/^[0-9a-f]{64}$/u.test(value))
         fail('RESOURCE_INPUT_INVALID', pointer);
@@ -127,7 +153,14 @@ function digest(value, pointer) {
 }
 function portablePath(value, pointer) {
     const result = text(value, pointer, 1024);
-    if (/[\\\u0000-\u001f\u007f:*?"<>|%#]/u.test(result) || result.split('/').some(part => !part || part === '.' || part === '..' || /[ .]$/u.test(part) || /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/iu.test(part)))
+    if (/[\\\u0000-\u001f\u007f:*?"<>|%#]/u.test(result) ||
+        result
+            .split('/')
+            .some(part => !part ||
+            part === '.' ||
+            part === '..' ||
+            /[ .]$/u.test(part) ||
+            /^(?:CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(?:\.|$)/iu.test(part)))
         fail('RESOURCE_PATH_INVALID', pointer);
     return result;
 }
@@ -141,13 +174,17 @@ function file(value, role, pointer) {
     if (/[^\u0021-\u007e]/u.test(mediaType))
         fail('RESOURCE_INPUT_INVALID', pointer + '/mediaType');
     digest(item.sha256, pointer + '/sha256');
-    if (typeof item.byteLength !== 'number' || !Number.isSafeInteger(item.byteLength) || item.byteLength < 0 || Object.is(item.byteLength, -0))
+    if (typeof item.byteLength !== 'number' ||
+        !Number.isSafeInteger(item.byteLength) ||
+        item.byteLength < 0 ||
+        Object.is(item.byteLength, -0))
         fail('RESOURCE_INPUT_INVALID', pointer + '/byteLength');
     return item;
 }
 function prepare(input, claimed, sourceOnly = false) {
     const raw = exact(capture(input), ['format', 'projectId', 'targetProfile', 'versions', 'entries'], '');
-    if (raw.format !== (sourceOnly ? 'egret.resource-build-plan/1' : claimed ? 'egret.resource-manifest/1' : 'egret.resource-build/1'))
+    if (raw.format !==
+        (sourceOnly ? 'egret.resource-build-plan/1' : claimed ? 'egret.resource-manifest/1' : 'egret.resource-build/1'))
         fail('RESOURCE_FORMAT_UNSUPPORTED', '/format');
     const projectId = identity(raw.projectId, 'p', '/projectId'), targetProfile = text(raw.targetProfile, '/targetProfile');
     const versionData = exact(raw.versions, ['engineVersion', 'resourceFormatVersion', 'toolProtocolVersion'], '/versions');
@@ -161,9 +198,24 @@ function prepare(input, claimed, sourceOnly = false) {
     const selected = new Map();
     const fileRecords = new Map(), pathOwners = new Map();
     let edges = 0;
-    const baseKeys = ['id', 'resourceKind', 'source', 'artifact', 'importer', 'settings', 'artifactFormatVersion', 'targetProfile', 'dependencies', 'provenance'];
+    const baseKeys = [
+        'id',
+        'resourceKind',
+        'source',
+        'artifact',
+        'importer',
+        'settings',
+        'artifactFormatVersion',
+        'targetProfile',
+        'dependencies',
+        'provenance'
+    ];
     for (let index = 0; index < entries.length; index++) {
-        const pointer = '/entries/' + index, item = exact(entries[index], sourceOnly ? baseKeys.filter(key => key !== 'artifact') : claimed ? [...baseKeys, 'buildKey', 'runtimeIdentity'] : baseKeys, pointer);
+        const pointer = '/entries/' + index, item = exact(entries[index], sourceOnly
+            ? baseKeys.filter(key => key !== 'artifact')
+            : claimed
+                ? [...baseKeys, 'buildKey', 'runtimeIdentity']
+                : baseKeys, pointer);
         const id = identity(item.id, 'e', pointer + '/id');
         if (selected.has(id))
             fail('RESOURCE_ID_DUPLICATE', pointer + '/id');
@@ -188,7 +240,12 @@ function prepare(input, claimed, sourceOnly = false) {
                 fail('RESOURCE_DEPENDENCY_INVALID', pointer + '/dependencies/' + dependency);
             seen.add(name);
         }
-        const files = sourceOnly ? [['source', 'source']] : [['source', 'source'], ['artifact', 'asset']];
+        const files = sourceOnly
+            ? [['source', 'source']]
+            : [
+                ['source', 'source'],
+                ['artifact', 'asset']
+            ];
         for (const [name, role] of files) {
             const current = file(item[name], role, pointer + '/' + name), encoded = canonical(current), old = fileRecords.get(current.id);
             if (old !== undefined && old !== encoded)
@@ -203,7 +260,18 @@ function prepare(input, claimed, sourceOnly = false) {
             digest(item.buildKey, pointer + '/buildKey');
             digest(item.runtimeIdentity, pointer + '/runtimeIdentity');
         }
-        const entry = Object.freeze({ id: item.id, resourceKind: item.resourceKind, source: item.source, ...(sourceOnly ? {} : { artifact: item.artifact }), importer: item.importer, settings: item.settings, artifactFormatVersion: item.artifactFormatVersion, targetProfile: item.targetProfile, dependencies: item.dependencies, provenance: item.provenance });
+        const entry = Object.freeze({
+            id: item.id,
+            resourceKind: item.resourceKind,
+            source: item.source,
+            ...(sourceOnly ? {} : { artifact: item.artifact }),
+            importer: item.importer,
+            settings: item.settings,
+            artifactFormatVersion: item.artifactFormatVersion,
+            targetProfile: item.targetProfile,
+            dependencies: item.dependencies,
+            provenance: item.provenance
+        });
         selected.set(id, claimed ? { entry, pointer, claimed: item } : { entry, pointer });
     }
     for (const { entry, pointer } of selected.values())
@@ -240,8 +308,22 @@ function prepare(input, claimed, sourceOnly = false) {
 // The pre-artifact and final-manifest paths share this exact projection and hash.
 // File binding and artifact identity remain outside the intrinsic build key.
 function buildIdentity(entry, targetProfile, versions, completed) {
-    const dependencies = entry.dependencies.map(dependency => ({ id: dependency, buildKey: completed.get(dependency).buildKey }));
-    const build = canonical({ format: 'egret.resource-build-key/1', resourceKind: entry.resourceKind, importer: entry.importer, settings: entry.settings, artifactFormatVersion: entry.artifactFormatVersion, targetProfile, versions, source: { sha256: entry.source.sha256, byteLength: entry.source.byteLength }, dependencies, provenance: entry.provenance });
+    const dependencies = entry.dependencies.map(dependency => ({
+        id: dependency,
+        buildKey: completed.get(dependency).buildKey
+    }));
+    const build = canonical({
+        format: 'egret.resource-build-key/1',
+        resourceKind: entry.resourceKind,
+        importer: entry.importer,
+        settings: entry.settings,
+        artifactFormatVersion: entry.artifactFormatVersion,
+        targetProfile,
+        versions,
+        source: { sha256: entry.source.sha256, byteLength: entry.source.byteLength },
+        dependencies,
+        provenance: entry.provenance
+    });
     return { build, buildKey: sha256Utf8(build) };
 }
 function evaluate(input, claimed) {
@@ -250,14 +332,32 @@ function evaluate(input, claimed) {
     for (const id of order) {
         const node = selected.get(id), entry = node.entry;
         const { build, buildKey } = buildIdentity(entry, targetProfile, versions, completed);
-        const runtime = canonical({ format: 'egret.resource-identity/1', projectId, id, buildKey, artifact: { sha256: entry.artifact.sha256, byteLength: entry.artifact.byteLength, mediaType: entry.artifact.mediaType }, artifactFormatVersion: entry.artifactFormatVersion, targetProfile });
+        const runtime = canonical({
+            format: 'egret.resource-identity/1',
+            projectId,
+            id,
+            buildKey,
+            artifact: {
+                sha256: entry.artifact.sha256,
+                byteLength: entry.artifact.byteLength,
+                mediaType: entry.artifact.mediaType
+            },
+            artifactFormatVersion: entry.artifactFormatVersion,
+            targetProfile
+        });
         const runtimeIdentity = sha256Utf8(runtime);
         if (node.claimed && (node.claimed.buildKey !== buildKey || node.claimed.runtimeIdentity !== runtimeIdentity))
             fail('RESOURCE_KEY_MISMATCH', node.pointer);
         completed.set(id, Object.freeze({ ...entry, buildKey, runtimeIdentity }));
         inputs.set(id, Object.freeze({ build, runtime }));
     }
-    const manifest = Object.freeze({ format: 'egret.resource-manifest/1', projectId, targetProfile, versions, entries: Object.freeze(ids.map(id => completed.get(id))) });
+    const manifest = Object.freeze({
+        format: 'egret.resource-manifest/1',
+        projectId,
+        targetProfile,
+        versions,
+        entries: Object.freeze(ids.map(id => completed.get(id)))
+    });
     const encoded = canonical(manifest);
     if (utf8ByteLength(encoded) > MAX_BYTES)
         fail('RESOURCE_LIMIT_EXCEEDED', '');
@@ -268,7 +368,13 @@ function evaluate(input, claimed) {
 export function validateResourceBuildPlanDescription(input) {
     try {
         const { projectId, targetProfile, versions, selected, ids } = prepare(input, false, true);
-        const result = Object.freeze({ format: 'egret.resource-build-plan/1', projectId, targetProfile, versions, entries: Object.freeze(ids.map(id => selected.get(id).entry)) });
+        const result = Object.freeze({
+            format: 'egret.resource-build-plan/1',
+            projectId,
+            targetProfile,
+            versions,
+            entries: Object.freeze(ids.map(id => selected.get(id).entry))
+        });
         return success(result);
     }
     catch (error) {
@@ -283,7 +389,13 @@ export function evaluateResourceBuildKeys(description) {
             const entry = selected.get(id).entry, { buildKey } = buildIdentity(entry, targetProfile, versions, completed);
             completed.set(id, Object.freeze({ ...entry, buildKey }));
         }
-        const result = Object.freeze({ format: 'egret.resource-build-keys/1', projectId, targetProfile, versions, entries: Object.freeze(ids.map(id => completed.get(id))) });
+        const result = Object.freeze({
+            format: 'egret.resource-build-keys/1',
+            projectId,
+            targetProfile,
+            versions,
+            entries: Object.freeze(ids.map(id => completed.get(id)))
+        });
         if (utf8ByteLength(canonical(result)) > MAX_BYTES)
             fail('RESOURCE_LIMIT_EXCEEDED', '');
         return success(result);
@@ -297,26 +409,38 @@ export function evaluateResourceBuildKeys(description) {
 export function validateResourceBuildDescription(input) {
     try {
         const { projectId, targetProfile, versions, selected, ids } = prepare(input, false);
-        const result = Object.freeze({ format: 'egret.resource-build/1', projectId, targetProfile, versions, entries: Object.freeze(ids.map(id => selected.get(id).entry)) });
+        const result = Object.freeze({
+            format: 'egret.resource-build/1',
+            projectId,
+            targetProfile,
+            versions,
+            entries: Object.freeze(ids.map(id => selected.get(id).entry))
+        });
         return success(result);
     }
     catch (error) {
         return rejection(error);
     }
 }
-export function buildResourceManifest(description) { try {
-    return success(evaluate(description, false));
+export function buildResourceManifest(description) {
+    try {
+        return success(evaluate(description, false));
+    }
+    catch (error) {
+        return rejection(error);
+    }
 }
-catch (error) {
-    return rejection(error);
-} }
-export function admitResourceManifest(value) { try {
-    return success(evaluate(value, true));
+export function admitResourceManifest(value) {
+    try {
+        return success(evaluate(value, true));
+    }
+    catch (error) {
+        return rejection(error);
+    }
 }
-catch (error) {
-    return rejection(error);
-} }
-export function isAdmittedResourceManifest(value) { return value !== null && typeof value === 'object' && admitted.has(value); }
+export function isAdmittedResourceManifest(value) {
+    return value !== null && typeof value === 'object' && admitted.has(value);
+}
 export function serializeResourceManifest(manifest) {
     if (!isAdmittedResourceManifest(manifest))
         return rejection(new Refusal('RESOURCE_INPUT_INVALID', ''));

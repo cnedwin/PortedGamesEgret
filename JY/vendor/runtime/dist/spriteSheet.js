@@ -2,7 +2,7 @@ import { isAssetLease } from "./AssetLease.js";
 import { applyBitmapAtlasFrame, readBitmapImage, spriteSheetBitmapOperations } from "./Bitmap.js";
 import { EgretError } from "./EgretError.js";
 import { commitBinding, engineOf } from "./ownership.js";
-import { captureAtlasFrameLayout, copyAtlasFrameLayout } from './atlasFrameLayout.js';
+import { captureAtlasFrameLayout, copyAtlasFrameLayout } from "./atlasFrameLayout.js";
 const states = new WeakMap();
 const arrayIsArray = Array.isArray;
 const hasOwnProperty = Object.prototype.hasOwnProperty;
@@ -18,9 +18,12 @@ function readAtlas(engine, lease, expectedImage) {
     engine.assertOpen();
     const snapshot = readBitmapImage(lease);
     const { image, sourceRect } = snapshot;
-    if (snapshot.viewRegion !== null || sourceRect.x !== 0 || sourceRect.y !== 0
-        || sourceRect.width !== image.width || sourceRect.height !== image.height
-        || (expectedImage !== undefined && image !== expectedImage)) {
+    if (snapshot.viewRegion !== null ||
+        sourceRect.x !== 0 ||
+        sourceRect.y !== 0 ||
+        sourceRect.width !== image.width ||
+        sourceRect.height !== image.height ||
+        (expectedImage !== undefined && image !== expectedImage)) {
         throw new EgretError("SPRITE_SHEET_ATLAS_INVALID");
     }
     return snapshot;
@@ -48,9 +51,7 @@ function own(input, key, revalidate) {
 }
 function readField(input, key, revalidate) {
     const present = own(input, key, revalidate);
-    const value = present
-        ? readSource(() => input[key], revalidate)
-        : undefined;
+    const value = present ? readSource(() => input[key], revalidate) : undefined;
     return { present, value };
 }
 /** Missing known fields are staged; a later read occurrence keeps its priority. */
@@ -79,7 +80,9 @@ function stageFrames(input, revalidate, atlasLayout) {
         const y = readField(record, "y", revalidate);
         const width = readField(record, "width", revalidate);
         const height = readField(record, "height", revalidate);
-        const layout = atlasLayout ? captureAtlasFrameLayout(record, (source, key) => readField(source, key, revalidate), callback => readSource(callback, revalidate)) : undefined;
+        const layout = atlasLayout
+            ? captureAtlasFrameLayout(record, (source, key) => readField(source, key, revalidate), callback => readSource(callback, revalidate))
+            : undefined;
         staged.push({ name, x, y, width, height, ...(layout === undefined ? {} : { layout }) });
     }
     return staged;
@@ -135,11 +138,15 @@ function recordCleanup(state, cause) {
     try {
         state.engine.captureCleanup(cause);
     }
-    catch { /* Preserve the primary. */ }
+    catch {
+        /* Preserve the primary. */
+    }
     try {
         state.engine.report({ code: "SPRITE_SHEET_BITMAP_FAILED", phase: "display-tree", severity: "error", cause });
     }
-    catch { /* Advanced context observers are observation only. */ }
+    catch {
+        /* Advanced context observers are observation only. */
+    }
 }
 /** A private failed Bitmap is retired once; caller-owned leases are never released. */
 function retireFailedBitmap(state, bitmap, primary) {
@@ -158,7 +165,10 @@ function retireFailedBitmap(state, bitmap, primary) {
         return primary;
     recordCleanup(state, cleanupCause);
     if (primary instanceof EgretError) {
-        return new EgretError(primary.code, { cause: primary.cause, cleanupErrors: [...primary.cleanupErrors, cleanupCause] });
+        return new EgretError(primary.code, {
+            cause: primary.cause,
+            cleanupErrors: [...primary.cleanupErrors, cleanupCause]
+        });
     }
     return new EgretError("SPRITE_SHEET_BITMAP_FAILED", { cause: primary, cleanupErrors: [cleanupCause] });
 }
@@ -200,13 +210,28 @@ function createFacade() {
         return stateOf(receiver);
     }
     const sheet = Object.freeze({
-        get frameCount() { return receiverState(this).names.length; },
-        get names() { return receiverState(this).names; },
-        get atlasWidth() { return receiverState(this).atlasWidth; },
-        get atlasHeight() { return receiverState(this).atlasHeight; },
-        get isDisposed() { return receiverState(this).disposed; },
-        getRegion(name) { return findRegion(receiverState(this), name); },
-        createBitmap(name) { receiverState(this); return createBitmap(this, name); },
+        get frameCount() {
+            return receiverState(this).names.length;
+        },
+        get names() {
+            return receiverState(this).names;
+        },
+        get atlasWidth() {
+            return receiverState(this).atlasWidth;
+        },
+        get atlasHeight() {
+            return receiverState(this).atlasHeight;
+        },
+        get isDisposed() {
+            return receiverState(this).disposed;
+        },
+        getRegion(name) {
+            return findRegion(receiverState(this), name);
+        },
+        createBitmap(name) {
+            receiverState(this);
+            return createBitmap(this, name);
+        },
         dispose() {
             const state = receiverState(this);
             if (state.disposed)
@@ -215,7 +240,7 @@ function createFacade() {
             state.disposed = true;
             state.lease = undefined;
             state.image = undefined;
-        },
+        }
     });
     return sheet;
 }
@@ -226,9 +251,11 @@ export function createSpriteSheet(atlasLease, frames, profile) {
     const engine = engineOf(atlasLease);
     const snapshot = readAtlas(engine, atlasLease);
     const { image } = snapshot;
-    if (profile !== undefined && profile !== 'trim-rotation-v1')
-        throw new EgretError('SPRITE_SHEET_INPUT_INVALID');
-    const revalidate = () => { readAtlas(engine, atlasLease, image); };
+    if (profile !== undefined && profile !== "trim-rotation-v1")
+        throw new EgretError("SPRITE_SHEET_INPUT_INVALID");
+    const revalidate = () => {
+        readAtlas(engine, atlasLease, image);
+    };
     const staged = stageFrames(frames, revalidate, profile !== undefined);
     const validated = [];
     const seenNames = new Set();
@@ -252,20 +279,36 @@ export function createSpriteSheet(atlasLease, frames, profile) {
             throw new EgretError("SPRITE_SHEET_REGION_INVALID");
         }
         seenNames.add(name);
-        const layout = frame.layout === undefined ? undefined : copyAtlasFrameLayout(frame.layout, width, height, kind => { throw new EgretError(kind === 'shape' ? 'SPRITE_SHEET_INPUT_INVALID' : 'SPRITE_SHEET_REGION_INVALID'); });
+        const layout = frame.layout === undefined
+            ? undefined
+            : copyAtlasFrameLayout(frame.layout, width, height, kind => {
+                throw new EgretError(kind === "shape" ? "SPRITE_SHEET_INPUT_INVALID" : "SPRITE_SHEET_REGION_INVALID");
+            });
         validated.push({ name, x, y, width, height, ...(layout === undefined ? {} : { layout }) });
     }
     // Allocate public-owned crops only after the complete staged table qualifies.
     const names = [];
     const regions = new Map();
     for (const frame of validated) {
-        regions.set(frame.name, Object.freeze({ x: frame.x, y: frame.y, width: frame.width, height: frame.height, ...(frame.layout === undefined ? {} : { layout: frame.layout }) }));
+        regions.set(frame.name, Object.freeze({
+            x: frame.x,
+            y: frame.y,
+            width: frame.width,
+            height: frame.height,
+            ...(frame.layout === undefined ? {} : { layout: frame.layout })
+        }));
         names.push(frame.name);
     }
     const state = {
-        engine, names: Object.freeze(names), regions,
-        atlasWidth: image.width, atlasHeight: image.height,
-        lease: atlasLease, image, disposed: false, creatingBitmap: false,
+        engine,
+        names: Object.freeze(names),
+        regions,
+        atlasWidth: image.width,
+        atlasHeight: image.height,
+        lease: atlasLease,
+        image,
+        disposed: false,
+        creatingBitmap: false
     };
     const sheet = createFacade();
     const binding = [sheet];

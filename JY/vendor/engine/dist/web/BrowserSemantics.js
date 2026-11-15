@@ -1,10 +1,49 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
 /** Roles a native button carries well: it is activated by a click from any assistive technology. */
-const pressable = ['button', 'checkbox', 'switch', 'radio', 'option', 'tab', 'menuitem', 'gridcell', 'columnheader', 'treeitem'];
+const pressable = [
+    'button',
+    'checkbox',
+    'switch',
+    'radio',
+    'option',
+    'tab',
+    'menuitem',
+    'gridcell',
+    'columnheader',
+    'treeitem'
+];
 const aria = {
-    group: 'group', image: 'img', checkbox: 'checkbox', switch: 'switch', radiogroup: 'radiogroup', radio: 'radio', listbox: 'listbox',
-    option: 'option', list: 'list', listitem: 'listitem', scrollbar: 'scrollbar', slider: 'slider', spinbutton: 'spinbutton', progressbar: 'progressbar', tablist: 'tablist', tab: 'tab', tabpanel: 'tabpanel', menu: 'menu', menuitem: 'menuitem', dialog: 'dialog', textbox: 'textbox', status: 'status', alert: 'alert', grid: 'grid', row: 'row', gridcell: 'gridcell', columnheader: 'columnheader', tree: 'tree', treeitem: 'treeitem', heading: 'heading',
+    group: 'group',
+    image: 'img',
+    checkbox: 'checkbox',
+    switch: 'switch',
+    radiogroup: 'radiogroup',
+    radio: 'radio',
+    listbox: 'listbox',
+    option: 'option',
+    list: 'list',
+    listitem: 'listitem',
+    scrollbar: 'scrollbar',
+    slider: 'slider',
+    spinbutton: 'spinbutton',
+    progressbar: 'progressbar',
+    tablist: 'tablist',
+    tab: 'tab',
+    tabpanel: 'tabpanel',
+    menu: 'menu',
+    menuitem: 'menuitem',
+    dialog: 'dialog',
+    textbox: 'textbox',
+    status: 'status',
+    alert: 'alert',
+    grid: 'grid',
+    row: 'row',
+    gridcell: 'gridcell',
+    columnheader: 'columnheader',
+    tree: 'tree',
+    treeitem: 'treeitem',
+    heading: 'heading'
 };
 /** Roles whose name is their content: a reader reads the text, and says a message when the text changes. */
 const worded = ['text', 'status', 'alert', 'heading'];
@@ -21,10 +60,18 @@ export function createBrowserSemantics(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_SEMANTICS_OPTIONS');
     const { semantics, canvas: surface, width, height, label, onError } = options;
-    if (semantics === null || typeof semantics !== 'object' || typeof semantics.observe !== 'function' || typeof semantics.perform !== 'function'
-        || surface === null || typeof surface !== 'object' || !finite(width) || width <= 0 || !finite(height) || height <= 0
-        || (label !== undefined && (typeof label !== 'string' || !/\S/.test(label) || label.length > 1024))
-        || (onError !== undefined && typeof onError !== 'function'))
+    if (semantics === null ||
+        typeof semantics !== 'object' ||
+        typeof semantics.observe !== 'function' ||
+        typeof semantics.perform !== 'function' ||
+        surface === null ||
+        typeof surface !== 'object' ||
+        !finite(width) ||
+        width <= 0 ||
+        !finite(height) ||
+        height <= 0 ||
+        (label !== undefined && (typeof label !== 'string' || !/\S/.test(label) || label.length > 1024)) ||
+        (onError !== undefined && typeof onError !== 'function'))
         throw new EgretError('UI_SEMANTICS_OPTIONS');
     if (semantics.state === 'closed')
         throw new EgretError('UI_SEMANTICS_CLOSED');
@@ -45,12 +92,14 @@ export function createBrowserSemantics(options) {
             return;
         closed = true;
         const failures = [];
-        const attempt = (action) => { try {
-            action();
-        }
-        catch (cause) {
-            failures.push(cause);
-        } };
+        const attempt = (action) => {
+            try {
+                action();
+            }
+            catch (cause) {
+                failures.push(cause);
+            }
+        };
         for (const pair of pairs.splice(0).reverse())
             attempt(() => pair.target.removeEventListener(pair.type, pair.listener, pair.options));
         for (const restore of restores.splice(0).reverse())
@@ -64,10 +113,15 @@ export function createBrowserSemantics(options) {
         for (const cause of failures)
             report(cause);
     }
-    function fail(cause) { cleanup(); report(cause); }
+    function fail(cause) {
+        cleanup();
+        report(cause);
+    }
     /** The rectangle of the canvas on the page, refused unless one scale and one offset map it. */
     function profile() {
-        if (typeof surface.getBoundingClientRect !== 'function' || surface.ownerDocument !== page || surface.isConnected !== true)
+        if (typeof surface.getBoundingClientRect !== 'function' ||
+            surface.ownerDocument !== page ||
+            surface.isConnected !== true)
             throw new EgretError('UI_SEMANTICS_SURFACE_INVALID');
         let current = surface, depth = 0;
         while (current !== page) {
@@ -101,8 +155,19 @@ export function createBrowserSemantics(options) {
                 container.style.cssText = placed = 'display:none';
             return;
         }
-        const style = (left, top) => 'position:fixed;left:' + left + 'px;top:' + top + 'px;width:' + width + 'px;height:' + height
-            + 'px;transform-origin:0 0;transform:scale(' + rect.width / width + ',' + rect.height / height + ');overflow:hidden;pointer-events:none;opacity:0;margin:0;padding:0;border:0';
+        const style = (left, top) => 'position:fixed;left:' +
+            left +
+            'px;top:' +
+            top +
+            'px;width:' +
+            width +
+            'px;height:' +
+            height +
+            'px;transform-origin:0 0;transform:scale(' +
+            rect.width / width +
+            ',' +
+            rect.height / height +
+            ');overflow:hidden;pointer-events:none;opacity:0;margin:0;padding:0;border:0';
         const wanted = style(rect.left, rect.top);
         if (wanted === placed)
             return;
@@ -164,8 +229,15 @@ export function createBrowserSemantics(options) {
                 holder.insertBefore(item.element, holder.children[cursor] ?? null);
             cursors.set(holder, cursor + 1);
             const { bounds } = node;
-            write(item, 'style', 'position:absolute;box-sizing:border-box;margin:0;padding:0;border:0;left:' + (bounds.x - (parent?.bounds.x ?? 0)) + 'px;top:'
-                + (bounds.y - (parent?.bounds.y ?? 0)) + 'px;width:' + bounds.width + 'px;height:' + bounds.height + 'px');
+            write(item, 'style', 'position:absolute;box-sizing:border-box;margin:0;padding:0;border:0;left:' +
+                (bounds.x - (parent?.bounds.x ?? 0)) +
+                'px;top:' +
+                (bounds.y - (parent?.bounds.y ?? 0)) +
+                'px;width:' +
+                bounds.width +
+                'px;height:' +
+                bounds.height +
+                'px');
             if (worded.includes(node.role))
                 write(item, 'text', node.name);
             else {
@@ -185,7 +257,11 @@ export function createBrowserSemantics(options) {
             write(item, 'aria-valuemax', text(node.range?.max));
             write(item, 'aria-orientation', node.orientation);
             // A row says which row of the grid it is and a cell which column it is in; the grid says how many there are. Elsewhere a position is a place in a set.
-            const placed = node.role === 'row' ? 'aria-rowindex' : node.role === 'gridcell' || node.role === 'columnheader' ? 'aria-colindex' : undefined;
+            const placed = node.role === 'row'
+                ? 'aria-rowindex'
+                : node.role === 'gridcell' || node.role === 'columnheader'
+                    ? 'aria-colindex'
+                    : undefined;
             write(item, 'aria-posinset', placed === undefined ? text(node.position?.index) : undefined);
             write(item, 'aria-setsize', placed === undefined ? text(node.position?.size) : undefined);
             if (placed !== undefined)
@@ -239,13 +315,15 @@ export function createBrowserSemantics(options) {
     }
     function listen(target, type, action, settings = {}) {
         // A listener the page failed to remove does nothing once the projection has closed.
-        const listener = event => { if (!closed)
-            try {
-                action(event);
-            }
-            catch (cause) {
-                fail(cause);
-            } };
+        const listener = event => {
+            if (!closed)
+                try {
+                    action(event);
+                }
+                catch (cause) {
+                    fail(cause);
+                }
+        };
         pairs.push({ target, type, listener, options: settings });
         target.addEventListener(type, listener, settings);
     }
@@ -254,8 +332,10 @@ export function createBrowserSemantics(options) {
         if (surface.getAttribute(name) !== null)
             return;
         surface.setAttribute(name, value);
-        restores.push(() => { if (surface.getAttribute(name) === value)
-            surface.removeAttribute(name); });
+        restores.push(() => {
+            if (surface.getAttribute(name) === value)
+                surface.removeAttribute(name);
+        });
     }
     try {
         profile();
@@ -280,8 +360,10 @@ export function createBrowserSemantics(options) {
             else
                 surface.setAttribute('aria-owns', owns);
         });
-        restores.push(() => { if (surface.getAttribute('aria-activedescendant')?.startsWith(holder.id + '-') === true)
-            surface.removeAttribute('aria-activedescendant'); });
+        restores.push(() => {
+            if (surface.getAttribute('aria-activedescendant')?.startsWith(holder.id + '-') === true)
+                surface.removeAttribute('aria-activedescendant');
+        });
         claim('role', 'application');
         if (label !== undefined)
             claim('aria-label', label);
@@ -295,29 +377,35 @@ export function createBrowserSemantics(options) {
             listen(viewport, 'resize', place);
             listen(viewport, 'scroll', place);
         }
-        const stop = semantics.observe(snapshot => { if (!closed)
-            try {
-                apply(snapshot);
-            }
-            catch (cause) {
-                fail(cause);
-            } });
+        const stop = semantics.observe(snapshot => {
+            if (!closed)
+                try {
+                    apply(snapshot);
+                }
+                catch (cause) {
+                    fail(cause);
+                }
+        });
         restores.push(stop);
         restores.push(semantics.onClose(cleanup));
         apply(semantics.snapshot);
         return Object.freeze({
-            get state() { return closed ? 'closed' : 'active'; },
+            get state() {
+                return closed ? 'closed' : 'active';
+            },
             container: holder,
-            elementOf: (id) => closed ? undefined : projected.get(id)?.element,
-            sync() { if (!closed)
-                try {
-                    place();
-                }
-                catch (cause) {
-                    fail(cause);
-                    throw cause;
-                } },
-            dispose: cleanup,
+            elementOf: (id) => (closed ? undefined : projected.get(id)?.element),
+            sync() {
+                if (!closed)
+                    try {
+                        place();
+                    }
+                    catch (cause) {
+                        fail(cause);
+                        throw cause;
+                    }
+            },
+            dispose: cleanup
         });
     }
     catch (cause) {

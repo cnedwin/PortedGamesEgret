@@ -18,7 +18,9 @@ function codeOf(cause, fallback) {
 function remember(record, issue) {
     record.lastIssue = Object.freeze({ code: issue.code, clockTickId: issue.clockTickId });
 }
-function originalDispose() { apply(playerDispose, this, []); }
+function originalDispose() {
+    apply(playerDispose, this, []);
+}
 /** Revoke first; every acquired borrow is then attempted independently. */
 function retire(record, state, keepDelivery = false) {
     if (!keepDelivery && record.delivery !== undefined)
@@ -43,14 +45,22 @@ function retire(record, state, keepDelivery = false) {
     record.pending = [];
     let first;
     for (const cleanup of [
-        () => { if (abort !== undefined)
-            scope?.remove(abort); },
-        () => { if (claimed && target !== undefined)
-            port?.claims.release(target, record.claimToken); },
-        () => { if (driver !== undefined)
-            coordinator?.remove(driver); },
-        () => { if (player !== undefined)
-            apply(playerDispose, player, []); },
+        () => {
+            if (abort !== undefined)
+                scope?.remove(abort);
+        },
+        () => {
+            if (claimed && target !== undefined)
+                port?.claims.release(target, record.claimToken);
+        },
+        () => {
+            if (driver !== undefined)
+                coordinator?.remove(driver);
+        },
+        () => {
+            if (player !== undefined)
+                apply(playerDispose, player, []);
+        }
     ]) {
         try {
             cleanup();
@@ -60,7 +70,9 @@ function retire(record, state, keepDelivery = false) {
             try {
                 port?.captureCleanup(cause);
             }
-            catch { /* Preserve the primary transition outcome. */ }
+            catch {
+                /* Preserve the primary transition outcome. */
+            }
         }
     }
     if (first !== undefined)
@@ -79,15 +91,33 @@ function assertControl(record) {
     return port;
 }
 function snapshot(record) {
-    return Object.freeze({ state: record.state, isDisposed: terminal(record.state),
-        elapsedSeconds: record.elapsed, positionSeconds: record.position, playIndex: record.play,
-        rate: record.rate, totalPlays: record.totalPlays, lastSample: record.lastSample,
-        pendingCommands: record.pending.length, committedEventCount: record.eventCount, lastIssue: record.lastIssue });
+    return Object.freeze({
+        state: record.state,
+        isDisposed: terminal(record.state),
+        elapsedSeconds: record.elapsed,
+        positionSeconds: record.position,
+        playIndex: record.play,
+        rate: record.rate,
+        totalPlays: record.totalPlays,
+        lastSample: record.lastSample,
+        pendingCommands: record.pending.length,
+        committedEventCount: record.eventCount,
+        lastIssue: record.lastIssue
+    });
 }
 function begin(record) {
-    return { state: record.state, elapsed: record.elapsed, position: record.position, play: record.play,
-        rate: record.rate, baseline: record.baseline, applyTarget: false, consumed: 0,
-        terminalCommand: false, events: [] };
+    return {
+        state: record.state,
+        elapsed: record.elapsed,
+        position: record.position,
+        play: record.play,
+        rate: record.rate,
+        baseline: record.baseline,
+        applyTarget: false,
+        consumed: 0,
+        terminalCommand: false,
+        events: []
+    };
 }
 function appendEvents(record, candidate, to, source, includeStart = false, includeComplete = true) {
     const events = planEvents(record.duration, record.totalPlays, record.markers, candidate.elapsed, to, { includeStart, includeComplete }, 1024 - candidate.events.length);
@@ -182,7 +212,9 @@ function observeRejected(result) {
         try {
             void Promise.resolve(result).then(undefined, ignore);
         }
-        catch { /* Return observation cannot replace the committed callback outcome. */ }
+        catch {
+            /* Return observation cannot replace the committed callback outcome. */
+        }
     }
 }
 /** Event delivery owns a short-lived borrow independent of the retired controller. */
@@ -238,7 +270,7 @@ function makeDelivery(record, port, scope, listener, events, token, initialIssue
                 if (record.delivery === token)
                     record.delivery = undefined;
             }
-        },
+        }
     };
 }
 function refusal(record, port, scope, cause, tick, code) {
@@ -247,8 +279,16 @@ function refusal(record, port, scope, cause, tick, code) {
     return makeDelivery(record, port, scope, undefined, [], { active: false }, issue);
 }
 function bindingError(cause) {
-    return cause instanceof EgretError && ['SEQ_BINDING_CHANGED', 'OBJECT_DISPOSED', 'LEASE_RELEASED',
-        'TEXTURE_DISPOSED', 'ASSET_LEASE_RELEASED', 'ASSET_DISPOSED', 'BITMAP_TEXTURE_REQUIRED'].includes(cause.code);
+    return (cause instanceof EgretError &&
+        [
+            'SEQ_BINDING_CHANGED',
+            'OBJECT_DISPOSED',
+            'LEASE_RELEASED',
+            'TEXTURE_DISPOSED',
+            'ASSET_LEASE_RELEASED',
+            'ASSET_DISPOSED',
+            'BITMAP_TEXTURE_REQUIRED'
+        ].includes(cause.code));
 }
 /** Pure preparation precedes one original player apply and callback-free publication. */
 function commit(record, candidate, tick, replaced) {
@@ -385,13 +425,24 @@ function stop(record, ownedCancellation = false) {
         deliver(port, makeDelivery(record, port, scope, undefined, [], { active: false }, issue));
 }
 function handleFor(record) {
-    function receiver(value) { if (value !== handle)
-        throw new EgretError('ANIMATION_CONTROLLER_INVALID'); }
+    function receiver(value) {
+        if (value !== handle)
+            throw new EgretError('ANIMATION_CONTROLLER_INVALID');
+    }
     const handle = Object.freeze({
         profile: 'egret.sequence-control/1',
-        start() { receiver(this); execute(record, Object.freeze({ kind: 'start' })); },
-        pause() { receiver(this); execute(record, Object.freeze({ kind: 'pause' })); },
-        resume() { receiver(this); execute(record, Object.freeze({ kind: 'resume' })); },
+        start() {
+            receiver(this);
+            execute(record, Object.freeze({ kind: 'start' }));
+        },
+        pause() {
+            receiver(this);
+            execute(record, Object.freeze({ kind: 'pause' }));
+        },
+        resume() {
+            receiver(this);
+            execute(record, Object.freeze({ kind: 'resume' }));
+        },
         setRate(rate) {
             receiver(this);
             const port = assertControl(record);
@@ -402,9 +453,18 @@ function handleFor(record) {
             const port = assertControl(record);
             execute(record, captureInput(port, () => captureSeek(request)));
         },
-        stop() { receiver(this); stop(record); },
-        dispose() { receiver(this); stop(record); },
-        getStatus() { receiver(this); return snapshot(record); },
+        stop() {
+            receiver(this);
+            stop(record);
+        },
+        dispose() {
+            receiver(this);
+            stop(record);
+        },
+        getStatus() {
+            receiver(this);
+            return snapshot(record);
+        }
     });
     resetControllers.set(handle, record);
     let targets = resetTargets.get(record.target);
@@ -488,16 +548,42 @@ export function createSequenceController(engine, scope, bitmap, clip, options) {
         if (port.claims.has(bitmap))
             throw new EgretError('ANIMATION_TARGET_BUSY');
         coordinator = requireCoordinator(port);
-        record = { port, scope: owned, coordinator, driver: undefined, player, clip, target: bitmap,
-            claimed: false, claimToken: {}, abort: undefined, duration: clip.durationSeconds,
-            totalPlays: admitted.totalPlays, markers: admitted.markers, listener: admitted.listener,
-            state: 'idle', elapsed: 0, position: 0, play: 0, rate: admitted.rate,
-            baseline: port.clock.elapsedSeconds, lastSample: undefined, eventCount: 0,
-            lastIssue: undefined, pending: [], busy: false, revision: {}, delivery: undefined };
+        record = {
+            port,
+            scope: owned,
+            coordinator,
+            driver: undefined,
+            player,
+            clip,
+            target: bitmap,
+            claimed: false,
+            claimToken: {},
+            abort: undefined,
+            duration: clip.durationSeconds,
+            totalPlays: admitted.totalPlays,
+            markers: admitted.markers,
+            listener: admitted.listener,
+            state: 'idle',
+            elapsed: 0,
+            position: 0,
+            play: 0,
+            rate: admitted.rate,
+            baseline: port.clock.elapsedSeconds,
+            lastSample: undefined,
+            eventCount: 0,
+            lastIssue: undefined,
+            pending: [],
+            busy: false,
+            revision: {},
+            delivery: undefined
+        };
         player = undefined;
         const current = record;
         const handle = handleFor(current);
-        const driver = { advance: (tick) => advance(current, tick), stop: () => stop(current, true) };
+        const driver = {
+            advance: (tick) => advance(current, tick),
+            stop: () => stop(current, true)
+        };
         current.driver = driver;
         owned.use(current.player);
         owned.use(handle);

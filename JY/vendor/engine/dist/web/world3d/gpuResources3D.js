@@ -29,7 +29,8 @@ export class GpuResources3D {
         this.#anisotropy = gl.getExtension('EXT_texture_filter_anisotropic');
         this.#maxAnisotropy = this.#anisotropy ? gl.getParameter(0x84ff) : 1;
         this.#maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE);
-        this.floatTargets = gl.getExtension('EXT_color_buffer_float') !== null || gl.getExtension('EXT_color_buffer_half_float') !== null;
+        this.floatTargets =
+            gl.getExtension('EXT_color_buffer_float') !== null || gl.getExtension('EXT_color_buffer_half_float') !== null;
     }
     get counts() {
         return { programs: this.#programs.size, geometries: this.#geometries.size, textures: this.#textures.size };
@@ -58,7 +59,9 @@ export class GpuResources3D {
         gl.linkProgram(program);
         // Compile status is only consulted on failure, keeping the fast path free of sync points.
         if (!gl.getProgramParameter(program, gl.LINK_STATUS) && !gl.isContextLost()) {
-            const log = [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs), gl.getProgramInfoLog(program)].filter(Boolean).join('\n');
+            const log = [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs), gl.getProgramInfoLog(program)]
+                .filter(Boolean)
+                .join('\n');
             gl.deleteShader(vs);
             gl.deleteShader(fs);
             gl.deleteProgram(program);
@@ -81,10 +84,24 @@ export class GpuResources3D {
             gl.uniformBlockBinding(program, block, 0);
         gl.useProgram(program);
         const samplers = {
-            uMap: TEXTURE_UNITS_3D.map, uNormalMap: TEXTURE_UNITS_3D.normalMap, uMetallicRoughnessMap: TEXTURE_UNITS_3D.metallicRoughnessMap,
-            uOcclusionMap: TEXTURE_UNITS_3D.occlusionMap, uEmissiveMap: TEXTURE_UNITS_3D.emissiveMap, uLightMap: TEXTURE_UNITS_3D.lightMap, uReflectionMap: TEXTURE_UNITS_3D.reflectionMap, uSceneDepth: TEXTURE_UNITS_3D.sceneDepth, uSplatWeights: TEXTURE_UNITS_3D.lightMap, uSplat0: TEXTURE_UNITS_3D.map,
-            uSplat1: TEXTURE_UNITS_3D.emissiveMap, uSplat2: TEXTURE_UNITS_3D.occlusionMap, uSplat3: TEXTURE_UNITS_3D.metallicRoughnessMap, uEnvironment: TEXTURE_UNITS_3D.environment,
-            uShadowMap: TEXTURE_UNITS_3D.shadow, uBoneTexture: TEXTURE_UNITS_3D.bones, uMorphTexture: TEXTURE_UNITS_3D.morph, uSceneColor: TEXTURE_UNITS_3D.sceneColor,
+            uMap: TEXTURE_UNITS_3D.map,
+            uNormalMap: TEXTURE_UNITS_3D.normalMap,
+            uMetallicRoughnessMap: TEXTURE_UNITS_3D.metallicRoughnessMap,
+            uOcclusionMap: TEXTURE_UNITS_3D.occlusionMap,
+            uEmissiveMap: TEXTURE_UNITS_3D.emissiveMap,
+            uLightMap: TEXTURE_UNITS_3D.lightMap,
+            uReflectionMap: TEXTURE_UNITS_3D.reflectionMap,
+            uSceneDepth: TEXTURE_UNITS_3D.sceneDepth,
+            uSplatWeights: TEXTURE_UNITS_3D.lightMap,
+            uSplat0: TEXTURE_UNITS_3D.map,
+            uSplat1: TEXTURE_UNITS_3D.emissiveMap,
+            uSplat2: TEXTURE_UNITS_3D.occlusionMap,
+            uSplat3: TEXTURE_UNITS_3D.metallicRoughnessMap,
+            uEnvironment: TEXTURE_UNITS_3D.environment,
+            uShadowMap: TEXTURE_UNITS_3D.shadow,
+            uBoneTexture: TEXTURE_UNITS_3D.bones,
+            uMorphTexture: TEXTURE_UNITS_3D.morph,
+            uSceneColor: TEXTURE_UNITS_3D.sceneColor
         };
         for (const name in samplers)
             if (uniforms[name])
@@ -108,8 +125,17 @@ export class GpuResources3D {
     }
     glType(data) {
         const gl = this.#gl;
-        return data instanceof Float32Array ? gl.FLOAT : data instanceof Uint16Array ? gl.UNSIGNED_SHORT : data instanceof Uint32Array ? gl.UNSIGNED_INT
-            : data instanceof Uint8Array ? gl.UNSIGNED_BYTE : data instanceof Int16Array ? gl.SHORT : gl.BYTE;
+        return data instanceof Float32Array
+            ? gl.FLOAT
+            : data instanceof Uint16Array
+                ? gl.UNSIGNED_SHORT
+                : data instanceof Uint32Array
+                    ? gl.UNSIGNED_INT
+                    : data instanceof Uint8Array
+                        ? gl.UNSIGNED_BYTE
+                        : data instanceof Int16Array
+                            ? gl.SHORT
+                            : gl.BYTE;
     }
     buffer() {
         const buffer = this.#gl.createBuffer();
@@ -155,10 +181,18 @@ export class GpuResources3D {
             if (!vao)
                 throw new World3DError('WORLD3D_CONTEXT_LOST', 'createVertexArray');
             const created = {
-                vao, buffers: new Map(), index: undefined, wire: undefined, layoutVersion: -1, version: -1, indexType: gl.UNSIGNED_SHORT, indexed: false, morph: undefined,
-                unsubscribe: geometry.onDispose(() => this.releaseGeometry(geometry)),
+                vao,
+                buffers: new Map(),
+                index: undefined,
+                wire: undefined,
+                layoutVersion: -1,
+                version: -1,
+                indexType: gl.UNSIGNED_SHORT,
+                indexed: false,
+                morph: undefined,
+                unsubscribe: geometry.onDispose(() => this.releaseGeometry(geometry))
             };
-            this.#geometries.set(geometry, entry = created);
+            this.#geometries.set(geometry, (entry = created));
         }
         const layoutChanged = entry.layoutVersion !== geometry.layoutVersion;
         gl.bindVertexArray(null);
@@ -173,7 +207,7 @@ export class GpuResources3D {
                 continue;
             }
             if (!buffer)
-                entry.buffers.set(name, buffer = { buffer: this.buffer(), version: -1, byteLength: -1 });
+                entry.buffers.set(name, (buffer = { buffer: this.buffer(), version: -1, byteLength: -1 }));
             this.upload(gl.ARRAY_BUFFER, buffer, attribute);
         }
         const index = geometry.index;
@@ -264,7 +298,14 @@ export class GpuResources3D {
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, lines, gl.STATIC_DRAW);
         gl.bindVertexArray(null);
-        const wire = { vao, buffer, version: geometry.version, byteLength: lines.byteLength, count: lines.length, type: this.glType(lines) };
+        const wire = {
+            vao,
+            buffer,
+            version: geometry.version,
+            byteLength: lines.byteLength,
+            count: lines.length,
+            type: this.glType(lines)
+        };
         entry.wire = wire;
         return wire;
     }
@@ -300,7 +341,16 @@ export class GpuResources3D {
             const vao = gl.createVertexArray();
             if (!vao)
                 throw new World3DError('WORLD3D_CONTEXT_LOST', 'createVertexArray');
-            this.#instances.set(mesh, entry = { vao, matrices: this.buffer(), colors: undefined, version: -1, layoutVersion: -1, geometryId: -1, capacityBytes: -1, lastFrame: frame });
+            this.#instances.set(mesh, (entry = {
+                vao,
+                matrices: this.buffer(),
+                colors: undefined,
+                version: -1,
+                layoutVersion: -1,
+                geometryId: -1,
+                capacityBytes: -1,
+                lastFrame: frame
+            }));
         }
         entry.lastFrame = frame;
         const crowd = mesh instanceof SkinnedInstancedMesh3D ? mesh : undefined;
@@ -308,7 +358,10 @@ export class GpuResources3D {
         const colors = crowd ? crowd.drawColors : mesh.instanceColors;
         const count = crowd?.drawCount ?? mesh.count;
         const animated = crowd?.drawAnimation;
-        const rebind = entry.layoutVersion !== geometry.layoutVersion || entry.geometryId !== geometry.id || (mesh.instanceColors !== undefined && !entry.colors) || (animated !== undefined && !entry.animation);
+        const rebind = entry.layoutVersion !== geometry.layoutVersion ||
+            entry.geometryId !== geometry.id ||
+            (mesh.instanceColors !== undefined && !entry.colors) ||
+            (animated !== undefined && !entry.animation);
         if (entry.version !== mesh.instanceVersion) {
             gl.bindBuffer(gl.ARRAY_BUFFER, entry.matrices);
             if (entry.capacityBytes === matrices.byteLength)
@@ -375,7 +428,7 @@ export class GpuResources3D {
         if (!entry || entry.count !== count) {
             if (entry)
                 gl.deleteTexture(entry.texture);
-            this.#bones.set(skeleton, entry = { texture: this.dataTexture(4, Math.max(count, 1), null), version: -1, count, lastFrame: frame });
+            this.#bones.set(skeleton, (entry = { texture: this.dataTexture(4, Math.max(count, 1), null), version: -1, count, lastFrame: frame }));
         }
         entry.lastFrame = frame;
         if (entry.version !== skeleton.version && count > 0) {
@@ -401,10 +454,12 @@ export class GpuResources3D {
             texture = this.dataTexture(width, height, data);
             this.#animations.set(source, texture);
             const gl = this.#gl, created = texture;
-            source.onDispose(() => { if (this.#animations.get(source) === created) {
-                gl.deleteTexture(created);
-                this.#animations.delete(source);
-            } });
+            source.onDispose(() => {
+                if (this.#animations.get(source) === created) {
+                    gl.deleteTexture(created);
+                    this.#animations.delete(source);
+                }
+            });
         }
         return texture;
     }
@@ -415,8 +470,13 @@ export class GpuResources3D {
         gl.texParameteri(target, gl.TEXTURE_WRAP_S, wrap(texture.wrapS));
         gl.texParameteri(target, gl.TEXTURE_WRAP_T, wrap(texture.wrapT));
         gl.texParameteri(target, gl.TEXTURE_MAG_FILTER, texture.magFilter === 'nearest' ? gl.NEAREST : gl.LINEAR);
-        const min = texture.mipmaps ? (texture.minFilter === 'nearest' ? gl.NEAREST_MIPMAP_LINEAR : gl.LINEAR_MIPMAP_LINEAR)
-            : (texture.minFilter === 'nearest' ? gl.NEAREST : gl.LINEAR);
+        const min = texture.mipmaps
+            ? texture.minFilter === 'nearest'
+                ? gl.NEAREST_MIPMAP_LINEAR
+                : gl.LINEAR_MIPMAP_LINEAR
+            : texture.minFilter === 'nearest'
+                ? gl.NEAREST
+                : gl.LINEAR;
         gl.texParameteri(target, gl.TEXTURE_MIN_FILTER, min);
         if (this.#anisotropy && texture.anisotropy > 1) {
             gl.texParameterf(target, this.#anisotropy.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(texture.anisotropy, this.#maxAnisotropy));
@@ -438,11 +498,16 @@ export class GpuResources3D {
             const handle = this.#gl.createTexture();
             if (!handle)
                 throw new World3DError('WORLD3D_CONTEXT_LOST', 'createTexture');
-            const created = { texture: handle, version: -1, maxMip: 0, unsubscribe: texture.onDispose(() => {
+            const created = {
+                texture: handle,
+                version: -1,
+                maxMip: 0,
+                unsubscribe: texture.onDispose(() => {
                     if (this.#textures.delete(texture))
                         this.#gl.deleteTexture(handle);
-                }) };
-            this.#textures.set(texture, entry = created);
+                })
+            };
+            this.#textures.set(texture, (entry = created));
         }
         return entry;
     }
@@ -487,7 +552,7 @@ export class GpuResources3D {
             'bc7': [['EXT_texture_compression_bptc'], 0x8e8c, 0x8e8d],
             'etc2-rgb8': [['WEBGL_compressed_texture_etc'], 0x9274, 0x9275],
             'etc2-rgba8': [['WEBGL_compressed_texture_etc'], 0x9278, 0x9279],
-            'astc-4x4': [['WEBGL_compressed_texture_astc'], 0x93b0, 0x93d0],
+            'astc-4x4': [['WEBGL_compressed_texture_astc'], 0x93b0, 0x93d0]
         };
         const entry = table[format];
         if (!entry)
@@ -553,7 +618,14 @@ export class GpuResources3D {
                     gl.deleteTexture(color);
                 throw new World3DError('WORLD3D_CONTEXT_LOST', 'createFramebuffer');
             }
-            entry = { framebuffer, color, depth: undefined, depthTexture: undefined, version: -1, unsubscribe: target.onDispose(() => this.releaseTarget(target)) };
+            entry = {
+                framebuffer,
+                color,
+                depth: undefined,
+                depthTexture: undefined,
+                version: -1,
+                unsubscribe: target.onDispose(() => this.releaseTarget(target))
+            };
             this.#targets.set(target, entry);
         }
         // A sampled target can allocate here while a different target is being drawn.

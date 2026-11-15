@@ -55,8 +55,9 @@ function snapshotArray(context, scope, input, code) {
 function admitPriority(context, scope, options) {
     if (options === undefined)
         return 'interactive';
-    if (typeof options !== 'object' || options === null
-        || callerRead(context, scope, 'MANIFEST_GROUP_OPTIONS_INVALID', () => IS_ARRAY(options))) {
+    if (typeof options !== 'object' ||
+        options === null ||
+        callerRead(context, scope, 'MANIFEST_GROUP_OPTIONS_INVALID', () => IS_ARRAY(options))) {
         throw new EgretError('MANIFEST_GROUP_OPTIONS_INVALID');
     }
     const priority = callerRead(context, scope, 'MANIFEST_GROUP_OPTIONS_INVALID', () => options.priority);
@@ -107,18 +108,35 @@ function selectMembers(manifest, roots, bindings) {
 function makeRecord(scope, selected, priority) {
     let resolveReady;
     let rejectReady;
-    const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+    const ready = new Promise((resolve, reject) => {
+        resolveReady = resolve;
+        rejectReady = reject;
+    });
     void APPLY(THEN, ready, [undefined, () => { }]);
     const group = {
-        controller: new CancellationController(), priority, ready, resolveReady, rejectReady,
-        byBinding: new Map(), scope, facade: undefined, state: 'pending', members: [],
-        acquired: [], completed: 0, reserved: false,
+        controller: new CancellationController(),
+        priority,
+        ready,
+        resolveReady,
+        rejectReady,
+        byBinding: new Map(),
+        scope,
+        facade: undefined,
+        state: 'pending',
+        members: [],
+        acquired: [],
+        completed: 0,
+        reserved: false
     };
     const byId = new Map();
     for (const value of selected) {
         const member = {
-            group, ref: value.state.ref, state: 'queued',
-            unmet: value.state.entry.dependencies.length, dependants: [], lease: undefined,
+            group,
+            ref: value.state.ref,
+            state: 'queued',
+            unmet: value.state.entry.dependencies.length,
+            dependants: [],
+            lease: undefined
         };
         group.members.push(member);
         group.byBinding.set(value.binding, member);
@@ -171,7 +189,9 @@ export function createManifestAssetGroupOwner(context, operations) {
             return undefined;
         const pending = group.state === 'pending';
         group.state = state;
-        const error = new EgretError(state === 'failed' ? 'MANIFEST_GROUP_ACQUIRE_FAILED' : 'MANIFEST_GROUP_DISPOSED', { cause });
+        const error = new EgretError(state === 'failed' ? 'MANIFEST_GROUP_ACQUIRE_FAILED' : 'MANIFEST_GROUP_DISPOSED', {
+            cause
+        });
         if (pending)
             group.rejectReady(error);
         removeReadyRecords(interactive, group);
@@ -296,9 +316,20 @@ export function createManifestAssetGroupOwner(context, operations) {
                         pump();
                     }
                 },
-                (cause) => { retireSlot(); reject(group, cause); pump(); },
+                (cause) => {
+                    retireSlot();
+                    reject(group, cause);
+                    pump();
+                }
             ]);
-            void APPLY(THEN, continuation, [undefined, (cause) => { retireSlot(); reject(group, cause); pump(); }]);
+            void APPLY(THEN, continuation, [
+                undefined,
+                (cause) => {
+                    retireSlot();
+                    reject(group, cause);
+                    pump();
+                }
+            ]);
         }
         catch (cause) {
             retireSlot();
@@ -353,7 +384,10 @@ export function createManifestAssetGroupOwner(context, operations) {
                 throw new EgretError('MANIFEST_GROUP_INVALID');
         }
         const facade = FREEZE({
-            get ready() { assertReceiver(this); return group.ready; },
+            get ready() {
+                assertReceiver(this);
+                return group.ready;
+            },
             get(binding) {
                 assertReceiver(this);
                 requireManifestBinding(binding);
@@ -366,7 +400,10 @@ export function createManifestAssetGroupOwner(context, operations) {
                 assertLifetime(context, group.scope);
                 return member.lease;
             },
-            dispose() { assertReceiver(this); terminate(group, 'disposed', disposalCause(group)); },
+            dispose() {
+                assertReceiver(this);
+                terminate(group, 'disposed', disposalCause(group));
+            }
         });
         group.facade = facade;
         return facade;
@@ -434,7 +471,7 @@ export function createManifestAssetGroupOwner(context, operations) {
             }
             for (const snapshot of snapshots)
                 runCleanup(snapshot);
-        },
+        }
     });
 }
 //# sourceMappingURL=manifestAssetGroup.js.map

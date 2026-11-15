@@ -1,1 +1,1 @@
-{"version":3,"file":"camera.d.ts","sourceRoot":"","sources":["../src/camera.ts"],"names":[],"mappings":"AACA,uHAAuH;AACvH,OAAO,EAAE,cAAc,EAAE,MAAM,eAAe,CAAC;AAC/C,YAAY,EAAE,QAAQ,EAAE,eAAe,EAAE,mBAAmB,EAAE,kBAAkB,EAAE,WAAW,EAAE,UAAU,EAAE,kBAAkB,EAAE,cAAc,EAAE,YAAY,EAAE,MAAM,kBAAkB,CAAC"}
+{"version":3,"file":"camera.d.ts","sourceRoot":"","sources":["../src/camera.ts"],"names":[],"mappings":"AACA,uHAAuH;AACvH,OAAO,EAAE,cAAc,EAAE,MAAM,eAAe,CAAC;AAC/C,YAAY,EACV,QAAQ,EACR,eAAe,EACf,mBAAmB,EACnB,kBAAkB,EAClB,WAAW,EACX,UAAU,EACV,kBAAkB,EAClB,cAAc,EACd,YAAY,EACb,MAAM,kBAAkB,CAAC"}

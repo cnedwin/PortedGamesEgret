@@ -24,8 +24,11 @@ function scalar(value, minimum, maximum) {
 function captureTarget(value) {
     if (!value || typeof value !== 'object')
         throw fault('TARGET');
-    const id = (name) => { if (typeof name !== 'string' || !name.length || name.length > 128 || name.includes('\0'))
-        throw fault('TARGET'); return name; };
+    const id = (name) => {
+        if (typeof name !== 'string' || !name.length || name.length > 128 || name.includes('\0'))
+            throw fault('TARGET');
+        return name;
+    };
     if (value.kind === 'leaf')
         return Object.freeze({ kind: 'leaf', id: id(value.id) });
     if (value.kind === 'row')
@@ -46,7 +49,14 @@ export function createBrowserTextEditor(options) {
     let keyboardId;
     let width = scalar(options.logicalWidth, 0.25, 16384), height = scalar(options.logicalHeight, 0.25, 16384);
     const target = captureTarget(options.target), canvas = options.canvas, label = options.label, zIndex = options.zIndex ?? 1, onError = options.onError;
-    if (typeof label !== 'string' || !label.length || label.length > 256 || !Number.isInteger(zIndex) || zIndex < 0 || zIndex > 1000000 || onError !== undefined && typeof onError !== 'function' || options.onInvalidate !== undefined && typeof options.onInvalidate !== 'function')
+    if (typeof label !== 'string' ||
+        !label.length ||
+        label.length > 256 ||
+        !Number.isInteger(zIndex) ||
+        zIndex < 0 ||
+        zIndex > 1000000 ||
+        (onError !== undefined && typeof onError !== 'function') ||
+        (options.onInvalidate !== undefined && typeof options.onInvalidate !== 'function'))
         throw fault('OPTIONS');
     const onInvalidate = options.onInvalidate;
     const permanent = [], editing = [];
@@ -55,10 +65,14 @@ export function createBrowserTextEditor(options) {
     let nativeFocus = () => { }, nativeBlur = () => { }, active = () => undefined;
     let nativeConnected = () => true;
     let document, window, keyboard;
-    function report(cause) { try {
-        onError?.(cause);
+    function report(cause) {
+        try {
+            onError?.(cause);
+        }
+        catch {
+            /* Reporting cannot replace the original state/lifetime result. */
+        }
     }
-    catch { /* Reporting cannot replace the original state/lifetime result. */ } }
     function detach(rows) {
         for (const pair of rows.splice(0).reverse())
             try {
@@ -138,7 +152,9 @@ export function createBrowserTextEditor(options) {
             try {
                 port.end(current, port.snapshot().revision, 'cancel');
             }
-            catch { /* Preserve the primary refusal. */ }
+            catch {
+                /* Preserve the primary refusal. */
+            }
             throw cause;
         }
         finally {
@@ -154,7 +170,10 @@ export function createBrowserTextEditor(options) {
                 retireNative();
         }
     }
-    function fail(cause) { dispose(); report(cause); }
+    function fail(cause) {
+        dispose();
+        report(cause);
+    }
     function drain() {
         if (closed || busy || draining)
             return;
@@ -164,8 +183,10 @@ export function createBrowserTextEditor(options) {
                 const terminal = deferredEnd;
                 deferredEnd = undefined;
                 pending = false;
-                perform(() => { if (terminal !== undefined)
-                    end(terminal); });
+                perform(() => {
+                    if (terminal !== undefined)
+                        end(terminal);
+                });
             }
             if (!closed && (pending || deferredEnd !== undefined))
                 fail(fault('REENTRANT'));
@@ -234,18 +255,27 @@ export function createBrowserTextEditor(options) {
             throw fault('INACTIVE');
         const value = apply(readValue, node, []), start = apply(readStart, node, []), end = apply(readEnd, node, []);
         const backward = apply(readDirection, node, []) === 'backward';
-        return { value, selection: { anchor: backward ? end : start, focus: backward ? start : end, affinity: 'downstream' } };
+        return {
+            value,
+            selection: { anchor: backward ? end : start, focus: backward ? start : end, affinity: 'downstream' }
+        };
     }
     function writeSelection(selection) {
         if (!node)
             return;
         const start = Math.min(selection.anchor, selection.focus), end = Math.max(selection.anchor, selection.focus), direction = selection.anchor > selection.focus ? 'backward' : 'forward';
-        if (apply(readStart, node, []) !== start || apply(readEnd, node, []) !== end || start !== end && apply(readDirection, node, []) !== direction)
+        if (apply(readStart, node, []) !== start ||
+            apply(readEnd, node, []) !== end ||
+            (start !== end && apply(readDirection, node, []) !== direction))
             apply(setSelection, node, [start, end, direction]);
     }
     function observeSelection() {
         const state = port.snapshot();
-        if (!token || !node || state.state === 'composing' || apply(active, document, []) !== node || apply(readValue, node, []) !== state.value)
+        if (!token ||
+            !node ||
+            state.state === 'composing' ||
+            apply(active, document, []) !== node ||
+            apply(readValue, node, []) !== state.value)
             return;
         port.observe(token, nativeRevision, nativeSample());
         nativeRevision = port.snapshot().revision;
@@ -315,7 +345,12 @@ export function createBrowserTextEditor(options) {
             apply(nativeBlur, node, []);
         }
         const presentation = port.presentation(root, target);
-        if (!presentation || !interactive || !root.editorInteractive() || !presentation.rowVisible || !presentation.clip.width || !presentation.clip.height) {
+        if (!presentation ||
+            !interactive ||
+            !root.editorInteractive() ||
+            !presentation.rowVisible ||
+            !presentation.clip.width ||
+            !presentation.clip.height) {
             end('cancel', true);
             retireNative();
             return;
@@ -346,13 +381,21 @@ export function createBrowserTextEditor(options) {
         layoutRevision = root.snapshot().committedRevision;
     }
     try {
-        port = bindTextEditorHost(options.editor, { changed() { if (busy)
-                pending = true;
-            else
-                perform(() => { }); }, dispose, viewRetired() { if (busy)
-                pending = true;
-            else
-                perform(() => { }); } });
+        port = bindTextEditorHost(options.editor, {
+            changed() {
+                if (busy)
+                    pending = true;
+                else
+                    perform(() => { });
+            },
+            dispose,
+            viewRetired() {
+                if (busy)
+                    pending = true;
+                else
+                    perform(() => { });
+            }
+        });
         root = port.root(options.root);
         assertEditorFonts(fonts, port.engine);
         if (options.keyboard !== undefined)
@@ -381,7 +424,10 @@ export function createBrowserTextEditor(options) {
         nativeFocus = method(globalThis.HTMLElement?.prototype, 'focus');
         nativeBlur = method(globalThis.HTMLElement?.prototype, 'blur');
         function authentic() {
-            if (apply(canvasWidth, canvas, []) === 0 || apply(ownerDocument, canvas, []) !== document || apply(connected, canvas, []) !== true || document.defaultView !== window)
+            if (apply(canvasWidth, canvas, []) === 0 ||
+                apply(ownerDocument, canvas, []) !== document ||
+                apply(connected, canvas, []) !== true ||
+                document.defaultView !== window)
                 throw fault('SURFACE');
         }
         function bounds() {
@@ -398,25 +444,56 @@ export function createBrowserTextEditor(options) {
                     reachedRoot = true;
                 // A transformed/contained body or root also transforms a fixed body child.
                 // Viewport coordinates are valid only when that overlay keeps the viewport owner.
-                if ((node === document.body || node === document.documentElement)
-                    && (style.transform !== 'none' || style.translate !== 'none' || style.contain !== 'none'
-                        || style.contentVisibility !== 'visible' || style.backdropFilter !== 'none'
-                        || /\b(?:transform|perspective|filter|backdrop-filter|contain)\b/u.test(style.willChange)))
+                if ((node === document.body || node === document.documentElement) &&
+                    (style.transform !== 'none' ||
+                        style.translate !== 'none' ||
+                        style.contain !== 'none' ||
+                        style.contentVisibility !== 'visible' ||
+                        style.backdropFilter !== 'none' ||
+                        /\b(?:transform|perspective|filter|backdrop-filter|contain)\b/u.test(style.willChange)))
                     throw fault('PLACEMENT_UNSUPPORTED');
-                if (style.opacity !== '1' || style.filter !== 'none' || style.perspective !== 'none' || style.writingMode !== 'horizontal-tb'
-                    || style.clipPath !== 'none' || style.clip !== 'auto' || style.maskImage !== 'none' || style.backdropFilter !== 'none'
-                    || style.rotate !== 'none' || style.scale !== 'none' || !['1', 'normal'].includes(style.zoom))
+                if (style.opacity !== '1' ||
+                    style.filter !== 'none' ||
+                    style.perspective !== 'none' ||
+                    style.writingMode !== 'horizontal-tb' ||
+                    style.clipPath !== 'none' ||
+                    style.clip !== 'auto' ||
+                    style.maskImage !== 'none' ||
+                    style.backdropFilter !== 'none' ||
+                    style.rotate !== 'none' ||
+                    style.scale !== 'none' ||
+                    !['1', 'normal'].includes(style.zoom))
                     throw fault('PLACEMENT_UNSUPPORTED');
                 if (style.transform !== 'none') {
                     const match = /^matrix\(([^)]+)\)$/u.exec(style.transform), values = match?.[1].split(',').map(Number);
-                    if (!values || values.length !== 6 || values.some(n => !Number.isFinite(n)) || values[1] !== 0 || values[2] !== 0 || values[0] <= 0 || values[3] <= 0)
+                    if (!values ||
+                        values.length !== 6 ||
+                        values.some(n => !Number.isFinite(n)) ||
+                        values[1] !== 0 ||
+                        values[2] !== 0 ||
+                        values[0] <= 0 ||
+                        values[3] <= 0)
                         throw fault('PLACEMENT_UNSUPPORTED');
                 }
                 const clipsX = ['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowX), clipsY = ['hidden', 'clip', 'auto', 'scroll'].includes(style.overflowY);
                 if (node === canvas || clipsX || clipsY) {
-                    if ([style.borderTopLeftRadius, style.borderTopRightRadius, style.borderBottomLeftRadius, style.borderBottomRightRadius].some(n => n.split(/\s+/u).some(value => Number.parseFloat(value) !== 0)))
+                    if ([
+                        style.borderTopLeftRadius,
+                        style.borderTopRightRadius,
+                        style.borderBottomLeftRadius,
+                        style.borderBottomRightRadius
+                    ].some(n => n.split(/\s+/u).some(value => Number.parseFloat(value) !== 0)))
                         throw fault('PLACEMENT_UNSUPPORTED');
-                    if ([style.paddingTop, style.paddingRight, style.paddingBottom, style.paddingLeft, style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth].some(n => Number.parseFloat(n) !== 0))
+                    if ([
+                        style.paddingTop,
+                        style.paddingRight,
+                        style.paddingBottom,
+                        style.paddingLeft,
+                        style.borderTopWidth,
+                        style.borderRightWidth,
+                        style.borderBottomWidth,
+                        style.borderLeftWidth
+                    ].some(n => Number.parseFloat(n) !== 0))
                         throw fault('PLACEMENT_UNSUPPORTED');
                     const box = apply(nativeRect, node, []);
                     if (clipsX) {
@@ -453,8 +530,19 @@ export function createBrowserTextEditor(options) {
                 end('cancel', true);
                 return;
             }
-            Object.assign(overlay.style, { left: clipLeft + 'px', top: clipTop + 'px', width: clipRight - clipLeft + 'px', height: clipBottom - clipTop + 'px' });
-            Object.assign(node.style, { left: x - clipLeft + 'px', top: y - clipTop + 'px', width: presentation.localWidth + 'px', height: presentation.localHeight + 'px', transform: 'scale(' + sx * presentation.scaleX + ',' + sy * presentation.scaleY + ')' });
+            Object.assign(overlay.style, {
+                left: clipLeft + 'px',
+                top: clipTop + 'px',
+                width: clipRight - clipLeft + 'px',
+                height: clipBottom - clipTop + 'px'
+            });
+            Object.assign(node.style, {
+                left: x - clipLeft + 'px',
+                top: y - clipTop + 'px',
+                width: presentation.localWidth + 'px',
+                height: presentation.localHeight + 'px',
+                transform: 'scale(' + sx * presentation.scaleX + ',' + sy * presentation.scaleY + ')'
+            });
         };
         authentic();
         removeRoot = root.onClose(dispose);
@@ -476,8 +564,10 @@ export function createBrowserTextEditor(options) {
         }
         listen(permanent, window, 'pagehide', () => end('cancel'));
         listen(permanent, window, 'blur', () => end('commit'));
-        listen(permanent, document, 'visibilitychange', () => { if (apply(visibility, document, []) !== 'visible')
-            end('cancel'); });
+        listen(permanent, document, 'visibilitychange', () => {
+            if (apply(visibility, document, []) !== 'visible')
+                end('cancel');
+        });
         if (typeof globalThis.ResizeObserver === 'function') {
             observer = new ResizeObserver(() => perform(() => { }));
             observer.observe(canvas);
@@ -494,7 +584,10 @@ export function createBrowserTextEditor(options) {
             if (settling)
                 throw fault('PRESENTATION_PENDING');
             const presentation = port.presentation(root, target), state = port.snapshot();
-            if (!presentation || presentation.contentRevision !== port.contentRevision() || presentation.source !== state.value || !presentation.rowVisible)
+            if (!presentation ||
+                presentation.contentRevision !== port.contentRevision() ||
+                presentation.source !== state.value ||
+                !presentation.rowVisible)
                 throw fault('PRESENTATION_PENDING');
             if (!presentation.clip.width || !presentation.clip.height || port.style().fontSet !== fonts.key)
                 throw fault('PLACEMENT_UNSUPPORTED');
@@ -520,12 +613,36 @@ export function createBrowserTextEditor(options) {
                 node.autocomplete = 'off';
                 node.setAttribute('aria-label', label);
                 node.setAttribute('data-egret-text-editor', '');
-                Object.assign(overlay.style, { position: 'fixed', overflow: 'hidden', pointerEvents: 'none', zIndex: String(zIndex) });
-                Object.assign(node.style, { all: 'initial', display: 'block', position: 'absolute', boxSizing: 'border-box', margin: '0', padding: '0', border: '0', background: 'transparent', outline: 'none', resize: 'none', pointerEvents: 'auto', transformOrigin: '0 0', minWidth: '0', minHeight: '0', appearance: 'none', whiteSpace: port.mode === 'single-line' ? 'pre' : 'pre-wrap' });
-                const selected = point === undefined ? state.selection : (() => {
-                    const hit = presentation.geometry?.hitTest((scalar(point.x, -1048576, 1048576) - presentation.box.x) / presentation.scaleX, (scalar(point.y, -1048576, 1048576) - presentation.box.y) / presentation.scaleY);
-                    return hit ? { anchor: hit.offset, focus: hit.offset, affinity: hit.affinity } : state.selection;
-                })();
+                Object.assign(overlay.style, {
+                    position: 'fixed',
+                    overflow: 'hidden',
+                    pointerEvents: 'none',
+                    zIndex: String(zIndex)
+                });
+                Object.assign(node.style, {
+                    all: 'initial',
+                    display: 'block',
+                    position: 'absolute',
+                    boxSizing: 'border-box',
+                    margin: '0',
+                    padding: '0',
+                    border: '0',
+                    background: 'transparent',
+                    outline: 'none',
+                    resize: 'none',
+                    pointerEvents: 'auto',
+                    transformOrigin: '0 0',
+                    minWidth: '0',
+                    minHeight: '0',
+                    appearance: 'none',
+                    whiteSpace: port.mode === 'single-line' ? 'pre' : 'pre-wrap'
+                });
+                const selected = point === undefined
+                    ? state.selection
+                    : (() => {
+                        const hit = presentation.geometry?.hitTest((scalar(point.x, -1048576, 1048576) - presentation.box.x) / presentation.scaleX, (scalar(point.y, -1048576, 1048576) - presentation.box.y) / presentation.scaleY);
+                        return hit ? { anchor: hit.offset, focus: hit.offset, affinity: hit.affinity } : state.selection;
+                    })();
                 token = port.begin();
                 nativeRevision = port.snapshot().revision;
                 keyboardId = keyboard?.getSnapshot().focusedId;
@@ -541,18 +658,30 @@ export function createBrowserTextEditor(options) {
                         synchronize();
                     }
                 });
-                listen(editing, node, 'input', event => { let isComposing = false; try {
-                    isComposing = apply(composing, event, []) === true;
-                }
-                catch { /* Some native autofill paths use Event rather than InputEvent. */ } input(isComposing); });
-                listen(editing, node, 'compositionstart', () => { if (token)
-                    port.compositionStart(token, nativeRevision); });
-                listen(editing, node, 'compositionupdate', () => { if (token)
-                    port.compositionUpdate(token, nativeRevision, nativeSample()); });
-                listen(editing, node, 'compositionend', () => { if (token) {
-                    port.compositionEnd(token, nativeRevision, nativeSample());
-                    nativeRevision = port.snapshot().revision;
-                } });
+                listen(editing, node, 'input', event => {
+                    let isComposing = false;
+                    try {
+                        isComposing = apply(composing, event, []) === true;
+                    }
+                    catch {
+                        /* Some native autofill paths use Event rather than InputEvent. */
+                    }
+                    input(isComposing);
+                });
+                listen(editing, node, 'compositionstart', () => {
+                    if (token)
+                        port.compositionStart(token, nativeRevision);
+                });
+                listen(editing, node, 'compositionupdate', () => {
+                    if (token)
+                        port.compositionUpdate(token, nativeRevision, nativeSample());
+                });
+                listen(editing, node, 'compositionend', () => {
+                    if (token) {
+                        port.compositionEnd(token, nativeRevision, nativeSample());
+                        nativeRevision = port.snapshot().revision;
+                    }
+                });
                 listen(editing, node, 'select', observeSelection);
                 listen(editing, document, 'selectionchange', observeSelection);
                 listen(editing, node, 'blur', () => end('commit'));
@@ -561,7 +690,7 @@ export function createBrowserTextEditor(options) {
                     if (key.isComposing || key.key === 'Process' || key.keyCode === 229 || port.snapshot().state === 'composing')
                         return;
                     const tab = key.key === 'Tab' && keyboard !== undefined && !key.altKey && !key.ctrlKey && !key.metaKey;
-                    if (key.key === 'Escape' || key.key === 'Enter' && port.mode === 'single-line' || tab) {
+                    if (key.key === 'Escape' || (key.key === 'Enter' && port.mode === 'single-line') || tab) {
                         apply(prevent, event, []);
                         end(key.key === 'Escape' ? 'cancel' : 'commit');
                         apply(nativeFocus, canvas, [{ preventScroll: true }]);
@@ -579,8 +708,12 @@ export function createBrowserTextEditor(options) {
                 apply(append, overlay, [node]);
                 apply(append, document.body, [overlay]);
                 if (typeof globalThis.MutationObserver === 'function') {
-                    mutation = new MutationObserver(() => { if (apply(connected, canvas, []) !== true || node && apply(connected, node, []) !== true)
-                        perform(() => { throw fault('ELEMENT_DETACHED'); }); });
+                    mutation = new MutationObserver(() => {
+                        if (apply(connected, canvas, []) !== true || (node && apply(connected, node, []) !== true))
+                            perform(() => {
+                                throw fault('ELEMENT_DETACHED');
+                            });
+                    });
                     mutation.observe(document.documentElement, { childList: true, subtree: true });
                 }
                 synchronize();
@@ -607,9 +740,14 @@ export function createBrowserTextEditor(options) {
                 drain();
             }
         }
-        return Object.freeze({ activate,
-            finish() { requestEnd('commit'); },
-            cancel() { requestEnd('cancel'); },
+        return Object.freeze({
+            activate,
+            finish() {
+                requestEnd('commit');
+            },
+            cancel() {
+                requestEnd('cancel');
+            },
             sync(viewport) {
                 if (closed)
                     return;
@@ -665,11 +803,33 @@ export function createBrowserTextEditor(options) {
                     drain();
                 }
             },
-            setInteractive(value) { if (typeof value !== 'boolean')
-                throw fault('OPTIONS'); interactive = value; if (!value)
-                perform(() => end('cancel', true)); },
-            snapshot() { return Object.freeze({ state: closed ? 'closed' : settling ? 'settling' : token ? port.snapshot().state === 'composing' ? 'composing' : 'editing' : 'inactive', interactive: interactive && root.editorInteractive(), contentRevision: port.contentRevision(), layoutRevision, nativeElement: node !== undefined, fontKey: fonts.key }); },
-            dispose, });
+            setInteractive(value) {
+                if (typeof value !== 'boolean')
+                    throw fault('OPTIONS');
+                interactive = value;
+                if (!value)
+                    perform(() => end('cancel', true));
+            },
+            snapshot() {
+                return Object.freeze({
+                    state: closed
+                        ? 'closed'
+                        : settling
+                            ? 'settling'
+                            : token
+                                ? port.snapshot().state === 'composing'
+                                    ? 'composing'
+                                    : 'editing'
+                                : 'inactive',
+                    interactive: interactive && root.editorInteractive(),
+                    contentRevision: port.contentRevision(),
+                    layoutRevision,
+                    nativeElement: node !== undefined,
+                    fontKey: fonts.key
+                });
+            },
+            dispose
+        });
     }
     catch (cause) {
         dispose();

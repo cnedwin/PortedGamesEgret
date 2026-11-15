@@ -4,7 +4,10 @@ import { finite, visualOf } from './displayVisualState.js';
 import { composeDisplayTransform } from './displayTransform.js';
 import { invertCoordinatePoint } from './coordinateInverse.js';
 import { EgretError } from './EgretError.js';
-function live(node) { assertLive(node); engineOf(node)?.assertOpen(); }
+function live(node) {
+    assertLive(node);
+    engineOf(node)?.assertOpen();
+}
 function budgetOf(node, options) {
     let requested;
     if (options !== undefined) {
@@ -63,10 +66,12 @@ export function queryDisplayPoint(receiver, x, y, options, inverse) {
         if (!Object.values(world).every(finite))
             throw new EgretError('COORDINATE_ARITHMETIC_RANGE');
     }
-    const result = inverse ? invertCoordinatePoint(world, px, py) : {
-        x: world.a * px + world.c * py + world.tx,
-        y: world.b * px + world.d * py + world.ty,
-    };
+    const result = inverse
+        ? invertCoordinatePoint(world, px, py)
+        : {
+            x: world.a * px + world.c * py + world.tx,
+            y: world.b * px + world.d * py + world.ty
+        };
     if (!finite(result.x) || !finite(result.y))
         throw new EgretError('COORDINATE_ARITHMETIC_RANGE');
     for (const current of path)

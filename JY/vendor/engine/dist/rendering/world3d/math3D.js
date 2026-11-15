@@ -129,9 +129,9 @@ export function quatMultiply(out, a, b) {
 export function quatFromAxisAngle(out, axis, radians) {
     const half = radians * 0.5, s = Math.sin(half);
     const length = Math.hypot(axis[0], axis[1], axis[2]) || 1;
-    out[0] = axis[0] / length * s;
-    out[1] = axis[1] / length * s;
-    out[2] = axis[2] / length * s;
+    out[0] = (axis[0] / length) * s;
+    out[1] = (axis[1] / length) * s;
+    out[2] = (axis[2] / length) * s;
     out[3] = Math.cos(half);
     return out;
 }

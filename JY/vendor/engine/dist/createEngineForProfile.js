@@ -35,7 +35,8 @@ export async function createEngineForProfile(options, profile) {
     }
     const clockOptions = admitGameClockOptions(clockValue);
     return startEngine(stableOptions, timeoutMs, {
-        shared: shared, sharedProfile: profile,
+        shared: shared,
+        sharedProfile: profile
     }, clockOptions);
 }
 //# sourceMappingURL=createEngineForProfile.js.map

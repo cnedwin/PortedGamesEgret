@@ -37,15 +37,18 @@ function runs(value, source) {
     let previous = 0;
     const boundary = (offset) => {
         const before = source.charCodeAt(offset - 1), after = source.charCodeAt(offset);
-        return !(before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff)
-            && !(before === 13 && after === 10);
+        return (!(before >= 0xd800 && before <= 0xdbff && after >= 0xdc00 && after <= 0xdfff) && !(before === 13 && after === 10));
     };
     for (let index = 0; index < count; index++) {
         const row = value[index];
         if (row === null || typeof row !== 'object' || Array.isArray(row))
             throw new EgretError('PARAGRAPH_REQUEST_INVALID');
         const start = number(row.start, previous, source.length), end = number(row.end, start, source.length);
-        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start === end || !boundary(start) || !boundary(end))
+        if (!Number.isSafeInteger(start) ||
+            !Number.isSafeInteger(end) ||
+            start === end ||
+            !boundary(start) ||
+            !boundary(end))
             throw new EgretError('PARAGRAPH_REQUEST_INVALID');
         const familyInput = row.fontFamilies, sizeInput = row.fontSize, colorInput = row.fillColor;
         if (familyInput === undefined && sizeInput === undefined && colorInput === undefined)
@@ -55,8 +58,13 @@ function runs(value, source) {
         const fillColor = colorInput === undefined ? undefined : number(colorInput, 0, 0xffffff);
         if (fillColor !== undefined && !Number.isInteger(fillColor))
             throw new EgretError('PARAGRAPH_REQUEST_INVALID');
-        result.push(Object.freeze({ start, end, ...(fontFamilies === undefined ? {} : { fontFamilies }),
-            ...(fontSize === undefined ? {} : { fontSize }), ...(fillColor === undefined ? {} : { fillColor }) }));
+        result.push(Object.freeze({
+            start,
+            end,
+            ...(fontFamilies === undefined ? {} : { fontFamilies }),
+            ...(fontSize === undefined ? {} : { fontSize }),
+            ...(fillColor === undefined ? {} : { fillColor })
+        }));
         previous = end;
     }
     return Object.freeze(result);
@@ -84,7 +92,9 @@ export function snapshotParagraphRequest(input) {
     if (maxLines !== undefined && !Number.isSafeInteger(maxLines))
         throw new EgretError('PARAGRAPH_REQUEST_INVALID');
     const fillColor = number(input.fillColor, 0, 0xffffff), density = number(input.density, 0.25, 4);
-    if (!Number.isInteger(fillColor) || (direction !== 'ltr' && direction !== 'rtl') || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(source))
+    if (!Number.isInteger(fillColor) ||
+        (direction !== 'ltr' && direction !== 'rtl') ||
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(source))
         throw new EgretError('PARAGRAPH_REQUEST_INVALID');
     // Reject ill-formed UTF16 rather than silently changing public source offsets.
     for (let i = 0; i < source.length; i++) {
@@ -100,18 +110,38 @@ export function snapshotParagraphRequest(input) {
     const styled = runs(input.runs, source);
     const authoredFontSet = input.fontSet;
     const fontSet = authoredFontSet === undefined ? undefined : text(authoredFontSet, 256);
-    return Object.freeze({ ...(fontSet === undefined ? {} : { fontSet }), text: source, width, fontFamilies, fontSize, ...(lineHeight === undefined ? {} : { lineHeight }), locale, direction, fillColor, density, ...(textAlign === undefined ? {} : { textAlign }), ...(maxLines === undefined ? {} : { maxLines }), ...(textGeometry ? { textGeometry: true } : {}), ...(styled === undefined ? {} : { runs: styled }) });
+    return Object.freeze({
+        ...(fontSet === undefined ? {} : { fontSet }),
+        text: source,
+        width,
+        fontFamilies,
+        fontSize,
+        ...(lineHeight === undefined ? {} : { lineHeight }),
+        locale,
+        direction,
+        fillColor,
+        density,
+        ...(textAlign === undefined ? {} : { textAlign }),
+        ...(maxLines === undefined ? {} : { maxLines }),
+        ...(textGeometry ? { textGeometry: true } : {}),
+        ...(styled === undefined ? {} : { runs: styled })
+    });
 }
 /** Own public metrics; provider memory or mutable arrays never become committed UI state. */
 export function snapshotParagraphRaster(value, request) {
     try {
         const metrics = value.metrics;
         const authored = metrics.lines, count = authored.length;
-        if (metrics.width !== request.width || !Array.isArray(authored) || !Number.isSafeInteger(count) || count > 8193 || count < 0)
+        if (metrics.width !== request.width ||
+            !Array.isArray(authored) ||
+            !Number.isSafeInteger(count) ||
+            count > 8193 ||
+            count < 0)
             throw new Error('Invalid paragraph layout');
         const height = number(metrics.height, 0, 1048576);
         const truncated = request.maxLines === undefined ? undefined : metrics.truncated;
-        if (request.maxLines !== undefined && (count > request.maxLines || typeof truncated !== 'boolean' || (truncated && !request.text.length)))
+        if (request.maxLines !== undefined &&
+            (count > request.maxLines || typeof truncated !== 'boolean' || (truncated && !request.text.length)))
             throw new Error('Invalid paragraph line-clamp result');
         let previous = 0, baseline = -1;
         const copied = [];
@@ -125,15 +155,34 @@ export function snapshotParagraphRaster(value, request) {
             if (y < baseline)
                 throw new Error('Invalid line order');
             baseline = y;
-            copied.push(Object.freeze({ start, end, baseline: y, ascent: number(line.ascent, 0, 1048576), descent: number(line.descent, 0, 1048576), height: number(line.height, 0, 1048576), width: number(line.width, 0, 1048576) }));
+            copied.push(Object.freeze({
+                start,
+                end,
+                baseline: y,
+                ascent: number(line.ascent, 0, 1048576),
+                descent: number(line.descent, 0, 1048576),
+                height: number(line.height, 0, 1048576),
+                width: number(line.width, 0, 1048576)
+            }));
         }
         const lines = Object.freeze(copied);
-        const owned = Object.freeze({ width: request.width, height, lines, ...(truncated === undefined ? {} : { truncated }) });
+        const owned = Object.freeze({
+            width: request.width,
+            height,
+            lines,
+            ...(truncated === undefined ? {} : { truncated })
+        });
         const image = value.image;
         if (image !== undefined && !isImageData2D(image))
             throw new Error('Invalid paragraph image');
         const offsetX = number(value.offsetX, -1048576, 1048576), offsetY = number(value.offsetY, -1048576, 1048576);
-        return Object.freeze({ metrics: owned, image, offsetX, offsetY, ...(request.textGeometry ? { geometry: value.geometry } : {}) });
+        return Object.freeze({
+            metrics: owned,
+            image,
+            offsetX,
+            offsetY,
+            ...(request.textGeometry ? { geometry: value.geometry } : {})
+        });
     }
     catch (cause) {
         throw new EgretError('PARAGRAPH_PROVIDER_RESULT_INVALID', { cause });

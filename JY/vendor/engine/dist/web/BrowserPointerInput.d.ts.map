@@ -1,1 +1,1 @@
-{"version":3,"file":"BrowserPointerInput.d.ts","sourceRoot":"","sources":["../../web/BrowserPointerInput.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EAAE,YAAY,EAAE,mBAAmB,EAAsD,MAAM,sBAAsB,CAAC;AAoBlI,uFAAuF;AACvF,wBAAgB,yBAAyB,CAAC,OAAO,EAAE,mBAAmB,GAAG,YAAY,CAwRpF"}
+{"version":3,"file":"BrowserPointerInput.d.ts","sourceRoot":"","sources":["../../web/BrowserPointerInput.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EACV,YAAY,EACZ,mBAAmB,EAIpB,MAAM,sBAAsB,CAAC;AAoC9B,uFAAuF;AACvF,wBAAgB,yBAAyB,CAAC,OAAO,EAAE,mBAAmB,GAAG,YAAY,CA0apF"}

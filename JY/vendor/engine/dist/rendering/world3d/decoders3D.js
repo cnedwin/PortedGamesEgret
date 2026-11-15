@@ -20,10 +20,14 @@ export function createDracoDecoder3D(draco) {
     if (!draco || typeof draco.Decoder !== 'function' || typeof draco._malloc !== 'function')
         throw new World3DError('WORLD3D_INPUT_INVALID', 'Draco decoder module');
     const types = {
-        5120: [Int8Array, draco.DT_INT8], 5121: [Uint8Array, draco.DT_UINT8], 5122: [Int16Array, draco.DT_INT16],
-        5123: [Uint16Array, draco.DT_UINT16], 5125: [Uint32Array, draco.DT_UINT32], 5126: [Float32Array, draco.DT_FLOAT32],
+        5120: [Int8Array, draco.DT_INT8],
+        5121: [Uint8Array, draco.DT_UINT8],
+        5122: [Int16Array, draco.DT_INT16],
+        5123: [Uint16Array, draco.DT_UINT16],
+        5125: [Uint32Array, draco.DT_UINT32],
+        5126: [Float32Array, draco.DT_FLOAT32]
     };
-    return (request) => {
+    return request => {
         const decoder = new draco.Decoder(), buffer = new draco.DecoderBuffer(), mesh = new draco.Mesh();
         let pointer = 0;
         try {
@@ -68,7 +72,15 @@ export function createDracoDecoder3D(draco) {
     };
 }
 // Target numbers of the transcoder, which are fixed by its public interface.
-const BASIS_TARGETS = Object.freeze({ 'etc2-rgba8': 1, bc1: 2, bc3: 3, bc7: 6, 'astc-4x4': 10, rgba8: 13, 'etc2-rgb8': 0 });
+const BASIS_TARGETS = Object.freeze({
+    'etc2-rgba8': 1,
+    bc1: 2,
+    bc3: 3,
+    bc7: 6,
+    'astc-4x4': 10,
+    rgba8: 13,
+    'etc2-rgb8': 0
+});
 /**
  * Turn an initialized Basis Universal transcoder module into the
  * `transcodeKtx2` option. `supports` reports which compressed formats the
@@ -79,7 +91,7 @@ export function createBasisTranscoder3D(basis, supports) {
     if (!basis || typeof basis.KTX2File !== 'function' || typeof supports !== 'function')
         throw new World3DError('WORLD3D_INPUT_INVALID', 'Basis transcoder module');
     let ready = false;
-    return (info) => {
+    return info => {
         if (!ready) {
             basis.initializeBasis();
             ready = true;
@@ -98,7 +110,9 @@ export function createBasisTranscoder3D(basis, supports) {
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'ktx2: transcoding could not start');
             // The transfer function byte of the data format descriptor says whether colors are sRGB.
             const view = new DataView(info.file.buffer, info.file.byteOffset, info.file.byteLength), descriptor = view.getUint32(48, true);
-            const colorSpace = descriptor > 0 && descriptor + 15 <= info.file.byteLength && info.file[descriptor + 14] === 2 ? 'srgb' : 'linear';
+            const colorSpace = descriptor > 0 && descriptor + 15 <= info.file.byteLength && info.file[descriptor + 14] === 2
+                ? 'srgb'
+                : 'linear';
             const levels = [];
             for (let level = 0; level < (format ? info.levelCount : 1); level++) {
                 const size = call(file, 'getImageTranscodedSizeInBytes', level, 0, 0, target), pixels = new Uint8Array(size);

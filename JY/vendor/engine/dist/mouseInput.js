@@ -18,21 +18,28 @@ export function createMouseInputOwner(engine, assembly) {
     const sample = new CancellationController().signal;
     const prototype = Object.getPrototypeOf(sample);
     const aborted = Object.getOwnPropertyDescriptor(prototype, 'aborted').get;
-    const add = Object.getOwnPropertyDescriptor(prototype, 'addEventListener').value;
-    const remove = Object.getOwnPropertyDescriptor(prototype, 'removeEventListener').value;
+    const add = Object.getOwnPropertyDescriptor(prototype, 'addEventListener')
+        .value;
+    const remove = Object.getOwnPropertyDescriptor(prototype, 'removeEventListener')
+        .value;
     const originalSignals = new WeakMap();
     const records = new Set();
     const shutdown = new Set();
     let started = false;
     const port = Object.freeze({
-        surface: assembly.surface, operations: assembly.operations,
-        assertOpen: assembly.assertOpen, report: assembly.report, captureCleanup: assembly.captureCleanup,
+        surface: assembly.surface,
+        operations: assembly.operations,
+        assertOpen: assembly.assertOpen,
+        report: assembly.report,
+        captureCleanup: assembly.captureCleanup,
         assertReady() {
             assembly.assertOpen();
             if (!started)
                 throw new EgretError('MOUSE_INPUT_INVALID');
         },
-        markStarted() { started = true; },
+        markStarted() {
+            started = true;
+        },
         scope(value) {
             assembly.assertOpen();
             const signal = originalSignals.get(value);
@@ -47,19 +54,33 @@ export function createMouseInputOwner(engine, assembly) {
             assertScopeOpen();
             const once = Object.freeze({ once: true });
             return Object.freeze({
-                scope, signal, assertOpen: assertScopeOpen,
-                use(value) { APPLY(SCOPE_USE, scope, [value]); },
-                add(listener) { APPLY(add, signal, ['abort', listener, once]); },
-                remove(listener) { APPLY(remove, signal, ['abort', listener]); },
+                scope,
+                signal,
+                assertOpen: assertScopeOpen,
+                use(value) {
+                    APPLY(SCOPE_USE, scope, [value]);
+                },
+                add(listener) {
+                    APPLY(add, signal, ['abort', listener, once]);
+                },
+                remove(listener) {
+                    APPLY(remove, signal, ['abort', listener]);
+                }
             });
         },
         onClose(listener) {
             assembly.assertOpen();
             shutdown.add(listener);
-            return () => { shutdown.delete(listener); };
+            return () => {
+                shutdown.delete(listener);
+            };
         },
-        addRecord(record) { records.add(record); },
-        removeRecord(record) { records.delete(record); },
+        addRecord(record) {
+            records.add(record);
+        },
+        removeRecord(record) {
+            records.delete(record);
+        }
     });
     registerMouseInputEngine(engine, port);
     return Object.freeze({
@@ -81,7 +102,7 @@ export function createMouseInputOwner(engine, assembly) {
                     assembly.report({ code: 'POINTER_INPUT_CLEANUP_FAILED', phase: 'engine', severity: 'error', cause });
                 }
             }
-        },
+        }
     });
 }
 /** The registry keeps a closed genuine identity without retaining Engine/Scope ports. */
@@ -103,7 +124,7 @@ function buttonInputPort(record) {
         remove(association) {
             if (record.buttons.get(association.target) === association)
                 record.buttons.delete(association.target);
-        },
+        }
     });
 }
 function live(record) {
@@ -145,8 +166,14 @@ function finishRetirement(record) {
     record.native = undefined;
     record.surface = undefined;
     record.pairs = [];
-    if (record.retirement === 'owner' && !record.wasAcquiring && record.cleanupErrors.length !== 0 && owner !== undefined) {
-        const error = new EgretError('MOUSE_INPUT_CLEANUP_FAILED', { cause: record.cleanupErrors[0], cleanupErrors: record.cleanupErrors.slice(1) });
+    if (record.retirement === 'owner' &&
+        !record.wasAcquiring &&
+        record.cleanupErrors.length !== 0 &&
+        owner !== undefined) {
+        const error = new EgretError('MOUSE_INPUT_CLEANUP_FAILED', {
+            cause: record.cleanupErrors[0],
+            cleanupErrors: record.cleanupErrors.slice(1)
+        });
         owner.captureCleanup(error);
         owner.report({ code: 'MOUSE_INPUT_CLEANUP_FAILED', phase: 'engine', severity: 'error', cause: error });
     }
@@ -179,7 +206,9 @@ function retire(record, reason) {
     }
     finishRetirement(record);
 }
-function inputEvent(type, payload) { return Object.freeze(new Event(type, payload)); }
+function inputEvent(type, payload) {
+    return Object.freeze(new Event(type, payload));
+}
 function payload(id, point) {
     return Object.freeze({ pointerId: id, globalX: point.x, globalY: point.y, pointerType: 'mouse', button: 0 });
 }
@@ -260,7 +289,11 @@ function nativeOperation(record, kind, event) {
             return;
         // MI1 control: end stays on the held target even when release selects a sibling.
         const endAllowed = operations.dispatch(held.target, inputEvent(record.events.end, payload(id, point)), record.maximum);
-        if (!live(record) || first !== held.target || !held.beginAllowed || !endAllowed || !operations.isAttached(held.target, record.maximum))
+        if (!live(record) ||
+            first !== held.target ||
+            !held.beginAllowed ||
+            !endAllowed ||
+            !operations.isAttached(held.target, record.maximum))
             return;
         // MI1 control: re-pick the same consumed release point after end callbacks.
         const second = operations.pick(point.x, point.y, record.maximum);
@@ -269,9 +302,11 @@ function nativeOperation(record, kind, event) {
             operations.dispatch(held.target, inputEvent(record.events.activate, data), record.maximum);
             // A control's callback is distinct from the unchanged public activate route.
             // Settings/life/token checks precede this final original pick after the route.
-            held.button?.afterActivate(held.token, data, () => live(record) && operations.isAttached(held.target, record.maximum)
-                && operations.pick(point.x, point.y, record.maximum) === held.target
-                && live(record) && operations.isAttached(held.target, record.maximum));
+            held.button?.afterActivate(held.token, data, () => live(record) &&
+                operations.isAttached(held.target, record.maximum) &&
+                operations.pick(point.x, point.y, record.maximum) === held.target &&
+                live(record) &&
+                operations.isAttached(held.target, record.maximum));
         }
     }
     finally {
@@ -279,14 +314,18 @@ function nativeOperation(record, kind, event) {
     }
 }
 function callbackFailure(record, owner, cause, primaryCleanup = false) {
-    if (record.failureEpisode && (Object.is(cause, record.failureCause) || (record.failureError !== undefined && cause === record.failureError)))
+    if (record.failureEpisode &&
+        (Object.is(cause, record.failureCause) || (record.failureError !== undefined && cause === record.failureError)))
         return;
     // Publish the episode before teardown callouts so nested native delivery cannot replay it.
     record.failureEpisode = true;
     record.failureCause = cause;
     record.failureError = undefined;
     retire(record, 'native');
-    const error = new EgretError('MOUSE_INPUT_CALLBACK_FAILED', { cause, cleanupErrors: primaryCleanup ? record.cleanupErrors.slice(1) : record.cleanupErrors });
+    const error = new EgretError('MOUSE_INPUT_CALLBACK_FAILED', {
+        cause,
+        cleanupErrors: primaryCleanup ? record.cleanupErrors.slice(1) : record.cleanupErrors
+    });
     record.failureError = error;
     owner.report({ code: 'MOUSE_INPUT_CALLBACK_FAILED', phase: 'engine', severity: 'error', cause: error });
 }
@@ -325,7 +364,15 @@ function deliver(record, kind, event) {
     }
 }
 function addPair(record, add, remove, listener) {
-    const pair = { add, remove, listener, inFlight: true, addSucceeded: false, removeAttempted: false, removeSucceeded: false };
+    const pair = {
+        add,
+        remove,
+        listener,
+        inFlight: true,
+        addSucceeded: false,
+        removeAttempted: false,
+        removeSucceeded: false
+    };
     record.pairs.push(pair);
     try {
         pair.add(pair.listener);
@@ -378,7 +425,10 @@ export function createMouseInputWithNative(options, nativeFactory) {
     catch (cause) {
         throw new EgretError('MOUSE_INPUT_OPTIONS_INVALID', { cause });
     }
-    const assertLive = () => { owner.assertReady(); scope.assertOpen(); };
+    const assertLive = () => {
+        owner.assertReady();
+        scope.assertOpen();
+    };
     let ready = false;
     const assertNativeLive = () => {
         try {
@@ -393,8 +443,16 @@ export function createMouseInputWithNative(options, nativeFactory) {
     };
     assertLive();
     const maximum = requestedMaximum === undefined ? 4096 : requestedMaximum;
-    if (typeof width !== 'number' || !Number.isFinite(width) || width <= 0 || typeof height !== 'number' || !Number.isFinite(height) || height <= 0
-        || typeof maximum !== 'number' || !Number.isInteger(maximum) || maximum < 1 || maximum > 65536)
+    if (typeof width !== 'number' ||
+        !Number.isFinite(width) ||
+        width <= 0 ||
+        typeof height !== 'number' ||
+        !Number.isFinite(height) ||
+        height <= 0 ||
+        typeof maximum !== 'number' ||
+        !Number.isInteger(maximum) ||
+        maximum < 1 ||
+        maximum > 65536)
         throw new EgretError('MOUSE_INPUT_OPTIONS_INVALID');
     const native = nativeFactory(owner.surface, width, height, assertNativeLive);
     assertLive();
@@ -404,15 +462,38 @@ export function createMouseInputWithNative(options, nativeFactory) {
         begin: createEventType('egret.mouse.begin', { bubbles: true, cancelable: true }),
         end: createEventType('egret.mouse.end', { bubbles: true, cancelable: true }),
         activate: createEventType('egret.mouse.activate', { bubbles: true, cancelable: false }),
-        cancel: createEventType('egret.mouse.cancel', { bubbles: true, cancelable: false }),
+        cancel: createEventType('egret.mouse.cancel', {
+            bubbles: true,
+            cancelable: false
+        })
     });
     const record = {
-        state: 'idle', phase: 'acquiring', busy: false, failureEpisode: false, failureCause: undefined, failureError: undefined, owner, scope, native, held: undefined,
-        events, buttons: new Map(), maximum, token: {}, surface: owner.surface, pairs: [], cleanupErrors: [], retirement: undefined, wasAcquiring: false,
+        state: 'idle',
+        phase: 'acquiring',
+        busy: false,
+        failureEpisode: false,
+        failureCause: undefined,
+        failureError: undefined,
+        owner,
+        scope,
+        native,
+        held: undefined,
+        events,
+        buttons: new Map(),
+        maximum,
+        token: {},
+        surface: owner.surface,
+        pairs: [],
+        cleanupErrors: [],
+        retirement: undefined,
+        wasAcquiring: false
     };
     const facade = Object.freeze({
-        get state() { if (this !== facade)
-            throw new EgretError('MOUSE_INPUT_INVALID'); return record.state; },
+        get state() {
+            if (this !== facade)
+                throw new EgretError('MOUSE_INPUT_INVALID');
+            return record.state;
+        },
         events,
         dispose() {
             if (this !== facade)
@@ -421,8 +502,11 @@ export function createMouseInputWithNative(options, nativeFactory) {
                 return;
             retire(record, 'explicit');
             if (record.cleanupErrors.length !== 0)
-                throw new EgretError('MOUSE_INPUT_CLEANUP_FAILED', { cause: record.cleanupErrors[0], cleanupErrors: record.cleanupErrors.slice(1) });
-        },
+                throw new EgretError('MOUSE_INPUT_CLEANUP_FAILED', {
+                    cause: record.cleanupErrors[0],
+                    cleanupErrors: record.cleanupErrors.slice(1)
+                });
+        }
     });
     registerMouseInputInstance(facade, engine, buttonInputPort(record));
     tokens.set(owner.surface, record.token);
@@ -440,12 +524,16 @@ export function createMouseInputWithNative(options, nativeFactory) {
     try {
         scope.use(facade);
         assertLive();
-        acquire(scope.add, scope.remove, () => { retire(record, 'owner'); });
+        acquire(scope.add, scope.remove, () => {
+            retire(record, 'owner');
+        });
         assertLive();
         for (const pair of native.pairs) {
             // A leaked closed callback retains the scalar kind and record, not the native target/ports.
             const kind = pair.kind;
-            acquire(pair.add, pair.remove, (event) => { deliver(record, kind, event); });
+            acquire(pair.add, pair.remove, (event) => {
+                deliver(record, kind, event);
+            });
             assertLive();
         }
         assertLive();
@@ -460,8 +548,14 @@ export function createMouseInputWithNative(options, nativeFactory) {
         failure = cause;
     }
     retire(record, 'setup');
-    if (hasFailure && !sourceFailure && failure instanceof EgretError && (failure.code === 'ENGINE_CLOSED' || failure.code === 'SCOPE_CLOSED')) {
-        throw new EgretError(failure.code, { cause: failure.cause, cleanupErrors: [...failure.cleanupErrors, ...record.cleanupErrors] });
+    if (hasFailure &&
+        !sourceFailure &&
+        failure instanceof EgretError &&
+        (failure.code === 'ENGINE_CLOSED' || failure.code === 'SCOPE_CLOSED')) {
+        throw new EgretError(failure.code, {
+            cause: failure.cause,
+            cleanupErrors: [...failure.cleanupErrors, ...record.cleanupErrors]
+        });
     }
     throw new EgretError('MOUSE_INPUT_SETUP_FAILED', { cause: failure, cleanupErrors: record.cleanupErrors });
 }

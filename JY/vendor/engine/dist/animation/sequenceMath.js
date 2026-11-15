@@ -21,7 +21,9 @@ function boundsFor(duration, totalPlays) {
     return { plays, endpoint, finite };
 }
 function assertTime(time, bounds) {
-    if (!Number.isFinite(time) || time < 0 || time > MAX_TIME ||
+    if (!Number.isFinite(time) ||
+        time < 0 ||
+        time > MAX_TIME ||
         (bounds.finite ? time > bounds.endpoint : time >= bounds.endpoint)) {
         throw new EgretError('ANIMATION_TIME_LIMIT');
     }
@@ -38,7 +40,7 @@ export function locatePosition(duration, totalPlays, time) {
         return Object.freeze({
             playIndex: bounds.plays - 1,
             positionSeconds: duration,
-            complete: true,
+            complete: true
         });
     }
     // The sentinel is strictly beyond time; at most 20 bisections select its play.
@@ -99,8 +101,7 @@ export function planEvents(duration, totalPlays, markers, oldElapsed, newElapsed
     if (markerCount > MAX_MARKERS)
         throw new EgretError('ANIMATION_EVENT_LIMIT');
     const includeStart = options.includeStart === true && oldElapsed === 0;
-    const includeComplete = options.includeComplete === true && bounds.finite &&
-        newElapsed === bounds.endpoint && newElapsed > oldElapsed;
+    const includeComplete = options.includeComplete === true && bounds.finite && newElapsed === bounds.endpoint && newElapsed > oldElapsed;
     let eventCount = includeComplete ? 1 : 0;
     if (eventCount > remainingBudget)
         throw new EgretError('ANIMATION_EVENT_LIMIT');
@@ -111,8 +112,7 @@ export function planEvents(duration, totalPlays, markers, oldElapsed, newElapsed
         if (!Number.isFinite(markerTime) || markerTime < 0 || markerTime > duration) {
             throw new EgretError('ANIMATION_TIME_LIMIT');
         }
-        const first = includeStart && markerTime === 0 ? 0 :
-            occurrenceUpperBound(duration, markerTime, bounds.plays, oldElapsed);
+        const first = includeStart && markerTime === 0 ? 0 : occurrenceUpperBound(duration, markerTime, bounds.plays, oldElapsed);
         const afterLast = occurrenceUpperBound(duration, markerTime, bounds.plays, newElapsed);
         eventCount += afterLast - first;
         if (eventCount > remainingBudget)
@@ -129,8 +129,10 @@ export function planEvents(duration, totalPlays, markers, oldElapsed, newElapsed
             const start = boundary(duration, playIndex);
             const end = boundary(duration, playIndex + 1);
             const timelineSeconds = occurrence(duration, marker.timeSeconds, playIndex);
-            if (!(start < end) || (marker.timeSeconds !== 0 && marker.timeSeconds !== duration &&
-                !(timelineSeconds > start && timelineSeconds < end))) {
+            if (!(start < end) ||
+                (marker.timeSeconds !== 0 &&
+                    marker.timeSeconds !== duration &&
+                    !(timelineSeconds > start && timelineSeconds < end))) {
                 throw new EgretError('ANIMATION_PRECISION_LIMIT');
             }
             events.push(Object.freeze({
@@ -139,21 +141,22 @@ export function planEvents(duration, totalPlays, markers, oldElapsed, newElapsed
                 markerIndex: marker.markerIndex,
                 playIndex,
                 timelineSeconds,
-                positionSeconds: marker.timeSeconds === 0 ? 0 : marker.timeSeconds,
+                positionSeconds: marker.timeSeconds === 0 ? 0 : marker.timeSeconds
             }));
         }
     }
     // End-of-play markers precede the next play's zero markers at the same B(k).
     // Rounded interior ties retain authored time order, then original input order.
     events.sort((left, right) => left.timelineSeconds - right.timelineSeconds ||
-        left.playIndex - right.playIndex || left.positionSeconds - right.positionSeconds ||
+        left.playIndex - right.playIndex ||
+        left.positionSeconds - right.positionSeconds ||
         left.markerIndex - right.markerIndex);
     const result = events;
     if (includeComplete) {
         result.push(Object.freeze({
             kind: 'complete',
             totalPlays: bounds.plays,
-            timelineSeconds: bounds.endpoint,
+            timelineSeconds: bounds.endpoint
         }));
     }
     return Object.freeze(result);

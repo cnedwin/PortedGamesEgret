@@ -16,6 +16,8 @@ export declare class DisplayObjectContainer extends DisplayObject {
     removeChild<T extends DisplayObject>(child: T): T;
     /** Detach every direct child without disposing nodes or transferring owners. */
     removeChildren(): void;
+    /** The first child with this name, or undefined. Children's own children are not looked at. */
+    getChildByName(name: string): DisplayObject | undefined;
     getChildAt(index: number): DisplayObject;
     /** Return a genuine direct child's current zero-based index without mutation. */
     getChildIndex(child: DisplayObject): number;

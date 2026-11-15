@@ -12,9 +12,18 @@ export function createBrowserVideo(options) {
         throw invalid();
     const { assets, src, stream, element: given, loop = false, muted = true, volume = 1, maxWidth = 1280, crossOrigin } = options;
     const kinds = [src, stream, given].filter(value => value !== undefined).length;
-    if (kinds !== 1 || (src !== undefined && (typeof src !== 'string' || src.length === 0)) || (stream !== undefined && (typeof MediaStream === 'undefined' || !(stream instanceof MediaStream)))
-        || (given !== undefined && !(given instanceof HTMLVideoElement)) || typeof loop !== 'boolean' || typeof muted !== 'boolean' || typeof volume !== 'number' || !(volume >= 0 && volume <= 1)
-        || !Number.isSafeInteger(maxWidth) || maxWidth < 1 || maxWidth > 4096 || (crossOrigin !== undefined && crossOrigin !== 'anonymous' && crossOrigin !== 'use-credentials'))
+    if (kinds !== 1 ||
+        (src !== undefined && (typeof src !== 'string' || src.length === 0)) ||
+        (stream !== undefined && (typeof MediaStream === 'undefined' || !(stream instanceof MediaStream))) ||
+        (given !== undefined && !(given instanceof HTMLVideoElement)) ||
+        typeof loop !== 'boolean' ||
+        typeof muted !== 'boolean' ||
+        typeof volume !== 'number' ||
+        !(volume >= 0 && volume <= 1) ||
+        !Number.isSafeInteger(maxWidth) ||
+        maxWidth < 1 ||
+        maxWidth > 4096 ||
+        (crossOrigin !== undefined && crossOrigin !== 'anonymous' && crossOrigin !== 'use-credentials'))
         throw invalid();
     const element = given ?? document.createElement('video');
     element.playsInline = true;
@@ -33,7 +42,11 @@ export function createBrowserVideo(options) {
     const watchFrames = () => {
         if (closed || !presented)
             return;
-        callback = element.requestVideoFrameCallback((_now, metadata) => { fresh = true; frameTime = metadata.mediaTime; watchFrames(); });
+        callback = element.requestVideoFrameCallback((_now, metadata) => {
+            fresh = true;
+            frameTime = metadata.mediaTime;
+            watchFrames();
+        });
     };
     const size = () => {
         const w = element.videoWidth, h = element.videoHeight;
@@ -43,18 +56,56 @@ export function createBrowserVideo(options) {
         return { width: Math.max(1, Math.round(w * scale)), height: Math.max(1, Math.round(h * scale)) };
     };
     const events = [
-        ['loadeddata', () => { if (state === 'loading')
-                state = element.paused ? 'ready' : 'playing'; fresh = true; frameTime = element.currentTime; }],
-        ['playing', () => { state = 'playing'; }],
-        ['pause', () => { if (state !== 'ended' && state !== 'failed')
-                state = 'paused'; }],
-        ['ended', () => { state = 'ended'; }],
-        ['error', () => { state = 'failed'; }],
-        ['seeked', () => { fresh = true; frameTime = element.currentTime; }],
-        ['timeupdate', () => { if (!presented) {
+        [
+            'loadeddata',
+            () => {
+                if (state === 'loading')
+                    state = element.paused ? 'ready' : 'playing';
                 fresh = true;
                 frameTime = element.currentTime;
-            } }],
+            }
+        ],
+        [
+            'playing',
+            () => {
+                state = 'playing';
+            }
+        ],
+        [
+            'pause',
+            () => {
+                if (state !== 'ended' && state !== 'failed')
+                    state = 'paused';
+            }
+        ],
+        [
+            'ended',
+            () => {
+                state = 'ended';
+            }
+        ],
+        [
+            'error',
+            () => {
+                state = 'failed';
+            }
+        ],
+        [
+            'seeked',
+            () => {
+                fresh = true;
+                frameTime = element.currentTime;
+            }
+        ],
+        [
+            'timeupdate',
+            () => {
+                if (!presented) {
+                    fresh = true;
+                    frameTime = element.currentTime;
+                }
+            }
+        ]
     ];
     for (const [name, listener] of events)
         element.addEventListener(name, listener);
@@ -69,14 +120,39 @@ export function createBrowserVideo(options) {
     }
     watchFrames();
     const source = {
-        get state() { return state; },
-        get width() { return size().width; },
-        get height() { return size().height; },
-        get duration() { return element.duration; },
-        get currentTime() { return element.currentTime; },
-        get loop() { return element.loop; }, set loop(value) { element.loop = value; },
-        get muted() { return element.muted; }, set muted(value) { element.muted = value; },
-        get volume() { return element.volume; }, set volume(value) { element.volume = value; },
+        get state() {
+            return state;
+        },
+        get width() {
+            return size().width;
+        },
+        get height() {
+            return size().height;
+        },
+        get duration() {
+            return element.duration;
+        },
+        get currentTime() {
+            return element.currentTime;
+        },
+        get loop() {
+            return element.loop;
+        },
+        set loop(value) {
+            element.loop = value;
+        },
+        get muted() {
+            return element.muted;
+        },
+        set muted(value) {
+            element.muted = value;
+        },
+        get volume() {
+            return element.volume;
+        },
+        set volume(value) {
+            element.volume = value;
+        },
         readFrame() {
             if (!fresh || element.readyState < 2)
                 return undefined;
@@ -90,13 +166,28 @@ export function createBrowserVideo(options) {
             }
             context.drawImage(element, 0, 0, width, height);
             const data = context.getImageData(0, 0, width, height).data;
-            return { image: createImageData2D({ width, height, pixels: new Uint8Array(data.buffer, data.byteOffset, data.byteLength) }), time: frameTime };
+            return {
+                image: createImageData2D({
+                    width,
+                    height,
+                    pixels: new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+                }),
+                time: frameTime
+            };
         },
-        async play() { if (state === 'ended')
-            state = 'paused'; await element.play(); },
-        pause() { element.pause(); },
-        seek(seconds) { if (state === 'ended')
-            state = 'paused'; element.currentTime = seconds; },
+        async play() {
+            if (state === 'ended')
+                state = 'paused';
+            await element.play();
+        },
+        pause() {
+            element.pause();
+        },
+        seek(seconds) {
+            if (state === 'ended')
+                state = 'paused';
+            element.currentTime = seconds;
+        },
         dispose() {
             closed = true;
             if (callback !== undefined && typeof element.cancelVideoFrameCallback === 'function')
@@ -112,7 +203,7 @@ export function createBrowserVideo(options) {
             }
             surface.width = 0;
             surface.height = 0;
-        },
+        }
     };
     const video = createVideo({ assets, source });
     return Object.freeze(Object.create(video, { element: { value: element, enumerable: true } }));

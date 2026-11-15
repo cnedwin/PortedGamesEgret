@@ -65,7 +65,7 @@ export function createDisplayInputOperations(stage) {
                 return false;
             // No public dispatch, lifetime, parent or candidate hook is input authority.
             return dispatchDisplayInputEvent(target, event, route.slice(1));
-        },
+        }
     });
 }
 //# sourceMappingURL=displayInputOperations.js.map

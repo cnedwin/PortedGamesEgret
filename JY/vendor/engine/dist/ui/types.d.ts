@@ -184,7 +184,7 @@ export interface UiCounters {
     readonly measurementCalls: number;
     readonly reusedMeasurements: number;
     readonly bindTotal: number;
-    readonly unbindTotal: number; /** Undefined: custom binding resource ownership is not introspected. */
+    readonly unbindTotal: number /** Undefined: custom binding resource ownership is not introspected. */;
     readonly resourceDemands: number | undefined;
     readonly resourceLeases: number | undefined;
 }

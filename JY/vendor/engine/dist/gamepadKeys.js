@@ -1,15 +1,38 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
 const DIRECTIONS = ['up', 'down', 'left', 'right'];
-const NAMES = ['a', 'b', 'x', 'y', 'l1', 'r1', 'l2', 'r2', 'select', 'start', 'l3', 'r3', 'up', 'down', 'left', 'right', 'home'];
+const NAMES = [
+    'a',
+    'b',
+    'x',
+    'y',
+    'l1',
+    'r1',
+    'l2',
+    'r2',
+    'select',
+    'start',
+    'l3',
+    'r3',
+    'up',
+    'down',
+    'left',
+    'right',
+    'home'
+];
 /**
  * What a pad does to a UI unless told otherwise. A direction is an arrow key, and an arrow nobody
  * took moves the focus, so one cross walks both inside a control and from control to control.
  */
 const USUAL = Object.freeze({
-    up: { key: 'ArrowUp', otherwise: 'previous' }, down: { key: 'ArrowDown', otherwise: 'next' },
-    left: { key: 'ArrowLeft', otherwise: 'previous' }, right: { key: 'ArrowRight', otherwise: 'next' },
-    a: { key: 'Enter' }, b: { key: 'Escape' }, l1: { focus: 'previous' }, r1: { focus: 'next' },
+    up: { key: 'ArrowUp', otherwise: 'previous' },
+    down: { key: 'ArrowDown', otherwise: 'next' },
+    left: { key: 'ArrowLeft', otherwise: 'previous' },
+    right: { key: 'ArrowRight', otherwise: 'next' },
+    a: { key: 'Enter' },
+    b: { key: 'Escape' },
+    l1: { focus: 'previous' },
+    r1: { focus: 'next' }
 });
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const within = (value, least, most) => typeof value === 'number' && value >= least && value <= most;
@@ -20,17 +43,32 @@ export function bindGamepadKeys(options) {
     if (!record(options))
         throw new EgretError('GAMEPAD_OPTIONS_INVALID');
     const { gamepad, keyboard, pad: only, map: given = {}, stick = 'left', wrap = true, threshold = 0.5, repeatDelay = 400, repeatInterval = 100 } = options;
-    if (!record(gamepad) || typeof gamepad.subscribe !== 'function' || typeof gamepad.onSample !== 'function'
-        || !record(keyboard) || typeof keyboard.keyDown !== 'function' || typeof keyboard.keyUp !== 'function' || typeof keyboard.moveFocus !== 'function'
-        || (only !== undefined && !(Number.isSafeInteger(only) && within(only, 0, 31))) || !record(given) || (stick !== false && stick !== 'left' && stick !== 'right') || typeof wrap !== 'boolean'
-        || !within(threshold, 0.1, 1) || !within(repeatDelay, 50, 5000) || !within(repeatInterval, 20, 5000))
+    if (!record(gamepad) ||
+        typeof gamepad.subscribe !== 'function' ||
+        typeof gamepad.onSample !== 'function' ||
+        !record(keyboard) ||
+        typeof keyboard.keyDown !== 'function' ||
+        typeof keyboard.keyUp !== 'function' ||
+        typeof keyboard.moveFocus !== 'function' ||
+        (only !== undefined && !(Number.isSafeInteger(only) && within(only, 0, 31))) ||
+        !record(given) ||
+        (stick !== false && stick !== 'left' && stick !== 'right') ||
+        typeof wrap !== 'boolean' ||
+        !within(threshold, 0.1, 1) ||
+        !within(repeatDelay, 50, 5000) ||
+        !within(repeatInterval, 20, 5000))
         throw new EgretError('GAMEPAD_OPTIONS_INVALID');
     const map = new Map();
     for (const name of NAMES) {
         const action = Object.hasOwn(given, name) ? given[name] : USUAL[name];
         if (action === null || action === undefined)
             continue;
-        if (!record(action) || !('focus' in action ? way(action.focus) : text(action['key']) && (action['code'] === undefined || text(action['code'])) && (action['otherwise'] === undefined || way(action['otherwise']))))
+        if (!record(action) ||
+            !('focus' in action
+                ? way(action.focus)
+                : text(action['key']) &&
+                    (action['code'] === undefined || text(action['code'])) &&
+                    (action['otherwise'] === undefined || way(action['otherwise']))))
             throw new EgretError('GAMEPAD_OPTIONS_INVALID');
         map.set(name, action);
     }
@@ -57,7 +95,11 @@ export function bindGamepadKeys(options) {
         const action = map.get(name);
         if (action === undefined)
             return;
-        const hold = { action, repeats: 'focus' in action || DIRECTIONS.includes(name), next: timestamp + repeatDelay };
+        const hold = {
+            action,
+            repeats: 'focus' in action || DIRECTIONS.includes(name),
+            next: timestamp + repeatDelay
+        };
         holds.set(id, hold);
         if ('key' in action) {
             const count = keys.get(action.key) ?? 0;
@@ -86,7 +128,7 @@ export function bindGamepadKeys(options) {
         const along = (direction) => direction === 'up' ? -y : direction === 'down' ? y : direction === 'left' ? -x : x;
         if (before !== undefined && along(before) >= threshold * 0.7)
             return before;
-        const now = Math.abs(x) >= Math.abs(y) ? (x < 0 ? 'left' : 'right') : (y < 0 ? 'up' : 'down');
+        const now = Math.abs(x) >= Math.abs(y) ? (x < 0 ? 'left' : 'right') : y < 0 ? 'up' : 'down';
         const direction = along(now) >= threshold ? now : undefined;
         if (direction === undefined)
             pointed.delete(pad.index);
@@ -128,9 +170,18 @@ export function bindGamepadKeys(options) {
             fire(hold, true);
         }
     }
-    const off = [gamepad.subscribe(change => { sync(change.timestamp, false); }), gamepad.onSample(timestamp => { sync(timestamp, true); })];
+    const off = [
+        gamepad.subscribe(change => {
+            sync(change.timestamp, false);
+        }),
+        gamepad.onSample(timestamp => {
+            sync(timestamp, true);
+        })
+    ];
     return Object.freeze({
-        get held() { return Object.freeze([...keys.keys()]); },
+        get held() {
+            return Object.freeze([...keys.keys()]);
+        },
         dispose() {
             if (disposed)
                 return;
@@ -148,7 +199,7 @@ export function bindGamepadKeys(options) {
             pointed.clear();
             if (failures.length > 0)
                 throw new EgretError('GAMEPAD_LISTENER_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
-        },
+        }
     });
 }
 //# sourceMappingURL=gamepadKeys.js.map

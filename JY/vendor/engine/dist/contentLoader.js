@@ -13,12 +13,18 @@ function provider(value) {
     if (typeof value !== 'object' || value === null)
         throw new EgretError('CONTENT_PROVIDERS_INVALID');
     const load = Object.getOwnPropertyDescriptor(value, 'load'), dispose = Object.getOwnPropertyDescriptor(value, 'dispose');
-    if (!load || !dispose || !Object.hasOwn(load, 'value') || !Object.hasOwn(dispose, 'value')
-        || typeof load.value !== 'function' || typeof dispose.value !== 'function')
+    if (!load ||
+        !dispose ||
+        !Object.hasOwn(load, 'value') ||
+        !Object.hasOwn(dispose, 'value') ||
+        typeof load.value !== 'function' ||
+        typeof dispose.value !== 'function')
         throw new EgretError('CONTENT_PROVIDERS_INVALID');
     return FREEZE({
         load: (...args) => APPLY(load.value, value, args),
-        dispose: (asset) => { APPLY(dispose.value, value, [asset]); },
+        dispose: (asset) => {
+            APPLY(dispose.value, value, [asset]);
+        }
     });
 }
 /** One manifest/source catalog, independent of global IDs and of other loaders. */
@@ -35,18 +41,38 @@ export function createContentLoader(engine, manifest, factory) {
     const descriptions = [];
     for (const e of entries.values()) {
         const multi = e.resourceKind === 'atlas' && e.importer.id === 'egret.atlas-pages';
-        const profile = multi ? ['egret.atlas-pages', 'egret.atlas-pages/1', 'application/json', e.dependencies.length] : e.resourceKind === 'image' ? ['egret.png', 'png/1', 'image/png', 0] : e.resourceKind === 'atlas' ? ['egret.aseprite-atlas', 'egret.atlas/1', 'application/json', 1] : e.resourceKind === 'sequence' ? ['egret.sequence', 'egret.sequence/1', 'application/json', 1] : undefined;
-        if ((multi && (e.dependencies.length < 1 || e.dependencies.length > 16)) || !profile || e.importer.id !== profile[0] || e.importer.version !== '1.0.0' || e.artifactFormatVersion !== profile[1] || e.artifact.mediaType !== profile[2] || e.dependencies.length !== profile[3]
-            || e.artifact.byteLength > (e.resourceKind === 'image' ? 8388608 : 4194304))
+        const profile = multi
+            ? ['egret.atlas-pages', 'egret.atlas-pages/1', 'application/json', e.dependencies.length]
+            : e.resourceKind === 'image'
+                ? ['egret.png', 'png/1', 'image/png', 0]
+                : e.resourceKind === 'atlas'
+                    ? ['egret.aseprite-atlas', 'egret.atlas/1', 'application/json', 1]
+                    : e.resourceKind === 'sequence'
+                        ? ['egret.sequence', 'egret.sequence/1', 'application/json', 1]
+                        : undefined;
+        if ((multi && (e.dependencies.length < 1 || e.dependencies.length > 16)) ||
+            !profile ||
+            e.importer.id !== profile[0] ||
+            e.importer.version !== '1.0.0' ||
+            e.artifactFormatVersion !== profile[1] ||
+            e.artifact.mediaType !== profile[2] ||
+            e.dependencies.length !== profile[3] ||
+            e.artifact.byteLength > (e.resourceKind === 'image' ? 8388608 : 4194304))
             throw contentFault('PROFILE', e.id);
         const dependency = entries.get(e.dependencies[0] ?? '');
         if (multi && e.dependencies.some(id => entries.get(id)?.resourceKind !== 'image'))
             throw contentFault('DEPENDENCY', e.id);
-        if (e.resourceKind === 'atlas' && dependency?.resourceKind !== 'image' || e.resourceKind === 'sequence' && dependency?.resourceKind !== 'atlas')
+        if ((e.resourceKind === 'atlas' && dependency?.resourceKind !== 'image') ||
+            (e.resourceKind === 'sequence' && dependency?.resourceKind !== 'atlas'))
             throw contentFault('DEPENDENCY', e.id);
-        if (e.resourceKind === 'sequence' && (e.source.id !== dependency.source.id || e.source.sha256 !== dependency.source.sha256 || e.source.byteLength !== dependency.source.byteLength))
+        if (e.resourceKind === 'sequence' &&
+            (e.source.id !== dependency.source.id ||
+                e.source.sha256 !== dependency.source.sha256 ||
+                e.source.byteLength !== dependency.source.byteLength))
             throw contentFault('SOURCE', e.id);
-        const binding = e.resourceKind === 'image' ? createManifestAssetBinding(manifest, e.id, imageType) : createManifestAssetBinding(manifest, e.id, metadataType);
+        const binding = e.resourceKind === 'image'
+            ? createManifestAssetBinding(manifest, e.id, imageType)
+            : createManifestAssetBinding(manifest, e.id, metadataType);
         bindings.set(e.id, binding);
         descriptions.push(FREEZE({ id: e.id, kind: e.resourceKind, binding }));
     }
@@ -57,7 +83,10 @@ export function createContentLoader(engine, manifest, factory) {
     const texturePort = Object.getOwnPropertyDescriptor(ports, 'textures'), metadataPort = Object.getOwnPropertyDescriptor(ports, 'metadata');
     if (!texturePort || !metadataPort || !Object.hasOwn(texturePort, 'value') || !Object.hasOwn(metadataPort, 'value'))
         throw new EgretError('CONTENT_PROVIDERS_INVALID');
-    const providers = { textures: provider(texturePort.value), metadata: provider(metadataPort.value) };
+    const providers = {
+        textures: provider(texturePort.value),
+        metadata: provider(metadataPort.value)
+    };
     owner.assertOpen();
     owner.register(imageType, providers.textures);
     owner.register(metadataType, providers.metadata);
@@ -65,8 +94,11 @@ export function createContentLoader(engine, manifest, factory) {
     let disposed = false;
     const groups = new Set();
     let disown = () => { };
-    function assertOpen() { owner.assertOpen(); if (disposed)
-        throw new EgretError('CONTENT_LOADER_DISPOSED'); }
+    function assertOpen() {
+        owner.assertOpen();
+        if (disposed)
+            throw new EgretError('CONTENT_LOADER_DISPOSED');
+    }
     function assertScope(scope) {
         assertOpen();
         if (!owner.isScope(scope))
@@ -84,10 +116,16 @@ export function createContentLoader(engine, manifest, factory) {
         groups.clear();
     }
     const loader = FREEZE({
-        get isDisposed() { if (this !== loader)
-            throw new EgretError('CONTENT_LOADER_INVALID'); return disposed; },
-        dispose() { if (this !== loader)
-            throw new EgretError('CONTENT_LOADER_INVALID'); dispose(); },
+        get isDisposed() {
+            if (this !== loader)
+                throw new EgretError('CONTENT_LOADER_INVALID');
+            return disposed;
+        },
+        dispose() {
+            if (this !== loader)
+                throw new EgretError('CONTENT_LOADER_INVALID');
+            dispose();
+        },
         load(scope, roots, options) {
             if (this !== loader)
                 throw new EgretError('CONTENT_LOADER_INVALID');
@@ -116,7 +154,10 @@ export function createContentLoader(engine, manifest, factory) {
             for (let i = 0; i < count; i++) {
                 const descriptor = Object.getOwnPropertyDescriptor(roots, String(i));
                 assertScope(scope);
-                if (!descriptor || !Object.hasOwn(descriptor, 'value') || typeof descriptor.value !== 'string' || captured.includes(descriptor.value))
+                if (!descriptor ||
+                    !Object.hasOwn(descriptor, 'value') ||
+                    typeof descriptor.value !== 'string' ||
+                    captured.includes(descriptor.value))
                     throw new EgretError('CONTENT_ROOTS_INVALID');
                 captured.push(descriptor.value);
                 visit(descriptor.value);
@@ -126,7 +167,10 @@ export function createContentLoader(engine, manifest, factory) {
             const atlasPages = new Map(), atlasPageNames = new Map();
             let state = 'pending';
             let resolve, reject;
-            const ready = new Promise((yes, no) => { resolve = yes; reject = no; });
+            const ready = new Promise((yes, no) => {
+                resolve = yes;
+                reject = no;
+            });
             void ready.catch(() => { });
             function retire(next, cause) {
                 if (state === 'disposed' || state === 'failed')
@@ -158,16 +202,31 @@ export function createContentLoader(engine, manifest, factory) {
                 return map.get(id);
             }
             const group = FREEZE({
-                get ready() { if (this !== group)
-                    throw new EgretError('CONTENT_GROUP_INVALID'); return ready; },
-                get isDisposed() { if (this !== group)
-                    throw new EgretError('CONTENT_GROUP_INVALID'); return state === 'disposed' || state === 'failed'; },
-                getImage(id) { if (this !== group)
-                    throw new EgretError('CONTENT_GROUP_INVALID'); return read(images, id); },
-                getAtlas(id) { if (this !== group)
-                    throw new EgretError('CONTENT_GROUP_INVALID'); return read(sheets, id); },
-                getAtlasPages(id) { if (this !== group)
-                    throw new EgretError('CONTENT_GROUP_INVALID'); return read(atlasPageNames, id); },
+                get ready() {
+                    if (this !== group)
+                        throw new EgretError('CONTENT_GROUP_INVALID');
+                    return ready;
+                },
+                get isDisposed() {
+                    if (this !== group)
+                        throw new EgretError('CONTENT_GROUP_INVALID');
+                    return state === 'disposed' || state === 'failed';
+                },
+                getImage(id) {
+                    if (this !== group)
+                        throw new EgretError('CONTENT_GROUP_INVALID');
+                    return read(images, id);
+                },
+                getAtlas(id) {
+                    if (this !== group)
+                        throw new EgretError('CONTENT_GROUP_INVALID');
+                    return read(sheets, id);
+                },
+                getAtlasPages(id) {
+                    if (this !== group)
+                        throw new EgretError('CONTENT_GROUP_INVALID');
+                    return read(atlasPageNames, id);
+                },
                 getAtlasPage(id, page) {
                     if (this !== group)
                         throw new EgretError('CONTENT_GROUP_INVALID');
@@ -176,10 +235,16 @@ export function createContentLoader(engine, manifest, factory) {
                         throw new EgretError('CONTENT_RESOURCE_INVALID');
                     return pages.get(page);
                 },
-                getSequence(id) { if (this !== group)
-                    throw new EgretError('CONTENT_GROUP_INVALID'); return read(clips, id); },
-                dispose() { if (this !== group)
-                    throw new EgretError('CONTENT_GROUP_INVALID'); retire('disposed'); },
+                getSequence(id) {
+                    if (this !== group)
+                        throw new EgretError('CONTENT_GROUP_INVALID');
+                    return read(clips, id);
+                },
+                dispose() {
+                    if (this !== group)
+                        throw new EgretError('CONTENT_GROUP_INVALID');
+                    retire('disposed');
+                }
             });
             groups.add(group);
             try {
@@ -244,14 +309,16 @@ export function createContentLoader(engine, manifest, factory) {
                 }
             }, cause => retire('failed', contentFault('LOAD', captured.join(','), cause)));
             return group;
-        },
+        }
     });
     registerContentLoader(loader, (scope, imageId, sequenceId) => {
         assertScope(scope);
         const sequence = entries.get(sequenceId), atlas = entries.get(sequence?.dependencies[0] ?? '');
-        if (sequence?.resourceKind !== 'sequence' || atlas?.resourceKind !== 'atlas'
-            || atlas.dependencies.length !== 1 || atlas.dependencies[0] !== imageId
-            || entries.get(imageId)?.resourceKind !== 'image')
+        if (sequence?.resourceKind !== 'sequence' ||
+            atlas?.resourceKind !== 'atlas' ||
+            atlas.dependencies.length !== 1 ||
+            atlas.dependencies[0] !== imageId ||
+            entries.get(imageId)?.resourceKind !== 'image')
             throw new EgretError('SEQUENCE_RESET_RESOURCE_MISMATCH');
     });
     disown = owner.own(dispose);

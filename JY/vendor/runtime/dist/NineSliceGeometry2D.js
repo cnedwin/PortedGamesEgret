@@ -43,8 +43,14 @@ function axis(source, target, leading, trailing) {
     const farUv = (source - trailing) / source;
     // Computed Float64 cuts are authoritative. Positive intervals must survive;
     // GPU Float32 conversion and raster capacity remain renderer obligations.
-    if (!finite(far) || !finite(nearUv) || !finite(farUv) ||
-        far < leading || far > target || nearUv < 0 || farUv > 1 || nearUv >= farUv ||
+    if (!finite(far) ||
+        !finite(nearUv) ||
+        !finite(farUv) ||
+        far < leading ||
+        far > target ||
+        nearUv < 0 ||
+        farUv > 1 ||
+        nearUv >= farUv ||
         (trailing > 0 && (far === target || farUv === 1)) ||
         (leading > 0 && nearUv === 0) ||
         (target > borders && far === leading)) {

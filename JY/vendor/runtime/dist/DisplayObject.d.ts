@@ -2,9 +2,9 @@ import type { RenderEffect2D } from './renderEffect.js';
 import type { Point2D, Rectangle2D, SharedMaterial2D } from '@egret/contracts';
 import type { BoundsQueryOptions } from './displayBounds.js';
 import type { CoordinateQueryOptions } from './displayCoordinates.js';
-import { EventDispatcher } from "./EventDispatcher.js";
-import { ASSERT_ATTACHABLE, ASSERT_BINDABLE, OWNERSHIP_CHILDREN } from "./ownership.js";
-import type { DisplayObjectContainer } from "./DisplayObjectContainer.js";
+import { EventDispatcher } from './EventDispatcher.js';
+import { ASSERT_ATTACHABLE, ASSERT_BINDABLE, OWNERSHIP_CHILDREN } from './ownership.js';
+import type { DisplayObjectContainer } from './DisplayObjectContainer.js';
 /** A live display node; detach and terminal dispose are separate operations. */
 export declare class DisplayObject extends EventDispatcher {
     constructor();
@@ -29,6 +29,25 @@ export declare class DisplayObject extends EventDispatcher {
     set scaleY(value: number);
     get rotation(): number;
     set rotation(value: number);
+    /** Degrees by which the y axis is turned beyond the rotation, so that upright lines lean. 0 unless set. */
+    get skewX(): number;
+    set skewX(value: number);
+    /** Degrees by which the x axis is turned beyond the rotation, so that level lines slope. 0 unless set. */
+    get skewY(): number;
+    set skewY(value: number);
+    /** A name the application gives the object, for `getChildByName`. Empty unless set; it changes nothing that is drawn. */
+    get name(): string;
+    set name(value: string);
+    /**
+     * The width the object takes on its parent: the width of what it and its children draw, in its own units, times its
+     * scaleX without the sign. Setting it sets scaleX, keeping its sign, so that the width becomes the value; an object
+     * that draws nothing has no width to scale and refuses any but 0.
+     */
+    get width(): number;
+    set width(value: number);
+    /** As `width`, down the object and with scaleY. */
+    get height(): number;
+    set height(value: number);
     get alpha(): number;
     set alpha(value: number);
     get visible(): boolean;

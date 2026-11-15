@@ -1,9 +1,12 @@
 import { noteOwnedPreparationFailure } from './ownedPreparationFailure2D.js';
 import { orient2d } from 'robust-predicates';
 function tryReplayPreparedStage2D(budget, cost) {
-    if (!Number.isSafeInteger(cost.preparedVertices) || cost.preparedVertices < 0
-        || !Number.isSafeInteger(cost.predicates) || cost.predicates < 0
-        || !Number.isSafeInteger(cost.tupleComparisons) || cost.tupleComparisons < 0)
+    if (!Number.isSafeInteger(cost.preparedVertices) ||
+        cost.preparedVertices < 0 ||
+        !Number.isSafeInteger(cost.predicates) ||
+        cost.predicates < 0 ||
+        !Number.isSafeInteger(cost.tupleComparisons) ||
+        cost.tupleComparisons < 0)
         return false;
     return budget === undefined || budget.tryReplayStageCost?.(cost) === true;
 }
@@ -28,16 +31,22 @@ export class GeometryPreparationError extends Error {
 }
 const MINIMUM = 2 ** -100, MAXIMUM = 2 ** 20;
 export const POLYGON_LIMIT = 1024;
-function fail(reason) { throw noteOwnedPreparationFailure(new GeometryPreparationError(reason)); }
+function fail(reason) {
+    throw noteOwnedPreparationFailure(new GeometryPreparationError(reason));
+}
 export function coordinate(value) {
     if (!Number.isFinite(value) || (value !== 0 && (Math.abs(value) < MINIMUM || Math.abs(value) > MAXIMUM)))
         fail('range');
     return value === 0 ? 0 : value;
 }
-export function same(a, b) { return a.x === b.x && a.y === b.y; }
-export function before(a, b) { return a.x < b.x || (a.x === b.x && a.y < b.y); }
+export function same(a, b) {
+    return a.x === b.x && a.y === b.y;
+}
+export function before(a, b) {
+    return a.x < b.x || (a.x === b.x && a.y < b.y);
+}
 function between(a, b, c) {
-    return b.x >= Math.min(a.x, c.x) && b.x <= Math.max(a.x, c.x) && b.y >= Math.min(a.y, c.y) && b.y <= Math.max(a.y, c.y);
+    return (b.x >= Math.min(a.x, c.x) && b.x <= Math.max(a.x, c.x) && b.y >= Math.min(a.y, c.y) && b.y <= Math.max(a.y, c.y));
 }
 /** Preserve the checked affine operation order without temporary corner-pair arrays. */
 function appendCorner(points, m, x, y, ratio) {
@@ -57,8 +66,8 @@ export class Preparation {
         this.containedClipping = containedClipping;
         // Dispatcher subjects are independently owned before clipping, so no
         // unchanged step needs to replace the array or its point objects.
-        this.reuseContainedSubjects = containedClipping && budget !== undefined
-            && clipContext?.options === options && clipContext.budget === budget;
+        this.reuseContainedSubjects =
+            containedClipping && budget !== undefined && clipContext?.options === options && clipContext.budget === budget;
     }
     determinant(a, b, c) {
         if (this.edgeTests >= this.options.maxClipEdgeTests)
@@ -81,8 +90,16 @@ export class Preparation {
                 return undefined;
             const first = clip[0], second = clip[1], third = clip[2], fourth = clip[3];
             const x = first.x, y = first.y, endX = second.x, endY = third.y;
-            if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(endX) || !Number.isFinite(endY)
-                || !(x < endX) || !(y < endY) || second.y !== y || third.x !== endX || fourth.x !== x || fourth.y !== endY)
+            if (!Number.isFinite(x) ||
+                !Number.isFinite(y) ||
+                !Number.isFinite(endX) ||
+                !Number.isFinite(endY) ||
+                !(x < endX) ||
+                !(y < endY) ||
+                second.y !== y ||
+                third.x !== endX ||
+                fourth.x !== x ||
+                fourth.y !== endY)
                 return undefined;
             left = Math.max(left, x);
             top = Math.max(top, y);
@@ -106,8 +123,8 @@ export class Preparation {
         const tuples = normalization === 'mesh' ? 2 * count * (count + 1) * bounds.count : 0;
         // An atomic refusal leaves the ordered per-clip traversal to report and
         // charge the same first failure. A successful replay cannot cut a point.
-        if (predicates > this.options.maxClipEdgeTests - this.edgeTests
-            || !tryReplayPreparedStage2D(this.budget, { preparedVertices: 0, predicates, tupleComparisons: tuples }))
+        if (predicates > this.options.maxClipEdgeTests - this.edgeTests ||
+            !tryReplayPreparedStage2D(this.budget, { preparedVertices: 0, predicates, tupleComparisons: tuples }))
             return false;
         this.edgeTests += predicates;
         return true;
@@ -125,8 +142,16 @@ export class Preparation {
         const left = first.x, top = first.y, right = second.x, bottom = third.y;
         // Keep the narrow canonical positive-winding rectangle; no bounding-box
         // substitution, epsilon or changed crossing arithmetic is permitted.
-        if (!Number.isFinite(left) || !Number.isFinite(top) || !Number.isFinite(right) || !Number.isFinite(bottom)
-            || !(left < right) || !(top < bottom) || second.y !== top || third.x !== right || fourth.x !== left || fourth.y !== bottom)
+        if (!Number.isFinite(left) ||
+            !Number.isFinite(top) ||
+            !Number.isFinite(right) ||
+            !Number.isFinite(bottom) ||
+            !(left < right) ||
+            !(top < bottom) ||
+            second.y !== top ||
+            third.x !== right ||
+            fourth.x !== left ||
+            fourth.y !== bottom)
             return undefined;
         for (const point of subject)
             if (!(point.x >= left && point.x <= right && point.y >= top && point.y <= bottom))
@@ -155,13 +180,25 @@ export class Preparation {
         if (!this.containedClipping || this.budget === undefined || typeof this.budget.tryReplayStageCost !== 'function')
             return undefined;
         const count = subject.length;
-        if (count < 3 || count > (normalization === 'mesh' ? 64 : POLYGON_LIMIT)
-            || clip.length !== 4 || !Number.isInteger(edge) || edge < 0 || edge > 3)
+        if (count < 3 ||
+            count > (normalization === 'mesh' ? 64 : POLYGON_LIMIT) ||
+            clip.length !== 4 ||
+            !Number.isInteger(edge) ||
+            edge < 0 ||
+            edge > 3)
             return undefined;
         const first = clip[0], second = clip[1], third = clip[2], fourth = clip[3];
         const left = first.x, top = first.y, right = second.x, bottom = third.y;
-        if (!Number.isFinite(left) || !Number.isFinite(top) || !Number.isFinite(right) || !Number.isFinite(bottom)
-            || !(left < right) || !(top < bottom) || second.y !== top || third.x !== right || fourth.x !== left || fourth.y !== bottom)
+        if (!Number.isFinite(left) ||
+            !Number.isFinite(top) ||
+            !Number.isFinite(right) ||
+            !Number.isFinite(bottom) ||
+            !(left < right) ||
+            !(top < bottom) ||
+            second.y !== top ||
+            third.x !== right ||
+            fourth.x !== left ||
+            fourth.y !== bottom)
             return undefined;
         for (const point of subject) {
             const inside = edge === 0 ? point.y >= top : edge === 1 ? point.x <= right : edge === 2 ? point.y <= bottom : point.x >= left;
@@ -171,7 +208,7 @@ export class Preparation {
         // Use the current edge's n: a preceding real cut may have changed it.
         // No crossing occurs; the already stable normalization keeps this sequence.
         const predicates = (normalization === 'rectangle' ? 3 : 2) * count;
-        const tuples = normalization === 'mesh' ? count * (count + 1) / 2 : 0;
+        const tuples = normalization === 'mesh' ? (count * (count + 1)) / 2 : 0;
         if (predicates > this.options.maxClipEdgeTests - this.edgeTests)
             return undefined;
         if (!tryReplayPreparedStage2D(this.budget, { preparedVertices: 0, predicates, tupleComparisons: tuples }))
@@ -191,8 +228,8 @@ export class Preparation {
             return undefined;
         const predicates = subject.length;
         // A refusal keeps the original point-by-point debit and first error.
-        if (predicates > this.options.maxClipEdgeTests - this.edgeTests
-            || !tryReplayPreparedStage2D(this.budget, { preparedVertices: 0, predicates, tupleComparisons: 0 }))
+        if (predicates > this.options.maxClipEdgeTests - this.edgeTests ||
+            !tryReplayPreparedStage2D(this.budget, { preparedVertices: 0, predicates, tupleComparisons: 0 }))
             return undefined;
         this.edgeTests += predicates;
         const boundary = vertical ? a.x : a.y;
@@ -284,16 +321,24 @@ export class Preparation {
     }
     /** Reuse only successful first-party clip rectangles, never the subject or viewport. */
     clipRectangle(input, context) {
-        if (!this.containedClipping || context === undefined || !context.active
-            || context.options !== this.options || this.budget === undefined || context.budget !== this.budget
-            || context.entries === undefined)
+        if (!this.containedClipping ||
+            context === undefined ||
+            !context.active ||
+            context.options !== this.options ||
+            this.budget === undefined ||
+            context.budget !== this.budget ||
+            context.entries === undefined)
             return this.rectangle(input);
         const entries = context.entries, cached = entries.get(input);
         if (cached !== undefined) {
             // A failed aggregate admission changes neither ledger. The original
             // ordered rectangle operation must decide the first refusal and debit.
-            if (cached.predicates <= this.options.maxClipEdgeTests - this.edgeTests
-                && tryReplayPreparedStage2D(this.budget, { preparedVertices: 0, predicates: cached.predicates, tupleComparisons: 0 })) {
+            if (cached.predicates <= this.options.maxClipEdgeTests - this.edgeTests &&
+                tryReplayPreparedStage2D(this.budget, {
+                    preparedVertices: 0,
+                    predicates: cached.predicates,
+                    tupleComparisons: 0
+                })) {
                 this.edgeTests += cached.predicates;
                 return cached.polygon;
             }

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '../EgretError.js';
-const fail = (code) => { throw new EgretError('TEXT_EDIT_' + code); };
+const fail = (code) => {
+    throw new EgretError('TEXT_EDIT_' + code);
+};
 const freeze = Object.freeze;
 function integer(value, maximum) {
     if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < 0 || value > maximum)
@@ -24,8 +26,9 @@ function source(input, mode, maximum, provisional = false) {
     if (typeof input !== 'string' || input.length > 8192)
         return fail('VALUE');
     const value = mode === 'multiline' ? input.replace(/\r\n?/gu, '\n') : input;
-    if (value.length > maximum || mode === 'single-line' && /[\r\n]/u.test(value)
-        || /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value))
+    if (value.length > maximum ||
+        (mode === 'single-line' && /[\r\n]/u.test(value)) ||
+        /[\u0000-\u0008\u000b\u000c\u000e-\u001f]/u.test(value))
         return fail('VALUE');
     // IME preedit may be incomplete. Only committed sources require well-formed UTF-16.
     if (!provisional)
@@ -49,13 +52,18 @@ export function createTextEditState(options) {
     if (options === null || typeof options !== 'object')
         return fail('OPTIONS');
     const mode = options.mode, maxLength = options.maxLength ?? 8192;
-    if (!['single-line', 'multiline'].includes(mode) || !Number.isSafeInteger(maxLength) || maxLength < 1 || maxLength > 8192)
+    if (!['single-line', 'multiline'].includes(mode) ||
+        !Number.isSafeInteger(maxLength) ||
+        maxLength < 1 ||
+        maxLength > 8192)
         return fail('OPTIONS');
     let value = source(options.value ?? '', mode, maxLength);
     let selected = selection(options.selection ?? { anchor: value.length, focus: value.length }, value);
     let revision = 0, closed = false, session, draft;
-    const live = () => { if (closed)
-        fail('CLOSED'); };
+    const live = () => {
+        if (closed)
+            fail('CLOSED');
+    };
     const expect = (expected) => {
         live();
         if (expected !== undefined && expected !== revision)
@@ -80,11 +88,25 @@ export function createTextEditState(options) {
         return 'changed';
     }
     const state = freeze({
-        mode, maxLength,
-        snapshot() { return freeze({ state: closed ? 'closed' : draft ? 'composing' : session ? 'editing' : 'idle', revision, value, selection: selected, session, draft }); },
+        mode,
+        maxLength,
+        snapshot() {
+            return freeze({
+                state: closed ? 'closed' : draft ? 'composing' : session ? 'editing' : 'idle',
+                revision,
+                value,
+                selection: selected,
+                session,
+                draft
+            });
+        },
         setValue(input, inputSelection, expectedRevision, cancelComposition = false) {
             const base = expect(expectedRevision), nextValue = source(input, mode, maxLength);
-            const nextSelection = inputSelection === undefined ? nextValue === value ? selected : selection({ anchor: nextValue.length, focus: nextValue.length }, nextValue) : selection(inputSelection, nextValue);
+            const nextSelection = inputSelection === undefined
+                ? nextValue === value
+                    ? selected
+                    : selection({ anchor: nextValue.length, focus: nextValue.length }, nextValue)
+                : selection(inputSelection, nextValue);
             if (closed || revision !== base)
                 return fail('STALE');
             if (draft !== undefined && !cancelComposition)
@@ -169,8 +191,15 @@ export function createTextEditState(options) {
             draft = undefined;
             return result;
         },
-        dispose() { if (closed)
-            return; closed = true; session = undefined; draft = undefined; value = ''; selected = freeze({ anchor: 0, focus: 0, affinity: 'downstream' }); },
+        dispose() {
+            if (closed)
+                return;
+            closed = true;
+            session = undefined;
+            draft = undefined;
+            value = '';
+            selected = freeze({ anchor: 0, focus: 0, affinity: 'downstream' });
+        }
     });
     return state;
 }

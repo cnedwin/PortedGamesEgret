@@ -6,8 +6,12 @@ const readPublishedState = states.get.bind(states);
 const APPLY = Reflect.apply;
 const SCOPE_STATE = Object.getOwnPropertyDescriptor(Scope.prototype, 'state').get;
 /** Metadata only: default collectors never import the text cache or leaf class. */
-export function hasTextFieldState(value) { return states.has(value); }
-export function readTextFieldState(value) { return states.get(value); }
+export function hasTextFieldState(value) {
+    return states.has(value);
+}
+export function readTextFieldState(value) {
+    return states.get(value);
+}
 export function writeTextFieldState(value, state) {
     const changed = readPublishedState(value) !== state;
     states.set(value, state);

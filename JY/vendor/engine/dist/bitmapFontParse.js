@@ -5,7 +5,15 @@ const refuse = (detail) => new EgretError('BITMAP_FONT_INVALID', { cause: new Ty
 const fonts = new WeakSet();
 /** Whether a value is a font this entry read. */
 export const isBitmapFont = (value) => typeof value === 'object' && value !== null && fonts.has(value);
-const draft = () => ({ face: '', size: undefined, lineHeight: undefined, base: undefined, pages: new Map(), glyphs: [], kernings: [] });
+const draft = () => ({
+    face: '',
+    size: undefined,
+    lineHeight: undefined,
+    base: undefined,
+    pages: new Map(),
+    glyphs: [],
+    kernings: []
+});
 /** A whole number from the attribute of a line or an element. */
 function whole(fields, key, where, fallback) {
     const raw = fields[key];
@@ -20,10 +28,36 @@ function glyphOf(fields, where, keys) {
     const id = whole(fields, 'id', where), x = whole(fields, keys.x, where), y = whole(fields, keys.y, where), width = whole(fields, keys.width, where), height = whole(fields, keys.height, where);
     if (id < 0 || id > 0x10ffff || x < 0 || y < 0 || width < 0 || height < 0)
         throw refuse(where + ': a character out of range');
-    return Object.freeze({ id, x, y, width, height, xOffset: whole(fields, keys.xOffset, where, 0), yOffset: whole(fields, keys.yOffset, where, 0), xAdvance: whole(fields, keys.xAdvance, where), page: whole(fields, 'page', where, 0) });
+    return Object.freeze({
+        id,
+        x,
+        y,
+        width,
+        height,
+        xOffset: whole(fields, keys.xOffset, where, 0),
+        yOffset: whole(fields, keys.yOffset, where, 0),
+        xAdvance: whole(fields, keys.xAdvance, where),
+        page: whole(fields, 'page', where, 0)
+    });
 }
-const BMFONT_KEYS = { x: 'x', y: 'y', width: 'width', height: 'height', xOffset: 'xoffset', yOffset: 'yoffset', xAdvance: 'xadvance' };
-const PLAIN_KEYS = { x: 'x', y: 'y', width: 'width', height: 'height', xOffset: 'xOffset', yOffset: 'yOffset', xAdvance: 'xAdvance' };
+const BMFONT_KEYS = {
+    x: 'x',
+    y: 'y',
+    width: 'width',
+    height: 'height',
+    xOffset: 'xoffset',
+    yOffset: 'yoffset',
+    xAdvance: 'xadvance'
+};
+const PLAIN_KEYS = {
+    x: 'x',
+    y: 'y',
+    width: 'width',
+    height: 'height',
+    xOffset: 'xOffset',
+    yOffset: 'yOffset',
+    xAdvance: 'xAdvance'
+};
 /** Takes in one tag of the text or XML form: its attributes as strings. */
 function take(into, tag, fields, where) {
     if (tag === 'info') {
@@ -85,7 +119,11 @@ function readXml(source) {
 }
 function readJson(value) {
     const into = draft(), info = value['info'], common = value['common'], pages = value['pages'], chars = value['chars'], kernings = value['kernings'] ?? [];
-    if (!record(common) || !Array.isArray(pages) || !Array.isArray(chars) || !Array.isArray(kernings) || (info !== undefined && !record(info)))
+    if (!record(common) ||
+        !Array.isArray(pages) ||
+        !Array.isArray(chars) ||
+        !Array.isArray(kernings) ||
+        (info !== undefined && !record(info)))
         throw refuse('json: common, pages and chars');
     if (record(info)) {
         if (info['face'] !== undefined && typeof info['face'] !== 'string')
@@ -96,10 +134,16 @@ function readJson(value) {
     }
     into.lineHeight = whole(common, 'lineHeight', 'json common');
     into.base = whole(common, 'base', 'json common');
-    pages.forEach((file, index) => { if (typeof file !== 'string')
-        throw refuse('json: page ' + index); into.pages.set(index, file); });
-    chars.forEach((char, index) => { if (!record(char))
-        throw refuse('json: char ' + index); into.glyphs.push(glyphOf(char, 'json char ' + index, BMFONT_KEYS)); });
+    pages.forEach((file, index) => {
+        if (typeof file !== 'string')
+            throw refuse('json: page ' + index);
+        into.pages.set(index, file);
+    });
+    chars.forEach((char, index) => {
+        if (!record(char))
+            throw refuse('json: char ' + index);
+        into.glyphs.push(glyphOf(char, 'json char ' + index, BMFONT_KEYS));
+    });
     kernings.forEach((pair, index) => {
         if (!record(pair))
             throw refuse('json: kerning ' + index);
@@ -121,7 +165,16 @@ function readEgret(value) {
         const where = 'egret frame ' + JSON.stringify(name), width = whole(frame, 'w', where), height = whole(frame, 'h', where);
         // A trimmed frame keeps the size it had before it was trimmed: that is its advance, and the tallest is the height of a line.
         const sourceW = whole(frame, 'sourceW', where, width), sourceH = whole(frame, 'sourceH', where, height);
-        into.glyphs.push(glyphOf({ id: name.codePointAt(0), x: frame['x'], y: frame['y'], width, height, xOffset: frame['offX'] ?? 0, yOffset: frame['offY'] ?? 0, xAdvance: sourceW }, where, PLAIN_KEYS));
+        into.glyphs.push(glyphOf({
+            id: name.codePointAt(0),
+            x: frame['x'],
+            y: frame['y'],
+            width,
+            height,
+            xOffset: frame['offX'] ?? 0,
+            yOffset: frame['offY'] ?? 0,
+            xAdvance: sourceW
+        }, where, PLAIN_KEYS));
         tallest = Math.max(tallest, sourceH);
     }
     into.lineHeight = tallest;
@@ -152,9 +205,15 @@ function finish(into, format) {
     }
     const glyphs = Object.freeze([...byCode.values()].sort((a, b) => a.id - b.id));
     const font = Object.freeze({
-        face: into.face, size: into.size ?? lineHeight, lineHeight, base, pages, glyphs, format,
+        face: into.face,
+        size: into.size ?? lineHeight,
+        lineHeight,
+        base,
+        pages,
+        glyphs,
+        format,
         glyph: (codePoint) => byCode.get(codePoint),
-        kerning: (first, second) => pairs.get(first * 0x110000 + second) ?? 0,
+        kerning: (first, second) => pairs.get(first * 0x110000 + second) ?? 0
     });
     fonts.add(font);
     return font;

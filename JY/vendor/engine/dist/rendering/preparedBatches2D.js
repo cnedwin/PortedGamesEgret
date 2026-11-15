@@ -2,7 +2,9 @@ const SCRATCH_LIMIT = 8388608;
 /** CPU concat ownership only. The Host retains the original GPU retirement proof. */
 export class PreparedBatchScratch2D {
     retained = 0;
-    available() { return SCRATCH_LIMIT - this.retained; }
+    available() {
+        return SCRATCH_LIMIT - this.retained;
+    }
     reserve(plan, bytes) {
         if (!Number.isSafeInteger(bytes) || bytes <= 0 || bytes > this.available())
             return false;
@@ -10,7 +12,10 @@ export class PreparedBatchScratch2D {
         plan.bytes += bytes;
         return true;
     }
-    refund(plan, bytes) { this.retained -= bytes; plan.bytes -= bytes; }
+    refund(plan, bytes) {
+        this.retained -= bytes;
+        plan.bytes -= bytes;
+    }
     release(plan) {
         if (plan.released)
             return;

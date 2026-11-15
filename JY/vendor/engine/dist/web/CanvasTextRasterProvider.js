@@ -70,8 +70,14 @@ function lineMetrics(metrics) {
     const hasInk = left < right && top < bottom;
     // Native signed zero belongs to raw evidence. T1 requires four canonical
     // zero extents for inkless lines, even if the native empty edge is nonzero.
-    return { advance, hasInk, inkLeft: hasInk ? left : 0, inkTop: hasInk ? top : 0,
-        inkRight: hasInk ? right : 0, inkBottom: hasInk ? bottom : 0 };
+    return {
+        advance,
+        hasInk,
+        inkLeft: hasInk ? left : 0,
+        inkTop: hasInk ? top : 0,
+        inkRight: hasInk ? right : 0,
+        inkBottom: hasInk ? bottom : 0
+    };
 }
 function surface(document, width, height, work, cleanupFailure, reportSuccessfulCleanupAtRelease = false) {
     let canvas;
@@ -87,7 +93,9 @@ function surface(document, width, height, work, cleanupFailure, reportSuccessful
         if (canvas.width !== width || canvas.height !== height)
             throw new EgretError('WEB_TEXT_STATE_UNSUPPORTED');
         // The hint must precede the surface's very first context acquisition.
-        context = canvas.getContext('2d', { alpha: true, colorSpace: 'srgb', willReadFrequently: true }) ?? undefined;
+        context =
+            canvas.getContext('2d', { alpha: true, colorSpace: 'srgb', willReadFrequently: true }) ??
+                undefined;
         if (context === undefined || typeof context.getContextAttributes !== 'function')
             throw new EgretError('WEB_TEXT_STATE_UNSUPPORTED');
         const attributes = context.getContextAttributes();
@@ -140,10 +148,14 @@ function surface(document, width, height, work, cleanupFailure, reportSuccessful
 export function createCanvasTextRasterProvider() {
     let owner;
     try {
-        if (typeof window !== 'undefined' && typeof document !== 'undefined' && window.document === document
-            && typeof document.createElement === 'function' && typeof document.fonts?.check === 'function'
-            && typeof HTMLCanvasElement === 'function' && typeof HTMLCanvasElement.prototype.getContext === 'function'
-            && typeof CanvasRenderingContext2D === 'function')
+        if (typeof window !== 'undefined' &&
+            typeof document !== 'undefined' &&
+            window.document === document &&
+            typeof document.createElement === 'function' &&
+            typeof document.fonts?.check === 'function' &&
+            typeof HTMLCanvasElement === 'function' &&
+            typeof HTMLCanvasElement.prototype.getContext === 'function' &&
+            typeof CanvasRenderingContext2D === 'function')
             owner = document;
     }
     catch (cause) {
@@ -169,8 +181,9 @@ export function createCanvasTextRasterProvider() {
             let quarantined = false;
             try {
                 cancelled(context.signal);
-                if (request.providerIdentity !== provider.identity || request.profile !== provider.profile
-                    || request.fontGeneration !== context.fontGeneration)
+                if (request.providerIdentity !== provider.identity ||
+                    request.profile !== provider.profile ||
+                    request.fontGeneration !== context.fontGeneration)
                     throw new EgretError('WEB_TEXT_PLAN_INVALID');
                 const font = fontFor(request);
                 ready(capturedDocument, font, request);
@@ -182,15 +195,22 @@ export function createCanvasTextRasterProvider() {
                     cancelled(context.signal);
                     // Exactly one authentic invocation issuer owns all plan geometry.
                     issued = context.createPlan({ baselineOffset: request.fontSize, lines });
-                    plans.set(issued, { used: false, busy: true, quarantined: false, cleanupCause: undefined,
-                        measureReadbackHint: readbackHint, rasterReadbackHint: undefined });
+                    plans.set(issued, {
+                        used: false,
+                        busy: true,
+                        quarantined: false,
+                        cleanupCause: undefined,
+                        measureReadbackHint: readbackHint,
+                        rasterReadbackHint: undefined
+                    });
                     cancelled(context.signal);
                     return issued;
                 }, (errors, failed, cause) => {
                     quarantined = true;
                     if (issued === undefined)
                         return new EgretError('WEB_TEXT_CLEANUP_FAILED', {
-                            cause: failed ? cause : errors[0], cleanupErrors: errors,
+                            cause: failed ? cause : errors[0],
+                            cleanupErrors: errors
                         });
                     const state = plans.get(issued);
                     state.quarantined = true;
@@ -221,8 +241,9 @@ export function createCanvasTextRasterProvider() {
                 const request = plan.request;
                 const placement = plan.metrics.raster;
                 const bytes = placement?.byteLength ?? 0;
-                if (context.fontGeneration !== request.fontGeneration || context.reservedImageBytes !== bytes
-                    || context.reservedScratchBytes !== 2 * bytes)
+                if (context.fontGeneration !== request.fontGeneration ||
+                    context.reservedImageBytes !== bytes ||
+                    context.reservedScratchBytes !== 2 * bytes)
                     throw new EgretError('WEB_TEXT_PLAN_INVALID');
                 cancelled(context.signal);
                 const font = fontFor(request);
@@ -239,9 +260,12 @@ export function createCanvasTextRasterProvider() {
                     }
                     cancelled(context.signal);
                     const pixels = canvas.getImageData(0, 0, placement.width, placement.height);
-                    if (pixels.width !== placement.width || pixels.height !== placement.height
-                        || !(pixels.data instanceof Uint8ClampedArray) || !(pixels.data.buffer instanceof ArrayBuffer)
-                        || pixels.data.byteLength !== bytes || pixels.colorSpace !== 'srgb') {
+                    if (pixels.width !== placement.width ||
+                        pixels.height !== placement.height ||
+                        !(pixels.data instanceof Uint8ClampedArray) ||
+                        !(pixels.data.buffer instanceof ArrayBuffer) ||
+                        pixels.data.byteLength !== bytes ||
+                        pixels.colorSpace !== 'srgb') {
                         throw new TypeError('Canvas text readback must be exact tight sRGB rgba8 bytes');
                     }
                     cancelled(context.signal);
@@ -281,7 +305,7 @@ export function createCanvasTextRasterProvider() {
             if (state.quarantined)
                 throw state.cleanupCause;
             occupied--;
-        },
+        }
     });
     return provider;
 }

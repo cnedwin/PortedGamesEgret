@@ -1,15 +1,21 @@
-import { EgretError } from "./EgretError.js";
-import { recordVisualChange, VISUAL_BINDING } from "./displayVisualState.js";
-import { assertLive, captureChildInsertion, childrenOf, isDisplayNode, prepareCapturedInsertionTree, publishCapturedInsertionTree, validateCapturedInsertionNode, validateCapturedInsertionRoots, validateCapturedInsertionSource } from "./displayTreeState.js";
-export const OWNERSHIP_CHILDREN = Symbol("egret.ownershipChildren");
-export const ASSERT_BINDABLE = Symbol("egret.assertBindable");
-export const ASSERT_ATTACHABLE = Symbol("egret.assertAttachable");
+import { EgretError } from './EgretError.js';
+import { recordVisualChange, VISUAL_BINDING } from './displayVisualState.js';
+import { assertLive, captureChildInsertion, childrenOf, isDisplayNode, prepareCapturedInsertionTree, publishCapturedInsertionTree, validateCapturedInsertionNode, validateCapturedInsertionRoots, validateCapturedInsertionSource } from './displayTreeState.js';
+export const OWNERSHIP_CHILDREN = Symbol('egret.ownershipChildren');
+export const ASSERT_BINDABLE = Symbol('egret.assertBindable');
+export const ASSERT_ATTACHABLE = Symbol('egret.assertAttachable');
 // Cleanup ownership and engine affinity are separate lifetime identities.
 const owners = new WeakMap();
 const engines = new WeakMap();
-export function ownerOf(value) { return owners.get(value); }
-export function engineOf(value) { return engines.get(value); }
-export function claimOwner(value, owner) { owners.set(value, owner); }
+export function ownerOf(value) {
+    return owners.get(value);
+}
+export function engineOf(value) {
+    return engines.get(value);
+}
+export function claimOwner(value, owner) {
+    owners.set(value, owner);
+}
 export function engineInSubtree(value) {
     const pending = [value];
     while (pending.length !== 0) {
@@ -35,7 +41,7 @@ export function preflightBinding(value, engine) {
             break;
         const existing = engineOf(current);
         if (existing !== undefined && existing !== engine)
-            throw new EgretError("ENGINE_MISMATCH");
+            throw new EgretError('ENGINE_MISMATCH');
         if (isDisplayNode(current)) {
             current[ASSERT_BINDABLE]();
             pending.push(...childrenOf(current));
@@ -55,7 +61,7 @@ export function validateBinding(value, engine) {
             break;
         const existing = engineOf(current);
         if (existing !== undefined && existing !== engine)
-            throw new EgretError("ENGINE_MISMATCH");
+            throw new EgretError('ENGINE_MISMATCH');
         if (isDisplayNode(current)) {
             assertLive(current);
             pending.push(...childrenOf(current));
@@ -104,7 +110,7 @@ function validateInsertionAffinities(records, engine) {
         const current = records[index];
         validateCapturedInsertionNode(current.record);
         if (current.engine !== undefined && current.engine !== engine)
-            throw new EgretError("ENGINE_MISMATCH");
+            throw new EgretError('ENGINE_MISMATCH');
     }
 }
 /** One post-last-hook capture supplies Engine selection, validation and all preparation. */

@@ -18,8 +18,19 @@ const resizableGetter = Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, '
 const detachedGetter = Object.getOwnPropertyDescriptor(ArrayBuffer.prototype, 'detached')?.get;
 const setBytes = typedPrototype.set;
 const MAX_JOBS = 4, MAX_BYTES = 8_388_608, MAX_TOTAL_BYTES = 33_554_432, MAX_CHUNKS = 1_024;
-const statusFields = ['jobs', 'encodedCreditBytes', 'ownedEncodedBytes', 'blobLogicalBytes', 'activeDecodes',
-    'bitmapLogicalBytes', 'rasterLogicalBytes', 'readbackCpuBytes', 'materializedCpuBytes', 'quarantinedJobs', 'unknownNativeObjects'];
+const statusFields = [
+    'jobs',
+    'encodedCreditBytes',
+    'ownedEncodedBytes',
+    'blobLogicalBytes',
+    'activeDecodes',
+    'bitmapLogicalBytes',
+    'rasterLogicalBytes',
+    'readbackCpuBytes',
+    'materializedCpuBytes',
+    'quarantinedJobs',
+    'unknownNativeObjects'
+];
 function fault(code, cause) {
     return new EgretError('WEB_PNG_' + code, { cause });
 }
@@ -34,7 +45,9 @@ function descriptor(target, key) {
         throw fault('DESCRIPTOR_READ_FAILED', cause);
     }
 }
-function functionValue(value) { return typeof value === 'function'; }
+function functionValue(value) {
+    return typeof value === 'function';
+}
 function fixedBacking(value, expectedTag) {
     if (apply(tagGetter, value, []) !== expectedTag)
         throw new TypeError('Intrinsic byte view required');
@@ -48,7 +61,11 @@ function fixedBacking(value, expectedTag) {
     }
     else
         new Bytes(backing, 0, 0);
-    return { backing, offset: apply(offsetGetter, value, []), length: apply(lengthGetter, value, []) };
+    return {
+        backing,
+        offset: apply(offsetGetter, value, []),
+        length: apply(lengthGetter, value, [])
+    };
 }
 function u32(bytes, at) {
     return bytes[at] * 16_777_216 + bytes[at + 1] * 65_536 + bytes[at + 2] * 256 + bytes[at + 3];
@@ -73,7 +90,7 @@ function preflight(bytes) {
         let type = '';
         for (let index = 0; index < 4; index++) {
             const value = bytes[at + 4 + index];
-            if (!(value >= 65 && value <= 90 || value >= 97 && value <= 122) || index === 2 && value > 90) {
+            if (!((value >= 65 && value <= 90) || (value >= 97 && value <= 122)) || (index === 2 && value > 90)) {
                 throw fault('STRUCTURE_INVALID', new TypeError('PNG chunk type spelling'));
             }
             type += String.fromCharCode(value);
@@ -89,7 +106,8 @@ function preflight(bytes) {
     const metadata = new Map();
     for (let index = 0; index < chunks.length; index++) {
         const chunk = chunks[index];
-        if (chunk.type === 'IHDR' && index !== 0 || chunk.type === 'IEND' && (index !== chunks.length - 1 || chunk.length !== 0)) {
+        if ((chunk.type === 'IHDR' && index !== 0) ||
+            (chunk.type === 'IEND' && (index !== chunks.length - 1 || chunk.length !== 0))) {
             throw fault('STRUCTURE_INVALID', new TypeError('Duplicate or misplaced PNG boundary chunk'));
         }
         if (chunk.type === 'IDAT') {
@@ -113,16 +131,23 @@ function preflight(bytes) {
     const header = chunks[0], width = u32(bytes, header.offset), height = u32(bytes, header.offset + 4);
     if (width === 0 || height === 0)
         throw fault('STRUCTURE_INVALID', new TypeError('Positive PNG dimensions required'));
-    if (width > IMAGE_LIMITS_2D.maxSourceEdge || height > IMAGE_LIMITS_2D.maxSourceEdge || width * height > IMAGE_LIMITS_2D.maxSourcePixels) {
+    if (width > IMAGE_LIMITS_2D.maxSourceEdge ||
+        height > IMAGE_LIMITS_2D.maxSourceEdge ||
+        width * height > IMAGE_LIMITS_2D.maxSourcePixels) {
         throw fault('INPUT_LIMIT', new RangeError('PNG image source dimensions exceed capacity'));
     }
-    if (bytes[header.offset + 8] !== 8 || ![2, 6].includes(bytes[header.offset + 9])
-        || bytes[header.offset + 10] !== 0 || bytes[header.offset + 11] !== 0 || bytes[header.offset + 12] !== 0
-        || chunks.some(chunk => !['IHDR', 'IDAT', 'IEND', 'sRGB', 'gAMA', 'cHRM'].includes(chunk.type))) {
+    if (bytes[header.offset + 8] !== 8 ||
+        ![2, 6].includes(bytes[header.offset + 9]) ||
+        bytes[header.offset + 10] !== 0 ||
+        bytes[header.offset + 11] !== 0 ||
+        bytes[header.offset + 12] !== 0 ||
+        chunks.some(chunk => !['IHDR', 'IDAT', 'IEND', 'sRGB', 'gAMA', 'cHRM'].includes(chunk.type))) {
         throw fault('PROFILE_UNSUPPORTED', new TypeError('PNG is outside the RGB/RGBA8 noninterlaced subset'));
     }
     const srgb = metadata.get('sRGB'), gamma = metadata.get('gAMA'), chromaticity = metadata.get('cHRM');
-    if (srgb && bytes[srgb.offset] > 3 || (gamma || chromaticity) && !srgb || gamma && u32(bytes, gamma.offset) !== 45455) {
+    if ((srgb && bytes[srgb.offset] > 3) ||
+        ((gamma || chromaticity) && !srgb) ||
+        (gamma && u32(bytes, gamma.offset) !== 45455)) {
         throw fault('PROFILE_UNSUPPORTED', new TypeError('PNG color metadata is outside the sRGB compatibility profile'));
     }
     if (chromaticity) {
@@ -140,8 +165,14 @@ function capturePorts(supplied) {
         if (typeof blob !== 'function')
             throw new TypeError('Native Blob unavailable');
         if (supplied !== undefined)
-            return { blob, decode: supplied.decode, decodeReceiver: supplied.receiver,
-                canvas: supplied.canvas, canvasReceiver: supplied.receiver, nativeClose: undefined };
+            return {
+                blob,
+                decode: supplied.decode,
+                decodeReceiver: supplied.receiver,
+                canvas: supplied.canvas,
+                canvasReceiver: supplied.receiver,
+                nativeClose: undefined
+            };
         if (typeof window === 'undefined' || typeof document === 'undefined' || window.document !== document) {
             throw new TypeError('Same-window document unavailable');
         }
@@ -150,9 +181,14 @@ function capturePorts(supplied) {
         if (typeof create !== 'function' || typeof nativeDecode !== 'function' || typeof nativeClose !== 'function') {
             throw new TypeError('Native PNG browser operations unavailable');
         }
-        return { blob, decode: nativeDecode, decodeReceiver: window,
-            canvas: (() => apply(create, owner, ['canvas'])), canvasReceiver: owner,
-            nativeClose: nativeClose };
+        return {
+            blob,
+            decode: nativeDecode,
+            decodeReceiver: window,
+            canvas: (() => apply(create, owner, ['canvas'])),
+            canvasReceiver: owner,
+            nativeClose: nativeClose
+        };
     }
     catch (cause) {
         throw fault('UNAVAILABLE', cause);
@@ -188,15 +224,35 @@ function assembleBrowserTextureProvider(options, owner) {
     let resolveClose, rejectClose;
     const jobs = [], handles = new WeakSet(), issued = new WeakMap();
     const manifestRuns = new Map();
-    const highWater = { jobs: 0, encodedCreditBytes: 0, ownedEncodedBytes: 0, blobLogicalBytes: 0,
-        activeDecodes: 0, bitmapLogicalBytes: 0, rasterLogicalBytes: 0, readbackCpuBytes: 0, materializedCpuBytes: 0,
-        quarantinedJobs: 0, unknownNativeObjects: 0 };
+    const highWater = {
+        jobs: 0,
+        encodedCreditBytes: 0,
+        ownedEncodedBytes: 0,
+        blobLogicalBytes: 0,
+        activeDecodes: 0,
+        bitmapLogicalBytes: 0,
+        rasterLogicalBytes: 0,
+        readbackCpuBytes: 0,
+        materializedCpuBytes: 0,
+        quarantinedJobs: 0,
+        unknownNativeObjects: 0
+    };
     let saturated = false;
     let provider;
     function currentStatus() {
-        const current = { jobs: occupied, encodedCreditBytes: encoded, ownedEncodedBytes: 0, blobLogicalBytes: 0,
-            activeDecodes: 0, bitmapLogicalBytes: 0, rasterLogicalBytes: 0, readbackCpuBytes: 0, materializedCpuBytes: 0,
-            quarantinedJobs: 0, unknownNativeObjects: 0 };
+        const current = {
+            jobs: occupied,
+            encodedCreditBytes: encoded,
+            ownedEncodedBytes: 0,
+            blobLogicalBytes: 0,
+            activeDecodes: 0,
+            bitmapLogicalBytes: 0,
+            rasterLogicalBytes: 0,
+            readbackCpuBytes: 0,
+            materializedCpuBytes: 0,
+            quarantinedJobs: 0,
+            unknownNativeObjects: 0
+        };
         for (const job of jobs) {
             const info = job.diagnostics;
             if (job.bytes !== undefined)
@@ -238,8 +294,10 @@ function assembleBrowserTextureProvider(options, owner) {
                 highWater[key] = value;
         }
     }
-    function gate() { if (closed)
-        throw fault('PROVIDER_CLOSED', new TypeError('PNG provider is closed')); }
+    function gate() {
+        if (closed)
+            throw fault('PROVIDER_CLOSED', new TypeError('PNG provider is closed'));
+    }
     function checkpoint(signal) {
         gate();
         let aborted;
@@ -278,7 +336,11 @@ function assembleBrowserTextureProvider(options, owner) {
         }
     }
     function closeWhenSettled() {
-        if (!closed || closePromise === undefined || manifestAdmissions !== 0 || manifestRuns.size !== 0 || jobs.some(job => !job.settled))
+        if (!closed ||
+            closePromise === undefined ||
+            manifestAdmissions !== 0 ||
+            manifestRuns.size !== 0 ||
+            jobs.some(job => !job.settled))
             return;
         // jobs retain admission order; quarantine reasons retain observation order.
         const reasons = jobs.flatMap(job => job.reasons);
@@ -287,7 +349,9 @@ function assembleBrowserTextureProvider(options, owner) {
         else
             resolveClose();
     }
-    function retain(job, cause) { job.reasons.push(cause); }
+    function retain(job, cause) {
+        job.reasons.push(cause);
+    }
     function retire(job) {
         const cleanup = [];
         if (job.bitmap !== undefined && job.bitmapClose !== undefined) {
@@ -431,9 +495,29 @@ function assembleBrowserTextureProvider(options, owner) {
         gate();
         if (occupied >= MAX_JOBS)
             throw fault('JOB_LIMIT', new RangeError('PNG occupied job limit'));
-        const job = { settled: false, credit: 0, bytes: undefined, reasons: [], bitmap: undefined, bitmapClose: undefined, canvas: undefined, uncertainSurface: undefined,
-            diagnostics: owner === undefined ? undefined : { blobBytes: 0, decodeActive: false, bitmapBytes: 0, bitmapUnsafe: false,
-                surfaceWidth: undefined, surfaceHeight: undefined, surfaceUnsafe: false, readbackBytes: 0, materializedBytes: 0 } };
+        const job = {
+            settled: false,
+            credit: 0,
+            bytes: undefined,
+            reasons: [],
+            bitmap: undefined,
+            bitmapClose: undefined,
+            canvas: undefined,
+            uncertainSurface: undefined,
+            diagnostics: owner === undefined
+                ? undefined
+                : {
+                    blobBytes: 0,
+                    decodeActive: false,
+                    bitmapBytes: 0,
+                    bitmapUnsafe: false,
+                    surfaceWidth: undefined,
+                    surfaceHeight: undefined,
+                    surfaceUnsafe: false,
+                    readbackBytes: 0,
+                    materializedBytes: 0
+                }
+        };
         occupied++;
         jobs.push(job);
         if (token !== undefined)
@@ -449,8 +533,13 @@ function assembleBrowserTextureProvider(options, owner) {
             gate();
             const taskId = descriptor(context, 'taskId');
             gate();
-            if (!record(signalValue) || typeof generation !== 'number' || !safeInteger(generation) || generation <= 0
-                || typeof taskId !== 'number' || !safeInteger(taskId) || taskId <= 0) {
+            if (!record(signalValue) ||
+                typeof generation !== 'number' ||
+                !safeInteger(generation) ||
+                generation <= 0 ||
+                typeof taskId !== 'number' ||
+                !safeInteger(taskId) ||
+                taskId <= 0) {
                 throw fault('CONTEXT_INVALID', new TypeError('PNG signal and positive manager-local identities required'));
             }
             const signal = signalValue;
@@ -513,7 +602,11 @@ function assembleBrowserTextureProvider(options, owner) {
                 job.diagnostics.blobBytes = binary.length;
             sampleStatus();
             checkpoint(signal);
-            const decodeOptions = freeze({ imageOrientation: 'from-image', premultiplyAlpha: 'none', colorSpaceConversion: 'none' });
+            const decodeOptions = freeze({
+                imageOrientation: 'from-image',
+                premultiplyAlpha: 'none',
+                colorSpaceConversion: 'none'
+            });
             let decodeTransition;
             let decoded;
             if (token !== undefined)
@@ -594,8 +687,9 @@ function assembleBrowserTextureProvider(options, owner) {
                 sampleStatus();
             }
             catch (cause) {
-                if (job.diagnostics && cause instanceof EgretError
-                    && (cause.code === 'WEB_PNG_RASTER_FAILED' || cause.code === 'WEB_PNG_DESCRIPTOR_READ_FAILED'))
+                if (job.diagnostics &&
+                    cause instanceof EgretError &&
+                    (cause.code === 'WEB_PNG_RASTER_FAILED' || cause.code === 'WEB_PNG_DESCRIPTOR_READ_FAILED'))
                     job.diagnostics.surfaceUnsafe = true;
                 sampleStatus();
                 throw cause;
@@ -622,8 +716,16 @@ function assembleBrowserTextureProvider(options, owner) {
                 throw fault('SURFACE_INVALID', new TypeError('Complete Canvas raster operations required'));
             call(transform, drawing, [1, 0, 0, 1, 0, 0], 'RASTER_FAILED');
             checkpoint(signal);
-            for (const [key, value] of [['globalAlpha', 1], ['globalCompositeOperation', 'copy'], ['imageSmoothingEnabled', false],
-                ['filter', 'none'], ['shadowBlur', 0], ['shadowOffsetX', 0], ['shadowOffsetY', 0], ['shadowColor', 'rgba(0, 0, 0, 0)']])
+            for (const [key, value] of [
+                ['globalAlpha', 1],
+                ['globalCompositeOperation', 'copy'],
+                ['imageSmoothingEnabled', false],
+                ['filter', 'none'],
+                ['shadowBlur', 0],
+                ['shadowOffsetX', 0],
+                ['shadowOffsetY', 0],
+                ['shadowColor', 'rgba(0, 0, 0, 0)']
+            ])
                 state(drawing, key, value, signal);
             call(draw, drawing, [picture, 0, 0], 'RASTER_FAILED');
             checkpoint(signal);
@@ -649,7 +751,11 @@ function assembleBrowserTextureProvider(options, owner) {
             try {
                 checkpoint(signal);
                 try {
-                    image = createImageData2D({ width: size.width, height: size.height, pixels: new Bytes(readback.backing, readback.offset, readback.length) });
+                    image = createImageData2D({
+                        width: size.width,
+                        height: size.height,
+                        pixels: new Bytes(readback.backing, readback.offset, readback.length)
+                    });
                 }
                 catch (cause) {
                     throw fault('VALUE_INVALID', cause);
@@ -736,7 +842,8 @@ function assembleBrowserTextureProvider(options, owner) {
             owner.cancel(token, fault('PROVIDER_CLOSED', new TypeError('PNG provider is closed')));
         const run = loadActual.call(provider, ref, token.context, token);
         const disposal = provider.dispose;
-        void run.then(value => {
+        void run
+            .then(value => {
             try {
                 if (!owner.publish(token, value)) {
                     try {
@@ -757,7 +864,8 @@ function assembleBrowserTextureProvider(options, owner) {
                     job.diagnostics.materializedBytes = 0;
                 sampleStatus();
             }
-        }, cause => owner.reject(token, cause)).then(() => {
+        }, cause => owner.reject(token, cause))
+            .then(() => {
             const job = manifestRuns.get(token);
             manifestRuns.delete(token);
             if (job)
@@ -769,15 +877,20 @@ function assembleBrowserTextureProvider(options, owner) {
     }
     provider = freeze({
         profile: 'png-rgb-rgba8-browser-normalized-v1',
-        get isClosed() { if (this !== provider)
-            throw fault('PROVIDER_INVALID', new TypeError('Exact PNG provider receiver required')); return closed; },
-        ...(owner === undefined ? {} : {
-            getStatus() {
-                if (this !== provider)
-                    throw fault('PROVIDER_INVALID', new TypeError('Exact PNG provider receiver required'));
-                return freeze({ current: freeze(currentStatus()), highWater: freeze({ ...highWater }), saturated });
-            },
-        }),
+        get isClosed() {
+            if (this !== provider)
+                throw fault('PROVIDER_INVALID', new TypeError('Exact PNG provider receiver required'));
+            return closed;
+        },
+        ...(owner === undefined
+            ? {}
+            : {
+                getStatus() {
+                    if (this !== provider)
+                        throw fault('PROVIDER_INVALID', new TypeError('Exact PNG provider receiver required'));
+                    return freeze({ current: freeze(currentStatus()), highWater: freeze({ ...highWater }), saturated });
+                }
+            }),
         load,
         dispose(value) {
             if (this !== provider)
@@ -800,7 +913,10 @@ function assembleBrowserTextureProvider(options, owner) {
                 throw fault('PROVIDER_INVALID', new TypeError('Exact PNG provider receiver required'));
             if (closePromise === undefined) {
                 closed = true;
-                closePromise = new Promise((resolve, reject) => { resolveClose = resolve; rejectClose = reject; });
+                closePromise = new Promise((resolve, reject) => {
+                    resolveClose = resolve;
+                    rejectClose = reject;
+                });
                 if (owner !== undefined) {
                     for (const token of manifestRuns.keys())
                         owner.cancel(token, fault('PROVIDER_CLOSED', new TypeError('PNG provider is closed')));
@@ -808,7 +924,7 @@ function assembleBrowserTextureProvider(options, owner) {
                 closeWhenSettled();
             }
             return closePromise;
-        },
+        }
     });
     return provider;
 }

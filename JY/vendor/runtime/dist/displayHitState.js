@@ -82,8 +82,14 @@ export function writeDisplayHitArea(receiver, source) {
     // Successful source reads may terminate or rebind the current node. Their
     // completed reentrant effects stand; this outer admission commits only here.
     live(node);
-    if (!finite(x) || !finite(y) || !finite(width) || !finite(height)
-        || width < 0 || height < 0 || !finite(x + width) || !finite(y + height)) {
+    if (!finite(x) ||
+        !finite(y) ||
+        !finite(width) ||
+        !finite(height) ||
+        width < 0 ||
+        height < 0 ||
+        !finite(x + width) ||
+        !finite(y + height)) {
         throw new EgretError('HIT_TEST_AREA_INVALID');
     }
     state.hitArea = Object.freeze({ x, y, width, height });

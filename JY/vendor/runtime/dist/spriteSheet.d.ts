@@ -2,7 +2,7 @@ import type { Disposable, TextureRegion2D } from "@egret/contracts";
 import type { AssetLease } from "./AssetLease.js";
 import type { Bitmap } from "./Bitmap.js";
 import type { Texture } from "./Texture.js";
-import type { AtlasFrameLayout } from './atlasFrameLayout.js';
+import type { AtlasFrameLayout } from "./atlasFrameLayout.js";
 type AtlasRegion = TextureRegion2D & {
     readonly layout?: AtlasFrameLayout;
 };
@@ -29,6 +29,6 @@ export interface SpriteSheet extends Disposable {
     dispose(): void;
 }
 /** Build one exact-name table from a genuine full-image lease without acquiring another resource. */
-export declare function createSpriteSheet(atlasLease: AssetLease<Texture>, frames: readonly SpriteSheetFrameInput[], profile?: 'trim-rotation-v1'): SpriteSheet;
+export declare function createSpriteSheet(atlasLease: AssetLease<Texture>, frames: readonly SpriteSheetFrameInput[], profile?: "trim-rotation-v1"): SpriteSheet;
 export {};
 //# sourceMappingURL=spriteSheet.d.ts.map

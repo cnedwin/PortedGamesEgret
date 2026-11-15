@@ -16,7 +16,9 @@ export function createUiKeyboardFocus(input, prefix, tabStop) {
     let closed = false;
     /** The row that is the stop of the list, where the list is one stop. */
     let holder;
-    function id(key) { return prefix + ':' + key; }
+    function id(key) {
+        return prefix + ':' + key;
+    }
     /** Moves the one stop to a row that is registered. The other rows are reached by the application, not by Tab. */
     function hold(key) {
         if (tabStop === undefined || holder === key)
@@ -95,7 +97,8 @@ export function createUiKeyboardFocus(input, prefix, tabStop) {
                 }
             if (tabStop !== undefined) {
                 // The stop stays with the row that holds the focus, then with the row that held it, then goes to the first that shows.
-                holder = getFocus().key ?? restore?.key ?? (holder !== undefined && keys.has(holder) ? holder : visible[0]?.key);
+                holder =
+                    getFocus().key ?? restore?.key ?? (holder !== undefined && keys.has(holder) ? holder : visible[0]?.key);
             }
             for (let index = 0; index < visible.length && !closed; index++) {
                 const row = visible[index], old = records.get(row.key), tabIndex = tabStop === undefined ? index + 1 : row.key === holder ? tabStop : -1;
@@ -109,14 +112,20 @@ export function createUiKeyboardFocus(input, prefix, tabStop) {
                 }
             }
             input.sync();
-            if (!closed && restore !== undefined && input.getSnapshot().state === 'active' && input.getSnapshot().focusedId === undefined && records.has(restore.key)) {
+            if (!closed &&
+                restore !== undefined &&
+                input.getSnapshot().state === 'active' &&
+                input.getSnapshot().focusedId === undefined &&
+                records.has(restore.key)) {
                 try {
                     input.focus(id(restore.key), { visible: restore.focusVisible });
                 }
                 catch (cause) {
                     // A replacement can be authored hidden. Keep the other rows available;
                     // callback failures close the channel and are not eligibility refusals.
-                    if (!(cause instanceof EgretError && cause.code === 'KEYBOARD_TARGET_INELIGIBLE' && input.getSnapshot().state === 'active'))
+                    if (!(cause instanceof EgretError &&
+                        cause.code === 'KEYBOARD_TARGET_INELIGIBLE' &&
+                        input.getSnapshot().state === 'active'))
                         throw cause;
                 }
             }
@@ -126,7 +135,9 @@ export function createUiKeyboardFocus(input, prefix, tabStop) {
             try {
                 dispose();
             }
-            catch { /* The original synchronization error remains authoritative. */ }
+            catch {
+                /* The original synchronization error remains authoritative. */
+            }
             throw new EgretError('UI_KEYBOARD_SYNC_FAILED', { cause });
         }
     }

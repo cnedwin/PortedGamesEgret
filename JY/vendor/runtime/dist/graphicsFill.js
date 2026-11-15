@@ -1,7 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 // Filling for Graphics beyond one simple outline: the non-zero rule over any number of outlines, so that holes and
 // outlines that cross themselves are filled as a canvas fills them, and gradients, which are given as vertex colours.
-const toLinear = (value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+import { decodeSRGBByte } from './srgbBytes.js';
+/**
+ * The linear-light value of an sRGB value from 0 to 255 that need not be whole: between the two bytes it lies between,
+ * read from the written table. A power here would differ in its last bit from one engine of JavaScript to another.
+ */
+function toLinear(value) {
+    const low = Math.floor(value);
+    if (low >= 255)
+        return decodeSRGBByte(255);
+    if (low < 0)
+        return decodeSRGBByte(0);
+    const from = decodeSRGBByte(low);
+    return from + (decodeSRGBByte(low + 1) - from) * (value - low);
+}
 /** The linear-light red, green and blue and the alpha of a gradient at a point. Stops are mixed as sRGB values, as a canvas mixes them. */
 export function gradientColor(gradient, x, y, out, at = 0) {
     const u = gradient.a * x + gradient.c * y + gradient.tx;
@@ -15,18 +28,18 @@ export function gradientColor(gradient, x, y, out, at = 0) {
     while (i < last && stops[i + 1].offset <= t)
         i++;
     const from = stops[i];
-    let color = from.color, alpha = from.alpha, r = color >> 16 & 255, g = color >> 8 & 255, b = color & 255;
+    let color = from.color, alpha = from.alpha, r = (color >> 16) & 255, g = (color >> 8) & 255, b = color & 255;
     if (i < last && t > from.offset) {
         const to = stops[i + 1], f = (t - from.offset) / (to.offset - from.offset);
         color = to.color;
-        r += ((color >> 16 & 255) - r) * f;
-        g += ((color >> 8 & 255) - g) * f;
+        r += (((color >> 16) & 255) - r) * f;
+        g += (((color >> 8) & 255) - g) * f;
         b += ((color & 255) - b) * f;
         alpha += (to.alpha - alpha) * f;
     }
-    out[at] = toLinear(r / 255);
-    out[at + 1] = toLinear(g / 255);
-    out[at + 2] = toLinear(b / 255);
+    out[at] = toLinear(r);
+    out[at + 1] = toLinear(g);
+    out[at + 2] = toLinear(b);
     out[at + 3] = alpha;
 }
 /** Whether an outline, taken as closed, has two sides that cross. */
@@ -137,7 +150,11 @@ export function fillNonZero(outlines, maxTriangles) {
         y1[i] = level(y1[i]);
     }
     const bands = ys.length - 1;
-    const at = (edge, y) => y === y0[edge] ? x0[edge] : y === y1[edge] ? x1[edge] : x0[edge] + (y - y0[edge]) * (x1[edge] - x0[edge]) / (y1[edge] - y0[edge]);
+    const at = (edge, y) => y === y0[edge]
+        ? x0[edge]
+        : y === y1[edge]
+            ? x1[edge]
+            : x0[edge] + ((y - y0[edge]) * (x1[edge] - x0[edge])) / (y1[edge] - y0[edge]);
     // For each band, the spans inside it: left and right at its top, then left and right at its bottom.
     const spans = [], corners = [];
     for (let k = 0; k <= bands; k++)
@@ -151,7 +168,12 @@ export function fillNonZero(outlines, maxTriangles) {
                 active.push(order[next]);
             next++;
         }
-        const here = active.map(edge => { const xt = at(edge, top), xb = at(edge, bottom); return { edge, xt, xb, middle: (xt + xb) / 2 }; }).sort((p, q) => p.middle - q.middle || p.xb - q.xb);
+        const here = active
+            .map(edge => {
+            const xt = at(edge, top), xb = at(edge, bottom);
+            return { edge, xt, xb, middle: (xt + xb) / 2 };
+        })
+            .sort((p, q) => p.middle - q.middle || p.xb - q.xb);
         const band = [];
         let winding = 0, left = here[0];
         for (const side of here) {
@@ -208,9 +230,10 @@ export function fillNonZero(outlines, maxTriangles) {
 const TOLERANCE = 2 / 255;
 /**
  * Cuts triangles until the colours of their corners, mixed across each side, stay within the tolerance of the gradient.
- * Whether a side is cut depends on its two ends alone, so two triangles that share a side cut it alike.
+ * A side's test depends on its endpoints. The triangle budget can still stop adjacent subdivisions at different depths.
+ * When supplied, boundary masks are replaced in the output order. Only the children of an original boundary inherit it.
  */
-export function refineForGradient(triangles, gradient, maxTriangles) {
+export function refineForGradient(triangles, gradient, maxTriangles, boundary) {
     const ca = [0, 0, 0, 0], cb = [0, 0, 0, 0], cm = [0, 0, 0, 0];
     const cut = (ax, ay, bx, by) => {
         if (ax > bx || (ax === bx && ay > by)) {
@@ -237,25 +260,41 @@ export function refineForGradient(triangles, gradient, maxTriangles) {
         return false;
     };
     const stack = triangles.slice(), out = [];
+    const boundaries = boundary?.slice();
+    if (boundary !== undefined)
+        boundary.length = 0;
     let count = triangles.length / 6;
     while (stack.length !== 0) {
         const p = stack.splice(stack.length - 6, 6);
-        const flags = count < maxTriangles ? [cut(p[0], p[1], p[2], p[3]), cut(p[2], p[3], p[4], p[5]), cut(p[4], p[5], p[0], p[1])] : [false, false, false];
+        const mask = boundaries?.pop() ?? 0;
+        const flags = count < maxTriangles
+            ? [cut(p[0], p[1], p[2], p[3]), cut(p[2], p[3], p[4], p[5]), cut(p[4], p[5], p[0], p[1])]
+            : [false, false, false];
         const cuts = (flags[0] ? 1 : 0) + (flags[1] ? 1 : 0) + (flags[2] ? 1 : 0);
         if (cuts === 0) {
             out.push(...p);
+            boundary?.push(mask);
             continue;
         }
         // Turned so that with one cut it is the first side, and with two the uncut side is the last.
         const turnBy = cuts === 3 ? 0 : cuts === 1 ? flags.indexOf(true) : (flags.indexOf(false) + 1) % 3;
         const ax = p[2 * turnBy], ay = p[2 * turnBy + 1], bx = p[2 * ((turnBy + 1) % 3)], by = p[2 * ((turnBy + 1) % 3) + 1], cx = p[2 * ((turnBy + 2) % 3)], cy = p[2 * ((turnBy + 2) % 3) + 1];
         const abx = (ax + bx) / 2, aby = (ay + by) / 2, bcx = (bx + cx) / 2, bcy = (by + cy) / 2, cax = (cx + ax) / 2, cay = (cy + ay) / 2;
-        if (cuts === 1)
+        // Rotate the three bits with the corners. New interior sides never carry a boundary bit.
+        const turned = (mask >>> turnBy) | ((mask << (3 - turnBy)) & 7);
+        const ab = turned & 1, bc = turned & 2, ca = turned & 4;
+        if (cuts === 1) {
             stack.push(ax, ay, abx, aby, cx, cy, abx, aby, bx, by, cx, cy);
-        else if (cuts === 2)
+            boundaries?.push(ab | ca, ab | bc);
+        }
+        else if (cuts === 2) {
             stack.push(abx, aby, bx, by, bcx, bcy, ax, ay, abx, aby, bcx, bcy, ax, ay, bcx, bcy, cx, cy);
-        else
+            boundaries?.push(ab | bc, ab, bc | ca);
+        }
+        else {
             stack.push(ax, ay, abx, aby, cax, cay, abx, aby, bx, by, bcx, bcy, cax, cay, bcx, bcy, cx, cy, abx, aby, bcx, bcy, cax, cay);
+            boundaries?.push(ab | ca, ab | bc, bc | ca, 0);
+        }
         count += cuts;
     }
     return out;

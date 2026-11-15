@@ -19,7 +19,9 @@ const failures = new WeakMap();
 const snapshots = new WeakMap();
 const summaries = new WeakMap();
 const requests = new WeakMap();
-function codeAt(text, index) { return apply(charCodeAt, text, [index]); }
+function codeAt(text, index) {
+    return apply(charCodeAt, text, [index]);
+}
 function matches(pattern, text) {
     const result = apply(regexpExec, pattern, [text]);
     // JavaScript's $ can precede a terminal line break; the admitted subset consumes every code unit.
@@ -93,8 +95,10 @@ export function snapshotTextRasterRequest(input, invocation) {
     }
     // Native allocation faults stay outside the descriptor-read wrapper.
     const value = freeze({});
-    apply(weakSet, snapshots, [value, { text, fontFamily, fontSize, fontWeight, fontStyle,
-            lineHeight, locale, direction, density, fillColor }]);
+    apply(weakSet, snapshots, [
+        value,
+        { text, fontFamily, fontSize, fontWeight, fontStyle, lineHeight, locale, direction, density, fillColor }
+    ]);
     return value;
 }
 function stringField(value, max, label, invocation) {
@@ -107,9 +111,12 @@ function stringField(value, max, label, invocation) {
 function validateCharacters(text, allowLineBreaks, invocation) {
     for (let i = 0; i < text.length; i++) {
         const code = codeAt(text, i);
-        if ((code < 32 && !(allowLineBreaks && (code === 10 || code === 13)))
-            || (code >= 0x7f && code <= 0x9f) || code === 0x2028 || code === 0x2029
-            || (code >= 0x202a && code <= 0x202e) || (code >= 0x2066 && code <= 0x2069)) {
+        if ((code < 32 && !(allowLineBreaks && (code === 10 || code === 13))) ||
+            (code >= 0x7f && code <= 0x9f) ||
+            code === 0x2028 ||
+            code === 0x2029 ||
+            (code >= 0x202a && code <= 0x202e) ||
+            (code >= 0x2066 && code <= 0x2069)) {
             invalid(invocation, 'Unsupported text control character');
         }
         if (code >= 0xd800 && code <= 0xdbff) {
@@ -151,8 +158,10 @@ export function summarizeTextRasterRequest(snapshot, providerIdentity, fontGener
     if (fields === undefined)
         throw new TypeFault('Authentic private request snapshot required');
     // These are already admitted cache scalars, not a new structural provider port.
-    if (typeof providerIdentity !== 'string' || !matches(providerPattern, providerIdentity)
-        || !safeInteger(fontGeneration) || fontGeneration <= 0) {
+    if (typeof providerIdentity !== 'string' ||
+        !matches(providerPattern, providerIdentity) ||
+        !safeInteger(fontGeneration) ||
+        fontGeneration <= 0) {
         throw new TypeFault('Admitted text provider identity and generation required');
     }
     const text = stringField(fields.text, 8192, 'Text source', invocation);
@@ -176,10 +185,23 @@ export function summarizeTextRasterRequest(snapshot, providerIdentity, fontGener
     const direction = fields.direction;
     const density = numeric(fields.density, 0.5, 4, false, 'Raster density', invocation);
     const fillColor = numeric(fields.fillColor, 0, 0xffffff, true, 'Fill color', invocation);
-    const metadataBytes = 512 + 2 * (text.length + fontFamily.length + locale.length + providerIdentity.length)
-        + 128 * lineCount;
-    const data = { text, fontFamily, fontSize, fontWeight, fontStyle, lineHeight,
-        locale, direction, density, fillColor, providerIdentity, fontGeneration, lineCount, metadataBytes };
+    const metadataBytes = 512 + 2 * (text.length + fontFamily.length + locale.length + providerIdentity.length) + 128 * lineCount;
+    const data = {
+        text,
+        fontFamily,
+        fontSize,
+        fontWeight,
+        fontStyle,
+        lineHeight,
+        locale,
+        direction,
+        density,
+        fillColor,
+        providerIdentity,
+        fontGeneration,
+        lineCount,
+        metadataBytes
+    };
     const value = freeze({ sourceCodeUnits: text.length, lineCount, metadataBytes });
     apply(weakSet, summaries, [value, data]);
     return value;
@@ -191,9 +213,18 @@ export function createTextFieldRequestInput(summary, invocation) {
     if (data === undefined)
         throw new TypeFault('Authentic private request summary required');
     // Plain validated scalars only: no cache-owned source-line array or plan identity.
-    return freeze({ text: data.text, fontFamily: data.fontFamily, fontSize: data.fontSize,
-        fontWeight: data.fontWeight, fontStyle: data.fontStyle, lineHeight: data.lineHeight,
-        locale: data.locale, direction: data.direction, density: data.density, fillColor: data.fillColor });
+    return freeze({
+        text: data.text,
+        fontFamily: data.fontFamily,
+        fontSize: data.fontSize,
+        fontWeight: data.fontWeight,
+        fontStyle: data.fontStyle,
+        lineHeight: data.lineHeight,
+        locale: data.locale,
+        direction: data.direction,
+        density: data.density,
+        fillColor: data.fillColor
+    });
 }
 /** Call only after the cache commits the summary's exact generation metadata charge. */
 export function createOwnedTextRasterRequest(summary, invocation) {
@@ -217,11 +248,20 @@ export function createOwnedTextRasterRequest(summary, invocation) {
     lines[line] = freeze({ start, end: data.text.length, breakEnd: data.text.length });
     const sourceLines = freeze(lines);
     const value = freeze({
-        text: data.text, fontFamily: data.fontFamily, fontSize: data.fontSize,
-        fontWeight: data.fontWeight, fontStyle: data.fontStyle, lineHeight: data.lineHeight,
-        locale: data.locale, direction: data.direction, density: data.density, fillColor: data.fillColor,
-        profile: 'canvas-explicit-lines-v1', providerIdentity: data.providerIdentity,
-        fontGeneration: data.fontGeneration, sourceLines,
+        text: data.text,
+        fontFamily: data.fontFamily,
+        fontSize: data.fontSize,
+        fontWeight: data.fontWeight,
+        fontStyle: data.fontStyle,
+        lineHeight: data.lineHeight,
+        locale: data.locale,
+        direction: data.direction,
+        density: data.density,
+        fillColor: data.fillColor,
+        profile: 'canvas-explicit-lines-v1',
+        providerIdentity: data.providerIdentity,
+        fontGeneration: data.fontGeneration,
+        sourceLines
     });
     apply(weakSet, requests, [value, { data, request: value }]);
     return value;
@@ -232,7 +272,8 @@ export function isOwnedTextRasterRequest(value) {
 export function requireOwnedTextRasterRequest(value, invocation) {
     openInvocation(invocation);
     const owned = typeof value === 'object' && value !== null
-        ? apply(weakGet, requests, [value]) : undefined;
+        ? apply(weakGet, requests, [value])
+        : undefined;
     if (owned === undefined)
         invalid(invocation, 'Authentic owned text request required');
     return owned.request;
@@ -244,12 +285,19 @@ export function matchesTextRasterRequestSummary(request, summary, providerIdenti
     if (owned === undefined || candidate === undefined)
         throw new TypeFault('Authentic request and summary required');
     const current = owned.data;
-    return current.providerIdentity === providerIdentity && candidate.providerIdentity === providerIdentity
-        && current.fontGeneration === fontGeneration && candidate.fontGeneration === fontGeneration
-        && current.text === candidate.text && current.fontFamily === candidate.fontFamily
-        && current.fontSize === candidate.fontSize && current.fontWeight === candidate.fontWeight
-        && current.fontStyle === candidate.fontStyle && current.lineHeight === candidate.lineHeight
-        && current.locale === candidate.locale && current.direction === candidate.direction
-        && current.density === candidate.density && current.fillColor === candidate.fillColor;
+    return (current.providerIdentity === providerIdentity &&
+        candidate.providerIdentity === providerIdentity &&
+        current.fontGeneration === fontGeneration &&
+        candidate.fontGeneration === fontGeneration &&
+        current.text === candidate.text &&
+        current.fontFamily === candidate.fontFamily &&
+        current.fontSize === candidate.fontSize &&
+        current.fontWeight === candidate.fontWeight &&
+        current.fontStyle === candidate.fontStyle &&
+        current.lineHeight === candidate.lineHeight &&
+        current.locale === candidate.locale &&
+        current.direction === candidate.direction &&
+        current.density === candidate.density &&
+        current.fillColor === candidate.fillColor);
 }
 //# sourceMappingURL=request.js.map

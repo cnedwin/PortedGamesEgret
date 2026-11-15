@@ -9,7 +9,7 @@ function gradientTexture({ width, height, stops }) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
   canvas.height = height;
-  const context = canvas.getContext('2d');
+  const context = canvas.getContext('2d', { willReadFrequently: true });
   context.scale(width / 2, height / 2);
   const fill = context.createRadialGradient(1, 1, 0, 1, 1, 1);
   for (const [offset, color] of stops) fill.addColorStop(offset, color);

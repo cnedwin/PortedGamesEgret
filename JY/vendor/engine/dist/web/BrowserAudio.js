@@ -5,8 +5,11 @@ import { createAudioMixer } from '@egret/engine/audio';
 const SMOOTH = 0.005;
 const gestures = ['pointerdown', 'pointerup', 'touchend', 'keydown', 'click'];
 const passive = Object.freeze({ capture: true, passive: true });
-const at = (line, time) => time >= line.end ? line.to : time <= line.start ? line.from
-    : line.from + (line.to - line.from) * (time - line.start) / (line.end - line.start);
+const at = (line, time) => time >= line.end
+    ? line.to
+    : time <= line.start
+        ? line.from
+        : line.from + ((line.to - line.from) * (time - line.start)) / (line.end - line.start);
 /**
  * Sound for a page on Web Audio. A page may not sound before the person has touched it: until
  * then the mixer is locked, music asked for waits, and the first touch or key lets it start.
@@ -16,8 +19,10 @@ export function createBrowserAudio(options = {}) {
         throw new EgretError('AUDIO_OPTIONS_INVALID');
     const { context: given, unlockTarget, pauseWhenHidden = true, onError, ...configuration } = options;
     const Live = globalThis.AudioContext, page = globalThis.document;
-    if ((given !== undefined && (given === null || typeof given !== 'object')) || typeof pauseWhenHidden !== 'boolean' || (onError !== undefined && typeof onError !== 'function')
-        || (unlockTarget !== undefined && (unlockTarget === null || typeof unlockTarget.addEventListener !== 'function')))
+    if ((given !== undefined && (given === null || typeof given !== 'object')) ||
+        typeof pauseWhenHidden !== 'boolean' ||
+        (onError !== undefined && typeof onError !== 'function') ||
+        (unlockTarget !== undefined && (unlockTarget === null || typeof unlockTarget.addEventListener !== 'function')))
         throw new EgretError('AUDIO_OPTIONS_INVALID');
     if (given === undefined && typeof Live !== 'function')
         throw new EgretError('AUDIO_HOST_UNAVAILABLE');
@@ -159,10 +164,14 @@ export function createBrowserAudio(options = {}) {
         place(request.pan);
         return {
             gain,
-            setGain(value, seconds) { line = ramp(gain.gain, line, value, seconds); },
+            setGain(value, seconds) {
+                line = ramp(gain.gain, line, value, seconds);
+            },
             setPan: place,
-            release() { for (const node of [gain, ...sides?.nodes ?? []])
-                node.disconnect(); },
+            release() {
+                for (const node of [gain, ...(sides?.nodes ?? [])])
+                    node.disconnect();
+            }
         };
     }
     /** What a media element was refused: without a touch it waits for one; a pause that overtook it is nothing. */
@@ -219,7 +228,9 @@ export function createBrowserAudio(options = {}) {
         follow();
         return {
             setGain: strip.setGain,
-            setRate(value) { element.playbackRate = value; },
+            setRate(value) {
+                element.playbackRate = value;
+            },
             setPan: strip.setPan,
             stop(seconds) {
                 if (over)
@@ -238,11 +249,13 @@ export function createBrowserAudio(options = {}) {
                 timer.start(0);
                 timer.stop(context.currentTime + seconds);
             },
-            position: () => element.currentTime,
+            position: () => element.currentTime
         };
     }
     const backend = {
-        get time() { return context.currentTime; },
+        get time() {
+            return context.currentTime;
+        },
         async decode(bytes) {
             // Decoding takes the buffer it is given away from its owner: it is given a copy.
             const copy = bytes.slice().buffer;
@@ -251,7 +264,14 @@ export function createBrowserAudio(options = {}) {
                 if (result !== undefined && typeof result.then === 'function')
                     result.then(resolve, reject);
             });
-            const sound = { duration: buffer.duration, channels: buffer.numberOfChannels, sampleRate: buffer.sampleRate, release() { buffers.delete(sound); } };
+            const sound = {
+                duration: buffer.duration,
+                channels: buffer.numberOfChannels,
+                sampleRate: buffer.sampleRate,
+                release() {
+                    buffers.delete(sound);
+                }
+            };
             buffers.set(sound, buffer);
             return sound;
         },
@@ -264,16 +284,28 @@ export function createBrowserAudio(options = {}) {
             // A file of another origin is asked for in the way that lets its samples into the graph, or not at all.
             element.crossOrigin = 'anonymous';
             await new Promise((resolve, reject) => {
-                const done = () => { element.removeEventListener('loadedmetadata', loaded); element.removeEventListener('error', failed); };
-                const loaded = () => { done(); resolve(); };
-                const failed = () => { done(); reject(element.error ?? new EgretError('AUDIO_STREAM_FAILED')); };
+                const done = () => {
+                    element.removeEventListener('loadedmetadata', loaded);
+                    element.removeEventListener('error', failed);
+                };
+                const loaded = () => {
+                    done();
+                    resolve();
+                };
+                const failed = () => {
+                    done();
+                    reject(element.error ?? new EgretError('AUDIO_STREAM_FAILED'));
+                };
                 element.addEventListener('loadedmetadata', loaded);
                 element.addEventListener('error', failed);
                 element.src = url;
             });
             const node = live.createMediaElementSource(element);
             const sound = {
-                duration: element.duration, channels: node.channelCount, sampleRate: live.sampleRate, streamed: true,
+                duration: element.duration,
+                channels: node.channelCount,
+                sampleRate: live.sampleRate,
+                streamed: true,
                 release() {
                     streams.delete(sound);
                     sounding.delete(element);
@@ -281,7 +313,7 @@ export function createBrowserAudio(options = {}) {
                     element.removeAttribute('src');
                     element.load();
                     node.disconnect();
-                },
+                }
             };
             streams.set(sound, { element, node });
             return sound;
@@ -294,8 +326,13 @@ export function createBrowserAudio(options = {}) {
             output ??= node;
             let line;
             const bus = {
-                setGain(value, seconds) { line = ramp(node.gain, line, value, seconds); },
-                release() { nodes.delete(bus); node.disconnect(); },
+                setGain(value, seconds) {
+                    line = ramp(node.gain, line, value, seconds);
+                },
+                release() {
+                    nodes.delete(bus);
+                    node.disconnect();
+                }
             };
             nodes.set(bus, node);
             return bus;
@@ -331,13 +368,15 @@ export function createBrowserAudio(options = {}) {
             source.start(0, request.offset);
             return {
                 setGain: strip.setGain,
-                setRate(value) { source.playbackRate.value = value; },
+                setRate(value) {
+                    source.playbackRate.value = value;
+                },
                 setPan: strip.setPan,
                 stop(seconds) {
                     if (over)
                         return;
                     source.stop(seconds > 0 ? context.currentTime + seconds : 0);
-                },
+                }
             };
         },
         suspend() {
@@ -361,7 +400,7 @@ export function createBrowserAudio(options = {}) {
             unlisten(pairs);
             if (live !== undefined && given === undefined)
                 live.close().catch(report);
-        },
+        }
     };
     let mixer;
     try {
@@ -398,13 +437,19 @@ export function createBrowserAudio(options = {}) {
             try {
                 mixer.dispose();
             }
-            catch { /* the first failure is the one told */ }
+            catch {
+                /* the first failure is the one told */
+            }
             throw cause;
         }
     }
     return Object.freeze({
-        mixer, context, output: output,
-        dispose() { mixer.dispose(); },
+        mixer,
+        context,
+        output: output,
+        dispose() {
+            mixer.dispose();
+        }
     });
 }
 //# sourceMappingURL=BrowserAudio.js.map

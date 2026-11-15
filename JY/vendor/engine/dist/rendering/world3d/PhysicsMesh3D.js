@@ -46,7 +46,7 @@ export class TriangleMeshShape3D {
         }
         if (kept.length === 0)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'mesh has no triangles with area');
-        const count = this.triangleCount = kept.length / 3;
+        const count = (this.triangleCount = kept.length / 3);
         // Per-triangle bounds and centroids drive the median splits.
         const boxes = new Float32Array(count * 6), centers = new Float32Array(count * 3), order = new Uint32Array(count);
         for (let t = 0; t < count; t++) {
@@ -131,7 +131,12 @@ export class TriangleMeshShape3D {
         stack[top++] = 0;
         while (top > 0) {
             const node = stack[--top], at = node * 6;
-            if (bounds[at] > maxX || bounds[at + 3] < minX || bounds[at + 1] > maxY || bounds[at + 4] < minY || bounds[at + 2] > maxZ || bounds[at + 5] < minZ)
+            if (bounds[at] > maxX ||
+                bounds[at + 3] < minX ||
+                bounds[at + 1] > maxY ||
+                bounds[at + 4] < minY ||
+                bounds[at + 2] > maxZ ||
+                bounds[at + 5] < minZ)
                 continue;
             const child = left[node];
             if (child >= 0) {
@@ -149,7 +154,7 @@ export class TriangleMeshShape3D {
     triangleNormal(triangle, out) {
         const p = this.positions, a = this.indices[triangle * 3] * 3, b = this.indices[triangle * 3 + 1] * 3, c = this.indices[triangle * 3 + 2] * 3;
         const ux = p[b] - p[a], uy = p[b + 1] - p[a + 1], uz = p[b + 2] - p[a + 2], vx = p[c] - p[a], vy = p[c + 1] - p[a + 1], vz = p[c + 2] - p[a + 2];
-        const x = uy * vz - uz * vy, y = uz * vx - ux * vz, z = ux * vy - uy * vx, length = Math.hypot(x, y, z) || 1;
+        const x = uy * vz - uz * vy, y = uz * vx - ux * vz, z = ux * vy - uy * vx, length = Math.sqrt(x * x + y * y + z * z) || 1;
         out[0] = x / length;
         out[1] = y / length;
         out[2] = z / length;
@@ -202,7 +207,7 @@ export class TriangleMeshShape3D {
         }
         const va = d3 * d6 - d5 * d4;
         if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) {
-            const w = (d4 - d3) / ((d4 - d3) + (d5 - d6));
+            const w = (d4 - d3) / (d4 - d3 + (d5 - d6));
             out[0] = bx + (cx - bx) * w;
             out[1] = by + (cy - by) * w;
             out[2] = bz + (cz - bz) * w;
@@ -300,7 +305,11 @@ export function createMeshShape3D(source) {
         }
         const index = geometry.index?.data, count = index ? index.length : attribute.count;
         // A mirrored transform reverses winding; swap two corners to keep the front side outward.
-        const mirrored = m !== undefined && m[0] * (m[5] * m[10] - m[6] * m[9]) - m[4] * (m[1] * m[10] - m[2] * m[9]) + m[8] * (m[1] * m[6] - m[2] * m[5]) < 0;
+        const mirrored = m !== undefined &&
+            m[0] * (m[5] * m[10] - m[6] * m[9]) -
+                m[4] * (m[1] * m[10] - m[2] * m[9]) +
+                m[8] * (m[1] * m[6] - m[2] * m[5]) <
+                0;
         for (let i = 0; i + 2 < count; i += 3) {
             const a = base + (index ? index[i] : i), b = base + (index ? index[i + 1] : i + 1), c = base + (index ? index[i + 2] : i + 2);
             if (mirrored)
@@ -317,8 +326,10 @@ export function createMeshShape3D(source) {
         while (root.parent)
             root = root.parent;
         root.updateWorldMatrices(true);
-        source.traverse(node => { if (node instanceof Mesh3D && !node.isInstanced && node.skeleton === undefined)
-            append(node.geometry, node.matrixWorld); });
+        source.traverse(node => {
+            if (node instanceof Mesh3D && !node.isInstanced && node.skeleton === undefined)
+                append(node.geometry, node.matrixWorld);
+        });
     }
     else
         throw new World3DError('WORLD3D_INPUT_INVALID', 'mesh shape source');

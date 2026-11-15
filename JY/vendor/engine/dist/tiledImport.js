@@ -4,7 +4,9 @@ const MAX_CELLS = 1 << 24, MAX_LAYERS = 256, MAX_TILESETS = 256, MAX_OBJECTS = 1
 /** The top three bits of a global id say how the tile is turned; the rest is the id. */
 export const TILE_FLIP_MASK = 0xe0000000;
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
-const fail = (code, where) => { throw new EgretError(code, { cause: new Error(where) }); };
+const fail = (code, where) => {
+    throw new EgretError(code, { cause: new Error(where) });
+};
 function whole(value, least, most, where) {
     if (!Number.isSafeInteger(value) || value < least || value > most)
         fail('TILEMAP_DATA_INVALID', where);
@@ -70,10 +72,13 @@ function base64(value, where) {
     const clean = value.replace(/\s+/g, '');
     if (clean.length % 4 !== 0 || !/^[A-Za-z0-9+/]*={0,2}$/.test(clean))
         fail('TILEMAP_DATA_INVALID', where);
-    const padding = clean.endsWith('==') ? 2 : clean.endsWith('=') ? 1 : 0, out = new Uint8Array(clean.length / 4 * 3 - padding);
+    const padding = clean.endsWith('==') ? 2 : clean.endsWith('=') ? 1 : 0, out = new Uint8Array((clean.length / 4) * 3 - padding);
     let at = 0;
     for (let i = 0; i < clean.length; i += 4) {
-        const n = (ALPHABET.indexOf(clean[i]) << 18) | (ALPHABET.indexOf(clean[i + 1]) << 12) | (Math.max(0, ALPHABET.indexOf(clean[i + 2])) << 6) | Math.max(0, ALPHABET.indexOf(clean[i + 3]));
+        const n = (ALPHABET.indexOf(clean[i]) << 18) |
+            (ALPHABET.indexOf(clean[i + 1]) << 12) |
+            (Math.max(0, ALPHABET.indexOf(clean[i + 2])) << 6) |
+            Math.max(0, ALPHABET.indexOf(clean[i + 3]));
         for (const shift of [16, 8, 0])
             if (at < out.length)
                 out[at++] = (n >>> shift) & 255;
@@ -120,7 +125,8 @@ function tileset(raw, where, external) {
     const columns = whole(set['columns'], 1, 16384, where + '.columns'), tileCount = whole(set['tilecount'], 1, MAX_CELLS, where + '.tilecount');
     // Every tile the set says it has lies inside its image.
     const rows = Math.ceil(tileCount / columns);
-    if (margin * 2 + columns * tileWidth + (columns - 1) * spacing > imageWidth || margin * 2 + rows * tileHeight + (rows - 1) * spacing > imageHeight)
+    if (margin * 2 + columns * tileWidth + (columns - 1) * spacing > imageWidth ||
+        margin * 2 + rows * tileHeight + (rows - 1) * spacing > imageHeight)
         fail('TILEMAP_DATA_INVALID', where + ': the tiles do not fit the image');
     const tiles = new Map();
     if (set['tiles'] !== undefined) {
@@ -137,34 +143,74 @@ function tileset(raw, where, external) {
                 animation = t['animation'].map(frame => {
                     if (!record(frame))
                         return fail('TILEMAP_DATA_INVALID', where + '.animation');
-                    return Object.freeze({ tileId: whole(frame['tileid'], 0, tileCount - 1, where + '.animation.tileid'), duration: whole(frame['duration'], 1, 3_600_000, where + '.animation.duration') });
+                    return Object.freeze({
+                        tileId: whole(frame['tileid'], 0, tileCount - 1, where + '.animation.tileid'),
+                        duration: whole(frame['duration'], 1, 3_600_000, where + '.animation.duration')
+                    });
                 });
             }
             const type = t['type'] ?? t['class'];
-            tiles.set(id, Object.freeze({ properties: properties(t['properties'], where + '.tiles.properties'), ...(animation === undefined ? {} : { animation: Object.freeze(animation) }), ...(typeof type === 'string' && type !== '' ? { type } : {}) }));
+            tiles.set(id, Object.freeze({
+                properties: properties(t['properties'], where + '.tiles.properties'),
+                ...(animation === undefined ? {} : { animation: Object.freeze(animation) }),
+                ...(typeof type === 'string' && type !== '' ? { type } : {})
+            }));
         }
     }
-    return Object.freeze({ name: text(set['name'], where + '.name'), firstGid, tileWidth, tileHeight, columns, tileCount, spacing, margin, image: text(set['image'], where + '.image'),
-        imageWidth, imageHeight, properties: properties(set['properties'], where + '.properties'), tiles });
+    return Object.freeze({
+        name: text(set['name'], where + '.name'),
+        firstGid,
+        tileWidth,
+        tileHeight,
+        columns,
+        tileCount,
+        spacing,
+        margin,
+        image: text(set['image'], where + '.image'),
+        imageWidth,
+        imageHeight,
+        properties: properties(set['properties'], where + '.properties'),
+        tiles
+    });
 }
 function object(raw, where) {
     if (!record(raw))
         return fail('TILEMAP_DATA_INVALID', where);
-    const shape = raw['point'] === true ? 'point' : raw['ellipse'] === true ? 'ellipse' : Array.isArray(raw['polygon']) ? 'polygon' : Array.isArray(raw['polyline']) ? 'polyline' : record(raw['text']) ? 'text' : 'rectangle';
+    const shape = raw['point'] === true
+        ? 'point'
+        : raw['ellipse'] === true
+            ? 'ellipse'
+            : Array.isArray(raw['polygon'])
+                ? 'polygon'
+                : Array.isArray(raw['polyline'])
+                    ? 'polyline'
+                    : record(raw['text'])
+                        ? 'text'
+                        : 'rectangle';
     const pointsRaw = shape === 'polygon' ? raw['polygon'] : shape === 'polyline' ? raw['polyline'] : undefined;
-    const points = pointsRaw === undefined ? undefined : Object.freeze(pointsRaw.map(point => {
-        if (!record(point))
-            return fail('TILEMAP_DATA_INVALID', where + '.points');
-        return Object.freeze({ x: number(point['x'], where + '.x'), y: number(point['y'], where + '.y') });
-    }));
+    const points = pointsRaw === undefined
+        ? undefined
+        : Object.freeze(pointsRaw.map(point => {
+            if (!record(point))
+                return fail('TILEMAP_DATA_INVALID', where + '.points');
+            return Object.freeze({ x: number(point['x'], where + '.x'), y: number(point['y'], where + '.y') });
+        }));
     const type = raw['type'] ?? raw['class'] ?? '';
     return Object.freeze({
-        id: whole(raw['id'], 0, Number.MAX_SAFE_INTEGER, where + '.id'), name: text(raw['name'], where + '.name', ''), type: text(type, where + '.type'),
-        x: number(raw['x'], where + '.x'), y: number(raw['y'], where + '.y'), width: number(raw['width'], where + '.width', 0), height: number(raw['height'], where + '.height', 0),
-        rotation: number(raw['rotation'], where + '.rotation', 0), visible: flag(raw['visible'], where + '.visible', true),
-        ...(raw['gid'] === undefined ? {} : { gid: whole(raw['gid'], 1, 0xffffffff, where + '.gid') }), shape,
-        ...(points === undefined ? {} : { points }), ...(shape === 'text' ? { text: text(raw['text']['text'], where + '.text', '') } : {}),
-        properties: properties(raw['properties'], where + '.properties'),
+        id: whole(raw['id'], 0, Number.MAX_SAFE_INTEGER, where + '.id'),
+        name: text(raw['name'], where + '.name', ''),
+        type: text(type, where + '.type'),
+        x: number(raw['x'], where + '.x'),
+        y: number(raw['y'], where + '.y'),
+        width: number(raw['width'], where + '.width', 0),
+        height: number(raw['height'], where + '.height', 0),
+        rotation: number(raw['rotation'], where + '.rotation', 0),
+        visible: flag(raw['visible'], where + '.visible', true),
+        ...(raw['gid'] === undefined ? {} : { gid: whole(raw['gid'], 1, 0xffffffff, where + '.gid') }),
+        shape,
+        ...(points === undefined ? {} : { points }),
+        ...(shape === 'text' ? { text: text(raw['text']['text'], where + '.text', '') } : {}),
+        properties: properties(raw['properties'], where + '.properties')
     });
 }
 /**
@@ -183,7 +229,9 @@ export function importTiledMap(json, options = {}) {
     const tileWidth = whole(json['tilewidth'], 1, 4096, 'tilewidth'), tileHeight = whole(json['tileheight'], 1, 4096, 'tileheight');
     if (!Array.isArray(json['tilesets']) || json['tilesets'].length > MAX_TILESETS)
         return fail('TILEMAP_DATA_INVALID', 'tilesets');
-    const tilesets = json['tilesets'].map((set, index) => tileset(set, 'tilesets.' + index, (options.tilesets ?? {}))).sort((a, b) => a.firstGid - b.firstGid);
+    const tilesets = json['tilesets']
+        .map((set, index) => tileset(set, 'tilesets.' + index, (options.tilesets ?? {})))
+        .sort((a, b) => a.firstGid - b.firstGid);
     for (let i = 1; i < tilesets.length; i++)
         if (tilesets[i].firstGid < tilesets[i - 1].firstGid + tilesets[i - 1].tileCount)
             fail('TILEMAP_DATA_INVALID', 'tilesets overlap');
@@ -207,7 +255,14 @@ export function importTiledMap(json, options = {}) {
                 walk(layer['layers'], name + '/', x, y, alpha, shown, parallaxX, parallaxY, depth + 1);
                 continue;
             }
-            const common = { name, offsetX: x, offsetY: y, opacity: alpha, visible: shown, properties: properties(layer['properties'], where) };
+            const common = {
+                name,
+                offsetX: x,
+                offsetY: y,
+                opacity: alpha,
+                visible: shown,
+                properties: properties(layer['properties'], where)
+            };
             if (layer['type'] === 'tilelayer') {
                 let data, w, h, startX = 0, startY = 0;
                 if (layer['chunks'] !== undefined) {
@@ -218,8 +273,13 @@ export function importTiledMap(json, options = {}) {
                         if (!record(chunk))
                             return fail('TILEMAP_DATA_INVALID', where + ': chunk');
                         const cw = whole(chunk['width'], 1, MAX_SIDE, where), ch = whole(chunk['height'], 1, MAX_SIDE, where);
-                        return { x: whole(chunk['x'], -MAX_SIDE, MAX_SIDE, where), y: whole(chunk['y'], -MAX_SIDE, MAX_SIDE, where), width: cw, height: ch,
-                            data: cells(chunk['data'], cw * ch, layer['encoding'], layer['compression'], where + ': chunk ' + index) };
+                        return {
+                            x: whole(chunk['x'], -MAX_SIDE, MAX_SIDE, where),
+                            y: whole(chunk['y'], -MAX_SIDE, MAX_SIDE, where),
+                            width: cw,
+                            height: ch,
+                            data: cells(chunk['data'], cw * ch, layer['encoding'], layer['compression'], where + ': chunk ' + index)
+                        };
                     });
                     if (chunks.length === 0) {
                         w = 0;
@@ -252,7 +312,17 @@ export function importTiledMap(json, options = {}) {
                     if (id !== 0 && !tilesets.some(set => id >= set.firstGid && id < set.firstGid + set.tileCount))
                         fail('TILEMAP_DATA_INVALID', where + ': tile ' + id + ' of no tileset');
                 }
-                layers.push(Object.freeze({ type: 'tile', ...common, width: w, height: h, startX, startY, parallaxX, parallaxY, data }));
+                layers.push(Object.freeze({
+                    type: 'tile',
+                    ...common,
+                    width: w,
+                    height: h,
+                    startX,
+                    startY,
+                    parallaxX,
+                    parallaxY,
+                    data
+                }));
             }
             else if (layer['type'] === 'objectgroup') {
                 if (!Array.isArray(layer['objects']))
@@ -260,14 +330,28 @@ export function importTiledMap(json, options = {}) {
                 objectCount += layer['objects'].length;
                 if (objectCount > MAX_OBJECTS)
                     fail('TILEMAP_DATA_INVALID', 'too many objects');
-                layers.push(Object.freeze({ type: 'object', ...common, objects: Object.freeze(layer['objects'].map((o, i) => object(o, where + ': object ' + i))) }));
+                layers.push(Object.freeze({
+                    type: 'object',
+                    ...common,
+                    objects: Object.freeze(layer['objects'].map((o, i) => object(o, where + ': object ' + i)))
+                }));
             }
             else
                 fail('TILEMAP_LAYER_UNSUPPORTED', where + ': ' + String(layer['type']));
         }
     }
     walk(json['layers'], '', 0, 0, 1, true, 1, 1, 0);
-    return Object.freeze({ orientation: 'orthogonal', width, height, tileWidth, tileHeight, infinite, backgroundColor: colour(json['backgroundcolor'], 'backgroundcolor'),
-        properties: properties(json['properties'], 'properties'), tilesets: Object.freeze(tilesets), layers: Object.freeze(layers) });
+    return Object.freeze({
+        orientation: 'orthogonal',
+        width,
+        height,
+        tileWidth,
+        tileHeight,
+        infinite,
+        backgroundColor: colour(json['backgroundcolor'], 'backgroundcolor'),
+        properties: properties(json['properties'], 'properties'),
+        tilesets: Object.freeze(tilesets),
+        layers: Object.freeze(layers)
+    });
 }
 //# sourceMappingURL=tiledImport.js.map

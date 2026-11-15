@@ -5,6 +5,8 @@ import { composeDisplayTransform } from './displayTransform.js';
 import { assertLive, childAtOf, childCountOf, isDisplayNode, isStageRoot, parentOf } from './displayTreeState.js';
 import { finite, visualOf } from './displayVisualState.js';
 import { engineOf } from './ownership.js';
+import { readBitmapState } from './bitmapDisplayState.js';
+import { resolveShape } from './graphicsShape.js';
 function live(node, engine) {
     assertLive(node);
     engine.assertOpen();
@@ -92,8 +94,40 @@ function nonsingular(matrix) {
     }
 }
 function contains(rectangle, point) {
-    return point.x >= rectangle.x && point.x < rectangle.x + rectangle.width
-        && point.y >= rectangle.y && point.y < rectangle.y + rectangle.height;
+    return (point.x >= rectangle.x &&
+        point.x < rectangle.x + rectangle.width &&
+        point.y >= rectangle.y &&
+        point.y < rectangle.y + rectangle.height);
+}
+/**
+ * Whether a point, in a node's own units, is on what the node itself draws: one of its filled rectangles, a triangle
+ * of its shapes, or its bitmap's rectangle. A node that is touch enabled and has no hit area is hit by this.
+ */
+function onContent(node, point) {
+    const visual = visualOf(node), x = point.x, y = point.y;
+    for (const { rect } of visual.primitives)
+        if (rect.width > 0 && rect.height > 0 && contains(rect, point))
+            return true;
+    const bitmap = readBitmapState(node);
+    if (bitmap !== undefined && x >= 0 && y >= 0 && x < bitmap.width && y < bitmap.height)
+        return true;
+    const shape = visual.shape === undefined ? undefined : resolveShape(visual.shape);
+    if (shape === undefined)
+        return false;
+    const bounds = shape.bounds;
+    if (x < bounds.x || y < bounds.y || x > bounds.x + bounds.width || y > bounds.y + bounds.height)
+        return false;
+    for (const { geometry } of shape.parts) {
+        const positions = geometry.positions, indices = geometry.indices;
+        for (let i = 0; i < geometry.indexCount; i += 3) {
+            const a = 2 * indices[i], b = 2 * indices[i + 1], c = 2 * indices[i + 2];
+            const ax = positions[a], ay = positions[a + 1], bx = positions[b], by = positions[b + 1], cx = positions[c], cy = positions[c + 1];
+            const d1 = (bx - ax) * (y - ay) - (by - ay) * (x - ax), d2 = (cx - bx) * (y - by) - (cy - by) * (x - bx), d3 = (ax - cx) * (y - cy) - (ay - cy) * (x - cx);
+            if ((d1 >= 0 && d2 >= 0 && d3 >= 0) || (d1 <= 0 && d2 <= 0 && d3 <= 0))
+                return true;
+        }
+    }
+    return false;
 }
 /** Private state only; all active arithmetic completes before a borrowed result. */
 export function queryDisplayHit(receiver, x, y, options) {
@@ -118,8 +152,12 @@ export function queryDisplayHit(receiver, x, y, options) {
         if (!visual.visible)
             return;
         const matrix = composeDisplayTransform(parentMatrix, visual);
-        if (!finite(matrix.a) || !finite(matrix.b) || !finite(matrix.c)
-            || !finite(matrix.d) || !finite(matrix.tx) || !finite(matrix.ty)) {
+        if (!finite(matrix.a) ||
+            !finite(matrix.b) ||
+            !finite(matrix.c) ||
+            !finite(matrix.d) ||
+            !finite(matrix.tx) ||
+            !finite(matrix.ty)) {
             throw new EgretError('HIT_TEST_ARITHMETIC_RANGE');
         }
         if (!nonsingular(matrix))
@@ -139,9 +177,21 @@ export function queryDisplayHit(receiver, x, y, options) {
         }
         const state = readDisplayHitState(node);
         const authored = state.hitArea;
-        const area = node !== root && state.touchEnabled && authored !== undefined
-            && authored.width > 0 && authored.height > 0 ? authored : undefined;
-        stack.push({ node, matrix, area, localPoint, nextChild: state.touchChildren === false ? -1 : childCountOf(node) - 1 });
+        // An authored area of no size stays what it was: nothing to hit. Without an area, the node's own drawing is the area.
+        const area = node === root || !state.touchEnabled
+            ? undefined
+            : authored === undefined
+                ? true
+                : authored.width > 0 && authored.height > 0
+                    ? authored
+                    : undefined;
+        stack.push({
+            node,
+            matrix,
+            area,
+            localPoint,
+            nextChild: state.touchChildren === false ? -1 : childCountOf(node) - 1
+        });
     }
     enter(root, identity);
     while (stack.length !== 0) {
@@ -157,7 +207,8 @@ export function queryDisplayHit(receiver, x, y, options) {
             const localPoint = cursor.localPoint ?? inversePoint(cursor.matrix, globalX, globalY);
             // Keep evaluating every eligible candidate after the first winner so a
             // topmost hit cannot hide another active branch's arithmetic failure.
-            if (contains(cursor.area, localPoint) && winner === undefined)
+            if (winner === undefined &&
+                (cursor.area === true ? onContent(cursor.node, localPoint) : contains(cursor.area, localPoint)))
                 winner = cursor.node;
         }
         stack.pop();

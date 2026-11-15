@@ -22,7 +22,11 @@ export function createBrowserEditorFontProvider(options) {
         throw fail('OPTIONS');
     const engine = options.engine, port = requireEditorEngine(engine), owner = port.scope(options.scope);
     const paragraphProvider = options.paragraphProvider, deadline = options.deadlineMs ?? 30000;
-    if (!paragraphProvider || typeof paragraphProvider.load !== 'function' || !Number.isFinite(deadline) || deadline < 1 || deadline > 120000)
+    if (!paragraphProvider ||
+        typeof paragraphProvider.load !== 'function' ||
+        !Number.isFinite(deadline) ||
+        deadline < 1 ||
+        deadline > 120000)
         throw fail('OPTIONS');
     const document = globalThis.document, Font = globalThis.FontFace;
     if (!document || typeof Font !== 'function' || !document.fonts)
@@ -95,8 +99,11 @@ export function createBrowserEditorFontProvider(options) {
             const parent = port.scope(scope);
             if (entries.size >= 8 || !Array.isArray(roots) || roots.length < 1 || roots.length > 16)
                 throw fail('LIMIT');
-            const ids = Object.freeze(roots.map(id => { if (typeof id !== 'string' || !id.length || id.length > 512)
-                throw fail('OPTIONS'); return id; }));
+            const ids = Object.freeze(roots.map(id => {
+                if (typeof id !== 'string' || !id.length || id.length > 512)
+                    throw fail('OPTIONS');
+                return id;
+            }));
             const child = port.scope(port.createScope());
             let group;
             try {
@@ -107,20 +114,52 @@ export function createBrowserEditorFontProvider(options) {
                 throw cause;
             }
             let resolve, reject, cancel;
-            const done = new Promise((yes, no) => { resolve = yes; reject = no; });
+            const done = new Promise((yes, no) => {
+                resolve = yes;
+                reject = no;
+            });
             void done.catch(() => { });
-            const cancelled = new Promise((_, no) => { cancel = no; });
+            const cancelled = new Promise((_, no) => {
+                cancel = no;
+            });
             void cancelled.catch(() => { });
             let entry;
-            const aborted = () => { retire(entry); }, removeAbort = () => { parent.remove(aborted); owner.remove(aborted); };
-            entry = { group, parent, child, paragraph: undefined, faces: [], aliases: new Map(), leases: new Set(), bytes: 0, jobs: 1, ready: false, retired: false, finishing: false, failure: undefined, closed: done, resolve, reject, cancel, removeAbort };
+            const aborted = () => {
+                retire(entry);
+            }, removeAbort = () => {
+                parent.remove(aborted);
+                owner.remove(aborted);
+            };
+            entry = {
+                group,
+                parent,
+                child,
+                paragraph: undefined,
+                faces: [],
+                aliases: new Map(),
+                leases: new Set(),
+                bytes: 0,
+                jobs: 1,
+                ready: false,
+                retired: false,
+                finishing: false,
+                failure: undefined,
+                closed: done,
+                resolve,
+                reject,
+                cancel,
+                removeAbort
+            };
             entries.add(entry);
             parent.add(aborted);
             owner.add(aborted);
             const ordinal = ++nextSet;
             const work = (async () => {
                 let paragraph;
-                const results = await Promise.allSettled([group.ready, Promise.resolve().then(() => paragraphProvider.load(child.scope, loader, ids))]);
+                const results = await Promise.allSettled([
+                    group.ready,
+                    Promise.resolve().then(() => paragraphProvider.load(child.scope, loader, ids))
+                ]);
                 if (results[1].status === 'fulfilled') {
                     paragraph = results[1].value;
                     entry.paragraph = paragraph;
@@ -133,7 +172,9 @@ export function createBrowserEditorFontProvider(options) {
                 if (!paragraph || closed || entry.retired || group.isDisposed || paragraph.isDisposed)
                     throw fail('CANCELLED');
                 const fonts = group.getFonts(), total = fonts.reduce((sum, font) => sum + font.byteLength, 0);
-                if (fonts.length > 16 || bytes + total > 67108864 || JSON.stringify(fonts.map(f => f.family)) !== JSON.stringify(paragraph.fontFamilies))
+                if (fonts.length > 16 ||
+                    bytes + total > 67108864 ||
+                    JSON.stringify(fonts.map(f => f.family)) !== JSON.stringify(paragraph.fontFamilies))
                     throw fail('PROFILE');
                 bytes += total;
                 entry.bytes = total;
@@ -164,32 +205,72 @@ export function createBrowserEditorFontProvider(options) {
                     if (entry.retired || closed)
                         throw fail('CANCELLED');
                 }
-                const handle = Object.freeze({ key: paragraph.key, fontFamilies: Object.freeze([...paragraph.fontFamilies]), identities: Object.freeze(fonts.map(f => f.identity)),
-                    get isDisposed() { return entry.retired || group.isDisposed || paragraph.isDisposed; }, closed: done, dispose() { retire(entry); } });
+                const handle = Object.freeze({
+                    key: paragraph.key,
+                    fontFamilies: Object.freeze([...paragraph.fontFamilies]),
+                    identities: Object.freeze(fonts.map(f => f.identity)),
+                    get isDisposed() {
+                        return entry.retired || group.isDisposed || paragraph.isDisposed;
+                    },
+                    closed: done,
+                    dispose() {
+                        retire(entry);
+                    }
+                });
                 const key = paragraph.key;
-                identities.set(handle, { engine, document, entry, borrow(onRetire) {
+                identities.set(handle, {
+                    engine,
+                    document,
+                    entry,
+                    borrow(onRetire) {
                         if (entry.retired || !entry.ready || entry.leases.size >= 64)
                             throw fail('LIMIT');
                         const user = { retired: onRetire };
                         entry.leases.add(user);
                         let released = false;
-                        return Object.freeze({ key, document, get isDisposed() { return entry.retired; },
+                        return Object.freeze({
+                            key,
+                            document,
+                            get isDisposed() {
+                                return entry.retired;
+                            },
                             families(names) {
                                 if (released || !names.length || names.some(name => !entry.aliases.has(name)))
                                     throw fail('FAMILY');
                                 return names.map(name => '"' + entry.aliases.get(name) + '"').join(',');
                             },
-                            release() { if (released)
-                                return; released = true; entry.leases.delete(user); finish(entry); }, });
-                    } });
+                            release() {
+                                if (released)
+                                    return;
+                                released = true;
+                                entry.leases.delete(user);
+                                finish(entry);
+                            }
+                        });
+                    }
+                });
                 entry.ready = true;
                 return handle;
             })();
             const timer = setTimeout(() => retire(entry, fail('TIMEOUT')), deadline);
-            void work.catch(cause => retire(entry, cause)).finally(() => { clearTimeout(timer); entry.jobs--; finish(entry); });
+            void work
+                .catch(cause => retire(entry, cause))
+                .finally(() => {
+                clearTimeout(timer);
+                entry.jobs--;
+                finish(entry);
+            });
             return Promise.race([work, cancelled]);
         },
-        getStatus() { return Object.freeze({ closed, sets: entries.size, fontBytes: bytes, pendingJobs: [...entries].reduce((n, e) => n + e.jobs, 0), editorLeases: [...entries].reduce((n, e) => n + e.leases.size, 0) }); },
+        getStatus() {
+            return Object.freeze({
+                closed,
+                sets: entries.size,
+                fontBytes: bytes,
+                pendingJobs: [...entries].reduce((n, e) => n + e.jobs, 0),
+                editorLeases: [...entries].reduce((n, e) => n + e.leases.size, 0)
+            });
+        },
         close() {
             if (!closing) {
                 closed = true;
@@ -197,14 +278,18 @@ export function createBrowserEditorFontProvider(options) {
                 for (const entry of current)
                     retire(entry);
                 owner.remove(onOwnerAbort);
-                closing = Promise.allSettled(current.map(e => e.closed)).then(() => { if (cleanupFailures.length)
-                    throw new AggregateError(cleanupFailures, 'Editor font cleanup failed'); });
+                closing = Promise.allSettled(current.map(e => e.closed)).then(() => {
+                    if (cleanupFailures.length)
+                        throw new AggregateError(cleanupFailures, 'Editor font cleanup failed');
+                });
                 void closing.catch(() => { });
             }
             return closing;
-        },
+        }
     });
-    function onOwnerAbort() { void provider.close(); }
+    function onOwnerAbort() {
+        void provider.close();
+    }
     owner.use({ dispose: onOwnerAbort });
     owner.add(onOwnerAbort);
     return provider;

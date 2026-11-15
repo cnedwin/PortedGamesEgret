@@ -1,13 +1,28 @@
 import { decodeSRGBByte } from './srgbBytes.js';
 /** The bytes of one group's uniform: 36 vectors of four floats. */
 export const EFFECT_UNIFORM_BYTES = 576;
-function fail() { throw new RangeError('Shared effect limits or geometry are unsupported'); }
+function fail() {
+    throw new RangeError('Shared effect limits or geometry are unsupported');
+}
 function inverse(m, rect, ratio) {
     const det = m.a * m.d - m.b * m.c;
     if (!Number.isFinite(det) || Math.abs(det) < 1e-12)
         fail();
     const a = m.d / det, b = -m.b / det, c = -m.c / det, d = m.a / det;
-    const values = [a / ratio, b / ratio, c / ratio, d / ratio, -a * m.tx - c * m.ty, -b * m.tx - d * m.ty, rect.x, rect.y, rect.width, rect.height, 0, 0].map(Math.fround);
+    const values = [
+        a / ratio,
+        b / ratio,
+        c / ratio,
+        d / ratio,
+        -a * m.tx - c * m.ty,
+        -b * m.tx - d * m.ty,
+        rect.x,
+        rect.y,
+        rect.width,
+        rect.height,
+        0,
+        0
+    ].map(Math.fround);
     if (values.some(v => !Number.isFinite(v)) || values[8] <= 0 || values[9] <= 0)
         fail();
     return values;
@@ -46,7 +61,10 @@ export function prepareEffects2D(frame, ratio, enabled) {
             }
             if (e.glow !== undefined) {
                 const g = e.glow;
-                spread = g.kind === 'outline' ? Math.min(16, Math.max(1, Math.round(g.spread * ratio))) : Math.min(16, Math.ceil(g.spread * ratio));
+                spread =
+                    g.kind === 'outline'
+                        ? Math.min(16, Math.max(1, Math.round(g.spread * ratio)))
+                        : Math.min(16, Math.ceil(g.spread * ratio));
                 if (!Number.isInteger(spread) || spread < 0 || !Number.isInteger(g.color) || g.color < 0 || g.color > 0xffffff)
                     fail();
                 uniform[113] = g.kind === 'outline' ? 2 : 1;
@@ -72,7 +90,15 @@ export function prepareEffects2D(frame, ratio, enabled) {
                 uniform.set(inverse(clip.matrix, clip.rect, ratio), 16 + i * 12);
             }
             const index = groups.length;
-            groups.push({ enter: command.ordinal, exit: -1, depth: stack.length + 1, maskPageIndex: e.maskPageIndex, radius, spread: e.glow === undefined ? -1 : spread, uniform });
+            groups.push({
+                enter: command.ordinal,
+                exit: -1,
+                depth: stack.length + 1,
+                maskPageIndex: e.maskPageIndex,
+                radius,
+                spread: e.glow === undefined ? -1 : spread,
+                uniform
+            });
             stack.push({ id: command.boundaryId, index });
             depth = Math.max(depth, stack.length);
         }

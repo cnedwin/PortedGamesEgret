@@ -1,66 +1,15 @@
 // SPDX-License-Identifier: Apache-2.0
 import { requireUiTheme, sameThemeMetrics, applyUiTheme } from './theme.js';
-import { EgretError, Sprite, DisplayObject } from '@egret/runtime';
+import { EgretError, DisplayObject } from '@egret/runtime';
 import { captureUiLayout, planUiLayout, UiHeightIndex, createUiDisplayOperations } from '@egret/runtime/ui';
 import { requireUiEngine } from '../internal/uiFactoryState.js';
 import { registerUiRoot } from '../internal/uiRootState.js';
 import { captureSource, captureReveal, revealScroll } from './virtualList.js';
 import { createUiKeyboardFocus } from './keyboardFocus.js';
 import { captureUiTree, leafConstraintTree, leafMeasuredTree, fixedLeafMeasurement } from './leafContent.js';
+import { withoutSources, preparationError, fail, next, number, viewport, origin } from './uiRootModel.js';
+import { createUiRootDisplayDraft, stageUiRootDisplay } from './uiRootDisplay.js';
 const freeze = Object.freeze;
-const sourceMarker = freeze({});
-// Layout caches retain numeric descriptors, never historical data source snapshots.
-function withoutSources(tree) {
-    function copy(node) {
-        const result = freeze({
-            ...node,
-            ...(node.kind === 'virtualList' ? {
-                source: sourceMarker
-            }
-                : {}),
-            ...(node.children === undefined ? {}
-                : {
-                    children: freeze(node.children.map(copy))
-                })
-        });
-        return result;
-    }
-    const root = copy(tree.root);
-    return captureUiLayout(root);
-}
-function preparationError(cause, cleanupErrors) {
-    if (cause instanceof EgretError && cleanupErrors.length === 0)
-        return cause;
-    return new EgretError(cause instanceof EgretError ? cause.code : 'UI_PREPARE_FAILED', { cause, cleanupErrors });
-}
-function fail(code) {
-    throw new EgretError(code);
-}
-function next(value) {
-    if (value >= Number.MAX_SAFE_INTEGER)
-        fail('UI_REVISION_EXHAUSTED');
-    return value + 1;
-}
-function number(value, min, max) {
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
-        fail('UI_VALUE_INVALID');
-    return value === 0 ? 0 : value;
-}
-function viewport(value) {
-    return freeze({
-        width: number(value.width, Number.MIN_VALUE, 16384),
-        height: number(value.height, Number.MIN_VALUE, 16384)
-    });
-}
-function origin(value, size) {
-    const x = number(value.x, -1048576, 1048576), y = number(value.y, -1048576, 1048576);
-    if (Math.abs(x + size.width) > 1048576 || Math.abs(y + size.height) > 1048576)
-        fail('UI_VALUE_INVALID');
-    return freeze({
-        x,
-        y
-    });
-}
 /** One owned transaction domain over the genuine display and input authorities. */
 export function createUiRoot(options) {
     const port = requireUiEngine(options.engine);
@@ -88,7 +37,9 @@ export function createUiRoot(options) {
         fail('UI_LIMIT');
     const listId = listNodes[0]?.id;
     let source = listNodes[0] === undefined ? undefined : captureSource(listNodes[0].source);
-    let explicitScroll = listNodes[0] === undefined ? undefined : number(listNodes[0].initialScrollOffset ?? 0, -Number.MAX_VALUE, Number.MAX_VALUE);
+    let explicitScroll = listNodes[0] === undefined
+        ? undefined
+        : number(listNodes[0].initialScrollOffset ?? 0, -Number.MAX_VALUE, Number.MAX_VALUE);
     let revealIntent;
     tree = withoutSources(tree);
     authoredTree = withoutSources(authoredTree);
@@ -112,7 +63,9 @@ export function createUiRoot(options) {
     validateNewInput(input);
     const keyboardOptions = options.keyboard;
     const keyboardIdentity = keyboardOptions === undefined ? undefined : port.requireKeyboard(keyboardOptions.input);
-    const keyboard = keyboardIdentity === undefined ? undefined : createUiKeyboardFocus(keyboardIdentity, keyboardOptions.idPrefix, keyboardOptions.tabStop);
+    const keyboard = keyboardIdentity === undefined
+        ? undefined
+        : createUiKeyboardFocus(keyboardIdentity, keyboardOptions.idPrefix, keyboardOptions.tabStop);
     let layerVisible = true, layerPointer = true, layerKeyboard = true, layerGeneration = 0, layerOwned = false;
     let layerOrigin;
     keyboard?.validate(source?.byKey.keys() ?? []);
@@ -137,14 +90,17 @@ export function createUiRoot(options) {
     const candidates = new Set();
     const candidateEntries = new Map();
     let outstanding = 0, bindTotal = 0, unbindTotal = 0, retentionCount = 0;
-    let unsubscribeClose = () => {
-    };
+    let unsubscribeClose = () => { };
     const rootWrapper = display.createWrapper(owner.scope);
     const listWrapper = listId === undefined ? undefined : display.createWrapper(owner.scope);
     function counters(rows = [], index = committedIndex) {
         const listBox = plan?.boxes.find(box => box.id === listId);
-        const range = index === undefined || listBox === undefined ? undefined : index.range(snapshot.scrollOffset, listBox.innerHeight, overscan);
-        const overscanOnly = range === undefined ? 0 : rows.filter(row => !row.visible && row.index >= range.start && row.index < range.end).length;
+        const range = index === undefined || listBox === undefined
+            ? undefined
+            : index.range(snapshot.scrollOffset, listBox.innerHeight, overscan);
+        const overscanOnly = range === undefined
+            ? 0
+            : rows.filter(row => !row.visible && row.index >= range.start && row.index < range.end).length;
         return freeze({
             layoutPasses,
             recordCount: index?.size ?? 0,
@@ -159,8 +115,8 @@ export function createUiRoot(options) {
             activeBindings: bindings.size,
             stagedBindings: [...allBindings].filter(b => !b.terminal && bindings.get(b.key) !== b).length,
             unsettledBindCalls: outstanding,
-            measurementCalls: paintCommitted ? 0 : plan?.measurementCalls ?? 0,
-            reusedMeasurements: paintCommitted ? 0 : plan?.reusedMeasurements ?? 0,
+            measurementCalls: paintCommitted ? 0 : (plan?.measurementCalls ?? 0),
+            reusedMeasurements: paintCommitted ? 0 : (plan?.reusedMeasurements ?? 0),
             bindTotal,
             unbindTotal,
             resourceDemands: undefined,
@@ -220,7 +176,7 @@ export function createUiRoot(options) {
         if (binding.entered) {
             unbindTotal++;
             try {
-                (pairedSource).unbind.call((pairedSource).identity, freeze({
+                pairedSource.unbind.call(pairedSource.identity, freeze({
                     key: binding.key,
                     bindingGeneration: binding.generation,
                     contentVersion: binding.version,
@@ -331,7 +287,13 @@ export function createUiRoot(options) {
     }
     function compatible(binding, w, key) {
         const record = w.source?.byKey.get(key);
-        return binding !== undefined && !binding.terminal && record !== undefined && binding.theme === w.theme && binding.version === record.contentVersion && binding.width === w.width && binding.density === density;
+        return (binding !== undefined &&
+            !binding.terminal &&
+            record !== undefined &&
+            binding.theme === w.theme &&
+            binding.version === record.contentVersion &&
+            binding.width === w.width &&
+            binding.density === density);
     }
     function makeBinding(w, key) {
         if (outstanding >= residentCap)
@@ -339,7 +301,7 @@ export function createUiRoot(options) {
         if (allBindings.size - bindings.size >= residentCap)
             fail('UI_LIMIT');
         generation = next(generation);
-        const record = (w.source).byKey.get(key);
+        const record = w.source.byKey.get(key);
         const scope = port.scope(port.createScope());
         let wrapper;
         try {
@@ -356,7 +318,7 @@ export function createUiRoot(options) {
             generation,
             width: w.width,
             density,
-            source: { identity: (w.source).identity, bind: (w.source).bind, unbind: (w.source).unbind },
+            source: { identity: w.source.identity, bind: w.source.bind, unbind: w.source.unbind },
             scope,
             wrapper,
             entered: false,
@@ -373,7 +335,7 @@ export function createUiRoot(options) {
         const context = freeze({
             theme: w.theme,
             key,
-            index: (w.index).indexOf(key),
+            index: w.index.indexOf(key),
             value: record.value,
             contentVersion: record.contentVersion,
             bindingGeneration: binding.generation,
@@ -388,14 +350,15 @@ export function createUiRoot(options) {
         outstanding++;
         let returned;
         try {
-            returned = (binding.source).bind.call((binding.source).identity, context);
+            returned = binding.source.bind.call(binding.source.identity, context);
         }
         catch (e) {
             outstanding--;
             retire(binding, 'error', w.cleanupErrors);
             return Promise.reject(e);
         }
-        return Promise.resolve(returned).then(value => {
+        return Promise.resolve(returned)
+            .then(value => {
             if (binding.terminal || closed || desired !== w.revision) {
                 retire(binding, 'cancel');
                 fail('UI_STALE');
@@ -416,10 +379,12 @@ export function createUiRoot(options) {
                 contentVersion: binding.version
             });
             return binding;
-        }).catch(e => {
+        })
+            .catch(e => {
             retire(binding, 'error', w.cleanupErrors);
             throw e;
-        }).finally(() => {
+        })
+            .finally(() => {
             outstanding--;
         });
     }
@@ -474,7 +439,16 @@ export function createUiRoot(options) {
             scope.dispose();
             throw cause;
         }
-        const binding = { theme: w.theme, id: name, width, density, scope, wrapper, source: captured, terminal: false };
+        const binding = {
+            theme: w.theme,
+            id: name,
+            width,
+            density,
+            scope,
+            wrapper,
+            source: captured,
+            terminal: false
+        };
         allLeafBindings.add(binding);
         w.leafBindings.set(name, binding);
         const context = freeze({ theme: w.theme, scope: scope.scope, width, density, signal: scope.signal });
@@ -488,7 +462,8 @@ export function createUiRoot(options) {
             retireLeaf(binding, w.cleanupErrors);
             return Promise.reject(cause);
         }
-        return Promise.resolve(returned).then(value => {
+        return Promise.resolve(returned)
+            .then(value => {
             if (binding.terminal || closed || desired !== w.revision) {
                 retireLeaf(binding, w.cleanupErrors);
                 fail('UI_STALE');
@@ -502,15 +477,33 @@ export function createUiRoot(options) {
             binding.height = height;
             binding.measure = fixedLeafMeasurement(width, height, binding.source.revision);
             return binding;
-        }).catch(cause => {
+        })
+            .catch(cause => {
             retireLeaf(binding, w.cleanupErrors);
             throw cause;
-        }).finally(() => { outstandingLeaves--; });
+        })
+            .finally(() => {
+            outstandingLeaves--;
+        });
     }
     function makeWindow(revision) {
-        return { theme, paintOnly: paintThemeOnly && plan !== undefined, cleanupErrors: [], revision, source, index: undefined, plan: undefined, box: undefined,
-            width: 0, height: 0, scroll: 0, round: 0, heights: new Map(heightUpdates),
-            bindings: new Map(), leafBindings: new Map() };
+        return {
+            theme,
+            paintOnly: paintThemeOnly && plan !== undefined,
+            cleanupErrors: [],
+            revision,
+            source,
+            index: undefined,
+            plan: undefined,
+            box: undefined,
+            width: 0,
+            height: 0,
+            scroll: 0,
+            round: 0,
+            heights: new Map(heightUpdates),
+            bindings: new Map(),
+            leafBindings: new Map()
+        };
     }
     function initializeWindow(w) {
         const baseTree = tree, sources = leafContents, widths = new Map();
@@ -534,9 +527,15 @@ export function createUiRoot(options) {
             collectMeasureDirty(baseTree.root, false);
             for (const [name, captured] of sources) {
                 const width = number(widths.get(name), Number.MIN_VALUE, 16384), prior = leafBindings.get(name);
-                if (!force.has(name) && prior !== undefined && !prior.terminal && prior.theme === w.theme && prior.source?.identity === captured.identity
-                    && prior.source.revision === captured.revision && prior.source.prepare === captured.prepare
-                    && prior.width === width && prior.density === density) {
+                if (!force.has(name) &&
+                    prior !== undefined &&
+                    !prior.terminal &&
+                    prior.theme === w.theme &&
+                    prior.source?.identity === captured.identity &&
+                    prior.source.revision === captured.revision &&
+                    prior.source.prepare === captured.prepare &&
+                    prior.width === width &&
+                    prior.density === density) {
                     w.leafBindings.set(name, prior);
                     continue;
                 }
@@ -556,22 +555,43 @@ export function createUiRoot(options) {
         const measures = new Map();
         for (const [name, binding] of w.leafBindings)
             measures.set(name, binding.measure);
-        const layoutDirty = !sameThemeMetrics(committedTheme, w.theme) ? new Map(dirty).set(baseTree.root.id, 'measure') : dirty;
-        const nextPlan = w.paintOnly ? plan : layout(measures.size === 0 ? baseTree : leafMeasuredTree(baseTree, measures), size, density, plan, layoutDirty);
+        const layoutDirty = !sameThemeMetrics(committedTheme, w.theme)
+            ? new Map(dirty).set(baseTree.root.id, 'measure')
+            : dirty;
+        const nextPlan = w.paintOnly
+            ? plan
+            : layout(measures.size === 0 ? baseTree : leafMeasuredTree(baseTree, measures), size, density, plan, layoutDirty);
         check(w.revision);
         const box = nextPlan.boxes.find(b => b.id === listId), width = box?.innerWidth ?? 0, height = box?.innerHeight ?? 0;
         if (box !== undefined && (width <= 0 || height <= 0))
             fail('UI_VALUE_INVALID');
-        const index = w.source === undefined ? undefined : sameThemeMetrics(committedTheme, w.theme) && w.source === committedSource && committedIndex !== undefined
-            && snapshot.boxes.find(b => b.id === listId)?.innerWidth === width && snapshot.density === density
-            ? committedIndex : new UiHeightIndex(w.source.records, width, density, sameThemeMetrics(committedTheme, w.theme) ? committedIndex : undefined);
+        const index = w.source === undefined
+            ? undefined
+            : sameThemeMetrics(committedTheme, w.theme) &&
+                w.source === committedSource &&
+                committedIndex !== undefined &&
+                snapshot.boxes.find(b => b.id === listId)?.innerWidth === width &&
+                snapshot.density === density
+                ? committedIndex
+                : new UiHeightIndex(w.source.records, width, density, sameThemeMetrics(committedTheme, w.theme) ? committedIndex : undefined);
         for (const key of retentions.keys()) {
             const b = bindings.get(key);
-            if (!w.source?.byKey.has(key) || bindingLocked(key) && b !== undefined && (b.theme !== w.theme || w.source?.byKey.get(key)?.contentVersion !== b.version || width !== b.width || density !== b.density))
+            if (!w.source?.byKey.has(key) ||
+                (bindingLocked(key) &&
+                    b !== undefined &&
+                    (b.theme !== w.theme ||
+                        w.source?.byKey.get(key)?.contentVersion !== b.version ||
+                        width !== b.width ||
+                        density !== b.density)))
                 fail('UI_ROW_RETAINED');
         }
-        const scroll = index === undefined ? 0 : explicitScroll !== undefined ? index.clampScroll(explicitScroll, height)
-            : committedIndex === undefined ? 0 : index.preserveAnchor(snapshot.anchor, committedIndex, height);
+        const scroll = index === undefined
+            ? 0
+            : explicitScroll !== undefined
+                ? index.clampScroll(explicitScroll, height)
+                : committedIndex === undefined
+                    ? 0
+                    : index.preserveAnchor(snapshot.anchor, committedIndex, height);
         w.plan = nextPlan;
         w.box = box;
         w.width = width;
@@ -587,7 +607,8 @@ export function createUiRoot(options) {
         });
         const entry = {
             used: false,
-            ...(candidate === undefined ? {}
+            ...(candidate === undefined
+                ? {}
                 : {
                     candidate
                 })
@@ -620,8 +641,14 @@ export function createUiRoot(options) {
         let journal = w.index?.stageHeights([...w.heights.values()]);
         let view = journal ?? w.index;
         if (view !== undefined)
-            w.scroll = revealIntent !== undefined ? revealScroll(view, revealIntent, snapshot.scrollOffset, w.height)
-                : explicitScroll !== undefined ? view.clampScroll(explicitScroll, w.height) : committedIndex === undefined ? view.clampScroll(w.scroll, w.height) : view.preserveAnchor(snapshot.anchor, committedIndex, w.height);
+            w.scroll =
+                revealIntent !== undefined
+                    ? revealScroll(view, revealIntent, snapshot.scrollOffset, w.height)
+                    : explicitScroll !== undefined
+                        ? view.clampScroll(explicitScroll, w.height)
+                        : committedIndex === undefined
+                            ? view.clampScroll(w.scroll, w.height)
+                            : view.preserveAnchor(snapshot.anchor, committedIndex, w.height);
         const keys = view === undefined ? [] : selected(view, w.scroll, w.height);
         const work = [];
         for (const key of keys) {
@@ -633,8 +660,7 @@ export function createUiRoot(options) {
                 continue;
             }
             const promise = makeBinding(w, key);
-            void promise.catch(() => {
-            });
+            void promise.catch(() => { });
             work.push(promise);
             check(revision);
         }
@@ -646,8 +672,14 @@ export function createUiRoot(options) {
         journal = w.index?.stageHeights([...w.heights.values()]);
         view = journal ?? w.index;
         if (view !== undefined)
-            w.scroll = revealIntent !== undefined ? revealScroll(view, revealIntent, snapshot.scrollOffset, w.height)
-                : explicitScroll !== undefined ? view.clampScroll(explicitScroll, w.height) : committedIndex === undefined ? view.clampScroll(w.scroll, w.height) : view.preserveAnchor(snapshot.anchor, committedIndex, w.height);
+            w.scroll =
+                revealIntent !== undefined
+                    ? revealScroll(view, revealIntent, snapshot.scrollOffset, w.height)
+                    : explicitScroll !== undefined
+                        ? view.clampScroll(explicitScroll, w.height)
+                        : committedIndex === undefined
+                            ? view.clampScroll(w.scroll, w.height)
+                            : view.preserveAnchor(snapshot.anchor, committedIndex, w.height);
         const finalKeys = view === undefined ? [] : selected(view, w.scroll, w.height);
         if (finalKeys.some(key => !compatible(w.bindings.get(key), w, key))) {
             if (w.round >= 8) {
@@ -656,132 +688,26 @@ export function createUiRoot(options) {
             }
             return token('pending');
         }
-        const updates = [], nextBindings = new Map(), nextShells = new Map(), freshShells = [], fillScopes = [], rows = [];
-        const available = [...pool, ...[...shells].filter(([key]) => !finalKeys.includes(key)).map(([, s]) => s)];
-        const childWrappers = [];
+        const draft = createUiRootDisplayDraft(pool, shells, finalKeys);
+        const { updates, nextBindings, nextShells, freshShells, fillScopes, rows } = draft;
         try {
-            let priorIndex = -2, priorEnd = 0;
-            for (const key of finalKeys) {
-                const b = w.bindings.get(key), i = (view).indexOf(key), top = i === priorIndex + 1 ? priorEnd : (view).prefix(i), y = top - w.scroll, h = (view).heightAt(i), visible = y + h > 0 && y < w.height;
-                priorIndex = i;
-                priorEnd = top + h;
-                const shell = shells.get(key) ?? available.shift() ?? (() => {
-                    const scope = port.scope(port.createScope());
-                    const item = {
-                        scope,
-                        wrapper: display.createWrapper(scope.scope)
-                    };
-                    freshShells.push(item);
-                    return item;
-                })();
-                nextBindings.set(key, b);
-                nextShells.set(key, shell);
-                childWrappers.push(shell.wrapper);
-                updates.push({
-                    wrapper: shell.wrapper,
-                    x: 0,
-                    y,
-                    visible,
-                    children: [b.wrapper],
-                    touchEnabled: false,
-                    touchChildren: true
-                });
-                updates.push({
-                    wrapper: b.wrapper,
-                    x: 0,
-                    y: 0,
-                    visible,
-                    children: [b.content],
-                    hitArea: {
-                        x: 0,
-                        y: 0,
-                        width: w.width,
-                        height: h
-                    },
-                    touchEnabled: visible,
-                    touchChildren: false
-                });
-                rows.push(freeze({
-                    key,
-                    index: i,
-                    bindingGeneration: b.generation,
-                    contentVersion: b.version,
-                    box: freeze({
-                        x: (w.box).innerX,
-                        y: (w.box).innerY + y,
-                        width: w.width,
-                        height: h
-                    }),
-                    visible
-                }));
-            }
-            const rootChildren = [], paintOrder = new Map();
-            for (const [paintIndex, box] of (w.plan).boxes.entries()) {
-                const node = tree.nodes.get(box.id);
-                if (node.kind === 'leaf' && node.fill !== undefined) {
-                    const scope = port.scope(port.createScope());
-                    fillScopes.push(scope);
-                    const shape = new Sprite();
-                    scope.use(shape);
-                    const color = node.fill;
-                    shape.graphics.beginFill(color.color, color.alpha ?? 1).drawRect(0, 0, box.width, box.height).endFill();
-                    const wrapper = display.createWrapper(scope.scope);
-                    updates.push({
-                        wrapper,
-                        x: box.x,
-                        y: box.y,
-                        children: [shape],
-                        touchEnabled: false,
-                        touchChildren: false
-                    });
-                    rootChildren.push(wrapper);
-                    paintOrder.set(wrapper, paintIndex);
-                }
-            }
-            for (const [paintIndex, box] of (w.plan).boxes.entries()) {
-                const binding = w.leafBindings.get(box.id);
-                if (binding === undefined)
-                    continue;
-                updates.push({ wrapper: binding.wrapper, x: box.innerX, y: box.innerY, children: [binding.content],
-                    hitArea: { x: 0, y: 0, width: box.innerWidth, height: box.innerHeight },
-                    touchEnabled: false, touchChildren: true });
-                rootChildren.push(binding.wrapper);
-                paintOrder.set(binding.wrapper, paintIndex);
-            }
-            if (w.box !== undefined && listWrapper !== undefined) {
-                rootChildren.push(listWrapper);
-                paintOrder.set(listWrapper, (w.plan).boxes.findIndex(box => box.id === listId));
-                updates.push({
-                    wrapper: listWrapper,
-                    x: w.box.innerX,
-                    y: w.box.innerY,
-                    clipRect: {
-                        x: 0,
-                        y: 0,
-                        width: w.width,
-                        height: w.height
-                    },
-                    children: childWrappers,
-                    touchEnabled: false,
-                    touchChildren: true
-                });
-            }
-            updates.push({
-                wrapper: rootWrapper,
-                x: layerOrigin?.x ?? position.x,
-                y: layerOrigin?.y ?? position.y,
-                clipRect: {
-                    x: 0,
-                    y: 0,
-                    width: size.width,
-                    height: size.height
-                },
-                children: rootChildren,
-                visible: layerVisible,
-                touchEnabled: false,
-                touchChildren: layerPointer
+            stageUiRootDisplay(draft, {
+                w,
+                finalKeys,
+                view,
+                shells,
+                port,
+                display,
+                tree,
+                listWrapper,
+                listId,
+                rootWrapper,
+                layerOrigin,
+                position,
+                size,
+                layerVisible,
+                layerPointer
             });
-            rootChildren.sort((a, b) => paintOrder.get(a) - paintOrder.get(b));
             const displayToken = display.prepare(rootWrapper, updates);
             check(revision);
             const nextSnapshot = freeze({
@@ -793,7 +719,7 @@ export function createUiRoot(options) {
                 origin: position,
                 viewport: size,
                 density,
-                boxes: (w.plan).boxes,
+                boxes: w.plan.boxes,
                 rows: freeze(rows),
                 scrollOffset: w.scroll,
                 scrollExtent: view?.totalHeight ?? 0,
@@ -806,7 +732,11 @@ export function createUiRoot(options) {
                 if (nextBindings.get(key) !== b)
                     retiring.push({
                         binding: b,
-                        reason: w.source?.byKey.has(key) ? (w.source.byKey.get(key)).contentVersion === b.version ? 'recycle' : 'replace' : 'delete'
+                        reason: w.source?.byKey.has(key)
+                            ? w.source.byKey.get(key).contentVersion === b.version
+                                ? 'recycle'
+                                : 'replace'
+                            : 'delete'
                     });
             for (const b of w.bindings.values())
                 if (nextBindings.get(b.key) !== b && !retiring.some(r => r.binding === b))
@@ -908,17 +838,24 @@ export function createUiRoot(options) {
                 keyboard?.validate(captured.byKey.keys());
                 check(revision);
                 if (source?.identity === value && source.revision === captured.revision) {
-                    if (source.bind !== captured.bind || source.unbind !== captured.unbind || source.records.length !== captured.records.length || source.records.some((r, i) => {
-                        const other = captured.records[i];
-                        return r.key !== other.key || r.contentVersion !== other.contentVersion || r.estimatedHeight !== other.estimatedHeight || r.value !== other.value;
-                    }))
+                    if (source.bind !== captured.bind ||
+                        source.unbind !== captured.unbind ||
+                        source.records.length !== captured.records.length ||
+                        source.records.some((r, i) => {
+                            const other = captured.records[i];
+                            return (r.key !== other.key ||
+                                r.contentVersion !== other.contentVersion ||
+                                r.estimatedHeight !== other.estimatedHeight ||
+                                r.value !== other.value);
+                        }))
                         fail('UI_SOURCE_REVISION');
                     return;
                 }
                 if (source !== undefined && captured.revision <= source.revision)
                     fail('UI_SOURCE_REVISION');
                 for (const key of retentions.keys())
-                    if (!captured.byKey.has(key) || bindingLocked(key) && captured.byKey.get(key)?.contentVersion !== bindings.get(key)?.version)
+                    if (!captured.byKey.has(key) ||
+                        (bindingLocked(key) && captured.byKey.get(key)?.contentVersion !== bindings.get(key)?.version))
                         fail('UI_ROW_RETAINED');
                 source = captured;
                 revealIntent = undefined;
@@ -944,7 +881,9 @@ export function createUiRoot(options) {
                 const scroll = number(value, -Number.MAX_VALUE, Number.MAX_VALUE);
                 // A scroll to where the list is changes nothing while nothing else waits. After a new source in the same turn it is not
                 // nothing: the list would follow its anchor to another offset, and this says where it is to be instead.
-                if (revealIntent === undefined && (explicitScroll === scroll || explicitScroll === undefined && snapshot.scrollOffset === scroll && desired === committed))
+                if (revealIntent === undefined &&
+                    (explicitScroll === scroll ||
+                        (explicitScroll === undefined && snapshot.scrollOffset === scroll && desired === committed)))
                     return;
                 revealIntent = undefined;
                 explicitScroll = scroll;
@@ -959,7 +898,7 @@ export function createUiRoot(options) {
                     if (seen.has(key) || !source?.byKey.has(key))
                         fail('UI_VALUE_INVALID');
                     seen.add(key);
-                    if ((source.byKey.get(key)).contentVersion === contentVersion)
+                    if (source.byKey.get(key).contentVersion === contentVersion)
                         accepted.push({
                             key,
                             height,
@@ -980,8 +919,12 @@ export function createUiRoot(options) {
                 fail('UI_KEYBOARD_UNAVAILABLE');
             keyboard.focus(key, options);
         },
-        getFocus() { return keyboard?.getFocus() ?? freeze({ key: undefined, focusVisible: false }); },
-        retain(key, reason) { return retainRow(key, reason); },
+        getFocus() {
+            return keyboard?.getFocus() ?? freeze({ key: undefined, focusVisible: false });
+        },
+        retain(key, reason) {
+            return retainRow(key, reason);
+        },
         snapshot() {
             return api.snapshot();
         }
@@ -1020,20 +963,37 @@ export function createUiRoot(options) {
             admit('tree', () => {
                 const revision = desired, captured = captureUiTree(value), t = applyUiTheme(captured.tree, captured.themes, theme);
                 check(revision);
-                if (t.nodes.size !== tree.nodes.size || [...t.nodes].some(([key, node]) => tree.nodes.get(key)?.kind !== node.kind))
+                if (t.nodes.size !== tree.nodes.size ||
+                    [...t.nodes].some(([key, node]) => tree.nodes.get(key)?.kind !== node.kind))
                     fail('UI_TREE_SHAPE');
                 const list = listId === undefined ? undefined : t.nodes.get(listId), s = list === undefined ? undefined : captureSource(list.source);
                 keyboard?.validate(s?.byKey.keys() ?? []);
-                if (s !== undefined && source !== undefined && s.revision <= source.revision && (s.revision !== source.revision || s.identity !== source.identity || s.bind !== source.bind || s.unbind !== source.unbind || s.records.length !== source.records.length || s.records.some((record, index) => { const old = (source).records[index]; return record.key !== old.key || record.contentVersion !== old.contentVersion || record.estimatedHeight !== old.estimatedHeight || record.value !== old.value; })))
+                if (s !== undefined &&
+                    source !== undefined &&
+                    s.revision <= source.revision &&
+                    (s.revision !== source.revision ||
+                        s.identity !== source.identity ||
+                        s.bind !== source.bind ||
+                        s.unbind !== source.unbind ||
+                        s.records.length !== source.records.length ||
+                        s.records.some((record, index) => {
+                            const old = source.records[index];
+                            return (record.key !== old.key ||
+                                record.contentVersion !== old.contentVersion ||
+                                record.estimatedHeight !== old.estimatedHeight ||
+                                record.value !== old.value);
+                        })))
                     fail('UI_SOURCE_REVISION');
                 check(revision);
                 for (const key of retentions.keys())
-                    if (!s?.byKey.has(key) || bindingLocked(key) && s?.byKey.get(key)?.contentVersion !== bindings.get(key)?.version)
+                    if (!s?.byKey.has(key) ||
+                        (bindingLocked(key) && s?.byKey.get(key)?.contentVersion !== bindings.get(key)?.version))
                         fail('UI_ROW_RETAINED');
                 for (const [name, content] of captured.contents) {
                     const previous = leafContents.get(name);
-                    if (previous?.identity === content.identity && (content.revision < previous.revision
-                        || content.revision === previous.revision && content.prepare !== previous.prepare))
+                    if (previous?.identity === content.identity &&
+                        (content.revision < previous.revision ||
+                            (content.revision === previous.revision && content.prepare !== previous.prepare)))
                         fail('UI_SOURCE_REVISION');
                 }
                 authoredTree = withoutSources(captured.tree);
@@ -1133,8 +1093,7 @@ export function createUiRoot(options) {
                 clearCandidate(c);
             busy = true;
             const revision = desired;
-            let rejectCancellation = () => {
-            };
+            let rejectCancellation = () => { };
             const canceled = new Promise((_, reject) => {
                 rejectCancellation = reject;
             });
@@ -1173,7 +1132,12 @@ export function createUiRoot(options) {
             if (busy || committing)
                 fail('UI_BUSY');
             display.assertStage();
-            if (entry.retired === true || entry.candidate !== undefined && !candidates.has(entry.candidate) || preparation.desiredRevision !== desired || preparation.baseCommittedRevision !== committed || entry.candidate !== undefined && (entry.candidate.inputGeneration !== inputGeneration || entry.candidate.layerGeneration !== layerGeneration)) {
+            if (entry.retired === true ||
+                (entry.candidate !== undefined && !candidates.has(entry.candidate)) ||
+                preparation.desiredRevision !== desired ||
+                preparation.baseCommittedRevision !== committed ||
+                (entry.candidate !== undefined &&
+                    (entry.candidate.inputGeneration !== inputGeneration || entry.candidate.layerGeneration !== layerGeneration))) {
                 entry.used = true;
                 if (entry.candidate !== undefined)
                     clearCandidate(entry.candidate);
@@ -1189,7 +1153,11 @@ export function createUiRoot(options) {
             // All child arrays, pool membership, retire lists and the snapshot already exist.
             // Runtime publication and index/reference assignment contain no user callbacks.
             try {
-                const keyboardRows = c.rows.map(row => ({ key: row.key, content: c.bindings.get(row.key).content, visible: row.visible }));
+                const keyboardRows = c.rows.map(row => ({
+                    key: row.key,
+                    content: c.bindings.get(row.key).content,
+                    visible: row.visible
+                }));
                 const restoreFocus = keyboard?.before(keyboardRows);
                 // Cancellation callbacks may change or close the UI. Never publish their obsolete proposal.
                 if (closed || desired !== preparation.desiredRevision || committed !== preparation.baseCommittedRevision) {
@@ -1365,7 +1333,13 @@ export function createUiRoot(options) {
         if (committing)
             fail('UI_BUSY');
         const p = origin({ x: value.x, y: value.y }, snapshot.viewport);
-        display.presentRoot(rootWrapper, { x: p.x, y: p.y, visible: value.visible, interactive: value.pointerEnabled, ...(value.index === undefined ? {} : { index: value.index }) });
+        display.presentRoot(rootWrapper, {
+            x: p.x,
+            y: p.y,
+            visible: value.visible,
+            interactive: value.pointerEnabled,
+            ...(value.index === undefined ? {} : { index: value.index })
+        });
         layerVisible = value.visible;
         layerPointer = value.pointerEnabled;
         layerKeyboard = value.keyboardEnabled;
@@ -1440,7 +1414,8 @@ export function createUiRoot(options) {
         });
     }
     try {
-        const placeholder = display.prepare(rootWrapper, [{
+        const placeholder = display.prepare(rootWrapper, [
+            {
                 wrapper: rootWrapper,
                 x: position.x,
                 y: position.y,
@@ -1465,10 +1440,25 @@ export function createUiRoot(options) {
         owner.assertOpen();
         closeEditorRoot = registerUiRoot(api, options.engine, freeze({
             wrapper: rootWrapper,
-            state: () => closed ? 'closed' : 'open',
+            state: () => (closed ? 'closed' : 'open'),
             snapshot: () => api.snapshot(),
-            layerState: () => freeze({ snapshot, ready: !closed && !busy && !committing && candidates.size === 0 && desired === committed && committed > 0, mutable: !closed && !committing, lifetimeOpen: !closed && !owner.signal.aborted && !port.terminal(), visible: layerVisible, pointerEnabled: layerPointer, keyboardEnabled: layerKeyboard, input: inputIdentity, keyboard: keyboardIdentity }),
-            presentLayer, releaseLayer, layerOwnership: (active) => { layerOwned = active; }, anchor,
+            layerState: () => freeze({
+                snapshot,
+                ready: !closed && !busy && !committing && candidates.size === 0 && desired === committed && committed > 0,
+                mutable: !closed && !committing,
+                lifetimeOpen: !closed && !owner.signal.aborted && !port.terminal(),
+                visible: layerVisible,
+                pointerEnabled: layerPointer,
+                keyboardEnabled: layerKeyboard,
+                input: inputIdentity,
+                keyboard: keyboardIdentity
+            }),
+            presentLayer,
+            releaseLayer,
+            layerOwnership: (active) => {
+                layerOwned = active;
+            },
+            anchor,
             lookup(target) {
                 if (closed)
                     return undefined;
@@ -1479,10 +1469,20 @@ export function createUiRoot(options) {
                 if (target.listId !== listId)
                     return undefined;
                 const row = snapshot.rows.find(row => row.key === target.key), binding = bindings.get(target.key);
-                return row === undefined || binding?.content === undefined ? undefined : freeze({ content: binding.content, visible: row.visible, bindingGeneration: row.bindingGeneration, contentVersion: row.contentVersion });
+                return row === undefined || binding?.content === undefined
+                    ? undefined
+                    : freeze({
+                        content: binding.content,
+                        visible: row.visible,
+                        bindingGeneration: row.bindingGeneration,
+                        contentVersion: row.contentVersion
+                    });
             },
-            retain(id, key) { if (id !== listId)
-                fail('UI_UNKNOWN_LIST'); return retainRow(key, 'focus', true); },
+            retain(id, key) {
+                if (id !== listId)
+                    fail('UI_UNKNOWN_LIST');
+                return retainRow(key, 'focus', true);
+            }
         }));
         return freeze(api);
     }
@@ -1490,8 +1490,7 @@ export function createUiRoot(options) {
         try {
             api.dispose();
         }
-        catch {
-        }
+        catch { }
         throw e;
     }
 }

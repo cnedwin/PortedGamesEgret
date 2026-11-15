@@ -10,20 +10,86 @@ export function isGLFailure(value) {
     return typeof value === 'object' && value !== null && failures.has(value);
 }
 const METHODS = [
-    'getContextAttributes', 'getError', 'isContextLost', 'getParameter', 'getShaderPrecisionFormat',
-    'getFramebufferAttachmentParameter', 'checkFramebufferStatus', 'bindFramebuffer', 'bindBuffer',
-    'bufferData', 'bufferSubData', 'getBufferSubData', 'readPixels', 'shaderSource', 'attachShader',
-    'getShaderParameter', 'getProgramParameter', 'getShaderInfoLog', 'getProgramInfoLog',
-    'getUniformBlockIndex', 'getActiveUniformBlockParameter', 'getUniformIndices', 'getActiveUniforms',
-    'getUniformLocation', 'useProgram', 'clientWaitSync', 'activeTexture', 'bindTexture', 'bindRenderbuffer',
-    'bindVertexArray', 'bindSampler', 'bindBufferRange', 'enable', 'disable', 'colorMask', 'depthMask', 'depthFunc', 'frontFace',
-    'clearDepth', 'clearColor', 'clear', 'viewport', 'scissor', 'depthRange', 'blendEquationSeparate', 'blendFuncSeparate',
-    'pixelStorei', 'texParameteri', 'texStorage2D', 'texSubImage2D', 'renderbufferStorage', 'framebufferTexture2D',
-    'framebufferRenderbuffer', 'drawBuffers', 'readBuffer', 'compileShader', 'linkProgram', 'detachShader',
-    'uniformBlockBinding', 'uniform1i', 'uniform1f', 'uniform2f', 'enableVertexAttribArray',
-    'disableVertexAttribArray', 'vertexAttribPointer', 'vertexAttribDivisor', 'drawArrays', 'drawElements', 'flush',
+    'getContextAttributes',
+    'getError',
+    'isContextLost',
+    'getParameter',
+    'getShaderPrecisionFormat',
+    'getFramebufferAttachmentParameter',
+    'checkFramebufferStatus',
+    'bindFramebuffer',
+    'bindBuffer',
+    'bufferData',
+    'bufferSubData',
+    'getBufferSubData',
+    'readPixels',
+    'shaderSource',
+    'attachShader',
+    'getShaderParameter',
+    'getProgramParameter',
+    'getShaderInfoLog',
+    'getProgramInfoLog',
+    'getUniformBlockIndex',
+    'getActiveUniformBlockParameter',
+    'getUniformIndices',
+    'getActiveUniforms',
+    'getUniformLocation',
+    'useProgram',
+    'clientWaitSync',
+    'activeTexture',
+    'bindTexture',
+    'bindRenderbuffer',
+    'bindVertexArray',
+    'bindSampler',
+    'bindBufferRange',
+    'enable',
+    'disable',
+    'colorMask',
+    'depthMask',
+    'depthFunc',
+    'frontFace',
+    'clearDepth',
+    'clearColor',
+    'clear',
+    'viewport',
+    'scissor',
+    'depthRange',
+    'blendEquationSeparate',
+    'blendFuncSeparate',
+    'pixelStorei',
+    'texParameteri',
+    'texStorage2D',
+    'texSubImage2D',
+    'renderbufferStorage',
+    'framebufferTexture2D',
+    'framebufferRenderbuffer',
+    'drawBuffers',
+    'readBuffer',
+    'compileShader',
+    'linkProgram',
+    'detachShader',
+    'uniformBlockBinding',
+    'uniform1i',
+    'uniform1f',
+    'uniform2f',
+    'enableVertexAttribArray',
+    'disableVertexAttribArray',
+    'vertexAttribPointer',
+    'vertexAttribDivisor',
+    'drawArrays',
+    'drawElements',
+    'flush'
 ];
-const KINDS = ['Buffer', 'Texture', 'Renderbuffer', 'Framebuffer', 'Shader', 'Program', 'VertexArray', 'Sync'];
+const KINDS = [
+    'Buffer',
+    'Texture',
+    'Renderbuffer',
+    'Framebuffer',
+    'Shader',
+    'Program',
+    'VertexArray',
+    'Sync'
+];
 /** One context generation owns every returned native object before another native call. */
 export class GLNativeSession {
     context;
@@ -46,7 +112,10 @@ export class GLNativeSession {
         this.timing = timing;
         const captured = Object.create(null);
         // Capture only the finite methods used by this executor. Never enumerate a native context.
-        for (const name of [...METHODS, ...KINDS.flatMap(kind => [kind === 'Sync' ? 'fenceSync' : 'create' + kind, 'delete' + kind])]) {
+        for (const name of [
+            ...METHODS,
+            ...KINDS.flatMap(kind => [kind === 'Sync' ? 'fenceSync' : 'create' + kind, 'delete' + kind])
+        ]) {
             const candidate = context[name];
             gate();
             if (typeof candidate !== 'function')
@@ -54,56 +123,140 @@ export class GLNativeSession {
             const raw = candidate.bind(context);
             this.calls.set(name, raw);
             // Specialize once so ordinary native draws and binds never read the clock.
-            const call = timing && name === 'texSubImage2D' ? (...args) => {
-                const start = this.recordOwners ? this.startTiming() : undefined;
-                try {
-                    return raw(...args);
+            const call = timing && name === 'texSubImage2D'
+                ? (...args) => {
+                    const start = this.recordOwners ? this.startTiming() : undefined;
+                    try {
+                        return raw(...args);
+                    }
+                    finally {
+                        this.finishTiming('texture-upload', start);
+                    }
                 }
-                finally {
-                    this.finishTiming('texture-upload', start);
-                }
-            } : raw;
-            Object.defineProperty(captured, name, { value: (...args) => {
+                : raw;
+            Object.defineProperty(captured, name, {
+                value: (...args) => {
                     gate();
                     const value = call(...args);
                     // Observe the real page write before the existing post-call gate can throw.
                     if (name === 'texSubImage2D' && this.diagnostics) {
                         const state = this.diagnostics, bytes = args[4] * args[5] * 4;
-                        if (state.totals.pageWriteCalls === Number.MAX_SAFE_INTEGER || bytes > Number.MAX_SAFE_INTEGER - state.totals.pageWriteBytes)
+                        if (state.totals.pageWriteCalls === Number.MAX_SAFE_INTEGER ||
+                            bytes > Number.MAX_SAFE_INTEGER - state.totals.pageWriteBytes)
                             state.saturated = true;
                         state.totals.pageWriteCalls = Math.min(Number.MAX_SAFE_INTEGER, state.totals.pageWriteCalls + 1);
                         state.totals.pageWriteBytes = Math.min(Number.MAX_SAFE_INTEGER, state.totals.pageWriteBytes + bytes);
                     }
                     gate();
                     return value;
-                } });
+                }
+            });
         }
         // Constants are fixed WebGL2 specification tokens, independent of mutable context properties.
         const constants = {
-            NO_ERROR: 0, OUT_OF_MEMORY: 1285, CONTEXT_LOST_WEBGL: 37442,
-            ARRAY_BUFFER: 34962, ELEMENT_ARRAY_BUFFER: 34963, UNIFORM_BUFFER: 35345, PIXEL_PACK_BUFFER: 35051, PIXEL_UNPACK_BUFFER: 35052,
-            DYNAMIC_DRAW: 35048, STREAM_READ: 35041, TEXTURE_2D: 3553, TEXTURE0: 33984, TEXTURE1: 33985, TEXTURE_MIN_FILTER: 10241, TEXTURE_MAG_FILTER: 10240,
-            TEXTURE_WRAP_S: 10242, TEXTURE_WRAP_T: 10243, TEXTURE_BASE_LEVEL: 33084, TEXTURE_MAX_LEVEL: 33085,
-            NEAREST: 9728, LINEAR: 9729, CLAMP_TO_EDGE: 33071, RGBA: 6408, RGBA8: 32856, SRGB8_ALPHA8: 35907, SRGB: 35904,
-            UNSIGNED_NORMALIZED: 35863, UNSIGNED_BYTE: 5121, UNSIGNED_INT: 5125, FLOAT: 5126,
-            FRAMEBUFFER: 36160, DRAW_FRAMEBUFFER: 36009, READ_FRAMEBUFFER: 36008, RENDERBUFFER: 36161, FRAMEBUFFER_COMPLETE: 36053,
-            COLOR_ATTACHMENT0: 36064, DEPTH_ATTACHMENT: 36096, BACK: 1029, FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING: 33296,
-            FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE: 33297, FRAMEBUFFER_ATTACHMENT_RED_SIZE: 33298, FRAMEBUFFER_ATTACHMENT_GREEN_SIZE: 33299,
-            FRAMEBUFFER_ATTACHMENT_BLUE_SIZE: 33300, FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE: 33301, DEPTH_COMPONENT32F: 36012,
-            COLOR_BUFFER_BIT: 16384, DEPTH_BUFFER_BIT: 256, VERTEX_SHADER: 35633, FRAGMENT_SHADER: 35632, COMPILE_STATUS: 35713, LINK_STATUS: 35714, HIGH_FLOAT: 36338,
-            MAX_TEXTURE_SIZE: 3379, MAX_RENDERBUFFER_SIZE: 34024, MAX_VIEWPORT_DIMS: 3386, MAX_VERTEX_ATTRIBS: 34921,
-            MAX_UNIFORM_BLOCK_SIZE: 35376, UNIFORM_BUFFER_OFFSET_ALIGNMENT: 35380, MAX_UNIFORM_BUFFER_BINDINGS: 35375,
-            MAX_VERTEX_UNIFORM_BLOCKS: 35371, MAX_FRAGMENT_UNIFORM_BLOCKS: 35373, MAX_TEXTURE_IMAGE_UNITS: 34930,
-            UNIFORM_BLOCK_DATA_SIZE: 35392, UNIFORM_OFFSET: 35387, INVALID_INDEX: 4294967295,
-            PACK_ALIGNMENT: 3333, PACK_ROW_LENGTH: 3330, PACK_SKIP_ROWS: 3331, PACK_SKIP_PIXELS: 3332,
-            UNPACK_ALIGNMENT: 3317, UNPACK_ROW_LENGTH: 3314, UNPACK_SKIP_ROWS: 3315, UNPACK_SKIP_PIXELS: 3316,
-            UNPACK_IMAGE_HEIGHT: 32878, UNPACK_SKIP_IMAGES: 32877, UNPACK_FLIP_Y_WEBGL: 37440,
-            UNPACK_PREMULTIPLY_ALPHA_WEBGL: 37441, UNPACK_COLORSPACE_CONVERSION_WEBGL: 37443, NONE: 0,
-            BLEND: 3042, DEPTH_TEST: 2929, STENCIL_TEST: 2960, SCISSOR_TEST: 3089, CULL_FACE: 2884, DITHER: 3024,
-            RASTERIZER_DISCARD: 35977, SAMPLE_ALPHA_TO_COVERAGE: 32926, SAMPLE_COVERAGE: 32928, POLYGON_OFFSET_FILL: 32823,
-            FUNC_ADD: 32774, ONE: 1, ZERO: 0, ONE_MINUS_SRC_ALPHA: 771, ONE_MINUS_SRC_COLOR: 769, DST_COLOR: 774,
-            GREATER: 516, CCW: 2305, TRIANGLES: 4, SYNC_GPU_COMMANDS_COMPLETE: 37143, ALREADY_SIGNALED: 37146, TIMEOUT_EXPIRED: 37147,
-            CONDITION_SATISFIED: 37148, WAIT_FAILED: 37149,
+            NO_ERROR: 0,
+            OUT_OF_MEMORY: 1285,
+            CONTEXT_LOST_WEBGL: 37442,
+            ARRAY_BUFFER: 34962,
+            ELEMENT_ARRAY_BUFFER: 34963,
+            UNIFORM_BUFFER: 35345,
+            PIXEL_PACK_BUFFER: 35051,
+            PIXEL_UNPACK_BUFFER: 35052,
+            DYNAMIC_DRAW: 35048,
+            STREAM_READ: 35041,
+            TEXTURE_2D: 3553,
+            TEXTURE0: 33984,
+            TEXTURE1: 33985,
+            TEXTURE_MIN_FILTER: 10241,
+            TEXTURE_MAG_FILTER: 10240,
+            TEXTURE_WRAP_S: 10242,
+            TEXTURE_WRAP_T: 10243,
+            TEXTURE_BASE_LEVEL: 33084,
+            TEXTURE_MAX_LEVEL: 33085,
+            NEAREST: 9728,
+            LINEAR: 9729,
+            CLAMP_TO_EDGE: 33071,
+            RGBA: 6408,
+            RGBA8: 32856,
+            SRGB8_ALPHA8: 35907,
+            SRGB: 35904,
+            UNSIGNED_NORMALIZED: 35863,
+            UNSIGNED_BYTE: 5121,
+            UNSIGNED_INT: 5125,
+            FLOAT: 5126,
+            FRAMEBUFFER: 36160,
+            DRAW_FRAMEBUFFER: 36009,
+            READ_FRAMEBUFFER: 36008,
+            RENDERBUFFER: 36161,
+            FRAMEBUFFER_COMPLETE: 36053,
+            COLOR_ATTACHMENT0: 36064,
+            DEPTH_ATTACHMENT: 36096,
+            BACK: 1029,
+            FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING: 33296,
+            FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE: 33297,
+            FRAMEBUFFER_ATTACHMENT_RED_SIZE: 33298,
+            FRAMEBUFFER_ATTACHMENT_GREEN_SIZE: 33299,
+            FRAMEBUFFER_ATTACHMENT_BLUE_SIZE: 33300,
+            FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE: 33301,
+            DEPTH_COMPONENT32F: 36012,
+            COLOR_BUFFER_BIT: 16384,
+            DEPTH_BUFFER_BIT: 256,
+            VERTEX_SHADER: 35633,
+            FRAGMENT_SHADER: 35632,
+            COMPILE_STATUS: 35713,
+            LINK_STATUS: 35714,
+            HIGH_FLOAT: 36338,
+            MAX_TEXTURE_SIZE: 3379,
+            MAX_RENDERBUFFER_SIZE: 34024,
+            MAX_VIEWPORT_DIMS: 3386,
+            MAX_VERTEX_ATTRIBS: 34921,
+            MAX_UNIFORM_BLOCK_SIZE: 35376,
+            UNIFORM_BUFFER_OFFSET_ALIGNMENT: 35380,
+            MAX_UNIFORM_BUFFER_BINDINGS: 35375,
+            MAX_VERTEX_UNIFORM_BLOCKS: 35371,
+            MAX_FRAGMENT_UNIFORM_BLOCKS: 35373,
+            MAX_TEXTURE_IMAGE_UNITS: 34930,
+            UNIFORM_BLOCK_DATA_SIZE: 35392,
+            UNIFORM_OFFSET: 35387,
+            INVALID_INDEX: 4294967295,
+            PACK_ALIGNMENT: 3333,
+            PACK_ROW_LENGTH: 3330,
+            PACK_SKIP_ROWS: 3331,
+            PACK_SKIP_PIXELS: 3332,
+            UNPACK_ALIGNMENT: 3317,
+            UNPACK_ROW_LENGTH: 3314,
+            UNPACK_SKIP_ROWS: 3315,
+            UNPACK_SKIP_PIXELS: 3316,
+            UNPACK_IMAGE_HEIGHT: 32878,
+            UNPACK_SKIP_IMAGES: 32877,
+            UNPACK_FLIP_Y_WEBGL: 37440,
+            UNPACK_PREMULTIPLY_ALPHA_WEBGL: 37441,
+            UNPACK_COLORSPACE_CONVERSION_WEBGL: 37443,
+            NONE: 0,
+            BLEND: 3042,
+            DEPTH_TEST: 2929,
+            STENCIL_TEST: 2960,
+            SCISSOR_TEST: 3089,
+            CULL_FACE: 2884,
+            DITHER: 3024,
+            RASTERIZER_DISCARD: 35977,
+            SAMPLE_ALPHA_TO_COVERAGE: 32926,
+            SAMPLE_COVERAGE: 32928,
+            POLYGON_OFFSET_FILL: 32823,
+            FUNC_ADD: 32774,
+            ONE: 1,
+            ZERO: 0,
+            ONE_MINUS_SRC_ALPHA: 771,
+            ONE_MINUS_SRC_COLOR: 769,
+            DST_COLOR: 774,
+            GREATER: 516,
+            CCW: 2305,
+            TRIANGLES: 4,
+            SYNC_GPU_COMMANDS_COMPLETE: 37143,
+            ALREADY_SIGNALED: 37146,
+            TIMEOUT_EXPIRED: 37147,
+            CONDITION_SATISFIED: 37148,
+            WAIT_FAILED: 37149
         };
         Object.assign(captured, constants);
         this.gl = captured;
@@ -152,7 +305,14 @@ export class GLNativeSession {
     }
     create(kind, bytes = 0, parameter, page) {
         this.gate();
-        const owner = { kind, bytes, value: undefined, outcome: 'owned', accounting: 'native', page: page !== undefined };
+        const owner = {
+            kind,
+            bytes,
+            value: undefined,
+            outcome: 'owned',
+            accounting: 'native',
+            page: page !== undefined
+        };
         // The slot exists before the native call; registration cannot lose a returned object.
         this.owners.add(owner);
         this.recordOwners?.push(owner);
@@ -268,7 +428,10 @@ export class GLNativeSession {
     }
     program(vertex, fragment) {
         const gl = this.gl, v = this.create('Shader', 0, gl.VERTEX_SHADER), f = this.create('Shader', 0, gl.FRAGMENT_SHADER);
-        for (const [owner, source] of [[v, vertex], [f, fragment]]) {
+        for (const [owner, source] of [
+            [v, vertex],
+            [f, fragment]
+        ]) {
             const shader = owner.value;
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
@@ -290,7 +453,8 @@ export class GLNativeSession {
     }
     block(program, name, members, bytes, binding = 0) {
         const gl = this.gl, index = gl.getUniformBlockIndex(program, name);
-        if (index === gl.INVALID_INDEX || gl.getActiveUniformBlockParameter(program, index, gl.UNIFORM_BLOCK_DATA_SIZE) !== bytes)
+        if (index === gl.INVALID_INDEX ||
+            gl.getActiveUniformBlockParameter(program, index, gl.UNIFORM_BLOCK_DATA_SIZE) !== bytes)
             throw glFailure('WEBGL2_CONTEXT_LIMIT');
         const indices = gl.getUniformIndices(program, [...members]);
         if (!indices || indices.some(value => value === gl.INVALID_INDEX))
@@ -319,7 +483,7 @@ export class GLNativeSession {
         }
         this.attachment(true);
         if (!qualified)
-            this.qualifiedDepthTargets.set(color, qualified = new WeakSet());
+            this.qualifiedDepthTargets.set(color, (qualified = new WeakSet()));
         qualified.add(depth);
     }
     attachment(working) {
@@ -329,8 +493,10 @@ export class GLNativeSession {
             for (const [name, expected] of [
                 [gl.FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, working ? gl.SRGB : gl.LINEAR],
                 [gl.FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, gl.UNSIGNED_NORMALIZED],
-                [gl.FRAMEBUFFER_ATTACHMENT_RED_SIZE, 8], [gl.FRAMEBUFFER_ATTACHMENT_GREEN_SIZE, 8],
-                [gl.FRAMEBUFFER_ATTACHMENT_BLUE_SIZE, 8], [gl.FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, 8],
+                [gl.FRAMEBUFFER_ATTACHMENT_RED_SIZE, 8],
+                [gl.FRAMEBUFFER_ATTACHMENT_GREEN_SIZE, 8],
+                [gl.FRAMEBUFFER_ATTACHMENT_BLUE_SIZE, 8],
+                [gl.FRAMEBUFFER_ATTACHMENT_ALPHA_SIZE, 8]
             ])
                 if (gl.getFramebufferAttachmentParameter(gl.FRAMEBUFFER, attachment, name) !== expected)
                     throw glFailure('WEBGL2_FORMAT_UNSUPPORTED');
@@ -344,7 +510,18 @@ export class GLNativeSession {
     }
     reset(width, height) {
         const gl = this.gl;
-        for (const cap of [gl.BLEND, gl.DEPTH_TEST, gl.STENCIL_TEST, gl.SCISSOR_TEST, gl.CULL_FACE, gl.DITHER, gl.RASTERIZER_DISCARD, gl.SAMPLE_ALPHA_TO_COVERAGE, gl.SAMPLE_COVERAGE, gl.POLYGON_OFFSET_FILL])
+        for (const cap of [
+            gl.BLEND,
+            gl.DEPTH_TEST,
+            gl.STENCIL_TEST,
+            gl.SCISSOR_TEST,
+            gl.CULL_FACE,
+            gl.DITHER,
+            gl.RASTERIZER_DISCARD,
+            gl.SAMPLE_ALPHA_TO_COVERAGE,
+            gl.SAMPLE_COVERAGE,
+            gl.POLYGON_OFFSET_FILL
+        ])
             gl.disable(cap);
         gl.colorMask(true, true, true, true);
         gl.depthMask(false);
@@ -356,7 +533,16 @@ export class GLNativeSession {
         gl.bindSampler(0, null);
         gl.bindBuffer(gl.PIXEL_UNPACK_BUFFER, null);
         gl.bindBuffer(gl.PIXEL_PACK_BUFFER, null);
-        for (const name of [gl.UNPACK_ROW_LENGTH, gl.UNPACK_SKIP_ROWS, gl.UNPACK_SKIP_PIXELS, gl.UNPACK_IMAGE_HEIGHT, gl.UNPACK_SKIP_IMAGES, gl.PACK_ROW_LENGTH, gl.PACK_SKIP_ROWS, gl.PACK_SKIP_PIXELS])
+        for (const name of [
+            gl.UNPACK_ROW_LENGTH,
+            gl.UNPACK_SKIP_ROWS,
+            gl.UNPACK_SKIP_PIXELS,
+            gl.UNPACK_IMAGE_HEIGHT,
+            gl.UNPACK_SKIP_IMAGES,
+            gl.PACK_ROW_LENGTH,
+            gl.PACK_SKIP_ROWS,
+            gl.PACK_SKIP_PIXELS
+        ])
             gl.pixelStorei(name, 0);
         gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
         gl.pixelStorei(gl.PACK_ALIGNMENT, 1);
@@ -368,7 +554,14 @@ export class GLNativeSession {
         const gl = this.gl;
         gl.bindTexture(gl.TEXTURE_2D, owner.value);
         gl.texStorage2D(gl.TEXTURE_2D, 1, working ? gl.SRGB8_ALPHA8 : gl.RGBA8, width, height);
-        for (const [name, value] of [[gl.TEXTURE_MIN_FILTER, gl.NEAREST], [gl.TEXTURE_MAG_FILTER, gl.NEAREST], [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE], [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE], [gl.TEXTURE_BASE_LEVEL, 0], [gl.TEXTURE_MAX_LEVEL, 0]])
+        for (const [name, value] of [
+            [gl.TEXTURE_MIN_FILTER, gl.NEAREST],
+            [gl.TEXTURE_MAG_FILTER, gl.NEAREST],
+            [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],
+            [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE],
+            [gl.TEXTURE_BASE_LEVEL, 0],
+            [gl.TEXTURE_MAX_LEVEL, 0]
+        ])
             gl.texParameteri(gl.TEXTURE_2D, name, value);
     }
 }

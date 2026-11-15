@@ -12,22 +12,47 @@ export function createBufferPoolFacade(owner) {
     return {
         plan(requests) {
             const plan = owner.plan(requests.map(request => ({ ...request, kind: 'buffer' })));
-            const result = Object.freeze({ session: plan.session, revision: plan.revision,
+            const result = Object.freeze({
+                session: plan.session,
+                revision: plan.revision,
                 requests: Object.freeze(requests.map(request => Object.freeze({ id: request.id, role: request.role, usage: request.usage, byteLength: request.byteLength }))),
-                matches: plan.matches, leases: plan.leases, victims: plan.victims });
+                matches: plan.matches,
+                leases: plan.leases,
+                victims: plan.victims
+            });
             weakSet(plans, result, plan);
             return result;
         },
-        claim(plan) { const actual = weakGet(plans, plan); if (!actual)
-            throw new TypeError('Foreign buffer plan'); return owner.claim(actual); },
-        registerCreated(request, resource) { return owner.registerCreated({ ...request, kind: 'buffer' }, resource); },
-        reserveReturns(leases) { return owner.reserveReturns(leases); },
-        publishReturns(plan) { return owner.publishReturns(plan); },
-        cancelReturns(plan) { return owner.cancelReturns(plan); },
-        detach(handle) { owner.detach(handle); },
-        destroyed(handle, succeeded) { owner.destroyed(handle, succeeded); },
-        invalidate() { owner.invalidate(); },
-        detachIdleForClose() { return owner.detachIdleForClose(); },
+        claim(plan) {
+            const actual = weakGet(plans, plan);
+            if (!actual)
+                throw new TypeError('Foreign buffer plan');
+            return owner.claim(actual);
+        },
+        registerCreated(request, resource) {
+            return owner.registerCreated({ ...request, kind: 'buffer' }, resource);
+        },
+        reserveReturns(leases) {
+            return owner.reserveReturns(leases);
+        },
+        publishReturns(plan) {
+            return owner.publishReturns(plan);
+        },
+        cancelReturns(plan) {
+            return owner.cancelReturns(plan);
+        },
+        detach(handle) {
+            owner.detach(handle);
+        },
+        destroyed(handle, succeeded) {
+            owner.destroyed(handle, succeeded);
+        },
+        invalidate() {
+            owner.invalidate();
+        },
+        detachIdleForClose() {
+            return owner.detachIdleForClose();
+        }
     };
 }
 //# sourceMappingURL=webgpuBufferPool.js.map

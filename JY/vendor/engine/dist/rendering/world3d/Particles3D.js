@@ -52,7 +52,9 @@ export class ParticleEmitter3D extends InstancedMesh3D {
     constructor(options = {}) {
         const capacity = requireCount3D(options.capacity ?? 1000, 'capacity', PARTICLES3D_LIMITS.maxParticles);
         const material = createSpriteMaterial3D({
-            ...(options.map ? { map: options.map } : {}), blending: options.blending ?? 'additive', depthWrite: false,
+            ...(options.map ? { map: options.map } : {}),
+            blending: options.blending ?? 'additive',
+            depthWrite: false
         });
         super(createQuadGeometry3D(), material, capacity, 4);
         this.name = 'particles';
@@ -91,12 +93,16 @@ export class ParticleEmitter3D extends InstancedMesh3D {
         this.#random = this.#seed;
     }
     /** Number of live particles. */
-    get aliveCount() { return this.#alive; }
+    get aliveCount() {
+        return this.#alive;
+    }
     /** Seconds simulated since construction or the last reset(). */
-    get elapsedSeconds() { return this.#elapsed; }
+    get elapsedSeconds() {
+        return this.#elapsed;
+    }
     /** Uniform value in [0, 1) from a small deterministic generator (mulberry32). */
     next() {
-        let t = this.#random = (this.#random + 0x6d2b79f5) >>> 0;
+        let t = (this.#random = (this.#random + 0x6d2b79f5) >>> 0);
         t = Math.imul(t ^ (t >>> 15), t | 1);
         t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
         return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
@@ -177,7 +183,7 @@ export class ParticleEmitter3D extends InstancedMesh3D {
         for (let i = 0; i < this.#alive;) {
             const o = i * STRIDE, age = state[o + 6] + dt;
             if (age >= state[o + 7]) {
-                const last = (--this.#alive) * STRIDE;
+                const last = --this.#alive * STRIDE;
                 if (last !== o)
                     state.copyWithin(o, last, last + STRIDE);
                 continue;

@@ -70,8 +70,13 @@ function primitiveNumber(value) {
 }
 function geometry(sourceRect, viewRegion, width, height, insets) {
     // The existing NS1 factory owns all range, precision and grid admission.
-    return geometryFactory({ sourceWidth: viewRegion?.logicalWidth ?? sourceRect.width, sourceHeight: viewRegion?.logicalHeight ?? sourceRect.height,
-        targetWidth: width, targetHeight: height, insets });
+    return geometryFactory({
+        sourceWidth: viewRegion?.logicalWidth ?? sourceRect.width,
+        sourceHeight: viewRegion?.logicalHeight ?? sourceRect.height,
+        targetWidth: width,
+        targetHeight: height,
+        insets
+    });
 }
 function content(lease, owned, sourceRect, viewRegion) {
     return freeze({ lease, geometry: owned, sourceRect, viewRegion, regionOnly: true });
@@ -103,7 +108,13 @@ export class NineSliceBitmap extends DisplayObject {
         const fixedInsets = freeze(insets);
         const size = freeze({ width, height });
         const slot = content(textureLease, owned, initial.sourceRect, initial.viewRegion);
-        const state = { sourceRect: initial.sourceRect, viewRegion: initial.viewRegion, insets: fixedInsets, lease: textureLease, size };
+        const state = {
+            sourceRect: initial.sourceRect,
+            viewRegion: initial.viewRegion,
+            insets: fixedInsets,
+            lease: textureLease,
+            size
+        };
         checkpoint(engine, textureLease);
         // All allocations/admission precede the callback-free affinity/content commit.
         commitBinding([this], engine);
@@ -111,10 +122,18 @@ export class NineSliceBitmap extends DisplayObject {
         register(this, state);
     }
     /** Identity-only borrow metadata conveys no live resource entitlement. */
-    get textureLease() { return stateOf(this).lease; }
-    get targetWidth() { return stateOf(this).size.width; }
-    get targetHeight() { return stateOf(this).size.height; }
-    get insets() { return stateOf(this).insets; }
+    get textureLease() {
+        return stateOf(this).lease;
+    }
+    get targetWidth() {
+        return stateOf(this).size.width;
+    }
+    get targetHeight() {
+        return stateOf(this).size.height;
+    }
+    get insets() {
+        return stateOf(this).insets;
+    }
     resize(width, height) {
         const state = stateOf(this);
         assertLive(this);

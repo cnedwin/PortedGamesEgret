@@ -5,7 +5,20 @@ import { captureUiInputDelivery } from './internal/uiFactoryState.js';
 const getter = (prototype, key) => Object.getOwnPropertyDescriptor(prototype, key).get;
 const parent = getter(DisplayObject.prototype, 'parent'), visible = getter(DisplayObject.prototype, 'visible');
 const touch = getter(DisplayObject.prototype, 'touchEnabled'), children = getter(DisplayObjectContainer.prototype, 'touchChildren');
-const reasons = Object.freeze(['target', 'outside', 'contact', 'pointercancel', 'owner', 'viewport', 'blur', 'hidden', 'pagehide', 'suspended', 'dispose', 'error']);
+const reasons = Object.freeze([
+    'target',
+    'outside',
+    'contact',
+    'pointercancel',
+    'owner',
+    'viewport',
+    'blur',
+    'hidden',
+    'pagehide',
+    'suspended',
+    'dispose',
+    'error'
+]);
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
 const count = (value) => typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 /**
@@ -21,9 +34,18 @@ export function createHoverInput(options) {
     let scope = owner.scope(options.scope);
     const width = options.width, height = options.height, maxNodes = options.maxNodes ?? 4096, capacity = options.capacity ?? 4;
     let onHover = options.onHover, onWheel = options.onWheel;
-    if (!finite(width) || width <= 0 || !finite(height) || height <= 0 || !Number.isInteger(maxNodes) || maxNodes < 1 || maxNodes > 65536
-        || !Number.isInteger(capacity) || capacity < 1 || capacity > 16
-        || (onHover !== undefined && typeof onHover !== 'function') || (onWheel !== undefined && typeof onWheel !== 'function'))
+    if (!finite(width) ||
+        width <= 0 ||
+        !finite(height) ||
+        height <= 0 ||
+        !Number.isInteger(maxNodes) ||
+        maxNodes < 1 ||
+        maxNodes > 65536 ||
+        !Number.isInteger(capacity) ||
+        capacity < 1 ||
+        capacity > 16 ||
+        (onHover !== undefined && typeof onHover !== 'function') ||
+        (onWheel !== undefined && typeof onWheel !== 'function'))
         throw new EgretError('HOVER_INPUT_OPTIONS_INVALID');
     owner.assertReady();
     scope.assertOpen();
@@ -31,8 +53,11 @@ export function createHoverInput(options) {
     const events = Object.freeze({
         enter: createEventType('egret.pointer.enter', { bubbles: true, cancelable: false }),
         move: createEventType('egret.pointer.hover', { bubbles: true, cancelable: false }),
-        leave: createEventType('egret.pointer.leave', { bubbles: true, cancelable: false }),
-        wheel: createEventType('egret.pointer.wheel', { bubbles: true, cancelable: true }),
+        leave: createEventType('egret.pointer.leave', {
+            bubbles: true,
+            cancelable: false
+        }),
+        wheel: createEventType('egret.pointer.wheel', { bubbles: true, cancelable: true })
     });
     const entries = new Map();
     const closers = new Set();
@@ -134,7 +159,13 @@ export function createHoverInput(options) {
     /** One observation: the observer first, then the target path while the target can still be reached. */
     function publish(kind, point, target, reason, related) {
         deliver(() => {
-            const notification = Object.freeze({ kind, point, target, ...(reason === undefined ? {} : { reason }), ...(related === undefined ? {} : { related }) });
+            const notification = Object.freeze({
+                kind,
+                point,
+                target,
+                ...(reason === undefined ? {} : { reason }),
+                ...(related === undefined ? {} : { related })
+            });
             try {
                 onHover?.(notification);
                 if (operations === undefined || !eligible(target))
@@ -153,7 +184,9 @@ export function createHoverInput(options) {
                     try {
                         listener(notification);
                     }
-                    catch { /* isolated */ }
+                    catch {
+                        /* isolated */
+                    }
             }
         });
     }
@@ -227,13 +260,19 @@ export function createHoverInput(options) {
         }
         return true;
     }
-    function dropAll(reason) { for (const id of [...entries.keys()])
-        if (state !== 'closed' || reason === 'dispose')
-            drop(id, reason); }
+    function dropAll(reason) {
+        for (const id of [...entries.keys()])
+            if (state !== 'closed' || reason === 'dispose')
+                drop(id, reason);
+    }
     // A callback run by an operation may close the input behind a check made before it.
-    function isClosed() { return state === 'closed'; }
-    function checkReason(reason) { if (!reasons.includes(reason))
-        throw new EgretError('HOVER_INPUT_REASON'); }
+    function isClosed() {
+        return state === 'closed';
+    }
+    function checkReason(reason) {
+        if (!reasons.includes(reason))
+            throw new EgretError('HOVER_INPUT_REASON');
+    }
     /** A sample may not arrive while another sample or wheel is being routed. */
     function exclusive(action) {
         if (sampling !== 0)
@@ -260,9 +299,18 @@ export function createHoverInput(options) {
         });
     }
     input = Object.freeze({
-        get state() { return state; }, events, width, height,
-        get viewportRevision() { return revision; },
-        get hovers() { return Object.freeze([...entries.values()].map(entry => Object.freeze({ point: entry.point, target: entry.target }))); },
+        get state() {
+            return state;
+        },
+        events,
+        width,
+        height,
+        get viewportRevision() {
+            return revision;
+        },
+        get hovers() {
+            return Object.freeze([...entries.values()].map(entry => Object.freeze({ point: entry.point, target: entry.target })));
+        },
         sample: (sample) => invoke(() => exclusive(() => {
             let pointerId, pointerType, globalX, globalY, timestamp;
             try {
@@ -275,7 +323,13 @@ export function createHoverInput(options) {
                     throw cause;
                 throw new EgretError('HOVER_INPUT_SAMPLE', { cause });
             }
-            if (!count(pointerId) || (pointerType !== 'mouse' && pointerType !== 'pen') || !finite(globalX) || !finite(globalY) || !finite(timestamp) || timestamp < 0 || timestamp < observedTime)
+            if (!count(pointerId) ||
+                (pointerType !== 'mouse' && pointerType !== 'pen') ||
+                !finite(globalX) ||
+                !finite(globalY) ||
+                !finite(timestamp) ||
+                timestamp < 0 ||
+                timestamp < observedTime)
                 throw new EgretError('HOVER_INPUT_SAMPLE');
             if (state !== 'active')
                 return undefined;
@@ -296,13 +350,21 @@ export function createHoverInput(options) {
                 entries.set(pointerId, entry);
             }
             // What it was over may have left the stage since: that is the owner's doing, not the pointer's.
-            const reason = entry.target !== undefined && entry.target !== next && !guarded(() => eligible(entry.target)) ? 'owner' : 'target';
+            const reason = entry.target !== undefined && entry.target !== next && !guarded(() => eligible(entry.target))
+                ? 'owner'
+                : 'target';
             settle(pointerId, entry, point, next, reason);
             return state === 'active' && entries.get(pointerId) === entry ? entry.target : undefined;
         })),
-        leave: (pointerId, reason) => invoke(() => { checkReason(reason); return state === 'closed' ? false : drop(pointerId, reason); }),
-        leaveAll: (reason) => invoke(() => { checkReason(reason); if (state !== 'closed')
-            dropAll(reason); }),
+        leave: (pointerId, reason) => invoke(() => {
+            checkReason(reason);
+            return state === 'closed' ? false : drop(pointerId, reason);
+        }),
+        leaveAll: (reason) => invoke(() => {
+            checkReason(reason);
+            if (state !== 'closed')
+                dropAll(reason);
+        }),
         wheel: (sample) => invoke(() => exclusive(() => {
             let globalX, globalY, deltaX, deltaY, deltaZ, unit, timestamp, zoom;
             try {
@@ -315,15 +377,32 @@ export function createHoverInput(options) {
                     throw cause;
                 throw new EgretError('HOVER_INPUT_SAMPLE', { cause });
             }
-            if (!finite(globalX) || !finite(globalY) || !finite(deltaX) || !finite(deltaY) || (deltaZ !== undefined && !finite(deltaZ)) || (unit !== 'pixel' && unit !== 'line' && unit !== 'page')
-                || !finite(timestamp) || timestamp < 0 || timestamp < observedTime || (zoom !== undefined && typeof zoom !== 'boolean'))
+            if (!finite(globalX) ||
+                !finite(globalY) ||
+                !finite(deltaX) ||
+                !finite(deltaY) ||
+                (deltaZ !== undefined && !finite(deltaZ)) ||
+                (unit !== 'pixel' && unit !== 'line' && unit !== 'page') ||
+                !finite(timestamp) ||
+                timestamp < 0 ||
+                timestamp < observedTime ||
+                (zoom !== undefined && typeof zoom !== 'boolean'))
                 throw new EgretError('HOVER_INPUT_SAMPLE');
             if (state !== 'active')
                 return false;
             const target = pick(globalX, globalY);
             if (state !== 'active')
                 return false;
-            const point = stamp({ globalX, globalY, deltaX, deltaY, ...(deltaZ === undefined ? {} : { deltaZ }), unit, timestamp, ...(zoom === undefined ? {} : { zoom }) });
+            const point = stamp({
+                globalX,
+                globalY,
+                deltaX,
+                deltaY,
+                ...(deltaZ === undefined ? {} : { deltaZ }),
+                unit,
+                timestamp,
+                ...(zoom === undefined ? {} : { zoom })
+            });
             observedTime = timestamp;
             return guarded(() => {
                 let consumed = false;
@@ -348,7 +427,13 @@ export function createHoverInput(options) {
                 if (state !== 'active' || entries.get(id) !== entry || next === entry.target)
                     continue;
                 const reason = entry.target !== undefined && !guarded(() => eligible(entry.target)) ? 'owner' : 'target';
-                settle(id, entry, stamp({ pointerId: id, pointerType: entry.point.pointerType, globalX: entry.point.globalX, globalY: entry.point.globalY, timestamp: entry.point.timestamp }), next, reason);
+                settle(id, entry, stamp({
+                    pointerId: id,
+                    pointerType: entry.point.pointerType,
+                    globalX: entry.point.globalX,
+                    globalY: entry.point.globalY,
+                    timestamp: entry.point.timestamp
+                }), next, reason);
             }
         })),
         setViewportRevision: (next) => invoke(() => {
@@ -379,7 +464,9 @@ export function createHoverInput(options) {
             if (closed)
                 return () => { };
             listeners.add(listener);
-            return () => { listeners.delete(listener); };
+            return () => {
+                listeners.delete(listener);
+            };
         },
         onClose: (listener) => {
             if (typeof listener !== 'function')
@@ -389,9 +476,11 @@ export function createHoverInput(options) {
                 return () => { };
             }
             closers.add(listener);
-            return () => { closers.delete(listener); };
+            return () => {
+                closers.delete(listener);
+            };
         },
-        dispose: retire,
+        dispose: retire
     });
     try {
         releaseEngine = owner.onClose(retire);

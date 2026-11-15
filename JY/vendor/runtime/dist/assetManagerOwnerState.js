@@ -22,10 +22,18 @@ function assertOwnerOpen(state) {
 export function registerAssetManagerOwner(manager, owner) {
     if (APPLY(WEAK_HAS, states, [manager]))
         throw new EgretError("TEXT_ASSETS_INVALID");
-    APPLY(WEAK_SET, states, [manager, {
-            owner: FREEZE(owner), closed: false, creationBusy: false,
-            lifetimeCommitted: false, closeCache: undefined, paragraphLifetimeCommitted: false, closeParagraphCache: undefined,
-        }]);
+    APPLY(WEAK_SET, states, [
+        manager,
+        {
+            owner: FREEZE(owner),
+            closed: false,
+            creationBusy: false,
+            lifetimeCommitted: false,
+            closeCache: undefined,
+            paragraphLifetimeCommitted: false,
+            closeParagraphCache: undefined
+        }
+    ]);
 }
 /** Return the immutable intrinsic operations, never a structural caller port. */
 export function requireAssetManagerOwner(value) {
@@ -82,23 +90,25 @@ export function beginParagraphCacheCreation(manager) {
     const state = requireState(manager);
     assertOwnerOpen(state);
     if (state.paragraphLifetimeCommitted)
-        throw new EgretError('PARAGRAPH_CACHE_ALREADY_CREATED');
+        throw new EgretError("PARAGRAPH_CACHE_ALREADY_CREATED");
     if (state.creationBusy)
-        throw new EgretError('TEXT_CACHE_REENTRANT');
+        throw new EgretError("TEXT_CACHE_REENTRANT");
     state.creationBusy = true;
     let active = true;
-    return () => { if (active) {
-        active = false;
-        state.creationBusy = false;
-    } };
+    return () => {
+        if (active) {
+            active = false;
+            state.creationBusy = false;
+        }
+    };
 }
 export function commitParagraphCacheLifetime(manager, close) {
     const state = requireState(manager);
     assertOwnerOpen(state);
     if (state.paragraphLifetimeCommitted)
-        throw new EgretError('PARAGRAPH_CACHE_ALREADY_CREATED');
+        throw new EgretError("PARAGRAPH_CACHE_ALREADY_CREATED");
     if (!state.creationBusy)
-        throw new EgretError('TEXT_CACHE_REENTRANT');
+        throw new EgretError("TEXT_CACHE_REENTRANT");
     state.paragraphLifetimeCommitted = true;
     state.closeParagraphCache = close;
 }

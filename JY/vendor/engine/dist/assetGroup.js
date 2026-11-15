@@ -179,11 +179,23 @@ function startMember(record, index, ref) {
     try {
         const promise = record.operations.acquire(ref, { signal: record.controller.signal });
         const continuation = APPLY(PROMISE_THEN, promise, [
-            (lease) => { retireSlot(); fulfillMember(record, index, lease); },
-            (cause) => { retireSlot(); rejectMember(record, cause); },
+            (lease) => {
+                retireSlot();
+                fulfillMember(record, index, lease);
+            },
+            (cause) => {
+                retireSlot();
+                rejectMember(record, cause);
+            }
         ]);
         // Consume even an unexpected internal handler throw without a detached rejection.
-        void APPLY(PROMISE_THEN, continuation, [undefined, (cause) => { retireSlot(); rejectMember(record, cause); }]);
+        void APPLY(PROMISE_THEN, continuation, [
+            undefined,
+            (cause) => {
+                retireSlot();
+                rejectMember(record, cause);
+            }
+        ]);
     }
     catch (cause) {
         retireSlot();
@@ -213,13 +225,30 @@ function schedule(record) {
 function makeRecord(context, operations, scope, refs, concurrency) {
     let resolveReady;
     let rejectReady;
-    const ready = new Promise((resolve, reject) => { resolveReady = resolve; rejectReady = reject; });
+    const ready = new Promise((resolve, reject) => {
+        resolveReady = resolve;
+        rejectReady = reject;
+    });
     // Own the rejection from creation, including disposal during the first loader.
     void APPLY(PROMISE_THEN, ready, [undefined, () => { }]);
     return {
-        context, operations, scope, refs, concurrency, ready, resolveReady, rejectReady,
-        controller: new CancellationController(), members: Array(refs.length), owner: undefined,
-        facade: undefined, state: 'pending', nextIndex: 0, outstanding: 0, completed: 0, scheduling: false,
+        context,
+        operations,
+        scope,
+        refs,
+        concurrency,
+        ready,
+        resolveReady,
+        rejectReady,
+        controller: new CancellationController(),
+        members: Array(refs.length),
+        owner: undefined,
+        facade: undefined,
+        state: 'pending',
+        nextIndex: 0,
+        outstanding: 0,
+        completed: 0,
+        scheduling: false
     };
 }
 function makeHandle(record) {
@@ -228,9 +257,18 @@ function makeHandle(record) {
             throw new EgretError('ASSET_GROUP_INVALID');
     }
     const group = FREEZE({
-        get state() { assertReceiver(this); return record.state; },
-        get ready() { assertReceiver(this); return record.ready; },
-        dispose() { assertReceiver(this); terminate(record, 'disposed', disposalCause(record)); },
+        get state() {
+            assertReceiver(this);
+            return record.state;
+        },
+        get ready() {
+            assertReceiver(this);
+            return record.ready;
+        },
+        dispose() {
+            assertReceiver(this);
+            terminate(record, 'disposed', disposalCause(record));
+        }
     });
     record.facade = group;
     return group;
@@ -288,7 +326,7 @@ export function createAssetGroupOwner(context, operations) {
             }
             for (const snapshot of snapshots)
                 runCleanup(snapshot);
-        },
+        }
     });
 }
 //# sourceMappingURL=assetGroup.js.map

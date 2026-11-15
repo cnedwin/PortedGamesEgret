@@ -16,7 +16,7 @@ function bytes(input, maximum) {
         const size = apply(length, input, []), backing = apply(buffer, input, []), start = apply(offset, input, []);
         apply(own(ArrayBuffer.prototype, 'byteLength').get, backing, []);
         const resizable = own(ArrayBuffer.prototype, 'resizable')?.get;
-        if (resizable && apply(resizable, backing, []) || size > maximum)
+        if ((resizable && apply(resizable, backing, [])) || size > maximum)
             throw fault('LIMIT');
         const copy = new Uint8Array(size);
         apply(set, copy, [new Uint8Array(backing, start, size)]);
@@ -31,18 +31,31 @@ export function createFontContentLoader(engine, manifest, factory) {
     const owner = requireContentEngine(engine);
     if (!isAdmittedResourceManifest(manifest) || typeof factory !== 'function')
         throw fault('INPUT');
-    const type = createAssetType('egret.content.font', (v) => { try {
-        return apply(tag, v, []) === 'Uint8Array';
-    }
-    catch {
-        return false;
-    } });
+    const type = createAssetType('egret.content.font', (v) => {
+        try {
+            return apply(tag, v, []) === 'Uint8Array';
+        }
+        catch {
+            return false;
+        }
+    });
     const entries = new Map(), bindings = new Map(), byRef = new Map(), rows = [];
     for (const e of manifest.entries) {
         if (e.resourceKind !== 'font')
             continue;
         const options = e.settings.options;
-        if (e.importer.id !== 'egret.font' || e.importer.version !== '1.0.0' || e.artifactFormatVersion !== 'egret.font/1' || e.dependencies.length || e.artifact.byteLength > 33554432 || !options || typeof options.family !== 'string' || !options.family.length || options.family.length > 256 || /[\u0000-\u001f\u007f]/u.test(options.family) || !['truetype', 'opentype'].includes(options.flavor) || e.artifact.mediaType !== (options.flavor === 'truetype' ? 'font/ttf' : 'font/otf'))
+        if (e.importer.id !== 'egret.font' ||
+            e.importer.version !== '1.0.0' ||
+            e.artifactFormatVersion !== 'egret.font/1' ||
+            e.dependencies.length ||
+            e.artifact.byteLength > 33554432 ||
+            !options ||
+            typeof options.family !== 'string' ||
+            !options.family.length ||
+            options.family.length > 256 ||
+            /[\u0000-\u001f\u007f]/u.test(options.family) ||
+            !['truetype', 'opentype'].includes(options.flavor) ||
+            e.artifact.mediaType !== (options.flavor === 'truetype' ? 'font/ttf' : 'font/otf'))
             throw fault('PROFILE');
         if (rows.length === 128)
             throw fault('LIMIT');
@@ -57,12 +70,20 @@ export function createFontContentLoader(engine, manifest, factory) {
     if (!supplied || typeof supplied !== 'object')
         throw fault('PROVIDER');
     const load = own(supplied, 'load'), disposeSource = own(supplied, 'dispose');
-    if (!load || !disposeSource || !Object.hasOwn(load, 'value') || !Object.hasOwn(disposeSource, 'value') || typeof load.value !== 'function' || typeof disposeSource.value !== 'function')
+    if (!load ||
+        !disposeSource ||
+        !Object.hasOwn(load, 'value') ||
+        !Object.hasOwn(disposeSource, 'value') ||
+        typeof load.value !== 'function' ||
+        typeof disposeSource.value !== 'function')
         throw fault('PROVIDER');
     let sourceBytes = 0, disposed = false, disown = () => { };
     const owned = new WeakMap(), groups = new Set();
-    const live = () => { owner.assertOpen(); if (disposed)
-        throw fault('CLOSED'); };
+    const live = () => {
+        owner.assertOpen();
+        if (disposed)
+            throw fault('CLOSED');
+    };
     owner.register(type, {
         async load(ref, context) {
             live();
@@ -99,33 +120,53 @@ export function createFontContentLoader(engine, manifest, factory) {
             sourceBytes += copy.byteLength;
             return copy;
         },
-        dispose(value) { const size = owned.get(value); if (size !== undefined) {
-            owned.delete(value);
-            sourceBytes -= size;
-        } }
+        dispose(value) {
+            const size = owned.get(value);
+            if (size !== undefined) {
+                owned.delete(value);
+                sourceBytes -= size;
+            }
+        }
     });
     const loader = freeze({
-        get isDisposed() { if (this !== loader)
-            throw fault('LOADER'); return disposed; },
-        getStatus() { if (this !== loader)
-            throw fault('LOADER'); return freeze({ groups: groups.size, sourceBytes }); },
-        dispose() { if (this !== loader)
-            throw fault('LOADER'); if (disposed)
-            return; disposed = true; disown(); let first; for (const group of [...groups]) {
-            try {
-                group.dispose();
+        get isDisposed() {
+            if (this !== loader)
+                throw fault('LOADER');
+            return disposed;
+        },
+        getStatus() {
+            if (this !== loader)
+                throw fault('LOADER');
+            return freeze({ groups: groups.size, sourceBytes });
+        },
+        dispose() {
+            if (this !== loader)
+                throw fault('LOADER');
+            if (disposed)
+                return;
+            disposed = true;
+            disown();
+            let first;
+            for (const group of [...groups]) {
+                try {
+                    group.dispose();
+                }
+                catch (cause) {
+                    first ??= cause;
+                }
             }
-            catch (cause) {
-                first ??= cause;
-            }
-        } if (first !== undefined)
-            throw first; },
+            if (first !== undefined)
+                throw first;
+        },
         load(scope, roots, options) {
             if (this !== loader)
                 throw fault('LOADER');
             live();
-            const check = () => { live(); if (!owner.isScope(scope) || apply(scopeState, scope, []) !== 'open')
-                throw fault('SCOPE'); };
+            const check = () => {
+                live();
+                if (!owner.isScope(scope) || apply(scopeState, scope, []) !== 'open')
+                    throw fault('SCOPE');
+            };
             check();
             if (!Array.isArray(roots) || roots.length < 1 || roots.length > 16 || groups.size >= 8)
                 throw fault('LIMIT');
@@ -136,7 +177,11 @@ export function createFontContentLoader(engine, manifest, factory) {
                 const descriptor = own(roots, String(i));
                 check();
                 const id = descriptor?.value;
-                if (!descriptor || !Object.hasOwn(descriptor, 'value') || typeof id !== 'string' || ids.includes(id) || !entries.has(id))
+                if (!descriptor ||
+                    !Object.hasOwn(descriptor, 'value') ||
+                    typeof id !== 'string' ||
+                    ids.includes(id) ||
+                    !entries.has(id))
                     throw fault('ROOTS');
                 const entry = entries.get(id), family = entry.settings.options.family;
                 total += entry.artifact.byteLength;
@@ -152,28 +197,55 @@ export function createFontContentLoader(engine, manifest, factory) {
                 throw fault('LIMIT');
             }
             let state = 'pending', resolve, reject, finish, failClose;
-            const ready = new Promise((yes, no) => { resolve = yes; reject = no; }), closed = new Promise((yes, no) => { finish = yes; failClose = no; });
+            const ready = new Promise((yes, no) => {
+                resolve = yes;
+                reject = no;
+            }), closed = new Promise((yes, no) => {
+                finish = yes;
+                failClose = no;
+            });
             void ready.catch(() => { });
             void closed.catch(() => { });
             const assets = [];
-            const retire = (cause) => { if (state === 'closed')
-                return; const pending = state === 'pending'; state = 'closed'; assets.length = 0; groups.delete(group); if (pending)
-                reject(cause); try {
-                raw.dispose();
-                finish();
-            }
-            catch (error) {
-                failClose(error);
-                throw error;
-            } };
+            const retire = (cause) => {
+                if (state === 'closed')
+                    return;
+                const pending = state === 'pending';
+                state = 'closed';
+                assets.length = 0;
+                groups.delete(group);
+                if (pending)
+                    reject(cause);
+                try {
+                    raw.dispose();
+                    finish();
+                }
+                catch (error) {
+                    failClose(error);
+                    throw error;
+                }
+            };
             const group = freeze({
-                ready, closed, get isDisposed() { if (this !== group)
-                    throw fault('GROUP'); return state === 'closed'; },
-                getFonts() { if (this !== group)
-                    throw fault('GROUP'); check(); if (state !== 'ready')
-                    throw fault('NOT_READY'); return freeze([...assets]); },
-                dispose() { if (this !== group)
-                    throw fault('GROUP'); retire(fault('CANCELLED')); }
+                ready,
+                closed,
+                get isDisposed() {
+                    if (this !== group)
+                        throw fault('GROUP');
+                    return state === 'closed';
+                },
+                getFonts() {
+                    if (this !== group)
+                        throw fault('GROUP');
+                    check();
+                    if (state !== 'ready')
+                        throw fault('NOT_READY');
+                    return freeze([...assets]);
+                },
+                dispose() {
+                    if (this !== group)
+                        throw fault('GROUP');
+                    retire(fault('CANCELLED'));
+                }
             });
             groups.add(group);
             try {
@@ -184,17 +256,29 @@ export function createFontContentLoader(engine, manifest, factory) {
                 retire(cause);
                 throw cause;
             }
-            void raw.ready.then(() => {
+            void raw.ready
+                .then(() => {
                 if (state !== 'pending')
                     return;
                 try {
                     check();
                     for (const id of ids) {
                         const entry = entries.get(id), lease = raw.get(bindings.get(id));
-                        const asset = freeze({ id, family: entry.settings.options.family, identity: entry.artifact.sha256, byteLength: entry.artifact.byteLength, format: entry.settings.options.flavor,
-                            copyBytes() { if (this !== asset)
-                                throw fault('ASSET'); check(); if (state !== 'ready')
-                                throw fault('NOT_READY'); return bytes(lease.value, 33554432); } });
+                        const asset = freeze({
+                            id,
+                            family: entry.settings.options.family,
+                            identity: entry.artifact.sha256,
+                            byteLength: entry.artifact.byteLength,
+                            format: entry.settings.options.flavor,
+                            copyBytes() {
+                                if (this !== asset)
+                                    throw fault('ASSET');
+                                check();
+                                if (state !== 'ready')
+                                    throw fault('NOT_READY');
+                                return bytes(lease.value, 33554432);
+                            }
+                        });
                         assets.push(asset);
                     }
                     state = 'ready';
@@ -203,7 +287,8 @@ export function createFontContentLoader(engine, manifest, factory) {
                 catch (cause) {
                     retire(cause);
                 }
-            }, cause => retire(cause)).catch(cause => retire(cause));
+            }, cause => retire(cause))
+                .catch(cause => retire(cause));
             return group;
         }
     });

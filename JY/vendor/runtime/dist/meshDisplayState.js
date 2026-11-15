@@ -3,9 +3,13 @@ import { recordVisualChange, VISUAL_CONTENT, VISUAL_BINDING } from "./displayVis
 const states = new WeakMap();
 const readPublishedState = states.get.bind(states);
 /** Slot registration survives cleanup; it is not display-class identity. */
-export function hasMeshState(value) { return states.has(value); }
+export function hasMeshState(value) {
+    return states.has(value);
+}
 /** Cached content conveys no active lease entitlement or live Texture authority. */
-export function readMeshState(node) { return states.get(node); }
+export function readMeshState(node) {
+    return states.get(node);
+}
 /** Authentic Mesh2D/NineSliceBitmap operations publish only privately admitted content. */
 export function writeMeshState(node, value) {
     const changed = readPublishedState(node) !== value;

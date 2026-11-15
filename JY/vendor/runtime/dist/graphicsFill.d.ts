@@ -30,7 +30,8 @@ export declare function outlineCrosses(points: readonly number[]): boolean;
 export declare function fillNonZero(outlines: readonly (readonly number[])[], maxTriangles: number): number[] | undefined;
 /**
  * Cuts triangles until the colours of their corners, mixed across each side, stay within the tolerance of the gradient.
- * Whether a side is cut depends on its two ends alone, so two triangles that share a side cut it alike.
+ * A side's test depends on its endpoints. The triangle budget can still stop adjacent subdivisions at different depths.
+ * When supplied, boundary masks are replaced in the output order. Only the children of an original boundary inherit it.
  */
-export declare function refineForGradient(triangles: readonly number[], gradient: ShapeGradient, maxTriangles: number): number[];
+export declare function refineForGradient(triangles: readonly number[], gradient: ShapeGradient, maxTriangles: number, boundary?: number[]): number[];
 //# sourceMappingURL=graphicsFill.d.ts.map
