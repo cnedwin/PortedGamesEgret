@@ -69,6 +69,31 @@ export function buildScenery(scene, surfaces) {
           for (const side of [-3.3, 3.3])
             concrete.box(x + side, 5.5, b.z + b.d / 2 + 0.25, 0.6, 7.6, 0.5, { tile: 4, tint: shade(WHITE, 0.7) });
         }
+        // Lift joints across the face, a thicker foot, gate houses on the crest and a stair up the east end.
+        for (let y = 4; y < 26; y += 4) plain.box(b.x, y, b.z + b.d / 2 + 0.03, b.w, 0.07, 0.06, { tint: rgb(0x4d4b46) });
+        concrete.box(b.x, 3.2, b.z + b.d / 2 + 0.35, b.w, 6.4, 0.7, { tile: 6, tint: shade(WHITE, 0.78) });
+        for (const x of [-25, -15, 25]) {
+          concrete.box(x, 27.6, b.z + 1, 5.4, 3.2, 3.4, { tile: 3, tint: shade(WHITE, 0.8) });
+          metal.box(x, 29.35, b.z + 1, 6, 0.3, 4, { tile: 2, tint: rgb(0x4a5258) });
+          for (const dx of [-1.5, 0, 1.5]) glow.box(x + dx, 27.8, b.z + 2.72, 0.8, 0.9, 0.02, { tint: [0.55, 0.45, 0.25] });
+          // Hoist ropes down to each gate.
+          for (const dx of [-2.2, 2.2]) plain.box(x + dx, 17.5, b.z + b.d / 2 + 0.28, 0.06, 17, 0.06, { tint: DARK });
+        }
+        for (let flight = 0; flight < 6; flight++) {
+          const y = 2 + flight * 4,
+            left = flight % 2 === 0;
+          plain.box(41 + (left ? -1.2 : 1.2), y, b.z + b.d / 2 + 0.75, 2.6, 0.1, 0.9, {
+            tint: rgb(0x555b5f),
+            roll: left ? 0.62 : -0.62,
+          });
+          plain.box(41 + (left ? -2.6 : 2.6), y + 1.9, b.z + b.d / 2 + 0.75, 0.9, 0.08, 0.9, { tint: rgb(0x555b5f) });
+          plain.box(41, y + 0.9, b.z + b.d / 2 + 1.22, 5.4, 0.05, 0.04, { tint: DARK });
+        }
+        // Drain outlets low on the face, each with a lamp above it.
+        for (let x = -36; x <= 36; x += 12) {
+          plain.cylinder(x, 8.6, b.z + b.d / 2 + 0.72, 0.28, 0.16, { axis: 'z', tint: rgb(0x121416), sides: 10 });
+          glow.box(x + 3, 19.2, b.z + b.d / 2 + 1.82, 0.4, 0.12, 0.06, { tint: [1.5, 1.3, 0.9] });
+        }
         // Railing along the crest.
         for (let x = -44; x <= 44; x += 4) plain.box(x, 26.6, b.z + b.d / 2 - 0.3, 0.08, 1.1, 0.08, { tint: DARK });
         plain.box(b.x, 27.1, b.z + b.d / 2 - 0.3, b.w, 0.06, 0.06, { tint: DARK });
@@ -136,6 +161,34 @@ export function buildScenery(scene, surfaces) {
         container.box(b.x, 2.05, b.z, b.w - 0.1, 1.65, b.d - 0.1, { tile: 1.3, tint: shade(tint, 1.25) });
         wheels(b.x, b.z, b.along, [-1.3, 1.3], 1.05);
         plain.box(b.x, 0.7, b.z, lengthX ? b.w : 0.5, 0.5, lengthX ? 0.5 : b.d, { tint: DARK });
+        {
+          // Hoops under the canvas, a tailgate, mud flaps, arches over the wheels and tail lamps.
+          const at = (along, side) => (lengthX ? [b.x + along, b.z + side] : [b.x + side, b.z + along]),
+            size = (along, side) => (lengthX ? [along, side] : [side, along]),
+            long = lengthX ? b.w : b.d,
+            wide = lengthX ? b.d : b.w;
+          for (let hoop = -long / 2 + 0.3; hoop < long / 2; hoop += 0.95) {
+            const [hx, hz] = at(hoop, 0),
+              [hw, hd] = size(0.07, wide - 0.04);
+            plain.box(hx, 2.07, hz, hw, 1.7, hd, { tint: shade(tint, 0.85) });
+          }
+          const [tx, tz] = at(-long / 2 - 0.03, 0),
+            [tw, td] = size(0.06, wide - 0.1);
+          metal.box(tx, 1.5, tz, tw, 0.7, td, { tile: 1.2, tint: shade(tint, 0.7) });
+          for (const side of [-1, 1]) {
+            const [fx, fz] = at(-long / 2 + 0.25, side * (wide / 2 - 0.22)),
+              [fw, fd] = size(0.04, 0.4);
+            plain.box(fx, 0.55, fz, fw, 0.6, fd, { tint: RUBBER });
+            const [lx, lz] = at(-long / 2 - 0.07, side * (wide / 2 - 0.3)),
+              [lw, ld] = size(0.03, 0.22);
+            glow.box(lx, 1.02, lz, lw, 0.12, ld, { tint: [0.9, 0.08, 0.05] });
+            for (const wheel of [-1.3, 1.3]) {
+              const [ax, az] = at(wheel, side * (wide / 2 - 0.02)),
+                [aw, ad] = size(1.25, 0.08);
+              plain.box(ax, 1.02, az, aw, 0.1, ad, { tint: DARK });
+            }
+          }
+        }
         break;
       }
       case 'truck-cab': {
@@ -156,6 +209,45 @@ export function buildScenery(scene, surfaces) {
           { tint: DARK },
         );
         wheels(b.x, b.z, b.along, [0.2], 1.05);
+        {
+          // A grille, a bumper with tow hooks, mirrors on arms, an exhaust stack and roof lamps.
+          const at = (along, side) => (lengthX ? [b.x + along, b.z + side] : [b.x + side, b.z + along]),
+            size = (along, side) => (lengthX ? [along, side] : [side, along]),
+            long = lengthX ? b.w : b.d,
+            wide = lengthX ? b.d : b.w;
+          const [gx, gz] = at(long / 2 + 0.03, 0),
+            [gw, gd] = size(0.05, wide * 0.55);
+          plain.box(gx, 1.2, gz, gw, 0.55, gd, { tint: rgb(0x121416) });
+          for (let bar = 0; bar < 4; bar++)
+            plain.box(
+              gx + (lengthX ? 0.02 : 0),
+              1.02 + bar * 0.12,
+              gz + (lengthX ? 0 : 0.02),
+              lengthX ? 0.03 : gw + 0.02,
+              0.03,
+              lengthX ? gd + 0.02 : 0.03,
+              { tint: STEEL },
+            );
+          const [bx, bz] = at(long / 2 + 0.12, 0),
+            [bw, bd] = size(0.2, wide + 0.1);
+          metal.box(bx, 0.62, bz, bw, 0.22, bd, { tile: 1, tint: rgb(0x2a2d30) });
+          for (const side of [-1, 1]) {
+            const [mx, mz] = at(long / 2 - 0.5, side * (wide / 2 + 0.22)),
+              [mw, md] = size(0.05, 0.16);
+            plain.box(mx, 2.05, mz, mw, 0.34, md, { tint: DARK });
+            const [rx, rz] = at(long / 2 - 0.5, side * (wide / 2 + 0.1)),
+              [rw, rd] = size(0.03, 0.26);
+            plain.box(rx, 2.0, rz, rw, 0.03, rd, { tint: DARK });
+            const [ax, az] = at(0.2, side * (wide / 2 - 0.02)),
+              [aw, ad] = size(1.25, 0.08);
+            plain.box(ax, 1.02, az, aw, 0.1, ad, { tint: DARK });
+            const [hx, hz] = at(long / 2 - 0.35, side * (wide / 2 - 0.35)),
+              [hw, hd] = size(0.16, 0.16);
+            glow.box(hx, 2.46, hz, hw, 0.08, hd, { tint: [0.9, 0.55, 0.1] });
+          }
+          const [ex, ez] = at(-long / 2 + 0.2, wide / 2 - 0.15);
+          plain.cylinder(ex, 2.35, ez, 0.06, 1.5, { tint: rgb(0x2a2d30), sides: 8 });
+        }
         for (const side of [-0.8, 0.8])
           glow.box(
             b.x + (lengthX ? b.w / 2 + 0.02 : side),
@@ -339,10 +431,7 @@ export function buildScenery(scene, surfaces) {
     return createGeometry3D({ positions, colors, indices }).computeNormals();
   })();
   {
-    const mesh = new Mesh3D(
-      hills,
-      createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 1, flatShading: true }),
-    );
+    const mesh = new Mesh3D(hills, createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 1 }));
     mesh.frustumCulled = false;
     scene.addChild(mesh);
   }
@@ -619,10 +708,60 @@ export function buildScenery(scene, surfaces) {
 
   // ---- trees: dark firs beyond the wall and a few inside it ---------------------------------
   const fir = (x, z, size) => {
-    plain.cylinder(x, size * 0.5, z, 0.14 * size, size, { sides: 5, tint: rgb(0x3b2f24) });
-    plain.cylinder(x, size * 1.5, z, 1.05 * size, size * 1.6, { top: 0.35 * size, sides: 7, tint: rgb(0x243a26), caps: false });
-    plain.cylinder(x, size * 2.5, z, 0.75 * size, size * 1.7, { top: 0.02, sides: 7, tint: rgb(0x2b4530), caps: false });
+    plain.limb([x, 0, z], [x + 0.05 * size, size * 3.4, z], 0.13 * size, 0.03 * size, { sides: 6, tint: rgb(0x3b2f24) });
+    // Six tiers of branches, each a shallow cone drooping over the one below, narrowing and lightening towards the top.
+    for (let tier = 0; tier < 6; tier++) {
+      const y = size * (0.7 + tier * 0.48),
+        reach = size * (1.15 - tier * 0.16),
+        lean = Math.sin(x * 3.1 + tier * 1.7) * 0.08 * size,
+        green = [rgb(0x16261a), rgb(0x1a2e1f), rgb(0x1f3524)][tier % 3];
+      plain.cylinder(x + lean, y, z - lean, reach, size * 0.62, {
+        top: reach * 0.18,
+        sides: 11,
+        tint: shade(green, 0.85 + tier * 0.05),
+        caps: false,
+      });
+      plain.cylinder(x + lean, y - size * 0.31, z - lean, reach * 0.55, 0.02, { sides: 8, tint: shade(green, 0.5) });
+    }
   };
+  /** A broad-leaved tree: a forked trunk under a crown of overlapping leaf masses. */
+  const oak = (x, z, size) => {
+    plain.limb([x, 0, z], [x + 0.1, size * 1.5, z + 0.05], 0.16 * size, 0.11 * size, { sides: 7, tint: rgb(0x3a2e24) });
+    for (const [dx, dz] of [
+      [0.5, 0.2],
+      [-0.45, 0.3],
+      [0.1, -0.5],
+    ])
+      plain.limb([x + 0.1, size * 1.4, z + 0.05], [x + dx * size, size * 2.3, z + dz * size], 0.08 * size, 0.04 * size, {
+        sides: 5,
+        tint: rgb(0x3a2e24),
+      });
+    for (const [dx, dy, dz, r] of [
+      [0, 2.7, 0, 1.15],
+      [0.75, 2.4, 0.3, 0.85],
+      [-0.7, 2.45, 0.35, 0.9],
+      [0.15, 2.35, -0.75, 0.85],
+      [-0.2, 3.25, 0.1, 0.8],
+    ])
+      plain.ball(x + dx * size, dy * size, z + dz * size, r * size, r * size * 0.8, r * size, {
+        tint: shade(rgb(0x35522f), 0.85 + (dx + dz) * 0.12),
+        sides: 9,
+        rings: 6,
+      });
+  };
+  for (const [x, z, size] of [
+    [-34.5, 30, 1.25],
+    [34.5, 30.2, 1.3],
+    [36, -27.5, 1.2],
+    [-12.5, 30.3, 1.1],
+    [45, 6, 2],
+    [-46, 12, 2.2],
+    [-44, -14, 1.9],
+    [10, 40, 2.1],
+    [-20, 41, 1.8],
+    [47, 26, 1.9],
+  ])
+    oak(x, z, size);
   for (let i = 0; i < 54; i++) {
     // Spread round the outside of the compound, a little unevenly.
     const angle = (i / 54) * Math.PI * 2 + Math.sin(i * 3.7) * 0.05,

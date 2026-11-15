@@ -13,8 +13,8 @@ import { SWITCH_TIME } from './data.mjs';
 import { createBuilder, orient, rgb } from './build.mjs';
 import { createDetails, flashTexture } from './textures.mjs';
 
-const STEEL = rgb(0x43474d),
-  DARK = rgb(0x2b2d30),
+const STEEL = rgb(0x62686f),
+  DARK = rgb(0x3d4046),
   TAN = rgb(0x6f6349),
   SLEEVE = rgb(0xb0b0a0),
   GLOVE = rgb(0x4a4a44);
@@ -29,6 +29,7 @@ const RIG_SCALE = 0.42;
 /** Where each weapon sits (x right, y up, z back) from the hip and when aimed, and where its muzzle is. */
 const HOLD = {
   rifle: { hip: [0.17, -0.19, -0.52], aim: [0, -0.0835, -0.34], muzzle: [0, 0.02, -0.62] },
+  marksman: { hip: [0.17, -0.2, -0.5], aim: [0, -0.1, -0.24], muzzle: [0, 0.02, -0.82] },
   pistol: { hip: [0.15, -0.17, -0.6], aim: [0, -0.058, -0.5], muzzle: [0, 0.03, -0.14] },
 };
 
@@ -58,7 +59,8 @@ function sleeve(builder, wrist, elbow) {
   builder.limb(wrist, mid, 0.037, 0.037, { tint: GLOVE, sides: 10 });
 }
 
-function rifleShapes() {
+/** The assault rifle, or with `marksman` its long-barrelled cousin with a telescopic sight. */
+function rifleShapes(marksman = false) {
   const body = createBuilder();
   // ---- receivers ------------------------------------------------------------------------
   body.box(0, 0.012, -0.03, 0.04, 0.05, 0.27, part(STEEL));
@@ -90,12 +92,29 @@ function rifleShapes() {
     body.limb([0, 0.006, z], [0, 0.006, z - 0.008], 0.0198, 0.0198, { tint: rgb(0x1c1d20), sides: 10, caps: false });
   body.limb([0, 0.006, -0.74], [0, 0.006, -0.746], 0.012, 0.012, { tint: rgb(0x0c0c0d), sides: 8 });
   // ---- sight: a holographic unit with a hooded window, and a folded front post ---------
-  body.box(0, 0.056, -0.05, 0.04, 0.012, 0.085, part(DARK));
-  body.box(0, 0.07, 0.0, 0.04, 0.02, 0.03, part(DARK)); // battery housing
-  for (const side of [-1, 1]) body.box(side * 0.0205, 0.086, -0.05, 0.004, 0.05, 0.05, part(DARK));
-  body.box(0, 0.1125, -0.05, 0.045, 0.005, 0.05, part(DARK));
-  body.box(0, 0.0635, -0.05, 0.038, 0.004, 0.05, part(DARK));
-  for (const side of [-1, 1]) body.box(side * 0.026, 0.064, -0.04, 0.008, 0.012, 0.012, part(STEEL)); // mount levers
+  if (!marksman) {
+    body.box(0, 0.056, -0.05, 0.04, 0.012, 0.085, part(DARK));
+    body.box(0, 0.07, 0.0, 0.04, 0.02, 0.03, part(DARK)); // battery housing
+    for (const side of [-1, 1]) body.box(side * 0.0205, 0.086, -0.05, 0.004, 0.05, 0.05, part(DARK));
+    body.box(0, 0.1125, -0.05, 0.045, 0.005, 0.05, part(DARK));
+    body.box(0, 0.0635, -0.05, 0.038, 0.004, 0.05, part(DARK));
+    for (const side of [-1, 1]) body.box(side * 0.026, 0.064, -0.04, 0.008, 0.012, 0.012, part(STEEL)); // mount levers
+  } else {
+    // A telescopic sight on two rings: the tube, a flared objective, an eyepiece and two turrets.
+    body.box(0, 0.056, -0.05, 0.03, 0.012, 0.2, part(DARK));
+    for (const z of [0.02, -0.12]) body.box(0, 0.078, z, 0.012, 0.034, 0.016, part(DARK));
+    body.limb([0, 0.1, 0.09], [0, 0.1, -0.2], 0.0165, 0.0165, { tint: DARK, sides: 12 });
+    body.limb([0, 0.1, -0.2], [0, 0.1, -0.27], 0.0165, 0.026, { tint: DARK, sides: 12 });
+    body.limb([0, 0.1, 0.09], [0, 0.1, 0.13], 0.0165, 0.021, { tint: DARK, sides: 12 });
+    body.limb([0, 0.1, -0.05], [0, 0.128, -0.05], 0.011, 0.011, { tint: STEEL, sides: 8 });
+    body.limb([0, 0.1, -0.05], [0.03, 0.1, -0.05], 0.011, 0.011, { tint: STEEL, sides: 8 });
+    // The lenses: dark glass with a blue-violet coating.
+    body.ball(0, 0.1, -0.268, 0.024, 0.024, 0.004, { tint: rgb(0x2a3a6a), sides: 12, rings: 4 });
+    body.ball(0, 0.1, 0.128, 0.019, 0.019, 0.004, { tint: rgb(0x1a2030), sides: 12, rings: 4 });
+    // A longer, heavier barrel past the handguard.
+    body.limb([0, 0.006, -0.74], [0, 0.006, -0.86], 0.011, 0.011, { tint: DARK, sides: 8 });
+    body.limb([0, 0.006, -0.84], [0, 0.006, -0.9], 0.016, 0.016, { tint: STEEL, sides: 8 });
+  }
   body.box(0, 0.058, -0.44, 0.02, 0.012, 0.034, part(DARK));
   body.box(0, 0.068, -0.452, 0.012, 0.012, 0.006, part(DARK));
   body.box(0, 0.058, 0.09, 0.02, 0.012, 0.03, part(DARK)); // folded rear sight
@@ -247,8 +266,11 @@ export function createGun(camera) {
     map: details.gunmetal.map,
     normalMap: details.gunmetal.normalMap,
     roughness: 0.46,
-    metallic: 0.35,
-    environmentIntensity: 2.4,
+    metallic: 0.3,
+    environmentIntensity: 2.6,
+    // A little light of its own, so the weapon keeps its shape in deep shadow.
+    emissive: 0x4a5058,
+    emissiveIntensity: 0.1,
   });
   const cloth = createStandardMaterial3D({
     color: 0xffffff,
@@ -263,7 +285,7 @@ export function createGun(camera) {
   camera.addChild(rig);
 
   const models = {};
-  for (const [key, set] of Object.entries({ rifle: rifleShapes(), pistol: pistolShapes() })) {
+  for (const [key, set] of Object.entries({ rifle: rifleShapes(), pistol: pistolShapes(), marksman: rifleShapes(true) })) {
     const node = new Object3D(),
       body = new Mesh3D(set.body, metal),
       magazine = new Mesh3D(set.magazine, metal),
@@ -287,6 +309,15 @@ export function createGun(camera) {
   dot.setScale(0.0035);
   dot.frustumCulled = false;
   models.rifle.node.addChild(dot);
+  // The sight's window: a pane of faintly tinted glass.
+  const lens = new Mesh3D(
+    createQuadGeometry3D(),
+    createUnlitMaterial3D({ color: 0x6fb0c8, opacity: 0.12, alphaMode: 'blend', depthWrite: false, side: 'double' }),
+  );
+  lens.setPosition(0, 0.0875, -0.05);
+  lens.setScale(0.037, 0.045, 1);
+  lens.frustumCulled = false;
+  models.rifle.node.addChild(lens);
 
   // Muzzle flash: two crossed cards and a brief light.
   const flashMaterial = createUnlitMaterial3D({
@@ -336,8 +367,8 @@ export function createGun(camera) {
       return [0, 1, 2].map((i) => (hold.hip[i] + (hold.aim[i] - hold.hip[i]) * aim + hold.muzzle[i]) * 1);
     },
     fire(weapon, aim) {
-      state.kickBack += weapon === 'pistol' ? 0.03 : 0.022 - 0.008 * aim;
-      state.kickUp += weapon === 'pistol' ? 0.09 : 0.035 - 0.015 * aim;
+      state.kickBack += weapon === 'pistol' ? 0.03 : weapon === 'marksman' ? 0.05 : 0.022 - 0.008 * aim;
+      state.kickUp += weapon === 'pistol' ? 0.09 : weapon === 'marksman' ? 0.08 : 0.035 - 0.015 * aim;
       state.flashLeft = 0.045;
       const size = (weapon === 'pistol' ? 0.16 : 0.26) * (0.8 + Math.random() * 0.5);
       for (const card of cards) card.setScale(size);
@@ -361,7 +392,9 @@ export function createGun(camera) {
         state.weapon = p.weapon;
         state.reload = 0;
       }
-      for (const key of Object.keys(models)) models[key].node.visible = visible && key === p.weapon;
+      // Through the marksman scope the eye is inside the tube, so the rifle itself is not drawn.
+      const scoped = p.weapon === 'marksman' && p.aim > 0.8;
+      for (const key of Object.keys(models)) models[key].node.visible = visible && !scoped && key === p.weapon;
       if (weapon.reloading <= 0) state.reload = 0;
       else state.reload = weapon.reloading;
 
@@ -411,7 +444,7 @@ export function createGun(camera) {
       dot.visible = p.weapon === 'rifle';
 
       state.flashLeft -= dt;
-      flash.visible = visible && state.flashLeft > 0;
+      flash.visible = visible && !scoped && state.flashLeft > 0;
       light.intensity = state.flashLeft > 0 ? 9 : 0;
     },
   };

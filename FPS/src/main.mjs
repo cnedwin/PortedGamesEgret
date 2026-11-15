@@ -161,6 +161,7 @@ async function main() {
     status.mode = next;
     hud.show(next === 'play' ? 'none' : next);
     input.setEnabled(next === 'play');
+    hud.toggleBag(false);
     hud.setTouch(input.touchMode && next === 'play');
     audio.setPaused(next !== 'play' && next !== 'title');
     if (next !== 'play') input.release();
@@ -196,6 +197,9 @@ async function main() {
     },
   });
   const input = createInput(canvas, hud.touch, {
+    onBag() {
+      if (mode === 'play') hud.toggleBag();
+    },
     onPause() {
       if (mode === 'play' && game.state !== 'dead' && game.state !== 'won') setMode('pause');
     },
@@ -266,7 +270,12 @@ async function main() {
     time += dt;
     if (mode === 'play') {
       const record = bot ? bot.think(dt) : input.sample();
-      if (record.weapon === 'swap') record.weapon = game.player.weapon === 'rifle' ? 'pistol' : 'rifle';
+      if (record.weapon === 'swap' || record.weapon === 'next' || record.weapon === 'previous') {
+        // The wheel and the touch button step through the weapons in order.
+        const order = ['rifle', 'pistol', 'marksman'],
+          at = order.indexOf(game.player.weapon);
+        record.weapon = order[(at + (record.weapon === 'previous' ? order.length - 1 : 1)) % order.length];
+      }
       // Long frames are played as several short steps so nothing tunnels or stalls.
       for (let left = dt; left > 1e-5; left -= STEP) {
         game.update(Math.min(STEP, left), record);

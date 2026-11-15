@@ -104,6 +104,11 @@ export function createInput(canvas, touchRoot, options = {}) {
       event.preventDefault();
     } else if (event.code === 'Digit1') weapon = 'rifle';
     else if (event.code === 'Digit2') weapon = 'pistol';
+    else if (event.code === 'Digit3') weapon = 'marksman';
+    else if (event.code === 'Tab') {
+      options.onBag?.();
+      event.preventDefault();
+    }
   });
   addEventListener('keyup', (event) => {
     const name = KEYS[event.code];
@@ -142,7 +147,7 @@ export function createInput(canvas, touchRoot, options = {}) {
   canvas.addEventListener(
     'wheel',
     (event) => {
-      if (enabled) weapon = event.deltaY > 0 ? 'pistol' : 'rifle';
+      if (enabled) weapon = event.deltaY > 0 ? 'next' : 'previous';
       event.preventDefault();
     },
     { passive: false },

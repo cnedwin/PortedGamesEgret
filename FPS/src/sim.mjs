@@ -5,6 +5,7 @@
 // view, the sound and the screen text consume.
 import { createCharacterMotor3D, createNavCrowd3D, createNavMesh3D, createPhysicsWorld3D } from '@egret/engine/world3d';
 import {
+  BACKPACK,
   ENEMIES,
   ENEMY_BODY,
   GRENADE,
@@ -130,6 +131,9 @@ export function createGame(options = {}) {
     const def = WEAPONS[key];
     weapons[key] = {
       def,
+      /** Magazine size, which an extended magazine raises, and the share of recoil a foregrip leaves. */
+      mag: def.mag,
+      recoilScale: 1,
       ammo: def.mag,
       reserve: def.reserve,
       cooldown: 0,
@@ -164,6 +168,8 @@ export function createGame(options = {}) {
     /** Seconds stood on the helipad with the helicopter waiting. */
     extracting: 0,
     loot: [],
+    /** Attachments fitted to the assault rifle, by key. */
+    attachments: [],
     lootValue: 0,
     stats: { shots: 0, hits: 0, headshots: 0, kills: 0, damageTaken: 0 },
   };
@@ -327,6 +333,9 @@ export function createGame(options = {}) {
       homeX: x,
       homeZ: z,
       wanderIn: random.range(2, 6),
+      grenades: kind === 'rush' ? 0 : 1,
+      unseenFor: 0,
+      flanking: false,
       /** Rounds left before a reload, and seconds of reloading left. */
       ammo: def.mag,
       reloading: 0,
@@ -428,12 +437,14 @@ export function createGame(options = {}) {
     enemy.coverLeft = seconds;
     enemy.coverGiveUp = 6;
     emit('enemyCover', { enemy });
+    bark(enemy, 'cover');
     return true;
   }
   function reloadEnemy(enemy) {
     enemy.reloading = enemy.def.reload;
     enemy.burstLeft = 0;
     emit('enemyReload', { enemy });
+    bark(enemy, 'reload');
     if (!enemy.cover) seekCover(enemy, 0.5);
   }
 
@@ -514,6 +525,8 @@ export function createGame(options = {}) {
       if (sees) alert(enemy, player.x, player.z);
       enemy.sees = sees;
     }
+    if (enemy.sees && enemy.seenFor === 0 && enemy.aware) bark(enemy, 'contact');
+    if (enemy.sees) enemy.unseenFor = Math.min(enemy.unseenFor, 0);
     enemy.seenFor = enemy.sees ? enemy.seenFor + dt : 0;
 
     // Changing magazines, and time spent behind cover.
@@ -563,7 +576,25 @@ export function createGame(options = {}) {
           enemy.lastSeenX = player.x;
           enemy.lastSeenZ = player.z;
         }
-        walkTo(enemy, enemy.lastSeenX, enemy.lastSeenZ, run);
+        // One soldier in three goes round the side instead of straight in.
+        const side = enemy.id % 3 === 0 ? (enemy.id % 2 ? 1 : -1) * 9 : 0,
+          gap = span(enemy.lastSeenX - enemy.x, enemy.lastSeenZ - enemy.z) || 1;
+        if (side && gap > 12) {
+          const fx = enemy.lastSeenX + ((enemy.lastSeenZ - enemy.z) / gap) * side,
+            fz = enemy.lastSeenZ - ((enemy.lastSeenX - enemy.x) / gap) * side;
+          if (walkable(fx, fz)) {
+            walkTo(enemy, fx, fz, run);
+            if (!enemy.flanking) bark(enemy, 'flank');
+            enemy.flanking = true;
+          } else walkTo(enemy, enemy.lastSeenX, enemy.lastSeenZ, run);
+        } else walkTo(enemy, enemy.lastSeenX, enemy.lastSeenZ, run);
+        // Lost sight of the operator for a while but know roughly where: flush them out.
+        enemy.unseenFor += 0.4;
+        if (enemy.kind !== 'rush' && enemy.grenades > 0 && enemy.unseenFor > 3.5 && gap > 7 && gap < 26 && random() < 0.25) {
+          enemy.grenades--;
+          enemy.unseenFor = -6;
+          enemyGrenade(enemy);
+        }
       } else if (distance > def.far) walkTo(enemy, player.x, player.z, run);
       else if (distance < def.near) {
         const bx = enemy.x - (dx / distance) * 4,
@@ -647,7 +678,7 @@ export function createGame(options = {}) {
   // ---- weapons -----------------------------------------------------------------------------
   const aimDir = [0, 0, 0];
   function startReload(weapon) {
-    if (weapon.reloading > 0 || weapon.ammo >= weapon.def.mag || weapon.reserve <= 0) return false;
+    if (weapon.reloading > 0 || weapon.ammo >= weapon.mag || weapon.reserve <= 0) return false;
     weapon.reloadTime = weapon.ammo <= 0 ? weapon.def.reloadEmpty : weapon.def.reload;
     weapon.reloading = weapon.reloadTime;
     emit('reload', { weapon: weapon.def.key, seconds: weapon.reloadTime, empty: weapon.ammo <= 0 });
@@ -701,7 +732,7 @@ export function createGame(options = {}) {
     }
     emit('shot', shot);
     // Kick: part of it stays, the rest settles back.
-    const kick = def.recoil * (1 - 0.35 * player.aim) * random.range(0.8, 1.2);
+    const kick = def.recoil * weapon.recoilScale * (1 - 0.35 * player.aim) * random.range(0.8, 1.2);
     player.kick += kick * 0.65;
     player.pitch = clamp(player.pitch + kick * 0.35, -PLAYER.pitchLimit, PLAYER.pitchLimit);
     player.yaw += kick * random.range(-0.45, 0.45);
@@ -727,7 +758,7 @@ export function createGame(options = {}) {
     if (weapon.reloading > 0) {
       weapon.reloading -= dt;
       if (weapon.reloading <= 0) {
-        const need = Math.min(weapon.def.mag - weapon.ammo, weapon.reserve);
+        const need = Math.min(weapon.mag - weapon.ammo, weapon.reserve);
         weapon.ammo += need;
         weapon.reserve -= need;
         weapon.reloading = 0;
@@ -771,6 +802,39 @@ export function createGame(options = {}) {
     game.grenades.push(grenade);
     emit('throw', { grenade });
   }
+  /** A soldier lobs a grenade at where the operator was last seen, to flush them out of cover. */
+  function enemyGrenade(enemy) {
+    const dx = enemy.lastSeenX - enemy.x,
+      dz = enemy.lastSeenZ - enemy.z,
+      distance = span(dx, dz) || 1,
+      // Time of flight for a lob at this range, then the speeds that land it there.
+      flight = 0.9 + distance * 0.045;
+    const body = world.createBody({
+      shape: { type: 'sphere', radius: 0.07 },
+      mass: 0.4,
+      position: [enemy.x + (dx / distance) * 0.5, 1.5, enemy.z + (dz / distance) * 0.5],
+      restitution: 0.3,
+      friction: 0.7,
+      linearDamping: 0.05,
+      layer: LAYER_GRENADE,
+      mask: LAYER_WORLD,
+      continuous: true,
+    });
+    body.linearVelocity[0] = dx / flight;
+    body.linearVelocity[1] = (PLAYER.gravity * flight) / 2 - 1.5 / flight;
+    body.linearVelocity[2] = dz / flight;
+    const grenade = { body, fuse: flight + 1.1, x: enemy.x, y: 1.5, z: enemy.z, thrownBy: enemy };
+    game.grenades.push(grenade);
+    emit('throw', { grenade, enemy });
+    bark(enemy, 'grenade');
+  }
+  /** A soldier calls out; at most one call every couple of seconds so they do not talk over each other. */
+  let barkIn = 0;
+  function bark(enemy, key) {
+    if (barkIn > 0 || enemy.dead) return;
+    barkIn = 2.2;
+    emit('bark', { enemy, key });
+  }
   function explode(grenade) {
     const [x, y, z] = grenade.body.position;
     world.removeBody(grenade.body);
@@ -778,14 +842,14 @@ export function createGame(options = {}) {
     noise(x, z, MISSION.hearing + 20);
     const oy = Math.max(y, 0.2) + 0.2;
     for (const enemy of game.enemies) {
-      if (enemy.dead) continue;
+      if (enemy.dead || grenade.thrownBy) continue;
       const d = span(enemy.x - x, enemy.z - z);
       if (d > GRENADE.radius || !game.clearLine(x, oy, z, enemy.x, 1.1, enemy.z)) continue;
       hurtEnemy(enemy, Math.max(25, GRENADE.damage * (1 - d / GRENADE.radius)), false, enemy.x - x, enemy.z - z);
     }
     const d = span(player.x - x, player.z - z);
     if (d < GRENADE.radius && game.clearLine(x, oy, z, player.x, player.y + 1, player.z))
-      hurtPlayer(GRENADE.selfDamage * (1 - d / GRENADE.radius), x, z);
+      hurtPlayer((grenade.thrownBy ? GRENADE.damage * 0.45 : GRENADE.selfDamage) * (1 - d / GRENADE.radius), x, z);
   }
   function updateGrenades(dt, input) {
     if (input.grenade && !grenadeHeld && player.grenades > 0 && player.healing <= 0) throwGrenade();
@@ -831,9 +895,21 @@ export function createGame(options = {}) {
       if (give.bandages) player.bandages += give.bandages;
       if (give.grenades) player.grenades += give.grenades;
       if (give.armor) player.armor = Math.min(PLAYER.armor, player.armor + give.armor);
+      if (give.marksman) weapons.marksman.reserve += give.marksman;
+      if (give.recoil) weapons.rifle.recoilScale *= give.recoil;
+      if (give.mag) weapons.rifle.mag += give.mag;
+      if (give.recoil || give.mag) game.attachments.push(item.key);
     } else {
       game.loot.push(item);
       game.lootValue += item.value;
+      // A full backpack: leave the cheapest thing behind.
+      if (game.loot.length > BACKPACK) {
+        let cheapest = 0;
+        for (let i = 1; i < game.loot.length; i++) if (game.loot[i].value < game.loot[cheapest].value) cheapest = i;
+        const [left] = game.loot.splice(cheapest, 1);
+        game.lootValue -= left.value;
+        emit('lootLeft', { item: left });
+      }
     }
   }
   function finishUse(use) {
@@ -1028,6 +1104,7 @@ export function createGame(options = {}) {
         game.grenades.splice(i, 1);
       }
     }
+    barkIn -= dt;
     crowd.update(dt);
     for (const enemy of game.enemies) updateEnemy(enemy, dt);
     // The fallen stay a while, then are cleared away.

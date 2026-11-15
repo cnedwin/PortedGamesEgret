@@ -102,7 +102,7 @@ export function createBot(game, { skill = 1 } = {}) {
         input.fire = onTarget && weapon.ammo > 0;
         input.crouch = foeDistance > 12 && p.health < 70;
       }
-      if (weapon.ammo === 0 || (!foe && weapon.ammo < weapon.def.mag * 0.4)) input.reload = true;
+      if (weapon.ammo === 0 || (!foe && weapon.ammo < weapon.mag * 0.4)) input.reload = true;
       if (p.health < 50 && p.bandages > 0 && (!foe || p.health < 25)) input.heal = true;
 
       // Keep moving unless busy shooting from a good spot.

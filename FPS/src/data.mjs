@@ -60,6 +60,21 @@ export const WEAPONS = {
     range: 120,
   },
 };
+/** The marksman rifle: slow, hard-hitting, with a magnifying scope. */
+WEAPONS.marksman = {
+  key: 'marksman',
+  auto: false,
+  mag: 10,
+  reserve: 30,
+  interval: 0.3,
+  damage: 78,
+  spread: [0.034, 0.0006],
+  recoil: 0.03,
+  reload: 2.5,
+  reloadEmpty: 3,
+  aimFov: 0.34,
+  range: 300,
+};
 export const HEADSHOT = 2.2;
 export const SWITCH_TIME = 0.42;
 
@@ -129,6 +144,9 @@ export const ENEMY_BODY = {
   duckedEye: 1.02,
 };
 
+/** How many valuables the backpack holds; when it is full the cheapest one is left behind. */
+export const BACKPACK = 12;
+
 export const MISSION = {
   introSeconds: 3,
   interactRange: 2.4,
@@ -166,6 +184,10 @@ export const SUPPLIES = [
   { key: 'bandage', rarity: 2, give: { bandages: 1 } },
   { key: 'plate', rarity: 3, give: { armor: 40 } },
   { key: 'grenade', rarity: 2, give: { grenades: 1 } },
+  // Attachments fit the assault rifle as soon as they are found.
+  { key: 'foregrip', rarity: 3, give: { recoil: 0.72 } },
+  { key: 'extmag', rarity: 3, give: { mag: 10 } },
+  { key: 'marksmanAmmo', rarity: 2, give: { marksman: 20 } },
 ];
 export const VALUABLES = [
   { key: 'wire', rarity: 1, value: 800 },

@@ -513,7 +513,7 @@ body {
 .feed {
   position: absolute;
   right: max(16px, env(safe-area-inset-right));
-  top: 76px;
+  top: 206px;
   display: grid;
   gap: 4px;
   justify-items: end;
@@ -1152,4 +1152,207 @@ body {
   .m-stats.four {
     grid-template-columns: 1fr 1fr;
   }
+}
+
+/* Minimap, top right. */
+.minimap {
+  position: absolute;
+  right: max(16px, env(safe-area-inset-right));
+  top: max(14px, env(safe-area-inset-top));
+  width: 176px;
+  height: 176px;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.feed-line.enemy {
+  border-right-color: var(--danger);
+  color: #ffd9d4;
+}
+.feed-line.enemy b {
+  color: var(--danger);
+}
+.warn {
+  position: absolute;
+  left: 50%;
+  top: 22%;
+  transform: translateX(-50%);
+  padding: 8px 22px;
+  border: 1px solid var(--danger);
+  background: rgba(120, 14, 8, 0.6);
+  color: #fff;
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  animation: warn 0.45s infinite alternate;
+}
+@keyframes warn {
+  to {
+    background: rgba(200, 30, 16, 0.75);
+  }
+}
+
+/* Backpack. */
+.bag {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(760px, 94vw);
+  padding: 16px 18px 18px;
+  background: rgba(10, 15, 17, 0.9);
+  border: 1px solid var(--line);
+  border-top: 2px solid var(--accent);
+  -webkit-backdrop-filter: blur(6px);
+  backdrop-filter: blur(6px);
+  text-shadow: none;
+}
+.bag-h {
+  display: flex;
+  align-items: baseline;
+  gap: 14px;
+  margin-bottom: 12px;
+}
+.bag-h b {
+  font-size: 20px;
+  letter-spacing: 0.2em;
+}
+.bag-h span {
+  font: 14px var(--mono);
+  color: var(--dim);
+}
+.bag-h em {
+  font: 600 18px var(--mono);
+  font-style: normal;
+  color: var(--amber);
+}
+.bag-h small {
+  margin-left: auto;
+  color: var(--dim);
+}
+.bag-b {
+  display: grid;
+  grid-template-columns: 1.35fr 1fr;
+  gap: 16px;
+}
+.bag-grid {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.bag-grid li {
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 7px;
+  border: 1px solid var(--c);
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 28%, transparent), rgba(233, 239, 233, 0.03));
+  font-size: 12.5px;
+  line-height: 1.25;
+}
+.bag-grid li span {
+  color: var(--c);
+}
+.bag-grid li b {
+  font: 12px var(--mono);
+  color: var(--ink);
+}
+.bag-grid li.empty {
+  border: 1px dashed var(--line);
+  background: none;
+}
+.bag-guns {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+}
+.bag-guns li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 9px;
+  margin-bottom: 5px;
+  border: 1px solid var(--line);
+  font-size: 13.5px;
+}
+.bag-guns li.on {
+  border-color: var(--accent);
+}
+.bag-guns b {
+  margin-left: auto;
+  font: 12.5px var(--mono);
+}
+.bag-guns kbd {
+  padding: 0 5px;
+  border: 1px solid var(--line);
+  font: 11px/16px var(--mono);
+  color: var(--dim);
+}
+.bag-k {
+  margin: 10px 0 5px;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--accent);
+}
+.bag-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+.bag-tags i {
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  font-style: normal;
+  font-size: 12.5px;
+}
+.bag-tags i.dim {
+  color: var(--dim);
+}
+@media (max-width: 720px) {
+  .minimap {
+    width: 120px;
+    height: 120px;
+  }
+  .feed {
+    top: 146px;
+  }
+  .bag-b {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* The marksman rifle's scope: everything outside the eyepiece goes dark. */
+.scope {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, transparent 0, transparent 31vh, rgba(0, 0, 0, 0.55) 32.5vh, #000 36vh);
+}
+.scope i {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  background: rgba(10, 10, 10, 0.85);
+}
+.scope i:nth-child(1) {
+  width: 62vh;
+  height: 1px;
+  margin-left: -31vh;
+}
+.scope i:nth-child(2) {
+  width: 1px;
+  height: 62vh;
+  margin-top: -31vh;
+}
+.scope b {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin: -2px;
+  border-radius: 50%;
+  background: #ff3a2a;
 }

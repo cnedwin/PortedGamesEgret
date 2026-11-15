@@ -1,7 +1,8 @@
 // The screen furniture: the heads-up display during a run, and the menus
 // around it. All of it is ordinary page elements laid over the canvas.
 import { MISSION, PLAYER } from './data.mjs';
-import { PLACES } from './level.mjs';
+import { BACKPACK, MISSION as RULES } from './data.mjs';
+import { BOUNDS, BOXES, PLACES } from './level.mjs';
 import { TEXT } from './text.mjs';
 
 const RARITY_CSS = ['#ccc', '#d8d8d8', '#5bd16a', '#4d9bff', '#b868ff', '#ffbf33', '#ff4d40'];
@@ -42,6 +43,10 @@ export function createHud(root, settings, actions) {
     <div class="prompt" hidden><span></span><i><b></b></i></div>
     <div class="status" hidden><span></span><i><b></b></i></div>
     <div class="comms" hidden><b></b><span></span></div>
+    <div class="scope" hidden><i></i><i></i><b></b></div>
+    <canvas class="minimap" width="176" height="176"></canvas>
+    <div class="warn" hidden></div>
+    <div class="bag" hidden></div>
     <div class="feed"></div>
     <div class="lootlist"></div>
     <div class="vitals">
@@ -49,7 +54,7 @@ export function createHud(root, settings, actions) {
       <div class="bar health"><i></i><span></span></div>
       <div class="kit"><span class="k-bandage"><em>✚</em><b>0</b><kbd>Q</kbd></span><span class="k-grenade"><em>●</em><b>0</b><kbd>G</kbd></span><span class="k-value"><em>◈</em><b>0</b></span></div>
     </div>
-    <div class="ammo"><div class="a-name"></div><div class="a-count"><b>30</b><span>/ 120</span></div><div class="a-note"></div><div class="a-slots"><span data-w="rifle">1</span><span data-w="pistol">2</span></div></div>`;
+    <div class="ammo"><div class="a-name"></div><div class="a-count"><b>30</b><span>/ 120</span></div><div class="a-note"></div><div class="a-slots"><span data-w="rifle">1</span><span data-w="pistol">2</span><span data-w="marksman">3</span></div></div>`;
   root.appendChild(play);
   const q = (selector, from = play) => from.querySelector(selector);
   const tape = q('.tape'),
@@ -290,6 +295,17 @@ export function createHud(root, settings, actions) {
           event.head ? 'head' : '',
         );
         break;
+      case 'bark':
+        feedLine(`<b>${t.enemies[event.enemy.kind]}</b> ${t.barks[event.key] ?? ''}`, 'enemy');
+        if (event.key === 'grenade') {
+          warn.hidden = false;
+          warn.textContent = t.grenadeWarn;
+          warnLeft = 2.6;
+        }
+        break;
+      case 'lootLeft':
+        feedLine(`${t.bagFull} <em>${t.items[event.item.key]}</em>`);
+        break;
       case 'loot':
         for (const item of event.items) {
           const line = el(
@@ -344,7 +360,144 @@ export function createHud(root, settings, actions) {
    * Refresh the display. `eye` is where the camera is and how it looks:
    * { x, y, z, yaw, pitch, fov (vertical, degrees), aspect }.
    */
+  // ---- minimap: the station from above, turned so that ahead is up -------------------------------
+  const MAP_SCALE = 2.6, // pixels per metre
+    minimap = q('.minimap'),
+    pen = minimap.getContext('2d'),
+    plan = document.createElement('canvas');
+  plan.width = Math.ceil((BOUNDS.maxX - BOUNDS.minX + 8) * MAP_SCALE);
+  plan.height = Math.ceil((BOUNDS.maxZ - BOUNDS.minZ + 8) * MAP_SCALE);
+  {
+    // The plan is drawn once: ground, then every solid box by height.
+    const c = plan.getContext('2d'),
+      at = (v, min) => (v - min + 4) * MAP_SCALE;
+    c.fillStyle = 'rgba(20, 28, 30, 0.9)';
+    c.fillRect(0, 0, plan.width, plan.height);
+    for (const b of BOXES) {
+      if (!b.solid || b.kind === 'roof' || b.y - b.h / 2 > 2.5 || b.w > 60 || b.d > 60) continue;
+      c.fillStyle = b.h > 3 ? 'rgba(170, 182, 176, 0.9)' : b.h > 1.6 ? 'rgba(120, 132, 128, 0.9)' : 'rgba(86, 96, 94, 0.9)';
+      c.fillRect(
+        at(b.x - b.w / 2, BOUNDS.minX),
+        at(b.z - b.d / 2, BOUNDS.minZ),
+        Math.max(1.5, b.w * MAP_SCALE),
+        Math.max(1.5, b.d * MAP_SCALE),
+      );
+    }
+    c.strokeStyle = 'rgba(200, 210, 204, 0.8)';
+    c.lineWidth = 2;
+    c.strokeRect(
+      at(BOUNDS.minX, BOUNDS.minX),
+      at(BOUNDS.minZ, BOUNDS.minZ),
+      (BOUNDS.maxX - BOUNDS.minX) * MAP_SCALE,
+      (BOUNDS.maxZ - BOUNDS.minZ) * MAP_SCALE,
+    );
+  }
+  function drawMinimap(game, yaw, time) {
+    const p = game.player,
+      size = minimap.width,
+      half = size / 2;
+    pen.clearRect(0, 0, size, size);
+    pen.save();
+    pen.beginPath();
+    pen.arc(half, half, half - 2, 0, Math.PI * 2);
+    pen.clip();
+    pen.translate(half, half);
+    pen.rotate(yaw);
+    pen.translate(-(p.x - BOUNDS.minX + 4) * MAP_SCALE, -(p.z - BOUNDS.minZ + 4) * MAP_SCALE);
+    pen.drawImage(plan, 0, 0);
+    const dot = (x, z, colour, radius) => {
+      pen.fillStyle = colour;
+      pen.beginPath();
+      pen.arc((x - BOUNDS.minX + 4) * MAP_SCALE, (z - BOUNDS.minZ + 4) * MAP_SCALE, radius, 0, Math.PI * 2);
+      pen.fill();
+    };
+    for (const terminal of game.terminals) if (!terminal.done) dot(terminal.x, terminal.z, '#58e0ff', 5);
+    if (game.terminalsDone === game.terminals.length) dot(PLACES.helipad.x, PLACES.helipad.z, '#5fe8b0', 7);
+    for (const crate of game.crates) if (!crate.opened) dot(crate.x, crate.z, '#ffbf33', 2.5);
+    // Soldiers show only while in view or just after firing, as on a real threat display.
+    for (const enemy of game.enemies)
+      if (!enemy.dead && (enemy.sees || enemy.firedAgo < 2.5)) dot(enemy.x, enemy.z, '#ff5a4a', 3.5);
+    for (const grenade of game.grenades) if (Math.floor(time * 8) % 2) dot(grenade.x, grenade.z, '#ffffff', 3);
+    pen.restore();
+    // The operator: an arrow at the centre, always pointing up. Then the rim and a north mark.
+    pen.fillStyle = '#e9efe9';
+    pen.beginPath();
+    pen.moveTo(half, half - 8);
+    pen.lineTo(half + 5.5, half + 6);
+    pen.lineTo(half, half + 3);
+    pen.lineTo(half - 5.5, half + 6);
+    pen.closePath();
+    pen.fill();
+    pen.strokeStyle = 'rgba(233, 239, 233, 0.45)';
+    pen.lineWidth = 1.5;
+    pen.beginPath();
+    pen.arc(half, half, half - 2, 0, Math.PI * 2);
+    pen.stroke();
+    pen.fillStyle = '#5fe8b0';
+    pen.font = 'bold 11px sans-serif';
+    pen.textAlign = 'center';
+    pen.textBaseline = 'middle';
+    pen.fillText('N', half + Math.sin(yaw) * (half - 10), half - Math.cos(yaw) * (half - 10));
+  }
+
+  // ---- backpack: a grid of what has been found, with the weapons and kit beside it ----------------
+  const bag = q('.bag'),
+    warn = q('.warn');
+  let warnLeft = 0,
+    bagKey = '',
+    mapTime = 0;
+  function fillBag(game) {
+    const p = game.player,
+      cells = [];
+    const loot = [...game.loot].sort((a, b) => b.value - a.value);
+    for (let i = 0; i < BACKPACK; i++) {
+      const item = loot[i];
+      cells.push(
+        item
+          ? `<li style="--c:${RARITY_CSS[item.rarity]}"><span>${t.items[item.key]}</span><b>${money(item.value)}</b></li>`
+          : '<li class="empty"></li>',
+      );
+    }
+    const guns = Object.keys(game.weapons)
+      .map((key, i) => {
+        const w = game.weapons[key];
+        return `<li class="${key === p.weapon ? 'on' : ''}"><kbd>${i + 1}</kbd><span>${t.weapons[key]}</span><b>${w.ammo} / ${Number.isFinite(w.reserve) ? w.reserve : '∞'}</b></li>`;
+      })
+      .join('');
+    const fitted = game.attachments.length
+      ? game.attachments.map((key) => `<i>${t.items[key]}</i>`).join('')
+      : `<i class="dim">${t.none}</i>`;
+    bag.innerHTML = `
+      <div class="bag-h"><b>${t.bag}</b><span>${game.loot.length} / ${BACKPACK}</span><em>◈ ${money(game.lootValue)}</em><small>${t.bagHint}</small></div>
+      <div class="bag-b">
+        <ul class="bag-grid">${cells.join('')}</ul>
+        <div class="bag-side">
+          <ul class="bag-guns">${guns}</ul>
+          <div class="bag-k">${t.fitted}</div><div class="bag-tags">${fitted}</div>
+          <div class="bag-k">${t.supplies}</div>
+          <div class="bag-tags"><i>✚ ${t.items.bandage} ×${p.bandages}</i><i>● ${t.items.grenade} ×${p.grenades}</i><i>${t.intel} ×${game.terminalsDone}（${money(game.terminalsDone * RULES.intelValue)}）</i></div>
+        </div>
+      </div>`;
+  }
+  /** Open or close the backpack; with no argument it flips. The run goes on while it is open. */
+  hud.toggleBag = (open = bag.hidden) => {
+    bag.hidden = !open;
+    bagKey = '';
+  };
+
   hud.update = (game, dt, eye) => {
+    // Through the marksman rifle's scope the view is a lit circle with a fine cross.
+    q('.scope').hidden = !(game.player.weapon === 'marksman' && game.player.aim > 0.8);
+    mapTime += dt;
+    drawMinimap(game, eye.yaw, mapTime);
+    if (warnLeft > 0 && (warnLeft -= dt) <= 0) warn.hidden = true;
+    if (!bag.hidden) {
+      const key = `${game.loot.length}|${game.lootValue}|${game.attachments.length}|${game.player.weapon}|${game.weapons[game.player.weapon].ammo}|${game.player.bandages}|${game.player.grenades}`;
+      if (key !== bagKey) {
+        bagKey = key;
+        fillBag(game);
+      }
+    }
     const p = game.player,
       weapon = game.weapons[p.weapon];
     // Vitals.
@@ -384,12 +537,12 @@ export function createHud(root, settings, actions) {
       cache.reserve = weapon.reserve;
       q('.a-count b').textContent = weapon.ammo;
       q('.a-count span').textContent = '/ ' + (Number.isFinite(weapon.reserve) ? weapon.reserve : '∞');
-      q('.a-count').classList.toggle('low', weapon.ammo <= weapon.def.mag * 0.25);
+      q('.a-count').classList.toggle('low', weapon.ammo <= weapon.mag * 0.25);
     }
     const note =
       weapon.ammo === 0 && weapon.reserve === 0
         ? t.noAmmo
-        : weapon.ammo <= weapon.def.mag * 0.25 && weapon.reloading <= 0
+        : weapon.ammo <= weapon.mag * 0.25 && weapon.reloading <= 0
           ? t.lowAmmo
           : '';
     if (note !== cache.note) q('.a-note').textContent = cache.note = note;
@@ -398,7 +551,7 @@ export function createHud(root, settings, actions) {
     const spread = weapon.def.spread[0] + (weapon.def.spread[1] - weapon.def.spread[0]) * p.aim,
       gap = Math.round(5 + spread * (1 + weapon.heat * 1.4) * (p.speed > 1 ? 1.5 : 1) * (p.grounded ? 1 : 2.2) * 620);
     if (gap !== cache.gap) cross.style.setProperty('--gap', (cache.gap = gap) + 'px');
-    cross.style.opacity = p.sprinting || p.healing > 0 ? 0.25 : p.weapon === 'rifle' ? 1 - p.aim : 1 - p.aim * 0.6;
+    cross.style.opacity = p.sprinting || p.healing > 0 ? 0.25 : p.weapon === 'pistol' ? 1 - p.aim * 0.6 : 1 - p.aim;
     if (hitLeft > 0 && (hitLeft -= dt) <= 0) hitmark.className = 'hitmark';
 
     // Objective and clock.
@@ -504,6 +657,8 @@ export function createHud(root, settings, actions) {
   };
 
   hud.reset = () => {
+    bag.hidden = true;
+    warn.hidden = true;
     feed.innerHTML = lootList.innerHTML = hurt.innerHTML = '';
     comms.hidden = true;
     commsLeft = 0;

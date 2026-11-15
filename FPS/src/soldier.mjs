@@ -88,47 +88,60 @@ function shapes(look) {
   upper.box(0, 0.42, 0.279 * k, 0.14, 0.012, 0.004, { tint: look.trim });
   upper.limb([0, 0.52, 0], [0, 0.63, 0], 0.055, 0.05, { tint: skin });
   if (look.visor) upper.limb([0, 0.53, 0], [0, 0.6, 0], 0.085, 0.075, { tint: look.vest, sides: 10 }); // collar guard
+  // The arms and the weapon are a part of their own, hinged at the shoulders, so they can be raised, lowered and kicked by recoil.
+  const arms = createBuilder();
   // Arms: shoulder, elbow pad, glove. The right holds the grip, the left the handguard.
   const arm = (shoulder, elbow, wrist) => {
-    upper.ball(shoulder[0], shoulder[1], shoulder[2], 0.086 * k, 0.086 * k, 0.086 * k, { tint: look.cloth, sides: 8, rings: 5 });
-    upper.limb(shoulder, elbow, 0.062 * k, 0.053 * k, { tint: look.cloth });
-    upper.ball(elbow[0], elbow[1], elbow[2], 0.06 * k, 0.06 * k, 0.06 * k, { tint: look.gear, sides: 7, rings: 4 });
-    upper.limb(elbow, wrist, 0.05 * k, 0.04 * k, { tint: look.cloth });
-    upper.ball(wrist[0], wrist[1], wrist[2], 0.046, 0.04, 0.052, { tint: BLACK, sides: 7, rings: 4 });
+    arms.ball(shoulder[0], shoulder[1], shoulder[2], 0.086 * k, 0.086 * k, 0.086 * k, { tint: look.cloth, sides: 8, rings: 5 });
+    arms.limb(shoulder, elbow, 0.062 * k, 0.053 * k, { tint: look.cloth });
+    arms.ball(elbow[0], elbow[1], elbow[2], 0.06 * k, 0.06 * k, 0.06 * k, { tint: look.gear, sides: 7, rings: 4 });
+    arms.limb(elbow, wrist, 0.05 * k, 0.04 * k, { tint: look.cloth });
+    arms.ball(wrist[0], wrist[1], wrist[2], 0.046, 0.04, 0.052, { tint: BLACK, sides: 7, rings: 4 });
   };
   arm([0.23 * k, 0.5, 0], [0.27 * k, 0.29, -0.13], [0.08, 0.3, -0.33]);
   arm([-0.23 * k, 0.5, 0], [-0.25 * k, 0.28, -0.22], [0.0, 0.32, -0.53]);
   if (look.visor)
-    for (const side of [-1, 1]) upper.box(side * 0.25 * k, 0.5, 0, 0.11, 0.13, 0.17, kit(look.vest)); // shoulder armour
-  else upper.limb([-0.272 * k, 0.43, 0.0], [-0.276 * k, 0.37, -0.03], 0.068 * k, 0.066 * k, { tint: look.trim, caps: false }); // arm band
+    for (const side of [-1, 1]) arms.box(side * 0.25 * k, 0.5, 0, 0.11, 0.13, 0.17, kit(look.vest)); // shoulder armour
+  else arms.limb([-0.272 * k, 0.43, 0.0], [-0.276 * k, 0.37, -0.03], 0.068 * k, 0.066 * k, { tint: look.trim, caps: false }); // arm band
   // The weapon: receiver, handguard, barrel with a suppressor, sight, magazine, stock and sling.
   const big = look.visor ? 1.25 : 1;
-  upper.box(0.05, 0.36, -0.36, 0.046 * big, 0.075 * big, 0.3, { tint: GUN });
-  upper.limb([0.05, 0.365, -0.5], [0.05, 0.365, -0.76], 0.03 * big, 0.027 * big, {
+  arms.box(0.05, 0.36, -0.36, 0.046 * big, 0.075 * big, 0.3, { tint: GUN });
+  arms.limb([0.05, 0.365, -0.5], [0.05, 0.365, -0.76], 0.03 * big, 0.027 * big, {
     tint: look.visor ? GUN : rgb(0x514833),
     sides: 8,
   });
-  upper.limb([0.05, 0.365, -0.76], [0.05, 0.365, -0.86], 0.011 * big, 0.011 * big, { tint: GUN, sides: 6 });
-  upper.limb([0.05, 0.365, -0.84], [0.05, 0.365, -1.0], 0.02 * big, 0.02 * big, { tint: rgb(0x1e2023), sides: 8 });
-  upper.box(0.05, 0.425, -0.4, 0.034, 0.045, 0.06, { tint: GUN });
-  upper.box(0.05, 0.408, -0.55, 0.02, 0.012, 0.36, { tint: rgb(0x1e2023) });
-  upper.box(0.05, 0.275, -0.42, 0.03, 0.13, look.visor ? 0.13 : 0.055, { tint: rgb(0x1e2023), pitch: 0.22 });
-  upper.box(0.05, 0.3, -0.27, 0.03, 0.09, 0.04, { tint: rgb(0x1e2023), pitch: -0.3 });
-  upper.limb([0.055, 0.365, -0.2], [0.06, 0.365, -0.04], 0.014, 0.014, { tint: GUN, sides: 6 });
-  upper.box(0.06, 0.35, -0.07, 0.04, 0.085, 0.12, { tint: rgb(0x514833) });
-  upper.limb([0.05, 0.33, -0.7], [0.2 * k, 0.52, 0.02], 0.007, 0.007, { tint: BLACK, sides: 4, caps: false });
+  arms.limb([0.05, 0.365, -0.76], [0.05, 0.365, -0.86], 0.011 * big, 0.011 * big, { tint: GUN, sides: 6 });
+  arms.limb([0.05, 0.365, -0.84], [0.05, 0.365, -1.0], 0.02 * big, 0.02 * big, { tint: rgb(0x1e2023), sides: 8 });
+  arms.box(0.05, 0.425, -0.4, 0.034, 0.045, 0.06, { tint: GUN });
+  arms.box(0.05, 0.408, -0.55, 0.02, 0.012, 0.36, { tint: rgb(0x1e2023) });
+  arms.box(0.05, 0.275, -0.42, 0.03, 0.13, look.visor ? 0.13 : 0.055, { tint: rgb(0x1e2023), pitch: 0.22 });
+  arms.box(0.05, 0.3, -0.27, 0.03, 0.09, 0.04, { tint: rgb(0x1e2023), pitch: -0.3 });
+  arms.limb([0.055, 0.365, -0.2], [0.06, 0.365, -0.04], 0.014, 0.014, { tint: GUN, sides: 6 });
+  arms.box(0.06, 0.35, -0.07, 0.04, 0.085, 0.12, { tint: rgb(0x514833) });
+  arms.limb([0.05, 0.33, -0.7], [0.2 * k, 0.52, 0.02], 0.007, 0.007, { tint: BLACK, sides: 4, caps: false });
   if (look.visor)
     for (const side of [-1, 1])
-      upper.limb([0.05, 0.34, -0.72], [0.05 + side * 0.07, 0.22, -0.8], 0.006, 0.006, { tint: GUN, sides: 4 });
+      arms.limb([0.05, 0.34, -0.72], [0.05 + side * 0.07, 0.22, -0.8], 0.006, 0.006, { tint: GUN, sides: 4 });
 
   // ---- head: face, helmet with rails and a mount, headset, eye protection ---------------
   const head = createBuilder();
   head.ball(0, 0.11, 0, 0.09, 0.113, 0.1, { tint: skin, sides: 12, rings: 8 });
   if (!look.mask) {
     head.box(0, 0.105, -0.097, 0.024, 0.03, 0.02, { tint: SKIN }); // nose
+    for (const side of [-1, 1]) {
+      head.box(side * 0.034, 0.119, -0.0905, 0.022, 0.009, 0.006, { tint: rgb(0xe8e4dc) }); // eye
+      head.box(side * 0.034, 0.119, -0.0935, 0.008, 0.008, 0.004, { tint: rgb(0x20160f) }); // pupil
+    }
+    head.box(0, 0.072, -0.092, 0.04, 0.006, 0.008, { tint: rgb(0x6a4034) }); // mouth
     for (const side of [-1, 1]) head.box(side * 0.034, 0.128, -0.089, 0.024, 0.008, 0.008, { tint: rgb(0x20160f) });
     head.box(0, 0.045, -0.06, 0.1, 0.05, 0.07, { tint: rgb(0x8f6e52) }); // jaw in shadow, a hint of stubble
-  } else head.box(0, 0.128, -0.086, 0.13, 0.03, 0.02, { tint: SKIN });
+  } else {
+    head.box(0, 0.128, -0.086, 0.13, 0.03, 0.02, { tint: SKIN });
+    for (const side of [-1, 1]) {
+      head.box(side * 0.033, 0.128, -0.0965, 0.022, 0.009, 0.004, { tint: rgb(0xe8e4dc) });
+      head.box(side * 0.033, 0.128, -0.099, 0.008, 0.008, 0.003, { tint: rgb(0x20160f) });
+    }
+  }
   if (look.visor) {
     head.ball(0, 0.15, 0.004, 0.118, 0.105, 0.128, { tint: look.helmet, sides: 12, rings: 7 });
     head.box(0, 0.105, -0.1, 0.19, 0.13, 0.03, { tint: rgb(0x0e1418) });
@@ -170,6 +183,7 @@ function shapes(look) {
   shin.box(0, -SHIN + 0.022, -0.045, 0.112 * k, 0.03, 0.262, { tint: BLACK });
   return {
     upper: upper.finish({ tangents: true }),
+    arms: arms.finish({ tangents: true }),
     head: head.finish({ tangents: true }),
     thighs: [leg(false), leg(true)],
     shin: shin.finish({ tangents: true }),
@@ -209,7 +223,11 @@ export function createSoldierFactory(world) {
       body = new Object3D();
     root.addChild(body);
     const upper = part(set.upper, body, 0, HIP, 0),
-      head = part(set.head, upper, 0, 0.62, 0);
+      head = part(set.head, upper, 0, 0.62, 0),
+      shoulders = new Object3D();
+    shoulders.setPosition(0, 0.5, 0);
+    upper.addChild(shoulders);
+    part(set.arms, shoulders, 0, -0.5, 0);
     const legs = [-1, 1].map((side) => {
       const thigh = part(set.thighs[side < 0 ? 0 : 1], body, side * 0.1 * bulk, HIP, 0),
         shin = part(set.shin, thigh, 0, -THIGH, 0);
@@ -274,7 +292,10 @@ export function createSoldierFactory(world) {
     let phase = Math.random() * 6,
       flinch = 0,
       lean = 0,
-      aim = 0;
+      aim = 0,
+      carry = -0.5,
+      recoil = 0,
+      twist = 0;
     return {
       root,
       /** Give back what the fall used. */
@@ -319,11 +340,21 @@ export function createSoldierFactory(world) {
           // The knee bends as the leg comes through.
           orient(leg.shin, 0, (-Math.max(0, -s) * 1.1 - 0.12 * pace) * (1 - down) - down * (i === 0 ? 1.5 : 1.85));
         }
-        if (enemy.hurtAgo < 0.05) flinch = 1;
+        if (enemy.hurtAgo < 0.05 && flinch < 0.5) {
+          flinch = 1;
+          // A hit spins the shoulders one way or the other.
+          twist = Math.random() < 0.5 ? -0.55 : 0.55;
+        }
         flinch *= Math.exp(-dt * 9);
         lean += ((enemy.speed > 3.6 ? -0.22 : -0.05) - lean) * Math.min(1, dt * 6);
         aim += ((enemy.sees ? pitchToPlayer : 0) - aim) * Math.min(1, dt * 8);
         const shake = enemy.firedAgo < 0.06 ? 0.03 : 0;
+        // The weapon: low across the body on guard, up at the shoulder in a fight, tipped down to reload; each shot kicks it.
+        if (enemy.firedAgo < 0.03) recoil = 1;
+        recoil *= Math.exp(-dt * 16);
+        const want = loading ? -0.75 : enemy.sees ? aim * 0.35 : enemy.aware ? (enemy.speed > 3.6 ? -0.4 : -0.15) : -0.6;
+        carry += (want - carry) * Math.min(1, dt * 7);
+        orient(shoulders, flinch * twist * 0.4, carry + recoil * 0.09, loading * 0.35 + flinch * twist * 0.2);
         // Changing magazines: the weapon tips down and to one side, and the head follows the hands.
         const fiddle = loading * Math.sin(phase * 2.2) * 0.05;
         orient(
@@ -332,6 +363,7 @@ export function createSoldierFactory(world) {
           lean + aim * 0.7 * (1 - loading) + flinch * 0.3 + shake - down * 0.12 - loading * 0.32,
           flinch * 0.12 + loading * 0.18 + fiddle,
         );
+        upper.rotateOnAxis([0, 1, 0], flinch * twist);
         orient(
           head,
           enemy.sees || loading ? -loading * 0.3 : Math.sin(phase * 0.13 + enemy.id) * 0.5,

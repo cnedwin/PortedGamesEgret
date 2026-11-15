@@ -14,21 +14,26 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 | 瞄准 · Aim | 右键 · right button | 瞄准 · AIM |
 | 换弹 · Reload | R | 换弹 · RLD |
 | 下载终端、搜索物资箱 · Download a terminal, search a crate | 按住 F 或 E · hold F or E | 按住“使用” · hold USE |
-| 切换武器 · Switch weapon | 1 / 2 / 滚轮 · wheel | 切枪 · SWAP |
+| 切换武器 · Switch weapon | 1 / 2 / 3 / 滚轮 · wheel | 切枪 · SWAP |
 | 手雷 · Grenade | G | 手雷 · NADE |
+| 背包 · Backpack | Tab | — |
 | 绷带 · Bandage | Q | 绷带 · HEAL |
 | 跳跃、奔跑、蹲下 · Jump, sprint, crouch | Space，Shift，C / Ctrl | 跳、摇杆推到底、蹲 · JUMP, push the stick fully, DUCK |
 | 暂停 · Pause | Esc / P | 暂停 · II |
 
-- 两把武器：全自动突击步枪和备弹无限的手枪；另有手雷和绷带。瞄准时散布更小、后坐力更低，移动、跳跃和连发都会让准星张开。
+- 三把武器：全自动突击步枪、备弹无限的手枪，以及带瞄准镜的半自动精确射手步枪；另有手雷和绷带。物资箱里能找到前握把（降低后坐力）和扩容弹匣，捡到即装在步枪上。瞄准时散布更小、后坐力更低，移动、跳跃和连发都会让准星张开。
+- 右上角的小地图随视角转动，标出建筑、终端、撤离点、没搜过的物资箱和已经暴露位置的敌人。
+- 背包只有十二格。装满后新搜到的贵重物品只能留在原地；按 Tab 查看背包、武器、配件和补给。
 - 护甲先吸收大部分伤害；生命只会自行恢复到一小截，其余要靠绷带。
-- 三种敌人：保持距离点射的步枪兵、贴脸冲锋的突击兵，以及血厚火力猛的重装兵。爆头伤害更高。他们打空弹匣要换弹，挨打或换弹时会跑到掩体后蹲下，再起身还击。守卫没发现你时不会开火，枪声会把附近的人都引来。
+- 三种敌人：保持距离点射的步枪兵、贴脸冲锋的突击兵，以及血厚火力猛的重装兵。爆头伤害更高。他们打空弹匣要换弹，挨打或换弹时会跑到掩体后蹲下，再起身还击。一段时间打不到你，他们会绕到侧面，或者朝你藏身的地方扔手雷——屏幕上会有警告。交火时他们会互相喊话。守卫没发现你时不会开火，枪声会把附近的人都引来。
 - 每下载一处终端都会招来一波增援。三处全部完成后直升机起飞，抵达后在停机坪上站满四秒即可撤离。
 - 十个物资箱里有弹药、绷带、防弹插板、手雷和按稀有度分色的贵重物品。结算时按用时、命中率、所受伤害和带出物资的总价值评级。
 
-- Two weapons: an automatic assault rifle and a pistol that never runs out of spare rounds, plus grenades and bandages. Aiming tightens the spread and softens the recoil; moving, jumping and long bursts open the crosshair.
+- Three weapons: an automatic assault rifle, a pistol that never runs out of spare rounds, and a semi-automatic marksman rifle with a scope, plus grenades and bandages. Crates can hold a foregrip (less recoil) and an extended magazine; both go straight onto the assault rifle. Aiming tightens the spread and softens the recoil; moving, jumping and long bursts open the crosshair.
+- The minimap in the top right turns with the view and shows buildings, terminals, the helipad, crates not yet searched and enemies who have given themselves away.
+- The backpack has twelve slots. Once it is full, further valuables stay where they are; Tab shows the backpack, weapons, attachments and supplies.
 - Armour takes most of a hit first. Health only comes back a little by itself; the rest takes a bandage.
-- Three kinds of enemy: riflemen who keep their distance and fire bursts, assaulters who rush in close, and heavies with thick armour and a machine gun. Headshots hurt more. They run dry and change magazines, and when hit or reloading they run for cover, kneel behind it, and come up shooting. Guards do not shoot until they notice you, and gunfire brings everyone nearby.
+- Three kinds of enemy: riflemen who keep their distance and fire bursts, assaulters who rush in close, and heavies with thick armour and a machine gun. Headshots hurt more. They run dry and change magazines, and when hit or reloading they run for cover, kneel behind it, and come up shooting. When they cannot hit you for a while they work round to the side, or throw a grenade at where you are hiding — a warning appears on screen. They call out to each other in a fight. Guards do not shoot until they notice you, and gunfire brings everyone nearby.
 - Each terminal downloaded brings a wave of reinforcements. After the third the helicopter sets off; once it arrives, stand on the helipad for four seconds to leave.
 - Ten supply crates hold ammunition, bandages, armour plates, grenades and valuables coloured by rarity. The debrief grades the run on time, accuracy, damage taken and the total value carried out.
 

@@ -151,6 +151,17 @@ test('soldiers under fire go to cover, and change magazines when empty', () => {
   for (const enemy of game.enemies) assert.ok(enemy.ammo >= 0 && enemy.ammo <= enemy.def.mag);
 });
 
+test('the marksman rifle is a third weapon, and attachments start unfitted', () => {
+  const game = started();
+  run(game, 0.6, (input, t) => (input.weapon = t === 0 ? 'marksman' : ''));
+  assert.equal(game.player.weapon, 'marksman');
+  const shots = run(game, 0.5, (input) => (input.fire = true)).filter((event) => event.type === 'shot');
+  assert.equal(shots.length, 1);
+  assert.equal(game.weapons.rifle.mag, WEAPONS.rifle.mag);
+  assert.equal(game.weapons.rifle.recoilScale, 1);
+  assert.deepEqual(game.attachments, []);
+});
+
 test('supply crates each hold one supply and one or two valuables', () => {
   const game = createGame({ seed: 5 });
   assert.equal(game.crates.length, PLACES.crates.length);

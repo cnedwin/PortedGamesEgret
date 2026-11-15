@@ -430,6 +430,34 @@ export function createAudio() {
         noise({ dur: 0.06, freq: 2400, q: 2, gain: 0.14 });
         tone({ at: 0.07, freq: 1250, dur: 0.07, type: 'square', gain: 0.05 });
         break;
+      case 'bark': {
+        // A shouted word or two: a rough voiced tone with a breath of noise, one beat per syllable.
+        const w = where(event.enemy.x, event.enemy.z),
+          beats = { contact: 2, reload: 3, cover: 2, flank: 4, grenade: 2 }[event.key] ?? 2,
+          pitch = 120 + (event.enemy.id % 5) * 12;
+        for (let i = 0; i < beats; i++) {
+          tone({
+            at: i * 0.13,
+            freq: pitch * (i % 2 ? 1.18 : 1),
+            to: pitch * 0.9,
+            dur: 0.11,
+            type: 'sawtooth',
+            gain: 0.1 * w.near + 0.012,
+            pan: w.pan,
+            wet: 0.5,
+          });
+          noise({
+            at: i * 0.13,
+            dur: 0.09,
+            freq: 1100 + (i % 2) * 500,
+            q: 2.5,
+            gain: 0.12 * w.near + 0.01,
+            pan: w.pan,
+            wet: 0.4,
+          });
+        }
+        break;
+      }
       case 'enemyReload': {
         const w = where(event.enemy.x, event.enemy.z);
         noise({ at: 0.3, dur: 0.05, freq: 2200, q: 3, gain: 0.2 * w.near, pan: w.pan });
