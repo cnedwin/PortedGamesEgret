@@ -28,6 +28,7 @@ const backend = await (useWebGPU ? import('@egret/engine/webgpu/world3d') : impo
 const { createWorld3DHost, createWorld3DView, startWorld3DLoop } = backend;
 
 const canvas = document.querySelector('#stage');
+const boot = document.querySelector('#boot');
 
 /** State for the browser console and for automated checks; the game never reads it. */
 const status = { error: '', frames: 0, mode: 'boot', game: undefined };
@@ -146,6 +147,7 @@ async function main() {
   const auto = params.get('auto') === '1';
   let game,
     bot,
+    deployed = false,
     mode = 'title',
     time = 0,
     endIn = 0;
@@ -168,7 +170,9 @@ async function main() {
   }
   function deploy() {
     audio.resume();
-    newGame();
+    // The title previews a fresh run without advancing its rules. Keep it on first deploy.
+    if (deployed) newGame();
+    deployed = true;
     hud.reset();
     endIn = 0;
     setMode('play');
@@ -208,6 +212,7 @@ async function main() {
       hud.setTouch(mode === 'play');
     },
   });
+  hud.touchMode = input.touchMode;
   input.sensitivity = settings.sensitivity;
   input.invertY = settings.invertY;
   // Clicking the picture while playing takes the mouse back if the browser let go of it.
@@ -266,6 +271,11 @@ async function main() {
   function frame(dt) {
     stats.begin();
     status.frames++;
+    if (status.frames === 1) requestAnimationFrame(() => {
+      if (status.error) return;
+      boot.classList.add('done');
+      if (auto) deploy();
+    });
     dt = Math.min(dt, 0.1);
     time += dt;
     if (mode === 'play') {
@@ -338,9 +348,7 @@ async function main() {
     });
   view.warm();
   setMode('title');
-  document.querySelector('#boot').classList.add('done');
   startWorld3DLoop(engine, fail);
-  if (auto) deploy();
 }
 
 main().catch(fail);

@@ -34,7 +34,9 @@ export function createHud(root, settings, actions) {
   play.hidden = true;
   play.innerHTML = `
     <div class="compass"><div class="tape"></div><div class="cmarks"></div><i class="needle"></i></div>
-    <div class="objective"><div class="obj-head"><b class="obj-title"></b><span class="obj-clock">00:00</span></div><ul class="obj-list"></ul></div>
+    <div class="objective"><div class="obj-head"><b class="obj-title"></b><span class="obj-clock">00:00</span></div><ul class="obj-list"></ul>
+      <div class="uplink" hidden><div class="uplink-label"><span></span><b></b></div><div class="uplink-track"><i></i></div><small></small></div>
+    </div>
     <div class="cross"><i class="l"></i><i class="r"></i><i class="u"></i><i class="d"></i><b></b></div>
     <div class="hitmark"><i></i><i></i><i></i><i></i></div>
     <div class="marks"></div>
@@ -68,7 +70,12 @@ export function createHud(root, settings, actions) {
     feed = q('.feed'),
     lootList = q('.lootlist'),
     cross = q('.cross'),
-    hitmark = q('.hitmark');
+    hitmark = q('.hitmark'),
+    uplink = q('.uplink'),
+    uplinkLabel = q('.uplink-label span'),
+    uplinkTime = q('.uplink-label b'),
+    uplinkFill = q('.uplink-track i'),
+    uplinkHint = q('.uplink small');
 
   function buildTape() {
     const names =
@@ -214,11 +221,13 @@ export function createHud(root, settings, actions) {
   function buildTouch() {
     const b = t.touch;
     touch.innerHTML = `<div class="stick"><i></i></div>
-      <button data-t="fire" class="t-fire">${b.fire}</button><button data-t="aim" class="t-aim">${b.aim}</button>
+      <button data-t="fire" class="t-fire">${b.fire}</button><button data-t="aim" class="t-aim" aria-pressed="false">${b.aim}</button>
       <button data-t="jump" class="t-jump">${b.jump}</button><button data-t="reload" class="t-reload">${b.reload}</button>
-      <button data-t="crouch" class="t-crouch">${b.crouch}</button><button data-t="interact" class="t-use">${b.use}</button>
+      <button data-t="crouch" class="t-crouch" aria-pressed="false">${b.crouch}</button><button data-t="interact" class="t-use">${b.use}</button>
       <button data-t="heal" class="t-heal">${b.heal}</button><button data-t="grenade" class="t-nade">${b.grenade}</button>
-      <button data-t="swap" class="t-swap">${b.swap}</button><button data-t="pause" class="t-pause">${b.pause}</button>`;
+      <div class="touch-tools"><button data-t="swap" class="t-swap">${b.swap}</button>
+        <button data-t="bag" class="t-bag" aria-expanded="false">${b.bag}</button>
+        <button data-t="pause" class="t-pause">${b.pause}</button></div>`;
   }
   hud.touch = touch;
 
@@ -320,7 +329,7 @@ export function createHud(root, settings, actions) {
         break;
       case 'terminal':
         feedLine(`<b>${t.places[event.terminal.key]}</b> ✓ <em>+${money(MISSION.intelValue)}</em>`, 'good');
-        feedLine(t.resupply, 'good');
+        feedLine(t.resupply + (event.resupply?.rifle || event.resupply?.marksman ? ` · ${t.ammoSupplied}` : ''), 'good');
         break;
       case 'comms':
         comms.hidden = false;
@@ -355,6 +364,10 @@ export function createHud(root, settings, actions) {
     clock: '',
     note: '',
     gap: -1,
+    uplinkLabel: '',
+    uplinkHint: '',
+    uplinkTime: '',
+    uplinkProgress: -1,
   };
   const letters = ['A', 'B', 'C'];
   /**
@@ -413,6 +426,8 @@ export function createHud(root, settings, actions) {
       pen.fill();
     };
     for (const terminal of game.terminals) if (!terminal.done) dot(terminal.x, terminal.z, '#58e0ff', 5);
+    const relay = game.transfer()?.relay;
+    if (relay) dot(relay.x, relay.z, '#ffd376', 6);
     if (game.terminalsDone === game.terminals.length) dot(PLACES.helipad.x, PLACES.helipad.z, '#5fe8b0', 7);
     for (const crate of game.crates) if (!crate.opened) dot(crate.x, crate.z, '#ffbf33', 2.5);
     // Soldiers show only while in view or just after firing, as on a real threat display.
@@ -446,7 +461,8 @@ export function createHud(root, settings, actions) {
     warn = q('.warn');
   let warnLeft = 0,
     bagKey = '',
-    mapTime = 0;
+    mapTime = 0,
+    nextMap = 0;
   function fillBag(game) {
     const p = game.player,
       cells = [];
@@ -469,7 +485,8 @@ export function createHud(root, settings, actions) {
       ? game.attachments.map((key) => `<i>${t.items[key]}</i>`).join('')
       : `<i class="dim">${t.none}</i>`;
     bag.innerHTML = `
-      <div class="bag-h"><b>${t.bag}</b><span>${game.loot.length} / ${BACKPACK}</span><em>◈ ${money(game.lootValue)}</em><small>${t.bagHint}</small></div>
+      <div class="bag-h"><b>${t.bag}</b><span>${game.loot.length} / ${BACKPACK}</span><em>◈ ${money(game.lootValue)}</em>
+        ${hud.touchMode ? `<button class="btn small" data-bag-close>${t.close}</button>` : `<small>${t.bagHint}</small>`}</div>
       <div class="bag-b">
         <ul class="bag-grid">${cells.join('')}</ul>
         <div class="bag-side">
@@ -483,14 +500,21 @@ export function createHud(root, settings, actions) {
   /** Open or close the backpack; with no argument it flips. The run goes on while it is open. */
   hud.toggleBag = (open = bag.hidden) => {
     bag.hidden = !open;
+    touch.querySelector('[data-t="bag"]')?.setAttribute('aria-expanded', String(open));
     bagKey = '';
   };
+  bag.addEventListener('click', (event) => {
+    if (event.target.closest('[data-bag-close]')) hud.toggleBag(false);
+  });
 
   hud.update = (game, dt, eye) => {
     // Through the marksman rifle's scope the view is a lit circle with a fine cross.
     q('.scope').hidden = !(game.player.weapon === 'marksman' && game.player.aim > 0.8);
     mapTime += dt;
-    drawMinimap(game, eye.yaw, mapTime);
+    if (mapTime >= nextMap) {
+      drawMinimap(game, eye.yaw, mapTime);
+      nextMap = mapTime + 1 / 24;
+    }
     if (warnLeft > 0 && (warnLeft -= dt) <= 0) warn.hidden = true;
     if (!bag.hidden) {
       const key = `${game.loot.length}|${game.lootValue}|${game.attachments.length}|${game.player.weapon}|${game.weapons[game.player.weapon].ammo}|${game.player.bandages}|${game.player.grenades}`;
@@ -559,12 +583,11 @@ export function createHud(root, settings, actions) {
     const extract = game.terminalsDone === game.terminals.length,
       eta = extract ? Math.ceil(game.heliEta) : 0,
       active = game.transfer(),
-      objectiveKey = (extract ? 'x' + eta : 'o') + game.terminalsDone + settings.lang + (active ? active.key : '');
+      relay = active?.relay,
+      objectiveKey = (extract ? 'x' : 'o') + game.terminalsDone + settings.lang + (active ? active.key : '');
     if (objectiveKey !== cache.objective) {
       cache.objective = objectiveKey;
-      q('.obj-title').textContent = extract
-        ? t.objectiveExtract + (eta > 0 ? `  ·  ${t.eta} ${clock(eta)}` : '')
-        : `${t.objective}  ${game.terminalsDone}/${game.terminals.length}`;
+      q('.obj-title').textContent = extract ? t.objectiveExtract : `${t.objective}  ${game.terminalsDone}/${game.terminals.length}`;
       q('.obj-list').innerHTML = game.terminals
         .map(
           (terminal, i) =>
@@ -574,6 +597,21 @@ export function createHud(root, settings, actions) {
     }
     const time = clock(game.t);
     if (time !== cache.clock) q('.obj-clock').textContent = cache.clock = time;
+    uplink.hidden = !active && !extract;
+    if (active || extract) {
+      const label = extract ? (eta ? t.eta : t.boardNow) : t.places[active.key],
+        remaining = extract ? (eta ? clock(eta) : '') : clock(Math.ceil((1 - active.progress) * active.duration)),
+        hint = extract ? (eta ? t.evadeUntilLanding : t.boardHint)
+          : relay ? (relay.inRange ? t.syncing : t.relayMove)
+          : !active.inRange ? t.transferLost : t.transferPhases[active.phase ?? 0],
+        share = extract ? 1 - game.heliEta / MISSION.heliSeconds : active.progress,
+        progress = Math.round(share * 100);
+      uplink.classList.toggle('is-relay', Boolean(relay));
+      if (label !== cache.uplinkLabel) uplinkLabel.textContent = cache.uplinkLabel = label;
+      if (hint !== cache.uplinkHint) uplinkHint.textContent = cache.uplinkHint = hint;
+      if (remaining !== cache.uplinkTime) uplinkTime.textContent = cache.uplinkTime = remaining;
+      if (progress !== cache.uplinkProgress) uplinkFill.style.width = (cache.uplinkProgress = progress) + '%';
+    }
 
     // Compass: the dial slides so that the bearing looked along sits under the needle.
     const bearing = ((((-eye.yaw * 180) / Math.PI) % 360) + 360) % 360;
@@ -618,8 +656,9 @@ export function createHud(root, settings, actions) {
       item.onCompass.style.opacity = Math.abs(turn) > 80 ? 0 : 1;
     };
     game.terminals.forEach((terminal, i) =>
-      place(marker('t' + i, 'terminal', letters[i]), terminal.x, 1.7, terminal.z, !terminal.done),
+      place(marker('t' + i, 'terminal', letters[i]), terminal.x, 1.7, terminal.z, !terminal.done && (!active || active === terminal)),
     );
+    place(marker('relay', 'relay', '◇'), relay?.x, 1.25, relay?.z, Boolean(relay));
     const pad = PLACES.helipad;
     place(marker('pad', 'pad', '▲'), pad.x, 1.2, pad.z, extract);
     game.crates.forEach((crate, i) => {
@@ -648,15 +687,14 @@ export function createHud(root, settings, actions) {
       busy = t.reloading;
       share = 1 - weapon.reloading / weapon.reloadTime;
     }
-    // A running transfer shows whenever the hands are free; it turns to a warning out of range.
-    const transfer = game.transfer();
-    if (!busy && transfer) {
-      busy = transfer.inRange
-        ? `${t.transfer} · ${t.places[transfer.key]} ${Math.floor(transfer.progress * 100)}%`
-        : t.transferLost;
-      share = transfer.progress;
+    if (!busy && relay) {
+      busy = relay.inRange ? t.syncing : t.relayMove;
+      share = relay.progress;
+    } else if (!busy && active && !active.inRange) {
+      busy = t.transferLost;
+      share = active.progress;
     }
-    status.classList.toggle('lost', Boolean(transfer && !transfer.inRange));
+    status.classList.toggle('lost', Boolean(!relay && active && !active.inRange));
     status.hidden = !busy;
     if (busy) {
       status.firstElementChild.textContent = busy;
@@ -671,7 +709,8 @@ export function createHud(root, settings, actions) {
   };
 
   hud.reset = () => {
-    bag.hidden = true;
+    hud.toggleBag(false);
+    nextMap = 0;
     warn.hidden = true;
     feed.innerHTML = lootList.innerHTML = hurt.innerHTML = '';
     comms.hidden = true;

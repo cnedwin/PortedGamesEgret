@@ -13,6 +13,7 @@ import {
   createParticleEmitter3D,
   createPointLight3D,
   createQuadGeometry3D,
+  createRingGeometry3D,
   createSphereGeometry3D,
   createStandardMaterial3D,
   createUnlitMaterial3D,
@@ -238,6 +239,23 @@ export function createView(scene, camera, options = {}) {
   });
   const extractBeam = beam(PLACES.helipad.x, PLACES.helipad.z, 0x6dff8a);
   extractBeam.visible = false;
+
+  // The relay marker stays near the floor and can be hidden by walls like other world objects.
+  const relayBeacon = new Object3D();
+  relayBeacon.name = 'relay-beacon';
+  relayBeacon.setPosition(0, 0.045, 0);
+  relayBeacon.visible = false;
+  const relayGlow = createUnlitMaterial3D({ color: 0xffb347, opacity: 0.65, alphaMode: 'blend', depthWrite: false, toneMapped: false });
+  const relayRing = new Mesh3D(createRingGeometry3D({ innerRadius: 0.58, outerRadius: 0.64, thetaSegments: 24 }), relayGlow);
+  relayRing.setRotation(-Math.PI / 2, 0, 0);
+  const relayPost = new Mesh3D(createBoxGeometry3D({ width: 0.055, height: 0.62, depth: 0.055 }), relayGlow);
+  relayPost.setPosition(0, 0.31, 0);
+  relayRing.layers = relayPost.layers = DETAIL;
+  relayRing.castShadow = relayPost.castShadow = false;
+  relayRing.receiveShadow = relayPost.receiveShadow = false;
+  relayBeacon.addChild(relayRing);
+  relayBeacon.addChild(relayPost);
+  scene.addChild(relayBeacon);
 
   // ---- supply crates: a box, a lid that swings up, and a glow once searched ---------------
   const crateBody = createBuilder()
@@ -544,8 +562,7 @@ export function createView(scene, camera, options = {}) {
     HOLES,
   );
   holeMesh.frustumCulled = false;
-  for (let i = 0; i < HOLES; i++) holeMesh.setTransformAt(i, hidden, undefined, 0.001);
-  holeMesh.count = HOLES;
+  holeMesh.count = 0;
   scene.addChild(holeMesh);
   let nextHole = 0;
   // Marks left by shots and blasts, laid onto the surface they hit with the engine's decals so
@@ -630,8 +647,15 @@ export function createView(scene, camera, options = {}) {
   };
   const marks = [],
     MARKS = 70;
+  function removeMark(mark) {
+    mark.removeFromParent();
+    // Each projection owns a new geometry. Its material is shared by other marks.
+    mark.geometry.dispose();
+  }
   function clearMarks() {
-    for (const mark of marks.splice(0)) mark.removeFromParent();
+    for (const mark of marks.splice(0)) removeMark(mark);
+    holeMesh.count = 0;
+    nextHole = 0;
   }
   /** Lay a mark where something struck. Returns false when no surface mesh took it. */
   function mark(surface, x, y, z, normal, size, kind) {
@@ -654,7 +678,7 @@ export function createView(scene, camera, options = {}) {
       if (!decal) continue;
       decal.receiveShadow = true;
       marks.push(decal);
-      if (marks.length > MARKS) marks.shift().removeFromParent();
+      if (marks.length > MARKS) removeMark(marks.shift());
       return true;
     }
     return false;
@@ -668,6 +692,7 @@ export function createView(scene, camera, options = {}) {
       quat,
       size * (0.8 + Math.random() * 0.5),
     );
+    if (holeMesh.count < HOLES) holeMesh.count++;
     nextHole = (nextHole + 1) % HOLES;
   }
 
@@ -762,6 +787,7 @@ export function createView(scene, camera, options = {}) {
       terminal.beam.visible = true;
     }
     extractBeam.visible = false;
+    relayBeacon.visible = false;
     heli.visible = false;
     heliT = 0;
     view.helicopter = 0;
@@ -909,6 +935,12 @@ export function createView(scene, camera, options = {}) {
     const pulse = 0.14 + 0.08 * Math.sin(time * 2.4);
     for (const terminal of terminals) terminal.beam.material.opacity = pulse;
     extractBeam.material.opacity = pulse + 0.05;
+    const relay = playing && game.state === 'play' ? game.transfer()?.relay : undefined;
+    relayBeacon.visible = Boolean(relay);
+    if (relay) {
+      if (relayBeacon.position[0] !== relay.x || relayBeacon.position[2] !== relay.z) relayBeacon.setPosition(relay.x, 0.045, relay.z);
+      relayGlow.opacity = 0.45 + pulse + (relay.inRange ? 0.16 : 0);
+    }
 
     // Grenades in flight.
     while (grenadeNodes.length < game.grenades.length) {

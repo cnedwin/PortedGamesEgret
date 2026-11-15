@@ -17,7 +17,7 @@ import {
   VALUABLES,
   WEAPONS,
 } from './data.mjs';
-import { BOXES, BOUNDS, PLACES, createWalkMesh, walkable } from './level.mjs';
+import { BOXES, BOUNDS, CROWD_RADIUS, PLACES, createWalkMesh, walkable } from './level.mjs';
 
 /** Collision categories: the map, and thrown grenades (which bullets pass through). */
 const LAYER_WORLD = 1,
@@ -157,10 +157,13 @@ export function createGame(options = {}) {
     terminals: PLACES.terminals.map((place, index) => ({
       ...place,
       index,
+      duration: MISSION.terminalProfiles[place.key].seconds,
       done: false,
       linked: false,
       inRange: false,
       progress: 0,
+      phase: 0,
+      relay: undefined,
     })),
     crates: [],
     /** 'intro', 'play', 'dead' or 'won'. */
@@ -353,7 +356,7 @@ export function createGame(options = {}) {
       /** True while kneeling behind something or changing magazines; the view eases `crouch` towards it. */
       ducked: false,
       crouch: 0,
-      agent: crowd.addAgent({ position: [x, 0, z], radius: 0.4, speed: def.speed * 0.45, acceleration: 18 }),
+      agent: crowd.addAgent({ position: [x, 0, z], radius: CROWD_RADIUS, speed: def.speed * 0.45, acceleration: 18 }),
     };
     if (alerted) alert(enemy, player.x, player.z);
     game.enemies.push(enemy);
@@ -651,26 +654,28 @@ export function createGame(options = {}) {
     pursuitIn = MISSION.pursuitEvery,
     pursuitLeft = 0;
   function sendWave(wave) {
+    const start = queue.length;
     for (const kind of Object.keys(wave)) for (let n = wave[kind]; n > 0; n--) queue.push(kind);
-    // Mix the kinds so a wave does not arrive sorted.
-    for (let i = queue.length - 1; i > 0; i--) {
-      const j = random.int(0, i);
+    // Mix this wave without moving the teams already on their way.
+    for (let i = queue.length - 1; i > start; i--) {
+      const j = random.int(start, i);
       [queue[i], queue[j]] = [queue[j], queue[i]];
     }
   }
-  /** An entry point far from the operator, out of sight when one can be found. */
+  /** Approach from one of the nearest entry points the operator cannot see. */
   function pickEntry() {
-    const far = PLACES.entries.filter(([x, z]) => span(x - player.x, z - player.z) >= MISSION.spawnFar);
-    const hidden = far.filter(([x, z]) => !game.clearLine(x, 1.6, z, player.x, eyeY(), player.z));
-    const pool = hidden.length ? hidden : far.length ? far : PLACES.entries;
-    return pool[random.int(0, pool.length - 1)];
+    const hidden = PLACES.entries
+      .map(([x, z]) => ({ x, z, distance: span(x - player.x, z - player.z) }))
+      .filter(({ x, z, distance }) => distance >= MISSION.spawnFar && !game.clearLine(x, 1.6, z, player.x, eyeY(), player.z))
+      .sort((a, b) => a.distance - b.distance);
+    if (hidden.length) return hidden[random.int(0, Math.min(1, hidden.length - 1))];
   }
   function updateWaves(dt) {
     spawnIn -= dt;
-    if (queue.length && spawnIn <= 0 && game.aliveCount() < MISSION.maxAlive) {
-      spawnIn = MISSION.spawnStagger;
-      const [x, z] = pickEntry();
-      spawnEnemy(queue.shift(), x + random.range(-0.8, 0.8), z + random.range(-0.8, 0.8), true);
+    if (player.alive && queue.length && spawnIn <= 0 && game.aliveCount() < MISSION.maxAlive) {
+      const entry = pickEntry();
+      spawnIn = entry ? MISSION.spawnStagger : 0.35;
+      if (entry) spawnEnemy(queue.shift(), entry.x, entry.z, true);
     }
     if (game.terminalsDone === game.terminals.length && pursuitLeft > 0) {
       pursuitIn -= dt;
@@ -891,8 +896,10 @@ export function createGame(options = {}) {
         best = { kind, target: item, seconds };
       }
     };
-    for (const terminal of game.terminals)
-      if (!terminal.done && !terminal.linked) consider('terminal', terminal, MISSION.downloadSeconds);
+    if (!game.transfer()) {
+      for (const terminal of game.terminals)
+        if (!terminal.done) consider('terminal', terminal, MISSION.downloadSeconds);
+    }
     for (const crate of game.crates) if (!crate.opened) consider('crate', crate, MISSION.searchSeconds);
     return best;
   }
@@ -932,8 +939,8 @@ export function createGame(options = {}) {
     terminal.linked = terminal.inRange = true;
     emit('uplink', { terminal });
     emit('comms', { key: 'hold' });
-    sendWave(MISSION.waves[Math.min(game.terminalsDone, MISSION.waves.length - 1)]);
-    noise(player.x, player.z, 200);
+    sendWave(MISSION.terminalProfiles[terminal.key].waves[0]);
+    noise(player.x, player.z, 38);
   }
   /** Put the operator somewhere at once. For tools and tests; play never calls it. */
   game.warp = (x, z) => {
@@ -944,27 +951,47 @@ export function createGame(options = {}) {
   game.transfer = () => game.terminals.find((terminal) => terminal.linked && !terminal.done);
   /** A transfer runs while the operator stays near its terminal and waits while they are away. */
   function updateTransfers(dt) {
-    for (const terminal of game.terminals) {
-      if (!terminal.linked || terminal.done) continue;
-      const inRange = player.alive && span(terminal.x - player.x, terminal.z - player.z) < MISSION.transferRange;
-      if (inRange !== terminal.inRange) emit('uplinkRange', { terminal, inRange });
-      terminal.inRange = inRange;
-      if (!inRange) continue;
-      const before = terminal.progress;
-      terminal.progress = Math.min(1, before + dt / MISSION.transferSeconds);
-      if (before < 0.5 && terminal.progress >= 0.5)
-        sendWave(MISSION.followUps[Math.min(game.terminalsDone, MISSION.followUps.length - 1)]);
-      if (terminal.progress >= 1) finishTransfer(terminal);
+    const terminal = game.transfer();
+    if (!terminal) return;
+    const inRange = player.alive && span(terminal.x - player.x, terminal.z - player.z) < MISSION.transferRange;
+    if (inRange !== terminal.inRange) emit('uplinkRange', { terminal, inRange });
+    terminal.inRange = inRange;
+    const relay = terminal.relay;
+    if (relay) {
+      relay.inRange = inRange && span(relay.x - player.x, relay.z - player.z) < MISSION.relayRange;
+      relay.progress = relay.inRange ? Math.min(1, relay.progress + dt / MISSION.relaySeconds) : 0;
+      if (relay.progress < 1) return;
+      terminal.relay = undefined;
+      terminal.phase++;
+      emit('comms', { key: 'relaySynced', terminal });
+      sendWave(MISSION.terminalProfiles[terminal.key].waves[terminal.phase]);
+    }
+    if (!inRange) return;
+    const phaseEnd = (terminal.phase + 1) / (terminal.relays.length + 1);
+    terminal.progress = Math.min(phaseEnd, terminal.progress + dt / terminal.duration);
+    if (terminal.progress < phaseEnd) return;
+    if (phaseEnd === 1) finishTransfer(terminal);
+    else {
+      terminal.relay = { ...terminal.relays[terminal.phase], inRange: false, progress: 0 };
+      emit('comms', { key: 'relayRequired', terminal });
     }
   }
   function finishTransfer(terminal) {
     terminal.done = true;
     game.terminalsDone++;
     game.lootValue += MISSION.intelValue;
-    // Each cabinet holds a field kit: some armour back, and bandages topped up.
-    player.armor = Math.min(PLAYER.armor, player.armor + MISSION.resupplyArmor);
-    player.bandages = Math.max(player.bandages, MISSION.resupplyBandages);
-    emit('terminal', { terminal, done: game.terminalsDone, total: game.terminals.length });
+    // Each cabinet holds a field kit with replacement armour, dressings and spare magazines.
+    const resupply = {
+      armor: Math.min(PLAYER.armor - player.armor, MISSION.resupplyArmor),
+      bandages: Math.max(0, MISSION.resupplyBandages - player.bandages),
+      rifle: Math.max(0, MISSION.resupplyRifle - weapons.rifle.reserve),
+      marksman: Math.max(0, MISSION.resupplyMarksman - weapons.marksman.reserve),
+    };
+    player.armor += resupply.armor;
+    player.bandages += resupply.bandages;
+    weapons.rifle.reserve += resupply.rifle;
+    weapons.marksman.reserve += resupply.marksman;
+    emit('terminal', { terminal, done: game.terminalsDone, total: game.terminals.length, resupply });
     if (game.terminalsDone === game.terminals.length) {
       pursuitLeft = MISSION.pursuitExtra;
       emit('comms', { key: 'all' });
@@ -1103,7 +1130,7 @@ export function createGame(options = {}) {
   game.rating = () => {
     const accuracy = game.stats.shots ? game.stats.hits / game.stats.shots : 0;
     let points = 0;
-    points += game.t < 270 ? 3 : game.t < 420 ? 2 : game.t < 660 ? 1 : 0;
+    points += game.t < 435 ? 3 : game.t < 510 ? 2 : game.t < 660 ? 1 : 0;
     points += accuracy > 0.45 ? 2 : accuracy > 0.28 ? 1 : 0;
     points += game.lootValue > 220000 ? 2 : game.lootValue > 140000 ? 1 : 0;
     points += game.stats.damageTaken < 120 ? 2 : game.stats.damageTaken < 260 ? 1 : 0;

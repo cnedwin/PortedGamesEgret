@@ -16,7 +16,7 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 | 接入终端、搜索物资箱 · Plug in at a terminal, search a crate | 按住 F 或 E · hold F or E | 按住“使用” · hold USE |
 | 切换武器 · Switch weapon | 1 / 2 / 3 / 滚轮 · wheel | 切枪 · SWAP |
 | 手雷 · Grenade | G | 手雷 · NADE |
-| 背包 · Backpack | Tab | — |
+| 背包 · Backpack | Tab | 背包 · BAG |
 | 绷带 · Bandage | Q | 绷带 · HEAL |
 | 跳跃、奔跑、蹲下 · Jump, sprint, crouch | Space，Shift，C / Ctrl | 跳、摇杆推到底、蹲 · JUMP, push the stick fully, DUCK |
 | 暂停 · Pause | Esc / P | 暂停 · II |
@@ -26,8 +26,8 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 - 背包只有十二格。装满后新搜到的贵重物品只能留在原地；按 Tab 查看背包、武器、配件和补给。
 - 护甲先吸收大部分伤害；生命只会自行恢复到一小截，其余要靠绷带。
 - 三种敌人：保持距离点射的步枪兵、贴脸冲锋的突击兵，以及血厚火力猛的重装兵。爆头伤害更高。他们打空弹匣要换弹，挨打或换弹时会跑到掩体后蹲下，再起身还击。一段时间打不到你，他们会绕到侧面，或者朝你藏身的地方扔手雷——屏幕上会有警告。交火时他们会互相喊话。守卫没发现你时不会开火，枪声会把附近的人都引来。
-- 一局大约三到五分钟。接入终端后数据自行传输，约需半分钟，期间要守在终端十二米内——走远了传输就暂停。传输一开始增援就到，过半时还有第二批。每完成一处，机柜里的补给会补上护甲和绷带。
-- 三处全部完成后直升机起飞，约四十秒后抵达，这段时间追兵不断；直升机到位后在停机坪上站满四秒即可撤离。
+- 一局预计六到八分钟。每次接入一处终端，按任务栏进度在十二米内守备。每处都有两次链路校准，靠近琥珀色标记、停留两秒即可继续传输。增援分三批接近，完成一处后可从机柜补充护甲、绷带和备用弹药。
+- 三处全部完成后，直升机将在六十四秒后抵达东南角的停机坪。沿掩体向撤离点移动，直升机到位后在停机坪站满四秒即可登机。
 - 十个物资箱里有弹药、绷带、防弹插板、手雷和按稀有度分色的贵重物品。结算时按用时、命中率、所受伤害和带出物资的总价值评级。
 
 - Three weapons: an automatic assault rifle, a pistol that never runs out of spare rounds, and a semi-automatic marksman rifle with a scope, plus grenades and bandages. Crates can hold a foregrip (less recoil) and an extended magazine; both go straight onto the assault rifle. Aiming tightens the spread and softens the recoil; moving, jumping and long bursts open the crosshair.
@@ -35,8 +35,8 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 - The backpack has twelve slots. Once it is full, further valuables stay where they are; Tab shows the backpack, weapons, attachments and supplies.
 - Armour takes most of a hit first. Health only comes back a little by itself; the rest takes a bandage.
 - Three kinds of enemy: riflemen who keep their distance and fire bursts, assaulters who rush in close, and heavies with thick armour and a machine gun. Headshots hurt more. They run dry and change magazines, and when hit or reloading they run for cover, kneel behind it, and come up shooting. When they cannot hit you for a while they work round to the side, or throw a grenade at where you are hiding — a warning appears on screen. They call out to each other in a fight. Guards do not shoot until they notice you, and gunfire brings everyone nearby.
-- A run takes about three to five minutes. Once a terminal is plugged in, the data sends itself in about half a minute, and the operator has to stay within twelve metres — walk away and the transfer waits. Reinforcements arrive as it starts, with a second group at the halfway mark. Each finished terminal hands back armour and bandages from the kit in its cabinet.
-- After the third the helicopter sets off and takes about forty seconds, with pursuers coming the whole time; once it arrives, stand on the helipad for four seconds to leave.
+- Allow six to eight minutes per run. Link one terminal at a time and stay within twelve metres. Stay near each amber relay marker for two seconds to resume the transfer. Reinforcements arrive in three waves. Each completed terminal can replenish armour, bandages and spare ammunition.
+- After the third terminal, the helicopter is sixty-four seconds out from the south-east helipad. Use cover on the way and hold on the pad for four seconds once the helicopter is in position.
 - Ten supply crates hold ammunition, bandages, armour plates, grenades and valuables coloured by rarity. The debrief grades the run on time, accuracy, damage taken and the total value carried out.
 
 设置里可以调整画质（高、中、低）、鼠标灵敏度、视野、音量、纵轴反转和语言。帧率不足时请调低画质。

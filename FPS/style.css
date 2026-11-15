@@ -74,11 +74,15 @@ body {
   gap: 10px;
   background: #0b0f11;
   z-index: 30;
-  transition: opacity 0.6s;
+  transition: opacity 0.45s, visibility 0s 0.45s;
 }
 #boot.done {
+  visibility: hidden;
   opacity: 0;
   pointer-events: none;
+}
+#boot.done .boot-bar i {
+  animation: none;
 }
 .boot-mark {
   font-size: clamp(34px, 7vw, 72px);
@@ -201,6 +205,9 @@ body {
 .cmark.pad {
   background: var(--accent);
 }
+.cmark.relay {
+  background: var(--amber);
+}
 
 /* Objective, top left. */
 .objective {
@@ -250,6 +257,40 @@ body {
 }
 .obj-list li.live {
   color: #58e0ff;
+}
+.uplink {
+  margin-top: 8px;
+  color: #b7eaf3;
+}
+.uplink.is-relay {
+  color: var(--amber);
+}
+.uplink-label {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 12px;
+}
+.uplink-label b {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+}
+.uplink-track {
+  height: 3px;
+  margin: 5px 0;
+  background: rgba(233, 239, 233, 0.16);
+}
+.uplink-track i {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: currentColor;
+}
+.uplink small {
+  display: block;
+  max-width: 25ch;
+  font-size: 11px;
 }
 .status.lost {
   color: #ff6a55;
@@ -1032,6 +1073,7 @@ body {
 
 /* ---- touch controls --------------------------------------------------------------------------- */
 .touch {
+  --touch-right: max(26px, env(safe-area-inset-right));
   position: absolute;
   inset: 0;
   pointer-events: none;
@@ -1075,7 +1117,7 @@ body {
   color: var(--accent);
 }
 .touch .t-fire {
-  right: max(26px, env(safe-area-inset-right));
+  right: var(--touch-right);
   bottom: max(86px, env(safe-area-inset-bottom));
   width: 78px;
   height: 78px;
@@ -1083,65 +1125,112 @@ body {
   border-color: rgba(255, 90, 74, 0.7);
 }
 .touch .t-aim {
-  right: 118px;
+  right: calc(var(--touch-right) + 92px);
   bottom: 70px;
 }
 .touch .t-jump {
-  right: 30px;
+  right: calc(var(--touch-right) + 4px);
   bottom: 178px;
 }
 .touch .t-reload {
-  right: 98px;
+  right: calc(var(--touch-right) + 86px);
   bottom: 142px;
 }
 .touch .t-crouch {
-  right: 174px;
-  bottom: 26px;
+  right: calc(var(--touch-right) + 148px);
+  bottom: max(26px, env(safe-area-inset-bottom));
 }
 .touch .t-use {
-  right: 166px;
-  bottom: 118px;
+  right: calc(var(--touch-right) + 143px);
+  bottom: 98px;
   border-color: var(--accent);
 }
 .touch .t-heal {
-  left: 30px;
+  left: max(30px, env(safe-area-inset-left));
   bottom: 196px;
   width: 46px;
   height: 46px;
 }
 .touch .t-nade {
-  left: 88px;
+  left: calc(max(30px, env(safe-area-inset-left)) + 58px);
   bottom: 196px;
   width: 46px;
   height: 46px;
 }
-.touch .t-swap {
-  right: 30px;
-  top: 96px;
-  width: 46px;
-  height: 46px;
+.touch-tools {
+  position: absolute;
+  top: calc(max(12px, env(safe-area-inset-top)) + 100px);
+  right: max(12px, env(safe-area-inset-right));
+  display: flex;
+  gap: 6px;
 }
-.touch .t-pause {
-  right: 30px;
-  top: 40px;
+.touch-tools button {
+  position: static;
   width: 46px;
-  height: 46px;
+  height: 44px;
 }
 .hud.touching .vitals {
   bottom: auto;
-  top: 96px;
+  top: calc(max(14px, env(safe-area-inset-top)) + 128px);
+  left: max(12px, env(safe-area-inset-left));
   width: 170px;
 }
 .hud.touching .ammo {
   bottom: auto;
-  top: 150px;
-  right: 30px;
+  top: calc(max(12px, env(safe-area-inset-top)) + 150px);
+  right: max(12px, env(safe-area-inset-right));
 }
 .hud.touching .a-count b {
   font-size: 28px;
 }
 .hud.touching .kit kbd {
   display: none;
+}
+.hud.touching .comms {
+  top: calc(max(14px, env(safe-area-inset-top)) + 218px);
+  bottom: auto;
+  max-width: min(460px, 88vw);
+  font-size: 13px;
+}
+
+@media (pointer: coarse) and (max-height: 560px) and (orientation: landscape) {
+  .touch-tools {
+    right: calc(max(12px, env(safe-area-inset-right)) + 96px);
+    top: max(12px, env(safe-area-inset-top));
+  }
+  .hud.touching .ammo {
+    top: calc(max(12px, env(safe-area-inset-top)) + 98px);
+  }
+  .hud.touching .comms {
+    top: calc(max(12px, env(safe-area-inset-top)) + 62px);
+    left: 52%;
+    max-width: min(440px, 43vw);
+  }
+  .hud.touching .vitals {
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .hud.touching .compass {
+    left: 47%;
+    width: min(22vw, 200px);
+    margin-left: 0;
+    transform: translateX(-50%);
+  }
+  .touch .t-fire {
+    bottom: max(48px, env(safe-area-inset-bottom));
+  }
+  .touch .t-jump {
+    bottom: calc(max(48px, env(safe-area-inset-bottom)) + 82px);
+  }
+  .touch .t-reload {
+    bottom: calc(max(48px, env(safe-area-inset-bottom)) + 46px);
+  }
+  .touch .t-use {
+    bottom: calc(max(48px, env(safe-area-inset-bottom)) + 29px);
+  }
+  .touch .t-aim {
+    bottom: max(30px, env(safe-area-inset-bottom));
+  }
 }
 
 @media (max-width: 720px) {
@@ -1162,6 +1251,26 @@ body {
     grid-template-columns: 1fr 1fr;
   }
 }
+@media (max-width: 540px) and (orientation: portrait) {
+  .hud.touching .compass {
+    top: calc(max(14px, env(safe-area-inset-top)) + 102px);
+    left: calc(max(12px, env(safe-area-inset-left)) + 66px);
+    width: 132px;
+    margin-left: -66px;
+  }
+  .hud.touching .vitals {
+    width: min(145px, 43vw);
+  }
+  .touch .stick {
+    left: max(16px, env(safe-area-inset-left));
+  }
+  .touch .t-heal {
+    left: max(16px, env(safe-area-inset-left));
+  }
+  .touch .t-nade {
+    left: calc(max(16px, env(safe-area-inset-left)) + 52px);
+  }
+}
 
 /* Minimap, top right. */
 .minimap {
@@ -1172,6 +1281,19 @@ body {
   height: 176px;
   border-radius: 50%;
   box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.hud.touching .minimap {
+  top: max(12px, env(safe-area-inset-top));
+  right: max(12px, env(safe-area-inset-right));
+  width: 90px;
+  height: 90px;
+}
+.mark.relay {
+  color: var(--amber);
+}
+.mark.relay > i {
+  background: var(--amber);
+  color: #1f1304;
 }
 .feed-line.enemy {
   border-right-color: var(--danger);
@@ -1237,6 +1359,20 @@ body {
 .bag-h small {
   margin-left: auto;
   color: var(--dim);
+}
+.bag-h [data-bag-close] {
+  margin-left: auto;
+  min-height: 42px;
+}
+.bag:has([data-bag-close]) {
+  z-index: 1;
+  max-height: 78dvh;
+  overflow: auto;
+  pointer-events: auto;
+  touch-action: pan-y;
+}
+.hud:has(.bag:not([hidden])) {
+  z-index: 2;
 }
 .bag-b {
   display: grid;

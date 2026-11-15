@@ -39,6 +39,12 @@ function playOut(seed, limit = 600) {
   return game;
 }
 
+function atTerminal(game, terminal) {
+  const p = game.player;
+  game.warp(terminal.x - Math.sin(terminal.facing) * 1.3, terminal.z - Math.cos(terminal.facing) * 1.3);
+  p.yaw = Math.atan2(-(terminal.x - p.x), -(terminal.z - p.z));
+}
+
 test('the map leaves room to stand where soldiers and the operator start', () => {
   assert.ok(walkable(PLACES.spawn.x, PLACES.spawn.z));
   assert.ok(walkable(PLACES.helipad.x, PLACES.helipad.z));
@@ -54,6 +60,18 @@ test('every terminal and the helipad can be walked to from the gate', () => {
   ]) {
     const path = game.navMesh.findPath([PLACES.spawn.x, 0, PLACES.spawn.z], [t[0], 0, t[1]], { snapDistance: 3 });
     assert.ok(path?.complete, `no way to ${t}`);
+  }
+});
+
+test('reinforcements can navigate from map entries to the objective fronts with their actual crowd radius', () => {
+  const game = createGame({ seed: 1 });
+  const agentRadius = game.enemies[0].agent.radius;
+  for (const terminal of game.terminals) {
+    const goal = [terminal.x - Math.sin(terminal.facing) * 1.3, 0, terminal.z - Math.cos(terminal.facing) * 1.3];
+    for (const [x, z] of PLACES.entries) {
+      const path = game.navMesh.findPath([x, 0, z], goal, { agentRadius, snapDistance: 1 });
+      assert.ok(path?.complete, `no reinforcement path from ${x}, ${z} to ${terminal.key}`);
+    }
   }
 });
 
@@ -138,16 +156,13 @@ test('a grenade at the feet hurts, and armour takes its share', () => {
   assert.ok(game.stats.damageTaken > 0);
 });
 
-test('soldiers under fire go to cover, and change magazines when empty', () => {
+test('soldiers change magazines when empty during combat', () => {
   const game = started(3);
+  for (const enemy of game.enemies) enemy.ammo = 1;
   const events = run(game, 0.3, (input) => (input.fire = true));
-  // Stand in the open and let them shoot.
-  events.push(...run(game, 45));
+  events.push(...run(game, 20));
   assert.ok(events.some((event) => event.type === 'enemyShot'));
-  assert.ok(
-    events.some((event) => event.type === 'enemyReload' || event.type === 'enemyCover'),
-    'nobody reloaded or took cover',
-  );
+  assert.ok(events.some((event) => event.type === 'enemyReload'));
   for (const enemy of game.enemies) assert.ok(enemy.ammo >= 0 && enemy.ammo <= enemy.def.mag);
 });
 
@@ -188,6 +203,7 @@ test('a run can be finished: three terminals, then the helicopter', () => {
     assert.equal(game.terminalsDone, 3);
     assert.ok(game.lootValue >= 3 * MISSION.intelValue);
     assert.ok(game.stats.kills > 0);
+    assert.ok(game.t >= 330 && game.t < 480, `seed ${seed} extracted in ${Math.round(game.t)} seconds`);
     assert.match(game.rating(), /^[SABC]$/);
   }
 });
@@ -198,9 +214,7 @@ test('a transfer runs only while the operator stays near its terminal', () => {
   const input = idleInput();
   while (game.state === 'intro') game.update(1 / 60, input);
   // Stand in front of the terminal, facing it, and hold the key until the uplink is in.
-  const p = game.player;
-  game.warp(terminal.x - Math.sin(terminal.facing) * 1.3, terminal.z - Math.cos(terminal.facing) * 1.3);
-  p.yaw = Math.atan2(-(terminal.x - p.x), -(terminal.z - p.z));
+  atTerminal(game, terminal);
   input.interact = true;
   for (let i = 0; i < 60 * (MISSION.downloadSeconds + 0.5) && !terminal.linked; i++) game.update(1 / 60, input);
   assert.ok(terminal.linked, 'holding the key plugs the uplink in');
@@ -214,4 +228,66 @@ test('a transfer runs only while the operator stays near its terminal', () => {
   for (let i = 0; i < 60; i++) game.update(1 / 60, input);
   assert.ok(Math.abs(terminal.progress - near) < 0.01, 'no progress out of range');
   assert.equal(terminal.inRange, false);
+});
+
+test('one transfer runs at a time and advancing its phases requires both signal checks', () => {
+  const game = started(3);
+  const [first, second] = game.terminals;
+  const quiet = () => {
+    for (const enemy of game.enemies) enemy.dead = true;
+  };
+  const use = input => (quiet(), input.interact = true);
+
+  atTerminal(game, first);
+  run(game, 2, use);
+  assert.equal(game.transfer(), first);
+  atTerminal(game, second);
+  run(game, 3, use);
+  assert.equal(second.linked, false);
+  assert.equal(game.transfer(), first);
+
+  atTerminal(game, first);
+  const required = run(game, 25, quiet);
+  assert.equal(first.phase, 0);
+  assert.equal(first.progress, 1 / 3);
+  assert.ok(required.some(event => event.key === 'relayRequired'));
+  const relay = first.relay;
+  assert.ok(relay && walkable(relay.x, relay.z));
+  assert.ok(Math.hypot(relay.x - first.x, relay.z - first.z) < 12);
+  assert.equal(relay.inRange, false);
+  run(game, 3, quiet);
+  assert.equal(first.progress, 1 / 3);
+  assert.equal(relay.progress, 0);
+
+  game.warp(relay.x, relay.z);
+  run(game, 1, quiet);
+  assert.equal(relay.inRange, true);
+  assert.ok(relay.progress > 0 && relay.progress < 1);
+  atTerminal(game, first);
+  run(game, 1, quiet);
+  assert.equal(relay.progress, 0);
+  game.warp(relay.x, relay.z);
+  const synced = run(game, 2.1, quiet);
+  assert.ok(synced.some(event => event.key === 'relaySynced'));
+  assert.equal(first.relay, undefined);
+  assert.equal(first.phase, 1);
+  assert.ok(first.progress > 1 / 3);
+
+  run(game, 25, quiet);
+  assert.equal(first.progress, 2 / 3);
+  const other = first.relay;
+  assert.ok(other && walkable(other.x, other.z));
+  assert.ok(Math.hypot(other.x - relay.x, other.z - relay.z) > 4);
+  game.warp(other.x, other.z);
+  run(game, 2.1, quiet);
+  assert.equal(first.phase, 2);
+  game.weapons.rifle.reserve = 0;
+  game.weapons.marksman.reserve = 0;
+  const finished = run(game, 25, quiet).find(event => event.type === 'terminal');
+  assert.equal(game.terminalsDone, 1);
+  assert.equal(game.transfer(), undefined);
+  assert.ok(game.weapons.rifle.reserve > 0);
+  assert.ok(game.weapons.marksman.reserve > 0);
+  assert.equal(finished.resupply.rifle, game.weapons.rifle.reserve);
+  assert.equal(finished.resupply.marksman, game.weapons.marksman.reserve);
 });

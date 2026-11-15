@@ -152,31 +152,31 @@ export const MISSION = {
   interactRange: 2.4,
   /** Holding the key this long plugs the uplink in; the transfer then runs by itself. */
   downloadSeconds: 1.5,
-  /** How long a terminal takes to send its data, and how close the operator must stay while it does. */
-  transferSeconds: 26,
+  /** Each sector has three transfer phases separated by short signal checks. */
+  terminalProfiles: {
+    yard: { seconds: 72, waves: [{ rifle: 2, rush: 1 }, { rush: 2 }, { rifle: 2 }] },
+    plant: { seconds: 82, waves: [{ rifle: 2 }, { rifle: 1, rush: 1 }, { rifle: 2, rush: 1 }] },
+    office: { seconds: 90, waves: [{ rifle: 2, rush: 1 }, { rush: 2 }, { rifle: 1, heavy: 1 }] },
+  },
   transferRange: 12,
+  relayRange: 1.65,
+  relaySeconds: 2,
   /** What a finished terminal hands back: armour, and bandages up to this many. */
   resupplyArmor: 50,
   resupplyBandages: 2,
+  resupplyRifle: 42,
+  resupplyMarksman: 12,
   searchSeconds: 1.2,
   extractSeconds: 4,
   /** How long the helicopter takes to arrive once the last terminal is done. */
-  heliSeconds: 38,
-  /** Reinforcements sent when each transfer starts, by kind. */
-  waves: [
-    { rifle: 3, rush: 2 },
-    { rifle: 4, rush: 2 },
-    { rifle: 4, rush: 3, heavy: 1 },
-  ],
-  /** A second, smaller group sent when each transfer is half done. */
-  followUps: [{ rush: 2 }, { rifle: 2, rush: 1 }, { rifle: 2, rush: 2 }],
+  heliSeconds: 64,
   maxAlive: 10,
-  spawnStagger: 0.85,
-  spawnFar: 18,
+  spawnStagger: 1.85,
+  spawnFar: 15,
   /** After the last terminal, one more soldier every so often while few are left. */
-  pursuitEvery: 6,
+  pursuitEvery: 8,
   pursuitMinAlive: 4,
-  pursuitExtra: 7,
+  pursuitExtra: 8,
   hearing: 42,
   sight: 55,
   /** How far a soldier who has not been alerted can spot the operator. */
