@@ -2,6 +2,7 @@ import { CLASSES } from '../data/arts.mjs';
 import { DIFFICULTIES, SCENARIOS } from '../data/extras.mjs';
 import { PLACE_BY_ID } from '../data/places.mjs';
 import { SECT_BY_ID, SECTS } from '../data/sects.mjs';
+import { openingPeaceYears } from '../core/world.mjs';
 import { btn, esc, icon } from './kit.mjs';
 
 export const prologue = [
@@ -116,7 +117,7 @@ export function legacyScreen(ui, sceneStyle) {
       <label>开局局势<select data-change="scenario">${options(Object.entries(SCENARIOS).map(([id, sc]) => [id, sc.name]), ui.scenario)}</select></label>
       <label>对手强弱<select data-change="difficulty">${options(DIFFICULTIES.map((d, i) => [i, d.name]), ui.difficulty)}</select></label>
       <div data-region="condition-details" class="opening-condition-details">
-        <p>${esc(SCENARIOS[ui.scenario].does)}</p><p>开局 ${DIFFICULTIES[ui.difficulty].peace} 年无人来犯。</p>
+        <p>${esc(SCENARIOS[ui.scenario].does)}</p><p>开局有 ${openingPeaceYears(ui.difficulty)} 年立足期。若先对某派出兵，对方可反击。</p>
       </div>
     </details>
     <div class="opening-actions">${btn(ui.founding ? '开山立派' : '入主山门', 'new', {}, 'gold-button', 'arrow')}</div>

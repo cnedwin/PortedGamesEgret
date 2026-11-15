@@ -6,14 +6,26 @@ import { colorFromHex } from './math3D.js';
 export function createCustomShader3D(input) {
     if (!input || typeof input.key !== 'string' || input.key.length === 0 || /[\s|/]/.test(input.key))
         throw new World3DError('WORLD3D_INPUT_INVALID', 'shader key');
-    if (input.glsl === undefined && input.wgsl === undefined && input.glslVertex === undefined && input.wgslVertex === undefined && input.glslNormal === undefined && input.wgslNormal === undefined)
+    if (input.glsl === undefined &&
+        input.wgsl === undefined &&
+        input.glslVertex === undefined &&
+        input.wgslVertex === undefined &&
+        input.glslNormal === undefined &&
+        input.wgslNormal === undefined)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'shader source');
     const uniforms = new Float32Array(16);
     if (input.uniforms)
         uniforms.set(Array.from(input.uniforms).slice(0, 16));
-    return Object.freeze({ key: input.key, ...(input.glsl === undefined ? {} : { glsl: input.glsl }), ...(input.wgsl === undefined ? {} : { wgsl: input.wgsl }),
-        ...(input.glslVertex === undefined ? {} : { glslVertex: input.glslVertex }), ...(input.wgslVertex === undefined ? {} : { wgslVertex: input.wgslVertex }),
-        ...(input.glslNormal === undefined ? {} : { glslNormal: input.glslNormal }), ...(input.wgslNormal === undefined ? {} : { wgslNormal: input.wgslNormal }), uniforms });
+    return Object.freeze({
+        key: input.key,
+        ...(input.glsl === undefined ? {} : { glsl: input.glsl }),
+        ...(input.wgsl === undefined ? {} : { wgsl: input.wgsl }),
+        ...(input.glslVertex === undefined ? {} : { glslVertex: input.glslVertex }),
+        ...(input.wgslVertex === undefined ? {} : { wgslVertex: input.wgslVertex }),
+        ...(input.glslNormal === undefined ? {} : { glslNormal: input.glslNormal }),
+        ...(input.wgslNormal === undefined ? {} : { wgslNormal: input.wgslNormal }),
+        uniforms
+    });
 }
 export function setColor3D(out, input) {
     if (typeof input === 'number')
@@ -165,8 +177,14 @@ export class Material3D extends Resource3D {
     get isTransparent() {
         return this.alphaMode === 'blend';
     }
-    setColor(color) { setColor3D(this.color, color); return this; }
-    setEmissive(color) { setColor3D(this.emissive, color); return this; }
+    setColor(color) {
+        setColor3D(this.color, color);
+        return this;
+    }
+    setEmissive(color) {
+        setColor3D(this.emissive, color);
+        return this;
+    }
     /** Independent copy sharing texture references. */
     clone() {
         const copy = new Material3D(this.shading);

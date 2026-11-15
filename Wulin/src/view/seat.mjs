@@ -4,11 +4,12 @@
 // The scene reads the world and never changes it. `refresh` is called when
 // the world has moved on; it rebuilds the buildings only if they changed and
 // keeps the figures in step with who lives here and what they are doing.
-import { InstancedMesh3D, Mesh3D, Object3D, Scene3D, createPerspectiveCamera3D, createStandardMaterial3D, quatFromEuler } from '@egret/engine/world3d';
+import { InstancedMesh3D, Mesh3D, Object3D, Raycaster3D, Scene3D, createPerspectiveCamera3D, createStandardMaterial3D, createUnlitMaterial3D, quatFromEuler } from '@egret/engine/world3d';
+import { GATE_AT, HALL_AT, PLOT, SEAT_PLOTS, YARD, seatLayout } from '../core/seat-layout.mjs';
 import { ART_BY_ID, CLASSES } from '../data/arts.mjs';
 import { PLACE_BY_ID } from '../data/places.mjs';
 import { SECT_BY_ID } from '../data/sects.mjs';
-import { PLOT, TREE_KINDS, createBuilding, treeParts } from './buildings.mjs';
+import { TREE_KINDS, createBuilding, treeParts } from './buildings.mjs';
 import { STRIKE_OF, createFigure } from './figure.mjs';
 import { floraGeometry, hasFlora, whenFlora } from './flora.mjs';
 import { BALL, BOX, FOLIAGE, ROD, SPIKE, TAPER, TOON, grad, beam, build, glow, heightSurface, hexOf, mix, model, scatter, shade } from './shapes.mjs';
@@ -17,52 +18,16 @@ import { lightScene } from './stage.mjs';
 /** How many people are shown at once, by picture quality. */
 const CROWD = { high: 22, medium: 14, low: 9 };
 
-/** Half the side of the flat ground the buildings stand on. */
-const YARD = 42;
-
-/**
- * Where buildings go. The hall is at the back of the courtyard and the gate
- * at the front; the rest fill the plots either side of the path between
- * them, nearest the middle first.
- */
-export function plots() {
-  const list = [];
-  for (const z of [-17, -6, 5, 16]) for (const column of [1, 2, 3]) for (const side of [-1, 1]) list.push({ x: side * (column * (PLOT - 1) - 1), z, column });
-  return list.sort((a, b) => a.column - b.column || Math.abs(a.z + 4) - Math.abs(b.z + 4));
-}
-const HALL_AT = { x: 0, z: -24 },
-  GATE_AT = { x: 0, z: YARD - 6 },
-  LANDMARK_AT = { x: 24, z: HALL_AT.z - 5 };
+const LANDMARK_AT = { x: 24, z: HALL_AT.z - 5 };
 /** People and buildings are drawn larger than life so they read from above. */
 const FIGURE_SCALE = 1.5;
-
-/** The kinds that want a place of honour or a quiet corner get their plots first. */
-const ORDER = ['board', 'yard', 'range', 'library', 'council', 'mess', 'dorm', 'store', 'clinic', 'cell', 'forge', 'loom', 'still', 'tower', 'garden', 'lumber', 'quarry', 'ironPit', 'goldPit'];
-
-/**
- * Where each kind of building would rather stand: the lower the number for a plot, the better.
- * Study and council sit quietly at the back near the hall; the drill yards flank the middle of
- * the avenue; kitchens, beds and stores keep to the east; the workshops, with their smoke and
- * noise, to the west by the gate; and whatever digs or grows goes to the outer edge.
- */
-const side = (plot) => Math.sign(plot.x);
-const WANTS = {
-  board: (p) => Math.abs(p.z - 16) + p.column * 12 + (side(p) > 0 ? 0 : 1),
-  yard: (p) => Math.abs(p.z - 5) + p.column * 9 + (side(p) < 0 ? 0 : 4),
-  range: (p) => Math.abs(p.z - 5) + p.column * 9 + (side(p) > 0 ? 0 : 4),
-  library: (p) => p.z + 17 + p.column * 4 + (side(p) < 0 ? 0 : 2),
-  council: (p) => p.z + 17 + p.column * 4 + (side(p) > 0 ? 0 : 2),
-  clinic: (p) => Math.abs(p.z + 6) + p.column * 3 + (side(p) < 0 ? 0 : 5),
-  cell: (p) => p.z + 17 - p.column * 3,
-  mess: (p) => Math.abs(p.z - 5) + p.column * 3 + (side(p) > 0 ? 0 : 9),
-  dorm: (p) => Math.abs(p.z + 2) + p.column * 2 + (side(p) > 0 ? 0 : 7),
-  store: (p) => Math.abs(p.z - 16) + p.column * 3 + (side(p) > 0 ? 0 : 7),
-  forge: (p) => Math.abs(p.z - 16) + p.column * 2 + (side(p) < 0 ? 0 : 9),
-  loom: (p) => Math.abs(p.z - 10) + p.column * 2 + (side(p) < 0 ? 0 : 9),
-  still: (p) => Math.abs(p.z - 5) + p.column * 2 + (side(p) < 0 ? 0 : 9),
-  tower: (p) => -Math.abs(p.z) - p.column * 6,
-};
-const edgeFirst = (p) => -p.column * 9 + (p.z + 17) * 0.3;
+const PLOT_HALF = (PLOT - 2.6) / 2;
+const PLOT_HEIGHT = 0.12;
+const PLOT_FRAME = build([-1, 1].flatMap(x => [-1, 1].flatMap(z => [
+  [BOX, [x * (PLOT_HALF - 0.8), 0, z * PLOT_HALF], [1.7, 0.055, 0.17], 0xffffff],
+  [BOX, [x * PLOT_HALF, 0, z * (PLOT_HALF - 0.8)], [0.17, 0.055, 1.7], 0xffffff],
+])));
+const PLOT_INK = createUnlitMaterial3D({ color: 0xffffff, vertexColors: true });
 
 /** Hills round the yard, by how mountainous the place is. */
 function ground(spec, random) {
@@ -279,7 +244,7 @@ function surroundings(height, random, sectColor, sectId = null) {
     for (const part of treeParts(x, z, size, kind)) greens.push([part[0], [part[1][0], part[1][1] + y, part[1][2]], part[2], part[3], part[4]]);
   };
   /** Whether a spot in the yard is open ground: not paved, not built on, not water. */
-  const open = (x, z) => Math.abs(x) > 3.6 && !(Math.abs(x) < 12 && z < HALL_AT.z + 15) && ![-11.5, -0.5, 10.5].some((row) => Math.abs(z - row) < 1.4) && !plots().some((plot) => Math.abs(x - plot.x) < 5.4 && Math.abs(z - plot.z) < 5.4) && ((x - POND.x) / (POND.rx + 1)) ** 2 + ((z - POND.z) / (POND.rz + 1)) ** 2 > 1;
+  const open = (x, z) => Math.abs(x) > 3.6 && !(Math.abs(x) < 12 && z < HALL_AT.z + 15) && ![-11.5, -0.5, 10.5].some((row) => Math.abs(z - row) < 1.4) && !SEAT_PLOTS.some((plot) => Math.abs(x - plot.x) < 5.4 && Math.abs(z - plot.z) < 5.4) && ((x - POND.x) / (POND.rx + 1)) ** 2 + ((z - POND.z) / (POND.rz + 1)) ** 2 > 1;
   // Grass in tufts, wild flowers and leafy plants wherever the yard is left alone, and thicker outside the wall.
   for (let i = 0; i < 520; i++) {
     const x = (random() - 0.5) * 2 * (edge - 1),
@@ -403,8 +368,10 @@ const weaponSlotOf = (person) => person.gear?.weapon?.slot ?? null;
  * @param placeId which stronghold to show
  * @param options.layer   an element over the canvas for the buildings' name tags
  * @param options.nameOf  gives a building kind its name
+ * @param options.canBuild whether the current view should show available plots
+ * @param options.onSelect receives a building index or plot ID when the canvas is tapped
  */
-export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind) => kind, onHour = () => {}, onAudio } = {}) {
+export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind) => kind, onHour = () => {}, onAudio, canBuild = () => false, onSelect } = {}) {
   const spec = PLACE_BY_ID[placeId];
   const random = scatter(spec.id.length * 7919 + spec.at.x * 31 + spec.at.y);
   const scene = new Scene3D();
@@ -419,7 +386,7 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
 
   let dressing = null,
     built = new Object3D(),
-    signature = '',
+    signature = null,
     owner = null;
   scene.addChild(built);
   /** Where smoke rises from: chimneys, fires and the censer. */
@@ -462,35 +429,70 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
   /** Where each kind of building ended up, for sending people to work. */
   let sites = {};
   let drillActivity = 0, forgeActivity = 0;
-  /** Name tags over the buildings: the element, the spot it marks and the building's place in the list. */
-  let tags = [];
-  const clearTags = () => (tags.forEach((tag) => tag.element.remove()), (tags = []));
+  let tags = [], emptyPlots = [], highlightedPlot = null;
+  const buildingIndices = new WeakMap();
+  const ray = new Raycaster3D();
+  const plotFrames = new InstancedMesh3D(PLOT_FRAME, PLOT_INK, SEAT_PLOTS.length);
+  plotFrames.visible = false;
+  plotFrames.castShadow = false;
+  plotFrames.pickable = false;
+  scene.addChild(plotFrames);
   /** Figures by person id. */
   const cast = new Map();
+
+  function addTag(type, id, at, y, text) {
+    if (!layer) return;
+    const element = document.createElement('button');
+    element.type = 'button';
+    element.className = `scene-pin seat-${type === 'building' ? 'tag' : 'plot'}`;
+    element.dataset.act = type === 'building' ? 'building' : 'build-plot';
+    element.dataset[type === 'building' ? 'index' : 'plot'] = id;
+    element.textContent = text;
+    if (type === 'plot') element.setAttribute('aria-label', `在第 ${id + 1} 块空地建造`);
+    // A finger that slides over a name tag has not pressed it. Keyboard activation stays native.
+    let down, dragged = false;
+    element.addEventListener('pointerdown', (event) => {
+      down = event;
+      dragged = !event.isPrimary || event.button !== 0;
+    });
+    element.addEventListener('pointermove', (event) => {
+      if (down?.pointerId === event.pointerId && Math.hypot(event.clientX - down.clientX, event.clientY - down.clientY) >= 8) dragged = true;
+    });
+    element.addEventListener('pointerleave', (event) => {
+      if (event.pointerType !== 'touch' && down?.pointerId === event.pointerId) dragged = true;
+    });
+    element.addEventListener('pointerup', () => (down = null));
+    element.addEventListener('pointercancel', () => (dragged = true));
+    element.addEventListener('click', (event) => {
+      if (event.detail && dragged) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      down = null;
+      dragged = false;
+    });
+    tags.push({ element, type, id, x: at.x, y, z: at.z });
+  }
+
+  function paintPlotFrames(selectedPlot) {
+    highlightedPlot = selectedPlot;
+    emptyPlots.forEach((plot, i) => {
+      const rgb = plot === selectedPlot ? [1, 0.74, 0.36] : [0.54, 0.42, 0.25];
+      plotFrames.setColorAt(i, ...rgb);
+    });
+  }
 
   function layBuildings(place) {
     scene.removeChild(built);
     built = new Object3D();
     scene.addChild(built);
     sites = {};
-    clearTags();
-    // Buildings the player has placed keep their plots; the rest take what is left, the busiest kinds nearest the path.
-    const all = plots();
-    const sorted = place.buildings.map((b, index) => ({ ...b, index })).sort((a, b) => ORDER.indexOf(a.kind) - ORDER.indexOf(b.kind));
-    const taken = new Set(sorted.filter((b) => all[b.plot] && b.kind !== 'hall' && b.kind !== 'gate').map((b) => b.plot));
-    const free = all.filter((_, i) => !taken.has(i));
+    tags.forEach(({ element }) => element.remove());
+    tags = [];
+    const layout = seatLayout(place.buildings);
+    emptyPlots = layout.emptyPlots;
     smokes = [];
-    /** The plot a kind likes best of those still free. */
-    const choose = (kind) => {
-      if (!free.length) return undefined;
-      const want = WANTS[kind] ?? edgeFirst;
-      let best = 0;
-      for (let i = 1; i < free.length; i++) if (want(free[i]) < want(free[best])) best = i;
-      return free.splice(best, 1)[0];
-    };
-    for (const building of sorted) {
-      const at = building.kind === 'hall' ? HALL_AT : building.kind === 'gate' ? GATE_AT : all[building.plot] && taken.delete(building.plot) ? all[building.plot] : choose(building.kind);
-      if (!at) continue;
+    for (const { building, index, at } of layout.placements) {
       const node = createBuilding(building.kind, building.level, place.owner);
       // The hall stands on its terrace. Buildings beside the avenue face it; those behind them face south.
       const turn = at.column === 1 ? -Math.sign(at.x) * (Math.PI / 2) : 0,
@@ -499,25 +501,48 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       node.setRotation(0, turn, 0);
       node.setScale(scale);
       built.addChild(node);
+      buildingIndices.set(node, index);
       const fx = Math.sin(turn),
         fz = Math.cos(turn);
       if (node.smoke) smokes.push([at.x + (node.smoke[0] * fz + node.smoke[2] * fx) * scale, node.smoke[1] * scale, at.z + (-node.smoke[0] * fx + node.smoke[2] * fz) * scale]);
-      sites[building.kind] ??= { x: at.x + (building.kind === 'hall' ? 0 : 0), z: at.z + (building.kind === 'hall' ? 8 : 0), fx, fz };
-      if (layer) {
-        const element = document.createElement('button');
-        element.className = 'scene-pin seat-tag';
-        element.dataset.act = 'building';
-        element.dataset.index = building.index;
-        element.textContent = `${nameOf(building.kind)}${building.level > 1 ? ' ' + building.level : ''}`;
-        tags.push({ element, x: at.x, y: building.kind === 'hall' ? 9 : building.kind === 'tower' ? 9 : 5, z: at.z });
-      }
+      sites[building.kind] ??= { x: at.x, z: at.z + (building.kind === 'hall' ? 8 : 0), fx, fz };
+      const labelY = building.kind === 'hall' || building.kind === 'tower' ? 9 : 5;
+      addTag('building', index, at, labelY, nameOf(building.kind) + (building.level > 1 ? ' ' + building.level : ''));
     }
+    plotFrames.count = emptyPlots.length;
+    emptyPlots.forEach((plot, i) => {
+      const at = SEAT_PLOTS[plot];
+      plotFrames.setTransformAt(i, [at.x, PLOT_HEIGHT, at.z], [0, 0, 0, 1], 1);
+      addTag('plot', plot, at, PLOT_HEIGHT, '+');
+    });
+    paintPlotFrames(highlightedPlot);
+  }
+
+  function pick(x, y) {
+    const width = stage.canvas?.clientWidth, height = stage.canvas?.clientHeight;
+    if (!(width && height)) return;
+    ray.setFromCamera(2 * x / width - 1, 1 - 2 * y / height, camera);
+    const [rx, ry, rz] = ray.origin, [dx, dy, dz] = ray.direction;
+    const groundDistance = dy < 0 ? (PLOT_HEIGHT - ry) / dy : Infinity;
+    const hit = ray.intersect(built, { firstHitOnly: true, far: groundDistance + PLOT_HEIGHT })[0];
+    if (hit) {
+      let node = hit.object;
+      while (node.parent && node.parent !== built) node = node.parent;
+      const index = buildingIndices.get(node);
+      if (index !== undefined) onSelect({ kind: 'building', index });
+      return;
+    }
+    if (!canBuild() || !Number.isFinite(groundDistance) || groundDistance <= 0) return;
+    const px = rx + dx * groundDistance, pz = rz + dz * groundDistance;
+    const plot = emptyPlots.find((i) => Math.abs(px - SEAT_PLOTS[i].x) <= PLOT_HALF && Math.abs(pz - SEAT_PLOTS[i].z) <= PLOT_HALF);
+    if (plot !== undefined) onSelect({ kind: 'plot', plot });
   }
 
   function refresh() {
     const place = world().places[placeId];
     if (place.owner !== owner) {
       owner = place.owner;
+      signature = null;
       if (dressing) scene.removeChild(dressing.node);
       dressing = surroundings(land.height, scatter(spec.at.x * 131 + spec.at.y), owner ? hexOf(SECT_BY_ID[owner].color) : 0x8a8474, owner);
       scene.addChild(dressing.node);
@@ -603,9 +628,12 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
 
   refresh();
   // When the model files arrive, the grounds are planted again from them.
-  whenFlora(() => ((owner = undefined), (signature = ''), refresh()));
+  whenFlora(() => ((owner = undefined), (signature = null), refresh()));
   const scene3 = {
     showTags: true,
+    selectedBuilding: null,
+    selectedPlot: null,
+    emptyPlots: () => emptyPlots.slice(),
     /** The light of this place, for whoever wants to know the hour. */
     light,
     /** Sets the hour of the day, 0 to 24, for looking at the place in a given light. */
@@ -625,7 +653,8 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
       return sources;
     },
     enter() {
-      stage.orbit.set({ target: [0, 1, -2], yaw: 0.45, pitch: 0.55, distance: 50, minDistance: 14, maxDistance: 120, minPitch: 0.2, maxPitch: 1.3, reach: 38, drift: 0.02 });
+      stage.orbit.set({ target: [0, 1, -2], yaw: 0.45, pitch: 0.55, distance: 50, minDistance: 14, maxDistance: 120, minPitch: 0.2, maxPitch: 1.3, reach: 38, drift: 0.02, dragPans: false });
+      if (onSelect) stage.orbit.onTap = pick;
     },
     update(dt) {
       for (const actor of cast.values()) direct(actor, dt);
@@ -673,19 +702,33 @@ export function createSeat(stage, world, placeId, { layer = null, nameOf = (kind
           r = 0.35 + (i % 3) * 0.22;
         carp.setTransformAt(i, [POND.x + Math.cos(a) * POND.rx * r, 0.03, POND.z + Math.sin(a) * POND.rz * r], quatFromEuler(turned, 0, -a + (i % 2 ? 0 : Math.PI), 0), 1.1);
       }
-      // The name tags follow their buildings; they are shown only while `showTags` is on.
+      const showPlots = canBuild();
+      plotFrames.visible = showPlots && emptyPlots.length > 0;
+      if (highlightedPlot !== scene3.selectedPlot) paintPlotFrames(scene3.selectedPlot);
+      // The DOM controls follow their world anchors and use the game's regular keyboard actions.
+      const width = stage.canvas?.clientWidth ?? layer?.clientWidth, height = stage.canvas?.clientHeight ?? layer?.clientHeight;
       for (const tag of tags) {
-        const at = scene3.showTags ? stage.orbit.project(tag.x, tag.y, tag.z) : null;
-        if (!at) {
+        const plot = tag.type === 'plot';
+        const at = (plot ? showPlots : scene3.showTags) ? stage.orbit.project(tag.x, tag.y, tag.z) : null;
+        if (!at || at.x < 8 || at.y < 8 || at.x > width - 8 || at.y > height - 8) {
           tag.element.remove();
           continue;
+        }
+        const selected = tag.id === (plot ? scene3.selectedPlot : scene3.selectedBuilding);
+        if (tag.selected !== selected) {
+          tag.selected = selected;
+          tag.element.classList.toggle('is-selected', selected);
+          tag.element.setAttribute('aria-pressed', String(selected));
         }
         if (!tag.element.isConnected) layer.append(tag.element);
         tag.element.style.left = at.x.toFixed(1) + 'px';
         tag.element.style.top = at.y.toFixed(1) + 'px';
       }
     },
-    leave: () => tags.forEach((tag) => tag.element.remove()),
+    leave() {
+      if (stage.orbit.onTap === pick) stage.orbit.onTap = null;
+      tags.forEach(({ element }) => element.remove());
+    },
   };
   return scene3;
 }

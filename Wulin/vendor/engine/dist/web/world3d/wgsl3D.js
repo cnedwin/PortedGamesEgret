@@ -141,7 +141,8 @@ fn morphDelta(targetIndex: i32, channel: i32, vertexIndex: u32) -> vec3f {
     let texel = (targetIndex * object.morph.y + channel) * object.morph.x + i32(vertexIndex);
     return morphData[texel].xyz;
 }
-${f.skinInstancing ? /* wgsl */ `
+${f.skinInstancing
+        ? /* wgsl */ `
 // The bones table holds every frame of every clip. The fourth float of an instance carries what all
 // instances share: matrices per frame, and the bone that may turn.
 fn bakedBone(joint: u32, frame: f32, packed: f32) -> mat4x4f {
@@ -167,34 +168,42 @@ fn bakedJoint(joint: u32, a: vec4f, b: vec4f, look: vec4f) -> mat4x4f {
         pose = pose * mat4x4f(vec4f(turn[0], 0.0), vec4f(turn[1], 0.0), vec4f(turn[2], 0.0), vec4f(pivot - turn * pivot, 1.0));
     }
     return pose;
-}` : ''}
+}`
+        : ''}
 
 @vertex
 fn vertexMain(input: VertexInput) -> VertexOutput {
     var position = input.position;
     var normal = ${f.normal ? 'input.normal' : 'vec3f(0.0, 0.0, 1.0)'};
-    ${f.morph && f.skinInstancing ? /* wgsl */ `
+    ${f.morph && f.skinInstancing
+        ? /* wgsl */ `
     // Baked instances read their morph weights from the last entry of their frames.
     let bakedWeights = bakedBlend(u32(input.instanceAnimation.w) % 2048u - 1u, input.instanceAnimation, input.instanceAnimation2);
     for (var i = 0; i < object.morph.z; i++) {
         position += morphDelta(i, 0, input.vertexIndex) * bakedWeights[i / 4][i % 4];
         ${f.morphNormals && (!f.depthOnly || f.customVertexWgsl !== undefined) ? 'normal += morphDelta(i, 1, input.vertexIndex) * bakedWeights[i / 4][i % 4];' : ''}
-    }` : f.morph ? /* wgsl */ `
+    }`
+        : f.morph
+            ? /* wgsl */ `
     for (var i = 0; i < object.morph.z; i++) {
         let targetIndex = object.morphIndices[i / 4][i % 4];
         let weight = object.morphWeights[i / 4][i % 4];
         position += morphDelta(targetIndex, 0, input.vertexIndex) * weight;
         ${f.morphNormals && (!f.depthOnly || f.customVertexWgsl !== undefined) ? 'normal += morphDelta(targetIndex, 1, input.vertexIndex) * weight;' : ''}
-    }` : ''}
+    }`
+            : ''}
     var model = object.model;
     var normalMatrix = mat3x3f(object.normal0.xyz, object.normal1.xyz, object.normal2.xyz);
-    ${f.skinning ? /* wgsl */ `
+    ${f.skinning
+        ? /* wgsl */ `
     let skin = input.weights.x * bones[input.joints.x] + input.weights.y * bones[input.joints.y]
         + input.weights.z * bones[input.joints.z] + input.weights.w * bones[input.joints.w];
     model = skin * object.bind;
-    normalMatrix = mat3x3f(model[0].xyz, model[1].xyz, model[2].xyz);` : ''}
+    normalMatrix = mat3x3f(model[0].xyz, model[1].xyz, model[2].xyz);`
+        : ''}
     var spriteTurn = 0.0;
-    ${f.gpuParticles ? /* wgsl */ `
+    ${f.gpuParticles
+        ? /* wgsl */ `
     // The instance slots carry a particle's start and birth, velocity and life, sizes and angles;
     // where it is now follows from the time alone.
     let particleLife = max(input.instance1.w, 0.0001);
@@ -235,21 +244,27 @@ fn vertexMain(input: VertexInput) -> VertexOutput {
     if (material.custom[3].x > 0.5) { model = mat4x4f(vec4f(1.0, 0.0, 0.0, 0.0), vec4f(0.0, 1.0, 0.0, 0.0), vec4f(0.0, 0.0, 1.0, 0.0), vec4f(0.0, 0.0, 0.0, 1.0)); }
     let particleSize = mix(input.instance2.x, input.instance2.y, particleAge);
     model = model * mat4x4f(vec4f(particleSize, 0.0, 0.0, 0.0), vec4f(0.0, particleSize, 0.0, 0.0), vec4f(0.0, 0.0, particleSize, 0.0), vec4f(particleCenter, 1.0));
-    spriteTurn = input.instance2.z + input.instance2.w * particleTime;` : ''}
-    ${f.instancing && !f.gpuParticles ? /* wgsl */ `
+    spriteTurn = input.instance2.z + input.instance2.w * particleTime;`
+        : ''}
+    ${f.instancing && !f.gpuParticles
+        ? /* wgsl */ `
     let instance = mat4x4f(input.instance0, input.instance1, input.instance2, input.instance3);
     model = model * instance;
-    normalMatrix = normalMatrix * mat3x3f(instance[0].xyz, instance[1].xyz, instance[2].xyz);` : ''}
-    ${f.skinInstancing ? /* wgsl */ `
+    normalMatrix = normalMatrix * mat3x3f(instance[0].xyz, instance[1].xyz, instance[2].xyz);`
+        : ''}
+    ${f.skinInstancing
+        ? /* wgsl */ `
     // Each instance is posed in its own space before its transform places it.
     let first = input.instanceAnimation;
     let second = input.instanceAnimation2;
     model = model * (input.weights.x * bakedJoint(input.joints.x, first, second, input.instanceLook) + input.weights.y * bakedJoint(input.joints.y, first, second, input.instanceLook)
         + input.weights.z * bakedJoint(input.joints.z, first, second, input.instanceLook) + input.weights.w * bakedJoint(input.joints.w, first, second, input.instanceLook));
-    normalMatrix = mat3x3f(model[0].xyz, model[1].xyz, model[2].xyz);` : ''}
+    normalMatrix = mat3x3f(model[0].xyz, model[1].xyz, model[2].xyz);`
+        : ''}
     var world = model * vec4f(position, 1.0);
     ${f.customVertexWgsl !== undefined ? `world = vec4f(customVertex(world.xyz, position, normal, ${f.uv ? 'input.uv' : 'vec2f(0.0)'}, ${f.vertexColor ? 'input.color' : 'vec4f(1.0)'}), world.w);` : ''}
-    ${f.billboard ? /* wgsl */ `
+    ${f.billboard
+        ? /* wgsl */ `
     // Expand the quad along the camera's right and up axes around the node origin.
     let origin = model * vec4f(0.0, 0.0, 0.0, 1.0);
     let right = vec3f(frame.view[0].x, frame.view[1].x, frame.view[2].x);
@@ -262,7 +277,8 @@ fn vertexMain(input: VertexInput) -> VertexOutput {
     let turned = vec2f(c * corner.x - s * corner.y, s * corner.x + c * corner.y);
     world = vec4f(origin.xyz + right * turned.x + up * turned.y, 1.0);
     normal = vec3f(0.0, 0.0, 1.0);
-    normalMatrix = transpose(mat3x3f(frame.view[0].xyz, frame.view[1].xyz, frame.view[2].xyz));` : ''}
+    normalMatrix = transpose(mat3x3f(frame.view[0].xyz, frame.view[1].xyz, frame.view[2].xyz));`
+        : ''}
     var output: VertexOutput;
     var clip = frame.viewProjection * world;
     ${f.screenSpace ? '// Positions are already in normalized device coordinates; depth is remapped below.\n    clip = vec4f(position.xy, -1.0, 1.0);' : ''}
@@ -276,11 +292,13 @@ fn vertexMain(input: VertexInput) -> VertexOutput {
     output.color = ${f.vertexColor ? 'input.color' : 'vec4f(1.0)'};
     output.uv1 = ${f.uv1 ? 'input.uv1' : 'vec2f(0.0)'};
     ${f.instanceColor ? 'output.color *= input.instanceColor;' : ''}
-    ${f.gpuParticles ? /* wgsl */ `
+    ${f.gpuParticles
+        ? /* wgsl */ `
     // From the instance's color to the shared end color over the particle's life, fading at both ends.
     output.color = mix(input.instanceColor, material.custom[2], particleAge);
     output.color.a *= smoothstep(0.0, max(material.custom[0].z, 0.0001), particleAge) * (1.0 - smoothstep(1.0 - max(material.custom[0].w, 0.0001), 1.0, particleAge));
-    if (!particleAlive) { output.clip = vec4f(2.0, 2.0, 2.0, 1.0); }` : ''}
+    if (!particleAlive) { output.clip = vec4f(2.0, 2.0, 2.0, 1.0); }`
+        : ''}
     return output;
 }
 `;
@@ -298,12 +316,17 @@ fn fragmentMain(input: VertexOutput) {
 }
 `;
     }
-    const shade = f.shading === 'lambert' ? 'return s.albedo * radiance * nl;'
-        // material.specular.w carries the band count for toon shading.
-        : f.shading === 'toon' ? 'return s.albedo * radiance * (ceil(nl * material.specular.w - 0.001) / max(material.specular.w, 1.0));' : f.shading === 'phong' ? /* wgsl */ `
+    const shade = f.shading === 'lambert'
+        ? 'return s.albedo * radiance * nl;'
+        : // material.specular.w carries the band count for toon shading.
+            f.shading === 'toon'
+                ? 'return s.albedo * radiance * (ceil(nl * material.specular.w - 0.001) / max(material.specular.w, 1.0));'
+                : f.shading === 'phong'
+                    ? /* wgsl */ `
     let h = normalize(l + s.view);
     let specular = pow(max(dot(s.normal, h), 0.0), max(material.specular.w, 1.0));
-    return (s.albedo + material.specular.rgb * specular) * radiance * nl;` : /* wgsl */ `
+    return (s.albedo + material.specular.rgb * specular) * radiance * nl;`
+                    : /* wgsl */ `
     let h = normalize(l + s.view);
     let nv = max(dot(s.normal, s.view), 0.0001);
     let nh = max(dot(s.normal, h), 0.0);
@@ -444,14 +467,18 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
     let duvx = dpdx(input.uv);
     let duvy = dpdy(input.uv);
     var base = material.color * input.color;
-    ${f.mapFromTarget ? /* wgsl */ `
+    ${f.mapFromTarget
+        ? /* wgsl */ `
     let mapColor = textureSample(mapTexture, mapSampler, input.uv);
     // Target pixels carry alpha-weighted RGB. Material shading uses straight color.
     var straightColor = vec3f(0.0);
     if (mapColor.a > 0.0) { straightColor = mapColor.rgb / mapColor.a; }
     base *= vec4f(straightColor, mapColor.a);`
-        : f.map ? 'base *= textureSample(mapTexture, mapSampler, input.uv);' : ''}
-    ${f.splat ? /* wgsl */ `
+        : f.map
+            ? 'base *= textureSample(mapTexture, mapSampler, input.uv);'
+            : ''}
+    ${f.splat
+        ? /* wgsl */ `
     {
         // Ground layers, each weighted by its channel of the weight map.
         var share = textureSample(lightTexture, lightSampler, input.uv);
@@ -459,8 +486,10 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
         if (total > 0.0001) { share = share / total; } else { share = vec4f(1.0, 0.0, 0.0, 0.0); }
         base = vec4f(base.rgb * (textureSample(mapTexture, mapSampler, input.uv * material.splat.x).rgb * share.r + textureSample(emissiveTexture, emissiveSampler, input.uv * material.splat.y).rgb * share.g
             + textureSample(occlusionTexture, occlusionSampler, input.uv * material.splat.z).rgb * share.b + textureSample(metallicRoughnessTexture, metallicRoughnessSampler, input.uv * material.splat.w).rgb * share.a), base.a);
-    }` : ''}
-    ${f.softDepth ? /* wgsl */ `
+    }`
+        : ''}
+    ${f.softDepth
+        ? /* wgsl */ `
     {
         // Fade out over the last stretch before the solid surface behind this pixel.
         let stored = textureLoad(sceneDepthMap, vec2i(input.clip.xy), 0) * 2.0 - 1.0;
@@ -468,32 +497,41 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
         if (frame.lightCounts.w > 0.5) { sceneDistance = (frame.pointShadow.w - stored) / frame.pointShadow.z; }
         surfaceDistance = -(frame.view * vec4f(input.worldPosition, 1.0)).z;
         ${f.transmission ? '' : 'base.a *= clamp((sceneDistance - surfaceDistance) / max(material.emissive.w, 0.0001), 0.0, 1.0);'}
-    }` : ''}
+    }`
+        : ''}
     ${f.normalMap ? 'let normalSample = textureSample(normalTexture, normalSampler, input.uv).xyz;' : ''}
     ${f.metallicRoughnessMap ? 'let mrSample = textureSample(metallicRoughnessTexture, metallicRoughnessSampler, input.uv);' : ''}
     ${f.occlusionMap ? 'let occlusionSample = textureSample(occlusionTexture, occlusionSampler, ' + (f.occlusionUv1 ? 'input.uv1' : 'input.uv') + ').r;' : ''}
     ${f.lightMap ? 'let lightSample = textureSample(lightTexture, lightSampler, ' + (f.lightUv1 ? 'input.uv1' : 'input.uv') + ').rgb;' : ''}
     ${f.emissiveMap ? 'let emissiveSample = textureSample(emissiveTexture, emissiveSampler, ' + (f.emissiveUv1 ? 'input.uv1' : 'input.uv') + ').rgb;' : ''}
-    ${f.shading === 'matcap' ? /* wgsl */ `
+    ${f.shading === 'matcap'
+        ? /* wgsl */ `
     var matcapNormal = normalize(${f.normal ? 'input.normal' : 'cross(dpx, -dpy)'});
     ${f.doubleSided ? 'if (!frontFacing) { matcapNormal = -matcapNormal; }' : ''}
     let matcapView = normalize((frame.view * vec4f(matcapNormal, 0.0)).xyz);
-    let matcapSample = textureSampleLevel(emissiveTexture, emissiveSampler, matcapView.xy * 0.5 + 0.5, 0.0).rgb;` : ''}
+    let matcapSample = textureSampleLevel(emissiveTexture, emissiveSampler, matcapView.xy * 0.5 + 0.5, 0.0).rgb;`
+        : ''}
     ${f.alphaMask ? 'if (base.a < material.params.x) { discard; }' : ''}
     for (var plane = 0; plane < i32(frame.clipInfo.x); plane++) {
         if (dot(input.worldPosition, frame.clipPlanes[plane].xyz) + frame.clipPlanes[plane].w < 0.0) { discard; }
     }
     var color = base.rgb${f.shading === 'matcap' ? ' * matcapSample' : ''};
-    ${lit ? /* wgsl */ `
+    ${lit
+        ? /* wgsl */ `
     var s: Surface;
-    ${f.flatShading || !f.normal ? 'var n = normalize(cross(dpy, dpx));' : /* wgsl */ `var n = normalize(input.normal);
+    ${f.flatShading || !f.normal
+            ? 'var n = normalize(cross(dpy, dpx));'
+            : /* wgsl */ `var n = normalize(input.normal);
     ${f.doubleSided ? 'if (!frontFacing) { n = -n; }' : ''}`}
-    ${f.normalMap ? /* wgsl */ `
+    ${f.normalMap
+            ? /* wgsl */ `
     var mapped = normalSample * 2.0 - 1.0;
     mapped = vec3f(mapped.xy * material.surface.z, mapped.z);
-    ${f.tangent ? /* wgsl */ `
+    ${f.tangent
+                ? /* wgsl */ `
     let t = normalize(input.tangent.xyz);
-    let b = cross(n, t) * input.tangent.w;` : /* wgsl */ `
+    let b = cross(n, t) * input.tangent.w;`
+                : /* wgsl */ `
     // Derive a cotangent frame from screen-space derivatives. Framebuffer Y
     // points down in WebGPU, so the Y derivatives are negated first.
     let dp2perp = cross(-dpy, n);
@@ -503,7 +541,8 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
     let invmax = inverseSqrt(max(max(dot(t, t), dot(b, b)), 1e-12));
     t *= invmax;
     b *= invmax;`}
-    n = normalize(mat3x3f(t, b, n) * mapped);` : ''}
+    n = normalize(mat3x3f(t, b, n) * mapped);`
+            : ''}
     ${f.customNormalWgsl !== undefined ? 'n = normalize(customNormal(n, input.worldPosition, ' + (f.uv ? 'input.uv' : 'vec2f(0.0)') + '));' : ''}
     s.normal = n;
     s.view = normalize(frame.cameraPosition.xyz - input.worldPosition);
@@ -515,7 +554,8 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
     s.f0 = mix(vec3f(0.04), s.albedo, s.metallic);
     var occlusion = 1.0;
     ${f.occlusionMap ? 'occlusion = mix(1.0, occlusionSample, material.surface.w);' : ''}
-    ${f.transmission ? /* wgsl */ `
+    ${f.transmission
+            ? /* wgsl */ `
     // Light that passes through replaces that share of the diffuse reflection.
     // What the surface reflects at this angle does not pass through it.
     var through = material.extra.y * (1.0 - s.metallic) * (1.0 - (0.04 + 0.96 * pow(1.0 - max(dot(s.normal, s.view), 0.0), 5.0)));
@@ -542,22 +582,26 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
     let travelled = ${f.softDepth ? 'max(sceneDistance - surfaceDistance, 0.0)' : 'material.extra.w'};
     if (material.attenuation.w > 0.0) { tint *= pow(max(material.attenuation.rgb, vec3f(0.0001)), vec3f(travelled / material.attenuation.w)); }
     s.albedo *= 1.0 - through;
-    var clear = 1.0;` : ''}
-    ${f.reflectionMap ? /* wgsl */ `
+    var clear = 1.0;`
+            : ''}
+    ${f.reflectionMap
+            ? /* wgsl */ `
     var mirrorClear = 1.0;
     // The mirror camera sees the scene flipped left to right; stored images are top row first.
     let mirrorAt = frame.viewProjection * vec4f(input.worldPosition, 1.0);
     let mirrorNdc = mirrorAt.xy / max(mirrorAt.w, 0.0001);
     let mirrorUv = vec2f(0.5 - mirrorNdc.x * 0.5, 0.5 - mirrorNdc.y * 0.5) + vec2f(s.normal.x, -s.normal.z) * material.sprite.z;
     let mirrored = textureSampleLevel(reflectionTexture, reflectionSampler, clamp(mirrorUv, vec2f(0.002), vec2f(0.998)), 0.0).rgb
-        * (s.f0 + (1.0 - s.f0) * pow(1.0 - max(dot(s.normal, s.view), 0.0), 5.0)) * material.sprite.w;` : ''}
+        * (s.f0 + (1.0 - s.f0) * pow(1.0 - max(dot(s.normal, s.view), 0.0), 5.0)) * material.sprite.w;`
+            : ''}
     var diffuseAlbedo = s.albedo;
     ${f.shading === 'standard' ? 'diffuseAlbedo *= 1.0 - s.metallic;' : ''}
     var irradiance = frame.ambient.rgb + mix(frame.hemisphereGround.rgb, frame.hemisphereSky.rgb, s.normal.y * 0.5 + 0.5);
     ${f.environment ? 'irradiance += textureSampleLevel(environmentMap, environmentSampler, s.normal, frame.output.y).rgb * frame.output.x * material.params.y;' : ''}
     ${f.lightMap ? 'irradiance += lightSample * material.extra.x;' : ''}
     color = diffuseAlbedo * irradiance * occlusion;
-    ${f.environment && f.shading === 'standard' && !f.reflectionMap ? /* wgsl */ `
+    ${f.environment && f.shading === 'standard' && !f.reflectionMap
+            ? /* wgsl */ `
     {
         let reflected = reflect(-s.view, s.normal);
         let nv = max(dot(s.normal, s.view), 0.0);
@@ -567,16 +611,19 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
         let a004 = min(r.x * r.x, exp2(-9.28 * nv)) * r.x + r.y;
         let scaleBias = vec2f(-1.04, 1.04) * a004 + r.zw;
         color += prefiltered * (s.f0 * scaleBias.x + scaleBias.y) * occlusion;
-    }` : ''}
+    }`
+            : ''}
     let directionalCount = i32(frame.lightCounts.x);
     let pointCount = i32(frame.lightCounts.y);
     let spotCount = i32(frame.lightCounts.z);
     for (var i = 0; i < directionalCount; i++) {
         var visible = 1.0;
-        ${f.receiveShadow ? `if (frame.directionalDirection[i].w >= 0.0) {
+        ${f.receiveShadow
+            ? `if (frame.directionalDirection[i].w >= 0.0) {
             if (f32(i) == frame.cascadeInfo.x) { visible = cascadedShadowFactor(i32(frame.directionalDirection[i].w), input.worldPosition, s.normal); }
             else { visible = shadowFactor(i32(frame.directionalDirection[i].w), input.worldPosition, s.normal); }
-        }` : ''}
+        }`
+            : ''}
         color += shade(s, -frame.directionalDirection[i].xyz, frame.directionalColor[i].rgb) * visible;
     }
     for (var i = 0; i < pointCount; i++) {
@@ -594,17 +641,23 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
         var visible = 1.0;
         ${f.receiveShadow ? 'if (cone > 0.0 && frame.spotDirection[i].w >= 0.0) { visible = shadowFactor(i32(frame.spotDirection[i].w), input.worldPosition, s.normal); }' : ''}
         color += shade(s, l, frame.spotColor[i].rgb * rangeFalloff(dist, frame.spotPosition[i].w) * cone) * visible;
-    }` : ''}
-    ${f.shading === 'matcap' ? '' : /* wgsl */ `
+    }`
+        : ''}
+    ${f.shading === 'matcap'
+        ? ''
+        : /* wgsl */ `
     var emissive = material.emissive.rgb;
     ${f.emissiveMap ? 'emissive *= emissiveSample;' : ''}
     color += emissive;`}
-    ${f.customWgsl !== undefined ? /* wgsl */ `
+    ${f.customWgsl !== undefined
+        ? /* wgsl */ `
     let customized = customFragment(vec4f(color, base.a), input.worldPosition, normalize(input.normal), input.uv);
     color = customized.rgb;
     base.a = customized.a;
-    ${f.transmission ? '// On a see-through material the hook\'s alpha is how much still passes: 0 covers what lies behind.\n    through *= clamp(customized.a, 0.0, 1.0);' : ''}` : ''}
-    ${f.fog ? /* wgsl */ `
+    ${f.transmission ? "// On a see-through material the hook's alpha is how much still passes: 0 covers what lies behind.\n    through *= clamp(customized.a, 0.0, 1.0);" : ''}`
+        : ''}
+    ${f.fog
+        ? /* wgsl */ `
     if (frame.fogParams.x > 0.5) {
         let dist = length(frame.cameraPosition.xyz - input.worldPosition);
         var fog = smoothstep(frame.fogParams.y, frame.fogParams.z, dist);
@@ -612,12 +665,15 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
         color = mix(color, frame.fogColor.rgb, clamp(fog, 0.0, 1.0));
         ${f.transmission ? 'clear = 1.0 - clamp(fog, 0.0, 1.0);' : ''}
         ${f.reflectionMap ? 'mirrorClear = 1.0 - clamp(fog, 0.0, 1.0);' : ''}
-    }` : ''}
+    }`
+        : ''}
     ${f.toneMapped ? 'color = toneMap(color);' : ''}
-    ${f.transmission ? /* wgsl */ `
+    ${f.transmission
+        ? /* wgsl */ `
     // The stored scene is display-ready, so it joins after tone mapping; the canvas holds it sRGB-encoded.
     ${f.linearOutput ? '' : 'passed = mix(passed / 12.92, pow((passed + 0.055) / 1.055, vec3f(2.4)), step(vec3f(0.04045), passed));'}
-    color += passed * tint * through * clear;` : ''}
+    color += passed * tint * through * clear;`
+        : ''}
     ${f.reflectionMap ? 'color += mirrored * mirrorClear;' : ''}
     ${f.linearOutput ? 'color = max(color, vec3f(0.0));' : 'color = encodeSrgb(color);'}
     ${f.premultipliedAlpha ? 'color *= base.a;' : ''}
@@ -627,7 +683,16 @@ fn fragmentMain(input: VertexOutput, @builtin(front_facing) frontFacing: bool) -
 }
 /** Assemble the complete WGSL module for one material variant. */
 export function buildMaterialWgsl3D(features) {
-    return (features.depthOnly ? DEPTH_FRAME : FRAME) + SHARED + (features.customVertexWgsl ?? '') + '\n' + vertexSource(features) + (features.customWgsl ?? '') + '\n' + (features.customNormalWgsl ?? '') + '\n' + fragmentSource(features);
+    return ((features.depthOnly ? DEPTH_FRAME : FRAME) +
+        SHARED +
+        (features.customVertexWgsl ?? '') +
+        '\n' +
+        vertexSource(features) +
+        (features.customWgsl ?? '') +
+        '\n' +
+        (features.customNormalWgsl ?? '') +
+        '\n' +
+        fragmentSource(features));
 }
 /** Stable cache key for a feature set. */
 export function shaderFeatureKey3D(features) {

@@ -14,16 +14,21 @@ export function registerUiEngine(engine, assembly) {
     let closed = false;
     const delivery = { depth: 0 };
     // This function retains only a tiny counter, never a closed Engine or Stage.
-    const deliver = (callback) => { delivery.depth++; try {
-        return callback();
-    }
-    finally {
-        delivery.depth--;
-    } };
+    const deliver = (callback) => {
+        delivery.depth++;
+        try {
+            return callback();
+        }
+        finally {
+            delivery.depth--;
+        }
+    };
     const signalPrototype = Object.getPrototypeOf(new CancellationController().signal);
     const aborted = Object.getOwnPropertyDescriptor(signalPrototype, 'aborted').get;
-    const add = Object.getOwnPropertyDescriptor(signalPrototype, 'addEventListener').value;
-    const remove = Object.getOwnPropertyDescriptor(signalPrototype, 'removeEventListener').value;
+    const add = Object.getOwnPropertyDescriptor(signalPrototype, 'addEventListener')
+        .value;
+    const remove = Object.getOwnPropertyDescriptor(signalPrototype, 'removeEventListener')
+        .value;
     const port = Object.freeze({
         stage: assembly.stage,
         terminal: () => closed,
@@ -34,9 +39,14 @@ export function registerUiEngine(engine, assembly) {
             return identity.claim(owner);
         },
         assertOpen: assembly.assertOpen,
-        assertIdle() { assembly.assertOpen(); if (assembly.isFrameBusy() || delivery.depth !== 0)
-            throw new EgretError('UI_BUSY'); },
-        isEngineScope(value) { return scopes.has(value); },
+        assertIdle() {
+            assembly.assertOpen();
+            if (assembly.isFrameBusy() || delivery.depth !== 0)
+                throw new EgretError('UI_BUSY');
+        },
+        isEngineScope(value) {
+            return scopes.has(value);
+        },
         createScope: assembly.createScope,
         scope(value) {
             assembly.assertOpen();
@@ -44,14 +54,28 @@ export function registerUiEngine(engine, assembly) {
             if (signal === undefined)
                 throw new EgretError('UI_SCOPE_INVALID');
             const scope = value;
-            const assertOpen = () => { assembly.assertOpen(); if (apply(state, scope, []) !== 'open' || apply(aborted, signal, []) === true)
-                throw new EgretError('SCOPE_CLOSED'); };
+            const assertOpen = () => {
+                assembly.assertOpen();
+                if (apply(state, scope, []) !== 'open' || apply(aborted, signal, []) === true)
+                    throw new EgretError('SCOPE_CLOSED');
+            };
             assertOpen();
-            return Object.freeze({ scope, signal, assertOpen,
-                use(value) { apply(use, scope, [value]); },
-                dispose() { apply(dispose, scope, []); },
-                add(listener) { apply(add, signal, ['abort', listener, Object.freeze({ once: true })]); },
-                remove(listener) { apply(remove, signal, ['abort', listener]); },
+            return Object.freeze({
+                scope,
+                signal,
+                assertOpen,
+                use(value) {
+                    apply(use, scope, [value]);
+                },
+                dispose() {
+                    apply(dispose, scope, []);
+                },
+                add(listener) {
+                    apply(add, signal, ['abort', listener, Object.freeze({ once: true })]);
+                },
+                remove(listener) {
+                    apply(remove, signal, ['abort', listener]);
+                }
             });
         },
         display(factory) {
@@ -72,11 +96,19 @@ export function registerUiEngine(engine, assembly) {
                 throw new EgretError('UI_KEYBOARD_INVALID');
             return identity.input;
         },
-        onClose(callback) { assembly.assertOpen(); closers.add(callback); return () => { closers.delete(callback); }; },
+        onClose(callback) {
+            assembly.assertOpen();
+            closers.add(callback);
+            return () => {
+                closers.delete(callback);
+            };
+        }
     });
     engines.set(engine, { token, port, deliver });
     return Object.freeze({
-        registerScope(scope) { scopes.set(scope, scope.signal); },
+        registerScope(scope) {
+            scopes.set(scope, scope.signal);
+        },
         deliver,
         close() {
             if (closed)
@@ -92,7 +124,7 @@ export function registerUiEngine(engine, assembly) {
                     assembly.captureCleanup(cause);
                     assembly.report({ code: 'UI_CLEANUP_FAILED', phase: 'engine', severity: 'error', cause });
                 }
-        },
+        }
     });
 }
 /** Genuine Engine and PointerInput facades are admitted by identity, never shape. */

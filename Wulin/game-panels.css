@@ -202,7 +202,9 @@ body:has(.shell.game) dialog.sheet .sheet-feedback[data-tone="warning"]:not([hid
 .goal-detail .meter { margin-top: 8px; width: 100%; }
 .sheet :is(.sheet-title, .sheet-footer) { flex-shrink: 0; }
 .sheet .sheet-title h2:focus { outline: none; }
-.sheet[data-kind="build"] { width: min(820px, calc(100% - 24px)); }
+.sheet[data-kind="build"] { width: min(820px, calc(100% - 24px)); overflow: hidden; }
+.sheet[data-kind="build"] .sheet-inner { display: flex; flex-direction: column; max-height: calc(100dvh - 28px); }
+.sheet[data-kind="build"] .sheet-body { min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .build-budget { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 11px; font-weight: 650; }
 .build-budget span, .build-card-head { display: flex; align-items: center; gap: 7px; }
 .build-budget .icon, .build-card-head .icon { flex: none; width: 16px; height: 16px; }
@@ -239,3 +241,18 @@ body:has(.shell.game) .sheet :is(button, select, input):focus-visible { outline:
 }
 
 .sheet .applicant-portrait { width: 58px; height: 70px; flex: none; border: 1px solid #a58a59; }
+
+.seat-journal { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 7px; }
+.seat-journal .button { min-height: 36px; }
+.recruit-status { padding: 8px 12px 0; }
+.building-list summary { margin: 0 12px 7px; padding: 7px 0; cursor: pointer; color: #e6cc93; }
+.guide-steps { list-style: none; padding: 0; margin: 14px 0 0; }
+.guide-steps li { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 0; border-top: 1px solid #a4885d70; }
+.guide-steps b { color: #f4ddb1; font-family: var(--serif); }
+.guide-steps p { margin: 3px 0 0; font-size: 13px; }
+.guide-steps .button { flex: none; }
+.guide-truce { margin-block: 10px; padding: 9px 11px; border-inline-start: 2px solid #a9bd83; background: #46623f47; color: #e2edc7; }
+@media (max-width: 420px) {
+  .guide-steps li { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .guide-steps .button, .seat-journal .button { min-height: 42px; }
+}

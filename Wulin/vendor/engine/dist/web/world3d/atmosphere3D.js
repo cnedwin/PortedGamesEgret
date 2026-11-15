@@ -91,19 +91,45 @@ export class Atmosphere3D {
         this.shaftIntensity = options.shaftIntensity ?? 0.6;
         this.shaftLength = options.shaftLength ?? 0.6;
     }
-    get fogDensity() { return this.post.uniforms[3]; }
-    set fogDensity(value) { this.post.uniforms[3] = this.amount(value, 'fogDensity'); }
-    get fogFalloff() { return this.post.uniforms[4]; }
-    set fogFalloff(value) { this.post.uniforms[4] = this.amount(value, 'fogFalloff'); }
-    get fogHeight() { return this.post.uniforms[5]; }
-    set fogHeight(value) { this.post.uniforms[5] = requireFinite3D(value, 'fogHeight'); }
-    get shaftIntensity() { return this.post.uniforms[7]; }
-    set shaftIntensity(value) { this.post.uniforms[7] = this.amount(value, 'shaftIntensity'); }
-    get shaftLength() { return this.post.uniforms[11]; }
-    set shaftLength(value) { const length = this.amount(value, 'shaftLength'); if (length > 1)
-        throw new World3DError('WORLD3D_INPUT_INVALID', 'shaftLength'); this.post.uniforms[11] = length; }
+    get fogDensity() {
+        return this.post.uniforms[3];
+    }
+    set fogDensity(value) {
+        this.post.uniforms[3] = this.amount(value, 'fogDensity');
+    }
+    get fogFalloff() {
+        return this.post.uniforms[4];
+    }
+    set fogFalloff(value) {
+        this.post.uniforms[4] = this.amount(value, 'fogFalloff');
+    }
+    get fogHeight() {
+        return this.post.uniforms[5];
+    }
+    set fogHeight(value) {
+        this.post.uniforms[5] = requireFinite3D(value, 'fogHeight');
+    }
+    get shaftIntensity() {
+        return this.post.uniforms[7];
+    }
+    set shaftIntensity(value) {
+        this.post.uniforms[7] = this.amount(value, 'shaftIntensity');
+    }
+    get shaftLength() {
+        return this.post.uniforms[11];
+    }
+    set shaftLength(value) {
+        const length = this.amount(value, 'shaftLength');
+        if (length > 1)
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'shaftLength');
+        this.post.uniforms[11] = length;
+    }
     /** Linear RGB fog color. */
-    setFogColor(r, g, b) { this.post.uniforms[0] = requireFinite3D(r, 'color'); this.post.uniforms[1] = requireFinite3D(g, 'color'); this.post.uniforms[2] = requireFinite3D(b, 'color'); }
+    setFogColor(r, g, b) {
+        this.post.uniforms[0] = requireFinite3D(r, 'color');
+        this.post.uniforms[1] = requireFinite3D(g, 'color');
+        this.post.uniforms[2] = requireFinite3D(b, 'color');
+    }
     /**
      * Refresh the camera and sun data. `sunDirection` is the direction the
      * sunlight travels in, as a directional light's world direction; pass
@@ -127,9 +153,9 @@ export class Atmosphere3D {
             return;
         // The sun sits far away against the light's travel; project that point to the screen.
         const far = camera.far * 0.5, at = this.#scratch;
-        at[0] = world[12] - dx / length * far;
-        at[1] = world[13] - dy / length * far;
-        at[2] = world[14] - dz / length * far;
+        at[0] = world[12] - (dx / length) * far;
+        at[1] = world[13] - (dy / length) * far;
+        at[2] = world[14] - (dz / length) * far;
         const forward = -(world[8] * -dx + world[9] * -dy + world[10] * -dz) / (length * sz);
         if (forward <= 0.05)
             return;
@@ -146,4 +172,6 @@ export class Atmosphere3D {
         return value;
     }
 }
-export function createAtmosphere3D(options = {}) { return new Atmosphere3D(options); }
+export function createAtmosphere3D(options = {}) {
+    return new Atmosphere3D(options);
+}

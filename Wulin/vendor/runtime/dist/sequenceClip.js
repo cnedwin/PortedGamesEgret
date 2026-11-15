@@ -62,7 +62,9 @@ function nonnegativeSafeInteger(value) {
 function nonnegativeFinite(value) {
     return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }
-function positiveZero(value) { return value === 0 ? 0 : value; }
+function positiveZero(value) {
+    return value === 0 ? 0 : value;
+}
 export function createSequenceClip(input, profile) {
     const source = admitObject(input);
     if (profile !== undefined && profile !== 'trim-rotation-v1')
@@ -80,7 +82,10 @@ export function createSequenceClip(input, profile) {
     if (length > MAX_FRAMES)
         throw new SequenceClipError('SEQ_BUDGET');
     const atlasWidth = widthField.value, atlasHeight = heightField.value;
-    if (!widthField.present || !heightField.present || !positiveSafeInteger(atlasWidth) || !positiveSafeInteger(atlasHeight))
+    if (!widthField.present ||
+        !heightField.present ||
+        !positiveSafeInteger(atlasWidth) ||
+        !positiveSafeInteger(atlasHeight))
         throw new SequenceClipError('SEQ_INPUT_INVALID');
     const regions = [], ends = [];
     let durationSeconds = 0;
@@ -94,23 +99,36 @@ export function createSequenceClip(input, profile) {
         const frameWidthField = captureOwn(frame, 'width');
         const frameHeightField = captureOwn(frame, 'height');
         const durationField = captureOwn(frame, 'durationSeconds');
-        const capturedLayout = profile === undefined ? undefined : captureAtlasFrameLayout(frame, captureOwn, callback => {
-            try {
-                return callback();
-            }
-            catch (cause) {
-                throw new SequenceClipError('SEQ_READ_FAILED', cause);
-            }
-        });
-        if (!xField.present || !yField.present || !frameWidthField.present || !frameHeightField.present || !durationField.present)
+        const capturedLayout = profile === undefined
+            ? undefined
+            : captureAtlasFrameLayout(frame, captureOwn, callback => {
+                try {
+                    return callback();
+                }
+                catch (cause) {
+                    throw new SequenceClipError('SEQ_READ_FAILED', cause);
+                }
+            });
+        if (!xField.present ||
+            !yField.present ||
+            !frameWidthField.present ||
+            !frameHeightField.present ||
+            !durationField.present)
             throw new SequenceClipError('SEQ_INPUT_INVALID');
         const x = xField.value, y = yField.value, width = frameWidthField.value, height = frameHeightField.value;
-        if (!nonnegativeSafeInteger(x) || !nonnegativeSafeInteger(y) || !positiveSafeInteger(width) || !positiveSafeInteger(height))
+        if (!nonnegativeSafeInteger(x) ||
+            !nonnegativeSafeInteger(y) ||
+            !positiveSafeInteger(width) ||
+            !positiveSafeInteger(height))
             throw new SequenceClipError('SEQ_REGION_INVALID');
         const right = x + width, bottom = y + height;
         if (!Number.isSafeInteger(right) || !Number.isSafeInteger(bottom) || right > atlasWidth || bottom > atlasHeight)
             throw new SequenceClipError('SEQ_REGION_INVALID');
-        const layout = capturedLayout === undefined ? undefined : copyAtlasFrameLayout(capturedLayout, width, height, kind => { throw new SequenceClipError(kind === 'shape' ? 'SEQ_INPUT_INVALID' : 'SEQ_REGION_INVALID'); });
+        const layout = capturedLayout === undefined
+            ? undefined
+            : copyAtlasFrameLayout(capturedLayout, width, height, kind => {
+                throw new SequenceClipError(kind === 'shape' ? 'SEQ_INPUT_INVALID' : 'SEQ_REGION_INVALID');
+            });
         const duration = durationField.value;
         if (typeof duration !== 'number' || !Number.isFinite(duration) || duration <= 0)
             throw new SequenceClipError('SEQ_TIME_INVALID');
@@ -119,13 +137,23 @@ export function createSequenceClip(input, profile) {
         const end = durationSeconds + duration;
         if (!Number.isFinite(end) || end <= durationSeconds)
             throw new SequenceClipError('SEQ_TIME_INVALID');
-        regions.push({ x: positiveZero(x), y: positiveZero(y), width, height, ...(layout === undefined ? {} : { layout }) });
+        regions.push({
+            x: positiveZero(x),
+            y: positiveZero(y),
+            width,
+            height,
+            ...(layout === undefined ? {} : { layout })
+        });
         ends.push(end);
         durationSeconds = end;
     }
     for (const region of regions)
         Object.freeze(region);
-    const owned = Object.freeze({ regions: Object.freeze(regions), ends: Object.freeze(ends), durationSeconds });
+    const owned = Object.freeze({
+        regions: Object.freeze(regions),
+        ends: Object.freeze(ends),
+        durationSeconds
+    });
     const clip = Object.freeze({ atlasWidth, atlasHeight, frameCount: length, durationSeconds });
     // Publish identity only after all validation, owned allocation and freezing.
     clips.set(clip, owned);

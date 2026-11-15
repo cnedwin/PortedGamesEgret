@@ -89,14 +89,18 @@ export class Mesh3D extends Object3D {
         if (!(geometry instanceof Geometry3D))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'geometry');
         const list = Array.isArray(material) ? material : [material];
-        if (list.length === 0 || list.length > MESH3D_LIMITS.maxMaterials || !list.every(item => item instanceof Material3D))
+        if (list.length === 0 ||
+            list.length > MESH3D_LIMITS.maxMaterials ||
+            !list.every(item => item instanceof Material3D))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'material');
         this.geometry = geometry;
         this.material = material;
         this.castShadow = true;
         this.syncMorphWeights();
     }
-    get isInstanced() { return false; }
+    get isInstanced() {
+        return false;
+    }
     /**
      * True when an instanced draw could stand in for this mesh: it is a plain
      * Mesh3D without skinning or morphing, and its transform is not mirrored.
@@ -108,7 +112,11 @@ export class Mesh3D extends Object3D {
         const version = this.worldVersion;
         if (version !== this.#windingWorld) {
             const m = this.matrixWorld;
-            this.#winding = m[0] * (m[5] * m[10] - m[6] * m[9]) - m[4] * (m[1] * m[10] - m[2] * m[9]) + m[8] * (m[1] * m[6] - m[2] * m[5]) > 0;
+            this.#winding =
+                m[0] * (m[5] * m[10] - m[6] * m[9]) -
+                    m[4] * (m[1] * m[10] - m[2] * m[9]) +
+                    m[8] * (m[1] * m[6] - m[2] * m[5]) >
+                    0;
             this.#windingWorld = version;
         }
         return this.#winding;
@@ -209,7 +217,9 @@ export class InstancedMesh3D extends Mesh3D {
         for (let i = 0; i < this.capacity; i++)
             mat4Identity(this.instanceMatrices.subarray(i * 16, i * 16 + 16));
     }
-    get isInstanced() { return true; }
+    get isInstanced() {
+        return true;
+    }
     setMatrixAt(index, matrix) {
         if (!Number.isSafeInteger(index) || index < 0 || index >= this.capacity)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'instance index');
@@ -220,14 +230,14 @@ export class InstancedMesh3D extends Mesh3D {
     setTransformAt(index, position, quaternion = [0, 0, 0, 1], scale = 1) {
         if (!Number.isSafeInteger(index) || index < 0 || index >= this.capacity)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'instance index');
-        const s = typeof scale === 'number' ? (scratchScale[0] = scratchScale[1] = scratchScale[2] = scale, scratchScale) : scale;
+        const s = typeof scale === 'number' ? ((scratchScale[0] = scratchScale[1] = scratchScale[2] = scale), scratchScale) : scale;
         mat4Compose(this.instanceMatrices.subarray(index * 16, index * 16 + 16), position, quaternion, s);
         this.instanceVersion++;
     }
     setColorAt(index, r, g, b, a = 1) {
         if (!Number.isSafeInteger(index) || index < 0 || index >= this.capacity)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'instance index');
-        const size = this.instanceColorSize, colors = this.instanceColors ??= new Float32Array(this.capacity * size).fill(1);
+        const size = this.instanceColorSize, colors = (this.instanceColors ??= new Float32Array(this.capacity * size).fill(1));
         colors[index * size] = r;
         colors[index * size + 1] = g;
         colors[index * size + 2] = b;
@@ -269,7 +279,7 @@ let sharedQuad;
 /** Camera-facing textured quad. Scale the node to size it; all sprites share one quad geometry. */
 export class Sprite3D extends Mesh3D {
     constructor(material = createSpriteMaterial3D()) {
-        super(sharedQuad ??= createQuadGeometry3D(), material);
+        super((sharedQuad ??= createQuadGeometry3D()), material);
         this.castShadow = false;
         this.receiveShadow = false;
     }

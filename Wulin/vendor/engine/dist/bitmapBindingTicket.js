@@ -69,8 +69,7 @@ function snapshotArray(input, code, expected, revalidate) {
         throw new EgretError(code);
     const array = input;
     const length = callerRead(() => array.length, code, revalidate);
-    if (!Number.isInteger(length) || length < 1 || length > 128
-        || (expected !== undefined && length !== expected))
+    if (!Number.isInteger(length) || length < 1 || length > 128 || (expected !== undefined && length !== expected))
         throw new EgretError(code);
     const snapshot = [];
     for (let index = 0; index < length; index++) {
@@ -121,9 +120,18 @@ function handleFor(record, handles) {
             throw new EgretError('BITMAP_BINDING_INVALID');
     };
     const handle = FREEZE({
-        prepare(members) { receiver(this); prepare(record, members); },
-        commit() { receiver(this); commit(record); },
-        dispose() { receiver(this); dispose(record); },
+        prepare(members) {
+            receiver(this);
+            prepare(record, members);
+        },
+        commit() {
+            receiver(this);
+            commit(record);
+        },
+        dispose() {
+            receiver(this);
+            dispose(record);
+        }
     });
     handles.set(handle, record);
     return handle;
@@ -148,8 +156,19 @@ export function createBitmapBindingOwner(context, targets) {
                 operations = current;
             }
             const captured = operations.captureBatch(snapshot);
-            const record = { context, scope, operations: operations, inventory,
-                phase: 'captured', conflict: false, reading: false, captured, prepared: undefined, publication: undefined, count: snapshot.length };
+            const record = {
+                context,
+                scope,
+                operations: operations,
+                inventory,
+                phase: 'captured',
+                conflict: false,
+                reading: false,
+                captured,
+                prepared: undefined,
+                publication: undefined,
+                count: snapshot.length
+            };
             const handle = handleFor(record, handles);
             inventory.add(record);
             try {
@@ -168,7 +187,9 @@ export function createBitmapBindingOwner(context, targets) {
                 throw new EgretError('BITMAP_BINDING_INVALID');
             assertOperation(record, 'prepared');
             return FREEZE({
-                validate() { assertOperation(record, 'prepared'); },
+                validate() {
+                    assertOperation(record, 'prepared');
+                },
                 captureContent(stage) {
                     assertOperation(record, 'prepared');
                     try {
@@ -178,7 +199,7 @@ export function createBitmapBindingOwner(context, targets) {
                         observeRefusal(record, cause);
                         throw cause;
                     }
-                },
+                }
             });
         },
         close() {
@@ -188,6 +209,6 @@ export function createBitmapBindingOwner(context, targets) {
                 markTerminal(record);
             for (const record of records)
                 clearPublication(record);
-        },
+        }
     });
 }

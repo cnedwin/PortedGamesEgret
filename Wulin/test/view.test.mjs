@@ -6,12 +6,14 @@ import { test } from 'node:test';
 
 register('../tools/egret-resolve.mjs', import.meta.url);
 const { createBattle } = await import('../src/core/battle.mjs');
+const { HALL_AT, SEAT_PLOTS } = await import('../src/core/seat-layout.mjs');
 const { advanceDay, assaultSides, build, createWorld, membersOf } = await import('../src/core/world.mjs');
 const { BUILDINGS } = await import('../src/data/goods.mjs');
 const { SECTS, SECT_BY_ID } = await import('../src/data/sects.mjs');
 const { createArena } = await import('../src/view/arena.mjs');
 const { createBuilding } = await import('../src/view/buildings.mjs');
 const { ACTION_NAMES, createFigure } = await import('../src/view/figure.mjs');
+const { createOrbit } = await import('../src/view/orbit.mjs');
 const { createSeat } = await import('../src/view/seat.mjs');
 
 /** Stands in for the stage: the scenes only ask it for the quality and the camera rig. */
@@ -47,6 +49,52 @@ test('a seat is built for every sect and follows the world', () => {
     for (let i = 0; i < 30; i++) seat.update(0.05);
     assert.notEqual(count(seat.scene), before);
   }
+});
+
+test('a seat picks the real hall and available ground, and distinguishes orbit gestures', () => {
+  const canvas = Object.assign(new EventTarget(), {
+    clientWidth: 800,
+    clientHeight: 500,
+    getBoundingClientRect: () => ({ left: 0, top: 0 }),
+  });
+  const orbit = createOrbit(canvas);
+  const sect = SECT_BY_ID.huashan, world = createWorld({ seed: 9, playerSect: sect.id });
+  const selections = [];
+  let showPlots = true;
+  const seat = createSeat({ quality: 'low', canvas, orbit }, () => world, sect.seat, {
+    canBuild: () => showPlots,
+    onSelect: (selection) => selections.push(selection),
+  });
+  seat.enter();
+  orbit.set({ yaw: 0, pitch: 1.15, distance: 78, drift: 0 });
+  seat.camera.aspect = canvas.clientWidth / canvas.clientHeight;
+  seat.update(0.016);
+  const hall = orbit.project(HALL_AT.x, 4, HALL_AT.z);
+  const plot = seat.emptyPlots().find((index) => SEAT_PLOTS[index].z === 16);
+  const at = SEAT_PLOTS[plot], ground = orbit.project(at.x, 0.12, at.z);
+  const pointer = (type, point, pointerId = 1, button = 0) =>
+    canvas.dispatchEvent(Object.assign(new Event(type), { pointerId, button, clientX: point.x, clientY: point.y }));
+  const tap = (point) => {
+    pointer('pointerdown', point);
+    pointer('pointerup', point);
+  };
+  tap(hall);
+  tap(ground);
+  assert.deepEqual(selections, [{ kind: 'building', index: world.places[sect.seat].buildings.findIndex(building => building.kind === 'hall') }, { kind: 'plot', plot }]);
+  showPlots = false;
+  tap(ground);
+  pointer('pointerdown', hall);
+  pointer('pointermove', { x: hall.x + 16, y: hall.y });
+  pointer('pointerup', hall);
+  pointer('pointerdown', hall);
+  pointer('pointerdown', hall, 2);
+  pointer('pointerup', hall, 2);
+  pointer('pointerup', hall);
+  pointer('pointerdown', hall, 1, 2);
+  pointer('pointerup', hall, 1, 2);
+  assert.equal(selections.length, 2);
+  seat.leave();
+  assert.equal(orbit.onTap, null);
 });
 
 test('an arena plays a battle to its end', () => {

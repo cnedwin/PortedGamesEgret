@@ -18,7 +18,10 @@ function localShape(shape) {
     if (shape?.type === 'convex')
         return { type: 'convex', hull: createConvexHullShape3D(shape.points) };
     if (shape?.type === 'compound')
-        return { type: 'compound', children: shape.children.map(child => ({ ...child, shape: localShape(child.shape) })) };
+        return {
+            type: 'compound',
+            children: shape.children.map(child => ({ ...child, shape: localShape(child.shape) }))
+        };
     return shape;
 }
 /**
@@ -34,24 +37,38 @@ export function servePhysics3D(port, options = {}) {
     const world = new PhysicsWorld3D(options);
     const bodies = new Map(), ids = new Map(), joints = new Map();
     let began = [], ended = [], startup = true;
-    world.onContactBegin = (a, b) => { const x = ids.get(a), y = ids.get(b); if (x !== undefined && y !== undefined)
-        began.push(x, y); };
-    world.onContactEnd = (a, b) => { const x = ids.get(a), y = ids.get(b); if (x !== undefined && y !== undefined)
-        ended.push(x, y); };
-    const body = (id) => { const found = bodies.get(id); if (!found)
-        throw new World3DError('WORLD3D_INPUT_INVALID', 'unknown body ' + String(id)); return found; };
+    world.onContactBegin = (a, b) => {
+        const x = ids.get(a), y = ids.get(b);
+        if (x !== undefined && y !== undefined)
+            began.push(x, y);
+    };
+    world.onContactEnd = (a, b) => {
+        const x = ids.get(a), y = ids.get(b);
+        if (x !== undefined && y !== undefined)
+            ended.push(x, y);
+    };
+    const body = (id) => {
+        const found = bodies.get(id);
+        if (!found)
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'unknown body ' + String(id));
+        return found;
+    };
     const handle = (m) => {
         if (m.t === 'world') {
             if (!startup)
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'world options are only accepted at startup');
             const requested = m['options'];
-            if (!requested || typeof requested !== 'object' || (requested.allowSleep !== undefined && typeof requested.allowSleep !== 'boolean')) {
+            if (!requested ||
+                typeof requested !== 'object' ||
+                (requested.allowSleep !== undefined && typeof requested.allowSleep !== 'boolean')) {
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'world options');
             }
             const gravity = requested.gravity === undefined ? undefined : triple(requested.gravity, 'gravity');
             // Validate the configuration as a unit and keep the host's world and objects in place.
             const config = new PhysicsWorld3D(requested);
-            if (!Number.isFinite(config.maxSubSteps) || !Number.isFinite(config.iterations) || !Number.isFinite(config.solverSteps)) {
+            if (!Number.isFinite(config.maxSubSteps) ||
+                !Number.isFinite(config.iterations) ||
+                !Number.isFinite(config.solverSteps)) {
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'world solver options');
             }
             if (requested.fixedStep !== undefined)
@@ -91,7 +108,11 @@ export function servePhysics3D(port, options = {}) {
             }
             case 'joint': {
                 const o = m['options'];
-                joints.set(m['id'], world.createJoint({ ...o, bodyA: body(o['bodyA']), ...(o['bodyB'] === undefined ? {} : { bodyB: body(o['bodyB']) }) }));
+                joints.set(m['id'], world.createJoint({
+                    ...o,
+                    bodyA: body(o['bodyA']),
+                    ...(o['bodyB'] === undefined ? {} : { bodyB: body(o['bodyB']) })
+                }));
                 break;
             }
             case 'unjoint': {
@@ -164,13 +185,20 @@ export function servePhysics3D(port, options = {}) {
             }
             case 'raycast': {
                 const hit = world.raycast(triple(m['origin'], 'origin'), triple(m['direction'], 'direction'), m['maxDistance'] ?? Infinity, m['mask'] ?? -1);
-                port.postMessage({ t: 'ray', request: m['request'], hit: hit && ids.has(hit.body) ? { id: ids.get(hit.body), distance: hit.distance, point: hit.point, normal: hit.normal } : null });
+                port.postMessage({
+                    t: 'ray',
+                    request: m['request'],
+                    hit: hit && ids.has(hit.body)
+                        ? { id: ids.get(hit.body), distance: hit.distance, point: hit.point, normal: hit.normal }
+                        : null
+                });
                 break;
             }
-            default: throw new World3DError('WORLD3D_INPUT_INVALID', 'unknown physics message ' + String(m.t));
+            default:
+                throw new World3DError('WORLD3D_INPUT_INVALID', 'unknown physics message ' + String(m.t));
         }
     };
-    port.addEventListener('message', (event) => {
+    port.addEventListener('message', event => {
         const message = event.data;
         // A request that cannot be carried out is reported back rather than left to stop the worker.
         try {
@@ -183,8 +211,14 @@ export function servePhysics3D(port, options = {}) {
                 return;
             }
             const invalid = error instanceof World3DError && error.code === 'WORLD3D_INPUT_INVALID';
-            port.postMessage({ t: 'error', about: 'raycast', message: text, request: message['request'],
-                code: invalid ? error.code : 'WORLD3D_RESOURCE_FAILED', detail: invalid ? error.detail : text });
+            port.postMessage({
+                t: 'error',
+                about: 'raycast',
+                message: text,
+                request: message['request'],
+                code: invalid ? error.code : 'WORLD3D_RESOURCE_FAILED',
+                detail: invalid ? error.detail : text
+            });
         }
     });
     port.start?.();
@@ -218,9 +252,13 @@ export class RemoteBody3D {
         this.node = options.node;
         this.userData = options.userData;
     }
-    get removed() { return !this.#alive; }
-    send(message) { if (this.#alive && this.#client[ownsBody](this))
-        this.#client.post({ ...message, id: this.id }); }
+    get removed() {
+        return !this.#alive;
+    }
+    send(message) {
+        if (this.#alive && this.#client[ownsBody](this))
+            this.#client.post({ ...message, id: this.id });
+    }
     /** Move the body there at once; this side shows it there straight away. */
     setPosition(x, y, z) {
         this.position[0] = requireFinite3D(x, 'x');
@@ -239,24 +277,50 @@ export class RemoteBody3D {
         this.send({ t: 'set', quaternion: [x, y, z, w] });
         return this;
     }
-    setLinearVelocity(x, y, z) { this.send({ t: 'set', linearVelocity: [requireFinite3D(x, 'x'), requireFinite3D(y, 'y'), requireFinite3D(z, 'z')] }); return this; }
-    setAngularVelocity(x, y, z) { this.send({ t: 'set', angularVelocity: [requireFinite3D(x, 'x'), requireFinite3D(y, 'y'), requireFinite3D(z, 'z')] }); return this; }
-    applyImpulse(x, y, z, point) { this.send({ t: 'impulse', impulse: [x, y, z], ...(point ? { point: [point[0], point[1], point[2]] } : {}) }); }
+    setLinearVelocity(x, y, z) {
+        this.send({
+            t: 'set',
+            linearVelocity: [requireFinite3D(x, 'x'), requireFinite3D(y, 'y'), requireFinite3D(z, 'z')]
+        });
+        return this;
+    }
+    setAngularVelocity(x, y, z) {
+        this.send({
+            t: 'set',
+            angularVelocity: [requireFinite3D(x, 'x'), requireFinite3D(y, 'y'), requireFinite3D(z, 'z')]
+        });
+        return this;
+    }
+    applyImpulse(x, y, z, point) {
+        this.send({ t: 'impulse', impulse: [x, y, z], ...(point ? { point: [point[0], point[1], point[2]] } : {}) });
+    }
     /** A force for the next step only, as with a local body. */
-    applyForce(x, y, z) { this.send({ t: 'force', force: [x, y, z] }); }
-    remove() { if (!this.#alive)
-        return; this.send({ t: 'remove' }); this.#alive = false; this.#client.forget(this); }
+    applyForce(x, y, z) {
+        this.send({ t: 'force', force: [x, y, z] });
+    }
+    remove() {
+        if (!this.#alive)
+            return;
+        this.send({ t: 'remove' });
+        this.#alive = false;
+        this.#client.forget(this);
+    }
 }
 export class RemoteJoint3D {
     id;
     #client;
     #alive = true;
     /** @internal */
-    constructor(client, id) { this.#client = client; this.id = id; }
-    remove() { if (this.#alive) {
-        this.#alive = false;
-        this.#client.post({ t: 'unjoint', id: this.id });
-    } }
+    constructor(client, id) {
+        this.#client = client;
+        this.id = id;
+    }
+    remove() {
+        if (this.#alive) {
+            this.#alive = false;
+            this.#client.post({ t: 'unjoint', id: this.id });
+        }
+    }
 }
 /**
  * The page's end of a remote physics world. Create bodies and joints as with a
@@ -275,9 +339,13 @@ export class PhysicsClient3D {
     #closed = false;
     #listener = (event) => this.receive(event.data);
     /** Steps asked for and not yet answered. */
-    get pending() { return this.#frame - this.#answered; }
+    get pending() {
+        return this.#frame - this.#answered;
+    }
     /** Number of the latest step whose result has arrived. */
-    get frame() { return this.#answered; }
+    get frame() {
+        return this.#answered;
+    }
     onContactBegin;
     onContactEnd;
     /** Called when the other end could not carry out a request. */
@@ -293,12 +361,20 @@ export class PhysicsClient3D {
         if (options)
             this.post({ t: 'world', options });
     }
-    get bodies() { return this.#bodies.values(); }
-    /** @internal */ post(message) { if (!this.#closed)
-        this.#port.postMessage(message); }
-    [ownsBody](body) { return body instanceof RemoteBody3D && this.#bodies.get(body.id) === body; }
-    /** @internal */ forget(body) { if (this[ownsBody](body))
-        this.#bodies.delete(body.id); }
+    get bodies() {
+        return this.#bodies.values();
+    }
+    /** @internal */ post(message) {
+        if (!this.#closed)
+            this.#port.postMessage(message);
+    }
+    [ownsBody](body) {
+        return body instanceof RemoteBody3D && this.#bodies.get(body.id) === body;
+    }
+    /** @internal */ forget(body) {
+        if (this[ownsBody](body))
+            this.#bodies.delete(body.id);
+    }
     createBody(options) {
         if (!options?.shape)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'shape');
@@ -321,10 +397,16 @@ export class PhysicsClient3D {
         if (!this[ownsBody](bodyA) || (bodyB !== undefined && !this[ownsBody](bodyB)))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'joint bodies');
         const joint = new RemoteJoint3D(this, this.#next++);
-        this.post({ t: 'joint', id: joint.id, options: { ...rest, bodyA: bodyA.id, ...(bodyB ? { bodyB: bodyB.id } : {}) } });
+        this.post({
+            t: 'joint',
+            id: joint.id,
+            options: { ...rest, bodyA: bodyA.id, ...(bodyB ? { bodyB: bodyB.id } : {}) }
+        });
         return joint;
     }
-    setGravity(x, y, z) { this.post({ t: 'gravity', value: [requireFinite3D(x, 'x'), requireFinite3D(y, 'y'), requireFinite3D(z, 'z')] }); }
+    setGravity(x, y, z) {
+        this.post({ t: 'gravity', value: [requireFinite3D(x, 'x'), requireFinite3D(y, 'y'), requireFinite3D(z, 'z')] });
+    }
     /**
      * Ask for the world to advance. If `maxPending` earlier steps are still
      * unanswered the request is not sent and false is returned, so a slow
@@ -347,7 +429,14 @@ export class PhysicsClient3D {
             }
             this.#rays.set(request, { resolve, reject });
             try {
-                this.post({ t: 'raycast', request, origin: [origin[0], origin[1], origin[2]], direction: [direction[0], direction[1], direction[2]], ...(maxDistance === undefined ? {} : { maxDistance }), ...(mask === undefined ? {} : { mask }) });
+                this.post({
+                    t: 'raycast',
+                    request,
+                    origin: [origin[0], origin[1], origin[2]],
+                    direction: [direction[0], direction[1], direction[2]],
+                    ...(maxDistance === undefined ? {} : { maxDistance }),
+                    ...(mask === undefined ? {} : { mask })
+                });
             }
             catch (error) {
                 this.#rays.delete(request);
@@ -439,4 +528,6 @@ export class PhysicsClient3D {
         this.#bodies.clear();
     }
 }
-export function connectPhysics3D(port, options) { return new PhysicsClient3D(port, options); }
+export function connectPhysics3D(port, options) {
+    return new PhysicsClient3D(port, options);
+}

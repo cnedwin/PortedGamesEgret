@@ -4,13 +4,28 @@ import { mat4Decompose, mat4Invert, quatFromAxisAngle, quatMultiply, quatNormali
 import { Mesh3D } from './Mesh3D.js';
 import { Object3D } from './Object3D.js';
 import { createBoxGeometry3D, createCylinderGeometry3D, createPlaneGeometry3D, createSphereGeometry3D, createTorusGeometry3D } from './primitives3D.js';
-const AXES = [[1, 0, 0], [0, 1, 0], [0, 0, 1]];
-const COLORS = [[0.9, 0.15, 0.2], [0.3, 0.8, 0.15], [0.15, 0.4, 0.95]];
+const AXES = [
+    [1, 0, 0],
+    [0, 1, 0],
+    [0, 0, 1]
+];
+const COLORS = [
+    [0.9, 0.15, 0.2],
+    [0.3, 0.8, 0.15],
+    [0.15, 0.4, 0.95]
+];
 const HIGHLIGHT = [1, 0.85, 0.1];
 const PICK = 0.09, RING = 1, PLANE_FROM = 0.25, PLANE_TO = 0.5;
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
-const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
-const unit = (a) => { const size = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / size, a[1] / size, a[2] / size]; };
+const cross = (a, b) => [
+    a[1] * b[2] - a[2] * b[1],
+    a[2] * b[0] - a[0] * b[2],
+    a[0] * b[1] - a[1] * b[0]
+];
+const unit = (a) => {
+    const size = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / size, a[1] / size, a[2] / size];
+};
 const snap = (value, step) => step !== undefined && step > 0 ? Math.round(value / step) * step : value;
 export class TransformGizmo3D extends Object3D {
     camera;
@@ -30,7 +45,11 @@ export class TransformGizmo3D extends Object3D {
     #drag;
     #hovered;
     #shownMode;
-    #groups = { translate: new Object3D(), rotate: new Object3D(), scale: new Object3D() };
+    #groups = {
+        translate: new Object3D(),
+        rotate: new Object3D(),
+        scale: new Object3D()
+    };
     #materials = new Map();
     constructor(camera, options = {}) {
         super();
@@ -47,10 +66,16 @@ export class TransformGizmo3D extends Object3D {
             this.addChild(group);
     }
     /** The object being edited. */
-    get object() { return this.#object; }
-    get dragging() { return this.#drag !== undefined; }
+    get object() {
+        return this.#object;
+    }
+    get dragging() {
+        return this.#drag !== undefined;
+    }
     /** The handle under the last hover ray, or the one being dragged. */
-    get activeHandle() { return this.#drag?.handle ?? this.#hovered; }
+    get activeHandle() {
+        return this.#drag?.handle ?? this.#hovered;
+    }
     attach(object) {
         if (!(object instanceof Object3D) || object === this)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'gizmo object');
@@ -59,13 +84,27 @@ export class TransformGizmo3D extends Object3D {
         this.update();
         return this;
     }
-    detach() { this.endDrag(); this.#object = undefined; this.visible = false; return this; }
+    detach() {
+        this.endDrag();
+        this.#object = undefined;
+        this.visible = false;
+        return this;
+    }
     handleMaterial(handle, color, opacity = 1) {
         // Drawn last and without depth, so the handles stay visible through the object.
-        const material = createUnlitMaterial3D({ color, opacity, alphaMode: 'blend', depthTest: false, depthWrite: false, side: 'double', fog: false, toneMapped: false });
+        const material = createUnlitMaterial3D({
+            color,
+            opacity,
+            alphaMode: 'blend',
+            depthTest: false,
+            depthWrite: false,
+            side: 'double',
+            fog: false,
+            toneMapped: false
+        });
         let list = this.#materials.get(handle);
         if (!list)
-            this.#materials.set(handle, list = []);
+            this.#materials.set(handle, (list = []));
         list.push({ material, color });
         return material;
     }
@@ -127,10 +166,12 @@ export class TransformGizmo3D extends Object3D {
     screenScale(position) {
         const camera = this.camera, m = camera.matrixWorld;
         if (camera.projectionKind === 'orthographic')
-            return camera.orthographicHeight / camera.zoom * this.size;
+            return (camera.orthographicHeight / camera.zoom) * this.size;
         // Distance along the viewing direction, which is -Z of the camera.
-        const depth = -((position[0] - m[12]) * m[8] + (position[1] - m[13]) * m[9] + (position[2] - m[14]) * m[10]);
-        return Math.max(depth, 1e-4) * 2 * Math.tan(camera.fov * Math.PI / 360) / camera.zoom * this.size;
+        const depth = -((position[0] - m[12]) * m[8] +
+            (position[1] - m[13]) * m[9] +
+            (position[2] - m[14]) * m[10]);
+        return ((Math.max(depth, 1e-4) * 2 * Math.tan((camera.fov * Math.PI) / 360)) / camera.zoom) * this.size;
     }
     /** World pose of the attached object. */
     pose() {
@@ -191,10 +232,12 @@ export class TransformGizmo3D extends Object3D {
         const { position, quaternion } = this.pose(), size = this.screenScale(position), axes = this.axes(quaternion), d = unit(direction);
         const o = [origin[0] - position[0], origin[1] - position[1], origin[2] - position[2]], names = ['x', 'y', 'z'];
         let best, nearest = Infinity;
-        const offer = (handle, distance) => { if (distance >= 0 && distance < nearest) {
-            nearest = distance;
-            best = handle;
-        } };
+        const offer = (handle, distance) => {
+            if (distance >= 0 && distance < nearest) {
+                nearest = distance;
+                best = handle;
+            }
+        };
         if (this.mode === 'rotate') {
             for (let i = 0; i < 3; i++) {
                 const n = axes[i], facing = dot(d, n);
@@ -222,7 +265,11 @@ export class TransformGizmo3D extends Object3D {
                 offer(names[i], t);
         }
         if (this.mode === 'translate') {
-            const planes = [['yz', 1, 2], ['xz', 0, 2], ['xy', 0, 1]];
+            const planes = [
+                ['yz', 1, 2],
+                ['xz', 0, 2],
+                ['xy', 0, 1]
+            ];
             for (let i = 0; i < 3; i++) {
                 const n = axes[i], facing = dot(d, n);
                 if (Math.abs(facing) < 1e-4)
@@ -252,7 +299,10 @@ export class TransformGizmo3D extends Object3D {
         const facing = dot(d, normal);
         if (Math.abs(facing) < 1e-5)
             return undefined;
-        const t = ((point[0] - origin[0]) * normal[0] + (point[1] - origin[1]) * normal[1] + (point[2] - origin[2]) * normal[2]) / facing;
+        const t = ((point[0] - origin[0]) * normal[0] +
+            (point[1] - origin[1]) * normal[1] +
+            (point[2] - origin[2]) * normal[2]) /
+            facing;
         return [origin[0] + d[0] * t, origin[1] + d[1] * t, origin[2] + d[2] * t];
     }
     /** Direction from the object toward the camera, used as a drag plane that always faces the viewer. */
@@ -268,7 +318,18 @@ export class TransformGizmo3D extends Object3D {
         if (!handle || !object)
             return false;
         const { position, quaternion } = this.pose(), axes = this.axes(quaternion), d = unit(direction), size = this.screenScale(position), index = 'xyz'.indexOf(handle);
-        const drag = { handle, position, quaternion, scale: [object.scale[0], object.scale[1], object.scale[2]], axes, along: 0, point: [0, 0, 0], normal: [0, 0, 1], edgeOn: false, size };
+        const drag = {
+            handle,
+            position,
+            quaternion,
+            scale: [object.scale[0], object.scale[1], object.scale[2]],
+            axes,
+            along: 0,
+            point: [0, 0, 0],
+            normal: [0, 0, 1],
+            edgeOn: false,
+            size
+        };
         if (this.mode === 'rotate') {
             drag.normal = axes[index];
             // Seen edge-on, a ring's own plane cannot be hit reliably; drag across the view instead.
@@ -312,13 +373,19 @@ export class TransformGizmo3D extends Object3D {
                 for (let i = 0; i < 3; i++) {
                     if (!drag.handle.includes('xyz'[i]))
                         continue;
-                    const axis = drag.axes[i], amount = snap((point[0] - drag.point[0]) * axis[0] + (point[1] - drag.point[1]) * axis[1] + (point[2] - drag.point[2]) * axis[2], this.translationSnap);
+                    const axis = drag.axes[i], amount = snap((point[0] - drag.point[0]) * axis[0] +
+                        (point[1] - drag.point[1]) * axis[1] +
+                        (point[2] - drag.point[2]) * axis[2], this.translationSnap);
                     move[0] += axis[0] * amount;
                     move[1] += axis[1] * amount;
                     move[2] += axis[2] * amount;
                 }
             }
-            this.setWorldPosition(object, [drag.position[0] + move[0], drag.position[1] + move[1], drag.position[2] + move[2]]);
+            this.setWorldPosition(object, [
+                drag.position[0] + move[0],
+                drag.position[1] + move[1],
+                drag.position[2] + move[2]
+            ]);
         }
         else if (this.mode === 'rotate') {
             const point = this.onPlane(origin, d, drag.position, drag.normal);
@@ -329,10 +396,18 @@ export class TransformGizmo3D extends Object3D {
             if (drag.edgeOn) {
                 // Movement across the ring, as seen by the camera, turns it like a wheel pushed at its rim.
                 const tangent = unit(cross(axis, drag.normal));
-                angle = ((point[0] - drag.point[0]) * tangent[0] + (point[1] - drag.point[1]) * tangent[1] + (point[2] - drag.point[2]) * tangent[2]) / (RING * drag.size);
+                angle =
+                    ((point[0] - drag.point[0]) * tangent[0] +
+                        (point[1] - drag.point[1]) * tangent[1] +
+                        (point[2] - drag.point[2]) * tangent[2]) /
+                        (RING * drag.size);
             }
             else {
-                const from = [drag.point[0] - drag.position[0], drag.point[1] - drag.position[1], drag.point[2] - drag.position[2]];
+                const from = [
+                    drag.point[0] - drag.position[0],
+                    drag.point[1] - drag.position[1],
+                    drag.point[2] - drag.position[2]
+                ];
                 const to = [point[0] - drag.position[0], point[1] - drag.position[1], point[2] - drag.position[2]];
                 angle = Math.atan2(dot(cross(from, to), axis), dot(from, to));
             }
@@ -348,7 +423,12 @@ export class TransformGizmo3D extends Object3D {
                     return;
                 // Dragging up or to the right grows the object, down or left shrinks it.
                 const m = this.camera.matrixWorld;
-                factor = 1 + ((point[0] - drag.point[0]) * (m[0] + m[4]) + (point[1] - drag.point[1]) * (m[1] + m[5]) + (point[2] - drag.point[2]) * (m[2] + m[6])) / drag.size;
+                factor =
+                    1 +
+                        ((point[0] - drag.point[0]) * (m[0] + m[4]) +
+                            (point[1] - drag.point[1]) * (m[1] + m[5]) +
+                            (point[2] - drag.point[2]) * (m[2] + m[6])) /
+                            drag.size;
             }
             else {
                 const start = Math.abs(drag.along) < 1e-6 ? 1e-6 : drag.along;
@@ -426,4 +506,6 @@ export class TransformGizmo3D extends Object3D {
                 entry.material.dispose();
     }
 }
-export function createTransformGizmo3D(camera, options = {}) { return new TransformGizmo3D(camera, options); }
+export function createTransformGizmo3D(camera, options = {}) {
+    return new TransformGizmo3D(camera, options);
+}
