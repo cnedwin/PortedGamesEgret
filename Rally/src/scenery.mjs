@@ -32,13 +32,12 @@ import {
   SPIKE,
   build,
   canvasTexture,
-  linear,
   paintTexture,
   rgb,
   scatterSource,
   yawQuat,
 } from './shapes.mjs';
-import { TRACK } from './track.mjs';
+import { TRACK, wrapAngle } from './track.mjs';
 
 const VERMILION = 0xc8321e,
   GOLD = 0xf2c230,
@@ -122,12 +121,12 @@ function roadTexture() {
     (x, y) => {
       // Fine grit, with the faint darker bands that tyres leave either side of the centre.
       const worn = Math.exp(-(((x - 140) / 46) ** 2)) + Math.exp(-(((x - 372) / 46) ** 2)),
-        grain = 66 + noise() * 22 - worn * 9,
-        edge = x < 12 || x > 499,
+        grain = 61 + noise() * 16 - worn * 9,
+        edge = x < 13 || x > 498,
         dash = Math.abs(x - 255.5) < 4 && y < 128;
-      if (edge) return [236, 232, 220, 255];
-      if (dash) return [232, 200, 96, 255];
-      return [grain, grain, grain + 4, 255];
+      if (edge) return [232, 234, 224, 255];
+      if (dash) return [200, 164, 90, 255];
+      return [grain, grain + 2, grain + 5, 255];
     },
     { wrapS: 'clamp', wrapT: 'repeat', anisotropy: 8 },
   );
@@ -165,14 +164,14 @@ export function createScenery(scene, track, options = {}) {
   const beside = (fraction, lateral) => track.sample(fraction * track.length, lateral, {});
 
   // ---- sky and light -----------------------------------------------------------------
-  const sky = createGradientCubeTexture3D([38, 108, 222], [214, 232, 250], [120, 150, 120], 64);
+  const sky = createGradientCubeTexture3D([55, 106, 174], [204, 226, 224], [129, 141, 119], 64);
   scene.background = sky;
   scene.environment = sky;
-  scene.environmentIntensity = 0.6;
-  scene.fog = { kind: 'linear', color: [linear(0.8), linear(0.88), linear(0.96)], near: 260, far: 1500 };
-  scene.addChild(createHemisphereLight3D({ color: 0xcfe4ff, groundColor: 0x86a25e, intensity: 0.5 }));
-  scene.addChild(createAmbientLight3D({ intensity: 0.05 }));
-  const sun = createDirectionalLight3D({ color: 0xffeccc, intensity: 2.1, castShadow: true });
+  scene.environmentIntensity = 0.53;
+  scene.fog = { kind: 'linear', color: rgb(0xb7cfd7), near: 220, far: 1320 };
+  scene.addChild(createHemisphereLight3D({ color: 0xd3e1f1, groundColor: 0x9b9d82, intensity: 0.56 }));
+  scene.addChild(createAmbientLight3D({ intensity: 0.07 }));
+  const sun = createDirectionalLight3D({ color: 0xffdec1, intensity: 1.98, castShadow: true });
   Object.assign(sun.shadow, { cascades: 3, cascadeDistance: 110, mapSize: options.shadowSize ?? 2048 });
   scene.addChild(sun);
   scenery.sun = sun;
@@ -225,9 +224,9 @@ export function createScenery(scene, track, options = {}) {
       colors = [],
       uvs = [],
       indices = [];
-    const grass = rgb(0x86c552),
-      meadow = rgb(0x5a9e44),
-      rock = rgb(0x8b8f7c),
+    const grass = rgb(0x769b5b),
+      meadow = rgb(0x587a58),
+      rock = rgb(0x828873),
       sand = rgb(0xd9c79a),
       bed = rgb(0x6d8a7a);
     for (let j = 0; j <= nz; j++)
@@ -238,11 +237,14 @@ export function createScenery(scene, track, options = {}) {
           shore = track.lakeDistance(x, z);
         positions.push(x, y, z);
         uvs.push(x / 14, z / 14);
-        // Sand round the lake, light grass by the road, darker meadow and rock on the hills.
-        let color = y > 15 ? rock : y > 7 ? meadow : grass;
-        if (shore < 1.2 && y < 1.6) color = y < TRACK.waterLevel - 0.3 ? bed : sand;
-        const speckle = 0.92 + ((i * 7 + j * 13) % 5) * 0.03;
-        colors.push(color[0] * speckle, color[1] * speckle, color[2] * speckle);
+        // Blend the roadside grass into hill meadow and exposed rock without contour bands.
+        const lower = y < 13 ? grass : meadow,
+          upper = y < 13 ? meadow : rock,
+          blend = Math.max(0, Math.min(1, (y - (y < 13 ? 5 : 13)) / 8)),
+          shoreColor = shore < 1.2 && y < 1.6 ? (y < TRACK.waterLevel - 0.3 ? bed : sand) : undefined,
+          tone = 0.96 + Math.sin(x * 0.067 + z * 0.035) * 0.04 + Math.sin(z * 0.087 - x * 0.032) * 0.035;
+        for (let k = 0; k < 3; k++)
+          colors.push((shoreColor?.[k] ?? lower[k] + (upper[k] - lower[k]) * blend) * tone);
       }
     for (let j = 0; j < nz; j++)
       for (let i = 0; i < nx; i++) {
@@ -264,9 +266,9 @@ export function createScenery(scene, track, options = {}) {
       256,
       256,
       (x, y) => {
-        const patch = Math.sin(x * 0.049) * Math.sin(y * 0.049) * 14 + Math.sin((x + y) * 0.098) * 8,
-          v = 214 + patch + noise() * 30;
-        return [v - 8, v, v - 20, 255];
+        const patch = Math.sin(x * 0.049) * Math.sin(y * 0.049) * 12 + Math.sin((x + y) * 0.098) * 6,
+          v = 215 + patch + noise() * 21;
+        return [v, v - 3, v - 10, 255];
       },
       { wrapS: 'repeat', wrapT: 'repeat', anisotropy: 8 },
     );
@@ -282,7 +284,7 @@ export function createScenery(scene, track, options = {}) {
   );
   road.renderOrder = 1;
   // Kerbs in vermilion and gold, alternating every few metres.
-  const stripes = paintTexture(4, 32, (x, y) => (y < 16 ? [216, 50, 30, 255] : [242, 194, 48, 255]), {
+  const stripes = paintTexture(4, 32, (x, y) => (y < 16 ? [185, 65, 47, 255] : [219, 170, 85, 255]), {
     wrapT: 'repeat',
     magFilter: 'nearest',
   });
@@ -301,8 +303,49 @@ export function createScenery(scene, track, options = {}) {
     createStandardMaterial3D({ color: 0xffffff, map: stripes, roughness: 0.7 }),
     false,
   );
+  {
+    // Compare headings across the whole bend, so tiny kinks don't get signs.
+    const span = Math.round(34 / track.step);
+    const bends = Array.from(track.heading, (_, i) => ({
+      s: i * track.step,
+      turn: wrapAngle(track.heading[(i + span) % track.count] - track.heading[(i - span + track.count) % track.count]),
+    }))
+      .filter(({ turn }) => Math.abs(turn) >= 0.48)
+      .sort((a, b) => Math.abs(b.turn) - Math.abs(a.turn));
+    const marked = [],
+      left = [],
+      right = [];
+    for (const { s, turn } of bends) {
+      if (marked.some((other) => Math.abs(track.delta(other, s)) < 80)) continue;
+      const approach = s - 34,
+        index = track.sample(approach, 0, {}).index,
+        outside = Math.sign(turn);
+      if (track.bridge[index]) continue;
+      const at = track.sample(approach, outside * (track.limit[index] + 3.7), {});
+      if (!clear(at.x, at.z, 3.05)) continue;
+      const places = turn > 0 ? left : right;
+      places.push([at.x, ground(at.x, at.z), at.z, at.heading + Math.PI, 1]);
+      marked.push(s);
+    }
+
+    // Two shared meshes for the mirrored chevrons. The boards sit behind the wall.
+    const board = (direction) =>
+      build([
+        [BOX, [-1.18, 1.27, 0], [0.13, 2.54, 0.16], 0x584936],
+        [BOX, [1.18, 1.27, 0], [0.13, 2.54, 0.16], 0x584936],
+        [BOX, [0, 2.77, -0.02], [4.45, 1.32, 0.17], 0xcda369],
+        [BOX, [0, 2.77, 0.07], [4.23, 1.1, 0.1], 0x243e3d],
+        ...[-1.12, 0, 1.12].flatMap((x) => [
+          [BOX, [x, 2.98, 0.135], [0.83, 0.2, 0.06], CREAM, [0, 0, -direction * 0.59]],
+          [BOX, [x, 2.56, 0.135], [0.83, 0.2, 0.06], CREAM, [0, 0, direction * 0.59]],
+        ]),
+      ]);
+    const signMaterial = lit();
+    copies(board(-1), left, signMaterial, false).name = 'Left bend markers';
+    copies(board(1), right, signMaterial, false).name = 'Right bend markers';
+  }
   // Whitewashed walls with dark tile caps on land; a stone balustrade on the bridge.
-  const wallWhite = rgb(0xf2efe6),
+  const wallWhite = rgb(0xdad6c8),
     wallCap = rgb(TILE),
     stone = rgb(STONE),
     stoneDark = rgb(0x8d897c);
@@ -765,21 +808,21 @@ export function createScenery(scene, track, options = {}) {
 
   // ---- mountains and clouds ----------------------------------------------------------------
   {
-    // A peak in bands: forest below, bare rock, then snow, with a shoulder to break the outline.
+    // Offset the rocky shoulders and snow line; the cool high ridge softens into the haze.
     const cone = (sides) => createConeGeometry3D({ radius: 1, height: 1, radialSegments: sides });
     const peak = build([
-      [cone(9), [0, 0.5, 0], [1, 1, 1], 0x4f7f6a],
-      [cone(9), [0, 0.62, 0], [0.78, 0.76, 0.78], 0x6f8fa8],
-      [cone(9), [0, 0.84, 0], [0.34, 0.33, 0.34], 0xf4f6f8],
-      [cone(7), [0.55, 0.3, 0.2], [0.7, 0.6, 0.7], 0x5a8a70],
-      [cone(7), [0.6, 0.42, 0.22], [0.42, 0.37, 0.42], 0x7f9cb0],
-      [cone(6), [-0.5, 0.22, -0.3], [0.6, 0.44, 0.6], 0x4f7f6a],
+      [cone(9), [0.02, 0.43, 0], [1.16, 0.86, 0.8], 0x526f70, [0, 0.2, 0.07]],
+      [cone(9), [-0.04, 0.57, 0.02], [0.89, 0.93, 0.68], 0x627b8d, [0, 0.2, 0.095]],
+      [cone(9), [-0.067, 0.86, 0.02], [0.34, 0.36, 0.26], 0xb8c9d4, [0, 0.2, 0.095]],
+      [cone(7), [0.61, 0.30, 0.21], [0.76, 0.63, 0.58], 0x586f71, [0, 0.44, -0.14]],
+      [cone(7), [0.66, 0.53, 0.22], [0.52, 0.58, 0.46], 0x6c8597, [0, 0.44, -0.14]],
+      [cone(6), [-0.62, 0.25, -0.28], [0.72, 0.51, 0.49], 0x4e7071, [0, 0.25, 0.1]],
     ]);
     // Rounded green foothills stand between the circuit and the peaks.
     const hill = build([
-      [BALL, [0, 0, 0], [1, 0.34, 1], 0x5f9c4a],
-      [BALL, [0.7, -0.02, 0.3], [0.7, 0.26, 0.7], 0x6aa852],
-      [BALL, [-0.6, -0.03, -0.4], [0.8, 0.22, 0.8], 0x528f42],
+      [BALL, [0, 0, 0], [1, 0.34, 1], 0x658b72],
+      [BALL, [0.7, -0.02, 0.3], [0.7, 0.26, 0.7], 0x71927f],
+      [BALL, [-0.6, -0.03, -0.4], [0.8, 0.22, 0.8], 0x5d8173],
     ]);
     const foothills = [];
     for (let k = 0; k < 26; k++) {
@@ -800,7 +843,7 @@ export function createScenery(scene, track, options = {}) {
     for (let k = 0; k < 34; k++) {
       const angle = (k / 34) * 6.283 + chance() * 0.12,
         distance = 820 + chance() * 300,
-        height = 110 + chance() * 150,
+        height = 105 + chance() * 143,
         tone = 0.75 + chance() * 0.4;
       peaks.push([
         Math.cos(angle) * distance,
@@ -1150,7 +1193,7 @@ export function createScenery(scene, track, options = {}) {
     const tufts = [],
       blooms = [],
       petals = [0xffffff, 0xf7a8c4, 0xffe08a, 0xc9b6f0, 0xff8a70].map(rgb),
-      green = rgb(0x5fa646);
+      green = rgb(0x5c8246);
     for (let i = 0; i < track.count; i++) {
       if (track.bridge[i]) continue;
       for (let n = 0; n < 5; n++) {
@@ -1183,7 +1226,7 @@ export function createScenery(scene, track, options = {}) {
 
     // Piers along the white walls, each under its own little tiled cap.
     const pier = build([
-      [BOX, [0, 0.75, 0], [0.9, 1.9, 0.9], 0xf2efe6],
+      [BOX, [0, 0.75, 0], [0.9, 1.9, 0.9], 0xdad6c8],
       [PYRAMID, [0, 2.0, 0], [0.85, 0.6, 0.85], TILE, [0, Math.PI / 4, 0]],
       [BALL, [0, 2.36, 0], 0.13, GOLD],
     ]);

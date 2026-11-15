@@ -231,7 +231,8 @@ export const TEXT = {
   zh: {
     title: '锦绣飞车',
     subtitle: '山水环道',
-    tagline: '基于新白鹭引擎开发的 3D 赛车游戏 Demo',
+    tagline: '过石桥，闯祥云门。在弯道蓄能，出弯加速。',
+    engineCredit: '新白鹭引擎 · 3D 赛车演示',
     start: '开始',
     pressStart: '点击或按回车',
     choose: '选择车手',
@@ -271,6 +272,9 @@ export const TEXT = {
     tip: '漂移时火花由蓝变橙再变紫，松开即可加速；倒数到“2”之后再踩油门可以弹射起步。捡铜钱提高极速，穿过祥云门加速，紧跟前车可借尾流；绕开泥潭、石狮和滚动的大鼓。',
     kmh: '公里/时',
     coins: '铜钱',
+    driftBuild: '漂移蓄能',
+    driftTiers: ['一档', '二档', '三档'],
+    driftRelease: '松开漂移加速',
     popups: {
       start: '弹射起步！',
       turbo: ['小喷！', '大喷！', '极限喷射！'],
@@ -286,7 +290,8 @@ export const TEXT = {
   en: {
     title: 'Jinxiu Rally',
     subtitle: 'Mountain and Water Circuit',
-    tagline: 'A 3D kart racing demo built with Egret Rebuild',
+    tagline: 'Race across stone bridges and through cloud gates. Charge in the turns, boost out.',
+    engineCredit: 'A 3D racing demo built with Egret Rebuild',
     start: 'Start',
     pressStart: 'Click or press Enter',
     choose: 'Choose your racer',
@@ -326,6 +331,9 @@ export const TEXT = {
     tip: 'Drift sparks turn blue, orange, then purple: let go for a boost. Press the accelerator after the count reaches 2 for a rocket start. Coins raise your top speed, cloud gates give a boost and so does tucking in behind another kart; steer round mud, stone lions and rolling drums.',
     kmh: 'km/h',
     coins: 'Coins',
+    driftBuild: 'Charging drift',
+    driftTiers: ['Tier 1', 'Tier 2', 'Tier 3'],
+    driftRelease: 'Release drift to boost',
     popups: {
       start: 'Rocket start!',
       turbo: ['Mini-turbo!', 'Super turbo!', 'Ultra turbo!'],
