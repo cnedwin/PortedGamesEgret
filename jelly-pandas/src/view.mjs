@@ -535,7 +535,6 @@ export function createView(scene, options = {}) {
     return mesh;
   };
   const glossy = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.3 });
-  const plain = createStandardMaterial3D({ color: 0xffffff, roughness: 0.3 });
   const crowns = instanced(
     crownShape,
     createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.25, metallic: 0.6 }),
@@ -543,7 +542,9 @@ export function createView(scene, options = {}) {
   );
 
   // ---- shots, sprinkles and pickups -------------------------------------------------------
-  const balls = instanced(shot, plain, 900, true);
+  // The shot has no texture. Use the horde's vertex layout so the first
+  // round projectile can reuse its color and depth pipelines.
+  const balls = instanced(buildShape([[shot, [0, 0, 0], 1, WHITE]]), glossy, 900, true);
   const bubbleMaterial = createStandardMaterial3D({
     color: 0xcdefff,
     roughness: 0.05,
