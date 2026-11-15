@@ -14,11 +14,30 @@ import { readOwnedSharedFrame } from '#egret-textured-frame-state';
 import { EgretError } from '@egret/runtime';
 import { GeometryPreparationError } from '../rendering/prepareRectangles2D.js';
 import { PreparedBatchScratch2D } from '../rendering/preparedBatches2D.js';
+import { collectWebGPUImageDemand, selectWebGPUImageVictims } from './webgpuImageResidency.js';
 import { observed, deferred, cleanupWebGPUBuffer, cleanupWebGPUTexture, observeWebGPUDeviceLoss, observeAuthenticatedWebGPUDeviceLoss } from './webgpuLifetime.js';
 import { runOwnedPreparationScope } from '../rendering/ownedPreparationFailure2D.js';
 import { createWebGPUBindingCache } from './webgpuBindingCache.js';
-const DEVICE_LIMIT_KEYS = ['maxTextureDimension2D', 'maxBufferSize', 'maxVertexBuffers', 'maxVertexAttributes', 'maxVertexBufferArrayStride', 'maxColorAttachments', 'maxColorAttachmentBytesPerSample', 'maxBindGroups', 'maxBindingsPerBindGroup', 'maxSampledTexturesPerShaderStage', 'maxSamplersPerShaderStage', 'maxUniformBuffersPerShaderStage', 'maxUniformBufferBindingSize', 'maxBindGroupsPlusVertexBuffers', 'maxInterStageShaderVariables'];
-function error(code, cause) { return new EgretError(code, { cause }); }
+const DEVICE_LIMIT_KEYS = [
+    'maxTextureDimension2D',
+    'maxBufferSize',
+    'maxVertexBuffers',
+    'maxVertexAttributes',
+    'maxVertexBufferArrayStride',
+    'maxColorAttachments',
+    'maxColorAttachmentBytesPerSample',
+    'maxBindGroups',
+    'maxBindingsPerBindGroup',
+    'maxSampledTexturesPerShaderStage',
+    'maxSamplersPerShaderStage',
+    'maxUniformBuffersPerShaderStage',
+    'maxUniformBufferBindingSize',
+    'maxBindGroupsPlusVertexBuffers',
+    'maxInterStageShaderVariables'
+];
+function error(code, cause) {
+    return new EgretError(code, { cause });
+}
 /** Private control-flow origin; callers receive only publicError, never this signal. */
 class ClassifiedWebGPUFailure {
     code;
@@ -30,7 +49,9 @@ class ClassifiedWebGPUFailure {
         this.publicError = publicError;
     }
 }
-function isObject(value) { return typeof value === 'object' && value !== null; }
+function isObject(value) {
+    return typeof value === 'object' && value !== null;
+}
 const SHARED_OPTIONS = new WeakMap();
 /** The sole lifecycle/submission authority; resource helpers only record settled ownership. */
 class WebGPUHostImplementation {
@@ -64,11 +85,64 @@ class WebGPUHostImplementation {
     /** The prepared draws of the last frame. A Host that is not active keeps none. */
     retention = new SharedPreparationRetention2D();
     // Fixed-size observations only; original records/native owners still authorize every transition.
-    resourceCpu = { canonicalBytes: 0, scratchBytes: 0, highCanonicalBytes: 0, highScratchBytes: 0, highTemporaryBytes: 0, saturated: false };
-    resourceUnknown = { knownLogicalBytes: 0, objects: 0, highKnownLogicalBytes: 0, highObjects: 0, saturated: false };
-    resourceReuse = { current: { idleBytes: 0, idleEntries: 0, leasedBytes: 0, leasedEntries: 0, reservedBytes: 0, reservedEntries: 0, detachedBytes: 0, detachedEntries: 0, unknownBytes: 0, unknownEntries: 0 }, highWater: { idleBytes: 0, idleEntries: 0, leasedBytes: 0, leasedEntries: 0, reservedBytes: 0, reservedEntries: 0, detachedBytes: 0, detachedEntries: 0, unknownBytes: 0, unknownEntries: 0 }, saturated: false };
-    resourceHighPending = { frames: 0, uploadCreditBytes: 0, pageCreditBytes: 0, readbackCreditBytes: 0, geometryCreditBytes: 0, colorCreditBytes: 0 };
-    resourceHighImages = { readyBytes: 0, readyEntries: 0, pinnedReadyBytes: 0, pinnedReadyEntries: 0, allocatedLogicalBytes: 0, reservedCreditBytes: 0 };
+    resourceCpu = {
+        canonicalBytes: 0,
+        scratchBytes: 0,
+        highCanonicalBytes: 0,
+        highScratchBytes: 0,
+        highTemporaryBytes: 0,
+        saturated: false
+    };
+    resourceUnknown = {
+        knownLogicalBytes: 0,
+        objects: 0,
+        highKnownLogicalBytes: 0,
+        highObjects: 0,
+        saturated: false
+    };
+    resourceReuse = {
+        current: {
+            idleBytes: 0,
+            idleEntries: 0,
+            leasedBytes: 0,
+            leasedEntries: 0,
+            reservedBytes: 0,
+            reservedEntries: 0,
+            detachedBytes: 0,
+            detachedEntries: 0,
+            unknownBytes: 0,
+            unknownEntries: 0
+        },
+        highWater: {
+            idleBytes: 0,
+            idleEntries: 0,
+            leasedBytes: 0,
+            leasedEntries: 0,
+            reservedBytes: 0,
+            reservedEntries: 0,
+            detachedBytes: 0,
+            detachedEntries: 0,
+            unknownBytes: 0,
+            unknownEntries: 0
+        },
+        saturated: false
+    };
+    resourceHighPending = {
+        frames: 0,
+        uploadCreditBytes: 0,
+        pageCreditBytes: 0,
+        readbackCreditBytes: 0,
+        geometryCreditBytes: 0,
+        colorCreditBytes: 0
+    };
+    resourceHighImages = {
+        readyBytes: 0,
+        readyEntries: 0,
+        pinnedReadyBytes: 0,
+        pinnedReadyEntries: 0,
+        allocatedLogicalBytes: 0,
+        reservedCreditBytes: 0
+    };
     resourceTotals = { pageWriteCalls: 0, pageWriteBytes: 0, readyCapacityEvictions: 0 };
     resourceSaturated = false;
     resourceReadyBytes = 0;
@@ -130,7 +204,10 @@ class WebGPUHostImplementation {
     stagePumpScheduled = false;
     cancelStagePump;
     monotonicNow;
-    now() { this.monotonicNow ??= globalThis.performance.now.bind(globalThis.performance); return this.monotonicNow(); }
+    now() {
+        this.monotonicNow ??= globalThis.performance.now.bind(globalThis.performance);
+        return this.monotonicNow();
+    }
     timers;
     constructor(input) {
         try {
@@ -146,14 +223,53 @@ class WebGPUHostImplementation {
             throw error('WEBGPU_OPTIONS_INVALID', cause);
         }
         this.borrowedPolicy = this.borrowed !== undefined;
-        Object.defineProperties(this, { sharedFrameProfile: { value: SHARED_FRAME_PROFILE_2D, enumerable: true },
-            renderSharedFrame: { value: (frame) => this.renderSharedOwnedFrame(frame), enumerable: true },
-            getSessionStatus: { value: () => Object.freeze({ state: this.state === 'active' ? 'ready' : this.state, generation: this.generation, attempt: this.attempt, firstFailure: this.firstFailure, generationFailure: this.generationFailure }), enumerable: true },
-            whenReady: { value: () => this.sharedWhenReady(), enumerable: true }, recover: { value: (device) => this.recoverShared(device), enumerable: true },
-            stageSharedFrame: { value: (frame, options) => this.renderSharedOwnedFrame(frame, { options }), enumerable: true },
-            getSharedStatus: { value: () => Object.freeze({ host: this.getStatus(), pendingGeometryBytes: this.pendingGeometryBytes, pendingColorBytes: this.pendingColorBytes, pendingCanonicalBytes: this.pendingCanonicalBytes, resources: this.resourceStatus() }), enumerable: true } });
+        Object.defineProperties(this, {
+            sharedFrameProfile: { value: SHARED_FRAME_PROFILE_2D, enumerable: true },
+            renderSharedFrame: {
+                value: (frame) => this.renderSharedOwnedFrame(frame),
+                enumerable: true
+            },
+            getSessionStatus: {
+                value: () => Object.freeze({
+                    state: this.state === 'active' ? 'ready' : this.state,
+                    generation: this.generation,
+                    attempt: this.attempt,
+                    firstFailure: this.firstFailure,
+                    generationFailure: this.generationFailure
+                }),
+                enumerable: true
+            },
+            whenReady: { value: () => this.sharedWhenReady(), enumerable: true },
+            recover: { value: (device) => this.recoverShared(device), enumerable: true },
+            stageSharedFrame: {
+                value: (frame, options) => this.renderSharedOwnedFrame(frame, { options }),
+                enumerable: true
+            },
+            getSharedStatus: {
+                value: () => Object.freeze({
+                    host: this.getStatus(),
+                    pendingGeometryBytes: this.pendingGeometryBytes,
+                    pendingColorBytes: this.pendingColorBytes,
+                    pendingCanonicalBytes: this.pendingCanonicalBytes,
+                    resources: this.resourceStatus()
+                }),
+                enumerable: true
+            }
+        });
     }
-    getStatus() { return Object.freeze({ state: this.state === 'lost' ? 'failed' : this.state === 'restoring' ? 'starting' : this.state, lastSerial: this.lastSerial, pendingFrames: this.ledger.size, pendingUploadBytes: this.pendingUploadBytes, pendingReadbackBytes: this.pendingReadbackBytes, firstFailure: this.firstFailure, callbackFailureCount: this.callbackFailureCount, lastCallbackFailure: this.lastCallbackFailure, cleanupOutcome: this.cleanupOutcome }); }
+    getStatus() {
+        return Object.freeze({
+            state: this.state === 'lost' ? 'failed' : this.state === 'restoring' ? 'starting' : this.state,
+            lastSerial: this.lastSerial,
+            pendingFrames: this.ledger.size,
+            pendingUploadBytes: this.pendingUploadBytes,
+            pendingReadbackBytes: this.pendingReadbackBytes,
+            firstFailure: this.firstFailure,
+            callbackFailureCount: this.callbackFailureCount,
+            lastCallbackFailure: this.lastCallbackFailure,
+            cleanupOutcome: this.cleanupOutcome
+        });
+    }
     sampleResourcePending() {
         this.resourceHighPending.frames = Math.max(this.resourceHighPending.frames, this.ledger.size);
         this.resourceHighPending.uploadCreditBytes = Math.max(this.resourceHighPending.uploadCreditBytes, this.pendingUploadBytes);
@@ -179,30 +295,66 @@ class WebGPUHostImplementation {
         else
             this.resourceTotals[key] = old + amount;
     }
-    resourcePageWrite(bytes) { this.resourceTotal('pageWriteCalls', 1); this.resourceTotal('pageWriteBytes', bytes); }
+    resourcePageWrite(bytes) {
+        this.resourceTotal('pageWriteCalls', 1);
+        this.resourceTotal('pageWriteBytes', bytes);
+    }
     /** Read-only logical observations; no native call, callback or state transition. */
     resourceStatus() {
         return Object.freeze({
             current: Object.freeze({
-                pending: Object.freeze({ frames: this.ledger.size, uploadCreditBytes: this.pendingUploadBytes, pageCreditBytes: this.pendingTextureBytes, readbackCreditBytes: this.pendingReadbackBytes, geometryCreditBytes: this.pendingGeometryBytes, colorCreditBytes: this.pendingColorBytes }),
-                cpu: Object.freeze({ canonicalBytes: this.resourceCpu.canonicalBytes, scratchBytes: this.resourceCpu.scratchBytes, temporaryBytes: this.resourceCpu.canonicalBytes + this.resourceCpu.scratchBytes }),
-                images: Object.freeze({ readyBytes: this.resourceReadyBytes, readyEntries: this.readyCount, pinnedReadyBytes: this.resourcePinnedBytes, pinnedReadyEntries: this.resourcePinnedEntries, allocatedLogicalBytes: this.allocatedImageBytes, reservedCreditBytes: this.reservedImageBytes }),
+                pending: Object.freeze({
+                    frames: this.ledger.size,
+                    uploadCreditBytes: this.pendingUploadBytes,
+                    pageCreditBytes: this.pendingTextureBytes,
+                    readbackCreditBytes: this.pendingReadbackBytes,
+                    geometryCreditBytes: this.pendingGeometryBytes,
+                    colorCreditBytes: this.pendingColorBytes
+                }),
+                cpu: Object.freeze({
+                    canonicalBytes: this.resourceCpu.canonicalBytes,
+                    scratchBytes: this.resourceCpu.scratchBytes,
+                    temporaryBytes: this.resourceCpu.canonicalBytes + this.resourceCpu.scratchBytes
+                }),
+                images: Object.freeze({
+                    readyBytes: this.resourceReadyBytes,
+                    readyEntries: this.readyCount,
+                    pinnedReadyBytes: this.resourcePinnedBytes,
+                    pinnedReadyEntries: this.resourcePinnedEntries,
+                    allocatedLogicalBytes: this.allocatedImageBytes,
+                    reservedCreditBytes: this.reservedImageBytes
+                }),
                 reusable: Object.freeze({ ...this.resourceReuse.current }),
-                unknownNative: Object.freeze({ knownLogicalBytes: this.resourceUnknown.knownLogicalBytes, objects: this.resourceUnknown.objects }),
+                unknownNative: Object.freeze({
+                    knownLogicalBytes: this.resourceUnknown.knownLogicalBytes,
+                    objects: this.resourceUnknown.objects
+                })
             }),
             highWater: Object.freeze({
                 pending: Object.freeze({ ...this.resourceHighPending }),
-                cpu: Object.freeze({ canonicalBytes: this.resourceCpu.highCanonicalBytes, scratchBytes: this.resourceCpu.highScratchBytes, temporaryBytes: this.resourceCpu.highTemporaryBytes }),
+                cpu: Object.freeze({
+                    canonicalBytes: this.resourceCpu.highCanonicalBytes,
+                    scratchBytes: this.resourceCpu.highScratchBytes,
+                    temporaryBytes: this.resourceCpu.highTemporaryBytes
+                }),
                 images: Object.freeze({ ...this.resourceHighImages }),
                 reusable: Object.freeze({ ...this.resourceReuse.highWater }),
-                unknownNative: Object.freeze({ knownLogicalBytes: this.resourceUnknown.highKnownLogicalBytes, objects: this.resourceUnknown.highObjects }),
+                unknownNative: Object.freeze({
+                    knownLogicalBytes: this.resourceUnknown.highKnownLogicalBytes,
+                    objects: this.resourceUnknown.highObjects
+                })
             }),
             totals: Object.freeze({ ...this.resourceTotals }),
-            saturated: this.resourceSaturated || this.resourceCpu.saturated || this.resourceReuse.saturated || this.resourceUnknown.saturated,
+            saturated: this.resourceSaturated ||
+                this.resourceCpu.saturated ||
+                this.resourceReuse.saturated ||
+                this.resourceUnknown.saturated
         });
     }
     noteUnknownResource(resource) {
-        if (resource.diagnosticUnknown || resource.settlement === 'destroyed' || resource.settlement === 'context-invalidated')
+        if (resource.diagnosticUnknown ||
+            resource.settlement === 'destroyed' ||
+            resource.settlement === 'context-invalidated')
             return;
         resource.diagnosticUnknown = true;
         const bytes = resource.logicalByteLength ?? 0, state = this.resourceUnknown;
@@ -236,7 +388,17 @@ class WebGPUHostImplementation {
             throw this.stateError();
         }
     }
-    stateError() { return error(this.state === 'stopped' ? 'WEBGPU_STOPPED' : this.state === 'closing' || this.state === 'closed' ? 'WEBGPU_CLOSED' : this.state === 'failed' ? 'WEBGPU_FAILED' : this.state === 'lost' || this.state === 'restoring' ? 'WEBGPU_DEVICE_LOST' : 'WEBGPU_NOT_STARTED', (SHARED_OPTIONS.get(this)?.recovery ? this.generationFailure : this.firstFailure)?.cause); }
+    stateError() {
+        return error(this.state === 'stopped'
+            ? 'WEBGPU_STOPPED'
+            : this.state === 'closing' || this.state === 'closed'
+                ? 'WEBGPU_CLOSED'
+                : this.state === 'failed'
+                    ? 'WEBGPU_FAILED'
+                    : this.state === 'lost' || this.state === 'restoring'
+                        ? 'WEBGPU_DEVICE_LOST'
+                        : 'WEBGPU_NOT_STARTED', (SHARED_OPTIONS.get(this)?.recovery ? this.generationFailure : this.firstFailure)?.cause);
+    }
     startupCancelled() {
         return this.state === 'stopped' || this.state === 'closing' || this.state === 'closed';
     }
@@ -248,14 +410,19 @@ class WebGPUHostImplementation {
             throw new ClassifiedWebGPUFailure('WEBGPU_START_CANCELLED', this.firstFailure?.cause);
         }
     }
-    proofFailed(cause) { if (this.owner) {
-        this.owner.unknown = true;
-        this.noteUnknownResource(this.owner);
-    } for (const record of this.ledger)
-        this.noteUnknownRecord(record); this.invalidateImageResidency(); if (!this.unsafe) {
-        this.unsafe = true;
-        this.unsafeCause = cause;
-    } }
+    proofFailed(cause) {
+        if (this.owner) {
+            this.owner.unknown = true;
+            this.noteUnknownResource(this.owner);
+        }
+        for (const record of this.ledger)
+            this.noteUnknownRecord(record);
+        this.invalidateImageResidency();
+        if (!this.unsafe) {
+            this.unsafe = true;
+            this.unsafeCause = cause;
+        }
+    }
     fail(code, cause, phase, serial, unsafe = false) {
         this.invalidateImageResidency();
         const attempt = this.recoveryAttempt;
@@ -285,7 +452,15 @@ class WebGPUHostImplementation {
             queueMicrotask(() => {
                 if (this.state === 'closed')
                     return;
-                const callbackFailure = (fault) => { this.callbackFailureCount = Math.min(Number.MAX_SAFE_INTEGER, this.callbackFailureCount + 1); this.lastCallbackFailure = Object.freeze({ code: 'WEBGPU_DIAGNOSTIC_CALLBACK_FAILED', cause: fault, phase: 'callback', serial }); };
+                const callbackFailure = (fault) => {
+                    this.callbackFailureCount = Math.min(Number.MAX_SAFE_INTEGER, this.callbackFailureCount + 1);
+                    this.lastCallbackFailure = Object.freeze({
+                        code: 'WEBGPU_DIAGNOSTIC_CALLBACK_FAILED',
+                        cause: fault,
+                        phase: 'callback',
+                        serial
+                    });
+                };
                 try {
                     observed(callback.call(undefined, Object.freeze({ ...failure, severity: 'error' }))).catch(callbackFailure);
                 }
@@ -295,12 +470,18 @@ class WebGPUHostImplementation {
             });
         }
     }
-    cancelTicket(cause) { if (this.ticket && !this.ticket.bound) {
-        this.ticket.reject(cause);
-        this.ticket = undefined;
-    } }
+    cancelTicket(cause) {
+        if (this.ticket && !this.ticket.bound) {
+            this.ticket.reject(cause);
+            this.ticket = undefined;
+        }
+    }
     stop() {
-        if (this.state === 'new' || this.state === 'starting' || this.state === 'active' || this.state === 'lost' || this.state === 'restoring')
+        if (this.state === 'new' ||
+            this.state === 'starting' ||
+            this.state === 'active' ||
+            this.state === 'lost' ||
+            this.state === 'restoring')
             this.state = 'stopped';
         const failure = error('WEBGPU_STOPPED');
         this.revokeRecovery(failure);
@@ -324,9 +505,17 @@ class WebGPUHostImplementation {
             this.readinessPending = true;
         }
         // Cache before any getter/call can reenter start or close.
-        this.initialize().then(() => { this.startingPending = false; if (this.readiness === barrier)
-            this.readinessPending = false; barrier.resolve(); }, cause => { this.startingPending = false; if (this.readiness === barrier)
-            this.readinessPending = false; barrier.reject(cause); });
+        this.initialize().then(() => {
+            this.startingPending = false;
+            if (this.readiness === barrier)
+                this.readinessPending = false;
+            barrier.resolve();
+        }, cause => {
+            this.startingPending = false;
+            if (this.readiness === barrier)
+                this.readinessPending = false;
+            barrier.reject(cause);
+        });
         return barrier.promise;
     }
     method(object, key, gate) {
@@ -368,14 +557,43 @@ class WebGPUHostImplementation {
             if (!Number.isSafeInteger(limits[key]) || limits[key] <= 0)
                 throw new TypeError('Device limit');
         }
-        if (limits['maxVertexBuffers'] < 1 || limits['maxVertexAttributes'] < 5 || limits['maxVertexBufferArrayStride'] < 52 || limits['maxColorAttachments'] < 1 || limits['maxColorAttachmentBytesPerSample'] < 4 || limits['maxBindGroups'] < 2 || limits['maxBindingsPerBindGroup'] < 2 + SHARED_BATCH_PAGES_2D || limits['maxSampledTexturesPerShaderStage'] < SHARED_BATCH_PAGES_2D || limits['maxSamplersPerShaderStage'] < 1 || limits['maxUniformBuffersPerShaderStage'] < 2 || limits['maxUniformBufferBindingSize'] < SHARED_REGION_WINDOW_BYTES_2D || limits['maxBindGroupsPlusVertexBuffers'] < 3 || limits['maxInterStageShaderVariables'] < 8)
+        if (limits['maxVertexBuffers'] < 1 ||
+            limits['maxVertexAttributes'] < 5 ||
+            limits['maxVertexBufferArrayStride'] < 52 ||
+            limits['maxColorAttachments'] < 1 ||
+            limits['maxColorAttachmentBytesPerSample'] < 4 ||
+            limits['maxBindGroups'] < 2 ||
+            limits['maxBindingsPerBindGroup'] < 2 + SHARED_BATCH_PAGES_2D ||
+            limits['maxSampledTexturesPerShaderStage'] < SHARED_BATCH_PAGES_2D ||
+            limits['maxSamplersPerShaderStage'] < 1 ||
+            limits['maxUniformBuffersPerShaderStage'] < 2 ||
+            limits['maxUniformBufferBindingSize'] < SHARED_REGION_WINDOW_BYTES_2D ||
+            limits['maxBindGroupsPlusVertexBuffers'] < 3 ||
+            limits['maxInterStageShaderVariables'] < 8)
             throw new TypeError('Device capabilities');
         const queue = device.queue;
         gate();
         const capture = (key) => this.method(device, key, gate);
-        return { device, lost, limits, add: capture('addEventListener'), remove: capture('removeEventListener'),
-            write: this.method(queue, 'writeBuffer', gate), writeTexture: this.method(queue, 'writeTexture', gate), submit: this.method(queue, 'submit', gate), fence: this.method(queue, 'onSubmittedWorkDone', gate),
-            push: capture('pushErrorScope'), pop: capture('popErrorScope'), buffer: capture('createBuffer'), texture: capture('createTexture'), encoder: capture('createCommandEncoder'), bindGroup: capture('createBindGroup'), sampler: capture('createSampler'), shader: capture('createShaderModule'), pipeline: capture('createRenderPipelineAsync') };
+        return {
+            device,
+            lost,
+            limits,
+            add: capture('addEventListener'),
+            remove: capture('removeEventListener'),
+            write: this.method(queue, 'writeBuffer', gate),
+            writeTexture: this.method(queue, 'writeTexture', gate),
+            submit: this.method(queue, 'submit', gate),
+            fence: this.method(queue, 'onSubmittedWorkDone', gate),
+            push: capture('pushErrorScope'),
+            pop: capture('popErrorScope'),
+            buffer: capture('createBuffer'),
+            texture: capture('createTexture'),
+            encoder: capture('createCommandEncoder'),
+            bindGroup: capture('createBindGroup'),
+            sampler: capture('createSampler'),
+            shader: capture('createShaderModule'),
+            pipeline: capture('createRenderPipelineAsync')
+        };
     }
     nativeLoss(owner, cause) {
         if (this.owner !== owner || owner.invalidated || this.state === 'closed')
@@ -392,7 +610,12 @@ class WebGPUHostImplementation {
         const terminal = this.state === 'stopped' || this.state === 'closing';
         if (!terminal)
             this.state = 'lost';
-        const failure = Object.freeze({ code: 'WEBGPU_DEVICE_LOST', cause, phase: 'device', serial: null });
+        const failure = Object.freeze({
+            code: 'WEBGPU_DEVICE_LOST',
+            cause,
+            phase: 'device',
+            serial: null
+        });
         this.firstFailure ??= failure;
         this.generationFailure = failure;
         const refused = error('WEBGPU_DEVICE_LOST', cause);
@@ -413,8 +636,10 @@ class WebGPUHostImplementation {
         this.diagnose(failure);
         if (!terminal && !this.recoveryAttempt && SHARED_OPTIONS.get(this)?.recovery?.mode === 'automatic') {
             // Publication was revoked synchronously; the one automatic attempt begins in a later microtask.
-            queueMicrotask(() => { if (this.state === 'lost' && !this.recoveryAttempt && this.episodeAttempts === 0)
-                observed(this.recoverShared()); });
+            queueMicrotask(() => {
+                if (this.state === 'lost' && !this.recoveryAttempt && this.episodeAttempts === 0)
+                    observed(this.recoverShared());
+            });
         }
     }
     checkRecoveryDeadline(attempt) {
@@ -423,7 +648,12 @@ class WebGPUHostImplementation {
         attempt.cancelled = true;
         this.state = 'failed';
         const failure = error('WEBGPU_RECOVERY_TIMEOUT');
-        this.generationFailure = Object.freeze({ code: 'WEBGPU_RECOVERY_TIMEOUT', cause: failure, phase: 'device', serial: null });
+        this.generationFailure = Object.freeze({
+            code: 'WEBGPU_RECOVERY_TIMEOUT',
+            cause: failure,
+            phase: 'device',
+            serial: null
+        });
         this.firstFailure ??= this.generationFailure;
         attempt.barrier.reject(failure);
         this.readinessPending = false;
@@ -470,8 +700,10 @@ class WebGPUHostImplementation {
                 if (this.borrowedPolicy) {
                     if (device === undefined)
                         throw new TypeError('Replacement borrowed device required');
-                    captured = this.captureNativeDevice(device, () => { if (this.state !== 'lost')
-                        throw this.stateError(); });
+                    captured = this.captureNativeDevice(device, () => {
+                        if (this.state !== 'lost')
+                            throw this.stateError();
+                    });
                 }
                 else if (device !== undefined)
                     throw new TypeError('Acquire policy does not accept a device');
@@ -491,11 +723,21 @@ class WebGPUHostImplementation {
             this.attempt++;
             this.episodeAttempts++;
             this.state = 'restoring';
-            const attempt = { barrier, actual: Promise.resolve(), deadline: this.now() + recovery.timeoutMs, failure: undefined, cancelled: false, cancelTimer: undefined };
+            const attempt = {
+                barrier,
+                actual: Promise.resolve(),
+                deadline: this.now() + recovery.timeoutMs,
+                failure: undefined,
+                cancelled: false,
+                cancelTimer: undefined
+            };
             this.recoveryAttempt = attempt;
             attempt.cancelTimer = this.ownedTimeout(() => this.checkRecoveryDeadline(attempt), recovery.timeoutMs);
-            const gate = () => { this.checkRecoveryDeadline(attempt); if (attempt.cancelled || this.state !== 'restoring')
-                throw this.stateError(); };
+            const gate = () => {
+                this.checkRecoveryDeadline(attempt);
+                if (attempt.cancelled || this.state !== 'restoring')
+                    throw this.stateError();
+            };
             attempt.actual = observed((async () => {
                 try {
                     if (this.startingPending && this.starting)
@@ -528,7 +770,11 @@ class WebGPUHostImplementation {
                         this.checkRecoveryDeadline(attempt);
                         if (!this.startupCancelled() && !attempt.cancelled) {
                             this.state = this.unsafe || this.episodeAttempts >= 3 ? 'failed' : 'lost';
-                            const code = this.unsafe ? 'WEBGPU_CLOSE_UNSAFE' : this.episodeAttempts >= 3 ? 'WEBGPU_RECOVERY_LIMIT' : 'WEBGPU_RECOVERY_FAILED';
+                            const code = this.unsafe
+                                ? 'WEBGPU_CLOSE_UNSAFE'
+                                : this.episodeAttempts >= 3
+                                    ? 'WEBGPU_RECOVERY_LIMIT'
+                                    : 'WEBGPU_RECOVERY_FAILED';
                             const failure = error(code, cause);
                             this.generationFailure = Object.freeze({ code, cause, phase: 'device', serial: null });
                             this.firstFailure ??= this.generationFailure;
@@ -721,7 +967,32 @@ class WebGPUHostImplementation {
             {
                 if (this.generation === Number.MAX_SAFE_INTEGER)
                     throw new ClassifiedWebGPUFailure('WEBGPU_GENERATION_EXHAUSTED');
-                const owner = { number: ++this.generation, device, pool: this.bufferPool, cache: this.bindingCache, epoch: this.imageEpoch, format: this.format, alpha: SHARED_OPTIONS.get(this).outputAlpha, fence: this.fence, pop: this.pop, native: { write: this.write, writeTexture: this.writeTexture, submit: this.submit, push: this.push, buffer: this.buffer, texture: this.texture, bindGroup: this.bindGroup, encoder: this.encoder, configure: this.configure, unconfigure: this.unconfigure, currentTexture: this.currentTexture }, invalidated: false, unknown: false };
+                const owner = {
+                    number: ++this.generation,
+                    device,
+                    pool: this.bufferPool,
+                    cache: this.bindingCache,
+                    epoch: this.imageEpoch,
+                    format: this.format,
+                    alpha: SHARED_OPTIONS.get(this).outputAlpha,
+                    fence: this.fence,
+                    pop: this.pop,
+                    native: {
+                        write: this.write,
+                        writeTexture: this.writeTexture,
+                        submit: this.submit,
+                        push: this.push,
+                        buffer: this.buffer,
+                        texture: this.texture,
+                        bindGroup: this.bindGroup,
+                        encoder: this.encoder,
+                        configure: this.configure,
+                        unconfigure: this.unconfigure,
+                        currentTexture: this.currentTexture
+                    },
+                    invalidated: false,
+                    unknown: false
+                };
                 this.owner = owner;
                 this.usedDevices.add(device);
                 if (recovery)
@@ -729,33 +1000,58 @@ class WebGPUHostImplementation {
                 const cell = this.lossCell;
                 if (recovery) {
                     cell.notify = cause => this.nativeLoss(owner, cause);
-                    cell.unknown = cause => { if (this.owner === owner) {
-                        owner.unknown = true;
-                        owner.finishReadbackLossWait?.();
-                        const failure = this.fail('WEBGPU_DEVICE_LOST', cause, 'device', null, true);
-                        this.revokeRecovery(failure);
-                        this.revokeStages(failure);
-                    } };
+                    cell.unknown = cause => {
+                        if (this.owner === owner) {
+                            owner.unknown = true;
+                            owner.finishReadbackLossWait?.();
+                            const failure = this.fail('WEBGPU_DEVICE_LOST', cause, 'device', null, true);
+                            this.revokeRecovery(failure);
+                            this.revokeStages(failure);
+                        }
+                    };
                     observeAuthenticatedWebGPUDeviceLoss(lost, cell);
                 }
                 else {
-                    cell.notify = cause => { this.fail('WEBGPU_DEVICE_LOST', cause, 'device', null, true); this.revokeStages(error('WEBGPU_DEVICE_LOST', cause)); };
+                    cell.notify = cause => {
+                        this.fail('WEBGPU_DEVICE_LOST', cause, 'device', null, true);
+                        this.revokeStages(error('WEBGPU_DEVICE_LOST', cause));
+                    };
                     observeWebGPUDeviceLoss(lost, cell);
                 }
             }
             gate();
             stage = 'WEBGPU_START_FAILED';
             const observedOwner = this.owner;
-            const listener = (event) => { if (observedOwner && this.owner !== observedOwner)
-                return; this.fail('WEBGPU_UNCAPTURED_ERROR', event.error, 'device', null); };
+            const listener = (event) => {
+                if (observedOwner && this.owner !== observedOwner)
+                    return;
+                this.fail('WEBGPU_UNCAPTURED_ERROR', event.error, 'device', null);
+            };
             this.removeListener = () => remove('uncapturederror', listener);
             add('uncapturederror', listener);
             gate();
-            if (captured['maxVertexBuffers'] < 1 || captured['maxVertexAttributes'] < 5 || captured['maxVertexBufferArrayStride'] < 52 || captured['maxColorAttachments'] < 1 || captured['maxColorAttachmentBytesPerSample'] < 4 || captured['maxBindGroups'] < 2 || captured['maxBindingsPerBindGroup'] < 2 + SHARED_BATCH_PAGES_2D || captured['maxSampledTexturesPerShaderStage'] < SHARED_BATCH_PAGES_2D || captured['maxSamplersPerShaderStage'] < 1 || captured['maxUniformBuffersPerShaderStage'] < 2 || captured['maxUniformBufferBindingSize'] < SHARED_REGION_WINDOW_BYTES_2D || captured['maxBindGroupsPlusVertexBuffers'] < 3 || captured['maxInterStageShaderVariables'] < 8)
+            if (captured['maxVertexBuffers'] < 1 ||
+                captured['maxVertexAttributes'] < 5 ||
+                captured['maxVertexBufferArrayStride'] < 52 ||
+                captured['maxColorAttachments'] < 1 ||
+                captured['maxColorAttachmentBytesPerSample'] < 4 ||
+                captured['maxBindGroups'] < 2 ||
+                captured['maxBindingsPerBindGroup'] < 2 + SHARED_BATCH_PAGES_2D ||
+                captured['maxSampledTexturesPerShaderStage'] < SHARED_BATCH_PAGES_2D ||
+                captured['maxSamplersPerShaderStage'] < 1 ||
+                captured['maxUniformBuffersPerShaderStage'] < 2 ||
+                captured['maxUniformBufferBindingSize'] < SHARED_REGION_WINDOW_BYTES_2D ||
+                captured['maxBindGroupsPlusVertexBuffers'] < 3 ||
+                captured['maxInterStageShaderVariables'] < 8)
                 throw new ClassifiedWebGPUFailure('WEBGPU_DEVICE_LIMIT');
-            if (SHARED_OPTIONS.get(this)?.enableEffects && (captured['maxUniformBufferBindingSize'] < EFFECT_UNIFORM_BYTES || captured['maxSampledTexturesPerShaderStage'] < 3))
+            if (SHARED_OPTIONS.get(this)?.enableEffects &&
+                (captured['maxUniformBufferBindingSize'] < EFFECT_UNIFORM_BYTES ||
+                    captured['maxSampledTexturesPerShaderStage'] < 3))
                 throw new ClassifiedWebGPUFailure('WEBGPU_DEVICE_LIMIT');
-            this.limits = { maxTextureDimension2D: captured['maxTextureDimension2D'], maxBufferSize: captured['maxBufferSize'] };
+            this.limits = {
+                maxTextureDimension2D: captured['maxTextureDimension2D'],
+                maxBufferSize: captured['maxBufferSize']
+            };
             const scopes = [];
             const pipelines = [];
             const capturedShader = (descriptor) => {
@@ -785,7 +1081,17 @@ class WebGPUHostImplementation {
                     for (const filter of ['nearest', 'linear'])
                         for (const u of ['clamp-to-edge', 'repeat', 'mirror-repeat'])
                             for (const v of ['clamp-to-edge', 'repeat', 'mirror-repeat']) {
-                                const value = sampler({ addressModeU: u, addressModeV: v, addressModeW: 'clamp-to-edge', minFilter: filter, magFilter: filter, mipmapFilter: 'nearest', lodMinClamp: 0, lodMaxClamp: 0, maxAnisotropy: 1 });
+                                const value = sampler({
+                                    addressModeU: u,
+                                    addressModeV: v,
+                                    addressModeW: 'clamp-to-edge',
+                                    minFilter: filter,
+                                    magFilter: filter,
+                                    mipmapFilter: 'nearest',
+                                    lodMinClamp: 0,
+                                    lodMaxClamp: 0,
+                                    maxAnisotropy: 1
+                                });
                                 this.sharedSamplers.set(filter + ':' + u + ':' + v, value);
                                 gate();
                             }
@@ -857,7 +1163,8 @@ class WebGPUHostImplementation {
             }
             if (operation?.cancelled)
                 throw this.stateError();
-            if (this.state === 'lost' || (!operation && SHARED_OPTIONS.get(this)?.recovery && this.readiness?.promise !== this.starting))
+            if (this.state === 'lost' ||
+                (!operation && SHARED_OPTIONS.get(this)?.recovery && this.readiness?.promise !== this.starting))
                 throw error('WEBGPU_DEVICE_LOST', this.generationFailure?.cause);
             if (classified && this.firstFailure?.code === classified.code) {
                 throw classified.publicError;
@@ -895,7 +1202,11 @@ class WebGPUHostImplementation {
                 try {
                     const result = observed(pop()).then(fault => {
                         if (fault) {
-                            const code = filter === 'validation' ? 'WEBGPU_VALIDATION' : filter === 'internal' ? 'WEBGPU_INTERNAL' : 'WEBGPU_OUT_OF_MEMORY';
+                            const code = filter === 'validation'
+                                ? 'WEBGPU_VALIDATION'
+                                : filter === 'internal'
+                                    ? 'WEBGPU_INTERNAL'
+                                    : 'WEBGPU_OUT_OF_MEMORY';
                             throw new ClassifiedWebGPUFailure(code, fault, scopeFailure(code, fault));
                         }
                     }, cause => {
@@ -914,14 +1225,35 @@ class WebGPUHostImplementation {
         gate();
         // A throwing external configure may already have changed the leased context.
         this.configured = true;
-        this.configure({ device: this.device, format: this.format, colorSpace: 'srgb', alphaMode: SHARED_OPTIONS.get(this)?.outputAlpha ?? 'premultiplied', usage: 16 | (this.options.enableReadback ? 1 : 0) });
+        this.configure({
+            device: this.device,
+            format: this.format,
+            colorSpace: 'srgb',
+            alphaMode: SHARED_OPTIONS.get(this)?.outputAlpha ?? 'premultiplied',
+            usage: 16 | (this.options.enableReadback ? 1 : 0)
+        });
         gate();
     }
     ownedBuffer(size, usage, record, gate) {
         gate();
         const buffer = (record.owner?.native.buffer ?? this.buffer)({ size, usage });
         // Record ownership immediately, even if capture getters throw or close reentrantly.
-        const resource = { buffer, destroy: () => { throw new TypeError('uncaptured destroy'); }, unmap: () => { throw new TypeError('uncaptured unmap'); }, map: () => Promise.reject(new TypeError('uncaptured map')), mappedRange: () => { throw new TypeError('uncaptured range'); }, mapped: false, cleaned: false, logicalByteLength: size };
+        const resource = {
+            buffer,
+            destroy: () => {
+                throw new TypeError('uncaptured destroy');
+            },
+            unmap: () => {
+                throw new TypeError('uncaptured unmap');
+            },
+            map: () => Promise.reject(new TypeError('uncaptured map')),
+            mappedRange: () => {
+                throw new TypeError('uncaptured range');
+            },
+            mapped: false,
+            cleaned: false,
+            logicalByteLength: size
+        };
         if (record.owner)
             resource.generation = record.owner;
         record.resources.push(resource);
@@ -943,9 +1275,23 @@ class WebGPUHostImplementation {
     }
     ownedTexture(view, record, gate, candidate) {
         gate();
-        const texture = (record.owner?.native.texture ?? this.texture)({ size: { width: view.region.width, height: view.region.height, depthOrArrayLayers: 1 }, dimension: '2d', format: candidate.entry.format, mipLevelCount: 1, sampleCount: 1, usage: 2 | 4 });
+        const texture = (record.owner?.native.texture ?? this.texture)({
+            size: { width: view.region.width, height: view.region.height, depthOrArrayLayers: 1 },
+            dimension: '2d',
+            format: candidate.entry.format,
+            mipLevelCount: 1,
+            sampleCount: 1,
+            usage: 2 | 4
+        });
         // Register the returned object before any gate or cleanup/view getter can reenter close.
-        const resource = { texture, destroy: () => { throw new TypeError('uncaptured texture destroy'); }, cleaned: false, logicalByteLength: candidate.entry.bytes };
+        const resource = {
+            texture,
+            destroy: () => {
+                throw new TypeError('uncaptured texture destroy');
+            },
+            cleaned: false,
+            logicalByteLength: candidate.entry.bytes
+        };
         if (record.owner)
             resource.generation = record.owner;
         record.textures.push(resource);
@@ -976,42 +1322,24 @@ class WebGPUHostImplementation {
     planImageResidency(projectionPlan, draws, shared = false) {
         this.active();
         const hits = new Map(), candidates = new Map();
-        const buckets = new Map();
-        let bytes = 0;
-        for (const draw of draws) {
-            if (draw.kind === 'rect' || draw.packed.vertexCount === 0 || hits.has(draw.viewIndex) || candidates.has(draw.viewIndex))
-                continue;
-            const view = projectionPlan.views[draw.viewIndex], region = view.region;
-            const cropKey = (shared ? 'shared:egret.alpha8-capped-srgb-pma8/1:rgba8unorm-srgb:' : '') + `${region.x},${region.y},${region.width},${region.height}`;
-            let bucket = this.imageDirectory.get(view.image) ?? buckets.get(view.image);
-            if (!bucket) {
-                bucket = new Map();
-                buckets.set(view.image, bucket);
+        const bytes = collectWebGPUImageDemand(projectionPlan, draws, shared, this.imageDirectory, this.imageEnabled, this.imageEpoch, hits, candidates);
+        // Every profile of this Host shares one ready residence; a shared Host may lower its bytes.
+        const victims = selectWebGPUImageVictims(this.imageOldest, this.imageEpoch, this.allocatedImageBytes + this.reservedImageBytes, this.readyCount, SHARED_OPTIONS.get(this)?.maxReadyPageBytes ?? 33554432, bytes, candidates.size, hits);
+        return {
+            epoch: this.imageEpoch,
+            revision: this.imageRevision,
+            victims,
+            bytes,
+            use: {
+                epoch: this.imageEpoch,
+                hits,
+                candidates,
+                reserved: 0,
+                pinned: false,
+                finished: false,
+                touchedQueue: false
             }
-            const entry = bucket.get(cropKey);
-            if (this.imageEnabled && entry?.epoch === this.imageEpoch && entry.state === 'ready')
-                hits.set(draw.viewIndex, entry);
-            else {
-                candidates.set(draw.viewIndex, { image: view.image, viewIndex: draw.viewIndex, transferred: false,
-                    entry: { format: shared ? 'rgba8unorm-srgb' : 'rgba8unorm', identity: {}, epoch: this.imageEpoch, bucket, cropKey, bytes: view.byteLength, resource: undefined,
-                        view: undefined, pinCount: 0, previous: undefined, next: undefined, state: 'cold' } });
-                bytes += view.byteLength;
-            }
-        }
-        const protectedHits = new Set(hits.values()), victims = [];
-        let available = this.allocatedImageBytes + this.reservedImageBytes, count = this.readyCount;
-        for (let entry = this.imageOldest; entry; entry = entry.next) {
-            // Every profile of this Host shares one ready residence; a shared Host may lower its bytes.
-            if (available + bytes <= (SHARED_OPTIONS.get(this)?.maxReadyPageBytes ?? 33554432) && count + candidates.size <= 256)
-                break;
-            if (entry.epoch !== this.imageEpoch || entry.state !== 'ready' || entry.pinCount !== 0 || protectedHits.has(entry))
-                continue;
-            victims.push(entry);
-            available -= entry.bytes;
-            count--;
-        }
-        return { epoch: this.imageEpoch, revision: this.imageRevision, victims, bytes,
-            use: { epoch: this.imageEpoch, hits, candidates, reserved: 0, pinned: false, finished: false, touchedQueue: false } };
+        };
     }
     assertImagePlanCurrent(plan) {
         this.active();
@@ -1118,7 +1446,14 @@ class WebGPUHostImplementation {
         const candidate = use.candidates.get(viewIndex), projection = record.projectionPlan.views[viewIndex];
         const owned = this.ownedTexture(projection, record, gate, candidate);
         if (record.stage) {
-            record.stage.writes.push({ kind: 'texture', texture: owned.texture, data: record.projections[viewIndex], width: projection.region.width, height: projection.region.height, offset: 0 });
+            record.stage.writes.push({
+                kind: 'texture',
+                texture: owned.texture,
+                data: record.projections[viewIndex],
+                width: projection.region.width,
+                height: projection.region.height,
+                offset: 0
+            });
             return owned;
         }
         // Attempted queue writes retain the original fence obligation, including throws.
@@ -1139,8 +1474,14 @@ class WebGPUHostImplementation {
         (record.owner?.native.write ?? this.write)(buffer, 0, data);
     }
     isReuseEligible(record) {
-        return this.state === 'active' && this.imageEnabled && (SHARED_OPTIONS.get(this)?.recovery ? !this.generationFailure : !this.firstFailure) && (!record.owner || record.owner === this.owner && !record.owner.invalidated) && !this.unsafe && !this.finalizing
-            && !record.failure && !record.unsafe;
+        return (this.state === 'active' &&
+            this.imageEnabled &&
+            (SHARED_OPTIONS.get(this)?.recovery ? !this.generationFailure : !this.firstFailure) &&
+            (!record.owner || (record.owner === this.owner && !record.owner.invalidated)) &&
+            !this.unsafe &&
+            !this.finalizing &&
+            !record.failure &&
+            !record.unsafe);
     }
     isImagePromotionEligible(record) {
         return this.isReuseEligible(record) && record.imageUse?.epoch === this.imageEpoch;
@@ -1171,8 +1512,11 @@ class WebGPUHostImplementation {
             if (!resource || candidate.transferred)
                 continue;
             // Re-read qualification, winner and slot after every earlier cleanup callback.
-            if (allowPromotion && this.isImagePromotionEligible(record) && entry.epoch === this.imageEpoch
-                && !entry.bucket.has(entry.cropKey) && this.readyCount < 256) {
+            if (allowPromotion &&
+                this.isImagePromotionEligible(record) &&
+                entry.epoch === this.imageEpoch &&
+                !entry.bucket.has(entry.cropKey) &&
+                this.readyCount < 256) {
                 try {
                     const revision = {};
                     entry.bucket.set(entry.cropKey, entry);
@@ -1267,7 +1611,8 @@ class WebGPUHostImplementation {
     }
     submissionBinding(record, key, entries, image, gate) {
         gate();
-        const binding = (record.owner?.cache ?? this.bindingCache).lookup(key) ?? (record.owner?.native.bindGroup ?? this.bindGroup)({ layout: key.layout, entries });
+        const binding = (record.owner?.cache ?? this.bindingCache).lookup(key) ??
+            (record.owner?.native.bindGroup ?? this.bindGroup)({ layout: key.layout, entries });
         // The record owns the returned binding before checking a native callback's state.
         record.bindings.push(binding);
         record.bindingCandidates.push({ key, binding, image });
@@ -1321,7 +1666,16 @@ class WebGPUHostImplementation {
     }
     sharedOwnerSnapshot() {
         this.active();
-        return { pendingFrames: this.ledger.size, pendingUploadBytes: this.pendingUploadBytes, pendingReadbackBytes: this.pendingReadbackBytes, pendingTextureBytes: this.pendingTextureBytes, pendingGeometryBytes: this.pendingGeometryBytes, serial: this.lastSerial, pendingColorBytes: this.pendingColorBytes, pendingCanonicalBytes: this.pendingCanonicalBytes };
+        return {
+            pendingFrames: this.ledger.size,
+            pendingUploadBytes: this.pendingUploadBytes,
+            pendingReadbackBytes: this.pendingReadbackBytes,
+            pendingTextureBytes: this.pendingTextureBytes,
+            pendingGeometryBytes: this.pendingGeometryBytes,
+            serial: this.lastSerial,
+            pendingColorBytes: this.pendingColorBytes,
+            pendingCanonicalBytes: this.pendingCanonicalBytes
+        };
     }
     renderSharedOwnedFrame(input, staging) {
         this.active();
@@ -1333,7 +1687,11 @@ class WebGPUHostImplementation {
         try {
             let ownedFailure;
             const trusted = new WeakSet();
-            const refuse = code => { const failure = new ClassifiedWebGPUFailure(code); trusted.add(failure); throw failure; };
+            const refuse = code => {
+                const failure = new ClassifiedWebGPUFailure(code);
+                trusted.add(failure);
+                throw failure;
+            };
             let admitted;
             try {
                 admitted = runOwnedPreparationScope(() => {
@@ -1353,12 +1711,20 @@ class WebGPUHostImplementation {
                             throw cause;
                         }
                     }
-                    if (frame.outputAlpha !== options.outputAlpha || frame.outputRepresentation !== (options.outputAlpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1'))
+                    if (frame.outputAlpha !== options.outputAlpha ||
+                        frame.outputRepresentation !==
+                            (options.outputAlpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1'))
                         refuse('WEBGPU_FRAME_PROFILE_UNSUPPORTED');
                     if (options.outputAlpha === 'opaque' && frame.clearAlpha !== 1)
                         refuse('WEBGPU_FRAME_INVALID');
                     const width = Math.ceil(frame.width * options.pixelRatio), height = Math.ceil(frame.height * options.pixelRatio);
-                    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0 || width > 4294967295 || height > 4294967295 || width > Math.floor(options.maxBackingPixels / height))
+                    if (!Number.isSafeInteger(width) ||
+                        !Number.isSafeInteger(height) ||
+                        width <= 0 ||
+                        height <= 0 ||
+                        width > 4294967295 ||
+                        height > 4294967295 ||
+                        width > Math.floor(options.maxBackingPixels / height))
                         refuse('WEBGPU_BACKING_LIMIT');
                     const prepared = prepareSharedDraws2D(frame, width, height, options, this.retention), ticket = this.ticket && !this.ticket.bound ? this.ticket : undefined;
                     const storage = planSharedSubmission2D(prepared, options, this.limits, this.sharedOwnerSnapshot(), staging ? options.enableReadback : ticket !== undefined);
@@ -1373,7 +1739,11 @@ class WebGPUHostImplementation {
                         if (viewIndex === undefined)
                             demands.push({ kind: 'rect' });
                         else
-                            demands.push({ kind: entry.prepared.command.kind === 'mesh' ? 'mesh' : 'image', packed: { vertexCount: entry.vertexCount }, viewIndex });
+                            demands.push({
+                                kind: entry.prepared.command.kind === 'mesh' ? 'mesh' : 'image',
+                                packed: { vertexCount: entry.vertexCount },
+                                viewIndex
+                            });
                     }
                     for (const group of prepared.effects.groups)
                         if (group.maskPageIndex !== undefined)
@@ -1386,9 +1756,13 @@ class WebGPUHostImplementation {
                     // A staged frame writes its rows after later frames are prepared, so it is given batches of its own.
                     batch = prepareSharedBatches2D(packed, this.limits.maxBufferSize, this.batchScratch, staging ? undefined : prepared.retention);
                     this.active();
-                    const regions = batch.draws.some(draw => draw.regionWindow >= 0) ? packSharedRegionWindows2D(prepared.frame) : undefined;
+                    const regions = batch.draws.some(draw => draw.regionWindow >= 0)
+                        ? packSharedRegionWindows2D(prepared.frame)
+                        : undefined;
                     return { storage, imagePlan, ...pages, ticket, batch, regions };
-                }, failure => { ownedFailure = failure; });
+                }, failure => {
+                    ownedFailure = failure;
+                });
             }
             catch (cause) {
                 if (this.state !== 'active')
@@ -1397,11 +1771,27 @@ class WebGPUHostImplementation {
                     throw cause.publicError;
                 if (cause === ownedFailure) {
                     if (cause instanceof SharedPreparationError)
-                        throw error(cause.reason === 'profile' ? 'WEBGPU_FRAME_PROFILE_UNSUPPORTED' : cause.reason === 'budget' ? 'WEBGPU_FRAME_BUDGET' : cause.reason === 'precision' ? 'WEBGPU_PRECISION_UNSUPPORTED' : 'WEBGPU_FRAME_INVALID', cause);
+                        throw error(cause.reason === 'profile'
+                            ? 'WEBGPU_FRAME_PROFILE_UNSUPPORTED'
+                            : cause.reason === 'budget'
+                                ? 'WEBGPU_FRAME_BUDGET'
+                                : cause.reason === 'precision'
+                                    ? 'WEBGPU_PRECISION_UNSUPPORTED'
+                                    : 'WEBGPU_FRAME_INVALID', cause);
                     if (cause instanceof SharedStorageError2D)
-                        throw error(cause.reason === 'device' ? 'WEBGPU_DEVICE_LIMIT' : cause.reason === 'backpressure' ? 'WEBGPU_BACKPRESSURE' : cause.reason === 'serial' ? 'WEBGPU_SERIAL_EXHAUSTED' : 'WEBGPU_FRAME_BUDGET', cause);
+                        throw error(cause.reason === 'device'
+                            ? 'WEBGPU_DEVICE_LIMIT'
+                            : cause.reason === 'backpressure'
+                                ? 'WEBGPU_BACKPRESSURE'
+                                : cause.reason === 'serial'
+                                    ? 'WEBGPU_SERIAL_EXHAUSTED'
+                                    : 'WEBGPU_FRAME_BUDGET', cause);
                     if (cause instanceof GeometryPreparationError)
-                        throw error(cause.reason === 'range' ? 'WEBGPU_GEOMETRY_RANGE' : cause.reason === 'budget' ? 'WEBGPU_FRAME_BUDGET' : 'WEBGPU_PRECISION_UNSUPPORTED', cause.cause);
+                        throw error(cause.reason === 'range'
+                            ? 'WEBGPU_GEOMETRY_RANGE'
+                            : cause.reason === 'budget'
+                                ? 'WEBGPU_FRAME_BUDGET'
+                                : 'WEBGPU_PRECISION_UNSUPPORTED', cause.cause);
                 }
                 throw error('WEBGPU_FRAME_INVALID', cause);
             }
@@ -1432,7 +1822,14 @@ class WebGPUHostImplementation {
             gate();
             if (typeof aborted !== 'boolean')
                 throw new TypeError('Signal aborted');
-            const captured = { signal, add, remove, aborted: false, abortFailure: undefined, readingReason: false };
+            const captured = {
+                signal,
+                add,
+                remove,
+                aborted: false,
+                abortFailure: undefined,
+                readingReason: false
+            };
             if (aborted) {
                 const failure = this.stageAbortReason(captured);
                 throw new ClassifiedWebGPUFailure(failure.code, failure.cause, failure);
@@ -1470,7 +1867,10 @@ class WebGPUHostImplementation {
         this.active();
         if (record.owner !== this.owner || record.owner?.invalidated)
             throw error('WEBGPU_UPLOAD_STALE');
-        if (record.stage && !record.stage.failure && record.stage.phase !== 'submitted' && this.now() >= record.stage.deadline)
+        if (record.stage &&
+            !record.stage.failure &&
+            record.stage.phase !== 'submitted' &&
+            this.now() >= record.stage.deadline)
             this.revokeStage(record, error('WEBGPU_UPLOAD_EXPIRED'));
         this.active();
         if (record.stage?.failure)
@@ -1496,20 +1896,51 @@ class WebGPUHostImplementation {
         const host = this;
         const handle = Object.freeze({
             ready: stage.ready.promise,
-            submit() { if (this !== handle)
-                throw error('WEBGPU_UPLOAD_INVALID'); return host.submitStage(record); },
-            dispose() { if (this !== handle)
-                throw error('WEBGPU_UPLOAD_INVALID'); if (stage.phase === 'submitted' || stage.phase === 'revoked')
-                return; host.revokeStage(record, error('WEBGPU_UPLOAD_DISPOSED')); }
+            submit() {
+                if (this !== handle)
+                    throw error('WEBGPU_UPLOAD_INVALID');
+                return host.submitStage(record);
+            },
+            dispose() {
+                if (this !== handle)
+                    throw error('WEBGPU_UPLOAD_INVALID');
+                if (stage.phase === 'submitted' || stage.phase === 'revoked')
+                    return;
+                host.revokeStage(record, error('WEBGPU_UPLOAD_DISPOSED'));
+            }
         });
         return handle;
     }
     admitStageRecord(record, p, done, signal, deadline) {
-        const stage = { deadline, plan: p, frameId: p.storage.prepared.frame.frameId, generation: record.owner.number, done, ready: deferred(), native: deferred(), signal, phase: 'admitted',
-            failure: undefined, returned: false, listener: undefined, removeOnce: false, cancelDeadline: undefined, recipe: undefined, writes: [], cursor: 0, outcomes: [], touched: false, proofStarted: false, proofSettled: false, inside: false };
+        const stage = {
+            deadline,
+            plan: p,
+            frameId: p.storage.prepared.frame.frameId,
+            generation: record.owner.number,
+            done,
+            ready: deferred(),
+            native: deferred(),
+            signal,
+            phase: 'admitted',
+            failure: undefined,
+            returned: false,
+            listener: undefined,
+            removeOnce: false,
+            cancelDeadline: undefined,
+            recipe: undefined,
+            writes: [],
+            cursor: 0,
+            outcomes: [],
+            touched: false,
+            proofStarted: false,
+            proofSettled: false,
+            inside: false
+        };
         record.stage = stage;
-        record.completion = observed(done.promise.then(() => { if (record.failure)
-            throw record.failure; }));
+        record.completion = observed(done.promise.then(() => {
+            if (record.failure)
+                throw record.failure;
+        }));
         const handle = this.createStageHandle(record);
         try {
             stage.cancelDeadline = this.ownedTimeout(() => this.revokeStage(record, error('WEBGPU_UPLOAD_EXPIRED')), 10000);
@@ -1546,7 +1977,7 @@ class WebGPUHostImplementation {
             return handle;
         }
         catch (cause) {
-            const failure = this.state !== 'active' ? this.stateError() : stage.failure ?? error('WEBGPU_UPLOAD_OPTIONS_INVALID', cause);
+            const failure = this.state !== 'active' ? this.stateError() : (stage.failure ?? error('WEBGPU_UPLOAD_OPTIONS_INVALID', cause));
             // No native operation has begun. Subscription failures unwind this exact charged record synchronously.
             stage.phase = 'revoked';
             stage.failure = failure;
@@ -1639,7 +2070,11 @@ class WebGPUHostImplementation {
         if (this.stagePumpScheduled)
             return;
         this.stagePumpScheduled = true;
-        this.cancelStagePump = this.ownedTimeout(() => { this.cancelStagePump = undefined; this.stagePumpScheduled = false; this.pumpStages(); }, 0);
+        this.cancelStagePump = this.ownedTimeout(() => {
+            this.cancelStagePump = undefined;
+            this.stagePumpScheduled = false;
+            this.pumpStages();
+        }, 0);
     }
     pumpStages() {
         if (this.busy) {
@@ -1681,7 +2116,9 @@ class WebGPUHostImplementation {
                         while (stage.cursor < stage.writes.length) {
                             const write = stage.writes[stage.cursor];
                             const unit = write.kind === 'buffer' ? write.unit : 4 * write.width;
-                            const available = write.kind === 'buffer' ? write.data.byteLength - write.offset : 4 * write.width * write.height - write.offset;
+                            const available = write.kind === 'buffer'
+                                ? write.data.byteLength - write.offset
+                                : 4 * write.width * write.height - write.offset;
                             const count = Math.min(available, Math.floor(remaining / unit) * unit);
                             if (count === 0) {
                                 more = true;
@@ -1709,7 +2146,12 @@ class WebGPUHostImplementation {
                     });
                 }
                 catch (cause) {
-                    const failure = stage.failure ?? (this.state !== 'active' ? this.stateError() : cause instanceof ClassifiedWebGPUFailure ? cause.publicError : this.fail('WEBGPU_RENDER_FAILED', cause, 'frame', null));
+                    const failure = stage.failure ??
+                        (this.state !== 'active'
+                            ? this.stateError()
+                            : cause instanceof ClassifiedWebGPUFailure
+                                ? cause.publicError
+                                : this.fail('WEBGPU_RENDER_FAILED', cause, 'frame', null));
                     this.revokeStage(record, failure);
                 }
                 finally {
@@ -1738,7 +2180,9 @@ class WebGPUHostImplementation {
         const outcomes = [...stage.outcomes];
         if (stage.touched) {
             try {
-                outcomes.push(observed(record.owner.fence()).catch(cause => { throw this.recordAsyncFailure(record, 'WEBGPU_QUEUE_FAILED', cause, 'frame'); }));
+                outcomes.push(observed(record.owner.fence()).catch(cause => {
+                    throw this.recordAsyncFailure(record, 'WEBGPU_QUEUE_FAILED', cause, 'frame');
+                }));
             }
             catch (cause) {
                 outcomes.push(observed(Promise.reject(this.recordAsyncFailure(record, 'WEBGPU_QUEUE_FAILED', cause, 'frame'))));
@@ -1763,7 +2207,12 @@ class WebGPUHostImplementation {
             }
             if (stage.failure)
                 this.retireStage(record);
-        })).catch(cause => { record.unsafe = true; record.failure = this.fail('WEBGPU_RENDER_FAILED', cause, 'cleanup', null, true); stage.ready.reject(record.failure); stage.done.resolve(); });
+        })).catch(cause => {
+            record.unsafe = true;
+            record.failure = this.fail('WEBGPU_RENDER_FAILED', cause, 'cleanup', null, true);
+            stage.ready.reject(record.failure);
+            stage.done.resolve();
+        });
     }
     submitStage(record) {
         const stage = record.stage;
@@ -1797,8 +2246,11 @@ class WebGPUHostImplementation {
             if (ticket)
                 ticket.bound = true;
             this.removeStageListener(stage);
-            const gate = () => { this.active(); if (record.owner !== this.owner || record.owner?.invalidated)
-                throw error('WEBGPU_UPLOAD_STALE'); };
+            const gate = () => {
+                this.active();
+                if (record.owner !== this.owner || record.owner?.invalidated)
+                    throw error('WEBGPU_UPLOAD_STALE');
+            };
             this.scoped(record.serial, 'frame', outcomes, gate, () => {
                 const oldWidth = this.surface.width;
                 gate();
@@ -1826,12 +2278,22 @@ class WebGPUHostImplementation {
             });
         }
         catch (cause) {
-            synchronous = this.state !== 'active' ? this.stateError() : cause instanceof ClassifiedWebGPUFailure ? cause.publicError : this.fail('WEBGPU_RENDER_FAILED', cause, 'frame', record.serial);
+            synchronous =
+                this.state !== 'active'
+                    ? this.stateError()
+                    : cause instanceof ClassifiedWebGPUFailure
+                        ? cause.publicError
+                        : this.fail('WEBGPU_RENDER_FAILED', cause, 'frame', record.serial);
             record.failure = synchronous;
         }
         try {
             this.finishSubmission(record, ticket, stage.done, outcomes, touched, synchronous, submitted, staging, frame.frameId, width, height, storage.rowPitch, storage.output);
-            return Object.freeze({ generation: stage.generation, frameId: frame.frameId, serial: record.serial, completed: stage.native.promise });
+            return Object.freeze({
+                generation: stage.generation,
+                frameId: frame.frameId,
+                serial: record.serial,
+                completed: stage.native.promise
+            });
         }
         finally {
             this.busy = false;
@@ -1864,7 +2326,14 @@ class WebGPUHostImplementation {
             // The slot already exists: retain the returned native object before
             // allocating its registered wrapper or reading any external method.
             raw.logicalByteLength = request.byteLength;
-            raw.texture = (record.owner?.native.texture ?? this.texture)({ size: { width: request.width, height: request.height, depthOrArrayLayers: 1 }, dimension: '2d', format: request.format, mipLevelCount: 1, sampleCount: 1, usage: request.usage });
+            raw.texture = (record.owner?.native.texture ?? this.texture)({
+                size: { width: request.width, height: request.height, depthOrArrayLayers: 1 },
+                dimension: '2d',
+                format: request.format,
+                mipLevelCount: 1,
+                sampleCount: 1,
+                usage: request.usage
+            });
             const texture = raw.texture;
             try {
                 raw.destroy = this.method(texture, 'destroy', () => undefined);
@@ -1875,7 +2344,13 @@ class WebGPUHostImplementation {
                 throw cause;
             }
             gate();
-            const resource = { texture, destroy: raw.destroy, cleaned: false, logicalByteLength: request.byteLength, ...(raw.diagnosticUnknown ? { diagnosticUnknown: true } : {}) };
+            const resource = {
+                texture,
+                destroy: raw.destroy,
+                cleaned: false,
+                logicalByteLength: request.byteLength,
+                ...(raw.diagnosticUnknown ? { diagnosticUnknown: true } : {})
+            };
             if (record.owner)
                 resource.generation = record.owner;
             lease = (record.owner?.pool ?? this.bufferPool).registerCreated(request, resource);
@@ -1895,8 +2370,10 @@ class WebGPUHostImplementation {
         const { storage, imagePlan, batch } = p, { prepared } = storage, { frame, width, height } = prepared;
         this.assertImagePlanCurrent(imagePlan);
         const requests = [];
-        const buffer = (role, usage, byteLength) => { if (byteLength > 0)
-            requests.push({ kind: 'buffer', id: requests.length, role, usage, byteLength }); };
+        const buffer = (role, usage, byteLength) => {
+            if (byteLength > 0)
+                requests.push({ kind: 'buffer', id: requests.length, role, usage, byteLength });
+        };
         for (const draw of batch.draws) {
             buffer('vertex', 40, draw.data.byteLength);
             buffer('uniform', 72, 128);
@@ -1906,13 +2383,39 @@ class WebGPUHostImplementation {
         for (const group of prepared.effects.groups)
             buffer('uniform', 72, group.uniform.byteLength);
         const colorId = requests.length;
-        requests.push({ kind: 'color', id: colorId, width, height, format: 'rgba8unorm-srgb', usage: 20, byteLength: storage.colorBytes, sampleCount: 1, mipLevelCount: 1, depthOrArrayLayers: 1, recipe: 'egret.srgb-pma8-target/1' });
+        requests.push({
+            kind: 'color',
+            id: colorId,
+            width,
+            height,
+            format: 'rgba8unorm-srgb',
+            usage: 20,
+            byteLength: storage.colorBytes,
+            sampleCount: 1,
+            mipLevelCount: 1,
+            depthOrArrayLayers: 1,
+            recipe: 'egret.srgb-pma8-target/1'
+        });
         for (let i = 0; i < prepared.effects.targetCount; i++)
-            requests.push({ kind: 'color', id: requests.length, width, height, format: 'rgba8unorm-srgb', usage: 20, byteLength: storage.colorBytes, sampleCount: 1, mipLevelCount: 1, depthOrArrayLayers: 1, recipe: 'egret.srgb-pma8-target/1' });
+            requests.push({
+                kind: 'color',
+                id: requests.length,
+                width,
+                height,
+                format: 'rgba8unorm-srgb',
+                usage: 20,
+                byteLength: storage.colorBytes,
+                sampleCount: 1,
+                mipLevelCount: 1,
+                depthOrArrayLayers: 1,
+                recipe: 'egret.srgb-pma8-target/1'
+            });
         const bufferPlan = this.bufferPool.plan(requests), bufferLeases = new Array(requests.length).fill(undefined);
         for (const lease of bufferPlan.leases)
             bufferLeases[lease.requestId] = lease;
-        const rawTargets = [{ requestId: colorId, texture: undefined, destroy: undefined, cleanupAttempted: false }];
+        const rawTargets = [
+            { requestId: colorId, texture: undefined, destroy: undefined, cleanupAttempted: false }
+        ];
         for (let i = 0; i < prepared.effects.targetCount; i++)
             rawTargets.push({ requestId: colorId + 1 + i, texture: undefined, destroy: undefined, cleanupAttempted: false });
         this.assertImagePlanCurrent(imagePlan);
@@ -1921,15 +2424,48 @@ class WebGPUHostImplementation {
         this.active();
         const owner = this.owner;
         // This shared-only path requires the exact prepared generation before charging a record.
-        if (!owner || owner.invalidated || owner.number !== this.generation || owner.device !== this.device
-            || owner.epoch !== imagePlan.epoch || owner.pool !== this.bufferPool)
+        if (!owner ||
+            owner.invalidated ||
+            owner.number !== this.generation ||
+            owner.device !== this.device ||
+            owner.epoch !== imagePlan.epoch ||
+            owner.pool !== this.bufferPool)
             throw error('WEBGPU_DEVICE_LOST', this.generationFailure?.cause);
         const serial = stageInput ? 0 : ++this.lastSerial, done = deferred();
-        const record = { owner, batchPlan: batch, shared: { frame, draws: batch.draws, colorBytes: storage.colorBytes + storage.effectBytes, canonicalBytes: p.canonicalBytes, rawTargets },
-            serial, upload: storage.upload, readback: storage.staging + storage.output, textureBytes: prepared.pageBytes, geometryBytes: prepared.geometryBytes,
-            resources: [], textures: [], views: [], bindings: [], projectionPlan: storage.projectionPlan, projections: p.projections, imageUse: undefined,
-            bufferPlan, bufferClaimed: false, bufferLeases, bufferReturns: undefined, retiring: false, bindingCandidates: [],
-            outcome: done.promise, completion: done.promise, failure: undefined, unsafe: false, retired: false };
+        const record = {
+            owner,
+            batchPlan: batch,
+            shared: {
+                frame,
+                draws: batch.draws,
+                colorBytes: storage.colorBytes + storage.effectBytes,
+                canonicalBytes: p.canonicalBytes,
+                rawTargets
+            },
+            serial,
+            upload: storage.upload,
+            readback: storage.staging + storage.output,
+            textureBytes: prepared.pageBytes,
+            geometryBytes: prepared.geometryBytes,
+            resources: [],
+            textures: [],
+            views: [],
+            bindings: [],
+            projectionPlan: storage.projectionPlan,
+            projections: p.projections,
+            imageUse: undefined,
+            bufferPlan,
+            bufferClaimed: false,
+            bufferLeases,
+            bufferReturns: undefined,
+            retiring: false,
+            bindingCandidates: [],
+            outcome: done.promise,
+            completion: done.promise,
+            failure: undefined,
+            unsafe: false,
+            retired: false
+        };
         this.ledger.add(record);
         batch.transferred = true;
         this.pendingUploadBytes += record.upload;
@@ -1993,7 +2529,10 @@ class WebGPUHostImplementation {
             });
         }
         catch (cause) {
-            synchronous = cause instanceof ClassifiedWebGPUFailure ? cause.publicError : this.fail('WEBGPU_RENDER_FAILED', cause, 'frame', serial);
+            synchronous =
+                cause instanceof ClassifiedWebGPUFailure
+                    ? cause.publicError
+                    : this.fail('WEBGPU_RENDER_FAILED', cause, 'frame', serial);
             record.failure = synchronous;
         }
         finally {
@@ -2005,7 +2544,8 @@ class WebGPUHostImplementation {
     }
     /** The pipeline of a draw: without a region, of one page, or of several pages. */
     sharedRole(draw) {
-        return this.sharedPipelines.get((draw.pages.length === 0 ? 'solid:' : draw.pages.length > 1 ? 'paged:' : 'sampled:') + draw.prepared.material.blend);
+        return this.sharedPipelines.get((draw.pages.length === 0 ? 'solid:' : draw.pages.length > 1 ? 'paged:' : 'sampled:') +
+            draw.prepared.material.blend);
     }
     prepareSharedGPU(record, p, colorId, gate) {
         const { batch } = p, imageUse = record.imageUse;
@@ -2029,9 +2569,20 @@ class WebGPUHostImplementation {
             this.sharedWrite(record, uniform.buffer, draw.uniform, 128);
             gate();
             const source = draw.prepared, index = source.pageIndex, sampled = index !== undefined, role = this.sharedRole(draw);
-            const image = sampled ? imageUse.hits.get(index) ?? imageUse.candidates.get(index).entry : undefined;
-            const view = sampled ? realized.get(index).view : undefined, sampler = sampled ? this.sharedSamplers.get(source.material.filter + ':' + source.material.addressU + ':' + source.material.addressV) : undefined;
-            const key = { session: this.imageEpoch, layout: role.layout, texture: image?.identity, view, sampler, uniform: lease.handle, offset: 0, size: 128 };
+            const image = sampled ? (imageUse.hits.get(index) ?? imageUse.candidates.get(index).entry) : undefined;
+            const view = sampled ? realized.get(index).view : undefined, sampler = sampled
+                ? this.sharedSamplers.get(source.material.filter + ':' + source.material.addressU + ':' + source.material.addressV)
+                : undefined;
+            const key = {
+                session: this.imageEpoch,
+                layout: role.layout,
+                texture: image?.identity,
+                view,
+                sampler,
+                uniform: lease.handle,
+                offset: 0,
+                size: 128
+            };
             const entries = [{ binding: 0, resource: { buffer: uniform.buffer, offset: 0, size: 128 } }];
             if (sampled)
                 entries.push({ binding: 1, resource: view }, { binding: 2, resource: sampler });
@@ -2040,7 +2591,10 @@ class WebGPUHostImplementation {
             // for the record and kept by it alone.
             if (draw.pages.length > 1) {
                 for (let unit = 1; unit < SHARED_BATCH_PAGES_2D; unit++)
-                    entries.push({ binding: 2 + unit, resource: unit < draw.pages.length ? realized.get(draw.pages[unit]).view : view });
+                    entries.push({
+                        binding: 2 + unit,
+                        resource: unit < draw.pages.length ? realized.get(draw.pages[unit]).view : view
+                    });
                 const binding = (record.owner?.native.bindGroup ?? this.bindGroup)({ layout: role.layout, entries });
                 record.bindings.push(binding);
                 gate();
@@ -2068,7 +2622,19 @@ class WebGPUHostImplementation {
                 }
                 let binding = byWindow.get(draw.regionWindow);
                 if (!binding) {
-                    binding = (record.owner?.native.bindGroup ?? this.bindGroup)({ layout, entries: [{ binding: 0, resource: { buffer: table.buffer, offset: draw.regionWindow * SHARED_REGION_WINDOW_STRIDE_2D, size: SHARED_REGION_WINDOW_BYTES_2D } }] });
+                    binding = (record.owner?.native.bindGroup ?? this.bindGroup)({
+                        layout,
+                        entries: [
+                            {
+                                binding: 0,
+                                resource: {
+                                    buffer: table.buffer,
+                                    offset: draw.regionWindow * SHARED_REGION_WINDOW_STRIDE_2D,
+                                    size: SHARED_REGION_WINDOW_BYTES_2D
+                                }
+                            }
+                        ]
+                    });
                     record.bindings.push(binding);
                     gate();
                     byWindow.set(draw.regionWindow, binding);
@@ -2091,9 +2657,18 @@ class WebGPUHostImplementation {
             const bindings = new Map(), source = effectTargets[(group.depth - 1) * 2], scratch = effectTargets[(group.depth - 1) * 2 + 1];
             for (const mode of EFFECT_PASSES) {
                 const role = this.effectPipelines.get(mode);
-                const entries = [{ binding: 0, resource: { buffer: effectUniforms.get(group).buffer, offset: 0, size: EFFECT_UNIFORM_BYTES } }, { binding: 1, resource: (mode === 'vertical' ? scratch : source).view }];
+                const entries = [
+                    {
+                        binding: 0,
+                        resource: { buffer: effectUniforms.get(group).buffer, offset: 0, size: EFFECT_UNIFORM_BYTES }
+                    },
+                    { binding: 1, resource: (mode === 'vertical' ? scratch : source).view }
+                ];
                 if (mode === 'composite')
-                    entries.push({ binding: 2, resource: group.maskPageIndex === undefined ? source.view : realized.get(group.maskPageIndex).view }, { binding: 3, resource: scratch.view });
+                    entries.push({
+                        binding: 2,
+                        resource: group.maskPageIndex === undefined ? source.view : realized.get(group.maskPageIndex).view
+                    }, { binding: 3, resource: scratch.view });
                 const binding = record.owner.native.bindGroup({ layout: role.layout, entries });
                 record.bindings.push(binding);
                 gate();
@@ -2102,7 +2677,10 @@ class WebGPUHostImplementation {
             effects.set(group, bindings);
         }
         const color = this.submissionTarget(record, colorId, gate);
-        const resolveBinding = record.owner.native.bindGroup({ layout: this.resolveLayout, entries: [{ binding: 0, resource: color.view }] });
+        const resolveBinding = record.owner.native.bindGroup({
+            layout: this.resolveLayout,
+            entries: [{ binding: 0, resource: color.view }]
+        });
         record.bindings.push(resolveBinding);
         gate();
         return { vertices, bindings, regionBindings, color, resolveBinding, effectTargets, effects };
@@ -2118,16 +2696,47 @@ class WebGPUHostImplementation {
         gate();
         const begin = this.method(encoder, 'beginRenderPass', gate), finish = this.method(encoder, 'finish', gate), copy = ticket ? this.method(encoder, 'copyTextureToBuffer', gate) : undefined;
         const c = frame.clearColor, a = frame.clearAlpha;
-        const attachment = { view: color.view, loadOp: 'clear', storeOp: 'store', clearValue: { r: a * decodeSharedSRGBByte(c >>> 16), g: a * decodeSharedSRGBByte(c >>> 8), b: a * decodeSharedSRGBByte(c), a } };
-        const capture = (pass, keys) => { const captured = {}; for (const key of keys) {
-            const method = this.method(pass, key, gate);
-            Object.defineProperty(captured, key, { value: (...args) => { gate(); const result = method(...args); gate(); return result; } });
-        } return captured; };
+        const attachment = {
+            view: color.view,
+            loadOp: 'clear',
+            storeOp: 'store',
+            clearValue: {
+                r: a * decodeSharedSRGBByte(c >>> 16),
+                g: a * decodeSharedSRGBByte(c >>> 8),
+                b: a * decodeSharedSRGBByte(c),
+                a
+            }
+        };
+        const capture = (pass, keys) => {
+            const captured = {};
+            for (const key of keys) {
+                const method = this.method(pass, key, gate);
+                Object.defineProperty(captured, key, {
+                    value: (...args) => {
+                        gate();
+                        const result = method(...args);
+                        gate();
+                        return result;
+                    }
+                });
+            }
+            return captured;
+        };
         const openPass = (view, clear, initial = false) => {
-            const colors = initial ? attachment : { view, loadOp: clear ? 'clear' : 'load', storeOp: 'store', ...(clear ? { clearValue: { r: 0, g: 0, b: 0, a: 0 } } : {}) };
+            const colors = initial
+                ? attachment
+                : {
+                    view,
+                    loadOp: clear ? 'clear' : 'load',
+                    storeOp: 'store',
+                    ...(clear ? { clearValue: { r: 0, g: 0, b: 0, a: 0 } } : {})
+                };
             const raw = begin({ colorAttachments: [colors] });
             gate();
-            return { pass: capture(raw, ['setPipeline', 'setViewport', 'setScissorRect', 'setVertexBuffer', 'setBindGroup', 'draw']), end: this.method(raw, 'end', gate) };
+            return {
+                pass: capture(raw, ['setPipeline', 'setViewport', 'setScissorRect', 'setVertexBuffer', 'setBindGroup', 'draw']),
+                end: this.method(raw, 'end', gate)
+            };
         };
         let active = openPass(color.view, false, true);
         const drawOne = (draw) => {
@@ -2188,7 +2797,11 @@ class WebGPUHostImplementation {
         }
         active.end();
         gate();
-        const resolveRaw = begin({ colorAttachments: [{ view: canvasView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }] });
+        const resolveRaw = begin({
+            colorAttachments: [
+                { view: canvasView, loadOp: 'clear', storeOp: 'store', clearValue: { r: 0, g: 0, b: 0, a: 0 } }
+            ]
+        });
         gate();
         const resolve = capture(resolveRaw, ['setPipeline', 'setViewport', 'setScissorRect', 'setBindGroup', 'draw']), endResolve = this.method(resolveRaw, 'end', gate);
         resolve.setPipeline(this.resolvePipeline);
@@ -2219,7 +2832,9 @@ class WebGPUHostImplementation {
         const nativeOutcomes = [...outcomes], nativeFailure = synchronous;
         if (submitted && staging && !synchronous) {
             try {
-                outcomes.push(this.readPixels(staging, record, frameId, width, height, rowPitch, output).then(value => { result = value; }));
+                outcomes.push(this.readPixels(staging, record, frameId, width, height, rowPitch, output).then(value => {
+                    result = value;
+                }));
             }
             catch (cause) {
                 synchronous = this.recordAsyncFailure(record, 'WEBGPU_READBACK_FAILED', cause, 'readback');
@@ -2229,7 +2844,9 @@ class WebGPUHostImplementation {
         if (touchedQueue || record.imageUse?.touchedQueue) {
             let proof;
             try {
-                proof = observed((record.owner?.fence ?? this.fence)()).catch(cause => { throw this.recordAsyncFailure(record, 'WEBGPU_QUEUE_FAILED', cause, 'frame'); });
+                proof = observed((record.owner?.fence ?? this.fence)()).catch(cause => {
+                    throw this.recordAsyncFailure(record, 'WEBGPU_QUEUE_FAILED', cause, 'frame');
+                });
             }
             catch (cause) {
                 proof = observed(Promise.reject(this.recordAsyncFailure(record, 'WEBGPU_QUEUE_FAILED', cause, 'frame')));
@@ -2254,7 +2871,10 @@ class WebGPUHostImplementation {
         const settled = Promise.allSettled(outcomes).then(results => {
             const rejected = results.find(value => value.status === 'rejected');
             if (rejected?.status === 'rejected')
-                record.failure ??= rejected.reason instanceof ClassifiedWebGPUFailure ? rejected.reason.publicError : rejected.reason;
+                record.failure ??=
+                    rejected.reason instanceof ClassifiedWebGPUFailure
+                        ? rejected.reason.publicError
+                        : rejected.reason;
             if (this.unsafe)
                 record.unsafe = true;
             if (!record.unsafe)
@@ -2273,11 +2893,18 @@ class WebGPUHostImplementation {
             }
             done.resolve();
         });
-        observed(settled).catch(cause => { record.unsafe = true; record.failure = this.fail('WEBGPU_RENDER_FAILED', cause, 'cleanup', serial, true); ticket?.reject(record.failure); done.resolve(); });
+        observed(settled).catch(cause => {
+            record.unsafe = true;
+            record.failure = this.fail('WEBGPU_RENDER_FAILED', cause, 'cleanup', serial, true);
+            ticket?.reject(record.failure);
+            done.resolve();
+        });
         record.completion = observed(done.promise.then(() => {
             if (record.failure)
                 throw record.failure;
-            if (!SHARED_OPTIONS.get(this)?.recovery && this.firstFailure && (this.firstFailure.serial === null || this.firstFailure.serial <= serial))
+            if (!SHARED_OPTIONS.get(this)?.recovery &&
+                this.firstFailure &&
+                (this.firstFailure.serial === null || this.firstFailure.serial <= serial))
                 throw error(this.firstFailure.code, this.firstFailure.cause);
         }));
         if (synchronous)
@@ -2286,7 +2913,14 @@ class WebGPUHostImplementation {
     }
     async rejectReadbackMapping(record, cause) {
         const owner = record.owner, recovery = SHARED_OPTIONS.get(this)?.recovery;
-        if (recovery && owner && owner === this.owner && !record.stage && !owner.invalidated && !owner.unknown && !record.unsafe && !this.unsafe) {
+        if (recovery &&
+            owner &&
+            owner === this.owner &&
+            !record.stage &&
+            !owner.invalidated &&
+            !owner.unknown &&
+            !record.unsafe &&
+            !this.unsafe) {
             let abort = false;
             try {
                 const name = Object.getOwnPropertyDescriptor(DOMException.prototype, 'name')?.get;
@@ -2344,8 +2978,20 @@ class WebGPUHostImplementation {
                         bytes[i] = bytes[i + 2];
                         bytes[i + 2] = blue;
                     }
-                const value = { serial: record.serial, frameId, width, height, format: 'rgba8unorm', sourceFormat: format, colorSpace: 'srgb', alphaMode: alpha, bytes };
-                return owner ? Object.freeze({ ...value, generation: owner.number }) : Object.freeze({ ...value, alphaMode: 'premultiplied' });
+                const value = {
+                    serial: record.serial,
+                    frameId,
+                    width,
+                    height,
+                    format: 'rgba8unorm',
+                    sourceFormat: format,
+                    colorSpace: 'srgb',
+                    alphaMode: alpha,
+                    bytes
+                };
+                return owner
+                    ? Object.freeze({ ...value, generation: owner.number })
+                    : Object.freeze({ ...value, alphaMode: 'premultiplied' });
             }
             catch (cause) {
                 throw this.recordAsyncFailure(record, 'WEBGPU_READBACK_FAILED', cause, 'readback');
@@ -2488,8 +3134,8 @@ class WebGPUHostImplementation {
             }
             if (this.isReuseEligible(record)) {
                 try {
-                    cache.publish(record.bindingCandidates.filter(candidate => retained.has(candidate.key.uniform)
-                        && (!candidate.image || candidate.image.state === 'ready' && !candidate.image.resource.cleaned)));
+                    cache.publish(record.bindingCandidates.filter(candidate => retained.has(candidate.key.uniform) &&
+                        (!candidate.image || (candidate.image.state === 'ready' && !candidate.image.resource.cleaned))));
                 }
                 catch (cause) {
                     failed(cause);
@@ -2504,7 +3150,10 @@ class WebGPUHostImplementation {
             // New staged/recovery authority retains unknown charges. Legacy immediate
             // retirement releases logical accounting only after its once cleanup;
             // unsafe outcome and persistent detached owners remain quarantined.
-            if ((record.stage || SHARED_OPTIONS.get(this)?.recovery) && (record.unsafe || record.resources.some(resource => resource.settlement === 'unknown') || record.textures.some(resource => resource.settlement === 'unknown')))
+            if ((record.stage || SHARED_OPTIONS.get(this)?.recovery) &&
+                (record.unsafe ||
+                    record.resources.some(resource => resource.settlement === 'unknown') ||
+                    record.textures.some(resource => resource.settlement === 'unknown')))
                 throw new TypeError('Unknown native ownership remains charged');
             this.ledger.delete(record);
             this.pendingUploadBytes -= record.upload;
@@ -2585,9 +3234,13 @@ class WebGPUHostImplementation {
         const serial = this.lastSerial, pending = [...this.ledger].map(record => record.completion);
         if (this.starting)
             pending.push(this.starting);
-        return observed(Promise.allSettled(pending).then(results => { const failed = results.find(result => result.status === 'rejected'); if (failed?.status === 'rejected')
-            throw failed.reason; if (this.firstFailure && (this.firstFailure.serial === null || this.firstFailure.serial <= serial))
-            throw error(this.firstFailure.code, this.firstFailure.cause); }));
+        return observed(Promise.allSettled(pending).then(results => {
+            const failed = results.find(result => result.status === 'rejected');
+            if (failed?.status === 'rejected')
+                throw failed.reason;
+            if (this.firstFailure && (this.firstFailure.serial === null || this.firstFailure.serial <= serial))
+                throw error(this.firstFailure.code, this.firstFailure.cause);
+        }));
     }
     close() {
         if (this.closing)
@@ -2674,16 +3327,22 @@ class WebGPUHostImplementation {
         if (this.unsafe)
             throw error('WEBGPU_CLOSE_UNSAFE', this.unsafeCause);
     }
-    setTimeout(callback, delayMs) { return this.ownedTimeout(callback, delayMs); }
+    setTimeout(callback, delayMs) {
+        return this.ownedTimeout(callback, delayMs);
+    }
     ownedTimeout(callback, delayMs) {
         this.timers ??= { set: globalThis.setTimeout.bind(globalThis), clear: globalThis.clearTimeout.bind(globalThis) };
         const timer = this.timers.set(callback, delayMs);
         let cancelled = false;
         const clear = this.timers.clear;
-        return () => { if (!cancelled) {
-            cancelled = true;
-            clear(timer);
-        } };
+        return () => {
+            if (!cancelled) {
+                cancelled = true;
+                clear(timer);
+            }
+        };
     }
 }
-export function createSharedWebGPUHost(options) { return new WebGPUHostImplementation(options); }
+export function createSharedWebGPUHost(options) {
+    return new WebGPUHostImplementation(options);
+}

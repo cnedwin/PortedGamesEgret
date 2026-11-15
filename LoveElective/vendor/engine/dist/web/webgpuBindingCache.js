@@ -24,9 +24,15 @@ export function createWebGPUBindingCache(session) {
             return undefined;
         // Snapshot only native identities/scalars. A key or handle may also retain
         // record-owned data; neither object belongs in the searchable directory.
-        return { layout: key.layout, texture: key.texture ?? absentTexture,
-            view: key.view ?? absentView, sampler: key.sampler ?? absentSampler,
-            uniform: key.uniform.identity, offset: key.offset, size: key.size };
+        return {
+            layout: key.layout,
+            texture: key.texture ?? absentTexture,
+            view: key.view ?? absentView,
+            sampler: key.sampler ?? absentSampler,
+            uniform: key.uniform.identity,
+            offset: key.offset,
+            size: key.size
+        };
     }
     function find(path) {
         const byTexture = mapGet(layouts, path.layout);
@@ -200,9 +206,17 @@ export function createWebGPUBindingCache(session) {
                 throw cause;
             }
         },
-        invalidateTexture(identity) { invalidateDependents(textures, identity); },
-        invalidateBuffer(identity) { invalidateDependents(buffers, identity); },
-        invalidate() { active = false; },
-        clear() { clearEntries(); },
+        invalidateTexture(identity) {
+            invalidateDependents(textures, identity);
+        },
+        invalidateBuffer(identity) {
+            invalidateDependents(buffers, identity);
+        },
+        invalidate() {
+            active = false;
+        },
+        clear() {
+            clearEntries();
+        }
     };
 }

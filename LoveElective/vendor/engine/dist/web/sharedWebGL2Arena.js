@@ -24,12 +24,21 @@ export function planSharedWebGL2Arenas(draws, alignment, regions) {
     let vertexBytes = 0;
     for (let i = 0; i < count; i++) {
         const draw = draws[i], bytes = draw.data.byteLength;
-        if (!Number.isSafeInteger(draw.vertexCount) || draw.vertexCount <= 0
-            || !Number.isSafeInteger(bytes) || bytes <= 0 || bytes !== VERTEX * draw.vertexCount
-            || bytes > RECORD_VERTEX - vertexBytes || draw.uniform.byteLength !== 128)
+        if (!Number.isSafeInteger(draw.vertexCount) ||
+            draw.vertexCount <= 0 ||
+            !Number.isSafeInteger(bytes) ||
+            bytes <= 0 ||
+            bytes !== VERTEX * draw.vertexCount ||
+            bytes > RECORD_VERTEX - vertexBytes ||
+            draw.uniform.byteLength !== 128)
             fail('budget');
-        sharedRanges.push({ draw, vertexOffset: vertexBytes, firstVertex: vertexBytes / VERTEX,
-            uniformOffset: i * sharedStride, uniformSize: 128 });
+        sharedRanges.push({
+            draw,
+            vertexOffset: vertexBytes,
+            firstVertex: vertexBytes / VERTEX,
+            uniformOffset: i * sharedStride,
+            uniformSize: 128
+        });
         vertexBytes += bytes;
     }
     // Allocation includes final stride padding; range sizes above expose only original payloads.
@@ -39,13 +48,18 @@ export function planSharedWebGL2Arenas(draws, alignment, regions) {
     if (draws.some(draw => draw.regionWindow >= 0)) {
         // A bound window is always the whole block, so the last window is allocated in full too.
         const rows = regions ? regions.length / 12 : 0, count = Math.ceil(rows / WINDOW_REGIONS);
-        if (!regions || !Number.isSafeInteger(rows) || rows <= 0 || rows > 4096
-            || draws.some(draw => draw.regionWindow >= count))
+        if (!regions ||
+            !Number.isSafeInteger(rows) ||
+            rows <= 0 ||
+            rows > 4096 ||
+            draws.some(draw => draw.regionWindow >= count))
             fail('budget');
         const stride = Math.ceil(WINDOW_BYTES / alignment) * alignment, windows = [];
         for (let i = 0; i < count; i++)
-            windows.push({ offset: i * stride,
-                data: regions.subarray(12 * WINDOW_REGIONS * i, Math.min(regions.length, 12 * WINDOW_REGIONS * (i + 1))) });
+            windows.push({
+                offset: i * stride,
+                data: regions.subarray(12 * WINDOW_REGIONS * i, Math.min(regions.length, 12 * WINDOW_REGIONS * (i + 1)))
+            });
         regionTable = { bytes: (count - 1) * stride + WINDOW_BYTES, stride, windows };
     }
     return { vertexBytes, uniformBytes, sharedRanges, regionTable };

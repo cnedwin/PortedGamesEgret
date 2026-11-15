@@ -11,21 +11,26 @@ export class SharedPreparationError extends Error {
         this.reason = reason;
     }
 }
-export function sharedFailure(reason) { throw noteOwnedPreparationFailure(new SharedPreparationError(reason)); }
+export function sharedFailure(reason) {
+    throw noteOwnedPreparationFailure(new SharedPreparationError(reason));
+}
 /** What one shared frame may hold at most, whatever a Host is configured to admit. */
 export const SHARED_FRAME_REGIONS_2D = 4096, SHARED_FRAME_PAGE_BYTES_2D = 67108864;
 const ATTRS = ['u', 'v', 'r', 'g', 'b', 'a', 'dr', 'dg', 'db'];
-function unit(value) { if (!Number.isFinite(value) || value < 0 || value > 1)
-    sharedFailure('precision'); return value === 0 ? 0 : value; }
-function uv(value) { if (!Number.isFinite(value))
-    sharedFailure('precision'); return value === 0 ? 0 : value; }
-function add(used, value, limit) { if (!Number.isSafeInteger(value) || value < 0 || value > limit - used)
-    sharedFailure('budget'); return used + value; }
-/** Address qualification follows f32 preparation and never clamps/modulos authored vertices. */
-export function qualifySharedUV(point, draw, frame) {
-    const domain = sharedUVDomain(draw, frame);
-    if (domain !== undefined)
-        qualifySharedUVIn(point.u, point.v, domain);
+function unit(value) {
+    if (!Number.isFinite(value) || value < 0 || value > 1)
+        sharedFailure('precision');
+    return value === 0 ? 0 : value;
+}
+function uv(value) {
+    if (!Number.isFinite(value))
+        sharedFailure('precision');
+    return value === 0 ? 0 : value;
+}
+function add(used, value, limit) {
+    if (!Number.isSafeInteger(value) || value < 0 || value > limit - used)
+        sharedFailure('budget');
+    return used + value;
 }
 /** Undefined for a draw without a page, whose corners are not qualified. */
 export function sharedUVDomain(draw, frame) {
@@ -34,24 +39,53 @@ export function sharedUVDomain(draw, frame) {
     const region = draw.region, page = frame.pages[draw.pageIndex].source, material = draw.material;
     const width = material.samplingDomain === 'page' ? page.width : region.logicalWidth;
     const height = material.samplingDomain === 'page' ? page.height : region.logicalHeight;
-    const periodic = material.samplingDomain === 'page' && (material.addressU !== 'clamp-to-edge' || material.addressV !== 'clamp-to-edge');
+    const periodic = material.samplingDomain === 'page' &&
+        (material.addressU !== 'clamp-to-edge' || material.addressV !== 'clamp-to-edge');
     return { width, height, limit: periodic ? 8192 : 1048576 };
 }
-/** `qualifySharedUV` of one corner's two texture coordinates, with the draw's domain already found. */
+/** Check one corner using the resolved draw domain and f32 preparation without clamping or wrapping authored UVs. */
 export function qualifySharedUVIn(pointU, pointV, domain) {
     const limit = domain.limit, u = Math.fround(pointU), v = Math.fround(pointV), x = Math.fround(u * domain.width), y = Math.fround(v * domain.height);
-    if (!Number.isFinite(u) || !Number.isFinite(v) || !Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > limit || Math.abs(y) > limit)
+    if (!Number.isFinite(u) ||
+        !Number.isFinite(v) ||
+        !Number.isFinite(x) ||
+        !Number.isFinite(y) ||
+        Math.abs(x) > limit ||
+        Math.abs(y) > limit)
         sharedFailure('precision');
 }
 function policyFor(budget) {
-    const sameXY = (a, b) => { budget.admitTupleComparison(); return a.x === b.x && a.y === b.y; };
+    const sameXY = (a, b) => {
+        budget.admitTupleComparison();
+        return a.x === b.x && a.y === b.y;
+    };
     const sameAttributes = (a, b) => {
         budget.admitTupleComparison();
-        return a.u === b.u && a.v === b.v && a.r === b.r && a.g === b.g && a.b === b.b && a.a === b.a && a.dr === b.dr && a.dg === b.dg && a.db === b.db;
+        return (a.u === b.u &&
+            a.v === b.v &&
+            a.r === b.r &&
+            a.g === b.g &&
+            a.b === b.b &&
+            a.a === b.a &&
+            a.dr === b.dr &&
+            a.dg === b.dg &&
+            a.db === b.db);
     };
-    const assertAppend = (length) => { if (!Number.isSafeInteger(length) || length < 0 || length >= 64)
-        sharedFailure('budget'); };
-    const policy = { maxCorners: 64, before(a, b) { budget.admitTupleComparison(); return a.x < b.x || (a.x === b.x && a.y < b.y); }, sameTuple(a, b) { return sameXY(a, b) && sameAttributes(a, b); }, assertAppend };
+    const assertAppend = (length) => {
+        if (!Number.isSafeInteger(length) || length < 0 || length >= 64)
+            sharedFailure('budget');
+    };
+    const policy = {
+        maxCorners: 64,
+        before(a, b) {
+            budget.admitTupleComparison();
+            return a.x < b.x || (a.x === b.x && a.y < b.y);
+        },
+        sameTuple(a, b) {
+            return sameXY(a, b) && sameAttributes(a, b);
+        },
+        assertAppend
+    };
     // `owned` marks corners this preparation created itself and nothing else reads: they are checked and
     // made canonical where they are, in the same order, instead of being copied into new objects.
     const finish = (preparation, input, owned) => {
@@ -76,7 +110,19 @@ function policyFor(budget) {
                 value = q;
             }
             else
-                value = { x: coordinate(p.x), y: coordinate(p.y), u: uv(p.u), v: uv(p.v), r: unit(p.r), g: unit(p.g), b: unit(p.b), a: unit(p.a), dr: unit(p.dr), dg: unit(p.dg), db: unit(p.db) };
+                value = {
+                    x: coordinate(p.x),
+                    y: coordinate(p.y),
+                    u: uv(p.u),
+                    v: uv(p.v),
+                    r: unit(p.r),
+                    g: unit(p.g),
+                    b: unit(p.b),
+                    a: unit(p.a),
+                    dr: unit(p.dr),
+                    dg: unit(p.dg),
+                    db: unit(p.db)
+                };
             const previous = result[result.length - 1];
             if (previous && sameXY(previous, value)) {
                 if (!sameAttributes(previous, value))
@@ -105,8 +151,23 @@ function policyFor(budget) {
     return { policy, normalize, normalizeOwned };
 }
 const attach = (p, q, weight, complementary, x, y) => {
-    const value = (key) => { const n = complementary ? q[key] + weight * (p[key] - q[key]) : p[key] + weight * (q[key] - p[key]); return key === 'u' || key === 'v' ? uv(n) : unit(n); };
-    return { x: coordinate(x), y: coordinate(y), u: value('u'), v: value('v'), r: value('r'), g: value('g'), b: value('b'), a: value('a'), dr: value('dr'), dg: value('dg'), db: value('db') };
+    const value = (key) => {
+        const n = complementary ? q[key] + weight * (p[key] - q[key]) : p[key] + weight * (q[key] - p[key]);
+        return key === 'u' || key === 'v' ? uv(n) : unit(n);
+    };
+    return {
+        x: coordinate(x),
+        y: coordinate(y),
+        u: value('u'),
+        v: value('v'),
+        r: value('r'),
+        g: value('g'),
+        b: value('b'),
+        a: value('a'),
+        dr: value('dr'),
+        dg: value('dg'),
+        db: value('db')
+    };
 };
 /** Moves an authored corner this preparation owns to backing space; both coordinates are read before either is written. */
 function transform(p, m, ratio) {
@@ -125,9 +186,16 @@ const NO_CLIPS = [];
  * The frame's tables, every command's own numbers and every frame-wide charge are checked for every frame.
  */
 export function prepareSharedDraws2D(frame, width, height, options, retention) {
-    if (frame.profile !== 'egret.shared-frame2d/1' || frame.colorRecipe !== 'egret.linear-srgb-pma/1' || frame.targetRepresentation !== 'egret.srgb-pma8-target/1')
+    if (frame.profile !== 'egret.shared-frame2d/1' ||
+        frame.colorRecipe !== 'egret.linear-srgb-pma/1' ||
+        frame.targetRepresentation !== 'egret.srgb-pma8-target/1')
         sharedFailure('profile');
-    if (frame.commands.length > options.maxCommands || frame.commands.length > 65536 || frame.pages.length > 64 || frame.regions.length > Math.min(SHARED_FRAME_REGIONS_2D, options.maxFrameRegions ?? SHARED_FRAME_REGIONS_2D) || frame.materials.length > 256 || frame.geometries.length > 4096)
+    if (frame.commands.length > options.maxCommands ||
+        frame.commands.length > 65536 ||
+        frame.pages.length > 64 ||
+        frame.regions.length > Math.min(SHARED_FRAME_REGIONS_2D, options.maxFrameRegions ?? SHARED_FRAME_REGIONS_2D) ||
+        frame.materials.length > 256 ||
+        frame.geometries.length > 4096)
         sharedFailure('budget');
     const pageLimit = Math.min(SHARED_FRAME_PAGE_BYTES_2D, options.maxFramePageBytes ?? SHARED_FRAME_PAGE_BYTES_2D);
     const effects = prepareEffects2D(frame, options.pixelRatio, options.enableEffects === true);
@@ -137,7 +205,9 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
         if (command.kind === 'barrier' && command.effect)
             clipsCount = add(clipsCount, command.effect.clips.length, options.maxClipRectangles);
     for (const page of frame.pages) {
-        if (!isImageData2D(page.source) || page.sourceRepresentation !== 'egret.srgb-straight-rgba8/1' || page.canonicalRepresentation !== 'egret.alpha8-capped-srgb-pma8/1')
+        if (!isImageData2D(page.source) ||
+            page.sourceRepresentation !== 'egret.srgb-straight-rgba8/1' ||
+            page.canonicalRepresentation !== 'egret.alpha8-capped-srgb-pma8/1')
             sharedFailure('frame');
         pageBytes = add(pageBytes, page.source.byteLength, pageLimit);
     }
@@ -154,11 +224,37 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
     }
     for (const region of frame.regions) {
         const page = frame.pages[region.pageIndex]?.source, p = region.packed;
-        if (!Number.isSafeInteger(region.pageIndex) || !page || ![p.x, p.y, p.width, p.height, region.logicalWidth, region.logicalHeight, region.trimX, region.trimY, region.quarterTurn].every(Number.isSafeInteger)
-            || p.x < 0 || p.y < 0 || p.width <= 0 || p.height <= 0 || p.x + p.width > page.width || p.y + p.height > page.height || region.logicalWidth <= 0 || region.logicalHeight <= 0 || region.logicalWidth > 1048576 || region.logicalHeight > 1048576 || region.trimX < 0 || region.trimY < 0 || region.quarterTurn < 0 || region.quarterTurn > 3)
+        if (!Number.isSafeInteger(region.pageIndex) ||
+            !page ||
+            ![
+                p.x,
+                p.y,
+                p.width,
+                p.height,
+                region.logicalWidth,
+                region.logicalHeight,
+                region.trimX,
+                region.trimY,
+                region.quarterTurn
+            ].every(Number.isSafeInteger) ||
+            p.x < 0 ||
+            p.y < 0 ||
+            p.width <= 0 ||
+            p.height <= 0 ||
+            p.x + p.width > page.width ||
+            p.y + p.height > page.height ||
+            region.logicalWidth <= 0 ||
+            region.logicalHeight <= 0 ||
+            region.logicalWidth > 1048576 ||
+            region.logicalHeight > 1048576 ||
+            region.trimX < 0 ||
+            region.trimY < 0 ||
+            region.quarterTurn < 0 ||
+            region.quarterTurn > 3)
             sharedFailure('frame');
         const odd = region.quarterTurn === 1 || region.quarterTurn === 3;
-        if (region.trimX + (odd ? p.height : p.width) > region.logicalWidth || region.trimY + (odd ? p.width : p.height) > region.logicalHeight)
+        if (region.trimX + (odd ? p.height : p.width) > region.logicalWidth ||
+            region.trimY + (odd ? p.width : p.height) > region.logicalHeight)
             sharedFailure('frame');
     }
     for (let i = 0; i < frame.commands.length; i++) {
@@ -197,7 +293,8 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
     let uvDomain;
     // Both SHARED Hosts authenticate the frame before this private helper owns its budget.
     // Shared polygons retain attributed corners and charge the same XY comparisons as TEXTURED meshes.
-    const intersect = (polygon, clip) => preparation.tryContainedClip(polygon, clip, 'mesh') ?? clipPolygon2D(preparation, polygon, clip, normalize, attach, policy, 'mesh');
+    const intersect = (polygon, clip) => preparation.tryContainedClip(polygon, clip, 'mesh') ??
+        clipPolygon2D(preparation, polygon, clip, normalize, attach, policy, 'mesh');
     // A quad of a matrix without rotation or shear, whose corners stay apart once placed, needs none of the general
     // path's tests to be known: its three signs agree and its four corners are distinct, so normalizing keeps them in
     // order, reversed when the placed winding is negative. The general path's charges for those tests (seven predicates
@@ -227,7 +324,7 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
         }
         if (x0 === x1 || y0 === y1)
             return undefined;
-        const sign = (x1 > x0) === (y1 > y0) ? 1 : -1, rank = (m.a > 0) === (m.d > 0) ? 1 : -1;
+        const sign = x1 > x0 === y1 > y0 ? 1 : -1, rank = m.a > 0 === m.d > 0 ? 1 : -1;
         if (sign !== rank || !budget.tryReplayStageCost(QUAD_COST))
             return undefined;
         preparation.edgeTests += QUAD_COST.predicates;
@@ -322,7 +419,15 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
                 // The record of the last frame is given again while it would be the same in every field that is read.
                 let kept = retention.rest(found, command, pageIndex);
                 if (kept === undefined) {
-                    kept = { kind: 'draw', command, material, region, pageIndex, polygons: found.polygons, vertexReservation: found.vertexReservation };
+                    kept = {
+                        kind: 'draw',
+                        command,
+                        material,
+                        region,
+                        pageIndex,
+                        polygons: found.polygons,
+                        vertexReservation: found.vertexReservation
+                    };
                     retention.give(found, kept);
                 }
                 retention.carry(command.ordinal, found, command, region);
@@ -334,7 +439,12 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
             const verticesBefore = budget.preparedVerticesCharged, predicatesBefore = budget.predicatesCharged, tuplesBefore = budget.tupleComparisonsCharged;
             clips = command.clips.length === 0 ? NO_CLIPS : command.clips.map(clip => preparation.rectangle(clip));
             // The viewport corners are the same for every command; they are checked when the first draw reaches them.
-            viewport ??= [{ x: 0, y: 0 }, { x: coordinate(width), y: 0 }, { x: coordinate(width), y: coordinate(height) }, { x: 0, y: coordinate(height) }];
+            viewport ??= [
+                { x: 0, y: 0 },
+                { x: coordinate(width), y: 0 },
+                { x: coordinate(width), y: coordinate(height) },
+                { x: 0, y: coordinate(height) }
+            ];
             polygons = [];
             vertexReservation = 0;
             uvDomain = sharedUVDomain({ region, material, pageIndex }, frame);
@@ -344,7 +454,19 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
                     const points = [];
                     for (let k = 0; k < 3; k++) {
                         const n = g.indices[i + k], p = 2 * n, c = 4 * n, d = 3 * n;
-                        points.push({ x: coordinate(g.positions[p]), y: coordinate(g.positions[p + 1]), u: uv(g.uvs[p]), v: uv(g.uvs[p + 1]), r: unit(g.lightColors[c]), g: unit(g.lightColors[c + 1]), b: unit(g.lightColors[c + 2]), a: unit(g.lightColors[c + 3]), dr: shared ? unit(g.darkColors[d]) : 0, dg: shared ? unit(g.darkColors[d + 1]) : 0, db: shared ? unit(g.darkColors[d + 2]) : 0 });
+                        points.push({
+                            x: coordinate(g.positions[p]),
+                            y: coordinate(g.positions[p + 1]),
+                            u: uv(g.uvs[p]),
+                            v: uv(g.uvs[p + 1]),
+                            r: unit(g.lightColors[c]),
+                            g: unit(g.lightColors[c + 1]),
+                            b: unit(g.lightColors[c + 2]),
+                            a: unit(g.lightColors[c + 3]),
+                            dr: shared ? unit(g.darkColors[d]) : 0,
+                            dg: shared ? unit(g.darkColors[d + 1]) : 0,
+                            db: shared ? unit(g.darkColors[d + 2]) : 0
+                        });
                     }
                     accept(points);
                 }
@@ -375,12 +497,32 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
                         u = (p.x + x) / page.width;
                         v = (p.y + y) / page.height;
                     }
-                    points.push({ x: corner === 1 || corner === 2 ? right : rect.x, y: corner >= 2 ? bottom : rect.y, u, v, r: red, g: green, b: blue, a, dr: 0, dg: 0, db: 0 });
+                    points.push({
+                        x: corner === 1 || corner === 2 ? right : rect.x,
+                        y: corner >= 2 ? bottom : rect.y,
+                        u,
+                        v,
+                        r: red,
+                        g: green,
+                        b: blue,
+                        a,
+                        dr: 0,
+                        dg: 0,
+                        db: 0
+                    });
                 }
                 accept(points);
             }
             upload = add(upload, 52 * vertexReservation + 128, Number.MAX_SAFE_INTEGER);
-            const made = { kind: 'draw', command, material, region, pageIndex, polygons, vertexReservation };
+            const made = {
+                kind: 'draw',
+                command,
+                material,
+                region,
+                pageIndex,
+                polygons,
+                vertexReservation
+            };
             entries.push(made);
             retained?.push(retention.keep(command.ordinal, found, command, material, region, page, geometry, made, budget.preparedVerticesCharged - verticesBefore, budget.predicatesCharged - predicatesBefore, budget.tupleComparisonsCharged - tuplesBefore));
         }
@@ -391,5 +533,16 @@ export function prepareSharedDraws2D(frame, width, height, options, retention) {
     }
     retention?.commit();
     // The region table is uploaded with the frame: 48 bytes for each of its regions.
-    return { effects, frame, width, height, entries, budget, geometryBytes, pageBytes, upload: upload + 48 * frame.regions.length + effects.uniformBytes, ...(retention ? { retention, retained: retained } : {}) };
+    return {
+        effects,
+        frame,
+        width,
+        height,
+        entries,
+        budget,
+        geometryBytes,
+        pageBytes,
+        upload: upload + 48 * frame.regions.length + effects.uniformBytes,
+        ...(retention ? { retention, retained: retained } : {})
+    };
 }

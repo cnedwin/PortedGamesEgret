@@ -3,7 +3,7 @@ import { assertAssetRef, assertAssetType } from "./AssetRef.js";
 import { CancellationController } from "./CancellationController.js";
 import { EgretError } from "./EgretError.js";
 import { closeOwnedTextCache, markAssetManagerOwnerClosed, registerAssetManagerOwner } from "./assetManagerOwnerState.js";
-import { claimOwner, engineOf, ownerOf } from './ownership.js';
+import { claimOwner, engineOf, ownerOf } from "./ownership.js";
 const CREATION_TOKEN = Symbol("egret.assetManagerFactory");
 const APPLY = Reflect.apply;
 const FREEZE = Object.freeze;
@@ -43,20 +43,32 @@ export class AssetManager {
         bindAssetManagerOwner = (manager, context) => {
             registerAssetManagerOwner(manager, FREEZE({
                 context,
-                assertOpen: () => { APPLY(assertOpen, manager, []); },
-                register: (type, provider) => { APPLY(register, manager, [type, provider]); },
+                assertOpen: () => {
+                    APPLY(assertOpen, manager, []);
+                },
+                register: (type, provider) => {
+                    APPLY(register, manager, [type, provider]);
+                },
                 acquire: (ref, options) => APPLY(acquire, manager, [ref, options]),
-                invalidate: (ref) => { APPLY(invalidate, manager, [ref]); },
+                invalidate: (ref) => {
+                    APPLY(invalidate, manager, [ref]);
+                }
             }));
             // Genuine construction alone supplies the captured, frozen narrow bridge.
             // Text-cache owner state and contexts without this callback are unchanged.
             const registerGroupOperations = context.registerAssetGroupOperations;
             if (registerGroupOperations !== undefined) {
                 const operations = FREEZE({
-                    admitGroupRefs: (refs) => { APPLY(admitGroupRefs, manager, [refs]); },
+                    admitGroupRefs: (refs) => {
+                        APPLY(admitGroupRefs, manager, [refs]);
+                    },
                     acquire: (ref, options) => APPLY(acquire, manager, [ref, options]),
-                    claimGroupLease: (lease, group) => { APPLY(claimGroupLease, manager, [lease, group]); },
-                    releaseGroupLease: (lease) => { APPLY(releaseGroupLease, lease, []); },
+                    claimGroupLease: (lease, group) => {
+                        APPLY(claimGroupLease, manager, [lease, group]);
+                    },
+                    releaseGroupLease: (lease) => {
+                        APPLY(releaseGroupLease, lease, []);
+                    }
                 });
                 APPLY(registerGroupOperations, context, [operations]);
             }
@@ -89,7 +101,9 @@ export class AssetManager {
         this.providers.set(type, {
             // Intrinsic invocation ignores mutable own .call properties on callbacks.
             load: (ref, context) => Reflect.apply(load, provider, [ref, context]),
-            dispose: (value) => { Reflect.apply(dispose, provider, [value]); },
+            dispose: value => {
+                Reflect.apply(dispose, provider, [value]);
+            }
         });
     }
     /** The executor commits an entry and its first waiter before any loader callback. */
@@ -125,17 +139,30 @@ export class AssetManager {
                     identity.generation = generation;
                     this.taskId = taskId;
                     entry = {
-                        ref, provider, generation, taskId,
-                        controller: new CancellationController((diagnostic) => this.diagnose(diagnostic.code, diagnostic.cause)),
-                        waiters: new Set(), leases: new Set(), state: "loading", started: false,
-                        hasValue: false, cleanupAttempted: false, value: undefined,
+                        ref,
+                        provider,
+                        generation,
+                        taskId,
+                        controller: new CancellationController(diagnostic => this.diagnose(diagnostic.code, diagnostic.cause)),
+                        waiters: new Set(),
+                        leases: new Set(),
+                        state: "loading",
+                        started: false,
+                        hasValue: false,
+                        cleanupAttempted: false,
+                        value: undefined
                     };
                     this.current.set(ref.id, entry);
                     this.entries.add(entry);
                 }
                 const waiter = {
-                    entry, signal, pending: true, installing: false, listening: false,
-                    resolve: lease => resolve(lease), reject,
+                    entry,
+                    signal,
+                    pending: true,
+                    installing: false,
+                    listening: false,
+                    resolve: lease => resolve(lease),
+                    reject,
                     listener: () => {
                         if (!waiter.pending)
                             return;
@@ -149,7 +176,7 @@ export class AssetManager {
                             return;
                         }
                         this.failWaiter(waiter, new EgretError("ASSET_ACQUIRE_CANCELLED", { cause: reason }));
-                    },
+                    }
                 };
                 entry.waiters.add(waiter);
                 this.installSignal(waiter);
@@ -182,12 +209,11 @@ export class AssetManager {
         for (const ref of refs) {
             assertAssetRef(ref);
             if (!this.providers.has(ref.type))
-                throw new EgretError('ASSET_PROVIDER_MISSING');
+                throw new EgretError("ASSET_PROVIDER_MISSING");
             const existing = this.identities.get(ref.id);
             const inputType = admitted.get(ref.id);
-            if ((existing !== undefined && existing.type !== ref.type)
-                || (inputType !== undefined && inputType !== ref.type))
-                throw new EgretError('ASSET_TYPE_MISMATCH');
+            if ((existing !== undefined && existing.type !== ref.type) || (inputType !== undefined && inputType !== ref.type))
+                throw new EgretError("ASSET_TYPE_MISMATCH");
             admitted.set(ref.id, ref.type);
         }
     }
@@ -195,12 +221,12 @@ export class AssetManager {
     claimGroupLease(lease, group) {
         this.assertOpen();
         if (!isAssetLease(lease) || engineOf(lease) !== this.#engine || ownerOf(lease) !== undefined)
-            throw new EgretError('ASSET_GROUP_MEMBER_INVALID');
+            throw new EgretError("ASSET_GROUP_MEMBER_INVALID");
         try {
             readAssetLeaseValue(lease);
         }
         catch (cause) {
-            throw new EgretError('ASSET_GROUP_MEMBER_INVALID', { cause });
+            throw new EgretError("ASSET_GROUP_MEMBER_INVALID", { cause });
         }
         claimOwner(lease, group);
     }
@@ -264,7 +290,11 @@ export class AssetManager {
             return;
         }
         // Resolve thenables through Promise machinery; every internal rejection is observed.
-        void Promise.resolve(promise).then(value => this.receive(entry, value), cause => this.failEntry(entry, new EgretError("ASSET_LOAD_FAILED", { cause }))).catch(cause => { this.failEntry(entry, new EgretError("ASSET_LOAD_FAILED", { cause })); });
+        void Promise.resolve(promise)
+            .then(value => this.receive(entry, value), cause => this.failEntry(entry, new EgretError("ASSET_LOAD_FAILED", { cause })))
+            .catch(cause => {
+            this.failEntry(entry, new EgretError("ASSET_LOAD_FAILED", { cause }));
+        });
     }
     receive(entry, value) {
         entry.hasValue = true;
@@ -362,7 +392,9 @@ export class AssetManager {
             revokeAssetLease(lease);
         entry.leases.clear();
     }
-    isTerminal(entry) { return entry.state === "terminal"; }
+    isTerminal(entry) {
+        return entry.state === "terminal";
+    }
     retireUnused(entry) {
         if (entry.state === "terminal" || entry.waiters.size !== 0 || entry.leases.size !== 0)
             return;

@@ -6,9 +6,15 @@ const terminal = new WeakSet();
 export function registerManagedWrapper(node, authority, dispose) {
     records.set(node, { authority, dispose });
 }
-export function isManagedWrapper(node) { return records.has(node); }
-export function managedBy(node, authority) { return records.get(node)?.authority === authority; }
-export function managedTerminal(node) { return terminal.has(node); }
+export function isManagedWrapper(node) {
+    return records.has(node);
+}
+export function managedBy(node, authority) {
+    return records.get(node)?.authority === authority;
+}
+export function managedTerminal(node) {
+    return terminal.has(node);
+}
 export function assertManagedMutable(node) {
     if (node !== undefined && records.has(node))
         throw new EgretError('UI_MANAGED_GEOMETRY');
