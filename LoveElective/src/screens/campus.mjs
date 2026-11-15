@@ -91,6 +91,10 @@ function mapScreen(game) {
               g.fill(ellipse(ax + 17, ay + 17, 17, 17));
               p.text('?', ax + 17, ay + 5, { size: 18, weight: 800, color: '#ffffff', align: 'center' });
             }
+            // A small heart on the senior who has a wish today.
+            if (sim.wishFor(s, girl)) {
+              p.heart(ax + 4, ay + 30, 7, THEME.rose);
+            }
             if (sim.chapterAt(s, girl, id)) {
               g.fillStyle = THEME.gold;
               g.fill(star(ax + 30, ay + 2, 9, 4));
@@ -101,8 +105,8 @@ function mapScreen(game) {
           });
           p.hit(Math.min(left, x - 80), py - 4, Math.max(w, 160), place.pin + 20, () => go(id), { r: 20 });
         }
-        p.card(W / 2 - 285, H - 53, 570, 36, { r: 11, fill: rgba('#272038', .9), stroke: '#77586d', shadow: .2 });
-        p.text(L(['选择要去的地方 · 金色星星表示有新的故事', 'Choose where to go · a gold star marks a new story']), W / 2, H - 45, {
+        p.card(W / 2 - 330, H - 53, 660, 36, { r: 11, fill: rgba('#272038', .9), stroke: '#77586d', shadow: .2 });
+        p.text(L(['选择要去的地方 · 金色星星：新的故事 · 粉色爱心：今日心愿', 'Choose where to go · gold star: a new story · pink heart: a wish today']), W / 2, H - 45, {
           size: 15,
           weight: 600,
           color: '#ffffff',
@@ -176,6 +180,7 @@ async function placeScreen(game, placeId) {
   game.showHud(null);
   await game.fadeIn(0.3);
 
+  let eventChecked = false;
   for (;;) {
     // Story chapters come first: meeting a senior whose next chapter is ready plays it.
     for (const girl of sim.girlsAt(s, placeId)) {
@@ -187,6 +192,19 @@ async function placeScreen(game, placeId) {
       game.save();
       game.toast(`${L(HEROINES[girl].name)} · ${L(['故事第 ', 'Story chapter '])}${chapter}${L([' 章 完成', ' complete'])}`, 'good');
       await world.setScene(place.scene, lightOf(s));
+    }
+
+    // Then, sometimes, a small campus event (at most one each time the hero arrives).
+    if (!eventChecked) {
+      eventChecked = true;
+      const ev = sim.rollEvent(s, placeId);
+      if (ev) {
+        game.hideHud();
+        await playScript(game, ev.script, { girl: ev.girl ?? null });
+        game.save();
+        await world.setScene(place.scene, lightOf(s));
+        game.showHud(null);
+      }
     }
 
     const before = sim.clock(s).absolute;
@@ -214,11 +232,14 @@ async function placeScreen(game, placeId) {
           'info',
         );
       } else {
-        const r = sim.act(s, placeId, act.id);
+        // Practice and work start with a short focus challenge that can raise what they give.
+        const focus = sim.hasFocus(act) && !sim.actBlocked(s, act) ? await focusChallenge(game, act) : 'ok';
+        const r = sim.act(s, placeId, act.id, focus);
         if (r) {
           const parts = Object.entries(r.gain).map(([k, n]) => `${L(STATS[k])} +${n}`);
           if (r.pay) parts.push(`¥ +${r.pay}`);
           if (r.energy > 0) parts.push(`${L(['体力', 'Energy'])} +${r.energy}`);
+          if (r.focus && r.focus !== 'ok') game.toast(FOCUS_NOTE[r.focus][game.lang === 'zh' ? 0 : 1], 'good');
           game.toast(`${L(act.name)}  →  ${parts.join('  ·  ')}`, 'good');
           game.audio.play('good');
           if (!act.free) await game.fadeOut(0.3);
@@ -355,6 +376,7 @@ async function girlScreen(game, girl) {
       if (note) game.toast(L(note), tone);
       if (r.gain > 0) game.audio.play('good');
       await line([girl, expr, zh, en], gainText(r.gain), r.gain > 0 ? 'good' : 'bad');
+      if (r.wish) wishGranted(game, girl, r.wish);
     } else if (choice.type === 'gift') {
       const item = await giftPicker(game);
       if (!item) continue;
@@ -364,6 +386,7 @@ async function girlScreen(game, girl) {
       game.audio.play(r.gain > 0 ? 'good' : 'bad');
       await line([girl, expr, zh, en], gainText(r.gain), r.gain > 0 ? 'good' : 'bad');
       if (r.clothes) game.toast(L(['这件衣服加入了她的衣橱', 'It has joined her wardrobe']), 'info');
+      if (r.wish) wishGranted(game, girl, r.wish);
     } else if (choice.type === 'date') {
       const spot = await datePicker(game);
       if (!spot) continue;
@@ -399,6 +422,7 @@ async function girlScreen(game, girl) {
       await game.fadeIn(0.4);
       await playing;
       game.toast(gainText(r.gain), 'good');
+      if (r.wish) wishGranted(game, girl, r.wish);
       return true;
     } else if (choice.type === 'dress') {
       await openWardrobe(game, girl);
@@ -429,6 +453,13 @@ function girlMenu(game, girl) {
       p.sheet(0, 0, 540, 592, { accent: h.color });
       p.text(L(h.name), 30, 22, { size: 32, weight: 800, color: h.color });
       p.text(L(h.role), 30, 68, { size: 15, color: THEME.soft });
+      // Her wish for today, if she has one.
+      const wish = sim.wishFor(s, girl);
+      if (wish) {
+        const text = `♥ ${L(['今日心愿', 'Wish today'])} · ${game.wishText(wish)}`,
+          w = Math.min(470, p.measure(text, 14, 750) + 26);
+        p.chip(text, 510 - w, 66, { color: THEME.rose, size: 14, h: 26, padX: 13 });
+      }
       p.chip(L(LEVELS[lv].name), 510 - p.measure(L(LEVELS[lv].name), 15, 700) - 24, 28, { color: h.color, size: 15, h: 30, padX: 12 });
       // Affection.
       p.heart(42, 112, 9);
@@ -442,7 +473,8 @@ function girlMenu(game, girl) {
         at = v => gx + ((v + 50) / 100) * gw;
       c.fillStyle = rgba('#2b2a4a', 0.1);
       c.fill(rrect(gx, gy, gw, 12, 6));
-      if (g.chats >= 3) {
+      const knowsPace = g.chats >= 3 || s.perk === 'mindreader';
+      if (knowsPace) {
         c.fillStyle = rgba(THEME.mint, 0.75);
         c.fill(rrect(at(h.pace[0]), gy, at(h.pace[1]) - at(h.pace[0]), 12, 6));
       }
@@ -453,7 +485,7 @@ function girlMenu(game, girl) {
       p.text(L(['← 留白', '← Space']), gx, gy + 18, { size: 13, color: THEME.faint });
       p.text(L(['靠近 →', 'Closer →']), gx + gw, gy + 18, { size: 13, color: THEME.faint, align: 'right' });
       p.text(
-        g.chats >= 3
+        knowsPace
           ? L(['绿色是她觉得舒服的距离', 'Green marks the distance she is comfortable with'])
           : L(['多聊几次，就能看出她喜欢的距离', 'Talk a few more times to learn the distance she likes']),
         gx + gw / 2,
@@ -600,5 +632,104 @@ function datePicker(game) {
       });
       p.button(320, 356, 150, 40, L(['算了', 'Never mind']), () => done(null), { kind: 'dark', size: 16 });
     });
+  });
+}
+
+// ------------------------------------------------------------------ wishes
+
+function wishGranted(game, girl, gain) {
+  const { L, world } = game;
+  world.effect('heart');
+  game.audio.play('heart');
+  game.toast(`${L(HEROINES[girl].name)} · ${L(['心愿达成', 'Wish granted'])} ♥ +${gain}`, 'good');
+}
+
+// ------------------------------------------------------------------ focus challenge
+
+const FOCUS_NOTE = {
+  perfect: ['完美专注！收获 ×1.5', 'Perfect focus! Gains ×1.5'],
+  good: ['状态不错！收获 ×1.2', 'Good focus! Gains ×1.2'],
+};
+
+/**
+ * A short timing challenge before practice or work: a marker sweeps along a
+ * track, and stopping it inside the bright band raises what the activity
+ * gives. Tap, Space or Enter stops it; "Just do it" skips the challenge.
+ * Resolves with 'perfect', 'good' or 'ok'.
+ */
+export function focusChallenge(game, act) {
+  const { ui, stage, L } = game;
+  return new Promise(resolve => {
+    const PW = 560,
+      PH = 250,
+      TX = 50,
+      TW = 460,
+      TY = 128;
+    // Where the bands sit changes every time, so it cannot be learned by rhythm alone.
+    const centre = 0.25 + Math.random() * 0.5,
+      perfect = 0.055,
+      good = 0.15;
+    const panel = ui.panel({ x: (W - PW) / 2, y: 236, w: PW, h: PH, res: 1.25, modal: true });
+    let finished = false,
+      t = Math.random() * 2,
+      result = null;
+    const keysBefore = ui.keys;
+    const speed = 0.62 + Math.random() * 0.18;
+    const marker = stage.rect(panel.node, 0x2b2140, 6, 46);
+    marker.y = TY - 9;
+    const pos = () => 1 - Math.abs(((t * speed) % 2) - 1);
+
+    const finish = outcome => {
+      if (finished) return;
+      finished = true;
+      stop();
+      ui.keys = keysBefore;
+      result = outcome;
+      paint();
+      stage.wait(outcome === 'ok' ? 0.05 : 0.45).then(() => {
+        panel.close();
+        resolve(result);
+      });
+    };
+    const judge = () => {
+      const d = Math.abs(pos() - centre);
+      finish(d <= perfect ? 'perfect' : d <= good ? 'good' : 'ok');
+    };
+
+    function paint() {
+      panel.paint(p => {
+        const g = p.g;
+        p.sheet(0, 0, PW, PH - 8, { accent: THEME.violet });
+        p.text(L(act.name), PW / 2, 22, { size: 24, weight: 800, align: 'center', family: SERIF });
+        p.text(
+          result
+            ? L(result === 'perfect' ? ['完美！', 'Perfect!'] : result === 'good' ? ['不错！', 'Good!'] : ['一般般', 'So-so'])
+            : L(['在光带里点一下，集中精神', 'Tap inside the bright band to focus']),
+          PW / 2,
+          66,
+          { size: 16, weight: 700, color: result === 'perfect' ? THEME.rose : THEME.soft, align: 'center' },
+        );
+        g.fillStyle = rgba('#2b2a4a', 0.12);
+        g.fill(rrect(TX, TY, TW, 28, 14));
+        g.fillStyle = rgba(THEME.sky, 0.55);
+        g.fill(rrect(TX + (centre - good) * TW, TY, good * 2 * TW, 28, 10));
+        g.fillStyle = rgba(THEME.rose, 0.9);
+        g.fill(rrect(TX + (centre - perfect) * TW, TY, perfect * 2 * TW, 28, 8));
+        if (!result) {
+          p.hit(0, 0, PW, 186, judge);
+          p.button(PW / 2 - 90, 186, 180, 40, L(['直接开始', 'Just do it']), () => finish('ok'), { kind: 'plain', size: 15 });
+        }
+      });
+    }
+    panel.blank = judge;
+    ui.keys = key => {
+      if (key === ' ' || key === 'Enter') judge();
+    };
+    const stop = stage.onTick(dt => {
+      t += dt;
+      marker.x = TX + pos() * TW - 3;
+    });
+    paint();
+    marker.x = TX + pos() * TW - 3;
   });
 }

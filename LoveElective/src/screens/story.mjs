@@ -5,7 +5,8 @@ import { hasStoryPortrait } from '../art/character-art.mjs';
 import { W } from '../engine/stage.mjs';
 import { THEME, FONT, SERIF, wrapText } from '../engine/ui.mjs';
 import { rgba, rrect, poly } from '../art/draw.mjs';
-import { HEROINES } from '../data/cast.mjs';
+import { HEROINES, STATS } from '../data/cast.mjs';
+import { GIFTS, SUPPLIES, CLOTHES } from '../data/items.mjs';
 import { SLOTS_OF_DAY } from '../data/places.mjs';
 import * as sim from '../sim.mjs';
 
@@ -223,6 +224,14 @@ export async function playScript(game, script, { girl = null, keepActor = false,
             game.toast(`♥ ${L(['好感', 'Affection'])} +${gained}`, 'good');
             game.audio.play('good');
           } else if (gained < 0) game.toast(`${L(['好感', 'Affection'])} ${gained}`, 'bad');
+          // Stats, money, energy and items a choice brings get a line of their own.
+          const parts = [];
+          for (const [k, n] of Object.entries(option.fx.stats ?? {})) parts.push(`${L(STATS[k])} ${n > 0 ? '+' : '−'}${Math.abs(n)}`);
+          if (option.fx.money) parts.push(`¥ ${option.fx.money > 0 ? '+' : '−'}${Math.abs(option.fx.money)}`);
+          if (option.fx.energy) parts.push(`${L(['体力', 'Energy'])} ${option.fx.energy > 0 ? '+' : '−'}${Math.abs(option.fx.energy)}`);
+          const item = option.fx.item && (GIFTS[option.fx.item] ?? SUPPLIES[option.fx.item] ?? CLOTHES[option.fx.item]);
+          if (item) parts.push(`${L(['获得', 'Got'])} ${L(item.name)}`);
+          if (parts.length) game.toast(parts.join('  ·  '), 'good');
         }
         if (option.then) await run(option.then);
       } else if (HEROINES[op]) {

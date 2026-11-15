@@ -6,6 +6,7 @@ import { HEROINES, HEROINE_IDS, LEVELS, STATS } from '../data/cast.mjs';
 import { FINALE_INTRO, ENDINGS, ENDING_SOLO } from '../story/scenes.mjs';
 import * as sim from '../sim.mjs';
 import { playScript } from './story.mjs';
+import { showUnlocks } from './memories.mjs';
 
 export async function finale(game) {
   if (game.quit || !game.state?.finale) return;
@@ -23,6 +24,10 @@ export async function finale(game) {
     await playScript(game, ENDING_SOLO, { light: 'night' });
   }
   await summary(game, girl, result);
+  // The term goes into the memories: endings, achievements and the perks they unlock.
+  const fresh = sim.recordTerm(game.memories, s, girl, result);
+  game.saveMemories();
+  await showUnlocks(game, fresh);
   await game.world.hideActor();
   game.clearSave();
 }
