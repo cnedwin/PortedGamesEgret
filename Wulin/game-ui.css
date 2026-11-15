@@ -252,6 +252,7 @@ body:has(.shell.game) dialog.sheet .sheet-title button:focus-visible {
 
 /* Shared dismissible sheets and lightweight, state-specific messages. */
 body:has(.shell.game) #announcement:not([hidden]) {
+  pointer-events: none;
   display: flex;
   align-items: center;
   gap: 9px;

@@ -37,6 +37,7 @@ const GIFTED_CHANCE = 0.125;
 const OPENING_PEACE_YEARS = [6, 5, 4, 3];
 const OPENING_APPLICANTS = 2;
 const OPENING_APPLICANT_DAYS = 90;
+const HOME_FALLBACK_COST = 0.2;
 const uniqueBuildings = new Set(['hall', 'gate', 'board', 'mess', 'store', 'library', 'clinic', 'council']);
 
 /** Maximum opening truce for a new game at the selected difficulty. */
@@ -156,7 +157,8 @@ function prepareOpening(state, rng) {
   const sectId = state.playerSect;
   const { seat } = SECT_BY_ID[sectId];
   const place = state.places[seat];
-  state.opening = { until: openingPeaceYears(state.options.difficulty) * DAYS_PER_YEAR, provoked: [] };
+  const { difficulty } = state.options;
+  state.opening = { until: openingPeaceYears(difficulty) * DAYS_PER_YEAR, provoked: [], homeFallback: difficulty === 0 || difficulty === 1 };
 
   // Some scenarios put reinforcements at the seat. Furnish only enough extra beds for the first applicants.
   const needed = residents(state, seat).length + OPENING_APPLICANTS;
@@ -454,6 +456,14 @@ function openingProtectsFrom(state, sectId) {
   return !!opening && state.day < opening.until && !opening.provoked.includes(sectId);
 }
 
+/** A new ordinary or easy campaign can retreat into its last original seat on its first eligible defense. */
+export function canFallBackAtHome(state, attackerId, placeId) {
+  const { opening, playerSect } = state;
+  return !!opening?.homeFallback && !state.options.autoPlayer && state.day >= opening.until
+    && attackerId !== playerSect && !!state.sects[attackerId]?.alive && !opening.provoked.includes(attackerId)
+    && placeId === SECT_BY_ID[playerSect].seat && state.places[placeId].owner === playerSect && placesOf(state, playerSect).length === 1;
+}
+
 /**
  * Who meets whom when a sect attacks a stronghold: the chosen party against
  * everyone the owner has there (at most ten a side).
@@ -476,9 +486,12 @@ export function assaultSides(state, attackerId, placeId, partyIds) {
 /** Launches the chosen assault. Inspecting a formation alone never breaks the opening truce. */
 export function beginAssault(state, attackerId, placeId, partyIds) {
   const prepared = assaultSides(state, attackerId, placeId, partyIds);
-  if (prepared.ok && attackerId === state.playerSect && openingProtectsFrom(state, prepared.defender)) {
+  if (!prepared.ok || attackerId !== state.playerSect) return prepared;
+  const breaksTruce = openingProtectsFrom(state, prepared.defender);
+  const rulesOutFallback = state.opening?.homeFallback && !state.opening.provoked.includes(prepared.defender);
+  if (breaksTruce || rulesOutFallback) {
     state.opening.provoked.push(prepared.defender);
-    note(state, 'hostilities', `本门向${SECT_BY_ID[prepared.defender].name}出兵，该派与本门提前结束开局休战。`, { sect: attackerId, place: placeId });
+    if (breaksTruce) note(state, 'hostilities', `本门向${SECT_BY_ID[prepared.defender].name}出兵，该派与本门提前结束开局休战。`, { sect: attackerId, place: placeId });
   }
   return prepared;
 }
@@ -515,6 +528,8 @@ export function settleAssault(state, attackerId, placeId, summary, rng) {
     defenderId = place.owner;
   const attacker = state.sects[attackerId],
     defender = state.sects[defenderId];
+  const eligibleFallback = canFallBackAtHome(state, attackerId, placeId);
+  if (eligibleFallback) state.opening.homeFallback = false;
   const fallen = [];
   for (const fighter of summary.fighters) {
     const person = state.persons[fighter.id];
@@ -530,7 +545,21 @@ export function settleAssault(state, attackerId, placeId, summary, rng) {
   attacker.relations[defenderId] = clamp(attacker.relations[defenderId] - 40, -100, 100);
   defender.relations[attackerId] = clamp(defender.relations[attackerId] - 60, -100, 100);
   const won = summary.winner === 0;
+  const losses = won && eligibleFallback ? { silver: Math.floor(defender.silver * HOME_FALLBACK_COST), grain: Math.floor(defender.grain * HOME_FALLBACK_COST) } : null;
   if (won) {
+    attacker.renown = clamp(attacker.renown + 60, 0, 1000);
+    defender.renown = clamp(defender.renown - 40, 0, 1000);
+  }
+  if (losses) {
+    defender.silver -= losses.silver;
+    defender.grain -= losses.grain;
+    // If no heir survives this battle, the injured head makes it back with the sect.
+    const headFall = fallen.findIndex(person => person.id === defender.leaderId);
+    if (headFall >= 0 && !membersOf(state, defenderId).some(person => person.id !== defender.leaderId && person.rank >= 3 && !fallen.includes(person))) {
+      fallen.splice(headFall, 1);
+    }
+    note(state, 'fallback', `${SECT_BY_ID[defenderId].name}退守内院，仍守住${PLACE_BY_ID[placeId].name}。损失银两 ${losses.silver} 两、粮草 ${losses.grain} 石。`, { sect: defenderId, place: placeId });
+  } else if (won) {
     // Whoever is left at the stronghold falls back to another of their sect's, or scatters.
     const refuge = placesOf(state, defenderId).find((id) => id !== placeId);
     for (const person of residents(state, placeId)) {
@@ -542,8 +571,6 @@ export function settleAssault(state, attackerId, placeId, summary, rng) {
     // Half of the party stays to hold what it took.
     const party = summary.fighters.filter((fighter) => fighter.side === 0 && !fighter.down && state.persons[fighter.id]);
     for (const fighter of party.slice(0, Math.ceil(party.length / 2))) state.persons[fighter.id].place = placeId;
-    attacker.renown = clamp(attacker.renown + 60, 0, 1000);
-    defender.renown = clamp(defender.renown - 40, 0, 1000);
     // Where there was a library, some of its books go with the victors.
     const looted = buildingLevel(state, placeId, 'library') ? lootManuals(state, attackerId, defenderId, rng) : [];
     note(state, 'conquer', `${SECT_BY_ID[attackerId].name}攻下${PLACE_BY_ID[placeId].name}${looted.length ? `，得秘笈${looted.map((art) => `《${art.name}》`).join('')}` : ''}。`, { sect: attackerId, place: placeId });
@@ -553,7 +580,7 @@ export function settleAssault(state, attackerId, placeId, summary, rng) {
   }
   for (const person of fallen) bury(state, person);
   if (!placesOf(state, defenderId).length) dissolve(state, defenderId, attackerId);
-  return { won, fallen: fallen.map((person) => person.name) };
+  return { won, held: place.owner === defenderId, losses, fallen: fallen.map((person) => person.name) };
 }
 
 function bury(state, person) {
@@ -698,12 +725,14 @@ function runSect(state, sectId, rng) {
     }
     const guard = residents(state, target).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
     if (strength(army) > strength(guard) * (1.6 - sect.temper.expand * 0.08)) {
+      const watchedSiege = foe === state.playerSect && state.options.interactive && !state.options.autoPlayer;
+      if (watchedSiege && state.pending) return;
       // Where the column set out from, for whoever is watching the map.
       const from = PLACE_BY_ID[target].roads.find((id) => state.places[id].owner === sectId);
       state.marches = [...(state.marches ?? []).slice(-5), { day: state.day, by: sectId, from, to: target }];
       // A player who is watching defends in person; the attack waits at the gate for them.
-      if (foe === state.playerSect && state.options.interactive && !state.options.autoPlayer) {
-        if (!state.pending) state.pending = { kind: 'siege', attacker: sectId, place: target, party: army.map((person) => person.id) };
+      if (watchedSiege) {
+        state.pending = { kind: 'siege', attacker: sectId, place: target, party: army.map((person) => person.id) };
         return;
       }
       assault(state, sectId, target, army.map((person) => person.id), rng);
