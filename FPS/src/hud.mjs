@@ -478,7 +478,11 @@ export function createHud(root, settings, actions) {
     const guns = Object.keys(game.weapons)
       .map((key, i) => {
         const w = game.weapons[key];
-        return `<li class="${key === p.weapon ? 'on' : ''}"><kbd>${i + 1}</kbd><span>${t.weapons[key]}</span><b>${w.ammo} / ${Number.isFinite(w.reserve) ? w.reserve : '∞'}</b></li>`;
+        const selected = key === p.weapon;
+        const label = `<kbd>${i + 1}</kbd><span>${t.weapons[key]}</span><b>${w.ammo} / ${Number.isFinite(w.reserve) ? w.reserve : '∞'}</b>`;
+        return `<li class="${selected ? 'on' : ''}">${hud.touchMode
+          ? `<button type="button" data-weapon-pick="${key}" aria-pressed="${selected}">${label}</button>`
+          : label}</li>`;
       })
       .join('');
     const fitted = game.attachments.length
@@ -504,7 +508,9 @@ export function createHud(root, settings, actions) {
     bagKey = '';
   };
   bag.addEventListener('click', (event) => {
-    if (event.target.closest('[data-bag-close]')) hud.toggleBag(false);
+    const weapon = event.target.closest('[data-weapon-pick]')?.dataset.weaponPick;
+    if (weapon) actions.selectWeapon(weapon);
+    if (weapon || event.target.closest('[data-bag-close]')) hud.toggleBag(false);
   });
 
   hud.update = (game, dt, eye) => {
@@ -565,7 +571,9 @@ export function createHud(root, settings, actions) {
       q('.a-count').classList.toggle('low', weapon.ammo <= weapon.mag * 0.25);
     }
     const note =
-      weapon.ammo === 0 && weapon.reserve === 0
+      p.drawing > 0
+        ? t.drawing
+        : weapon.ammo === 0 && weapon.reserve === 0
         ? t.noAmmo
         : weapon.ammo <= weapon.mag * 0.25 && weapon.reloading <= 0
           ? t.lowAmmo
@@ -599,8 +607,14 @@ export function createHud(root, settings, actions) {
     if (time !== cache.clock) q('.obj-clock').textContent = cache.clock = time;
     uplink.hidden = !active && !extract;
     if (active || extract) {
-      const label = extract ? (eta ? t.eta : t.boardNow) : t.places[active.key],
-        remaining = extract ? (eta ? clock(eta) : '') : clock(Math.ceil((1 - active.progress) * active.duration)),
+      const label = extract ? (eta ? t.eta : t.boardNow) : relay ? `${t.relayCheck} ${active.phase + 1}/2` : t.places[active.key],
+        remaining = extract
+          ? (eta ? clock(eta) : '')
+          : relay
+            ? relay.inRange
+              ? clock(Math.ceil((1 - relay.progress) * MISSION.relaySeconds))
+              : `${Math.ceil(Math.hypot(relay.x - p.x, relay.z - p.z))} m`
+            : clock(Math.ceil((1 - active.progress) * active.duration)),
         hint = extract ? (eta ? t.evadeUntilLanding : t.boardHint)
           : relay ? (relay.inRange ? t.syncing : t.relayMove)
           : !active.inRange ? t.transferLost : t.transferPhases[active.phase ?? 0],
@@ -671,6 +685,7 @@ export function createHud(root, settings, actions) {
     // Prompts and progress.
     const use = game.prompt;
     prompt.hidden = !use;
+    if (hud.touchMode) touch.querySelector('.t-use')?.classList.toggle('is-usable', Boolean(use));
     if (use) {
       prompt.firstElementChild.textContent = (hud.touchMode ? t.useTouch : t.use)[use.kind];
       prompt.lastElementChild.firstElementChild.style.width = Math.round((use.progress ?? 0) * 100) + '%';

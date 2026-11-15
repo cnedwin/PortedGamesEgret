@@ -42,7 +42,6 @@ This document records where this version stands: problems already solved, parts 
 
 | 问题 · Issue | 影响 · Effect |
 | --- | --- |
-| 触屏只能轮流切枪 · Touch can only cycle weapons | 没有直接选第三把枪的按钮 · no button picks the third weapon directly |
 | 同时只点亮最近的五盏灯 · Only the nearest five lamps are lit | 引擎每帧最多八盏点光源，远处的灯只有发光贴片没有照明 · the engine lights at most eight point lights a frame, so distant lamps glow without lighting anything |
 | 杉树在阴影里偏黑 · Firs go nearly black in shade | 背光时层次看不清 · the tiers are hard to read against the light |
 | 代打程序不搜物资箱 · The stand-in player never searches crates | 自动演示里看不到搜集和背包 · the automatic demo shows no looting or backpack |
@@ -129,10 +128,10 @@ Every model is put together in code from the boxes, cylinders, tapered limbs and
 
 | 模型 · Model | 已有 · Has | 还粗的地方 · Still coarse |
 | --- | --- | --- |
-| 突击步枪 · Assault rifle | 机匣、八面护木与导轨、枪管、导气箍与消音器、带镜片的全息瞄具、战术灯、瞄准模块、前握把、带托腮的伸缩枪托、防滑握把、弧形弹匣；开火、换弹、落地、切枪动作 · receiver, eight-sided handguard with rails, barrel with gas block and suppressor, holographic sight with a lens, light, aiming module, foregrip, sliding stock with a cheek rest, ridged grip, curved magazine; firing, reload, landing and switching motion | 没有拉机柄动作和抛壳口细节，弹匣只是下落再装回，表面磨损靠一张通用金属贴图 · no charging handle motion or ejection port detail, the magazine only drops and returns, wear comes from one shared metal texture |
+| 突击步枪 · Assault rifle | 机匣、八面护木与导轨、枪管、导气箍与消音器、带镜片的全息瞄具、战术灯、瞄准模块、前握把、带托腮的伸缩枪托、防滑握把、弧形弹匣；开火、换弹、落地、切枪动作 · receiver, eight-sided handguard with rails, barrel with gas block and suppressor, holographic sight with a lens, light, aiming module, foregrip, sliding stock with a cheek rest, ridged grip, curved magazine; firing, reload, landing and switching motion | 没有拉机柄动作和抛壳口细节，表面磨损靠一张通用金属贴图 · no charging handle motion or ejection port detail, wear comes from one shared metal texture |
 | 精确射手步枪 · Marksman rifle | 在步枪基础上换成更长更重的枪管，加装带镜环、调节旋钮和镀膜镜片的瞄准镜 · the rifle's base with a longer, heavier barrel and a telescopic sight on rings with turrets and coated lenses | 与突击步枪共用大部分零件，外形区别不大；镜内是界面遮罩，不是真实的镜片画面 · shares most parts with the assault rifle and looks similar; the scope view is an overlay, not a rendered lens |
-| 手枪 · Pistol | 带防滑纹和抛壳口的套筒、照门准星、带导轨的握把座、扳机与护圈 · slide with serrations and an ejection port, sights, frame with a rail, trigger and guard | 套筒不后坐，没有空仓挂机 · the slide does not cycle and does not lock back when empty |
-| 手与袖子 · Hands and sleeves | 五指手套、迷彩袖子、袖口、手表 · gloved fingers, camouflage sleeves, cuffs, a watch | 手指不随动作弯曲，换弹时左手不离开护木 · fingers do not move, and the left hand stays on the handguard during a reload |
+| 手枪 · Pistol | 带防滑纹和抛壳口的套筒、照门准星、带导轨的握把座、扳机与护圈、套筒后坐和空仓挂机 · slide cycle, empty lock, serrations and an ejection port, sights, frame with a rail, trigger and guard | 无独立的拉套筒动作 · no separate manual slide action |
+| 手与袖子 · Hands and sleeves | 五指手套、迷彩袖子、袖口、手表、换弹时左手跟随弹匣 · gloved fingers, camouflage sleeves, cuffs, a watch and a support hand that follows the magazine | 手指保持握持姿势 · fingers keep their grip pose |
 | 敌人 · Soldiers | 头盔或绒线帽、风镜或护目镜、耳机与麦克风、脸（眼睛、瞳孔、鼻子、嘴）、防弹背心与弹匣袋、电台、腰带、背包、迷彩服、护肘护膝、靴子、枪；肩部关节带持枪、后坐、扭身；走、瞄、蹲、换弹姿态；布娃娃 · helmet or watch cap, goggles or glasses, headset with microphone, face (eyes, pupils, nose, mouth), plate carrier with magazine pouches, radio, belt kit, pack, camouflage, elbow and knee pads, boots, weapon; a shoulder joint for carrying, recoil and flinching; walking, aiming, kneeling and reloading poses; ragdoll | 肘和手腕不单独活动，没有骨骼蒙皮，三种兵只靠颜色和装备区分，没有死亡以外的受击倒地动作 · elbows and wrists do not move on their own, no skinned skeleton, the three kinds differ only in colour and gear, no knock-down short of death |
 | 卡车 · Trucks | 驾驶室、篷布货厢与骨架、格栅、保险杠、后视镜、排气管、轮拱、尾板、挡泥板、车灯 · cab, canvas bed with hoops, grille, bumper, mirrors, exhaust, wheel arches, tailgate, mud flaps, lamps | 车窗不透明，没有内饰，轮胎没有花纹 · windows are opaque, no interior, tyres have no tread |
 | 大坝 · Dam | 施工缝、加厚坝脚、三座闸房与钢索、检修楼梯、排水口、坝顶栏杆 · lift joints, a thicker foot, three gate houses with hoist ropes, a maintenance stair, drain outlets, a crest railing | 没有泄水的水流，立面仍是直壁，没有弧度 · no water coming through, and the face is still a straight wall with no curve |
@@ -145,12 +144,10 @@ Every model is put together in code from the boxes, cylinders, tapered limbs and
 
 1. 对 WebGPU 后端做单独的真机验收。
 2. 找几个人各打三局，记录用时和阵亡位置，据此调整传输时长、增援人数和直升机到达时间。
-3. 给触屏增加直接选枪。
-4. 加一个检查点：每完成一处终端存一次进度。
-5. 背包改成物品占不同大小的格子，并允许丢弃。
+3. 加一个检查点：每完成一处终端存一次进度。
+4. 背包改成物品占不同大小的格子，并允许丢弃。
 
 1. Run a dedicated device test for the WebGPU backend.
 2. Have a few people play three runs each, note the time taken and where they died, and tune the transfer length, the size of the reinforcements and the helicopter's arrival from that.
-3. Add direct weapon selection on touch.
-4. Add a checkpoint: save progress as each terminal finishes.
-5. Give items different sizes in the backpack and allow dropping them.
+3. Add a checkpoint: save progress as each terminal finishes.
+4. Give items different sizes in the backpack and allow dropping them.

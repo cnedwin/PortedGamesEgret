@@ -48,6 +48,7 @@ export const idleInput = () => ({
   lookYaw: 0, // turn since the last step, radians (positive turns left)
   lookPitch: 0, // positive looks up
   fire: false,
+  firePressed: false, // a new pull even if release and re-press both fell between samples
   aim: false,
   sprint: false,
   crouch: false,
@@ -780,10 +781,10 @@ export function createGame(options = {}) {
     if (weapon.autoReload > 0 && (weapon.autoReload -= dt) <= 0) startReload(weapon);
     if (input.reload) startReload(weapon);
     const ready = player.drawing <= 0 && weapon.reloading <= 0 && player.healing <= 0 && !player.sprinting;
-    const pulled = input.fire && (weapon.def.auto || !weapon.triggerHeld);
+    const pulled = input.fire && (weapon.def.auto || !weapon.triggerHeld || input.firePressed);
     if (pulled && ready && weapon.cooldown <= 0) {
       if (weapon.ammo > 0) fireWeapon(weapon);
-      else if (!weapon.triggerHeld) {
+      else if (!weapon.triggerHeld || input.firePressed) {
         emit('dry', { weapon: weapon.def.key });
         startReload(weapon);
       }
@@ -891,7 +892,9 @@ export function createGame(options = {}) {
       if (distance > MISSION.interactRange) return;
       // It has to be roughly ahead, unless it is right underfoot.
       if (distance > 0.7 && (dx * fx + dz * fz) / distance < 0.35) return;
-      if (distance < bestScore) {
+      // Reach the console face or the top of the lid without passing through a wall.
+      const useY = kind === 'terminal' ? 1.4 : 0.65;
+      if (distance < bestScore && game.clearLine(player.x, eyeY(), player.z, item.x, useY, item.z)) {
         bestScore = distance;
         best = { kind, target: item, seconds };
       }

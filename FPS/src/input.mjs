@@ -3,25 +3,23 @@
 import { idleInput } from './sim.mjs';
 
 const KEYS = {
-  KeyW: 'forward',
-  ArrowUp: 'forward',
-  KeyS: 'back',
-  ArrowDown: 'back',
-  KeyA: 'left',
-  ArrowLeft: 'left',
-  KeyD: 'right',
-  ArrowRight: 'right',
-  Space: 'jump',
-  ShiftLeft: 'sprint',
-  ShiftRight: 'sprint',
-  KeyC: 'crouch',
-  ControlLeft: 'crouch',
-  KeyR: 'reload',
-  KeyF: 'interact',
-  KeyE: 'interact',
-  KeyQ: 'heal',
-  KeyG: 'grenade',
+  forward: ['KeyW', 'ArrowUp'],
+  back: ['KeyS', 'ArrowDown'],
+  left: ['KeyA', 'ArrowLeft'],
+  right: ['KeyD', 'ArrowRight'],
+  jump: ['Space'],
+  sprint: ['ShiftLeft', 'ShiftRight'],
+  crouch: ['KeyC', 'ControlLeft'],
+  reload: ['KeyR'],
+  interact: ['KeyF', 'KeyE'],
+  heal: ['KeyQ'],
+  grenade: ['KeyG'],
 };
+const KEY_ACTION = new Map(Object.entries(KEYS).flatMap(([action, codes]) => codes.map((code) => [code, action])));
+const WEAPON_KEYS = new Map([['Digit1', 'rifle'], ['Digit2', 'pistol'], ['Digit3', 'marksman']]);
+const WEAPON_CHOICES = new Set(WEAPON_KEYS.values());
+const TAP_ACTIONS = new Set(['fire', 'jump', 'reload', 'heal', 'grenade']);
+const AIM_DRAG_SCALE = 0.62;
 
 /**
  * `canvas` takes the mouse; `touchRoot` holds the on-screen controls built
@@ -29,12 +27,23 @@ const KEYS = {
  * the mouse capture is lost; `options.onTouch` when a finger first plays.
  */
 export function createInput(canvas, touchRoot, options = {}) {
-  const held = {},
-    record = idleInput();
+  const keys = new Set(),
+    mouseButtons = new Set(),
+    touches = new Map(),
+    taps = new Set(),
+    touchTaps = new Set(),
+    record = idleInput(),
+    touchState = { moveX: 0, moveZ: 0, aim: false, crouch: false };
+  const keyDown = (action) => KEYS[action].some((code) => keys.has(code));
+  function hasTouchAction(owners, action) {
+    for (const owner of owners.values()) if (owner.action === action) return true;
+    return false;
+  }
+  const touchDown = (action) => hasTouchAction(touches, action);
+  const tapped = (action) => taps.has(action) || hasTouchAction(touchTaps, action);
+  const actionDown = (action) => keyDown(action) || touchDown(action) || tapped(action);
   let lookX = 0,
     lookY = 0,
-    fire = false,
-    aim = false,
     weapon = '',
     enabled = false;
   const input = {
@@ -58,36 +67,48 @@ export function createInput(canvas, touchRoot, options = {}) {
     release() {
       if (input.locked) document.exitPointerLock?.();
     },
+    selectWeapon(key) {
+      if (enabled && WEAPON_CHOICES.has(key)) weapon = key;
+    },
+    /** Release physical holds and toggle state together, even without a final browser up event. */
+    cancel() {
+      keys.clear();
+      mouseButtons.clear();
+      touches.clear();
+      taps.clear();
+      touchTaps.clear();
+      resetTouchMotion();
+      setTouchToggle('aim', false);
+      setTouchToggle('crouch', false);
+      lookX = lookY = 0;
+      weapon = '';
+    },
     /** Take input while a run is on; let go of everything otherwise. */
     setEnabled(on) {
       enabled = on;
-      if (!on) {
-        for (const key of Object.keys(held)) held[key] = false;
-        fire = aim = false;
-        resetTouchMotion();
-        lookX = lookY = 0;
-        weapon = '';
-        for (const key of Object.keys(touchHeld)) touchHeld[key] = false;
-      }
+      if (!on) input.cancel();
     },
     /** The input since the last call, ready for `game.update`. */
     sample() {
       const r = record;
-      r.moveX = (held.right ? 1 : 0) - (held.left ? 1 : 0) + touchState.moveX;
-      r.moveZ = (held.forward ? 1 : 0) - (held.back ? 1 : 0) + touchState.moveZ;
+      r.moveX = Number(keyDown('right')) - Number(keyDown('left')) + touchState.moveX;
+      r.moveZ = Number(keyDown('forward')) - Number(keyDown('back')) + touchState.moveZ;
       r.lookYaw = -lookX;
       r.lookPitch = input.invertY ? lookY : -lookY;
       lookX = lookY = 0;
-      r.fire = fire || touchHeld.fire;
-      r.aim = aim || touchState.aim;
-      r.sprint = Boolean(held.sprint) || touchState.moveZ > 0.92;
-      r.crouch = Boolean(held.crouch) || touchState.crouch;
-      r.jump = Boolean(held.jump) || touchHeld.jump;
-      r.reload = Boolean(held.reload) || touchHeld.reload;
-      r.interact = Boolean(held.interact) || touchHeld.interact;
-      r.heal = Boolean(held.heal) || touchHeld.heal;
-      r.grenade = Boolean(held.grenade) || touchHeld.grenade;
+      r.firePressed = tapped('fire');
+      r.fire = mouseButtons.has(0) || touchDown('fire') || r.firePressed;
+      r.aim = mouseButtons.has(2) || touchState.aim;
+      r.sprint = keyDown('sprint') || (touchState.moveZ > 0.92 && !r.fire);
+      r.crouch = keyDown('crouch') || touchState.crouch;
+      r.jump = actionDown('jump');
+      r.reload = actionDown('reload');
+      r.interact = keyDown('interact') || touchDown('interact');
+      r.heal = actionDown('heal');
+      r.grenade = actionDown('grenade');
       r.weapon = weapon;
+      taps.clear();
+      touchTaps.clear();
       weapon = '';
       return r;
     },
@@ -95,61 +116,52 @@ export function createInput(canvas, touchRoot, options = {}) {
 
   // ---- keyboard ----------------------------------------------------------------------------
   addEventListener('keydown', (event) => {
-    if (event.code === 'Escape' || event.code === 'KeyP') {
-      if (enabled) options.onPause?.();
-      return;
-    }
     if (!enabled) return;
-    const name = KEYS[event.code];
+    const code = event.code;
+    const name = KEY_ACTION.get(code);
     if (name) {
-      held[name] = true;
       event.preventDefault();
-    } else if (event.code === 'Digit1') weapon = 'rifle';
-    else if (event.code === 'Digit2') weapon = 'pistol';
-    else if (event.code === 'Digit3') weapon = 'marksman';
-    else if (event.code === 'Tab') {
-      options.onBag?.();
+      if (!event.repeat && !keys.has(code)) {
+        keys.add(code);
+        if (TAP_ACTIONS.has(name)) taps.add(name);
+      }
+    } else if (code === 'Escape' || code === 'KeyP') {
+      if (!event.repeat) options.onPause?.();
+    } else if (code === 'Tab') {
       event.preventDefault();
+      if (!event.repeat) options.onBag?.();
+    } else if (!event.repeat) {
+      input.selectWeapon(WEAPON_KEYS.get(code));
     }
   });
-  addEventListener('keyup', (event) => {
-    const name = KEYS[event.code];
-    if (name) held[name] = false;
-  });
-  addEventListener('blur', () => {
-    for (const key of Object.keys(held)) held[key] = false;
-    fire = aim = false;
+  addEventListener('keyup', (event) => keys.delete(event.code));
+  addEventListener('blur', input.cancel);
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) input.cancel();
   });
 
   // ---- mouse -------------------------------------------------------------------------------
   const RADIANS_PER_PIXEL = 0.0022;
-  let dragging = false;
   addEventListener('mousemove', (event) => {
-    if (!enabled || (!input.locked && !dragging)) return;
-    lookX += event.movementX * RADIANS_PER_PIXEL * input.sensitivity * (aim ? 0.62 : 1);
-    lookY += event.movementY * RADIANS_PER_PIXEL * input.sensitivity * (aim ? 0.62 : 1);
+    if (!enabled || (!input.locked && !mouseButtons.size)) return;
+    const scale = RADIANS_PER_PIXEL * input.sensitivity * (mouseButtons.has(2) ? AIM_DRAG_SCALE : 1);
+    lookX += event.movementX * scale;
+    lookY += event.movementY * scale;
   });
   canvas.addEventListener('mousedown', (event) => {
     if (!enabled) return;
     // Without capture (a browser may refuse it), holding a button drags the view.
-    if (!input.locked) {
-      dragging = true;
-      input.capture();
-    }
-    if (event.button === 0) fire = true;
-    if (event.button === 2) aim = true;
+    if (!input.locked) input.capture();
+    if (event.button === 0 && !mouseButtons.has(0)) taps.add('fire');
+    mouseButtons.add(event.button);
     event.preventDefault();
   });
-  addEventListener('mouseup', (event) => {
-    if (event.button === 0) fire = false;
-    if (event.button === 2) aim = false;
-    dragging = false;
-  });
+  addEventListener('mouseup', (event) => mouseButtons.delete(event.button));
   canvas.addEventListener('contextmenu', (event) => event.preventDefault());
   canvas.addEventListener(
     'wheel',
     (event) => {
-      if (enabled) weapon = event.deltaY > 0 ? 'next' : 'previous';
+      if (enabled && event.deltaY) weapon = event.deltaY > 0 ? 'next' : 'previous';
       event.preventDefault();
     },
     { passive: false },
@@ -160,8 +172,6 @@ export function createInput(canvas, touchRoot, options = {}) {
   });
 
   // ---- touch -------------------------------------------------------------------------------
-  const touchState = { moveX: 0, moveZ: 0, aim: false, crouch: false },
-    touchHeld = {};
   let stickId = -1,
     stickX = 0,
     stickY = 0,
@@ -172,9 +182,17 @@ export function createInput(canvas, touchRoot, options = {}) {
   const startTouch = () => {
     if (input.touchMode) return;
     input.touchMode = true;
+    input.cancel();
+    input.release();
     options.onTouch?.();
   };
   const stickNub = () => touchRoot?.querySelector('.stick i');
+  function setTouchToggle(name, pressed) {
+    touchState[name] = pressed;
+    const button = touchRoot?.querySelector(`[data-t="${name}"]`);
+    button?.classList.toggle('on', pressed);
+    button?.setAttribute('aria-pressed', String(pressed));
+  }
   function resetTouchMotion() {
     stickId = lookId = -1;
     touchState.moveX = touchState.moveZ = 0;
@@ -202,6 +220,7 @@ export function createInput(canvas, touchRoot, options = {}) {
     { passive: false },
   );
   const moveTouch = (event) => {
+    if (!enabled) return;
     for (const touch of event.changedTouches) {
       if (touch.identifier === stickId) {
         const dx = (touch.clientX - stickX) / 56,
@@ -212,8 +231,9 @@ export function createInput(canvas, touchRoot, options = {}) {
         const nub = stickNub();
         if (nub) nub.style.transform = `translate(${touchState.moveX * 34}px, ${-touchState.moveZ * 34}px)`;
       } else if (touch.identifier === lookId) {
-        lookX += (touch.clientX - lookLastX) * TOUCH_RADIANS_PER_PIXEL * input.sensitivity;
-        lookY += (touch.clientY - lookLastY) * TOUCH_RADIANS_PER_PIXEL * input.sensitivity;
+        const scale = TOUCH_RADIANS_PER_PIXEL * input.sensitivity * (touchState.aim ? AIM_DRAG_SCALE : 1);
+        lookX += (touch.clientX - lookLastX) * scale;
+        lookY += (touch.clientY - lookLastY) * scale;
         lookLastX = touch.clientX;
         lookLastY = touch.clientY;
       }
@@ -221,6 +241,8 @@ export function createInput(canvas, touchRoot, options = {}) {
   };
   const endTouch = (event) => {
     for (const touch of event.changedTouches) {
+      if (event.type === 'touchcancel') touchTaps.delete(touches.get(touch.identifier));
+      touches.delete(touch.identifier);
       if (touch.identifier === stickId) {
         stickId = -1;
         touchState.moveX = touchState.moveZ = 0;
@@ -238,34 +260,30 @@ export function createInput(canvas, touchRoot, options = {}) {
       'touchstart',
       (event) => {
         startTouch();
-        const button = event.target.closest('button');
+        const button = event.target.closest('button[data-t]');
         if (!button || !enabled) return;
         const name = button.dataset.t;
         if (name === 'pause') options.onPause?.();
         else if (name === 'bag') options.onBag?.();
-        else if (name === 'aim' || name === 'crouch') {
-          const pressed = (touchState[name] = !touchState[name]);
-          button.classList.toggle('on', pressed);
-          button.setAttribute('aria-pressed', String(pressed));
-        }
+        else if (name === 'aim' || name === 'crouch') setTouchToggle(name, !touchState[name]);
         else if (name === 'swap') weapon = 'swap';
-        else touchHeld[name] = true;
-        if (name === 'fire' && lookId < 0) {
-          const touch = event.changedTouches[0];
-          lookId = touch.identifier;
-          lookLastX = touch.clientX;
-          lookLastY = touch.clientY;
+        else {
+          const newPress = !touchDown(name) && TAP_ACTIONS.has(name);
+          for (const touch of event.changedTouches) {
+            const owner = { action: name };
+            touches.set(touch.identifier, owner);
+            if (newPress) touchTaps.add(owner);
+            if (name === 'fire' && lookId < 0) {
+              lookId = touch.identifier;
+              lookLastX = touch.clientX;
+              lookLastY = touch.clientY;
+            }
+          }
         }
         event.preventDefault();
       },
       { passive: false },
     );
-    const release = (event) => {
-      const button = event.target.closest('button');
-      if (button) touchHeld[button.dataset.t] = false;
-    };
-    touchRoot.addEventListener('touchend', release);
-    touchRoot.addEventListener('touchcancel', release);
   }
 
   return input;

@@ -1145,6 +1145,10 @@ body {
   bottom: 98px;
   border-color: var(--accent);
 }
+.touch .t-use.is-usable {
+  background: rgba(95, 232, 176, 0.2);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
 .touch .t-heal {
   left: max(30px, env(safe-area-inset-left));
   bottom: 196px;
@@ -1426,6 +1430,26 @@ body {
 .bag-guns li.on {
   border-color: var(--accent);
 }
+.bag-guns li:has(button) {
+  padding: 0;
+}
+.bag-guns button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 44px;
+  padding: 7px 9px;
+  border: 0;
+  background: rgba(95, 232, 176, 0.05);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.bag-guns button[aria-pressed='true'] {
+  background: rgba(95, 232, 176, 0.16);
+}
 .bag-guns b {
   margin-left: auto;
   font: 12.5px var(--mono);
@@ -1471,9 +1495,11 @@ body {
 
 /* The marksman rifle's scope: everything outside the eyepiece goes dark. */
 .scope {
+  --scope-radius: min(31dvh, 43vw);
+  --scope-edge: calc(var(--scope-radius) + 1.5vmin);
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, transparent 0, transparent 31vh, rgba(0, 0, 0, 0.55) 32.5vh, #000 36vh);
+  background: radial-gradient(circle at center, transparent var(--scope-radius), rgba(0, 0, 0, 0.55) var(--scope-edge), #000 calc(var(--scope-edge) + 3.5vmin));
 }
 .scope i {
   position: absolute;
@@ -1482,14 +1508,14 @@ body {
   background: rgba(10, 10, 10, 0.85);
 }
 .scope i:nth-child(1) {
-  width: 62vh;
+  width: calc(2 * var(--scope-radius));
   height: 1px;
-  margin-left: -31vh;
+  margin-left: calc(-1 * var(--scope-radius));
 }
 .scope i:nth-child(2) {
   width: 1px;
-  height: 62vh;
-  margin-top: -31vh;
+  height: calc(2 * var(--scope-radius));
+  margin-top: calc(-1 * var(--scope-radius));
 }
 .scope b {
   position: absolute;
