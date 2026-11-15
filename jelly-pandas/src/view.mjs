@@ -744,18 +744,22 @@ export function createView(scene, options = {}) {
   // goes back to the pool once its owner is gone and the ribbon has faded.
   const trails = [],
     trailOf = new Map();
+  const addTrail = () => {
+    const trail = createTrail3D({ points: 40, minDistance: 0.12, blending: 'additive', opacity: 0.75, endOpacity: 0 });
+    trail.frustumCulled = false;
+    trail.castShadow = false;
+    scene.addChild(trail);
+    const entry = { trail, owner: undefined, seen: false };
+    trails.push(entry);
+    return entry;
+  };
   const trailFor = (owner, color, width, lifetime) => {
     let entry = trailOf.get(owner);
     if (!entry) {
       entry = trails.find((candidate) => !candidate.owner && candidate.trail.pointCount === 0);
       if (!entry) {
         if (trails.length >= 40) return undefined;
-        const trail = createTrail3D({ points: 40, minDistance: 0.12, blending: 'additive', opacity: 0.75, endOpacity: 0 });
-        trail.frustumCulled = false;
-        trail.castShadow = false;
-        scene.addChild(trail);
-        entry = { trail, owner: undefined, seen: false };
-        trails.push(entry);
+        entry = addTrail();
       }
       entry.owner = owner;
       entry.trail.clear();
@@ -767,6 +771,40 @@ export function createView(scene, options = {}) {
     }
     entry.seen = true;
     return entry.trail;
+  };
+
+  // Draw one transparent sample of these effects on the first title frame.
+  // The ring and trail also use the reflection pass; sparks and bubbles stay out.
+  view.prepareOpeningEffects = () => {
+    const ringMesh = view.rings[0].mesh;
+    const { frustumCulled } = ringMesh;
+    const { startOpacity, endOpacity } = stars;
+    const bubbleOpacity = bubbleMaterial.opacity;
+    const { trail } = addTrail();
+    const trailOpacity = trail.opacity;
+    ringMesh.visible = true;
+    ringMesh.frustumCulled = false;
+    stars.startOpacity = 0;
+    stars.endOpacity = 0;
+    stars.burst(1);
+    bubbles.setTransformAt(0, [0, 1, 0]);
+    bubbles.count = 1;
+    bubbleMaterial.opacity = 0;
+    trail.opacity = 0;
+    trail.push(0, 1, 0);
+    trail.push(0.25, 1, 0);
+    return () => {
+      ringMesh.visible = false;
+      ringMesh.frustumCulled = frustumCulled;
+      stars.startOpacity = startOpacity;
+      stars.endOpacity = endOpacity;
+      stars.reset();
+      bubbles.count = 0;
+      bubbleMaterial.opacity = bubbleOpacity;
+      trail.visible = false;
+      trail.clear();
+      trail.opacity = trailOpacity;
+    };
   };
   const TRAIL = Object.fromEntries(
     Object.entries({
