@@ -841,8 +841,14 @@ body {
   text-align: center;
   font-size: 14px;
 }
+.pointer-lock-note {
+  margin: 0 0 14px;
+  color: var(--dim);
+  font-size: 14px;
+  line-height: 1.45;
+}
 @media (pointer: coarse) and (hover: none) {
-  .m-screen .fullscreen-toggle {
+  .m-screen .fullscreen-toggle, .panel-b .desktop-setting {
     display: none;
   }
 }

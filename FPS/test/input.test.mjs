@@ -14,17 +14,23 @@ function eventHub() {
       listeners.set(type, existing);
     },
     dispatch(type, fields = {}) {
-      const event = { type, preventDefault() {}, ...fields };
+      const event = { type, isTrusted: true, preventDefault() {}, ...fields };
       for (const listener of listeners.get(type) ?? []) listener(event);
     },
   };
 }
 
-function setup(options = {}) {
+function setup(options = {}, coarse = false) {
   const browser = eventHub();
   const document = eventHub();
   const canvas = eventHub();
   const touch = eventHub();
+  const area = eventHub();
+  const lock = (element = canvas) => {
+    document.pointerLockElement = element;
+    document.dispatch('pointerlockchange');
+  };
+  document.exitPointerLock = () => lock(null);
   const buttons = new Map();
   touch.querySelector = (selector) => {
     if (selector === '.stick i') return touch.nub;
@@ -33,7 +39,7 @@ function setup(options = {}) {
   touch.nub = { style: { transform: '' } };
   globalThis.addEventListener = browser.addEventListener;
   globalThis.document = document;
-  globalThis.matchMedia = () => ({ matches: false });
+  globalThis.matchMedia = () => ({ matches: coarse });
   globalThis.innerWidth = 1000;
   const button = (name) => {
     if (!buttons.has(name)) {
@@ -48,9 +54,9 @@ function setup(options = {}) {
     }
     return buttons.get(name);
   };
-  const input = createInput(canvas, touch, options);
+  const input = createInput(canvas, touch, { ...options, gameArea: area });
   input.setEnabled(true);
-  return { input, browser, document, canvas, touch, button };
+  return { input, browser, document, canvas, touch, area, lock, button };
 }
 
 const finger = (identifier, clientX = 700, clientY = 300) => ({ identifier, clientX, clientY });
@@ -72,6 +78,7 @@ test('keyboard aliases stay held until the last physical key is released', () =>
 
 test('short taps produce one simulation sample, while interaction must stay held', () => {
   const { input, browser, canvas } = setup();
+  input.dragLook = true;
   for (const code of ['KeyQ', 'KeyG', 'KeyR', 'Space', 'KeyF']) {
     browser.dispatch('keydown', { code });
     browser.dispatch('keyup', { code });
@@ -160,4 +167,125 @@ test('direct weapon selection and swap queue only while accepting game input', (
   input.setEnabled(false);
   input.selectWeapon('pistol');
   assert.equal(input.sample().weapon, '');
+});
+
+test('captures raw mouse during the calling gesture and remembers typed unsupported fallback', async () => {
+  const { input, canvas, lock } = setup();
+  const calls = [];
+  canvas.requestPointerLock = (...args) => {
+    calls.push(args);
+    if (args.length) return Promise.reject(new DOMException('Raw mouse unavailable', 'NotSupportedError'));
+    lock();
+    return Promise.resolve();
+  };
+  const entered = input.capture();
+  assert.deepEqual(calls, [[{ unadjustedMovement: true }]]);
+  assert.equal(input.capturePending, true);
+  assert.equal(await entered, true);
+  assert.equal(input.capturePending, false);
+  input.release();
+  assert.equal(await input.capture(), true);
+  assert.deepEqual(calls, [[{ unadjustedMovement: true }], [], []]);
+});
+
+test('security denial never opts into drag or retries normal pointer lock', async () => {
+  const { input, canvas, browser } = setup();
+  let requests = 0;
+  canvas.requestPointerLock = () => {
+    requests++;
+    return Promise.reject(new DOMException('Denied', 'NotAllowedError'));
+  };
+  assert.equal(await input.capture(), false);
+  assert.equal(requests, 1);
+  canvas.dispatch('mousedown', { button: 0 });
+  browser.dispatch('mousemove', { movementX: 100, movementY: 0 });
+  let sampled = input.sample();
+  assert.equal(sampled.fire, false);
+  assert.equal(Math.abs(sampled.lookYaw), 0);
+  assert.equal(requests, 1);
+  input.dragLook = true;
+  canvas.dispatch('mousedown', { button: 2 });
+  input.adsSensitivity = 0.8;
+  browser.dispatch('mousemove', { movementX: 100, movementY: 0 });
+  sampled = input.sample();
+  assert.equal(sampled.aim, true);
+  assert.ok(Math.abs(sampled.lookYaw + 0.176) < 1e-10);
+  assert.equal(requests, 1);
+});
+
+test('legacy void pointer lock waits for change or error and cancels a late lock', async () => {
+  const { input, canvas, document, lock } = setup();
+  canvas.requestPointerLock = () => {};
+  const first = input.capture();
+  assert.equal(input.capturePending, true);
+  document.dispatch('pointerlockerror');
+  assert.equal(await first, false);
+
+  const second = input.capture();
+  lock();
+  assert.equal(await second, true);
+  input.release();
+
+  const canceled = input.capture();
+  input.release();
+  assert.equal(await canceled, false);
+  lock();
+  assert.equal(input.locked, false);
+  assert.equal(input.capturePending, false);
+});
+
+test('legacy silence expires and a lock delivered after the deadline is released', async (t) => {
+  const { input, canvas, lock } = setup();
+  let expire;
+  t.mock.method(globalThis, 'setTimeout', (callback, delay) => {
+    assert.ok(delay > 0 && delay <= 2500);
+    expire = callback;
+    return 1;
+  });
+  t.mock.method(globalThis, 'clearTimeout', () => {});
+  canvas.requestPointerLock = () => {};
+  const request = input.capture();
+  assert.equal(input.capturePending, true);
+  expire();
+  assert.equal(await request, false);
+  assert.equal(input.capturePending, false);
+  lock();
+  assert.equal(input.locked, false);
+});
+
+test('capture does not report a lock lost before the caller can use it', async () => {
+  const { input, canvas, lock } = setup();
+  canvas.requestPointerLock = () => {};
+  const request = input.capture();
+  lock();
+  lock(null);
+  assert.equal(await request, false);
+});
+
+test('only live mouse unlock and desktop blur pause, and trusted contacts can switch back to mouse', async () => {
+  const transitions = [];
+  const { input, area, canvas, browser, lock } = setup({
+    onPause: reason => transitions.push(reason),
+    onTouch: () => transitions.push('touch'),
+    onMouse: () => transitions.push('mouse'),
+  }, true);
+  canvas.requestPointerLock = () => { lock(); return Promise.resolve(); };
+  area.dispatch('pointerdown', { pointerType: 'mouse', isTrusted: false });
+  assert.equal(input.touchMode, true);
+  area.dispatch('pointerdown', { pointerType: 'mouse' });
+  assert.equal(input.touchMode, false);
+  assert.equal(await input.capture(), true);
+  area.dispatch('pointerdown', { pointerType: 'touch' });
+  assert.equal(input.touchMode, true);
+  assert.equal(input.locked, false);
+  assert.deepEqual(transitions, ['mouse', 'touch']);
+  area.dispatch('pointerdown', { pointerType: 'mouse' });
+  assert.equal(await input.capture(), true);
+  lock(null);
+  assert.deepEqual(transitions, ['mouse', 'touch', 'mouse', 'released']);
+
+  assert.equal(await input.capture(), true);
+  browser.dispatch('blur');
+  assert.equal(input.locked, false);
+  assert.deepEqual(transitions, ['mouse', 'touch', 'mouse', 'released', 'released']);
 });

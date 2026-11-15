@@ -113,6 +113,7 @@ export function createHud(root, gameArea, settings, actions) {
   root.appendChild(menu);
   let changingFullscreen = false;
   let fullscreenFailed = false;
+  let mouseStatus = null;
   const fullscreenButton = (classes = '') =>
     `<button type="button" class="btn fullscreen-toggle ${classes}" data-act="fullscreen">${t.enterFullscreen}</button>`;
   function buildMenu() {
@@ -129,7 +130,8 @@ export function createHud(root, gameArea, settings, actions) {
       </section>
       <section class="m-screen m-card" data-s="pause">
         <div class="m-k">${t.paused}</div><h2>${t.title}</h2>
-        <div class="m-actions col"><button class="btn primary" data-act="resume">${t.resume}</button>${fullscreenButton()}<button class="btn" data-act="settings">${t.settings}</button><button class="btn" data-act="controls">${t.controls}</button><button class="btn" data-act="restart">${t.restart}</button></div>
+        <p class="pointer-lock-note" role="status" hidden></p>
+        <div class="m-actions col"><button class="btn primary" data-act="resume">${t.resume}</button><button type="button" class="btn" data-act="drag-look" hidden>${t.dragLook}</button>${fullscreenButton()}<button class="btn" data-act="settings">${t.settings}</button><button class="btn" data-act="controls">${t.controls}</button><button class="btn" data-act="restart">${t.restart}</button></div>
       </section>
       <section class="m-screen m-card" data-s="dead">
         <div class="m-k bad">${t.deadSub}</div><h2>${t.dead}</h2>
@@ -149,6 +151,7 @@ export function createHud(root, gameArea, settings, actions) {
         <div class="panel-b" data-pane="settings">
           <label><span>${t.quality}</span>${seg('quality', ['low', 'medium', 'high'], t.qualityNames)}</label>
           <label><span>${t.sensitivity}</span><input type="range" data-set="sensitivity" min="0.3" max="3" step="0.05"><output data-o="sensitivity"></output></label>
+          <label class="desktop-setting"><span>${t.adsSensitivity}</span><input type="range" data-set="adsSensitivity" min="0.2" max="1.5" step="0.01"><output data-o="adsSensitivity"></output></label>
           <label><span>${t.fov}</span><input type="range" data-set="fov" min="60" max="95" step="1"><output data-o="fov"></output></label>
           <label><span>${t.volume}</span><input type="range" data-set="volume" min="0" max="1" step="0.05"><output data-o="volume"></output></label>
           <label><span>${t.invert}</span>${seg('invertY', ['off', 'on'], { off: t.off, on: t.on })}</label>
@@ -161,11 +164,26 @@ export function createHud(root, gameArea, settings, actions) {
     menu.dataset.screen = hud.screen;
     syncSettings();
     syncFullscreen();
+    syncMouseStatus();
     q('.a-name').textContent = '';
     cache.weapon = '';
     cache.objective = '';
   }
   const field = (name) => menu.querySelector(`[data-f="${name}"]`);
+  function syncMouseStatus() {
+    const note = menu.querySelector('.pointer-lock-note');
+    const resume = menu.querySelector('[data-act="resume"]');
+    note.hidden = !mouseStatus;
+    note.textContent = t.pointerLock[mouseStatus] ?? '';
+    resume.disabled = mouseStatus === 'waiting';
+    resume.textContent = mouseStatus === 'failed' ? t.retryPointerLock : t.resume;
+    menu.querySelector('[data-act="drag-look"]').hidden = mouseStatus !== 'failed';
+  }
+  hud.setMouseStatus = (status) => {
+    mouseStatus = status ?? null;
+    syncMouseStatus();
+  };
+
   function syncFullscreen() {
     const active = document.fullscreenElement === gameArea;
     const available = document.fullscreenEnabled && gameArea.requestFullscreen && document.exitFullscreen;

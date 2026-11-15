@@ -20,11 +20,12 @@ const WEAPON_KEYS = new Map([['Digit1', 'rifle'], ['Digit2', 'pistol'], ['Digit3
 const WEAPON_CHOICES = new Set(WEAPON_KEYS.values());
 const TAP_ACTIONS = new Set(['fire', 'jump', 'reload', 'heal', 'grenade']);
 const AIM_DRAG_SCALE = 0.62;
+const CAPTURE_TIMEOUT_MS = 1800;
 
 /**
  * `canvas` takes the mouse; `touchRoot` holds the on-screen controls built
  * by the HUD. `options.onPause` is called when the player asks to pause or
- * the mouse capture is lost; `options.onTouch` when a finger first plays.
+ * the mouse capture is lost; `onTouch` and `onMouse` report device switches.
  */
 export function createInput(canvas, touchRoot, options = {}) {
   const keys = new Set(),
@@ -45,26 +46,45 @@ export function createInput(canvas, touchRoot, options = {}) {
   let lookX = 0,
     lookY = 0,
     weapon = '',
-    enabled = false;
+    enabled = false,
+    captureRequest,
+    ownsLock = false,
+    tryRaw = true;
   const input = {
     sensitivity: 1,
+    adsSensitivity: AIM_DRAG_SCALE,
     invertY: false,
+    dragLook: false,
     /** Handheld browsers start with controls. A touchscreen can still take over on hybrids. */
     touchMode: matchMedia('(pointer: coarse)').matches,
     get locked() {
       return document.pointerLockElement === canvas;
     },
-    /** Ask the browser to capture the mouse. Must be called from a click or key press. */
-    capture() {
-      if (input.touchMode) return;
-      try {
-        const asked = canvas.requestPointerLock?.();
-        asked?.catch?.(() => {});
-      } catch {
-        /* the browser refused; drag-to-look still works */
+    get capturePending() {
+      return Boolean(captureRequest && !captureRequest.canceled);
+    },
+    /** The native request starts during the calling gesture. Resolve only after checking the actual lock. */
+    async capture() {
+      if (input.touchMode || !canvas.requestPointerLock) return false;
+      let request = captureRequest;
+      if (request?.canceled) return false;
+      if (!request) {
+        if (input.locked) return ownsLock;
+        request = { canceled: false, legacy: false };
+        request.result = new Promise(resolve => { request.resolve = resolve; });
+        captureRequest = request;
+        request.timer = setTimeout(() => finishCapture(request, input.locked), CAPTURE_TIMEOUT_MS);
+        requestLock(request);
       }
+      return (await request.result) && ownsLock && input.locked;
     },
     release() {
+      ownsLock = false;
+      if (captureRequest && !captureRequest.canceled) {
+        // Keep the abandoned request until it settles so a late lock cannot satisfy a newer attempt.
+        captureRequest.canceled = true;
+        captureRequest.resolve(false);
+      }
       if (input.locked) document.exitPointerLock?.();
     },
     selectWeapon(key) {
@@ -114,6 +134,47 @@ export function createInput(canvas, touchRoot, options = {}) {
     },
   };
 
+  function finishCapture(request, acquired) {
+    if (captureRequest !== request) return;
+    clearTimeout(request.timer);
+    captureRequest = undefined;
+    ownsLock = acquired && !request.canceled && !input.touchMode && input.locked;
+    if (!ownsLock && input.locked) document.exitPointerLock?.();
+    request.resolve(ownsLock);
+  }
+
+  function requestLock(request) {
+    const raw = tryRaw;
+    const failed = (error) => {
+      if (captureRequest !== request) return;
+      // Denials keep their original result. Only lack of raw support permits retrying.
+      if (!request.canceled && raw && (error?.name === 'NotSupportedError' || error?.name === 'TypeError')) {
+        tryRaw = false;
+        requestLock(request);
+      } else finishCapture(request, false);
+    };
+    try {
+      const result = raw ? canvas.requestPointerLock({ unadjustedMovement: true }) : canvas.requestPointerLock();
+      request.legacy = typeof result?.then !== 'function';
+      if (request.legacy) {
+        if (input.locked) finishCapture(request, true);
+      } else {
+        Promise.resolve(result).then(() => {
+          if (input.locked) finishCapture(request, true);
+        }, failed);
+      }
+    } catch (error) {
+      failed(error);
+    }
+  }
+
+  function loseFocus() {
+    const wasPlaying = enabled && !input.touchMode && (ownsLock || input.locked || input.dragLook);
+    input.cancel();
+    input.release();
+    if (wasPlaying) options.onPause?.('released');
+  }
+
   // ---- keyboard ----------------------------------------------------------------------------
   addEventListener('keydown', (event) => {
     if (!enabled) return;
@@ -135,23 +196,21 @@ export function createInput(canvas, touchRoot, options = {}) {
     }
   });
   addEventListener('keyup', (event) => keys.delete(event.code));
-  addEventListener('blur', input.cancel);
+  addEventListener('blur', loseFocus);
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) input.cancel();
+    if (document.hidden) loseFocus();
   });
 
   // ---- mouse -------------------------------------------------------------------------------
   const RADIANS_PER_PIXEL = 0.0022;
   addEventListener('mousemove', (event) => {
-    if (!enabled || (!input.locked && !mouseButtons.size)) return;
-    const scale = RADIANS_PER_PIXEL * input.sensitivity * (mouseButtons.has(2) ? AIM_DRAG_SCALE : 1);
+    if (!enabled || input.touchMode || (!input.locked && (!input.dragLook || !mouseButtons.size))) return;
+    const scale = RADIANS_PER_PIXEL * input.sensitivity * (mouseButtons.has(2) ? input.adsSensitivity : 1);
     lookX += event.movementX * scale;
     lookY += event.movementY * scale;
   });
   canvas.addEventListener('mousedown', (event) => {
-    if (!enabled) return;
-    // Without capture (a browser may refuse it), holding a button drags the view.
-    if (!input.locked) input.capture();
+    if (!enabled || input.touchMode || (!input.locked && !input.dragLook)) return;
     if (event.button === 0 && !mouseButtons.has(0)) taps.add('fire');
     mouseButtons.add(event.button);
     event.preventDefault();
@@ -166,8 +225,17 @@ export function createInput(canvas, touchRoot, options = {}) {
     { passive: false },
   );
   document.addEventListener('pointerlockchange', () => {
-    // Capture lost while playing means the player pressed Esc or switched away.
-    if (!input.locked && enabled && !input.touchMode) options.onPause?.();
+    if (input.locked) {
+      if (captureRequest) finishCapture(captureRequest, true);
+      else if (!ownsLock) document.exitPointerLock?.();
+    } else if (ownsLock) {
+      ownsLock = false;
+      input.cancel();
+      if (enabled && !input.touchMode) options.onPause?.('released');
+    }
+  });
+  document.addEventListener('pointerlockerror', () => {
+    if (captureRequest?.legacy) finishCapture(captureRequest, false);
   });
 
   // ---- touch -------------------------------------------------------------------------------
@@ -185,6 +253,16 @@ export function createInput(canvas, touchRoot, options = {}) {
     input.release();
     options.onTouch?.();
   };
+  const gameArea = options.gameArea ?? canvas;
+  gameArea.addEventListener('pointerdown', (event) => {
+    if (!event.isTrusted) return;
+    if (event.pointerType === 'touch') startTouch();
+    else if (event.pointerType === 'mouse' && input.touchMode) {
+      input.cancel();
+      input.touchMode = false;
+      options.onMouse?.(event);
+    }
+  }, true);
   const stickNub = () => touchRoot?.querySelector('.stick i');
   function setTouchToggle(name, pressed) {
     touchState[name] = pressed;
@@ -201,6 +279,7 @@ export function createInput(canvas, touchRoot, options = {}) {
   canvas.addEventListener(
     'touchstart',
     (event) => {
+      if (!event.isTrusted) return;
       startTouch();
       if (!enabled) return;
       for (const touch of event.changedTouches) {
@@ -258,6 +337,7 @@ export function createInput(canvas, touchRoot, options = {}) {
     touchRoot.addEventListener(
       'touchstart',
       (event) => {
+        if (!event.isTrusted) return;
         startTouch();
         const button = event.target.closest('button[data-t]');
         if (!button || !enabled) return;

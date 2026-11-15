@@ -51,6 +51,7 @@ function loadSettings() {
   const defaults = {
     quality: 'high',
     sensitivity: 1,
+    adsSensitivity: 0.62,
     invertY: false,
     volume: 0.8,
     fov: 74,
@@ -61,6 +62,7 @@ function loadSettings() {
     return {
       ...defaults,
       ...saved,
+      adsSensitivity: Number.isFinite(saved.adsSensitivity) ? Math.max(0.2, Math.min(1.5, saved.adsSensitivity)) : defaults.adsSensitivity,
       ...(params.get('lang') ? { lang: defaults.lang } : {}),
       ...(params.get('quality') ? { quality: params.get('quality') } : {}),
     };
@@ -153,6 +155,7 @@ async function main() {
     bot,
     deployed = false,
     mode = 'title',
+    mouseAttempt = 0,
     time = 0,
     endIn = 0;
   function newGame() {
@@ -163,28 +166,50 @@ async function main() {
     status.game = game;
   }
   function setMode(next) {
+    mouseAttempt++;
     mode = next;
     status.mode = next;
     hud.show(next === 'play' ? 'none' : next);
+    hud.setMouseStatus(null);
     input.setEnabled(next === 'play');
     hud.toggleBag(false);
     hud.setTouch(input.touchMode && next === 'play');
     audio.setPaused(next !== 'play' && next !== 'title');
-    if (next !== 'play') input.release();
+    if (next !== 'play') {
+      input.dragLook = false;
+      input.release();
+    }
+  }
+  function resume() {
+    if (input.capturePending) return;
+    audio.resume();
+    if (auto || input.touchMode) return setMode('play');
+    // Keep the simulation paused until the native request from this click succeeds.
+    setMode('pause');
+    hud.setMouseStatus('waiting');
+    const attempt = mouseAttempt;
+    void input.capture().then(locked => {
+      if (attempt !== mouseAttempt) return;
+      if (locked && input.locked && document.hasFocus() && !document.hidden) setMode('play');
+      else {
+        input.release();
+        hud.setMouseStatus('failed');
+      }
+    });
   }
   function deploy() {
-    audio.resume();
     // The title previews a fresh run without advancing its rules. Keep it on first deploy.
     if (deployed) newGame();
     deployed = true;
     hud.reset();
     endIn = 0;
-    setMode('play');
-    if (!auto) input.capture();
+    resume();
   }
 
-  function pause() {
-    if (mode === 'play' && game.state !== 'dead' && game.state !== 'won') setMode('pause');
+  function pause(reason) {
+    if (!(mode === 'play' && game.state !== 'dead' && game.state !== 'won') && !input.capturePending) return;
+    setMode('pause');
+    hud.setMouseStatus(reason);
   }
 
   const hud = createHud(document.querySelector('#ui'), gameArea, settings, {
@@ -193,10 +218,12 @@ async function main() {
     selectWeapon(weapon) {
       if (mode === 'play') input.selectWeapon(weapon);
     },
-    resume() {
+    resume,
+    'drag-look'() {
+      if (mode !== 'pause' || input.capturePending) return;
       audio.resume();
+      input.dragLook = true;
       setMode('play');
-      input.capture();
     },
     click: () => {
       audio.resume();
@@ -208,33 +235,38 @@ async function main() {
       if (key === 'volume') audio.setVolume(settings.volume);
       if (key === 'fov') view.setFov(settings.fov);
       input.sensitivity = settings.sensitivity;
+      input.adsSensitivity = settings.adsSensitivity;
       input.invertY = settings.invertY;
     },
   });
   const input = createInput(canvas, hud.touch, {
+    gameArea,
     onBag() {
       if (mode === 'play') hud.toggleBag();
     },
     onPause: pause,
     onTouch() {
+      mouseAttempt++;
       hud.touchMode = true;
       hud.setTouch(mode === 'play');
+      hud.setMouseStatus(null);
+    },
+    onMouse() {
+      hud.touchMode = false;
+      hud.setTouch(false);
+      if (!auto) pause('released');
     },
   });
   hud.touchMode = input.touchMode;
   input.sensitivity = settings.sensitivity;
+  input.adsSensitivity = settings.adsSensitivity;
   input.invertY = settings.invertY;
   let wasFullscreen = document.fullscreenElement === gameArea;
   document.addEventListener('fullscreenchange', () => {
     const fullscreen = document.fullscreenElement === gameArea;
-    if (wasFullscreen && !fullscreen && !input.touchMode && !auto) pause();
+    if (wasFullscreen && !fullscreen && !input.touchMode && !auto) pause('released');
     wasFullscreen = fullscreen;
   });
-  // Clicking the picture while playing takes the mouse back if the browser let go of it.
-  canvas.addEventListener('click', () => {
-    if (mode === 'play' && !input.locked && !auto) input.capture();
-  });
-
   newGame();
 
   // ---- how the picture reacts: focus, and what being hurt does to it ------------------------
