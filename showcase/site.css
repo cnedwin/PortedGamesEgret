@@ -1,0 +1,724 @@
+/* The showcase: a dark lagoon-ink page where each game brings its own colour.
+   System CJK fonts are used so the page loads fast everywhere, mainland China included. */
+
+:root {
+  --ink: #0c1d22;
+  --ink-2: #13292f;
+  --ink-3: #1b363d;
+  --mist: #e2ebe7;
+  --egret: #f6f8f6;
+  --muted: #94aba7;
+  --line: rgba(226, 235, 231, 0.14);
+  --reed: #e8c879;
+  --accent: var(--reed);
+  --serif: 'Songti SC', 'STSong', 'Noto Serif SC', 'Noto Serif CJK SC', 'Source Han Serif SC', 'SimSun', Georgia, serif;
+  --sans: system-ui, -apple-system, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --gutter: clamp(16px, 4vw, 56px);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+html {
+  background: var(--ink);
+}
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--ink);
+  color: var(--mist);
+  font: 16px/1.75 var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+a {
+  color: inherit;
+}
+img {
+  display: block;
+  max-width: 100%;
+}
+button {
+  font: inherit;
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* ---- top bar ------------------------------------------------------------------------------- */
+.bar {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px var(--gutter);
+  background: linear-gradient(rgba(12, 29, 34, 0.92), rgba(12, 29, 34, 0));
+  transition: background-color 0.2s;
+}
+/* Once the page has scrolled, the bar gets a solid ground so it never sits on words. */
+.bar.solid {
+  background: rgba(12, 29, 34, 0.96);
+  box-shadow: 0 1px 0 var(--line);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.brand-name {
+  font: 600 17px/1.2 var(--serif);
+  letter-spacing: 0.06em;
+  color: var(--egret);
+}
+.bar-links {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  font-size: 14px;
+}
+.bar-links a {
+  color: var(--muted);
+  text-decoration: none;
+}
+.bar-links a:hover {
+  color: var(--egret);
+}
+.lang {
+  min-width: 44px;
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(12, 29, 34, 0.5);
+  cursor: pointer;
+  font-size: 13px;
+}
+.lang:hover {
+  border-color: var(--mist);
+}
+
+/* ---- buttons ------------------------------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 24px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  cursor: pointer;
+  transition: background-color 0.15s, color 0.15s, border-color 0.15s;
+}
+.btn-play {
+  background: var(--accent);
+  color: #0a1714;
+}
+.btn-play:hover {
+  background: var(--egret);
+}
+.btn-quiet {
+  border-color: rgba(246, 248, 246, 0.42);
+  background: rgba(12, 29, 34, 0.35);
+  color: var(--egret);
+}
+.btn-quiet:hover {
+  border-color: var(--egret);
+  background: rgba(12, 29, 34, 0.6);
+}
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+/* ---- front page: the strip of games -------------------------------------------------------- */
+/* Six tall panels side by side. A narrow panel shows its title written
+   top to bottom, like a hanging banner; the chosen panel opens wide. */
+.strip {
+  display: flex;
+  height: 100vh;
+  min-height: 560px;
+  max-height: 980px;
+  background: #000;
+}
+.panel {
+  position: relative;
+  flex: 1 1 0;
+  min-width: 0;
+  overflow: hidden;
+  border-right: 1px solid rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: flex-grow 0.55s cubic-bezier(0.22, 0.8, 0.25, 1);
+  --accent: var(--panel-accent);
+}
+.panel:last-child {
+  border-right: 0;
+}
+.panel.open {
+  flex-grow: 5.2;
+  cursor: default;
+}
+.panel-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: saturate(0.55) brightness(0.55);
+  transform: scale(1.04);
+  transition: filter 0.55s, transform 0.9s;
+}
+.panel.open .panel-art {
+  filter: none;
+  transform: scale(1);
+}
+.panel::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, rgba(12, 29, 34, 0.1) 30%, rgba(12, 29, 34, 0.94) 100%);
+  pointer-events: none;
+}
+.panel.open::after {
+  background:
+    linear-gradient(90deg, rgba(12, 29, 34, 0.86) 0%, rgba(12, 29, 34, 0.35) 46%, rgba(12, 29, 34, 0) 70%),
+    linear-gradient(180deg, rgba(12, 29, 34, 0) 55%, rgba(12, 29, 34, 0.9) 100%);
+}
+/* The accent stripe: a thin line of the game's own colour along the top. */
+.panel::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 2;
+  height: 3px;
+  background: var(--accent);
+  opacity: 0.55;
+}
+.panel.open::before {
+  opacity: 1;
+}
+
+/* The banner title of a closed panel. */
+.panel-banner {
+  position: absolute;
+  z-index: 2;
+  top: 96px;
+  left: 50%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  writing-mode: vertical-rl;
+  font: 700 clamp(22px, 2.3vw, 34px) / 1 var(--serif);
+  letter-spacing: 0.32em;
+  color: var(--egret);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.6);
+  cursor: pointer;
+  transition: opacity 0.3s;
+}
+.panel-genre-v {
+  position: absolute;
+  z-index: 2;
+  bottom: 28px;
+  left: 50%;
+  transform: translateX(-50%);
+  writing-mode: vertical-rl;
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+  white-space: nowrap;
+  text-orientation: upright;
+  transition: opacity 0.3s;
+}
+/* English labels lie on their side rather than standing letter by letter. */
+html[lang='en'] .panel-genre-v {
+  text-orientation: mixed;
+}
+.panel.open .panel-banner,
+.panel.open .panel-genre-v {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* The open panel's words. */
+.panel-body {
+  position: absolute;
+  z-index: 3;
+  left: clamp(24px, 5vw, 72px);
+  bottom: clamp(48px, 10vh, 110px);
+  width: min(560px, 80%);
+  opacity: 0;
+  visibility: hidden;
+  transform: translateY(14px);
+  transition: opacity 0.35s, transform 0.45s, visibility 0s 0.35s;
+}
+.panel.open .panel-body {
+  opacity: 1;
+  visibility: visible;
+  transform: none;
+  transition: opacity 0.45s 0.25s, transform 0.55s 0.25s, visibility 0s;
+}
+.panel-genre {
+  margin: 0 0 10px;
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+.panel-title {
+  margin: 0;
+  font: 800 clamp(48px, 6.4vw, 96px) / 1.02 var(--serif);
+  letter-spacing: 0.04em;
+  color: var(--egret);
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+}
+.panel-en {
+  margin: 10px 0 0;
+  font: italic 400 clamp(18px, 1.8vw, 24px) / 1.3 Georgia, var(--serif);
+  color: var(--mist);
+}
+.panel-line {
+  margin: 22px 0 28px;
+  max-width: 34em;
+  font-size: 17px;
+  color: var(--mist);
+}
+
+/* ---- front page: the engine ---------------------------------------------------------------- */
+.engine {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: clamp(64px, 10vw, 120px) var(--gutter);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  gap: 24px 64px;
+}
+.engine h2 {
+  margin: 0;
+  font: 700 clamp(28px, 3vw, 40px) / 1.3 var(--serif);
+  color: var(--egret);
+  text-wrap: balance;
+}
+.engine p {
+  margin: 0;
+  max-width: 38em;
+  color: var(--mist);
+}
+.engine-facts {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+  border-top: 1px solid var(--line);
+}
+.engine-facts li {
+  padding: 20px 24px 0 0;
+}
+.engine-facts strong {
+  display: block;
+  font: 700 20px/1.4 var(--serif);
+  color: var(--egret);
+}
+.engine-facts span {
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* ---- one game ------------------------------------------------------------------------------ */
+.game {
+  --accent: var(--game-accent, var(--reed));
+}
+.hero {
+  position: relative;
+  min-height: min(88vh, 860px);
+  display: flex;
+  align-items: flex-end;
+  padding: 120px var(--gutter) clamp(40px, 7vh, 72px);
+  overflow: hidden;
+}
+.hero-art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.hero::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(12, 29, 34, 0.9) 0%, rgba(12, 29, 34, 0.4) 50%, rgba(12, 29, 34, 0) 75%),
+    linear-gradient(180deg, rgba(12, 29, 34, 0.2) 0%, rgba(12, 29, 34, 0) 40%, var(--ink) 100%);
+}
+.hero-inner {
+  position: relative;
+  z-index: 1;
+  width: min(760px, 100%);
+}
+.back {
+  position: absolute;
+  z-index: 2;
+  top: 78px;
+  left: var(--gutter);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(12, 29, 34, 0.55);
+  font-size: 14px;
+  text-decoration: none;
+  color: var(--mist);
+}
+.back::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-left: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(45deg);
+}
+.back:hover {
+  border-color: var(--mist);
+  color: var(--egret);
+}
+.hero-genre {
+  margin: 0 0 12px;
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+}
+.hero-title {
+  margin: 0;
+  font: 800 clamp(44px, 8vw, 112px) / 1 var(--serif);
+  white-space: nowrap;
+  letter-spacing: 0.04em;
+  color: var(--egret);
+  text-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+}
+.hero-en {
+  margin: 14px 0 30px;
+  font: italic 400 clamp(20px, 2.2vw, 30px) / 1.3 Georgia, var(--serif);
+  color: var(--mist);
+}
+
+.about {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: clamp(40px, 6vw, 72px) var(--gutter);
+  display: grid;
+  grid-template-columns: minmax(0, 1.7fr) minmax(220px, 1fr);
+  gap: 48px;
+}
+.about-text {
+  margin: 0;
+  max-width: 36em;
+  font: 400 18px/2 var(--serif);
+  color: var(--mist);
+  text-align: justify;
+}
+.about-text:lang(en) {
+  font: 400 18px/1.8 Georgia, var(--serif);
+  text-align: left;
+}
+.facts {
+  margin: 0;
+  border-top: 2px solid var(--accent);
+}
+.facts div {
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.facts dt {
+  font-size: 13px;
+  color: var(--muted);
+}
+.facts dd {
+  margin: 2px 0 0;
+  color: var(--egret);
+}
+
+.gallery {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--gutter) clamp(48px, 8vw, 96px);
+}
+.gallery h2,
+.more h2 {
+  margin: 0 0 20px;
+  font: 700 26px/1.3 var(--serif);
+  color: var(--egret);
+}
+.shots {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 12px;
+}
+/* The first picture is large; the others share the row beneath it. */
+.shot {
+  grid-column: span 2;
+  padding: 0;
+  border: 0;
+  background: var(--ink-2);
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  cursor: zoom-in;
+}
+.shot:first-child {
+  grid-column: 1 / -1;
+}
+.shots[data-count='4'] .shot:first-child {
+  grid-column: span 6;
+}
+.shots[data-count='2'] .shot:not(:first-child),
+.shots[data-count='3'] .shot:not(:first-child) {
+  grid-column: span 3;
+}
+.shot img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s;
+}
+.shot:hover img {
+  transform: scale(1.03);
+}
+
+.cta {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--gutter) clamp(48px, 8vw, 96px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+}
+.cta p {
+  margin: 0;
+  font: 700 clamp(22px, 2.4vw, 30px) / 1.4 var(--serif);
+  color: var(--egret);
+}
+
+.more {
+  border-top: 1px solid var(--line);
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 40px var(--gutter) 64px;
+}
+.more-list {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+}
+.more-list a {
+  position: relative;
+  display: block;
+  aspect-ratio: 3 / 4;
+  overflow: hidden;
+  text-decoration: none;
+  background: var(--ink-2);
+}
+.more-list img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: brightness(0.6);
+  transition: filter 0.3s;
+}
+.more-list a:hover img {
+  filter: brightness(0.85);
+}
+.more-list span {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  font: 700 20px/1.3 var(--serif);
+  color: var(--egret);
+}
+.more-list small {
+  display: block;
+  font: italic 13px/1.4 Georgia, serif;
+  color: var(--mist);
+}
+
+/* ---- picture viewer ------------------------------------------------------------------------ */
+.viewer {
+  width: min(1400px, 96vw);
+  max-width: none;
+  max-height: 94vh;
+  padding: 0;
+  border: 0;
+  background: #000;
+  overflow: visible;
+}
+.viewer::backdrop {
+  background: rgba(4, 10, 12, 0.88);
+}
+.viewer img {
+  width: 100%;
+  max-height: 94vh;
+  object-fit: contain;
+}
+.viewer button {
+  position: absolute;
+  border: 0;
+  background: rgba(12, 29, 34, 0.75);
+  color: var(--egret);
+  cursor: pointer;
+}
+.viewer-close {
+  top: 10px;
+  right: 10px;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  font-size: 26px;
+  line-height: 1;
+}
+.viewer-step {
+  top: 50%;
+  width: 48px;
+  height: 72px;
+  margin-top: -36px;
+  font-size: 34px;
+}
+.viewer-step.prev {
+  left: 0;
+}
+.viewer-step.next {
+  right: 0;
+}
+
+/* ---- footer -------------------------------------------------------------------------------- */
+.foot {
+  padding: 32px var(--gutter) 40px;
+  border-top: 1px solid var(--line);
+  font-size: 14px;
+  color: var(--muted);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 8px 24px;
+}
+.foot p {
+  margin: 0;
+}
+
+/* ---- narrow screens ------------------------------------------------------------------------ */
+@media (max-width: 760px) {
+  .brand-name {
+    font-size: 15px;
+  }
+  .bar-links a {
+    display: none;
+  }
+  /* The strip becomes a stack: closed panels are short bands, the open one is tall. */
+  .strip {
+    flex-direction: column;
+    height: auto;
+    max-height: none;
+    min-height: 0;
+    padding-top: 62px;
+  }
+  .panel {
+    flex: none;
+    height: 92px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.6);
+    transition: height 0.45s cubic-bezier(0.22, 0.8, 0.25, 1);
+  }
+  .panel.open {
+    height: min(78vh, 600px);
+  }
+  .panel-banner {
+    writing-mode: horizontal-tb;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
+    font-size: 26px;
+    letter-spacing: 0.12em;
+  }
+  .panel-genre-v {
+    display: none;
+    writing-mode: horizontal-tb;
+    left: auto;
+    right: 20px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
+    letter-spacing: 0.06em;
+    text-orientation: mixed;
+  }
+  .panel.open::after {
+    background: linear-gradient(180deg, rgba(12, 29, 34, 0) 25%, rgba(12, 29, 34, 0.95) 85%);
+  }
+  .panel-body {
+    left: 20px;
+    right: 20px;
+    bottom: 28px;
+    width: auto;
+  }
+  .panel-line {
+    font-size: 15px;
+    margin: 14px 0 20px;
+  }
+  .engine,
+  .about {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .engine-facts {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .about-text {
+    font-size: 17px;
+  }
+  .shots .shot,
+  .shots .shot:first-child,
+  .shots[data-count] .shot:not(:first-child) {
+    grid-column: 1 / -1;
+  }
+  .more-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .hero {
+    min-height: 78vh;
+  }
+  .hero::after {
+    background: linear-gradient(180deg, rgba(12, 29, 34, 0.15) 20%, rgba(12, 29, 34, 0.75) 60%, var(--ink) 100%);
+  }
+  .back {
+    top: 66px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+    transition-delay: 0s !important;
+  }
+}
