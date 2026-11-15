@@ -26,6 +26,7 @@ A new game opens as the edict reaches the mountain gates. The three skippable sc
 
 - **山门 · Seat**：拖动转视角，滚轮或双指缩放。点建筑可扩建，点空地可在该处兴建。开局玩家就是总舵掌门，招贤榜已有两名求见者，有空铺便可收录。掌门手札可随时打开，会指向厢房、招贤榜与店铺。
 - **立足期**：新局按难度获得 6、5、4、3 年立足期。主动出兵会解除与目标门派的保护。抓紧扩建厢房、延揽门徒并安排一旬收支。
+- **首战守备**：掌门手札可查看守军、山门和薪俸。易与寻常新局在立足期后首次无故受袭、且只剩原山门时，战败可退守内院一次，损失两成银粮。
 - **弟子 · Disciples**：给每个人派差事：修练一门武学、采集、制造、行侠仗义或欺压良民。练得够了可以晋升，身份从杂役、外门、内门到亲传。
 - **江湖 · The world**：与本派据点相邻的无主之地可以开设分舵，相邻的他派据点可以出兵。出兵后双方自动交手，可随时暂停（空格）、调速、点选敌人下令集火、撤退或速决。馈赠能改善关系。
 - **时间 · Time**：暂停、行、快、疾四档。每十日一旬，发薪、耗粮、结算忠诚，各派也在这时行动。
@@ -34,6 +35,7 @@ A new game opens as the edict reaches the mountain gates. The three skippable sc
 
 - **Seat**: drag to turn the view, use the wheel or two fingers to zoom. Select a building to upgrade it or an empty plot to build there. You start as the sect's leader at its seat with two candidates already at the board. A free bed is required to take one in. The leader's handbook points you to quarters, recruitment and shops.
 - **Opening truce**: new campaigns get 6, 5, 4 or 3 years of protection according to difficulty. Launching an attack lifts it with that opponent. Use this time to make room for new disciples and establish an income.
+- **First defense**: the leader's handbook shows the garrison, gate and payroll. On Easy or Normal, a new campaign that loses its first unprovoked defense of its only original seat after the truce can fall back into the inner court once, losing 20% of its silver and grain.
 - **Disciples**: give each one work: practise an art, gather, craft, do good deeds or lean on the locals. Enough practice earns a promotion, from servant to outer, inner and personal disciple.
 - **The world**: open ground next to one of your strongholds can be settled, and a neighbour's stronghold can be attacked. The two sides then fight on their own while you pause (space), change speed, tap an enemy to set your whole side on them, break off, or settle it at once. Gifts mend relations.
 - **Time**: paused or one of three speeds. Every ten days wages are paid, grain is eaten, loyalty is reckoned and the other sects make their moves.

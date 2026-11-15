@@ -34,7 +34,7 @@ import { createRng } from './core/rng.mjs';
 import { createSlots, deserialize, saveFileName, serialize } from './core/save.mjs';
 import { SEAT_PLOTS, availablePlots } from './core/seat-layout.mjs';
 import {
-  SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, beginAssault, donate, beds, build, buildAvailability, createWorld, dateText, gift, ledger, membersOf, openShop, openingProtection, placesOf, promote,
+  SHOP_LIMIT, advanceDay, appoint, assault, assaultSides, beginAssault, canFallBackAtHome, donate, beds, build, buildAvailability, createWorld, dateText, gift, ledger, membersOf, openShop, openingProtection, placesOf, promote,
   recruit, recruitAvailability, relocate, residents, setJob, setMaster, settle, settleAssault, strength, tradeRoutes, upgrade, upgradeAvailability, usedCells,
 } from './core/world.mjs';
 import { btn, esc, fact, formRow, icon, meter, mount, num, panelTitle, pill, resource, screenHead, tag } from './ui/kit.mjs';
@@ -697,7 +697,7 @@ function tell(event, name) {
  * @param fight.side    which side the player commands
  * @param fight.settle  applies the result to the world: (summary, rng) => { won, verdict }
  */
-function startFight({ sides, formations = [], title, heads, colors, side = 0, settle: settleFight }) {
+function startFight({ sides, formations = [], title, heads, colors, side = 0, saveAfter = false, settle: settleFight }) {
   const rng = createRng(1);
   rng.state = world.rng;
   const battle = createBattle({ sides, formations, seed: rng.int(1, 1e9) });
@@ -720,8 +720,10 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
     const summary = { winner: battle.winner, time: battle.time, fighters: battle.units.map((u) => ({ id: u.id, side: u.side, down: u.down, fled: u.fled, hpLeft: u.hp / u.hpMax, dealt: u.dealt, xp: Math.round(u.dealt) })) };
     const result = settleFight(summary, rng);
     world.rng = rng.state;
+    queueOutcome();
+    if (saveAfter) slots.write('auto', world, autoLabel());
     ui.fight = null;
-    ui.lastFight = { title, won: result.won, verdict: `${result.verdict}历时 ${battle.time.toFixed(0)} 秒。`, lines };
+    ui.lastFight = { title, won: result.won, fellBack: result.fellBack, verdict: `${result.verdict}历时 ${battle.time.toFixed(0)} 秒。`, lines };
     feedbackAudio.play(result.won ? 'victory' : 'defeat');
     ui.sheet = { kind: 'fight' };
   };
@@ -755,6 +757,13 @@ function startFight({ sides, formations = [], title, heads, colors, side = 0, se
 const colorOf = (sectId) => parseInt(SECT_BY_ID[sectId].color.slice(1), 16);
 const headOf = (sectId) => ({ name: SECT_BY_ID[sectId].name, person: leaderOf(sectId) ?? founder(SECT_BY_ID[sectId]) });
 const fallenText = (outcome) => (outcome.fallen.length ? `战殁：${outcome.fallen.join('、')}。` : '无人战殁。');
+function defenseVerdict(outcome, placeId) {
+  if (!outcome.won) return (outcome.held ? '守住了山门。' : '击退来敌，但掌门战殁、无人继任，山门失守。') + fallenText(outcome);
+  if (outcome.held && outcome.losses) {
+    return `首战失利，众人退守内院，仍持有${PLACE_BY_ID[placeId].name}。损失银两 ${num(outcome.losses.silver)}、粮草 ${num(outcome.losses.grain)}。他派仍可能来犯，可趁机整备守军或改善邻派关系。` + fallenText(outcome);
+  }
+  return '据点失守。' + fallenText(outcome);
+}
 
 /** Marches on a stronghold with the sect's ten best. */
 function march(placeId) {
@@ -776,10 +785,11 @@ function defend() {
   const prepared = assaultSides(world, attacker, place, party);
   if (!prepared.ok) return toast('来敌已退。');
   startFight({
-    ...prepared, title: `${SECT_BY_ID[attacker].name}来犯${PLACE_BY_ID[place].name}`, heads: [headOf(attacker), headOf(me())], colors: [colorOf(attacker), colorOf(me())], side: 1,
+    ...prepared, title: `${SECT_BY_ID[attacker].name}来犯${PLACE_BY_ID[place].name}`, heads: [headOf(attacker), headOf(me())], colors: [colorOf(attacker), colorOf(me())], side: 1, saveAfter: true,
     settle(summary, rng) {
       const outcome = settleAssault(world, attacker, place, summary, rng);
-      return { won: !outcome.won, verdict: `${outcome.won ? '据点失守。' : '守住了。'}${fallenText(outcome)}` };
+      if (outcome.losses) ui.resume = 0;
+      return { won: !outcome.won && outcome.held, fellBack: !!outcome.losses, verdict: defenseVerdict(outcome, place) };
     },
   });
 }
@@ -804,7 +814,7 @@ function duel() {
 
 // ---- the chronicle and the saves -----------------------------------------------------------------------
 
-const LOG_TYPES = { start: '立派', conquer: '征伐', repel: '守御', fall: '覆灭', settle: '分舵', death: '讣告', desert: '叛离', insight: '领悟', succession: '传位', summit: '大会', event: '奇遇', intel: '情报', hostilities: '交战', court: '朝廷', join: '来投' };
+const LOG_TYPES = { start: '立派', conquer: '征伐', repel: '守御', fallback: '退守', fall: '覆灭', settle: '分舵', death: '讣告', desert: '叛离', insight: '领悟', succession: '传位', summit: '大会', event: '奇遇', intel: '情报', hostilities: '交战', court: '朝廷', join: '来投' };
 
 function chronicleScreen() {
   const records = chronicleEntries(world).filter((r) => ui.logFilter === '全部' || (ui.logFilter === '本派') === (r.sect === me() || r.type === 'start')).slice(-160).reverse();
@@ -852,11 +862,27 @@ const SHEETS = {
       ['先点一座建筑', `这里还有 ${free} 张空铺。厢房满了就扩建，空地可用来兴建。`, 'build', '查看山门'],
       ['再见一位求师者', `招贤榜前有 ${home.applicants.length} 人。掌门在此、有空铺，就能当场收录。`, 'recruit', '走访招贤榜'],
       ['给山门留一笔进项', '店铺每旬进账。安排好住处与弟子，再点「行」过一旬，回来看粮草和薪俸。', 'here', '查看山下店铺'],
+      ['把新弟子编入练功队伍', '新弟子入门后在休息。先安排一门能学的武艺，学成后检查出招次序。', 'train', '安排练功'],
     ];
     return ['掌门手札', `<p class="guide-lead">${leader ? `你已接掌本派，现任掌门是${esc(leader.name)}。` : '本派暂缺掌门。'}先把山门安顿好，再决定何时出山。</p>
-      ${protection?.active ? `<p class="guide-truce">立足期余 <b>${num(protection.daysLeft)}</b> 日。此期他派不会主动来攻。若你先对某派出兵，那一派可立即反击。</p>` : ''}
+      ${protection?.active ? `<p class="guide-truce">立足期余 <b>${num(protection.daysLeft)}</b> 日。若你先对某派出兵，会提前结束和对方的开局休战。</p>` : ''}
       <ol class="guide-steps">${steps.map(([title, text, tab, label]) => `<li><div><b>${esc(title)}</b><p>${esc(text)}</p></div>${btn(label, 'guide-go', { tab }, 'outline', 'arrow')}</li>`).join('')}</ol>`,
-    closeBtn('合上手札')];
+    btn('守山门准备', 'prepare-defense', {}, 'outline', 'gate') + closeBtn('合上手札')];
+  },
+  guard() {
+    const placeId = ui.place;
+    const place = world.places[placeId];
+    if (!place) return ['守山门准备', '<p>本派暂无据点。</p>', closeBtn('关闭')];
+    const guard = residents(world, placeId).sort((a, b) => prowess(b) - prowess(a)).slice(0, 10);
+    const gateIndex = place.buildings.findIndex((building) => building.kind === 'gate');
+    const gate = place.buildings[gateIndex]?.level ?? 0;
+    const protection = openingProtection(world);
+    return ['守山门准备', `<p>${esc(PLACE_BY_ID[placeId].name)}受袭时，由留在此地的十名最强弟子迎战。</p>
+      <dl class="facts">${fact('驻守', `${guard.length} 人 · 战力 ${num(strength(guard))}`)}${fact('山门防御', gate ? `${gate} 级 · +${gate * 4}%` : '尚未修建')}${fact('现有储备', `银 ${num(books().silver)} 两 · 粮 ${num(books().grain)} 石`)}${fact('每旬薪俸', `${num(ledger(world, me()).wages)} 两`)}</dl>
+      ${protection?.active ? `<p class="guide-truce">立足期还剩 ${num(protection.daysLeft)} 日。</p>` : ''}
+      <p>留足薪俸，扩建山门。让留守弟子练功、带好兵器，再到「出招与站位」检查谁打前排。</p>`,
+    closeBtn('返回') + (gateIndex >= 0 ? btn('查看山门扩建', 'guard-gate', { index: gateIndex }, 'primary', 'gate') : '')
+      + btn('查看弟子', 'page', { page: 'disciples' }, 'outline')];
   },
   goal() {
     const goal = goalView(world);
@@ -977,7 +1003,8 @@ const SHEETS = {
       <h3 class="season-head">江湖</h3><ul class="season-list">${list(abroad, '这一季江湖平静。')}</ul>
       <p class="caption">季报可在设置里关掉。</p>`, btn('继续', 'close', {}, 'primary')];
   },
-  herald: ({ label, text }) => [label, `<div class="herald"><div class="herald-seal">${esc(label)}</div><p>${esc(text)}</p></div>`, btn('知道了', 'close', {}, 'primary')],
+  herald: ({ label, text, prepare }) => [label, `<div class="herald"><div class="herald-seal">${esc(label)}</div><p>${esc(text)}</p></div>`,
+    btn('知道了', 'close', {}, prepare ? 'outline' : 'primary') + (prepare ? btn('整备守军', 'prepare-defense', {}, 'primary', 'gate') : '')],
   outcome: ({ title, text }) => [title ?? '江湖', `<p>${esc(text)}</p>`, btn('知道了', 'close', {}, 'primary')],
   siege() {
     const pending = world.pending;
@@ -987,7 +1014,8 @@ const SHEETS = {
     return [`${SECT_BY_ID[pending.attacker].name}来犯`, `<p>${esc(SECT_BY_ID[pending.attacker].name)}的人马已到${esc(PLACE_BY_ID[pending.place].name)}山门之外。</p>
       <dl class="facts">${fact('来敌', `${party.length} 人 · 战力 ${num(strength(party))}`)}${fact('我方守卫', `${guard.length} 人 · 战力 ${num(strength(guard))}`)}</dl>
       ${formRow('阵法', `<select id="formation">${options(formationsFor(me(), guard).map((id) => [id, `${FORMATIONS[id].name}：${FORMATIONS[id].does}`]), books().formation ?? 'line')}</select>`)}
-      <p class="caption">守在此处的人迎战，山门与箭楼助守。亲自指挥，或交由守将自行应对。</p>`, btn('交由守将', 'siege-auto', {}, 'outline') + btn('亲自指挥', 'siege-fight', {}, 'primary', 'swords')];
+      <p class="caption">守在此处的人迎战，山门与箭楼助守。亲自指挥，或交由守将自行应对。</p>
+      ${canFallBackAtHome(world, pending.attacker, pending.place) ? '<p class="guide-truce">这次可退守内院。若战败，山门保住，但要损失两成银粮，弟子可能受伤或战殁。此安排只生效一次。</p>' : ''}`, btn('交由守将', 'siege-auto', {}, 'outline') + btn('亲自指挥', 'siege-fight', {}, 'primary', 'swords')];
   },
   gear() {
     const person = picked(),
@@ -1029,7 +1057,8 @@ const SHEETS = {
   retreat: () => ['确认撤退', '<p>撤退即认负。跑得出战场的弟子可以保全，来不及的仍会倒下。</p>', closeBtn('继续作战') + btn('确认撤退', 'fight-retreat', {}, 'danger')],
   fight() {
     const last = ui.lastFight;
-    return [`战报 · ${last.title}`, `<p class="battle-result ${last.won ? '' : 'bad'}">${last.won ? '此战告捷' : '此战失利'}</p><p>${esc(last.verdict)}</p><div class="fight-lines">${last.lines.map((line) => `<div>${esc(line)}</div>`).join('') || '两军未及交手。'}</div>`, btn('返回江湖', 'page', { page: 'world' }, 'primary', 'arrow')];
+    const [label, page] = world.outcome?.result === 'lost' ? ['查看纪事', 'chronicle'] : last.fellBack ? ['返回山门', 'seat'] : ['返回江湖', 'world'];
+    return [`战报 · ${last.title}`, `<p class="battle-result ${last.won ? '' : 'bad'}">${last.won ? '此战告捷' : '此战失利'}</p><p>${esc(last.verdict)}</p><div class="fight-lines">${last.lines.map((line) => `<div>${esc(line)}</div>`).join('') || '两军未及交手。'}</div>`, btn(label, 'page', { page }, 'primary', 'arrow')];
   },
   diplomacy() {
     return ['门派往来', `<div class="diplomacy-list">${SECTS.filter((s) => s.id !== me()).map((s) => {
@@ -1234,6 +1263,8 @@ function enter(next, text = '', { guide = false } = {}) {
   });
   ui.batch.clear();
   Object.assign(ui, { heralds: [], season: takeStock(), held: placesOf(world, me()), ended: !!world.outcome, picking: false });
+  const protection = openingProtection(world);
+  if (protection?.active && protection.daysLeft <= 30) ui.heralds.push(truceWarning(protection.daysLeft));
   toast(text);
   startPicture();
 }
@@ -1471,6 +1502,12 @@ const actions = {
   'goal-open': () => (ui.sheet = { kind: 'goal' }),
   'guide-open': () => (ui.sheet = { kind: 'guide' }),
   'guide-go'(data) {
+    if (data.tab === 'train') {
+      actions.page({ page: 'disciples' });
+      const newest = membersOf(world, me()).filter((person) => person.rank === 0).at(-1);
+      if (newest) Object.assign(ui, { person: newest.id, sheet: { kind: 'job' } });
+      return;
+    }
     actions.page({ page: 'seat' });
     ui.commandCollapsed = false;
     ui.seatTab = data.tab;
@@ -1478,6 +1515,15 @@ const actions = {
       const dorm = world.places[ui.place]?.buildings.findIndex((building) => building.kind === 'dorm');
       if (dorm >= 0) actions.building({ index: dorm });
     }
+  },
+  'prepare-defense'() {
+    actions.page({ page: 'seat' });
+    ui.resume = ui.speed = 0;
+    ui.sheet = { kind: 'guard' };
+  },
+  'guard-gate'(data) {
+    actions.building(data);
+    ui.sheet = null;
   },
   'goal-go'() {
     const go = goalView(world)?.go;
@@ -1517,12 +1563,16 @@ const actions = {
   },
   'siege-auto'() {
     const { attacker, place, party } = world.pending;
+    books().formation = pick('#formation') || books().formation;
     world.pending = null;
     const rng = createRng(1);
     rng.state = world.rng;
     const result = assault(world, attacker, place, party, rng);
     world.rng = rng.state;
-    ui.sheet = { kind: 'outcome', title: `${SECT_BY_ID[attacker].name}来犯`, text: !result.ok ? '来敌已退。' : result.won ? `${PLACE_BY_ID[place].name}失守。` : `守将击退了来敌。` };
+    if (result.losses) ui.resume = 0;
+    queueOutcome();
+    if (result.ok) slots.write('auto', world, autoLabel());
+    ui.sheet = { kind: 'outcome', title: `${SECT_BY_ID[attacker].name}来犯`, text: result.ok ? defenseVerdict(result, place) : '来敌已退。' };
   },
   'mod-load': loadMod,
   'mod-clear'() {
@@ -1623,7 +1673,7 @@ const changes = {
 /** True for a moment after the map has been dragged, so the drag does not also pick a stronghold. */
 let mapDragged = false;
 
-const navigationActions = new Set(['page', 'sheet', 'close', 'prologue-next', 'skip-prologue', 'sect-next', 'sect-back', 'command-toggle', 'goal-open', 'guide-open', 'guide-go', 'mapmode']);
+const navigationActions = new Set(['page', 'sheet', 'close', 'prologue-next', 'skip-prologue', 'sect-next', 'sect-back', 'command-toggle', 'goal-open', 'guide-open', 'guide-go', 'prepare-defense', 'guard-gate', 'mapmode']);
 const selectionActions = new Set(['choose-sect', 'choose-founding', 'succession', 'building', 'build-kind', 'build-plot', 'place', 'look', 'rank', 'seat-tab', 'person', 'picking', 'batch-toggle', 'art', 'art-tier', 'speed', 'fight-pause', 'fight-speed', 'fight-stance', 'log-filter']);
 const confirmationActions = new Set(['new', 'load', 'march', 'fight-rally', 'fight-retreat', 'siege-fight', 'answer']);
 
@@ -1731,6 +1781,20 @@ app.addEventListener('wheel', (event) => event.target.closest('.map-panel:not(.i
 
 /** What the sect has, for telling a season's change. */
 const takeStock = () => ({ index: Math.floor(world.day / 90), day: world.day, silver: books().silver, grain: books().grain, renown: books().renown, members: membersOf(world, me()).length, places: placesOf(world, me()).length });
+const truceWarning = (days) => ({
+  kind: 'herald', label: '立足期将尽', prepare: true,
+  text: `立足期还剩 ${days} 日。届时他派可能来攻。先检查本地守军、山门和库存，或去江湖改善邻派关系。`,
+});
+
+/** The same notices are due whether a day or a battle determined the outcome. */
+function queueOutcome() {
+  if (!world.outcome || ui.ended) return;
+  ui.ended = true;
+  world.pending = null;
+  const result = world.outcome.result;
+  const text = { 'won-conquest': '天下据点尽归本派，一统江湖！', 'won-summit': '武林大会推举你为盟主，号令天下，莫敢不从。', 'won-court': '朝廷封你为武林都指挥使，禁武令自此废除。', lost: '本门已不复存在。江湖路远，后会有期。' }[result] ?? '';
+  ui.heralds.push({ kind: 'herald', label: result === 'lost' ? '终局' : '功成', text });
+}
 /** At the turn of a season, reports what changed over the one that ended, and stops the clock for it. */
 function openSeason() {
   const was = ui.season,
@@ -1751,20 +1815,27 @@ function openSeason() {
 setInterval(() => {
   // Something at the door is answered before time moves on.
   if (world && ui.heralds.length && !ui.sheet && !ui.fight) return void ((ui.sheet = ui.heralds.shift()), render());
-  if (world?.pending && !ui.sheet && !ui.fight) return void ((ui.sheet = { kind: world.pending.kind === 'siege' ? 'siege' : 'event' }), (ui.resume ||= ui.speed), (ui.speed = 0), render());
-  if (!world || !ui.speed || ui.sheet || ui.fight || world.outcome) return;
+  if (world?.pending && !world.outcome && !ui.sheet && !ui.fight) return void ((ui.sheet = { kind: world.pending.kind === 'siege' ? 'siege' : 'event' }), (ui.resume ||= ui.speed), (ui.speed = 0), render());
+  if (!world || ui.sheet || ui.fight || world.outcome) return;
+  if (Math.floor(world.day / 90) !== ui.season?.index) {
+    openSeason();
+    if (ui.sheet) return void render();
+  }
+  if (!ui.speed) return;
   // Leave the page alone while the player has a list open, so it does not close under them.
   if (document.activeElement?.tagName === 'SELECT') return;
   const before = world.day;
   const protection = openingProtection(world);
-  for (let i = 0; i < ui.speed && !world.pending; i++) advanceDay(world);
-  if (world.day % 30 < ui.speed) slots.write('auto', world, autoLabel());
+  const warningDay = protection?.active ? protection.until - 30 : -1;
+  const seasonReport = localStorage.getItem('wulin-season') !== 'off';
+  for (let i = 0; i < ui.speed && !world.pending && !world.outcome; i++) {
+    advanceDay(world);
+    if (world.day === warningDay || seasonReport && world.day % 90 === 0) break;
+  }
   const fresh = world.log.filter((entry) => entry.day > before);
   const news = fresh.filter((entry) => entry.sect === me()).at(-1);
   if (news) ui.notice = news.text;
-  if (protection?.active && before < protection.until - 30 && world.day >= protection.until - 30) {
-    ui.heralds.push({ kind: 'herald', label: '立足期将尽', text: `立足期还剩 ${protection.until - world.day} 日。届时他派可能来攻，可先整备守军或改善邻派关系。` });
-  }
+  if (!world.outcome && world.day === warningDay && before < warningDay) ui.heralds.push(truceWarning(30));
   // Great matters are announced one at a time, each on a sheet of its own.
   for (const entry of fresh) {
     const mine = entry.sect === me(),
@@ -1773,10 +1844,8 @@ setInterval(() => {
     if (label) ui.heralds.push({ kind: 'herald', label, text: entry.text });
   }
   ui.held = placesOf(world, me());
-  if (world.outcome && !ui.ended) {
-    ui.ended = true;
-    ui.heralds.push({ kind: 'herald', label: world.outcome.result === 'lost' ? '终局' : '功成', text: { 'won-conquest': '天下据点尽归本派，一统江湖！', 'won-summit': '武林大会推举你为盟主，号令天下，莫敢不从。', 'won-court': '朝廷封你为武林都指挥使，禁武令自此废除。', lost: '本门已不复存在。江湖路远，后会有期。' }[world.outcome.result] ?? '' });
-  }
+  queueOutcome();
+  if (Math.floor(world.day / 30) > Math.floor(before / 30) || world.outcome) slots.write('auto', world, autoLabel());
   if (ui.heralds.length) ui.sheet = { ...ui.heralds.shift(), pace: ui.speed };
   else if (Math.floor(world.day / 90) !== ui.season?.index) openSeason();
   render();
