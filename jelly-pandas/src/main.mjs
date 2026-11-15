@@ -150,6 +150,7 @@ async function main() {
     endAt = 0,
     now = 0;
   let prepareOpeningEffects = useWebGPU;
+  let prepareOpeningReflection = true;
   function syncTouchControls() {
     const active = input.touchMode && mode === 'play' && !cardsShown && game?.state === 'play';
     input.setTouchEnabled(active);
@@ -413,7 +414,9 @@ async function main() {
       // World3D draws the main view synchronously after onUpdate.
       queueMicrotask(view.prepareOpeningEffects());
     }
-    view.renderReflection(renderer, camera);
+    const warmReflection = prepareOpeningReflection && mode === 'title' && view.reflect;
+    if (warmReflection) prepareOpeningReflection = false;
+    view.renderReflection(renderer, camera, warmReflection);
   }
 
   // The Engine clock calls `frame`, then the view draws the scene.
