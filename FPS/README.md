@@ -51,6 +51,8 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 | 敌人寻路与互相避让 · Enemy path finding and avoidance | `createNavMesh3D` + `createNavCrowd3D` |
 | 场景 · Scenery | 按表面合并成少量网格，世界尺度纹理坐标 · merged into a few meshes per surface, with world-scale texture coordinates |
 | 表面 · Surfaces | 程序生成的颜色贴图与法线贴图，`createStandardMaterial3D` · generated colour and normal maps |
+| 风化：雨痕、墙脚积尘、地面污渍 · Weathering: rain streaks, dirt at the foot of walls, stains on the ground | `createCustomShader3D` 片元钩子，按世界坐标计算 · fragment hook, worked out from world position |
+| 晨雾与光柱 · Morning mist and light shafts | `createAtmosphere3D`，接入后期处理的自定义通道 · through the custom post-processing pass |
 | 曳光弹、弹孔 · Tracers, bullet holes | `InstancedMesh3D` |
 | 枪口火光、尘土、火花、爆炸、水雾 · Muzzle flash, dust, sparks, blasts, mist | `createParticleEmitter3D`，`createPointLight3D` |
 | 天空与雾 · Sky and haze | `createGradientCubeTexture3D`，线性雾 · linear fog |
@@ -73,7 +75,7 @@ All models, textures and sounds are generated in code; the project contains no i
 | `src/bot.mjs` | 代打玩家，用于自动检查和 `?auto=1` · a stand-in player for automated checks and `?auto=1` |
 | `src/view.mjs`，`src/scenery.mjs` | 场景、灯光、特效 · scene, lights, effects |
 | `src/soldier.mjs`，`src/gun.mjs` | 敌人模型与动画、手中的武器 · enemy models and animation, the weapon in hand |
-| `src/build.mjs`，`src/textures.mjs` | 几何体拼装、程序纹理 · geometry building, generated textures |
+| `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |
 | `src/hud.mjs`，`src/text.mjs` | 界面与中英文文字 · interface and its Chinese and English text |
 | `src/input.mjs`，`src/audio.mjs` | 键鼠与触屏、合成音效 · keyboard, mouse and touch; synthesised sound |
 | `src/stats.mjs` | `?stats=1` 的性能读数 · the performance readout for `?stats=1` |

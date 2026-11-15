@@ -34,15 +34,19 @@ const HOLD = {
 
 function rifleShapes() {
   const body = createBuilder();
-  // Receiver, handguard with a rail, barrel and muzzle brake.
-  body.box(0, 0, -0.02, 0.044, 0.068, 0.3, { tint: STEEL });
-  body.box(0, -0.002, -0.31, 0.046, 0.05, 0.3, { tint: TAN });
-  for (let i = 0; i < 5; i++) body.box(0, -0.002, -0.2 - i * 0.055, 0.05, 0.016, 0.03, { tint: DARK });
-  body.box(0, 0.04, -0.2, 0.026, 0.012, 0.54, { tint: DARK });
-  body.cylinder(0, 0.006, -0.52, 0.01, 0.14, { axis: 'z', sides: 8, tint: DARK });
-  body.cylinder(0, 0.006, -0.6, 0.016, 0.06, { axis: 'z', sides: 8, tint: STEEL });
+  // Receiver, an eight-sided handguard with a rail, barrel, gas block and muzzle brake.
+  body.box(0, 0.012, -0.03, 0.042, 0.05, 0.27, { tint: STEEL });
+  body.box(0, -0.028, 0.0, 0.038, 0.04, 0.17, { tint: DARK });
+  body.limb([0, 0.004, -0.165], [0, 0.004, -0.46], 0.03, 0.027, { tint: TAN, sides: 8 });
+  for (let i = 0; i < 6; i++) body.box(0, 0.004, -0.2 - i * 0.045, 0.064, 0.012, 0.022, { tint: DARK });
+  body.box(0, 0.04, -0.2, 0.024, 0.012, 0.54, { tint: DARK });
+  for (let i = 0; i < 12; i++) body.box(0, 0.048, 0.05 - i * 0.045, 0.026, 0.006, 0.02, { tint: rgb(0x1c1d1f) });
+  body.limb([0, 0.006, -0.46], [0, 0.006, -0.6], 0.0095, 0.0095, { tint: DARK, sides: 8 });
+  body.box(0, 0.016, -0.5, 0.024, 0.036, 0.03, { tint: DARK });
+  body.limb([0, 0.006, -0.58], [0, 0.006, -0.645], 0.015, 0.015, { tint: STEEL, sides: 8 });
+  for (const dz of [-0.6, -0.62]) body.box(0, 0.006, dz, 0.034, 0.008, 0.008, { tint: rgb(0x121314) });
   // Stock with a cheek rest, grip and trigger guard.
-  body.box(0, -0.004, 0.2, 0.034, 0.05, 0.18, { tint: DARK });
+  body.limb([0, 0.008, 0.1], [0, 0.008, 0.3], 0.015, 0.015, { tint: DARK, sides: 8 });
   body.box(0, -0.03, 0.27, 0.04, 0.1, 0.07, { tint: TAN });
   body.box(0, -0.035, 0.31, 0.044, 0.12, 0.02, { tint: DARK });
   body.box(0, -0.075, 0.075, 0.034, 0.1, 0.042, { tint: DARK, pitch: 0.32 });
@@ -87,8 +91,15 @@ function pistolShapes() {
 
 /** Add the weapons under `camera` and return the object that animates them. */
 export function createGun(camera) {
-  const metal = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.5, metallic: 0.25 });
-  const cloth = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.9 });
+  // The weapon is often in a wall's shadow; extra sky light keeps its shape readable there.
+  const metal = createStandardMaterial3D({
+    color: 0xffffff,
+    vertexColors: true,
+    roughness: 0.5,
+    metallic: 0.25,
+    environmentIntensity: 2.4,
+  });
+  const cloth = createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.9, environmentIntensity: 2 });
   const rig = new Object3D();
   rig.setScale(RIG_SCALE);
   camera.addChild(rig);

@@ -11,10 +11,10 @@ const SKIN = rgb(0xc9a27e),
 /** How each kind is dressed: uniform, vest, headgear, trim, and build. */
 const LOOKS = {
   rifle: {
-    cloth: rgb(0x5d6444),
-    vest: rgb(0x8b7b57),
-    helmet: rgb(0x555c3f),
-    trim: rgb(0x3b3f2c),
+    cloth: rgb(0x566040),
+    vest: rgb(0x2c3326),
+    helmet: rgb(0x39412e),
+    trim: rgb(0x7a6842),
     bulk: 1,
     mask: false,
     visor: false,
