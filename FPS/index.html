@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>断流行动 / Operation Cutoff</title>
+  <meta name="description" content="断流行动：基于新白鹭引擎开发的第一人称战术射击 Demo。 / Operation Cutoff, a first-person tactical shooter demo built with Egret Rebuild.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230c1114'/%3E%3Cpath d='M8 2v4M8 10v4M2 8h4M10 8h4' stroke='%235fe8b0' stroke-width='1.6'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="./style.css">
+  <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
+        "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="stage" tabindex="0" aria-label="断流行动：第一人称射击。WASD 移动，鼠标瞄准，左键开火，右键瞄准，F 互动。 / Operation Cutoff: a first-person shooter. W A S D to move, mouse to look, left button to fire, right button to aim, F to use."></canvas>
+  <div id="ui"></div>
+  <div id="boot"><div class="boot-mark">断流行动</div><div class="boot-sub">OPERATION CUTOFF</div><div class="boot-bar"><i></i></div></div>
+  <div id="error" role="alert" hidden></div>
+  <script type="module" src="./src/main.mjs"></script>
+</body>
+</html>

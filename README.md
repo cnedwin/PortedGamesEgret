@@ -38,6 +38,12 @@ An independently developed 2D campus romance and dress-up demo built with Egret 
 
 An independently developed wuxia sect management demo being built for Egret Rebuild. Take charge of one of twelve sects: build its seat, take in and train disciples, and fight or befriend the other sects until you rule the martial world or are named its leader. A work in progress: the rules, numbers, saves and editor work, the game is shown as text panels for now, and the 3D scenes drawn with the engine are still being made. [Play](https://cnedwin.github.io/PortedGamesEgret/Wulin/) · [Guide](Wulin/README.md)
 
+## Operation Cutoff · 断流行动
+
+一款使用新白鹭引擎独立开发的第一人称战术射击游戏 Demo。黎明时分，特勤干员潜入被武装分子占据的水电站：在堆场、厂房和办公楼找到三处数据终端并下载情报，搜刮按稀有度分色的物资，用步枪、手枪和手雷顶住步枪兵、突击兵和重装兵的一波波增援，最后赶到停机坪登上直升机撤离。场景、角色、贴图和音效全部由代码生成，支持中英文、键鼠和触屏。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/FPS/) · [说明与开发](FPS/README.md)
+
+An independently developed first-person tactical shooter demo built with Egret Rebuild. At first light an operator slips into a hydropower station held by an armed militia: download the three data terminals in the cargo yard, the powerhouse and the office block, search crates for loot coloured by rarity, hold off waves of riflemen, assaulters and heavies with a rifle, a pistol and grenades, then reach the helipad and board the helicopter. The station, the soldiers, the textures and the sound are all generated in code, with Chinese and English text and keyboard, mouse or touch controls. [Play online](https://cnedwin.github.io/PortedGamesEgret/FPS/) · [Guide and development](FPS/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)

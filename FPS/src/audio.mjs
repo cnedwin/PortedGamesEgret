@@ -1,0 +1,343 @@
+// Sound, all of it synthesised with the Web Audio API as it is needed: shots
+// are shaped noise, clicks and thumps; the valley wind, the generators' hum
+// and the helicopter are loops built from filtered noise and a few tones.
+
+export function createAudio() {
+  let context, master, noiseBuffer, ambience;
+  let volume = 0.8;
+  const audio = { ready: false };
+
+  function start() {
+    if (context) return true;
+    const Context = globalThis.AudioContext ?? globalThis.webkitAudioContext;
+    if (!Context) return false;
+    context = new Context();
+    const squash = context.createDynamicsCompressor();
+    squash.threshold.value = -14;
+    squash.ratio.value = 5;
+    master = context.createGain();
+    master.gain.value = volume;
+    master.connect(squash).connect(context.destination);
+    // Two seconds of white noise, reused by every noisy sound.
+    noiseBuffer = context.createBuffer(1, context.sampleRate * 2, context.sampleRate);
+    const data = noiseBuffer.getChannelData(0);
+    for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
+    ambience = startAmbience();
+    audio.ready = true;
+    return true;
+  }
+  /** Browsers only allow sound after a click or key press; call this from one. */
+  audio.resume = () => {
+    if (start() && context.state === 'suspended') context.resume();
+  };
+  audio.setVolume = (value) => {
+    volume = value;
+    if (master) master.gain.value = value;
+  };
+  audio.setPaused = (paused) => {
+    if (ambience) ambience.out.gain.setTargetAtTime(paused ? 0.25 : 1, context.currentTime, 0.2);
+  };
+
+  // ---- building blocks -----------------------------------------------------------------------
+  const out = (pan) => {
+    if (!pan || !context.createStereoPanner) return master;
+    const node = context.createStereoPanner();
+    node.pan.value = Math.max(-1, Math.min(1, pan));
+    node.connect(master);
+    return node;
+  };
+  /** A burst of filtered noise. `freq` may sweep to `to`. */
+  function noise({
+    at = 0,
+    dur = 0.1,
+    freq = 1000,
+    to,
+    q = 1,
+    type = 'bandpass',
+    gain = 0.5,
+    attack = 0.002,
+    pan = 0,
+    rate = 1,
+  }) {
+    if (!audio.ready) return;
+    const t = context.currentTime + at,
+      source = context.createBufferSource(),
+      filter = context.createBiquadFilter(),
+      level = context.createGain();
+    source.buffer = noiseBuffer;
+    source.loop = true;
+    source.playbackRate.value = rate;
+    filter.type = type;
+    filter.Q.value = q;
+    filter.frequency.setValueAtTime(freq, t);
+    if (to) filter.frequency.exponentialRampToValueAtTime(Math.max(20, to), t + dur);
+    level.gain.setValueAtTime(0.0001, t);
+    level.gain.exponentialRampToValueAtTime(gain, t + attack);
+    level.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    source.connect(filter).connect(level).connect(out(pan));
+    source.start(t, Math.random() * 1.5);
+    source.stop(t + dur + 0.05);
+  }
+  /** A note that may glide from `freq` to `to`. */
+  function tone({ at = 0, dur = 0.1, freq = 440, to, type = 'sine', gain = 0.3, attack = 0.003, pan = 0 }) {
+    if (!audio.ready) return;
+    const t = context.currentTime + at,
+      osc = context.createOscillator(),
+      level = context.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t);
+    if (to) osc.frequency.exponentialRampToValueAtTime(Math.max(10, to), t + dur);
+    level.gain.setValueAtTime(0.0001, t);
+    level.gain.exponentialRampToValueAtTime(gain, t + attack);
+    level.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+    osc.connect(level).connect(out(pan));
+    osc.start(t);
+    osc.stop(t + dur + 0.05);
+  }
+  const jitter = (spread) => 1 + (Math.random() - 0.5) * spread;
+
+  // ---- loops: wind, generators, helicopter, a low bed of tension -----------------------------
+  function startAmbience() {
+    const outGain = context.createGain();
+    outGain.connect(master);
+    const loop = (freq, type, q, gain) => {
+      const source = context.createBufferSource(),
+        filter = context.createBiquadFilter(),
+        level = context.createGain();
+      source.buffer = noiseBuffer;
+      source.loop = true;
+      filter.type = type;
+      filter.frequency.value = freq;
+      filter.Q.value = q;
+      level.gain.value = gain;
+      source.connect(filter).connect(level).connect(outGain);
+      source.start(0, Math.random());
+      return { filter, level };
+    };
+    const hum = (freq, gain) => {
+      const osc = context.createOscillator(),
+        level = context.createGain();
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      level.gain.value = gain;
+      osc.connect(level).connect(outGain);
+      osc.start();
+      return level;
+    };
+    const wind = loop(420, 'lowpass', 0.4, 0.05),
+      water = loop(110, 'lowpass', 0.7, 0.16),
+      generators = [hum(50, 0), hum(100, 0), hum(150, 0)],
+      rotor = loop(170, 'bandpass', 1.2, 0),
+      rotorLow = hum(46, 0);
+    // The rotor's chop: its loudness beats twenty-odd times a second.
+    const chop = context.createOscillator(),
+      chopDepth = context.createGain();
+    chop.frequency.value = 23;
+    chopDepth.gain.value = 0;
+    chop.connect(chopDepth).connect(rotor.level.gain);
+    chop.start();
+    // Tension: two detuned low notes that swell while soldiers are hunting.
+    const bed = context.createGain(),
+      bedFilter = context.createBiquadFilter();
+    bed.gain.value = 0;
+    bedFilter.type = 'lowpass';
+    bedFilter.frequency.value = 260;
+    for (const freq of [55, 55.7, 82.4]) {
+      const osc = context.createOscillator();
+      osc.type = 'sawtooth';
+      osc.frequency.value = freq;
+      osc.connect(bedFilter);
+      osc.start();
+    }
+    bedFilter.connect(bed).connect(outGain);
+    return { out: outGain, wind, water, generators, rotor, rotorLow, chopDepth, bed };
+  }
+  let heartbeat = 0;
+  /** Follow the game each frame: where the operator is, how hot the fight is, how near the helicopter. */
+  audio.update = (dt, game, helicopter) => {
+    if (!audio.ready) return;
+    const p = game.player,
+      now = context.currentTime,
+      indoors = game.isIndoors(p.x, p.z),
+      inPlant = indoors && p.x < 16;
+    const gust = 0.045 + 0.03 * Math.sin(now * 0.31) + 0.015 * Math.sin(now * 1.3);
+    ambience.wind.level.gain.setTargetAtTime(indoors ? gust * 0.35 : gust, now, 0.3);
+    // The spillway is to the north; it grows louder towards the dam.
+    ambience.water.level.gain.setTargetAtTime((indoors ? 0.05 : 0.1) + Math.max(0, (10 - p.z) / 40) * 0.14, now, 0.4);
+    const nearPlant = Math.max(0, 1 - Math.hypot(p.x - 4, p.z + 17) / 34);
+    ambience.generators.forEach((level, i) =>
+      level.gain.setTargetAtTime((inPlant ? 0.09 : nearPlant * 0.03) / (i + 1), now, 0.3),
+    );
+    ambience.rotor.level.gain.setTargetAtTime(helicopter * 0.5, now, 0.2);
+    ambience.chopDepth.gain.setTargetAtTime(helicopter * 0.4, now, 0.2);
+    ambience.rotorLow.gain.setTargetAtTime(helicopter * 0.12, now, 0.2);
+    let hunting = 0;
+    for (const enemy of game.enemies) if (!enemy.dead && enemy.aware) hunting++;
+    ambience.bed.gain.setTargetAtTime(game.state === 'play' ? Math.min(0.11, hunting * 0.022) : 0, now, 1.2);
+    // A heartbeat when badly hurt.
+    if (game.state === 'play' && p.health < 30) {
+      heartbeat -= dt;
+      if (heartbeat <= 0) {
+        heartbeat = 0.85;
+        tone({ freq: 62, to: 40, dur: 0.14, gain: 0.5 });
+        tone({ at: 0.2, freq: 55, to: 36, dur: 0.14, gain: 0.35 });
+      }
+    }
+  };
+
+  // ---- one-shot sounds -----------------------------------------------------------------------
+  function gunshot(kind, indoors) {
+    const rifle = kind === 'rifle';
+    noise({ dur: rifle ? 0.11 : 0.08, freq: rifle ? 2100 : 2800, to: 320, q: 0.6, gain: 0.95, rate: jitter(0.08) });
+    noise({ dur: 0.03, freq: 5200, type: 'highpass', gain: 0.5 });
+    tone({ freq: rifle ? 165 : 210, to: 48, dur: rifle ? 0.1 : 0.07, gain: 0.85 });
+    // The report rolling round the valley, or slapping off the walls indoors.
+    noise({
+      at: 0.03,
+      dur: indoors ? 0.3 : 0.75,
+      freq: indoors ? 1400 : 760,
+      to: 180,
+      type: 'lowpass',
+      gain: indoors ? 0.32 : 0.2,
+    });
+  }
+  const ui = {
+    click: () => tone({ freq: 880, to: 660, dur: 0.05, type: 'triangle', gain: 0.12 }),
+  };
+  audio.click = () => ui.click();
+
+  audio.handle = (event, game) => {
+    if (!audio.ready) return;
+    const p = game.player;
+    /** Loudness and left/right placement for something happening at (x, z). */
+    const where = (x, z) => {
+      const dx = x - p.x,
+        dz = z - p.z,
+        distance = Math.hypot(dx, dz),
+        side = (dx * Math.cos(p.yaw) - dz * Math.sin(p.yaw)) / (distance || 1);
+      return { distance, pan: side * 0.8, near: 1 / (1 + distance * 0.07) };
+    };
+    switch (event.type) {
+      case 'shot':
+        gunshot(event.weapon, game.isIndoors(p.x, p.z));
+        if (event.enemy) {
+          tone({ at: 0.02, freq: event.head ? 2300 : 1500, dur: 0.045, type: 'square', gain: 0.1 });
+          if (event.killed) {
+            tone({ at: 0.06, freq: 980, dur: 0.09, type: 'triangle', gain: 0.2 });
+            tone({ at: 0.13, freq: event.head ? 1960 : 1470, dur: 0.16, type: 'triangle', gain: 0.2 });
+          }
+        }
+        break;
+      case 'enemyShot': {
+        const w = where(event.fromX, event.fromZ),
+          delay = Math.min(0.25, w.distance / 340);
+        noise({
+          at: delay,
+          dur: 0.09,
+          freq: 1700 * (0.6 + w.near * 0.6),
+          to: 260,
+          q: 0.6,
+          gain: 0.75 * w.near + 0.05,
+          pan: w.pan,
+        });
+        tone({ at: delay, freq: 130, to: 50, dur: 0.08, gain: 0.5 * w.near, pan: w.pan });
+        // A miss cracks past the ear.
+        if (!event.hit)
+          noise({ at: delay * 0.5, dur: 0.07, freq: 3600, to: 900, q: 4, gain: 0.16, pan: (Math.random() - 0.5) * 1.6 });
+        break;
+      }
+      case 'playerHit':
+        tone({ freq: 110, to: 55, dur: 0.16, gain: 0.6 });
+        noise({ dur: 0.12, freq: event.armor ? 2600 : 700, q: 1.5, gain: 0.35 });
+        break;
+      case 'playerDown':
+        tone({ freq: 220, to: 40, dur: 1.1, type: 'sawtooth', gain: 0.25 });
+        break;
+      case 'reload': {
+        const T = event.seconds;
+        noise({ at: T * 0.14, dur: 0.05, freq: 2400, q: 3, gain: 0.3 });
+        tone({ at: T * 0.14, freq: 320, dur: 0.04, type: 'square', gain: 0.08 });
+        noise({ at: T * 0.58, dur: 0.06, freq: 1800, q: 3, gain: 0.34 });
+        tone({ at: T * 0.6, freq: 240, dur: 0.05, type: 'square', gain: 0.1 });
+        if (event.empty) noise({ at: T * 0.86, dur: 0.07, freq: 3000, q: 2, gain: 0.34 });
+        break;
+      }
+      case 'dry':
+        tone({ freq: 1400, dur: 0.025, type: 'square', gain: 0.1 });
+        break;
+      case 'switch':
+        noise({ dur: 0.18, freq: 900, type: 'lowpass', gain: 0.14 });
+        noise({ at: 0.22, dur: 0.04, freq: 2600, q: 3, gain: 0.2 });
+        break;
+      case 'step':
+        noise({
+          dur: 0.07,
+          freq: (event.indoors ? 900 : 480) * jitter(0.3),
+          type: 'lowpass',
+          gain: (event.sprint ? 0.2 : 0.12) * (event.indoors ? 1.3 : 1),
+        });
+        break;
+      case 'jump':
+        noise({ dur: 0.1, freq: 600, type: 'lowpass', gain: 0.12 });
+        break;
+      case 'land':
+        noise({ dur: 0.12, freq: 380, type: 'lowpass', gain: Math.min(0.4, 0.1 + event.speed * 0.025) });
+        break;
+      case 'throw':
+        noise({ dur: 0.22, freq: 500, to: 1800, q: 1.2, gain: 0.16 });
+        break;
+      case 'explosion': {
+        const w = where(event.x, event.z);
+        noise({ dur: 1.3, freq: 1400, to: 70, type: 'lowpass', gain: 1.1 * (0.35 + w.near), pan: w.pan * 0.6 });
+        tone({ freq: 80, to: 28, dur: 0.9, gain: 0.9 * (0.3 + w.near) });
+        noise({ at: 0.35, dur: 1.6, freq: 500, to: 120, type: 'lowpass', gain: 0.22 });
+        break;
+      }
+      case 'healStart':
+        noise({ dur: 0.5, freq: 1500, q: 0.8, gain: 0.1 });
+        noise({ at: 0.7, dur: 0.6, freq: 1100, q: 0.8, gain: 0.1 });
+        break;
+      case 'healed':
+        tone({ freq: 520, to: 780, dur: 0.22, type: 'triangle', gain: 0.14 });
+        break;
+      case 'useStart':
+        for (let i = 0; i < (event.kind === 'terminal' ? 8 : 3); i++)
+          tone({
+            at: i * 0.3,
+            freq: event.kind === 'terminal' ? 1200 + (i % 3) * 180 : 300,
+            dur: 0.05,
+            type: 'square',
+            gain: 0.045,
+          });
+        break;
+      case 'loot': {
+        noise({ dur: 0.07, freq: 1500, q: 3, gain: 0.3 });
+        const best = Math.max(...event.items.map((item) => item.rarity));
+        // The rarer the find, the longer the chime climbs.
+        for (let i = 0; i < Math.max(2, best); i++)
+          tone({ at: 0.1 + i * 0.07, freq: 520 * 2 ** ([0, 4, 7, 12, 16, 19][i] / 12), dur: 0.22, type: 'triangle', gain: 0.13 });
+        break;
+      }
+      case 'terminal':
+        for (const [i, semitone] of [0, 7, 12].entries())
+          tone({ at: i * 0.1, freq: 660 * 2 ** (semitone / 12), dur: 0.3, type: 'triangle', gain: 0.16 });
+        break;
+      case 'comms':
+        noise({ dur: 0.06, freq: 2400, q: 2, gain: 0.14 });
+        tone({ at: 0.07, freq: 1250, dur: 0.07, type: 'square', gain: 0.05 });
+        break;
+      case 'enemyDown': {
+        const w = where(event.enemy.x, event.enemy.z);
+        noise({ at: 0.25, dur: 0.14, freq: 300, type: 'lowpass', gain: 0.3 * w.near, pan: w.pan });
+        break;
+      }
+      case 'won':
+        for (const [i, semitone] of [0, 4, 7, 12].entries())
+          tone({ at: 0.3 + i * 0.16, freq: 440 * 2 ** (semitone / 12), dur: 0.6, type: 'triangle', gain: 0.16 });
+        break;
+      default:
+    }
+  };
+
+  return audio;
+}
