@@ -628,6 +628,7 @@ export const TEXT = {
   pick: { en: 'Pick your panda', zh: '选择你的熊猫' },
   levelUp: { en: 'LEVEL UP!', zh: '升级！' },
   reroll: { en: 'Reroll (R)', zh: '重抽 (R)' },
+  rerollTouch: { en: 'Reroll', zh: '重抽' },
   newToy: { en: 'New toy', zh: '新玩具' },
   newCharm: { en: 'New charm', zh: '新护符' },
   starterUpgrade: { en: 'Upgrade your starter', zh: '强化初始玩具' },

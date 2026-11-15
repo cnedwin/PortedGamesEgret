@@ -91,6 +91,42 @@
   top: max(91px, calc(env(safe-area-inset-top) + 83px));
 }
 
+@media (pointer: coarse) {
+  .cards .pill {
+    min-height: 44px;
+    min-width: 99px;
+    font-size: 13px;
+  }
+  .cards .card p {
+    font-size: 12px;
+  }
+  .cards .card b {
+    font-size: 14px;
+  }
+  .cards .card em {
+    font-size: 11px;
+  }
+  .cards .card kbd {
+    display: none;
+  }
+}
+
+@media (pointer: coarse) and (orientation: portrait) {
+  .cards .deck {
+    display: grid;
+    width: min(95vw, 480px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+  }
+  .cards .card {
+    width: 100%;
+    min-height: 156px;
+    gap: 5px;
+    padding: 8px 5px;
+    overflow-wrap: anywhere;
+  }
+}
+
 @media (max-height: 430px) and (orientation: landscape) {
   .touch {
     --touch-bottom: max(42px, calc(env(safe-area-inset-bottom) + 38px));

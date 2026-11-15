@@ -320,7 +320,7 @@ export function createHud(root, options = {}) {
       el('p', '', button, info.text);
       button.addEventListener('click', () => handlers.onPick(index));
     });
-    const reroll = el('button', 'pill', cards, `${t('reroll')} ×${panda.rerolls}`);
+    const reroll = el('button', 'pill', cards, `${t(touchMode ? 'rerollTouch' : 'reroll')} ×${panda.rerolls}`);
     reroll.type = 'button';
     reroll.disabled = panda.rerolls <= 0;
     reroll.addEventListener('click', () => handlers.onReroll());
