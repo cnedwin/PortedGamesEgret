@@ -1,10 +1,16 @@
 import { copyImageData2DPixels } from '@egret/contracts';
 import { decodeSRGBByte } from './srgbBytes.js';
 /** Selected sRGB transfer. Alpha and tint coefficients are never gamma converted. */
-export function decodeSharedSRGB(value) { return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4; }
+export function decodeSharedSRGB(value) {
+    return value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4;
+}
 /** The linear-light value of an sRGB byte, from the written table: the same number in every JavaScript engine. */
-export function decodeSharedSRGBByte(code) { return decodeSRGBByte(code); }
-export function encodeSharedSRGB(value) { return value <= 0.0031308 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055; }
+export function decodeSharedSRGBByte(code) {
+    return decodeSRGBByte(code);
+}
+export function encodeSharedSRGB(value) {
+    return value <= 0.0031308 ? 12.92 * value : 1.055 * value ** (1 / 2.4) - 0.055;
+}
 const caps = Object.freeze(Array.from({ length: 256 }, (_, alpha) => {
     let code = 0;
     while (code < 255 && decodeSharedSRGB((code + 1) / 255) <= alpha / 255)

@@ -3,7 +3,9 @@ import { EgretError } from '@egret/runtime';
 const MODES = ['text', 'numeric', 'decimal', 'tel', 'email', 'url', 'search', 'none'];
 const HINTS = ['enter', 'done', 'go', 'next', 'previous', 'search', 'send'];
 const PLACEHOLDER = '--egret-text-input-placeholder', MARK = 'data-egret-text-input', PROBE = 100, TEXT_LIMIT = 1048576;
-function fault(code) { return new EgretError('BROWSER_TEXT_INPUT_' + code); }
+function fault(code) {
+    return new EgretError('BROWSER_TEXT_INPUT_' + code);
+}
 function scalar(value, minimum, maximum, code) {
     if (typeof value !== 'number' || !Number.isFinite(value) || value < minimum || value > maximum)
         throw fault(code);
@@ -22,10 +24,19 @@ function colour(value, code) {
 function rectangle(value, code) {
     if (!value || typeof value !== 'object')
         throw fault(code);
-    return { x: scalar(value.x, -1048576, 1048576, code), y: scalar(value.y, -1048576, 1048576, code), width: scalar(value.width, 1, 16384, code), height: scalar(value.height, 1, 16384, code) };
+    return {
+        x: scalar(value.x, -1048576, 1048576, code),
+        y: scalar(value.y, -1048576, 1048576, code),
+        width: scalar(value.width, 1, 16384, code),
+        height: scalar(value.height, 1, 16384, code)
+    };
 }
-function points(value) { let count = 0; for (const _ of value)
-    count++; return count; }
+function points(value) {
+    let count = 0;
+    for (const _ of value)
+        count++;
+    return count;
+}
 /** Index that lies `count` characters before `index`, never inside a surrogate pair. */
 function back(value, index, count) {
     let at = index;
@@ -41,11 +52,15 @@ function back(value, index, count) {
     }
     return at;
 }
-function head(value, count) { let at = 0; for (const point of value) {
-    if (count-- <= 0)
-        break;
-    at += point.length;
-} return value.slice(0, at); }
+function head(value, count) {
+    let at = 0;
+    for (const point of value) {
+        if (count-- <= 0)
+            break;
+        at += point.length;
+    }
+    return value.slice(0, at);
+}
 /**
  * Platform text entry over a canvas: a native field placed on a rectangle of the stage, so that input methods
  * (Chinese, Japanese, Korean), on-screen keyboards, paste and accessibility work as the platform provides them.
@@ -56,11 +71,20 @@ export function createBrowserTextInput(options) {
         throw fault('OPTIONS');
     const canvas = options.canvas, zIndex = options.zIndex ?? 1, isolate = options.isolateKeys ?? true, onError = options.onError;
     const win = globalThis.window, doc = globalThis.document;
-    if (win === undefined || doc === undefined || typeof globalThis.HTMLCanvasElement !== 'function' || !(canvas instanceof globalThis.HTMLCanvasElement) || canvas.ownerDocument !== doc)
+    if (win === undefined ||
+        doc === undefined ||
+        typeof globalThis.HTMLCanvasElement !== 'function' ||
+        !(canvas instanceof globalThis.HTMLCanvasElement) ||
+        canvas.ownerDocument !== doc)
         throw fault('SURFACE');
-    if (!Number.isInteger(zIndex) || zIndex < 0 || zIndex > 1000000 || typeof isolate !== 'boolean' || onError !== undefined && typeof onError !== 'function')
+    if (!Number.isInteger(zIndex) ||
+        zIndex < 0 ||
+        zIndex > 1000000 ||
+        typeof isolate !== 'boolean' ||
+        (onError !== undefined && typeof onError !== 'function'))
         throw fault('OPTIONS');
-    if (options.parent !== undefined && (!(options.parent instanceof globalThis.HTMLElement) || options.parent.ownerDocument !== doc))
+    if (options.parent !== undefined &&
+        (!(options.parent instanceof globalThis.HTMLElement) || options.parent.ownerDocument !== doc))
         throw fault('OPTIONS');
     let logicalWidth = scalar(options.logicalWidth, 0.25, 16384, 'OPTIONS'), logicalHeight = scalar(options.logicalHeight, 0.25, 16384, 'OPTIONS');
     let disposed = false, session, sheet, releaseFocus = () => { };
@@ -77,14 +101,18 @@ export function createBrowserTextInput(options) {
         if (typeof globalThis.reportError === 'function')
             globalThis.reportError(cause);
         else
-            queueMicrotask(() => { throw cause; });
+            queueMicrotask(() => {
+                throw cause;
+            });
     }
-    function guard(action) { try {
-        action();
+    function guard(action) {
+        try {
+            action();
+        }
+        catch (cause) {
+            report(cause);
+        }
     }
-    catch (cause) {
-        report(cause);
-    } }
     function placeholderSheet() {
         // A constructed sheet styles ::placeholder without an inline <style>, which a content security policy may refuse.
         if (sheet || typeof globalThis.CSSStyleSheet !== 'function' || !Array.isArray(doc.adoptedStyleSheets))
@@ -95,7 +123,9 @@ export function createBrowserTextInput(options) {
             doc.adoptedStyleSheets = [...doc.adoptedStyleSheets, next];
             sheet = next;
         }
-        catch { /* The platform colour of a placeholder remains. */ }
+        catch {
+            /* The platform colour of a placeholder remains. */
+        }
     }
     function layout() {
         const current = session;
@@ -184,7 +214,12 @@ export function createBrowserTextInput(options) {
                 win.addEventListener('keydown', held, true);
                 win.addEventListener('keyup', held, true);
                 win.addEventListener('blur', lost);
-                releaseFocus = () => { releaseFocus = () => { }; win.removeEventListener('keydown', held, true); win.removeEventListener('keyup', held, true); win.removeEventListener('blur', lost); };
+                releaseFocus = () => {
+                    releaseFocus = () => { };
+                    win.removeEventListener('keydown', held, true);
+                    win.removeEventListener('keyup', held, true);
+                    win.removeEventListener('blur', lost);
+                };
             }
         }
         const request = current.request;
@@ -196,20 +231,27 @@ export function createBrowserTextInput(options) {
             guard(() => request.onCancel());
     }
     function listen(current, target, type, action, capture = false) {
-        const listener = (event) => { if (session === current)
-            guard(() => action(event)); };
+        const listener = (event) => {
+            if (session === current)
+                guard(() => action(event));
+        };
         target.addEventListener(type, listener, capture);
         current.removals.push(() => target.removeEventListener(type, listener, capture));
     }
-    function alive() { if (disposed)
-        throw fault('DISPOSED'); }
+    function alive() {
+        if (disposed)
+            throw fault('DISPOSED');
+    }
     return {
         open(request) {
             alive();
             if (!request || typeof request !== 'object')
                 throw fault('REQUEST');
             const place = rectangle(request, 'REQUEST'), multiline = request.multiline ?? false, password = request.password ?? false, blur = request.blur ?? 'commit';
-            if (typeof multiline !== 'boolean' || typeof password !== 'boolean' || multiline && password || blur !== 'commit' && blur !== 'cancel')
+            if (typeof multiline !== 'boolean' ||
+                typeof password !== 'boolean' ||
+                (multiline && password) ||
+                (blur !== 'commit' && blur !== 'cancel'))
                 throw fault('REQUEST');
             const maxLength = request.maxLength;
             if (maxLength !== undefined && (!Number.isInteger(maxLength) || maxLength < 1 || maxLength > TEXT_LIMIT))
@@ -221,11 +263,14 @@ export function createBrowserTextInput(options) {
             const fontFamily = text(request.fontFamily ?? 'sans-serif', 1024, 'REQUEST'), fontSize = scalar(request.fontSize ?? 16, 1, 4096, 'REQUEST'), padding = scalar(request.padding ?? 0, 0, 4096, 'REQUEST');
             const lineHeight = request.lineHeight === undefined ? undefined : scalar(request.lineHeight, 1, 16384, 'REQUEST');
             const weight = request.fontWeight ?? 'normal', align = request.textAlign ?? 'left', select = request.select ?? 'end';
-            if (weight !== 'normal' && weight !== 'bold' && !(typeof weight === 'number' && Number.isInteger(weight) && weight >= 1 && weight <= 1000))
+            if (weight !== 'normal' &&
+                weight !== 'bold' &&
+                !(typeof weight === 'number' && Number.isInteger(weight) && weight >= 1 && weight <= 1000))
                 throw fault('REQUEST');
-            if (!['left', 'center', 'right'].includes(align) || select !== 'all' && select !== 'end')
+            if (!['left', 'center', 'right'].includes(align) || (select !== 'all' && select !== 'end'))
                 throw fault('REQUEST');
-            if (request.inputMode !== undefined && !MODES.includes(request.inputMode) || request.enterKeyHint !== undefined && !HINTS.includes(request.enterKeyHint))
+            if ((request.inputMode !== undefined && !MODES.includes(request.inputMode)) ||
+                (request.enterKeyHint !== undefined && !HINTS.includes(request.enterKeyHint)))
                 throw fault('REQUEST');
             const ink = colour(request.color ?? 0, 'REQUEST'), paper = request.backgroundColor === undefined ? 'transparent' : colour(request.backgroundColor, 'REQUEST');
             const hint = request.placeholderColor === undefined ? undefined : colour(request.placeholderColor, 'REQUEST');
@@ -242,12 +287,51 @@ export function createBrowserTextInput(options) {
             if (session)
                 throw fault('REENTRANT');
             const wrapper = doc.createElement('div'), node = doc.createElement(multiline ? 'textarea' : 'input');
-            Object.assign(wrapper.style, { all: 'initial', display: 'block', position: 'fixed', left: '0', top: '0', width: PROBE + 'px', height: PROBE + 'px', margin: '0', padding: '0', border: '0', overflow: 'visible', pointerEvents: 'none', zIndex: String(zIndex) });
+            Object.assign(wrapper.style, {
+                all: 'initial',
+                display: 'block',
+                position: 'fixed',
+                left: '0',
+                top: '0',
+                width: PROBE + 'px',
+                height: PROBE + 'px',
+                margin: '0',
+                padding: '0',
+                border: '0',
+                overflow: 'visible',
+                pointerEvents: 'none',
+                zIndex: String(zIndex)
+            });
             Object.assign(node.style, {
-                all: 'initial', display: 'block', position: 'absolute', boxSizing: 'border-box', margin: '0', border: '0', outline: 'none', resize: 'none', appearance: 'none', minWidth: '0', minHeight: '0',
-                borderRadius: '0', pointerEvents: 'auto', transformOrigin: '0 0', visibility: 'hidden', overflow: multiline ? 'auto' : 'hidden', whiteSpace: multiline ? 'pre-wrap' : 'pre', overflowWrap: multiline ? 'break-word' : 'normal',
-                padding: multiline ? padding + 'px' : '0 ' + padding + 'px', fontFamily, fontSize: fontSize + 'px', fontWeight: String(weight), lineHeight: lineHeight === undefined ? 'normal' : lineHeight + 'px',
-                color: ink, caretColor: ink, background: paper, textAlign: align, userSelect: 'text', touchAction: 'manipulation'
+                all: 'initial',
+                display: 'block',
+                position: 'absolute',
+                boxSizing: 'border-box',
+                margin: '0',
+                border: '0',
+                outline: 'none',
+                resize: 'none',
+                appearance: 'none',
+                minWidth: '0',
+                minHeight: '0',
+                borderRadius: '0',
+                pointerEvents: 'auto',
+                transformOrigin: '0 0',
+                visibility: 'hidden',
+                overflow: multiline ? 'auto' : 'hidden',
+                whiteSpace: multiline ? 'pre-wrap' : 'pre',
+                overflowWrap: multiline ? 'break-word' : 'normal',
+                padding: multiline ? padding + 'px' : '0 ' + padding + 'px',
+                fontFamily,
+                fontSize: fontSize + 'px',
+                fontWeight: String(weight),
+                lineHeight: lineHeight === undefined ? 'normal' : lineHeight + 'px',
+                color: ink,
+                caretColor: ink,
+                background: paper,
+                textAlign: align,
+                userSelect: 'text',
+                touchAction: 'manipulation'
             });
             node.style.setProperty('-webkit-user-select', 'text');
             if (hint !== undefined) {
@@ -272,12 +356,30 @@ export function createBrowserTextInput(options) {
             if (request.enterKeyHint !== undefined)
                 node.enterKeyHint = request.enterKeyHint;
             node.value = value;
-            const current = { node, wrapper, request, multiline, maxLength, blur, openedAt: win.performance.now(), removals: [], place, composing: false, fresh: true, reported: '0' + node.value };
+            const current = {
+                node,
+                wrapper,
+                request,
+                multiline,
+                maxLength,
+                blur,
+                openedAt: win.performance.now(),
+                removals: [],
+                place,
+                composing: false,
+                fresh: true,
+                reported: '0' + node.value
+            };
             session = current;
             try {
                 listen(current, node, 'input', () => changed(current));
-                listen(current, node, 'compositionstart', () => { current.composing = true; });
-                listen(current, node, 'compositionend', () => { current.composing = false; changed(current); });
+                listen(current, node, 'compositionstart', () => {
+                    current.composing = true;
+                });
+                listen(current, node, 'compositionend', () => {
+                    current.composing = false;
+                    changed(current);
+                });
                 listen(current, node, 'keydown', event => {
                     const key = event;
                     if (isolate)
@@ -331,8 +433,10 @@ export function createBrowserTextInput(options) {
                     listen(current, viewport, 'scroll', layout);
                 }
                 if (typeof globalThis.ResizeObserver === 'function') {
-                    const observer = new globalThis.ResizeObserver(() => { if (session === current)
-                        guard(layout); });
+                    const observer = new globalThis.ResizeObserver(() => {
+                        if (session === current)
+                            guard(layout);
+                    });
                     observer.observe(canvas);
                     current.removals.push(() => observer.disconnect());
                 }
@@ -356,8 +460,14 @@ export function createBrowserTextInput(options) {
                 throw cause;
             }
         },
-        commit() { alive(); end('commit'); },
-        cancel() { alive(); end('cancel'); },
+        commit() {
+            alive();
+            end('commit');
+        },
+        cancel() {
+            alive();
+            end('cancel');
+        },
         setValue(value) {
             alive();
             const current = session;
@@ -370,8 +480,14 @@ export function createBrowserTextInput(options) {
             current.composing = false;
             current.reported = '0' + current.node.value;
         },
-        move(place) { alive(); const current = session; if (!current)
-            throw fault('IDLE'); current.place = rectangle(place, 'RECTANGLE'); layout(); },
+        move(place) {
+            alive();
+            const current = session;
+            if (!current)
+                throw fault('IDLE');
+            current.place = rectangle(place, 'RECTANGLE');
+            layout();
+        },
         resize(width, height) {
             alive();
             const nextWidth = scalar(width, 0.25, 16384, 'SIZE'), nextHeight = scalar(height, 0.25, 16384, 'SIZE');
@@ -379,11 +495,16 @@ export function createBrowserTextInput(options) {
             logicalHeight = nextHeight;
             layout();
         },
-        sync() { alive(); layout(); },
+        sync() {
+            alive();
+            layout();
+        },
         getSnapshot() {
             if (disposed)
                 return { state: 'disposed', value: '', composing: false };
-            return session ? { state: 'open', value: session.node.value, composing: session.composing } : { state: 'idle', value: '', composing: false };
+            return session
+                ? { state: 'open', value: session.node.value, composing: session.composing }
+                : { state: 'idle', value: '', composing: false };
         },
         dispose() {
             if (disposed)
@@ -394,7 +515,9 @@ export function createBrowserTextInput(options) {
             const owned = sheet;
             sheet = undefined;
             if (owned)
-                guard(() => { doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter(item => item !== owned); });
+                guard(() => {
+                    doc.adoptedStyleSheets = doc.adoptedStyleSheets.filter(item => item !== owned);
+                });
         }
     };
 }

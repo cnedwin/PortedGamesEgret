@@ -118,8 +118,12 @@ export function createSharedMaterial2D(input) {
     const light = color(lightValues, 4);
     const dark = color(darkValues, 3);
     const blend = blendInput === undefined ? 'normal' : blendInput;
-    if (blend !== 'normal' && blend !== 'add-accumulate' && blend !== 'add-preserve' &&
-        blend !== 'multiply-factor' && blend !== 'screen' && blend !== 'erase')
+    if (blend !== 'normal' &&
+        blend !== 'add-accumulate' &&
+        blend !== 'add-preserve' &&
+        blend !== 'multiply-factor' &&
+        blend !== 'screen' &&
+        blend !== 'erase')
         throw new TypeFault('Shared material option is unsupported');
     const samplingDomain = domainInput === undefined ? 'region' : domainInput;
     if (samplingDomain !== 'page' && samplingDomain !== 'region')
@@ -144,15 +148,28 @@ export function createSharedMaterial2D(input) {
     }
     if (maxAnisotropy !== 1)
         throw new TypeFault('Shared material option is unsupported');
-    if (minFilter !== selectedFilter || magFilter !== selectedFilter ||
+    if (minFilter !== selectedFilter ||
+        magFilter !== selectedFilter ||
         (samplingDomain === 'region' && (addressU !== 'clamp-to-edge' || addressV !== 'clamp-to-edge')) ||
         (samplingDomain === 'page' && regionIsolation !== 'bounded')) {
         throw new TypeFault('Shared material option is unsupported');
     }
     // Publication is callback-free. The contracts registry is the only brand
     // owner; runtime and rendering authenticate through the contracts root.
-    const material = freeze({ light, dark, blend, samplingDomain, filter: selectedFilter,
-        addressU, addressV, regionIsolation, mipLevel: 0, minFilter, magFilter, maxAnisotropy: 1 });
+    const material = freeze({
+        light,
+        dark,
+        blend,
+        samplingDomain,
+        filter: selectedFilter,
+        addressU,
+        addressV,
+        regionIsolation,
+        mipLevel: 0,
+        minFilter,
+        magFilter,
+        maxAnisotropy: 1
+    });
     apply(weakSet, owned, [material, true]);
     return material;
 }

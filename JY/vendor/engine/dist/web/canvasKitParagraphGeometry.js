@@ -4,7 +4,9 @@ import { EgretError } from '@egret/runtime';
 export function captureCanvasKitTextGeometry(paragraph, nativeLines, request, metrics, layout, rtl, ltr, native) {
     if (typeof paragraph.getGlyphInfoAt !== 'function')
         throw new EgretError('PARAGRAPH_FEATURE_UNSUPPORTED');
-    const fail = () => { throw new EgretError('PARAGRAPH_NATIVE_GEOMETRY_INVALID'); };
+    const fail = () => {
+        throw new EgretError('PARAGRAPH_NATIVE_GEOMETRY_INVALID');
+    };
     const scalar = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 1048576 ? v : fail();
     const authored = (index) => layout.boundaries?.[index] ?? index;
     const clusters = [], lines = [];
@@ -22,7 +24,11 @@ export function captureCanvasKitTextGeometry(paragraph, nativeLines, request, me
             continue;
         }
         const { start, end } = info.graphemeClusterTextRange;
-        if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start !== index || end <= start || end > layout.text.length)
+        if (!Number.isSafeInteger(start) ||
+            !Number.isSafeInteger(end) ||
+            start !== index ||
+            end <= start ||
+            end > layout.text.length)
             fail();
         while (lineIndex < nativeLines.length && start >= nativeLines[lineIndex].endIndex) {
             const row = nativeLines[lineIndex];
@@ -52,7 +58,16 @@ export function captureCanvasKitTextGeometry(paragraph, nativeLines, request, me
         const left = scalar(bounds[0]), top = scalar(bounds[1]), right = scalar(bounds[2]), bottom = scalar(bounds[3]);
         if (right < left || bottom < top)
             fail();
-        clusters.push(Object.freeze({ start: authored(start), end: authored(end), lineIndex, direction: info.dir === rtl ? 'rtl' : 'ltr', left, top, right, bottom }));
+        clusters.push(Object.freeze({
+            start: authored(start),
+            end: authored(end),
+            lineIndex,
+            direction: info.dir === rtl ? 'rtl' : 'ltr',
+            left,
+            top,
+            right,
+            bottom
+        }));
         index = end;
     }
     for (let i = 0; i < nativeLines.length; i++) {

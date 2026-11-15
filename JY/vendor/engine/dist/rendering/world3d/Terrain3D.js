@@ -12,8 +12,13 @@ import { Mesh3D } from './Mesh3D.js';
 import { Object3D } from './Object3D.js';
 import { TriangleMeshShape3D } from './PhysicsMesh3D.js';
 export const TERRAIN3D_LIMITS = Object.freeze({
-    maxSamplesPerSide: 4097, maxChunkCells: 254, maxLevels: 8, maxChunks: 4096, maxCachedGeometryBytes: 128 * 1024 * 1024,
-    maxStreamTiles: 256, maxStreamPending: 32,
+    maxSamplesPerSide: 4097,
+    maxChunkCells: 254,
+    maxLevels: 8,
+    maxChunks: 4096,
+    maxCachedGeometryBytes: 128 * 1024 * 1024,
+    maxStreamTiles: 256,
+    maxStreamPending: 32
 });
 /**
  * Heights on a regular grid in the XZ plane. Every cell is split into two
@@ -56,13 +61,25 @@ export class HeightField3D {
         }
         this.refresh();
     }
-    get minHeight() { return this.#min; }
-    get maxHeight() { return this.#max; }
-    get cellWidth() { return this.width / (this.columns - 1); }
-    get cellDepth() { return this.depth / (this.rows - 1); }
+    get minHeight() {
+        return this.#min;
+    }
+    get maxHeight() {
+        return this.#max;
+    }
+    get cellWidth() {
+        return this.width / (this.columns - 1);
+    }
+    get cellDepth() {
+        return this.depth / (this.rows - 1);
+    }
     /** Local x of a sample column and local z of a sample row. */
-    columnX(column) { return column / (this.columns - 1) * this.width - this.width / 2; }
-    rowZ(row) { return row / (this.rows - 1) * this.depth - this.depth / 2; }
+    columnX(column) {
+        return (column / (this.columns - 1)) * this.width - this.width / 2;
+    }
+    rowZ(row) {
+        return (row / (this.rows - 1)) * this.depth - this.depth / 2;
+    }
     /** Height stored at a sample; indices are clamped to the grid. */
     sampleAt(column, row) {
         const c = column < 0 ? 0 : column >= this.columns ? this.columns - 1 : column | 0, r = row < 0 ? 0 : row >= this.rows ? this.rows - 1 : row | 0;
@@ -187,7 +204,9 @@ export class HeightField3D {
         return { type: 'mesh', mesh: new TriangleMeshShape3D(positions, indices) };
     }
 }
-export function createHeightField3D(options) { return new HeightField3D(options); }
+export function createHeightField3D(options) {
+    return new HeightField3D(options);
+}
 /** Height field with one sample per pixel of a decoded RGBA image; the image's top row is the -Z edge. */
 export function createHeightFieldFromPixels3D(pixels, options) {
     if (!pixels || !pixels.data || pixels.data.length !== pixels.width * pixels.height * 4)
@@ -198,7 +217,13 @@ export function createHeightFieldFromPixels3D(pixels, options) {
     const count = pixels.width * pixels.height, heights = new Float32Array(count), data = pixels.data;
     for (let i = 0; i < count; i++)
         heights[i] = low + (high - low) * (wide ? (data[i * 4] * 256 + data[i * 4 + 1]) / 65535 : data[i * 4] / 255);
-    return new HeightField3D({ columns: pixels.width, rows: pixels.height, width: options.width, depth: options.depth, heights });
+    return new HeightField3D({
+        columns: pixels.width,
+        rows: pixels.height,
+        width: options.width,
+        depth: options.depth,
+        heights
+    });
 }
 function chunkBufferLayout(nx, nz, skirts) {
     const vertexCount = nx * nz + (skirts ? 2 * (nx + nz) : 0);
@@ -237,7 +262,10 @@ export class Terrain3D extends Object3D {
         if (this.chunkCells < 1 || this.levels < 1)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'terrain chunks and levels');
         this.lodDistance = requirePositive3D(options.lodDistance ?? Math.max(field.cellWidth, field.cellDepth) * this.chunkCells * 2, 'lodDistance');
-        this.#skirt = options.skirtDepth === undefined ? Math.max(field.width, field.depth) * 0.02 : requireFinite3D(options.skirtDepth, 'skirtDepth');
+        this.#skirt =
+            options.skirtDepth === undefined
+                ? Math.max(field.width, field.depth) * 0.02
+                : requireFinite3D(options.skirtDepth, 'skirtDepth');
         if (this.#skirt < 0)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'skirtDepth');
         this.#uvScale = requirePositive3D(options.uvScale ?? 1, 'uvScale');
@@ -247,7 +275,15 @@ export class Terrain3D extends Object3D {
         for (let row = 0; row < field.rows - 1; row += this.chunkCells) {
             for (let column = 0; column < field.columns - 1; column += this.chunkCells) {
                 const mesh = new Mesh3D(new Geometry3D(), material);
-                const chunk = { mesh, column, row, columns: Math.min(this.chunkCells, field.columns - 1 - column), rows: Math.min(this.chunkCells, field.rows - 1 - row), geometries: [], level: -1 };
+                const chunk = {
+                    mesh,
+                    column,
+                    row,
+                    columns: Math.min(this.chunkCells, field.columns - 1 - column),
+                    rows: Math.min(this.chunkCells, field.rows - 1 - row),
+                    geometries: [],
+                    level: -1
+                };
                 mesh.name = 'terrain-chunk';
                 mesh.beforeRender = (camera) => this.select(chunk, camera);
                 this.#chunks.push(chunk);
@@ -256,20 +292,36 @@ export class Terrain3D extends Object3D {
             }
         }
     }
-    get material() { return this.#material; }
-    set material(value) { this.#material = value; for (const chunk of this.#chunks)
-        chunk.mesh.material = value; }
-    get chunkCount() { return this.#chunks.length; }
+    get material() {
+        return this.#material;
+    }
+    set material(value) {
+        this.#material = value;
+        for (const chunk of this.#chunks)
+            chunk.mesh.material = value;
+    }
+    get chunkCount() {
+        return this.#chunks.length;
+    }
     /** Detail level each chunk is currently drawn at, in row-major chunk order. */
-    get chunkLevels() { return this.#chunks.map((chunk) => chunk.level); }
+    get chunkLevels() {
+        return this.#chunks.map(chunk => chunk.level);
+    }
     /** Triangles in the levels the chunks currently use. */
-    get triangleCount() { let total = 0; for (const chunk of this.#chunks)
-        total += chunk.mesh.geometry.drawCount / 3; return total; }
+    get triangleCount() {
+        let total = 0;
+        for (const chunk of this.#chunks)
+            total += chunk.mesh.geometry.drawCount / 3;
+        return total;
+    }
     /** Set shadow casting and receiving on every chunk. */
-    setShadows(cast, receive) { for (const chunk of this.#chunks) {
-        chunk.mesh.castShadow = cast;
-        chunk.mesh.receiveShadow = receive;
-    } return this; }
+    setShadows(cast, receive) {
+        for (const chunk of this.#chunks) {
+            chunk.mesh.castShadow = cast;
+            chunk.mesh.receiveShadow = receive;
+        }
+        return this;
+    }
     /**
      * Choose every chunk's level for a camera now. Rendering does this by
      * itself; call it when you read `chunkLevels` or `triangleCount` first.
@@ -305,7 +357,9 @@ export class Terrain3D extends Object3D {
             throw new World3DError('WORLD3D_INPUT_INVALID', 'singular world matrix');
         const position = options.position;
         vec3TransformMat4(local, [
-            requireFinite3D(position[0], 'position'), requireFinite3D(position[1], 'position'), requireFinite3D(position[2], 'position'),
+            requireFinite3D(position[0], 'position'),
+            requireFinite3D(position[1], 'position'),
+            requireFinite3D(position[2], 'position')
         ], inverse);
         const width = requirePositive3D(options.width ?? 1, 'width'), height = requirePositive3D(options.height ?? 1, 'height');
         const depth = requirePositive3D(options.depth ?? Math.max(width, height) / 2, 'depth');
@@ -467,8 +521,8 @@ export class Terrain3D extends Object3D {
             normals[to * 3] = normal[0];
             normals[to * 3 + 1] = normal[1];
             normals[to * 3 + 2] = normal[2];
-            uvs[to * 2] = column / (field.columns - 1) * this.#uvScale;
-            uvs[to * 2 + 1] = row / (field.rows - 1) * this.#uvScale;
+            uvs[to * 2] = (column / (field.columns - 1)) * this.#uvScale;
+            uvs[to * 2 + 1] = (row / (field.rows - 1)) * this.#uvScale;
             if (colors) {
                 color[0] = color[1] = color[2] = 1;
                 this.#colorAt(y, 1 - normal[1], x, z, color);
@@ -511,10 +565,10 @@ export class Terrain3D extends Object3D {
                         quad(t0, b0, t1, t1, b0, b1);
                 }
             };
-            side(nx, (i) => i, (i) => xs[i], () => zs[0], true);
-            side(nx, (i) => (nz - 1) * nx + i, (i) => xs[i], () => zs[nz - 1], false);
-            side(nz, (i) => i * nx, () => xs[0], (i) => zs[i], false);
-            side(nz, (i) => i * nx + nx - 1, () => xs[nx - 1], (i) => zs[i], true);
+            side(nx, i => i, i => xs[i], () => zs[0], true);
+            side(nx, i => (nz - 1) * nx + i, i => xs[i], () => zs[nz - 1], false);
+            side(nz, i => i * nx, () => xs[0], i => zs[i], false);
+            side(nz, i => i * nx + nx - 1, () => xs[nx - 1], i => zs[i], true);
         }
         const geometry = new Geometry3D();
         geometry.setAttribute('position', new Attribute3D(positions, 3));
@@ -526,18 +580,28 @@ export class Terrain3D extends Object3D {
         return geometry;
     }
 }
-export function createTerrain3D(field, material, options = {}) { return new Terrain3D(field, material, options); }
+export function createTerrain3D(field, material, options = {}) {
+    return new Terrain3D(field, material, options);
+}
 /**
  * A standard material whose color is a blend of ground textures, such as
  * sand, grass, rock and snow, painted by a weight map. Use it on a terrain
  * with `uvScale` 1 so the weight map covers the terrain once.
  */
 export function createTerrainMaterial3D(options) {
-    if (!options || !Array.isArray(options.layers) || options.layers.length < 1 || options.layers.length > 4 || !options.weights)
+    if (!options ||
+        !Array.isArray(options.layers) ||
+        options.layers.length < 1 ||
+        options.layers.length > 4 ||
+        !options.weights)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'terrain layers');
-    const repeat = [0, 1, 2, 3].map((i) => requirePositive3D(typeof options.repeat === 'number' ? options.repeat : options.repeat?.[i] ?? 32, 'repeat'));
+    const repeat = [0, 1, 2, 3].map(i => requirePositive3D(typeof options.repeat === 'number' ? options.repeat : (options.repeat?.[i] ?? 32), 'repeat'));
     const material = createStandardMaterial3D({ roughness: 0.95, ...options });
-    material.splat = Object.freeze({ weights: options.weights, layers: Object.freeze([...options.layers]), repeat: Object.freeze(repeat) });
+    material.splat = Object.freeze({
+        weights: options.weights,
+        layers: Object.freeze([...options.layers]),
+        repeat: Object.freeze(repeat)
+    });
     return material;
 }
 export class TerrainStream3D extends Object3D {
@@ -565,16 +629,26 @@ export class TerrainStream3D extends Object3D {
             throw new World3DError('WORLD3D_INPUT_INVALID', 'loadsPerUpdate');
         this.#options = options;
     }
-    get tiles() { return [...this.#tiles.values()]; }
+    get tiles() {
+        return [...this.#tiles.values()];
+    }
     /** Outstanding loader calls, including retired requests that have yet to settle. */
-    get pendingCount() { return this.#outstanding; }
+    get pendingCount() {
+        return this.#outstanding;
+    }
     /** Most recent failure in a loader, tile preparation, or lifecycle callback. */
-    get lastFailure() { return this.#lastFailure; }
-    tileAt(x, z) { return this.#tiles.get(Math.floor(x / this.tileSize) + ',' + Math.floor(z / this.tileSize)); }
+    get lastFailure() {
+        return this.#lastFailure;
+    }
+    tileAt(x, z) {
+        return this.#tiles.get(Math.floor(x / this.tileSize) + ',' + Math.floor(z / this.tileSize));
+    }
     /** Ground height at a world point of this node's space, or undefined where no tile is loaded. */
     heightAt(x, z) {
         const tile = this.tileAt(x, z);
-        return tile ? tile.field.heightAt(x - (tile.x + 0.5) * this.tileSize, z - (tile.z + 0.5) * this.tileSize) : undefined;
+        return tile
+            ? tile.field.heightAt(x - (tile.x + 0.5) * this.tileSize, z - (tile.z + 0.5) * this.tileSize)
+            : undefined;
     }
     /** Request the tiles near a position and release those that fell out of range. */
     update(x, z) {
@@ -589,8 +663,8 @@ export class TerrainStream3D extends Object3D {
         const minX = Math.floor((x - retention) / size), maxX = Math.floor((x + retention) / size);
         const minZ = Math.floor((z - retention) / size), maxZ = Math.floor((z + retention) / size);
         const bounds = [minX, maxX, minZ, maxZ];
-        if (!bounds.every(value => Number.isSafeInteger(value) && Number.isFinite(Math.fround((value + 0.5) * size)))
-            || (maxX - minX + 1) * (maxZ - minZ + 1) > TERRAIN3D_LIMITS.maxStreamTiles) {
+        if (!bounds.every(value => Number.isSafeInteger(value) && Number.isFinite(Math.fround((value + 0.5) * size))) ||
+            (maxX - minX + 1) * (maxZ - minZ + 1) > TERRAIN3D_LIMITS.maxStreamTiles) {
             throw new World3DError('WORLD3D_BUDGET', 'terrain stream tile range');
         }
         const near = (tx, tz) => Math.hypot(Math.max(tx * size - x, 0, x - (tx + 1) * size), Math.max(tz * size - z, 0, z - (tz + 1) * size));
@@ -723,5 +797,7 @@ export class TerrainStream3D extends Object3D {
         this.#lastFailure = Object.freeze({ x: location.x, z: location.z, phase, cause });
     }
 }
-export function createTerrainStream3D(options) { return new TerrainStream3D(options); }
+export function createTerrainStream3D(options) {
+    return new TerrainStream3D(options);
+}
 //# sourceMappingURL=Terrain3D.js.map

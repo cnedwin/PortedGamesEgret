@@ -14,12 +14,22 @@ export function createScrollControl(options) {
     const { axis = 'y', wheel, thumb, onScroll, onDragChange } = options;
     let { viewportLength, contentLength } = options;
     const initial = options.offset ?? 0;
-    if ((axis !== 'x' && axis !== 'y') || !length(viewportLength) || viewportLength <= 0 || !length(contentLength) || !length(initial)
-        || (onScroll !== undefined && typeof onScroll !== 'function') || (onDragChange !== undefined && typeof onDragChange !== 'function'))
+    if ((axis !== 'x' && axis !== 'y') ||
+        !length(viewportLength) ||
+        viewportLength <= 0 ||
+        !length(contentLength) ||
+        !length(initial) ||
+        (onScroll !== undefined && typeof onScroll !== 'function') ||
+        (onDragChange !== undefined && typeof onDragChange !== 'function'))
         throw new EgretError('UI_CONTROL_OPTIONS');
     let lineLength = 40, trackLength = 0, minimumLength = 16;
     if (wheel !== undefined) {
-        if (wheel === null || typeof wheel !== 'object' || wheel.hover === null || typeof wheel.hover !== 'object' || wheel.hover.events === null || typeof wheel.hover.events !== 'object')
+        if (wheel === null ||
+            typeof wheel !== 'object' ||
+            wheel.hover === null ||
+            typeof wheel.hover !== 'object' ||
+            wheel.hover.events === null ||
+            typeof wheel.hover.events !== 'object')
             throw new EgretError('UI_CONTROL_OPTIONS');
         displayTarget(wheel.target);
         lineLength = wheel.lineLength ?? 40;
@@ -27,7 +37,11 @@ export function createScrollControl(options) {
             throw new EgretError('UI_CONTROL_OPTIONS');
     }
     if (thumb !== undefined) {
-        if (thumb === null || typeof thumb !== 'object' || thumb.input === null || typeof thumb.input !== 'object' || typeof thumb.input.observe !== 'function')
+        if (thumb === null ||
+            typeof thumb !== 'object' ||
+            thumb.input === null ||
+            typeof thumb.input !== 'object' ||
+            typeof thumb.input.observe !== 'function')
             throw new EgretError('UI_CONTROL_OPTIONS');
         displayTarget(thumb.target);
         trackLength = thumb.trackLength;
@@ -39,8 +53,10 @@ export function createScrollControl(options) {
     const range = () => Math.max(0, contentLength - viewportLength);
     let offset = Math.min(initial, range());
     let drag;
-    function open() { if (closed)
-        throw new EgretError('UI_CONTROL_CLOSED'); }
+    function open() {
+        if (closed)
+            throw new EgretError('UI_CONTROL_CLOSED');
+    }
     function move(next) {
         const clamped = Math.min(range(), Math.max(0, next));
         if (clamped === offset)
@@ -57,7 +73,7 @@ export function createScrollControl(options) {
     }
     /** The share of the content that shows, on the track; a content that fits fills it. */
     function thumbLength() {
-        return Math.min(trackLength, Math.max(minimumLength, trackLength * viewportLength / contentLength));
+        return Math.min(trackLength, Math.max(minimumLength, (trackLength * viewportLength) / contentLength));
     }
     function setDragging(next) {
         const was = drag !== undefined;
@@ -65,7 +81,7 @@ export function createScrollControl(options) {
         if (was !== (next !== undefined))
             onDragChange?.(next !== undefined);
     }
-    const along = (contact) => axis === 'y' ? contact.globalY : contact.globalX;
+    const along = (contact) => (axis === 'y' ? contact.globalY : contact.globalX);
     const subscriptions = [];
     if (wheel !== undefined) {
         subscriptions.push(wheel.target.on(wheel.hover.events.wheel, event => {
@@ -97,10 +113,14 @@ export function createScrollControl(options) {
             const travel = trackLength - thumbLength();
             // A thumb that fills its track has nowhere to go.
             if (travel > 0)
-                move(drag.from + (along(event.payload) - drag.origin) * range() / travel);
-        }), target.on(input.events.end, event => { if (!closed && owns(event.payload))
-            setDragging(undefined); }), target.on(input.events.cancel, event => { if (!closed && owns(event.payload))
-            setDragging(undefined); }), 
+                move(drag.from + ((along(event.payload) - drag.origin) * range()) / travel);
+        }), target.on(input.events.end, event => {
+            if (!closed && owns(event.payload))
+                setDragging(undefined);
+        }), target.on(input.events.cancel, event => {
+            if (!closed && owns(event.payload))
+                setDragging(undefined);
+        }), 
         // A thumb that has left the stage receives no event; the stream of the input still ends the drag.
         input.observe(notification => {
             if (closed || !owns(notification.contact))
@@ -111,24 +131,48 @@ export function createScrollControl(options) {
     }
     return Object.freeze({
         axis,
-        get offset() { return offset; },
-        get maximum() { return range(); },
-        get viewportLength() { return viewportLength; },
-        get contentLength() { return contentLength; },
+        get offset() {
+            return offset;
+        },
+        get maximum() {
+            return range();
+        },
+        get viewportLength() {
+            return viewportLength;
+        },
+        get contentLength() {
+            return contentLength;
+        },
         get thumb() {
             if (thumb === undefined)
                 return undefined;
             const size = thumbLength(), most = range();
-            return Object.freeze({ start: most === 0 ? 0 : (trackLength - size) * offset / most, length: size });
+            return Object.freeze({ start: most === 0 ? 0 : ((trackLength - size) * offset) / most, length: size });
         },
-        get dragging() { return drag !== undefined; },
-        get enabled() { return enabled; },
-        scrollTo(next) { return request(next); },
-        scrollBy(delta) { return request(offset + delta); },
-        line(direction) { return request(offset + direction * lineLength); },
-        page(direction) { return request(offset + direction * Math.max(lineLength, viewportLength - lineLength)); },
-        toStart() { return request(0); },
-        toEnd() { return request(range()); },
+        get dragging() {
+            return drag !== undefined;
+        },
+        get enabled() {
+            return enabled;
+        },
+        scrollTo(next) {
+            return request(next);
+        },
+        scrollBy(delta) {
+            return request(offset + delta);
+        },
+        line(direction) {
+            return request(offset + direction * lineLength);
+        },
+        page(direction) {
+            return request(offset + direction * Math.max(lineLength, viewportLength - lineLength));
+        },
+        toStart() {
+            return request(0);
+        },
+        toEnd() {
+            return request(range());
+        },
         setLengths(nextViewport, nextContent) {
             open();
             if (!length(nextViewport) || nextViewport <= 0 || !length(nextContent))
@@ -168,7 +212,7 @@ export function createScrollControl(options) {
                 }
             if (failure !== undefined)
                 throw failure;
-        },
+        }
     });
 }
 //# sourceMappingURL=scrollControl.js.map

@@ -1,10 +1,10 @@
-import { captureAtlasFrameLayout, copyAtlasFrameLayout } from './atlasFrameLayout.js';
+import { captureAtlasFrameLayout, copyAtlasFrameLayout } from "./atlasFrameLayout.js";
 import { isAssetLease, readAssetLeaseValue } from "./AssetLease.js";
 import { AssetLease } from "./AssetLease.js";
 import { DisplayObject } from "./DisplayObject.js";
 import { hasBitmapState, readBitmapState, writeBitmapState } from "./bitmapDisplayState.js";
 import { assertLive, isStageRoot, isTerminated } from "./displayTreeState.js";
-import { collectPreparedSharedFrameContent } from './sharedFrameCapture.js';
+import { collectPreparedSharedFrameContent } from "./sharedFrameCapture.js";
 import { EgretError } from "./EgretError.js";
 import { claimOwner, ownerOf, commitBinding, engineOf } from "./ownership.js";
 import { isTexture, readTextureImage, readTextureSnapshot } from "./Texture.js";
@@ -27,7 +27,7 @@ function operationsFor(context) {
     const batchPublications = new WeakMap();
     const affinity = (value) => {
         if (engineOf(value) !== context)
-            throw new EgretError('ENGINE_MISMATCH');
+            throw new EgretError("ENGINE_MISMATCH");
     };
     const batchAffinity = (targets) => {
         for (let index = 0; index < targets.length; index++) {
@@ -43,20 +43,20 @@ function operationsFor(context) {
     const capturedBatch = (captured) => {
         const entry = batchCaptures.get(captured);
         if (entry === undefined)
-            throw new EgretError('BITMAP_RESOURCE_PREPARED_INVALID');
+            throw new EgretError("BITMAP_RESOURCE_PREPARED_INVALID");
         return entry;
     };
     const expectedBatch = (entry) => {
         // Complete the entire token pass before reading even the first entitlement.
         for (let index = 0; index < entry.targets.length; index++) {
             if (readBitmapState(entry.targets[index]) !== entry.expected[index]) {
-                throw new EgretError('BITMAP_RESOURCE_BINDING_CHANGED');
+                throw new EgretError("BITMAP_RESOURCE_BINDING_CHANGED");
             }
         }
     };
     const batchImage = (lease) => {
         if (!isAssetLease(lease))
-            throw new EgretError('BITMAP_LEASE_INVALID');
+            throw new EgretError("BITMAP_LEASE_INVALID");
         affinity(lease);
         return readBitmapImage(lease);
     };
@@ -69,14 +69,16 @@ function operationsFor(context) {
         const state = readBitmapBinding(bitmap);
         // A changed binding wins before any external entitlement revocation.
         if (expected !== undefined && state !== expected)
-            throw new EgretError('BITMAP_RESOURCE_BINDING_CHANGED');
+            throw new EgretError("BITMAP_RESOURCE_BINDING_CHANGED");
         if (state === undefined)
-            throw new EgretError('BITMAP_RESOURCE_TEXTURE_REQUIRED');
+            throw new EgretError("BITMAP_RESOURCE_TEXTURE_REQUIRED");
         readBitmapImage(state.lease);
         return state;
     };
     operations = freezeResourceOperations({
-        capture(bitmap, expected) { return liveBinding(bitmap, expected); },
+        capture(bitmap, expected) {
+            return liveBinding(bitmap, expected);
+        },
         prepare(bitmap, lease) {
             affinity(bitmap);
             affinity(lease);
@@ -84,9 +86,11 @@ function operationsFor(context) {
             const snapshot = readBitmapImage(lease);
             // Use the captured intrinsic; no late public setter or freeze callback.
             const state = freezeResourceOperations({
-                lease, sourceRect: snapshot.sourceRect, viewRegion: snapshot.viewRegion,
+                lease,
+                sourceRect: snapshot.sourceRect,
+                viewRegion: snapshot.viewRegion,
                 width: snapshot.viewRegion?.logicalWidth ?? snapshot.sourceRect.width,
-                height: snapshot.viewRegion?.logicalHeight ?? snapshot.sourceRect.height,
+                height: snapshot.viewRegion?.logicalHeight ?? snapshot.sourceRect.height
             });
             preparedStates.set(state, { bitmap, state });
             return state;
@@ -96,18 +100,18 @@ function operationsFor(context) {
             assertBitmap(bitmap);
             const entry = preparedStates.get(prepared);
             if (entry === undefined || entry.bitmap !== bitmap)
-                throw new EgretError('BITMAP_RESOURCE_PREPARED_INVALID');
+                throw new EgretError("BITMAP_RESOURCE_PREPARED_INVALID");
             affinity(entry.state.lease);
             assertLive(bitmap);
             context.assertOpen();
             if (mutations.has(bitmap))
-                throw new EgretError('BITMAP_MUTATION_REENTRANT');
+                throw new EgretError("BITMAP_MUTATION_REENTRANT");
             const current = readBitmapState(bitmap);
             if (current !== expected)
-                throw new EgretError('BITMAP_RESOURCE_BINDING_CHANGED');
+                throw new EgretError("BITMAP_RESOURCE_BINDING_CHANGED");
             // Both entitlements are fresh even when expected state identity is unchanged.
             if (current === undefined)
-                throw new EgretError('BITMAP_RESOURCE_TEXTURE_REQUIRED');
+                throw new EgretError("BITMAP_RESOURCE_TEXTURE_REQUIRED");
             readBitmapImage(current.lease);
             readBitmapImage(entry.state.lease);
             preparedStates.delete(prepared);
@@ -129,19 +133,19 @@ function operationsFor(context) {
             assertLive(bitmap);
             context.assertOpen();
             if (!isAssetLease(lease) || ownerOf(lease) !== undefined)
-                throw new EgretError('BITMAP_RESOURCE_LEASE_INVALID');
+                throw new EgretError("BITMAP_RESOURCE_LEASE_INVALID");
             readAssetLeaseValue(lease);
             claimOwner(lease, owner);
         },
         release(lease) {
             affinity(lease);
             if (!isAssetLease(lease))
-                throw new EgretError('BITMAP_RESOURCE_LEASE_INVALID');
+                throw new EgretError("BITMAP_RESOURCE_LEASE_INVALID");
             applyResourceOperation(releaseResourceLease, lease, []);
         },
         captureBatch(targets) {
             if (!Array.isArray(targets) || targets.length < 1 || targets.length > 128) {
-                throw new EgretError('BITMAP_BINDING_TARGETS_INVALID');
+                throw new EgretError("BITMAP_BINDING_TARGETS_INVALID");
             }
             const copied = [], seen = new Set();
             for (let index = 0; index < targets.length; index++) {
@@ -149,7 +153,7 @@ function operationsFor(context) {
                 affinity(bitmap);
                 assertBitmap(bitmap);
                 if (seen.has(bitmap))
-                    throw new EgretError('BITMAP_BINDING_TARGETS_INVALID');
+                    throw new EgretError("BITMAP_BINDING_TARGETS_INVALID");
                 seen.add(bitmap);
                 copied.push(bitmap);
             }
@@ -158,14 +162,15 @@ function operationsFor(context) {
             for (let index = 0; index < copied.length; index++) {
                 const state = readBitmapState(copied[index]);
                 if (state === undefined)
-                    throw new EgretError('BITMAP_RESOURCE_TEXTURE_REQUIRED');
+                    throw new EgretError("BITMAP_RESOURCE_TEXTURE_REQUIRED");
                 expected.push(state);
             }
             for (let index = 0; index < expected.length; index++)
                 batchImage(expected[index].lease);
             const captured = freezeResourceOperations({});
             batchCaptures.set(captured, freezeResourceOperations({
-                targets: freezeResourceOperations(copied), expected: freezeResourceOperations(expected),
+                targets: freezeResourceOperations(copied),
+                expected: freezeResourceOperations(expected)
             }));
             return captured;
         },
@@ -174,7 +179,7 @@ function operationsFor(context) {
             batchAffinity(entry.targets);
             batchLife(entry.targets);
             if (!Array.isArray(members) || members.length !== entry.targets.length) {
-                throw new EgretError('BITMAP_BINDING_MEMBERS_INVALID');
+                throw new EgretError("BITMAP_BINDING_MEMBERS_INVALID");
             }
             const leases = [];
             for (let index = 0; index < entry.targets.length; index++)
@@ -188,9 +193,13 @@ function operationsFor(context) {
             const states = [];
             for (let index = 0; index < snapshots.length; index++) {
                 const snapshot = snapshots[index];
-                states.push(freezeResourceOperations({ lease: leases[index], sourceRect: snapshot.sourceRect, viewRegion: snapshot.viewRegion,
+                states.push(freezeResourceOperations({
+                    lease: leases[index],
+                    sourceRect: snapshot.sourceRect,
+                    viewRegion: snapshot.viewRegion,
                     width: snapshot.viewRegion?.logicalWidth ?? snapshot.sourceRect.width,
-                    height: snapshot.viewRegion?.logicalHeight ?? snapshot.sourceRect.height }));
+                    height: snapshot.viewRegion?.logicalHeight ?? snapshot.sourceRect.height
+                }));
             }
             const prepared = freezeResourceOperations({});
             batchPreparedStates.set(prepared, freezeResourceOperations({ captured, states: freezeResourceOperations(states) }));
@@ -201,11 +210,11 @@ function operationsFor(context) {
             batchAffinity(entry.targets);
             const candidate = batchPreparedStates.get(prepared);
             if (candidate === undefined || candidate.captured !== captured)
-                throw new EgretError('BITMAP_RESOURCE_PREPARED_INVALID');
+                throw new EgretError("BITMAP_RESOURCE_PREPARED_INVALID");
             batchLife(entry.targets);
             for (let index = 0; index < entry.targets.length; index++) {
                 if (mutations.has(entry.targets[index]))
-                    throw new EgretError('BITMAP_MUTATION_REENTRANT');
+                    throw new EgretError("BITMAP_MUTATION_REENTRANT");
             }
             expectedBatch(entry);
             oldBatchImages(entry);
@@ -222,19 +231,19 @@ function operationsFor(context) {
         capturePreparedSharedContent(stage, captured, prepared) {
             const entry = capturedBatch(captured), candidate = batchPreparedStates.get(prepared);
             if (candidate === undefined || candidate.captured !== captured)
-                throw new EgretError('BITMAP_RESOURCE_PREPARED_INVALID');
+                throw new EgretError("BITMAP_RESOURCE_PREPARED_INVALID");
             const validate = () => {
                 if (batchCaptures.get(captured) !== entry || batchPreparedStates.get(prepared) !== candidate) {
-                    throw new EgretError('BITMAP_RESOURCE_PREPARED_INVALID');
+                    throw new EgretError("BITMAP_RESOURCE_PREPARED_INVALID");
                 }
                 if (!isStageRoot(stage))
-                    throw new EgretError('FRAME_STAGE_INVALID');
+                    throw new EgretError("FRAME_STAGE_INVALID");
                 affinity(stage);
                 batchAffinity(entry.targets);
                 batchLife(entry.targets);
                 for (let index = 0; index < entry.targets.length; index++) {
                     if (mutations.has(entry.targets[index]))
-                        throw new EgretError('BITMAP_MUTATION_REENTRANT');
+                        throw new EgretError("BITMAP_MUTATION_REENTRANT");
                 }
                 expectedBatch(entry);
                 oldBatchImages(entry);
@@ -248,7 +257,9 @@ function operationsFor(context) {
             // The completed map never escapes this frozen view or receives another write.
             // Whole states preserve crop, logical dimensions, rotation and atlas metadata.
             const view = freezeResourceOperations({
-                read(node) { return selected.get(node) ?? readBitmapState(node); },
+                read(node) {
+                    return selected.get(node) ?? readBitmapState(node);
+                }
             });
             const content = collectPreparedSharedFrameContent(stage, view);
             validate();
@@ -257,7 +268,7 @@ function operationsFor(context) {
         clearBatchIfCurrent(publication) {
             const entry = batchPublications.get(publication);
             if (entry === undefined)
-                throw new EgretError('BITMAP_RESOURCE_PREPARED_INVALID');
+                throw new EgretError("BITMAP_RESOURCE_PREPARED_INVALID");
             batchAffinity(entry.targets);
             if (!entry.active)
                 return;
@@ -268,7 +279,7 @@ function operationsFor(context) {
                 if (readBitmapState(target) === entry.states[index])
                     writeBitmapState(target, undefined);
             }
-        },
+        }
     });
     resourceTargetOperations.set(context, operations);
     return operations;
@@ -278,8 +289,13 @@ function assertBitmap(value) {
         throw new EgretError("BITMAP_INVALID");
 }
 function captureState(lease, sourceRect, viewRegion = null) {
-    return Object.freeze({ lease, sourceRect, viewRegion,
-        width: viewRegion?.logicalWidth ?? sourceRect.width, height: viewRegion?.logicalHeight ?? sourceRect.height });
+    return Object.freeze({
+        lease,
+        sourceRect,
+        viewRegion,
+        width: viewRegion?.logicalWidth ?? sourceRect.width,
+        height: viewRegion?.logicalHeight ?? sourceRect.height
+    });
 }
 /** Shared lease/crop guard starts after the established lifecycle priority. */
 function beginMutation(node) {
@@ -331,8 +347,12 @@ function copyRegion(base, fields) {
     const x = regionInteger(fields.x, false), y = regionInteger(fields.y, false);
     const width = regionInteger(fields.width, true), height = regionInteger(fields.height, true);
     const right = x + width, bottom = y + height;
-    if (!Number.isSafeInteger(right) || !Number.isSafeInteger(bottom)
-        || x < base.x || y < base.y || right > base.x + base.width || bottom > base.y + base.height) {
+    if (!Number.isSafeInteger(right) ||
+        !Number.isSafeInteger(bottom) ||
+        x < base.x ||
+        y < base.y ||
+        right > base.x + base.width ||
+        bottom > base.y + base.height) {
         throw new EgretError("BITMAP_REGION_INVALID", { cause: new RangeError("Bitmap region exceeds its Texture view") });
     }
     return Object.freeze({ x, y, width, height });
@@ -357,8 +377,12 @@ export class Bitmap extends DisplayObject {
         const apply = Reflect.apply;
         spriteSheetBitmapOperations = Object.freeze({
             construct: (lease) => new OriginalBitmap(lease),
-            setCrop: (bitmap, region) => { apply(setCrop, bitmap, [region]); },
-            dispose: (bitmap) => { apply(dispose, bitmap, []); },
+            setCrop: (bitmap, region) => {
+                apply(setCrop, bitmap, [region]);
+            },
+            dispose: (bitmap) => {
+                apply(dispose, bitmap, []);
+            }
         });
     }
     get textureLease() {
@@ -420,8 +444,14 @@ export class Bitmap extends DisplayObject {
             mutations.delete(this);
         }
     }
-    get naturalWidth() { assertBitmap(this); return readBitmapState(this)?.width ?? 0; }
-    get naturalHeight() { assertBitmap(this); return readBitmapState(this)?.height ?? 0; }
+    get naturalWidth() {
+        assertBitmap(this);
+        return readBitmapState(this)?.width ?? 0;
+    }
+    get naturalHeight() {
+        assertBitmap(this);
+        return readBitmapState(this)?.height ?? 0;
+    }
     /** Drop the borrow before base cleanup/reentry; the caller still owns the lease. */
     dispose() {
         assertBitmap(this);
@@ -432,7 +462,9 @@ export class Bitmap extends DisplayObject {
     }
 }
 /** Brand and slot only: geometry may be validated before any lease read. */
-export function bitmapCaptureState(node) { return readBitmapState(node); }
+export function bitmapCaptureState(node) {
+    return readBitmapState(node);
+}
 /** Internal binding authority; a cleared slot remains distinguishable from retirement. */
 export function readBitmapBinding(node) {
     assertBitmap(node);
@@ -465,7 +497,7 @@ export function applyBitmapAtlasFrame(bitmap, region) {
     try {
         const previous = readBitmapState(bitmap);
         if (previous === undefined)
-            throw new EgretError('BITMAP_TEXTURE_REQUIRED');
+            throw new EgretError("BITMAP_TEXTURE_REQUIRED");
         const initial = readBitmapImage(previous.lease);
         // Internal atlas bridges obey the same immutable-view rule as public crop.
         if (initial.viewRegion !== null)
@@ -477,22 +509,30 @@ export function applyBitmapAtlasFrame(bitmap, region) {
                 return { present, value: present ? source[key] : undefined };
             }
             catch (cause) {
-                throw new EgretError('BITMAP_REGION_INVALID', { cause });
+                throw new EgretError("BITMAP_REGION_INVALID", { cause });
             }
         }, callback => {
             try {
                 return callback();
             }
             catch (cause) {
-                throw new EgretError('BITMAP_REGION_INVALID', { cause });
+                throw new EgretError("BITMAP_REGION_INVALID", { cause });
             }
         });
         revalidateMutation(bitmap, engine, previous);
         const snapshot = readBitmapImage(previous.lease);
         const sourceRect = copyRegion(snapshot.sourceRect, fields);
-        const layout = copyAtlasFrameLayout(captured, sourceRect.width, sourceRect.height, () => { throw new EgretError('BITMAP_REGION_INVALID'); });
-        const next = freezeAtlasState({ lease: previous.lease, sourceRect, layout, viewRegion: null,
-            width: layout.sourceWidth, height: layout.sourceHeight });
+        const layout = copyAtlasFrameLayout(captured, sourceRect.width, sourceRect.height, () => {
+            throw new EgretError("BITMAP_REGION_INVALID");
+        });
+        const next = freezeAtlasState({
+            lease: previous.lease,
+            sourceRect,
+            layout,
+            viewRegion: null,
+            width: layout.sourceWidth,
+            height: layout.sourceHeight
+        });
         revalidateMutation(bitmap, engine, previous);
         readBitmapImage(previous.lease);
         // Publish one new token, even for identical crop/layout scalars (ABA protection).

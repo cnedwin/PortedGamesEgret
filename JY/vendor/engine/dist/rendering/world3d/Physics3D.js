@@ -8,8 +8,15 @@
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { ConvexHullShape3D } from './PhysicsHull3D.js';
 import { TriangleMeshShape3D } from './PhysicsMesh3D.js';
+import { StaticTree, rayShape } from './PhysicsQueries3D.js';
 export const raycastExcludingBody3D = Symbol('physics raycast excluding one body');
-export const PHYSICS3D_LIMITS = Object.freeze({ maxBodies: 16384, maxSubSteps: 8, maxContactsPerPair: 8, maxCompoundChildren: 32, maxSolverSteps: 8 });
+export const PHYSICS3D_LIMITS = Object.freeze({
+    maxBodies: 16384,
+    maxSubSteps: 8,
+    maxContactsPerPair: 8,
+    maxCompoundChildren: 32,
+    maxSolverSteps: 8
+});
 const v3 = (x = 0, y = 0, z = 0) => new Float64Array([x, y, z]);
 const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 function cross(out, a, b) {
@@ -19,7 +26,7 @@ function cross(out, a, b) {
     out[2] = z;
     return out;
 }
-const clamp = (value, low, high) => value < low ? low : value > high ? high : value;
+const clamp = (value, low, high) => (value < low ? low : value > high ? high : value);
 let nextBodyId = 1;
 export class RigidBody3D {
     id = nextBodyId++;
@@ -83,20 +90,27 @@ export class RigidBody3D {
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'convex shape');
         }
         else if (shape.type === 'compound') {
-            if (!Array.isArray(shape.children) || shape.children.length === 0 || shape.children.length > PHYSICS3D_LIMITS.maxCompoundChildren)
+            if (!Array.isArray(shape.children) ||
+                shape.children.length === 0 ||
+                shape.children.length > PHYSICS3D_LIMITS.maxCompoundChildren)
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'compound children');
             const half = this.compoundHalf;
             for (const child of shape.children) {
                 const kind = child?.shape?.type;
                 if (kind !== 'sphere' && kind !== 'box' && kind !== 'capsule' && kind !== 'convex')
                     throw new World3DError('WORLD3D_INPUT_INVALID', 'compound parts are spheres, boxes, capsules or convex hulls');
-                const at = child.position ?? [0, 0, 0], turn = child.quaternion ?? [0, 0, 0, 1], size = Math.hypot(turn[0], turn[1], turn[2], turn[3]);
+                const at = child.position ?? [0, 0, 0], turn = child.quaternion ?? [0, 0, 0, 1], size = Math.sqrt(turn[0] * turn[0] + turn[1] * turn[1] + turn[2] * turn[2] + turn[3] * turn[3]);
                 for (const value of at)
                     requireFinite3D(value, 'compound child position');
                 if (!(size > 0))
                     throw new World3DError('WORLD3D_INPUT_INVALID', 'compound child quaternion');
                 // The part is validated by building it; it never joins a world of its own.
-                const part = new RigidBody3D({ type: 'kinematic', shape: child.shape, position: at, quaternion: [turn[0] / size, turn[1] / size, turn[2] / size, turn[3] / size] });
+                const part = new RigidBody3D({
+                    type: 'kinematic',
+                    shape: child.shape,
+                    position: at,
+                    quaternion: [turn[0] / size, turn[1] / size, turn[2] / size, turn[3] / size]
+                });
                 this.parts.push(part);
                 this.partPoses.push(new Float64Array([at[0], at[1], at[2], turn[0] / size, turn[1] / size, turn[2] / size, turn[3] / size]));
                 const box = part.aabb;
@@ -137,25 +151,40 @@ export class RigidBody3D {
                 ix = iy = iz = 0.4 * m * shape.radius * shape.radius;
             else if (shape.type === 'box' || shape.type === 'convex' || shape.type === 'compound') {
                 // A hull or a compound is weighed like the box around it.
-                const [x, y, z] = shape.type === 'box' ? shape.halfExtents : shape.type === 'convex' ? shape.hull.halfExtents : this.compoundHalf;
-                ix = m / 3 * (y * y + z * z);
-                iy = m / 3 * (x * x + z * z);
-                iz = m / 3 * (x * x + y * y);
+                const [x, y, z] = shape.type === 'box'
+                    ? shape.halfExtents
+                    : shape.type === 'convex'
+                        ? shape.hull.halfExtents
+                        : this.compoundHalf;
+                ix = (m / 3) * (y * y + z * z);
+                iy = (m / 3) * (x * x + z * z);
+                iz = (m / 3) * (x * x + y * y);
             }
             else {
                 // Treat the capsule as a cylinder spanning its full length.
                 const capsule = shape, r = capsule.radius, length = 2 * (capsule.halfHeight + r);
                 iy = 0.5 * m * r * r;
-                ix = iz = m * (3 * r * r + length * length) / 12;
+                ix = iz = (m * (3 * r * r + length * length)) / 12;
             }
             this.inverseInertiaLocal.set([1 / ix, 1 / iy, 1 / iz]);
         }
         this.refresh();
     }
-    wake() { this.isSleeping = false; this.sleepTime = 0; }
-    setPosition(x, y, z) { this.position[0] = x; this.position[1] = y; this.position[2] = z; this.wake(); this.refresh(); this.world?.staticMoved(this); return this; }
+    wake() {
+        this.isSleeping = false;
+        this.sleepTime = 0;
+    }
+    setPosition(x, y, z) {
+        this.position[0] = x;
+        this.position[1] = y;
+        this.position[2] = z;
+        this.wake();
+        this.refresh();
+        this.world?.staticMoved(this);
+        return this;
+    }
     setQuaternion(x, y, z, w) {
-        const length = Math.hypot(x, y, z, w) || 1;
+        const length = Math.sqrt(x * x + y * y + z * z + w * w) || 1;
         this.quaternion[0] = x / length;
         this.quaternion[1] = y / length;
         this.quaternion[2] = z / length;
@@ -165,11 +194,33 @@ export class RigidBody3D {
         this.world?.staticMoved(this);
         return this;
     }
-    setLinearVelocity(x, y, z) { this.linearVelocity[0] = x; this.linearVelocity[1] = y; this.linearVelocity[2] = z; this.wake(); return this; }
-    setAngularVelocity(x, y, z) { this.angularVelocity[0] = x; this.angularVelocity[1] = y; this.angularVelocity[2] = z; this.wake(); return this; }
+    setLinearVelocity(x, y, z) {
+        this.linearVelocity[0] = x;
+        this.linearVelocity[1] = y;
+        this.linearVelocity[2] = z;
+        this.wake();
+        return this;
+    }
+    setAngularVelocity(x, y, z) {
+        this.angularVelocity[0] = x;
+        this.angularVelocity[1] = y;
+        this.angularVelocity[2] = z;
+        this.wake();
+        return this;
+    }
     /** Accumulate a force through the center of mass; cleared after each step. */
-    applyForce(x, y, z) { this.force[0] += x; this.force[1] += y; this.force[2] += z; this.wake(); }
-    applyTorque(x, y, z) { this.torque[0] += x; this.torque[1] += y; this.torque[2] += z; this.wake(); }
+    applyForce(x, y, z) {
+        this.force[0] += x;
+        this.force[1] += y;
+        this.force[2] += z;
+        this.wake();
+    }
+    applyTorque(x, y, z) {
+        this.torque[0] += x;
+        this.torque[1] += y;
+        this.torque[2] += z;
+        this.wake();
+    }
     /** Change velocity at once; give `point` in world space to add spin. */
     applyImpulse(x, y, z, point) {
         if (this.type !== 'dynamic')
@@ -204,7 +255,10 @@ export class RigidBody3D {
             // R * diag(inv) * R^T
             for (let i = 0; i < 3; i++)
                 for (let j = 0; j < 3; j++)
-                    world[i * 3 + j] = r[i * 3] * inv[0] * r[j * 3] + r[i * 3 + 1] * inv[1] * r[j * 3 + 1] + r[i * 3 + 2] * inv[2] * r[j * 3 + 2];
+                    world[i * 3 + j] =
+                        r[i * 3] * inv[0] * r[j * 3] +
+                            r[i * 3 + 1] * inv[1] * r[j * 3 + 1] +
+                            r[i * 3 + 2] * inv[2] * r[j * 3 + 2];
         }
         else
             world.fill(0);
@@ -286,7 +340,16 @@ class Manifold {
     count = 0;
     /** Identifies which part of the shapes the next contacts come from, so impulses can be matched across steps. */
     feature = 0;
-    contacts = Array.from({ length: 8 }, () => ({ px: 0, py: 0, pz: 0, nx: 0, ny: 0, nz: 0, depth: 0, feature: 0 }));
+    contacts = Array.from({ length: 8 }, () => ({
+        px: 0,
+        py: 0,
+        pz: 0,
+        nx: 0,
+        ny: 0,
+        nz: 0,
+        depth: 0,
+        feature: 0
+    }));
     add(px, py, pz, nx, ny, nz, depth) {
         if (this.count >= this.contacts.length)
             return;
@@ -399,7 +462,7 @@ function sphereBox(m, x, y, z, radius, box) {
         lx = local[0] - closest[0];
         ly = local[1] - closest[1];
         lz = local[2] - closest[2];
-        const d = Math.hypot(lx, ly, lz);
+        const d = Math.sqrt(lx * lx + ly * ly + lz * lz);
         if (d >= radius)
             return;
         lx /= d;
@@ -483,7 +546,7 @@ const MARGIN = 0.02;
 const corner = v3();
 function boxCorner(out, box, index) {
     const r = box.rotation, p = box.position, h = box.shape.halfExtents;
-    const x = (index & 1 ? h[0] : -h[0]), y = (index & 2 ? h[1] : -h[1]), z = (index & 4 ? h[2] : -h[2]);
+    const x = index & 1 ? h[0] : -h[0], y = index & 2 ? h[1] : -h[1], z = index & 4 ? h[2] : -h[2];
     out[0] = p[0] + r[0] * x + r[1] * y + r[2] * z;
     out[1] = p[1] + r[3] * x + r[4] * y + r[5] * z;
     out[2] = p[2] + r[6] * x + r[7] * y + r[8] * z;
@@ -502,21 +565,23 @@ function boxPlane(m, box, plane) {
 const axisScratch = v3(), bestAxis = v3(), faceA = new Float64Array(32), faceB = new Float64Array(32);
 function boxProjection(box, axis) {
     const r = box.rotation, h = box.shape.halfExtents;
-    return Math.abs(axis[0] * r[0] + axis[1] * r[3] + axis[2] * r[6]) * h[0] + Math.abs(axis[0] * r[1] + axis[1] * r[4] + axis[2] * r[7]) * h[1]
-        + Math.abs(axis[0] * r[2] + axis[1] * r[5] + axis[2] * r[8]) * h[2];
+    return (Math.abs(axis[0] * r[0] + axis[1] * r[3] + axis[2] * r[6]) * h[0] +
+        Math.abs(axis[0] * r[1] + axis[1] * r[4] + axis[2] * r[7]) * h[1] +
+        Math.abs(axis[0] * r[2] + axis[1] * r[5] + axis[2] * r[8]) * h[2]);
 }
 function insideBox(box, point, tolerance) {
     const r = box.rotation, p = box.position, h = box.shape.halfExtents;
     const dx = point[0] - p[0], dy = point[1] - p[1], dz = point[2] - p[2];
-    return Math.abs(r[0] * dx + r[3] * dy + r[6] * dz) <= h[0] + tolerance && Math.abs(r[1] * dx + r[4] * dy + r[7] * dz) <= h[1] + tolerance
-        && Math.abs(r[2] * dx + r[5] * dy + r[8] * dz) <= h[2] + tolerance;
+    return (Math.abs(r[0] * dx + r[3] * dy + r[6] * dz) <= h[0] + tolerance &&
+        Math.abs(r[1] * dx + r[4] * dy + r[7] * dz) <= h[1] + tolerance &&
+        Math.abs(r[2] * dx + r[5] * dy + r[8] * dz) <= h[2] + tolerance);
 }
 function boxBox(m, a, b) {
     const ra = a.rotation, rb = b.rotation, d = [b.position[0] - a.position[0], b.position[1] - a.position[1], b.position[2] - a.position[2]];
     let best = Infinity, bestDepth = 0, bestIndex = -1;
     // Separating-axis test over the 6 face normals and 9 edge cross products.
     const test = (x, y, z, bias, index) => {
-        const length = Math.hypot(x, y, z);
+        const length = Math.sqrt(x * x + y * y + z * z);
         if (length < 1e-6)
             return true;
         axisScratch[0] = x / length;
@@ -594,7 +659,7 @@ function boxBox(m, a, b) {
                     to[kept * 4 + 3] = from[o + 3];
                     kept++;
                 }
-                if ((d0 < 0) !== (d1 < 0) && d0 !== 0 && d1 !== 0 && kept < 8) {
+                if (d0 < 0 !== d1 < 0 && d0 !== 0 && d1 !== 0 && kept < 8) {
                     const t = d0 / (d0 - d1);
                     to[kept * 4] = from[o] + (from[next] - from[o]) * t;
                     to[kept * 4 + 1] = from[o + 1] + (from[next + 1] - from[o + 1]) * t;
@@ -627,14 +692,16 @@ function boxBox(m, a, b) {
         boxCorner(corner, b, i);
         m.feature = i;
         if (insideBox(a, corner, MARGIN)) {
-            const depth = extentA - ((corner[0] - a.position[0]) * nx + (corner[1] - a.position[1]) * ny + (corner[2] - a.position[2]) * nz);
+            const depth = extentA -
+                ((corner[0] - a.position[0]) * nx + (corner[1] - a.position[1]) * ny + (corner[2] - a.position[2]) * nz);
             if (depth > -MARGIN)
                 m.add(corner[0], corner[1], corner[2], nx, ny, nz, depth);
         }
         boxCorner(corner, a, i);
         m.feature = 8 + i;
         if (insideBox(b, corner, MARGIN)) {
-            const depth = extentB + ((corner[0] - b.position[0]) * nx + (corner[1] - b.position[1]) * ny + (corner[2] - b.position[2]) * nz);
+            const depth = extentB +
+                ((corner[0] - b.position[0]) * nx + (corner[1] - b.position[1]) * ny + (corner[2] - b.position[2]) * nz);
             if (depth > -MARGIN)
                 m.add(corner[0], corner[1], corner[2], nx, ny, nz, depth);
         }
@@ -651,7 +718,8 @@ function isMoving(body) {
     if (body.type === 'static' || body.isSleeping)
         return false;
     const v = body.linearVelocity, w = body.angularVelocity;
-    return v[0] * v[0] + v[1] * v[1] + v[2] * v[2] > 4 * SLEEP_LINEAR * SLEEP_LINEAR || w[0] * w[0] + w[1] * w[1] + w[2] * w[2] > 4 * SLEEP_ANGULAR * SLEEP_ANGULAR;
+    return (v[0] * v[0] + v[1] * v[1] + v[2] * v[2] > 4 * SLEEP_LINEAR * SLEEP_LINEAR ||
+        w[0] * w[0] + w[1] * w[1] + w[2] * w[2] > 4 * SLEEP_ANGULAR * SLEEP_ANGULAR);
 }
 const candidates = [];
 let candidateCount = 0;
@@ -666,7 +734,7 @@ function toMeshLocal(out, body, x, y, z) {
 function sphereTriangle(mesh, triangle, x, y, z, radius, feature) {
     const face = mesh.closestPoint(triangle, x, y, z, meshPoint);
     let nx = meshPoint[0] - x, ny = meshPoint[1] - y, nz = meshPoint[2] - z;
-    const distance = Math.hypot(nx, ny, nz);
+    const distance = Math.sqrt(nx * nx + ny * ny + nz * nz);
     if (distance >= radius)
         return;
     mesh.triangleNormal(triangle, meshNormal);
@@ -722,7 +790,10 @@ function emitMeshContacts(m, meshBody) {
             if (!c.face && other.depth > c.depth + 1e-6 && (alike > 0.9 || (other.face && alike > 0.7)))
                 keep = false;
             // Neighbouring triangles report the same point twice; keep the first.
-            else if (j < i && c.face === other.face && alike > 0.999 && Math.abs(c.x - other.x) + Math.abs(c.y - other.y) + Math.abs(c.z - other.z) < 1e-3)
+            else if (j < i &&
+                c.face === other.face &&
+                alike > 0.999 &&
+                Math.abs(c.x - other.x) + Math.abs(c.y - other.y) + Math.abs(c.z - other.z) < 1e-3)
                 keep = false;
         }
         if (!keep)
@@ -731,12 +802,22 @@ function emitMeshContacts(m, meshBody) {
         m.addDeep(p[0] + r[0] * c.x + r[1] * c.y + r[2] * c.z, p[1] + r[3] * c.x + r[4] * c.y + r[5] * c.z, p[2] + r[6] * c.x + r[7] * c.y + r[8] * c.z, r[0] * c.nx + r[1] * c.ny + r[2] * c.nz, r[3] * c.nx + r[4] * c.ny + r[5] * c.nz, r[6] * c.nx + r[7] * c.ny + r[8] * c.nz, c.depth);
     }
 }
+// The sphere being tested, kept here so one visitor serves every query instead of a new closure per pair.
+let sphereQueryMesh, sphereQueryX = 0, sphereQueryY = 0, sphereQueryZ = 0, sphereQueryRadius = 0, sphereQueryFeature = 0;
+const visitSphereTriangle = (triangle) => sphereTriangle(sphereQueryMesh, triangle, sphereQueryX, sphereQueryY, sphereQueryZ, sphereQueryRadius, sphereQueryFeature + (triangle & 1023));
 function sphereMesh(m, x, y, z, radius, meshBody, feature) {
     const mesh = meshBody.shape.mesh;
     toMeshLocal(meshSegA, meshBody, x, y, z);
     const lx = meshSegA[0], ly = meshSegA[1], lz = meshSegA[2];
     candidateCount = 0;
-    mesh.query(lx - radius, ly - radius, lz - radius, lx + radius, ly + radius, lz + radius, triangle => sphereTriangle(mesh, triangle, lx, ly, lz, radius, feature + (triangle & 1023)));
+    sphereQueryMesh = mesh;
+    sphereQueryX = lx;
+    sphereQueryY = ly;
+    sphereQueryZ = lz;
+    sphereQueryRadius = radius;
+    sphereQueryFeature = feature;
+    mesh.query(lx - radius, ly - radius, lz - radius, lx + radius, ly + radius, lz + radius, visitSphereTriangle);
+    sphereQueryMesh = undefined;
     emitMeshContacts(m, meshBody);
 }
 function capsuleMesh(m, capsule, meshBody) {
@@ -776,13 +857,15 @@ function capsuleMesh(m, capsule, meshBody) {
         const base = triangle * 3, vertex = indices[base] * 3;
         const alongNormal = dx * meshNormal[0] + dy * meshNormal[1] + dz * meshNormal[2];
         if (alongNormal !== 0) {
-            const offset = (positions[vertex] - ax) * meshNormal[0] + (positions[vertex + 1] - ay) * meshNormal[1] + (positions[vertex + 2] - az) * meshNormal[2];
+            const offset = (positions[vertex] - ax) * meshNormal[0] +
+                (positions[vertex + 1] - ay) * meshNormal[1] +
+                (positions[vertex + 2] - az) * meshNormal[2];
             const t = offset / alongNormal;
             if (t > 0 && t < 1)
                 consider(ax + dx * t, ay + dy * t, az + dz * t);
         }
         for (let edge = 0; edge < 3; edge++) {
-            const first = indices[base + edge] * 3, second = indices[base + (edge + 1) % 3] * 3;
+            const first = indices[base + edge] * 3, second = indices[base + ((edge + 1) % 3)] * 3;
             for (let i = 0; i < 3; i++) {
                 segC[i] = positions[first + i];
                 segD[i] = positions[second + i];
@@ -797,7 +880,9 @@ function capsuleMesh(m, capsule, meshBody) {
 }
 // ---- boxes and hulls as generic convex solids ----
 const solidNormal = [0, 0, 0], solidPoint = v3();
-function solidVertexCount(body) { return body.shape.type === 'convex' ? body.shape.hull.points.length / 3 : 8; }
+function solidVertexCount(body) {
+    return body.shape.type === 'convex' ? body.shape.hull.points.length / 3 : 8;
+}
 function solidVertex(out, body, index) {
     if (body.shape.type !== 'convex')
         return boxCorner(out, body, index);
@@ -870,7 +955,9 @@ function solidSolid(m, a, b) {
     solidEdges(m, a, b);
 }
 const BOX_EDGES = [0, 1, 2, 3, 4, 5, 6, 7, 0, 2, 1, 3, 4, 6, 5, 7, 0, 4, 1, 5, 2, 6, 3, 7];
-function solidEdgeCount(body) { return body.shape.type === 'convex' ? body.shape.hull.edges.length / 2 : 12; }
+function solidEdgeCount(body) {
+    return body.shape.type === 'convex' ? body.shape.hull.edges.length / 2 : 12;
+}
 function solidEdge(body, index, a, b) {
     const list = body.shape.type === 'convex' ? body.shape.hull.edges : BOX_EDGES;
     solidVertex(a, body, list[index * 2]);
@@ -910,7 +997,12 @@ function clipSegmentSolid(body, a, b) {
     }
     else {
         const h = body.shape.halfExtents;
-        if (!cut(ax - h[0], ex) || !cut(-ax - h[0], -ex) || !cut(ay - h[1], ey) || !cut(-ay - h[1], -ey) || !cut(az - h[2], ez) || !cut(-az - h[2], -ez))
+        if (!cut(ax - h[0], ex) ||
+            !cut(-ax - h[0], -ex) ||
+            !cut(ay - h[1], ey) ||
+            !cut(-ay - h[1], -ey) ||
+            !cut(az - h[2], ez) ||
+            !cut(-az - h[2], -ez))
             return false;
     }
     clipRange[0] = enter;
@@ -949,14 +1041,15 @@ function solidEdges(m, a, b) {
                 continue;
             const fx = otherB[0] - otherA[0], fy = otherB[1] - otherA[1], fz = otherB[2] - otherA[2];
             let cx = dy * fz - dz * fy, cy = dz * fx - dx * fz, cz = dx * fy - dy * fx;
-            const length = Math.hypot(cx, cy, cz);
+            const length = Math.sqrt(cx * cx + cy * cy + cz * cz);
             if (length < 1e-9)
                 continue; // parallel edges: a face or corner contact describes it better
             cx /= length;
             cy /= length;
             cz /= length;
             // b's inside lies beyond its edge, which fixes the direction from a to b.
-            if (cx * (b.position[0] - nearB[0]) + cy * (b.position[1] - nearB[1]) + cz * (b.position[2] - nearB[2]) < 0) {
+            if (cx * (b.position[0] - nearB[0]) + cy * (b.position[1] - nearB[1]) + cz * (b.position[2] - nearB[2]) <
+                0) {
                 cx = -cx;
                 cy = -cy;
                 cz = -cz;
@@ -1079,7 +1172,12 @@ function collide(m, first, second) {
         const a = as.length ? as[i] : first, box = a.aabb;
         for (let j = 0; j < countB; j++) {
             const b = bs.length ? bs[j] : second, other = b.aabb;
-            if (box[0] > other[3] || box[3] < other[0] || box[1] > other[4] || box[4] < other[1] || box[2] > other[5] || box[5] < other[2])
+            if (box[0] > other[3] ||
+                box[3] < other[0] ||
+                box[1] > other[4] ||
+                box[4] < other[1] ||
+                box[2] > other[5] ||
+                box[5] < other[2])
                 continue;
             if (!collideSimple(inner, a, b))
                 continue;
@@ -1221,7 +1319,14 @@ export class Joint3D {
         this.collideConnected = options.collideConnected ?? false;
         const anchor = options.anchor ?? [a.position[0], a.position[1], a.position[2]];
         const add = (ax, ay, az, bx = ax, by = ay, bz = az) => {
-            this.points.push({ localA: toLocal(a, ax, ay, az), localB: b ? toLocal(b, bx, by, bz) : v3(bx, by, bz), ra: v3(), rb: v3(), bias: v3(), inverse: new Float64Array(9) });
+            this.points.push({
+                localA: toLocal(a, ax, ay, az),
+                localB: b ? toLocal(b, bx, by, bz) : v3(bx, by, bz),
+                ra: v3(),
+                rb: v3(),
+                bias: v3(),
+                inverse: new Float64Array(9)
+            });
         };
         if (this.type === 'distance') {
             const other = options.anchorB ?? (b ? [b.position[0], b.position[1], b.position[2]] : anchor);
@@ -1240,12 +1345,12 @@ export class Joint3D {
         if (options.maxMotorForce !== undefined && this.type !== 'slider')
             throw new World3DError('WORLD3D_INPUT_INVALID', 'maxMotorForce needs a slider joint');
         if (this.type === 'hinge' || this.type === 'point' || this.type === 'slider') {
-            const axis = options.axis ?? [0, 1, 0], size = Math.hypot(axis[0], axis[1], axis[2]);
+            const axis = options.axis ?? [0, 1, 0], size = Math.sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
             if (!(size > 0))
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'joint axis');
             const x = axis[0] / size, y = axis[1] / size, z = axis[2] / size;
             // Any direction across the axis serves as the zero mark for measuring the angle.
-            const seed = Math.abs(x) < 0.57 ? [1, 0, 0] : [0, 1, 0], side = cross(v3(), [x, y, z], seed), length = Math.hypot(side[0], side[1], side[2]);
+            const seed = Math.abs(x) < 0.57 ? [1, 0, 0] : [0, 1, 0], side = cross(v3(), [x, y, z], seed), length = Math.sqrt(side[0] * side[0] + side[1] * side[1] + side[2] * side[2]);
             side[0] /= length;
             side[1] /= length;
             side[2] /= length;
@@ -1266,7 +1371,9 @@ export class Joint3D {
             turn(a, this.sideA, side[0], side[1], side[2]);
             turn(b, this.sideB, side[0], side[1], side[2]);
             if (options.limits) {
-                if (this.type === 'point' || !(options.limits[0] <= options.limits[1]) || (this.type === 'hinge' && (options.limits[0] < -Math.PI || options.limits[1] > Math.PI)))
+                if (this.type === 'point' ||
+                    !(options.limits[0] <= options.limits[1]) ||
+                    (this.type === 'hinge' && (options.limits[0] < -Math.PI || options.limits[1] > Math.PI)))
                     throw new World3DError('WORLD3D_INPUT_INVALID', 'joint limits');
                 this.limits = [options.limits[0], options.limits[1]];
             }
@@ -1285,12 +1392,14 @@ export class Joint3D {
         }
         else if (options.limits || options.coneLimit !== undefined || options.maxMotorTorque)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'limits and motors need a hinge or point joint');
-        if (this.type === 'distance') { /* built above */ }
+        if (this.type === 'distance') {
+            /* built above */
+        }
         else if (this.type === 'point')
             add(anchor[0], anchor[1], anchor[2]);
         else if (this.type === 'hinge') {
             // Two pivots along the pin leave exactly one free rotation: about the pin.
-            const axis = options.axis ?? [0, 1, 0], size = Math.hypot(axis[0], axis[1], axis[2]);
+            const axis = options.axis ?? [0, 1, 0], size = Math.sqrt(axis[0] * axis[0] + axis[1] * axis[1] + axis[2] * axis[2]);
             if (!(size > 0))
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'joint axis');
             const k = 0.5 / size;
@@ -1358,7 +1467,9 @@ function rotateInto(out, body, local) {
 const jointA = v3(), jointB = v3(), jointC = v3(), jointK = new Float64Array(9), JOINT_BAUMGARTE = 0.2;
 /** u^T K v for a 3x3 matrix. */
 function quadratic(k, u, v) {
-    return u[0] * (k[0] * v[0] + k[1] * v[1] + k[2] * v[2]) + u[1] * (k[3] * v[0] + k[4] * v[1] + k[5] * v[2]) + u[2] * (k[6] * v[0] + k[7] * v[1] + k[8] * v[2]);
+    return (u[0] * (k[0] * v[0] + k[1] * v[1] + k[2] * v[2]) +
+        u[1] * (k[3] * v[0] + k[4] * v[1] + k[5] * v[2]) +
+        u[2] * (k[6] * v[0] + k[7] * v[1] + k[8] * v[2]));
 }
 /** Add one body's contribution to the 3x3 effective-mass matrix of a pivot at offset r. */
 function addPivotMass(k, body, r) {
@@ -1406,165 +1517,6 @@ function pivotVelocity(out, body, r) {
     out[2] += body.linearVelocity[2];
     return out;
 }
-// ---- static bodies --------------------------------------------------------------
-/**
- * Bodies that never move, kept in a hierarchy of boxes so that a moving body, a ray or a
- * sweep only looks at the ones nearby. It is rebuilt when a static body is added, removed or moved.
- */
-class StaticTree {
-    bodies = [];
-    #boxes = new Float64Array(0);
-    /** Two numbers per node: an inner node holds its children; a leaf holds -(first body + 1) and a count. */
-    #links = new Int32Array(0);
-    #count = 0;
-    #dirty = false;
-    #stack = new Int32Array(64);
-    #busy = false;
-    add(body) { this.bodies.push(body); this.#dirty = true; }
-    remove(body) { const at = this.bodies.indexOf(body); if (at >= 0) {
-        this.bodies.splice(at, 1);
-        this.#dirty = true;
-    } }
-    touch() { this.#dirty = true; }
-    build() {
-        this.#dirty = false;
-        this.#count = 0;
-        const bodies = this.bodies, most = Math.max(2 * bodies.length, 1);
-        if (this.#links.length < most * 2) {
-            this.#boxes = new Float64Array(most * 6);
-            this.#links = new Int32Array(most * 2);
-        }
-        if (bodies.length > 0)
-            this.split(0, bodies.length);
-    }
-    split(first, end) {
-        const bodies = this.bodies, node = this.#count++, box = this.#boxes, at = node * 6;
-        let lx = Infinity, ly = Infinity, lz = Infinity, hx = -Infinity, hy = -Infinity, hz = -Infinity;
-        let cx0 = Infinity, cy0 = Infinity, cz0 = Infinity, cx1 = -Infinity, cy1 = -Infinity, cz1 = -Infinity;
-        for (let i = first; i < end; i++) {
-            const b = bodies[i].aabb, cx = b[0] + b[3], cy = b[1] + b[4], cz = b[2] + b[5];
-            lx = Math.min(lx, b[0]);
-            ly = Math.min(ly, b[1]);
-            lz = Math.min(lz, b[2]);
-            hx = Math.max(hx, b[3]);
-            hy = Math.max(hy, b[4]);
-            hz = Math.max(hz, b[5]);
-            cx0 = Math.min(cx0, cx);
-            cy0 = Math.min(cy0, cy);
-            cz0 = Math.min(cz0, cz);
-            cx1 = Math.max(cx1, cx);
-            cy1 = Math.max(cy1, cy);
-            cz1 = Math.max(cz1, cz);
-        }
-        box[at] = lx;
-        box[at + 1] = ly;
-        box[at + 2] = lz;
-        box[at + 3] = hx;
-        box[at + 4] = hy;
-        box[at + 5] = hz;
-        const count = end - first, sx = cx1 - cx0, sy = cy1 - cy0, sz = cz1 - cz0, axis = sx >= sy && sx >= sz ? 0 : sy >= sz ? 1 : 2;
-        // A handful of bodies, or bodies stacked at one place, stay together in a leaf.
-        if (count <= 4 || !(Math.max(sx, sy, sz) > 0)) {
-            this.#links[node * 2] = -(first + 1);
-            this.#links[node * 2 + 1] = count;
-            return node;
-        }
-        const part = bodies.slice(first, end).sort((a, b) => a.aabb[axis] + a.aabb[axis + 3] - b.aabb[axis] - b.aabb[axis + 3]);
-        for (let i = 0; i < count; i++)
-            bodies[first + i] = part[i];
-        const middle = first + (count >> 1);
-        const left = this.split(first, middle), right = this.split(middle, end);
-        this.#links[node * 2] = left;
-        this.#links[node * 2 + 1] = right;
-        return node;
-    }
-    /** Call `visit` for every static body whose bounds meet the box. */
-    query(lx, ly, lz, hx, hy, hz, visit) {
-        if (this.#dirty)
-            this.build();
-        if (this.#count === 0)
-            return;
-        const box = this.#boxes, links = this.#links, bodies = this.bodies, shared = !this.#busy;
-        // A visitor may ask again while this walk is under way; it then gets a list of its own.
-        let stack = shared ? this.#stack : new Int32Array(64), top = 0;
-        if (shared)
-            this.#busy = true;
-        stack[top++] = 0;
-        try {
-            while (top > 0) {
-                const node = stack[--top], at = node * 6;
-                if (box[at] > hx || box[at + 3] < lx || box[at + 1] > hy || box[at + 4] < ly || box[at + 2] > hz || box[at + 5] < lz)
-                    continue;
-                const link = links[node * 2];
-                if (link < 0) {
-                    for (let i = -link - 1, end = i + links[node * 2 + 1]; i < end; i++) {
-                        const b = bodies[i].aabb;
-                        if (b[0] > hx || b[3] < lx || b[1] > hy || b[4] < ly || b[2] > hz || b[5] < lz)
-                            continue;
-                        visit(bodies[i]);
-                    }
-                    continue;
-                }
-                if (top + 2 > stack.length) {
-                    const grown = new Int32Array(stack.length * 2);
-                    grown.set(stack);
-                    stack = grown;
-                }
-                stack[top++] = link;
-                stack[top++] = links[node * 2 + 1];
-            }
-        }
-        finally {
-            if (shared)
-                this.#busy = false;
-        }
-    }
-    /** Call `visit` for static bodies whose bounds the ray crosses within the distance `visit` returns. */
-    ray(o, d, limit, visit) {
-        if (this.#dirty)
-            this.build();
-        if (this.#count === 0)
-            return;
-        const box = this.#boxes, links = this.#links, bodies = this.bodies, stack = [0];
-        const reaches = (b, at) => {
-            let near = 0, far = limit;
-            for (let i = 0; i < 3; i++) {
-                const low = b[at + i], high = b[at + i + 3], from = o[i], way = d[i];
-                if (Math.abs(way) < 1e-12) {
-                    if (from < low || from > high)
-                        return false;
-                    continue;
-                }
-                let t1 = (low - from) / way, t2 = (high - from) / way;
-                if (t1 > t2) {
-                    const swap = t1;
-                    t1 = t2;
-                    t2 = swap;
-                }
-                if (t1 > near)
-                    near = t1;
-                if (t2 < far)
-                    far = t2;
-                if (near > far)
-                    return false;
-            }
-            return true;
-        };
-        while (stack.length > 0) {
-            const node = stack.pop();
-            if (!reaches(box, node * 6))
-                continue;
-            const link = links[node * 2];
-            if (link < 0) {
-                for (let i = -link - 1, end = i + links[node * 2 + 1]; i < end; i++)
-                    if (reaches(bodies[i].aabb, 0))
-                        limit = visit(bodies[i], limit);
-            }
-            else
-                stack.push(link, links[node * 2 + 1]);
-        }
-    }
-}
 const SLOP = 0.01, BAUMGARTE = 0.15, SLEEP_LINEAR = 0.15, SLEEP_ANGULAR = 0.2, SLEEP_DELAY = 0.5;
 export class PhysicsWorld3D {
     gravity = v3(0, -9.81, 0);
@@ -1581,7 +1533,14 @@ export class PhysicsWorld3D {
      * where, in which direction and how hard: enough to pick a sound, deal damage or squash a shape.
      */
     onContact;
-    #report = { a: undefined, b: undefined, point: v3(), normal: v3(), impulse: 0, began: false };
+    #report = {
+        a: undefined,
+        b: undefined,
+        point: v3(),
+        normal: v3(),
+        impulse: 0,
+        began: false
+    };
     #bodies = [];
     #manifold = new Manifold();
     #contacts = [];
@@ -1608,10 +1567,14 @@ export class PhysicsWorld3D {
         this.solverSteps = Math.min(Math.max(Math.floor(options.solverSteps ?? 1), 1), PHYSICS3D_LIMITS.maxSolverSteps);
         this.allowSleep = options.allowSleep ?? true;
     }
-    get bodies() { return this.#bodies; }
+    get bodies() {
+        return this.#bodies;
+    }
     /** @internal A static body was repositioned: its place among the others is worked out again. */
-    staticMoved(body) { if (body.type === 'static')
-        this.#statics.touch(); }
+    staticMoved(body) {
+        if (body.type === 'static')
+            this.#statics.touch();
+    }
     /** Visit every body whose bounds meet a box: planes, bodies that can move, then static ones. */
     near(lx, ly, lz, hx, hy, hz, visit) {
         for (const plane of this.#planes)
@@ -1625,7 +1588,9 @@ export class PhysicsWorld3D {
         this.#statics.query(lx, ly, lz, hx, hy, hz, visit);
     }
     /** Contact points solved in the last step. */
-    get contactCount() { return this.#contactCount; }
+    get contactCount() {
+        return this.#contactCount;
+    }
     addBody(body) {
         if (!(body instanceof RigidBody3D) || body.world)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'body');
@@ -1649,8 +1614,12 @@ export class PhysicsWorld3D {
         return body;
     }
     /** Create a body from options and add it. */
-    createBody(options) { return this.addBody(new RigidBody3D(options)); }
-    get joints() { return this.#joints; }
+    createBody(options) {
+        return this.addBody(new RigidBody3D(options));
+    }
+    get joints() {
+        return this.#joints;
+    }
     /** Connect two bodies, or pin one to the world. Anchors are given in world space as the bodies stand now. */
     createJoint(options) {
         const joint = new Joint3D(options);
@@ -1738,7 +1707,7 @@ export class PhysicsWorld3D {
                     else
                         jointB.set(joint.axisB);
                     cross(row, jointA, jointB);
-                    const size = Math.hypot(row[0], row[1], row[2]);
+                    const size = Math.sqrt(row[0] * row[0] + row[1] * row[1] + row[2] * row[2]);
                     joint.current = Math.atan2(size, dot(jointA, jointB));
                     if (size > 1e-6) {
                         row[0] /= size;
@@ -1760,7 +1729,10 @@ export class PhysicsWorld3D {
                     point.rb.fill(0);
                 // Positional error: where b's pivot is relative to a's.
                 for (let i = 0; i < 3; i++)
-                    point.bias[i] = ((b ? b.position[i] + point.rb[i] : point.localB[i]) - a.position[i] - point.ra[i]) * JOINT_BAUMGARTE / dt;
+                    point.bias[i] =
+                        (((b ? b.position[i] + point.rb[i] : point.localB[i]) - a.position[i] - point.ra[i]) *
+                            JOINT_BAUMGARTE) /
+                            dt;
                 const k = jointK;
                 k.fill(0);
                 addPivotMass(k, a, point.ra);
@@ -1774,7 +1746,7 @@ export class PhysicsWorld3D {
                         joint.slideMass = along > 1e-12 ? 1 / along : 0;
                     }
                     cross(jointA, n, Math.abs(n[0]) < 0.57 ? [1, 0, 0] : [0, 1, 0]);
-                    const size = Math.hypot(jointA[0], jointA[1], jointA[2]);
+                    const size = Math.sqrt(jointA[0] * jointA[0] + jointA[1] * jointA[1] + jointA[2] * jointA[2]);
                     jointA[0] /= size;
                     jointA[1] /= size;
                     jointA[2] /= size;
@@ -1787,7 +1759,9 @@ export class PhysicsWorld3D {
                     const i11 = k22 / det, i12 = -k12 / det, i22 = k11 / det;
                     for (let row = 0; row < 3; row++)
                         for (let column = 0; column < 3; column++) {
-                            inverse[row * 3 + column] = jointA[row] * (i11 * jointA[column] + i12 * jointB[column]) + jointB[row] * (i12 * jointA[column] + i22 * jointB[column]);
+                            inverse[row * 3 + column] =
+                                jointA[row] * (i11 * jointA[column] + i12 * jointB[column]) +
+                                    jointB[row] * (i12 * jointA[column] + i22 * jointB[column]);
                         }
                     continue;
                 }
@@ -1842,7 +1816,7 @@ export class PhysicsWorld3D {
             x -= u[0] * along;
             y -= u[1] * along;
             z -= u[2] * along;
-            const offset = Math.hypot(x, y, z), inertia = spin > 1e-12 ? 1 / spin : Infinity, mobility = 1 / (inertia + body.mass * offset * offset);
+            const offset = Math.sqrt(x * x + y * y + z * z), inertia = spin > 1e-12 ? 1 / spin : Infinity, mobility = 1 / (inertia + body.mass * offset * offset);
             if (mobility <= best)
                 continue;
             best = mobility;
@@ -1860,7 +1834,7 @@ export class PhysicsWorld3D {
         if (arm === 0) {
             // Centered on the pivot: a far-away push acts as a pure twist.
             cross(jointB, u, Math.abs(u[0]) < 0.57 ? [1, 0, 0] : [0, 1, 0]);
-            const size = Math.hypot(jointB[0], jointB[1], jointB[2]);
+            const size = Math.sqrt(jointB[0] * jointB[0] + jointB[1] * jointB[1] + jointB[2] * jointB[2]);
             ex = jointB[0] / size;
             ey = jointB[1] / size;
             ez = jointB[2] / size;
@@ -1877,14 +1851,17 @@ export class PhysicsWorld3D {
             joint.rowB[2] = pz - b.position[2];
         }
         let k = 0;
-        for (const [body, r] of [[a, joint.rowA], [b, joint.rowB]]) {
+        for (const [body, r] of [
+            [a, joint.rowA],
+            [b, joint.rowB]
+        ]) {
             if (!body || body.type !== 'dynamic' || body.isSleeping)
                 continue;
             cross(jointB, r, t);
             applyInverseInertia(jointC, body.inverseInertiaWorld, jointB);
             k += body.inverseMass + dot(jointB, jointC);
         }
-        joint.rowMass = k > 1e-12 ? arm * arm / k : 0;
+        joint.rowMass = k > 1e-12 ? (arm * arm) / k : 0;
     }
     solveJoint(joint, dt) {
         const a = joint.bodyA, b = joint.bodyB;
@@ -1900,7 +1877,10 @@ export class PhysicsWorld3D {
                 if (b)
                     applyPivotImpulse(b, joint.rowB, t[0] * push, t[1] * push, t[2] * push, 1);
             };
-            const rate = () => { const va = pivotVelocity(scratchC, a, joint.rowA), vb = pivotVelocity(scratchD, b, joint.rowB); return ((vb[0] - va[0]) * t[0] + (vb[1] - va[1]) * t[1] + (vb[2] - va[2]) * t[2]) / arm; };
+            const rate = () => {
+                const va = pivotVelocity(scratchC, a, joint.rowA), vb = pivotVelocity(scratchD, b, joint.rowB);
+                return ((vb[0] - va[0]) * t[0] + (vb[1] - va[1]) * t[1] + (vb[2] - va[2]) * t[2]) / arm;
+            };
             if (joint.type === 'hinge' && joint.maxMotorTorque > 0) {
                 const most = joint.maxMotorTorque * dt, total = clamp(joint.motorImpulse + (joint.motorSpeed - rate()) * joint.rowMass, -most, most);
                 turn(total - joint.motorImpulse);
@@ -1929,7 +1909,10 @@ export class PhysicsWorld3D {
                 if (b)
                     applyPivotImpulse(b, point.rb, n[0] * impulse, n[1] * impulse, n[2] * impulse, -1);
             };
-            const speed = () => { const va = pivotVelocity(scratchC, a, point.ra), vb = pivotVelocity(scratchD, b, point.rb); return (va[0] - vb[0]) * n[0] + (va[1] - vb[1]) * n[1] + (va[2] - vb[2]) * n[2]; };
+            const speed = () => {
+                const va = pivotVelocity(scratchC, a, point.ra), vb = pivotVelocity(scratchD, b, point.rb);
+                return (va[0] - vb[0]) * n[0] + (va[1] - vb[1]) * n[1] + (va[2] - vb[2]) * n[2];
+            };
             if (joint.maxMotorForce > 0) {
                 const most = joint.maxMotorForce * dt, total = clamp(joint.motorImpulse + (joint.motorSpeed - speed()) * mass, -most, most);
                 push(total - joint.motorImpulse);
@@ -1954,7 +1937,7 @@ export class PhysicsWorld3D {
                 // One equation along the line between the two attachments.
                 let nx = (b ? b.position[0] + point.rb[0] : point.localB[0]) - a.position[0] - point.ra[0], ny = (b ? b.position[1] + point.rb[1] : point.localB[1]) - a.position[1] - point.ra[1];
                 let nz = (b ? b.position[2] + point.rb[2] : point.localB[2]) - a.position[2] - point.ra[2];
-                const length = Math.hypot(nx, ny, nz);
+                const length = Math.sqrt(nx * nx + ny * ny + nz * nz);
                 if (length < 1e-9 || (joint.rope && length <= joint.length))
                     continue;
                 nx /= length;
@@ -1964,7 +1947,10 @@ export class PhysicsWorld3D {
                 jointA[1] = ny;
                 jointA[2] = nz;
                 let mass = 0;
-                for (const [body, r] of [[a, point.ra], [b, point.rb]]) {
+                for (const [body, r] of [
+                    [a, point.ra],
+                    [b, point.rb]
+                ]) {
                     if (!body || body.type !== 'dynamic' || body.isSleeping)
                         continue;
                     cross(jointB, r, [nx, ny, nz]);
@@ -1977,7 +1963,8 @@ export class PhysicsWorld3D {
                     // A spring: the link gives way in proportion to how hard it is pulled, and loses energy as it moves.
                     const weight = 1 / mass, omega = 2 * Math.PI * joint.stiffness, spring = weight * omega * omega, loss = 2 * weight * joint.damping * omega;
                     const gamma = 1 / (dt * (loss + dt * spring)), beta = dt * spring * gamma;
-                    let soft = -(dx * nx + dy * ny + dz * nz + beta * (length - joint.length) + gamma * joint.accumulated) / (mass + gamma);
+                    let soft = -(dx * nx + dy * ny + dz * nz + beta * (length - joint.length) + gamma * joint.accumulated) /
+                        (mass + gamma);
                     if (joint.rope) {
                         const total = Math.min(joint.accumulated + soft, 0);
                         soft = total - joint.accumulated;
@@ -1988,7 +1975,7 @@ export class PhysicsWorld3D {
                         applyPivotImpulse(b, point.rb, nx * soft, ny * soft, nz * soft, 1);
                     continue;
                 }
-                let lambda = -(dx * nx + dy * ny + dz * nz + (length - joint.length) * JOINT_BAUMGARTE / dt) / mass;
+                let lambda = -(dx * nx + dy * ny + dz * nz + ((length - joint.length) * JOINT_BAUMGARTE) / dt) / mass;
                 if (joint.rope) {
                     // A rope only pulls: the running total may never push the ends apart.
                     const total = Math.min(joint.accumulated + lambda, 0);
@@ -2094,7 +2081,7 @@ export class PhysicsWorld3D {
                 // Contacts are found once per step; later slices only correct what is left of each overlap.
                 for (let i = 0; i < count; i++) {
                     const c = contacts[i];
-                    c.bias = c.depth < 0 ? c.depth / h : BAUMGARTE / h * Math.max(c.depth - SLOP, 0);
+                    c.bias = c.depth < 0 ? c.depth / h : (BAUMGARTE / h) * Math.max(c.depth - SLOP, 0);
                     c.bounce = false;
                 }
             }
@@ -2137,7 +2124,7 @@ export class PhysicsWorld3D {
                     q[1] = y + half * (w[1] * r + w[2] * x - w[0] * z);
                     q[2] = z + half * (w[2] * r + w[0] * y - w[1] * x);
                     q[3] = r - half * (w[0] * x + w[1] * y + w[2] * z);
-                    const length = Math.hypot(q[0], q[1], q[2], q[3]) || 1;
+                    const length = Math.sqrt(q[0] * q[0] + q[1] * q[1] + q[2] * q[2] + q[3] * q[3]) || 1;
                     q[0] /= length;
                     q[1] /= length;
                     q[2] /= length;
@@ -2192,15 +2179,20 @@ export class PhysicsWorld3D {
         }
         // Bodies joined by contacts or joints rest and wake together: a pile sleeps only once all of it is still.
         const parent = this.#islands.length >= bodies.length ? this.#islands : (this.#islands = new Int32Array(bodies.length * 2));
-        const rest = this.#islandRest.length >= bodies.length ? this.#islandRest : (this.#islandRest = new Float64Array(bodies.length * 2));
+        const rest = this.#islandRest.length >= bodies.length
+            ? this.#islandRest
+            : (this.#islandRest = new Float64Array(bodies.length * 2));
         for (let i = 0; i < bodies.length; i++) {
             bodies[i].slot = i;
             parent[i] = i;
         }
-        const root = (index) => { while (parent[index] !== index) {
-            parent[index] = parent[parent[index]];
-            index = parent[index];
-        } return index; };
+        const root = (index) => {
+            while (parent[index] !== index) {
+                parent[index] = parent[parent[index]];
+                index = parent[index];
+            }
+            return index;
+        };
         const join = (a, b) => {
             if (!b || a.type !== 'dynamic' || b.type !== 'dynamic' || a.isSleeping || b.isSleeping)
                 return;
@@ -2223,7 +2215,8 @@ export class PhysicsWorld3D {
             if (body.type !== 'dynamic' || body.isSleeping || !this.allowSleep)
                 continue;
             const v = body.linearVelocity, w = body.angularVelocity;
-            const slow = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] < SLEEP_LINEAR * SLEEP_LINEAR && w[0] * w[0] + w[1] * w[1] + w[2] * w[2] < SLEEP_ANGULAR * SLEEP_ANGULAR;
+            const slow = v[0] * v[0] + v[1] * v[1] + v[2] * v[2] < SLEEP_LINEAR * SLEEP_LINEAR &&
+                w[0] * w[0] + w[1] * w[1] + w[2] * w[2] < SLEEP_ANGULAR * SLEEP_ANGULAR;
             body.sleepTime = slow ? body.sleepTime + dt : 0;
             const island = root(body.slot);
             if (body.sleepTime < rest[island])
@@ -2257,13 +2250,15 @@ export class PhysicsWorld3D {
      * next step finds the contact and answers it with the body's full speed.
      */
     sweep(body, dt) {
-        const v = body.linearVelocity, speed = Math.hypot(v[0], v[1], v[2]), travel = speed * dt, inner = thinnestHalf(body.shape);
+        const v = body.linearVelocity, speed = Math.sqrt(v[0] * v[0] + v[1] * v[1] + v[2] * v[2]), travel = speed * dt, inner = thinnestHalf(body.shape);
         // Slow enough that the ordinary overlap test cannot miss anything.
         if (travel <= inner * 0.5 || travel === 0)
             return 1;
         const p = body.position, ox = p[0], oy = p[1], oz = p[2];
-        const distance = this.cast(body, v[0] / speed, v[1] / speed, v[2] / speed, travel, inner, (other) => other !== body && (body.layer & other.mask) !== 0 && (other.layer & body.mask) !== 0
-            && !(this.#jointPairs.size > 0 && this.#jointPairs.has(this.pairKey(body, other))), true);
+        const distance = this.cast(body, v[0] / speed, v[1] / speed, v[2] / speed, travel, inner, other => other !== body &&
+            (body.layer & other.mask) !== 0 &&
+            (other.layer & body.mask) !== 0 &&
+            !(this.#jointPairs.size > 0 && this.#jointPairs.has(this.pairKey(body, other))), true);
         p[0] = ox;
         p[1] = oy;
         p[2] = oz;
@@ -2283,8 +2278,10 @@ export class PhysicsWorld3D {
         this.#castBody = undefined;
         // Only bodies whose bounds meet the swept bounds of the shape can be touched.
         const from = probe.aabb;
-        this.near(from[0] + Math.min(dx * reach, 0), from[1] + Math.min(dy * reach, 0), from[2] + Math.min(dz * reach, 0), from[3] + Math.max(dx * reach, 0), from[4] + Math.max(dy * reach, 0), from[5] + Math.max(dz * reach, 0), (body) => { if (!body.isTrigger && accept(body))
-            near.push(body); });
+        this.near(from[0] + Math.min(dx * reach, 0), from[1] + Math.min(dy * reach, 0), from[2] + Math.min(dz * reach, 0), from[3] + Math.max(dx * reach, 0), from[4] + Math.max(dy * reach, 0), from[5] + Math.max(dz * reach, 0), body => {
+            if (!body.isTrigger && accept(body))
+                near.push(body);
+        });
         if (near.length === 0)
             return -1;
         const pressing = (body) => {
@@ -2417,14 +2414,40 @@ export class PhysicsWorld3D {
             previousImpulses.set(warm.impulses);
         }
         else if (!warm)
-            this.#warm.set(key, warm = { stamp: 0, count: 0, features: new Int16Array(8), impulses: new Float64Array(24) });
+            this.#warm.set(key, (warm = { stamp: 0, count: 0, features: new Int16Array(8), impulses: new Float64Array(24) }));
         warm.stamp = this.#stamp;
         warm.count = m.count;
         for (let i = 0; i < m.count; i++) {
             const source = m.contacts[i];
             let c = this.#contacts[this.#contactCount];
             if (!c)
-                c = this.#contacts[this.#contactCount] = { a, b, nx: 0, ny: 0, nz: 0, t1: v3(), t2: v3(), ra: v3(), rb: v3(), normalMass: 0, tangentMass1: 0, tangentMass2: 0, bias: 0, friction: 0, depth: 0, total: 0, bounce: false, normalImpulse: 0, tangentImpulse1: 0, tangentImpulse2: 0, warm, slot: 0, ima: 0, imb: 0, rows: new Float64Array(45) };
+                c = this.#contacts[this.#contactCount] = {
+                    a,
+                    b,
+                    nx: 0,
+                    ny: 0,
+                    nz: 0,
+                    t1: v3(),
+                    t2: v3(),
+                    ra: v3(),
+                    rb: v3(),
+                    normalMass: 0,
+                    tangentMass1: 0,
+                    tangentMass2: 0,
+                    bias: 0,
+                    friction: 0,
+                    depth: 0,
+                    total: 0,
+                    bounce: false,
+                    normalImpulse: 0,
+                    tangentImpulse1: 0,
+                    tangentImpulse2: 0,
+                    warm,
+                    slot: 0,
+                    ima: 0,
+                    imb: 0,
+                    rows: new Float64Array(45)
+                };
             this.#contactCount++;
             c.a = a;
             c.b = b;
@@ -2453,7 +2476,7 @@ export class PhysicsWorld3D {
             const n = [c.nx, c.ny, c.nz];
             // Any vector not parallel to the normal seeds the tangent basis.
             cross(c.t1, n, Math.abs(c.nx) < 0.57 ? [1, 0, 0] : [0, 1, 0]);
-            const length = Math.hypot(c.t1[0], c.t1[1], c.t1[2]);
+            const length = Math.sqrt(c.t1[0] * c.t1[0] + c.t1[1] * c.t1[1] + c.t1[2] * c.t1[2]);
             c.t1[0] /= length;
             c.t1[1] /= length;
             c.t1[2] /= length;
@@ -2467,13 +2490,20 @@ export class PhysicsWorld3D {
             // Push out of penetration, and bounce only on real impacts so resting contacts stay quiet.
             // A real impact bounces; a resting or slow contact is pushed out of penetration instead.
             // Doing both in one step would add the correction speed to the bounce.
-            c.bias = source.depth < 0 ? source.depth / dt : approach < -1 && restitution > 0 ? -restitution * approach : BAUMGARTE / dt * Math.max(source.depth - SLOP, 0);
+            c.bias =
+                source.depth < 0
+                    ? source.depth / dt
+                    : approach < -1 && restitution > 0
+                        ? -restitution * approach
+                        : (BAUMGARTE / dt) * Math.max(source.depth - SLOP, 0);
             c.depth = source.depth;
             c.total = 0;
             c.bounce = source.depth >= 0 && approach < -1 && restitution > 0;
         }
     }
-    pairKey(a, b) { return a.id < b.id ? a.id * 4194304 + b.id : b.id * 4194304 + a.id; }
+    pairKey(a, b) {
+        return a.id < b.id ? a.id * 4194304 + b.id : b.id * 4194304 + a.id;
+    }
     /**
      * Work out everything one solver direction needs, so the iterations that follow are plain
      * sums and products. Returns the effective mass along that direction.
@@ -2515,8 +2545,15 @@ export class PhysicsWorld3D {
     /** Velocity of b relative to a at the contact, along the direction stored at `at`. */
     rowVelocity(c, at) {
         const row = c.rows, va = c.a.linearVelocity, vb = c.b.linearVelocity, wa = c.a.angularVelocity, wb = c.b.angularVelocity;
-        return (vb[0] - va[0]) * row[at] + (vb[1] - va[1]) * row[at + 1] + (vb[2] - va[2]) * row[at + 2]
-            + wb[0] * row[at + 6] + wb[1] * row[at + 7] + wb[2] * row[at + 8] - wa[0] * row[at + 3] - wa[1] * row[at + 4] - wa[2] * row[at + 5];
+        return ((vb[0] - va[0]) * row[at] +
+            (vb[1] - va[1]) * row[at + 1] +
+            (vb[2] - va[2]) * row[at + 2] +
+            wb[0] * row[at + 6] +
+            wb[1] * row[at + 7] +
+            wb[2] * row[at + 8] -
+            wa[0] * row[at + 3] -
+            wa[1] * row[at + 4] -
+            wa[2] * row[at + 5]);
     }
     applyRow(c, at, magnitude) {
         const row = c.rows, x = row[at] * magnitude, y = row[at + 1] * magnitude, z = row[at + 2] * magnitude;
@@ -2569,7 +2606,7 @@ export class PhysicsWorld3D {
     }
     /** @internal Skip one body before selecting the nearest hit. */
     [raycastExcludingBody3D](origin, direction, maxDistance, mask, excluded) {
-        const length = Math.hypot(direction[0], direction[1], direction[2]);
+        const length = Math.sqrt(direction[0] * direction[0] + direction[1] * direction[1] + direction[2] * direction[2]);
         if (!(length > 0))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'ray direction');
         const d = [direction[0] / length, direction[1] / length, direction[2] / length], o = [origin[0], origin[1], origin[2]];
@@ -2578,10 +2615,15 @@ export class PhysicsWorld3D {
         const test = (body, within) => {
             if (body === excluded || (body.layer & mask) === 0 || body.isTrigger)
                 return within;
-            const distance = rayShape(body, o, d, within, normal);
+            const distance = rayShape(body, o, d, within, normal, meshNormal);
             if (distance < 0 || distance > within)
                 return within;
-            best = { body, distance, point: [o[0] + d[0] * distance, o[1] + d[1] * distance, o[2] + d[2] * distance], normal: [normal[0], normal[1], normal[2]] };
+            best = {
+                body,
+                distance,
+                point: [o[0] + d[0] * distance, o[1] + d[1] * distance, o[2] + d[2] * distance],
+                normal: [normal[0], normal[1], normal[2]]
+            };
             return distance;
         };
         for (const body of this.#planes)
@@ -2595,8 +2637,10 @@ export class PhysicsWorld3D {
     overlapSphere(center, radius, mask = -1) {
         const probe = probeBody(center, { type: 'sphere', radius: requirePositive3D(radius, 'radius') }), found = [];
         const box = probe.aabb;
-        this.near(box[0], box[1], box[2], box[3], box[4], box[5], (body) => { if ((body.layer & mask) !== 0 && !body.isTrigger && collide(this.#manifold, probe, body))
-            found.push(body); });
+        this.near(box[0], box[1], box[2], box[3], box[4], box[5], body => {
+            if ((body.layer & mask) !== 0 && !body.isTrigger && collide(this.#manifold, probe, body))
+                found.push(body);
+        });
         return found;
     }
     /**
@@ -2608,7 +2652,7 @@ export class PhysicsWorld3D {
      */
     shapeCast(shape, origin, direction, maxDistance, mask = -1, quaternion) {
         const dx = requireFinite3D(direction[0], 'direction'), dy = requireFinite3D(direction[1], 'direction'), dz = requireFinite3D(direction[2], 'direction');
-        if (Math.abs(Math.hypot(dx, dy, dz) - 1) > 1e-3)
+        if (Math.abs(Math.sqrt(dx * dx + dy * dy + dz * dz) - 1) > 1e-3)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'direction must have unit length');
         const reach = requireFinite3D(maxDistance, 'maxDistance');
         if (!(reach >= 0))
@@ -2618,7 +2662,7 @@ export class PhysicsWorld3D {
         const probe = probeBody(origin, shape);
         if (quaternion)
             probe.setQuaternion(quaternion[0], quaternion[1], quaternion[2], quaternion[3]);
-        const m = this.#manifold, hit = this.cast(probe, dx, dy, dz, reach, Math.max(thinnestHalf(shape), 0.02), (body) => (body.layer & mask) !== 0, false);
+        const m = this.#manifold, hit = this.cast(probe, dx, dy, dz, reach, Math.max(thinnestHalf(shape), 0.02), body => (body.layer & mask) !== 0, false);
         if (hit < 0)
             return undefined;
         const body = this.#castBody;
@@ -2629,12 +2673,17 @@ export class PhysicsWorld3D {
                 best = m.contacts[i];
         // Whichever way the pair was ordered, report the normal that faces back along the cast.
         const facing = best.nx * dx + best.ny * dy + best.nz * dz > 0 ? -1 : 1;
-        return { body, distance: hit, point: [best.px, best.py, best.pz], normal: [best.nx * facing, best.ny * facing, best.nz * facing] };
+        return {
+            body,
+            distance: hit,
+            point: [best.px, best.py, best.pz],
+            normal: [best.nx * facing, best.ny * facing, best.nz * facing]
+        };
     }
     /** @internal Contacts of a free-standing shape against the world, for the character controller. */
     probe(body, mask, visit) {
         const m = this.#manifold, box = body.aabb;
-        this.near(box[0], box[1], box[2], box[3], box[4], box[5], (other) => {
+        this.near(box[0], box[1], box[2], box[3], box[4], box[5], other => {
             if (other === body || other.isTrigger || (other.layer & mask) === 0 || !collide(m, body, other))
                 return;
             for (let i = 0; i < m.count; i++) {
@@ -2663,144 +2712,6 @@ function thinnestHalf(shape) {
 }
 function probeBody(position, shape) {
     return new RigidBody3D({ type: 'kinematic', shape, position: [position[0], position[1], position[2]] });
-}
-/** Distance along a unit ray to a body, or -1. Writes the surface normal at the hit. */
-function rayShape(body, o, d, limit, normal) {
-    const shape = body.shape, p = body.position, r = body.rotation;
-    if (shape.type === 'compound') {
-        let best = -1, bx = 0, by = 0, bz = 0;
-        for (const part of body.parts) {
-            const distance = rayShape(part, o, d, best < 0 ? limit : best, normal);
-            if (distance < 0 || (best >= 0 && distance >= best))
-                continue;
-            best = distance;
-            bx = normal[0];
-            by = normal[1];
-            bz = normal[2];
-        }
-        normal[0] = bx;
-        normal[1] = by;
-        normal[2] = bz;
-        return best;
-    }
-    const raySphere = (cx, cy, cz, radius) => {
-        const mx = o[0] - cx, my = o[1] - cy, mz = o[2] - cz, b = mx * d[0] + my * d[1] + mz * d[2], c = mx * mx + my * my + mz * mz - radius * radius;
-        if (c > 0 && b > 0)
-            return -1;
-        const discriminant = b * b - c;
-        if (discriminant < 0)
-            return -1;
-        const t = Math.max(-b - Math.sqrt(discriminant), 0);
-        normal[0] = (mx + d[0] * t) / radius;
-        normal[1] = (my + d[1] * t) / radius;
-        normal[2] = (mz + d[2] * t) / radius;
-        return t;
-    };
-    if (shape.type === 'sphere')
-        return raySphere(p[0], p[1], p[2], shape.radius);
-    if (shape.type === 'plane') {
-        const nx = r[1], ny = r[4], nz = r[7], denominator = d[0] * nx + d[1] * ny + d[2] * nz;
-        if (denominator >= -1e-9)
-            return -1;
-        const t = ((p[0] - o[0]) * nx + (p[1] - o[1]) * ny + (p[2] - o[2]) * nz) / denominator;
-        if (t < 0)
-            return -1;
-        normal[0] = nx;
-        normal[1] = ny;
-        normal[2] = nz;
-        return t;
-    }
-    // Work in the body's local frame for boxes and capsules.
-    const dx = o[0] - p[0], dy = o[1] - p[1], dz = o[2] - p[2];
-    const lo = [r[0] * dx + r[3] * dy + r[6] * dz, r[1] * dx + r[4] * dy + r[7] * dz, r[2] * dx + r[5] * dy + r[8] * dz];
-    const ld = [r[0] * d[0] + r[3] * d[1] + r[6] * d[2], r[1] * d[0] + r[4] * d[1] + r[7] * d[2], r[2] * d[0] + r[5] * d[1] + r[8] * d[2]];
-    let t = -1, lx = 0, ly = 0, lz = 0;
-    if (shape.type === 'convex') {
-        t = shape.hull.raycast(lo[0], lo[1], lo[2], ld[0], ld[1], ld[2], limit, meshNormal);
-        if (t < 0)
-            return -1;
-        lx = meshNormal[0];
-        ly = meshNormal[1];
-        lz = meshNormal[2];
-    }
-    else if (shape.type === 'mesh') {
-        t = shape.mesh.raycast(lo[0], lo[1], lo[2], ld[0], ld[1], ld[2], limit, meshNormal);
-        if (t < 0)
-            return -1;
-        lx = meshNormal[0];
-        ly = meshNormal[1];
-        lz = meshNormal[2];
-    }
-    else if (shape.type === 'box') {
-        let near = 0, far = limit, axis = -1, sign = 0;
-        for (let i = 0; i < 3; i++) {
-            const h = shape.halfExtents[i];
-            if (Math.abs(ld[i]) < 1e-12) {
-                if (Math.abs(lo[i]) > h)
-                    return -1;
-                continue;
-            }
-            let t1 = (-h - lo[i]) / ld[i], t2 = (h - lo[i]) / ld[i], s = -1;
-            if (t1 > t2) {
-                const swap = t1;
-                t1 = t2;
-                t2 = swap;
-                s = 1;
-            }
-            if (t1 > near) {
-                near = t1;
-                axis = i;
-                sign = s;
-            }
-            far = Math.min(far, t2);
-            if (near > far)
-                return -1;
-        }
-        if (axis < 0)
-            return -1; // Origin inside the box.
-        t = near;
-        lx = axis === 0 ? sign : 0;
-        ly = axis === 1 ? sign : 0;
-        lz = axis === 2 ? sign : 0;
-    }
-    else {
-        const capsule = shape, radius = capsule.radius, h = capsule.halfHeight;
-        // Side: an infinite cylinder around local Y, clipped to the segment.
-        const a = ld[0] * ld[0] + ld[2] * ld[2], b = lo[0] * ld[0] + lo[2] * ld[2], c = lo[0] * lo[0] + lo[2] * lo[2] - radius * radius;
-        if (a > 1e-12) {
-            const discriminant = b * b - a * c;
-            if (discriminant >= 0) {
-                const hit = (-b - Math.sqrt(discriminant)) / a, y = lo[1] + ld[1] * hit;
-                if (hit >= 0 && Math.abs(y) <= h) {
-                    t = hit;
-                    lx = (lo[0] + ld[0] * hit) / radius;
-                    ly = 0;
-                    lz = (lo[2] + ld[2] * hit) / radius;
-                }
-            }
-        }
-        if (t < 0) {
-            // Caps: the nearer of the two end spheres, tested in world space.
-            let bestCap = -1, bx = 0, by = 0, bz = 0;
-            for (const side of [-h, h]) {
-                const hit = raySphere(p[0] + r[1] * side, p[1] + r[4] * side, p[2] + r[7] * side, radius);
-                if (hit >= 0 && (bestCap < 0 || hit < bestCap)) {
-                    bestCap = hit;
-                    bx = normal[0];
-                    by = normal[1];
-                    bz = normal[2];
-                }
-            }
-            normal[0] = bx;
-            normal[1] = by;
-            normal[2] = bz;
-            return bestCap;
-        }
-    }
-    normal[0] = r[0] * lx + r[1] * ly + r[2] * lz;
-    normal[1] = r[3] * lx + r[4] * ly + r[5] * lz;
-    normal[2] = r[6] * lx + r[7] * ly + r[8] * lz;
-    return t;
 }
 /**
  * Kinematic capsule that slides along the world instead of being simulated.
@@ -2837,13 +2748,16 @@ export class CharacterController3D {
         this.node = options.node;
         if (options.position)
             this.position.set(options.position);
-        this.#probe = new RigidBody3D({ type: 'kinematic', shape: { type: 'capsule', radius: this.radius, halfHeight: this.height / 2 - this.radius } });
+        this.#probe = new RigidBody3D({
+            type: 'kinematic',
+            shape: { type: 'capsule', radius: this.radius, halfHeight: this.height / 2 - this.radius }
+        });
     }
     /** Move by a world-space displacement, sliding along anything in the way. */
     move(dx, dy, dz) {
         requireFinite3D(dx + dy + dz, 'displacement');
         // Split long moves so one step never exceeds the radius and tunnels through thin walls.
-        const distance = Math.hypot(dx, dy, dz), steps = Math.min(Math.max(Math.ceil(distance / (this.radius * 0.9)), 1), 32);
+        const distance = Math.sqrt(dx * dx + dy * dy + dz * dz), steps = Math.min(Math.max(Math.ceil(distance / (this.radius * 0.9)), 1), 32);
         const p = this.position, probe = this.#probe, walkable = Math.cos(this.slopeLimit);
         this.isGrounded = false;
         this.groundBody = undefined;
@@ -2855,7 +2769,13 @@ export class CharacterController3D {
             for (let iteration = 0; iteration < 4; iteration++) {
                 probe.position.set(p);
                 probe.refresh();
-                const hit = { depth: 0, nx: 0, ny: 0, nz: 0, body: undefined };
+                const hit = {
+                    depth: 0,
+                    nx: 0,
+                    ny: 0,
+                    nz: 0,
+                    body: undefined
+                };
                 this.world.probe(probe, this.mask, (x, y, z, depth, body) => {
                     // Resolve the deepest contact first; the normal points from the capsule into the obstacle.
                     if (depth > hit.depth) {
@@ -2906,6 +2826,10 @@ export class CharacterController3D {
         }
     }
 }
-export function createPhysicsWorld3D(options = {}) { return new PhysicsWorld3D(options); }
-export function createCharacterController3D(world, options = {}) { return new CharacterController3D(world, options); }
+export function createPhysicsWorld3D(options = {}) {
+    return new PhysicsWorld3D(options);
+}
+export function createCharacterController3D(world, options = {}) {
+    return new CharacterController3D(world, options);
+}
 //# sourceMappingURL=Physics3D.js.map

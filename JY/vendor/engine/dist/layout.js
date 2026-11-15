@@ -44,8 +44,11 @@ export function planLinearLayout(options) {
     if (!isArray(items))
         throw new EgretError('LAYOUT_OPTIONS_INVALID');
     const length = read(items, 'length');
-    if (typeof length !== 'number' || !Number.isInteger(length)
-        || !Number.isFinite(length) || length < 0 || length > 0xffffffff) {
+    if (typeof length !== 'number' ||
+        !Number.isInteger(length) ||
+        !Number.isFinite(length) ||
+        length < 0 ||
+        length > 0xffffffff) {
         throw new EgretError('LAYOUT_OPTIONS_INVALID');
     }
     // This one observed bound also governs Proxy arrays and must win over getters
@@ -116,14 +119,14 @@ export function planLinearLayout(options) {
             x: horizontal ? item.mainPosition : crossPosition,
             y: horizontal ? crossPosition : item.mainPosition,
             width: item.width,
-            height: item.height,
+            height: item.height
         }));
         index++;
     }
     return Object.freeze({
         width: horizontal ? mainExtent : crossExtent,
         height: horizontal ? crossExtent : mainExtent,
-        placements: Object.freeze(placements),
+        placements: Object.freeze(placements)
     });
 }
 //# sourceMappingURL=layout.js.map

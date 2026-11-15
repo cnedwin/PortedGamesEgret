@@ -22,10 +22,14 @@ const weakSet = WeakMap.prototype.set;
 const owned = new WeakMap();
 export const IMAGE_LIMITS_2D = freeze({
     // One image is at most 2048 x 2048 pixels, or any other shape of that area within the edge bound.
-    maxSourceEdge: 4096, maxSourcePixels: 4194304,
-    maxImagesPerFrame: 64, maxViewsPerFrame: 128,
-    maxImageTableBytes: 16777216, maxProjectionBytes: 16777216,
-    maxImageScratchBytes: 33554432, maxPendingTextureBytes: 33554432,
+    maxSourceEdge: 4096,
+    maxSourcePixels: 4194304,
+    maxImagesPerFrame: 64,
+    maxViewsPerFrame: 128,
+    maxImageTableBytes: 16777216,
+    maxProjectionBytes: 16777216,
+    maxImageScratchBytes: 33554432,
+    maxPendingTextureBytes: 33554432
 });
 function read(source, key) {
     try {
@@ -69,9 +73,12 @@ export function createImageData2D(input) {
     const pixelCount = width * height;
     const bytesPerRow = 4 * width;
     const byteLength = 4 * pixelCount;
-    if (width > IMAGE_LIMITS_2D.maxSourceEdge || height > IMAGE_LIMITS_2D.maxSourceEdge ||
-        !safeInteger(pixelCount) || pixelCount > IMAGE_LIMITS_2D.maxSourcePixels ||
-        !safeInteger(bytesPerRow) || !safeInteger(byteLength))
+    if (width > IMAGE_LIMITS_2D.maxSourceEdge ||
+        height > IMAGE_LIMITS_2D.maxSourceEdge ||
+        !safeInteger(pixelCount) ||
+        pixelCount > IMAGE_LIMITS_2D.maxSourcePixels ||
+        !safeInteger(bytesPerRow) ||
+        !safeInteger(byteLength))
         throw new RangeFault('Image source capacity exceeded');
     literal(format, 'rgba8unorm');
     literal(colorSpace, 'srgb');
@@ -96,7 +103,16 @@ export function createImageData2D(input) {
     if (apply(lengthGetter, pixels, []) !== byteLength)
         throw new RangeFault('Image pixels must have exact tight byte length');
     const copy = cloneBytes(pixels, byteLength);
-    const image = freeze({ width, height, bytesPerRow, byteLength, format: 'rgba8unorm', colorSpace: 'srgb', alphaMode: 'straight', origin: 'top-left' });
+    const image = freeze({
+        width,
+        height,
+        bytesPerRow,
+        byteLength,
+        format: 'rgba8unorm',
+        colorSpace: 'srgb',
+        alphaMode: 'straight',
+        origin: 'top-left'
+    });
     apply(weakSet, owned, [image, copy]);
     return image;
 }

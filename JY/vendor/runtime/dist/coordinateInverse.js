@@ -1,8 +1,12 @@
 import { EgretError } from './EgretError.js';
 const FRACTION_MASK = (1n << 52n) - 1n;
 const MAX_BITS = 8192;
-function magnitude(n) { return n < 0n ? -n : n; }
-function bits(n) { return n === 0n ? 0 : magnitude(n).toString(2).length; }
+function magnitude(n) {
+    return n < 0n ? -n : n;
+}
+function bits(n) {
+    return n === 0n ? 0 : magnitude(n).toString(2).length;
+}
 function bounded(n) {
     if (bits(n) > MAX_BITS)
         throw new EgretError('COORDINATE_ARITHMETIC_RANGE');
@@ -16,15 +20,15 @@ function decodeFiniteDyadic(value, view) {
     const fraction = raw & FRACTION_MASK;
     const integer = encodedExponent === 0 ? fraction : (1n << 52n) | fraction;
     return {
-        integer: (raw >> 63n) === 0n ? integer : -integer,
-        exponent: encodedExponent === 0 ? -1074 : encodedExponent - 1075,
+        integer: raw >> 63n === 0n ? integer : -integer,
+        exponent: encodedExponent === 0 ? -1074 : encodedExponent - 1075
     };
 }
 /** Only the fixed two/four inverse products are admitted, with no rounded sum. */
 function sumDyadicProducts(terms) {
     const products = terms.map(([left, right, sign]) => ({
         integer: bounded(left.integer * right.integer * BigInt(sign)),
-        exponent: left.exponent + right.exponent,
+        exponent: left.exponent + right.exponent
     }));
     const nonzero = products.filter(product => product.integer !== 0n);
     if (nonzero.length === 0)
@@ -40,7 +44,7 @@ function sumDyadicProducts(terms) {
 function roundDyadicRatio(numerator, denominator) {
     if (numerator.integer === 0n)
         return 0;
-    const negative = (numerator.integer < 0n) !== (denominator.integer < 0n);
+    const negative = numerator.integer < 0n !== denominator.integer < 0n;
     let n = magnitude(numerator.integer);
     let d = magnitude(denominator.integer);
     let binaryExponent = bits(n) - bits(d);
@@ -79,11 +83,24 @@ export function invertCoordinatePoint(matrix, x, y) {
     const c = decodeFiniteDyadic(matrix.c, view), d = decodeFiniteDyadic(matrix.d, view);
     const tx = decodeFiniteDyadic(matrix.tx, view), ty = decodeFiniteDyadic(matrix.ty, view);
     const gx = decodeFiniteDyadic(x, view), gy = decodeFiniteDyadic(y, view);
-    const determinant = sumDyadicProducts([[a, d, 1], [b, c, -1]]);
+    const determinant = sumDyadicProducts([
+        [a, d, 1],
+        [b, c, -1]
+    ]);
     if (determinant.integer === 0n)
         throw new EgretError('COORDINATE_TRANSFORM_SINGULAR');
-    const nx = sumDyadicProducts([[d, gx, 1], [d, tx, -1], [c, gy, -1], [c, ty, 1]]);
-    const ny = sumDyadicProducts([[a, gy, 1], [a, ty, -1], [b, gx, -1], [b, tx, 1]]);
+    const nx = sumDyadicProducts([
+        [d, gx, 1],
+        [d, tx, -1],
+        [c, gy, -1],
+        [c, ty, 1]
+    ]);
+    const ny = sumDyadicProducts([
+        [a, gy, 1],
+        [a, ty, -1],
+        [b, gx, -1],
+        [b, tx, 1]
+    ]);
     // Both coordinates finish before the caller can publish an owned point.
     return { x: roundDyadicRatio(nx, determinant), y: roundDyadicRatio(ny, determinant) };
 }

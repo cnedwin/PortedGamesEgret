@@ -2,10 +2,18 @@
 import { EgretError } from '@egret/runtime';
 import { bindKeyboardSurface, createKeyboardInput } from '#egret-keyboard-input';
 const apply = Reflect.apply, owned = new WeakSet();
-function getter(prototype, name) { const value = prototype === undefined ? undefined : Object.getOwnPropertyDescriptor(prototype, name)?.get; if (typeof value !== 'function')
-    throw new EgretError('KEYBOARD_INPUT_SURFACE_INVALID'); return value; }
-function method(prototype, name) { const value = prototype === undefined ? undefined : Object.getOwnPropertyDescriptor(prototype, name)?.value; if (typeof value !== 'function')
-    throw new EgretError('KEYBOARD_INPUT_SURFACE_INVALID'); return value; }
+function getter(prototype, name) {
+    const value = prototype === undefined ? undefined : Object.getOwnPropertyDescriptor(prototype, name)?.get;
+    if (typeof value !== 'function')
+        throw new EgretError('KEYBOARD_INPUT_SURFACE_INVALID');
+    return value;
+}
+function method(prototype, name) {
+    const value = prototype === undefined ? undefined : Object.getOwnPropertyDescriptor(prototype, name)?.value;
+    if (typeof value !== 'function')
+        throw new EgretError('KEYBOARD_INPUT_SURFACE_INVALID');
+    return value;
+}
 /** Canvas-local native keyboard bridge. Canvas focus remains application-owned. */
 export function createBrowserKeyboardInput(options) {
     const input = createKeyboardInput(options), bridge = bindKeyboardSurface(input), surface = bridge.surface;
@@ -13,19 +21,27 @@ export function createBrowserKeyboardInput(options) {
     let closed = false, paused = false, busy = false, claimed = false;
     let removeClose = () => { }, removeInteractive = () => { }, restore = () => { };
     let remove = () => { }, add = () => { };
-    function removePair(pair) { if (pair.adding || pair.removed)
-        return; pair.removed = true; apply(remove, pair.target, [pair.type, pair.listener, false]); }
-    function detach() { let failure, failed = false; for (const pair of pairs.slice().reverse())
-        try {
-            removePair(pair);
-        }
-        catch (cause) {
-            if (!failed) {
-                failed = true;
-                failure = cause;
+    function removePair(pair) {
+        if (pair.adding || pair.removed)
+            return;
+        pair.removed = true;
+        apply(remove, pair.target, [pair.type, pair.listener, false]);
+    }
+    function detach() {
+        let failure, failed = false;
+        for (const pair of pairs.slice().reverse())
+            try {
+                removePair(pair);
             }
-        } if (failed)
-        throw failure; }
+            catch (cause) {
+                if (!failed) {
+                    failed = true;
+                    failure = cause;
+                }
+            }
+        if (failed)
+            throw failure;
+    }
     function cleanup() {
         if (closed)
             return;
@@ -45,15 +61,18 @@ export function createBrowserKeyboardInput(options) {
         for (const cause of failures)
             bridge.report(cause);
     }
-    function fail(cause) { try {
-        input.dispose();
+    function fail(cause) {
+        try {
+            input.dispose();
+        }
+        catch (secondary) {
+            bridge.report(secondary);
+        }
+        finally {
+            cleanup();
+        }
+        bridge.report(cause);
     }
-    catch (secondary) {
-        bridge.report(secondary);
-    }
-    finally {
-        cleanup();
-    } bridge.report(cause); }
     try {
         removeClose = bridge.onClose(cleanup);
         const win = globalThis.window, document = globalThis.document;
@@ -67,8 +86,13 @@ export function createBrowserKeyboardInput(options) {
         const getAttribute = method(globalThis.Element?.prototype, 'getAttribute'), setAttribute = method(globalThis.Element?.prototype, 'setAttribute'), removeAttribute = method(globalThis.Element?.prototype, 'removeAttribute');
         add = method(globalThis.EventTarget?.prototype, 'addEventListener');
         remove = method(globalThis.EventTarget?.prototype, 'removeEventListener');
-        function authentic() { apply(canvasBrand, surface, []); if (apply(ownerDocument, surface, []) !== document || apply(defaultView, document, []) !== win || apply(connected, surface, []) !== true)
-            throw new EgretError('KEYBOARD_INPUT_SURFACE_INVALID'); }
+        function authentic() {
+            apply(canvasBrand, surface, []);
+            if (apply(ownerDocument, surface, []) !== document ||
+                apply(defaultView, document, []) !== win ||
+                apply(connected, surface, []) !== true)
+                throw new EgretError('KEYBOARD_INPUT_SURFACE_INVALID');
+        }
         authentic();
         if (owned.has(surface))
             throw new EgretError('KEYBOARD_INPUT_IN_USE');
@@ -76,19 +100,33 @@ export function createBrowserKeyboardInput(options) {
         claimed = true;
         if (apply(getAttribute, surface, ['tabindex']) === null) {
             // Restore only the exact value still owned by this bridge.
-            restore = () => { if (apply(getAttribute, surface, ['tabindex']) === '0')
-                apply(removeAttribute, surface, ['tabindex']); };
+            restore = () => {
+                if (apply(getAttribute, surface, ['tabindex']) === '0')
+                    apply(removeAttribute, surface, ['tabindex']);
+            };
             apply(setAttribute, surface, ['tabindex', '0']);
         }
-        function cancel(reason) { input.cancel(reason); }
+        function cancel(reason) {
+            input.cancel(reason);
+        }
         function keyboard(event, down) {
             authentic();
-            if (apply(active, document, []) !== surface || apply(target, event, []) !== surface || apply(visibility, document, []) !== 'visible')
+            if (apply(active, document, []) !== surface ||
+                apply(target, event, []) !== surface ||
+                apply(visibility, document, []) !== 'visible')
                 return;
             const physical = apply(code, event, []), logical = apply(key, event, []);
             if (apply(composing, event, []) === true || logical === 'Process' || logical === 'Dead' || physical === '')
                 return;
-            const sample = { code: physical, key: logical, repeat: apply(repeat, event, []), altKey: apply(alt, event, []), ctrlKey: apply(ctrl, event, []), metaKey: apply(meta, event, []), shiftKey: apply(shift, event, []) };
+            const sample = {
+                code: physical,
+                key: logical,
+                repeat: apply(repeat, event, []),
+                altKey: apply(alt, event, []),
+                ctrlKey: apply(ctrl, event, []),
+                metaKey: apply(meta, event, []),
+                shiftKey: apply(shift, event, [])
+            };
             const prevented = down ? input.keyDown(sample) : input.keyUp(sample);
             // Prevention belongs to this original native event even if its genuine
             // handler synchronously suspended, closed, or handed focus to an editor.
@@ -155,12 +193,17 @@ export function createBrowserKeyboardInput(options) {
         listen(surface, 'blur', () => cancel('blur'));
         listen(win, 'blur', () => cancel('blur'));
         listen(win, 'pagehide', () => cancel('pagehide'));
-        listen(document, 'visibilitychange', () => { if (apply(visibility, document, []) !== 'visible')
-            cancel('hidden'); });
-        removeInteractive = bridge.onInteractive(value => { paused = !value; if (paused)
-            detach();
-        else
-            attach(); });
+        listen(document, 'visibilitychange', () => {
+            if (apply(visibility, document, []) !== 'visible')
+                cancel('hidden');
+        });
+        removeInteractive = bridge.onInteractive(value => {
+            paused = !value;
+            if (paused)
+                detach();
+            else
+                attach();
+        });
         attach();
         if (closed || input.getSnapshot().state === 'closed')
             throw new EgretError('KEYBOARD_INPUT_CLOSED');

@@ -1,11 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
-const ARROWS = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+const ARROWS = {
+    ArrowLeft: [-1, 0],
+    ArrowRight: [1, 0],
+    ArrowUp: [0, -1],
+    ArrowDown: [0, 1]
+};
 const LETTERS = { KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] };
 const ACTIVATES = ['Space', 'Enter', 'NumpadEnter'];
 const METHODS = {
-    action: ['press', 'release'], toggle: ['toggle'], textField: ['edit'], selection: ['next', 'previous', 'first', 'last'],
-    scroll: ['line', 'page', 'toStart', 'toEnd'], range: ['stepBy', 'toMin', 'toMax'], movement: ['setDirection'],
+    action: ['press', 'release'],
+    toggle: ['toggle'],
+    textField: ['edit'],
+    selection: ['next', 'previous', 'first', 'last'],
+    scroll: ['line', 'page', 'toStart', 'toEnd'],
+    range: ['stepBy', 'toMin', 'toMax'],
+    movement: ['setDirection']
 };
 export function createControlKeys(options) {
     if (options === null || typeof options !== 'object')
@@ -13,11 +23,20 @@ export function createControlKeys(options) {
     const { keyboard, target, kind, control } = options;
     const events = keyboard === null || typeof keyboard !== 'object' ? undefined : keyboard.events;
     const methods = typeof kind === 'string' && Object.hasOwn(METHODS, kind) ? METHODS[kind] : undefined;
-    if (events === null || typeof events !== 'object' || [events.keyDown, events.keyUp, events.cancel].some(type => type === null || typeof type !== 'object')
-        || target === null || typeof target !== 'object' || typeof target.on !== 'function' || methods === undefined
-        || control === null || typeof control !== 'object' || methods.some(name => typeof control[name] !== 'function'))
+    if (events === null ||
+        typeof events !== 'object' ||
+        [events.keyDown, events.keyUp, events.cancel].some(type => type === null || typeof type !== 'object') ||
+        target === null ||
+        typeof target !== 'object' ||
+        typeof target.on !== 'function' ||
+        methods === undefined ||
+        control === null ||
+        typeof control !== 'object' ||
+        methods.some(name => typeof control[name] !== 'function'))
         throw new EgretError('UI_CONTROL_OPTIONS');
-    const onPressChange = options.kind === 'selection' || options.kind === 'scroll' || options.kind === 'range' ? undefined : options.onPressChange;
+    const onPressChange = options.kind === 'selection' || options.kind === 'scroll' || options.kind === 'range'
+        ? undefined
+        : options.onPressChange;
     if (onPressChange !== undefined && typeof onPressChange !== 'function')
         throw new EgretError('UI_CONTROL_OPTIONS');
     let closed = false;
@@ -33,10 +52,22 @@ export function createControlKeys(options) {
             onPressChange?.(!was);
     }
     const shortcut = (payload) => payload.altKey || payload.ctrlKey || payload.metaKey;
-    let down, release = () => { };
+    let down, release = () => {
+        /* nothing is held */
+    };
     if (options.kind === 'action' || options.kind === 'toggle' || options.kind === 'textField') {
-        const activate = options.kind === 'action' ? () => { options.control.press(); options.control.release(); }
-            : options.kind === 'toggle' ? () => { options.control.toggle(); } : () => { options.control.edit(); };
+        const activate = options.kind === 'action'
+            ? () => {
+                options.control.press();
+                options.control.release();
+            }
+            : options.kind === 'toggle'
+                ? () => {
+                    options.control.toggle();
+                }
+                : () => {
+                    options.control.edit();
+                };
         down = event => {
             const { code, repeat } = event.payload;
             if (!ACTIVATES.includes(code) || shortcut(event.payload) || !control.enabled)
@@ -80,7 +111,12 @@ export function createControlKeys(options) {
         const scroll = options.control;
         if (scroll.axis !== 'x' && scroll.axis !== 'y')
             throw new EgretError('UI_CONTROL_OPTIONS');
-        const moves = { PageDown: () => scroll.page(1), PageUp: () => scroll.page(-1), Home: () => scroll.toStart(), End: () => scroll.toEnd() };
+        const moves = {
+            PageDown: () => scroll.page(1),
+            PageUp: () => scroll.page(-1),
+            Home: () => scroll.toStart(),
+            End: () => scroll.toEnd()
+        };
         moves[scroll.axis === 'y' ? 'ArrowDown' : 'ArrowRight'] = () => scroll.line(1);
         moves[scroll.axis === 'y' ? 'ArrowUp' : 'ArrowLeft'] = () => scroll.line(-1);
         down = event => {
@@ -94,9 +130,16 @@ export function createControlKeys(options) {
     }
     else if (options.kind === 'range') {
         const range = options.control, orientation = options.orientation ?? 'both', page = options.page ?? 10;
-        if ((orientation !== 'horizontal' && orientation !== 'vertical' && orientation !== 'both') || !Number.isSafeInteger(page) || page < 1)
+        if ((orientation !== 'horizontal' && orientation !== 'vertical' && orientation !== 'both') ||
+            !Number.isSafeInteger(page) ||
+            page < 1)
             throw new EgretError('UI_CONTROL_OPTIONS');
-        const moves = { PageUp: () => range.stepBy(page), PageDown: () => range.stepBy(-page), Home: () => range.toMin(), End: () => range.toMax() };
+        const moves = {
+            PageUp: () => range.stepBy(page),
+            PageDown: () => range.stepBy(-page),
+            Home: () => range.toMin(),
+            End: () => range.toMax()
+        };
         if (orientation !== 'vertical') {
             moves.ArrowRight = () => range.stepBy(1);
             moves.ArrowLeft = () => range.stepBy(-1);
@@ -118,7 +161,10 @@ export function createControlKeys(options) {
         const movement = options.control, keys = options.keys ?? 'both';
         if (keys !== 'arrows' && keys !== 'wasd' && keys !== 'both')
             throw new EgretError('UI_CONTROL_OPTIONS');
-        const vectors = { ...(keys === 'wasd' ? {} : ARROWS), ...(keys === 'arrows' ? {} : LETTERS) };
+        const vectors = {
+            ...(keys === 'wasd' ? {} : ARROWS),
+            ...(keys === 'arrows' ? {} : LETTERS)
+        };
         const steer = () => {
             let x = 0, y = 0;
             for (const code of held) {
@@ -137,11 +183,16 @@ export function createControlKeys(options) {
             hold(code, true);
             steer();
         };
-        release = code => { hold(code, false); steer(); };
+        release = code => {
+            hold(code, false);
+            steer();
+        };
     }
     const subscriptions = [
-        target.on(events.keyDown, event => { if (!closed && !event.defaultPrevented)
-            down(event); }),
+        target.on(events.keyDown, event => {
+            if (!closed && !event.defaultPrevented)
+                down(event);
+        }),
         target.on(events.keyUp, event => {
             if (closed || !held.has(event.payload.code))
                 return;
@@ -150,11 +201,15 @@ export function createControlKeys(options) {
             release(event.payload.code, !taken);
         }),
         // The focus left, or the page did, while the key was down.
-        target.on(events.cancel, event => { if (!closed && held.has(event.payload.code))
-            release(event.payload.code, false); }),
+        target.on(events.cancel, event => {
+            if (!closed && held.has(event.payload.code))
+                release(event.payload.code, false);
+        })
     ];
     return Object.freeze({
-        get pressed() { return held.size > 0; },
+        get pressed() {
+            return held.size > 0;
+        },
         dispose() {
             if (closed)
                 return;
@@ -188,7 +243,7 @@ export function createControlKeys(options) {
                 }
             if (failure !== undefined)
                 throw failure;
-        },
+        }
     });
 }
 //# sourceMappingURL=controlKeys.js.map

@@ -17,12 +17,28 @@ export class Event {
     constructor(type, payload) {
         this.type = type;
         this.payload = payload;
-        states.set(this, { active: false, stopped: false, immediate: false, prevented: false, target: undefined, currentTarget: undefined, phase: undefined });
+        states.set(this, {
+            active: false,
+            stopped: false,
+            immediate: false,
+            prevented: false,
+            target: undefined,
+            currentTarget: undefined,
+            phase: undefined
+        });
     }
-    get target() { return stateOf(this).target; }
-    get currentTarget() { return stateOf(this).currentTarget; }
-    get eventPhase() { return stateOf(this).phase; }
-    get defaultPrevented() { return stateOf(this).prevented; }
+    get target() {
+        return stateOf(this).target;
+    }
+    get currentTarget() {
+        return stateOf(this).currentTarget;
+    }
+    get eventPhase() {
+        return stateOf(this).phase;
+    }
+    get defaultPrevented() {
+        return stateOf(this).prevented;
+    }
     stopPropagation() {
         const state = stateOf(this);
         if (state.active)

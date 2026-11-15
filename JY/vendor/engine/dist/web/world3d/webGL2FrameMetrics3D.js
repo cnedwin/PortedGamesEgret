@@ -16,7 +16,13 @@ export class WebGL2FrameMetrics3D {
             throw new World3DError('WORLD3D_INPUT_INVALID', 'nested frame measurement');
         if (gpu || this.#pending.length > 0)
             this.poll();
-        const capture = { passes: [], gpu, cpuSubmissionMs: 0, viewIndex: 0, reflections: { rendered: 0, reused: 0 } };
+        const capture = {
+            passes: [],
+            gpu,
+            cpuSubmissionMs: 0,
+            viewIndex: 0,
+            reflections: { rendered: 0, reused: 0 }
+        };
         this.#capture = capture;
         try {
             const result = draw();
@@ -30,7 +36,13 @@ export class WebGL2FrameMetrics3D {
                 drawCalls += pass.drawCalls;
                 triangles += pass.triangles;
             }
-            return Object.freeze({ drawCalls, triangles, cpuSubmissionMs: capture.cpuSubmissionMs, passes, reflections: Object.freeze(capture.reflections) });
+            return Object.freeze({
+                drawCalls,
+                triangles,
+                cpuSubmissionMs: capture.cpuSubmissionMs,
+                passes,
+                reflections: Object.freeze(capture.reflections)
+            });
         }
         finally {
             this.#capture = undefined;
@@ -53,11 +65,24 @@ export class WebGL2FrameMetrics3D {
             return undefined;
         let gpuTime = Object.freeze({ status: 'disabled' });
         const pass = {
-            view, viewIndex, kind, width, height, ...(shadowMapSizes ? { shadowMapSizes: Object.freeze(shadowMapSizes) } : {}),
-            drawCalls: 0, triangles: 0, cpuSubmissionMs: 0,
-            get gpuTime() { return gpuTime; },
+            view,
+            viewIndex,
+            kind,
+            width,
+            height,
+            ...(shadowMapSizes ? { shadowMapSizes: Object.freeze(shadowMapSizes) } : {}),
+            drawCalls: 0,
+            triangles: 0,
+            cpuSubmissionMs: 0,
+            get gpuTime() {
+                return gpuTime;
+            }
         };
-        const timer = capture.gpu ? this.startQuery(timing => { gpuTime = Object.freeze(timing); }) : undefined;
+        const timer = capture.gpu
+            ? this.startQuery(timing => {
+                gpuTime = Object.freeze(timing);
+            })
+            : undefined;
         this.#pass = pass;
         return { pass, started: performance.now(), ...(timer ? { timer } : {}) };
     }
@@ -137,7 +162,9 @@ export class WebGL2FrameMetrics3D {
             const { query, setResult } = this.#pending[i];
             const elapsed = gl.getQueryParameter(query, gl.QUERY_RESULT);
             gl.deleteQuery(query);
-            setResult(typeof elapsed === 'number' && Number.isFinite(elapsed) && elapsed >= 0 ? { status: 'ready', milliseconds: elapsed / 1e6 } : { status: 'unavailable' });
+            setResult(typeof elapsed === 'number' && Number.isFinite(elapsed) && elapsed >= 0
+                ? { status: 'ready', milliseconds: elapsed / 1e6 }
+                : { status: 'unavailable' });
         }
         if (ready > 0)
             this.#pending.splice(0, ready);

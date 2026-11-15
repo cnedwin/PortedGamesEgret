@@ -23,9 +23,13 @@ export class BatchedMesh3D extends Mesh3D {
         this.name = 'batch';
     }
     /** Number of geometries added and not deleted. */
-    get itemCount() { let count = 0; for (const item of this.#items)
-        if (item)
-            count++; return count; }
+    get itemCount() {
+        let count = 0;
+        for (const item of this.#items)
+            if (item)
+                count++;
+        return count;
+    }
     /** Add a triangle geometry and return its id within this batch. The geometry itself is copied. */
     addGeometry(geometry, matrix = IDENTITY) {
         if (!(geometry instanceof Geometry3D) || geometry.topology !== 'triangles')
@@ -35,10 +39,17 @@ export class BatchedMesh3D extends Mesh3D {
             throw new World3DError('WORLD3D_INPUT_INVALID', 'batch geometry needs positions and normals');
         if (this.#items.length >= BATCH3D_LIMITS.maxItems)
             throw new World3DError('WORLD3D_BUDGET', 'batch items');
-        const count = position.count, indices = geometry.index ? Uint32Array.from(geometry.index.data) : Uint32Array.from({ length: count }, (_, i) => i);
+        const count = position.count, indices = geometry.index
+            ? Uint32Array.from(geometry.index.data)
+            : Uint32Array.from({ length: count }, (_, i) => i);
         this.#items.push({
-            positions: Float32Array.from(position.data), normals: Float32Array.from(normal.data), uvs: uv ? Float32Array.from(uv.data) : undefined,
-            indices, matrix: this.checkedMatrix(matrix), visible: true, color: undefined,
+            positions: Float32Array.from(position.data),
+            normals: Float32Array.from(normal.data),
+            uvs: uv ? Float32Array.from(uv.data) : undefined,
+            indices,
+            matrix: this.checkedMatrix(matrix),
+            visible: true,
+            color: undefined
         });
         this.#dirty = true;
         return this.#items.length - 1;
@@ -57,17 +68,40 @@ export class BatchedMesh3D extends Mesh3D {
             throw new World3DError('WORLD3D_INPUT_INVALID', 'batch id');
         return item;
     }
-    setMatrixAt(id, matrix) { this.item(id).matrix = this.checkedMatrix(matrix); this.#dirty = true; return this; }
-    getMatrixAt(id, out = new Float32Array(16)) { out.set(this.item(id).matrix); return out; }
-    setVisibleAt(id, visible) { const item = this.item(id); if (item.visible !== visible) {
-        item.visible = visible;
+    setMatrixAt(id, matrix) {
+        this.item(id).matrix = this.checkedMatrix(matrix);
         this.#dirty = true;
-    } return this; }
-    getVisibleAt(id) { return this.item(id).visible; }
+        return this;
+    }
+    getMatrixAt(id, out = new Float32Array(16)) {
+        out.set(this.item(id).matrix);
+        return out;
+    }
+    setVisibleAt(id, visible) {
+        const item = this.item(id);
+        if (item.visible !== visible) {
+            item.visible = visible;
+            this.#dirty = true;
+        }
+        return this;
+    }
+    getVisibleAt(id) {
+        return this.item(id).visible;
+    }
     /** Tint one item through vertex colors; the material needs `vertexColors` enabled. */
-    setColorAt(id, r, g, b) { this.item(id).color = new Float32Array([r, g, b]); this.#useColors = true; this.#dirty = true; return this; }
+    setColorAt(id, r, g, b) {
+        this.item(id).color = new Float32Array([r, g, b]);
+        this.#useColors = true;
+        this.#dirty = true;
+        return this;
+    }
     /** Remove an item. Its id is not reused. */
-    deleteGeometry(id) { this.item(id); this.#items[id] = undefined; this.#dirty = true; return this; }
+    deleteGeometry(id) {
+        this.item(id);
+        this.#items[id] = undefined;
+        this.#dirty = true;
+        return this;
+    }
     /** Rebuild the combined buffers now instead of at the next frame. */
     flush() {
         if (!this.#dirty)
@@ -110,7 +144,10 @@ export class BatchedMesh3D extends Mesh3D {
             if (uvs && item.uvs)
                 uvs.set(item.uvs, vertex * 2);
             // A mirrored transform flips winding; swap two corners so faces stay outward.
-            const mirrored = m[0] * (m[5] * m[10] - m[6] * m[9]) - m[4] * (m[1] * m[10] - m[2] * m[9]) + m[8] * (m[1] * m[6] - m[2] * m[5]) < 0;
+            const mirrored = m[0] * (m[5] * m[10] - m[6] * m[9]) -
+                m[4] * (m[1] * m[10] - m[2] * m[9]) +
+                m[8] * (m[1] * m[6] - m[2] * m[5]) <
+                0;
             for (let i = 0; i < item.indices.length; i += 3) {
                 indices[index + i] = item.indices[i] + vertex;
                 indices[index + i + 1] = item.indices[i + (mirrored ? 2 : 1)] + vertex;
@@ -133,9 +170,13 @@ export class BatchedMesh3D extends Mesh3D {
         geometry.setIndex(indices.length > 0 ? indices : new Uint32Array(3));
         geometry.invalidateBounds();
     }
-    beforeRender() { this.flush(); }
+    beforeRender() {
+        this.flush();
+    }
     /** Release the combined geometry. The material stays with its owner. */
-    dispose() { this.geometry.dispose(); }
+    dispose() {
+        this.geometry.dispose();
+    }
 }
 /**
  * A polyline drawn as a ribbon of triangles that turns to face the camera,
@@ -183,7 +224,7 @@ export class FatLine3D extends Mesh3D {
         if (flat.length / 3 > BATCH3D_LIMITS.maxLinePoints)
             throw new World3DError('WORLD3D_BUDGET', 'line points');
         this.#points = Float32Array.from(flat);
-        const count = this.#count = flat.length / 3, segments = this.closed ? count : count - 1;
+        const count = (this.#count = flat.length / 3), segments = this.closed ? count : count - 1;
         // Two vertices per point (plus a repeated first pair when closed) and two triangles per segment.
         const pairs = this.closed ? count + 1 : count, indices = new Uint32Array(segments * 6);
         for (let i = 0; i < segments; i++) {
@@ -193,7 +234,7 @@ export class FatLine3D extends Mesh3D {
         this.#positions = new Float32Array(pairs * 6);
         const geometry = this.geometry;
         geometry.setIndex(undefined);
-        geometry.setAttribute('position', this.#attribute = new Attribute3D(this.#positions, 3));
+        geometry.setAttribute('position', (this.#attribute = new Attribute3D(this.#positions, 3)));
         geometry.setIndex(indices);
         return this;
     }
@@ -203,10 +244,17 @@ export class FatLine3D extends Mesh3D {
         if (count < 2 || !attribute)
             return;
         // Camera position in the line's local space, so the ribbon can be built there directly.
-        const eye = this.worldToLocal(this.#local, [camera.matrixWorld[12], camera.matrixWorld[13], camera.matrixWorld[14]]);
+        const eye = this.worldToLocal(this.#local, [
+            camera.matrixWorld[12],
+            camera.matrixWorld[13],
+            camera.matrixWorld[14]
+        ]);
         const ex = eye[0], ey = eye[1], ez = eye[2], pairs = this.closed ? count + 1 : count;
-        const pixel = this.screenSpace && camera.projectionKind === 'perspective' ? 2 * Math.tan(camera.fov * Math.PI / 360) / (camera.zoom * Math.max(this.resolutionHeight, 1))
-            : this.screenSpace ? camera.orthographicHeight / (camera.zoom * Math.max(this.resolutionHeight, 1)) : 0;
+        const pixel = this.screenSpace && camera.projectionKind === 'perspective'
+            ? (2 * Math.tan((camera.fov * Math.PI) / 360)) / (camera.zoom * Math.max(this.resolutionHeight, 1))
+            : this.screenSpace
+                ? camera.orthographicHeight / (camera.zoom * Math.max(this.resolutionHeight, 1))
+                : 0;
         for (let i = 0; i < pairs; i++) {
             const at = (i % count) * 3, x = points[at], y = points[at + 1], z = points[at + 2];
             // Direction of travel: toward the next point, blended with the previous one at joints.
@@ -267,8 +315,15 @@ export class FatLine3D extends Mesh3D {
         attribute.touch();
     }
     /** Release the line's own geometry and material. */
-    dispose() { this.geometry.dispose(); this.material.dispose(); }
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
+    }
 }
-export function createBatchedMesh3D(material) { return new BatchedMesh3D(material); }
-export function createFatLine3D(points, options = {}) { return new FatLine3D(points, options); }
+export function createBatchedMesh3D(material) {
+    return new BatchedMesh3D(material);
+}
+export function createFatLine3D(points, options = {}) {
+    return new FatLine3D(points, options);
+}
 //# sourceMappingURL=Batch3D.js.map

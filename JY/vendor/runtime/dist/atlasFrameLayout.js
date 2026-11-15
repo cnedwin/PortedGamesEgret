@@ -19,18 +19,30 @@ export function copyAtlasFrameLayout(captured, width, height, reject) {
         return reject('shape');
     const values = fields.map(field => field.value);
     const [sourceWidth, sourceHeight, trimX, trimY, packedRotation] = values;
-    if (typeof sourceWidth !== 'number' || !Number.isSafeInteger(sourceWidth) || sourceWidth <= 0
-        || typeof sourceHeight !== 'number' || !Number.isSafeInteger(sourceHeight) || sourceHeight <= 0
-        || typeof trimX !== 'number' || !Number.isSafeInteger(trimX) || trimX < 0
-        || typeof trimY !== 'number' || !Number.isSafeInteger(trimY) || trimY < 0
-        || (packedRotation !== 0 && packedRotation !== 90))
+    if (typeof sourceWidth !== 'number' ||
+        !Number.isSafeInteger(sourceWidth) ||
+        sourceWidth <= 0 ||
+        typeof sourceHeight !== 'number' ||
+        !Number.isSafeInteger(sourceHeight) ||
+        sourceHeight <= 0 ||
+        typeof trimX !== 'number' ||
+        !Number.isSafeInteger(trimX) ||
+        trimX < 0 ||
+        typeof trimY !== 'number' ||
+        !Number.isSafeInteger(trimY) ||
+        trimY < 0 ||
+        (packedRotation !== 0 && packedRotation !== 90))
         return reject('region');
     const right = trimX + (packedRotation === 90 ? height : width);
     const bottom = trimY + (packedRotation === 90 ? width : height);
-    if (!Number.isSafeInteger(right) || !Number.isSafeInteger(bottom)
-        || right > sourceWidth || bottom > sourceHeight)
+    if (!Number.isSafeInteger(right) || !Number.isSafeInteger(bottom) || right > sourceWidth || bottom > sourceHeight)
         return reject('region');
-    return Object.freeze({ sourceWidth, sourceHeight, trimX: trimX === 0 ? 0 : trimX,
-        trimY: trimY === 0 ? 0 : trimY, packedRotation: packedRotation === 0 ? 0 : 90 });
+    return Object.freeze({
+        sourceWidth,
+        sourceHeight,
+        trimX: trimX === 0 ? 0 : trimX,
+        trimY: trimY === 0 ? 0 : trimY,
+        packedRotation: packedRotation === 0 ? 0 : 90
+    });
 }
 //# sourceMappingURL=atlasFrameLayout.js.map

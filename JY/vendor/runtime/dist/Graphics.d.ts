@@ -31,13 +31,24 @@ export interface GradientBoxMatrix {
 /**
  * Drawing state belongs to one node; every shape snapshots its fill and its line. A node that draws only filled
  * rectangles keeps them as rectangles. Any other shape, and any line, makes the node's drawing one list of triangles
- * in drawing order: edges are not smoothed, and a curve is drawn as straight pieces within a quarter unit of it.
+ * in drawing order, and a curve is drawn as straight pieces within a quarter unit of it. Edges are a stair of pixels
+ * unless `smoothing` is set.
  */
 export declare class Graphics {
     private readonly owner;
     private fill;
     private line;
+    private soft;
     constructor(owner: DisplayObject);
+    /**
+     * How far, in the node's units, the edge of each shape and line drawn from now on fades to nothing: 0, which it is
+     * at first, to 8. One unit smooths an edge at the size it was drawn. A band of triangles is added around the shape,
+     * which is that much larger. A fill under a line has no band of its own. Filled rectangles alone stay rectangles,
+     * and an image fill has no band.
+     */
+    get smoothing(): number;
+    set smoothing(value: number);
+    private edged;
     beginFill(value: number, alpha?: number): this;
     /** The line of the shapes drawn after it: its width in the node's units, colour and alpha. No width, or 0, ends the line. */
     lineStyle(thickness?: number, value?: number, alpha?: number, options?: LineStyleOptions): this;

@@ -4,24 +4,56 @@ import { captureMouseInputRuntimePrimitives, requireMouseInputEngine } from './i
 import { captureUiInputDelivery, registerUiKeyboardInput } from './internal/uiFactoryState.js';
 const primitives = captureMouseInputRuntimePrimitives();
 const bindings = new WeakMap();
-const reasons = new Set(['focus', 'rebind', 'removed', 'owner', 'suspended', 'dispose', 'blur', 'hidden', 'pagehide', 'error']);
-function fail(code) { throw new EgretError(code); }
-function idValid(id) { return typeof id === 'string' && id.length > 0 && id.length <= 128 && !id.includes('\0'); }
-function object(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
+const reasons = new Set([
+    'focus',
+    'rebind',
+    'removed',
+    'owner',
+    'suspended',
+    'dispose',
+    'blur',
+    'hidden',
+    'pagehide',
+    'error'
+]);
+function fail(code) {
+    throw new EgretError(code);
+}
+function idValid(id) {
+    return typeof id === 'string' && id.length > 0 && id.length <= 128 && !id.includes('\0');
+}
+function object(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
 function sample(value) {
     if (!object(value))
         fail('KEYBOARD_INPUT_SAMPLE_INVALID');
     const code = value.code, key = value.key;
-    if (typeof code !== 'string' || code.length < 1 || code.length > 64 || typeof key !== 'string' || key.length < 1 || key.length > 128)
+    if (typeof code !== 'string' ||
+        code.length < 1 ||
+        code.length > 64 ||
+        typeof key !== 'string' ||
+        key.length < 1 ||
+        key.length > 128)
         fail('KEYBOARD_INPUT_SAMPLE_INVALID');
     const repeat = value.repeat, altKey = value.altKey, ctrlKey = value.ctrlKey, metaKey = value.metaKey, shiftKey = value.shiftKey;
-    const result = { code, key, repeat: repeat === undefined ? false : repeat, altKey: altKey === undefined ? false : altKey, ctrlKey: ctrlKey === undefined ? false : ctrlKey, metaKey: metaKey === undefined ? false : metaKey, shiftKey: shiftKey === undefined ? false : shiftKey };
+    const result = {
+        code,
+        key,
+        repeat: repeat === undefined ? false : repeat,
+        altKey: altKey === undefined ? false : altKey,
+        ctrlKey: ctrlKey === undefined ? false : ctrlKey,
+        metaKey: metaKey === undefined ? false : metaKey,
+        shiftKey: shiftKey === undefined ? false : shiftKey
+    };
     if ([result.repeat, result.altKey, result.ctrlKey, result.metaKey, result.shiftKey].some(v => typeof v !== 'boolean'))
         fail('KEYBOARD_INPUT_SAMPLE_INVALID');
     return Object.freeze(result);
 }
 /** Private browser binding reuses the genuine eager Engine authority. */
-export function bindKeyboardSurface(input) { return bindings.get(input) ?? fail('KEYBOARD_INPUT_CLOSED'); }
+export function bindKeyboardSurface(input) {
+    return bindings.get(input) ?? fail('KEYBOARD_INPUT_CLOSED');
+}
 export function createKeyboardInput(options) {
     if (!object(options))
         fail('KEYBOARD_INPUT_OPTIONS_INVALID');
@@ -33,14 +65,21 @@ export function createKeyboardInput(options) {
     const requestedTargets = options.maxTargets, requestedKeys = options.maxKeys, requestedNodes = options.maxNodes;
     const maxTargets = requestedTargets === undefined ? 4096 : requestedTargets, maxKeys = requestedKeys === undefined ? 64 : requestedKeys, maxNodes = requestedNodes === undefined ? 4096 : requestedNodes;
     let observer = options.onFocusChange;
-    for (const [value, max] of [[maxTargets, 65536], [maxKeys, 256], [maxNodes, 65536]])
+    for (const [value, max] of [
+        [maxTargets, 65536],
+        [maxKeys, 256],
+        [maxNodes, 65536]
+    ])
         if (!Number.isInteger(value) || value < 1 || value > max)
             fail('KEYBOARD_INPUT_OPTIONS_INVALID');
     if (observer !== undefined && typeof observer !== 'function')
         fail('KEYBOARD_INPUT_OPTIONS_INVALID');
     const events = Object.freeze({
-        keyDown: createEventType('egret.keyboard.keyDown', { bubbles: true, cancelable: true }), keyUp: createEventType('egret.keyboard.keyUp', { bubbles: true, cancelable: true }),
-        cancel: createEventType('egret.keyboard.cancel', { bubbles: true }), focusIn: createEventType('egret.keyboard.focusIn', { bubbles: true }), focusOut: createEventType('egret.keyboard.focusOut', { bubbles: true }),
+        keyDown: createEventType('egret.keyboard.keyDown', { bubbles: true, cancelable: true }),
+        keyUp: createEventType('egret.keyboard.keyUp', { bubbles: true, cancelable: true }),
+        cancel: createEventType('egret.keyboard.cancel', { bubbles: true }),
+        focusIn: createEventType('egret.keyboard.focusIn', { bubbles: true }),
+        focusOut: createEventType('egret.keyboard.focusOut', { bubbles: true })
     });
     const records = new Map(), held = new Map(), closers = new Set();
     const interactive = new Set();
@@ -50,10 +89,17 @@ export function createKeyboardInput(options) {
     let releaseEngine, input, keyBusy = false;
     const report = owner.report;
     let focusOwner, focusRoots;
-    function assertOpen() { if (state === 'closed')
-        fail('KEYBOARD_INPUT_CLOSED'); owner.assertReady(); scope.assertOpen(); }
-    function assertMutation() { assertOpen(); if (notifying !== 0)
-        fail('KEYBOARD_INPUT_REENTRANT'); }
+    function assertOpen() {
+        if (state === 'closed')
+            fail('KEYBOARD_INPUT_CLOSED');
+        owner.assertReady();
+        scope.assertOpen();
+    }
+    function assertMutation() {
+        assertOpen();
+        if (notifying !== 0)
+            fail('KEYBOARD_INPUT_REENTRANT');
+    }
     function eligible(value) {
         if (value.disabled || operations === undefined)
             return false;
@@ -71,13 +117,15 @@ export function createKeyboardInput(options) {
         }
         return contained;
     }
-    function callout(action) { try {
-        return deliver(action);
+    function callout(action) {
+        try {
+            return deliver(action);
+        }
+        catch (cause) {
+            callbackFailed = true;
+            throw cause;
+        }
     }
-    catch (cause) {
-        callbackFailed = true;
-        throw cause;
-    } }
     function route(target, type, payload, active) {
         if (operations === undefined || owner === undefined)
             return false;
@@ -102,8 +150,10 @@ export function createKeyboardInput(options) {
             active?.delete(event);
         }
     }
-    function stopKeys() { for (const event of activeKeys)
-        event.stopImmediatePropagation(); }
+    function stopKeys() {
+        for (const event of activeKeys)
+            event.stopImmediatePropagation();
+    }
     function drain(reason) {
         const keys = [...held.values()];
         held.clear();
@@ -135,25 +185,43 @@ export function createKeyboardInput(options) {
         const epoch = ++revision;
         stopKeys();
         let failure, failed = false;
-        const attempt = (action) => { try {
-            action();
-        }
-        catch (cause) {
-            if (!failed) {
-                failure = cause;
-                failed = true;
+        const attempt = (action) => {
+            try {
+                action();
             }
-        } };
-        function reconcile() { if (state === 'active' && revision === epoch && focused === next && next !== undefined && (records.get(next.record.id) !== next.record || !eligible(next.record)))
-            transition(undefined, false, 'owner', 'owner'); }
+            catch (cause) {
+                if (!failed) {
+                    failure = cause;
+                    failed = true;
+                }
+            }
+        };
+        function reconcile() {
+            if (state === 'active' &&
+                revision === epoch &&
+                focused === next &&
+                next !== undefined &&
+                (records.get(next.record.id) !== next.record || !eligible(next.record)))
+                transition(undefined, false, 'owner', 'owner');
+        }
         notifying++;
         try {
             attempt(() => drain(cancelReason));
             if (previous !== undefined)
-                attempt(() => { route(previous.target, events.focusOut, Object.freeze({ targetId: previous.record.id, relatedId: next?.record.id, reason, focusVisible }), activeFocus); });
+                attempt(() => {
+                    route(previous.target, events.focusOut, Object.freeze({ targetId: previous.record.id, relatedId: next?.record.id, reason, focusVisible }), activeFocus);
+                });
             attempt(() => reconcile());
-            if (!failed && revision === epoch && focused === next && next !== undefined && state === 'active' && records.get(next.record.id) === next.record && eligible(next.record))
-                attempt(() => { route(next.target, events.focusIn, Object.freeze({ targetId: next.record.id, relatedId: previous?.record.id, reason, focusVisible }), activeFocus); });
+            if (!failed &&
+                revision === epoch &&
+                focused === next &&
+                next !== undefined &&
+                state === 'active' &&
+                records.get(next.record.id) === next.record &&
+                eligible(next.record))
+                attempt(() => {
+                    route(next.target, events.focusIn, Object.freeze({ targetId: next.record.id, relatedId: previous?.record.id, reason, focusVisible }), activeFocus);
+                });
             attempt(() => reconcile());
             if (!failed && revision === epoch)
                 attempt(() => callout(() => observer?.(Object.freeze({ previousId: previous?.record.id, focusedId: focused?.record.id, reason, focusVisible }))));
@@ -172,15 +240,17 @@ export function createKeyboardInput(options) {
         for (const event of activeFocus)
             event.stopImmediatePropagation();
         let failure, failed = false;
-        const attempt = (action) => { try {
-            action();
-        }
-        catch (cause) {
-            if (!failed) {
-                failed = true;
-                failure = cause;
+        const attempt = (action) => {
+            try {
+                action();
             }
-        } };
+            catch (cause) {
+                if (!failed) {
+                    failed = true;
+                    failure = cause;
+                }
+            }
+        };
         attempt(() => transition(undefined, false, reason, reason));
         attempt(() => drain(reason));
         records.clear();
@@ -200,7 +270,12 @@ export function createKeyboardInput(options) {
         if (failed)
             throw failure;
     }
-    function release() { owner = undefined; scope = undefined; operations = undefined; observer = undefined; }
+    function release() {
+        owner = undefined;
+        scope = undefined;
+        operations = undefined;
+        observer = undefined;
+    }
     function invoke(action) {
         calls++;
         try {
@@ -211,7 +286,9 @@ export function createKeyboardInput(options) {
                 try {
                     close('error');
                 }
-                catch { /* Original callback failure remains authoritative. */ }
+                catch {
+                    /* Original callback failure remains authoritative. */
+                }
             throw cause;
         }
         finally {
@@ -222,24 +299,44 @@ export function createKeyboardInput(options) {
             }
         }
     }
-    function orderedTargets() { return [...records.values()].filter(v => v.tabIndex >= 0 && eligible(v)).sort((a, b) => { if (a.tabIndex === 0)
-        return b.tabIndex === 0 ? 0 : 1; if (b.tabIndex === 0)
-        return -1; return a.tabIndex - b.tabIndex; }); }
-    function retire() { invoke(() => close('owner')); }
-    function sync() { if (state === 'closed')
-        return; assertMutation(); if (focused !== undefined && !eligible(focused.record))
-        transition(undefined, false, 'owner', 'owner'); }
-    function validateTarget(target) { if (operations === undefined || primitives.disposed(target) === true || !operations.isAttached(target, maxNodes))
-        fail('KEYBOARD_TARGET_INVALID'); }
-    function settings(target, tabIndex, disabled) { if (!Number.isInteger(tabIndex) || tabIndex < -1 || tabIndex > 32767 || typeof disabled !== 'boolean')
-        fail('KEYBOARD_TARGET_INVALID'); validateTarget(target); }
+    function orderedTargets() {
+        return [...records.values()]
+            .filter(v => v.tabIndex >= 0 && eligible(v))
+            .sort((a, b) => {
+            if (a.tabIndex === 0)
+                return b.tabIndex === 0 ? 0 : 1;
+            if (b.tabIndex === 0)
+                return -1;
+            return a.tabIndex - b.tabIndex;
+        });
+    }
+    function retire() {
+        invoke(() => close('owner'));
+    }
+    function sync() {
+        if (state === 'closed')
+            return;
+        assertMutation();
+        if (focused !== undefined && !eligible(focused.record))
+            transition(undefined, false, 'owner', 'owner');
+    }
+    function validateTarget(target) {
+        if (operations === undefined || primitives.disposed(target) === true || !operations.isAttached(target, maxNodes))
+            fail('KEYBOARD_TARGET_INVALID');
+    }
+    function settings(target, tabIndex, disabled) {
+        if (!Number.isInteger(tabIndex) || tabIndex < -1 || tabIndex > 32767 || typeof disabled !== 'boolean')
+            fail('KEYBOARD_TARGET_INVALID');
+        validateTarget(target);
+    }
     function focus(id, configuration = {}) {
         assertMutation();
         if (!object(configuration))
             fail('KEYBOARD_INPUT_FOCUS_INVALID');
         const requestedVisible = configuration.visible, requestedReason = configuration.reason;
         assertMutation();
-        if ((requestedVisible !== undefined && typeof requestedVisible !== 'boolean') || (requestedReason !== undefined && !['programmatic', 'keyboard', 'pointer'].includes(requestedReason)))
+        if ((requestedVisible !== undefined && typeof requestedVisible !== 'boolean') ||
+            (requestedReason !== undefined && !['programmatic', 'keyboard', 'pointer'].includes(requestedReason)))
             fail('KEYBOARD_INPUT_FOCUS_INVALID');
         if (id !== undefined && !idValid(id))
             fail('KEYBOARD_INPUT_FOCUS_INVALID');
@@ -289,7 +386,8 @@ export function createKeyboardInput(options) {
             keyBusy = false;
         }
     }
-    input = Object.freeze({ events,
+    input = Object.freeze({
+        events,
         registerTarget: (configuration) => invoke(() => {
             assertMutation();
             if (!object(configuration))
@@ -305,7 +403,8 @@ export function createKeyboardInput(options) {
                 fail('KEYBOARD_TARGET_INVALID');
             const record = { id, target, tabIndex, disabled };
             records.set(id, record);
-            return Object.freeze({ update: (update) => invoke(() => {
+            return Object.freeze({
+                update: (update) => invoke(() => {
                     assertMutation();
                     if (records.get(id) !== record)
                         fail('KEYBOARD_REGISTRATION_CLOSED');
@@ -326,7 +425,8 @@ export function createKeyboardInput(options) {
                         else if (rebind)
                             transition({ record, target: nextTarget }, focusVisible, 'rebind', 'rebind');
                     }
-                }), dispose: () => invoke(() => {
+                }),
+                dispose: () => invoke(() => {
                     if (records.get(id) !== record)
                         return;
                     // Retirement remains legal during owner shutdown and cancellation callbacks.
@@ -337,7 +437,8 @@ export function createKeyboardInput(options) {
                             event.stopImmediatePropagation();
                         transition(undefined, false, 'removed', 'removed');
                     }
-                }) });
+                })
+            });
         }),
         focus: (id, configuration) => invoke(() => focus(id, configuration)),
         moveFocus: (direction, wrap = false) => invoke(() => {
@@ -359,28 +460,67 @@ export function createKeyboardInput(options) {
             focus(next?.id, { reason: 'keyboard' });
             return focused?.record.id;
         }),
-        keyDown: (raw) => invoke(() => key('keyDown', raw)), keyUp: (raw) => invoke(() => key('keyUp', raw)),
-        cancel: (reason = 'focus') => invoke(() => { if (!reasons.has(reason))
-            fail('KEYBOARD_INPUT_CANCEL_INVALID'); if (state === 'closed')
-            return; assertMutation(); transition(undefined, false, reason, reason); drain(reason); }),
-        sync: () => invoke(sync), setInteractive: (value) => invoke(() => { assertMutation(); if (typeof value !== 'boolean')
-            fail('KEYBOARD_INPUT_OPTIONS_INVALID'); if (value) {
-            state = 'active';
+        keyDown: (raw) => invoke(() => key('keyDown', raw)),
+        keyUp: (raw) => invoke(() => key('keyUp', raw)),
+        cancel: (reason = 'focus') => invoke(() => {
+            if (!reasons.has(reason))
+                fail('KEYBOARD_INPUT_CANCEL_INVALID');
+            if (state === 'closed')
+                return;
+            assertMutation();
+            transition(undefined, false, reason, reason);
+            drain(reason);
+        }),
+        sync: () => invoke(sync),
+        setInteractive: (value) => invoke(() => {
+            assertMutation();
+            if (typeof value !== 'boolean')
+                fail('KEYBOARD_INPUT_OPTIONS_INVALID');
+            if (value) {
+                state = 'active';
+                for (const callback of interactive)
+                    callout(() => callback(true));
+                return;
+            }
+            state = 'suspended';
+            transition(undefined, false, 'suspended', 'suspended');
+            drain('suspended');
             for (const callback of interactive)
-                callout(() => callback(true));
-            return;
-        } state = 'suspended'; transition(undefined, false, 'suspended', 'suspended'); drain('suspended'); for (const callback of interactive)
-            callout(() => callback(false)); }),
-        getSnapshot: () => Object.freeze({ state, focusedId: focused?.record.id, focusVisible, pressedKeys: Object.freeze([...held.keys()]), targetCount: records.size }),
-        dispose: () => invoke(() => close('dispose')), });
+                callout(() => callback(false));
+        }),
+        getSnapshot: () => Object.freeze({
+            state,
+            focusedId: focused?.record.id,
+            focusVisible,
+            pressedKeys: Object.freeze([...held.keys()]),
+            targetCount: records.size
+        }),
+        dispose: () => invoke(() => close('dispose'))
+    });
     try {
         releaseEngine = owner.onClose(retire);
         scope.add(retire);
         scope.use(input);
-        bindings.set(input, Object.freeze({ surface: owner.surface, onInteractive: (callback) => { interactive.add(callback); return () => { interactive.delete(callback); }; }, report: (cause) => report({ code: 'KEYBOARD_INPUT_HOST_FAILED', phase: 'engine', severity: 'error', cause }), onClose: (callback) => { if (state === 'closed') {
-                callback();
-                return () => { };
-            } closers.add(callback); return () => { closers.delete(callback); }; } }));
+        bindings.set(input, Object.freeze({
+            surface: owner.surface,
+            onInteractive: (callback) => {
+                interactive.add(callback);
+                return () => {
+                    interactive.delete(callback);
+                };
+            },
+            report: (cause) => report({ code: 'KEYBOARD_INPUT_HOST_FAILED', phase: 'engine', severity: 'error', cause }),
+            onClose: (callback) => {
+                if (state === 'closed') {
+                    callback();
+                    return () => { };
+                }
+                closers.add(callback);
+                return () => {
+                    closers.delete(callback);
+                };
+            }
+        }));
         owner.assertReady();
         scope.assertOpen();
         registerUiKeyboardInput(input, engine, (claimant) => {
@@ -389,7 +529,8 @@ export function createKeyboardInput(options) {
                 fail('KEYBOARD_FOCUS_SCOPE_ACTIVE');
             focusOwner = claimant;
             let released = false;
-            return Object.freeze({ setRoots: (roots) => invoke(() => {
+            return Object.freeze({
+                setRoots: (roots) => invoke(() => {
                     assertMutation();
                     if (released || focusOwner !== claimant)
                         fail('KEYBOARD_FOCUS_SCOPE_CLOSED');
@@ -401,7 +542,8 @@ export function createKeyboardInput(options) {
                     }
                     focusRoots = roots === undefined ? undefined : Object.freeze([...roots]);
                     sync();
-                }), focusFirst: () => invoke(() => {
+                }),
+                focusFirst: () => invoke(() => {
                     assertMutation();
                     if (released || focusOwner !== claimant)
                         fail('KEYBOARD_FOCUS_SCOPE_CLOSED');
@@ -409,9 +551,17 @@ export function createKeyboardInput(options) {
                         return;
                     sync();
                     focus(orderedTargets()[0]?.id, { reason: 'programmatic' });
-                }), release: () => { if (released)
-                    return; released = true; if (focusOwner !== claimant)
-                    return; focusRoots = undefined; focusOwner = undefined; } });
+                }),
+                release: () => {
+                    if (released)
+                        return;
+                    released = true;
+                    if (focusOwner !== claimant)
+                        return;
+                    focusRoots = undefined;
+                    focusOwner = undefined;
+                }
+            });
         });
         return input;
     }
@@ -419,7 +569,9 @@ export function createKeyboardInput(options) {
         try {
             close('error');
         }
-        catch { /* Preserve setup failure. */ }
+        catch {
+            /* Preserve setup failure. */
+        }
         throw cause;
     }
 }

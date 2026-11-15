@@ -1,7 +1,7 @@
 import type { Rectangle2D, SharedMaterial2D } from "@egret/contracts";
 import type { DisplayObject } from "./DisplayObject.js";
-import type { RenderEffect2D } from './renderEffect.js';
-import type { ShapeState } from './graphicsShape.js';
+import type { RenderEffect2D } from "./renderEffect.js";
+import type { ShapeState } from "./graphicsShape.js";
 export interface Primitive {
     readonly rect: Rectangle2D;
     readonly color: number;
@@ -20,10 +20,15 @@ export interface VisualState {
     scaleX: number;
     scaleY: number;
     rotation: number;
+    /** Degrees by which the y axis and the x axis are turned beyond the rotation; 0 and 0 is no skew. */
+    skewX: number;
+    skewY: number;
+    /** A name the application gives, for getChildByName. */
+    name: string;
     alpha: number;
     visible: boolean;
     sharedMaterial: SharedMaterial2D | null;
-    renderBoundary: 'none' | 'isolate';
+    renderBoundary: "none" | "isolate";
     renderEffect: RenderEffect2D | undefined;
     clipRect: Rectangle2D | undefined;
     primitives: Primitive[];

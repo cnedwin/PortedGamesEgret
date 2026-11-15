@@ -16,23 +16,48 @@ import { Object3D } from './Object3D.js';
 import { isKtx23D, parseKtx23D } from './Ktx23D.js';
 import { Texture3D, isCompressedPixels3D } from './Texture3D.js';
 import { mat4Compose, mat4Identity } from './math3D.js';
-const SUPPORTED_EXTENSIONS = new Set(['KHR_materials_unlit', 'KHR_materials_emissive_strength', 'KHR_texture_transform', 'KHR_lights_punctual', 'KHR_mesh_quantization', 'KHR_texture_basisu', 'EXT_mesh_gpu_instancing', 'EXT_meshopt_compression',
-    'KHR_materials_transmission', 'KHR_materials_ior', 'KHR_materials_volume', 'KHR_materials_clearcoat', 'KHR_materials_sheen']);
+const SUPPORTED_EXTENSIONS = new Set([
+    'KHR_materials_unlit',
+    'KHR_materials_emissive_strength',
+    'KHR_texture_transform',
+    'KHR_lights_punctual',
+    'KHR_mesh_quantization',
+    'KHR_texture_basisu',
+    'EXT_mesh_gpu_instancing',
+    'EXT_meshopt_compression',
+    'KHR_materials_transmission',
+    'KHR_materials_ior',
+    'KHR_materials_volume',
+    'KHR_materials_clearcoat',
+    'KHR_materials_sheen'
+]);
 /** Extensions accepted only when the caller injects the matching decoder. */
-const DECODER_EXTENSIONS = Object.freeze({ KHR_draco_mesh_compression: 'decodeDraco' });
+const DECODER_EXTENSIONS = Object.freeze({
+    KHR_draco_mesh_compression: 'decodeDraco'
+});
 const GLTF_LIMITS = Object.freeze({
-    maxNodes: 65536, maxAccessors: 262144, maxJsonBytes: 64 * 1024 * 1024,
-    maxAccessorBytes: 128 * 1024 * 1024, maxDecodedAccessorBytes: 256 * 1024 * 1024,
-    maxInstanceMatrixBytes: 64 * 1024 * 1024,
+    maxNodes: 65536,
+    maxAccessors: 262144,
+    maxJsonBytes: 64 * 1024 * 1024,
+    maxAccessorBytes: 128 * 1024 * 1024,
+    maxDecodedAccessorBytes: 256 * 1024 * 1024,
+    maxInstanceMatrixBytes: 64 * 1024 * 1024
 });
 const COMPONENTS = { SCALAR: 1, VEC2: 2, VEC3: 3, VEC4: 4, MAT2: 4, MAT3: 9, MAT4: 16 };
-const ARRAY_TYPES = { 5120: Int8Array, 5121: Uint8Array, 5122: Int16Array, 5123: Uint16Array, 5125: Uint32Array, 5126: Float32Array };
+const ARRAY_TYPES = {
+    5120: Int8Array,
+    5121: Uint8Array,
+    5122: Int16Array,
+    5123: Uint16Array,
+    5125: Uint32Array,
+    5126: Float32Array
+};
 function fail(detail, cause) {
     throw new World3DError('WORLD3D_GLTF_INVALID', detail, cause);
 }
 function decodeBase64(text) {
     const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-    const clean = text.replace(/[^A-Za-z0-9+/]/g, ''), out = new Uint8Array(Math.floor(clean.length * 3 / 4));
+    const clean = text.replace(/[^A-Za-z0-9+/]/g, ''), out = new Uint8Array(Math.floor((clean.length * 3) / 4));
     let bits = 0, count = 0, o = 0;
     for (let i = 0; i < clean.length; i++) {
         bits = (bits << 6) | alphabet.indexOf(clean[i]);
@@ -94,7 +119,10 @@ function dataUri(uri) {
     const match = /^data:([^;,]*)(;base64)?,(.*)$/s.exec(uri);
     if (!match)
         return undefined;
-    return { mimeType: match[1] ?? '', bytes: match[2] ? decodeBase64(match[3]) : encodeUtf8(decodeURIComponent(match[3])) };
+    return {
+        mimeType: match[1] ?? '',
+        bytes: match[2] ? decodeBase64(match[3]) : encodeUtf8(decodeURIComponent(match[3]))
+    };
 }
 class GltfReader {
     json;
@@ -130,12 +158,22 @@ class GltfReader {
             let bytes = this.meshoptCache.get(index);
             if (!bytes) {
                 // The built-in decoder is used unless the caller supplies a faster one.
-                const decode = this.options.decodeMeshopt ?? ((request) => decodeMeshopt3D(request.source, request.count, request.stride, request.mode, request.filter));
+                const decode = this.options.decodeMeshopt ??
+                    ((request) => decodeMeshopt3D(request.source, request.count, request.stride, request.mode, request.filter));
                 const source = this.buffers[packed.buffer] ?? fail('meshopt buffer ' + packed.buffer);
                 const from = packed.byteOffset ?? 0, size = packed.byteLength, count = packed.count, stride = packed.byteStride;
-                if (!Number.isSafeInteger(from) || !Number.isSafeInteger(size) || from < 0 || size < 0 || size > source.byteLength - from)
+                if (!Number.isSafeInteger(from) ||
+                    !Number.isSafeInteger(size) ||
+                    from < 0 ||
+                    size < 0 ||
+                    size > source.byteLength - from)
                     fail('meshopt range');
-                if (!Number.isSafeInteger(count) || !Number.isSafeInteger(stride) || count < 0 || stride <= 0 || stride > 256 || count * stride > GLTF_LIMITS.maxJsonBytes * 16)
+                if (!Number.isSafeInteger(count) ||
+                    !Number.isSafeInteger(stride) ||
+                    count < 0 ||
+                    stride <= 0 ||
+                    stride > 256 ||
+                    count * stride > GLTF_LIMITS.maxJsonBytes * 16)
                     fail('meshopt layout');
                 if (!['ATTRIBUTES', 'TRIANGLES', 'INDICES'].includes(packed.mode))
                     fail('meshopt mode');
@@ -152,7 +190,11 @@ class GltfReader {
         }
         const buffer = this.buffers[view.buffer] ?? fail('buffer ' + view.buffer);
         const offset = view.byteOffset ?? 0, length = view.byteLength;
-        if (!Number.isSafeInteger(offset) || !Number.isSafeInteger(length) || offset < 0 || length < 0 || length > buffer.byteLength - offset)
+        if (!Number.isSafeInteger(offset) ||
+            !Number.isSafeInteger(length) ||
+            offset < 0 ||
+            length < 0 ||
+            length > buffer.byteLength - offset)
             fail('bufferView range');
         return { bytes: buffer.subarray(offset, offset + length), stride: view.byteStride ?? 0 };
     }
@@ -167,7 +209,9 @@ class GltfReader {
             fail('accessor count');
         const bytesPerElement = ArrayType.BYTES_PER_ELEMENT;
         const elementBytes = itemSize * bytesPerElement;
-        const range = def.bufferView === undefined ? undefined : this.accessorRange(def.bufferView, def.byteOffset ?? 0, count, elementBytes);
+        const range = def.bufferView === undefined
+            ? undefined
+            : this.accessorRange(def.bufferView, def.byteOffset ?? 0, count, elementBytes);
         let sparseData;
         let sparseBytes = 0;
         if (def.sparse) {
@@ -207,7 +251,8 @@ class GltfReader {
         return result;
     }
     reserveAccessorBytes(bytes) {
-        if (bytes > GLTF_LIMITS.maxAccessorBytes || this.decodedAccessorBytes + bytes > GLTF_LIMITS.maxDecodedAccessorBytes) {
+        if (bytes > GLTF_LIMITS.maxAccessorBytes ||
+            this.decodedAccessorBytes + bytes > GLTF_LIMITS.maxDecodedAccessorBytes) {
             throw new World3DError('WORLD3D_BUDGET', 'gltf decoded accessor bytes');
         }
         this.decodedAccessorBytes += bytes;
@@ -215,8 +260,12 @@ class GltfReader {
     accessorRange(viewIndex, byteOffset, count, elementBytes, allowStride = true) {
         const { bytes, stride } = this.bufferView(viewIndex);
         const step = stride === 0 ? elementBytes : stride;
-        if (!Number.isSafeInteger(byteOffset) || byteOffset < 0 || !Number.isSafeInteger(step) || step < elementBytes ||
-            (stride !== 0 && !allowStride) || count - 1 > Math.floor((bytes.byteLength - byteOffset - elementBytes) / step))
+        if (!Number.isSafeInteger(byteOffset) ||
+            byteOffset < 0 ||
+            !Number.isSafeInteger(step) ||
+            step < elementBytes ||
+            (stride !== 0 && !allowStride) ||
+            count - 1 > Math.floor((bytes.byteLength - byteOffset - elementBytes) / step))
             fail('accessor range');
         return { bytes, byteOffset, step };
     }
@@ -224,11 +273,17 @@ class GltfReader {
     copyElements(out, { bytes, byteOffset, step }, count, itemSize, ArrayType) {
         const bytesPerElement = ArrayType.BYTES_PER_ELEMENT;
         const data = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-        const read = ArrayType === Float32Array ? (o) => data.getFloat32(o, true)
-            : ArrayType === Uint32Array ? (o) => data.getUint32(o, true)
-                : ArrayType === Uint16Array ? (o) => data.getUint16(o, true)
-                    : ArrayType === Int16Array ? (o) => data.getInt16(o, true)
-                        : ArrayType === Uint8Array ? (o) => data.getUint8(o) : (o) => data.getInt8(o);
+        const read = ArrayType === Float32Array
+            ? (o) => data.getFloat32(o, true)
+            : ArrayType === Uint32Array
+                ? (o) => data.getUint32(o, true)
+                : ArrayType === Uint16Array
+                    ? (o) => data.getUint16(o, true)
+                    : ArrayType === Int16Array
+                        ? (o) => data.getInt16(o, true)
+                        : ArrayType === Uint8Array
+                            ? (o) => data.getUint8(o)
+                            : (o) => data.getInt8(o);
         for (let i = 0; i < count; i++) {
             const base = byteOffset + i * step;
             for (let c = 0; c < itemSize; c++)
@@ -245,7 +300,17 @@ class GltfReader {
             return array;
         this.reserveAccessorBytes(array.length * Float32Array.BYTES_PER_ELEMENT);
         const out = new Float32Array(array.length);
-        const scale = !normalized ? 1 : array instanceof Uint8Array ? 1 / 255 : array instanceof Uint16Array ? 1 / 65535 : array instanceof Int8Array ? 1 / 127 : array instanceof Int16Array ? 1 / 32767 : 1;
+        const scale = !normalized
+            ? 1
+            : array instanceof Uint8Array
+                ? 1 / 255
+                : array instanceof Uint16Array
+                    ? 1 / 65535
+                    : array instanceof Int8Array
+                        ? 1 / 127
+                        : array instanceof Int16Array
+                            ? 1 / 32767
+                            : 1;
         for (let i = 0; i < array.length; i++)
             out[i] = normalized ? Math.max(array[i] * scale, -1) : array[i];
         this.floatAccessorCache.set(index, out);
@@ -259,11 +324,16 @@ class GltfReader {
         const def = this.json.images?.[index] ?? fail('image ' + index);
         const decode = this.options.decodeImage;
         // KTX2 containers are read here; every other encoding goes to the injected decoder.
-        const embeddedBytes = def.bufferView !== undefined ? this.bufferView(def.bufferView).bytes : typeof def.uri === 'string' ? dataUri(def.uri)?.bytes : undefined;
-        if (embeddedBytes && isKtx23D(embeddedBytes) || !embeddedBytes && def.mimeType === 'image/ktx2' && typeof def.uri === 'string' && this.options.loadBuffer) {
+        const embeddedBytes = def.bufferView !== undefined
+            ? this.bufferView(def.bufferView).bytes
+            : typeof def.uri === 'string'
+                ? dataUri(def.uri)?.bytes
+                : undefined;
+        if ((embeddedBytes && isKtx23D(embeddedBytes)) ||
+            (!embeddedBytes && def.mimeType === 'image/ktx2' && typeof def.uri === 'string' && this.options.loadBuffer)) {
             const transcode = this.options.transcodeKtx2;
             pending = (async () => {
-                const bytes = embeddedBytes ?? await this.options.loadBuffer(def.uri);
+                const bytes = embeddedBytes ?? (await this.options.loadBuffer(def.uri));
                 const result = await parseKtx23D(bytes, transcode ? { transcode } : {});
                 this.imageColorSpace.set(index, result.colorSpace);
                 return result.source;
@@ -278,7 +348,8 @@ class GltfReader {
             request = { index, mimeType: def.mimeType, bytes: this.bufferView(def.bufferView).bytes, uri: undefined };
         else if (typeof def.uri === 'string') {
             const embedded = dataUri(def.uri);
-            request = embedded ? { index, mimeType: def.mimeType ?? embedded.mimeType, bytes: embedded.bytes, uri: undefined }
+            request = embedded
+                ? { index, mimeType: def.mimeType ?? embedded.mimeType, bytes: embedded.bytes, uri: undefined }
                 : { index, mimeType: def.mimeType, bytes: undefined, uri: def.uri };
         }
         else
@@ -303,17 +374,21 @@ class GltfReader {
         const imageIndex = def.extensions?.KHR_texture_basisu?.source ?? def.source;
         if (imageIndex === undefined)
             throw new World3DError('WORLD3D_GLTF_UNSUPPORTED', 'texture without a supported image source');
-        const sampler = def.sampler !== undefined ? this.json.samplers?.[def.sampler] ?? {} : {};
+        const sampler = def.sampler !== undefined ? (this.json.samplers?.[def.sampler] ?? {}) : {};
         const wrap = (mode) => mode === 33071 ? 'clamp' : mode === 33648 ? 'mirror' : 'repeat';
         const min = sampler.minFilter;
         const image = await this.image(imageIndex);
         // A compressed chain carries its own mip levels; none can be generated for it.
         const storedLevels = isCompressedPixels3D(image) ? image.levels.length : 0;
         const texture = new Texture3D(image, {
-            name: def.name ?? '', colorSpace, flipY: false, wrapS: wrap(sampler.wrapS), wrapT: wrap(sampler.wrapT),
+            name: def.name ?? '',
+            colorSpace,
+            flipY: false,
+            wrapS: wrap(sampler.wrapS),
+            wrapT: wrap(sampler.wrapT),
             magFilter: sampler.magFilter === 9728 ? 'nearest' : 'linear',
             minFilter: min === 9728 || min === 9984 || min === 9986 ? 'nearest' : 'linear',
-            mipmaps: storedLevels > 0 ? storedLevels > 1 : min === undefined || min >= 9984,
+            mipmaps: storedLevels > 0 ? storedLevels > 1 : min === undefined || min >= 9984
         });
         if (transform) {
             if (Array.isArray(transform.offset))
@@ -333,7 +408,7 @@ class GltfReader {
         const cached = this.materialCache.get(key);
         if (cached)
             return cached;
-        const def = index === undefined ? {} : this.json.materials?.[index] ?? fail('material ' + index);
+        const def = index === undefined ? {} : (this.json.materials?.[index] ?? fail('material ' + index));
         const pbr = def.pbrMetallicRoughness ?? {}, extensions = def.extensions ?? {};
         const material = new Material3D(extensions.KHR_materials_unlit ? 'unlit' : 'standard', { name: def.name ?? '' });
         const base = pbr.baseColorFactor ?? [1, 1, 1, 1];
@@ -375,8 +450,11 @@ class GltfReader {
         material.normalScale = def.normalTexture?.scale ?? 1;
         material.occlusionStrength = def.occlusionTexture?.strength ?? 1;
         const [map, metallicRoughness, normal, occlusion, emissive] = await Promise.all([
-            this.texture(pbr.baseColorTexture, 'srgb'), this.texture(pbr.metallicRoughnessTexture, 'linear'),
-            this.texture(def.normalTexture, 'linear'), this.texture(def.occlusionTexture, 'linear', true), this.texture(def.emissiveTexture, 'srgb', true),
+            this.texture(pbr.baseColorTexture, 'srgb'),
+            this.texture(pbr.metallicRoughnessTexture, 'linear'),
+            this.texture(def.normalTexture, 'linear'),
+            this.texture(def.occlusionTexture, 'linear', true),
+            this.texture(def.emissiveTexture, 'srgb', true)
         ]);
         material.map = map;
         material.metallicRoughnessMap = metallicRoughness;
@@ -405,7 +483,12 @@ class GltfReader {
                 componentTypes[semantic] = accessor.componentType;
         }
         const indexComponentType = primitive.indices === undefined ? undefined : this.json.accessors?.[primitive.indices]?.componentType;
-        const result = await decode({ bytes: this.bufferView(packed.bufferView).bytes, attributes: semantics, componentTypes, indexComponentType });
+        const result = await decode({
+            bytes: this.bufferView(packed.bufferView).bytes,
+            attributes: semantics,
+            componentTypes,
+            indexComponentType
+        });
         const seed = (accessorIndex, array, label) => {
             const def = this.json.accessors?.[accessorIndex] ?? fail('accessor ' + accessorIndex);
             const itemSize = COMPONENTS[def.type] ?? fail('accessor type');
@@ -463,7 +546,15 @@ class GltfReader {
                     fail('index out of range');
         }
         const mode = primitive.mode ?? 4;
-        const topologies = { 0: 'points', 1: 'lines', 2: 'line-strip', 3: 'line-strip', 4: 'triangles', 5: 'triangles', 6: 'triangles' };
+        const topologies = {
+            0: 'points',
+            1: 'lines',
+            2: 'line-strip',
+            3: 'line-strip',
+            4: 'triangles',
+            5: 'triangles',
+            6: 'triangles'
+        };
         geometry.topology = topologies[mode] ?? fail('primitive mode');
         if (mode === 2 || mode === 5 || mode === 6) {
             // Rewrite loops, strips and fans as plain lists the renderer understands.
@@ -490,7 +581,7 @@ class GltfReader {
             geometry.setMorphTargets(primitive.targets.map((target, i) => ({
                 name: targetNames?.[i] ?? 'target_' + i,
                 ...(target.POSITION !== undefined ? { position: this.floats(target.POSITION) } : {}),
-                ...(target.NORMAL !== undefined ? { normal: this.floats(target.NORMAL) } : {}),
+                ...(target.NORMAL !== undefined ? { normal: this.floats(target.NORMAL) } : {})
             })));
         }
         this.geometries.push(geometry);
@@ -534,7 +625,12 @@ class GltfReader {
         if (colorSize !== 0 && colorSize !== 3 && colorSize !== 4)
             fail('instancing _COLOR_0');
         const colors = colorIndex === undefined ? undefined : this.floats(colorIndex);
-        const counts = [translation && translation.length / 3, rotation && rotation.length / 4, scale && scale.length / 3, colors && colors.length / colorSize].filter((n) => n !== undefined);
+        const counts = [
+            translation && translation.length / 3,
+            rotation && rotation.length / 4,
+            scale && scale.length / 3,
+            colors && colors.length / colorSize
+        ].filter((n) => n !== undefined);
         const count = counts[0] ?? fail('instancing needs an attribute');
         if (count < 1 || counts.some(n => n !== count))
             fail('instancing accessor counts');
@@ -590,7 +686,7 @@ class GltfReader {
         }
         else {
             const p = def.perspective ?? fail('camera.perspective');
-            camera.fov = p.yfov * 180 / Math.PI;
+            camera.fov = (p.yfov * 180) / Math.PI;
             camera.aspect = p.aspectRatio ?? 1;
             camera.near = p.znear;
             camera.far = p.zfar ?? p.znear * 10000;
@@ -748,7 +844,15 @@ class GltfReader {
                 if (nodeIndex === undefined)
                     continue;
                 const node = this.nodes[nodeIndex] ?? fail('animation target');
-                const mapped = path === 'translation' ? 'position' : path === 'rotation' ? 'quaternion' : path === 'scale' ? 'scale' : path === 'weights' ? 'weights' : undefined;
+                const mapped = path === 'translation'
+                    ? 'position'
+                    : path === 'rotation'
+                        ? 'quaternion'
+                        : path === 'scale'
+                            ? 'scale'
+                            : path === 'weights'
+                                ? 'weights'
+                                : undefined;
                 if (!mapped)
                     continue;
                 const interpolation = sampler.interpolation === 'STEP' ? 'step' : sampler.interpolation === 'CUBICSPLINE' ? 'cubic' : 'linear';
@@ -853,15 +957,20 @@ export async function loadGltf3D(data, options = {}) {
     const scene = built.scenes[built.defaultScene] ?? built.scenes[0] ?? new Object3D();
     let disposed = false;
     return Object.freeze({
-        scene, scenes: Object.freeze(built.scenes), animations: Object.freeze(built.animations), cameras: Object.freeze(built.cameras),
-        materials: Object.freeze(reader.materials), textures: Object.freeze(reader.textures), geometries: Object.freeze(reader.geometries),
+        scene,
+        scenes: Object.freeze(built.scenes),
+        animations: Object.freeze(built.animations),
+        cameras: Object.freeze(built.cameras),
+        materials: Object.freeze(reader.materials),
+        textures: Object.freeze(reader.textures),
+        geometries: Object.freeze(reader.geometries),
         dispose() {
             if (disposed)
                 return;
             disposed = true;
             for (const resource of [...reader.geometries, ...reader.materials, ...reader.textures])
                 resource.dispose();
-        },
+        }
     });
 }
 //# sourceMappingURL=Gltf3D.js.map

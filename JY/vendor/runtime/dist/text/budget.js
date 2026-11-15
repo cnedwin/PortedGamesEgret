@@ -2,33 +2,73 @@ import { EgretError } from '../EgretError.js';
 const freeze = Object.freeze;
 const finite = Number.isSafeInteger;
 const keys = freeze([
-    'occupiedSlots', 'currentGenerations', 'retiredGenerations', 'quarantinedGenerations',
-    'pendingJobs', 'pendingWaiters', 'callerLeaseSlots', 'activeCallerLeases',
-    'residentEntries', 'residentBytes', 'liveImageBytes', 'reservedImageBytes',
-    'pendingRasterBytes', 'quarantinedImageBytes', 'quarantinedRasterBytes',
-    'metadataBytes', 'idleWaiters', 'cleanupFailureCount', 'lateProviderFailureCount',
+    'occupiedSlots',
+    'currentGenerations',
+    'retiredGenerations',
+    'quarantinedGenerations',
+    'pendingJobs',
+    'pendingWaiters',
+    'callerLeaseSlots',
+    'activeCallerLeases',
+    'residentEntries',
+    'residentBytes',
+    'liveImageBytes',
+    'reservedImageBytes',
+    'pendingRasterBytes',
+    'quarantinedImageBytes',
+    'quarantinedRasterBytes',
+    'metadataBytes',
+    'idleWaiters',
+    'cleanupFailureCount',
+    'lateProviderFailureCount'
 ]);
 export const TEXT_BUDGET_DEFAULTS = freeze({
-    maxGenerations: 64, maxPendingJobs: 4, maxWaiters: 128, maxCallerLeases: 128,
-    maxResidentEntries: 32, maxMetadataBytes: 2097152,
-    maxLogicalImageBytes: 16777216, maxPendingRasterBytes: 8388608,
+    maxGenerations: 64,
+    maxPendingJobs: 4,
+    maxWaiters: 128,
+    maxCallerLeases: 128,
+    maxResidentEntries: 32,
+    maxMetadataBytes: 2097152,
+    maxLogicalImageBytes: 16777216,
+    maxPendingRasterBytes: 8388608
 });
 export const TEXT_BUDGET_MINIMA = freeze({
-    maxGenerations: 1, maxPendingJobs: 1, maxWaiters: 1, maxCallerLeases: 1,
-    maxResidentEntries: 0, maxMetadataBytes: 4096,
-    maxLogicalImageBytes: 1, maxPendingRasterBytes: 1,
+    maxGenerations: 1,
+    maxPendingJobs: 1,
+    maxWaiters: 1,
+    maxCallerLeases: 1,
+    maxResidentEntries: 0,
+    maxMetadataBytes: 4096,
+    maxLogicalImageBytes: 1,
+    maxPendingRasterBytes: 1
 });
 /** Proposals are checked before any counter changes or persistent allocation. */
 export class TextBudget {
     limits;
     counters = {
-        occupiedSlots: 0, currentGenerations: 0, retiredGenerations: 0, quarantinedGenerations: 0,
-        pendingJobs: 0, pendingWaiters: 0, callerLeaseSlots: 0, activeCallerLeases: 0,
-        residentEntries: 0, residentBytes: 0, liveImageBytes: 0, reservedImageBytes: 0,
-        pendingRasterBytes: 0, quarantinedImageBytes: 0, quarantinedRasterBytes: 0,
-        metadataBytes: 4096, idleWaiters: 0, cleanupFailureCount: 0, lateProviderFailureCount: 0,
+        occupiedSlots: 0,
+        currentGenerations: 0,
+        retiredGenerations: 0,
+        quarantinedGenerations: 0,
+        pendingJobs: 0,
+        pendingWaiters: 0,
+        callerLeaseSlots: 0,
+        activeCallerLeases: 0,
+        residentEntries: 0,
+        residentBytes: 0,
+        liveImageBytes: 0,
+        reservedImageBytes: 0,
+        pendingRasterBytes: 0,
+        quarantinedImageBytes: 0,
+        quarantinedRasterBytes: 0,
+        metadataBytes: 4096,
+        idleWaiters: 0,
+        cleanupFailureCount: 0,
+        lateProviderFailureCount: 0
     };
-    constructor(limits) { this.limits = limits; }
+    constructor(limits) {
+        this.limits = limits;
+    }
     check(delta, failure) {
         const next = (key) => {
             const value = this.counters[key] + (delta[key] ?? 0);
@@ -69,6 +109,8 @@ export class TextBudget {
         for (const key of keys)
             this.counters[key] += delta[key] ?? 0;
     }
-    snapshot() { return freeze({ ...this.counters }); }
+    snapshot() {
+        return freeze({ ...this.counters });
+    }
 }
 //# sourceMappingURL=budget.js.map

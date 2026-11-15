@@ -14,8 +14,12 @@ function method(prototype, name) {
         throw new EgretError('POINTER_INPUT_SURFACE_INVALID');
     return operation;
 }
-function finite(value) { return typeof value === 'number' && Number.isFinite(value); }
-function sameRectangle(a, b) { return a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height; }
+function finite(value) {
+    return typeof value === 'number' && Number.isFinite(value);
+}
+function sameRectangle(a, b) {
+    return a.left === b.left && a.top === b.top && a.width === b.width && a.height === b.height;
+}
 /** Pointer Events adapter for the explicit connected, untransformed Canvas profile. */
 export function createBrowserPointerInput(options) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
@@ -117,7 +121,7 @@ export function createBrowserPointerInput(options) {
                 throw failures[0];
             if (failures.length > 1)
                 throw new AggregateError(failures, 'Pointer notification failed');
-        },
+        }
     });
     try {
         const bridge = bindPointerSurface(input);
@@ -163,8 +167,10 @@ export function createBrowserPointerInput(options) {
         const computedStyle = win.getComputedStyle;
         if (typeof computedStyle !== 'function')
             throw new EgretError('POINTER_INPUT_SURFACE_INVALID');
-        function assertOpen() { if (closed || input.state === 'closed')
-            throw new EgretError('POINTER_INPUT_CLOSED'); }
+        function assertOpen() {
+            if (closed || input.state === 'closed')
+                throw new EgretError('POINTER_INPUT_CLOSED');
+        }
         function dom(operation, receiver, args = []) {
             assertOpen();
             const value = APPLY(operation, receiver, args);
@@ -179,13 +185,19 @@ export function createBrowserPointerInput(options) {
         }
         function profile() {
             dom(canvasBrand, surface);
-            if (dom(ownerDocument, surface) !== document || dom(defaultView, document) !== win || dom(connected, surface) !== true)
+            if (dom(ownerDocument, surface) !== document ||
+                dom(defaultView, document) !== win ||
+                dom(connected, surface) !== true)
                 throw new EgretError('POINTER_INPUT_SURFACE_INVALID');
             let current = surface;
             const seen = new Set();
             // Ordinary ancestors only: unsupported transforms/shadow roots are refused.
             while (current !== document) {
-                if (current === null || current === undefined || seen.has(current) || seen.size >= 64 || dom(nodeType, current) !== 1)
+                if (current === null ||
+                    current === undefined ||
+                    seen.has(current) ||
+                    seen.size >= 64 ||
+                    dom(nodeType, current) !== 1)
                     throw new EgretError('POINTER_INPUT_SURFACE_INVALID');
                 seen.add(current);
                 const style = dom(computedStyle, win, [current]);
@@ -195,8 +207,21 @@ export function createBrowserPointerInput(options) {
                 if (zoom !== 'normal' && zoom !== '1')
                     throw new EgretError('POINTER_INPUT_SURFACE_INVALID');
                 if (current === surface) {
-                    const edges = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width'];
-                    if (css(style, 'object-fit') !== 'fill' || edges.some(name => { const value = css(style, name); return value !== '0px' && value !== '0'; }))
+                    const edges = [
+                        'padding-top',
+                        'padding-right',
+                        'padding-bottom',
+                        'padding-left',
+                        'border-top-width',
+                        'border-right-width',
+                        'border-bottom-width',
+                        'border-left-width'
+                    ];
+                    if (css(style, 'object-fit') !== 'fill' ||
+                        edges.some(name => {
+                            const value = css(style, name);
+                            return value !== '0px' && value !== '0';
+                        }))
                         throw new EgretError('POINTER_INPUT_SURFACE_INVALID');
                 }
                 current = dom(parentNode, current);
@@ -271,7 +296,9 @@ export function createBrowserPointerInput(options) {
                     fail(cause);
             }
         }
-        function cancel(reason) { input.cancelAll(reason); }
+        function cancel(reason) {
+            input.cancelAll(reason);
+        }
         function refresh(force) {
             const next = profile();
             if (force || !sameRectangle(bounds, next)) {
@@ -294,7 +321,10 @@ export function createBrowserPointerInput(options) {
                 return undefined;
             }
             const type = APPLY(pointerType, event, []);
-            if (!finite(id) || !Number.isSafeInteger(id) || id < 0 || (type !== 'mouse' && type !== 'touch' && type !== 'pen'))
+            if (!finite(id) ||
+                !Number.isSafeInteger(id) ||
+                id < 0 ||
+                (type !== 'mouse' && type !== 'touch' && type !== 'pen'))
                 return undefined;
             return { id, type };
         }
@@ -305,7 +335,15 @@ export function createBrowserPointerInput(options) {
             if (!finite(x) || !finite(y) || !finite(heldButtons) || !finite(time) || !finite(p) || !finite(w) || !finite(h))
                 throw new EgretError('POINTER_INPUT_EVENT_INVALID');
             // Map CSS coordinates once. Device pixel ratio belongs to rendering only.
-            return { globalX: (x - rect.left) * width / rect.width, globalY: (y - rect.top) * height / rect.height, buttons: heldButtons, timestamp: time, pressure: p, width: w, height: h };
+            return {
+                globalX: ((x - rect.left) * width) / rect.width,
+                globalY: ((y - rect.top) * height) / rect.height,
+                buttons: heldButtons,
+                timestamp: time,
+                pressure: p,
+                width: w,
+                height: h
+            };
         }
         function acquireNative(id, session) {
             capturesInFlight++;
@@ -408,15 +446,27 @@ export function createBrowserPointerInput(options) {
         listen(surface, 'lostpointercapture', false, event => pointer(event, 'lost'));
         listen(win, 'blur', false, () => cancel('blur'));
         listen(win, 'pagehide', false, () => cancel('pagehide'));
-        listen(document, 'visibilitychange', false, () => { if (dom(visibility, document) !== 'visible')
-            cancel('hidden'); });
-        listen(win, 'resize', false, () => { refresh(true); });
-        listen(win, 'orientationchange', false, () => { refresh(true); });
-        listen(win, 'scroll', true, () => { refresh(true); });
+        listen(document, 'visibilitychange', false, () => {
+            if (dom(visibility, document) !== 'visible')
+                cancel('hidden');
+        });
+        listen(win, 'resize', false, () => {
+            refresh(true);
+        });
+        listen(win, 'orientationchange', false, () => {
+            refresh(true);
+        });
+        listen(win, 'scroll', true, () => {
+            refresh(true);
+        });
         const viewport = win.visualViewport;
         if (viewport !== null && viewport !== undefined) {
-            listen(viewport, 'resize', false, () => { refresh(true); });
-            listen(viewport, 'scroll', false, () => { refresh(true); });
+            listen(viewport, 'resize', false, () => {
+                refresh(true);
+            });
+            listen(viewport, 'scroll', false, () => {
+                refresh(true);
+            });
         }
         // Restoration is intentionally application-owned: host readiness must precede resume.
         listen(surface, 'webglcontextlost', false, () => input.setInteractive(false));

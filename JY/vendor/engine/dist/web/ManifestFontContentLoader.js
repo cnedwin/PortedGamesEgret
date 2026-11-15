@@ -8,17 +8,23 @@ export function createManifestFontContentLoader(engine, manifest, options) {
         return { load: (ref, context) => source.readBytes(ref, context), dispose: () => { } };
     });
     let closing;
-    return Object.freeze({ loader, source, close() {
+    return Object.freeze({
+        loader,
+        source,
+        close() {
             if (!closing) {
-                closing = (async () => { try {
-                    loader.dispose();
-                }
-                finally {
-                    await source.close();
-                } })();
+                closing = (async () => {
+                    try {
+                        loader.dispose();
+                    }
+                    finally {
+                        await source.close();
+                    }
+                })();
                 void closing.catch(() => { });
             }
             return closing;
-        } });
+        }
+    });
 }
 //# sourceMappingURL=ManifestFontContentLoader.js.map

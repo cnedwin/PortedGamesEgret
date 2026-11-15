@@ -5,12 +5,28 @@ export function createRangeControl(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_CONTROL_OPTIONS');
     const { input, target, axis = 'x', start = 0, length, min = 0, max = 100, step = 1, onChange, onDragChange } = options;
-    if (input === null || typeof input !== 'object' || typeof input.observe !== 'function' || input.events === null || typeof input.events !== 'object'
-        || target === null || typeof target !== 'object' || typeof target.on !== 'function' || typeof target.globalToLocal !== 'function'
-        || (axis !== 'x' && axis !== 'y') || !finite(start) || !finite(length) || length <= 0 || !finite(min) || !finite(max)
+    if (input === null ||
+        typeof input !== 'object' ||
+        typeof input.observe !== 'function' ||
+        input.events === null ||
+        typeof input.events !== 'object' ||
+        target === null ||
+        typeof target !== 'object' ||
+        typeof target.on !== 'function' ||
+        typeof target.globalToLocal !== 'function' ||
+        (axis !== 'x' && axis !== 'y') ||
+        !finite(start) ||
+        !finite(length) ||
+        length <= 0 ||
+        !finite(min) ||
+        !finite(max) ||
         // A step no wider than the range also says the range is not empty.
-        || !finite(step) || step <= 0 || step > max - min || (options.value !== undefined && !finite(options.value))
-        || (onChange !== undefined && typeof onChange !== 'function') || (onDragChange !== undefined && typeof onDragChange !== 'function'))
+        !finite(step) ||
+        step <= 0 ||
+        step > max - min ||
+        (options.value !== undefined && !finite(options.value)) ||
+        (onChange !== undefined && typeof onChange !== 'function') ||
+        (onDragChange !== undefined && typeof onDragChange !== 'function'))
         throw new EgretError('UI_CONTROL_OPTIONS');
     /** The value of the range nearest to a number: `min` and so many steps, or the far end. */
     function nearest(wanted) {
@@ -20,8 +36,10 @@ export function createRangeControl(options) {
     }
     let value = nearest(options.value ?? min), closed = false, enabled = true;
     let session;
-    function open() { if (closed)
-        throw new EgretError('UI_CONTROL_CLOSED'); }
+    function open() {
+        if (closed)
+            throw new EgretError('UI_CONTROL_CLOSED');
+    }
     function assign(wanted) {
         const next = nearest(wanted);
         if (next === value)
@@ -52,26 +70,42 @@ export function createRangeControl(options) {
             setDragging(event.payload.session);
             assign(under(event.payload));
         }),
-        target.on(input.events.move, event => { if (!closed && owns(event.payload))
-            assign(under(event.payload)); }),
-        target.on(input.events.end, event => { if (!closed && owns(event.payload))
-            setDragging(undefined); }),
-        target.on(input.events.cancel, event => { if (!closed && owns(event.payload))
-            setDragging(undefined); }),
+        target.on(input.events.move, event => {
+            if (!closed && owns(event.payload))
+                assign(under(event.payload));
+        }),
+        target.on(input.events.end, event => {
+            if (!closed && owns(event.payload))
+                setDragging(undefined);
+        }),
+        target.on(input.events.cancel, event => {
+            if (!closed && owns(event.payload))
+                setDragging(undefined);
+        }),
         // A track that has left the stage receives no event; the stream of the input still ends the drag.
         input.observe(notification => {
             if (closed || !owns(notification.contact))
                 return;
             if (notification.kind === 'end' || notification.kind === 'cancel')
                 setDragging(undefined);
-        }),
+        })
     ];
     return Object.freeze({
-        get value() { return value; },
-        min, max, step,
-        get fraction() { return (value - min) / (max - min); },
-        get dragging() { return session !== undefined; },
-        get enabled() { return enabled; },
+        get value() {
+            return value;
+        },
+        min,
+        max,
+        step,
+        get fraction() {
+            return (value - min) / (max - min);
+        },
+        get dragging() {
+            return session !== undefined;
+        },
+        get enabled() {
+            return enabled;
+        },
         setValue(next) {
             open();
             if (!finite(next))
@@ -88,8 +122,14 @@ export function createRangeControl(options) {
             const position = (value - min) / step, whole = steps > 0 ? Math.floor(position + 1e-9) : Math.ceil(position - 1e-9);
             return assign(min + (whole + steps) * step);
         },
-        toMin() { open(); return enabled ? assign(min) : false; },
-        toMax() { open(); return enabled ? assign(max) : false; },
+        toMin() {
+            open();
+            return enabled ? assign(min) : false;
+        },
+        toMax() {
+            open();
+            return enabled ? assign(max) : false;
+        },
         setEnabled(next) {
             open();
             if (typeof next !== 'boolean')
@@ -121,7 +161,7 @@ export function createRangeControl(options) {
                 }
             if (failure !== undefined)
                 throw failure;
-        },
+        }
     });
 }
 //# sourceMappingURL=rangeControl.js.map

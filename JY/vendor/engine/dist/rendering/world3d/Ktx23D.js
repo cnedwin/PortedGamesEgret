@@ -8,13 +8,20 @@ import { World3DError } from './core3D.js';
 import { COMPRESSED_BLOCK_BYTES_3D } from './Texture3D.js';
 const IDENTIFIER = [0xab, 0x4b, 0x54, 0x58, 0x20, 0x32, 0x30, 0xbb, 0x0d, 0x0a, 0x1a, 0x0a];
 const FORMATS = Object.freeze({
-    37: { format: 'rgba8', colorSpace: 'linear' }, 43: { format: 'rgba8', colorSpace: 'srgb' },
-    133: { format: 'bc1', colorSpace: 'linear' }, 134: { format: 'bc1', colorSpace: 'srgb' },
-    137: { format: 'bc3', colorSpace: 'linear' }, 138: { format: 'bc3', colorSpace: 'srgb' },
-    145: { format: 'bc7', colorSpace: 'linear' }, 146: { format: 'bc7', colorSpace: 'srgb' },
-    147: { format: 'etc2-rgb8', colorSpace: 'linear' }, 148: { format: 'etc2-rgb8', colorSpace: 'srgb' },
-    151: { format: 'etc2-rgba8', colorSpace: 'linear' }, 152: { format: 'etc2-rgba8', colorSpace: 'srgb' },
-    157: { format: 'astc-4x4', colorSpace: 'linear' }, 158: { format: 'astc-4x4', colorSpace: 'srgb' },
+    37: { format: 'rgba8', colorSpace: 'linear' },
+    43: { format: 'rgba8', colorSpace: 'srgb' },
+    133: { format: 'bc1', colorSpace: 'linear' },
+    134: { format: 'bc1', colorSpace: 'srgb' },
+    137: { format: 'bc3', colorSpace: 'linear' },
+    138: { format: 'bc3', colorSpace: 'srgb' },
+    145: { format: 'bc7', colorSpace: 'linear' },
+    146: { format: 'bc7', colorSpace: 'srgb' },
+    147: { format: 'etc2-rgb8', colorSpace: 'linear' },
+    148: { format: 'etc2-rgb8', colorSpace: 'srgb' },
+    151: { format: 'etc2-rgba8', colorSpace: 'linear' },
+    152: { format: 'etc2-rgba8', colorSpace: 'srgb' },
+    157: { format: 'astc-4x4', colorSpace: 'linear' },
+    158: { format: 'astc-4x4', colorSpace: 'srgb' }
 });
 const KTX2_LIMITS = Object.freeze({ maxEdge: 8192, maxLevels: 14 });
 /** True when `bytes` starts with the KTX 2.0 file identifier. */
@@ -97,6 +104,9 @@ export async function parseKtx23D(bytes, options = {}) {
         w = Math.max(1, w >> 1);
         h = Math.max(1, h >> 1);
     }
-    return { source: { width, height, format: known.format, levels: levels.map(level => level.slice()) }, colorSpace: known.colorSpace };
+    return {
+        source: { width, height, format: known.format, levels: levels.map(level => level.slice()) },
+        colorSpace: known.colorSpace
+    };
 }
 //# sourceMappingURL=Ktx23D.js.map

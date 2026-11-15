@@ -13,8 +13,11 @@ const MOST_PER_PAGE = 16384;
 const SPACE = 32, IDEOGRAPHIC_SPACE = 0x3000;
 const isSpace = (code) => code === SPACE || code === IDEOGRAPHIC_SPACE;
 /** Scripts written without spaces between words, which may be broken between any two of their characters. */
-const isIdeograph = (code) => (code >= 0x2e80 && code <= 0x9fff) || (code >= 0xac00 && code <= 0xd7af) || (code >= 0xf900 && code <= 0xfaff)
-    || (code >= 0xff00 && code <= 0xffef) || (code >= 0x20000 && code <= 0x3ffff);
+const isIdeograph = (code) => (code >= 0x2e80 && code <= 0x9fff) ||
+    (code >= 0xac00 && code <= 0xd7af) ||
+    (code >= 0xf900 && code <= 0xfaff) ||
+    (code >= 0xff00 && code <= 0xffef) ||
+    (code >= 0x20000 && code <= 0x3ffff);
 /** Marks that stay with what is before them, and marks that stay with what is after them, so that no line starts or ends with one. */
 const CLOSING = new Set([...'，。、；：！？）》」』】〕〉…·”’,.;:!?)]}%'].map(c => c.codePointAt(0)));
 const OPENING = new Set([...'（《「『【〔〈“‘([{'].map(c => c.codePointAt(0)));
@@ -22,8 +25,12 @@ function optionsOf(o) {
     if (!record(o))
         throw invalid();
     const { maxWidth, align = 'left', letterSpacing = 0, lineSpacing = 0, kerning = true, fallback } = o;
-    if ((maxWidth !== undefined && (!finite(maxWidth) || maxWidth < 0)) || (align !== 'left' && align !== 'center' && align !== 'right') || !finite(letterSpacing) || !finite(lineSpacing)
-        || typeof kerning !== 'boolean' || (fallback !== undefined && fallback !== null && (typeof fallback !== 'string' || [...fallback].length !== 1)))
+    if ((maxWidth !== undefined && (!finite(maxWidth) || maxWidth < 0)) ||
+        (align !== 'left' && align !== 'center' && align !== 'right') ||
+        !finite(letterSpacing) ||
+        !finite(lineSpacing) ||
+        typeof kerning !== 'boolean' ||
+        (fallback !== undefined && fallback !== null && (typeof fallback !== 'string' || [...fallback].length !== 1)))
         throw invalid();
     return { maxWidth, align, letterSpacing, lineSpacing, kerning, fallback };
 }
@@ -40,12 +47,19 @@ function layout(font, text, o) {
             return { code, glyph: own, advance: own.xAdvance };
         if (isSpace(code)) {
             const space = font.glyph(SPACE);
-            return { code, glyph: undefined, advance: space !== undefined && code === IDEOGRAPHIC_SPACE ? space.xAdvance * 2 : blank };
+            return {
+                code,
+                glyph: undefined,
+                advance: space !== undefined && code === IDEOGRAPHIC_SPACE ? space.xAdvance * 2 : blank
+            };
         }
         missing++;
-        return fallback === undefined ? { code, glyph: undefined, advance: 0 } : { code, glyph: fallback, advance: fallback.xAdvance };
+        return fallback === undefined
+            ? { code, glyph: undefined, advance: 0 }
+            : { code, glyph: fallback, advance: fallback.xAdvance };
     };
-    const between = (a, b) => o.letterSpacing + (o.kerning && a.glyph !== undefined && b.glyph !== undefined ? font.kerning(a.glyph.id, b.glyph.id) : 0);
+    const between = (a, b) => o.letterSpacing +
+        (o.kerning && a.glyph !== undefined && b.glyph !== undefined ? font.kerning(a.glyph.id, b.glyph.id) : 0);
     /** May a line end before the character at `i` and the next start with it. */
     const breakBefore = (chars, i) => {
         const before = chars[i - 1].code, here = chars[i].code;
@@ -103,14 +117,32 @@ function layout(font, text, o) {
                 pen += between(span.chars[i - 1], char);
             const g = char.glyph;
             if (g !== undefined && g.width > 0 && g.height > 0) {
-                glyphs.push(Object.freeze({ codePoint: char.code, page: g.page, line: index, x: left + pen + g.xOffset, y: top + g.yOffset, width: g.width, height: g.height, sourceX: g.x, sourceY: g.y }));
+                glyphs.push(Object.freeze({
+                    codePoint: char.code,
+                    page: g.page,
+                    line: index,
+                    x: left + pen + g.xOffset,
+                    y: top + g.yOffset,
+                    width: g.width,
+                    height: g.height,
+                    sourceX: g.x,
+                    sourceY: g.y
+                }));
             }
             pen += char.advance;
         }
         let end = span.to;
         while (end > span.from && isSpace(span.chars[end - 1].code))
             end--;
-        lines.push(Object.freeze({ text: span.chars.slice(span.from, end).map(c => String.fromCodePoint(c.code)).join(''), width: w, x: left, y: top }));
+        lines.push(Object.freeze({
+            text: span.chars
+                .slice(span.from, end)
+                .map(c => String.fromCodePoint(c.code))
+                .join(''),
+            width: w,
+            x: left,
+            y: top
+        }));
     });
     const height = spans.length === 0 ? 0 : spans.length * font.lineHeight + (spans.length - 1) * o.lineSpacing;
     return Object.freeze({ width: box, height, lines: Object.freeze(lines), glyphs: Object.freeze(glyphs), missing });
@@ -126,18 +158,26 @@ export function createBitmapText(options) {
     if (!record(options))
         throw invalid();
     const { font, pages, text: text0 = '', color: color0 = 0xffffff } = options;
-    if (!isBitmapFont(font) || !Array.isArray(pages) || pages.length !== font.pages.length || !pages.every(page => page instanceof AssetLease))
+    if (!isBitmapFont(font) ||
+        !Array.isArray(pages) ||
+        pages.length !== font.pages.length ||
+        !pages.every(page => page instanceof AssetLease))
         throw invalid();
     const o = optionsOf(options);
     const colorOk = (value) => Number.isSafeInteger(value) && value >= 0 && value <= 0xffffff;
     if (typeof text0 !== 'string' || !colorOk(color0))
         throw invalid();
     // Each character must lie on its page, so that no character samples beyond the image.
-    const sizes = pages.map(page => { const texture = page.value; return { width: texture.width, height: texture.height }; });
+    const sizes = pages.map(page => {
+        const texture = page.value;
+        return { width: texture.width, height: texture.height };
+    });
     for (const g of font.glyphs) {
         const size = sizes[g.page];
         if (g.x + g.width > size.width || g.y + g.height > size.height)
-            throw new EgretError('BITMAP_FONT_INVALID', { cause: new TypeError('character ' + g.id + ' lies outside page ' + g.page) });
+            throw new EgretError('BITMAP_FONT_INVALID', {
+                cause: new TypeError('character ' + g.id + ' lies outside page ' + g.page)
+            });
     }
     const display = new DisplayObjectContainer(), meshes = pages.map(() => undefined);
     let text = text0, color = color0, current, closed = false;
@@ -180,8 +220,10 @@ export function createBitmapText(options) {
         color = nextColor;
         current = laid;
     }
-    const open = () => { if (closed)
-        throw new EgretError('BITMAP_TEXT_CLOSED'); };
+    const open = () => {
+        if (closed)
+            throw new EgretError('BITMAP_TEXT_CLOSED');
+    };
     /** Lays out with one option changed, checked as the options are, and draws it; nothing changes when it is refused. */
     const change = (patch, required = true) => {
         if (required && Object.values(patch).includes(undefined))
@@ -191,24 +233,66 @@ export function createBitmapText(options) {
     };
     draw(o, text, color);
     return Object.freeze({
-        get state() { return closed ? 'closed' : 'active'; },
+        get state() {
+            return closed ? 'closed' : 'active';
+        },
         display,
-        get text() { return text; },
-        set text(value) { if (typeof value !== 'string')
-            throw invalid(); open(); if (value !== text)
-            draw(o, value, color); },
-        get color() { return color; },
-        set color(value) { if (!colorOk(value))
-            throw invalid(); open(); if (value !== color)
-            draw(o, text, value); },
-        get maxWidth() { return o.maxWidth; }, set maxWidth(value) { change({ maxWidth: value }, false); },
-        get align() { return o.align; }, set align(value) { change({ align: value }); },
-        get letterSpacing() { return o.letterSpacing; }, set letterSpacing(value) { change({ letterSpacing: value }); },
-        get lineSpacing() { return o.lineSpacing; }, set lineSpacing(value) { change({ lineSpacing: value }); },
-        get width() { return current.width; },
-        get height() { return current.height; },
-        get layout() { return current; },
-        get meshes() { return Object.freeze(meshes.filter((mesh) => mesh !== undefined && mesh.visible)); },
+        get text() {
+            return text;
+        },
+        set text(value) {
+            if (typeof value !== 'string')
+                throw invalid();
+            open();
+            if (value !== text)
+                draw(o, value, color);
+        },
+        get color() {
+            return color;
+        },
+        set color(value) {
+            if (!colorOk(value))
+                throw invalid();
+            open();
+            if (value !== color)
+                draw(o, text, value);
+        },
+        get maxWidth() {
+            return o.maxWidth;
+        },
+        set maxWidth(value) {
+            change({ maxWidth: value }, false);
+        },
+        get align() {
+            return o.align;
+        },
+        set align(value) {
+            change({ align: value });
+        },
+        get letterSpacing() {
+            return o.letterSpacing;
+        },
+        set letterSpacing(value) {
+            change({ letterSpacing: value });
+        },
+        get lineSpacing() {
+            return o.lineSpacing;
+        },
+        set lineSpacing(value) {
+            change({ lineSpacing: value });
+        },
+        get width() {
+            return current.width;
+        },
+        get height() {
+            return current.height;
+        },
+        get layout() {
+            return current;
+        },
+        get meshes() {
+            return Object.freeze(meshes.filter((mesh) => mesh !== undefined && mesh.visible));
+        },
         dispose() {
             if (closed)
                 return;
@@ -230,7 +314,7 @@ export function createBitmapText(options) {
             meshes.fill(undefined);
             if (failures.length > 0)
                 throw new EgretError('BITMAP_TEXT_CLEANUP_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
-        },
+        }
     });
 }
 //# sourceMappingURL=bitmapText.js.map

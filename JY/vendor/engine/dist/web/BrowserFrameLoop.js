@@ -16,12 +16,19 @@ export function createBrowserFrameLoop(options) {
     const { engine, frame, host, update, onError } = options, limit = options.maxPendingFrames ?? 2;
     const request = options.requestFrame ?? ((callback) => requestAnimationFrame(callback));
     const cancel = options.cancelFrame ?? ((handle) => cancelAnimationFrame(handle));
-    if (engine === null || typeof engine !== 'object' || typeof engine.advanceTime !== 'function' || typeof engine.renderSharedFrame !== 'function'
-        || frame === undefined || frame === null
-        || (host !== undefined && (host === null || typeof host !== 'object' || typeof host.getStatus !== 'function'))
-        || !Number.isSafeInteger(limit) || limit < 1
-        || (update !== undefined && typeof update !== 'function') || (onError !== undefined && typeof onError !== 'function')
-        || typeof request !== 'function' || typeof cancel !== 'function')
+    if (engine === null ||
+        typeof engine !== 'object' ||
+        typeof engine.advanceTime !== 'function' ||
+        typeof engine.renderSharedFrame !== 'function' ||
+        frame === undefined ||
+        frame === null ||
+        (host !== undefined && (host === null || typeof host !== 'object' || typeof host.getStatus !== 'function')) ||
+        !Number.isSafeInteger(limit) ||
+        limit < 1 ||
+        (update !== undefined && typeof update !== 'function') ||
+        (onError !== undefined && typeof onError !== 'function') ||
+        typeof request !== 'function' ||
+        typeof cancel !== 'function')
         throw invalid();
     const clockLimit = engine.clock?.maxDeltaSeconds, asked = options.maxStepSeconds ?? 0.1;
     if (typeof clockLimit !== 'number' || !(clockLimit > 0) || typeof asked !== 'number' || !(asked > 0))
@@ -76,7 +83,9 @@ export function createBrowserFrameLoop(options) {
             state = 'idle';
     };
     const loop = {
-        get state() { return state; },
+        get state() {
+            return state;
+        },
         start() {
             if (state === 'closed')
                 throw new EgretError('FRAME_LOOP_CLOSED');
@@ -90,7 +99,10 @@ export function createBrowserFrameLoop(options) {
         },
         stop,
         snapshot: () => Object.freeze({ state, steps, frames, skipped, seconds, failure }),
-        dispose() { stop(); state = 'closed'; },
+        dispose() {
+            stop();
+            state = 'closed';
+        }
     };
     return Object.freeze(loop);
 }

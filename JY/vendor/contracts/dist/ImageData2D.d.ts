@@ -3,10 +3,10 @@ export interface ImageData2DInput {
     readonly width: number;
     readonly height: number;
     readonly pixels: Uint8Array<ArrayBuffer>;
-    readonly format?: "rgba8unorm";
-    readonly colorSpace?: "srgb";
-    readonly alphaMode?: "straight";
-    readonly origin?: "top-left";
+    readonly format?: 'rgba8unorm';
+    readonly colorSpace?: 'srgb';
+    readonly alphaMode?: 'straight';
+    readonly origin?: 'top-left';
 }
 /** Immutable CPU byte identity; the brand conveys no asset or GPU authority. */
 export interface ImageData2D {
@@ -15,10 +15,10 @@ export interface ImageData2D {
     readonly height: number;
     readonly bytesPerRow: number;
     readonly byteLength: number;
-    readonly format: "rgba8unorm";
-    readonly colorSpace: "srgb";
-    readonly alphaMode: "straight";
-    readonly origin: "top-left";
+    readonly format: 'rgba8unorm';
+    readonly colorSpace: 'srgb';
+    readonly alphaMode: 'straight';
+    readonly origin: 'top-left';
 }
 export interface TextureRegion2D {
     readonly x: number;

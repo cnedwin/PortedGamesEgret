@@ -1,4 +1,4 @@
-import type { SequenceRegion } from './sequenceClip.js';
+import type { SequenceRegion } from "./sequenceClip.js";
 import type { ImageData2D, TextureRegion2D } from "@egret/contracts";
 import { AssetLease } from "./AssetLease.js";
 import { DisplayObject } from "./DisplayObject.js";

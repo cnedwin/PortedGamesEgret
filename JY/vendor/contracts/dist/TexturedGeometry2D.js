@@ -67,9 +67,13 @@ function elementLength(value, tag) {
     return byteLength / elementBytes;
 }
 function copyPayload(source, tag, length) {
-    const copy = tag === 'Float32Array' ? new Floats32(length) :
-        tag === 'Float64Array' ? new Floats64(length) :
-            tag === 'Uint16Array' ? new Indices16(length) : new Indices32(length);
+    const copy = tag === 'Float32Array'
+        ? new Floats32(length)
+        : tag === 'Float64Array'
+            ? new Floats64(length)
+            : tag === 'Uint16Array'
+                ? new Indices16(length)
+                : new Indices32(length);
     // Native allocation/copy failures escape. TypedArray set reads only the
     // intrinsic used range and cannot invoke the caller's iterator or species.
     apply(setElements, copy, [source]);
@@ -87,8 +91,13 @@ function canonical(source, length, kind, vertexCount) {
         // Create own elements rather than invoking an inherited indexed setter.
         // A null-prototype descriptor also excludes inherited get/set fields.
         // Equality with zero converts both signed zeros to positive zero.
-        const descriptor = { __proto__: null, value: value === 0 ? 0 : value,
-            writable: true, enumerable: true, configurable: true };
+        const descriptor = {
+            __proto__: null,
+            value: value === 0 ? 0 : value,
+            writable: true,
+            enumerable: true,
+            configurable: true
+        };
         defineProperty(result, index, descriptor);
     }
     return freeze(result);
@@ -114,15 +123,15 @@ export function createTexturedGeometry2D(input) {
     const vertexCount = positionsLength / 2;
     const indexCount = indicesLength;
     // G4: shape outranks capacity; both precede copies and canonical arrays.
-    if (!safeInteger(vertexCount) || !safeInteger(indexCount) ||
-        uvsLength !== positionsLength || lightColorsLength !== 4 * vertexCount ||
-        !((vertexCount === 0 && indexCount === 0) ||
-            (vertexCount >= 3 && indexCount >= 3 && indexCount % 3 === 0))) {
+    if (!safeInteger(vertexCount) ||
+        !safeInteger(indexCount) ||
+        uvsLength !== positionsLength ||
+        lightColorsLength !== 4 * vertexCount ||
+        !((vertexCount === 0 && indexCount === 0) || (vertexCount >= 3 && indexCount >= 3 && indexCount % 3 === 0))) {
         throw new RangeFault('Textured geometry array shape is invalid');
     }
     const logicalByteLength = 64 * vertexCount + 4 * indexCount;
-    if (vertexCount > 65536 || indexCount > 196608 ||
-        !safeInteger(logicalByteLength) || logicalByteLength > 4980736) {
+    if (vertexCount > 65536 || indexCount > 196608 || !safeInteger(logicalByteLength) || logicalByteLength > 4980736) {
         throw new RangeFault('Textured geometry capacity exceeded');
     }
     // G5 completes every native copy before G6 examines any copied component.
@@ -136,8 +145,16 @@ export function createTexturedGeometry2D(input) {
     const indices = canonical(indicesCopy, indicesLength, 'index', vertexCount);
     // Logical accounting describes canonical payload units, not physical heap
     // usage or an allocation guarantee. Only the completed frozen value is owned.
-    const geometry = freeze({ vertexCount, indexCount, triangleCount: indexCount / 3,
-        logicalByteLength, positions, uvs, lightColors, indices });
+    const geometry = freeze({
+        vertexCount,
+        indexCount,
+        triangleCount: indexCount / 3,
+        logicalByteLength,
+        positions,
+        uvs,
+        lightColors,
+        indices
+    });
     apply(weakSet, owned, [geometry, true]);
     return geometry;
 }

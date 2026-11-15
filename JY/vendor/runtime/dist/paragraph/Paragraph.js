@@ -11,21 +11,45 @@ import { snapshotParagraphRequest } from './request.js';
 const states = new WeakMap();
 const useScope = Scope.prototype.use, disposeContainer = DisplayObjectContainer.prototype.dispose;
 const creationToken = Symbol('egret.paragraph.factory');
-function stateOf(node) { const s = states.get(node); if (!s)
-    throw new EgretError('PARAGRAPH_INVALID'); return s; }
-function live(s) { if (s.disposed)
-    throw new EgretError('PARAGRAPH_DISPOSED'); s.cache.assertOpen(); assertTextFieldScope(s.scope); }
-function cancel(s, code) { const demand = s.pending; s.pending = undefined; if (demand) {
-    const error = new EgretError(code);
-    demand.reject(error);
-    demand.controller.abort(error);
-} }
+function stateOf(node) {
+    const s = states.get(node);
+    if (!s)
+        throw new EgretError('PARAGRAPH_INVALID');
+    return s;
+}
+function live(s) {
+    if (s.disposed)
+        throw new EgretError('PARAGRAPH_DISPOSED');
+    s.cache.assertOpen();
+    assertTextFieldScope(s.scope);
+}
+function cancel(s, code) {
+    const demand = s.pending;
+    s.pending = undefined;
+    if (demand) {
+        const error = new EgretError(code);
+        demand.reject(error);
+        demand.controller.abort(error);
+    }
+}
 class ParagraphNode extends DisplayObjectContainer {
     constructor(scope, cache, token) {
         super();
         if (token !== creationToken)
             throw new EgretError('PARAGRAPH_FACTORY_REQUIRED');
-        const s = { scope, cache, disposed: false, revision: 0, request: undefined, committedRevision: undefined, committedGeneration: undefined, metrics: undefined, image: undefined, committed: undefined, pending: undefined };
+        const s = {
+            scope,
+            cache,
+            disposed: false,
+            revision: 0,
+            request: undefined,
+            committedRevision: undefined,
+            committedGeneration: undefined,
+            metrics: undefined,
+            image: undefined,
+            committed: undefined,
+            pending: undefined
+        };
         states.set(this, s);
         live(s);
         Reflect.apply(useScope, scope, [this]);
@@ -58,10 +82,15 @@ class ParagraphNode extends DisplayObjectContainer {
             cancel(s, 'PARAGRAPH_STALE');
             const controller = new CancellationController();
             let fulfill, reject;
-            const promise = new Promise((resolve, fail) => { fulfill = resolve; reject = fail; });
+            const promise = new Promise((resolve, fail) => {
+                fulfill = resolve;
+                reject = fail;
+            });
             // Demand authority exists before an injected provider can synchronously reenter.
             s.pending = { revision, generation, controller, promise, reject };
-            const work = s.cache.acquire(request, controller.signal).then(prepared => {
+            const work = s.cache
+                .acquire(request, controller.signal)
+                .then(prepared => {
                 let image, published = false;
                 try {
                     live(s);
@@ -111,8 +140,12 @@ class ParagraphNode extends DisplayObjectContainer {
                         prepared.lease.release();
                     }
                 }
-            }).catch(cause => { if (s.pending?.controller === controller)
-                s.pending = undefined; throw cause; });
+            })
+                .catch(cause => {
+                if (s.pending?.controller === controller)
+                    s.pending = undefined;
+                throw cause;
+            });
             void work.then(fulfill, reject);
             return promise;
         }
@@ -122,7 +155,14 @@ class ParagraphNode extends DisplayObjectContainer {
     }
     getStatus() {
         const s = stateOf(this);
-        return Object.freeze({ state: s.disposed ? 'disposed' : s.metrics ? 'ready' : 'unprepared', desiredRevision: s.revision, committedRevision: s.committedRevision, pending: s.pending !== undefined, metrics: s.metrics, ...(s.committed?.geometry ? { geometry: s.committed.geometry } : {}) });
+        return Object.freeze({
+            state: s.disposed ? 'disposed' : s.metrics ? 'ready' : 'unprepared',
+            desiredRevision: s.revision,
+            committedRevision: s.committedRevision,
+            pending: s.pending !== undefined,
+            metrics: s.metrics,
+            ...(s.committed?.geometry ? { geometry: s.committed.geometry } : {})
+        });
     }
     dispose() {
         const s = stateOf(this);
@@ -147,5 +187,7 @@ class ParagraphNode extends DisplayObjectContainer {
         }
     }
 }
-export function createParagraphNode(scope, cache) { return new ParagraphNode(scope, cache, creationToken); }
+export function createParagraphNode(scope, cache) {
+    return new ParagraphNode(scope, cache, creationToken);
+}
 //# sourceMappingURL=Paragraph.js.map

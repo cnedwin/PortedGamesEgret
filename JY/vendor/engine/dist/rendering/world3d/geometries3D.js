@@ -27,8 +27,14 @@ function grid(l, base, columns, rows) {
 }
 /** Flat disc or sector in the XY plane, facing +Z. */
 export function createCircleGeometry3D(options = {}) {
-    return createRingGeometry3D({ innerRadius: 0, outerRadius: options.radius ?? 0.5, thetaSegments: options.segments ?? 32, phiSegments: 1,
-        ...(options.thetaStart === undefined ? {} : { thetaStart: options.thetaStart }), ...(options.thetaLength === undefined ? {} : { thetaLength: options.thetaLength }) });
+    return createRingGeometry3D({
+        innerRadius: 0,
+        outerRadius: options.radius ?? 0.5,
+        thetaSegments: options.segments ?? 32,
+        phiSegments: 1,
+        ...(options.thetaStart === undefined ? {} : { thetaStart: options.thetaStart }),
+        ...(options.thetaLength === undefined ? {} : { thetaLength: options.thetaLength })
+    });
 }
 /** Flat ring in the XY plane, facing +Z. An inner radius of 0 gives a disc. */
 export function createRingGeometry3D(options = {}) {
@@ -38,12 +44,12 @@ export function createRingGeometry3D(options = {}) {
     const ts = count(options.thetaSegments, 32, 3, 'thetaSegments'), ps = count(options.phiSegments, 1, 1, 'phiSegments');
     const start = options.thetaStart ?? 0, length = options.thetaLength ?? Math.PI * 2, l = lists();
     for (let j = 0; j <= ps; j++) {
-        const radius = inner + (outer - inner) * j / ps;
+        const radius = inner + ((outer - inner) * j) / ps;
         for (let i = 0; i <= ts; i++) {
-            const angle = start + length * i / ts, x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
+            const angle = start + (length * i) / ts, x = Math.cos(angle) * radius, y = Math.sin(angle) * radius;
             l.positions.push(x, y, 0);
             l.normals.push(0, 0, 1);
-            l.uvs.push(x / outer * 0.5 + 0.5, y / outer * 0.5 + 0.5);
+            l.uvs.push((x / outer) * 0.5 + 0.5, (y / outer) * 0.5 + 0.5);
         }
     }
     const stride = ts + 1;
@@ -58,13 +64,16 @@ export function createTorusKnotGeometry3D(options = {}) {
     const radius = requirePositive3D(options.radius ?? 0.5, 'radius'), tube = requirePositive3D(options.tube ?? 0.15, 'tube');
     const ts = count(options.tubularSegments, 96, 3, 'tubularSegments'), rs = count(options.radialSegments, 12, 3, 'radialSegments');
     const p = options.p ?? 2, q = options.q ?? 3, l = lists();
-    const at = (u) => { const cu = Math.cos(u), su = Math.sin(u), quOverP = q / p * u, cs = Math.cos(quOverP); return [radius * (2 + cs) * 0.5 * cu, radius * (2 + cs) * su * 0.5, radius * Math.sin(quOverP) * 0.5]; };
+    const at = (u) => {
+        const cu = Math.cos(u), su = Math.sin(u), quOverP = (q / p) * u, cs = Math.cos(quOverP);
+        return [radius * (2 + cs) * 0.5 * cu, radius * (2 + cs) * su * 0.5, radius * Math.sin(quOverP) * 0.5];
+    };
     for (let i = 0; i <= ts; i++) {
-        const u = i / ts * p * Math.PI * 2, p1 = at(u), p2 = at(u + 0.01);
+        const u = (i / ts) * p * Math.PI * 2, p1 = at(u), p2 = at(u + 0.01);
         const t = [p2[0] - p1[0], p2[1] - p1[1], p2[2] - p1[2]], n0 = [p2[0] + p1[0], p2[1] + p1[1], p2[2] + p1[2]];
         const b = unit(cross(t, n0)), n = unit(cross(b, t));
         for (let j = 0; j <= rs; j++) {
-            const v = j / rs * Math.PI * 2, cx = -tube * Math.cos(v), cy = tube * Math.sin(v);
+            const v = (j / rs) * Math.PI * 2, cx = -tube * Math.cos(v), cy = tube * Math.sin(v);
             const x = p1[0] + cx * n[0] + cy * b[0], y = p1[1] + cx * n[1] + cy * b[1], z = p1[2] + cx * n[2] + cy * b[2];
             const normal = unit([x - p1[0], y - p1[1], z - p1[2]]);
             l.positions.push(x, y, z);
@@ -75,8 +84,13 @@ export function createTorusKnotGeometry3D(options = {}) {
     grid(l, 0, rs, ts);
     return build(l);
 }
-function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
-function unit(a) { const length = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / length, a[1] / length, a[2] / length]; }
+function cross(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+function unit(a) {
+    const length = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / length, a[1] / length, a[2] / length];
+}
 /**
  * Project a convex solid's triangles onto a sphere, subdividing each `detail`
  * times. Vertices are not shared, so the result is faceted unless
@@ -115,7 +129,9 @@ export function createPolyhedronGeometry3D(vertices, indices, options = {}) {
     }
     return createGeometry3D({ positions: l.positions, normals: l.normals, uvs: l.uvs });
 }
-function mix(a, b, t) { return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t]; }
+function mix(a, b, t) {
+    return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
+}
 const PHI = (1 + Math.sqrt(5)) / 2, INVERSE_PHI = 1 / PHI;
 export function createTetrahedronGeometry3D(options = {}) {
     return createPolyhedronGeometry3D([1, 1, 1, -1, -1, 1, -1, 1, -1, 1, -1, -1], [2, 1, 0, 0, 3, 2, 1, 3, 0, 2, 3, 1], options);
@@ -124,12 +140,117 @@ export function createOctahedronGeometry3D(options = {}) {
     return createPolyhedronGeometry3D([1, 0, 0, -1, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 1, 0, 0, -1], [0, 2, 4, 0, 4, 3, 0, 3, 5, 0, 5, 2, 1, 2, 5, 1, 5, 3, 1, 3, 4, 1, 4, 2], options);
 }
 export function createIcosahedronGeometry3D(options = {}) {
-    return createPolyhedronGeometry3D([-1, PHI, 0, 1, PHI, 0, -1, -PHI, 0, 1, -PHI, 0, 0, -1, PHI, 0, 1, PHI, 0, -1, -PHI, 0, 1, -PHI, PHI, 0, -1, PHI, 0, 1, -PHI, 0, -1, -PHI, 0, 1], [0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11, 1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8, 3, 9, 4, 3, 4, 2, 3, 2, 6, 3, 6, 8, 3, 8, 9, 4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1], options);
+    return createPolyhedronGeometry3D([
+        -1,
+        PHI,
+        0,
+        1,
+        PHI,
+        0,
+        -1,
+        -PHI,
+        0,
+        1,
+        -PHI,
+        0,
+        0,
+        -1,
+        PHI,
+        0,
+        1,
+        PHI,
+        0,
+        -1,
+        -PHI,
+        0,
+        1,
+        -PHI,
+        PHI,
+        0,
+        -1,
+        PHI,
+        0,
+        1,
+        -PHI,
+        0,
+        -1,
+        -PHI,
+        0,
+        1
+    ], [
+        0, 11, 5, 0, 5, 1, 0, 1, 7, 0, 7, 10, 0, 10, 11, 1, 5, 9, 5, 11, 4, 11, 10, 2, 10, 7, 6, 7, 1, 8, 3, 9, 4, 3, 4,
+        2, 3, 2, 6, 3, 6, 8, 3, 8, 9, 4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1
+    ], options);
 }
 export function createDodecahedronGeometry3D(options = {}) {
     const r = INVERSE_PHI, t = PHI;
-    return createPolyhedronGeometry3D([-1, -1, -1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, -1, -1, 1, -1, 1, 1, 1, -1, 1, 1, 1, 0, -r, -t, 0, -r, t, 0, r, -t, 0, r, t, -r, -t, 0, -r, t, 0, r, -t, 0, r, t, 0, -t, 0, -r, t, 0, -r, -t, 0, r, t, 0, r], [3, 11, 7, 3, 7, 15, 3, 15, 13, 7, 19, 17, 7, 17, 6, 7, 6, 15, 17, 4, 8, 17, 8, 10, 17, 10, 6, 8, 0, 16, 8, 16, 2, 8, 2, 10, 0, 12, 1, 0, 1, 18, 0, 18, 16, 6, 10, 2, 6, 2, 13, 6, 13, 15, 2, 16, 18, 2, 18, 3, 2, 3, 13,
-        18, 1, 9, 18, 9, 11, 18, 11, 3, 4, 14, 12, 4, 12, 0, 4, 0, 8, 11, 9, 5, 11, 5, 19, 11, 19, 7, 19, 5, 14, 19, 14, 4, 19, 4, 17, 1, 12, 14, 1, 14, 5, 1, 5, 9], options);
+    return createPolyhedronGeometry3D([
+        -1,
+        -1,
+        -1,
+        -1,
+        -1,
+        1,
+        -1,
+        1,
+        -1,
+        -1,
+        1,
+        1,
+        1,
+        -1,
+        -1,
+        1,
+        -1,
+        1,
+        1,
+        1,
+        -1,
+        1,
+        1,
+        1,
+        0,
+        -r,
+        -t,
+        0,
+        -r,
+        t,
+        0,
+        r,
+        -t,
+        0,
+        r,
+        t,
+        -r,
+        -t,
+        0,
+        -r,
+        t,
+        0,
+        r,
+        -t,
+        0,
+        r,
+        t,
+        0,
+        -t,
+        0,
+        -r,
+        t,
+        0,
+        -r,
+        -t,
+        0,
+        r,
+        t,
+        0,
+        r
+    ], [
+        3, 11, 7, 3, 7, 15, 3, 15, 13, 7, 19, 17, 7, 17, 6, 7, 6, 15, 17, 4, 8, 17, 8, 10, 17, 10, 6, 8, 0, 16, 8, 16, 2,
+        8, 2, 10, 0, 12, 1, 0, 1, 18, 0, 18, 16, 6, 10, 2, 6, 2, 13, 6, 13, 15, 2, 16, 18, 2, 18, 3, 2, 3, 13, 18, 1, 9,
+        18, 9, 11, 18, 11, 3, 4, 14, 12, 4, 12, 0, 4, 0, 8, 11, 9, 5, 11, 5, 19, 11, 19, 7, 19, 5, 14, 19, 14, 4, 19, 4,
+        17, 1, 12, 14, 1, 14, 5, 1, 5, 9
+    ], options);
 }
 /** Revolve a profile of [x, y] points (x is the distance from the Y axis) around Y. */
 export function createLatheGeometry3D(profile, options = {}) {
@@ -142,7 +263,7 @@ export function createLatheGeometry3D(profile, options = {}) {
         return [dy / size, -dx / size];
     });
     for (let i = 0; i <= segments; i++) {
-        const phi = start + length * i / segments, sin = Math.sin(phi), cos = Math.cos(phi);
+        const phi = start + (length * i) / segments, sin = Math.sin(phi), cos = Math.cos(phi);
         for (let j = 0; j < rows; j++) {
             const [x, y] = profile[j], [nx, ny] = profileNormals[j];
             l.positions.push(x * sin, y, x * cos);
@@ -162,7 +283,7 @@ export function createTubeGeometry3D(curve, options = {}) {
     for (let i = 0; i <= ts; i++) {
         const center = curve.getPointAt(i / ts), n = frames.normals[i], b = frames.binormals[i];
         for (let j = 0; j <= rs; j++) {
-            const v = j / rs * Math.PI * 2, sin = Math.sin(v), cos = -Math.cos(v), nx = cos * n[0] + sin * b[0], ny = cos * n[1] + sin * b[1], nz = cos * n[2] + sin * b[2];
+            const v = (j / rs) * Math.PI * 2, sin = Math.sin(v), cos = -Math.cos(v), nx = cos * n[0] + sin * b[0], ny = cos * n[1] + sin * b[1], nz = cos * n[2] + sin * b[2];
             l.positions.push(center[0] + radius * nx, center[1] + radius * ny, center[2] + radius * nz);
             l.normals.push(nx, ny, nz);
             l.uvs.push(i / ts, j / rs);
@@ -203,7 +324,7 @@ export function createExtrudeGeometry3D(shapes, options = {}) {
     // Map an outline point at step `s` into 3D.
     const place = (x, y, s) => {
         if (!path || !frames)
-            return [x, y, depth * s / steps];
+            return [x, y, (depth * s) / steps];
         const center = path.getPointAt(s / steps), n = frames.normals[s], b = frames.binormals[s];
         return [center[0] + n[0] * x + b[0] * y, center[1] + n[1] * x + b[1] * y, center[2] + n[2] * x + b[2] * y];
     };
@@ -254,8 +375,10 @@ export function createExtrudeGeometry3D(shapes, options = {}) {
     }
     const capVertices = caps.positions.length / 3;
     const geometry = createGeometry3D({
-        positions: [...caps.positions, ...sides.positions], normals: [...caps.normals, ...sides.normals], uvs: [...caps.uvs, ...sides.uvs],
-        indices: [...caps.indices, ...sides.indices.map(index => index + capVertices)],
+        positions: [...caps.positions, ...sides.positions],
+        normals: [...caps.normals, ...sides.normals],
+        uvs: [...caps.uvs, ...sides.uvs],
+        indices: [...caps.indices, ...sides.indices.map(index => index + capVertices)]
     });
     geometry.addGroup(0, caps.indices.length, 0);
     geometry.addGroup(caps.indices.length, sides.indices.length, 1);
@@ -276,7 +399,7 @@ export function createWireframeGeometry3D(geometry) {
     const indices = triangleIndices(geometry), p = geometry.getAttribute('position').data, seen = new Set(), positions = [], total = p.length / 3;
     for (let i = 0; i < indices.length; i += 3)
         for (let e = 0; e < 3; e++) {
-            const a = indices[i + e], b = indices[i + (e + 1) % 3], key = Math.min(a, b) * total + Math.max(a, b);
+            const a = indices[i + e], b = indices[i + ((e + 1) % 3)], key = Math.min(a, b) * total + Math.max(a, b);
             if (seen.has(key))
                 continue;
             seen.add(key);
@@ -296,14 +419,18 @@ export function createEdgesGeometry3D(geometry, thresholdAngle = Math.PI / 180) 
         const key = Math.round(p[i * 3] * 1e4) + ',' + Math.round(p[i * 3 + 1] * 1e4) + ',' + Math.round(p[i * 3 + 2] * 1e4);
         let id = ids.get(key);
         if (id === undefined)
-            ids.set(key, id = ids.size);
+            ids.set(key, (id = ids.size));
         welded.push(id);
     }
     const edges = new Map();
     for (let i = 0; i < indices.length; i += 3) {
         const ia = indices[i], ib = indices[i + 1], ic = indices[i + 2];
         const normal = unit(cross([p[ib * 3] - p[ia * 3], p[ib * 3 + 1] - p[ia * 3 + 1], p[ib * 3 + 2] - p[ia * 3 + 2]], [p[ic * 3] - p[ia * 3], p[ic * 3 + 1] - p[ia * 3 + 1], p[ic * 3 + 2] - p[ia * 3 + 2]]));
-        for (const [a, b] of [[ia, ib], [ib, ic], [ic, ia]]) {
+        for (const [a, b] of [
+            [ia, ib],
+            [ib, ic],
+            [ic, ia]
+        ]) {
             const wa = welded[a], wb = welded[b];
             if (wa === wb)
                 continue;
@@ -360,7 +487,9 @@ export function mergeGeometries3D(geometries, useGroups = false) {
     out.topology = first.topology;
     let vertexTotal = 0, indexTotal = 0;
     for (const geometry of geometries) {
-        if (geometry.topology !== first.topology || geometry.attributes.size !== names.length || (geometry.index === undefined) !== (first.index === undefined))
+        if (geometry.topology !== first.topology ||
+            geometry.attributes.size !== names.length ||
+            (geometry.index === undefined) !== (first.index === undefined))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'geometries differ in layout');
         for (const name of names) {
             const a = geometry.getAttribute(name), b = first.getAttribute(name);
@@ -381,7 +510,11 @@ export function mergeGeometries3D(geometries, useGroups = false) {
         out.setAttribute(name, new Attribute3D(data, model.itemSize, model.normalized));
     }
     let vertexOffset = 0, drawOffset = 0;
-    const index = first.index ? (vertexTotal > 65535 ? new Uint32Array(indexTotal) : new Uint16Array(indexTotal)) : undefined;
+    const index = first.index
+        ? vertexTotal > 65535
+            ? new Uint32Array(indexTotal)
+            : new Uint16Array(indexTotal)
+        : undefined;
     for (const geometry of geometries) {
         const vertices = geometry.getAttribute('position').count, source = geometry.index?.data, drawCount = source ? source.length : vertices;
         if (index && source)
@@ -412,7 +545,7 @@ export function mergeVertices3D(geometry, tolerance = 1e-4) {
                 key += Math.round(attribute.data[i * attribute.itemSize + k] * scale) + ',';
         let id = ids.get(key);
         if (id === undefined) {
-            ids.set(key, id = kept.length);
+            ids.set(key, (id = kept.length));
             kept.push(i);
         }
         remap.push(id);
@@ -422,8 +555,10 @@ export function mergeVertices3D(geometry, tolerance = 1e-4) {
     out.name = geometry.name;
     for (const [name, attribute] of attributes) {
         const size = attribute.itemSize, data = cloneArray(attribute.data, kept.length * size);
-        kept.forEach((from, to) => { for (let k = 0; k < size; k++)
-            data[to * size + k] = attribute.data[from * size + k]; });
+        kept.forEach((from, to) => {
+            for (let k = 0; k < size; k++)
+                data[to * size + k] = attribute.data[from * size + k];
+        });
         out.setAttribute(name, new Attribute3D(data, size, attribute.normalized));
     }
     const index = kept.length > 65535 ? new Uint32Array(total) : new Uint16Array(total);

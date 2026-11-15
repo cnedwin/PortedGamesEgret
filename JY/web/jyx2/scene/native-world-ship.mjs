@@ -12,7 +12,7 @@ function createWakeTexture() {
   const surface = document.createElement('canvas');
   surface.width = 128;
   surface.height = 256;
-  const ctx = surface.getContext('2d');
+  const ctx = surface.getContext('2d', { willReadFrequently: true });
   const foam = ctx.createLinearGradient(0, 256, 0, 0);
   foam.addColorStop(0, '#efffed00');
   foam.addColorStop(.28, '#e9fff4c9');

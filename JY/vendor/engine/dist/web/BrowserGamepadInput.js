@@ -54,8 +54,10 @@ export function createBrowserGamepadInput(options = {}) {
         }
     };
     try {
-        listen(page, 'visibilitychange', event => { if (page.visibilityState === 'hidden')
-            letGo(event); });
+        listen(page, 'visibilitychange', event => {
+            if (page.visibilityState === 'hidden')
+                letGo(event);
+        });
         listen(win, 'blur', letGo);
         listen(win, 'pagehide', letGo);
     }
@@ -77,9 +79,14 @@ export function createBrowserGamepadInput(options = {}) {
                 if (pad === null || pad === undefined || pad.connected === false)
                     continue;
                 samples.push({
-                    index: pad.index, id: pad.id, mapping: pad.mapping,
-                    buttons: Array.from(pad.buttons, button => ({ pressed: button.pressed, value: Math.min(1, Math.max(0, button.value)) })),
-                    axes: Array.from(pad.axes, axis => Number.isFinite(axis) ? Math.min(1, Math.max(-1, axis)) : 0),
+                    index: pad.index,
+                    id: pad.id,
+                    mapping: pad.mapping,
+                    buttons: Array.from(pad.buttons, button => ({
+                        pressed: button.pressed,
+                        value: Math.min(1, Math.max(0, button.value))
+                    })),
+                    axes: Array.from(pad.axes, axis => (Number.isFinite(axis) ? Math.min(1, Math.max(-1, axis)) : 0))
                 });
             }
             // A clock of the page may be coarse or handed in out of step: the input is never told that time went back.
@@ -90,7 +97,11 @@ export function createBrowserGamepadInput(options = {}) {
             if (rumble === null || typeof rumble !== 'object')
                 throw new EgretError('GAMEPAD_OPTIONS_INVALID');
             const { duration = 200, weak = 0.5, strong = 0.5 } = rumble;
-            if (!Number.isSafeInteger(index) || !within(index, 0, 31) || !within(duration, 0, 5000) || !within(weak, 0, 1) || !within(strong, 0, 1))
+            if (!Number.isSafeInteger(index) ||
+                !within(index, 0, 31) ||
+                !within(duration, 0, 5000) ||
+                !within(weak, 0, 1) ||
+                !within(strong, 0, 1))
                 throw new EgretError('GAMEPAD_OPTIONS_INVALID');
             if (closed || page?.visibilityState === 'hidden')
                 return false;
@@ -99,7 +110,12 @@ export function createBrowserGamepadInput(options = {}) {
             if (actuator === null || actuator === undefined || typeof actuator.playEffect !== 'function')
                 return false;
             try {
-                const played = actuator.playEffect('dual-rumble', { startDelay: 0, duration, weakMagnitude: weak, strongMagnitude: strong });
+                const played = actuator.playEffect('dual-rumble', {
+                    startDelay: 0,
+                    duration,
+                    weakMagnitude: weak,
+                    strongMagnitude: strong
+                });
                 if (played !== undefined && typeof played.then === 'function')
                     played.then(undefined, report);
             }
@@ -112,7 +128,7 @@ export function createBrowserGamepadInput(options = {}) {
         dispose() {
             cleanup();
             input.dispose();
-        },
+        }
     });
 }
 //# sourceMappingURL=BrowserGamepadInput.js.map

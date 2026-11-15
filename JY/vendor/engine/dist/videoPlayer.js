@@ -20,14 +20,22 @@ export function createVideo(options) {
     // Asset names are shared by all types of an Engine, so each video names its pictures under its own name.
     const name = 'egret.video.' + ++made, waiting = new Map(), type = createAssetType(name, value => isTexture(value));
     assets.register(type, {
-        load: async (ref) => { const texture = waiting.get(ref.id); if (texture === undefined)
-            throw new EgretError('VIDEO_FRAME_INVALID'); return texture; },
-        dispose: texture => { texture.dispose(); },
+        load: async (ref) => {
+            const texture = waiting.get(ref.id);
+            if (texture === undefined)
+                throw new EgretError('VIDEO_FRAME_INVALID');
+            return texture;
+        },
+        dispose: texture => {
+            texture.dispose();
+        }
     });
     const display = new DisplayObjectContainer(), listeners = new Set();
     let bitmap, shown, busy = false, closed = false, frames = 0, skipped = 0, count = 0, shownTime = NaN, endedTold = false;
-    const open = () => { if (closed)
-        throw new EgretError('VIDEO_CLOSED'); };
+    const open = () => {
+        if (closed)
+            throw new EgretError('VIDEO_CLOSED');
+    };
     /** Tells of the end once each time the source comes to it. */
     function watchEnd() {
         const ended = source.state === 'ended';
@@ -48,21 +56,49 @@ export function createVideo(options) {
             endedTold = false;
     }
     return Object.freeze({
-        get state() { return closed ? 'closed' : source.state; },
+        get state() {
+            return closed ? 'closed' : source.state;
+        },
         display,
-        get width() { return source.width; },
-        get height() { return source.height; },
-        get duration() { return source.duration; },
-        get currentTime() { return source.currentTime; },
-        get loop() { return source.loop; },
-        set loop(value) { if (typeof value !== 'boolean')
-            throw invalid(); open(); source.loop = value; },
-        get muted() { return source.muted; },
-        set muted(value) { if (typeof value !== 'boolean')
-            throw invalid(); open(); source.muted = value; },
-        get volume() { return source.volume; },
-        set volume(value) { if (!finite(value) || value < 0 || value > 1)
-            throw invalid(); open(); source.volume = value; },
+        get width() {
+            return source.width;
+        },
+        get height() {
+            return source.height;
+        },
+        get duration() {
+            return source.duration;
+        },
+        get currentTime() {
+            return source.currentTime;
+        },
+        get loop() {
+            return source.loop;
+        },
+        set loop(value) {
+            if (typeof value !== 'boolean')
+                throw invalid();
+            open();
+            source.loop = value;
+        },
+        get muted() {
+            return source.muted;
+        },
+        set muted(value) {
+            if (typeof value !== 'boolean')
+                throw invalid();
+            open();
+            source.muted = value;
+        },
+        get volume() {
+            return source.volume;
+        },
+        set volume(value) {
+            if (!finite(value) || value < 0 || value > 1)
+                throw invalid();
+            open();
+            source.volume = value;
+        },
         async play() {
             open();
             endedTold = false;
@@ -73,9 +109,16 @@ export function createVideo(options) {
                 throw new EgretError('VIDEO_PLAY_REFUSED', { cause });
             }
         },
-        pause() { open(); source.pause(); },
-        seek(seconds) { if (!finite(seconds) || seconds < 0)
-            throw invalid(); open(); source.seek(seconds); },
+        pause() {
+            open();
+            source.pause();
+        },
+        seek(seconds) {
+            if (!finite(seconds) || seconds < 0)
+                throw invalid();
+            open();
+            source.seek(seconds);
+        },
         async update() {
             open();
             // A picture still on its way to a texture: the next update takes whatever is newest then.
@@ -131,16 +174,31 @@ export function createVideo(options) {
                 throw invalid();
             open();
             listeners.add(listener);
-            return () => { listeners.delete(listener); };
+            return () => {
+                listeners.delete(listener);
+            };
         },
-        snapshot() { return Object.freeze({ state: closed ? 'closed' : source.state, frames, skipped, currentTime: source.currentTime, shownTime }); },
+        snapshot() {
+            return Object.freeze({
+                state: closed ? 'closed' : source.state,
+                frames,
+                skipped,
+                currentTime: source.currentTime,
+                shownTime
+            });
+        },
         dispose() {
             if (closed)
                 return;
             closed = true;
             listeners.clear();
             const failures = [];
-            for (const step of [() => bitmap?.dispose(), () => shown?.release(), () => display.dispose(), () => source.dispose()])
+            for (const step of [
+                () => bitmap?.dispose(),
+                () => shown?.release(),
+                () => display.dispose(),
+                () => source.dispose()
+            ])
                 try {
                     step();
                 }
@@ -151,7 +209,7 @@ export function createVideo(options) {
             shown = undefined;
             if (failures.length > 0)
                 throw new EgretError('VIDEO_CLEANUP_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
-        },
+        }
     });
 }
 //# sourceMappingURL=videoPlayer.js.map

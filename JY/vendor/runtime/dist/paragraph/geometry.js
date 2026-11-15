@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '../EgretError.js';
-const invalid = () => { throw new EgretError('PARAGRAPH_PROVIDER_RESULT_INVALID'); };
+const invalid = () => {
+    throw new EgretError('PARAGRAPH_PROVIDER_RESULT_INVALID');
+};
 const scalar = (v) => typeof v === 'number' && Number.isFinite(v) && Math.abs(v) <= 1048576 ? (v === 0 ? 0 : v) : invalid();
 function boundary(text, value) {
     if (!Number.isSafeInteger(value) || value < 0 || value > text.length)
         return invalid();
     const unit = text.charCodeAt(value), prior = text.charCodeAt(value - 1);
-    if ((unit >= 0xdc00 && unit <= 0xdfff && prior >= 0xd800 && prior <= 0xdbff)
-        || (prior === 13 && unit === 10))
+    if ((unit >= 0xdc00 && unit <= 0xdfff && prior >= 0xd800 && prior <= 0xdbff) || (prior === 13 && unit === 10))
         return invalid();
     return value;
 }
@@ -31,7 +32,10 @@ export function snapshotParagraphTextGeometry(data, request, metrics) {
     for (let i = 0; i < lineCount; i++) {
         const row = sourceLines[i], metric = metrics.lines[i];
         const start = boundary(text, row.start), end = boundary(text, row.end);
-        if (start !== metric.start || end < start || end > metric.end || (end !== metric.end && !(metrics.truncated && i === lineCount - 1)))
+        if (start !== metric.start ||
+            end < start ||
+            end > metric.end ||
+            (end !== metric.end && !(metrics.truncated && i === lineCount - 1)))
             return invalid();
         lines.push(Object.freeze({ start, end, ...box(row) }));
     }
@@ -39,7 +43,12 @@ export function snapshotParagraphTextGeometry(data, request, metrics) {
     for (let index = 0; index < clusterCount; index++) {
         const cluster = sourceClusters[index];
         const start = boundary(text, cluster.start), end = boundary(text, cluster.end), lineIndex = cluster.lineIndex, direction = cluster.direction;
-        if (start < previousEnd || end <= start || !Number.isSafeInteger(lineIndex) || lineIndex < 0 || lineIndex >= lines.length || (direction !== 'ltr' && direction !== 'rtl'))
+        if (start < previousEnd ||
+            end <= start ||
+            !Number.isSafeInteger(lineIndex) ||
+            lineIndex < 0 ||
+            lineIndex >= lines.length ||
+            (direction !== 'ltr' && direction !== 'rtl'))
             return invalid();
         const line = lines[lineIndex];
         if (start < line.start || end > line.end || /[\r\n]/.test(text.slice(start, end)))
@@ -53,8 +62,8 @@ export function snapshotParagraphTextGeometry(data, request, metrics) {
     // explicitly not a measurement of VM objects, physical memory or Wasm heaps.
     const storageBytes = text.length * 2 + lines.length * 112 + clusters.length * 160;
     const stops = lines.map(() => []);
-    const leading = (c) => c.direction === 'rtl' ? c.right : c.left;
-    const trailing = (c) => c.direction === 'rtl' ? c.left : c.right;
+    const leading = (c) => (c.direction === 'rtl' ? c.right : c.left);
+    const trailing = (c) => (c.direction === 'rtl' ? c.left : c.right);
     const stop = (offset, affinity, lineIndex, x) => Object.freeze({ offset, affinity, lineIndex, x, top: lines[lineIndex].top, bottom: lines[lineIndex].bottom });
     for (const cluster of clusters) {
         stops[cluster.lineIndex].push(stop(cluster.start, 'downstream', cluster.lineIndex, leading(cluster)), stop(cluster.end, 'upstream', cluster.lineIndex, trailing(cluster)));
@@ -98,18 +107,22 @@ export function snapshotParagraphTextGeometry(data, request, metrics) {
             return affinity === 'upstream' ? matching[0] : matching[matching.length - 1];
         // Hard-break interiors and hidden truncated source map to admitted stops;
         // they never manufacture a caret inside CRLF or a synthetic ellipsis.
-        const directional = all.filter(s => affinity === 'upstream' ? s.offset < offset : s.offset > offset);
+        const directional = all.filter(s => (affinity === 'upstream' ? s.offset < offset : s.offset > offset));
         const candidates = directional.length ? directional : all;
-        return candidates.reduce((best, s) => Math.abs(s.offset - offset) < Math.abs(best.offset - offset) ? s : best);
+        return candidates.reduce((best, s) => (Math.abs(s.offset - offset) < Math.abs(best.offset - offset) ? s : best));
     }
-    const geometry = Object.freeze({ text, storageBytes, lines, clusters,
+    const geometry = Object.freeze({
+        text,
+        storageBytes,
+        lines,
+        clusters,
         getCaret: caret,
         hitTest(x, y) {
             if (typeof x !== 'number' || !Number.isFinite(x) || typeof y !== 'number' || !Number.isFinite(y))
                 throw new EgretError('PARAGRAPH_GEOMETRY_POINT_INVALID');
             if (!lines.length)
                 return undefined;
-            const distance = (top, bottom) => y < top ? top - y : y > bottom ? y - bottom : 0;
+            const distance = (top, bottom) => (y < top ? top - y : y > bottom ? y - bottom : 0);
             let lineIndex = 0;
             for (let i = 1; i < lines.length; i++)
                 if (distance(lines[i].top, lines[i].bottom) < distance(lines[lineIndex].top, lines[lineIndex].bottom))
@@ -124,7 +137,7 @@ export function snapshotParagraphTextGeometry(data, request, metrics) {
                 selected = row.find(s => s.offset === offset && s.affinity === affinity);
             }
             else
-                selected = row.reduce((best, s) => Math.abs(s.x - x) < Math.abs(best.x - x) ? s : best);
+                selected = row.reduce((best, s) => (Math.abs(s.x - x) < Math.abs(best.x - x) ? s : best));
             const line = lines[lineIndex];
             return Object.freeze({ ...selected, inside: cluster !== undefined && y >= line.top && y <= line.bottom });
         },
@@ -135,20 +148,32 @@ export function snapshotParagraphTextGeometry(data, request, metrics) {
                 throw new EgretError('PARAGRAPH_GEOMETRY_POSITION_INVALID');
             if (start === end)
                 return Object.freeze([]);
-            const rows = clusters.filter(c => c.start < end && c.end > start && c.right > c.left && c.bottom > c.top)
-                .map(c => ({ ...c })).sort((a, b) => a.lineIndex - b.lineIndex || a.left - b.left);
+            const rows = clusters
+                .filter(c => c.start < end && c.end > start && c.right > c.left && c.bottom > c.top)
+                .map(c => ({ ...c }))
+                .sort((a, b) => a.lineIndex - b.lineIndex || a.left - b.left);
             const merged = [];
             for (const row of rows) {
                 const last = merged[merged.length - 1];
-                if (last && last.lineIndex === row.lineIndex && last.direction === row.direction && last.top === row.top && last.bottom === row.bottom && Math.abs(last.right - row.left) <= 0.0001
-                    && (last.direction === 'ltr' ? last.end === row.start : last.start === row.end)) {
-                    merged[merged.length - 1] = { ...last, start: Math.min(last.start, row.start), end: Math.max(last.end, row.end), right: row.right };
+                if (last &&
+                    last.lineIndex === row.lineIndex &&
+                    last.direction === row.direction &&
+                    last.top === row.top &&
+                    last.bottom === row.bottom &&
+                    Math.abs(last.right - row.left) <= 0.0001 &&
+                    (last.direction === 'ltr' ? last.end === row.start : last.start === row.end)) {
+                    merged[merged.length - 1] = {
+                        ...last,
+                        start: Math.min(last.start, row.start),
+                        end: Math.max(last.end, row.end),
+                        right: row.right
+                    };
                 }
                 else
                     merged.push(row);
             }
             return Object.freeze(merged.map(row => Object.freeze(row)));
-        },
+        }
     });
     return geometry;
 }

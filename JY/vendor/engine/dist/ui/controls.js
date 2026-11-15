@@ -84,7 +84,7 @@ export function createMovementControl(options) {
         target.on(input.events.begin, begin),
         target.on(input.events.move, move),
         target.on(input.events.end, end),
-        target.on(input.events.cancel, end),
+        target.on(input.events.cancel, end)
     ];
     // An invalid target receives no dispatch, so the owner-session terminal stream is the only
     // signal that the held contact is gone.
@@ -98,9 +98,15 @@ export function createMovementControl(options) {
             release();
     });
     return Object.freeze({
-        get value() { return value; },
-        get active() { return owner !== undefined; },
-        get enabled() { return enabled; },
+        get value() {
+            return value;
+        },
+        get active() {
+            return owner !== undefined;
+        },
+        get enabled() {
+            return enabled;
+        },
         setDirection(x, y) {
             if (closed)
                 throw new EgretError('UI_CONTROL_CLOSED');
@@ -145,7 +151,7 @@ export function createMovementControl(options) {
             }
             if (failure !== undefined)
                 throw failure;
-        },
+        }
     });
 }
 export function createActionControl(options) {
@@ -199,7 +205,7 @@ export function createActionControl(options) {
         target.on(input.events.begin, begin),
         target.on(input.events.move, move),
         target.on(input.events.end, end),
-        target.on(input.events.cancel, cancel),
+        target.on(input.events.cancel, cancel)
     ];
     const observeTerminal = input.observe(notification => {
         if (closed || candidate === undefined || notification.contact.session !== candidate)
@@ -211,9 +217,15 @@ export function createActionControl(options) {
         }
     });
     return Object.freeze({
-        get pressed() { return held; },
-        get enabled() { return enabled; },
-        get activationCount() { return activations; },
+        get pressed() {
+            return held;
+        },
+        get enabled() {
+            return enabled;
+        },
+        get activationCount() {
+            return activations;
+        },
         press() {
             if (closed)
                 throw new EgretError('UI_CONTROL_CLOSED');
@@ -270,7 +282,7 @@ export function createActionControl(options) {
             }
             if (failure !== undefined)
                 throw failure;
-        },
+        }
     });
 }
 //# sourceMappingURL=controls.js.map

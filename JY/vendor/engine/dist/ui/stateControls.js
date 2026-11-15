@@ -30,7 +30,11 @@ function within(root, node) {
 export function createHoverControl(options) {
     const { hover, onHoverChange } = record(options);
     const target = displayTarget(options.target);
-    if (hover === null || typeof hover !== 'object' || typeof hover.observe !== 'function' || hover.events === null || typeof hover.events !== 'object')
+    if (hover === null ||
+        typeof hover !== 'object' ||
+        typeof hover.observe !== 'function' ||
+        hover.events === null ||
+        typeof hover.events !== 'object')
         throw new EgretError('UI_CONTROL_OPTIONS');
     callback(onHoverChange);
     // The pointers that are over the control or over one of its descendants.
@@ -44,8 +48,12 @@ export function createHoverControl(options) {
         onHoverChange?.(next);
     }
     const subscriptions = [
-        target.on(hover.events.enter, event => { if (closed)
-            return; inside.add(event.payload.pointerId); publish(); }),
+        target.on(hover.events.enter, event => {
+            if (closed)
+                return;
+            inside.add(event.payload.pointerId);
+            publish();
+        }),
         // A pointer that goes from one descendant to another has not left the control.
         target.on(hover.events.leave, event => {
             if (closed || within(target, event.payload.related))
@@ -55,15 +63,22 @@ export function createHoverControl(options) {
         }),
         // A target that has left the stage receives no event. The stream of the input still says its hover ended.
         hover.observe(notification => {
-            if (closed || notification.kind !== 'leave' || !inside.has(notification.point.pointerId) || within(target, notification.related))
+            if (closed ||
+                notification.kind !== 'leave' ||
+                !inside.has(notification.point.pointerId) ||
+                within(target, notification.related))
                 return;
             inside.delete(notification.point.pointerId);
             publish();
-        }),
+        })
     ];
     return Object.freeze({
-        get hovered() { return reported; },
-        get enabled() { return enabled; },
+        get hovered() {
+            return reported;
+        },
+        get enabled() {
+            return enabled;
+        },
         setEnabled(next) {
             if (closed)
                 throw new EgretError('UI_CONTROL_CLOSED');
@@ -98,7 +113,7 @@ export function createHoverControl(options) {
             }
             if (failure !== undefined)
                 throw failure;
-        },
+        }
     });
 }
 export function createToggleControl(options) {
@@ -114,30 +129,53 @@ export function createToggleControl(options) {
         checked = next;
         onChange?.(next);
     }
-    const action = createActionControl({ input, target, onActivate: () => set(!checked), ...(onPressChange === undefined ? {} : { onPressChange }) });
+    const action = createActionControl({
+        input,
+        target,
+        onActivate: () => set(!checked),
+        ...(onPressChange === undefined ? {} : { onPressChange })
+    });
     let closed = false;
-    function open() { if (closed)
-        throw new EgretError('UI_CONTROL_CLOSED'); }
+    function open() {
+        if (closed)
+            throw new EgretError('UI_CONTROL_CLOSED');
+    }
     return Object.freeze({
-        get checked() { return checked; },
-        get pressed() { return action.pressed; },
-        get enabled() { return action.enabled; },
-        toggle() { open(); if (action.enabled)
-            set(!checked); },
+        get checked() {
+            return checked;
+        },
+        get pressed() {
+            return action.pressed;
+        },
+        get enabled() {
+            return action.enabled;
+        },
+        toggle() {
+            open();
+            if (action.enabled)
+                set(!checked);
+        },
         setChecked(next) {
             open();
             if (typeof next !== 'boolean')
                 throw new EgretError('UI_CONTROL_OPTIONS');
             set(next);
         },
-        press() { action.press(); },
-        release() { action.release(); },
+        press() {
+            action.press();
+        },
+        release() {
+            action.release();
+        },
         setEnabled(next) {
             if (typeof next !== 'boolean')
                 throw new EgretError('UI_CONTROL_OPTIONS');
             action.setEnabled(next);
         },
-        dispose() { closed = true; action.dispose(); },
+        dispose() {
+            closed = true;
+            action.dispose();
+        }
     });
 }
 export function createSelectionGroup(options) {
@@ -149,7 +187,12 @@ export function createSelectionGroup(options) {
     const entries = [], byKey = new Map(), targets = new Set();
     for (const item of items) {
         const { key, enabled: itemEnabled = true } = record(item), target = displayTarget(item.target);
-        if (typeof key !== 'string' || key.length < 1 || key.length > 128 || byKey.has(key) || targets.has(target) || typeof itemEnabled !== 'boolean')
+        if (typeof key !== 'string' ||
+            key.length < 1 ||
+            key.length > 128 ||
+            byKey.has(key) ||
+            targets.has(target) ||
+            typeof itemEnabled !== 'boolean')
             throw new EgretError('UI_CONTROL_OPTIONS');
         const entry = { key, target, enabled: itemEnabled, action: undefined };
         entries.push(entry);
@@ -164,8 +207,10 @@ export function createSelectionGroup(options) {
     }
     const keys = Object.freeze(entries.map(entry => entry.key));
     let closed = false, enabled = true;
-    function open() { if (closed)
-        throw new EgretError('UI_CONTROL_CLOSED'); }
+    function open() {
+        if (closed)
+            throw new EgretError('UI_CONTROL_CLOSED');
+    }
     function known(key) {
         const entry = byKey.get(key);
         if (entry === undefined)
@@ -203,26 +248,53 @@ export function createSelectionGroup(options) {
     try {
         // Each item takes its press through an action control; whether the press may select is decided in one place, above.
         for (const entry of entries)
-            entry.action = createActionControl({ input, target: entry.target, onActivate: () => { choose(entry); } });
+            entry.action = createActionControl({
+                input,
+                target: entry.target,
+                onActivate: () => {
+                    choose(entry);
+                }
+            });
     }
     catch (cause) {
         for (const entry of entries)
             try {
                 entry.action?.dispose();
             }
-            catch { /* the first failure is the one reported */ }
+            catch {
+                /* the first failure is the one reported */
+            }
         throw cause;
     }
     return Object.freeze({
-        get selected() { return selected?.key; },
+        get selected() {
+            return selected?.key;
+        },
         keys,
-        get enabled() { return enabled; },
-        select(key) { open(); return choose(known(key)); },
-        next() { return move(1); },
-        previous() { return move(-1); },
-        first() { open(); return choose(seek(0, 1)); },
-        last() { open(); return choose(seek(entries.length - 1, -1)); },
-        isItemEnabled(key) { return known(key).enabled; },
+        get enabled() {
+            return enabled;
+        },
+        select(key) {
+            open();
+            return choose(known(key));
+        },
+        next() {
+            return move(1);
+        },
+        previous() {
+            return move(-1);
+        },
+        first() {
+            open();
+            return choose(seek(0, 1));
+        },
+        last() {
+            open();
+            return choose(seek(entries.length - 1, -1));
+        },
+        isItemEnabled(key) {
+            return known(key).enabled;
+        },
         setItemEnabled(key, next) {
             open();
             const entry = known(key);
@@ -250,7 +322,7 @@ export function createSelectionGroup(options) {
                 }
             if (failure !== undefined)
                 throw failure;
-        },
+        }
     });
 }
 //# sourceMappingURL=stateControls.js.map

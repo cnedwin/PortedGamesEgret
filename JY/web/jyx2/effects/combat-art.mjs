@@ -157,7 +157,7 @@ export function createCombatArt(usedMagics, density = 1) {
     const atlas = document.createElement('canvas');
     atlas.width = width * Math.min(columns, page.length) * density;
     atlas.height = height * Math.ceil(page.length / columns) * density;
-    const context = atlas.getContext('2d');
+    const context = atlas.getContext('2d', { willReadFrequently: true });
     const regions = page.map(({ id, style, paint }, index) => {
       const x = index % columns * width * density, y = Math.floor(index / columns) * height * density;
       context.save();

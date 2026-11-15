@@ -1,4 +1,4 @@
-import { createTextValueFailure, requireOwnedTextRasterRequest, takeTextValueFailure, } from './request.js';
+import { createTextValueFailure, requireOwnedTextRasterRequest, takeTextValueFailure } from './request.js';
 const apply = Reflect.apply;
 const freeze = Object.freeze;
 const TypeFault = TypeError;
@@ -147,10 +147,10 @@ function createPlan(state, input) {
         }
         const logicalHeight = coordinate(count * request.lineHeight, invocation, 'Logical height');
         const logicalBounds = bounds(0, 0, maxAdvance, logicalHeight, invocation);
-        const inkBounds = hasAnyInk
-            ? bounds(unionLeft, unionTop, unionRight, unionBottom, invocation) : undefined;
+        const inkBounds = hasAnyInk ? bounds(unionLeft, unionTop, unionRight, unionBottom, invocation) : undefined;
         const contentBounds = hasAnyInk
-            ? bounds(min(0, unionLeft), min(0, unionTop), max(maxAdvance, unionRight), max(logicalHeight, unionBottom), invocation) : logicalBounds;
+            ? bounds(min(0, unionLeft), min(0, unionTop), max(maxAdvance, unionRight), max(logicalHeight, unionBottom), invocation)
+            : logicalBounds;
         let raster;
         if (hasAnyInk) {
             const density = request.density;
@@ -165,8 +165,7 @@ function createPlan(state, input) {
             const pixelBottom = coordinate(ceil(scaledBottom) + 2, invocation, 'Raster bottom');
             const width = pixelRight - pixelLeft;
             const height = pixelBottom - pixelTop;
-            if (!safeInteger(width) || !safeInteger(height) || width <= 0 || height <= 0
-                || width > 4096 || height > 4096)
+            if (!safeInteger(width) || !safeInteger(height) || width <= 0 || height <= 0 || width > 4096 || height > 4096)
                 limit(invocation, 'Raster edge limit');
             const pixels = width * height;
             if (!safeInteger(pixels) || pixels > 1048576)
@@ -178,11 +177,26 @@ function createPlan(state, input) {
             const y = coordinate(pixelTop / density, invocation, 'Raster y');
             const logicalWidth = coordinate(width / density, invocation, 'Raster logical width');
             const rasterLogicalHeight = coordinate(height / density, invocation, 'Raster logical height');
-            raster = freeze({ pixelLeft, pixelTop, width, height, byteLength, density,
-                x, y, logicalWidth, logicalHeight: rasterLogicalHeight });
+            raster = freeze({
+                pixelLeft,
+                pixelTop,
+                width,
+                height,
+                byteLength,
+                density,
+                x,
+                y,
+                logicalWidth,
+                logicalHeight: rasterLogicalHeight
+            });
         }
-        const metrics = freeze({ logicalBounds, inkBounds, contentBounds,
-            lines: freeze(lines), raster });
+        const metrics = freeze({
+            logicalBounds,
+            inkBounds,
+            contentBounds,
+            lines: freeze(lines),
+            raster
+        });
         const plan = freeze({ request, metrics });
         if (state.closed)
             throw createTextValueFailure(invocation, 'TEXT_PLAN_SCOPE_CLOSED');
@@ -214,7 +228,8 @@ export function requireIssuedTextRasterPlan(issuer, value, invocation) {
     // Authenticate the invocation without consuming a note or reopening its closed failure scope.
     takeTextValueFailure(invocation, undefined);
     const owner = typeof value === 'object' && value !== null
-        ? apply(weakGet, plans, [value]) : undefined;
+        ? apply(weakGet, plans, [value])
+        : undefined;
     if (state.invocation !== invocation || owner !== state || value !== state.issued) {
         invalid(invocation, 'The exact plan issued for this invocation is required');
     }

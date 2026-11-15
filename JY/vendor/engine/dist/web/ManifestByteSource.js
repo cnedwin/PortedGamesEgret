@@ -21,17 +21,37 @@ const set = byteProto.set;
 const owners = new WeakMap();
 const MAX_INPUT = 8_388_608, MAX_BYTES = 33_554_432, MAX_NETWORK = 4, MAX_DECODE = 2, MAX_QUEUE = 128, MAX_RECORDS = 132;
 const retryStatus = new Set([408, 429, 500, 502, 503, 504]);
-const statusFields = ['jobs', 'queuedNetwork', 'queuedDecode', 'retryWaiting', 'activeNetwork', 'activeDecode',
-    'encodedCreditBytes', 'ownedEncodedBytes', 'borrowedChunkBytes', 'quarantinedJobs'];
+const statusFields = [
+    'jobs',
+    'queuedNetwork',
+    'queuedDecode',
+    'retryWaiting',
+    'activeNetwork',
+    'activeDecode',
+    'encodedCreditBytes',
+    'ownedEncodedBytes',
+    'borrowedChunkBytes',
+    'quarantinedJobs'
+];
 function deferred() {
     let resolve, reject;
-    const result = new Promise((yes, no) => { resolve = yes; reject = no; });
+    const result = new Promise((yes, no) => {
+        resolve = yes;
+        reject = no;
+    });
     return { promise: result, resolve, reject };
 }
-function fault(code, cause) { return new EgretError('WEB_RESOURCE_' + code, { cause }); }
-function record(value) { return typeof value === 'object' && value !== null; }
-function method(value) { if (typeof value !== 'function')
-    throw new TypeError('Required operation unavailable'); return value; }
+function fault(code, cause) {
+    return new EgretError('WEB_RESOURCE_' + code, { cause });
+}
+function record(value) {
+    return typeof value === 'object' && value !== null;
+}
+function method(value) {
+    if (typeof value !== 'function')
+        throw new TypeError('Required operation unavailable');
+    return value;
+}
 function strict(value, allowed) {
     if (!record(value) || (proto(value) !== Object.prototype && proto(value) !== null))
         throw fault('OPTIONS_INVALID');
@@ -70,8 +90,20 @@ function capture() {
         if (typeof Abort !== 'function' || typeof URL !== 'function')
             throw new TypeError('Native browser capabilities unavailable');
         const clock = global.performance;
-        return { global, fetch, digest, subtle, Abort, abort: method(Abort.prototype.abort), signal: method(own(Abort.prototype, 'signal')?.get), URL,
-            clock, now: method(clock.now), timer: method(global.setTimeout), clear: method(global.clearTimeout) };
+        return {
+            global,
+            fetch,
+            digest,
+            subtle,
+            Abort,
+            abort: method(Abort.prototype.abort),
+            signal: method(own(Abort.prototype, 'signal')?.get),
+            URL,
+            clock,
+            now: method(clock.now),
+            timer: method(global.setTimeout),
+            clear: method(global.clearTimeout)
+        };
     }
     catch (cause) {
         throw fault('UNAVAILABLE', cause);
@@ -147,8 +179,18 @@ export class ManifestPngOwner {
     byteLimit;
     deadlineMs;
     retries;
-    highWater = { jobs: 0, queuedNetwork: 0, queuedDecode: 0, retryWaiting: 0,
-        activeNetwork: 0, activeDecode: 0, encodedCreditBytes: 0, ownedEncodedBytes: 0, borrowedChunkBytes: 0, quarantinedJobs: 0 };
+    highWater = {
+        jobs: 0,
+        queuedNetwork: 0,
+        queuedDecode: 0,
+        retryWaiting: 0,
+        activeNetwork: 0,
+        activeDecode: 0,
+        encodedCreditBytes: 0,
+        ownedEncodedBytes: 0,
+        borrowedChunkBytes: 0,
+        quarantinedJobs: 0
+    };
     saturated = false;
     constructor(manifest, bindings, options) {
         if (!isAdmittedResourceManifest(manifest))
@@ -178,13 +220,18 @@ export class ManifestPngOwner {
         const input = strict(options, ['baseUrl', 'deadlineMs', 'networkRetries', 'profile']);
         if (input.profile !== undefined && input.profile !== 'font-sfnt/1')
             throw fault('OPTIONS_INVALID');
-        if (input.profile === 'font-sfnt/1' && admitted.some(item => item.entry.resourceKind !== 'font' || item.entry.artifactFormatVersion !== 'egret.font/1'))
+        if (input.profile === 'font-sfnt/1' &&
+            admitted.some(item => item.entry.resourceKind !== 'font' || item.entry.artifactFormatVersion !== 'egret.font/1'))
             throw fault('BINDINGS_INVALID');
         this.inputLimit = input.profile === 'font-sfnt/1' ? 33_554_432 : MAX_INPUT;
         this.byteLimit = input.profile === 'font-sfnt/1' ? 67_108_864 : MAX_BYTES;
         const deadline = input.deadlineMs ?? 10_000, retries = input.networkRetries ?? 0;
-        if (typeof input.baseUrl !== 'string' || typeof deadline !== 'number' || !Number.isSafeInteger(deadline)
-            || deadline < 1 || deadline > 30_000 || (retries !== 0 && retries !== 1))
+        if (typeof input.baseUrl !== 'string' ||
+            typeof deadline !== 'number' ||
+            !Number.isSafeInteger(deadline) ||
+            deadline < 1 ||
+            deadline > 30_000 ||
+            (retries !== 0 && retries !== 1))
             throw fault('OPTIONS_INVALID');
         this.deadlineMs = deadline;
         this.retries = retries;
@@ -194,13 +241,21 @@ export class ManifestPngOwner {
             if (!spelling(text) || !text.endsWith('/'))
                 throw new TypeError('Explicit plain directory URL required');
             const base = new this.native.URL(text);
-            if (!['http:', 'https:'].includes(base.protocol) || base.username || base.password || base.search || base.hash
-                || base.href !== text)
+            if (!['http:', 'https:'].includes(base.protocol) ||
+                base.username ||
+                base.password ||
+                base.search ||
+                base.hash ||
+                base.href !== text)
                 throw new TypeError('Canonical http/https directory base required');
             this.base = base;
             for (const item of admitted) {
                 const path = item.entry.artifact.path;
-                if (!spelling(path) || path.trim() !== path || path.startsWith('/') || path.includes(':') || path.split('/').some(part => part === '.' || part === '..'))
+                if (!spelling(path) ||
+                    path.trim() !== path ||
+                    path.startsWith('/') ||
+                    path.includes(':') ||
+                    path.split('/').some(part => part === '.' || part === '..'))
                     throw new TypeError('Relative canonical artifact path required');
                 const resolved = new this.native.URL(path, base);
                 if (!this.contained(resolved))
@@ -213,15 +268,23 @@ export class ManifestPngOwner {
         }
     }
     contained(value) {
-        return value.origin === this.base.origin && value.pathname.startsWith(this.base.pathname)
-            && !value.username && !value.password && !value.search && !value.hash;
+        return (value.origin === this.base.origin &&
+            value.pathname.startsWith(this.base.pathname) &&
+            !value.username &&
+            !value.password &&
+            !value.search &&
+            !value.hash);
     }
-    now() { return apply(this.native.now, this.native.clock, []); }
+    now() {
+        return apply(this.native.now, this.native.clock, []);
+    }
     controller() {
         const controller = new this.native.Abort();
         return { controller, signal: apply(this.native.signal, controller, []) };
     }
-    get isClosed() { return this.closed; }
+    get isClosed() {
+        return this.closed;
+    }
     currentStatus() {
         let ownedEncodedBytes = 0, borrowedChunkBytes = 0, quarantinedJobs = 0;
         for (const job of this.jobs) {
@@ -233,9 +296,18 @@ export class ManifestPngOwner {
             if (job.finished)
                 quarantinedJobs++;
         }
-        return { jobs: this.jobs.size, queuedNetwork: this.networkQueue.length, queuedDecode: this.decodeQueue.length,
-            retryWaiting: this.retryCount, activeNetwork: this.networkCount, activeDecode: this.decodeCount,
-            encodedCreditBytes: this.byteCount, ownedEncodedBytes, borrowedChunkBytes, quarantinedJobs };
+        return {
+            jobs: this.jobs.size,
+            queuedNetwork: this.networkQueue.length,
+            queuedDecode: this.decodeQueue.length,
+            retryWaiting: this.retryCount,
+            activeNetwork: this.networkCount,
+            activeDecode: this.decodeCount,
+            encodedCreditBytes: this.byteCount,
+            ownedEncodedBytes,
+            borrowedChunkBytes,
+            quarantinedJobs
+        };
     }
     sampleStatus() {
         const current = this.currentStatus();
@@ -250,7 +322,11 @@ export class ManifestPngOwner {
         }
     }
     getStatus() {
-        return freeze({ current: freeze(this.currentStatus()), highWater: freeze({ ...this.highWater }), saturated: this.saturated });
+        return freeze({
+            current: freeze(this.currentStatus()),
+            highWater: freeze({ ...this.highWater }),
+            saturated: this.saturated
+        });
     }
     begin(ref, context) {
         if (this.closed)
@@ -277,7 +353,11 @@ export class ManifestPngOwner {
             signal = context.signal;
             generation = context.resourceGeneration;
             taskId = context.taskId;
-            if (!record(signal) || !Number.isSafeInteger(generation) || generation < 1 || !Number.isSafeInteger(taskId) || taskId < 1)
+            if (!record(signal) ||
+                !Number.isSafeInteger(generation) ||
+                generation < 1 ||
+                !Number.isSafeInteger(taskId) ||
+                taskId < 1)
                 throw new TypeError('Signal and positive local IDs required');
             add = method(signal.addEventListener);
             remove = method(signal.removeEventListener);
@@ -318,7 +398,10 @@ export class ManifestPngOwner {
         try {
             if (this.closed)
                 this.cancel(job, fault('SOURCE_CLOSED'));
-            job.timer = apply(this.native.timer, this.native.global, [() => this.cancel(job, fault('DEADLINE_EXCEEDED')), Math.max(0, end - this.now())]);
+            job.timer = apply(this.native.timer, this.native.global, [
+                () => this.cancel(job, fault('DEADLINE_EXCEEDED')),
+                Math.max(0, end - this.now())
+            ]);
             if (!job.terminal) {
                 const aborted = signal.aborted;
                 if (typeof aborted !== 'boolean')
@@ -348,8 +431,10 @@ export class ManifestPngOwner {
         }
         return job;
     }
-    authentic(job) { if (job.owner !== this || !this.jobs.has(job) || job.finished)
-        throw fault('CONTEXT_INVALID'); }
+    authentic(job) {
+        if (job.owner !== this || !this.jobs.has(job) || job.finished)
+            throw fault('CONTEXT_INVALID');
+    }
     checkpoint(job) {
         if (!job.terminal && this.now() >= job.end)
             this.cancel(job, fault('DEADLINE_EXCEEDED'));
@@ -389,7 +474,10 @@ export class ManifestPngOwner {
             job.cleanup.push(cause);
             job.networkUnsafe = true;
         }
-        for (const [queue, property] of [[this.networkQueue, 'queuedNetwork'], [this.decodeQueue, 'queuedDecode']]) {
+        for (const [queue, property] of [
+            [this.networkQueue, 'queuedNetwork'],
+            [this.decodeQueue, 'queuedDecode']
+        ]) {
             const at = queue.indexOf(job);
             if (at >= 0) {
                 queue.splice(at, 1);
@@ -478,7 +566,9 @@ export class ManifestPngOwner {
             this.sampleStatus();
         }
     }
-    waitingCount() { return this.networkQueue.length + this.decodeQueue.length + this.retryCount; }
+    waitingCount() {
+        return this.networkQueue.length + this.decodeQueue.length + this.retryCount;
+    }
     networkPermit(job) {
         this.checkpoint(job);
         if (job.waitingRetry) {
@@ -513,12 +603,14 @@ export class ManifestPngOwner {
             throw cause;
         }
     }
-    decoded(job) { if (job.decode) {
-        job.decode = false;
-        this.decodeCount--;
-        this.sampleStatus();
-        this.pump();
-    } }
+    decoded(job) {
+        if (job.decode) {
+            job.decode = false;
+            this.decodeCount--;
+            this.sampleStatus();
+            this.pump();
+        }
+    }
     async transport(job) {
         await this.networkPermit(job);
         let result;
@@ -527,10 +619,16 @@ export class ManifestPngOwner {
             this.checkpoint(job);
             let response;
             try {
-                response = await promise(apply(this.native.fetch, this.native.global, [job.url, { method: 'GET', credentials: 'omit', redirect: 'error', cache: 'no-store', signal: job.nativeSignal }]));
+                response = await promise(apply(this.native.fetch, this.native.global, [
+                    job.url,
+                    { method: 'GET', credentials: 'omit', redirect: 'error', cache: 'no-store', signal: job.nativeSignal }
+                ]));
             }
             catch (cause) {
-                return { retry: cause instanceof TypeError && !job.terminal, error: job.terminal ?? fault('FETCH_FAILED', cause) };
+                return {
+                    retry: cause instanceof TypeError && !job.terminal,
+                    error: job.terminal ?? fault('FETCH_FAILED', cause)
+                };
             }
             if (!record(response))
                 throw fault('RESPONSE_INVALID');
@@ -710,7 +808,13 @@ export class ManifestPngOwner {
         this.retryCount++;
         this.sampleStatus();
         await new Promise(resolve => {
-            const handle = apply(this.native.timer, this.native.global, [() => { job.delay = undefined; resolve(); }, 100]);
+            const handle = apply(this.native.timer, this.native.global, [
+                () => {
+                    job.delay = undefined;
+                    resolve();
+                },
+                100
+            ]);
             job.delay = { handle, finish: resolve };
         });
         // Keep this single waiting reservation until networkPermit transfers it
@@ -746,7 +850,8 @@ export class ManifestPngOwner {
                 }
                 this.checkpoint(job);
                 const digest = new Bytes(hash);
-                if (digest.byteLength !== 32 || Array.from(digest, value => value.toString(16).padStart(2, '0')).join('') !== job.entry.artifact.sha256)
+                if (digest.byteLength !== 32 ||
+                    Array.from(digest, value => value.toString(16).padStart(2, '0')).join('') !== job.entry.artifact.sha256)
                     throw fault('INTEGRITY_MISMATCH');
                 return data;
             }
@@ -768,8 +873,12 @@ export class ManifestPngOwner {
         job.publication.resolve(value);
         return true;
     }
-    reject(job, cause) { this.cancel(job, cause instanceof EgretError ? cause : fault('BODY_FAILED', cause)); }
-    publication(job) { return job.publication.promise; }
+    reject(job, cause) {
+        this.cancel(job, cause instanceof EgretError ? cause : fault('BODY_FAILED', cause));
+    }
+    publication(job) {
+        return job.publication.promise;
+    }
     finish(job) {
         if (job.finished)
             return;
@@ -824,8 +933,11 @@ export function createManifestByteSource(manifest, bindings, options) {
     const owner = new ManifestPngOwner(manifest, bindings, options);
     const source = freeze({
         profile: 'manifest-sha256-browser-v1',
-        get isClosed() { if (this !== source)
-            throw fault('SOURCE_INVALID'); return owner.isClosed; },
+        get isClosed() {
+            if (this !== source)
+                throw fault('SOURCE_INVALID');
+            return owner.isClosed;
+        },
         readBytes(ref, context) {
             if (this !== source)
                 return Promise.reject(fault('SOURCE_INVALID'));
@@ -836,13 +948,25 @@ export function createManifestByteSource(manifest, bindings, options) {
             catch (cause) {
                 return Promise.reject(cause);
             }
-            void owner.readActual(job).then(value => { owner.publish(job, value); owner.finish(job); }, cause => { owner.reject(job, cause); owner.finish(job); });
+            void owner.readActual(job).then(value => {
+                owner.publish(job, value);
+                owner.finish(job);
+            }, cause => {
+                owner.reject(job, cause);
+                owner.finish(job);
+            });
             return owner.publication(job);
         },
-        close() { if (this !== source)
-            throw fault('SOURCE_INVALID'); return owner.close(); },
-        getStatus() { if (this !== source)
-            throw fault('SOURCE_INVALID'); return owner.getStatus(); },
+        close() {
+            if (this !== source)
+                throw fault('SOURCE_INVALID');
+            return owner.close();
+        },
+        getStatus() {
+            if (this !== source)
+                throw fault('SOURCE_INVALID');
+            return owner.getStatus();
+        }
     });
     owners.set(source, owner);
     return source;

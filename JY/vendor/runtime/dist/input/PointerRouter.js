@@ -2,12 +2,26 @@
 import { EgretError } from "../EgretError.js";
 let nextGeneration = 1;
 const reasons = Object.freeze([
-    "pointercancel", "lostcapture", "blur", "hidden", "pagehide", "viewport",
-    "owner", "suspended", "dispose", "error",
+    "pointercancel",
+    "lostcapture",
+    "blur",
+    "hidden",
+    "pagehide",
+    "viewport",
+    "owner",
+    "suspended",
+    "dispose",
+    "error"
 ]);
-function finite(value) { return typeof value === "number" && Number.isFinite(value); }
-function safeNonnegative(value) { return typeof value === "number" && Number.isSafeInteger(value) && value >= 0; }
-function object(value) { return value !== null && typeof value === "object"; }
+function finite(value) {
+    return typeof value === "number" && Number.isFinite(value);
+}
+function safeNonnegative(value) {
+    return typeof value === "number" && Number.isSafeInteger(value) && value >= 0;
+}
+function object(value) {
+    return value !== null && typeof value === "object";
+}
 function checkReason(reason) {
     if (!reasons.includes(reason))
         throw new EgretError("POINTER_INPUT_REASON");
@@ -18,15 +32,26 @@ function copyUpdate(input, observedTime) {
         if (!object(input))
             throw new EgretError("POINTER_INPUT_SAMPLE");
         const { globalX, globalY, buttons, timestamp, pressure, width, height } = input;
-        if (!finite(globalX) || !finite(globalY) || !safeNonnegative(buttons) || buttons > 65535
-            || !finite(timestamp) || timestamp < 0 || timestamp < observedTime
-            || (pressure !== undefined && (!finite(pressure) || pressure < 0 || pressure > 1))
-            || (width !== undefined && (!finite(width) || width < 0))
-            || (height !== undefined && (!finite(height) || height < 0)))
+        if (!finite(globalX) ||
+            !finite(globalY) ||
+            !safeNonnegative(buttons) ||
+            buttons > 65535 ||
+            !finite(timestamp) ||
+            timestamp < 0 ||
+            timestamp < observedTime ||
+            (pressure !== undefined && (!finite(pressure) || pressure < 0 || pressure > 1)) ||
+            (width !== undefined && (!finite(width) || width < 0)) ||
+            (height !== undefined && (!finite(height) || height < 0)))
             throw new EgretError("POINTER_INPUT_SAMPLE");
-        return Object.freeze({ globalX, globalY, buttons, timestamp,
-            ...(pressure === undefined ? {} : { pressure }), ...(width === undefined ? {} : { width }),
-            ...(height === undefined ? {} : { height }) });
+        return Object.freeze({
+            globalX,
+            globalY,
+            buttons,
+            timestamp,
+            ...(pressure === undefined ? {} : { pressure }),
+            ...(width === undefined ? {} : { width }),
+            ...(height === undefined ? {} : { height })
+        });
     }
     catch (cause) {
         if (cause instanceof EgretError && cause.code === "POINTER_INPUT_SAMPLE")
@@ -39,8 +64,13 @@ export function createPointerRouter(options) {
     if (!object(options))
         throw new EgretError("POINTER_INPUT_OPTIONS");
     const { capacity = 10, viewportRevision = 0, pick, eligible, dispatch } = options;
-    if (!Number.isInteger(capacity) || capacity < 5 || capacity > 32 || !safeNonnegative(viewportRevision)
-        || typeof pick !== "function" || typeof eligible !== "function" || typeof dispatch !== "function") {
+    if (!Number.isInteger(capacity) ||
+        capacity < 5 ||
+        capacity > 32 ||
+        !safeNonnegative(viewportRevision) ||
+        typeof pick !== "function" ||
+        typeof eligible !== "function" ||
+        typeof dispatch !== "function") {
         throw new EgretError("POINTER_INPUT_OPTIONS");
     }
     if (!Number.isSafeInteger(nextGeneration))
@@ -76,8 +106,12 @@ export function createPointerRouter(options) {
             throw new EgretError("POINTER_INPUT_REENTRANT");
         return run(action);
     }
-    function alive(entry) { return entries.get(entry.session) === entry; }
-    function closed() { return state === "closed"; }
+    function alive(entry) {
+        return entries.get(entry.session) === entry;
+    }
+    function closed() {
+        return state === "closed";
+    }
     function snapshot(session, update) {
         if (!Number.isSafeInteger(sequence + 1))
             throw new EgretError("POINTER_INPUT_EXHAUSTED");
@@ -244,9 +278,15 @@ export function createPointerRouter(options) {
         });
     }
     return Object.freeze({
-        get state() { return state; },
-        get contacts() { return Object.freeze([...entries.values()].map(entry => entry.contact)); },
-        get viewportRevision() { return revision; },
+        get state() {
+            return state;
+        },
+        get contacts() {
+            return Object.freeze([...entries.values()].map(entry => entry.contact));
+        },
+        get viewportRevision() {
+            return revision;
+        },
         begin(input) {
             return sampleOperation(() => {
                 if (state !== "active")
@@ -277,7 +317,14 @@ export function createPointerRouter(options) {
                     return undefined;
                 const session = Object.freeze({ generation, id: nextId++, pointerId, pointerType });
                 const contact = snapshot(session, copied);
-                const entry = { session, contact, owner, captured: owner !== undefined, captureTarget: owner, lastTarget: owner };
+                const entry = {
+                    session,
+                    contact,
+                    owner,
+                    captured: owner !== undefined,
+                    captureTarget: owner,
+                    lastTarget: owner
+                };
                 entries.set(session, entry);
                 hostIds.set(pointerId, session);
                 observedTime = copied.timestamp;
@@ -285,8 +332,12 @@ export function createPointerRouter(options) {
                 return alive(entry) ? session : undefined;
             });
         },
-        move(session, update) { return updateContact("move", session, update); },
-        end(session, update) { return updateContact("end", session, update); },
+        move(session, update) {
+            return updateContact("move", session, update);
+        },
+        end(session, update) {
+            return updateContact("end", session, update);
+        },
         cancel(session, reason) {
             return run(() => {
                 const entry = entries.get(session);
@@ -297,7 +348,10 @@ export function createPointerRouter(options) {
             });
         },
         cancelAll(reason) {
-            run(() => { checkReason(reason); cancelEvery(reason); });
+            run(() => {
+                checkReason(reason);
+                cancelEvery(reason);
+            });
         },
         capture(session, target) {
             return run(() => {
@@ -340,7 +394,9 @@ export function createPointerRouter(options) {
                 return alive(entry) && state === "active";
             });
         },
-        sync() { run(synchronize); },
+        sync() {
+            run(synchronize);
+        },
         setViewportRevision(next) {
             run(() => {
                 if (!safeNonnegative(next) || next <= revision)
@@ -391,7 +447,7 @@ export function createPointerRouter(options) {
                     checking.clear();
                 }
             });
-        },
+        }
     });
 }
 //# sourceMappingURL=PointerRouter.js.map

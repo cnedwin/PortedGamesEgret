@@ -9,7 +9,9 @@ class Builder {
     normals = [];
     uvs = [];
     indices = [];
-    get vertexCount() { return this.positions.length / 3; }
+    get vertexCount() {
+        return this.positions.length / 3;
+    }
     vertex(px, py, pz, nx, ny, nz, u, v) {
         this.positions.push(px, py, pz);
         this.normals.push(nx, ny, nz);
@@ -128,7 +130,7 @@ export function createCylinderGeometry3D(options = {}) {
             const center = builder.vertexCount;
             builder.vertex(0, y, 0, 0, normalY, 0, 0.5, 0.5);
             for (let ix = 0; ix <= rs; ix++) {
-                const theta = ix / rs * Math.PI * 2, sin = Math.sin(theta), cos = Math.cos(theta);
+                const theta = (ix / rs) * Math.PI * 2, sin = Math.sin(theta), cos = Math.cos(theta);
                 builder.vertex(radius * sin, y, radius * cos, 0, normalY, 0, sin * 0.5 + 0.5, cos * 0.5 * normalY + 0.5);
             }
             for (let ix = 0; ix < rs; ix++) {
@@ -146,8 +148,10 @@ export function createCylinderGeometry3D(options = {}) {
 }
 export function createConeGeometry3D(options = {}) {
     return createCylinderGeometry3D({
-        radiusTop: 0, radiusBottom: options.radius ?? 0.5, height: options.height ?? 1,
-        ...(options.radialSegments === undefined ? {} : { radialSegments: options.radialSegments }),
+        radiusTop: 0,
+        radiusBottom: options.radius ?? 0.5,
+        height: options.height ?? 1,
+        ...(options.radialSegments === undefined ? {} : { radialSegments: options.radialSegments })
     });
 }
 /** Torus around the Z axis. */
@@ -156,9 +160,9 @@ export function createTorusGeometry3D(options = {}) {
     const rs = segments(options.radialSegments, 16, 3, 'radialSegments'), ts = segments(options.tubularSegments, 48, 3, 'tubularSegments');
     const builder = new Builder();
     for (let j = 0; j <= rs; j++) {
-        const v = j / rs * Math.PI * 2, cosV = Math.cos(v), sinV = Math.sin(v);
+        const v = (j / rs) * Math.PI * 2, cosV = Math.cos(v), sinV = Math.sin(v);
         for (let i = 0; i <= ts; i++) {
-            const u = i / ts * Math.PI * 2, cosU = Math.cos(u), sinU = Math.sin(u);
+            const u = (i / ts) * Math.PI * 2, cosU = Math.cos(u), sinU = Math.sin(u);
             builder.vertex((radius + tube * cosV) * cosU, (radius + tube * cosV) * sinU, tube * sinV, cosV * cosU, cosV * sinU, sinV, i / ts, j / rs);
         }
     }
@@ -173,7 +177,7 @@ export function createCapsuleGeometry3D(options = {}) {
     const rows = cs * 2 + 1, total = Math.PI * radius + height;
     for (let iy = 0; iy <= rows; iy++) {
         // Rows 0..cs sweep the top hemisphere, the rest sweep the bottom one.
-        const upper = iy <= cs, ring = upper ? iy : iy - 1, phi = ring / (cs * 2) * Math.PI;
+        const upper = iy <= cs, ring = upper ? iy : iy - 1, phi = (ring / (cs * 2)) * Math.PI;
         const sinPhi = Math.sin(phi), cosPhi = Math.cos(phi), offset = upper ? height / 2 : -height / 2;
         const arc = phi * radius + (upper ? 0 : height);
         for (let ix = 0; ix <= rs; ix++) {

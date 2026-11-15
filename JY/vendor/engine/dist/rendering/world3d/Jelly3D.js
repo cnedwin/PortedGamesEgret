@@ -26,7 +26,12 @@ fn customVertex(worldPosition: vec3f, localPosition: vec3f, normal: vec3f, uv: v
 }`;
 /** The vertex hook a jelly drives. Its parameters start as "no change". */
 export function createJellyShader3D() {
-    return createCustomShader3D({ key: 'world3d-jelly', glslVertex: GLSL_VERTEX, wgslVertex: WGSL_VERTEX, uniforms: [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0] });
+    return createCustomShader3D({
+        key: 'world3d-jelly',
+        glslVertex: GLSL_VERTEX,
+        wgslVertex: WGSL_VERTEX,
+        uniforms: [0, 1, 0, 1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 0, 0]
+    });
 }
 /**
  * Makes everything drawn under `target` behave like jelly. Each mesh gets its
@@ -87,7 +92,7 @@ export class Jelly3D {
         let radius = 0;
         target.updateWorldMatrix();
         const origin = target.matrixWorld;
-        target.traverse((object) => {
+        target.traverse(object => {
             if (!(object instanceof Mesh3D))
                 return;
             const own = (material) => {
@@ -111,11 +116,17 @@ export class Jelly3D {
         this.write();
     }
     /** How flat the shape is along its squash line right now: positive when pressed, negative when stretched. */
-    get amount() { return this.#strain[0] * this.#axis[0] + this.#strain[1] * this.#axis[1] + this.#strain[2] * this.#axis[2]; }
+    get amount() {
+        return this.#strain[0] * this.#axis[0] + this.#strain[1] * this.#axis[1] + this.#strain[2] * this.#axis[2];
+    }
     /** The line the shape is squashed along, as a unit direction. */
-    get axis() { return this.#axis; }
+    get axis() {
+        return this.#axis;
+    }
     /** How far the top currently trails, in world units. */
-    get lag() { return this.#lag; }
+    get lag() {
+        return this.#lag;
+    }
     /**
      * Knock the jelly: `direction` is the way the blow travels, `strength` the
      * change of speed it stands for in metres per second.
@@ -124,7 +135,7 @@ export class Jelly3D {
         const size = Math.hypot(direction[0], direction[1], direction[2]), speed = requireFinite3D(strength, 'strength');
         if (!(size > 0))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'direction');
-        this.kick(direction[0] / size * speed, direction[1] / size * speed, direction[2] / size * speed);
+        this.kick((direction[0] / size) * speed, (direction[1] / size) * speed, (direction[2] / size) * speed);
     }
     kick(dx, dy, dz) {
         const omega = 2 * Math.PI * this.stiffness, press = this.sensitivity * omega, s = this.#strainSpeed, l = this.#lagSpeed;
@@ -168,9 +179,12 @@ export class Jelly3D {
             velocity[2] = vz;
             this.#seen = true;
             // Small fixed slices keep the springs stable whatever the frame time.
-            const omega = 2 * Math.PI * this.stiffness, steps = Math.max(1, Math.ceil(dt * omega / 0.35)), h = dt / steps, drag = 2 * this.damping * omega;
+            const omega = 2 * Math.PI * this.stiffness, steps = Math.max(1, Math.ceil((dt * omega) / 0.35)), h = dt / steps, drag = 2 * this.damping * omega;
             for (let step = 0; step < steps; step++) {
-                for (const [value, speed] of [[this.#strain, this.#strainSpeed], [this.#lag, this.#lagSpeed]]) {
+                for (const [value, speed] of [
+                    [this.#strain, this.#strainSpeed],
+                    [this.#lag, this.#lagSpeed]
+                ]) {
                     for (let i = 0; i < 3; i++) {
                         speed[i] = (speed[i] - omega * omega * value[i] * h) / (1 + drag * h);
                         value[i] = value[i] + speed[i] * h;
@@ -199,16 +213,20 @@ export class Jelly3D {
         if (size > 1e-6) {
             // Keep the line's direction from flipping as the shape swings through rest, so pressing turns into stretching.
             const facing = strain[0] * axis[0] + strain[1] * axis[1] + strain[2] * axis[2] < 0 ? -1 : 1;
-            axis[0] = strain[0] / size * facing;
-            axis[1] = strain[1] / size * facing;
-            axis[2] = strain[2] / size * facing;
+            axis[0] = (strain[0] / size) * facing;
+            axis[1] = (strain[1] / size) * facing;
+            axis[2] = (strain[2] / size) * facing;
         }
         let amount = this.amount;
         amount = amount > most ? most : amount < -most ? -most : amount;
         let along = 1 - amount;
         const world = this.target.matrixWorld, drop = this.height * this.base;
         // Breathing presses and releases along up, on top of whatever the springs are doing.
-        const breath = this.idle > 0 ? this.idle * Math.sin(this.#clock * this.idleRate * 2 * Math.PI) * Math.abs(axis[0] * up[0] + axis[1] * up[1] + axis[2] * up[2]) : 0;
+        const breath = this.idle > 0
+            ? this.idle *
+                Math.sin(this.#clock * this.idleRate * 2 * Math.PI) *
+                Math.abs(axis[0] * up[0] + axis[1] * up[1] + axis[2] * up[2])
+            : 0;
         along -= breath;
         // Whatever is lost along the line is gained across it, so the volume stays about the same.
         const across = 1 / Math.sqrt(along);
@@ -242,5 +260,7 @@ export class Jelly3D {
         return out;
     }
 }
-export function createJelly3D(target, options = {}) { return new Jelly3D(target, options); }
+export function createJelly3D(target, options = {}) {
+    return new Jelly3D(target, options);
+}
 //# sourceMappingURL=Jelly3D.js.map

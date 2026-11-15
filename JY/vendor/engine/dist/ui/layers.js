@@ -4,12 +4,22 @@ import { requireUiEngine } from '../internal/uiFactoryState.js';
 import { requireUiRoot } from '../internal/uiRootState.js';
 const managers = new WeakMap();
 let nextManager = 0;
-function fail(code) { throw new EgretError(code); }
-function object(value) { return value !== null && typeof value === 'object' && !Array.isArray(value); }
-function number(value, min, max) { if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
-    fail('UI_VALUE_INVALID'); return value; }
-function id(value) { if (typeof value !== 'string' || value.length < 1 || value.length > 80 || value.includes('\0'))
-    fail('UI_LAYER_ID_INVALID'); return value; }
+function fail(code) {
+    throw new EgretError(code);
+}
+function object(value) {
+    return value !== null && typeof value === 'object' && !Array.isArray(value);
+}
+function number(value, min, max) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
+        fail('UI_VALUE_INVALID');
+    return value;
+}
+function id(value) {
+    if (typeof value !== 'string' || value.length < 1 || value.length > 80 || value.includes('\0'))
+        fail('UI_LAYER_ID_INVALID');
+    return value;
+}
 function rect(value) {
     if (!object(value))
         fail('UI_VALUE_INVALID');
@@ -26,7 +36,9 @@ export function createUiLayerManager(options) {
     const input = options.input, inputPort = port.requireInput(input), keyboardIdentity = options.keyboard, keyboard = keyboardIdentity === undefined ? undefined : port.requireKeyboard(keyboardIdentity);
     const limit = number(options.maxLayers ?? 16, 1, 32), policy = options.editorPolicy ?? 'commit', invalidate = options.onInvalidate;
     let viewport = rect(options.viewport);
-    if (!Number.isInteger(limit) || !['commit', 'cancel'].includes(policy) || invalidate !== undefined && typeof invalidate !== 'function')
+    if (!Number.isInteger(limit) ||
+        !['commit', 'cancel'].includes(policy) ||
+        (invalidate !== undefined && typeof invalidate !== 'function'))
         fail('UI_VALUE_INVALID');
     port.assertIdle();
     scope.assertOpen();
@@ -36,16 +48,25 @@ export function createUiLayerManager(options) {
     const entries = new Map(), errors = [];
     let desired = [], stack = [], poses = [], revision = 0, wanted = 1, closed = false, admitting = false, syncing = false, notifying = false;
     let removeEngine = () => { }, removeEscape = () => { };
-    const attempt = (action, out = errors) => { try {
-        action();
+    const attempt = (action, out = errors) => {
+        try {
+            action();
+        }
+        catch (cause) {
+            out.push(cause);
+        }
+    };
+    function open() {
+        if (closed)
+            fail('UI_LAYER_CLOSED');
+        port.assertOpen();
+        scope.assertOpen();
     }
-    catch (cause) {
-        out.push(cause);
-    } };
-    function open() { if (closed)
-        fail('UI_LAYER_CLOSED'); port.assertOpen(); scope.assertOpen(); }
-    function admission() { open(); if (admitting || syncing)
-        fail('UI_BUSY'); }
+    function admission() {
+        open();
+        if (admitting || syncing)
+            fail('UI_BUSY');
+    }
     function request() {
         wanted++;
         if (!Number.isSafeInteger(wanted))
@@ -65,7 +86,10 @@ export function createUiLayerManager(options) {
             }
         }
     }
-    function resolve(name) { const entry = entries.get(name); return entry ?? fail('UI_LAYER_UNKNOWN'); }
+    function resolve(name) {
+        const entry = entries.get(name);
+        return entry ?? fail('UI_LAYER_UNKNOWN');
+    }
     function closeEntry(entry) {
         const index = desired.indexOf(entry);
         if (index < 0)
@@ -87,7 +111,9 @@ export function createUiLayerManager(options) {
         if (at >= 0)
             desired = desired.slice(0, at);
         // Anchors hold registration identity, so reusing an id cannot revive an old popup.
-        desired = desired.filter((value, index, all) => value.anchor === undefined || entries.get(value.anchor.parent.id) === value.anchor.parent && (value.anchor.parent.kind === 'base' || all.indexOf(value.anchor.parent) < index));
+        desired = desired.filter((value, index, all) => value.anchor === undefined ||
+            (entries.get(value.anchor.parent.id) === value.anchor.parent &&
+                (value.anchor.parent.kind === 'base' || all.indexOf(value.anchor.parent) < index)));
         for (const listener of entry.listeners)
             attempt(listener);
         attempt(entry.unsubscribe);
@@ -95,7 +121,9 @@ export function createUiLayerManager(options) {
         attempt(() => entry.keyboardRegistration?.dispose());
         if (restore && entry.port.state() === 'open') {
             attempt(() => entry.port.releaseLayer(entry.kind === 'base'));
-            attempt(() => { errors.push(...entry.port.notifyInteraction(policy)); });
+            attempt(() => {
+                errors.push(...entry.port.notifyInteraction(policy));
+            });
         }
         attempt(() => entry.scope?.dispose());
         // Unregister publishes lifetime revocation immediately; held contacts cannot wait for another sync.
@@ -112,7 +140,9 @@ export function createUiLayerManager(options) {
                 break;
             if (entry.anchor !== undefined) {
                 const parent = entry.anchor.parent;
-                if (entries.get(parent.id) !== parent || parent.kind !== 'base' && !active.includes(parent) || parent.port.anchor(entry.anchor.target) === undefined)
+                if (entries.get(parent.id) !== parent ||
+                    (parent.kind !== 'base' && !active.includes(parent)) ||
+                    parent.port.anchor(entry.anchor.target) === undefined)
                     break;
             }
             active.push(entry);
@@ -128,13 +158,15 @@ export function createUiLayerManager(options) {
             if (active[index].kind === 'modal')
                 modal = index;
         const values = [], byEntry = new Map();
-        const ordered = [...entries.values()].filter(e => e.kind === 'base').concat(active, [...entries.values()].filter(e => e.kind !== 'base' && !active.includes(e)));
+        const ordered = [...entries.values()]
+            .filter(e => e.kind === 'base')
+            .concat(active, [...entries.values()].filter(e => e.kind !== 'base' && !active.includes(e)));
         for (const entry of ordered) {
             const state = entry.port.layerState();
             if (state.input !== input || state.keyboard !== keyboard)
                 fail('UI_LAYER_INPUT_MISMATCH');
             const visible = entry.kind === 'base' || active.includes(entry);
-            if (!state.mutable || visible && entry.kind !== 'base' && !stack.includes(entry) && !state.ready)
+            if (!state.mutable || (visible && entry.kind !== 'base' && !stack.includes(entry) && !state.ready))
                 return undefined;
             const size = state.snapshot.viewport;
             let x = state.snapshot.origin.x, y = state.snapshot.origin.y;
@@ -145,7 +177,10 @@ export function createUiLayerManager(options) {
                     const parent = byEntry.get(entry.anchor.parent), box = entry.anchor.parent.port.anchor(entry.anchor.target);
                     if (parent === undefined || !parent.visible || box === undefined)
                         return undefined;
-                    x = parent.x + box.x + (entry.anchor.align === 'start' ? 0 : (box.width - size.width) / (entry.anchor.align === 'end' ? 1 : 2));
+                    x =
+                        parent.x +
+                            box.x +
+                            (entry.anchor.align === 'start' ? 0 : (box.width - size.width) / (entry.anchor.align === 'end' ? 1 : 2));
                     const below = parent.y + box.y + box.height + entry.anchor.gap, above = parent.y + box.y - size.height - entry.anchor.gap;
                     y = entry.anchor.placement === 'below' ? below : above;
                     if (y + size.height > viewport.y + viewport.height && above >= viewport.y)
@@ -168,10 +203,23 @@ export function createUiLayerManager(options) {
         return values;
     }
     function same(a, b) {
-        return a.length === b.length && a.every((x, i) => { const y = b[i]; return x.entry === y.entry && x.x === y.x && x.y === y.y && x.visible === y.visible && x.pointer === y.pointer && x.keyboard === y.keyboard; });
+        return (a.length === b.length &&
+            a.every((x, i) => {
+                const y = b[i];
+                return (x.entry === y.entry &&
+                    x.x === y.x &&
+                    x.y === y.y &&
+                    x.visible === y.visible &&
+                    x.pointer === y.pointer &&
+                    x.keyboard === y.keyboard);
+            }));
     }
     function order(values) {
-        return values.filter(value => value.visible).flatMap(value => value.entry.backdrop === undefined ? [value.entry.port.wrapper] : [value.entry.backdrop, value.entry.port.wrapper]);
+        return values
+            .filter(value => value.visible)
+            .flatMap(value => value.entry.backdrop === undefined
+            ? [value.entry.port.wrapper]
+            : [value.entry.backdrop, value.entry.port.wrapper]);
     }
     function ordered(nodes) {
         const start = port.stage.numChildren - nodes.length;
@@ -186,18 +234,22 @@ export function createUiLayerManager(options) {
                 return true;
             }
             catch (cause) {
-                if (!(cause instanceof EgretError && (cause.code === 'KEYBOARD_TARGET_INELIGIBLE' || cause.code === 'UI_ROW_NOT_REALIZED')))
+                if (!(cause instanceof EgretError &&
+                    (cause.code === 'KEYBOARD_TARGET_INELIGIBLE' || cause.code === 'UI_ROW_NOT_REALIZED')))
                     out.push(cause);
                 return false;
             }
         }
         if (restore?.id !== undefined && accept(() => keyboard.focus(restore.id, { visible: restore.visible })))
             return;
-        if (top?.initialFocus !== undefined && accept(() => top.root.list(top.initialFocus.listId).focus(top.initialFocus.key, { visible: true })))
+        if (top?.initialFocus !== undefined &&
+            accept(() => top.root.list(top.initialFocus.listId).focus(top.initialFocus.key, { visible: true })))
             return;
         if (keyboard.getSnapshot().focusedId !== undefined)
             return;
-        accept(() => { keyboardScope.focusFirst(); });
+        accept(() => {
+            keyboardScope.focusFirst();
+        });
         if (keyboard.getSnapshot().focusedId === undefined && top?.sentinel !== undefined)
             accept(() => keyboard.focus(top.sentinel));
     }
@@ -226,7 +278,11 @@ export function createUiLayerManager(options) {
             if (closed)
                 return result('closed');
             // Cancellation is a user-code boundary. Reject a stale continuation, never overwrite its intent.
-            if (epoch !== wanted || roots.some(([entry, committed, pending]) => entries.get(entry.id) !== entry || entry.port.state() !== 'open' || entry.port.layerState().snapshot.committedRevision !== committed || entry.port.layerState().snapshot.desiredRevision !== pending))
+            if (epoch !== wanted ||
+                roots.some(([entry, committed, pending]) => entries.get(entry.id) !== entry ||
+                    entry.port.state() !== 'open' ||
+                    entry.port.layerState().snapshot.committedRevision !== committed ||
+                    entry.port.layerState().snapshot.desiredRevision !== pending))
                 return result('pending');
             next = plan();
             if (closed)
@@ -239,7 +295,10 @@ export function createUiLayerManager(options) {
                 common++;
             const restore = stack[common]?.savedFocus;
             for (const entry of desired.slice(common))
-                entry.savedFocus = Object.freeze({ id: previousFocus?.focusedId, visible: previousFocus?.focusVisible ?? false });
+                entry.savedFocus = Object.freeze({
+                    id: previousFocus?.focusedId,
+                    visible: previousFocus?.focusVisible ?? false
+                });
             const top = desired.at(-1);
             // From here through publication there are no application callbacks or resource acquisitions.
             for (const value of next) {
@@ -256,8 +315,20 @@ export function createUiLayerManager(options) {
                     if (value.visible && reorder)
                         port.stage.setChildIndex(entry.backdrop, port.stage.numChildren - 1);
                 }
-                if (value.content.visible !== value.visible || value.content.pointerEnabled !== value.pointer || value.content.keyboardEnabled !== value.keyboard || value.entry.root.snapshot().origin.x !== value.x || value.entry.root.snapshot().origin.y !== value.y || value.visible && reorder) {
-                    entry.port.presentLayer({ x: value.x, y: value.y, visible: value.visible, pointerEnabled: value.pointer, keyboardEnabled: value.keyboard, ...(value.visible && reorder ? { index: port.stage.numChildren - 1 } : {}) });
+                if (value.content.visible !== value.visible ||
+                    value.content.pointerEnabled !== value.pointer ||
+                    value.content.keyboardEnabled !== value.keyboard ||
+                    value.entry.root.snapshot().origin.x !== value.x ||
+                    value.entry.root.snapshot().origin.y !== value.y ||
+                    (value.visible && reorder)) {
+                    entry.port.presentLayer({
+                        x: value.x,
+                        y: value.y,
+                        visible: value.visible,
+                        pointerEnabled: value.pointer,
+                        keyboardEnabled: value.keyboard,
+                        ...(value.visible && reorder ? { index: port.stage.numChildren - 1 } : {})
+                    });
                 }
             }
             poses = next;
@@ -295,7 +366,11 @@ export function createUiLayerManager(options) {
                 const name = id(configuration.id), root = configuration.root, kind = configuration.kind, rawAnchor = configuration.anchor, rawFocus = configuration.initialFocus;
                 const escape = configuration.closeOnEscape ?? true, outside = configuration.closeOnOutside ?? kind === 'popup';
                 const color = number(configuration.backdropColor ?? 0x0b1320, 0, 0xffffff), alpha = number(configuration.backdropAlpha ?? (kind === 'modal' ? 0.45 : 0), 0, 1);
-                if (!['base', 'popup', 'modal'].includes(kind) || typeof escape !== 'boolean' || typeof outside !== 'boolean' || !Number.isInteger(color) || kind === 'base' && rawAnchor !== undefined)
+                if (!['base', 'popup', 'modal'].includes(kind) ||
+                    typeof escape !== 'boolean' ||
+                    typeof outside !== 'boolean' ||
+                    !Number.isInteger(color) ||
+                    (kind === 'base' && rawAnchor !== undefined))
                     fail('UI_VALUE_INVALID');
                 if (entries.has(name))
                     fail('UI_LAYER_ID_DUPLICATE');
@@ -310,9 +385,15 @@ export function createUiLayerManager(options) {
                         fail('UI_VALUE_INVALID');
                     const parentRoot = rawAnchor.root, placement = rawAnchor.placement ?? 'below', align = rawAnchor.align ?? 'start', gap = number(rawAnchor.gap ?? 4, 0, 4096), target = rawAnchor.target;
                     const parent = [...entries.values()].find(value => value.root === parentRoot);
-                    if (parent === undefined || !['above', 'below'].includes(placement) || !['start', 'center', 'end'].includes(align))
+                    if (parent === undefined ||
+                        !['above', 'below'].includes(placement) ||
+                        !['start', 'center', 'end'].includes(align))
                         fail('UI_LAYER_ANCHOR_INVALID');
-                    const captured = target.kind === 'leaf' ? Object.freeze({ kind: 'leaf', id: id(target.id) }) : target.kind === 'row' ? Object.freeze({ kind: 'row', listId: id(target.listId), key: id(target.key) }) : fail('UI_LAYER_ANCHOR_INVALID');
+                    const captured = target.kind === 'leaf'
+                        ? Object.freeze({ kind: 'leaf', id: id(target.id) })
+                        : target.kind === 'row'
+                            ? Object.freeze({ kind: 'row', listId: id(target.listId), key: id(target.key) })
+                            : fail('UI_LAYER_ANCHOR_INVALID');
                     anchor = Object.freeze({ parent, target: captured, placement, align, gap });
                 }
                 const initialFocus = rawFocus === undefined ? undefined : Object.freeze({ listId: id(rawFocus.listId), key: id(rawFocus.key) });
@@ -332,18 +413,52 @@ export function createUiLayerManager(options) {
                     sentinel = 'egret.layer.' + sequence + '.' + name;
                     registration = keyboard?.registerTarget({ id: sentinel, target: backdrop, tabIndex: -1 });
                     const bg = backdrop;
-                    listeners.push(bg.on(input.events.begin, event => { event.stopPropagation(); event.preventDefault(); input.capture(event.payload.session, bg); }));
-                    listeners.push(bg.on(input.events.end, event => { event.stopPropagation(); event.preventDefault(); if (entry !== undefined && entry.outside && stack.at(-1) === entry)
-                        closeEntry(entry); }));
-                    listeners.push(bg.on(input.events.cancel, event => { event.stopPropagation(); }));
+                    listeners.push(bg.on(input.events.begin, event => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        input.capture(event.payload.session, bg);
+                    }));
+                    listeners.push(bg.on(input.events.end, event => {
+                        event.stopPropagation();
+                        event.preventDefault();
+                        if (entry !== undefined && entry.outside && stack.at(-1) === entry)
+                            closeEntry(entry);
+                    }));
+                    listeners.push(bg.on(input.events.cancel, event => {
+                        event.stopPropagation();
+                    }));
                 }
-                unsubscribe = access.onClose(() => { if (entry !== undefined)
-                    retire(entry, false); });
-                entry = { id: name, kind, root, port: access, anchor, initialFocus, escape, outside, scope: ownScope, backdrop, sentinel, keyboardRegistration: registration, release, unsubscribe, listeners: Object.freeze(listeners), savedFocus: undefined };
+                unsubscribe = access.onClose(() => {
+                    if (entry !== undefined)
+                        retire(entry, false);
+                });
+                entry = {
+                    id: name,
+                    kind,
+                    root,
+                    port: access,
+                    anchor,
+                    initialFocus,
+                    escape,
+                    outside,
+                    scope: ownScope,
+                    backdrop,
+                    sentinel,
+                    keyboardRegistration: registration,
+                    release,
+                    unsubscribe,
+                    listeners: Object.freeze(listeners),
+                    savedFocus: undefined
+                };
                 entries.set(name, entry);
                 request();
-                return Object.freeze({ id: name, dispose() { if (entry !== undefined)
-                        retire(entry, true); } });
+                return Object.freeze({
+                    id: name,
+                    dispose() {
+                        if (entry !== undefined)
+                            retire(entry, true);
+                    }
+                });
             }
             catch (cause) {
                 for (const listener of listeners)
@@ -358,17 +473,63 @@ export function createUiLayerManager(options) {
                 admitting = false;
             }
         },
-        open(name) { open(); const entry = resolve(id(name)); if (entry.kind === 'base')
-            fail('UI_LAYER_BASE'); if (desired.includes(entry))
-            return; if (entry.anchor !== undefined && entry.anchor.parent.kind !== 'base' && !desired.includes(entry.anchor.parent))
-            fail('UI_LAYER_ANCHOR_INVALID'); desired = [...desired, entry]; request(); },
-        close(name) { open(); const entry = resolve(id(name)); if (entry.kind === 'base')
-            fail('UI_LAYER_BASE'); closeEntry(entry); },
-        setViewport(value) { admission(); const next = rect(value); open(); if (next.x === viewport.x && next.y === viewport.y && next.width === viewport.width && next.height === viewport.height)
-            return; viewport = next; request(); },
+        open(name) {
+            open();
+            const entry = resolve(id(name));
+            if (entry.kind === 'base')
+                fail('UI_LAYER_BASE');
+            if (desired.includes(entry))
+                return;
+            if (entry.anchor !== undefined && entry.anchor.parent.kind !== 'base' && !desired.includes(entry.anchor.parent))
+                fail('UI_LAYER_ANCHOR_INVALID');
+            desired = [...desired, entry];
+            request();
+        },
+        close(name) {
+            open();
+            const entry = resolve(id(name));
+            if (entry.kind === 'base')
+                fail('UI_LAYER_BASE');
+            closeEntry(entry);
+        },
+        setViewport(value) {
+            admission();
+            const next = rect(value);
+            open();
+            if (next.x === viewport.x &&
+                next.y === viewport.y &&
+                next.width === viewport.width &&
+                next.height === viewport.height)
+                return;
+            viewport = next;
+            request();
+        },
         sync,
         snapshot() {
-            return Object.freeze({ state: closed ? 'closed' : 'open', committedRevision: revision, desiredRevision: wanted, viewport, openStack: Object.freeze(stack.map(entry => entry.id)), desiredStack: Object.freeze(desired.map(entry => entry.id)), layers: Object.freeze([...entries.values()].map(entry => { const pose = poses.find(value => value.entry === entry); return Object.freeze({ id: entry.id, kind: entry.kind, visible: pose?.visible ?? false, pointerEnabled: pose?.pointer ?? false, keyboardEnabled: pose?.keyboard ?? false, origin: Object.freeze({ x: pose?.x ?? 0, y: pose?.y ?? 0 }) }); })), counters: Object.freeze({ registered: entries.size, open: stack.length, backdrops: [...entries.values()].filter(entry => entry.backdrop !== undefined).length }) });
+            return Object.freeze({
+                state: closed ? 'closed' : 'open',
+                committedRevision: revision,
+                desiredRevision: wanted,
+                viewport,
+                openStack: Object.freeze(stack.map(entry => entry.id)),
+                desiredStack: Object.freeze(desired.map(entry => entry.id)),
+                layers: Object.freeze([...entries.values()].map(entry => {
+                    const pose = poses.find(value => value.entry === entry);
+                    return Object.freeze({
+                        id: entry.id,
+                        kind: entry.kind,
+                        visible: pose?.visible ?? false,
+                        pointerEnabled: pose?.pointer ?? false,
+                        keyboardEnabled: pose?.keyboard ?? false,
+                        origin: Object.freeze({ x: pose?.x ?? 0, y: pose?.y ?? 0 })
+                    });
+                })),
+                counters: Object.freeze({
+                    registered: entries.size,
+                    open: stack.length,
+                    backdrops: [...entries.values()].filter(entry => entry.backdrop !== undefined).length
+                })
+            });
         },
         dispose() {
             if (closed)
@@ -391,9 +552,11 @@ export function createUiLayerManager(options) {
             const failure = errors.splice(0);
             if (failure.length !== 0)
                 throw new EgretError('UI_LAYER_CLEANUP_FAILED', { cause: failure[0], cleanupErrors: failure.slice(1) });
-        },
+        }
     });
-    function onAbort() { api.dispose(); }
+    function onAbort() {
+        api.dispose();
+    }
     try {
         managers.set(engine, owner);
         removeEngine = port.onClose(onAbort);
@@ -414,7 +577,9 @@ export function createUiLayerManager(options) {
         try {
             api.dispose();
         }
-        catch { /* Preserve the setup failure. */ }
+        catch {
+            /* Preserve the setup failure. */
+        }
         throw cause;
     }
 }

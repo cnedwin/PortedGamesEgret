@@ -33,8 +33,10 @@ export class Ragdoll3D {
         if (parts.length > RAGDOLL3D_LIMITS.maxParts)
             throw new World3DError('WORLD3D_BUDGET', 'ragdoll parts');
         const named = new Map();
-        root.traverse((object) => { if (object.name && !named.has(object.name))
-            named.set(object.name, object); });
+        root.traverse(object => {
+            if (object.name && !named.has(object.name))
+                named.set(object.name, object);
+        });
         let roots = 0;
         for (const [index, part] of parts.entries()) {
             const bone = typeof part?.bone === 'string' ? named.get(part.bone) : part?.bone;
@@ -64,8 +66,12 @@ export class Ragdoll3D {
         this.options = { ...options };
         this.#parts = parts.map(part => ({ ...part }));
     }
-    get active() { return this.bodies.length > 0; }
-    get bones() { return this.#bones; }
+    get active() {
+        return this.bodies.length > 0;
+    }
+    get bones() {
+        return this.#bones;
+    }
     /**
      * Go limp from the pose the skeleton is in now. `velocity` is the speed
      * every part starts with, such as the character's own; `spin` adds a turn
@@ -85,11 +91,22 @@ export class Ragdoll3D {
                 mat4Decompose(m, place, turn, scale);
                 scales[index] = scale;
                 const body = this.world.createBody({
-                    type: 'dynamic', shape: part.shape, mass: part.mass ?? 1,
-                    position: [m[0] * at[0] + m[4] * at[1] + m[8] * at[2] + m[12], m[1] * at[0] + m[5] * at[1] + m[9] * at[2] + m[13], m[2] * at[0] + m[6] * at[1] + m[10] * at[2] + m[14]],
+                    type: 'dynamic',
+                    shape: part.shape,
+                    mass: part.mass ?? 1,
+                    position: [
+                        m[0] * at[0] + m[4] * at[1] + m[8] * at[2] + m[12],
+                        m[1] * at[0] + m[5] * at[1] + m[9] * at[2] + m[13],
+                        m[2] * at[0] + m[6] * at[1] + m[10] * at[2] + m[14]
+                    ],
                     quaternion: [turn[0], turn[1], turn[2], turn[3]],
-                    friction: o.friction ?? 0.6, restitution: o.restitution ?? 0, linearDamping: o.linearDamping ?? 0.05, angularDamping: o.angularDamping ?? 0.4,
-                    ...(o.layer === undefined ? {} : { layer: o.layer }), ...(o.mask === undefined ? {} : { mask: o.mask }), userData: this,
+                    friction: o.friction ?? 0.6,
+                    restitution: o.restitution ?? 0,
+                    linearDamping: o.linearDamping ?? 0.05,
+                    angularDamping: o.angularDamping ?? 0.4,
+                    ...(o.layer === undefined ? {} : { layer: o.layer }),
+                    ...(o.mask === undefined ? {} : { mask: o.mask }),
+                    userData: this
                 });
                 bodies.push(body);
                 body.setLinearVelocity(velocity[0], velocity[1], velocity[2]);
@@ -103,8 +120,13 @@ export class Ragdoll3D {
                 // The direction is given in the bone's frame; the joint wants it in the world.
                 const ax = m[0] * axis[0] + m[4] * axis[1] + m[8] * axis[2], ay = m[1] * axis[0] + m[5] * axis[1] + m[9] * axis[2], az = m[2] * axis[0] + m[6] * axis[1] + m[10] * axis[2];
                 const options = {
-                    type: joint.type ?? 'point', bodyA: bodies[index], bodyB: bodies[part.parent], anchor: [m[12], m[13], m[14]], axis: [ax, ay, az],
-                    ...(joint.limits && (joint.type === 'hinge') ? { limits: joint.limits } : {}), ...(joint.coneLimit !== undefined && joint.type !== 'hinge' ? { coneLimit: joint.coneLimit } : {}),
+                    type: joint.type ?? 'point',
+                    bodyA: bodies[index],
+                    bodyB: bodies[part.parent],
+                    anchor: [m[12], m[13], m[14]],
+                    axis: [ax, ay, az],
+                    ...(joint.limits && joint.type === 'hinge' ? { limits: joint.limits } : {}),
+                    ...(joint.coneLimit !== undefined && joint.type !== 'hinge' ? { coneLimit: joint.coneLimit } : {})
                 };
                 joints.push(this.world.createJoint(options));
             }
@@ -168,7 +190,9 @@ export class Ragdoll3D {
             bone.markTransformDirty();
         }
     }
-    dispose() { this.deactivate(); }
+    dispose() {
+        this.deactivate();
+    }
 }
 export function createRagdoll3D(world, root, parts, options = {}) {
     return new Ragdoll3D(world, root, parts, options);

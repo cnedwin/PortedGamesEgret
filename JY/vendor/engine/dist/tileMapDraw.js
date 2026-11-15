@@ -14,8 +14,14 @@ export function createTileMap(options) {
     if (!record(options))
         throw new EgretError('TILEMAP_OPTIONS_INVALID');
     const { map, textures, chunkSize = 32 } = options;
-    if (!record(map) || map.orientation !== 'orthogonal' || !Array.isArray(map.layers) || !Array.isArray(map.tilesets) || !record(textures)
-        || !Number.isSafeInteger(chunkSize) || chunkSize < 4 || chunkSize > 128)
+    if (!record(map) ||
+        map.orientation !== 'orthogonal' ||
+        !Array.isArray(map.layers) ||
+        !Array.isArray(map.tilesets) ||
+        !record(textures) ||
+        !Number.isSafeInteger(chunkSize) ||
+        chunkSize < 4 ||
+        chunkSize > 128)
         throw new EgretError('TILEMAP_OPTIONS_INVALID');
     const sets = map.tilesets;
     const setOf = (gid) => {
@@ -51,7 +57,12 @@ export function createTileMap(options) {
             const sx = set.margin + (id % set.columns) * (set.tileWidth + set.spacing), sy = set.margin + Math.floor(id / set.columns) * (set.tileHeight + set.spacing);
             const u0 = sx / set.imageWidth, v0 = sy / set.imageHeight, u1 = (sx + set.tileWidth) / set.imageWidth, v1 = (sy + set.tileHeight) / set.imageHeight;
             // The corners top left, top right, bottom right, bottom left, then turned as the flags say.
-            let corners = [[u0, v0], [u1, v0], [u1, v1], [u0, v1]];
+            let corners = [
+                [u0, v0],
+                [u1, v0],
+                [u1, v1],
+                [u0, v1]
+            ];
             if (raw & FLIP_D)
                 corners = [corners[0], corners[3], corners[2], corners[1]];
             if (raw & FLIP_H)
@@ -64,14 +75,22 @@ export function createTileMap(options) {
         return { geometry: createTexturedGeometry2D({ positions, uvs, lightColors, indices }), tiles: n };
     }
     function faceOf(chunk) {
-        return Object.freeze({ column: chunk.column, row: chunk.row, get visible() { return chunk.visible; },
-            meshes: Object.freeze(chunk.pieces.map(piece => Object.freeze({ tileset: piece.tileset, mesh: piece.mesh, geometry: piece.geometry, tiles: piece.tiles }))) });
+        return Object.freeze({
+            column: chunk.column,
+            row: chunk.row,
+            get visible() {
+                return chunk.visible;
+            },
+            meshes: Object.freeze(chunk.pieces.map(piece => Object.freeze({ tileset: piece.tileset, mesh: piece.mesh, geometry: piece.geometry, tiles: piece.tiles })))
+        });
     }
     /** Draws a chunk again: a mesh is kept and given its new geometry where it can be, made where a set appears, and let go where one disappears. */
     function draw(layer, chunk) {
         const before = new Map(chunk.pieces.map(piece => [piece.tileset, piece])), next = [];
         for (const set of sets) {
-            const lease = Object.hasOwn(textures, set.name) ? textures[set.name] : undefined;
+            const lease = Object.hasOwn(textures, set.name)
+                ? textures[set.name]
+                : undefined;
             const built = geometryOf(layer, chunk, set), old = before.get(set.name);
             if (built === undefined)
                 continue;
@@ -94,8 +113,10 @@ export function createTileMap(options) {
             gone.mesh.dispose();
         }
         // Back to front in the order of the tilesets, as they are drawn.
-        next.forEach((piece, index) => { if (chunk.display.getChildIndex(piece.mesh) !== index)
-            chunk.display.setChildIndex(piece.mesh, index); });
+        next.forEach((piece, index) => {
+            if (chunk.display.getChildIndex(piece.mesh) !== index)
+                chunk.display.setChildIndex(piece.mesh, index);
+        });
         chunk.pieces = next;
         chunk.face = faceOf(chunk);
     }
@@ -127,14 +148,35 @@ export function createTileMap(options) {
             container.y = data.offsetY;
             container.alpha = data.opacity;
             container.visible = data.visible;
-            const layer = { data, cells: new Uint32Array(data.data), display: container, chunks: [], across: Math.ceil(data.width / chunkSize), face: undefined };
+            const layer = {
+                data,
+                cells: new Uint32Array(data.data),
+                display: container,
+                chunks: [],
+                across: Math.ceil(data.width / chunkSize),
+                face: undefined
+            };
             for (let row = 0; row < data.height; row += chunkSize)
                 for (let column = 0; column < data.width; column += chunkSize) {
-                    const chunk = { column, row, visible: true, pieces: [], display: container.addChild(new DisplayObjectContainer()), face: undefined };
+                    const chunk = {
+                        column,
+                        row,
+                        visible: true,
+                        pieces: [],
+                        display: container.addChild(new DisplayObjectContainer()),
+                        face: undefined
+                    };
                     draw(layer, chunk);
                     layer.chunks.push(chunk);
                 }
-            layer.face = Object.freeze({ name: data.name, data, display: container, get chunks() { return Object.freeze(layer.chunks.map(chunk => chunk.face)); } });
+            layer.face = Object.freeze({
+                name: data.name,
+                data,
+                display: container,
+                get chunks() {
+                    return Object.freeze(layer.chunks.map(chunk => chunk.face));
+                }
+            });
             layers.push(layer);
         }
     }
@@ -155,8 +197,15 @@ export function createTileMap(options) {
         if (set === undefined)
             return undefined;
         const id = gid - set.firstGid;
-        return Object.freeze({ gid, tileset: set, id, flippedHorizontally: (raw & FLIP_H) !== 0, flippedVertically: (raw & FLIP_V) !== 0, flippedDiagonally: (raw & FLIP_D) !== 0,
-            properties: set.tiles.get(id)?.properties ?? NONE });
+        return Object.freeze({
+            gid,
+            tileset: set,
+            id,
+            flippedHorizontally: (raw & FLIP_H) !== 0,
+            flippedVertically: (raw & FLIP_V) !== 0,
+            flippedDiagonally: (raw & FLIP_D) !== 0,
+            properties: set.tiles.get(id)?.properties ?? NONE
+        });
     }
     const cellIndex = (layer, column, row) => {
         if (!Number.isSafeInteger(column) || !Number.isSafeInteger(row))
@@ -164,12 +213,19 @@ export function createTileMap(options) {
         const c = column - layer.data.startX, r = row - layer.data.startY;
         return c < 0 || r < 0 || c >= layer.data.width || r >= layer.data.height ? -1 : r * layer.data.width + c;
     };
-    const open = () => { if (closed)
-        throw new EgretError('TILEMAP_CLOSED'); };
+    const open = () => {
+        if (closed)
+            throw new EgretError('TILEMAP_CLOSED');
+    };
     return Object.freeze({
-        get state() { return closed ? 'closed' : 'active'; },
-        data: map, display,
-        get layers() { return Object.freeze(layers.map(layer => layer.face)); },
+        get state() {
+            return closed ? 'closed' : 'active';
+        },
+        data: map,
+        display,
+        get layers() {
+            return Object.freeze(layers.map(layer => layer.face));
+        },
         layer: (name) => layerOf(name).face,
         tileAt(name, column, row) {
             const layer = layerOf(name), index = cellIndex(layer, column, row);
@@ -215,7 +271,13 @@ export function createTileMap(options) {
             return Object.freeze({ x: column * map.tileWidth, y: row * map.tileHeight });
         },
         cull(view) {
-            if (!record(view) || !finite(view.x) || !finite(view.y) || !finite(view.width) || !finite(view.height) || view.width < 0 || view.height < 0)
+            if (!record(view) ||
+                !finite(view.x) ||
+                !finite(view.y) ||
+                !finite(view.width) ||
+                !finite(view.height) ||
+                view.width < 0 ||
+                view.height < 0)
                 throw new EgretError('TILEMAP_OPTIONS_INVALID');
             open();
             let shown = 0;
@@ -242,7 +304,7 @@ export function createTileMap(options) {
             const failures = release();
             if (failures.length > 0)
                 throw new EgretError('TILEMAP_CLEANUP_FAILED', { cause: failures[0], cleanupErrors: failures.slice(1) });
-        },
+        }
     });
 }
 //# sourceMappingURL=tileMapDraw.js.map

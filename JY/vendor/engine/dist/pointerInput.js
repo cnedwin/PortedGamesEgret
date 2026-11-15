@@ -9,7 +9,11 @@ const touch = getter(DisplayObject.prototype, 'touchEnabled'), children = getter
 const bindings = new WeakMap();
 // Keep browser-only references in a separate closure, released with its binding.
 function surfaceBinding(surface, report, onClose) {
-    return Object.freeze({ surface, onClose, report: (cause) => report({ code: 'POINTER_INPUT_HOST_FAILED', phase: 'engine', severity: 'error', cause }) });
+    return Object.freeze({
+        surface,
+        onClose,
+        report: (cause) => report({ code: 'POINTER_INPUT_HOST_FAILED', phase: 'engine', severity: 'error', cause })
+    });
 }
 /** Private browser assembly authority; never exported by the optional public entry. */
 export function bindPointerSurface(input) {
@@ -18,6 +22,8 @@ export function bindPointerSurface(input) {
         throw new EgretError('POINTER_INPUT_CLOSED');
     return binding;
 }
+/** How far, in stage units, a contact may end from where it began and still be a tap. */
+const TAP_SLOP = 12;
 export function createPointerInput(options) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('POINTER_INPUT_OPTIONS_INVALID');
@@ -29,8 +35,14 @@ export function createPointerInput(options) {
     let observer = options.onContact;
     // Late subscribers to the same stream; the creation-time observer keeps its single slot.
     const listeners = new Set();
-    if (!Number.isFinite(width) || width <= 0 || !Number.isFinite(height) || height <= 0 || !Number.isInteger(maxNodes) || maxNodes < 1 || maxNodes > 65536
-        || (observer !== undefined && typeof observer !== 'function'))
+    if (!Number.isFinite(width) ||
+        width <= 0 ||
+        !Number.isFinite(height) ||
+        height <= 0 ||
+        !Number.isInteger(maxNodes) ||
+        maxNodes < 1 ||
+        maxNodes > 65536 ||
+        (observer !== undefined && typeof observer !== 'function'))
         throw new EgretError('POINTER_INPUT_OPTIONS_INVALID');
     owner.assertReady();
     scope.assertOpen();
@@ -39,7 +51,11 @@ export function createPointerInput(options) {
         begin: createEventType('egret.pointer.begin', { bubbles: true, cancelable: true }),
         move: createEventType('egret.pointer.move', { bubbles: true, cancelable: true }),
         end: createEventType('egret.pointer.end', { bubbles: true, cancelable: true }),
-        cancel: createEventType('egret.pointer.cancel', { bubbles: true, cancelable: false }),
+        cancel: createEventType('egret.pointer.cancel', {
+            bubbles: true,
+            cancelable: false
+        }),
+        tap: createEventType('egret.pointer.tap', { bubbles: true, cancelable: false })
     });
     const closers = new Set();
     const activeEvents = new Map();
@@ -128,10 +144,19 @@ export function createPointerInput(options) {
             throw first;
         return value;
     }
-    function retire() { invoke(() => router.dispose()); }
+    function retire() {
+        invoke(() => router.dispose());
+    }
+    // Where each contact began and on what, for a tap: an end on the same target within TAP_SLOP units of its begin.
+    const begun = new Map();
     router = createPointerRouter({
         ...(options.capacity === undefined ? {} : { capacity: options.capacity }),
-        pick: (x, y) => { owner.assertReady(); scope.assertOpen(); return operations.pick(x, y, maxNodes); }, eligible,
+        pick: (x, y) => {
+            owner.assertReady();
+            scope.assertOpen();
+            return operations.pick(x, y, maxNodes);
+        },
+        eligible,
         dispatch: (kind, contact, target, reason) => deliver(() => {
             // Termination during capture/target callbacks must stop the older route.
             if (kind === 'cancel')
@@ -155,7 +180,9 @@ export function createPointerInput(options) {
                     try {
                         listener(notification);
                     }
-                    catch { /* isolated */ }
+                    catch {
+                        /* isolated */
+                    }
             let delivered = false;
             try {
                 if (threw)
@@ -163,9 +190,12 @@ export function createPointerInput(options) {
                 if (target === undefined || !eligible(target))
                     return;
                 // A callback may synchronously cancel or close the session before target delivery.
-                if ((kind === 'begin' || kind === 'move') && !router.contacts.some(value => value.session === contact.session))
+                if ((kind === 'begin' || kind === 'move') &&
+                    !router.contacts.some(value => value.session === contact.session))
                     return;
                 delivered = true;
+                if (kind === 'begin')
+                    begun.set(contact.session, { target, x: contact.globalX, y: contact.globalY });
                 if (kind === 'cancel')
                     operations.dispatch(target, Object.freeze(new Event(events.cancel, Object.freeze({ ...contact, reason: reason }))), maxNodes);
                 else {
@@ -179,9 +209,19 @@ export function createPointerInput(options) {
                         if (activeEvents.get(contact.session) === event)
                             activeEvents.delete(contact.session);
                     }
+                    // A tap follows the end it completes, on the target both were on, unless a listener closed the input.
+                    const start = kind === 'end' ? begun.get(contact.session) : undefined;
+                    if (start !== undefined &&
+                        start.target === target &&
+                        Math.hypot(contact.globalX - start.x, contact.globalY - start.y) <= TAP_SLOP &&
+                        router.state !== 'closed' &&
+                        eligible(target))
+                        operations.dispatch(target, Object.freeze(new Event(events.tap, contact)), maxNodes);
                 }
             }
             finally {
+                if (kind === 'end' || kind === 'cancel')
+                    begun.delete(contact.session);
                 // `delivered` records that a target path was attempted, not that a particular control ran.
                 if (kind === 'end') {
                     const observed = Object.freeze({ ...notification, delivered });
@@ -189,13 +229,24 @@ export function createPointerInput(options) {
                         try {
                             listener(observed);
                         }
-                        catch { /* isolated */ }
+                        catch {
+                            /* isolated */
+                        }
                 }
             }
-        }),
+        })
     });
     input = Object.freeze({
-        get state() { return router.state; }, get contacts() { return router.contacts; }, get viewportRevision() { return router.viewportRevision; }, events,
+        get state() {
+            return router.state;
+        },
+        get contacts() {
+            return router.contacts;
+        },
+        get viewportRevision() {
+            return router.viewportRevision;
+        },
+        events,
         begin: (sample) => invoke(() => router.begin(sample)),
         move: (session, sample) => invoke(() => router.move(session, sample)),
         end: (session, sample) => invoke(() => router.end(session, sample)),
@@ -203,20 +254,34 @@ export function createPointerInput(options) {
         cancelAll: (reason) => invoke(() => router.cancelAll(reason)),
         capture: (session, target) => invoke(() => router.capture(session, target)),
         releaseCapture: (session) => invoke(() => router.releaseCapture(session)),
-        sync: () => invoke(() => router.sync()), setViewportRevision: (revision) => invoke(() => router.setViewportRevision(revision)),
-        setInteractive: (value) => invoke(() => router.setInteractive(value)), dispose: retire,
-        observe: (listener) => { if (typeof listener !== 'function')
-            throw new EgretError('POINTER_INPUT_OPTIONS_INVALID'); listeners.add(listener); return () => { listeners.delete(listener); }; },
+        sync: () => invoke(() => router.sync()),
+        setViewportRevision: (revision) => invoke(() => router.setViewportRevision(revision)),
+        setInteractive: (value) => invoke(() => router.setInteractive(value)),
+        dispose: retire,
+        observe: (listener) => {
+            if (typeof listener !== 'function')
+                throw new EgretError('POINTER_INPUT_OPTIONS_INVALID');
+            listeners.add(listener);
+            return () => {
+                listeners.delete(listener);
+            };
+        }
     });
     registerUiPointerInput(input, engine, Object.freeze({ events, state: () => router.state, activeContacts: () => router.contacts.length, sync: input.sync }));
     try {
         releaseEngine = owner.onClose(retire);
         scope.add(retire);
         scope.use(input);
-        bindings.set(input, surfaceBinding(owner.surface, owner.report, (callback) => { if (closed) {
-            callback();
-            return () => { };
-        } closers.add(callback); return () => { closers.delete(callback); }; }));
+        bindings.set(input, surfaceBinding(owner.surface, owner.report, (callback) => {
+            if (closed) {
+                callback();
+                return () => { };
+            }
+            closers.add(callback);
+            return () => {
+                closers.delete(callback);
+            };
+        }));
         owner.assertReady();
         scope.assertOpen();
         return input;

@@ -1,16 +1,53 @@
 const DEFAULTS = Object.freeze({
-    pixelRatio: 1, maxBackingPixels: 16777216, maxCommands: 65536, maxClipRectangles: 262144,
-    maxPreparedVertices: 1048576, maxClipEdgeTests: 4194304, maxUploadBytes: 33554432,
-    maxPendingUploadBytes: 67108864, maxPendingFrames: 2, maxReadbackBytes: 67108864, enableReadback: false,
-    maxSourceTriangles: 65536, maxFrameGeometryBytes: 16777216, maxPendingGeometryBytes: 33554432, maxTupleComparisons: 1048576,
+    pixelRatio: 1,
+    maxBackingPixels: 16777216,
+    maxCommands: 65536,
+    maxClipRectangles: 262144,
+    maxPreparedVertices: 1048576,
+    maxClipEdgeTests: 4194304,
+    maxUploadBytes: 33554432,
+    maxPendingUploadBytes: 67108864,
+    maxPendingFrames: 2,
+    maxReadbackBytes: 67108864,
+    enableReadback: false,
+    maxSourceTriangles: 65536,
+    maxFrameGeometryBytes: 16777216,
+    maxPendingGeometryBytes: 33554432,
+    maxTupleComparisons: 1048576
 });
-const PAGE_LIMITS = Object.freeze({ maxFrameRegions: 4096, maxFramePageBytes: 67108864, maxReadyPageBytes: 134217728 });
+const PAGE_LIMITS = Object.freeze({
+    maxFrameRegions: 4096,
+    maxFramePageBytes: 67108864,
+    maxReadyPageBytes: 134217728
+});
 const PAGE_KEYS = ['maxFrameRegions', 'maxFramePageBytes', 'maxReadyPageBytes'];
-const KEYS = ['canvas', 'device', 'onDiagnostic', 'pixelRatio', 'maxBackingPixels', 'maxCommands', 'maxClipRectangles',
-    'maxPreparedVertices', 'maxClipEdgeTests', 'maxUploadBytes', 'maxPendingUploadBytes', 'maxPendingFrames',
-    'maxReadbackBytes', 'enableReadback', 'maxSourceTriangles', 'maxFrameGeometryBytes', 'maxPendingGeometryBytes', 'maxTupleComparisons', 'outputAlpha', 'recovery', 'enableEffects',
-    ...PAGE_KEYS];
-function object(value) { return typeof value === 'object' && value !== null; }
+const KEYS = [
+    'canvas',
+    'device',
+    'onDiagnostic',
+    'pixelRatio',
+    'maxBackingPixels',
+    'maxCommands',
+    'maxClipRectangles',
+    'maxPreparedVertices',
+    'maxClipEdgeTests',
+    'maxUploadBytes',
+    'maxPendingUploadBytes',
+    'maxPendingFrames',
+    'maxReadbackBytes',
+    'enableReadback',
+    'maxSourceTriangles',
+    'maxFrameGeometryBytes',
+    'maxPendingGeometryBytes',
+    'maxTupleComparisons',
+    'outputAlpha',
+    'recovery',
+    'enableEffects',
+    ...PAGE_KEYS
+];
+function object(value) {
+    return typeof value === 'object' && value !== null;
+}
 /** Snapshot every top-level read, then the selected policy reads, before any semantic refusal. */
 export function admitSharedWebGPUOptions(input) {
     if (!object(input))
@@ -41,7 +78,8 @@ export function admitSharedWebGPUOptions(input) {
     }
     if (!object(captured.canvas))
         throw new TypeError('canvas');
-    if (policy !== undefined && (!object(policy) || (kind !== 'acquire' && kind !== 'borrow') || (kind === 'borrow' && !object(borrowed))))
+    if (policy !== undefined &&
+        (!object(policy) || (kind !== 'acquire' && kind !== 'borrow') || (kind === 'borrow' && !object(borrowed))))
         throw new TypeError('device policy');
     if (captured.onDiagnostic !== undefined && typeof captured.onDiagnostic !== 'function')
         throw new TypeError('diagnostic callback');
@@ -53,7 +91,9 @@ export function admitSharedWebGPUOptions(input) {
                 throw new TypeError(key);
         }
         else {
-            if (typeof value !== 'number' || !Number.isFinite(value) || (key !== 'pixelRatio' && !Number.isSafeInteger(value)))
+            if (typeof value !== 'number' ||
+                !Number.isFinite(value) ||
+                (key !== 'pixelRatio' && !Number.isSafeInteger(value)))
                 throw new TypeError(key);
             if (value <= 0 || (key !== 'pixelRatio' && value > DEFAULTS[key]))
                 throw new RangeError(key);
@@ -76,8 +116,11 @@ export function admitSharedWebGPUOptions(input) {
             throw new RangeError(key);
         pages[key] = value;
     }
-    return { surface: captured.canvas, configuration: Object.freeze({ ...configuration, enableEffects, outputAlpha, recovery, ...pages }),
+    return {
+        surface: captured.canvas,
+        configuration: Object.freeze({ ...configuration, enableEffects, outputAlpha, recovery, ...pages }),
         borrowed: kind === 'borrow' ? borrowed : undefined,
-        callback: captured.onDiagnostic };
+        callback: captured.onDiagnostic
+    };
 }
 //# sourceMappingURL=sharedWebGPUOptions.js.map

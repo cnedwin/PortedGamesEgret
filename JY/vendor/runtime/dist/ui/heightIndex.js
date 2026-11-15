@@ -1,14 +1,28 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '../EgretError.js';
 const CAP = 50000, MAX_HEIGHT = 1048576, MAX_TOTAL = 2 ** 40;
-function invalid() { throw new EgretError('UI_INVALID'); }
-function finite(value, min, max) { if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
-    invalid(); return value === 0 ? 0 : value; }
-function counter(value) { const n = finite(value, 0, Number.MAX_SAFE_INTEGER); return n % 1 === 0 ? n : invalid(); }
-function key(value) { if (typeof value !== 'string' || value.length === 0 || value.length > 128)
-    invalid(); return value; }
-function index(value, max) { if (!Number.isInteger(value) || value < 0 || value > max)
-    invalid(); return value; }
+function invalid() {
+    throw new EgretError('UI_INVALID');
+}
+function finite(value, min, max) {
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < min || value > max)
+        invalid();
+    return value === 0 ? 0 : value;
+}
+function counter(value) {
+    const n = finite(value, 0, Number.MAX_SAFE_INTEGER);
+    return n % 1 === 0 ? n : invalid();
+}
+function key(value) {
+    if (typeof value !== 'string' || value.length === 0 || value.length > 128)
+        invalid();
+    return value;
+}
+function index(value, max) {
+    if (!Number.isInteger(value) || value < 0 || value > max)
+        invalid();
+    return value;
+}
 function arrayCount(value) {
     if (!Array.isArray(value))
         invalid();
@@ -34,8 +48,13 @@ function fields(value, allowed) {
     return result;
 }
 class HeightView {
-    prefix(end) { index(end, this.size); let sum = 0; for (let i = end; i > 0; i -= i & -i)
-        sum += this.cell(i); return sum === 0 ? 0 : sum; }
+    prefix(end) {
+        index(end, this.size);
+        let sum = 0;
+        for (let i = end; i > 0; i -= i & -i)
+            sum += this.cell(i);
+        return sum === 0 ? 0 : sum;
+    }
     find(offset) {
         finite(offset, -Number.MAX_VALUE, Number.MAX_VALUE);
         if (!this.size)
@@ -54,7 +73,11 @@ class HeightView {
         }
         return Math.min(found, this.size - 1);
     }
-    clampScroll(scroll, viewport) { finite(scroll, -Number.MAX_VALUE, Number.MAX_VALUE); finite(viewport, Number.MIN_VALUE, 16384); return Math.max(0, Math.min(scroll, Math.max(0, this.totalHeight - viewport))); }
+    clampScroll(scroll, viewport) {
+        finite(scroll, -Number.MAX_VALUE, Number.MAX_VALUE);
+        finite(viewport, Number.MIN_VALUE, 16384);
+        return Math.max(0, Math.min(scroll, Math.max(0, this.totalHeight - viewport)));
+    }
     range(scroll, viewport, overscan = 2) {
         const s = this.clampScroll(scroll, viewport);
         finite(overscan, 0, 32);
@@ -68,10 +91,21 @@ class HeightView {
             top += this.heightAt(visibleEnd);
             visibleEnd++;
         }
-        return Object.freeze({ start: Math.max(0, visibleStart - overscan), end: Math.min(this.size, visibleEnd + overscan), visibleStart, visibleEnd });
+        return Object.freeze({
+            start: Math.max(0, visibleStart - overscan),
+            end: Math.min(this.size, visibleEnd + overscan),
+            visibleStart,
+            visibleEnd
+        });
     }
-    anchor(scroll) { finite(scroll, -Number.MAX_VALUE, Number.MAX_VALUE); if (!this.size)
-        return undefined; const s = Math.max(0, Math.min(scroll, this.totalHeight)); const i = this.find(s); return Object.freeze({ key: this.keyAt(i), offset: s - this.prefix(i) }); }
+    anchor(scroll) {
+        finite(scroll, -Number.MAX_VALUE, Number.MAX_VALUE);
+        if (!this.size)
+            return undefined;
+        const s = Math.max(0, Math.min(scroll, this.totalHeight));
+        const i = this.find(s);
+        return Object.freeze({ key: this.keyAt(i), offset: s - this.prefix(i) });
+    }
     preserveAnchor(anchor, old, viewport) {
         if (!anchor || !this.size)
             return this.clampScroll(0, viewport);
@@ -150,16 +184,34 @@ export class UiHeightIndex extends HeightView {
         if (!Number.isFinite(total) || total > MAX_TOTAL)
             throw new EgretError('UI_LIMIT');
     }
-    get size() { return this.#keys.length; }
-    get totalHeight() { return this.prefix(this.size); }
-    get measuredCount() { return this.#measuredCount; }
+    get size() {
+        return this.#keys.length;
+    }
+    get totalHeight() {
+        return this.prefix(this.size);
+    }
+    get measuredCount() {
+        return this.#measuredCount;
+    }
     /** Numeric typed-array bytes only; string, map and JS heap storage excluded. */
-    get logicalBytes() { return this.#tree.byteLength + this.#heights.byteLength + this.#measured.byteLength; }
-    keyAt(i) { return this.#keys[index(i, this.size - 1)]; }
-    versionAt(i) { return this.#versions[index(i, this.size - 1)]; }
-    heightAt(i) { return this.#heights[index(i, this.size - 1)]; }
-    indexOf(k) { return this.#positions.get(k) ?? -1; }
-    cell(i) { return this.#tree[i]; }
+    get logicalBytes() {
+        return this.#tree.byteLength + this.#heights.byteLength + this.#measured.byteLength;
+    }
+    keyAt(i) {
+        return this.#keys[index(i, this.size - 1)];
+    }
+    versionAt(i) {
+        return this.#versions[index(i, this.size - 1)];
+    }
+    heightAt(i) {
+        return this.#heights[index(i, this.size - 1)];
+    }
+    indexOf(k) {
+        return this.#positions.get(k) ?? -1;
+    }
+    cell(i) {
+        return this.#tree[i];
+    }
     stageHeights(updates) {
         const count = arrayCount(updates);
         const captured = [], seen = new Set();
@@ -194,17 +246,34 @@ export class UiHeightIndex extends HeightView {
             throw new EgretError('UI_LIMIT');
         const base = this, revision = this.#revision;
         let consumed = false;
-        return new class extends HeightView {
+        return new (class extends HeightView {
             cellWork = work;
             changedCount = heights.size;
-            get size() { return base.size; }
-            get totalHeight() { return total; }
-            get measuredCount() { return measured; }
-            keyAt(i) { return base.keyAt(i); }
-            versionAt(i) { return base.versionAt(i); }
-            indexOf(k) { return base.indexOf(k); }
-            heightAt(i) { index(i, this.size - 1); return heights.get(i) ?? base.#heights[i]; }
-            cell(i) { return cells.get(i) ?? base.#tree[i]; }
+            get size() {
+                return base.size;
+            }
+            get totalHeight() {
+                return total;
+            }
+            get measuredCount() {
+                return measured;
+            }
+            keyAt(i) {
+                return base.keyAt(i);
+            }
+            versionAt(i) {
+                return base.versionAt(i);
+            }
+            indexOf(k) {
+                return base.indexOf(k);
+            }
+            heightAt(i) {
+                index(i, this.size - 1);
+                return heights.get(i) ?? base.#heights[i];
+            }
+            cell(i) {
+                return cells.get(i) ?? base.#tree[i];
+            }
             apply() {
                 if (consumed || base.#revision !== revision)
                     throw new EgretError('UI_STALE');
@@ -220,7 +289,7 @@ export class UiHeightIndex extends HeightView {
                 base.#measuredCount = measured;
                 base.#revision++;
             }
-        }();
+        })();
     }
 }
 //# sourceMappingURL=heightIndex.js.map

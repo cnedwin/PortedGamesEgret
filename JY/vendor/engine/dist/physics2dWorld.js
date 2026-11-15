@@ -12,30 +12,57 @@ function shapeOk(shape) {
     if (shape['kind'] === 'circle')
         return finite(shape['radius']) && shape['radius'] > 0;
     if (shape['kind'] === 'box')
-        return finite(shape['width']) && finite(shape['height']) && shape['width'] > 0 && shape['height'] > 0;
-    return shape['kind'] === 'polygon' && Array.isArray(shape['points']) && shape['points'].every(vector) && convex(shape['points']);
+        return (finite(shape['width']) &&
+            finite(shape['height']) &&
+            shape['width'] > 0 &&
+            shape['height'] > 0);
+    return (shape['kind'] === 'polygon' &&
+        Array.isArray(shape['points']) &&
+        shape['points'].every(vector) &&
+        convex(shape['points']));
 }
 /** A world of bodies that move, meet and push each other apart, in fixed steps, without turning. */
 export function createPhysicsWorld(options = {}) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('PHYSICS_OPTIONS_INVALID');
     const { gravity: g0 = { x: 0, y: 0 }, fixedStep = 1 / 60, maxSteps = 8, iterations = 8, cellSize = 64, maxBodies = 4096, bounceThreshold } = options;
-    if (!vector(g0) || !finite(fixedStep) || fixedStep <= 0 || fixedStep > 1 || !Number.isSafeInteger(maxSteps) || maxSteps < 1 || maxSteps > 120 || !Number.isSafeInteger(iterations) || iterations < 1 || iterations > 64
-        || !finite(cellSize) || cellSize <= 0 || !Number.isSafeInteger(maxBodies) || maxBodies < 1 || maxBodies > 65536
-        || (bounceThreshold !== undefined && (!finite(bounceThreshold) || bounceThreshold < 0)))
+    if (!vector(g0) ||
+        !finite(fixedStep) ||
+        fixedStep <= 0 ||
+        fixedStep > 1 ||
+        !Number.isSafeInteger(maxSteps) ||
+        maxSteps < 1 ||
+        maxSteps > 120 ||
+        !Number.isSafeInteger(iterations) ||
+        iterations < 1 ||
+        iterations > 64 ||
+        !finite(cellSize) ||
+        cellSize <= 0 ||
+        !Number.isSafeInteger(maxBodies) ||
+        maxBodies < 1 ||
+        maxBodies > 65536 ||
+        (bounceThreshold !== undefined && (!finite(bounceThreshold) || bounceThreshold < 0)))
         throw new EgretError('PHYSICS_OPTIONS_INVALID');
     let gravity = Object.freeze({ x: g0.x, y: g0.y });
     const bodies = [];
     const listeners = new Set();
     let touching = new Map(), pending = 0, steps = 0, ids = 0, closed = false;
-    const open = () => { if (closed)
-        throw new EgretError('PHYSICS_CLOSED'); };
+    const open = () => {
+        if (closed)
+            throw new EgretError('PHYSICS_CLOSED');
+    };
     function shapeOf(body) {
         body.placed ??= place(body.shape, body.x, body.y, body.angle);
         return body.placed;
     }
-    function boxFor(body) { body.box ??= boxOf(shapeOf(body)); return body.box; }
-    function moved(body) { body.placed = undefined; body.box = undefined; }
+    function boxFor(body) {
+        body.box ??= boxOf(shapeOf(body));
+        return body.box;
+    }
+    function moved(body) {
+        body.placed = undefined;
+        body.box = undefined;
+    }
     function own(value) {
         const body = bodies.find(candidate => candidate.face === value);
         if (body === undefined)
@@ -45,20 +72,54 @@ export function createPhysicsWorld(options = {}) {
     const meets = (a, b) => (a.layer & b.mask) !== 0 && (b.layer & a.mask) !== 0;
     function faceOf(body) {
         const settable = (key, least) => ({
-            get: () => body[key], set: (value) => { if (!finite(value) || value < least)
-                throw new EgretError('PHYSICS_OPTIONS_INVALID'); body[key] = value; },
+            get: () => body[key],
+            set: (value) => {
+                if (!finite(value) || value < least)
+                    throw new EgretError('PHYSICS_OPTIONS_INVALID');
+                body[key] = value;
+            }
         });
-        const placeKey = (key) => ({ get: () => body[key], set: (value) => { if (!finite(value))
-                throw new EgretError('PHYSICS_OPTIONS_INVALID'); body[key] = value; moved(body); } });
-        const speedKey = (key) => ({ get: () => body[key], set: (value) => { if (!finite(value))
-                throw new EgretError('PHYSICS_OPTIONS_INVALID'); if (body.kind !== 'static')
-                body[key] = value; } });
-        const bitKey = (key) => ({ get: () => body[key], set: (value) => { if (!bits(value))
-                throw new EgretError('PHYSICS_OPTIONS_INVALID'); body[key] = value; } });
+        const placeKey = (key) => ({
+            get: () => body[key],
+            set: (value) => {
+                if (!finite(value))
+                    throw new EgretError('PHYSICS_OPTIONS_INVALID');
+                body[key] = value;
+                moved(body);
+            }
+        });
+        const speedKey = (key) => ({
+            get: () => body[key],
+            set: (value) => {
+                if (!finite(value))
+                    throw new EgretError('PHYSICS_OPTIONS_INVALID');
+                if (body.kind !== 'static')
+                    body[key] = value;
+            }
+        });
+        const bitKey = (key) => ({
+            get: () => body[key],
+            set: (value) => {
+                if (!bits(value))
+                    throw new EgretError('PHYSICS_OPTIONS_INVALID');
+                body[key] = value;
+            }
+        });
         const face = {
-            id: body.id, kind: body.kind, shape: body.shape, mass: body.mass, sensor: body.sensor,
-            get state() { return body.removed ? 'removed' : 'active'; },
-            get data() { return body.data; }, set data(value) { body.data = value; },
+            id: body.id,
+            kind: body.kind,
+            shape: body.shape,
+            mass: body.mass,
+            sensor: body.sensor,
+            get state() {
+                return body.removed ? 'removed' : 'active';
+            },
+            get data() {
+                return body.data;
+            },
+            set data(value) {
+                body.data = value;
+            },
             applyImpulse(x, y) {
                 if (!finite(x) || !finite(y))
                     throw new EgretError('PHYSICS_OPTIONS_INVALID');
@@ -78,7 +139,7 @@ export function createPhysicsWorld(options = {}) {
             bounds() {
                 const box = boxFor(body);
                 return Object.freeze({ x: box.minX, y: box.minY, width: box.maxX - box.minX, height: box.maxY - box.minY });
-            },
+            }
         };
         for (const key of ['x', 'y', 'angle'])
             Object.defineProperty(face, key, { ...placeKey(key), enumerable: true });
@@ -88,25 +149,72 @@ export function createPhysicsWorld(options = {}) {
             Object.defineProperty(face, key, { ...bitKey(key), enumerable: true });
         Object.defineProperty(face, 'restitution', { ...settable('restitution', 0), enumerable: true });
         Object.defineProperty(face, 'friction', { ...settable('friction', 0), enumerable: true });
-        Object.defineProperty(face, 'gravityScale', { get: () => body.gravityScale, set: (value) => { if (!finite(value))
-                throw new EgretError('PHYSICS_OPTIONS_INVALID'); body.gravityScale = value; }, enumerable: true });
+        Object.defineProperty(face, 'gravityScale', {
+            get: () => body.gravityScale,
+            set: (value) => {
+                if (!finite(value))
+                    throw new EgretError('PHYSICS_OPTIONS_INVALID');
+                body.gravityScale = value;
+            },
+            enumerable: true
+        });
         return Object.freeze(face);
     }
     function add(o) {
         if (o === null || typeof o !== 'object' || Array.isArray(o))
             throw new EgretError('PHYSICS_OPTIONS_INVALID');
         const { kind = 'dynamic', shape, x = 0, y = 0, angle = 0, vx = 0, vy = 0, density = 1, restitution = 0, friction = 0.3, gravityScale = 1, layer = 1, mask = 0xffffffff, sensor = false, display, data } = o;
-        if ((kind !== 'static' && kind !== 'kinematic' && kind !== 'dynamic') || !shapeOk(shape) || ![x, y, angle, vx, vy, gravityScale].every(finite) || !finite(density) || density <= 0
-            || !finite(restitution) || restitution < 0 || restitution > 1 || !finite(friction) || friction < 0 || !bits(layer) || !bits(mask) || typeof sensor !== 'boolean'
-            || (display !== undefined && (!(display instanceof DisplayObject) || display.isDisposed)))
+        if ((kind !== 'static' && kind !== 'kinematic' && kind !== 'dynamic') ||
+            !shapeOk(shape) ||
+            ![x, y, angle, vx, vy, gravityScale].every(finite) ||
+            !finite(density) ||
+            density <= 0 ||
+            !finite(restitution) ||
+            restitution < 0 ||
+            restitution > 1 ||
+            !finite(friction) ||
+            friction < 0 ||
+            !bits(layer) ||
+            !bits(mask) ||
+            typeof sensor !== 'boolean' ||
+            (display !== undefined && (!(display instanceof DisplayObject) || display.isDisposed)))
             throw new EgretError('PHYSICS_OPTIONS_INVALID');
         open();
         if (bodies.length >= maxBodies)
             throw new EgretError('PHYSICS_BODY_LIMIT');
-        const frozen = shape.kind === 'polygon' ? Object.freeze({ kind: 'polygon', points: Object.freeze(shape.points.map(p => Object.freeze({ x: p.x, y: p.y }))) }) : Object.freeze({ ...shape });
+        const frozen = shape.kind === 'polygon'
+            ? Object.freeze({
+                kind: 'polygon',
+                points: Object.freeze(shape.points.map(p => Object.freeze({ x: p.x, y: p.y })))
+            })
+            : Object.freeze({ ...shape });
         const mass = kind === 'dynamic' ? density * areaOf(frozen) : Infinity;
-        const body = { id: ++ids, kind, shape: frozen, mass, inverseMass: kind === 'dynamic' ? 1 / mass : 0, sensor, x, y, angle, vx: kind === 'static' ? 0 : vx, vy: kind === 'static' ? 0 : vy, fx: 0, fy: 0,
-            restitution, friction, gravityScale, layer, mask, data, display, removed: false, placed: undefined, box: undefined, face: undefined };
+        const body = {
+            id: ++ids,
+            kind,
+            shape: frozen,
+            mass,
+            inverseMass: kind === 'dynamic' ? 1 / mass : 0,
+            sensor,
+            x,
+            y,
+            angle,
+            vx: kind === 'static' ? 0 : vx,
+            vy: kind === 'static' ? 0 : vy,
+            fx: 0,
+            fy: 0,
+            restitution,
+            friction,
+            gravityScale,
+            layer,
+            mask,
+            data,
+            display,
+            removed: false,
+            placed: undefined,
+            box: undefined,
+            face: undefined
+        };
         body.face = faceOf(body);
         bodies.push(body);
         if (display !== undefined) {
@@ -135,7 +243,9 @@ export function createPhysicsWorld(options = {}) {
                         if (seen.has(id))
                             continue;
                         seen.add(id);
-                        if ((a.kind !== 'dynamic' && b.kind !== 'dynamic' && !a.sensor && !b.sensor) || !meets(a, b) || !boxesMeet(boxFor(a), boxFor(b)))
+                        if ((a.kind !== 'dynamic' && b.kind !== 'dynamic' && !a.sensor && !b.sensor) ||
+                            !meets(a, b) ||
+                            !boxesMeet(boxFor(a), boxFor(b)))
                             continue;
                         out.push([a, b]);
                     }
@@ -183,7 +293,7 @@ export function createPhysicsWorld(options = {}) {
                     continue;
                 // The bouncier of the two decides, so that a ball bounces on a floor that says nothing of bouncing.
                 // What only rests on another, held down by gravity, meets it at a speed below the threshold and is not thrown back up.
-                const bounce = -along > threshold ? Math.max(a.restitution, b.restitution) : 0, j = -(1 + bounce) * along / total;
+                const bounce = -along > threshold ? Math.max(a.restitution, b.restitution) : 0, j = (-(1 + bounce) * along) / total;
                 a.vx -= j * nx * a.inverseMass;
                 a.vy -= j * ny * a.inverseMass;
                 b.vx += j * nx * b.inverseMass;
@@ -207,7 +317,7 @@ export function createPhysicsWorld(options = {}) {
                 const { a, b } = c, { nx, ny, depth } = again, total = a.inverseMass + b.inverseMass;
                 if (total === 0 || depth <= SLOP)
                     continue;
-                const push = (depth - SLOP) * CORRECTION / total;
+                const push = ((depth - SLOP) * CORRECTION) / total;
                 if (a.inverseMass > 0) {
                     a.x -= nx * push * a.inverseMass;
                     a.y -= ny * push * a.inverseMass;
@@ -222,10 +332,22 @@ export function createPhysicsWorld(options = {}) {
         const told = [];
         for (const [key, touch] of now)
             if (!touching.has(key))
-                told.push(Object.freeze({ type: 'begin', a: touch.a.face, b: touch.b.face, normal: Object.freeze({ x: touch.nx, y: touch.ny }), sensor: touch.sensor }));
+                told.push(Object.freeze({
+                    type: 'begin',
+                    a: touch.a.face,
+                    b: touch.b.face,
+                    normal: Object.freeze({ x: touch.nx, y: touch.ny }),
+                    sensor: touch.sensor
+                }));
         for (const [key, touch] of touching)
             if (!now.has(key))
-                told.push(Object.freeze({ type: 'end', a: touch.a.face, b: touch.b.face, normal: Object.freeze({ x: touch.nx, y: touch.ny }), sensor: touch.sensor }));
+                told.push(Object.freeze({
+                    type: 'end',
+                    a: touch.a.face,
+                    b: touch.b.face,
+                    normal: Object.freeze({ x: touch.nx, y: touch.ny }),
+                    sensor: touch.sensor
+                }));
         touching = now;
         tell(told);
     }
@@ -260,7 +382,13 @@ export function createPhysicsWorld(options = {}) {
         for (const [key, touch] of [...touching])
             if (touch.a === body || touch.b === body) {
                 touching.delete(key);
-                ended.push(Object.freeze({ type: 'end', a: touch.a.face, b: touch.b.face, normal: Object.freeze({ x: touch.nx, y: touch.ny }), sensor: touch.sensor }));
+                ended.push(Object.freeze({
+                    type: 'end',
+                    a: touch.a.face,
+                    b: touch.b.face,
+                    normal: Object.freeze({ x: touch.nx, y: touch.ny }),
+                    sensor: touch.sensor
+                }));
             }
         try {
             tell(ended);
@@ -269,15 +397,28 @@ export function createPhysicsWorld(options = {}) {
             failures.push(cause);
         }
     }
-    const maskOf = (value) => { if (value === undefined)
-        return 0xffffffff; if (!bits(value))
-        throw new EgretError('PHYSICS_OPTIONS_INVALID'); return value; };
+    const maskOf = (value) => {
+        if (value === undefined)
+            return 0xffffffff;
+        if (!bits(value))
+            throw new EgretError('PHYSICS_OPTIONS_INVALID');
+        return value;
+    };
     return Object.freeze({
-        get state() { return closed ? 'closed' : 'active'; },
-        get gravity() { return gravity; },
-        set gravity(value) { if (!vector(value))
-            throw new EgretError('PHYSICS_OPTIONS_INVALID'); gravity = Object.freeze({ x: value.x, y: value.y }); },
-        get bodies() { return Object.freeze(bodies.map(body => body.face)); },
+        get state() {
+            return closed ? 'closed' : 'active';
+        },
+        get gravity() {
+            return gravity;
+        },
+        set gravity(value) {
+            if (!vector(value))
+                throw new EgretError('PHYSICS_OPTIONS_INVALID');
+            gravity = Object.freeze({ x: value.x, y: value.y });
+        },
+        get bodies() {
+            return Object.freeze(bodies.map(body => body.face));
+        },
         addBody: add,
         removeBody(value) {
             const body = own(value), failures = [];
@@ -286,9 +427,22 @@ export function createPhysicsWorld(options = {}) {
                 throw failures[0];
         },
         addTileColliders(grid) {
-            if (grid === null || typeof grid !== 'object' || !Number.isSafeInteger(grid.columns) || grid.columns < 0 || !Number.isSafeInteger(grid.rows) || grid.rows < 0 || !finite(grid.tileWidth) || grid.tileWidth <= 0
-                || !finite(grid.tileHeight) || grid.tileHeight <= 0 || typeof grid.solid !== 'function' || (grid.x !== undefined && !finite(grid.x)) || (grid.y !== undefined && !finite(grid.y))
-                || (grid.layer !== undefined && !bits(grid.layer)) || (grid.friction !== undefined && (!finite(grid.friction) || grid.friction < 0)) || grid.columns * grid.rows > 1 << 24)
+            if (grid === null ||
+                typeof grid !== 'object' ||
+                !Number.isSafeInteger(grid.columns) ||
+                grid.columns < 0 ||
+                !Number.isSafeInteger(grid.rows) ||
+                grid.rows < 0 ||
+                !finite(grid.tileWidth) ||
+                grid.tileWidth <= 0 ||
+                !finite(grid.tileHeight) ||
+                grid.tileHeight <= 0 ||
+                typeof grid.solid !== 'function' ||
+                (grid.x !== undefined && !finite(grid.x)) ||
+                (grid.y !== undefined && !finite(grid.y)) ||
+                (grid.layer !== undefined && !bits(grid.layer)) ||
+                (grid.friction !== undefined && (!finite(grid.friction) || grid.friction < 0)) ||
+                grid.columns * grid.rows > 1 << 24)
                 throw new EgretError('PHYSICS_OPTIONS_INVALID');
             open();
             const ox = grid.x ?? 0, oy = grid.y ?? 0;
@@ -308,7 +462,8 @@ export function createPhysicsWorld(options = {}) {
                             if (used[(bottom + 1) * grid.columns + k] === 1 || !solid(k, bottom + 1))
                                 break grow;
                         // The run below must end where this one does, or it would be cut.
-                        if ((c > 0 && solid(c - 1, bottom + 1) && used[(bottom + 1) * grid.columns + c - 1] === 0) || (end + 1 < grid.columns && solid(end + 1, bottom + 1)))
+                        if ((c > 0 && solid(c - 1, bottom + 1) && used[(bottom + 1) * grid.columns + c - 1] === 0) ||
+                            (end + 1 < grid.columns && solid(end + 1, bottom + 1)))
                             break;
                         bottom++;
                     }
@@ -316,8 +471,14 @@ export function createPhysicsWorld(options = {}) {
                         for (let k = c; k <= end; k++)
                             used[rr * grid.columns + k] = 1;
                     const width = (end - c + 1) * grid.tileWidth, height = (bottom - r + 1) * grid.tileHeight;
-                    made.push(add({ kind: 'static', shape: { kind: 'box', width, height }, x: ox + c * grid.tileWidth + width / 2, y: oy + r * grid.tileHeight + height / 2,
-                        ...(grid.layer === undefined ? {} : { layer: grid.layer }), ...(grid.friction === undefined ? {} : { friction: grid.friction }) }));
+                    made.push(add({
+                        kind: 'static',
+                        shape: { kind: 'box', width, height },
+                        x: ox + c * grid.tileWidth + width / 2,
+                        y: oy + r * grid.tileHeight + height / 2,
+                        ...(grid.layer === undefined ? {} : { layer: grid.layer }),
+                        ...(grid.friction === undefined ? {} : { friction: grid.friction })
+                    }));
                 }
             return Object.freeze(made);
         },
@@ -345,7 +506,9 @@ export function createPhysicsWorld(options = {}) {
                 throw new EgretError('PHYSICS_OPTIONS_INVALID');
             open();
             listeners.add(listener);
-            return () => { listeners.delete(listener); };
+            return () => {
+                listeners.delete(listener);
+            };
         },
         queryPoint(x, y, mask) {
             if (!finite(x) || !finite(y))
@@ -354,7 +517,14 @@ export function createPhysicsWorld(options = {}) {
             return Object.freeze(bodies.filter(body => (body.layer & m) !== 0 && holds(shapeOf(body), x, y)).map(body => body.face));
         },
         queryRect(rect, mask) {
-            if (rect === null || typeof rect !== 'object' || !finite(rect.x) || !finite(rect.y) || !finite(rect.width) || !finite(rect.height) || rect.width < 0 || rect.height < 0)
+            if (rect === null ||
+                typeof rect !== 'object' ||
+                !finite(rect.x) ||
+                !finite(rect.y) ||
+                !finite(rect.width) ||
+                !finite(rect.height) ||
+                rect.width < 0 ||
+                rect.height < 0)
                 throw new EgretError('PHYSICS_OPTIONS_INVALID');
             const m = maskOf(mask), probe = place({ kind: 'box', width: Math.max(rect.width, 1e-9), height: Math.max(rect.height, 1e-9) }, rect.x + rect.width / 2, rect.y + rect.height / 2, 0);
             return Object.freeze(bodies.filter(body => (body.layer & m) !== 0 && meet(probe, shapeOf(body)) !== undefined).map(body => body.face));
@@ -371,7 +541,14 @@ export function createPhysicsWorld(options = {}) {
                 if (hit !== undefined && (best === undefined || hit.t < best.t))
                     best = { body, ...hit };
             }
-            return best === undefined ? undefined : Object.freeze({ body: best.body.face, point: Object.freeze({ x: from.x + dx * best.t, y: from.y + dy * best.t }), normal: Object.freeze({ x: best.nx, y: best.ny }), fraction: best.t });
+            return best === undefined
+                ? undefined
+                : Object.freeze({
+                    body: best.body.face,
+                    point: Object.freeze({ x: from.x + dx * best.t, y: from.y + dy * best.t }),
+                    normal: Object.freeze({ x: best.nx, y: best.ny }),
+                    fraction: best.t
+                });
         },
         moveAndSlide(value, dx, dy) {
             const body = own(value);
@@ -382,7 +559,10 @@ export function createPhysicsWorld(options = {}) {
             // Across and down apart, each pushed back out of what it entered, so that the body slides along a wall. A long
             // movement is taken in parts no longer than half the body, so that it cannot pass through a thin wall.
             const box = boxFor(body), part = Math.max(1e-6, Math.min(box.maxX - box.minX, box.maxY - box.minY) / 2);
-            for (const [mx, my] of [[dx, 0], [0, dy]]) {
+            for (const [mx, my] of [
+                [dx, 0],
+                [0, dy]
+            ]) {
                 const distance = Math.abs(mx + my);
                 if (distance === 0)
                     continue;
@@ -395,10 +575,16 @@ export function createPhysicsWorld(options = {}) {
                     for (let round = 0; round < 4; round++) {
                         let deepest;
                         for (const other of bodies) {
-                            if (other === body || other.sensor || other.kind === 'dynamic' || !meets(body, other) || !boxesMeet(boxFor(body), boxFor(other)))
+                            if (other === body ||
+                                other.sensor ||
+                                other.kind === 'dynamic' ||
+                                !meets(body, other) ||
+                                !boxesMeet(boxFor(body), boxFor(other)))
                                 continue;
                             const meeting = meet(shapeOf(body), shapeOf(other));
-                            if (meeting !== undefined && meeting.depth > 1e-9 && (deepest === undefined || meeting.depth > deepest.depth))
+                            if (meeting !== undefined &&
+                                meeting.depth > 1e-9 &&
+                                (deepest === undefined || meeting.depth > deepest.depth))
                                 deepest = meeting;
                         }
                         if (deepest === undefined)
@@ -419,7 +605,9 @@ export function createPhysicsWorld(options = {}) {
             }
             return Object.freeze({ x: body.x, y: body.y, collided: normals.length > 0, normals: Object.freeze(normals) });
         },
-        snapshot() { return Object.freeze({ bodies: bodies.length, contacts: touching.size, steps, pending }); },
+        snapshot() {
+            return Object.freeze({ bodies: bodies.length, contacts: touching.size, steps, pending });
+        },
         dispose() {
             if (closed)
                 return;
@@ -429,7 +617,7 @@ export function createPhysicsWorld(options = {}) {
             bodies.length = 0;
             touching.clear();
             listeners.clear();
-        },
+        }
     });
 }
 //# sourceMappingURL=physics2dWorld.js.map

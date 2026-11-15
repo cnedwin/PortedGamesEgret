@@ -22,7 +22,9 @@ function scalarRead(operation, receiver) {
         throw new EgretError('MOUSE_INPUT_EVENT_INVALID', { cause });
     }
 }
-function finite(value) { return typeof value === 'number' && Number.isFinite(value); }
+function finite(value) {
+    return typeof value === 'number' && Number.isFinite(value);
+}
 /** Capture only when an authentic ready Engine/Scope and scalar options have been admitted. */
 const browserPorts = (surface, width, height, assertLive) => {
     let win, document;
@@ -63,8 +65,29 @@ const browserPorts = (surface, width, height, assertLive) => {
         throw new EgretError('MOUSE_INPUT_SURFACE_INVALID', { cause });
     }
     assertLive();
-    const required = [canvasBrand, ownerDocument, parentNode, nodeType, defaultView, left, top, rectWidth, rectHeight,
-        eventType, pointerId, pointerType, primary, button, clientX, clientY, computedStyle, styleValue, rectangle, add, remove];
+    const required = [
+        canvasBrand,
+        ownerDocument,
+        parentNode,
+        nodeType,
+        defaultView,
+        left,
+        top,
+        rectWidth,
+        rectHeight,
+        eventType,
+        pointerId,
+        pointerType,
+        primary,
+        button,
+        clientX,
+        clientY,
+        computedStyle,
+        styleValue,
+        rectangle,
+        add,
+        remove
+    ];
     if (win === undefined || document === undefined || required.some(value => typeof value !== 'function'))
         throw new EgretError('MOUSE_INPUT_SURFACE_INVALID');
     // Native getters establish identity without consulting canvas or document own fields.
@@ -102,7 +125,16 @@ const browserPorts = (surface, width, height, assertLive) => {
                 throw new EgretError('MOUSE_INPUT_SURFACE_INVALID');
             if (current === surface) {
                 const fitting = canonical(style, 'object-fit');
-                const edges = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width'].map(name => canonical(style, name));
+                const edges = [
+                    'padding-top',
+                    'padding-right',
+                    'padding-bottom',
+                    'padding-left',
+                    'border-top-width',
+                    'border-right-width',
+                    'border-bottom-width',
+                    'border-left-width'
+                ].map(name => canonical(style, name));
                 assertLive();
                 if (fitting !== 'fill' || edges.some(value => value !== '0px' && value !== '0'))
                     throw new EgretError('MOUSE_INPUT_SURFACE_INVALID');
@@ -119,13 +151,19 @@ const browserPorts = (surface, width, height, assertLive) => {
     profile();
     const pair = (target, type, capture, kind) => Object.freeze({
         kind,
-        add(listener) { APPLY(add, target, [type, listener, capture]); },
-        remove(listener) { APPLY(remove, target, [type, listener, capture]); },
+        add(listener) {
+            APPLY(add, target, [type, listener, capture]);
+        },
+        remove(listener) {
+            APPLY(remove, target, [type, listener, capture]);
+        }
     });
     const pairs = Object.freeze([
         pair(surface, 'pointerdown', false, 'down'),
-        pair(win, 'pointerup', true, 'up'), pair(win, 'pointercancel', true, 'cancel'),
-        pair(win, 'blur', false, 'blur'), pair(win, 'pagehide', false, 'pagehide'),
+        pair(win, 'pointerup', true, 'up'),
+        pair(win, 'pointercancel', true, 'cancel'),
+        pair(win, 'blur', false, 'blur'),
+        pair(win, 'pagehide', false, 'pagehide')
     ]);
     return Object.freeze({
         pairs,
@@ -165,14 +203,16 @@ const browserPorts = (surface, width, height, assertLive) => {
             if (!finite(x) || !finite(y))
                 throw new EgretError('MOUSE_INPUT_EVENT_INVALID');
             // MI1 control: fresh CSS rectangle maps to logical coordinates without DPR.
-            const globalX = (x - rect.left) * width / rect.width;
-            const globalY = (y - rect.top) * height / rect.height;
+            const globalX = ((x - rect.left) * width) / rect.width;
+            const globalY = ((y - rect.top) * height) / rect.height;
             if (!finite(globalX) || !finite(globalY))
                 throw new EgretError('MOUSE_INPUT_EVENT_INVALID');
             return Object.freeze({ x: globalX, y: globalY });
-        },
+        }
     });
 };
 /** Primary mouse activation for the admitted ordinary desktop Canvas layout profile. */
-export function createMouseInput(options) { return createMouseInputWithNative(options, browserPorts); }
+export function createMouseInput(options) {
+    return createMouseInputWithNative(options, browserPorts);
+}
 //# sourceMappingURL=MouseInput.js.map

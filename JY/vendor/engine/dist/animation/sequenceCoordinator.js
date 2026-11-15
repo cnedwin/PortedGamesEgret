@@ -37,7 +37,10 @@ export function protectedDelivery(port, callback) {
 export function deliver(port, delivery) {
     if (delivery === undefined)
         return;
-    protectedDelivery(port, () => { delivery.events(); delivery.diagnostics(); });
+    protectedDelivery(port, () => {
+        delivery.events();
+        delivery.diagnostics();
+    });
 }
 export function coordinatorSize(port) {
     return coordinators.get(port)?.size ?? 0;
@@ -65,7 +68,17 @@ export function requireCoordinator(port) {
         removeClose = undefined;
         let first;
         let failed = false;
-        for (const cleanup of [() => { unregister?.(); }, () => { unsub?.dispose(); }, () => { owned?.dispose(); }]) {
+        for (const cleanup of [
+            () => {
+                unregister?.();
+            },
+            () => {
+                unsub?.dispose();
+            },
+            () => {
+                owned?.dispose();
+            }
+        ]) {
             try {
                 cleanup();
             }
@@ -104,7 +117,9 @@ export function requireCoordinator(port) {
         return undefined;
     }
     const coordinator = Object.freeze({
-        get size() { return drivers.size; },
+        get size() {
+            return drivers.size;
+        },
         add(driver) {
             if (closed)
                 throw new EgretError('ANIMATION_COORDINATOR_CLOSED');
@@ -112,10 +127,15 @@ export function requireCoordinator(port) {
                 throw new EgretError('ANIMATION_CONTROLLER_LIMIT');
             drivers.add(driver);
         },
-        remove(driver) { drivers.delete(driver); if (drivers.size === 0)
-            release(); },
-        discardIfEmpty() { if (drivers.size === 0)
-            release(); },
+        remove(driver) {
+            drivers.delete(driver);
+            if (drivers.size === 0)
+                release();
+        },
+        discardIfEmpty() {
+            if (drivers.size === 0)
+                release();
+        }
     });
     try {
         scope = port.createScope();

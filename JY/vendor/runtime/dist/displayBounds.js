@@ -7,7 +7,10 @@ import { composeDisplayTransform } from './displayTransform.js';
 import { finite, visualOf } from './displayVisualState.js';
 import { engineOf } from './ownership.js';
 import { EgretError } from './EgretError.js';
-function live(node) { assertLive(node); engineOf(node)?.assertOpen(); }
+function live(node) {
+    assertLive(node);
+    engineOf(node)?.assertOpen();
+}
 function budgetsOf(node, options) {
     let nodes, primitives;
     if (options !== undefined) {
@@ -168,6 +171,11 @@ export function queryDisplayBounds(receiver, options) {
         live(current);
     // Ordinary binary64 subtraction is intentional, not an outward enclosure.
     // Saved output retains no authority, options, primitive or resource reference.
-    return Object.freeze({ x: minX === 0 ? 0 : minX, y: minY === 0 ? 0 : minY, width: width === 0 ? 0 : width, height: height === 0 ? 0 : height });
+    return Object.freeze({
+        x: minX === 0 ? 0 : minX,
+        y: minY === 0 ? 0 : minY,
+        width: width === 0 ? 0 : width,
+        height: height === 0 ? 0 : height
+    });
 }
 //# sourceMappingURL=displayBounds.js.map

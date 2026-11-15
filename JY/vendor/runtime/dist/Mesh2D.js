@@ -48,9 +48,9 @@ export class Mesh2D extends DisplayObject {
     /** Opaque producer binding: scene traversal exposes neither its borrowed lease nor a content writer. */
     static createBinding(textureLease, geometry) {
         if (!isTexturedGeometry2D(geometry) && !isSharedGeometry2D(geometry))
-            throw new EgretError('MESH_GEOMETRY_INVALID');
+            throw new EgretError("MESH_GEOMETRY_INVALID");
         if (!isAssetLease(textureLease))
-            throw new EgretError('MESH_LEASE_INVALID');
+            throw new EgretError("MESH_LEASE_INVALID");
         const initial = readMeshTexture(textureLease), engine = engineOf(textureLease);
         engine.assertOpen();
         let disposed = false, cleaned = false, finishListeners = () => { };
@@ -58,16 +58,26 @@ export class Mesh2D extends DisplayObject {
         class OpaqueMesh extends DisplayObject {
             constructor(token) {
                 if (token !== creation)
-                    throw new EgretError('MESH_BINDING_FACTORY_REQUIRED');
+                    throw new EgretError("MESH_BINDING_FACTORY_REQUIRED");
                 super();
                 const cleanup = this.clearListeners;
-                finishListeners = () => { Reflect.apply(cleanup, this, []); };
+                finishListeners = () => {
+                    Reflect.apply(cleanup, this, []);
+                };
             }
-            dispose() { dispose(); }
+            dispose() {
+                dispose();
+            }
         }
         const node = new OpaqueMesh(creation);
-        function finish() { if (cleaned)
-            return; cleaned = true; const cleanup = finishListeners; finishListeners = () => { }; cleanup(); }
+        function finish() {
+            if (cleaned)
+                return;
+            cleaned = true;
+            const cleanup = finishListeners;
+            finishListeners = () => { };
+            cleanup();
+        }
         // Retire all resources before any external cancellation-listener cleanup can reenter an owner.
         function beginDispose() {
             if (!disposed) {
@@ -77,32 +87,48 @@ export class Mesh2D extends DisplayObject {
             }
             return finish;
         }
-        function dispose() { beginDispose()(); }
-        function live() { if (disposed)
-            throw new EgretError('MESH_BINDING_DISPOSED'); assertLive(node); engine.assertOpen(); }
+        function dispose() {
+            beginDispose()();
+        }
+        function live() {
+            if (disposed)
+                throw new EgretError("MESH_BINDING_DISPOSED");
+            assertLive(node);
+            engine.assertOpen();
+        }
         commitBinding([node], engine);
         writeMeshState(node, contentState(textureLease, geometry, initial.sourceRect, initial.viewRegion));
-        const binding = Object.freeze({ node, dispose, beginDispose, prepare(lease, geometry) {
+        const binding = Object.freeze({
+            node,
+            dispose,
+            beginDispose,
+            prepare(lease, geometry) {
                 live();
                 if (!isTexturedGeometry2D(geometry) && !isSharedGeometry2D(geometry))
-                    throw new EgretError('MESH_GEOMETRY_INVALID');
+                    throw new EgretError("MESH_GEOMETRY_INVALID");
                 if (!isAssetLease(lease))
-                    throw new EgretError('MESH_LEASE_INVALID');
+                    throw new EgretError("MESH_LEASE_INVALID");
                 if (engineOf(lease) !== engine)
-                    throw new EgretError('ENGINE_MISMATCH');
+                    throw new EgretError("ENGINE_MISMATCH");
                 const snapshot = readMeshTexture(lease), previous = readMeshState(node);
                 const next = contentState(lease, geometry, snapshot.sourceRect, snapshot.viewRegion);
                 let settled = false;
-                return Object.freeze({ abort() { settled = true; }, commit() {
+                return Object.freeze({
+                    abort() {
+                        settled = true;
+                    },
+                    commit() {
                         live();
                         if (settled || readMeshState(node) !== previous)
-                            throw new EgretError('MESH_BINDING_STALE');
+                            throw new EgretError("MESH_BINDING_STALE");
                         // These identity/entitlement reads and publication invoke no caller code.
                         readMeshTexture(lease);
                         settled = true;
                         writeMeshState(node, next);
-                    } });
-            } });
+                    }
+                });
+            }
+        });
         // A consumer Scope cannot adopt an adapter-owned child through display traversal.
         commitBinding([binding], engine);
         claimOwner(node, binding);

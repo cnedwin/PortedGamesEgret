@@ -42,13 +42,18 @@ function cancel(demand, cause) {
 }
 function copyMetrics(value) {
     const copyBounds = (bounds) => FREEZE({ ...bounds });
-    return FREEZE({ logicalBounds: copyBounds(value.logicalBounds),
+    return FREEZE({
+        logicalBounds: copyBounds(value.logicalBounds),
         inkBounds: value.inkBounds === undefined ? undefined : copyBounds(value.inkBounds),
         contentBounds: copyBounds(value.contentBounds),
-        lines: FREEZE(value.lines.map(line => FREEZE({ source: FREEZE({ ...line.source }),
-            advance: line.advance, baselineY: line.baselineY,
-            inkBounds: line.inkBounds === undefined ? undefined : copyBounds(line.inkBounds) }))),
-        raster: value.raster === undefined ? undefined : FREEZE({ ...value.raster }) });
+        lines: FREEZE(value.lines.map(line => FREEZE({
+            source: FREEZE({ ...line.source }),
+            advance: line.advance,
+            baselineY: line.baselineY,
+            inkBounds: line.inkBounds === undefined ? undefined : copyBounds(line.inkBounds)
+        }))),
+        raster: value.raster === undefined ? undefined : FREEZE({ ...value.raster })
+    });
 }
 /** This class never enters a public namespace; only authentic cache assembly constructs it. */
 class TextFieldLeaf extends DisplayObject {
@@ -60,8 +65,18 @@ class TextFieldLeaf extends DisplayObject {
         cache.context.assertOpen();
         assertTextFieldScope(scope);
         cache.assertOpen();
-        const state = { scope, cache, disposed: false, reading: false, desiredRevision: 0,
-            desired: undefined, committedRevision: undefined, metrics: undefined, committed: undefined, pending: undefined };
+        const state = {
+            scope,
+            cache,
+            disposed: false,
+            reading: false,
+            desiredRevision: 0,
+            desired: undefined,
+            committedRevision: undefined,
+            metrics: undefined,
+            committed: undefined,
+            pending: undefined
+        };
         states.set(this, state);
         publish(this, state);
         APPLY(USE_SCOPE, scope, [this]);
@@ -75,7 +90,9 @@ class TextFieldLeaf extends DisplayObject {
         let previous;
         try {
             // The private callback runs after successful source reads, before semantics.
-            const desired = state.cache.adopt(input, () => { live(state); });
+            const desired = state.cache.adopt(input, () => {
+                live(state);
+            });
             live(state);
             const revision = state.desiredRevision + 1;
             if (!SAFE_INTEGER(revision))
@@ -109,7 +126,8 @@ class TextFieldLeaf extends DisplayObject {
                 demand = { revision: state.desiredRevision, controller, resolve, reject };
                 state.pending = demand;
                 const acquired = state.cache.acquire(state.desired, controller.signal);
-                void acquired.then(result => {
+                void acquired
+                    .then(result => {
                     let staged;
                     let ownsResult = result.kind === 'image';
                     try {
@@ -128,10 +146,19 @@ class TextFieldLeaf extends DisplayObject {
                         let sourceRect;
                         if (result.kind === 'image')
                             sourceRect = FREEZE({ ...readBitmapImage(result.lease).sourceRect });
-                        staged = FREEZE({ contentBounds: metrics.contentBounds,
-                            raster: metrics.raster === undefined ? undefined : FREEZE({ x: metrics.raster.x, y: metrics.raster.y,
-                                width: metrics.raster.logicalWidth, height: metrics.raster.logicalHeight }),
-                            lease: result.kind === 'image' ? result.lease : undefined, sourceRect });
+                        staged = FREEZE({
+                            contentBounds: metrics.contentBounds,
+                            raster: metrics.raster === undefined
+                                ? undefined
+                                : FREEZE({
+                                    x: metrics.raster.x,
+                                    y: metrics.raster.y,
+                                    width: metrics.raster.logicalWidth,
+                                    height: metrics.raster.logicalHeight
+                                }),
+                            lease: result.kind === 'image' ? result.lease : undefined,
+                            sourceRect
+                        });
                         live(state);
                         state.cache.assertOpen();
                         if (state.pending !== demand || state.desiredRevision !== demand.revision)
@@ -165,10 +192,16 @@ class TextFieldLeaf extends DisplayObject {
                         state.pending = undefined;
                         demand.reject(cause);
                     }
-                }).catch(cause => {
+                })
+                    .catch(cause => {
                     // A stale lease retirement can throw; observe and report without resurrecting demand.
                     state.cache.context.captureCleanup(cause);
-                    state.cache.context.report({ code: 'TEXT_FIELD_CLEANUP_FAILED', phase: 'assets', severity: 'error', cause });
+                    state.cache.context.report({
+                        code: 'TEXT_FIELD_CLEANUP_FAILED',
+                        phase: 'assets',
+                        severity: 'error',
+                        cause
+                    });
                 });
             }
             catch (cause) {
@@ -178,9 +211,13 @@ class TextFieldLeaf extends DisplayObject {
     }
     getStatus() {
         const state = stateOf(this);
-        return FREEZE({ state: state.disposed ? 'disposed' : state.committedRevision === undefined ? 'unprepared' : 'ready',
-            desiredRevision: state.desiredRevision, committedRevision: state.committedRevision,
-            pending: state.pending !== undefined, metrics: state.metrics });
+        return FREEZE({
+            state: state.disposed ? 'disposed' : state.committedRevision === undefined ? 'unprepared' : 'ready',
+            desiredRevision: state.desiredRevision,
+            committedRevision: state.committedRevision,
+            pending: state.pending !== undefined,
+            metrics: state.metrics
+        });
     }
     dispose() {
         const state = stateOf(this);
@@ -205,9 +242,15 @@ class TextFieldLeaf extends DisplayObject {
             }
         };
         // Terminate the display before any cancellation/release callback can reenter it.
-        attempt(() => { APPLY(DISPOSE_DISPLAY, this, []); });
-        attempt(() => { cancel(pending, new EgretError('TEXT_FIELD_DISPOSED')); });
-        attempt(() => { release(committed); });
+        attempt(() => {
+            APPLY(DISPOSE_DISPLAY, this, []);
+        });
+        attempt(() => {
+            cancel(pending, new EgretError('TEXT_FIELD_DISPOSED'));
+        });
+        attempt(() => {
+            release(committed);
+        });
         if (failed)
             throw first;
     }

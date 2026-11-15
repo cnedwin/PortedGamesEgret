@@ -44,7 +44,7 @@ export class Vehicle3D {
         this.topSpeed = requirePositive3D(options.topSpeed ?? 40, 'topSpeed');
         this.rollInfluence = Math.min(Math.max(requireFinite3D(options.rollInfluence ?? 0.2, 'rollInfluence'), 0), 1);
         this.mask = options.mask ?? -1;
-        const weight = chassis.mass * Math.hypot(world.gravity[0], world.gravity[1], world.gravity[2]) / options.wheels.length;
+        const weight = (chassis.mass * Math.hypot(world.gravity[0], world.gravity[1], world.gravity[2])) / options.wheels.length;
         for (const wheel of options.wheels) {
             if (!wheel || !wheel.position)
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'wheel position');
@@ -54,17 +54,33 @@ export class Vehicle3D {
             // By default the car sits a third of the way into its travel, and the ride settles in about one bounce.
             const stiffness = requirePositive3D(wheel.stiffness ?? Math.max(weight, 1) / (travel / 3), 'wheel stiffness');
             this.wheels.push({
-                position: Float64Array.from(wheel.position), radius: requirePositive3D(wheel.radius ?? 0.35, 'wheel radius'), restLength: requirePositive3D(wheel.restLength ?? 0.3, 'wheel restLength'), travel, stiffness,
-                damping: requireFinite3D(wheel.damping ?? 1.4 * Math.sqrt(stiffness * chassis.mass / options.wheels.length), 'wheel damping'),
-                steered: wheel.steered ?? false, driven: wheel.driven ?? false, grip: requireFinite3D(wheel.grip ?? 1.2, 'wheel grip'), node: wheel.node,
-                grounded: false, length: wheel.restLength ?? 0.3, load: 0, spin: 0, ground: undefined, contact: new Float64Array(3),
+                position: Float64Array.from(wheel.position),
+                radius: requirePositive3D(wheel.radius ?? 0.35, 'wheel radius'),
+                restLength: requirePositive3D(wheel.restLength ?? 0.3, 'wheel restLength'),
+                travel,
+                stiffness,
+                damping: requireFinite3D(wheel.damping ?? 1.4 * Math.sqrt((stiffness * chassis.mass) / options.wheels.length), 'wheel damping'),
+                steered: wheel.steered ?? false,
+                driven: wheel.driven ?? false,
+                grip: requireFinite3D(wheel.grip ?? 1.2, 'wheel grip'),
+                node: wheel.node,
+                grounded: false,
+                length: wheel.restLength ?? 0.3,
+                load: 0,
+                spin: 0,
+                ground: undefined,
+                contact: new Float64Array(3)
             });
         }
     }
     /** Number of wheels on the ground after the last update. */
-    get groundedWheels() { let count = 0; for (const wheel of this.wheels)
-        if (wheel.grounded)
-            count++; return count; }
+    get groundedWheels() {
+        let count = 0;
+        for (const wheel of this.wheels)
+            if (wheel.grounded)
+                count++;
+        return count;
+    }
     /** Apply suspension, engine, brakes and tyre grip for the coming step of `deltaSeconds`. */
     update(deltaSeconds) {
         const dt = requireFinite3D(deltaSeconds, 'deltaSeconds');
@@ -100,7 +116,9 @@ export class Vehicle3D {
             wheel.grounded = hit !== undefined;
             wheel.ground = hit?.body;
             wheel.load = 0;
-            wheel.length = hit ? Math.max(hit.distance - wheel.radius, wheel.restLength - wheel.travel) : wheel.restLength + wheel.travel;
+            wheel.length = hit
+                ? Math.max(hit.distance - wheel.radius, wheel.restLength - wheel.travel)
+                : wheel.restLength + wheel.travel;
             let forwardSpeed = this.speed;
             if (hit) {
                 const c = wheel.contact, n = hit.normal;
@@ -158,14 +176,21 @@ export class Vehicle3D {
                     // Sideways: take out this wheel's share of the slide at that point, as far as its grip allows. How much push
                     // that takes depends on how easily the chassis turns about the point, not only on its mass.
                     const gx = grip[0] - p[0], gy = grip[1] - p[1], gz = grip[2] - p[2];
-                    const sideSpeed = (v[0] + w[1] * gz - w[2] * gy - ux) * side[0] + (v[1] + w[2] * gx - w[0] * gz - uy) * side[1] + (v[2] + w[0] * gy - w[1] * gx - uz) * side[2];
+                    const sideSpeed = (v[0] + w[1] * gz - w[2] * gy - ux) * side[0] +
+                        (v[1] + w[2] * gx - w[0] * gz - uy) * side[1] +
+                        (v[2] + w[0] * gy - w[1] * gx - uz) * side[2];
                     const tx = gy * side[2] - gz * side[1], ty = gz * side[0] - gx * side[2], tz = gx * side[1] - gy * side[0], m = body.inverseInertiaWorld;
-                    const yielding = body.inverseMass + tx * (m[0] * tx + m[1] * ty + m[2] * tz) + ty * (m[3] * tx + m[4] * ty + m[5] * tz) + tz * (m[6] * tx + m[7] * ty + m[8] * tz);
+                    const yielding = body.inverseMass +
+                        tx * (m[0] * tx + m[1] * ty + m[2] * tz) +
+                        ty * (m[3] * tx + m[4] * ty + m[5] * tz) +
+                        tz * (m[6] * tx + m[7] * ty + m[8] * tz);
                     const hold = Math.min(Math.max(-sideSpeed / (yielding * count), -most), most);
                     // Along: engine below top speed, then brakes, which can stop the wheel's share of the car but not reverse it.
-                    let push = wheel.driven && driven > 0 && Math.abs(forwardSpeed) < this.topSpeed ? throttle * this.engineForce / driven * dt : 0;
+                    let push = wheel.driven && driven > 0 && Math.abs(forwardSpeed) < this.topSpeed
+                        ? ((throttle * this.engineForce) / driven) * dt
+                        : 0;
                     if (braking > 0) {
-                        const stop = Math.min(braking * this.brakeForce / count * dt, Math.abs(forwardSpeed) * share);
+                        const stop = Math.min(((braking * this.brakeForce) / count) * dt, Math.abs(forwardSpeed) * share);
                         push -= Math.sign(forwardSpeed) * stop;
                     }
                     push = Math.min(Math.max(push, -most), most);
@@ -176,7 +201,7 @@ export class Vehicle3D {
                         other.applyImpulse(-ix + down[0] * lift, -iy + down[1] * lift, -iz + down[2] * lift, c);
                 }
             }
-            wheel.spin += forwardSpeed / wheel.radius * dt;
+            wheel.spin += (forwardSpeed / wheel.radius) * dt;
             const node = wheel.node;
             if (node) {
                 node.position[0] = from[0] + down[0] * wheel.length;
@@ -195,5 +220,7 @@ export class Vehicle3D {
         }
     }
 }
-export function createVehicle3D(world, chassis, options) { return new Vehicle3D(world, chassis, options); }
+export function createVehicle3D(world, chassis, options) {
+    return new Vehicle3D(world, chassis, options);
+}
 //# sourceMappingURL=Vehicle3D.js.map

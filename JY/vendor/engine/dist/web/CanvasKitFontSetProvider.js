@@ -5,7 +5,8 @@ const fault = (code, cause) => new EgretError('PARAGRAPH_FONT_SET_' + code, { ca
 /** A stable cache provider routes immutable generations; it never mutates a live native font table. */
 export function createCanvasKitFontSetProvider(options) {
     const canvasKit = options.canvasKit, buildIdentity = options.buildIdentity;
-    if (buildIdentity !== undefined && (typeof buildIdentity !== 'string' || !buildIdentity.length || buildIdentity.length > 512))
+    if (buildIdentity !== undefined &&
+        (typeof buildIdentity !== 'string' || !buildIdentity.length || buildIdentity.length > 512))
         throw fault('OPTIONS');
     const capabilities = Object.freeze({ ...canvasKitParagraphCapabilities(canvasKit), fontSets: true });
     const identity = 'egret.canvaskit-font-sets.v1:' + ++nextRouter;
@@ -14,7 +15,8 @@ export function createCanvasKitFontSetProvider(options) {
     const faces = new Map();
     const borrowFont = (font) => {
         let record = faces.get(font.identity);
-        if (record && (record.bytes.length !== font.data.length || record.bytes.some((value, index) => value !== font.data[index])))
+        if (record &&
+            (record.bytes.length !== font.data.length || record.bytes.some((value, index) => value !== font.data[index])))
             throw fault('IDENTITY_COLLISION');
         if (!record) {
             const face = decodeCanvasKitFont(canvasKit, font.data);
@@ -26,11 +28,18 @@ export function createCanvasKitFontSetProvider(options) {
         record.references++;
         const owned = record;
         let released = false;
-        return { face: owned.face, release() { if (released)
-                return; released = true; if (--owned.references === 0) {
-                faces.delete(font.identity);
-                owned.face.delete();
-            } } };
+        return {
+            face: owned.face,
+            release() {
+                if (released)
+                    return;
+                released = true;
+                if (--owned.references === 0) {
+                    faces.delete(font.identity);
+                    owned.face.delete();
+                }
+            }
+        };
     };
     const entries = new Map();
     let sequence = 0, closed = false, fontBytes = 0, closing;
@@ -76,11 +85,23 @@ export function createCanvasKitFontSetProvider(options) {
         return closed || !entry || entry.retired || !entry.native ? undefined : entry;
     };
     const provider = Object.freeze({
-        identity, capabilities,
-        hasFontSet(key) { if (this !== provider)
-            throw fault('PROVIDER'); return active(key) !== undefined; },
-        getStatus() { if (this !== provider)
-            throw fault('PROVIDER'); return Object.freeze({ closed, sets: entries.size, fontBytes, pendingJobs: [...entries.values()].reduce((sum, e) => sum + e.jobs, 0) }); },
+        identity,
+        capabilities,
+        hasFontSet(key) {
+            if (this !== provider)
+                throw fault('PROVIDER');
+            return active(key) !== undefined;
+        },
+        getStatus() {
+            if (this !== provider)
+                throw fault('PROVIDER');
+            return Object.freeze({
+                closed,
+                sets: entries.size,
+                fontBytes,
+                pendingJobs: [...entries.values()].reduce((sum, e) => sum + e.jobs, 0)
+            });
+        },
         async load(scope, loader, roots) {
             if (this !== provider || closed)
                 throw fault('CLOSED');
@@ -92,11 +113,29 @@ export function createCanvasKitFontSetProvider(options) {
                 throw fault(closed ? 'CLOSED' : 'LIMIT');
             }
             let resolve, reject;
-            const done = new Promise((yes, no) => { resolve = yes; reject = no; });
+            const done = new Promise((yes, no) => {
+                resolve = yes;
+                reject = no;
+            });
             void done.catch(() => { });
-            const entry = { key: identity + ':' + ++sequence, group, native: undefined, bytes: 0, jobs: 1, retired: false, finished: false, closed: done, resolve, reject, failure: undefined };
+            const entry = {
+                key: identity + ':' + ++sequence,
+                group,
+                native: undefined,
+                bytes: 0,
+                jobs: 1,
+                retired: false,
+                finished: false,
+                closed: done,
+                resolve,
+                reject,
+                failure: undefined
+            };
             entries.set(entry.key, entry);
-            void group.closed.then(() => retire(entry), cause => { entry.failure = cause; retire(entry); });
+            void group.closed.then(() => retire(entry), cause => {
+                entry.failure = cause;
+                retire(entry);
+            });
             try {
                 await group.ready;
                 if (closed || entry.retired || group.isDisposed)
@@ -107,11 +146,24 @@ export function createCanvasKitFontSetProvider(options) {
                 // Reserve retained bytes before host native callbacks can reenter.
                 fontBytes += size;
                 entry.bytes = size;
-                entry.native = createCanvasKitParagraphProviderOwned({ canvasKit, ...(buildIdentity === undefined ? {} : { buildIdentity }), fonts: fonts.map(font => ({ family: font.family, identity: font.identity, data: font.copyBytes() })) }, borrowFont);
+                entry.native = createCanvasKitParagraphProviderOwned({
+                    canvasKit,
+                    ...(buildIdentity === undefined ? {} : { buildIdentity }),
+                    fonts: fonts.map(font => ({ family: font.family, identity: font.identity, data: font.copyBytes() }))
+                }, borrowFont);
                 if (closed || entry.retired || group.isDisposed)
                     throw fault('CANCELLED');
-                const handle = Object.freeze({ key: entry.key, fontFamilies: Object.freeze(fonts.map(font => font.family)), closed: done,
-                    get isDisposed() { return entry.retired || group.isDisposed; }, dispose() { retire(entry); } });
+                const handle = Object.freeze({
+                    key: entry.key,
+                    fontFamilies: Object.freeze(fonts.map(font => font.family)),
+                    closed: done,
+                    get isDisposed() {
+                        return entry.retired || group.isDisposed;
+                    },
+                    dispose() {
+                        retire(entry);
+                    }
+                });
                 return handle;
             }
             catch (cause) {
@@ -149,8 +201,10 @@ export function createCanvasKitFontSetProvider(options) {
                 const current = [...entries.values()];
                 for (const entry of current)
                     retire(entry);
-                closing = Promise.allSettled(current.map(entry => entry.closed)).then(() => { if (failures.length)
-                    throw new AggregateError(failures, 'Font-set cleanup failed'); });
+                closing = Promise.allSettled(current.map(entry => entry.closed)).then(() => {
+                    if (failures.length)
+                        throw new AggregateError(failures, 'Font-set cleanup failed');
+                });
                 void closing.catch(() => { });
             }
             return closing;

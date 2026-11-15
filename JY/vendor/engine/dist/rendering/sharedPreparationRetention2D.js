@@ -22,7 +22,8 @@ const BATCH_BYTES = 32 + 8 * 6 + 2 * (32 + 8 * 6) + 128 + 24 + 8 * 8;
 const PLACES = [0, -1, 1, -2, 2];
 const same = Object.is;
 function sameMatrix(a, b) {
-    return a === b || (same(a.a, b.a) && same(a.b, b.b) && same(a.c, b.c) && same(a.d, b.d) && same(a.tx, b.tx) && same(a.ty, b.ty));
+    return (a === b ||
+        (same(a.a, b.a) && same(a.b, b.b) && same(a.c, b.c) && same(a.d, b.d) && same(a.tx, b.tx) && same(a.ty, b.ty)));
 }
 function sameRect(a, b) {
     return a === b || (same(a.x, b.x) && same(a.y, b.y) && same(a.width, b.width) && same(a.height, b.height));
@@ -45,20 +46,35 @@ function sameRegion(a, b) {
     if (a === undefined || b === undefined)
         return false;
     const p = a.packed, q = b.packed;
-    return same(p.x, q.x) && same(p.y, q.y) && same(p.width, q.width) && same(p.height, q.height) && same(a.logicalWidth, b.logicalWidth)
-        && same(a.logicalHeight, b.logicalHeight) && same(a.trimX, b.trimX) && same(a.trimY, b.trimY) && same(a.quarterTurn, b.quarterTurn);
+    return (same(p.x, q.x) &&
+        same(p.y, q.y) &&
+        same(p.width, q.width) &&
+        same(p.height, q.height) &&
+        same(a.logicalWidth, b.logicalWidth) &&
+        same(a.logicalHeight, b.logicalHeight) &&
+        same(a.trimX, b.trimX) &&
+        same(a.trimY, b.trimY) &&
+        same(a.quarterTurn, b.quarterTurn));
 }
 /** Every input of the geometry of a draw. The opacity only matters by being zero: a draw of none has no geometry. */
 function sameDraw(kept, command, material, region, page, geometry) {
     const old = kept.command;
-    if (old.kind !== command.kind || kept.material !== material || kept.page !== page || kept.geometry !== geometry || (old.opacity === 0) !== (command.opacity === 0)
-        || !sameMatrix(old.matrix, command.matrix) || !sameClips(old.clips, command.clips) || !sameRegion(kept.region, region))
+    if (old.kind !== command.kind ||
+        kept.material !== material ||
+        kept.page !== page ||
+        kept.geometry !== geometry ||
+        (old.opacity === 0) !== (command.opacity === 0) ||
+        !sameMatrix(old.matrix, command.matrix) ||
+        !sameClips(old.clips, command.clips) ||
+        !sameRegion(kept.region, region))
         return false;
     if (command.kind === 'mesh')
         return true;
     if (!sameRect(old.rect, command.rect))
         return false;
-    return command.kind !== 'rect' || (same(old.fillColor, command.fillColor) && same(old.fillAlpha, command.fillAlpha));
+    return (command.kind !== 'rect' ||
+        (same(old.fillColor, command.fillColor) &&
+            same(old.fillAlpha, command.fillAlpha)));
 }
 function polygonBytes(polygons) {
     let bytes = 24 + 8 * polygons.length;
@@ -92,14 +108,29 @@ export class SharedPreparationRetention2D {
         this.#limit = maxBytes;
     }
     /** The logical bytes and the draws kept now. */
-    get bytes() { return this.#bytes + this.#batchBytes; }
+    get bytes() {
+        return this.#bytes + this.#batchBytes;
+    }
     /** The batches kept now. */
-    get batches() { return this.#batches.size; }
-    get draws() { let count = 0; for (const entry of this.#kept)
-        if (entry !== undefined)
-            count++; return count; }
+    get batches() {
+        return this.#batches.size;
+    }
+    get draws() {
+        let count = 0;
+        for (const entry of this.#kept)
+            if (entry !== undefined)
+                count++;
+        return count;
+    }
     /** Everything kept is dropped; a frame being prepared keeps nothing. */
-    clear() { this.#kept = []; this.#next = undefined; this.#bytes = 0; this.#batches = new Map(); this.#nextBatches = undefined; this.#batchBytes = 0; }
+    clear() {
+        this.#kept = [];
+        this.#next = undefined;
+        this.#bytes = 0;
+        this.#batches = new Map();
+        this.#nextBatches = undefined;
+        this.#batchBytes = 0;
+    }
     /** Starts a frame. Results kept for another size, pixel ratio or set of limits are dropped first. */
     begin(commands, width, height, ratio, options) {
         if (this.#width !== width || this.#height !== height || !same(this.#ratio, ratio) || this.#options !== options) {
@@ -127,7 +158,9 @@ export class SharedPreparationRetention2D {
         const kept = this.#kept, shift = this.#shift, attempts = this.#unfound < 8 ? PLACES.length : 1;
         for (let attempt = 0; attempt < attempts; attempt++) {
             const delta = shift + PLACES[attempt], candidate = kept[ordinal + delta];
-            if (candidate === undefined || candidate.frame === this.#frame || !sameDraw(candidate, command, material, region, page, geometry))
+            if (candidate === undefined ||
+                candidate.frame === this.#frame ||
+                !sameDraw(candidate, command, material, region, page, geometry))
                 continue;
             this.#shift = delta;
             this.#unfound = 0;
@@ -193,8 +226,25 @@ export class SharedPreparationRetention2D {
                 entry.frame = this.#frame;
             }
             else
-                entry = { command, material, region, page, geometry, polygons: undefined, vertexReservation: 0, geometryCost: undefined, rows: undefined, vertexCount: 0, rowsCost: undefined,
-                    prepared: undefined, rested: false, packed: undefined, changes: 2, bytes: ENTRY_BYTES, frame: this.#frame };
+                entry = {
+                    command,
+                    material,
+                    region,
+                    page,
+                    geometry,
+                    polygons: undefined,
+                    vertexReservation: 0,
+                    geometryCost: undefined,
+                    rows: undefined,
+                    vertexCount: 0,
+                    rowsCost: undefined,
+                    prepared: undefined,
+                    rested: false,
+                    packed: undefined,
+                    changes: 2,
+                    bytes: ENTRY_BYTES,
+                    frame: this.#frame
+                };
             this.#next[ordinal] = entry;
             this.#nextBytes += ENTRY_BYTES;
             this.#nextCount++;
@@ -203,9 +253,25 @@ export class SharedPreparationRetention2D {
         const bytes = ENTRY_BYTES + polygonBytes(polygons);
         if (bytes > room)
             return undefined;
-        const entry = { command, material, region, page, geometry, polygons, vertexReservation,
-            geometryCost: { preparedVertices, predicates, tupleComparisons }, rows: undefined, vertexCount: 0, rowsCost: undefined,
-            prepared, rested: false, packed: undefined, changes, bytes, frame: this.#frame };
+        const entry = {
+            command,
+            material,
+            region,
+            page,
+            geometry,
+            polygons,
+            vertexReservation,
+            geometryCost: { preparedVertices, predicates, tupleComparisons },
+            rows: undefined,
+            vertexCount: 0,
+            rowsCost: undefined,
+            prepared,
+            rested: false,
+            packed: undefined,
+            changes,
+            bytes,
+            frame: this.#frame
+        };
         this.#next[ordinal] = entry;
         this.#nextBytes += bytes;
         this.#nextCount++;
@@ -220,7 +286,9 @@ export class SharedPreparationRetention2D {
         this.#next = undefined;
     }
     /** A frame that did not complete its geometry leaves what was kept before as it was. */
-    abandon() { this.#next = undefined; }
+    abandon() {
+        this.#next = undefined;
+    }
     /** Keeps a copy of the rows a kept draw was just given, while there is room. */
     keepRows(entry, rows, vertexCount, cost) {
         if (entry.rows !== undefined || entry.polygons === undefined || rows.byteLength > this.#limit - this.bytes)
@@ -236,7 +304,10 @@ export class SharedPreparationRetention2D {
      * kept rows of the draw: they are the same rows, with the place of the region and the opacity of this frame.
      */
     keepPacked(entry, packed) {
-        if (entry.packed !== undefined || entry.rows === undefined || packed.data.byteLength !== entry.rows.byteLength || PACKED_BYTES > this.#limit - this.bytes)
+        if (entry.packed !== undefined ||
+            entry.rows === undefined ||
+            packed.data.byteLength !== entry.rows.byteLength ||
+            PACKED_BYTES > this.#limit - this.bytes)
             return false;
         entry.packed = packed;
         entry.rows = packed.data;
@@ -245,9 +316,14 @@ export class SharedPreparationRetention2D {
         return true;
     }
     /** Starts the batches of a frame. Until they are complete, the batches kept before stay kept. */
-    beginBatches() { this.#nextBatches = new Map(); this.#nextBatchBytes = 0; }
+    beginBatches() {
+        this.#nextBatches = new Map();
+        this.#nextBatchBytes = 0;
+    }
     /** The kept batch whose first draw was at this place in its frame. */
-    findBatch(ordinal) { return this.#batches.get(ordinal); }
+    findBatch(ordinal) {
+        return this.#batches.get(ordinal);
+    }
     /** A kept batch that is a batch of this frame stays kept. */
     carryBatch(batch) {
         if (this.#nextBatches === undefined)
@@ -257,7 +333,9 @@ export class SharedPreparationRetention2D {
     }
     /** Whether there is room to keep a batch of this many draws with these joined rows. */
     roomForBatch(draws, joinedBytes) {
-        return this.#nextBatches !== undefined && draws >= 2 && BATCH_BYTES + joinedBytes + 24 + 16 * draws <= this.#limit - this.#bytes - this.#nextBatchBytes;
+        return (this.#nextBatches !== undefined &&
+            draws >= 2 &&
+            BATCH_BYTES + joinedBytes + 24 + 16 * draws <= this.#limit - this.#bytes - this.#nextBatchBytes);
     }
     /** Keeps a batch this frame joined. The caller has asked whether there is room. */
     keepBatch(members, lengths, pages, joined) {

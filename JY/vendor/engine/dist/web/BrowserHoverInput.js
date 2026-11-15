@@ -14,8 +14,10 @@ export function createBrowserHoverInput(options) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('HOVER_INPUT_OPTIONS_INVALID');
     const { canvas: surface, wheelPage = 'unconsumed', onError, ...configuration } = options;
-    if ((wheelPage !== 'unconsumed' && wheelPage !== 'never' && wheelPage !== 'always') || (onError !== undefined && typeof onError !== 'function')
-        || surface === null || typeof surface !== 'object')
+    if ((wheelPage !== 'unconsumed' && wheelPage !== 'never' && wheelPage !== 'always') ||
+        (onError !== undefined && typeof onError !== 'function') ||
+        surface === null ||
+        typeof surface !== 'object')
         throw new EgretError('HOVER_INPUT_OPTIONS_INVALID');
     const input = createHoverInput(configuration);
     const pairs = [];
@@ -54,7 +56,9 @@ export function createBrowserHoverInput(options) {
         const { width, height } = input;
         /** The rectangle of the canvas on the page, refused unless one scale and one offset map it. */
         function profile() {
-            if (typeof surface?.getBoundingClientRect !== 'function' || surface.ownerDocument !== page || surface.isConnected !== true)
+            if (typeof surface?.getBoundingClientRect !== 'function' ||
+                surface.ownerDocument !== page ||
+                surface.isConnected !== true)
                 throw new EgretError('HOVER_INPUT_SURFACE_INVALID');
             let current = surface, depth = 0;
             // Ordinary ancestors only: a transform or a zoom would need a mapping this adapter does not have.
@@ -68,8 +72,21 @@ export function createBrowserHoverInput(options) {
                 if (zoom !== 'normal' && zoom !== '1')
                     throw new EgretError('HOVER_INPUT_SURFACE_INVALID');
                 if (current === surface) {
-                    const edges = ['padding-top', 'padding-right', 'padding-bottom', 'padding-left', 'border-top-width', 'border-right-width', 'border-bottom-width', 'border-left-width'];
-                    if (read('object-fit') !== 'fill' || edges.some(name => { const value = read(name); return value !== '0px' && value !== '0'; }))
+                    const edges = [
+                        'padding-top',
+                        'padding-right',
+                        'padding-bottom',
+                        'padding-left',
+                        'border-top-width',
+                        'border-right-width',
+                        'border-bottom-width',
+                        'border-left-width'
+                    ];
+                    if (read('object-fit') !== 'fill' ||
+                        edges.some(name => {
+                            const value = read(name);
+                            return value !== '0px' && value !== '0';
+                        }))
                         throw new EgretError('HOVER_INPUT_SURFACE_INVALID');
                 }
                 current = current.parentNode;
@@ -133,12 +150,14 @@ export function createBrowserHoverInput(options) {
             const rect = current();
             if (!finite(event.clientX) || !finite(event.clientY))
                 throw new EgretError('HOVER_INPUT_EVENT_INVALID');
-            const globalX = (event.clientX - rect.left) * width / rect.width, globalY = (event.clientY - rect.top) * height / rect.height;
+            const globalX = ((event.clientX - rect.left) * width) / rect.width, globalY = ((event.clientY - rect.top) * height) / rect.height;
             return globalX >= 0 && globalY >= 0 && globalX < width && globalY < height ? { globalX, globalY } : undefined;
         }
         function identify(event) {
             const { pointerId, pointerType } = event;
-            return Number.isSafeInteger(pointerId) && pointerId >= 0 && (pointerType === 'mouse' || pointerType === 'pen') ? { pointerId, pointerType } : undefined;
+            return Number.isSafeInteger(pointerId) && pointerId >= 0 && (pointerType === 'mouse' || pointerType === 'pen')
+                ? { pointerId, pointerType }
+                : undefined;
         }
         function hover(event) {
             const identity = identify(event);
@@ -169,14 +188,24 @@ export function createBrowserHoverInput(options) {
                 const unit = units[event.deltaMode];
                 if (unit === undefined || !finite(event.deltaX) || !finite(event.deltaY) || !finite(event.deltaZ))
                     throw new EgretError('HOVER_INPUT_EVENT_INVALID');
-                consumed = input.wheel({ ...point, deltaX: event.deltaX, deltaY: event.deltaY, deltaZ: event.deltaZ, unit, timestamp: time(event), zoom: event.ctrlKey === true });
+                consumed = input.wheel({
+                    ...point,
+                    deltaX: event.deltaX,
+                    deltaY: event.deltaY,
+                    deltaZ: event.deltaZ,
+                    unit,
+                    timestamp: time(event),
+                    zoom: event.ctrlKey === true
+                });
             }
             if ((wheelPage === 'never' || (wheelPage === 'unconsumed' && consumed)) && event.cancelable)
                 event.preventDefault();
         }
         function listen(target, type, action, settings = {}) {
-            const listener = event => guard(() => { if (event.type === type)
-                action(event); });
+            const listener = event => guard(() => {
+                if (event.type === type)
+                    action(event);
+            });
             const pair = { target, type, listener, options: settings };
             pairs.push(pair);
             target.addEventListener(type, listener, settings);
@@ -190,8 +219,10 @@ export function createBrowserHoverInput(options) {
         listen(surface, 'wheel', event => wheel(event), { passive: wheelPage === 'always' });
         listen(win, 'blur', () => input.leaveAll('blur'));
         listen(win, 'pagehide', () => input.leaveAll('pagehide'));
-        listen(page, 'visibilitychange', () => { if (page.visibilityState !== 'visible')
-            input.leaveAll('hidden'); });
+        listen(page, 'visibilitychange', () => {
+            if (page.visibilityState !== 'visible')
+                input.leaveAll('hidden');
+        });
         listen(win, 'resize', remap);
         listen(win, 'orientationchange', remap);
         listen(win, 'scroll', remap, { capture: true });

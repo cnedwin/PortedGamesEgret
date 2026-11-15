@@ -3,15 +3,28 @@ export function place(shape, x, y, degrees) {
     if (shape.kind === 'circle')
         return { kind: 'circle', x, y, radius: shape.radius, points: new Float64Array(0) };
     const local = shape.kind === 'box'
-        ? [{ x: -shape.width / 2, y: -shape.height / 2 }, { x: shape.width / 2, y: -shape.height / 2 }, { x: shape.width / 2, y: shape.height / 2 }, { x: -shape.width / 2, y: shape.height / 2 }]
+        ? [
+            { x: -shape.width / 2, y: -shape.height / 2 },
+            { x: shape.width / 2, y: -shape.height / 2 },
+            { x: shape.width / 2, y: shape.height / 2 },
+            { x: -shape.width / 2, y: shape.height / 2 }
+        ]
         : shape.points;
-    const a = degrees * Math.PI / 180, cos = Math.cos(a), sin = Math.sin(a), points = new Float64Array(local.length * 2);
-    local.forEach((p, i) => { points[i * 2] = x + p.x * cos - p.y * sin; points[i * 2 + 1] = y + p.x * sin + p.y * cos; });
+    const a = (degrees * Math.PI) / 180, cos = Math.cos(a), sin = Math.sin(a), points = new Float64Array(local.length * 2);
+    local.forEach((p, i) => {
+        points[i * 2] = x + p.x * cos - p.y * sin;
+        points[i * 2 + 1] = y + p.x * sin + p.y * cos;
+    });
     return { kind: 'polygon', x, y, radius: 0, points };
 }
 export function boxOf(shape) {
     if (shape.kind === 'circle')
-        return { minX: shape.x - shape.radius, minY: shape.y - shape.radius, maxX: shape.x + shape.radius, maxY: shape.y + shape.radius };
+        return {
+            minX: shape.x - shape.radius,
+            minY: shape.y - shape.radius,
+            maxX: shape.x + shape.radius,
+            maxY: shape.y + shape.radius
+        };
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (let i = 0; i < shape.points.length; i += 2) {
         const px = shape.points[i], py = shape.points[i + 1];
@@ -103,7 +116,9 @@ export function meet(a, b) {
         const dx = b.x - a.x, dy = b.y - a.y, distance = Math.hypot(dx, dy), reach = a.radius + b.radius;
         if (distance > reach)
             return undefined;
-        return distance === 0 ? { nx: 0, ny: 1, depth: reach } : { nx: dx / distance, ny: dy / distance, depth: reach - distance };
+        return distance === 0
+            ? { nx: 0, ny: 1, depth: reach }
+            : { nx: dx / distance, ny: dy / distance, depth: reach - distance };
     }
     const list = [];
     axes(a, b, list);

@@ -15,7 +15,8 @@ export function runOwnedPreparationScope(operation, privateObserver) {
         return operation();
     }
     catch (failure) {
-        if (((typeof failure === 'object' && failure !== null) || typeof failure === 'function') && origins.get(failure) === token) {
+        if (((typeof failure === 'object' && failure !== null) || typeof failure === 'function') &&
+            origins.get(failure) === token) {
             try {
                 privateObserver(failure);
             }

@@ -11,7 +11,12 @@ export class PostChainWebGL23D {
     scene = new RenderTarget3D(1, 1, { format: 'rgba16f', depthTexture: true, name: 'world3d.post.scene' });
     /** Target and flat white material for the outline mask. */
     mask = new RenderTarget3D(1, 1, { name: 'world3d.post.mask' });
-    maskMaterial = (() => { const material = new Material3D('unlit', { side: 'double' }); material.fog = false; material.toneMapped = false; return material; })();
+    maskMaterial = (() => {
+        const material = new Material3D('unlit', { side: 'double' });
+        material.fog = false;
+        material.toneMapped = false;
+        return material;
+    })();
     #gl;
     #resources;
     #float;
@@ -105,19 +110,25 @@ export class PostChainWebGL23D {
         this.#outline = maskTexture ? settings : undefined;
         const useAo = settings.ssao && depthTexture !== undefined && settings.ssaoIntensity > 0;
         // Allocate before binding the shared units: allocation binds on the active unit.
-        const ao = useAo ? this.#ao = this.surface(this.#ao, width, height, false) : undefined;
+        const ao = useAo ? (this.#ao = this.surface(this.#ao, width, height, false)) : undefined;
         gl.activeTexture(gl.TEXTURE2);
         gl.bindTexture(gl.TEXTURE_2D, depthTexture ?? null);
         gl.activeTexture(gl.TEXTURE0);
         if (ao) {
-            const program = resources.program('post/ssao', () => ({ vertex: POST_VERTEX_GLSL_3D, fragment: POST_SSAO_GLSL_3D }));
+            const program = resources.program('post/ssao', () => ({
+                vertex: POST_VERTEX_GLSL_3D,
+                fragment: POST_SSAO_GLSL_3D
+            }));
             this.pass(program, sceneTexture, ao.framebuffer, width, height, [Math.max(settings.ssaoRadius, 0.001), settings.ssaoIntensity, settings.ssaoBias, 0], [0, 0, 0, 0]);
             draws++;
         }
         if (settings.dof && depthTexture !== undefined && settings.dofRadius > 0) {
             // Everything after this reads the blurred image as the scene.
-            const dof = this.#dof = this.surface(this.#dof, width, height, this.#float);
-            const program = resources.program('post/dof', () => ({ vertex: POST_VERTEX_GLSL_3D, fragment: POST_DOF_GLSL_3D }));
+            const dof = (this.#dof = this.surface(this.#dof, width, height, this.#float));
+            const program = resources.program('post/dof', () => ({
+                vertex: POST_VERTEX_GLSL_3D,
+                fragment: POST_DOF_GLSL_3D
+            }));
             this.pass(program, sceneTexture, dof.framebuffer, width, height, [settings.dofFocus, Math.max(settings.dofRange, 0.001), settings.dofRadius, 0], [0, 0, 0, 0]);
             sceneTexture = dof.texture;
             draws++;
@@ -131,7 +142,7 @@ export class PostChainWebGL23D {
                 const sourceWidth = w, sourceHeight = h;
                 w = Math.max(w >> 1, 1);
                 h = Math.max(h >> 1, 1);
-                const level = this.#levels[i] = this.surface(this.#levels[i], w, h, this.#float);
+                const level = (this.#levels[i] = this.surface(this.#levels[i], w, h, this.#float));
                 this.pass(down, source, level.framebuffer, w, h, [1 / sourceWidth, 1 / sourceHeight, settings.bloomThreshold, Math.min(Math.max(settings.bloomKnee, 0), 1)], [i === 0 ? 1 : 0, 0, 0, 0]);
                 source = level.texture;
                 draws++;
@@ -153,7 +164,7 @@ export class PostChainWebGL23D {
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
         }
         // Allocate the intermediate before binding unit 1: allocation binds on the active unit.
-        const ldr = settings.fxaa ? this.#ldr = this.surface(this.#ldr, width, height, false) : undefined;
+        const ldr = settings.fxaa ? (this.#ldr = this.surface(this.#ldr, width, height, false)) : undefined;
         gl.activeTexture(gl.TEXTURE1);
         gl.bindTexture(gl.TEXTURE_2D, levels > 0 ? this.#levels[0].texture : this.#black);
         gl.activeTexture(gl.TEXTURE4);
@@ -164,7 +175,10 @@ export class PostChainWebGL23D {
         // The hook needs depth; without a depth texture it is left out rather than reading garbage.
         const custom = depthTexture !== undefined && settings.custom?.glsl !== undefined ? settings.custom : undefined;
         this.#custom = custom?.uniforms;
-        const composite = resources.program('post/composite' + (custom ? '|' + custom.key : ''), () => ({ vertex: POST_VERTEX_GLSL_3D, fragment: postCompositeGlsl3D(custom?.glsl) }));
+        const composite = resources.program('post/composite' + (custom ? '|' + custom.key : ''), () => ({
+            vertex: POST_VERTEX_GLSL_3D,
+            fragment: postCompositeGlsl3D(custom?.glsl)
+        }));
         const p = this.#params;
         if (ldr) {
             // FXAA works on display-encoded color, so the composite always encodes into the intermediate.
@@ -198,7 +212,12 @@ export class PostChainWebGL23D {
     dispose(lost = false) {
         const gl = this.#gl;
         if (!lost) {
-            for (const surface of [...this.#levels, ...(this.#ldr ? [this.#ldr] : []), ...(this.#ao ? [this.#ao] : []), ...(this.#dof ? [this.#dof] : [])]) {
+            for (const surface of [
+                ...this.#levels,
+                ...(this.#ldr ? [this.#ldr] : []),
+                ...(this.#ao ? [this.#ao] : []),
+                ...(this.#dof ? [this.#dof] : [])
+            ]) {
                 gl.deleteTexture(surface.texture);
                 gl.deleteFramebuffer(surface.framebuffer);
             }

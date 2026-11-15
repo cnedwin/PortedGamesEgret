@@ -3,7 +3,9 @@ import { EgretError } from '@egret/runtime';
 import { captureUiLayout } from '@egret/runtime/ui';
 const themes = new WeakMap();
 const freeze = Object.freeze;
-function invalid() { throw new EgretError('UI_THEME_INVALID'); }
+function invalid() {
+    throw new EgretError('UI_THEME_INVALID');
+}
 function record(value, allowed) {
     if (value === null || typeof value !== 'object')
         invalid();
@@ -15,8 +17,9 @@ function record(value, allowed) {
         throw new EgretError('UI_THEME_LIMIT');
     const result = Object.create(null);
     for (const key of keys) {
-        if (typeof key !== 'string' || !/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(key)
-            || allowed !== undefined && !allowed.includes(key))
+        if (typeof key !== 'string' ||
+            !/^[A-Za-z][A-Za-z0-9_.-]{0,63}$/.test(key) ||
+            (allowed !== undefined && !allowed.includes(key)))
             invalid();
         // Data-only descriptors prevent hidden getter work during admission.
         const descriptor = Object.getOwnPropertyDescriptor(value, key);
@@ -44,18 +47,39 @@ function tokens(value, capture) {
 }
 export function createUiTheme(descriptor) {
     const raw = record(descriptor, ['id', 'colors', 'spacing', 'typography', 'skins']);
-    const result = freeze({ id: name(raw.id),
-        colors: tokens(raw.colors, value => { const n = numeric(value, 0, 0xffffff); if (!Number.isInteger(n))
-            invalid(); return n; }),
+    const result = freeze({
+        id: name(raw.id),
+        colors: tokens(raw.colors, value => {
+            const n = numeric(value, 0, 0xffffff);
+            if (!Number.isInteger(n))
+                invalid();
+            return n;
+        }),
         spacing: tokens(raw.spacing, value => numeric(value, 0, 4096)),
         typography: tokens(raw.typography, value => {
             const t = record(value, ['fontFamily', 'fontSize', 'lineHeight']);
-            if (typeof t.fontFamily !== 'string' || !t.fontFamily.length || t.fontFamily.length > 256 || /[\x00-\x1f\x7f]/.test(t.fontFamily))
+            if (typeof t.fontFamily !== 'string' ||
+                !t.fontFamily.length ||
+                t.fontFamily.length > 256 ||
+                /[\x00-\x1f\x7f]/.test(t.fontFamily))
                 invalid();
-            return freeze({ fontFamily: t.fontFamily, fontSize: numeric(t.fontSize, 1, 512), lineHeight: numeric(t.lineHeight, 1, 2048) });
+            return freeze({
+                fontFamily: t.fontFamily,
+                fontSize: numeric(t.fontSize, 1, 512),
+                lineHeight: numeric(t.lineHeight, 1, 2048)
+            });
         }),
         skins: tokens(raw.skins, value => {
-            const rawSkin = record(value, ['default', 'hover', 'pressed', 'disabled', 'focus', 'checked', 'selected', 'expanded']);
+            const rawSkin = record(value, [
+                'default',
+                'hover',
+                'pressed',
+                'disabled',
+                'focus',
+                'checked',
+                'selected',
+                'expanded'
+            ]);
             const skin = Object.create(null);
             skin.default = name(rawSkin.default);
             for (const key of Object.keys(rawSkin))
@@ -66,7 +90,15 @@ export function createUiTheme(descriptor) {
     themes.set(result, JSON.stringify([result.spacing, result.typography]));
     return result;
 }
-const skinStates = freeze(['disabled', 'pressed', 'checked', 'selected', 'expanded', 'focus', 'hover']);
+const skinStates = freeze([
+    'disabled',
+    'pressed',
+    'checked',
+    'selected',
+    'expanded',
+    'focus',
+    'hover'
+]);
 /**
  * The name a skin gives to the state of a control: of the states that hold, the first in `order`
  * that the skin has a name for, and `default` when it has none. The usual order is the one a player
@@ -75,8 +107,13 @@ const skinStates = freeze(['disabled', 'pressed', 'checked', 'selected', 'expand
  */
 export function selectUiSkin(skin, state = {}, order = skinStates) {
     const asked = order;
-    if (skin === null || typeof skin !== 'object' || typeof skin.default !== 'string' || state === null || typeof state !== 'object' || !Array.isArray(order)
-        || asked.some((entry, index) => !skinStates.includes(entry) || asked.indexOf(entry) !== index))
+    if (skin === null ||
+        typeof skin !== 'object' ||
+        typeof skin.default !== 'string' ||
+        state === null ||
+        typeof state !== 'object' ||
+        !Array.isArray(order) ||
+        asked.some((entry, index) => !skinStates.includes(entry) || asked.indexOf(entry) !== index))
         invalid();
     for (const entry of skinStates)
         if (state[entry] !== undefined && typeof state[entry] !== 'boolean')
@@ -113,11 +150,15 @@ export function applyUiTheme(tree, bindings, theme) {
     }
     function copy(node) {
         const binding = bindings.get(node.id);
-        return { ...node,
-            ...(binding?.fill === undefined ? {} : { fill: { color: resolve(theme.colors, binding.fill), alpha: node.fill?.alpha ?? 1 } }),
+        return {
+            ...node,
+            ...(binding?.fill === undefined
+                ? {}
+                : { fill: { color: resolve(theme.colors, binding.fill), alpha: node.fill?.alpha ?? 1 } }),
             ...(binding?.padding === undefined ? {} : { padding: resolve(theme.spacing, binding.padding) }),
             ...(binding?.gap === undefined ? {} : { gap: resolve(theme.spacing, binding.gap) }),
-            ...(node.children === undefined ? {} : { children: node.children.map(copy) }) };
+            ...(node.children === undefined ? {} : { children: node.children.map(copy) })
+        };
     }
     return captureUiLayout(copy(tree.root));
 }

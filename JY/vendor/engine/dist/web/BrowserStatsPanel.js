@@ -19,8 +19,18 @@ export function createBrowserStatsPanel(options) {
     if (options === null || typeof options !== 'object')
         throw invalid();
     const { canvas, label } = options, interval = options.intervalMs ?? 500, page = canvas?.ownerDocument;
-    if (canvas === null || typeof canvas !== 'object' || typeof canvas.getBoundingClientRect !== 'function' || page === null || typeof page !== 'object' || typeof page.createElement !== 'function'
-        || page.body === null || typeof page.body !== 'object' || (label !== undefined && typeof label !== 'string') || typeof interval !== 'number' || !(interval >= 100) || !Number.isFinite(interval))
+    if (canvas === null ||
+        typeof canvas !== 'object' ||
+        typeof canvas.getBoundingClientRect !== 'function' ||
+        page === null ||
+        typeof page !== 'object' ||
+        typeof page.createElement !== 'function' ||
+        page.body === null ||
+        typeof page.body !== 'object' ||
+        (label !== undefined && typeof label !== 'string') ||
+        typeof interval !== 'number' ||
+        !(interval >= 100) ||
+        !Number.isFinite(interval))
         throw invalid();
     const element = page.createElement('div');
     // Over the page and out of the way of the pointer: what is under the panel is still pressed.
@@ -29,18 +39,57 @@ export function createBrowserStatsPanel(options) {
     page.body.appendChild(element);
     let closed = false, last, since, seen = 0, longest = 0, shown = false;
     let commands = -1, triangles = -1, geometries = -1, pages = -1, pending = -1, frames = -1, skipped = -1;
-    let current = Object.freeze({ fps: 0, longestFrameMs: 0, commands: 0, triangles: 0, geometries: 0, pages: 0, pendingFrames: 0, frames: 0, skipped: 0 });
-    const text = (value) => value < 0 ? '-' : String(value);
+    let current = Object.freeze({
+        fps: 0,
+        longestFrameMs: 0,
+        commands: 0,
+        triangles: 0,
+        geometries: 0,
+        pages: 0,
+        pendingFrames: 0,
+        frames: 0,
+        skipped: 0
+    });
+    const text = (value) => (value < 0 ? '-' : String(value));
     function refresh(now) {
-        const elapsed = now - since, fps = elapsed > 0 ? Math.round(10000 * seen / elapsed) / 10 : 0;
-        current = Object.freeze({ fps, longestFrameMs: Math.round(10 * longest) / 10, commands: Math.max(0, commands), triangles: Math.max(0, triangles), geometries: Math.max(0, geometries),
-            pages: Math.max(0, pages), pendingFrames: Math.max(0, pending), frames: Math.max(0, frames), skipped: Math.max(0, skipped) });
+        const elapsed = now - since, fps = elapsed > 0 ? Math.round((10000 * seen) / elapsed) / 10 : 0;
+        current = Object.freeze({
+            fps,
+            longestFrameMs: Math.round(10 * longest) / 10,
+            commands: Math.max(0, commands),
+            triangles: Math.max(0, triangles),
+            geometries: Math.max(0, geometries),
+            pages: Math.max(0, pages),
+            pendingFrames: Math.max(0, pending),
+            frames: Math.max(0, frames),
+            skipped: Math.max(0, skipped)
+        });
         const box = canvas.getBoundingClientRect();
         element.style.left = box.left + 'px';
         element.style.top = box.top + 'px';
-        element.textContent = (label === undefined ? '' : label + '\n') + 'fps ' + fps.toFixed(1) + '  longest ' + current.longestFrameMs.toFixed(1) + ' ms\n'
-            + 'commands ' + text(commands) + '  triangles ' + text(triangles) + '\n' + 'geometries ' + text(geometries) + '  pages ' + text(pages) + '\n'
-            + 'pending ' + text(pending) + '  drawn ' + text(frames) + '  skipped ' + text(skipped);
+        element.textContent =
+            (label === undefined ? '' : label + '\n') +
+                'fps ' +
+                fps.toFixed(1) +
+                '  longest ' +
+                current.longestFrameMs.toFixed(1) +
+                ' ms\n' +
+                'commands ' +
+                text(commands) +
+                '  triangles ' +
+                text(triangles) +
+                '\n' +
+                'geometries ' +
+                text(geometries) +
+                '  pages ' +
+                text(pages) +
+                '\n' +
+                'pending ' +
+                text(pending) +
+                '  drawn ' +
+                text(frames) +
+                '  skipped ' +
+                text(skipped);
         since = now;
         seen = 0;
         longest = 0;
@@ -77,8 +126,12 @@ export function createBrowserStatsPanel(options) {
                 refresh(now);
         },
         snapshot: () => current,
-        dispose() { if (closed)
-            return; closed = true; element.remove(); },
+        dispose() {
+            if (closed)
+                return;
+            closed = true;
+            element.remove();
+        }
     });
 }
 //# sourceMappingURL=BrowserStatsPanel.js.map

@@ -21,7 +21,9 @@ export class PlanarReflection3D {
     #perspectiveCamera = new Camera3D();
     #orthographicCamera = new Camera3D('orthographic');
     #camera = this.#perspectiveCamera;
-    get camera() { return this.#camera; }
+    get camera() {
+        return this.#camera;
+    }
     /** Moves the cutting plane back by this distance so geometry touching the mirror leaves no gap. */
     clipBias = 0.05;
     /** Draw the mirror image on every Nth call only; in between, the last image is kept. 1 draws every time. */
@@ -42,7 +44,9 @@ export class PlanarReflection3D {
         this.target = new RenderTarget3D(width, height, { name: 'planar-reflection' });
         this.#perspectiveCamera.name = this.#orthographicCamera.name = 'reflection-camera';
     }
-    get texture() { return this.target.texture; }
+    get texture() {
+        return this.target.texture;
+    }
     /**
      * Place the mirror camera for a viewing camera and a world plane given as
      * [nx, ny, nz, d] with unit normal, where n . p + d = 0 and the normal
@@ -125,8 +129,11 @@ export class PlanarReflection3D {
         const scheduled = this.#calls === 0;
         this.#calls = (this.#calls + 1) % interval;
         const drawn = this.#drawn;
-        if (!scheduled && drawn?.renderer === renderer && drawn.scene === scene && drawn.version === this.target.version
-            && (renderer.reuseReflection?.(this.target) ?? true))
+        if (!scheduled &&
+            drawn?.renderer === renderer &&
+            drawn.scene === scene &&
+            drawn.version === this.target.version &&
+            (renderer.reuseReflection?.(this.target) ?? true))
             return true;
         this.#drawn = undefined;
         const shadowsEnabled = renderer.shadowsEnabled, post = renderer.postProcess, postEnabled = post?.enabled;
@@ -164,11 +171,17 @@ export class PlanarReflection3D {
             }
         };
         if (post && touchedPost)
-            restore(() => { post.enabled = postEnabled; });
+            restore(() => {
+                post.enabled = postEnabled;
+            });
         for (let i = touchedHidden - 1; i >= 0; i--)
-            restore(() => { hidden[i].visible = shown[i]; });
+            restore(() => {
+                hidden[i].visible = shown[i];
+            });
         if (touchedShadows)
-            restore(() => { renderer.shadowsEnabled = shadowsEnabled; });
+            restore(() => {
+                renderer.shadowsEnabled = shadowsEnabled;
+            });
         if (cleanupErrors) {
             const causes = primary ? [primary.cause, ...cleanupErrors] : cleanupErrors;
             if (causes.length === 1)
@@ -181,7 +194,10 @@ export class PlanarReflection3D {
             this.#drawn = { renderer, scene, version: this.target.version };
         return result;
     }
-    dispose() { this.#drawn = undefined; this.target.dispose(); }
+    dispose() {
+        this.#drawn = undefined;
+        this.target.dispose();
+    }
 }
 // Four waves share one formula: each is turned from the main direction,
 // shorter and lower than the one before. Deep-water waves travel at
@@ -208,14 +224,16 @@ vec3 waterWaves(vec2 p, out vec2 slope) {
     return moved;
 }
 `;
-const GLSL_VERTEX = GLSL_WAVES + /* glsl */ `
+const GLSL_VERTEX = GLSL_WAVES +
+    /* glsl */ `
 vec3 customVertex(vec3 worldPosition, vec3 localPosition, vec3 normal, vec2 uv, vec4 color) {
     vec2 slope;
     vec3 moved = waterWaves(worldPosition.xz, slope);
     return worldPosition + vec3(moved.x, moved.y, moved.z);
 }
 `;
-const GLSL_NORMAL = GLSL_WAVES + /* glsl */ `
+const GLSL_NORMAL = GLSL_WAVES +
+    /* glsl */ `
 vec3 customNormal(vec3 normal, vec3 worldPosition, vec2 uv) {
     vec2 slope;
     waterWaves(worldPosition.xz, slope);
@@ -375,12 +393,22 @@ export class Water3D extends Mesh3D {
         }
     }
     /** Seconds the waves have been running; set it to keep several clients in step. */
-    get time() { return this.#uniforms[0]; }
-    set time(value) { this.#uniforms[0] = requireFinite3D(value, 'time'); }
-    get amplitude() { return this.#uniforms[1]; }
-    set amplitude(value) { this.#uniforms[1] = requireFinite3D(value, 'amplitude'); }
+    get time() {
+        return this.#uniforms[0];
+    }
+    set time(value) {
+        this.#uniforms[0] = requireFinite3D(value, 'time');
+    }
+    get amplitude() {
+        return this.#uniforms[1];
+    }
+    set amplitude(value) {
+        this.#uniforms[1] = requireFinite3D(value, 'amplitude');
+    }
     /** Advance the waves by a time step in seconds. */
-    update(deltaSeconds) { this.#uniforms[0] = this.#uniforms[0] + requireFinite3D(deltaSeconds, 'deltaSeconds'); }
+    update(deltaSeconds) {
+        this.#uniforms[0] = this.#uniforms[0] + requireFinite3D(deltaSeconds, 'deltaSeconds');
+    }
     /**
      * World height of the surface at a world point now, for floating objects.
      * It ignores the sideways pull of steep waves, so it is exact at steepness 0
@@ -390,8 +418,11 @@ export class Water3D extends Mesh3D {
         const u = this.#uniforms, heading = Math.atan2(u[5], u[4]);
         let height = this.matrixWorld[13];
         for (let i = 0; i < 4; i++) {
-            const angle = heading + WAVE_TURN[i], k = Math.PI * 2 / (u[2] * WAVE_LENGTH[i]);
-            height += u[1] * WAVE_HEIGHT[i] * Math.sin(k * (Math.cos(angle) * x + Math.sin(angle) * z) - Math.sqrt(9.81 * k) * u[3] * u[0]);
+            const angle = heading + WAVE_TURN[i], k = (Math.PI * 2) / (u[2] * WAVE_LENGTH[i]);
+            height +=
+                u[1] *
+                    WAVE_HEIGHT[i] *
+                    Math.sin(k * (Math.cos(angle) * x + Math.sin(angle) * z) - Math.sqrt(9.81 * k) * u[3] * u[0]);
         }
         return height;
     }
@@ -428,7 +459,11 @@ export class Water3D extends Mesh3D {
             if (density < 0)
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'density');
             const tint = this.material.attenuationColor;
-            const installed = { kind: 'exponential', color: [tint[0] * 1.6, tint[1] * 1.6, tint[2] * 1.6], density };
+            const installed = {
+                kind: 'exponential',
+                color: [tint[0] * 1.6, tint[1] * 1.6, tint[2] * 1.6],
+                density
+            };
             const override = { scene, previous: scene.fog, installed };
             scene.fog = installed;
             underwaterFogOwners.set(scene, override);
@@ -454,7 +489,9 @@ export class Water3D extends Mesh3D {
         this.reflection?.dispose();
     }
 }
-export function createWater3D(options = {}) { return new Water3D(options); }
+export function createWater3D(options = {}) {
+    return new Water3D(options);
+}
 /**
  * The material Water3D uses, for a water surface on your own geometry: a
  * standard material that refracts, with the wave hooks attached. Advance
@@ -469,7 +506,11 @@ export function createWaterMaterial3D(options = {}) {
     const clarity = requireFinite3D(options.clarity ?? 0.85, 'clarity');
     if (steepness < 0 || steepness > 1 || clarity < 0 || clarity > 1)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'steepness and clarity are 0 to 1');
-    const material = createStandardMaterial3D({ color: options.color ?? 0x2f7f9f, roughness: options.roughness ?? 0.06, metallic: 0 });
+    const material = createStandardMaterial3D({
+        color: options.color ?? 0x2f7f9f,
+        roughness: options.roughness ?? 0.06,
+        metallic: 0
+    });
     material.transmission = clarity;
     material.ior = 1.33;
     material.thickness = requireFinite3D(options.thickness ?? 0.5, 'thickness');
@@ -488,8 +529,31 @@ export function createWaterMaterial3D(options = {}) {
     // The underside is drawn too, for a camera below the surface.
     material.side = 'double';
     material.shader = createCustomShader3D({
-        key: 'world3d-water', glslVertex: GLSL_VERTEX, wgslVertex: WGSL_VERTEX, glslNormal: GLSL_NORMAL, wgslNormal: WGSL_NORMAL, glsl: GLSL_FRAGMENT, wgsl: WGSL_FRAGMENT,
-        uniforms: [0, amplitude, wavelength, speed, dx / length, dz / length, steepness, ripple, rippleLength, 0.03, 0, 0, foamWidth, foamWidth > 0 ? 1 : 0, caustics, depthFade * 0.5],
+        key: 'world3d-water',
+        glslVertex: GLSL_VERTEX,
+        wgslVertex: WGSL_VERTEX,
+        glslNormal: GLSL_NORMAL,
+        wgslNormal: WGSL_NORMAL,
+        glsl: GLSL_FRAGMENT,
+        wgsl: WGSL_FRAGMENT,
+        uniforms: [
+            0,
+            amplitude,
+            wavelength,
+            speed,
+            dx / length,
+            dz / length,
+            steepness,
+            ripple,
+            rippleLength,
+            0.03,
+            0,
+            0,
+            foamWidth,
+            foamWidth > 0 ? 1 : 0,
+            caustics,
+            depthFade * 0.5
+        ]
     });
     return material;
 }
