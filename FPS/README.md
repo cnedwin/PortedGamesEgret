@@ -14,12 +14,16 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 | 瞄准 · Aim | 右键 · right button | 瞄准 · AIM |
 | 换弹 · Reload | R | 换弹 · RLD |
 | 接入终端、搜索物资箱 · Plug in at a terminal, search a crate | 按住 F 或 E · hold F or E | 按住“使用” · hold USE |
-| 切换武器 · Switch weapon | 1 / 2 / 3 / 滚轮 · wheel | 切枪 · SWAP |
+| 切换武器 · Switch weapon | 1 / 2 / 3 / 滚轮 · wheel | 切枪，或点背包里的武器 · SWAP, or tap a weapon in the backpack |
 | 手雷 · Grenade | G | 手雷 · NADE |
 | 背包 · Backpack | Tab | 背包 · BAG |
 | 绷带 · Bandage | Q | 绷带 · HEAL |
 | 跳跃、奔跑、蹲下 · Jump, sprint, crouch | Space，Shift，C / Ctrl | 跳、摇杆推到底、蹲 · JUMP, push the stick fully, DUCK |
 | 暂停 · Pause | Esc / P | 暂停 · II |
+
+触屏可以一边移动一边开火。摇杆推到底进入奔跑，开火时回到步行。开镜会降低滑动的转向速度。
+
+On touch, you can move and fire together. Pushing the stick all the way starts a sprint, and firing brings you back to a walk. Dragging turns the view more slowly while aiming.
 
 - 三把武器：全自动突击步枪、备弹无限的手枪，以及带瞄准镜的半自动精确射手步枪；另有手雷和绷带。物资箱里能找到前握把（降低后坐力）和扩容弹匣，捡到即装在步枪上。瞄准时散布更小、后坐力更低，移动、跳跃和连发都会让准星张开。
 - 右上角的小地图随视角转动，标出建筑、终端、撤离点、没搜过的物资箱和已经暴露位置的敌人。
@@ -39,9 +43,9 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 - After the third terminal, the helicopter is sixty-four seconds out from the south-east helipad. Use cover on the way and hold on the pad for four seconds once the helicopter is in position.
 - Ten supply crates hold ammunition, bandages, armour plates, grenades and valuables coloured by rarity. The debrief grades the run on time, accuracy, damage taken and the total value carried out.
 
-设置里可以调整画质（高、中、低）、鼠标灵敏度、视野、音量、纵轴反转和语言。帧率不足时请调低画质。
+设置里可以调整画质（高、中、低）、视角灵敏度、视野、音量、纵轴反转和语言。帧率不足时请调低画质。
 
-Settings cover graphics quality (high, medium, low), mouse sensitivity, field of view, volume, Y inversion and language. Lower the quality if the frame rate drops.
+Settings cover graphics quality (high, medium, low), look sensitivity, field of view, volume, Y inversion and language. Lower the quality if the frame rate drops.
 
 ## 引擎用法 · How it uses the engine
 

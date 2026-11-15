@@ -182,6 +182,9 @@ async function main() {
   const hud = createHud(document.querySelector('#ui'), settings, {
     deploy,
     restart: deploy,
+    selectWeapon(weapon) {
+      if (mode === 'play') input.selectWeapon(weapon);
+    },
     resume() {
       audio.resume();
       setMode('play');
@@ -278,7 +281,7 @@ async function main() {
     });
     dt = Math.min(dt, 0.1);
     time += dt;
-    if (mode === 'play') {
+    if (mode === 'play' && dt > 1e-5) {
       const record = bot ? bot.think(dt) : input.sample();
       if (record.weapon === 'swap' || record.weapon === 'next' || record.weapon === 'previous') {
         // The wheel and the touch button step through the weapons in order.
@@ -290,6 +293,7 @@ async function main() {
       for (let left = dt; left > 1e-5; left -= STEP) {
         game.update(Math.min(STEP, left), record);
         record.lookYaw = record.lookPitch = 0;
+        record.firePressed = false;
         record.weapon = '';
       }
       for (const event of game.events) {

@@ -111,6 +111,24 @@ test('nobody shoots an operator they have not seen', () => {
   assert.ok(game.enemies.every((enemy) => !enemy.aware));
 });
 
+test('a new trigger press works when release and re-press were between samples', () => {
+  const game = started();
+  const pistol = game.weapons.pistol;
+  run(game, 0.5, (input) => (input.weapon = 'pistol'));
+  run(game, 0.3, (input) => (input.fire = true));
+  assert.equal(pistol.ammo, WEAPONS.pistol.mag - 1);
+  run(game, STEP, (input) => {
+    input.fire = true;
+    input.firePressed = true;
+  });
+  assert.equal(pistol.ammo, WEAPONS.pistol.mag - 2);
+  run(game, STEP, (input) => {
+    input.fire = true;
+    input.firePressed = true;
+  });
+  assert.equal(pistol.ammo, WEAPONS.pistol.mag - 2, 'the interval still applies');
+});
+
 test('firing spends rounds, reports where they went, and reloading refills the magazine', () => {
   const game = started();
   const rifle = game.weapons.rifle;
@@ -228,6 +246,34 @@ test('a transfer runs only while the operator stays near its terminal', () => {
   for (let i = 0; i < 60; i++) game.update(1 / 60, input);
   assert.ok(Math.abs(terminal.progress - near) < 0.01, 'no progress out of range');
   assert.equal(terminal.inRange, false);
+});
+
+test('the office terminal cannot be used through its east wall', () => {
+  const game = started(1);
+  const office = game.terminals.find(terminal => terminal.key === 'office');
+  game.warp(36.7, 4);
+  const advance = { ...idleInput(), moveZ: 1, sprint: true };
+  for (let i = 0; i < 800 && game.player.z > -18; i++) game.update(STEP, advance);
+  assert.ok(Math.abs(game.player.z + 18) < 0.25);
+  game.player.yaw = Math.PI / 2;
+  run(game, 2, input => (input.interact = true));
+  assert.equal(office.linked, false);
+  assert.equal(game.prompt, undefined);
+
+  atTerminal(game, office);
+  run(game, 2, input => (input.interact = true));
+  assert.equal(office.linked, true);
+});
+
+test('a visible supply crate remains usable from beside its closed lid', () => {
+  const game = started();
+  const crate = game.crates[8];
+  game.warp(crate.x, crate.z + 1.25);
+  game.player.yaw = 0;
+  run(game, 0.1);
+  assert.equal(game.prompt?.target, crate);
+  const events = run(game, 1.5, input => (input.interact = true));
+  assert.ok(events.some(event => event.type === 'loot' && event.crate === crate));
 });
 
 test('one transfer runs at a time and advancing its phases requires both signal checks', () => {
