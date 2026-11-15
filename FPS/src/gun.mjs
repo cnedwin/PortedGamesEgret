@@ -16,7 +16,7 @@ import { flashTexture } from './textures.mjs';
 const STEEL = rgb(0x43474d),
   DARK = rgb(0x2b2d30),
   TAN = rgb(0x6f6349),
-  SLEEVE = rgb(0x4c543a),
+  SLEEVE = rgb(0x3d4431),
   GLOVE = rgb(0x2a2b2e);
 
 /**
@@ -65,7 +65,7 @@ function rifleShapes() {
   hands.box(0.02, -0.085, 0.085, 0.062, 0.07, 0.08, { tint: GLOVE });
   hands.box(0.085, -0.16, 0.23, 0.07, 0.07, 0.3, { tint: SLEEVE, yaw: -0.36, pitch: -0.45 });
   hands.box(-0.006, -0.04, -0.3, 0.066, 0.05, 0.09, { tint: GLOVE });
-  hands.box(-0.115, -0.14, -0.15, 0.062, 0.062, 0.38, { tint: SLEEVE, yaw: 0.56, pitch: -0.42 });
+  hands.box(-0.13, -0.17, -0.13, 0.056, 0.056, 0.42, { tint: SLEEVE, yaw: 0.6, pitch: -0.62 });
   return { body: body.finish(), magazine: magazine.finish(), hands: hands.finish(), magazineAt: [0, -0.035, -0.07] };
 }
 function pistolShapes() {

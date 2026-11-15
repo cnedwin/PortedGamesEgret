@@ -113,7 +113,7 @@ export function createSurfaces() {
         const patch = cloud(u, v, 5, 12, 3);
         return tint([0.3, 0.31, 0.32], 0.78 + patch * 0.22 + (h - 0.5) * 0.16);
       },
-      1.2,
+      0.5,
     ),
     // Corrugated steel, ribs running up and down; the colour comes from the vertex tint.
     container: paint(

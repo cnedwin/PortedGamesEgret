@@ -68,7 +68,7 @@ export function createView(scene, camera, options = {}) {
     return light;
   };
   for (const [x, y, z, strength] of PLACES.lamps) {
-    const lamp = createPointLight3D({ color: 0xffd9a8, intensity: 16 * strength, range: 19 });
+    const lamp = createPointLight3D({ color: 0xffd9a8, intensity: 24 * strength, range: 20 });
     lamp.setPosition(x, y - 0.3, z);
     manage(lamp, x, z);
   }
