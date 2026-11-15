@@ -4,7 +4,7 @@
 import { Mesh3D, createGeometry3D, createStandardMaterial3D, createUnlitMaterial3D } from '@egret/engine/world3d';
 import { createBuilder, rgb } from './build.mjs';
 import { BOUNDS, BOXES, PLACES } from './level.mjs';
-import { canvasTexture } from './textures.mjs';
+import { canvasTexture, dotTexture } from './textures.mjs';
 
 const WHITE = [1, 1, 1];
 const shade = (c, k) => [c[0] * k, c[1] * k, c[2] * k];
@@ -294,6 +294,55 @@ export function buildScenery(scene, surfaces) {
     scene.addChild(mesh);
   }
 
+  // ---- trees: dark firs beyond the wall and a few inside it ---------------------------------
+  const fir = (x, z, size) => {
+    plain.cylinder(x, size * 0.5, z, 0.14 * size, size, { sides: 5, tint: rgb(0x3b2f24) });
+    plain.cylinder(x, size * 1.5, z, 1.05 * size, size * 1.6, { top: 0.35 * size, sides: 7, tint: rgb(0x243a26), caps: false });
+    plain.cylinder(x, size * 2.5, z, 0.75 * size, size * 1.7, { top: 0.02, sides: 7, tint: rgb(0x2b4530), caps: false });
+  };
+  for (let i = 0; i < 54; i++) {
+    // Spread round the outside of the compound, a little unevenly.
+    const angle = (i / 54) * Math.PI * 2 + Math.sin(i * 3.7) * 0.05,
+      reach = 50 + ((i * 37) % 11) * 1.6,
+      x = Math.sin(angle) * reach * 1.05,
+      z = Math.cos(angle) * reach * 0.95 + 2;
+    if (z < -24 && Math.abs(x) < 50) continue; // the dam stands there
+    fir(x, z, 2.2 + ((i * 13) % 7) * 0.22);
+  }
+  for (const [x, z, size] of [
+    [-35.5, 29.5, 1.5],
+    [35, -24.5, 1.7],
+    [36, 12.5, 1.4],
+    [-10.5, 29.8, 1.3],
+  ])
+    fir(x, z, size);
+
+  // ---- water falling from the sluice gates ---------------------------------------------------
+  const water = createBuilder();
+  for (const x of [-25, -15, 25]) {
+    water.box(x, 3.4, BOUNDS.minZ + 0.35, 5.4, 6.4, 0.3, { tint: [0.75, 0.85, 0.9] });
+    water.box(x, 0.2, BOUNDS.minZ + 1.6, 6.2, 0.5, 1.6, { tint: [0.9, 0.95, 0.97] });
+  }
+
+  // ---- puddles: last night's rain, lying in the low spots and mirroring the sky --------------
+  const puddles = createBuilder();
+  for (const [x, z, w, d, turn] of [
+    [-6, 17, 3.2, 2, 0.3],
+    [7.5, 5.5, 2.6, 3.6, 1.1],
+    [-12, -6.5, 3.8, 2.2, 0.6],
+    [15, 19, 2.4, 2.4, 0],
+    [-24, 13.2, 2.2, 1.4, 0.2],
+    [3, -6.2, 4.2, 1.6, 0],
+    [24, 10, 3, 2.2, 0.8],
+    [-30, -17.5, 2.6, 1.8, 0.4],
+    [20.5, -11, 1.8, 3, 0.1],
+    [-3, 27, 2.6, 1.6, 0.5],
+  ])
+    puddles
+      .cylinder(x, 0.016, z, Math.min(w, d) / 2, 0.004, { sides: 14 })
+      .cylinder(x + Math.cos(turn) * w * 0.28, 0.016, z + Math.sin(turn) * d * 0.28, Math.min(w, d) * 0.36, 0.004, { sides: 12 })
+      .cylinder(x - Math.cos(turn) * w * 0.3, 0.016, z - Math.sin(turn) * d * 0.22, Math.min(w, d) * 0.3, 0.004, { sides: 12 });
+
   // ---- one mesh per surface ----------------------------------------------------------------
   const add = (builder, material, { shadows = true, tangents = true } = {}) => {
     if (builder.empty) return;
@@ -324,6 +373,85 @@ export function buildScenery(scene, surfaces) {
     shadows: false,
     tangents: false,
   });
+  add(
+    water,
+    createUnlitMaterial3D({ color: 0xffffff, vertexColors: true, opacity: 0.6, alphaMode: 'blend', depthWrite: false }),
+    {
+      shadows: false,
+      tangents: false,
+    },
+  );
+  add(
+    puddles,
+    createStandardMaterial3D({
+      color: 0x0b0e11,
+      roughness: 0.04,
+      opacity: 0.72,
+      alphaMode: 'blend',
+      depthWrite: false,
+      environmentIntensity: 2.2,
+    }),
+    { shadows: false, tangents: false },
+  );
+
+  // ---- the sun, just clear of the ridge: a bright disc inside a wide soft glow ----------------
+  {
+    const direction = [0.72, 0.4, 0.56],
+      halo = createBuilder();
+    for (const [size, strength] of [
+      [16, 3],
+      [70, 0.5],
+      [190, 0.16],
+    ])
+      halo.box(direction[0] * 400, direction[1] * 400, direction[2] * 400, size, size, 0.01, {
+        fit: true,
+        tint: [strength, strength * 0.78, strength * 0.5],
+        yaw: Math.atan2(direction[0], direction[2]),
+        pitch: -Math.asin(direction[1]),
+      });
+    const sun = new Mesh3D(
+      halo.finish(),
+      createUnlitMaterial3D({
+        color: 0xffffff,
+        vertexColors: true,
+        map: dotTexture(64, 2.2),
+        alphaMode: 'blend',
+        blending: 'additive',
+        depthWrite: false,
+        fog: false,
+        toneMapped: false,
+        side: 'double',
+      }),
+    );
+    sun.frustumCulled = false;
+    scene.addChild(sun);
+  }
+
+  // ---- stencilled zone letters on the walls beside each terminal ------------------------------
+  const stencil = (letter, x, y, z, yaw, size = 2.2) => {
+    const texture = canvasTexture(128, 128, (c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      c.fillStyle = 'rgba(235, 228, 205, 0.85)';
+      c.font = 'bold 112px Impact, "Arial Black", sans-serif';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillText(letter, w / 2, h / 2 + 6);
+      // Stencil bridges and wear.
+      c.globalCompositeOperation = 'destination-out';
+      c.fillRect(0, h * 0.47, w, 5);
+      for (let i = 0; i < 160; i++)
+        c.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 4, 1 + Math.random() * 2);
+    });
+    if (!texture) return;
+    const sign = new Mesh3D(
+      createBuilder().box(x, y, z, size, size, 0.01, { fit: true, yaw }).finish(),
+      createStandardMaterial3D({ color: 0xffffff, map: texture, alphaMode: 'blend', depthWrite: false, roughness: 0.9 }),
+    );
+    scene.addChild(sign);
+  };
+  stencil('A', -37.96, 2.6, 13, Math.PI / 2);
+  stencil('B', -2, 5.6, -7.72, 0, 3);
+  stencil('C', 21.76, 2.9, -8.5, -Math.PI / 2);
 
   // ---- the helipad mark ------------------------------------------------------------------
   const pad = canvasTexture(512, 512, (c, w, h) => {

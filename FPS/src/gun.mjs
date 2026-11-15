@@ -112,7 +112,7 @@ export function createGun(camera) {
   // The red dot of the rifle's sight.
   const dot = new Mesh3D(
     createQuadGeometry3D(),
-    createUnlitMaterial3D({ color: 0xff2a1a, blending: 'additive', depthWrite: false, toneMapped: false }),
+    createUnlitMaterial3D({ color: 0xff2a1a, alphaMode: 'blend', blending: 'additive', depthWrite: false, toneMapped: false }),
   );
   dot.setPosition(0, 0.0835, -0.05);
   dot.setScale(0.0035);
@@ -123,6 +123,7 @@ export function createGun(camera) {
   const flashMaterial = createUnlitMaterial3D({
     color: 0xffffff,
     map: flashTexture(),
+    alphaMode: 'blend',
     blending: 'additive',
     depthWrite: false,
     side: 'double',
