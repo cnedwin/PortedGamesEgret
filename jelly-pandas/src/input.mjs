@@ -59,12 +59,12 @@ export function createInput(canvas, touch) {
   /** Each control owns a single contact, so a second finger can use another control. */
   function bindTouch(element, start, move, finish) {
     let pointer;
-    const release = (canceled) => {
+    const release = (canceled, event) => {
       if (pointer === undefined) return;
       const id = pointer;
       pointer = undefined;
       contacts.delete(id);
-      finish?.(canceled);
+      finish?.(canceled, event);
       if (element.hasPointerCapture?.(id)) {
         try {
           element.releasePointerCapture?.(id);
@@ -86,12 +86,12 @@ export function createInput(canvas, touch) {
       event.preventDefault();
     });
     on(element, 'lostpointercapture', (event) => {
-      if (event.pointerId === pointer && event.target === element) release(true);
+      if (event.pointerId === pointer && event.target === element) release(true, event);
     });
   }
 
   if (touch) {
-    const { joystick, actions } = touch;
+    const { joystick, actions, pause } = touch;
     let centerX, centerY, radius;
     const moveStick = (event) => {
       const x = event.clientX - centerX, y = event.clientY - centerY;
@@ -130,6 +130,27 @@ export function createInput(canvas, touch) {
           touchTaps.delete(action);
           if (action === 'jump') input.onJumpCancel?.();
         }
+      });
+    }
+    if (pause) {
+      let startX, startY, swiped;
+      const outsideSlop = (event) => Math.hypot(event.clientX - startX, event.clientY - startY) > 12;
+      // Browsers may not synthesize click for a second finger while the stick is held.
+      bindTouch(pause, (event) => {
+        if (event.pointerType === 'mouse') return false;
+        startX = event.clientX;
+        startY = event.clientY;
+        swiped = false;
+        pause.classList.add('held');
+        return true;
+      }, (event) => {
+        swiped ||= outsideSlop(event);
+      }, (canceled, event) => {
+        pause.classList.remove('held');
+        if (canceled || swiped || outsideSlop(event)) return;
+        const { left, top, width, height } = pause.getBoundingClientRect();
+        const { clientX: x, clientY: y } = event;
+        if (x >= left && x < left + width && y >= top && y < top + height) input.onCommand?.('menu');
       });
     }
 
@@ -203,7 +224,7 @@ export function createInput(canvas, touch) {
   });
   on(window, 'pointerup', (event) => {
     const contact = contacts.get(event.pointerId);
-    if (contact) return contact.release(false);
+    if (contact) return contact.release(false, event);
     if (event.pointerType === 'touch') return;
     dragging = false;
     if (event.button === 2) mouseRoll = false;
@@ -215,7 +236,7 @@ export function createInput(canvas, touch) {
     lookX += event.movementX;
     lookY += event.movementY;
   });
-  on(window, 'pointercancel', (event) => contacts.get(event.pointerId)?.release(true));
+  on(window, 'pointercancel', (event) => contacts.get(event.pointerId)?.release(true, event));
   on(
     canvas,
     'wheel',

@@ -160,7 +160,11 @@ async function main() {
     human.jumpHeld = false;
     human.charge = 0;
   };
-  hud.touch.pause.addEventListener('click', () => input.onCommand?.('menu'));
+  hud.touch.pause.addEventListener('click', (event) => {
+    // Touch and pen releases are handled by input. Mouse and keyboard keep native clicks.
+    if (event.detail && event.pointerType !== 'mouse') return;
+    if (mode === 'play' && !cardsShown && game?.state === 'play') input.onCommand?.('menu');
+  });
 
   const setMode = (next) => {
     mode = next;
