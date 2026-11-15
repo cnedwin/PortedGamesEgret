@@ -1,6 +1,6 @@
-import { assertManagedEdgeMutable, assertManagedChildrenMutable, cleanupManagedWrapper, managedTerminal } from './ui/managedState.js';
+import { assertManagedEdgeMutable, assertManagedChildrenMutable, cleanupManagedWrapper, managedTerminal } from "./ui/managedState.js";
 import { DisplayObject } from "./DisplayObject.js";
-import { registerDisplayHitContainer, readDisplayTouchChildren, writeDisplayTouchChildren } from './displayHitState.js';
+import { registerDisplayHitContainer, readDisplayTouchChildren, writeDisplayTouchChildren } from "./displayHitState.js";
 import { EgretError } from "./EgretError.js";
 import { ASSERT_ATTACHABLE, ASSERT_BINDABLE, OWNERSHIP_CHILDREN, commitBinding, engineInSubtree, engineOf, ownerOf, preflightBinding, prepareChildInsertion, publishPreparedChildInsertion, validateBinding } from "./ownership.js";
 import { assertAttachable, assertContainer, assertLive, assertNoCycle, assertChildInsertionIndex, attachNode, childAtOf, childCountOf, childIndexOf, childrenOf, detachChildren, detachNode, isDisplayNode, isTerminated, parentOf, registerContainer, removeNode, setNodeIndex } from "./displayTreeState.js";
@@ -8,12 +8,24 @@ import { assertAttachable, assertContainer, assertLive, assertNoCycle, assertChi
 const disposalBoundaries = new WeakMap();
 /** Ordered display children with atomic reparenting and ownership-aware cleanup. */
 export class DisplayObjectContainer extends DisplayObject {
-    constructor() { super(); registerContainer(this); registerDisplayHitContainer(this); }
+    constructor() {
+        super();
+        registerContainer(this);
+        registerDisplayHitContainer(this);
+    }
     /** Suppressed descendants never implicitly retarget to this container. */
-    get touchChildren() { return readDisplayTouchChildren(this); }
-    set touchChildren(value) { writeDisplayTouchChildren(this, value); }
-    get numChildren() { return childCountOf(this); }
-    [OWNERSHIP_CHILDREN]() { return childrenOf(this); }
+    get touchChildren() {
+        return readDisplayTouchChildren(this);
+    }
+    set touchChildren(value) {
+        writeDisplayTouchChildren(this, value);
+    }
+    get numChildren() {
+        return childCountOf(this);
+    }
+    [OWNERSHIP_CHILDREN]() {
+        return childrenOf(this);
+    }
     /** Subclass hooks run in preflight; final binding and reparenting use internal state. */
     addChild(child) {
         assertManagedEdgeMutable(this, child);
@@ -48,10 +60,9 @@ export class DisplayObjectContainer extends DisplayObject {
         assertNoCycle(this, child);
         // Receiver hooks still run; unrelated existing descendants do not. Final
         // incoming validation always reads the current tree without user callbacks.
-        const binding = finalEngine === undefined ? undefined : [
-            ...(receiverWasBound ? [] : validateBinding(this, finalEngine)),
-            ...validateBinding(child, finalEngine),
-        ];
+        const binding = finalEngine === undefined
+            ? undefined
+            : [...(receiverWasBound ? [] : validateBinding(this, finalEngine)), ...validateBinding(child, finalEngine)];
         if (binding !== undefined && finalEngine !== undefined)
             commitBinding(binding, finalEngine);
         attachNode(this, child);
@@ -108,6 +119,17 @@ export class DisplayObjectContainer extends DisplayObject {
         assertLive(this);
         detachChildren(this);
     }
+    /** The first child with this name, or undefined. Children's own children are not looked at. */
+    getChildByName(name) {
+        if (typeof name !== "string")
+            throw new EgretError("DISPLAY_VALUE_INVALID");
+        for (let index = 0, count = childCountOf(this); index < count; index++) {
+            const child = childAtOf(this, index);
+            if (child !== undefined && child.name === name)
+                return child;
+        }
+        return undefined;
+    }
     getChildAt(index) {
         this.validateIndex(index);
         const child = childAtOf(this, index);
@@ -148,14 +170,21 @@ export class DisplayObjectContainer extends DisplayObject {
         const engine = engineOf(this);
         const failures = [];
         const recordFailure = (cause) => {
-            const causes = cause instanceof EgretError && (cause.code === "EVENT_LISTENER_CLEANUP_FAILED" || cause.code === "DISPLAY_TREE_CLEANUP_FAILED")
-                ? [cause.cause, ...cause.cleanupErrors] : [cause];
+            const causes = cause instanceof EgretError &&
+                (cause.code === "EVENT_LISTENER_CLEANUP_FAILED" || cause.code === "DISPLAY_TREE_CLEANUP_FAILED")
+                ? [cause.cause, ...cause.cleanupErrors]
+                : [cause];
             for (const item of causes) {
                 if (engine === undefined)
                     failures.push(item);
                 else {
                     engine.captureCleanup(item);
-                    engine.report({ code: "DISPLAY_CHILD_CLEANUP_FAILED", phase: "display-tree", severity: "error", cause: item });
+                    engine.report({
+                        code: "DISPLAY_CHILD_CLEANUP_FAILED",
+                        phase: "display-tree",
+                        severity: "error",
+                        cause: item
+                    });
                 }
             }
         };

@@ -5,6 +5,7 @@ import { rgba, star } from '../art/draw.mjs';
 import { drawFigure } from '../art/figure.mjs';
 import { HEROINES, HEROINE_IDS } from '../data/cast.mjs';
 import { loadCover } from '../art/character-art.mjs';
+import { endingCount } from './memories.mjs';
 
 function coverImage(g, image) {
   const ratio = Math.max(W / image.width, H / image.height);
@@ -107,6 +108,12 @@ export function titleScreen(game) {
           game.savePrefs();
           paintMenu();
         }, { kind: 'ghost', size: 16 });
+        y += 52;
+        // The album of endings, achievements and perks kept across terms.
+        p.button(70, y, 286, 42, `${L(['回忆册', 'Memories'])}  ·  ${endingCount(game.memories)}`, () => finish('album'), {
+          kind: 'ghost',
+          size: 16,
+        });
       });
     }
 

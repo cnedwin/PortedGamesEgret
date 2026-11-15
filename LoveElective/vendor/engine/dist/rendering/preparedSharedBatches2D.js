@@ -8,8 +8,11 @@ function alike(a, b) {
     // Regions of one window of the region table share a batch, whatever their page and opacity: the
     // region's slot and the opacity are in each vertex, and the page in the region's row. The caller
     // counts the pages. A draw with a region and one without never share a batch.
-    if (xc.kind !== yc.kind || x.material !== y.material || (x.pageIndex === undefined) !== (y.pageIndex === undefined) || a.regionWindow !== b.regionWindow
-        || xc.clips.length !== yc.clips.length)
+    if (xc.kind !== yc.kind ||
+        x.material !== y.material ||
+        (x.pageIndex === undefined) !== (y.pageIndex === undefined) ||
+        a.regionWindow !== b.regionWindow ||
+        xc.clips.length !== yc.clips.length)
         return false;
     if (xc.clips !== yc.clips)
         for (let i = 0; i < xc.clips.length; i++) {
@@ -48,7 +51,16 @@ const NO_ROWS = new Float32Array(0);
 function held(draw, first) {
     if (draw.data.byteLength === draw.data.buffer.byteLength)
         return draw;
-    return first ? { prepared: draw.prepared, data: NO_ROWS, vertexCount: draw.vertexCount, uniform: draw.uniform, regionWindow: draw.regionWindow, pages: draw.pages } : undefined;
+    return first
+        ? {
+            prepared: draw.prepared,
+            data: NO_ROWS,
+            vertexCount: draw.vertexCount,
+            uniform: draw.uniform,
+            regionWindow: draw.regionWindow,
+            pages: draw.pages
+        }
+        : undefined;
 }
 // The places and offsets of the draws of a kept batch that are other records than the batch holds. Batching is synchronous and calls no caller code.
 let changed = new Uint32Array(64);
@@ -66,7 +78,14 @@ let changed = new Uint32Array(64);
  * that reads them later than that must not pass `kept`.
  */
 export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept) {
-    const plan = { draws: [], logicalDraws: input, logicalSpans: [], bytes: 0, released: false, transferred: false };
+    const plan = {
+        draws: [],
+        logicalDraws: input,
+        logicalSpans: [],
+        bytes: 0,
+        released: false,
+        transferred: false
+    };
     try {
         kept?.beginBatches();
         for (let start = 0; start < input.length;) {
@@ -87,7 +106,11 @@ export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept) {
                 for (let i = 0, offset = 0; same && i < count; i++) {
                     const next = input[start + i], length = lengths[i];
                     if (next !== members[i]) {
-                        if ('barrier' in next || next.data.length !== length || (next.prepared.pageIndex ?? -1) !== pages[i] || next.prepared.command.ordinal !== ordinal + i || !alike(first, next)) {
+                        if ('barrier' in next ||
+                            next.data.length !== length ||
+                            (next.prepared.pageIndex ?? -1) !== pages[i] ||
+                            next.prepared.command.ordinal !== ordinal + i ||
+                            !alike(first, next)) {
                             same = false;
                             break;
                         }
@@ -105,7 +128,9 @@ export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept) {
                 if (same && start + count < input.length) {
                     // Joining ended at the last of these draws. It ends there again unless the draw after them now joins.
                     const next = input[start + count];
-                    if (!('barrier' in next) && compatible(first, next, input[start + count - 1]) && next.data.byteLength <= ceiling - total) {
+                    if (!('barrier' in next) &&
+                        compatible(first, next, input[start + count - 1]) &&
+                        next.data.byteLength <= ceiling - total) {
                         const page = next.prepared.pageIndex;
                         same = page !== undefined && !old.pages.includes(page) && old.pages.length === SHARED_BATCH_PAGES_2D;
                     }
@@ -118,7 +143,16 @@ export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept) {
                         members[place] = held(next, place === 0);
                     }
                     // The joined draw names the record of the first draw; its block and pages are as they were.
-                    const joined = old.prepared === first.prepared ? old : { prepared: first.prepared, data: old.data, vertexCount: old.vertexCount, uniform: old.uniform, regionWindow: old.regionWindow, pages: old.pages };
+                    const joined = old.prepared === first.prepared
+                        ? old
+                        : {
+                            prepared: first.prepared,
+                            data: old.data,
+                            vertexCount: old.vertexCount,
+                            uniform: old.uniform,
+                            regionWindow: old.regionWindow,
+                            pages: old.pages
+                        };
                     before.joined = joined;
                     kept.carryBatch(before);
                     plan.draws.push(joined);
@@ -172,7 +206,14 @@ export function prepareSharedBatches2D(input, maxBufferSize, scratch, kept) {
                     for (let unit = 0; unit < SHARED_BATCH_PAGES_2D; unit++)
                         units[unit] = unit < pages.length ? pages[unit] : SHARED_NO_PAGE_2D;
                 }
-                const joined = { prepared: first.prepared, data, vertexCount: data.length / 13, uniform, regionWindow: first.regionWindow, pages };
+                const joined = {
+                    prepared: first.prepared,
+                    data,
+                    vertexCount: data.length / 13,
+                    uniform,
+                    regionWindow: first.regionWindow,
+                    pages
+                };
                 plan.draws.push(joined);
                 plan.logicalSpans.push({ first: start, count: end - start });
                 if (kept !== undefined && kept.roomForBatch(end - start, bytes)) {

@@ -5,6 +5,8 @@ import { HEROINES, HEROINE_IDS, HERO, LEVELS } from './data/cast.mjs';
 import { CLOTHES, GIFTS, SUPPLIES, HAIRSTYLES, SHOPS } from './data/items.mjs';
 import { PLACES, SLOTS_OF_DAY, DAYS_IN_TERM, DATE_SPOTS } from './data/places.mjs';
 import { QUESTS } from './data/quests.mjs';
+import { EVENTS } from './data/events.mjs';
+import { PERKS, ACHIEVEMENTS } from './data/memories.mjs';
 
 export const SAVE_VERSION = 1;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -20,7 +22,11 @@ export const DATE_AFFECTION = 35;
 export const DRESS_AFFECTION = 35;
 export const CONFESS_AFFECTION = 88;
 
-export function newGame() {
+/**
+ * A new term. `options.perk` applies one of the perks earned in earlier terms
+ * (see src/data/memories.mjs); `options.seed` fixes the daily wishes and events.
+ */
+export function newGame(options = {}) {
   const girls = {};
   for (const id of HEROINE_IDS) {
     girls[id] = {
@@ -42,7 +48,7 @@ export function newGame() {
   }
   const owned = {};
   for (const id of HERO.owned) owned[id] = true;
-  return {
+  const state = {
     version: SAVE_VERSION,
     day: 1,
     slot: 0,
@@ -57,7 +63,17 @@ export function newGame() {
     quests: {},
     flags: {},
     finale: false,
+    seed: options.seed ?? Math.floor(Math.random() * 2 ** 31),
+    perk: null,
+    wish: null,
+    eventDay: 0,
   };
+  const perk = PERKS.find(x => x.id === options.perk);
+  if (perk) {
+    state.perk = perk.id;
+    perk.apply(state);
+  }
+  return state;
 }
 
 // ------------------------------------------------------------------ time
@@ -93,7 +109,11 @@ function startDay(s, rested) {
     s.day = DAYS_IN_TERM;
     s.slot = 3;
     s.finale = true;
+    s.wish = null;
+    return;
   }
+  if (s.perk === 'earlybird') s.energy = clamp(s.energy + 10, 0, 100);
+  rollWish(s);
 }
 
 /** Move to the next part of the day; after the night comes a short night's sleep. */
@@ -213,7 +233,12 @@ export function chat(s, girl, approach) {
   // Pressing on when she already feels crowded, or pulling away when she feels ignored, costs a little.
   if ((zone === 'forward' && approach === 'closer') || (zone === 'distant' && approach === 'space')) gain = -1;
   gain = addAffection(s, girl, gain, 'capped');
-  return { gain, zone, pull: g.pull };
+  const w = wishFor(s, girl);
+  const wish =
+    (w?.kind === 'chat' && w.approach === approach) || (w?.kind === 'style' && (outfitStyles(s.hero.wear)[w.style] ?? 0) >= WISH_STYLE)
+      ? grantWish(s)
+      : 0;
+  return { gain, zone, pull: g.pull, wish };
 }
 
 export function giftTaste(girl, item) {
@@ -236,10 +261,12 @@ export function give(s, girl, item) {
     // Clothes join her wardrobe; she likes them more when they are her style.
     const fits = Object.keys(CLOTHES[item].styles).some(tag => HEROINES[girl].likes.includes(tag));
     if (!g.gifted.includes(item)) g.gifted.push(item);
-    return { taste: fits ? 'love' : 'like', gain: addAffection(s, girl, fits ? 9 : 5, 'capped'), clothes: true };
+    return { taste: fits ? 'love' : 'like', gain: addAffection(s, girl, fits ? 9 : 5, 'capped'), clothes: true, wish: 0 };
   }
   const taste = giftTaste(girl, item);
-  return { taste, gain: addAffection(s, girl, { love: 8, like: 5, fine: 2, hate: -4 }[taste], 'capped') };
+  const gain = addAffection(s, girl, { love: 8, like: 5, fine: 2, hate: -4 }[taste], 'capped');
+  const w = wishFor(s, girl);
+  return { taste, gain, wish: w?.kind === 'gift' && w.item === item ? grantWish(s) : 0 };
 }
 
 export function canDate(s, girl) {
@@ -270,8 +297,10 @@ export function date(s, girl, spotId) {
     Math.round((3.5 + spot.cost / 40) * Math.min(1.3, Math.max(0.7, ZONE_FACTOR[zone])) * styleBonus(s, girl)),
     'date',
   );
+  const w = wishFor(s, girl);
+  const wish = w?.kind === 'date' && w.spot === spotId ? grantWish(s) : 0;
   advance(s);
-  return { gain, zone, jealous, spot };
+  return { gain, zone, jealous, spot, wish };
 }
 
 // ------------------------------------------------------------------ story chapters
@@ -314,6 +343,7 @@ export function applyEffect(s, girl, fx = {}) {
   if (fx.stats) addStats(s, fx.stats);
   if (fx.flag) s.flags[fx.flag] = true;
   if (fx.item) s.bag[fx.item] = (s.bag[fx.item] ?? 0) + 1;
+  if (fx.energy) s.energy = clamp(s.energy + fx.energy, 0, 100);
   return gained;
 }
 
@@ -340,20 +370,34 @@ export function actBlocked(s, act) {
   return null;
 }
 
-/** Do an activity at the current place. Returns what changed. */
-export function act(s, placeId, actId) {
+/** How well the hero kept his focus during an activity, and what that multiplies. */
+export const FOCUS = { perfect: 1.5, good: 1.2, ok: 1 };
+
+/** Activities with a focus challenge: practice and work, not purchases or rest. */
+export const hasFocus = a => !a.special && !a.free && (a.energy ?? 0) < 0;
+
+/**
+ * Do an activity at the current place. Returns what changed. `focus` is the
+ * result of the focus challenge ('perfect', 'good' or 'ok'); it raises what
+ * the activity gives.
+ */
+export function act(s, placeId, actId, focus = 'ok') {
   const a = PLACES[placeId].acts.find(x => x.id === actId);
   if (!a || a.special || actBlocked(s, a)) return null;
-  const result = { gain: trained(s, a.gain), energy: a.energy ?? 0, pay: 0, cost: a.cost ?? 0 };
+  const k = hasFocus(a) ? (FOCUS[focus] ?? 1) : 1;
+  const gain = trained(s, a.gain);
+  for (const name of Object.keys(gain)) gain[name] = Math.ceil(gain[name] * k);
+  const result = { gain, energy: a.energy ?? 0, pay: 0, cost: a.cost ?? 0, focus: hasFocus(a) ? focus : null };
   s.energy = clamp(s.energy + result.energy, 0, 100);
   s.money -= result.cost;
   if (a.pay) {
-    result.pay = Math.round(a.pay[0] + statValue(s, a.pay[1]) * a.pay[2]);
+    result.pay = Math.round((a.pay[0] + statValue(s, a.pay[1]) * a.pay[2]) * k);
     s.money += result.pay;
   }
   addStats(s, result.gain);
   s.counters[a.id] = (s.counters[a.id] ?? 0) + 1;
   if (a.work) s.counters.work = (s.counters.work ?? 0) + 1;
+  if (result.focus === 'perfect') s.counters.perfect = (s.counters.perfect ?? 0) + 1;
   if (!a.free) advance(s);
   return result;
 }
@@ -577,10 +621,161 @@ export function deserialize(text) {
   try {
     const s = JSON.parse(text);
     if (!s || s.version !== SAVE_VERSION || !s.girls || !s.hero) return null;
+    // Saves from before wishes, events and perks existed.
+    s.seed ??= 1;
+    s.perk ??= null;
+    s.wish ??= null;
+    s.eventDay ??= 0;
     recoverLegacyDyes(s.hero, [HERO.wear]);
     for (const id of HEROINE_IDS) recoverLegacyDyes(s.girls[id], Object.values(HEROINES[id].outfits));
     return s;
   } catch {
     return null;
   }
+}
+
+// ------------------------------------------------------------------ randomness
+
+/** A number in [0, 1) that depends only on the save's seed and the given parts. */
+export function chance(s, ...parts) {
+  let h = (s.seed ?? 1) >>> 0;
+  for (const part of parts) {
+    for (const ch of String(part)) h = Math.imul(h ^ ch.charCodeAt(0), 2654435761) >>> 0;
+    h = Math.imul(h ^ (h >>> 15), 2246822507) >>> 0;
+  }
+  h ^= h >>> 13;
+  h = Math.imul(h, 3266489909) >>> 0;
+  return ((h ^ (h >>> 16)) >>> 0) / 2 ** 32;
+}
+const pickBy = (list, r) => list[Math.floor(r * list.length) % list.length];
+
+// ------------------------------------------------------------------ daily wishes
+
+/** Style points an outfit needs to satisfy a wish to see the hero in that style. */
+export const WISH_STYLE = 4;
+/** Affection a granted wish brings, on top of the gesture itself and outside the daily cap. */
+export const WISH_AFFECTION = 5;
+
+/**
+ * Each morning one senior the hero has met wishes for something small: a
+ * present, a way of being spoken to, an outing or a look. Granting it the
+ * same day brings extra affection. Her wish also hints at what she likes.
+ */
+function rollWish(s) {
+  const met = HEROINE_IDS.filter(id => s.girls[id].met);
+  if (!met.length) {
+    s.wish = null;
+    return;
+  }
+  const girl = pickBy(met, chance(s, 'wish-girl', s.day)),
+    h = HEROINES[girl],
+    g = s.girls[girl];
+  const kinds = ['gift', 'chat', 'style'];
+  if (g.aff >= DATE_AFFECTION) kinds.push('date');
+  const kind = pickBy(kinds, chance(s, 'wish-kind', s.day));
+  const wish = { girl, day: s.day, kind, done: false };
+  if (kind === 'gift') wish.item = pickBy([...h.gifts.love, ...h.gifts.like].filter(id => SHOPS.giftshop.stock.includes(id)), chance(s, 'wish-item', s.day));
+  if (kind === 'chat') {
+    const middle = (h.pace[0] + h.pace[1]) / 2;
+    wish.approach = middle - g.pull > 7 ? 'closer' : middle - g.pull < -7 ? 'space' : 'steady';
+  }
+  if (kind === 'style') wish.style = pickBy(h.likes, chance(s, 'wish-style', s.day));
+  if (kind === 'date') wish.spot = pickBy(DATE_SPOTS, chance(s, 'wish-spot', s.day)).id;
+  s.wish = wish;
+}
+
+/** Today's wish of this senior, if she has one still open. */
+export function wishFor(s, girl) {
+  const w = s.wish;
+  return w && w.girl === girl && w.day === s.day && !w.done ? w : null;
+}
+
+function grantWish(s) {
+  const w = s.wish;
+  w.done = true;
+  s.counters.wish = (s.counters.wish ?? 0) + 1;
+  return addAffection(s, w.girl, WISH_AFFECTION, false);
+}
+
+// ------------------------------------------------------------------ campus events
+
+/** How likely a small event is when the hero walks into a place, at most once per part of the day. */
+export const EVENT_CHANCE = 0.34;
+
+/** Can this event happen here and now? */
+export function eventFits(s, ev, place) {
+  if (!ev.places.includes(place)) return false;
+  if (ev.slots && !ev.slots.includes(s.slot)) return false;
+  if (ev.from && s.day < ev.from) return false;
+  if (s.flags['event:' + ev.id] && !ev.again) return false;
+  if (ev.girl && !(s.girls[ev.girl].met && whereIs(s, ev.girl) === place)) return false;
+  if (ev.money && s.money < ev.money) return false;
+  return true;
+}
+
+/**
+ * Perhaps start a small event on entering a place. Returns the event (its
+ * script is played by the campus screen), or null. Events the hero has
+ * already seen this term do not come back unless marked `again`.
+ */
+export function rollEvent(s, place) {
+  const at = clock(s).absolute;
+  if (s.eventDay === at || s.finale) return null;
+  if (chance(s, 'event', at, place) >= EVENT_CHANCE) return null;
+  const fits = EVENTS.filter(ev => eventFits(s, ev, place));
+  if (!fits.length) return null;
+  // Events with a senior come up a little more often than the ones without.
+  const weights = fits.map(ev => (ev.girl ? 2 : 1));
+  let r = chance(s, 'event-pick', at, place) * weights.reduce((a, b) => a + b, 0);
+  const ev = fits.find((_, i) => (r -= weights[i]) < 0) ?? fits[0];
+  s.eventDay = at;
+  s.flags['event:' + ev.id] = true;
+  s.counters.event = (s.counters.event ?? 0) + 1;
+  return ev;
+}
+
+// ------------------------------------------------------------------ memories across terms
+
+/** A fresh record of everything kept between terms. */
+export const newMemories = () => ({ version: 1, terms: 0, endings: {}, achievements: {}, events: {}, best: 0 });
+
+/** Ending key for the album: '<girl>:love', '<girl>:friend' or 'solo'. */
+export const endingKey = (girl, result) => (girl ? `${girl}:${result}` : 'solo');
+
+/**
+ * Add a finished term to the memories. Returns what is new: endings and
+ * achievements seen for the first time, and the perks they unlock.
+ */
+export function recordTerm(memories, s, girl, result) {
+  const m = memories;
+  m.terms += 1;
+  const fresh = { endings: [], achievements: [], perks: [] };
+  const key = endingKey(girl, result);
+  if (!m.endings[key]) fresh.endings.push(key);
+  m.endings[key] = (m.endings[key] ?? 0) + 1;
+  for (const id of Object.keys(s.flags)) if (id.startsWith('event:')) m.events[id.slice(6)] = true;
+  m.best = Math.max(m.best, ...HEROINE_IDS.map(id => s.girls[id].aff));
+  const before = new Set(unlockedPerks(m).map(p => p.id));
+  for (const a of ACHIEVEMENTS)
+    if (!m.achievements[a.id] && a.test(s, { girl, result, memories: m })) {
+      m.achievements[a.id] = true;
+      fresh.achievements.push(a.id);
+    }
+  fresh.perks = unlockedPerks(m)
+    .filter(p => !before.has(p.id))
+    .map(p => p.id);
+  return fresh;
+}
+
+/** Perks the memories have earned, to choose one from at the start of a new term. */
+export const unlockedPerks = m => PERKS.filter(p => !p.needs || m.achievements[p.needs]);
+
+export function readMemories(text) {
+  try {
+    const m = JSON.parse(text);
+    if (m?.version === 1) return { ...newMemories(), ...m };
+  } catch {
+    /* fall through */
+  }
+  return newMemories();
 }

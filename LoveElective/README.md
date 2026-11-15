@@ -76,6 +76,22 @@ Bloom Boutique on the shopping street sells clothes. Dresses, skirts and other p
 
 Money from work buys clothes, presents and supplies (energy drinks and books that raise stats). The notice board at the gate and the phone list more than twenty tasks: finding your way around, the arts showcase, sports day, final exams, outfit challenges and a request from each senior, rewarded with money, stats or affection.
 
+### 心愿、校园事件与专注 · Wishes, campus events and focus
+
+- **今日心愿**：每天早上，一位已经认识的学姐会许一个小心愿：想要某件礼物、想换一种相处距离、想看你穿某种风格，或者想去某个地方约会。当天替她实现，好感额外 +5，不受每日上限限制。地图上她的头像旁有粉色爱心，手机和她的卡片上写着心愿内容。心愿也是在悄悄告诉你她喜欢什么。
+- **校园事件**：走进一个地方时，有时会遇到一段小插曲：图书馆窗台上的猫、突击小测、突然下雨、流星、街头歌手，以及和七位学姐各自有关的偶遇。共十八种，每种两个选择，带来属性、金钱、体力或好感。同一学期里不会重复，每个学期遇到的都不一样。
+- **专注挑战**：听课、自习、训练、练习和打工之前，会有一条光带和一根来回摆动的指针。在光带里点一下（或按空格），“不错”让收获 ×1.2，“完美”×1.5；不想玩可以点“直接开始”。
+
+- **A wish a day:** each morning one senior you have met makes a small wish: a particular present, a different way of being spoken to, an outfit style, or an outing. Grant it that day for 5 extra affection outside the daily cap. A pink heart beside her on the map marks her, and the phone and her card say what she wants. Her wishes also quietly tell you what she likes.
+- **Campus events:** walking into a place sometimes brings a small scene: the cat on the library windowsill, a pop quiz, a sudden shower, a shooting star, a street singer, and chance meetings with each of the seven seniors. There are eighteen, each with two choices that bring stats, money, energy or affection. None repeats within a term, and each term turns up different ones.
+- **Focus challenge:** before lectures, study, training, practice and work, a pointer sweeps along a bar. Tap inside the bright band (or press Space): Good multiplies the gains by 1.2, Perfect by 1.5. "Just do it" skips the challenge.
+
+### 回忆册与开学天赋 · Memories and perks
+
+标题界面的“回忆册”记录跨学期的收获：十五个结局（七位学姐各两个，加一个独自的结局）、十八项成就，以及成就解锁的十种开学天赋。从第二个学期起，开始新学期时可以带上一种天赋，例如五项属性各 +4、第一次聊天就能看到她喜欢的距离、每天早上多 10 点体力、开学多带 ¥600。每个学期结束后，新解锁的结局、成就和天赋会单独列出来。
+
+"Memories" on the title screen keeps what carries over between terms: fifteen endings (two for each senior and one for going alone), eighteen achievements, and the ten perks they unlock. From the second term on, a new term can begin with one perk, such as every stat +4, seeing the distance she likes from your first talk, ten more energy each morning, or ¥600 more to start with. When a term ends, the endings, achievements and perks it unlocked are listed.
+
 ### 结局 · Endings
 
 星空祭之夜可以向好感达到 55 的学姐告白。读完她的全部四章且好感达到 88，会进入她的恋爱结局；否则是“未完待续”。也可以谁都不说。每位学姐各有两种结局，另有一个独自的结局。
@@ -111,9 +127,9 @@ The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. 
 | 动画与计时 · Animation and timing | `engine.advanceTime` 驱动 `engine.clock.onTick`，补间、粒子和打字效果都挂在这一个时钟上 · tweens, particles and text all run from this one clock |
 | 淡入淡出、悬停高亮 · Fades and hover highlight | `Sprite.graphics` 的纯色矩形 · solid rectangles |
 
-音乐和音效由 Web Audio 合成。时间、属性、好感、拉扯、任务和结局规则可脱离页面运行，在 Node 中玩完整个学期。
+音乐和音效由 Web Audio 合成。时间、属性、好感、拉扯、心愿、校园事件、任务、结局和回忆规则可脱离页面运行，在 Node 中玩完整个学期。
 
-Music and sound are synthesised with Web Audio. The time, stats, affection, push-and-pull, task and ending rules can run a whole term in Node without a page.
+Music and sound are synthesised with Web Audio. The time, stats, affection, push-and-pull, wish, campus event, task, ending and memory rules can run a whole term in Node without a page.
 
 ## 目录 · Layout
 
@@ -123,10 +139,10 @@ Music and sound are synthesised with Web Audio. The time, stats, affection, push
 | `src/main.mjs`, `src/game.mjs` | 启动与流程；各界面共用的状态栏、提示、头像和存档 · start-up and flow; the top bar, messages, portraits and saving shared by all screens |
 | `src/sim.mjs` | 玩法规则，不依赖页面 · the rules, no page needed |
 | `src/engine/` | 引擎接入（`stage`）、分层场景（`world`）、界面面板（`ui`） · the engine connection, the layered scene and the interface panels |
-| `src/screens/` | 标题、剧情、校园、衣橱、商店、手机、结局 · title, story, campus, wardrobe, shops, phone, finale |
+| `src/screens/` | 标题、剧情、校园、衣橱、商店、手机、结局、回忆册 · title, story, campus, wardrobe, shops, phone, finale, memories |
 | `src/art/` | 人物组合绘制与素材接入 · character compositing and asset loading |
 | `assets/` | 封面、角色、校园、前景装饰、服装和道具插画 · cover, cast, campus, foreground, fashion and item illustrations |
-| `src/data/` | 学姐、服饰与道具、地点、任务 · seniors, clothes and items, places, tasks |
+| `src/data/` | 学姐、服饰与道具、地点、任务、校园事件、成就与天赋 · seniors, clothes and items, places, tasks, campus events, achievements and perks |
 | `src/story/` | 序章、各章剧情、日常台词、结局（中英双语） · prologue, chapters, everyday lines and endings, in Chinese and English |
 | `src/audio.mjs` | 音乐与音效 · music and sound |
 | `tools/`, `test/` | 无页面游玩与规则测试 · headless play and rule tests |

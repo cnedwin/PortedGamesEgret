@@ -1,10 +1,11 @@
 // Start-up and the overall flow of a play-through:
 // title → prologue → days on campus → the last night → ending → title.
-import { createGame } from './game.mjs';
+import { createGame, sim } from './game.mjs';
 import { titleScreen } from './screens/title.mjs';
 import { playScript } from './screens/story.mjs';
 import { campus } from './screens/campus.mjs';
 import { finale } from './screens/finale.mjs';
+import { openAlbum, pickPerk } from './screens/memories.mjs';
 import { PROLOGUE } from './story/scenes.mjs';
 import { preloadCharacterArt } from './art/character-art.mjs';
 
@@ -54,10 +55,22 @@ async function start() {
 
   for (;;) {
     const choice = await titleScreen(game);
+    if (choice === 'album') {
+      await game.fadeIn(0.3);
+      await openAlbum(game);
+      continue;
+    }
     if (choice === 'continue' && game.load()) {
       await game.fadeIn();
     } else {
-      game.newGame();
+      // From the second term on, one perk earned earlier may come along.
+      let perk = null;
+      if (sim.unlockedPerks(game.memories).length) {
+        await game.fadeIn(0.3);
+        perk = await pickPerk(game);
+        await game.fadeOut(0.3);
+      }
+      game.newGame(perk);
       await game.world.setScene('gate', 'day');
       await game.fadeIn();
       await playScript(game, PROLOGUE, { light: 'day' });

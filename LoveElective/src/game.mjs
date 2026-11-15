@@ -10,11 +10,13 @@ import { paintPortrait } from './art/character-art.mjs';
 import { loadItemArt } from './art/icons.mjs';
 import { rgba, ellipse, rrect, poly } from './art/draw.mjs';
 import { HEROINES, HERO } from './data/cast.mjs';
-import { SLOTS_OF_DAY, WEEKDAYS, DAYS_IN_TERM } from './data/places.mjs';
+import { SLOTS_OF_DAY, WEEKDAYS, DAYS_IN_TERM, DATE_SPOTS } from './data/places.mjs';
+import { GIFTS, STYLES } from './data/items.mjs';
 import * as sim from './sim.mjs';
 
 const SAVE_KEY = 'love-elective-save-v1';
 const PREFS_KEY = 'love-elective-prefs-v1';
+const MEMORIES_KEY = 'love-elective-memories-v1';
 
 function readStorage(key) {
   try {
@@ -72,8 +74,23 @@ export async function createGame(canvas, options) {
     game.state = sim.deserialize(readStorage(SAVE_KEY) ?? '');
     return !!game.state;
   };
-  game.newGame = () => {
-    game.state = sim.newGame();
+  /** Start a term, with one of the perks earned in earlier terms if one was chosen. */
+  game.newGame = perk => {
+    game.state = sim.newGame({ perk });
+  };
+
+  // ---- memories kept between terms: endings, achievements and perks
+  game.memories = sim.readMemories(readStorage(MEMORIES_KEY) ?? '');
+  game.saveMemories = () => writeStorage(MEMORIES_KEY, JSON.stringify(game.memories));
+
+  /** Today's wish in a few words, e.g. "想要：热可可". */
+  game.wishText = w => {
+    const L = game.L;
+    if (w.kind === 'gift') return `${L(['想要', 'Wants'])}: ${L(GIFTS[w.item].name)}`;
+    if (w.kind === 'date') return `${L(['想去', 'Would love'])}: ${L(DATE_SPOTS.find(d => d.id === w.spot).name)}`;
+    if (w.kind === 'style') return `${L(['想看你穿', 'Wants to see you in'])}: ${L(STYLES[w.style])}${L(['风', ' style'])}`;
+    const approach = { closer: ['你主动一点', 'you to be bolder'], steady: ['自然地聊聊', 'an easy talk'], space: ['安静地待着', 'some quiet company'] };
+    return `${L(['想要', 'Wants'])}: ${L(approach[w.approach])}`;
   };
   game.clearSave = () => {
     game.state = null;

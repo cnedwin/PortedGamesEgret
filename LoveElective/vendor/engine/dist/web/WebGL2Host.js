@@ -1,4 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
+import { deferred } from './sharedHostDeferred.js';
 import { sharedEffectGLSL, EFFECT_PASSES, EFFECT_UNIFORM_BYTES } from './sharedEffectShaders.js';
 import { SHARED_FRAME_PROFILE_2D } from '@egret/contracts';
 import { readOwnedSharedFrame } from '#egret-textured-frame-state';
@@ -15,28 +16,45 @@ import { planSharedStorageFees2D, withSharedReadbackLayout2D, checkSharedCapacit
 import { planSharedWebGL2Arenas, checkSharedWebGL2ArenaCapacity, qualifySharedWebGL2Alignment } from './sharedWebGL2Arena.js';
 import { createRetentionLedger } from './sharedRetentionLedger.js';
 import { GLNativeSession, glFailure, isGLFailure } from './webgl2Native.js';
-import { sharedWebGL2VertexSource, sharedWebGL2FragmentSource, sharedWebGL2PagedFragmentSource, sharedWebGL2SolidVertexSource, sharedWebGL2SolidFragmentSource, sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragmentSource, sharedWebGL2BlendFactors, sharedWebGL2LayerVertexSource, sharedWebGL2LayerFragmentSource, sharedWebGL2LayerEffectFragmentSource } from './sharedWebGL2Shaders.js';
-function deferred() {
-    let resolve, reject;
-    const promise = new Promise((a, b) => { resolve = a; reject = b; });
-    promise.catch(() => undefined);
-    return { promise, resolve, reject };
-}
+import { sharedWebGL2VertexSource, sharedWebGL2FragmentSource, sharedWebGL2PagedFragmentSource, sharedWebGL2SolidVertexSource, sharedWebGL2SolidFragmentSource, sharedWebGL2ResolveVertexSource, sharedWebGL2ResolveFragmentSource, sharedWebGL2BlendFactors } from './sharedWebGL2Shaders.js';
+import { MAX_LAYER_HANDLES, MAX_LAYER_EXTENT, MAX_LAYER_BYTES, createWebGL2LayerProgram, readWebGL2LayerEffect, readWebGL2LayerPlacement } from './webgl2LayerState.js';
 const schedule = globalThis.setTimeout.bind(globalThis), cancel = globalThis.clearTimeout.bind(globalThis);
 const invoke = Reflect.apply;
 const clock = () => performance.now();
 const TIMING_CAPACITY = 2048;
-const TIMING_PHASES = ['texture-prepare', 'texture-upload', 'working-framebuffer-validation', 'default-framebuffer-validation', 'submit', 'fence-poll',
-    'completion-error-query', 'retire', 'sync-delete-error-query'];
+const TIMING_PHASES = [
+    'texture-prepare',
+    'texture-upload',
+    'working-framebuffer-validation',
+    'default-framebuffer-validation',
+    'submit',
+    'fence-poll',
+    'completion-error-query',
+    'retire',
+    'sync-delete-error-query'
+];
 function createFrameTiming() {
     const totals = Object.fromEntries(TIMING_PHASES.map(phase => [phase, { count: 0, totalMs: 0, maxMs: 0 }]));
     return { totals, samples: [], next: 0, dropped: 0 };
 }
-const ATTRIBUTES = Object.freeze({ alpha: true, premultipliedAlpha: true, antialias: false, depth: false, stencil: false, preserveDrawingBuffer: false });
-const MAX_LAYER_HANDLES = 512;
-const MAX_LAYER_EXTENT = 2048;
-const MAX_LAYER_BYTES = 32 * 1024 * 1024;
-const DRAW_UNIFORM_MEMBERS = ['viewport', 'materialLight', 'materialDark', 'pageUnits0', 'pageUnits1', 'domain', 'samplerPolicy', 'pageExecution'];
+const ATTRIBUTES = Object.freeze({
+    alpha: true,
+    premultipliedAlpha: true,
+    antialias: false,
+    depth: false,
+    stencil: false,
+    preserveDrawingBuffer: false
+});
+const DRAW_UNIFORM_MEMBERS = [
+    'viewport',
+    'materialLight',
+    'materialDark',
+    'pageUnits0',
+    'pageUnits1',
+    'domain',
+    'samplerPolicy',
+    'pageExecution'
+];
 class SharedGLHost {
     surface;
     sharedFrameProfile = SHARED_FRAME_PROFILE_2D;
@@ -65,17 +83,79 @@ class SharedGLHost {
     lostNative;
     // Fixed-size observations only; original records/native owners still authorize every transition.
     frameTiming;
-    resourceCpu = { canonicalBytes: 0, scratchBytes: 0, highCanonicalBytes: 0, highScratchBytes: 0, highTemporaryBytes: 0, saturated: false };
-    resourceUnknown = { knownLogicalBytes: 0, objects: 0, highKnownLogicalBytes: 0, highObjects: 0, saturated: false };
-    resourceReuse = { current: { idleBytes: 0, idleEntries: 0, leasedBytes: 0, leasedEntries: 0, reservedBytes: 0, reservedEntries: 0, detachedBytes: 0, detachedEntries: 0, unknownBytes: 0, unknownEntries: 0 }, highWater: { idleBytes: 0, idleEntries: 0, leasedBytes: 0, leasedEntries: 0, reservedBytes: 0, reservedEntries: 0, detachedBytes: 0, detachedEntries: 0, unknownBytes: 0, unknownEntries: 0 }, saturated: false, unknownNative: this.resourceUnknown };
-    resourceHighPending = { frames: 0, uploadCreditBytes: 0, pageCreditBytes: 0, readbackCreditBytes: 0, geometryCreditBytes: 0, colorCreditBytes: 0 };
-    resourceHighImages = { readyBytes: 0, readyEntries: 0, pinnedReadyBytes: 0, pinnedReadyEntries: 0, allocatedLogicalBytes: 0, reservedCreditBytes: 0 };
+    resourceCpu = {
+        canonicalBytes: 0,
+        scratchBytes: 0,
+        highCanonicalBytes: 0,
+        highScratchBytes: 0,
+        highTemporaryBytes: 0,
+        saturated: false
+    };
+    resourceUnknown = {
+        knownLogicalBytes: 0,
+        objects: 0,
+        highKnownLogicalBytes: 0,
+        highObjects: 0,
+        saturated: false
+    };
+    resourceReuse = {
+        current: {
+            idleBytes: 0,
+            idleEntries: 0,
+            leasedBytes: 0,
+            leasedEntries: 0,
+            reservedBytes: 0,
+            reservedEntries: 0,
+            detachedBytes: 0,
+            detachedEntries: 0,
+            unknownBytes: 0,
+            unknownEntries: 0
+        },
+        highWater: {
+            idleBytes: 0,
+            idleEntries: 0,
+            leasedBytes: 0,
+            leasedEntries: 0,
+            reservedBytes: 0,
+            reservedEntries: 0,
+            detachedBytes: 0,
+            detachedEntries: 0,
+            unknownBytes: 0,
+            unknownEntries: 0
+        },
+        saturated: false,
+        unknownNative: this.resourceUnknown
+    };
+    resourceHighPending = {
+        frames: 0,
+        uploadCreditBytes: 0,
+        pageCreditBytes: 0,
+        readbackCreditBytes: 0,
+        geometryCreditBytes: 0,
+        colorCreditBytes: 0
+    };
+    resourceHighImages = {
+        readyBytes: 0,
+        readyEntries: 0,
+        pinnedReadyBytes: 0,
+        pinnedReadyEntries: 0,
+        allocatedLogicalBytes: 0,
+        reservedCreditBytes: 0
+    };
     resourceTotals = { pageWriteCalls: 0, pageWriteBytes: 0, readyCapacityEvictions: 0 };
     resourceSaturated = false;
     resourceReadyBytes = 0;
     resourcePinnedBytes = 0;
     resourcePinnedEntries = 0;
-    resourceNative = { pageBytes: 0, highPageBytes: 0, reservedPageBytes: 0, highReservedPageBytes: 0, unknown: this.resourceUnknown, totals: this.resourceTotals, saturated: false };
+    resourceNative = {
+        pageBytes: 0,
+        highPageBytes: 0,
+        reservedPageBytes: 0,
+        highReservedPageBytes: 0,
+        unknown: this.resourceUnknown,
+        totals: this.resourceTotals,
+        saturated: false
+    };
     pool = createRetentionLedger(this.token, this.resourceReuse);
     scratch = new PreparedBatchScratch2D();
     /** The prepared draws of the last ordinary frame. A Host that is not active keeps none. */
@@ -188,32 +268,79 @@ class SharedGLHost {
         const owner = this.snapshot();
         return Object.freeze({
             current: Object.freeze({
-                pending: Object.freeze({ frames: owner.pendingFrames, uploadCreditBytes: owner.pendingUploadBytes, pageCreditBytes: owner.pendingTextureBytes, readbackCreditBytes: owner.pendingReadbackBytes, geometryCreditBytes: owner.pendingGeometryBytes, colorCreditBytes: owner.pendingColorBytes }),
-                cpu: Object.freeze({ canonicalBytes: this.resourceCpu.canonicalBytes, scratchBytes: this.resourceCpu.scratchBytes, temporaryBytes: this.resourceCpu.canonicalBytes + this.resourceCpu.scratchBytes }),
-                images: Object.freeze({ readyBytes: this.resourceReadyBytes, readyEntries: this.pages.size, pinnedReadyBytes: this.resourcePinnedBytes, pinnedReadyEntries: this.resourcePinnedEntries, allocatedLogicalBytes: this.resourceNative.pageBytes, reservedCreditBytes: this.resourceNative.reservedPageBytes }),
+                pending: Object.freeze({
+                    frames: owner.pendingFrames,
+                    uploadCreditBytes: owner.pendingUploadBytes,
+                    pageCreditBytes: owner.pendingTextureBytes,
+                    readbackCreditBytes: owner.pendingReadbackBytes,
+                    geometryCreditBytes: owner.pendingGeometryBytes,
+                    colorCreditBytes: owner.pendingColorBytes
+                }),
+                cpu: Object.freeze({
+                    canonicalBytes: this.resourceCpu.canonicalBytes,
+                    scratchBytes: this.resourceCpu.scratchBytes,
+                    temporaryBytes: this.resourceCpu.canonicalBytes + this.resourceCpu.scratchBytes
+                }),
+                images: Object.freeze({
+                    readyBytes: this.resourceReadyBytes,
+                    readyEntries: this.pages.size,
+                    pinnedReadyBytes: this.resourcePinnedBytes,
+                    pinnedReadyEntries: this.resourcePinnedEntries,
+                    allocatedLogicalBytes: this.resourceNative.pageBytes,
+                    reservedCreditBytes: this.resourceNative.reservedPageBytes
+                }),
                 reusable: Object.freeze({ ...this.resourceReuse.current }),
-                unknownNative: Object.freeze({ knownLogicalBytes: this.resourceUnknown.knownLogicalBytes, objects: this.resourceUnknown.objects }),
+                unknownNative: Object.freeze({
+                    knownLogicalBytes: this.resourceUnknown.knownLogicalBytes,
+                    objects: this.resourceUnknown.objects
+                })
             }),
             highWater: Object.freeze({
                 pending: Object.freeze({ ...this.resourceHighPending }),
-                cpu: Object.freeze({ canonicalBytes: this.resourceCpu.highCanonicalBytes, scratchBytes: this.resourceCpu.highScratchBytes, temporaryBytes: this.resourceCpu.highTemporaryBytes }),
-                images: Object.freeze({ ...this.resourceHighImages, allocatedLogicalBytes: this.resourceNative.highPageBytes, reservedCreditBytes: this.resourceNative.highReservedPageBytes }),
+                cpu: Object.freeze({
+                    canonicalBytes: this.resourceCpu.highCanonicalBytes,
+                    scratchBytes: this.resourceCpu.highScratchBytes,
+                    temporaryBytes: this.resourceCpu.highTemporaryBytes
+                }),
+                images: Object.freeze({
+                    ...this.resourceHighImages,
+                    allocatedLogicalBytes: this.resourceNative.highPageBytes,
+                    reservedCreditBytes: this.resourceNative.highReservedPageBytes
+                }),
                 reusable: Object.freeze({ ...this.resourceReuse.highWater }),
-                unknownNative: Object.freeze({ knownLogicalBytes: this.resourceUnknown.highKnownLogicalBytes, objects: this.resourceUnknown.highObjects }),
+                unknownNative: Object.freeze({
+                    knownLogicalBytes: this.resourceUnknown.highKnownLogicalBytes,
+                    objects: this.resourceUnknown.highObjects
+                })
             }),
             totals: Object.freeze({ ...this.resourceTotals }),
-            saturated: this.resourceSaturated || this.resourceCpu.saturated || this.resourceReuse.saturated || this.resourceUnknown.saturated || this.resourceNative.saturated,
+            saturated: this.resourceSaturated ||
+                this.resourceCpu.saturated ||
+                this.resourceReuse.saturated ||
+                this.resourceUnknown.saturated ||
+                this.resourceNative.saturated
         });
     }
     stateError() {
-        const code = this.state === 'lost' ? 'WEBGL2_CONTEXT_LOST' : this.state === 'restoring' ? 'WEBGL2_CONTEXT_RESTORING' :
-            this.state === 'stopped' ? 'WEBGL2_STOPPED' : this.state === 'closing' || this.state === 'closed' ? 'WEBGL2_CLOSED' : this.state === 'failed' ? 'WEBGL2_FAILED' : 'WEBGL2_NOT_STARTED';
+        const code = this.state === 'lost'
+            ? 'WEBGL2_CONTEXT_LOST'
+            : this.state === 'restoring'
+                ? 'WEBGL2_CONTEXT_RESTORING'
+                : this.state === 'stopped'
+                    ? 'WEBGL2_STOPPED'
+                    : this.state === 'closing' || this.state === 'closed'
+                        ? 'WEBGL2_CLOSED'
+                        : this.state === 'failed'
+                            ? 'WEBGL2_FAILED'
+                            : 'WEBGL2_NOT_STARTED';
         return glFailure(code, this.generationFailure?.cause);
     }
-    active() { if (this.state !== 'active') {
-        this.retention.clear();
-        throw this.stateError();
-    } }
+    active() {
+        if (this.state !== 'active') {
+            this.retention.clear();
+            throw this.stateError();
+        }
+    }
     generationState(token) {
         if (token !== this.token || this.state === 'lost' || this.state === 'closed')
             throw this.stateError();
@@ -246,7 +373,13 @@ class SharedGLHost {
                     return;
                 const failed = (fault) => {
                     this.callbackFailureCount = Math.min(Number.MAX_SAFE_INTEGER, this.callbackFailureCount + 1);
-                    this.lastCallbackFailure = Object.freeze({ code: 'WEBGL2_DIAGNOSTIC_CALLBACK_FAILED', cause: fault, phase: 'callback', serial, generation: failure.generation });
+                    this.lastCallbackFailure = Object.freeze({
+                        code: 'WEBGL2_DIAGNOSTIC_CALLBACK_FAILED',
+                        cause: fault,
+                        phase: 'callback',
+                        serial,
+                        generation: failure.generation
+                    });
                 };
                 try {
                     Promise.resolve(callback.call(undefined, Object.freeze({ ...failure, severity: 'error' }))).catch(failed);
@@ -257,10 +390,12 @@ class SharedGLHost {
             });
         return glFailure(code, cause);
     }
-    rejectUnbound(cause) { if (this.ticket && !this.ticket.bound) {
-        this.ticket.reject(cause);
-        this.ticket = undefined;
-    } }
+    rejectUnbound(cause) {
+        if (this.ticket && !this.ticket.bound) {
+            this.ticket.reject(cause);
+            this.ticket = undefined;
+        }
+    }
     start() {
         if (this.state === 'starting' || this.state === 'active')
             return this.starting;
@@ -273,7 +408,9 @@ class SharedGLHost {
         this.ready = deferred();
         this.starting = this.ready.promise;
         // Store the public barrier before any externally controlled canvas method.
-        queueMicrotask(() => { void this.initialize(false); });
+        queueMicrotask(() => {
+            void this.initialize(false);
+        });
         return this.starting;
     }
     whenReady() {
@@ -323,13 +460,19 @@ class SharedGLHost {
         const id = schedule(callback, delayMs);
         return () => cancel(id);
     }
-    cancelRestore() { if (this.restoreTimer !== undefined) {
-        cancel(this.restoreTimer);
-        this.restoreTimer = undefined;
-    } }
+    cancelRestore() {
+        if (this.restoreTimer !== undefined) {
+            cancel(this.restoreTimer);
+            this.restoreTimer = undefined;
+        }
+    }
     bindListeners() {
-        const lost = (event) => { if (!this.lostNative?.())
-            return; event.preventDefault(); this.onLoss(); };
+        const lost = (event) => {
+            if (!this.lostNative?.())
+                return;
+            event.preventDefault();
+            this.onLoss();
+        };
         const restored = () => {
             if (this.state !== 'lost' || this.restoreAttempt || this.lostNative?.())
                 return;
@@ -419,9 +562,11 @@ class SharedGLHost {
             this.sweepLayers();
         }
     }
-    retireLost() { for (const record of [...this.records])
-        if (record.native.invalidated)
-            this.retire(record); }
+    retireLost() {
+        for (const record of [...this.records])
+            if (record.native.invalidated)
+                this.retire(record);
+    }
     async initialize(restoring) {
         const barrier = this.ready;
         this.busy = true;
@@ -465,7 +610,9 @@ class SharedGLHost {
             const native = new GLNativeSession(context, () => this.generationGate(token), this.resourceNative, this.frameTiming ? (phase, started, serial) => this.recordTiming(phase, started, generation, serial) : undefined);
             this.native = native;
             const gl = native.gl, attrs = gl.getContextAttributes();
-            if (context.canvas !== this.surface || !attrs || Object.entries(ATTRIBUTES).some(([key, value]) => attrs[key] !== value))
+            if (context.canvas !== this.surface ||
+                !attrs ||
+                Object.entries(ATTRIBUTES).some(([key, value]) => attrs[key] !== value))
                 throw glFailure('WEBGL2_CONTEXT_ATTRIBUTES_UNSUPPORTED');
             // Explicitly request the one supported drawing-buffer color space when exposed.
             if ('drawingBufferColorSpace' in context) {
@@ -474,8 +621,12 @@ class SharedGLHost {
                 if (context.drawingBufferColorSpace !== 'srgb')
                     throw glFailure('WEBGL2_FORMAT_UNSUPPORTED');
             }
-            const integer = (name, min) => { const value = gl.getParameter(name); if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min)
-                throw glFailure('WEBGL2_CONTEXT_LIMIT'); return value; };
+            const integer = (name, min) => {
+                const value = gl.getParameter(name);
+                if (typeof value !== 'number' || !Number.isSafeInteger(value) || value < min)
+                    throw glFailure('WEBGL2_CONTEXT_LIMIT');
+                return value;
+            };
             const alignment = integer(gl.UNIFORM_BUFFER_OFFSET_ALIGNMENT, 4);
             try {
                 qualifySharedWebGL2Alignment(alignment);
@@ -491,9 +642,17 @@ class SharedGLHost {
             integer(gl.MAX_TEXTURE_IMAGE_UNITS, SHARED_BATCH_PAGES_2D);
             integer(gl.MAX_VERTEX_ATTRIBS, 5);
             const dims = gl.getParameter(gl.MAX_VIEWPORT_DIMS);
-            if (!dims || dims.length !== 2 || ![dims[0], dims[1]].every(n => n !== undefined && Number.isSafeInteger(n) && n > 0))
+            if (!dims ||
+                dims.length !== 2 ||
+                ![dims[0], dims[1]].every(n => n !== undefined && Number.isSafeInteger(n) && n > 0))
                 throw glFailure('WEBGL2_CONTEXT_LIMIT');
-            this.limits = { alignment, texture: integer(gl.MAX_TEXTURE_SIZE, 1), renderbuffer: integer(gl.MAX_RENDERBUFFER_SIZE, 1), viewportWidth: dims[0], viewportHeight: dims[1] };
+            this.limits = {
+                alignment,
+                texture: integer(gl.MAX_TEXTURE_SIZE, 1),
+                renderbuffer: integer(gl.MAX_RENDERBUFFER_SIZE, 1),
+                viewportWidth: dims[0],
+                viewportHeight: dims[1]
+            };
             for (const type of [gl.VERTEX_SHADER, gl.FRAGMENT_SHADER]) {
                 const p = gl.getShaderPrecisionFormat(type, gl.HIGH_FLOAT);
                 if (!p || p.precision < 23 || p.rangeMin < 126 || p.rangeMax < 127)
@@ -551,7 +710,11 @@ class SharedGLHost {
                 barrier.reject(glFailure('WEBGL2_CONTEXT_LOST', cause));
                 return;
             }
-            const code = isGLFailure(cause) ? cause.code : restoring ? 'WEBGL2_RESTORE_FAILED' : 'WEBGL2_START_FAILED';
+            const code = isGLFailure(cause)
+                ? cause.code
+                : restoring
+                    ? 'WEBGL2_RESTORE_FAILED'
+                    : 'WEBGL2_START_FAILED';
             const failure = this.note(code, isGLFailure(cause) ? cause.cause : cause, restoring ? 'restore' : 'startup');
             if (this.state !== 'closing' && this.state !== 'closed' && this.state !== 'stopped')
                 this.state = 'failed';
@@ -566,7 +729,16 @@ class SharedGLHost {
         }
     }
     snapshot() {
-        const owner = { pendingFrames: this.records.size, pendingUploadBytes: 0, pendingReadbackBytes: 0, pendingTextureBytes: 0, pendingGeometryBytes: 0, pendingColorBytes: 0, pendingCanonicalBytes: 0, serial: this.serial };
+        const owner = {
+            pendingFrames: this.records.size,
+            pendingUploadBytes: 0,
+            pendingReadbackBytes: 0,
+            pendingTextureBytes: 0,
+            pendingGeometryBytes: 0,
+            pendingColorBytes: 0,
+            pendingCanonicalBytes: 0,
+            serial: this.serial
+        };
         // At most two accepted records; counters derive from their still-owned immutable fees.
         const mutable = owner;
         for (const r of this.records) {
@@ -604,7 +776,7 @@ class SharedGLHost {
                 return slot.wasReady ? 'stale' : 'empty';
             },
             update: (frame) => this.updateLayer(slot, frame),
-            dispose: () => this.disposeLayer(handle, slot),
+            dispose: () => this.disposeLayer(handle, slot)
         });
         this.layers.set(handle, slot);
         return handle;
@@ -706,7 +878,7 @@ class SharedGLHost {
             if (!item || typeof item !== 'object')
                 throw glFailure('WEBGL2_LAYER_INVALID');
             const { layer, x, y, width, height, effect } = item;
-            const light = effect === undefined ? undefined : this.readLayerEffect(effect, frameWidth, frameHeight);
+            const light = effect === undefined ? undefined : readWebGL2LayerEffect(this.options, effect, frameWidth, frameHeight);
             this.active();
             const slot = this.layers.get(layer);
             if (!slot)
@@ -714,53 +886,12 @@ class SharedGLHost {
             const revision = slot.ready;
             if (!revision || revision.native !== this.native || revision.owner.outcome !== 'owned')
                 throw glFailure('WEBGL2_LAYER_NOT_READY');
-            if (typeof x !== 'number' || typeof y !== 'number' || typeof width !== 'number' || typeof height !== 'number' || width <= 0 || height <= 0)
-                throw glFailure('WEBGL2_LAYER_INVALID');
-            const physicalX = x * ratio, physicalY = y * ratio, physicalWidth = width * ratio, physicalHeight = height * ratio;
-            if (![physicalX, physicalY, physicalWidth, physicalHeight, physicalX + physicalWidth, physicalY + physicalHeight]
-                .every(value => Number.isFinite(value) && Math.abs(value) <= 8388608))
-                throw glFailure('WEBGL2_LAYER_INVALID');
-            const visibleLight = light && light.left < physicalX + physicalWidth && light.right > physicalX &&
-                light.top < physicalY + physicalHeight && light.bottom > physicalY ? light : undefined;
-            reads.push({ revision, x: physicalX, y: physicalY, width: physicalWidth, height: physicalHeight, effect: visibleLight });
+            reads.push(readWebGL2LayerPlacement(revision, x, y, width, height, ratio, light));
         }
         // A later placement getter may have disposed an earlier revision.
         if (reads.some(read => !read.revision.retained))
             throw glFailure('WEBGL2_LAYER_NOT_READY');
         return reads;
-    }
-    readLayerEffect(input, frameWidth, frameHeight) {
-        if (!this.options.enableEffects || !input || typeof input !== 'object')
-            throw glFailure('WEBGL2_LAYER_EFFECT_INVALID');
-        const { bounds, multiply, add } = input;
-        if (!bounds || typeof bounds !== 'object')
-            throw glFailure('WEBGL2_LAYER_EFFECT_INVALID');
-        const { x, y, width, height } = bounds;
-        if (typeof x !== 'number' || typeof y !== 'number' || typeof width !== 'number' || typeof height !== 'number' || width <= 0 || height <= 0)
-            throw glFailure('WEBGL2_LAYER_EFFECT_INVALID');
-        const ratio = this.options.pixelRatio, left = x * ratio, top = y * ratio, right = (x + width) * ratio, bottom = (y + height) * ratio;
-        if (![left, top, right, bottom].every(value => Number.isFinite(value) && Math.abs(value) <= 8388608) ||
-            right <= left || bottom <= top)
-            throw glFailure('WEBGL2_LAYER_EFFECT_INVALID');
-        const scale = multiply === undefined ? undefined : this.readLayerColor(multiply, 4);
-        const emission = add === undefined ? undefined : this.readLayerColor(add, 1);
-        if ((!scale || scale.every(value => value === 1)) && (!emission || emission.every(value => value === 0)))
-            return undefined;
-        // Ceil-sized backing buffers can contain centers beyond the logical frame.
-        const clippedLeft = Math.max(0, left), clippedTop = Math.max(0, top);
-        const clippedRight = Math.min(frameWidth * ratio, right), clippedBottom = Math.min(frameHeight * ratio, bottom);
-        if (clippedRight <= clippedLeft || clippedBottom <= clippedTop)
-            return undefined;
-        return { left: clippedLeft, top: clippedTop, right: clippedRight, bottom: clippedBottom,
-            scale: scale ?? [1, 1, 1], emission: emission ?? [0, 0, 0] };
-    }
-    readLayerColor(input, max) {
-        if (!Array.isArray(input) || input.length !== 3)
-            throw glFailure('WEBGL2_LAYER_EFFECT_INVALID');
-        const rgb = [input[0], input[1], input[2]];
-        if (!rgb.every(value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= max))
-            throw glFailure('WEBGL2_LAYER_EFFECT_INVALID');
-        return rgb;
     }
     finishLayerRecord(record) {
         for (const read of record.layerReads ?? [])
@@ -839,36 +970,63 @@ class SharedGLHost {
                     if (staging)
                         staging.signal = this.captureSignal(staging.options, staging.token);
                     const layerWrite = layerInput && 'write' in layerInput ? layerInput.write : undefined;
-                    const layerReads = layerInput && 'placements' in layerInput ? this.readLayers(layerInput.placements, frame.width, frame.height) : undefined;
+                    const layerReads = layerInput && 'placements' in layerInput
+                        ? this.readLayers(layerInput.placements, frame.width, frame.height)
+                        : undefined;
                     const options = layerWrite ? { ...this.options, pixelRatio: 1 } : this.options;
                     const alpha = layerWrite ? 'premultiplied' : options.outputAlpha;
-                    if (frame.outputAlpha !== alpha || frame.outputRepresentation !== (alpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1'))
+                    if (frame.outputAlpha !== alpha ||
+                        frame.outputRepresentation !==
+                            (alpha === 'opaque' ? 'egret.srgb-opaque-unorm8/1' : 'egret.srgb-premultiplied-unorm8/1'))
                         throw glFailure('WEBGL2_FRAME_PROFILE_UNSUPPORTED');
                     if (alpha === 'opaque' && frame.clearAlpha !== 1)
                         throw glFailure('WEBGL2_FRAME_INVALID');
                     if (layerWrite) {
-                        if (frame.clearAlpha !== 0 || !Number.isInteger(frame.width) || !Number.isInteger(frame.height) ||
-                            frame.commands.some(command => command.kind === 'barrier' ? command.effect !== undefined :
-                                command.kind === 'mesh' || frame.materials[command.materialIndex]?.blend !== 'normal'))
+                        if (frame.clearAlpha !== 0 ||
+                            !Number.isInteger(frame.width) ||
+                            !Number.isInteger(frame.height) ||
+                            frame.commands.some(command => command.kind === 'barrier'
+                                ? command.effect !== undefined
+                                : command.kind === 'mesh' || frame.materials[command.materialIndex]?.blend !== 'normal'))
                             throw glFailure('WEBGL2_LAYER_INVALID');
-                        if (frame.width > MAX_LAYER_EXTENT || frame.height > MAX_LAYER_EXTENT ||
+                        if (frame.width > MAX_LAYER_EXTENT ||
+                            frame.height > MAX_LAYER_EXTENT ||
                             this.layerBytes + frame.width * frame.height * 4 > MAX_LAYER_BYTES)
                             throw glFailure('WEBGL2_LAYER_BUDGET');
                     }
                     const width = Math.ceil(frame.width * options.pixelRatio), height = Math.ceil(frame.height * options.pixelRatio);
-                    if (!Number.isSafeInteger(width) || !Number.isSafeInteger(height) || width <= 0 || height <= 0 || width > 4294967295 || height > 4294967295 || width > Math.floor(options.maxBackingPixels / height))
+                    if (!Number.isSafeInteger(width) ||
+                        !Number.isSafeInteger(height) ||
+                        width <= 0 ||
+                        height <= 0 ||
+                        width > 4294967295 ||
+                        height > 4294967295 ||
+                        width > Math.floor(options.maxBackingPixels / height))
                         throw glFailure('WEBGL2_BACKING_LIMIT');
                     // A frame baked into a layer is another sequence of frames; it neither takes nor replaces what the ordinary frames keep.
                     const prepared = prepareSharedDraws2D(frame, width, height, options, layerWrite ? undefined : this.retention);
                     const ticket = !layerWrite && !staging && this.ticket && !this.ticket.bound ? this.ticket : undefined;
                     const reserve = staging ? options.enableReadback : !!ticket;
-                    const fees = planSharedStorageFees2D(prepared, options), layout = withSharedReadbackLayout2D(fees, { rowPitch: reserve ? 4 * width : 0, staging: reserve ? fees.colorBytes : 0, output: reserve ? fees.colorBytes : 0 });
+                    const fees = planSharedStorageFees2D(prepared, options), layout = withSharedReadbackLayout2D(fees, {
+                        rowPitch: reserve ? 4 * width : 0,
+                        staging: reserve ? fees.colorBytes : 0,
+                        output: reserve ? fees.colorBytes : 0
+                    });
                     const limits = this.limits;
-                    if (width > limits.texture || height > limits.texture || width > limits.viewportWidth || height > limits.viewportHeight)
+                    if (width > limits.texture ||
+                        height > limits.texture ||
+                        width > limits.viewportWidth ||
+                        height > limits.viewportHeight)
                         throw glFailure('WEBGL2_CONTEXT_LIMIT');
                     const projectionPlan = {
-                        views: frame.pages.map(({ source: image }) => ({ image, region: { x: 0, y: 0, width: image.width, height: image.height }, byteLength: image.byteLength })),
-                        commandViews: [], projectionBytes: prepared.pageBytes, scratchBytes: 0,
+                        views: frame.pages.map(({ source: image }) => ({
+                            image,
+                            region: { x: 0, y: 0, width: image.width, height: image.height },
+                            byteLength: image.byteLength
+                        })),
+                        commandViews: [],
+                        projectionBytes: prepared.pageBytes,
+                        scratchBytes: 0
                     };
                     if (projectionPlan.views.some(({ image }) => image.width > limits.texture || image.height > limits.texture))
                         throw glFailure('WEBGL2_CONTEXT_LIMIT');
@@ -909,7 +1067,9 @@ class SharedGLHost {
                     const arena = planSharedWebGL2Arenas(batch.draws, limits.alignment, batch.draws.some(draw => draw.regionWindow >= 0) ? packSharedRegions2D(frame) : undefined);
                     checkSharedWebGL2ArenaCapacity(arena, this.arenaOwner());
                     return { storage, arena, batch, ...pages, ticket, hits, layerWrite, layerReads };
-                }, failure => { owned = failure; });
+                }, failure => {
+                    owned = failure;
+                });
             }
             catch (cause) {
                 if (staging)
@@ -920,9 +1080,21 @@ class SharedGLHost {
                     throw cause;
                 if (cause === owned) {
                     if (cause instanceof SharedPreparationError)
-                        throw glFailure(cause.reason === 'profile' ? 'WEBGL2_FRAME_PROFILE_UNSUPPORTED' : cause.reason === 'budget' ? 'WEBGL2_FRAME_BUDGET' : cause.reason === 'precision' ? 'WEBGL2_PRECISION_UNSUPPORTED' : 'WEBGL2_FRAME_INVALID', cause);
+                        throw glFailure(cause.reason === 'profile'
+                            ? 'WEBGL2_FRAME_PROFILE_UNSUPPORTED'
+                            : cause.reason === 'budget'
+                                ? 'WEBGL2_FRAME_BUDGET'
+                                : cause.reason === 'precision'
+                                    ? 'WEBGL2_PRECISION_UNSUPPORTED'
+                                    : 'WEBGL2_FRAME_INVALID', cause);
                     if (cause instanceof SharedStorageError2D)
-                        throw glFailure(cause.reason === 'device' ? 'WEBGL2_CONTEXT_LIMIT' : cause.reason === 'backpressure' ? 'WEBGL2_BACKPRESSURE' : cause.reason === 'serial' ? 'WEBGL2_SERIAL_EXHAUSTED' : 'WEBGL2_FRAME_BUDGET', cause);
+                        throw glFailure(cause.reason === 'device'
+                            ? 'WEBGL2_CONTEXT_LIMIT'
+                            : cause.reason === 'backpressure'
+                                ? 'WEBGL2_BACKPRESSURE'
+                                : cause.reason === 'serial'
+                                    ? 'WEBGL2_SERIAL_EXHAUSTED'
+                                    : 'WEBGL2_FRAME_BUDGET', cause);
                     if (cause instanceof GeometryPreparationError)
                         throw glFailure('WEBGL2_GEOMETRY_RANGE', cause);
                 }
@@ -963,7 +1135,11 @@ class SharedGLHost {
         for (const [index, hit] of p.hits)
             if (this.pages.get(p.storage.projectionPlan.views[index].image) !== hit || !hit.ready)
                 throw glFailure('WEBGL2_FRAME_INVALID');
-        return { requests, plan, layout: { vertex, uniform, regions, color, effectTargets, effectUniforms, pageTextures: new Map() } };
+        return {
+            requests,
+            plan,
+            layout: { vertex, uniform, regions, color, effectTargets, effectUniforms, pageTextures: new Map() }
+        };
     }
     stageLife(token) {
         this.active();
@@ -1000,7 +1176,17 @@ class SharedGLHost {
         const add = this.signalRead(token, () => source.addEventListener), remove = this.signalRead(token, () => source.removeEventListener);
         if (typeof add !== 'function' || typeof remove !== 'function')
             throw glFailure('WEBGL2_UPLOAD_OPTIONS_INVALID');
-        const captured = { source, add, remove, token, listener: () => undefined, subscribed: false, aborted: false, failure: undefined, control: undefined };
+        const captured = {
+            source,
+            add,
+            remove,
+            token,
+            listener: () => undefined,
+            subscribed: false,
+            aborted: false,
+            failure: undefined,
+            control: undefined
+        };
         captured.listener = () => {
             if (captured.subscribed && captured.control && !captured.control.revoked)
                 this.observeAbort(captured);
@@ -1133,12 +1319,55 @@ class SharedGLHost {
     admitUpload(p, input) {
         this.stageLife(input.token);
         const { requests, plan, layout } = this.planRecord(p), native = this.native;
-        const control = { token: input.token, generation: this.generation, frameId: p.storage.prepared.frame.frameId, end: input.end,
-            ready: deferred(), record: undefined, signal: input.signal, timer: undefined, phase: 'admitted', transferred: false, revoked: false, failure: undefined };
-        const record = { serial: 0, generation: this.generation, storage: p.storage, vertexArenaBytes: p.arena.vertexBytes, uniformArenaBytes: p.arena.uniformBytes,
-            canonicalBytes: p.canonicalBytes, reservedPageBytes: p.canonicalBytes, projections: p.projections, done: deferred(), leases: [], pages: [], native, pool: this.pool,
-            rawOwners: [], readback: undefined, ticket: undefined, pbo: undefined, sync: undefined, failure: undefined, retired: false, deadline: 0 };
-        record.upload = { control, requests, plan, layout, arena: p.arena, batch: p.batch, writes: [], claimed: false, allocated: false, writeIndex: 0 };
+        const control = {
+            token: input.token,
+            generation: this.generation,
+            frameId: p.storage.prepared.frame.frameId,
+            end: input.end,
+            ready: deferred(),
+            record: undefined,
+            signal: input.signal,
+            timer: undefined,
+            phase: 'admitted',
+            transferred: false,
+            revoked: false,
+            failure: undefined
+        };
+        const record = {
+            serial: 0,
+            generation: this.generation,
+            storage: p.storage,
+            vertexArenaBytes: p.arena.vertexBytes,
+            uniformArenaBytes: p.arena.uniformBytes,
+            canonicalBytes: p.canonicalBytes,
+            reservedPageBytes: p.canonicalBytes,
+            projections: p.projections,
+            done: deferred(),
+            leases: [],
+            pages: [],
+            native,
+            pool: this.pool,
+            rawOwners: [],
+            readback: undefined,
+            ticket: undefined,
+            pbo: undefined,
+            sync: undefined,
+            failure: undefined,
+            retired: false,
+            deadline: 0
+        };
+        record.upload = {
+            control,
+            requests,
+            plan,
+            layout,
+            arena: p.arena,
+            batch: p.batch,
+            writes: [],
+            claimed: false,
+            allocated: false,
+            writeIndex: 0
+        };
         control.record = record;
         this.records.add(record);
         p.batch.transferred = true;
@@ -1183,11 +1412,18 @@ class SharedGLHost {
                 layout.pageTextures.set(index, page);
             }
             const owner = this;
-            const handle = Object.freeze({ ready: control.ready.promise,
-                submit() { if (this !== handle)
-                    throw glFailure('WEBGL2_UPLOAD_INVALID'); return owner.submitUpload(control); },
-                dispose() { if (this !== handle)
-                    throw glFailure('WEBGL2_UPLOAD_INVALID'); owner.revokeUpload(control, glFailure('WEBGL2_UPLOAD_DISPOSED')); },
+            const handle = Object.freeze({
+                ready: control.ready.promise,
+                submit() {
+                    if (this !== handle)
+                        throw glFailure('WEBGL2_UPLOAD_INVALID');
+                    return owner.submitUpload(control);
+                },
+                dispose() {
+                    if (this !== handle)
+                        throw glFailure('WEBGL2_UPLOAD_INVALID');
+                    owner.revokeUpload(control, glFailure('WEBGL2_UPLOAD_DISPOSED'));
+                }
             });
             control.timer = schedule(() => this.revokeUpload(control, glFailure('WEBGL2_UPLOAD_EXPIRED')), Math.max(0, control.end - clock()));
             this.schedulePump();
@@ -1412,7 +1648,10 @@ class SharedGLHost {
                 this.drawRecord(record, work.layout, work.arena);
             }
             catch (cause) {
-                record.failure ??= !issued && isGLFailure(cause) ? cause : this.note(isGLFailure(cause) ? cause.code : 'WEBGL2_RENDER_FAILED', isGLFailure(cause) ? cause.cause : cause, 'frame', record.serial);
+                record.failure ??=
+                    !issued && isGLFailure(cause)
+                        ? cause
+                        : this.note(isGLFailure(cause) ? cause.code : 'WEBGL2_RENDER_FAILED', isGLFailure(cause) ? cause.cause : cause, 'frame', record.serial);
                 if (this.state === 'active' && (issued || !isGLFailure(cause))) {
                     this.state = 'failed';
                     this.revokeUploads(record.failure);
@@ -1429,7 +1668,12 @@ class SharedGLHost {
                 record.completion.reject(record.failure);
                 throw record.failure;
             }
-            return Object.freeze({ generation: record.generation, frameId: control.frameId, serial: record.serial, completed: record.completion.promise });
+            return Object.freeze({
+                generation: record.generation,
+                frameId: control.frameId,
+                serial: record.serial,
+                completed: record.completion.promise
+            });
         }
         finally {
             if (submitted !== undefined) {
@@ -1446,7 +1690,29 @@ class SharedGLHost {
     submit(p) {
         const native = this.native, gl = native.gl, { width, height } = p.storage.prepared;
         const { requests, plan, layout } = this.planRecord(p), { vertex, uniform, regions } = layout;
-        const record = { serial: this.serial + 1, generation: this.generation, storage: p.storage, vertexArenaBytes: p.arena.vertexBytes, uniformArenaBytes: p.arena.uniformBytes, canonicalBytes: p.canonicalBytes, reservedPageBytes: p.canonicalBytes, projections: p.projections, done: deferred(), leases: [], pages: [], native, pool: this.pool, rawOwners: [], readback: undefined, ticket: p.ticket, pbo: undefined, sync: undefined, failure: undefined, retired: false, deadline: clock() + 30000 };
+        const record = {
+            serial: this.serial + 1,
+            generation: this.generation,
+            storage: p.storage,
+            vertexArenaBytes: p.arena.vertexBytes,
+            uniformArenaBytes: p.arena.uniformBytes,
+            canonicalBytes: p.canonicalBytes,
+            reservedPageBytes: p.canonicalBytes,
+            projections: p.projections,
+            done: deferred(),
+            leases: [],
+            pages: [],
+            native,
+            pool: this.pool,
+            rawOwners: [],
+            readback: undefined,
+            ticket: p.ticket,
+            pbo: undefined,
+            sync: undefined,
+            failure: undefined,
+            retired: false,
+            deadline: clock() + 30000
+        };
         for (const lease of plan.leases)
             record.leases[lease.requestId] = lease;
         this.records.add(record);
@@ -1638,12 +1904,7 @@ class SharedGLHost {
         const existing = effect ? this.layerEffectProgram : this.layerProgram;
         if (existing)
             return existing;
-        const gl = native.gl, program = native.program(sharedWebGL2LayerVertexSource, effect ? sharedWebGL2LayerEffectFragmentSource : sharedWebGL2LayerFragmentSource);
-        const location = (name) => gl.getUniformLocation(program, name);
-        const variant = { program, origin: location('origin'), extent: location('extent'),
-            viewport: location('viewportSize'), texture: location('layerTexture'),
-            effect: effect ? { min: location('effectMin'), max: location('effectMax'), scaleRG: location('multiplyRG'),
-                scaleBAddR: location('multiplyBAddR'), addGB: location('addGB') } : undefined };
+        const variant = createWebGL2LayerProgram(native, effect);
         if (effect)
             this.layerEffectProgram = variant;
         else
@@ -1653,7 +1914,8 @@ class SharedGLHost {
     drawRecord(record, layout, arena) {
         const native = record.native, gl = native.gl, { width, height, frame } = record.storage.prepared;
         const { vertex, uniform, regions, color, pageTextures } = layout;
-        const colorTexture = (record.layerWrite?.revision?.owner ?? record.leases[color].handle.resource).value;
+        const colorTexture = (record.layerWrite?.revision?.owner ?? record.leases[color].handle.resource)
+            .value;
         gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
         gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, colorTexture, 0);
         gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null);
@@ -1675,7 +1937,13 @@ class SharedGLHost {
             gl.bindVertexArray(this.drawVAO);
             if (vertex >= 0) {
                 gl.bindBuffer(gl.ARRAY_BUFFER, record.leases[vertex].handle.resource.value);
-                for (const [index, size, offset] of [[0, 2, 0], [1, 2, 8], [2, 4, 16], [3, 3, 32], [4, 2, 44]]) {
+                for (const [index, size, offset] of [
+                    [0, 2, 0],
+                    [1, 2, 8],
+                    [2, 4, 16],
+                    [3, 3, 32],
+                    [4, 2, 44]
+                ]) {
                     gl.enableVertexAttribArray(index);
                     gl.vertexAttribPointer(index, size, gl.FLOAT, false, 52, offset);
                     gl.vertexAttribDivisor(index, 0);
@@ -1720,10 +1988,16 @@ class SharedGLHost {
         }
         else {
             const targets = layout.effectTargets.map(id => record.leases[id].handle.resource.value);
-            const setTarget = (target, clear) => { gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0); gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null); native.workingAttachment(target, null); if (clear) {
-                gl.clearColor(0, 0, 0, 0);
-                gl.clear(gl.COLOR_BUFFER_BIT);
-            } };
+            const setTarget = (target, clear) => {
+                gl.bindFramebuffer(gl.FRAMEBUFFER, this.framebuffer);
+                gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, target, 0);
+                gl.framebufferRenderbuffer(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.RENDERBUFFER, null);
+                native.workingAttachment(target, null);
+                if (clear) {
+                    gl.clearColor(0, 0, 0, 0);
+                    gl.clear(gl.COLOR_BUFFER_BIT);
+                }
+            };
             const groups = record.storage.prepared.effects.groups, enters = new Map(groups.map(g => [g.enter, g])), exits = new Map(groups.map(g => [g.exit, g]));
             const ranges = new Map(arena.sharedRanges.map(range => [range.draw.prepared.command.ordinal, range]));
             const effectPass = (group, mode, target, source, glow) => {
@@ -1737,7 +2011,9 @@ class SharedGLHost {
                 if (mode === 'composite') {
                     gl.activeTexture(gl.TEXTURE1);
                     gl.bindSampler(1, null);
-                    gl.bindTexture(gl.TEXTURE_2D, group.maskPageIndex === undefined ? source : pageTextures.get(group.maskPageIndex).native.value);
+                    gl.bindTexture(gl.TEXTURE_2D, group.maskPageIndex === undefined
+                        ? source
+                        : pageTextures.get(group.maskPageIndex).native.value);
                     gl.uniform1i(gl.getUniformLocation(program, 'maskTexture'), 1);
                     gl.activeTexture(gl.TEXTURE0 + 2);
                     gl.bindSampler(2, null);
@@ -1831,14 +2107,30 @@ class SharedGLHost {
             this.unsafe = true;
     }
     schedulePump() {
-        if (this.pump !== undefined || ![...this.records].some(record => !record.retired && (!record.upload || record.sync || record.failure || record.upload.control.phase !== 'ready')))
+        if (this.pump !== undefined ||
+            ![...this.records].some(record => !record.retired &&
+                (!record.upload || record.sync || record.failure || record.upload.control.phase !== 'ready')))
             return;
-        this.pump = schedule(() => { this.pump = undefined; this.poll(); }, 0);
+        this.pump = schedule(() => {
+            this.pump = undefined;
+            this.poll();
+        }, 0);
     }
     detachContainers(native) {
         const gl = native.gl;
         // Zero offsets explicitly clear fixed VAO references without a placeholder buffer.
-        for (const [vao, layout] of [[this.drawVAO, [[0, 2], [1, 2], [2, 4], [3, 3], [4, 2]]]]) {
+        for (const [vao, layout] of [
+            [
+                this.drawVAO,
+                [
+                    [0, 2],
+                    [1, 2],
+                    [2, 4],
+                    [3, 3],
+                    [4, 2]
+                ]
+            ]
+        ]) {
             if (!vao)
                 continue;
             gl.bindVertexArray(vao);
@@ -1978,7 +2270,18 @@ class SharedGLHost {
                             }
                         if (clock() >= record.deadline)
                             throw glFailure('WEBGL2_SYNC_TIMEOUT');
-                        record.readback = Object.freeze({ generation: record.generation, serial: record.serial, frameId: frame.frameId, width, height, format: 'rgba8unorm', sourceFormat: 'rgba8unorm', colorSpace: 'srgb', alphaMode: this.options.outputAlpha, bytes });
+                        record.readback = Object.freeze({
+                            generation: record.generation,
+                            serial: record.serial,
+                            frameId: frame.frameId,
+                            width,
+                            height,
+                            format: 'rgba8unorm',
+                            sourceFormat: 'rgba8unorm',
+                            colorSpace: 'srgb',
+                            alphaMode: this.options.outputAlpha,
+                            bytes
+                        });
                     }
                 }
                 catch (cause) {
@@ -2095,7 +2398,8 @@ class SharedGLHost {
                     for (const current of this.pages.values())
                         bytes += current.source.byteLength;
                     for (const [key, victim] of this.pages) {
-                        if ((this.pages.size < 256 && bytes + page.source.byteLength <= this.options.maxReadyPageBytes) || victim.pins > 0)
+                        if ((this.pages.size < 256 && bytes + page.source.byteLength <= this.options.maxReadyPageBytes) ||
+                            victim.pins > 0)
                             continue;
                         this.pages.delete(key);
                         bytes -= victim.source.byteLength;
@@ -2105,7 +2409,9 @@ class SharedGLHost {
                         if (!native.cleanup(victim.native))
                             this.unsafe = true;
                     }
-                    if (!this.unsafe && this.pages.size < 256 && bytes + page.source.byteLength <= this.options.maxReadyPageBytes) {
+                    if (!this.unsafe &&
+                        this.pages.size < 256 &&
+                        bytes + page.source.byteLength <= this.options.maxReadyPageBytes) {
                         page.ready = true;
                         this.pages.set(page.source, page);
                         this.resourceReadyBytes += page.source.byteLength;
@@ -2136,7 +2442,9 @@ class SharedGLHost {
                 for (const owner of record.rawOwners) {
                     // A native create may return an owner and then fail its gate before
                     // registration. This original record still owns that raw result.
-                    if (owner === record.layerWrite?.revision?.owner || owner.accounting === 'retention' || record.pages.some(page => page.native === owner && (page.pins > 0 || this.pages.get(page.source) === page)))
+                    if (owner === record.layerWrite?.revision?.owner ||
+                        owner.accounting === 'retention' ||
+                        record.pages.some(page => page.native === owner && (page.pins > 0 || this.pages.get(page.source) === page)))
                         continue;
                     if (!native.cleanup(owner))
                         this.unsafe = true;
@@ -2220,26 +2528,32 @@ class SharedGLHost {
         void cpu.then(async () => {
             await Promise.allSettled([...this.records].map(record => record.done.promise));
             let failure = this.native?.cleanupFailure;
-            const attempt = (cleanup) => { try {
-                cleanup();
-            }
-            catch (cause) {
-                this.unsafe = true;
-                failure ??= { cause };
-            } };
-            // Teardown steps are independent; a failed detach must not abandon known owners.
-            attempt(() => { if (this.native && !this.native.invalidated) {
+            const attempt = (cleanup) => {
                 try {
-                    this.detachContainers(this.native);
-                    this.native.check();
+                    cleanup();
                 }
                 catch (cause) {
-                    if (!this.native.invalidated)
-                        throw cause;
+                    this.unsafe = true;
+                    failure ??= { cause };
                 }
-            } });
-            attempt(() => { for (const handle of this.pool.detachIdleForClose())
-                attempt(() => this.disposeHandle(handle, this.native, this.pool)); });
+            };
+            // Teardown steps are independent; a failed detach must not abandon known owners.
+            attempt(() => {
+                if (this.native && !this.native.invalidated) {
+                    try {
+                        this.detachContainers(this.native);
+                        this.native.check();
+                    }
+                    catch (cause) {
+                        if (!this.native.invalidated)
+                            throw cause;
+                    }
+                }
+            });
+            attempt(() => {
+                for (const handle of this.pool.detachIdleForClose())
+                    attempt(() => this.disposeHandle(handle, this.native, this.pool));
+            });
             attempt(() => this.pool.invalidate());
             this.pages.clear();
             this.resourceReadyBytes = 0;
@@ -2247,8 +2561,10 @@ class SharedGLHost {
             this.resourcePinnedEntries = 0;
             this.sampleResourceImages();
             attempt(() => this.sweepLayers());
-            attempt(() => { if (this.native && !this.native.cleanupAll())
-                this.unsafe = true; });
+            attempt(() => {
+                if (this.native && !this.native.cleanupAll())
+                    this.unsafe = true;
+            });
             failure ??= this.native?.cleanupFailure;
             attempt(() => this.removeListeners?.());
             this.removeListeners = undefined;
@@ -2267,18 +2583,52 @@ class SharedGLHost {
         return this.closing;
     }
     getSessionStatus() {
-        return Object.freeze({ state: this.state === 'active' ? 'ready' : this.state, generation: this.generation, attempt: this.attempt,
-            firstFailure: this.firstFailure, generationFailure: this.generationFailure });
+        return Object.freeze({
+            state: this.state === 'active' ? 'ready' : this.state,
+            generation: this.generation,
+            attempt: this.attempt,
+            firstFailure: this.firstFailure,
+            generationFailure: this.generationFailure
+        });
     }
     getStatus() {
         const owner = this.snapshot();
-        return Object.freeze({ state: this.state, generation: this.generation, lastSerial: this.serial, pendingFrames: owner.pendingFrames, pendingUploadBytes: owner.pendingUploadBytes, pendingReadbackBytes: owner.pendingReadbackBytes, firstFailure: this.firstFailure, generationFailure: this.generationFailure, callbackFailureCount: this.callbackFailureCount, lastCallbackFailure: this.lastCallbackFailure, cleanupOutcome: this.cleanupOutcome });
+        return Object.freeze({
+            state: this.state,
+            generation: this.generation,
+            lastSerial: this.serial,
+            pendingFrames: owner.pendingFrames,
+            pendingUploadBytes: owner.pendingUploadBytes,
+            pendingReadbackBytes: owner.pendingReadbackBytes,
+            firstFailure: this.firstFailure,
+            generationFailure: this.generationFailure,
+            callbackFailureCount: this.callbackFailureCount,
+            lastCallbackFailure: this.lastCallbackFailure,
+            cleanupOutcome: this.cleanupOutcome
+        });
     }
     getSharedStatus() {
         const owner = this.snapshot(), unknown = this.native?.unknown() ?? { bytes: 0, objects: 0 }, retention = this.pool.getStatus();
-        return Object.freeze({ host: this.getStatus(), pendingGeometryBytes: owner.pendingGeometryBytes, pendingColorBytes: owner.pendingColorBytes, pendingCanonicalBytes: owner.pendingCanonicalBytes,
-            resources: this.resourceStatus(), retention: Object.freeze({ idleBytes: retention.idleBytes, idleEntries: retention.idleEntries, reservedBytes: retention.reservedBytes, reservedEntries: retention.reservedEntries, unknownBytes: retention.unknownBytes, unknownEntries: retention.unknownEntries, unknownNativeBytes: this.retiredUnknownBytes + unknown.bytes, unknownNativeObjects: this.retiredUnknownObjects + unknown.objects }) });
+        return Object.freeze({
+            host: this.getStatus(),
+            pendingGeometryBytes: owner.pendingGeometryBytes,
+            pendingColorBytes: owner.pendingColorBytes,
+            pendingCanonicalBytes: owner.pendingCanonicalBytes,
+            resources: this.resourceStatus(),
+            retention: Object.freeze({
+                idleBytes: retention.idleBytes,
+                idleEntries: retention.idleEntries,
+                reservedBytes: retention.reservedBytes,
+                reservedEntries: retention.reservedEntries,
+                unknownBytes: retention.unknownBytes,
+                unknownEntries: retention.unknownEntries,
+                unknownNativeBytes: this.retiredUnknownBytes + unknown.bytes,
+                unknownNativeObjects: this.retiredUnknownObjects + unknown.objects
+            })
+        });
     }
 }
 /** Explicit compatibility backend; the Engine retains the original shared-frame contract. */
-export function createSharedWebGL2Host(options) { return new SharedGLHost(options); }
+export function createSharedWebGL2Host(options) {
+    return new SharedGLHost(options);
+}

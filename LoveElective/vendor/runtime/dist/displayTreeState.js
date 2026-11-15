@@ -14,26 +14,44 @@ const readChildList = childLists.get.bind(childLists);
 const readParent = parents.get.bind(parents);
 const deleteParent = parents.delete.bind(parents);
 const readStageRoot = roots.has.bind(roots);
-export function registerNode(node) { nodes.add(node); }
-export function registerContainer(node) { childLists.set(node, []); }
+export function registerNode(node) {
+    nodes.add(node);
+}
+export function registerContainer(node) {
+    childLists.set(node, []);
+}
 /** Authenticate an actual registered container without inspecting its shape. */
 export function assertContainer(value) {
     if (readChildList(value) === undefined)
         throw new EgretError("INVALID_DISPLAY_CONTAINER");
 }
-export function markStageRoot(node) { roots.add(node); }
+export function markStageRoot(node) {
+    roots.add(node);
+}
 /** Identity-only authentication never reads a forged or proxied Stage. */
-export function isStageRoot(value) { return roots.has(value); }
-export function isDisplayNode(value) { return nodes.has(value); }
-export function isTerminated(node) { return terminated.has(node); }
-export function parentOf(node) { return parents.get(node); }
+export function isStageRoot(value) {
+    return roots.has(value);
+}
+export function isDisplayNode(value) {
+    return nodes.has(value);
+}
+export function isTerminated(node) {
+    return terminated.has(node);
+}
+export function parentOf(node) {
+    return parents.get(node);
+}
 /** Return a snapshot so callers cannot mutate the authoritative child list. */
 export function childrenOf(node) {
     return [...(childLists.get(node) ?? [])];
 }
 /** Callback-free O(1) readers for budgeted traversal; never clone the list. */
-export function childCountOf(node) { return childLists.get(node)?.length ?? 0; }
-export function childAtOf(node, index) { return childLists.get(node)?.[index]; }
+export function childCountOf(node) {
+    return childLists.get(node)?.length ?? 0;
+}
+export function childAtOf(node, index) {
+    return childLists.get(node)?.[index];
+}
 /** Read the exact direct-child index in O(n), without a snapshot or callbacks. */
 export function childIndexOf(parent, child) {
     const list = readChildList(parent);
@@ -192,16 +210,20 @@ function captureInsertionNode(node, edgeParent, repeated) {
         edgeAgrees = parentChildren !== undefined && occurrences === 1;
     }
     return {
-        node, actualParent, children, genuine,
+        node,
+        actualParent,
+        children,
+        genuine,
         terminated: insertionIsTerminated(node),
         stageRoot: insertionIsRoot(node),
-        repeated, edgeAgrees,
+        repeated,
+        edgeAgrees
     };
 }
 function captureInsertionTree(root) {
     const records = [];
     const pending = [
-        { node: root, parent: undefined },
+        { node: root, parent: undefined }
     ];
     const seen = new InsertionSet();
     while (pending.length !== 0) {
@@ -227,7 +249,8 @@ export function captureChildInsertion(receiver, child) {
     // receiver contributes its own record only.
     const receiverEngine = engineOf(receiver);
     const receiverTree = receiverEngine !== undefined && readVerifiedInsertionTree(receiver) === receiverEngine
-        ? [captureInsertionNode(receiver, undefined, false)] : captureInsertionTree(receiver);
+        ? [captureInsertionNode(receiver, undefined, false)]
+        : captureInsertionTree(receiver);
     const incomingTree = captureInsertionTree(child);
     const receiverAncestors = [];
     const seenAncestors = new InsertionSet();
@@ -264,15 +287,26 @@ export function captureChildInsertion(receiver, child) {
             }
     }
     return {
-        receiver, child, receiverTree, incomingTree, receiverAncestors, repeatedAncestor,
-        targetChildren, oldParent, sourceChildren, sourceEdges,
+        receiver,
+        child,
+        receiverTree,
+        incomingTree,
+        receiverAncestors,
+        repeatedAncestor,
+        targetChildren,
+        oldParent,
+        sourceChildren,
+        sourceEdges,
         sourceContainerGenuine: !distinctSource || actualSource !== undefined,
-        oldIndex,
+        oldIndex
     };
 }
 /** Inclusive index checks never coerce boxed, string or other caller values. */
 export function assertChildInsertionIndex(receiver, index) {
-    if (typeof index !== "number" || !insertionInteger(index) || index < 0 || index > (readChildList(receiver)?.length ?? 0)) {
+    if (typeof index !== "number" ||
+        !insertionInteger(index) ||
+        index < 0 ||
+        index > (readChildList(receiver)?.length ?? 0)) {
         throw new EgretError("INVALID_INDEX");
     }
 }

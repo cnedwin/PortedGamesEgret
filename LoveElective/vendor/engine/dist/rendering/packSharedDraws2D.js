@@ -22,7 +22,7 @@ export const SHARED_BATCH_PAGES_2D = 8, SHARED_NO_PAGE_2D = 0xffffffff;
 const ROW = SHARED_VERTEX_BYTES_2D / 4, BLOCK = 128, NO_PAGES = Object.freeze([]);
 // One polygon's represented corners. Packing is synchronous and calls no caller code, so the storage is shared.
 let corners = new Float32Array(64 * ROW);
-const address = (value) => value === 'repeat' ? 1 : value === 'mirror-repeat' ? 2 : 0;
+const address = (value) => (value === 'repeat' ? 1 : value === 'mirror-repeat' ? 2 : 0);
 /** The region table of one frame. Every region is written, whether or not a draw of the frame uses it. */
 export function packSharedRegions2D(frame) {
     const regions = frame.regions, table = new Uint32Array(12 * regions.length);
@@ -72,7 +72,13 @@ function writeBlock(floats, words, f, width, height, draw) {
         words[w] = draw.pageIndex;
         for (let unit = 1; unit < SHARED_BATCH_PAGES_2D; unit++)
             words[w + unit] = SHARED_NO_PAGE_2D;
-        const strategy = material.filter === 'nearest' ? 0 : material.samplingDomain === 'page' ? 1 : material.regionIsolation === 'strict' ? 3 : 2;
+        const strategy = material.filter === 'nearest'
+            ? 0
+            : material.samplingDomain === 'page'
+                ? 1
+                : material.regionIsolation === 'strict'
+                    ? 3
+                    : 2;
         words[w + 11] = material.samplingDomain === 'page' ? 1 : 0;
         words[w + 12] = address(material.addressU);
         words[w + 13] = address(material.addressV);
@@ -120,7 +126,10 @@ export function packSharedDraws2D(prepared) {
     let blockBytes, blockFloats, blockWords, block = 0, blockEnd = 0;
     const blockOf = (draw, beside) => {
         const other = beside?.prepared;
-        if (other !== undefined && other.material === draw.material && other.pageIndex === draw.pageIndex && other.command.kind === draw.command.kind)
+        if (other !== undefined &&
+            other.material === draw.material &&
+            other.pageIndex === draw.pageIndex &&
+            other.command.kind === draw.command.kind)
             return beside.uniform;
         if (block === blockEnd) {
             const blocks = new ArrayBuffer(BLOCKS * BLOCK);
@@ -137,7 +146,10 @@ export function packSharedDraws2D(prepared) {
     // A kept record never shares the block of a record that is not kept, which would hold a whole allocation of blocks for it.
     const keptBlockOf = (draw, beside) => {
         const other = beside?.prepared;
-        if (other !== undefined && other.material === draw.material && other.pageIndex === draw.pageIndex && other.command.kind === draw.command.kind)
+        if (other !== undefined &&
+            other.material === draw.material &&
+            other.pageIndex === draw.pageIndex &&
+            other.command.kind === draw.command.kind)
             return beside.uniform;
         const own = new ArrayBuffer(BLOCK);
         writeBlock(new Float32Array(own), new Uint32Array(own), 0, prepared.width, prepared.height, draw);
@@ -171,9 +183,17 @@ export function packSharedDraws2D(prepared) {
                     let pages = NO_PAGES;
                     if (draw.region) {
                         const known = rested?.pages;
-                        pages = known !== undefined && known.length === 1 && known[0] === draw.pageIndex ? known : [draw.pageIndex];
+                        pages =
+                            known !== undefined && known.length === 1 && known[0] === draw.pageIndex ? known : [draw.pageIndex];
                     }
-                    packed = { prepared: draw, data, vertexCount: kept.vertexCount, uniform: keptBlockOf(draw, rested), regionWindow: draw.region ? Math.floor(index / SHARED_REGION_WINDOW_2D) : -1, pages };
+                    packed = {
+                        prepared: draw,
+                        data,
+                        vertexCount: kept.vertexCount,
+                        uniform: keptBlockOf(draw, rested),
+                        regionWindow: draw.region ? Math.floor(index / SHARED_REGION_WINDOW_2D) : -1,
+                        pages
+                    };
                     // Without room to keep it, the record is this frame's alone and is made again for the next.
                     if (retention.keepPacked(kept, packed))
                         rested = packed;
@@ -239,8 +259,19 @@ export function packSharedDraws2D(prepared) {
                     corners[o + 12] = opacity;
                     // Every value is finite exactly when their sum is: a NaN or an infinity carries into it, and thirteen
                     // finite f32 values cannot add up to an infinity in f64.
-                    if (!Number.isFinite(corners[o] + corners[o + 1] + corners[o + 2] + corners[o + 3] + corners[o + 4] + corners[o + 5] + corners[o + 6]
-                        + corners[o + 7] + corners[o + 8] + corners[o + 9] + corners[o + 10] + corners[o + 11] + corners[o + 12]))
+                    if (!Number.isFinite(corners[o] +
+                        corners[o + 1] +
+                        corners[o + 2] +
+                        corners[o + 3] +
+                        corners[o + 4] +
+                        corners[o + 5] +
+                        corners[o + 6] +
+                        corners[o + 7] +
+                        corners[o + 8] +
+                        corners[o + 9] +
+                        corners[o + 10] +
+                        corners[o + 11] +
+                        corners[o + 12]))
                         sharedFailure('precision');
                     // Qualification reads the two represented texture coordinates.
                     if (uvDomain !== undefined)
@@ -267,8 +298,19 @@ export function packSharedDraws2D(prepared) {
         }
         // The orientation of each triangle is the one charge of this stage.
         if (kept !== undefined && keptRows === undefined)
-            retention.keepRows(kept, rows.subarray(first, used), vertices, { preparedVertices: 0, predicates: budget.predicatesCharged - predicatesBefore, tupleComparisons: 0 });
-        fresh = { prepared: draw, data: rows.subarray(first, used), vertexCount: vertices, uniform: blockOf(draw, fresh), regionWindow, pages };
+            retention.keepRows(kept, rows.subarray(first, used), vertices, {
+                preparedVertices: 0,
+                predicates: budget.predicatesCharged - predicatesBefore,
+                tupleComparisons: 0
+            });
+        fresh = {
+            prepared: draw,
+            data: rows.subarray(first, used),
+            vertexCount: vertices,
+            uniform: blockOf(draw, fresh),
+            regionWindow,
+            pages
+        };
         result.push(fresh);
     }
     return result;

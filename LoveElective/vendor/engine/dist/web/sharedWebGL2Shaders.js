@@ -166,12 +166,14 @@ vec3 decoded(vec3 value) {
 
 vec4 decodedPageTap(ivec2 index) {
     // Canonical rows retain their CPU order on upload. RGBA8 performs no sRGB decode.
-    // Every read of a page is this one fetch${paged ? ' from the unit that holds the region\'s page' : ''}.
-${paged ? `    vec4 value;
+    // Every read of a page is this one fetch${paged ? " from the unit that holds the region's page" : ''}.
+${paged
+    ? `    vec4 value;
     switch (pageOfRegion.x) {
 ${[1, 2, 3, 4, 5, 6, 7].map(unit => `        case ${unit}u: value = texelFetch(page${unit}, index, 0); break;`).join('\n')}
         default: value = texelFetch(page0, index, 0); break;
-    }` : '    vec4 value = texelFetch(page, index, 0);'}
+    }`
+    : '    vec4 value = texelFetch(page, index, 0);'}
     return vec4(decoded(value.rgb), value.a);
 }
 
@@ -292,13 +294,20 @@ void main() {
 /** FUNC_ADD for RGB and alpha; admission separately restricts add-preserve to opaque output. */
 export function sharedWebGL2BlendFactors(blend) {
     switch (blend) {
-        case 'normal': return [1, 771, 1, 771];
-        case 'add-accumulate': return [1, 1, 1, 1];
-        case 'add-preserve': return [1, 1, 0, 1];
-        case 'multiply-factor': return [774, 771, 1, 771];
-        case 'screen': return [1, 769, 1, 771];
+        case 'normal':
+            return [1, 771, 1, 771];
+        case 'add-accumulate':
+            return [1, 1, 1, 1];
+        case 'add-preserve':
+            return [1, 1, 0, 1];
+        case 'multiply-factor':
+            return [774, 771, 1, 771];
+        case 'screen':
+            return [1, 769, 1, 771];
         // What is drawn takes away from what is there, by its alpha, and adds nothing.
-        case 'erase': return [0, 771, 0, 771];
-        default: throw new TypeError('Unsupported shared blend');
+        case 'erase':
+            return [0, 771, 0, 771];
+        default:
+            throw new TypeError('Unsupported shared blend');
     }
 }

@@ -28,8 +28,10 @@ export function createRetentionLedger(session, diagnostics) {
     const unknown = { bytes: 0, count: 0, bytesKey: 'unknownBytes', countKey: 'unknownEntries' };
     let head, tail;
     let revision = {}, active = true;
-    function requireActive() { if (!active)
-        throw new TypeError('Inactive buffer pool'); }
+    function requireActive() {
+        if (!active)
+            throw new TypeError('Inactive buffer pool');
+    }
     function requireNode(handle) {
         const node = weakGet(nodes, handle);
         if (!node)
@@ -42,8 +44,13 @@ export function createRetentionLedger(session, diagnostics) {
         const request = input.request, key = input.key;
         if (!Object.isFrozen(request))
             throw new TypeError('Mutable retention request');
-        if (!Number.isSafeInteger(request.id) || request.id < 0 || !Number.isSafeInteger(request.byteLength)
-            || request.byteLength <= 0 || request.byteLength % 4 !== 0 || typeof key !== 'string' || key.length === 0) {
+        if (!Number.isSafeInteger(request.id) ||
+            request.id < 0 ||
+            !Number.isSafeInteger(request.byteLength) ||
+            request.byteLength <= 0 ||
+            request.byteLength % 4 !== 0 ||
+            typeof key !== 'string' ||
+            key.length === 0) {
             throw new TypeError('Invalid retention request');
         }
         return { request, key };
@@ -71,7 +78,12 @@ export function createRetentionLedger(session, diagnostics) {
         }
     }
     function leaseFor(request, node) {
-        const lease = Object.freeze({ requestId: request.id, handle: node.handle, offset: 0, size: request.byteLength });
+        const lease = Object.freeze({
+            requestId: request.id,
+            handle: node.handle,
+            offset: 0,
+            size: request.byteLength
+        });
         weakSet(leaseNodes, lease, node);
         return lease;
     }
@@ -187,8 +199,9 @@ export function createRetentionLedger(session, diagnostics) {
             }
             let remainingBytes = idle.bytes - matchedBytes, remainingCount = idle.count - selected.length;
             // Protect every exact hit before selecting one unmatched FIFO prefix.
-            for (let node = head; node && (remainingBytes + reserved.bytes + incomingBytes > MAX_IDLE_BYTES
-                || remainingCount + reserved.count + incomingCount > MAX_IDLE_ENTRIES); node = node.next) {
+            for (let node = head; node &&
+                (remainingBytes + reserved.bytes + incomingBytes > MAX_IDLE_BYTES ||
+                    remainingCount + reserved.count + incomingCount > MAX_IDLE_ENTRIES); node = node.next) {
                 if (setHas(protectedNodes, node))
                     continue;
                 victims.push(node);
@@ -196,9 +209,22 @@ export function createRetentionLedger(session, diagnostics) {
                 remainingCount--;
             }
             const publicLeases = Object.freeze(leases), publicVictims = Object.freeze(victims.map(node => node.handle));
-            const plan = Object.freeze({ session, revision, requests: Object.freeze(rows), matches,
-                leases: publicLeases, victims: publicVictims });
-            weakSet(claims, plan, { revision, nextRevision: {}, matches: selected, victims, leases: publicLeases, consumed: false });
+            const plan = Object.freeze({
+                session,
+                revision,
+                requests: Object.freeze(rows),
+                matches,
+                leases: publicLeases,
+                victims: publicVictims
+            });
+            weakSet(claims, plan, {
+                revision,
+                nextRevision: {},
+                matches: selected,
+                victims,
+                leases: publicLeases,
+                consumed: false
+            });
             return plan;
         },
         claim(plan) {
@@ -228,8 +254,17 @@ export function createRetentionLedger(session, diagnostics) {
             if (weakHas(registeredResources, resource))
                 throw new TypeError('Already registered buffer resource');
             const handle = Object.freeze({ ...request, identity: Object.freeze({}), session, resource });
-            const node = { handle, key, state: 'leased', lease: undefined, bucket: undefined,
-                keyPrevious: undefined, keyNext: undefined, previous: undefined, next: undefined };
+            const node = {
+                handle,
+                key,
+                state: 'leased',
+                lease: undefined,
+                bucket: undefined,
+                keyPrevious: undefined,
+                keyNext: undefined,
+                previous: undefined,
+                next: undefined
+            };
             const lease = leaseFor(request, node), nextRevision = {};
             weakSet(nodes, handle, node);
             weakAdd(registeredResources, resource);
@@ -257,7 +292,11 @@ export function createRetentionLedger(session, diagnostics) {
                 else
                     transient.push(node.handle);
             }
-            const plan = Object.freeze({ identity: Object.freeze({}), retained: Object.freeze(retained), transient: Object.freeze(transient) });
+            const plan = Object.freeze({
+                identity: Object.freeze({}),
+                retained: Object.freeze(retained),
+                transient: Object.freeze(transient)
+            });
             const nextRevision = {};
             weakSet(returns, plan, { nodes: selected, consumed: false });
             // Reservations bound retention only: the leased allocation charge
@@ -299,7 +338,11 @@ export function createRetentionLedger(session, diagnostics) {
                 detachNode(state.nodes[i]);
             return result;
         },
-        detach(handle) { const node = requireNode(handle), nextRevision = {}; detachNode(node); revision = nextRevision; },
+        detach(handle) {
+            const node = requireNode(handle), nextRevision = {};
+            detachNode(node);
+            revision = nextRevision;
+        },
         settled(handle, outcome) {
             const node = requireNode(handle);
             if (outcome !== 'destroyed' && outcome !== 'unknown' && outcome !== 'context-invalidated')
@@ -320,7 +363,9 @@ export function createRetentionLedger(session, diagnostics) {
             // prior unknown cleanup or turns invalidation into native deletion.
             revision = nextRevision;
         },
-        invalidate() { active = false; },
+        invalidate() {
+            active = false;
+        },
         detachIdleForClose() {
             const cleanup = [];
             for (let node = head; node; node = node.next)
@@ -332,9 +377,14 @@ export function createRetentionLedger(session, diagnostics) {
             return result;
         },
         getStatus() {
-            return Object.freeze({ idleBytes: idle.bytes, idleEntries: idle.count,
-                reservedBytes: reserved.bytes, reservedEntries: reserved.count,
-                unknownBytes: unknown.bytes, unknownEntries: unknown.count });
-        },
+            return Object.freeze({
+                idleBytes: idle.bytes,
+                idleEntries: idle.count,
+                reservedBytes: reserved.bytes,
+                reservedEntries: reserved.count,
+                unknownBytes: unknown.bytes,
+                unknownEntries: unknown.count
+            });
+        }
     };
 }

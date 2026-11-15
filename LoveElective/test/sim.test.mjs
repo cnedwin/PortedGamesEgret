@@ -10,6 +10,8 @@ import { CHAPTERS_SCRIPT } from '../src/story/chapters.mjs';
 import { CHAT_LINES, GIFT_LINES, DATE_LINES, JEALOUS_LINES } from '../src/story/lines.mjs';
 import { ENDINGS, PROLOGUE, FINALE_INTRO, ENDING_SOLO } from '../src/story/scenes.mjs';
 import { playTerm } from '../tools/headless.mjs';
+import { EVENTS } from '../src/data/events.mjs';
+import { PERKS, ACHIEVEMENTS } from '../src/data/memories.mjs';
 
 /** A game in which the hero has already met `girl` and stands beside her. */
 function withGirl(girl) {
@@ -294,4 +296,136 @@ test('a term played start to finish can reach a love ending', () => {
   assert.equal(s.finale, true);
   assert.equal(s.girls.wanqing.chapter, 4);
   assert.equal(sim.confess(s, 'wanqing'), 'love');
+});
+
+test('a senior the hero has met makes one wish each morning, and granting it brings extra affection', () => {
+  const s = withGirl('qingge');
+  s.girls.linxia.met = true;
+  sim.sleep(s);
+  const w = s.wish;
+  assert.ok(w && ['qingge', 'linxia'].includes(w.girl));
+  assert.equal(w.day, s.day);
+  assert.ok(['gift', 'chat', 'style', 'date'].includes(w.kind));
+  // Grant a gift wish by hand and check the bonus is outside the daily cap.
+  const g = sim.newGame({ seed: 7 });
+  g.girls.qingge.met = true;
+  g.wish = { girl: 'qingge', day: g.day, kind: 'gift', item: 'tea', done: false };
+  while (sim.whereIs(g, 'qingge') !== 'library') sim.advance(g);
+  g.wish.day = g.day;
+  sim.enter(g, 'library');
+  g.bag.tea = 1;
+  const before = g.girls.qingge.aff;
+  const r = sim.give(g, 'qingge', 'tea');
+  assert.equal(r.wish, sim.WISH_AFFECTION);
+  assert.equal(g.girls.qingge.aff, before + r.gain + r.wish);
+  assert.equal(g.counters.wish, 1);
+  assert.equal(sim.wishFor(g, 'qingge'), null, 'a wish is granted only once');
+});
+
+test('wishes are the same for the same seed and day, and every kind can be granted', () => {
+  const play = () => {
+    const s = sim.newGame({ seed: 42 });
+    for (const id of HEROINE_IDS) s.girls[id].met = true;
+    const seen = [];
+    for (let d = 0; d < 20; d++) {
+      sim.sleep(s);
+      seen.push(JSON.stringify(s.wish));
+    }
+    return seen;
+  };
+  const a = play();
+  assert.deepEqual(a, play());
+  const kinds = new Set(a.map(w => JSON.parse(w).kind));
+  assert.ok(kinds.size >= 3, [...kinds].join());
+  for (const text of a) {
+    const w = JSON.parse(text);
+    if (w.kind === 'gift') assert.ok(GIFTS[w.item] && SHOPS.giftshop.stock.includes(w.item), w.item);
+    if (w.kind === 'style') assert.ok(HEROINES[w.girl].likes.includes(w.style));
+    if (w.kind === 'chat') assert.ok(sim.APPROACHES[w.approach] !== undefined);
+  }
+});
+
+test('the focus challenge raises what practice and work give', () => {
+  const plain = sim.newGame();
+  sim.enter(plain, 'library');
+  const ok = sim.act(plain, 'library', 'study', 'ok');
+  const sharp = sim.newGame();
+  sim.enter(sharp, 'library');
+  const perfect = sim.act(sharp, 'library', 'study', 'perfect');
+  assert.ok(perfect.gain.intellect > ok.gain.intellect);
+  assert.equal(sharp.counters.perfect, 1);
+  const work = sim.newGame();
+  sim.enter(work, 'cafe');
+  const paid = sim.act(work, 'cafe', 'barista', 'good').pay;
+  const base = sim.newGame();
+  sim.enter(base, 'cafe');
+  assert.ok(paid > sim.act(base, 'cafe', 'barista').pay);
+  // Buying a coffee has no challenge.
+  assert.equal(sim.hasFocus(PLACES.cafe.acts.find(a => a.id === 'coffee')), false);
+});
+
+test('campus events fit their place, time and senior, and do not repeat in a term', () => {
+  for (const ev of EVENTS) {
+    for (const place of ev.places) assert.ok(PLACES[place], `${ev.id}: ${place}`);
+    if (ev.girl) assert.ok(HEROINES[ev.girl], ev.id);
+    const picks = ev.script.filter(step => step[0] === 'pick');
+    assert.ok(picks.length >= 1, ev.id);
+    for (const option of picks.flatMap(step => step[1])) {
+      assert.ok(option.t[0] && option.t[1], ev.id);
+      for (const k of Object.keys(option.fx ?? {})) assert.ok(['aff', 'pull', 'stats', 'money', 'energy', 'item'].includes(k), `${ev.id}: ${k}`);
+    }
+  }
+  assert.equal(new Set(EVENTS.map(ev => ev.id)).size, EVENTS.length);
+  // Over a term of visits, events come up, and none without `again` comes twice.
+  const s = sim.newGame({ seed: 5 });
+  for (const id of HEROINE_IDS) s.girls[id].met = true;
+  const seen = [];
+  while (!s.finale) {
+    for (const place of Object.keys(PLACES)) {
+      if (!sim.placeOpen(s, place)) continue;
+      const ev = sim.rollEvent(s, place);
+      if (ev) {
+        assert.ok(sim.eventFits({ ...s, flags: {} }, ev, place), ev.id);
+        seen.push(ev.id);
+      }
+    }
+    sim.advance(s);
+  }
+  assert.ok(seen.length >= 15, `only ${seen.length} events`);
+  const once = seen.filter(id => !EVENTS.find(ev => ev.id === id).again);
+  assert.equal(new Set(once).size, once.length);
+});
+
+test('a finished term fills the memories and unlocks perks for the next', () => {
+  const m = sim.newMemories();
+  const s = playTerm(['qingge']);
+  const result = sim.confess(s, 'qingge');
+  const fresh = sim.recordTerm(m, s, 'qingge', result);
+  assert.equal(m.terms, 1);
+  assert.ok(fresh.endings.includes(`qingge:${result}`));
+  assert.ok(fresh.achievements.includes('firstterm'));
+  assert.ok(fresh.perks.includes('notes'));
+  // The same ending again is not new.
+  assert.deepEqual(sim.recordTerm(m, s, 'qingge', result).endings, []);
+  // A perk changes the next term's start.
+  const next = sim.newGame({ perk: 'notes' });
+  assert.equal(next.perk, 'notes');
+  assert.equal(next.stats.intellect, 14);
+  // Unknown perks are ignored; memories survive being stored.
+  assert.equal(sim.newGame({ perk: 'nope' }).perk, null);
+  assert.deepEqual(sim.readMemories(JSON.stringify(m)), m);
+  assert.deepEqual(sim.readMemories('garbage'), sim.newMemories());
+  for (const perk of PERKS) assert.ok(!perk.needs || ACHIEVEMENTS.find(a => a.id === perk.needs), perk.id);
+});
+
+test('saves from before wishes and events still load', () => {
+  const s = sim.newGame();
+  delete s.seed;
+  delete s.wish;
+  delete s.perk;
+  delete s.eventDay;
+  const back = sim.deserialize(JSON.stringify(s));
+  assert.equal(back.seed, 1);
+  assert.equal(back.wish, null);
+  sim.sleep(back);
 });

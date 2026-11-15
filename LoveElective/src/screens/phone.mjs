@@ -73,6 +73,12 @@ export function openPhone(game, tab = 'girls') {
             weight: 700,
             color: where ? THEME.ink : THEME.faint,
           });
+          const wish = sim.wishFor(s, id);
+          if (wish) {
+            const text = '♥ ' + game.wishText(wish),
+              w = Math.min(250, p.measure(text, 12, 700) + 20);
+            p.chip(text, 940 - w, y + 8, { color: THEME.rose, size: 12, h: 22, padX: 10 });
+          }
           const need = sim.chapterNeeds(s, id);
           let hint;
           if (!need) hint = L(['故事已全部读完 · 星空祭见', 'Her story is complete · see you at the Star Festival']);
