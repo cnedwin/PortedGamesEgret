@@ -16,12 +16,16 @@ Jelly Pandas is an independently developed 3D action survival demo built with [E
 | 选卡，重抽 · Pick a card, reroll | 1 2 3，R | 方向键 ← ↑ → · direction pad，Y | 点卡片或重抽 · tap the card or Reroll |
 | 菜单 · Menu | Esc / P | Start | 暂停 · Pause |
 
-- 八只熊猫，颜色、肚皮花纹和初始玩具各不相同。可单人游玩，也可带一到三位由游戏操控的伙伴；站到倒下的熊猫身边可以把它救起。
+- 八只熊猫拥有各自的立绘、脸部表情、肚皮花纹和初始玩具。选角会显示玩具打法。可单人游玩，也可带一到三位由游戏操控的伙伴，站到倒下的熊猫身边可以救起它。[角色设计稿](CHARACTER-DESIGN.md)
+- 「果冻三连」奖励尝试三种主动动作。空中下砸、地面肚皮撞和翻滚各命中一次，就能拿到一次共享经验。
+- 首轮升级可在强化初始玩具、搭配进化护符和换一种新玩具之间选择。精英和首领掉落的宝箱会给已有装备升级，升满之后仍有经验。
 - 十二种玩具，各有八级和一次进化（升到满级并拥有对应护符）；十二种护符，各有五级。
 - 七种糖果敌人、戴皇冠的精英、定时出现的狂潮和三个 Boss。
 - 敌人都是物理刚体：会挤成一堆、被打飞、互相撞伤、摔伤、掉进海里；沙滩球和木桶可以推进敌群。
 
-- Eight pandas, each with its own colour, belly pattern and first toy. Play alone or with one to three friends steered by the game; stand next to a fallen panda to revive it.
+- Eight pandas with their own portraits, expressions, belly stamps and starter toys. The picker shows how each toy plays. Go solo or bring one to three AI friends, and stand beside fallen pandas to revive them. [Character designs](CHARACTER-DESIGN.md)
+- The Jelly Hat Trick awards shared XP once per run for landing an air slam, a belly bump and a roll.
+- Your first upgrade offers a starter upgrade, its evolution charm or a new toy. Elite and boss chests upgrade gear you already own or grant XP when the build is maxed.
 - Twelve toys with eight levels and an evolution each (reach the top level and own the matching charm), and twelve charms with five levels.
 - Seven kinds of candy, crowned elites, timed surges and three bosses.
 - Every enemy is a physics body: they pile up, get thrown, hurt each other when they collide, take fall damage and drown in the sea; beach balls and barrels can be shoved into the crowd.
@@ -53,9 +57,9 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 | 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
 | 画面 · Look | 级联阴影、天空环境光、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, ambient occlusion, bloom, FXAA |
 
-所有模型、纹理和音效都由代码生成，项目不含图片或音频文件。
+模型、3D 纹理和音效由代码生成，选角与队伍头像共用一张角色概念图。
 
-All models, textures and sounds are generated in code; the project contains no image or audio files.
+3D models, 3D textures and sounds are generated in code. The picker and party portraits share one concept art atlas.
 
 ## 目录 · Layout
 
@@ -68,6 +72,7 @@ All models, textures and sounds are generated in code; the project contains no i
 | `src/island.mjs` | 绘制与碰撞共用的岛屿高度网格 · the island height grid shared by drawing and collision |
 | `src/view.mjs`, `src/panda.mjs`, `src/wind.mjs` | 3D 画面与植被的风 · everything drawn in 3D, and the wind in the plants |
 | `src/hud.mjs`, `src/input.mjs`, `src/audio.mjs` | 界面、输入、音效 · interface, input, sound |
+| `assets/panda-roster.webp` | 角色设定和头像图集 · character concepts and portrait atlas |
 | `tools/`, `test/` | 无页面运行与规则测试 · headless run and rule tests |
 | `vendor/` | 引擎运行时副本 · the engine runtime copy |
 

@@ -1271,21 +1271,22 @@ export function createView(scene, options = {}) {
           burst(stars, x, y + 0.3, z, 14, event.radius * 0.3);
           view.shake = Math.max(view.shake, 0.6);
           view.freeze = Math.max(view.freeze, 0.07);
-          view.pandas[event.panda]?.kick(-10);
+          view.pandas[event.panda]?.land(event.fall, true);
           break;
         case 'land':
           burst(dust, x, y + 0.1, z, 6, 0.5);
+          view.pandas[event.panda]?.land(event.fall);
           break;
         case 'jump':
           burst(dust, x, y + 0.1, z, 4 + event.power * 10, 0.4);
-          view.pandas[event.panda]?.kick(4 + event.power * 6);
+          view.pandas[event.panda]?.launch(event.power);
           break;
         case 'bump':
           burst(dust, x, y + 0.4, z, 8, 0.4);
           view.pandas[event.panda]?.kick(4);
           break;
         case 'hurt':
-          view.pandas[event.panda]?.kick(-7);
+          view.pandas[event.panda]?.hurt(x - event.fromX, z - event.fromZ, event.amount);
           view.shake = Math.max(view.shake, 0.35);
           view.freeze = Math.max(view.freeze, 0.05);
           break;

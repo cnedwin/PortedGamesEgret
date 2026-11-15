@@ -236,6 +236,9 @@ export function createGame(options = {}) {
       hurtFlash: 0,
       pendingPicks: 0,
       offer: undefined,
+      openingPick: !!member.human,
+      openingOffer: false,
+      tricks: member.human ? { slam: false, bump: false, roll: false } : undefined,
       rerolls: 3,
       kills: 0,
       brain: { t: 0, x: 0, z: 0, hop: 0 },
@@ -304,7 +307,7 @@ export function createGame(options = {}) {
   }
 
   // ---- upgrade cards ----------------------------------------------------------------
-  function makeOffer(panda) {
+  function upgradePool(panda) {
     const pool = [];
     for (const toy of panda.toys) {
       const def = TOYS[toy.id];
@@ -324,18 +327,36 @@ export function createGame(options = {}) {
         const useful = panda.toys.some((toy) => TOYS[toy.id].charm === def.key);
         pool.push({ type: 'charm', id, level: 1, weight: useful ? 1.6 : 0.8 });
       });
-    const cards = [];
-    while (cards.length < 3 && pool.length) {
-      let total = 0;
-      for (const card of pool) total += card.weight;
-      let roll = random() * total,
-        pick = 0;
-      for (; pick < pool.length - 1; pick++) {
-        roll -= pool[pick].weight;
-        if (roll <= 0) break;
-      }
-      cards.push(pool.splice(pick, 1)[0]);
+    return pool;
+  }
+  function drawCard(pool) {
+    let total = 0;
+    for (const card of pool) total += card.weight;
+    let roll = random() * total,
+      pick = 0;
+    for (; pick < pool.length - 1; pick++) {
+      roll -= pool[pick].weight;
+      if (roll <= 0) break;
     }
+    return pool.splice(pick, 1)[0];
+  }
+  function makeOffer(panda) {
+    const pool = upgradePool(panda);
+    const previousToy = panda.openingOffer ? panda.offer?.[2]?.id : undefined;
+    panda.openingOffer = false;
+    if (panda.openingPick && panda.toys.length) {
+      const starter = panda.toys[0];
+      const charmId = CHARM_BY_KEY[TOYS[starter.id].charm];
+      const improve = pool.find((card) => card.type === 'toy' && card.id === starter.id);
+      const pair = pool.find((card) => card.type === 'charm' && card.id === charmId);
+      const newToys = pool.filter((card) => card.type === 'toy' && card.level === 1 && card.id !== previousToy);
+      if (improve && pair && newToys.length) {
+        panda.openingOffer = true;
+        return [improve, pair, drawCard(newToys)];
+      }
+    }
+    const cards = [];
+    while (cards.length < 3 && pool.length) cards.push(drawCard(pool));
     if (cards.length < 3) cards.push({ type: 'heal' });
     if (cards.length < 3) cards.push({ type: 'bonus' });
     return cards;
@@ -367,6 +388,8 @@ export function createGame(options = {}) {
     if (!panda?.offer || !panda.offer[index]) return false;
     applyCard(panda, panda.offer[index]);
     panda.offer = undefined;
+    panda.openingPick = false;
+    panda.openingOffer = false;
     panda.pendingPicks--;
     if (panda.pendingPicks > 0) panda.offer = makeOffer(panda);
     return true;
@@ -384,6 +407,8 @@ export function createGame(options = {}) {
   /** Owe the panda one upgrade and show it an offer if none is open. */
   function grantPick(panda) {
     panda.pendingPicks++;
+    // Keep the opening choice for after a teammate revives the player.
+    if (panda.down && panda.openingPick) return;
     if (!panda.offer) panda.offer = makeOffer(panda);
     // Friends choose at once: evolutions first, then whatever they already own.
     if (!panda.human) {
@@ -604,7 +629,7 @@ export function createGame(options = {}) {
     panda.hp -= amount;
     panda.iframe = 0.5;
     panda.hurtFlash = 0.3;
-    emit('hurt', panda.x, panda.y + 1, panda.z, { panda: panda.index, amount: Math.round(amount) });
+    emit('hurt', panda.x, panda.y + 1, panda.z, { panda: panda.index, amount: Math.round(amount), fromX, fromZ });
     if (shove > 0) {
       const dx = panda.x - fromX,
         dz = panda.z - fromZ,
@@ -619,6 +644,7 @@ export function createGame(options = {}) {
       panda.down = true;
       panda.revive = 0;
       panda.offer = undefined;
+      panda.openingOffer = false;
       // A panda that falls in the water washes ashore, where friends can reach it.
       if (isWater(panda.x, panda.z)) {
         const r = span(panda.x, panda.z) || 1,
@@ -1137,6 +1163,16 @@ export function createGame(options = {}) {
   // ---- pandas -------------------------------------------------------------------------
   const bodyDamage = (panda) =>
     (9 + game.level * 1.4) * (1 + 0.2 * (panda.charms.get(CHARM_BY_KEY.jelly) ?? 0)) * (1 + panda.stats.might * 0.5);
+  function markTrick(panda, kind) {
+    const tricks = panda.tricks;
+    if (!tricks || tricks[kind]) return;
+    tricks[kind] = true;
+    if (tricks.slam && tricks.bump && tricks.roll) {
+      const xp = Math.round(game.xpNeed * 0.4);
+      addExperience(xp);
+      emit('announce', panda.x, panda.y, panda.z, { key: 'trickReward', panda: panda.index, xp });
+    }
+  }
 
   /** Decide what a friend does this step: stay near the player, keep out of the thick of it, help the fallen. */
   function botInput(panda, dt, out) {
@@ -1327,11 +1363,14 @@ export function createGame(options = {}) {
       v[0] = wx;
       v[2] = wz;
       const damage = bodyDamage(panda) * 1.3;
+      let hit = false;
       game.eachEnemyNear(panda.x + panda.headingX * 0.8, panda.z + panda.headingZ * 0.8, 1.5, (enemy) => {
         if (panda.bumpHits.has(enemy.id) || Math.abs(enemy.y - panda.y) > 2) return;
         panda.bumpHits.add(enemy.id);
         game.damage(enemy, damage, panda, panda.headingX * 17 * (1 + stats.knock), panda.headingZ * 17 * (1 + stats.knock), 6);
+        hit = true;
       });
+      if (hit) markTrick(panda, 'bump');
       game.pushProps(panda.x + panda.headingX, panda.z + panda.headingZ, 1.4, 14, 3);
     }
     if (panda.slamming) {
@@ -1348,6 +1387,7 @@ export function createGame(options = {}) {
       if (panda.slamming) {
         const radius = 3 + Math.min(3.5, fall * 0.3),
           damage = bodyDamage(panda) * (1.6 + fall * 0.14);
+        let hit = false;
         game.eachEnemyNear(panda.x, panda.z, radius, (enemy, d) => {
           if (Math.abs(enemy.y - panda.y) > 2.5) return;
           const k = (9 * (1 + stats.knock)) / (d || 1);
@@ -1359,14 +1399,17 @@ export function createGame(options = {}) {
             (enemy.z - panda.z) * k,
             9 + fall * 0.5,
           );
+          hit = true;
         });
+        if (hit) markTrick(panda, 'slam');
         game.pushProps(panda.x, panda.z, radius, 9, 6);
-        emit('slam', panda.x, panda.y, panda.z, { panda: panda.index, radius });
+        emit('slam', panda.x, panda.y, panda.z, { panda: panda.index, radius, fall });
       } else if (fall > 1) emit('land', panda.x, panda.y, panda.z, { panda: panda.index, fall });
       panda.slamming = false;
     }
     if (panda.rolling) {
       const damage = bodyDamage(panda) * 0.55;
+      let hit = false;
       game.eachEnemyNear(panda.x, panda.z, 0.9, (enemy, d) => {
         if (enemy.rollT > game.t || Math.abs(enemy.y - panda.y) > 1.8) return;
         enemy.rollT = game.t + 0.5;
@@ -1379,7 +1422,9 @@ export function createGame(options = {}) {
           (enemy.z - panda.z) * k + panda.headingZ * 4,
           4,
         );
+        hit = true;
       });
+      if (hit) markTrick(panda, 'roll');
     }
     // The sea stings: a dunked panda is tossed back toward the island.
     if (panda.y < ISLAND.sea - 0.55) {
@@ -1460,14 +1505,20 @@ export function createGame(options = {}) {
           emit('heal', pickup.x, pickup.y + 1, pickup.z, {});
         } else {
           // A chest levels up something every panda already owns and showers sprinkles.
+          let upgrades = 0;
           for (const other of game.pandas) {
-            const cards = makeOffer(other).filter(
-              (card) => card.type === 'evo' || ((card.type === 'toy' || card.type === 'charm') && card.level > 1),
-            );
-            if (cards.length) applyCard(other, cards.find((card) => card.type === 'evo') ?? cards[(random() * cards.length) | 0]);
+            const cards = upgradePool(other).filter((card) => card.type === 'evo' || card.level > 1);
+            if (!cards.length) continue;
+            const evolutions = cards.filter((card) => card.type === 'evo');
+            const reward = drawCard(evolutions.length ? evolutions : cards);
+            applyCard(other, reward);
+            // Sprinkles collected this step may already have opened cards with the old level.
+            if (other.offer?.some((card) => card.type === reward.type && card.id === reward.id)) other.offer = makeOffer(other);
+            upgrades++;
           }
-          addExperience(game.xpNeed * 0.35);
-          emit('chest', pickup.x, pickup.y + 1, pickup.z, { panda: panda.index });
+          const xp = game.xpNeed * 0.35;
+          addExperience(xp);
+          emit('chest', pickup.x, pickup.y + 1, pickup.z, { panda: panda.index, upgrades, xp });
         }
         break;
       }

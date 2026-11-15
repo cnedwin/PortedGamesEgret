@@ -1,7 +1,7 @@
 // The page around the 3D view: title screen, health and experience bars,
 // level-up cards, boss bar, damage numbers and the end screen, in English or
 // Chinese. Built from plain elements over the canvas.
-import { CHARMS, RUN, SKINS, TEXT, TOYS } from './data.mjs';
+import { CHARMS, CHARM_BY_KEY, PLAY_STYLES, RUN, SKINS, TEXT, TOY_BY_KEY, TOYS } from './data.mjs';
 
 const hex = (value) => '#' + value.toString(16).padStart(6, '0');
 const el = (tag, className, parent, text) => {
@@ -12,6 +12,7 @@ const el = (tag, className, parent, text) => {
   return node;
 };
 const clock = (seconds) => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+const TRICKS = [['slam', 'trickSlam'], ['bump', 'trickBump'], ['roll', 'trickRoll']];
 
 /** What one level of a toy adds, in words. */
 const DELTA = {
@@ -29,8 +30,11 @@ const DELTA = {
 
 /** Build the interface inside `root`. `options.lang` is "en" or "zh"; the browser's language is used otherwise. */
 export function createHud(root, options = {}) {
-  let lang = options.lang ?? ((navigator.language ?? 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+  let lang = options.lang === 'zh' || options.lang === 'en'
+    ? options.lang
+    : ((navigator.language ?? 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en');
   const zh = () => lang === 'zh';
+  document.documentElement.lang = zh() ? 'zh-CN' : 'en';
   const t = (key) => TEXT[key]?.[lang] ?? key;
   const name = (def) => def[lang] ?? def.en;
   const describe = (def) => (zh() ? def.dzh : def.den);
@@ -58,6 +62,14 @@ export function createHud(root, options = {}) {
   // A red edge that flashes when the player is hurt and pulses while health is low.
   const vignette = el('div', 'vignette', play);
   const announce = el('div', 'announce', play);
+  const challenge = el('aside', 'island-challenge hidden', play);
+  const challengeHead = el('div', 'challenge-head', challenge),
+    challengeTitle = el('b', '', challengeHead),
+    challengeCount = el('span', 'challenge-count', challengeHead);
+  challengeCount.setAttribute('aria-live', 'polite');
+  const challengeMoves = el('div', 'challenge-moves', challenge);
+  const challengeSteps = TRICKS.map(([key, label]) => ({ key, label, node: el('span', '', challengeMoves) }));
+  const challengeGoal = el('p', '', challenge);
   const party = el('div', 'party', play),
     toyRow = el('div', 'toys', play),
     hint = el('div', 'hint', play);
@@ -67,6 +79,8 @@ export function createHud(root, options = {}) {
     markerPool = [];
   let numberNext = 0,
     announceUntil = 0,
+    challengeMask = -1,
+    challengeUntil = Infinity,
     toySignature = '',
     partySignature = '';
   const partyRows = [];
@@ -105,11 +119,14 @@ export function createHud(root, options = {}) {
     end = el('div', 'layer end hidden', root);
   const show = (node, on) => node.classList.toggle('hidden', !on);
 
-  /** Small panda face built from styled elements, tinted like the skin. */
-  const face = (skin, parent) => {
+  /** One atlas supplies square head crops and full-body tiles in the same roster order. */
+  const face = (index, parent) => {
     const node = el('span', 'face', parent);
-    node.style.setProperty('--body', hex(skin.body));
-    node.style.setProperty('--patch', hex(skin.patch));
+    node.setAttribute('aria-hidden', 'true');
+    node.style.setProperty('--body', hex(SKINS[index].body));
+    // Source tiles are 384 × 512. Crop a 320px square just below the top of each tile.
+    node.style.setProperty('--roster-x', `${((index % 4) * 384 + 32) / (1536 - 320) * 100}%`);
+    node.style.setProperty('--roster-y', `${(Math.floor(index / 4) * 512 + 24) / (1024 - 320) * 100}%`);
     return node;
   };
 
@@ -150,23 +167,42 @@ export function createHud(root, options = {}) {
     el('p', 'tag', panel, t('tagline'));
     el('h2', '', panel, t('pick'));
     const grid = el('div', 'skins', panel);
-    SKINS.forEach((skin, index) => {
-      const button = el('button', 'skin' + (index === state.skin ? ' on' : ''), grid);
+    const buttons = SKINS.map((skin, index) => {
+      const button = el('button', 'skin', grid);
       button.type = 'button';
-      face(skin, button);
+      button.dataset.skin = skin.key;
+      face(index, button);
       el('span', '', button, name(skin));
-      el(
-        'small',
-        '',
-        button,
-        TOYS.find((toy) => toy.key === skin.start).icon + ' ' + name(TOYS.find((toy) => toy.key === skin.start)),
-      );
+      const toy = TOYS[TOY_BY_KEY[skin.start]];
+      el('small', '', button, `${toy.icon} ${name(toy)}`);
       button.addEventListener('click', () => {
+        if (state.skin === index) return;
         state.skin = index;
         handlers.onChange?.();
-        hud.showTitle(state, handlers);
+        showSkin();
       });
+      return button;
     });
+    const profile = el('div', 'panda-profile', panel);
+    const art = el('span', 'profile-art', profile);
+    art.setAttribute('aria-hidden', 'true');
+    const profileCopy = el('div', '', profile);
+    const profileTitle = el('b', '', profileCopy), profileHint = el('p', '', profileCopy);
+    function showSkin() {
+      const index = state.skin;
+      const skin = SKINS[index];
+      const toy = TOYS[TOY_BY_KEY[skin.start]];
+      buttons.forEach((button, i) => {
+        button.classList.toggle('on', i === index);
+        button.setAttribute('aria-pressed', String(i === index));
+      });
+      profile.style.setProperty('--body', hex(skin.body));
+      art.style.setProperty('--roster-x', `${(index % 4) / 3 * 100}%`);
+      art.style.setProperty('--roster-y', `${Math.floor(index / 4) * 100}%`);
+      profileTitle.textContent = `${name(skin)} · ${name(toy)}`;
+      profileHint.textContent = name(PLAY_STYLES[skin.key]);
+    }
+    showSkin();
     const row = el('div', 'row', panel);
     el('span', '', row, t('party'));
     for (let size = 1; size <= 4; size++) {
@@ -222,6 +258,11 @@ export function createHud(root, options = {}) {
     toySignature = '';
     partySignature = '';
     announce.textContent = '';
+    challengeMask = -1;
+    challengeUntil = Infinity;
+    challengeTitle.textContent = t('trickTitle');
+    challengeGoal.textContent = t('trickGoal');
+    show(challenge, false);
     hint.textContent = touchMode ? '' : t('clickToPlay');
   };
 
@@ -259,9 +300,18 @@ export function createHud(root, options = {}) {
     show(cards, true);
     el('h2', '', cards, t('levelUp'));
     const row = el('div', 'deck', cards);
+    const opening = panda.openingOffer;
+    const starter = TOYS[TOY_BY_KEY[SKINS[panda.skin].start]];
     panda.offer.forEach((card, index) => {
       const info = cardInfo(card),
         button = el('button', 'card' + (info.evo ? ' evo' : ''), row);
+      if (opening && card.type === 'toy' && card.id === TOY_BY_KEY[starter.key]) {
+        info.tag = t('starterUpgrade') + ' · ' + info.tag;
+      } else if (opening && card.type === 'charm' && card.id === CHARM_BY_KEY[starter.charm]) {
+        info.tag = t('starterEvolution');
+        info.text += zh() ? `。配合满级${name(starter)}可进化为${name(starter.evo)}。` :
+          ` With max-level ${name(starter)}, evolves into ${name(starter.evo)}.`;
+      }
       button.type = 'button';
       el('kbd', '', button, String(index + 1));
       el('span', 'icon', button, info.icon);
@@ -270,10 +320,11 @@ export function createHud(root, options = {}) {
       el('p', '', button, info.text);
       button.addEventListener('click', () => handlers.onPick(index));
     });
-    const reroll = el('button', 'pill', cards, `${t('reroll')} ×${panda.rerolls}`);
+    const reroll = el('button', 'pill', cards, `${t(touchMode ? 'rerollTouch' : 'reroll')} ×${panda.rerolls}`);
     reroll.type = 'button';
     reroll.disabled = panda.rerolls <= 0;
     reroll.addEventListener('click', () => handlers.onReroll());
+    if (opening) el('p', 'reroll-tip', cards, t('starterReroll'));
   };
   hud.hideCards = () => show(cards, false);
 
@@ -314,6 +365,11 @@ export function createHud(root, options = {}) {
       el('span', '', row, label);
       el('b', '', row, String(value));
     }
+    if (human.tricks) {
+      const row = el('div', '', stats);
+      el('span', '', row, t('trickTitle'));
+      el('b', '', row, `${TRICKS.filter(([key]) => human.tricks[key]).length}/3`);
+    }
     const build = el('div', 'build', panel);
     for (const toy of human.toys) el('span', toy.evo ? 'evo' : '', build, `${TOYS[toy.id].icon}${toy.level}`);
     for (const [id, level] of human.charms) el('span', '', build, `${CHARMS[id].icon}${level}`);
@@ -348,7 +404,7 @@ export function createHud(root, options = {}) {
       partyRows.length = 0;
       for (const panda of game.pandas) {
         const row = el('div', 'member', party);
-        face(SKINS[panda.skin], row);
+        face(panda.skin, row);
         const bars = el('div', 'bars', row);
         el('span', '', bars, name(SKINS[panda.skin]) + (panda.human ? ' ★' : ''));
         const hp = el('div', 'hp', bars),
@@ -389,6 +445,26 @@ export function createHud(root, options = {}) {
     if (boss) {
       bossName.textContent = name(boss.def);
       bossFill.style.width = `${Math.max(0, (boss.hp / boss.maxHp) * 100)}%`;
+    }
+    if (human.tricks) {
+      let mask = 0, count = 0;
+      challengeSteps.forEach(({ key }, index) => {
+        if (!human.tricks[key]) return;
+        mask |= 1 << index;
+        count++;
+      });
+      if (mask !== challengeMask) {
+        challengeMask = mask;
+        if (count === challengeSteps.length) challengeUntil = game.t + 4;
+        for (const { key, label, node } of challengeSteps) {
+          const done = human.tricks[key];
+          node.textContent = (done ? '✓ ' : '') + t(label);
+          node.classList.toggle('done', done);
+        }
+        challengeCount.textContent = `${count}/3`;
+        challenge.classList.toggle('complete', count === challengeSteps.length);
+      }
+      show(challenge, game.state === 'play' && game.t < challengeUntil && !boss);
     }
     if (now > announceUntil) announce.classList.remove('on');
     // Arrows over fallen friends.
@@ -435,6 +511,7 @@ export function createHud(root, options = {}) {
         case 'announce':
           if (event.key === 'bossIncoming') say(`${name(event.name)} ${t('bossIncoming')}`, now, 3.5, 'danger');
           else if (event.key === 'bossDown') say(`${name(event.name)} ✔`, now, 3, 'good');
+          else if (event.key === 'trickReward') say(`${t('trickReward')} +${event.xp} XP`, now, 3, 'good');
           else say(t(event.key), now, 2.6, event.key === 'surge' ? 'danger' : '');
           break;
         case 'hurt':
@@ -451,7 +528,7 @@ export function createHud(root, options = {}) {
           say(`${name(SKINS[game.pandas[event.panda].skin])} ${t('revived')}`, now, 2, 'good');
           break;
         case 'chest':
-          say(t('chest'), now, 2, 'good');
+          say(t(event.upgrades === 0 ? 'chestXp' : 'chest'), now, 2, 'good');
           break;
         case 'evolve': {
           const toy = TOYS[event.toy];

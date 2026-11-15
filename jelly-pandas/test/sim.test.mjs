@@ -4,7 +4,7 @@ import { register } from 'node:module';
 import { test } from 'node:test';
 
 register('../tools/egret-resolve.mjs', import.meta.url);
-const { BOSSES, CHARMS, CHARM_BY_KEY, ENEMIES, RUN, SKINS, TEXT, TOYS, TOY_BY_KEY } = await import('../src/data.mjs');
+const { BOSSES, CHARMS, CHARM_BY_KEY, ENEMIES, RUN, SKINS, TEXT, TOYS, TOY_BY_KEY, experienceFor } = await import('../src/data.mjs');
 const { ISLAND, groundHeight, isWater } = await import('../src/island.mjs');
 const { createGame } = await import('../src/sim.mjs');
 
@@ -88,6 +88,95 @@ test('a level-up offers three cards, waits for the player and applies the choice
   assert.equal(game.choose(0, 0), false, 'nothing to choose once the offer is taken');
 });
 
+test('every first human deck lets the player strengthen the starter, pursue an evolution or try something new', () => {
+  for (let skin = 0; skin < SKINS.length; skin++) {
+    const game = createGame({ seed: skin + 3, party: [{ skin, human: true }] });
+    const panda = game.pandas[0];
+    const starter = TOY_BY_KEY[SKINS[skin].start];
+    game.addExperience(game.xpNeed + experienceFor(2));
+    const [upgrade, pair, newToy] = panda.offer;
+    assert.equal(panda.openingOffer, true);
+    assert.deepEqual([upgrade.type, upgrade.id, upgrade.level], ['toy', starter, 2], SKINS[skin].key);
+    assert.deepEqual([pair.type, pair.id, pair.level], ['charm', CHARM_BY_KEY[TOYS[starter].charm], 1]);
+    assert.equal(newToy.type, 'toy');
+    assert.equal(newToy.level, 1);
+    assert.notEqual(newToy.id, starter);
+    assert.equal(game.reroll(0), true);
+    assert.equal(panda.openingOffer, true);
+    assert.deepEqual(panda.offer.slice(0, 2), [upgrade, pair]);
+    assert.notEqual(panda.offer[2].id, newToy.id);
+    assert.equal(game.choose(0, 0), true);
+    assert.equal(panda.toys[0].level, 2);
+    assert.equal(panda.openingPick, false);
+    assert.equal(panda.openingOffer, false);
+    assert.equal(game.waitingForChoice(), true, 'overflow XP still owes an ordinary choice');
+    assert.equal(game.choose(0, 0), true);
+    assert.equal(game.waitingForChoice(), false);
+  }
+});
+
+test('a chest upgrades owned items before granting its shared experience', () => {
+  const game = createGame({ seed: 1, party: [{ skin: 0, human: true }, { skin: 1, human: false }] });
+  const [human, friend] = game.pandas;
+  const collect = () => {
+    game.events.length = 0;
+    game.pickups.push({ kind: 'chest', x: human.x, y: human.y, z: human.z, t: 0 });
+    game.update(1 / 60, idle);
+    return game.events.find(event => event.type === 'chest');
+  };
+  const chestXp = game.xpNeed * 0.35;
+  const first = collect();
+  assert.equal(human.toys[0].level, 2);
+  assert.equal(friend.toys[0].level, 2);
+  assert.equal(game.xp, chestXp);
+  assert.equal(first.upgrades, 2);
+  assert.equal(first.xp, chestXp);
+
+  const starter = human.toys[0];
+  starter.level = RUN.maxToyLevel;
+  human.charms.set(CHARM_BY_KEY[TOYS[starter.id].charm], RUN.maxCharmLevel);
+  collect();
+  assert.equal(starter.evo, true, 'the owned evolution takes priority');
+  assert.equal(game.xp, chestXp * 2);
+
+  // A new toy is still available to buy, but this chest can only improve owned items.
+  game.xp = 0;
+  friend.toys[0].level = RUN.maxToyLevel;
+  friend.toys[0].evo = true;
+  const capped = collect();
+  assert.equal(human.toys.length, 1);
+  assert.equal(starter.evo, true);
+  assert.equal(game.xp, chestXp, 'a capped build still receives the chest XP');
+  assert.equal(capped.upgrades, 0);
+  assert.equal(capped.xp, chestXp);
+});
+
+test('an upgrade from a chest does not leave a same-step card promising a stale level', () => {
+  const game = createGame({ seed: 1, party: [{ skin: 0, human: true }] });
+  const panda = game.pandas[0];
+  game.addExperience(game.xpNeed);
+  assert.equal(panda.offer[0].level, 2);
+  game.pickups.push({ kind: 'chest', x: panda.x, y: panda.y, z: panda.z, t: 0 });
+  game.update(1 / 60, idle);
+  assert.equal(panda.toys[0].level, 2);
+  assert.equal(panda.offer[0].level, 3);
+  assert.equal(panda.openingOffer, true);
+  assert.equal(panda.pendingPicks, 1);
+});
+
+test('a down player gets their first choice after the party revives them', () => {
+  const game = createGame({ seed: 1, party: [{ skin: 0, human: true }, { skin: 1, human: false }] });
+  const panda = game.pandas[0];
+  game.hurt(panda, 9999, 0, 0);
+  game.addExperience(game.xpNeed);
+  assert.equal(panda.offer, undefined);
+  assert.equal(game.waitingForChoice(), false);
+  run(game, 8);
+  assert.equal(panda.down, false);
+  assert.equal(panda.openingOffer, true);
+  assert.equal(panda.pendingPicks, 1);
+});
+
 test('a maxed toy with its charm is offered an evolution', () => {
   const game = createGame({ seed: 9, party: [{ skin: 0, human: true }] }),
     panda = game.pandas[0],
@@ -154,4 +243,56 @@ test('thrown enemies that land in the sea are gone', () => {
   game.damage(enemy, 0, game.pandas[0], 60, 0, 12);
   run(game, 4);
   assert.equal(enemy.dead, true);
+});
+
+test('three actual body hits earn the optional shared XP once, while misses earn nothing', () => {
+  const game = createGame({ seed: 19, party: [{ skin: 0, human: true }] });
+  const panda = game.pandas[0];
+  panda.toys.length = 0;
+  const notices = [];
+  const step = (values) => {
+    game.update(1 / 60, values ? { ...idle, ...values } : idle);
+    notices.push(...game.events.filter(event => event.key === 'trickReward'));
+    game.events.length = 0;
+  };
+  const wait = (steps, values) => { for (let i = 0; i < steps; i++) step(values); };
+  const target = (x, z) => game.spawnEnemy(0, panda.x + x, panda.z + z, { elite: true });
+  wait(25);
+  step({ slam: true });
+  assert.deepEqual(panda.tricks, { slam: false, bump: false, roll: false });
+  assert.equal(game.xp, 0);
+  wait(72);
+
+  const bumped = target(1.15, 0);
+  step({ moveX: 1, slam: true });
+  assert.ok(bumped.hp < bumped.maxHp);
+  assert.deepEqual(panda.tricks, { slam: false, bump: true, roll: false });
+  wait(20);
+
+  wait(24, { jump: true });
+  wait(12);
+  assert.equal(panda.grounded, false);
+  const slammed = target(1.8, 0);
+  step({ slam: true });
+  wait(36);
+  assert.ok(slammed.hp < slammed.maxHp);
+  assert.deepEqual(panda.tricks, { slam: true, bump: true, roll: false });
+  assert.equal(notices.length, 0);
+
+  const before = game.xp;
+  const reward = Math.round(game.xpNeed * 0.4);
+  const rolled = target(0.75, 0);
+  step({ moveX: 1, roll: true });
+  assert.ok(rolled.hp < rolled.maxHp);
+  assert.deepEqual(panda.tricks, { slam: true, bump: true, roll: true });
+  assert.equal(game.xp, before + reward);
+  assert.equal(notices.length, 1);
+  assert.equal(notices[0].panda, panda.index);
+  assert.equal(notices[0].xp, reward);
+
+  const repeat = target(0.75, 0);
+  step({ moveX: 1, roll: true });
+  assert.ok(repeat.hp < repeat.maxHp);
+  assert.equal(game.xp, before + reward);
+  assert.equal(notices.length, 1);
 });
