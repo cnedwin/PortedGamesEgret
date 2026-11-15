@@ -1,7 +1,7 @@
 // The enemy soldiers: jointed figures put together from boxes, one set of
 // shapes per kind, moved by a few lines of procedural animation (a walk
 // cycle, an aiming lean, a flinch when hit, and a fall).
-import { Mesh3D, Object3D, createStandardMaterial3D } from '@egret/engine/world3d';
+import { Mesh3D, Object3D, createRagdoll3D, createStandardMaterial3D } from '@egret/engine/world3d';
 import { createBuilder, orient, rgb } from './build.mjs';
 import { createDetails } from './textures.mjs';
 
@@ -177,7 +177,12 @@ function shapes(look) {
 }
 
 /** Builds soldiers of every kind; they share shapes and one material. */
-export function createSoldierFactory() {
+/**
+ * `world` is a physics world holding the map, used only for bodies falling:
+ * a soldier who is shot goes limp and drops as jointed rigid bodies. Without
+ * one, the fall is a simple tip backwards.
+ */
+export function createSoldierFactory(world) {
   const details = createDetails();
   const material = createStandardMaterial3D({
     color: 0xffffff,
@@ -210,14 +215,80 @@ export function createSoldierFactory() {
         shin = part(set.shin, thigh, 0, -THIGH, 0);
       return { thigh, shin };
     });
+    let ragdoll;
+    /** Go limp: hand the figure's joints to rigid bodies, thrown the way the killing shot was travelling. */
+    function drop(enemy) {
+      root.updateWorldMatrices(true);
+      const hinge = { type: 'hinge', axis: [1, 0, 0], limits: [-2.3, 0.05] };
+      const leg = (index, parent) => [
+        {
+          bone: legs[index].thigh,
+          shape: { type: 'capsule', radius: 0.08 * bulk, halfHeight: 0.14 },
+          offset: [0, -0.22, 0],
+          mass: 9,
+          parent,
+          joint: { type: 'point', coneLimit: 1.1 },
+        },
+      ];
+      const parts = [
+        { bone: upper, shape: { type: 'box', halfExtents: [0.19 * bulk, 0.3, 0.13 * bulk] }, offset: [0, 0.3, 0], mass: 32 },
+        {
+          bone: head,
+          shape: { type: 'sphere', radius: 0.115 },
+          offset: [0, 0.12, 0],
+          mass: 5,
+          parent: 0,
+          joint: { type: 'point', coneLimit: 0.6 },
+        },
+        ...leg(0, 0),
+        {
+          bone: legs[0].shin,
+          shape: { type: 'capsule', radius: 0.065 * bulk, halfHeight: 0.15 },
+          offset: [0, -0.23, 0],
+          mass: 5,
+          parent: 2,
+          joint: hinge,
+        },
+        ...leg(1, 0),
+        {
+          bone: legs[1].shin,
+          shape: { type: 'capsule', radius: 0.065 * bulk, halfHeight: 0.15 },
+          offset: [0, -0.23, 0],
+          mass: 5,
+          parent: 4,
+          joint: hinge,
+        },
+      ];
+      ragdoll = createRagdoll3D(world, root, parts, {
+        layer: 4,
+        mask: 1,
+        friction: 0.9,
+        linearDamping: 0.25,
+        angularDamping: 0.7,
+      });
+      // `fallYaw` looks along the shot; push that way and tip the top of the body over.
+      const dx = -Math.sin(enemy.fallYaw),
+        dz = -Math.cos(enemy.fallYaw);
+      ragdoll.activate([dx * 2.4, 1, dz * 2.4], [dz * 2.5, (Math.random() - 0.5) * 3, -dx * 2.5]);
+    }
     let phase = Math.random() * 6,
       flinch = 0,
       lean = 0,
       aim = 0;
     return {
       root,
+      /** Give back what the fall used. */
+      dispose() {
+        ragdoll?.dispose();
+        ragdoll = undefined;
+      },
       /** Place and pose the figure for this frame. `pitchToPlayer` is how far up or down its target is. */
       update(enemy, dt, pitchToPlayer) {
+        if (enemy.dead && world) {
+          if (!ragdoll) drop(enemy);
+          ragdoll.update();
+          return;
+        }
         if (enemy.dead) {
           // Fall onto the back, away from the shot, then sink out of the way.
           const t = Math.min(1, enemy.deadFor / 0.5),

@@ -16,12 +16,15 @@ import {
   createSphereGeometry3D,
   createStandardMaterial3D,
   createUnlitMaterial3D,
+  createDecal3D,
+  createPhysicsWorld3D,
+  createSpotLight3D,
 } from '@egret/engine/world3d';
 import { createBuilder, orient, rgb } from './build.mjs';
-import { ENEMY_BODY, MISSION } from './data.mjs';
+import { ENEMY_BODY, MISSION, PLAYER } from './data.mjs';
 import { createGun } from './gun.mjs';
 import { setRain } from './grime.mjs';
-import { PLACES } from './level.mjs';
+import { BOXES, PLACES } from './level.mjs';
 import { buildScenery } from './scenery.mjs';
 import { createSoldierFactory } from './soldier.mjs';
 import { canvasTexture, createSurfaces, dotTexture, skyTexture } from './textures.mjs';
@@ -55,7 +58,7 @@ export function createView(scene, camera, options = {}) {
   Object.assign(sun.shadow, { cascades: 3, cascadeDistance: 70, mapSize: options.shadowSize ?? 2048 });
   scene.addChild(sun);
 
-  const { wet } = buildScenery(scene, createSurfaces());
+  const { wet, meshes } = buildScenery(scene, createSurfaces());
 
   // ---- rain: wet ground that mirrors the scene, and streaks falling round the camera -------
   const GROUND = [0, 1, 0, 0],
@@ -128,6 +131,36 @@ export function createView(scene, camera, options = {}) {
     scene.addChild(light);
     return light;
   };
+  // Floodlights on the two towers: spotlights that cast shadows, each with a visible beam in the rain.
+  const beamMaterial = createUnlitMaterial3D({
+    color: 0xfff0cf,
+    opacity: 0.026,
+    alphaMode: 'blend',
+    blending: 'additive',
+    depthWrite: false,
+    side: 'double',
+    toneMapped: false,
+    fog: false,
+  });
+  /** A soft cone of light from `from` towards `to`, `spread` wide at its far end. */
+  const lightCone = (from, to, spread) => {
+    const cone = new Mesh3D(createBuilder().limb(from, to, 0.12, spread, { sides: 18, caps: false }).finish(), beamMaterial);
+    cone.frustumCulled = false;
+    cone.layers = 2;
+    scene.addChild(cone);
+  };
+  for (const [x, z, tx, tz] of [
+    [-8.5, 26, 2, 12],
+    [-36.4, -11, -24, -2],
+  ]) {
+    const flood = createSpotLight3D({ color: 0xfff0cf, intensity: 60, range: 46, angle: 0.5, penumbra: 0.5, castShadow: true });
+    flood.setPosition(x, 9.4, z).lookAt(tx, 0, tz);
+    scene.addChild(flood);
+    lightCone([x, 9.4, z], [tx, 0.2, tz], 5);
+  }
+  // Each lamp post throws a fainter cone straight down.
+  for (const [x, y, z] of PLACES.lamps)
+    if (y > 5 && y < 6.8 && !(x > -8 && x < 16 && z < -8)) lightCone([x, y - 0.1, z], [x, 0.1, z], 3.2);
   for (const [x, y, z, strength] of PLACES.lamps) {
     const lamp = createPointLight3D({ color: 0xffd9a8, intensity: 24 * strength, range: 20 });
     lamp.setPosition(x, y - 0.3, z);
@@ -242,7 +275,26 @@ export function createView(scene, camera, options = {}) {
   }
 
   // ---- soldiers ----------------------------------------------------------------------------
-  const createSoldier = createSoldierFactory(),
+  // A physics world of the view's own, holding the map, for things that only need to look right:
+  // soldiers going limp when shot. The rules never see it.
+  const propWorld = createPhysicsWorld3D({ gravity: [0, -PLAYER.gravity, 0] });
+  propWorld.createBody({
+    type: 'static',
+    shape: { type: 'box', halfExtents: [120, 1, 120] },
+    position: [0, -1, 0],
+    friction: 0.9,
+    layer: 1,
+  });
+  for (const b of BOXES)
+    if (b.solid)
+      propWorld.createBody({
+        type: 'static',
+        shape: { type: 'box', halfExtents: [b.w / 2, b.h / 2, b.d / 2] },
+        position: [b.x, b.y, b.z],
+        friction: 0.8,
+        layer: 1,
+      });
+  const createSoldier = createSoldierFactory(propWorld),
     soldiers = new Map();
   function syncSoldiers(game, dt) {
     const p = game.player;
@@ -259,6 +311,7 @@ export function createView(scene, camera, options = {}) {
     if (soldiers.size > game.enemies.length)
       for (const [enemy, soldier] of soldiers)
         if (!game.enemies.includes(enemy)) {
+          soldier.dispose();
           soldier.root.removeFromParent();
           soldiers.delete(enemy);
         }
@@ -495,6 +548,117 @@ export function createView(scene, camera, options = {}) {
   holeMesh.count = HOLES;
   scene.addChild(holeMesh);
   let nextHole = 0;
+  // Marks left by shots and blasts, laid onto the surface they hit with the engine's decals so
+  // they wrap round edges and corrugations. The oldest are cleared as new ones come.
+  const markTexture = (draw) => canvasTexture(128, 128, draw);
+  const pit = (c, w, core, ring, cracks) => {
+    c.clearRect(0, 0, w, w);
+    const glow = c.createRadialGradient(w / 2, w / 2, 2, w / 2, w / 2, w * 0.46);
+    glow.addColorStop(0, core);
+    glow.addColorStop(0.22, core);
+    glow.addColorStop(0.3, ring);
+    glow.addColorStop(0.62, ring.replace(/[\d.]+\)$/, '0.35)'));
+    glow.addColorStop(1, ring.replace(/[\d.]+\)$/, '0)'));
+    c.fillStyle = glow;
+    c.fillRect(0, 0, w, w);
+    c.strokeStyle = core;
+    c.lineWidth = 1.5;
+    for (let i = 0; i < cracks; i++) {
+      const angle = Math.random() * 6.28,
+        reach = w * (0.2 + Math.random() * 0.28);
+      c.beginPath();
+      c.moveTo(w / 2 + Math.cos(angle) * w * 0.08, w / 2 + Math.sin(angle) * w * 0.08);
+      c.lineTo(w / 2 + Math.cos(angle + 0.3) * reach * 0.6, w / 2 + Math.sin(angle + 0.3) * reach * 0.6);
+      c.lineTo(w / 2 + Math.cos(angle) * reach, w / 2 + Math.sin(angle) * reach);
+      c.stroke();
+    }
+  };
+  const markMaterial = (texture, more) =>
+    texture &&
+    createStandardMaterial3D({ color: 0xffffff, map: texture, alphaMode: 'blend', depthWrite: false, roughness: 0.9, ...more });
+  const markMaterials = {
+    // Chipped stone: a dark pit in a pale crater with cracks running out.
+    stone: markMaterial(markTexture((c, w) => pit(c, w, 'rgba(18, 16, 14, 0.95)', 'rgba(150, 146, 138, 0.6)', 7))),
+    // Punched steel: a black hole ringed with bare bright metal.
+    steel: markMaterial(
+      markTexture((c, w) => pit(c, w, 'rgba(6, 6, 7, 1)', 'rgba(210, 214, 220, 0.9)', 0)),
+      { roughness: 0.35, metallic: 0.8 },
+    ),
+    // Splintered wood: a dark hole with pale torn fibres.
+    wood: markMaterial(markTexture((c, w) => pit(c, w, 'rgba(24, 14, 8, 0.95)', 'rgba(214, 186, 140, 0.7)', 12))),
+    scorch: markMaterial(
+      markTexture((c, w) => {
+        c.clearRect(0, 0, w, w);
+        const burn = c.createRadialGradient(w / 2, w / 2, 0, w / 2, w / 2, w / 2);
+        burn.addColorStop(0, 'rgba(8, 7, 6, 0.92)');
+        burn.addColorStop(0.45, 'rgba(14, 12, 10, 0.7)');
+        burn.addColorStop(1, 'rgba(20, 18, 16, 0)');
+        c.fillStyle = burn;
+        c.fillRect(0, 0, w, w);
+        c.strokeStyle = 'rgba(6, 5, 4, 0.5)';
+        for (let i = 0; i < 26; i++) {
+          const angle = Math.random() * 6.28;
+          c.lineWidth = 1 + Math.random() * 3;
+          c.beginPath();
+          c.moveTo(w / 2 + Math.cos(angle) * w * 0.12, w / 2 + Math.sin(angle) * w * 0.12);
+          c.lineTo(
+            w / 2 + Math.cos(angle) * w * (0.3 + Math.random() * 0.2),
+            w / 2 + Math.sin(angle) * w * (0.3 + Math.random() * 0.2),
+          );
+          c.stroke();
+        }
+      }),
+    ),
+  };
+  /** Which surface mesh each kind of box was built into, and what a shot leaves on it. */
+  const SURFACE_OF = {
+    ground: ['asphalt', 'stone'],
+    dam: ['concrete', 'stone'],
+    'dam-step': ['concrete', 'stone'],
+    compound: ['concrete', 'stone'],
+    barrier: ['concrete', 'stone'],
+    plant: ['wall', 'stone'],
+    office: ['wall', 'stone'],
+    booth: ['wall', 'stone'],
+    sandbag: ['sandbag', 'stone'],
+    container: ['container', 'steel'],
+    'truck-bed': ['container', 'steel'],
+    crate: ['wood', 'wood'],
+    pallet: ['wood', 'wood'],
+    reel: ['wood', 'wood'],
+    desk: ['wood', 'wood'],
+  };
+  const marks = [],
+    MARKS = 70;
+  function clearMarks() {
+    for (const mark of marks.splice(0)) mark.removeFromParent();
+  }
+  /** Lay a mark where something struck. Returns false when no surface mesh took it. */
+  function mark(surface, x, y, z, normal, size, kind) {
+    const [first, material] = SURFACE_OF[surface] ?? ['metal', 'steel'],
+      using = markMaterials[kind ?? material];
+    if (!using) return false;
+    // The box list names the likely mesh; a few things are built from more than one surface, so the rest are tried after it.
+    for (const name of [first, 'apron', 'metal', 'plain', 'concrete', 'wall']) {
+      const target = meshes[name];
+      if (!target) continue;
+      const decal = createDecal3D(target, using, {
+        position: [x, y, z],
+        normal,
+        width: size,
+        height: size,
+        depth: 0.12,
+        rotation: Math.random() * 6.28,
+        offset: 0.004,
+      });
+      if (!decal) continue;
+      decal.receiveShadow = true;
+      marks.push(decal);
+      if (marks.length > MARKS) marks.shift().removeFromParent();
+      return true;
+    }
+    return false;
+  }
   function hole(x, y, z, normal, size = 0.09) {
     // The quad faces +Z; turn that onto the wall's normal and lift it off the surface a little.
     aimQuat(normal[0], normal[1], normal[2]);
@@ -585,7 +749,11 @@ export function createView(scene, camera, options = {}) {
   /** Start showing a new run. */
   view.attach = (game) => {
     buildCrates(game);
-    for (const soldier of soldiers.values()) soldier.root.removeFromParent();
+    for (const soldier of soldiers.values()) {
+      soldier.dispose();
+      soldier.root.removeFromParent();
+    }
+    clearMarks();
     soldiers.clear();
     tracers.length = 0;
     for (const terminal of terminals) {
@@ -637,7 +805,8 @@ export function createView(scene, camera, options = {}) {
               event.surface?.startsWith('truck');
           burst(hard ? sparks : chips, event.toX, event.toY, event.toZ, hard ? 9 : 7, nx, ny + 0.2, nz);
           burst(dust, event.toX, event.toY, event.toZ, 3, nx, ny + 0.2, nz);
-          hole(event.toX, event.toY, event.toZ, event.normal);
+          if (!mark(event.surface, event.toX, event.toY, event.toZ, event.normal, hard ? 0.09 : 0.13))
+            hole(event.toX, event.toY, event.toZ, event.normal);
         }
         break;
       }
@@ -658,7 +827,7 @@ export function createView(scene, camera, options = {}) {
         burst(smoke, event.x, event.y + 0.6, event.z, 30);
         burst(sparks, event.x, event.y + 0.3, event.z, 60, 0, 1, 0);
         burst(chips, event.x, event.y + 0.2, event.z, 40, 0, 1, 0);
-        hole(event.x, 0.001, event.z, [0, 1, 0], 2.6);
+        if (!mark('ground', event.x, 0, event.z, [0, 1, 0], 4.2, 'scorch')) hole(event.x, 0.001, event.z, [0, 1, 0], 2.6);
         blast.setPosition(event.x, event.y + 1, event.z);
         view.flash = 1;
         view.shake = Math.min(2, view.shake + 1.6 * clamp01(1.3 - Math.hypot(event.x - p.x, event.z - p.z) / 18));
@@ -718,6 +887,7 @@ export function createView(scene, camera, options = {}) {
     gun.update(dt, game, turn, tilt, playing && game.state !== 'dead' && game.state !== 'won');
 
     updateLights(dt, camera.position[0], camera.position[2]);
+    if (dt > 0) propWorld.step(Math.min(dt, 0.05));
     updateRain(time, game);
     syncSoldiers(game, dt);
     updateTracers(dt);

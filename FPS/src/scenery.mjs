@@ -667,6 +667,7 @@ export function buildScenery(scene, surfaces) {
       .cylinder(x - Math.cos(turn) * w * 0.3, 0.016, z - Math.sin(turn) * d * 0.22, Math.min(w, d) * 0.3, 0.004, { sides: 12 });
 
   // ---- one mesh per surface ----------------------------------------------------------------
+  const meshes = {};
   const add = (builder, material, { shadows = true, tangents = true } = {}) => {
     if (builder.empty) return undefined;
     const mesh = new Mesh3D(builder.finish({ tangents }), material);
@@ -674,6 +675,9 @@ export function buildScenery(scene, surfaces) {
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     scene.addChild(mesh);
+    // Remember the mesh of each surface, so marks can be laid onto whatever a shot hits.
+    for (const name of Object.keys(groups)) if (groups[name] === builder) meshes[name] = mesh;
+    if (builder === apron) meshes.apron = mesh;
     return mesh;
   };
   /** The wet ground: meshes that show the mirror image, and their materials. */
@@ -956,5 +960,5 @@ export function buildScenery(scene, surfaces) {
     mesh.receiveShadow = true;
     scene.addChild(mesh);
   }
-  return { wet };
+  return { wet, meshes };
 }

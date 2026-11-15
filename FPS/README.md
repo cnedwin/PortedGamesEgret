@@ -57,7 +57,10 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 | 掉漆与锈蚀 · Chipped paint and rust | `createCustomShader3D` 片元钩子 · fragment hook |
 | 景深与受伤时的画面 · Depth of field and the picture when hurt | 后期处理的景深、饱和度、暗角 · post-processing depth of field, saturation, vignette |
 | 晨雾与光柱 · Morning mist and light shafts | `createAtmosphere3D`，接入后期处理的自定义通道 · through the custom post-processing pass |
-| 曳光弹、弹孔 · Tracers, bullet holes | `InstancedMesh3D` |
+| 曳光弹 · Tracers | `InstancedMesh3D` |
+| 弹孔与爆炸焦痕 · Bullet marks and scorch | `createDecal3D`，贴合被击中的表面 · laid onto the surface that was hit |
+| 敌人中弹倒地 · Soldiers falling when shot | `createRagdoll3D`，在画面自用的物理世界里 · in a physics world of the view's own |
+| 探照灯 · Floodlights | `createSpotLight3D` 投射阴影，加可见光锥 · casting shadows, with visible beams |
 | 枪口火光、尘土、火花、爆炸、水雾 · Muzzle flash, dust, sparks, blasts, mist | `createParticleEmitter3D`，`createPointLight3D` |
 | 天空与雾 · Sky and haze | 程序绘制的 `CubeTexture3D`（云、日晕），线性雾 · a painted `CubeTexture3D` (clouds, sun glow), linear fog |
 | 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
