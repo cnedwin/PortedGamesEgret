@@ -33,6 +33,7 @@ export const TEXT = {
     quality: '画面质量',
     qualityNames: { low: '低', medium: '中', high: '高' },
     sensitivity: '视角灵敏度',
+    adsSensitivity: '鼠标瞄准倍率',
     invert: '反转纵轴',
     on: '开',
     off: '关',
@@ -43,6 +44,13 @@ export const TEXT = {
     enterFullscreen: '进入全屏',
     exitFullscreen: '退出全屏',
     fullscreenFailed: '浏览器未能切换全屏，可以继续在当前窗口游玩。',
+    pointerLock: {
+      waiting: '正在锁定鼠标指针…',
+      failed: '浏览器未能锁定鼠标。可以重试，或选择按住鼠标键拖动视角。',
+      released: '鼠标指针已释放。点「继续」重新锁定。',
+    },
+    retryPointerLock: '重试鼠标锁定',
+    dragLook: '使用拖动瞄准',
     keys: [
       ['W A S D', '移动'],
       ['鼠标', '转动视角'],
@@ -179,6 +187,7 @@ export const TEXT = {
     quality: 'Graphics quality',
     qualityNames: { low: 'Low', medium: 'Medium', high: 'High' },
     sensitivity: 'Look sensitivity',
+    adsSensitivity: 'Mouse aim multiplier',
     invert: 'Invert Y',
     on: 'On',
     off: 'Off',
@@ -189,6 +198,13 @@ export const TEXT = {
     enterFullscreen: 'Enter fullscreen',
     exitFullscreen: 'Exit fullscreen',
     fullscreenFailed: 'The browser could not switch fullscreen. You can keep playing in this window.',
+    pointerLock: {
+      waiting: 'Locking the mouse pointer…',
+      failed: 'The browser could not lock the mouse. Retry or choose to aim by dragging with a mouse button held.',
+      released: 'The mouse pointer was released. Select Resume to lock it again.',
+    },
+    retryPointerLock: 'Retry mouse lock',
+    dragLook: 'Use drag to aim',
     keys: [
       ['W A S D', 'Move'],
       ['Mouse', 'Look'],

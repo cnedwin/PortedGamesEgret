@@ -26,6 +26,10 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 
 On touch, you can move and fire together. Pushing the stick all the way starts a sprint, and firing brings you back to a walk. Dragging turns the view more slowly while aiming.
 
+PC 部署和继续时会请求锁定鼠标。锁定后可直接移动鼠标转向。若请求失败，可在暂停菜单重试，或主动选择按住鼠标键拖动视角。设置里的鼠标瞄准倍率用于单独调整右键瞄准时的灵敏度。
+
+On PC, Deploy and Resume request mouse lock so you can turn by moving the mouse. If the request fails, retry from the pause menu or choose to aim by dragging with a mouse button held. The mouse aim multiplier adjusts right-button aim independently.
+
 - 三把武器：全自动突击步枪、备弹无限的手枪，以及带瞄准镜的半自动精确射手步枪；另有手雷和绷带。物资箱里能找到前握把（降低后坐力）和扩容弹匣，捡到即装在步枪上。瞄准时散布更小、后坐力更低，移动、跳跃和连发都会让准星张开。
 - 右上角的小地图随视角转动，标出建筑、终端、撤离点、没搜过的物资箱和已经暴露位置的敌人。
 - 背包只有十二格。装满后新搜到的贵重物品只能留在原地；按 Tab 查看背包、武器、配件和补给。
