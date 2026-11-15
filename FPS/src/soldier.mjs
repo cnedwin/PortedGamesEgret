@@ -16,7 +16,7 @@ const SKIN = rgb(0xc9a27e),
  */
 const LOOKS = {
   rifle: {
-    cloth: [0.42, 0.47, 0.33],
+    cloth: [0.27, 0.31, 0.2],
     vest: rgb(0x4a4f38),
     gear: rgb(0x6f6444),
     helmet: rgb(0x4b5238),
