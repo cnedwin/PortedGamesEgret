@@ -400,6 +400,9 @@ export function createAudio() {
         noise({ dur: 0.5, freq: 1500, q: 0.8, gain: 0.1 });
         noise({ at: 0.7, dur: 0.6, freq: 1100, q: 0.8, gain: 0.1 });
         break;
+      case 'uplinkRange':
+        tone({ freq: event.inRange ? 660 : 330, to: event.inRange ? 880 : 220, dur: 0.18, type: 'square', gain: 0.1 });
+        break;
       case 'healed':
         tone({ freq: 520, to: 780, dur: 0.22, type: 'triangle', gain: 0.14 });
         break;

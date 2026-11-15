@@ -191,3 +191,27 @@ test('a run can be finished: three terminals, then the helicopter', () => {
     assert.match(game.rating(), /^[SABC]$/);
   }
 });
+
+test('a transfer runs only while the operator stays near its terminal', () => {
+  const game = createGame({ seed: 3 });
+  const terminal = game.terminals[0];
+  const input = idleInput();
+  while (game.state === 'intro') game.update(1 / 60, input);
+  // Stand in front of the terminal, facing it, and hold the key until the uplink is in.
+  const p = game.player;
+  game.warp(terminal.x - Math.sin(terminal.facing) * 1.3, terminal.z - Math.cos(terminal.facing) * 1.3);
+  p.yaw = Math.atan2(-(terminal.x - p.x), -(terminal.z - p.z));
+  input.interact = true;
+  for (let i = 0; i < 60 * (MISSION.downloadSeconds + 0.5) && !terminal.linked; i++) game.update(1 / 60, input);
+  assert.ok(terminal.linked, 'holding the key plugs the uplink in');
+  assert.equal(game.terminalsDone, 0, 'the data is not out yet');
+  input.interact = false;
+  for (let i = 0; i < 60; i++) game.update(1 / 60, input);
+  const near = terminal.progress;
+  assert.ok(near > 0 && near < 1);
+  // Far away the transfer waits.
+  game.warp(PLACES.spawn.x, PLACES.spawn.z);
+  for (let i = 0; i < 60; i++) game.update(1 / 60, input);
+  assert.ok(Math.abs(terminal.progress - near) < 0.01, 'no progress out of range');
+  assert.equal(terminal.inRange, false);
+});

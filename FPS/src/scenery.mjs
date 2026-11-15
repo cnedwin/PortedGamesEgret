@@ -714,7 +714,7 @@ export function buildScenery(scene, surfaces) {
       const y = size * (0.7 + tier * 0.48),
         reach = size * (1.15 - tier * 0.16),
         lean = Math.sin(x * 3.1 + tier * 1.7) * 0.08 * size,
-        green = [rgb(0x16261a), rgb(0x1a2e1f), rgb(0x1f3524)][tier % 3];
+        green = [rgb(0x1a2c1e), rgb(0x1f3524), rgb(0x243d29)][tier % 3];
       plain.cylinder(x + lean, y, z - lean, reach, size * 0.62, {
         top: reach * 0.18,
         sides: 11,

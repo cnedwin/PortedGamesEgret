@@ -150,24 +150,33 @@ export const BACKPACK = 12;
 export const MISSION = {
   introSeconds: 3,
   interactRange: 2.4,
-  downloadSeconds: 2.6,
+  /** Holding the key this long plugs the uplink in; the transfer then runs by itself. */
+  downloadSeconds: 1.5,
+  /** How long a terminal takes to send its data, and how close the operator must stay while it does. */
+  transferSeconds: 26,
+  transferRange: 12,
+  /** What a finished terminal hands back: armour, and bandages up to this many. */
+  resupplyArmor: 50,
+  resupplyBandages: 2,
   searchSeconds: 1.2,
   extractSeconds: 4,
   /** How long the helicopter takes to arrive once the last terminal is done. */
-  heliSeconds: 14,
-  /** Reinforcements sent after each terminal, by kind. */
+  heliSeconds: 38,
+  /** Reinforcements sent when each transfer starts, by kind. */
   waves: [
     { rifle: 3, rush: 2 },
     { rifle: 4, rush: 2 },
     { rifle: 4, rush: 3, heavy: 1 },
   ],
+  /** A second, smaller group sent when each transfer is half done. */
+  followUps: [{ rush: 2 }, { rifle: 2, rush: 1 }, { rifle: 2, rush: 2 }],
   maxAlive: 10,
   spawnStagger: 0.85,
   spawnFar: 18,
   /** After the last terminal, one more soldier every so often while few are left. */
-  pursuitEvery: 7,
+  pursuitEvery: 6,
   pursuitMinAlive: 4,
-  pursuitExtra: 5,
+  pursuitExtra: 7,
   hearing: 42,
   sight: 55,
   /** How far a soldier who has not been alerted can spot the operator. */

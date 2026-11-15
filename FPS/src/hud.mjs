@@ -320,6 +320,7 @@ export function createHud(root, settings, actions) {
         break;
       case 'terminal':
         feedLine(`<b>${t.places[event.terminal.key]}</b> ✓ <em>+${money(MISSION.intelValue)}</em>`, 'good');
+        feedLine(t.resupply, 'good');
         break;
       case 'comms':
         comms.hidden = false;
@@ -505,14 +506,14 @@ export function createHud(root, settings, actions) {
       armor = Math.ceil(p.armor);
     if (health !== cache.health) {
       cache.health = health;
-      const bar = q('.health');
+      const bar = q('.bar.health');
       bar.firstElementChild.style.width = (100 * p.health) / PLAYER.health + '%';
       bar.lastElementChild.textContent = health;
       bar.classList.toggle('low', health <= 30);
     }
     if (armor !== cache.armor) {
       cache.armor = armor;
-      const bar = q('.armor');
+      const bar = q('.bar.armor');
       bar.firstElementChild.style.width = (100 * p.armor) / PLAYER.armor + '%';
       bar.lastElementChild.textContent = armor;
     }
@@ -557,14 +558,18 @@ export function createHud(root, settings, actions) {
     // Objective and clock.
     const extract = game.terminalsDone === game.terminals.length,
       eta = extract ? Math.ceil(game.heliEta) : 0,
-      objectiveKey = (extract ? 'x' + eta : 'o') + game.terminalsDone + settings.lang;
+      active = game.transfer(),
+      objectiveKey = (extract ? 'x' + eta : 'o') + game.terminalsDone + settings.lang + (active ? active.key : '');
     if (objectiveKey !== cache.objective) {
       cache.objective = objectiveKey;
       q('.obj-title').textContent = extract
         ? t.objectiveExtract + (eta > 0 ? `  ·  ${t.eta} ${clock(eta)}` : '')
         : `${t.objective}  ${game.terminalsDone}/${game.terminals.length}`;
       q('.obj-list').innerHTML = game.terminals
-        .map((terminal, i) => `<li class="${terminal.done ? 'done' : ''}"><i>${letters[i]}</i>${t.places[terminal.key]}</li>`)
+        .map(
+          (terminal, i) =>
+            `<li class="${terminal.done ? 'done' : terminal === active ? 'live' : ''}"><i>${letters[i]}</i>${t.places[terminal.key]}</li>`,
+        )
         .join('');
     }
     const time = clock(game.t);
@@ -643,6 +648,15 @@ export function createHud(root, settings, actions) {
       busy = t.reloading;
       share = 1 - weapon.reloading / weapon.reloadTime;
     }
+    // A running transfer shows whenever the hands are free; it turns to a warning out of range.
+    const transfer = game.transfer();
+    if (!busy && transfer) {
+      busy = transfer.inRange
+        ? `${t.transfer} · ${t.places[transfer.key]} ${Math.floor(transfer.progress * 100)}%`
+        : t.transferLost;
+      share = transfer.progress;
+    }
+    status.classList.toggle('lost', Boolean(transfer && !transfer.inRange));
     status.hidden = !busy;
     if (busy) {
       status.firstElementChild.textContent = busy;

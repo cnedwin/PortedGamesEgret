@@ -154,7 +154,14 @@ export function createGame(options = {}) {
     grenades: [],
     /** What happened this step; whoever reads them empties the list. */
     events: [],
-    terminals: PLACES.terminals.map((place, index) => ({ ...place, index, done: false })),
+    terminals: PLACES.terminals.map((place, index) => ({
+      ...place,
+      index,
+      done: false,
+      linked: false,
+      inRange: false,
+      progress: 0,
+    })),
     crates: [],
     /** 'intro', 'play', 'dead' or 'won'. */
     state: 'intro',
@@ -884,7 +891,8 @@ export function createGame(options = {}) {
         best = { kind, target: item, seconds };
       }
     };
-    for (const terminal of game.terminals) if (!terminal.done) consider('terminal', terminal, MISSION.downloadSeconds);
+    for (const terminal of game.terminals)
+      if (!terminal.done && !terminal.linked) consider('terminal', terminal, MISSION.downloadSeconds);
     for (const crate of game.crates) if (!crate.opened) consider('crate', crate, MISSION.searchSeconds);
     return best;
   }
@@ -919,13 +927,44 @@ export function createGame(options = {}) {
       emit('loot', { crate: use.target, items: use.target.items });
       return;
     }
+    // Plugging in starts the transfer, and the transfer is what brings the reinforcements.
     const terminal = use.target;
+    terminal.linked = terminal.inRange = true;
+    emit('uplink', { terminal });
+    emit('comms', { key: 'hold' });
+    sendWave(MISSION.waves[Math.min(game.terminalsDone, MISSION.waves.length - 1)]);
+    noise(player.x, player.z, 200);
+  }
+  /** Put the operator somewhere at once. For tools and tests; play never calls it. */
+  game.warp = (x, z) => {
+    motor.position[0] = player.x = x;
+    motor.position[2] = player.z = z;
+  };
+  /** The terminal sending its data right now, if any. */
+  game.transfer = () => game.terminals.find((terminal) => terminal.linked && !terminal.done);
+  /** A transfer runs while the operator stays near its terminal and waits while they are away. */
+  function updateTransfers(dt) {
+    for (const terminal of game.terminals) {
+      if (!terminal.linked || terminal.done) continue;
+      const inRange = player.alive && span(terminal.x - player.x, terminal.z - player.z) < MISSION.transferRange;
+      if (inRange !== terminal.inRange) emit('uplinkRange', { terminal, inRange });
+      terminal.inRange = inRange;
+      if (!inRange) continue;
+      const before = terminal.progress;
+      terminal.progress = Math.min(1, before + dt / MISSION.transferSeconds);
+      if (before < 0.5 && terminal.progress >= 0.5)
+        sendWave(MISSION.followUps[Math.min(game.terminalsDone, MISSION.followUps.length - 1)]);
+      if (terminal.progress >= 1) finishTransfer(terminal);
+    }
+  }
+  function finishTransfer(terminal) {
     terminal.done = true;
     game.terminalsDone++;
     game.lootValue += MISSION.intelValue;
+    // Each cabinet holds a field kit: some armour back, and bandages topped up.
+    player.armor = Math.min(PLAYER.armor, player.armor + MISSION.resupplyArmor);
+    player.bandages = Math.max(player.bandages, MISSION.resupplyBandages);
     emit('terminal', { terminal, done: game.terminalsDone, total: game.terminals.length });
-    sendWave(MISSION.waves[Math.min(game.terminalsDone, MISSION.waves.length) - 1]);
-    noise(player.x, player.z, 200);
     if (game.terminalsDone === game.terminals.length) {
       pursuitLeft = MISSION.pursuitExtra;
       emit('comms', { key: 'all' });
@@ -1064,7 +1103,7 @@ export function createGame(options = {}) {
   game.rating = () => {
     const accuracy = game.stats.shots ? game.stats.hits / game.stats.shots : 0;
     let points = 0;
-    points += game.t < 300 ? 3 : game.t < 480 ? 2 : game.t < 720 ? 1 : 0;
+    points += game.t < 270 ? 3 : game.t < 420 ? 2 : game.t < 660 ? 1 : 0;
     points += accuracy > 0.45 ? 2 : accuracy > 0.28 ? 1 : 0;
     points += game.lootValue > 220000 ? 2 : game.lootValue > 140000 ? 1 : 0;
     points += game.stats.damageTaken < 120 ? 2 : game.stats.damageTaken < 260 ? 1 : 0;
@@ -1095,6 +1134,7 @@ export function createGame(options = {}) {
       updateWeapons(dt, input);
       updateGrenades(dt, input);
       updateUse(dt, input);
+      updateTransfers(dt);
       updateWaves(dt);
       updateExtraction(dt);
     } else {

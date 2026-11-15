@@ -839,6 +839,10 @@ export function createView(scene, camera, options = {}) {
         gun.land(event.speed);
         view.shake = Math.min(1, view.shake + event.speed * 0.02);
         break;
+      case 'uplink':
+        // Amber while the data is going out.
+        terminals[event.terminal.index].light.color.set(rgb(0xffb347));
+        break;
       case 'terminal': {
         const terminal = terminals[event.terminal.index];
         terminal.screenMaterial.map = screenDone;
