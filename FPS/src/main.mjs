@@ -6,7 +6,7 @@
 //   ?backend=webgpu  draw with WebGPU instead of WebGL2
 //   ?lang=zh|en      interface language (defaults to the browser's)
 //   ?quality=low|medium|high
-//   ?post=0  ?ssao=0  ?shadows=0   switch single features off
+//   ?post=0  ?ssao=0  ?shadows=0  ?reflect=0  ?dof=0   switch single features off
 //   ?ratio=1         cap on the device pixel ratio (default 1.5)
 //   ?seed=123        replay the same run
 //   ?auto=1          let the stand-in player play
@@ -118,9 +118,11 @@ async function main() {
   status.scene = scene;
   status.camera = camera;
 
+  let focusOn = true;
   /**
    * Picture quality. High: everything. Medium: no contact shading, smaller
-   * shadow maps. Low: no post-processing and no shadows. The address options
+   * shadow maps. Low: no post-processing, no shadows and no mirror image on
+   * the wet ground. The address options
    * can switch single features off on top of that.
    */
   function applyQuality() {
@@ -131,6 +133,9 @@ async function main() {
     renderer.postProcess.ssao = high && !off('ssao');
     renderer.shadowsEnabled = !low && !off('shadows');
     view.setShadowSize(high ? 2048 : 1024);
+    view.setReflections(!low && !off('reflect'));
+    focusOn = high && !off('dof');
+    if (!focusOn) renderer.postProcess.dof = false;
   }
   applyQuality();
 
@@ -208,6 +213,50 @@ async function main() {
 
   newGame();
 
+  // ---- how the picture reacts: focus, and what being hurt does to it ------------------------
+  const BASE = { saturation: 1.04, contrast: 1.07, vignette: 0.28 };
+  renderer.postProcess.dofRadius = 0;
+  let focus = 30,
+    focusIn = 0,
+    hurt = 0,
+    deadFor = 0;
+  /** Note a blow, so the picture flinches: `amount` in health points. */
+  function flinch(amount) {
+    hurt = Math.min(1.2, hurt + 0.25 + amount / 35);
+  }
+  function grade(dt) {
+    const post = renderer.postProcess,
+      p = game.player,
+      playing = mode === 'play';
+    hurt = Math.max(0, hurt - dt * 1.4);
+    deadFor = playing && game.state === 'dead' ? deadFor + dt : 0;
+    // Badly hurt, the colour drains and the edges close in; a fresh blow adds a jolt of both.
+    const low = playing ? Math.max(0, 1 - p.health / 45) : 0,
+      gone = Math.min(1, deadFor / 1.5);
+    post.saturation = BASE.saturation * (1 - Math.min(0.9, low * 0.55 + hurt * 0.25 + gone * 0.9));
+    post.vignette = BASE.vignette + low * 0.3 + hurt * 0.3 + gone * 0.35;
+    post.contrast = BASE.contrast + hurt * 0.12;
+    if (!focusOn) return;
+    post.dof = true;
+    if (!playing) {
+      // Behind a menu the scene goes soft; the title screen keeps it sharp.
+      post.dofFocus = 0.4;
+      post.dofRange = 0.2;
+      post.dofRadius += ((mode === 'title' ? 0 : 5) - post.dofRadius) * Math.min(1, dt * 6);
+      return;
+    }
+    // Focus on whatever is under the crosshair, looked up a few times a second.
+    focusIn -= dt;
+    if (focusIn <= 0) {
+      focusIn = 0.12;
+      focus += (Math.max(1.5, game.sightDistance()) - focus) * 0.5;
+    }
+    post.dofFocus = focus;
+    // Aiming narrows the sharp zone so the weapon and the near ground blur; a blow or a wound smears everything a little.
+    post.dofRange = Math.max(2.5, focus * (1.1 - 0.45 * p.aim));
+    post.dofRadius += (p.aim * 3.2 + hurt * 3 + low * 1.6 + gone * 5 - post.dofRadius) * Math.min(1, dt * 10);
+  }
+
   // ---- one frame ---------------------------------------------------------------------------
   const STEP = 1 / 60;
   function frame(dt) {
@@ -225,6 +274,7 @@ async function main() {
         record.weapon = '';
       }
       for (const event of game.events) {
+        if (event.type === 'playerHit') flinch(event.amount);
         view.handle(event, game);
         hud.handle(event);
         audio.handle(event, game);
@@ -256,6 +306,8 @@ async function main() {
     }
     atmosphere.update(camera, SUNLIGHT);
     audio.update(dt, game, view.helicopter, mode);
+    grade(dt);
+    view.renderReflection(renderer);
     stats.lap('view');
     stats.end(game.aliveCount());
   }
@@ -270,7 +322,11 @@ async function main() {
     onError: fail,
   });
   // For the console and automated checks: draw one extra frame and return what each pass cost (WebGL2 only).
-  stats.measure = () => renderer.measureFrame?.(() => renderer.render(scene, camera));
+  stats.measure = () =>
+    renderer.measureFrame?.(() => {
+      view.renderReflection(renderer);
+      renderer.render(scene, camera);
+    });
   view.warm();
   setMode('title');
   document.querySelector('#boot').classList.add('done');

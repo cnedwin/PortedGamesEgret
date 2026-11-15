@@ -67,7 +67,7 @@ export const GRENADE = { fuse: 2.2, speed: 15, lift: 3.2, radius: 6.5, damage: 1
 
 /**
  * Enemy soldiers. `near` and `far` bound the distance each kind likes to
- * fight from; `burst` is shots per burst, `pause` the rest between bursts,
+ * fight from; `mag` is shots before a reload of `reload` seconds; `burst` is shots per burst, `pause` the rest between bursts,
  * `aim` the chance of a hit at point-blank range.
  */
 export const ENEMIES = {
@@ -82,6 +82,8 @@ export const ENEMIES = {
     pause: [0.8, 1.5],
     damage: 11,
     aim: 0.6,
+    mag: 24,
+    reload: 2.4,
     head: HEADSHOT,
   },
   rush: {
@@ -95,6 +97,8 @@ export const ENEMIES = {
     pause: [0.5, 1.0],
     damage: 8,
     aim: 0.52,
+    mag: 30,
+    reload: 2,
     head: HEADSHOT,
   },
   heavy: {
@@ -108,10 +112,22 @@ export const ENEMIES = {
     pause: [1.3, 2.0],
     damage: 10,
     aim: 0.48,
+    mag: 60,
+    reload: 3.6,
     head: 1.4,
   },
 };
-export const ENEMY_BODY = { radius: 0.36, shoulder: 1.48, headY: 1.63, headRadius: 0.2, eye: 1.6 };
+/** The shape shots are tested against, standing and ducked. */
+export const ENEMY_BODY = {
+  radius: 0.36,
+  shoulder: 1.48,
+  headY: 1.63,
+  headRadius: 0.2,
+  eye: 1.6,
+  duckedShoulder: 0.98,
+  duckedHeadY: 1.1,
+  duckedEye: 1.02,
+};
 
 export const MISSION = {
   introSeconds: 3,

@@ -45,7 +45,7 @@ export function createBot(game, { skill = 1 } = {}) {
       for (const enemy of game.enemies) {
         if (enemy.dead) continue;
         const d = span(enemy.x - p.x, enemy.z - p.z);
-        if (d < foeDistance && d < 60 && game.clearLine(p.x, eyeY, p.z, enemy.x, 1.25, enemy.z)) {
+        if (d < foeDistance && d < 60 && game.clearLine(p.x, eyeY, p.z, enemy.x, enemy.ducked ? 0.8 : 1.25, enemy.z)) {
           foe = enemy;
           foeDistance = d;
         }
@@ -53,7 +53,13 @@ export function createBot(game, { skill = 1 } = {}) {
       const weapon = game.weapons[p.weapon];
       let wantYaw, wantPitch;
       if (foe) {
-        const aimY = foeDistance < 14 * skill ? ENEMY_BODY.headY : 1.15;
+        const aimY = foe.ducked
+          ? foeDistance < 14 * skill
+            ? ENEMY_BODY.duckedHeadY
+            : 0.7
+          : foeDistance < 14 * skill
+            ? ENEMY_BODY.headY
+            : 1.15;
         wantYaw = Math.atan2(-(foe.x - p.x), -(foe.z - p.z));
         wantPitch = Math.atan2(aimY - eyeY, foeDistance) - p.kick;
       }

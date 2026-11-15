@@ -216,7 +216,7 @@ export function createGame(options = {}) {
       if (enemy.dead) continue;
       // Head: a sphere.
       const hx = enemy.x - ox,
-        hy = ENEMY_BODY.headY - oy,
+        hy = (enemy.ducked ? ENEMY_BODY.duckedHeadY : ENEMY_BODY.headY) - oy,
         hz = enemy.z - oz;
       const along = hx * dx + hy * dy + hz * dz;
       if (along > 0 && along < reach + 1) {
@@ -239,7 +239,7 @@ export function createGame(options = {}) {
       const distance = (-b - Math.sqrt(disc)) / a;
       if (distance <= 0 || distance >= reach) continue;
       const y = oy + dy * distance;
-      if (y < 0.02 || y > ENEMY_BODY.shoulder) continue;
+      if (y < 0.02 || y > (enemy.ducked ? ENEMY_BODY.duckedShoulder : ENEMY_BODY.shoulder)) continue;
       if (!best || distance < best.distance) best = { enemy, distance, head: false };
     }
     return best;
@@ -256,6 +256,16 @@ export function createGame(options = {}) {
     out[2] = -Math.cos(yaw) * flat;
     return out;
   }
+
+  const gazeDir = [0, 0, 0];
+  /** How far away the thing under the crosshair is, for focusing the picture. */
+  game.sightDistance = (reach = 150) => {
+    lookDirection(gazeDir);
+    const oy = eyeY(),
+      wall = wallDistance(player.x, oy, player.z, gazeDir[0], gazeDir[1], gazeDir[2], reach),
+      struck = rayEnemies(player.x, oy, player.z, gazeDir[0], gazeDir[1], gazeDir[2], wall);
+    return struck ? struck.distance : wall;
+  };
 
   // ---- hurting the operator --------------------------------------------------------------
   function hurtPlayer(amount, fromX, fromZ) {
@@ -317,6 +327,16 @@ export function createGame(options = {}) {
       homeX: x,
       homeZ: z,
       wanderIn: random.range(2, 6),
+      /** Rounds left before a reload, and seconds of reloading left. */
+      ammo: def.mag,
+      reloading: 0,
+      /** Where the soldier is heading for cover, and how long it will stay down there. */
+      cover: undefined,
+      coverLeft: 0,
+      coverCooldown: random.range(1, 5),
+      /** True while kneeling behind something or changing magazines; the view eases `crouch` towards it. */
+      ducked: false,
+      crouch: 0,
       agent: crowd.addAgent({ position: [x, 0, z], radius: 0.4, speed: def.speed * 0.45, acceleration: 18 }),
     };
     if (alerted) alert(enemy, player.x, player.z);
@@ -345,6 +365,7 @@ export function createGame(options = {}) {
     if (enemy.dead) return false;
     enemy.health -= amount;
     enemy.hurtAgo = 0;
+    if (enemy.health - amount > 0 && enemy.coverCooldown <= 0 && random() < 0.5) seekCover(enemy, random.range(1.5, 3.5));
     alert(enemy, player.x, player.z);
     if (enemy.health > 0) return false;
     enemy.dead = true;
@@ -374,9 +395,52 @@ export function createGame(options = {}) {
     enemy.agent.setTarget(target);
   }
 
+  // ---- cover ------------------------------------------------------------------------------
+  // Places to kneel: beside anything on the ground tall enough to hide behind.
+  const coverSpots = [];
+  for (const b of BOXES) {
+    if (!b.solid || b.h < 0.9 || b.y - b.h / 2 > 0.1 || b.w > 30 || b.d > 30) continue;
+    for (const [x, z] of [
+      [b.x - b.w / 2 - 0.75, b.z],
+      [b.x + b.w / 2 + 0.75, b.z],
+      [b.x, b.z - b.d / 2 - 0.75],
+      [b.x, b.z + b.d / 2 + 0.75],
+    ])
+      if (walkable(x, z)) coverSpots.push({ x, z });
+  }
+  /** Send a soldier to the nearest spot the operator cannot see into; returns whether one was found. */
+  function seekCover(enemy, seconds) {
+    let found;
+    const near = [];
+    for (const spot of coverSpots) {
+      const d = span(spot.x - enemy.x, spot.z - enemy.z);
+      if (d < 13) near.push([d, spot]);
+    }
+    near.sort((a, b) => a[0] - b[0]);
+    for (const [, spot] of near.slice(0, 7))
+      if (!game.clearLine(spot.x, ENEMY_BODY.duckedEye, spot.z, player.x, eyeY(), player.z)) {
+        found = spot;
+        break;
+      }
+    enemy.coverCooldown = 9;
+    if (!found) return false;
+    enemy.cover = found;
+    enemy.coverLeft = seconds;
+    enemy.coverGiveUp = 6;
+    emit('enemyCover', { enemy });
+    return true;
+  }
+  function reloadEnemy(enemy) {
+    enemy.reloading = enemy.def.reload;
+    enemy.burstLeft = 0;
+    emit('enemyReload', { enemy });
+    if (!enemy.cover) seekCover(enemy, 0.5);
+  }
+
   function enemyFire(enemy, distance) {
     const def = enemy.def;
     enemy.firedAgo = 0;
+    if (--enemy.ammo <= 0) reloadEnemy(enemy);
     // Harder to hit from far away, on the move, crouched, or in the first moments of a fight.
     let chance = clamp(def.aim - distance * 0.009, 0.12, def.aim);
     if (player.speed > PLAYER.walk + 0.5) chance *= 0.65;
@@ -438,12 +502,40 @@ export function createGame(options = {}) {
         // Soldiers on guard only notice what is in front of them and not too far off, or right next to them.
         const facing = Math.cos(enemy.yaw) * -dz + Math.sin(enemy.yaw) * -dx;
         if (enemy.aware || distance < 5 || (distance < MISSION.guardSight && facing > distance * 0.25))
-          sees = game.clearLine(enemy.x, ENEMY_BODY.eye, enemy.z, player.x, eyeY() - 0.1, player.z);
+          sees = game.clearLine(
+            enemy.x,
+            enemy.ducked ? ENEMY_BODY.duckedEye : ENEMY_BODY.eye,
+            enemy.z,
+            player.x,
+            eyeY() - 0.1,
+            player.z,
+          );
       }
       if (sees) alert(enemy, player.x, player.z);
       enemy.sees = sees;
     }
     enemy.seenFor = enemy.sees ? enemy.seenFor + dt : 0;
+
+    // Changing magazines, and time spent behind cover.
+    enemy.coverCooldown -= dt;
+    if (enemy.reloading > 0 && (enemy.reloading -= dt) <= 0) {
+      enemy.reloading = 0;
+      enemy.ammo = def.mag;
+    }
+    let atCover = false;
+    if (enemy.cover) {
+      const gap = span(enemy.cover.x - enemy.x, enemy.cover.z - enemy.z);
+      atCover = gap < 0.8;
+      enemy.coverGiveUp -= dt;
+      if (atCover) {
+        agent.stop();
+        enemy.coverLeft -= dt;
+        // Up again once the wait is over and the weapon is loaded: the soldier fights on from here.
+        if (enemy.coverLeft <= 0 && enemy.reloading <= 0) enemy.cover = undefined;
+      } else if (enemy.coverGiveUp <= 0) enemy.cover = undefined;
+    }
+    enemy.ducked = atCover || (enemy.reloading > 0 && enemy.speed < 0.8);
+    enemy.crouch += ((enemy.ducked ? 1 : 0) - enemy.crouch) * Math.min(1, dt * 9);
 
     // Decide where to go.
     enemy.think -= dt;
@@ -456,6 +548,11 @@ export function createGame(options = {}) {
         const wx = enemy.homeX + random.range(-5, 5),
           wz = enemy.homeZ + random.range(-5, 5);
         if (walkable(wx, wz)) walkTo(enemy, wx, wz, def.speed * 0.4);
+      }
+    } else if (enemy.cover) {
+      if (enemy.think <= 0 && !atCover) {
+        enemy.think = 0.4;
+        walkTo(enemy, enemy.cover.x, enemy.cover.z, def.speed * 1.1);
       }
     } else if (enemy.think <= 0) {
       enemy.think = 0.4;
@@ -491,7 +588,7 @@ export function createGame(options = {}) {
     enemy.yaw += clamp(turn, -dt * 7, dt * 7);
 
     // Shoot in bursts once the operator has been in view a moment.
-    if (enemy.sees && enemy.seenFor > 0.45 && player.alive && game.state === 'play') {
+    if (enemy.sees && enemy.seenFor > 0.45 && enemy.reloading <= 0 && !enemy.ducked && player.alive && game.state === 'play') {
       if (enemy.burstLeft > 0) {
         enemy.shotIn -= dt;
         if (enemy.shotIn <= 0) {

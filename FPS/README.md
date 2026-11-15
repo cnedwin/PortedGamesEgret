@@ -22,13 +22,13 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 
 - 两把武器：全自动突击步枪和备弹无限的手枪；另有手雷和绷带。瞄准时散布更小、后坐力更低，移动、跳跃和连发都会让准星张开。
 - 护甲先吸收大部分伤害；生命只会自行恢复到一小截，其余要靠绷带。
-- 三种敌人：保持距离点射的步枪兵、贴脸冲锋的突击兵，以及血厚火力猛的重装兵。爆头伤害更高。守卫没发现你时不会开火，枪声会把附近的人都引来。
+- 三种敌人：保持距离点射的步枪兵、贴脸冲锋的突击兵，以及血厚火力猛的重装兵。爆头伤害更高。他们打空弹匣要换弹，挨打或换弹时会跑到掩体后蹲下，再起身还击。守卫没发现你时不会开火，枪声会把附近的人都引来。
 - 每下载一处终端都会招来一波增援。三处全部完成后直升机起飞，抵达后在停机坪上站满四秒即可撤离。
 - 十个物资箱里有弹药、绷带、防弹插板、手雷和按稀有度分色的贵重物品。结算时按用时、命中率、所受伤害和带出物资的总价值评级。
 
 - Two weapons: an automatic assault rifle and a pistol that never runs out of spare rounds, plus grenades and bandages. Aiming tightens the spread and softens the recoil; moving, jumping and long bursts open the crosshair.
 - Armour takes most of a hit first. Health only comes back a little by itself; the rest takes a bandage.
-- Three kinds of enemy: riflemen who keep their distance and fire bursts, assaulters who rush in close, and heavies with thick armour and a machine gun. Headshots hurt more. Guards do not shoot until they notice you, and gunfire brings everyone nearby.
+- Three kinds of enemy: riflemen who keep their distance and fire bursts, assaulters who rush in close, and heavies with thick armour and a machine gun. Headshots hurt more. They run dry and change magazines, and when hit or reloading they run for cover, kneel behind it, and come up shooting. Guards do not shoot until they notice you, and gunfire brings everyone nearby.
 - Each terminal downloaded brings a wave of reinforcements. After the third the helicopter sets off; once it arrives, stand on the helipad for four seconds to leave.
 - Ten supply crates hold ammunition, bandages, armour plates, grenades and valuables coloured by rarity. The debrief grades the run on time, accuracy, damage taken and the total value carried out.
 
@@ -52,6 +52,10 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 | 场景 · Scenery | 按表面合并成少量网格，世界尺度纹理坐标 · merged into a few meshes per surface, with world-scale texture coordinates |
 | 表面 · Surfaces | 程序生成的颜色贴图与法线贴图，`createStandardMaterial3D` · generated colour and normal maps |
 | 风化：雨痕、墙脚积尘、地面污渍 · Weathering: rain streaks, dirt at the foot of walls, stains on the ground | `createCustomShader3D` 片元钩子，按世界坐标计算 · fragment hook, worked out from world position |
+| 湿地面倒影 · The wet ground's mirror image | `PlanarReflection3D` + 材质的 `reflectionMap` · the material's `reflectionMap` |
+| 雨滴涟漪 · Rings where raindrops land | `createCustomShader3D` 法线钩子 · normal hook |
+| 掉漆与锈蚀 · Chipped paint and rust | `createCustomShader3D` 片元钩子 · fragment hook |
+| 景深与受伤时的画面 · Depth of field and the picture when hurt | 后期处理的景深、饱和度、暗角 · post-processing depth of field, saturation, vignette |
 | 晨雾与光柱 · Morning mist and light shafts | `createAtmosphere3D`，接入后期处理的自定义通道 · through the custom post-processing pass |
 | 曳光弹、弹孔 · Tracers, bullet holes | `InstancedMesh3D` |
 | 枪口火光、尘土、火花、爆炸、水雾 · Muzzle flash, dust, sparks, blasts, mist | `createParticleEmitter3D`，`createPointLight3D` |
@@ -105,7 +109,7 @@ node tools/headless.mjs 5 1       # 让代打玩家打 5 局，种子从 1 开�
 | `?backend=webgpu` | 用 WebGPU 绘制 · draw with WebGPU |
 | `?lang=zh` / `?lang=en` | 界面语言 · interface language |
 | `?quality=low` / `medium` / `high` | 画质 · graphics quality |
-| `?post=0`，`?ssao=0`，`?shadows=0` | 关闭后期处理、环境遮蔽、阴影 · switch off post-processing, ambient occlusion, shadows |
+| `?post=0`，`?ssao=0`，`?shadows=0`，`?reflect=0`，`?dof=0` | 关闭后期处理、环境遮蔽、阴影、地面倒影、景深 · switch off post-processing, ambient occlusion, shadows, the ground's mirror image, depth of field |
 | `?ratio=1` | 限制设备像素比（默认 1.5） · cap the device pixel ratio (default 1.5) |
 | `?seed=123` | 固定随机种子 · fix the random seed |
 | `?auto=1` | 由代打玩家自动游玩 · let the stand-in player play |

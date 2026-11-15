@@ -138,6 +138,19 @@ test('a grenade at the feet hurts, and armour takes its share', () => {
   assert.ok(game.stats.damageTaken > 0);
 });
 
+test('soldiers under fire go to cover, and change magazines when empty', () => {
+  const game = started(3);
+  const events = run(game, 0.3, (input) => (input.fire = true));
+  // Stand in the open and let them shoot.
+  events.push(...run(game, 45));
+  assert.ok(events.some((event) => event.type === 'enemyShot'));
+  assert.ok(
+    events.some((event) => event.type === 'enemyReload' || event.type === 'enemyCover'),
+    'nobody reloaded or took cover',
+  );
+  for (const enemy of game.enemies) assert.ok(enemy.ammo >= 0 && enemy.ammo <= enemy.def.mag);
+});
+
 test('supply crates each hold one supply and one or two valuables', () => {
   const game = createGame({ seed: 5 });
   assert.equal(game.crates.length, PLACES.crates.length);

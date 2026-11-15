@@ -233,25 +233,39 @@ export function createSoldierFactory() {
           orient(legs[1].shin, 0, -0.15 * t);
           return;
         }
-        const pace = Math.min(1, enemy.speed / 3.2);
+        const pace = Math.min(1, enemy.speed / 3.2),
+          down = enemy.crouch,
+          loading = enemy.reloading > 0 ? 1 : 0;
         phase += dt * (3 + enemy.speed * 2.1);
         const swing = Math.sin(phase) * 0.75 * pace;
         root.setPosition(enemy.x, 0, enemy.z);
         orient(root, enemy.yaw);
-        body.setPosition(0, Math.abs(Math.cos(phase)) * 0.045 * pace - 0.02 * pace, 0);
+        // Kneeling drops the hips and folds the legs under them.
+        body.setPosition(0, Math.abs(Math.cos(phase)) * 0.045 * pace - 0.02 * pace - down * 0.4, 0);
         for (const [i, leg] of legs.entries()) {
           const s = i === 0 ? swing : -swing;
-          orient(leg.thigh, 0, s);
+          orient(leg.thigh, 0, s * (1 - down) + down * (i === 0 ? 1.45 : 0.35));
           // The knee bends as the leg comes through.
-          orient(leg.shin, 0, -Math.max(0, -s) * 1.1 - 0.12 * pace);
+          orient(leg.shin, 0, (-Math.max(0, -s) * 1.1 - 0.12 * pace) * (1 - down) - down * (i === 0 ? 1.5 : 1.85));
         }
         if (enemy.hurtAgo < 0.05) flinch = 1;
         flinch *= Math.exp(-dt * 9);
         lean += ((enemy.speed > 3.6 ? -0.22 : -0.05) - lean) * Math.min(1, dt * 6);
         aim += ((enemy.sees ? pitchToPlayer : 0) - aim) * Math.min(1, dt * 8);
         const shake = enemy.firedAgo < 0.06 ? 0.03 : 0;
-        orient(upper, Math.sin(phase) * 0.08 * pace, lean + aim * 0.7 + flinch * 0.3 + shake, flinch * 0.12);
-        orient(head, enemy.sees ? 0 : Math.sin(phase * 0.13 + enemy.id) * 0.5, aim * 0.3 - lean);
+        // Changing magazines: the weapon tips down and to one side, and the head follows the hands.
+        const fiddle = loading * Math.sin(phase * 2.2) * 0.05;
+        orient(
+          upper,
+          Math.sin(phase) * 0.08 * pace + loading * 0.25,
+          lean + aim * 0.7 * (1 - loading) + flinch * 0.3 + shake - down * 0.12 - loading * 0.32,
+          flinch * 0.12 + loading * 0.18 + fiddle,
+        );
+        orient(
+          head,
+          enemy.sees || loading ? -loading * 0.3 : Math.sin(phase * 0.13 + enemy.id) * 0.5,
+          aim * 0.3 * (1 - loading) - lean - loading * 0.3,
+        );
       },
     };
   };

@@ -3,6 +3,7 @@
 // asked once a frame to bring the scene up to date.
 import {
   InstancedMesh3D,
+  PlanarReflection3D,
   Mesh3D,
   Object3D,
   createAmbientLight3D,
@@ -19,6 +20,7 @@ import {
 import { createBuilder, orient, rgb } from './build.mjs';
 import { ENEMY_BODY, MISSION } from './data.mjs';
 import { createGun } from './gun.mjs';
+import { setRain } from './grime.mjs';
 import { PLACES } from './level.mjs';
 import { buildScenery } from './scenery.mjs';
 import { createSoldierFactory } from './soldier.mjs';
@@ -53,7 +55,67 @@ export function createView(scene, camera, options = {}) {
   Object.assign(sun.shadow, { cascades: 3, cascadeDistance: 70, mapSize: options.shadowSize ?? 2048 });
   scene.addChild(sun);
 
-  buildScenery(scene, createSurfaces());
+  const { wet } = buildScenery(scene, createSurfaces());
+
+  // ---- rain: wet ground that mirrors the scene, and streaks falling round the camera -------
+  const GROUND = [0, 1, 0, 0],
+    DETAIL = 2;
+  const mirror = new PlanarReflection3D({ width: 768, height: 432 });
+  mirror.shadows = false;
+  mirror.interval = 2;
+  mirror.layerMask = ~DETAIL;
+  let mirrorOn = true;
+  for (const { material } of wet.materials) {
+    material.reflectionMap = mirror.texture;
+    material.reflectionDistortion = 0.035;
+    material.touch();
+  }
+  /** Switch the mirror image on the wet ground on or off (it costs a second, smaller drawing of the scene). */
+  view.setReflections = (on) => {
+    mirrorOn = on;
+    for (const { material, strength } of wet.materials) material.reflectionStrength = on ? strength : 0;
+  };
+  view.setReflections(true);
+  /** Draw the mirror image; call once a frame before the scene is drawn. */
+  view.renderReflection = (renderer) => {
+    if (mirrorOn) mirror.render(renderer, scene, camera, GROUND, wet.meshes);
+  };
+  const DROPS = 420,
+    RAIN_BOX = 24,
+    RAIN_HEIGHT = 13;
+  const rain = new InstancedMesh3D(
+    createBoxGeometry3D({ width: 1, height: 1, depth: 1 }),
+    createUnlitMaterial3D({ color: 0xc9d4de, opacity: 0.2, alphaMode: 'blend', depthWrite: false, fog: false }),
+    DROPS,
+  );
+  rain.frustumCulled = false;
+  rain.layers = DETAIL;
+  scene.addChild(rain);
+  const drops = Array.from({ length: DROPS }, (_, i) => ({
+    x: ((i * 7919) % 1000) / 1000,
+    z: ((i * 104729) % 1000) / 1000,
+    phase: ((i * 31337) % 1000) / 1000,
+    speed: 11 + (i % 7),
+  }));
+  const dropAt = [0, 0, 0],
+    dropSize = [0.005, 0.6, 0.005],
+    wrap = (v, around) => around + ((((v - around) % RAIN_BOX) + RAIN_BOX * 1.5) % RAIN_BOX) - RAIN_BOX / 2;
+  function updateRain(time, game) {
+    const cx = camera.position[0],
+      cy = camera.position[1],
+      cz = camera.position[2];
+    for (let i = 0; i < DROPS; i++) {
+      const drop = drops[i];
+      // Each streak keeps its place in the world and falls through a box that follows the camera.
+      dropAt[0] = wrap(drop.x * RAIN_BOX, cx);
+      dropAt[2] = wrap(drop.z * RAIN_BOX, cz);
+      dropAt[1] = cy - 4 + RAIN_HEIGHT - ((time * drop.speed + drop.phase * RAIN_HEIGHT) % RAIN_HEIGHT);
+      const hidden = dropAt[1] < 0.2 || game.isIndoors(dropAt[0], dropAt[2]);
+      rain.setTransformAt(i, dropAt, undefined, hidden ? 0.0001 : dropSize);
+    }
+    rain.count = DROPS;
+    setRain(time, 1);
+  }
 
   // Lamps. Indoors they carry the scene; outdoors they only warm the ground at dawn.
   // The renderer lights with a handful of point lights at a time, so only the
@@ -506,6 +568,8 @@ export function createView(scene, camera, options = {}) {
 
   // ---- the weapon in hand ------------------------------------------------------------------
   const gun = createGun(camera);
+  // The weapon and its flash stay out of the ground's mirror image.
+  for (const child of camera.children) child.traverse((node) => void (node.layers = 2));
   view.gun = gun;
   let lastYaw = 0,
     lastPitch = 0,
@@ -654,6 +718,7 @@ export function createView(scene, camera, options = {}) {
     gun.update(dt, game, turn, tilt, playing && game.state !== 'dead' && game.state !== 'won');
 
     updateLights(dt, camera.position[0], camera.position[2]);
+    updateRain(time, game);
     syncSoldiers(game, dt);
     updateTracers(dt);
 

@@ -161,6 +161,8 @@ export function createAudio() {
       osc.start();
       return level;
     };
+    const rain = loop(5200, 'highpass', 0.5, 0),
+      patter = loop(900, 'bandpass', 0.6, 0);
     const wind = loop(420, 'lowpass', 0.4, 0.05),
       water = loop(110, 'lowpass', 0.7, 0.16),
       generators = [hum(50, 0), hum(100, 0), hum(150, 0)],
@@ -187,7 +189,7 @@ export function createAudio() {
       osc.start();
     }
     bedFilter.connect(bed).connect(outGain);
-    return { out: outGain, wind, water, generators, rotor, rotorLow, chopDepth, bed };
+    return { out: outGain, rain, patter, wind, water, generators, rotor, rotorLow, chopDepth, bed };
   }
   let heartbeat = 0;
   /** Follow the game each frame: where the operator is, how hot the fight is, how near the helicopter. */
@@ -197,6 +199,9 @@ export function createAudio() {
       now = context.currentTime,
       indoors = game.isIndoors(p.x, p.z),
       inPlant = indoors && p.x < 16;
+    // Rain: a hiss in the open, a duller drumming on the roof indoors.
+    ambience.rain.level.gain.setTargetAtTime(indoors ? 0.006 : 0.03, now, 0.4);
+    ambience.patter.level.gain.setTargetAtTime(indoors ? 0.07 : 0.012, now, 0.4);
     const gust = 0.045 + 0.03 * Math.sin(now * 0.31) + 0.015 * Math.sin(now * 1.3);
     ambience.wind.level.gain.setTargetAtTime(indoors ? gust * 0.35 : gust, now, 0.3);
     // The spillway is to the north; it grows louder towards the dam.
@@ -425,6 +430,12 @@ export function createAudio() {
         noise({ dur: 0.06, freq: 2400, q: 2, gain: 0.14 });
         tone({ at: 0.07, freq: 1250, dur: 0.07, type: 'square', gain: 0.05 });
         break;
+      case 'enemyReload': {
+        const w = where(event.enemy.x, event.enemy.z);
+        noise({ at: 0.3, dur: 0.05, freq: 2200, q: 3, gain: 0.2 * w.near, pan: w.pan });
+        noise({ at: 1.3, dur: 0.06, freq: 1700, q: 3, gain: 0.24 * w.near, pan: w.pan });
+        break;
+      }
       case 'enemyDown': {
         const w = where(event.enemy.x, event.enemy.z);
         noise({ at: 0.25, dur: 0.14, freq: 300, type: 'lowpass', gain: 0.3 * w.near, pan: w.pan });

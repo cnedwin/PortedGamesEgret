@@ -15,6 +15,8 @@ export function buildScenery(scene, surfaces) {
   // One builder per surface; `plain` has no texture and `glow` is not lit.
   const groups = {};
   for (const name of [...Object.keys(surfaces), 'plain', 'glow']) groups[name] = createBuilder();
+  // Concrete laid flat on the ground is wet like the tarmac, so it is kept apart from the walls.
+  const apron = createBuilder();
   const { concrete, asphalt, container, wall, wood, sandbag, metal, plain, glow } = groups;
 
   const OLIVE = rgb(0x4d5a3c),
@@ -33,9 +35,9 @@ export function buildScenery(scene, surfaces) {
     midZ = (BOUNDS.maxZ + BOUNDS.minZ) / 2;
   asphalt.box(midX, -0.1, midZ, width + 2, 0.2, depth + 2, { tile: 5, skipBottom: true });
   // Concrete aprons in front of the buildings and under the yard.
-  concrete.box(4, 0.006, -5.5, 26, 0.012, 5, { tile: 4, tint: shade(WHITE, 0.9), skipBottom: true });
-  concrete.box(27, 0.007, 21, 14, 0.014, 14, { tile: 4, tint: shade(WHITE, 0.82), skipBottom: true });
-  concrete.box(-24, 0.005, 2, 26, 0.01, 54, { tile: 4, tint: shade(WHITE, 0.78), skipBottom: true });
+  apron.box(4, 0.006, -5.5, 26, 0.012, 5, { tile: 4, tint: shade(WHITE, 0.9), skipBottom: true });
+  apron.box(27, 0.007, 21, 14, 0.014, 14, { tile: 4, tint: shade(WHITE, 0.82), skipBottom: true });
+  apron.box(-24, 0.005, 2, 26, 0.01, 54, { tile: 4, tint: shade(WHITE, 0.78), skipBottom: true });
   // Road lines from the gate to the powerhouse.
   for (let z = 22; z > -4; z -= 3.2) plain.box(1.5, 0.012, z, 0.16, 0.004, 1.6, { tint: shade(WHITE, 0.75), skipBottom: true });
   for (const x of [-1.6, 4.6]) plain.box(x, 0.012, 9, 0.12, 0.004, 28, { tint: shade(YELLOW, 0.8), skipBottom: true });
@@ -666,12 +668,19 @@ export function buildScenery(scene, surfaces) {
 
   // ---- one mesh per surface ----------------------------------------------------------------
   const add = (builder, material, { shadows = true, tangents = true } = {}) => {
-    if (builder.empty) return;
+    if (builder.empty) return undefined;
     const mesh = new Mesh3D(builder.finish({ tangents }), material);
     mesh.castShadow = shadows;
     mesh.receiveShadow = true;
     mesh.frustumCulled = false;
     scene.addChild(mesh);
+    return mesh;
+  };
+  /** The wet ground: meshes that show the mirror image, and their materials. */
+  const wet = { meshes: [], materials: [] };
+  const mirror = (mesh, strength) => {
+    wet.meshes.push(mesh);
+    wet.materials.push({ material: mesh.material, strength });
   };
   const lit = (surface, more) =>
     createStandardMaterial3D({
@@ -683,19 +692,45 @@ export function buildScenery(scene, surfaces) {
       ...more,
     });
   add(concrete, weather(lit(surfaces.concrete, { roughness: 0.95 }), { streaks: 0.75, foot: 0.7, stains: 0.6, tone: 0.35 }));
-  add(asphalt, weather(lit(surfaces.asphalt, { roughness: 0.88 }), { streaks: 0, foot: 0, stains: 0.75, tone: 0.3 }), {
-    shadows: false,
-  });
+  // Rain-wet ground: smooth enough to mirror, with drops ringing across it.
+  mirror(
+    add(
+      asphalt,
+      weather(lit(surfaces.asphalt, { roughness: 0.3 }), { streaks: 0, foot: 0, stains: 0.75, tone: 0.3, rain: true }),
+      { shadows: false },
+    ),
+    0.36,
+  );
+  mirror(
+    add(
+      apron,
+      weather(lit(surfaces.concrete, { roughness: 0.42 }), { streaks: 0, foot: 0, stains: 0.6, tone: 0.3, rain: true }),
+      { shadows: false },
+    ),
+    0.34,
+  );
   add(
     container,
-    weather(lit(surfaces.container, { roughness: 0.6, metallic: 0.35 }), { streaks: 0.45, foot: 0.65, stains: 0.3, tone: 0.25 }),
+    weather(lit(surfaces.container, { roughness: 0.6, metallic: 0.35 }), {
+      streaks: 0.45,
+      foot: 0.65,
+      stains: 0.3,
+      tone: 0.25,
+      wear: 0.62,
+    }),
   );
   add(wall, weather(lit(surfaces.wall, { roughness: 0.93 }), { streaks: 0.7, foot: 0.75, stains: 0.4, tone: 0.3 }));
   add(wood, weather(lit(surfaces.wood, { roughness: 0.85 }), { streaks: 0.2, foot: 0.5, stains: 0.3, tone: 0.25 }));
   add(sandbag, weather(lit(surfaces.sandbag, { roughness: 1 }), { streaks: 0.2, foot: 0.6, stains: 0.2, tone: 0.3 }));
   add(
     metal,
-    weather(lit(surfaces.metal, { roughness: 0.5, metallic: 0.6 }), { streaks: 0.55, foot: 0.5, stains: 0.3, tone: 0.2 }),
+    weather(lit(surfaces.metal, { roughness: 0.5, metallic: 0.6 }), {
+      streaks: 0.55,
+      foot: 0.5,
+      stains: 0.3,
+      tone: 0.2,
+      wear: 0.5,
+    }),
   );
   add(
     plain,
@@ -721,17 +756,23 @@ export function buildScenery(scene, surfaces) {
       tangents: false,
     },
   );
-  add(
-    puddles,
-    createStandardMaterial3D({
-      color: 0x0b0e11,
-      roughness: 0.04,
-      opacity: 0.72,
-      alphaMode: 'blend',
-      depthWrite: false,
-      environmentIntensity: 2.2,
-    }),
-    { shadows: false, tangents: false },
+  mirror(
+    add(
+      puddles,
+      createStandardMaterial3D({
+        color: 0x0b0e11,
+        roughness: 0.03,
+        opacity: 0.78,
+        alphaMode: 'blend',
+        depthWrite: false,
+        environmentIntensity: 2.2,
+      }),
+      {
+        shadows: false,
+        tangents: false,
+      },
+    ),
+    0.95,
   );
 
   // ---- the sun, just clear of the ridge: a bright disc inside a wide soft glow ----------------
@@ -915,4 +956,5 @@ export function buildScenery(scene, surfaces) {
     mesh.receiveShadow = true;
     scene.addChild(mesh);
   }
+  return { wet };
 }
