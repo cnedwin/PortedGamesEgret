@@ -157,7 +157,6 @@ export function createInput(canvas, touchRoot, options = {}) {
     event.preventDefault();
   });
   addEventListener('mouseup', (event) => mouseButtons.delete(event.button));
-  canvas.addEventListener('contextmenu', (event) => event.preventDefault());
   canvas.addEventListener(
     'wheel',
     (event) => {

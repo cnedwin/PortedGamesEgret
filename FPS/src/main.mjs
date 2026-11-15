@@ -22,6 +22,10 @@ import { createStats } from './stats.mjs';
 import { pickLanguage } from './text.mjs';
 import { createView } from './view.mjs';
 
+const gameArea = document.querySelector('#game');
+// Cancel the browser menu over both the canvas and its controls. Mouse buttons reach the input handler as usual.
+gameArea.addEventListener('contextmenu', (event) => event.preventDefault());
+
 const params = new URLSearchParams(location.search);
 const useWebGPU = params.get('backend') === 'webgpu';
 const backend = await (useWebGPU ? import('@egret/engine/webgpu/world3d') : import('@egret/engine/webgl2/world3d'));
@@ -108,7 +112,7 @@ async function main() {
   });
   renderer.postProcess.custom = atmosphere.post;
   const SUNLIGHT = [-0.72, -0.4, -0.56];
-  const stats = createStats(renderer, params.get('stats') === '1');
+  const stats = createStats(renderer, params.get('stats') === '1', gameArea);
   status.stats = stats;
 
   const settings = loadSettings();
@@ -179,7 +183,11 @@ async function main() {
     if (!auto) input.capture();
   }
 
-  const hud = createHud(document.querySelector('#ui'), settings, {
+  function pause() {
+    if (mode === 'play' && game.state !== 'dead' && game.state !== 'won') setMode('pause');
+  }
+
+  const hud = createHud(document.querySelector('#ui'), gameArea, settings, {
     deploy,
     restart: deploy,
     selectWeapon(weapon) {
@@ -207,9 +215,7 @@ async function main() {
     onBag() {
       if (mode === 'play') hud.toggleBag();
     },
-    onPause() {
-      if (mode === 'play' && game.state !== 'dead' && game.state !== 'won') setMode('pause');
-    },
+    onPause: pause,
     onTouch() {
       hud.touchMode = true;
       hud.setTouch(mode === 'play');
@@ -218,6 +224,12 @@ async function main() {
   hud.touchMode = input.touchMode;
   input.sensitivity = settings.sensitivity;
   input.invertY = settings.invertY;
+  let wasFullscreen = document.fullscreenElement === gameArea;
+  document.addEventListener('fullscreenchange', () => {
+    const fullscreen = document.fullscreenElement === gameArea;
+    if (wasFullscreen && !fullscreen && !input.touchMode && !auto) pause();
+    wasFullscreen = fullscreen;
+  });
   // Clicking the picture while playing takes the mouse back if the browser let go of it.
   canvas.addEventListener('click', () => {
     if (mode === 'play' && !input.locked && !auto) input.capture();

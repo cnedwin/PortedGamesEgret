@@ -20,6 +20,7 @@ Operation Cutoff is an independently developed first-person tactical shooter dem
 | 绷带 · Bandage | Q | 绷带 · HEAL |
 | 跳跃、奔跑、蹲下 · Jump, sprint, crouch | Space，Shift，C / Ctrl | 跳、摇杆推到底、蹲 · JUMP, push the stick fully, DUCK |
 | 暂停 · Pause | Esc / P | 暂停 · II |
+| 全屏 · Fullscreen | 标题或暂停菜单 · Title or pause menu | 设置 · Settings |
 
 触屏可以一边移动一边开火。摇杆推到底进入奔跑，开火时回到步行。开镜会降低滑动的转向速度。
 

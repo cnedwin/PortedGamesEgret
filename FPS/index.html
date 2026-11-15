@@ -23,10 +23,12 @@
   </script>
 </head>
 <body>
-  <canvas id="stage" tabindex="0" aria-label="断流行动：第一人称射击。WASD 移动，鼠标瞄准，左键开火，右键瞄准，F 互动。 / Operation Cutoff: a first-person shooter. W A S D to move, mouse to look, left button to fire, right button to aim, F to use."></canvas>
-  <div id="ui"></div>
-  <div id="boot"><div class="boot-mark">断流行动</div><div class="boot-sub">OPERATION CUTOFF</div><div class="boot-bar"><i></i></div></div>
-  <div id="error" role="alert" hidden></div>
+  <main id="game">
+    <canvas id="stage" tabindex="0" aria-label="断流行动：第一人称射击。WASD 移动，鼠标瞄准，左键开火，右键瞄准，F 互动。 / Operation Cutoff: a first-person shooter. W A S D to move, mouse to look, left button to fire, right button to aim, F to use."></canvas>
+    <div id="ui"></div>
+    <div id="boot"><div class="boot-mark">断流行动</div><div class="boot-sub">OPERATION CUTOFF</div><div class="boot-bar"><i></i></div></div>
+    <div id="error" role="alert" hidden></div>
+  </main>
   <script type="module" src="./src/main.mjs"></script>
 </body>
 </html>

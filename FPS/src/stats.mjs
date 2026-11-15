@@ -9,7 +9,7 @@ const SMOOTH = 0.1; // share of each new sample in the running averages
  * just drawn. With `visible` false the numbers are still gathered (for
  * automated checks) but nothing is added to the page.
  */
-export function createStats(renderer, visible = true) {
+export function createStats(renderer, visible = true, root = document.body) {
   const average = { frame: 0, rules: 0, view: 0, draw: 0 };
   const stats = { average, renderer, drawCalls: 0, triangles: 0, slowest: 0, enemies: 0 };
   let box,
@@ -19,7 +19,7 @@ export function createStats(renderer, visible = true) {
   if (visible) {
     box = document.createElement('pre');
     box.className = 'frame-stats';
-    document.body.appendChild(box);
+    root.appendChild(box);
   }
   const blend = (key, value) => {
     average[key] += (value - average[key]) * SMOOTH;
