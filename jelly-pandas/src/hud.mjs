@@ -30,8 +30,11 @@ const DELTA = {
 
 /** Build the interface inside `root`. `options.lang` is "en" or "zh"; the browser's language is used otherwise. */
 export function createHud(root, options = {}) {
-  let lang = options.lang ?? ((navigator.language ?? 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en');
+  let lang = options.lang === 'zh' || options.lang === 'en'
+    ? options.lang
+    : ((navigator.language ?? 'en').toLowerCase().startsWith('zh') ? 'zh' : 'en');
   const zh = () => lang === 'zh';
+  document.documentElement.lang = zh() ? 'zh-CN' : 'en';
   const t = (key) => TEXT[key]?.[lang] ?? key;
   const name = (def) => def[lang] ?? def.en;
   const describe = (def) => (zh() ? def.dzh : def.den);
