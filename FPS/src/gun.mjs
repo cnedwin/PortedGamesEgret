@@ -63,9 +63,9 @@ function rifleShapes() {
   // The forearms and gloves that hold it.
   const hands = createBuilder();
   hands.box(0.02, -0.085, 0.085, 0.062, 0.07, 0.08, { tint: GLOVE });
-  hands.box(0.085, -0.16, 0.23, 0.07, 0.07, 0.3, { tint: SLEEVE, yaw: -0.36, pitch: -0.45 });
+  hands.limb([0.03, -0.1, 0.11], [0.2, -0.3, 0.4], 0.04, 0.05, { tint: SLEEVE });
   hands.box(-0.006, -0.04, -0.3, 0.066, 0.05, 0.09, { tint: GLOVE });
-  hands.box(-0.13, -0.17, -0.13, 0.056, 0.056, 0.42, { tint: SLEEVE, yaw: 0.6, pitch: -0.62 });
+  hands.limb([-0.01, -0.06, -0.29], [-0.16, -0.36, -0.12], 0.036, 0.048, { tint: SLEEVE });
   return { body: body.finish(), magazine: magazine.finish(), hands: hands.finish(), magazineAt: [0, -0.035, -0.07] };
 }
 function pistolShapes() {

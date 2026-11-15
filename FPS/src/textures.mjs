@@ -171,7 +171,7 @@ export function createSurfaces() {
       },
       (u, v, h) => {
         const weave = noise(u, v, 128, 3);
-        return tint([0.6, 0.55, 0.41], 0.62 + h * 0.36 + weave * 0.1);
+        return tint([0.56, 0.52, 0.4], 0.74 + h * 0.24 + weave * 0.08);
       },
       9,
     ),

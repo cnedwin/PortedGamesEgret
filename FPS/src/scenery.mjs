@@ -4,6 +4,7 @@
 import { Mesh3D, createGeometry3D, createStandardMaterial3D, createUnlitMaterial3D } from '@egret/engine/world3d';
 import { createBuilder, rgb } from './build.mjs';
 import { BOUNDS, BOXES, PLACES } from './level.mjs';
+import { weather } from './grime.mjs';
 import { canvasTexture, dotTexture } from './textures.mjs';
 
 const WHITE = [1, 1, 1];
@@ -118,7 +119,7 @@ export function buildScenery(scene, surfaces) {
         break;
       }
       case 'sandbag':
-        sandbag.box(b.x, b.y, b.z, b.w, b.h, b.d, { tile: 1.15 });
+        sandbag.box(b.x, b.y, b.z, b.w, b.h, b.d, { tile: 0.95 });
         break;
       case 'booth':
         wall.box(b.x, 0.55, b.z, b.w, 1.1, b.d, { tile: 3, tint: rgb(0x8d9a8e) });
@@ -227,6 +228,56 @@ export function buildScenery(scene, surfaces) {
         metal.cylinder(b.x, b.y, b.z, 2, b.h, { tile: 3, tint: rgb(0x7f8a8c), sides: 20 });
         plain.box(b.x, b.y - b.h / 2 - 0.1, b.z, 3.4, 0.2, 3.4, { tint: rgb(0x5b6166) });
         break;
+      case 'barrel':
+        metal.cylinder(b.x, b.y, b.z, 0.29, b.h, { tile: 1.2, tint, sides: 12 });
+        for (const ring of [0.28, 0.6])
+          plain.cylinder(b.x, ring, b.z, 0.3, 0.03, { tint: shade(tint, 0.6), sides: 12, caps: false });
+        break;
+      case 'pallet':
+        for (const dy of [0.05, 0.37])
+          for (let slat = -0.5; slat <= 0.5; slat += 0.25)
+            wood.box(b.x + slat, dy, b.z, 0.16, 0.035, b.d, { tile: 0.8, tint: shade(WHITE, 0.8) });
+        for (const side of [-0.5, 0, 0.5])
+          wood.box(b.x + side, 0.21, b.z, 0.1, 0.28, b.d, { tile: 0.8, tint: shade(WHITE, 0.7) });
+        break;
+      case 'tyres':
+        for (let i = 0; i < 3; i++)
+          plain.cylinder(b.x + (i % 2) * 0.05, 0.125 + i * 0.25, b.z, 0.4, 0.24, { tint: RUBBER, sides: 14 });
+        break;
+      case 'reel':
+        for (const side of [-0.4, 0.4])
+          wood.cylinder(b.x + side, 0.65, b.z, 0.65, 0.07, { axis: 'x', tile: 1, sides: 16, tint: shade(WHITE, 0.85) });
+        plain.cylinder(b.x, 0.65, b.z, 0.36, 0.74, { axis: 'x', sides: 14, tint: rgb(0x1d2022), caps: false });
+        break;
+      case 'forklift':
+        metal.box(b.x, 0.75, b.z + 0.3, 1.15, 0.9, 1.7, { tile: 1.5, tint: rgb(0xc98a1a) });
+        plain.box(b.x, 1.75, b.z + 0.5, 1.05, 0.08, 1.2, { tint: DARK });
+        for (const sx of [-0.5, 0.5])
+          for (const sz of [-0.05, 1.05]) plain.box(b.x + sx, 1.45, b.z + sz, 0.06, 0.6, 0.06, { tint: DARK });
+        for (const sx of [-0.3, 0.3]) {
+          plain.box(b.x + sx, 1.05, b.z - 0.62, 0.08, 2.1, 0.1, { tint: DARK });
+          plain.box(b.x + sx, 0.12, b.z - 1.05, 0.1, 0.05, 0.9, { tint: STEEL });
+        }
+        for (const sx of [-0.6, 0.6])
+          for (const sz of [-0.3, 0.9])
+            plain.cylinder(b.x + sx, 0.28, b.z + sz, 0.28, 0.2, { axis: 'x', tint: RUBBER, sides: 12 });
+        break;
+      case 'penstock':
+        metal.cylinder(b.x, b.y, -28.2, 1.05, 3.9, { axis: 'z', tile: 2.2, tint: rgb(0x5f7a84), sides: 20, caps: false });
+        for (const dz of [-1.2, 0.6])
+          plain.cylinder(b.x, b.y, -28.2 + dz, 1.13, 0.16, { axis: 'z', tint: rgb(0x3a4a50), sides: 20 });
+        concrete.box(b.x, 0.7, -28.2, 2.2, 1.4, 1.2, { tile: 2, tint: shade(WHITE, 0.8) });
+        break;
+      case 'tower': {
+        plain.box(b.x, b.y, b.z, 0.22, b.h, 0.22, { tint: rgb(0x5b6166) });
+        for (let y = 1; y < b.h; y += 1.6) plain.box(b.x, y, b.z, 0.5, 0.05, 0.5, { tint: rgb(0x5b6166) });
+        plain.box(b.x, b.h + 0.1, b.z, 1.6, 0.12, 0.3, { tint: DARK });
+        for (const dx of [-0.55, 0, 0.55]) {
+          plain.box(b.x + dx, b.h + 0.35, b.z, 0.42, 0.34, 0.2, { tint: DARK });
+          glow.box(b.x + dx, b.h + 0.35, b.z + (b.z > 0 ? -0.11 : 0.11), 0.34, 0.26, 0.02, { tint: [2.2, 2, 1.6] });
+        }
+        break;
+      }
       case 'supply':
         // Supply crates open, so the view draws them itself.
         break;
@@ -293,6 +344,160 @@ export function buildScenery(scene, surfaces) {
     mesh.frustumCulled = false;
     scene.addChild(mesh);
   }
+
+  // ---- fittings on the buildings: frames, pipes, lamps, vents ---------------------------------
+  const FRAME = rgb(0x3b4246);
+  /** A steel frame round an opening in a wall that runs along X (`alongX`) or along Z. */
+  const frame = (x, z, width, sill, top, alongX, thick = 0.5) => {
+    const side = (offset) => (alongX ? [x + offset, z] : [x, z + offset]);
+    for (const offset of [-width / 2, width / 2]) {
+      const [fx, fz] = side(offset);
+      plain.box(fx, (sill + top) / 2, fz, alongX ? 0.1 : thick + 0.08, top - sill, alongX ? thick + 0.08 : 0.1, { tint: FRAME });
+    }
+    plain.box(x, top + 0.05, z, alongX ? width + 0.2 : thick + 0.08, 0.1, alongX ? thick + 0.08 : width + 0.2, { tint: FRAME });
+    if (sill > 0) {
+      plain.box(x, sill - 0.03, z, alongX ? width + 0.2 : thick + 0.16, 0.06, alongX ? thick + 0.16 : width + 0.2, {
+        tint: FRAME,
+      });
+      // A window: a bar across and one upright.
+      plain.box(x, (sill + top) / 2, z, alongX ? width : 0.05, 0.05, alongX ? 0.05 : width, { tint: FRAME });
+      plain.box(x, (sill + top) / 2, z, 0.05, top - sill, 0.05, { tint: FRAME });
+    }
+  };
+  // Powerhouse: doors and windows.
+  frame(-2, -8, 3.6, 0, 3.4, true);
+  frame(11, -8, 2.2, 0, 2.4, true);
+  frame(-8, -16, 2.2, 0, 2.4, false);
+  frame(-8, -21.5, 2.4, 1.1, 2.3, false);
+  frame(16, -12, 2.2, 0, 2.4, false);
+  frame(16, -20, 2.4, 1.1, 2.3, false);
+  // Office block.
+  frame(32, 2, 2.2, 0, 2.4, true, 0.4);
+  frame(26, 2, 2.2, 1, 2.2, true, 0.4);
+  frame(22, -3.5, 2.2, 0, 2.4, false, 0.4);
+  frame(22, -14, 2.6, 1, 2.2, false, 0.4);
+  frame(28.5, -9, 2.2, 0, 2.4, true, 0.3);
+  // The roller door's housing, and striped posts either side of it.
+  metal.box(-2, 3.75, -7.6, 4.2, 0.6, 0.5, { tile: 2, tint: rgb(0x566067) });
+  for (const dx of [-2.2, 2.2])
+    for (let band = 0; band < 5; band++)
+      plain.cylinder(-2 + dx, 0.13 + band * 0.26, -7.3, 0.11, 0.26, { tint: band % 2 ? rgb(0x18191b) : YELLOW, sides: 8 });
+  // A row of high windows along the powerhouse front, lit from inside.
+  for (let x = -6; x <= 14; x += 2.5) {
+    glow.box(x, 6.4, -7.74, 1.7, 0.8, 0.02, { tint: [0.5, 0.42, 0.26] });
+    plain.box(x, 6.4, -7.72, 1.9, 1, 0.04, { tint: FRAME });
+  }
+  // Eaves, downpipes at the corners, and vents on the roofs.
+  plain.box(4, 8.02, -7.55, 25.4, 0.14, 0.5, { tint: rgb(0x3a4146) });
+  for (const [px, pz] of [
+    [-8.3, -7.7],
+    [16.3, -7.7],
+    [21.75, 2.25],
+    [36.25, 2.25],
+  ])
+    plain.cylinder(px, pz < 0 ? 4 : 2, pz, 0.07, pz < 0 ? 8 : 4, { tint: rgb(0x4a5258), sides: 8 });
+  for (const [vx, vz] of [
+    [-3, -14],
+    [5, -20],
+    [12, -13],
+  ]) {
+    metal.box(vx, 8.75, vz, 1.6, 0.7, 1.6, { tile: 1.5, tint: rgb(0x6d777c) });
+    plain.cylinder(vx, 9.3, vz, 0.55, 0.4, { tint: rgb(0x3a4146), sides: 12 });
+  }
+  for (const [ax, az] of [
+    [26, -17],
+    [32, -3],
+  ]) {
+    metal.box(ax, 4.6, az, 1.3, 0.8, 0.9, { tile: 1.2, tint: rgb(0x8a9094) });
+    plain.cylinder(ax, 4.62, az + 0.46, 0.3, 0.03, { axis: 'z', tint: DARK, sides: 12 });
+  }
+  // A radio mast and dish on the office roof.
+  plain.cylinder(34, 7.3, -17.5, 0.05, 6, { tint: rgb(0x8a9094), sides: 6 });
+  plain.cylinder(33.6, 5.4, -17.5, 0.55, 0.12, { axis: 'x', top: 0.1, tint: rgb(0xb9bfc2), sides: 14 });
+  for (const y of [6.2, 7.8, 9.4]) plain.box(34, y, -17.5, 0.5, 0.03, 0.03, { tint: rgb(0x8a9094) });
+  // Wall lamps over the doors (lit heads only; the light comes from the lamps nearby).
+  for (const [lx, ly, lz, ax] of [
+    [11, 2.9, -7.6, 0],
+    [-8.4, 2.9, -16, 1],
+    [16.4, 2.9, -12, 1],
+    [32, 2.9, 2.35, 0],
+    [21.65, 2.9, -3.5, 1],
+  ]) {
+    plain.box(lx, ly, lz, ax ? 0.2 : 0.36, 0.14, ax ? 0.36 : 0.2, { tint: DARK });
+    glow.box(lx, ly - 0.08, lz, ax ? 0.14 : 0.3, 0.03, ax ? 0.3 : 0.14, { tint: [1.6, 1.3, 0.8] });
+  }
+  // Cable trays and conduit along the powerhouse's inside walls, and a gantry rail overhead.
+  plain.box(4, 4.6, -25.6, 23, 0.1, 0.35, { tint: rgb(0x4a5258) });
+  plain.box(-7.6, 4.6, -17, 0.35, 0.1, 17, { tint: rgb(0x4a5258) });
+  for (const gz of [-12, -22]) metal.box(4, 7.2, gz, 23.4, 0.4, 0.3, { tile: 2, tint: rgb(0xb58a1e) });
+  metal.box(6, 7.05, -17, 0.5, 0.5, 10.4, { tile: 2, tint: rgb(0xb58a1e) });
+  plain.box(6, 6.3, -17, 0.06, 1.1, 0.06, { tint: DARK });
+  plain.box(6, 5.7, -17, 0.3, 0.25, 0.3, { tint: rgb(0x8a2a20) });
+
+  // ---- wire along the top of the compound wall --------------------------------------------
+  for (const [x0, z0, x1, z1] of [
+    [BOUNDS.minX - 0.5, BOUNDS.minZ, BOUNDS.minX - 0.5, BOUNDS.maxZ],
+    [BOUNDS.maxX + 0.5, BOUNDS.minZ, BOUNDS.maxX + 0.5, BOUNDS.maxZ],
+    [BOUNDS.minX, BOUNDS.maxZ + 0.5, BOUNDS.maxX, BOUNDS.maxZ + 0.5],
+  ]) {
+    const length = Math.hypot(x1 - x0, z1 - z0),
+      alongX = x0 !== x1;
+    for (let d = 0; d <= length; d += 3.5)
+      plain.box(x0 + ((x1 - x0) * d) / length, 4.75, z0 + ((z1 - z0) * d) / length, 0.07, 0.8, 0.07, { tint: FRAME });
+    for (const y of [4.6, 4.85, 5.1])
+      plain.box((x0 + x1) / 2, y, (z0 + z1) / 2, alongX ? length : 0.025, 0.025, alongX ? 0.025 : length, {
+        tint: rgb(0x8a9094),
+      });
+  }
+
+  // ---- power lines leaving the transformers for a pylon beyond the wall ---------------------
+  const pylon = (x, z, height) => {
+    for (const [dx, dz] of [
+      [-1, -1],
+      [1, -1],
+      [-1, 1],
+      [1, 1],
+    ])
+      plain.box(x + dx * 0.9, height / 2, z + dz * 0.9, 0.16, height, 0.16, {
+        tint: rgb(0x6d777c),
+        roll: -dx * 0.045,
+        pitch: dz * 0.045,
+      });
+    for (let y = 3; y < height; y += 3) plain.box(x, y, z, 1.9 - y * 0.05, 0.08, 1.9 - y * 0.05, { tint: rgb(0x6d777c) });
+    for (const y of [height - 1, height - 4]) plain.box(x, y, z, 7, 0.14, 0.2, { tint: rgb(0x6d777c) });
+  };
+  pylon(46, -22, 20);
+  pylon(70, 10, 22);
+  for (const dx of [-3, 0, 3]) {
+    plain.box(32.7 + dx * 0.3, 10.8, -22.3, 27.5, 0.03, 0.03, { tint: DARK, roll: 0.59 });
+    plain.box(58 + dx * 0.2, 19.6, -6, 0.03, 0.03, 40, { tint: DARK, yaw: -0.64, pitch: 0.03 });
+  }
+
+  // ---- small things on the ground: drain covers, cones, kerbs ------------------------------
+  for (const [x, z] of [
+    [1.5, 20],
+    [-8, 2],
+    [14, 12],
+    [22, -6],
+    [-20, 21],
+  ]) {
+    plain.cylinder(x, 0.012, z, 0.42, 0.01, { tint: rgb(0x2a2d2f), sides: 14 });
+    plain.cylinder(x, 0.016, z, 0.3, 0.006, { tint: rgb(0x1b1d1f), sides: 10 });
+  }
+  for (const [x, z] of [
+    [-1.2, 23.4],
+    [4.4, 21],
+    [19.5, 17.5],
+    [23.5, 14.2],
+    [-11, 12.8],
+    [8.4, -5.6],
+  ]) {
+    plain.box(x, 0.02, z, 0.36, 0.04, 0.36, { tint: rgb(0x1b1d1f) });
+    plain.cylinder(x, 0.3, z, 0.14, 0.56, { top: 0.03, sides: 10, tint: rgb(0xd4541c) });
+    plain.cylinder(x, 0.34, z, 0.105, 0.1, { top: 0.085, sides: 10, tint: rgb(0xe8e4d8), caps: false });
+  }
+  // Kerbs along the road from the gate.
+  for (const x of [-2.4, 5.4]) concrete.box(x, 0.07, 10, 0.3, 0.14, 26, { tile: 1.5, tint: shade(WHITE, 0.9) });
 
   // ---- trees: dark firs beyond the wall and a few inside it ---------------------------------
   const fir = (x, z, size) => {
@@ -361,14 +566,33 @@ export function buildScenery(scene, surfaces) {
       roughness: 0.9,
       ...more,
     });
-  add(concrete, lit(surfaces.concrete, { roughness: 0.95 }));
-  add(asphalt, lit(surfaces.asphalt, { roughness: 0.88 }), { shadows: false });
-  add(container, lit(surfaces.container, { roughness: 0.6, metallic: 0.35 }));
-  add(wall, lit(surfaces.wall, { roughness: 0.93 }));
-  add(wood, lit(surfaces.wood, { roughness: 0.85 }));
-  add(sandbag, lit(surfaces.sandbag, { roughness: 1 }));
-  add(metal, lit(surfaces.metal, { roughness: 0.5, metallic: 0.6 }));
-  add(plain, createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.8 }), { tangents: false });
+  add(concrete, weather(lit(surfaces.concrete, { roughness: 0.95 }), { streaks: 0.75, foot: 0.7, stains: 0.6, tone: 0.35 }));
+  add(asphalt, weather(lit(surfaces.asphalt, { roughness: 0.88 }), { streaks: 0, foot: 0, stains: 0.75, tone: 0.3 }), {
+    shadows: false,
+  });
+  add(
+    container,
+    weather(lit(surfaces.container, { roughness: 0.6, metallic: 0.35 }), { streaks: 0.45, foot: 0.65, stains: 0.3, tone: 0.25 }),
+  );
+  add(wall, weather(lit(surfaces.wall, { roughness: 0.93 }), { streaks: 0.7, foot: 0.75, stains: 0.4, tone: 0.3 }));
+  add(wood, weather(lit(surfaces.wood, { roughness: 0.85 }), { streaks: 0.2, foot: 0.5, stains: 0.3, tone: 0.25 }));
+  add(sandbag, weather(lit(surfaces.sandbag, { roughness: 1 }), { streaks: 0.2, foot: 0.6, stains: 0.2, tone: 0.3 }));
+  add(
+    metal,
+    weather(lit(surfaces.metal, { roughness: 0.5, metallic: 0.6 }), { streaks: 0.55, foot: 0.5, stains: 0.3, tone: 0.2 }),
+  );
+  add(
+    plain,
+    weather(createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.8 }), {
+      streaks: 0.25,
+      foot: 0.4,
+      stains: 0.2,
+      tone: 0.2,
+    }),
+    {
+      tangents: false,
+    },
+  );
   add(glow, createUnlitMaterial3D({ color: 0xffffff, vertexColors: true, toneMapped: false }), {
     shadows: false,
     tangents: false,
@@ -449,8 +673,91 @@ export function buildScenery(scene, surfaces) {
     );
     scene.addChild(sign);
   };
+  // ---- sign plates and container markings ----------------------------------------------------
+  /** A painted plate: `style` is 'plate' (white on green), 'warn' (black on yellow) or 'mark' (white lettering only). */
+  const plate = (lines, style, width, height) =>
+    canvasTexture(256, Math.round((256 * height) / width), (c, w, h) => {
+      c.clearRect(0, 0, w, h);
+      if (style !== 'mark') {
+        c.fillStyle = style === 'warn' ? '#d9a520' : '#22463a';
+        c.fillRect(0, 0, w, h);
+        c.strokeStyle = style === 'warn' ? '#141414' : '#e6e2d4';
+        c.lineWidth = 6;
+        c.strokeRect(7, 7, w - 14, h - 14);
+      }
+      c.fillStyle = style === 'warn' ? '#141414' : 'rgba(238, 234, 220, 0.92)';
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      lines.forEach((line, i) => {
+        const size = Math.min((h / lines.length) * (i === 0 ? 0.62 : 0.4), (w * 1.7) / Math.max(4, line.length));
+        c.font = `bold ${Math.round(size)}px "Microsoft YaHei", "PingFang SC", "Noto Sans SC", Arial, sans-serif`;
+        c.fillText(line, w / 2, (h * (i + 0.5)) / lines.length + (i === 0 ? 4 : -2));
+      });
+      // Weathering: scratches through the paint.
+      c.globalCompositeOperation = 'destination-out';
+      for (let i = 0; i < 120; i++)
+        c.fillRect(Math.random() * w, Math.random() * h, 1 + Math.random() * 5, 1 + Math.random() * 2);
+    });
+  /** Put copies of one painted plate on walls: each place is [x, y, z, yaw]. */
+  const signs = (lines, style, width, height, places) => {
+    const texture = plate(lines, style, width, height);
+    if (!texture) return;
+    const builder = createBuilder();
+    for (const [x, y, z, yaw] of places) builder.box(x, y, z, width, height, 0.02, { fit: true, yaw });
+    const mesh = new Mesh3D(
+      builder.finish(),
+      createStandardMaterial3D({
+        color: 0xffffff,
+        map: texture,
+        alphaMode: style === 'mark' ? 'blend' : 'opaque',
+        depthWrite: style !== 'mark',
+        roughness: 0.7,
+      }),
+    );
+    mesh.receiveShadow = true;
+    scene.addChild(mesh);
+  };
+  const EAST = Math.PI / 2,
+    WEST = -Math.PI / 2,
+    NORTH = Math.PI;
+  signs(['发电厂房', 'POWERHOUSE'], 'plate', 2.4, 1, [
+    [11, 3.6, -7.72, 0],
+    [-8.28, 3.6, -16, WEST],
+  ]);
+  signs(['管理楼', 'ADMIN BLOCK'], 'plate', 2, 0.85, [
+    [32, 3.3, 2.22, 0],
+    [21.78, 3.3, -3.5, WEST],
+  ]);
+  signs(['高压危险', 'DANGER  HIGH VOLTAGE'], 'warn', 1.3, 0.75, [
+    [16.28, 1.9, -23.6, EAST],
+    [16.28, 1.9, -16.2, EAST],
+    [15.72, 1.9, -15.6, WEST],
+    [-7.72, 1.9, -12, EAST],
+  ]);
+  signs(['管制区域  禁止入内', 'RESTRICTED AREA'], 'warn', 2.2, 0.8, [
+    [5.5, 2.2, 25.98, NORTH],
+    [-37.96, 2.4, 26, EAST],
+    [37.96, 2.4, 12, WEST],
+  ]);
+  signs(['撤离点', 'EXTRACTION'], 'plate', 1.8, 0.8, [[37.96, 2.6, 21, WEST]]);
+  signs(['货场', 'CARGO YARD'], 'plate', 2, 0.85, [[-37.96, 4, 13, EAST]]);
+  // Owner codes on the long sides of the containers.
+  const codes = ['QLHU 204817 3', 'TKRU 771305 0', 'MSDU 418296 5'].map(() => []);
+  let which = 0;
+  for (const b of BOXES) {
+    if (b.kind !== 'container') continue;
+    const list = codes[which++ % codes.length],
+      y = b.y + 0.75;
+    if (b.along === 'x')
+      list.push([b.x + b.w / 2 - 1.3, y, b.z + b.d / 2 + 0.015, 0], [b.x - b.w / 2 + 1.3, y, b.z - b.d / 2 - 0.015, NORTH]);
+    else list.push([b.x + b.w / 2 + 0.015, y, b.z - b.d / 2 + 1.3, EAST], [b.x - b.w / 2 - 0.015, y, b.z + b.d / 2 - 1.3, WEST]);
+  }
+  ['QLHU 204817 3', 'TKRU 771305 0', 'MSDU 418296 5'].forEach((code, i) =>
+    signs([code, '22G1   MAX 30480 KG'], 'mark', 1.9, 0.55, codes[i]),
+  );
+
   stencil('A', -37.96, 2.6, 13, Math.PI / 2);
-  stencil('B', -2, 5.6, -7.72, 0, 3);
+  stencil('B', 4.6, 4.2, -7.72, 0, 2.6);
   stencil('C', 21.76, 2.9, -8.5, -Math.PI / 2);
 
   // ---- the helipad mark ------------------------------------------------------------------

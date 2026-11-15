@@ -96,6 +96,17 @@ async function main() {
     ssaoRadius: 0.6,
     ssaoIntensity: 1,
   });
+  // Mist lying in the valley and shafts of low sunlight through it.
+  const atmosphere = backend.createAtmosphere3D({
+    fogColor: 0xcfb7a2,
+    fogDensity: 0.0065,
+    fogHeight: 0,
+    fogFalloff: 0.07,
+    shaftIntensity: 0.5,
+    shaftLength: 0.7,
+  });
+  renderer.postProcess.custom = atmosphere.post;
+  const SUNLIGHT = [-0.72, -0.4, -0.56];
   const stats = createStats(renderer, params.get('stats') === '1');
   status.stats = stats;
 
@@ -243,6 +254,7 @@ async function main() {
         aspect: canvas.clientWidth / Math.max(1, canvas.clientHeight),
       });
     }
+    atmosphere.update(camera, SUNLIGHT);
     audio.update(dt, game, view.helicopter);
     stats.lap('view');
     stats.end(game.aliveCount());

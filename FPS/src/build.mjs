@@ -132,6 +132,99 @@ export function createBuilder() {
         }
       return builder;
     },
+    /** Add a round bar from one point to another, `r0` thick at the start and `r1` at the end: limbs, barrels, pipes. */
+    limb(from, to, r0, r1 = r0, { sides = 8, tint = [1, 1, 1], caps = true } = {}) {
+      const axis = [to[0] - from[0], to[1] - from[1], to[2] - from[2]],
+        length = Math.hypot(axis[0], axis[1], axis[2]) || 1;
+      axis[0] /= length;
+      axis[1] /= length;
+      axis[2] /= length;
+      // Two directions square to the bar and to each other.
+      const helper = Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0];
+      const a = [
+          axis[1] * helper[2] - axis[2] * helper[1],
+          axis[2] * helper[0] - axis[0] * helper[2],
+          axis[0] * helper[1] - axis[1] * helper[0],
+        ],
+        al = Math.hypot(a[0], a[1], a[2]);
+      a[0] /= al;
+      a[1] /= al;
+      a[2] /= al;
+      const b = [axis[1] * a[2] - axis[2] * a[1], axis[2] * a[0] - axis[0] * a[2], axis[0] * a[1] - axis[1] * a[0]];
+      const base = positions.length / 3;
+      for (let i = 0; i <= sides; i++) {
+        const angle = (i / sides) * Math.PI * 2,
+          c = Math.cos(angle),
+          sn = Math.sin(angle),
+          n = [a[0] * c + b[0] * sn, a[1] * c + b[1] * sn, a[2] * c + b[2] * sn];
+        for (const [point, radius, v] of [
+          [from, r0, 0],
+          [to, r1, 1],
+        ]) {
+          positions.push(point[0] + n[0] * radius, point[1] + n[1] * radius, point[2] + n[2] * radius);
+          normals.push(n[0], n[1], n[2]);
+          colors.push(tint[0], tint[1], tint[2]);
+          uvs.push(i / sides, v);
+        }
+      }
+      for (let i = 0; i < sides; i++) {
+        const k = base + i * 2;
+        indices.push(k, k + 2, k + 1, k + 1, k + 2, k + 3);
+      }
+      if (caps)
+        for (const [point, radius, sign] of [
+          [from, r0, -1],
+          [to, r1, 1],
+        ]) {
+          const centre = positions.length / 3;
+          positions.push(point[0], point[1], point[2]);
+          normals.push(axis[0] * sign, axis[1] * sign, axis[2] * sign);
+          colors.push(tint[0], tint[1], tint[2]);
+          uvs.push(0.5, 0.5);
+          for (let i = 0; i <= sides; i++) {
+            const angle = (i / sides) * Math.PI * 2,
+              c = Math.cos(angle) * radius,
+              sn = Math.sin(angle) * radius;
+            positions.push(point[0] + a[0] * c + b[0] * sn, point[1] + a[1] * c + b[1] * sn, point[2] + a[2] * c + b[2] * sn);
+            normals.push(axis[0] * sign, axis[1] * sign, axis[2] * sign);
+            colors.push(tint[0], tint[1], tint[2]);
+            uvs.push(0.5, 0.5);
+          }
+          for (let i = 0; i < sides; i++)
+            if (sign > 0) indices.push(centre, centre + i + 1, centre + i + 2);
+            else indices.push(centre, centre + i + 2, centre + i + 1);
+        }
+      return builder;
+    },
+    /** Add a ball, or an egg shape when the three radii differ. */
+    ball(x, y, z, rx, ry = rx, rz = rx, { sides = 10, rings = 7, tint = [1, 1, 1] } = {}) {
+      const base = positions.length / 3;
+      for (let r = 0; r <= rings; r++) {
+        const polar = (r / rings) * Math.PI,
+          sy = Math.cos(polar),
+          sr = Math.sin(polar);
+        for (let i = 0; i <= sides; i++) {
+          const angle = (i / sides) * Math.PI * 2,
+            nx = Math.cos(angle) * sr,
+            nz = Math.sin(angle) * sr,
+            // Normals of a stretched ball lean towards its flatter sides.
+            lx = nx / rx,
+            ly = sy / ry,
+            lz = nz / rz,
+            ll = Math.hypot(lx, ly, lz) || 1;
+          positions.push(x + nx * rx, y + sy * ry, z + nz * rz);
+          normals.push(lx / ll, ly / ll, lz / ll);
+          colors.push(tint[0], tint[1], tint[2]);
+          uvs.push(i / sides, r / rings);
+        }
+      }
+      for (let r = 0; r < rings; r++)
+        for (let i = 0; i < sides; i++) {
+          const k = base + r * (sides + 1) + i;
+          indices.push(k, k + 1, k + sides + 1, k + 1, k + sides + 2, k + sides + 1);
+        }
+      return builder;
+    },
     /** Turn what was added into a geometry; `tangents` are needed by surfaces with a normal map. */
     finish({ tangents = false } = {}) {
       const geometry = createGeometry3D({ positions, normals, uvs, colors, indices });

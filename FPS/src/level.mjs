@@ -290,6 +290,50 @@ sandbags(21, 25.5, 'z', 4);
 barrier(27, 28.6, 'x', 5);
 barrier(33.5, 17, 'z', 4);
 
+// ---- loose things lying about: barrels, pallets, tyres, cable reels --------------------------
+const barrels = (x, z, count = 1) => {
+  for (let i = 0; i < count; i++)
+    box('barrel', x + (i % 2) * 0.66, z + Math.floor(i / 2) * 0.66, 0.6, 0.6, 0.9, 0, {
+      tint: [0x2f5d7c, 0x8a3b2e, 0x4c6b3c][Math.abs(i + Math.round(x)) % 3],
+    });
+};
+barrels(-12.5, 21, 3);
+barrels(-21, -1.2, 2);
+barrels(16.8, -6.5, 4);
+barrels(7, 26.5, 2);
+barrels(-36.6, -1, 3);
+barrels(13.5, -13, 2);
+barrels(31, 13, 3);
+barrels(-6.8, -19, 2);
+barrels(24.5, 5, 2);
+for (const [x, z] of [
+  [-9, 10.5],
+  [-27.5, 20.5],
+  [2.5, 15.5],
+  [17, -2.2],
+  [-33.5, -19],
+  [33, 26],
+])
+  box('pallet', x, z, 1.2, 1, 0.42);
+for (const [x, z] of [
+  [-4, 12],
+  [22, 28.5],
+  [-18.5, -14.5],
+])
+  box('tyres', x, z, 0.8, 0.8, 0.75);
+for (const [x, z] of [
+  [9.5, 9],
+  [-31, 16.5],
+  [20.5, -19.5],
+])
+  box('reel', x, z, 0.9, 1.3, 1.3);
+box('forklift', -24.5, 20.6, 1.3, 2.6, 2.1);
+// Big steel pipes carry water from the dam into the back of the powerhouse.
+for (const px of [-2.5, 4, 10.5]) box('penstock', px, -28.1, 2.2, 3.6, 2.4, 1.4);
+// A floodlight tower by the gate and another in the yard.
+box('tower', -8.5, 26, 0.5, 0.5, 9);
+box('tower', -36.4, -11, 0.5, 0.5, 9);
+
 // Supply crates are solid too, so soldiers walk round them.
 for (const [cx, cz, turn] of PLACES.crates) {
   const sideways = Math.abs(Math.sin(turn)) > 0.7;

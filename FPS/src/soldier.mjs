@@ -44,45 +44,59 @@ const HIP = 0.9,
   SHIN = 0.46;
 
 function shapes(look) {
-  const k = look.bulk;
+  const k = look.bulk,
+    skin = look.mask ? BLACK : SKIN;
   // Hips, chest, vest, pack, both arms and the weapon, modelled around the hip joint, facing -Z.
   const upper = createBuilder();
-  upper.box(0, 0.06, 0, 0.36 * k, 0.2, 0.22 * k, { tint: look.cloth });
-  upper.box(0, 0.36, 0, 0.4 * k, 0.44, 0.23 * k, { tint: look.cloth });
-  upper.box(0, 0.36, -0.005, 0.43 * k, 0.36, 0.27 * k, { tint: look.vest });
-  upper.box(0, 0.24, -0.16 * k, 0.3 * k, 0.12, 0.07, { tint: look.trim });
-  upper.box(0, 0.4, 0.17 * k, 0.3 * k, 0.34, 0.12, { tint: look.trim });
-  upper.box(0, 0.6, 0, 0.14, 0.08, 0.14, { tint: look.mask ? BLACK : SKIN });
+  upper.box(0, 0.05, 0, 0.34 * k, 0.18, 0.2 * k, { tint: look.cloth });
+  upper.limb([0, 0.1, 0], [0, 0.52, 0], 0.16 * k, 0.19 * k, { tint: look.cloth, sides: 10 });
+  // The vest: front and back plates, a belt of pouches, a pack.
+  upper.box(0, 0.36, -0.1 * k, 0.33 * k, 0.34, 0.1, { tint: look.vest });
+  upper.box(0, 0.36, 0.1 * k, 0.33 * k, 0.36, 0.1, { tint: look.vest });
+  for (const side of [-0.11, 0, 0.11]) upper.box(side * k, 0.2, -0.17 * k, 0.085, 0.13, 0.06, { tint: look.trim });
+  upper.box(0, 0.4, 0.2 * k, 0.27 * k, 0.32, 0.11, { tint: look.trim });
+  upper.box(0.1 * k, 0.47, -0.16 * k, 0.09, 0.06, 0.03, { tint: BLACK });
+  upper.limb([0, 0.52, 0], [0, 0.63, 0], 0.055, 0.05, { tint: skin });
   // Shoulders, then the right arm back to the grip and the left arm out to the handguard.
-  upper.box(-0.25 * k, 0.5, 0, 0.13 * k, 0.15, 0.17 * k, { tint: look.cloth });
-  upper.box(0.25 * k, 0.5, 0, 0.13 * k, 0.15, 0.17 * k, { tint: look.cloth });
-  upper.box(0.23 * k, 0.38, -0.1, 0.1 * k, 0.3, 0.1 * k, { tint: look.cloth, pitch: -0.9 });
-  upper.box(0.17 * k, 0.3, -0.27, 0.085 * k, 0.26, 0.085 * k, { tint: look.cloth, pitch: -1.5, yaw: 0.45 });
-  upper.box(-0.22 * k, 0.4, -0.14, 0.1 * k, 0.32, 0.1 * k, { tint: look.cloth, pitch: -1.15 });
-  upper.box(-0.11 * k, 0.33, -0.38, 0.085 * k, 0.26, 0.085 * k, { tint: look.cloth, pitch: -1.45, yaw: -0.5 });
-  upper.box(0.1, 0.3, -0.36, 0.07, 0.08, 0.08, { tint: BLACK });
-  upper.box(-0.02, 0.31, -0.5, 0.07, 0.07, 0.08, { tint: BLACK });
-  if (look.trim && !look.visor) upper.box(-0.265 * k, 0.47, 0, 0.02, 0.07, 0.18 * k, { tint: look.trim });
-  // The weapon across the chest: receiver, handguard, barrel, magazine, stock.
+  const arm = (shoulder, elbow, hand) => {
+    upper.ball(shoulder[0], shoulder[1], shoulder[2], 0.085 * k, 0.085 * k, 0.085 * k, { tint: look.cloth, sides: 8, rings: 5 });
+    upper.limb(shoulder, elbow, 0.062 * k, 0.052 * k, { tint: look.cloth });
+    upper.limb(elbow, hand, 0.05 * k, 0.04 * k, { tint: look.cloth });
+    upper.ball(hand[0], hand[1], hand[2], 0.045, 0.045, 0.05, { tint: BLACK, sides: 6, rings: 4 });
+  };
+  arm([0.23 * k, 0.5, 0], [0.27 * k, 0.29, -0.13], [0.08, 0.3, -0.33]);
+  arm([-0.23 * k, 0.5, 0], [-0.25 * k, 0.28, -0.22], [0.0, 0.32, -0.53]);
+  if (!look.visor)
+    upper.limb([-0.27 * k, 0.44, 0], [-0.275 * k, 0.37, -0.03], 0.068 * k, 0.066 * k, { tint: look.trim, caps: false });
+  // The weapon across the chest: receiver, handguard, barrel, sight, magazine, stock.
   const big = look.visor ? 1.25 : 1;
   upper.box(0.05, 0.36, -0.36, 0.05 * big, 0.08 * big, 0.34, { tint: GUN });
   upper.box(0.05, 0.36, -0.62, 0.042 * big, 0.055 * big, 0.26, { tint: look.visor ? GUN : rgb(0x4a4233) });
-  upper.cylinder(0.05, 0.365, -0.83, 0.013 * big, 0.2, { axis: 'z', sides: 6, tint: GUN });
+  upper.limb([0.05, 0.365, -0.74], [0.05, 0.365, -0.95], 0.013 * big, 0.013 * big, { tint: GUN, sides: 6 });
+  upper.box(0.05, 0.415, -0.4, 0.02, 0.03, 0.08, { tint: GUN });
   upper.box(0.05, 0.27, -0.4, 0.035, 0.14, look.visor ? 0.14 : 0.06, { tint: GUN, pitch: 0.2 });
   upper.box(0.06, 0.35, -0.12, 0.045, 0.09, 0.2, { tint: GUN });
+  if (look.visor) upper.box(0.05, 0.25, -0.66, 0.02, 0.2, 0.02, { tint: GUN });
 
   const head = createBuilder();
-  head.box(0, 0.11, 0, 0.19, 0.22, 0.2, { tint: look.mask ? BLACK : SKIN });
-  if (look.mask) head.box(0, 0.13, -0.101, 0.15, 0.05, 0.012, { tint: look.visor ? rgb(0x101820) : SKIN });
-  head.box(0, 0.21, 0.005, 0.235, 0.12, 0.25, { tint: look.helmet });
-  if (look.visor) head.box(0, 0.12, -0.11, 0.22, 0.14, 0.03, { tint: rgb(0x0e1418) });
-  else if (!look.mask) head.box(0, 0.165, -0.12, 0.2, 0.04, 0.06, { tint: look.helmet });
-  else head.box(0, 0.17, -0.11, 0.2, 0.05, 0.03, { tint: rgb(0x23262a) });
+  head.ball(0, 0.11, 0, 0.092, 0.115, 0.102, { tint: skin });
+  // Helmet or cap, sitting low over the brow.
+  head.ball(0, 0.155, 0.006, 0.112, 0.092, 0.122, { tint: look.helmet, rings: 6 });
+  if (look.visor) head.box(0, 0.115, -0.092, 0.17, 0.11, 0.035, { tint: rgb(0x0e1418) });
+  else if (look.mask) {
+    head.box(0, 0.125, -0.092, 0.15, 0.04, 0.02, { tint: SKIN });
+    head.box(0, 0.165, -0.105, 0.17, 0.045, 0.03, { tint: rgb(0x23262a) });
+  } else {
+    head.box(0, 0.168, -0.11, 0.17, 0.02, 0.07, { tint: look.helmet });
+    head.box(0, 0.19, 0.0, 0.24, 0.025, 0.04, { tint: look.trim });
+  }
+  for (const side of [-1, 1]) head.box(side * 0.1, 0.11, 0.01, 0.03, 0.07, 0.06, { tint: look.helmet });
 
-  const thigh = createBuilder().box(0, -THIGH / 2, 0, 0.16 * k, THIGH, 0.18 * k, { tint: look.cloth });
-  thigh.box(0, -THIGH + 0.02, -0.07 * k, 0.15 * k, 0.12, 0.05, { tint: look.trim });
-  const shin = createBuilder().box(0, -SHIN / 2 + 0.03, 0, 0.13 * k, SHIN - 0.08, 0.15 * k, { tint: look.cloth });
-  shin.box(0, -SHIN + 0.06, -0.03, 0.14 * k, 0.12, 0.27, { tint: BLACK });
+  const thigh = createBuilder().limb([0, 0.02, 0], [0, -THIGH, 0], 0.088 * k, 0.07 * k, { tint: look.cloth });
+  thigh.box(0.06 * k, -0.2, 0, 0.05, 0.14, 0.11, { tint: look.trim });
+  const shin = createBuilder().ball(0, -0.01, -0.02, 0.072 * k, 0.075, 0.075 * k, { tint: look.trim, sides: 8, rings: 5 });
+  shin.limb([0, 0, 0], [0, -SHIN + 0.1, 0.01], 0.066 * k, 0.052 * k, { tint: look.cloth });
+  shin.box(0, -SHIN + 0.06, -0.035, 0.12 * k, 0.12, 0.27, { tint: BLACK });
   return { upper: upper.finish(), head: head.finish(), thigh: thigh.finish(), shin: shin.finish() };
 }
 
