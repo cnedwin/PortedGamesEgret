@@ -94,6 +94,7 @@ All models, textures, sounds and music are generated in code; the project contai
 | `src/input.mjs`，`src/audio.mjs`，`src/music.mjs` | 键鼠与触屏、合成音效、随战况变化的配乐 · keyboard, mouse and touch; synthesised sound; a score that follows the fight |
 | `src/stats.mjs` | `?stats=1` 的性能读数 · the performance readout for `?stats=1` |
 | `test/`，`tools/` | 规则测试、无页面整局试玩 · tests of the rules, whole runs without a page |
+| `STATUS.md` | 现状与待办：验证情况、已知问题、未完成的功能、模型细节 · status and backlog: what is verified, known issues, unfinished features, model detail |
 | `vendor/` | 引擎运行时副本，来源见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |
 
 ## 运行与开发 · Running and development
