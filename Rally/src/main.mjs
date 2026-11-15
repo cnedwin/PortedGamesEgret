@@ -109,9 +109,13 @@ async function main() {
   const hud = createHud(document.querySelector('#ui'), track, {
     lang: settings.lang,
     stage: canvas,
-    onPause: () => setPaused(true),
+    onPause: (event) => {
+      // A gesture on Pause resolves through the input module. Keep native mouse and keyboard clicks.
+      if (event.detail && (event.pointerType === 'touch' || event.pointerType === 'pen' || event.sourceCapabilities?.firesTouchEvents)) return;
+      if (mode === 'race') setPaused(true);
+    },
   });
-  const input = createInput(hud.touchRoot);
+  const input = createInput(hud.touchRoot, hud.pauseButton);
   const audio = createAudio();
   audio.setMuted(settings.muted);
 
@@ -143,7 +147,11 @@ async function main() {
   const setMode = (next) => {
     mode = next;
     status.mode = next;
+    const driving = next === 'intro' || next === 'race';
+    input.setTouchEnabled(driving);
+    hud.setTouchAvailable(driving);
     hud.setRacePauseAvailable(next === 'race');
+    document.documentElement.classList.toggle('race-active', driving);
   };
   const seed = () => Number(params.get('seed')) || Date.now() & 0xffffff || 1;
 
@@ -222,7 +230,9 @@ async function main() {
 
   input.onCommand = (command) => {
     audio.unlock();
-    if (command === 'mute') {
+    if (command === 'pause') {
+      if (mode === 'race') setPaused(true);
+    } else if (command === 'mute') {
       settings.muted = !settings.muted;
       applySettings();
     } else if (command === 'menu' || command === 'back') {

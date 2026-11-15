@@ -528,9 +528,9 @@ export function createView(scene, camera, track, options = {}) {
     rig.fovTarget = 62 + fast * 10 + (pushed ? 8 : 0) + rig.kick;
   }
   /** Circle a point: used on the title, the choosing screen and the sweep before the start. */
-  function orbit(x, y, z, angle, distance, height) {
+  function orbit(x, y, z, angle, distance, height, side = 0) {
     camera.setPosition(x + Math.sin(angle) * distance, y + height, z + Math.cos(angle) * distance);
-    camera.lookAt(x, y + 1.1, z);
+    camera.lookAt(x + Math.cos(angle) * side, y + 1.1, z - Math.sin(angle) * side);
     rig.fovTarget = 55;
   }
 
@@ -704,10 +704,16 @@ export function createView(scene, camera, track, options = {}) {
     for (const kind in counts) shapes[kind].count = Math.min(counts[kind], shapes[kind].capacity);
 
     // Camera.
-    if (shot === 'select' && shown) orbit(shown.at.x, shown.at.y, shown.at.z, shown.at.heading + 2.6 + time * 0.35, 5.4, 1.9);
-    else if (shot === 'title') {
+    if (shot === 'select' && shown) {
+      const angle = shown.at.heading + Math.PI - 0.63 + Math.sin(time * 0.65) * 0.24;
+      orbit(shown.at.x, shown.at.y, shown.at.z, angle, 5.15, 2.0);
+      rig.fovTarget = 53;
+    } else if (shot === 'title') {
       rig.orbit += dt * 0.12;
-      orbit(watched.x, watched.y, watched.z, watched.heading + Math.PI + Math.sin(rig.orbit) * 1.3, 11.5, 4.2);
+      // Leave room for the title controls on wide screens and use the whole scene on phones.
+      const side = Math.min(4.6, Math.max(0, (camera.aspect - 1.15) * 6.8));
+      const angle = watched.heading + Math.PI - 0.37 + Math.sin(rig.orbit) * 0.46;
+      orbit(watched.x, watched.y, watched.z, angle, 11.5, 4.3, -side);
     } else if (shot === 'intro') {
       // From high in front of the grid round to the chase position.
       const ease = sweep * sweep * (3 - 2 * sweep);

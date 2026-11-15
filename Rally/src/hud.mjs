@@ -47,6 +47,8 @@ export function createHud(root, track, options = {}) {
     if (preview && stage.parentElement === preview) root.before(stage);
     screen.replaceChildren(...nodes);
     screen.hidden = nodes.length === 0;
+    screen.classList.toggle('title-screen', nodes[0]?.classList.contains('title') ?? false);
+    screen.classList.toggle('select-screen', nodes[0] === selection && !!selection);
   };
   show();
 
@@ -86,7 +88,7 @@ export function createHud(root, track, options = {}) {
         button('primary', t().start, handlers.onStart),
         el('p', 'hint', t().pressStart),
         settingsRow(settings, redraw),
-        el('p', 'help', t().help),
+        el('p', 'engine-credit', t().engineCredit),
       ]),
     );
   };
@@ -104,6 +106,7 @@ export function createHud(root, track, options = {}) {
         settings.racer = index;
         redraw();
       });
+      card.setAttribute('aria-pressed', String(index === settings.racer));
       card.append(seal(entry), el('span', 'card-name', entry.name[hud.lang]));
       return card;
     });
@@ -176,8 +179,13 @@ export function createHud(root, track, options = {}) {
     itemCount = el('span', 'item-count'),
     coinCount = el('strong'),
     coins = el('div', 'coins', undefined, [el('span', 'coin'), coinCount]),
-    driftFill = el('i'),
-    drift = el('div', 'drift', undefined, [driftFill]),
+    driftTitle = el('strong'),
+    driftHint = el('span', 'drift-hint'),
+    driftFills = DRIVE.driftLevels.map(() => el('i')),
+    drift = el('div', 'drift', undefined, [
+      el('div', 'drift-heading', undefined, [driftTitle, driftHint]),
+      el('div', 'drift-stages', undefined, driftFills.map(fill => el('span', undefined, undefined, [fill]))),
+    ]),
     popups = el('div', 'popups'),
     // Ink thrown by a rival: blots that cover part of the view until they fade.
     inkBlots = el(
@@ -230,6 +238,9 @@ export function createHud(root, track, options = {}) {
   hud.setRacePauseAvailable = (available) => {
     pause.hidden = !available;
   };
+  hud.setTouchAvailable = (available) => {
+    touch.hidden = !available;
+  };
   race.append(
     lines,
     hurt,
@@ -250,6 +261,7 @@ export function createHud(root, track, options = {}) {
   );
   /** The element holding the touch buttons, for the input module. */
   hud.touchRoot = touch;
+  hud.pauseButton = pause;
 
   // The map: the circuit drawn once, kart dots on top each frame. World +X is right and +Z is down.
   const MAP = 168,
@@ -290,6 +302,8 @@ export function createHud(root, track, options = {}) {
   }
 
   let bannerUntil = 0,
+    turboUntil = 0,
+    turboLevel = 0,
     now = 0,
     tick = 0;
   /** Show a line of large text for `seconds`. */
@@ -307,6 +321,8 @@ export function createHud(root, track, options = {}) {
     race.hidden = false;
     banner.className = 'banner';
     bannerUntil = 0;
+    drift.className = 'drift';
+    turboUntil = 0;
     speedUnit.textContent = t().kmh;
     labelRaceControls();
   };
@@ -326,13 +342,23 @@ export function createHud(root, track, options = {}) {
     place.dataset.place = kart.place;
     coinCount.textContent = `${kart.coins}/${DRIVE.coinLimit}`;
     coins.className = kart.coins >= DRIVE.coinLimit ? 'coins full' : 'coins';
-    // The drift meter fills toward the next mini-turbo and takes its colour.
-    drift.className = kart.drifting ? `drift on level${kart.driftLevel}` : 'drift';
-    if (kart.drifting) {
-      const levels = DRIVE.driftLevels,
-        from = kart.driftLevel ? levels[kart.driftLevel - 1] : 0,
-        to = levels[Math.min(kart.driftLevel, levels.length - 1)];
-      driftFill.style.width = `${kart.driftLevel >= levels.length ? 100 : Math.min(100, ((kart.driftCharge - from) / (to - from)) * 100)}%`;
+    // Each section represents one real charge threshold, with the ready tier visible on release.
+    const turbo = !kart.drifting && now < turboUntil;
+    const level = turbo ? turboLevel : kart.driftLevel;
+    const showingDrift = kart.drifting || turbo;
+    const driftClass = showingDrift ? `drift on level${level}` : 'drift';
+    if (drift.className !== driftClass) drift.className = driftClass;
+    if (showingDrift) {
+      const title = turbo ? t().popups.turbo[level - 1] : (t().driftTiers[level - 1] ?? t().driftBuild);
+      const hint = kart.drifting && level ? t().driftRelease : '';
+      if (driftTitle.textContent !== title) driftTitle.textContent = title;
+      if (driftHint.textContent !== hint) driftHint.textContent = hint;
+      for (const [index, fill] of driftFills.entries()) {
+        const from = DRIVE.driftLevels[index - 1] ?? 0;
+        const to = DRIVE.driftLevels[index];
+        const fraction = turbo ? Number(index < level) : Math.max(0, Math.min(1, (kart.driftCharge - from) / (to - from)));
+        fill.style.transform = `scaleX(${fraction})`;
+      }
     }
     inkBlots.style.opacity = Math.min(1, kart.inked / 0.8);
     hurt.style.opacity = Math.max(0, Number(hurt.style.opacity || 0) - dt * 1.6);
@@ -373,16 +399,28 @@ export function createHud(root, track, options = {}) {
 
     pen.clearRect(0, 0, MAP * 2, MAP * 2);
     pen.drawImage(outline, 0, 0);
-    // Rivals first, the player on top.
-    for (const other of [...game.karts].sort((a, b) => Number(a.human) - Number(b.human))) {
+    // Rivals remain dots. The player's marker shows where the kart is pointing.
+    for (const other of game.karts) {
+      if (other === kart) continue;
       pen.beginPath();
-      pen.arc(mapX(other.x), mapY(other.z), other.human ? 9 : 6, 0, Math.PI * 2);
+      pen.arc(mapX(other.x), mapY(other.z), 6, 0, Math.PI * 2);
       pen.fillStyle = css(RACERS[other.racer].body);
       pen.fill();
-      pen.lineWidth = other.human ? 4 : 2;
-      pen.strokeStyle = other.human ? '#ffffff' : 'rgba(20,24,32,.8)';
+      pen.lineWidth = 2;
+      pen.strokeStyle = 'rgba(20,24,32,.8)';
       pen.stroke();
     }
+    const x = mapX(kart.x), y = mapY(kart.z), fx = Math.sin(kart.heading), fy = Math.cos(kart.heading);
+    pen.beginPath();
+    pen.moveTo(x + fx * 14, y + fy * 14);
+    pen.lineTo(x - fx * 7 + fy * 7, y - fy * 7 - fx * 7);
+    pen.lineTo(x - fx * 7 - fy * 7, y - fy * 7 + fx * 7);
+    pen.closePath();
+    pen.fillStyle = '#fff3cb';
+    pen.fill();
+    pen.lineWidth = 3;
+    pen.strokeStyle = '#2b2522';
+    pen.stroke();
   };
 
   /** Banners for what just happened to the player. */
@@ -398,13 +436,16 @@ export function createHud(root, track, options = {}) {
     const mine = game.human?.index;
     for (const event of events) {
       if (event.type === 'count') announce(String(event.n), 0.9, 'count');
-      else if (event.type === 'go') announce(t().go, 1.1, 'go');
+      else if (event.type === 'go') announce(t().go, 0.65, 'start-go');
       else if (event.kart !== mine) continue;
       else if (event.type === 'lap' && event.final) announce(t().finalLap, 2.2, 'final');
       else if (event.type === 'lap') announce(`${t().lap} ${event.lap}/${game.laps}`, 1.6);
       else if (event.type === 'finish') announce(t().finish, 3, 'go');
       else if (event.type === 'item') announce(ITEMS[event.item].name[hud.lang], 1.1, 'small');
-      else if (event.type === 'turbo') popup(t().popups.turbo[event.level - 1], 'level' + event.level);
+      else if (event.type === 'turbo') {
+        turboLevel = event.level;
+        turboUntil = now + 0.8;
+      }
       else if (event.type === 'boost' && t().popups[event.source]) popup(t().popups[event.source], 'gold');
       else if (event.type === 'overtake') popup(`${t().popups.overtake} ${t().place[event.place - 1]}`, 'green');
       else if (event.type === 'coin' && event.full) popup(t().popups.purse, 'gold');

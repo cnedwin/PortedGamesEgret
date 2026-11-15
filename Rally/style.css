@@ -81,18 +81,66 @@ body {
   backdrop-filter: blur(6px);
 }
 .title {
-  background: rgba(23, 26, 34, 0.66);
+  width: min(550px, 100%);
+  padding: clamp(22px, 4vw, 48px);
+  border: 1px solid rgba(247, 220, 177, 0.42);
+  border-left: 4px solid #e77553;
+  border-radius: 16px;
+  color: #fff3dc;
+  background: linear-gradient(135deg, #10262ded, #182229e8 75%);
+  box-shadow: 0 18px 56px rgba(8, 21, 25, 0.4);
+  backdrop-filter: none;
+  text-align: left;
+}
+.title-screen {
+  padding-inline: max(5.5vw, env(safe-area-inset-left)) max(16px, env(safe-area-inset-right));
+  background: linear-gradient(90deg, #13282c86, #12252628 56%, transparent 80%);
+}
+.title-screen .title {
+  margin-inline: 0 auto;
+}
+.title h1 {
+  margin-block: 9px 12px;
+  font-size: clamp(40px, 6vw, 83px);
+  letter-spacing: 0.04em;
+  color: #ffe7b1;
+  text-shadow: 0 3px 0 #803924;
+}
+.title .kicker {
+  color: #f6b38f;
+  letter-spacing: 0.22em;
+}
+.title .tagline {
+  max-width: 34ch;
+  font-size: clamp(14px, 1.7vw, 18px);
+  line-height: 1.6;
+}
+.title .options {
+  justify-content: flex-start;
+}
+.engine-credit {
+  margin: 20px 0 0;
+  color: #bed0cb;
+  font-size: 12px;
+}
+.select-screen {
+  background: radial-gradient(ellipse at 25% 40%, #314b48, #182528 65%, #131f25);
 }
 .select {
   width: min(820px, 100%);
+  border: 1px solid #d6b87c8c;
+  border-radius: 16px;
+  background: #18292f;
+  box-shadow: 0 16px 38px #0d1d2080;
+  backdrop-filter: none;
 }
 /* The selection preview and the controls occupy separate areas of the same screen. */
 .select-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 540px);
   align-items: center;
-  gap: clamp(16px, 3vw, 36px);
-  width: min(1200px, 100%);
+  gap: clamp(12px, 2vw, 24px);
+  width: min(1360px, 100%);
   margin: auto;
 }
 .select-preview {
@@ -117,6 +165,15 @@ body {
   overflow-wrap: anywhere;
 }
 @media (max-width: 760px) {
+  .title-screen {
+    padding-inline: max(14px, env(safe-area-inset-left)) max(14px, env(safe-area-inset-right));
+  }
+  .title-screen .title {
+    margin-inline: auto;
+  }
+  .title h1 {
+    font-size: clamp(36px, 10.5vw, 59px);
+  }
   .select-layout {
     grid-template-columns: minmax(0, 1fr);
     max-width: 540px;
@@ -381,7 +438,7 @@ button {
   position: absolute;
   left: max(20px, env(safe-area-inset-left));
   bottom: 18px;
-  font: 900 clamp(44px, 9vw, 84px) / 1 var(--serif);
+  font: 900 clamp(34px, 6vw, 62px) / 1 var(--serif);
   color: var(--paper);
   -webkit-text-stroke: 2px rgba(23, 26, 34, 0.55);
 }
@@ -504,8 +561,23 @@ button {
   animation: pop 0.35s cubic-bezier(0.2, 1.6, 0.4, 1);
 }
 .banner.count {
-  font-size: clamp(90px, 20vw, 200px);
+  top: 15%;
+  font-size: clamp(46px, 9vmin, 90px);
   color: var(--gold);
+}
+.banner.start-go {
+  top: 15%;
+  font-size: clamp(32px, 7vmin, 64px);
+  color: #b1ffce;
+}
+.banner.pop:is(.count, .start-go) {
+  animation-name: start-cue;
+}
+@keyframes start-cue {
+  from {
+    transform: scale(0.86);
+    opacity: 0;
+  }
 }
 .banner.go {
   color: #7bf08c;
@@ -590,15 +662,16 @@ button {
   border: 2px solid rgba(246, 239, 224, 0.7);
   background: rgba(23, 26, 34, 0.65);
   pointer-events: auto;
+  touch-action: none;
 }
 .touch-button {
   flex: none;
   width: var(--touch-size);
   height: var(--touch-size);
   font-size: clamp(18px, 4.5vw, 28px);
-  touch-action: none;
 }
-.touch-button.held {
+.touch-button.held,
+.race-pause.held {
   background: rgba(242, 194, 48, 0.6);
 }
 .race-pause {
@@ -608,7 +681,6 @@ button {
   right: max(12px, env(safe-area-inset-right));
   width: 44px;
   height: 44px;
-  touch-action: manipulation;
 }
 .pause-icon {
   width: 12px;
@@ -616,6 +688,10 @@ button {
   border-inline: 4px solid currentColor;
 }
 @media (pointer: coarse) {
+  /* Keep driving contacts out of browser boundary actions. Menus retain native scrolling. */
+  html.race-active {
+    overscroll-behavior: none;
+  }
   .touch {
     display: flex;
   }
@@ -774,34 +850,75 @@ button {
 .drift {
   position: absolute;
   left: 50%;
-  bottom: 16%;
-  width: min(240px, 40vw);
-  height: 12px;
-  margin-left: calc(min(240px, 40vw) / -2);
-  border-radius: 8px;
-  border: 2px solid rgba(246, 239, 224, 0.75);
-  background: rgba(23, 26, 34, 0.55);
-  overflow: hidden;
+  bottom: clamp(82px, 14vh, 130px);
+  width: min(260px, 78vw);
+  transform: translateX(-50%);
+  padding: 7px 10px 9px;
+  border-radius: 10px;
+  border: 1px solid rgba(246, 239, 224, 0.58);
+  background: #162329e8;
   opacity: 0;
   transition: opacity 0.15s;
 }
 .drift.on {
   opacity: 1;
 }
-.drift i {
+.drift-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #f8ead4;
+}
+.drift-hint {
+  font-size: 12px;
+  color: #f0e1c8;
+  text-align: right;
+}
+.drift.level1 strong {
+  color: #82cbff;
+}
+.drift.level2 strong {
+  color: #ffad62;
+}
+.drift.level3 strong {
+  color: #d8a1ff;
+}
+.drift-stages {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+.drift-stages > span {
+  height: 5px;
+  border-radius: 3px;
+  overflow: hidden;
+  background: #61717890;
+}
+.drift-stages i {
   display: block;
   height: 100%;
-  background: #f2f2f2;
+  transform: scaleX(0);
+  transform-origin: left;
+  background: #82cbff;
 }
-.drift.level1 i {
-  background: #4fb8ff;
+.drift-stages > :nth-child(2) i {
+  background: #ffad62;
 }
-.drift.level2 i {
-  background: #ff9a2e;
+.drift-stages > :nth-child(3) i {
+  background: #d8a1ff;
 }
-.drift.level3 i {
-  background: #c86bff;
-  box-shadow: 0 0 12px #c86bff;
+@media (pointer: coarse) {
+  .drift {
+    bottom: max(188px, calc(env(safe-area-inset-bottom) + 168px));
+  }
+}
+@media (pointer: coarse) and (max-height: 420px) {
+  .drift {
+    bottom: max(156px, calc(env(safe-area-inset-bottom) + 136px));
+  }
 }
 .popups {
   position: absolute;
@@ -828,15 +945,6 @@ button {
 }
 .popup.brown {
   color: #c9a071;
-}
-.popup.level1 {
-  color: #7fcaff;
-}
-.popup.level2 {
-  color: #ffb45e;
-}
-.popup.level3 {
-  color: #d99aff;
 }
 @keyframes rise {
   0% {
