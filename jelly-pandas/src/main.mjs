@@ -149,6 +149,7 @@ async function main() {
     cardsShown = false,
     endAt = 0,
     now = 0;
+  let prepareOpeningEffects = useWebGPU;
   function syncTouchControls() {
     const active = input.touchMode && mode === 'play' && !cardsShown && game?.state === 'play';
     input.setTouchEnabled(active);
@@ -205,6 +206,7 @@ async function main() {
     });
   }
   function start() {
+    prepareOpeningEffects = false;
     audio.unlock();
     audio.play('levelup');
     // Friends get skins other than the player's, in a random order.
@@ -406,6 +408,11 @@ async function main() {
 
     // 7. Drawing starts here: the water's mirror image now, the main view as soon as this function returns.
     stats.end(game.aliveCount ?? 0);
+    if (prepareOpeningEffects && mode === 'title') {
+      prepareOpeningEffects = false;
+      // World3D draws the main view synchronously after onUpdate.
+      queueMicrotask(view.prepareOpeningEffects());
+    }
     view.renderReflection(renderer, camera);
   }
 
