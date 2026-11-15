@@ -266,8 +266,34 @@ export function createView(scene, options = {}) {
     sea.material.touch();
   };
   /** Draw the mirror image the water shows; call before the main view is drawn. */
-  view.renderReflection = (renderer, camera) => {
-    if (view.reflect && mirror) sea.renderReflection(renderer, scene, camera);
+  view.renderReflection = (renderer, camera, preparePanda = false) => {
+    if (!view.reflect || !mirror) return;
+    if (!preparePanda) {
+      sea.renderReflection(renderer, scene, camera);
+      return;
+    }
+
+    // The title mirror can cull the panda's face. Exercise those shader variants
+    // in the existing reflection pass with zero-area triangles and shared assets.
+    const samples = new Map();
+    for (const mesh of view.pandas[0].jelly.meshes) {
+      const { geometry, material } = mesh;
+      if (material.map || material.transmission > 0) continue;
+      const key = material.shading + '/' + material.alphaMode;
+      if (samples.has(key)) continue;
+      const sample = new Mesh3D(geometry, material);
+      sample.setScale(0);
+      sample.layers = mesh.layers;
+      sample.castShadow = false;
+      sample.frustumCulled = false;
+      samples.set(key, sample);
+    }
+    try {
+      for (const mesh of samples.values()) scene.addChild(mesh);
+      sea.renderReflection(renderer, scene, camera);
+    } finally {
+      for (const mesh of samples.values()) mesh.removeFromParent();
+    }
   };
   const seaBed = new Mesh3D(createPlaneGeometry3D({ width: 600, height: 600 }), createUnlitMaterial3D({ color: 0x1b6fb8 }));
   seaBed.setRotation(-Math.PI / 2, 0, 0);
