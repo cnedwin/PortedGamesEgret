@@ -166,6 +166,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
   const panel = $('#settings');
   const CHOICES = {
     quality: ['画质', '自动会按帧率升降；选定后固定不变。高档草更密、阴影更清晰、分辨率更高。', [['auto', '自动'], ['low', '低'], ['mid', '中'], ['high', '高']]],
+    models: ['模型', '人物、兵器和建筑的精细程度。高档约 23MB，脸和手最细，带布纹和皮肤细节；低档适合手机。重新载入后生效。', [['auto', '自动'], ['low', '低'], ['mid', '中'], ['high', '高']]],
     particles: ['粒子', '枪光火星、雪尘和飘雪的数量。', [['few', '少'], ['some', '标准'], ['many', '多']]],
     sound: ['声音', '风声、配乐和兵刃声。', [['off', '关'], ['on', '开']]]
   };
@@ -176,7 +177,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     const keys = Object.keys(DEFAULT_KEYS)
       .map((action) => `<div class="row"><div>${DEED_NAMES[action]}</div><button type="button" class="key" data-key="${action}">${keyName(input.keys[action])}</button></div>`)
       .join('');
-    panel.innerHTML = `<h2>设置</h2>${rows}<div class="row"><small>画质里的草和粒子里的飘雪在重新载入后生效。</small><button type="button" class="act" data-do="reload">重新载入</button></div><h3>按键</h3>${keys}<div class="foot"><button type="button" class="act" data-do="defaults">恢复默认</button><button type="button" class="act" data-do="close">关闭</button></div>`;
+    panel.innerHTML = `<h2>设置</h2>${rows}<div class="row"><small>模型、画质里的草和粒子里的飘雪在重新载入后生效。</small><button type="button" class="act" data-do="reload">重新载入</button></div><h3>按键</h3>${keys}<div class="foot"><button type="button" class="act" data-do="defaults">恢复默认</button><button type="button" class="act" data-do="close">关闭</button></div>`;
   }
   root.addEventListener('click', (event) => {
     const target = event.target.closest('button');
