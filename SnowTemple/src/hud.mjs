@@ -5,16 +5,17 @@ import { GRADES, HERO, LOOT } from './rules/tune.mjs';
 
 // Small line drawings for the deeds, each on a 40 by 40 field.
 const ICONS = {
-  attack: '<path d="M7 33 30 10"/><path d="M30 10l5-6-1.5 8.5z" fill="currentColor"/><circle cx="27" cy="13" r="2.6"/>',
-  guard: '<path d="M6 14 34 26"/><path d="M12 30c8-2 14-8 16-20"/><path d="M9 21l3 3M27 15l3 3"/>',
-  stars: '<path d="M6 30 20 16M12 34 26 20M4 22 18 8"/><path d="M20 16l4-5M26 20l5-4M18 8l3-5"/>',
-  rain: '<circle cx="20" cy="22" r="13"/><path d="M20 3v19M11 7v12M29 7v12M14 31l6-9 6 9"/>',
-  dodge: '<path d="M8 28c8 2 14-2 18-10"/><path d="M26 18l-6 1M26 18l1 6"/><path d="M6 20h7M4 14h9"/>',
-  glide: '<path d="M5 26c10-2 20-8 30-18"/><path d="M8 32h18M12 20h6"/><path d="M35 8l-7 1M35 8l-1 7"/>',
-  drink: '<circle cx="20" cy="26" r="9"/><circle cx="20" cy="13" r="5"/><path d="M20 8V4M17 4h6"/>'
+  attack: '<path d="m6 34 24-24M24 11l12-7-7 12-2-3z" fill="currentColor"/><path d="M23 17v6m-1-5-6 1"/>',
+  counter: '<path d="M33 8A14 14 0 1 0 26 33M33 8v8m0-8h-8"/><path d="m12 27 15-15m-7 1 11-4-5 11"/>',
+  guard: '<path d="M20 4 32 9v9c0 7-5 12-12 17C13 30 8 25 8 18V9z"/><path d="m12 21 15-10m-5 1 8-2-4 7m-13-1 4 5"/>',
+  stars: '<path d="m21 3 2 7 7 2-7 2-2 7-2-7-7-2 7-2z" fill="currentColor"/><path d="m11 16 2 5 5 2-5 2-2 5-2-5-5-2 5-2zm17 5 2 4 4 2-4 2-2 4-2-4-4-2 4-2z"/>',
+  rain: '<path d="M20 3v24M10 7v14m20-14v14M7 18l3 4 3-4m4 6 3 4 3-4m4-6 3 4 3-4"/><path d="M5 34c6-5 24-5 30 0"/>',
+  dodge: '<path d="M10 28h10l7-4 6 1v5l-8 3H10zM16 28l3-11 7 2-1 6M4 23h8M5 16h9"/><path d="M27 8h9l-4-4m4 4-4 4"/>',
+  glide: '<path d="M5 29c10 3 20 0 30-7M5 35c10 1 16-1 23-4M18 3v17m-7-13 14 9m0-9-14 9m16-3h6"/>',
+  drink: '<path d="M17 4h6v5h-6zM17 9v3c-6 0-8 7-3 10-5 2-8 4-8 8 0 4 6 6 14 6s14-2 14-6c0-4-3-6-8-8 5-3 3-10-3-10V9m-9 14h12"/><path d="M12 30c3 2 6 2 7 2"/>'
 };
 const DEED_NAMES = { attack: '出枪', guard: '格挡（按住）', stars: '寒星', rain: '梨花枪雨', dodge: '闪避', glide: '踏雪（按住）', drink: '饮酒', up: '向上', down: '向下', left: '向左', right: '向右', bag: '行囊' };
-const PAD_LABELS = { guard: '格挡', glide: '踏雪' };
+const ACTION_LABELS = { attack: '出枪', guard: '格挡', stars: '寒星', rain: '枪雨', dodge: '闪避', glide: '踏雪', drink: '饮酒' };
 const GOALS = { road: '往草料场去', yard: '清掉草料场里的人', gate: '上山神庙', boss: '', done: '' };
 
 const el = (tag, attrs = {}, html = '') => {
@@ -23,10 +24,11 @@ const el = (tag, attrs = {}, html = '') => {
   node.innerHTML = html;
   return node;
 };
-const icon = (name) => `<svg viewBox="0 0 40 40" color="currentColor">${ICONS[name]}</svg>`;
+const icon = (name, className = '') => `<svg class="${className}" viewBox="0 0 40 40" aria-hidden="true">${ICONS[name]}</svg>`;
+const actionFace = (name) => `${icon(name, 'action-icon')}${name === 'attack' ? icon('counter', 'counter-icon') : ''}<span class="action-label">${ACTION_LABELS[name]}</span>`;
 const bar = (kind) => `<div class="bar ${kind}">${kind === 'hp' ? '<i class="lag"></i>' : ''}<i class="fill"></i></div>`;
 
-export function createHud(root, input, settings, { onSettings, onStart }) {
+export function createHud(root, input, settings, { onSettings, onStart, onUiSound }) {
   root.innerHTML = `
     <div class="shade top"></div><div class="shade low"></div>
     <div id="hurt"></div>
@@ -35,7 +37,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     <div id="goal" class="hud"></div>
     <div id="lord" class="hud"><div class="who"><b></b><span></span></div>${bar('hp')}<div class="bar posture"><i class="fill"></i></div></div>
     <div id="notes" class="hud"></div>
-    <div id="battle-hint" class="hud" role="status"><kbd></kbd><span></span></div>
+    <div id="battle-hint" class="hud" role="status"><div class="hint-symbol" hidden></div><div class="hint-copy"><kbd></kbd><span></span></div></div>
     <div id="deeds" class="hud"></div>
     <div id="pack" class="hud"><ul></ul><button class="tag" type="button">行囊<b>0</b><kbd></kbd></button></div>
     <div id="stick" class="touch hud"><i></i></div><div id="pads" class="touch hud"></div>
@@ -53,15 +55,15 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
   const deeds = {},
     pads = {},
     padOwners = [];
-  const order = ['attack', 'guard', 'stars', 'rain', 'dodge', 'glide', 'drink'];
+  const order = DEEDS;
   for (const name of order) {
-    const node = el('div', { class: 'deed' + (name === 'rain' ? ' big' : ''), title: DEED_NAMES[name] }, `${icon(name)}<i class="wait"></i><kbd></kbd>${name === 'drink' ? '<em>3</em>' : ''}${name === 'attack' ? '<span class="counter-name">回马枪</span>' : ''}`);
+    const node = el('div', { class: 'deed', 'data-deed': name, title: DEED_NAMES[name] }, `<i class="wait"></i>${actionFace(name)}<kbd></kbd>${name === 'drink' ? '<em>3</em>' : ''}`);
     $('#deeds').append(node);
     deeds[name] = node;
   }
   const PAD_PLACES = { attack: [0, 0], dodge: [96, 6], guard: [66, 92], stars: [0, 98], rain: [8, 170], drink: [136, 112], glide: [164, 40] };
   for (const name of order) {
-    const node = el('button', { class: 'pad', 'data-deed': name, type: 'button', 'aria-label': DEED_NAMES[name] }, `${icon(name)}<span class="pad-label">${PAD_LABELS[name] ?? DEED_NAMES[name]}</span>${name === 'drink' ? '<em>3</em>' : ''}`);
+    const node = el('button', { class: 'pad', 'data-deed': name, type: 'button', 'aria-label': DEED_NAMES[name] }, `${actionFace(name)}${name === 'drink' ? '<em>3</em>' : ''}`);
     if (name === 'attack') node.classList.add('main');
     node.style.setProperty('--pad-right', PAD_PLACES[name][0]);
     node.style.setProperty('--pad-bottom', PAD_PLACES[name][1]);
@@ -79,7 +81,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     $('#pads').append(node);
     pads[name] = node;
   }
-  const mobileAttack = pads.attack.querySelector('.pad-label');
+  const attackLabels = [deeds.attack, pads.attack].map(node => node.querySelector('.action-label'));
   function labelKeys() {
     for (const name of order) deeds[name].querySelector('kbd').textContent = keyName(input.keys[name]);
     $('#pack kbd').textContent = keyName(input.keys.bag);
@@ -131,7 +133,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
 
   // ---- bag ----------------------------------------------------------------------------------
   const pack = $('#pack');
-  const toggleBag = () => pack.classList.toggle('open');
+  const toggleBag = () => onUiSound(pack.classList.toggle('open') ? 'open' : 'close');
   pack.querySelector('.tag').addEventListener('click', toggleBag);
   input.on('bag', toggleBag);
   function fillBag(game) {
@@ -151,6 +153,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     while ($('#notes').children.length > 5) $('#notes').firstChild.remove();
   };
   const battleHint = $('#battle-hint');
+  const hintSymbol = battleHint.querySelector('.hint-symbol');
   const hintKey = battleHint.querySelector('kbd');
   const hintText = battleHint.querySelector('span');
   const coarse = matchMedia('(pointer: coarse)');
@@ -158,8 +161,13 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
   hud.hint = (text, action = null) => {
     hintUntil = now + 4.2;
     hintAction = action;
-    hintKey.hidden = !action;
-    hintKey.textContent = action ? `${PAD_LABELS[action] ?? DEED_NAMES[action]}${coarse.matches ? '' : ` · ${keyName(input.keys[action])}`}` : '';
+    const mark = action === 'attack' ? 'counter' : action;
+    const label = mark === 'counter' ? '反击' : ACTION_LABELS[action];
+    hintKey.hidden = !mark;
+    hintKey.textContent = mark ? `${label}${coarse.matches ? '' : ` · ${keyName(input.keys[action])}`}` : '';
+    hintSymbol.hidden = !mark;
+    hintSymbol.innerHTML = mark ? icon(mark) : '';
+    battleHint.dataset.action = mark ?? '';
     hintText.textContent = text;
     battleHint.classList.add('on');
   };
@@ -169,6 +177,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     battleHint.classList.remove('on');
     hintText.textContent = '';
     hintKey.hidden = true;
+    hintSymbol.hidden = true;
   };
   let speechTimer = 0;
   hud.say = (text, who = '', time = 3) => {
@@ -239,8 +248,10 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     if (set) {
       settings[set] = value;
       onSettings(settings);
+      onUiSound('select');
       drawSettings();
     } else if (key) {
+      onUiSound('select');
       target.classList.add('asking');
       target.textContent = '请按键…';
       input.ask((code) => {
@@ -249,6 +260,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
         if (other) input.keys[other] = input.keys[key];
         input.keys[key] = code;
         onSettings(settings);
+        onUiSound('confirm');
         labelKeys();
         drawSettings();
       });
@@ -256,18 +268,22 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
       drawSettings();
       const open = panel.classList.toggle('on');
       input.setEnabled(!open);
+      onUiSound(open ? 'open' : 'close');
       // Once settings opens, Space must not activate the toolbar toggle a second time.
       if (open) panel.focus({ preventScroll: true });
     } else if (act === 'close') {
       panel.classList.remove('on');
       input.setEnabled(true);
+      onUiSound('close');
     } else if (act === 'reload') location.reload();
     else if (act === 'defaults') {
       Object.assign(input.keys, DEFAULT_KEYS);
       onSettings(settings);
+      onUiSound('confirm');
       labelKeys();
       drawSettings();
     } else if (act === 'full') {
+      onUiSound('select');
       if (document.fullscreenElement) document.exitFullscreen();
       else document.documentElement.requestFullscreen?.().catch(() => {});
     }
@@ -320,10 +336,12 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
       if (charge !== undefined) pads[name].style.setProperty('--charge', charge.toFixed(3));
     };
     const counter = hero.counter > 0 && hero.state !== 'dead';
-    const attackLabel = counter ? '回马枪' : '出枪';
-    if (mobileAttack.textContent !== attackLabel) {
-      mobileAttack.textContent = attackLabel;
-      pads.attack.setAttribute('aria-label', attackLabel);
+    const attackLabel = counter ? '反击' : ACTION_LABELS.attack;
+    if (attackLabels[0].textContent !== attackLabel) {
+      for (const label of attackLabels) label.textContent = attackLabel;
+      const full = counter ? '回马枪' : DEED_NAMES.attack;
+      deeds.attack.title = full;
+      pads.attack.setAttribute('aria-label', full);
     }
     if (hintUntil && (now >= hintUntil || (hintAction === 'attack' && hero.state === 'riposte'))) hud.clearHint();
     set('attack', { ready: counter, now: hero.state === 'cut' || hero.state === 'riposte', charge: Math.min(1, hero.counter / HERO.guard.counter) });
