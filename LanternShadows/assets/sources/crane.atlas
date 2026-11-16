@@ -1,0 +1,25 @@
+crane.png
+size: 786,114
+filter: Linear,Linear
+repeat: none
+pma: false
+wingF1
+bounds: 2,2,78,108
+wingB1
+bounds: 82,2,66,108
+wingF2
+bounds: 150,2,84,99
+wingB2
+bounds: 236,2,69,93
+legs
+bounds: 307,2,93,69
+body
+bounds: 402,2,99,66
+neck2
+bounds: 503,2,48,66
+neck1
+bounds: 553,2,63,63
+tail
+bounds: 618,2,75,48
+head
+bounds: 695,2,87,42

@@ -5,7 +5,7 @@ import { bossBox, bossReach, createBoss, hitBoss, open, present, restoreBoss, ri
 import { HAIRS, createClones, out, stepClones } from './clones.mjs';
 import { FOES, createFoe, foeBox, hitFoe, standing, stepFoe } from './foes.mjs';
 import { ATTACKS, TUNE, bodyOf, canBeHurt, conjure, createHero, hurtHero, reviveHero, stepHero } from './hero.mjs';
-import { moveBody, overlaps, solidAt } from './level.mjs';
+import { CELL, groundUnder, moveBody, overlaps, solidAt } from './level.mjs';
 
 /** How long the count of blows waits for the next one, and how long he lies fallen before he is stood up again. */
 export const COMBO_SECONDS = 1.9,
@@ -13,6 +13,10 @@ export const COMBO_SECONDS = 1.9,
 const POST = { halfWidth: 20, height: 112 };
 /** How near a post he may stand. */
 export const POST_ROOM = 58;
+
+/** A peach of the orchard: how much room it takes, and how fast it falls once it is knocked from its bough. */
+const PEACH = { half: 16, fall: 2200 };
+export const peachBox = peach => ({ x: peach.x - PEACH.half, y: peach.y - PEACH.half, width: PEACH.half * 2, height: PEACH.half * 2 });
 
 /** How far behind its pennant the court before the gate begins, and how far into it he walks before he is met. */
 const COURT = { behind: 48, within: 200, edge: 44 };
@@ -38,9 +42,12 @@ export function createAct(level, { from, clones = HAIRS.count } = {}) {
   return {
     level,
     hero: createHero(start.x, start.y),
-    foes: [...of('spearman'), ...of('archer')].sort((a, b) => a.x - b.x).map((thing, id) => Object.assign(createFoe(thing.type, thing.x, thing.y, id), skip ? { state: 'down', gone: true } : {})),
+    foes: level.things.filter(thing => thing.type in FOES).sort((a, b) => a.x - b.x).map((thing, id) => Object.assign(createFoe(thing.type, thing.x, thing.y, id), skip ? { state: 'down', gone: true } : {})),
     posts: of('post').map((thing, index) => ({ x: thing.x, y: thing.y, index, hits: 0 })),
     checkpoints,
+    // Peaches hang until they are knocked down or jumped for; each gives back one of his own.
+    peaches: of('peach').map((thing, index) => ({ index, x: thing.x, y: thing.y - 24, vy: 0, state: 'hung' })),
+    eaten: 0,
     gate: gate ? { x: gate.x, y: gate.y, barred: false } : null,
     boss,
     from: skip ? 'boss' : undefined,
@@ -171,6 +178,11 @@ export function stepAct(act, input, dt) {
       events.push({ type: 'met', attack, foe, side: side(foe), at: where(foe, rect) }, ...hitFoe(foe, attack, side(foe)));
       if (!standing(foe)) act.felled++;
     }
+    for (const peach of act.peaches)
+      if (peach.state === 'hung' && overlaps(box, peachBox(peach))) {
+        peach.state = 'falling';
+        events.push({ type: 'peach-struck', at: { x: peach.x, y: peach.y } });
+      }
     for (const arrow of act.arrows)
       if (arrow.life > 0 && overlaps(box, { x: arrow.x - 20, y: arrow.y - 6, width: 40, height: 12 })) {
         arrow.life = 0;
@@ -234,7 +246,7 @@ export function stepAct(act, input, dt) {
     for (const event of stepFoe(foe, hero, dt, level)) {
       events.push(event);
       if (event.type === 'arrow') act.arrows.push(event.arrow);
-      else if (event.type === 'foe-strike' && overlaps(event.box, bodyOf(hero))) wound(foe.x);
+      else if ((event.type === 'foe-strike' || event.type === 'foe-touch') && overlaps(event.box, bodyOf(hero))) wound(foe.x);
     }
   }
   for (const arrow of act.arrows) {
@@ -251,6 +263,22 @@ export function stepAct(act, input, dt) {
     }
   }
   act.arrows = act.arrows.filter(arrow => arrow.life > 0);
+
+  // Peaches: one knocked loose falls to whatever is under it, and one he touches when he is short of a peach is eaten.
+  for (const peach of act.peaches) {
+    if (peach.state === 'eaten') continue;
+    if (peach.state === 'falling') {
+      peach.vy += PEACH.fall * dt;
+      peach.y += peach.vy * dt;
+      if (groundUnder(level, peach.x, peach.y + 12)) Object.assign(peach, { y: Math.floor((peach.y + 13) / CELL) * CELL - 12, vy: 0, state: 'ground' });
+    }
+    if (hero.state !== 'down' && hero.health < TUNE.health && overlaps(peachBox(peach), bodyOf(hero))) {
+      peach.state = 'eaten';
+      hero.health++;
+      act.eaten++;
+      events.push({ type: 'peach', at: { x: peach.x, y: peach.y } });
+    }
+  }
 
   if (boss && !boss.gone) {
     // He comes down when the Monkey King walks into the court with no soldier left standing.

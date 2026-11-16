@@ -22,8 +22,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url)),
 /** Atlas pixels for each stage unit. The stage is drawn at up to twice its size, and the camera closes in. */
 const SCALE = 3,
   PAD = 2;
-const PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha'],
-  LEVELS = ['act1'];
+const PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane'],
+  LEVELS = ['act1', 'act2'];
 export const SPINE = '4.3.13';
 
 const rad = Math.PI / 180,
@@ -309,8 +309,8 @@ async function main() {
   // The levels, as Tiled maps.
   fs.mkdirSync(path.join(OUT, 'levels'), { recursive: true });
   for (const name of LEVELS) {
-    const { level, title } = await import(`./levels/${name}.mjs`);
-    fs.writeFileSync(path.join(OUT, 'levels', name + '.tmj'), JSON.stringify(toTiled(level, title)) + '\n');
+    const { level, title, tiles } = await import(`./levels/${name}.mjs`);
+    fs.writeFileSync(path.join(OUT, 'levels', name + '.tmj'), JSON.stringify(toTiled(level, title, tiles)) + '\n');
     console.log(`${name}: ${level.columns}×${level.rows} cells`);
     if (SHEET) console.log(level.text());
   }

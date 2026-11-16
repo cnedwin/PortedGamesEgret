@@ -22,6 +22,8 @@ export function readLevel(map) {
     rows: map.height,
     width: map.width * CELL,
     height: map.height * CELL,
+    /** The name of the picture its ground is drawn from. */
+    set: map.tilesets[0]?.name,
     kind: Uint8Array.from(terrain.data, gid => kindOf.get(gid) ?? EMPTY),
     things: (things?.objects ?? []).map(object => ({ type: object.type, x: object.x * scale, y: object.y * scale }))
   };

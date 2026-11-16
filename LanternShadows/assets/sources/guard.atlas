@@ -1,0 +1,39 @@
+guard.png
+size: 954,282
+filter: Linear,Linear
+repeat: none
+pma: false
+weapon
+bounds: 2,2,72,234
+shield
+bounds: 76,2,84,198
+legF1
+bounds: 162,2,57,120
+legB1
+bounds: 221,2,54,120
+head
+bounds: 277,2,84,117
+torso
+bounds: 363,2,93,111
+legF2
+bounds: 458,2,45,105
+legB2
+bounds: 505,2,39,105
+skirt
+bounds: 546,2,90,99
+armF1
+bounds: 638,2,51,87
+armB1
+bounds: 691,2,51,84
+armB2
+bounds: 744,2,48,78
+armF2
+bounds: 794,2,60,66
+plume1
+bounds: 856,2,42,63
+plume2
+bounds: 900,2,51,48
+footB
+bounds: 2,238,72,42
+footF
+bounds: 76,238,72,42

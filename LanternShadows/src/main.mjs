@@ -11,7 +11,7 @@
 //   input.mjs        keyboard, gamepad and touch as one answer a step
 //   sound.mjs        the percussion, made from numbers
 //
-// Address options: ?backend=webgpu draws with WebGPU instead of WebGL2, ?stats shows what is being drawn,
+// Address options: ?act=2 begins with the second act, ?backend=webgpu draws with WebGPU instead of WebGL2, ?stats shows what is being drawn,
 // ?lang=en starts in English, ?slow=0.25 plays at a quarter of the speed, to watch how he moves, and ?from=nezha
 // begins at the court before the gate. ?clones=200 sets how many copies a tuft of hair makes (a hundred unless
 // said), and keeps them all on the stage however slowly it is then drawn.
@@ -45,8 +45,8 @@ const KEY_HINTS = {
   en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll, through a spear'], ['I', 'clones'], ['P', 'pause']]
 };
 const WORDS = {
-  zh: { tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了', soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
-  en: { tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open', soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
+  zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了', soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
+  en: { titles: { act1: 'Act one: the Southern Gate', act2: 'Act two: the Peach Orchard' }, curtain: title => `${title}. Curtain`, tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open', soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
 };
 function speak() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
@@ -104,30 +104,35 @@ const { engine, scope } = game;
 // ---- What is loaded --------------------------------------------------------------------------------------------
 const loadPicture = createPictures(engine, scope),
   asset = path => new URL(`../assets/${path}`, import.meta.url);
-const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring'],
-  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha'];
+const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring', 'far2', 'tree', 'peach', 'moongate', 'orchard'],
+  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane'],
+  /** The acts, in the order they are played. */
+  ACTS = ['act1', 'act2'];
 // The line under the gong fills as the files come in: the pictures, three files for each puppet, the list of
-// them, and the level.
-const awaited = PICTURES.length + PUPPETS.length * 3 + 2,
+// them, and the levels.
+const awaited = PICTURES.length + PUPPETS.length * 3 + 1 + ACTS.length,
   filled = watchReading(count => ($('filling').firstElementChild.style.width = `${Math.min(100, (count / awaited) * 100)}%`));
-let art, puppetOf, mapSource;
+let art, puppetOf, maps;
 try {
-  const [pictures, puppets, map] = await Promise.all([
+  const [pictures, puppets, levelMaps] = await Promise.all([
     // The cloth is the one picture with nothing to see through, and is kept as a JPEG.
     Promise.all(PICTURES.map(name => loadPicture(asset(`scene/${name}.${name === 'screen' ? 'jpg' : 'png'}`).href))),
     loadPuppets(engine, scope, PUPPETS, asset('')),
-    readJson(asset('levels/act1.tmj').href)
+    Promise.all(ACTS.map(name => readJson(asset(`levels/${name}.tmj`).href)))
   ]);
   art = Object.fromEntries(PICTURES.map((name, index) => [name, pictures[index]]));
   puppetOf = puppets;
-  mapSource = map;
+  maps = Object.fromEntries(ACTS.map((name, index) => [name, levelMaps[index]]));
 } catch (cause) {
   fail(cause);
   throw cause;
 }
-const level = readLevel(mapSource);
-/** Where the act begins: at its beginning, or at the court before the gate. */
-let from = query.get('from') === 'nezha' ? 'boss' : undefined;
+const levels = Object.fromEntries(ACTS.map(name => [name, readLevel(maps[name])]));
+/** Which act is on the stage, and where it begins: at its beginning, or at the court before the gate. */
+let from = query.get('from') === 'nezha' ? 'boss' : undefined,
+  onStage = !from && ACTS[Number(query.get('act')) - 1] ? ACTS[Number(query.get('act')) - 1] : 'act1',
+  level = levels[onStage],
+  mapSource = maps[onStage];
 /** How many copies a tuft of hair makes; if the address says, that many are kept whatever it costs. */
 const TUFT = Math.max(10, Math.min(400, Math.round(Number(query.get('clones'))) || HAIRS.count)),
   keepAll = query.has('clones');
@@ -143,7 +148,6 @@ function picture(parent, lease, x, y, width) {
   return bitmap;
 }
 const layer = parent => parent.addChild(scope.use(new DisplayObjectContainer()));
-const GROUND = level.things.find(thing => thing.type === 'spawn').y;
 
 // From the lamp outward: the cloth, what hangs far behind it, the level and its puppets, and the front of the booth.
 picture(engine.stage, art.screen, 0, 0, STAGE.width);
@@ -153,21 +157,13 @@ const far = layer(engine.stage),
 // Leather only darkens the light that comes through it.
 const shadowBlend = query.get('blend') ?? 'multiply';
 far.blendMode = drift.blendMode = shadowBlend;
-for (const x of [-80, 1240]) picture(far, art.far, x, GROUND - 344, 1400).alpha = 0.6;
 const wisps = [[120, 96, 26], [620, 150, -18], [1100, 70, 14], [1680, 128, -22], [2300, 90, 20], [2900, 140, -16], [3500, 80, 18]].map(([x, y, speed]) => ({ bitmap: picture(drift, art.wisp, x, y, 150), speed }));
 
-const scenery = layer(world);
-scenery.blendMode = shadowBlend;
-if (act.gate) picture(scenery, art.gate, act.gate.x - 210, act.gate.y - 398, 420);
-const pennants = act.checkpoints.map(point => picture(scenery, art.pennant, point.x - 14, point.y - 120, 56));
-
-// The ground is the level's tile map, drawn by the engine from the same file the rules read. The map is stored
-// at twice the size of a cell, so it is shown at half.
-const tiles = scope.use(createTileMap({ map: importTiledMap(mapSource), textures: { terrace: art.tiles }, chunkSize: 16 }));
-tiles.display.scaleX = tiles.display.scaleY = CELL / mapSource.tilewidth;
-tiles.display.blendMode = shadowBlend;
-world.addChild(tiles.display);
-
+// What an act is dressed with goes into these, and is taken out again when the next act is set: the scenery, the
+// ground, and (among the cast) the puppets of whoever stands in the way.
+const scenery = layer(world),
+  ground = layer(world);
+scenery.blendMode = ground.blendMode = shadowBlend;
 const cast = layer(world),
   flights = layer(world),
   effects = layer(world);
@@ -180,21 +176,77 @@ flicker.alpha = 0;
 picture(engine.stage, art.frame, 0, 0, STAGE.width);
 
 // ---- The cast --------------------------------------------------------------------------------------------------
-const posts = act.posts.map(post => {
-  const puppet = createPuppet(puppetOf('dummy'), scope);
-  puppet.bones = 8;
-  puppet.node.x = post.x;
-  puppet.node.y = post.y;
-  puppet.play('idle', { loop: true });
-  cast.addChild(puppet.node);
-  return { puppet, blows: 0 };
-});
-const soldiers = act.foes.map(foe => {
-  const puppet = createPuppet(puppetOf(foe.kind), scope);
-  puppet.bones = 18;
-  cast.addChild(puppet.node);
-  return { puppet };
-});
+const troupe = layer(cast);
+troupe.blendMode = shadowBlend;
+/** What each act is dressed differently with: what hangs far behind, its way out, and its ground. */
+const DRESS = {
+  act1: { far: 'far', gate: ['gate', 420, 398], tiles: 'tiles' },
+  act2: { far: 'far2', gate: ['moongate', 380, 378], tiles: 'orchard' }
+};
+let posts = [],
+  soldiers = [],
+  pennants = [],
+  peachesShown = [],
+  tiles;
+/** Everything that was put up for the act now on the stage, to be taken down with it. */
+const dressed = [];
+/** Dresses the stage for the act that is about to be played. */
+function dress() {
+  const look = DRESS[onStage],
+    floor = level.things.find(thing => thing.type === 'spawn').y,
+    hang = (parent, lease, x, y, width) => {
+      const bitmap = parent.addChild(new Bitmap(lease));
+      bitmap.x = x;
+      bitmap.y = y;
+      bitmap.scaleX = bitmap.scaleY = width / bitmap.naturalWidth;
+      dressed.push({ node: bitmap, parent });
+      return bitmap;
+    };
+  for (const x of [-80, 1240]) hang(far, art[look.far], x, floor - 344, 1400).alpha = 0.6;
+  for (const thing of level.things) if (thing.type === 'tree') hang(scenery, art.tree, thing.x - 160, thing.y - 378, 320);
+  const [gate, wide, tall] = look.gate;
+  if (act.gate) hang(scenery, art[gate], act.gate.x - wide / 2, act.gate.y - tall, wide);
+  pennants = act.checkpoints.map(point => hang(scenery, art.pennant, point.x - 14, point.y - 120, 56));
+  // The ground is the level's tile map, drawn by the engine from the same file the rules read. The map is stored
+  // at twice the size of a cell, so it is shown at half.
+  tiles = createTileMap({ map: importTiledMap(mapSource), textures: { [level.set]: art[look.tiles] }, chunkSize: 16 });
+  tiles.display.scaleX = tiles.display.scaleY = CELL / mapSource.tilewidth;
+  tiles.display.blendMode = shadowBlend;
+  ground.addChild(tiles.display);
+  const stand = (name, bones, size = 1) => {
+    const puppet = createPuppet(puppetOf(name), scope);
+    puppet.bones = bones;
+    puppet.scale(size);
+    troupe.addChild(puppet.node);
+    dressed.push({ node: puppet.node, parent: troupe, puppet });
+    return puppet;
+  };
+  posts = act.posts.map(post => {
+    const puppet = stand('dummy', 8);
+    puppet.node.x = post.x;
+    puppet.node.y = post.y;
+    puppet.play('idle', { loop: true });
+    return { puppet, blows: 0 };
+  });
+  soldiers = act.foes.map(foe => ({ puppet: foe.flies ? stand(foe.kind, 11, 1.2) : stand(foe.kind, 18) }));
+  // Peaches hang in front of the scenery, each turned about its middle.
+  peachesShown = act.peaches.map(peach => {
+    const shown = hang(flights, art.peach, peach.x, peach.y, 30);
+    shown.anchorOffsetX = shown.naturalWidth / 2;
+    shown.anchorOffsetY = shown.naturalHeight / 2;
+    return shown;
+  });
+}
+/** Takes down what the last act was dressed with. */
+function undress() {
+  for (const { node, parent, puppet } of dressed.splice(0)) {
+    parent.removeChild(node);
+    if (puppet) puppet.dispose();
+    else node.dispose();
+  }
+  ground.removeChild(tiles.display);
+  tiles.dispose();
+}
 // Nezha waits out of sight until he is called down.
 const nezha = createPuppet(puppetOf('nezha'), scope);
 nezha.bones = 21;
@@ -230,6 +282,7 @@ cast.addChild(wukong.node);
 wukong.play('idle', { loop: true });
 /** Arrows in the air, each with the picture that shows it. */
 const arrows = new Map();
+dress();
 
 // Sparks from the staff, straw from the posts, and dust from his feet.
 const emitter = (lease, options, blend) => {
@@ -300,6 +353,8 @@ function showResult() {
     words = WORDS[lang];
   $('result').hidden = !result;
   if (!result) return;
+  $('result-title').textContent = words.curtain(words.titles[onStage]);
+  $('next').hidden = !ACTS[ACTS.indexOf(onStage) + 1];
   $('rank').textContent = result.rank;
   $('tally').innerHTML = [
     [words.time, words.seconds(Math.round(result.time))],
@@ -380,7 +435,19 @@ function happen(events) {
       event.at.slice(0, 48).forEach(at => burst(dust, at.x, at.y - 30, 4));
       sound.play('whirl', { volume: 0.6, rate: 0.8, pan });
       counted = true;
-    } else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
+    } else if (type === 'foe-block') {
+      // The shield takes it: a dull ring, and a few sparks where the staff met it.
+      const { foe } = event;
+      burst(sparks, foe.x + foe.facing * 28, foe.y - 62, 8);
+      sound.play('tap', { volume: 0.9, rate: 0.45, pan: panOf(foe.x) });
+      sound.play('smallGong', { volume: 0.3, rate: 2.2, pan: panOf(foe.x) });
+      camera.shake({ trauma: 0.16 });
+      freeze = Math.max(freeze, 0.03);
+    } else if (type === 'foe-open') (burst(sparks, event.foe.x, event.foe.y - 70, 22), sound.play('smallGong', { volume: 0.7, rate: 1.2, pan: panOf(event.foe.x) }));
+    else if (type === 'foe-dive') sound.play('swish', { volume: 0.6, rate: 1.7, pan: panOf(event.foe.x) });
+    else if (type === 'peach-struck') (burst(dust, event.at.x, event.at.y, 5), sound.play('tap', { volume: 0.5, rate: 1.6, pan: panOf(event.at.x) }));
+    else if (type === 'peach') (burst(sparks, event.at.x, event.at.y, 14), sound.play('smallGong', { volume: 0.5, rate: 1.9, pan }), (counted = true));
+    else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
     else if (type === 'foe-strike' || type === 'arrow') sound.play('swish', { volume: 0.55, rate: type === 'arrow' ? 1.7 : 1.3, pan: panOf(event.foe.x) });
     else if (type === 'foe-down') (sound.play('drum', { volume: 0.8, rate: 0.7, pan: panOf(event.foe.x) }), (counted = true));
     else if (type === 'hurt') {
@@ -477,7 +544,7 @@ function update(seconds) {
     puppet.node.visible = !foe.gone;
     if (foe.gone || !inView(foe.x, centre)) return;
     const shown = foeAnimation(foe);
-    puppet.play(shown.name, { loop: shown.name === 'idle' || shown.name === 'walk', key: shown.key, mix: shown.name === 'attack' ? 0.03 : 0.08 });
+    puppet.play(shown.name, { loop: shown.name === 'idle' || shown.name === 'walk' || shown.name === 'fly' || shown.name === 'dive', key: shown.key, mix: shown.name === 'attack' || shown.name === 'block' ? 0.03 : 0.08 });
     puppet.face(foe.facing);
     puppet.node.x = foe.x;
     puppet.node.y = foe.y;
@@ -565,6 +632,14 @@ function update(seconds) {
       arrows.delete(arrow);
     }
   act.checkpoints.forEach((point, index) => (pennants[index].alpha = point.reached ? 1 : 0.4));
+  // Peaches: one on its bough stirs a little; one that has been eaten is gone.
+  act.peaches.forEach((peach, index) => {
+    const shown = peachesShown[index];
+    shown.visible = peach.state !== 'eaten';
+    shown.x = peach.x;
+    shown.y = peach.y;
+    shown.rotation = peach.state === 'hung' ? Math.sin(clock * 1.7 + index * 2) * 7 : 0;
+  });
 
   for (const made of [sparks, straw, dust, flames]) made.update(still ? 0 : dt);
   for (const wisp of wisps) {
@@ -651,6 +726,26 @@ function again() {
 }
 $('again').addEventListener('click', again);
 
+/** Sets the stage for an act: from its beginning, or (the first act) from the court before the gate. */
+function setAct(name, where) {
+  from = where;
+  if (name !== onStage) {
+    undress();
+    onStage = name;
+    level = levels[name];
+    mapSource = maps[name];
+    act = createAct(level, { from, clones: TUFT });
+    dress();
+    camera.setBounds({ x: 0, y: 0, width: level.width, height: STAGE.height });
+  }
+  again();
+}
+$('next').addEventListener('click', () => {
+  setAct(ACTS[ACTS.indexOf(onStage) + 1]);
+  notice(WORDS[lang].titles[onStage]);
+  sound.play('gong', { volume: 0.9 });
+});
+
 $('lang').addEventListener('click', () => ((lang = lang === 'zh' ? 'en' : 'zh'), speak()));
 $('mute').addEventListener('click', event => {
   sound.muted = !sound.muted;
@@ -671,9 +766,9 @@ filled();
 $('filling').hidden = true;
 status.textContent = '';
 status.removeAttribute('data-zh');
-/** Raises the curtain on the act, from its beginning or from the court before the gate. */
-function raise(where) {
-  if (where !== from) ((from = where), again());
+/** Raises the curtain on an act, from its beginning or (the first act) from the court before the gate. */
+function raise(name, where) {
+  if (name !== onStage || where !== from) setAct(name, where);
   playing = true;
   $('curtain').classList.add('is-up');
   $('hud').hidden = false;
@@ -681,8 +776,12 @@ function raise(where) {
   sound.begin().then(() => sound.play('gong', { volume: 0.9 }));
   canvas.focus();
 }
-start.addEventListener('click', () => raise(query.get('from') === 'nezha' ? 'boss' : undefined));
-startBoss.addEventListener('click', () => raise('boss'));
+// The gong begins wherever the address says, the first act if it says nothing; the lines under it choose for themselves.
+const [openingAct, openingFrom] = [onStage, from];
+start.addEventListener('click', () => raise(openingAct, openingFrom));
+startBoss.addEventListener('click', () => raise('act1', 'boss'));
+$('start-act2').disabled = false;
+$('start-act2').addEventListener('click', () => raise('act2'));
 
 // What a check reads; the play does not need it.
 globalThis.__lantern = {
@@ -697,7 +796,11 @@ globalThis.__lantern = {
   },
   backend: game.backend,
   camera: () => camera.snapshot(),
-  begin: where => (where === 'nezha' ? startBoss : start).click(),
+  begin: where => (where === 'nezha' ? startBoss : where === 'act2' ? $('start-act2') : start).click(),
+  get stage() {
+    return onStage;
+  },
+  next: () => $('next').click(),
   get boss() {
     return act.boss;
   },

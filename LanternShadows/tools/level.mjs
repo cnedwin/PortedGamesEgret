@@ -16,7 +16,9 @@ export const TILES = [
 const GID = Object.fromEntries(TILES.map((tile, index) => [tile.name, index + 1]));
 
 /** What a letter on the grid stands for when it is a thing rather than ground. */
-export const THINGS = { S: 'spawn', s: 'spearman', a: 'archer', p: 'post', c: 'checkpoint', G: 'gate', N: 'boss' };
+export const THINGS = { S: 'spawn', s: 'spearman', a: 'archer', h: 'guard', k: 'crane', p: 'post', c: 'checkpoint', t: 'tree', o: 'peach', G: 'gate', N: 'boss' };
+/** The pictures a level's ground may be drawn from, by the name a level gives. Each holds the tiles of TILES in order. */
+export const TILESETS = { terrace: 'tiles.png', orchard: 'orchard.png' };
 
 /** An empty grid to draw a level on: `fill` lays ground or cloud over a rectangle of cells, `put` stands a thing in one. */
 export function grid(columns, rows) {
@@ -35,12 +37,18 @@ export function grid(columns, rows) {
       cells[row][column] = letter;
       return this;
     },
+    /** Places a thing that needs nothing under it: what flies, and what hangs from a bough. */
+    hang(letter, column, row) {
+      if (cells[row][column] !== '.') throw Error(`Cell ${column},${row} is taken by ${cells[row][column]}`);
+      cells[row][column] = letter;
+      return this;
+    },
     text: () => cells.map(row => row.join('')).join('\n')
   };
 }
 
 /** The Tiled map of a grid: one layer of terrain, and the things as points where their feet are. */
-export function toTiled({ columns, rows, cells }, title) {
+export function toTiled({ columns, rows, cells }, title, set = 'terrace') {
   const at = (c, r) => cells[r]?.[c] ?? '.';
   const data = [],
     objects = [];
@@ -73,14 +81,14 @@ export function toTiled({ columns, rows, cells }, title) {
     tilesets: [
       {
         firstgid: 1,
-        name: 'terrace',
+        name: set,
         tilewidth: size,
         tileheight: size,
         columns: TILES.length,
         tilecount: TILES.length,
         spacing: 0,
         margin: 0,
-        image: '../scene/tiles.png',
+        image: '../scene/' + TILESETS[set],
         imagewidth: size * TILES.length,
         imageheight: size,
         tiles: TILES.map((tile, id) => ({ id, type: tile.name, properties: [{ name: tile.solid ? 'solid' : 'ledge', type: 'bool', value: true }] }))

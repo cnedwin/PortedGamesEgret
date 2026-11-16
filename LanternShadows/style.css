@@ -159,6 +159,9 @@ body {
 .tally dt { letter-spacing: 0.08em; }
 .tally dd { margin: 0; color: var(--pale-gold); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .gong.small { width: 4.4em; height: 4.4em; font-size: 1.2em; }
+.gongs { display: flex; gap: 1.6em; }
+.gongs [hidden] { display: none; }
+:root[lang='en'] .gong.small { font-size: 0.95em; width: 5.4em; height: 5.4em; letter-spacing: 0.02em; }
 
 /* The gong: a bronze disc, struck to begin. */
 .gong {
@@ -170,7 +173,8 @@ body {
 .gong:hover:not(:disabled) { transform: scale(1.04); }
 .gong:active:not(:disabled) { transform: scale(0.96); }
 .gong:disabled { filter: grayscale(0.7) brightness(0.6); cursor: progress; }
-/* The lesser choice on the playbill, written rather than struck. */
+/* The lesser choices on the playbill, written rather than struck. */
+.asides { margin: 0; display: flex; flex-wrap: wrap; justify-content: center; gap: 0.2em 1.6em; }
 .aside { border: 0; padding: 0.3em 0.6em; background: none; color: #f0c98a; font: 700 0.92em var(--serif); letter-spacing: 0.08em; text-decoration: underline; text-decoration-color: #c98a2a; text-underline-offset: 0.3em; cursor: pointer; }
 .aside:hover:not(:disabled) { color: var(--pale-gold); }
 .aside:disabled { opacity: 0.4; cursor: progress; }

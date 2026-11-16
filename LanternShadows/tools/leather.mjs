@@ -102,7 +102,7 @@ let serial = 0;
 export function leather({ shape, fill = DYE.hide, holes = [], over = '', under = '', opacity = 0.88, edge = 1.05 }) {
   const id = 'cut' + ++serial;
   const cut = holes.length
-    ? `<mask id="${id}" maskUnits="userSpaceOnUse" x="-400" y="-400" width="1200" height="1200"><rect x="-400" y="-400" width="1200" height="1200" fill="#fff"/><path d="${holes.join('')}" fill="#000"/></mask>`
+    ? `<mask id="${id}" maskUnits="userSpaceOnUse" x="-400" y="-400" width="2400" height="1600"><rect x="-400" y="-400" width="2400" height="1600" fill="#fff"/><path d="${holes.join('')}" fill="#000"/></mask>`
     : '';
   const clip = `<clipPath id="${id}c"><path d="${shape}"/></clipPath>`;
   return (
