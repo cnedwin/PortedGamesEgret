@@ -25,7 +25,7 @@ import { createBrowserGame } from '@egret/engine/web/game';
 import { bindPlayButton, createInput } from './input.mjs';
 import { createPictures, readJson, watchReading } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
-import { FURNACE, createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
+import { FURNACE, VENT, createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
 import { BOSS, bossAnimation, present } from './rules/boss.mjs';
 import { ERLANG, bossAnimation as erlangAnimation, houndAnimation } from './rules/erlang.mjs';
 import { LAOZI, bossAnimation as laoziAnimation, furnaceWalls } from './rules/laozi.mjs';
@@ -259,6 +259,7 @@ let posts = [],
   soldiers = [],
   pennants = [],
   peachesShown = [],
+  ventsShown = [],
   furnacesShown = [],
   tiles;
 /** Everything that was put up for the act now on the stage, to be taken down with it. */
@@ -303,7 +304,21 @@ function dress() {
   });
   soldiers = act.foes.map(foe => ({ puppet: foe.flies ? stand(foe.kind, 11, 1.2) : stand(foe.kind, 18) }));
   // Grates lie on the floor; a furnace stands on its feet, and is turned about them when it is knocked over.
-  for (const vent of act.vents) hang(flights, art.vent, vent.x - 32, vent.y - 14, 64);
+  ventsShown = act.vents.map(vent => {
+    hang(flights, art.vent, vent.x - 32, vent.y - 14, 64);
+    const node = effects.addChild(new Sprite()), g = node.graphics, half = VENT.width / 2;
+    // A cutout of the live flame, with a smaller gold core; only the loose embers need particles.
+    g.beginFill(0xc74819, 0.7).moveTo(-half, 0).lineTo(-19, -27).lineTo(-23, -54)
+      .lineTo(-11, -84).lineTo(-8, -66).lineTo(4, -VENT.height).lineTo(9, -100)
+      .lineTo(20, -77).lineTo(13, -49).lineTo(half, -29).lineTo(half, 0)
+      .lineTo(-half, 0).endFill();
+    g.beginFill(0xffca70, 0.84).moveTo(-13, 0).lineTo(-10, -31).lineTo(-13, -49)
+      .lineTo(-3, -40).lineTo(4, -101).lineTo(8, -63).lineTo(15, -33)
+      .lineTo(10, 0).lineTo(-13, 0).endFill();
+    Object.assign(node, { x: vent.x, y: vent.y, visible: false });
+    dressed.push({ node, parent: effects });
+    return node;
+  });
   furnacesShown = act.furnaces.map(furnace => {
     const shown = hang(scenery, art.furnace, furnace.x, furnace.y, 96);
     shown.anchorOffsetX = shown.naturalWidth / 2;
@@ -909,14 +924,27 @@ function update(seconds) {
   // The palace's fires. A grate sputters before its turn and stands alight in it; a furnace knocked over lies on
   // its side with its fire along the floor; a fan's wind is dust blown the way it blows, and what it sends along
   // the floor is a tongue of flame.
-  if (!still) {
-    for (const vent of act.vents) {
-      if (!inView(vent.x, centre) || vent.state === 'off' || !vent.state) continue;
-      const alight = vent.state === 'on';
-      for (let n = some(alight ? 300 : 50); n > 0; n--) burst(flames, vent.x + (Math.random() - 0.5) * 30, vent.y - 8 - (alight ? Math.random() * 60 : 0), 1);
+  act.vents.forEach((vent, i) => {
+    const shown = ventsShown[i], near = inView(vent.x, centre), alight = vent.state === 'on';
+    shown.visible = near && alight;
+    if (shown.visible) {
+      shown.scaleY = 0.94 + 0.08 * Math.sin(clock * 15 + i);
+      shown.alpha = 0.83 + 0.12 * Math.sin(clock * 11 + i);
     }
-    for (const furnace of act.furnaces) for (let n = furnace.life > 0 ? some(FURNACE.spill * 0.5) : 0; n > 0; n--) burst(flames, furnace.x + furnace.side * Math.random() * FURNACE.spill, furnace.y - 4, 1);
-    for (const foe of act.foes) for (let n = foe.gust > 0 ? some(90) : 0; n > 0; n--) burst(dust, foe.x + foe.facing * (30 + Math.random() * FOES.fanner.gust.reach), foe.y - 16 - Math.random() * 80, 1);
+    if (still || !near || (!alight && vent.state !== 'warn')) return;
+    burst(flames, vent.x + (Math.random() - 0.5) * 20, vent.y - 8 - (alight ? Math.random() * 90 : 0), some(alight ? 64 : 24));
+  });
+  if (!still) {
+    // Each burst rebuilds the emitter mesh. Emit the frame's embers in groups across the spill.
+    for (const furnace of act.furnaces) {
+      if (furnace.life <= 0) continue;
+      for (let band = 0; band < 3; band++) {
+        const offset = (band + Math.random()) * FURNACE.spill / 3;
+        burst(flames, furnace.x + furnace.side * offset, furnace.y - 4, some(FURNACE.spill / 6));
+      }
+    }
+    for (const foe of act.foes)
+      if (foe.gust > 0) burst(dust, foe.x + foe.facing * (30 + Math.random() * FOES.fanner.gust.reach), foe.y - 16 - Math.random() * 80, some(90));
     for (const arrow of act.arrows) if (arrow.kind === 'ember') (burst(flames, arrow.x, arrow.y + 8, some(160)), burst(sparks, arrow.x, arrow.y, some(30)));
   }
   act.furnaces.forEach((furnace, index) => {
