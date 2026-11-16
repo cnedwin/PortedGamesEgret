@@ -96,14 +96,18 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     knob.style.setProperty('--y', dy * 34 + 'px');
     input.setStick(d < 0.2 ? 0 : dx, d < 0.2 ? 0 : dy);
   });
-  for (const type of ['pointerup', 'pointercancel'])
-    stick.addEventListener(type, () => {
-      stickFrom = null;
-      stick.classList.remove('on');
-      knob.style.setProperty('--x', '0px');
-      knob.style.setProperty('--y', '0px');
-      input.setStick(0, 0);
-    });
+  const resetStick = () => {
+    stickFrom = null;
+    stick.classList.remove('on');
+    knob.style.setProperty('--x', '0px');
+    knob.style.setProperty('--y', '0px');
+    input.setStick(0, 0);
+  };
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) stick.addEventListener(type, resetStick);
+  input.on('reset', () => {
+    resetStick();
+    if (hud.settingsOpen?.()) drawSettings();
+  });
 
   // ---- bag ----------------------------------------------------------------------------------
   const pack = $('#pack');

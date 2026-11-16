@@ -349,10 +349,10 @@ function stepHero(game, input, dt) {
         }
       } else if (hero.state !== 'free') hero.state = 'free';
 
-      let speed = HERO.speed;
+      let speed = HERO.speed * Math.min(1, wish);
       if (hero.state === 'guard') speed *= 0.38;
       if (hero.state === 'glide') {
-        speed = HERO.glide.speed;
+        speed = HERO.glide.speed * Math.min(1, wish);
         spend(hero, HERO.glide.cost * dt);
         if (hero.stamina <= 0) hero.state = 'free';
       }

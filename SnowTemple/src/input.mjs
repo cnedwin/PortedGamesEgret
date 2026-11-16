@@ -21,7 +21,7 @@ export function createInput(canvas, keys) {
     pressed = new Set(),
     pointer = { x: 0.5, y: 0.5, seen: false },
     stick = { x: 0, z: 0 },
-    listeners = { bag: () => {}, any: () => {} };
+    listeners = { bag: () => {}, any: () => {}, reset: () => {} };
   let asking = null;
 
   const actionOf = (code) => Object.keys(keys).find((action) => keys[action] === code);
@@ -50,7 +50,16 @@ export function createInput(canvas, keys) {
     press(event.code, event);
   });
   addEventListener('keyup', (event) => release(event.code));
-  addEventListener('blur', () => down.clear());
+  function reset() {
+    down.clear();
+    pressed.clear();
+    stick.x = stick.z = 0;
+    pointer.seen = false;
+    asking = null;
+    listeners.reset();
+  }
+  addEventListener('blur', reset);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
   canvas.addEventListener('pointerdown', (event) => {
     if (event.pointerType === 'touch') return;
     canvas.focus();
@@ -69,6 +78,7 @@ export function createInput(canvas, keys) {
   return {
     keys,
     pointer,
+    reset,
     on: (name, call) => (listeners[name] = call),
     /** Ask for the next key pressed, for rebinding. */
     ask: (call) => (asking = call),
