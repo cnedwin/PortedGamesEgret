@@ -45,13 +45,13 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
   scene.background = [0.012, 0.018, 0.035];
-  scene.fog = { kind: 'exponential', color: [0.03, 0.045, 0.085], density: 0.02 };
-  scene.addChild(createHemisphereLight3D({ color: 0x4a66a8, groundColor: 0x141a2a, intensity: 0.3 }));
-  scene.addChild(createAmbientLight3D({ intensity: 0.04 }));
-  const moon = createDirectionalLight3D({ color: 0x8fb0ff, intensity: 0.82, castShadow: true });
+  scene.fog = { kind: 'exponential', color: [0.027, 0.041, 0.071], density: 0.017 };
+  scene.addChild(createHemisphereLight3D({ color: 0x7489ad, groundColor: 0x2b3141, intensity: 0.39 }));
+  scene.addChild(createAmbientLight3D({ intensity: 0.055 }));
+  const moon = createDirectionalLight3D({ color: 0xa5c2ef, intensity: 0.89, castShadow: true });
   Object.assign(moon.shadow, { mapSize: shadowSize, extent: 24, near: 1, far: 90, cascades: 1 });
   scene.addChild(moon);
-  const MOON = [-16, 30, 14];
+  const MOON = [-17, 29, -9];
   view.sunDirection = (() => {
     const l = Math.hypot(...MOON);
     return MOON.map((v) => v / l);
@@ -96,12 +96,9 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     lootMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 0.4, metallic: 0.3, emissive: 0xffffff, emissiveIntensity: 0.25 }),
     dropViews = new Map();
 
-  // ---- the two things that bar the way ---------------------------------------------------------
-  const marks = new Map(); // warnings on the ground, by foe
-
   // ---- camera -------------------------------------------------------------------------------
   const focus = { x: PLACES.start.x, z: PLACES.start.z },
-    BACK = [0, 18.2, 13.4],
+    BACK = [0, 14.2, 12.1],
     eye = [0, 0, 0],
     look = [0, 0, 0];
   camera.fov = 36;
@@ -115,8 +112,8 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     const hero = game.hero,
       lu = game.boss;
     let tx = hero.x,
-      tz = hero.z - 1.2,
-      zoom = 1;
+      tz = hero.z - 1.45,
+      zoom = game.stage === 'yard' ? 1.06 : 1;
     if (game.stage === 'boss' && lu.state !== 'dead') {
       // Lean toward Lu Qian, but never let the hero leave the middle of the picture.
       const dx = lu.x - hero.x,
@@ -125,8 +122,10 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         pull = Math.min(3.2, d * 0.3);
       tx += (dx / d) * pull;
       tz += (dz / d) * pull;
-      zoom = 1.08 + Math.min(0.14, d * 0.012);
+      zoom = 1.13 + Math.min(0.18, d * 0.013);
     }
+    // Keep threats at the edges of a narrow viewport in view.
+    zoom *= Math.min(1.22, Math.max(1, 1.2 / camera.aspect));
     const k = 1 - Math.exp(-dt * 5.5);
     focus.x += (tx - focus.x) * k;
     focus.z += (tz - focus.z) * k;
@@ -173,29 +172,44 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
 
   // ---- events -------------------------------------------------------------------------------
   const foeById = (game, id) => game.foes.find((foe) => foe.id === id);
+  const warnings = new WeakMap();
   function warn(game, e) {
-    const foe = foeById(game, e.id),
-      move = e.move,
-      tint = move.unblockable ? TINT.warnHard : TINT.warn,
-      list = [];
-    const common = { mode: 3, life: e.time + move.active * 0.5, tint, power: 1.7, y: 0.09 };
-    const follow = (off = 0) => (item, t) => {
-      item.k = t;
-      if (foe.state === 'stagger' || foe.state === 'dead' || foe.state === 'down' || foe.state === 'roam') return fx.release(item);
-      if (move.shape === 'disc' && !move.self) item.mesh.setPosition(foe.aim.x, 0.09, foe.aim.z);
-      else {
-        item.mesh.setPosition(foe.x, 0.09, foe.z);
-        item.mesh.setRotation(0, foe.face + off, 0);
+    const foe = foeById(game, e.id);
+    if (!foe) return;
+    const move = e.move;
+    const disc = move.shape === 'disc';
+    const arc = move.shape === 'arc';
+    const impact = e.time + (foe.state === 'windup' ? move.active * 0.5 : 0);
+    const y = 0.11;
+    const common = { mode: 3, y, life: impact + 0.14, tint: move.unblockable ? TINT.warnHard : TINT.warn, hard: move.unblockable, edgeType: disc ? 0 : arc ? 1 : 2 };
+    // Preview the playable hit area from inShape, including the hero's collision margin.
+    // Arrows keep a directional strip because their hit moves with the projectile.
+    const margin = HERO.radius * 0.6;
+    const radius = move.range + margin;
+    const tail = 0.4;
+    warnings.set(foe, e);
+    const follow = (off = 0) => (item) => {
+      if (warnings.get(foe) !== e || foe.move !== move || (foe.state !== 'windup' && foe.state !== 'strike')) return fx.release(item);
+      const elapsed = foe.state === 'windup' ? foe.t : impact + foe.t - move.active * 0.5;
+      item.k = Math.max(0, Math.min(1, elapsed / impact));
+      const aftermath = Math.max(0, Math.min(1, (elapsed - impact) / 0.14));
+      item.fade = Math.min(1, item.age * 30) * (1 - aftermath);
+      if (disc) {
+        item.mesh.setPosition(foe.aim.x, y, foe.aim.z);
+        return;
       }
+      const angle = foe.face + off;
+      const behind = arc ? 0 : tail;
+      item.mesh.setPosition(foe.x - Math.sin(angle) * behind, y, foe.z - Math.cos(angle) * behind);
+      item.mesh.setRotation(0, angle, 0);
     };
-    if (move.shape === 'arc') {
-      const r = move.range + 0.3;
-      list.push(fx.spawn(fx.sector(move.arc), { ...common, from: [r, 1, r], track: follow() }));
-    } else if (move.shape === 'disc') {
-      const r = move.range + 0.2;
-      list.push(fx.spawn(fx.sector(Math.PI * 2), { ...common, from: [r, 1, r], track: follow() }));
-    } else for (const off of move.shape === 'lines' ? [-0.42, 0, 0.42] : [0]) list.push(fx.spawn('strip', { ...common, from: [move.width + 0.3, 1, move.range], track: follow(off) }));
-    marks.set(e.id, list);
+    if (disc || arc) {
+      fx.spawn(fx.sector(disc ? Math.PI * 2 : move.arc + 0.24), { ...common, from: [radius, 1, radius], track: follow() });
+    } else {
+      for (const off of move.shape === 'lines' ? [-0.42, 0, 0.42] : [0]) {
+        fx.spawn('strip', { ...common, from: [move.width + margin * 2, 1, move.range + tail], track: follow(off) });
+      }
+    }
   }
 
   function onEvent(game, e) {
@@ -224,8 +238,10 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
           pz = e.z - d[2] * 0.45,
           tint = e.source === 'star' || e.source === 'rain' ? TINT.spear : TINT.gold;
         fx.burst(px, 1.15, pz, { count: e.heavy ? 22 : 11, dir: [d[0], 0.35, d[2]], spread: 0.55, speed: e.heavy ? 12 : 8, life: 0.36, size: 0.085, tint, power: 4 });
-        fx.spawn('ring', { mode: 1, x: px, y: 1.1, z: pz, life: 0.2, from: [0.2, 1, 0.2], to: [e.heavy ? 1.8 : 1.1, 1, e.heavy ? 1.8 : 1.1], tint: TINT.white, power: 2.4 });
-        fx.flash(px, pz, [1, 0.8, 0.55], e.heavy ? 26 : 12, 0.16, 8);
+        const counter = e.source === 'riposte';
+        const impactSize = counter ? 2.45 : e.heavy ? 1.8 : 1.1;
+        fx.spawn('ring', { mode: 1, x: px, y: 1.1, z: pz, life: counter ? 0.26 : 0.2, from: [0.2, 1, 0.2], to: [impactSize, 1, impactSize], tint: counter ? TINT.gold : TINT.white, power: counter ? 3.6 : 2.4 });
+        fx.flash(px, pz, [1, 0.8, 0.55], counter ? 41 : e.heavy ? 26 : 12, 0.16, 8);
         const figure = figures.get(e.id);
         if (figure) figure.flash = 1;
         view.shake = Math.max(view.shake, e.heavy ? 0.6 : 0.25);
@@ -239,11 +255,14 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
           d = dirOf(e.face),
           px = e.x + d[0] * 0.7,
           pz = e.z + d[2] * 0.7;
-        fx.burst(px, 1.2, pz, { count: big ? 34 : 12, spread: 1, speed: big ? 11 : 7, life: big ? 0.5 : 0.3, size: 0.09, tint: TINT.gold, power: big ? 5 : 3 });
+        const tint = big ? TINT.gold : TINT.spear;
+        fx.burst(px, 1.2, pz, { count: big ? 34 : 12, spread: 1, speed: big ? 11 : 7, life: big ? 0.5 : 0.3, size: 0.09, tint, power: big ? 5 : 3 });
         if (big) {
           fx.spawn('ring', { mode: 1, x: px, y: 1.2, z: pz, life: 0.35, from: [0.3, 1, 0.3], to: [3.6, 1, 3.6], tint: TINT.gold, power: 3.2 });
           fx.flash(px, pz, [1, 0.85, 0.5], 60, 0.3, 14);
           view.shake = Math.max(view.shake, 0.6);
+        } else if (e.type === 'block') {
+          fx.spawn('arcUp', { mode: 0, x: px, y: 1.15, z: pz, yaw: e.face, life: 0.18, from: [0.28, 0.36, 0.28], tint, power: 2.45 });
         }
         break;
       }
@@ -395,7 +414,8 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     heroFigure.glow += ((cutting ? 3.2 : hero.counter > 0 ? 2 : 0.25) - heroFigure.glow) * Math.min(1, dt * 14);
     heroFigure.metal.emissiveIntensity = heroFigure.glow;
     heroFigure.flash = Math.max(0, heroFigure.flash - dt * 6);
-    heroFigure.cloth.emissive.set([heroFigure.flash * 0.9, heroFigure.flash * 0.2, heroFigure.flash * 0.15]);
+    const [heroRed, heroGreen, heroBlue] = heroFigure.look.fill;
+    heroFigure.cloth.emissive.set([heroRed + heroFigure.flash * 0.9, heroGreen + heroFigure.flash * 0.2, heroBlue + heroFigure.flash * 0.15]);
     heroFigure.root.visible = !(hero.safe > 0 && hero.state === 'free' && Math.floor(clock * 14) % 2 === 0);
     if (hero.moving) {
       footstep += dt * (hero.state === 'glide' ? 3 : 1);
@@ -406,8 +426,12 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       }
     }
     // A ring at his feet while the riposte is there to be taken.
-    if (hero.counter > 0 && !view.counterRing) view.counterRing = fx.spawn('ring', { mode: 1, y: 0.1, life: 9, from: [1.5, 1, 1.5], tint: TINT.gold, power: 2.2, hold: true, track: (item) => (item.mesh.setPosition(game.hero.x, 0.1, game.hero.z), (item.shader.uniforms[0] = 0.25 + Math.sin(item.age * 16) * 0.1)) });
-    if (hero.counter <= 0 && view.counterRing) (fx.release(view.counterRing), (view.counterRing = null));
+    const counter = hero.counter > 0 && hero.state !== 'dead';
+    if (counter && !view.counterRing) view.counterRing = fx.spawn('ring', { mode: 7, life: 60, from: [1.45, 1, 1.45], tint: TINT.gold, power: 2.6, track: (item) => {
+      item.mesh.setPosition(hero.x, 0.13, hero.z);
+      item.k = Math.min(1, hero.counter / HERO.guard.counter);
+    } });
+    if (!counter && view.counterRing) (fx.release(view.counterRing), (view.counterRing = null));
 
     // The others.
     for (const foe of game.foes) {
@@ -427,7 +451,8 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       figure.glow += (threat - figure.glow) * Math.min(1, dt * 12);
       figure.metal.emissiveIntensity = figure.glow;
       figure.flash = Math.max(0, figure.flash - dt * 7);
-      figure.cloth.emissive.set([figure.flash, figure.flash * 0.9, figure.flash * 0.8]);
+      const [red, green, blue] = figure.look.fill;
+      figure.cloth.emissive.set([red + figure.flash, green + figure.flash * 0.9, blue + figure.flash * 0.8]);
       if (foe.kind === 'lu' && foe.phase === 2 && foe.state !== 'dead' && Math.random() < dt * 40) {
         const d = dirOf(foe.face);
         fx.burst(foe.x + d[0] * 1.2 - d[2] * 0.4, 1.5, foe.z + d[2] * 1.2 + d[0] * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.5, speed: 1.6, life: 0.6, size: 0.16, tint: TINT.fire, power: 3.5, rise: 3 });
@@ -516,9 +541,17 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     scenery.glowMaterial.emissiveIntensity = 2.3 + Math.sin(clock * 9) * 0.25;
     for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? Math.min(1, lamp.share + 0.45) : 0;
 
-    // Whatever tall thing stands between the camera and the hero thins out.
+    moveCamera(game, dt, clock);
+    // Fade the roof or a nearby tree only where it crosses the camera's sightline to the hero.
+    const sightX = camera.position[0] - hero.x,
+      sightZ = camera.position[2] - hero.z,
+      sightLengthSquared = sightX * sightX + sightZ * sightZ;
     for (const thing of scenery.tall) {
-      const hide = thing.z > hero.z + 0.5 && thing.z < hero.z + 16 && Math.abs(thing.x - hero.x - (thing.z - hero.z) * 0) < thing.r + 0.6 ? 0.22 : 1;
+      const dx = thing.x - hero.x,
+        dz = thing.z - hero.z,
+        t = (dx * sightX + dz * sightZ) / Math.max(0.01, sightLengthSquared),
+        sightY = 1.35 + (camera.position[1] - 1.35) * t,
+        hide = t > 0 && t < 1 && sightY < thing.top && Math.hypot(dx - sightX * t, dz - sightZ * t) < thing.r ? 0.22 : 1;
       thing.opacity = (thing.opacity ?? 1) + (hide - (thing.opacity ?? 1)) * Math.min(1, dt * 7);
       const see = thing.opacity < 0.98;
       if (see !== thing.see) {
@@ -537,7 +570,6 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     g[2] = hero.z;
 
     fx.update(dt, clock);
-    moveCamera(game, dt, clock);
   };
 
   // The wet flags of the gate road and the forecourt mirror the scene, at the highest picture quality.
@@ -575,9 +607,30 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   };
   view.snap = (game) => {
     focus.x = game.hero.x;
-    focus.z = game.hero.z - 1.2;
+    focus.z = game.hero.z - 1.45;
     gameCamera(game, 1);
     for (let i = 0; i < 3; i++) (drawn.eye[i] = eye[i]), (drawn.look[i] = look[i]);
+  };
+  view.resetRound = (game) => {
+    for (const figure of figures.values()) figure.root.removeFromParent();
+    for (const item of shotViews.values()) item.mesh?.removeFromParent();
+    for (const item of dropViews.values()) item.node.removeFromParent();
+    figures.clear();
+    shotViews.clear();
+    dropViews.clear();
+    fx.clear();
+    view.counterRing = null;
+    view.cine = null;
+    view.shake = 0;
+    heroTravel = lastPrint = footstep = 0;
+    foot = 1;
+    heroLast = { x: game.hero.x, z: game.hero.z };
+    heroFigure.glow = heroFigure.flash = 0;
+    for (const door of scenery.doors) {
+      door.open = game.bars.gate ? 0 : 1;
+      door.hinge.setRotation(0, -door.side * door.open * 1.75, 0);
+    }
+    view.snap(game);
   };
   return view;
 }

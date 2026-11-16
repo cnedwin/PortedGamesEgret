@@ -14,6 +14,7 @@ const ICONS = {
   drink: '<circle cx="20" cy="26" r="9"/><circle cx="20" cy="13" r="5"/><path d="M20 8V4M17 4h6"/>'
 };
 const DEED_NAMES = { attack: '出枪', guard: '格挡（按住）', stars: '寒星', rain: '梨花枪雨', dodge: '闪避', glide: '踏雪（按住）', drink: '饮酒', up: '向上', down: '向下', left: '向左', right: '向右', bag: '行囊' };
+const PAD_LABELS = { guard: '格挡', glide: '踏雪' };
 const GOALS = { road: '往草料场去', yard: '清掉草料场里的人', gate: '上山神庙', boss: '', done: '' };
 
 const el = (tag, attrs = {}, html = '') => {
@@ -34,13 +35,14 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     <div id="goal" class="hud"></div>
     <div id="lord" class="hud"><div class="who"><b></b><span></span></div>${bar('hp')}<div class="bar posture"><i class="fill"></i></div></div>
     <div id="notes" class="hud"></div>
+    <div id="battle-hint" class="hud" role="status"><kbd></kbd><span></span></div>
     <div id="deeds" class="hud"></div>
     <div id="pack" class="hud"><ul></ul><button class="tag" type="button">行囊<b>0</b><kbd></kbd></button></div>
     <div id="stick" class="touch hud"><i></i></div><div id="pads" class="touch hud"></div>
     <div id="speech"></div>
     <div id="card"><b></b><i></i><span></span></div>
     <div id="veil"></div>
-    <div id="title"><div class="name">风雪山神庙</div><div class="seal">水浒　第一回</div><div class="go">点击开始</div><div class="keys"><span class="key"></span><span class="tap">左侧拖动移动　右侧按钮出枪、格挡、闪避</span></div></div>
+    <div id="title"><h1 class="name">风雪山神庙</h1><div class="seal">水浒　第一回</div><div class="entry"><button class="go" type="button" disabled>踏雪上路<span aria-hidden="true">›</span></button><div class="keys"><span class="key"></span><span class="tap">左手移动　右手出枪、格挡和闪避</span></div></div></div>
     <div class="corner"><button type="button" data-do="full">全屏</button><button type="button" data-do="set">设置</button></div>
     <div class="panel" id="settings" role="dialog" aria-label="设置" tabindex="-1"></div>
     <div id="debug"></div>`;
@@ -53,15 +55,16 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     padOwners = [];
   const order = ['attack', 'guard', 'stars', 'rain', 'dodge', 'glide', 'drink'];
   for (const name of order) {
-    const node = el('div', { class: 'deed' + (name === 'rain' ? ' big' : ''), title: DEED_NAMES[name] }, `${icon(name)}<i class="wait"></i><kbd></kbd>${name === 'drink' ? '<em>3</em>' : ''}`);
+    const node = el('div', { class: 'deed' + (name === 'rain' ? ' big' : ''), title: DEED_NAMES[name] }, `${icon(name)}<i class="wait"></i><kbd></kbd>${name === 'drink' ? '<em>3</em>' : ''}${name === 'attack' ? '<span class="counter-name">回马枪</span>' : ''}`);
     $('#deeds').append(node);
     deeds[name] = node;
   }
   const PAD_PLACES = { attack: [0, 0], dodge: [96, 6], guard: [66, 92], stars: [0, 98], rain: [8, 170], drink: [136, 112], glide: [164, 40] };
   for (const name of order) {
-    const node = el('button', { class: 'pad' + (name === 'attack' ? ' main' : ''), type: 'button', 'aria-label': DEED_NAMES[name] }, `${icon(name)}${name === 'drink' ? '<em>3</em>' : ''}`);
-    node.style.right = PAD_PLACES[name][0] + 'px';
-    node.style.bottom = PAD_PLACES[name][1] + 'px';
+    const node = el('button', { class: 'pad', 'data-deed': name, type: 'button', 'aria-label': DEED_NAMES[name] }, `${icon(name)}<span class="pad-label">${PAD_LABELS[name] ?? DEED_NAMES[name]}</span>${name === 'drink' ? '<em>3</em>' : ''}`);
+    if (name === 'attack') node.classList.add('main');
+    node.style.setProperty('--pad-right', PAD_PLACES[name][0]);
+    node.style.setProperty('--pad-bottom', PAD_PLACES[name][1]);
     const owner = createPointerOwner();
     padOwners.push(owner);
     node.addEventListener('pointerdown', (event) => {
@@ -76,6 +79,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     $('#pads').append(node);
     pads[name] = node;
   }
+  const mobileAttack = pads.attack.querySelector('.pad-label');
   function labelKeys() {
     for (const name of order) deeds[name].querySelector('kbd').textContent = keyName(input.keys[name]);
     $('#pack kbd').textContent = keyName(input.keys.bag);
@@ -146,6 +150,26 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     setTimeout(() => node.remove(), 3700);
     while ($('#notes').children.length > 5) $('#notes').firstChild.remove();
   };
+  const battleHint = $('#battle-hint');
+  const hintKey = battleHint.querySelector('kbd');
+  const hintText = battleHint.querySelector('span');
+  const coarse = matchMedia('(pointer: coarse)');
+  let now = 0, hintUntil = 0, hintAction = null;
+  hud.hint = (text, action = null) => {
+    hintUntil = now + 4.2;
+    hintAction = action;
+    hintKey.hidden = !action;
+    hintKey.textContent = action ? `${PAD_LABELS[action] ?? DEED_NAMES[action]}${coarse.matches ? '' : ` · ${keyName(input.keys[action])}`}` : '';
+    hintText.textContent = text;
+    battleHint.classList.add('on');
+  };
+  hud.clearHint = () => {
+    hintAction = null;
+    hintUntil = 0;
+    battleHint.classList.remove('on');
+    hintText.textContent = '';
+    hintKey.hidden = true;
+  };
   let speechTimer = 0;
   hud.say = (text, who = '', time = 3) => {
     const node = $('#speech');
@@ -155,6 +179,10 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     node.classList.add('on');
     clearTimeout(speechTimer);
     speechTimer = setTimeout(() => node.classList.remove('on'), time * 1000);
+  };
+  hud.clearSpeech = () => {
+    clearTimeout(speechTimer);
+    $('#speech').classList.remove('on');
   };
   hud.card = (title, under = '', time = 3.2) => {
     const node = $('#card');
@@ -178,10 +206,14 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
   };
 
   // ---- title and settings -------------------------------------------------------------------
-  $('#title').addEventListener('pointerdown', () => onStart());
+  $('#title').addEventListener('click', () => onStart());
   root.classList.add('idle');
-  hud.hideTitle = () => ($('#title').classList.add('gone'), root.classList.remove('idle'));
-  hud.ready = () => ($('#title .go').textContent = matchMedia('(pointer: coarse)').matches ? '轻点开始' : '点击开始');
+  hud.hideTitle = () => {
+    $('#title').classList.add('gone');
+    $('#title').inert = true;
+    root.classList.remove('idle');
+  };
+  hud.ready = () => ($('#title .go').disabled = false);
 
   const panel = $('#settings');
   const CHOICES = {
@@ -251,6 +283,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
   let bagCount = -1,
     goal = null;
   hud.update = (game, view) => {
+    now = game.time;
     const hero = game.hero;
     scale(me.hp, hero.hp / HERO.hp);
     scale(me.lag, hero.hp / HERO.hp);
@@ -275,7 +308,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
       lord.posture.style.background = lu.state === 'down' ? '#fff' : '';
     }
     // The deeds: what is spent, what waits, what is ready.
-    const set = (name, { wait = 0, off = false, ready = false, now = false, count } = {}) => {
+    const set = (name, { wait = 0, charge, off = false, ready = false, now = false, count } = {}) => {
       for (const node of [deeds[name], pads[name]]) {
         node.classList.toggle('off', off);
         node.classList.toggle('ready', ready);
@@ -284,12 +317,20 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
         if (mask) mask.style.setProperty('--wait', wait);
         if (count !== undefined) node.querySelector('em').textContent = count;
       }
+      if (charge !== undefined) pads[name].style.setProperty('--charge', charge.toFixed(3));
     };
-    set('attack', { ready: hero.counter > 0, now: hero.state === 'cut' });
+    const counter = hero.counter > 0 && hero.state !== 'dead';
+    const attackLabel = counter ? '回马枪' : '出枪';
+    if (mobileAttack.textContent !== attackLabel) {
+      mobileAttack.textContent = attackLabel;
+      pads.attack.setAttribute('aria-label', attackLabel);
+    }
+    if (hintUntil && (now >= hintUntil || (hintAction === 'attack' && hero.state === 'riposte'))) hud.clearHint();
+    set('attack', { ready: counter, now: hero.state === 'cut' || hero.state === 'riposte', charge: Math.min(1, hero.counter / HERO.guard.counter) });
     set('guard', { off: hero.stamina <= 0, now: hero.state === 'guard' });
-    set('stars', { wait: hero.starsWait / HERO.stars.cooldown, off: hero.starsWait > 0 });
-    set('rain', { off: hero.will < HERO.will, ready: hero.will >= HERO.will, wait: 1 - hero.will / HERO.will });
-    set('dodge', { off: hero.stamina < HERO.dodge.cost * 0.5 });
+    set('stars', { wait: hero.starsWait / HERO.stars.cooldown, off: hero.starsWait > 0, charge: 1 - hero.starsWait / HERO.stars.cooldown });
+    set('rain', { off: hero.will < HERO.will, ready: hero.will >= HERO.will, wait: 1 - hero.will / HERO.will, charge: hero.will / HERO.will });
+    set('dodge', { off: hero.stamina < HERO.dodge.cost * 0.5, now: hero.state === 'dodge' });
     set('glide', { off: hero.stamina <= 1, now: hero.state === 'glide' });
     set('drink', { off: hero.gourd <= 0, count: hero.gourd });
     const total = Object.values(game.bag).reduce((a, b) => a + b, 0);

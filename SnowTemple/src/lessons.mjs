@@ -1,20 +1,20 @@
 // Small reminders at the moment a mechanic becomes relevant. No extra rules or combat pauses.
-export function createLessons() {
+export function createLessons({ structured = false } = {}) {
   const seen = new Set();
   return (event, counterAvailable = true) => {
     if (event.type === 'riposte') seen.add('counter');
-    let id, text;
+    let id, text, action = null;
     if (event.type === 'stage' && event.stage === 'yard') {
-      id = 'guard'; text = '先看抬手，再举枪格挡。快要中招时举枪，可弹反。';
+      id = 'guard'; action = 'guard'; text = '看准抬手，快挨打时格挡可弹反。';
     } else if ((event.type === 'block' || event.type === 'parry') && counterAvailable) {
-      id = 'counter'; text = '接住了！金环亮起时再出枪，使出回马枪。';
+      id = 'counter'; action = 'attack'; text = '金环亮起，出枪接回马枪。';
     } else if (event.type === 'guardBreak') {
-      id = 'stamina'; text = '气力耗尽会破防。松开格挡、拉开距离，让气力恢复。';
+      id = 'stamina'; text = '拉开距离，松开格挡恢复气力。';
     } else if (event.type === 'stage' && event.stage === 'boss') {
-      id = 'boss'; text = '留意陆谦的起手。砸地和火焰不可格挡，要闪避离开落点。';
+      id = 'boss'; action = 'dodge'; text = '斜纹不可挡，闪避离开预警范围。';
     }
     if (!id || seen.has(id)) return null;
     seen.add(id);
-    return text;
+    return structured ? { text, action } : text;
   };
 }
