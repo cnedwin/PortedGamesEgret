@@ -374,6 +374,55 @@ function sword(reach, grip, width) {
   ] };
 }
 
+const PLASTER = rgb(0x8a8378),
+  LACQUER = rgb(0x7a1f1a),
+  TIMBER = rgb(0x4a2a1c),
+  TILE = rgb(0x2c3038);
+
+/** A tiled roof of two slopes: rows of tile, a ridge with a beast at each end, upturned corners, and snow. */
+function roof(s, y, width, depth, rise, z0 = 0, pitch = 0.62) {
+  const slope = Math.atan2(rise, depth / 2),
+    run = Math.hypot(rise, depth / 2) + 0.7;
+  for (const side of [1, -1]) {
+    const lean = [side * slope, 0, 0],
+      c = [0, y + rise / 2 - 0.12, z0 + (side * depth) / 4];
+    s.push({ kind: 'box', c, h: [width / 2, 0.07, run / 2], colour: TILE, k: 0.02, round: 0.03, turn: lean, ridge: { axis: 0, n: (Math.PI * 2) / pitch, amp: pitch * 0.2 } });
+    // Round end tiles along the eave.
+    for (let x = -width / 2 + pitch / 2; x < width / 2; x += pitch) s.push({ kind: 'egg', c: [x, y - 0.16, z0 + side * (depth / 2 + 0.28)], r: [pitch * 0.27, pitch * 0.27, 0.09], colour: dim(TILE, 1.5), k: 0.02 });
+    // Snow lies thick near the ridge and thins toward the eave.
+    s.push({ kind: 'box', c: [0, y + rise * 0.62 + 0.02, z0 + side * depth * 0.2], h: [width / 2 - 0.25, 0.07, run * 0.3], colour: SNOW, k: 0.06, round: 0.06, turn: lean, rough: { scale: 1.6, amp: 0.2 } });
+    for (const end of [1, -1]) {
+      // The corner turns up into a horn.
+      const cx = end * (width / 2 - 0.1), cz = z0 + side * (depth / 2 + 0.2);
+      s.push({ kind: 'cap', a: [cx - end * 1.2, y + 0.0, cz - side * 0.15], b: [cx + end * 0.5, y + 0.55, cz + side * 0.25], ra: 0.16, rb: 0.05, colour: TILE, k: 0.1 });
+      s.push({ kind: 'cap', a: [end * (width / 2), y + rise * 0.95, z0], b: [end * (width / 2), y - 0.05, z0 + side * (depth / 2 + 0.3)], ra: 0.14, rb: 0.12, colour: dim(TILE, 0.8), k: 0.04 });
+    }
+  }
+  s.push({ kind: 'box', c: [0, y + rise + 0.08, z0], h: [width / 2 + 0.1, 0.2, 0.17], colour: dim(TILE, 0.85), k: 0.04, round: 0.06 });
+  s.push({ kind: 'egg', c: [0, y + rise + 0.3, z0], r: [width / 2 - 0.4, 0.09, 0.2], colour: SNOW, k: 0.05, rough: { scale: 3, amp: 0.08 } });
+  for (const end of [1, -1]) {
+    // The ridge beast: a fish-tailed dragon biting the end of the ridge.
+    const x = end * (width / 2 + 0.05);
+    s.push({ kind: 'egg', c: [x, y + rise + 0.3, z0], r: [0.24, 0.3, 0.2], colour: dim(TILE, 1.2), k: 0.06 });
+    s.push({ kind: 'cap', a: [x, y + rise + 0.4, z0], b: [x + end * 0.3, y + rise + 0.95, z0], ra: 0.15, rb: 0.04, colour: dim(TILE, 1.2), k: 0.06 });
+    s.push({ kind: 'cap', a: [x + end * 0.3, y + rise + 0.95, z0], b: [x - end * 0.05, y + rise + 1.1, z0], ra: 0.05, rb: 0.03, colour: dim(TILE, 1.2), k: 0.03 });
+  }
+}
+/** A row of bracket sets under an eave: each a block, two arms and a cap. */
+function brackets(s, y, half, z) {
+  for (let x = -half; x <= half + 0.01; x += 0.8) {
+    s.push({ kind: 'box', c: [x, y, z], h: [0.11, 0.1, 0.11], colour: rgb(0x1f5a5a), k: 0.01, round: 0.02 });
+    s.push({ kind: 'box', c: [x, y + 0.16, z], h: [0.3, 0.06, 0.07], colour: LACQUER, k: 0.01, round: 0.02 });
+    s.push({ kind: 'box', c: [x, y + 0.16, z + Math.sign(z) * 0.14], h: [0.07, 0.06, 0.26], colour: rgb(0x1f5a5a), k: 0.01, round: 0.02 });
+  }
+}
+/** The tile cap of a wall, with snow on it. */
+function wallCap(s, x, y, z, half) {
+  for (const side of [1, -1]) s.push({ kind: 'box', c: [x, y + 0.08, z + side * 0.36], h: [half, 0.05, 0.42], colour: TILE, k: 0.02, round: 0.03, turn: [side * 0.42, 0, 0], ridge: { axis: 0, n: (Math.PI * 2) / 0.5, amp: 0.08 } });
+  s.push({ kind: 'cap', a: [x - half, y + 0.3, z], b: [x + half, y + 0.3, z], ra: 0.12, rb: 0.12, colour: dim(TILE, 0.85), k: 0.03 });
+  s.push({ kind: 'cap', a: [x - half + 0.3, y + 0.4, z], b: [x + half - 0.3, y + 0.4, z], ra: 0.14, rb: 0.14, colour: SNOW, k: 0.05, flat: 1, rough: { scale: 3, amp: 0.12 } });
+}
+
 /** Stone and bronze that stand about the place, sculpted about their footing at the origin. */
 const PROPS = {
   lion() {
@@ -449,6 +498,92 @@ const PROPS = {
     s.push({ kind: 'egg', c: [0, 0.05, 0], r: [1.25, 0.1, 1.25], colour: SNOW, k: 0.1, rough: { scale: 5, amp: 0.1 } });
     return s;
   },
+  gate() {
+    // The wall to either side of the doorway under its tile cap, and the four posts of the gate house.
+    const s = [];
+    for (const side of [1, -1]) {
+      s.push({ kind: 'box', c: [side * 5.45, 1.45, 0], h: [3.7, 1.45, 0.5], colour: PLASTER, k: 0.03, round: 0.04, rough: { scale: 2.2, amp: 0.05 } });
+      s.push({ kind: 'box', c: [side * 5.45, 0.36, 0], h: [3.75, 0.36, 0.6], colour: dim(STONE, 0.6), k: 0.03, round: 0.06, rough: { scale: 5, amp: 0.05 } });
+      for (let i = 0; i < 9; i++) s.push({ kind: 'box', c: [side * (2.1 + i * 0.83), 0.36, 0], h: [0.012, 0.4, 0.64], colour: dim(STONE, 0.3), k: 0.01, cut: true }); // joints between the stones
+      wallCap(s, side * 5.45, 2.98, 0, 3.85);
+      for (const z of [0.75, -0.75]) {
+        s.push({ kind: 'cap', a: [side * 2.2, 0.45, z], b: [side * 2.2, 4.5, z], ra: 0.24, rb: 0.21, colour: LACQUER, k: 0.02 });
+        s.push({ kind: 'egg', c: [side * 2.2, 0.45, z], r: [0.36, 0.22, 0.36], colour: STONE, k: 0.03, rough: { scale: 8, amp: 0.03 } });
+        s.push({ kind: 'egg', c: [side * 2.2, 4.42, z], r: [0.29, 0.07, 0.29], colour: GOLD, k: 0.01 });
+      }
+      s.push({ kind: 'box', c: [side * 2.2, 0.16, 0], h: [0.44, 0.16, 1.2], colour: STONE, k: 0.02, round: 0.05, rough: { scale: 8, amp: 0.03 } });
+      s.push({ kind: 'egg', c: [side * 2.2, 0.36, 0], r: [0.4, 0.07, 1.1], colour: SNOW, k: 0.05, rough: { scale: 9, amp: 0.05 } });
+    }
+    return s;
+  },
+  gateRoof() {
+    const s = [];
+    // Lintels, a row of brackets, the name board, and the roof.
+    for (const z of [0.75, -0.75]) s.push({ kind: 'box', c: [0, 4.42, z], h: [2.75, 0.2, 0.17], colour: TIMBER, k: 0.02, round: 0.03 });
+    for (const side of [1, -1]) s.push({ kind: 'box', c: [side * 2.2, 4.42, 0], h: [0.17, 0.2, 1.0], colour: TIMBER, k: 0.02, round: 0.03 });
+    brackets(s, 4.74, 2.6, 0.92);
+    brackets(s, 4.74, 2.6, -0.92);
+    s.push({ kind: 'box', c: [0, 3.78, 0.82], h: [1.2, 0.4, 0.06], colour: rgb(0x1c2a3a), k: 0.01, round: 0.03 });
+    s.push({ kind: 'box', c: [0, 3.78, 0.86], h: [1.28, 0.48, 0.03], colour: GOLD, k: 0.006, round: 0.02 });
+    s.push({ kind: 'box', c: [0, 3.78, 0.9], h: [1.14, 0.34, 0.04], colour: rgb(0x16222f), k: 0.006, round: 0.02 });
+    roof(s, 4.95, 7.6, 4.2, 1.5, 0, 0.4);
+    return s;
+  },
+  temple() {
+    const s = [];
+    // The terrace and its steps.
+    s.push({ kind: 'box', c: [0, 0.45, 0], h: [10.6, 0.45, 5.6], colour: dim(STONE, 0.75), k: 0.05, round: 0.08, rough: { scale: 3, amp: 0.06 } });
+    s.push({ kind: 'box', c: [0, 0.86, 0], h: [10.75, 0.07, 5.75], colour: STONE, k: 0.03, round: 0.05 });
+    for (let i = 0; i < 4; i++) s.push({ kind: 'box', c: [0, 0.11 + i * 0.22, 5.9 + (3 - i) * 0.42], h: [3.5, 0.11, 0.24], colour: i % 2 ? dim(STONE, 1.1) : STONE, k: 0.02, round: 0.03, rough: { scale: 6, amp: 0.02 } });
+    for (const side of [1, -1]) s.push({ kind: 'box', c: [side * 3.7, 0.5, 6.4], h: [0.22, 0.5, 1.0], colour: dim(STONE, 0.8), k: 0.03, round: 0.06 });
+    s.push({ kind: 'egg', c: [0, 0.94, 4.6], r: [9.8, 0.06, 0.9], colour: SNOW, k: 0.06, rough: { scale: 2.5, amp: 0.08 } });
+    // The hall: plastered walls between timbers, a lattice window to each side of the door.
+    s.push({ kind: 'box', c: [0, 3.0, -1.2], h: [8.5, 2.2, 3.3], colour: rgb(0x8a6a58), k: 0.03, round: 0.04, rough: { scale: 2, amp: 0.04 } });
+    for (let i = 0; i < 7; i++) s.push({ kind: 'box', c: [-8.4 + i * 2.8, 3.0, 2.12], h: [0.16, 2.2, 0.08], colour: TIMBER, k: 0.01, round: 0.02 });
+    s.push({ kind: 'box', c: [0, 1.25, 2.12], h: [8.5, 0.12, 0.08], colour: TIMBER, k: 0.01, round: 0.02 });
+    for (const side of [1, -1]) {
+      s.push({ kind: 'box', c: [side * 5.6, 3.0, 2.1], h: [1.0, 0.85, 0.2], colour: rgb(0x1a1210), k: 0.02, cut: true });
+      for (let i = -3; i <= 3; i++) s.push({ kind: 'box', c: [side * 5.6 + i * 0.27, 3.0, 2.14], h: [0.035, 0.85, 0.04], colour: LACQUER, k: 0.006 });
+      for (let j = -2; j <= 2; j++) s.push({ kind: 'box', c: [side * 5.6, 3.0 + j * 0.32, 2.14], h: [1.0, 0.03, 0.04], colour: LACQUER, k: 0.006 });
+      // A door leaf standing ajar.
+      s.push({ kind: 'box', c: [side * 1.5, 2.7, 2.3], h: [0.68, 1.8, 0.06], colour: LACQUER, k: 0.01, round: 0.02, turn: [0, side * 0.5, 0] });
+    }
+    s.push({ kind: 'box', c: [0, 2.7, 2.1], h: [1.2, 1.8, 0.3], colour: rgb(0x1a1210), k: 0.02, cut: true });
+    // The colonnade: red columns on stone drums, a beam, and brackets under the eaves.
+    for (let i = 0; i < 6; i++) {
+      const x = -8 + i * 3.2;
+      s.push({ kind: 'cap', a: [x, 1.0, 3.5], b: [x, 5.2, 3.5], ra: 0.3, rb: 0.26, colour: LACQUER, k: 0.02 });
+      s.push({ kind: 'egg', c: [x, 1.02, 3.5], r: [0.44, 0.2, 0.44], colour: STONE, k: 0.03, rough: { scale: 8, amp: 0.03 } });
+      s.push({ kind: 'egg', c: [x, 5.1, 3.5], r: [0.36, 0.08, 0.36], colour: GOLD, k: 0.01 });
+    }
+    s.push({ kind: 'box', c: [0, 5.35, 3.5], h: [8.9, 0.24, 0.22], colour: TIMBER, k: 0.02, round: 0.04 });
+    s.push({ kind: 'box', c: [0, 5.35, 3.74], h: [8.6, 0.12, 0.02], colour: rgb(0x1f5a5a), k: 0.006, round: 0.01 });
+    brackets(s, 5.75, 8.6, 3.7);
+    s.push({ kind: 'box', c: [0, 6.25, 4.3], h: [1.7, 0.5, 0.07], colour: rgb(0x1c2a3a), k: 0.01, round: 0.03 });
+    s.push({ kind: 'box', c: [0, 6.25, 4.36], h: [1.8, 0.6, 0.03], colour: GOLD, k: 0.006, round: 0.02 });
+    s.push({ kind: 'box', c: [0, 6.25, 4.4], h: [1.6, 0.4, 0.04], colour: rgb(0x16222f), k: 0.006, round: 0.02 });
+    roof(s, 5.9, 22.5, 13, 3.4, 0.6);
+    // The upper storey and its smaller roof.
+    s.push({ kind: 'box', c: [0, 8.4, 0.6], h: [5.6, 0.9, 2.2], colour: rgb(0x6a4a3c), k: 0.03, round: 0.04 });
+    for (let i = 0; i < 9; i++) s.push({ kind: 'box', c: [-5.2 + i * 1.3, 8.4, 2.82], h: [0.07, 0.8, 0.05], colour: LACQUER, k: 0.01 });
+    roof(s, 9.3, 13.4, 6.4, 2.3, 0.6);
+    return s;
+  },
+  lantern() {
+    // A stone lantern: a stepped foot, a shaft, a lamp house with four posts, a roof with snow on it.
+    const s = [], st = STONE;
+    s.push({ kind: 'box', c: [0, 0.1, 0], h: [0.34, 0.1, 0.34], colour: dim(st, 0.8), k: 0.02, round: 0.04, rough: { scale: 20, amp: 0.02 } });
+    s.push({ kind: 'box', c: [0, 0.26, 0], h: [0.24, 0.07, 0.24], colour: st, k: 0.02, round: 0.04 });
+    s.push({ kind: 'cap', a: [0, 0.3, 0], b: [0, 1.0, 0], ra: 0.13, rb: 0.105, colour: st, k: 0.04, rough: { scale: 25, amp: 0.015 } });
+    s.push({ kind: 'egg', c: [0, 0.66, 0], r: [0.15, 0.05, 0.15], colour: dim(st, 1.15), k: 0.02 });
+    s.push({ kind: 'box', c: [0, 1.07, 0], h: [0.25, 0.06, 0.25], colour: st, k: 0.02, round: 0.04 });
+    for (const [x, z] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) s.push({ kind: 'box', c: [x * 0.17, 1.3, z * 0.17], h: [0.04, 0.18, 0.04], colour: dim(st, 0.7), k: 0.01, round: 0.015 });
+    s.push({ kind: 'box', c: [0, 1.5, 0], h: [0.25, 0.035, 0.25], colour: dim(st, 0.8), k: 0.015, round: 0.02 });
+    s.push({ kind: 'cap', a: [0, 1.5, 0], b: [0, 1.78, 0], ra: 0.36, rb: 0.05, colour: dim(st, 0.75), k: 0.03, fold: { n: 4, amp: 0.05, from: -1 } });
+    s.push({ kind: 'egg', c: [0, 1.84, 0], r: [0.07, 0.09, 0.07], colour: st, k: 0.02 });
+    s.push({ kind: 'cap', a: [0, 1.62, 0], b: [0, 1.82, 0], ra: 0.3, rb: 0.07, colour: SNOW, k: 0.05, rough: { scale: 14, amp: 0.06 } });
+    return s;
+  },
   rock() {
     const s = [], dark = rgb(0x3c4048);
     for (const [c, r] of [[[0, 0.4, 0], [1, 0.75, 0.85]], [[0.55, 0.3, 0.3], [0.6, 0.5, 0.55]], [[-0.5, 0.25, -0.35], [0.6, 0.45, 0.6]], [[0.1, 0.75, -0.2], [0.55, 0.5, 0.5]]])
@@ -491,7 +626,7 @@ for (const [name, make] of Object.entries(THINGS)) {
   jobs.push([name, () => sculpt(make().solids, { cell: 0.0075, mottle: 0.05 })]);
   if (make().edge) jobs.push([name + 'Edge', () => sculpt(make().edge, { cell: 0.006, mottle: 0.03 })]);
 }
-for (const [name, make] of Object.entries(PROPS)) jobs.push([name, () => sculpt(make(), { cell: { rock: 0.05, pine: 0.085, stack: 0.04 }[name] ?? 0.026, mottle: 0.16 })]);
+for (const [name, make] of Object.entries(PROPS)) jobs.push([name, () => sculpt(make(), { cell: { rock: 0.05, pine: 0.085, stack: 0.04, gate: 0.07, gateRoof: 0.08, temple: 0.16, lantern: 0.022 }[name] ?? 0.026, mottle: 0.16 })]);
 
 // Models not asked for keep what was sculpted before.
 const old = existsSync(indexPath) && only.length ? { index: JSON.parse(readFileSync(indexPath, 'utf8')), bin: readFileSync(binPath) } : null,
