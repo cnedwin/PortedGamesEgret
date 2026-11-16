@@ -42,7 +42,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     <div id="veil"></div>
     <div id="title"><div class="name">风雪山神庙</div><div class="seal">水浒　第一回</div><div class="go">点击开始</div><div class="keys"><span class="key"></span><span class="tap">左侧拖动移动　右侧按钮出枪、格挡、闪避</span></div></div>
     <div class="corner"><button type="button" data-do="full">全屏</button><button type="button" data-do="set">设置</button></div>
-    <div class="panel" id="settings"></div>
+    <div class="panel" id="settings" role="dialog" aria-label="设置" tabindex="-1"></div>
     <div id="debug"></div>`;
   const $ = (selector) => root.querySelector(selector);
   const hud = { staged: false };
@@ -222,8 +222,10 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
       });
     } else if (act === 'set') {
       drawSettings();
-      panel.classList.toggle('on');
-      input.setEnabled(!panel.classList.contains('on'));
+      const open = panel.classList.toggle('on');
+      input.setEnabled(!open);
+      // Once settings opens, Space must not activate the toolbar toggle a second time.
+      if (open) panel.focus({ preventScroll: true });
     } else if (act === 'close') {
       panel.classList.remove('on');
       input.setEnabled(true);
