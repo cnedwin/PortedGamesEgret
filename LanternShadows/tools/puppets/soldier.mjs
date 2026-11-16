@@ -1,6 +1,6 @@
-// The soldiers of heaven, as shadow puppets: one figure in scale armour, carried either with a spear or with a
-// bow. Drawn standing on y = 200 and facing right, as the other puppets are; tools/puppets/spearman.mjs and
-// archer.mjs each ask for one of the two.
+// The soldiers of heaven, as shadow puppets: one figure in scale armour, carried with a spear, with a bow, or
+// in black armour with a hammer and a tall shield. Drawn standing on y = 200 and facing right, as the other
+// puppets are; tools/puppets/spearman.mjs, archer.mjs and guard.mjs each ask for one of the three.
 import { DYE, barbs, beads, blob, crescent, curve, dot, leather, line, poly, ribbon, scales, slit, stud } from '../leather.mjs';
 
 const BONES = [
@@ -37,14 +37,28 @@ const WEAPONS = {
   // A bow, held upright by its grip, strung.
   bow:
     line(curve([[118, 96], [118, 134], [118, 172]]), 0.7, DYE.ink) +
-    leather({ shape: ribbon([[118, 96], [126, 108], [129, 134], [126, 160], [118, 172]], [1.2, 2, 2.6, 2, 1.2]), fill: DYE.amber, holes: beads([127.4, 122], [127.4, 146], 4, 0.7), edge: 1 })
+    leather({ shape: ribbon([[118, 96], [126, 108], [129, 134], [126, 160], [118, 172]], [1.2, 2, 2.6, 2, 1.2]), fill: DYE.amber, holes: beads([127.4, 122], [127.4, 146], 4, 0.7), edge: 1 }),
+  // A hammer, held upright: a short haft and a head like a melon.
+  shield:
+    leather({ shape: poly([[118.7, 96], [121.3, 96], [121.3, 150], [118.7, 150]]), fill: DYE.black, opacity: 0.95, edge: 1 }) +
+    leather({ shape: blob([[120, 76], [128, 80], [130, 88], [128, 96], [120, 100], [112, 96], [110, 88], [112, 80]], 0.5), fill: DYE.gold, holes: [slit([120, 79], [120, 97], 0.9), slit([115, 81], [113.6, 95], 0.7), slit([125, 81], [126.4, 95], 0.7)], edge: 1 })
 };
+/** The tall shield, carried on the other arm: drawn where that hand hangs, and brought round in front by the arm. */
+const SHIELD = leather({
+  shape: blob([[84, 108], [95, 104], [106, 108], [107, 150], [95, 166], [83, 150]], 0.3),
+  fill: DYE.crimson,
+  opacity: 0.93,
+  holes: [dot(95, 132, 5), ...beads([87, 112], [103, 112], 4, 1), crescent(95, 120, 3.4, 270), crescent(95, 146, 3.4, 90), slit([88, 124], [88, 146], 0.9), slit([102, 124], [102, 146], 0.9)],
+  over: line(blob([[86.4, 110], [95, 106.6], [103.6, 110], [104.6, 149], [95, 162.6], [85.4, 149]], 0.3), 1.2, DYE.gold) + stud(95, 132, 2)
+});
 
 function partsOf(weapon) {
+  // The guard's armour is black where the others' is teal.
+  const coat = weapon === 'shield' ? DYE.black : DYE.teal;
   return [
     ['plume2', 'plume2', leather({ shape: ribbon([[96, 58], [91, 53], [86, 50]], [2.6, 2.2, 1.1]), fill: DYE.red, holes: barbs([[96, 58], [86, 50]], 1.8, 3, 0.7, 0.5) })],
     ['plume1', 'plume1', leather({ shape: ribbon([[102, 71], [99, 64], [96, 58]], [1.8, 2.6, 2.6]), fill: DYE.red, holes: barbs([[102, 71], [96, 58]], 2, 3, 0.7, 0.5) }) + stud(96, 58, 1)],
-    ['armB1', 'armB1', limb([[95, 105], [92, 113], [90, 122]], [4.8, 4.4, 3.8], DYE.teal, [crescent(92.4, 110, 2.2, 200), crescent(91, 116, 2, 200)])],
+    ['armB1', 'armB1', limb([[95, 105], [92, 113], [90, 122]], [4.8, 4.4, 3.8], coat, [crescent(92.4, 110, 2.2, 200), crescent(91, 116, 2, 200)])],
     ['armB2', 'armB2', limb([[90, 122], [92, 129], [95, 136]], [3.6, 3.4, 3], DYE.gold, beads([90.8, 125], [93.8, 133], 3, 0.8)) + fist(95.6, 137.6) + stud(90, 122)],
     ['legB1', 'legB1', limb([[96, 143], [94.4, 156], [93, 170]], [6, 5.4, 4.4], DYE.crimson, [slit([95.4, 148], [93.6, 164], 0.8)])],
     ['legB2', 'legB2', limb([[93, 170], [92, 182], [91, 194]], [4.4, 4, 3.2], DYE.black, [crescent(92.4, 176, 2.2, 90), crescent(92, 182, 2, 90), crescent(91.6, 188, 1.8, 90)]) + stud(93, 170)],
@@ -53,7 +67,7 @@ function partsOf(weapon) {
       'skirt',
       'skirt',
       // The tassets: plates of armour hanging from the belt.
-      leather({ shape: poly([[90, 139], [110.6, 139], [114, 164], [108, 168], [103.4, 163], [98.6, 168], [93.6, 163], [88, 167]]), fill: DYE.teal, holes: scales(90, 145, 22, 18, 3, 90), over: line(poly([[90, 139], [110.6, 139], [111, 142], [89.6, 142]]), 0.6, DYE.ink, `fill="${DYE.gold}"`) })
+      leather({ shape: poly([[90, 139], [110.6, 139], [114, 164], [108, 168], [103.4, 163], [98.6, 168], [93.6, 163], [88, 167]]), fill: coat, holes: scales(90, 145, 22, 18, 3, 90), over: line(poly([[90, 139], [110.6, 139], [111, 142], [89.6, 142]]), 0.6, DYE.ink, `fill="${DYE.gold}"`) })
     ],
     ['legF1', 'legF1', limb([[104, 143], [105.6, 156], [107, 170]], [6.6, 5.8, 4.8], DYE.crimson, [slit([104.4, 148], [106.6, 164], 0.9), slit([107.6, 148], [109, 161], 0.7)])],
     ['legF2', 'legF2', limb([[107, 170], [106, 182], [105, 194]], [4.8, 4.3, 3.4], DYE.black, [crescent(106.6, 176, 2.4, 90), crescent(106.2, 182, 2.2, 90), crescent(105.8, 188, 2, 90)], line(curve([[103, 171.4], [111, 171.2]]), 1.5, DYE.gold)) + stud(107, 170)],
@@ -63,7 +77,7 @@ function partsOf(weapon) {
       'chest',
       leather({
         shape: blob([[97, 99], [106.4, 99], [113.4, 103], [115, 114], [111.6, 129.4], [92, 129.4], [89, 114], [90.4, 103.4]], 0.42),
-        fill: DYE.teal,
+        fill: coat,
         holes: scales(90, 107, 25, 13, 3.3, 90),
         over:
           leather({ shape: blob([[95.6, 98.6], [107.6, 98.6], [110.6, 102.6], [102, 106], [93.6, 102.8]], 0.4), fill: DYE.gold, holes: beads([97.6, 101.6], [107.4, 101.6], 5, 0.75), edge: 1 }) +
@@ -90,8 +104,9 @@ function partsOf(weapon) {
       }) + stud(102, 100, 1.1)
     ],
     ['weapon', 'weapon', WEAPONS[weapon]],
-    ['armF1', 'armF1', limb([[107, 105], [109.4, 114], [111, 123]], [5.2, 4.8, 4], DYE.teal, [crescent(108.6, 110, 2.4, 20), crescent(110, 116.4, 2.2, 20)]) + stud(107, 105)],
-    ['armF2', 'armF2', limb([[111, 123], [115.4, 129], [120, 134]], [3.9, 3.6, 3.1], DYE.gold, beads([112.8, 125.2], [118, 131.6], 3, 0.85)) + fist(120.6, 134.8) + stud(111, 123)]
+    ['armF1', 'armF1', limb([[107, 105], [109.4, 114], [111, 123]], [5.2, 4.8, 4], coat, [crescent(108.6, 110, 2.4, 20), crescent(110, 116.4, 2.2, 20)]) + stud(107, 105)],
+    ['armF2', 'armF2', limb([[111, 123], [115.4, 129], [120, 134]], [3.9, 3.6, 3.1], DYE.gold, beads([112.8, 125.2], [118, 131.6], 3, 0.85)) + fist(120.6, 134.8) + stud(111, 123)],
+    ...(weapon === 'shield' ? [['shield', 'armB2', SHIELD]] : [])
   ];
 }
 
@@ -268,6 +283,86 @@ const ANIMATIONS = {
     hurt,
     down
   }
+};
+
+// The guard carries his shield before him in everything he does: `held` is the arm that does it, and each of his
+// animations keeps it there unless it says otherwise.
+const held = (shoulder = 78, elbow = 30) => ({ armB1: { rot: [[0, shoulder], [1, shoulder]] }, armB2: { rot: [[0, elbow], [1, elbow]] } });
+ANIMATIONS.shield = {
+  idle: { seconds: 2.6, bones: { ...breath({ armF1: { rot: [[0, 0], [0.5, 2], [1, 0]] } }), ...held() } },
+  walk: { seconds: 1, bones: { ...ANIMATIONS.spear.walk.bones, ...held(80, 28) } },
+  // The warning before the hammer falls: it is carried up and back. It holds its last pose.
+  windup: {
+    seconds: 0.4,
+    bones: {
+      hip: { pos: [[0, 0, 0], [1, -4, -2, 'out']], rot: [[0, 0], [1, 5, 'out']] },
+      chest: { rot: [[0, 0], [1, 12, 'out']] },
+      head: { rot: [[0, 0], [1, -8, 'out']] },
+      armF1: { rot: [[0, 0], [1, 150, 'out']] },
+      armF2: { rot: [[0, 0], [1, 30, 'out']] },
+      weapon: { rot: [[0, 0], [1, 40, 'out']] },
+      legF1: { rot: [[0, 0], [1, 14, 'out']] },
+      legF2: { rot: [[0, 0], [1, -22, 'out']] },
+      legB1: { rot: [[0, 0], [1, -10, 'out']] },
+      plume1: { rot: [[0, 0], [1, 14]] },
+      plume2: { rot: [[0, 0], [1, 22]] },
+      ...held(70, 26)
+    }
+  },
+  // The hammer brought down in front of him.
+  attack: {
+    seconds: 0.56,
+    events: [[0.2, 'hit']],
+    bones: {
+      hip: { pos: [[0, -4, -2], [0.2, 8, -6, 'in'], [0.56, 8, -6], [1, 0, 0]], rot: [[0, 5], [0.2, -10, 'in'], [0.56, -10], [1, 0]] },
+      chest: { rot: [[0, 12], [0.2, -22, 'in'], [0.56, -20], [1, 0]] },
+      head: { rot: [[0, -8], [0.2, 14, 'in'], [0.56, 12], [1, 0]] },
+      armF1: { rot: [[0, 150], [0.2, 46, 'in'], [0.56, 50], [1, 0]] },
+      armF2: { rot: [[0, 30], [0.2, 10, 'in'], [1, 0]] },
+      weapon: { rot: [[0, 40], [0.2, -96, 'in'], [0.56, -92], [1, 0]] },
+      legF1: { rot: [[0, 14], [0.2, 34, 'in'], [0.56, 30], [1, 0]] },
+      legF2: { rot: [[0, -22], [0.2, -46, 'in'], [0.56, -40], [1, 0]] },
+      legB1: { rot: [[0, -10], [0.2, -24, 'in'], [0.56, -20], [1, 0]] },
+      plume1: { rot: [[0, 14], [0.24, -30], [0.6, 12], [1, 0]] },
+      plume2: { rot: [[0, 22], [0.3, -44], [0.66, 18], [1, 0]] },
+      skirt: { rot: [[0, 0], [0.2, -16], [0.5, 6], [1, 0]] },
+      armB1: { rot: [[0, 70], [0.2, 86, 'in'], [0.56, 84], [1, 78]] },
+      armB2: { rot: [[0, 26], [0.2, 32, 'in'], [1, 30]] }
+    }
+  },
+  // A blow taken on the shield: he gives a little and is still again.
+  block: {
+    seconds: 0.26,
+    bones: {
+      hip: { pos: [[0, 0, 0], [0.3, -5, -1, 'out'], [1, 0, 0]], rot: [[0, 0], [0.3, 5, 'out'], [1, 0]] },
+      chest: { rot: [[0, 0], [0.3, 7, 'out'], [1, 0]] },
+      armB1: { rot: [[0, 78], [0.3, 62, 'out'], [1, 78]] },
+      armB2: { rot: [[0, 30], [0.3, 44, 'out'], [1, 30]] },
+      plume1: { rot: [[0, 0], [0.3, -16], [0.7, 8], [1, 0]] },
+      plume2: { rot: [[0, 0], [0.36, -24], [0.76, 12], [1, 0]] }
+    }
+  },
+  // The shield knocked aside: he staggers with it flung wide, and for that while there is nothing between
+  // him and the staff.
+  open: {
+    seconds: 1.2,
+    bones: {
+      hip: { pos: [[0, 0, 0], [0.14, -8, -3, 'out'], [0.8, -6, -2], [1, 0, 0]], rot: [[0, 0], [0.14, 12, 'out'], [0.8, 9], [1, 0]] },
+      chest: { rot: [[0, 0], [0.14, 20, 'out'], [0.5, 15], [0.8, 17], [1, 0]] },
+      head: { rot: [[0, 0], [0.14, -20, 'out'], [0.8, -14], [1, 0]] },
+      armB1: { rot: [[0, 78], [0.14, -70, 'out'], [0.5, -56], [0.8, -62], [1, 78]] },
+      armB2: { rot: [[0, 30], [0.14, -10, 'out'], [0.8, -4], [1, 30]] },
+      armF1: { rot: [[0, 0], [0.14, 46, 'out'], [0.8, 36], [1, 0]] },
+      weapon: { rot: [[0, 0], [0.14, -34, 'out'], [0.8, -26], [1, 0]] },
+      legF1: { rot: [[0, 0], [0.14, 24, 'out'], [0.8, 18], [1, 0]] },
+      legF2: { rot: [[0, 0], [0.14, -18, 'out'], [0.8, -12], [1, 0]] },
+      legB1: { rot: [[0, 0], [0.14, -14, 'out'], [0.8, -10], [1, 0]] },
+      plume1: { rot: [[0, 0], [0.14, -36], [0.5, 14], [0.8, -6], [1, 0]] },
+      plume2: { rot: [[0, 0], [0.2, -48], [0.56, 20], [0.86, -8], [1, 0]] }
+    }
+  },
+  hurt: { ...hurt, bones: { ...hurt.bones, armB1: { rot: [[0, 78], [0.3, 30, 'out'], [1, 78]] }, armB2: { rot: [[0, 30], [0.3, 50, 'out'], [1, 30]] } } },
+  down
 };
 
 /** A soldier's description, as tools/author.mjs wants it. */

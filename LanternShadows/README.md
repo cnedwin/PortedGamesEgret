@@ -1,8 +1,8 @@
 # Lantern Shadows · 灯影·闹天宫
 
-灯影·闹天宫是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 2D 横版动作游戏 Demo，整出戏演在一块皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，孙悟空一路打上南天门。目前有**第一幕**：十名天兵把守一路，哪吒踏着风火轮在南天门前拦路，一场三四分钟；后面的两幕还在做。
+灯影·闹天宫是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 2D 横版动作游戏 Demo，整出戏演在一块皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，孙悟空一路打上南天门。目前有两幕。**第一幕南天门**：十名天兵把守一路，哪吒踏着风火轮在门前拦路。**第二幕蟠桃园**：桃林里有持盾的力士和从空中扑下来的仙鹤，枝上的桃子可以打下来吃。每幕三四分钟；第二幕的 Boss 和第三幕还在做。
 
-Lantern Shadows is an independently developed 2D side-scrolling action demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), played as a shadow-puppet show: a lamp behind a cloth, carved and dyed leather puppets against it, and the Monkey King fighting his way to the Southern Gate of Heaven. **Act one** is here: ten soldiers of heaven hold the road, and Nezha comes down on his wheels of wind and fire to bar the gate, three or four minutes in all. Two more acts are still to come.
+Lantern Shadows is an independently developed 2D side-scrolling action demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), played as a shadow-puppet show: a lamp behind a cloth, carved and dyed leather puppets against it, and the Monkey King fighting his way to the Southern Gate of Heaven. Two acts are here. **Act one, the Southern Gate**: ten soldiers of heaven hold the road, and Nezha comes down on his wheels of wind and fire to bar the gate. **Act two, the Peach Orchard**: shield-bearers among the trees, cranes that stoop out of the air, and peaches on the boughs to knock down and eat. Each is three or four minutes; the second act's boss and a third act are still to come.
 
 ## 玩法 · How to play
 
@@ -22,7 +22,13 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - **弓手**站着不动，拉满弓后放箭。箭可以跳过、翻过，也可以一棍打落。
 - 五个桃是他的体力，挨一下少一个；吃完就倒，随后在上一面红旗（歇脚处）重新站起来。
 - 把十名天兵全部击退再走进门前的院子，哪吒就到了；打退他，南天门才开。落幕时按用时、受伤和倒地次数盖一枚印：S、A、B、C。
-- P 或 Esc 暂停。开场的戏单上可以选“直接会哪吒”，从门前的院子演起。
+- P 或 Esc 暂停。开场的戏单上可以选“直接会哪吒”，从门前的院子演起；也可以选从第二幕演起。一幕落幕后，按“下一幕”接着演。
+
+**第二幕**新添的：
+
+- **力士**举着一面高盾，正面的平扫和劈砸都被盾挡住。连击的第二下上挑能把盾掀开，盾回来之前（一秒多）怎么打都中；或者翻到他背后，他转身要半秒多。他的锤子抡起来有预警，落在身前。
+- **仙鹤**停在半空，看见他就仰身一叫（预警），然后沿一条直线扑下来，再飞回原处。扑的方向在起扑时就定了，走开一步就落空；也可以迎着它一棍打下来，或者趁它停在空中时跳起来打。上挑够得着低处的鹤。
+- **桃子**挂在枝上，一棍能打下来，也可以跳起来够。少了桃（体力）的时候碰到就吃掉，回一个；体力满的时候它留在原地。
 
 **哪吒**的体力分三段，每打掉一段他就换一种打法：
 
@@ -40,7 +46,13 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - An **archer** stands where he is, draws, and looses. An arrow can be jumped, rolled through, or knocked out of the air with the staff.
 - Five peaches are his strength, and each blow he takes eats one. When they are gone he falls, and is stood up again at the last red pennant he passed.
 - When all ten soldiers are down and he walks into the court before the gate, Nezha arrives; the gate opens only when Nezha has been driven off. As the curtain falls a seal is set on the act for its time, his wounds and his falls: S, A, B or C.
-- P or Esc pauses. The playbill at the start offers “straight to Nezha”, which begins at the court.
+- P or Esc pauses. The playbill at the start offers “straight to Nezha”, which begins at the court, and a beginning from act two. When an act's curtain has fallen, “Next act” goes on to the one after.
+
+New in **act two**:
+
+- A **shield-bearer** carries a tall shield, and it takes the sweep and the smash from in front. The lift, the second blow of the combination, knocks the shield aside, and until he has it back (a little over a second) everything lands; or get behind him, since he takes more than half a second to come about. His hammer is raised as a warning and comes down in front of him.
+- A **crane** keeps its place in the air. When it sees him it rears and calls, which is the warning, stoops along a straight line, and climbs back. The line is fixed as the stoop begins, so a step aside is enough; or meet it with the staff, or jump and strike it where it waits. The lift reaches a crane that hangs low.
+- A **peach** hangs on a bough until the staff knocks it down, or he jumps for it. Short of a peach of his own, he eats it on touching it and has one back; whole, he leaves it where it is.
 
 **Nezha**’s strength is in three parts, and with each that is spent he fights another way:
 
@@ -50,16 +62,16 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - A light blow does not move him. The smash that ends the combination staggers him, which is the moment to land more; having just been staggered, he is not staggered again at once.
 - If the Monkey King falls in the court he is stood up at the pennant at its entrance, and Nezha’s strength goes back to the start of the part it had reached.
 
-地址参数 · Address options：默认用 WebGL2，`?backend=webgpu` 改用 WebGPU，`?stats` 显示帧率与骨骼数，`?slow=0.25` 以四分之一速度播放（看动作用），`?from=nezha` 从门前的院子演起，`?clones=200` 设定一把毫毛变出多少个分身（10 到 400，默认 100），`?lang=en` 以英文开始，`?dev` 不用打包好的文件而逐个加载 `src/` 与 `vendor/` 里的模块（改代码时用）。画面太慢时会自动收回一部分分身，写了 `?clones` 就一个不收。
-WebGL2 is the default and `?backend=webgpu` draws with WebGPU instead, `?stats` shows the frame rate and bone count, `?slow=0.25` plays at quarter speed (to watch the motion), `?from=nezha` begins at the court before the gate, `?clones=200` sets how many clones a tuft makes (10 to 400, a hundred unless said), `?lang=en` starts in English, and `?dev` loads the modules in `src/` and `vendor/` one by one instead of the packed file (for working on the code). When the stage is drawn too slowly some of the clones are sent back; with `?clones` given, none are.
+地址参数 · Address options：`?act=2` 从第二幕演起；默认用 WebGL2，`?backend=webgpu` 改用 WebGPU，`?stats` 显示帧率与骨骼数，`?slow=0.25` 以四分之一速度播放（看动作用），`?from=nezha` 从门前的院子演起，`?clones=200` 设定一把毫毛变出多少个分身（10 到 400，默认 100），`?lang=en` 以英文开始，`?dev` 不用打包好的文件而逐个加载 `src/` 与 `vendor/` 里的模块（改代码时用）。画面太慢时会自动收回一部分分身，写了 `?clones` 就一个不收。
+`?act=2` begins with the second act; WebGL2 is the default and `?backend=webgpu` draws with WebGPU instead, `?stats` shows the frame rate and bone count, `?slow=0.25` plays at quarter speed (to watch the motion), `?from=nezha` begins at the court before the gate, `?clones=200` sets how many clones a tuft makes (10 to 400, a hundred unless said), `?lang=en` starts in English, and `?dev` loads the modules in `src/` and `vendor/` one by one instead of the packed file (for working on the code). When the stage is drawn too slowly some of the clones are sent back; with `?clones` given, none are.
 
 ## 用到的引擎能力 · What it uses of the engine
 
 | 能力 · Capability | 用在哪里 · Where |
 |---|---|
-| Spine 骨骼动画 · Spine skeletal animation (`@egret/spine`) | 五种皮偶：悟空 25 根骨骼、24 片皮、11 段动画；哪吒 21 根骨骼、19 片皮、17 段动画；枪兵与弓手各 18 根骨骼；木人桩 8 根。一幕里同台 14 个，只推进镜头附近的；使出身外身时再加一百个悟空，一共两千五百多根骨骼同时在动。动画之间有混合，受击时整台戏定格几帧。 · Five puppets: the Monkey King with 25 bones, 24 pieces and 11 animations; Nezha with 21 bones, 19 pieces and 17 animations; a spearman and an archer with 18 bones each; and a post with 8. Fourteen share the stage in an act, and only those near the camera are moved on; the body beyond the body adds a hundred Monkey Kings, more than two and a half thousand bones moving at once. Animations blend into one another, and the whole stage holds still for a few frames when a blow lands. |
+| Spine 骨骼动画 · Spine skeletal animation (`@egret/spine`) | 七种皮偶（第二幕添了 18 根骨骼的力士和 11 根骨骼的仙鹤），其中：悟空 25 根骨骼、24 片皮、12 段动画；哪吒 21 根骨骼、19 片皮、17 段动画；枪兵与弓手各 18 根骨骼；木人桩 8 根。一幕里同台 14 个，只推进镜头附近的；使出身外身时再加一百个悟空，一共两千五百多根骨骼同时在动。动画之间有混合，受击时整台戏定格几帧。 · Seven puppets (act two adds a shield-bearer of 18 bones and a crane of 11), among them the Monkey King with 25 bones, 24 pieces and 12 animations; Nezha with 21 bones, 19 pieces and 17 animations; a spearman and an archer with 18 bones each; and a post with 8. Fourteen share the stage in an act, and only those near the camera are moved on; the body beyond the body adds a hundred Monkey Kings, more than two and a half thousand bones moving at once. Animations blend into one another, and the whole stage holds still for a few frames when a blow lands. |
 | 多轨动画 · Animation tracks | 哪吒同时放三条轨：第一条是他在做什么，第二条收放三头六臂，第三条管乾坤圈在不在手里。后两条只动自己那块骨头，其余照旧。 · Nezha plays three tracks at once: what he is doing on the first, his three heads and six arms shown or put away on the second, and whether the ring is in his hand on the third. The upper two move only their own bone and leave the rest as it was. |
-| 瓦片地图 · Tile map (`@egret/engine/tilemap`) | 关卡是一张 Tiled 地图：引擎用它画地面，规则读同一个文件里的实心格、云格和摆放的东西。 · The level is a Tiled map: the engine draws the ground from it, and the rules read the solid cells, the cloud cells and the things placed in the same file. |
+| 瓦片地图 · Tile map (`@egret/engine/tilemap`) | 每一幕是一张 Tiled 地图，各用自己的一套瓦片（南天门的石台与云，蟠桃园的草地与树枝）：引擎用它画地面，规则读同一个文件里的实心格、可以站的格和摆放的东西。换幕时拆掉上一幕的地图、布景和皮偶，搭起下一幕的。 · Each act is a Tiled map with a tile set of its own (stone and cloud for the gate, turf and boughs for the orchard): the engine draws the ground from it, and the rules read the solid cells, the cells that can be stood on and the things placed in the same file. Between acts the last one's map, scenery and puppets are taken down and the next one's put up. |
 | 资源清单 · Resource manifest | 骨骼、图集和贴图由清单登记，按清单里的校验和核对后加载。图片由浏览器自带的图片解码读入（`src/pictures.mjs`），这条路在各家手机浏览器上都走得通。 · Skeletons, atlases and their pages are listed in a manifest and checked against its checksums as they load. Pictures are decoded by the browser's own image element (`src/pictures.mjs`), a way that works in every phone browser. |
 | 混合模式 · Blend modes | 皮偶与布景用正片叠底画在幕布上：皮只会让透过它的光变暗，两片叠着的地方更暗；火星用相加。 · Puppets and scenery are multiplied onto the cloth, since leather only darkens the light that passes through it, and where two pieces overlap it is darker still. Sparks are added. |
 | 2D 摄像机 · 2D camera | 跟随、前瞻、边界、多层视差、受击震动与重击时的推近。 · Following with a lead, bounds, parallax layers, a shake when a blow lands and a push-in on the heaviest. |
@@ -101,11 +113,11 @@ Packing needs esbuild (set `ESBUILD` to its module path if it is not installed h
 ```
 index.html, style.css   页面、幕布前的字与触屏按钮 · the page, the words in front of the cloth, the touch buttons
 src/main.mjs            搭台、加载、每一帧 · sets the stage, loads, runs each frame
-src/rules/act.mjs       一幕戏：地面、悟空、天兵、箭、拦路的哪吒与计数 · an act: the ground, the hero, the soldiers, arrows, whoever bars the gate, and the count
+src/rules/act.mjs       一幕戏：地面、悟空、天兵、箭、桃子、拦路的哪吒与计数 · an act: the ground, the hero, the soldiers, arrows, peaches, whoever bars the gate, and the count
 src/rules/boss.mjs      哪吒：三段打法、乾坤圈与风火轮 · Nezha: his three phases, the ring and the wheels
 src/rules/clones.mjs    身外身：毫毛变出的分身 · the clones his hairs become
 src/rules/hero.mjs      悟空的移动、连击与受伤（不含绘制）· how he moves, fights and is hurt, with no drawing
-src/rules/foes.mjs      枪兵与弓手 · the spearman and the archer
+src/rules/foes.mjs      枪兵、弓手、力士与仙鹤 · the spearman, the archer, the shield-bearer and the crane
 src/rules/level.mjs     地面与碰撞，读自关卡地图 · the ground and what stops a body, read from the level's map
 src/puppets.mjs         加载并操纵皮偶 · loads and plays the puppets
 src/pictures.mjs        读入图片 · reads pictures in

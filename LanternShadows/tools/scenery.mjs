@@ -1,6 +1,6 @@
 // The stage the puppets play on: the lit cloth, the wooden front of the booth, and the scenery pieces that hang
 // between the lamp and the cloth. Each is a drawing in SVG; tools/author.mjs takes their pictures.
-import { DYE, beads, blob, crescent, dot, leather, poly, slit } from './leather.mjs';
+import { DYE, beads, blob, crescent, dot, leather, poly, ribbon, slit } from './leather.mjs';
 
 const W = 960,
   H = 540;
@@ -79,7 +79,8 @@ export const far = {
   file: 'far.png',
   width: 1400,
   height: 360,
-  scale: 1,
+  // It is out of focus, and loses nothing by being kept small.
+  scale: 0.6,
   svg: blurred(hall(260, 330, 220, 150, '#8a5a3c') + hall(700, 340, 300, 210, '#7a4d38') + hall(1130, 330, 200, 130, '#8a5a3c') + [[90, 300, 1.6], [470, 320, 2], [930, 310, 1.8], [1300, 318, 1.5], [600, 120, 1.2], [1040, 90, 1]].map(([x, y, s]) => cloudPiece(x, y, s, '#9a6a4a', 0.55)).join(''), 3.2)
 };
 
@@ -174,4 +175,92 @@ export const ring = {
   svg: leather({ shape: dot(20, 20, 18), fill: DYE.gold, holes: [dot(20, 20, 11.5), ...Array.from({ length: 10 }, (_, i) => dot(20 + 14.8 * Math.cos((i * Math.PI) / 5), 20 + 14.8 * Math.sin((i * Math.PI) / 5), 1.3))], opacity: 0.95, edge: 1.2 }) + `<circle cx="20" cy="20" r="11.5" fill="none" stroke="${DYE.ink}" stroke-width="1.1"/>`
 };
 
-export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant, ring];
+// ---- The orchard of the peaches of immortality: the second act -------------------------------------------------
+const LEAF = '#2f7d4a',
+  BLOSSOM = '#e58a78';
+/** A peach tree as one flat piece: a leaning trunk, and a crown of leaves with fruit in it. */
+function peachTree(x, base, s, trunk, leaf, fruit = true) {
+  const crown = (cx, cy, r) => {
+    const shape = blob(Array.from({ length: 9 }, (_, i) => [cx + Math.cos((i / 9) * Math.PI * 2) * r * (i % 2 ? 1 : 0.86), cy + Math.sin((i / 9) * Math.PI * 2) * r * 0.74 * (i % 2 ? 1 : 0.88)]), 0.6);
+    const leaves = Array.from({ length: 7 }, (_, i) => crescent(cx + Math.cos(i * 2.4) * r * 0.55, cy + Math.sin(i * 2.4) * r * 0.4, r * 0.13, 40 + i * 70));
+    return leather({ shape, fill: leaf, opacity: 0.8, holes: leaves, edge: 1.1 }) + (fruit ? [0.9, 3.2, 5.1].map(a => `<circle cx="${cx + Math.cos(a) * r * 0.5}" cy="${cy + Math.sin(a) * r * 0.36}" r="${r * 0.085}" fill="${BLOSSOM}" stroke="${DYE.ink}" stroke-width="0.7"/>`).join('') : '');
+  };
+  return (
+    leather({ shape: ribbon([[x, base], [x - 4 * s, base - 60 * s], [x + 8 * s, base - 120 * s], [x - 6 * s, base - 176 * s]], [15 * s, 12 * s, 10 * s, 7 * s]), fill: trunk, opacity: 0.86, holes: [slit([x - 2 * s, base - 14 * s], [x - 5 * s, base - 54 * s], 2 * s), slit([x + 3 * s, base - 70 * s], [x + 7 * s, base - 112 * s], 1.8 * s)] }) +
+    leather({ shape: ribbon([[x + 6 * s, base - 116 * s], [x + 40 * s, base - 150 * s], [x + 70 * s, base - 158 * s]], [7 * s, 5 * s, 3 * s]), fill: trunk, opacity: 0.86 }) +
+    crown(x - 50 * s, base - 196 * s, 62 * s) +
+    crown(x + 62 * s, base - 186 * s, 58 * s) +
+    crown(x + 4 * s, base - 246 * s, 70 * s)
+  );
+}
+
+/** Far behind the cloth in the orchard: rows of peach trees on a rise, out of focus. */
+export const far2 = {
+  file: 'far2.png',
+  width: 1400,
+  height: 360,
+  scale: 0.6,
+  svg: blurred(
+    `<path d="M0 360V300Q200 262 420 290T860 280T1400 296V360Z" fill="#8a6a44" fill-opacity="0.5"/>` +
+      [[110, 316, 0.62], [330, 300, 0.8], [560, 318, 0.56], [760, 296, 0.86], [990, 312, 0.66], [1200, 300, 0.8], [1350, 320, 0.5]].map(([x, base, s], i) => peachTree(x, base, s, '#7a4d38', i % 2 ? '#7c8a52' : '#8a8a4c', false)).join(''),
+    3.2
+  )
+};
+
+/** A peach tree to stand among the players. It stands on the bottom edge of the picture, its trunk in the middle. */
+export const tree = { file: 'tree.png', width: 320, height: 380, scale: 1.5, svg: peachTree(160, 380, 1.12, DYE.fur, LEAF) };
+
+/** A peach of immortality, with its leaf. */
+export const peach = {
+  file: 'peach.png',
+  width: 28,
+  height: 30,
+  scale: 3,
+  svg:
+    leather({ shape: blob([[21, 4], [26, 7], [22, 11], [16, 9]], 0.5), fill: LEAF, holes: [slit([18, 8], [24, 7], 0.4)], edge: 0.9 }) +
+    leather({ shape: blob([[14, 8], [21, 11], [24, 18], [20, 25], [14, 28.4], [8, 25], [4, 18], [7, 11]], 0.5), fill: BLOSSOM, opacity: 0.94, holes: [slit([14, 11], [13, 24], 0.7), crescent(9, 17, 2.2, 170)], edge: 1.1 })
+};
+
+/** The way out of the orchard: a moon gate in a tiled wall, with the orchard's name over it. */
+export const moongate = {
+  file: 'moongate.png',
+  width: 380,
+  height: 380,
+  scale: 1.5,
+  svg: (() => {
+    const wall = leather({
+      shape: poly([[24, 380], [356, 380], [356, 84], [24, 84]]),
+      fill: '#cdb07c',
+      opacity: 0.82,
+      holes: [dot(190, 248, 112), ...[70, 310].flatMap(x => [slit([x - 16, 120], [x + 16, 120], 3), slit([x - 16, 136], [x + 16, 136], 3), slit([x - 16, 152], [x + 16, 152], 3)])],
+      over: `<circle cx="190" cy="248" r="112" fill="none" stroke="${DYE.ink}" stroke-width="1.6"/><circle cx="190" cy="248" r="121" fill="none" stroke="${DYE.crimson}" stroke-opacity="0.85" stroke-width="6"/>`
+    });
+    const roof = leather({ shape: blob([[4, 78], [24, 66], [110, 52], [190, 46], [270, 52], [356, 66], [376, 78], [356, 92], [190, 88], [24, 92]], 0.3), fill: DYE.green, opacity: 0.88, holes: [...scalesRow(30, 80, 320, 7), ...scalesRow(60, 64, 260, 6)] });
+    const board = leather({ shape: poly([[136, 98], [244, 98], [244, 130], [136, 130]]), fill: DYE.crimson, opacity: 0.92, holes: beads([141, 102], [239, 102], 11, 1.2).concat(beads([141, 126], [239, 126], 11, 1.2)), over: `<text x="190" y="122" text-anchor="middle" font-family="'Noto Serif CJK SC','Songti SC','SimSun',serif" font-weight="900" font-size="21" letter-spacing="4" fill="#f6dc9c">蟠桃園</text>` });
+    return wall + roof + board;
+  })()
+};
+
+/** The ground of the orchard, in the order tools/level.mjs names the tiles: turf over dark earth, and boughs to stand on. */
+export const orchard = {
+  file: 'orchard.png',
+  width: 240,
+  height: 48,
+  scale: 2,
+  svg: (() => {
+    const earth = x => `<rect x="${x}" y="0" width="48" height="48" fill="#3a2414" fill-opacity="0.92"/>`;
+    const top =
+      earth(0) +
+      `<rect x="0" y="0" width="48" height="7" fill="${LEAF}" fill-opacity="0.95"/><path d="M0 0.5H48M0 7H48" stroke="${DYE.ink}" stroke-width="1"/>` +
+      `<g fill="#f4d9a0" fill-opacity="0.5"><path d="${slit([8, 11], [11, 21], 1.2)}${slit([14, 10], [15, 19], 1)}${slit([30, 11], [28, 22], 1.2)}${slit([36, 10], [38, 20], 1)}${dot(22, 30, 1.6)}${dot(42, 36, 1.4)}${dot(6, 38, 1.4)}"/></g>`;
+    const fill = earth(48) + `<g fill="#f4d9a0" fill-opacity="0.16"><path d="${dot(60, 14, 2.4)}${dot(80, 30, 2)}${dot(68, 40, 1.6)}${slit([84, 10], [92, 12], 1.2)}"/></g>`;
+    // A bough: a round limb with leaves hanging from it. An end piece is the same limb pushed in from its side.
+    const bough = (x, from, to) =>
+      [[8, 3], [20, -2], [33, 4], [43, -3]].map(([at, lean]) => `<path d="${slit([x + at, 14], [x + at + lean, 31], 3.2)}" fill="${LEAF}" fill-opacity="0.85" stroke="${DYE.ink}" stroke-width="0.7"/>`).join('') +
+      `<rect x="${x + from}" y="4" width="${to - from}" height="12" rx="6" fill="${DYE.fur}" fill-opacity="0.92" stroke="${DYE.ink}" stroke-width="1.1"/>` +
+      `<path d="M${x + Math.max(from, 0) + 6} 7.4H${x + Math.min(to, 48) - 6}" stroke="#f4d9a0" stroke-opacity="0.5" stroke-width="1"/>`;
+    return [top, fill, bough(96, 3, 62), bough(144, -14, 62), bough(192, -14, 45)].map((art, i) => `<svg x="${i * 48}" y="0" width="48" height="48" viewBox="${i * 48} 0 48 48">${art}</svg>`).join('');
+  })()
+};
+
+export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant, ring, far2, tree, peach, moongate, orchard];

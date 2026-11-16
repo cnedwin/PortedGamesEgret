@@ -96,7 +96,7 @@ export function stepClones(clones, targets, home, dt, level, crowd) {
         clone.facing = dx > 0 ? 1 : -1;
         if (clone.grounded) clone.vx = clone.facing * clone.speed;
         if (clone.grounded && target.y < clone.y - 40 && Math.abs(target.x - clone.x) < 200) clone.vy = -TUNE.jump * 0.92;
-      } else if (clone.grounded && Math.abs(target.y - clone.y) < 50) {
+      } else if (clone.grounded && (target.flies || Math.abs(target.y - clone.y) < 50)) {
         Object.assign(clone, { state: 'attack', time: 0, vx: 0, facing: target.x >= clone.x ? 1 : -1, blow: (clone.blow + 1) % ATTACKS.length, serial: clone.serial + 1 });
       } else if (clone.grounded) clone.vx = 0;
     } else if (clone.grounded) {

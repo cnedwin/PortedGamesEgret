@@ -14,6 +14,8 @@ import { toTiled } from '../tools/level.mjs';
 import * as act1 from '../tools/levels/act1.mjs';
 import * as archer from '../tools/puppets/archer.mjs';
 import * as dummy from '../tools/puppets/dummy.mjs';
+import * as crane from '../tools/puppets/crane.mjs';
+import * as guard from '../tools/puppets/guard.mjs';
 import * as nezha from '../tools/puppets/nezha.mjs';
 import * as spearman from '../tools/puppets/spearman.mjs';
 import * as wukong from '../tools/puppets/wukong.mjs';
@@ -21,7 +23,7 @@ import { SCENERY } from '../tools/scenery.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'),
   read = file => fs.readFileSync(path.join(ROOT, file)),
-  PUPPETS = { wukong, dummy, spearman, archer, nezha };
+  PUPPETS = { wukong, dummy, spearman, archer, nezha, guard, crane };
 
 test('each puppet is put together soundly', () => {
   for (const [name, puppet] of Object.entries(PUPPETS)) {
@@ -80,7 +82,7 @@ test("the puppet's blows are as long as the rules say, and strike when the rules
 });
 
 test('a loop ends as it began, so that it repeats without a jerk', () => {
-  for (const [puppet, loops] of [[wukong, ['idle', 'run', 'fall']], [dummy, ['idle']], [spearman, ['idle', 'walk']], [archer, ['idle']], [nezha, ['idle', 'move', 'charge', 'calm', 'wrath', 'held', 'bare']]])
+  for (const [puppet, loops] of [[wukong, ['idle', 'run', 'fall']], [dummy, ['idle']], [spearman, ['idle', 'walk']], [archer, ['idle']], [nezha, ['idle', 'move', 'charge', 'calm', 'wrath', 'held', 'bare']], [guard, ['idle', 'walk']], [crane, ['fly', 'dive']]])
     for (const title of loops)
       for (const [bone, tracks] of Object.entries(puppet.animations[title].bones))
         for (const [kind, keys] of Object.entries(tracks)) {
@@ -166,7 +168,7 @@ test("pictures are read by the game's own reader, which every browser allows", (
 });
 
 test("the soldiers' blows are as long as the rules say, and strike when the rules say", () => {
-  for (const [kind, puppet] of [['spearman', spearman], ['archer', archer]]) {
+  for (const [kind, puppet] of [['spearman', spearman], ['archer', archer], ['guard', guard]]) {
     const spec = FOES[kind];
     for (const needed of ['idle', 'windup', 'attack', 'hurt', 'down']) assert.ok(puppet.animations[needed], `${kind}.${needed}`);
     assert.equal(puppet.animations.attack.seconds, spec.attack, kind);
@@ -194,6 +196,16 @@ test("Nezha's moves are as long as the rules say, and he has a pose for everythi
   // What is put away is put away from the first moment, and what is shown is whole.
   assert.ok(nezha.animations.calm.bones.aura.scale.every(([, size]) => size < 0.05));
   assert.ok(nezha.animations.bare.bones.ring.scale.every(([, size]) => size < 0.05));
+});
+
+test('the orchard has a pose for everything its guards and cranes do, and a second level of its own', async () => {
+  for (const needed of ['idle', 'walk', 'windup', 'attack', 'block', 'open', 'hurt', 'down']) assert.ok(guard.animations[needed], `guard: ${needed}`);
+  assert.equal(guard.animations.open.seconds, FOES.guard.shield.open);
+  assert.equal(guard.animations.block.seconds, FOES.guard.shield.block);
+  for (const needed of ['fly', 'windup', 'dive', 'hurt', 'down']) assert.ok(crane.animations[needed], `crane: ${needed}`);
+  assert.ok(crane.animations.windup.seconds <= FOES.crane.windup);
+  const act2 = await import('../tools/levels/act2.mjs');
+  assert.deepEqual(JSON.parse(read('assets/levels/act2.tmj')), JSON.parse(JSON.stringify(toTiled(act2.level, act2.title, act2.tiles))), 'run tools/author.mjs again');
 });
 
 test('the level on disk is the one its layout describes', () => {

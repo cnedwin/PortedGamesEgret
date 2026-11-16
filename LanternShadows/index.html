@@ -11,30 +11,42 @@
   <!-- Fetched at once. Written by tools/bundle.mjs. -->
   <link rel="preload" as="fetch" crossorigin href="assets/manifest.json">
   <link rel="preload" as="fetch" crossorigin href="assets/levels/act1.tmj">
+  <link rel="preload" as="fetch" crossorigin href="assets/levels/act2.tmj">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/frame.png">
-  <link rel="preload" as="fetch" crossorigin href="assets/scene/far.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/far2.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/far.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/guard.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/archer.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/gate.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/moongate.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/screen.jpg">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/tree.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/crane.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/guard.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/archer.json">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/wisp.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/crane.json">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/tiles.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/orchard.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/ring.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/peach.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/pennant.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/spark.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/arrow.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/guard.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/archer.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/crane.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/chaff.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.atlas">
   <!-- End of what is fetched at once. -->
@@ -102,19 +114,25 @@
 
     <section class="result" id="result" hidden>
       <div class="playbill">
-        <p class="act" data-zh="第一幕　南天门　落幕" data-en="Act one, the Southern Gate: curtain">第一幕　南天门　落幕</p>
+        <p class="act" id="result-title"></p>
         <p class="seal" id="rank">S</p>
         <dl class="tally" id="tally"></dl>
-        <button type="button" class="gong small" id="again"><span data-zh="再演" data-en="Again">再演</span></button>
+        <div class="gongs">
+          <button type="button" class="gong small" id="again"><span data-zh="再演" data-en="Again">再演</span></button>
+          <button type="button" class="gong small" id="next" hidden><span data-zh="下一幕" data-en="Next act">下一幕</span></button>
+        </div>
       </div>
     </section>
 
     <section class="curtain" id="curtain">
       <div class="playbill">
         <h1><span data-zh="灯影" data-en="Lantern Shadows">灯影</span><em data-zh="闹天宫" data-en="Havoc in Heaven">闹天宫</em></h1>
-        <p class="act" data-zh="第一幕　南天门　哪吒拦路" data-en="Act one: the Southern Gate, and Nezha in the way">第一幕　南天门　哪吒拦路</p>
+        <p class="act" data-zh="第一幕　南天门　　第二幕　蟠桃园" data-en="Act one, the Southern Gate. Act two, the Peach Orchard">第一幕　南天门　　第二幕　蟠桃园</p>
         <button type="button" class="gong" id="start" disabled><span data-zh="开锣" data-en="Begin">开锣</span></button>
-        <button type="button" class="aside" id="start-boss" disabled data-zh="只看压轴：直接会哪吒" data-en="Only the finale: straight to Nezha">只看压轴：直接会哪吒</button>
+        <p class="asides">
+          <button type="button" class="aside" id="start-boss" disabled data-zh="直接会哪吒" data-en="Straight to Nezha">直接会哪吒</button>
+          <button type="button" class="aside" id="start-act2" disabled data-zh="从第二幕蟠桃园演起" data-en="Begin with act two, the Peach Orchard">从第二幕蟠桃园演起</button>
+        </p>
         <i class="filling" id="filling"><b></b></i>
         <p class="status" id="status" data-zh="正在挂灯、理线……" data-en="Hanging the lamp…">正在挂灯、理线……</p>
       </div>

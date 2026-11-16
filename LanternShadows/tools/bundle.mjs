@@ -40,14 +40,14 @@ export function inputsHash() {
 }
 
 /**
- * What the page should begin to fetch while the game's code is still on its way: the manifest, the level, and
- * every picture and skeleton the first act shows, largest first.
+ * What the page should begin to fetch while the game's code is still on its way: the manifest, the levels, and
+ * every picture and skeleton the play shows, largest first.
  */
 export function preloads() {
   const manifest = JSON.parse(read('assets/manifest.json'));
   const files = [...manifest.entries.map(entry => 'assets/' + entry.artifact.path), ...filesUnder('assets/scene', '').filter(file => /\.(png|jpg)$/.test(file))];
   const bySize = files.map(file => [file, fs.statSync(path.join(ROOT, file)).size]).sort((a, b) => b[1] - a[1] || (a[0] < b[0] ? -1 : 1));
-  return ['assets/manifest.json', 'assets/levels/act1.tmj', ...bySize.map(([file]) => file)];
+  return ['assets/manifest.json', ...filesUnder('assets/levels', '.tmj'), ...bySize.map(([file]) => file)];
 }
 /** The lines of index.html that ask for them. */
 export const preloadLines = () => preloads().map(file => `  <link rel="preload" as="fetch" crossorigin href="${file}">`).join('\n');
