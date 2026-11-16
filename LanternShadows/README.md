@@ -14,7 +14,7 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 | 筋斗云 · Cloud roll | L，或 Shift · L or Shift | B | 云 · Roll |
 | 身外身 · Clones | I，或 C · I or C | Y | 变 · Hairs |
 
-- 连按三下棍是一套连击：平扫、上挑、劈砸，一下比一下重。每一下打中都有一记锣鼓：平扫是梆子，上挑是小锣，劈砸是大锣。
+- 连按三下棍是一套连击：平扫、上挑、劈砸，一下比一下重。击中时分别是竹木、上挑的短响和鼓皮般的重击，格挡和卸开飞来的兵器另有不同的声音。
 - 跳键按得久跳得高，轻点是小跳；云朵可以从下面跳上去，石台要跳上去。
 - 筋斗云贴地翻出一段，空中可以用一次；翻滚途中什么都伤不到他，枪尖和箭都能穿过去。一棍打中之后可以用它收招。
 - **身外身**：他自己打中的每一棍都攒一根毫毛，攒满三十根（桃子下面那条金线满了），就能拔一把毫毛吹出一百个小悟空。它们翻着筋斗落地，扑向附近的天兵或哪吒围着打，七秒后变回毫毛；附近没有敌人时就在他身边跑跳。分身打中的也计入连击，但不攒毫毛。施法的那一下谁也伤不到他。分身在场时，台口会写出分身数、正在推进的骨骼数和每秒帧数。
@@ -25,7 +25,7 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - P、Esc 或戏台上的「暂停」按钮可暂停。手机竖屏也能从戏单开锣，触控键排在幕布下方。
 - 戏单可选从第二、三幕起演，或直接到三位首领的院子。一幕落幕后可以接着演、重演本幕或返回戏单。
 - 完整演完一幕会记下最好评级、最快时间和最高连击，并可拿下限时、连击和不倒地三枚印。直接进首领院子是独立练习。
-- 三幕各有一首原创循环配乐，进入时按需加载。戏台上可以分别开关配乐和锣鼓。
+- 三幕各有一首两分钟以上的原创配乐，进场按需加载。换幕时配乐交接，同幕重演接着播放。戏台上可以分别开关配乐和音效。
 
 **第二幕**新添的：
 
@@ -128,7 +128,7 @@ New in **act three**:
 | 混合模式 · Blend modes | 皮偶与布景用正片叠底画在幕布上：皮只会让透过它的光变暗，两片叠着的地方更暗；火星用相加。 · Puppets and scenery are multiplied onto the cloth, since leather only darkens the light that passes through it, and where two pieces overlap it is darker still. Sparks are added. |
 | 2D 摄像机 · 2D camera | 跟随、前瞻、边界、多层视差、受击震动与重击时的推近。 · Following with a lead, bounds, parallax layers, a shake when a blow lands and a push-in on the heaviest. |
 | 粒子 · Particles | 火星、稻草屑、脚下的尘，风火轮上和它碾过的地面上的火，丹房里炉口的火柱、打翻的炉火、扇出的火舌与风。 · Sparks, straw, dust underfoot, the fire on the wheels and on the ground they have crossed, and in the palace the columns over the grates, the spilled furnace fire, and the fan's flame and wind. |
-| 混音器 · Audio mixer | 七种锣鼓声都由代码合成为 WAV 再交给混音器，仓库里没有录音文件。 · All seven percussion sounds are worked out in code as WAV bytes and handed to the mixer; the repository holds no recordings. |
+| 混音器 · Audio mixer | 三幕配乐和动作音效走独立音轨。频繁动作使用不同的短音，限制混战时的重复和叠声。 · The score and foley use separate buses. Common actions rotate through synthesized variants, with limits on repeated and overlapping cues. |
 | 输入 · Input | 键盘、手柄（带震动）、触屏。 · Keyboard, gamepad with rumble, and touch. |
 | 渲染后端 · Renderers | 默认 WebGL2，可选 WebGPU。 · WebGL2 by default, WebGPU on request. |
 
@@ -183,7 +183,8 @@ src/rules/level.mjs     地面与碰撞，读自关卡地图 · the ground and w
 src/puppets.mjs         加载并操纵皮偶 · loads and plays the puppets
 src/pictures.mjs        读入图片 · reads pictures in
 src/input.mjs           键盘、手柄、触屏 · keyboard, gamepad, touch
-src/sound.mjs           合成的锣鼓 · the synthesised percussion
+src/sound.mjs           配乐和音效混音 · score and effects mix
+src/foley.mjs           按动作合成音效 · synthesizes foley for each action
 tools/                  画皮、绑骨、出图集、布景与关卡，以及打包 · drawing, rigging, atlases, scenery and levels, and the packing
 build/                  tools/bundle.mjs 的产物，页面加载的就是它 · what tools/bundle.mjs writes, and what the page loads
 assets/                 tools/author.mjs 的产物 · what tools/author.mjs writes

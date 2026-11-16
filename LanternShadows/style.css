@@ -96,6 +96,8 @@ body {
 .tools button[aria-pressed='true'] { opacity: 0.5; text-decoration: line-through; }
 .tools [hidden] { display: none; }
 .tools #pause-play { color: #fff0b8; background: #552318; }
+/* Keep the music button out of the pause tap's slot until the browser sends its click. */
+.tools #pause-play[hidden] { display: block; visibility: hidden; }
 
 .keys { left: 0; right: 0; bottom: 4%; text-align: center; color: #f3d78dd9; font-weight: 700; font-size: 0.88em; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000a; }
 .keys kbd { display: inline-block; min-width: 1.7em; margin: 0 0.2em 0 0.9em; padding: 0.05em 0.4em; border: 1px solid #f3d78d88; border-radius: 3px; background: #1c0f0b99; font: 700 0.9em ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }

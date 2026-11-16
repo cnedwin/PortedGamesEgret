@@ -11,7 +11,7 @@
 //   puppets.mjs      Spine skeletons, loaded as the engine's manifest lists them
 //   pictures.mjs     pictures read in the way every browser allows
 //   input.mjs        keyboard, gamepad and touch as one answer a step
-//   sound.mjs        the percussion, made from numbers
+//   sound.mjs        the stage score and foley mix
 //
 // Address options: ?act=2 begins with the second act, ?backend=webgpu draws with WebGPU instead of WebGL2, ?stats shows what is being drawn,
 // ?lang=en starts in English, ?slow=0.25 plays at a quarter of the speed, to watch how he moves, and ?from=nezha
@@ -544,7 +544,6 @@ const panOf = x => (x - camera.snapshot().center.x) / (STAGE.width / 2);
 /** The beat, the held breath and the shudder of the booth that a blow of the staff brings. */
 function land(attack, pan) {
   sound.play({ hit: 'staff', lift: 'uplift', slam: 'smash' }[attack.kind], { volume: 0.93, pan });
-  if (attack.kind === 'slam') sound.play('gong', { volume: 0.48, rate: 0.9, pan });
   freeze = Math.max(freeze, attack.stop);
   camera.shake({ trauma: attack.shake });
   input.gamepads?.rumble(0, { duration: 90 + attack.power * 60, weak: 0.4, strong: 0.3 * attack.power });
@@ -558,11 +557,11 @@ function happen(events) {
   let counted = false;
   for (const event of events) {
     const { type } = event;
-    if (type === 'jump') (sound.play('drum', { volume: 0.5, rate: 1.5, pan }), burst(dust, hero.x, hero.y, 6));
-    else if (type === 'land') (sound.play('drum', { volume: Math.min(0.9, event.speed / 1300), rate: 0.9, pan }), burst(dust, hero.x, hero.y, event.speed > 500 ? 12 : 5));
-    else if (type === 'dash') (sound.play('whirl', { volume: 0.7, pan }), burst(dust, hero.x, hero.y - 20, 10));
-    else if (type === 'step') sound.play('tap', { volume: 0.28, rate: 0.9 + Math.random() * 0.25, pan });
-    else if (type === 'swing') sound.play('swish', { volume: 0.5, rate: [1.1, 0.95, 0.75][ATTACKS.indexOf(event.attack)] ?? 1.2, pan });
+    if (type === 'jump') (sound.play('jump', { volume: 0.65, pan }), burst(dust, hero.x, hero.y, 6));
+    else if (type === 'land') (sound.play('land', { volume: Math.min(0.83, event.speed / 1000), pan }), burst(dust, hero.x, hero.y, event.speed > 500 ? 12 : 5));
+    else if (type === 'dash') (sound.play('whirl', { volume: 0.64, pan }), burst(dust, hero.x, hero.y - 20, 10));
+    else if (type === 'step') sound.play('tap', { volume: 0.42, pan });
+    else if (type === 'swing') sound.play('swish', { volume: 0.57, rate: [1.04, 0.9, 0.78][ATTACKS.indexOf(event.attack)] ?? 1.1, pan });
     else if (type === 'met') {
       if (event.blocked) continue;
       if (!event.crowd || clock >= nextCrowdBeat) burst(sparks, event.at.x, event.at.y, 8 + event.attack.power * 9);
@@ -577,7 +576,7 @@ function happen(events) {
       if (event.crowd) {
         if (clock >= nextCrowdBeat) {
           nextCrowdBeat = clock + 0.068;
-          sound.play('clap', { volume: 0.35, rate: 1.2 + Math.random() * 0.5, pan: panOf(event.at.x) });
+          sound.play('clap', { volume: 0.36, pan: panOf(event.at.x) });
           camera.shake({ trauma: event.attack.shake });
         }
       } else {
@@ -591,11 +590,11 @@ function happen(events) {
       sound.play('parry', { volume: 0.76, rate: event.ring ? 0.88 : 1.25, pan: panOf(event.at.x) });
       freeze = Math.max(freeze, event.ring ? 0.08 : 0.04);
     } else if (type.startsWith('boss') || type.startsWith('ring') || type.startsWith('hound') || type.startsWith('staff') || type.startsWith('furnace-') && type !== 'furnace-tipped' || type.startsWith('drop') || type === 'gate-open') (told(event), (counted = true));
-    else if (type === 'hairs-full') (notice(WORDS[lang].tuft), sound.play('smallGong', { volume: 0.6, rate: 1.5 }), (counted = true));
-    else if (type === 'conjure') (sound.play('whirl', { volume: 0.8, rate: 1.3, pan }), (counted = true));
+    else if (type === 'hairs-full') (notice(WORDS[lang].tuft), sound.play('confirm', { volume: 0.64 }), (counted = true));
+    else if (type === 'conjure') (sound.play('whirl', { volume: 0.58, rate: 1.13, pan }), (counted = true));
     else if (type === 'clones') {
       notice(WORDS[lang].blown);
-      sound.play('gong', { volume: 1, rate: 0.9 });
+      sound.play('magic', { volume: 0.85 });
       burst(dust, hero.x, hero.y - 40, 40);
       burst(sparks, hero.x, hero.y - 80, 30);
       camera.shake({ trauma: 0.7 });
@@ -623,23 +622,21 @@ function happen(events) {
     else if (type === 'burst') {
       burst(sparks, event.at.x, event.at.y - 10, 44);
       burst(dust, event.at.x, event.at.y, 16);
-      sound.play('drum', { volume: 0.9, rate: 0.8, pan: panOf(event.at.x) });
-      sound.play('clap', { volume: 0.6, rate: 0.7, pan: panOf(event.at.x) });
+      sound.play('smash', { volume: 0.68, rate: 0.9, pan: panOf(event.at.x) });
       camera.shake({ trauma: 0.3 });
     } else if (type === 'furnace-tipped') {
       burst(sparks, event.furnace.x, event.furnace.y - 50, 30);
-      sound.play('smallGong', { volume: 0.8, rate: 0.7, pan: panOf(event.furnace.x) });
-      sound.play('drum', { volume: 0.8, rate: 0.6, pan: panOf(event.furnace.x) });
+      sound.play('guard', { volume: 0.69, rate: 0.72, pan: panOf(event.furnace.x) });
       camera.shake({ trauma: 0.35 });
       counted = true;
-    } else if (type === 'vent-on') inView(event.vent.x, camera.snapshot().center.x) && sound.play('whirl', { volume: 0.25, rate: 0.5, pan: panOf(event.vent.x) });
-    else if (type === 'peach-struck') (burst(dust, event.at.x, event.at.y, 5), sound.play('tap', { volume: 0.5, rate: 1.6, pan: panOf(event.at.x) }));
-    else if (type === 'peach') (burst(sparks, event.at.x, event.at.y, 14), sound.play('smallGong', { volume: 0.5, rate: 1.9, pan }), (counted = true));
+    } else if (type === 'vent-on') inView(event.vent.x, camera.snapshot().center.x) && sound.play('ember', { volume: 0.44, pan: panOf(event.vent.x) });
+    else if (type === 'peach-struck') (burst(dust, event.at.x, event.at.y, 5), sound.play('tap', { volume: 0.45, rate: 1.18, pan: panOf(event.at.x) }));
+    else if (type === 'peach') (burst(sparks, event.at.x, event.at.y, 14), sound.play('confirm', { volume: 0.68, pan }), (counted = true));
     else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
     else if (type === 'foe-strike' || type === 'arrow') sound.play('swish', { volume: 0.55, rate: type === 'arrow' ? 1.7 : 1.3, pan: panOf(type === 'arrow' ? event.arrow.x : event.foe.x) });
-    else if (type === 'foe-down') (sound.play('drum', { volume: 0.8, rate: 0.7, pan: panOf(event.foe.x) }), (counted = true));
+    else if (type === 'foe-down') (sound.play('land', { volume: 0.45, rate: 0.82, pan: panOf(event.foe.x) }), (counted = true));
     else if (type === 'hurt') {
-      sound.play('drum', { volume: 1, rate: 0.55, pan });
+      sound.play('hurt', { volume: 0.95, pan });
       burst(sparks, hero.x, hero.y - 60, 16);
       freeze = Math.max(freeze, 0.09);
       camera.shake({ trauma: 0.6 });
@@ -647,13 +644,13 @@ function happen(events) {
       counted = true;
     } else if (type === 'revive') (burst(dust, hero.x, hero.y, 14), (counted = true));
     else if (type === 'lapse') counted = true;
-    else if (type === 'checkpoint') (notice(WORDS[lang].rested), sound.play('smallGong', { volume: 0.5, rate: 1.3 }));
+    else if (type === 'checkpoint') (notice(WORDS[lang].rested), sound.play('confirm', { volume: 0.72 }));
     else if (type === 'barred') notice(WORDS[lang].barred(event.left));
     else if (type === 'clear') {
       input.clear();
       sound.court(false);
       sound.dim(true);
-      sound.play('gong', { volume: 1, rate: 0.8 });
+      sound.play('smallGong', { volume: 0.77 });
       if (campaignRun()) recordBook.record(onStage, act.result);
       showResult();
       showRecords();
@@ -668,29 +665,27 @@ function told(event) {
     pan = panOf(boss.x),
     words = WORDS[lang].bosses[boss.kind],
     { type, move } = event;
-  if (type === 'boss-enter') (notice(words.enter), sound.court(true), sound.play('gong', { volume: 1, rate: 0.7 }));
+  if (type === 'boss-enter') (notice(words.enter), sound.court(true), sound.play('gong', { volume: 0.86, rate: 0.9 }));
   // Erlang changes his shape in a puff of smoke; he lands from a leap with his whole weight; and his hound is
   // heard before it is seen to run.
   else if (type === 'boss-change') (burst(dust, boss.x, boss.y - boss.rise - 70, 36), burst(sparks, boss.x, boss.y - boss.rise - 70, 16), sound.play('whirl', { volume: 0.8, rate: event.form === 'hawk' ? 1.6 : 1, pan }));
   else if (type === 'boss-land') (burst(dust, boss.x, boss.y, 26), sound.play('drum', { volume: 1, rate: 0.5, pan }), camera.shake({ trauma: 0.4 + boss.size * 0.2 }), (freeze = Math.max(freeze, 0.05)));
-  else if (type === 'hound-windup') (sound.play('tap', { volume: 0.9, rate: 0.38, pan: panOf(event.hound.x) }), sound.play('tap', { volume: 0.7, rate: 0.44, pan: panOf(event.hound.x) }));
+  else if (type === 'hound-windup') sound.play('tap', { volume: 0.87, rate: 0.66, pan: panOf(event.hound.x) });
   else if (type === 'hound-run') sound.play('swish', { volume: 0.6, rate: 0.7, pan: panOf(event.hound.x) });
   else if (type === 'hound-yelp') sound.play('clap', { volume: 0.7, rate: 1.9, pan: panOf(event.hound.x) });
   // Laozi: the snare carrying off the staff, the staff found again, and the furnace shut and broken out of.
-  else if (type === 'staff-taken') (burst(sparks, event.at.x, event.at.y, 40), sound.play('gong', { volume: 0.8, rate: 1.6 }), camera.shake({ trauma: 0.5 }), (freeze = Math.max(freeze, 0.12)), notice(WORDS[lang].taken));
+  else if (type === 'staff-taken') (burst(sparks, event.at.x, event.at.y, 40), sound.play('parry', { volume: 0.76, rate: 0.83 }), camera.shake({ trauma: 0.5 }), (freeze = Math.max(freeze, 0.12)), notice(WORDS[lang].taken));
   else if (type === 'staff-thrown') sound.play('swish', { volume: 0.7, rate: 0.8, pan });
-  else if (type === 'staff-back') (burst(sparks, act.hero.x, act.hero.y - 70, 26), sound.play('smallGong', { volume: 0.8, rate: 1.3 }), notice(WORDS[lang].regained));
+  else if (type === 'staff-back') (burst(sparks, act.hero.x, act.hero.y - 70, 26), sound.play('confirm', { volume: 0.77 }), notice(WORDS[lang].regained));
   else if (type === 'furnace-shut') {
-    sound.play('gong', { volume: 1, rate: 0.5 });
-    sound.play('drum', { volume: 1, rate: 0.45 });
+    sound.play('gong', { volume: 0.9, rate: 0.82 });
     camera.shake({ trauma: 1 });
     freeze = Math.max(freeze, 0.25);
     notice(WORDS[lang].shut(LAOZI.furnace.seconds));
-  } else if (type === 'drop') sound.play('tap', { volume: 0.4, rate: 1.9, pan: panOf(event.drop.x) });
-  else if (type === 'drop-landed') (burst(flames, event.at.x, event.at.y - 6, 16), burst(dust, event.at.x, event.at.y, 6), sound.play('drum', { volume: 0.5, rate: 1.1, pan: panOf(event.at.x) }));
+  } else if (type === 'drop') sound.play('ember', { volume: 0.58, rate: 1.12, pan: panOf(event.drop.x) });
+  else if (type === 'drop-landed') (burst(flames, event.at.x, event.at.y - 6, 16), burst(dust, event.at.x, event.at.y, 6), sound.play('land', { volume: 0.61, rate: 0.86, pan: panOf(event.at.x) }));
   else if (type === 'furnace-broken') {
-    sound.play('gong', { volume: 1, rate: 1 });
-    sound.play('gong', { volume: 0.8, rate: 0.5 });
+    sound.play('magic', { volume: 0.94, rate: 0.9 });
     burst(sparks, act.hero.x, act.hero.y - 70, 120);
     camera.shake({ trauma: 1 });
     camera.zoomTo(1.12, 0.08);
@@ -705,12 +700,11 @@ function told(event) {
   else if (type === 'ring') sound.play('whirl', { volume: 0.6, rate: 1.7, pan });
   else if (type === 'ring-caught') sound.play('tap', { volume: 0.6, rate: 1.4, pan });
   else if (type === 'ring-home') (burst(sparks, event.at.x, event.at.y, 36), (freeze = Math.max(freeze, 0.1)), camera.shake({ trauma: 0.6 }));
-  else if (type === 'boss-stun') sound.play('smallGong', { volume: 0.9, rate: 0.8, pan });
+  else if (type === 'boss-stun') sound.play('smallGong', { volume: 0.66, rate: 0.89, pan });
   else if (type === 'boss-phase' || type === 'boss-down') {
     // The turn of the fight: everything holds its breath, and the booth shakes.
     const last = type === 'boss-down';
-    sound.play('gong', { volume: 1, rate: last ? 0.5 : 0.62 });
-    sound.play('drum', { volume: 1, rate: 0.5 });
+    sound.play(last ? 'gong' : 'drum', { volume: last ? 0.94 : 0.83, rate: 0.84 });
     burst(sparks, boss.x, boss.y - 70, 60);
     freeze = Math.max(freeze, last ? 0.34 : 0.2);
     camera.shake({ trauma: 1 });
@@ -718,7 +712,7 @@ function told(event) {
     zoomBack = last ? 0.7 : 0.4;
     input.gamepads?.rumble(0, { duration: 400, weak: 1, strong: 1 });
     if (!last) notice(words.phases[event.phase]);
-  } else if (type === 'gate-open') (notice(words.opened), sound.play('smallGong', { volume: 0.7, rate: 1.1 }));
+  } else if (type === 'gate-open') (notice(words.opened), sound.play('confirm', { volume: 0.66 }));
 }
 
 /** Whether something at `x` is near enough to what the camera shows to be worth moving. */
@@ -1092,10 +1086,15 @@ function pause(value = !paused) {
   $('pause-play').hidden = paused;
   if (!paused) canvas.focus();
 }
-addEventListener('keydown', event => (event.code === 'KeyP' || event.code === 'Escape') && !event.repeat && pause());
+function playPauseCue() {
+  const wasPaused = paused;
+  pause();
+  if (paused !== wasPaused) sound.play(paused ? 'cancel' : 'confirm', { volume: 0.57 });
+}
+addEventListener('keydown', event => (event.code === 'KeyP' || event.code === 'Escape') && !event.repeat && playPauseCue());
 addEventListener('blur', () => pause(true));
-bindPlayButton($('pause-play'), () => pause(true));
-bindPlayButton($('paused'), () => pause(false));
+bindPlayButton($('pause-play'), playPauseCue);
+bindPlayButton($('paused'), playPauseCue);
 
 /** Puts the act back to its beginning. */
 function again() {
@@ -1124,7 +1123,10 @@ function again() {
   showCount();
   canvas.focus();
 }
-$('again').addEventListener('click', again);
+$('again').addEventListener('click', () => {
+  again();
+  sound.play('confirm', { volume: 0.69 });
+});
 
 /** Sets the stage for an act: from its beginning, or (the first act) from the court before the gate. */
 function setAct(name, where) {
@@ -1143,7 +1145,7 @@ function setAct(name, where) {
 $('next').addEventListener('click', () => {
   setAct(ACTS[ACTS.indexOf(onStage) + 1]);
   notice(WORDS[lang].titles[onStage]);
-  sound.play('gong', { volume: 0.9 });
+  sound.play('confirm', { volume: 0.75 });
 });
 
 $('lang').addEventListener('click', () => ((lang = lang === 'zh' ? 'en' : 'zh'), speak()));
@@ -1152,10 +1154,12 @@ $('music').setAttribute('aria-pressed', String(sound.musicMuted));
 $('mute').addEventListener('click', event => {
   sound.muted = !sound.muted;
   event.currentTarget.setAttribute('aria-pressed', String(sound.muted));
+  if (!sound.muted) sound.play('confirm', { volume: 0.57 });
 });
 $('music').addEventListener('click', event => {
   sound.musicMuted = !sound.musicMuted;
   event.currentTarget.setAttribute('aria-pressed', String(sound.musicMuted));
+  sound.play(sound.musicMuted ? 'cancel' : 'confirm', { volume: 0.48 });
 });
 // An iPhone's browsers cannot make a page fill the screen, and there the button would do nothing.
 $('full').hidden = !document.fullscreenEnabled || !booth.requestFullscreen;
@@ -1179,7 +1183,9 @@ function raise(name, where) {
   $('hud').hidden = false;
   showCount();
   sound.score(onStage);
-  sound.begin().then(() => sound.play('gong', { volume: 0.9 }));
+  sound.begin().then(() => {
+    if (playing && onStage === name) sound.play('gong', { volume: 0.83 });
+  });
   canvas.focus();
 }
 // The gong begins wherever the address says, the first act if it says nothing; the lines under it choose for themselves.
@@ -1193,6 +1199,7 @@ $('start-act3').disabled = $('start-laozi').disabled = false;
 $('start-laozi').addEventListener('click', () => raise('act3', 'boss'));
 $('playbill-back').addEventListener('click', () => {
   playing = false;
+  sound.play('cancel', { volume: 0.64 });
   sound.score();
   setAct(openingAct, openingFrom);
   $('hud').hidden = true;

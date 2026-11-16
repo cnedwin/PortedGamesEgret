@@ -1,354 +1,425 @@
-"""Original Lantern Shadows trio. Run with Python/NumPy and a working FFmpeg.
-Run `python tools/compose-score.py OUTPUT_DIR --ffmpeg ffmpeg` to encode MP3s.
-Use FFmpeg 7.1 and its libmp3lame encoder to reproduce the distributed files.
-No samples, recordings, MIDI files, or external piece are used.
+"""Lantern Shadows' original three-act score, rendered without external samples.
+
+Run python tools/compose-score.py OUTPUT_DIR --ffmpeg ffmpeg with NumPy and
+FFmpeg 7.1/libmp3lame. Omit --ffmpeg to keep only the stereo WAV masters.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
-from functools import lru_cache
-from pathlib import Path
 import argparse
+from dataclasses import dataclass
 import hashlib
 import json
 import math
+from pathlib import Path
 import re
 import subprocess
 import wave
 
 import numpy as np
 
+
 SR = 44100
 TAU = 2 * np.pi
-PITCH = {"C": 0, "D": 2, "E": 4, "F": 5, "G": 7, "A": 9, "B": 11}
+PITCH = dict(C=0, D=2, E=4, F=5, G=7, A=9, B=11)
+# Voicings keep the body in the midrange so the arrangement also reads on a phone.
+CHORD = {
+    "Dm": "D3 A3 F4 A4", "Gm": "G2 D3 Bb3 G4", "Bb": "Bb2 F3 D4 Bb4",
+    "F": "F3 C4 A4 C5", "C": "C3 G3 E4 G4", "Asus": "A2 E3 B3 D4",
+    "Dopen": "D3 A3 D4 A4", "Eb": "Eb3 Bb3 G4 Bb4",
+    "G": "G3 D4 B4 D5", "Em": "E3 B3 G4 B4", "Am": "A2 E3 C4 E4",
+    "Dsus": "D3 A3 G4 E4", "C/G": "G2 C4 G4 E5",
+}
 
 
 def midi(note):
-    name, accidental, octave = re.fullmatch(r"([A-G])([#b]?)(-?\d+)", note).groups()
-    return (int(octave) + 1) * 12 + PITCH[name] + (accidental == "#") - (accidental == "b")
+    letter, accidental, octave = re.fullmatch(r"([A-G])([#b]?)(-?\d+)", note).groups()
+    return (int(octave) + 1) * 12 + PITCH[letter] + (accidental == "#") - (accidental == "b")
 
 
-def timeline(length):
-    return np.arange(max(1, round(length * SR)), dtype=np.float64) / SR
+def timeline(seconds):
+    return np.arange(round(seconds * SR), dtype=np.float64) / SR
 
 
-def noise(size, seed):
-    return np.random.default_rng(seed).normal(0, 1, size)
+def colored_noise(rng, size, width):
+    return np.convolve(rng.normal(0, 1, size), np.ones(width) / math.sqrt(width), mode="same")
 
 
-@lru_cache(maxsize=256)
-def pluck(f, length, kind):
-    if kind == "lute":
-        strike, damp, sustain, stiff, profile = .22, .47, .41, .00013, (.11, .21, .26, .13)
-    elif kind == "zither":
-        strike, damp, sustain, stiff, profile = .31, .28, .66, .000055, (.06, .22, .29, .25)
-    else:
-        strike, damp, sustain, stiff, profile = .19, .36, .51, .000025, (.23, .20, .13, .08)
-    t = timeline(length + 1.18)
-    envelope = np.exp(-np.maximum(t - length, 0) / sustain) * (1 - np.exp(-t * 920))
-    out = np.zeros_like(t)
-    for harmonic in range(1, min(16, int(SR / (2.2 * f)))):
-        resonance = 1 + .7 * np.exp(-((harmonic * f - 510) / 340) ** 2) + .42 * np.exp(-((harmonic * f - 2400) / 610) ** 2)
-        amp = np.sin(np.pi * harmonic * strike) / harmonic ** (1.16 if kind == "zither" else 1.4)
-        phase = TAU * f * harmonic * np.sqrt(1 + stiff * harmonic ** 2) * t
-        decay = np.exp(-t * (damp * harmonic ** .88 + (1.25 if kind == "lute" else .87)))
-        out += amp * resonance * decay * np.sin(phase + .18 * harmonic)
-    for i, amp in enumerate(profile):
-        out += amp * np.exp(-t * (55 + 29 * i)) * np.sin(TAU * (620 + i * 457) * t)
-    raw = noise(t.size, round(f * 1000) + sum(map(ord, kind)))
-    attack = (raw - np.roll(raw, 1)) * .022 * np.exp(-t * 182)
-    return (out + attack) * envelope * np.clip((t[-1] - t) / .055, 0, 1)
+def finish(voice, t, decay=.06):
+    return voice * np.clip((t[-1] - t) / decay, 0, 1)
 
 
-def flute(f, length, slide, seed, style):
-    t = timeline(length + .22)
-    vibrato = np.minimum(t * 5, 1) * np.sin(TAU * (4.05 + seed % 5 / 10) * t)
-    drift = .0019 * np.sin(t * 5.3 + seed) + .0026 * vibrato
-    bend = 2 ** ((slide * np.exp(-t * 12) - .085 * np.exp(-t * 57)) / 12)
-    phase = np.cumsum((f * bend * (1 + drift)) * (TAU / SR))
-    amp = (1 - np.exp(-t / (.052 if style == "xiao" else .021))) * np.exp(-np.maximum(t - length, 0) / .042)
-    amp *= .92 + .08 * np.sin(t * 6 + seed) + .06 * np.sin(t * 2)
-    tone = sum(weight * np.sin(harmonic * phase + shift) for harmonic, weight, shift in
-               ((1, .83, 0), (2, .19, -.8), (3, .30, .4), (4, .055, .9), (5, .085, .4),
-                (6, .07 if style == "dizi" else .025, -.12), (7, .055 if style == "dizi" else .021, .5)))
-    breath = noise(t.size, seed * 8731)
-    breath = (breath - np.roll(breath, 4)) * (.021 if style == "xiao" else .032)
-    breath += .047 * np.sin(phase * 8.01) * np.exp(-t / .035)
-    return (tone + breath) * amp * np.clip((t[-1] - t) / .03, 0, 1)
+def pluck(f, duration, rng, kind):
+    """A plucked string observed through its fixed soundboard and finger noise."""
+    t = timeline(duration + .55)
+    bright = kind == "zither"
+    low = kind == "bass"
+    where = rng.uniform(.18, .26) if bright else rng.uniform(.23, .32)
+    f *= 2 ** (rng.uniform(-.037, .048) / 12)
+    phase = TAU * f * (t + .00025 * (1 - np.exp(-t * 36)))
+    tail = np.exp(-np.maximum(t - duration, 0) / (.20 if bright else .15))
+    tone = np.zeros_like(t)
+    for h in range(1, min(16, math.floor(7600 / f))):
+        hz = h * f
+        stiffness = 1 + (.000027 if low else .00014 if bright else .00007) * h * h
+        amp = np.sin(np.pi * h * where) / h ** (1.14 if bright else 1.36)
+        body = 1 + .42 * np.exp(-((hz - 290) / 160) ** 2) + .27 * np.exp(-((hz - 770) / 430) ** 2)
+        damping = (1.24 if bright else 1.84) + (h - 1) ** .84 * (.88 if bright else 1.01)
+        tone += body * amp * np.sin(phase * h * stiffness + rng.uniform(-.42, .42)) * np.exp(-t * damping)
+    if bright:
+        # Neighbor strings sing lightly after the strike.
+        tone += .075 * np.sin(phase * 1.997 + .8) * np.exp(-t * 1.62) * (1 - np.exp(-t * 19))
+    elif low:
+        tone += .13 * np.sin(phase * 2.002) * np.exp(-t * 2.97)
+    for hz, amp, decay in ((214, .19, 38), (387, .10, 53), (713, .07, 77)):
+        tone += amp * np.sin(TAU * hz * rng.uniform(.96, 1.04) * t) * np.exp(-t * decay)
+    finger = colored_noise(rng, t.size, 13) * rng.uniform(.026, .044) * np.exp(-t * rng.uniform(58, 95))
+    return finish((tone * tail + finger) * (1 - np.exp(-t * 510)), t)
 
 
-def bowed(f, length, seed):
-    t = timeline(length + .58)
-    bend = 1 + np.sin(t * 24.3 + seed) * .0025 + np.sin(t * 4.1) * .002
-    phase = np.cumsum(f * TAU / SR * bend)
-    env = (1 - np.exp(-t / .22)) * np.exp(-np.maximum(t - length, 0) / .11)
-    env *= np.clip((t[-1] - t) / .06, 0, 1) * (.83 + .15 * np.sin(t * 2 + seed))
-    return sum(amp * np.sin(i * phase + i * .35) for i, amp in
-               ((1, .64), (2, .18), (3, .12), (4, .093), (5, .06), (6, .02))) * env
+def wind(f, duration, rng, kind, slide):
+    """Low bamboo flutes with a breath envelope, restrained vibrato and pitch scoops."""
+    t = timeline(duration + .28)
+    xiao = kind == "xiao"
+    breath = colored_noise(rng, t.size, 20)
+    delayed_vibrato = (1 - np.exp(-np.maximum(0, t - .26) * 3.1))
+    flutter = delayed_vibrato * np.sin(TAU * rng.uniform(4.15, 4.85) * t + rng.uniform(0, TAU))
+    motion = .16 * np.sin(t * 2.5 + rng.uniform(0, TAU)) + .074 * np.sin(t * 12)
+    pitch = slide * np.exp(-t * 13) + .072 * flutter + .032 * motion
+    phase = np.cumsum((TAU * f / SR) * 2 ** (pitch / 12))
+    release = np.exp(-np.maximum(t - duration, 0) / .059)
+    onset = 1 - np.exp(-t / (.071 if xiao else .044))
+    env = onset * release * (.83 + .12 * np.sin(np.pi * np.minimum(t / duration, 1)) + motion * .2)
+    harmonics = ((1, .83, 0), (2, .26, .62), (3, .17, -.38), (4, .048, 1.2), (5, .041, .88))
+    if not xiao:
+        harmonics += ((6, .021, -.24), (7, .018, .56))
+    wave = sum(gain * np.sin(h * phase + position + .045 * math.sqrt(h) * flutter) for h, gain, position in harmonics)
+    air = (.040 if xiao else .029) * breath * (1 + .7 * np.exp(-t * 18))
+    return finish((wave + air) * env, t)
 
 
-def percussion(instrument, seed):
-    length = {"drum": .86, "wood": .26, "bell": 2.4, "shaker": .25}[instrument]
-    t = timeline(length)
-    n = noise(t.size, seed)
-    if instrument == "drum":
-        bend = 63 * t + 19 * (1 - np.exp(-t * 24)) / 24
-        y = .71 * np.sin(TAU * bend) * np.exp(-t * 8.8)
-        y += .26 * np.sin(TAU * 104.5 * t) * np.exp(-t * 14)
-        y += .19 * np.sin(TAU * 159.4 * t) * np.exp(-t * 19) + .11 * n * np.exp(-t * 110)
-    elif instrument == "wood":
-        y = .4 * np.sin(TAU * 779.2 * t) * np.exp(-t * 57) + .21 * np.sin(TAU * 1107.5 * t) * np.exp(-t * 85)
-        y += .13 * (n - np.roll(n, 1)) * np.exp(-t * 188)
-    elif instrument == "bell":
-        y = .56 * np.sin(TAU * 665.4 * t) * np.exp(-t * 1.8) + .22 * np.sin(TAU * 1002.5 * t) * np.exp(-t * 3.3)
-        y += .15 * np.sin(TAU * 1544.8 * t) * np.exp(-t * 4.8)
-    else:
-        y = (n - np.roll(n, 2)) * .16 * np.exp(-t * 31)
-        y *= np.sin(np.pi * np.minimum(t * 24, 1)) ** .38 + np.exp(-t * 28) * .35
-    return y * (1 - np.exp(-t * 1350)) * np.clip((t[-1] - t) / .023, 0, 1)
+def bow(f, duration, rng, slide):
+    """A dark bowed string with independent pitch and bow-pressure variation."""
+    t = timeline(duration + .36)
+    pressure = .82 + .13 * np.sin(t * rng.uniform(2.0, 2.9) + rng.uniform(0, 2))
+    vibrato = np.sin(TAU * rng.uniform(3.75, 4.6) * t) * (1 - np.exp(-t * 1.7))
+    pitch = .073 * vibrato + slide * np.exp(-t * 9.1) + .019 * np.sin(t * 3.7)
+    phase = np.cumsum((TAU * f / SR) * 2 ** (pitch / 12))
+    harmonics = ((1, .56), (2, .27), (3, .14), (4, .081), (5, .042), (7, .025), (8, .013))
+    tone = sum(gain * np.sin(h * phase + h * .31) for h, gain in harmonics)
+    grains = colored_noise(rng, t.size, 24) * (.022 + .025 * np.exp(-t * 24))
+    env = (1 - np.exp(-t / rng.uniform(.10, .16))) * np.exp(-np.maximum(t - duration, 0) / .097)
+    return finish((tone + grains) * env * pressure, t)
 
 
+def percussion(kind, rng):
+    profiles = {
+        "skin": (.68, ((77, .64, 10), (132, .29, 18), (219, .16, 30), (328, .07, 55)), .10, 15),
+        "rim": (.23, ((442, .24, 43), (801, .38, 58), (1248, .18, 92), (1604, .08, 109)), .085, 12),
+        "bronze": (2.44, ((223, .41, 2.5), (331, .24, 3.9), (498, .21, 4.8), (682, .11, 6), (889, .08, 8)), .05, 11),
+    }
+    duration, partials, contact, width = profiles[kind]
+    t = timeline(duration)
+    modes = np.zeros_like(t)
+    for f, gain, damping in partials:
+        phase = t * f * rng.uniform(.97, 1.03)
+        if kind == "skin":
+            phase += (1 - np.exp(-t * 30)) * (f * .12 / 30)
+        modes += gain * np.sin(TAU * phase) * np.exp(-t * damping)
+    touch = colored_noise(rng, t.size, width) * contact * np.exp(-t * (60 if kind == "skin" else 105))
+    return finish((modes + touch) * (1 - np.exp(-t * 600)), t)
 
-GATE = [
-    "D4:0:.48 A4:.67:.34 G4:1.17:.48 F4:1.83:.56 D4:2.75:1.05",
-    "F4:.10:.43 G4:.69:.36 A4:1.28:.67 C5:2.08:.44 A4:2.74:.73",
-    "G4:0:.82 F4:1.10:.55 D4:1.81:.43 C4:2.45:.48 D4:3.16:.62",
-    "A3:.25:.54 C4:.99:.44 D4:1.52:1.69",
-    "D4:.12:.52 F4:.78:.50 G4:1.42:.52 A4:2.20:.44 D5:2.80:.76",
-    "C5:.18:.73 A4:1.19:.47 G4:1.91:.38 A4:2.46:.52 F4:3.12:.48",
-    "D4:0:.66 G4:.84:.59 C5:1.81:.83 A4:2.85:.70",
-    "G4:.22:.45 F4:.92:.52 D4:1.60:1.64",
-    "D5:.05:.84 C5:1.14:.50 A4:1.79:.68 G4:2.74:.70",
-    "F4:.15:.42 G4:.77:.47 A4:1.49:.96 F4:2.84:.54",
-    "G4:0:.59 C5:.74:.67 D5:1.63:.48 A4:2.32:1.26",
-    "C5:.06:.48 G4:.79:.53 F4:1.53:.39 D4:2.24:1.17",
-    "A4:.13:.54 D5:.85:.75 C5:1.82:.51 A4:2.49:.67",
-    "G4:0:.64 F4:.87:.57 G4:1.60:.37 D4:2.16:1.15",
-    "C4:.12:.64 D4:1.02:.51 G4:1.76:.45 F4:2.42:.70",
-    "D4:.16:1.65 A3:2.47:.59 C4:3.17:.31",
-]
-ORCHARD = [
-    "G5:.09:.37 A5:.62:.31 B5:1.03:.58 D6:1.97:.42 B5:2.59:.34 G5:3.11:.68",
-    "A5:.13:.40 E5:.73:.44 G5:1.41:.57 D5:2.22:1.05",
-    "E5:.13:.48 G5:.83:.38 D6:1.42:.66 E6:2.31:.37 D6:2.89:.43",
-    "B5:.04:.44 A5:.67:.44 G5:1.34:1.52",
-    "B5:.22:.37 D6:.78:.43 E6:1.44:.86 D6:2.70:.73",
-    "G5:.14:.47 B5:.81:.42 A5:1.45:.54 G5:2.28:.38 E5:2.85:.46",
-    "D5:.06:.51 G5:.78:.44 A5:1.40:.49 B5:2.07:.51 D6:2.81:.67",
-    "B5:.18:.46 A5:.83:.49 G5:1.57:1.67",
-    "E6:.12:.65 D6:1.03:.39 B5:1.59:.44 D6:2.27:.53 B5:3.01:.52",
-    "A5:.11:.54 G5:.88:.44 E5:1.59:.75 G5:2.75:.63",
-    "G5:.07:.44 B5:.72:.47 D6:1.37:.57 B5:2.16:.38 E6:2.83:.59",
-    "D6:.21:.52 A5:.94:.56 G5:1.81:1.25",
-    "E5:.14:.49 G5:.85:.37 A5:1.43:.40 B5:2.03:.69 D6:2.92:.59",
-    "E6:0:.61 D6:.87:.52 G5:1.66:.63 A5:2.53:.77",
-    "B5:.15:.38 D6:.67:.40 B5:1.26:.53 A5:2.14:.53 E5:2.87:.54",
-    "G5:.18:1.93 D5:2.68:.58 E5:3.39:.29",
-]
-FURNACE = [
-    "Eb4:.13:1.16 Bb3:1.64:.62 Db4:2.55:.75",
-    "Gb4:.16:.71 Ab4:1.15:.68 Eb4:2.10:1.22",
-    "Bb3:0:.66 Db4:.93:.49 Eb4:1.71:.74 Gb4:2.77:.65",
-    "Eb4:.20:1.79 Db4:2.65:.54",
-    "Ab4:.11:.77 Bb4:1.12:.46 Ab4:1.86:.53 Gb4:2.55:.76",
-    "Db4:.13:.66 Gb4:1.10:1.21 Ab4:2.79:.61",
-    "Eb4:0:.63 Db4:.85:.59 Bb3:1.72:.44 Gb3:2.45:.92",
-    "Bb3:.10:.45 Db4:.76:.46 Eb4:1.51:1.75",
-    "Eb5:.16:.61 Db5:1.03:.65 Bb4:2.02:1.01",
-    "Ab4:.19:.70 Gb4:1.16:.45 Eb4:1.85:.63 Db4:2.72:.51",
-    "Gb4:.14:.72 Bb4:1.08:.55 Db5:1.85:.66 Bb4:2.81:.62",
-    "Ab4:.18:.54 Gb4:.95:.52 Bb3:1.83:1.69",
-    "Db4:.10:.74 Eb4:1.07:.69 Gb4:2.03:.52 Eb4:2.78:.69",
-    "Ab4:.15:.49 Gb4:.86:.82 Db4:1.99:1.15",
-    "Bb3:.11:.62 Gb3:.96:.55 Db4:1.81:.72 Eb4:2.87:.65",
-    "Eb4:.10:2.01 Gb3:2.62:.58 Bb3:3.42:.29",
-]
 
-@dataclass
+@dataclass(frozen=True)
 class Note:
-    instrument: str
+    voice: str
     start: float
     pitch: int
-    length: float
+    beats: float
     gain: float
     pan: float
-    bend: float = 0
+    slide: float
 
 
 class StageScore:
-    def __init__(self, cue: str, bpm: float, seed: int, room: float, rms: float):
+    def __init__(self, cue, bpm, seed, bars, room):
         self.cue = cue
         self.bpm = bpm
         self.seed = seed
+        self.bars = bars
         self.room = room
-        self.rms = rms
         self.notes: list[Note] = []
 
-    def add(self, part, bar, beat, pitch, length, gain, pan=0, bend=0):
-        self.notes.append(Note(part, bar * 4 + beat, midi(pitch), length, gain, pan, bend))
+    def add(self, voice, bar, beat, pitch, length, gain, pan=0, slide=0):
+        self.notes.append(Note(voice, bar * 4 + beat, midi(pitch), length, gain, pan, slide))
 
-    def phrase(self, part, bar, phrase, gain, pan, bend=0):
-        for i, item in enumerate(phrase.split()):
-            pitch, beat, dur = item.split(":")
-            self.add(part, bar, float(beat), pitch, float(dur), gain * (1 if i % 3 == 0 else .85), pan, bend if i == 0 else 0)
+    def phrase(self, voice, bar, bars, gain, pan):
+        for offset, phrase in enumerate(bars):
+            for index, token in enumerate(phrase.split()):
+                pitch, beat, length = token.split(":")
+                slide = -.22 if index == 0 and voice in ("xiao", "dizi", "bow") else 0
+                contour = 1 if index == 0 else .86 if index % 2 else .91
+                self.add(voice, bar + offset, float(beat), pitch, float(length), gain * contour, pan, slide)
 
-    def strokes(self, bar, instrument, pattern, pan=0):
-        for beat, gain in pattern:
-            self.add(instrument, bar, beat, "C4", .18, gain, pan)
+    def backing(self, start, chords, texture, gain):
+        for offset, chord in enumerate(chords):
+            bar = start + offset
+            root, fifth, third, high = CHORD[chord].split()
+            # Longer bass notes under open phrases, short pickups when the lead rests.
+            bass_onset = (.07, .30, .04, .20)[offset % 4]
+            self.add("bass", bar, bass_onset, root, 1.55, gain, -.04)
+            if texture == "open":
+                self.add("zither", bar, 1.32 + .32 * (offset % 2), fifth, 1.24, gain * .62, .34)
+                if offset % 4 == 2:
+                    self.add("bow", bar, .55, third, 3.22, gain * .43, -.28, -.13)
+            elif texture == "weave":
+                gestures = (
+                    ((.34, fifth, .62), (1.22, third, .57), (2.76, high, .48)),
+                    ((.83, third, .67), (2.07, fifth, .60)),
+                    ((.32, fifth, .62), (1.60, high, .61), (2.48, third, .58)),
+                    ((1.26, third, .72), (2.88, fifth, .77)),
+                )
+                for beat, pitch, length in gestures[offset % 4]:
+                    self.add("zither", bar, beat, pitch, length, gain * .63, .28)
+                if offset % 4 == 1:
+                    self.add("lute", bar, 3.12, fifth, .48, gain * .46, -.19)
+            elif texture == "march":
+                self.add("lute", bar, 1.20 + .24 * (offset % 2), fifth, .65, gain * .69, -.25)
+                self.add("lute", bar, 2.57, third, .78, gain * .62, -.25)
+                if offset % 2 == 0:
+                    self.add("skin", bar, 0, "C4", .5, gain * .70, .04)
+                    self.add("skin", bar, 2.80, "C4", .5, gain * .35, .04)
+                else:
+                    self.add("rim", bar, 2.01, "C4", .5, gain * .45, .18)
+                    if offset % 4 == 3:
+                        self.add("skin", bar, 3.20, "C4", .5, gain * .47, .04)
 
     def render(self, target):
-        seconds = 60 / self.bpm
-        n = round(64 * seconds * SR)
-        mix = np.zeros((n, 2), dtype=np.float64)
-        for index, e in enumerate(self.notes):
-            length = e.length * seconds
-            seed = self.seed + index * 13
-            f = 440 * 2 ** ((e.pitch - 69) / 12)
-            if e.instrument in ("lute", "zither", "bass"):
-                voice = pluck(f, round(length, 3), e.instrument)
-            elif e.instrument in ("dizi", "xiao"):
-                voice = flute(f, length, e.bend, seed, e.instrument)
-            elif e.instrument == "bow":
-                voice = bowed(f, length, seed)
-            elif e.instrument == "bronze":
-                voice = bronze(f, seed)
+        beat = 60 / self.bpm
+        n = round(self.bars * 4 * beat * SR)
+        mix = np.zeros((n, 2), dtype=np.float32)
+        rng = np.random.default_rng(self.seed)
+        for e in sorted(self.notes, key=lambda note: note.start):
+            duration = e.beats * beat
+            frequency = 440 * 2 ** ((e.pitch - 69) / 12)
+            if e.voice in ("zither", "lute", "bass"):
+                data = pluck(frequency, duration, rng, e.voice)
+            elif e.voice in ("xiao", "dizi"):
+                data = wind(frequency, duration, rng, e.voice, e.slide)
+            elif e.voice == "bow":
+                data = bow(frequency, duration, rng, e.slide)
             else:
-                voice = percussion(e.instrument, seed)
-            angle = math.pi * (e.pan + 1) / 4
-            panned = voice[:, None] * e.gain * np.asarray([math.cos(angle), math.sin(angle)])
-            # Fold voices and room tails over the loop edge. The two cycles share one phase-continuous mix.
-            start = round(e.start * seconds * SR) % n
-            size = min(len(panned), n - start)
-            mix[start:start + size] += panned[:size]
-            mix[:len(panned) - size] += panned[size:]
+                data = percussion(e.voice, rng)
+            pan = (e.pan + 1 + rng.uniform(-.025, .025)) * np.pi / 4
+            gain = e.gain * rng.uniform(.91, 1.07)
+            stereo = (data[:, None] * gain * np.array([np.cos(pan), np.sin(pan)])).astype(np.float32)
+            # Human timing offsets and room tails wrap to the same phase at the loop edge.
+            start = round((e.start * beat + rng.uniform(-.014, .018)) * SR) % n
+            tail = min(n - start, len(stereo))
+            mix[start:start + tail] += stereo[:tail]
+            mix[:len(stereo) - tail] += stereo[tail:]
+
         mix -= mix.mean(axis=0)
         dry = mix.copy()
-        for delay, ratio, flip in (
-            (.027, .36, True), (.043, .25, False), (.074, .22, True),
-            (.109, .16, False), (.158, .15, True), (.229, .11, False), (.358, .08, True), (.483, .06, True),
-        ):
-            mix += self.room * ratio * np.roll(dry[:, ::-1] if flip else dry, round(delay * SR), axis=0)
-        mix = np.tanh(mix * 1.17)
-        gain = min(.78 / float(np.max(np.abs(mix))), 10 ** (self.rms / 20) / float(np.sqrt(np.mean(mix ** 2))))
-        mix *= gain
+        for delay, amount, flip in ((.021, .31, False), (.033, .25, True), (.064, .20, False),
+                                     (.091, .13, True), (.137, .11, False), (.204, .080, True),
+                                     (.287, .054, True), (.389, .032, False)):
+            room = dry[:, ::-1] if flip else dry
+            samples = round(delay * SR)
+            mix[samples:] += self.room * amount * room[:-samples]
+            mix[:samples] += self.room * amount * room[-samples:]
+        # Conservative level and unsquashed peaks preserve instrument dynamics.
+        rms = float(np.sqrt(np.mean(mix ** 2)))
+        mix *= min(.58 / float(np.max(np.abs(mix))), 10 ** (-25.5 / 20) / rms)
+
         with wave.open(str(target), "wb") as file:
-            file.setnchannels(2)
-            file.setsampwidth(2)
-            file.setframerate(SR)
+            file.setparams((2, 2, SR, n, "NONE", "not compressed"))
             file.writeframes((mix * 32767).astype("<i2").tobytes())
-        return {"cue": self.cue, "beatsPerMinute": self.bpm, "durationSeconds": n / SR, "frames": n, "notes": len(self.notes)}
-
-
-def bronze(f, seed):
-    t = timeline(2.7)
-    modes = ((1, .63, 1.8), (1.31, .34, 2.55), (1.71, .19, 3.3), (2.09, .16, 4.82), (2.67, .08, 5.1), (3.77, .09, 8.5))
-    tone = sum(amp * np.exp(-decay * t) * np.sin(TAU * f * partial * t) for partial, amp, decay in modes)
-    air = noise(t.size, seed)
-    tone += (air - np.roll(air, 3)) * .056 * np.exp(-t * 78)
-    return tone * (1 - np.exp(-t * 391)) * np.clip((t[-1] - t) / .06, 0, 1)
+        return {"cue": self.cue, "beatsPerMinute": self.bpm, "bars": self.bars,
+                "durationSeconds": n / SR, "frames": n, "notes": len(self.notes)}
 
 
 def gate():
-    s = StageScore("act1-gate", 76, 6371, .20, -19.8)
-    roots = ["D3", "D3", "G2", "D3", "D3", "F3", "C3", "D3", "G2", "D3", "C3", "D3", "F3", "G2", "C3", "D3"]
-    fifths = ["A3", "A3", "D3", "A3", "A3", "C4", "G3", "A3", "D3", "A3", "G3", "A3", "C4", "D3", "G3", "A3"]
-    for bar, motif in enumerate(GATE):
-        s.phrase("lute", bar, motif, .28 if bar < 8 else .24, -.24)
-        for beat, note, duration, volume in [(0, roots[bar], 1.2, .24), (1.72, fifths[bar], .70, .14), (2.76, roots[bar], .81, .18)]:
-            s.add("bass", bar, beat, note, duration, volume, .12)
-        if bar in (2, 3, 5, 8, 10, 13, 14):
-            s.add("bow", bar, .18, fifths[bar] if bar in (8, 14) else roots[bar], 2.75, .090, .28)
-        if bar in (7, 8, 9, 10, 11, 14):
-            replies = {7:"A4:2.14:1.46",8:"F5:.66:.65 D5:1.47:.54 C5:2.34:1.2",9:"A4:1.0:.65 C5:2.12:1.15",10:"D5:.35:1.18 G4:2.00:1.42",11:"A4:.71:1.12 F4:2.62:.81",14:"G4:.57:.59 A4:1.31:1.77"}
-            s.phrase("xiao", bar, replies[bar], .105, .22, -.23)
-        s.strokes(bar, "drum", ((0, .22), (2.04, .148), (3.35, .085)) if bar % 4 != 3 else ((0, .22), (2.47, .09), (3.10, .16)), -.04)
-        if bar % 2:
-            s.strokes(bar, "wood", ((1.0, .062), (2.55, .068)), .33)
-    for bar, beat, note in [(0, 0, "D3"), (7, 2.38, "A3"), (15, 0, "D3")]:
-        s.add("bronze", bar, beat, note, 1.3, .068, .34)
+    """Five sections: reed calls, lute answer, patrol, a softer procession, curtain."""
+    s = StageScore("act1-gate", 78, 8061, 40, .22)
+    sections = (
+        ("Dm Dopen Bb Dm Gm F C Dm", "open", .155),
+        ("F C Gm Dm Bb Gm C Dm", "weave", .165),
+        ("Dm Bb F C Gm Dm Asus Dm", "march", .185),
+        ("Bb F Gm Dm Bb C Asus Dopen", "weave", .14),
+        ("Dm Bb Gm Dopen F Gm Asus Dopen", "open", .119),
+    )
+    for index, (chords, texture, gain) in enumerate(sections):
+        s.backing(index * 8, chords.split(), texture, gain)
+    s.phrase("xiao", 0, (
+        "D4:.48:1.10 F4:1.78:.55 A4:2.54:1.11", "G4:.32:.76 F4:1.33:.60 D4:2.22:1.23",
+        "", "A3:.72:.63 C4:1.58:.62 D4:2.46:1.12",
+        "F4:.34:.80 G4:1.31:.58 Bb4:2.27:1.25", "A4:.47:1.34 F4:2.47:.84",
+        "E4:.67:.82 G4:1.74:.67 F4:2.61:.76", "D4:.55:2.45",
+    ), .20, .19)
+    s.phrase("lute", 8, (
+        "A4:.32:.45 C5:1.05:.66 A4:1.97:.58 F4:2.80:.84", "G4:.43:.66 E4:1.44:.45 G4:2.20:.88",
+        "G4:.16:.68 Bb4:1.16:.51 A4:1.87:.53 G4:2.65:.62", "F4:.33:.68 A4:1.30:.65 D5:2.40:1.02",
+        "Bb4:.28:.93 A4:1.54:.44 F4:2.27:.63", "G4:.35:.71 D4:1.36:.64 Bb3:2.36:1.02",
+        "", "A3:.50:.55 D4:1.35:1.47",
+    ), .27, -.18)
+    s.phrase("xiao", 14, ("E4:.75:.64 G4:1.59:.72 E4:2.55:.40", "F4:.92:.42 D4:1.59:1.36"), .18, .20)
+    s.phrase("lute", 16, (
+        "D4:.33:.51 F4:1.04:.49 A4:1.86:.57 D5:2.73:.91", "Bb4:.39:.69 A4:1.46:.46 F4:2.18:.62",
+        "C5:.31:.65 A4:1.27:.60 F4:2.39:.92", "G4:.12:.60 E4:1.18:.55 G4:2.10:.49 C5:2.94:.64",
+        "Bb4:.23:.79 G4:1.49:.65 D4:2.47:.77", "F4:.35:.61 A4:1.35:.61 D5:2.35:.80",
+        "E5:.32:.66 D5:1.46:.53 B4:2.29:.50", "A4:.44:.62 F4:1.42:.51 D4:2.19:1.31",
+    ), .26, -.18)
+    s.phrase("xiao", 24, (
+        "D5:.71:.89 C5:1.99:.57 Bb4:2.83:.55", "A4:.41:2.12",
+        "G4:.49:.87 Bb4:1.58:.57 A4:2.47:.69", "F4:.31:.69 D4:1.55:1.5",
+        "", "G4:.32:.74 E4:1.39:.57 G4:2.22:.91",
+        "A4:.62:1.62 E4:2.59:.60", "D4:.39:2.54",
+    ), .19, .21)
+    s.phrase("bow", 32, (
+        "D4:.83:1.33 F4:2.48:1.07", "A4:.39:1.27 F4:2.09:1.04",
+        "G4:.25:.90 D4:1.57:2.01", "", "A3:.69:.81 C4:1.94:1.29",
+        "D4:.60:.82 G4:1.75:1.10", "E4:.59:1.42 A3:2.53:.81", "",
+    ), .16, -.14)
+    s.add("skin", 10, 3.26, "C4", .4, .065)
+    s.add("bronze", 22, 3.20, "C4", 1.4, .082, .17)
+    s.add("lute", 39, 2.35, "D4", 1.55, .14, -.20)
     return s
 
 
 def orchard():
-    s = StageScore("act2-orchard", 94, 1487, .15, -20.3)
-    roots = ["G3", "E3", "C3", "G3", "E3", "C3", "D3", "G3", "C3", "E3", "G3", "D3", "E3", "C3", "D3", "G3"]
-    echoes = ["D4", "B3", "G3", "D4", "B3", "G3", "A3", "D4", "G3", "B3", "D4", "A3", "B3", "G3", "A3", "D4"]
-    for bar, motif in enumerate(ORCHARD):
-        s.phrase("dizi", bar, motif, .195 if bar < 8 else .174, .16, -.34)
-        for beat, note, duration, volume in [
-            (0, roots[bar], .81, .20), (.84, echoes[bar], .39, .124), (1.57, echoes[bar], .34, .12),
-            (2.17, roots[bar], .62, .156), (3.16, echoes[bar], .50, .115),
-        ]:
-            s.add("zither", bar, beat, note, duration, volume, -.27)
-        if bar in (3, 7, 11, 15):
-            s.add("bass", bar, 1.33, roots[bar], 1.66, .11, -.06)
-        if bar in (2, 6, 9, 10, 13, 14):
-            s.add("lute", bar, 2.58, "G4" if bar % 2 else "D5", .47, .101, .38)
-            s.add("lute", bar, 3.24, "B4", .43, .077, .38)
-        s.strokes(bar, "wood", ((.48, .142), (1.69, .077), (2.75, .114), (3.54, .069)), -.13 if bar % 2 else .31)
-        if bar % 4 != 3:
-            s.strokes(bar, "shaker", ((1.17, .111), (3.24, .123)), .39)
-        if bar in (0, 4, 8, 12):
-            s.strokes(bar, "drum", ((0, .075),), 0)
+    """A garden walk in six sections with plucked and bamboo calls in G."""
+    s = StageScore("act2-orchard", 92, 2738, 48, .27)
+    sections = (
+        ("G C/G Em G Am Em Dsus G", "open", .127),
+        ("C/G G Em C/G Am Em Dsus G", "weave", .148),
+        ("Em Am C/G G Em C/G Dsus G", "open", .128),
+        ("G Dsus Em C/G Am G Dsus G", "march", .126),
+        ("C/G Am Em G C/G Em Dsus G", "weave", .140),
+        ("Em C/G G G Am C/G Dsus G", "open", .108),
+    )
+    for index, (chords, texture, gain) in enumerate(sections):
+        s.backing(index * 8, chords.split(), texture, gain)
+    s.phrase("zither", 0, (
+        "G4:.37:.52 B4:1.24:.57 D5:2.12:1.02", "E5:.23:.77 D5:1.34:.59 B4:2.28:.82",
+        "G4:.50:.64 E4:1.56:.75 G4:2.71:.72", "",
+        "C5:.48:.64 E5:1.55:.60 D5:2.61:.83", "B4:.71:1.21 E4:2.43:.73",
+        "A4:.47:.68 E4:1.43:.64 A4:2.49:.76", "G4:.44:2.06",
+    ), .226, -.24)
+    s.phrase("dizi", 8, (
+        "E5:.26:.87 D5:1.43:.60 G4:2.29:.99", "B4:.55:.65 D5:1.55:.79 B4:2.68:.68",
+        "G4:.51:.69 B4:1.51:.58 E5:2.38:.95", "D5:.52:1.1 C5:1.97:.57 G4:2.80:.72",
+        "A4:.44:.68 C5:1.40:.55 E5:2.31:.97", "G5:.26:.65 E5:1.30:.54 B4:2.28:.99",
+        "A4:.25:1.01 D5:1.70:.60 E5:2.59:.70", "D5:.30:.65 B4:1.30:.57 G4:2.26:1.09",
+    ), .171, .23)
+    s.phrase("lute", 16, (
+        "E4:.55:.61 G4:1.53:.48 B4:2.31:.93", "C5:.31:.75 A4:1.39:.73 E4:2.60:.91",
+        "G4:.33:.60 C5:1.26:.52 E5:2.13:.99", "",
+        "B4:.39:.69 G4:1.52:.57 E4:2.55:.85", "G4:.42:.66 E4:1.38:.65 C4:2.36:.92",
+        "D4:.31:.64 A4:1.23:.63 E4:2.22:1.15", "G4:1.20:1.98",
+    ), .23, -.23)
+    s.phrase("dizi", 19, ("D5:.56:.51 B4:1.38:.51 G4:2.27:1.25",), .145, .27)
+    s.phrase("zither", 24, (
+        "G4:.36:.46 B4:.98:.51 D5:1.82:.57 E5:2.80:.75", "D5:.19:.63 A4:1.37:.64 D5:2.42:.76",
+        "B4:.51:.62 E5:1.38:.57 D5:2.22:.79", "C5:.22:.55 E5:1.18:.72 G5:2.47:.88",
+        "E5:.47:.75 C5:1.59:.64 A4:2.64:.76", "B4:.35:.71 D5:1.44:.62 G4:2.52:.76",
+        "E4:.35:.52 A4:1.21:.53 E5:2.17:.98", "D5:.22:.66 B4:1.25:.60 G4:2.37:1.16",
+    ), .234, -.30)
+    s.phrase("xiao", 32, (
+        "E4:.61:1.76", "A4:.37:.87 C5:1.54:.58 E5:2.37:1.16",
+        "B4:.64:1.01 G4:1.98:.75 E4:2.94:.58", "D4:.82:.78 G4:1.93:1.47",
+        "", "E4:.38:.76 G4:1.57:.65 B4:2.55:.83",
+        "A4:.41:.67 E4:1.51:.68 D4:2.61:.69", "G4:.44:2.24",
+    ), .169, .22)
+    s.phrase("zither", 40, (
+        "B4:.63:.76 G4:1.78:.58 E4:2.61:.87", "G4:.41:.70 C5:1.40:.58 E5:2.32:.93",
+        "D5:.45:.75 B4:1.58:.68 G4:2.66:.77", "",
+        "A4:.47:.64 C5:1.38:.69 E4:2.47:.86", "G4:.43:.82 E4:1.58:1.15",
+        "A4:.48:.81 D4:1.83:1.05", "G4:.57:2.38",
+    ), .192, -.24)
+    s.add("rim", 12, 3, "C4", .5, .042, .31)
+    s.add("bronze", 30, .39, "C4", 1.4, .058, .25)
     return s
 
 
 def furnace():
-    s = StageScore("act3-furnace", 70, 2903, .27, -19.4)
-    roots = ["Eb2", "Gb2", "Db3", "Eb2", "Ab2", "Db3", "Gb2", "Eb2", "Eb2", "Ab2", "Gb2", "Bb2", "Eb2", "Db3", "Gb2", "Eb2"]
-    upper = ["Bb3", "Db4", "Ab3", "Bb3", "Eb4", "Ab3", "Db4", "Bb3", "Bb3", "Eb4", "Db4", "Gb3", "Bb3", "Ab3", "Db4", "Bb3"]
-    for bar, motif in enumerate(FURNACE):
-        s.phrase("bow", bar, motif, .24 if bar < 8 else .27, -.20)
-        s.add("bass", bar, .02, roots[bar], 1.42, .26, .08)
-        s.add("bass", bar, 2.42 if bar % 2 else 2.12, roots[bar], .9, .19, .04)
-        s.add("zither", bar, .76 if bar % 2 else .51, upper[bar], .69, .142, .31)
-        s.add("zither", bar, 2.99, upper[bar], .58, .118, .35)
-        if bar in (1, 3, 6, 7, 9, 11, 13, 15):
-            s.add("bronze", bar, 2.06 if bar % 2 else 0, upper[bar], 1.0, .134 if bar in (3, 7, 11, 15) else .102, .27)
-        if bar in (5, 8, 10, 12, 14):
-            s.add("xiao", bar, 1.38, upper[bar], 1.90, .069, -.42, -.30)
-        s.strokes(bar, "drum", ((0, .13), (1.78, .065), (3.11, .105)) if bar >= 8 and bar < 15 else ((0, .122), (2.73, .08)), -.06)
-        if bar in (5, 7, 9, 11, 13):
-            s.strokes(bar, "wood", ((1.6, .08), (3.48, .061)), .42)
+    """A low string lament opens out to brushed drum, then gives way to breath."""
+    s = StageScore("act3-furnace", 70, 6359, 40, .32)
+    sections = (
+        ("Dopen Dm Gm Dm Eb Bb Gm Dopen", "open", .146),
+        ("Gm Bb Eb Dm Gm Bb Asus Dm", "weave", .161),
+        ("Dm Eb Bb Gm Dm Eb Asus Dopen", "march", .178),
+        ("Bb Gm Eb Dm Bb Gm Asus Dm", "weave", .135),
+        ("Dm Gm Eb Dopen Bb Gm Asus Dopen", "open", .113),
+    )
+    for index, (chords, texture, gain) in enumerate(sections):
+        s.backing(index * 8, chords.split(), texture, gain)
+    s.phrase("bow", 0, (
+        "D4:.48:1.23 F4:1.98:.61 A4:2.84:.87", "G4:.25:.85 F4:1.42:.62 D4:2.29:1.30",
+        "", "A3:.59:.91 C4:1.80:.51 D4:2.63:1.02",
+        "Eb4:.43:1.17 G4:2.15:1.40", "F4:.40:.91 D4:1.70:1.77",
+        "Bb3:.43:.62 D4:1.38:.68 G4:2.48:.87", "D4:.59:2.54",
+    ), .225, -.21)
+    s.phrase("xiao", 8, (
+        "G4:.45:.73 Bb4:1.47:.58 D5:2.47:1.05", "A4:.39:.95 F4:1.75:.68 D4:2.80:.76",
+        "Eb4:.32:1.22 G4:1.95:1.10", "F4:.55:.82 E4:1.82:.59 D4:2.72:.79",
+        "G4:.59:.84 D4:1.86:1.18", "", "E4:.61:.71 B3:1.76:.59 A3:2.73:.73", "D4:.43:2.48",
+    ), .163, .26)
+    s.phrase("lute", 16, (
+        "D4:.46:.61 F4:1.51:.56 A4:2.38:1.03", "G4:.38:.65 Bb4:1.44:.66 G4:2.57:.84",
+        "F4:.15:.71 D4:1.26:.63 Bb3:2.39:.93", "G4:.53:.73 Bb4:1.64:.59 D5:2.60:.84",
+        "A4:.45:.75 F4:1.58:.65 D4:2.62:.73", "Eb4:.31:.68 G4:1.36:.66 Bb4:2.52:.92",
+        "E4:.65:.67 B4:1.70:.59 A4:2.67:.88", "D4:.54:2.19",
+    ), .201, -.19)
+    s.phrase("bow", 24, (
+        "F4:.41:1.37 D4:2.16:1.38", "G4:.50:.67 Bb4:1.52:.65 G4:2.62:.84",
+        "Eb4:.48:1.19 G4:2.12:1.31", "F4:.43:.69 E4:1.49:.53 D4:2.42:1.17",
+        "", "D4:.44:.89 Bb3:1.81:1.11", "A3:.40:1.47 E4:2.36:1.03", "D4:.51:2.49",
+    ), .196, -.19)
+    s.phrase("xiao", 32, (
+        "A3:.71:1.27 D4:2.32:1.15", "Bb3:.47:.85 D4:1.75:1.27",
+        "Eb4:.59:.87 D4:1.94:.77", "", "F4:.41:1.64 D4:2.45:.79",
+        "Bb3:.46:.98 G3:1.89:1.08", "A3:.61:.68 E4:1.58:.81", "D4:.53:2.41",
+    ), .155, .18)
+    for bar, beat, gain in ((5, 2.38, .065), (15, 3.15, .088), (22, .65, .102), (31, 2.95, .068)):
+        s.add("bronze", bar, beat, "C4", 1.5, gain, .21)
     return s
 
 
-def dbfs(v):
-    return float(20 * np.log10(max(1e-12, v)))
+def dbfs(value):
+    return float(20 * np.log10(max(1e-12, value)))
 
 
 def inspect(wave_path, mp3_path, ffmpeg, meta):
-    with wave.open(str(wave_path), "rb") as source:
-        assert (source.getnchannels(), source.getframerate()) == (2, SR)
-        master = np.frombuffer(source.readframes(source.getnframes()), "<i2").reshape(-1, 2) / 32768
     if ffmpeg:
         subprocess.run([ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-i", str(wave_path),
-                        "-codec:a", "libmp3lame", "-q:a", "4", "-write_xing", "1", str(mp3_path)], check=True)
+                        "-codec:a", "libmp3lame", "-q:a", "5", "-write_xing", "1", str(mp3_path)], check=True)
         pcm = subprocess.check_output([ffmpeg, "-hide_banner", "-loglevel", "error", "-i", str(mp3_path),
                                        "-f", "f32le", "-acodec", "pcm_f32le", "-"])
         track = np.frombuffer(pcm, dtype="<f4").reshape(-1, 2)
         meta.update(encodedBytes=mp3_path.stat().st_size, hashSha256=hashlib.sha256(mp3_path.read_bytes()).hexdigest())
-        assert track.shape == master.shape and mp3_path.stat().st_size < 850000
+        assert mp3_path.stat().st_size < 2200000
     else:
-        track = master
+        with wave.open(str(wave_path), "rb") as source:
+            assert (source.getnchannels(), source.getframerate()) == (2, SR)
+            track = np.frombuffer(source.readframes(source.getnframes()), "<i2").reshape(-1, 2) / 32768
+    assert track.shape == (meta["frames"], 2)
     peak = float(np.max(np.abs(track)))
     jump = float(np.max(np.abs(track[0] - track[-1])))
     seam = np.concatenate((track[-4410:], track[:4410]))
     typical = float(np.quantile(np.abs(np.diff(seam, axis=0)), .99))
-    assert peak < .81 and jump < max(.006, typical * 2.5)
-    meta.update(decodedFrames=track.shape[0], peakDbFS=dbfs(peak), rmsDbFS=dbfs(float(np.sqrt(np.mean(track ** 2)))),
-                seamSampleJump=jump, nearSeamP99=typical)
+    assert peak < .708 and jump < max(.006, typical * 2.5)
+    meta.update(decodedFrames=track.shape[0], peakDbFS=dbfs(peak),
+                rmsDbFS=dbfs(float(np.sqrt(np.mean(track ** 2)))), seamSampleJump=jump, nearSeamP99=typical)
     return meta
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--ffmpeg", help="FFmpeg executable for MP3 export. Omit to generate WAV masters only.")
+    parser.add_argument("--ffmpeg", help="FFmpeg executable for MP3 export. Omit for WAV masters only.")
     args = parser.parse_args()
-    args.output.mkdir(exist_ok=True, parents=True)
     masters = args.output / "master"
-    masters.mkdir(exist_ok=True)
+    masters.mkdir(exist_ok=True, parents=True)
     report = []
     for score in (gate(), orchard(), furnace()):
         wav_path = masters / (score.cue + ".wav")
