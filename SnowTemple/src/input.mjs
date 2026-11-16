@@ -22,7 +22,7 @@ export function createInput(canvas, keys) {
     pointer = { x: 0.5, y: 0.5, seen: false },
     stick = { x: 0, z: 0 },
     listeners = { bag: () => {}, any: () => {}, reset: () => {} };
-  let asking = null;
+  let asking = null, enabled = true;
 
   const actionOf = (code) => Object.keys(keys).find((action) => keys[action] === code);
   function press(code, event) {
@@ -33,6 +33,7 @@ export function createInput(canvas, keys) {
       asking = null;
       return;
     }
+    if (!enabled) return;
     const action = actionOf(code) ?? { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[code];
     if (!action) return;
     event?.preventDefault();
@@ -79,15 +80,21 @@ export function createInput(canvas, keys) {
     keys,
     pointer,
     reset,
+    setEnabled(on) {
+      enabled = on;
+      reset();
+    },
     on: (name, call) => (listeners[name] = call),
     /** Ask for the next key pressed, for rebinding. */
     ask: (call) => (asking = call),
     /** The stick and the buttons on glass feed the same state. */
     setStick(x, z) {
+      if (!enabled) return;
       stick.x = x;
       stick.z = z;
     },
     hold(action, on) {
+      if (!enabled) return;
       if (on) {
         if (!down.has(action)) pressed.add(action);
         down.add(action);
@@ -109,5 +116,16 @@ export function createInput(canvas, keys) {
       pressed.clear();
       return input;
     }
+  };
+}
+
+/** A control belongs to one pointer until it ends or the whole input is reset. */
+export function createPointerOwner() {
+  let id = null;
+  return {
+    claim(next) { if (id !== null) return false; id = next; return true; },
+    owns(next) { return id !== null && id === next; },
+    release(next) { if (id !== next || id === null) return false; id = null; return true; },
+    reset() { id = null; }
   };
 }

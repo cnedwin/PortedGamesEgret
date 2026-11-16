@@ -35,3 +35,41 @@ test('view receives the configured shadow map size rather than silently forcing 
   assert.match(source, /shadowSize\s*=\s*2048/);
   assert.match(source, /mapSize:\s*shadowSize/);
 });
+
+test('settings input suppression drops taps and resumes with a clean state, but rebinding still works', () => {
+  const oldAdd = globalThis.addEventListener, oldDocument = globalThis.document;
+  const events = {};
+  globalThis.addEventListener = (name, fn) => { events[name] = fn; };
+  globalThis.document = { hidden: false, addEventListener() {} };
+  try {
+    const input = createInput({ addEventListener() {} }, { ...DEFAULT_KEYS });
+    input.hold('attack', true);
+    input.setEnabled(false);
+    input.hold('attack', true); input.setStick(1, 0);
+    events.keydown({ code: 'Space', preventDefault() {} });
+    assert.deepEqual(input.sample({x: 0, z: 0}, null), quiet());
+    let rebound;
+    input.ask(code => { rebound = code; });
+    events.keydown({ code: 'KeyR', preventDefault() {} });
+    assert.equal(rebound, 'KeyR');
+    input.setEnabled(true);
+    assert.deepEqual(input.sample({x: 0, z: 0}, null), quiet());
+    input.hold('attack', true);
+    assert.equal(input.sample({x: 0, z: 0}, null).attack, true);
+  } finally { globalThis.addEventListener = oldAdd; globalThis.document = oldDocument; }
+});
+
+test('a touch control has one owner; another finger cannot steal or release it', async () => {
+  const { createPointerOwner } = await import('../src/input.mjs');
+  const owner = createPointerOwner();
+  assert.equal(owner.claim(1), true);
+  assert.equal(owner.claim(2), false);
+  assert.equal(owner.owns(1), true);
+  assert.equal(owner.release(2), false);
+  assert.equal(owner.owns(1), true);
+  assert.equal(owner.release(1), true);
+  assert.equal(owner.claim(2), true);
+  owner.reset();
+  assert.equal(owner.owns(2), false);
+  assert.equal(owner.claim(3), true);
+});
