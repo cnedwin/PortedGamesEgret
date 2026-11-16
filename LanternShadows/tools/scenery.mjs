@@ -104,24 +104,7 @@ export const gate = {
   })()
 };
 
-/** The terrace the puppets stand on: one length of it, made to repeat. */
-export const ground = {
-  file: 'ground.png',
-  width: 240,
-  height: 110,
-  scale: 1.5,
-  svg:
-    `<rect x="0" y="6" width="240" height="104" fill="${DYE.black}" fill-opacity="0.9"/>` +
-    `<rect x="0" y="0" width="240" height="7" fill="${DYE.gold}" fill-opacity="0.92"/><path d="M0 0.6H240M0 7H240" stroke="${DYE.ink}" stroke-width="1.2"/>` +
-    // A band of carved cloud heads, then plain stone with a few chisel marks.
-    `<g fill="#f4d9a0" fill-opacity="0.62">${Array.from({ length: 6 }, (_, i) => `<path d="${crescent(20 + i * 40, 22, 9, 90)}${crescent(20 + i * 40, 22, 4.4, 270)}${dot(40 + i * 40, 20, 2)}"/>`).join('')}</g>` +
-    `<path d="M0 36H240" stroke="${DYE.gold}" stroke-opacity="0.7" stroke-width="1.2"/>` +
-    `<g fill="#f4d9a0" fill-opacity="0.2">${[[30, 56], [96, 70], [150, 52], [208, 78], [60, 92], [176, 96]].map(([x, y]) => `<path d="${slit([x, y], [x + 22, y + 2], 1.4)}"/>`).join('')}</g>`
-};
-
-/** A cloud to stand on, and smaller ones to drift by. */
-/** Feet rest on the line y = 24 of this picture. */
-export const platform = { file: 'cloud.png', width: 200, height: 84, scale: 1.5, svg: cloudPiece(100, 54, 1.9, DYE.hide, 0.82) };
+/** A small cloud to drift by. */
 export const wisp = { file: 'wisp.png', width: 120, height: 50, scale: 1.5, svg: blurred(cloudPiece(60, 30, 1.1, '#b98a5a', 0.5), 1.2) };
 
 /** A spark: a soft bright point for the particles. */
@@ -129,4 +112,57 @@ export const spark = { file: 'spark.png', width: 32, height: 32, scale: 1, svg: 
 /** A scrap of straw, for what flies off the practice post. */
 export const chaff = { file: 'chaff.png', width: 16, height: 6, scale: 2, svg: `<path d="${slit([1, 3], [15, 3], 2)}" fill="#fff"/>` };
 
-export const SCENERY = [screen, frame, far, gate, ground, platform, wisp, spark, chaff];
+/** The tiles a level is built of, side by side in the order tools/level.mjs names them; each is 48 units square. */
+export const tiles = {
+  file: 'tiles.png',
+  width: 240,
+  height: 48,
+  scale: 2,
+  svg: (() => {
+    const stone = x => `<rect x="${x}" y="0" width="48" height="48" fill="${DYE.black}" fill-opacity="0.9"/>`;
+    const top =
+      stone(0) +
+      `<rect x="0" y="0" width="48" height="6" fill="${DYE.gold}" fill-opacity="0.94"/><path d="M0 0.5H48M0 6H48" stroke="${DYE.ink}" stroke-width="1"/>` +
+      `<g fill="#f4d9a0" fill-opacity="0.6"><path d="${crescent(12, 20, 8, 90)}${crescent(12, 20, 3.8, 270)}${dot(24, 18, 1.8)}${crescent(36, 20, 8, 90)}${crescent(36, 20, 3.8, 270)}${dot(0, 18, 1.8)}${dot(48, 18, 1.8)}"/></g>` +
+      `<path d="M0 33H48" stroke="${DYE.gold}" stroke-opacity="0.65" stroke-width="1.1"/>`;
+    const fill = stone(48) + `<g fill="#f4d9a0" fill-opacity="0.18"><path d="${slit([54, 14], [72, 15.4], 1.3)}${slit([70, 36], [90, 37], 1.3)}"/></g>`;
+    // A bank of cloud to stand on: flat above, scalloped below, with an end piece for each side.
+    const bank = (x, left, right) => {
+      const x0 = x + (left ? 5 : 0),
+        x1 = x + 48 - (right ? 5 : 0);
+      const under = `Q${x1 - 6} 33 ${x + 36} 27Q${x + 30} 35 ${x + 24} 27Q${x + 18} 35 ${x + 12} 27Q${x0 + 6} 33 ${x0} ${left ? 18 : 27}`;
+      const shape = `M${x0} ${left ? 12 : 4}${left ? `Q${x0} 4 ${x0 + 8} 4` : ''}H${right ? x1 - 8 : x1}${right ? `Q${x1} 4 ${x1} 12V18` : 'V27'}${under}Z`;
+      return (
+        `<path d="${shape}" fill="${DYE.hide}" fill-opacity="0.84"/>` +
+        `<path d="${shape}" fill="none" stroke="${DYE.ink}" stroke-width="1.1" stroke-linejoin="round"/>` +
+        `<path d="M${x0 + (left ? 6 : 0)} 4H${x1 - (right ? 6 : 0)}" stroke="${DYE.ink}" stroke-width="1.6"/>` +
+        `<path d="${crescent(x + 14, 15, 5, 200)}${crescent(x + 34, 15, 5, 340)}" fill="#fff6d2" fill-opacity="0.7" stroke="${DYE.ink}" stroke-width="0.4"/>`
+      );
+    };
+    // Each tile is clipped to its own square, so that none bleeds into its neighbour.
+    return [top, fill, bank(96, true, false), bank(144, false, false), bank(192, false, true)].map((art, i) => `<svg x="${i * 48}" y="0" width="48" height="48" viewBox="${i * 48} 0 48 48">${art}</svg>`).join('');
+  })()
+};
+
+/** An arrow in flight, pointing right. */
+export const arrow = {
+  file: 'arrow.png',
+  width: 46,
+  height: 10,
+  scale: 2,
+  svg: `<path d="M3 5H38" stroke="${DYE.ink}" stroke-width="1.6"/><path d="M36 1.6L45 5L36 8.4Z" fill="${DYE.ink}"/><path d="M1 1.4L9 5L1 8.6M5 1.8L12 5L5 8.2" fill="none" stroke="${DYE.crimson}" stroke-width="1.5"/>`
+};
+
+/** A pennant on a pole: where he comes back to if he falls. It stands on the bottom edge of the picture. */
+export const pennant = {
+  file: 'pennant.png',
+  width: 56,
+  height: 120,
+  scale: 1.5,
+  svg:
+    leather({ shape: poly([[12, 6], [15, 6], [15, 120], [12, 120]]), fill: DYE.black, opacity: 0.94, edge: 1 }) +
+    leather({ shape: poly([[15, 10], [52, 16], [40, 26], [52, 36], [15, 42]]), fill: DYE.red, holes: [dot(24, 26, 3.2), slit([30, 20], [40, 22], 1.2), slit([30, 32], [40, 30], 1.2)], edge: 1 }) +
+    leather({ shape: dot(13.5, 5, 3.4), fill: DYE.gold, edge: 1 })
+};
+
+export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant];

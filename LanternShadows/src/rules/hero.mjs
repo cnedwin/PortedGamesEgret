@@ -1,5 +1,6 @@
 // How the Monkey King moves and fights: one step of the rules at a time, with nothing here that draws or listens.
 // Lengths are stage units (the stage is 960 by 540, y down) and times are seconds. `x`, `y` are where his feet are.
+import { moveBody } from './level.mjs';
 
 /** The numbers his movement is made of. */
 export const TUNE = {
@@ -20,7 +21,11 @@ export const TUNE = {
   /** The crouch after a fall, longer for a harder one. */
   land: 0.12,
   halfWidth: 16,
-  height: 112
+  height: 112,
+  /** Peaches: the blows he can take before he falls. */
+  health: 5,
+  /** A blow throws him back for this long, and for this long after it nothing more can hurt him. */
+  hurt: { seconds: 0.34, speed: 300, lift: 320, safe: 1.1 }
 };
 
 /**
@@ -37,7 +42,30 @@ export const ATTACKS = [
 export const CHAIN_GRACE = 0.24;
 
 export function createHero(x, y) {
-  return { x, y, vx: 0, vy: 0, facing: 1, grounded: true, state: 'move', time: 0, attack: 0, serial: 0, struck: false, queued: false, grace: 0, coyote: 0, buffer: 0, cut: false, dashCooldown: 0, airDash: true, landing: 0, stride: 0 };
+  return { x, y, vx: 0, vy: 0, facing: 1, grounded: true, state: 'move', time: 0, attack: 0, serial: 0, struck: false, queued: false, grace: 0, coyote: 0, buffer: 0, cut: false, dashCooldown: 0, airDash: true, landing: 0, stride: 0, health: TUNE.health, safe: 0 };
+}
+
+/** The room he takes up, as a rectangle of the stage: what a spear or an arrow has to meet. */
+export const bodyOf = hero => ({ x: hero.x - TUNE.halfWidth, y: hero.y - TUNE.height + 10, width: TUNE.halfWidth * 2, height: TUNE.height - 10 });
+
+/** Whether a blow would land on him now. The cloud roll carries him through anything. */
+export const canBeHurt = hero => hero.state !== 'down' && hero.state !== 'dash' && hero.safe <= 0;
+
+/**
+ * He is struck from the side `from` (an x). Returns what happened: `hurt`, and `down` with it if that was his
+ * last peach; nothing if the blow could not land.
+ */
+export function hurtHero(hero, from, damage = 1) {
+  if (!canBeHurt(hero)) return [];
+  const away = hero.x >= from ? 1 : -1;
+  hero.health = Math.max(0, hero.health - damage);
+  Object.assign(hero, { state: hero.health ? 'hurt' : 'down', time: 0, vx: away * TUNE.hurt.speed, vy: -TUNE.hurt.lift, grounded: false, facing: -away, safe: TUNE.hurt.safe, queued: false, grace: 0, serial: hero.serial + 1 });
+  return hero.health ? [{ type: 'hurt' }] : [{ type: 'hurt' }, { type: 'down' }];
+}
+
+/** Stands him up again at a place, whole. */
+export function reviveHero(hero, x, y) {
+  Object.assign(hero, { x, y, vx: 0, vy: 0, facing: 1, grounded: true, state: 'move', time: 0, health: TUNE.health, safe: TUNE.hurt.safe, landing: 0, grace: 0, queued: false, buffer: 0, serial: hero.serial + 1 });
 }
 
 const toward = (value, goal, amount) => (value < goal ? Math.min(goal, value + amount) : Math.max(goal, value - amount));
@@ -56,17 +84,27 @@ function beginAttack(hero, index, input, events) {
 
 /**
  * One step. `input` is `{ move, jump, jumpHeld, attack, dash }`: `move` from -1 to 1, the others true on the step
- * they are pressed (`jumpHeld` while held). `level` is `{ width, floors }`, each floor `{ x, y, width }` a ledge that
- * can be stood on. Returns what happened, for the stage to show and sound: `jump`, `land`, `dash`, `swing`,
- * `strike` (with the rectangle the staff sweeps) and `step`.
+ * they are pressed (`jumpHeld` while held). `level` is the ground, as rules/level.mjs reads it. Returns what
+ * happened, for the stage to show and sound: `jump`, `land`, `dash`, `swing`, `strike` (with the rectangle the
+ * staff sweeps) and `step`.
  */
 export function stepHero(hero, input, dt, level) {
   const events = [];
   hero.dashCooldown = Math.max(0, hero.dashCooldown - dt);
   hero.landing = Math.max(0, hero.landing - dt);
   hero.grace = Math.max(0, hero.grace - dt);
+  hero.safe = Math.max(0, hero.safe - dt);
   hero.buffer = input.jump ? TUNE.buffer : Math.max(0, hero.buffer - dt);
   hero.coyote = hero.grounded ? TUNE.coyote : Math.max(0, hero.coyote - dt);
+
+  // Thrown back by a blow, or lying where he fell, he answers to nothing.
+  if (hero.state === 'hurt' || hero.state === 'down') {
+    hero.time += dt;
+    if (hero.grounded) hero.vx = toward(hero.vx, 0, TUNE.groundBrake * 0.5 * dt);
+    if (hero.state === 'hurt' && hero.time >= TUNE.hurt.seconds) hero.state = 'move';
+    input = { move: 0, jump: false, jumpHeld: true, attack: false, dash: false };
+    hero.buffer = 0;
+  }
 
   const mayDash = input.dash && hero.dashCooldown === 0 && (hero.grounded || hero.airDash);
   if (hero.state === 'attack') {
@@ -120,25 +158,16 @@ export function stepHero(hero, input, dt, level) {
     if (hang < 1 && hero.vy > 160) hero.vy = 160;
   }
 
-  // Sideways first, then down onto whatever ledge is under his feet.
-  hero.x = Math.min(level.width - TUNE.halfWidth, Math.max(TUNE.halfWidth, hero.x + hero.vx * dt));
-  const before = hero.y,
-    was = hero.grounded;
-  hero.y += hero.vy * dt;
-  hero.grounded = false;
-  if (hero.vy >= 0)
-    for (const floor of level.floors) {
-      if (hero.x < floor.x - TUNE.halfWidth * 0.5 || hero.x > floor.x + floor.width + TUNE.halfWidth * 0.5) continue;
-      if (before <= floor.y + 0.01 && hero.y >= floor.y) {
-        const speed = hero.vy;
-        Object.assign(hero, { y: floor.y, vy: 0, grounded: true, airDash: true });
-        if (!was) {
-          hero.landing = speed > 500 ? TUNE.land : 0;
-          events.push({ type: 'land', speed });
-        }
-        break;
-      }
+  // Sideways until a wall, then down onto whatever is under his feet.
+  const was = hero.grounded,
+    { landed } = moveBody(hero, dt, level, TUNE);
+  if (hero.grounded) {
+    hero.airDash = true;
+    if (!was) {
+      hero.landing = landed > 500 && hero.state === 'move' ? TUNE.land : 0;
+      events.push({ type: 'land', speed: landed });
     }
+  }
   if (hero.grounded && hero.state === 'move' && Math.abs(hero.vx) > 60) {
     hero.stride += Math.abs(hero.vx) * dt;
     if (hero.stride > 86) (hero.stride = 0), events.push({ type: 'step' });
@@ -148,6 +177,7 @@ export function stepHero(hero, input, dt, level) {
 
 /** The animation that shows what he is doing, and a number that changes whenever it should start again. */
 export function animationOf(hero) {
+  if (hero.state === 'down' || hero.state === 'hurt') return { name: hero.state, key: hero.serial };
   if (hero.state === 'dash') return { name: 'dash', key: hero.serial };
   if (hero.state === 'attack') return { name: ATTACKS[hero.attack].name, key: hero.serial };
   if (!hero.grounded) return { name: hero.vy < 60 ? 'jump' : 'fall', key: 0 };

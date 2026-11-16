@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
   <title>灯影·闹天宫 Lantern Shadows</title>
-  <meta name="description" content="一出皮影戏里的横版动作：孙悟空在南天门外练棍。A side-scrolling action demo played as a shadow-puppet show.">
+  <meta name="description" content="一出皮影戏里的横版动作：孙悟空打上南天门。A side-scrolling action demo played as a shadow-puppet show.">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
   <script type="importmap">
@@ -22,6 +22,7 @@
         "@egret/engine/particles": "./vendor/engine/dist/particles.js",
         "@egret/engine/resources": "./vendor/engine/dist/resources.js",
         "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/engine/tilemap": "./vendor/engine/dist/tilemap.js",
         "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
         "@egret/engine/web/game": "./vendor/engine/dist/web/game.js",
         "@egret/engine/web/gamepad": "./vendor/engine/dist/web/gamepad.js",
@@ -43,6 +44,9 @@
 
     <div class="hud" id="hud" hidden>
       <p class="banner" data-zh="灯影　闹天宫" data-en="Lantern Shadows">灯影　闹天宫</p>
+      <div class="peaches" id="peaches" role="img" aria-label="桃"><i></i><i></i><i></i><i></i><i></i></div>
+      <p class="tally-line"><span id="soldiers"></span><span id="clock">0:00</span></p>
+      <p class="notice" id="notice" role="status" hidden></p>
       <output class="combo" id="combo" hidden><b id="combo-count">0</b><span data-zh="连击" data-en="hits">连击</span></output>
       <p class="best" id="best" hidden></p>
       <nav class="tools">
@@ -61,10 +65,19 @@
       <pre class="stats" id="stats" hidden></pre>
     </div>
 
+    <section class="result" id="result" hidden>
+      <div class="playbill">
+        <p class="act" data-zh="第一幕　南天门　落幕" data-en="Act one, the Southern Gate: curtain">第一幕　南天门　落幕</p>
+        <p class="seal" id="rank">S</p>
+        <dl class="tally" id="tally"></dl>
+        <button type="button" class="gong small" id="again"><span data-zh="再演" data-en="Again">再演</span></button>
+      </div>
+    </section>
+
     <section class="curtain" id="curtain">
       <div class="playbill">
         <h1><span data-zh="灯影" data-en="Lantern Shadows">灯影</span><em data-zh="闹天宫" data-en="Havoc in Heaven">闹天宫</em></h1>
-        <p class="act" data-zh="试演　南天门外练棍" data-en="Rehearsal: staff practice before the Southern Gate">试演　南天门外练棍</p>
+        <p class="act" data-zh="第一幕　南天门" data-en="Act one: the Southern Gate">第一幕　南天门</p>
         <button type="button" class="gong" id="start" disabled><span data-zh="开锣" data-en="Begin">开锣</span></button>
         <p class="status" id="status" data-zh="正在挂灯、理线……" data-en="Hanging the lamp…">正在挂灯、理线……</p>
       </div>

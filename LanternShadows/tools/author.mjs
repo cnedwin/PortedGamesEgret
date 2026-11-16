@@ -11,6 +11,7 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { buildResourceManifest } from '../vendor/contracts/dist/resources/index.js';
+import { toTiled } from './level.mjs';
 import { SCENERY } from './scenery.mjs';
 
 const HERE = path.dirname(fileURLToPath(import.meta.url)),
@@ -21,7 +22,8 @@ const HERE = path.dirname(fileURLToPath(import.meta.url)),
 /** Atlas pixels for each stage unit. The stage is drawn at up to twice its size, and the camera closes in. */
 const SCALE = 3,
   PAD = 2;
-const PUPPETS = ['wukong', 'dummy'];
+const PUPPETS = ['wukong', 'dummy', 'spearman', 'archer'],
+  LEVELS = ['act1'];
 export const SPINE = '4.3.13';
 
 const rad = Math.PI / 180,
@@ -233,10 +235,10 @@ async function poseSheet(browser, puppet, name, moments = ONLY ? 11 : 7) {
       return `<g transform="translate(${column * cell[0] - 25} ${row * cell[1] - 12})">${puppet.parts.map(([part, , art]) => `<g transform="${pose[part]}">${art}</g>`).join('')}<path d="M40 200H180" stroke="#7a4a22" stroke-width="0.6"/></g>` + (column ? '' : `<text x="6" y="${row * cell[1] + 16}" font-family="monospace" font-size="11" fill="#5a2a14">${animation} ${puppet.animations[animation].seconds}s</text>`);
     })
   );
-  const page = await browser.newPage({ deviceScaleFactor: 1.5 });
+  const page = await browser.newPage({ deviceScaleFactor: 1.25 });
   await page.setContent(`<body style="margin:0;background:#f4e3b5">${svg(moments * cell[0], names.length * cell[1], cells.join(''))}</body>`);
   fs.mkdirSync(path.join(HERE, 'out'), { recursive: true });
-  await page.locator('body > svg').screenshot({ path: path.join(HERE, 'out', `poses-${name}.png`) });
+  await page.locator('body > svg').screenshot({ path: path.join(HERE, 'out', `poses-${name}.png`), timeout: 240000 });
   await page.close();
 }
 
@@ -294,6 +296,15 @@ async function main() {
     console.log(`${piece.file}: ${piece.width * piece.scale}×${piece.height * piece.scale}, ${Math.round(bytes.length / 1024)} KB`);
   }
   await browser.close();
+
+  // The levels, as Tiled maps.
+  fs.mkdirSync(path.join(OUT, 'levels'), { recursive: true });
+  for (const name of LEVELS) {
+    const { level, title } = await import(`./levels/${name}.mjs`);
+    fs.writeFileSync(path.join(OUT, 'levels', name + '.tmj'), JSON.stringify(toTiled(level, title)) + '\n');
+    console.log(`${name}: ${level.columns}×${level.rows} cells`);
+    if (SHEET) console.log(level.text());
+  }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await main();

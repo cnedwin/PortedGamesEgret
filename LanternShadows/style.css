@@ -33,7 +33,7 @@ body {
 #stage { display: block; width: 100%; height: 100%; outline: none; }
 
 .hud { position: absolute; inset: 0; pointer-events: none; font-size: clamp(11px, 1.55cqw, 19px); }
-.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden], .trouble[hidden] { display: none; }
+.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden], .trouble[hidden], .notice[hidden], .result[hidden] { display: none; }
 .trouble { top: 30%; left: 12%; right: 12%; padding: 0.8em 1.2em; border: 1px solid #c98a2a; background: #1c0f0be6; color: #ffd9c8; font-size: 0.95em; line-height: 1.5; text-align: center; -webkit-user-select: text; user-select: text; pointer-events: auto; }
 .hud > * { position: absolute; margin: 0; }
 
@@ -45,6 +45,20 @@ body {
   font-weight: 700; text-shadow: 0 1px 0 #0008;
 }
 :root[lang='en'] .banner { letter-spacing: 0.08em; font-size: 0.86em; }
+
+/* His strength, in peaches: each blow he takes eats one. */
+.peaches { top: 10.4%; left: 10.6%; display: flex; gap: 0.42em; }
+.peaches i {
+  position: relative; width: 1.3em; height: 1.36em; border-radius: 50% 50% 48% 48% / 42% 42% 58% 58%;
+  background: radial-gradient(circle at 38% 34%, #ffd9b0 0 12%, #f08a6a 46%, #b9281d 100%); box-shadow: 0 0 0 1.5px #1c0f0b, 0 0 0.5em #f9e3a6;
+  transition: opacity 0.2s, transform 0.2s;
+}
+.peaches i::before { content: ''; position: absolute; left: 50%; top: -0.34em; width: 0.56em; height: 0.34em; border-radius: 0 100% 0 100%; background: #1c7a52; box-shadow: 0 0 0 1.2px #1c0f0b; }
+.peaches i.is-eaten { opacity: 0.22; transform: scale(0.8); }
+.tally-line { top: 10.2%; left: 0; right: 0; text-align: center; color: #4a2410; font-weight: 700; font-size: 0.95em; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
+.tally-line span + span { margin-left: 1.4em; font-variant-numeric: tabular-nums; }
+.notice { top: 18%; left: 50%; transform: translateX(-50%); padding: 0.4em 1.2em; border: 1px solid #c98a2a; background: linear-gradient(#5c100d, #8f1d16); color: var(--pale-gold); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; box-shadow: 0 0.3em 1em #0006; }
+:root[lang='en'] .notice { letter-spacing: 0.02em; }
 
 /* The count of blows: a large figure and its word, down the right-hand post. */
 .combo { top: 21%; right: 5.2%; display: grid; justify-items: center; color: var(--ink); line-height: 1; text-shadow: 0 0 0.25em #f9e3a6, 0 0 0.5em #f9e3a6, 0 0 0.9em #f9e3a6; }
@@ -65,7 +79,7 @@ body {
 .tools button[aria-pressed='true'] { opacity: 0.5; text-decoration: line-through; }
 .tools [hidden] { display: none; }
 
-.keys { left: 0; right: 0; bottom: 4.4%; text-align: center; color: #f3d78dd9; font-weight: 700; font-size: 0.88em; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000a; }
+.keys { left: 0; right: 0; bottom: 4%; text-align: center; color: #f3d78dd9; font-weight: 700; font-size: 0.88em; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000a; }
 .keys kbd { display: inline-block; min-width: 1.7em; margin: 0 0.2em 0 0.9em; padding: 0.05em 0.4em; border: 1px solid #f3d78d88; border-radius: 3px; background: #1c0f0b99; font: 700 0.9em ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
 .stats { left: 4%; bottom: 9%; padding: 0.4em 0.7em; background: #1c0f0bcc; color: #f3d78d; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; }
 
@@ -110,6 +124,19 @@ body {
 :root[lang='en'] .playbill h1 em { font-size: 2.9em; letter-spacing: 0.01em; white-space: nowrap; }
 .act { margin: 0; color: #f0c98a; letter-spacing: 0.18em; }
 :root[lang='en'] .act { letter-spacing: 0.03em; }
+/* When an act ends its curtain falls, with the reckoning on it: a seal for how it was played. */
+.result { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(#0000 60%, #0007), repeating-linear-gradient(90deg, #5c100d 0 3.2%, #7c1711 5.4%, #8f1d16 6.2%, #6a120e 8.4%, #5c100d 10%); animation: fall 0.7s cubic-bezier(0.6, 0, 0.3, 1); }
+@keyframes fall { from { transform: translateY(-101%); } to { transform: none; } }
+.seal {
+  margin: 0; width: 1.5em; height: 1.5em; display: grid; place-items: center; transform: rotate(-7deg);
+  border: 0.06em solid #f3d78d; border-radius: 0.14em; outline: 0.03em solid #f3d78d; outline-offset: 0.05em;
+  background: #b9281d; color: #f3d78d; font: 900 5.2em/1 'Iowan Old Style', 'Palatino Linotype', Georgia, serif; box-shadow: 0 0.06em 0.3em #0008;
+}
+.tally { margin: 0; display: grid; grid-template-columns: auto auto; gap: 0.3em 1.6em; color: #f0c98a; text-align: left; }
+.tally dt { letter-spacing: 0.08em; }
+.tally dd { margin: 0; color: var(--pale-gold); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
+.gong.small { width: 4.4em; height: 4.4em; font-size: 1.2em; }
+
 /* The gong: a bronze disc, struck to begin. */
 .gong {
   width: 6.2em; height: 6.2em; border: 0; border-radius: 50%; cursor: pointer; color: #3a1c0c;
@@ -124,6 +151,7 @@ body {
 .status.is-error { color: #ffd0c0; }
 
 @media (prefers-reduced-motion: reduce) {
+  .result { animation: none; }
   .curtain { transition: opacity 0.3s; }
   .curtain.is-up { transform: none; opacity: 0; pointer-events: none; }
   .combo.is-struck b { animation: none; }

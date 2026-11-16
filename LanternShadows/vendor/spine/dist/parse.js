@@ -55,11 +55,9 @@ export function parseSpineSetup(id, source, atlasText, pageNames, imageIds, leas
                 page.width !== width ||
                 page.height !== height)
                 throw spineFault('PAGE_DIMENSIONS', id);
-            // PMA transport needs its own qualified normalization/color profile.
-            if (page.pma)
-                throw spineFault('PAGE_ALPHA_PROFILE', id);
             page.setTexture(new PageTexture(width, height));
-            pages.push(Object.freeze({ name: page.name, imageId: imageIds[i], width, height, sourcePremultiplied: false }));
+            // A page the atlas declares premultiplied is drawn from a straight copy that the loader makes of it.
+            pages.push(Object.freeze({ name: page.name, imageId: imageIds[i], width, height, sourcePremultiplied: page.pma === true }));
         }
         const loader = new Core.AtlasAttachmentLoader(atlas), data = binary ? readSpineBinary(loader, source, id) : new Core.SkeletonJson(loader).readSkeletonData(decoded);
         const exportVersion = data.version;
