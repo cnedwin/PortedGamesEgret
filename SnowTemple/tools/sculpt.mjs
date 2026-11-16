@@ -142,7 +142,8 @@ function field(solids, x, y, z, shade) {
       continue;
     }
     const h = Math.max(k - Math.abs(d - ds), 0) / k,
-      t = Math.max(0, Math.min(1, 0.5 + (0.5 * (d - ds)) / k));
+      // Colour changes over a narrower band than shape does, so that a seam stays a seam.
+      t = Math.max(0, Math.min(1, 0.5 + (0.5 * (d - ds)) / (k * 0.3)));
     if (shade) {
       if (d > 1e8) shade.colour = [...s.colour];
       else if (t > 0) shade.colour = shade.colour.map((v, c) => mix(v, s.colour[c], t));
