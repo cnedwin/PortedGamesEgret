@@ -45,6 +45,26 @@ export function createInput(target = window) {
     button.addEventListener('contextmenu', event => event.preventDefault());
   }
 
+  // Thumbs working the buttons must not zoom or slide the page. A touch on the stage or on the game's own buttons
+  // is kept from the browser altogether; elsewhere a second tap close on the first, which a browser reads as a
+  // request to zoom, is refused, as is a pinch.
+  const onStage = event => event.target instanceof Element && event.target.closest('canvas, .pads') !== null;
+  let lastTap = 0;
+  const refuse = { passive: false };
+  document.addEventListener('touchstart', event => (onStage(event) || event.touches.length > 1) && event.preventDefault(), refuse);
+  document.addEventListener('touchmove', event => event.preventDefault(), refuse);
+  document.addEventListener(
+    'touchend',
+    event => {
+      const now = event.timeStamp,
+        double = now - lastTap < 350;
+      lastTap = now;
+      if (onStage(event) || double) event.preventDefault();
+    },
+    refuse
+  );
+  for (const type of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(type, event => event.preventDefault(), refuse);
+
   let gamepads;
   try {
     gamepads = createBrowserGamepadInput({ deadZone: 0.28 });

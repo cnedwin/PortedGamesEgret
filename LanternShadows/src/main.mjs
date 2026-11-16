@@ -316,6 +316,8 @@ $('mute').addEventListener('click', event => {
   sound.muted = !sound.muted;
   event.currentTarget.setAttribute('aria-pressed', String(sound.muted));
 });
+// An iPhone's browsers cannot make a page fill the screen, and there the button would do nothing.
+$('full').hidden = !document.fullscreenEnabled || !booth.requestFullscreen;
 $('full').addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : booth.requestFullscreen?.().catch(() => {})));
 for (const button of document.querySelectorAll('.tools button')) button.addEventListener('keydown', event => event.code === 'Space' && event.preventDefault());
 

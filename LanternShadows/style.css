@@ -11,11 +11,17 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
+/* A game under the thumbs must not be mistaken for a page to zoom or slide: nothing here answers a pinch, a
+   double tap or a drag, and a long press brings up no menu. src/input.mjs refuses the same gestures in script,
+   for the browsers that do not listen to this. */
+html { background: #0b0604; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+html, body, .booth, .booth * { touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
 body {
   display: grid; place-items: center; overflow: hidden;
   background: radial-gradient(120% 90% at 50% 40%, #2a160c 0%, var(--room) 70%);
   color: var(--pale-gold); font-family: var(--serif);
-  -webkit-user-select: none; user-select: none; touch-action: none;
+  -webkit-user-select: none; user-select: none;
+  position: fixed; inset: 0; overscroll-behavior: none;
 }
 /* The booth keeps the shape of the cloth, as large as the window allows. */
 .booth {
@@ -57,6 +63,7 @@ body {
 .tools :is(a, button):hover { background: #f3d78d80; }
 .tools :is(a, button):focus-visible, .gong:focus-visible { outline: 2px solid #fff3c4; outline-offset: 2px; }
 .tools button[aria-pressed='true'] { opacity: 0.5; text-decoration: line-through; }
+.tools [hidden] { display: none; }
 
 .keys { left: 0; right: 0; bottom: 4.4%; text-align: center; color: #f3d78dd9; font-weight: 700; font-size: 0.88em; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000a; }
 .keys kbd { display: inline-block; min-width: 1.7em; margin: 0 0.2em 0 0.9em; padding: 0.05em 0.4em; border: 1px solid #f3d78d88; border-radius: 3px; background: #1c0f0b99; font: 700 0.9em ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
