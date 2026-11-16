@@ -31,10 +31,10 @@ import { ERLANG, bossAnimation as erlangAnimation, houndAnimation } from './rule
 import { LAOZI, bossAnimation as laoziAnimation, furnaceWalls } from './rules/laozi.mjs';
 import { HAIRS, cloneAnimation, out } from './rules/clones.mjs';
 import { FOES, foeAnimation } from './rules/foes.mjs';
-import { ATTACKS, TUNE, animationOf } from './rules/hero.mjs';
+import { ATTACKS, PUNCH, TUNE, animationOf } from './rules/hero.mjs';
 import { CELL, readLevel } from './rules/level.mjs';
 import { createSound } from './sound.mjs';
-import { ACT_GOALS, createRecordBook } from './records.mjs';
+import { ACT_GOALS, TRIAL_GOALS, createRecordBook, createTrialBook } from './records.mjs';
 
 const STAGE = { width: 960, height: 540 };
 const query = new URLSearchParams(location.search),
@@ -46,8 +46,8 @@ const canvas = $('stage'),
 // ---- Words -----------------------------------------------------------------------------------------------------
 let lang = query.get('lang') === 'en' || (!query.has('lang') && !navigator.language.startsWith('zh')) ? 'en' : 'zh';
 const KEY_HINTS = {
-  zh: [['A', 'D', '走'], ['K', '跳'], ['J', '棍，连按三下'], ['L', '筋斗云，可穿过枪尖'], ['I', '身外身'], ['P', '暂停']],
-  en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll, through a spear'], ['I', 'clones'], ['P', 'pause']]
+  zh: [['A', 'D', '走'], ['空格', '跳'], ['J', '棍，连按三下'], ['L', '闪避'], ['I', '身外身'], ['P', '暂停']],
+  en: [['A', 'D', 'move'], ['Space', 'jump'], ['J', 'staff, three in a row'], ['L', 'dodge'], ['I', 'clones'], ['P', 'pause']]
 };
 const WORDS = {
   zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园', act3: '第三幕　兜率宫' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, bosses: { nezha: { name: '哪吒', enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了' }, erlang: { name: '二郎神', enter: '二郎真君提三尖两刃刀到，哮天犬随后', phases: ['', '他要变化了：变成鹰时把他打下来', '法天象地！他落地的震波要跳过去'], opened: '二郎神收兵，月洞门开了' }, laozi: { name: '太上老君', enter: '太上老君拂尘一摆，金刚琢在手', phases: ['', '他取出扇子：三道火舌，一道一道跳过去'], opened: '老君罢手，兜率宫的门开了' } }, taken: '金刚琢套走了金箍棒！别打那个圈，去另一头把棒捡回来', regained: '金箍棒回来了', shut: n => `八卦炉合上了：撑过 ${n} 秒`, broken: '破炉而出，炼成火眼金睛！出手加倍', finale: '全剧终', unplayed: '未演', places: { act1: '南天门', act2: '蟠桃园', act3: '兜率宫' }, soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
@@ -99,6 +99,27 @@ const fail = cause => {
 
 const sound = createSound(),
   input = createInput();
+const mobilePointer = matchMedia('(pointer: coarse)');
+const screenControls = $('screen-controls');
+let showDesktopControls = matchMedia('(any-pointer: coarse)').matches;
+try {
+  const saved = localStorage.getItem('lantern-screen-controls');
+  if (saved !== null) showDesktopControls = saved === 'on';
+} catch { /* The setting can still be used for this visit. */ }
+function showControls() {
+  const visible = mobilePointer.matches || showDesktopControls;
+  input.clear();
+  $('hud').classList.toggle('screen-input', visible);
+  screenControls.setAttribute('aria-pressed', String(visible));
+}
+mobilePointer.addEventListener('change', showControls);
+screenControls.addEventListener('click', () => {
+  showDesktopControls = !showDesktopControls;
+  try { localStorage.setItem('lantern-screen-controls', showDesktopControls ? 'on' : 'off'); } catch { /* Session only. */ }
+  showControls();
+  canvas.focus();
+});
+showControls();
 try {
   game = await createBrowserGame({
     canvas,
@@ -191,29 +212,45 @@ const cast = layer(world),
   effects = layer(world);
 cast.blendMode = flights.blendMode = shadowBlend;
 
-// One reusable backlit mark for each contact, drawn over the leather silhouettes.
+// Each cutout is drawn once and reused. Only the player's strike gets a long trail.
+function cutout(paint, color, opacity, [head, ...rest]) {
+  paint.beginFill(color, opacity).moveTo(...head);
+  for (const point of rest) paint.lineTo(...point);
+  paint.lineTo(...head).endFill();
+}
+
 const contactMarks = Object.fromEntries(Object.entries({
-  hit: [0xffdc87, [[-53, 18], [-26, 26], [20, 12], [61, -19], [15, 1], [-18, 8]]],
-  lift: [0xb9efde, [[-31, 27], [-9, 25], [25, -9], [46, -63], [12, -19], [-8, 4]]],
-  slam: [0xffbd69, [[-66, 21], [-24, 4], [4, -42], [46, -82], [18, -19], [-7, 19]]],
-  guard: [0xf6c17a, [[-15, -29], [5, -14], [14, -11], [9, 2], [19, 28], [0, 15], [-15, 19], [-10, 0]]],
-  parry: [0xe4f7ed, [[-29, 13], [-5, 3], [19, -26], [16, -3], [37, 7], [7, 9], [-4, 30], [-2, 12]]],
-}).map(([kind, [color, points]]) => {
+  hit: { color: 0xffc46d, duration: 0.16, dx: 15, dy: 1, points: [[-39, 14], [-16, 18], [16, 10], [49, -16], [14, -1], [-11, 4]] },
+  lift: { color: 0xb9efde, duration: 0.20, dx: 10, dy: -23, points: [[-26, 24], [-4, 20], [26, -9], [43, -57], [10, -18], [-6, 3]] },
+  slam: { color: 0xffad58, duration: 0.24, dx: 31, dy: 9, points: [[-53, 20], [-21, 5], [5, -34], [44, -64], [19, -17], [-5, 18]] },
+  guard: { color: 0xe7d5ab, duration: 0.14, dx: -19, dy: -4, points: [[-18, -23], [-3, -13], [9, -27], [4, -6], [19, 15], [1, 8], [-12, 26], [-7, 3]] },
+  guardBreak: { color: 0x9bdac3, duration: 0.22, dx: 24, dy: -32, points: [[-33, 23], [-13, 4], [-6, -21], [9, -8], [37, -31], [23, 1], [3, 21]] },
+  parry: { color: 0xe4f7ed, duration: 0.20, dx: -13, dy: -18, points: [[-29, 13], [-5, 3], [19, -26], [16, -3], [37, 7], [7, 9], [-4, 30], [-2, 12]] },
+  hurt: { color: 0xe8765c, duration: 0.21, dx: 21, dy: -5, points: [[-27, -14], [-4, -9], [12, -23], [9, -5], [35, 5], [10, 8], [2, 21], [-7, 7]] },
+  swipeHit: { color: 0xffda94, duration: 0.12, points: [[8, -15], [42, -23], [99, -18], [142, -2], [155, 6], [128, 7], [87, -4], [41, -9]] },
+  swipeLift: { color: 0xccebd6, duration: 0.14, points: [[9, 40], [53, 29], [87, 7], [115, -35], [117, -68], [130, -39], [115, -5], [84, 26], [50, 41]] },
+  swipeSlam: { color: 0xffc078, duration: 0.15, points: [[10, -63], [56, -68], [102, -57], [143, -27], [156, 17], [138, 45], [124, 6], [105, -23], [67, -49]] },
+  swipeFist: { color: 0xffdb9b, duration: 0.09, points: [[8, -11], [35, -16], [62, -6], [50, 0], [23, -4]] },
+}).map(([kind, { color, duration, dx, dy, points }]) => {
   const node = effects.addChild(scope.use(new Sprite()));
   node.visible = false;
   const paint = node.graphics;
-  paint.beginFill(color, 0.86).moveTo(...points[0]);
-  for (const point of points.slice(1)) paint.lineTo(...point);
-  paint.lineTo(...points[0]).endFill();
-  return [kind, { node, left: 0 }];
+  const strike = kind.startsWith('swipe');
+  cutout(paint, color, strike ? 0.36 : 0.85, points);
+  if (!strike) {
+    cutout(paint, 0xfff0bc, kind === 'hurt' ? 0.38 : 0.87, [[-10, 0], [0, -9], [13, -3], [2, 8]]);
+    cutout(paint, color, 0.65, [[19, -11], [25, -18], [32, -19], [27, -13]]);
+  }
+  return [kind, { node, duration, dx, dy, left: 0, side: 1, x: 0, y: 0 }];
 }));
 
 function showContact(kind, x, y, side) {
   const mark = contactMarks[kind];
-  if (!mark) return;
-  mark.left = 0.18;
-  Object.assign(mark.node, { x, y, scaleX: side || 1, alpha: 1, visible: true });
+  Object.assign(mark, { x, y, side: side || 1, left: mark.duration });
+  Object.assign(mark.node, { x, y, scaleX: mark.side, scaleY: 1, alpha: 1, visible: true });
 }
+
+const SWIPE = { hit: 'swipeHit', lift: 'swipeLift', slam: 'swipeSlam' };
 
 // Mark the actual fire walls and the landing points with a few reusable shapes.
 // The moving gold edges remain readable even when the furnace fills with smoke.
@@ -451,14 +488,17 @@ function showCombo(struck) {
 }
 function showCount() {
   const words = WORDS[lang];
-  $('act-banner').textContent = words.titles[onStage];
+  $('act-banner').textContent = act.solo ? trialWords[lang].name : words.titles[onStage];
   $('best').hidden = act.best < 3;
   $('best').textContent = words.best(act.best);
   $('soldiers').textContent = words.soldiers(remaining(act));
   peaches.forEach((peach, index) => peach.classList.toggle('is-eaten', index >= act.hero.health));
+  const hairs = $('hairs'), ready = tuftReady(act);
+  hairs.hidden = act.solo;
   $('hairs-fill').style.width = `${(act.hairs / HAIRS.need) * 100}%`;
-  $('hairs').classList.toggle('is-ready', tuftReady(act));
-  document.querySelector('.pads').classList.toggle('has-tuft', tuftReady(act));
+  hairs.classList.toggle('is-ready', ready);
+  document.querySelector('.pads').classList.toggle('has-tuft', ready);
+  document.querySelector('[data-hold="special"]').disabled = act.solo;
   $('boss').hidden = !(act.boss && present(act.boss));
   if (act.boss) {
     $('boss-name').textContent = words.bosses[act.boss.kind].name;
@@ -474,7 +514,47 @@ function notice(text) {
 let store;
 try { store = globalThis.localStorage; } catch { /* The book can live in memory. */ }
 const recordBook = createRecordBook(store);
-const campaignRun = () => act.from !== 'boss' && !query.has('slow') && !query.has('clones');
+const trialBook = createTrialBook(store);
+const recordsEnabled = !query.has('slow') && !query.has('clones');
+const scoredRun = () => recordsEnabled && act.from !== 'boss';
+const currentBook = () => act.solo ? trialBook : recordBook;
+const trialWords = {
+  zh: { name: '单棒试演', description: '仅凭金箍棒过关，本幕不能使用身外身。试演成绩单独保存。', enter: '单棒试演本幕',
+    start: goal => `单棒试演 · 身外身禁用 · 目标 ${goal.time} 秒内落幕` },
+  en: { name: 'Staff Trial', description: 'Clear the act with your staff and no clones. Trials keep their own records.', enter: 'Play the Staff Trial',
+    start: goal => `Staff Trial · No clones · Aim for ${goal.time} s` },
+};
+const trialPicker = document.createElement('details');
+trialPicker.className = 'replay';
+trialPicker.id = 'trial-picker';
+trialPicker.hidden = !recordsEnabled;
+const trialSummary = document.createElement('summary');
+trialSummary.className = 'aside';
+const trialDescription = document.createElement('p');
+const trialChoices = document.createElement('div');
+trialChoices.className = 'asides';
+const trialButtons = Object.fromEntries(ACTS.map(actName => {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.id = `trial-${actName}`;
+  button.className = 'aside';
+  button.addEventListener('click', () => startTrial(actName));
+  trialChoices.append(button);
+  return [actName, button];
+}));
+trialPicker.append(trialSummary, trialDescription, trialChoices);
+$('show-records').after(trialPicker);
+const trialEntry = document.createElement('button');
+trialEntry.type = 'button';
+trialEntry.id = 'try-trial';
+trialEntry.className = 'aside';
+trialEntry.addEventListener('click', () => startTrial(onStage));
+
+function startTrial(actName) {
+  raise(actName, undefined, true);
+  notice(trialWords[lang].start(TRIAL_GOALS[actName]));
+}
+
 function showRecords() {
   const slot = $('show-records'), words = WORDS[lang];
   slot.replaceChildren();
@@ -486,13 +566,19 @@ function showRecords() {
     slot.append(mark);
   }
   slot.hidden = !slot.childElementCount;
+  trialSummary.textContent = trialWords[lang].name;
+  trialDescription.textContent = trialWords[lang].description;
+  for (const actName of ACTS) {
+    const test = trialBook.get(actName);
+    trialButtons[actName].textContent = words.places[actName] + (test ? ` · ${test.rank} · ${test.goals.filter(Boolean).length}/3` : '');
+  }
 }
 
 function showReplay() {
-  const panel = $('replay'), saved = campaignRun() && recordBook.get(onStage), words = WORDS[lang];
+  const panel = $('replay'), saved = scoredRun() && currentBook().get(onStage), words = WORDS[lang];
   panel.hidden = !saved;
   if (!saved) return;
-  const headline = document.createElement('p'), items = document.createElement('ul'), goal = ACT_GOALS[onStage];
+  const headline = document.createElement('p'), items = document.createElement('ul'), goal = (act.solo ? TRIAL_GOALS : ACT_GOALS)[onStage];
   headline.textContent = `${lang === 'zh' ? '个人最好' : 'Personal best'}　${saved.rank} · ${words.seconds(Math.round(saved.time))} · ${words.best(saved.combo)}`;
   const labels = lang === 'zh' ? [`${goal.time} 秒内落幕`, `${goal.combo} 连击`, '全程不倒地'] :
     [`Finish in ${goal.time} s`, `${goal.combo} hits`, 'No falls'];
@@ -503,15 +589,19 @@ function showReplay() {
     items.append(item);
   });
   panel.replaceChildren(headline, items);
+  if (!act.solo) {
+    trialEntry.textContent = trialWords[lang].enter;
+    panel.append(trialEntry);
+  }
 }
 function showResult() {
   const result = act.result,
     words = WORDS[lang];
   $('result').hidden = !result;
   if (!result) return;
-  $('result-title').textContent = words.curtain(words.titles[onStage]);
-  $('next').hidden = !ACTS[ACTS.indexOf(onStage) + 1];
-  $('finale').hidden = !$('next').hidden;
+  $('result-title').textContent = act.solo ? `${words.places[onStage]} · ${trialWords[lang].name}` : words.curtain(words.titles[onStage]);
+  $('next').hidden = act.solo || !ACTS[ACTS.indexOf(onStage) + 1];
+  $('finale').hidden = act.solo || !$('next').hidden;
   $('finale').textContent = `${words.finale}　${ACTS.map(name => `${words.places[name]} ${recordBook.get(name)?.rank ?? words.unplayed}`).join('　')}`;
   $('rank').textContent = result.rank;
   $('tally').innerHTML = [
@@ -543,7 +633,7 @@ engine.clock.onTick(scope, value => {
 const panOf = x => (x - camera.snapshot().center.x) / (STAGE.width / 2);
 /** The beat, the held breath and the shudder of the booth that a blow of the staff brings. */
 function land(attack, pan) {
-  sound.play({ hit: 'staff', lift: 'uplift', slam: 'smash' }[attack.kind], { volume: 0.93, pan });
+  sound.play(attack === PUNCH ? 'clap' : { hit: 'staff', lift: 'uplift', slam: 'smash' }[attack.kind], { volume: 0.93, pan });
   freeze = Math.max(freeze, attack.stop);
   camera.shake({ trauma: attack.shake });
   input.gamepads?.rumble(0, { duration: 90 + attack.power * 60, weak: 0.4, strong: 0.3 * attack.power });
@@ -554,7 +644,7 @@ let nextCrowdBeat = 0;
 function happen(events) {
   const hero = act.hero,
     pan = panOf(hero.x);
-  let counted = false;
+  let counted = false, playerContact = false;
   for (const event of events) {
     const { type } = event;
     if (type === 'jump') (sound.play('jump', { volume: 0.65, pan }), burst(dust, hero.x, hero.y, 6));
@@ -562,6 +652,10 @@ function happen(events) {
     else if (type === 'dash') (sound.play('whirl', { volume: 0.64, pan }), burst(dust, hero.x, hero.y - 20, 10));
     else if (type === 'step') sound.play('tap', { volume: 0.42, pan });
     else if (type === 'swing') sound.play('swish', { volume: 0.57, rate: [1.04, 0.9, 0.78][ATTACKS.indexOf(event.attack)] ?? 1.1, pan });
+    else if (type === 'strike') {
+      const style = event.attack === PUNCH ? 'swipeFist' : SWIPE[event.attack.kind];
+      showContact(style, hero.x, hero.y - 65, hero.facing);
+    }
     else if (type === 'met') {
       if (event.blocked) continue;
       if (!event.crowd || clock >= nextCrowdBeat) burst(sparks, event.at.x, event.at.y, 8 + event.attack.power * 9);
@@ -579,8 +673,14 @@ function happen(events) {
           sound.play('clap', { volume: 0.36, pan: panOf(event.at.x) });
           camera.shake({ trauma: event.attack.shake });
         }
-      } else {
+      } else if (!playerContact) {
+        // One swing can meet several targets. It still has a single impact beat.
+        playerContact = true;
         showContact(event.attack.kind, event.at.x, event.at.y, event.side);
+        if (event.attack.kind === 'slam') {
+          const feet = event.foe?.grounded ? event.foe.y : event.post?.y ?? event.at.y + 20;
+          burst(dust, event.at.x + event.side * 16, feet - 5, 12);
+        }
         land(event.attack, panOf(event.at.x));
       }
       counted = true;
@@ -610,12 +710,18 @@ function happen(events) {
       const { foe } = event;
       const edge = foe.x + foe.facing * 28;
       burst(sparks, edge, foe.y - 62, 8);
-      showContact('guard', edge, foe.y - 62, hero.facing);
+      showContact('guard', edge, foe.y - 62, -foe.facing);
       sound.play('guard', { volume: 0.88, pan: panOf(edge) });
       camera.shake({ trauma: 0.16 });
       freeze = Math.max(freeze, 0.03);
       counted = true;
-    } else if (type === 'foe-open') (burst(sparks, event.foe.x, event.foe.y - 70, 22), sound.play('smallGong', { volume: 0.7, rate: 1.2, pan: panOf(event.foe.x) }));
+    } else if (type === 'foe-open') {
+      const { foe } = event;
+      const edge = foe.x + foe.facing * 20;
+      showContact('guardBreak', edge, foe.y - 66, -foe.facing);
+      burst(sparks, edge, foe.y - 70, 22);
+      sound.play('smallGong', { volume: 0.7, rate: 1.2, pan: panOf(edge) });
+    }
     else if (type === 'foe-dive') sound.play('swish', { volume: 0.6, rate: 1.7, pan: panOf(event.foe.x) });
     else if (type === 'gust') sound.play('whirl', { volume: 0.7, rate: 0.7, pan: panOf(event.foe.x) });
     else if (type === 'pill') sound.play('swish', { volume: 0.5, rate: 1.5, pan: panOf(event.foe.x) });
@@ -637,6 +743,7 @@ function happen(events) {
     else if (type === 'foe-down') (sound.play('land', { volume: 0.45, rate: 0.82, pan: panOf(event.foe.x) }), (counted = true));
     else if (type === 'hurt') {
       sound.play('hurt', { volume: 0.95, pan });
+      showContact('hurt', hero.x, hero.y - 60, Math.sign(hero.vx));
       burst(sparks, hero.x, hero.y - 60, 16);
       freeze = Math.max(freeze, 0.09);
       camera.shake({ trauma: 0.6 });
@@ -651,7 +758,7 @@ function happen(events) {
       sound.court(false);
       sound.dim(true);
       sound.play('smallGong', { volume: 0.77 });
-      if (campaignRun()) recordBook.record(onStage, act.result);
+      if (scoredRun()) currentBook().record(onStage, act.result);
       showResult();
       showRecords();
     }
@@ -999,11 +1106,17 @@ function update(seconds) {
   });
 
   for (const made of [sparks, straw, dust, flames]) made.update(still ? 0 : dt);
-  for (const mark of Object.values(contactMarks)) {
+  if (!paused) for (const mark of Object.values(contactMarks)) {
     if (mark.left <= 0) continue;
-    mark.left = Math.max(0, mark.left - (still ? 0 : dt));
-    mark.node.alpha = mark.left / 0.18;
+    mark.left = Math.max(0, mark.left - dt);
+    const remaining = mark.left / mark.duration, travel = 1 - remaining * remaining;
+    mark.node.alpha = Math.min(1, 1.7 * remaining);
     mark.node.visible = mark.left > 0;
+    // Only the little contact pieces travel. The swing silhouette stays put.
+    if (mark.dx !== undefined) {
+      mark.node.x = Math.round(mark.x + mark.dx * mark.side * travel);
+      mark.node.y = Math.round(mark.y + mark.dy * travel);
+    }
   }
   for (const wisp of wisps) {
     wisp.bitmap.x += wisp.speed * (paused ? 0 : dt);
@@ -1097,7 +1210,7 @@ bindPlayButton($('pause-play'), playPauseCue);
 bindPlayButton($('paused'), playPauseCue);
 
 /** Puts the act back to its beginning. */
-function again() {
+function again(solo = act.solo) {
   input.clear();
   paused = false;
   $('paused').hidden = true;
@@ -1105,7 +1218,7 @@ function again() {
   sound.court(false);
   sound.dim(false);
   if (playing) sound.score(onStage);
-  act = createAct(level, { from, clones: TUFT });
+  act = createAct(level, { from, clones: TUFT, solo });
   for (const shown of [...arrows.values(), ...pills.values()]) shown.dispose();
   arrows.clear();
   pills.clear();
@@ -1125,22 +1238,23 @@ function again() {
 }
 $('again').addEventListener('click', () => {
   again();
+  if (act.solo) notice(trialWords[lang].start(TRIAL_GOALS[onStage]));
   sound.play('confirm', { volume: 0.69 });
 });
 
 /** Sets the stage for an act: from its beginning, or (the first act) from the court before the gate. */
-function setAct(name, where) {
+function setAct(name, where, solo = false) {
   from = where;
   if (name !== onStage) {
     undress();
     onStage = name;
     level = levels[name];
     mapSource = maps[name];
-    act = createAct(level, { from, clones: TUFT });
+    act = createAct(level, { from, clones: TUFT, solo });
     dress();
     camera.setBounds({ x: 0, y: 0, width: level.width, height: STAGE.height });
   }
-  again();
+  again(solo);
 }
 $('next').addEventListener('click', () => {
   setAct(ACTS[ACTS.indexOf(onStage) + 1]);
@@ -1161,6 +1275,10 @@ $('music').addEventListener('click', event => {
   event.currentTarget.setAttribute('aria-pressed', String(sound.musicMuted));
   sound.play(sound.musicMuted ? 'cancel' : 'confirm', { volume: 0.48 });
 });
+document.querySelector('.tools').addEventListener('click', event => {
+  // Mouse and touch users should be able to jump as soon as they close a setting.
+  if (event.detail && !paused && event.target.closest('button')) canvas.focus();
+});
 // An iPhone's browsers cannot make a page fill the screen, and there the button would do nothing.
 $('full').hidden = !document.fullscreenEnabled || !booth.requestFullscreen;
 $('full').addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : booth.requestFullscreen?.().catch(() => {})));
@@ -1176,8 +1294,8 @@ $('filling').hidden = true;
 status.textContent = '';
 status.removeAttribute('data-zh');
 /** Raises the curtain on an act, from its beginning or (the first act) from the court before the gate. */
-function raise(name, where) {
-  if (name !== onStage || where !== from) setAct(name, where);
+function raise(name, where, solo = false) {
+  if (name !== onStage || where !== from || solo !== act.solo || act.result) setAct(name, where, solo);
   playing = true;
   $('curtain').classList.add('is-up');
   $('hud').hidden = false;

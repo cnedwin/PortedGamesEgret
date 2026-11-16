@@ -8,10 +8,10 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 
 | | 键盘 · Keyboard | 手柄 · Gamepad | 触屏 · Touch |
 |---|---|---|---|
-| 走 · Move | A D，或方向键 · A D or the arrow keys | 左摇杆、十字键 · left stick, D-pad | ◀ ▶ |
-| 跳 · Jump | K，或空格 · K or Space | A | 跳 · Jump |
+| 走 · Move | A D，或左右方向键 · A D or Left/Right | 左摇杆、十字键 · left stick, D-pad | 横向摇杆 · horizontal stick |
+| 跳 · Jump | 空格 · Space | A | 跳 · Jump |
 | 棍 · Staff | J | X | 棍 · Staff |
-| 筋斗云 · Cloud roll | L，或 Shift · L or Shift | B | 云 · Roll |
+| 筋斗云 · Cloud roll | L，或 Shift · L or Shift | B | 闪 · Roll |
 | 身外身 · Clones | I，或 C · I or C | Y | 变 · Hairs |
 
 - 连按三下棍是一套连击：平扫、上挑、劈砸，一下比一下重。击中时分别是竹木、上挑的短响和鼓皮般的重击，格挡和卸开飞来的兵器另有不同的声音。
@@ -23,8 +23,10 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - 五个桃是他的体力，挨一下少一个；吃完就倒，随后在上一面红旗（歇脚处）重新站起来。
 - 把十名天兵全部击退再走进门前的院子，哪吒就到了；打退他，南天门才开。落幕时按用时、受伤和倒地次数盖一枚印：S、A、B、C。
 - P、Esc 或戏台上的「暂停」按钮可暂停。手机竖屏也能从戏单开锣，触控键排在幕布下方。
+- 手机默认显示横向摇杆，越往边缘推，移动越快。电脑可用「屏幕按键」打开同一套控制，也可用键盘。
 - 戏单可选从第二、三幕起演，或直接到三位首领的院子。一幕落幕后可以接着演、重演本幕或返回戏单。
 - 完整演完一幕会记下最好评级、最快时间和最高连击，并可拿下限时、连击和不倒地三枚印。直接进首领院子是独立练习。
+- 三幕都有「单棒试演」。整幕禁用百身术，限时、连击和不倒地目标独立计分，从戏单或通关结算页进入。
 - 三幕各有一首两分钟以上的原创配乐，进场按需加载。换幕时配乐交接，同幕重演接着播放。戏台上可以分别开关配乐和音效。
 
 **第二幕**新添的：
@@ -183,6 +185,7 @@ src/rules/level.mjs     地面与碰撞，读自关卡地图 · the ground and w
 src/puppets.mjs         加载并操纵皮偶 · loads and plays the puppets
 src/pictures.mjs        读入图片 · reads pictures in
 src/input.mjs           键盘、手柄、触屏 · keyboard, gamepad, touch
+src/joystick.mjs        横向屏幕摇杆 · horizontal on-screen stick
 src/sound.mjs           配乐和音效混音 · score and effects mix
 src/foley.mjs           按动作合成音效 · synthesizes foley for each action
 tools/                  画皮、绑骨、出图集、布景与关卡，以及打包 · drawing, rigging, atlases, scenery and levels, and the packing
