@@ -1,0 +1,8 @@
+# The asset manifest and the packed game hash the source bytes. Keep the same
+# newline convention in GitHub Pages and on Windows checkouts.
+*.atlas text eol=lf
+*.json text eol=lf
+*.tmj text eol=lf
+*.html text eol=lf
+*.js text eol=lf
+*.mjs text eol=lf

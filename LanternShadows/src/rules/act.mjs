@@ -211,7 +211,8 @@ export function stepAct(act, input, dt) {
       const rect = foeBox(foe);
       if (!standing(foe) || !overlaps(box, rect)) continue;
       landed++;
-      events.push({ type: 'met', attack, foe, side: side(foe), at: where(foe, rect) }, ...hitFoe(foe, attack, side(foe)));
+      const reply = hitFoe(foe, attack, side(foe));
+      events.push({ type: 'met', attack, foe, side: side(foe), at: where(foe, rect), blocked: reply.some(event => event.type === 'foe-block') }, ...reply);
       if (!standing(foe)) act.felled++;
     }
     for (const furnace of act.furnaces)

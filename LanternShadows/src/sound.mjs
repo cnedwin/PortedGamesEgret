@@ -1,9 +1,12 @@
-// The percussion of the play. A shadow play is accompanied by gongs, drums and clappers, and here every blow has
-// its beat. Nothing is recorded: each sound is worked out from a few decaying tones and a burst of noise, written
-// out as the bytes of a WAV file, and played through the engine's mixer.
+// The stage's original score and percussion share the engine mixer.
 import { createBrowserAudio } from '@egret/engine/web/audio';
 
 const RATE = 32000;
+const SCORE = {
+  act1: 'act1-gate.mp3',
+  act2: 'act2-orchard.mp3',
+  act3: 'act3-furnace.mp3',
+};
 
 function wav(samples) {
   const bytes = new Uint8Array(44 + samples.length * 2),
@@ -72,21 +75,66 @@ const SOUNDS = {
   swish: () => struck(0.2, [], [0.55, 0.05, 0.5], 13),
   whirl: () => struck(0.34, [[330, 0.12, 0.12, 0.9]], [0.5, 0.11, 0.3], 17),
   // A footfall on the terrace.
-  tap: () => struck(0.07, [[420, 0.2, 0.012, -0.6]], [0.3, 0.008, 0.35], 19)
+  tap: () => struck(0.07, [[420, 0.2, 0.012, -0.6]], [0.3, 0.008, 0.35], 19),
+  staff: () => struck(0.18, [[240, 0.35, 0.029, -0.32], [1080, 0.45, 0.012], [1770, 0.25, 0.009]], [0.48, 0.018, 0.7], 23),
+  uplift: () => struck(0.32, [[365, 0.48, 0.05, 0.28], [810, 0.25, 0.07, 0.3], [1860, 0.16, 0.07]], [0.36, 0.03, 0.55], 29),
+  smash: () => struck(0.46, [[108, 0.56, 0.1, -0.52], [215, 0.28, 0.07, -0.24], [670, 0.23, 0.034]], [0.65, 0.035, 0.46], 31),
+  guard: () => struck(0.24, [[875, 0.34, 0.065, -0.08], [1550, 0.4, 0.04], [2320, 0.22, 0.025]], [0.45, 0.017, 0.86], 37),
+  parry: () => struck(0.4, [[1250, 0.42, 0.095, 0.11], [2020, 0.25, 0.06, 0.14], [2940, 0.14, 0.05]], [0.32, 0.02, 0.87], 41),
 };
 
 export function createSound() {
   const sounds = {};
-  let audio, ready;
+  const themes = new Map();
+  const preference = (key) => {
+    try { return localStorage.getItem(`lantern-${key}`) === 'off'; } catch { return false; }
+  };
+  const remember = (key, value) => {
+    try { localStorage.setItem(`lantern-${key}`, value ? 'off' : 'on'); } catch { /* Session settings still work. */ }
+  };
+  let audio, ready, wanted, musicRequest = 0, activeTheme;
+  let muted = preference('effects'), musicMuted = preference('music'), dim = false, court = false;
+  const musicLevel = () => dim ? 0.09 : court ? 0.26 : 0.39;
+  const mix = () => audio?.mixer.bus('music').setVolume(musicLevel(), { fade: 0.24 });
   // The mixer is made on the first press: a page may not sound before the player has touched it.
   const begin = () => {
     if (ready) return ready;
     ready = (async () => {
-      audio = createBrowserAudio({ volume: 0.8, buses: [{ name: 'effects', volume: 1 }], onError: () => {} });
+      audio = createBrowserAudio({
+        volume: 0.8,
+        buses: [{ name: 'effects', volume: 1, muted }, { name: 'music', volume: musicLevel(), muted: musicMuted }],
+        onError: () => {},
+      });
       await Promise.all(Object.entries(SOUNDS).map(async ([name, make]) => (sounds[name] = await audio.mixer.decode(make()))));
     })().catch(() => {});
     return ready;
   };
+  function theme(act) {
+    if (themes.has(act)) return themes.get(act);
+    const loading = (async () => {
+      const response = await fetch(new URL(`../assets/music/${SCORE[act]}`, import.meta.url));
+      if (!response.ok) throw new Error(`Score ${response.status}`);
+      return audio.mixer.decode(await response.arrayBuffer());
+    })().catch(() => { themes.delete(act); });
+    themes.set(act, loading);
+    return loading;
+  }
+  async function score(act) {
+    wanted = act;
+    const request = ++musicRequest;
+    if (!SCORE[act]) {
+      activeTheme = undefined;
+      audio?.mixer.stopMusic({ fade: 0.45 });
+      return;
+    }
+    if (musicMuted) return;
+    await begin();
+    if (!audio || request !== musicRequest) return;
+    const track = await theme(act);
+    if (!track || request !== musicRequest || musicMuted) return;
+    audio.mixer.playMusic(track, { bus: 'music', loop: true, volume: 1, fade: 0.55 });
+    activeTheme = act;
+  }
   for (const type of ['pointerdown', 'keydown']) addEventListener(type, begin, { once: true, capture: true });
   return {
     /** Makes the mixer and the sounds, if a press has not already; resolves when they can be played. */
@@ -105,6 +153,24 @@ export function createSound() {
         // A sound that cannot play is not worth stopping the play for.
       }
     },
-    muted: false
+    score,
+    dim(value) { dim = value; mix(); },
+    court(value) { court = value; mix(); },
+    get muted() { return muted; },
+    set muted(value) {
+      muted = value;
+      remember('effects', value);
+      audio?.mixer.bus('effects').setMuted(value);
+    },
+    get musicMuted() { return musicMuted; },
+    set musicMuted(value) {
+      musicMuted = value;
+      remember('music', value);
+      audio?.mixer.bus('music').setMuted(value);
+      if (!value && activeTheme !== wanted) score(wanted);
+    },
+    state() {
+      return { theme: activeTheme, voice: audio?.mixer.music?.state, dim, court, muted, musicMuted };
+    },
   };
 }

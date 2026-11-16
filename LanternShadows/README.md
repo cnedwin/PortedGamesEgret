@@ -22,7 +22,10 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - **弓手**站着不动，拉满弓后放箭。箭可以跳过、翻过，也可以一棍打落。
 - 五个桃是他的体力，挨一下少一个；吃完就倒，随后在上一面红旗（歇脚处）重新站起来。
 - 把十名天兵全部击退再走进门前的院子，哪吒就到了；打退他，南天门才开。落幕时按用时、受伤和倒地次数盖一枚印：S、A、B、C。
-- P 或 Esc 暂停。开场的戏单上可以选“直接会哪吒”“直接会二郎神”“直接会太上老君”，从各自的院子演起；也可以选从第二、三幕演起。一幕落幕后，按“下一幕”接着演。
+- P、Esc 或戏台上的「暂停」按钮可暂停。手机竖屏也能从戏单开锣，触控键排在幕布下方。
+- 戏单可选从第二、三幕起演，或直接到三位首领的院子。一幕落幕后可以接着演、重演本幕或返回戏单。
+- 完整演完一幕会记下最好评级、最快时间和最高连击，并可拿下限时、连击和不倒地三枚印。直接进首领院子是独立练习。
+- 三幕各有一首原创循环配乐，进入时按需加载。戏台上可以分别开关配乐和锣鼓。
 
 **第二幕**新添的：
 
@@ -69,7 +72,10 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - An **archer** stands where he is, draws, and looses. An arrow can be jumped, rolled through, or knocked out of the air with the staff.
 - Five peaches are his strength, and each blow he takes eats one. When they are gone he falls, and is stood up again at the last red pennant he passed.
 - When all ten soldiers are down and he walks into the court before the gate, Nezha arrives; the gate opens only when Nezha has been driven off. As the curtain falls a seal is set on the act for its time, his wounds and his falls: S, A, B or C.
-- P or Esc pauses. The playbill at the start offers “straight to Nezha”, “straight to Erlang” and “straight to Laozi”, each beginning at his court, and a beginning from act two or three. When an act's curtain has fallen, “Next act” goes on to the one after.
+- Use P, Esc or the on-stage Pause button. The portrait playbill can start the show and places the touch buttons below the cloth.
+- The playbill can start acts two and three or open any of the three bosses' courts for practice. After an act, continue, replay it or return to the playbill.
+- A complete act records the best rank, fastest clear and highest combo. Each act has three seals for time, hits and finishing without a fall.
+- Each act loads its own original loop on demand. Music and percussion have separate switches on the stage.
 
 New in **act two**:
 
@@ -153,6 +159,13 @@ node tools/bundle.mjs                改过 src/、vendor/ 或 assets/ 之后重
 
 打包需要 esbuild（不在本目录时用环境变量 `ESBUILD` 指向它的模块路径）。没有重新打包时，测试会指出来。
 Packing needs esbuild (set `ESBUILD` to its module path if it is not installed here). A test says so when it has not been done.
+
+三首配乐的原始谱和合成器在 `tools/compose-score.py`。可用 Python、NumPy 和 FFmpeg 重新导出。
+The original scores and synthesizers are in `tools/compose-score.py`. Python, NumPy and FFmpeg can render them again.
+
+```
+python tools/compose-score.py ./score-export --ffmpeg ffmpeg
+```
 
 ## 目录 · Layout
 
