@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { COMBO_SECONDS, POST_ROOM, REVIVE_SECONDS, createAct, peachBox, postBox, rankOf, remaining, stepAct, tuftReady } from '../src/rules/act.mjs';
 import { BOSS, bossAnimation, bossBox, bossReach, createBoss, hitBoss, open, present, restoreBoss, stepBoss, wakeBoss } from '../src/rules/boss.mjs';
 import { HAIRS, cloneAnimation, createClones, out } from '../src/rules/clones.mjs';
+import * as erlang from '../src/rules/erlang.mjs';
 import { FOES, LIE, createFoe, foeAnimation, foeBox, hitFoe, stepFoe, thrust } from '../src/rules/foes.mjs';
 import { ATTACKS, CHAIN_GRACE, TUNE, animationOf, bodyOf, canBeHurt, createHero, hurtHero, reach, reviveHero, stepHero } from '../src/rules/hero.mjs';
 import { CELL, flatLevel, groundUnder as groundUnderFoot, lay, moveBody, overlaps, readLevel } from '../src/rules/level.mjs';
@@ -923,11 +924,13 @@ test('the second act is read from its map: an orchard with its own ground, guard
   const level = readLevel(ACT2),
     act = createAct(level),
     count = kind => act.foes.filter(foe => foe.kind === kind).length;
-  assert.deepEqual([level.columns, level.rows, level.set], [100, 12, 'orchard']);
+  assert.deepEqual([level.columns, level.rows, level.set], [124, 12, 'orchard']);
   assert.equal(readLevel(ACT1).set, 'terrace');
   assert.deepEqual([count('guard'), count('crane'), count('spearman'), count('archer')], [4, 5, 3, 2]);
-  assert.equal(act.peaches.length, 4);
-  assert.equal(act.boss, null);
+  assert.equal(act.peaches.length, 5);
+  assert.equal(act.boss.kind, 'erlang');
+  assert.equal(createAct(readLevel(ACT1)).boss.kind, 'nezha');
+  assert.ok(act.foes.every(foe => foe.x < act.boss.arena.left), 'nobody else stands in his court');
   assert.ok(level.things.filter(thing => thing.type === 'tree').length >= 4);
   // Every peach can be reached: by the lifting blow from where he can stand under it.
   for (const peach of act.peaches) {
@@ -1041,6 +1044,218 @@ test('against Nezha the crowd wears a phase down and cannot skip one; if the Mon
   assert.equal(fallen.clones.length, 0);
 });
 
+// ---- Erlang ----------------------------------------------------------------------------------------------------
+const { ERLANG } = erlang;
+const godFight = (boss, hero, seconds) => {
+  const events = [];
+  for (let t = 0; t < seconds; t += DT) events.push(...erlang.stepBoss(boss, hero, DT));
+  return events;
+};
+/** Him, come down into a court and ready, with someone standing `gap` to his left; his hound kept away unless asked for. */
+function god(gap = 200, withHound = false) {
+  const boss = erlang.createBoss(1600, GROUND, COURT),
+    hero = { x: 1600 - gap, y: GROUND, state: 'move' };
+  if (!withHound) boss.hound.wait = Infinity;
+  erlang.wakeBoss(boss);
+  godFight(boss, hero, ERLANG.enter.seconds + DT);
+  return { boss, hero };
+}
+function godUntil(boss, hero, type, limit = 10) {
+  for (let t = 0; t < limit; t += DT) {
+    const found = erlang.stepBoss(boss, hero, DT).find(event => event.type === type);
+    if (found) return { ...found, after: t };
+  }
+  assert.fail(`no ${type} within ${limit} s (he is in ${boss.state}, ${boss.move})`);
+}
+const MIGHTY = { kind: 'slam', power: 100 };
+
+test('Erlang warns before his glaive comes down, and it reaches a long way in front of him', () => {
+  const { boss, hero } = god(190);
+  assert.deepEqual([boss.kind, boss.state, boss.rise, boss.form], ['erlang', 'idle', 0, 'man']);
+  assert.equal(godUntil(boss, hero, 'boss-windup').move, 'slash');
+  assert.equal(erlang.bossReach(boss), null);
+  assert.equal(erlang.bossAnimation(boss).name, 'windup');
+  const struck = godUntil(boss, hero, 'boss-strike');
+  assert.ok(Math.abs(struck.after - ERLANG.slash.windup) < 2 * DT);
+  godFight(boss, hero, ERLANG.slash.from + 2 * DT);
+  const reach = erlang.bossReach(boss);
+  assert.ok(reach.x < boss.x - 150 && reach.x + reach.width > boss.x, 'from just behind him to well in front');
+  assert.ok(overlaps(reach, bodyOf(createHero(hero.x, GROUND))));
+  godFight(boss, hero, ERLANG.slash.seconds);
+  assert.equal(boss.state, 'idle');
+});
+
+test('he leaps to where the Monkey King stood and strikes what is under him as he lands', () => {
+  const { boss, hero } = god(420);
+  boss.turn = 1;
+  assert.equal(godUntil(boss, hero, 'boss-windup').move, 'leap');
+  godUntil(boss, hero, 'boss-strike');
+  const aimed = hero.x;
+  hero.x += 400;
+  let highest = 0;
+  for (let t = 0; t < 2 && boss.lift !== null; t += DT) (erlang.stepBoss(boss, hero, DT), (highest = Math.max(highest, boss.rise)));
+  assert.ok(highest > 120, `he rose ${highest}`);
+  assert.ok(Math.abs(boss.x - aimed) < 12, `he came down at ${boss.x}, having aimed at ${aimed}`);
+  assert.deepEqual([boss.rise, boss.waves.length], [0, 0]);
+  const reach = erlang.bossReach(boss);
+  assert.ok(reach && overlaps(reach, bodyOf(createHero(aimed, GROUND))) && !overlaps(reach, bodyOf(createHero(hero.x, GROUND))));
+  godFight(boss, hero, ERLANG.leap.land + 0.02);
+  assert.equal(erlang.bossReach(boss), null);
+});
+
+test('in his second phase he becomes a hawk, stoops twice, and is himself again; struck as a hawk he falls', () => {
+  const { boss, hero } = god(300);
+  assert.deepEqual(erlang.hitBoss(boss, MIGHTY), [{ type: 'boss-phase', phase: 1 }]);
+  assert.equal(erlang.open(boss), false);
+  godFight(boss, hero, ERLANG.roar + DT);
+  assert.equal(godUntil(boss, hero, 'boss-windup').move, 'hawk');
+  assert.equal(erlang.bossAnimation(boss).name, 'crouch');
+  assert.equal(godUntil(boss, hero, 'boss-change').form, 'hawk');
+  assert.ok(erlang.bossBox(boss).height < 80, 'a hawk is a small thing to hit');
+  let stoops = 0,
+    top = 0;
+  const events = [];
+  for (let t = 0; t < 8 && boss.form === 'hawk'; t += DT) {
+    for (const event of erlang.stepBoss(boss, hero, DT)) (events.push(event), event.type === 'boss-strike' && stoops++);
+    top = Math.max(top, boss.rise);
+    if (boss.step === 'stoop') assert.ok(overlaps(erlang.bossReach(boss), erlang.bossBox(boss)));
+  }
+  assert.equal(stoops, ERLANG.hawk.stoops);
+  assert.ok(Math.abs(top - ERLANG.hawk.height) < 2);
+  assert.deepEqual(events.at(-1), { type: 'boss-change', form: 'man' });
+  assert.deepEqual([boss.form, boss.rise, boss.state], ['man', 0, 'idle']);
+
+  // The next time, the staff meets him in the air.
+  boss.turn = 0;
+  godUntil(boss, hero, 'boss-change');
+  godFight(boss, hero, 0.3);
+  assert.deepEqual(types(erlang.hitBoss(boss, LIGHT)), ['boss-change', 'boss-stun']);
+  assert.deepEqual([boss.form, boss.state], ['man', 'stun']);
+  godFight(boss, hero, 0.5);
+  assert.equal(boss.rise, 0, 'he has come down');
+});
+
+test('in his last phase he grows, his reach grows with him, and his landing sends a wave each way', () => {
+  const { boss, hero } = god(300);
+  erlang.hitBoss(boss, MIGHTY);
+  godFight(boss, hero, ERLANG.roar + DT);
+  const before = erlang.bossBox(boss);
+  assert.deepEqual(erlang.hitBoss(boss, MIGHTY), [{ type: 'boss-phase', phase: 2 }]);
+  godFight(boss, hero, ERLANG.roar + 0.3);
+  assert.equal(boss.size, ERLANG.phases[2].size);
+  const grown = erlang.bossBox(boss);
+  assert.ok(Math.abs(grown.height / before.height - boss.size) < 0.01 && grown.y + grown.height === before.y + before.height, 'he stands on the same ground, taller');
+  assert.equal(godUntil(boss, hero, 'boss-windup').move, 'leap');
+  godUntil(boss, hero, 'boss-land');
+  assert.deepEqual(boss.waves.map(wave => Math.sign(wave.vx)), [-1, 1]);
+  const [hazard] = erlang.bossHazards(boss);
+  assert.ok(hazard.box.y + hazard.box.height === GROUND && hazard.box.height < 60, 'a wave is low, and can be jumped');
+  godFight(boss, hero, ERLANG.leap.wave.seconds + 0.1);
+  assert.equal(boss.waves.length, 0);
+  // Beaten, he kneels, and then he is gone.
+  assert.deepEqual(types(erlang.hitBoss(boss, MIGHTY)), ['boss-down']);
+  assert.equal(erlang.bossAnimation(boss).name, 'down');
+  assert.deepEqual(types(godFight(boss, hero, ERLANG.yield + DT)), ['boss-gone']);
+});
+
+test('his hound comes from behind the Monkey King, shows itself, and runs past him; struck twice it keeps away', () => {
+  const { boss, hero } = god(300, true),
+    hound = boss.hound;
+  // Its master is kept waiting, so that he stays on his side of the court.
+  boss.rest = 99;
+  assert.equal(erlang.houndAnimation(hound), null, 'it keeps out of sight at first');
+  const shown = godUntil(boss, hero, 'hound-windup');
+  assert.ok(shown.hound.x < hero.x && hound.facing === 1, 'he faces its master, so it comes from the left');
+  assert.equal(erlang.houndAnimation(hound).name, 'crouch');
+  assert.ok(!erlang.bossHazards(boss).length, 'showing itself, it hurts nobody');
+  godUntil(boss, hero, 'hound-run');
+  assert.equal(erlang.bossHazards(boss).length, 1);
+  godUntil(boss, hero, 'hound-gone');
+  assert.ok(hound.x >= hero.x + ERLANG.hound.past - 12, `it ran on to ${hound.x}`);
+  assert.equal(hound.state, 'lurk');
+  // The other way round, and the staff ready for it.
+  hero.x = boss.x + 300;
+  godUntil(boss, hero, 'hound-run');
+  assert.equal(hound.facing, -1);
+  assert.deepEqual(types(erlang.hitHound(boss)), ['hound-yelp']);
+  assert.equal(erlang.houndAnimation(hound).name, 'yelp');
+  assert.deepEqual(erlang.hitHound(boss), [], 'backing away, it is out of reach');
+  godUntil(boss, hero, 'hound-gone');
+  godUntil(boss, hero, 'hound-run');
+  erlang.hitHound(boss);
+  godUntil(boss, hero, 'hound-gone');
+  assert.ok(hound.wait > ERLANG.phases[0].hound + ERLANG.hound.sulk - 1, 'after two it keeps away longer');
+});
+
+/** An act that is only Erlang's court. */
+function godCourt() {
+  const level = lay(flatLevel(2400, GROUND, [{ type: 'spawn', x: 200, y: GROUND }, { type: 'checkpoint', x: 900, y: GROUND }, { type: 'erlang', x: 1700, y: GROUND }, { type: 'gate', x: 2100, y: GROUND }]), 'cloud', 24, 7, 4);
+  return createAct(level, { from: 'boss' });
+}
+
+test('in the court the hound bites whoever stands in its way, a jump clears it, and the staff sends it off', () => {
+  const run = input => {
+    const act = godCourt();
+    act.hero.x = 1200;
+    play(act, ERLANG.enter.seconds + 0.1);
+    Object.assign(act.boss, { rest: 99 });
+    act.boss.hound.wait = 0;
+    const events = [];
+    for (let t = 0; t < 4; t += DT) events.push(...stepAct(act, input(act), DT));
+    return { act, events };
+  };
+  const bitten = run(() => ask());
+  assert.equal(bitten.act.hero.health, TUNE.health - 1);
+  const near = act => act.boss.hound.state === 'run' && Math.abs(act.boss.hound.x - act.hero.x) < 170;
+  const jumped = run(act => ask({ jump: near(act) && act.hero.grounded, jumpHeld: true }));
+  assert.equal(jumped.act.hero.health, TUNE.health);
+  const struck = run(act => ask({ attack: near(act), move: near(act) ? -1 : 0 }));
+  assert.ok(struck.events.some(event => event.type === 'met' && event.hound), 'the staff met the hound');
+  assert.ok(types(struck.events).includes('hound-yelp'));
+  assert.equal(struck.act.hero.health, TUNE.health);
+});
+
+test('driving Erlang off opens the moon gate, and a fall in his court puts the fight back to its phase', () => {
+  const act = godCourt(),
+    { boss, hero } = act;
+  hero.x = 1200;
+  assert.ok(types(play(act, 0.1)).includes('boss-enter'));
+  play(act, ERLANG.enter.seconds + 0.1);
+  erlang.hitBoss(boss, MIGHTY);
+  erlang.hitBoss(boss, { kind: 'hit', power: 3 });
+  hurtHero(hero, hero.x + 10, TUNE.health);
+  play(act, 0.1);
+  assert.deepEqual([boss.health, boss.phase, boss.form, boss.state], [ERLANG.phases[0].until, 1, 'man', 'idle']);
+  erlang.hitBoss(boss, MIGHTY);
+  play(act, ERLANG.roar + 0.5);
+  erlang.hitBoss(boss, MIGHTY);
+  const end = play(act, ERLANG.yield + 0.1);
+  assert.deepEqual(types(end).filter(type => type.startsWith('boss') || type === 'gate-open'), ['boss-gone', 'gate-open']);
+  hero.x = 2090;
+  assert.ok(types(play(act, 1.5)).includes('clear'));
+});
+
+/**
+ * How a simple player fights Erlang: strikes him when near; rolls as the glaive comes down and as he lands;
+ * jumps the hound and the waves; and strikes the hawk as it stoops.
+ */
+function duelGod(act) {
+  const { hero, boss } = act,
+    dx = boss.x - hero.x,
+    gap = Math.abs(dx),
+    toward = Math.sign(dx) || 1,
+    low = erlang.bossHazards(boss).some(({ box }) => Math.abs(box.x + box.width / 2 - hero.x) < 150) || (boss.hound.state === 'run' && Math.abs(boss.hound.x - hero.x) < 170 && Math.sign(hero.x - boss.hound.x) === boss.hound.facing);
+  if (low && hero.grounded) return ask({ jump: true, jumpHeld: true });
+  if (!hero.grounded) return ask({ jumpHeld: true });
+  if (boss.form === 'hawk') return ask({ move: toward * 0.01, attack: boss.step === 'stoop' && Math.hypot(dx, boss.rise - 60) < 190 && hero.state === 'move' });
+  if (boss.state === 'attack' && boss.move === 'slash' && boss.time < 0.06) return ask({ move: toward, dash: true });
+  if (boss.state === 'attack' && boss.move === 'leap' && boss.lift !== null) return ask({ move: -toward, dash: boss.lift < 0 && boss.rise < 90 });
+  const reach = 104 + ERLANG.halfWidth * boss.size,
+    left = boss.state === 'windup' ? ERLANG[boss.move].windup - boss.time : 9;
+  if (!erlang.open(boss)) return ask({ move: gap > reach + 80 ? toward : 0 });
+  return ask({ move: gap > reach - 20 ? toward : 0, attack: gap < reach && left > 0.4 });
+}
+
 /** The clouds of a level, each as the span it covers and the height of its top. */
 function cloudsOf(level) {
   const spans = [];
@@ -1094,7 +1309,7 @@ function playThrough(level, limit = 600) {
     retreat = 0;
   for (let t = 0; t < limit && act.state === 'play'; t += DT) {
     if (act.boss && present(act.boss)) {
-      stepAct(act, duel(act, clouds), DT);
+      stepAct(act, act.boss.kind === 'erlang' ? duelGod(act) : duel(act, clouds), DT);
       continue;
     }
     const hero = act.hero,
@@ -1126,10 +1341,11 @@ test('the first act can be played through, Nezha and all, and is not over in a m
   console.log(`    a simple player clears the first act in ${Math.round(act.result.time)} s, falling ${act.result.falls} times and wounded ${act.result.wounds} times: rank ${act.result.rank}`);
 });
 
-test('the second act can be played through: shields, cranes and all', () => {
+test('the second act can be played through: shields, cranes, Erlang and all', () => {
   const act = playThrough(readLevel(ACT2));
   assert.equal(act.state, 'cleared', told(act));
   assert.equal(act.result.felled, 14);
-  assert.ok(act.result.time > 40, `cleared in ${act.result.time} s`);
+  assert.ok(act.boss.gone, 'Erlang was driven off');
+  assert.ok(act.result.time > 60, `cleared in ${act.result.time} s`);
   console.log(`    a simple player clears the second act in ${Math.round(act.result.time)} s, falling ${act.result.falls} times, wounded ${act.result.wounds} times and eating ${act.eaten} peaches: rank ${act.result.rank}`);
 });

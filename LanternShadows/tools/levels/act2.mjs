@@ -1,13 +1,14 @@
-// Act two: the orchard of the peaches of immortality. A hundred cells long and twelve high; the turf is the bottom
-// three rows. Left to right: the first tree and a peach to knock down, a shield-bearer to learn on, boughs with a
-// crane over them, a climb through the branches, a raised bank held by a shield and a spear, and the last stretch
-// to the moon gate. Peaches hang where a jump or a lifting blow can reach them.
+// Act two: the orchard of the peaches of immortality. A hundred and twenty-four cells long and twelve high; the
+// turf is the bottom three rows. Left to right: the first tree and a peach to knock down, a shield-bearer to learn
+// on, boughs with a crane over them, a climb through the branches, a raised bank held by a shield and a spear, the
+// last stretch, and the court before the moon gate, where Erlang and his hound hold the way out. Peaches hang
+// where a jump or a lifting blow can reach them.
 import { grid } from '../level.mjs';
 
 export const title = 'Act two: the Peach Orchard';
 export const tiles = 'orchard';
-export const level = grid(100, 12)
-  .fill('X', 0, 9, 100, 3)
+export const level = grid(124, 12)
+  .fill('X', 0, 9, 124, 3)
   // The way in.
   .put('S', 3, 8)
   .put('t', 9, 8)
@@ -46,4 +47,11 @@ export const level = grid(100, 12)
   .hang('k', 85, 5)
   .hang('o', 86, 5)
   .put('c', 89, 8)
-  .put('G', 94, 8);
+  .put('t', 94, 8)
+  .hang('o', 96, 5)
+  // The court before the moon gate.
+  .put('c', 100, 8)
+  .fill('-', 104, 7, 3, 1)
+  .fill('-', 113, 7, 3, 1)
+  .put('E', 112, 8)
+  .put('G', 118, 8);

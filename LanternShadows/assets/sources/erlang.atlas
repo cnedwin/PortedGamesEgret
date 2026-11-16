@@ -1,0 +1,39 @@
+erlang.png
+size: 978,576
+filter: Linear,Linear
+repeat: none
+pma: false
+weapon
+bounds: 2,2,90,528
+cloak
+bounds: 94,2,90,243
+legF1
+bounds: 186,2,57,120
+legB1
+bounds: 245,2,54,120
+head
+bounds: 301,2,84,117
+torso
+bounds: 387,2,93,111
+legF2
+bounds: 482,2,45,105
+legB2
+bounds: 529,2,39,105
+skirt
+bounds: 570,2,90,99
+armF1
+bounds: 662,2,51,87
+armB1
+bounds: 715,2,51,84
+armB2
+bounds: 768,2,48,78
+armF2
+bounds: 818,2,60,66
+plume1
+bounds: 880,2,42,63
+plume2
+bounds: 924,2,51,48
+footB
+bounds: 2,532,72,42
+footF
+bounds: 76,532,72,42

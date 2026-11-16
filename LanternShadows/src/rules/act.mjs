@@ -1,7 +1,8 @@
 // An act of the play: the ground, the Monkey King, the soldiers and the posts in his way, the arrows in the air,
 // whoever bars the gate at the end, and the count that is kept of how he does. One call steps all of it and says
 // what happened.
-import { bossBox, bossReach, createBoss, hitBoss, open, present, restoreBoss, ringBox, stepBoss, wakeBoss } from './boss.mjs';
+import * as nezha from './boss.mjs';
+import * as erlang from './erlang.mjs';
 import { HAIRS, createClones, out, stepClones } from './clones.mjs';
 import { FOES, createFoe, foeBox, hitFoe, standing, stepFoe } from './foes.mjs';
 import { ATTACKS, TUNE, bodyOf, canBeHurt, conjure, createHero, hurtHero, reviveHero, stepHero } from './hero.mjs';
@@ -13,6 +14,17 @@ export const COMBO_SECONDS = 1.9,
 const POST = { halfWidth: 20, height: 112 };
 /** How near a post he may stand. */
 export const POST_ROOM = 58;
+
+// Whoever bars the gate is one of two, and each has his own rules under the same names.
+const { present, ringBox } = nezha,
+  way = boss => (boss.kind === 'erlang' ? erlang : nezha),
+  bossBox = boss => way(boss).bossBox(boss),
+  bossReach = boss => way(boss).bossReach(boss),
+  hitBoss = (boss, attack) => way(boss).hitBoss(boss, attack),
+  open = boss => way(boss).open(boss),
+  restoreBoss = boss => way(boss).restoreBoss(boss),
+  stepBoss = (boss, hero, dt) => way(boss).stepBoss(boss, hero, dt),
+  wakeBoss = boss => way(boss).wakeBoss(boss);
 
 /** A peach of the orchard: how much room it takes, and how fast it falls once it is knocked from its bough. */
 const PEACH = { half: 16, fall: 2200 };
@@ -31,11 +43,11 @@ export function createAct(level, { from, clones = HAIRS.count } = {}) {
   const of = type => level.things.filter(thing => thing.type === type);
   const [spawn] = of('spawn'),
     [gate] = of('gate'),
-    [lair] = of('boss'),
+    [lair] = [...of('boss'), ...of('erlang')],
     checkpoints = of('checkpoint').map(thing => ({ x: thing.x, y: thing.y, reached: false }));
   // The court runs from the last pennant before him to the end of the level.
   const door = lair && checkpoints.findLast(point => point.x < lair.x),
-    boss = lair ? createBoss(lair.x, lair.y, { left: (door?.x ?? lair.x - 500) - COURT.behind, right: level.width }) : null,
+    boss = lair ? (lair.type === 'erlang' ? erlang : nezha).createBoss(lair.x, lair.y, { left: (door?.x ?? lair.x - 500) - COURT.behind, right: level.width }) : null,
     skip = from === 'boss' && boss && door,
     start = skip ? door : spawn;
   if (skip) for (const point of checkpoints) point.reached = point.x <= door.x;
@@ -200,6 +212,12 @@ export function stepAct(act, input, dt) {
         Object.assign(ring, { struck: true, back: true });
         events.push({ type: 'deflect', at: { x: ring.x, y: ring.y }, attack, ring });
       }
+      // Erlang's hound can be struck as it shows itself and as it runs.
+      const hound = boss.hound;
+      if (hound && erlang.houndOut(hound) && overlaps(box, erlang.houndBox(hound))) {
+        landed++;
+        events.push({ type: 'met', attack, hound, side: side(hound), at: { x: hound.x, y: hound.y - 30 } }, ...erlang.hitHound(boss));
+      }
     }
     if (landed) {
       act.combo += landed;
@@ -292,6 +310,7 @@ export function stepAct(act, input, dt) {
     const body = bodyOf(hero),
       blow = bossReach(boss);
     if (blow && overlaps(blow, body)) wound(boss.x);
+    if (boss.kind === 'erlang') for (const hurt of erlang.bossHazards(boss)) if (overlaps(hurt.box, body)) wound(hurt.from);
     if (boss.ring && overlaps(ringBox(boss.ring), body)) wound(boss.ring.x - boss.ring.vx);
     // Burning ground hurts whoever stands on it; a cloud is clear of it.
     for (const fire of boss.fires) if (hero.grounded && hero.y >= boss.y - 1 && hero.x > Math.min(fire.from, fire.to) - 10 && hero.x < Math.max(fire.from, fire.to) + 10) wound((fire.from + fire.to) / 2);
@@ -327,4 +346,5 @@ export function stepAct(act, input, dt) {
 
 export { ATTACKS, FOES, moveBody };
 export { BOSS } from './boss.mjs';
+export { ERLANG } from './erlang.mjs';
 export { HAIRS } from './clones.mjs';

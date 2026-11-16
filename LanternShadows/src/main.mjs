@@ -4,6 +4,7 @@
 //   rules/hero.mjs   how the Monkey King moves, fights and is hurt (no drawing)
 //   rules/foes.mjs   the soldiers of heaven
 //   rules/boss.mjs   Nezha, who bars the gate
+//   rules/erlang.mjs Erlang and his hound, who hold the way out of the orchard
 //   rules/clones.mjs the hairs he blows into copies of himself
 //   rules/level.mjs  the ground, read from the level's Tiled map
 //   puppets.mjs      Spine skeletons, loaded as the engine's manifest lists them
@@ -13,7 +14,7 @@
 //
 // Address options: ?act=2 begins with the second act, ?backend=webgpu draws with WebGPU instead of WebGL2, ?stats shows what is being drawn,
 // ?lang=en starts in English, ?slow=0.25 plays at a quarter of the speed, to watch how he moves, and ?from=nezha
-// begins at the court before the gate. ?clones=200 sets how many copies a tuft of hair makes (a hundred unless
+// begins at the court before the gate (and ?from=erlang at the second act's). ?clones=200 sets how many copies a tuft of hair makes (a hundred unless
 // said), and keeps them all on the stage however slowly it is then drawn.
 import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createCamera2D } from '@egret/engine/camera';
@@ -25,6 +26,7 @@ import { createPictures, readJson, watchReading } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
 import { createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
 import { BOSS, bossAnimation, present } from './rules/boss.mjs';
+import { ERLANG, bossAnimation as erlangAnimation, houndAnimation } from './rules/erlang.mjs';
 import { HAIRS, cloneAnimation, out } from './rules/clones.mjs';
 import { foeAnimation } from './rules/foes.mjs';
 import { ATTACKS, TUNE, animationOf } from './rules/hero.mjs';
@@ -45,8 +47,8 @@ const KEY_HINTS = {
   en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll, through a spear'], ['I', 'clones'], ['P', 'pause']]
 };
 const WORDS = {
-  zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了', soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
-  en: { titles: { act1: 'Act one: the Southern Gate', act2: 'Act two: the Peach Orchard' }, curtain: title => `${title}. Curtain`, tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open', soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
+  zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, bosses: { nezha: { name: '哪吒', enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了' }, erlang: { name: '二郎神', enter: '二郎真君提三尖两刃刀到，哮天犬随后', phases: ['', '他要变化了：变成鹰时把他打下来', '法天象地！他落地的震波要跳过去'], opened: '二郎神收兵，月洞门开了' } }, soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
+  en: { titles: { act1: 'Act one: the Southern Gate', act2: 'Act two: the Peach Orchard' }, curtain: title => `${title}. Curtain`, tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, bosses: { nezha: { name: 'Nezha', enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open' }, erlang: { name: 'Erlang', enter: 'Erlang comes with his three-pointed glaive, and his hound behind him', phases: ['', 'He changes his shape: strike the hawk out of the air', 'He grows to the size of the sky! Jump the wave when he lands'], opened: 'Erlang calls off the fight, and the moon gate stands open' } }, soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
 };
 function speak() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
@@ -105,7 +107,7 @@ const { engine, scope } = game;
 const loadPicture = createPictures(engine, scope),
   asset = path => new URL(`../assets/${path}`, import.meta.url);
 const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring', 'far2', 'tree', 'peach', 'moongate', 'orchard'],
-  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane'],
+  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane', 'erlang', 'hawk', 'hound'],
   /** The acts, in the order they are played. */
   ACTS = ['act1', 'act2'];
 // The line under the gong fills as the files come in: the pictures, three files for each puppet, the list of
@@ -129,8 +131,9 @@ try {
 }
 const levels = Object.fromEntries(ACTS.map(name => [name, readLevel(maps[name])]));
 /** Which act is on the stage, and where it begins: at its beginning, or at the court before the gate. */
-let from = query.get('from') === 'nezha' ? 'boss' : undefined,
-  onStage = !from && ACTS[Number(query.get('act')) - 1] ? ACTS[Number(query.get('act')) - 1] : 'act1',
+const asked = query.get('from');
+let from = asked === 'nezha' || asked === 'erlang' ? 'boss' : undefined,
+  onStage = asked === 'erlang' ? 'act2' : !from && ACTS[Number(query.get('act')) - 1] ? ACTS[Number(query.get('act')) - 1] : 'act1',
   level = levels[onStage],
   mapSource = maps[onStage];
 /** How many copies a tuft of hair makes; if the address says, that many are kept whatever it costs. */
@@ -256,6 +259,16 @@ nezha.scale(1.25);
 nezha.layer(1, 'calm', 0);
 nezha.layer(2, 'held', 0);
 cast.addChild(nezha.node);
+// Erlang, the hawk he becomes, and his hound wait out of sight too.
+const [erlang, hawk, hound] = [['erlang', 18], ['hawk', 11], ['hound', 15]].map(([name, bones]) => {
+  const puppet = createPuppet(puppetOf(name), scope);
+  puppet.bones = bones;
+  puppet.node.visible = false;
+  cast.addChild(puppet.node);
+  return puppet;
+});
+hawk.scale(1.5);
+hound.scale(1.3);
 const ringShown = flights.addChild(scope.use(new Bitmap(art.ring)));
 ringShown.scaleX = ringShown.scaleY = (BOSS.ring.radius * 2.2) / ringShown.naturalWidth;
 ringShown.anchorOffsetX = ringShown.naturalWidth / 2;
@@ -340,7 +353,10 @@ function showCount() {
   $('hairs').classList.toggle('is-ready', tuftReady(act));
   document.querySelector('.pads').classList.toggle('has-tuft', tuftReady(act));
   $('boss').hidden = !(act.boss && present(act.boss));
-  if (act.boss) $('boss-health').style.width = `${(act.boss.health / BOSS.health) * 100}%`;
+  if (act.boss) {
+    $('boss-name').textContent = words.bosses[act.boss.kind].name;
+    $('boss-health').style.width = `${(act.boss.health / (act.boss.kind === 'erlang' ? ERLANG : BOSS).health) * 100}%`;
+  }
 }
 let noticeUntil = 0;
 function notice(text) {
@@ -419,7 +435,7 @@ function happen(events) {
       burst(sparks, event.at.x, event.at.y, event.ring ? 30 : 14);
       sound.play(event.ring ? 'smallGong' : 'clap', { volume: 0.8, rate: 1.5, pan: panOf(event.at.x) });
       freeze = Math.max(freeze, event.ring ? 0.08 : 0.04);
-    } else if (type.startsWith('boss') || type.startsWith('ring') || type === 'gate-open') (told(event), (counted = true));
+    } else if (type.startsWith('boss') || type.startsWith('ring') || type.startsWith('hound') || type === 'gate-open') (told(event), (counted = true));
     else if (type === 'hairs-full') (notice(WORDS[lang].tuft), sound.play('smallGong', { volume: 0.6, rate: 1.5 }), (counted = true));
     else if (type === 'conjure') (sound.play('whirl', { volume: 0.8, rate: 1.3, pan }), (counted = true));
     else if (type === 'clones') {
@@ -469,12 +485,20 @@ function happen(events) {
   if (counted) (showCombo(events.some(event => event.type === 'met')), showCount());
 }
 
-/** What Nezha does, as it is heard and felt. */
+/** What whoever bars the gate does, as it is heard and felt. */
 function told(event) {
   const boss = act.boss,
     pan = panOf(boss.x),
+    words = WORDS[lang].bosses[boss.kind],
     { type, move } = event;
-  if (type === 'boss-enter') (notice(WORDS[lang].enter), sound.play('gong', { volume: 1, rate: 0.7 }));
+  if (type === 'boss-enter') (notice(words.enter), sound.play('gong', { volume: 1, rate: 0.7 }));
+  // Erlang changes his shape in a puff of smoke; he lands from a leap with his whole weight; and his hound is
+  // heard before it is seen to run.
+  else if (type === 'boss-change') (burst(dust, boss.x, boss.y - boss.rise - 70, 36), burst(sparks, boss.x, boss.y - boss.rise - 70, 16), sound.play('whirl', { volume: 0.8, rate: event.form === 'hawk' ? 1.6 : 1, pan }));
+  else if (type === 'boss-land') (burst(dust, boss.x, boss.y, 26), sound.play('drum', { volume: 1, rate: 0.5, pan }), camera.shake({ trauma: 0.4 + boss.size * 0.2 }), (freeze = Math.max(freeze, 0.05)));
+  else if (type === 'hound-windup') (sound.play('tap', { volume: 0.9, rate: 0.38, pan: panOf(event.hound.x) }), sound.play('tap', { volume: 0.7, rate: 0.44, pan: panOf(event.hound.x) }));
+  else if (type === 'hound-run') sound.play('swish', { volume: 0.6, rate: 0.7, pan: panOf(event.hound.x) });
+  else if (type === 'hound-yelp') sound.play('clap', { volume: 0.7, rate: 1.9, pan: panOf(event.hound.x) });
   else if (type === 'boss-ready' || type === 'boss-halt') (sound.play('drum', { volume: 0.9, rate: 0.6, pan }), camera.shake({ trauma: 0.3 }), burst(dust, boss.x, boss.y, 14));
   else if (type === 'boss-windup') sound.play(move === 'charge' ? 'whirl' : 'tap', { volume: 0.8, rate: move === 'charge' ? 0.55 : move === 'ring' ? 1.5 : 0.5, pan });
   else if (type === 'boss-strike') (sound.play(move === 'charge' ? 'whirl' : 'swish', { volume: 0.8, rate: move === 'sweep' ? 0.8 : 1.2, pan }), move === 'charge' && camera.shake({ trauma: 0.4 }));
@@ -493,8 +517,8 @@ function told(event) {
     camera.zoomTo(last ? 1.12 : 1.08, 0.08);
     zoomBack = last ? 0.7 : 0.4;
     input.gamepads?.rumble(0, { duration: 400, weak: 1, strong: 1 });
-    if (!last) notice(WORDS[lang].phases[event.phase]);
-  } else if (type === 'gate-open') (notice(WORDS[lang].opened), sound.play('smallGong', { volume: 0.7, rate: 1.1 }));
+    if (!last) notice(words.phases[event.phase]);
+  } else if (type === 'gate-open') (notice(words.opened), sound.play('smallGong', { volume: 0.7, rate: 1.1 }));
 }
 
 /** Whether something at `x` is near enough to what the camera shows to be worth moving. */
@@ -572,11 +596,44 @@ function update(seconds) {
     if (inView(clone.x, centre)) moving.push(puppet);
   }
 
+  /** So many a second, as how many for this frame, whatever the frame's length. */
+  const some = rate => Math.floor(rate * dt) + (Math.random() < (rate * dt) % 1 ? 1 : 0);
   // Nezha: what he is doing, with his rage and the ring in his hand each shown or put away on a track of its own.
   const boss = act.boss,
-    here = !!boss && present(boss);
+    met = !!boss && present(boss),
+    here = met && boss.kind === 'nezha';
   nezha.node.visible = here;
   ringShown.visible = here && !!boss.ring;
+  // Erlang: himself or the hawk, whichever he is; grown as he has grown; and his hound when it shows itself.
+  const god = met && boss.kind === 'erlang';
+  erlang.node.visible = god && boss.form === 'man';
+  hawk.node.visible = god && boss.form === 'hawk';
+  hound.node.visible = false;
+  if (god) {
+    const shown = erlangAnimation(boss),
+      puppet = boss.form === 'man' ? erlang : hawk;
+    // He is drawn a soldier's size, and stands a third taller; grown, as much again as the rules say.
+    erlang.scale(1.3 * boss.size);
+    puppet.play(shown.name, { loop: shown.loop, key: shown.key, mix: boss.state === 'attack' ? 0.03 : 0.1 });
+    puppet.face(boss.facing);
+    puppet.node.x = boss.x;
+    puppet.node.y = boss.y - boss.rise;
+    puppet.node.alpha = boss.state === 'yield' ? Math.max(0, Math.min(1, (ERLANG.yield - boss.time) / 0.5)) : 1;
+    puppet.speed(held);
+    moving.push(puppet);
+    const running = houndAnimation(boss.hound);
+    if (running) {
+      hound.node.visible = true;
+      hound.play(running.name, { loop: running.loop, key: running.key, mix: 0.05 });
+      hound.face(boss.hound.facing);
+      hound.node.x = boss.hound.x;
+      hound.node.y = boss.hound.y;
+      hound.speed(held);
+      moving.push(hound);
+    }
+    // The waves his landing sends along the ground are dust thrown up, with sparks in it.
+    if (!still) for (const wave of boss.waves) (burst(dust, wave.x, boss.y - 6, some(150)), burst(sparks, wave.x, boss.y - 18, some(70)));
+  }
   if (here) {
     const shown = bossAnimation(boss);
     nezha.play(shown.name, { loop: shown.loop, key: shown.key, mix: boss.state === 'attack' ? 0.03 : 0.1 });
@@ -595,9 +652,7 @@ function update(seconds) {
     }
     if (!still) {
       // His wheels burn once he is angered, and harder as he rides them; the ground burns where they went.
-      // `some` turns so many a second into how many for this frame, whatever the frame's length.
-      const riding = boss.state === 'attack' && boss.move === 'charge',
-        some = rate => Math.floor(rate * dt) + (Math.random() < (rate * dt) % 1 ? 1 : 0);
+      const riding = boss.state === 'attack' && boss.move === 'charge';
       if (boss.phase === 2 || riding) burst(flames, boss.x - boss.facing * 8, boss.y - boss.rise - 10, some(riding ? 240 : 50));
       for (const fire of boss.fires) {
         const span = Math.abs(fire.to - fire.from);
@@ -780,8 +835,9 @@ function raise(name, where) {
 const [openingAct, openingFrom] = [onStage, from];
 start.addEventListener('click', () => raise(openingAct, openingFrom));
 startBoss.addEventListener('click', () => raise('act1', 'boss'));
-$('start-act2').disabled = false;
+$('start-act2').disabled = $('start-erlang').disabled = false;
 $('start-act2').addEventListener('click', () => raise('act2'));
+$('start-erlang').addEventListener('click', () => raise('act2', 'boss'));
 
 // What a check reads; the play does not need it.
 globalThis.__lantern = {
@@ -796,7 +852,7 @@ globalThis.__lantern = {
   },
   backend: game.backend,
   camera: () => camera.snapshot(),
-  begin: where => (where === 'nezha' ? startBoss : where === 'act2' ? $('start-act2') : start).click(),
+  begin: where => (where === 'nezha' ? startBoss : where === 'act2' ? $('start-act2') : where === 'erlang' ? $('start-erlang') : start).click(),
   get stage() {
     return onStage;
   },
