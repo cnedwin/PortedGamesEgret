@@ -159,6 +159,10 @@ body {
 .tally dt { letter-spacing: 0.08em; }
 .tally dd { margin: 0; color: var(--pale-gold); font-weight: 700; text-align: right; font-variant-numeric: tabular-nums; }
 .gong.small { width: 4.4em; height: 4.4em; font-size: 1.2em; }
+/* When the last curtain has fallen: the seals of all three acts, in one line. */
+.finale { margin: 0; color: var(--pale-gold); font-weight: 700; letter-spacing: 0.1em; }
+.finale[hidden] { display: none; }
+:root[lang='en'] .finale { letter-spacing: 0.02em; }
 .gongs { display: flex; gap: 1.6em; }
 .gongs [hidden] { display: none; }
 :root[lang='en'] .gong.small { font-size: 0.95em; width: 5.4em; height: 5.4em; letter-spacing: 0.02em; }

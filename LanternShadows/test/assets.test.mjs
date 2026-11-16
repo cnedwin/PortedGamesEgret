@@ -8,6 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import { BOSS } from '../src/rules/boss.mjs';
 import { ERLANG } from '../src/rules/erlang.mjs';
+import { LAOZI } from '../src/rules/laozi.mjs';
 import { FOES } from '../src/rules/foes.mjs';
 import { ATTACKS, TUNE } from '../src/rules/hero.mjs';
 import { skeletonBones, skeletonOf, timelines } from '../tools/author.mjs';
@@ -21,6 +22,7 @@ import * as erlangPuppet from '../tools/puppets/erlang.mjs';
 import * as fanner from '../tools/puppets/fanner.mjs';
 import * as hawk from '../tools/puppets/hawk.mjs';
 import * as hound from '../tools/puppets/hound.mjs';
+import * as laoziPuppet from '../tools/puppets/laozi.mjs';
 import * as guard from '../tools/puppets/guard.mjs';
 import * as nezha from '../tools/puppets/nezha.mjs';
 import * as spearman from '../tools/puppets/spearman.mjs';
@@ -29,7 +31,7 @@ import { SCENERY } from '../tools/scenery.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'),
   read = file => fs.readFileSync(path.join(ROOT, file)),
-  PUPPETS = { wukong, dummy, spearman, archer, nezha, guard, crane, erlang: erlangPuppet, hawk, hound, fanner, alchemist };
+  PUPPETS = { wukong, dummy, spearman, archer, nezha, guard, crane, erlang: erlangPuppet, hawk, hound, fanner, alchemist, laozi: laoziPuppet };
 
 test('each puppet is put together soundly', () => {
   for (const [name, puppet] of Object.entries(PUPPETS)) {
@@ -226,6 +228,14 @@ test('Erlang, the hawk he becomes and his hound have a pose for everything the r
   for (const needed of ['run', 'crouch', 'yelp']) assert.ok(hound.animations[needed], `hound: ${needed}`);
   assert.ok(hound.animations.crouch.seconds <= ERLANG.hound.windup);
   assert.equal(hound.animations.yelp.seconds, ERLANG.hound.yelp);
+});
+
+test('Laozi has a pose for everything the rules have him do, and the staff can be put away', () => {
+  for (const needed of ['idle', 'walk', 'windup', 'attack', 'roar', 'stun', 'down']) assert.ok(laoziPuppet.animations[needed], `laozi: ${needed}`);
+  for (const move of ['whisk', 'snare', 'fan']) assert.ok(laoziPuppet.animations.windup.seconds <= LAOZI[move].windup, move);
+  assert.equal(laoziPuppet.animations.attack.seconds, LAOZI.whisk.seconds);
+  assert.equal(laoziPuppet.animations.roar.seconds, LAOZI.roar);
+  assert.ok(wukong.animations.bare.bones.staff.scale.every(([, size]) => size < 0.05) && wukong.animations.held.bones.staff.scale.every(([, size]) => size === 1));
 });
 
 test('the third level on disk is the one its layout describes', async () => {

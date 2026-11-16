@@ -1,0 +1,37 @@
+laozi.png
+size: 1023,234
+filter: Linear,Linear
+repeat: none
+pma: false
+weapon
+bounds: 2,2,75,228
+head
+bounds: 79,2,87,198
+legF1
+bounds: 168,2,57,120
+legB1
+bounds: 227,2,54,120
+torso
+bounds: 283,2,93,111
+legF2
+bounds: 378,2,45,105
+legB2
+bounds: 425,2,39,105
+skirt
+bounds: 466,2,90,99
+armF1
+bounds: 558,2,51,87
+armB1
+bounds: 611,2,51,84
+armB2
+bounds: 664,2,48,78
+armF2
+bounds: 714,2,60,66
+plume1
+bounds: 776,2,42,63
+plume2
+bounds: 820,2,51,48
+footB
+bounds: 873,2,72,42
+footF
+bounds: 947,2,72,42

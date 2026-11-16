@@ -312,6 +312,15 @@ export const vent = {
   svg: leather({ shape: poly([[2, 16], [62, 16], [56, 4], [8, 4]]), fill: DYE.black, opacity: 0.95, holes: Array.from({ length: 6 }, (_, i) => slit([13 + i * 7.6, 7], [12 + i * 7.6, 14], 1.3)), over: `<path d="M8 4H56" stroke="${DYE.gold}" stroke-width="1.6"/>` })
 };
 
+/** His staff, standing where it was flung: gold at either end. It stands on the bottom edge of the picture. */
+export const staff = {
+  file: 'staff.png',
+  width: 14,
+  height: 124,
+  scale: 2,
+  svg: leather({ shape: poly([[5.4, 4], [8.6, 4], [8.6, 124], [5.4, 124]]), fill: DYE.crimson, opacity: 0.95, edge: 1 }) + leather({ shape: poly([[4.4, 2], [9.6, 2], [9.6, 18], [4.4, 18]]), fill: DYE.gold, holes: [slit([7, 5], [7, 15], 0.6)], edge: 0.9 }) + leather({ shape: poly([[4.4, 106], [9.6, 106], [9.6, 122], [4.4, 122]]), fill: DYE.gold, edge: 0.9 })
+};
+
 /** The way out of the furnace room: a doorway under the palace's name. */
 export const door = {
   file: 'door.png',
@@ -346,4 +355,4 @@ export const palace = {
   })()
 };
 
-export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant, ring, far2, tree, peach, moongate, orchard, far3, furnace, pill, vent, door, palace];
+export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant, ring, far2, tree, peach, moongate, orchard, far3, furnace, pill, vent, door, palace, staff];

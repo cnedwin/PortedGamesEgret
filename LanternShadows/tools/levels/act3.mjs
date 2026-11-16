@@ -1,13 +1,13 @@
-// Act three: the Tushita Palace, where Laozi refines his elixir. A hundred and four cells long and twelve high; the
+// Act three: the Tushita Palace, where Laozi refines his elixir. A hundred and twenty-eight cells long and twelve high; the
 // floor is the bottom three rows. Left to right: the first grate that breathes fire, a furnace to knock over onto
 // a boy with a fan, galleries with an alchemist on them, a run of grates, a raised floor held by the household,
-// and the last stretch to the door. Peaches are few here.
+// the last stretch, and the court before the door, where Laozi himself is waiting. Peaches are few here.
 import { grid } from '../level.mjs';
 
 export const title = 'Act three: the Tushita Palace';
 export const tiles = 'palace';
-export const level = grid(104, 12)
-  .fill('X', 0, 9, 104, 3)
+export const level = grid(128, 12)
+  .fill('X', 0, 9, 128, 3)
   // The way in: one grate to learn the fire's turn on.
   .put('S', 3, 8)
   .put('v', 10, 8)
@@ -44,4 +44,10 @@ export const level = grid(104, 12)
   .fill('-', 89, 6, 4, 1)
   .put('a', 91, 5)
   .put('c', 95, 8)
-  .put('G', 99, 8);
+  .hang('o', 98, 5)
+  // The court before the door, with two grates in its floor.
+  .put('c', 104, 8)
+  .put('v', 109, 8)
+  .put('v', 119, 8)
+  .put('L', 115, 8)
+  .put('G', 123, 8);

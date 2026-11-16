@@ -3,6 +3,7 @@
 // what happened.
 import * as nezha from './boss.mjs';
 import * as erlang from './erlang.mjs';
+import * as laozi from './laozi.mjs';
 import { HAIRS, createClones, out, stepClones } from './clones.mjs';
 import { FOES, createFoe, foeBox, hitFoe, standing, stepFoe } from './foes.mjs';
 import { ATTACKS, TUNE, bodyOf, canBeHurt, conjure, createHero, hurtHero, reviveHero, stepHero } from './hero.mjs';
@@ -17,7 +18,7 @@ export const POST_ROOM = 58;
 
 // Whoever bars the gate is one of two, and each has his own rules under the same names.
 const { present, ringBox } = nezha,
-  way = boss => (boss.kind === 'erlang' ? erlang : nezha),
+  way = boss => ({ erlang, laozi })[boss.kind] ?? nezha,
   bossBox = boss => way(boss).bossBox(boss),
   bossReach = boss => way(boss).bossReach(boss),
   hitBoss = (boss, attack) => way(boss).hitBoss(boss, attack),
@@ -60,11 +61,11 @@ export function createAct(level, { from, clones = HAIRS.count } = {}) {
   const of = type => level.things.filter(thing => thing.type === type);
   const [spawn] = of('spawn'),
     [gate] = of('gate'),
-    [lair] = [...of('boss'), ...of('erlang')],
+    [lair] = [...of('boss'), ...of('erlang'), ...of('laozi')],
     checkpoints = of('checkpoint').map(thing => ({ x: thing.x, y: thing.y, reached: false }));
   // The court runs from the last pennant before him to the end of the level.
   const door = lair && checkpoints.findLast(point => point.x < lair.x),
-    boss = lair ? (lair.type === 'erlang' ? erlang : nezha).createBoss(lair.x, lair.y, { left: (door?.x ?? lair.x - 500) - COURT.behind, right: level.width }) : null,
+    boss = lair ? ({ erlang, laozi }[lair.type] ?? nezha).createBoss(lair.x, lair.y, { left: (door?.x ?? lair.x - 500) - COURT.behind, right: level.width }) : null,
     skip = from === 'boss' && boss && door,
     start = skip ? door : spawn;
   if (skip) for (const point of checkpoints) point.reached = point.x <= door.x;
@@ -81,6 +82,8 @@ export function createAct(level, { from, clones = HAIRS.count } = {}) {
     vents: of('vent').map((thing, index) => ({ x: thing.x, y: thing.y, offset: index * 0.9 })),
     furnaces: of('furnace').map((thing, index) => ({ index, x: thing.x, y: thing.y, state: 'stands', side: 0, life: 0, wait: 0 })),
     pills: [],
+    /** Whether he has come out of the furnace with eyes of fire, and strikes whoever bars the gate twice as hard. */
+    keen: false,
     gate: gate ? { x: gate.x, y: gate.y, barred: false } : null,
     boss,
     from: skip ? 'boss' : undefined,
@@ -231,11 +234,14 @@ export function stepAct(act, input, dt) {
       const rect = bossBox(boss);
       if (open(boss) && overlaps(box, rect)) {
         landed++;
-        events.push({ type: 'met', attack, boss, side: side(boss), at: where(boss, rect) }, ...hitBoss(boss, attack));
+        events.push({ type: 'met', attack, boss, side: side(boss), at: where(boss, rect) }, ...hitBoss(boss, act.keen ? { ...attack, power: attack.power * 2 } : attack));
       }
       // The ring can be knocked back the way it came, and then it is his to mind.
       const ring = boss.ring;
-      if (ring && !ring.struck && overlaps(box, ringBox(ring))) {
+      // Laozi's snare takes the weapon that strikes it; Nezha's ring is knocked back the way it came.
+      if (boss.kind === 'laozi') {
+        if (ring && !hero.bare && overlaps(box, ringBox(ring))) ((hero.bare = true), events.push(...laozi.takeStaff(boss, hero)));
+      } else if (ring && !ring.struck && overlaps(box, ringBox(ring))) {
         Object.assign(ring, { struck: true, back: true });
         events.push({ type: 'deflect', at: { x: ring.x, y: ring.y }, attack, ring });
       }
@@ -384,11 +390,20 @@ export function stepAct(act, input, dt) {
       // His rage throws back whoever stands near, without hurting him.
       if (event.type === 'boss-phase' && hero.state !== 'down' && Math.abs(hero.x - boss.x) < 240) Object.assign(hero, { state: 'move', vx: (hero.x >= boss.x ? 1 : -1) * 560, vy: -320, grounded: false, queued: false, grace: 0 });
       else if (event.type === 'boss-gone') (events.push({ type: 'gate-open' }), (act.openAt = act.time + GATE_SECONDS));
+      else if (event.type === 'arrow') act.arrows.push(event.arrow);
+      else if (event.type === 'furnace-broken') act.keen = true;
     }
     const body = bodyOf(hero),
       blow = bossReach(boss);
     if (blow && overlaps(blow, body)) wound(boss.x);
-    if (boss.kind === 'erlang') for (const hurt of erlang.bossHazards(boss)) if (overlaps(hurt.box, body)) wound(hurt.from);
+    for (const hurt of way(boss).bossHazards?.(boss) ?? []) if (overlaps(hurt.box, body)) wound(hurt.from);
+    // A staff the snare took lies where it was flung until he walks to it.
+    const lost = boss.staff;
+    if (lost && lost.wait <= 0 && hero.bare && hero.state !== 'down' && Math.abs(hero.x - lost.x) < laozi.LAOZI.staff.reach && Math.abs(hero.y - lost.y) < 60) {
+      hero.bare = false;
+      boss.staff = null;
+      events.push({ type: 'staff-back' });
+    }
     if (boss.ring && overlaps(ringBox(boss.ring), body)) wound(boss.ring.x - boss.ring.vx);
     // Burning ground hurts whoever stands on it; a cloud is clear of it.
     for (const fire of boss.fires) if (hero.grounded && hero.y >= boss.y - 1 && hero.x > Math.min(fire.from, fire.to) - 10 && hero.x < Math.max(fire.from, fire.to) + 10) wound((fire.from + fire.to) / 2);
@@ -425,4 +440,5 @@ export function stepAct(act, input, dt) {
 export { ATTACKS, FOES, moveBody };
 export { BOSS } from './boss.mjs';
 export { ERLANG } from './erlang.mjs';
+export { LAOZI } from './laozi.mjs';
 export { HAIRS } from './clones.mjs';

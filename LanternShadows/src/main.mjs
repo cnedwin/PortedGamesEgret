@@ -5,6 +5,7 @@
 //   rules/foes.mjs   the soldiers of heaven
 //   rules/boss.mjs   Nezha, who bars the gate
 //   rules/erlang.mjs Erlang and his hound, who hold the way out of the orchard
+//   rules/laozi.mjs  Laozi, his snare and his furnace
 //   rules/clones.mjs the hairs he blows into copies of himself
 //   rules/level.mjs  the ground, read from the level's Tiled map
 //   puppets.mjs      Spine skeletons, loaded as the engine's manifest lists them
@@ -27,6 +28,7 @@ import { createPuppet, loadPuppets } from './puppets.mjs';
 import { FURNACE, createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
 import { BOSS, bossAnimation, present } from './rules/boss.mjs';
 import { ERLANG, bossAnimation as erlangAnimation, houndAnimation } from './rules/erlang.mjs';
+import { LAOZI, bossAnimation as laoziAnimation, furnaceWalls } from './rules/laozi.mjs';
 import { HAIRS, cloneAnimation, out } from './rules/clones.mjs';
 import { FOES, foeAnimation } from './rules/foes.mjs';
 import { ATTACKS, TUNE, animationOf } from './rules/hero.mjs';
@@ -47,8 +49,8 @@ const KEY_HINTS = {
   en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll, through a spear'], ['I', 'clones'], ['P', 'pause']]
 };
 const WORDS = {
-  zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园', act3: '第三幕　兜率宫' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, bosses: { nezha: { name: '哪吒', enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了' }, erlang: { name: '二郎神', enter: '二郎真君提三尖两刃刀到，哮天犬随后', phases: ['', '他要变化了：变成鹰时把他打下来', '法天象地！他落地的震波要跳过去'], opened: '二郎神收兵，月洞门开了' } }, soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
-  en: { titles: { act1: 'Act one: the Southern Gate', act2: 'Act two: the Peach Orchard', act3: 'Act three: the Tushita Palace' }, curtain: title => `${title}. Curtain`, tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, bosses: { nezha: { name: 'Nezha', enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open' }, erlang: { name: 'Erlang', enter: 'Erlang comes with his three-pointed glaive, and his hound behind him', phases: ['', 'He changes his shape: strike the hawk out of the air', 'He grows to the size of the sky! Jump the wave when he lands'], opened: 'Erlang calls off the fight, and the moon gate stands open' } }, soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
+  zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园', act3: '第三幕　兜率宫' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, bosses: { nezha: { name: '哪吒', enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了' }, erlang: { name: '二郎神', enter: '二郎真君提三尖两刃刀到，哮天犬随后', phases: ['', '他要变化了：变成鹰时把他打下来', '法天象地！他落地的震波要跳过去'], opened: '二郎神收兵，月洞门开了' }, laozi: { name: '太上老君', enter: '太上老君拂尘一摆，金刚琢在手', phases: ['', '他取出扇子：三道火舌，一道一道跳过去'], opened: '老君罢手，兜率宫的门开了' } }, taken: '金刚琢套走了金箍棒！别打那个圈，去另一头把棒捡回来', regained: '金箍棒回来了', shut: n => `八卦炉合上了：撑过 ${n} 秒`, broken: '破炉而出，炼成火眼金睛！出手加倍', finale: '全剧终', unplayed: '未演', places: { act1: '南天门', act2: '蟠桃园', act3: '兜率宫' }, soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
+  en: { titles: { act1: 'Act one: the Southern Gate', act2: 'Act two: the Peach Orchard', act3: 'Act three: the Tushita Palace' }, curtain: title => `${title}. Curtain`, tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, bosses: { nezha: { name: 'Nezha', enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open' }, erlang: { name: 'Erlang', enter: 'Erlang comes with his three-pointed glaive, and his hound behind him', phases: ['', 'He changes his shape: strike the hawk out of the air', 'He grows to the size of the sky! Jump the wave when he lands'], opened: 'Erlang calls off the fight, and the moon gate stands open' }, laozi: { name: 'Laozi', enter: 'Laozi comes with his whisk, and the Diamond Snare in his hand', phases: ['', 'He takes out his fan: three flames, to be jumped one by one'], opened: 'Laozi stays his hand, and the door of the palace stands open' } }, taken: 'The Snare has taken the staff! Do not strike the ring; fetch the staff from the far end', regained: 'The staff is his again', shut: n => `The furnace is shut: last ${n} seconds`, broken: 'Out of the furnace with eyes of fire! Every blow counts double', finale: 'The play is done', unplayed: 'not played', places: { act1: 'The Gate', act2: 'The Orchard', act3: 'The Palace' }, soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
 };
 function speak() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
@@ -106,8 +108,8 @@ const { engine, scope } = game;
 // ---- What is loaded --------------------------------------------------------------------------------------------
 const loadPicture = createPictures(engine, scope),
   asset = path => new URL(`../assets/${path}`, import.meta.url);
-const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring', 'far2', 'tree', 'peach', 'moongate', 'orchard', 'far3', 'furnace', 'pill', 'vent', 'door', 'palace'],
-  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane', 'erlang', 'hawk', 'hound', 'fanner', 'alchemist'],
+const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring', 'far2', 'tree', 'peach', 'moongate', 'orchard', 'far3', 'furnace', 'pill', 'vent', 'door', 'palace', 'staff'],
+  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane', 'erlang', 'hawk', 'hound', 'fanner', 'alchemist', 'laozi'],
   /** The acts, in the order they are played. */
   ACTS = ['act1', 'act2', 'act3'];
 // The line under the gong fills as the files come in: the pictures, three files for each puppet, the list of
@@ -132,8 +134,8 @@ try {
 const levels = Object.fromEntries(ACTS.map(name => [name, readLevel(maps[name])]));
 /** Which act is on the stage, and where it begins: at its beginning, or at the court before the gate. */
 const asked = query.get('from');
-let from = asked === 'nezha' || asked === 'erlang' ? 'boss' : undefined,
-  onStage = asked === 'erlang' ? 'act2' : !from && ACTS[Number(query.get('act')) - 1] ? ACTS[Number(query.get('act')) - 1] : 'act1',
+let from = asked === 'nezha' || asked === 'erlang' || asked === 'laozi' ? 'boss' : undefined,
+  onStage = asked === 'erlang' ? 'act2' : asked === 'laozi' ? 'act3' : !from && ACTS[Number(query.get('act')) - 1] ? ACTS[Number(query.get('act')) - 1] : 'act1',
   level = levels[onStage],
   mapSource = maps[onStage];
 /** How many copies a tuft of hair makes; if the address says, that many are kept whatever it costs. */
@@ -176,6 +178,11 @@ cast.blendMode = flights.blendMode = shadowBlend;
 const flicker = engine.stage.addChild(scope.use(new Sprite()));
 flicker.graphics.beginFill(0x2a1208).drawRect(0, 0, STAGE.width, STAGE.height).endFill();
 flicker.alpha = 0;
+// And a white one, for the moment he breaks out of the furnace.
+const glare = engine.stage.addChild(scope.use(new Sprite()));
+glare.graphics.beginFill(0xfff6d2).drawRect(0, 0, STAGE.width, STAGE.height).endFill();
+glare.alpha = 0;
+let flash = 0;
 picture(engine.stage, art.frame, 0, 0, STAGE.width);
 
 // ---- The cast --------------------------------------------------------------------------------------------------
@@ -279,6 +286,17 @@ const [erlang, hawk, hound] = [['erlang', 18], ['hawk', 11], ['hound', 15]].map(
 });
 hawk.scale(1.5);
 hound.scale(1.3);
+// Laozi, and the staff his snare may take, standing where it was flung.
+const sage = createPuppet(puppetOf('laozi'), scope);
+sage.bones = 18;
+sage.scale(1.2);
+sage.node.visible = false;
+cast.addChild(sage.node);
+const staffShown = flights.addChild(scope.use(new Bitmap(art.staff)));
+staffShown.scaleX = staffShown.scaleY = 14 / staffShown.naturalWidth;
+staffShown.anchorOffsetX = staffShown.naturalWidth / 2;
+staffShown.anchorOffsetY = staffShown.naturalHeight;
+staffShown.visible = false;
 const ringShown = flights.addChild(scope.use(new Bitmap(art.ring)));
 ringShown.scaleX = ringShown.scaleY = (BOSS.ring.radius * 2.2) / ringShown.naturalWidth;
 ringShown.anchorOffsetX = ringShown.naturalWidth / 2;
@@ -303,6 +321,7 @@ const wukong = createPuppet(puppetOf('wukong'), scope);
 wukong.bones = 25;
 cast.addChild(wukong.node);
 wukong.play('idle', { loop: true });
+wukong.layer(1, 'held', 0);
 /** Arrows in the air, each with the picture that shows it; and the alchemists' pills likewise. */
 const arrows = new Map(),
   pills = new Map();
@@ -366,7 +385,7 @@ function showCount() {
   $('boss').hidden = !(act.boss && present(act.boss));
   if (act.boss) {
     $('boss-name').textContent = words.bosses[act.boss.kind].name;
-    $('boss-health').style.width = `${(act.boss.health / (act.boss.kind === 'erlang' ? ERLANG : BOSS).health) * 100}%`;
+    $('boss-health').style.width = `${(act.boss.health / ({ erlang: ERLANG, laozi: LAOZI }[act.boss.kind] ?? BOSS).health) * 100}%`;
   }
 }
 let noticeUntil = 0;
@@ -375,6 +394,13 @@ function notice(text) {
   $('notice').hidden = false;
   noticeUntil = clock + 2.6;
 }
+/** The seal each act was last given. */
+let ranks = {};
+try {
+  ranks = JSON.parse(localStorage.getItem('lantern-shadows-ranks')) ?? {};
+} catch {
+  ranks = {};
+}
 function showResult() {
   const result = act.result,
     words = WORDS[lang];
@@ -382,6 +408,15 @@ function showResult() {
   if (!result) return;
   $('result-title').textContent = words.curtain(words.titles[onStage]);
   $('next').hidden = !ACTS[ACTS.indexOf(onStage) + 1];
+  // The seal of each act is kept, and when the last curtain falls all three are told together.
+  ranks[onStage] = result.rank;
+  try {
+    localStorage.setItem('lantern-shadows-ranks', JSON.stringify(ranks));
+  } catch {
+    // Without anywhere to keep them they last as long as the page does.
+  }
+  $('finale').hidden = !$('next').hidden ? true : false;
+  $('finale').textContent = `${words.finale}　${ACTS.map(name => `${words.places[name]} ${ranks[name] ?? words.unplayed}`).join('　')}`;
   $('rank').textContent = result.rank;
   $('tally').innerHTML = [
     [words.time, words.seconds(Math.round(result.time))],
@@ -446,7 +481,7 @@ function happen(events) {
       burst(sparks, event.at.x, event.at.y, event.ring ? 30 : 14);
       sound.play(event.ring ? 'smallGong' : 'clap', { volume: 0.8, rate: 1.5, pan: panOf(event.at.x) });
       freeze = Math.max(freeze, event.ring ? 0.08 : 0.04);
-    } else if (type.startsWith('boss') || type.startsWith('ring') || type.startsWith('hound') || type === 'gate-open') (told(event), (counted = true));
+    } else if (type.startsWith('boss') || type.startsWith('ring') || type.startsWith('hound') || type.startsWith('staff') || type.startsWith('furnace-') && type !== 'furnace-tipped' || type.startsWith('drop') || type === 'gate-open') (told(event), (counted = true));
     else if (type === 'hairs-full') (notice(WORDS[lang].tuft), sound.play('smallGong', { volume: 0.6, rate: 1.5 }), (counted = true));
     else if (type === 'conjure') (sound.play('whirl', { volume: 0.8, rate: 1.3, pan }), (counted = true));
     else if (type === 'clones') {
@@ -490,7 +525,7 @@ function happen(events) {
     else if (type === 'peach-struck') (burst(dust, event.at.x, event.at.y, 5), sound.play('tap', { volume: 0.5, rate: 1.6, pan: panOf(event.at.x) }));
     else if (type === 'peach') (burst(sparks, event.at.x, event.at.y, 14), sound.play('smallGong', { volume: 0.5, rate: 1.9, pan }), (counted = true));
     else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
-    else if (type === 'foe-strike' || type === 'arrow') sound.play('swish', { volume: 0.55, rate: type === 'arrow' ? 1.7 : 1.3, pan: panOf(event.foe.x) });
+    else if (type === 'foe-strike' || type === 'arrow') sound.play('swish', { volume: 0.55, rate: type === 'arrow' ? 1.7 : 1.3, pan: panOf(type === 'arrow' ? event.arrow.x : event.foe.x) });
     else if (type === 'foe-down') (sound.play('drum', { volume: 0.8, rate: 0.7, pan: panOf(event.foe.x) }), (counted = true));
     else if (type === 'hurt') {
       sound.play('drum', { volume: 1, rate: 0.55, pan });
@@ -525,6 +560,29 @@ function told(event) {
   else if (type === 'hound-windup') (sound.play('tap', { volume: 0.9, rate: 0.38, pan: panOf(event.hound.x) }), sound.play('tap', { volume: 0.7, rate: 0.44, pan: panOf(event.hound.x) }));
   else if (type === 'hound-run') sound.play('swish', { volume: 0.6, rate: 0.7, pan: panOf(event.hound.x) });
   else if (type === 'hound-yelp') sound.play('clap', { volume: 0.7, rate: 1.9, pan: panOf(event.hound.x) });
+  // Laozi: the snare carrying off the staff, the staff found again, and the furnace shut and broken out of.
+  else if (type === 'staff-taken') (burst(sparks, event.at.x, event.at.y, 40), sound.play('gong', { volume: 0.8, rate: 1.6 }), camera.shake({ trauma: 0.5 }), (freeze = Math.max(freeze, 0.12)), notice(WORDS[lang].taken));
+  else if (type === 'staff-thrown') sound.play('swish', { volume: 0.7, rate: 0.8, pan });
+  else if (type === 'staff-back') (burst(sparks, act.hero.x, act.hero.y - 70, 26), sound.play('smallGong', { volume: 0.8, rate: 1.3 }), notice(WORDS[lang].regained));
+  else if (type === 'furnace-shut') {
+    sound.play('gong', { volume: 1, rate: 0.5 });
+    sound.play('drum', { volume: 1, rate: 0.45 });
+    camera.shake({ trauma: 1 });
+    freeze = Math.max(freeze, 0.25);
+    notice(WORDS[lang].shut(LAOZI.furnace.seconds));
+  } else if (type === 'drop') sound.play('tap', { volume: 0.4, rate: 1.9, pan: panOf(event.drop.x) });
+  else if (type === 'drop-landed') (burst(flames, event.at.x, event.at.y - 6, 16), burst(dust, event.at.x, event.at.y, 6), sound.play('drum', { volume: 0.5, rate: 1.1, pan: panOf(event.at.x) }));
+  else if (type === 'furnace-broken') {
+    sound.play('gong', { volume: 1, rate: 1 });
+    sound.play('gong', { volume: 0.8, rate: 0.5 });
+    burst(sparks, act.hero.x, act.hero.y - 70, 120);
+    camera.shake({ trauma: 1 });
+    camera.zoomTo(1.12, 0.08);
+    zoomBack = 0.7;
+    freeze = Math.max(freeze, 0.35);
+    flash = 1;
+    notice(WORDS[lang].broken);
+  }
   else if (type === 'boss-ready' || type === 'boss-halt') (sound.play('drum', { volume: 0.9, rate: 0.6, pan }), camera.shake({ trauma: 0.3 }), burst(dust, boss.x, boss.y, 14));
   else if (type === 'boss-windup') sound.play(move === 'charge' ? 'whirl' : 'tap', { volume: 0.8, rate: move === 'charge' ? 0.55 : move === 'ring' ? 1.5 : 0.5, pan });
   else if (type === 'boss-strike') (sound.play(move === 'charge' ? 'whirl' : 'swish', { volume: 0.8, rate: move === 'sweep' ? 0.8 : 1.2, pan }), move === 'charge' && camera.shake({ trauma: 0.4 }));
@@ -630,6 +688,40 @@ function update(seconds) {
     here = met && boss.kind === 'nezha';
   nezha.node.visible = here;
   ringShown.visible = here && !!boss.ring;
+  // Laozi; his snare in the air; the staff it took, in flight and then standing where it fell; and his furnace:
+  // two walls of fire, and what falls between them, shown on the floor before it comes.
+  const old = met && boss.kind === 'laozi';
+  sage.node.visible = old && boss.state !== 'furnace';
+  if (met && boss.kind !== 'nezha') ringShown.visible = !!boss.ring;
+  staffShown.visible = old && !!boss.staff;
+  wukong.layer(1, act.hero.bare ? 'bare' : 'held', 0);
+  if (old) {
+    const shown = laoziAnimation(boss);
+    sage.play(shown.name, { loop: shown.loop, key: shown.key, mix: boss.state === 'attack' ? 0.03 : 0.1 });
+    sage.face(boss.facing);
+    sage.node.x = boss.x;
+    sage.node.y = boss.y - boss.rise;
+    sage.node.alpha = boss.state === 'yield' ? Math.max(0, Math.min(1, (LAOZI.yield - boss.time) / 0.5)) : 1;
+    sage.speed(held);
+    if (sage.node.visible) moving.push(sage);
+    if (boss.ring) ((ringShown.x = boss.ring.x), (ringShown.y = boss.ring.y), (ringShown.rotation = (ringShown.rotation + (still ? 0 : dt * 1100)) % 360));
+    if (boss.staff) {
+      // Flung, it turns end over end along an arc; landed, it stands in the floor.
+      const flown = 1 - Math.max(0, boss.staff.wait) / LAOZI.staff.flight;
+      staffShown.x = boss.staff.from.x + (boss.staff.x - boss.staff.from.x) * flown;
+      staffShown.y = boss.staff.from.y + (boss.staff.y - boss.staff.from.y) * flown - 220 * flown * (1 - flown);
+      staffShown.rotation = flown < 1 ? flown * 720 : 8;
+    }
+    const walls = furnaceWalls(boss);
+    if (walls && !still) {
+      for (const [x, lean] of [[walls.left - 14, 1], [walls.right + 14, -1]]) for (let n = some(520); n > 0; n--) burst(flames, x + lean * Math.random() * 16, boss.y - Math.random() * 430, 1);
+      for (const drop of boss.drops) drop.warn > 0 ? burst(sparks, drop.x + (Math.random() - 0.5) * 30, boss.y - 4, some(60)) : burst(flames, drop.x, drop.y - 20, some(260));
+      const left = Math.ceil(LAOZI.furnace.seconds - boss.time);
+      if (left !== told.left && left > 0 && left < LAOZI.furnace.seconds) ((told.left = left), notice(WORDS[lang].shut(left)));
+    }
+  }
+  // Out of the furnace his eyes burn.
+  if (act.keen && !still) burst(sparks, act.hero.x + act.hero.facing * 10, act.hero.y - 96, some(26));
   // Erlang: himself or the hawk, whichever he is; grown as he has grown; and his hound when it shows itself.
   const god = met && boss.kind === 'erlang';
   erlang.node.visible = god && boss.form === 'man';
@@ -776,7 +868,11 @@ function update(seconds) {
   // from nothing, and the renderer refuses a frame with such a number in it. What is that small is made nothing.
   for (const node of [world, far, drift]) for (const key of ['x', 'y', 'rotation']) if (node[key] !== 0 && Math.abs(node[key]) < 1e-6) node[key] = 0;
   // Two slow waves and a quick one make a flame's unevenness.
-  flicker.alpha = 0.05 + 0.02 * Math.sin(clock * 2.3) + 0.012 * Math.sin(clock * 7.9 + 1) + 0.01 * Math.sin(clock * 23.7);
+  // Shut in the furnace the whole cloth darkens and shudders with the fire; breaking out of it is a white flash.
+  const shutIn = act.boss?.state === 'furnace' ? 0.16 + 0.05 * Math.sin(clock * 11) : 0;
+  flash = Math.max(0, flash - dt * 2.4);
+  flicker.alpha = 0.05 + 0.02 * Math.sin(clock * 2.3) + 0.012 * Math.sin(clock * 7.9 + 1) + 0.01 * Math.sin(clock * 23.7) + shutIn;
+  glare.alpha = flash * 0.85;
 
   if (!$('notice').hidden && clock > noticeUntil) $('notice').hidden = true;
   if (playing && act.state === 'play') {
@@ -907,7 +1003,8 @@ startBoss.addEventListener('click', () => raise('act1', 'boss'));
 $('start-act2').disabled = $('start-erlang').disabled = false;
 $('start-act2').addEventListener('click', () => raise('act2'));
 $('start-erlang').addEventListener('click', () => raise('act2', 'boss'));
-$('start-act3').disabled = false;
+$('start-act3').disabled = $('start-laozi').disabled = false;
+$('start-laozi').addEventListener('click', () => raise('act3', 'boss'));
 $('start-act3').addEventListener('click', () => raise('act3'));
 
 // What a check reads; the play does not need it.
@@ -923,7 +1020,7 @@ globalThis.__lantern = {
   },
   backend: game.backend,
   camera: () => camera.snapshot(),
-  begin: where => (where === 'nezha' ? startBoss : where === 'act2' ? $('start-act2') : where === 'erlang' ? $('start-erlang') : where === 'act3' ? $('start-act3') : start).click(),
+  begin: where => (where === 'nezha' ? startBoss : where === 'act2' ? $('start-act2') : where === 'erlang' ? $('start-erlang') : where === 'act3' ? $('start-act3') : where === 'laozi' ? $('start-laozi') : start).click(),
   get stage() {
     return onStage;
   },
