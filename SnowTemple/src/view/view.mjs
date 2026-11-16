@@ -40,7 +40,7 @@ function lootShape(kind) {
   return b.geometry();
 }
 
-export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false } = {}) {
+export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false, shadowSize = 2048 } = {}) {
   const view = { shake: 0, cine: null, zoom: 1 };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
@@ -49,7 +49,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   scene.addChild(createHemisphereLight3D({ color: 0x4a66a8, groundColor: 0x141a2a, intensity: 0.3 }));
   scene.addChild(createAmbientLight3D({ intensity: 0.04 }));
   const moon = createDirectionalLight3D({ color: 0x8fb0ff, intensity: 0.82, castShadow: true });
-  Object.assign(moon.shadow, { mapSize: 2048, extent: 24, near: 1, far: 90, cascades: 1 });
+  Object.assign(moon.shadow, { mapSize: shadowSize, extent: 24, near: 1, far: 90, cascades: 1 });
   scene.addChild(moon);
   const MOON = [-16, 30, 14];
   view.sunDirection = (() => {

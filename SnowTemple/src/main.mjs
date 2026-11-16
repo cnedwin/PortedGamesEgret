@@ -13,6 +13,7 @@ import { createAtmosphere3D, createWebGL2Renderer3D, createWorld3DHost, createWo
 import { createAudio } from './audio.mjs';
 import { createHud } from './hud.mjs';
 import { DEFAULT_KEYS, createInput } from './input.mjs';
+import { createLessons } from './lessons.mjs';
 import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { loadModels } from './view/models.mjs';
@@ -172,8 +173,15 @@ async function main() {
     view.snap(game);
   }
 
+  const lesson = createLessons();
+  let pendingHint = null;
   function onEvent(e) {
     audio.play(e);
+    const hint = lesson(e, game.hero.counter > 0);
+    if (hint) {
+      if (hud.staged) pendingHint = hint;
+      else hud.note(hint, 1);
+    }
     switch (e.type) {
       case 'cine':
         stage(e.id, e.time);
@@ -246,6 +254,10 @@ async function main() {
       }
       for (const line of pending) if (!line.said && clock >= line.at) (line.said = true), hud.say(line.text, line.who, 2.6);
       if (hud.staged && game.cine <= 0 && !view.cine) hud.stage(false);
+      if (pendingHint && !hud.staged) {
+        hud.note(pendingHint, 1);
+        pendingHint = null;
+      }
     }
     view.update(game, events, mode === 'play' ? dt * slowFor : dt, clock);
     view.mirror?.(renderer, game);

@@ -1,6 +1,6 @@
 // Everything written over the picture: the hero's bars, Lu Qian's, the row of deeds, the bag, the notes,
 // speech and title cards, the settings and the controls for hands on glass.
-import { DEEDS, DEFAULT_KEYS, keyName } from './input.mjs';
+import { DEEDS, DEFAULT_KEYS, keyName, createPointerOwner } from './input.mjs';
 import { GRADES, HERO, LOOT } from './rules/tune.mjs';
 
 // Small line drawings for the deeds, each on a 40 by 40 field.
@@ -42,14 +42,15 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     <div id="veil"></div>
     <div id="title"><div class="name">风雪山神庙</div><div class="seal">水浒　第一回</div><div class="go">点击开始</div><div class="keys"><span class="key"></span><span class="tap">左侧拖动移动　右侧按钮出枪、格挡、闪避</span></div></div>
     <div class="corner"><button type="button" data-do="full">全屏</button><button type="button" data-do="set">设置</button></div>
-    <div class="panel" id="settings"></div>
+    <div class="panel" id="settings" role="dialog" aria-label="设置" tabindex="-1"></div>
     <div id="debug"></div>`;
   const $ = (selector) => root.querySelector(selector);
   const hud = { staged: false };
 
   // ---- the row of deeds, for keys and for thumbs ---------------------------------------------
   const deeds = {},
-    pads = {};
+    pads = {},
+    padOwners = [];
   const order = ['attack', 'guard', 'stars', 'rain', 'dodge', 'glide', 'drink'];
   for (const name of order) {
     const node = el('div', { class: 'deed' + (name === 'rain' ? ' big' : ''), title: DEED_NAMES[name] }, `${icon(name)}<i class="wait"></i><kbd></kbd>${name === 'drink' ? '<em>3</em>' : ''}`);
@@ -61,8 +62,17 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     const node = el('button', { class: 'pad' + (name === 'attack' ? ' main' : ''), type: 'button', 'aria-label': DEED_NAMES[name] }, `${icon(name)}${name === 'drink' ? '<em>3</em>' : ''}`);
     node.style.right = PAD_PLACES[name][0] + 'px';
     node.style.bottom = PAD_PLACES[name][1] + 'px';
-    node.addEventListener('pointerdown', (event) => (event.preventDefault(), node.setPointerCapture(event.pointerId), input.hold(name, true)));
-    for (const type of ['pointerup', 'pointercancel']) node.addEventListener(type, () => input.hold(name, false));
+    const owner = createPointerOwner();
+    padOwners.push(owner);
+    node.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      if (!owner.claim(event.pointerId)) return;
+      node.setPointerCapture(event.pointerId);
+      input.hold(name, true);
+    });
+    for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) node.addEventListener(type, (event) => {
+      if (owner.release(event.pointerId)) input.hold(name, false);
+    });
     $('#pads').append(node);
     pads[name] = node;
   }
@@ -77,8 +87,10 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
   // The stick appears where the thumb comes down.
   const stick = $('#stick'),
     knob = stick.querySelector('i');
+  const stickOwner = createPointerOwner();
   let stickFrom = null;
   stick.addEventListener('pointerdown', (event) => {
+    if (!stickOwner.claim(event.pointerId)) return;
     stick.setPointerCapture(event.pointerId);
     stickFrom = [event.clientX, event.clientY];
     const box = stick.getBoundingClientRect();
@@ -87,7 +99,7 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     stick.classList.add('on');
   });
   stick.addEventListener('pointermove', (event) => {
-    if (!stickFrom) return;
+    if (!stickFrom || !stickOwner.owns(event.pointerId)) return;
     let dx = (event.clientX - stickFrom[0]) / 48,
       dy = (event.clientY - stickFrom[1]) / 48;
     const d = Math.hypot(dx, dy);
@@ -96,14 +108,22 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
     knob.style.setProperty('--y', dy * 34 + 'px');
     input.setStick(d < 0.2 ? 0 : dx, d < 0.2 ? 0 : dy);
   });
-  for (const type of ['pointerup', 'pointercancel'])
-    stick.addEventListener(type, () => {
-      stickFrom = null;
-      stick.classList.remove('on');
-      knob.style.setProperty('--x', '0px');
-      knob.style.setProperty('--y', '0px');
-      input.setStick(0, 0);
-    });
+  const resetStick = () => {
+    stickOwner.reset();
+    stickFrom = null;
+    stick.classList.remove('on');
+    knob.style.setProperty('--x', '0px');
+    knob.style.setProperty('--y', '0px');
+    input.setStick(0, 0);
+  };
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) stick.addEventListener(type, (event) => {
+    if (stickOwner.release(event.pointerId)) resetStick();
+  });
+  input.on('reset', () => {
+    resetStick();
+    for (const owner of padOwners) owner.reset();
+    if (hud.settingsOpen?.()) drawSettings();
+  });
 
   // ---- bag ----------------------------------------------------------------------------------
   const pack = $('#pack');
@@ -202,9 +222,14 @@ export function createHud(root, input, settings, { onSettings, onStart }) {
       });
     } else if (act === 'set') {
       drawSettings();
-      panel.classList.toggle('on');
-    } else if (act === 'close') panel.classList.remove('on');
-    else if (act === 'reload') location.reload();
+      const open = panel.classList.toggle('on');
+      input.setEnabled(!open);
+      // Once settings opens, Space must not activate the toolbar toggle a second time.
+      if (open) panel.focus({ preventScroll: true });
+    } else if (act === 'close') {
+      panel.classList.remove('on');
+      input.setEnabled(true);
+    } else if (act === 'reload') location.reload();
     else if (act === 'defaults') {
       Object.assign(input.keys, DEFAULT_KEYS);
       onSettings(settings);
