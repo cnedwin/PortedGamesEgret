@@ -235,44 +235,8 @@ function buildGrass(scene, rand, density) {
 
 // ---- things that stand on the ground ------------------------------------------------------
 
-function pine(b, x, z, rand, tall = 1) {
-  const y = height(x, z),
-    h = (7 + rand() * 3) * tall,
-    lean = (rand() - 0.5) * 0.5;
-  b.limb([x, y - 0.3, z], [x + lean, y + h * 0.75, z], 0.34 * tall, 0.1, { tint: BARK, sides: 7 });
-  for (let i = 0; i < 5; i++) {
-    const k = i / 5,
-      cy = y + h * (0.3 + k * 0.6),
-      r = (2.6 - k * 1.9) * tall,
-      cx = x + lean * (0.3 + k * 0.65);
-    b.limb([cx, cy, z], [cx, cy + h * 0.24, z], r, 0.05, { tint: shade(NEEDLE, 0.8 + rand() * 0.4), tintB: NEEDLE, sides: 9, caps: false });
-    // Snow sits on every tier.
-    b.limb([cx, cy + h * 0.045, z], [cx, cy + h * 0.2, z], r * 0.8, 0.12, { tint: SNOW, tintB: shade(SNOW, 0.85), sides: 9, caps: false });
-  }
-}
 
-function rock(b, x, z, r, rand) {
-  const y = height(x, z);
-  for (let i = 0; i < 3; i++) {
-    const ox = (rand() - 0.5) * r * 0.9,
-      oz = (rand() - 0.5) * r * 0.9,
-      s = r * (0.55 + rand() * 0.45);
-    b.ball(x + ox, y + s * 0.35, z + oz, s, s * (0.6 + rand() * 0.5), s * (0.8 + rand() * 0.3), { tint: shade(STONE_DARK, 0.7 + rand() * 0.5), sides: 7, rings: 5 });
-    b.ball(x + ox, y + s * 0.78, z + oz, s * 0.78, s * 0.28, s * 0.72, { tint: SNOW, sides: 7, rings: 4 });
-  }
-}
 
-function stack(b, x, z, r, burning) {
-  // A fodder stack: a drum of straw under a thatched cone, snow on its windward side.
-  const straw = burning ? shade(STRAW, 0.35) : STRAW;
-  b.limb([x, 0, z], [x, 1.7, z], r * 0.95, r, { tint: shade(straw, 0.7), tintB: straw, sides: 12 });
-  b.limb([x, 1.7, z], [x, 3.0, z], r * 1.08, 0.15, { tint: straw, tintB: shade(straw, 0.8), sides: 12 });
-  if (!burning) b.limb([x - 0.15, 1.95, z - 0.1], [x - 0.05, 3.06, z], r * 0.85, 0.12, { tint: SNOW, sides: 12, caps: false });
-  for (let i = 0; i < 9; i++) {
-    const a = i * 2.4;
-    b.limb([x + Math.cos(a) * r * 0.97, 0.2 + (i % 3) * 0.4, z + Math.sin(a) * r * 0.97], [x + Math.cos(a) * (r + 0.3), 0.05 + (i % 3) * 0.4, z + Math.sin(a) * (r + 0.3)], 0.025, 0.01, { tint: STRAW, sides: 4 });
-  }
-}
 
 function lantern(b, glow, x, z) {
   const y = height(x, z);
@@ -382,15 +346,30 @@ function buildTemple(scene, rand, material, glow) {
   void rand;
 }
 
-function buildProps(scene, rand, material, glow, tall, lights) {
-  const b = createBuilder();
+function buildProps(scene, rand, material, glow, tall, lights, models) {
+  const b = createBuilder(),
+    stone = createStandardMaterial3D({ vertexColors: true, roughness: 0.9, metallic: 0 }),
+    bronze = createStandardMaterial3D({ vertexColors: true, roughness: 0.45, metallic: 0.7 });
+  /** Stand a sculpted model on the ground. */
+  const stand = (name, x, z, size, turn, material = stone, tallness = size) => {
+    const mesh = new Mesh3D(models[name], material);
+    mesh.castShadow = true;
+    mesh.receiveShadow = true;
+    mesh.setPosition(x, height(x, z) - 0.03, z);
+    mesh.setRotation(0, turn, 0);
+    mesh.setScale(size, tallness, size);
+    scene.addChild(mesh);
+    return mesh;
+  };
+  const scorched = createStandardMaterial3D({ vertexColors: true, roughness: 0.95, color: 0x4a3a30 }),
+    wood = createStandardMaterial3D({ vertexColors: true, roughness: 0.92 });
   for (const round of ROUNDS) {
     const { x, z, r } = round;
     if (round.kind === 'stack') {
-      stack(b, x, z, r, x > 0);
+      stand('stack', x, z, r, x * 3, x > 0 ? scorched : wood);
       if (x > 0) lights.push({ x, y: 5, z, color: 0xff6a20, intensity: 15, range: 17, flicker: 0.4 });
     }
-    else if (round.kind === 'rock') rock(b, x, z, r, rand);
+    else if (round.kind === 'rock') stand('rock', x, z, r * 0.95, rand() * 6);
     else if (round.kind === 'lantern') {
       lantern(b, glow, x, z);
       lights.push({ x, y: 1.4, z, color: 0xffa050, intensity: 14, range: 10, flicker: 0.12 });
@@ -402,24 +381,16 @@ function buildProps(scene, rand, material, glow, tall, lights) {
       for (const side of [1, -1]) b.limb([x + side * 0.85, 0.6, z + side * 0.3], [x + side * 0.95, 0.6, z + side * 0.36], 0.6, 0.6, { tint: rgb(0x2c1d14), sides: 12 });
       b.limb([x - 0.6, 0.8, z - 1.2], [x - 1.6, 0.2, z - 2.6], 0.05, 0.05, { tint: TIMBER, sides: 5 });
     } else if (round.kind === 'censer') {
-      for (let i = 0; i < 3; i++) b.limb([x + Math.cos(i * 2.1) * 0.55, 0.1, z + Math.sin(i * 2.1) * 0.55], [x + Math.cos(i * 2.1) * 0.4, 0.75, z + Math.sin(i * 2.1) * 0.4], 0.1, 0.13, { tint: rgb(0x40443f), sides: 6 });
-      b.limb([x, 0.7, z], [x, 1.35, z], 0.62, 0.85, { tint: rgb(0x3a4a44), tintB: rgb(0x55665c), sides: 12 });
-      b.limb([x, 1.33, z], [x, 1.4, z], 0.8, 0.8, { tint: rgb(0x8f8f86), sides: 12 });
+      stand('censer', x, z, 1, 0, bronze);
       lights.push({ x, y: 2.6, z, color: 0xffb070, intensity: 30, range: 16, flicker: 0.2, fire: true });
     } else if (round.kind === 'lion') {
-      b.box(x, 0.45, z, 1.3, 0.9, 1.6, { tint: STONE, top: SNOW });
-      b.ball(x, 1.4, z, 0.5, 0.6, 0.62, { tint: shade(STONE, 1.1), sides: 8, rings: 6 });
-      b.ball(x, 2.05, z + 0.25, 0.4, 0.4, 0.42, { tint: shade(STONE, 1.15), sides: 8, rings: 6 });
-      b.ball(x, 2.3, z + 0.2, 0.36, 0.16, 0.36, { tint: SNOW, sides: 8, rings: 4 });
+      stand('lion', x, z, 0.9, x < 0 ? 0.25 : -0.25);
     } else if (round.kind === 'stele') {
       b.box(x, 0.3, z, 1.5, 0.6, 0.9, { tint: STONE_DARK, top: SNOW });
       b.box(x, 1.9, z, 1.05, 2.8, 0.3, { tint: shade(STONE, 0.8), top: SNOW, ry: -0.2 });
     } else if (round.kind === 'pine') {
-      const own = createBuilder(),
-        cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.9 });
-      pine(own, x, z, rand, 0.85);
-      const mesh = own.mesh(cover);
-      scene.addChild(mesh);
+      const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.9 }),
+        mesh = stand('pine', x, z, 0.95, rand() * 6, cover, 1.1);
       tall.push({ x, z, r: 2.4, material: cover, mesh });
     }
   }
@@ -438,8 +409,11 @@ function buildProps(scene, rand, material, glow, tall, lights) {
     const x = -38 + rand() * 76,
       z = -56 + rand() * 100,
       d = edge(x, z);
-    if (d > 1.2 && d < 4 && rand() < 0.5) rock(b, x, z, 0.6 + rand() * 1.1, rand);
-    else if (d > 3.5 && d < 22 && !(Math.abs(x) < 14 && z < -40) && !(z > 2 && z < 30 && d < 6 && Math.abs(x) < 4)) pine(b, x, z, rand, 0.9 + rand() * 0.5);
+    if (d > 1.2 && d < 4 && rand() < 0.5) stand('rock', x, z, 0.5 + rand() * 1.0, rand() * 6);
+    else if (d > 3.5 && d < 22 && !(Math.abs(x) < 14 && z < -40) && !(z > 2 && z < 30 && d < 6 && Math.abs(x) < 4)) {
+      const size = 0.95 + rand() * 0.6;
+      stand('pine', x, z, size, rand() * 6, wood, size * (1 + rand() * 0.35));
+    }
   }
   // Far peaks behind the temple, dim in the snow.
   for (let i = 0; i < 9; i++) {
@@ -452,7 +426,7 @@ function buildProps(scene, rand, material, glow, tall, lights) {
 }
 
 /** Build the whole place. Returns what the view animates: grass, doors, lamps and what may hide the hero. */
-export function buildScenery(scene, { density = 1 } = {}) {
+export function buildScenery(scene, models, { density = 1 } = {}) {
   const rand = scatter(20261116),
     material = createStandardMaterial3D({ vertexColors: true, roughness: 0.85, metallic: 0 }),
     glowMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 1, emissive: 0xff8a3a, emissiveIntensity: 2.4 }),
@@ -464,7 +438,7 @@ export function buildScenery(scene, { density = 1 } = {}) {
   const grass = buildGrass(scene, rand, density);
   const doors = buildGate(scene, rand, material, tall);
   buildTemple(scene, rand, material, glow);
-  buildProps(scene, rand, material, glow, tall, lamps);
+  buildProps(scene, rand, material, glow, tall, lamps, models);
   const glowMesh = glow.mesh(glowMaterial, { shadow: false });
   scene.addChild(glowMesh);
   // Lamps: the renderer lights a few point lights at a time, so only the nearest burn.
