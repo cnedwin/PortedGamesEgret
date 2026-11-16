@@ -55,7 +55,7 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 - 五万多丛枯草是一次实例化绘制，顶点着色器里随阵风起伏，人走过会被拨开。
 - 枪光、法阵、地面预警和光柱是「网格加一段片元着色器」画的：扫掠、噪声条纹和侵蚀都在着色器里；火星、雪尘和飘雪是实例化的光点。
 - 动作：左手会自己找到枪杆握上去（两节手臂的反向求解），饮酒、掐诀、受击时再松开；挨打是先被打退再收住，倒下分腿软、后仰、落地三段。
-- 地面：重击、落枪和砸地会留下一阵子才淡掉的裂痕；雪地上有会被雪填平的脚印；最高画质下山门甬道和庙前的湿石板会映出场景。
+- 地面：重击、落枪和砸地会留下一阵子才淡掉的裂痕；雪地上有会被雪填平的脚印；最高画质下山门甬道和庙前的湿石板会映出场景。贴地有三层随风漂移的薄雾，有横掠画面的风线，每盏灯火周围有一圈被照亮的雪雾；石板和路上有结了冰的积水。
 - 规则（`src/rules`）与画面分开，不依赖浏览器，可以直接用 Node 测试；`test/bot.mjs` 是一个按规则出招的玩家，测试用它通关，地址加 `?auto` 可以看它打。
 - 声音全部由振荡器和噪声合成：风声、五声音阶的拨弦、兵刃声。没有配音。
 - 设置里可调画质（自动、低、中、高）、粒子数量、声音和全部按键；自动画质会按帧率升降绘制分辨率。
@@ -65,7 +65,7 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 - More than fifty thousand tufts of dry grass are one instanced draw, swaying with gusts in the vertex shader and parting round whoever walks through.
 - Spear light, the formation, the ground warnings and the columns of light are a mesh plus a fragment shader: the sweep, the grain and the erosion happen in the shader. Sparks, snow dust and falling snow are instanced dots.
 - Movement: the left hand finds the haft by itself (a two-bone reach) and lets go to drink, to cast or when struck; a blow throws a figure back before he gathers himself, and a fall goes knees first, then over backward, then down.
-- The ground: heavy cuts, falling spears and slams leave scars that fade after a while; snow keeps footprints until it drifts back into them; at the highest picture quality the wet flags of the gate road and the forecourt mirror the scene.
+- The ground: heavy cuts, falling spears and slams leave scars that fade after a while; snow keeps footprints until it drifts back into them; at the highest picture quality the wet flags of the gate road and the forecourt mirror the scene. Three layers of thin mist drift over the ground, streaks of blown snow cross the picture, every flame has a halo of lit snow round it, and meltwater has frozen in patches on the flags and along the road.
 - The rules (`src/rules`) are kept apart from the picture and do not need a browser, so Node tests them directly; `test/bot.mjs` is a player made of rules that the tests finish the chapter with, and `?auto` in the address lets it play.
 - All sound is synthesized from oscillators and noise: wind, a plucked five-note tune, and the weapons. There is no voice acting.
 - Settings cover picture quality (automatic, low, medium, high), particle amount, sound and every key; automatic quality moves the drawing resolution with the frame rate.

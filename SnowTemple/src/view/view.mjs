@@ -60,6 +60,8 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   const scenery = buildScenery(scene, models, { density });
   const fx = createEffects(scene, camera, { particles });
   view.fx = fx;
+  for (const lamp of scenery.lights) lamp.halo = { x: lamp.x, y: lamp.light.position[1] + 0.1, z: lamp.z, size: lamp.fire ? 4.2 : 2.6, colour: lamp.fire ? [1, 0.42, 0.14] : [1, 0.6, 0.25], strength: 0 };
+  fx.setHalos(scenery.lights.map((lamp) => lamp.halo));
 
   // ---- people -------------------------------------------------------------------------------
   const heroFigure = createFigure('hero', models, detail);
@@ -512,6 +514,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       lamp.light.intensity = lamp.intensity * lamp.share * (1 + Math.sin(clock * 11 + lamp.x) * lamp.flicker * 0.5 + Math.sin(clock * 23 + lamp.z) * lamp.flicker * 0.5);
     });
     scenery.glowMaterial.emissiveIntensity = 2.3 + Math.sin(clock * 9) * 0.25;
+    for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? Math.min(1, lamp.share + 0.45) : 0;
 
     // Whatever tall thing stands between the camera and the hero thins out.
     for (const thing of scenery.tall) {
@@ -545,13 +548,13 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     mirror.layerMask = ~2;
     const { material, mesh } = scenery.paving;
     material.reflectionMap = mirror.texture;
-    material.reflectionStrength = 0.3;
+    material.reflectionStrength = 0.6;
     material.reflectionDistortion = 0.02;
     material.touch();
     /** Draw the mirror picture; call once a frame before the scene is drawn. */
     view.mirror = (renderer, game) => {
-      const near = game.hero.z < -3;
-      material.reflectionStrength = near ? 0.3 : 0;
+      const near = game.hero.z < 31;
+      material.reflectionStrength = near ? 0.6 : 0;
       if (near) mirror.render(renderer, scene, camera, [0, 1, 0, -0.1], [mesh]);
     };
   }
