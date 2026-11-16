@@ -1,0 +1,98 @@
+import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import { registerHooks } from 'node:module';
+import { test } from 'node:test';
+import { FOES } from '../src/rules/tune.mjs';
+import { HANDS, YARD_BONES, YARD_GRIPS } from '../src/view/rig.mjs';
+
+// Use the same World3D modules and packs as the browser, with the HTML import map resolved in Node.
+const aliases = {
+  '@egret/engine/world3d': '../vendor/engine/dist/rendering/world3d/index.js',
+  '@egret/runtime': '../vendor/runtime/dist/index.js',
+  '@egret/contracts': '../vendor/contracts/dist/index.js',
+  '@egret/contracts/resources': '../vendor/contracts/dist/resources/index.js'
+};
+registerHooks({ resolve(name, context, next) {
+  return next(aliases[name] ? new URL(aliases[name], import.meta.url).href : name, context);
+} });
+const { createFigure, foePose, pose } = await import('../src/view/figures.mjs');
+const { loadModels } = await import('../src/view/models.mjs');
+const realFetch = globalThis.fetch;
+let models;
+try {
+  globalThis.fetch = async (url) => new Response(await readFile(url));
+  models = await loadModels('low');
+} finally {
+  globalThis.fetch = realFetch;
+}
+
+const DT = 1 / 60;
+const world = (node, point) => node.localToWorld([0, 0, 0], point);
+const distance = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
+const scaled = (point, factor) => point.map((axis) => axis * factor);
+const foeState = (kind) => ({ id: 1, kind, sheet: FOES[kind], state: 'roam', t: 0, x: 0, z: 0, face: 0, walking: true });
+
+function move(kind, speedFactor) {
+  const foe = foeState(kind);
+  const figure = createFigure(kind, models, 'low');
+  const step = foe.sheet.speed * speedFactor * DT;
+  const knees = [];
+  for (let i = 0; i < 150; i++) {
+    foe.z += step;
+    const [target, smoothing] = foePose(foe, i * DT, foe.z, figure.gait, DT);
+    pose(figure, target, smoothing, DT);
+    if (i > 20) knees.push(target.shinL[0]);
+  }
+  return { figure, kneePeak: Math.max(...knees) };
+}
+
+for (const kind of ['blade', 'shield', 'bow']) {
+  test(`${kind}: its packed ankle and palm bones follow the walk and run within its existing speed`, () => {
+    const joints = models[kind].getAttribute('joints').data;
+    const used = new Set(joints);
+    assert(joints.every((joint) => joint < YARD_BONES.length));
+    for (const joint of ['footL', 'footR', 'palmL', 'palmR']) assert(used.has(YARD_BONES.indexOf(joint)));
+    const walk = move(kind, 0.42), run = move(kind, 1);
+    assert(Math.abs(run.figure.gait.speed - FOES[kind].speed) < 0.001);
+    assert(run.kneePeak > walk.kneePeak + 0.2);
+  });
+}
+
+test('blade and shield use a physical handle and the shield leads during a bash', () => {
+  const blade = move('blade', 1).figure;
+  const shield = move('shield', 1).figure;
+  for (const figure of [blade, shield]) {
+    assert(distance(world(figure.joints.palmR, HANDS.R.grip), world(figure.joints.weapon, [0, 0, 0])) < 0.0005);
+  }
+  const checkShield = () => assert(distance(
+    world(shield.joints.palmL, HANDS.L.grip),
+    world(shield.joints.off, scaled(YARD_GRIPS.shield, shield.look.offScale))
+  ) < 0.0005);
+  checkShield();
+  const foe = { ...foeState('shield'), move: FOES.shield.moves.bash, walking: false, state: 'strike' };
+  const [attack, smoothing] = foePose(foe, 0, 0, shield.gait, DT);
+  for (let i = 0; i < 20; i++) pose(shield, attack, smoothing, DT);
+  checkShield();
+  assert(world(shield.joints.palmL, HANDS.L.grip)[2] > world(shield.joints.palmR, HANDS.R.grip)[2] + 0.25);
+});
+
+test('the archer holds the riser and pulls the middle of the cord before release', () => {
+  const figure = createFigure('bow', models, 'low');
+  const foe = { ...foeState('bow'), move: FOES.bow.moves.shot, walking: false, state: 'windup', t: FOES.bow.moves.shot.windup };
+  const [draw, smoothing] = foePose(foe, 0, 0, figure.gait, DT);
+  for (let i = 0; i < 30; i++) pose(figure, draw, smoothing, DT);
+  const { off, palmL, palmR } = figure.joints;
+  assert(distance(world(palmL, HANDS.L.grip), world(off, scaled(YARD_GRIPS.bow, figure.look.offScale))) < 0.0005);
+  const pulled = world(palmR, HANDS.R.grip);
+  const segment = figure.string[0];
+  const endpoints = () => [world(segment, [0, -0.5, 0]), world(segment, [0, 0.5, 0])];
+  assert(Math.min(...endpoints().map((point) => distance(point, pulled))) < 0.0005);
+  const rest = world(off, [0, 0, YARD_GRIPS.bowTipZ * figure.look.offScale]);
+  assert(distance(pulled, rest) > 0.18);
+
+  foe.state = 'strike';
+  const [release, releaseSmoothing] = foePose(foe, 0, 0, figure.gait, DT);
+  pose(figure, release, releaseSmoothing, DT);
+  const slack = world(off, [0, 0, YARD_GRIPS.bowTipZ * figure.look.offScale]);
+  assert(Math.min(...endpoints().map((point) => distance(point, slack))) < 0.0005);
+});

@@ -1,9 +1,9 @@
 // The people of the chapter: sculpted figures on a shared skeleton, and the poses that move them.
 // A figure faces +z; its left is +x. Poses are sets of joint angles; each frame every joint eases toward
 // the pose its state asks for, which is what gives the cuts their snap and the walk its weight.
-import { Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatSlerp } from '@egret/engine/world3d';
+import { Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createCylinderGeometry3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatSlerp } from '@egret/engine/world3d';
 import { LOCOMOTION, sampleLocomotion } from './locomotion.mjs';
-import { BASE_BONES, BIND, BONES, HANDS, JOINTS } from './rig.mjs';
+import { BIND, BONES, HANDS, JOINTS, YARD_BONES, YARD_GRIPS } from './rig.mjs';
 
 // Fine surface that the sculpted mesh is too coarse to carry, drawn per pixel from a pattern that stays
 // fixed to the figure: the threads of woven cloth, pores and flush on skin, the grain of leather, the
@@ -76,13 +76,15 @@ function surfaced(material) {
 /** Size, what is carried in the right hand, and what on the left arm. */
 const LOOKS = {
   hero: { size: 1, weapon: 'spear', grip: 0.5, articulated: true, fill: [0.008, 0.015, 0.024] },
-  blade: { size: 1, weapon: 'sabre', grip: -0.24, fill: [0.01, 0.006, 0.003] },
+  blade: { size: 1, weapon: 'sabre', fill: [0.01, 0.006, 0.003] },
   shield: { size: 1.06, weapon: 'short', off: 'rattan', offScale: 1.12, fill: [0.01, 0.008, 0.004] },
   bow: { size: 0.98, off: 'longbow', offScale: 1.08, fill: [0.006, 0.008, 0.012] },
   lu: { size: 1.2, weapon: 'glaive', grip: 0.55, articulated: true, fill: [0.019, 0.006, 0.008] }
 };
 const POSED = ['hips', 'spine', 'head', 'armL', 'foreL', 'armR', 'foreR', 'legL', 'shinL', 'legR', 'shinR', 'cloak', 'weapon', 'off'];
 const ARTICULATED_POSED = [...POSED, 'footL', 'footR'];
+const bowCord = createCylinderGeometry3D({ radiusTop: 0.0045, radiusBottom: 0.0045, height: 1, radialSegments: 5 });
+const bowCordMaterial = createStandardMaterial3D({ color: 0xc9c0ae, roughness: 0.82 });
 
 /** Build one figure of the given kind from the sculpted models. */
 export function createFigure(kind, models, detail = 'high') {
@@ -94,12 +96,14 @@ export function createFigure(kind, models, detail = 'high') {
     metal = dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.28, metallic: 0.9, emissive: 0x9fd4ff, emissiveIntensity: 0 })),
     root = new Object3D(),
     joints = { root },
-    bones = look.articulated ? BONES : BASE_BONES,
-    posed = look.articulated ? ARTICULATED_POSED : POSED,
+    bones = look.articulated ? BONES : YARD_BONES,
+    posed = ARTICULATED_POSED,
     rest = {};
+  root.name = kind;
   for (const name of bones) {
     const [parent, x, y, z] = JOINTS[name];
     const joint = new Object3D();
+    joint.name = name;
     joint.setPosition(x, y, z);
     // The pose the figure was sculpted in; the skin is bound to it.
     joint.setRotation(0, 0, BIND[name] ?? 0);
@@ -122,11 +126,19 @@ export function createFigure(kind, models, detail = 'high') {
   };
   if (look.weapon) (hold('weapon', look.weapon, gear), hold('weapon', look.weapon + 'Edge', metal));
   if (look.off) hold('off', look.off, gear, look.offScale);
+  const string = kind === 'bow' ? ['lower', 'upper'].map((end) => {
+    const segment = new Mesh3D(bowCord, bowCordMaterial);
+    segment.name = 'bow-string-' + end;
+    segment.castShadow = false;
+    joints.off.addChild(segment);
+    return segment;
+  }) : null;
+  if (string) stringBow(string, look.offScale, [0, 0, YARD_GRIPS.bowTipZ * look.offScale]);
   root.setScale(look.size);
   const angles = {};
   for (const name of posed) angles[name] = [0, 0, 0];
-  const gait = look.articulated ? { phase: 0, travelled: 0, speed: 0, walk: {}, run: {} } : null;
-  return { kind, look, root, joints, rest, posed, angles, gait, held: 0, slide: 0, rightOpening: 0, lift: 0, cloth, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
+  const gait = { phase: 0, travelled: 0, speed: 0, heading: 0, walk: {}, run: {} };
+  return { kind, look, root, joints, rest, posed, angles, gait, string, held: 0, slide: 0, rightOpening: 0, lift: 0, cloth, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
 }
 
 // ---- poses --------------------------------------------------------------------------------
@@ -156,8 +168,9 @@ const ZERO = [0, 0, 0];
 const STAND = {
   hero: { spine: [0.06, -0.3, 0], head: [0, 0.25, 0], armR: [0.3, 0, -0.25], foreR: [-1.0, 0, 0], weapon: [-0.22, 1.1, 0], armL: [-0.25, 0, 0.18], foreL: [-0.7, 0, 0], legL: [-0.18, 0, 0.07], shinL: [0.2, 0, 0], legR: [0.22, 0, -0.07], shinR: [0.18, 0, 0], cloak: [0.12, 0, 0] },
   foe: { spine: [0.1, -0.2, 0], armR: [0.1, 0, -0.3], foreR: [-0.9, 0, 0], weapon: [-0.5, 0.25, 0], armL: [-0.2, 0, 0.2], foreL: [-0.6, 0, 0], legL: [-0.15, 0, 0.08], shinL: [0.18, 0, 0], legR: [0.18, 0, -0.08], shinR: [0.15, 0, 0], cloak: [0.1, 0, 0] },
-  shield: { armL: [-0.95, 0, 0.1], foreL: [-1.1, 0, -0.5], off: [1.2, 0, 0] },
-  bow: { armL: [-0.5, 0, 0.2], foreL: [-0.6, 0, 0], off: [0.9, 0, 0], armR: [0, 0, -0.15], foreR: [-0.4, 0, 0] }
+  blade: { spine: [0.13, -0.25, -0.04], armR: [0.2, 0, -0.41], foreR: [-0.68, 0, -0.1], weapon: [-0.3, -0.46, 0.09], armL: [-0.23, 0, 0.17], foreL: [-0.51, 0, 0] },
+  shield: { spine: [0.22, 0.15, 0], armL: [-0.91, 0, 0.1], foreL: [-1.13, 0, -0.47], off: [1.26, 0.06, -0.03], armR: [0.19, 0, -0.36], foreR: [-0.68, 0, -0.04], weapon: [-0.57, -0.53, -0.16] },
+  bow: { spine: [0.08, -0.1, 0.02], armL: [-0.59, 0, 0.23], foreL: [-0.55, 0, -0.06], off: [0.83, 0.02, 0.32], armR: [-0.05, 0, -0.21], foreR: [-0.37, 0, 0] }
 };
 
 /** A stride: `phase` runs 0..1 over two steps, `reach` is how far the legs swing. */
@@ -179,10 +192,11 @@ function stride(base, phase, reach, lean) {
 }
 
 const GAIT_BODY = ['hips', 'spine', 'head', 'legL', 'shinL', 'footL', 'legR', 'shinR', 'footR'];
-function capturedStride(base, gait, distance, speed, clock, travelled) {
+function capturedStride(base, gait, distance, speed, clock, travelled, strideDirection = 1) {
   const running = ease(span(speed, 1.85, 4.25)),
     strideMeters = mix(LOCOMOTION.walk.strideMeters, LOCOMOTION.run.strideMeters, running);
-  gait.phase = (gait.phase + distance / strideMeters) % 1;
+  gait.phase += strideDirection * distance / strideMeters;
+  gait.phase -= Math.floor(gait.phase);
   const walk = sampleLocomotion('walk', gait.phase, gait.walk),
     run = sampleLocomotion('run', gait.phase, gait.run),
     result = { ...base, lift: mix(walk.lift, run.lift, running), contactL: mix(walk.contactL, run.contactL, running), contactR: mix(walk.contactR, run.contactR, running) };
@@ -317,6 +331,8 @@ const FOE_POSES = {
   fireBack: { spine: [0.55, -0.5, 0], armR: [0.3, 0, -0.5], foreR: [-0.4, 0, 0], weapon: [0.5, -0.9, 0], legL: [-0.6, 0, 0.1], shinL: [0.9, 0, 0], legR: [0.4, 0, -0.1], shinR: [0.7, 0, 0], lift: -0.28 },
   fireThrough: { spine: [-0.25, 0.6, 0], armR: [-2.2, 0, 0.3], foreR: [-0.2, 0, 0], weapon: [-1.0, 0.5, 0], lift: 0.05, cloak: [0.8, 0, 0] },
   wheel: { spine: [0.15, 0, 0], armR: [-1.4, 0, -0.9], foreR: [-0.1, 0, 0], armL: [-0.6, 0, 1.0], weapon: [0.05, -1.57, 0], lift: -0.12, cloak: [1.1, 0, 0] },
+  bashBack: { spine: [0.17, -0.32, 0.05], armL: [-0.72, 0, 0.23], foreL: [-1.42, 0.08, -0.35], off: [1.43, 0, 0], armR: [0.35, 0, -0.41], weapon: [-0.52, -0.46, -0.15], legL: [-0.4, 0, 0.12], shinL: [0.48, 0, 0], legR: [0.42, 0, -0.18], shinR: [0.3, 0, 0], lift: -0.17 },
+  bashThrough: { spine: [0.43, 0.24, -0.04], armL: [-1.55, 0, 0.16], foreL: [-0.47, 0.06, -0.35], off: [1.39, 0.06, 0], armR: [0.4, 0, -0.48], weapon: [-0.58, -0.5, -0.2], legL: [-0.85, 0, 0.14], shinL: [0.93, 0, 0], legR: [0.43, 0, -0.18], shinR: [0.15, 0, 0], lift: -0.2 },
   draw: { free: true, spine: [0.02, -0.5, 0], head: [0, 0.4, 0], armL: [-1.5, 0, -0.35], foreL: [-0.05, 0, 0], off: [1.55, 0, 0], armR: [-1.35, 0, -0.5], foreR: [-2.0, 0, 0] },
   loft: { free: true, spine: [-0.35, -0.5, 0], head: [-0.3, 0.4, 0], armL: [-2.3, 0, -0.35], foreL: [-0.05, 0, 0], off: [1.55, 0, 0], armR: [-2.0, 0, -0.5], foreR: [-2.0, 0, 0] },
   stagger: { free: true, spine: [-0.55, 0.3, 0], head: [-0.4, 0, 0], armR: [0.3, 0, -1.0], foreR: [-0.4, 0, 0], weapon: [0.4, -1.0, 0.3], armL: [0.2, 0, 1.0], foreL: [-0.3, 0, 0], legL: [0.3, 0, 0.1], shinL: [0.35, 0, 0], legR: [-0.25, 0, -0.1], shinR: [0.35, 0, 0], lift: -0.08 },
@@ -325,11 +341,37 @@ const FOE_POSES = {
   wait: { free: true, spine: [0.05, 0, 0], armR: [-0.35, 0, -0.3], foreR: [-0.5, 0, 0], weapon: [-1.5, 0, 0], armL: [0.1, 0, 0.12], foreL: [-0.2, 0, 0] }
 };
 
+function yardStride(foe, base, gait, distance, clock, travelled) {
+  const backing = Math.abs(gait.heading) > 2.2;
+  const relative = backing ? gait.heading - Math.sign(gait.heading) * Math.PI : gait.heading;
+  // A short pursuit uses the faster capture at each actor's own original maximum speed.
+  const pace = gait.speed / foe.sheet.speed * 4.5;
+  const result = capturedStride(base, gait, distance, pace, clock, travelled, backing ? -1 : 1);
+  const turn = Math.max(-1.08, Math.min(1.08, relative * 0.78));
+  result.hips[1] += turn;
+  result.spine[1] -= turn * 0.87;
+  if (foe.kind === 'blade') {
+    const swing = mix(gait.walk.armL[0], gait.run.armL[0], ease(span(pace, 1.85, 4.25)));
+    result.armL = [swing * 0.68, base.armL[1], base.armL[2]];
+  }
+  return result;
+}
+
 /** A foe's pose for what he is doing. */
 export function foePose(foe, clock, travelled, gait, dt = 0) {
   const base = { ...STAND.foe, ...(STAND[foe.kind] ?? {}) },
     over = (pose) => ({ ...base, ...pose }),
     distance = travelledSince(gait, travelled, dt);
+  if (gait && foe.kind !== 'lu') {
+    const dx = foe.x - (gait.x ?? foe.x),
+      dz = foe.z - (gait.z ?? foe.z);
+    if (Math.abs(dx) + Math.abs(dz) > 1e-4) {
+      const angle = Math.atan2(dx, dz) - foe.face;
+      gait.heading = Math.atan2(Math.sin(angle), Math.cos(angle));
+    }
+    gait.x = foe.x;
+    gait.z = foe.z;
+  }
   switch (foe.state) {
     case 'dead':
       return fall(base, foe.t, foe.id % 2 ? 1 : -1);
@@ -348,18 +390,30 @@ export function foePose(foe, clock, travelled, gait, dt = 0) {
         key = move.name === 'fire' ? 'fire' : move.name === 'wheel' ? 'wheel' : move.shape === 'arc' ? 'arc' : move.shape === 'line' ? 'line' : 'disc';
       if (foe.kind === 'bow') {
         const pose = over(move.name === 'volley' ? FOE_POSES.loft : FOE_POSES.draw);
-        return foe.state === 'recover' ? [blend(pose, base, ease(span(foe.t, 0, 0.35))), 14] : [pose, 12];
+        if (foe.state === 'windup') {
+          const draw = ease(span(foe.t, move.windup * 0.14, move.windup * 0.86));
+          const aiming = blend(base, pose, ease(span(foe.t, 0, move.windup * 0.5)));
+          return [{ ...aiming, bowDraw: draw }, 18];
+        }
+        if (foe.state === 'strike') return [{ ...pose, foreR: [-1.75, -0.35, -0.24] }, 32];
+        return [blend(pose, base, ease(span(foe.t, 0, 0.35))), 14];
       }
       if (key === 'wheel') return [over({ ...FOE_POSES.wheel, hips: [0, foe.state === 'strike' ? foe.t * 26 : 0, 0] }), foe.state === 'strike' ? 60 : 14];
-      const back = over(FOE_POSES[key + 'Back']),
-        through = over(FOE_POSES[key + 'Through']);
-      if (foe.state === 'windup') return [blend(base, back, ease(span(foe.t, 0, move.windup * 0.55))), 16];
+      const action = foe.kind === 'shield' && move.name === 'bash' ? 'bash' : key,
+        back = over(FOE_POSES[action + 'Back']),
+        through = over(FOE_POSES[action + 'Through']);
+      if (foe.state === 'windup') {
+        const drawn = blend(base, back, ease(span(foe.t, 0, move.windup * 0.55)));
+        // The high lift moves the shaft beyond the support arm before the overhead blow.
+        if (foe.kind === 'lu' && move.name === 'slam') drawn.free = true;
+        return [drawn, 16];
+      }
       if (foe.state === 'strike') return [through, 48];
       return [blend(through, base, ease(span(foe.t, move.recover * 0.35, move.recover))), 14];
     }
   }
-  if (foe.walking) return gait && dt > 0
-    ? [capturedStride(base, gait, distance, gait.speed, clock, travelled), 40]
+  if (foe.walking) return gait
+    ? [foe.kind === 'lu' ? capturedStride(base, gait, distance, gait.speed, clock, travelled) : yardStride(foe, base, gait, distance, clock, travelled), 40]
     : [stride(base, travelled / 1.9, 0.6, 0.12), 16];
   const breath = Math.sin(clock * 1.6 + foe.id) * 0.02;
   return [{ ...base, lift: breath }, 10];
@@ -381,18 +435,102 @@ export function pose(figure, target, rate, dt) {
     poseGrip(figure, target, dt);
     return;
   }
-  // Older figures still carry their equipment from the original hand anchor.
-  const hand = joints.hand.getWorldPosition(scratch);
-  joints.spine.worldToLocal(scratch, hand);
-  joints.weapon.setPosition(scratch[0], scratch[1], scratch[2]);
-  if (figure.look.grip === undefined) return;
-  figure.held += ((target.free ? 0 : 1) - figure.held) * (1 - Math.exp(-12 * dt));
-  if (figure.held < 0.02) return;
-  joints.weapon.localToWorld(scratch, [0, 0, figure.look.grip]);
-  joints.spine.worldToLocal(scratch, scratch);
-  reach(joints.armL, joints.foreL, figure.rest.armL, scratch, figure.held);
+  poseYardGrips(figure, target);
 }
-const scratch = [0, 0, 0];
+
+const yardCenter = [0, 0, 0],
+  yardAnchor = [0, 0, 0],
+  yardPalm = [0, 0, 0],
+  yardOffset = [0, 0, 0],
+  yardAim = [0, 0, 0],
+  yardNeutral = [0, 0, 0, 1],
+  yardWrist = [0, 0, 0, 1],
+  yardCordRotation = [0, 0, 0, 1],
+  yardMatrix = new Float32Array(16),
+  yardUp = [0, 1, 0],
+  yardSide = [1, 0, 0];
+
+/** Point the palm's curled grip along the actual handle rather than the prop's mesh pivot. */
+function alignYardWrist(palm, fore, item, axis, weight = 1) {
+  item.updateWorldMatrix();
+  fore.updateWorldMatrix();
+  const shaft = item.matrixWorld,
+    foreTransform = fore.matrixWorld;
+  for (let i = 0; i < 3; i++) {
+    yardAim[i] = shaft[axis] * foreTransform[i * 4] + shaft[axis + 1] * foreTransform[i * 4 + 1] + shaft[axis + 2] * foreTransform[i * 4 + 2];
+  }
+  const length = Math.hypot(...yardAim) || 1,
+    sign = yardAim[2] < 0 ? 1 : -1;
+  for (let i = 0; i < 3; i++) yardAim[i] *= sign / length;
+  mat4LookAt(yardMatrix, yardCenter, yardAim, Math.abs(yardAim[1]) > 0.96 ? yardSide : yardUp);
+  quatFromRotationMatrix(yardWrist, yardMatrix);
+  quatSlerp(yardWrist, yardNeutral, yardWrist, weight);
+  palm.setQuaternion(...yardWrist);
+}
+
+function seatProp(item, palm, grip, anchor, scale) {
+  palm.localToWorld(yardPalm, grip);
+  item.parent.worldToLocal(yardPalm, yardPalm);
+  for (let i = 0; i < 3; i++) yardAnchor[i] = anchor[i] * scale;
+  item.localToWorld(yardAnchor, yardAnchor);
+  item.parent.worldToLocal(yardAnchor, yardAnchor);
+  item.setPosition(yardPalm[0] - yardAnchor[0] + item.position[0], yardPalm[1] - yardAnchor[1] + item.position[1], yardPalm[2] - yardAnchor[2] + item.position[2]);
+}
+
+function poseYardGrips(figure, target) {
+  const { joints, look, string } = figure;
+  if (look.weapon) {
+    alignYardWrist(joints.palmR, joints.foreR, joints.weapon, 8);
+    seatProp(joints.weapon, joints.palmR, HANDS.R.grip, yardCenter, 1);
+  }
+  if (!look.off) return;
+  alignYardWrist(joints.palmL, joints.foreL, joints.off, 4);
+  seatProp(joints.off, joints.palmL, HANDS.L.grip, string ? YARD_GRIPS.bow : YARD_GRIPS.shield, look.offScale);
+  if (!string) return;
+
+  const draw = target.bowDraw ?? 0,
+    scale = look.offScale,
+    neutralZ = YARD_GRIPS.bowTipZ * scale;
+  yardAnchor[0] = yardAnchor[1] = 0;
+  yardAnchor[2] = neutralZ;
+  if (draw > 0.01) {
+    alignYardWrist(joints.palmR, joints.foreR, joints.off, 4, draw);
+    yardAnchor[2] -= 0.36 * draw * scale;
+    joints.off.localToWorld(yardAnchor, yardAnchor);
+    joints.spine.worldToLocal(yardAnchor, yardAnchor);
+    joints.palmR.localToWorld(yardPalm, HANDS.R.grip);
+    joints.palmR.getWorldPosition(yardOffset);
+    joints.spine.worldToLocal(yardPalm, yardPalm);
+    joints.spine.worldToLocal(yardOffset, yardOffset);
+    for (let i = 0; i < 3; i++) yardAnchor[i] -= yardPalm[i] - yardOffset[i];
+    reach(joints.armR, joints.foreR, figure.rest.armR, yardAnchor, draw, -HANDS.R.wrist[1], -1);
+    alignYardWrist(joints.palmR, joints.foreR, joints.off, 4, draw);
+    joints.palmR.localToWorld(yardPalm, HANDS.R.grip);
+    joints.off.worldToLocal(yardPalm, yardPalm);
+    yardAnchor[0] = yardPalm[0] * draw;
+    yardAnchor[1] = yardPalm[1] * draw;
+    yardAnchor[2] = mix(neutralZ, yardPalm[2], draw);
+  } else joints.palmR.setRotation(0, 0, 0);
+  stringBow(string, scale, yardAnchor);
+}
+
+/** Two cord segments share an endpoint at the nock and spring back on release. */
+function stringBow(string, scale, nock) {
+  for (let i = 0; i < string.length; i++) {
+    const y = (i ? 1 : -1) * YARD_GRIPS.bowHalfHeight * scale,
+      z = YARD_GRIPS.bowTipZ * scale,
+      xDelta = -nock[0],
+      yDelta = y - nock[1],
+      zDelta = z - nock[2],
+      length = Math.hypot(xDelta, yDelta, zDelta);
+    const segment = string[i];
+    segment.setPosition(nock[0] * 0.5, (nock[1] + y) * 0.5, (nock[2] + z) * 0.5);
+    segment.setScale(1, length, 1);
+    aim(yardCordRotation, xDelta / length, yDelta / length, zDelta / length);
+    segment.setQuaternion(...yardCordRotation);
+  }
+}
+
 const shaftAxis = [0, 0, 0],
   wristZero = [0, 0, 0],
   gripPoint = [0, 0, 0],
@@ -407,18 +545,30 @@ const shaftAxis = [0, 0, 0],
   wristUp = [0, 1, 0],
   wristSide = [1, 0, 0];
 
-function setFingers(joints, hand, opening, anchored = false) {
+// Fit Lu Qian's digit arcs to the broader glaive shaft, including the thumb opposing it.
+const GLAIVE_GRIP = {
+  R: [0.0226, -0.0646, 0.002],
+  L: [-0.0226, -0.0646, 0.002],
+  fingers: [[-0.01, 0.735, 1.2], [-0.07, -0.06, 0.195], [-0.02, 0.16, 0.46], [0.43, -0.04, 0.375]],
+  supportTips: [0, 0, 0.18, 0.19],
+  thumb: [[-0.025, 0.22, -0.71], [-0.76, 0.99, -0.57]]
+};
+
+function setFingers(joints, hand, opening, anchored = false, profile = null) {
+  const held = profile ? 1 - (anchored ? 0 : opening) : 0;
   for (let i = 0; i < hand.fingers.length; i++) {
     const finger = hand.fingers[i],
-      extent = opening * hand.side * (anchored && i < 2 ? 0.12 : 1);
-    joints[finger.joints[0]].setRotation(0, 0, extent * 0.53);
-    joints[finger.joints[1]].setRotation(0, 0, extent * 0.83);
-    joints[finger.joints[2]].setRotation(0, 0, extent * 0.64);
+      extent = opening * (anchored && i < 2 ? 0.12 : 1),
+      bend = profile?.fingers[i],
+      tip = (bend?.[2] ?? 0) + (anchored ? 0 : profile?.supportTips[i] ?? 0);
+    joints[finger.joints[0]].setRotation(0, 0, hand.side * (extent * 0.53 + (bend?.[0] ?? 0) * held));
+    joints[finger.joints[1]].setRotation(0, 0, hand.side * (extent * 0.83 + (bend?.[1] ?? 0) * held));
+    joints[finger.joints[2]].setRotation(0, 0, hand.side * (extent * 0.64 + tip * held));
   }
   const thumb = anchored ? 0 : opening,
-    thumbExtent = thumb * hand.side;
-  joints[hand.thumb.joints[0]].setRotation(-thumb * 0.29, thumbExtent * 0.16, thumbExtent * 0.33);
-  joints[hand.thumb.joints[1]].setRotation(-thumb * 0.18, 0, thumbExtent * 0.39);
+    a = profile?.thumb[0] ?? ZERO, b = profile?.thumb[1] ?? ZERO;
+  joints[hand.thumb.joints[0]].setRotation(-thumb * 0.29 + a[0] * held, hand.side * (thumb * 0.16 + a[1] * held), hand.side * (thumb * 0.33 + a[2] * held));
+  joints[hand.thumb.joints[1]].setRotation(-thumb * 0.18 + b[0] * held, hand.side * b[1] * held, hand.side * (thumb * 0.39 + b[2] * held));
 }
 
 /** Keep the grip tunnel along the haft while retaining the forearm's natural roll. */
@@ -451,6 +601,8 @@ function chooseSupport(origin, direction, shoulder, palmOffset, preferred, armRe
 
 function poseGrip(figure, target, dt) {
   const { joints, rest, look } = figure,
+    profile = look.weapon === 'glaive' ? GLAIVE_GRIP : null,
+    leftGrip = profile?.L ?? HANDS.L.grip,
     step = 1 - Math.exp(-20 * dt);
   figure.held += ((target.grip?.strength ?? (target.free ? 0 : 1)) - figure.held) * step;
   figure.slide += ((target.grip?.slide ?? 0) - figure.slide) * step;
@@ -463,10 +615,10 @@ function poseGrip(figure, target, dt) {
 
   const right = joints.palmR;
   alignWrist(right, joints.foreR, 1);
-  right.localToWorld(gripPoint, HANDS.R.grip);
+  right.localToWorld(gripPoint, profile?.R ?? HANDS.R.grip);
   joints.spine.worldToLocal(gripPoint, gripPoint);
   joints.weapon.setPosition(...gripPoint);
-  setFingers(joints, HANDS.R, figure.rightOpening, true);
+  setFingers(joints, HANDS.R, profile ? 0 : figure.rightOpening, true, profile);
 
   const left = joints.palmL;
   const weight = figure.held;
@@ -479,7 +631,7 @@ function poseGrip(figure, target, dt) {
     for (let axis = 0; axis < 3; axis++) localShaftAxis[axis] -= origin[axis];
     for (let pass = 0; pass < 3; pass++) {
       alignWrist(left, joints.foreL, weight);
-      left.localToWorld(gripPoint, HANDS.L.grip);
+      left.localToWorld(gripPoint, leftGrip);
       left.getWorldPosition(offsetPoint);
       joints.spine.worldToLocal(gripPoint, gripPoint);
       joints.spine.worldToLocal(offsetPoint, offsetPoint);
@@ -489,11 +641,11 @@ function poseGrip(figure, target, dt) {
       reach(joints.armL, joints.foreL, rest.armL, supportPoint, pass === 0 ? weight : weight * weight, foreLength);
     }
     alignWrist(left, joints.foreL, weight);
-    left.localToWorld(gripPoint, HANDS.L.grip);
+    left.localToWorld(gripPoint, leftGrip);
     joints.weapon.worldToLocal(gripPoint, gripPoint);
     seated = 1 - span(Math.hypot(gripPoint[0], gripPoint[1]), 0.03, 0.115);
   } else left.setRotation(0.06, 0, 0.05);
-  setFingers(joints, HANDS.L, 1 - weight * seated);
+  setFingers(joints, HANDS.L, 1 - weight * seated, false, profile);
 }
 
 const UPPER = 0.29,
@@ -511,7 +663,7 @@ function aim(out, x, y, z) {
 const qa = [0, 0, 0, 1],
   qb = [0, 0, 0, 1];
 /** Bend a two-boned arm so that its hand comes to `to`; both are given in the space the shoulder sits in. */
-function reach(upper, fore, shoulder, to, weight, foreLength = FORE) {
+function reach(upper, fore, shoulder, to, weight, foreLength = FORE, side = 1) {
   let dx = to[0] - shoulder[0],
     dy = to[1] - shoulder[1],
     dz = to[2] - shoulder[2];
@@ -523,8 +675,8 @@ function reach(upper, fore, shoulder, to, weight, foreLength = FORE) {
   // The elbow lies off the line from shoulder to hand, out and down and a little back.
   const along = (UPPER * UPPER - foreLength * foreLength + d * d) / (2 * d),
     off = Math.sqrt(Math.max(0, UPPER * UPPER - along * along)),
-    dot = 0.55 * dx - 0.75 * dy - 0.35 * dz;
-  let px = 0.55 - dx * dot,
+    dot = side * 0.55 * dx - 0.75 * dy - 0.35 * dz;
+  let px = side * 0.55 - dx * dot,
     py = -0.75 - dy * dot,
     pz = -0.35 - dz * dot;
   const pl = Math.hypot(px, py, pz) || 1;
