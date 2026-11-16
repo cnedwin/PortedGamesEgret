@@ -74,7 +74,7 @@ async function main() {
   const scene = new Scene3D(),
     camera = createPerspectiveCamera3D({ fov: 36, near: 0.5, far: 260 });
   scene.addChild(camera);
-  Object.assign(renderer.postProcess, { enabled: true, bloom: true, bloomThreshold: 1.05, bloomKnee: 0.5, bloomIntensity: 0.36, bloomLevels: 6, fxaa: true, vignette: 0.42, contrast: 1.06, saturation: 1.05, ssao: level.ssao, ssaoRadius: 0.7, ssaoIntensity: 1.1 });
+  Object.assign(renderer.postProcess, { enabled: true, bloom: true, bloomThreshold: 1.14, bloomKnee: 0.48, bloomIntensity: 0.29, bloomLevels: 6, fxaa: true, vignette: 0.36, contrast: 1.06, saturation: 1.02, ssao: level.ssao, ssaoRadius: 0.7, ssaoIntensity: 1.1 });
   renderer.shadowsEnabled = !!level.shadows;
   const atmosphere = createAtmosphere3D({ fogColor: 0x30405e, fogDensity: 0.03, fogHeight: 0.2, fogFalloff: 0.32, shaftIntensity: 0 });
   renderer.postProcess.custom = atmosphere.post;
@@ -120,13 +120,24 @@ async function main() {
   const lerp3 = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k),
     smooth = (k) => k * k * (3 - 2 * k);
   const SHOTS = {
-    // Hold the spear and cloak against the yard fire, then rise into the play camera.
-    open: () => (k, { hero }) => ({
-      eye: lerp3([hero.x - 3.4, 2.75, hero.z + 5.2], [hero.x - 2.5, 4.1, hero.z + 7], smooth(k)),
-      look: lerp3([hero.x, 1.8, hero.z - 7], [hero.x, 1.25, hero.z - 3.5], smooth(k))
-    }),
+    // Start on Lin Chong's face, orbit outside the spear, then rise into the road camera.
+    open: () => (k, { hero }) => {
+      const side = 0.58;
+      const close = [hero.x - 1.9, 2.04, hero.z - 3.25],
+        shoulder = [hero.x - 3.95, 2.68, hero.z + 1.45],
+        road = [hero.x - 2.5, 4.1, hero.z + 7],
+        focus = [hero.x, 1.53, hero.z],
+        trail = [hero.x, 1.25, hero.z - 3.5];
+      return {
+        eye: k < side ? lerp3(close, shoulder, smooth(Math.max(0, (k - 0.12) / (side - 0.12)))) : lerp3(shoulder, road, smooth((k - side) / (1 - side))),
+        look: lerp3(focus, trail, smooth(k))
+      };
+    },
     // Along the forecourt to Lu Qian.
-    meet: () => (k, g) => ({ eye: lerp3([g.boss.x + 5, 3.2, g.boss.z + 9], [g.boss.x + 2.5, 2.4, g.boss.z + 5.5], smooth(Math.min(1, k * 1.25))), look: [g.boss.x, 1.5, g.boss.z] }),
+    meet: () => (k, { boss }) => ({
+      eye: lerp3([boss.x + 4.5, 2.9, boss.z + 7.7], [boss.x + 2.4, 2.15, boss.z + 4.3], smooth(Math.min(1, k * 1.24))),
+      look: [boss.x, 1.67, boss.z + 0.15]
+    }),
     rage: () => (k, g) => ({ eye: [g.boss.x - 3 + k * 2, 2.2 + k, g.boss.z + 6.5], look: [g.boss.x, 1.6, g.boss.z] }),
     end: () => (k, g) => ({ eye: lerp3([g.hero.x + 4, 3, g.hero.z + 7], [g.hero.x + 10, 16, g.hero.z + 20], smooth(k)), look: [g.hero.x, 1.2, g.hero.z - k * 6] })
   };
@@ -150,10 +161,10 @@ async function main() {
   const freshSummary = () => ({ time: 0, parries: 0, ripostes: 0, falls: 0 });
 
   function stage(id, time) {
-    view.stage(time, SHOTS[id]());
+    view.stage(time, SHOTS[id](), id === 'open' || id === 'meet');
     hud.stage(true);
     pending = LINES[id].map(([at, text, who]) => ({ at: game.time + at, text, who }));
-    if (id === 'open') titleCardAt = game.time + 0.6;
+    if (id === 'open') titleCardAt = game.time + 1.15;
   }
 
   function startGame(replay = '') {

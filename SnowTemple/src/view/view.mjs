@@ -44,13 +44,17 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   const view = { shake: 0, cine: null, zoom: 1 };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
-  scene.background = [0.012, 0.018, 0.035];
-  scene.fog = { kind: 'exponential', color: [0.027, 0.041, 0.071], density: 0.017 };
+  scene.background = [0.016, 0.024, 0.044];
+  scene.fog = { kind: 'exponential', color: [0.031, 0.043, 0.071], density: 0.018 };
   scene.addChild(createHemisphereLight3D({ color: 0x7489ad, groundColor: 0x2b3141, intensity: 0.39 }));
   scene.addChild(createAmbientLight3D({ intensity: 0.055 }));
   const moon = createDirectionalLight3D({ color: 0xa5c2ef, intensity: 0.89, castShadow: true });
   Object.assign(moon.shadow, { mapSize: shadowSize, extent: 24, near: 1, far: 90, cascades: 1 });
   scene.addChild(moon);
+  // Soft camera-side fill lets the faces and forged edges read in the two low shots.
+  const portraitFill = createDirectionalLight3D({ color: 0xf8dfc3, intensity: 0 });
+  portraitFill.visible = false;
+  scene.addChild(portraitFill);
   const MOON = [-17, 29, -9];
   view.sunDirection = (() => {
     const l = Math.hypot(...MOON);
@@ -104,7 +108,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   camera.far = 260;
   camera.updateProjectionMatrix();
   /** A staged shot: the camera goes where `at(k)` says for `time` seconds, then returns to the fight. */
-  view.stage = (time, at) => (view.cine = { t: 0, time, at });
+  view.stage = (time, at, portrait = false) => (view.cine = { t: 0, time, at, portrait });
 
   function gameCamera(game, dt) {
     const hero = game.hero,
@@ -166,6 +170,14 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     camera.lookAt(drawn.look[0] + jx, drawn.look[1], drawn.look[2]);
     moon.setPosition(focus.x + MOON[0], MOON[1], focus.z + MOON[2]);
     moon.lookAt(focus.x, 0, focus.z);
+    const fill = view.cine?.portrait ? 0.34 * Math.min(1, (view.cine.time - view.cine.t) * 2.1) : 0;
+    portraitFill.intensity += (fill - portraitFill.intensity) * Math.min(1, dt * 12);
+    portraitFill.visible = portraitFill.intensity > 0.001;
+    if (!portraitFill.visible) portraitFill.intensity = 0;
+    else {
+      portraitFill.setPosition(drawn.eye[0] + 1.4, drawn.eye[1] + 1.2, drawn.eye[2]);
+      portraitFill.lookAt(drawn.look[0], drawn.look[1], drawn.look[2]);
+    }
   }
 
   // ---- events -------------------------------------------------------------------------------
@@ -561,7 +573,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       lamp.share += ((i < 6 ? 1 : 0) - lamp.share) * Math.min(1, dt * 3);
       lamp.light.intensity = lamp.intensity * lamp.share * (1 + Math.sin(clock * 11 + lamp.x) * lamp.flicker * 0.5 + Math.sin(clock * 23 + lamp.z) * lamp.flicker * 0.5);
     });
-    scenery.glowMaterial.emissiveIntensity = 2.3 + Math.sin(clock * 9) * 0.25;
+    scenery.glowMaterial.emissiveIntensity = 2.08 + Math.sin(clock * 9) * 0.18;
     for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? Math.min(1, lamp.share + 0.45) : 0;
 
     moveCamera(game, dt, clock);
@@ -595,22 +607,32 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     fx.update(dt, clock);
   };
 
-  // The wet flags of the gate road and the forecourt mirror the scene, at the highest picture quality.
+  // Only damp patches mirror the scene at the highest picture quality.
   if (reflect) {
     const mirror = new PlanarReflection3D({ width: 640, height: 360 });
-    mirror.shadows = false;
-    mirror.interval = 2;
+    mirror.interval = 4;
     mirror.layerMask = ~2;
-    const { material, mesh } = scenery.paving;
+    const { material, mesh, nearReflection } = scenery.paving;
+    const plane = [0, 1, 0, -0.05];
+    const hidden = [mesh];
     material.reflectionMap = mirror.texture;
-    material.reflectionStrength = 0.6;
-    material.reflectionDistortion = 0.02;
+    material.reflectionStrength = 0.36;
+    material.reflectionDistortion = 0.008;
     material.touch();
     /** Draw the mirror picture; call once a frame before the scene is drawn. */
     view.mirror = (renderer, game) => {
-      const near = game.hero.z < 31;
-      material.reflectionStrength = near ? 0.6 : 0;
-      if (near) mirror.render(renderer, scene, camera, [0, 1, 0, -0.1], [mesh]);
+      const near = nearReflection(game.hero.x, game.hero.z);
+      material.reflectionStrength = near ? 0.36 : 0;
+      if (!near) return;
+      // The main color pass uses linear light and shadows. Match those program variants
+      // so the first wet stone doesn't synchronously link a second set of shaders.
+      const toneMapping = renderer.toneMapping;
+      renderer.toneMapping = 'none';
+      try {
+        mirror.render(renderer, scene, camera, plane, hidden);
+      } finally {
+        renderer.toneMapping = toneMapping;
+      }
     };
   }
 
