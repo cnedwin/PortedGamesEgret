@@ -609,7 +609,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
 
   // The first roof or pine fade needs the lit, shadow-receiving blend program.
   // Submit a clipped mesh once while loading so that exact main-pass variant is ready.
-  view.prepareSceneryFade = () => {
+  view.prepareFirstFrame = () => {
     const material = createStandardMaterial3D({ vertexColors: true, alphaMode: 'blend' });
     const box = createBuilder();
     box.box(0, 0, 0, 1, 1, 1);
@@ -618,10 +618,12 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     mesh.setPosition(0, -1000, 0);
     mesh.frustumCulled = false;
     scene.addChild(mesh);
+    const finishEffectWarmup = fx.prepareFirstDraw();
     return () => {
       mesh.removeFromParent();
       mesh.geometry.dispose();
       material.dispose();
+      finishEffectWarmup();
     };
   };
 

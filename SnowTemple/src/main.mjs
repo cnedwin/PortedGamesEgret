@@ -304,7 +304,7 @@ async function main() {
   function frame(dt) {
     status.frames++;
     if (status.frames === 2) {
-      finishSceneryWarmup();
+      finishShaderWarmup();
       boot.classList.add('done');
       hud.ready();
       if (params.has('auto') || params.get('at')) startGame();
@@ -387,7 +387,7 @@ async function main() {
     }
   }
 
-  const finishSceneryWarmup = view.prepareSceneryFade();
+  const finishShaderWarmup = view.prepareFirstFrame();
   createWorld3DView(engine, scope, { renderer, scene, camera, autoResize: false, onUpdate: frame, onError: fail });
   // For the console and for automated checks.
   window.__snow = {
