@@ -1,6 +1,8 @@
-// Sculpts every model of the game and writes them to assets/models.bin with an index beside it.
-//   node tools/models.mjs            all of them
-//   node tools/models.mjs hero lu    only those named
+// Sculpts every model of the game at three levels of detail and writes each level to
+// assets/models-<level>.bin with an index beside it.
+//   node tools/models.mjs                     everything
+//   node tools/models.mjs --level=mid         one level
+//   node tools/models.mjs hero lu             only those named, at every level
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { BIND, BONES, JOINTS } from '../src/view/rig.mjs';
 import { pack, sculpt } from './sculpt.mjs';
@@ -82,19 +84,19 @@ function person(look) {
     [-1, 'legR']
   ])
     cap('hips', [side * 0.035, 0.06, 0], [side * 0.07, hem, 0], 0.15 * w, (look.long ? 0.24 : 0.2) * w, under, { k: 0.03, flat: 0.8, fold: { n: 11, amp: 0.011, from: 0.15 }, also: [bone(leg), 0.4] });
-  egg('hips', [0, hem - 0.015, 0], [(look.long ? 0.3 : 0.26) * w, 0.016, (look.long ? 0.25 : 0.215) * w], trim, { k: 0.01 });
+  egg('hips', [0, hem - 0.015, 0], [(look.long ? 0.315 : 0.275) * w, 0.02, (look.long ? 0.265 : 0.23) * w], trim, { k: 0.01 });
   // Torso: belly, chest, shoulders; the coat crossed right over left with a band at its edge.
   egg('spine', [0, 0.08, 0], [0.165 * w, 0.17, 0.118 * w], coat, { k: 0.04 });
   egg('spine', [0, 0.31, 0.005], [0.195 * w, 0.2, 0.128 * w], coat, { k: 0.05 });
   for (const side of [1, -1]) egg('spine', [side * 0.185 * w, 0.445, 0], [0.09, 0.075, 0.09], coat, { k: 0.04 });
-  cap('spine', [0.07, 0.5, 0.07], [0.02, 0.33, 0.128 * w], 0.016, 0.02, trim, { k: 0.006, flat: 0.5 });
-  cap('spine', [0.02, 0.33, 0.128 * w], [-0.075, 0.09, 0.116 * w], 0.02, 0.022, trim, { k: 0.006, flat: 0.5 });
-  cap('spine', [-0.07, 0.5, 0.07], [-0.012, 0.37, 0.124 * w], 0.016, 0.018, trim, { k: 0.006, flat: 0.5 });
+  cap('spine', [0.07, 0.5, 0.078], [0.02, 0.33, 0.134 * w], 0.02, 0.023, trim, { k: 0.006, flat: 0.85 });
+  cap('spine', [0.02, 0.33, 0.134 * w], [-0.075, 0.09, 0.124 * w], 0.023, 0.025, trim, { k: 0.006, flat: 0.85 });
+  cap('spine', [-0.07, 0.5, 0.078], [-0.012, 0.37, 0.13 * w], 0.02, 0.021, trim, { k: 0.006, flat: 0.85 });
   egg('spine', [0, 0.515, -0.02], [0.082, 0.03, 0.085], trim, { k: 0.012 });
   cap('spine', [0, 0.47, 0.005], [0, 0.6, 0.012], 0.05, 0.046, SKIN, { k: 0.02 });
   // Sash: wound twice, knotted at the left hip, the ends hanging.
-  egg('spine', [0, 0.035, 0], [0.18 * w, 0.042, 0.13 * w], look.sash ?? trim, { k: 0.008 });
-  egg('spine', [0, 0.085, 0], [0.176 * w, 0.02, 0.127 * w], dim(look.sash ?? trim, 0.7), { k: 0.006 });
+  egg('spine', [0, 0.035, 0], [0.192 * w, 0.046, 0.142 * w], look.sash ?? trim, { k: 0.008 });
+  egg('spine', [0, 0.085, 0], [0.19 * w, 0.022, 0.14 * w], dim(look.sash ?? trim, 0.7), { k: 0.006 });
   egg('spine', [0.1, 0.04, 0.115 * w], [0.035, 0.03, 0.025], look.sash ?? trim, { k: 0.01 });
   cap('hips', [0.1, 0.08, 0.125 * w], [0.12, -0.2, 0.17 * w], 0.016, 0.026, look.sash ?? trim, { k: 0.008, flat: 0.35, fold: { n: 3, amp: 0.004 }, also: [bone('legL'), 0.3] });
   cap('hips', [0.085, 0.08, 0.125 * w], [0.06, -0.15, 0.165 * w], 0.014, 0.022, dim(look.sash ?? trim, 0.8), { k: 0.008, flat: 0.35, also: [bone('legL'), 0.3] });
@@ -202,6 +204,10 @@ function person(look) {
   look.hat?.({ cap: (n, a, b, ...rest) => cap(n, lift(a), lift(b), ...rest), egg: (n, c, ...rest) => egg(n, lift(c), ...rest), box: (n, c, ...rest) => box(n, lift(c), ...rest) });
   part = 'body';
   look.extra?.({ cap, egg, box, w });
+  // What each solid is made of, where it was not said: skin and hair by their colour, boots are leather,
+  // anything shaggy is fur, the rest is cloth.
+  for (const solid of out)
+    solid.stuff ??= solid.colour === HAIR ? 4 : solid.part === 'head' || solid.part === 'hand' ? 1 : solid.part === 'boot' ? 2 : (solid.rough?.amp ?? 0) >= 0.016 ? 4 : 0;
   return out;
 }
 
@@ -251,15 +257,15 @@ const LOOKS = {
   shield: {
     skin: rgb(0xc08e66), face: { jaw: 1.14, brow: 1.25 }, coat: rgb(0x4f5a4a), trim: rgb(0x8a6a2c), sash: rgb(0x2c2a26), cuff: IRON, legs: rgb(0x2c302c), boots: rgb(0x1c1b19), bulk: 1.08, beard: true,
     hat({ egg, cap }) {
-      egg('head', [0, 0.15, 0], [0.112, 0.09, 0.115], IRON, { k: 0.008 });
-      egg('head', [0, 0.13, 0], [0.122, 0.014, 0.125], dim(IRON, 1.6), { k: 0.006 });
-      cap('head', [0, 0.23, 0], [0, 0.31, 0], 0.018, 0.005, IRON, { k: 0.01 });
-      egg('head', [0, 0.06, -0.07], [0.105, 0.08, 0.06], dim(IRON, 0.8), { k: 0.01 });
+      egg('head', [0, 0.15, 0], [0.112, 0.09, 0.115], IRON, { stuff: 3, k: 0.008 });
+      egg('head', [0, 0.13, 0], [0.122, 0.014, 0.125], dim(IRON, 1.6), { stuff: 3, k: 0.006 });
+      cap('head', [0, 0.23, 0], [0, 0.31, 0], 0.018, 0.005, IRON, { stuff: 3, k: 0.01 });
+      egg('head', [0, 0.06, -0.07], [0.105, 0.08, 0.06], dim(IRON, 0.8), { stuff: 3, k: 0.01 });
     },
     extra({ egg, box, w }) {
       egg('spine', [0, 0.28, 0.01], [0.2 * w, 0.21, 0.138 * w], rgb(0x4a3526), { k: 0.012 });
-      for (let row = 0; row < 3; row++) for (let i = -1; i <= 1; i++) box('spine', [i * 0.085, 0.4 - row * 0.105, 0.13 * w - Math.abs(i) * 0.022], [0.034, 0.042, 0.008], dim(IRON, 1.3), { k: 0.004, round: 0.008 });
-      for (const side of [1, -1]) egg('spine', [side * 0.21 * w, 0.46, 0], [0.105, 0.06, 0.11], IRON, { k: 0.01 });
+      for (let row = 0; row < 3; row++) for (let i = -1; i <= 1; i++) box('spine', [i * 0.085, 0.4 - row * 0.105, 0.13 * w - Math.abs(i) * 0.022], [0.034, 0.042, 0.008], dim(IRON, 1.3), { stuff: 3, k: 0.004, round: 0.008 });
+      for (const side of [1, -1]) egg('spine', [side * 0.21 * w, 0.46, 0], [0.105, 0.06, 0.11], IRON, { stuff: 3, k: 0.01 });
     }
   },
   // A bowman: a dark blue coat, a fur hat, a quiver across the back.
@@ -283,20 +289,20 @@ const LOOKS = {
       egg('head', [0, 0.135, -0.004], [0.094, 0.012, 0.099], rgb(0x2a2a30), { k: 0.004 });
       box('head', [0, 0.245, -0.05], [0.07, 0.055, 0.04], rgb(0x121216), { k: 0.01, round: 0.02 });
       box('head', [0, 0.19, -0.105], [0.27, 0.02, 0.012], rgb(0x121216), { k: 0.006, round: 0.01 });
-      egg('head', [0, 0.17, 0.095], [0.022, 0.022, 0.012], GOLD, { k: 0.004 });
+      egg('head', [0, 0.17, 0.095], [0.022, 0.022, 0.012], GOLD, { stuff: 3, k: 0.004 });
     },
     extra(tools) {
       const { egg, box, w } = tools;
       cloak(rgb(0x5a1418), 0.8)(tools);
       for (const side of [1, -1]) {
-        egg('spine', [side * 0.215 * w, 0.47, 0], [0.12, 0.06, 0.125], IRON, { k: 0.01 });
-        egg('spine', [side * 0.245 * w, 0.43, 0], [0.11, 0.045, 0.115], dim(IRON, 0.8), { k: 0.008 });
-        egg('spine', [side * 0.215 * w, 0.5, 0], [0.05, 0.03, 0.05], GOLD, { k: 0.006 });
+        egg('spine', [side * 0.215 * w, 0.47, 0], [0.12, 0.06, 0.125], IRON, { stuff: 3, k: 0.01 });
+        egg('spine', [side * 0.245 * w, 0.43, 0], [0.11, 0.045, 0.115], dim(IRON, 0.8), { stuff: 3, k: 0.008 });
+        egg('spine', [side * 0.215 * w, 0.5, 0], [0.05, 0.03, 0.05], GOLD, { stuff: 3, k: 0.006 });
       }
       // A plate on the chest and a broad belt with a clasp.
-      box('spine', [0, 0.33, 0.125 * w], [0.075, 0.075, 0.012], dim(IRON, 1.2), { k: 0.006, round: 0.02, turn: [0, 0, 0.785] });
-      egg('spine', [0, 0.33, 0.14 * w], [0.03, 0.03, 0.012], GOLD, { k: 0.004 });
-      box('spine', [0, 0.04, 0.13 * w], [0.045, 0.04, 0.012], GOLD, { k: 0.004, round: 0.008 });
+      box('spine', [0, 0.33, 0.125 * w], [0.075, 0.075, 0.012], dim(IRON, 1.2), { stuff: 3, k: 0.006, round: 0.02, turn: [0, 0, 0.785] });
+      egg('spine', [0, 0.33, 0.14 * w], [0.03, 0.03, 0.012], GOLD, { stuff: 3, k: 0.004 });
+      box('spine', [0, 0.04, 0.13 * w], [0.045, 0.04, 0.012], GOLD, { stuff: 3, k: 0.004, round: 0.008 });
     }
   }
 };
@@ -596,15 +602,17 @@ const PROPS = {
 
 /** Sculpt a figure part by part, each on a grid as fine as it deserves, and join the results. */
 const CELLS = { body: 0.013, hat: 0.01, head: 0.0046, hand: 0.004, boot: 0.007 };
-function sculptParts(solids, bones) {
-  const made = Object.entries(CELLS).map(([part, cell]) => sculpt(solids.filter((solid) => solid.part === part), { cell, bones, mottle: part === 'head' || part === 'hand' ? 0.035 : 0.07, pad: cell * 3 })),
+function sculptParts(solids, bones, coarse) {
+  // Faces and hands coarsen more slowly than the rest, or they would be the first things lost.
+  const made = Object.entries(CELLS).map(([part, fine]) => [part, fine * (part === 'head' || part === 'hand' ? Math.pow(coarse, 0.7) : coarse)]).map(([part, cell]) => sculpt(solids.filter((solid) => solid.part === part), { cell, bones, mottle: part === 'head' || part === 'hand' ? 0.035 : 0.07, pad: cell * 3 })),
     total = made.reduce((sum, mesh) => sum + mesh.positions.length / 3, 0),
-    out = { positions: new Float32Array(total * 3), normals: new Float32Array(total * 3), colours: new Float32Array(total * 3), joints: new Uint8Array(total * 4), weights: new Float32Array(total * 4), indices: [], lo: [1e9, 1e9, 1e9], hi: [-1e9, -1e9, -1e9] };
+    out = { positions: new Float32Array(total * 3), normals: new Float32Array(total * 3), colours: new Float32Array(total * 3), stuffs: new Uint8Array(total), joints: new Uint8Array(total * 4), weights: new Float32Array(total * 4), indices: [], lo: [1e9, 1e9, 1e9], hi: [-1e9, -1e9, -1e9] };
   let at = 0;
   for (const mesh of made) {
     out.positions.set(mesh.positions, at * 3);
     out.normals.set(mesh.normals, at * 3);
     out.colours.set(mesh.colours, at * 3);
+    out.stuffs.set(mesh.stuffs, at);
     out.joints.set(mesh.joints, at * 4);
     out.weights.set(mesh.weights, at * 4);
     for (const i of mesh.indices) out.indices.push(i + at);
@@ -615,39 +623,51 @@ function sculptParts(solids, bones) {
   return out;
 }
 
+// Three levels of detail, each a file of its own. `coarse` multiplies the size of the grid cells;
+// blades and buildings coarsen less, because thin edges and rows of tile would vanish.
+const LEVELS = { high: 1, mid: 1.4, low: 2 };
+const args = process.argv.slice(2),
+  wanted = args.find((arg) => arg.startsWith('--level='))?.slice(8) ?? 'all',
+  only = args.filter((arg) => !arg.startsWith('--'));
 mkdirSync(new URL('../assets/', import.meta.url), { recursive: true });
-const binPath = new URL('../assets/models.bin', import.meta.url),
-  indexPath = new URL('../assets/models.json', import.meta.url),
-  only = process.argv.slice(2),
-  jobs = [];
 const bones = bindPose();
-for (const [name, look] of Object.entries(LOOKS)) jobs.push([name, () => sculptParts(person(look), bones)]);
-for (const [name, make] of Object.entries(THINGS)) {
-  jobs.push([name, () => sculpt(make().solids, { cell: 0.0075, mottle: 0.05 })]);
-  if (make().edge) jobs.push([name + 'Edge', () => sculpt(make().edge, { cell: 0.006, mottle: 0.03 })]);
-}
-for (const [name, make] of Object.entries(PROPS)) jobs.push([name, () => sculpt(make(), { cell: { rock: 0.05, pine: 0.085, stack: 0.04, gate: 0.07, gateRoof: 0.08, temple: 0.16, lantern: 0.022 }[name] ?? 0.026, mottle: 0.16 })]);
 
-// Models not asked for keep what was sculpted before.
-const old = existsSync(indexPath) && only.length ? { index: JSON.parse(readFileSync(indexPath, 'utf8')), bin: readFileSync(binPath) } : null,
-  chunks = [],
-  index = {};
-let offset = 0;
-for (const [name, make] of jobs) {
-  let bytes, info;
-  if (old && !only.includes(name) && old.index[name]) {
-    info = old.index[name];
-    bytes = old.bin.subarray(info.offset, info.offset + info.bytes);
-  } else {
-    const started = Date.now(),
-      packed = pack(make());
-    ({ bytes, info } = packed);
-    console.log(`${name}: ${info.count} points, ${info.indices / 3} triangles, ${(bytes.length / 1024) | 0} KB, ${((Date.now() - started) / 1000).toFixed(1)} s`);
+for (const [level, coarse] of Object.entries(LEVELS)) {
+  if (wanted !== 'all' && wanted !== level) continue;
+  const binPath = new URL(`../assets/models-${level}.bin`, import.meta.url),
+    indexPath = new URL(`../assets/models-${level}.json`, import.meta.url),
+    jobs = [],
+    thin = Math.min(coarse, 1.25),
+    built = Math.min(coarse, 1.3);
+  for (const [name, look] of Object.entries(LOOKS)) jobs.push([name, () => sculptParts(person(look), bones, coarse)]);
+  for (const [name, make] of Object.entries(THINGS)) {
+    jobs.push([name, () => sculpt(make().solids, { cell: 0.0075 * thin, mottle: 0.05 })]);
+    if (make().edge) jobs.push([name + 'Edge', () => sculpt(make().edge.map((solid) => ({ ...solid, stuff: 3 })), { cell: 0.006 * thin, mottle: 0.03 })]);
   }
-  index[name] = { ...info, offset, bytes: bytes.length };
-  chunks.push(bytes);
-  offset += bytes.length;
+  const CELL = { rock: 0.05, pine: 0.085, stack: 0.04, gate: 0.07, gateRoof: 0.08, temple: 0.16, lantern: 0.022 };
+  for (const [name, make] of Object.entries(PROPS)) jobs.push([name, () => sculpt(make(), { cell: (CELL[name] ?? 0.026) * (['gate', 'gateRoof', 'temple'].includes(name) ? built : coarse), mottle: 0.16 })]);
+
+  // Models not asked for keep what was sculpted before.
+  const old = existsSync(indexPath) && only.length ? { index: JSON.parse(readFileSync(indexPath, 'utf8')), bin: readFileSync(binPath) } : null,
+    chunks = [],
+    index = {};
+  let offset = 0;
+  for (const [name, make] of jobs) {
+    let bytes, info;
+    if (old && !only.includes(name) && old.index[name]) {
+      info = old.index[name];
+      bytes = old.bin.subarray(info.offset, info.offset + info.bytes);
+    } else {
+      const started = Date.now(),
+        packed = pack(make());
+      ({ bytes, info } = packed);
+      console.log(`${level} ${name}: ${info.count} points, ${info.indices / 3} triangles, ${(bytes.length / 1024) | 0} KB, ${((Date.now() - started) / 1000).toFixed(1)} s`);
+    }
+    index[name] = { ...info, offset, bytes: bytes.length };
+    chunks.push(bytes);
+    offset += bytes.length;
+  }
+  writeFileSync(binPath, Buffer.concat(chunks));
+  writeFileSync(indexPath, JSON.stringify(index));
+  console.log(`assets/models-${level}.bin: ${(offset / 1024) | 0} KB`);
 }
-writeFileSync(binPath, Buffer.concat(chunks));
-writeFileSync(indexPath, JSON.stringify(index));
-console.log(`assets/models.bin: ${(offset / 1024) | 0} KB`);

@@ -147,6 +147,7 @@ function field(solids, x, y, z, shade) {
       // Colour changes over a narrower band than shape does, so that a seam stays a seam.
       t = Math.max(0, Math.min(1, 0.5 + (0.5 * (d - ds)) / (k * 0.3)));
     if (shade) {
+      if (d > 1e8 || t > 0.5) shade.stuff = s.stuff ?? 0;
       if (d > 1e8) shade.colour = [...s.colour];
       else if (t > 0) shade.colour = shade.colour.map((v, c) => mix(v, s.colour[c], t));
       shade.pull.push([s.bone ?? 0, ds, s.also]);
@@ -236,6 +237,7 @@ export function sculpt(list, { cell = 0.01, bones = null, soft = 0.035, mottle =
   const count = positions.length / 3,
     normals = new Float32Array(count * 3),
     colours = new Float32Array(count * 3),
+    stuffs = new Uint8Array(count),
     joints = bones ? new Uint8Array(count * 4) : null,
     weights = bones ? new Float32Array(count * 4) : null,
     shade = {},
@@ -264,6 +266,7 @@ export function sculpt(list, { cell = 0.01, bones = null, soft = 0.035, mottle =
       open -= weight * Math.max(0, Math.min(1, 1 - field(solids, x + gx * reach, y + gy * reach, z + gz * reach) / reach));
     const tone = (0.35 + 0.65 * Math.max(0, open)) * (1 - mottle / 2 + noise3(x * 45, y * 45, z * 45) * mottle * 0.6 + noise3(x * 9, y * 9, z * 9) * mottle * 0.4);
     for (let c = 0; c < 3; c++) colours[v * 3 + c] = shade.colour[c] * tone;
+    stuffs[v] = shade.stuff ?? 0;
     if (bones) {
       // The nearer a solid, the more its bone holds the point; the four strongest are kept.
       let nearest = 1e9;
@@ -284,7 +287,7 @@ export function sculpt(list, { cell = 0.01, bones = null, soft = 0.035, mottle =
       });
     }
   }
-  return { positions: Float32Array.from(positions), normals, colours, joints, weights, indices: Uint32Array.from(indices), lo, hi };
+  return { positions: Float32Array.from(positions), normals, colours, stuffs, joints, weights, indices: Uint32Array.from(indices), lo, hi };
 }
 
 /** Pack a mesh small: positions as 16-bit steps across its box, the rest as bytes. */
@@ -298,6 +301,8 @@ export function pack(mesh) {
   parts.push(pos);
   parts.push(Int8Array.from(mesh.normals, (v) => Math.round(v * 127)));
   parts.push(Uint8Array.from(mesh.colours, (v) => Math.round(Math.min(1, Math.pow(Math.max(0, v), 1 / 2.2)) * 255)));
+  // What each point is made of: 0 cloth, 1 skin, 2 leather, 3 metal, 4 hair or fur.
+  parts.push(mesh.stuffs);
   if (mesh.joints) {
     parts.push(mesh.joints);
     // Weights as bytes that still add up to 255.

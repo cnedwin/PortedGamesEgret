@@ -1,8 +1,76 @@
 // The people of the chapter: sculpted figures on a shared skeleton, and the poses that move them.
 // A figure faces +z; its left is +x. Poses are sets of joint angles; each frame every joint eases toward
 // the pose its state asks for, which is what gives the cuts their snap and the walk its weight.
-import { Mesh3D, Object3D, Skeleton3D, createStandardMaterial3D } from '@egret/engine/world3d';
+import { Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createStandardMaterial3D } from '@egret/engine/world3d';
 import { BIND, BONES, JOINTS } from './rig.mjs';
+
+// Fine surface that the sculpted mesh is too coarse to carry, drawn per pixel from a pattern that stays
+// fixed to the figure: the threads of woven cloth, pores and flush on skin, the grain of leather, the
+// brushing of metal, strands of hair. Each fades out as it gets too small on screen to draw cleanly.
+const SURFACE_GLSL = `
+float sHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float sNoise(vec2 p) {
+    vec2 i = floor(p), f = fract(p), u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(sHash(i), sHash(i + vec2(1.0, 0.0)), u.x), mix(sHash(i + vec2(0.0, 1.0)), sHash(i + vec2(1.0, 1.0)), u.x), u.y);
+}
+// How much of a pattern of the given pitch (metres) can still be drawn at this pixel.
+float sSeen(vec2 p, float pitch) { return clamp(1.3 - max(fwidth(p.x), fwidth(p.y)) / pitch * 2.2, 0.0, 1.0); }
+// Height of the surface's fine relief at a point; x of the result is the height, yz its slope.
+vec3 sRelief(float id, vec2 p) {
+    if (id < 0.5) {
+        // Plain weave: warp over weft, with a thicker thread now and then.
+        float pitch = 0.0026, seen = sSeen(p, pitch), k = 6.2832 / pitch;
+        float slub = 0.7 + 0.6 * sNoise(vec2(p.x * 30.0, p.y * 700.0));
+        float h = sin(p.x * k) * sin(p.y * k) * slub;
+        return vec3(h, cos(p.x * k) * sin(p.y * k), sin(p.x * k) * cos(p.y * k)) * seen;
+    } else if (id < 1.5) {
+        // Skin: pores, and finer creases across them.
+        float seen = sSeen(p, 0.0016);
+        float h = sNoise(p * 1400.0) * 0.6 + sNoise(vec2(p.x * 500.0, p.y * 1900.0)) * 0.4;
+        return vec3(h - 0.5, sNoise(p * 1400.0 + vec2(0.4, 0.0)) - sNoise(p * 1400.0), sNoise(p * 1400.0 + vec2(0.0, 0.4)) - sNoise(p * 1400.0)) * seen * 0.6;
+    } else if (id < 2.5) {
+        // Leather: a pebbled grain broken by creases.
+        float seen = sSeen(p, 0.003);
+        float g = sNoise(p * 650.0), c = abs(sNoise(p * 90.0) - 0.5) * 2.0;
+        float h = g * 0.7 + smoothstep(0.12, 0.0, c) * -0.8;
+        return vec3(h - 0.35, sNoise(p * 650.0 + vec2(0.3, 0.0)) - g, sNoise(p * 650.0 + vec2(0.0, 0.3)) - g) * seen;
+    } else if (id < 3.5) {
+        // Metal: brushed one way, with a few pits.
+        float seen = sSeen(p, 0.002);
+        float h = sNoise(vec2(p.x * 90.0, p.y * 2400.0));
+        return vec3(h - 0.5, 0.0, sNoise(vec2(p.x * 90.0, p.y * 2400.0 + 0.4)) - h) * seen * 0.7;
+    }
+    // Hair and fur: strands running down.
+    float seen = sSeen(p, 0.0022);
+    float h = sNoise(vec2(p.x * 2100.0, p.y * 60.0));
+    return vec3(h - 0.5, sNoise(vec2(p.x * 2100.0 + 0.4, p.y * 60.0)) - h, 0.0) * seen * 1.4;
+}
+vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
+    float id = floor(uv.x / 16.0);
+    vec2 p = vec2(uv.x - id * 16.0, uv.y);
+    vec3 relief = sRelief(id, p);
+    // Low places are darker; cloth also fades and soils unevenly, and skin flushes in patches.
+    vec3 c = color.rgb * (1.0 + relief.x * (id < 0.5 ? 0.22 : id > 3.5 ? 0.45 : 0.16));
+    float patchy = sNoise(p * 14.0) * 0.6 + sNoise(p * 55.0) * 0.4;
+    if (id < 0.5) c *= 0.88 + patchy * 0.24;
+    else if (id < 1.5) c *= mix(vec3(1.0), vec3(1.12, 0.93, 0.9), smoothstep(0.45, 0.8, patchy) * 0.5);
+    else if (id < 2.5) c *= 0.8 + patchy * 0.35;
+    else if (id < 3.5) c *= 0.9 + patchy * 0.2;
+    return vec4(c, color.a);
+}`;
+const SURFACE_NORMAL_GLSL = `
+vec3 customNormal(vec3 normal, vec3 worldPosition, vec2 uv) {
+    float id = floor(uv.x / 16.0);
+    vec3 relief = sRelief(id, vec2(uv.x - id * 16.0, uv.y));
+    // Lean the normal by the slope of the relief, along two directions that lie in the surface.
+    vec3 side = normalize(cross(normal, vec3(0.0, 1.0, 0.001))), up = cross(side, normal);
+    return normal - (side * relief.y + up * relief.z) * (id < 0.5 ? 0.55 : 0.4);
+}`;
+/** Give a figure's material its fine surface. */
+function surfaced(material) {
+  material.shader = createCustomShader3D({ key: 'snow-surface', glsl: SURFACE_GLSL, glslNormal: SURFACE_NORMAL_GLSL });
+  return material;
+}
 
 /** Size, what is carried in the right hand, and what on the left arm. */
 const LOOKS = {
@@ -15,11 +83,13 @@ const LOOKS = {
 const POSED = ['hips', 'spine', 'head', 'armL', 'foreL', 'armR', 'foreR', 'legL', 'shinL', 'legR', 'shinR', 'cloak', 'weapon', 'off'];
 
 /** Build one figure of the given kind from the sculpted models. */
-export function createFigure(kind, models) {
+export function createFigure(kind, models, detail = 'high') {
   const look = LOOKS[kind],
-    cloth = createStandardMaterial3D({ vertexColors: true, roughness: 0.78, metallic: 0 }),
+    fine = detail !== 'low',
+    dress = (material) => (fine ? surfaced(material) : material),
+    cloth = dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.78, metallic: 0 })),
     gear = createStandardMaterial3D({ vertexColors: true, roughness: 0.6, metallic: 0.1 }),
-    metal = createStandardMaterial3D({ vertexColors: true, roughness: 0.28, metallic: 0.9, emissive: 0x9fd4ff, emissiveIntensity: 0 }),
+    metal = dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.28, metallic: 0.9, emissive: 0x9fd4ff, emissiveIntensity: 0 })),
     root = new Object3D(),
     joints = { root },
     rest = {};

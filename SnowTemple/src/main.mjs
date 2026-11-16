@@ -5,6 +5,7 @@
 //   ?auto        a rule-driven player takes the controls
 //   ?at=yard | gate | boss | rage     begin further in
 //   ?quality=low | mid | high         fix the picture quality for this visit
+//   ?models=low | mid | high          fix the model detail for this visit
 //   ?debug       show the state panel (F3 toggles it)
 import { createEngine } from '@egret/engine';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
@@ -33,7 +34,7 @@ function fail(cause) {
 
 const SETTINGS_KEY = 'snow-temple-settings';
 function loadSettings() {
-  const defaults = { quality: 'auto', particles: 'some', sound: 'on', keys: { ...DEFAULT_KEYS } };
+  const defaults = { quality: 'auto', models: 'auto', particles: 'some', sound: 'on', keys: { ...DEFAULT_KEYS } };
   try {
     const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}');
     return { ...defaults, ...saved, keys: { ...DEFAULT_KEYS, ...(saved.keys ?? {}) }, ...(params.get('quality') ? { quality: params.get('quality') } : {}) };
@@ -79,8 +80,11 @@ async function main() {
   progress(0.45, '栽松，铺雪');
   await new Promise((done) => setTimeout(done));
   const amount = { few: 0.5, some: 1, many: 1.6 }[settings.particles] ?? 1,
-    models = await loadModels(),
-    view = createView(scene, camera, models, { density: level.density, particles: amount, shadowSize: level.shadows || 1024 });
+    // Model detail is its own choice; left to itself, a phone takes the light set.
+    detail = ['low', 'mid', 'high'].includes(params.get('models') ?? settings.models) ? (params.get('models') ?? settings.models) : coarse ? 'low' : 'high',
+    models = await loadModels(detail),
+    view = createView(scene, camera, models, {
+      detail, density: level.density, particles: amount, shadowSize: level.shadows || 1024 });
   progress(0.9, '请陆虞候入座');
   await new Promise((done) => setTimeout(done));
 
