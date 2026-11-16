@@ -57,6 +57,32 @@ const CLOAK = leather({
   opacity: 0.84,
   holes: [slit([92, 112], [86, 150], 1.1), slit([96, 118], [91, 160], 0.9), crescent(84, 166, 2.6, 60)]
 });
+/** The helmet of heaven's soldiers, its cheek piece, and the spike the plume flies from. */
+const HELMET =
+  leather({ shape: blob([[91.6, 86.4], [93.6, 77], [102.4, 71.6], [110.6, 76], [112.4, 82.6], [101, 82.4]], 0.45), fill: DYE.gold, holes: [...beads([94.6, 83.6], [110, 80.6], 6, 0.7), crescent(101.6, 76.6, 2.6, 270)], edge: 1 }) +
+  leather({ shape: blob([[92.6, 85], [98, 85], [99, 93], [95, 96], [92, 92]], 0.4), fill: DYE.gold, holes: [dot(95.6, 90, 1)], edge: 0.9 }) +
+  leather({ shape: poly([[100.6, 72.4], [104, 72.4], [102.6, 66]]), fill: DYE.gold, edge: 0.9 });
+/** Those of Laozi's household, who wear no armour: their hair is bound up under a black cap with a pin through it. */
+const HOUSEHOLD = ['fan', 'gourd'];
+const CAP =
+  leather({ shape: blob([[91.6, 87], [92.6, 78], [101, 73], [110, 76.6], [112, 82], [102, 82.6], [96, 88]], 0.45), fill: DYE.black, holes: [slit([95, 80], [106, 76.6], 0.5)], opacity: 0.95, edge: 1 }) +
+  leather({ shape: blob([[98, 73.6], [100, 67], [105, 66.6], [106.6, 72.6]], 0.5), fill: DYE.black, opacity: 0.95, edge: 0.9 }) +
+  line(curve([[95.6, 69.6], [110, 68.6]]), 1.3, DYE.gold);
+/** A palm-leaf fan as wide as he is, held upright by its handle. */
+WEAPONS.fan =
+  leather({ shape: poly([[119, 110], [121, 110], [121, 150], [119, 150]]), fill: DYE.black, opacity: 0.95, edge: 1 }) +
+  leather({
+    shape: blob([[120, 112], [106, 102], [100, 84], [106, 66], [120, 58], [134, 66], [140, 84], [134, 102]], 0.5),
+    fill: DYE.green,
+    opacity: 0.86,
+    holes: [slit([120, 108], [120, 62], 0.9), slit([118, 106], [107, 72], 0.7), slit([122, 106], [133, 72], 0.7), slit([117, 108], [102, 86], 0.6), slit([123, 108], [138, 86], 0.6)],
+    over: line(blob([[120, 110.4], [107.4, 101], [102, 84], [107.4, 67.6], [120, 60], [132.6, 67.6], [138, 84], [132.6, 101]], 0.5), 1, DYE.gold)
+  });
+/** A gourd of pills, held up by its neck. */
+WEAPONS.gourd =
+  leather({ shape: blob([[120, 104], [124, 107], [123.4, 113], [128.6, 120], [129, 130], [120, 137], [111, 130], [111.4, 120], [116.6, 113], [116, 107]], 0.5), fill: DYE.amber, holes: [crescent(116, 126, 3, 200), dot(120, 109.6, 0.9)], edge: 1 }) +
+  line(curve([[115.4, 114.6], [124.6, 114.6]]), 1.6, DYE.red) +
+  leather({ shape: poly([[118.6, 100], [121.4, 100], [121.4, 104.6], [118.6, 104.6]]), fill: DYE.red, edge: 0.8 });
 /** The eye in his forehead, painted on the helmet. */
 const THIRD_EYE = `<path d="${slit([107.4, 75.4], [107.8, 81.6], 1.9)}" fill="${DYE.red}" stroke="${DYE.ink}" stroke-width="0.6"/><circle cx="107.6" cy="78.5" r="0.9" fill="${DYE.ink}"/>`;
 /** The tall shield, carried on the other arm: drawn where that hand hangs, and brought round in front by the arm. */
@@ -70,11 +96,13 @@ const SHIELD = leather({
 
 function partsOf(weapon) {
   // The guard's armour is black where the others' is teal.
-  const coat = weapon === 'shield' ? DYE.black : weapon === 'glaive' ? DYE.hide : DYE.teal;
+  const coat = { shield: DYE.black, glaive: DYE.hide, fan: DYE.red, gourd: DYE.amber }[weapon] ?? DYE.teal,
+    // The plume of a helmet; on a cap, a ribbon of the same shape.
+    plume = HOUSEHOLD.includes(weapon) ? DYE.black : DYE.red;
   return [
     ...(weapon === 'glaive' ? [['cloak', 'chest', CLOAK]] : []),
-    ['plume2', 'plume2', leather({ shape: ribbon([[96, 58], [91, 53], [86, 50]], [2.6, 2.2, 1.1]), fill: DYE.red, holes: barbs([[96, 58], [86, 50]], 1.8, 3, 0.7, 0.5) })],
-    ['plume1', 'plume1', leather({ shape: ribbon([[102, 71], [99, 64], [96, 58]], [1.8, 2.6, 2.6]), fill: DYE.red, holes: barbs([[102, 71], [96, 58]], 2, 3, 0.7, 0.5) }) + stud(96, 58, 1)],
+    ['plume2', 'plume2', leather({ shape: ribbon([[96, 58], [91, 53], [86, 50]], [2.6, 2.2, 1.1]), fill: plume, holes: barbs([[96, 58], [86, 50]], 1.8, 3, 0.7, 0.5) })],
+    ['plume1', 'plume1', leather({ shape: ribbon([[102, 71], [99, 64], [96, 58]], [1.8, 2.6, 2.6]), fill: plume, holes: barbs([[102, 71], [96, 58]], 2, 3, 0.7, 0.5) }) + stud(96, 58, 1)],
     ['armB1', 'armB1', limb([[95, 105], [92, 113], [90, 122]], [4.8, 4.4, 3.8], coat, [crescent(92.4, 110, 2.2, 200), crescent(91, 116, 2, 200)])],
     ['armB2', 'armB2', limb([[90, 122], [92, 129], [95, 136]], [3.6, 3.4, 3], DYE.gold, beads([90.8, 125], [93.8, 133], 3, 0.8)) + fist(95.6, 137.6) + stud(90, 122)],
     ['legB1', 'legB1', limb([[96, 143], [94.4, 156], [93, 170]], [6, 5.4, 4.4], DYE.crimson, [slit([95.4, 148], [93.6, 164], 0.8)])],
@@ -114,10 +142,7 @@ function partsOf(weapon) {
         over:
           line(curve([[104.6, 83.2], [108.6, 82], [111.6, 83]]), 1.2) +
           line(curve([[112.6, 91.4], [109.6, 91.6]]), 0.8) +
-          // The helmet, its cheek piece, and the spike the plume flies from.
-          leather({ shape: blob([[91.6, 86.4], [93.6, 77], [102.4, 71.6], [110.6, 76], [112.4, 82.6], [101, 82.4]], 0.45), fill: DYE.gold, holes: [...beads([94.6, 83.6], [110, 80.6], 6, 0.7), crescent(101.6, 76.6, 2.6, 270)], edge: 1 }) +
-          leather({ shape: blob([[92.6, 85], [98, 85], [99, 93], [95, 96], [92, 92]], 0.4), fill: DYE.gold, holes: [dot(95.6, 90, 1)], edge: 0.9 }) +
-          leather({ shape: poly([[100.6, 72.4], [104, 72.4], [102.6, 66]]), fill: DYE.gold, edge: 0.9 }) +
+          (HOUSEHOLD.includes(weapon) ? CAP : HELMET) +
           (weapon === 'glaive' ? THIRD_EYE : '')
       }) + stud(102, 100, 1.1)
     ],
@@ -455,6 +480,10 @@ ANIMATIONS.glaive = {
   hurt,
   down
 };
+
+// Laozi's household move as Erlang does when he strikes: the fan is swept over and down, and the pill is thrown
+// with the same arm.
+ANIMATIONS.fan = ANIMATIONS.gourd = { idle: ANIMATIONS.spear.idle, windup: ANIMATIONS.glaive.windup, attack: ANIMATIONS.glaive.attack, hurt, down };
 
 /** A soldier's description, as tools/author.mjs wants it. */
 export const soldier = weapon => ({ bones: BONES, parts: partsOf(weapon), animations: ANIMATIONS[weapon], events: ['hit'] });

@@ -263,4 +263,87 @@ export const orchard = {
   })()
 };
 
-export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant, ring, far2, tree, peach, moongate, orchard];
+// ---- The Tushita Palace, where Laozi refines his elixir: the third act ------------------------------------------
+/** A furnace for the elixir, as one flat piece: a round belly on three legs, a lid, and a mouth with the fire in it. */
+function furnacePiece(x, base, s, dye = DYE.amber, lit = true) {
+  const at = (dx, dy) => [x + dx * s, base - dy * s];
+  return (
+    [-22, 0, 22].map(dx => leather({ shape: poly([at(dx - 5, 0), at(dx + 5, 0), at(dx + 3, 22), at(dx - 3, 22)]), fill: DYE.black, opacity: 0.9 })).join('') +
+    leather({
+      shape: blob([at(-34, 30), at(-40, 56), at(-30, 84), at(0, 92), at(30, 84), at(40, 56), at(34, 30), at(0, 20)], 0.5),
+      fill: dye,
+      opacity: 0.88,
+      holes: [dot(...at(0, 52), 13 * s), ...[-1, 1].flatMap(side => [crescent(...at(side * 25, 66), 4 * s, side > 0 ? 0 : 180), crescent(...at(side * 27, 44), 4 * s, side > 0 ? 0 : 180)]), ...beads(at(-24, 80), at(24, 80), 7, 1.3 * s)],
+      over: `<circle cx="${x}" cy="${base - 52 * s}" r="${13 * s}" fill="none" stroke="${DYE.ink}" stroke-width="1.2"/>` + (lit ? `<circle cx="${x}" cy="${base - 52 * s}" r="${9 * s}" fill="${DYE.red}" fill-opacity="0.8"/>` : '')
+    }) +
+    leather({ shape: blob([at(-30, 90), at(-20, 104), at(0, 110), at(20, 104), at(30, 90), at(0, 86)], 0.4), fill: DYE.crimson, opacity: 0.9, holes: [slit(at(-14, 97), at(14, 97), 1.2 * s)] }) +
+    leather({ shape: dot(...at(0, 114), 5 * s), fill: DYE.gold })
+  );
+}
+
+/** Far behind the cloth in the palace: pillars, hangings between them, and the great furnaces, out of focus. */
+export const far3 = {
+  file: 'far3.png',
+  width: 1400,
+  height: 360,
+  scale: 0.6,
+  svg: blurred(
+    [80, 400, 720, 1040, 1340].map(x => leather({ shape: poly([[x - 16, 360], [x + 16, 360], [x + 13, 20], [x - 13, 20]]), fill: '#7a4d38', opacity: 0.7, holes: [slit([x, 60], [x, 320], 3)] })).join('') +
+      [[80, 400], [400, 720], [720, 1040], [1040, 1340]].map(([a, b]) => `<path d="M${a} 24Q${(a + b) / 2} 120 ${b} 24V60Q${(a + b) / 2} 150 ${a} 60Z" fill="#8a3a2c" fill-opacity="0.5"/>`).join('') +
+      furnacePiece(240, 350, 1.5, '#8a5a3c', false) +
+      furnacePiece(880, 352, 1.9, '#7a4d38', false) +
+      furnacePiece(1200, 350, 1.2, '#8a5a3c', false),
+    3.2
+  )
+};
+
+/** A small furnace that stands in his way and can be knocked over. It stands on the bottom edge of the picture, in the middle. */
+export const furnace = { file: 'furnace.png', width: 96, height: 124, scale: 2, svg: furnacePiece(48, 124, 1) };
+
+/** A pill from the alchemist's gourd. */
+export const pill = { file: 'pill.png', width: 20, height: 20, scale: 3, svg: leather({ shape: dot(10, 10, 8), fill: DYE.red, opacity: 0.95, holes: [crescent(8, 8, 2.4, 220)], edge: 1.2 }) + `<circle cx="10" cy="10" r="2" fill="${DYE.gold}"/>` };
+
+/** A grate in the floor that the furnace under it breathes fire through. It lies on the bottom edge of the picture. */
+export const vent = {
+  file: 'vent.png',
+  width: 64,
+  height: 16,
+  scale: 2,
+  svg: leather({ shape: poly([[2, 16], [62, 16], [56, 4], [8, 4]]), fill: DYE.black, opacity: 0.95, holes: Array.from({ length: 6 }, (_, i) => slit([13 + i * 7.6, 7], [12 + i * 7.6, 14], 1.3)), over: `<path d="M8 4H56" stroke="${DYE.gold}" stroke-width="1.6"/>` })
+};
+
+/** The way out of the furnace room: a doorway under the palace's name. */
+export const door = {
+  file: 'door.png',
+  width: 340,
+  height: 380,
+  scale: 1.5,
+  svg: (() => {
+    const post = x => leather({ shape: poly([[x - 14, 380], [x + 14, 380], [x + 12, 96], [x - 12, 96]]), fill: DYE.crimson, opacity: 0.88, holes: [slit([x, 130], [x, 240], 2.4), slit([x, 260], [x, 366], 2.4)] });
+    const lintel = leather({ shape: poly([[30, 60], [310, 60], [318, 100], [22, 100]]), fill: DYE.black, opacity: 0.9, holes: beads([44, 92], [296, 92], 15, 1.5), over: `<path d="M30 60H310" stroke="${DYE.gold}" stroke-width="2.4"/>` });
+    const board = leather({ shape: poly([[112, 16], [228, 16], [228, 52], [112, 52]]), fill: DYE.teal, opacity: 0.92, holes: beads([118, 21], [222, 21], 11, 1.2).concat(beads([118, 47], [222, 47], 11, 1.2)), over: `<text x="170" y="43" text-anchor="middle" font-family="'Noto Serif CJK SC','Songti SC','SimSun',serif" font-weight="900" font-size="22" letter-spacing="4" fill="#f6dc9c">兜率宮</text>` });
+    const hanging = side => `<path d="M${170 + side * 112} 100Q${170 + side * 96} 190 ${170 + side * 118} 300L${170 + side * 80} 300Q${170 + side * 60} 190 ${170 + side * 40} 100Z" fill="${DYE.red}" fill-opacity="0.6" stroke="${DYE.ink}" stroke-width="1"/>`;
+    return hanging(-1) + hanging(1) + post(54) + post(286) + lintel + board;
+  })()
+};
+
+/** The floor of the palace, in the order tools/level.mjs names the tiles: boards over dark stone, and galleries to stand on. */
+export const palace = {
+  file: 'palace.png',
+  width: 240,
+  height: 48,
+  scale: 2,
+  svg: (() => {
+    const stone = x => `<rect x="${x}" y="0" width="48" height="48" fill="#2c1a14" fill-opacity="0.93"/>`;
+    const top = stone(0) + `<rect x="0" y="0" width="48" height="7" fill="${DYE.crimson}" fill-opacity="0.95"/><path d="M0 0.5H48M0 7H48" stroke="${DYE.ink}" stroke-width="1"/><path d="M0 3.6H48" stroke="${DYE.gold}" stroke-opacity="0.8" stroke-width="1"/>` + `<g fill="#f4d9a0" fill-opacity="0.45"><path d="${dot(12, 22, 5)}${dot(36, 22, 5)}${dot(24, 38, 3)}${dot(0, 38, 3)}${dot(48, 38, 3)}"/></g><g fill="#2c1a14"><path d="${dot(12, 22, 2.6)}${dot(36, 22, 2.6)}"/></g>`;
+    const fill = stone(48) + `<g fill="#f4d9a0" fill-opacity="0.14"><path d="${slit([52, 16], [92, 16], 1)}${slit([52, 36], [92, 36], 1)}${slit([72, 2], [72, 14], 1)}${slit([60, 18], [60, 34], 1)}${slit([84, 18], [84, 34], 1)}"/></g>`;
+    // A gallery: a rail of boards with a carved skirt under it. An end piece is the same rail pushed in from its side.
+    const gallery = (x, from, to) =>
+      [6, 18, 30, 42].map(at => `<path d="${crescent(x + at, 17, 4.6, 90)}" fill="${DYE.gold}" fill-opacity="0.85" stroke="${DYE.ink}" stroke-width="0.6"/>`).join('') +
+      `<rect x="${x + from}" y="4" width="${to - from}" height="11" rx="2" fill="${DYE.crimson}" fill-opacity="0.93" stroke="${DYE.ink}" stroke-width="1.1"/>` +
+      `<path d="M${x + Math.max(from, 0) + 3} 7.4H${x + Math.min(to, 48) - 3}" stroke="${DYE.gold}" stroke-opacity="0.8" stroke-width="1.1"/>`;
+    return [top, fill, gallery(96, 3, 62), gallery(144, -14, 62), gallery(192, -14, 45)].map((art, i) => `<svg x="${i * 48}" y="0" width="48" height="48" viewBox="${i * 48} 0 48 48">${art}</svg>`).join('');
+  })()
+};
+
+export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant, ring, far2, tree, peach, moongate, orchard, far3, furnace, pill, vent, door, palace];

@@ -1,0 +1,37 @@
+alchemist.png
+size: 1017,129
+filter: Linear,Linear
+repeat: none
+pma: false
+weapon
+bounds: 2,2,72,123
+legF1
+bounds: 76,2,57,120
+legB1
+bounds: 135,2,54,120
+head
+bounds: 191,2,84,117
+torso
+bounds: 277,2,93,111
+legF2
+bounds: 372,2,45,105
+legB2
+bounds: 419,2,39,105
+skirt
+bounds: 460,2,90,99
+armF1
+bounds: 552,2,51,87
+armB1
+bounds: 605,2,51,84
+armB2
+bounds: 658,2,48,78
+armF2
+bounds: 708,2,60,66
+plume1
+bounds: 770,2,42,63
+plume2
+bounds: 814,2,51,48
+footB
+bounds: 867,2,72,42
+footF
+bounds: 941,2,72,42

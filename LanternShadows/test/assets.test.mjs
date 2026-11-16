@@ -16,7 +16,9 @@ import * as act1 from '../tools/levels/act1.mjs';
 import * as archer from '../tools/puppets/archer.mjs';
 import * as dummy from '../tools/puppets/dummy.mjs';
 import * as crane from '../tools/puppets/crane.mjs';
+import * as alchemist from '../tools/puppets/alchemist.mjs';
 import * as erlangPuppet from '../tools/puppets/erlang.mjs';
+import * as fanner from '../tools/puppets/fanner.mjs';
 import * as hawk from '../tools/puppets/hawk.mjs';
 import * as hound from '../tools/puppets/hound.mjs';
 import * as guard from '../tools/puppets/guard.mjs';
@@ -27,7 +29,7 @@ import { SCENERY } from '../tools/scenery.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'),
   read = file => fs.readFileSync(path.join(ROOT, file)),
-  PUPPETS = { wukong, dummy, spearman, archer, nezha, guard, crane, erlang: erlangPuppet, hawk, hound };
+  PUPPETS = { wukong, dummy, spearman, archer, nezha, guard, crane, erlang: erlangPuppet, hawk, hound, fanner, alchemist };
 
 test('each puppet is put together soundly', () => {
   for (const [name, puppet] of Object.entries(PUPPETS)) {
@@ -172,7 +174,7 @@ test("pictures are read by the game's own reader, which every browser allows", (
 });
 
 test("the soldiers' blows are as long as the rules say, and strike when the rules say", () => {
-  for (const [kind, puppet] of [['spearman', spearman], ['archer', archer], ['guard', guard]]) {
+  for (const [kind, puppet] of [['spearman', spearman], ['archer', archer], ['guard', guard], ['fanner', fanner], ['alchemist', alchemist]]) {
     const spec = FOES[kind];
     for (const needed of ['idle', 'windup', 'attack', 'hurt', 'down']) assert.ok(puppet.animations[needed], `${kind}.${needed}`);
     assert.equal(puppet.animations.attack.seconds, spec.attack, kind);
@@ -224,6 +226,11 @@ test('Erlang, the hawk he becomes and his hound have a pose for everything the r
   for (const needed of ['run', 'crouch', 'yelp']) assert.ok(hound.animations[needed], `hound: ${needed}`);
   assert.ok(hound.animations.crouch.seconds <= ERLANG.hound.windup);
   assert.equal(hound.animations.yelp.seconds, ERLANG.hound.yelp);
+});
+
+test('the third level on disk is the one its layout describes', async () => {
+  const act3 = await import('../tools/levels/act3.mjs');
+  assert.deepEqual(JSON.parse(read('assets/levels/act3.tmj')), JSON.parse(JSON.stringify(toTiled(act3.level, act3.title, act3.tiles))), 'run tools/author.mjs again');
 });
 
 test('the level on disk is the one its layout describes', () => {
