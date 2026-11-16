@@ -6,15 +6,20 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { FOES } from '../src/rules/foes.mjs';
 import { ATTACKS } from '../src/rules/hero.mjs';
 import { skeletonBones, skeletonOf, timelines } from '../tools/author.mjs';
+import { toTiled } from '../tools/level.mjs';
+import * as act1 from '../tools/levels/act1.mjs';
+import * as archer from '../tools/puppets/archer.mjs';
 import * as dummy from '../tools/puppets/dummy.mjs';
+import * as spearman from '../tools/puppets/spearman.mjs';
 import * as wukong from '../tools/puppets/wukong.mjs';
 import { SCENERY } from '../tools/scenery.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'),
   read = file => fs.readFileSync(path.join(ROOT, file)),
-  PUPPETS = { wukong, dummy };
+  PUPPETS = { wukong, dummy, spearman, archer };
 
 test('each puppet is put together soundly', () => {
   for (const [name, puppet] of Object.entries(PUPPETS)) {
@@ -66,13 +71,13 @@ test("the puppet's blows are as long as the rules say, and strike when the rules
     const [at] = animation.events.find(([, event]) => event === 'hit');
     assert.ok(Math.abs(at * animation.seconds - attack.hitAt) < 0.02, `${attack.name} strikes at ${at * animation.seconds}, the rules at ${attack.hitAt}`);
   }
-  for (const needed of ['idle', 'run', 'jump', 'fall', 'land', 'dash']) assert.ok(wukong.animations[needed], needed);
+  for (const needed of ['idle', 'run', 'jump', 'fall', 'land', 'dash', 'hurt', 'down']) assert.ok(wukong.animations[needed], needed);
   for (const kind of new Set(ATTACKS.map(attack => attack.kind))) assert.ok(dummy.animations[kind], `the post has no way to take a ${kind}`);
   assert.ok(dummy.animations.idle);
 });
 
 test('a loop ends as it began, so that it repeats without a jerk', () => {
-  for (const [puppet, loops] of [[wukong, ['idle', 'run', 'fall']], [dummy, ['idle']]])
+  for (const [puppet, loops] of [[wukong, ['idle', 'run', 'fall']], [dummy, ['idle']], [spearman, ['idle', 'walk']], [archer, ['idle']]])
     for (const title of loops)
       for (const [bone, tracks] of Object.entries(puppet.animations[title].bones))
         for (const keys of Object.values(tracks)) {
@@ -137,4 +142,32 @@ test("pictures are read by the game's own reader, which every browser allows", (
     assert.ok(!/\bloadTexture\(|@egret\/spine\/web|createManifestSpineContentLoader/.test(text), file);
   }
   assert.ok(!fs.existsSync(path.join(ROOT, 'vendor/engine/dist/web/BrowserTextureProvider.js')) || !read('src/main.mjs').toString().includes('game.loadTexture'));
+});
+
+test("the soldiers' blows are as long as the rules say, and strike when the rules say", () => {
+  for (const [kind, puppet] of [['spearman', spearman], ['archer', archer]]) {
+    const spec = FOES[kind];
+    for (const needed of ['idle', 'windup', 'attack', 'hurt', 'down']) assert.ok(puppet.animations[needed], `${kind}.${needed}`);
+    assert.equal(puppet.animations.attack.seconds, spec.attack, kind);
+    const [at] = puppet.animations.attack.events.find(([, event]) => event === 'hit');
+    assert.ok(Math.abs(at * spec.attack - spec.hitAt) < 0.02, `${kind} strikes at ${at * spec.attack}, the rules at ${spec.hitAt}`);
+    // The warning is fully shown before the blow begins.
+    assert.ok(puppet.animations.windup.seconds <= spec.windup, kind);
+    // A blow begins in the pose its warning ends in.
+    for (const [bone, tracks] of Object.entries(puppet.animations.attack.bones))
+      for (const [track, keys] of Object.entries(tracks)) {
+        const before = puppet.animations.windup.bones[bone]?.[track]?.at(-1);
+        if (before) assert.deepEqual(keys[0].slice(1).filter(Number.isFinite), before.slice(1).filter(Number.isFinite), `${kind}.${bone}.${track}`);
+      }
+  }
+  assert.ok(spearman.animations.walk);
+});
+
+test('the level on disk is the one its layout describes', () => {
+  const written = JSON.parse(read('assets/levels/act1.tmj'));
+  assert.deepEqual(written, JSON.parse(JSON.stringify(toTiled(act1.level, act1.title))), 'run tools/author.mjs again');
+  const [set] = written.tilesets,
+    png = read('assets/scene/tiles.png');
+  assert.deepEqual([png.readUInt32BE(16), png.readUInt32BE(20)], [set.imagewidth, set.imageheight]);
+  assert.equal(set.imagewidth, set.tilewidth * set.columns);
 });

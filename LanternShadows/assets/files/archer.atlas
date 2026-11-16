@@ -1,0 +1,37 @@
+archer.png
+size: 1002,258
+filter: Linear,Linear
+repeat: none
+pma: false
+weapon
+bounds: 2,2,57,252
+legF1
+bounds: 61,2,57,120
+legB1
+bounds: 120,2,54,120
+head
+bounds: 176,2,84,117
+torso
+bounds: 262,2,93,111
+legF2
+bounds: 357,2,45,105
+legB2
+bounds: 404,2,39,105
+skirt
+bounds: 445,2,90,99
+armF1
+bounds: 537,2,51,87
+armB1
+bounds: 590,2,51,84
+armB2
+bounds: 643,2,48,78
+armF2
+bounds: 693,2,60,66
+plume1
+bounds: 755,2,42,63
+plume2
+bounds: 799,2,51,48
+footB
+bounds: 852,2,72,42
+footF
+bounds: 926,2,72,42

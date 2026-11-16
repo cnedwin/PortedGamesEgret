@@ -1,0 +1,37 @@
+spearman.png
+size: 987,498
+filter: Linear,Linear
+repeat: none
+pma: false
+weapon
+bounds: 2,2,42,492
+legF1
+bounds: 46,2,57,120
+legB1
+bounds: 105,2,54,120
+head
+bounds: 161,2,84,117
+torso
+bounds: 247,2,93,111
+legF2
+bounds: 342,2,45,105
+legB2
+bounds: 389,2,39,105
+skirt
+bounds: 430,2,90,99
+armF1
+bounds: 522,2,51,87
+armB1
+bounds: 575,2,51,84
+armB2
+bounds: 628,2,48,78
+armF2
+bounds: 678,2,60,66
+plume1
+bounds: 740,2,42,63
+plume2
+bounds: 784,2,51,48
+footB
+bounds: 837,2,72,42
+footF
+bounds: 911,2,72,42

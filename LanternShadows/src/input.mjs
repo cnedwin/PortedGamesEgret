@@ -97,6 +97,10 @@ export function createInput(target = window) {
       pressed.jump = pressed.attack = pressed.dash = false;
       return out;
     },
+    /** Holds an action down or lets it go, as a key would: for a check that plays the game by itself. */
+    hold(action, down) {
+      if (action in held) set(action, down);
+    },
     /** Presses an action once, as a key would: for a check, or for a button of the page's own. */
     tap(action) {
       if (action in pressed) pressed[action] = true;

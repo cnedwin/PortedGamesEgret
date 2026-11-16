@@ -46,9 +46,9 @@ An independently developed first-person tactical shooter demo built with Egret R
 
 ## Lantern Shadows · 灯影·闹天宫
 
-一款使用新白鹭引擎独立开发的 2D 横版动作游戏 Demo，整出戏演在皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，孙悟空在南天门外练棍。皮偶是 Spine 骨骼动画，每片皮的轮廓与花纹都由代码画出；平扫、上挑、劈砸三下连击各有一记锣鼓，打中时整台戏定格、震动。目前是试演：一个场地、一套连击，关卡与 Boss 在后面。支持键盘、手柄和触屏。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/LanternShadows/) · [说明与开发](LanternShadows/README.md)
+一款使用新白鹭引擎独立开发的 2D 横版动作游戏 Demo，整出戏演在皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，孙悟空一路打上南天门。皮偶是 Spine 骨骼动画，每片皮的轮廓与花纹都由代码画出，关卡是一张瓦片地图；平扫、上挑、劈砸三下连击各有一记锣鼓，打中时整台戏定格、震动。第一幕有十名天兵把守：枪兵出枪前有预警，弓手的箭可以一棍打落，筋斗云能从枪尖里穿过去。后面的两幕与 Boss 还在做。支持键盘、手柄和触屏。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/LanternShadows/) · [说明与开发](LanternShadows/README.md)
 
-An independently developed 2D side-scrolling action demo built with Egret Rebuild, played as a shadow-puppet show: a lamp behind a cloth, carved and dyed leather puppets against it, and the Monkey King practising with his staff before the Southern Gate of Heaven. The puppets are Spine skeletons whose every piece is drawn by code; the sweep, the lift and the smash of his combination each have their beat of percussion, and the stage holds still and shudders when a blow lands. This is the rehearsal: one yard and one combination, with the stages and the boss to come. Keyboard, gamepad and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/LanternShadows/) · [Guide and development](LanternShadows/README.md)
+An independently developed 2D side-scrolling action demo built with Egret Rebuild, played as a shadow-puppet show: a lamp behind a cloth, carved and dyed leather puppets against it, and the Monkey King fighting his way to the Southern Gate of Heaven. The puppets are Spine skeletons whose every piece is drawn by code, and the level is a tile map; the sweep, the lift and the smash of his combination each have their beat of percussion, and the stage holds still and shudders when a blow lands. Ten soldiers of heaven hold the first act: a spearman warns before he thrusts, an archer’s arrow can be knocked out of the air, and the cloud roll passes through a spear point. Two more acts and a boss are still to come. Keyboard, gamepad and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/LanternShadows/) · [Guide and development](LanternShadows/README.md)
 
 ## 参与维护 · Contributing
 
