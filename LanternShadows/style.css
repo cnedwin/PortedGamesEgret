@@ -70,7 +70,7 @@ body {
 .crowd { bottom: 8.6%; left: 50%; transform: translateX(-50%); color: var(--pale-gold); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; font-variant-numeric: tabular-nums; text-shadow: 0 0.1em 0.3em #000c; }
 :root[lang='en'] .crowd { letter-spacing: 0.02em; }
 /* On a touch screen the foot of the booth belongs to the buttons, so the line is written on the cloth instead. */
-@media (pointer: coarse) { .crowd { bottom: auto; top: 27.5%; color: #4a2410; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6, 0 0 1em #f9e3a6; } }
+@media (pointer: coarse) { .crowd { bottom: auto; top: 31%; color: #4a2410; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6, 0 0 1em #f9e3a6; } }
 /* Whoever bars the gate: his name, and his strength as a band of red silk marked off in three. */
 .foe { top: 14.8%; left: 30%; right: 30%; display: flex; align-items: center; gap: 0.7em; color: #4a2410; font-weight: 900; letter-spacing: 0.1em; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
 .foe i { position: relative; flex: 1; height: 0.62em; border: 1.5px solid var(--ink); background: #1c0f0b4d; box-shadow: 0 0 0 1px #c98a2a; }
