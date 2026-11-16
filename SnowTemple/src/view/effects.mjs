@@ -78,6 +78,15 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
         float grain = fNoise(vec2(uv.x * 4.0 + seed, uv.y * 7.0 - age * 3.0));
         a = (pow(across, 6.0) * 1.4 + pow(across, 2.0) * 0.45 * (0.5 + grain)) * pow(1.0 - uv.y, max(k, 0.2)) * uCustom[2].x;
         hot = pow(across, 8.0);
+    } else if (mode == 6) {
+        // A scar on the ground: cracks running out from where the blow fell, and a broken ring round it.
+        vec2 p = uv * 2.0 - 1.0;
+        float r = length(p), ang = atan(p.y, p.x);
+        float wander = fNoise(vec2(ang * 2.5 + seed, r * 3.0)) - 0.5;
+        float ray = abs(fract((ang + wander * 0.9) * 7.0 / 6.28318 + seed) - 0.5);
+        float cracks = smoothstep(0.05 + r * 0.05, 0.0, ray * (0.25 + r)) * smoothstep(1.0, 0.25, r) * step(fHash(vec2(floor((ang + wander * 0.9) * 7.0 / 6.28318 + seed), seed)), 0.8);
+        float ring = fLine(r + wander * 0.25, 0.42, 0.035) * 0.7 * step(0.35, fNoise(vec2(ang * 5.0, seed)));
+        a = (cracks + ring + exp(-r * 7.0)) * uCustom[2].x * 0.85;
     } else {
         // A bolt: bright at the head, torn along its tail.
         float across = 1.0 - abs(uv.x * 2.0 - 1.0);
@@ -152,6 +161,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     ring: sectorGeometry(0.02, 1, Math.PI * 2),
     strip: stripGeometry(),
     pad: padGeometry(),
+    scar: padGeometry(),
     column: columnGeometry(),
     bolt: boltGeometry()
   };
@@ -174,7 +184,8 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     let item = spare.get(geometry)?.pop();
     if (!item) {
       const shader = createCustomShader3D({ key: 'snow-fx', glsl: FX_GLSL });
-      const material = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', blending: 'additive', depthWrite: false, side: 'double', fog: false });
+      // Scars darken the ground; everything else is light added to it.
+      const material = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', blending: geometry === shapes.scar ? 'normal' : 'additive', depthWrite: false, side: 'double', fog: false });
       material.shader = shader;
       const mesh = new Mesh3D(geometry, material);
       mesh.frustumCulled = false;
@@ -233,6 +244,18 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     snowMesh = makeDots(FLAKES, false),
     flakes = Array.from({ length: FLAKES }, (_, i) => ({ x: Math.random(), y: Math.random(), z: Math.random(), sway: Math.random() * 6.28, speed: 1.6 + (i % 5) * 0.45, size: 0.035 + (i % 4) * 0.014 }));
   const BOX = [44, 16, 34];
+
+  // ---- footprints in the snow ----------------------------------------------------------------
+  const printMaterial = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', depthWrite: false });
+  printMaterial.shader = dotShader;
+  const printMesh = new InstancedMesh3D(createGeometry3D({ positions: [-0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 0, 0.5, -0.5, 0, 0.5], uvs: [0, 0, 1, 0, 1, 1, 0, 1], indices: [0, 2, 1, 0, 3, 2] }), printMaterial, 96, 4);
+  printMesh.frustumCulled = false;
+  printMesh.castShadow = false;
+  printMesh.count = 0;
+  scene.addChild(printMesh);
+  const prints = Array.from({ length: 96 }, () => ({ x: 0, z: 0, yaw: 0, age: 99 })),
+    PRINT = [0.15, 1, 0.34];
+  let printAt = 0;
 
   // ---- flashes of light ----------------------------------------------------------------------
   const flashes = [0, 1].map(() => {
@@ -341,6 +364,19 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
       slot.light.intensity = slot.peak * Math.pow(slot.left / slot.life, 1.5);
     }
 
+    // Footprints fade as the snow drifts back into them.
+    let f = 0;
+    for (const step of prints) {
+      step.age += dt;
+      if (step.age > 16) continue;
+      place[0] = step.x;
+      place[1] = 0.03;
+      place[2] = step.z;
+      printMesh.setTransformAt(f, place, axisAngle(0, 1, 0, step.yaw), PRINT);
+      printMesh.setColorAt(f++, 0.16, 0.2, 0.32, 0.55 * Math.min(1, (16 - step.age) / 6));
+    }
+    printMesh.count = f;
+
     // Spears: fall along their lean, stand a moment, then sink away.
     let s = 0;
     for (const spear of falling) {
@@ -366,5 +402,9 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     falling = falling.filter((spear) => spear.t < spear.at + 0.9);
   }
 
-  return { spawn, release, burst, flash, dropSpear, update, sector, shapes, rgb };
+  /** A scar left on the ground by a heavy blow; it stays a while and fades. */
+  function scar(x, z, size, life = 7) {
+    spawn('scar', { mode: 6, x, y: 0.05, z, yaw: Math.random() * 6.28, life, from: [size, 1, size], tint: [0.012, 0.014, 0.022], power: 1.6, track: (item, t) => (item.fade = Math.min(1, t * 30, (1 - t) * 3)) });
+  }
+  return { spawn, release, burst, flash, dropSpear, update, sector, shapes, rgb, scar, print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
 }

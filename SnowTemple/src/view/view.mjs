@@ -3,6 +3,7 @@
 import {
   Mesh3D,
   Object3D,
+  PlanarReflection3D,
   createAmbientLight3D,
   createDirectionalLight3D,
   createHemisphereLight3D,
@@ -13,7 +14,7 @@ import { HERO } from '../rules/tune.mjs';
 import { createBuilder, rgb } from './build.mjs';
 import { TINT, createEffects } from './effects.mjs';
 import { createFigure, foePose, heroPose, pose } from './figures.mjs';
-import { buildScenery, height } from './scenery.mjs';
+import { buildScenery, height, paved } from './scenery.mjs';
 
 const GRADE_TINT = [TINT.white, TINT.jade, TINT.gold];
 const dirOf = (face) => [Math.sin(face), 0, Math.cos(face)];
@@ -39,7 +40,7 @@ function lootShape(kind) {
   return b.geometry();
 }
 
-export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high' } = {}) {
+export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false } = {}) {
   const view = { shake: 0, cine: null, zoom: 1 };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
@@ -65,7 +66,9 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   heroFigure.metal.emissive.set([0.45, 0.75, 1]);
   scene.addChild(heroFigure.root);
   let heroTravel = 0,
-    heroLast = null;
+    heroLast = null,
+    lastPrint = 0,
+    foot = 1;
   const figures = new Map();
   function figureOf(foe) {
     let figure = figures.get(foe.id);
@@ -207,6 +210,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
           const px = e.x + d[0] * 2.7,
             pz = e.z + d[2] * 2.7;
           fx.spawn('ring', { mode: 1, x: px, z: pz, life: 0.45, from: [0.6, 1, 0.6], to: [3.4, 1, 3.4], power: 2.2 });
+          fx.scar(px, pz, 1.5);
           fx.burst(px, 0.2, pz, { count: 16, spread: 1, speed: 4.5, life: 0.6, size: 0.14, tint: TINT.white, power: 1.1, rise: -6 });
           view.shake = Math.max(view.shake, 0.55);
         }
@@ -280,12 +284,14 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         break;
       }
       case 'spear':
+        fx.scar(e.x, e.z, 1.1, 5);
         fx.spawn('ring', { mode: 1, x: e.x, z: e.z, life: 0.4, from: [0.3, 1, 0.3], to: [2.6, 1, 2.6], power: 2.4 });
         fx.spawn('column', { mode: 4, x: e.x, y: 0, z: e.z, life: 0.35, from: [0.9, 9, 0.9], power: 2.2, k: 1.4 });
         fx.burst(e.x, 0.2, e.z, { count: 9, spread: 1, speed: 6, life: 0.5, size: 0.1, tint: TINT.spear, power: 3 });
         view.shake = Math.max(view.shake, 0.3);
         break;
       case 'burst':
+        fx.scar(e.x, e.z, 4.5, 9);
         fx.spawn('ring', { mode: 1, x: e.x, z: e.z, life: 0.7, from: [1, 1, 1], to: [HERO.rain.radius + 2, 1, HERO.rain.radius + 2], tint: TINT.gold, power: 3.4 });
         fx.spawn('ring', { mode: 1, x: e.x, z: e.z, life: 0.5, from: [0.5, 1, 0.5], to: [6, 1, 6], tint: TINT.white, power: 3 });
         fx.burst(e.x, 0.3, e.z, { count: 60, spread: 1, speed: 13, life: 0.8, size: 0.12, tint: TINT.gold, power: 4, rise: -4 });
@@ -305,7 +311,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         } else if (move.shape === 'disc') {
           fx.spawn('ring', { mode: 1, x: e.aim.x, z: e.aim.z, life: 0.5, from: [0.5, 1, 0.5], to: [move.range + 0.6, 1, move.range + 0.6], tint, power: 2.6 });
           fx.burst(e.aim.x, 0.2, e.aim.z, { count: 24, spread: 1, speed: 7, life: 0.6, size: 0.15, tint: boss ? tint : TINT.white, power: boss ? 2.5 : 1 });
-          if (boss) view.shake = Math.max(view.shake, 0.8);
+          if (boss) (view.shake = Math.max(view.shake, 0.8)), fx.scar(e.aim.x, e.aim.z, move.range * 0.9, 9);
         } else if (e.kind === 'lu') {
           for (const off of move.shape === 'lines' ? [-0.42, 0, 0.42] : [0]) {
             const a = e.face + off,
@@ -373,7 +379,13 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     // The hero.
     if (heroLast) heroTravel += Math.hypot(hero.x - heroLast.x, hero.z - heroLast.z);
     heroLast = { x: hero.x, z: hero.z };
-    const [target, rate] = heroPose(hero, HERO, clock, heroTravel);
+    const [target, rate] = heroPose(hero, HERO, clock, heroTravel, game.deadFor);
+    // Footprints where he treads on snow, left and right by turns.
+    if (hero.moving && hero.state !== 'glide' && heroTravel - lastPrint > 0.62 && !paved(hero.x, hero.z)) {
+      lastPrint = heroTravel;
+      foot = -foot;
+      fx.print(hero.x + Math.cos(hero.face) * 0.11 * foot, hero.z - Math.sin(hero.face) * 0.11 * foot, hero.face);
+    }
     heroFigure.root.setPosition(hero.x, 0, hero.z);
     heroFigure.root.setRotation(0, hero.face, 0);
     pose(heroFigure, target, hero.freeze > 0 ? 0 : rate, dt);
@@ -524,6 +536,25 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     fx.update(dt, clock);
     moveCamera(game, dt, clock);
   };
+
+  // The wet flags of the gate road and the forecourt mirror the scene, at the highest picture quality.
+  if (reflect) {
+    const mirror = new PlanarReflection3D({ width: 640, height: 360 });
+    mirror.shadows = false;
+    mirror.interval = 2;
+    mirror.layerMask = ~2;
+    const { material, mesh } = scenery.paving;
+    material.reflectionMap = mirror.texture;
+    material.reflectionStrength = 0.3;
+    material.reflectionDistortion = 0.02;
+    material.touch();
+    /** Draw the mirror picture; call once a frame before the scene is drawn. */
+    view.mirror = (renderer, game) => {
+      const near = game.hero.z < -3;
+      material.reflectionStrength = near ? 0.3 : 0;
+      if (near) mirror.render(renderer, scene, camera, [0, 1, 0, -0.1], [mesh]);
+    };
+  }
 
   /** Where a point of the world falls on screen, as fractions of the width and height. */
   const projected = [0, 0, 0];

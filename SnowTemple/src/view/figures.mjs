@@ -74,11 +74,11 @@ function surfaced(material) {
 
 /** Size, what is carried in the right hand, and what on the left arm. */
 const LOOKS = {
-  hero: { size: 1, weapon: 'spear' },
-  blade: { size: 1, weapon: 'sabre' },
+  hero: { size: 1, weapon: 'spear', grip: 0.5 },
+  blade: { size: 1, weapon: 'sabre', grip: -0.24 },
   shield: { size: 1.06, weapon: 'short', off: 'rattan' },
   bow: { size: 0.98, off: 'longbow' },
-  lu: { size: 1.2, weapon: 'glaive' }
+  lu: { size: 1.2, weapon: 'glaive', grip: 0.55 }
 };
 const POSED = ['hips', 'spine', 'head', 'armL', 'foreL', 'armR', 'foreR', 'legL', 'shinL', 'legR', 'shinR', 'cloak', 'weapon', 'off'];
 
@@ -119,7 +119,7 @@ export function createFigure(kind, models, detail = 'high') {
   root.setScale(look.size);
   const angles = {};
   for (const name of POSED) angles[name] = [0, 0, 0];
-  return { kind, look, root, joints, rest, angles, lift: 0, cloth, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
+  return { kind, look, root, joints, rest, angles, held: 0, lift: 0, cloth, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
 }
 
 // ---- poses --------------------------------------------------------------------------------
@@ -183,18 +183,33 @@ const CUTS = [
 
 const HERO_POSES = {
   guard: { spine: [0.12, 0, 0], armR: [-1.0, 0, -0.35], foreR: [-0.9, 0, 0], weapon: [-0.2, 1.4, 0.2], armL: [-1.2, 0, 0.45], foreL: [-0.7, 0, 0], legL: [-0.35, 0, 0.16], shinL: [0.4, 0, 0], legR: [0.3, 0, -0.16], shinR: [0.35, 0, 0], lift: -0.12 },
-  dodge: { spine: [1.0, 0, 0], head: [-0.4, 0, 0], armR: [0.6, 0, -0.3], foreR: [-0.6, 0, 0], weapon: [0.1, -0.5, 0], armL: [0.7, 0, 0.3], foreL: [-0.5, 0, 0], legL: [-1.2, 0, 0], shinL: [1.5, 0, 0], legR: [-0.3, 0, 0], shinR: [1.2, 0, 0], lift: -0.42, cloak: [1.2, 0, 0] },
-  hurt: { spine: [-0.5, 0.35, 0], head: [-0.35, 0, 0], armR: [0.4, 0, -0.9], foreR: [-0.5, 0, 0], weapon: [0.3, -0.8, 0], armL: [0.3, 0, 0.9], foreL: [-0.4, 0, 0], legL: [0.25, 0, 0.1], shinL: [0.3, 0, 0], legR: [-0.2, 0, -0.1], shinR: [0.3, 0, 0], lift: -0.06 },
-  drink: { spine: [-0.18, 0, 0], head: [-0.5, 0, 0], armL: [-2.1, 0, 0.35], foreL: [-1.7, 0, 0], armR: [-0.4, 0, -0.35], foreR: [-0.5, 0, 0], weapon: [-1.45, 0, 0] },
-  stars: { spine: [0.1, 0.55, 0], armL: [-1.55, 0, -0.1], foreL: [-0.05, 0, 0], armR: [0.5, 0, -0.5], foreR: [-0.7, 0, 0], weapon: [0.15, -1.3, 0], legL: [-0.5, 0, 0.1], shinL: [0.5, 0, 0], legR: [0.4, 0, -0.1], shinR: [0.2, 0, 0], lift: -0.1 },
+  dodge: { free: true, spine: [1.0, 0, 0], head: [-0.4, 0, 0], armR: [0.6, 0, -0.3], foreR: [-0.6, 0, 0], weapon: [0.1, -0.5, 0], armL: [0.7, 0, 0.3], foreL: [-0.5, 0, 0], legL: [-1.2, 0, 0], shinL: [1.5, 0, 0], legR: [-0.3, 0, 0], shinR: [1.2, 0, 0], lift: -0.42, cloak: [1.2, 0, 0] },
+  hurt: { free: true, spine: [-0.5, 0.35, 0], head: [-0.35, 0, 0], armR: [0.4, 0, -0.9], foreR: [-0.5, 0, 0], weapon: [0.3, -0.8, 0], armL: [0.3, 0, 0.9], foreL: [-0.4, 0, 0], legL: [0.25, 0, 0.1], shinL: [0.3, 0, 0], legR: [-0.2, 0, -0.1], shinR: [0.3, 0, 0], lift: -0.06 },
+  drink: { free: true, spine: [-0.18, 0, 0], head: [-0.5, 0, 0], armL: [-2.1, 0, 0.35], foreL: [-1.7, 0, 0], armR: [-0.4, 0, -0.35], foreR: [-0.5, 0, 0], weapon: [-1.45, 0, 0] },
+  stars: { free: true, spine: [0.1, 0.55, 0], armL: [-1.55, 0, -0.1], foreL: [-0.05, 0, 0], armR: [0.5, 0, -0.5], foreR: [-0.7, 0, 0], weapon: [0.15, -1.3, 0], legL: [-0.5, 0, 0.1], shinL: [0.5, 0, 0], legR: [0.4, 0, -0.1], shinR: [0.2, 0, 0], lift: -0.1 },
   rainUp: { spine: [-0.28, 0, 0], head: [-0.45, 0, 0], armR: [-3.0, 0, -0.08], foreR: [-0.1, 0, 0], weapon: [-1.57, 0, 0], armL: [-0.6, 0, 0.9], foreL: [-0.3, 0, 0], lift: 0.25, cloak: [1.0, 0, 0] },
   rainDown: { spine: [0.75, 0, 0], head: [-0.3, 0, 0], armR: [-1.0, 0, 0], foreR: [-0.5, 0, 0], weapon: [1.25, 0, 0], armL: [-1.0, 0, 0.2], foreL: [-0.5, 0, 0], legL: [-1.1, 0, 0.1], shinL: [1.3, 0, 0], legR: [0.3, 0, -0.1], shinR: [1.2, 0, 0], lift: -0.4 },
-  glide: { spine: [0.75, 0, 0], head: [-0.6, 0, 0], armR: [0.9, 0, -0.4], foreR: [-0.3, 0, 0], weapon: [0.12, -0.25, 0], armL: [0.9, 0, 0.4], foreL: [-0.2, 0, 0], legL: [-0.7, 0, 0.05], shinL: [0.9, 0, 0], legR: [0.75, 0, -0.05], shinR: [0.5, 0, 0], lift: -0.1, cloak: [1.35, 0, 0] },
-  dead: { hips: [-1.45, 0, 0.1], spine: [-0.1, 0, 0], head: [-0.2, 0.4, 0], armR: [0.2, 0, -1.2], armL: [0.1, 0, 1.3], weapon: [0.2, -1.2, 1.2], legL: [0.1, 0, 0.25], legR: [-0.15, 0, -0.2], shinR: [0.5, 0, 0], lift: -0.8 }
+  glide: { free: true, spine: [0.75, 0, 0], head: [-0.6, 0, 0], armR: [0.9, 0, -0.4], foreR: [-0.3, 0, 0], weapon: [0.12, -0.25, 0], armL: [0.9, 0, 0.4], foreL: [-0.2, 0, 0], legL: [-0.7, 0, 0.05], shinL: [0.9, 0, 0], legR: [0.75, 0, -0.05], shinR: [0.5, 0, 0], lift: -0.1, cloak: [1.35, 0, 0] },
+  dead: { free: true, hips: [-1.45, 0, 0.1], spine: [-0.1, 0, 0], head: [-0.2, 0.4, 0], armR: [0.2, 0, -1.2], armL: [0.1, 0, 1.3], weapon: [0.2, -1.2, 1.2], legL: [0.1, 0, 0.25], legR: [-0.15, 0, -0.2], shinR: [0.5, 0, 0], lift: -0.8 }
 };
 
+/** Struck: thrown back at once, then gathering himself over the rest of the stagger. */
+function reel(base, struck, t, total) {
+  const back = span(t, total * 0.45, total);
+  return [back > 0 ? blend(struck, { ...base, lift: -0.06, spine: [0.22, 0, 0] }, ease(back)) : struck, back > 0 ? 14 : 34];
+}
+/** Falling: the knees give, he goes over backward, and comes to rest with one arm thrown out. */
+function fall(base, t, side) {
+  const buckle = { ...base, free: true, lift: -0.3, spine: [0.35, 0.2 * side, 0], head: [0.3, 0, 0], legL: [-0.7, 0, 0.1], shinL: [1.5, 0, 0], legR: [-0.5, 0, -0.1], shinR: [1.3, 0, 0], armL: [-0.4, 0, 0.5], armR: [-0.2, 0, -0.6], weapon: [0.5, -0.6 * side, 0.3] },
+    over = { ...base, free: true, lift: -0.62, hips: [-1.0, 0, 0.12 * side], spine: [-0.3, 0, 0], head: [-0.5, 0, 0], legL: [-0.6, 0, 0.2], shinL: [1.1, 0, 0], legR: [-0.2, 0, -0.2], shinR: [0.7, 0, 0], armL: [-1.6, 0, 0.9], armR: [-1.2, 0, -1.0], weapon: [0.3, -1.0, 0.8] },
+    down = { ...base, free: true, ...HERO_POSES.dead, hips: [-1.5, 0, 0.16 * side], head: [-0.15, 0.5 * side, 0] };
+  if (t < 0.22) return [buckle, 16];
+  if (t < 0.5) return [over, 13];
+  return [down, t < 0.8 ? 16 : 6];
+}
+
 /** The hero's pose for what he is doing. Returns [pose, how fast the joints chase it]. */
-export function heroPose(hero, tune, clock, travelled) {
+export function heroPose(hero, tune, clock, travelled, fallen = 0) {
   const base = STAND.hero;
   switch (hero.state) {
     case 'cut': {
@@ -211,7 +226,7 @@ export function heroPose(hero, tune, clock, travelled) {
     case 'dodge':
       return [{ ...base, ...HERO_POSES.dodge, hips: [hero.t / tune.dodge.time < 0.8 ? 0.5 : 0, 0, 0] }, 26];
     case 'hurt':
-      return [{ ...base, ...HERO_POSES.hurt }, 30];
+      return reel(base, { ...base, ...HERO_POSES.hurt }, hero.t, hero.staggerFor ?? 0.4);
     case 'drink':
       return [{ ...base, ...HERO_POSES.drink }, 14];
     case 'stars':
@@ -221,7 +236,7 @@ export function heroPose(hero, tune, clock, travelled) {
     case 'glide':
       return [{ ...base, ...HERO_POSES.glide }, 14];
     case 'dead':
-      return [{ ...base, ...HERO_POSES.dead }, 7];
+      return fall(base, fallen, 1);
   }
   if (hero.moving) return [{ ...stride({ ...base, weapon: [0.12, 0.3, 0], armR: [0.35, 0, -0.25] }, travelled / 2.3, 0.85, 0.22) }, 18];
   const breath = Math.sin(clock * 1.8) * 0.02;
@@ -238,12 +253,12 @@ const FOE_POSES = {
   fireBack: { spine: [0.55, -0.5, 0], armR: [0.3, 0, -0.5], foreR: [-0.4, 0, 0], weapon: [0.5, -0.9, 0], legL: [-0.6, 0, 0.1], shinL: [0.9, 0, 0], legR: [0.4, 0, -0.1], shinR: [0.7, 0, 0], lift: -0.28 },
   fireThrough: { spine: [-0.25, 0.6, 0], armR: [-2.2, 0, 0.3], foreR: [-0.2, 0, 0], weapon: [-1.0, 0.5, 0], lift: 0.05, cloak: [0.8, 0, 0] },
   wheel: { spine: [0.15, 0, 0], armR: [-1.4, 0, -0.9], foreR: [-0.1, 0, 0], armL: [-0.6, 0, 1.0], weapon: [0.05, -1.57, 0], lift: -0.12, cloak: [1.1, 0, 0] },
-  draw: { spine: [0.02, -0.5, 0], head: [0, 0.4, 0], armL: [-1.5, 0, -0.35], foreL: [-0.05, 0, 0], off: [1.55, 0, 0], armR: [-1.35, 0, -0.5], foreR: [-2.0, 0, 0] },
-  loft: { spine: [-0.35, -0.5, 0], head: [-0.3, 0.4, 0], armL: [-2.3, 0, -0.35], foreL: [-0.05, 0, 0], off: [1.55, 0, 0], armR: [-2.0, 0, -0.5], foreR: [-2.0, 0, 0] },
-  stagger: { spine: [-0.55, 0.3, 0], head: [-0.4, 0, 0], armR: [0.3, 0, -1.0], foreR: [-0.4, 0, 0], weapon: [0.4, -1.0, 0.3], armL: [0.2, 0, 1.0], foreL: [-0.3, 0, 0], legL: [0.3, 0, 0.1], shinL: [0.35, 0, 0], legR: [-0.25, 0, -0.1], shinR: [0.35, 0, 0], lift: -0.08 },
-  down: { spine: [0.7, 0, 0], head: [0.45, 0, 0], armR: [-0.8, 0, -0.2], foreR: [-0.9, 0, 0], weapon: [-1.35, 0, 0.15], armL: [-0.3, 0, 0.3], foreL: [-1.0, 0, 0], legL: [-1.4, 0, 0.1], shinL: [1.5, 0, 0], legR: [0.2, 0, -0.1], shinR: [1.5, 0, 0], lift: -0.46 },
-  rage: { spine: [-0.42, 0, 0], head: [-0.5, 0, 0], armR: [-0.7, 0, -1.3], foreR: [-0.3, 0, 0], weapon: [-0.9, -0.9, 0], armL: [-0.7, 0, 1.3], foreL: [-0.4, 0, 0], legL: [-0.2, 0, 0.2], legR: [0.2, 0, -0.2], lift: 0.05, cloak: [1.0, 0, 0] },
-  wait: { spine: [0.05, 0, 0], armR: [-0.35, 0, -0.3], foreR: [-0.5, 0, 0], weapon: [-1.5, 0, 0], armL: [0.1, 0, 0.12], foreL: [-0.2, 0, 0] }
+  draw: { free: true, spine: [0.02, -0.5, 0], head: [0, 0.4, 0], armL: [-1.5, 0, -0.35], foreL: [-0.05, 0, 0], off: [1.55, 0, 0], armR: [-1.35, 0, -0.5], foreR: [-2.0, 0, 0] },
+  loft: { free: true, spine: [-0.35, -0.5, 0], head: [-0.3, 0.4, 0], armL: [-2.3, 0, -0.35], foreL: [-0.05, 0, 0], off: [1.55, 0, 0], armR: [-2.0, 0, -0.5], foreR: [-2.0, 0, 0] },
+  stagger: { free: true, spine: [-0.55, 0.3, 0], head: [-0.4, 0, 0], armR: [0.3, 0, -1.0], foreR: [-0.4, 0, 0], weapon: [0.4, -1.0, 0.3], armL: [0.2, 0, 1.0], foreL: [-0.3, 0, 0], legL: [0.3, 0, 0.1], shinL: [0.35, 0, 0], legR: [-0.25, 0, -0.1], shinR: [0.35, 0, 0], lift: -0.08 },
+  down: { free: true, spine: [0.7, 0, 0], head: [0.45, 0, 0], armR: [-0.8, 0, -0.2], foreR: [-0.9, 0, 0], weapon: [-1.35, 0, 0.15], armL: [-0.3, 0, 0.3], foreL: [-1.0, 0, 0], legL: [-1.4, 0, 0.1], shinL: [1.5, 0, 0], legR: [0.2, 0, -0.1], shinR: [1.5, 0, 0], lift: -0.46 },
+  rage: { free: true, spine: [-0.42, 0, 0], head: [-0.5, 0, 0], armR: [-0.7, 0, -1.3], foreR: [-0.3, 0, 0], weapon: [-0.9, -0.9, 0], armL: [-0.7, 0, 1.3], foreL: [-0.4, 0, 0], legL: [-0.2, 0, 0.2], legR: [0.2, 0, -0.2], lift: 0.05, cloak: [1.0, 0, 0] },
+  wait: { free: true, spine: [0.05, 0, 0], armR: [-0.35, 0, -0.3], foreR: [-0.5, 0, 0], weapon: [-1.5, 0, 0], armL: [0.1, 0, 0.12], foreL: [-0.2, 0, 0] }
 };
 
 /** A foe's pose for what he is doing. */
@@ -252,9 +267,9 @@ export function foePose(foe, clock, travelled) {
     over = (pose) => ({ ...base, ...pose });
   switch (foe.state) {
     case 'dead':
-      return [over({ ...HERO_POSES.dead, hips: [-1.5, 0, foe.id % 2 ? 0.2 : -0.2] }), 8];
+      return fall(base, foe.t, foe.id % 2 ? 1 : -1);
     case 'stagger':
-      return [over(FOE_POSES.stagger), 28];
+      return reel(base, over(FOE_POSES.stagger), foe.t, foe.staggerFor ?? 0.5);
     case 'down':
       return [over(FOE_POSES.down), 12];
     case 'rage':
@@ -300,5 +315,76 @@ export function pose(figure, target, rate, dt) {
   const hand = joints.hand.getWorldPosition(scratch);
   joints.spine.worldToLocal(scratch, hand);
   joints.weapon.setPosition(scratch[0], scratch[1], scratch[2]);
+  // The left hand goes to the haft, unless the pose keeps it for something else.
+  if (figure.look.grip === undefined) return;
+  figure.held += ((target.free ? 0 : 1) - figure.held) * (1 - Math.exp(-12 * dt));
+  if (figure.held < 0.02) return;
+  joints.weapon.updateWorldMatrices(true);
+  joints.weapon.localToWorld(scratch, [0, 0, figure.look.grip]);
+  joints.spine.worldToLocal(scratch, scratch);
+  reach(joints.armL, joints.foreL, figure.rest.armL, scratch, figure.held);
 }
 const scratch = [0, 0, 0];
+
+const UPPER = 0.29,
+  FORE = 0.29;
+/** The turn that carries "straight down" onto the direction (x, y, z), written into `out`. */
+function aim(out, x, y, z) {
+  if (y > 0.9999) return ((out[0] = 1), (out[1] = out[2] = out[3] = 0), out);
+  const l = Math.hypot(-z, 1 - y, x);
+  out[0] = -z / l;
+  out[1] = 0;
+  out[2] = x / l;
+  out[3] = (1 - y) / l;
+  return out;
+}
+const qa = [0, 0, 0, 1],
+  qb = [0, 0, 0, 1];
+/** Bend a two-boned arm so that its hand comes to `to`; both are given in the space the shoulder sits in. */
+function reach(upper, fore, shoulder, to, weight) {
+  let dx = to[0] - shoulder[0],
+    dy = to[1] - shoulder[1],
+    dz = to[2] - shoulder[2];
+  const far = Math.hypot(dx, dy, dz) || 1e-4,
+    d = Math.min(far, UPPER + FORE - 0.01);
+  dx /= far;
+  dy /= far;
+  dz /= far;
+  // The elbow lies off the line from shoulder to hand, out and down and a little back.
+  const along = (UPPER * UPPER - FORE * FORE + d * d) / (2 * d),
+    off = Math.sqrt(Math.max(0, UPPER * UPPER - along * along)),
+    dot = 0.55 * dx - 0.75 * dy - 0.35 * dz;
+  let px = 0.55 - dx * dot,
+    py = -0.75 - dy * dot,
+    pz = -0.35 - dz * dot;
+  const pl = Math.hypot(px, py, pz) || 1;
+  px /= pl;
+  py /= pl;
+  pz /= pl;
+  const ex = dx * along + px * off,
+    ey = dy * along + py * off,
+    ez = dz * along + pz * off;
+  aim(qa, ex / UPPER, ey / UPPER, ez / UPPER);
+  // The forearm's direction, seen from the upper arm: turn it back by the upper arm's turn.
+  let fx = dx * d - ex,
+    fy = dy * d - ey,
+    fz = dz * d - ez;
+  const fl = Math.hypot(fx, fy, fz) || 1;
+  fx /= fl;
+  fy /= fl;
+  fz /= fl;
+  const [x, y, z, w] = [-qa[0], -qa[1], -qa[2], qa[3]],
+    tx = 2 * (y * fz - z * fy),
+    ty = 2 * (z * fx - x * fz),
+    tz = 2 * (x * fy - y * fx);
+  aim(qb, fx + w * tx + (y * tz - z * ty), fy + w * ty + (z * tx - x * tz), fz + w * tz + (x * ty - y * tx));
+  for (const [joint, q] of [
+    [upper, qa],
+    [fore, qb]
+  ]) {
+    // Ease from the posed turn to the reaching one.
+    const now = joint.quaternion,
+      sign = now[0] * q[0] + now[1] * q[1] + now[2] * q[2] + now[3] * q[3] < 0 ? -1 : 1;
+    joint.setQuaternion(now[0] + (q[0] * sign - now[0]) * weight, now[1] + (q[1] * sign - now[1]) * weight, now[2] + (q[2] * sign - now[2]) * weight, now[3] + (q[3] * sign - now[3]) * weight);
+  }
+}
