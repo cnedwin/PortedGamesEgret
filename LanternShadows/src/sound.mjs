@@ -91,6 +91,10 @@ export function createSound() {
   return {
     /** Makes the mixer and the sounds, if a press has not already; resolves when they can be played. */
     begin,
+    /** How many of the sounds are ready to play. */
+    get ready() {
+      return Object.keys(sounds).length;
+    },
     /** Plays a sound by name. `pan` is from -1 (left) to 1; `rate` raises or lowers it. */
     play(name, { volume = 1, rate = 1, pan = 0 } = {}) {
       const sound = sounds[name];

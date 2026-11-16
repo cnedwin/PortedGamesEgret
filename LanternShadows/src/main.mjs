@@ -2,17 +2,19 @@
 //
 //   rules/hero.mjs   how the Monkey King moves and fights (no drawing)
 //   rules/yard.mjs   the practice yard, its posts and the count of blows
-//   puppets.mjs      Spine skeletons, loaded through the engine's manifest
+//   puppets.mjs      Spine skeletons, loaded as the engine's manifest lists them
+//   pictures.mjs     pictures read in the way every browser allows
 //   input.mjs        keyboard, gamepad and touch as one answer a step
 //   sound.mjs        the percussion, made from numbers
 //
-// Address options: ?backend=webgl2 or webgpu chooses the renderer, ?stats shows what is being drawn,
+// Address options: ?backend=webgpu draws with WebGPU instead of WebGL2, ?stats shows what is being drawn,
 // ?lang=en starts in English, and ?slow=0.25 plays at a quarter of the speed, to watch how he moves.
 import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createCamera2D } from '@egret/engine/camera';
 import { createParticleEmitter } from '@egret/engine/particles';
 import { createBrowserGame } from '@egret/engine/web/game';
 import { createInput } from './input.mjs';
+import { createPictures } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
 import { ATTACKS, animationOf, createHero, stepHero } from './rules/hero.mjs';
 import { GROUND, STAGE, YARD, createYard, keepApart, stepYard, strike } from './rules/yard.mjs';
@@ -51,6 +53,9 @@ const describe = cause => {
 const fail = cause => {
   status.textContent = (lang === 'zh' ? '戏台没搭起来：' : 'The booth could not be set up: ') + describe(cause);
   status.classList.add('is-error');
+  // Once the curtain is up the playbill cannot be seen, so trouble during the play is told over the stage.
+  $('trouble').textContent = (lang === 'zh' ? '戏演不下去了：' : 'The play cannot go on: ') + describe(cause);
+  $('trouble').hidden = !$('curtain').classList.contains('is-up');
   console.error(cause);
 };
 
@@ -64,7 +69,8 @@ try {
     height: STAGE.height,
     clearColor: 0x2a1208,
     pixelRatio: Math.min(2, Math.max(1, (devicePixelRatio || 1) * 0.75)),
-    backend: query.get('backend') ?? 'auto',
+    // WebGL2 unless WebGPU is asked for, as in the other demos of this collection.
+    backend: query.get('backend') === 'webgpu' && navigator.gpu ? 'webgpu' : 'webgl2',
     fit: 'contain',
     fitTo: booth,
     pointer: false,
@@ -80,14 +86,14 @@ try {
 const { engine, scope } = game;
 
 // ---- The stage -------------------------------------------------------------------------------------------------
-const scene = name => game.loadTexture(new URL(`../assets/scene/${name}`, import.meta.url).href);
-// The engine decodes a few pictures at a time, so they are asked for one after another.
+const loadPicture = createPictures(engine, scope),
+  scene = name => loadPicture(new URL(`../assets/scene/${name}`, import.meta.url).href);
 let clothLease, frameLease, farLease, gateLease, groundLease, cloudLease, wispLease, sparkLease, chaffLease, puppetOf;
 try {
-  const leases = [];
-  for (const name of ['screen.png', 'frame.png', 'far.png', 'gate.png', 'ground.png', 'cloud.png', 'wisp.png', 'spark.png', 'chaff.png']) leases.push(await scene(name));
-  [clothLease, frameLease, farLease, gateLease, groundLease, cloudLease, wispLease, sparkLease, chaffLease] = leases;
-  puppetOf = await loadPuppets(engine, scope, ['wukong', 'dummy'], new URL('../assets/', import.meta.url));
+  [clothLease, frameLease, farLease, gateLease, groundLease, cloudLease, wispLease, sparkLease, chaffLease, puppetOf] = await Promise.all([
+    ...['screen.png', 'frame.png', 'far.png', 'gate.png', 'ground.png', 'cloud.png', 'wisp.png', 'spark.png', 'chaff.png'].map(scene),
+    loadPuppets(engine, scope, ['wukong', 'dummy'], new URL('../assets/', import.meta.url))
+  ]);
 } catch (cause) {
   fail(cause);
   throw cause;
@@ -339,5 +345,6 @@ globalThis.__lantern = {
   camera: () => camera.snapshot(),
   begin: () => start.click(),
   tap: action => input.tap(action),
+  sounds: () => sound.ready,
   pause
 };

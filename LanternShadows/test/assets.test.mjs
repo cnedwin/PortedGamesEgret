@@ -129,3 +129,12 @@ test('the page can find every module it asks for', () => {
   for (const name of asked) assert.ok(map[name], `nothing is mapped for ${name}`);
   for (const pick of html.matchAll(/(?:src|href)="((?!https?:|data:|\.\.\/)[^"#]+)"/g)) assert.ok(fs.existsSync(path.join(ROOT, pick[1])), pick[1]);
 });
+
+test("pictures are read by the game's own reader, which every browser allows", () => {
+  // The engine's reader of PNG files is refused by the browsers on an iPhone, so nothing here may go through it.
+  for (const file of ['src/main.mjs', 'src/puppets.mjs', 'src/pictures.mjs']) {
+    const text = read(file).toString();
+    assert.ok(!/\bloadTexture\(|@egret\/spine\/web|createManifestSpineContentLoader/.test(text), file);
+  }
+  assert.ok(!fs.existsSync(path.join(ROOT, 'vendor/engine/dist/web/BrowserTextureProvider.js')) || !read('src/main.mjs').toString().includes('game.loadTexture'));
+});
