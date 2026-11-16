@@ -51,7 +51,7 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 ## 画面与技术 · Picture and technology
 
 - 全部用引擎的 3D 模块（`@egret/engine/world3d`）和 WebGL 2 渲染器：带阴影的月光、最近的六盏灯火轮流点亮、泛光、环境光遮蔽、贴地的高度雾。
-- 场景、人物、兵器和掉落物都由代码建模，没有外部模型和贴图：五个带关节的人物（十四个关节，姿势逐帧追赶），山门、山神庙、草垛、石灯、石狮、松树。
+- 人物、兵器、石狮、香炉、山石、松树和草垛是**雕出来的**：`tools/sculpt.mjs` 把每个模型写成一组会互相融合的软体（胶囊、椭球、圆角盒），在细网格上求出表面，得到带平滑法线、颜色、褶缝阴影和骨骼权重的高面数网格（主角约九万三千个三角面），存进 `assets/models.bin`。五个人物共用一副十五根骨头的骨架，蒙皮绑定，姿势逐帧追赶。山门、庙和石灯仍是代码搭的。
 - 五万多丛枯草是一次实例化绘制，顶点着色器里随阵风起伏，人走过会被拨开。
 - 枪光、法阵、地面预警和光柱是「网格加一段片元着色器」画的：扫掠、噪声条纹和侵蚀都在着色器里；火星、雪尘和飘雪是实例化的光点。
 - 规则（`src/rules`）与画面分开，不依赖浏览器，可以直接用 Node 测试；`test/bot.mjs` 是一个按规则出招的玩家，测试用它通关，地址加 `?auto` 可以看它打。
@@ -59,7 +59,7 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 - 设置里可调画质（自动、低、中、高）、粒子数量、声音和全部按键；自动画质会按帧率升降绘制分辨率。
 
 - Everything is drawn with the engine's 3D module (`@egret/engine/world3d`) and its WebGL 2 renderer: shadowed moonlight, the six nearest lamps lit at a time, bloom, ambient occlusion and low-lying height fog.
-- The place, the people, the weapons and the loot are all modelled in code, with no external models or textures: five jointed figures (fourteen joints, each easing toward its pose every frame), the gate, the temple, fodder stacks, stone lanterns, stone lions and pines.
+- The people, weapons, stone lions, censer, rocks, pines and fodder stacks are **sculpted**: `tools/sculpt.mjs` takes each model as a set of soft solids (capsules, eggs, rounded boxes) that melt into one another, finds the surface on a fine grid, and writes a dense mesh with smooth normals, colour, shadow in its creases and bone weights (about ninety-three thousand triangles for the hero) into `assets/models.bin`. The five figures share one skeleton of fifteen bones and are skinned to it, each joint easing toward its pose every frame. The gate, the temple and the lanterns are still put together in code.
 - More than fifty thousand tufts of dry grass are one instanced draw, swaying with gusts in the vertex shader and parting round whoever walks through.
 - Spear light, the formation, the ground warnings and the columns of light are a mesh plus a fragment shader: the sweep, the grain and the erosion happen in the shader. Sparks, snow dust and falling snow are instanced dots.
 - The rules (`src/rules`) are kept apart from the picture and do not need a browser, so Node tests them directly; `test/bot.mjs` is a player made of rules that the tests finish the chapter with, and `?auto` in the address lets it play.
@@ -70,6 +70,7 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 
 ```sh
 node --test test/*.test.mjs      # 规则测试 · rule tests
+node tools/models.mjs            # 重新雕刻全部模型（约两分钟），或只雕点名的：node tools/models.mjs hero lu · sculpt every model again (about two minutes), or only those named
 python3 -m http.server 4180      # 在仓库根目录运行，然后打开 /SnowTemple/ · run at the repository root, then open /SnowTemple/
 ```
 
@@ -80,6 +81,7 @@ python3 -m http.server 4180      # 在仓库根目录运行，然后打开 /Snow
 | `src/rules/` | 地形、数值与战斗规则 · the ground, the numbers and the rules of the fight |
 | `src/view/` | 建模、场景、人物姿势、特效与镜头 · modelling, scenery, poses, effects and the camera |
 | `src/hud.mjs` `src/input.mjs` `src/audio.mjs` | 界面、输入、声音 · interface, input, sound |
+| `tools/` `assets/` | 雕刻工具、模型定义与雕好的模型 · the sculptor, the model descriptions and the sculpted models |
 | `test/` | 规则测试与规则玩家 · rule tests and the rule-driven player |
 | `vendor/` | 引擎运行时副本，见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |
 

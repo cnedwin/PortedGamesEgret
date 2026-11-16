@@ -14,6 +14,7 @@ import { createHud } from './hud.mjs';
 import { DEFAULT_KEYS, createInput } from './input.mjs';
 import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
+import { loadModels } from './view/models.mjs';
 import { createView } from './view/view.mjs';
 
 const params = new URLSearchParams(location.search),
@@ -78,7 +79,8 @@ async function main() {
   progress(0.45, '栽松，铺雪');
   await new Promise((done) => setTimeout(done));
   const amount = { few: 0.5, some: 1, many: 1.6 }[settings.particles] ?? 1,
-    view = createView(scene, camera, { density: level.density, particles: amount, shadowSize: level.shadows || 1024 });
+    models = await loadModels(),
+    view = createView(scene, camera, models, { density: level.density, particles: amount, shadowSize: level.shadows || 1024 });
   progress(0.9, '请陆虞候入座');
   await new Promise((done) => setTimeout(done));
 

@@ -39,7 +39,7 @@ function lootShape(kind) {
   return b.geometry();
 }
 
-export function createView(scene, camera, { density = 1, particles = 1 } = {}) {
+export function createView(scene, camera, models, { density = 1, particles = 1 } = {}) {
   const view = { shake: 0, cine: null, zoom: 1 };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
@@ -56,12 +56,12 @@ export function createView(scene, camera, { density = 1, particles = 1 } = {}) {
     return MOON.map((v) => v / l);
   })();
 
-  const scenery = buildScenery(scene, { density });
+  const scenery = buildScenery(scene, models, { density });
   const fx = createEffects(scene, camera, { particles });
   view.fx = fx;
 
   // ---- people -------------------------------------------------------------------------------
-  const heroFigure = createFigure('hero');
+  const heroFigure = createFigure('hero', models);
   heroFigure.metal.emissive.set([0.45, 0.75, 1]);
   scene.addChild(heroFigure.root);
   let heroTravel = 0,
@@ -70,7 +70,7 @@ export function createView(scene, camera, { density = 1, particles = 1 } = {}) {
   function figureOf(foe) {
     let figure = figures.get(foe.id);
     if (!figure) {
-      figure = createFigure(foe.kind);
+      figure = createFigure(foe.kind, models);
       figure.metal.emissive.set([1, 0.3, 0.12]);
       figure.travel = 0;
       figure.last = { x: foe.x, z: foe.z };

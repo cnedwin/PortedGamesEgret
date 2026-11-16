@@ -1,193 +1,51 @@
-// The people of the chapter: jointed figures modelled from limbs and balls, and the poses that move them.
+// The people of the chapter: sculpted figures on a shared skeleton, and the poses that move them.
 // A figure faces +z; its left is +x. Poses are sets of joint angles; each frame every joint eases toward
 // the pose its state asks for, which is what gives the cuts their snap and the walk its weight.
-import { Object3D, createStandardMaterial3D } from '@egret/engine/world3d';
-import { createBuilder, rgb, shade } from './build.mjs';
+import { Mesh3D, Object3D, Skeleton3D, createStandardMaterial3D } from '@egret/engine/world3d';
+import { BIND, BONES, JOINTS } from './rig.mjs';
 
-const SKIN = rgb(0xd9a982),
-  STEEL = rgb(0xaeb6c2),
-  IRON = rgb(0x3b3f47),
-  WOOD = rgb(0x4a2f1c),
-  RED = rgb(0xb3221c),
-  BLACK = rgb(0x17171b);
-
-/** How each is dressed. */
+/** Size, what is carried in the right hand, and what on the left arm. */
 const LOOKS = {
-  hero: { coat: rgb(0xcfd3d8), trim: rgb(0x8e2420), legs: rgb(0x2b3140), boots: rgb(0x1d1b1c), cloak: rgb(0x39404f), size: 1, weapon: 'spear', hat: 'felt' },
-  blade: { coat: rgb(0x6b4a33), trim: rgb(0x2e2420), legs: rgb(0x37312d), boots: rgb(0x1f1a17), size: 1, weapon: 'sabre', hat: 'scarf' },
-  shield: { coat: rgb(0x4f5a4a), trim: rgb(0x8a6a2c), legs: rgb(0x2c302c), boots: rgb(0x1c1b19), size: 1.06, weapon: 'short', hat: 'cap', off: 'shield' },
-  bow: { coat: rgb(0x2f3d5c), trim: rgb(0x9a8a70), legs: rgb(0x26282e), boots: rgb(0x1b1a19), size: 0.98, weapon: 'none', hat: 'fur', off: 'bow' },
-  lu: { coat: rgb(0x25181c), trim: rgb(0x9b1f24), legs: rgb(0x16161a), boots: rgb(0x0f0f11), cloak: rgb(0x5a1418), size: 1.2, weapon: 'glaive', hat: 'official' }
-};
-
-const JOINTS = {
-  hips: ['root', 0, 0.94, 0],
-  spine: ['hips', 0, 0.06, 0],
-  head: ['spine', 0, 0.56, 0],
-  armL: ['spine', 0.21, 0.46, 0],
-  foreL: ['armL', 0, -0.29, 0],
-  off: ['foreL', 0, -0.26, 0],
-  armR: ['spine', -0.21, 0.46, 0],
-  foreR: ['armR', 0, -0.29, 0],
-  hand: ['foreR', 0, -0.26, 0],
-  legL: ['hips', 0.1, 0, 0],
-  shinL: ['legL', 0, -0.45, 0],
-  legR: ['hips', -0.1, 0, 0],
-  shinR: ['legR', 0, -0.45, 0],
-  cloak: ['spine', 0, 0.47, -0.13],
-  weapon: ['spine', 0, 0, 0]
+  hero: { size: 1, weapon: 'spear' },
+  blade: { size: 1, weapon: 'sabre' },
+  shield: { size: 1.06, weapon: 'short', off: 'rattan' },
+  bow: { size: 0.98, off: 'longbow' },
+  lu: { size: 1.2, weapon: 'glaive' }
 };
 const POSED = ['hips', 'spine', 'head', 'armL', 'foreL', 'armR', 'foreR', 'legL', 'shinL', 'legR', 'shinR', 'cloak', 'weapon', 'off'];
 
-function weaponShapes(kind) {
-  const body = createBuilder(),
-    edge = createBuilder();
-  if (kind === 'spear') {
-    body.limb([0, 0, -1.05], [0, 0, 1.3], 0.02, 0.018, { tint: WOOD, sides: 6 });
-    body.limb([0, 0, -1.17], [0, 0, -1.05], 0.004, 0.024, { tint: IRON, sides: 6 });
-    body.ball(0, 0, 1.27, 0.07, 0.07, 0.09, { tint: RED, sides: 8, rings: 5 }); // the tassel
-    for (let i = 0; i < 7; i++) {
-      const a = (i / 7) * Math.PI * 2;
-      body.limb([0, 0, 1.25], [Math.cos(a) * 0.09, Math.sin(a) * 0.09 - 0.05, 1.08], 0.02, 0.004, { tint: RED, sides: 4 });
-    }
-    // The wine gourd, tied below the tassel.
-    body.limb([0, -0.02, 0.95], [0, -0.13, 0.95], 0.006, 0.006, { tint: BLACK, sides: 4 });
-    body.ball(0, -0.2, 0.95, 0.07, 0.075, 0.07, { tint: rgb(0xb5843a), sides: 8, rings: 5 });
-    body.ball(0, -0.11, 0.95, 0.045, 0.045, 0.045, { tint: rgb(0xb5843a), sides: 8, rings: 5 });
-    edge.limb([0, 0, 1.3], [0, 0, 1.44], 0.03, 0.06, { tint: STEEL, sides: 4, flat: 0.22 });
-    edge.limb([0, 0, 1.44], [0, 0, 1.82], 0.06, 0.003, { tint: STEEL, sides: 4, flat: 0.22 });
-  } else if (kind === 'sabre' || kind === 'short') {
-    const reach = kind === 'sabre' ? 1.25 : 0.95,
-      grip = kind === 'sabre' ? -0.4 : -0.14;
-    body.limb([0, 0, grip], [0, 0, 0.3], 0.02, 0.02, { tint: WOOD, sides: 6 });
-    body.box(0, 0, 0.3, 0.035, 0.12, 0.03, { tint: rgb(0x8a6a2c) });
-    edge.box(0, 0.015, (0.3 + reach) / 2, 0.014, 0.1, reach - 0.3, { tint: STEEL });
-    edge.box(0, 0.035, reach + 0.05, 0.012, 0.075, 0.12, { tint: STEEL, rx: -0.45 });
-  } else if (kind === 'glaive') {
-    body.limb([0, 0, -1.0], [0, 0, 1.0], 0.027, 0.024, { tint: rgb(0x2a1a14), sides: 6 });
-    body.limb([0, 0, -1.14], [0, 0, -1.0], 0.005, 0.03, { tint: IRON, sides: 6 });
-    body.box(0, 0, 1.0, 0.07, 0.07, 0.07, { tint: rgb(0x9a7a2c), rz: 0.78 });
-    body.ball(0, -0.07, 0.94, 0.05, 0.08, 0.05, { tint: RED, sides: 6, rings: 4 });
-    edge.box(0, 0.05, 1.42, 0.02, 0.2, 0.8, { tint: STEEL });
-    edge.box(0, 0.1, 1.86, 0.018, 0.17, 0.2, { tint: STEEL, rx: -0.6 });
-    edge.box(0, -0.07, 1.24, 0.016, 0.07, 0.16, { tint: STEEL, rx: 0.7 });
-  }
-  return { body, edge };
-}
-
-function offShapes(kind) {
-  const b = createBuilder();
-  if (kind === 'shield') {
-    b.limb([0.05, 0, 0.06], [0.05, 0, 0.1], 0.44, 0.4, { tint: rgb(0x7a5a2e), sides: 14 });
-    b.limb([0.05, 0, 0.1], [0.05, 0, 0.16], 0.13, 0.05, { tint: IRON, sides: 10 });
-    for (let i = 0; i < 6; i++) {
-      const a = (i / 6) * Math.PI * 2;
-      b.ball(0.05 + Math.cos(a) * 0.3, Math.sin(a) * 0.3, 0.1, 0.03, 0.03, 0.02, { tint: IRON, sides: 5, rings: 3 });
-    }
-  } else if (kind === 'bow') {
-    const curve = (t) => [0, t * 0.62, 0.02 + (1 - t * t) * 0.2];
-    for (let i = -5; i < 5; i++) b.limb(curve(i / 5), curve((i + 1) / 5), 0.016, 0.016, { tint: rgb(0x5c3a1e), sides: 5, caps: false });
-    b.limb(curve(-1), curve(1), 0.004, 0.004, { tint: rgb(0xd8d2c2), sides: 3, caps: false });
-    b.limb([0, 0, 0.02], [0, 0, 0.75], 0.007, 0.007, { tint: rgb(0xc9bfa6), sides: 4 });
-  }
-  return b;
-}
-
-/** The shapes of one figure, joint by joint. */
-function dress(kind) {
+/** Build one figure of the given kind from the sculpted models. */
+export function createFigure(kind, models) {
   const look = LOOKS[kind],
-    parts = {},
-    at = (name) => (parts[name] ??= createBuilder()),
-    coat = look.coat,
-    dark = shade(coat, 0.72);
-  // Torso: the coat widens toward the shoulders; a sash at the waist.
-  at('spine').limb([0, -0.04, 0], [0, 0.26, 0], 0.17, 0.2, { tint: dark, tintB: coat, sides: 10, flat: 0.72 });
-  at('spine').limb([0, 0.26, 0], [0, 0.5, 0], 0.2, 0.16, { tint: coat, sides: 10, flat: 0.7 });
-  at('spine').limb([0, 0.0, 0], [0, 0.07, 0], 0.185, 0.185, { tint: look.trim, sides: 10, flat: 0.74, caps: false });
-  at('spine').box(0, 0.3, 0.125, 0.07, 0.42, 0.02, { tint: look.trim }); // the coat's front band
-  at('spine').limb([0, 0.5, 0], [0, 0.58, 0], 0.06, 0.055, { tint: SKIN, sides: 8 });
-  for (const side of [1, -1]) at('spine').ball(side * 0.2, 0.46, 0, 0.085, 0.075, 0.085, { tint: kind === 'lu' || kind === 'shield' ? IRON : coat, sides: 8, rings: 5 });
-  // The skirt of the coat hangs from the hips, split at the sides.
-  at('hips').limb([0, 0.08, 0], [0, -0.34, 0], 0.18, 0.27, { tint: dark, tintB: shade(coat, 0.55), sides: 10, flat: 0.78, caps: false });
-  at('hips').box(0, -0.12, 0.2, 0.1, 0.42, 0.02, { tint: look.trim, rx: -0.12 });
-  // Head and hat.
-  at('head').ball(0, 0.08, 0.005, 0.095, 0.115, 0.1, { tint: SKIN, sides: 10, rings: 7 });
-  at('head').ball(0, 0.11, -0.03, 0.1, 0.105, 0.1, { tint: BLACK, sides: 10, rings: 6 }); // hair
-  if (look.hat === 'felt') {
-    // A wide felt hat, snow on its brim.
-    at('head').limb([0, 0.15, 0], [0, 0.2, 0], 0.33, 0.12, { tint: rgb(0x4a4038), tintB: rgb(0x5a4e44), sides: 14 });
-    at('head').limb([0, 0.2, 0], [0, 0.31, 0], 0.12, 0.03, { tint: rgb(0x5a4e44), sides: 12 });
-    at('head').limb([0, 0.155, 0], [0, 0.17, 0], 0.335, 0.3, { tint: rgb(0xe8eef4), sides: 14, caps: false });
-    at('head').ball(0, 0.32, 0, 0.035, 0.035, 0.035, { tint: RED, sides: 6, rings: 4 });
-  } else if (look.hat === 'scarf') {
-    at('head').ball(0, 0.15, -0.01, 0.105, 0.07, 0.105, { tint: look.trim, sides: 10, rings: 5 });
-    at('head').limb([0, 0.13, -0.09], [0.03, 0.0, -0.16], 0.03, 0.012, { tint: look.trim, sides: 5 });
-  } else if (look.hat === 'cap') {
-    at('head').ball(0, 0.15, 0, 0.115, 0.085, 0.115, { tint: IRON, sides: 10, rings: 5 });
-    at('head').limb([0, 0.22, 0], [0, 0.3, 0], 0.02, 0.004, { tint: IRON, sides: 5 });
-  } else if (look.hat === 'fur') {
-    at('head').limb([0, 0.1, 0], [0, 0.2, 0], 0.125, 0.115, { tint: rgb(0x6a5440), sides: 10 });
-  } else {
-    // An official's black cap with its two stiff wings.
-    at('head').limb([0, 0.13, 0], [0, 0.24, -0.01], 0.105, 0.095, { tint: BLACK, sides: 10 });
-    at('head').box(0, 0.25, -0.05, 0.13, 0.1, 0.07, { tint: BLACK });
-    at('head').box(0, 0.19, -0.1, 0.52, 0.035, 0.012, { tint: BLACK });
-  }
-  for (const [arm, fore, side] of [
-    ['armL', 'foreL', 1],
-    ['armR', 'foreR', -1]
-  ]) {
-    at(arm).limb([0, 0.02, 0], [0, -0.29, 0], 0.07, 0.058, { tint: coat, sides: 7 });
-    at(fore).limb([0, 0, 0], [0, -0.2, 0], 0.058, 0.066, { tint: coat, tintB: dark, sides: 7 }); // a wide cuff
-    at(fore).limb([0, -0.19, 0], [0, -0.23, 0], 0.05, 0.05, { tint: look.trim, sides: 7 });
-    at(fore).ball(0, -0.27, 0, 0.042, 0.05, 0.042, { tint: SKIN, sides: 6, rings: 4 });
-    void side;
-  }
-  for (const [leg, shin] of [
-    ['legL', 'shinL'],
-    ['legR', 'shinR']
-  ]) {
-    at(leg).limb([0, 0.02, 0], [0, -0.45, 0], 0.092, 0.07, { tint: look.legs, sides: 7 });
-    at(shin).limb([0, 0, 0], [0, -0.38, 0], 0.07, 0.055, { tint: look.legs, tintB: look.boots, sides: 7 });
-    at(shin).limb([0, -0.36, 0], [0, -0.47, 0.0], 0.062, 0.066, { tint: look.boots, sides: 7 });
-    at(shin).box(0, -0.455, 0.055, 0.11, 0.07, 0.2, { tint: look.boots });
-  }
-  if (look.cloak) {
-    // A cloak in three falling panels.
-    const tint = look.cloak,
-      low = shade(look.cloak, 0.6);
-    for (const [x0, x1] of [
-      [-0.2, -0.06],
-      [-0.06, 0.06],
-      [0.06, 0.2]
-    ])
-      at('cloak').sheet([x0, 0, 0], [x1, 0, 0], [x1 * 1.55, -0.95, -0.2], [x0 * 1.55, -0.95, -0.2], { tint, tintB: low });
-  }
-  if (kind === 'bow') at('spine').limb([-0.1, 0.1, -0.16], [0.12, 0.5, -0.14], 0.05, 0.05, { tint: rgb(0x4a3526), sides: 6 }); // the quiver
-  return parts;
-}
-
-/** Build one figure of the given kind. */
-export function createFigure(kind) {
-  const look = LOOKS[kind],
-    cloth = createStandardMaterial3D({ vertexColors: true, roughness: 0.86, metallic: 0, side: 'double' }),
-    metal = createStandardMaterial3D({ vertexColors: true, roughness: 0.32, metallic: 0.85, emissive: 0x9fd4ff, emissiveIntensity: 0 }),
+    cloth = createStandardMaterial3D({ vertexColors: true, roughness: 0.78, metallic: 0 }),
+    gear = createStandardMaterial3D({ vertexColors: true, roughness: 0.6, metallic: 0.1 }),
+    metal = createStandardMaterial3D({ vertexColors: true, roughness: 0.28, metallic: 0.9, emissive: 0x9fd4ff, emissiveIntensity: 0 }),
     root = new Object3D(),
     joints = { root },
     rest = {};
   for (const [name, [parent, x, y, z]] of Object.entries(JOINTS)) {
     const joint = new Object3D();
     joint.setPosition(x, y, z);
+    // The pose the figure was sculpted in; the skin is bound to it.
+    joint.setRotation(0, 0, BIND[name] ?? 0);
     rest[name] = [x, y, z];
     joints[parent].addChild(joint);
     joints[name] = joint;
   }
-  const parts = dress(kind);
-  for (const [name, builder] of Object.entries(parts)) joints[name].addChild(builder.mesh(cloth));
-  const weapon = weaponShapes(look.weapon);
-  if (!weapon.body.empty) joints.weapon.addChild(weapon.body.mesh(cloth));
-  if (!weapon.edge.empty) joints.weapon.addChild(weapon.edge.mesh(metal));
-  if (look.off) joints.off.addChild(offShapes(look.off).mesh(cloth));
+  root.updateWorldMatrices(true);
+  const body = new Mesh3D(models[kind], cloth);
+  body.castShadow = true;
+  body.receiveShadow = true;
+  root.addChild(body);
+  body.bind(new Skeleton3D(BONES.map((name) => joints[name])));
+  const hold = (joint, name, material) => {
+    if (!models[name]) return;
+    const mesh = new Mesh3D(models[name], material);
+    mesh.castShadow = true;
+    joints[joint].addChild(mesh);
+  };
+  if (look.weapon) (hold('weapon', look.weapon, gear), hold('weapon', look.weapon + 'Edge', metal));
+  if (look.off) hold('off', look.off, gear);
   root.setScale(look.size);
   const angles = {};
   for (const name of POSED) angles[name] = [0, 0, 0];
