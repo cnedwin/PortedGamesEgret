@@ -165,4 +165,13 @@ export const pennant = {
     leather({ shape: dot(13.5, 5, 3.4), fill: DYE.gold, edge: 1 })
 };
 
-export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant];
+/** The Universe Ring in flight: a hoop of gold, carved through all the way round. */
+export const ring = {
+  file: 'ring.png',
+  width: 40,
+  height: 40,
+  scale: 2,
+  svg: leather({ shape: dot(20, 20, 18), fill: DYE.gold, holes: [dot(20, 20, 11.5), ...Array.from({ length: 10 }, (_, i) => dot(20 + 14.8 * Math.cos((i * Math.PI) / 5), 20 + 14.8 * Math.sin((i * Math.PI) / 5), 1.3))], opacity: 0.95, edge: 1.2 }) + `<circle cx="20" cy="20" r="11.5" fill="none" stroke="${DYE.ink}" stroke-width="1.1"/>`
+};
+
+export const SCENERY = [screen, frame, far, gate, wisp, spark, chaff, tiles, arrow, pennant, ring];

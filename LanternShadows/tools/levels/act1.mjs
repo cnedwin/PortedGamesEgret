@@ -1,11 +1,12 @@
-// Act one: the road to the Southern Gate of Heaven. Eighty cells long and twelve high; the terrace is the bottom
-// three rows. Left to right: a post to try the staff on, the first soldiers and an archer on a stone step, a
-// climb over clouds, a raised terrace held by three, and the guard before the gate.
+// Act one: the road to the Southern Gate of Heaven. A hundred cells long and twelve high; the terrace is the
+// bottom three rows. Left to right: a post to try the staff on, the first soldiers and an archer on a stone step,
+// a climb over clouds, a raised terrace held by three, the guard, and the court before the gate, where Nezha
+// comes down to bar the way. The court runs from its pennant to the end, with three clouds to stand clear on.
 import { grid } from '../level.mjs';
 
 export const title = 'Act one: the Southern Gate';
-export const level = grid(80, 12)
-  .fill('X', 0, 9, 80, 3)
+export const level = grid(100, 12)
+  .fill('X', 0, 9, 100, 3)
   // The beginning.
   .put('S', 3, 8)
   .put('p', 9, 8)
@@ -27,8 +28,14 @@ export const level = grid(80, 12)
   .put('s', 53, 7)
   .put('s', 57, 7)
   .put('a', 60, 7)
-  // The guard, and the gate.
+  // The guard.
   .put('c', 64, 8)
   .put('s', 68, 8)
   .put('s', 71, 8)
-  .put('G', 75, 8);
+  // The court before the gate.
+  .put('c', 77, 8)
+  .fill('-', 79, 7, 3, 1)
+  .fill('-', 86, 7, 3, 1)
+  .fill('-', 93, 7, 3, 1)
+  .put('N', 89, 8)
+  .put('G', 95, 8);

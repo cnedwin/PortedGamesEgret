@@ -3,6 +3,7 @@
 //   rules/act.mjs    an act: the ground, the hero, the soldiers, arrows, and the count that is kept
 //   rules/hero.mjs   how the Monkey King moves, fights and is hurt (no drawing)
 //   rules/foes.mjs   the soldiers of heaven
+//   rules/boss.mjs   Nezha, who bars the gate
 //   rules/level.mjs  the ground, read from the level's Tiled map
 //   puppets.mjs      Spine skeletons, loaded as the engine's manifest lists them
 //   pictures.mjs     pictures read in the way every browser allows
@@ -10,7 +11,8 @@
 //   sound.mjs        the percussion, made from numbers
 //
 // Address options: ?backend=webgpu draws with WebGPU instead of WebGL2, ?stats shows what is being drawn,
-// ?lang=en starts in English, and ?slow=0.25 plays at a quarter of the speed, to watch how he moves.
+// ?lang=en starts in English, ?slow=0.25 plays at a quarter of the speed, to watch how he moves, and ?from=nezha
+// begins at the court before the gate.
 import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createCamera2D } from '@egret/engine/camera';
 import { createParticleEmitter } from '@egret/engine/particles';
@@ -20,6 +22,7 @@ import { createInput } from './input.mjs';
 import { createPictures } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
 import { createAct, remaining, stepAct } from './rules/act.mjs';
+import { BOSS, bossAnimation, present } from './rules/boss.mjs';
 import { foeAnimation } from './rules/foes.mjs';
 import { ATTACKS, TUNE, animationOf } from './rules/hero.mjs';
 import { CELL, readLevel } from './rules/level.mjs';
@@ -39,8 +42,8 @@ const KEY_HINTS = {
   en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll, through a spear'], ['P', 'pause']]
 };
 const WORDS = {
-  zh: { soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
-  en: { soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
+  zh: { enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了', soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
+  en: { enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open', soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
 };
 function speak() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
@@ -98,12 +101,12 @@ const { engine, scope } = game;
 // ---- What is loaded --------------------------------------------------------------------------------------------
 const loadPicture = createPictures(engine, scope),
   asset = path => new URL(`../assets/${path}`, import.meta.url);
-const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant'];
+const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring'];
 let art, puppetOf, mapSource;
 try {
   const [pictures, puppets, map] = await Promise.all([
     Promise.all(PICTURES.map(name => loadPicture(asset(`scene/${name}.png`).href))),
-    loadPuppets(engine, scope, ['wukong', 'dummy', 'spearman', 'archer'], asset('')),
+    loadPuppets(engine, scope, ['wukong', 'dummy', 'spearman', 'archer', 'nezha'], asset('')),
     fetch(asset('levels/act1.tmj')).then(response => (response.ok ? response.json() : Promise.reject(Error('The level is missing: run tools/author.mjs.'))))
   ]);
   art = Object.fromEntries(PICTURES.map((name, index) => [name, pictures[index]]));
@@ -114,7 +117,9 @@ try {
   throw cause;
 }
 const level = readLevel(mapSource);
-let act = createAct(level);
+/** Where the act begins: at its beginning, or at the court before the gate. */
+let from = query.get('from') === 'nezha' ? 'boss' : undefined;
+let act = createAct(level, { from });
 
 // ---- The stage -------------------------------------------------------------------------------------------------
 /** A picture placed by its top left corner and drawn `width` stage units wide. */
@@ -126,7 +131,7 @@ function picture(parent, lease, x, y, width) {
   return bitmap;
 }
 const layer = parent => parent.addChild(scope.use(new DisplayObjectContainer()));
-const GROUND = act.hero.y;
+const GROUND = level.things.find(thing => thing.type === 'spawn').y;
 
 // From the lamp outward: the cloth, what hangs far behind it, the level and its puppets, and the front of the booth.
 picture(engine.stage, art.screen, 0, 0, STAGE.width);
@@ -176,6 +181,19 @@ const soldiers = act.foes.map(foe => {
   cast.addChild(puppet.node);
   return { puppet, bones: 18 };
 });
+// Nezha waits out of sight until he is called down.
+const nezha = createPuppet(puppetOf('nezha'), scope);
+nezha.node.visible = false;
+// He is a boy, and drawn small; on the stage he is shown a quarter larger, as the rules measure him.
+nezha.scale(1.25);
+nezha.layer(1, 'calm', 0);
+nezha.layer(2, 'held', 0);
+cast.addChild(nezha.node);
+const ringShown = flights.addChild(scope.use(new Bitmap(art.ring)));
+ringShown.scaleX = ringShown.scaleY = (BOSS.ring.radius * 2.2) / ringShown.naturalWidth;
+ringShown.anchorOffsetX = ringShown.naturalWidth / 2;
+ringShown.anchorOffsetY = ringShown.naturalHeight / 2;
+ringShown.visible = false;
 const wukong = createPuppet(puppetOf('wukong'), scope);
 cast.addChild(wukong.node);
 wukong.play('idle', { loop: true });
@@ -192,7 +210,10 @@ const emitter = (lease, options, blend) => {
 const sparks = emitter(art.spark, { maxParticles: 400, lifetime: [0.18, 0.42], speed: [160, 520], angle: [0, 360], gravity: { x: 0, y: 500 }, drag: 2.4, size: 14, startScale: [0.6, 1.3], endScale: 0.1, startColor: 0xfff3c0, endColor: 0xff6a1a, startAlpha: 1, endAlpha: 0, shape: { kind: 'circle', radius: 6 }, seed: 31 }, 'add');
 const straw = emitter(art.chaff, { maxParticles: 300, lifetime: [0.5, 1], speed: [120, 420], angle: [200, 340], gravity: { x: 0, y: 1300 }, drag: 1.2, size: { width: 15, height: 5 }, startColor: 0x7a4a14, endColor: 0x5a3410, startAlpha: 0.95, endAlpha: 0, rotation: [0, 360], spin: [-900, 900], shape: { kind: 'circle', radius: 10 }, seed: 47 }, 'normal');
 const dust = emitter(art.spark, { maxParticles: 200, lifetime: [0.3, 0.6], speed: [30, 150], angle: [180, 360], gravity: { x: 0, y: -60 }, drag: 2, size: 26, startScale: [0.5, 1], endScale: 1.8, startColor: 0x6a4424, endColor: 0x6a4424, startAlpha: 0.34, endAlpha: 0, shape: { kind: 'rectangle', width: 30, height: 4 }, seed: 59 }, 'normal');
+// Fire: from his wheels when he is angered, and along the ground where they have been.
+const flames = emitter(art.spark, { maxParticles: 700, lifetime: [0.25, 0.6], speed: [40, 190], angle: [245, 295], gravity: { x: 0, y: -320 }, drag: 1.2, size: 24, startScale: [0.6, 1.3], endScale: 0.15, startColor: 0xffe08a, endColor: 0xff3a10, startAlpha: 0.95, endAlpha: 0, shape: { kind: 'rectangle', width: 26, height: 6 }, seed: 73 }, 'add');
 const burst = (made, x, y, count) => {
+  if (count <= 0) return;
   made.x = x;
   made.y = y;
   made.burst(count);
@@ -205,7 +226,13 @@ const camera = scope.use(
 );
 camera.addLayer(far, { factor: 0.3 });
 camera.addLayer(drift, { factor: 0.55 });
-camera.follow(() => ({ x: act.hero.x + lead, y: STAGE.height / 2 }), { smoothing: 0.1 });
+/** Where the camera looks: a little ahead of him, and nowhere outside the court once he is met there. */
+function aim() {
+  const boss = act.boss,
+    x = act.hero.x + lead;
+  return { x: boss && present(boss) ? Math.min(boss.arena.right - STAGE.width / 2, Math.max(boss.arena.left + STAGE.width / 2, x)) : x, y: STAGE.height / 2 };
+}
+camera.follow(aim, { smoothing: 0.1 });
 
 // ---- What is told in front of the cloth ------------------------------------------------------------------------
 const combo = $('combo'),
@@ -225,6 +252,8 @@ function showCount() {
   $('best').textContent = words.best(act.best);
   $('soldiers').textContent = words.soldiers(remaining(act));
   peaches.forEach((peach, index) => peach.classList.toggle('is-eaten', index >= act.hero.health));
+  $('boss').hidden = !(act.boss && present(act.boss));
+  if (act.boss) $('boss-health').style.width = `${(act.boss.health / BOSS.health) * 100}%`;
 }
 let noticeUntil = 0;
 function notice(text) {
@@ -296,10 +325,10 @@ function happen(events) {
       land(event.attack, pan);
       counted = true;
     } else if (type === 'deflect') {
-      burst(sparks, event.arrow.x, event.arrow.y, 14);
-      sound.play('clap', { volume: 0.8, rate: 1.5, pan: panOf(event.arrow.x) });
-      freeze = Math.max(freeze, 0.04);
-    } else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
+      burst(sparks, event.at.x, event.at.y, event.ring ? 30 : 14);
+      sound.play(event.ring ? 'smallGong' : 'clap', { volume: 0.8, rate: 1.5, pan: panOf(event.at.x) });
+      freeze = Math.max(freeze, event.ring ? 0.08 : 0.04);
+    } else if (type.startsWith('boss') || type.startsWith('ring') || type === 'gate-open') (told(event), (counted = true)); else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
     else if (type === 'foe-strike' || type === 'arrow') sound.play('swish', { volume: 0.55, rate: type === 'arrow' ? 1.7 : 1.3, pan: panOf(event.foe.x) });
     else if (type === 'foe-down') (sound.play('drum', { volume: 0.8, rate: 0.7, pan: panOf(event.foe.x) }), (counted = true));
     else if (type === 'hurt') {
@@ -319,6 +348,34 @@ function happen(events) {
     }
   }
   if (counted) (showCombo(events.some(event => event.type === 'met')), showCount());
+}
+
+/** What Nezha does, as it is heard and felt. */
+function told(event) {
+  const boss = act.boss,
+    pan = panOf(boss.x),
+    { type, move } = event;
+  if (type === 'boss-enter') (notice(WORDS[lang].enter), sound.play('gong', { volume: 1, rate: 0.7 }));
+  else if (type === 'boss-ready' || type === 'boss-halt') (sound.play('drum', { volume: 0.9, rate: 0.6, pan }), camera.shake({ trauma: 0.3 }), burst(dust, boss.x, boss.y, 14));
+  else if (type === 'boss-windup') sound.play(move === 'charge' ? 'whirl' : 'tap', { volume: 0.8, rate: move === 'charge' ? 0.55 : move === 'ring' ? 1.5 : 0.5, pan });
+  else if (type === 'boss-strike') (sound.play(move === 'charge' ? 'whirl' : 'swish', { volume: 0.8, rate: move === 'sweep' ? 0.8 : 1.2, pan }), move === 'charge' && camera.shake({ trauma: 0.4 }));
+  else if (type === 'ring') sound.play('whirl', { volume: 0.6, rate: 1.7, pan });
+  else if (type === 'ring-caught') sound.play('tap', { volume: 0.6, rate: 1.4, pan });
+  else if (type === 'ring-home') (burst(sparks, event.at.x, event.at.y, 36), (freeze = Math.max(freeze, 0.1)), camera.shake({ trauma: 0.6 }));
+  else if (type === 'boss-stun') sound.play('smallGong', { volume: 0.9, rate: 0.8, pan });
+  else if (type === 'boss-phase' || type === 'boss-down') {
+    // The turn of the fight: everything holds its breath, and the booth shakes.
+    const last = type === 'boss-down';
+    sound.play('gong', { volume: 1, rate: last ? 0.5 : 0.62 });
+    sound.play('drum', { volume: 1, rate: 0.5 });
+    burst(sparks, boss.x, boss.y - 70, 60);
+    freeze = Math.max(freeze, last ? 0.34 : 0.2);
+    camera.shake({ trauma: 1 });
+    camera.zoomTo(last ? 1.12 : 1.08, 0.08);
+    zoomBack = last ? 0.7 : 0.4;
+    input.gamepads?.rumble(0, { duration: 400, weak: 1, strong: 1 });
+    if (!last) notice(WORDS[lang].phases[event.phase]);
+  } else if (type === 'gate-open') (notice(WORDS[lang].opened), sound.play('smallGong', { volume: 0.7, rate: 1.1 }));
 }
 
 /** Whether something at `x` is near enough to what the camera shows to be worth moving. */
@@ -377,6 +434,39 @@ function update(seconds) {
     puppet.speed(held);
     moving.push(puppet);
   });
+  // Nezha: what he is doing, with his rage and the ring in his hand each shown or put away on a track of its own.
+  const boss = act.boss,
+    here = !!boss && present(boss);
+  nezha.node.visible = here;
+  ringShown.visible = here && !!boss.ring;
+  if (here) {
+    const shown = bossAnimation(boss);
+    nezha.play(shown.name, { loop: shown.loop, key: shown.key, mix: boss.state === 'attack' ? 0.03 : 0.1 });
+    nezha.layer(1, boss.phase === 2 && boss.state !== 'flee' ? 'wrath' : 'calm', 0.5);
+    nezha.layer(2, boss.ring ? 'bare' : 'held', 0);
+    nezha.face(boss.facing);
+    nezha.node.x = boss.x;
+    nezha.node.y = boss.y - boss.rise;
+    nezha.node.alpha = boss.state === 'flee' ? Math.max(0, Math.min(1, (BOSS.flee - boss.time) / 0.4)) : 1;
+    nezha.speed(held);
+    moving.push(nezha);
+    if (boss.ring) {
+      ringShown.x = boss.ring.x;
+      ringShown.y = boss.ring.y;
+      ringShown.rotation = (ringShown.rotation + (still ? 0 : dt * 1100)) % 360;
+    }
+    if (!still) {
+      // His wheels burn once he is angered, and harder as he rides them; the ground burns where they went.
+      // `some` turns so many a second into how many for this frame, whatever the frame's length.
+      const riding = boss.state === 'attack' && boss.move === 'charge',
+        some = rate => Math.floor(rate * dt) + (Math.random() < (rate * dt) % 1 ? 1 : 0);
+      if (boss.phase === 2 || riding) burst(flames, boss.x - boss.facing * 8, boss.y - boss.rise - 10, some(riding ? 240 : 50));
+      for (const fire of boss.fires) {
+        const span = Math.abs(fire.to - fire.from);
+        for (let n = some(span * 0.24); n > 0; n--) burst(flames, Math.min(fire.from, fire.to) + Math.random() * span, boss.y - 4, 1);
+      }
+    }
+  }
   if (tick) {
     for (const puppet of moving) puppet.advance(tick);
     tick = undefined;
@@ -403,7 +493,7 @@ function update(seconds) {
     }
   act.checkpoints.forEach((point, index) => (pennants[index].alpha = point.reached ? 1 : 0.4));
 
-  for (const made of [sparks, straw, dust]) made.update(still ? 0 : dt);
+  for (const made of [sparks, straw, dust, flames]) made.update(still ? 0 : dt);
   for (const wisp of wisps) {
     wisp.bitmap.x += wisp.speed * (paused ? 0 : dt);
     if (wisp.bitmap.x > level.width) wisp.bitmap.x = -160;
@@ -435,7 +525,7 @@ function showStats(moved) {
   frames++;
   const now = performance.now();
   if (now - since >= 500) (rate = (frames * 1000) / (now - since)), (frames = 0), (since = now);
-  stats.textContent = `${game.backend}  ${rate.toFixed(0)} fps\npuppets moving ${moved} of ${posts.length + soldiers.length + 1}\n${animationOf(act.hero).name}  x ${act.hero.x.toFixed(0)}  y ${act.hero.y.toFixed(0)}`;
+  stats.textContent = `${game.backend}  ${rate.toFixed(0)} fps\npuppets moving ${moved} of ${posts.length + soldiers.length + 2}\n${animationOf(act.hero).name}  x ${act.hero.x.toFixed(0)}  y ${act.hero.y.toFixed(0)}`;
 }
 if (stats) stats.hidden = false;
 
@@ -450,11 +540,13 @@ $('paused').addEventListener('click', () => pause(false));
 
 /** Puts the act back to its beginning. */
 function again() {
-  act = createAct(level);
+  act = createAct(level, { from });
   for (const shown of arrows.values()) shown.dispose();
   arrows.clear();
-  freeze = carry = 0;
-  camera.follow(() => ({ x: act.hero.x + lead, y: STAGE.height / 2 }), { smoothing: 0.1 });
+  freeze = carry = lead = 0;
+  camera.zoomTo(1, 0);
+  camera.lookAt(act.hero.x, STAGE.height / 2);
+  camera.follow(aim, { smoothing: 0.1 });
   showResult();
   showCombo(false);
   showCount();
@@ -475,17 +567,23 @@ for (const button of document.querySelectorAll('.tools button')) button.addEvent
 staged = true;
 speak();
 game.loop.start();
-const start = $('start');
-start.disabled = false;
+const start = $('start'),
+  startBoss = $('start-boss');
+start.disabled = startBoss.disabled = false;
 status.textContent = '';
 status.removeAttribute('data-zh');
-start.addEventListener('click', () => {
+/** Raises the curtain on the act, from its beginning or from the court before the gate. */
+function raise(where) {
+  if (where !== from) ((from = where), again());
   playing = true;
   $('curtain').classList.add('is-up');
   $('hud').hidden = false;
+  showCount();
   sound.begin().then(() => sound.play('gong', { volume: 0.9 }));
   canvas.focus();
-});
+}
+start.addEventListener('click', () => raise(query.get('from') === 'nezha' ? 'boss' : undefined));
+startBoss.addEventListener('click', () => raise('boss'));
 
 // What a check reads; the play does not need it.
 globalThis.__lantern = {
@@ -500,7 +598,10 @@ globalThis.__lantern = {
   },
   backend: game.backend,
   camera: () => camera.snapshot(),
-  begin: () => start.click(),
+  begin: where => (where === 'nezha' ? startBoss : start).click(),
+  get boss() {
+    return act.boss;
+  },
   tap: action => input.tap(action),
   hold: (action, down) => input.hold(action, down),
   sounds: () => sound.ready,

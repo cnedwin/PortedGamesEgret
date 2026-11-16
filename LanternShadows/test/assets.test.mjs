@@ -6,6 +6,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { BOSS } from '../src/rules/boss.mjs';
 import { FOES } from '../src/rules/foes.mjs';
 import { ATTACKS } from '../src/rules/hero.mjs';
 import { skeletonBones, skeletonOf, timelines } from '../tools/author.mjs';
@@ -13,13 +14,14 @@ import { toTiled } from '../tools/level.mjs';
 import * as act1 from '../tools/levels/act1.mjs';
 import * as archer from '../tools/puppets/archer.mjs';
 import * as dummy from '../tools/puppets/dummy.mjs';
+import * as nezha from '../tools/puppets/nezha.mjs';
 import * as spearman from '../tools/puppets/spearman.mjs';
 import * as wukong from '../tools/puppets/wukong.mjs';
 import { SCENERY } from '../tools/scenery.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'),
   read = file => fs.readFileSync(path.join(ROOT, file)),
-  PUPPETS = { wukong, dummy, spearman, archer };
+  PUPPETS = { wukong, dummy, spearman, archer, nezha };
 
 test('each puppet is put together soundly', () => {
   for (const [name, puppet] of Object.entries(PUPPETS)) {
@@ -51,7 +53,7 @@ test('animations move only bones that exist, in order of time, within their leng
       for (const [bone, tracks] of Object.entries(animation.bones)) {
         assert.ok(bones.has(bone), `${name}.${title} moves ${bone}, which is not a bone`);
         for (const [kind, keys] of Object.entries(tracks)) {
-          assert.ok(kind === 'rot' || kind === 'pos', `${name}.${title}.${bone}.${kind}`);
+          assert.ok(kind === 'rot' || kind === 'pos' || kind === 'scale', `${name}.${title}.${bone}.${kind}`);
           assert.equal(keys[0][0], 0, `${name}.${title}.${bone} does not start at 0`);
           assert.ok(keys.at(-1)[0] <= 1, `${name}.${title}.${bone} runs past the end`);
           for (let i = 1; i < keys.length; i++) assert.ok(keys[i][0] > keys[i - 1][0], `${name}.${title}.${bone}: keys out of order`);
@@ -77,12 +79,14 @@ test("the puppet's blows are as long as the rules say, and strike when the rules
 });
 
 test('a loop ends as it began, so that it repeats without a jerk', () => {
-  for (const [puppet, loops] of [[wukong, ['idle', 'run', 'fall']], [dummy, ['idle']], [spearman, ['idle', 'walk']], [archer, ['idle']]])
+  for (const [puppet, loops] of [[wukong, ['idle', 'run', 'fall']], [dummy, ['idle']], [spearman, ['idle', 'walk']], [archer, ['idle']], [nezha, ['idle', 'move', 'charge', 'calm', 'wrath', 'held', 'bare']]])
     for (const title of loops)
       for (const [bone, tracks] of Object.entries(puppet.animations[title].bones))
-        for (const keys of Object.values(tracks)) {
+        for (const [kind, keys] of Object.entries(tracks)) {
           assert.equal(keys.at(-1)[0], 1, `${title}.${bone} stops early`);
-          assert.deepEqual(keys.at(-1).slice(1).filter(Number.isFinite), keys[0].slice(1).filter(Number.isFinite), `${title}.${bone}`);
+          // A wheel that has gone round whole turns is where it began.
+          const whole = value => (kind === 'rot' ? ((value % 360) + 360) % 360 : value);
+          assert.deepEqual(keys.at(-1).slice(1).filter(Number.isFinite).map(whole), keys[0].slice(1).filter(Number.isFinite).map(whole), `${title}.${bone}`);
         }
 });
 
@@ -161,6 +165,18 @@ test("the soldiers' blows are as long as the rules say, and strike when the rule
       }
   }
   assert.ok(spearman.animations.walk);
+});
+
+test("Nezha's moves are as long as the rules say, and he has a pose for everything the rules have him do", () => {
+  for (const move of ['thrust', 'sweep', 'ring', 'charge']) {
+    assert.equal(nezha.animations[move + 'Windup'].seconds, BOSS[move].windup, `${move}: the warning`);
+    if (BOSS[move].seconds) assert.equal(nezha.animations[move].seconds, BOSS[move].seconds, move);
+  }
+  for (const state of ['roar', 'stun', 'flee']) assert.equal(nezha.animations[state].seconds, BOSS[state], state);
+  for (const needed of ['idle', 'move', 'calm', 'wrath', 'held', 'bare']) assert.ok(nezha.animations[needed], needed);
+  // What is put away is put away from the first moment, and what is shown is whole.
+  assert.ok(nezha.animations.calm.bones.aura.scale.every(([, size]) => size < 0.05));
+  assert.ok(nezha.animations.bare.bones.ring.scale.every(([, size]) => size < 0.05));
 });
 
 test('the level on disk is the one its layout describes', () => {

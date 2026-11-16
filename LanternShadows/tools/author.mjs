@@ -22,7 +22,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url)),
 /** Atlas pixels for each stage unit. The stage is drawn at up to twice its size, and the camera closes in. */
 const SCALE = 3,
   PAD = 2;
-const PUPPETS = ['wukong', 'dummy', 'spearman', 'archer'],
+const PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha'],
   LEVELS = ['act1'];
 export const SPINE = '4.3.13';
 
@@ -89,6 +89,15 @@ export function timelines({ seconds, bones = {}, events = [] }) {
         const next = keys[i + 1],
           key = { time: round(t * seconds, 4), x, y };
         const curve = next && curveOf(next[3], t * seconds, next[0] * seconds, [[x, next[1]], [y, next[2]]]);
+        if (curve) key.curve = curve;
+        return key;
+      });
+    // A piece shown or put away: the same amount along and across.
+    if (tracks.scale)
+      lines.scale = tracks.scale.map(([t, value], i, keys) => {
+        const next = keys[i + 1],
+          key = { time: round(t * seconds, 4), x: value, y: value };
+        const curve = next && curveOf(next[2], t * seconds, next[0] * seconds, [[value, next[1]], [value, next[1]]]);
         if (curve) key.curve = curve;
         return key;
       });

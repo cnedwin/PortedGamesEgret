@@ -1,0 +1,43 @@
+nezha.png
+size: 1002,558
+filter: Linear,Linear
+repeat: none
+pma: false
+spear
+bounds: 2,2,48,480
+aura
+bounds: 52,2,240,174
+head
+bounds: 294,2,81,117
+wheelB
+bounds: 377,2,87,87
+wheelF
+bounds: 466,2,87,87
+torso
+bounds: 555,2,81,87
+legB1
+bounds: 638,2,48,84
+legF1
+bounds: 688,2,48,84
+ring
+bounds: 738,2,72,81
+skirt
+bounds: 812,2,93,78
+legB2
+bounds: 907,2,45,78
+legF2
+bounds: 954,2,45,78
+armF1
+bounds: 2,484,45,72
+armB1
+bounds: 49,484,48,69
+armB2
+bounds: 99,484,36,63
+armF2
+bounds: 137,484,60,60
+sash1
+bounds: 199,484,69,51
+sash2
+bounds: 270,484,69,48
+sash3
+bounds: 341,484,60,48

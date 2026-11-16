@@ -16,7 +16,7 @@ export const TILES = [
 const GID = Object.fromEntries(TILES.map((tile, index) => [tile.name, index + 1]));
 
 /** What a letter on the grid stands for when it is a thing rather than ground. */
-export const THINGS = { S: 'spawn', s: 'spearman', a: 'archer', p: 'post', c: 'checkpoint', G: 'gate' };
+export const THINGS = { S: 'spawn', s: 'spearman', a: 'archer', p: 'post', c: 'checkpoint', G: 'gate', N: 'boss' };
 
 /** An empty grid to draw a level on: `fill` lays ground or cloud over a rectangle of cells, `put` stands a thing in one. */
 export function grid(columns, rows) {
