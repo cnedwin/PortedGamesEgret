@@ -6,6 +6,8 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { ANKLE_DEPTH, BIND, BONES, HANDS, JOINTS, YARD_BONES, YARD_GRIPS } from '../src/view/rig.mjs';
 import { pack, sculpt } from './sculpt.mjs';
+import { finishEquipment } from './equipment-detail.mjs';
+import { detailSceneMesh } from './scene-detail.mjs';
 
 const rgb = (hex) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255].map((v) => Math.pow(v, 2.2));
 const dim = (c, k) => c.map((v) => v * k);
@@ -499,7 +501,7 @@ function sword(reach, grip, width) {
 const PLASTER = rgb(0x8a8378),
   LACQUER = rgb(0x7a1f1a),
   TIMBER = rgb(0x4a2a1c),
-  TILE = rgb(0x2c3038);
+  TILE = rgb(0x3b4654);
 
 /** A tiled roof of two slopes: rows of tile, a ridge with a beast at each end, upturned corners, and snow. */
 function roof(s, y, width, depth, rise, z0 = 0, pitch = 0.62) {
@@ -511,8 +513,13 @@ function roof(s, y, width, depth, rise, z0 = 0, pitch = 0.62) {
     s.push({ kind: 'box', c, h: [width / 2, 0.07, run / 2], colour: TILE, k: 0.02, round: 0.03, turn: lean, ridge: { axis: 0, n: (Math.PI * 2) / pitch, amp: pitch * 0.2 } });
     // Round end tiles along the eave.
     for (let x = -width / 2 + pitch / 2; x < width / 2; x += pitch) s.push({ kind: 'egg', c: [x, y - 0.16, z0 + side * (depth / 2 + 0.28)], r: [pitch * 0.27, pitch * 0.27, 0.09], colour: dim(TILE, 1.5), k: 0.02 });
-    // Snow lies thick near the ridge and thins toward the eave.
-    s.push({ kind: 'box', c: [0, y + rise * 0.62 + 0.02, z0 + side * depth * 0.2], h: [width / 2 - 0.25, 0.07, run * 0.3], colour: SNOW, k: 0.06, round: 0.06, turn: lean, rough: { scale: 1.6, amp: 0.2 } });
+    // Overlapping drift tongues expose the lower tiles. The changing reach
+    // repeats on neither roof slope, preserving readable dark eaves against snow.
+    for (let drift = 0; drift < 4; drift++) {
+      const x = (drift - 1.5) * width * 0.22 + side * (drift % 2 ? 0.06 : -0.06);
+      const depthScale = [0.24, 0.3, 0.26, 0.29][side > 0 ? drift : 3 - drift];
+      s.push({ kind: 'box', c: [x, y + rise * 0.62 + 0.02, z0 + side * depth * 0.2], h: [width * 0.151, 0.09, run * depthScale], colour: SNOW, k: 0.06, round: 0.08, turn: lean, rough: { scale: 1.75, amp: 0.07 } });
+    }
     for (const end of [1, -1]) {
       // The corner turns up into a horn.
       const cx = end * (width / 2 - 0.1), cz = z0 + side * (depth / 2 + 0.2);
@@ -761,11 +768,13 @@ for (const [level, coarse] of Object.entries(LEVELS)) {
     jobs.push([name, () => sculptParts(person(look, full ? BONES : YARD_BONES), full ? fullRig : yardRig, coarse)]);
   }
   for (const [name, make] of Object.entries(THINGS)) {
-    jobs.push([name, () => sculpt(make().solids, { cell: 0.0075 * thin, mottle: 0.05 })]);
-    if (make().edge) jobs.push([name + 'Edge', () => sculpt(make().edge.map((solid) => ({ ...solid, stuff: 3 })), { cell: 0.006 * thin, mottle: 0.03 })]);
+    const { solids, edge } = finishEquipment(name, make(), rgb);
+    jobs.push([name, () => sculpt(solids, { cell: 0.0075 * thin, mottle: 0.05 })]);
+    if (edge) jobs.push([name + 'Edge', () => sculpt(edge.map((solid) => ({ ...solid, stuff: 3 })), { cell: 0.006 * thin, mottle: 0.03 })]);
   }
   const CELL = { rock: 0.05, pine: 0.085, stack: 0.04, gate: 0.07, gateRoof: 0.08, temple: 0.16, lantern: 0.022 };
-  for (const [name, make] of Object.entries(PROPS)) jobs.push([name, () => sculpt(make(), { cell: (CELL[name] ?? 0.026) * (['gate', 'gateRoof', 'temple'].includes(name) ? built : coarse), mottle: 0.16 })]);
+  for (const [name, make] of Object.entries(PROPS)) jobs.push([name, () => detailSceneMesh(name,
+    sculpt(make(), { cell: (CELL[name] ?? 0.026) * (['gate', 'gateRoof', 'temple'].includes(name) ? built : coarse), mottle: 0.16 }), coarse)]);
 
   // Models not asked for keep what was sculpted before.
   const old = existsSync(indexPath) && only.length ? { index: JSON.parse(readFileSync(indexPath, 'utf8')), bin: readFileSync(binPath) } : null,

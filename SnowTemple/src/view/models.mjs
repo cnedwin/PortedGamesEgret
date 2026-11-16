@@ -2,13 +2,62 @@
 // They are made by tools/models.mjs; see tools/sculpt.mjs for how.
 import { Attribute3D, createGeometry3D } from '@egret/engine/world3d';
 
-/** Read every model. Returns a map from name to geometry; skinned ones carry bones and weights. */
-export async function loadModels(level = 'high', base = new URL('../../assets/', import.meta.url)) {
-  const [index, bin] = await Promise.all([fetch(new URL(`models-${level}.json`, base)).then((r) => r.json()), fetch(new URL(`models-${level}.bin`, base)).then((r) => r.arrayBuffer())]);
+const BODY_NAMES = new Set(['hero', 'blade', 'shield', 'bow', 'lu']);
+
+function sceneRange(index) {
+  let start, total = 0;
+  for (const [name, info] of Object.entries(index).sort((a, b) => a[1].offset - b[1].offset)) {
+    if (info.offset !== total || !Number.isSafeInteger(info.bytes) || info.bytes < 4 || info.bytes % 4 !== 0) return null;
+    if (BODY_NAMES.has(name)) {
+      if (!info.skinned || start !== undefined) return null;
+    } else {
+      start ??= total;
+    }
+    total += info.bytes;
+  }
+  return start > 0 && Number.isSafeInteger(total) ? { start, total } : null;
+}
+
+async function fullPack(url) {
+  const response = await fetch(url);
+  if (!response.ok) throw Error('Model pack HTTP ' + response.status);
+  return { bin: await response.arrayBuffer(), offset: 0 };
+}
+
+async function scenePack(url, range) {
+  const end = range.total - 1;
+  try {
+    const response = await fetch(url, { headers: { Range: 'bytes=' + range.start + '-' + end } });
+    if (response.status === 200) {
+      // Some local servers ignore Range and send the complete file once.
+      const bin = await response.arrayBuffer();
+      if (bin.byteLength === range.total) return { bin, offset: 0 };
+    } else if (response.status === 206 &&
+      response.headers.get('Content-Range') === 'bytes ' + range.start + '-' + end + '/' + range.total) {
+      const bin = await response.arrayBuffer();
+      if (bin.byteLength === range.total - range.start) return { bin, offset: range.start };
+    } else {
+      await response.body?.cancel();
+    }
+  } catch {
+    // A proxy or development server may reject byte ranges. Retry the ordinary file.
+  }
+  return fullPack(url);
+}
+
+/** Read the stock pack, or just its scene suffix when all five external bodies have been validated. */
+export async function loadModels(level = 'high', base = new URL('../../assets/', import.meta.url), replacementBodies) {
+  const url = new URL('models-' + level + '.bin', base);
+  const manifest = fetch(new URL('models-' + level + '.json', base)).then((response) => response.json());
+  const [index, candidates, preloaded] = await Promise.all([manifest, replacementBodies, replacementBodies ? null : fullPack(url)]);
+  const useReplacements = candidates && [...BODY_NAMES].every((name) => candidates[name]?.length > 0);
+  const range = useReplacements ? sceneRange(index) : null;
+  const { bin, offset } = preloaded ?? await (range ? scenePack(url, range) : fullPack(url));
   const models = {};
   for (const [name, info] of Object.entries(index)) {
+    if (useReplacements && BODY_NAMES.has(name)) continue;
     const n = info.count;
-    let at = info.offset;
+    let at = info.offset - offset;
     const take = (Type, length) => {
       const view = new Type(bin, at, length);
       at += Math.ceil((length * Type.BYTES_PER_ELEMENT) / 4) * 4;
