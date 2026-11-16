@@ -27,7 +27,8 @@ body {
 #stage { display: block; width: 100%; height: 100%; outline: none; }
 
 .hud { position: absolute; inset: 0; pointer-events: none; font-size: clamp(11px, 1.55cqw, 19px); }
-.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden] { display: none; }
+.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden], .trouble[hidden] { display: none; }
+.trouble { top: 30%; left: 12%; right: 12%; padding: 0.8em 1.2em; border: 1px solid #c98a2a; background: #1c0f0be6; color: #ffd9c8; font-size: 0.95em; line-height: 1.5; text-align: center; -webkit-user-select: text; user-select: text; pointer-events: auto; }
 .hud > * { position: absolute; margin: 0; }
 
 /* The name of the play hangs from the beam as a strip of red cloth, written downward. */
@@ -73,11 +74,11 @@ body {
 .pad-move { left: 4.6%; }
 .pad-act { right: 4.6%; }
 .pads button {
-  width: 4.1em; height: 4.1em; border: 2px solid #3a1c0cb0; border-radius: 50%; background: #f3d78d3d; color: #3a1c0c;
+  width: 4.1em; height: 4.1em; border: 2px solid #f3d78db0; border-radius: 50%; background: #1c0f0b73; color: var(--pale-gold);
   font: 900 1.25em var(--serif); touch-action: none; -webkit-tap-highlight-color: transparent;
 }
-.pads button[data-hold='attack'] { width: 4.9em; height: 4.9em; margin-bottom: 1.2em; background: #9c1f1740; }
-.pads button.is-held { background: #3a1c0c90; color: #f3d78d; transform: scale(0.94); }
+.pads button[data-hold='attack'] { width: 4.9em; height: 4.9em; margin-bottom: 1.2em; background: #9c1f17b0; }
+.pads button.is-held { background: #f3d78dcc; color: #3a1c0c; transform: scale(0.94); }
 @media (pointer: coarse) {
   .pads { display: block; }
   .keys { display: none; }
@@ -112,7 +113,7 @@ body {
 .gong:hover:not(:disabled) { transform: scale(1.04); }
 .gong:active:not(:disabled) { transform: scale(0.96); }
 .gong:disabled { filter: grayscale(0.7) brightness(0.6); cursor: progress; }
-.status { margin: 0; min-height: 1.4em; color: #e7b98a; font-size: 0.86em; }
+.status { margin: 0; min-height: 1.4em; color: #e7b98a; font-size: 0.86em; -webkit-user-select: text; user-select: text; }
 .status.is-error { color: #ffd0c0; }
 
 @media (prefers-reduced-motion: reduce) {

@@ -11,7 +11,6 @@
     {
       "imports": {
         "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
-        "#egret-manifest-resources": "./vendor/engine/dist/manifestResourceState.js",
         "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
         "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
         "@egret/contracts": "./vendor/contracts/dist/index.js",
@@ -26,14 +25,12 @@
         "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
         "@egret/engine/web/game": "./vendor/engine/dist/web/game.js",
         "@egret/engine/web/gamepad": "./vendor/engine/dist/web/gamepad.js",
-        "@egret/engine/web/resources": "./vendor/engine/dist/web/resources.js",
         "@egret/engine/webgl2": "./vendor/engine/dist/web/webgl2.js",
         "@egret/engine/webgpu": "./vendor/engine/dist/web/webgpu.js",
         "@egret/runtime": "./vendor/runtime/dist/index.js",
         "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
         "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
         "@egret/spine": "./vendor/spine/dist/index.js",
-        "@egret/spine/web": "./vendor/spine/dist/web.js",
         "@esotericsoftware/spine-core": "./vendor/spine-core/dist/index.js",
         "robust-predicates": "./vendor/robust-predicates/index.js"
       }
@@ -60,6 +57,7 @@
         <div class="pad-act"><button type="button" data-hold="dash" data-zh="云" data-en="Roll">云</button><button type="button" data-hold="attack" data-zh="棍" data-en="Staff">棍</button><button type="button" data-hold="jump" data-zh="跳" data-en="Jump">跳</button></div>
       </div>
       <button type="button" class="paused" id="paused" hidden data-zh="暂停　按 P 继续" data-en="Paused. Press P to go on">暂停　按 P 继续</button>
+      <p class="trouble" id="trouble" role="alert" hidden></p>
       <pre class="stats" id="stats" hidden></pre>
     </div>
 

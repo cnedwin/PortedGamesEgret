@@ -25,21 +25,21 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - There are three practice posts, one of them on a cloud. A post cannot be walked through, but the cloud roll passes behind it. Blows landed one after another are counted; the count lapses when he rests.
 - P or Esc pauses.
 
-地址参数 · Address options：`?backend=webgl2` 或 `webgpu` 指定渲染后端，`?stats` 显示帧率与骨骼数，`?slow=0.25` 以四分之一速度播放（看动作用），`?lang=en` 以英文开始。
-`?backend=webgl2` or `webgpu` chooses the renderer, `?stats` shows the frame rate and bone count, `?slow=0.25` plays at quarter speed (to watch the motion), `?lang=en` starts in English.
+地址参数 · Address options：默认用 WebGL2，`?backend=webgpu` 改用 WebGPU，`?stats` 显示帧率与骨骼数，`?slow=0.25` 以四分之一速度播放（看动作用），`?lang=en` 以英文开始。
+WebGL2 is the default and `?backend=webgpu` draws with WebGPU instead, `?stats` shows the frame rate and bone count, `?slow=0.25` plays at quarter speed (to watch the motion), `?lang=en` starts in English.
 
 ## 用到的引擎能力 · What it uses of the engine
 
 | 能力 · Capability | 用在哪里 · Where |
 |---|---|
 | Spine 骨骼动画 · Spine skeletal animation (`@egret/spine`) | 悟空 25 根骨骼、24 片皮、9 段动画；木人桩 8 根骨骼、4 段动画。动画之间有混合，受击时整台戏定格几帧。 · The Monkey King has 25 bones, 24 pieces and 9 animations; a post has 8 bones and 4. Animations blend into one another, and the whole stage holds still for a few frames when a blow lands. |
-| 资源清单 · Resource manifest | 骨骼、图集和贴图由清单登记，带校验和加载。 · Skeletons, atlases and their pages are listed in a manifest and loaded with their checksums. |
+| 资源清单 · Resource manifest | 骨骼、图集和贴图由清单登记，按清单里的校验和核对后加载。图片由浏览器自带的图片解码读入（`src/pictures.mjs`），因为引擎自己的 PNG 读取器对画布的要求 iPhone 上的浏览器不满足。 · Skeletons, atlases and their pages are listed in a manifest and checked against its checksums as they load. Pictures are decoded by the browser's own image element (`src/pictures.mjs`), because the engine's own PNG reader asks more of a canvas than the browsers on an iPhone give. |
 | 混合模式 · Blend modes | 皮偶与布景用正片叠底画在幕布上：皮只会让透过它的光变暗，两片叠着的地方更暗；火星用相加。 · Puppets and scenery are multiplied onto the cloth, since leather only darkens the light that passes through it, and where two pieces overlap it is darker still. Sparks are added. |
 | 2D 摄像机 · 2D camera | 跟随、前瞻、边界、多层视差、受击震动与重击时的推近。 · Following with a lead, bounds, parallax layers, a shake when a blow lands and a push-in on the heaviest. |
 | 粒子 · Particles | 火星、稻草屑、脚下的尘。 · Sparks, straw, and dust underfoot. |
 | 混音器 · Audio mixer | 七种锣鼓声都由代码合成为 WAV 再交给混音器，仓库里没有录音文件。 · All seven percussion sounds are worked out in code as WAV bytes and handed to the mixer; the repository holds no recordings. |
 | 输入 · Input | 键盘、手柄（带震动）、触屏。 · Keyboard, gamepad with rumble, and touch. |
-| 渲染后端 · Renderers | WebGPU 可用时用 WebGPU，否则 WebGL2。 · WebGPU where the browser offers it, WebGL2 otherwise. |
+| 渲染后端 · Renderers | 默认 WebGL2，可选 WebGPU。 · WebGL2 by default, WebGPU on request. |
 
 ## 美术是怎么来的 · Where the art comes from
 
@@ -64,6 +64,7 @@ src/main.mjs            搭台、加载、每一帧 · sets the stage, loads, ru
 src/rules/hero.mjs      悟空的移动与连击（不含绘制）· how he moves and fights, with no drawing
 src/rules/yard.mjs      练武场、木人桩与连击计数 · the yard, its posts and the count of blows
 src/puppets.mjs         加载并操纵皮偶 · loads and plays the puppets
+src/pictures.mjs        读入图片 · reads pictures in
 src/input.mjs           键盘、手柄、触屏 · keyboard, gamepad, touch
 src/sound.mjs           合成的锣鼓 · the synthesised percussion
 tools/                  画皮、绑骨、出图集与布景 · drawing, rigging, atlases and scenery

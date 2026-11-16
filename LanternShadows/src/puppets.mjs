@@ -1,8 +1,8 @@
 // Puppets on the stage. Each is a Spine skeleton whose pieces were drawn and rigged by tools/author.mjs; here they
-// are loaded through the engine's resource manifest, and given a small handle to play by.
+// are loaded as the engine's resource manifest lists them, and given a small handle to play by.
 import { admitResourceManifest } from '@egret/contracts/resources';
-import { createSpineDisplay, createSpineInstance } from '@egret/spine';
-import { createManifestSpineContentLoader } from '@egret/spine/web';
+import { createSpineContentLoader, createSpineDisplay, createSpineInstance } from '@egret/spine';
+import { readBytes, readTexture } from './pictures.mjs';
 
 /** Loads the named puppets. Returns a function that gives the loaded asset of a name. */
 export async function loadPuppets(engine, scope, names, base) {
@@ -10,7 +10,20 @@ export async function loadPuppets(engine, scope, names, base) {
   if (!response.ok) throw Error('The puppets are missing: run tools/author.mjs.');
   const admitted = admitResourceManifest(await response.json());
   if (!admitted.ok) throw Error('The puppet manifest was refused.');
-  const loader = createManifestSpineContentLoader(engine, scope, admitted.value, { baseUrl: base.href, deadlineMs: 30000, networkRetries: 1 });
+  const entries = new Map(admitted.value.entries.map(entry => [entry.id, entry]));
+  // The loader asks for each file by what it is bound to; here each is fetched from where the manifest says it
+  // lies, checked against the manifest's checksum, and handed over as a texture or as text.
+  const loader = createSpineContentLoader(engine, scope, admitted.value, bindings => {
+    const fileOf = new Map(bindings.map(bound => [bound.binding.ref.id, entries.get(bound.id).artifact]));
+    const where = ref => {
+      const file = fileOf.get(ref.id);
+      return [new URL(file.path, base).href, file.sha256];
+    };
+    return {
+      textures: { load: ref => readTexture(...where(ref)), dispose: texture => texture.dispose() },
+      metadata: { load: async ref => new TextDecoder('utf-8', { fatal: true }).decode(await readBytes(...where(ref))), dispose() {} }
+    };
+  });
   const group = loader.load(scope, names.map(name => 'e_' + name));
   await group.ready;
   return name => group.getSpine('e_' + name);
