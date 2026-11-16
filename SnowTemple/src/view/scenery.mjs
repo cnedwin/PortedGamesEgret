@@ -47,7 +47,7 @@ function noise(x, z) {
 }
 
 /** Paved ground: the gate road and the forecourt. */
-const paved = (x, z) => (z < -6.5 && z > -20 && Math.abs(x) < 3.4) || (z <= -19 && z > -43 && Math.abs(x) < 13.5 && edge(x, z) < 0.6);
+export const paved = (x, z) => (z < -6.5 && z > -20 && Math.abs(x) < 3.4) || (z <= -19 && z > -43 && Math.abs(x) < 13.5 && edge(x, z) < 0.6);
 /** Where the fire has been: the middle of the fodder yard. */
 const burnt = (x, z) => Math.max(0, 1 - Math.hypot(x - 0.5, z - 8.5) / 9.5);
 /** Height of the land: flat where one walks, rising into drifts and slopes beyond the edge. */
@@ -157,8 +157,11 @@ function buildPaving(scene, rand) {
         r = 1.2 + ring * 1.25;
       b.box(cx + Math.sin(a) * r, 0.07, cz + Math.cos(a) * r, (Math.PI * 2 * r) / n - 0.06, 0.12, 1.16, { tint: shade(STONE_DARK, 0.9 + rand() * 0.3), top: shade(STONE, 1.5 + rand() * 0.4), ry: a });
     }
-  const mesh = b.mesh(createStandardMaterial3D({ vertexColors: true, roughness: 0.55, metallic: 0.05 }), { shadow: false });
+  // The flags are wet with melt: smooth enough to hold a dim picture of what stands on them.
+  const material = createStandardMaterial3D({ vertexColors: true, roughness: 0.34, metallic: 0.05 }),
+    mesh = b.mesh(material, { shadow: false });
   scene.addChild(mesh);
+  return { mesh, material };
 }
 
 const GRASS_GLSL = `
@@ -228,6 +231,7 @@ function buildGrass(scene, rand, density) {
   }
   grass.count = count;
   grass.frustumCulled = false;
+  grass.layers = 2; // left out of the mirror picture
   grass.receiveShadow = true;
   scene.addChild(grass);
   return { shader, count };
@@ -386,7 +390,7 @@ export function buildScenery(scene, models, { density = 1 } = {}) {
     tall = [],
     lamps = [];
   buildGround(scene);
-  buildPaving(scene, rand);
+  const paving = buildPaving(scene, rand);
   const grass = buildGrass(scene, rand, density);
   const doors = buildGate(scene, rand, material, tall, models);
   buildTemple(scene, material, glow, models);
@@ -401,5 +405,5 @@ export function buildScenery(scene, models, { density = 1 } = {}) {
     return { ...lamp, light, share: 0 };
   });
   void ZONES;
-  return { grass, doors, lights, tall, glowMaterial };
+  return { grass, doors, lights, tall, glowMaterial, paving };
 }

@@ -84,7 +84,8 @@ async function main() {
     detail = ['low', 'mid', 'high'].includes(params.get('models') ?? settings.models) ? (params.get('models') ?? settings.models) : coarse ? 'low' : 'high',
     models = await loadModels(detail),
     view = createView(scene, camera, models, {
-      detail, density: level.density, particles: amount, shadowSize: level.shadows || 1024 });
+      detail,
+      reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024 });
   progress(0.9, '请陆虞候入座');
   await new Promise((done) => setTimeout(done));
 
@@ -247,6 +248,7 @@ async function main() {
       if (hud.staged && game.cine <= 0 && !view.cine) hud.stage(false);
     }
     view.update(game, events, mode === 'play' ? dt * slowFor : dt, clock);
+    view.mirror?.(renderer, game);
     if (mode === 'title') titleCamera();
     atmosphere.update(camera, view.sunDirection);
     hud.update(game, view);
