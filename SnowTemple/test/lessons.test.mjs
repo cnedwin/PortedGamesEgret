@@ -27,3 +27,16 @@ test('a guard-breaking block does not teach an unavailable counter or consume it
   assert.match(lesson({ type: 'guardBreak' }, false), /气力/);
   assert.match(lesson({ type: 'block' }, true), /回马枪/);
 });
+
+test('on-screen combat hints identify their action and stay short enough for touch play', () => {
+  const lesson = createLessons({ structured: true });
+  const hints = [
+    lesson({ type: 'stage', stage: 'yard' }),
+    lesson({ type: 'parry' }),
+    lesson({ type: 'guardBreak' }),
+    lesson({ type: 'stage', stage: 'boss' })
+  ];
+  assert.deepEqual(hints.map(({ action }) => action), ['guard', 'attack', null, 'dodge']);
+  assert.ok(hints.every(({ text }) => text.length <= 24));
+  assert.match(hints[3].text, /斜纹/);
+});

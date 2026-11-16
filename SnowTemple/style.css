@@ -75,6 +75,8 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .deed.now::before { box-shadow: inset 0 0 0 2px var(--frost); }
 .deed kbd { position: absolute; left: 50%; top: calc(100% + 9px); transform: translateX(-50%); font: 11px/1 var(--plain); color: var(--dim); white-space: nowrap; text-shadow: 0 1px 3px #000; }
 .deed em { position: absolute; right: -9px; top: -7px; font: 600 15px/1 var(--plain); color: var(--gold); font-style: normal; }
+.counter-name { position: absolute; left: 50%; bottom: calc(100% + 12px); padding: 3px 7px; border-bottom: 1px solid var(--gold); transform: translateX(-50%); white-space: nowrap; font-size: 13px; color: #ffe5ae; background: #1e140cef; visibility: hidden; }
+.deed.ready .counter-name { visibility: visible; }
 
 #pack { position: absolute; right: max(18px, env(safe-area-inset-right)); bottom: max(22px, env(safe-area-inset-bottom)); text-align: right; font-family: var(--script); }
 #pack .tag { display: inline-flex; gap: .6em; align-items: center; padding: 6px 12px; background: #070b12d9; box-shadow: inset 0 0 0 1px #ffffff2b; letter-spacing: .2em; transition: transform .2s; }
@@ -92,6 +94,10 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .note[data-grade="1"] { border-color: var(--jade); }
 .note[data-grade="2"] { border-color: var(--gold); color: var(--gold); }
 @keyframes note { 0% { opacity: 0; transform: translateX(-12px); } 8%, 80% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+#battle-hint { position: absolute; left: max(18px, env(safe-area-inset-left)); top: clamp(122px, 22vh, 172px); max-width: min(310px, 36vw); display: grid; gap: 3px; padding: 8px 12px; border-left: 2px solid var(--gold); background: linear-gradient(90deg, #0b131ff5, #0b131fda); color: var(--snow); line-height: 1.45; font-size: 14px; opacity: 0; }
+#battle-hint.on { opacity: 1; }
+#battle-hint kbd { justify-self: start; color: #ffdda1; font: 600 12px/1.2 var(--plain); }
 
 /* Staged moments: bars close in, a line of speech, a title card. */
 .shade { position: absolute; left: 0; right: 0; height: 11vh; background: #000; transition: transform .7s; }
@@ -150,19 +156,35 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
   #stick i { position: absolute; width: 112px; height: 112px; margin: -56px; border-radius: 50%; box-shadow: inset 0 0 0 1px #ffffff40; background: #ffffff0d; opacity: 0; }
   #stick i::after { content: ""; position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px; border-radius: 50%; background: #ffffff4d; transform: translate(var(--x, 0), var(--y, 0)); }
   #stick.on i { opacity: 1; }
-  #pads { position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: 250px; height: 240px; }
-  .pad { position: absolute; width: 58px; height: 58px; border-radius: 50%; background: #070b12b3; box-shadow: inset 0 0 0 1px #ffffff47; }
-  .pad svg { position: absolute; inset: 13px; stroke: var(--snow); fill: none; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
-  .pad.main { width: 84px; height: 84px; right: 0; bottom: 0; }
-  .pad.main svg { inset: 20px; }
-  .pad.off svg { opacity: .3; }
-  .pad.ready { box-shadow: inset 0 0 0 2px var(--gold), 0 0 16px #e2b86699; }
-  .pad em { position: absolute; right: 0; top: -4px; font: 600 14px var(--plain); color: var(--gold); font-style: normal; }
+  #pads { --pad-unit: 1px; position: absolute; right: max(14px, env(safe-area-inset-right)); bottom: max(14px, env(safe-area-inset-bottom)); width: calc(250 * var(--pad-unit)); height: calc(240 * var(--pad-unit)); }
+  .pad { --pad-size: 58; --pad-rim: #d8ecff73; position: absolute; right: calc(var(--pad-right) * var(--pad-unit)); bottom: calc(var(--pad-bottom) * var(--pad-unit)); width: calc(var(--pad-size) * var(--pad-unit)); height: calc(var(--pad-size) * var(--pad-unit)); border-radius: 50%; background: radial-gradient(ellipse at 50% 25%, #1a2d40ed, #09101bea 74%); box-shadow: inset 0 0 0 1px var(--pad-rim), 0 3px 7px #0006; }
+  .pad svg { position: absolute; width: 52%; height: 52%; left: 24%; top: 9%; stroke: var(--snow); fill: none; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
+  .pad-label { position: absolute; bottom: 13%; left: 50%; transform: translateX(-50%); white-space: nowrap; font: 600 calc(10.8 * var(--pad-unit))/1 var(--plain); color: var(--snow); pointer-events: none; }
+  .pad.main { --pad-size: 84; --pad-rim: #ebd4a5b0; background: radial-gradient(ellipse at 50% 25%, #49362aee, #171321f2 74%); }
+  .pad.main .pad-label { font-size: calc(15 * var(--pad-unit)); }
+  .pad[data-deed="guard"], .pad[data-deed="dodge"] { --pad-rim: #a5d0f2c2; }
+  .pad.off svg, .pad.off .pad-label { opacity: .52; }
+  .pad.now { box-shadow: inset 0 0 0 2px var(--frost), inset 0 0 14px #9cc8f25c, 0 3px 7px #0006; }
+  .pad.ready { box-shadow: inset 0 0 0 2px var(--gold), 0 0 12px #e2b866ad; }
+  .pad.main.ready { background: radial-gradient(ellipse at 50% 25%, #6b441de8, #21170e 78%); }
+  .pad.ready .pad-label { color: #ffe7b7; }
+  .pad[data-deed="stars"]::after, .pad[data-deed="rain"]::after, .pad.main.ready::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; background: conic-gradient(var(--meter, var(--frost)) calc(var(--charge, 0) * 100%), transparent 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px)); pointer-events: none; }
+  .pad.ready::after { --meter: var(--gold); }
+  .pad em { position: absolute; right: 0; top: -4px; font: 600 14px var(--plain); color: var(--gold); font-style: normal; pointer-events: none; }
   #pack { bottom: auto; right: auto; top: 92px; left: max(18px, env(safe-area-inset-left)); text-align: left; display: flex; flex-direction: column-reverse; }
   #pack ul { margin: 8px 0 0; }
   #lord { bottom: auto; top: 76px; }
   #notes { bottom: 46vh; }
+  #battle-hint { top: 132px; max-width: min(248px, 36vw); font-size: 13px; }
   #title .keys .key { display: none; }
   #title .keys .tap { display: inline; }
+}
+@media (pointer: coarse) and (max-height: 390px), (pointer: coarse) and (max-width: 515px) {
+  #pads { --pad-unit: .87px; }
+}
+@media (pointer: coarse) and (orientation: portrait) {
+  #lord { top: 119px; }
+  #battle-hint { max-width: min(240px, 61vw); }
+  #lord.on ~ #battle-hint { top: 181px; }
 }
 @media (prefers-reduced-motion: reduce) { #title .go, .bar.will.full .fill { animation: none; } }

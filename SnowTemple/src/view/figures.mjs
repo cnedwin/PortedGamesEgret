@@ -74,11 +74,11 @@ function surfaced(material) {
 
 /** Size, what is carried in the right hand, and what on the left arm. */
 const LOOKS = {
-  hero: { size: 1, weapon: 'spear', grip: 0.5 },
-  blade: { size: 1, weapon: 'sabre', grip: -0.24 },
-  shield: { size: 1.06, weapon: 'short', off: 'rattan' },
-  bow: { size: 0.98, off: 'longbow' },
-  lu: { size: 1.2, weapon: 'glaive', grip: 0.55 }
+  hero: { size: 1, weapon: 'spear', grip: 0.5, fill: [0.008, 0.015, 0.024] },
+  blade: { size: 1, weapon: 'sabre', grip: -0.24, fill: [0.01, 0.006, 0.003] },
+  shield: { size: 1.06, weapon: 'short', off: 'rattan', offScale: 1.12, fill: [0.01, 0.008, 0.004] },
+  bow: { size: 0.98, off: 'longbow', offScale: 1.08, fill: [0.006, 0.008, 0.012] },
+  lu: { size: 1.2, weapon: 'glaive', grip: 0.55, fill: [0.019, 0.006, 0.008] }
 };
 const POSED = ['hips', 'spine', 'head', 'armL', 'foreL', 'armR', 'foreR', 'legL', 'shinL', 'legR', 'shinR', 'cloak', 'weapon', 'off'];
 
@@ -108,14 +108,15 @@ export function createFigure(kind, models, detail = 'high') {
   body.receiveShadow = true;
   root.addChild(body);
   body.bind(new Skeleton3D(BONES.map((name) => joints[name])));
-  const hold = (joint, name, material) => {
+  const hold = (joint, name, material, scale = 1) => {
     if (!models[name]) return;
     const mesh = new Mesh3D(models[name], material);
     mesh.castShadow = true;
+    mesh.setScale(scale);
     joints[joint].addChild(mesh);
   };
   if (look.weapon) (hold('weapon', look.weapon, gear), hold('weapon', look.weapon + 'Edge', metal));
-  if (look.off) hold('off', look.off, gear);
+  if (look.off) hold('off', look.off, gear, look.offScale);
   root.setScale(look.size);
   const angles = {};
   for (const name of POSED) angles[name] = [0, 0, 0];
@@ -238,9 +239,16 @@ export function heroPose(hero, tune, clock, travelled, fallen = 0) {
     case 'dead':
       return fall(base, fallen, 1);
   }
-  if (hero.moving) return [{ ...stride({ ...base, weapon: [0.12, 0.3, 0], armR: [0.35, 0, -0.25] }, travelled / 2.3, 0.85, 0.22) }, 18];
+  if (hero.moving) {
+    const pace = Math.min(1, Math.hypot(hero.vx, hero.vz) / tune.speed);
+    const moving = stride({ ...base, weapon: [0.12, 0.3, 0], armR: [0.35, 0, -0.25] }, travelled / 2.3, 0.42 + 0.43 * pace, 0.07 + 0.15 * pace);
+    moving.cloak[1] = Math.sin(clock * 2.9 + travelled * 0.6) * (0.06 + pace * 0.1);
+    moving.cloak[2] = Math.sin(clock * 2.2 + 0.9) * 0.07;
+    return [moving, 18];
+  }
   const breath = Math.sin(clock * 1.8) * 0.02;
-  return [{ ...base, spine: [0.06 + breath, -0.3, 0], lift: breath * 0.6 }, 10];
+  const wind = Math.sin(clock * 2.4) * 0.045 + Math.sin(clock * 4.1) * 0.023;
+  return [{ ...base, spine: [0.06 + breath, -0.3, 0], cloak: [0.12 + wind, wind * 0.6, wind], lift: breath * 0.6 }, 10];
 }
 
 const FOE_POSES = {

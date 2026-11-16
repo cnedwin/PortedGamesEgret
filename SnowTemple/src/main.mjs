@@ -11,6 +11,7 @@ import { createEngine } from '@egret/engine';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { createAtmosphere3D, createWebGL2Renderer3D, createWorld3DHost, createWorld3DView, startWorld3DLoop } from '@egret/engine/webgl2/world3d';
 import { createAudio } from './audio.mjs';
+import { captureTempleLoadout, createTempleReplay } from './chapter.mjs';
 import { createHud } from './hud.mjs';
 import { DEFAULT_KEYS, createInput } from './input.mjs';
 import { createLessons } from './lessons.mjs';
@@ -91,7 +92,9 @@ async function main() {
   await new Promise((done) => setTimeout(done));
 
   const input = createInput(canvas, settings.keys),
-    audio = createAudio();
+    audio = createAudio(),
+    ui = document.querySelector('#ui'),
+    result = document.querySelector('#chapter-result');
   audio.setOn(settings.sound === 'on');
   let game = createGame(),
     mode = 'title',
@@ -99,12 +102,12 @@ async function main() {
     carry = 0,
     ratio = level.ratio,
     debug = params.has('debug');
-  const hud = createHud(document.querySelector('#ui'), input, settings, {
+  const hud = createHud(ui, input, settings, {
     onSettings(next) {
       saveSettings(next);
       audio.setOn(next.sound === 'on');
     },
-    onStart: () => mode === 'title' && startGame()
+    onStart: () => mode === 'title' && !hud.settingsOpen() && startGame()
   });
   input.on('any', (code) => {
     if (code === 'F3') debug = !debug;
@@ -115,8 +118,11 @@ async function main() {
   const lerp3 = (a, b, k) => a.map((v, i) => v + (b[i] - v) * k),
     smooth = (k) => k * k * (3 - 2 * k);
   const SHOTS = {
-    // Over the burning yard, coming down to the man on the road.
-    open: () => (k) => ({ eye: lerp3([14, 20, 26], [6, 13, 44], smooth(Math.min(1, k * 1.3))), look: lerp3([4, 1, 8], [0, 1, 32], smooth(Math.min(1, k * 1.3))) }),
+    // Hold the spear and cloak against the yard fire, then rise into the play camera.
+    open: () => (k, { hero }) => ({
+      eye: lerp3([hero.x - 3.4, 2.75, hero.z + 5.2], [hero.x - 2.5, 4.1, hero.z + 7], smooth(k)),
+      look: lerp3([hero.x, 1.8, hero.z - 7], [hero.x, 1.25, hero.z - 3.5], smooth(k))
+    }),
     // Along the forecourt to Lu Qian.
     meet: () => (k, g) => ({ eye: lerp3([g.boss.x + 5, 3.2, g.boss.z + 9], [g.boss.x + 2.5, 2.4, g.boss.z + 5.5], smooth(Math.min(1, k * 1.25))), look: [g.boss.x, 1.5, g.boss.z] }),
     rage: () => (k, g) => ({ eye: [g.boss.x - 3 + k * 2, 2.2 + k, g.boss.z + 6.5], look: [g.boss.x, 1.6, g.boss.z] }),
@@ -131,29 +137,70 @@ async function main() {
     rage: [[0.5, '我回不去了。你也休想走！', '陆谦']],
     end: [[0.6, '……高太尉，不会放过你。', '陆谦']]
   };
-  let pending = [];
+  let pending = [],
+    titleCardAt = Infinity,
+    veilAt = Infinity,
+    pendingHint = null,
+    lesson = createLessons({ structured: true }),
+    summary,
+    templeLoadout,
+    quickMeet = false;
+  const freshSummary = () => ({ time: 0, parries: 0, ripostes: 0, falls: 0 });
+
   function stage(id, time) {
     view.stage(time, SHOTS[id]());
     hud.stage(true);
-    pending = LINES[id].map(([at, text, who]) => ({ at: clock + at, text, who }));
-    if (id === 'open') {
-      setTimeout(() => (hud.card('风雪山神庙', '第一回'), audio.gong()), 600);
-    }
-    if (id === 'end')
-      setTimeout(() => {
-        hud.card('第一回　完', '雪还在下。往东，是梁山泊。', 6);
-        audio.gong();
-      }, 3600);
+    pending = LINES[id].map(([at, text, who]) => ({ at: game.time + at, text, who }));
+    if (id === 'open') titleCardAt = game.time + 0.6;
   }
 
-  function startGame() {
+  function startGame(replay = '') {
+    quickMeet = replay === 'temple';
+    game = quickMeet ? createTempleReplay(templeLoadout) : createGame();
     mode = 'play';
+    summary = freshSummary();
+    if (!quickMeet) templeLoadout = null;
+    lesson = createLessons({ structured: true });
+    carry = 0;
+    pending = [];
+    pendingHint = null;
+    titleCardAt = veilAt = Infinity;
+    result.hidden = true;
+    ui.inert = false;
+    ui.classList.remove('complete');
+    input.setEnabled(true);
     audio.start();
+    audio.setMood('road');
     hud.hideTitle();
-    canvas.focus();
-    const at = params.get('at');
+    hud.stage(false);
+    hud.clearSpeech();
+    hud.clearHint();
+    hud.veil(false);
+    view.resetRound(game);
+    canvas.focus({ preventScroll: true });
+    const at = replay ? '' : params.get('at');
     if (at) jump(at);
-    else begin(game);
+    else if (!quickMeet) {
+      begin(game);
+      game.events.forEach(onEvent);
+    }
+  }
+  for (const button of result.querySelectorAll('[data-replay]'))
+    button.addEventListener('click', () => mode === 'result' && startGame(button.dataset.replay));
+
+  function showResult() {
+    mode = 'result';
+    input.setEnabled(false);
+    hud.clearSpeech();
+    hud.clearHint();
+    ui.classList.add('complete');
+    ui.inert = true;
+    const seconds = Math.floor(summary.time);
+    result.querySelector('[data-stat="time"]').textContent = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+    for (const stat of ['parries', 'ripostes', 'falls']) result.querySelector(`[data-stat="${stat}"]`).textContent = summary[stat];
+    result.hidden = false;
+    result.querySelector('[data-replay="temple"]').focus({ preventScroll: true });
+    audio.gong();
   }
   /** Begin further in, for looking at one part. */
   function jump(at) {
@@ -173,22 +220,24 @@ async function main() {
     view.snap(game);
   }
 
-  const lesson = createLessons();
-  let pendingHint = null;
   function onEvent(e) {
     audio.play(e);
     const hint = lesson(e, game.hero.counter > 0);
     if (hint) {
       if (hud.staged) pendingHint = hint;
-      else hud.note(hint, 1);
+      else hud.hint(hint.text, hint.action);
     }
     switch (e.type) {
       case 'cine':
-        stage(e.id, e.time);
+        if (e.id === 'meet' && quickMeet) {
+          game.cine = 0;
+          quickMeet = false;
+        } else stage(e.id, e.time);
         break;
       case 'stage':
         audio.setMood(e.stage === 'boss' ? 'boss' : e.stage === 'yard' ? 'yard' : 'road');
         if (e.stage === 'gate') hud.say('庙门的闩，落了。', '', 3);
+        if (e.stage === 'boss' && !templeLoadout) templeLoadout = captureTempleLoadout(game);
         break;
       case 'party':
         hud.say('庙那边又下来几个。', '', 2.6);
@@ -203,11 +252,21 @@ async function main() {
       case 'hurt':
         hud.hurt();
         break;
+      case 'parry':
+        summary.parries++;
+        break;
+      case 'riposte':
+        summary.ripostes++;
+        hud.clearHint();
+        pendingHint = null;
+        break;
       case 'fall':
+        summary.falls++;
         hud.card('倒在雪里', '', 2.6);
-        setTimeout(() => hud.veil(true), 1700);
+        veilAt = game.time + 1.7;
         break;
       case 'revive':
+        veilAt = Infinity;
         view.snap(game);
         hud.veil(false);
         hud.note('在火盆边缓过一口气。', 1);
@@ -239,7 +298,9 @@ async function main() {
     }
     let events = none;
     if (status.hold) dt = 0;
-    if (mode === 'play' && !hud.settingsOpen()) {
+    const active = mode === 'play' && !hud.settingsOpen();
+    if (active) {
+      if (game.stage !== 'done') summary.time += dt;
       // A moment stretched: a slip past a blade or a riposte slows the fight, not the clock.
       slowFor = game.slow > 0 ? 0.32 : 1;
       carry += dt * slowFor;
@@ -252,14 +313,28 @@ async function main() {
           onEvent(e);
         }
       }
-      for (const line of pending) if (!line.said && clock >= line.at) (line.said = true), hud.say(line.text, line.who, 2.6);
-      if (hud.staged && game.cine <= 0 && !view.cine) hud.stage(false);
-      if (pendingHint && !hud.staged) {
-        hud.note(pendingHint, 1);
-        pendingHint = null;
+      for (const line of pending) if (!line.said && game.time >= line.at) (line.said = true), hud.say(line.text, line.who, 2.2);
+      if (game.time >= titleCardAt) {
+        titleCardAt = Infinity;
+        hud.card('风雪山神庙', '第一回', 1.55);
+        audio.gong();
+      }
+      if (game.time >= veilAt) {
+        veilAt = Infinity;
+        hud.veil(true);
       }
     }
-    view.update(game, events, mode === 'play' ? dt * slowFor : dt, clock);
+    view.update(game, events, mode === 'play' ? (active ? dt * slowFor : 0) : dt, clock);
+    if (active && hud.staged && game.cine <= 0 && !view.cine) {
+      hud.stage(false);
+      hud.clearSpeech();
+      pending = [];
+      if (game.stage === 'done') showResult();
+    }
+    if (active && pendingHint && !hud.staged) {
+      hud.hint(pendingHint.text, pendingHint.action);
+      pendingHint = null;
+    }
     view.mirror?.(renderer, game);
     if (mode === 'title') titleCamera();
     atmosphere.update(camera, view.sunDirection);
@@ -276,11 +351,17 @@ async function main() {
     }
     hud.debug(debug ? `状态: ${game.hero.state}  关: ${game.stage}  过场: ${game.cine > 0 ? '是' : '否'}\n位置: ${game.hero.x.toFixed(1)}, ${game.hero.z.toFixed(1)}  气血: ${game.hero.hp | 0}  枪意: ${game.hero.will | 0}\n帧率: ${fps.toFixed(0)}  绘制比例: ${ratio}  陆谦: ${game.boss.state} ${game.boss.hp | 0}` : null);
   }
-  /** Behind the title: a slow look over the burning yard toward the temple. */
+  // A preview pose on the snow road. Starting places the player back at the chapter entrance.
+  Object.assign(game.hero, { x: -0.2, z: 24.2, face: -2.65 });
   function titleCamera() {
-    const a = clock * 0.05;
-    camera.setPosition(9 + Math.sin(a) * 3, 9.5, 31 + Math.cos(a) * 2);
-    camera.lookAt(0, 1.5, 6);
+    const drift = Math.sin(clock * 0.18) * 0.3;
+    if (camera.aspect < 1) {
+      camera.setPosition(-1.1 + drift, 3.6, 34);
+      camera.lookAt(0, 1.8, 11);
+    } else {
+      camera.setPosition(-4.4 + drift, 3.15, 32.5);
+      camera.lookAt(0.5, 1.7, 10.3);
+    }
   }
 
   createWorld3DView(engine, scope, { renderer, scene, camera, autoResize: false, onUpdate: frame, onError: fail });

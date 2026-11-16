@@ -63,15 +63,24 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
         a += exp(-r * 5.0) * 0.5 * uCustom[2].x * open;
         hot = a * 0.3;
     } else if (mode == 3) {
-        // A warning on the ground: stripes running out from the man, a hard edge, and a bright line
-        // that crosses the shape as his blow comes.
-        float flow = fract(uv.y * 5.0 - age * 3.0 + fNoise(vec2(uv.x * 9.0, seed)) * 0.4);
-        float stripes = smoothstep(0.55, 0.75, flow) * 0.5;
-        float rim = smoothstep(0.93, 0.985, uv.y) + smoothstep(0.06, 0.0, uv.x) + smoothstep(0.94, 1.0, uv.x);
-        float sides = pow(sin(clamp(uv.x, 0.0, 1.0) * 3.14159), 0.35);
-        float front = fLine(uv.y, k, 0.035) * 1.6 + step(uv.y, k) * 0.2;
-        a = (0.16 + stripes * (0.4 + k * 0.6) + rim * 0.9 + front) * sides * smoothstep(0.0, 0.08, age) * (1.0 - smoothstep(0.92, 1.0, age) * 0.6);
-        hot = front * 0.4;
+        // The dark backing stays visible on snow. A continuous amber edge means guard;
+        // diagonal stripes and an interrupted vermilion edge mean get out of the shape.
+        float hard = uCustom[2].y, edgeType = uCustom[2].z;
+        float edge = 1.0 - uv.y;
+        if (edgeType > 0.5) edge = min(edge, min(uv.x, 1.0 - uv.x));
+        if (edgeType > 1.5) edge = min(edge, uv.y);
+        float thickness = clamp(fwidth(edge) * 1.2, 0.009, 0.036);
+        float outer = 1.0 - smoothstep(thickness * 2.8, thickness * 4.5, edge);
+        float rim = 1.0 - smoothstep(thickness, thickness * 2.4, abs(edge - thickness * 1.4));
+        float slash = smoothstep(0.52, 0.72, fract(uv.x * 16.0 - uv.y * 9.0));
+        float front = 1.0 - smoothstep(0.015, 0.045, abs(uv.y - max(0.07, k)));
+        float signal = max(rim * mix(1.0, 0.4 + slash * 0.6, hard), front * 0.65);
+        signal = max(signal, hard * slash * mix(0.32, 0.53, uv.y));
+        vec3 body = mix(vec3(0.025, 0.023, 0.035), tint * 0.52, hard * 0.65);
+        vec3 line = mix(tint, vec3(1.0, 0.92, 0.77), front * 0.32 + k * 0.20);
+        float fill = 0.18 + hard * 0.05 + step(uv.y, k) * 0.13;
+        a = max(fill, max(outer * 0.82, signal * 0.95)) * uCustom[2].x;
+        return vec4(mix(body, line, signal), a);
     } else if (mode == 4) {
         // A standing column of light.
         float across = 1.0 - abs(uv.x * 2.0 - 1.0);
@@ -87,6 +96,12 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
         float cracks = smoothstep(0.05 + r * 0.05, 0.0, ray * (0.25 + r)) * smoothstep(1.0, 0.25, r) * step(fHash(vec2(floor((ang + wander * 0.9) * 7.0 / 6.28318 + seed), seed)), 0.8);
         float ring = fLine(r + wander * 0.25, 0.42, 0.035) * 0.7 * step(0.35, fNoise(vec2(ang * 5.0, seed)));
         a = (cracks * 1.3 + ring + exp(-r * 5.0) * 1.2) * uCustom[2].x;
+    } else if (mode == 7) {
+        // The counter window empties around the hero's feet as the opening closes.
+        float rim = 1.0 - smoothstep(0.028, 0.09, abs(uv.y - 0.9));
+        float progress = smoothstep(0.0, 0.04, k) * step(uv.x, k);
+        a = rim * (0.18 + progress * 0.82);
+        hot = progress * 0.55;
     } else {
         // A bolt: bright at the head, torn along its tail.
         float across = 1.0 - abs(uv.x * 2.0 - 1.0);
@@ -146,8 +161,8 @@ const boltGeometry = () =>
 export const TINT = {
   spear: [0.55, 0.8, 1.0],
   gold: [1.0, 0.66, 0.22],
-  warn: [1.0, 0.25, 0.1],
-  warnHard: [1.0, 0.1, 0.25],
+  warn: [1.0, 0.78, 0.37],
+  warnHard: [1.0, 0.25, 0.23],
   fire: [1.0, 0.45, 0.1],
   white: [0.9, 0.95, 1.0],
   jade: [0.4, 1.0, 0.75]
@@ -172,42 +187,45 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     return sectors.get(key);
   };
   const live = [],
-    spare = new Map();
+    spare = new Map(),
+    groundSpare = new Map();
   let serial = 0;
 
   /**
    * Show one shape. `mode` picks the shader's drawing; `life` is seconds; `from`/`to` are sizes it grows
    * between; `k` and `fade` are read by the shader; `track` is called each frame to move it.
    */
-  function spawn(shape, { mode, x = 0, y = 0.07, z = 0, yaw = 0, life = 0.4, from = [1, 1, 1], to = from, tint = TINT.spear, power = 2, k = 0, fade = 1, track, hold = false }) {
+  function spawn(shape, { mode, x = 0, y = 0.07, z = 0, yaw = 0, life = 0.4, from = [1, 1, 1], to = from, tint = TINT.spear, power = 2, k = 0, fade = 1, track, hold = false, hard = false, edgeType = 0 }) {
     const geometry = typeof shape === 'string' ? shapes[shape] : shape;
-    let item = spare.get(geometry)?.pop();
+    const grounded = mode === 3 || geometry === shapes.scar;
+    const pool = grounded ? groundSpare : spare;
+    let item = pool.get(geometry)?.pop();
     if (!item) {
       const shader = createCustomShader3D({ key: 'snow-fx', glsl: FX_GLSL });
-      // Scars darken the ground; everything else is light added to it.
-      const material = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', blending: geometry === shapes.scar ? 'normal' : 'additive', depthWrite: false, side: 'double', fog: false });
+      const material = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', blending: grounded ? 'normal' : 'additive', depthWrite: false, side: 'double', fog: false });
       material.shader = shader;
       const mesh = new Mesh3D(geometry, material);
       mesh.frustumCulled = false;
       mesh.castShadow = false;
-      mesh.renderOrder = 10;
       scene.addChild(mesh);
-      item = { mesh, shader, geometry };
+      item = { mesh, shader, geometry, pool };
     }
     Object.assign(item, { age: 0, life, from, to, track, hold, k, fade, done: false });
     item.mesh.visible = true;
+    item.mesh.renderOrder = mode === 3 ? 14 : 10;
     item.mesh.setPosition(x, y, z);
     item.mesh.setRotation(0, yaw, 0);
     item.mesh.setScale(from[0], from[1], from[2]);
-    item.shader.uniforms.set([0, (++serial * 0.618) % 10, k, mode, tint[0], tint[1], tint[2], power * 0.62, fade, 0, 0, 0]);
+    item.shader.uniforms.set([0, (++serial * 0.618) % 10, k, mode, tint[0], tint[1], tint[2], power * 0.62, fade, Number(hard), edgeType, 0]);
     live.push(item);
     return item;
   }
   function release(item) {
+    if (item.done) return;
     item.mesh.visible = false;
     item.done = true;
-    if (!spare.has(item.geometry)) spare.set(item.geometry, []);
-    spare.get(item.geometry).push(item);
+    if (!item.pool.has(item.geometry)) item.pool.set(item.geometry, []);
+    item.pool.get(item.geometry).push(item);
   }
 
   // ---- sparks, embers, dust: one pool of bright dots ----------------------------------------
@@ -316,13 +334,14 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
 
   function update(dt, clock) {
     for (const item of live) {
+      if (item.done) continue;
       item.age += dt;
       const t = Math.min(1, item.age / item.life),
         u = item.shader.uniforms;
       u[0] = item.hold ? item.age : t;
+      item.track?.(item, t, dt);
       u[2] = item.k;
       u[8] = item.fade;
-      item.track?.(item, t, dt);
       if (item.to !== item.from) {
         const e = 1 - (1 - t) * (1 - t);
         item.mesh.setScale(item.from[0] + (item.to[0] - item.from[0]) * e, item.from[1] + (item.to[1] - item.from[1]) * e, item.from[2] + (item.to[2] - item.from[2]) * e);
@@ -452,5 +471,17 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
   function scar(x, z, size, life = 7) {
     spawn('scar', { mode: 6, x, y: 0.05, z, yaw: Math.random() * 6.28, life, from: [size * 1.3, 1, size * 1.3], tint: [0.012, 0.014, 0.022], power: 1.6, track: (item, t) => (item.fade = Math.min(1, t * 30, (1 - t) * 3)) });
   }
-  return { spawn, release, burst, flash, dropSpear, update, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
+  function clear() {
+    for (const item of live) release(item);
+    live.length = sparks.length = falling.length = 0;
+    for (const step of prints) step.age = 99;
+    printAt = 0;
+    sparkMesh.count = printMesh.count = spearMesh.count = 0;
+    for (const slot of flashes) {
+      slot.left = 0;
+      slot.light.intensity = 0;
+    }
+  }
+
+  return { spawn, release, burst, flash, dropSpear, update, clear, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
 }

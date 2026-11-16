@@ -50,6 +50,12 @@ function noise(x, z) {
 export const paved = (x, z) => (z < -6.5 && z > -20 && Math.abs(x) < 3.4) || (z <= -19 && z > -43 && Math.abs(x) < 13.5 && edge(x, z) < 0.6);
 /** Where the fire has been: the middle of the fodder yard. */
 const burnt = (x, z) => Math.max(0, 1 - Math.hypot(x - 0.5, z - 8.5) / 9.5);
+/** Trodden snow leads from the brazier to the yard. */
+function roadTrace(x, z) {
+  if (z <= 16 || z >= 38) return 0;
+  const center = Math.sin((z - 16) * 0.4) * 0.65;
+  return Math.max(0, 1 - Math.abs(x - center) / 2.7) * Math.min(1, (z - 16) * 0.5, (38 - z) * 0.5);
+}
 /** Height of the land: flat where one walks, rising into drifts and slopes beyond the edge. */
 export function height(x, z) {
   const out = Math.max(0, edge(x, z) - 0.4);
@@ -68,8 +74,9 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
     float streak = gNoise(vec2(p.x * 0.35 + p.y * 0.12, p.y * 1.7));
     float grain = gNoise(p * 9.0);
     float glint = step(0.992, gHash(floor(p * 34.0))) * smoothstep(0.55, 1.0, color.b);
-    vec3 c = color.rgb * (0.86 + streak * 0.2 + grain * 0.08);
-    return vec4(c + glint * 0.5, color.a);
+    vec3 c = color.rgb * (0.89 + streak * 0.17 + grain * 0.055);
+    float pixel = max(length(dFdx(p)), length(dFdy(p)));
+    return vec4(c + glint * (1.0 - smoothstep(0.018, 0.038, pixel)) * 0.24, color.a);
 }`;
 const GROUND_NORMAL_GLSL = `
 vec3 customNormal(vec3 normal, vec3 worldPosition, vec2 uv) {
@@ -108,8 +115,9 @@ function buildGround(scene) {
       normals.set([-sx / nl, 1 / nl, -sz / nl], k);
       // Colour: fresh snow, trodden grey along the way, ash where the yard burned, bare rock on steep ground.
       const d = edge(x, z),
-        trodden = Math.max(0, Math.min(1, -d / 3.5)) * (0.35 + noise(x * 0.9, z * 0.9) * 0.5),
-        ash = burnt(x, z) * (0.5 + noise(x * 1.7, z * 1.7) * 0.7),
+        tread = Math.max(roadTrace(x, z), Math.min(1, -d / 3.4) * 0.45),
+        trodden = Math.max(0, tread) * (0.6 + noise(x * 0.42, z * 0.42) * 0.23),
+        ash = burnt(x, z) * (0.66 + noise(x * 0.75, z * 0.75) * 0.45),
         steep = Math.max(0, Math.min(1, (Math.hypot(sx, sz) - 0.55) * 2.2)),
         drift = 0.9 + noise(x * 0.22, z * 0.22) * 0.16;
       for (let c = 0; c < 3; c++) {
@@ -149,18 +157,33 @@ function buildPaving(scene, rand) {
         tint = shade(STONE, tone);
       b.box(x + 0.8, 0.03 + rand() * 0.02, z + 0.6, 1.52, 0.1, 1.17, { tint: shade(tint, 0.6), top: snowy ? shade(SNOW, 0.55 + rand() * 0.2) : tint, ry: (rand() - 0.5) * 0.03 });
     }
-  // Meltwater, frozen over: dark glassy patches on the flags and along the road, each a few overlapping rounds.
-  const ICE = [0.09, 0.13, 0.2];
+  // Shallow meltwater has a broken frost rim and catches the same light as the wet flags.
+  const ICE = [0.22, 0.28, 0.36];
   for (const [px, pz, size] of [
     [2.2, -15.5, 1.1], [-1.4, -9.2, 0.8], [-6.5, -25, 1.6], [7.2, -31.5, 1.4], [-3.5, -36.5, 1.2], [4.5, -22.8, 1.0], [-9.5, -31, 1.1],
     [1.2, 24.5, 1.3], [-1.6, 17.2, 1.0], [-2.5, 9.5, 1.7], [3.6, 12.4, 1.1], [0.8, -2.8, 1.2]
-  ])
-    for (let i = 0; i < 4; i++) {
-      const ox = (rand() - 0.5) * size * 0.9,
-        oz = (rand() - 0.5) * size * 0.9,
-        lift = paved(px, pz) ? 0.118 : 0.012;
-      b.limb([px + ox, lift, pz + oz], [px + ox, lift + 0.012, pz + oz], size * (0.36 + rand() * 0.34), size * (0.32 + rand() * 0.3), { tint: ICE, sides: 16 });
+  ]) {
+    const stony = paved(px, pz),
+      lift = stony ? 0.137 : 0.015,
+      frost = stony ? shade(STONE, 1.6) : shade(SNOW, 0.78),
+      center = [px, lift, pz],
+      outer = [],
+      inner = [],
+      turn = rand() * Math.PI;
+    for (let i = 0; i < 10; i++) {
+      const a = turn + i / 10 * Math.PI * 2,
+        r = size * (0.58 + rand() * 0.24),
+        x = Math.sin(a) * r,
+        z = Math.cos(a) * r * 0.62;
+      outer.push([px + x, lift, pz + z]);
+      inner.push([px + x * 0.64, lift, pz + z * 0.64]);
     }
+    for (let i = 0; i < 10; i++) {
+      const next = (i + 1) % 10;
+      b.sheet(center, inner[i], inner[next], inner[next], { tint: ICE });
+      b.sheet(inner[next], inner[i], outer[i], outer[next], { tint: ICE, tintB: frost });
+    }
+  }
   // The round terrace in the middle of the court, where the censer stands.
   const { x: cx, z: cz } = PLACES.court;
   for (let ring = 0; ring < 3; ring++)
@@ -198,15 +221,15 @@ vec3 customVertex(vec3 worldPosition, vec3 localPosition, vec3 normal, vec2 uv, 
 function buildGrass(scene, rand, density) {
   // One tuft: five dry stalks leaning out of the snow, pale at the tips.
   const b = createBuilder(),
-    low = rgb(0x4a4252),
-    high = rgb(0xb9a98a);
+    low = rgb(0x59545d),
+    high = rgb(0xb6a78e);
   for (let i = 0; i < 5; i++) {
     const a = (i / 5) * Math.PI * 2 + 0.4,
       lean = 0.16 + (i % 2) * 0.14,
       w = 0.028,
       dx = Math.cos(a),
       dz = Math.sin(a),
-      h = 0.62 + (i % 3) * 0.2,
+      h = 0.48 + (i % 3) * 0.17,
       base = [dx * 0.05, 0, dz * 0.05],
       top = [dx * (0.05 + lean), h, dz * (0.05 + lean)];
     b.sheet([base[0] - dz * w, 0, base[2] + dx * w], [base[0] + dz * w, 0, base[2] - dx * w], [top[0] + dz * w * 0.2, top[1], top[2] - dx * w * 0.2], [top[0] - dz * w * 0.2, top[1], top[2] + dx * w * 0.2], { tint: low, tintB: high });
@@ -215,15 +238,15 @@ function buildGrass(scene, rand, density) {
   const material = createStandardMaterial3D({ vertexColors: true, roughness: 0.9, side: 'double' });
   material.shader = shader;
   const places = [];
-  const want = Math.round(52000 * density);
-  for (let tries = 0; places.length < want && tries < want * 6; tries++) {
+  const want = Math.round(15100 * density);
+  for (let tries = 0; places.length < want * 3 && tries < want * 12; tries++) {
     const x = -34 + rand() * 68,
       z = -52 + rand() * 96,
       d = edge(x, z);
     if (d > 13 || paved(x, z)) continue;
     // Thick along the edges of the way, thin where feet and fire have been.
     const patch = noise(x * 0.18 + 3, z * 0.18) * 1.3,
-      keep = d > -0.6 ? patch : patch * 0.16 * (1 - burnt(x, z));
+      keep = (d > -0.6 ? patch : patch * 0.12) * (1 - roadTrace(x, z) * 0.94) * (1 - burnt(x, z) * 0.9);
     if (rand() > keep) continue;
     if (ROUNDS.some((round) => Math.hypot(x - round.x, z - round.z) < round.r + 0.2)) continue;
     places.push(x, height(x, z), z);
@@ -284,7 +307,7 @@ function buildGate(scene, rand, material, tall, models) {
   // The roof is its own piece: the camera may need to see through it.
   const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.8 }),
     roofMesh = place('gateRoof', cover);
-  tall.push({ x, z, r: 4.2, material: cover, mesh: roofMesh });
+  tall.push({ x, z, r: 4.2, top: 8.6, material: cover, mesh: roofMesh });
   // The two leaves of the door, hung on the inner posts.
   const doors = [];
   for (const side of [1, -1]) {
@@ -311,6 +334,37 @@ function buildTemple(scene, material, glow, models) {
   // Lamplight behind the door and the two lattice windows.
   glow.box(x, 2.7, z + 1.95, 2.3, 3.5, 0.05, { tint: [1, 0.55, 0.2] });
   for (const side of [1, -1]) glow.box(x + side * 5.6, 3.0, z + 1.98, 2.0, 1.7, 0.05, { tint: [0.9, 0.5, 0.2] });
+
+  // Keep the entrance readable behind the duel: a pale snow line and warm lanterns frame the red door.
+  const details = createBuilder();
+  for (const side of [1, -1]) {
+    const lx = x + side * 2.65;
+    details.limb([lx, 3.1, z + 2.25], [lx, 3.55, z + 2.25], 0.036, 0.036, { tint: TIMBER, sides: 5 });
+    details.box(lx, 2.97, z + 2.25, 0.58, 0.12, 0.43, { tint: LACQUER, top: SNOW });
+    details.box(lx, 2.38, z + 2.25, 0.43, 0.11, 0.35, { tint: LACQUER });
+    glow.box(lx, 2.66, z + 2.25, 0.42, 0.48, 0.32, { tint: [0.95, 0.3, 0.08] });
+  }
+  scene.addChild(details.mesh(material, { shadow: false }));
+}
+
+/** Layered profiles for the skyline visible from the title and the temple's forecourt. */
+function buildRidges(b) {
+  for (let layer = 0; layer < 3; layer++) {
+    const distance = -84 - layer * 29;
+    const seed = 3.4 + layer * 4.1;
+    const base = rgb(0x202c43 + layer * 0x070706);
+    const crest = rgb(0x475973 + layer * 0x080806);
+    const point = (x) => {
+      const t = x * 0.026 + seed;
+      const height = 8 + layer * 3 + noise(t, seed) * 17 + noise(t * 2.8, seed + 1) * 5;
+      return [x, height, distance + noise(t * 0.7, seed + 4) * 7];
+    };
+    for (let x = -135; x < 135; x += 4.5) {
+      const left = point(x),
+        right = point(x + 4.5);
+      b.sheet([left[0], -3, left[2]], [right[0], -3, right[2]], right, left, { tint: base, tintB: crest });
+    }
+  }
 }
 
 function buildProps(scene, rand, material, glow, tall, lights, models) {
@@ -340,10 +394,10 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     else if (round.kind === 'lantern') {
       stand('lantern', x, z, 1, 0);
       glow.box(x, height(x, z) + 1.29, z, 0.26, 0.3, 0.26, { tint: [1, 0.62, 0.25] });
-      lights.push({ x, y: 1.4, z, color: 0xffa050, intensity: 14, range: 10, flicker: 0.12 });
+      lights.push({ x, y: 1.4, z, color: 0xffb66b, intensity: 11, range: 8.5, flicker: 0.1 });
     } else if (round.kind === 'brazier') {
       brazier(b, glow, x, z);
-      lights.push({ x, y: 1.3, z, color: 0xff7a2a, intensity: 26, range: 13, flicker: 0.3, fire: true });
+      lights.push({ x, y: 1.3, z, color: 0xff8f48, intensity: 20, range: 11, flicker: 0.25, fire: true });
     } else if (round.kind === 'cart') {
       b.box(x, 0.75, z, 1.5, 0.12, 2.5, { tint: TIMBER, top: SNOW, ry: 0.5, rz: 0.12 });
       for (const side of [1, -1]) b.limb([x + side * 0.85, 0.6, z + side * 0.3], [x + side * 0.95, 0.6, z + side * 0.36], 0.6, 0.6, { tint: rgb(0x2c1d14), sides: 12 });
@@ -359,7 +413,7 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     } else if (round.kind === 'pine') {
       const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.9 }),
         mesh = stand('pine', x, z, 0.95, rand() * 6, cover, 1.1);
-      tall.push({ x, z, r: 2.4, material: cover, mesh });
+      tall.push({ x, z, r: 2.7, top: mesh.position[1] + 7.6, material: cover, mesh });
     }
   }
   // What is left of the yard fence.
@@ -378,19 +432,15 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
       z = -56 + rand() * 100,
       d = edge(x, z);
     if (d > 1.2 && d < 4 && rand() < 0.5) stand('rock', x, z, 0.5 + rand() * 1.0, rand() * 6);
-    else if (d > 3.5 && d < 22 && !(Math.abs(x) < 14 && z < -40) && !(z > 2 && z < 30 && d < 6 && Math.abs(x) < 4)) {
+    else if (d > (z > 15 ? 6 : 4.5) && d < 22 && !(Math.abs(x) < 14 && z < -40)) {
       const size = 0.95 + rand() * 0.6;
       stand('pine', x, z, size, rand() * 6, wood, size * (1 + rand() * 0.35));
     }
   }
-  // Far peaks behind the temple, dim in the snow.
-  for (let i = 0; i < 9; i++) {
-    const x = -70 + i * 17 + rand() * 8,
-      z = -92 - rand() * 26,
-      h = 24 + rand() * 26;
-    b.limb([x, -2, z], [x + (rand() - 0.5) * 8, h, z], 20 + rand() * 12, 1.5, { tint: rgb(0x1c2333), tintB: rgb(0x7f8ba6), sides: 7, caps: false });
-  }
   scene.addChild(b.mesh(material));
+  const ridges = createBuilder();
+  buildRidges(ridges);
+  scene.addChild(ridges.mesh(material, { shadow: false }));
 }
 
 /** Build the whole place. Returns what the view animates: grass, doors, lamps and what may hide the hero. */

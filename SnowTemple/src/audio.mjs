@@ -128,7 +128,16 @@ export function createAudio() {
     },
     spear: () => (hiss(1800, { hold: 0.1, peak: 0.34, slide: 0.3 }), tone(180, { type: 'triangle', hold: 0.12, peak: 0.34, slide: 0.5 })),
     burst: () => (tone(55, { hold: 1.1, peak: 1, slide: 0.5 }), hiss(300, { hold: 0.8, peak: 0.8, q: 0.4 }), ring(392, 0.4, 1.6)),
-    windup: (e) => e.kind === 'lu' && tone(e.move.unblockable ? 233 : 175, { type: 'sawtooth', attack: e.time * 0.8, hold: 0.12, peak: 0.12, slide: 1.5 }),
+    windup(e) {
+      if (e.move.unblockable) {
+        tone(190, { type: 'triangle', hold: 0.16, peak: 0.20, slide: 0.6 });
+        tone(142, { at: e.time * 0.28, type: 'sawtooth', hold: 0.20, peak: 0.1, slide: 0.6 });
+      } else if (e.kind === 'bow') {
+        hiss(1750, { q: 3, attack: 0.04, hold: 0.14, peak: 0.19, slide: 0.65 });
+      } else {
+        tone(e.kind === 'lu' ? 450 : 550, { type: 'triangle', attack: 0.006, hold: 0.1, peak: 0.11, slide: 1.45 });
+      }
+    },
     strike(e) {
       if (e.kind === 'bow') return hiss(3000, { hold: 0.12, peak: 0.3, slide: 0.3 });
       hiss(e.kind === 'lu' ? 500 : 900, { q: 0.8, hold: 0.2, peak: e.kind === 'lu' ? 0.6 : 0.34, slide: 2.2 });
@@ -143,12 +152,22 @@ export function createAudio() {
     alert: () => tone(147, { type: 'sawtooth', hold: 0.5, peak: 0.2, slide: 1.3 })
   };
   /** A deep struck bell, for title cards. */
-  audio.gong = () => (ring(98, 0.5, 4), tone(49, { hold: 3, peak: 0.5 }));
+  audio.gong = () => {
+    if (context && on) {
+      ring(98, 0.5, 4);
+      tone(49, { hold: 3, peak: 0.5 });
+    }
+  };
   audio.play = (event) => context && on && SOUNDS[event.type]?.(event);
   audio.start = start;
   audio.setOn = (value) => {
+    if (value === on) return;
     on = value;
-    if (master) master.gain.value = on ? 0.9 : 0;
+    if (!context) return;
+    const now = context.currentTime;
+    master.gain.cancelScheduledValues(now);
+    master.gain.setTargetAtTime(on ? 0.9 : 0, now, 0.035);
+    if (on) nextNote = now + 0.045;
   };
   audio.setMood = (value) => (mood = value);
 
@@ -157,8 +176,11 @@ export function createAudio() {
   const LINES = { road: [0, -1, 2, -1, 4, 3, -1, 2, -1, -1, 5, 4, 2, -1, 0, -1], yard: [0, 2, 4, 2, 5, 4, 2, 0, 3, 2, 0, 2, 4, 5, 4, 2], boss: [0, 0, 4, 0, 5, 0, 4, 2, 0, 0, 6, 5, 4, 2, 4, 0] };
   audio.update = () => {
     if (!context || !on) return;
-    while (nextNote < context.currentTime + 0.2) {
-      const at = nextNote - context.currentTime,
+    const now = context.currentTime;
+    // Catch the next beat after a suspended tab without creating nodes for missed beats.
+    if (nextNote < now - 0.12) nextNote = now + 0.045;
+    while (nextNote < now + 0.2) {
+      const at = Math.max(0, nextNote - now),
         fast = mood !== 'road',
         line = LINES[mood] ?? LINES.road,
         note = line[step % line.length];
