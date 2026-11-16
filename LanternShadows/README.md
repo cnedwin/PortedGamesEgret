@@ -50,8 +50,8 @@ Lantern Shadows is an independently developed 2D side-scrolling action demo buil
 - A light blow does not move him. The smash that ends the combination staggers him, which is the moment to land more; having just been staggered, he is not staggered again at once.
 - If the Monkey King falls in the court he is stood up at the pennant at its entrance, and Nezha’s strength goes back to the start of the part it had reached.
 
-地址参数 · Address options：默认用 WebGL2，`?backend=webgpu` 改用 WebGPU，`?stats` 显示帧率与骨骼数，`?slow=0.25` 以四分之一速度播放（看动作用），`?from=nezha` 从门前的院子演起，`?clones=200` 设定一把毫毛变出多少个分身（10 到 400，默认 100），`?lang=en` 以英文开始。画面太慢时会自动收回一部分分身，写了 `?clones` 就一个不收。
-WebGL2 is the default and `?backend=webgpu` draws with WebGPU instead, `?stats` shows the frame rate and bone count, `?slow=0.25` plays at quarter speed (to watch the motion), `?from=nezha` begins at the court before the gate, `?clones=200` sets how many clones a tuft makes (10 to 400, a hundred unless said), `?lang=en` starts in English. When the stage is drawn too slowly some of the clones are sent back; with `?clones` given, none are.
+地址参数 · Address options：默认用 WebGL2，`?backend=webgpu` 改用 WebGPU，`?stats` 显示帧率与骨骼数，`?slow=0.25` 以四分之一速度播放（看动作用），`?from=nezha` 从门前的院子演起，`?clones=200` 设定一把毫毛变出多少个分身（10 到 400，默认 100），`?lang=en` 以英文开始，`?dev` 不用打包好的文件而逐个加载 `src/` 与 `vendor/` 里的模块（改代码时用）。画面太慢时会自动收回一部分分身，写了 `?clones` 就一个不收。
+WebGL2 is the default and `?backend=webgpu` draws with WebGPU instead, `?stats` shows the frame rate and bone count, `?slow=0.25` plays at quarter speed (to watch the motion), `?from=nezha` begins at the court before the gate, `?clones=200` sets how many clones a tuft makes (10 to 400, a hundred unless said), `?lang=en` starts in English, and `?dev` loads the modules in `src/` and `vendor/` one by one instead of the packed file (for working on the code). When the stage is drawn too slowly some of the clones are sent back; with `?clones` given, none are.
 
 ## 用到的引擎能力 · What it uses of the engine
 
@@ -83,6 +83,19 @@ node tools/author.mjs --sheet=attack 只画名字以 attack 开头的动作，�
 绘制需要带 Chromium 的 Playwright（不在本目录时用环境变量 `PLAYWRIGHT` 指向它的模块路径）。
 Drawing needs Playwright with Chromium (set `PLAYWRIGHT` to its module path if it is not installed here).
 
+## 加载 · Loading
+
+页面加载的是 `build/lantern.js`：`tools/bundle.mjs` 把游戏自己的模块和 `vendor/` 里的引擎运行库打成一个压缩过的文件，两百六十个模块变成一次请求。它还在 `index.html` 里列出第一幕要读的每个文件，让浏览器在代码还没到时就开始取；开锣键下面的金线随文件到齐而填满。幕布是唯一不透明的大图，存成 JPEG。
+
+The page loads `build/lantern.js`: `tools/bundle.mjs` packs the game's own modules and the engine runtime in `vendor/` into one minified file, so that two hundred and sixty modules are one request. It also lists in `index.html` every file the first act reads, so that the browser starts on them while the code is still on its way; the gold line under the gong fills as they arrive. The cloth is the one large picture with nothing to see through, and is kept as a JPEG.
+
+```
+node tools/bundle.mjs                改过 src/、vendor/ 或 assets/ 之后重新打包 · packs again after a change under src/, vendor/ or assets/
+```
+
+打包需要 esbuild（不在本目录时用环境变量 `ESBUILD` 指向它的模块路径）。没有重新打包时，测试会指出来。
+Packing needs esbuild (set `ESBUILD` to its module path if it is not installed here). A test says so when it has not been done.
+
 ## 目录 · Layout
 
 ```
@@ -98,9 +111,10 @@ src/puppets.mjs         加载并操纵皮偶 · loads and plays the puppets
 src/pictures.mjs        读入图片 · reads pictures in
 src/input.mjs           键盘、手柄、触屏 · keyboard, gamepad, touch
 src/sound.mjs           合成的锣鼓 · the synthesised percussion
-tools/                  画皮、绑骨、出图集、布景与关卡 · drawing, rigging, atlases, scenery and levels
+tools/                  画皮、绑骨、出图集、布景与关卡，以及打包 · drawing, rigging, atlases, scenery and levels, and the packing
+build/                  tools/bundle.mjs 的产物，页面加载的就是它 · what tools/bundle.mjs writes, and what the page loads
 assets/                 tools/author.mjs 的产物 · what tools/author.mjs writes
-vendor/                 引擎运行库，见 vendor/SOURCE.md · the engine runtime, see vendor/SOURCE.md
+vendor/                 引擎运行库的源文件，见 vendor/SOURCE.md · the engine runtime's files, see vendor/SOURCE.md
 test/                   规则与资源的检查 · checks of the rules and the assets
 ```
 

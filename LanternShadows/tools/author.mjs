@@ -299,7 +299,7 @@ async function main() {
     const page = await browser.newPage({ deviceScaleFactor: piece.scale });
     await page.setContent(`<body style="margin:0;background:transparent">${svg(piece.width, piece.height, piece.svg)}</body>`);
     const jpeg = piece.file.endsWith('.jpg');
-    const bytes = await page.locator('body > svg').screenshot(jpeg ? { type: 'jpeg', quality: 86 } : { omitBackground: true });
+    const bytes = await page.locator('body > svg').screenshot(jpeg ? { type: 'jpeg', quality: 88 } : { omitBackground: true });
     fs.writeFileSync(path.join(OUT, 'scene', piece.file), bytes);
     await page.close();
     console.log(`${piece.file}: ${piece.width * piece.scale}×${piece.height * piece.scale}, ${Math.round(bytes.length / 1024)} KB`);

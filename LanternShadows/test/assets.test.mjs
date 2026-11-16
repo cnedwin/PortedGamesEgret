@@ -140,6 +140,22 @@ test('the page can find every module it asks for', () => {
   for (const pick of html.matchAll(/(?:src|href)="((?!https?:|data:|\.\.\/)[^"#]+)"/g)) assert.ok(fs.existsSync(path.join(ROOT, pick[1])), pick[1]);
 });
 
+test('the packed game is made from the sources as they are now, and asks for nothing else', async () => {
+  const { inputsHash, preloadBlock, preloadLines, preloads } = await import('../tools/bundle.mjs');
+  const made = JSON.parse(read('build/lantern.json')),
+    packed = read('build/lantern.js').toString(),
+    html = read('index.html').toString();
+  assert.equal(made.inputs, inputsHash(), 'run tools/bundle.mjs again');
+  assert.equal(packed.length, made.bytes);
+  assert.ok(!/\bfrom\s*["'][^"']+["']/.test(packed.slice(0, 400)) && !/import\(["']@/.test(packed), 'the packed game imports nothing');
+  assert.ok(packed.startsWith('/*! Lantern Shadows') && packed.includes('vendor/NOTICE'), 'it says where its notices are');
+  assert.ok(packed.length < 1.2e6, `it has grown to ${packed.length} bytes`);
+  // The page starts on every file the first act reads, and on none that is not there.
+  assert.equal(preloadBlock(html), preloadLines(), 'run tools/bundle.mjs again');
+  for (const file of preloads()) assert.ok(fs.existsSync(path.join(ROOT, file)), file);
+  assert.ok(html.includes('<link rel="modulepreload" href="build/lantern.js">') && html.includes("'./build/lantern.js'"));
+});
+
 test("pictures are read by the game's own reader, which every browser allows", () => {
   // The engine's reader of PNG files is refused by the browsers on an iPhone, so nothing here may go through it.
   for (const file of ['src/main.mjs', 'src/puppets.mjs', 'src/pictures.mjs']) {

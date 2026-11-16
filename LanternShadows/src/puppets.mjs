@@ -2,13 +2,11 @@
 // are loaded as the engine's resource manifest lists them, and given a small handle to play by.
 import { admitResourceManifest } from '@egret/contracts/resources';
 import { createSpineContentLoader, createSpineDisplay, createSpineInstance } from '@egret/spine';
-import { readBytes, readTexture } from './pictures.mjs';
+import { readBytes, readJson, readTexture } from './pictures.mjs';
 
 /** Loads the named puppets. Returns a function that gives the loaded asset of a name. */
 export async function loadPuppets(engine, scope, names, base) {
-  const response = await fetch(new URL('manifest.json', base));
-  if (!response.ok) throw Error('The puppets are missing: run tools/author.mjs.');
-  const admitted = admitResourceManifest(await response.json());
+  const admitted = admitResourceManifest(await readJson(new URL('manifest.json', base).href));
   if (!admitted.ok) throw Error('The puppet manifest was refused.');
   const entries = new Map(admitted.value.entries.map(entry => [entry.id, entry]));
   // The loader asks for each file by what it is bound to; here each is fetched from where the manifest says it

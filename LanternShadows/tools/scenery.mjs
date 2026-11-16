@@ -7,7 +7,7 @@ const W = 960,
 
 /** The cloth, lit from behind: brightest where the lamp hangs, darker toward the frame, with the weave showing. */
 export const screen = {
-  file: 'screen.png',
+  file: 'screen.jpg',
   width: W,
   height: H,
   scale: 1,
