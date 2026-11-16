@@ -24,11 +24,11 @@ import { createBrowserGame } from '@egret/engine/web/game';
 import { createInput } from './input.mjs';
 import { createPictures, readJson, watchReading } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
-import { createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
+import { FURNACE, createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
 import { BOSS, bossAnimation, present } from './rules/boss.mjs';
 import { ERLANG, bossAnimation as erlangAnimation, houndAnimation } from './rules/erlang.mjs';
 import { HAIRS, cloneAnimation, out } from './rules/clones.mjs';
-import { foeAnimation } from './rules/foes.mjs';
+import { FOES, foeAnimation } from './rules/foes.mjs';
 import { ATTACKS, TUNE, animationOf } from './rules/hero.mjs';
 import { CELL, readLevel } from './rules/level.mjs';
 import { createSound } from './sound.mjs';
@@ -47,8 +47,8 @@ const KEY_HINTS = {
   en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll, through a spear'], ['I', 'clones'], ['P', 'pause']]
 };
 const WORDS = {
-  zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, bosses: { nezha: { name: '哪吒', enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了' }, erlang: { name: '二郎神', enter: '二郎真君提三尖两刃刀到，哮天犬随后', phases: ['', '他要变化了：变成鹰时把他打下来', '法天象地！他落地的震波要跳过去'], opened: '二郎神收兵，月洞门开了' } }, soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
-  en: { titles: { act1: 'Act one: the Southern Gate', act2: 'Act two: the Peach Orchard' }, curtain: title => `${title}. Curtain`, tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, bosses: { nezha: { name: 'Nezha', enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open' }, erlang: { name: 'Erlang', enter: 'Erlang comes with his three-pointed glaive, and his hound behind him', phases: ['', 'He changes his shape: strike the hawk out of the air', 'He grows to the size of the sky! Jump the wave when he lands'], opened: 'Erlang calls off the fight, and the moon gate stands open' } }, soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
+  zh: { titles: { act1: '第一幕　南天门', act2: '第二幕　蟠桃园', act3: '第三幕　兜率宫' }, curtain: title => `${title}　落幕`, tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, bosses: { nezha: { name: '哪吒', enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了' }, erlang: { name: '二郎神', enter: '二郎真君提三尖两刃刀到，哮天犬随后', phases: ['', '他要变化了：变成鹰时把他打下来', '法天象地！他落地的震波要跳过去'], opened: '二郎神收兵，月洞门开了' } }, soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
+  en: { titles: { act1: 'Act one: the Southern Gate', act2: 'Act two: the Peach Orchard', act3: 'Act three: the Tushita Palace' }, curtain: title => `${title}. Curtain`, tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, bosses: { nezha: { name: 'Nezha', enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open' }, erlang: { name: 'Erlang', enter: 'Erlang comes with his three-pointed glaive, and his hound behind him', phases: ['', 'He changes his shape: strike the hawk out of the air', 'He grows to the size of the sky! Jump the wave when he lands'], opened: 'Erlang calls off the fight, and the moon gate stands open' } }, soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
 };
 function speak() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
@@ -106,10 +106,10 @@ const { engine, scope } = game;
 // ---- What is loaded --------------------------------------------------------------------------------------------
 const loadPicture = createPictures(engine, scope),
   asset = path => new URL(`../assets/${path}`, import.meta.url);
-const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring', 'far2', 'tree', 'peach', 'moongate', 'orchard'],
-  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane', 'erlang', 'hawk', 'hound'],
+const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring', 'far2', 'tree', 'peach', 'moongate', 'orchard', 'far3', 'furnace', 'pill', 'vent', 'door', 'palace'],
+  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane', 'erlang', 'hawk', 'hound', 'fanner', 'alchemist'],
   /** The acts, in the order they are played. */
-  ACTS = ['act1', 'act2'];
+  ACTS = ['act1', 'act2', 'act3'];
 // The line under the gong fills as the files come in: the pictures, three files for each puppet, the list of
 // them, and the levels.
 const awaited = PICTURES.length + PUPPETS.length * 3 + 1 + ACTS.length,
@@ -184,12 +184,14 @@ troupe.blendMode = shadowBlend;
 /** What each act is dressed differently with: what hangs far behind, its way out, and its ground. */
 const DRESS = {
   act1: { far: 'far', gate: ['gate', 420, 398], tiles: 'tiles' },
-  act2: { far: 'far2', gate: ['moongate', 380, 378], tiles: 'orchard' }
+  act2: { far: 'far2', gate: ['moongate', 380, 378], tiles: 'orchard' },
+  act3: { far: 'far3', gate: ['door', 340, 378], tiles: 'palace' }
 };
 let posts = [],
   soldiers = [],
   pennants = [],
   peachesShown = [],
+  furnacesShown = [],
   tiles;
 /** Everything that was put up for the act now on the stage, to be taken down with it. */
 const dressed = [];
@@ -232,6 +234,14 @@ function dress() {
     return { puppet, blows: 0 };
   });
   soldiers = act.foes.map(foe => ({ puppet: foe.flies ? stand(foe.kind, 11, 1.2) : stand(foe.kind, 18) }));
+  // Grates lie on the floor; a furnace stands on its feet, and is turned about them when it is knocked over.
+  for (const vent of act.vents) hang(flights, art.vent, vent.x - 32, vent.y - 14, 64);
+  furnacesShown = act.furnaces.map(furnace => {
+    const shown = hang(scenery, art.furnace, furnace.x, furnace.y, 96);
+    shown.anchorOffsetX = shown.naturalWidth / 2;
+    shown.anchorOffsetY = shown.naturalHeight;
+    return shown;
+  });
   // Peaches hang in front of the scenery, each turned about its middle.
   peachesShown = act.peaches.map(peach => {
     const shown = hang(flights, art.peach, peach.x, peach.y, 30);
@@ -293,8 +303,9 @@ const wukong = createPuppet(puppetOf('wukong'), scope);
 wukong.bones = 25;
 cast.addChild(wukong.node);
 wukong.play('idle', { loop: true });
-/** Arrows in the air, each with the picture that shows it. */
-const arrows = new Map();
+/** Arrows in the air, each with the picture that shows it; and the alchemists' pills likewise. */
+const arrows = new Map(),
+  pills = new Map();
 dress();
 
 // Sparks from the staff, straw from the posts, and dust from his feet.
@@ -461,6 +472,21 @@ function happen(events) {
       freeze = Math.max(freeze, 0.03);
     } else if (type === 'foe-open') (burst(sparks, event.foe.x, event.foe.y - 70, 22), sound.play('smallGong', { volume: 0.7, rate: 1.2, pan: panOf(event.foe.x) }));
     else if (type === 'foe-dive') sound.play('swish', { volume: 0.6, rate: 1.7, pan: panOf(event.foe.x) });
+    else if (type === 'gust') sound.play('whirl', { volume: 0.7, rate: 0.7, pan: panOf(event.foe.x) });
+    else if (type === 'pill') sound.play('swish', { volume: 0.5, rate: 1.5, pan: panOf(event.foe.x) });
+    else if (type === 'burst') {
+      burst(sparks, event.at.x, event.at.y - 10, 44);
+      burst(dust, event.at.x, event.at.y, 16);
+      sound.play('drum', { volume: 0.9, rate: 0.8, pan: panOf(event.at.x) });
+      sound.play('clap', { volume: 0.6, rate: 0.7, pan: panOf(event.at.x) });
+      camera.shake({ trauma: 0.3 });
+    } else if (type === 'furnace-tipped') {
+      burst(sparks, event.furnace.x, event.furnace.y - 50, 30);
+      sound.play('smallGong', { volume: 0.8, rate: 0.7, pan: panOf(event.furnace.x) });
+      sound.play('drum', { volume: 0.8, rate: 0.6, pan: panOf(event.furnace.x) });
+      camera.shake({ trauma: 0.35 });
+      counted = true;
+    } else if (type === 'vent-on') inView(event.vent.x, camera.snapshot().center.x) && sound.play('whirl', { volume: 0.25, rate: 0.5, pan: panOf(event.vent.x) });
     else if (type === 'peach-struck') (burst(dust, event.at.x, event.at.y, 5), sound.play('tap', { volume: 0.5, rate: 1.6, pan: panOf(event.at.x) }));
     else if (type === 'peach') (burst(sparks, event.at.x, event.at.y, 14), sound.play('smallGong', { volume: 0.5, rate: 1.9, pan }), (counted = true));
     else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
@@ -667,8 +693,49 @@ function update(seconds) {
   }
   measure(shown, moving, performance.now() - before);
 
+  // The palace's fires. A grate sputters before its turn and stands alight in it; a furnace knocked over lies on
+  // its side with its fire along the floor; a fan's wind is dust blown the way it blows, and what it sends along
+  // the floor is a tongue of flame.
+  if (!still) {
+    for (const vent of act.vents) {
+      if (!inView(vent.x, centre) || vent.state === 'off' || !vent.state) continue;
+      const alight = vent.state === 'on';
+      for (let n = some(alight ? 300 : 50); n > 0; n--) burst(flames, vent.x + (Math.random() - 0.5) * 30, vent.y - 8 - (alight ? Math.random() * 60 : 0), 1);
+    }
+    for (const furnace of act.furnaces) for (let n = furnace.life > 0 ? some(FURNACE.spill * 0.5) : 0; n > 0; n--) burst(flames, furnace.x + furnace.side * Math.random() * FURNACE.spill, furnace.y - 4, 1);
+    for (const foe of act.foes) for (let n = foe.gust > 0 ? some(90) : 0; n > 0; n--) burst(dust, foe.x + foe.facing * (30 + Math.random() * FOES.fanner.gust.reach), foe.y - 16 - Math.random() * 80, 1);
+    for (const arrow of act.arrows) if (arrow.kind === 'ember') (burst(flames, arrow.x, arrow.y + 8, some(160)), burst(sparks, arrow.x, arrow.y, some(30)));
+  }
+  act.furnaces.forEach((furnace, index) => {
+    const shown = furnacesShown[index],
+      lying = furnace.state === 'tipped' ? furnace.side * 84 : 0;
+    shown.rotation += (lying - shown.rotation) * Math.min(1, dt * 14);
+    // On its side it rests on its belly, not on the point it was turned about.
+    shown.y = furnace.y - (Math.abs(shown.rotation) / 84) * 36;
+  });
+  // Pills: a picture for each, turning as it flies and winking as it lies lit.
+  for (const pill of act.pills) {
+    let shown = pills.get(pill);
+    if (!shown) {
+      shown = flights.addChild(new Bitmap(art.pill));
+      shown.scaleX = shown.scaleY = 20 / shown.naturalWidth;
+      shown.anchorOffsetX = shown.naturalWidth / 2;
+      shown.anchorOffsetY = shown.naturalHeight / 2;
+      pills.set(pill, shown);
+    }
+    shown.x = pill.x;
+    shown.y = pill.y;
+    shown.rotation = pill.state === 'fly' ? pill.time * 900 : 0;
+    shown.alpha = pill.state === 'fuse' && Math.floor(pill.time * 18) % 2 ? 0.4 : 1;
+  }
+  for (const [pill, shown] of pills)
+    if (!act.pills.includes(pill)) {
+      shown.dispose();
+      pills.delete(pill);
+    }
   // Arrows: a picture for each one in the air, turned the way it flies.
   for (const arrow of act.arrows) {
+    if (arrow.kind === 'ember') continue;
     let shown = arrows.get(arrow);
     if (!shown) {
       shown = flights.addChild(new Bitmap(art.arrow));
@@ -768,8 +835,10 @@ $('paused').addEventListener('click', () => pause(false));
 /** Puts the act back to its beginning. */
 function again() {
   act = createAct(level, { from, clones: TUFT });
-  for (const shown of arrows.values()) shown.dispose();
+  for (const shown of [...arrows.values(), ...pills.values()]) shown.dispose();
   arrows.clear();
+  pills.clear();
+  for (const shown of furnacesShown) shown.rotation = 0;
   freeze = carry = lead = 0;
   camera.zoomTo(1, 0);
   camera.lookAt(act.hero.x, STAGE.height / 2);
@@ -838,6 +907,8 @@ startBoss.addEventListener('click', () => raise('act1', 'boss'));
 $('start-act2').disabled = $('start-erlang').disabled = false;
 $('start-act2').addEventListener('click', () => raise('act2'));
 $('start-erlang').addEventListener('click', () => raise('act2', 'boss'));
+$('start-act3').disabled = false;
+$('start-act3').addEventListener('click', () => raise('act3'));
 
 // What a check reads; the play does not need it.
 globalThis.__lantern = {
@@ -852,7 +923,7 @@ globalThis.__lantern = {
   },
   backend: game.backend,
   camera: () => camera.snapshot(),
-  begin: where => (where === 'nezha' ? startBoss : where === 'act2' ? $('start-act2') : where === 'erlang' ? $('start-erlang') : start).click(),
+  begin: where => (where === 'nezha' ? startBoss : where === 'act2' ? $('start-act2') : where === 'erlang' ? $('start-erlang') : where === 'act3' ? $('start-act3') : start).click(),
   get stage() {
     return onStage;
   },

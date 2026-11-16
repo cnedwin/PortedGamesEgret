@@ -14,6 +14,12 @@ export const FOES = {
   // A shield-bearer takes nothing from in front until a lifting blow has knocked his shield aside: `turn` is how
   // long he takes to face whoever has got behind him, and `open` how long the shield stays aside.
   guard: { health: 6, halfWidth: 20, height: 118, walk: 55, chase: 105, patrol: 80, sight: 340, tall: 70, range: 86, windup: 0.5, attack: 0.56, hitAt: 0.11, lunge: 60, rest: 1.1, reach: { x: 4, y: 0, width: 104, height: 124 }, shield: { turn: 0.55, open: 1.2, block: 0.26 } },
+  // The boy who fans the furnaces: his fan sends a tongue of flame along the floor (to be jumped, or put out with
+  // the staff), and for `seconds` the wind of it pushes back whoever stands before him.
+  fanner: { health: 3, halfWidth: 18, height: 116, walk: 0, chase: 0, patrol: 0, sight: 440, tall: 70, range: 440, windup: 0.5, attack: 0.56, hitAt: 0.11, lunge: 0, rest: 2.2, gust: { seconds: 0.9, push: 250, reach: 440 }, ember: { speed: 430, seconds: 1.2, from: 30 } },
+  // The alchemist throws a pill at where he stands: it takes `seconds` to arrive, lies there for `fuse`, and bursts
+  // over `radius`.
+  alchemist: { health: 3, halfWidth: 18, height: 116, walk: 0, chase: 0, patrol: 0, sight: 520, tall: 230, range: 520, windup: 0.6, attack: 0.56, hitAt: 0.11, lunge: 0, rest: 2.4, pill: { seconds: 0.8, fuse: 0.45, radius: 76, from: 112, arc: 130 } },
   // A crane keeps its place in the air, and stoops at whoever comes under it: `stoop` is how fast, `back` how
   // fast it climbs to its place again, and `sway` how far it drifts to either side while it waits.
   crane: { health: 2, halfWidth: 24, height: 44, flies: true, sight: 430, tall: 330, windup: 0.5, stoop: 640, back: 260, sway: 56, rest: 1.7 }
@@ -26,7 +32,7 @@ const GRAVITY = 2600;
 
 export function createFoe(kind, x, y, id) {
   const flies = !!FOES[kind].flies;
-  return { id, kind, x, y, vx: 0, vy: 0, facing: -1, grounded: !flies, flies, state: 'idle', time: 0, health: FOES[kind].health, home: x, perch: y, rest: 0.4, struck: false, serial: 0, gone: false, turning: 0, blocked: 0, blocks: 0 };
+  return { id, kind, x, y, vx: 0, vy: 0, facing: -1, grounded: !flies, flies, state: 'idle', time: 0, health: FOES[kind].health, home: x, perch: y, rest: 0.4, struck: false, serial: 0, gone: false, turning: 0, blocked: 0, blocks: 0, gust: 0 };
 }
 
 /** The room a foe takes up, as a rectangle of the stage. */
@@ -93,6 +99,8 @@ export function stepFoe(foe, hero, dt, level) {
   foe.time += dt;
   foe.rest = Math.max(0, foe.rest - dt);
   foe.blocked = Math.max(0, foe.blocked - dt);
+  // The wind of a fan dies when the boy who made it is struck.
+  foe.gust = foe.state === 'hurt' || foe.state === 'down' ? 0 : Math.max(0, foe.gust - dt);
   const dx = hero.x - foe.x,
     sees = hero.state !== 'down' && Math.abs(dx) < spec.sight && Math.abs(hero.y - foe.y) < spec.tall;
 
@@ -116,6 +124,11 @@ export function stepFoe(foe, hero, dt, level) {
           rise = Math.max(-spec.arrow.tilt, Math.min(spec.arrow.tilt, (hero.y - 60 - from.y) / Math.max(60, Math.abs(hero.x - from.x)))),
           length = Math.hypot(1, rise);
         events.push({ type: 'arrow', foe, arrow: { ...from, vx: (foe.facing * spec.arrow.speed) / length, vy: (rise * spec.arrow.speed) / length, life: spec.arrow.seconds } });
+      } else if (spec.gust) {
+        foe.gust = spec.gust.seconds;
+        events.push({ type: 'gust', foe }, { type: 'arrow', foe, arrow: { kind: 'ember', x: foe.x + foe.facing * 40, y: foe.y - spec.ember.from, vx: foe.facing * spec.ember.speed, vy: 0, life: spec.ember.seconds } });
+      } else if (spec.pill) {
+        events.push({ type: 'pill', foe, pill: { from: { x: foe.x + foe.facing * 20, y: foe.y - spec.pill.from }, to: { x: hero.x, y: hero.y }, x: foe.x, y: foe.y - spec.pill.from, time: 0, state: 'fly' } });
       } else events.push({ type: 'foe-strike', foe, box: thrust(foe) });
     }
     if (foe.time >= spec.attack) begin(foe, 'idle'), (foe.rest = spec.rest);

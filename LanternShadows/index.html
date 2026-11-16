@@ -12,16 +12,20 @@
   <link rel="preload" as="fetch" crossorigin href="assets/manifest.json">
   <link rel="preload" as="fetch" crossorigin href="assets/levels/act1.tmj">
   <link rel="preload" as="fetch" crossorigin href="assets/levels/act2.tmj">
+  <link rel="preload" as="fetch" crossorigin href="assets/levels/act3.tmj">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/frame.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/far2.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/erlang.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/far.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/fanner.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/far3.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/guard.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/archer.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/gate.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/alchemist.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/moongate.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/screen.jpg">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/tree.png">
@@ -29,11 +33,15 @@
   <link rel="preload" as="fetch" crossorigin href="assets/files/hawk.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/crane.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/door.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/erlang.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/hound.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/guard.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/furnace.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/alchemist.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/fanner.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/archer.json">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/wisp.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/hound.json">
@@ -44,13 +52,18 @@
   <link rel="preload" as="fetch" crossorigin href="assets/scene/orchard.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/ring.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/peach.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/palace.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/pennant.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/pill.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/vent.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/spark.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/arrow.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/erlang.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/guard.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/alchemist.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/fanner.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/archer.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/hound.atlas">
@@ -136,12 +149,13 @@
     <section class="curtain" id="curtain">
       <div class="playbill">
         <h1><span data-zh="灯影" data-en="Lantern Shadows">灯影</span><em data-zh="闹天宫" data-en="Havoc in Heaven">闹天宫</em></h1>
-        <p class="act" data-zh="第一幕　南天门　　第二幕　蟠桃园" data-en="Act one, the Southern Gate. Act two, the Peach Orchard">第一幕　南天门　　第二幕　蟠桃园</p>
+        <p class="act" data-zh="南天门　　蟠桃园　　兜率宫" data-en="The Southern Gate. The Peach Orchard. The Tushita Palace">南天门　　蟠桃园　　兜率宫</p>
         <button type="button" class="gong" id="start" disabled><span data-zh="开锣" data-en="Begin">开锣</span></button>
         <p class="asides">
           <button type="button" class="aside" id="start-boss" disabled data-zh="直接会哪吒" data-en="Straight to Nezha">直接会哪吒</button>
           <button type="button" class="aside" id="start-act2" disabled data-zh="从第二幕蟠桃园演起" data-en="Begin with act two, the Peach Orchard">从第二幕蟠桃园演起</button>
           <button type="button" class="aside" id="start-erlang" disabled data-zh="直接会二郎神" data-en="Straight to Erlang">直接会二郎神</button>
+          <button type="button" class="aside" id="start-act3" disabled data-zh="从第三幕兜率宫演起" data-en="Begin with act three, the Tushita Palace">从第三幕兜率宫演起</button>
         </p>
         <i class="filling" id="filling"><b></b></i>
         <p class="status" id="status" data-zh="正在挂灯、理线……" data-en="Hanging the lamp…">正在挂灯、理线……</p>

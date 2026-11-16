@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'node:test';
 
-import { COMBO_SECONDS, POST_ROOM, REVIVE_SECONDS, createAct, peachBox, postBox, rankOf, remaining, stepAct, tuftReady } from '../src/rules/act.mjs';
+import { COMBO_SECONDS, FURNACE, POST_ROOM, REVIVE_SECONDS, VENT, createAct, peachBox, postBox, rankOf, remaining, stepAct, tuftReady, ventState } from '../src/rules/act.mjs';
 import { BOSS, bossAnimation, bossBox, bossReach, createBoss, hitBoss, open, present, restoreBoss, stepBoss, wakeBoss } from '../src/rules/boss.mjs';
 import { HAIRS, cloneAnimation, createClones, out } from '../src/rules/clones.mjs';
 import * as erlang from '../src/rules/erlang.mjs';
@@ -1044,6 +1044,114 @@ test('against Nezha the crowd wears a phase down and cannot skip one; if the Mon
   assert.equal(fallen.clones.length, 0);
 });
 
+// ---- The palace ------------------------------------------------------------------------------------------------
+const palaceWith = things => createAct(flatLevel(2400, GROUND, [{ type: 'spawn', x: 200, y: GROUND }, ...things.map(([type, x, y = GROUND]) => ({ type, x, y }))]));
+
+test('a grate breathes fire by turns, warning first, and burns only while it is alight', () => {
+  const act = palaceWith([['vent', 600], ['vent', 900]]),
+    [vent, other] = act.vents;
+  const turns = [];
+  for (let t = 0; t < VENT.period; t += 0.05) turns.push(ventState(vent, t));
+  assert.deepEqual([...new Set(turns)], ['off', 'warn', 'on'], 'quiet, then a warning, then alight');
+  assert.ok(Math.abs(turns.filter(turn => turn === 'on').length * 0.05 - VENT.on) < 0.11);
+  assert.notEqual(ventState(vent, 2), ventState(other, 2), 'they do not all burn together');
+  // He stands on it through a whole turn: burned once, when it lights.
+  act.hero.x = 600;
+  const events = [];
+  let burnedWhile;
+  for (let t = 0; t < VENT.period; t += DT) for (const event of stepAct(act, ask(), DT)) (events.push(event), event.type === 'hurt' && (burnedWhile ??= ventState(vent, act.time)));
+  assert.equal(burnedWhile, 'on');
+  assert.ok(types(events).includes('vent-on'));
+  // Beside it he is not touched.
+  const beside = palaceWith([['vent', 600]]);
+  beside.hero.x = 600 + VENT.width;
+  play(beside, VENT.period);
+  assert.equal(beside.hero.health, TUNE.health);
+});
+
+test('a furnace knocked over spills fire away from him, which burns the household and would burn him', () => {
+  const act = palaceWith([['furnace', 500], ['fanner', 620], ['spearman', 1500]]),
+    [furnace] = act.furnaces;
+  act.foes[0].rest = 99;
+  act.hero.x = 420;
+  const events = tap(act, { attack: true }, 0.3);
+  assert.ok(types(events).includes('furnace-tipped'));
+  assert.deepEqual([furnace.state, furnace.side], ['tipped', 1]);
+  assert.equal(act.combo, 1, 'it counts as a blow landed');
+  const burning = [...events, ...play(act, FURNACE.seconds)];
+  const burns = burning.filter(event => event.type === 'met' && event.attack.name === 'burn');
+  assert.ok(burns.length >= 3 && burns.every(event => event.foe === act.foes[0]), 'the boy in it is burned, the soldier far off is not');
+  assert.equal(act.foes[0].state, 'down');
+  assert.equal(act.hero.health, TUNE.health, 'behind it, he is clear');
+  assert.equal(furnace.life <= 0, true);
+  // Struck again it does nothing; and whoever walks into the fire is burned by it.
+  const careless = palaceWith([['furnace', 500]]);
+  careless.hero.x = 420;
+  tap(careless, { attack: true }, 0.4);
+  play(careless, 0.6, ask({ move: 1 }));
+  assert.equal(careless.hero.health, TUNE.health - 1);
+});
+
+test('the boy with the fan sends a flame along the floor and a wind that pushes back; rolling goes through both', () => {
+  const act = palaceWith([['fanner', 900]]);
+  act.hero.x = 640;
+  let events = [];
+  for (let t = 0; t < 3 && !events.some(event => event.type === 'gust'); t += DT) events = stepAct(act, ask(), DT);
+  assert.deepEqual(types(events).filter(type => type !== 'step'), ['gust', 'arrow']);
+  const [ember] = act.arrows;
+  assert.ok(ember.kind === 'ember' && ember.vx < 0 && ember.vy === 0);
+  const from = act.hero.x;
+  play(act, 0.3, ask({ move: 1 }));
+  assert.ok(act.hero.x < from + 30, `against the wind he made ${act.hero.x - from}`);
+  events = play(act, 0.8);
+  assert.ok(act.hero.x < from - 60, 'standing, he is pushed back');
+  assert.ok(types(events).includes('hurt'), 'and the flame reaches him');
+
+  // A jump clears the flame; the staff puts it out.
+  const nimble = palaceWith([['fanner', 900]]);
+  nimble.hero.x = 640;
+  events = [];
+  for (let t = 0; t < 3 && !nimble.arrows.length; t += DT) stepAct(nimble, ask(), DT);
+  for (let t = 0; t < 2 && nimble.arrows.length; t += DT) stepAct(nimble, ask({ jump: nimble.hero.grounded && Math.abs(nimble.arrows[0].x - nimble.hero.x) < 90, jumpHeld: true }), DT);
+  assert.equal(nimble.hero.health, TUNE.health);
+});
+
+test('the alchemist throws a pill at where he stood; it lies lit for a moment and bursts', () => {
+  const act = palaceWith([['alchemist', 1000]]);
+  act.hero.x = 700;
+  let events = [];
+  for (let t = 0; t < 3 && !act.pills.length; t += DT) events = stepAct(act, ask(), DT);
+  assert.ok(types(events).includes('pill'));
+  const [pill] = act.pills,
+    spec = FOES.alchemist.pill;
+  let highest = pill.y;
+  for (let t = 0; t < 2 && pill.state === 'fly'; t += DT) (stepAct(act, ask({ move: -1 }), DT), (highest = Math.min(highest, pill.y)));
+  assert.ok(highest < GROUND - spec.from - 60, 'it goes over in an arc');
+  assert.ok(Math.abs(pill.x - 700) < 2 && Math.abs(pill.y - (GROUND - 10)) < 6, `it lies at ${pill.x}, ${pill.y}`);
+  assert.equal(pill.state, 'fuse');
+  events = play(act, spec.fuse + 0.05, ask({ move: -1 }));
+  assert.ok(types(events).includes('burst'));
+  assert.equal(act.pills.length, 0);
+  assert.equal(act.hero.health, TUNE.health, 'he walked clear of it');
+  const slow = palaceWith([['alchemist', 1000]]);
+  slow.hero.x = 700;
+  play(slow, 2.6);
+  assert.equal(slow.hero.health, TUNE.health - 1, 'standing where it fell costs a peach');
+});
+
+const ACT3 = JSON.parse(fs.readFileSync(new URL('../assets/levels/act3.tmj', import.meta.url)));
+
+test('the third act is read from its map: a palace with grates, furnaces and its household', () => {
+  const level = readLevel(ACT3),
+    act = createAct(level),
+    count = kind => act.foes.filter(foe => foe.kind === kind).length;
+  assert.deepEqual([level.columns, level.set], [104, 'palace']);
+  assert.deepEqual([count('fanner'), count('alchemist'), count('guard'), count('spearman'), count('archer')], [3, 3, 2, 2, 1]);
+  assert.deepEqual([act.vents.length, act.furnaces.length, act.peaches.length], [6, 3, 1]);
+  // No grate is under a pennant, a furnace or anyone's feet.
+  for (const vent of act.vents) for (const thing of [...act.checkpoints, ...act.furnaces, ...act.foes, act.hero]) assert.ok(Math.abs(thing.x - vent.x) > 40 || Math.abs(thing.y - vent.y) > 40, `a grate at ${vent.x} is under something`);
+});
+
 // ---- Erlang ----------------------------------------------------------------------------------------------------
 const { ERLANG } = erlang;
 const godFight = (boss, hero, seconds) => {
@@ -1321,7 +1429,10 @@ function playThrough(level, limit = 600) {
       gap = Math.abs(dx);
     if (above && !target.flies && gap < 70 && hero.grounded && target.y < hero.y - 150) retreat = 1.3;
     retreat -= DT;
-    const move = retreat > 0 ? -1 : inReach && gap < 70 && 'health' in target ? 0 : Math.sign(dx) || 1;
+    // He does not walk onto a grate that is alight or about to be.
+    const going = Math.sign(dx) || 1,
+      hot = act.vents.some(vent => vent.state !== 'off' && (vent.x - hero.x) * going > 0 && (vent.x - hero.x) * going < 90 && Math.abs(vent.y - hero.y) < 40),
+      move = retreat > 0 ? -1 : (inReach && gap < 70 && 'health' in target) || hot ? 0 : going;
     stuck = move && Math.abs(hero.x - last) < 0.05 && hero.grounded ? stuck + DT : 0;
     last = hero.x;
     const jump = hero.grounded && retreat <= 0 && ((above && !target.flies && gap < 420) || stuck > 0.1);
@@ -1348,4 +1459,12 @@ test('the second act can be played through: shields, cranes, Erlang and all', ()
   assert.ok(act.boss.gone, 'Erlang was driven off');
   assert.ok(act.result.time > 60, `cleared in ${act.result.time} s`);
   console.log(`    a simple player clears the second act in ${Math.round(act.result.time)} s, falling ${act.result.falls} times, wounded ${act.result.wounds} times and eating ${act.eaten} peaches: rank ${act.result.rank}`);
+});
+
+test('the third act can be played through: grates, furnaces, fans, pills and all', () => {
+  const act = playThrough(readLevel(ACT3));
+  assert.equal(act.state, 'cleared', told(act));
+  assert.equal(act.result.felled, 11);
+  assert.ok(act.result.time > 35, `cleared in ${act.result.time} s`);
+  console.log(`    a simple player clears the third act in ${Math.round(act.result.time)} s, falling ${act.result.falls} times and wounded ${act.result.wounds} times: rank ${act.result.rank}`);
 });

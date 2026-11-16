@@ -1,0 +1,37 @@
+fanner.png
+size: 1002,336
+filter: Linear,Linear
+repeat: none
+pma: false
+weapon
+bounds: 2,2,132,288
+legF1
+bounds: 136,2,57,120
+legB1
+bounds: 195,2,54,120
+head
+bounds: 251,2,84,117
+torso
+bounds: 337,2,93,111
+legF2
+bounds: 432,2,45,105
+legB2
+bounds: 479,2,39,105
+skirt
+bounds: 520,2,90,99
+armF1
+bounds: 612,2,51,87
+armB1
+bounds: 665,2,51,84
+armB2
+bounds: 718,2,48,78
+armF2
+bounds: 768,2,60,66
+plume1
+bounds: 830,2,42,63
+plume2
+bounds: 874,2,51,48
+footB
+bounds: 927,2,72,42
+footF
+bounds: 2,292,72,42

@@ -9,6 +9,122 @@
   },
   "entries": [
     {
+      "id": "e_alchemist",
+      "resourceKind": "spine",
+      "source": {
+        "id": "f_source_alchemist",
+        "path": "sources/alchemist.json",
+        "role": "source",
+        "mediaType": "application/json",
+        "sha256": "d9050013c6fb78ea7677f8d5f873d278886112cd0906450f0bb72494c68af0b1",
+        "byteLength": 16364
+      },
+      "artifact": {
+        "id": "f_asset_alchemist",
+        "path": "files/alchemist.json",
+        "role": "asset",
+        "mediaType": "application/json",
+        "sha256": "d9050013c6fb78ea7677f8d5f873d278886112cd0906450f0bb72494c68af0b1",
+        "byteLength": 16364
+      },
+      "importer": {
+        "id": "egret.spine-json",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13"
+      },
+      "artifactFormatVersion": "spine-json/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_alchemist_atlas"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "793b628e3c54abf9e80a26c42e4dbb27114b5a1a0e97707353f6c68fb7041ec1",
+      "runtimeIdentity": "12587cfc0a37815aa40554ba3f597c74b8451846799db5df6a3b18eb22db5085"
+    },
+    {
+      "id": "e_alchemist_atlas",
+      "resourceKind": "spine-atlas",
+      "source": {
+        "id": "f_source_alchemist_atlas",
+        "path": "sources/alchemist.atlas",
+        "role": "source",
+        "mediaType": "text/plain",
+        "sha256": "619eed32708d4e403ca075a1652c844196f44cc25455c2cb9c488f371dfb7b39",
+        "byteLength": 497
+      },
+      "artifact": {
+        "id": "f_asset_alchemist_atlas",
+        "path": "files/alchemist.atlas",
+        "role": "asset",
+        "mediaType": "text/plain",
+        "sha256": "619eed32708d4e403ca075a1652c844196f44cc25455c2cb9c488f371dfb7b39",
+        "byteLength": 497
+      },
+      "importer": {
+        "id": "egret.spine-atlas",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13",
+        "pageNames": [
+          "alchemist.png"
+        ]
+      },
+      "artifactFormatVersion": "spine-atlas/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_alchemist_page"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "02c62d1e57a2e7ecf3a0bc061e0b63c1a227162914b34e5376fda4713251f2a8",
+      "runtimeIdentity": "d5dfba38a4150a5b9c7f2ce689a1b3e05c73e8dbd19eb7aebcffd4ad55a83114"
+    },
+    {
+      "id": "e_alchemist_page",
+      "resourceKind": "image",
+      "source": {
+        "id": "f_source_alchemist_page",
+        "path": "sources/alchemist.png",
+        "role": "source",
+        "mediaType": "image/png",
+        "sha256": "a79e855d0b507e830ff6a25319bd9c735d1e256d91c1cd07ce5841c88d3c6907",
+        "byteLength": 70513
+      },
+      "artifact": {
+        "id": "f_asset_alchemist_page",
+        "path": "files/alchemist.png",
+        "role": "asset",
+        "mediaType": "image/png",
+        "sha256": "a79e855d0b507e830ff6a25319bd9c735d1e256d91c1cd07ce5841c88d3c6907",
+        "byteLength": 70513
+      },
+      "importer": {
+        "id": "egret.png",
+        "version": "1.0.0"
+      },
+      "settings": {},
+      "artifactFormatVersion": "png/1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "49ce9092de295efc92c14d6990688afb24ab5f81f11b9b79acd30211f1f9ce64",
+      "runtimeIdentity": "d1fa990985d019868e773ddbcec7db484f5e51d8d80db270eba87d1404fdba35"
+    },
+    {
       "id": "e_archer",
       "resourceKind": "spine",
       "source": {
@@ -471,6 +587,122 @@
       },
       "buildKey": "0a75a3892ee1eb9d1826c9d9c30950576ec07e1f2102b4370e2774c59867b670",
       "runtimeIdentity": "c67996a3a64d330516942d396ebe03e8aac561cb2ab2f6a5f929bc95dcfc459a"
+    },
+    {
+      "id": "e_fanner",
+      "resourceKind": "spine",
+      "source": {
+        "id": "f_source_fanner",
+        "path": "sources/fanner.json",
+        "role": "source",
+        "mediaType": "application/json",
+        "sha256": "07b148c690f7636fb5f377506d28efa691aa3db36070d3603068fea22b5eef20",
+        "byteLength": 16362
+      },
+      "artifact": {
+        "id": "f_asset_fanner",
+        "path": "files/fanner.json",
+        "role": "asset",
+        "mediaType": "application/json",
+        "sha256": "07b148c690f7636fb5f377506d28efa691aa3db36070d3603068fea22b5eef20",
+        "byteLength": 16362
+      },
+      "importer": {
+        "id": "egret.spine-json",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13"
+      },
+      "artifactFormatVersion": "spine-json/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_fanner_atlas"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "1de1eb1cabb21b6d840ef5cf71f5948b5428cb8d5188bff368b46d51867d9a5f",
+      "runtimeIdentity": "94b9f550e234517eeecb4b9d706573ca3c65ac5cbbb61491e346e29428741a4d"
+    },
+    {
+      "id": "e_fanner_atlas",
+      "resourceKind": "spine-atlas",
+      "source": {
+        "id": "f_source_fanner_atlas",
+        "path": "sources/fanner.atlas",
+        "role": "source",
+        "mediaType": "text/plain",
+        "sha256": "436fd6d5f6dadd6d5c33942663a379f2b4bfa3f88381754725fd270c740cefc0",
+        "byteLength": 496
+      },
+      "artifact": {
+        "id": "f_asset_fanner_atlas",
+        "path": "files/fanner.atlas",
+        "role": "asset",
+        "mediaType": "text/plain",
+        "sha256": "436fd6d5f6dadd6d5c33942663a379f2b4bfa3f88381754725fd270c740cefc0",
+        "byteLength": 496
+      },
+      "importer": {
+        "id": "egret.spine-atlas",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13",
+        "pageNames": [
+          "fanner.png"
+        ]
+      },
+      "artifactFormatVersion": "spine-atlas/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_fanner_page"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "20a97046fbed0a449294bc1bb4c216db2e29121f8aae87380ca6f36d15dba29b",
+      "runtimeIdentity": "a09351975ff13b99e45c816c3daf87434feea4d52582df86601f05fd306536ce"
+    },
+    {
+      "id": "e_fanner_page",
+      "resourceKind": "image",
+      "source": {
+        "id": "f_source_fanner_page",
+        "path": "sources/fanner.png",
+        "role": "source",
+        "mediaType": "image/png",
+        "sha256": "3436d7d3d19c6c9e41c599bb99a0844073020ff415f85813346b81c3748d73a9",
+        "byteLength": 93525
+      },
+      "artifact": {
+        "id": "f_asset_fanner_page",
+        "path": "files/fanner.png",
+        "role": "asset",
+        "mediaType": "image/png",
+        "sha256": "3436d7d3d19c6c9e41c599bb99a0844073020ff415f85813346b81c3748d73a9",
+        "byteLength": 93525
+      },
+      "importer": {
+        "id": "egret.png",
+        "version": "1.0.0"
+      },
+      "settings": {},
+      "artifactFormatVersion": "png/1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "26c8d6cd0f2ab04b65714022aa240d6f48b94c5faa7ffc2115494f2a2bbd61d9",
+      "runtimeIdentity": "6e6f5802718a99d41ca426cf184884d62a0fdbd1933f3659d29e1bff26336904"
     },
     {
       "id": "e_guard",

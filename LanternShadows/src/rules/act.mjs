@@ -30,6 +30,23 @@ const { present, ringBox } = nezha,
 const PEACH = { half: 16, fall: 2200 };
 export const peachBox = peach => ({ x: peach.x - PEACH.half, y: peach.y - PEACH.half, width: PEACH.half * 2, height: PEACH.half * 2 });
 
+/** A grate in the floor breathes fire by turns: quiet, then sputtering as a warning for `warn`, then alight for `on`. */
+export const VENT = { period: 2.8, warn: 0.5, on: 1, width: 44, height: 150 };
+/** What a grate is doing at a time in the act: `off`, `warn` or `on`. */
+export function ventState(vent, time) {
+  const at = (time + vent.offset) % VENT.period;
+  return at < VENT.period - VENT.on - VENT.warn ? 'off' : at < VENT.period - VENT.on ? 'warn' : 'on';
+}
+/**
+ * A furnace knocked over spills its fire along the floor, away from whoever struck it, for `spill` and for
+ * `seconds`; every `every`, whoever of the household stands in it is burned as by a light blow.
+ */
+export const FURNACE = { halfWidth: 30, height: 100, spill: 230, seconds: 2.6, every: 0.5 };
+export const furnaceBox = furnace => ({ x: furnace.x - FURNACE.halfWidth, y: furnace.y - FURNACE.height, width: FURNACE.halfWidth * 2, height: FURNACE.height });
+const BURN = { name: 'burn', kind: 'hit', power: 1, stop: 0, shake: 0.1 };
+/** Whether a place on the floor is in a furnace's spilled fire. */
+const inSpill = (furnace, x, y) => furnace.life > 0 && Math.abs(y - furnace.y) < 12 && (x - furnace.x) * furnace.side > -10 && (x - furnace.x) * furnace.side < FURNACE.spill;
+
 /** How far behind its pennant the court before the gate begins, and how far into it he walks before he is met. */
 const COURT = { behind: 48, within: 200, edge: 44 };
 /** How long the gate takes to open once whoever barred it is gone. */
@@ -60,6 +77,10 @@ export function createAct(level, { from, clones = HAIRS.count } = {}) {
     // Peaches hang until they are knocked down or jumped for; each gives back one of his own.
     peaches: of('peach').map((thing, index) => ({ index, x: thing.x, y: thing.y - 24, vy: 0, state: 'hung' })),
     eaten: 0,
+    // The palace: grates that breathe fire, furnaces to be knocked over, and pills in the air or lying lit.
+    vents: of('vent').map((thing, index) => ({ x: thing.x, y: thing.y, offset: index * 0.9 })),
+    furnaces: of('furnace').map((thing, index) => ({ index, x: thing.x, y: thing.y, state: 'stands', side: 0, life: 0, wait: 0 })),
+    pills: [],
     gate: gate ? { x: gate.x, y: gate.y, barred: false } : null,
     boss,
     from: skip ? 'boss' : undefined,
@@ -190,6 +211,12 @@ export function stepAct(act, input, dt) {
       events.push({ type: 'met', attack, foe, side: side(foe), at: where(foe, rect) }, ...hitFoe(foe, attack, side(foe)));
       if (!standing(foe)) act.felled++;
     }
+    for (const furnace of act.furnaces)
+      if (furnace.state === 'stands' && overlaps(box, furnaceBox(furnace))) {
+        Object.assign(furnace, { state: 'tipped', side: side(furnace), life: FURNACE.seconds, wait: 0 });
+        landed++;
+        events.push({ type: 'furnace-tipped', furnace });
+      }
     for (const peach of act.peaches)
       if (peach.state === 'hung' && overlaps(box, peachBox(peach))) {
         peach.state = 'falling';
@@ -264,6 +291,7 @@ export function stepAct(act, input, dt) {
     for (const event of stepFoe(foe, hero, dt, level)) {
       events.push(event);
       if (event.type === 'arrow') act.arrows.push(event.arrow);
+      else if (event.type === 'pill') act.pills.push(event.pill);
       else if ((event.type === 'foe-strike' || event.type === 'foe-touch') && overlaps(event.box, bodyOf(hero))) wound(foe.x);
     }
   }
@@ -281,6 +309,56 @@ export function stepAct(act, input, dt) {
     }
   }
   act.arrows = act.arrows.filter(arrow => arrow.life > 0);
+
+  // The wind of a fan pushes back whoever stands before it, unless he is rolling through.
+  for (const foe of act.foes) {
+    const gust = FOES[foe.kind].gust;
+    if (!gust || foe.gust <= 0 || hero.state === 'dash' || hero.state === 'down') continue;
+    const ahead = (hero.x - foe.x) * foe.facing;
+    if (ahead <= 0 || ahead > gust.reach || Math.abs(hero.y - foe.y) > 80) continue;
+    const pushed = { x: hero.x, y: hero.y, vx: foe.facing * gust.push, vy: 0 };
+    moveBody(pushed, dt, level, TUNE);
+    hero.x = pushed.x;
+  }
+  // Pills: thrown in an arc at where he stood, they lie lit for a moment and burst.
+  for (const pill of act.pills) {
+    const spec = FOES.alchemist.pill;
+    pill.time += dt;
+    if (pill.state === 'fly') {
+      const u = Math.min(1, pill.time / spec.seconds);
+      pill.x = pill.from.x + (pill.to.x - pill.from.x) * u;
+      pill.y = pill.from.y + (pill.to.y - 10 - pill.from.y) * u - spec.arc * 4 * u * (1 - u);
+      if (u === 1) {
+        // It comes to rest on whatever is under the place it was thrown at.
+        while (pill.y < level.height && !groundUnder(level, pill.x, pill.y + 10)) pill.y += 4;
+        Object.assign(pill, { state: 'fuse', time: 0 });
+      }
+    } else if (pill.time >= spec.fuse) {
+      pill.state = 'burst';
+      events.push({ type: 'burst', at: { x: pill.x, y: pill.y } });
+      if (Math.hypot(hero.x - pill.x, hero.y - 50 - pill.y) < spec.radius) wound(pill.x);
+    }
+  }
+  act.pills = act.pills.filter(pill => pill.state !== 'burst');
+  // Grates: fire stands over one when its turn comes, and hurts whoever is in it.
+  for (const vent of act.vents) {
+    const now = ventState(vent, act.time);
+    if (now !== vent.state) ((vent.state = now), now === 'on' && events.push({ type: 'vent-on', vent }));
+    if (now === 'on' && overlaps({ x: vent.x - VENT.width / 2, y: vent.y - VENT.height, width: VENT.width, height: VENT.height }, bodyOf(hero))) wound(vent.x);
+  }
+  // Spilled fire: it burns him if he stands in it, and the household as a light blow would, now and then.
+  for (const furnace of act.furnaces) {
+    if (furnace.life <= 0) continue;
+    furnace.life -= dt;
+    if (hero.grounded && inSpill(furnace, hero.x, hero.y)) wound(furnace.x);
+    if ((furnace.wait -= dt) > 0) continue;
+    furnace.wait = FURNACE.every;
+    for (const foe of act.foes) {
+      if (!standing(foe) || foe.flies || !inSpill(furnace, foe.x, foe.y)) continue;
+      events.push({ type: 'met', attack: BURN, foe, side: furnace.side, at: { x: foe.x, y: foe.y - 30 }, crowd: true }, ...hitFoe(foe, BURN, furnace.side));
+      if (!standing(foe)) act.felled++;
+    }
+  }
 
   // Peaches: one knocked loose falls to whatever is under it, and one he touches when he is short of a peach is eaten.
   for (const peach of act.peaches) {
