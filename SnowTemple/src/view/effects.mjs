@@ -191,25 +191,27 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     groundSpare = new Map();
   let serial = 0;
 
+  function takeEffect(geometry, grounded) {
+    const pool = grounded ? groundSpare : spare;
+    const spareItem = pool.get(geometry)?.pop();
+    if (spareItem) return spareItem;
+    const shader = createCustomShader3D({ key: 'snow-fx', glsl: FX_GLSL });
+    const material = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', blending: grounded ? 'normal' : 'additive', depthWrite: false, side: 'double', fog: false });
+    material.shader = shader;
+    const mesh = new Mesh3D(geometry, material);
+    mesh.frustumCulled = false;
+    mesh.castShadow = false;
+    scene.addChild(mesh);
+    return { mesh, shader, geometry, pool };
+  }
+
   /**
    * Show one shape. `mode` picks the shader's drawing; `life` is seconds; `from`/`to` are sizes it grows
    * between; `k` and `fade` are read by the shader; `track` is called each frame to move it.
    */
   function spawn(shape, { mode, x = 0, y = 0.07, z = 0, yaw = 0, life = 0.4, from = [1, 1, 1], to = from, tint = TINT.spear, power = 2, k = 0, fade = 1, track, hold = false, hard = false, edgeType = 0 }) {
     const geometry = typeof shape === 'string' ? shapes[shape] : shape;
-    const grounded = mode === 3 || geometry === shapes.scar;
-    const pool = grounded ? groundSpare : spare;
-    let item = pool.get(geometry)?.pop();
-    if (!item) {
-      const shader = createCustomShader3D({ key: 'snow-fx', glsl: FX_GLSL });
-      const material = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', blending: grounded ? 'normal' : 'additive', depthWrite: false, side: 'double', fog: false });
-      material.shader = shader;
-      const mesh = new Mesh3D(geometry, material);
-      mesh.frustumCulled = false;
-      mesh.castShadow = false;
-      scene.addChild(mesh);
-      item = { mesh, shader, geometry, pool };
-    }
+    const item = takeEffect(geometry, mode === 3 || geometry === shapes.scar);
     Object.assign(item, { age: 0, life, from, to, track, hold, k, fade, done: false });
     item.mesh.visible = true;
     item.mesh.renderOrder = mode === 3 ? 14 : 10;
@@ -226,6 +228,15 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     item.done = true;
     if (!item.pool.has(item.geometry)) item.pool.set(item.geometry, []);
     item.pool.get(item.geometry).push(item);
+  }
+
+  // Compile the shared effect program under the loading screen and return the pad
+  // to the pool without advancing the effect clock or seed.
+  function prepareFirstDraw() {
+    const item = takeEffect(shapes.pad, false);
+    item.mesh.name = 'snow-fx-pad';
+    item.mesh.setPosition(0, -1000, 0);
+    return () => release(item);
   }
 
   // ---- sparks, embers, dust: one pool of bright dots ----------------------------------------
@@ -483,5 +494,5 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     }
   }
 
-  return { spawn, release, burst, flash, dropSpear, update, clear, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
+  return { spawn, release, prepareFirstDraw, burst, flash, dropSpear, update, clear, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
 }
