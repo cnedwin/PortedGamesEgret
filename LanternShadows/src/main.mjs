@@ -4,6 +4,7 @@
 //   rules/hero.mjs   how the Monkey King moves, fights and is hurt (no drawing)
 //   rules/foes.mjs   the soldiers of heaven
 //   rules/boss.mjs   Nezha, who bars the gate
+//   rules/clones.mjs the hairs he blows into copies of himself
 //   rules/level.mjs  the ground, read from the level's Tiled map
 //   puppets.mjs      Spine skeletons, loaded as the engine's manifest lists them
 //   pictures.mjs     pictures read in the way every browser allows
@@ -12,7 +13,8 @@
 //
 // Address options: ?backend=webgpu draws with WebGPU instead of WebGL2, ?stats shows what is being drawn,
 // ?lang=en starts in English, ?slow=0.25 plays at a quarter of the speed, to watch how he moves, and ?from=nezha
-// begins at the court before the gate.
+// begins at the court before the gate. ?clones=200 sets how many copies a tuft of hair makes (a hundred unless
+// said), and keeps them all on the stage however slowly it is then drawn.
 import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createCamera2D } from '@egret/engine/camera';
 import { createParticleEmitter } from '@egret/engine/particles';
@@ -21,8 +23,9 @@ import { createBrowserGame } from '@egret/engine/web/game';
 import { createInput } from './input.mjs';
 import { createPictures } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
-import { createAct, remaining, stepAct } from './rules/act.mjs';
+import { createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
 import { BOSS, bossAnimation, present } from './rules/boss.mjs';
+import { HAIRS, cloneAnimation, out } from './rules/clones.mjs';
 import { foeAnimation } from './rules/foes.mjs';
 import { ATTACKS, TUNE, animationOf } from './rules/hero.mjs';
 import { CELL, readLevel } from './rules/level.mjs';
@@ -38,12 +41,12 @@ const canvas = $('stage'),
 // ---- Words -----------------------------------------------------------------------------------------------------
 let lang = query.get('lang') === 'en' || (!query.has('lang') && !navigator.language.startsWith('zh')) ? 'en' : 'zh';
 const KEY_HINTS = {
-  zh: [['A', 'D', '走'], ['K', '跳'], ['J', '棍，连按三下'], ['L', '筋斗云，可穿过枪尖'], ['P', '暂停']],
-  en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll, through a spear'], ['P', 'pause']]
+  zh: [['A', 'D', '走'], ['K', '跳'], ['J', '棍，连按三下'], ['L', '筋斗云，可穿过枪尖'], ['I', '身外身'], ['P', '暂停']],
+  en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll, through a spear'], ['I', 'clones'], ['P', 'pause']]
 };
 const WORDS = {
-  zh: { enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了', soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
-  en: { enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open', soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
+  zh: { tuft: '毫毛攒足了，可以使身外身', blown: '身外身！', crowd: (n, bones, rate) => `身外身 ${n}　骨骼 ${bones}　每秒 ${rate} 帧`, enter: '哪吒三太子踏风火轮到', phases: ['', '乾坤圈！一棍打回去', '三头六臂，风火轮！上云躲火'], opened: '哪吒败走，南天门开了', soldiers: n => `天兵 ${n}`, barred: n => `南天门不开：还有 ${n} 名天兵`, rested: '歇脚处已记下', best: n => `最高连击 ${n}`, count: '最高连击', time: '用时', falls: '倒地', wounds: '受伤', felled: '击退天兵', times: n => `${n} 次`, none: '无', seconds: n => `${n} 秒` },
+  en: { tuft: 'Hairs enough for the body beyond the body', blown: 'The body beyond the body!', crowd: (n, bones, rate) => `${n} clones, ${bones} bones moving, ${rate} frames a second`, enter: 'Prince Nezha comes down on his wheels of wind and fire', phases: ['', 'The Universe Ring! Knock it back with the staff', 'Three heads, six arms, wheels ablaze! Take to a cloud'], opened: 'Nezha is driven off, and the gate stands open', soldiers: n => `Soldiers ${n}`, barred: n => `The gate is shut: ${n} soldier${n === 1 ? '' : 's'} still standing`, rested: 'Resting place marked', best: n => `Best ${n}`, count: 'Best count', time: 'Time', falls: 'Falls', wounds: 'Wounds', felled: 'Soldiers felled', times: n => String(n), none: 'none', seconds: n => `${n} s` }
 };
 function speak() {
   document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
@@ -119,7 +122,10 @@ try {
 const level = readLevel(mapSource);
 /** Where the act begins: at its beginning, or at the court before the gate. */
 let from = query.get('from') === 'nezha' ? 'boss' : undefined;
-let act = createAct(level, { from });
+/** How many copies a tuft of hair makes; if the address says, that many are kept whatever it costs. */
+const TUFT = Math.max(10, Math.min(400, Math.round(Number(query.get('clones'))) || HAIRS.count)),
+  keepAll = query.has('clones');
+let act = createAct(level, { from, clones: TUFT });
 
 // ---- The stage -------------------------------------------------------------------------------------------------
 /** A picture placed by its top left corner and drawn `width` stage units wide. */
@@ -170,6 +176,7 @@ picture(engine.stage, art.frame, 0, 0, STAGE.width);
 // ---- The cast --------------------------------------------------------------------------------------------------
 const posts = act.posts.map(post => {
   const puppet = createPuppet(puppetOf('dummy'), scope);
+  puppet.bones = 8;
   puppet.node.x = post.x;
   puppet.node.y = post.y;
   puppet.play('idle', { loop: true });
@@ -178,11 +185,13 @@ const posts = act.posts.map(post => {
 });
 const soldiers = act.foes.map(foe => {
   const puppet = createPuppet(puppetOf(foe.kind), scope);
+  puppet.bones = 18;
   cast.addChild(puppet.node);
-  return { puppet, bones: 18 };
+  return { puppet };
 });
 // Nezha waits out of sight until he is called down.
 const nezha = createPuppet(puppetOf('nezha'), scope);
+nezha.bones = 21;
 nezha.node.visible = false;
 // He is a boy, and drawn small; on the stage he is shown a quarter larger, as the rules measure him.
 nezha.scale(1.25);
@@ -194,7 +203,23 @@ ringShown.scaleX = ringShown.scaleY = (BOSS.ring.radius * 2.2) / ringShown.natur
 ringShown.anchorOffsetX = ringShown.naturalWidth / 2;
 ringShown.anchorOffsetY = ringShown.naturalHeight / 2;
 ringShown.visible = false;
+// The clones stand between the soldiers and the Monkey King himself. Their puppets are made a few a frame once
+// the stage is up, so that a hundred skeletons are waiting by the time a tuft can be plucked.
+const mob = layer(cast);
+mob.blendMode = shadowBlend;
+const crowd = [];
+function warm(some) {
+  for (; some > 0 && crowd.length < TUFT; some--) {
+    const puppet = createPuppet(puppetOf('wukong'), scope);
+    puppet.bones = 25;
+    puppet.scale(HAIRS.scale);
+    puppet.node.visible = false;
+    mob.addChild(puppet.node);
+    crowd.push(puppet);
+  }
+}
 const wukong = createPuppet(puppetOf('wukong'), scope);
+wukong.bones = 25;
 cast.addChild(wukong.node);
 wukong.play('idle', { loop: true });
 /** Arrows in the air, each with the picture that shows it. */
@@ -252,6 +277,9 @@ function showCount() {
   $('best').textContent = words.best(act.best);
   $('soldiers').textContent = words.soldiers(remaining(act));
   peaches.forEach((peach, index) => peach.classList.toggle('is-eaten', index >= act.hero.health));
+  $('hairs-fill').style.width = `${(act.hairs / HAIRS.need) * 100}%`;
+  $('hairs').classList.toggle('is-ready', tuftReady(act));
+  document.querySelector('.pads').classList.toggle('has-tuft', tuftReady(act));
   $('boss').hidden = !(act.boss && present(act.boss));
   if (act.boss) $('boss-health').style.width = `${(act.boss.health / BOSS.health) * 100}%`;
 }
@@ -322,13 +350,31 @@ function happen(events) {
         seat.puppet.then('idle');
         burst(straw, event.at.x, event.at.y, 4 + event.attack.power * 5);
       }
-      land(event.attack, pan);
+      // A blow of the crowd's is lighter on the ear and on the booth than one of his own.
+      if (event.crowd) (sound.play('clap', { volume: 0.45, rate: 1.2 + Math.random() * 0.5, pan: panOf(event.at.x) }), camera.shake({ trauma: event.attack.shake }));
+      else land(event.attack, pan);
       counted = true;
     } else if (type === 'deflect') {
       burst(sparks, event.at.x, event.at.y, event.ring ? 30 : 14);
       sound.play(event.ring ? 'smallGong' : 'clap', { volume: 0.8, rate: 1.5, pan: panOf(event.at.x) });
       freeze = Math.max(freeze, event.ring ? 0.08 : 0.04);
-    } else if (type.startsWith('boss') || type.startsWith('ring') || type === 'gate-open') (told(event), (counted = true)); else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
+    } else if (type.startsWith('boss') || type.startsWith('ring') || type === 'gate-open') (told(event), (counted = true));
+    else if (type === 'hairs-full') (notice(WORDS[lang].tuft), sound.play('smallGong', { volume: 0.6, rate: 1.5 }), (counted = true));
+    else if (type === 'conjure') (sound.play('whirl', { volume: 0.8, rate: 1.3, pan }), (counted = true));
+    else if (type === 'clones') {
+      notice(WORDS[lang].blown);
+      sound.play('gong', { volume: 1, rate: 0.9 });
+      burst(dust, hero.x, hero.y - 40, 40);
+      burst(sparks, hero.x, hero.y - 80, 30);
+      camera.shake({ trauma: 0.7 });
+      input.gamepads?.rumble(0, { duration: 300, weak: 0.9, strong: 0.6 });
+      counted = true;
+    } else if (type === 'clones-gone') {
+      // Each goes in a puff, as far as the puffs go round.
+      event.at.slice(0, 48).forEach(at => burst(dust, at.x, at.y - 30, 4));
+      sound.play('whirl', { volume: 0.6, rate: 0.8, pan });
+      counted = true;
+    } else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
     else if (type === 'foe-strike' || type === 'arrow') sound.play('swish', { volume: 0.55, rate: type === 'arrow' ? 1.7 : 1.3, pan: panOf(event.foe.x) });
     else if (type === 'foe-down') (sound.play('drum', { volume: 0.8, rate: 0.7, pan: panOf(event.foe.x) }), (counted = true));
     else if (type === 'hurt') {
@@ -434,6 +480,25 @@ function update(seconds) {
     puppet.speed(held);
     moving.push(puppet);
   });
+  // The clones: each puppet of the crowd shows one of them, as many as the stage is drawn fast enough to carry.
+  warm(2);
+  let shown = 0;
+  for (let index = 0; index < crowd.length; index++) {
+    const puppet = crowd[index],
+      clone = act.clones[index],
+      visible = !!clone && out(clone) && index < carried;
+    puppet.node.visible = visible;
+    if (!visible) continue;
+    shown++;
+    const doing = cloneAnimation(clone);
+    puppet.play(doing.name, { loop: doing.loop, key: doing.key, mix: 0.05 });
+    puppet.face(clone.facing);
+    puppet.node.x = clone.x;
+    puppet.node.y = clone.y;
+    puppet.speed(held);
+    if (inView(clone.x, centre)) moving.push(puppet);
+  }
+
   // Nezha: what he is doing, with his rage and the ring in his hand each shown or put away on a track of its own.
   const boss = act.boss,
     here = !!boss && present(boss);
@@ -467,10 +532,12 @@ function update(seconds) {
       }
     }
   }
+  const before = performance.now();
   if (tick) {
     for (const puppet of moving) puppet.advance(tick);
     tick = undefined;
   }
+  measure(shown, moving, performance.now() - before);
 
   // Arrows: a picture for each one in the air, turned the way it flies.
   for (const arrow of act.arrows) {
@@ -516,6 +583,30 @@ function update(seconds) {
   if (stats) showStats(moving.length);
 }
 
+// How fast the stage is being drawn, by the clock on the wall; and, while the clones are out, the line that
+// tells how many there are and how many bones are being moved for them all.
+let lastFrame = performance.now(),
+  frameMs = 16.7,
+  poseMs = 0,
+  slowFor = 0,
+  toldAt = 0,
+  carried = TUFT;
+function measure(shown, moving, posing) {
+  const now = performance.now(),
+    took = Math.min(500, now - lastFrame);
+  lastFrame = now;
+  frameMs += (took - frameMs) * 0.1;
+  poseMs += (posing - poseMs) * 0.1;
+  $('crowd').hidden = shown === 0;
+  if (shown === 0) return void (slowFor = 0);
+  // A stage that cannot carry them all sends some of the hairs back, unless the address asked for every one.
+  slowFor = frameMs > 45 && !paused ? slowFor + took : 0;
+  if (!keepAll && slowFor > 700 && carried > 20) ((carried = Math.max(20, Math.floor(carried * 0.7))), (slowFor = 0));
+  if (now - toldAt < 200) return;
+  toldAt = now;
+  $('crowd').textContent = WORDS[lang].crowd(shown, moving.reduce((sum, puppet) => sum + puppet.bones, 0), Math.round(1000 / frameMs));
+}
+
 // ---- Around the play -------------------------------------------------------------------------------------------
 const stats = query.has('stats') ? $('stats') : undefined;
 let frames = 0,
@@ -525,7 +616,7 @@ function showStats(moved) {
   frames++;
   const now = performance.now();
   if (now - since >= 500) (rate = (frames * 1000) / (now - since)), (frames = 0), (since = now);
-  stats.textContent = `${game.backend}  ${rate.toFixed(0)} fps\npuppets moving ${moved} of ${posts.length + soldiers.length + 2}\n${animationOf(act.hero).name}  x ${act.hero.x.toFixed(0)}  y ${act.hero.y.toFixed(0)}`;
+  stats.textContent = `${game.backend}  ${rate.toFixed(0)} fps\npuppets moving ${moved} of ${posts.length + soldiers.length + 2 + crowd.length}, posed in ${poseMs.toFixed(1)} ms\n${animationOf(act.hero).name}  x ${act.hero.x.toFixed(0)}  y ${act.hero.y.toFixed(0)}`;
 }
 if (stats) stats.hidden = false;
 
@@ -540,7 +631,7 @@ $('paused').addEventListener('click', () => pause(false));
 
 /** Puts the act back to its beginning. */
 function again() {
-  act = createAct(level, { from });
+  act = createAct(level, { from, clones: TUFT });
   for (const shown of arrows.values()) shown.dispose();
   arrows.clear();
   freeze = carry = lead = 0;
@@ -602,6 +693,7 @@ globalThis.__lantern = {
   get boss() {
     return act.boss;
   },
+  crowd: () => ({ made: crowd.length, carried, frameMs, poseMs }),
   tap: action => input.tap(action),
   hold: (action, down) => input.hold(action, down),
   sounds: () => sound.ready,

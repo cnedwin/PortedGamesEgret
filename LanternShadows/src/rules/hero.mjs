@@ -25,7 +25,9 @@ export const TUNE = {
   /** Peaches: the blows he can take before he falls. */
   health: 5,
   /** A blow throws him back for this long, and for this long after it nothing more can hurt him. */
-  hurt: { seconds: 0.34, speed: 300, lift: 320, safe: 1.1 }
+  hurt: { seconds: 0.34, speed: 300, lift: 320, safe: 1.1 },
+  /** Plucking a tuft of hair and blowing on it: how long it takes, and the moment in it at which the hairs change. */
+  conjure: { seconds: 0.7, at: 0.4 }
 };
 
 /**
@@ -48,8 +50,15 @@ export function createHero(x, y) {
 /** The room he takes up, as a rectangle of the stage: what a spear or an arrow has to meet. */
 export const bodyOf = hero => ({ x: hero.x - TUNE.halfWidth, y: hero.y - TUNE.height + 10, width: TUNE.halfWidth * 2, height: TUNE.height - 10 });
 
-/** Whether a blow would land on him now. The cloud roll carries him through anything. */
-export const canBeHurt = hero => hero.state !== 'down' && hero.state !== 'dash' && hero.safe <= 0;
+/** Whether a blow would land on him now. The cloud roll carries him through anything, and so does working his magic. */
+export const canBeHurt = hero => hero.state !== 'down' && hero.state !== 'dash' && hero.state !== 'conjure' && hero.safe <= 0;
+
+/** He stops what he is doing to pluck a tuft of hair. Returns whether he could: not while thrown back or fallen. */
+export function conjure(hero) {
+  if (hero.state === 'hurt' || hero.state === 'down' || hero.state === 'conjure') return false;
+  Object.assign(hero, { state: 'conjure', time: 0, queued: false, grace: 0, serial: hero.serial + 1 });
+  return true;
+}
 
 /**
  * He is struck from the side `from` (an x). Returns what happened: `hurt`, and `down` with it if that was his
@@ -102,6 +111,15 @@ export function stepHero(hero, input, dt, level) {
     hero.time += dt;
     if (hero.grounded) hero.vx = toward(hero.vx, 0, TUNE.groundBrake * 0.5 * dt);
     if (hero.state === 'hurt' && hero.time >= TUNE.hurt.seconds) hero.state = 'move';
+    input = { move: 0, jump: false, jumpHeld: true, attack: false, dash: false };
+    hero.buffer = 0;
+  }
+
+  // Working his magic he stands where he is and answers to nothing until it is done.
+  if (hero.state === 'conjure') {
+    hero.time += dt;
+    hero.vx = toward(hero.vx, 0, TUNE.groundBrake * dt);
+    if (hero.time >= TUNE.conjure.seconds) hero.state = 'move';
     input = { move: 0, jump: false, jumpHeld: true, attack: false, dash: false };
     hero.buffer = 0;
   }
@@ -177,7 +195,7 @@ export function stepHero(hero, input, dt, level) {
 
 /** The animation that shows what he is doing, and a number that changes whenever it should start again. */
 export function animationOf(hero) {
-  if (hero.state === 'down' || hero.state === 'hurt') return { name: hero.state, key: hero.serial };
+  if (hero.state === 'down' || hero.state === 'hurt' || hero.state === 'conjure') return { name: hero.state, key: hero.serial };
   if (hero.state === 'dash') return { name: 'dash', key: hero.serial };
   if (hero.state === 'attack') return { name: ATTACKS[hero.attack].name, key: hero.serial };
   if (!hero.grounded) return { name: hero.vy < 60 ? 'jump' : 'fall', key: 0 };

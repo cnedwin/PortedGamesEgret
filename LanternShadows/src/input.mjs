@@ -1,5 +1,5 @@
 // What the player asks for, from the keyboard, a gamepad and the buttons on a touch screen, as one answer a step:
-// `{ move, jump, jumpHeld, attack, dash }`. A press is reported on one step only, however long it is held.
+// `{ move, jump, jumpHeld, attack, dash, special }`. A press is reported on one step only, however long it is held.
 import { createBrowserGamepadInput } from '@egret/engine/web/gamepad';
 
 const KEYS = {
@@ -7,15 +7,16 @@ const KEYS = {
   right: ['ArrowRight', 'KeyD'],
   jump: ['Space', 'KeyK', 'ArrowUp', 'KeyW'],
   attack: ['KeyJ', 'KeyZ'],
-  dash: ['KeyL', 'ShiftLeft', 'ShiftRight', 'KeyX']
+  dash: ['KeyL', 'ShiftLeft', 'ShiftRight', 'KeyX'],
+  special: ['KeyI', 'KeyC']
 };
 const ACTION_OF = Object.fromEntries(Object.entries(KEYS).flatMap(([action, codes]) => codes.map(code => [code, action])));
-const PAD = { jump: 'a', attack: 'x', dash: 'b' };
+const PAD = { jump: 'a', attack: 'x', dash: 'b', special: 'y' };
 
 export function createInput(target = window) {
-  const held = { left: false, right: false, jump: false, attack: false, dash: false },
-    pressed = { jump: false, attack: false, dash: false },
-    pad = { jump: false, attack: false, dash: false };
+  const held = { left: false, right: false, jump: false, attack: false, dash: false, special: false },
+    pressed = { jump: false, attack: false, dash: false, special: false },
+    pad = { jump: false, attack: false, dash: false, special: false };
   const set = (action, down) => {
     if (down && !held[action] && action in pressed) pressed[action] = true;
     held[action] = down;
@@ -93,8 +94,8 @@ export function createInput(target = window) {
         }
         jumpHeld ||= pad.jump;
       }
-      const out = { move, jump: pressed.jump, jumpHeld, attack: pressed.attack, dash: pressed.dash };
-      pressed.jump = pressed.attack = pressed.dash = false;
+      const out = { move, jump: pressed.jump, jumpHeld, attack: pressed.attack, dash: pressed.dash, special: pressed.special };
+      pressed.jump = pressed.attack = pressed.dash = pressed.special = false;
       return out;
     },
     /** Holds an action down or lets it go, as a key would: for a check that plays the game by itself. */

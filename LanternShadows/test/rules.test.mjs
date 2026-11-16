@@ -4,10 +4,11 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { test } from 'node:test';
 
-import { COMBO_SECONDS, POST_ROOM, REVIVE_SECONDS, createAct, postBox, rankOf, remaining, stepAct } from '../src/rules/act.mjs';
+import { COMBO_SECONDS, POST_ROOM, REVIVE_SECONDS, createAct, postBox, rankOf, remaining, stepAct, tuftReady } from '../src/rules/act.mjs';
 import { BOSS, bossAnimation, bossBox, bossReach, createBoss, hitBoss, open, present, restoreBoss, stepBoss, wakeBoss } from '../src/rules/boss.mjs';
+import { HAIRS, cloneAnimation, createClones, out } from '../src/rules/clones.mjs';
 import { FOES, LIE, createFoe, foeAnimation, hitFoe, stepFoe, thrust } from '../src/rules/foes.mjs';
-import { ATTACKS, CHAIN_GRACE, TUNE, animationOf, bodyOf, createHero, hurtHero, reach, reviveHero, stepHero } from '../src/rules/hero.mjs';
+import { ATTACKS, CHAIN_GRACE, TUNE, animationOf, bodyOf, canBeHurt, createHero, hurtHero, reach, reviveHero, stepHero } from '../src/rules/hero.mjs';
 import { CELL, flatLevel, lay, moveBody, overlaps, readLevel } from '../src/rules/level.mjs';
 
 const DT = 1 / 120,
@@ -771,6 +772,104 @@ test('if he falls in the court the fight goes back to the start of its phase, an
   assert.ok(types(play(act, 1)).includes('clear'));
   assert.equal(act.state, 'cleared');
   restoreBoss(createBoss(0, 0, COURT));
+});
+
+// ---- The body beyond the body ----------------------------------------------------------------------------------
+/** Gives him hairs enough and has him pluck them: plays until the clones are out, and returns what happened. */
+function blow(act) {
+  act.hairs = HAIRS.need;
+  return [...stepAct(act, ask({ special: true }), DT), ...play(act, TUNE.conjure.at + DT)];
+}
+
+test('his own blows that land are hairs toward a tuft, and it cannot be plucked before there are enough', () => {
+  const act = actWith([['post', 300]]);
+  act.hero.x = 300 - POST_ROOM;
+  assert.equal(tuftReady(act), false);
+  assert.deepEqual(types(stepAct(act, ask({ special: true }), DT)), [], 'asked for too soon, nothing happens');
+  tap(act, { attack: true }, 0.4);
+  assert.equal(act.hairs, 1);
+  act.hairs = HAIRS.need - 1;
+  const events = tap(act, { attack: true }, 0.4);
+  assert.ok(types(events).includes('hairs-full'));
+  assert.equal(act.hairs, HAIRS.need);
+  assert.equal(tuftReady(act), true);
+  tap(act, { attack: true }, 0.4);
+  assert.equal(act.hairs, HAIRS.need, 'a full tuft is no fuller for another blow');
+});
+
+test('he plucks, blows, and a hundred of him come out over a moment; nothing hurts him while he does', () => {
+  const act = actWith([]);
+  act.hairs = HAIRS.need;
+  assert.deepEqual(types(stepAct(act, ask({ special: true }), DT)), ['conjure']);
+  assert.deepEqual([act.hero.state, animationOf(act.hero).name, canBeHurt(act.hero), act.hairs], ['conjure', 'conjure', false, 0]);
+  assert.equal(act.clones.length, 0, 'not until he blows');
+  const events = play(act, TUNE.conjure.at + DT);
+  assert.deepEqual(events.filter(event => event.type === 'clones'), [{ type: 'clones', count: HAIRS.count }]);
+  assert.ok(act.clones.filter(out).length < 20, 'they do not all come at once');
+  play(act, HAIRS.wave);
+  assert.equal(act.clones.filter(out).length, HAIRS.count);
+  assert.equal(act.hero.state, 'move', 'and he is his own man again');
+  assert.equal(tuftReady(act), false);
+  assert.deepEqual(cloneAnimation({ state: 'tumble' }).name, 'dash', 'they come out turning somersaults');
+  // A tuft of another size, as the address can ask for.
+  const few = createAct(flatLevel(2400, GROUND, [{ type: 'spawn', x: 200, y: GROUND }]), { clones: 12 });
+  blow(few);
+  assert.equal(few.clones.length, 12);
+});
+
+test('with nobody to go for the clones run about the stage, and when their time is up they are hairs again', () => {
+  const act = actWith([]);
+  blow(act);
+  play(act, 3);
+  const { clones } = act;
+  assert.ok(clones.every(clone => clone.x >= HAIRS.halfWidth && clone.x <= act.level.width - HAIRS.halfWidth && clone.y <= GROUND + 0.01), 'they stay on the stage');
+  assert.ok(clones.some(clone => clone.facing > 0) && clones.some(clone => clone.facing < 0), 'they go both ways');
+  assert.ok(new Set(clones.map(clone => Math.round(clone.x / 50))).size >= 10, 'and spread out');
+  assert.ok(clones.every(clone => Math.abs(clone.x - act.hero.x) < HAIRS.stray + 320), 'but not far from him');
+  const end = play(act, HAIRS.seconds - 3);
+  const gone = end.find(event => event.type === 'clones-gone');
+  assert.equal(gone.at.length, HAIRS.count);
+  assert.equal(act.clones.length, 0);
+  // The same tuft blown the same way comes out the same.
+  assert.deepEqual(createClones(act.hero, 30, 7), createClones(act.hero, 30, 7));
+  assert.notDeepEqual(createClones(act.hero, 30, 7), createClones(act.hero, 30, 8));
+});
+
+test('a crowd of clones fells soldiers, on the ground and on a cloud, and its blows are counted but grow no hairs', () => {
+  const level = lay(flatLevel(2400, GROUND, [{ type: 'spawn', x: 200, y: GROUND }, { type: 'spearman', x: 520, y: GROUND }, { type: 'archer', x: 17 * CELL, y: 7 * CELL }]), 'cloud', 15, 7, 4),
+    act = createAct(level);
+  blow(act);
+  const events = play(act, 5, ask({ move: -1 }));
+  assert.equal(remaining(act), 0, 'both are down');
+  assert.equal(act.felled, 2);
+  assert.ok(events.some(event => event.type === 'met' && event.crowd && event.foe));
+  assert.ok(act.best >= 8, `the count reached ${act.best}`);
+  assert.equal(act.hairs, 0);
+});
+
+test('against Nezha the crowd wears a phase down and cannot skip one; if the Monkey King falls, they are gone', () => {
+  const act = court(),
+    { boss, hero } = act;
+  hero.x = 1200;
+  play(act, BOSS.enter.seconds + 0.1);
+  hero.x = boss.x - 400;
+  blow(act);
+  let events = [];
+  for (let t = 0; t < HAIRS.seconds && act.clones.length; t += DT) events.push(...stepAct(act, ask({ move: hero.x > boss.arena.left + 100 ? -1 : 0, dash: hero.state === 'move' && boss.state === 'windup' }), DT));
+  const dealt = events.filter(event => event.type === 'met' && event.crowd && event.boss).length;
+  assert.ok(dealt >= 8 && dealt <= 22, `the crowd landed ${dealt} blows, and he is in ${boss.state} with ${boss.health}`);
+  assert.ok(boss.health >= BOSS.phases[0].until, 'he is still in his first phase, or just out of it');
+  assert.ok(boss.phase <= 1);
+
+  const fallen = court();
+  fallen.hero.x = 1200;
+  play(fallen, 0.2);
+  blow(fallen);
+  play(fallen, 1);
+  hurtHero(fallen.hero, 0, TUNE.health);
+  fallen.reviveIn = REVIVE_SECONDS;
+  assert.ok(types(stepAct(fallen, ask(), DT)).includes('clones-gone'));
+  assert.equal(fallen.clones.length, 0);
 });
 
 /** The clouds of a level, each as the span it covers and the height of its top. */
