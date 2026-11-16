@@ -60,5 +60,13 @@ function addDigit(palm, prefix, wrist, points) {
 
 /** The order bones are numbered in for skinning. */
 export const BONES = Object.keys(JOINTS);
+// The yard's weapons need palm and ankle motion, with a smaller palette than Lin Chong's fingers.
+export const YARD_BONES = [...BASE_BONES, 'footL', 'footR', 'palmL', 'palmR'];
+export const YARD_GRIPS = {
+  shield: [-0.018, 0.015, -0.045],
+  bow: [0, 0, 0.22],
+  bowTipZ: -0.04,
+  bowHalfHeight: 0.64
+};
 /** Rotation about z of the joints that are not straight in the sculpted pose. */
 export const BIND = { armL: 0.6, armR: -0.6, legL: 0.09, legR: -0.09 };
