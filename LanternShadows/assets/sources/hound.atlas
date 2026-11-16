@@ -1,0 +1,33 @@
+hound.png
+size: 744,78
+filter: Linear,Linear
+repeat: none
+pma: false
+hindF1
+bounds: 2,2,48,72
+hindB1
+bounds: 52,2,39,69
+foreF1
+bounds: 93,2,39,69
+foreB1
+bounds: 134,2,33,69
+body
+bounds: 169,2,117,60
+neck
+bounds: 288,2,63,60
+head
+bounds: 353,2,75,57
+tail2
+bounds: 430,2,42,57
+foreB2
+bounds: 474,2,39,57
+hindB2
+bounds: 515,2,39,57
+hindF2
+bounds: 556,2,39,57
+foreF2
+bounds: 597,2,39,57
+tail1
+bounds: 638,2,57,48
+jaw
+bounds: 697,2,45,27

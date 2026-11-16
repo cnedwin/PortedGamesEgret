@@ -1,0 +1,25 @@
+hawk.png
+size: 798,132
+filter: Linear,Linear
+repeat: none
+pma: false
+wingF1
+bounds: 2,2,90,126
+wingB1
+bounds: 94,2,81,123
+wingF2
+bounds: 177,2,105,108
+wingB2
+bounds: 284,2,90,102
+legs
+bounds: 376,2,63,75
+body
+bounds: 441,2,102,69
+tail
+bounds: 545,2,87,66
+head
+bounds: 634,2,66,48
+neck1
+bounds: 702,2,48,48
+neck2
+bounds: 752,2,42,45

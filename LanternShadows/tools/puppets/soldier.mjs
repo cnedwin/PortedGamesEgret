@@ -1,6 +1,7 @@
 // The soldiers of heaven, as shadow puppets: one figure in scale armour, carried with a spear, with a bow, or
-// in black armour with a hammer and a tall shield. Drawn standing on y = 200 and facing right, as the other
-// puppets are; tools/puppets/spearman.mjs, archer.mjs and guard.mjs each ask for one of the three.
+// in black armour with a hammer and a tall shield. The same figure in pale armour and a red cloak, with a third
+// eye and a three-pointed glaive, is Erlang. Drawn standing on y = 200 and facing right, as the other puppets
+// are; tools/puppets/spearman.mjs, archer.mjs, guard.mjs and erlang.mjs each ask for one of the four.
 import { DYE, barbs, beads, blob, crescent, curve, dot, leather, line, poly, ribbon, scales, slit, stud } from '../leather.mjs';
 
 const BONES = [
@@ -43,6 +44,21 @@ const WEAPONS = {
     leather({ shape: poly([[118.7, 96], [121.3, 96], [121.3, 150], [118.7, 150]]), fill: DYE.black, opacity: 0.95, edge: 1 }) +
     leather({ shape: blob([[120, 76], [128, 80], [130, 88], [128, 96], [120, 100], [112, 96], [110, 88], [112, 80]], 0.5), fill: DYE.gold, holes: [slit([120, 79], [120, 97], 0.9), slit([115, 81], [113.6, 95], 0.7), slit([125, 81], [126.4, 95], 0.7)], edge: 1 })
 };
+/** Erlang's glaive, held upright: three points on a long haft, the middle one a leaf with an edge to either side. */
+WEAPONS.glaive =
+  leather({ shape: poly([[118.7, 60], [121.3, 60], [121.3, 198], [118.7, 198]]), fill: DYE.black, opacity: 0.95, edge: 1 }) +
+  leather({ shape: blob([[120, 26], [124.6, 42], [122.4, 60], [117.6, 60], [115.4, 42]], 0.3), fill: DYE.hide, holes: [slit([120, 32], [120, 56], 0.8)], edge: 1 }) +
+  leather({ shape: blob([[113, 60], [127, 60], [131, 52], [133.4, 38], [129.6, 47], [126, 55], [114, 55], [110.4, 47], [106.6, 38], [109, 52]], 0.25), fill: DYE.hide, holes: [dot(120, 57.4, 1.1)], edge: 1 }) +
+  leather({ shape: blob([[116.6, 61], [123.4, 61], [126, 73], [120, 70], [114, 73]], 0.4), fill: DYE.red, holes: [slit([118.4, 63], [117, 70], 0.5), slit([121.6, 63], [123, 70], 0.5)], edge: 0.9 });
+/** His cloak, hanging from the shoulders behind him. */
+const CLOAK = leather({
+  shape: blob([[96, 102], [104, 101], [100, 124], [96, 150], [88, 172], [78, 176], [82, 150], [86, 124], [90, 108]], 0.4),
+  fill: DYE.red,
+  opacity: 0.84,
+  holes: [slit([92, 112], [86, 150], 1.1), slit([96, 118], [91, 160], 0.9), crescent(84, 166, 2.6, 60)]
+});
+/** The eye in his forehead, painted on the helmet. */
+const THIRD_EYE = `<path d="${slit([107.4, 75.4], [107.8, 81.6], 1.9)}" fill="${DYE.red}" stroke="${DYE.ink}" stroke-width="0.6"/><circle cx="107.6" cy="78.5" r="0.9" fill="${DYE.ink}"/>`;
 /** The tall shield, carried on the other arm: drawn where that hand hangs, and brought round in front by the arm. */
 const SHIELD = leather({
   shape: blob([[84, 108], [95, 104], [106, 108], [107, 150], [95, 166], [83, 150]], 0.3),
@@ -54,8 +70,9 @@ const SHIELD = leather({
 
 function partsOf(weapon) {
   // The guard's armour is black where the others' is teal.
-  const coat = weapon === 'shield' ? DYE.black : DYE.teal;
+  const coat = weapon === 'shield' ? DYE.black : weapon === 'glaive' ? DYE.hide : DYE.teal;
   return [
+    ...(weapon === 'glaive' ? [['cloak', 'chest', CLOAK]] : []),
     ['plume2', 'plume2', leather({ shape: ribbon([[96, 58], [91, 53], [86, 50]], [2.6, 2.2, 1.1]), fill: DYE.red, holes: barbs([[96, 58], [86, 50]], 1.8, 3, 0.7, 0.5) })],
     ['plume1', 'plume1', leather({ shape: ribbon([[102, 71], [99, 64], [96, 58]], [1.8, 2.6, 2.6]), fill: DYE.red, holes: barbs([[102, 71], [96, 58]], 2, 3, 0.7, 0.5) }) + stud(96, 58, 1)],
     ['armB1', 'armB1', limb([[95, 105], [92, 113], [90, 122]], [4.8, 4.4, 3.8], coat, [crescent(92.4, 110, 2.2, 200), crescent(91, 116, 2, 200)])],
@@ -100,7 +117,8 @@ function partsOf(weapon) {
           // The helmet, its cheek piece, and the spike the plume flies from.
           leather({ shape: blob([[91.6, 86.4], [93.6, 77], [102.4, 71.6], [110.6, 76], [112.4, 82.6], [101, 82.4]], 0.45), fill: DYE.gold, holes: [...beads([94.6, 83.6], [110, 80.6], 6, 0.7), crescent(101.6, 76.6, 2.6, 270)], edge: 1 }) +
           leather({ shape: blob([[92.6, 85], [98, 85], [99, 93], [95, 96], [92, 92]], 0.4), fill: DYE.gold, holes: [dot(95.6, 90, 1)], edge: 0.9 }) +
-          leather({ shape: poly([[100.6, 72.4], [104, 72.4], [102.6, 66]]), fill: DYE.gold, edge: 0.9 })
+          leather({ shape: poly([[100.6, 72.4], [104, 72.4], [102.6, 66]]), fill: DYE.gold, edge: 0.9 }) +
+          (weapon === 'glaive' ? THIRD_EYE : '')
       }) + stud(102, 100, 1.1)
     ],
     ['weapon', 'weapon', WEAPONS[weapon]],
@@ -362,6 +380,79 @@ ANIMATIONS.shield = {
     }
   },
   hurt: { ...hurt, bones: { ...hurt.bones, armB1: { rot: [[0, 78], [0.3, 30, 'out'], [1, 78]] }, armB2: { rot: [[0, 30], [0.3, 50, 'out'], [1, 30]] } } },
+  down
+};
+
+// Erlang moves as the guard does, without a shield to mind: his blow is the guard's hammer blow made with the
+// glaive, and what else he does is his own.
+const free = bones => Object.fromEntries(Object.entries(bones).filter(([bone]) => bone !== 'armB1' && bone !== 'armB2'));
+const stance = (t, legs) => [[0, 0], [t, legs, 'out'], [1, legs]];
+ANIMATIONS.glaive = {
+  idle: ANIMATIONS.spear.idle,
+  walk: ANIMATIONS.spear.walk,
+  windup: { seconds: 0.4, bones: { ...free(ANIMATIONS.shield.windup.bones), armB1: { rot: [[0, 0], [1, 40, 'out']] }, armB2: { rot: [[0, 0], [1, 50, 'out']] } } },
+  attack: { seconds: 0.56, events: [[0.2, 'hit']], bones: { ...free(ANIMATIONS.shield.attack.bones), armB1: { rot: [[0, 40], [0.2, -30, 'in'], [1, 0]] }, armB2: { rot: [[0, 50], [0.2, 16, 'in'], [1, 0]] } } },
+  // Gathered to spring: before a leap, and before he changes his shape. It holds its last pose.
+  crouch: {
+    seconds: 0.36,
+    bones: {
+      hip: { pos: [[0, 0, 0], [0.7, -2, -16, 'out'], [1, -2, -16]], rot: stance(0.7, -6) },
+      chest: { rot: stance(0.7, -16) },
+      head: { rot: stance(0.7, 14) },
+      armF1: { rot: stance(0.7, -34) },
+      weapon: { rot: stance(0.7, -58) },
+      armB1: { rot: stance(0.7, 30) },
+      legF1: { rot: stance(0.7, 46) },
+      legF2: { rot: stance(0.7, -82) },
+      legB1: { rot: stance(0.7, 28) },
+      legB2: { rot: stance(0.7, -70) },
+      footF: { rot: stance(0.7, 30) },
+      footB: { rot: stance(0.7, 36) },
+      plume1: { rot: stance(0.7, 12) },
+      plume2: { rot: stance(0.7, 20) }
+    }
+  },
+  // In the air, the glaive carried up behind his head. It holds its last pose until he comes down.
+  leap: {
+    seconds: 0.3,
+    bones: {
+      hip: { pos: [[0, -2, -16], [1, 0, 4, 'out']], rot: [[0, -6], [1, 8, 'out']] },
+      chest: { rot: [[0, -16], [1, 14, 'out']] },
+      head: { rot: [[0, 14], [1, -10, 'out']] },
+      armF1: { rot: [[0, -34], [1, 150, 'out']] },
+      armF2: { rot: [[0, 0], [1, 30, 'out']] },
+      weapon: { rot: [[0, -58], [1, 40, 'out']] },
+      armB1: { rot: [[0, 30], [1, 40, 'out']] },
+      armB2: { rot: [[0, 0], [1, 50, 'out']] },
+      legF1: { rot: [[0, 46], [1, 52, 'out']] },
+      legF2: { rot: [[0, -82], [1, -90, 'out']] },
+      legB1: { rot: [[0, 28], [1, -24, 'out']] },
+      legB2: { rot: [[0, -70], [1, -44, 'out']] },
+      plume1: { rot: [[0, 12], [1, 30]] },
+      plume2: { rot: [[0, 20], [1, 44]] },
+      skirt: { rot: [[0, 0], [1, 14]] }
+    }
+  },
+  // Between phases: the glaive held aloft and his head thrown back.
+  roar: {
+    seconds: 1.4,
+    bones: {
+      hip: { pos: [[0, 0, 0], [0.2, 0, 4, 'out'], [0.8, 0, 4], [1, 0, 0]] },
+      chest: { rot: [[0, 0], [0.2, 16, 'out'], [0.5, 19], [0.8, 16], [1, 0]] },
+      head: { rot: [[0, 0], [0.2, 18, 'out'], [0.8, 16], [1, 0]] },
+      armF1: { rot: [[0, 0], [0.2, 128, 'out'], [0.5, 134], [0.8, 128], [1, 0]] },
+      armF2: { rot: [[0, 0], [0.2, 20, 'out'], [0.8, 20], [1, 0]] },
+      weapon: { rot: [[0, 0], [0.2, -24, 'out'], [0.8, -24], [1, 0]] },
+      armB1: { rot: [[0, 0], [0.2, -64, 'out'], [0.8, -60], [1, 0]] },
+      armB2: { rot: [[0, 0], [0.2, -30, 'out'], [0.8, -30], [1, 0]] },
+      legF1: { rot: [[0, 0], [0.2, 16, 'out'], [0.8, 16], [1, 0]] },
+      legB1: { rot: [[0, 0], [0.2, -16, 'out'], [0.8, -16], [1, 0]] },
+      plume1: { rot: [[0, 0], [0.2, -30], [0.5, 10], [0.8, -10], [1, 0]] },
+      plume2: { rot: [[0, 0], [0.26, -44], [0.56, 16], [0.86, -14], [1, 0]] }
+    }
+  },
+  stun: { seconds: 1.3, bones: { ...free(ANIMATIONS.shield.open.bones), armB1: { rot: [[0, 0], [0.14, 54, 'out'], [0.8, 40], [1, 0]] }, armB2: { rot: [[0, 0], [0.14, 30, 'out'], [0.8, 24], [1, 0]] } } },
+  hurt,
   down
 };
 

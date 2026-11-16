@@ -7,6 +7,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import { BOSS } from '../src/rules/boss.mjs';
+import { ERLANG } from '../src/rules/erlang.mjs';
 import { FOES } from '../src/rules/foes.mjs';
 import { ATTACKS, TUNE } from '../src/rules/hero.mjs';
 import { skeletonBones, skeletonOf, timelines } from '../tools/author.mjs';
@@ -15,6 +16,9 @@ import * as act1 from '../tools/levels/act1.mjs';
 import * as archer from '../tools/puppets/archer.mjs';
 import * as dummy from '../tools/puppets/dummy.mjs';
 import * as crane from '../tools/puppets/crane.mjs';
+import * as erlangPuppet from '../tools/puppets/erlang.mjs';
+import * as hawk from '../tools/puppets/hawk.mjs';
+import * as hound from '../tools/puppets/hound.mjs';
 import * as guard from '../tools/puppets/guard.mjs';
 import * as nezha from '../tools/puppets/nezha.mjs';
 import * as spearman from '../tools/puppets/spearman.mjs';
@@ -23,7 +27,7 @@ import { SCENERY } from '../tools/scenery.mjs';
 
 const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..'),
   read = file => fs.readFileSync(path.join(ROOT, file)),
-  PUPPETS = { wukong, dummy, spearman, archer, nezha, guard, crane };
+  PUPPETS = { wukong, dummy, spearman, archer, nezha, guard, crane, erlang: erlangPuppet, hawk, hound };
 
 test('each puppet is put together soundly', () => {
   for (const [name, puppet] of Object.entries(PUPPETS)) {
@@ -82,7 +86,7 @@ test("the puppet's blows are as long as the rules say, and strike when the rules
 });
 
 test('a loop ends as it began, so that it repeats without a jerk', () => {
-  for (const [puppet, loops] of [[wukong, ['idle', 'run', 'fall']], [dummy, ['idle']], [spearman, ['idle', 'walk']], [archer, ['idle']], [nezha, ['idle', 'move', 'charge', 'calm', 'wrath', 'held', 'bare']], [guard, ['idle', 'walk']], [crane, ['fly', 'dive']]])
+  for (const [puppet, loops] of [[wukong, ['idle', 'run', 'fall']], [dummy, ['idle']], [spearman, ['idle', 'walk']], [archer, ['idle']], [nezha, ['idle', 'move', 'charge', 'calm', 'wrath', 'held', 'bare']], [guard, ['idle', 'walk']], [crane, ['fly', 'dive']], [erlangPuppet, ['idle', 'walk']], [hawk, ['fly', 'dive']], [hound, ['run']]])
     for (const title of loops)
       for (const [bone, tracks] of Object.entries(puppet.animations[title].bones))
         for (const [kind, keys] of Object.entries(tracks)) {
@@ -206,6 +210,20 @@ test('the orchard has a pose for everything its guards and cranes do, and a seco
   assert.ok(crane.animations.windup.seconds <= FOES.crane.windup);
   const act2 = await import('../tools/levels/act2.mjs');
   assert.deepEqual(JSON.parse(read('assets/levels/act2.tmj')), JSON.parse(JSON.stringify(toTiled(act2.level, act2.title, act2.tiles))), 'run tools/author.mjs again');
+});
+
+test('Erlang, the hawk he becomes and his hound have a pose for everything the rules have them do', () => {
+  for (const needed of ['idle', 'walk', 'windup', 'attack', 'crouch', 'leap', 'roar', 'stun', 'down']) assert.ok(erlangPuppet.animations[needed], `erlang: ${needed}`);
+  assert.equal(erlangPuppet.animations.attack.seconds, ERLANG.slash.seconds);
+  assert.ok(erlangPuppet.animations.windup.seconds <= ERLANG.slash.windup && erlangPuppet.animations.crouch.seconds <= Math.min(ERLANG.leap.windup, ERLANG.hawk.windup));
+  assert.equal(erlangPuppet.animations.roar.seconds, ERLANG.roar);
+  assert.equal(erlangPuppet.animations.stun.seconds, ERLANG.stun);
+  // The hawk moves by the crane's animations, so it must have the crane's bones.
+  assert.deepEqual(hawk.bones.map(([bone, parent]) => [bone, parent]), crane.bones.map(([bone, parent]) => [bone, parent]));
+  assert.equal(hawk.animations, crane.animations);
+  for (const needed of ['run', 'crouch', 'yelp']) assert.ok(hound.animations[needed], `hound: ${needed}`);
+  assert.ok(hound.animations.crouch.seconds <= ERLANG.hound.windup);
+  assert.equal(hound.animations.yelp.seconds, ERLANG.hound.yelp);
 });
 
 test('the level on disk is the one its layout describes', () => {

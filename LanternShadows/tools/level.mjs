@@ -16,7 +16,7 @@ export const TILES = [
 const GID = Object.fromEntries(TILES.map((tile, index) => [tile.name, index + 1]));
 
 /** What a letter on the grid stands for when it is a thing rather than ground. */
-export const THINGS = { S: 'spawn', s: 'spearman', a: 'archer', h: 'guard', k: 'crane', p: 'post', c: 'checkpoint', t: 'tree', o: 'peach', G: 'gate', N: 'boss' };
+export const THINGS = { S: 'spawn', s: 'spearman', a: 'archer', h: 'guard', k: 'crane', p: 'post', c: 'checkpoint', t: 'tree', o: 'peach', G: 'gate', N: 'boss', E: 'erlang' };
 /** The pictures a level's ground may be drawn from, by the name a level gives. Each holds the tiles of TILES in order. */
 export const TILESETS = { terrace: 'tiles.png', orchard: 'orchard.png' };
 

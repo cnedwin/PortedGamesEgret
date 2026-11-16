@@ -42,7 +42,7 @@ export const BOSS = {
 };
 
 export function createBoss(x, y, arena) {
-  return { x, y, home: x, arena, vx: 0, facing: -1, rise: BOSS.enter.from, state: 'wait', move: null, time: 0, health: BOSS.health, phase: 0, rest: 0, turn: 0, steady: 0, struck: false, last: null, ring: null, fires: [], serial: 0, gone: false };
+  return { kind: 'nezha', x, y, home: x, arena, vx: 0, facing: -1, rise: BOSS.enter.from, state: 'wait', move: null, time: 0, health: BOSS.health, phase: 0, rest: 0, turn: 0, steady: 0, struck: false, last: null, ring: null, fires: [], serial: 0, gone: false };
 }
 
 const begin = (boss, state, move = null) => Object.assign(boss, { state, move, time: 0, struck: false, serial: boss.serial + 1 });

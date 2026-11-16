@@ -16,6 +16,7 @@
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/far2.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/erlang.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/far.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/guard.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.png">
@@ -25,15 +26,20 @@
   <link rel="preload" as="fetch" crossorigin href="assets/scene/screen.jpg">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/tree.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/hawk.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/crane.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/erlang.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/hound.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/guard.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/archer.json">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/wisp.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/hound.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/crane.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/hawk.json">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/tiles.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/orchard.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/ring.png">
@@ -43,9 +49,12 @@
   <link rel="preload" as="fetch" crossorigin href="assets/scene/arrow.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/erlang.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/guard.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/archer.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/hound.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/hawk.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/files/crane.atlas">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/chaff.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.atlas">
@@ -91,7 +100,7 @@
       <div class="peaches" id="peaches" role="img" aria-label="桃"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="hairs" id="hairs"><span data-zh="毫毛" data-en="Hairs">毫毛</span><i><b id="hairs-fill"></b></i><em data-zh="按 I 身外身" data-en="press I">按 I 身外身</em></div>
       <p class="tally-line"><span id="soldiers"></span><span id="clock">0:00</span></p>
-      <div class="foe" id="boss" hidden><span data-zh="哪吒" data-en="Nezha">哪吒</span><i><b id="boss-health"></b></i></div>
+      <div class="foe" id="boss" hidden><span id="boss-name"></span><i><b id="boss-health"></b></i></div>
       <p class="notice" id="notice" role="status" hidden></p>
       <output class="combo" id="combo" hidden><b id="combo-count">0</b><span data-zh="连击" data-en="hits">连击</span></output>
       <p class="best" id="best" hidden></p>
@@ -132,6 +141,7 @@
         <p class="asides">
           <button type="button" class="aside" id="start-boss" disabled data-zh="直接会哪吒" data-en="Straight to Nezha">直接会哪吒</button>
           <button type="button" class="aside" id="start-act2" disabled data-zh="从第二幕蟠桃园演起" data-en="Begin with act two, the Peach Orchard">从第二幕蟠桃园演起</button>
+          <button type="button" class="aside" id="start-erlang" disabled data-zh="直接会二郎神" data-en="Straight to Erlang">直接会二郎神</button>
         </p>
         <i class="filling" id="filling"><b></b></i>
         <p class="status" id="status" data-zh="正在挂灯、理线……" data-en="Hanging the lamp…">正在挂灯、理线……</p>
