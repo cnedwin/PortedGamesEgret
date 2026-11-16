@@ -1,0 +1,128 @@
+/* The page is a darkened room with one lit thing in it: the cloth of the shadow-play booth. */
+:root {
+  --room: #0b0604;
+  --wood: #1d0f09;
+  --gold: #e0a21a;
+  --pale-gold: #f3d78d;
+  --red: #9c1f17;
+  --deep-red: #5c100d;
+  --ink: #1c0f0b;
+  --serif: 'Songti SC', 'STSong', 'Noto Serif CJK SC', 'Source Han Serif SC', 'SimSun', 'Iowan Old Style', 'Palatino Linotype', Georgia, serif;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: grid; place-items: center; overflow: hidden;
+  background: radial-gradient(120% 90% at 50% 40%, #2a160c 0%, var(--room) 70%);
+  color: var(--pale-gold); font-family: var(--serif);
+  -webkit-user-select: none; user-select: none; touch-action: none;
+}
+/* The booth keeps the shape of the cloth, as large as the window allows. */
+.booth {
+  position: relative; overflow: hidden;
+  width: min(100vw, calc(100dvh * 16 / 9)); aspect-ratio: 16 / 9;
+  background: #2a1208; box-shadow: 0 0 0 1px #3b2010, 0 30px 80px #000c;
+  container-type: inline-size;
+}
+#stage { display: block; width: 100%; height: 100%; outline: none; }
+
+.hud { position: absolute; inset: 0; pointer-events: none; font-size: clamp(11px, 1.55cqw, 19px); }
+.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden] { display: none; }
+.hud > * { position: absolute; margin: 0; }
+
+/* The name of the play hangs from the beam as a strip of red cloth, written downward. */
+.banner {
+  top: 4.4%; left: 4.4%; padding: 1.1em 0.42em 1.5em; writing-mode: vertical-rl; letter-spacing: 0.24em;
+  color: var(--pale-gold); background: linear-gradient(#5c100d, #8f1d16); border: 1px solid #c98a2a99; border-top: 0;
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% calc(100% - 0.7em), 0 100%);
+  font-weight: 700; text-shadow: 0 1px 0 #0008;
+}
+:root[lang='en'] .banner { letter-spacing: 0.08em; font-size: 0.86em; }
+
+/* The count of blows: a large figure and its word, down the right-hand post. */
+.combo { top: 21%; right: 5.2%; display: grid; justify-items: center; color: var(--ink); line-height: 1; text-shadow: 0 0 0.25em #f9e3a6, 0 0 0.5em #f9e3a6, 0 0 0.9em #f9e3a6; }
+.combo b { font-size: 4.2em; font-weight: 900; font-variant-numeric: lining-nums; color: #7a130f; -webkit-text-stroke: 0.03em #f3d78d; paint-order: stroke fill; }
+.combo span { margin-top: 0.3em; writing-mode: vertical-rl; letter-spacing: 0.3em; font-weight: 700; font-size: 1.1em; }
+:root[lang='en'] .combo span { writing-mode: horizontal-tb; letter-spacing: 0.06em; }
+.combo.is-struck b { animation: struck 0.16s ease-out; }
+@keyframes struck { from { transform: scale(1.5) rotate(-6deg); } to { transform: none; } }
+.best { top: 15%; right: 3.8%; color: #5a2a14; font-size: 0.92em; font-weight: 700; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
+
+.tools { top: 9.4%; right: 3.6%; display: flex; gap: 0.5em; pointer-events: auto; }
+.tools :is(a, button) {
+  padding: 0.28em 0.7em; border: 1px solid #5a2a1488; border-radius: 2px; background: #f3d78d38; color: #3a1c0c;
+  font: 700 0.86em var(--serif); text-decoration: none; cursor: pointer; backdrop-filter: blur(2px);
+}
+.tools :is(a, button):hover { background: #f3d78d80; }
+.tools :is(a, button):focus-visible, .gong:focus-visible { outline: 2px solid #fff3c4; outline-offset: 2px; }
+.tools button[aria-pressed='true'] { opacity: 0.5; text-decoration: line-through; }
+
+.keys { left: 0; right: 0; bottom: 4.4%; text-align: center; color: #f3d78dd9; font-weight: 700; font-size: 0.88em; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000a; }
+.keys kbd { display: inline-block; min-width: 1.7em; margin: 0 0.2em 0 0.9em; padding: 0.05em 0.4em; border: 1px solid #f3d78d88; border-radius: 3px; background: #1c0f0b99; font: 700 0.9em ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
+.stats { left: 4%; bottom: 9%; padding: 0.4em 0.7em; background: #1c0f0bcc; color: #f3d78d; font: 12px/1.5 ui-monospace, Menlo, Consolas, monospace; }
+
+.paused {
+  top: 44%; left: 50%; transform: translate(-50%, -50%); padding: 0.7em 1.6em; border: 1px solid #c98a2a; border-radius: 2px; pointer-events: auto; cursor: pointer;
+  background: linear-gradient(#5c100d, #8f1d16); color: var(--pale-gold); font: 700 1.2em var(--serif); letter-spacing: 0.16em; box-shadow: 0 0.4em 1.4em #0008;
+}
+:root[lang='en'] .paused { letter-spacing: 0.03em; }
+
+/* Buttons for a touch screen, shown only where there is no keyboard to speak of. */
+.pads { inset: auto 0 0 0; height: 46%; display: none; }
+.pads > div { position: absolute; bottom: 9%; display: flex; gap: 0.7em; align-items: flex-end; pointer-events: auto; }
+.pad-move { left: 4.6%; }
+.pad-act { right: 4.6%; }
+.pads button {
+  width: 4.1em; height: 4.1em; border: 2px solid #3a1c0cb0; border-radius: 50%; background: #f3d78d3d; color: #3a1c0c;
+  font: 900 1.25em var(--serif); touch-action: none; -webkit-tap-highlight-color: transparent;
+}
+.pads button[data-hold='attack'] { width: 4.9em; height: 4.9em; margin-bottom: 1.2em; background: #9c1f1740; }
+.pads button.is-held { background: #3a1c0c90; color: #f3d78d; transform: scale(0.94); }
+@media (pointer: coarse) {
+  .pads { display: block; }
+  .keys { display: none; }
+}
+
+/* Before the play: the curtain is down, with the playbill on it. It is drawn up when the gong is struck. */
+.curtain {
+  position: absolute; inset: 0; display: grid; place-items: center;
+  background:
+    linear-gradient(#0000 60%, #0007),
+    repeating-linear-gradient(90deg, #5c100d 0 3.2%, #7c1711 5.4%, #8f1d16 6.2%, #6a120e 8.4%, #5c100d 10%);
+  transition: transform 0.9s cubic-bezier(0.6, 0, 0.3, 1);
+}
+.curtain::after { content: ''; position: absolute; inset: auto 0 0 0; height: 1.4%; background: linear-gradient(90deg, #c98a2a, #f3d78d, #c98a2a); }
+.curtain.is-up { transform: translateY(-112%); visibility: hidden; transition: transform 0.9s cubic-bezier(0.6, 0, 0.3, 1), visibility 0s 0.9s; }
+.playbill { display: grid; justify-items: center; gap: clamp(6px, 1.9cqw, 24px); padding: 1em 2em; text-align: center; font-size: clamp(12px, 1.7cqw, 21px); }
+.playbill h1 { margin: 0; display: flex; align-items: baseline; gap: 0.36em; font-weight: 900; line-height: 1; color: var(--pale-gold); text-shadow: 0 0.04em 0 #2a0806, 0 0.12em 0.4em #0009; }
+.playbill h1 span { font-size: 2.3em; letter-spacing: 0.12em; }
+.playbill h1 em { font-style: normal; font-size: 5em; letter-spacing: 0.06em; }
+:root[lang='en'] .playbill h1 { flex-direction: column; align-items: center; gap: 0.2em; }
+:root[lang='en'] .playbill h1 span { font-size: 1.5em; letter-spacing: 0.3em; }
+:root[lang='en'] .playbill h1 em { font-size: 2.9em; letter-spacing: 0.01em; white-space: nowrap; }
+.act { margin: 0; color: #f0c98a; letter-spacing: 0.18em; }
+:root[lang='en'] .act { letter-spacing: 0.03em; }
+/* The gong: a bronze disc, struck to begin. */
+.gong {
+  width: 6.2em; height: 6.2em; border: 0; border-radius: 50%; cursor: pointer; color: #3a1c0c;
+  background: radial-gradient(circle at 38% 32%, #fff0b8 0 6%, #e9b949 22%, #b9781c 62%, #7c4a12 100%);
+  box-shadow: 0 0 0 0.3em #5a3410, 0 0 0 0.42em #c98a2a, 0 0.6em 1.6em #000a; font: 900 1.5em var(--serif); letter-spacing: 0.1em;
+  transition: transform 0.12s, filter 0.2s;
+}
+.gong:hover:not(:disabled) { transform: scale(1.04); }
+.gong:active:not(:disabled) { transform: scale(0.96); }
+.gong:disabled { filter: grayscale(0.7) brightness(0.6); cursor: progress; }
+.status { margin: 0; min-height: 1.4em; color: #e7b98a; font-size: 0.86em; }
+.status.is-error { color: #ffd0c0; }
+
+@media (prefers-reduced-motion: reduce) {
+  .curtain { transition: opacity 0.3s; }
+  .curtain.is-up { transform: none; opacity: 0; pointer-events: none; }
+  .combo.is-struck b { animation: none; }
+}
+
+/* A phone held upright shows the booth small: say so, beneath it. */
+@media (pointer: coarse) and (orientation: portrait) {
+  body { align-content: center; gap: 18px; }
+  body::after { content: '横过手机来看戏　Turn the phone sideways'; color: #c9a36a; font-size: 14px; letter-spacing: 0.06em; }
+}

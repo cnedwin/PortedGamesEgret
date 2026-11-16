@@ -22,7 +22,7 @@ const WORDS = {
     close: '关闭',
     prev: '上一张',
     next: '下一张',
-    engineTitle: '同一个引擎，六种玩法',
+    engineTitle: '同一个引擎，七种玩法',
     engineText:
       '这里的每一个游戏都运行在新白鹭引擎 Egret Rebuild 上：从三维射击、赛车和动作生存，到回合制角色扮演、门派经营和二维恋爱养成。打开网页就能玩，电脑和手机都能操作，代码全部开源。',
     engineFacts: [
@@ -51,7 +51,7 @@ const WORDS = {
     close: 'Close',
     prev: 'Previous',
     next: 'Next',
-    engineTitle: 'One engine, six kinds of play',
+    engineTitle: 'One engine, seven kinds of play',
     engineText:
       'Every game here runs on the new Egret engine, Egret Rebuild: 3D shooting, racing and action survival, turn-based role-playing, sect management and 2D romance. Each one opens in a web page, plays on a computer or a phone, and is open source.',
     engineFacts: [

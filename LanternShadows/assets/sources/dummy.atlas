@@ -1,0 +1,21 @@
+dummy.png
+size: 561,162
+filter: Linear,Linear
+repeat: none
+pma: false
+post
+bounds: 2,2,24,156
+body
+bounds: 28,2,96,135
+head
+bounds: 126,2,66,96
+plume2
+bounds: 194,2,33,63
+plume1
+bounds: 229,2,30,63
+armL
+bounds: 261,2,93,45
+armR
+bounds: 356,2,93,45
+base
+bounds: 451,2,108,36

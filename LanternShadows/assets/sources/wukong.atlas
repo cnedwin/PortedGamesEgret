@@ -1,0 +1,53 @@
+wukong.png
+size: 987,471
+filter: Linear,Linear
+repeat: none
+pma: false
+staff
+bounds: 2,2,24,390
+legF1
+bounds: 28,2,60,123
+legB1
+bounds: 90,2,54,123
+head
+bounds: 146,2,120,120
+torso
+bounds: 268,2,93,105
+skirtF
+bounds: 363,2,87,105
+legF2
+bounds: 452,2,48,105
+legB2
+bounds: 502,2,39,105
+skirtB
+bounds: 543,2,60,102
+featherB1
+bounds: 605,2,54,102
+featherF2
+bounds: 661,2,75,99
+featherF1
+bounds: 738,2,51,99
+armF1
+bounds: 791,2,54,87
+featherB2
+bounds: 847,2,81,84
+armB1
+bounds: 930,2,54,84
+tail2
+bounds: 2,394,60,75
+pelvis
+bounds: 64,394,72,72
+armB2
+bounds: 138,394,42,72
+armF2
+bounds: 182,394,54,66
+footF
+bounds: 238,394,75,42
+footB
+bounds: 315,394,72,42
+handB
+bounds: 389,394,33,42
+tail1
+bounds: 424,394,72,39
+handF
+bounds: 498,394,39,39

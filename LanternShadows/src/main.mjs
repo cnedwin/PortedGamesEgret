@@ -1,0 +1,343 @@
+// Lantern Shadows: the page. It hangs the cloth, loads the puppets, and runs the play.
+//
+//   rules/hero.mjs   how the Monkey King moves and fights (no drawing)
+//   rules/yard.mjs   the practice yard, its posts and the count of blows
+//   puppets.mjs      Spine skeletons, loaded through the engine's manifest
+//   input.mjs        keyboard, gamepad and touch as one answer a step
+//   sound.mjs        the percussion, made from numbers
+//
+// Address options: ?backend=webgl2 or webgpu chooses the renderer, ?stats shows what is being drawn,
+// ?lang=en starts in English, and ?slow=0.25 plays at a quarter of the speed, to watch how he moves.
+import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
+import { createCamera2D } from '@egret/engine/camera';
+import { createParticleEmitter } from '@egret/engine/particles';
+import { createBrowserGame } from '@egret/engine/web/game';
+import { createInput } from './input.mjs';
+import { createPuppet, loadPuppets } from './puppets.mjs';
+import { ATTACKS, animationOf, createHero, stepHero } from './rules/hero.mjs';
+import { GROUND, STAGE, YARD, createYard, keepApart, stepYard, strike } from './rules/yard.mjs';
+import { createSound } from './sound.mjs';
+
+const query = new URLSearchParams(location.search),
+  $ = id => document.getElementById(id);
+const canvas = $('stage'),
+  booth = $('booth'),
+  status = $('status');
+
+// ---- Words -----------------------------------------------------------------------------------------------------
+let lang = query.get('lang') === 'en' || (!query.has('lang') && !navigator.language.startsWith('zh')) ? 'en' : 'zh';
+const KEY_HINTS = {
+  zh: [['A', 'D', '走'], ['K', '跳'], ['J', '棍，连按三下'], ['L', '筋斗云']],
+  en: [['A', 'D', 'move'], ['K', 'jump'], ['J', 'staff, three in a row'], ['L', 'cloud roll']]
+};
+function speak() {
+  document.documentElement.lang = lang === 'zh' ? 'zh-CN' : 'en';
+  for (const element of document.querySelectorAll('[data-zh]')) element.textContent = element.dataset[lang];
+  $('lang').textContent = lang === 'zh' ? 'EN' : '中文';
+  $('keys').innerHTML = KEY_HINTS[lang].map(hint => hint.slice(0, -1).map(key => `<kbd>${key}</kbd>`).join('') + hint.at(-1)).join('');
+  if (staged) showBest();
+}
+// The playbill is in the right language while the stage is still being set.
+let staged = false;
+speak();
+
+// ---- The engine ------------------------------------------------------------------------------------------------
+/** An error and what caused it, each by its code where it has one. */
+const describe = cause => {
+  const parts = [];
+  for (let at = cause; at && parts.length < 4; at = at.cause) parts.push(String(at.code ?? at.message ?? at));
+  return parts.join(' ← ');
+};
+const fail = cause => {
+  status.textContent = (lang === 'zh' ? '戏台没搭起来：' : 'The booth could not be set up: ') + describe(cause);
+  status.classList.add('is-error');
+  console.error(cause);
+};
+
+const sound = createSound(),
+  input = createInput();
+let game;
+try {
+  game = await createBrowserGame({
+    canvas,
+    width: STAGE.width,
+    height: STAGE.height,
+    clearColor: 0x2a1208,
+    pixelRatio: Math.min(2, Math.max(1, (devicePixelRatio || 1) * 0.75)),
+    backend: query.get('backend') ?? 'auto',
+    fit: 'contain',
+    fitTo: booth,
+    pointer: false,
+    keyboard: false,
+    autoStart: false,
+    update,
+    onError: fail
+  });
+} catch (cause) {
+  fail(cause);
+  throw cause;
+}
+const { engine, scope } = game;
+
+// ---- The stage -------------------------------------------------------------------------------------------------
+const scene = name => game.loadTexture(new URL(`../assets/scene/${name}`, import.meta.url).href);
+// The engine decodes a few pictures at a time, so they are asked for one after another.
+let clothLease, frameLease, farLease, gateLease, groundLease, cloudLease, wispLease, sparkLease, chaffLease, puppetOf;
+try {
+  const leases = [];
+  for (const name of ['screen.png', 'frame.png', 'far.png', 'gate.png', 'ground.png', 'cloud.png', 'wisp.png', 'spark.png', 'chaff.png']) leases.push(await scene(name));
+  [clothLease, frameLease, farLease, gateLease, groundLease, cloudLease, wispLease, sparkLease, chaffLease] = leases;
+  puppetOf = await loadPuppets(engine, scope, ['wukong', 'dummy'], new URL('../assets/', import.meta.url));
+} catch (cause) {
+  fail(cause);
+  throw cause;
+}
+
+/** A picture placed by its top left corner and drawn `width` stage units wide. */
+function picture(parent, lease, x, y, width) {
+  const bitmap = parent.addChild(scope.use(new Bitmap(lease)));
+  bitmap.x = x;
+  bitmap.y = y;
+  bitmap.scaleX = bitmap.scaleY = width / bitmap.naturalWidth;
+  return bitmap;
+}
+const layer = parent => parent.addChild(scope.use(new DisplayObjectContainer()));
+
+// From the lamp outward: the cloth, what hangs far behind it, the yard and its puppets, and the front of the booth.
+picture(engine.stage, clothLease, 0, 0, STAGE.width);
+const far = layer(engine.stage),
+  drift = layer(engine.stage),
+  world = layer(engine.stage);
+// Leather only darkens the light that comes through it.
+const shadowBlend = query.get('blend') ?? 'multiply';
+far.blendMode = drift.blendMode = shadowBlend;
+picture(far, farLease, -80, GROUND - 344, 1400).alpha = 0.6;
+const wisps = [[120, 96, 26], [520, 150, -18], [900, 70, 14], [1280, 128, -22]].map(([x, y, speed]) => ({ bitmap: picture(drift, wispLease, x, y, 150), speed }));
+
+const scenery = layer(world),
+  cast = layer(world),
+  effects = layer(world);
+scenery.blendMode = cast.blendMode = shadowBlend;
+picture(scenery, gateLease, YARD.gate.x - 210, GROUND - 398, 420);
+for (let x = 0; x < YARD.width; x += 240) picture(scenery, groundLease, x, GROUND - 1, 240);
+for (const floor of YARD.floors) if (floor.cloud) picture(scenery, cloudLease, floor.x + floor.width / 2 - 100, floor.y - 24, 200);
+
+// The lamp is a flame: a wash over the cloth that is never quite steady.
+const flicker = engine.stage.addChild(scope.use(new Sprite()));
+flicker.graphics.beginFill(0x2a1208).drawRect(0, 0, STAGE.width, STAGE.height).endFill();
+flicker.alpha = 0;
+picture(engine.stage, frameLease, 0, 0, STAGE.width);
+
+// ---- The cast --------------------------------------------------------------------------------------------------
+const hero = createHero(YARD.start.x, YARD.start.y),
+  yard = createYard();
+const wukong = createPuppet(puppetOf('wukong'), scope);
+const posts = yard.posts.map(post => {
+  const puppet = createPuppet(puppetOf('dummy'), scope);
+  puppet.node.x = post.x;
+  puppet.node.y = post.y;
+  puppet.play('idle', { loop: true });
+  cast.addChild(puppet.node);
+  return { post, puppet, blows: 0 };
+});
+cast.addChild(wukong.node);
+wukong.play('idle', { loop: true });
+
+// Sparks from the staff, straw from the posts, and dust from his feet.
+const emitter = (lease, options, blend) => {
+  const made = scope.use(createParticleEmitter({ texture: lease, running: false, ...options }));
+  made.display.blendMode = blend;
+  effects.addChild(made.display);
+  return made;
+};
+const sparks = emitter(sparkLease, { maxParticles: 400, lifetime: [0.18, 0.42], speed: [160, 520], angle: [0, 360], gravity: { x: 0, y: 500 }, drag: 2.4, size: 14, startScale: [0.6, 1.3], endScale: 0.1, startColor: 0xfff3c0, endColor: 0xff6a1a, startAlpha: 1, endAlpha: 0, shape: { kind: 'circle', radius: 6 }, seed: 31 }, 'add');
+const straw = emitter(chaffLease, { maxParticles: 300, lifetime: [0.5, 1], speed: [120, 420], angle: [200, 340], gravity: { x: 0, y: 1300 }, drag: 1.2, size: { width: 15, height: 5 }, startColor: 0x7a4a14, endColor: 0x5a3410, startAlpha: 0.95, endAlpha: 0, rotation: [0, 360], spin: [-900, 900], shape: { kind: 'circle', radius: 10 }, seed: 47 }, 'normal');
+const dust = emitter(sparkLease, { maxParticles: 200, lifetime: [0.3, 0.6], speed: [30, 150], angle: [180, 360], gravity: { x: 0, y: -60 }, drag: 2, size: 26, startScale: [0.5, 1], endScale: 1.8, startColor: 0x6a4424, endColor: 0x6a4424, startAlpha: 0.34, endAlpha: 0, shape: { kind: 'rectangle', width: 30, height: 4 }, seed: 59 }, 'normal');
+const burst = (made, x, y, count) => {
+  made.x = x;
+  made.y = y;
+  made.burst(count);
+};
+
+// ---- The camera ------------------------------------------------------------------------------------------------
+let lead = 0;
+const camera = scope.use(
+  createCamera2D({ world, width: STAGE.width, height: STAGE.height, center: { x: hero.x, y: STAGE.height / 2 }, bounds: { x: 0, y: 0, width: YARD.width, height: STAGE.height }, shakeOffset: 11, shakeRotation: 0.5, seed: 5 })
+);
+camera.addLayer(far, { factor: 0.3 });
+camera.addLayer(drift, { factor: 0.55 });
+camera.follow(() => ({ x: hero.x + lead, y: STAGE.height / 2 }), { smoothing: 0.1 });
+
+// ---- The count of blows ----------------------------------------------------------------------------------------
+const combo = $('combo'),
+  comboCount = $('combo-count'),
+  best = $('best');
+function showCombo(struck) {
+  combo.hidden = yard.combo < 2;
+  comboCount.textContent = String(yard.combo);
+  if (struck && !combo.hidden) {
+    combo.classList.remove('is-struck');
+    void combo.offsetWidth;
+    combo.classList.add('is-struck');
+  }
+}
+function showBest() {
+  best.hidden = yard.best < 3;
+  best.textContent = (lang === 'zh' ? '最高连击 ' : 'Best ') + yard.best;
+}
+
+// ---- One frame -------------------------------------------------------------------------------------------------
+const STEP = 1 / 120,
+  PACE = Math.min(1, Math.max(0.02, Number(query.get('slow')) || 1));
+let carry = 0,
+  freeze = 0,
+  clock = 0,
+  tick,
+  zoomBack = 0,
+  playing = false,
+  paused = false;
+engine.clock.onTick(scope, value => {
+  tick = value;
+});
+
+function happen(events) {
+  for (const event of events) {
+    const pan = (hero.x - camera.snapshot().center.x) / (STAGE.width / 2);
+    if (event.type === 'jump') (sound.play('drum', { volume: 0.5, rate: 1.5, pan }), burst(dust, hero.x, hero.y, 6));
+    else if (event.type === 'land') (sound.play('drum', { volume: Math.min(0.9, event.speed / 1300), rate: 0.9, pan }), burst(dust, hero.x, hero.y, event.speed > 500 ? 12 : 5));
+    else if (event.type === 'dash') (sound.play('whirl', { volume: 0.7, pan }), burst(dust, hero.x, hero.y - 20, 10));
+    else if (event.type === 'step') sound.play('tap', { volume: 0.28, rate: 0.9 + Math.random() * 0.25, pan });
+    else if (event.type === 'swing') sound.play('swish', { volume: 0.5, rate: [1.1, 0.95, 0.75][ATTACKS.indexOf(event.attack)], pan });
+    else if (event.type === 'strike') {
+      const met = strike(yard, event.box, hero.x, event.attack);
+      for (const { post, side, at } of met) {
+        const seat = posts[post.index];
+        seat.puppet.face(side);
+        seat.puppet.play(event.attack.kind, { key: ++seat.blows, mix: 0.03 });
+        seat.puppet.then('idle');
+        burst(sparks, at.x, at.y, 10 + event.attack.power * 10);
+        burst(straw, at.x, at.y, 4 + event.attack.power * 5);
+      }
+      if (!met.length) continue;
+      // The beat, the held breath, and the shudder of the booth.
+      sound.play({ hit: 'clap', lift: 'smallGong', slam: 'gong' }[event.attack.kind], { volume: 0.9, pan });
+      freeze = event.attack.stop;
+      camera.shake({ trauma: event.attack.shake });
+      input.gamepads?.rumble(0, { duration: 90 + event.attack.power * 60, weak: 0.4, strong: 0.3 * event.attack.power });
+      if (event.attack.kind === 'slam') (camera.zoomTo(1.07, 0.06), (zoomBack = 0.16));
+      showCombo(true);
+      showBest();
+    }
+  }
+}
+
+function update(seconds) {
+  // The rules and the puppets keep the same time: the engine's tick, slowed if the address asks for it.
+  const dt = Math.min(tick?.deltaSeconds ?? seconds, 0.1) * PACE;
+  clock += dt;
+  input.poll(performance.now());
+  if (playing && !paused) {
+    if (freeze > 0) freeze -= dt;
+    else {
+      carry += dt;
+      let asked;
+      while (carry >= STEP && freeze <= 0) {
+        carry -= STEP;
+        // Presses belong to the first step of a frame; what is held lasts through all of them.
+        asked = asked ? { ...asked, jump: false, attack: false, dash: false } : input.read();
+        happen(stepHero(hero, asked, STEP, YARD));
+        keepApart(hero, yard);
+        if (stepYard(yard, STEP)) showCombo(false);
+      }
+    }
+  }
+  // While a blow is being felt, or the play is paused, every puppet holds its pose.
+  const still = paused || freeze > 0,
+    held = still ? 0 : PACE;
+
+  // The puppet follows the rules.
+  const { name, key } = animationOf(hero);
+  wukong.play(name, { loop: name === 'idle' || name === 'run' || name === 'fall', key, mix: name.startsWith('attack') ? 0.04 : name === 'dash' ? 0.03 : 0.08 });
+  wukong.face(hero.facing);
+  wukong.node.x = hero.x;
+  wukong.node.y = hero.y;
+  wukong.speed(held);
+  for (const { puppet } of posts) puppet.speed(held);
+  if (tick) {
+    wukong.advance(tick);
+    for (const { puppet } of posts) puppet.advance(tick);
+    tick = undefined;
+  }
+
+  for (const made of [sparks, straw, dust]) made.update(still ? 0 : dt);
+  for (const wisp of wisps) {
+    wisp.bitmap.x += wisp.speed * (paused ? 0 : dt);
+    if (wisp.bitmap.x > YARD.width) wisp.bitmap.x = -160;
+    else if (wisp.bitmap.x < -160) wisp.bitmap.x = YARD.width;
+  }
+  lead += (hero.facing * 90 - lead) * Math.min(1, dt * 3);
+  if (zoomBack > 0 && (zoomBack -= dt) <= 0) camera.zoomTo(1, 0.35);
+  camera.update(paused ? 0 : dt);
+  // Two slow waves and a quick one make a flame's unevenness.
+  flicker.alpha = 0.05 + 0.02 * Math.sin(clock * 2.3) + 0.012 * Math.sin(clock * 7.9 + 1) + 0.01 * Math.sin(clock * 23.7);
+  if (stats) showStats();
+}
+
+// ---- Around the play -------------------------------------------------------------------------------------------
+const stats = query.has('stats') ? $('stats') : undefined;
+let frames = 0,
+  since = performance.now(),
+  rate = 0;
+function showStats() {
+  frames++;
+  const now = performance.now();
+  if (now - since >= 500) (rate = (frames * 1000) / (now - since)), (frames = 0), (since = now);
+  stats.textContent = `${game.backend}  ${rate.toFixed(0)} fps\npuppets ${posts.length + 1}  bones ${25 + posts.length * 8}\n${animationOf(hero).name}  x ${hero.x.toFixed(0)}  y ${hero.y.toFixed(0)}`;
+}
+if (stats) stats.hidden = false;
+
+function pause(value = !paused) {
+  if (!playing) return;
+  paused = value;
+  $('paused').hidden = !paused;
+}
+addEventListener('keydown', event => (event.code === 'KeyP' || event.code === 'Escape') && !event.repeat && pause());
+addEventListener('blur', () => pause(true));
+$('paused').addEventListener('click', () => pause(false));
+
+$('lang').addEventListener('click', () => ((lang = lang === 'zh' ? 'en' : 'zh'), speak()));
+$('mute').addEventListener('click', event => {
+  sound.muted = !sound.muted;
+  event.currentTarget.setAttribute('aria-pressed', String(sound.muted));
+});
+$('full').addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : booth.requestFullscreen?.().catch(() => {})));
+for (const button of document.querySelectorAll('.tools button')) button.addEventListener('keydown', event => event.code === 'Space' && event.preventDefault());
+
+staged = true;
+speak();
+game.loop.start();
+const start = $('start');
+start.disabled = false;
+status.textContent = '';
+status.removeAttribute('data-zh');
+start.addEventListener('click', () => {
+  playing = true;
+  $('curtain').classList.add('is-up');
+  $('hud').hidden = false;
+  sound.begin().then(() => sound.play('gong', { volume: 0.9 }));
+  canvas.focus();
+});
+
+// What a check reads; the play does not need it.
+globalThis.__lantern = {
+  hero,
+  yard,
+  get playing() {
+    return playing;
+  },
+  backend: game.backend,
+  camera: () => camera.snapshot(),
+  begin: () => start.click(),
+  tap: action => input.tap(action),
+  pause
+};
