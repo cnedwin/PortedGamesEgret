@@ -380,12 +380,56 @@ function buildGrass(scene, rand, density) {
 
 
 function brazier(b, glow, x, z) {
+  const iron = rgb(0x33383b), hammered = rgb(0x514942);
   for (let i = 0; i < 3; i++) {
     const a = (i / 3) * Math.PI * 2;
-    b.limb([x + Math.cos(a) * 0.42, 0, z + Math.sin(a) * 0.42], [x + Math.cos(a) * 0.2, 0.62, z + Math.sin(a) * 0.2], 0.03, 0.03, { tint: rgb(0x26262b), sides: 5 });
+    const c = Math.cos(a), s = Math.sin(a);
+    b.limb([x + c * 0.42, 0, z + s * 0.42], [x + c * 0.2, 0.62, z + s * 0.2], 0.042, 0.035, { tint: iron, sides: 6 });
+    b.limb([x + c * 0.43, 0.03, z + s * 0.43], [x + c * 0.29, 0.05, z + s * 0.29], 0.054, 0.032, { tint: hammered, sides: 6 });
   }
-  b.limb([x, 0.55, z], [x, 0.8, z], 0.28, 0.46, { tint: rgb(0x2b2b31), sides: 10 });
+  b.limb([x, 0.56, z], [x, 0.8, z], 0.28, 0.46, { tint: iron, tintB: hammered, sides: 12 });
+  b.limb([x, 0.751, z], [x, 0.804, z], 0.464, 0.469, { tint: iron, tintB: hammered, sides: 12, caps: false });
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2;
+    b.ball(x + Math.cos(a) * 0.447, 0.758, z + Math.sin(a) * 0.447, 0.028, 0.024, 0.028, { tint: hammered, sides: 5, rings: 3 });
+  }
   glow.limb([x, 0.79, z], [x, 0.82, z], 0.4, 0.4, { tint: [1, 0.42, 0.1], sides: 10 });
+}
+
+function buildStele(mesh, x, z) {
+  mesh.box(x, 0.25, z, 1.5, 0.5, 0.87, { tint: STONE_DARK });
+  mesh.box(x, 0.503, z, 1.36, 0.15, 0.76, { tint: STONE, top: SNOW_DIM });
+  mesh.box(x, 1.87, z, 1.03, 2.58, 0.3, { tint: shade(STONE, 0.86) });
+  mesh.box(x, 3.2, z, 1.12, 0.15, 0.37, { tint: STONE, top: SNOW });
+  for (const side of [-1, 1]) mesh.box(x + side * 0.448, 1.91, z + 0.148, 0.061, 2.39, 0.039, { tint: STONE_DARK });
+  const motif = [[-0.265, 2.35], [-0.138, 2.47], [-0.063, 2.42], [0.095, 2.63], [0.267, 2.35]];
+  for (let i = 1; i < motif.length; i++) {
+    const [a, b] = [motif[i - 1], motif[i]];
+    mesh.limb([x + a[0], a[1], z + 0.161], [x + b[0], b[1], z + 0.161], 0.017, 0.017, { tint: SNOW_DIM, sides: 4 });
+  }
+}
+
+/** Split planks and a spoked carriage use the same merged scene geometry as the old cart. */
+function buildCart(mesh, x, z) {
+  const yaw = 0.5, c = Math.cos(yaw), s = Math.sin(yaw),
+    at = (across, y, along) => [x + c * across + s * along, y, z - s * across + c * along];
+  const plank = (across, y, along, w, h, d, tint, top) => mesh.box(...at(across, y, along), w, h, d, { tint, top, ry: yaw });
+  const metal = rgb(0x33383c), rims = rgb(0x595047), oak = rgb(0x674337);
+  for (let i = 0; i < 5; i++) plank((i - 2) * 0.28, 0.75, 0, 0.265, 0.11, 2.48, i % 2 ? TIMBER : oak, i < 2 ? SNOW_DIM : undefined);
+  for (const side of [-1, 1]) {
+    plank(side * 0.68, 0.91, 0, 0.12, 0.28, 2.3, TIMBER);
+    plank(side * 0.685, 1.066, -0.24, 0.1, 0.046, 1.56, SNOW_DIM);
+    mesh.limb(at(side * 0.63, 0.59, -1.13), at(side * 0.79, 0.24, -2.23), 0.045, 0.032, { tint: TIMBER, sides: 6 });
+    const wheel = (angle) => at(side * 0.88, 0.57 + Math.sin(angle) * 0.51, Math.cos(angle) * 0.51);
+    const hub = at(side * 0.88, 0.57, 0);
+    for (let i = 0; i < 12; i++) {
+      const angle = i * Math.PI / 6;
+      mesh.limb(wheel(angle), wheel(angle + Math.PI / 6), 0.052, 0.052, { tint: rims, sides: 5, caps: false });
+      if (i % 2 === 0) mesh.limb(hub, wheel(angle), 0.037, 0.024, { tint: oak, sides: 4, caps: false });
+    }
+    mesh.limb(at(side * 0.62, 0.57, 0), at(side * 0.95, 0.57, 0), 0.13, 0.104, { tint: metal, sides: 8 });
+  }
+  for (const end of [-1, 1]) plank(0, 0.885, end * 1.15, 1.34, 0.21, 0.12, oak);
 }
 
 
@@ -438,7 +482,13 @@ function buildTemple(scene, material, glow, models) {
 
   // Keep the entrance readable behind the duel: a pale snow line and warm lanterns frame the red door.
   const details = createBuilder();
+  const lattice = rgb(0x4b2c24);
   for (const side of [1, -1]) {
+    // Draw the muntins outside the emissive panes at every model detail level.
+    // They share this existing trim mesh, and leave the recess open to lamplight.
+    const wx = x + side * 5.6, wz = z + 2.195;
+    for (let column = -2; column <= 2; column++) details.box(wx + column * 0.32, 3.0, wz, 0.064, 1.69, 0.065, { tint: lattice });
+    for (let row = -2; row <= 2; row++) details.box(wx, 3.0 + row * 0.29, wz, 2.0, 0.055, 0.065, { tint: lattice });
     const lx = x + side * 2.65;
     details.limb([lx, 3.1, z + 2.25], [lx, 3.55, z + 2.25], 0.036, 0.036, { tint: TIMBER, sides: 5 });
     details.box(lx, 2.97, z + 2.25, 0.58, 0.12, 0.43, { tint: LACQUER, top: SNOW });
@@ -483,13 +533,22 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     scene.addChild(mesh);
     return mesh;
   };
-  const scorched = createStandardMaterial3D({ vertexColors: true, roughness: 0.95, color: 0x4a3a30 }),
+  const scorched = createStandardMaterial3D({ vertexColors: true, roughness: 0.95, color: 0x756054 }),
     wood = createStandardMaterial3D({ vertexColors: true, roughness: 0.92 });
   for (const round of ROUNDS) {
     const { x, z, r } = round;
     if (round.kind === 'stack') {
       stand('stack', x, z, r, x * 3, x > 0 ? scorched : wood);
-      if (x > 0) lights.push({ x, y: 5, z, color: 0xff6a20, intensity: 15, range: 17, flicker: 0.4 });
+      if (x > 0) {
+        // Split sheaves at the fire-facing edge, within the existing stack's snow skirt.
+        const char = rgb(0x3c2925), fibre = rgb(0x795943);
+        for (let i = 0; i < 5; i++) {
+          const dx = (i - 2) * 0.22, turn = i * 0.71;
+          b.limb([x + dx, 0.18 + i * 0.021, z + r * 0.65], [x + dx + 0.38 * Math.sin(turn), 0.09, z + r * 1.03],
+            0.09, 0.035, { tint: char, tintB: fibre, sides: 6 });
+        }
+        lights.push({ x, y: 5, z, color: 0xff6a20, intensity: 15, range: 17, flicker: 0.4 });
+      }
     }
     else if (round.kind === 'rock') stand('rock', x, z, r * 0.95, rand() * 6);
     else if (round.kind === 'lantern') {
@@ -500,17 +559,14 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
       brazier(b, glow, x, z);
       lights.push({ x, y: 1.3, z, color: 0xff8f48, intensity: 20, range: 11, flicker: 0.25, fire: true });
     } else if (round.kind === 'cart') {
-      b.box(x, 0.75, z, 1.5, 0.12, 2.5, { tint: TIMBER, top: SNOW, ry: 0.5, rz: 0.12 });
-      for (const side of [1, -1]) b.limb([x + side * 0.85, 0.6, z + side * 0.3], [x + side * 0.95, 0.6, z + side * 0.36], 0.6, 0.6, { tint: rgb(0x2c1d14), sides: 12 });
-      b.limb([x - 0.6, 0.8, z - 1.2], [x - 1.6, 0.2, z - 2.6], 0.05, 0.05, { tint: TIMBER, sides: 5 });
+      buildCart(b, x, z);
     } else if (round.kind === 'censer') {
       stand('censer', x, z, 1, 0, bronze);
       lights.push({ x, y: 2.6, z, color: 0xffb070, intensity: 30, range: 16, flicker: 0.2, fire: true });
     } else if (round.kind === 'lion') {
       stand('lion', x, z, 0.9, x < 0 ? 0.25 : -0.25);
     } else if (round.kind === 'stele') {
-      b.box(x, 0.3, z, 1.5, 0.6, 0.9, { tint: STONE_DARK, top: SNOW });
-      b.box(x, 1.9, z, 1.05, 2.8, 0.3, { tint: shade(STONE, 0.8), top: SNOW, ry: -0.2 });
+      buildStele(b, x, z);
     } else if (round.kind === 'pine') {
       const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.9 }),
         mesh = stand('pine', x, z, 0.95, rand() * 6, cover, 1.1);

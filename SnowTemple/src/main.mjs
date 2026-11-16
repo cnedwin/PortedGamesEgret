@@ -6,6 +6,7 @@
 //   ?at=yard | gate | boss | rage     begin further in
 //   ?quality=low | mid | high         fix the picture quality for this visit
 //   ?models=low | mid | high          fix the model detail for this visit
+//   ?characters=original              compare the sculpted fallback bodies
 //   ?debug       show the state panel (F3 toggles it)
 import { createEngine } from '@egret/engine';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
@@ -18,6 +19,7 @@ import { createLessons } from './lessons.mjs';
 import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { loadModels } from './view/models.mjs';
+import { loadCharacterBodies } from './view/characters.mjs';
 import { createView } from './view/view.mjs';
 
 const params = new URLSearchParams(location.search),
@@ -84,10 +86,16 @@ async function main() {
   const amount = { few: 0.5, some: 1, many: 1.6 }[settings.particles] ?? 1,
     // Model detail is its own choice; left to itself, a phone takes the light set.
     detail = ['low', 'mid', 'high'].includes(params.get('models') ?? settings.models) ? (params.get('models') ?? settings.models) : coarse ? 'low' : 'high',
-    models = await loadModels(detail),
+    externalLoad = params.get('characters') === 'original' ? null : loadCharacterBodies(detail),
+    [models, external] = await Promise.all([
+      loadModels(detail, undefined, externalLoad?.then(({ bodies }) => bodies)),
+      externalLoad
+    ]),
+    characters = external ? scope.use(external).bodies : undefined,
     view = createView(scene, camera, models, {
       detail,
-      reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024 });
+      reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, characters });
+  if (external) status.characters = { level: detail, loaded: Object.keys(characters).sort(), failures: external.failures };
   progress(0.9, '请陆虞候入座');
   await new Promise((done) => setTimeout(done));
 

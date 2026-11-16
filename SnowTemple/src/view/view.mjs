@@ -40,7 +40,7 @@ function lootShape(kind) {
   return b.geometry();
 }
 
-export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false, shadowSize = 2048 } = {}) {
+export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false, shadowSize = 2048, characters = {} } = {}) {
   const view = { shake: 0, cine: null, zoom: 1 };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
@@ -68,7 +68,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   fx.setHalos(scenery.lights.map((lamp) => lamp.halo));
 
   // ---- people -------------------------------------------------------------------------------
-  const heroFigure = createFigure('hero', models, detail);
+  const heroFigure = createFigure('hero', models, detail, characters.hero);
   heroFigure.metal.emissive.set([0.45, 0.75, 1]);
   scene.addChild(heroFigure.root);
   let heroTravel = 0,
@@ -77,7 +77,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   function figureOf(foe) {
     let figure = figures.get(foe.id);
     if (!figure) {
-      figure = createFigure(foe.kind, models, detail);
+      figure = createFigure(foe.kind, models, detail, characters[foe.kind]);
       figure.metal.emissive.set([1, 0.3, 0.12]);
       figure.travel = 0;
       figure.last = { x: foe.x, z: foe.z };
@@ -89,8 +89,16 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
 
   // ---- arrows, loot -------------------------------------------------------------------------
   const arrowShape = createBuilder();
-  arrowShape.limb([0, 0, -0.75], [0, 0, 0], 0.013, 0.013, { tint: rgb(0xc9bfa6), sides: 4 });
-  arrowShape.limb([0, 0, 0], [0, 0, 0.1], 0.03, 0.002, { tint: rgb(0xd8dde6), sides: 4 });
+  arrowShape.limb([0, 0, -0.75], [0, 0, 0], 0.011, 0.012, { tint: rgb(0xaf8860), sides: 5 });
+  arrowShape.limb([0, 0, 0], [0, 0, 0.1], 0.027, 0.002, { tint: rgb(0xd1e0e5), sides: 4 });
+  for (let feather = 0; feather < 3; feather++) {
+    const angle = feather * Math.PI * 2 / 3;
+    const point = (radius, depth) => [Math.cos(angle) * radius, Math.sin(angle) * radius, depth];
+    const corners = [point(0.008, -0.72), point(0.044, -0.686), point(0.033, -0.615), point(0.008, -0.576)];
+    const tint = rgb(feather === 0 ? 0x995448 : 0xc8bea7);
+    arrowShape.sheet(...corners, { tint });
+    arrowShape.sheet(...corners.reverse(), { tint });
+  }
   const arrowGeometry = arrowShape.geometry(),
     plain = createStandardMaterial3D({ vertexColors: true, roughness: 0.6, emissive: 0xffd9a0, emissiveIntensity: 0.6 }),
     shotViews = new Map(),
@@ -449,7 +457,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     heroFigure.metal.emissiveIntensity = heroFigure.glow;
     heroFigure.flash = Math.max(0, heroFigure.flash - dt * 6);
     const [heroRed, heroGreen, heroBlue] = heroFigure.look.fill;
-    heroFigure.cloth.emissive.set([heroRed + heroFigure.flash * 0.9, heroGreen + heroFigure.flash * 0.2, heroBlue + heroFigure.flash * 0.15]);
+    heroFigure.tintBody(heroRed + heroFigure.flash * 0.9, heroGreen + heroFigure.flash * 0.2, heroBlue + heroFigure.flash * 0.15);
     heroFigure.root.visible = !(hero.safe > 0 && hero.state === 'free' && Math.floor(clock * 14) % 2 === 0);
     if (hero.moving && hero.state === 'glide') {
       glideTrailTime += dt;
@@ -487,7 +495,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       figure.metal.emissiveIntensity = figure.glow;
       figure.flash = Math.max(0, figure.flash - dt * 7);
       const [red, green, blue] = figure.look.fill;
-      figure.cloth.emissive.set([red + figure.flash, green + figure.flash * 0.9, blue + figure.flash * 0.8]);
+      figure.tintBody(red + figure.flash, green + figure.flash * 0.9, blue + figure.flash * 0.8);
       if (foe.kind === 'lu' && foe.phase === 2 && foe.state !== 'dead' && Math.random() < dt * 40) {
         const d = dirOf(foe.face);
         fx.burst(foe.x + d[0] * 1.2 - d[2] * 0.4, 1.5, foe.z + d[2] * 1.2 + d[0] * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.5, speed: 1.6, life: 0.6, size: 0.16, tint: TINT.fire, power: 3.5, rise: 3 });
@@ -495,7 +503,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     }
     for (const [id, figure] of figures)
       if (!game.foes.some((foe) => foe.id === id)) {
-        figure.root.removeFromParent();
+        figure.dispose();
         figures.delete(id);
       }
 
@@ -677,7 +685,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     for (let i = 0; i < 3; i++) (drawn.eye[i] = eye[i]), (drawn.look[i] = look[i]);
   };
   view.resetRound = (game) => {
-    for (const figure of figures.values()) figure.root.removeFromParent();
+    for (const figure of figures.values()) figure.dispose();
     for (const item of shotViews.values()) item.mesh?.removeFromParent();
     for (const item of dropViews.values()) item.node.removeFromParent();
     figures.clear();

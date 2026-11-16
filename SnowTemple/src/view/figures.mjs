@@ -87,12 +87,11 @@ const bowCord = createCylinderGeometry3D({ radiusTop: 0.0045, radiusBottom: 0.00
 const bowCordMaterial = createStandardMaterial3D({ color: 0xc9c0ae, roughness: 0.82 });
 
 /** Build one figure of the given kind from the sculpted models. */
-export function createFigure(kind, models, detail = 'high') {
+export function createFigure(kind, models, detail = 'high', externalBody) {
   const look = LOOKS[kind],
     fine = detail !== 'low',
     mainWeapon = kind === 'hero' || kind === 'lu',
     dress = (material) => (fine ? surfaced(material) : material),
-    cloth = dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.78, metallic: 0 })),
     gear = createStandardMaterial3D({ vertexColors: true, roughness: 0.6, metallic: 0.1 }),
     // The night scene has direct light and a low sky fill. Leave enough diffuse
     // response for the forged faces and bevels to read when they miss a highlight.
@@ -115,11 +114,52 @@ export function createFigure(kind, models, detail = 'high') {
     joints[name] = joint;
   }
   root.updateWorldMatrices(true);
-  const body = new Mesh3D(models[kind], cloth);
-  body.castShadow = true;
-  body.receiveShadow = true;
-  root.addChild(body);
-  body.bind(new Skeleton3D(bones.map((name) => joints[name])));
+  const skeleton = new Skeleton3D(bones.map((name) => joints[name]));
+  const bodyMaterials = new Map();
+  function addBody(geometry, material) {
+    const body = new Mesh3D(geometry, material);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    root.addChild(body);
+    body.bind(skeleton);
+  }
+  function instanceMaterial(template) {
+    let material = bodyMaterials.get(template);
+    if (!material) {
+      material = template.clone();
+      bodyMaterials.set(template, material);
+    }
+    return material;
+  }
+  if (externalBody?.length) {
+    for (const { geometry, material } of externalBody) {
+      addBody(geometry, Array.isArray(material) ? material.map(instanceMaterial) : instanceMaterial(material));
+    }
+  } else {
+    const cloth = dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.78, metallic: 0 }));
+    bodyMaterials.set(cloth, cloth);
+    addBody(models[kind], cloth);
+  }
+  // Authoring emissive colour remains in place under the game's per-character hit and night fill.
+  const bodyGlow = [...bodyMaterials.values()].map((material) => {
+    const authored = Array.from(material.emissive, (value) => value * material.emissiveIntensity);
+    const strength = Math.max(1, material.emissiveIntensity);
+    material.emissiveIntensity = strength;
+    return { material, authored, strength };
+  });
+  function tintBody(red, green, blue) {
+    for (const { material, authored, strength } of bodyGlow) {
+      material.emissive[0] = (authored[0] + red) / strength;
+      material.emissive[1] = (authored[1] + green) / strength;
+      material.emissive[2] = (authored[2] + blue) / strength;
+    }
+  }
+  function dispose() {
+    root.removeFromParent();
+    for (const material of bodyMaterials.values()) material.dispose();
+    gear.dispose();
+    metal.dispose();
+  }
   const hold = (joint, name, material, scale = 1) => {
     if (!models[name]) return;
     const mesh = new Mesh3D(models[name], material);
@@ -141,7 +181,7 @@ export function createFigure(kind, models, detail = 'high') {
   const angles = {};
   for (const name of posed) angles[name] = [0, 0, 0];
   const gait = { phase: 0, travelled: 0, speed: 0, heading: 0, walk: {}, run: {} };
-  return { kind, look, root, joints, rest, posed, angles, gait, string, held: 0, slide: 0, rightOpening: 0, lift: 0, cloth, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
+  return { kind, look, root, joints, rest, posed, angles, gait, string, held: 0, slide: 0, rightOpening: 0, lift: 0, tintBody, dispose, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
 }
 
 // ---- poses --------------------------------------------------------------------------------
