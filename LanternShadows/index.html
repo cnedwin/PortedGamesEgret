@@ -7,6 +7,38 @@
   <meta name="description" content="一出皮影戏里的横版动作：孙悟空打上南天门。A side-scrolling action demo played as a shadow-puppet show.">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
+  <link rel="modulepreload" href="build/lantern.js">
+  <!-- Fetched at once. Written by tools/bundle.mjs. -->
+  <link rel="preload" as="fetch" crossorigin href="assets/manifest.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/levels/act1.tmj">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/frame.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/far.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/archer.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/gate.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/screen.jpg">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/archer.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/wisp.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.json">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/tiles.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/ring.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/pennant.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/spark.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/arrow.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/archer.atlas">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/chaff.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.atlas">
+  <!-- End of what is fetched at once. -->
+  <!-- What the bare names in src/ and vendor/ stand for. The packed game does not need it; ?dev does. -->
   <script type="importmap">
     {
       "imports": {
@@ -83,10 +115,18 @@
         <p class="act" data-zh="第一幕　南天门　哪吒拦路" data-en="Act one: the Southern Gate, and Nezha in the way">第一幕　南天门　哪吒拦路</p>
         <button type="button" class="gong" id="start" disabled><span data-zh="开锣" data-en="Begin">开锣</span></button>
         <button type="button" class="aside" id="start-boss" disabled data-zh="只看压轴：直接会哪吒" data-en="Only the finale: straight to Nezha">只看压轴：直接会哪吒</button>
+        <i class="filling" id="filling"><b></b></i>
         <p class="status" id="status" data-zh="正在挂灯、理线……" data-en="Hanging the lamp…">正在挂灯、理线……</p>
       </div>
     </section>
   </main>
-  <script type="module" src="src/main.mjs"></script>
+  <!-- The game as tools/bundle.mjs packs it; with ?dev in the address, its modules as they are written. -->
+  <script type="module">
+    import(new URLSearchParams(location.search).has('dev') ? './src/main.mjs' : './build/lantern.js').catch(cause => {
+      const status = document.getElementById('status');
+      status.textContent = String(cause);
+      status.classList.add('is-error');
+    });
+  </script>
 </body>
 </html>

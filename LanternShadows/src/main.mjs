@@ -21,7 +21,7 @@ import { createParticleEmitter } from '@egret/engine/particles';
 import { createTileMap, importTiledMap } from '@egret/engine/tilemap';
 import { createBrowserGame } from '@egret/engine/web/game';
 import { createInput } from './input.mjs';
-import { createPictures } from './pictures.mjs';
+import { createPictures, readJson, watchReading } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
 import { createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
 import { BOSS, bossAnimation, present } from './rules/boss.mjs';
@@ -104,13 +104,19 @@ const { engine, scope } = game;
 // ---- What is loaded --------------------------------------------------------------------------------------------
 const loadPicture = createPictures(engine, scope),
   asset = path => new URL(`../assets/${path}`, import.meta.url);
-const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring'];
+const PICTURES = ['screen', 'frame', 'far', 'gate', 'wisp', 'spark', 'chaff', 'tiles', 'arrow', 'pennant', 'ring'],
+  PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha'];
+// The line under the gong fills as the files come in: the pictures, three files for each puppet, the list of
+// them, and the level.
+const awaited = PICTURES.length + PUPPETS.length * 3 + 2,
+  filled = watchReading(count => ($('filling').firstElementChild.style.width = `${Math.min(100, (count / awaited) * 100)}%`));
 let art, puppetOf, mapSource;
 try {
   const [pictures, puppets, map] = await Promise.all([
-    Promise.all(PICTURES.map(name => loadPicture(asset(`scene/${name}.png`).href))),
-    loadPuppets(engine, scope, ['wukong', 'dummy', 'spearman', 'archer', 'nezha'], asset('')),
-    fetch(asset('levels/act1.tmj')).then(response => (response.ok ? response.json() : Promise.reject(Error('The level is missing: run tools/author.mjs.'))))
+    // The cloth is the one picture with nothing to see through, and is kept as a JPEG.
+    Promise.all(PICTURES.map(name => loadPicture(asset(`scene/${name}.${name === 'screen' ? 'jpg' : 'png'}`).href))),
+    loadPuppets(engine, scope, PUPPETS, asset('')),
+    readJson(asset('levels/act1.tmj').href)
   ]);
   art = Object.fromEntries(PICTURES.map((name, index) => [name, pictures[index]]));
   puppetOf = puppets;
@@ -661,6 +667,8 @@ game.loop.start();
 const start = $('start'),
   startBoss = $('start-boss');
 start.disabled = startBoss.disabled = false;
+filled();
+$('filling').hidden = true;
 status.textContent = '';
 status.removeAttribute('data-zh');
 /** Raises the curtain on the act, from its beginning or from the court before the gate. */
