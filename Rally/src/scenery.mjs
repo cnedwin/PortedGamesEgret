@@ -37,13 +37,15 @@ import {
   scatterSource,
   yawQuat,
 } from './shapes.mjs';
+import { createGrandstand } from './grandstand.mjs';
+import { addStartGate } from './start-gate.mjs';
 import { TRACK, wrapAngle } from './track.mjs';
+import { treeModels } from './tree-models.mjs';
 
 const VERMILION = 0xc8321e,
   GOLD = 0xf2c230,
   TILE = 0x2f4a45, // dark glazed roof tile
   STONE = 0xb9b4a6,
-  WOOD = 0x6b4226,
   CREAM = 0xf3ead6;
 const OCTAGON = createCylinderGeometry3D({ radiusTop: 0.8, radiusBottom: 1, height: 1, radialSegments: 8 });
 const EAVE = createConeGeometry3D({ radius: 1, height: 1, radialSegments: 8 });
@@ -425,57 +427,7 @@ export function createScenery(scene, track, options = {}) {
     line.renderOrder = 2;
     scene.addChild(holder);
 
-    // The gate: two red pillars, painted beams and a tiled roof with upturned eaves.
-    const parts = [];
-    for (const side of [-1, 1]) {
-      parts.push([CYLINDER, [side * span, 5.2, 0], [0.75, 10.4, 0.75], VERMILION]);
-      parts.push([BOX, [side * span, 0.5, 0], [2.2, 1, 2.2], STONE]);
-      parts.push([BOX, [side * span, 10.1, 0], [1.9, 0.5, 1.9], GOLD]);
-      // Eave tips curl up at each end of the roof.
-      parts.push([BOX, [side * (span + 3.6), 12.75, 0], [2.6, 0.4, 5.4], TILE, [0, 0, side * 0.42]]);
-      parts.push([SPHERE, [side * (span + 4.9), 13.5, 0], 0.4, GOLD]);
-      // A lantern under each end of the beam.
-      parts.push([CYLINDER, [side * (span - 2.6), 8.3, 0], [0.05, 1.3, 0.05], 0x222222]);
-      parts.push([SPHERE, [side * (span - 2.6), 7.2, 0], [0.8, 0.95, 0.8], [1.5, 0.18, 0.12]]);
-      parts.push([CYLINDER, [side * (span - 2.6), 8.1, 0], [0.4, 0.2, 0.4], GOLD]);
-      parts.push([CYLINDER, [side * (span - 2.6), 6.3, 0], [0.4, 0.2, 0.4], GOLD]);
-    }
-    parts.push([BOX, [0, 9, 0], [span * 2 + 2.4, 0.9, 1], 0x1f6f8a]);
-    parts.push([BOX, [0, 9.55, 0], [span * 2 + 2.4, 0.22, 1.1], GOLD]);
-    parts.push([BOX, [0, 10.6, 0], [span * 2 + 3, 1, 1.2], VERMILION]);
-    parts.push([BOX, [0, 11.3, 0], [span * 2 + 3.4, 0.4, 1.6], 0x2e8b57]);
-    parts.push([BOX, [0, 11.95, 0], [span * 2 + 6, 0.5, 5.6], TILE]);
-    parts.push([BOX, [0, 12.45, 0], [span * 2 + 4, 0.5, 3.4], 0x39594f]);
-    parts.push([BOX, [0, 13, 0], [span * 2 + 2, 0.6, 0.7], TILE]);
-    for (const x of [-span, 0, span]) parts.push([SPHERE, [x, 13.6, 0], [0.5, 0.7, 0.5], GOLD]);
-    const gate = new Mesh3D(build(parts), lit({ roughness: 0.6 }));
-    gate.castShadow = true;
-    gate.receiveShadow = true;
-    holder.addChild(gate);
-
-    // The plaque carries the game's name on both faces.
-    const plaque = canvasTexture(512, 128, (c, w, h) => {
-      c.fillStyle = '#12365a';
-      c.fillRect(0, 0, w, h);
-      c.strokeStyle = '#f2c230';
-      c.lineWidth = 10;
-      c.strokeRect(8, 8, w - 16, h - 16);
-      c.fillStyle = '#f7d560';
-      c.font = '700 84px "Noto Serif SC", "Songti SC", "SimSun", "KaiTi", serif';
-      c.textAlign = 'center';
-      c.textBaseline = 'middle';
-      c.fillText('锦 绣 飞 车', w / 2, h / 2 + 4);
-    });
-    for (const facing of [0, Math.PI]) {
-      const sign = new Mesh3D(
-        createPlaneGeometry3D({ width: 12, height: 3 }),
-        createStandardMaterial3D({ color: 0xffffff, map: plaque, roughness: 0.5 }),
-      );
-      sign.setPosition(0, 9.9, facing ? -0.68 : 0.68);
-      sign.setRotation(0, facing, 0);
-      sign.castShadow = false;
-      holder.addChild(sign);
-    }
+    addStartGate(holder, span);
   }
 
   // ---- lake --------------------------------------------------------------------------
@@ -650,39 +602,13 @@ export function createScenery(scene, track, options = {}) {
   }
 
   // ---- trees, bamboo and rocks ---------------------------------------------------------
-  const pine = build([
-    [ROD, [0, 1.2, 0], [0.28, 2.4, 0.28], WOOD],
-    [SPIKE, [0, 3.2, 0], [2.3, 2.6, 2.3], 0x2f6b3f],
-    [SPIKE, [0, 4.9, 0], [1.8, 2.3, 1.8], 0x37784a],
-    [SPIKE, [0, 6.4, 0], [1.2, 2, 1.2], 0x418654],
-  ]);
-  const blossom = build([
-    [ROD, [0, 1.1, 0], [0.22, 2.2, 0.22], 0x5a3a28, [0, 0, 0.12]],
-    [ROD, [0.5, 2.3, 0], [0.12, 1.4, 0.12], 0x5a3a28, [0, 0, -0.7]],
-    [ROD, [-0.5, 2.4, 0.2], [0.12, 1.4, 0.12], 0x5a3a28, [0.3, 0, 0.7]],
-    [BALL, [0, 3.3, 0], [1.5, 1.1, 1.5], 0xf7b3cb],
-    [BALL, [1.2, 2.9, 0.2], [1.1, 0.85, 1.1], 0xf59ab8],
-    [BALL, [-1.2, 3, 0.3], [1.15, 0.9, 1.15], 0xfac6d6],
-    [BALL, [0.2, 3, -1], [1, 0.8, 1], 0xf7a8c4],
-  ]);
-  const bamboo = build(
-    [0, 1, 2, 3].flatMap((k) => {
-      const x = Math.cos(k * 2.4) * 0.5,
-        z = Math.sin(k * 2.4) * 0.5,
-        h = 5 + (k % 3) * 1.4;
-      return [
-        [ROD, [x, h / 2, z], [0.09, h, 0.09], 0x6fae4a],
-        [SPIKE, [x + 0.45, h * 0.86, z], [0.3, 1.5, 0.5], 0x4f9440, [0, k, -1.1]],
-        [SPIKE, [x - 0.45, h * 0.7, z + 0.1], [0.3, 1.4, 0.5], 0x5aa04a, [0, k, 1.1]],
-        [SPIKE, [x, h + 0.5, z], [0.35, 1.3, 0.35], 0x4f9440],
-      ];
-    }),
-  );
+  const trees = treeModels();
   const rock = build([
     [BALL, [0, 0.5, 0], [1.3, 0.9, 1], 0x8f8f88],
     [BALL, [0.9, 0.3, 0.4], [0.7, 0.5, 0.6], 0x7f7f78],
   ]);
   const pines = [],
+    hillPines = [],
     blossoms = [],
     bamboos = [],
     rocks = [];
@@ -701,12 +627,19 @@ export function createScenery(scene, track, options = {}) {
     // Blossom and bamboo keep to the roadside; pines take the hills.
     if (away < 28 && kind < 0.34) blossoms.push([x, y, z, turn, size, tint]);
     else if (away < 40 && kind < 0.62) bamboos.push([x, y, z, turn, size * 1.1, tint]);
-    else if (kind < 0.94) pines.push([x, y, z, turn, size * (1 + Math.min(1, away / 120)), tint]);
-    else rocks.push([x, y, z, turn, size * 1.4, tint]);
+    else if (kind < 0.94) {
+      // The route never comes close to the hill models, so their simpler
+      // shapes and lack of cast shadows do not cause a switch as you drive.
+      if (pines.length + hillPines.length < 520) {
+        const grove = away < 34 ? pines : hillPines;
+        grove.push([x, y, z, turn, size * (1 + Math.min(1, away / 120)), tint]);
+      }
+    } else rocks.push([x, y, z, turn, size * 1.4, tint]);
   }
-  copies(pine, pines.slice(0, 520));
-  copies(blossom, blossoms.slice(0, 200));
-  copies(bamboo, bamboos.slice(0, 260));
+  copies(trees.pine, pines);
+  copies(trees.hillPine, hillPines, lit(), false);
+  copies(trees.blossom, blossoms.slice(0, 200));
+  copies(trees.bamboo, bamboos.slice(0, 260));
   copies(rock, rocks, lit({ flatShading: true }));
 
   // ---- lanterns and banners along the road -------------------------------------------------
@@ -751,60 +684,7 @@ export function createScenery(scene, track, options = {}) {
   }
 
   // ---- grandstand and crowd ---------------------------------------------------------------
-  const fans = [];
-  {
-    const rows = 5,
-      length = 56;
-    const parts = [];
-    // Steps rise away from the road; the model's +X is the driver's left, the side the stand is on.
-    for (let r = 0; r < rows; r++)
-      parts.push([BOX, [r * 1.5, 0.6 + r * 0.7, 0], [1.5, 1.2 + r * 1.4, length], r % 2 ? 0xd9d2c0 : 0xc9c2b0]);
-    // A tiled canopy on red posts.
-    for (let z = -length / 2; z <= length / 2; z += 14)
-      parts.push([CYLINDER, [rows * 1.5 - 0.4, 4.6, z], [0.2, 9.2, 0.2], VERMILION]);
-    parts.push([BOX, [rows * 0.75 + 0.6, 9.4, 0], [rows * 1.5 + 4, 0.35, length + 3], TILE, [0, 0, 0.12]]);
-    parts.push([BOX, [rows * 1.5 - 0.2, 9.95, 0], [0.6, 0.5, length + 3], GOLD]);
-    const stand = new Mesh3D(build(parts), lit({ roughness: 0.8 }));
-    stand.castShadow = true;
-    stand.receiveShadow = true;
-    // On the outside of the start straight, facing the road.
-    const at = beside(0.012, -(track.limit[0] + 4.5));
-    stand.setPosition(at.x, at.y - 0.1, at.z);
-    stand.setRotation(0, at.heading, 0);
-    scene.addChild(stand);
-
-    const fanShape = build([
-      [BALL, [0, 0.45, 0], [0.3, 0.45, 0.26], [1, 1, 1]],
-      [BALL, [0, 1.05, 0], 0.22, [1, 0.86, 0.72]],
-    ]);
-    const outfits = [0xd8262c, 0xf2c230, 0x1f6f8a, 0x2e8b57, 0xf3ead6, 0xf07a1a, 0x8e44ad].map(rgb);
-    const crowd = new InstancedMesh3D(fanShape, lit({ roughness: 0.8 }), rows * 46);
-    crowd.castShadow = false;
-    crowd.frustumCulled = false;
-    const fx = Math.sin(at.heading),
-      fz = Math.cos(at.heading),
-      rx = -fz,
-      rz = fx;
-    for (let r = 0; r < rows; r++)
-      for (let k = 0; k < 46; k++) {
-        const along = -length / 2 + 1 + k * 1.2 + (r % 2) * 0.4,
-          across = -r * 1.5,
-          index = fans.length;
-        fans.push({
-          x: at.x + fx * along + rx * across,
-          y: at.y + 1.1 + r * 1.4,
-          z: at.z + fz * along + rz * across,
-          phase: chance() * 6.28,
-          pace: 5 + chance() * 4,
-        });
-        const outfit = outfits[Math.floor(chance() * outfits.length)];
-        crowd.setColorAt(index, outfit[0], outfit[1], outfit[2]);
-      }
-    crowd.count = fans.length;
-    scene.addChild(crowd);
-    scenery.crowd = crowd;
-    scenery.crowdTurn = at.heading - Math.PI / 2;
-  }
+  const grandstand = createGrandstand(scene, beside(0.012, -(track.limit[0] + 4.5)), { chance });
 
   // ---- mountains and clouds ----------------------------------------------------------------
   {
@@ -1131,28 +1011,6 @@ export function createScenery(scene, track, options = {}) {
     copies(hall, halls, lit({ roughness: 0.65 }));
 
     // Willows trail their branches by the water; maples add red and gold to the hills.
-    const willow = build([
-      [ROD, [0, 1.8, 0], [0.3, 3.6, 0.3], 0x5a4a32, [0, 0, 0.08]],
-      [BALL, [0.1, 4.3, 0], [2.1, 1.3, 2.1], 0x8fbf5a],
-      ...[0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => {
-        const a = k * 0.63,
-          r = 1.5 + (k % 3) * 0.35;
-        return [
-          SPIKE,
-          [Math.cos(a) * r, 2.9 - (k % 2) * 0.3, Math.sin(a) * r],
-          [0.34, 2.9 + (k % 3) * 0.5, 0.34],
-          k % 2 ? 0x9fcf6a : 0x7fb04a,
-          [Math.PI, 0, 0],
-        ];
-      }),
-    ]);
-    const maple = build([
-      [ROD, [0, 1.3, 0], [0.24, 2.6, 0.24], 0x5a3a28],
-      [BALL, [0, 3.5, 0], [1.7, 1.4, 1.7], 0xd9542a],
-      [BALL, [1.1, 3, 0.3], [1.1, 0.9, 1.1], 0xf2a81d],
-      [BALL, [-1, 3.1, -0.4], [1.2, 1, 1.2], 0xc8321e],
-      [BALL, [0.2, 4.4, -0.2], [1, 0.8, 1], 0xf07a1a],
-    ]);
     const willows = [],
       maples = [];
     for (let n = 0; n < 1400; n++) {
@@ -1166,8 +1024,8 @@ export function createScenery(scene, track, options = {}) {
       else if (shore > 1.5 && chance() < 0.16 && maples.length < 110 && clear(x, z, 12))
         maples.push([x, ground(x, z) - 0.15, z, chance() * 6.28, size * 1.1, [tone, tone, tone]]);
     }
-    copies(willow, willows);
-    copies(maple, maples);
+    copies(trees.willow, willows);
+    copies(trees.maple, maples);
 
     // Tufts of grass and wild flowers on the verge between the kerb and the wall.
     // Blades are four-sided so thousands of them stay cheap to draw.
@@ -1391,14 +1249,7 @@ export function createScenery(scene, track, options = {}) {
       position[2] = lantern.z;
       scenery.skyLanterns.setTransformAt(i, position, yawQuat(lantern.sway), 1.6);
     });
-    const turn = yawQuat(scenery.crowdTurn);
-    for (let i = 0; i < fans.length; i++) {
-      const fan = fans[i];
-      position[0] = fan.x;
-      position[1] = fan.y + Math.max(0, Math.sin(time * fan.pace + fan.phase)) * (0.12 + excitement * 0.45);
-      position[2] = fan.z;
-      scenery.crowd.setTransformAt(i, position, turn, 1);
-    }
+    grandstand.update(time, excitement);
   };
 
   return scenery;
