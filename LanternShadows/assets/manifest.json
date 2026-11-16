@@ -241,6 +241,122 @@
       "runtimeIdentity": "ee5a3bcf972518c5ef7599690ab82d38a39d9ff22f98bbac0c7e7cfbd5c60cac"
     },
     {
+      "id": "e_nezha",
+      "resourceKind": "spine",
+      "source": {
+        "id": "f_source_nezha",
+        "path": "sources/nezha.json",
+        "role": "source",
+        "mediaType": "application/json",
+        "sha256": "0e5dea81e44b13a2ae6e44c2c7ed8447ed9d2d04c872c3704f8d90f34638ef0a",
+        "byteLength": 47553
+      },
+      "artifact": {
+        "id": "f_asset_nezha",
+        "path": "files/nezha.json",
+        "role": "asset",
+        "mediaType": "application/json",
+        "sha256": "0e5dea81e44b13a2ae6e44c2c7ed8447ed9d2d04c872c3704f8d90f34638ef0a",
+        "byteLength": 47553
+      },
+      "importer": {
+        "id": "egret.spine-json",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13"
+      },
+      "artifactFormatVersion": "spine-json/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_nezha_atlas"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "7d45e94aa5bfa175dd34c659b005a456b3f02e60260ccec2727e1424ac0744ea",
+      "runtimeIdentity": "c599dc3c71e80f437625c2286eca9343fd982839bb7b838d0b3576f1fb25e4e8"
+    },
+    {
+      "id": "e_nezha_atlas",
+      "resourceKind": "spine-atlas",
+      "source": {
+        "id": "f_source_nezha_atlas",
+        "path": "sources/nezha.atlas",
+        "role": "source",
+        "mediaType": "text/plain",
+        "sha256": "a4337f9e8cb9aae4c4f47641b0935d0f4d4fecbe9f4570e96306bb276d01f604",
+        "byteLength": 575
+      },
+      "artifact": {
+        "id": "f_asset_nezha_atlas",
+        "path": "files/nezha.atlas",
+        "role": "asset",
+        "mediaType": "text/plain",
+        "sha256": "a4337f9e8cb9aae4c4f47641b0935d0f4d4fecbe9f4570e96306bb276d01f604",
+        "byteLength": 575
+      },
+      "importer": {
+        "id": "egret.spine-atlas",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13",
+        "pageNames": [
+          "nezha.png"
+        ]
+      },
+      "artifactFormatVersion": "spine-atlas/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_nezha_page"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "a1b343edfd57ba2a05c3599aea1e04bb21397e1592821551b6bfd100d76044e4",
+      "runtimeIdentity": "0cfb161425646b37253af2f988bb4f31b861b52f0331708c3617fa2875342a7b"
+    },
+    {
+      "id": "e_nezha_page",
+      "resourceKind": "image",
+      "source": {
+        "id": "f_source_nezha_page",
+        "path": "sources/nezha.png",
+        "role": "source",
+        "mediaType": "image/png",
+        "sha256": "7e80cab868b945bdc36cc7465d6dd4ec82bfd31a844190c9dfc09231a108ff15",
+        "byteLength": 120820
+      },
+      "artifact": {
+        "id": "f_asset_nezha_page",
+        "path": "files/nezha.png",
+        "role": "asset",
+        "mediaType": "image/png",
+        "sha256": "7e80cab868b945bdc36cc7465d6dd4ec82bfd31a844190c9dfc09231a108ff15",
+        "byteLength": 120820
+      },
+      "importer": {
+        "id": "egret.png",
+        "version": "1.0.0"
+      },
+      "settings": {},
+      "artifactFormatVersion": "png/1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "55e2054b3cd3ef280208e336d292a91683ba768b25cf4df4532d7846004122a0",
+      "runtimeIdentity": "128dddbe14a089bc32f2774b4c721c7e7b980364cf32858fad842acb4f8dea50"
+    },
+    {
       "id": "e_spearman",
       "resourceKind": "spine",
       "source": {

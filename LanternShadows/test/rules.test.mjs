@@ -5,9 +5,10 @@ import fs from 'node:fs';
 import { test } from 'node:test';
 
 import { COMBO_SECONDS, POST_ROOM, REVIVE_SECONDS, createAct, postBox, rankOf, remaining, stepAct } from '../src/rules/act.mjs';
+import { BOSS, bossAnimation, bossBox, bossReach, createBoss, hitBoss, open, present, restoreBoss, stepBoss, wakeBoss } from '../src/rules/boss.mjs';
 import { FOES, LIE, createFoe, foeAnimation, hitFoe, stepFoe, thrust } from '../src/rules/foes.mjs';
 import { ATTACKS, CHAIN_GRACE, TUNE, animationOf, bodyOf, createHero, hurtHero, reach, reviveHero, stepHero } from '../src/rules/hero.mjs';
-import { CELL, flatLevel, lay, moveBody, readLevel } from '../src/rules/level.mjs';
+import { CELL, flatLevel, lay, moveBody, overlaps, readLevel } from '../src/rules/level.mjs';
 
 const DT = 1 / 120,
   GROUND = 432;
@@ -249,13 +250,20 @@ const ACT1 = JSON.parse(fs.readFileSync(new URL('../assets/levels/act1.tmj', imp
 test('the first act is read from its map: ground, soldiers, posts, resting places and the gate', () => {
   const level = readLevel(ACT1),
     act = createAct(level);
-  assert.deepEqual([level.columns, level.rows, level.width], [80, 12, 3840]);
+  assert.deepEqual([level.columns, level.rows, level.width], [100, 12, 4800]);
   assert.deepEqual([act.hero.x, act.hero.y], [3.5 * CELL, GROUND]);
   assert.equal(act.foes.filter(foe => foe.kind === 'spearman').length, 7);
   assert.equal(act.foes.filter(foe => foe.kind === 'archer').length, 3);
   assert.equal(act.posts.length, 2);
-  assert.equal(act.checkpoints.length, 2);
+  assert.equal(act.checkpoints.length, 3);
   assert.ok(act.gate.x > act.foes.at(-1).x, 'the gate is past the last soldier');
+  // The court before the gate: from its pennant to the end, wider than the stage, with him and the gate inside.
+  const { arena } = act.boss;
+  assert.deepEqual([arena.left, arena.right], [act.checkpoints.at(-1).x - 48, level.width]);
+  assert.ok(arena.right - arena.left > 960 && act.boss.x > arena.left + 300 && act.gate.x < arena.right);
+  assert.ok(act.foes.every(foe => foe.x < arena.left), 'no soldier stands in the court');
+  const skipped = createAct(level, { from: 'boss' });
+  assert.deepEqual([skipped.hero.x, remaining(skipped), skipped.from], [act.checkpoints.at(-1).x, 0, 'boss']);
   // Everything stands on something, and nothing stands inside the ground.
   const size = { halfWidth: 10, height: 100 };
   for (const thing of level.things) {
@@ -496,14 +504,329 @@ test('the gate stays shut while a soldier stands, and opens to end the act', () 
   assert.equal(rankOf({ time: 60, falls: 4, wounds: 20 }), 'C');
 });
 
-test('the first act can be played through, and is not over in a moment', () => {
+// ---- Nezha -----------------------------------------------------------------------------------------------------
+const COURT = { left: 900, right: 2300 };
+const fight = (boss, hero, seconds) => {
+  const events = [];
+  for (let t = 0; t < seconds; t += DT) events.push(...stepBoss(boss, hero, DT));
+  return events;
+};
+/** Him, come down into a court and ready, with someone standing `gap` to his left. */
+function nezha(gap = 200) {
+  const boss = createBoss(1600, GROUND, COURT),
+    hero = { x: 1600 - gap, y: GROUND, state: 'move' },
+    entered = [...wakeBoss(boss), ...fight(boss, hero, BOSS.enter.seconds + DT)];
+  return { boss, hero, entered };
+}
+/** Steps until an event of the type happens, and returns it with the time it took. */
+function until(boss, hero, type, limit = 8) {
+  for (let t = 0; t < limit; t += DT) {
+    const found = stepBoss(boss, hero, DT).find(event => event.type === type);
+    if (found) return { ...found, after: t };
+  }
+  assert.fail(`no ${type} within ${limit} s (he is in ${boss.state})`);
+}
+const HEAVY = { kind: 'slam', power: 2 },
+  LIGHT = { kind: 'hit', power: 1 };
+
+test('Nezha comes down from above, cannot be struck until he has, and then faces whoever is there', () => {
+  const boss = createBoss(1600, GROUND, COURT),
+    hero = { x: 1400, y: GROUND, state: 'move' };
+  assert.equal(present(boss), false);
+  assert.deepEqual(fight(boss, hero, 1), [], 'he does nothing until he is called');
+  assert.deepEqual(types(wakeBoss(boss)), ['boss-enter']);
+  assert.equal(boss.rise, BOSS.enter.from);
+  fight(boss, hero, BOSS.enter.seconds / 2);
+  assert.ok(boss.rise > 0 && boss.rise < BOSS.enter.from / 2, `half way down he hangs at ${boss.rise}`);
+  assert.equal(open(boss), false);
+  assert.deepEqual(types(fight(boss, hero, BOSS.enter.seconds / 2 + DT)), ['boss-ready']);
+  assert.equal(boss.rise, 0);
+  assert.equal(boss.facing, -1);
+  assert.equal(open(boss), true);
+  assert.equal(bossAnimation(boss).name, 'idle');
+});
+
+test('he warns before a thrust, and the thrust carries the spear a long way', () => {
+  const { boss, hero } = nezha(260);
+  const warned = until(boss, hero, 'boss-windup');
+  assert.equal(warned.move, 'thrust');
+  assert.equal(bossReach(boss), null, 'a warning hurts nobody');
+  assert.equal(bossAnimation(boss).name, 'thrustWindup');
+  const struck = until(boss, hero, 'boss-strike');
+  assert.ok(Math.abs(struck.after - BOSS.thrust.windup) < 2 * DT, `the warning lasted ${struck.after}`);
+  const from = boss.x;
+  fight(boss, hero, BOSS.thrust.from + 2 * DT);
+  const reach = bossReach(boss);
+  assert.ok(reach && reach.x + reach.width <= boss.x, 'the spear reaches the way he faces');
+  fight(boss, hero, BOSS.thrust.seconds);
+  assert.ok(Math.abs(from - boss.x - BOSS.thrust.speed * (BOSS.thrust.until - BOSS.thrust.from)) < 30, `he went ${from - boss.x}`);
+  assert.equal(boss.state, 'idle');
+  assert.equal(bossReach(boss), null);
+});
+
+test('he closes in before thrusting at what is out of reach, and sweeps at what is too near', () => {
+  const far = nezha(640);
+  const first = until(far.boss, far.hero, 'boss-windup');
+  assert.ok(Math.abs(far.hero.x - far.boss.x) < BOSS.thrust.range, 'he came within reach first');
+  assert.equal(first.move, 'thrust');
+  const near = nezha(80);
+  assert.equal(until(near.boss, near.hero, 'boss-windup').move, 'sweep');
+  until(near.boss, near.hero, 'boss-strike');
+  fight(near.boss, near.hero, BOSS.sweep.from + 2 * DT);
+  const reach = bossReach(near.boss);
+  assert.ok(reach.height > TUNE.jump ** 2 / (2 * TUNE.gravity) - 20, 'a sweep is not to be jumped');
+  assert.ok(overlaps(reach, bodyOf(createHero(near.hero.x, GROUND))));
+});
+
+test('a light blow does not move him; the last of the combination staggers him, but not twice running', () => {
+  const { boss, hero } = nezha();
+  assert.deepEqual(types(hitBoss(boss, LIGHT)), ['boss-hurt']);
+  assert.equal(boss.health, BOSS.health - 1);
+  assert.equal(boss.state, 'idle');
+  assert.deepEqual(types(hitBoss(boss, HEAVY)), ['boss-stun']);
+  assert.equal(bossAnimation(boss).name, 'stun');
+  assert.equal(open(boss), true, 'staggered, he can be struck');
+  fight(boss, hero, BOSS.stun + DT);
+  assert.equal(boss.state, 'idle');
+  assert.deepEqual(types(hitBoss(boss, HEAVY)), ['boss-hurt'], 'he has steadied himself');
+  fight(boss, { ...hero, state: 'down' }, BOSS.steady);
+  assert.deepEqual(types(hitBoss(boss, HEAVY)), ['boss-stun']);
+});
+
+test('he fights in three phases, none of which a single blow can skip, and is driven off at the end', () => {
+  const { boss, hero } = nezha(300);
+  const mighty = { kind: 'slam', power: 100 };
+  assert.deepEqual(hitBoss(boss, mighty), [{ type: 'boss-phase', phase: 1 }]);
+  assert.equal(boss.health, BOSS.phases[0].until);
+  assert.equal(boss.state, 'roar');
+  assert.equal(open(boss), false, 'in his rage nothing reaches him');
+  fight(boss, hero, BOSS.roar + DT);
+  assert.equal(until(boss, hero, 'boss-windup').move, 'ring', 'the second phase opens with the ring');
+  assert.deepEqual(hitBoss(boss, mighty), [{ type: 'boss-phase', phase: 2 }]);
+  fight(boss, hero, BOSS.roar + DT);
+  assert.equal(until(boss, hero, 'boss-windup').move, 'charge', 'the third with the ride');
+  assert.deepEqual(types(hitBoss(boss, mighty)), ['boss-down']);
+  assert.equal(boss.health, 0);
+  assert.equal(bossAnimation(boss).name, 'flee');
+  const end = fight(boss, hero, BOSS.flee + DT);
+  assert.deepEqual(types(end), ['boss-gone']);
+  assert.ok(boss.gone && !present(boss) && boss.rise > 300);
+});
+
+test('the ring flies out and comes home to his hand; knocked back, it staggers him and costs him', () => {
+  const { boss, hero } = nezha(300);
+  hitBoss(boss, { kind: 'slam', power: 100 });
+  fight(boss, hero, BOSS.roar + DT);
+  hero.x = boss.x - 560;
+  const { ring } = until(boss, hero, 'ring');
+  assert.ok(ring.vx < 0 && boss.ring === ring);
+  let furthest = 0;
+  for (let t = 0; t < 3 && boss.ring; t += DT) (stepBoss(boss, hero, DT), (furthest = Math.max(furthest, Math.abs(ring.x - ring.from))));
+  assert.equal(boss.ring, null, 'it came home');
+  assert.ok(Math.abs(furthest - BOSS.ring.reach) < 40, `it flew ${furthest}`);
+  assert.equal(boss.health, BOSS.phases[0].until);
+
+  const again = until(boss, hero, 'ring').ring;
+  fight(boss, hero, 0.2);
+  Object.assign(again, { struck: true, back: true });
+  const home = [];
+  for (let t = 0; t < 2 && boss.ring; t += DT) home.push(...stepBoss(boss, hero, DT));
+  assert.deepEqual(types(home), ['ring-home', 'boss-stun']);
+  assert.equal(boss.health, BOSS.phases[0].until - BOSS.ring.rebound);
+});
+
+test('in the last phase he rides his wheels to the end of the court, low and fast, and the ground burns behind', () => {
+  const { boss, hero } = nezha(300);
+  hitBoss(boss, { kind: 'slam', power: 100 });
+  hitBoss(boss, { kind: 'slam', power: 100 });
+  fight(boss, hero, BOSS.roar + DT);
+  const warned = until(boss, hero, 'boss-windup');
+  assert.equal(warned.move, 'charge');
+  const struck = until(boss, hero, 'boss-strike');
+  assert.ok(Math.abs(struck.after - BOSS.charge.windup * BOSS.quick) < 2 * DT, 'his warnings are shorter now');
+  assert.ok(boss.rise > 60, 'he rises first');
+  const from = boss.x;
+  fight(boss, hero, 0.2);
+  assert.ok(bossBox(boss).height === BOSS.charge.height && boss.rise === 0, 'he rides low');
+  assert.ok(overlaps(bossReach(boss), bossBox(boss)));
+  until(boss, hero, 'boss-halt');
+  assert.ok(boss.x < COURT.left + 120, `he stopped at ${boss.x}`);
+  const [fire] = boss.fires;
+  assert.ok(fire.from === from && Math.abs(fire.to - boss.x) < 1, 'the fire lies along the way he went');
+  fight(boss, hero, BOSS.charge.fire - 0.1);
+  assert.equal(boss.fires.length, 1);
+  fight(boss, hero, 0.2);
+  assert.equal(boss.fires.length, 0, 'and burns out');
+  assert.equal(boss.state, 'idle');
+});
+
+/** An act that is only the court: a pennant, three hundred units of terrace, him, a cloud, and the gate. */
+function court() {
+  const level = lay(flatLevel(2400, GROUND, [{ type: 'spawn', x: 200, y: GROUND }, { type: 'checkpoint', x: 900, y: GROUND }, { type: 'boss', x: 1700, y: GROUND }, { type: 'gate', x: 2100, y: GROUND }]), 'cloud', 24, 7, 4);
+  const act = createAct(level, { from: 'boss' });
+  return act;
+}
+
+test('he is met in the court when no soldier stands, and nobody leaves it until he is driven off', () => {
+  const guarded = actWith([['spearman', 700], ['checkpoint', 900], ['boss', 1700], ['gate', 2100]]);
+  guarded.hero.x = 1300;
+  play(guarded, 0.5);
+  assert.equal(guarded.boss.state, 'wait', 'not while a soldier stands');
+
+  const act = court();
+  assert.equal(act.hero.x, 900, 'begun from the court, he stands at its pennant');
+  assert.equal(remaining(act), 0);
+  assert.deepEqual(types(play(act, 0.2)), []);
+  act.hero.x = 1200;
+  assert.ok(types(play(act, DT)).includes('boss-enter'));
+  play(act, 0.3, ask({ move: -1 }));
+  play(act, 2, ask({ move: -1 }));
+  assert.ok(Math.abs(act.hero.x - act.boss.arena.left - 44) < 0.01, `he got out to ${act.hero.x}`);
+  act.hero.x = 2200;
+  play(act, 0.1);
+  assert.equal(act.state, 'play', 'the gate is not his yet');
+});
+
+test('standing in his thrust costs a peach, rolling through it costs nothing, and the staff wears him down', () => {
+  const act = court();
+  act.hero.x = 1440;
+  play(act, BOSS.enter.seconds + 0.1);
+  let events = [];
+  for (let t = 0; t < 4 && !events.some(event => event.type === 'boss-strike'); t += DT) events = stepAct(act, ask(), DT);
+  events = play(act, BOSS.thrust.seconds);
+  assert.ok(types(events).includes('hurt'));
+  assert.equal(act.hero.health, TUNE.health - 1);
+
+  const nimble = court();
+  nimble.hero.x = 1440;
+  play(nimble, BOSS.enter.seconds + 0.1);
+  events = [];
+  for (let t = 0; t < 4 && !events.some(event => event.type === 'boss-strike'); t += DT) events = stepAct(nimble, ask(), DT);
+  events = tap(nimble, { dash: true, move: 1 }, BOSS.thrust.seconds);
+  assert.equal(nimble.hero.health, TUNE.health);
+  // Behind him now, with his back turned: the whole combination lands.
+  nimble.hero.x = nimble.boss.x + 60;
+  events = [...tap(nimble, { attack: true, move: -1 }, 0.2), ...tap(nimble, { attack: true }, 0.22), ...tap(nimble, { attack: true }, 0.6)];
+  assert.equal(events.filter(event => event.type === 'met' && event.boss).length, 3);
+  assert.equal(nimble.boss.health, BOSS.health - 4);
+  assert.equal(nimble.combo, 3);
+});
+
+test('the staff sends his ring back at him, and a cloud is clear of his fire', () => {
+  const act = court(),
+    { boss, hero } = act;
+  hero.x = 1200;
+  play(act, BOSS.enter.seconds + 0.1);
+  hitBoss(boss, { kind: 'slam', power: 100 });
+  play(act, BOSS.roar + 0.1);
+  let events = [];
+  for (let t = 0; t < 5 && !boss.ring; t += DT) stepAct(act, ask(), DT);
+  // He waits for it and strikes as it arrives.
+  for (let t = 0; t < 2 && Math.abs(boss.ring.x - hero.x) > 150; t += DT) stepAct(act, ask(), DT);
+  events = tap(act, { attack: true, move: Math.sign(boss.ring.x - hero.x) }, 1.2);
+  assert.ok(events.some(event => event.type === 'deflect' && event.ring), 'the ring was struck');
+  assert.ok(types(events).includes('boss-stun'), 'and came home hard');
+  assert.equal(hero.health, TUNE.health);
+
+  // The ride: one waits on the ground and is burned, the other on a cloud and is not.
+  for (const [where, y, burned] of [[1250, GROUND, true], [26 * CELL, 7 * CELL, false]]) {
+    const ride = court();
+    ride.hero.x = 1200;
+    play(ride, BOSS.enter.seconds + 0.1);
+    hitBoss(ride.boss, { kind: 'slam', power: 100 });
+    hitBoss(ride.boss, { kind: 'slam', power: 100 });
+    play(ride, BOSS.roar);
+    Object.assign(ride.hero, { x: where, y, vx: 0, vy: 0, safe: 0 });
+    events = [];
+    for (let t = 0; t < 6 && !events.some(event => event.type === 'boss-halt'); t += DT) events = stepAct(ride, ask(), DT);
+    play(ride, 0.3);
+    assert.equal(ride.hero.health < TUNE.health, burned, burned ? 'on the ground he is burned' : 'on a cloud he is not');
+  }
+});
+
+test('if he falls in the court the fight goes back to the start of its phase, and driving Nezha off opens the gate', () => {
+  const act = court(),
+    { boss, hero } = act;
+  hero.x = 1200;
+  play(act, BOSS.enter.seconds + 0.1);
+  hitBoss(boss, { kind: 'slam', power: 100 });
+  play(act, BOSS.roar + 0.1);
+  hitBoss(boss, LIGHT);
+  hitBoss(boss, LIGHT);
+  assert.equal(boss.health, BOSS.phases[0].until - 2);
+  hurtHero(hero, hero.x + 10, TUNE.health);
+  const fallen = play(act, 0.1);
+  assert.ok(types(fallen).includes('revive'));
+  assert.equal(hero.x, 900);
+  assert.deepEqual([boss.health, boss.phase, boss.ring, boss.state], [BOSS.phases[0].until, 1, null, 'idle']);
+  assert.ok(Math.abs(boss.x - 1700) < 30, 'he is back where he came down');
+
+  hitBoss(boss, { kind: 'slam', power: 100 });
+  play(act, BOSS.roar + 0.1);
+  hitBoss(boss, { kind: 'slam', power: 100 });
+  const end = play(act, BOSS.flee + 0.1);
+  assert.deepEqual(types(end).filter(type => type.startsWith('boss') || type === 'gate-open'), ['boss-gone', 'gate-open']);
+  hero.x = 2090;
+  assert.deepEqual(types(play(act, 0.5)), [], 'the gate takes a moment to open');
+  assert.ok(types(play(act, 1)).includes('clear'));
+  assert.equal(act.state, 'cleared');
+  restoreBoss(createBoss(0, 0, COURT));
+});
+
+/** The clouds of a level, each as the span it covers and the height of its top. */
+function cloudsOf(level) {
+  const spans = [];
+  for (let row = 0; row < level.rows; row++)
+    for (let column = 0; column < level.columns; column++)
+      if (level.kind[row * level.columns + column] === 2) {
+        const last = spans.at(-1);
+        if (last && last.y === row * CELL && last.to === column * CELL) last.to += CELL;
+        else spans.push({ from: column * CELL, to: (column + 1) * CELL, y: row * CELL });
+      }
+  return spans;
+}
+/**
+ * How a simple player fights him: stands close and strikes; rolls through a thrust or a sweep at the last
+ * moment; knocks the ring back when it comes; and waits out the ride on the nearest cloud.
+ */
+function duel(act, clouds) {
+  const { hero, boss } = act,
+    dx = boss.x - hero.x,
+    gap = Math.abs(dx),
+    toward = Math.sign(dx) || 1;
+  if ((boss.move === 'charge' && boss.state !== 'idle') || boss.fires.length) {
+    const cloud = clouds.reduce((best, each) => (Math.abs((each.from + each.to) / 2 - hero.x) < Math.abs((best.from + best.to) / 2 - hero.x) ? each : best)),
+      middle = (cloud.from + cloud.to) / 2;
+    if (hero.grounded && hero.y <= cloud.y) return ask({ jumpHeld: true });
+    return ask({ move: Math.abs(middle - hero.x) < 30 ? 0 : Math.sign(middle - hero.x), jump: hero.grounded && Math.abs(middle - hero.x) < 110, jumpHeld: true });
+  }
+  const ring = boss.ring;
+  if (ring && !ring.struck) {
+    const away = ring.x - hero.x,
+      coming = Math.sign(ring.vx) === -Math.sign(away);
+    return ask({ move: coming ? Math.sign(away) * 0.01 : 0, attack: coming && Math.abs(away) < 170 && hero.state === 'move' });
+  }
+  const warning = boss.state === 'windup' && boss.move !== 'ring',
+    left = warning ? BOSS[boss.move].windup * (boss.phase === 2 ? BOSS.quick : 1) - boss.time : 9;
+  if (warning && left < 0.07 && gap < (boss.move === 'thrust' ? 520 : 200)) return ask({ move: toward, dash: true });
+  if (!open(boss)) return ask({ move: gap > 180 ? toward : 0 });
+  return ask({ move: gap > 90 ? toward : 0, attack: gap < 120 && left > 0.4 });
+}
+
+test('the first act can be played through, Nezha and all, and is not over in a moment', () => {
   // A simple player: makes for the nearest soldier to the left of the rest, jumping toward one who stands higher
   // and backing off to try again when he ends up underneath; strikes what is near, and rolls from a warning.
-  const act = createAct(readLevel(ACT1));
+  const level = readLevel(ACT1),
+    act = createAct(level),
+    clouds = cloudsOf(level).filter(cloud => cloud.from > act.boss.arena.left);
   let stuck = 0,
     last = 0,
     retreat = 0;
   for (let t = 0; t < 600 && act.state === 'play'; t += DT) {
+    if (present(act.boss)) {
+      stepAct(act, duel(act, clouds), DT);
+      continue;
+    }
     const hero = act.hero,
       target = act.foes.find(foe => foe.state !== 'down') ?? act.gate,
       dx = target.x - hero.x,
@@ -521,6 +844,7 @@ test('the first act can be played through, and is not over in a moment', () => {
   }
   assert.equal(act.state, 'cleared', `stopped at x ${Math.round(act.hero.x)} with ${remaining(act)} soldiers left after ${Math.round(act.time)} s`);
   assert.equal(act.result.felled, 10);
-  assert.ok(act.result.time > 25, `cleared in ${act.result.time} s`);
+  assert.ok(act.boss.gone, 'Nezha was driven off');
+  assert.ok(act.result.time > 45, `cleared in ${act.result.time} s`);
   console.log(`    a simple player clears the first act in ${Math.round(act.result.time)} s, falling ${act.result.falls} times and wounded ${act.result.wounds} times: rank ${act.result.rank}`);
 });

@@ -38,6 +38,7 @@ export function createPuppet(asset, scope, { onEvent } = {}) {
     display = createSpineDisplay(instance, scope, { colorProfile: 'egret-shared-linear/1' }),
     node = display.node;
   let playing, key, rate = 1, size = 1;
+  const layers = [];
   return {
     node,
     instance,
@@ -56,6 +57,15 @@ export function createPuppet(asset, scope, { onEvent } = {}) {
       instance.addAnimation(0, name, { loop, mixSeconds: mix });
       playing = name;
       key = 0;
+    },
+    /**
+     * Plays `name`, going round, on a track above the first. What it moves it takes over from the first track;
+     * what it leaves alone goes on as it was.
+     */
+    layer(track, name, mix = 0.2) {
+      if (layers[track] === name) return;
+      layers[track] = name;
+      instance.setAnimation(track, name, { loop: true, mixSeconds: mix });
     },
     face(direction) {
       node.scaleX = direction < 0 ? -size : size;

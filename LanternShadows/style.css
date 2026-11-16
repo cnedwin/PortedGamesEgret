@@ -33,7 +33,7 @@ body {
 #stage { display: block; width: 100%; height: 100%; outline: none; }
 
 .hud { position: absolute; inset: 0; pointer-events: none; font-size: clamp(11px, 1.55cqw, 19px); }
-.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden], .trouble[hidden], .notice[hidden], .result[hidden] { display: none; }
+.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden], .trouble[hidden], .notice[hidden], .result[hidden], .foe[hidden] { display: none; }
 .trouble { top: 30%; left: 12%; right: 12%; padding: 0.8em 1.2em; border: 1px solid #c98a2a; background: #1c0f0be6; color: #ffd9c8; font-size: 0.95em; line-height: 1.5; text-align: center; -webkit-user-select: text; user-select: text; pointer-events: auto; }
 .hud > * { position: absolute; margin: 0; }
 
@@ -57,7 +57,14 @@ body {
 .peaches i.is-eaten { opacity: 0.22; transform: scale(0.8); }
 .tally-line { top: 10.2%; left: 0; right: 0; text-align: center; color: #4a2410; font-weight: 700; font-size: 0.95em; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
 .tally-line span + span { margin-left: 1.4em; font-variant-numeric: tabular-nums; }
-.notice { top: 18%; left: 50%; transform: translateX(-50%); padding: 0.4em 1.2em; border: 1px solid #c98a2a; background: linear-gradient(#5c100d, #8f1d16); color: var(--pale-gold); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; box-shadow: 0 0.3em 1em #0006; }
+/* Whoever bars the gate: his name, and his strength as a band of red silk marked off in three. */
+.foe { top: 14.8%; left: 30%; right: 30%; display: flex; align-items: center; gap: 0.7em; color: #4a2410; font-weight: 900; letter-spacing: 0.1em; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
+.foe i { position: relative; flex: 1; height: 0.62em; border: 1.5px solid var(--ink); background: #1c0f0b4d; box-shadow: 0 0 0 1px #c98a2a; }
+.foe b { position: absolute; inset: 0 auto 0 0; width: 100%; background: linear-gradient(#d8402a, #8f1a1a); transition: width 0.2s; }
+.foe i::before, .foe i::after { content: ''; position: absolute; z-index: 1; top: -0.18em; bottom: -0.18em; width: 2px; background: var(--ink); }
+.foe i::before { left: 33.33%; }
+.foe i::after { left: 66.67%; }
+.notice { top: 21%; left: 50%; transform: translateX(-50%); padding: 0.4em 1.2em; border: 1px solid #c98a2a; background: linear-gradient(#5c100d, #8f1d16); color: var(--pale-gold); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; box-shadow: 0 0.3em 1em #0006; }
 :root[lang='en'] .notice { letter-spacing: 0.02em; }
 
 /* The count of blows: a large figure and its word, down the right-hand post. */
@@ -147,6 +154,11 @@ body {
 .gong:hover:not(:disabled) { transform: scale(1.04); }
 .gong:active:not(:disabled) { transform: scale(0.96); }
 .gong:disabled { filter: grayscale(0.7) brightness(0.6); cursor: progress; }
+/* The lesser choice on the playbill, written rather than struck. */
+.aside { border: 0; padding: 0.3em 0.6em; background: none; color: #f0c98a; font: 700 0.92em var(--serif); letter-spacing: 0.08em; text-decoration: underline; text-decoration-color: #c98a2a; text-underline-offset: 0.3em; cursor: pointer; }
+.aside:hover:not(:disabled) { color: var(--pale-gold); }
+.aside:disabled { opacity: 0.4; cursor: progress; }
+:root[lang='en'] .aside { letter-spacing: 0.02em; }
 .status { margin: 0; min-height: 1.4em; color: #e7b98a; font-size: 0.86em; -webkit-user-select: text; user-select: text; }
 .status.is-error { color: #ffd0c0; }
 

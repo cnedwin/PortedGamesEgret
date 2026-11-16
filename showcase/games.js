@@ -148,12 +148,12 @@ export const GAMES = [
       en: 'One cloth, one lamp, and a shadow-puppet Monkey King storming the gate of heaven.',
     },
     intro: {
-      zh: '整出戏演在皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，远处的天宫在灯影里是虚的。孙悟空一路打上南天门，平扫、上挑、劈砸三下一套，每一下打中都有一记锣鼓，整台戏跟着定格、震动。第一幕有十名天兵把守：枪兵出枪前先放平枪杆，弓手的箭可以一棍打落，筋斗云能从枪尖里穿过去；五个桃是他的体力，落幕时盖一枚印评定这一场。皮偶是 Spine 骨骼动画，每片皮都由代码画出，关卡是瓦片地图，锣鼓声是算出来的。后面的两幕与 Boss 还在做。',
-      en: 'The whole play is on the cloth of a shadow-puppet booth: a lamp behind it, carved and dyed leather puppets against it, and the halls of heaven out of focus in the distance. The Monkey King fights his way to the Southern Gate with a sweep, a lift and a smash; every blow that lands has its beat of percussion, and the stage holds still and shudders with it. Ten soldiers of heaven hold the first act: a spearman levels his spear before he thrusts, an archer’s arrow can be knocked out of the air, and the cloud roll passes through a spear point. Five peaches are his strength, and a seal is set on the act as the curtain falls. The puppets are Spine skeletons drawn by code, the level is a tile map, and the percussion is worked out from numbers. Two more acts and a boss are still to come.',
+      zh: '整出戏演在皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，远处的天宫在灯影里是虚的。孙悟空一路打上南天门，平扫、上挑、劈砸三下一套，每一下打中都有一记锣鼓，整台戏跟着定格、震动。第一幕有十名天兵把守：枪兵出枪前先放平枪杆，弓手的箭可以一棍打落，筋斗云能从枪尖里穿过去；五个桃是他的体力，落幕时盖一枚印评定这一场。南天门前哪吒踏风火轮拦路，分三段打：火尖枪，能一棍打回去的乾坤圈，最后现出三头六臂，风火轮碾过的地面会烧起来。皮偶是 Spine 骨骼动画，每片皮都由代码画出，关卡是瓦片地图，锣鼓声是算出来的。后面的两幕还在做。',
+      en: 'The whole play is on the cloth of a shadow-puppet booth: a lamp behind it, carved and dyed leather puppets against it, and the halls of heaven out of focus in the distance. The Monkey King fights his way to the Southern Gate with a sweep, a lift and a smash; every blow that lands has its beat of percussion, and the stage holds still and shudders with it. Ten soldiers of heaven hold the first act: a spearman levels his spear before he thrusts, an archer’s arrow can be knocked out of the air, and the cloud roll passes through a spear point. Five peaches are his strength, and a seal is set on the act as the curtain falls. Before the gate Nezha comes down on his wheels of wind and fire and fights in three phases: the fire-tipped spear, the Universe Ring that the staff can send back at him, and at last three heads and six arms, on wheels that leave the ground burning. The puppets are Spine skeletons drawn by code, the level is a tile map, and the percussion is worked out from numbers. Two more acts are still to come.',
     },
     facts: {
-      zh: [['画面', '2D 骨骼动画，WebGL2 与 WebGPU'], ['操作', '键盘、手柄、触屏'], ['状态', '第一幕']],
-      en: [['Graphics', '2D skeletal animation, WebGL2 and WebGPU'], ['Controls', 'Keyboard, gamepad, touch'], ['Status', 'Act one']],
+      zh: [['画面', '2D 骨骼动画，WebGL2 与 WebGPU'], ['操作', '键盘、手柄、触屏'], ['状态', '第一幕，含哪吒一战']],
+      en: [['Graphics', '2D skeletal animation, WebGL2 and WebGPU'], ['Controls', 'Keyboard, gamepad, touch'], ['Status', 'Act one, with Nezha']],
     },
     cover: 'cover.webp',
     shots: ['1.webp', '2.webp', '3.webp'],
