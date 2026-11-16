@@ -238,22 +238,6 @@ function buildGrass(scene, rand, density) {
 
 
 
-function lantern(b, glow, x, z) {
-  const y = height(x, z);
-  b.box(x, y + 0.12, z, 0.62, 0.24, 0.62, { tint: STONE });
-  b.limb([x, y + 0.24, z], [x, y + 1.0, z], 0.13, 0.11, { tint: STONE, sides: 6 });
-  b.box(x, y + 1.06, z, 0.46, 0.12, 0.46, { tint: STONE });
-  for (const [dx, dz] of [
-    [1, 1],
-    [1, -1],
-    [-1, 1],
-    [-1, -1]
-  ])
-    b.box(x + dx * 0.15, y + 1.29, z + dz * 0.15, 0.07, 0.34, 0.07, { tint: STONE_DARK });
-  glow.box(x, y + 1.29, z, 0.24, 0.3, 0.24, { tint: [1, 0.62, 0.25] });
-  b.limb([x, y + 1.46, z], [x, y + 1.72, z], 0.44, 0.06, { tint: STONE_DARK, sides: 4 });
-  b.limb([x, y + 1.5, z], [x, y + 1.76, z], 0.4, 0.05, { tint: SNOW, sides: 4, caps: false });
-}
 
 function brazier(b, glow, x, z) {
   for (let i = 0; i < 3; i++) {
@@ -264,50 +248,26 @@ function brazier(b, glow, x, z) {
   glow.limb([x, 0.79, z], [x, 0.82, z], 0.4, 0.4, { tint: [1, 0.42, 0.1], sides: 10 });
 }
 
-function roof(b, x, y, z, w, d, rise, snow = 0.75) {
-  // Two slopes meeting at a ridge, the eaves turned up at the corners.
-  const slope = Math.atan2(rise, d / 2),
-    run = Math.hypot(rise, d / 2) + 0.5;
-  for (const side of [1, -1]) {
-    b.box(x, y + rise / 2 - 0.08, z + (side * d) / 4, w, 0.2, run, { tint: shade(TILE, 0.8), top: shade(SNOW, snow), rx: side * slope });
-    for (let i = 0; i <= 10; i++) {
-      const px = x - w / 2 + (w * i) / 10;
-      b.box(px, y + rise / 2 + 0.05, z + (side * d) / 4, 0.09, 0.07, run, { tint: TILE, rx: side * slope });
-    }
-    for (const end of [1, -1]) b.box(x + end * (w / 2 + 0.05), y + 0.08, z + side * (d / 2 + 0.1), 0.5, 0.16, 0.5, { tint: TILE, rx: side * -0.5, rz: end * 0.5 });
-  }
-  b.box(x, y + rise + 0.1, z, w + 0.3, 0.3, 0.34, { tint: TILE, top: shade(SNOW, snow) });
-  for (const end of [1, -1]) b.box(x + end * (w / 2 + 0.1), y + rise + 0.32, z, 0.26, 0.5, 0.3, { tint: TILE, rz: end * -0.3 });
-}
 
-function buildGate(scene, rand, material, tall) {
-  const b = createBuilder(),
-    top = createBuilder(),
-    { x, z } = PLACES.gate;
-  // The wall to either side, capped with tile and snow.
-  for (const wall of WALLS.slice(0, 2)) {
-    const cx = (wall.ax + wall.bx) / 2,
-      w = Math.abs(wall.bx - wall.ax) + 0.3;
-    b.box(cx, 1.45, z, w, 2.9, 1.0, { tint: shade(rgb(0x8a8378), 0.8 + rand() * 0.2) });
-    b.box(cx, 0.35, z, w + 0.1, 0.7, 1.16, { tint: STONE_DARK });
-    b.box(cx, 3.02, z, w + 0.3, 0.26, 1.5, { tint: TILE, top: SNOW });
-  }
-  // Wall running on into the trees.
-  for (const side of [1, -1]) b.box(x + side * 17, 1.4 + height(side * 17, z), z, 16, 3.4, 0.9, { tint: rgb(0x77716a), top: SNOW });
-  // Gate house: four posts and a lintel under a roof that the camera may need to see through.
-  for (const side of [1, -1]) {
-    b.limb([x + side * 2.2, 0, z - 0.75], [x + side * 2.2, 4.6, z - 0.75], 0.24, 0.22, { tint: LACQUER, sides: 8 });
-    b.limb([x + side * 2.2, 0, z + 0.75], [x + side * 2.2, 4.6, z + 0.75], 0.24, 0.22, { tint: LACQUER, sides: 8 });
-    b.box(x + side * 2.2, 0.2, z, 0.8, 0.4, 2.3, { tint: STONE });
-  }
-  top.box(x, 4.4, z, 5.4, 0.42, 0.42, { tint: TIMBER });
-  top.box(x, 3.72, z, 2.3, 0.72, 0.1, { tint: rgb(0x1c2a3a) }); // the name board
-  top.box(x, 3.72, z + 0.06, 1.7, 0.36, 0.02, { tint: rgb(0xc9a44a) });
-  roof(top, x, 4.62, z, 7.4, 4.0, 1.45);
-  scene.addChild(b.mesh(material));
-  const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.8 });
-  const roofMesh = top.mesh(cover);
-  scene.addChild(roofMesh);
+function buildGate(scene, rand, material, tall, models) {
+  const { x, z } = PLACES.gate,
+    place = (name, mat) => {
+      const mesh = new Mesh3D(models[name], mat);
+      mesh.castShadow = true;
+      mesh.receiveShadow = true;
+      mesh.setPosition(x, 0, z);
+      scene.addChild(mesh);
+      return mesh;
+    };
+  place('gate', material);
+  // The wall runs on into the trees to either side.
+  const far = createBuilder();
+  for (const side of [1, -1]) far.box(x + side * 17.2, 1.4 + height(side * 17, z), z, 16, 3.4, 0.9, { tint: rgb(0x77716a), top: SNOW });
+  scene.addChild(far.mesh(material));
+  void rand;
+  // The roof is its own piece: the camera may need to see through it.
+  const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.8 }),
+    roofMesh = place('gateRoof', cover);
   tall.push({ x, z, r: 4.2, material: cover, mesh: roofMesh });
   // The two leaves of the door, hung on the inner posts.
   const doors = [];
@@ -325,25 +285,16 @@ function buildGate(scene, rand, material, tall) {
   return doors;
 }
 
-function buildTemple(scene, rand, material, glow) {
-  const b = createBuilder(),
-    { x, z } = PLACES.temple;
-  // A stone terrace and its steps.
-  b.box(x, 0.45, z, 21, 0.9, 11, { tint: STONE_DARK, top: shade(STONE, 0.9) });
-  for (let i = 0; i < 4; i++) b.box(x, 0.11 + i * 0.22, z + 5.7 + (3 - i) * 0.42, 7, 0.22, 0.44, { tint: STONE, top: i % 2 ? SNOW : shade(STONE, 1.1) });
-  // The hall: red columns, dark walls, a door standing a little open with lamplight behind it.
-  b.box(x, 3.0, z - 1.2, 17, 4.2, 6.6, { tint: rgb(0x3a2a24) });
-  for (let i = 0; i < 6; i++) b.limb([x - 8 + i * 3.2, 0.9, z + 3.4], [x - 8 + i * 3.2, 5.3, z + 3.4], 0.3, 0.27, { tint: LACQUER, sides: 9 });
-  b.box(x, 5.3, z + 3.4, 17.6, 0.5, 0.5, { tint: TIMBER });
-  for (const side of [1, -1]) b.box(x + side * 1.5, 2.7, z + 2.16, 1.3, 3.6, 0.12, { tint: LACQUER, ry: side * 0.5 });
-  glow.box(x, 2.7, z + 2.1, 2.2, 3.5, 0.05, { tint: [1, 0.55, 0.2] });
-  for (const side of [1, -1]) glow.box(x + side * 5.4, 3.0, z + 2.14, 1.6, 1.4, 0.05, { tint: [0.9, 0.5, 0.2] });
-  b.box(x, 6.0, z + 3.6, 3.6, 0.9, 0.12, { tint: rgb(0x1c2a3a) });
-  b.box(x, 6.0, z + 3.68, 2.8, 0.5, 0.02, { tint: rgb(0xc9a44a) });
-  roof(b, x, 5.6, z + 0.6, 22, 12.5, 3.4, 0.82);
-  roof(b, x, 9.0, z + 0.6, 13, 6, 2.2, 0.9);
-  scene.addChild(b.mesh(material));
-  void rand;
+function buildTemple(scene, material, glow, models) {
+  const { x, z } = PLACES.temple,
+    hall = new Mesh3D(models.temple, material);
+  hall.castShadow = true;
+  hall.receiveShadow = true;
+  hall.setPosition(x, 0, z);
+  scene.addChild(hall);
+  // Lamplight behind the door and the two lattice windows.
+  glow.box(x, 2.7, z + 1.95, 2.3, 3.5, 0.05, { tint: [1, 0.55, 0.2] });
+  for (const side of [1, -1]) glow.box(x + side * 5.6, 3.0, z + 1.98, 2.0, 1.7, 0.05, { tint: [0.9, 0.5, 0.2] });
 }
 
 function buildProps(scene, rand, material, glow, tall, lights, models) {
@@ -371,7 +322,8 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     }
     else if (round.kind === 'rock') stand('rock', x, z, r * 0.95, rand() * 6);
     else if (round.kind === 'lantern') {
-      lantern(b, glow, x, z);
+      stand('lantern', x, z, 1, 0);
+      glow.box(x, height(x, z) + 1.29, z, 0.26, 0.3, 0.26, { tint: [1, 0.62, 0.25] });
       lights.push({ x, y: 1.4, z, color: 0xffa050, intensity: 14, range: 10, flicker: 0.12 });
     } else if (round.kind === 'brazier') {
       brazier(b, glow, x, z);
@@ -436,8 +388,8 @@ export function buildScenery(scene, models, { density = 1 } = {}) {
   buildGround(scene);
   buildPaving(scene, rand);
   const grass = buildGrass(scene, rand, density);
-  const doors = buildGate(scene, rand, material, tall);
-  buildTemple(scene, rand, material, glow);
+  const doors = buildGate(scene, rand, material, tall, models);
+  buildTemple(scene, material, glow, models);
   buildProps(scene, rand, material, glow, tall, lamps, models);
   const glowMesh = glow.mesh(glowMaterial, { shadow: false });
   scene.addChild(glowMesh);

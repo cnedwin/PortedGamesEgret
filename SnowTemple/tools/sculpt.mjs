@@ -119,6 +119,8 @@ function distance(s, x, y, z) {
       qy = Math.abs(py - s.c[1]) - s.h[1] + r,
       qz = Math.abs(pz - s.c[2]) - s.h[2] + r;
     d = Math.hypot(Math.max(qx, 0), Math.max(qy, 0), Math.max(qz, 0)) + Math.min(Math.max(qx, qy, qz), 0) - r;
+    // Ridges across a box, as rows of roof tile: `axis` is the direction they repeat along.
+    if (s.ridge) d -= (Math.cos(([px, py, pz][s.ridge.axis] - s.c[s.ridge.axis]) * s.ridge.n) * 0.5 + 0.5) * s.ridge.amp;
   }
   if (s.rough) d += (noise3(x * s.rough.scale, y * s.rough.scale, z * s.rough.scale) - 0.5) * s.rough.amp;
   return d;
