@@ -13,14 +13,12 @@
   <link rel="preload" as="fetch" crossorigin href="assets/levels/act1.tmj">
   <link rel="preload" as="fetch" crossorigin href="assets/levels/act2.tmj">
   <link rel="preload" as="fetch" crossorigin href="assets/levels/act3.tmj">
-  <link rel="preload" as="fetch" crossorigin href="assets/scene/frame.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/far3.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.png">
-  <link rel="preload" as="fetch" crossorigin href="assets/scene/far2.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/erlang.png">
-  <link rel="preload" as="fetch" crossorigin href="assets/scene/far.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/fanner.png">
-  <link rel="preload" as="fetch" crossorigin href="assets/scene/far3.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/far2.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/guard.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/laozi.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/spearman.png">
@@ -30,11 +28,13 @@
   <link rel="preload" as="fetch" crossorigin href="assets/scene/moongate.png">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/screen.jpg">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/tree.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/far.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/wukong.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/hawk.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/crane.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/nezha.json">
   <link rel="preload" as="fetch" crossorigin href="assets/scene/door.png">
+  <link rel="preload" as="fetch" crossorigin href="assets/scene/frame.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/dummy.png">
   <link rel="preload" as="fetch" crossorigin href="assets/files/erlang.json">
   <link rel="preload" as="fetch" crossorigin href="assets/files/laozi.json">
@@ -113,7 +113,7 @@
     <canvas id="stage" tabindex="0" aria-label="皮影戏台"></canvas>
 
     <div class="hud" id="hud" hidden>
-      <p class="banner" data-zh="灯影　闹天宫" data-en="Lantern Shadows">灯影　闹天宫</p>
+      <p class="banner" id="act-banner">南天门</p>
       <div class="peaches" id="peaches" role="img" aria-label="桃"><i></i><i></i><i></i><i></i><i></i></div>
       <div class="hairs" id="hairs"><span data-zh="毫毛" data-en="Hairs">毫毛</span><i><b id="hairs-fill"></b></i><em data-zh="按 I 身外身" data-en="press I">按 I 身外身</em></div>
       <p class="tally-line"><span id="soldiers"></span><span id="clock">0:00</span></p>
@@ -124,16 +124,18 @@
       <nav class="tools">
         <a href="../" data-zh="返回" data-en="Back">返回</a>
         <button type="button" id="lang">EN</button>
-        <button type="button" id="mute" aria-pressed="false" data-zh="锣鼓" data-en="Sound">锣鼓</button>
+        <button type="button" id="mute" aria-pressed="false" data-zh="音效" data-en="Effects">音效</button>
+        <button type="button" id="music" aria-pressed="false" data-zh="配乐" data-en="Music">配乐</button>
+        <button type="button" id="pause-play" data-zh="暂停" data-en="Pause">暂停</button>
         <button type="button" id="full" data-zh="全屏" data-en="Full screen">全屏</button>
       </nav>
       <p class="crowd" id="crowd" hidden></p>
       <p class="keys" id="keys"></p>
-      <div class="pads" aria-hidden="true">
+      <div class="pads" role="group" aria-label="触屏操作">
         <div class="pad-move"><button type="button" data-hold="left">◀</button><button type="button" data-hold="right">▶</button></div>
         <div class="pad-act"><button type="button" data-hold="special" data-zh="变" data-en="Hairs">变</button><button type="button" data-hold="dash" data-zh="云" data-en="Roll">云</button><button type="button" data-hold="attack" data-zh="棍" data-en="Staff">棍</button><button type="button" data-hold="jump" data-zh="跳" data-en="Jump">跳</button></div>
       </div>
-      <button type="button" class="paused" id="paused" hidden data-zh="暂停　按 P 继续" data-en="Paused. Press P to go on">暂停　按 P 继续</button>
+      <button type="button" class="paused" id="paused" hidden data-zh="继续演出" data-en="Resume">继续演出</button>
       <p class="trouble" id="trouble" role="alert" hidden></p>
       <pre class="stats" id="stats" hidden></pre>
     </div>
@@ -143,10 +145,12 @@
         <p class="act" id="result-title"></p>
         <p class="seal" id="rank">S</p>
         <dl class="tally" id="tally"></dl>
+        <div class="replay" id="replay" hidden></div>
         <p class="finale" id="finale" hidden></p>
         <div class="gongs">
           <button type="button" class="gong small" id="again"><span data-zh="再演" data-en="Again">再演</span></button>
           <button type="button" class="gong small" id="next" hidden><span data-zh="下一幕" data-en="Next act">下一幕</span></button>
+          <button type="button" class="aside" id="playbill-back" data-zh="回戏单" data-en="Playbill">回戏单</button>
         </div>
       </div>
     </section>
@@ -165,6 +169,7 @@
         </p>
         <i class="filling" id="filling"><b></b></i>
         <p class="status" id="status" data-zh="正在挂灯、理线……" data-en="Hanging the lamp…">正在挂灯、理线……</p>
+        <div class="show-records" id="show-records" hidden></div>
       </div>
     </section>
   </main>

@@ -27,29 +27,48 @@ export const screen = {
   <rect width="${W}" height="${H}" fill="url(#corner)"/>`
 };
 
-const tassel = x => `<path d="M${x} 46v10" stroke="#e0a21a" stroke-width="1.6"/><path d="M${x - 3} 56h6l1.5 13h-9z" fill="#b9281d"/><circle cx="${x}" cy="55" r="2.6" fill="#e0a21a"/>`;
-/** The front of the booth: a carved beam with a short valance, two posts and the ledge the players stand behind. */
+// The valance and corner brackets hug the frame so they leave the upper jump lane open.
+const valance = Array.from({ length: 8 }, (_, i) => {
+  const x = i * 120;
+  return `<path d="M${x} 24Q${x + 60} 61 ${x + 120} 24Z" fill="url(#silk)" stroke="#a07544" stroke-width="1.1"/>
+  <path d="M${x + 7} 26Q${x + 60} 52 ${x + 113} 26M${x + 23} 25Q${x + 60} 49 ${x + 97} 25" fill="none" stroke="#d6ac79" stroke-opacity=".34" stroke-width=".7"/>
+  <path d="M${x + 60} 42v6m-2 2-.9 11h5.8l-.9-11Z" fill="#852d28" stroke="#b8884b" stroke-width=".7"/>
+  <circle cx="${x + 60}" cy="49" r="2" fill="#c2a064"/>`;
+}).join('');
+
+const carpentry = side => `<g${side === 'right' ? ` transform="translate(${W} 0) scale(-1 1)"` : ''}>
+  <path d="M2 27H46L42 39Q32 38 26 61H2Z" fill="#251311" stroke="#93633f" stroke-width="1.5"/>
+  <path d="M4 30H40L37 35Q28 36 22 55H4Z" fill="#543027" stroke="#c39362" stroke-width=".75"/>
+  <path d="M6 44H14Q14 34 20 34q6 0 6 5t-8 5h-3m-8 8 12-1" fill="none" stroke="#c19766" stroke-width="1.1"/>
+  <path d="M6 70V518M11 73V514" stroke="#ac794d" stroke-opacity=".42" stroke-width=".75"/>
+  <path d="M18 70V523" stroke="#d0a46d" stroke-opacity=".7" stroke-width="1"/>
+</g>`;
+
+/** The front of the booth is lacquered wood, carved brackets and a short scalloped silk valance. */
 export const frame = {
   file: 'frame.png',
   width: W,
   height: H,
   scale: 1.5,
   svg: `<defs>
-    <linearGradient id="wood" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2c160c"/><stop offset="1" stop-color="#150a05"/></linearGradient>
-    <linearGradient id="post" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#150a05"/><stop offset="0.5" stop-color="#32190d"/><stop offset="1" stop-color="#150a05"/></linearGradient>
-    <linearGradient id="cloth" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#6d1410"/><stop offset="1" stop-color="#8f1d16"/></linearGradient>
+    <linearGradient id="wood" x2="0%" y2="100%"><stop stop-color="#211210"/><stop offset=".45" stop-color="#482923"/><stop offset="1" stop-color="#21120e"/></linearGradient>
+    <linearGradient id="post" x2="100%" y2="0%"><stop stop-color="#190f0d"/><stop offset=".52" stop-color="#503029"/><stop offset="1" stop-color="#221310"/></linearGradient>
+    <linearGradient id="silk" x2="0%" y2="100%"><stop stop-color="#4c161a"/><stop offset="1" stop-color="#8b332a"/></linearGradient>
+    <pattern id="inlay" width="78" height="15" patternUnits="userSpaceOnUse">
+      <path d="M0 7.5h10l4-4 4 4-4 4-4-4m8 0h13l8-5 8 5-8 5-8-5m16 0h13l4-4 4 4-4 4-4-4m8 0h10" fill="none" stroke="#bb8f59" stroke-opacity=".65" stroke-width=".8"/>
+      <circle cx="39" cy="7.5" r="1.7" fill="#b8915e"/>
+    </pattern>
   </defs>
   <rect x="0" y="0" width="${W}" height="26" fill="url(#wood)"/>
-  <path d="M0 26H${W}" stroke="#c98a2a" stroke-opacity="0.75" stroke-width="1.4"/>
-  ${Array.from({ length: 23 }, (_, i) => `<path d="${crescent(30 + i * 41, 13, 6, 90)}${crescent(30 + i * 41, 13, 6, 270)}" fill="#c98a2a" fill-opacity="0.5"/>`).join('')}
-  <!-- The valance: scallops of red cloth with a gold edge. -->
-  <path d="M0 26${Array.from({ length: 12 }, (_, i) => `Q${i * 80 + 40} 66 ${i * 80 + 80} 26`).join('')}Z" fill="url(#cloth)"/>
-  <path d="M0 26${Array.from({ length: 12 }, (_, i) => `Q${i * 80 + 40} 66 ${i * 80 + 80} 26`).join('')}" fill="none" stroke="#e0a21a" stroke-width="1.8"/>
-  ${Array.from({ length: 12 }, (_, i) => tassel(i * 80 + 40)).join('')}
-  <rect x="0" y="0" width="22" height="${H}" fill="url(#post)"/><rect x="${W - 22}" y="0" width="22" height="${H}" fill="url(#post)"/>
-  <path d="M22 0V${H}M${W - 22} 0V${H}" stroke="#c98a2a" stroke-opacity="0.6" stroke-width="1.2"/>
+  <path d="M0 3H${W}M0 21H${W}" stroke="#b2834e" stroke-opacity=".65" stroke-width="1"/>
+  <rect x="0" y="3" width="${W}" height="15" fill="url(#inlay)"/>
+  ${valance}
+  <path d="M0 24H${W}" stroke="#c49962" stroke-width="1.1"/>
+  <rect x="0" y="0" width="20" height="${H}" fill="url(#post)"/><rect x="${W - 20}" y="0" width="20" height="${H}" fill="url(#post)"/>
+  ${carpentry('left')}${carpentry('right')}
   <rect x="0" y="${H - 16}" width="${W}" height="16" fill="url(#wood)"/>
-  <path d="M0 ${H - 16}H${W}" stroke="#c98a2a" stroke-opacity="0.75" stroke-width="1.4"/>`
+  <path d="M0 524H${W}M0 528H${W}M0 537H${W}" stroke="#b2834e" stroke-opacity=".6" stroke-width=".85"/>
+  <rect x="22" y="526" width="${W - 44}" height="13" fill="url(#inlay)" opacity=".55"/>`
 };
 
 /** A curl of auspicious cloud: the outline, and the spiral cut into it. */
@@ -62,26 +81,56 @@ const cloudPiece = (x, y, s, dye, opacity = 0.8) => leather({ ...cloud(x, y, s),
 
 const blurred = (art, amount) => `<defs><filter id="soft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="${amount}"/></filter></defs><g filter="url(#soft)">${art}</g>`;
 
-/** A hall of the heavenly palace, as one flat piece: a tiered roof on pillars. */
-function hall(x, base, w, h, dye) {
-  const roof = (y, half, rise) => poly([[x - half - 16, y + 4], [x - half, y - 2], [x - half * 0.5, y - rise], [x + half * 0.5, y - rise], [x + half, y - 2], [x + half + 16, y + 4], [x + half - 4, y + 9], [x - half + 4, y + 9]]);
-  const top = base - h;
-  return (
-    leather({ shape: poly([[x - w / 2, base], [x + w / 2, base], [x + w / 2, top + 30], [x - w / 2, top + 30]]), fill: dye, opacity: 0.7, holes: Array.from({ length: Math.floor(w / 26) }, (_, i) => slit([x - w / 2 + 16 + i * 26, top + 44], [x - w / 2 + 16 + i * 26, base - 8], 5)) }) +
-    leather({ shape: roof(top + 30, w / 2 + 8, 22), fill: dye, opacity: 0.85, holes: scalesRow(x - w / 2, top + 24, w, 6) }) +
-    leather({ shape: roof(top + 6, w / 3, 18), fill: dye, opacity: 0.85, holes: scalesRow(x - w / 3 + 4, top + 1, (w * 2) / 3 - 8, 5) })
-  );
-}
 const scalesRow = (x, y, width, size) => Array.from({ length: Math.floor(width / (size * 2)) }, (_, i) => crescent(x + size + i * size * 2, y, size * 0.7, 90));
 
-/** Far behind the cloth: halls and cloud banks, out of focus. */
+/** Each backdrop is hung twice, with a small overlap. Its edges fade before the adjoining copy starts. */
+const backdrop = art => `<defs>
+  <linearGradient id="join"><stop stop-color="#fff" stop-opacity="0"/><stop offset=".06" stop-color="#fff"/>
+  <stop offset=".94" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+  <mask id="seams"><rect width="1400" height="360" fill="url(#join)"/></mask>
+</defs><g mask="url(#seams)">${art}</g>`;
+
+/** Tiered halls carved from separate pieces, with openings that let the cloth show through. */
+function cloudHall(x, y, scale, opacity, tiers = 2) {
+  const roof = (height, half) => `<path d="M${-half - 18} ${height - 5}q21 8 48-20l12-10h${2 * half - 84}
+    l12 10q27 28 48 20Q${half + 6} ${height + 12} 0 ${height + 10}Q${-half - 6} ${height + 12} ${-half - 18} ${height - 5}Z" fill="#557879" stroke="#41575b" stroke-width="1.2"/>
+    <path d="M${-half - 8} ${height}Q${-half / 2} ${height - 1} 0 ${height - 3}T${half + 8} ${height}" fill="none" stroke="#cfc49b" stroke-opacity=".7" stroke-width="1.3"/>`;
+  const pillars = [-56, -28, 0, 28, 56].map(dx => `<path d="M${dx - 4} -79h8l1 68h-10Z" fill="#9b7554"/>
+    <path d="M${dx - 7} -16h14v6h-14Z" fill="#755548"/>`).join('');
+  const railing = [-74, -52, -30, -8, 14, 36, 58].map(dx => `M${dx} -19v10`).join('');
+  return `<g transform="translate(${x} ${y}) scale(${scale})" opacity="${opacity}">
+    <path d="M-86-8h172l12 8H-98Z" fill="#867f66"/>
+    <path d="M-74-83h148v13H-74Z" fill="#8d6e53"/>${pillars}
+    <path d="M-78-19h156${railing}" stroke="#ad9480" stroke-width="2" fill="none"/>
+    ${roof(-88, 85)}
+    ${tiers > 1 ? `<path d="M-44-112h88v26h-88Z" fill="#93705b"/>${roof(-115, 49)}` : ''}
+    ${tiers > 2 ? `<path d="M-28-138h56v27h-56Z" fill="#94745c"/>${roof(-137, 45)}` : ''}
+  </g>`;
+}
+
+/** Southern Heaven: pale mountain fans and a jade-roofed precinct suspended above the cloud banks. */
 export const far = {
   file: 'far.png',
   width: 1400,
   height: 360,
-  // It is out of focus, and loses nothing by being kept small.
   scale: 0.6,
-  svg: blurred(hall(260, 330, 220, 150, '#8a5a3c') + hall(700, 340, 300, 210, '#7a4d38') + hall(1130, 330, 200, 130, '#8a5a3c') + [[90, 300, 1.6], [470, 320, 2], [930, 310, 1.8], [1300, 318, 1.5], [600, 120, 1.2], [1040, 90, 1]].map(([x, y, s]) => cloudPiece(x, y, s, '#9a6a4a', 0.55)).join(''), 3.2)
+  svg: backdrop(`
+    <path d="M0 298 103 250 162 173 216 141 282 196 326 175 406 237 477 263 520 244 571 192 656 173 721 237
+      772 253 819 234 908 124 954 155 1002 222 1070 250 1142 190 1190 174 1283 256 1400 279V347H0Z" fill="#719999" opacity=".38"/>
+    <path d="M23 293Q130 230 226 258T420 278Q491 246 558 262T750 287Q826 252 936 244T1153 270Q1260 267 1400 306V352H0Z" fill="#a8a78a" opacity=".33"/>
+    <path d="M80 312Q240 294 345 303T571 307Q673 277 824 293T1018 312Q1191 302 1380 322V339H80Z" fill="#9a8871" opacity=".38"/>
+    ${cloudHall(131, 306, .75, .45, 1)}${cloudHall(410, 303, 1.08, .73)}
+    ${cloudHall(710, 290, 1.39, .79, 3)}${cloudHall(1000, 312, .85, .66, 1)}
+    ${cloudHall(1220, 300, 1.04, .6)}
+    <g fill="#ad8d63" opacity=".45">
+      <path d="M28 329Q119 319 171 330T318 330Q362 315 392 318 377 296 421 300 439 306 432 313Q497 307 533 330
+        636 327 678 336 743 325 801 333Q866 322 939 329 991 308 1040 317Q1074 322 1060 331 1160 321 1258 337
+        1336 323 1400 337V360H0Z"/>
+      <path d="M48 273Q104 259 143 264 156 242 205 249 220 255 206 262Q256 255 315 268 233 279 48 273Z
+        M824 215Q907 202 969 211 990 186 1031 197 1045 204 1034 210Q1091 204 1175 218 1053 229 824 215Z"/>
+    </g>
+    <path d="M28 341Q120 327 210 339t192-3 204 5m105-6q145-8 235 4t223 0m-126-104q80 5 163 0"
+      fill="none" stroke="#dfd0a5" stroke-width="2" stroke-opacity=".7"/>`)
 };
 
 /** The Southern Gate of Heaven: a ceremonial arch, carved through, with its name on the board. */
@@ -194,17 +243,45 @@ function peachTree(x, base, s, trunk, leaf, fruit = true) {
   );
 }
 
-/** Far behind the cloth in the orchard: rows of peach trees on a rise, out of focus. */
+/** A row of flowering peach-tree silhouettes. Each branch carries irregular hand-cut petals. */
+function blossomTree(x, y, scale, paint, flip = false) {
+  const buds = [[-78, -123], [-50, -125], [-41, -149], [-18, -150], [-4, -166], [27, -138], [58, -146], [78, -128], [90, -139], [55, -111]];
+  const petals = buds.map(([cx, cy], i) => {
+    const size = 5 + i % 3 * 1.7;
+    return `<path d="M${cx - size} ${cy}q${size * .36} ${-size} ${size} ${-size * .58}q${size * .66} ${-size * .64} ${size} ${size * .58}q${-size * .55} ${size} ${-size} ${size * .67}q${-size * .66} ${size * .45} ${-size} ${-size * .67}Z" fill="#eed3a2" opacity=".56"/>`;
+  }).join('');
+  return `<g transform="translate(${x} ${y}) scale(${flip ? -scale : scale} ${scale})">
+    <path d="M-11 0Q4-39-6-67L-35-98-69-122-84-130-57-124-28-105-28-127-20-143-21-116-8-91 5-71
+      24-100 50-127 79-144 70-131 49-118 50-109 80-109 59-103 47-105 26-85 14-61Q9-17 16 0Z" fill="#88694b" opacity=".84"/>
+    <path d="M-96-133Q-92-141-78-141-73-153-57-146-54-164-34-157-27-169-6-159 5-181 22-166 43-166
+      47-152 66-163 72-149 89-155 92-142Q111-144 102-130 112-115 89-117 83-104 62-112 52-101 40-116
+      27-112 23-126 7-121-7-139-25-132-38-140-51-127-62-134Q-85-119-96-133Z" fill="${paint}" opacity=".81"/>
+    <path d="M-10-9q12-34 8-57m3 20q4-24 25-47m-41 9-26-22" fill="none" stroke="#cfab71" stroke-width="1.8" opacity=".55"/>
+    ${petals}</g>`;
+}
+
+/** The Peach Orchard colours the distance with coral branches above cool, sparse hills. */
 export const far2 = {
   file: 'far2.png',
   width: 1400,
   height: 360,
   scale: 0.6,
-  svg: blurred(
-    `<path d="M0 360V300Q200 262 420 290T860 280T1400 296V360Z" fill="#8a6a44" fill-opacity="0.5"/>` +
-      [[110, 316, 0.62], [330, 300, 0.8], [560, 318, 0.56], [760, 296, 0.86], [990, 312, 0.66], [1200, 300, 0.8], [1350, 320, 0.5]].map(([x, base, s], i) => peachTree(x, base, s, '#7a4d38', i % 2 ? '#7c8a52' : '#8a8a4c', false)).join(''),
-    3.2
-  )
+  svg: backdrop(`
+    <path d="M0 275 71 231 130 240 171 222 234 201 286 222 345 254 429 215 522 232 590 184 634 175 683 207
+      750 236 842 229 913 187 967 174 1038 213 1119 229 1182 195 1252 220 1314 224 1400 260V330H0Z" fill="#819485" opacity=".33"/>
+    <path d="M0 307Q134 260 243 280T463 274Q570 251 689 282T938 280 1150 289 1400 280V349H0Z" fill="#7e9069" opacity=".48"/>
+    <path d="M0 328Q122 302 245 309T438 309Q570 289 695 313T937 313 1182 319 1400 317V360H0Z" fill="#9d8c5b" opacity=".48"/>
+    <g opacity=".59">
+      ${blossomTree(76, 304, .46, '#c39386')}${blossomTree(272, 286, .64, '#c79486', true)}
+      ${blossomTree(460, 310, .71, '#bb9485')}${blossomTree(608, 296, .56, '#d5aa8f', true)}
+      ${blossomTree(835, 297, .64, '#cf9783')}${blossomTree(1010, 309, .78, '#ca9587', true)}
+      ${blossomTree(1278, 304, .57, '#caa08b')}${blossomTree(1360, 319, .51, '#c59482', true)}
+    </g>
+    ${blossomTree(137, 332, 1.32, '#bd7f79', true)}${blossomTree(356, 335, .94, '#b57a77')}
+    ${blossomTree(712, 346, 1.39, '#be8180', true)}${blossomTree(1124, 333, 1.17, '#b07c78')}
+    ${blossomTree(1322, 354, .76, '#c18a81', true)}
+    <path d="M38 347q106-14 209-1m43-11q86-18 176-5m178 14q180-20 338-4m32-2q101 5 186-2m32 16 120-6"
+      stroke="#cfc093" stroke-width="1.5" opacity=".65" fill="none"/>`)
 };
 
 /** A peach tree to stand among the players. It stands on the bottom edge of the picture, its trunk in the middle. */
@@ -281,20 +358,52 @@ function furnacePiece(x, base, s, dye = DYE.amber, lit = true) {
   );
 }
 
-/** Far behind the cloth in the palace: pillars, hangings between them, and the great furnaces, out of focus. */
+/** Stained lattice, open around its axis so the stage light still reads through it. */
+function palaceLattice(x, y, size) {
+  return `<svg x="${x - size / 2}" y="${y - size / 2}" width="${size}" height="${size}" viewBox="0 0 100 100">
+    <path d="M33 7H67L93 33V67L67 93H33L7 67V33Z" fill="#c69059" fill-opacity=".16" stroke="#8c624a" stroke-width="3"/>
+    <path d="M33 12H67L88 33V67L67 88H33L12 67V33Z" fill="none" stroke="#c19e64" stroke-width="2.5"/>
+    <path d="M32 14v72m12-73v22m12-22v22m12-21v72M44 65v22m12-22v22M14 32h72M14 68h72
+      M13 44h22m-22 12h22m30-12h22m-22 12h22" fill="none" stroke="#987156" stroke-width="1.8"/>
+    <path d="M50 36 64 50 50 64 36 50Z" fill="none" stroke="#a7754c" stroke-width="2"/>
+    <circle cx="50" cy="50" r="5" fill="#ba8b5d" opacity=".62"/>
+  </svg>`;
+}
+
+/** The Tushita Palace is an interior of smoke, lacquered joinery and bronze alchemy furnaces. */
 export const far3 = {
   file: 'far3.png',
   width: 1400,
   height: 360,
   scale: 0.6,
-  svg: blurred(
-    [80, 400, 720, 1040, 1340].map(x => leather({ shape: poly([[x - 16, 360], [x + 16, 360], [x + 13, 20], [x - 13, 20]]), fill: '#7a4d38', opacity: 0.7, holes: [slit([x, 60], [x, 320], 3)] })).join('') +
-      [[80, 400], [400, 720], [720, 1040], [1040, 1340]].map(([a, b]) => `<path d="M${a} 24Q${(a + b) / 2} 120 ${b} 24V60Q${(a + b) / 2} 150 ${a} 60Z" fill="#8a3a2c" fill-opacity="0.5"/>`).join('') +
-      furnacePiece(240, 350, 1.5, '#8a5a3c', false) +
-      furnacePiece(880, 352, 1.9, '#7a4d38', false) +
-      furnacePiece(1200, 350, 1.2, '#8a5a3c', false),
-    3.2
-  )
+  svg: backdrop(`
+    <defs><linearGradient id="soot" x2="0%" y2="100%"><stop stop-color="#772d29" stop-opacity="0"/>
+      <stop offset=".11" stop-color="#772d29" stop-opacity=".55"/>
+      <stop offset=".6" stop-color="#ad744e" stop-opacity=".12"/><stop offset="1" stop-color="#9f6c50" stop-opacity=".36"/>
+    </linearGradient></defs>
+    <rect width="1400" height="360" fill="url(#soot)"/>
+    <path d="M0 44H1400V67H0ZM0 316H1400V330H0Z" fill="#70534a" opacity=".36"/>
+    <path d="M0 53H1400M0 60H1400M0 321H1400M0 333H1400" stroke="#b08b66" stroke-width="2" opacity=".58"/>
+    <g opacity=".65">
+      ${palaceLattice(173, 130, 113)}${palaceLattice(457, 145, 136)}${palaceLattice(713, 124, 102)}
+      ${palaceLattice(958, 135, 129)}${palaceLattice(1230, 144, 111)}
+    </g>
+    <g fill="none" stroke="#9c785d" stroke-width="1.3" opacity=".55">
+      <path d="M0 209H1400M0 219H1400M0 279H1400M0 290H1400"/>
+      <path d="M102 219v60m84-60v60m88-60v60m87-60v60m88-60v60m88-60v60m87-60v60m88-60v60m88-60v60m87-60v60m88-60v60m88-60v60m88-60v60m88-60v60m88-60v60"/>
+    </g>
+    <g opacity=".58">
+      <path d="M42 48H280L259 79H63ZM314 51H578L565 89H327ZM625 50H799L785 82H642ZM846 49H1075L1057 84H865ZM1112 46H1354L1336 77H1129Z"
+        fill="#854941" stroke="#ae8860" stroke-width="2"/>
+      ${[49, 299, 603, 822, 1094, 1350].map(x => `<path d="M${x - 9} 47h18l3 278h-24Z" fill="#785246"/>
+        <path d="M${x - 15} 66h30l-2 12h-26ZM${x - 15} 311h30v13h-30Z" fill="#695048"/>
+        <path d="M${x - 4} 84v223M${x + 4} 84v223" stroke="#b2835b" stroke-width="1.8"/>`).join('')}
+    </g>
+    <g opacity=".64">${furnacePiece(201, 338, 1.22, '#a57958', false)}
+      ${furnacePiece(506, 334, .88, '#997455', false)}${furnacePiece(724, 341, 1.43, '#987252', false)}
+      ${furnacePiece(995, 338, 1.14, '#a38060', false)}${furnacePiece(1275, 345, 1.37, '#9e7458', false)}
+    </g>
+    <path d="M0 354Q163 319 302 348T602 344T872 344T1152 349T1400 340V360H0Z" fill="#9d795c" opacity=".28"/>`)
 };
 
 /** A small furnace that stands in his way and can be knocked over. It stands on the bottom edge of the picture, in the middle. */

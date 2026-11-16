@@ -11,7 +11,7 @@
 //   puppets.mjs      Spine skeletons, loaded as the engine's manifest lists them
 //   pictures.mjs     pictures read in the way every browser allows
 //   input.mjs        keyboard, gamepad and touch as one answer a step
-//   sound.mjs        the percussion, made from numbers
+//   sound.mjs        the stage score and foley mix
 //
 // Address options: ?act=2 begins with the second act, ?backend=webgpu draws with WebGPU instead of WebGL2, ?stats shows what is being drawn,
 // ?lang=en starts in English, ?slow=0.25 plays at a quarter of the speed, to watch how he moves, and ?from=nezha
@@ -22,10 +22,10 @@ import { createCamera2D } from '@egret/engine/camera';
 import { createParticleEmitter } from '@egret/engine/particles';
 import { createTileMap, importTiledMap } from '@egret/engine/tilemap';
 import { createBrowserGame } from '@egret/engine/web/game';
-import { createInput } from './input.mjs';
+import { bindPlayButton, createInput } from './input.mjs';
 import { createPictures, readJson, watchReading } from './pictures.mjs';
 import { createPuppet, loadPuppets } from './puppets.mjs';
-import { FURNACE, createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
+import { FURNACE, VENT, createAct, remaining, stepAct, tuftReady } from './rules/act.mjs';
 import { BOSS, bossAnimation, present } from './rules/boss.mjs';
 import { ERLANG, bossAnimation as erlangAnimation, houndAnimation } from './rules/erlang.mjs';
 import { LAOZI, bossAnimation as laoziAnimation, furnaceWalls } from './rules/laozi.mjs';
@@ -34,6 +34,7 @@ import { FOES, foeAnimation } from './rules/foes.mjs';
 import { ATTACKS, TUNE, animationOf } from './rules/hero.mjs';
 import { CELL, readLevel } from './rules/level.mjs';
 import { createSound } from './sound.mjs';
+import { ACT_GOALS, createRecordBook } from './records.mjs';
 
 const STAGE = { width: 960, height: 540 };
 const query = new URLSearchParams(location.search),
@@ -57,7 +58,7 @@ function speak() {
   for (const element of document.querySelectorAll('[data-zh]')) element.textContent = element.dataset[lang];
   $('lang').textContent = lang === 'zh' ? 'EN' : '中文';
   $('keys').innerHTML = KEY_HINTS[lang].map(hint => hint.slice(0, -1).map(key => `<kbd>${key}</kbd>`).join('') + hint.at(-1)).join('');
-  if (staged) (showCount(), showResult());
+  if (staged) (showCount(), showRecords(), showResult());
 }
 // The playbill is in the right language while the stage is still being set.
 let staged = false;
@@ -67,21 +68,37 @@ speak();
 /** An error and what caused it, each by its code where it has one. */
 const describe = cause => {
   const parts = [];
-  for (let at = cause; at && parts.length < 4; at = at.cause) parts.push(String(at.code ?? at.message ?? at));
+  for (let at = cause; at && parts.length < 5; at = at.cause) parts.push(String(at.code ?? at.message ?? at.assetId ?? at));
   return parts.join(' ← ');
 };
+let game;
+let lastPrecisionFault = -Infinity, consecutivePrecisionFaults = 0, renderRecoveries = 0, settleView = false;
 const fail = cause => {
-  status.textContent = (lang === 'zh' ? '戏台没搭起来：' : 'The booth could not be set up: ') + describe(cause);
+  const reason = describe(cause);
+  // A clipped sliver can reverse winding when the WebGL2 host packs it to f32.
+  // Retire the rejected frame and retry briefly without the fractional camera shake.
+  if (staged && game?.loop.state === 'failed' && cause?.code === 'FRAME_RENDER_FAILED' &&
+      reason.includes('WEBGL2_PRECISION_UNSUPPORTED') && reason.includes('Shared preparation precision')) {
+    const now = performance.now();
+    if (now - lastPrecisionFault > 1400) consecutivePrecisionFaults = 0;
+    lastPrecisionFault = now;
+    if (++consecutivePrecisionFaults <= 2) {
+      renderRecoveries++;
+      settleView = true;
+      queueMicrotask(() => game.loop.start());
+      return;
+    }
+  }
+  status.textContent = (lang === 'zh' ? '戏台没搭起来：' : 'The booth could not be set up: ') + reason;
   status.classList.add('is-error');
   // Once the curtain is up the playbill cannot be seen, so trouble during the play is told over the stage.
-  $('trouble').textContent = (lang === 'zh' ? '戏演不下去了：' : 'The play cannot go on: ') + describe(cause);
+  $('trouble').textContent = (lang === 'zh' ? '戏演不下去了：' : 'The play cannot go on: ') + reason;
   $('trouble').hidden = !$('curtain').classList.contains('is-up');
   console.error(cause);
 };
 
 const sound = createSound(),
   input = createInput();
-let game;
 try {
   game = await createBrowserGame({
     canvas,
@@ -174,6 +191,50 @@ const cast = layer(world),
   effects = layer(world);
 cast.blendMode = flights.blendMode = shadowBlend;
 
+// One reusable backlit mark for each contact, drawn over the leather silhouettes.
+const contactMarks = Object.fromEntries(Object.entries({
+  hit: [0xffdc87, [[-53, 18], [-26, 26], [20, 12], [61, -19], [15, 1], [-18, 8]]],
+  lift: [0xb9efde, [[-31, 27], [-9, 25], [25, -9], [46, -63], [12, -19], [-8, 4]]],
+  slam: [0xffbd69, [[-66, 21], [-24, 4], [4, -42], [46, -82], [18, -19], [-7, 19]]],
+  guard: [0xf6c17a, [[-15, -29], [5, -14], [14, -11], [9, 2], [19, 28], [0, 15], [-15, 19], [-10, 0]]],
+  parry: [0xe4f7ed, [[-29, 13], [-5, 3], [19, -26], [16, -3], [37, 7], [7, 9], [-4, 30], [-2, 12]]],
+}).map(([kind, [color, points]]) => {
+  const node = effects.addChild(scope.use(new Sprite()));
+  node.visible = false;
+  const paint = node.graphics;
+  paint.beginFill(color, 0.86).moveTo(...points[0]);
+  for (const point of points.slice(1)) paint.lineTo(...point);
+  paint.lineTo(...points[0]).endFill();
+  return [kind, { node, left: 0 }];
+}));
+
+function showContact(kind, x, y, side) {
+  const mark = contactMarks[kind];
+  if (!mark) return;
+  mark.left = 0.18;
+  Object.assign(mark.node, { x, y, scaleX: side || 1, alpha: 1, visible: true });
+}
+
+// Mark the actual fire walls and the landing points with a few reusable shapes.
+// The moving gold edges remain readable even when the furnace fills with smoke.
+const wallLights = Array.from({ length: 2 }, (_, side) => {
+  const light = effects.addChild(scope.use(new Sprite())), width = LAOZI.furnace.wall;
+  const g = light.graphics;
+  g.beginFill(0x932d10, 0.65).drawRect(0, -540, width, 540).endFill();
+  g.beginFill(0xed7424, 0.76).drawRect(side ? 0 : width - 9, -540, 9, 540).endFill();
+  g.beginFill(0xffd78c, 0.84).drawRect(side ? 1 : width - 3, -540, 2, 540).endFill();
+  light.visible = false;
+  return light;
+});
+const dropLights = Array.from({ length: 5 }, () => {
+  const light = effects.addChild(scope.use(new Sprite()));
+  const g = light.graphics, half = LAOZI.furnace.width / 2;
+  g.beginFill(0xb84214, 0.82).drawRect(-half, -5, half * 2, 5).endFill();
+  g.beginFill(0xfff0a8, 0.9).drawRect(-half + 3, -3, half * 2 - 6, 2).endFill();
+  light.visible = false;
+  return light;
+});
+
 // The lamp is a flame: a wash over the cloth that is never quite steady.
 const flicker = engine.stage.addChild(scope.use(new Sprite()));
 flicker.graphics.beginFill(0x2a1208).drawRect(0, 0, STAGE.width, STAGE.height).endFill();
@@ -198,6 +259,7 @@ let posts = [],
   soldiers = [],
   pennants = [],
   peachesShown = [],
+  ventsShown = [],
   furnacesShown = [],
   tiles;
 /** Everything that was put up for the act now on the stage, to be taken down with it. */
@@ -242,7 +304,21 @@ function dress() {
   });
   soldiers = act.foes.map(foe => ({ puppet: foe.flies ? stand(foe.kind, 11, 1.2) : stand(foe.kind, 18) }));
   // Grates lie on the floor; a furnace stands on its feet, and is turned about them when it is knocked over.
-  for (const vent of act.vents) hang(flights, art.vent, vent.x - 32, vent.y - 14, 64);
+  ventsShown = act.vents.map(vent => {
+    hang(flights, art.vent, vent.x - 32, vent.y - 14, 64);
+    const node = effects.addChild(new Sprite()), g = node.graphics, half = VENT.width / 2;
+    // A cutout of the live flame, with a smaller gold core; only the loose embers need particles.
+    g.beginFill(0xc74819, 0.7).moveTo(-half, 0).lineTo(-19, -27).lineTo(-23, -54)
+      .lineTo(-11, -84).lineTo(-8, -66).lineTo(4, -VENT.height).lineTo(9, -100)
+      .lineTo(20, -77).lineTo(13, -49).lineTo(half, -29).lineTo(half, 0)
+      .lineTo(-half, 0).endFill();
+    g.beginFill(0xffca70, 0.84).moveTo(-13, 0).lineTo(-10, -31).lineTo(-13, -49)
+      .lineTo(-3, -40).lineTo(4, -101).lineTo(8, -63).lineTo(15, -33)
+      .lineTo(10, 0).lineTo(-13, 0).endFill();
+    Object.assign(node, { x: vent.x, y: vent.y, visible: false });
+    dressed.push({ node, parent: effects });
+    return node;
+  });
   furnacesShown = act.furnaces.map(furnace => {
     const shown = hang(scenery, art.furnace, furnace.x, furnace.y, 96);
     shown.anchorOffsetX = shown.naturalWidth / 2;
@@ -349,7 +425,7 @@ const burst = (made, x, y, count) => {
 // ---- The camera ------------------------------------------------------------------------------------------------
 let lead = 0;
 const camera = scope.use(
-  createCamera2D({ world, width: STAGE.width, height: STAGE.height, center: { x: act.hero.x, y: STAGE.height / 2 }, bounds: { x: 0, y: 0, width: level.width, height: STAGE.height }, shakeOffset: 11, shakeRotation: 0.5, seed: 5 })
+  createCamera2D({ world, width: STAGE.width, height: STAGE.height, center: { x: act.hero.x, y: STAGE.height / 2 }, bounds: { x: 0, y: 0, width: level.width, height: STAGE.height }, shakeOffset: 11, roundToPixel: true, seed: 5 })
 );
 camera.addLayer(far, { factor: 0.3 });
 camera.addLayer(drift, { factor: 0.55 });
@@ -364,17 +440,18 @@ camera.follow(aim, { smoothing: 0.1 });
 // ---- What is told in front of the cloth ------------------------------------------------------------------------
 const combo = $('combo'),
   peaches = [...$('peaches').children];
+let comboPulse;
 function showCombo(struck) {
   combo.hidden = act.combo < 2;
-  $('combo-count').textContent = String(act.combo);
-  if (struck && !combo.hidden) {
-    combo.classList.remove('is-struck');
-    void combo.offsetWidth;
-    combo.classList.add('is-struck');
+  const count = $('combo-count'), value = String(act.combo);
+  if (count.textContent !== value) count.textContent = value;
+  if (struck && !combo.hidden && comboPulse?.playState !== 'running' && !matchMedia('(prefers-reduced-motion: reduce)').matches) {
+    comboPulse = count.animate([{ transform: 'scale(1.34) rotate(-5deg)' }, { transform: 'none' }], { duration: 155, easing: 'ease-out' });
   }
 }
 function showCount() {
   const words = WORDS[lang];
+  $('act-banner').textContent = words.titles[onStage];
   $('best').hidden = act.best < 3;
   $('best').textContent = words.best(act.best);
   $('soldiers').textContent = words.soldiers(remaining(act));
@@ -394,12 +471,38 @@ function notice(text) {
   $('notice').hidden = false;
   noticeUntil = clock + 2.6;
 }
-/** The seal each act was last given. */
-let ranks = {};
-try {
-  ranks = JSON.parse(localStorage.getItem('lantern-shadows-ranks')) ?? {};
-} catch {
-  ranks = {};
+let store;
+try { store = globalThis.localStorage; } catch { /* The book can live in memory. */ }
+const recordBook = createRecordBook(store);
+const campaignRun = () => act.from !== 'boss' && !query.has('slow') && !query.has('clones');
+function showRecords() {
+  const slot = $('show-records'), words = WORDS[lang];
+  slot.replaceChildren();
+  for (const actName of ACTS) {
+    const saved = recordBook.get(actName);
+    if (!saved) continue;
+    const mark = document.createElement('span');
+    mark.textContent = `${words.places[actName]} ${saved.rank} · ${saved.goals.filter(Boolean).length}/3`;
+    slot.append(mark);
+  }
+  slot.hidden = !slot.childElementCount;
+}
+
+function showReplay() {
+  const panel = $('replay'), saved = campaignRun() && recordBook.get(onStage), words = WORDS[lang];
+  panel.hidden = !saved;
+  if (!saved) return;
+  const headline = document.createElement('p'), items = document.createElement('ul'), goal = ACT_GOALS[onStage];
+  headline.textContent = `${lang === 'zh' ? '个人最好' : 'Personal best'}　${saved.rank} · ${words.seconds(Math.round(saved.time))} · ${words.best(saved.combo)}`;
+  const labels = lang === 'zh' ? [`${goal.time} 秒内落幕`, `${goal.combo} 连击`, '全程不倒地'] :
+    [`Finish in ${goal.time} s`, `${goal.combo} hits`, 'No falls'];
+  labels.forEach((label, index) => {
+    const item = document.createElement('li');
+    item.dataset.earned = String(saved.goals[index]);
+    item.textContent = `${saved.goals[index] ? '✓' : '○'} ${label}`;
+    items.append(item);
+  });
+  panel.replaceChildren(headline, items);
 }
 function showResult() {
   const result = act.result,
@@ -408,15 +511,8 @@ function showResult() {
   if (!result) return;
   $('result-title').textContent = words.curtain(words.titles[onStage]);
   $('next').hidden = !ACTS[ACTS.indexOf(onStage) + 1];
-  // The seal of each act is kept, and when the last curtain falls all three are told together.
-  ranks[onStage] = result.rank;
-  try {
-    localStorage.setItem('lantern-shadows-ranks', JSON.stringify(ranks));
-  } catch {
-    // Without anywhere to keep them they last as long as the page does.
-  }
-  $('finale').hidden = !$('next').hidden ? true : false;
-  $('finale').textContent = `${words.finale}　${ACTS.map(name => `${words.places[name]} ${ranks[name] ?? words.unplayed}`).join('　')}`;
+  $('finale').hidden = !$('next').hidden;
+  $('finale').textContent = `${words.finale}　${ACTS.map(name => `${words.places[name]} ${recordBook.get(name)?.rank ?? words.unplayed}`).join('　')}`;
   $('rank').textContent = result.rank;
   $('tally').innerHTML = [
     [words.time, words.seconds(Math.round(result.time))],
@@ -427,6 +523,7 @@ function showResult() {
   ]
     .map(([name, value]) => `<dt>${name}</dt><dd>${value}</dd>`)
     .join('');
+  showReplay();
 }
 
 // ---- One frame -------------------------------------------------------------------------------------------------
@@ -446,26 +543,28 @@ engine.clock.onTick(scope, value => {
 const panOf = x => (x - camera.snapshot().center.x) / (STAGE.width / 2);
 /** The beat, the held breath and the shudder of the booth that a blow of the staff brings. */
 function land(attack, pan) {
-  sound.play({ hit: 'clap', lift: 'smallGong', slam: 'gong' }[attack.kind], { volume: 0.9, pan });
+  sound.play({ hit: 'staff', lift: 'uplift', slam: 'smash' }[attack.kind], { volume: 0.93, pan });
   freeze = Math.max(freeze, attack.stop);
   camera.shake({ trauma: attack.shake });
   input.gamepads?.rumble(0, { duration: 90 + attack.power * 60, weak: 0.4, strong: 0.3 * attack.power });
   if (attack.kind === 'slam') (camera.zoomTo(1.07, 0.06), (zoomBack = 0.16));
 }
 
+let nextCrowdBeat = 0;
 function happen(events) {
   const hero = act.hero,
     pan = panOf(hero.x);
   let counted = false;
   for (const event of events) {
     const { type } = event;
-    if (type === 'jump') (sound.play('drum', { volume: 0.5, rate: 1.5, pan }), burst(dust, hero.x, hero.y, 6));
-    else if (type === 'land') (sound.play('drum', { volume: Math.min(0.9, event.speed / 1300), rate: 0.9, pan }), burst(dust, hero.x, hero.y, event.speed > 500 ? 12 : 5));
-    else if (type === 'dash') (sound.play('whirl', { volume: 0.7, pan }), burst(dust, hero.x, hero.y - 20, 10));
-    else if (type === 'step') sound.play('tap', { volume: 0.28, rate: 0.9 + Math.random() * 0.25, pan });
-    else if (type === 'swing') sound.play('swish', { volume: 0.5, rate: [1.1, 0.95, 0.75][ATTACKS.indexOf(event.attack)], pan });
+    if (type === 'jump') (sound.play('jump', { volume: 0.65, pan }), burst(dust, hero.x, hero.y, 6));
+    else if (type === 'land') (sound.play('land', { volume: Math.min(0.83, event.speed / 1000), pan }), burst(dust, hero.x, hero.y, event.speed > 500 ? 12 : 5));
+    else if (type === 'dash') (sound.play('whirl', { volume: 0.64, pan }), burst(dust, hero.x, hero.y - 20, 10));
+    else if (type === 'step') sound.play('tap', { volume: 0.42, pan });
+    else if (type === 'swing') sound.play('swish', { volume: 0.57, rate: [1.04, 0.9, 0.78][ATTACKS.indexOf(event.attack)] ?? 1.1, pan });
     else if (type === 'met') {
-      burst(sparks, event.at.x, event.at.y, 10 + event.attack.power * 10);
+      if (event.blocked) continue;
+      if (!event.crowd || clock >= nextCrowdBeat) burst(sparks, event.at.x, event.at.y, 8 + event.attack.power * 9);
       if (event.post) {
         const seat = posts[event.post.index];
         seat.puppet.face(event.side);
@@ -474,19 +573,28 @@ function happen(events) {
         burst(straw, event.at.x, event.at.y, 4 + event.attack.power * 5);
       }
       // A blow of the crowd's is lighter on the ear and on the booth than one of his own.
-      if (event.crowd) (sound.play('clap', { volume: 0.45, rate: 1.2 + Math.random() * 0.5, pan: panOf(event.at.x) }), camera.shake({ trauma: event.attack.shake }));
-      else land(event.attack, pan);
+      if (event.crowd) {
+        if (clock >= nextCrowdBeat) {
+          nextCrowdBeat = clock + 0.068;
+          sound.play('clap', { volume: 0.36, pan: panOf(event.at.x) });
+          camera.shake({ trauma: event.attack.shake });
+        }
+      } else {
+        showContact(event.attack.kind, event.at.x, event.at.y, event.side);
+        land(event.attack, panOf(event.at.x));
+      }
       counted = true;
     } else if (type === 'deflect') {
       burst(sparks, event.at.x, event.at.y, event.ring ? 30 : 14);
-      sound.play(event.ring ? 'smallGong' : 'clap', { volume: 0.8, rate: 1.5, pan: panOf(event.at.x) });
+      showContact('parry', event.at.x, event.at.y, hero.facing);
+      sound.play('parry', { volume: 0.76, rate: event.ring ? 0.88 : 1.25, pan: panOf(event.at.x) });
       freeze = Math.max(freeze, event.ring ? 0.08 : 0.04);
     } else if (type.startsWith('boss') || type.startsWith('ring') || type.startsWith('hound') || type.startsWith('staff') || type.startsWith('furnace-') && type !== 'furnace-tipped' || type.startsWith('drop') || type === 'gate-open') (told(event), (counted = true));
-    else if (type === 'hairs-full') (notice(WORDS[lang].tuft), sound.play('smallGong', { volume: 0.6, rate: 1.5 }), (counted = true));
-    else if (type === 'conjure') (sound.play('whirl', { volume: 0.8, rate: 1.3, pan }), (counted = true));
+    else if (type === 'hairs-full') (notice(WORDS[lang].tuft), sound.play('confirm', { volume: 0.64 }), (counted = true));
+    else if (type === 'conjure') (sound.play('whirl', { volume: 0.58, rate: 1.13, pan }), (counted = true));
     else if (type === 'clones') {
       notice(WORDS[lang].blown);
-      sound.play('gong', { volume: 1, rate: 0.9 });
+      sound.play('magic', { volume: 0.85 });
       burst(dust, hero.x, hero.y - 40, 40);
       burst(sparks, hero.x, hero.y - 80, 30);
       camera.shake({ trauma: 0.7 });
@@ -500,11 +608,13 @@ function happen(events) {
     } else if (type === 'foe-block') {
       // The shield takes it: a dull ring, and a few sparks where the staff met it.
       const { foe } = event;
-      burst(sparks, foe.x + foe.facing * 28, foe.y - 62, 8);
-      sound.play('tap', { volume: 0.9, rate: 0.45, pan: panOf(foe.x) });
-      sound.play('smallGong', { volume: 0.3, rate: 2.2, pan: panOf(foe.x) });
+      const edge = foe.x + foe.facing * 28;
+      burst(sparks, edge, foe.y - 62, 8);
+      showContact('guard', edge, foe.y - 62, hero.facing);
+      sound.play('guard', { volume: 0.88, pan: panOf(edge) });
       camera.shake({ trauma: 0.16 });
       freeze = Math.max(freeze, 0.03);
+      counted = true;
     } else if (type === 'foe-open') (burst(sparks, event.foe.x, event.foe.y - 70, 22), sound.play('smallGong', { volume: 0.7, rate: 1.2, pan: panOf(event.foe.x) }));
     else if (type === 'foe-dive') sound.play('swish', { volume: 0.6, rate: 1.7, pan: panOf(event.foe.x) });
     else if (type === 'gust') sound.play('whirl', { volume: 0.7, rate: 0.7, pan: panOf(event.foe.x) });
@@ -512,23 +622,21 @@ function happen(events) {
     else if (type === 'burst') {
       burst(sparks, event.at.x, event.at.y - 10, 44);
       burst(dust, event.at.x, event.at.y, 16);
-      sound.play('drum', { volume: 0.9, rate: 0.8, pan: panOf(event.at.x) });
-      sound.play('clap', { volume: 0.6, rate: 0.7, pan: panOf(event.at.x) });
+      sound.play('smash', { volume: 0.68, rate: 0.9, pan: panOf(event.at.x) });
       camera.shake({ trauma: 0.3 });
     } else if (type === 'furnace-tipped') {
       burst(sparks, event.furnace.x, event.furnace.y - 50, 30);
-      sound.play('smallGong', { volume: 0.8, rate: 0.7, pan: panOf(event.furnace.x) });
-      sound.play('drum', { volume: 0.8, rate: 0.6, pan: panOf(event.furnace.x) });
+      sound.play('guard', { volume: 0.69, rate: 0.72, pan: panOf(event.furnace.x) });
       camera.shake({ trauma: 0.35 });
       counted = true;
-    } else if (type === 'vent-on') inView(event.vent.x, camera.snapshot().center.x) && sound.play('whirl', { volume: 0.25, rate: 0.5, pan: panOf(event.vent.x) });
-    else if (type === 'peach-struck') (burst(dust, event.at.x, event.at.y, 5), sound.play('tap', { volume: 0.5, rate: 1.6, pan: panOf(event.at.x) }));
-    else if (type === 'peach') (burst(sparks, event.at.x, event.at.y, 14), sound.play('smallGong', { volume: 0.5, rate: 1.9, pan }), (counted = true));
+    } else if (type === 'vent-on') inView(event.vent.x, camera.snapshot().center.x) && sound.play('ember', { volume: 0.44, pan: panOf(event.vent.x) });
+    else if (type === 'peach-struck') (burst(dust, event.at.x, event.at.y, 5), sound.play('tap', { volume: 0.45, rate: 1.18, pan: panOf(event.at.x) }));
+    else if (type === 'peach') (burst(sparks, event.at.x, event.at.y, 14), sound.play('confirm', { volume: 0.68, pan }), (counted = true));
     else if (type === 'foe-windup') sound.play('tap', { volume: 0.7, rate: event.foe.kind === 'archer' ? 1.8 : 0.6, pan: panOf(event.foe.x) });
     else if (type === 'foe-strike' || type === 'arrow') sound.play('swish', { volume: 0.55, rate: type === 'arrow' ? 1.7 : 1.3, pan: panOf(type === 'arrow' ? event.arrow.x : event.foe.x) });
-    else if (type === 'foe-down') (sound.play('drum', { volume: 0.8, rate: 0.7, pan: panOf(event.foe.x) }), (counted = true));
+    else if (type === 'foe-down') (sound.play('land', { volume: 0.45, rate: 0.82, pan: panOf(event.foe.x) }), (counted = true));
     else if (type === 'hurt') {
-      sound.play('drum', { volume: 1, rate: 0.55, pan });
+      sound.play('hurt', { volume: 0.95, pan });
       burst(sparks, hero.x, hero.y - 60, 16);
       freeze = Math.max(freeze, 0.09);
       camera.shake({ trauma: 0.6 });
@@ -536,11 +644,16 @@ function happen(events) {
       counted = true;
     } else if (type === 'revive') (burst(dust, hero.x, hero.y, 14), (counted = true));
     else if (type === 'lapse') counted = true;
-    else if (type === 'checkpoint') (notice(WORDS[lang].rested), sound.play('smallGong', { volume: 0.5, rate: 1.3 }));
+    else if (type === 'checkpoint') (notice(WORDS[lang].rested), sound.play('confirm', { volume: 0.72 }));
     else if (type === 'barred') notice(WORDS[lang].barred(event.left));
     else if (type === 'clear') {
-      sound.play('gong', { volume: 1, rate: 0.8 });
+      input.clear();
+      sound.court(false);
+      sound.dim(true);
+      sound.play('smallGong', { volume: 0.77 });
+      if (campaignRun()) recordBook.record(onStage, act.result);
       showResult();
+      showRecords();
     }
   }
   if (counted) (showCombo(events.some(event => event.type === 'met')), showCount());
@@ -552,29 +665,27 @@ function told(event) {
     pan = panOf(boss.x),
     words = WORDS[lang].bosses[boss.kind],
     { type, move } = event;
-  if (type === 'boss-enter') (notice(words.enter), sound.play('gong', { volume: 1, rate: 0.7 }));
+  if (type === 'boss-enter') (notice(words.enter), sound.court(true), sound.play('gong', { volume: 0.86, rate: 0.9 }));
   // Erlang changes his shape in a puff of smoke; he lands from a leap with his whole weight; and his hound is
   // heard before it is seen to run.
   else if (type === 'boss-change') (burst(dust, boss.x, boss.y - boss.rise - 70, 36), burst(sparks, boss.x, boss.y - boss.rise - 70, 16), sound.play('whirl', { volume: 0.8, rate: event.form === 'hawk' ? 1.6 : 1, pan }));
   else if (type === 'boss-land') (burst(dust, boss.x, boss.y, 26), sound.play('drum', { volume: 1, rate: 0.5, pan }), camera.shake({ trauma: 0.4 + boss.size * 0.2 }), (freeze = Math.max(freeze, 0.05)));
-  else if (type === 'hound-windup') (sound.play('tap', { volume: 0.9, rate: 0.38, pan: panOf(event.hound.x) }), sound.play('tap', { volume: 0.7, rate: 0.44, pan: panOf(event.hound.x) }));
+  else if (type === 'hound-windup') sound.play('tap', { volume: 0.87, rate: 0.66, pan: panOf(event.hound.x) });
   else if (type === 'hound-run') sound.play('swish', { volume: 0.6, rate: 0.7, pan: panOf(event.hound.x) });
   else if (type === 'hound-yelp') sound.play('clap', { volume: 0.7, rate: 1.9, pan: panOf(event.hound.x) });
   // Laozi: the snare carrying off the staff, the staff found again, and the furnace shut and broken out of.
-  else if (type === 'staff-taken') (burst(sparks, event.at.x, event.at.y, 40), sound.play('gong', { volume: 0.8, rate: 1.6 }), camera.shake({ trauma: 0.5 }), (freeze = Math.max(freeze, 0.12)), notice(WORDS[lang].taken));
+  else if (type === 'staff-taken') (burst(sparks, event.at.x, event.at.y, 40), sound.play('parry', { volume: 0.76, rate: 0.83 }), camera.shake({ trauma: 0.5 }), (freeze = Math.max(freeze, 0.12)), notice(WORDS[lang].taken));
   else if (type === 'staff-thrown') sound.play('swish', { volume: 0.7, rate: 0.8, pan });
-  else if (type === 'staff-back') (burst(sparks, act.hero.x, act.hero.y - 70, 26), sound.play('smallGong', { volume: 0.8, rate: 1.3 }), notice(WORDS[lang].regained));
+  else if (type === 'staff-back') (burst(sparks, act.hero.x, act.hero.y - 70, 26), sound.play('confirm', { volume: 0.77 }), notice(WORDS[lang].regained));
   else if (type === 'furnace-shut') {
-    sound.play('gong', { volume: 1, rate: 0.5 });
-    sound.play('drum', { volume: 1, rate: 0.45 });
+    sound.play('gong', { volume: 0.9, rate: 0.82 });
     camera.shake({ trauma: 1 });
     freeze = Math.max(freeze, 0.25);
     notice(WORDS[lang].shut(LAOZI.furnace.seconds));
-  } else if (type === 'drop') sound.play('tap', { volume: 0.4, rate: 1.9, pan: panOf(event.drop.x) });
-  else if (type === 'drop-landed') (burst(flames, event.at.x, event.at.y - 6, 16), burst(dust, event.at.x, event.at.y, 6), sound.play('drum', { volume: 0.5, rate: 1.1, pan: panOf(event.at.x) }));
+  } else if (type === 'drop') sound.play('ember', { volume: 0.58, rate: 1.12, pan: panOf(event.drop.x) });
+  else if (type === 'drop-landed') (burst(flames, event.at.x, event.at.y - 6, 16), burst(dust, event.at.x, event.at.y, 6), sound.play('land', { volume: 0.61, rate: 0.86, pan: panOf(event.at.x) }));
   else if (type === 'furnace-broken') {
-    sound.play('gong', { volume: 1, rate: 1 });
-    sound.play('gong', { volume: 0.8, rate: 0.5 });
+    sound.play('magic', { volume: 0.94, rate: 0.9 });
     burst(sparks, act.hero.x, act.hero.y - 70, 120);
     camera.shake({ trauma: 1 });
     camera.zoomTo(1.12, 0.08);
@@ -589,12 +700,11 @@ function told(event) {
   else if (type === 'ring') sound.play('whirl', { volume: 0.6, rate: 1.7, pan });
   else if (type === 'ring-caught') sound.play('tap', { volume: 0.6, rate: 1.4, pan });
   else if (type === 'ring-home') (burst(sparks, event.at.x, event.at.y, 36), (freeze = Math.max(freeze, 0.1)), camera.shake({ trauma: 0.6 }));
-  else if (type === 'boss-stun') sound.play('smallGong', { volume: 0.9, rate: 0.8, pan });
+  else if (type === 'boss-stun') sound.play('smallGong', { volume: 0.66, rate: 0.89, pan });
   else if (type === 'boss-phase' || type === 'boss-down') {
     // The turn of the fight: everything holds its breath, and the booth shakes.
     const last = type === 'boss-down';
-    sound.play('gong', { volume: 1, rate: last ? 0.5 : 0.62 });
-    sound.play('drum', { volume: 1, rate: 0.5 });
+    sound.play(last ? 'gong' : 'drum', { volume: last ? 0.94 : 0.83, rate: 0.84 });
     burst(sparks, boss.x, boss.y - 70, 60);
     freeze = Math.max(freeze, last ? 0.34 : 0.2);
     camera.shake({ trauma: 1 });
@@ -602,7 +712,7 @@ function told(event) {
     zoomBack = last ? 0.7 : 0.4;
     input.gamepads?.rumble(0, { duration: 400, weak: 1, strong: 1 });
     if (!last) notice(words.phases[event.phase]);
-  } else if (type === 'gate-open') (notice(words.opened), sound.play('smallGong', { volume: 0.7, rate: 1.1 }));
+  } else if (type === 'gate-open') (notice(words.opened), sound.play('confirm', { volume: 0.66 }));
 }
 
 /** Whether something at `x` is near enough to what the camera shows to be worth moving. */
@@ -621,7 +731,7 @@ function update(seconds) {
       while (carry >= STEP && freeze <= 0) {
         carry -= STEP;
         // Presses belong to the first step of a frame; what is held lasts through all of them.
-        asked = asked ? { ...asked, jump: false, attack: false, dash: false } : input.read();
+        asked = asked ? { ...asked, jump: false, attack: false, dash: false, special: false } : input.read();
         happen(stepAct(act, asked, STEP));
       }
     }
@@ -691,6 +801,24 @@ function update(seconds) {
   // Laozi; his snare in the air; the staff it took, in flight and then standing where it fell; and his furnace:
   // two walls of fire, and what falls between them, shown on the floor before it comes.
   const old = met && boss.kind === 'laozi';
+  const walls = old ? furnaceWalls(boss) : null;
+  wallLights.forEach((node, i) => {
+    node.visible = !!walls;
+    if (walls) {
+      node.x = i ? walls.right : walls.left - LAOZI.furnace.wall;
+      node.y = boss.y;
+      node.alpha = 0.88 + 0.09 * Math.sin(clock * 9 + i);
+    }
+  });
+  dropLights.forEach((node, i) => {
+    const drop = walls && boss.drops[i];
+    node.visible = !!drop && drop.warn > 0;
+    if (node.visible) {
+      node.x = drop.x;
+      node.y = boss.y;
+      node.alpha = 0.68 + 0.26 * Math.sin(clock * 18);
+    }
+  });
   sage.node.visible = old && boss.state !== 'furnace';
   if (met && boss.kind !== 'nezha') ringShown.visible = !!boss.ring;
   staffShown.visible = old && !!boss.staff;
@@ -712,10 +840,12 @@ function update(seconds) {
       staffShown.y = boss.staff.from.y + (boss.staff.y - boss.staff.from.y) * flown - 220 * flown * (1 - flown);
       staffShown.rotation = flown < 1 ? flown * 720 : 8;
     }
-    const walls = furnaceWalls(boss);
     if (walls && !still) {
-      for (const [x, lean] of [[walls.left - 14, 1], [walls.right + 14, -1]]) for (let n = some(520); n > 0; n--) burst(flames, x + lean * Math.random() * 16, boss.y - Math.random() * 430, 1);
-      for (const drop of boss.drops) drop.warn > 0 ? burst(sparks, drop.x + (Math.random() - 0.5) * 30, boss.y - 4, some(60)) : burst(flames, drop.x, drop.y - 20, some(260));
+      // A few sparks give the continuous light movement without filling the emitter.
+      for (const x of [walls.left - 5, walls.right + 5])
+        if (inView(x, centre)) burst(flames, x, boss.y - Math.random() * 380, some(38));
+      for (const drop of boss.drops)
+        if (drop.warn <= 0) burst(flames, drop.x, drop.y - 20, some(75));
       const left = Math.ceil(LAOZI.furnace.seconds - boss.time);
       if (left !== told.left && left > 0 && left < LAOZI.furnace.seconds) ((told.left = left), notice(WORDS[lang].shut(left)));
     }
@@ -788,14 +918,27 @@ function update(seconds) {
   // The palace's fires. A grate sputters before its turn and stands alight in it; a furnace knocked over lies on
   // its side with its fire along the floor; a fan's wind is dust blown the way it blows, and what it sends along
   // the floor is a tongue of flame.
-  if (!still) {
-    for (const vent of act.vents) {
-      if (!inView(vent.x, centre) || vent.state === 'off' || !vent.state) continue;
-      const alight = vent.state === 'on';
-      for (let n = some(alight ? 300 : 50); n > 0; n--) burst(flames, vent.x + (Math.random() - 0.5) * 30, vent.y - 8 - (alight ? Math.random() * 60 : 0), 1);
+  act.vents.forEach((vent, i) => {
+    const shown = ventsShown[i], near = inView(vent.x, centre), alight = vent.state === 'on';
+    shown.visible = near && alight;
+    if (shown.visible) {
+      shown.scaleY = 0.94 + 0.08 * Math.sin(clock * 15 + i);
+      shown.alpha = 0.83 + 0.12 * Math.sin(clock * 11 + i);
     }
-    for (const furnace of act.furnaces) for (let n = furnace.life > 0 ? some(FURNACE.spill * 0.5) : 0; n > 0; n--) burst(flames, furnace.x + furnace.side * Math.random() * FURNACE.spill, furnace.y - 4, 1);
-    for (const foe of act.foes) for (let n = foe.gust > 0 ? some(90) : 0; n > 0; n--) burst(dust, foe.x + foe.facing * (30 + Math.random() * FOES.fanner.gust.reach), foe.y - 16 - Math.random() * 80, 1);
+    if (still || !near || (!alight && vent.state !== 'warn')) return;
+    burst(flames, vent.x + (Math.random() - 0.5) * 20, vent.y - 8 - (alight ? Math.random() * 90 : 0), some(alight ? 64 : 24));
+  });
+  if (!still) {
+    // Each burst rebuilds the emitter mesh. Emit the frame's embers in groups across the spill.
+    for (const furnace of act.furnaces) {
+      if (furnace.life <= 0) continue;
+      for (let band = 0; band < 3; band++) {
+        const offset = (band + Math.random()) * FURNACE.spill / 3;
+        burst(flames, furnace.x + furnace.side * offset, furnace.y - 4, some(FURNACE.spill / 6));
+      }
+    }
+    for (const foe of act.foes)
+      if (foe.gust > 0) burst(dust, foe.x + foe.facing * (30 + Math.random() * FOES.fanner.gust.reach), foe.y - 16 - Math.random() * 80, some(90));
     for (const arrow of act.arrows) if (arrow.kind === 'ember') (burst(flames, arrow.x, arrow.y + 8, some(160)), burst(sparks, arrow.x, arrow.y, some(30)));
   }
   act.furnaces.forEach((furnace, index) => {
@@ -856,6 +999,12 @@ function update(seconds) {
   });
 
   for (const made of [sparks, straw, dust, flames]) made.update(still ? 0 : dt);
+  for (const mark of Object.values(contactMarks)) {
+    if (mark.left <= 0) continue;
+    mark.left = Math.max(0, mark.left - (still ? 0 : dt));
+    mark.node.alpha = mark.left / 0.18;
+    mark.node.visible = mark.left > 0;
+  }
   for (const wisp of wisps) {
     wisp.bitmap.x += wisp.speed * (paused ? 0 : dt);
     if (wisp.bitmap.x > level.width) wisp.bitmap.x = -160;
@@ -864,6 +1013,14 @@ function update(seconds) {
   lead += (hero.facing * 90 - lead) * Math.min(1, dt * 3);
   if (zoomBack > 0 && (zoomBack -= dt) <= 0) camera.zoomTo(1, 0.35);
   camera.update(paused ? 0 : dt);
+  if (settleView) {
+    for (const node of [world, far, drift]) {
+      node.x = Math.round(node.x);
+      node.y = Math.round(node.y);
+      node.rotation = 0;
+    }
+    settleView = false;
+  }
   // A shake that has all but died away can leave the stage moved or turned by a number too small to be told
   // from nothing, and the renderer refuses a frame with such a number in it. What is that small is made nothing.
   for (const node of [world, far, drift]) for (const key of ['x', 'y', 'rotation']) if (node[key] !== 0 && Math.abs(node[key]) < 1e-6) node[key] = 0;
@@ -877,7 +1034,8 @@ function update(seconds) {
   if (!$('notice').hidden && clock > noticeUntil) $('notice').hidden = true;
   if (playing && act.state === 'play') {
     const total = Math.floor(act.time);
-    $('clock').textContent = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    const shown = `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')}`;
+    if ($('clock').textContent !== shown) $('clock').textContent = shown;
   }
   if (stats) showStats(moving.length);
 }
@@ -922,19 +1080,40 @@ if (stats) stats.hidden = false;
 function pause(value = !paused) {
   if (!playing || act.state !== 'play') return;
   paused = value;
+  input.clear();
+  sound.dim(paused);
   $('paused').hidden = !paused;
+  $('pause-play').hidden = paused;
+  if (!paused) canvas.focus();
 }
-addEventListener('keydown', event => (event.code === 'KeyP' || event.code === 'Escape') && !event.repeat && pause());
+function playPauseCue() {
+  const wasPaused = paused;
+  pause();
+  if (paused !== wasPaused) sound.play(paused ? 'cancel' : 'confirm', { volume: 0.57 });
+}
+addEventListener('keydown', event => (event.code === 'KeyP' || event.code === 'Escape') && !event.repeat && playPauseCue());
 addEventListener('blur', () => pause(true));
-$('paused').addEventListener('click', () => pause(false));
+bindPlayButton($('pause-play'), playPauseCue);
+bindPlayButton($('paused'), playPauseCue);
 
 /** Puts the act back to its beginning. */
 function again() {
+  input.clear();
+  paused = false;
+  $('paused').hidden = true;
+  $('pause-play').hidden = false;
+  sound.court(false);
+  sound.dim(false);
+  if (playing) sound.score(onStage);
   act = createAct(level, { from, clones: TUFT });
   for (const shown of [...arrows.values(), ...pills.values()]) shown.dispose();
   arrows.clear();
   pills.clear();
   for (const shown of furnacesShown) shown.rotation = 0;
+  for (const mark of Object.values(contactMarks)) {
+    mark.left = 0;
+    mark.node.visible = false;
+  }
   freeze = carry = lead = 0;
   camera.zoomTo(1, 0);
   camera.lookAt(act.hero.x, STAGE.height / 2);
@@ -944,7 +1123,10 @@ function again() {
   showCount();
   canvas.focus();
 }
-$('again').addEventListener('click', again);
+$('again').addEventListener('click', () => {
+  again();
+  sound.play('confirm', { volume: 0.69 });
+});
 
 /** Sets the stage for an act: from its beginning, or (the first act) from the court before the gate. */
 function setAct(name, where) {
@@ -963,18 +1145,25 @@ function setAct(name, where) {
 $('next').addEventListener('click', () => {
   setAct(ACTS[ACTS.indexOf(onStage) + 1]);
   notice(WORDS[lang].titles[onStage]);
-  sound.play('gong', { volume: 0.9 });
+  sound.play('confirm', { volume: 0.75 });
 });
 
 $('lang').addEventListener('click', () => ((lang = lang === 'zh' ? 'en' : 'zh'), speak()));
+$('mute').setAttribute('aria-pressed', String(sound.muted));
+$('music').setAttribute('aria-pressed', String(sound.musicMuted));
 $('mute').addEventListener('click', event => {
   sound.muted = !sound.muted;
   event.currentTarget.setAttribute('aria-pressed', String(sound.muted));
+  if (!sound.muted) sound.play('confirm', { volume: 0.57 });
+});
+$('music').addEventListener('click', event => {
+  sound.musicMuted = !sound.musicMuted;
+  event.currentTarget.setAttribute('aria-pressed', String(sound.musicMuted));
+  sound.play(sound.musicMuted ? 'cancel' : 'confirm', { volume: 0.48 });
 });
 // An iPhone's browsers cannot make a page fill the screen, and there the button would do nothing.
 $('full').hidden = !document.fullscreenEnabled || !booth.requestFullscreen;
 $('full').addEventListener('click', () => (document.fullscreenElement ? document.exitFullscreen() : booth.requestFullscreen?.().catch(() => {})));
-for (const button of document.querySelectorAll('.tools button')) button.addEventListener('keydown', event => event.code === 'Space' && event.preventDefault());
 
 staged = true;
 speak();
@@ -993,7 +1182,10 @@ function raise(name, where) {
   $('curtain').classList.add('is-up');
   $('hud').hidden = false;
   showCount();
-  sound.begin().then(() => sound.play('gong', { volume: 0.9 }));
+  sound.score(onStage);
+  sound.begin().then(() => {
+    if (playing && onStage === name) sound.play('gong', { volume: 0.83 });
+  });
   canvas.focus();
 }
 // The gong begins wherever the address says, the first act if it says nothing; the lines under it choose for themselves.
@@ -1005,6 +1197,15 @@ $('start-act2').addEventListener('click', () => raise('act2'));
 $('start-erlang').addEventListener('click', () => raise('act2', 'boss'));
 $('start-act3').disabled = $('start-laozi').disabled = false;
 $('start-laozi').addEventListener('click', () => raise('act3', 'boss'));
+$('playbill-back').addEventListener('click', () => {
+  playing = false;
+  sound.play('cancel', { volume: 0.64 });
+  sound.score();
+  setAct(openingAct, openingFrom);
+  $('hud').hidden = true;
+  $('curtain').classList.remove('is-up');
+  $('start').focus();
+});
 $('start-act3').addEventListener('click', () => raise('act3'));
 
 // What a check reads; the play does not need it.
@@ -1032,6 +1233,8 @@ globalThis.__lantern = {
   tap: action => input.tap(action),
   hold: (action, down) => input.hold(action, down),
   sounds: () => sound.ready,
+  soundState: () => sound.state(),
+  get renderRecoveries() { return renderRecoveries; },
   pause,
   again,
   health: TUNE.health

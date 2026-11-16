@@ -11,11 +11,9 @@
 }
 * { box-sizing: border-box; }
 html, body { height: 100%; margin: 0; }
-/* A game under the thumbs must not be mistaken for a page to zoom or slide: nothing here answers a pinch, a
-   double tap or a drag, and a long press brings up no menu. src/input.mjs refuses the same gestures in script,
-   for the browsers that do not listen to this. */
 html { background: #0b0604; overscroll-behavior: none; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
-html, body, .booth, .booth * { touch-action: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+.booth { -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; }
+#stage, .pads, #pause-play, #paused { touch-action: none; }
 body {
   display: grid; place-items: center; overflow: hidden;
   background: radial-gradient(120% 90% at 50% 40%, #2a160c 0%, var(--room) 70%);
@@ -86,8 +84,6 @@ body {
 .combo b { font-size: 4.2em; font-weight: 900; font-variant-numeric: lining-nums; color: #7a130f; -webkit-text-stroke: 0.03em #f3d78d; paint-order: stroke fill; }
 .combo span { margin-top: 0.3em; writing-mode: vertical-rl; letter-spacing: 0.3em; font-weight: 700; font-size: 1.1em; }
 :root[lang='en'] .combo span { writing-mode: horizontal-tb; letter-spacing: 0.06em; }
-.combo.is-struck b { animation: struck 0.16s ease-out; }
-@keyframes struck { from { transform: scale(1.5) rotate(-6deg); } to { transform: none; } }
 .best { top: 15%; right: 3.8%; color: #5a2a14; font-size: 0.92em; font-weight: 700; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
 
 .tools { top: 9.4%; right: 3.6%; display: flex; gap: 0.5em; pointer-events: auto; }
@@ -99,6 +95,9 @@ body {
 .tools :is(a, button):focus-visible, .gong:focus-visible { outline: 2px solid #fff3c4; outline-offset: 2px; }
 .tools button[aria-pressed='true'] { opacity: 0.5; text-decoration: line-through; }
 .tools [hidden] { display: none; }
+.tools #pause-play { color: #fff0b8; background: #552318; }
+/* Keep the music button out of the pause tap's slot until the browser sends its click. */
+.tools #pause-play[hidden] { display: block; visibility: hidden; }
 
 .keys { left: 0; right: 0; bottom: 4%; text-align: center; color: #f3d78dd9; font-weight: 700; font-size: 0.88em; letter-spacing: 0.04em; text-shadow: 0 1px 2px #000a; }
 .keys kbd { display: inline-block; min-width: 1.7em; margin: 0 0.2em 0 0.9em; padding: 0.05em 0.4em; border: 1px solid #f3d78d88; border-radius: 3px; background: #1c0f0b99; font: 700 0.9em ui-monospace, 'SF Mono', Menlo, Consolas, monospace; }
@@ -131,6 +130,7 @@ body {
 /* Before the play: the curtain is down, with the playbill on it. It is drawn up when the gong is struck. */
 .curtain {
   position: absolute; inset: 0; display: grid; place-items: center;
+  overflow: auto; touch-action: pan-y; overscroll-behavior: contain;
   background:
     linear-gradient(#0000 60%, #0007),
     repeating-linear-gradient(90deg, #5c100d 0 3.2%, #7c1711 5.4%, #8f1d16 6.2%, #6a120e 8.4%, #5c100d 10%);
@@ -148,7 +148,7 @@ body {
 .act { margin: 0; color: #f0c98a; letter-spacing: 0.18em; }
 :root[lang='en'] .act { letter-spacing: 0.03em; }
 /* When an act ends its curtain falls, with the reckoning on it: a seal for how it was played. */
-.result { position: absolute; inset: 0; display: grid; place-items: center; background: linear-gradient(#0000 60%, #0007), repeating-linear-gradient(90deg, #5c100d 0 3.2%, #7c1711 5.4%, #8f1d16 6.2%, #6a120e 8.4%, #5c100d 10%); animation: fall 0.7s cubic-bezier(0.6, 0, 0.3, 1); }
+.result { position: absolute; inset: 0; display: grid; place-items: center; overflow: auto; touch-action: pan-y; overscroll-behavior: contain; background: linear-gradient(#0000 60%, #0007), repeating-linear-gradient(90deg, #5c100d 0 3.2%, #7c1711 5.4%, #8f1d16 6.2%, #6a120e 8.4%, #5c100d 10%); animation: fall 0.7s cubic-bezier(0.6, 0, 0.3, 1); }
 @keyframes fall { from { transform: translateY(-101%); } to { transform: none; } }
 .seal {
   margin: 0; width: 1.5em; height: 1.5em; display: grid; place-items: center; transform: rotate(-7deg);
@@ -163,7 +163,7 @@ body {
 .finale { margin: 0; color: var(--pale-gold); font-weight: 700; letter-spacing: 0.1em; }
 .finale[hidden] { display: none; }
 :root[lang='en'] .finale { letter-spacing: 0.02em; }
-.gongs { display: flex; gap: 1.6em; }
+.gongs { display: flex; gap: 1.6em; align-items: center; justify-content: center; flex-wrap: wrap; }
 .gongs [hidden] { display: none; }
 :root[lang='en'] .gong.small { font-size: 0.95em; width: 5.4em; height: 5.4em; letter-spacing: 0.02em; }
 
@@ -188,6 +188,25 @@ body {
 .filling[hidden] { display: none; }
 .filling b { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(90deg, #c98a2a, #f3d78d); transition: width 0.2s; }
 .status { margin: 0; min-height: 1.4em; color: #e7b98a; font-size: 0.86em; -webkit-user-select: text; user-select: text; }
+.show-records { display: flex; flex-wrap: wrap; justify-content: center; gap: 0.4em 1.1em; color: #edcc90; font-size: 0.82em; }
+.show-records span { border-bottom: 1px solid #d3985170; padding-bottom: 0.24em; }
+.replay { display: grid; gap: 0.48em; width: min(100%, 32em); font-size: 0.82em; color: #f0cb93; }
+.show-records[hidden], .replay[hidden] { display: none; }
+.replay p { margin: 0; }
+.replay ul { display: flex; flex-wrap: wrap; gap: 0.3em 0.5em; justify-content: center; list-style: none; padding: 0; margin: 0; }
+.replay li { padding: 0.26em 0.56em; border: 1px solid #b86d46; background: #340e0b7a; }
+.replay li[data-earned='true'] { color: #ffe5a0; background: #714719; border-color: #e3b455; }
+
+/* Keep the playbill and results reachable in short landscape windows. */
+@media (orientation: landscape) and (max-height: 490px) {
+  .playbill { gap: 7px; padding: 12px 20px; }
+  .playbill h1 span { font-size: 1.8em; }
+  .playbill h1 em { font-size: 3.6em; }
+  .result .playbill { gap: 5px; font-size: 13px; }
+  .result .seal { font-size: 3.4em; }
+  .result .tally { column-gap: 1em; row-gap: 0.12em; }
+  .result .gong.small { width: 3.6em; height: 3.6em; }
+}
 .status.is-error { color: #ffd0c0; }
 
 @media (prefers-reduced-motion: reduce) {
@@ -198,8 +217,38 @@ body {
   .hairs.is-ready i, .pads.has-tuft button[data-hold='special'] { animation: none; }
 }
 
-/* A phone held upright shows the booth small: say so, beneath it. */
+/* The cloth stays widescreen; a portrait phone has room for hands below it. */
 @media (pointer: coarse) and (orientation: portrait) {
-  body { align-content: center; gap: 18px; }
-  body::after { content: '横过手机来看戏　Turn the phone sideways'; color: #c9a36a; font-size: 14px; letter-spacing: 0.06em; }
+  .booth { width: 100vw; height: 100dvh; aspect-ratio: auto; --cloth-top: calc(50% - 28.125vw); }
+  .playbill { width: 100%; max-width: 30rem; gap: 15px; padding: 20px; font-size: 16px; }
+  .playbill h1 { flex-wrap: wrap; justify-content: center; }
+  .playbill h1 span { font-size: 1.65em; }
+  .playbill h1 em { font-size: 2.75em; white-space: nowrap; }
+  .asides { flex-direction: column; gap: 4px; }
+  .aside { min-height: 36px; }
+  .hud { font-size: 13px; }
+  .tools { top: max(12px, env(safe-area-inset-top)); left: 4%; right: 4%; justify-content: center; flex-wrap: wrap; }
+  .tools button { min-height: 36px; }
+  .banner { top: calc(var(--cloth-top) - 99px); left: 5%; writing-mode: horizontal-tb; padding: 0.4em 0.7em; clip-path: none; }
+  .peaches { top: calc(var(--cloth-top) - 56px); left: 6%; }
+  .hairs { top: calc(var(--cloth-top) - 29px); left: 6%; color: var(--pale-gold); text-shadow: none; }
+  .hairs i { border-color: #b48751; }
+  .tally-line, .best { top: calc(var(--cloth-top) - 54px); left: auto; right: 6%; color: var(--pale-gold); text-shadow: none; }
+  .best { top: calc(var(--cloth-top) - 31px); }
+  .foe { top: calc(var(--cloth-top) + 19px); left: 14%; right: 14%; }
+  .notice { top: calc(var(--cloth-top) + 40px); width: max-content; max-width: 92%; white-space: normal; text-align: center; }
+  .crowd { top: calc(var(--cloth-top) + 84px); font-size: 12px; }
+  .combo { top: calc(var(--cloth-top) + 92px); font-size: 0.82em; }
+  .pads { top: calc(var(--cloth-top) + 56.25vw); height: auto; }
+  .pads > div { bottom: max(15%, env(safe-area-inset-bottom)); gap: 6px; }
+  .pads button { width: clamp(44px, 12vw, 56px); height: clamp(44px, 12vw, 56px); }
+  .pads button[data-hold='attack'] { width: clamp(49px, 13vw, 61px); height: clamp(49px, 13vw, 61px); margin-bottom: 11px; }
+  .pad-move { left: 4%; }
+  .pad-act { right: 4%; }
+  .stats { bottom: max(12px, env(safe-area-inset-bottom)); }
+}
+@media (pointer: coarse) and (orientation: portrait) and (max-width: 355px) {
+  .pad-move { left: 2%; }
+  .pad-act { right: 2%; }
+  .pads > div { gap: 3px; }
 }

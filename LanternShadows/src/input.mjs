@@ -14,57 +14,58 @@ const ACTION_OF = Object.fromEntries(Object.entries(KEYS).flatMap(([action, code
 const PAD = { jump: 'a', attack: 'x', dash: 'b', special: 'y' };
 
 export function createInput(target = window) {
-  const held = { left: false, right: false, jump: false, attack: false, dash: false, special: false },
-    pressed = { jump: false, attack: false, dash: false, special: false },
-    pad = { jump: false, attack: false, dash: false, special: false };
-  const set = (action, down) => {
-    if (down && !held[action] && action in pressed) pressed[action] = true;
-    held[action] = down;
+  const owners = Object.fromEntries(Object.keys(KEYS).map(action => [action, new Set()]));
+  const pressed = { jump: false, attack: false, dash: false, special: false };
+  const pad = { jump: false, attack: false, dash: false, special: false };
+  const contacts = new Map();
+  const held = action => owners[action].size > 0;
+  const set = (action, source, down) => {
+    if (down) {
+      if (!held(action) && action in pressed) pressed[action] = true;
+      owners[action].add(source);
+    } else owners[action].delete(source);
+  };
+  const clear = () => {
+    for (const sources of Object.values(owners)) sources.clear();
+    for (const { button } of contacts.values()) button.classList.remove('is-held');
+    contacts.clear();
+    for (const action in pressed) pressed[action] = false;
   };
   const key = down => event => {
     const action = ACTION_OF[event.code];
     if (!action || event.metaKey || event.ctrlKey || event.altKey) return;
     if (event.target instanceof HTMLButtonElement && event.code === 'Space') return;
     event.preventDefault();
-    if (!event.repeat) set(action, down);
+    if (!event.repeat) set(action, event.code, down);
   };
   target.addEventListener('keydown', key(true));
   target.addEventListener('keyup', key(false));
-  target.addEventListener('blur', () => Object.keys(held).forEach(action => (held[action] = false)));
+  target.addEventListener('blur', clear);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) clear(); });
 
-  // Touch buttons carry the action they stand for in `data-hold`.
+  // Keep the starting button until the contact ends, even outside its bounds.
+  const lift = event => {
+    const contact = contacts.get(event.pointerId);
+    if (!contact) return;
+    const { action, button } = contact;
+    contacts.delete(event.pointerId);
+    set(action, event.pointerId, false);
+    if (![...contacts.values()].some(other => other.button === button)) button.classList.remove('is-held');
+  };
+  for (const type of ['pointerup', 'pointercancel']) target.addEventListener(type, lift);
   for (const button of document.querySelectorAll('[data-hold]')) {
-    const action = button.dataset.hold,
-      lift = () => (set(action, false), button.classList.remove('is-held'));
+    const action = button.dataset.hold;
     button.addEventListener('pointerdown', event => {
+      if ((event.pointerType === 'mouse' && event.button !== 0) || contacts.has(event.pointerId)) return;
       event.preventDefault();
-      button.setPointerCapture?.(event.pointerId);
-      set(action, true);
+      contacts.set(event.pointerId, { action, button });
+      try { button.setPointerCapture?.(event.pointerId); } catch { /* Window listeners still track the release. */ }
+      set(action, event.pointerId, true);
       button.classList.add('is-held');
     });
     for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) button.addEventListener(type, lift);
     button.addEventListener('contextmenu', event => event.preventDefault());
   }
-
-  // Thumbs working the buttons must not zoom or slide the page. A touch on the stage or on the game's own buttons
-  // is kept from the browser altogether; elsewhere a second tap close on the first, which a browser reads as a
-  // request to zoom, is refused, as is a pinch.
-  const onStage = event => event.target instanceof Element && event.target.closest('canvas, .pads') !== null;
-  let lastTap = 0;
-  const refuse = { passive: false };
-  document.addEventListener('touchstart', event => (onStage(event) || event.touches.length > 1) && event.preventDefault(), refuse);
-  document.addEventListener('touchmove', event => event.preventDefault(), refuse);
-  document.addEventListener(
-    'touchend',
-    event => {
-      const now = event.timeStamp,
-        double = now - lastTap < 350;
-      lastTap = now;
-      if (onStage(event) || double) event.preventDefault();
-    },
-    refuse
-  );
-  for (const type of ['gesturestart', 'gesturechange', 'gestureend', 'dblclick']) document.addEventListener(type, event => event.preventDefault(), refuse);
 
   let gamepads;
   try {
@@ -80,8 +81,8 @@ export function createInput(target = window) {
     },
     /** Reads this step's input. Call once a step: it uses up the presses. */
     read() {
-      let move = (held.right ? 1 : 0) - (held.left ? 1 : 0),
-        jumpHeld = held.jump;
+      let move = Number(held('right')) - Number(held('left')),
+        jumpHeld = held('jump');
       const first = gamepads?.input.pads[0];
       if (first) {
         const stick = first.stick('left').x,
@@ -100,15 +101,43 @@ export function createInput(target = window) {
     },
     /** Holds an action down or lets it go, as a key would: for a check that plays the game by itself. */
     hold(action, down) {
-      if (action in held) set(action, down);
+      if (action in owners) set(action, 'check', down);
     },
     /** Presses an action once, as a key would: for a check, or for a button of the page's own. */
     tap(action) {
       if (action in pressed) pressed[action] = true;
     },
+    clear,
     /** Looks at the gamepads; once a frame. */
     poll(timestamp) {
       gamepads?.poll(timestamp);
     }
   };
+}
+
+/** A second finger can pause even on browsers which suppress its click while movement is held. */
+export function bindPlayButton(button, apply) {
+  let contact;
+  button.addEventListener('pointerdown', event => {
+    if (event.pointerType !== 'touch' && event.pointerType !== 'pen') return;
+    contact = { id: event.pointerId, x: event.clientX, y: event.clientY, dragged: false };
+    try { button.setPointerCapture?.(event.pointerId); } catch { /* A regular tap will still click. */ }
+  });
+  const drifted = event => Math.hypot(event.clientX - contact.x, event.clientY - contact.y) > 18;
+  button.addEventListener('pointermove', event => {
+    if (contact?.id === event.pointerId && drifted(event)) contact.dragged = true;
+  });
+  button.addEventListener('pointerup', event => {
+    if (contact?.id !== event.pointerId) return;
+    const inside = button.getBoundingClientRect();
+    const tap = !contact.dragged && !drifted(event) && event.clientX >= inside.left && event.clientX <= inside.right &&
+      event.clientY >= inside.top && event.clientY <= inside.bottom;
+    contact = undefined;
+    if (tap) apply();
+  });
+  for (const type of ['pointercancel', 'lostpointercapture'])
+    button.addEventListener(type, event => { if (contact?.id === event.pointerId) contact = undefined; });
+  button.addEventListener('click', event => {
+    if (event.detail === 0 || !['touch', 'pen'].includes(event.pointerType)) apply();
+  });
 }
