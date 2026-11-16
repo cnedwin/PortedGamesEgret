@@ -4,7 +4,7 @@
 //   node tools/models.mjs --level=mid         one level
 //   node tools/models.mjs hero lu             only those named, at every level
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
-import { BIND, BONES, JOINTS } from '../src/view/rig.mjs';
+import { ANKLE_DEPTH, BIND, BONES, HANDS, JOINTS } from '../src/view/rig.mjs';
 import { pack, sculpt } from './sculpt.mjs';
 
 const rgb = (hex) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255].map((v) => Math.pow(v, 2.2));
@@ -37,7 +37,7 @@ function bindPose() {
 }
 
 /** A figure's solids. `look` says how he is dressed. */
-function person(look) {
+function person(look, articulated) {
   let part = 'body';
   const out = [],
     bone = (name) => BONES.indexOf(name),
@@ -49,10 +49,11 @@ function person(look) {
     w = look.bulk ?? 1;
 
   // Legs first, so that the coat lies over them.
-  for (const [leg, shin, side] of [
-    ['legL', 'shinL', 1],
-    ['legR', 'shinR', -1]
-  ]) {
+  for (const side of ['L', 'R']) {
+    const leg = 'leg' + side,
+      shin = 'shin' + side,
+      ankle = articulated ? 'foot' + side : shin,
+      bootPoint = ([x, y, z]) => [x, y - (articulated ? ANKLE_DEPTH : 0), z];
     cap(leg, [0, 0.02, 0], [0, -0.45, 0], 0.09 * w, 0.064, legs, { k: 0.03 });
     cap(shin, [0, 0, 0], [0, -0.2, 0], 0.064, 0.055, legs, { k: 0.03 });
     // The boot, on a finer grid: a creased cloth shaft bound at the calf, an ankle, a heel,
@@ -63,19 +64,18 @@ function person(look) {
       welt = dim(boots, 2.2);
     cap(shin, [0, -0.13, 0], [0, -0.37, 0.002], 0.06, 0.046, leather, { k: 0.012, fold: { n: 3, amp: 0.003, from: 0.3 } });
     for (let i = 0; i < 4; i++) egg(shin, [0, -0.17 - i * 0.05, 0], [0.0625 - i * 0.004, 0.009, 0.0625 - i * 0.004], welt, { k: 0.005 });
-    egg(shin, [0, -0.4, 0.002], [0.043, 0.04, 0.05], leather, { k: 0.02 });
-    egg(shin, [0, -0.447, -0.03], [0.037, 0.03, 0.038], leather, { k: 0.02 });
-    cap(shin, [0, -0.415, 0.02], [0, -0.455, 0.105], 0.04, 0.031, leather, { k: 0.02 });
-    egg(shin, [0, -0.455, 0.13], [0.041, 0.025, 0.044], leather, { k: 0.018 });
-    egg(shin, [0, -0.44, 0.158], [0.022, 0.016, 0.016], leather, { k: 0.014 });
+    egg(ankle, bootPoint([0, -0.4, 0.002]), [0.043, 0.04, 0.05], leather, { k: 0.02 });
+    egg(ankle, bootPoint([0, -0.447, -0.03]), [0.037, 0.03, 0.038], leather, { k: 0.02 });
+    cap(ankle, bootPoint([0, -0.415, 0.02]), bootPoint([0, -0.455, 0.105]), 0.04, 0.031, leather, { k: 0.02 });
+    egg(ankle, bootPoint([0, -0.455, 0.13]), [0.041, 0.025, 0.044], leather, { k: 0.018 });
+    egg(ankle, bootPoint([0, -0.44, 0.158]), [0.022, 0.016, 0.016], leather, { k: 0.014 });
     for (const off of [1, -1]) {
-      egg(shin, [off * 0.036, -0.404, -0.008], [0.012, 0.014, 0.014], leather, { k: 0.012 }); // ankle bones
+      egg(ankle, bootPoint([off * 0.036, -0.404, -0.008]), [0.012, 0.014, 0.014], leather, { k: 0.012 });
     }
-    cap(shin, [0, -0.398, 0.047], [0, -0.44, 0.125], 0.004, 0.004, welt, { k: 0.003 });
-    egg(shin, [0, -0.478, 0.052], [0.041, 0.011, 0.118], sole, { k: 0.006 });
-    egg(shin, [0, -0.47, 0.052], [0.043, 0.004, 0.12], welt, { k: 0.003 });
+    cap(ankle, bootPoint([0, -0.398, 0.047]), bootPoint([0, -0.44, 0.125]), 0.004, 0.004, welt, { k: 0.003 });
+    egg(ankle, bootPoint([0, -0.478, 0.052]), [0.041, 0.011, 0.118], sole, { k: 0.006 });
+    egg(ankle, bootPoint([0, -0.47, 0.052]), [0.043, 0.004, 0.12], welt, { k: 0.003 });
     part = 'body';
-    void side;
   }
   // The skirt of the coat: two overlapping halves, each half following its leg a little, pleated.
   const hem = look.long ? -0.6 : -0.38;
@@ -102,10 +102,9 @@ function person(look) {
   cap('hips', [0.085, 0.08, 0.125 * w], [0.06, -0.15, 0.165 * w], 0.014, 0.022, dim(look.sash ?? trim, 0.8), { k: 0.008, flat: 0.35, also: [bone('legL'), 0.3] });
 
   // Arms: a full sleeve gathered into a bound cuff, and a hand closed as on a haft.
-  for (const [arm, fore, side] of [
-    ['armL', 'foreL', 1],
-    ['armR', 'foreR', -1]
-  ]) {
+  for (const side of ['L', 'R']) {
+    const arm = 'arm' + side,
+      fore = 'fore' + side;
     cap(arm, [0, 0.01, 0], [0, -0.29, 0], 0.07 * w, 0.058, coat, { k: 0.035, fold: { n: 5, amp: 0.004 } });
     cap(fore, [0, 0, 0], [0, -0.17, 0], 0.056, 0.064, coat, { k: 0.03, fold: { n: 6, amp: 0.005 } });
     cap(fore, [0, -0.15, 0], [0, -0.235, 0], 0.05, 0.043, look.cuff ?? trim, { k: 0.01 });
@@ -114,27 +113,30 @@ function person(look) {
     // knuckles, nails, and a thumb closing over them.
     part = 'hand';
     const sk = look.skin ?? SKIN,
-      inward = -side;
+      hand = HANDS[side],
+      inward = -hand.side,
+      local = (point, origin) => articulated ? point.map((v, i) => v - origin[i]) : point,
+      palm = articulated ? hand.palm : fore,
+      nail = [0.78, 0.6, 0.52];
     cap(fore, [0, -0.2, 0], [0, -0.258, 0], 0.03, 0.026, sk, { k: 0.01, flat: 0.8 });
-    box(fore, [inward * 0.004, -0.292, 0.002], [0.013, 0.034, 0.036], sk, { k: 0.012, round: 0.012 });
-    egg(fore, [inward * 0.014, -0.282, 0.026], [0.012, 0.024, 0.014], sk, { k: 0.012 }); // the ball of the thumb
-    for (let i = 0; i < 4; i++) {
-      const z = 0.03 - i * 0.0195,
-        long = [1, 1.08, 1, 0.82][i],
-        r = [0.0088, 0.009, 0.0086, 0.0076][i],
-        k1 = [side * 0.006, -0.326, z],
-        k2 = [inward * 0.012 * long, -0.326 - 0.034 * long, z],
-        k3 = [inward * 0.034 * long, -0.326 - 0.036 * long, z],
-        tip = [inward * 0.04 * long, -0.326 - 0.014 * long, z];
-      egg(fore, k1, [0.0105, 0.0105, 0.0098], sk, { k: 0.008 });
-      cap(fore, k1, k2, r, r * 0.95, sk, { k: 0.006 });
-      cap(fore, k2, k3, r * 0.95, r * 0.88, sk, { k: 0.004 });
-      cap(fore, k3, tip, r * 0.88, r * 0.78, sk, { k: 0.004 });
-      egg(fore, [tip[0] + inward * 0.004, tip[1] + 0.004, z], [0.0035, 0.0068, 0.0058], [0.78, 0.6, 0.52], { k: 0.0015 }); // nail
+    box(palm, local([inward * 0.004, -0.292, 0.002], hand.wrist), [0.013, 0.034, 0.036], sk, { k: 0.012, round: 0.012 });
+    egg(palm, local([inward * 0.014, -0.282, 0.026], hand.wrist), [0.012, 0.024, 0.014], sk, { k: 0.012 });
+    for (const { joints, points, radius } of hand.fingers) {
+      const boneAt = (i) => articulated ? joints[i] : fore;
+      egg(boneAt(0), local(points[0], points[0]), [0.0105, 0.0105, 0.0098], sk, { k: 0.008 });
+      const widths = [1, 0.95, 0.88, 0.78];
+      for (let i = 0; i < joints.length; i++) {
+        cap(boneAt(i), local(points[i], points[i]), local(points[i + 1], points[i]), radius * widths[i], radius * widths[i + 1], sk, { k: i ? 0.004 : 0.006 });
+      }
+      const [x, y, z] = points[3];
+      egg(boneAt(2), local([x + inward * 0.004, y + 0.004, z], points[2]), [0.0035, 0.0068, 0.0058], nail, { k: 0.0015 });
     }
-    cap(fore, [inward * 0.012, -0.276, 0.034], [inward * 0.03, -0.304, 0.046], 0.0115, 0.0105, sk, { k: 0.008 });
-    cap(fore, [inward * 0.03, -0.304, 0.046], [inward * 0.044, -0.33, 0.036], 0.0102, 0.0086, sk, { k: 0.005 });
-    egg(fore, [inward * 0.05, -0.33, 0.038], [0.003, 0.007, 0.006], [0.78, 0.6, 0.52], { k: 0.0015 });
+    const { joints: thumb, points } = hand.thumb,
+      thumbA = articulated ? thumb[0] : fore,
+      thumbB = articulated ? thumb[1] : fore;
+    cap(thumbA, local(points[0], points[0]), local(points[1], points[0]), 0.0115, 0.0105, sk, { k: 0.008 });
+    cap(thumbB, local(points[1], points[1]), local(points[2], points[1]), 0.0102, 0.0086, sk, { k: 0.005 });
+    egg(thumbB, local([inward * 0.05, -0.33, 0.038], points[1]), [0.003, 0.007, 0.006], nail, { k: 0.0015 });
     part = 'body';
   }
 
@@ -639,7 +641,7 @@ for (const [level, coarse] of Object.entries(LEVELS)) {
     jobs = [],
     thin = Math.min(coarse, 1.25),
     built = Math.min(coarse, 1.3);
-  for (const [name, look] of Object.entries(LOOKS)) jobs.push([name, () => sculptParts(person(look), bones, coarse)]);
+  for (const [name, look] of Object.entries(LOOKS)) jobs.push([name, () => sculptParts(person(look, name === 'hero' || name === 'lu'), bones, coarse)]);
   for (const [name, make] of Object.entries(THINGS)) {
     jobs.push([name, () => sculpt(make().solids, { cell: 0.0075 * thin, mottle: 0.05 })]);
     if (make().edge) jobs.push([name + 'Edge', () => sculpt(make().edge.map((solid) => ({ ...solid, stuff: 3 })), { cell: 0.006 * thin, mottle: 0.03 })]);

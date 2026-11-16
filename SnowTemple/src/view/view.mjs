@@ -13,7 +13,7 @@ import { BARS, PLACES } from '../rules/arena.mjs';
 import { HERO } from '../rules/tune.mjs';
 import { createBuilder, rgb } from './build.mjs';
 import { TINT, createEffects } from './effects.mjs';
-import { createFigure, foePose, heroPose, pose } from './figures.mjs';
+import { FALL_CONTACT, createFigure, foePose, heroPose, pose } from './figures.mjs';
 import { buildScenery, height, paved } from './scenery.mjs';
 
 const GRADE_TINT = [TINT.white, TINT.jade, TINT.gold];
@@ -68,9 +68,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   heroFigure.metal.emissive.set([0.45, 0.75, 1]);
   scene.addChild(heroFigure.root);
   let heroTravel = 0,
-    heroLast = null,
-    lastPrint = 0,
-    foot = 1;
+    heroLast = null;
   const figures = new Map();
   function figureOf(foe) {
     let figure = figures.get(foe.id);
@@ -391,8 +389,21 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   }
 
   // ---- one frame ----------------------------------------------------------------------------
-  let footstep = 0;
+  const footPosition = [0, 0, 0],
+    contacts = { L: 0, R: 0 };
+  let glideTrailTime = 0;
   const fires = [{ x: 7.2, y: 2.4, z: 9.8, size: 1.1 }];
+
+  function bodyContact(figure, time, x, z) {
+    const landed = time >= FALL_CONTACT;
+    if (landed && !figure.landed) {
+      const surface = paved(x, z) ? 'stone' : 'snow';
+      view.onFoley?.({ type: 'bodyLand', x, z, surface });
+      fx.burst(x, 0.08, z, { count: surface === 'snow' ? 7 : 3, spread: 1.15, speed: 1.5, life: 0.42, size: 0.16, tint: TINT.white, power: 0.73, rise: -1 });
+    }
+    figure.landed = landed;
+  }
+
   view.update = function update(game, events, dt, clock) {
     for (const e of events) onEvent(game, e);
     const hero = game.hero;
@@ -400,16 +411,27 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     // The hero.
     if (heroLast) heroTravel += Math.hypot(hero.x - heroLast.x, hero.z - heroLast.z);
     heroLast = { x: hero.x, z: hero.z };
-    const [target, rate] = heroPose(hero, HERO, clock, heroTravel, game.deadFor);
-    // Footprints where he treads on snow, left and right by turns.
-    if (hero.moving && hero.state !== 'glide' && heroTravel - lastPrint > 0.62 && !paved(hero.x, hero.z)) {
-      lastPrint = heroTravel;
-      foot = -foot;
-      fx.print(hero.x + Math.cos(hero.face) * 0.11 * foot, hero.z - Math.sin(hero.face) * 0.11 * foot, hero.face);
-    }
+    const [target, rate] = heroPose(hero, HERO, clock, heroTravel, game.deadFor, heroFigure.gait, dt);
     heroFigure.root.setPosition(hero.x, 0, hero.z);
     heroFigure.root.setRotation(0, hero.face, 0);
     pose(heroFigure, target, hero.freeze > 0 ? 0 : rate, dt);
+    if (dt > 0) {
+      // Footprints and foley come from the same contact in the captured stride.
+      for (const side of ['L', 'R']) {
+        const contact = target['contact' + side] ?? 0;
+        if (contact >= 0.55 && contacts[side] < 0.55) {
+          const [x, , z] = heroFigure.joints['foot' + side].getWorldPosition(footPosition),
+            surface = paved(x, z) ? 'stone' : 'snow';
+          if (surface === 'snow') {
+            fx.print(x, z, hero.face);
+            fx.burst(x, 0.08, z, { count: 2, spread: 1, speed: 1.4, life: 0.5, size: 0.13, tint: TINT.white, power: 0.7, rise: -1 });
+          }
+          view.onFoley?.({ type: 'footstep', x, z, surface });
+        }
+        contacts[side] = contact;
+      }
+      bodyContact(heroFigure, hero.state === 'dead' ? game.deadFor : 0, hero.x, hero.z);
+    }
     const cutting = hero.state === 'cut' || hero.state === 'riposte' || hero.state === 'rain' || hero.state === 'stars';
     heroFigure.glow += ((cutting ? 3.2 : hero.counter > 0 ? 2 : 0.25) - heroFigure.glow) * Math.min(1, dt * 14);
     heroFigure.metal.emissiveIntensity = heroFigure.glow;
@@ -417,12 +439,12 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     const [heroRed, heroGreen, heroBlue] = heroFigure.look.fill;
     heroFigure.cloth.emissive.set([heroRed + heroFigure.flash * 0.9, heroGreen + heroFigure.flash * 0.2, heroBlue + heroFigure.flash * 0.15]);
     heroFigure.root.visible = !(hero.safe > 0 && hero.state === 'free' && Math.floor(clock * 14) % 2 === 0);
-    if (hero.moving) {
-      footstep += dt * (hero.state === 'glide' ? 3 : 1);
-      if (footstep > 0.16) {
-        footstep = 0;
-        fx.burst(hero.x, 0.08, hero.z, { count: hero.state === 'glide' ? 5 : 2, spread: 1, speed: 1.4, life: 0.5, size: 0.13, tint: TINT.white, power: 0.7, rise: -1 });
-        if (hero.state === 'glide') fx.burst(hero.x, 0.9, hero.z, { count: 3, spread: 0.6, speed: 1, life: 0.45, size: 0.1, tint: TINT.spear, power: 3, rise: 0 });
+    if (hero.moving && hero.state === 'glide') {
+      glideTrailTime += dt;
+      if (glideTrailTime > 0.054) {
+        glideTrailTime = 0;
+        fx.burst(hero.x, 0.08, hero.z, { count: 5, spread: 1, speed: 1.4, life: 0.5, size: 0.13, tint: TINT.white, power: 0.7, rise: -1 });
+        fx.burst(hero.x, 0.9, hero.z, { count: 3, spread: 0.6, speed: 1, life: 0.45, size: 0.1, tint: TINT.spear, power: 3, rise: 0 });
       }
     }
     // A ring at his feet while the riposte is there to be taken.
@@ -439,7 +461,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       figure.travel += Math.hypot(foe.x - figure.last.x, foe.z - figure.last.z);
       figure.last.x = foe.x;
       figure.last.z = foe.z;
-      const [want, speed] = foePose(foe, clock, figure.travel),
+      const [want, speed] = foePose(foe, clock, figure.travel, figure.gait, dt),
         jitter = foe.shake > 0 ? Math.sin(clock * 90) * foe.shake * 0.25 : 0;
       if (foe.state === 'dead' && foe.t > 2.6) figure.sink = Math.min(1.4, figure.sink + dt * 0.5);
       else figure.sink = 0;
@@ -447,6 +469,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       figure.root.setPosition(foe.x + jitter, -figure.sink, foe.z);
       figure.root.setRotation(0, foe.face, 0);
       pose(figure, want, foe.freeze > 0 ? 0 : speed, dt);
+      if (dt > 0) bodyContact(figure, foe.state === 'dead' ? foe.t : 0, foe.x, foe.z);
       const threat = foe.state === 'windup' ? 0.4 + (foe.t / foe.move.windup) * 3 : foe.state === 'strike' ? 3.5 : foe.kind === 'lu' && foe.phase === 2 ? 1.2 : 0;
       figure.glow += (threat - figure.glow) * Math.min(1, dt * 12);
       figure.metal.emissiveIntensity = figure.glow;
@@ -622,8 +645,11 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     view.counterRing = null;
     view.cine = null;
     view.shake = 0;
-    heroTravel = lastPrint = footstep = 0;
-    foot = 1;
+    heroTravel = glideTrailTime = 0;
+    contacts.L = contacts.R = 0;
+    heroFigure.gait.phase = heroFigure.gait.travelled = heroFigure.gait.speed = 0;
+    heroFigure.landed = false;
+    heroFigure.held = heroFigure.slide = heroFigure.rightOpening = 0;
     heroLast = { x: game.hero.x, z: game.hero.z };
     heroFigure.glow = heroFigure.flash = 0;
     for (const door of scenery.doors) {

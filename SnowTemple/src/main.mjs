@@ -95,6 +95,7 @@ async function main() {
     audio = createAudio(),
     ui = document.querySelector('#ui'),
     result = document.querySelector('#chapter-result');
+  view.onFoley = (event) => audio.play(event);
   audio.setOn(settings.sound === 'on');
   let game = createGame(),
     mode = 'title',
@@ -107,6 +108,7 @@ async function main() {
       saveSettings(next);
       audio.setOn(next.sound === 'on');
     },
+    onUiSound: (cue) => audio.playUi(cue),
     onStart: () => mode === 'title' && !hud.settingsOpen() && startGame()
   });
   input.on('any', (code) => {
@@ -170,7 +172,9 @@ async function main() {
     ui.classList.remove('complete');
     input.setEnabled(true);
     audio.start();
-    audio.setMood('road');
+    audio.setPaused(false);
+    audio.setMood(quickMeet ? 'gate' : 'title');
+    audio.playUi(replay ? 'confirm' : 'start');
     hud.hideTitle();
     hud.stage(false);
     hud.clearSpeech();
@@ -179,7 +183,10 @@ async function main() {
     view.resetRound(game);
     canvas.focus({ preventScroll: true });
     const at = replay ? '' : params.get('at');
-    if (at) jump(at);
+    if (at) {
+      jump(at);
+      audio.setMood(at === 'yard' ? 'yard' : 'gate');
+    }
     else if (!quickMeet) {
       begin(game);
       game.events.forEach(onEvent);
@@ -229,13 +236,14 @@ async function main() {
     }
     switch (e.type) {
       case 'cine':
+        if (e.id === 'rage') audio.setMood('boss2');
         if (e.id === 'meet' && quickMeet) {
           game.cine = 0;
           quickMeet = false;
         } else stage(e.id, e.time);
         break;
       case 'stage':
-        audio.setMood(e.stage === 'boss' ? 'boss' : e.stage === 'yard' ? 'yard' : 'road');
+        audio.setMood(e.stage === 'boss' ? 'boss1' : e.stage === 'done' ? 'end' : e.stage);
         if (e.stage === 'gate') hud.say('庙门的闩，落了。', '', 3);
         if (e.stage === 'boss' && !templeLoadout) templeLoadout = captureTempleLoadout(game);
         break;
@@ -270,7 +278,7 @@ async function main() {
         view.snap(game);
         hud.veil(false);
         hud.note('在火盆边缓过一口气。', 1);
-        audio.setMood('road');
+        audio.setMood(game.stage);
         break;
     }
   }
@@ -299,6 +307,8 @@ async function main() {
     let events = none;
     if (status.hold) dt = 0;
     const active = mode === 'play' && !hud.settingsOpen();
+    audio.setPaused(hud.settingsOpen());
+    audio.setListener(game.hero.x, game.hero.z);
     if (active) {
       if (game.stage !== 'done') summary.time += dt;
       // A moment stretched: a slip past a blade or a riposte slows the fight, not the clock.
@@ -329,6 +339,7 @@ async function main() {
       hud.stage(false);
       hud.clearSpeech();
       pending = [];
+      if (game.stage === 'road') audio.setMood('road');
       if (game.stage === 'done') showResult();
     }
     if (active && pendingHint && !hud.staged) {
