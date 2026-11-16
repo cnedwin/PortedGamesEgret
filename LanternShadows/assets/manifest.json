@@ -1053,6 +1053,122 @@
       "runtimeIdentity": "5ae9ef776f9f0daafb2f61771525008ee29326a13faf38237da15c9a4b99f2fa"
     },
     {
+      "id": "e_laozi",
+      "resourceKind": "spine",
+      "source": {
+        "id": "f_source_laozi",
+        "path": "sources/laozi.json",
+        "role": "source",
+        "mediaType": "application/json",
+        "sha256": "5d645af6f5b6147a9facd7901de1a74cf9078793724462096bbe636e1a7e307d",
+        "byteLength": 28474
+      },
+      "artifact": {
+        "id": "f_asset_laozi",
+        "path": "files/laozi.json",
+        "role": "asset",
+        "mediaType": "application/json",
+        "sha256": "5d645af6f5b6147a9facd7901de1a74cf9078793724462096bbe636e1a7e307d",
+        "byteLength": 28474
+      },
+      "importer": {
+        "id": "egret.spine-json",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13"
+      },
+      "artifactFormatVersion": "spine-json/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_laozi_atlas"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "d34c4e6cb67f899883467498d24e8a8b483e22f41a87779c8bccb1732db05b1a",
+      "runtimeIdentity": "0bf0f299b40cfec986264953751c406c7639e8d80183e24f22ac1b3ab397e89e"
+    },
+    {
+      "id": "e_laozi_atlas",
+      "resourceKind": "spine-atlas",
+      "source": {
+        "id": "f_source_laozi_atlas",
+        "path": "sources/laozi.atlas",
+        "role": "source",
+        "mediaType": "text/plain",
+        "sha256": "8e7c04dc944f257b54bb4bd67813bf8cb3f8f6ee0029cd29bda9c32b0bf91d04",
+        "byteLength": 493
+      },
+      "artifact": {
+        "id": "f_asset_laozi_atlas",
+        "path": "files/laozi.atlas",
+        "role": "asset",
+        "mediaType": "text/plain",
+        "sha256": "8e7c04dc944f257b54bb4bd67813bf8cb3f8f6ee0029cd29bda9c32b0bf91d04",
+        "byteLength": 493
+      },
+      "importer": {
+        "id": "egret.spine-atlas",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13",
+        "pageNames": [
+          "laozi.png"
+        ]
+      },
+      "artifactFormatVersion": "spine-atlas/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_laozi_page"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "2027c6bcab55387a312c43cd2a21508e6ede9fd678d8bf3ecfea9d2814647784",
+      "runtimeIdentity": "84ba6249ba05247ee86b2dbddab06697cc8d55b8e6ed5894d0d8e1665d2bc817"
+    },
+    {
+      "id": "e_laozi_page",
+      "resourceKind": "image",
+      "source": {
+        "id": "f_source_laozi_page",
+        "path": "sources/laozi.png",
+        "role": "source",
+        "mediaType": "image/png",
+        "sha256": "4dbebc636c0ba7ad3823f832722ddfdb1ea0a5bfca538379777ae16da446f11e",
+        "byteLength": 85847
+      },
+      "artifact": {
+        "id": "f_asset_laozi_page",
+        "path": "files/laozi.png",
+        "role": "asset",
+        "mediaType": "image/png",
+        "sha256": "4dbebc636c0ba7ad3823f832722ddfdb1ea0a5bfca538379777ae16da446f11e",
+        "byteLength": 85847
+      },
+      "importer": {
+        "id": "egret.png",
+        "version": "1.0.0"
+      },
+      "settings": {},
+      "artifactFormatVersion": "png/1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "9f797afc64fbf150c80f723e4028c44ede7ef9dad8a830e85c3e75a460a3df98",
+      "runtimeIdentity": "160d32212f236c51762ab996816141bb1b12a265db646a8e8a4bbc6db9b642f0"
+    },
+    {
       "id": "e_nezha",
       "resourceKind": "spine",
       "source": {
@@ -1292,16 +1408,16 @@
         "path": "sources/wukong.json",
         "role": "source",
         "mediaType": "application/json",
-        "sha256": "d24d9bef53585873a196b517d8274d12cf2175d7725cd583203cdbe931a5303d",
-        "byteLength": 57131
+        "sha256": "ad665b8be2c5b96fd8ef0acb9872394db672a920bcb465b793b793f113336c17",
+        "byteLength": 57401
       },
       "artifact": {
         "id": "f_asset_wukong",
         "path": "files/wukong.json",
         "role": "asset",
         "mediaType": "application/json",
-        "sha256": "d24d9bef53585873a196b517d8274d12cf2175d7725cd583203cdbe931a5303d",
-        "byteLength": 57131
+        "sha256": "ad665b8be2c5b96fd8ef0acb9872394db672a920bcb465b793b793f113336c17",
+        "byteLength": 57401
       },
       "importer": {
         "id": "egret.spine-json",
@@ -1320,8 +1436,8 @@
         "license": "Apache-2.0",
         "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
       },
-      "buildKey": "9f2c3ad367f2358e3bcc17e4d6df5c5b9483fff188365be044532f6123396633",
-      "runtimeIdentity": "c794232beb2eaa238d89cd85ced363ac8bfd81c8e349f24db9098221110e98d2"
+      "buildKey": "ab808700d5dc065ae60262624ff46eb557fa1a660ea6bdc9103ac8fafc82bb3a",
+      "runtimeIdentity": "a1d8d58d9a1e7c359a24372e75aa9726587dcbd5fe07f084b17ce844fb85b3ad"
     },
     {
       "id": "e_wukong_atlas",

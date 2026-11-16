@@ -63,7 +63,7 @@ const HELMET =
   leather({ shape: blob([[92.6, 85], [98, 85], [99, 93], [95, 96], [92, 92]], 0.4), fill: DYE.gold, holes: [dot(95.6, 90, 1)], edge: 0.9 }) +
   leather({ shape: poly([[100.6, 72.4], [104, 72.4], [102.6, 66]]), fill: DYE.gold, edge: 0.9 });
 /** Those of Laozi's household, who wear no armour: their hair is bound up under a black cap with a pin through it. */
-const HOUSEHOLD = ['fan', 'gourd'];
+const HOUSEHOLD = ['fan', 'gourd', 'whisk'];
 const CAP =
   leather({ shape: blob([[91.6, 87], [92.6, 78], [101, 73], [110, 76.6], [112, 82], [102, 82.6], [96, 88]], 0.45), fill: DYE.black, holes: [slit([95, 80], [106, 76.6], 0.5)], opacity: 0.95, edge: 1 }) +
   leather({ shape: blob([[98, 73.6], [100, 67], [105, 66.6], [106.6, 72.6]], 0.5), fill: DYE.black, opacity: 0.95, edge: 0.9 }) +
@@ -83,6 +83,15 @@ WEAPONS.gourd =
   leather({ shape: blob([[120, 104], [124, 107], [123.4, 113], [128.6, 120], [129, 130], [120, 137], [111, 130], [111.4, 120], [116.6, 113], [116, 107]], 0.5), fill: DYE.amber, holes: [crescent(116, 126, 3, 200), dot(120, 109.6, 0.9)], edge: 1 }) +
   line(curve([[115.4, 114.6], [124.6, 114.6]]), 1.6, DYE.red) +
   leather({ shape: poly([[118.6, 100], [121.4, 100], [121.4, 104.6], [118.6, 104.6]]), fill: DYE.red, edge: 0.8 });
+/** Laozi's whisk, held upright: a short handle and a long fall of white hair. */
+WEAPONS.whisk =
+  leather({ shape: poly([[118.8, 96], [121.2, 96], [121.2, 150], [118.8, 150]]), fill: DYE.crimson, opacity: 0.95, edge: 1 }) +
+  leather({ shape: blob([[117, 96], [123, 96], [130, 78], [134, 104], [129, 132], [124, 112], [121, 136], [118, 110], [114, 126], [113, 100]], 0.4), fill: DYE.hide, opacity: 0.92, holes: [slit([120, 94], [127, 84], 0.6), slit([120, 96], [130, 110], 0.6), slit([119, 98], [121, 126], 0.6), slit([118, 98], [115, 116], 0.6)], edge: 1 }) +
+  leather({ shape: dot(120, 96, 2.6), fill: DYE.gold, edge: 0.9 });
+/** His long white beard and his brows, over the face. */
+const BEARD =
+  leather({ shape: blob([[101, 95], [112, 92.6], [114, 100], [111, 116], [106, 128], [103, 114], [99, 104]], 0.5), fill: DYE.hide, opacity: 0.95, holes: [slit([108, 98], [107, 122], 0.6), slit([104.6, 99], [104, 112], 0.5), slit([111, 97], [110, 112], 0.5)], edge: 1 }) +
+  line(curve([[103.6, 82.4], [108.6, 80.4], [113.6, 82.6], [116, 86]]), 1.6, DYE.hide);
 /** The eye in his forehead, painted on the helmet. */
 const THIRD_EYE = `<path d="${slit([107.4, 75.4], [107.8, 81.6], 1.9)}" fill="${DYE.red}" stroke="${DYE.ink}" stroke-width="0.6"/><circle cx="107.6" cy="78.5" r="0.9" fill="${DYE.ink}"/>`;
 /** The tall shield, carried on the other arm: drawn where that hand hangs, and brought round in front by the arm. */
@@ -96,7 +105,7 @@ const SHIELD = leather({
 
 function partsOf(weapon) {
   // The guard's armour is black where the others' is teal.
-  const coat = { shield: DYE.black, glaive: DYE.hide, fan: DYE.red, gourd: DYE.amber }[weapon] ?? DYE.teal,
+  const coat = { shield: DYE.black, glaive: DYE.hide, fan: DYE.red, gourd: DYE.amber, whisk: DYE.gold }[weapon] ?? DYE.teal,
     // The plume of a helmet; on a cap, a ribbon of the same shape.
     plume = HOUSEHOLD.includes(weapon) ? DYE.black : DYE.red;
   return [
@@ -143,7 +152,7 @@ function partsOf(weapon) {
           line(curve([[104.6, 83.2], [108.6, 82], [111.6, 83]]), 1.2) +
           line(curve([[112.6, 91.4], [109.6, 91.6]]), 0.8) +
           (HOUSEHOLD.includes(weapon) ? CAP : HELMET) +
-          (weapon === 'glaive' ? THIRD_EYE : '')
+          (weapon === 'glaive' ? THIRD_EYE : weapon === 'whisk' ? BEARD : '')
       }) + stud(102, 100, 1.1)
     ],
     ['weapon', 'weapon', WEAPONS[weapon]],
@@ -484,6 +493,9 @@ ANIMATIONS.glaive = {
 // Laozi's household move as Erlang does when he strikes: the fan is swept over and down, and the pill is thrown
 // with the same arm.
 ANIMATIONS.fan = ANIMATIONS.gourd = { idle: ANIMATIONS.spear.idle, windup: ANIMATIONS.glaive.windup, attack: ANIMATIONS.glaive.attack, hurt, down };
+
+// Laozi himself moves as Erlang does, at an old man's pace.
+ANIMATIONS.whisk = { ...ANIMATIONS.glaive, walk: { ...ANIMATIONS.spear.walk, seconds: 1.1 } };
 
 /** A soldier's description, as tools/author.mjs wants it. */
 export const soldier = weapon => ({ bones: BONES, parts: partsOf(weapon), animations: ANIMATIONS[weapon], events: ['hit'] });

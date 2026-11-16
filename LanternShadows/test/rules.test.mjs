@@ -8,8 +8,9 @@ import { COMBO_SECONDS, FURNACE, POST_ROOM, REVIVE_SECONDS, VENT, createAct, pea
 import { BOSS, bossAnimation, bossBox, bossReach, createBoss, hitBoss, open, present, restoreBoss, stepBoss, wakeBoss } from '../src/rules/boss.mjs';
 import { HAIRS, cloneAnimation, createClones, out } from '../src/rules/clones.mjs';
 import * as erlang from '../src/rules/erlang.mjs';
+import * as laozi from '../src/rules/laozi.mjs';
 import { FOES, LIE, createFoe, foeAnimation, foeBox, hitFoe, stepFoe, thrust } from '../src/rules/foes.mjs';
-import { ATTACKS, CHAIN_GRACE, TUNE, animationOf, bodyOf, canBeHurt, createHero, hurtHero, reach, reviveHero, stepHero } from '../src/rules/hero.mjs';
+import { ATTACKS, CHAIN_GRACE, PUNCH, TUNE, animationOf, bodyOf, canBeHurt, createHero, hurtHero, reach, reviveHero, stepHero } from '../src/rules/hero.mjs';
 import { CELL, flatLevel, groundUnder as groundUnderFoot, lay, moveBody, overlaps, readLevel } from '../src/rules/level.mjs';
 
 const DT = 1 / 120,
@@ -1145,9 +1146,9 @@ test('the third act is read from its map: a palace with grates, furnaces and its
   const level = readLevel(ACT3),
     act = createAct(level),
     count = kind => act.foes.filter(foe => foe.kind === kind).length;
-  assert.deepEqual([level.columns, level.set], [104, 'palace']);
+  assert.deepEqual([level.columns, level.set, act.boss.kind], [128, 'palace', 'laozi']);
   assert.deepEqual([count('fanner'), count('alchemist'), count('guard'), count('spearman'), count('archer')], [3, 3, 2, 2, 1]);
-  assert.deepEqual([act.vents.length, act.furnaces.length, act.peaches.length], [6, 3, 1]);
+  assert.deepEqual([act.vents.length, act.furnaces.length, act.peaches.length], [8, 3, 2]);
   // No grate is under a pennant, a furnace or anyone's feet.
   for (const vent of act.vents) for (const thing of [...act.checkpoints, ...act.furnaces, ...act.foes, act.hero]) assert.ok(Math.abs(thing.x - vent.x) > 40 || Math.abs(thing.y - vent.y) > 40, `a grate at ${vent.x} is under something`);
 });
@@ -1364,6 +1365,149 @@ function duelGod(act) {
   return ask({ move: gap > reach - 20 ? toward : 0, attack: gap < reach && left > 0.4 });
 }
 
+// ---- Laozi -----------------------------------------------------------------------------------------------------
+const { LAOZI } = laozi;
+/** An act that is only Laozi's court, with him come down and ready and the Monkey King `gap` to his left. */
+function sageCourt(gap = 300) {
+  const act = createAct(flatLevel(2400, GROUND, [{ type: 'spawn', x: 200, y: GROUND }, { type: 'checkpoint', x: 900, y: GROUND }, { type: 'laozi', x: 1700, y: GROUND }, { type: 'gate', x: 2100, y: GROUND }]), { from: 'boss' });
+  act.hero.x = 1200;
+  play(act, LAOZI.enter.seconds + 0.2);
+  act.hero.x = act.boss.x - gap;
+  return act;
+}
+const actUntil = (act, type, input = ask(), limit = 12) => {
+  for (let t = 0; t < limit; t += DT) {
+    const found = stepAct(act, typeof input === 'function' ? input(act) : input, DT).find(event => event.type === type);
+    if (found) return found;
+  }
+  assert.fail(`no ${type} within ${limit} s (he is in ${act.boss.state}, ${act.boss.move})`);
+};
+
+test("Laozi's snare takes the staff that strikes it; bare-handed he has one short blow, until he finds the staff again", () => {
+  const act = sageCourt(420),
+    { hero, boss } = act;
+  assert.equal(boss.kind, 'laozi');
+  const { ring } = actUntil(act, 'ring');
+  // He stands his ground and sweeps at it as it comes.
+  for (let t = 0; t < 2 && Math.abs(ring.x - hero.x) > 150; t += DT) stepAct(act, ask(), DT);
+  const events = tap(act, { attack: true, move: 1 }, 0.3);
+  assert.ok(types(events).includes('staff-taken'), 'the snare has it');
+  assert.deepEqual([hero.bare, ring.taken, ring.back], [true, true, true]);
+  assert.equal(hero.health, TUNE.health, 'it took the staff, not a peach');
+  const thrown = actUntil(act, 'staff-thrown', ask({ move: -1 }));
+  assert.ok(thrown.staff.x > boss.x, 'flung to the end of the court furthest from him');
+  // Bare-handed: a press is one short blow, and a second press does not follow it with another.
+  const swing = tap(act, { attack: true }, 0.12).find(event => event.type === 'strike');
+  assert.equal(swing.attack, PUNCH);
+  assert.ok(swing.box.width < ATTACKS[0].box.width / 2);
+  tap(act, { attack: true }, 0.5);
+  assert.equal(hero.attack, 0);
+  // He goes round for it.
+  hero.x = thrown.staff.x - 200;
+  const back = actUntil(act, 'staff-back', ask({ move: 1 }), 3);
+  assert.ok(back && !hero.bare && boss.staff === null);
+});
+
+test('he sweeps his whisk at whoever crowds him, and from his second phase fans three flames along the floor', () => {
+  const near = sageCourt(90);
+  assert.equal(actUntil(near, 'boss-windup').move, 'whisk');
+  actUntil(near, 'boss-strike');
+  play(near, LAOZI.whisk.from + 2 * DT);
+  assert.ok(overlaps(laozi.bossReach(near.boss), bodyOf(createHero(near.boss.x - 90, GROUND))));
+  const act = sageCourt(400);
+  assert.deepEqual(laozi.hitBoss(act.boss, MIGHTY), [{ type: 'boss-phase', phase: 1 }]);
+  play(act, LAOZI.roar + 0.1);
+  assert.equal(actUntil(act, 'boss-windup').move, 'fan');
+  const flames = [];
+  for (let t = 0; t < LAOZI.fan.windup + LAOZI.fan.seconds; t += DT) flames.push(...stepAct(act, ask({ move: -1 }), DT).filter(event => event.type === 'arrow'));
+  assert.equal(flames.length, LAOZI.fan.count);
+  assert.ok(flames.every(event => event.arrow.kind === 'ember' && event.arrow.vx < 0));
+});
+
+test('with two thirds of his strength spent he shuts the furnace: its walls close, fire falls, and it has to be lasted out', () => {
+  const act = sageCourt(300),
+    { hero, boss } = act;
+  laozi.hitBoss(boss, MIGHTY);
+  play(act, LAOZI.roar + 0.1);
+  assert.deepEqual(types(laozi.hitBoss(boss, MIGHTY)), ['furnace-shut']);
+  assert.deepEqual([boss.state, laozi.open(boss), laozi.shut(boss), boss.phase], ['furnace', false, true, 2]);
+  const wide = laozi.furnaceWalls(boss);
+  // He keeps to the middle and steps out from under what is shown on the floor.
+  const dodge = () => {
+    const walls = laozi.furnaceWalls(boss),
+      middle = (walls.left + walls.right) / 2,
+      goal = [0, -80, 80, -150, 150].map(by => middle + by).find(x => !boss.drops.some(drop => Math.abs(drop.x - x) < 56));
+    return ask({ move: Math.abs(goal - hero.x) < 8 ? 0 : Math.sign(goal - hero.x) });
+  };
+  hero.x = (wide.left + wide.right) / 2;
+  let drops = 0,
+    landed = 0;
+  for (let t = 0; t < LAOZI.furnace.closing + 0.1; t += DT) for (const event of stepAct(act, dodge(), DT)) (event.type === 'drop' && drops++, event.type === 'drop-landed' && landed++);
+  const closed = laozi.furnaceWalls(boss);
+  assert.ok(closed.left > wide.left + 100 && Math.abs(closed.right - closed.left - LAOZI.furnace.room) < 2, 'the walls have closed to the room that is left');
+  assert.ok(drops >= 3 && landed >= 2, `fire fell: ${drops} shown, ${landed} landed`);
+  assert.ok(laozi.bossHazards(boss).length >= 2, 'the walls burn');
+  const broken = actUntil(act, 'furnace-broken', dodge, LAOZI.furnace.seconds);
+  assert.ok(broken && act.keen, 'he comes out with eyes of fire');
+  assert.ok(hero.health >= TUNE.health - 2, `he came out with ${hero.health} peaches`);
+  assert.deepEqual([boss.state, laozi.open(boss), laozi.furnaceWalls(boss)], ['stun', true, null]);
+  // And strikes twice as hard.
+  hero.x = boss.x - 60;
+  const before = boss.health;
+  tap(act, { attack: true, move: 1 }, 0.2);
+  assert.equal(boss.health, before - 2);
+
+  // Whoever stands at a wall is burned by it.
+  const careless = sageCourt(300);
+  laozi.hitBoss(careless.boss, MIGHTY);
+  laozi.hitBoss(careless.boss, MIGHTY);
+  careless.hero.x = careless.boss.arena.left + 60;
+  play(careless, 1);
+  assert.ok(careless.hero.health < TUNE.health);
+});
+
+test('driven off, Laozi opens the door, and the play can end', () => {
+  const act = sageCourt(300),
+    { boss, hero } = act;
+  laozi.hitBoss(boss, MIGHTY);
+  laozi.hitBoss(boss, MIGHTY);
+  boss.time = LAOZI.furnace.seconds;
+  hero.x = (boss.arena.left + boss.arena.right) / 2 - 40;
+  play(act, 0.1);
+  assert.deepEqual(types(laozi.hitBoss(boss, MIGHTY)), ['boss-down']);
+  const end = play(act, LAOZI.yield + 0.1);
+  assert.deepEqual(types(end).filter(type => type.startsWith('boss') || type === 'gate-open'), ['boss-gone', 'gate-open']);
+  hero.x = 2090;
+  assert.ok(types(play(act, 1.5)).includes('clear'));
+});
+
+/**
+ * How a simple player fights Laozi: never strikes while the snare is out, and jumps it and the flames; rolls
+ * through the whisk; fetches the staff if it is taken; and in the furnace keeps to the middle, out from under
+ * what is shown on the floor.
+ */
+function duelSage(act) {
+  const { hero, boss } = act,
+    dx = boss.x - hero.x,
+    gap = Math.abs(dx),
+    toward = Math.sign(dx) || 1,
+    coming = [...act.arrows.filter(arrow => arrow.kind === 'ember'), ...(boss.ring ? [boss.ring] : [])].some(thing => Math.abs(thing.x - hero.x) < 130 && Math.sign(thing.vx) === Math.sign(hero.x - thing.x));
+  if (coming && hero.grounded) return ask({ jump: true, jumpHeld: true });
+  if (!hero.grounded) return ask({ jumpHeld: true });
+  if (laozi.shut(boss)) {
+    const walls = laozi.furnaceWalls(boss),
+      middle = (walls.left + walls.right) / 2,
+      clear = x => !boss.drops.some(drop => Math.abs(drop.x - x) < 56) && !act.vents.some(vent => Math.abs(vent.x - x) < 44),
+      goal = [0, -70, 70, -140, 140, -40].map(by => middle + by).find(clear) ?? middle;
+    return ask({ move: Math.abs(goal - hero.x) < 8 ? 0 : Math.sign(goal - hero.x) });
+  }
+  if (hero.bare && boss.staff) return ask({ move: Math.sign(boss.staff.x - hero.x) });
+  if (boss.state === 'windup' && boss.move === 'whisk' && LAOZI.whisk.windup - boss.time < 0.07 && gap < 200) return ask({ move: toward, dash: true });
+  if (!laozi.open(boss)) return ask({ move: gap > 200 ? toward : 0 });
+  const left = boss.state === 'windup' ? LAOZI[boss.move].windup - boss.time : 9;
+  return ask({ move: gap > 90 ? toward : 0, attack: gap < 125 && left > 0.4 && !boss.ring });
+}
+
 /** The clouds of a level, each as the span it covers and the height of its top. */
 function cloudsOf(level) {
   const spans = [];
@@ -1417,7 +1561,7 @@ function playThrough(level, limit = 600) {
     retreat = 0;
   for (let t = 0; t < limit && act.state === 'play'; t += DT) {
     if (act.boss && present(act.boss)) {
-      stepAct(act, act.boss.kind === 'erlang' ? duelGod(act) : duel(act, clouds), DT);
+      stepAct(act, act.boss.kind === 'erlang' ? duelGod(act) : act.boss.kind === 'laozi' ? duelSage(act) : duel(act, clouds), DT);
       continue;
     }
     const hero = act.hero,
@@ -1461,10 +1605,11 @@ test('the second act can be played through: shields, cranes, Erlang and all', ()
   console.log(`    a simple player clears the second act in ${Math.round(act.result.time)} s, falling ${act.result.falls} times, wounded ${act.result.wounds} times and eating ${act.eaten} peaches: rank ${act.result.rank}`);
 });
 
-test('the third act can be played through: grates, furnaces, fans, pills and all', () => {
+test('the third act can be played through: grates, furnaces, fans, pills, Laozi and all', () => {
   const act = playThrough(readLevel(ACT3));
   assert.equal(act.state, 'cleared', told(act));
   assert.equal(act.result.felled, 11);
-  assert.ok(act.result.time > 35, `cleared in ${act.result.time} s`);
+  assert.ok(act.boss.gone && act.keen, 'Laozi was driven off, after the furnace');
+  assert.ok(act.result.time > 70, `cleared in ${act.result.time} s`);
   console.log(`    a simple player clears the third act in ${Math.round(act.result.time)} s, falling ${act.result.falls} times and wounded ${act.result.wounds} times: rank ${act.result.rank}`);
 });

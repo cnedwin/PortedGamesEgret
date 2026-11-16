@@ -22,7 +22,7 @@ const HERE = path.dirname(fileURLToPath(import.meta.url)),
 /** Atlas pixels for each stage unit. The stage is drawn at up to twice its size, and the camera closes in. */
 const SCALE = 3,
   PAD = 2;
-const PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane', 'erlang', 'hawk', 'hound', 'fanner', 'alchemist'],
+const PUPPETS = ['wukong', 'dummy', 'spearman', 'archer', 'nezha', 'guard', 'crane', 'erlang', 'hawk', 'hound', 'fanner', 'alchemist', 'laozi'],
   LEVELS = ['act1', 'act2', 'act3'];
 export const SPINE = '4.3.13';
 

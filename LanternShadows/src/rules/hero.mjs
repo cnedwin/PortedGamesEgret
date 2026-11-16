@@ -40,11 +40,13 @@ export const ATTACKS = [
   { name: 'attack2', seconds: 0.36, hitAt: 0.12, chainAt: 0.2, lunge: 150, box: { x: 0, y: 20, width: 118, height: 150 }, power: 1, kind: 'lift', stop: 0.065, shake: 0.34 },
   { name: 'attack3', seconds: 0.56, hitAt: 0.235, chainAt: 0.5, lunge: 260, box: { x: 4, y: 0, width: 138, height: 136 }, power: 2, kind: 'slam', stop: 0.12, shake: 0.7 }
 ];
+/** What he has when the staff has been taken from him: one short blow with the hand, and no combination. */
+export const PUNCH = { name: 'attack1', seconds: 0.34, hitAt: 0.1, chainAt: 0.34, lunge: 120, box: { x: 0, y: 40, width: 58, height: 70 }, power: 1, kind: 'hit', stop: 0.04, shake: 0.2 };
 /** How long after a blow ends the next press still continues the combination. */
 export const CHAIN_GRACE = 0.24;
 
 export function createHero(x, y) {
-  return { x, y, vx: 0, vy: 0, facing: 1, grounded: true, state: 'move', time: 0, attack: 0, serial: 0, struck: false, queued: false, grace: 0, coyote: 0, buffer: 0, cut: false, dashCooldown: 0, airDash: true, landing: 0, stride: 0, health: TUNE.health, safe: 0 };
+  return { x, y, vx: 0, vy: 0, facing: 1, grounded: true, state: 'move', time: 0, attack: 0, serial: 0, struck: false, queued: false, grace: 0, coyote: 0, buffer: 0, cut: false, dashCooldown: 0, airDash: true, landing: 0, stride: 0, health: TUNE.health, safe: 0, bare: false };
 }
 
 /** The room he takes up, as a rectangle of the stage: what a spear or an arrow has to meet. */
@@ -74,7 +76,7 @@ export function hurtHero(hero, from, damage = 1) {
 
 /** Stands him up again at a place, whole. */
 export function reviveHero(hero, x, y) {
-  Object.assign(hero, { x, y, vx: 0, vy: 0, facing: 1, grounded: true, state: 'move', time: 0, health: TUNE.health, safe: TUNE.hurt.safe, landing: 0, grace: 0, queued: false, buffer: 0, serial: hero.serial + 1 });
+  Object.assign(hero, { x, y, vx: 0, vy: 0, facing: 1, grounded: true, state: 'move', time: 0, bare: false, health: TUNE.health, safe: TUNE.hurt.safe, landing: 0, grace: 0, queued: false, buffer: 0, serial: hero.serial + 1 });
 }
 
 const toward = (value, goal, amount) => (value < goal ? Math.min(goal, value + amount) : Math.max(goal, value - amount));
@@ -87,8 +89,9 @@ export function reach(hero, attack) {
 
 function beginAttack(hero, index, input, events) {
   if (input.move) hero.facing = Math.sign(input.move);
+  if (hero.bare) index = 0;
   Object.assign(hero, { state: 'attack', attack: index, time: 0, struck: false, queued: false, grace: 0, serial: hero.serial + 1 });
-  events.push({ type: 'swing', attack: ATTACKS[index] });
+  events.push({ type: 'swing', attack: hero.bare ? PUNCH : ATTACKS[index] });
 }
 
 /**
@@ -126,7 +129,7 @@ export function stepHero(hero, input, dt, level) {
 
   const mayDash = input.dash && hero.dashCooldown === 0 && (hero.grounded || hero.airDash);
   if (hero.state === 'attack') {
-    const attack = ATTACKS[hero.attack];
+    const attack = hero.bare ? PUNCH : ATTACKS[hero.attack];
     hero.time += dt;
     if (input.attack) hero.queued = true;
     // He steps into the blow, and stands his ground once it has landed.
@@ -137,11 +140,11 @@ export function stepHero(hero, input, dt, level) {
       events.push({ type: 'strike', attack, box: reach(hero, attack) });
     }
     if (hero.struck && mayDash) hero.state = 'move';
-    else if (hero.time >= attack.chainAt && hero.queued && hero.attack < ATTACKS.length - 1) beginAttack(hero, hero.attack + 1, input, events);
+    else if (hero.time >= attack.chainAt && hero.queued && !hero.bare && hero.attack < ATTACKS.length - 1) beginAttack(hero, hero.attack + 1, input, events);
     else if (hero.time >= attack.chainAt && hero.buffer > 0 && (hero.grounded || hero.coyote > 0)) hero.state = 'move';
     else if (hero.time >= attack.seconds) {
       hero.state = 'move';
-      hero.grace = hero.attack < ATTACKS.length - 1 ? CHAIN_GRACE : 0;
+      hero.grace = !hero.bare && hero.attack < ATTACKS.length - 1 ? CHAIN_GRACE : 0;
     }
   }
   if (hero.state === 'dash') {

@@ -491,4 +491,9 @@ export const animations = {
   }
 };
 
+// The staff in his hand, or not: on a track of its own, as it may be taken from him. A staff put away is drawn
+// too small to see.
+animations.held = { seconds: 1, bones: { staff: { scale: [[0, 1], [1, 1]] } } };
+animations.bare = { seconds: 1, bones: { staff: { scale: [[0, 0.02], [1, 0.02]] } } };
+
 export const events = ['hit'];
