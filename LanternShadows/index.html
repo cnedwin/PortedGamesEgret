@@ -45,6 +45,7 @@
     <div class="hud" id="hud" hidden>
       <p class="banner" data-zh="灯影　闹天宫" data-en="Lantern Shadows">灯影　闹天宫</p>
       <div class="peaches" id="peaches" role="img" aria-label="桃"><i></i><i></i><i></i><i></i><i></i></div>
+      <div class="hairs" id="hairs"><span data-zh="毫毛" data-en="Hairs">毫毛</span><i><b id="hairs-fill"></b></i><em data-zh="按 I 身外身" data-en="press I">按 I 身外身</em></div>
       <p class="tally-line"><span id="soldiers"></span><span id="clock">0:00</span></p>
       <div class="foe" id="boss" hidden><span data-zh="哪吒" data-en="Nezha">哪吒</span><i><b id="boss-health"></b></i></div>
       <p class="notice" id="notice" role="status" hidden></p>
@@ -56,10 +57,11 @@
         <button type="button" id="mute" aria-pressed="false" data-zh="锣鼓" data-en="Sound">锣鼓</button>
         <button type="button" id="full" data-zh="全屏" data-en="Full screen">全屏</button>
       </nav>
+      <p class="crowd" id="crowd" hidden></p>
       <p class="keys" id="keys"></p>
       <div class="pads" aria-hidden="true">
         <div class="pad-move"><button type="button" data-hold="left">◀</button><button type="button" data-hold="right">▶</button></div>
-        <div class="pad-act"><button type="button" data-hold="dash" data-zh="云" data-en="Roll">云</button><button type="button" data-hold="attack" data-zh="棍" data-en="Staff">棍</button><button type="button" data-hold="jump" data-zh="跳" data-en="Jump">跳</button></div>
+        <div class="pad-act"><button type="button" data-hold="special" data-zh="变" data-en="Hairs">变</button><button type="button" data-hold="dash" data-zh="云" data-en="Roll">云</button><button type="button" data-hold="attack" data-zh="棍" data-en="Staff">棍</button><button type="button" data-hold="jump" data-zh="跳" data-en="Jump">跳</button></div>
       </div>
       <button type="button" class="paused" id="paused" hidden data-zh="暂停　按 P 继续" data-en="Paused. Press P to go on">暂停　按 P 继续</button>
       <p class="trouble" id="trouble" role="alert" hidden></p>

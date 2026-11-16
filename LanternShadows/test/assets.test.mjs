@@ -8,7 +8,7 @@ import { fileURLToPath } from 'node:url';
 
 import { BOSS } from '../src/rules/boss.mjs';
 import { FOES } from '../src/rules/foes.mjs';
-import { ATTACKS } from '../src/rules/hero.mjs';
+import { ATTACKS, TUNE } from '../src/rules/hero.mjs';
 import { skeletonBones, skeletonOf, timelines } from '../tools/author.mjs';
 import { toTiled } from '../tools/level.mjs';
 import * as act1 from '../tools/levels/act1.mjs';
@@ -74,6 +74,7 @@ test("the puppet's blows are as long as the rules say, and strike when the rules
     assert.ok(Math.abs(at * animation.seconds - attack.hitAt) < 0.02, `${attack.name} strikes at ${at * animation.seconds}, the rules at ${attack.hitAt}`);
   }
   for (const needed of ['idle', 'run', 'jump', 'fall', 'land', 'dash', 'hurt', 'down']) assert.ok(wukong.animations[needed], needed);
+  assert.equal(wukong.animations.conjure.seconds, TUNE.conjure.seconds, 'plucking the tuft');
   for (const kind of new Set(ATTACKS.map(attack => attack.kind))) assert.ok(dummy.animations[kind], `the post has no way to take a ${kind}`);
   assert.ok(dummy.animations.idle);
 });

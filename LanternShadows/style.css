@@ -33,7 +33,7 @@ body {
 #stage { display: block; width: 100%; height: 100%; outline: none; }
 
 .hud { position: absolute; inset: 0; pointer-events: none; font-size: clamp(11px, 1.55cqw, 19px); }
-.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden], .trouble[hidden], .notice[hidden], .result[hidden], .foe[hidden] { display: none; }
+.hud[hidden], .combo[hidden], .best[hidden], .stats[hidden], .paused[hidden], .trouble[hidden], .notice[hidden], .result[hidden], .foe[hidden], .crowd[hidden] { display: none; }
 .trouble { top: 30%; left: 12%; right: 12%; padding: 0.8em 1.2em; border: 1px solid #c98a2a; background: #1c0f0be6; color: #ffd9c8; font-size: 0.95em; line-height: 1.5; text-align: center; -webkit-user-select: text; user-select: text; pointer-events: auto; }
 .hud > * { position: absolute; margin: 0; }
 
@@ -57,6 +57,20 @@ body {
 .peaches i.is-eaten { opacity: 0.22; transform: scale(0.8); }
 .tally-line { top: 10.2%; left: 0; right: 0; text-align: center; color: #4a2410; font-weight: 700; font-size: 0.95em; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
 .tally-line span + span { margin-left: 1.4em; font-variant-numeric: tabular-nums; }
+/* The hairs toward the next tuft, under his peaches: a thin gold band that fills, and says so when it is full. */
+.hairs { top: 16.4%; left: 10.6%; display: flex; align-items: center; gap: 0.5em; color: #4a2410; font-size: 0.82em; font-weight: 700; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
+.hairs i { position: relative; width: 7.4em; height: 0.46em; border: 1.5px solid var(--ink); background: #1c0f0b33; }
+.hairs b { position: absolute; inset: 0 auto 0 0; width: 0; background: linear-gradient(#f3c645, #c9861a); transition: width 0.15s; }
+.hairs em { display: none; font-style: normal; color: #8f1a1a; }
+.hairs.is-ready em { display: inline; }
+.hairs.is-ready i { box-shadow: 0 0 0 1px #c98a2a, 0 0 0.7em #ffd76a; animation: ready 0.9s ease-in-out infinite alternate; }
+@keyframes ready { from { filter: brightness(1); } to { filter: brightness(1.5); } }
+@media (pointer: coarse) { .hairs.is-ready em { display: none; } }
+/* While the clones are out: how many, how many bones are being moved, and how fast the stage is drawn. */
+.crowd { bottom: 8.6%; left: 50%; transform: translateX(-50%); color: var(--pale-gold); font-weight: 700; letter-spacing: 0.08em; white-space: nowrap; font-variant-numeric: tabular-nums; text-shadow: 0 0.1em 0.3em #000c; }
+:root[lang='en'] .crowd { letter-spacing: 0.02em; }
+/* On a touch screen the foot of the booth belongs to the buttons, so the line is written on the cloth instead. */
+@media (pointer: coarse) { .crowd { bottom: auto; top: 27.5%; color: #4a2410; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6, 0 0 1em #f9e3a6; } }
 /* Whoever bars the gate: his name, and his strength as a band of red silk marked off in three. */
 .foe { top: 14.8%; left: 30%; right: 30%; display: flex; align-items: center; gap: 0.7em; color: #4a2410; font-weight: 900; letter-spacing: 0.1em; text-shadow: 0 0 0.3em #f9e3a6, 0 0 0.6em #f9e3a6; }
 .foe i { position: relative; flex: 1; height: 0.62em; border: 1.5px solid var(--ink); background: #1c0f0b4d; box-shadow: 0 0 0 1px #c98a2a; }
@@ -106,6 +120,8 @@ body {
   font: 900 1.25em var(--serif); touch-action: none; -webkit-tap-highlight-color: transparent;
 }
 .pads button[data-hold='attack'] { width: 4.9em; height: 4.9em; margin-bottom: 1.2em; background: #9c1f17b0; }
+.pads button[data-hold='special'] { opacity: 0.32; }
+.pads.has-tuft button[data-hold='special'] { opacity: 1; background: #e0a21ad9; color: #3a1c0c; border-color: #fff0b8; animation: ready 0.9s ease-in-out infinite alternate; }
 .pads button.is-held { background: #f3d78dcc; color: #3a1c0c; transform: scale(0.94); }
 @media (pointer: coarse) {
   .pads { display: block; }
@@ -167,6 +183,7 @@ body {
   .curtain { transition: opacity 0.3s; }
   .curtain.is-up { transform: none; opacity: 0; pointer-events: none; }
   .combo.is-struck b { animation: none; }
+  .hairs.is-ready i, .pads.has-tuft button[data-hold='special'] { animation: none; }
 }
 
 /* A phone held upright shows the booth small: say so, beneath it. */

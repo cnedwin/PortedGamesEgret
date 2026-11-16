@@ -2,8 +2,9 @@
 // whoever bars the gate at the end, and the count that is kept of how he does. One call steps all of it and says
 // what happened.
 import { bossBox, bossReach, createBoss, hitBoss, open, present, restoreBoss, ringBox, stepBoss, wakeBoss } from './boss.mjs';
+import { HAIRS, createClones, out, stepClones } from './clones.mjs';
 import { FOES, createFoe, foeBox, hitFoe, standing, stepFoe } from './foes.mjs';
-import { ATTACKS, bodyOf, canBeHurt, createHero, hurtHero, reviveHero, stepHero } from './hero.mjs';
+import { ATTACKS, TUNE, bodyOf, canBeHurt, conjure, createHero, hurtHero, reviveHero, stepHero } from './hero.mjs';
 import { moveBody, overlaps, solidAt } from './level.mjs';
 
 /** How long the count of blows waits for the next one, and how long he lies fallen before he is stood up again. */
@@ -20,9 +21,9 @@ export const GATE_SECONDS = 1.2;
 
 /**
  * An act on a level. `from: 'boss'` begins it at the court before the gate with the soldiers already cleared
- * away, for whoever only wants to meet the one who bars it.
+ * away, for whoever only wants to meet the one who bars it. `clones` is how many a tuft of hair makes.
  */
-export function createAct(level, { from } = {}) {
+export function createAct(level, { from, clones = HAIRS.count } = {}) {
   const of = type => level.things.filter(thing => thing.type === type);
   const [spawn] = of('spawn'),
     [gate] = of('gate'),
@@ -44,6 +45,11 @@ export function createAct(level, { from } = {}) {
     boss,
     from: skip ? 'boss' : undefined,
     arrows: [],
+    // The hairs: how many blows toward a tuft, the clones that are out, and what is left of their time.
+    hairs: 0,
+    tuft: clones,
+    clones: [],
+    crowd: { left: 0, wait: 0, blows: 0, casting: false, casts: 0 },
     resting: { x: start.x, y: start.y },
     reviveIn: 0,
     combo: 0,
@@ -82,6 +88,19 @@ export function rankOf({ time, falls, wounds, boss }) {
 /** The soldiers still standing. */
 export const remaining = act => act.foes.filter(standing).length;
 
+/** Whether he has landed blows enough to pluck a tuft. */
+export const tuftReady = act => act.hairs >= HAIRS.need && !act.clones.length && !act.crowd.casting;
+
+/** Who the clones may go for, nearest to him first: soldiers, whoever bars the gate, and failing those a post. */
+function quarry(act) {
+  const { hero, boss } = act,
+    near = thing => Math.abs(thing.x - hero.x) < HAIRS.sight,
+    found = act.foes.filter(foe => standing(foe) && near(foe));
+  if (boss && present(boss) && open(boss)) found.push(boss);
+  if (!found.length) found.push(...act.posts.filter(near));
+  return found.sort((a, b) => Math.abs(a.x - hero.x) - Math.abs(b.x - hero.x));
+}
+
 /**
  * One step of the act. Returns what happened: everything `stepHero` and `stepFoe` report, and besides `met`
  * (a blow that landed, with what it struck and where), `deflect` (an arrow knocked out of the air), `stuck` (an
@@ -103,6 +122,21 @@ export function stepAct(act, input, dt) {
       // The one at the gate takes up the fight again from the start of the phase it had reached.
       if (boss && present(boss)) restoreBoss(boss);
       events.push({ type: 'revive' });
+    }
+  }
+  // The tuft: asked for when the blows are enough, he plucks it, and at the moment he blows the clones are out.
+  const { crowd } = act;
+  if (input.special && tuftReady(act) && conjure(hero)) {
+    act.hairs = 0;
+    crowd.casting = true;
+    events.push({ type: 'conjure' });
+  }
+  if (crowd.casting && (hero.state !== 'conjure' || hero.time >= TUNE.conjure.at)) {
+    crowd.casting = false;
+    if (hero.state === 'conjure') {
+      act.clones = createClones(hero, act.tuft, ++crowd.casts);
+      Object.assign(crowd, { left: HAIRS.seconds, wait: HAIRS.wave, blows: 0 });
+      events.push({ type: 'clones', count: act.clones.length });
     }
   }
   const wound = from => {
@@ -159,6 +193,32 @@ export function stepAct(act, input, dt) {
       act.combo += landed;
       act.best = Math.max(act.best, act.combo);
       act.timer = COMBO_SECONDS;
+      // Every blow of his own that lands is a hair toward the next tuft; the clones' blows are not.
+      if (!act.clones.length && act.hairs < HAIRS.need && (act.hairs = Math.min(HAIRS.need, act.hairs + landed)) === HAIRS.need) events.push({ type: 'hairs-full' });
+    }
+  }
+
+  if (act.clones.length) {
+    // The clones: each crowd's blow lands as a light blow of the staff would, and is counted with his.
+    const blows = stepClones(act.clones, quarry(act), hero.x, dt, level, crowd);
+    for (const { target, attack } of blows) {
+      const side = target.x >= hero.x ? 1 : -1,
+        at = { x: target.x, y: target.y - 60 };
+      if (target === boss) events.push({ type: 'met', attack, boss, side, at, crowd: true }, ...hitBoss(boss, attack));
+      else if ('kind' in target) {
+        events.push({ type: 'met', attack, foe: target, side, at, crowd: true }, ...hitFoe(target, attack, side));
+        if (!standing(target)) act.felled++;
+      } else (target.hits++, events.push({ type: 'met', attack, post: target, side, at, crowd: true }));
+    }
+    if (blows.length) {
+      act.combo += blows.length;
+      act.best = Math.max(act.best, act.combo);
+      act.timer = COMBO_SECONDS;
+    }
+    // Their time runs out, or he falls, and they are hairs again.
+    if ((crowd.left -= dt) <= 0 || hero.state === 'down') {
+      events.push({ type: 'clones-gone', at: act.clones.filter(out).map(clone => ({ x: clone.x, y: clone.y })) });
+      act.clones = [];
     }
   }
   keepApart(hero, act.posts);
@@ -239,3 +299,4 @@ export function stepAct(act, input, dt) {
 
 export { ATTACKS, FOES, moveBody };
 export { BOSS } from './boss.mjs';
+export { HAIRS } from './clones.mjs';

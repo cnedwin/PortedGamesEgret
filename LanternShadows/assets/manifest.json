@@ -480,16 +480,16 @@
         "path": "sources/wukong.json",
         "role": "source",
         "mediaType": "application/json",
-        "sha256": "78fd7b09df3a4226cf6412ec2d00c84163ebc52ea40f066a817b7c27fe805943",
-        "byteLength": 51965
+        "sha256": "d24d9bef53585873a196b517d8274d12cf2175d7725cd583203cdbe931a5303d",
+        "byteLength": 57131
       },
       "artifact": {
         "id": "f_asset_wukong",
         "path": "files/wukong.json",
         "role": "asset",
         "mediaType": "application/json",
-        "sha256": "78fd7b09df3a4226cf6412ec2d00c84163ebc52ea40f066a817b7c27fe805943",
-        "byteLength": 51965
+        "sha256": "d24d9bef53585873a196b517d8274d12cf2175d7725cd583203cdbe931a5303d",
+        "byteLength": 57131
       },
       "importer": {
         "id": "egret.spine-json",
@@ -508,8 +508,8 @@
         "license": "Apache-2.0",
         "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
       },
-      "buildKey": "c138366782c0c559241129dd437566981f4fdb32b59bd06654416235b5cc3802",
-      "runtimeIdentity": "9591579982dd0701702a8bdb09828e993fbbd2a64d9555e888b9e7519257ccc2"
+      "buildKey": "9f2c3ad367f2358e3bcc17e4d6df5c5b9483fff188365be044532f6123396633",
+      "runtimeIdentity": "c794232beb2eaa238d89cd85ced363ac8bfd81c8e349f24db9098221110e98d2"
     },
     {
       "id": "e_wukong_atlas",
