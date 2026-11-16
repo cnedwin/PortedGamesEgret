@@ -607,6 +607,24 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     fx.update(dt, clock);
   };
 
+  // The first roof or pine fade needs the lit, shadow-receiving blend program.
+  // Submit a clipped mesh once while loading so that exact main-pass variant is ready.
+  view.prepareSceneryFade = () => {
+    const material = createStandardMaterial3D({ vertexColors: true, alphaMode: 'blend' });
+    const box = createBuilder();
+    box.box(0, 0, 0, 1, 1, 1);
+    const mesh = box.mesh(material, { shadow: false });
+    mesh.name = 'scenery-fade-warmup';
+    mesh.setPosition(0, -1000, 0);
+    mesh.frustumCulled = false;
+    scene.addChild(mesh);
+    return () => {
+      mesh.removeFromParent();
+      mesh.geometry.dispose();
+      material.dispose();
+    };
+  };
+
   // Only damp patches mirror the scene at the highest picture quality.
   if (reflect) {
     const mirror = new PlanarReflection3D({ width: 640, height: 360 });
