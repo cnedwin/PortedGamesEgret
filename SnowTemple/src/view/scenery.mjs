@@ -149,6 +149,18 @@ function buildPaving(scene, rand) {
         tint = shade(STONE, tone);
       b.box(x + 0.8, 0.03 + rand() * 0.02, z + 0.6, 1.52, 0.1, 1.17, { tint: shade(tint, 0.6), top: snowy ? shade(SNOW, 0.55 + rand() * 0.2) : tint, ry: (rand() - 0.5) * 0.03 });
     }
+  // Meltwater, frozen over: dark glassy patches on the flags and along the road, each a few overlapping rounds.
+  const ICE = [0.09, 0.13, 0.2];
+  for (const [px, pz, size] of [
+    [2.2, -15.5, 1.1], [-1.4, -9.2, 0.8], [-6.5, -25, 1.6], [7.2, -31.5, 1.4], [-3.5, -36.5, 1.2], [4.5, -22.8, 1.0], [-9.5, -31, 1.1],
+    [1.2, 24.5, 1.3], [-1.6, 17.2, 1.0], [-2.5, 9.5, 1.7], [3.6, 12.4, 1.1], [0.8, -2.8, 1.2]
+  ])
+    for (let i = 0; i < 4; i++) {
+      const ox = (rand() - 0.5) * size * 0.9,
+        oz = (rand() - 0.5) * size * 0.9,
+        lift = paved(px, pz) ? 0.118 : 0.012;
+      b.limb([px + ox, lift, pz + oz], [px + ox, lift + 0.012, pz + oz], size * (0.36 + rand() * 0.34), size * (0.32 + rand() * 0.3), { tint: ICE, sides: 16 });
+    }
   // The round terrace in the middle of the court, where the censer stands.
   const { x: cx, z: cz } = PLACES.court;
   for (let ring = 0; ring < 3; ring++)
@@ -158,7 +170,7 @@ function buildPaving(scene, rand) {
       b.box(cx + Math.sin(a) * r, 0.07, cz + Math.cos(a) * r, (Math.PI * 2 * r) / n - 0.06, 0.12, 1.16, { tint: shade(STONE_DARK, 0.9 + rand() * 0.3), top: shade(STONE, 1.5 + rand() * 0.4), ry: a });
     }
   // The flags are wet with melt: smooth enough to hold a dim picture of what stands on them.
-  const material = createStandardMaterial3D({ vertexColors: true, roughness: 0.34, metallic: 0.05 }),
+  const material = createStandardMaterial3D({ vertexColors: true, roughness: 0.2, metallic: 0.05 }),
     mesh = b.mesh(material, { shadow: false });
   scene.addChild(mesh);
   return { mesh, material };

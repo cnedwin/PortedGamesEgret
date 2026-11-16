@@ -86,7 +86,7 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
         float ray = abs(fract((ang + wander * 0.9) * 7.0 / 6.28318 + seed) - 0.5);
         float cracks = smoothstep(0.05 + r * 0.05, 0.0, ray * (0.25 + r)) * smoothstep(1.0, 0.25, r) * step(fHash(vec2(floor((ang + wander * 0.9) * 7.0 / 6.28318 + seed), seed)), 0.8);
         float ring = fLine(r + wander * 0.25, 0.42, 0.035) * 0.7 * step(0.35, fNoise(vec2(ang * 5.0, seed)));
-        a = (cracks + ring + exp(-r * 7.0)) * uCustom[2].x * 0.85;
+        a = (cracks * 1.3 + ring + exp(-r * 5.0) * 1.2) * uCustom[2].x;
     } else {
         // A bolt: bright at the head, torn along its tail.
         float across = 1.0 - abs(uv.x * 2.0 - 1.0);
@@ -219,6 +219,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     mesh.frustumCulled = false;
     mesh.castShadow = false;
     mesh.renderOrder = 11;
+    mesh.layers = 2; // left out of the mirror picture
     mesh.count = 0;
     scene.addChild(mesh);
     return mesh;
@@ -245,6 +246,20 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     flakes = Array.from({ length: FLAKES }, (_, i) => ({ x: Math.random(), y: Math.random(), z: Math.random(), sway: Math.random() * 6.28, speed: 1.6 + (i % 5) * 0.45, size: 0.035 + (i % 4) * 0.014 }));
   const BOX = [44, 16, 34];
 
+  // ---- low mist, streaks of wind, and the glow round every lamp ------------------------------
+  // Mist: wide soft sheets lying just over the ground, drifting with the wind, in three layers.
+  const WISPS = Math.round(46 * Math.min(1.3, amount)),
+    mistMesh = makeDots(WISPS, false),
+    wisps = Array.from({ length: WISPS }, (_, i) => ({ x: Math.random(), z: Math.random(), y: 0.3 + (i % 3) * 0.42, size: 7 + Math.random() * 7, speed: 0.7 + (i % 3) * 0.45, thin: 0.5 + Math.random() * 0.5 })),
+    FLAT = [-Math.SQRT1_2, 0, 0, Math.SQRT1_2];
+  // Wind: long thin streaks of blown snow that cross the picture quickly.
+  const GUSTS = 14,
+    gustMesh = makeDots(GUSTS, true),
+    gusts = Array.from({ length: GUSTS }, () => ({ x: Math.random(), z: Math.random(), y: 0.4 + Math.random() * 2.2, speed: 11 + Math.random() * 8, long: 2.4 + Math.random() * 2.6 }));
+  // Halos: the snow in the air lights up round a flame.
+  const haloMesh = makeDots(24, true);
+  let halos = [];
+
   // ---- footprints in the snow ----------------------------------------------------------------
   const printMaterial = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', depthWrite: false });
   printMaterial.shader = dotShader;
@@ -254,7 +269,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
   printMesh.count = 0;
   scene.addChild(printMesh);
   const prints = Array.from({ length: 96 }, () => ({ x: 0, z: 0, yaw: 0, age: 99 })),
-    PRINT = [0.15, 1, 0.34];
+    PRINT = [0.19, 1, 0.4];
   let printAt = 0;
 
   // ---- flashes of light ----------------------------------------------------------------------
@@ -359,6 +374,37 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     }
     snowMesh.count = FLAKES;
 
+    for (let i = 0; i < WISPS; i++) {
+      const w = wisps[i];
+      place[0] = cx + ((((w.x * 56 + clock * w.speed - cx) % 56) + 56) % 56) - 28;
+      place[1] = w.y;
+      place[2] = cz + ((((w.z * 44 + clock * 0.2 - cz) % 44) + 44) % 44) - 22;
+      // A sheet thins out as it nears the edge of the box, so that none pops in or out.
+      const inside = Math.min(1, (28 - Math.abs(place[0] - cx)) / 8, (22 - Math.abs(place[2] - cz)) / 6);
+      mistMesh.setTransformAt(i, place, FLAT, [w.size * 1.8, w.size, 1]);
+      mistMesh.setColorAt(i, 0.5, 0.6, 0.82, 0.1 * w.thin * Math.max(0, inside));
+    }
+    mistMesh.count = WISPS;
+    for (let i = 0; i < GUSTS; i++) {
+      const g = gusts[i];
+      place[0] = cx + ((((g.x * 60 + clock * g.speed - cx) % 60) + 60) % 60) - 30;
+      place[1] = g.y + Math.sin(clock * 1.3 + i) * 0.2;
+      place[2] = cz + ((((g.z * 40 - cz) % 40) + 40) % 40) - 20;
+      gustMesh.setTransformAt(i, place, face, [g.long, 0.035, 1]);
+      gustMesh.setColorAt(i, 0.8, 0.88, 1, 0.16 * Math.min(1, (30 - Math.abs(place[0] - cx)) / 8));
+    }
+    gustMesh.count = GUSTS;
+    let h = 0;
+    for (const halo of halos) {
+      if (h >= 24 || halo.strength <= 0.01) continue;
+      place[0] = halo.x;
+      place[1] = halo.y;
+      place[2] = halo.z;
+      haloMesh.setTransformAt(h, place, face, halo.size * (1 + Math.sin(clock * 7 + halo.x) * 0.05));
+      haloMesh.setColorAt(h++, halo.colour[0], halo.colour[1], halo.colour[2], 0.2 * halo.strength);
+    }
+    haloMesh.count = h;
+
     for (const slot of flashes) {
       slot.left = Math.max(0, slot.left - dt);
       slot.light.intensity = slot.peak * Math.pow(slot.left / slot.life, 1.5);
@@ -373,7 +419,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
       place[1] = 0.03;
       place[2] = step.z;
       printMesh.setTransformAt(f, place, axisAngle(0, 1, 0, step.yaw), PRINT);
-      printMesh.setColorAt(f++, 0.16, 0.2, 0.32, 0.55 * Math.min(1, (16 - step.age) / 6));
+      printMesh.setColorAt(f++, 0.1, 0.13, 0.24, 0.8 * Math.min(1, (16 - step.age) / 6));
     }
     printMesh.count = f;
 
@@ -404,7 +450,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
 
   /** A scar left on the ground by a heavy blow; it stays a while and fades. */
   function scar(x, z, size, life = 7) {
-    spawn('scar', { mode: 6, x, y: 0.05, z, yaw: Math.random() * 6.28, life, from: [size, 1, size], tint: [0.012, 0.014, 0.022], power: 1.6, track: (item, t) => (item.fade = Math.min(1, t * 30, (1 - t) * 3)) });
+    spawn('scar', { mode: 6, x, y: 0.05, z, yaw: Math.random() * 6.28, life, from: [size * 1.3, 1, size * 1.3], tint: [0.012, 0.014, 0.022], power: 1.6, track: (item, t) => (item.fade = Math.min(1, t * 30, (1 - t) * 3)) });
   }
-  return { spawn, release, burst, flash, dropSpear, update, sector, shapes, rgb, scar, print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
+  return { spawn, release, burst, flash, dropSpear, update, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
 }
