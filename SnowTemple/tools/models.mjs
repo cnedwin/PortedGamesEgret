@@ -156,53 +156,57 @@ function person(look, palette) {
   cap('spine', [0, 0.46, 0.0], [0, 0.6, 0.014], 0.05, 0.046, skin, { k: 0.02 });
   for (const side of [1, -1]) cap('spine', [side * 0.02, 0.6, 0.0], [side * 0.012, 0.5, 0.035], 0.012, 0.012, skin, { k: 0.02 }); // the cords of the neck
   egg('spine', [0, 0.545, 0.043], [0.011, 0.014, 0.01], skin, { k: 0.015 });
-  egg('head', [0, 0.135, -0.006], [0.077, 0.092, 0.094], skin, { k: 0.03 });
-  egg('head', [0, 0.068, 0.02], [0.061 * jaw, 0.076, 0.069], skin, { k: 0.04 });
-  egg('head', [0, 0.012, 0.056], [0.03 * jaw, 0.022, 0.026], skin, { k: 0.025 });
-  egg('head', [0, 0.132, 0.077], [0.058, 0.011 * brow, 0.016 * brow], skin, { k: 0.016 });
-  egg('head', [0, 0.168, 0.06], [0.055, 0.035, 0.03], skin, { k: 0.03 }); // forehead
-  for (const side of [1, -1]) {
-    egg('head', [side * 0.05 * jaw, 0.04, 0.0], [0.022, 0.03, 0.03], skin, { k: 0.03 });
-    egg('head', [side * 0.05, 0.094, 0.052], [0.022, 0.018, 0.022], skin, { k: 0.03 });
-    // The eye: a hollow, the ball in it, the iris, and a lid above and below.
-    egg('head', [side * 0.031, 0.115, 0.083], [0.019, 0.012, 0.014], shadow, { k: 0.008, cut: true });
-    egg('head', [side * 0.031, 0.114, 0.072], [0.0125, 0.0125, 0.0125], [0.82, 0.8, 0.76], { k: 0.002 });
-    egg('head', [side * 0.0305, 0.114, 0.0832], [0.0058, 0.0058, 0.003], rgb(0x2a1a10), { k: 0.001 });
-    egg('head', [side * 0.0305, 0.114, 0.0852], [0.0026, 0.0026, 0.0016], [0.01, 0.01, 0.01], { k: 0.0008 });
-    egg('head', [side * 0.031, 0.1222, 0.0765], [0.0175, 0.0055, 0.0115], skin, { k: 0.003 });
-    egg('head', [side * 0.031, 0.1065, 0.0755], [0.0155, 0.004, 0.0105], skin, { k: 0.003 });
-    cap('head', [side * 0.011, 0.133 + 0.002 * brow, 0.089], [side * 0.05, 0.136, 0.076], 0.0045 * brow, 0.0028, HAIR, { k: 0.003, rough: { scale: 400, amp: 0.003 } });
-    // The ear: a rim, a lobe, and the hollow inside.
-    egg('head', [side * 0.08, 0.108, -0.006], [0.008, 0.028, 0.018], skin, { k: 0.008, turn: [0, side * 0.35, 0] });
-    egg('head', [side * 0.079, 0.085, -0.002], [0.007, 0.011, 0.009], skin, { k: 0.006 });
-    egg('head', [side * 0.087, 0.11, -0.001], [0.004, 0.017, 0.009], shadow, { k: 0.004, cut: true });
-    // The wing of the nose and its nostril.
-    egg('head', [side * 0.0135, 0.077, 0.098], [0.009, 0.0085, 0.0105], skin, { k: 0.008 });
-    egg('head', [side * 0.007, 0.0705, 0.1035], [0.0042, 0.003, 0.0048], dim(skin, 0.25), { k: 0.002, cut: true });
-    cap('head', [side * 0.018, 0.074, 0.092], [side * 0.03, 0.05, 0.082], 0.002, 0.002, shadow, { k: 0.006, cut: true }); // the fold from nose to mouth
-  }
-  cap('head', [0, 0.126, 0.086], [0, 0.086, 0.108], 0.0078, 0.0105, skin, { k: 0.012 });
-  egg('head', [0, 0.08, 0.1095], [0.0125, 0.0105, 0.012], skin, { k: 0.008 });
-  egg('head', [0, 0.066, 0.094], [0.016, 0.008, 0.008], skin, { k: 0.01 });
-  egg('head', [0, 0.0575, 0.0935], [0.0195, 0.0058, 0.0095], lip, { k: 0.004 });
-  egg('head', [0, 0.0475, 0.0905], [0.0165, 0.0068, 0.0098], lip, { k: 0.004 });
-  egg('head', [0, 0.0528, 0.099], [0.021, 0.0016, 0.006], dim(lip, 0.3), { k: 0.0015, cut: true });
-  egg('head', [0, 0.036, 0.084], [0.016, 0.006, 0.006], shadow, { k: 0.008, cut: true }); // under the lip
-  // Hair drawn back over the skull into a knot, with sideburns.
-  egg('head', [0, 0.152, -0.03], [0.081, 0.083, 0.094], HAIR, { k: 0.008, rough: { scale: 160, amp: 0.004 } });
-  egg('head', [0, 0.24, -0.03], [0.03, 0.032, 0.03], HAIR, { k: 0.012, rough: { scale: 200, amp: 0.004 } });
-  egg('head', [0, 0.222, -0.03], [0.034, 0.009, 0.034], look.trim, { k: 0.004 });
-  for (const side of [1, -1]) cap('head', [side * 0.071, 0.13, 0.03], [side * 0.069, 0.07, 0.022], 0.01, 0.004, HAIR, { k: 0.005, rough: { scale: 300, amp: 0.003 } });
-  if (look.beard) {
-    // A full beard along the jaw, a moustache over the lip.
-    egg('head', [0, 0.008, 0.052], [0.054 * jaw, 0.052, 0.046], HAIR, { k: 0.014, rough: { scale: 220, amp: 0.006 } });
+  if (f.portrait) {
+    portraitHead({ cap, egg, box }, skin, f);
+  } else {
+    egg('head', [0, 0.135, -0.006], [0.077, 0.092, 0.094], skin, { k: 0.03 });
+    egg('head', [0, 0.068, 0.02], [0.061 * jaw, 0.076, 0.069], skin, { k: 0.04 });
+    egg('head', [0, 0.012, 0.056], [0.03 * jaw, 0.022, 0.026], skin, { k: 0.025 });
+    egg('head', [0, 0.132, 0.077], [0.058, 0.011 * brow, 0.016 * brow], skin, { k: 0.016 });
+    egg('head', [0, 0.168, 0.06], [0.055, 0.035, 0.03], skin, { k: 0.03 }); // forehead
     for (const side of [1, -1]) {
-      cap('head', [side * 0.058 * jaw, 0.08, 0.02], [side * 0.03, 0.01, 0.05], 0.019, 0.024, HAIR, { k: 0.012, rough: { scale: 220, amp: 0.006 } });
-      cap('head', [side * 0.004, 0.063, 0.1], [side * 0.032, 0.046, 0.086], 0.0065, 0.004, HAIR, { k: 0.004, rough: { scale: 300, amp: 0.003 } });
+      egg('head', [side * 0.05 * jaw, 0.04, 0.0], [0.022, 0.03, 0.03], skin, { k: 0.03 });
+      egg('head', [side * 0.05, 0.094, 0.052], [0.022, 0.018, 0.022], skin, { k: 0.03 });
+      // The eye: a hollow, the ball in it, the iris, and a lid above and below.
+      egg('head', [side * 0.031, 0.115, 0.083], [0.019, 0.012, 0.014], shadow, { k: 0.008, cut: true });
+      egg('head', [side * 0.031, 0.114, 0.072], [0.0125, 0.0125, 0.0125], [0.82, 0.8, 0.76], { k: 0.002 });
+      egg('head', [side * 0.0305, 0.114, 0.0832], [0.0058, 0.0058, 0.003], rgb(0x2a1a10), { k: 0.001 });
+      egg('head', [side * 0.0305, 0.114, 0.0852], [0.0026, 0.0026, 0.0016], [0.01, 0.01, 0.01], { k: 0.0008 });
+      egg('head', [side * 0.031, 0.1222, 0.0765], [0.0175, 0.0055, 0.0115], skin, { k: 0.003 });
+      egg('head', [side * 0.031, 0.1065, 0.0755], [0.0155, 0.004, 0.0105], skin, { k: 0.003 });
+      cap('head', [side * 0.011, 0.133 + 0.002 * brow, 0.089], [side * 0.05, 0.136, 0.076], 0.0045 * brow, 0.0028, HAIR, { k: 0.003, rough: { scale: 400, amp: 0.003 } });
+      // The ear: a rim, a lobe, and the hollow inside.
+      egg('head', [side * 0.08, 0.108, -0.006], [0.008, 0.028, 0.018], skin, { k: 0.008, turn: [0, side * 0.35, 0] });
+      egg('head', [side * 0.079, 0.085, -0.002], [0.007, 0.011, 0.009], skin, { k: 0.006 });
+      egg('head', [side * 0.087, 0.11, -0.001], [0.004, 0.017, 0.009], shadow, { k: 0.004, cut: true });
+      // The wing of the nose and its nostril.
+      egg('head', [side * 0.0135, 0.077, 0.098], [0.009, 0.0085, 0.0105], skin, { k: 0.008 });
+      egg('head', [side * 0.007, 0.0705, 0.1035], [0.0042, 0.003, 0.0048], dim(skin, 0.25), { k: 0.002, cut: true });
+      cap('head', [side * 0.018, 0.074, 0.092], [side * 0.03, 0.05, 0.082], 0.002, 0.002, shadow, { k: 0.006, cut: true }); // the fold from nose to mouth
     }
-  } else if (look.stubble) {
-    for (const side of [1, -1]) cap('head', [side * 0.004, 0.063, 0.1], [side * 0.026, 0.052, 0.09], 0.005, 0.003, HAIR, { k: 0.004 });
-    egg('head', [0, 0.014, 0.076], [0.012, 0.014, 0.008], HAIR, { k: 0.006, rough: { scale: 300, amp: 0.004 } });
+    cap('head', [0, 0.126, 0.086], [0, 0.086, 0.108], 0.0078, 0.0105, skin, { k: 0.012 });
+    egg('head', [0, 0.08, 0.1095], [0.0125, 0.0105, 0.012], skin, { k: 0.008 });
+    egg('head', [0, 0.066, 0.094], [0.016, 0.008, 0.008], skin, { k: 0.01 });
+    egg('head', [0, 0.0575, 0.0935], [0.0195, 0.0058, 0.0095], lip, { k: 0.004 });
+    egg('head', [0, 0.0475, 0.0905], [0.0165, 0.0068, 0.0098], lip, { k: 0.004 });
+    egg('head', [0, 0.0528, 0.099], [0.021, 0.0016, 0.006], dim(lip, 0.3), { k: 0.0015, cut: true });
+    egg('head', [0, 0.036, 0.084], [0.016, 0.006, 0.006], shadow, { k: 0.008, cut: true }); // under the lip
+    // Hair drawn back over the skull into a knot, with sideburns.
+    egg('head', [0, 0.152, -0.03], [0.081, 0.083, 0.094], HAIR, { k: 0.008, rough: { scale: 160, amp: 0.004 } });
+    egg('head', [0, 0.24, -0.03], [0.03, 0.032, 0.03], HAIR, { k: 0.012, rough: { scale: 200, amp: 0.004 } });
+    egg('head', [0, 0.222, -0.03], [0.034, 0.009, 0.034], look.trim, { k: 0.004 });
+    for (const side of [1, -1]) cap('head', [side * 0.071, 0.13, 0.03], [side * 0.069, 0.07, 0.022], 0.01, 0.004, HAIR, { k: 0.005, rough: { scale: 300, amp: 0.003 } });
+    if (look.beard) {
+      // A full beard along the jaw, a moustache over the lip.
+      egg('head', [0, 0.008, 0.052], [0.054 * jaw, 0.052, 0.046], HAIR, { k: 0.014, rough: { scale: 220, amp: 0.006 } });
+      for (const side of [1, -1]) {
+        cap('head', [side * 0.058 * jaw, 0.08, 0.02], [side * 0.03, 0.01, 0.05], 0.019, 0.024, HAIR, { k: 0.012, rough: { scale: 220, amp: 0.006 } });
+        cap('head', [side * 0.004, 0.063, 0.1], [side * 0.032, 0.046, 0.086], 0.0065, 0.004, HAIR, { k: 0.004, rough: { scale: 300, amp: 0.003 } });
+      }
+    } else if (look.stubble) {
+      for (const side of [1, -1]) cap('head', [side * 0.004, 0.063, 0.1], [side * 0.026, 0.052, 0.09], 0.005, 0.003, HAIR, { k: 0.004 });
+      egg('head', [0, 0.014, 0.076], [0.012, 0.014, 0.008], HAIR, { k: 0.006, rough: { scale: 300, amp: 0.004 } });
+    }
   }
   part = 'hat';
   // Hats sit on the brow, clear of the eyes.
@@ -215,6 +219,76 @@ function person(look, palette) {
   for (const solid of out)
     solid.stuff ??= solid.colour === HAIR ? 4 : solid.part === 'head' || solid.part === 'hand' ? 1 : solid.part === 'boot' ? 2 : (solid.rough?.amp ?? 0) >= 0.016 ? 4 : 0;
   return out;
+}
+
+/** Planes drawn to read in warm firelight and in the cold shade below either hat. */
+function portraitHead({ cap, egg, box }, skin, face) {
+  const jaw = face.jaw,
+    chin = face.chin,
+    [cheekX, cheekY, cheekZ] = face.cheek,
+    [noseY, noseZ] = face.noseTip,
+    [eyeY, eyeDepth, eyeHeight, eyeSlope] = face.eye,
+    socket = [skin[0] * 0.66, skin[1] * 0.59, skin[2] * 0.57],
+    flushed = [skin[0] * 1.06, skin[1] * face.flush, skin[2] * face.flush],
+    lips = [skin[0] * 0.75, skin[1] * 0.54, skin[2] * 0.56],
+    hairDetail = { stuff: 4, rough: { scale: 270, amp: 0.0017 } };
+
+  egg('head', [0, 0.133, -0.012], [0.076 * face.width, 0.091, 0.092], skin, { k: 0.022 });
+  egg('head', [0, 0.165, 0.054], [0.063 * face.width, 0.037, 0.031], skin, { k: 0.025 });
+  box('head', [0, 0.067 + chin * 0.35, 0.014], [0.061 * jaw, 0.060, 0.057], skin, { k: 0.027, round: 0.03 });
+  box('head', [0, 0.022 + chin, 0.048], [0.043 * jaw, 0.028, 0.039], skin, { k: 0.018, round: 0.02 });
+  egg('head', [0, 0.022 + chin, 0.065], [0.032 * jaw, 0.021, 0.024], skin, { k: 0.019 });
+  egg('head', [0, 0.086 + chin * 0.15, 0.045], [0.058 * face.width, 0.053, 0.036], skin, { k: 0.022 });
+  for (const side of [-1, 1]) {
+    // Lay the cheek over the mandible as a broad strip. A shallow hollow below makes the flare visible from above.
+    egg('head', [side * 0.058, 0.043 + chin, 0.014], [0.017 * jaw, 0.033, 0.038], skin, { k: 0.020, turn: [0, -side * 0.16, side * -0.24] });
+    egg('head', [side * cheekX, cheekY, cheekZ], [0.024, 0.024, 0.024], flushed, { k: 0.023, turn: [-0.09, side * 0.29, -side * 0.18] });
+    if (face.hollow) egg('head', [side * 0.052, 0.073, 0.087], [0.015, 0.017, face.hollow], dim(skin, 0.88), { k: 0.008, cut: true, turn: [-0.26, side * 0.25, -side * 0.35] });
+    egg('head', [side * 0.032, 0.130, 0.065], [0.029, 0.010 * face.brow, 0.020], skin, { k: 0.019, turn: [0, -side * 0.13, side * 0.12] });
+
+    // Keep the exposed sclera narrow and use the oblique lid and the brow to carry the expression.
+    const x = side * 0.031,
+      eyeTurn = [0, 0, side * eyeSlope];
+    egg('head', [x, eyeY, eyeDepth + 0.012], [0.020, 0.009, 0.011], socket, { k: 0.007, cut: true, turn: eyeTurn });
+    egg('head', [x, eyeY, eyeDepth], [0.0155, eyeHeight, 0.0093], rgb(0xc7baa4), { k: 0.004, turn: eyeTurn });
+    egg('head', [x - side * 0.001, eyeY, eyeDepth + 0.0086], [0.0065, 0.0059, 0.0035], rgb(0x3f2d22), { k: 0.0018, stuff: 1 });
+    egg('head', [x - side * 0.001, eyeY, eyeDepth + 0.0109], [0.0037, 0.0038, 0.0015], rgb(0x1c1816), { k: 0.001, stuff: 1 });
+    cap('head', [side * 0.016, eyeY + eyeHeight * 0.64, eyeDepth + 0.0065], [side * 0.047, eyeY + eyeHeight * 0.75 + eyeSlope * 0.016, eyeDepth + 0.002], 0.0028, 0.0025, dim(skin, 0.90), { k: 0.004 });
+    cap('head', [side * 0.015, face.browLine[0], 0.087], [side * 0.035, face.browLine[1], 0.087], face.brow * 0.0037, face.brow * 0.0036, HAIR, { ...hairDetail, k: 0.0035 });
+    cap('head', [side * 0.035, face.browLine[1], 0.087], [side * 0.051, face.browLine[1] - 0.006, 0.074], face.brow * 0.0036, 0.0021, HAIR, { ...hairDetail, k: 0.003 });
+
+    egg('head', [side * 0.079 * face.width, 0.108, -0.008], [0.009, 0.027, 0.017], skin, { k: 0.008, turn: [0, side * 0.34, 0] });
+    egg('head', [side * 0.079 * face.width, 0.085, -0.002], [0.007, 0.010, 0.009], dim(skin, 0.97), { k: 0.006 });
+    egg('head', [side * 0.085 * face.width, 0.108, -0.004], [0.0044, 0.015, 0.009], socket, { k: 0.004, cut: true });
+  }
+
+  cap('head', [0, 0.126, 0.077], [0, noseY + 0.015, noseZ - 0.015], 0.0086, 0.012, skin, { k: 0.018 });
+  egg('head', [0, noseY + 0.018, noseZ - 0.022], [0.014, 0.026, 0.018], skin, { k: 0.016 });
+  egg('head', [0, noseY, noseZ], [0.0118 * face.noseWidth, 0.0089, 0.0113], flushed, { k: 0.011 });
+  for (const side of [-1, 1]) {
+    egg('head', [side * 0.0124 * face.noseWidth, noseY - 0.003, noseZ - 0.0105], [0.0084, 0.007, 0.0097], skin, { k: 0.010 });
+    egg('head', [side * 0.009 * face.noseWidth, noseY - 0.0085, noseZ - 0.0045], [0.0033, 0.0028, 0.0042], dim(socket, 0.67), { k: 0.0025, cut: true });
+  }
+
+  const mouth = face.mouth,
+    lipZ = 0.092 + chin * 0.25;
+  egg('head', [0, mouth[0] + 0.0095, lipZ - 0.002], [0.018, 0.010, 0.009], skin, { k: 0.009 });
+  egg('head', [0, mouth[0] + 0.0024, lipZ], [mouth[1], 0.0043, 0.0080], lips, { k: 0.004 });
+  egg('head', [0, mouth[0] - 0.005, lipZ - 0.001], [mouth[1] * 0.84, 0.0048, 0.0080], dim(lips, 1.14), { k: 0.004 });
+  egg('head', [0, mouth[0] - 0.001, lipZ + 0.005], [mouth[1] * 0.98, 0.0018, 0.005], dim(lips, 0.40), { k: 0.003, cut: true, turn: [0, 0, mouth[2]] });
+
+  egg('head', [0, 0.152, -0.031], [0.081 * face.width, 0.082, 0.093], HAIR, { ...hairDetail, k: 0.007 });
+  egg('head', [0, 0.239, -0.03], [0.029, 0.032, 0.03], HAIR, { ...hairDetail, k: 0.011 });
+  for (const side of [-1, 1]) {
+    cap('head', [side * 0.071 * face.width, 0.133, 0.029], [side * 0.067, 0.081 + chin, 0.025], 0.008, 0.0035, HAIR, { ...hairDetail, k: 0.006 });
+    cap('head', [side * 0.004, mouth[0] + 0.011, lipZ + 0.005], [side * 0.026, mouth[0] + face.moustache, lipZ - 0.001], 0.0042, 0.0024, face.beardHair, { ...hairDetail, k: 0.004 });
+    if (face.beard) {
+      cap('head', [side * 0.052, 0.054, 0.036], [side * 0.031, 0.011 + chin, 0.063], 0.012, 0.016, face.beardHair, { ...hairDetail, k: 0.010 });
+      cap('head', [side * 0.019, 0.010 + chin, 0.076], [side * 0.006, -0.040, 0.069], 0.013, 0.005, rgb(0x40362e), { ...hairDetail, k: 0.009 });
+    }
+  }
+  if (face.beard) cap('head', [0, 0.021, 0.076], [0, -0.047, 0.066], 0.021, 0.0065, face.beardHair, { ...hairDetail, k: 0.012 });
+  else egg('head', [0, 0.019 + chin, 0.077], [0.011, 0.0095, 0.010], face.beardHair, { ...hairDetail, k: 0.007 });
 }
 
 const cloak = (colour, length = 0.98) => ({ cap }) => {
@@ -231,7 +305,9 @@ const cloak = (colour, length = 0.98) => ({ cap }) => {
 const LOOKS = {
   // Lin Chong: a pale quilted coat, a dark travelling cloak, and the wide felt hat with snow on its brim.
   hero: {
-    stubble: true, face: { jaw: 1.02, brow: 1.1 }, coat: rgb(0xb4bac4), trim: rgb(0x8e2420), sash: rgb(0x8e2420), cuff: rgb(0x2b3140), legs: rgb(0x2b3140), boots: rgb(0x1d1b1c),
+    skin: rgb(0xca9c7e),
+    face: { portrait: true, width: 1.03, jaw: 1.025, chin: 0, cheek: [0.043, 0.092, 0.052], flush: 0.91, brow: 1.06, browLine: [0.134, 0.138], eye: [0.113, 0.078, 0.0063, 0.04], noseTip: [0.081, 0.105], noseWidth: 1.02, mouth: [0.052, 0.019, -0.025], moustache: 0.001, beardHair: rgb(0x352923) },
+    coat: rgb(0xb4bac4), trim: rgb(0x8e2420), sash: rgb(0x8e2420), cuff: rgb(0x2b3140), legs: rgb(0x2b3140), boots: rgb(0x1d1b1c),
     hat({ cap, egg }) {
       egg('head', [0, 0.172, 0], [0.34, 0.02, 0.34], rgb(0x4a4038), { k: 0.012 });
       egg('head', [0, 0.185, 0], [0.22, 0.03, 0.22], rgb(0x4a4038), { k: 0.03 });
@@ -289,7 +365,9 @@ const LOOKS = {
   },
   // Lu Qian: a long black robe edged in crimson, shoulder guards, a short cape, the winged cap of an officer.
   lu: {
-    skin: rgb(0xd2a57e), face: { jaw: 0.97, brow: 1.2 }, coat: rgb(0x25181c), trim: rgb(0x9b1f24), sash: rgb(0xb58a3a), cuff: rgb(0x5a1418), legs: rgb(0x16161a), boots: rgb(0x0f0f11), long: true, beard: true, bulk: 1.06,
+    skin: rgb(0xc89973),
+    face: { portrait: true, width: 0.96, jaw: 0.88, chin: -0.009, cheek: [0.046, 0.097, 0.053], hollow: 0.011, flush: 0.94, brow: 1.23, browLine: [0.13, 0.142], eye: [0.111, 0.077, 0.0059, 0.16], noseTip: [0.077, 0.114], noseWidth: 0.91, mouth: [0.047, 0.019, 0.09], moustache: -0.004, beard: true, beardHair: rgb(0x29231f) },
+    coat: rgb(0x25181c), trim: rgb(0x9b1f24), sash: rgb(0xb58a3a), cuff: rgb(0x5a1418), legs: rgb(0x16161a), boots: rgb(0x0f0f11), long: true, bulk: 1.06,
     hat({ cap, box, egg }) {
       egg('head', [0, 0.172, -0.004], [0.096, 0.062, 0.1], rgb(0x121216), { k: 0.008 });
       egg('head', [0, 0.135, -0.004], [0.094, 0.012, 0.099], rgb(0x2a2a30), { k: 0.004 });
@@ -316,42 +394,71 @@ const LOOKS = {
 /** Things held in the hand, sculpted along +z from the grip at the origin. */
 const THINGS = {
   spear() {
-    const s = [];
-    s.push({ kind: 'cap', a: [0, 0, -1.05], b: [0, 0, 1.3], ra: 0.019, rb: 0.017, colour: WOOD, k: 0.004 });
-    s.push({ kind: 'cap', a: [0, 0, -1.18], b: [0, 0, -1.04], ra: 0.004, rb: 0.024, colour: IRON, k: 0.004 });
-    for (let i = 0; i < 3; i++) s.push({ kind: 'egg', c: [0, 0, -0.3 + i * 0.5], r: [0.022, 0.022, 0.012], colour: dim(GOLD, 0.8), k: 0.003 });
-    // The tassel: a red skirt of threads below the head.
-    s.push({ kind: 'cap', a: [0, 0, 1.3], b: [0, 0, 1.12], ra: 0.03, rb: 0.085, colour: RED, k: 0.01, fold: { n: 13, amp: 0.016, from: 0.2 }, rough: { scale: 120, amp: 0.01 } });
-    s.push({ kind: 'egg', c: [0, 0, 1.31], r: [0.034, 0.034, 0.028], colour: GOLD, k: 0.006 });
-    // The wine gourd on its cord.
-    s.push({ kind: 'cap', a: [0, -0.015, 0.95], b: [0, -0.11, 0.95], ra: 0.006, rb: 0.006, colour: dim(RED, 0.6), k: 0.004 });
-    s.push({ kind: 'egg', c: [0, -0.215, 0.95], r: [0.07, 0.072, 0.07], colour: rgb(0x8a5a26), k: 0.03 });
-    s.push({ kind: 'egg', c: [0, -0.13, 0.95], r: [0.045, 0.045, 0.045], colour: rgb(0x8a5a26), k: 0.03 });
-    s.push({ kind: 'egg', c: [0, -0.168, 0.95], r: [0.036, 0.008, 0.036], colour: RED, k: 0.004 });
+    const oak = rgb(0x70472b), bronze = rgb(0xbe9961), blueIron = rgb(0x687886), silk = rgb(0xc4312a), silkShadow = rgb(0x801c22);
+    const s = [
+      { kind: 'cap', a: [0, 0, -1.05], b: [0, 0, 1.3], ra: 0.019, rb: 0.017, colour: oak, k: 0.004 },
+      { kind: 'cap', a: [0, 0, -1.18], b: [0, 0, -1.04], ra: 0.004, rb: 0.024, colour: blueIron, k: 0.004 },
+      { kind: 'egg', c: [0, 0, -1.048], r: [0.024, 0.024, 0.009], colour: bronze, k: 0.003 },
+      // A hammered socket and two bright ferrules above the silk knot.
+      { kind: 'cap', a: [0, 0, 1.28], b: [0, 0, 1.381], ra: 0.028, rb: 0.019, colour: blueIron, k: 0.004, rough: { scale: 95, amp: 0.002 } },
+      { kind: 'egg', c: [0, 0, 1.322], r: [0.034, 0.034, 0.009], colour: bronze, k: 0.004 },
+      { kind: 'egg', c: [0, 0, 1.371], r: [0.027, 0.027, 0.008], colour: bronze, k: 0.003 },
+      { kind: 'cap', a: [0, 0, 1.292], b: [0, 0, 1.16], ra: 0.03, rb: 0.064, colour: silkShadow, k: 0.008, fold: { n: 10, amp: 0.012, from: 0.3 } },
+      { kind: 'egg', c: [0, 0, 1.277], r: [0.034, 0.034, 0.022], colour: silk, k: 0.005 },
+      // The two amber lobes, fabric neck band, and dark stopper of the wine gourd.
+      { kind: 'cap', a: [0, -0.015, 0.95], b: [0, -0.11, 0.95], ra: 0.006, rb: 0.006, colour: silkShadow, k: 0.004 },
+      { kind: 'egg', c: [0, -0.215, 0.95], r: [0.07, 0.072, 0.07], colour: rgb(0x97622c), k: 0.03 },
+      { kind: 'egg', c: [0, -0.13, 0.95], r: [0.045, 0.045, 0.045], colour: rgb(0xab7235), k: 0.03 },
+      { kind: 'egg', c: [0, -0.168, 0.95], r: [0.038, 0.011, 0.038], colour: silk, k: 0.004 },
+      { kind: 'cap', a: [0, -0.089, 0.95], b: [0, -0.105, 0.95], ra: 0.017, rb: 0.015, colour: rgb(0x4d2c1c), k: 0.003 }
+    ];
+    for (let i = 0; i < 3; i++) s.push({ kind: 'egg', c: [0, 0, -0.3 + i * 0.5], r: [0.022, 0.022, 0.012], colour: dim(bronze, 0.82), k: 0.003 });
+    for (let i = 0; i < 9; i++) {
+      const angle = i * Math.PI * 2 / 9, x = Math.cos(angle), y = Math.sin(angle);
+      const spread = 0.052 + (i % 3) * 0.011;
+      s.push({ kind: 'cap', a: [x * 0.026, y * 0.026, 1.274], b: [x * spread, y * spread, 1.118 - (i % 3) * 0.016], ra: 0.011, rb: 0.008, colour: dim(silk, 0.69 + (i % 4) * 0.12), k: 0.005 });
+    }
     return { solids: s, edge: [
-      { kind: 'cap', a: [0, 0, 1.32], b: [0, 0, 1.44], ra: 0.016, rb: 0.016, colour: STEEL, k: 0.005 },
-      // A leaf blade with a raised spine.
-      { kind: 'egg', c: [0, 0, 1.62], r: [0.058, 0.012, 0.2], colour: STEEL, k: 0.012 },
-      { kind: 'cap', a: [0, 0, 1.44], b: [0, 0, 1.8], ra: 0.016, rb: 0.003, colour: dim(STEEL, 1.15), k: 0.008 }
+      { kind: 'cap', a: [0, 0, 1.32], b: [0, 0, 1.466], ra: 0.016, rb: 0.019, colour: rgb(0x727e86), k: 0.005 },
+      // The leaf has a darker forged face, a narrow ridge and light polished margins.
+      { kind: 'egg', c: [0, 0, 1.62], r: [0.064, 0.0095, 0.2], colour: rgb(0xd1dee2), k: 0.006 },
+      { kind: 'egg', c: [0, 0, 1.607], r: [0.048, 0.013, 0.166], colour: rgb(0x8299aa), k: 0.004, rough: { scale: 120, amp: 0.0015 } },
+      { kind: 'cap', a: [0, 0, 1.45], b: [0, 0, 1.804], ra: 0.0175, rb: 0.003, colour: rgb(0xaebfc9), k: 0.004 },
+      { kind: 'box', c: [0.034, 0.0105, 1.615], h: [0.009, 0.005, 0.021], turn: [0, 0.3, 0], colour: rgb(0x687c8b), k: 0.002, round: 0.002, cut: true }
     ] };
   },
   sabre: () => sword(1.25, -0.4, 0.062),
   short: () => sword(0.95, -0.14, 0.05),
   glaive() {
-    const s = [];
-    s.push({ kind: 'cap', a: [0, 0, -1.0], b: [0, 0, 1.0], ra: 0.026, rb: 0.023, colour: rgb(0x2a1a14), k: 0.004 });
-    s.push({ kind: 'cap', a: [0, 0, -1.15], b: [0, 0, -0.99], ra: 0.005, rb: 0.03, colour: IRON, k: 0.004 });
-    for (let i = 0; i < 4; i++) s.push({ kind: 'egg', c: [0, 0, -0.6 + i * 0.4], r: [0.03, 0.03, 0.014], colour: GOLD, k: 0.003 });
-    // A dragon-mouth collar and a tuft of red hair below the blade.
-    s.push({ kind: 'egg', c: [0, 0.01, 1.02], r: [0.045, 0.06, 0.06], colour: GOLD, k: 0.01 });
-    s.push({ kind: 'cap', a: [0, -0.04, 0.98], b: [0, -0.2, 0.9], ra: 0.03, rb: 0.055, colour: RED, k: 0.01, fold: { n: 9, amp: 0.012, from: 0.2 } });
+    const bronze = rgb(0xad8751), brightBronze = rgb(0xc5a671), iron = rgb(0x656c73), binding = rgb(0x8e252c);
+    // Keep the shaft, its four bands and the butt profile where the hand was fitted.
+    const s = [
+      { kind: 'cap', a: [0, 0, -1.0], b: [0, 0, 1.0], ra: 0.026, rb: 0.023, colour: rgb(0x56372a), k: 0.004 },
+      { kind: 'cap', a: [0, 0, -1.15], b: [0, 0, -0.99], ra: 0.005, rb: 0.03, colour: iron, k: 0.004 },
+      { kind: 'egg', c: [0, 0.01, 1.02], r: [0.045, 0.06, 0.06], colour: bronze, k: 0.01 },
+      // Blackened socket, a pair of raised ribs, and red cloth beneath the collar.
+      { kind: 'cap', a: [0, 0, 0.993], b: [0, 0, 1.059], ra: 0.034, rb: 0.036, colour: iron, k: 0.005 },
+      { kind: 'egg', c: [0, 0, 0.985], r: [0.044, 0.047, 0.012], colour: brightBronze, k: 0.004 },
+      { kind: 'egg', c: [0, 0.008, 1.05], r: [0.041, 0.045, 0.01], colour: brightBronze, k: 0.004 },
+      { kind: 'egg', c: [0, 0, 0.928], r: [0.037, 0.037, 0.012], colour: binding, k: 0.004 },
+      { kind: 'egg', c: [0, 0, 0.95], r: [0.038, 0.038, 0.011], colour: rgb(0xb34435), k: 0.004 },
+      { kind: 'cap', a: [0, -0.04, 0.98], b: [0, -0.2, 0.9], ra: 0.03, rb: 0.055, colour: binding, k: 0.01, fold: { n: 9, amp: 0.012, from: 0.2 } }
+    ];
+    for (let i = 0; i < 4; i++) s.push({ kind: 'egg', c: [0, 0, -0.6 + i * 0.4], r: [0.03, 0.03, 0.014], colour: bronze, k: 0.003 });
+    for (const side of [-1, 1]) {
+      s.push({ kind: 'egg', c: [side * 0.04, 0.021, 1.02], r: [0.009, 0.011, 0.008], colour: brightBronze, k: 0.002 });
+      s.push({ kind: 'cap', a: [side * 0.02, -0.081, 0.957], b: [side * 0.033, -0.23, 0.9], ra: 0.016, rb: 0.011, colour: rgb(0xa33832), k: 0.005 });
+    }
     return { solids: s, edge: [
-      // A broad curved blade: a long slab, a swelling belly, a hooked back.
-      { kind: 'box', c: [0, 0.07, 1.42], h: [0.011, 0.105, 0.4], colour: STEEL, k: 0.01, round: 0.01 },
-      { kind: 'egg', c: [0, 0.16, 1.5], r: [0.011, 0.085, 0.3], colour: STEEL, k: 0.02 },
-      { kind: 'egg', c: [0, 0.13, 1.86], r: [0.01, 0.12, 0.16], colour: STEEL, k: 0.02, turn: [-0.5, 0, 0] },
-      { kind: 'egg', c: [0, -0.07, 1.22], r: [0.01, 0.06, 0.09], colour: STEEL, k: 0.012, turn: [0.6, 0, 0] },
-      { kind: 'egg', c: [0, -0.02, 1.5], r: [0.016, 0.02, 0.36], colour: dim(STEEL, 0.5), k: 0.006 }
+      // A positive curve along the cutting edge and a swept point. The darker face stands proud of its bevel.
+      { kind: 'egg', c: [0, 0.081, 1.49], r: [0.0105, 0.137, 0.462], turn: [-0.16, 0, 0], colour: rgb(0xcfdae1), k: 0.009 },
+      { kind: 'egg', c: [0, 0.156, 1.67], r: [0.011, 0.107, 0.279], turn: [-0.34, 0, 0], colour: rgb(0xd6e0e6), k: 0.009 },
+      { kind: 'egg', c: [0, 0.177, 1.866], r: [0.01, 0.085, 0.16], turn: [-0.64, 0, 0], colour: rgb(0xd3dde3), k: 0.009 },
+      { kind: 'egg', c: [0, 0.064, 1.492], r: [0.016, 0.111, 0.412], turn: [-0.13, 0, 0], colour: rgb(0x7d8e9d), k: 0.006, rough: { scale: 69, amp: 0.002 } },
+      { kind: 'egg', c: [0, -0.044, 1.177], r: [0.013, 0.065, 0.118], turn: [0.59, 0, 0], colour: rgb(0x71808b), k: 0.008 },
+      { kind: 'egg', c: [0, -0.018, 1.508], r: [0.018, 0.022, 0.342], turn: [-0.05, 0, 0], colour: rgb(0xa2afb8), k: 0.004 },
+      { kind: 'box', c: [0.016, 0.167, 1.484], h: [0.006, 0.035, 0.005], turn: [0.45, 0, 0], colour: rgb(0x606f7d), k: 0.002, round: 0.002, cut: true },
+      { kind: 'box', c: [-0.014, 0.119, 1.641], h: [0.006, 0.024, 0.005], turn: [-0.65, 0, 0], colour: rgb(0x657485), k: 0.002, round: 0.002, cut: true }
     ] };
   },
   rattan() {

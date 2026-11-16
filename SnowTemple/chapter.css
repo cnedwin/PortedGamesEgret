@@ -2,6 +2,7 @@
 #title {
   background: linear-gradient(90deg, #070b13f0, #070b135c 33%, transparent 58%),
     linear-gradient(0deg, #070b13d9, transparent 46%);
+  transition-duration: .52s;
 }
 #title .name { top: 7.5dvh; margin: 0; font-size: clamp(36px, 9.25dvh, 94px); font-weight: 500; }
 #title .seal { left: calc(max(7vw, 28px) + clamp(36px, 9.25dvh, 94px) * 1.35); top: 9dvh; }

@@ -90,10 +90,13 @@ const bowCordMaterial = createStandardMaterial3D({ color: 0xc9c0ae, roughness: 0
 export function createFigure(kind, models, detail = 'high') {
   const look = LOOKS[kind],
     fine = detail !== 'low',
+    mainWeapon = kind === 'hero' || kind === 'lu',
     dress = (material) => (fine ? surfaced(material) : material),
     cloth = dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.78, metallic: 0 })),
     gear = createStandardMaterial3D({ vertexColors: true, roughness: 0.6, metallic: 0.1 }),
-    metal = dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.28, metallic: 0.9, emissive: 0x9fd4ff, emissiveIntensity: 0 })),
+    // The night scene has direct light and a low sky fill. Leave enough diffuse
+    // response for the forged faces and bevels to read when they miss a highlight.
+    metal = dress(createStandardMaterial3D({ vertexColors: true, roughness: mainWeapon ? 0.36 : 0.28, metallic: mainWeapon ? 0.48 : 0.9, emissive: 0x9fd4ff, emissiveIntensity: 0 })),
     root = new Object3D(),
     joints = { root },
     bones = look.articulated ? BONES : YARD_BONES,
