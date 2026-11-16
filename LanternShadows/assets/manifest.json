@@ -1,0 +1,244 @@
+{
+  "format": "egret.resource-manifest/1",
+  "projectId": "p_lantern_shadows",
+  "targetProfile": "web-shared/1",
+  "versions": {
+    "engineVersion": "0.0.0",
+    "resourceFormatVersion": "1.0",
+    "toolProtocolVersion": "1.0"
+  },
+  "entries": [
+    {
+      "id": "e_dummy",
+      "resourceKind": "spine",
+      "source": {
+        "id": "f_source_dummy",
+        "path": "sources/dummy.json",
+        "role": "source",
+        "mediaType": "application/json",
+        "sha256": "24b1fa0c4ad29e3ff62d12f183c7448772d43a7b18505d22eeec91026ee7e2c5",
+        "byteLength": 10460
+      },
+      "artifact": {
+        "id": "f_asset_dummy",
+        "path": "files/dummy.json",
+        "role": "asset",
+        "mediaType": "application/json",
+        "sha256": "24b1fa0c4ad29e3ff62d12f183c7448772d43a7b18505d22eeec91026ee7e2c5",
+        "byteLength": 10460
+      },
+      "importer": {
+        "id": "egret.spine-json",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13"
+      },
+      "artifactFormatVersion": "spine-json/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_dummy_atlas"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "2a1918d035022a404ce409d3cf4e9880701b08e235c4d1f311383a49b6356f57",
+      "runtimeIdentity": "5d3675117afd135d252acfd0f6bf6326294af8520e696cf3fdce581d0994449b"
+    },
+    {
+      "id": "e_dummy_atlas",
+      "resourceKind": "spine-atlas",
+      "source": {
+        "id": "f_source_dummy_atlas",
+        "path": "sources/dummy.atlas",
+        "role": "source",
+        "mediaType": "text/plain",
+        "sha256": "1e21bc20feffed8bbce4bfb3ad74642bad23d98be0e256b185cca9a295255950",
+        "byteLength": 274
+      },
+      "artifact": {
+        "id": "f_asset_dummy_atlas",
+        "path": "files/dummy.atlas",
+        "role": "asset",
+        "mediaType": "text/plain",
+        "sha256": "1e21bc20feffed8bbce4bfb3ad74642bad23d98be0e256b185cca9a295255950",
+        "byteLength": 274
+      },
+      "importer": {
+        "id": "egret.spine-atlas",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13",
+        "pageNames": [
+          "dummy.png"
+        ]
+      },
+      "artifactFormatVersion": "spine-atlas/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_dummy_page"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "80def5b26e5abd085e5feadbcfbe96d263d094b09b415780fa67a0464b591613",
+      "runtimeIdentity": "9414ca3f5496ae4e0faf6979848be185ff87575abf7c7cca1b67f2b1cad265b2"
+    },
+    {
+      "id": "e_dummy_page",
+      "resourceKind": "image",
+      "source": {
+        "id": "f_source_dummy_page",
+        "path": "sources/dummy.png",
+        "role": "source",
+        "mediaType": "image/png",
+        "sha256": "444f9ea7c20ac616b6e95f9d047589d0e0a799c42941f55b87601d53b262a455",
+        "byteLength": 36531
+      },
+      "artifact": {
+        "id": "f_asset_dummy_page",
+        "path": "files/dummy.png",
+        "role": "asset",
+        "mediaType": "image/png",
+        "sha256": "444f9ea7c20ac616b6e95f9d047589d0e0a799c42941f55b87601d53b262a455",
+        "byteLength": 36531
+      },
+      "importer": {
+        "id": "egret.png",
+        "version": "1.0.0"
+      },
+      "settings": {},
+      "artifactFormatVersion": "png/1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "83acd03122fa7b98ba89be3a5e4884898790a1e68d5e8ebadf852d130c428309",
+      "runtimeIdentity": "ee5a3bcf972518c5ef7599690ab82d38a39d9ff22f98bbac0c7e7cfbd5c60cac"
+    },
+    {
+      "id": "e_wukong",
+      "resourceKind": "spine",
+      "source": {
+        "id": "f_source_wukong",
+        "path": "sources/wukong.json",
+        "role": "source",
+        "mediaType": "application/json",
+        "sha256": "2e21704473c27e6dc4f813de678708cfc843e89663af47f5e667289f12add62d",
+        "byteLength": 43482
+      },
+      "artifact": {
+        "id": "f_asset_wukong",
+        "path": "files/wukong.json",
+        "role": "asset",
+        "mediaType": "application/json",
+        "sha256": "2e21704473c27e6dc4f813de678708cfc843e89663af47f5e667289f12add62d",
+        "byteLength": 43482
+      },
+      "importer": {
+        "id": "egret.spine-json",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13"
+      },
+      "artifactFormatVersion": "spine-json/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_wukong_atlas"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "6f35ea8cb0a2f6fdec888ba2401f1b19bfbc3114490a46c27e209b7e9a3d2dfe",
+      "runtimeIdentity": "065746cc831eccf019d2722064597a09f68fe018baa674fb0f4e5bcf764a785b"
+    },
+    {
+      "id": "e_wukong_atlas",
+      "resourceKind": "spine-atlas",
+      "source": {
+        "id": "f_source_wukong_atlas",
+        "path": "sources/wukong.atlas",
+        "role": "source",
+        "mediaType": "text/plain",
+        "sha256": "e880a12d87d35a83795efbf5dfa15c3717bae5d1eaf3140498ad9fc141152027",
+        "byteLength": 735
+      },
+      "artifact": {
+        "id": "f_asset_wukong_atlas",
+        "path": "files/wukong.atlas",
+        "role": "asset",
+        "mediaType": "text/plain",
+        "sha256": "e880a12d87d35a83795efbf5dfa15c3717bae5d1eaf3140498ad9fc141152027",
+        "byteLength": 735
+      },
+      "importer": {
+        "id": "egret.spine-atlas",
+        "version": "1.0.0"
+      },
+      "settings": {
+        "coreVersion": "4.3.13",
+        "pageNames": [
+          "wukong.png"
+        ]
+      },
+      "artifactFormatVersion": "spine-atlas/4.3-1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [
+        "e_wukong_page"
+      ],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "c672aaa5081988d60d966148cd769aeb60c27894e9c0f86d3412178b9e4e62b0",
+      "runtimeIdentity": "581f7f2a02c805ca54769414159d25ca979207ee9699270c758f91a22238253c"
+    },
+    {
+      "id": "e_wukong_page",
+      "resourceKind": "image",
+      "source": {
+        "id": "f_source_wukong_page",
+        "path": "sources/wukong.png",
+        "role": "source",
+        "mediaType": "image/png",
+        "sha256": "2376373f6ad6854ad448d7d719c50553149f1919ba4dc71358bdfb477bb8a3a7",
+        "byteLength": 122978
+      },
+      "artifact": {
+        "id": "f_asset_wukong_page",
+        "path": "files/wukong.png",
+        "role": "asset",
+        "mediaType": "image/png",
+        "sha256": "2376373f6ad6854ad448d7d719c50553149f1919ba4dc71358bdfb477bb8a3a7",
+        "byteLength": 122978
+      },
+      "importer": {
+        "id": "egret.png",
+        "version": "1.0.0"
+      },
+      "settings": {},
+      "artifactFormatVersion": "png/1",
+      "targetProfile": "web-shared/1",
+      "dependencies": [],
+      "provenance": {
+        "origin": "Lantern Shadows puppet art",
+        "license": "Apache-2.0",
+        "notice": "Drawn and rigged by tools/author.mjs; not an Editor export."
+      },
+      "buildKey": "90b0b3e2c50bb526a4e5008393868474d585aee9ada9fc6161912b796cef0932",
+      "runtimeIdentity": "2c23714665128108dede54e9b7b319e2764a3de362a5cf065f5de7321a8c32fa"
+    }
+  ]
+}

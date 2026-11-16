@@ -1,0 +1,70 @@
+/******************************************************************************
+ * Spine Runtimes License Agreement
+ * Last updated April 5, 2025. Replaces all prior versions.
+ *
+ * Copyright (c) 2013-2025, Esoteric Software LLC
+ *
+ * Integration of the Spine Runtimes into software or otherwise creating
+ * derivative works of the Spine Runtimes is permitted under the terms and
+ * conditions of Section 2 of the Spine Editor License Agreement:
+ * http://esotericsoftware.com/spine-editor-license
+ *
+ * Otherwise, it is permitted to integrate the Spine Runtimes into software
+ * or otherwise create derivative works of the Spine Runtimes (collectively,
+ * "Products"), provided that each user of the Products must obtain their own
+ * Spine Editor license and redistribution of the Products in any form must
+ * include this license and copyright notice.
+ *
+ * THE SPINE RUNTIMES ARE PROVIDED BY ESOTERIC SOFTWARE LLC "AS IS" AND ANY
+ * EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL ESOTERIC SOFTWARE LLC BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES,
+ * BUSINESS INTERRUPTION, OR LOSS OF USE, DATA, OR PROFITS) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF
+ * THE SPINE RUNTIMES, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *****************************************************************************/
+/** Stores mix (crossfade) durations to be applied when {@link AnimationState} animations are changed on the same track. */
+export class AnimationStateData {
+    /** The SkeletonData to look up animations when they are specified by name. */
+    skeletonData;
+    animationToMixTime = {};
+    /** The mix duration to use when no mix duration has been defined between two animations. */
+    defaultMix = 0;
+    constructor(skeletonData) {
+        if (!skeletonData)
+            throw new Error("skeletonData cannot be null.");
+        this.skeletonData = skeletonData;
+    }
+    setMix(from, to, duration) {
+        if (typeof from === "string")
+            return this.setMix1(from, to, duration);
+        return this.setMix2(from, to, duration);
+    }
+    setMix1(fromName, toName, duration) {
+        const from = this.skeletonData.findAnimation(fromName);
+        if (!from)
+            throw new Error(`Animation not found: ${fromName}`);
+        const to = this.skeletonData.findAnimation(toName);
+        if (!to)
+            throw new Error(`Animation not found: ${toName}`);
+        this.setMix2(from, to, duration);
+    }
+    setMix2(from, to, duration) {
+        if (!from)
+            throw new Error("from cannot be null.");
+        if (!to)
+            throw new Error("to cannot be null.");
+        const key = `${from.name}.${to.name}`;
+        this.animationToMixTime[key] = duration;
+    }
+    /** Returns the mix duration to use when changing from the specified animation to the other on the same track, or the
+     * {@link defaultMix} if no mix duration has been set. */
+    getMix(from, to) {
+        const key = `${from.name}.${to.name}`;
+        const value = this.animationToMixTime[key];
+        return value === undefined ? this.defaultMix : value;
+    }
+}

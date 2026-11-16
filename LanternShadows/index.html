@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>灯影·闹天宫 Lantern Shadows</title>
+  <meta name="description" content="一出皮影戏里的横版动作：孙悟空在南天门外练棍。A side-scrolling action demo played as a shadow-puppet show.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "#egret-manifest-resources": "./vendor/engine/dist/manifestResourceState.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/camera": "./vendor/engine/dist/camera.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+        "@egret/engine/particles": "./vendor/engine/dist/particles.js",
+        "@egret/engine/resources": "./vendor/engine/dist/resources.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+        "@egret/engine/web/game": "./vendor/engine/dist/web/game.js",
+        "@egret/engine/web/gamepad": "./vendor/engine/dist/web/gamepad.js",
+        "@egret/engine/web/resources": "./vendor/engine/dist/web/resources.js",
+        "@egret/engine/webgl2": "./vendor/engine/dist/web/webgl2.js",
+        "@egret/engine/webgpu": "./vendor/engine/dist/web/webgpu.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "@egret/spine": "./vendor/spine/dist/index.js",
+        "@egret/spine/web": "./vendor/spine/dist/web.js",
+        "@esotericsoftware/spine-core": "./vendor/spine-core/dist/index.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main class="booth" id="booth">
+    <canvas id="stage" tabindex="0" aria-label="皮影戏台"></canvas>
+
+    <div class="hud" id="hud" hidden>
+      <p class="banner" data-zh="灯影　闹天宫" data-en="Lantern Shadows">灯影　闹天宫</p>
+      <output class="combo" id="combo" hidden><b id="combo-count">0</b><span data-zh="连击" data-en="hits">连击</span></output>
+      <p class="best" id="best" hidden></p>
+      <nav class="tools">
+        <a href="../" data-zh="返回" data-en="Back">返回</a>
+        <button type="button" id="lang">EN</button>
+        <button type="button" id="mute" aria-pressed="false" data-zh="锣鼓" data-en="Sound">锣鼓</button>
+        <button type="button" id="full" data-zh="全屏" data-en="Full screen">全屏</button>
+      </nav>
+      <p class="keys" id="keys"></p>
+      <div class="pads" aria-hidden="true">
+        <div class="pad-move"><button type="button" data-hold="left">◀</button><button type="button" data-hold="right">▶</button></div>
+        <div class="pad-act"><button type="button" data-hold="dash" data-zh="云" data-en="Roll">云</button><button type="button" data-hold="attack" data-zh="棍" data-en="Staff">棍</button><button type="button" data-hold="jump" data-zh="跳" data-en="Jump">跳</button></div>
+      </div>
+      <button type="button" class="paused" id="paused" hidden data-zh="暂停　按 P 继续" data-en="Paused. Press P to go on">暂停　按 P 继续</button>
+      <pre class="stats" id="stats" hidden></pre>
+    </div>
+
+    <section class="curtain" id="curtain">
+      <div class="playbill">
+        <h1><span data-zh="灯影" data-en="Lantern Shadows">灯影</span><em data-zh="闹天宫" data-en="Havoc in Heaven">闹天宫</em></h1>
+        <p class="act" data-zh="试演　南天门外练棍" data-en="Rehearsal: staff practice before the Southern Gate">试演　南天门外练棍</p>
+        <button type="button" class="gong" id="start" disabled><span data-zh="开锣" data-en="Begin">开锣</span></button>
+        <p class="status" id="status" data-zh="正在挂灯、理线……" data-en="Hanging the lamp…">正在挂灯、理线……</p>
+      </div>
+    </section>
+  </main>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

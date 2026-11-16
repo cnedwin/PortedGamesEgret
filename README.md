@@ -44,6 +44,12 @@ An independently developed wuxia sect management demo being built for Egret Rebu
 
 An independently developed first-person tactical shooter demo built with Egret Rebuild. At first light an operator slips into a hydropower station held by an armed militia: download the three data terminals in the cargo yard, the powerhouse and the office block, search crates for loot coloured by rarity, hold off waves of riflemen, assaulters and heavies with a rifle, a pistol and grenades, then reach the helipad and board the helicopter. The station, the soldiers, the textures and the sound are all generated in code, with Chinese and English text and keyboard, mouse or touch controls. [Play online](https://cnedwin.github.io/PortedGamesEgret/FPS/) · [Guide and development](FPS/README.md)
 
+## Lantern Shadows · 灯影·闹天宫
+
+一款使用新白鹭引擎独立开发的 2D 横版动作游戏 Demo，整出戏演在皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，孙悟空在南天门外练棍。皮偶是 Spine 骨骼动画，每片皮的轮廓与花纹都由代码画出；平扫、上挑、劈砸三下连击各有一记锣鼓，打中时整台戏定格、震动。目前是试演：一个场地、一套连击，关卡与 Boss 在后面。支持键盘、手柄和触屏。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/LanternShadows/) · [说明与开发](LanternShadows/README.md)
+
+An independently developed 2D side-scrolling action demo built with Egret Rebuild, played as a shadow-puppet show: a lamp behind a cloth, carved and dyed leather puppets against it, and the Monkey King practising with his staff before the Southern Gate of Heaven. The puppets are Spine skeletons whose every piece is drawn by code; the sweep, the lift and the smash of his combination each have their beat of percussion, and the stage holds still and shudders when a blow lands. This is the rehearsal: one yard and one combination, with the stages and the boss to come. Keyboard, gamepad and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/LanternShadows/) · [Guide and development](LanternShadows/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)

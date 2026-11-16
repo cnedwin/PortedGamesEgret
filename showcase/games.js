@@ -136,4 +136,26 @@ export const GAMES = [
     cover: 'cover.webp',
     shots: ['1.webp', '2.webp', '3.webp'],
   },
+  {
+    id: 'lantern',
+    folder: 'LanternShadows',
+    zh: '灯影·闹天宫',
+    en: 'Lantern Shadows',
+    accent: '#e0a21a',
+    genre: { zh: '皮影横版动作', en: 'Shadow-puppet side-scrolling action' },
+    line: {
+      zh: '一块幕布、一盏灯，皮影孙悟空在南天门外练棍。',
+      en: 'One cloth, one lamp, and a shadow-puppet Monkey King at staff practice.',
+    },
+    intro: {
+      zh: '整出戏演在皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，远处的天宫在灯影里是虚的。孙悟空在南天门外的练武场上练棍，平扫、上挑、劈砸三下一套，一下比一下重，每一下打中都有一记锣鼓，整台戏跟着定格、震动；筋斗云贴地翻出，能穿到木人桩身后，云朵可以跳上去。皮偶是 Spine 骨骼动画，每片皮的轮廓、染色和花纹都由代码画出，锣鼓声也是算出来的。目前是试演，用来确定手感与画面，关卡与 Boss 在后面。',
+      en: 'The whole play is on the cloth of a shadow-puppet booth: a lamp behind it, carved and dyed leather puppets against it, and the halls of heaven out of focus in the distance. In the yard before the Southern Gate the Monkey King practises his combination, a sweep, a lift and a smash, each heavier than the last. Every blow that lands has its beat of percussion, and the stage holds still and shudders with it. The cloud roll carries him along the ground and behind a practice post, and clouds can be jumped onto. The puppets are Spine skeletons whose every outline, dye and carving is drawn by code, and the percussion is worked out from numbers. This is the rehearsal, to settle how it feels and looks; the stages and the boss come after.',
+    },
+    facts: {
+      zh: [['画面', '2D 骨骼动画，WebGL2 与 WebGPU'], ['操作', '键盘、手柄、触屏'], ['状态', '试演']],
+      en: [['Graphics', '2D skeletal animation, WebGL2 and WebGPU'], ['Controls', 'Keyboard, gamepad, touch'], ['Status', 'Rehearsal']],
+    },
+    cover: 'cover.webp',
+    shots: ['1.webp', '2.webp', '3.webp'],
+  },
 ];
