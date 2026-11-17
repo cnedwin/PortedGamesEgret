@@ -13,7 +13,7 @@ import { BARS, PLACES } from '../rules/arena.mjs';
 import { HERO } from '../rules/tune.mjs';
 import { createBuilder, rgb } from './build.mjs';
 import { TINT, createEffects } from './effects.mjs';
-import { FALL_CONTACT, createFigure, foePose, heroPose, pose } from './figures.mjs';
+import { FALL_CONTACT, createFigure, foePose, heroPose, pose, validateCharacterBody } from './figures.mjs';
 import { buildScenery, height, paved } from './scenery.mjs';
 
 const GRADE_TINT = [TINT.white, TINT.jade, TINT.gold];
@@ -64,16 +64,18 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   fx.setHalos(scenery.lights.map((lamp) => lamp.halo));
 
   // ---- people -------------------------------------------------------------------------------
-  const heroFigure = createFigure('hero', models, detail, characters.hero);
+  const bodies = { ...characters };
+  const heroFigure = createFigure('hero', models, detail, bodies.hero);
   heroFigure.metal.emissive.set([0.45, 0.75, 1]);
   scene.addChild(heroFigure.root);
   let heroTravel = 0,
     heroLast = null;
   const figures = new Map();
+  let charactersDisposed = false;
   function figureOf(foe) {
     let figure = figures.get(foe.id);
     if (!figure) {
-      figure = createFigure(foe.kind, models, detail, characters[foe.kind]);
+      figure = createFigure(foe.kind, models, detail, bodies[foe.kind]);
       figure.metal.emissive.set([1, 0.3, 0.12]);
       figure.travel = 0;
       figure.last = { x: foe.x, z: foe.z };
@@ -82,6 +84,33 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     }
     return figure;
   }
+
+  /** Attach a loaded body to current figures and use it for later spawns of this kind. */
+  view.useCharacterBody = (kind, parts) => {
+    if (charactersDisposed || !parts?.length) return false;
+    const targets = kind === 'hero' ? [heroFigure] : [...figures.values()].filter(figure => figure.kind === kind);
+    if (!targets.length) validateCharacterBody(parts);
+    const staged = [];
+    try {
+      for (const figure of targets) staged.push({ figure, body: figure.stageBody(parts) });
+    } catch (error) {
+      for (const { figure, body } of staged) figure.disposeBody(body);
+      throw error;
+    }
+    const retired = staged.map(({ figure, body }) => ({ figure, body: figure.installBody(body) }));
+    bodies[kind] = parts;
+    for (const { figure, body } of retired) figure.disposeBody(body);
+    return true;
+  };
+
+  view.disposeCharacters = () => {
+    if (charactersDisposed) return;
+    charactersDisposed = true;
+    const mounted = [heroFigure, ...figures.values()];
+    figures.clear();
+    for (const kind of Object.keys(bodies)) delete bodies[kind];
+    for (const figure of mounted) figure.dispose();
+  };
 
   // ---- arrows, loot -------------------------------------------------------------------------
   const arrowShape = createBuilder();

@@ -20,7 +20,7 @@ import { createLessons } from './lessons.mjs';
 import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { loadModels } from './view/models.mjs';
-import { loadCharacterBodies } from './view/characters.mjs';
+import { loadCharacterGroup } from './view/characters.mjs';
 import { loadPropAtlas } from './view/prop-atlas.mjs';
 import { createSnowLook } from './view/look.mjs';
 import { createView } from './view/view.mjs';
@@ -87,18 +87,69 @@ async function main() {
   const amount = { few: 0.5, some: 1, many: 1.6 }[settings.particles] ?? 1,
     // Model detail is its own choice; left to itself, a phone takes the light set.
     detail = ['low', 'mid', 'high'].includes(params.get('models') ?? settings.models) ? (params.get('models') ?? settings.models) : coarse ? 'low' : 'high',
-    externalLoad = params.get('characters') === 'original' ? null : loadCharacterBodies(detail),
-    [models, external, loadedAtlas] = await Promise.all([
-      loadModels(detail, undefined, externalLoad?.then(({ bodies }) => bodies)),
-      externalLoad,
-      loadPropAtlas(detail)
-    ]),
+    [models, loadedAtlas] = await Promise.all([loadModels(detail), loadPropAtlas(detail)]),
     propAtlas = loadedAtlas ? scope.use(loadedAtlas).maps : undefined,
-    characters = external ? scope.use(external).bodies : undefined,
     view = createView(scene, camera, models, {
       detail,
-      reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, characters, propAtlas });
-  if (external) status.characters = { level: detail, loaded: Object.keys(characters).sort(), failures: external.failures };
+      reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, propAtlas });
+  const loadExternal = params.get('characters') !== 'original';
+  const roleScope = engine.createScope();
+  const roleLifetime = new AbortController();
+  const characterStatus = { level: detail, phase: loadExternal ? 'waiting' : 'disabled', loaded: [], failures: {} };
+  status.characters = characterStatus;
+  scope.use({
+    dispose() {
+      roleLifetime.abort();
+      if (characterStatus.phase === 'waiting' || characterStatus.phase === 'loading') characterStatus.phase = 'cancelled';
+      try {
+        view.disposeCharacters();
+      } finally {
+        roleScope.dispose();
+      }
+    }
+  });
+
+  async function startBackgroundCharacters() {
+    const signal = roleLifetime.signal;
+    if (signal.aborted) return;
+    characterStatus.phase = 'loading';
+    try {
+      const { group } = await loadCharacterGroup(engine, roleScope, detail, signal);
+      const leases = await group.ready;
+      for (const { value } of leases) {
+        if (signal.aborted) return;
+        const { kind, parts, error } = value;
+        if (error !== undefined) {
+          characterStatus.failures[kind] = error;
+          continue;
+        }
+        try {
+          const programs = [];
+          for (const { mesh, material } of parts) {
+            for (const item of Array.isArray(material) ? material : [material]) {
+              programs.push({ mesh, material: item, fog: Boolean(scene.fog), environment: Boolean(scene.environment),
+                receiveShadows: renderer.shadowsEnabled });
+              if (renderer.shadowsEnabled) programs.push({ mesh, material: item, pass: 'shadow' });
+            }
+          }
+          await renderer.preparePrograms(programs);
+          // Give input and presentation a turn between role replacements.
+          await new Promise(resolve => requestAnimationFrame(resolve));
+          if (signal.aborted) return;
+          view.useCharacterBody(kind, parts);
+          characterStatus.loaded.push(kind);
+        } catch (cause) {
+          if (signal.aborted) return;
+          characterStatus.failures[kind] = String(cause?.message ?? cause);
+        }
+      }
+      characterStatus.phase = 'ready';
+    } catch (cause) {
+      if (signal.aborted) return;
+      characterStatus.phase = 'failed';
+      characterStatus.failures.group = String(cause?.message ?? cause);
+    }
+  }
   progress(0.9, '请陆虞候入座');
   await new Promise((done) => setTimeout(done));
 
@@ -332,6 +383,7 @@ async function main() {
       hud.ready();
       audio.prepareDialogue('lin-opening');
       if (params.has('auto') || params.get('at')) startGame();
+      if (loadExternal) requestAnimationFrame(startBackgroundCharacters);
     }
     dt = Math.min(dt, 0.1);
     clock += dt;
@@ -436,7 +488,18 @@ async function main() {
     }
   };
   progress(1, '起风');
-  startWorld3DLoop(engine, fail);
+  const loop = startWorld3DLoop(engine, fail);
+  function onPageHide(event) {
+    if (event.persisted) return;
+    removeEventListener('pagehide', onPageHide);
+    loop.dispose();
+    try {
+      scope.dispose();
+    } finally {
+      void engine.dispose().catch(console.error);
+    }
+  }
+  addEventListener('pagehide', onPageHide);
 }
 
 main().catch(fail);
