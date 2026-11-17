@@ -40,7 +40,7 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     <div class="shade top"></div><div class="shade low"></div>
     <div id="hurt"></div>
     <div class="pips hud"></div>
-    <div id="me" class="hud">${bar('hp')}${bar('st')}${bar('will')}<div class="row"><div class="purse">银钱<b>0</b></div><div class="state"><span data-chip="wine" hidden></span><span data-chip="edge" hidden>乘隙</span><span data-chip="full" title="葫芦一口未动，枪意涨得快" hidden>满壶养气</span></div></div><div class="lore"></div></div>
+    <div id="me" class="hud">${bar('hp')}${bar('st')}${bar('will')}<div class="row"><div class="purse"><span>银钱</span><b>0</b></div><div class="state"><span data-chip="wine" hidden></span><span data-chip="edge" hidden>乘隙</span><span data-chip="full" title="葫芦一口未动，枪意涨得快" hidden>满壶<i>养气</i></span></div></div><div class="lore"></div></div>
     <div id="goal" class="hud"></div>
     <div id="lord" class="hud"><div class="who"><b></b><span></span></div>${bar('hp')}<div class="bar posture"><i class="fill"></i></div></div>
     <div id="notes" class="hud"></div>
@@ -412,11 +412,15 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     me.willBar.classList.toggle('full', hero.will >= HERO.will);
     me.purse.textContent = game.coins;
     // What he is to do: in the yard stand, which wave; on the climb, how high.
-    const want = game.mode === 'yard' ? (game.wave ? `守住草料场　第 ${game.wave} 拨` : '守住草料场') : GOALS[game.stage] && game.tier > 1 ? `${GOALS[game.stage]}　${tierLine(game.tier)}` : GOALS[game.stage];
-    if (goal !== want) {
-      goal = want;
-      $('#goal').textContent = want;
-      $('#goal').hidden = !want;
+    // The wave or the tier goes on a line of its own, so the goal stays short beside the bars on a narrow screen.
+    const what = game.mode === 'yard' ? '守住草料场' : GOALS[game.stage],
+      under = game.mode === 'yard' ? (game.wave ? `第 ${game.wave} 拨` : '') : what && game.tier > 1 ? tierLine(game.tier) : '';
+    if (goal !== what + under) {
+      goal = what + under;
+      const node = $('#goal');
+      node.textContent = what;
+      if (under) node.append(el('small', {}, under));
+      node.hidden = !what;
     }
     // Wine in him, an opening after a slip, a gourd not yet touched; and what the pages have taught.
     const tipsy = Math.ceil(hero.tipsy);

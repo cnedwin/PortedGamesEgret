@@ -2,12 +2,12 @@
 // the moves that grow out of the three cuts, wine, fire and cover, the tiers, and holding the yard.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { FLAMES, PLACES, WET, cover, wet } from '../src/rules/arena.mjs';
+import { FLAMES, PLACES, ROUNDS, WET, cover, edge, wet } from '../src/rules/arena.mjs';
 import { BOONS, offer } from '../src/rules/boons.mjs';
 import { loadProgress, recordClear, recordStand } from '../src/progress.mjs';
 import { createGame, grant, quiet, spawn, step } from '../src/rules/game.mjs';
 import { TIERS, grade, rulesFor, tierName } from '../src/rules/tiers.mjs';
-import { DERIVE, FOES, FORMS, HERO, WINE } from '../src/rules/tune.mjs';
+import { DERIVE, FIRE, FOES, FORMS, HERO, WINE } from '../src/rules/tune.mjs';
 import { AFFIXES, waveOf } from '../src/rules/yard.mjs';
 import { createBot } from './bot.mjs';
 
@@ -151,6 +151,26 @@ test('raising the guard cuts a cut short, for a little breath', () => {
   press(other.game, { attack: true });
   press(other.game, { guard: true });
   assert.equal(other.hero.state, 'cut');
+
+  // A guard held all along cuts nothing short: three presses are still the three cuts, at no cost in breath.
+  const held = duel('blade', 9);
+  press(held.game, { guard: true });
+  held.hero.stamina = HERO.stamina;
+  const swings = [];
+  for (let i = 0; i < 100; i++) swings.push(...step(held.game, { ...quiet(), guard: true, attack: i % 14 === 0 }, TICK).filter((e) => e.type === 'swing').map((e) => e.cut));
+  assert.deepEqual(swings.slice(0, 3), [0, 1, 2]);
+  assert.equal(held.hero.stamina, HERO.stamina);
+});
+
+test('with a riposte open, a strike in a dodge waits and becomes the riposte', () => {
+  const { game, hero } = duel('blade', 2.4);
+  hero.counter = 1.2;
+  press(game, { dodge: true, mx: 1 });
+  run(game, 0.15);
+  press(game, { attack: true });
+  const seen = run(game, 0.6);
+  assert.ok(!seen.some((e) => e.type === 'swing'), 'no thrust takes its place');
+  assert.ok(seen.some((e) => e.type === 'riposte' || e.type === 'riposteHit'));
 });
 
 test('wine makes him hit harder and be hit harder; an untouched gourd feeds his resolve', () => {
@@ -233,6 +253,57 @@ test('big things stop arrows; wet stone carries a dodge farther', () => {
   const [wx, wz] = WET[5];
   assert.ok(wet(wx, wz) && !wet(wx + 4, wz + 5));
   assert.ok(slide(wx, wz) > slide(wx + 4, wz + 5) * 1.2);
+});
+
+test('new fire gives a moment to step out, and does not bite a man who cannot move', () => {
+  const torch = () => {
+    const game = createGame(3);
+    game.foes = [];
+    const foe = spawn(game, 'blade', 0, 6, 'ember');
+    Object.assign(game.hero, { x: 0, z: 8, face: Math.PI });
+    foe.pause = 0;
+    return { game, hero: game.hero, foe };
+  };
+  // He takes the torch man's blow and stands where he was struck: the blow hurts, the fire waits for him
+  // to come to, and only then bites.
+  const stood = torch();
+  let lit = 0,
+    hurt = 0,
+    scorched = 0;
+  for (let i = 0; i < 60 * 6 && !scorched; i++)
+    for (const e of step(stood.game, quiet(), TICK)) {
+      if (e.type === 'fire' && !lit) lit = stood.game.time;
+      if (e.type === 'hurt' && !hurt) hurt = stood.game.time;
+      if (e.type === 'scorch') scorched = stood.game.time;
+    }
+  assert.ok(lit && hurt && scorched);
+  assert.ok(scorched - lit >= FIRE.grace - 1e-6, 'not at once');
+  assert.ok(scorched - hurt >= HERO.hurt.safe - 1e-6, 'and not while he reels');
+
+  // He guards the blow and walks out of the fire: it never touches him.
+  const left = torch();
+  let seen = [];
+  for (let i = 0; i < 60 * 4; i++) {
+    const fire = left.game.fires[0],
+      away = fire && Math.hypot(left.hero.x - fire.x, left.hero.z - fire.z) < fire.r + 0.6;
+    seen.push(...step(left.game, { ...quiet(), guard: !fire, az: -1, mz: away ? 1 : 0, mx: away ? 0.4 : 0 }, TICK).map((e) => e.type));
+    if (fire && !away) break;
+  }
+  assert.ok(seen.includes('fire'));
+  assert.ok(!seen.includes('scorch'));
+});
+
+test('everyone who walks in later has ground to stand on', () => {
+  const clear = (x, z, who) => assert.ok(edge(x, z) < -0.5 && !ROUNDS.some((r) => Math.hypot(r.x - x, r.z - z) < r.r + 0.45), `${who} at ${x}, ${z}`);
+  let seed = 1;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) - 1) / 2147483646;
+  for (let n = 1; n <= 14; n++) for (let again = 0; again < 6; again++) for (const man of waveOf(n, rand).men) clear(man.x, man.z, `wave ${n} ${man.kind}`);
+  const game = createGame(2, { tier: 2 });
+  for (const foe of game.foes) if (foe.kind !== 'lu') (foe.hp = 0.01), (foe.state = 'dead');
+  for (let i = 0; i < 300 && game.party !== 1; i++) step(game, quiet(), TICK);
+  const second = game.foes.filter((foe) => foe.party === 1);
+  assert.equal(second.length, 6);
+  for (const foe of second) clear(foe.x, foe.z, foe.kind);
 });
 
 test('boons change the deeds: five stars, stars that pass through, a denser rain, a sharper spear', () => {

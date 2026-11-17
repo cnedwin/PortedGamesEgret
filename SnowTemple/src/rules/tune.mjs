@@ -134,5 +134,5 @@ export const DERIVE = { afterDodge: 0.28, hold: 0.36, cancelCost: 8 };
 /** Wine: for a while after a drink he hits harder and is hit harder; an untouched gourd feeds his resolve. */
 export const WINE = { tipsy: 10, deal: 1.25, take: 1.2, fullGourd: 1.3 };
 
-/** Fire on the ground and on a man: how often it bites, how hard, and how long a man burns. */
-export const FIRE = { tick: 0.5, damage: 6, burn: 4, hero: 5 };
+/** Fire on the ground and on a man: how often it bites, how hard, how long a man burns, and how long new fire waits before its first bite. */
+export const FIRE = { tick: 0.5, damage: 6, burn: 4, hero: 5, grace: 0.4 };

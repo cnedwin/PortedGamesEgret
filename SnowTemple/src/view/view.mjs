@@ -792,6 +792,10 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     heroFigure.held = heroFigure.slide = heroFigure.rightOpening = 0;
     heroLast = { x: game.hero.x, z: game.hero.z };
     heroFigure.glow = heroFigure.flash = 0;
+    // He stands as the new round finds him, whatever he was doing when the last one ended.
+    heroFigure.root.setPosition(game.hero.x, 0, game.hero.z);
+    heroFigure.root.setRotation(0, game.hero.face, 0);
+    pose(heroFigure, heroPose(game.hero, HERO, 0, 0, 0, heroFigure.gait, 0)[0], 1, 1e3);
     for (const door of scenery.doors) {
       door.open = game.bars.gate ? 0 : 1;
       door.hinge.setRotation(0, -door.side * door.open * 1.75, 0);
