@@ -113,6 +113,8 @@ export function createInput(canvas, keys) {
         input.az = input.mz;
       }
       for (const action of DEEDS) input[action] = HELD.has(action) ? down.has(action) : pressed.has(action);
+      // The attack kept down gathers the heavy blow.
+      input.charge = down.has('attack');
       pressed.clear();
       return input;
     }

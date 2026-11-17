@@ -125,8 +125,8 @@ export const FORMS = {
   lunge: { base: 0, range: 4.6, arc: 0.6, damage: 21, lunge: 4.8, push: 2.2, recover: 0.3 },
   // Out of the snow step: a running sweep.
   sweep: { base: 1, range: 3.7, arc: 2.5, damage: 18, lunge: 3.4, push: 2.6, recover: 0.34 },
-  // The attack held down through a cut: a gathered overhead blow.
-  charge: { base: 2, range: 3.9, arc: 0.9, damage: 46, lunge: 2.8, push: 4.4, recover: 0.5, heavy: true, cost: 16 }
+  // The attack held down through a cut: a gathered overhead blow, slow to come and dear in breath.
+  charge: { base: 2, windup: 0.34, range: 3.9, arc: 0.9, damage: 46, lunge: 2.8, push: 4.4, recover: 0.5, heavy: true, cost: 24 }
 };
 /** How long after a dodge the thrust is still there, how long a hold gathers the blow, what cancelling a cut into a guard costs. */
 export const DERIVE = { afterDodge: 0.28, hold: 0.36, cancelCost: 8 };

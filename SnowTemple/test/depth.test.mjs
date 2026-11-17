@@ -4,7 +4,8 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FLAMES, PLACES, WET, cover, wet } from '../src/rules/arena.mjs';
 import { BOONS, offer } from '../src/rules/boons.mjs';
-import { choose, createGame, grant, quiet, spawn, step } from '../src/rules/game.mjs';
+import { loadProgress, recordClear, recordStand } from '../src/progress.mjs';
+import { createGame, grant, quiet, spawn, step } from '../src/rules/game.mjs';
 import { TIERS, grade, rulesFor, tierName } from '../src/rules/tiers.mjs';
 import { DERIVE, FOES, FORMS, HERO, WINE } from '../src/rules/tune.mjs';
 import { AFFIXES, waveOf } from '../src/rules/yard.mjs';
@@ -123,7 +124,7 @@ test('the attack held through a cut gathers a heavy blow; tapping makes the plai
   const { game, hero, foe } = duel('blade', 2);
   foe.hp = foe.maxHp = 5000;
   press(game, { attack: true, charge: true });
-  const seen = run(game, 0.9, () => ({ ...quiet(), charge: true }));
+  const seen = run(game, 1.1, () => ({ ...quiet(), charge: true }));
   const swings = seen.filter((e) => e.type === 'swing');
   assert.equal(swings.length, 1);
   assert.equal(swings[0].form, 'charge');
@@ -377,6 +378,19 @@ test('each tier adds one rule to those below it', () => {
   assert.ok(names(4).has('fire') || names(4).has('wheel'));
 });
 
+test('what is earned is kept: a clear opens the next tier, and only a better mark or a farther wave replaces the old', () => {
+  const kept = loadProgress(); // no storage here: a fresh record
+  assert.deepEqual(kept, { open: 1, tier: 1, marks: {}, wave: 0 });
+  assert.deepEqual(recordClear(kept, 1, '丙'), { improved: true, opened: true });
+  assert.equal(kept.open, 2);
+  assert.deepEqual(recordClear(kept, 1, '丁'), { improved: false, opened: false });
+  assert.deepEqual(recordClear(kept, 1, '甲'), { improved: true, opened: false });
+  assert.deepEqual(kept.marks, { 1: '甲' });
+  assert.equal(kept.open, 2, 'clearing the first tier again opens nothing more');
+  assert.ok(recordStand(kept, 5) && !recordStand(kept, 5) && !recordStand(kept, 3));
+  assert.equal(kept.wave, 5);
+});
+
 test('a run is marked: clean and quick is the top mark, falls cost most', () => {
   assert.equal(grade({ time: 200, falls: 0, hurts: 2, parries: 3, ripostes: 2 }).mark, '甲');
   assert.equal(grade({ time: 300, falls: 0, hurts: 8 }).mark, '乙');
@@ -400,7 +414,7 @@ test('holding the yard: waves grow, leaders come from the third, and a fall ends
   const game = createGame(4, { mode: 'yard' });
   assert.equal(game.stage, 'yard');
   assert.equal(game.boss.state, 'wait');
-  const seen = run(game, 2);
+  const seen = run(game, 3);
   assert.equal(seen.find((e) => e.type === 'wave').wave, 1);
   assert.equal(game.foes.filter((foe) => foe.kind !== 'lu').length, 3);
   // Two waves down: a page lies in the yard.

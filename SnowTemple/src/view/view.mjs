@@ -1,6 +1,7 @@
 // The picture of the fight: it reads the game each frame, moves the figures, the camera and the lamps,
 // and answers the game's events with light, sparks and dust.
 import {
+  InstancedMesh3D,
   Mesh3D,
   Object3D,
   PlanarReflection3D,
@@ -13,10 +14,11 @@ import { BARS, PLACES } from '../rules/arena.mjs';
 import { HERO } from '../rules/tune.mjs';
 import { createBuilder, rgb } from './build.mjs';
 import { TINT, createEffects } from './effects.mjs';
-import { FALL_CONTACT, createFigure, foePose, heroPose, pose } from './figures.mjs';
+import { FALL_CONTACT, bowstringBatch, createFigure, foePose, heroPose, pose } from './figures.mjs';
 import { buildScenery, height, paved } from './scenery.mjs';
 
 const GRADE_TINT = [TINT.white, TINT.jade, TINT.gold];
+const LEADER_TINT = { swift: TINT.spear, iron: TINT.white, ember: TINT.fire };
 const dirOf = (face) => [Math.sin(face), 0, Math.cos(face)];
 
 function lootShape(kind) {
@@ -77,6 +79,11 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       figure.metal.emissive.set([1, 0.3, 0.12]);
       figure.travel = 0;
       figure.last = { x: foe.x, z: foe.z };
+      if (foe.elite) {
+        // A leader stands a little taller, with a ring of his colour at his feet.
+        figure.root.setScale(1.12, 1.12, 1.12);
+        figure.mark = fx.spawn('ring', { mode: 7, life: 1e6, from: [1.25, 1, 1.25], tint: LEADER_TINT[foe.elite], power: 2, k: 1, track: (item) => item.mesh.setPosition(foe.x, 0.12, foe.z) });
+      }
       scene.addChild(figure.root);
       figures.set(foe.id, figure);
     }
@@ -231,22 +238,41 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     switch (e.type) {
       case 'slash': {
         const d = dirOf(e.face);
-        if (e.cut === 0) {
+        // The moves that grow out of a cut wear its look, drawn larger.
+        if (e.form === 'lunge') {
+          fx.spawn('strip', { mode: 5, x: e.x + d[0] * 0.6, y: 1.15, z: e.z + d[2] * 0.6, yaw: e.face, life: 0.26, from: [1.1, 1, 3], to: [0.5, 1, 7], power: 3.2 });
+          fx.spawn('arcNarrow', { mode: 0, x: e.x, y: 1.1, z: e.z, yaw: e.face, life: 0.24, from: [1.5, 1, 1.5], power: 2.6 });
+          fx.burst(e.x, 0.15, e.z, { count: 10, dir: [-d[0], 0.3, -d[2]], spread: 0.6, speed: 4, life: 0.5, size: 0.15, tint: TINT.white, power: 0.9, rise: -3 });
+        } else if (e.form === 'sweep') {
+          fx.spawn('arcWide', { mode: 0, x: e.x, y: 1.1, z: e.z, yaw: e.face, life: 0.32, from: [1.2, 1, 1.2], to: [1.36, 1, 1.36], power: 3 });
+          fx.spawn('arcWide', { mode: 0, x: e.x, y: 0.5, z: e.z, yaw: e.face + 0.5, life: 0.36, from: [1.05, 1, 1.05], to: [1.2, 1, 1.2], tint: TINT.white, power: 1.4 });
+          fx.burst(e.x + d[0] * 1.6, 0.15, e.z + d[2] * 1.6, { count: 18, spread: 1, speed: 5, life: 0.55, size: 0.15, tint: TINT.white, power: 0.9, rise: -4 });
+        } else if (e.cut === 0) {
           fx.spawn('strip', { mode: 5, x: e.x + d[0] * 0.6, y: 1.15, z: e.z + d[2] * 0.6, yaw: e.face, life: 0.2, from: [0.9, 1, 2.2], to: [0.5, 1, 4.6], power: 2.6 });
           fx.spawn('arcNarrow', { mode: 0, x: e.x, y: 1.1, z: e.z, yaw: e.face, life: 0.22, from: [1.05, 1, 1.05], power: 2.2 });
         } else if (e.cut === 1) fx.spawn('arcWide', { mode: 0, x: e.x, y: 1.1, z: e.z, yaw: e.face, life: 0.28, from: [1, 1, 1], to: [1.12, 1, 1.12], power: 2.6 });
         else {
-          fx.spawn('arcUp', { mode: 0, x: e.x, y: 0.9, z: e.z, yaw: e.face, life: 0.3, from: [1, 1.15, 1.15], power: 3 });
+          const gathered = e.form === 'charge',
+            size = gathered ? 1.3 : 1;
+          fx.spawn('arcUp', { mode: 0, x: e.x, y: 0.9, z: e.z, yaw: e.face, life: 0.3, from: [size, 1.15 * size, 1.15 * size], tint: gathered ? TINT.gold : TINT.spear, power: gathered ? 3.6 : 3 });
           const px = e.x + d[0] * 2.7,
             pz = e.z + d[2] * 2.7;
-          fx.spawn('ring', { mode: 1, x: px, z: pz, life: 0.45, from: [0.6, 1, 0.6], to: [3.4, 1, 3.4], power: 2.2 });
-          fx.scar(px, pz, 1.5);
-          fx.burst(px, 0.2, pz, { count: 16, spread: 1, speed: 4.5, life: 0.6, size: 0.14, tint: TINT.white, power: 1.1, rise: -6 });
-          view.shake = Math.max(view.shake, 0.55);
+          fx.spawn('ring', { mode: 1, x: px, z: pz, life: 0.45, from: [0.6, 1, 0.6], to: [3.4 * size, 1, 3.4 * size], tint: gathered ? TINT.gold : TINT.spear, power: 2.2 });
+          fx.scar(px, pz, 1.5 * size);
+          fx.burst(px, 0.2, pz, { count: gathered ? 28 : 16, spread: 1, speed: 4.5, life: 0.6, size: 0.14, tint: TINT.white, power: 1.1, rise: -6 });
+          if (gathered) fx.flash(px, pz, [1, 0.8, 0.5], 46, 0.22, 12);
+          view.shake = Math.max(view.shake, gathered ? 0.85 : 0.55);
         }
         break;
       }
       case 'hit': {
+        if (e.source === 'fire') {
+          // A bite of the fire he is burning with: flame, not steel.
+          fx.burst(e.x, 1.1, e.z, { count: 7, dir: [0, 1, 0], spread: 0.7, speed: 2.6, life: 0.6, size: 0.2, tint: TINT.fire, power: 3.2, rise: 3, drag: 1 });
+          const burning = figures.get(e.id);
+          if (burning) burning.flash = 0.5;
+          break;
+        }
         const d = dirOf(e.face),
           px = e.x - d[0] * 0.45,
           pz = e.z - d[2] * 0.45,
@@ -310,7 +336,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         fx.burst(e.x, 1.2, e.z, { count: 10, spread: 1, speed: 6, life: 0.3, tint: TINT.gold, power: 3 });
         break;
       case 'rain': {
-        const R = HERO.rain.radius;
+        const R = e.radius ?? HERO.rain.radius;
         fx.spawn('pad', { mode: 2, x: e.x, y: 0.1, z: e.z, life: HERO.rain.time + 0.5, from: [R, 1, R], tint: TINT.gold, power: 2.1, hold: true, track: (item) => ((item.k = Math.min(1, item.age / 0.6)), (item.fade = Math.min(1, (item.life - item.age) / 0.5))) });
         fx.spawn('column', { mode: 4, x: e.x, y: 0, z: e.z, life: HERO.rain.time, from: [2.4, 30, 2.4], tint: TINT.gold, power: 2.4, k: 0.4, track: (item, t) => (item.fade = Math.min(1, t * 6, (1 - t) * 5)) });
         for (const spear of e.spears) fx.dropSpear(spear.x, spear.z, spear.at, spear.lean, spear.turn);
@@ -327,7 +353,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         break;
       case 'burst':
         fx.scar(e.x, e.z, 4.5, 9);
-        fx.spawn('ring', { mode: 1, x: e.x, z: e.z, life: 0.7, from: [1, 1, 1], to: [HERO.rain.radius + 2, 1, HERO.rain.radius + 2], tint: TINT.gold, power: 3.4 });
+        fx.spawn('ring', { mode: 1, x: e.x, z: e.z, life: 0.7, from: [1, 1, 1], to: [(hero.rainRadius ?? HERO.rain.radius) + 2, 1, (hero.rainRadius ?? HERO.rain.radius) + 2], tint: TINT.gold, power: 3.4 });
         fx.spawn('ring', { mode: 1, x: e.x, z: e.z, life: 0.5, from: [0.5, 1, 0.5], to: [6, 1, 6], tint: TINT.white, power: 3 });
         fx.burst(e.x, 0.3, e.z, { count: 60, spread: 1, speed: 13, life: 0.8, size: 0.12, tint: TINT.gold, power: 4, rise: -4 });
         fx.flash(e.x, e.z, [1, 0.9, 0.7], 120, 0.5, 22);
@@ -400,8 +426,34 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         focus.x = e.x;
         focus.z = e.z;
         break;
+      case 'fire': {
+        // Fire on the ground. What burns the hero is drawn like any blow he must step out of; what he
+        // laid himself is a formation in the colour of fire. The flames over both are fed each frame.
+        const fade = (item) => (item.fade = Math.min(1, item.age * 8, (item.life - item.age) * 2.5));
+        if (e.harm === 'hero') fx.spawn(fx.sector(Math.PI * 2), { mode: 3, x: e.x, y: 0.1, z: e.z, life: e.life, from: [e.r, 1, e.r], tint: TINT.warnHard, hard: true, k: 1, track: fade });
+        else fx.spawn('pad', { mode: 2, x: e.x, y: 0.1, z: e.z, life: e.life, from: [e.r, 1, e.r], tint: TINT.fire, power: 2.2, k: 1, hold: true, track: fade });
+        fx.spawn('ring', { mode: 1, x: e.x, z: e.z, life: 0.4, from: [0.3, 1, 0.3], to: [e.r * 1.15, 1, e.r * 1.15], tint: TINT.fire, power: 2.4 });
+        fx.burst(e.x, 0.2, e.z, { count: 18, spread: 1, speed: 5, life: 0.6, size: 0.18, tint: TINT.fire, power: 3.2, rise: 2 });
+        fx.flash(e.x, e.z, [1, 0.5, 0.2], 34, 0.5, 9);
+        break;
+      }
+      case 'ignite':
+        fx.spawn('ring', { mode: 1, x: e.x, y: 1, z: e.z, life: 0.4, from: [0.3, 1, 0.3], to: [2.4, 1, 2.4], tint: TINT.fire, power: 3 });
+        fx.burst(e.x, 1.1, e.z, { count: 26, spread: 1, speed: 5, life: 0.7, size: 0.2, tint: TINT.fire, power: 3.6, rise: 3 });
+        fx.flash(e.x, e.z, [1, 0.5, 0.2], 44, 0.35, 10);
+        break;
+      case 'scorch':
+        fx.burst(e.x, 0.9, e.z, { count: 12, dir: [0, 1, 0], spread: 0.7, speed: 3, life: 0.5, size: 0.18, tint: TINT.fire, power: 3.2, rise: 3 });
+        heroFigure.flash = 0.7;
+        view.shake = Math.max(view.shake, 0.3);
+        break;
+      case 'arrowStuck':
+        fx.burst(e.x, 1.1, e.z, { count: 7, spread: 1, speed: 3.5, life: 0.35, size: 0.08, tint: TINT.white, power: 1.6 });
+        break;
+      case 'wave':
+        view.shake = Math.max(view.shake, 0.3);
+        break;
     }
-    void hero;
   }
 
   // ---- one frame ----------------------------------------------------------------------------
@@ -492,7 +544,11 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       figure.metal.emissiveIntensity = figure.glow;
       figure.flash = Math.max(0, figure.flash - dt * 7);
       const [red, green, blue] = figure.look.fill;
-      figure.tintBody(red + rim * 0.85 + figure.flash, green + rim * 0.48 + figure.flash * 0.9, blue + rim * 0.40 + figure.flash * 0.8);
+      const alight = foe.burning > 0 && foe.state !== 'dead',
+        heat = alight ? 0.22 + Math.sin(clock * 17 + foe.id) * 0.06 : 0;
+      figure.tintBody(red + rim * 0.85 + figure.flash + heat, green + rim * 0.48 + figure.flash * 0.9 + heat * 0.35, blue + rim * 0.40 + figure.flash * 0.8);
+      if (alight && Math.random() < dt * 34) fx.burst(foe.x + (Math.random() - 0.5) * 0.5, 0.5 + Math.random() * 1.1, foe.z + (Math.random() - 0.5) * 0.5, { count: 1, dir: [0, 1, 0], spread: 0.4, speed: 1.8, life: 0.6, size: 0.2, tint: TINT.fire, power: 3.4, rise: 3, drag: 1 });
+      if (figure.mark && foe.state === 'dead') (fx.release(figure.mark), (figure.mark = null));
       if (foe.kind === 'lu' && foe.phase === 2 && foe.state !== 'dead' && Math.random() < dt * 40) {
         const d = dirOf(foe.face);
         fx.burst(foe.x + d[0] * 1.2 - d[2] * 0.4, 1.5, foe.z + d[2] * 1.2 + d[0] * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.5, speed: 1.6, life: 0.6, size: 0.16, tint: TINT.fire, power: 3.5, rise: 3 });
@@ -500,6 +556,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     }
     for (const [id, figure] of figures)
       if (!game.foes.some((foe) => foe.id === id)) {
+        if (figure.mark) fx.release(figure.mark);
         figure.dispose();
         figures.delete(id);
       }
@@ -570,6 +627,14 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       lamp.distance = Math.hypot(lamp.x - focus.x, lamp.z - focus.z);
       if (lamp.fire && lamp.distance < 30 && Math.random() < dt * 50) fx.burst(lamp.x + (Math.random() - 0.5) * 0.4, lamp.y - 0.4, lamp.z + (Math.random() - 0.5) * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.25, speed: 1.8, life: 0.7, size: 0.22, tint: TINT.fire, power: 2.8, rise: 2.5, drag: 1 });
     }
+    // Fire lying on the ground from a blow, an arrow or a torch.
+    for (const patch of game.fires) {
+      if (Math.random() < dt * 24 * patch.r) {
+        const a = Math.random() * Math.PI * 2,
+          r = Math.sqrt(Math.random()) * patch.r * 0.92;
+        fx.burst(patch.x + Math.sin(a) * r, 0.1, patch.z + Math.cos(a) * r, { count: 1, dir: [0, 1, 0], spread: 0.3, speed: 1.9, life: 0.65, size: 0.22, tint: TINT.fire, power: 3, rise: 2.6, drag: 1 });
+      }
+    }
     for (const fire of fires)
       if (Math.hypot(fire.x - focus.x, fire.z - focus.z) < 34)
         for (let i = 0; i < 2; i++) fx.burst(fire.x + (Math.random() - 0.5) * fire.size * 2, fire.y - Math.random() * 1.6, fire.z + (Math.random() - 0.5) * fire.size * 2, { count: 1, dir: [0.25, 1, 0], spread: 0.3, speed: 2.2, life: 0.9, size: 0.26, tint: TINT.fire, power: 2.2, rise: 3, drag: 0.8 });
@@ -623,8 +688,11 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         material.alphaMode = 'blend';
         return { mesh: thing.mesh, material, ...seen };
       });
+    // Eight like things in view are drawn as one instanced batch, which has a program of its own. A crowded
+    // yard gets there with four bowmen's strings, or with coins left lying.
+    const batches = [bowstringBatch(), new InstancedMesh3D((lootGeometry.coin ??= lootShape('coin')), lootMaterial, 1)].map((mesh) => ({ mesh, material: mesh.material, ...seen }));
     try {
-      await renderer.preparePrograms([...faded, ...fx.programs().map((request) => ({ ...request, ...seen }))]);
+      await renderer.preparePrograms([...faded, ...batches, ...fx.programs().map((request) => ({ ...request, ...seen }))]);
     } finally {
       for (const { material } of faded) material.dispose();
     }

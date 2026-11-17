@@ -34,17 +34,22 @@
     <section id="chapter-result" role="dialog" aria-modal="true" aria-labelledby="result-heading" hidden>
       <div class="result-paper">
         <div class="result-seal" aria-hidden="true">水浒</div>
+        <div class="result-mark" hidden><b data-stat="mark"></b><span>等</span></div>
         <h2 id="result-heading">风雪山神庙</h2>
-        <p>第一回　完</p>
+        <p data-stat="line">第一回　完</p>
         <dl>
           <div><dt>用时</dt><dd data-stat="time"></dd></div>
           <div><dt>弹反</dt><dd data-stat="parries"></dd></div>
           <div><dt>回马枪</dt><dd data-stat="ripostes"></dd></div>
-          <div><dt>倒地</dt><dd data-stat="falls"></dd></div>
+          <div><dt data-stat="last-name">倒地</dt><dd data-stat="last"></dd></div>
         </dl>
+        <p class="result-news" data-stat="news" hidden></p>
         <div class="result-actions">
+          <button type="button" data-replay="climb">更上一重</button>
           <button type="button" data-replay="temple">重战陆谦</button>
           <button type="button" data-replay="chapter">重走此章</button>
+          <button type="button" data-replay="yard">再守一回</button>
+          <button type="button" data-replay="title">回到卷首</button>
         </div>
       </div>
     </section>

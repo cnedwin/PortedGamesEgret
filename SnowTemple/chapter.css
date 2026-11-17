@@ -29,6 +29,31 @@
 #title .go:hover { background: #953025; }
 #title .go span { color: #ecc992; font: 22px/1 var(--plain); }
 #title .keys { position: static; margin-top: 10px; color: #d2deeb; text-shadow: 0 2px 5px #050709; }
+/* Two ways in: the road to the temple, or a stand in the yard. Above them, how high the climb is set. */
+#title .ways { display: flex; flex-wrap: wrap; align-items: stretch; gap: 10px; }
+#title .stand {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  min-height: 44px;
+  padding: 6px 16px;
+  border: 1px solid #9fb3c98f;
+  background: #0f1926e6;
+  box-shadow: 0 5px 22px #050709a8;
+  color: #e9f0f7;
+  font-family: var(--script);
+  font-size: clamp(16px, 2.4vw, 20px);
+  letter-spacing: .17em;
+}
+#title .stand:hover { background: #1b2a3d; }
+#title .stand small { font: 11px/1.3 var(--plain); letter-spacing: .06em; color: #a9b9cb; }
+#title .climb:not([hidden]) { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; text-shadow: 0 2px 5px #050709; }
+#title .climb button { flex: none; width: 34px; height: 44px; border: 1px solid #e6bd8266; background: #0b121dcc; color: #ecc992; font: 22px/1 var(--plain); }
+#title .climb button:disabled { opacity: .28; cursor: default; }
+#title .tier { min-width: 11em; max-width: min(24em, 60vw); }
+#title .tier b { display: block; font: 400 clamp(17px, 2.5vw, 20px)/1.3 var(--script); letter-spacing: .14em; color: #fff1d9; }
+#title .tier small { display: block; color: #c3d0de; font-size: 12px; line-height: 1.5; }
 
 #chapter-result:not([hidden]) {
   position: absolute;
@@ -75,6 +100,23 @@
 .result-paper dl div + div { border-left: 1px solid #e2b86630; }
 .result-paper dt { color: #bfcbd8; font-size: 12px; }
 .result-paper dd { margin: 2px 0 0; color: #fff0d7; font-size: 19px; font-variant-numeric: tabular-nums; }
+/* The mark of the run, pressed on the sheet like a seal. */
+.result-mark:not([hidden]) {
+  position: absolute;
+  right: clamp(10px, 4vw, 28px);
+  top: clamp(10px, 4dvh, 26px);
+  display: grid;
+  place-items: center;
+  width: clamp(46px, 11dvh, 68px);
+  aspect-ratio: 1;
+  background: #9c261f;
+  box-shadow: inset 0 0 0 2px #9c261f, inset 0 0 0 3px #ffdfac8c;
+  color: #ffe9c4;
+  transform: rotate(5deg);
+}
+.result-mark b { font: 500 clamp(26px, 6.6dvh, 42px)/1 var(--script); }
+.result-mark span { position: absolute; right: 3px; bottom: 2px; font: 10px/1 var(--script); opacity: .8; }
+.result-paper .result-news { margin: 0 0 clamp(8px, 2.6dvh, 16px); color: #dbe5ef; font: 14px/1.6 var(--plain); letter-spacing: .04em; }
 .result-actions { display: flex; justify-content: center; flex-wrap: wrap; gap: 9px; }
 .result-actions button {
   min-height: 44px;
@@ -84,7 +126,7 @@
   font-family: var(--script);
   letter-spacing: .12em;
 }
-.result-actions button:first-child { background: #79231d; }
+.result-actions button.lead { background: #79231d; }
 .result-actions button:hover { border-color: var(--gold); background: #913225; }
 #ui.complete .hud, #ui.complete .corner { visibility: hidden; }
 

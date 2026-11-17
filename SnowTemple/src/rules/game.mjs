@@ -171,7 +171,7 @@ export function createGame(seed = 7, { tier = 1, mode = 'chapter' } = {}) {
     // He stands in the middle of the yard; the gate stays barred and Lu Qian keeps to his temple.
     Object.assign(game.hero, { x: 0, z: 11, face: Math.PI });
     game.stage = 'yard';
-    game.waveWait = 1;
+    game.waveWait = 2.2;
   } else spawnParty(game, 0);
   game.foes.push(lu);
   return game;
