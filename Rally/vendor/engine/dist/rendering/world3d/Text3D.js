@@ -8,12 +8,17 @@
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { Path2D3D, Shape3D, signedArea2D } from './Curves3D.js';
 import { createExtrudeGeometry3D, createShapeGeometry3D } from './geometries3D.js';
-export const TEXT3D_LIMITS = Object.freeze({ maxCharacters: 4096, maxFontBytes: 67108864, maxGlyphPoints: 65536, maxCompositeDepth: 8 });
+export const TEXT3D_LIMITS = Object.freeze({
+    maxCharacters: 4096,
+    maxFontBytes: 67108864,
+    maxGlyphPoints: 65536,
+    maxCompositeDepth: 8
+});
 function inside(point, polygon) {
     let hit = false;
     for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
         const a = polygon[i], b = polygon[j];
-        if ((a[1] > point[1]) !== (b[1] > point[1]) && point[0] < (b[0] - a[0]) * (point[1] - a[1]) / (b[1] - a[1]) + a[0])
+        if (a[1] > point[1] !== b[1] > point[1] && point[0] < ((b[0] - a[0]) * (point[1] - a[1])) / (b[1] - a[1]) + a[0])
             hit = !hit;
     }
     return hit;
@@ -44,7 +49,9 @@ export class Font3D {
         this.#cache.set(codePoint, glyph);
         return glyph;
     }
-    hasGlyph(character) { return this.glyph(character.codePointAt(0) ?? -1) !== undefined; }
+    hasGlyph(character) {
+        return this.glyph(character.codePointAt(0) ?? -1) !== undefined;
+    }
     /** Width of the widest line, in world units. */
     measureText(text, options = {}) {
         let widest = 0;
@@ -104,7 +111,7 @@ export class Font3D {
         for (let i = 0; i < c.length;) {
             const op = c[i++];
             if (op === 0) {
-                contours.push(current = []);
+                contours.push((current = []));
                 x = at(i) + offsetX;
                 y = at(i + 1) + offsetY;
                 i += 2;
@@ -152,7 +159,11 @@ export class Font3D {
                     points.push(p);
             }
             const first = points[0], last = points[points.length - 1];
-            if (points.length > 1 && first && last && Math.abs(first[0] - last[0]) < 1e-9 && Math.abs(first[1] - last[1]) < 1e-9)
+            if (points.length > 1 &&
+                first &&
+                last &&
+                Math.abs(first[0] - last[0]) < 1e-9 &&
+                Math.abs(first[1] - last[1]) < 1e-9)
                 points.pop();
             const area = points.length >= 3 ? Math.abs(signedArea2D(points)) : 0;
             if (area > 1e-12)
@@ -161,17 +172,21 @@ export class Font3D {
         // An outline inside an even number of others is solid; inside an odd number, a hole of the smallest one around it.
         const depth = rings.map((ring, i) => rings.reduce((n, other, j) => n + (i !== j && inside(ring.points[0], other.points) ? 1 : 0), 0));
         const solids = new Map();
-        rings.forEach((ring, i) => { if (depth[i] % 2 === 0) {
-            const shape = new Shape3D(ring.points);
-            solids.set(i, shape);
-            out.push(shape);
-        } });
+        rings.forEach((ring, i) => {
+            if (depth[i] % 2 === 0) {
+                const shape = new Shape3D(ring.points);
+                solids.set(i, shape);
+                out.push(shape);
+            }
+        });
         rings.forEach((ring, i) => {
             if (depth[i] % 2 === 0)
                 return;
             let owner = -1;
             for (const j of solids.keys())
-                if (depth[j] === depth[i] - 1 && inside(ring.points[0], rings[j].points) && (owner < 0 || rings[j].area < rings[owner].area))
+                if (depth[j] === depth[i] - 1 &&
+                    inside(ring.points[0], rings[j].points) &&
+                    (owner < 0 || rings[j].area < rings[owner].area))
                     owner = j;
             if (owner < 0)
                 return;
@@ -200,9 +215,15 @@ export function parseTypefaceFont3D(input) {
         throw new World3DError('WORLD3D_INPUT_INVALID', 'typeface JSON has no glyphs');
     const unitsPerEm = Number(json['resolution'] ?? 1000), box = json['boundingBox'];
     const ascender = Number(json['ascender'] ?? box?.yMax ?? unitsPerEm * 0.8), descender = Number(json['descender'] ?? box?.yMin ?? -unitsPerEm * 0.2);
-    const lineHeight = box && Number.isFinite(box.yMax) && Number.isFinite(box.yMin) ? box.yMax - box.yMin + Number(json['underlineThickness'] ?? 0) : ascender - descender;
+    const lineHeight = box && Number.isFinite(box.yMax) && Number.isFinite(box.yMin)
+        ? box.yMax - box.yMin + Number(json['underlineThickness'] ?? 0)
+        : ascender - descender;
     return new Font3D({
-        unitsPerEm, ascender, descender, lineHeight: lineHeight > 0 ? lineHeight : unitsPerEm, familyName: typeof json['familyName'] === 'string' ? json['familyName'] : '',
+        unitsPerEm,
+        ascender,
+        descender,
+        lineHeight: lineHeight > 0 ? lineHeight : unitsPerEm,
+        familyName: typeof json['familyName'] === 'string' ? json['familyName'] : '',
         glyph(codePoint) {
             const entry = glyphs[String.fromCodePoint(codePoint)];
             if (!entry)
@@ -234,7 +255,7 @@ export function parseTypefaceFont3D(input) {
                     throw new World3DError('WORLD3D_INPUT_INVALID', 'typeface outline command');
             }
             return { advance: Number(entry.ha ?? 0), commands };
-        },
+        }
     });
 }
 // ---- TrueType -----------------------------------------------------------------
@@ -245,7 +266,11 @@ export function parseTypefaceFont3D(input) {
  * PostScript (CFF) outlines are not supported.
  */
 export function parseTrueTypeFont3D(input) {
-    const bytes = input instanceof ArrayBuffer ? new Uint8Array(input) : ArrayBuffer.isView(input) ? new Uint8Array(input.buffer, input.byteOffset, input.byteLength) : undefined;
+    const bytes = input instanceof ArrayBuffer
+        ? new Uint8Array(input)
+        : ArrayBuffer.isView(input)
+            ? new Uint8Array(input.buffer, input.byteOffset, input.byteLength)
+            : undefined;
     if (!bytes || bytes.length < 12)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'font data');
     if (bytes.length > TEXT3D_LIMITS.maxFontBytes)
@@ -322,7 +347,8 @@ export function parseTrueTypeFont3D(input) {
             }
             return 0;
         };
-        const glyphRange = (index) => longOffsets ? [view.getUint32(loca + index * 4), view.getUint32(loca + index * 4 + 4)]
+        const glyphRange = (index) => longOffsets
+            ? [view.getUint32(loca + index * 4), view.getUint32(loca + index * 4 + 4)]
             : [view.getUint16(loca + index * 2) * 2, view.getUint16(loca + index * 2 + 2) * 2];
         /** Append a glyph's contours as point lists [x, y, onCurve, ...], one list per contour. */
         const contoursOf = (index, out, level) => {
@@ -442,7 +468,10 @@ export function parseTrueTypeFont3D(input) {
             }
         };
         return new Font3D({
-            unitsPerEm, ascender, descender, lineHeight: Math.max(ascender - descender + lineGap, 1),
+            unitsPerEm,
+            ascender,
+            descender,
+            lineHeight: Math.max(ascender - descender + lineGap, 1),
             glyph(codePoint) {
                 const index = glyphIndex(codePoint);
                 if (index === 0 || index >= glyphCount)
@@ -496,7 +525,7 @@ export function parseTrueTypeFont3D(input) {
                         throw cause;
                     throw new World3DError('WORLD3D_INPUT_INVALID', 'font glyph data', cause);
                 }
-            },
+            }
         });
     }
     catch (cause) {
@@ -522,5 +551,7 @@ export function createTextGeometry3D(text, font, options = {}) {
     if (shapes.length === 0)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'the text has no visible characters');
     const depth = requireFinite3D(options.depth ?? (options.size ?? 1) * 0.2, 'text depth');
-    return depth > 0 ? createExtrudeGeometry3D(shapes, { depth, ...(options.steps !== undefined ? { steps: options.steps } : {}) }) : createShapeGeometry3D(shapes);
+    return depth > 0
+        ? createExtrudeGeometry3D(shapes, { depth, ...(options.steps !== undefined ? { steps: options.steps } : {}) })
+        : createShapeGeometry3D(shapes);
 }

@@ -477,6 +477,7 @@ export function createHud(root, track, options = {}) {
   };
 
   hud.showResults = (game, handlers) => {
+    const scrollTop = screen.firstElementChild?.classList.contains('results-panel') ? screen.scrollTop : 0;
     const rows = game.results().map((row) => {
       const racer = RACERS[row.kart.racer],
         line = el('tr', row.kart.human ? 'me' : '', undefined, [
@@ -492,7 +493,7 @@ export function createHud(root, track, options = {}) {
     });
     const head = el('tr', undefined, undefined, [el('th'), el('th'), el('th', 'num', t().time), el('th', 'num', t().bestLap)]);
     show(
-      el('div', 'panel wide', undefined, [
+      el('div', 'panel wide results-panel', undefined, [
         el('h2', undefined, `${t().results} · ${t().place[game.human.place - 1]}`),
         el('table', 'results', undefined, [head, ...rows]),
         el('div', 'row', undefined, [
@@ -501,6 +502,7 @@ export function createHud(root, track, options = {}) {
         ]),
       ]),
     );
+    screen.scrollTop = scrollTop;
   };
 
   /** Hide the in-race display (back on the menus). */

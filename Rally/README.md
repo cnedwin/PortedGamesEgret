@@ -89,7 +89,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 |---|---|
 | 赛道中心线 · The circuit's centre line | `CatmullRomCurve3D` 闭合曲线，等距取样 · closed curve, sampled at equal distances |
 | 路面、路肩、围墙、桥面 · Road, kerbs, walls, bridge deck | `createGeometry3D` 沿赛道生成的带状网格 · strips generated along the track |
-| 车手与座驾、建筑 · Racers, karts and buildings | 基本体合并为带顶点色的网格；车漆用清漆层，金属件用金属度，衣物用绒面光泽 · primitives merged into vertex-coloured meshes; clearcoat for the paint, metalness for the fittings, sheen for cloth |
+| 车手、座驾、地标与道具 · Racers, karts, landmarks and props | 白鹭 glTF 加载器读取内嵌 PBR 贴图的 GLB，也支持带顶点色的程序网格 · Egret's glTF loader reads GLBs with embedded PBR textures alongside vertex-coloured procedural meshes |
 | 轮胎 · Tyres | `createLatheGeometry3D` 旋转成形 · spun from an outline |
 | 树木、花草、灯笼、旌旗、观众、仙鹤、长城、群山 · Trees, verge plants, lanterns, banners, crowd, cranes, long wall, mountains | `InstancedMesh3D` 逐实例变换与颜色 · per-instance transform and colour |
 | 道具箱、铜钱、滚鼓与飞行中的道具 · Item boxes, coins, drums and items in flight | 每帧重填的 `InstancedMesh3D` · refilled every frame |
@@ -102,9 +102,9 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 | 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
 | 画面 · Look | 级联阴影、天空环境光、雾、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, fog, ambient occlusion, bloom, FXAA |
 
-比赛规则（车辆手感、对手驾驶、道具、圈数与名次）是独立的一层，不依赖页面，可以在 Node 中整局运行。所有模型、纹理、音乐和音效都由代码生成，项目不含图片或音频文件。
+比赛规则（车辆手感、对手驾驶、道具、圈数与名次）可以在 Node 中整局运行。画面使用程序网格和 [Tripo 模型](assets/track-models/README.md)，音乐和音效由代码生成。
 
-The rules of a race (handling, rival driving, items, laps and places) are a separate layer that needs no page and can run a whole race in Node. All models, textures, music and sounds are generated in code; the project contains no image or audio files.
+The race rules (handling, rival driving, items, laps and places) can run a whole race in Node. The visuals use procedural meshes and [Tripo models](assets/track-models/README.md). Music and sound effects are generated in code.
 
 ## 目录 · Layout
 
@@ -138,6 +138,7 @@ npx serve .
 |---|---|
 | `?lang=zh` / `?lang=en` | 界面语言 · interface language |
 | `?backend=webgpu` | 使用 WebGPU 绘制 · draw with WebGPU |
+| `?models=original` | 使用原程序模型 · use the original procedural models |
 | `?quality=high` / `medium` / `low` | 起始画质 · starting picture quality |
 | `?ratio=1` | 限制像素比以提高帧率 · cap the pixel ratio for a higher frame rate |
 | `?seed=123` | 固定随机种子 · fix the random seed |

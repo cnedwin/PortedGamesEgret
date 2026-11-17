@@ -19,10 +19,16 @@ export class AudioListener3D extends Object3D {
         this.output.gain.value = options.volume ?? 1;
         this.output.connect(this.context.destination);
     }
-    get volume() { return this.output.gain.value; }
-    set volume(value) { this.output.gain.value = Math.max(0, value); }
+    get volume() {
+        return this.output.gain.value;
+    }
+    set volume(value) {
+        this.output.gain.value = Math.max(0, value);
+    }
     /** Browsers start audio suspended until a user gesture; call this from one. */
-    resume() { return this.context.state === 'suspended' ? this.context.resume() : Promise.resolve(); }
+    resume() {
+        return this.context.state === 'suspended' ? this.context.resume() : Promise.resolve();
+    }
     /** Fetch and decode a sound file into a buffer that any number of sources can share. */
     async load(url, signal) {
         let response;
@@ -41,8 +47,12 @@ export class AudioListener3D extends Object3D {
             throw new World3DError('WORLD3D_RESOURCE_FAILED', 'audio decode: ' + url, cause);
         }
     }
-    /** @internal */ register(source) { this.#sources.add(source); }
-    /** @internal */ unregister(source) { this.#sources.delete(source); }
+    /** @internal */ register(source) {
+        this.#sources.add(source);
+    }
+    /** @internal */ unregister(source) {
+        this.#sources.delete(source);
+    }
     /** Copy this node's world pose to the audio listener and every source's to its panner. */
     update() {
         if (this.#disposed)
@@ -103,7 +113,7 @@ export class PositionalAudio3D extends Object3D {
         this.gain = context.createGain();
         this.gain.gain.value = options.volume ?? 1;
         if (options.spatial ?? true) {
-            const panner = this.panner = context.createPanner();
+            const panner = (this.panner = context.createPanner());
             panner.panningModel = 'HRTF';
             panner.distanceModel = options.distanceModel ?? 'inverse';
             panner.refDistance = options.refDistance ?? 1;
@@ -119,9 +129,15 @@ export class PositionalAudio3D extends Object3D {
             this.gain.connect(listener.output);
         listener.register(this);
     }
-    get volume() { return this.gain.gain.value; }
-    set volume(value) { this.gain.gain.value = Math.max(0, value); }
-    get isPlaying() { return this.#voices.size > 0; }
+    get volume() {
+        return this.gain.gain.value;
+    }
+    set volume(value) {
+        this.gain.gain.value = Math.max(0, value);
+    }
+    get isPlaying() {
+        return this.#voices.size > 0;
+    }
     /** Start a voice after `delaySeconds`, from `offsetSeconds` into the buffer. */
     play(delaySeconds = 0, offsetSeconds = 0) {
         if (this.#disposed)
@@ -133,7 +149,10 @@ export class PositionalAudio3D extends Object3D {
         voice.loop = this.loop;
         voice.playbackRate.value = this.playbackRate;
         voice.connect(this.gain);
-        voice.onended = () => { voice.disconnect(); this.#voices.delete(voice); };
+        voice.onended = () => {
+            voice.disconnect();
+            this.#voices.delete(voice);
+        };
         this.#voices.add(voice);
         this.updatePanner();
         voice.start(context.currentTime + Math.max(0, delaySeconds), Math.max(0, offsetSeconds));
@@ -146,7 +165,9 @@ export class PositionalAudio3D extends Object3D {
             try {
                 voice.stop();
             }
-            catch { /* not started yet */ }
+            catch {
+                /* not started yet */
+            }
             voice.disconnect();
         }
         this.#voices.clear();
@@ -182,5 +203,9 @@ export class PositionalAudio3D extends Object3D {
         this.listener.unregister(this);
     }
 }
-export function createAudioListener3D(options = {}) { return new AudioListener3D(options); }
-export function createPositionalAudio3D(listener, options = {}) { return new PositionalAudio3D(listener, options); }
+export function createAudioListener3D(options = {}) {
+    return new AudioListener3D(options);
+}
+export function createPositionalAudio3D(listener, options = {}) {
+    return new PositionalAudio3D(listener, options);
+}

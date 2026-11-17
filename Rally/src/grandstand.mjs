@@ -23,6 +23,8 @@ const ROWS = 5;
 const SEATS_PER_ROW = 46;
 const STEP = 1.46;
 const RISE = 1.35;
+const SEAT_X = 0.12;
+const SEAT_TOP = 0.435;
 const AISLES = [-9.1, 9.1];
 const DECKS = [[-28, -10.22], [-7.98, 7.98], [10.22, 28]];
 
@@ -91,7 +93,7 @@ function architecture(detail) {
       const z = (start + end) / 2, length = end - start;
       box(x, (y - 0.2) / 2, z, 1.47, y - 0.2, length, row % 2 ? 0x9c8f77 : STONE);
       box(x, y - 0.135, z, 1.48, 0.27, length, TRIM);
-      box(x + 0.12, y + 0.36, z, 0.76, 0.15, length - 0.3, WOOD);
+      box(x + SEAT_X, y + SEAT_TOP - 0.075, z, 0.76, 0.15, length - 0.3, WOOD);
       box(x + 0.45, y + 0.57, z, 0.105, 0.46, length - 0.3, shade(RED, 0.82));
     }
     for (const z of AISLES) {
@@ -161,8 +163,8 @@ function spectators(detail, chance) {
       if (AISLES.some((aisle) => Math.abs(z - aisle) < 1.4) || attendance < (detail ? 0.30 : 0.47)) continue;
       const random = scatterSource(seed);
       const scale = 0.87 + random() * 0.20;
-      const yaw = -Math.PI / 2 + (random() - 0.5) * 0.6;
-      const x = row * STEP + 0.09 + (random() - 0.5) * 0.26;
+      const yaw = -Math.PI / 2 + (random() - 0.5) * 0.48;
+      const forwardJitter = random() - 0.5;
       const y = tread(row);
       const skin = choose(SKINS, random), hair = choose(HAIR_COLORS, random);
       const standing = random() > 0.65;
@@ -170,7 +172,11 @@ function spectators(detail, chance) {
       const raised = standing && random() > 0.40;
       const coat = waving ? RED : choose(COATS, random);
       const trousers = shade(choose(COATS, random), 0.39);
-      const shoulder = standing ? 1.16 : 0.96;
+      // A standing spectator uses the tread in front of the bench. A seated
+      // spectator's hips meet the same seat height at every body scale.
+      const x = row * STEP + (standing ? -0.53 + forwardJitter * 0.07 : SEAT_X - 0.14 + forwardJitter * 0.05);
+      const seat = SEAT_TOP / scale;
+      const shoulder = standing ? 1.16 : seat + 0.52;
       const lean = standing ? 0 : 0.08 + random() * 0.10;
       const sin = Math.sin(yaw), cos = Math.cos(yaw);
 
@@ -190,9 +196,15 @@ function spectators(detail, chance) {
       if (row < 2) part(EYES, 0, shoulder + 0.33, lean + 0.255, [0.107, 0.041, 0.01], shade(skin, 0.39));
 
       for (const side of [-1, 1]) {
-        part(BOX, side * 0.14, standing ? 0.30 : 0.21, standing ? -0.04 : 0.38, [0.17, standing ? 0.59 : 0.42, 0.20], trousers);
-        if (!standing) part(BOX, side * 0.14, 0.43, 0.23, [0.18, 0.18, 0.39], trousers);
-        if (row < 2) part(BOX, side * 0.14, 0.08, standing ? 0.009 : 0.44, [0.17, 0.16, 0.26], 0x3c3028);
+        if (standing) {
+          part(BOX, side * 0.14, 0.30, -0.04, [0.17, 0.59, 0.20], trousers);
+        } else {
+          const ankle = row < 2 ? 0.14 : 0.005;
+          const knee = seat + 0.13;
+          part(BOX, side * 0.14, (ankle + knee) / 2, 0.49, [0.17, knee - ankle, 0.16], trousers);
+          part(BOX, side * 0.14, seat + 0.09, 0.25, [0.18, 0.18, 0.49], trousers);
+        }
+        if (row < 2) part(BOX, side * 0.14, 0.08, standing ? -0.015 : 0.475, [0.17, 0.16, 0.215], 0x3c3028);
         if (waving && side === 1) continue;
         const up = raised && side === (slot % 2 ? 1 : -1);
         part(BOX, side * 0.267, shoulder + (up ? 0.14 : -0.16), lean + (up ? 0.04 : 0.11), [0.15, 0.40, 0.15], coat, up ? -0.47 : -0.31);

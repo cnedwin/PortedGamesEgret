@@ -28,7 +28,12 @@ function copyRegion(image, input) {
         if (input === null || typeof input !== "object")
             throw new TypeError("Texture region must be a record");
         const x = input.x, y = input.y, width = input.width, height = input.height;
-        for (const [value, positive] of [[x, false], [y, false], [width, true], [height, true]]) {
+        for (const [value, positive] of [
+            [x, false],
+            [y, false],
+            [width, true],
+            [height, true]
+        ]) {
             if (typeof value !== "number")
                 throw new TypeError("Texture region fields must be numbers");
             if (!Number.isSafeInteger(value) || (positive ? value <= 0 : value < 0))
@@ -45,7 +50,7 @@ function copyRegion(image, input) {
     }
 }
 function viewInteger(value, positive, maximum) {
-    if (typeof value !== 'number')
+    if (typeof value !== "number")
         throw new TypeFault("Texture view region fields must be numbers");
     if (!safeInteger(value) || (positive ? value <= 0 : value < 0) || value > maximum) {
         throw new RangeFault("Texture view region integer range");
@@ -55,7 +60,7 @@ function viewInteger(value, positive, maximum) {
 /** Stage the entire region before validation, then own both immutable records. */
 function copyViewRegion(image, input) {
     try {
-        if (typeof input !== 'object' || input === null || isArray(input)) {
+        if (typeof input !== "object" || input === null || isArray(input)) {
             throw new TypeFault("Texture view region must be a record");
         }
         const packedInput = input.packed;
@@ -65,7 +70,7 @@ function copyViewRegion(image, input) {
         const trimYInput = input.trimY;
         const quarterTurnInput = input.quarterTurn;
         // A late top-level getter outranks an earlier malformed packed record.
-        if (typeof packedInput !== 'object' || packedInput === null || isArray(packedInput)) {
+        if (typeof packedInput !== "object" || packedInput === null || isArray(packedInput)) {
             throw new TypeFault("Texture view region must be a record");
         }
         const xInput = packedInput.x;
@@ -92,8 +97,7 @@ function copyViewRegion(image, input) {
             throw new RangeFault("Texture view content exceeds its logical region");
         }
         const packed = freeze({ x, y, width, height });
-        return freeze({ packed, logicalWidth, logicalHeight, trimX, trimY,
-            quarterTurn: quarterTurn });
+        return freeze({ packed, logicalWidth, logicalHeight, trimX, trimY, quarterTurn: quarterTurn });
     }
     catch (cause) {
         throw new EgretError("TEXTURE_VIEW_REGION_INVALID", { cause });
@@ -111,17 +115,32 @@ export class Texture {
     static {
         createInstance = (image, sourceRect, viewRegion = null) => new Texture(image, sourceRect, CREATION_TOKEN, viewRegion);
     }
-    get imageData() { return readTextureSnapshot(this).image; }
-    get sourceRect() { return stateOf(this).sourceRect; }
-    get viewRegion() { return stateOf(this).viewRegion; }
-    get width() { return stateOf(this).sourceRect.width; }
-    get height() { return stateOf(this).sourceRect.height; }
-    get isDisposed() { return stateOf(this).image === undefined; }
+    get imageData() {
+        return readTextureSnapshot(this).image;
+    }
+    get sourceRect() {
+        return stateOf(this).sourceRect;
+    }
+    get viewRegion() {
+        return stateOf(this).viewRegion;
+    }
+    get width() {
+        return stateOf(this).sourceRect.width;
+    }
+    get height() {
+        return stateOf(this).sourceRect.height;
+    }
+    get isDisposed() {
+        return stateOf(this).image === undefined;
+    }
     /** Drop only the wrapper reference; saved image values keep their own pixels. */
     dispose() {
         const state = stateOf(this);
         if (state.image !== undefined)
-            apply(weakSet, states, [this, freeze({ image: undefined, sourceRect: state.sourceRect, viewRegion: state.viewRegion })]);
+            apply(weakSet, states, [
+                this,
+                freeze({ image: undefined, sourceRect: state.sourceRect, viewRegion: state.viewRegion })
+            ]);
     }
 }
 export function createTexture(image, sourceRect) {
@@ -138,7 +157,9 @@ export function createTextureView(image, region) {
     return createInstance(image, viewRegion.packed, viewRegion);
 }
 /** Brand-only: disposal does not change the identity of a Texture. */
-export function isTexture(value) { return apply(weakHas, states, [value]); }
+export function isTexture(value) {
+    return apply(weakHas, states, [value]);
+}
 /** The image alone, under the checks of `readTextureSnapshot` and without a record of its own. */
 export function readTextureImage(texture) {
     const image = stateOf(texture).image;

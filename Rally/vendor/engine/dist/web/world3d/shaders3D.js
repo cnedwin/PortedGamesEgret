@@ -4,13 +4,36 @@
 // so every material variant shares the same attribute and uniform contract.
 /** Fixed vertex attribute locations shared by every program and vertex array. */
 export const ATTRIBUTE_LOCATIONS_3D = Object.freeze({
-    position: 0, normal: 1, uv: 2, tangent: 3, color: 4, joints: 5, weights: 6, uv1: 7,
-    instanceMatrix: 8, instanceColor: 12, instanceAnimation: 13, instanceAnimation2: 14, instanceLook: 15,
+    position: 0,
+    normal: 1,
+    uv: 2,
+    tangent: 3,
+    color: 4,
+    joints: 5,
+    weights: 6,
+    uv1: 7,
+    instanceMatrix: 8,
+    instanceColor: 12,
+    instanceAnimation: 13,
+    instanceAnimation2: 14,
+    instanceLook: 15
 });
 /** Fixed texture units; samplers are assigned once when a program is linked. */
 export const TEXTURE_UNITS_3D = Object.freeze({
-    map: 0, normalMap: 1, metallicRoughnessMap: 2, occlusionMap: 3, emissiveMap: 4,
-    environment: 5, shadow: 6, bones: 7, morph: 8, lightMap: 9, sceneColor: 10, reflectionMap: 11, sceneDepth: 12,
+    map: 0,
+    normalMap: 1,
+    metallicRoughnessMap: 2,
+    occlusionMap: 3,
+    emissiveMap: 4,
+    environment: 5,
+    shadow: 6,
+    bones: 7,
+    morph: 8,
+    lightMap: 9,
+    sceneColor: 10,
+    reflectionMap: 11,
+    sceneDepth: 12,
+    tiledLights: 13
 });
 export const MAX_MORPH_INFLUENCES_3D = 8;
 const FRAME_BLOCK = /* glsl */ `
@@ -41,6 +64,8 @@ layout(std140) uniform Frame {
     vec4 uPointShadow;             // x: shadowed point light index or -1, y: first of its four slots
     vec4 uClipPlanes[4];           // world-space planes; the negative side is discarded
     vec4 uClipInfo;                // x: plane count; zw: share of the output the view covers
+    vec4 uTileGrid;                // tiles across, tiles down, tile edge in pixels, viewport origin x
+    vec4 uTileInfo;                // x: tiled point lights (0 = none), y: header base, z: index base, w: viewport origin y
 };
 `;
 const VERTEX_SOURCE = /* glsl */ `
@@ -294,6 +319,10 @@ uniform sampler2D uEmissiveMap;
 uniform sampler2D uLightMap;
 uniform vec4 uSheen;             // color scaled by strength, roughness
 uniform vec2 uExtra;             // light map intensity, transmission
+uniform highp sampler2D uTiledLights; // tiled point lights: lights, tile headers, light indices
+vec4 tiledTexel(int i) {
+    return texelFetch(uTiledLights, ivec2(i % 512, i / 512), 0);
+}
 #ifdef USE_TRANSMISSION
 uniform sampler2D uSceneColor;   // what was drawn before the see-through surfaces
 uniform vec4 uRefraction;        // index of refraction, thickness, attenuation distance (0 = none)
@@ -674,6 +703,22 @@ void main() {
         #endif
         color += shade(s, toLight / max(dist, 0.0001), uPointColor[i].rgb * rangeFalloff(dist, uPointPosition[i].w)) * visible;
     }
+    // Point lights past the eight: only those whose range reaches this pixel's screen tile are visited.
+    if (uTileInfo.x > 0.5) {
+        ivec2 tileAt = clamp(ivec2((gl_FragCoord.xy - vec2(uTileGrid.w, uTileInfo.w)) / uTileGrid.z), ivec2(0), ivec2(uTileGrid.xy) - 1);
+        vec4 head = tiledTexel(int(uTileInfo.y) + tileAt.y * int(uTileGrid.x) + tileAt.x);
+        int first = int(head.x), tileCount = int(head.y);
+        for (int k = 0; k < 32; k++) {
+            if (k >= tileCount) break;
+            int slot = first + k;
+            int lightIndex = int(tiledTexel(int(uTileInfo.z) + slot / 4)[slot % 4]);
+            vec4 lightPosition = tiledTexel(lightIndex * 2), lightColor = tiledTexel(lightIndex * 2 + 1);
+            vec3 toLight = lightPosition.xyz - vWorldPosition;
+            float dist = length(toLight);
+            if (dist >= lightPosition.w) continue;
+            color += shade(s, toLight / max(dist, 0.0001), lightColor.rgb * rangeFalloff(dist, lightPosition.w));
+        }
+    }
     for (int i = 0; i < spotCount; i++) {
         vec3 toLight = uSpotPosition[i].xyz - vWorldPosition;
         float dist = length(toLight);
@@ -756,8 +801,13 @@ void main() {
 `;
 /** Specialize the material shader pair with a list of preprocessor symbols. */
 export function buildMaterialShader3D(defines, customFragment = '', customVertex = '', customNormal = '') {
-    const header = '#version 300 es\nprecision highp float;\nprecision highp int;\n' + defines.map(name => '#define ' + name + '\n').join('');
-    return { vertex: header + VERTEX_SOURCE.replace('/*CUSTOM_VERTEX*/', () => customVertex), fragment: header + FRAGMENT_SOURCE.replace('/*CUSTOM_FRAGMENT*/', () => customFragment).replace('/*CUSTOM_NORMAL*/', () => customNormal) };
+    const header = '#version 300 es\nprecision highp float;\nprecision highp int;\n' +
+        defines.map(name => '#define ' + name + '\n').join('');
+    return {
+        vertex: header + VERTEX_SOURCE.replace('/*CUSTOM_VERTEX*/', () => customVertex),
+        fragment: header +
+            FRAGMENT_SOURCE.replace('/*CUSTOM_FRAGMENT*/', () => customFragment).replace('/*CUSTOM_NORMAL*/', () => customNormal)
+    };
 }
 /** Full-screen triangle that samples a cube map along the view ray; drawn at the far plane. */
 export const SKYBOX_SHADER_3D = Object.freeze({
@@ -787,5 +837,5 @@ void main() {
     if (uOutput.y < 0.5) color = mix(color * 12.92, 1.055 * pow(color, vec3(1.0 / 2.4)) - 0.055, step(vec3(0.0031308), color));
     outColor = vec4(color, 1.0);
 }
-`,
+`
 });

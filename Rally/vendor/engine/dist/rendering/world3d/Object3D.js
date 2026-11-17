@@ -3,9 +3,11 @@
 // matrices are recomputed lazily from dirty flags so static subtrees cost
 // nothing per frame.
 import { World3DError, allocateId3D } from './core3D.js';
-import { mat4Compose, mat4Copy, mat4Decompose, mat4Identity, mat4Invert, mat4LookAt, mat4Multiply, quatFromAxisAngle, quatFromEuler, quatFromRotationMatrix, quatMultiply, quatNormalize, vec3TransformMat4, } from './math3D.js';
+import { mat4Compose, mat4Copy, mat4Decompose, mat4Identity, mat4Invert, mat4LookAt, mat4Multiply, quatFromAxisAngle, quatFromEuler, quatFromRotationMatrix, quatMultiply, quatNormalize, vec3TransformMat4 } from './math3D.js';
 export const WORLD3D_LIMITS = Object.freeze({
-    maxDepth: 256, maxChildren: 65536, maxNameLength: 256,
+    maxDepth: 256,
+    maxChildren: 65536,
+    maxNameLength: 256
 });
 const UP = new Float32Array([0, 1, 0]);
 const scratchMatrix = new Float32Array(16);
@@ -42,11 +44,19 @@ export class Object3D {
     constructor(kind = 'object') {
         this.kind = kind;
     }
-    get parent() { return this.#parent; }
-    get children() { return this.#children; }
-    get numChildren() { return this.#children.length; }
+    get parent() {
+        return this.#parent;
+    }
+    get children() {
+        return this.#children;
+    }
+    get numChildren() {
+        return this.#children.length;
+    }
     /** Increases every time matrixWorld is recomputed; dependants compare it to skip work. */
-    get worldVersion() { return this.#worldVersion; }
+    get worldVersion() {
+        return this.#worldVersion;
+    }
     // ---- hierarchy ---------------------------------------------------------
     addChild(child) {
         return this.addChildAt(child, this.#children.length);
@@ -98,7 +108,9 @@ export class Object3D {
         }
         this.#children.length = 0;
     }
-    getChildAt(index) { return this.#children[index]; }
+    getChildAt(index) {
+        return this.#children[index];
+    }
     /** Depth-first search including this node. */
     getObjectByName(name) {
         if (this.name === name)

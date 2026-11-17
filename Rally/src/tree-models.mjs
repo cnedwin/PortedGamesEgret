@@ -1,7 +1,7 @@
 // Roadside vegetation uses the same colors as painted scenery, with five
 // silhouettes and a lighter pine for the far hills. Each shape is instanced.
 import { createCylinderGeometry3D, createGeometry3D } from '@egret/engine/world3d';
-import { build } from './shapes.mjs';
+import { build, shade } from './shapes.mjs';
 
 // Branch ends are buried in the ground, in another branch or under the leaves.
 const BARK = createCylinderGeometry3D({ radiusTop: 0.63, radiusBottom: 1, height: 1, radialSegments: 6, openEnded: true });
@@ -30,9 +30,32 @@ function crown(sides, rings) {
 }
 
 const FOLIAGE = crown(8, [[-0.85, 0.04], [-0.48, 0.73], [0, 1], [0.52, 0.68], [0.78, 0.04]]);
-const NEEDLES = crown(7, [[-0.42, 0.1], [-0.2, 0.9], [0.03, 1], [0.56, 0.65], [0.85, 0.06]]);
 const HILL_NEEDLES = crown(6, [[-1, 0.04], [-0.84, 1], [-0.36, 0.5], [-0.3, 0.83], [0.23, 0.36], [0.27, 0.56], [1, 0.04]]);
 const BLOOM = crown(6, [[-0.69, 0.04], [-0.29, 0.81], [0.13, 1], [0.79, 0.04]]);
+
+// Each spray has a low underside and an outward tip. Overlapping sprays
+// make the near pine read as a branch with lobes, with room for air between them.
+const NEEDLE_SPRAY = createGeometry3D({
+  positions: [
+    -0.92, -0.13, 0.05,
+    -0.35, 0.32, -0.07, -0.36, 0.03, -0.65, -0.33, -0.14, -0.34,
+    -0.28, -0.13, 0.39, -0.27, 0.03, 0.62,
+    0.31, 0.39, 0.08, 0.41, 0.01, -0.62, 0.43, -0.11, -0.34,
+    0.49, -0.12, 0.36, 0.55, 0.05, 0.74,
+    0.98, -0.01, 0.03,
+  ],
+  indices: [
+    0, 1, 2, 0, 2, 3, 0, 3, 4, 0, 4, 5, 0, 5, 1,
+    1, 6, 2, 2, 6, 7, 2, 7, 3, 3, 7, 8, 3, 8, 4, 4, 8, 9,
+    4, 9, 5, 5, 9, 10, 5, 10, 1, 1, 10, 6,
+    6, 11, 7, 7, 11, 8, 8, 11, 9, 9, 11, 10, 10, 11, 6,
+  ],
+});
+const PINE_FAN = [
+  [0.12, 0, 0.10, 0, 0.88, 1.18, 0.79, 1.07],
+  [-0.12, -0.43, -0.11, -0.72, 0.69, 0.95, 0.72, 0.89],
+  [-0.25, 0.45, 0.02, 0.85, 0.62, 1.07, 0.70, 1.00],
+];
 
 /** A bent branch is made from a few tapered spans rather than a straight post. */
 function stem(parts, a, b, radius, color) {
@@ -51,11 +74,18 @@ function pine() {
     [[0.91, 4.09, -0.72], [1.58, 0.91, 1.38], 0x376d4e],
     [[-0.65, 5.11, -0.39], [1.56, 0.98, 1.41], 0x347255],
     [[0.53, 5.64, 0.61], [1.27, 0.85, 1.15], 0x4d815d],
-    [[0.12, 6.89, 0.19], [1.18, 1.03, 1.08], 0x548c64],
+    [[0.12, 7.08, 0.19], [1.18, 1.19, 1.08], 0x548c64],
   ];
-  tiers.forEach(([tip, scale, color], i) => {
+  tiers.forEach(([tip, [reach, lift, spread], color], i) => {
     if (i < 4) stem(parts, [0, tip[1] - 0.8, -0.06], tip, 0.12, 0x614a35);
-    parts.push([NEEDLES, tip, scale, color, [0, i * 0.87, (i % 2 ? 1 : -1) * 0.14]]);
+    const direction = Math.atan2(-tip[2], tip[0]);
+    const cos = Math.cos(direction), sin = Math.sin(direction);
+    const mirror = i % 2 ? -1 : 1;
+    for (const [along, across, height, bend, length, thickness, width, tint] of PINE_FAN) {
+      const x = along * reach, z = across * spread * mirror;
+      parts.push([NEEDLE_SPRAY, [tip[0] + cos * x + sin * z, tip[1] + height, tip[2] - sin * x + cos * z],
+        [reach * length, lift * thickness, spread * width], shade(color, tint), [0, direction + bend * mirror, -0.12 + 0.035 * i]]);
+    }
   });
   for (const end of [[0.64, 0, 0.22], [-0.31, 0, 0.46], [-0.45, 0, -0.23]])
     stem(parts, end, [0, 0.64, 0], 0.19, 0x584735);

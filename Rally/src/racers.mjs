@@ -15,6 +15,7 @@ import {
 } from '@egret/engine/world3d';
 import { RACERS } from './data.mjs';
 import { BALL, BOX, CONE, CYLINDER, SPHERE, TORUS, build, canvasTexture, quads, shade } from './shapes.mjs';
+import { addTrackModel } from './track-models.mjs';
 
 const DARK = 0x1c1c22,
   WHITE = 0xfbfbf6,
@@ -554,6 +555,7 @@ function parts(racer) {
       metal: build(kart.metal),
       dark: build(kart.dark),
       body: build([...driver.body, ...driver.extra]),
+      driver,
       // The head is stored relative to the neck so it can turn there.
       head: build(
         driver.head.map(([geometry, at, ...rest]) => [geometry, [at[0] - NECK[0], at[1] - NECK[1], at[2] - NECK[2]], ...rest]),
@@ -568,8 +570,8 @@ function parts(racer) {
  * A racer's kart. `node` goes in the scene; `pose(kart, dt, time)` moves it
  * to match a kart from the rules, and `still()` parks it for a portrait.
  */
-export function createKartModel(racerIndex) {
-  const shapes = parts(RACERS[racerIndex]);
+export function createKartModel(racerIndex, trackModels = {}) {
+  const racer = RACERS[racerIndex], shapes = parts(racer);
   const node = new Object3D(),
     lean = new Object3D(),
     neck = new Object3D();
@@ -581,19 +583,28 @@ export function createKartModel(racerIndex) {
     parent.addChild(mesh);
     return mesh;
   };
+  const importedKart = addTrackModel(lean, trackModels[racer.id + '-kart'], shapes.paint.boundingBox, { stretch: true });
+  const driverArt = trackModels[racer.id + '-driver'];
+  const importedDriver = driverArt && addTrackModel(
+    lean, driverArt, (shapes.driverBounds ??= build([...shapes.driver.body, ...shapes.driver.head]).boundingBox),
+  );
   const shell = [
-    layer(shapes.paint, paintMaterial),
+    importedKart ?? layer(shapes.paint, paintMaterial),
     layer(shapes.metal, metalMaterial),
     layer(shapes.dark, darkMaterial),
-    layer(shapes.body, clothMaterial),
+    importedDriver ?? layer(shapes.body, clothMaterial),
   ];
+  if (importedDriver && shapes.driver.extra.length) shell.push(layer((shapes.ornaments ??= build(shapes.driver.extra)), clothMaterial));
   shell.push(layer(BADGES, shapes.badge, lean, false), layer(LAMPS, lampMaterial, lean, false));
   // Tail lamps brighten under braking, so each kart has its own.
   const tail = layer(TAIL_LAMPS, createUnlitMaterial3D({ color: [0.9, 0.05, 0.03] }), lean, false);
   shell.push(tail);
   neck.setPosition(NECK[0], NECK[1], NECK[2]);
   lean.addChild(neck);
-  shell.push(layer(shapes.head, clothMaterial, neck));
+  if (!importedDriver) {
+    const importedHead = addTrackModel(neck, trackModels[racer.id + '-head'], shapes.head.boundingBox);
+    shell.push(importedHead ?? layer(shapes.head, clothMaterial, neck));
+  }
   const wheels = WHEEL_PLACES.map(([x, y, z], index) => {
     const wheel = layer(index < 2 ? FRONT_WHEEL : REAR_WHEEL, wheelMaterial);
     wheel.setPosition(x, y, z);

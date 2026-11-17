@@ -4,23 +4,48 @@ import { GRAPHICS_SHAPE_LIMITS, addOutline, addPath, arcPoints, bezierPoints, co
 import { isAssetLease, readAssetLeaseValue } from "./AssetLease.js";
 import { isTexture, readTextureSnapshot } from "./Texture.js";
 const invalid = () => new EgretError("GRAPHICS_VALUE_INVALID");
-const numbers = (...values) => { for (const value of values)
-    if (!finite(value))
-        throw invalid(); };
-const size = (...values) => { for (const value of values)
-    if (!finite(value) || value < 0)
-        throw invalid(); };
+const numbers = (...values) => {
+    for (const value of values)
+        if (!finite(value))
+            throw invalid();
+};
+const size = (...values) => {
+    for (const value of values)
+        if (!finite(value) || value < 0)
+            throw invalid();
+};
 /**
  * Drawing state belongs to one node; every shape snapshots its fill and its line. A node that draws only filled
  * rectangles keeps them as rectangles. Any other shape, and any line, makes the node's drawing one list of triangles
- * in drawing order: edges are not smoothed, and a curve is drawn as straight pieces within a quarter unit of it.
+ * in drawing order, and a curve is drawn as straight pieces within a quarter unit of it. Edges are a stair of pixels
+ * unless `smoothing` is set.
  */
 export class Graphics {
     owner;
     fill;
     line;
+    soft = 0;
     constructor(owner) {
         this.owner = owner;
+    }
+    /**
+     * How far, in the node's units, the edge of each shape and line drawn from now on fades to nothing: 0, which it is
+     * at first, to 8. One unit smooths an edge at the size it was drawn. A band of triangles is added around the shape,
+     * which is that much larger. A fill under a line has no band of its own. Filled rectangles alone stay rectangles,
+     * and an image fill has no band.
+     */
+    get smoothing() {
+        return this.soft;
+    }
+    set smoothing(value) {
+        assertVisualMutable(this.owner);
+        if (!finite(value) || value < 0 || value > 8)
+            throw invalid();
+        this.finishPath();
+        this.soft = value;
+    }
+    edged(paint) {
+        return paint === undefined || this.soft === 0 ? paint : { ...paint, feather: this.soft };
     }
     beginFill(value, alpha = 1) {
         assertVisualMutable(this.owner);
@@ -33,12 +58,16 @@ export class Graphics {
     /** The line of the shapes drawn after it: its width in the node's units, colour and alpha. No width, or 0, ends the line. */
     lineStyle(thickness, value = 0, alpha = 1, options = {}) {
         assertVisualMutable(this.owner);
-        if (thickness !== undefined && (!finite(thickness) || thickness < 0 || thickness > GRAPHICS_SHAPE_LIMITS.maxLineWidth))
+        if (thickness !== undefined &&
+            (!finite(thickness) || thickness < 0 || thickness > GRAPHICS_SHAPE_LIMITS.maxLineWidth))
             throw invalid();
         if (!color(value) || !unit(alpha) || typeof options !== "object" || options === null)
             throw invalid();
         const caps = options.caps ?? "none", joints = options.joints ?? "miter", miterLimit = options.miterLimit ?? 4, given = options.dash;
-        if ((caps !== "none" && caps !== "round" && caps !== "square") || (joints !== "miter" && joints !== "round" && joints !== "bevel") || !finite(miterLimit) || miterLimit < 1)
+        if ((caps !== "none" && caps !== "round" && caps !== "square") ||
+            (joints !== "miter" && joints !== "round" && joints !== "bevel") ||
+            !finite(miterLimit) ||
+            miterLimit < 1)
             throw invalid();
         let dash;
         if (given !== undefined) {
@@ -55,7 +84,10 @@ export class Graphics {
                 dash = given.slice();
         }
         this.finishPath();
-        this.line = thickness === undefined || thickness === 0 ? undefined : { width: thickness, color: value, alpha, caps, joints, miterLimit, dash };
+        this.line =
+            thickness === undefined || thickness === 0
+                ? undefined
+                : { width: thickness, color: value, alpha, caps, joints, miterLimit, dash };
         return this;
     }
     /** A fill whose colour runs along the line from one point to another, and stays the end colours beyond them. */
@@ -65,7 +97,16 @@ export class Graphics {
         const dx = x1 - x0, dy = y1 - y0, square = dx * dx + dy * dy;
         if (!(square > 0) || !finite(1 / square))
             throw invalid();
-        return this.gradient({ radial: false, a: dx / square, c: dy / square, tx: -(x0 * dx + y0 * dy) / square, b: 0, d: 0, ty: 0, stops: gradientStops(stops) });
+        return this.gradient({
+            radial: false,
+            a: dx / square,
+            c: dy / square,
+            tx: -(x0 * dx + y0 * dy) / square,
+            b: 0,
+            d: 0,
+            ty: 0,
+            stops: gradientStops(stops)
+        });
     }
     /** A fill whose colour runs from a centre out to a circle, or to an ellipse when `radiusY` is given, and stays the last colour beyond it. */
     beginRadialGradientFill(x, y, radius, stops, radiusY = radius) {
@@ -73,7 +114,16 @@ export class Graphics {
         numbers(x, y, radius, radiusY);
         if (!(radius > 0) || !(radiusY > 0) || !finite(1 / radius) || !finite(1 / radiusY))
             throw invalid();
-        return this.gradient({ radial: true, a: 1 / radius, c: 0, tx: -x / radius, b: 0, d: 1 / radiusY, ty: -y / radiusY, stops: gradientStops(stops) });
+        return this.gradient({
+            radial: true,
+            a: 1 / radius,
+            c: 0,
+            tx: -x / radius,
+            b: 0,
+            d: 1 / radiusY,
+            ty: -y / radiusY,
+            stops: gradientStops(stops)
+        });
     }
     /**
      * A gradient fill as older code gives it: "linear" or "radial", colours, alphas, ratios from 0 to 255, and a matrix
@@ -82,7 +132,12 @@ export class Graphics {
      */
     beginGradientFill(type, colors, alphas, ratios, matrix) {
         assertVisualMutable(this.owner);
-        if ((type !== "linear" && type !== "radial") || !Array.isArray(colors) || !Array.isArray(alphas) || !Array.isArray(ratios) || colors.length !== alphas.length || colors.length !== ratios.length)
+        if ((type !== "linear" && type !== "radial") ||
+            !Array.isArray(colors) ||
+            !Array.isArray(alphas) ||
+            !Array.isArray(ratios) ||
+            colors.length !== alphas.length ||
+            colors.length !== ratios.length)
             throw invalid();
         const m = matrix ?? { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
         if (typeof m !== "object" || m === null)
@@ -97,8 +152,26 @@ export class Graphics {
         // The node's point in the square's units, then along the square for a linear gradient or out from its centre for a radial one.
         const ia = m.d / det, ic = -m.c / det, itx = (m.c * m.ty - m.d * m.tx) / det, ib = -m.b / det, id = m.a / det, ity = (m.b * m.tx - m.a * m.ty) / det;
         if (type === "linear")
-            return this.gradient({ radial: false, a: ia / 1638.4, c: ic / 1638.4, tx: itx / 1638.4 + 0.5, b: 0, d: 0, ty: 0, stops });
-        return this.gradient({ radial: true, a: ia / 819.2, c: ic / 819.2, tx: itx / 819.2, b: ib / 819.2, d: id / 819.2, ty: ity / 819.2, stops });
+            return this.gradient({
+                radial: false,
+                a: ia / 1638.4,
+                c: ic / 1638.4,
+                tx: itx / 1638.4 + 0.5,
+                b: 0,
+                d: 0,
+                ty: 0,
+                stops
+            });
+        return this.gradient({
+            radial: true,
+            a: ia / 819.2,
+            c: ic / 819.2,
+            tx: itx / 819.2,
+            b: ib / 819.2,
+            d: id / 819.2,
+            ty: ity / 819.2,
+            stops
+        });
     }
     drawRect(x, y, width, height) {
         assertVisualMutable(this.owner);
@@ -106,7 +179,10 @@ export class Graphics {
         this.paintRequired();
         const state = visualOf(this.owner);
         // Filled rectangles alone stay rectangles, which a frame draws without a geometry.
-        if (state.shape === undefined && this.line === undefined && this.fill.gradient === undefined && this.fill.bitmap === undefined) {
+        if (state.shape === undefined &&
+            this.line === undefined &&
+            this.fill.gradient === undefined &&
+            this.fill.bitmap === undefined) {
             state.primitives.push({ rect, ...this.fill });
             recordVisualChange(this.owner, VISUAL_CONTENT);
             return this;
@@ -224,8 +300,18 @@ export class Graphics {
         if (det === 0 || !finite(1 / det))
             throw invalid();
         // The node's point as a pixel of the image, then as a part of its width and height.
-        const bitmap = { lease, repeat, width, height, a: m.d / det / width, c: -m.c / det / width, tx: (m.c * m.ty - m.d * m.tx) / det / width,
-            b: -m.b / det / height, d: m.a / det / height, ty: (m.b * m.tx - m.a * m.ty) / det / height };
+        const bitmap = {
+            lease,
+            repeat,
+            width,
+            height,
+            a: m.d / det / width,
+            c: -m.c / det / width,
+            tx: (m.c * m.ty - m.d * m.tx) / det / width,
+            b: -m.b / det / height,
+            d: m.a / det / height,
+            ty: (m.b * m.tx - m.a * m.ty) / det / height
+        };
         for (const value of [bitmap.a, bitmap.b, bitmap.c, bitmap.d, bitmap.tx, bitmap.ty])
             if (!finite(value))
                 throw invalid();
@@ -252,7 +338,16 @@ export class Graphics {
         if (state.shape === undefined) {
             const shape = createShapeState();
             for (const { rect, color: value, alpha } of state.primitives)
-                addOutline(shape, [rect.x, rect.y, rect.x + rect.width, rect.y, rect.x + rect.width, rect.y + rect.height, rect.x, rect.y + rect.height], true, { color: value, alpha }, undefined);
+                addOutline(shape, [
+                    rect.x,
+                    rect.y,
+                    rect.x + rect.width,
+                    rect.y,
+                    rect.x + rect.width,
+                    rect.y + rect.height,
+                    rect.x,
+                    rect.y + rect.height
+                ], true, { color: value, alpha }, undefined);
             state.primitives = [];
             state.shape = shape;
         }
@@ -260,7 +355,7 @@ export class Graphics {
     }
     path() {
         const shape = this.shape();
-        return shape.path ??= { fill: this.fill, line: this.line, subpaths: [] };
+        return (shape.path ??= { fill: this.edged(this.fill), line: this.edged(this.line), subpaths: [] });
     }
     /** The part of the path being drawn; a path that was not begun with moveTo begins at the origin. */
     current() {
@@ -288,7 +383,7 @@ export class Graphics {
     outline(points, convex) {
         this.finishPath();
         const mark = this.mark();
-        if (!addOutline(this.shape(), points, convex, this.fill, this.line)) {
+        if (!addOutline(this.shape(), points, convex, this.edged(this.fill), this.edged(this.line))) {
             mark();
             throw new EgretError("GRAPHICS_BUDGET");
         }
@@ -299,7 +394,10 @@ export class Graphics {
         const state = visualOf(this.owner), shape = state.shape;
         if (shape === undefined) {
             const primitives = state.primitives;
-            return () => { state.shape = undefined; state.primitives = primitives; };
+            return () => {
+                state.shape = undefined;
+                state.primitives = primitives;
+            };
         }
         const positions = shape.positions.length, colors = shape.colors.length, uvs = shape.uvs.length, indices = shape.indices.length, done = shape.done.length, bitmap = shape.bitmap;
         const path = shape.path, parts = path?.subpaths.length ?? 0, last = parts === 0 ? 0 : path.subpaths[parts - 1].length;

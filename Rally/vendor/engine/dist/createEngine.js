@@ -1,4 +1,4 @@
-import { EgretError } from "@egret/runtime";
+import { EgretError } from '@egret/runtime';
 import { startEngine } from './startEngine.js';
 import { admitGameClockOptions } from './gameClock.js';
 /**
@@ -11,7 +11,7 @@ export async function createEngine(options) {
     const stableOptions = { host, ...(diagnostic === undefined ? {} : { onDiagnostic: diagnostic }) };
     const timeoutMs = options.shutdownTimeoutMs ?? 1000;
     if (!Number.isFinite(timeoutMs) || !Number.isInteger(timeoutMs) || timeoutMs <= 0)
-        throw new EgretError("INVALID_TIMEOUT");
+        throw new EgretError('INVALID_TIMEOUT');
     let clockValue;
     try {
         clockValue = options.clock;
