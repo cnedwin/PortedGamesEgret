@@ -41,7 +41,7 @@ function lootShape(kind) {
 }
 
 export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false, shadowSize = 2048, characters = {} } = {}) {
-  const view = { shake: 0, cine: null, zoom: 1 };
+  const view = { shake: 0, cine: null, zoom: 1, fogLights: [] };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
   scene.background = [0.012, 0.017, 0.034];
@@ -56,10 +56,6 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   portraitFill.visible = false;
   scene.addChild(portraitFill);
   const MOON = [-17, 29, -9];
-  view.sunDirection = (() => {
-    const l = Math.hypot(...MOON);
-    return MOON.map((v) => v / l);
-  })();
 
   const scenery = buildScenery(scene, models, { density });
   const fx = createEffects(scene, camera, { particles });
@@ -577,12 +573,13 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       if (Math.hypot(fire.x - focus.x, fire.z - focus.z) < 34)
         for (let i = 0; i < 2; i++) fx.burst(fire.x + (Math.random() - 0.5) * fire.size * 2, fire.y - Math.random() * 1.6, fire.z + (Math.random() - 0.5) * fire.size * 2, { count: 1, dir: [0.25, 1, 0], spread: 0.3, speed: 2.2, life: 0.9, size: 0.26, tint: TINT.fire, power: 2.2, rise: 3, drag: 0.8 });
     const near = [...lit].sort((a, b) => a.distance - b.distance);
+    view.fogLights = near;
     near.forEach((lamp, i) => {
       lamp.share += ((i < 6 ? 1 : 0) - lamp.share) * Math.min(1, dt * 3);
       lamp.light.intensity = lamp.intensity * lamp.share * (1 + Math.sin(clock * 11 + lamp.x) * lamp.flicker * 0.5 + Math.sin(clock * 23 + lamp.z) * lamp.flicker * 0.5);
     });
     scenery.glowMaterial.emissiveIntensity = 1.66 + Math.sin(clock * 9) * 0.13;
-    for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? lamp.share * 0.83 : 0;
+    for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? lamp.share * 0.57 : 0;
 
     moveCamera(game, dt, clock);
     // Fade the roof or a nearby tree only where it crosses the camera's sightline to the hero.

@@ -61,42 +61,79 @@ function pavingSnow(x, z) {
 }
 /** Where the fire has been: the middle of the fodder yard. */
 const burnt = (x, z) => Math.max(0, 1 - Math.hypot(x - 0.5, z - 8.5) / 9.5);
-/** Trodden snow leads from the brazier to the yard. */
+const saturate = (value) => Math.max(0, Math.min(1, value));
+function smooth(lo, hi, value) {
+  const t = saturate((value - lo) / (hi - lo));
+  return t * t * (3 - 2 * t);
+}
+
+const roadCenter = (z) => Math.sin((z - 16) * 0.4) * 0.65;
+const roadSpan = (z) => smooth(15, 18, z) * (1 - smooth(38, 41.5, z));
+
+/** The compacted footway widens and frays into the snow along the verges. */
+function compactedRoad(x, z) {
+  return (1 - smooth(0.63, 2.65, Math.abs(x - roadCenter(z)))) * roadSpan(z);
+}
+
 function roadTrace(x, z) {
   if (z <= 16 || z >= 38) return 0;
-  const center = Math.sin((z - 16) * 0.4) * 0.65;
-  return Math.max(0, 1 - Math.abs(x - center) / 2.7) * Math.min(1, (z - 16) * 0.5, (38 - z) * 0.5);
+  return Math.max(0, 1 - Math.abs(x - roadCenter(z)) / 2.7) * Math.min(1, (z - 16) * 0.5, (38 - z) * 0.5);
 }
-/** Height of the land: flat where one walks, rising into drifts and slopes beyond the edge. */
-export function height(x, z) {
-  const out = Math.max(0, edge(x, z) - 0.4);
+
+function landHeight(x, z, distance) {
+  const out = Math.max(0, distance - 0.4);
   return Math.min(7, out * out * 0.05 + out * 0.16) * (0.6 + noise(x * 0.13, z * 0.13) * 0.9) + (out > 0 ? noise(x * 0.5, z * 0.5) * 0.25 : 0);
 }
 
+/** Height of the land: flat where one walks, rising into drifts and slopes beyond the edge. */
+export function height(x, z) {
+  return landHeight(x, z, edge(x, z));
+}
+
+function snowSurface(x, z, distance = edge(x, z)) {
+  const base = landHeight(x, z, distance), window = roadSpan(z);
+  if (window === 0) return base;
+  const across = Math.abs(x - roadCenter(z));
+  const ripples = noise(x * 0.89 + z * 0.21, z * 0.38);
+  const berm = smooth(1.6, 3.4, across) * (1 - smooth(4.7, 8.1, across));
+  const shoulder = berm * (0.05 + 0.16 * ripples * ripples);
+  const crust = (ripples - 0.58) * 0.038;
+  const tread = (1 - smooth(0.6, 2.3, across)) * -0.021;
+  // Visible relief leaves the collision surface and the actor foot plane untouched.
+  return base + (shoulder + crust + tread) * window;
+}
+
 const GROUND_GLSL = `
-float gHash(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+float gHash(vec2 p) {
+    vec3 q = fract(vec3(p.xyx) * 0.1031);
+    q += dot(q, q.yzx + 33.33);
+    return fract((q.x + q.y) * q.z);
+}
 float gNoise(vec2 p) {
     vec2 i = floor(p), f = fract(p), u = f * f * (3.0 - 2.0 * f);
     return mix(mix(gHash(i), gHash(i + vec2(1.0, 0.0)), u.x), mix(gHash(i + vec2(0.0, 1.0)), gHash(i + vec2(1.0, 1.0)), u.x), u.y);
 }
 vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
-    // Wind-combed snow: long soft streaks, a fine grain, and now and then a glint.
     vec2 p = worldPosition.xz;
-    float streak = gNoise(vec2(p.x * 0.35 + p.y * 0.12, p.y * 1.7));
-    float grain = gNoise(p * 9.0);
-    float glint = step(0.992, gHash(floor(p * 34.0))) * smoothstep(0.55, 1.0, color.b);
-    vec3 c = color.rgb * (0.89 + streak * 0.17 + grain * 0.055);
     float pixel = max(length(dFdx(p)), length(dFdy(p)));
-    return vec4(c + glint * (1.0 - smoothstep(0.018, 0.038, pixel)) * 0.24, color.a);
+    float fine = 1.0 - smoothstep(0.022, 0.080, pixel);
+    // Packed crust, soft windrows, and small glints that disappear at distance.
+    float streak = gNoise(vec2(p.x * 0.84 + p.y * 0.27, p.y * 2.15));
+    float crust = gNoise(p * 5.3);
+    float grain = gHash(floor(p * 26.0)) - 0.5;
+    float glint = step(0.992, gHash(floor(p * 34.0))) * smoothstep(0.55, 1.0, color.b);
+    vec3 c = color.rgb * (0.83 + streak * 0.20 + crust * 0.10 + grain * fine * 0.095);
+    return vec4(c + glint * fine * 0.14, color.a);
 }`;
 const GROUND_NORMAL_GLSL = `
+float snowGrain(vec2 p) {
+    return gNoise(vec2(p.x * 1.4 + p.y * 0.45, p.y * 1.88)) + gNoise(p * 5.4) * 0.29;
+}
 vec3 customNormal(vec3 normal, vec3 worldPosition, vec2 uv) {
     vec2 p = worldPosition.xz;
-    float e = 0.12;
-    float h0 = gNoise(p * 1.3) + gNoise(p * 4.1) * 0.35;
-    float hx = gNoise((p + vec2(e, 0.0)) * 1.3) + gNoise((p + vec2(e, 0.0)) * 4.1) * 0.35;
-    float hz = gNoise((p + vec2(0.0, e)) * 1.3) + gNoise((p + vec2(0.0, e)) * 4.1) * 0.35;
-    return normal + vec3(h0 - hx, 0.0, h0 - hz) * 1.6;
+    float pixel = max(length(dFdx(p)), length(dFdy(p)));
+    float h0 = snowGrain(p), hx = snowGrain(p + vec2(0.087, 0.0)), hz = snowGrain(p + vec2(0.0, 0.087));
+    return normal + vec3(h0 - hx, 0.0, h0 - hz) * mix(0.67, 1.69, 1.0 - smoothstep(0.02, 0.13, pixel));
 }`;
 
 function buildGround(scene) {
@@ -116,25 +153,32 @@ function buildGround(scene) {
     for (let i = 0; i < nx; i++) {
       const x = X0 + i * STEP,
         z = Z0 + j * STEP,
+        d = edge(x, z),
+        k = (j * nx + i) * 3;
+      positions.set([x, snowSurface(x, z, d), z], k);
+    }
+  for (let j = 0; j < nz; j++)
+    for (let i = 0; i < nx; i++) {
+      const x = X0 + i * STEP,
+        z = Z0 + j * STEP,
         k = (j * nx + i) * 3,
-        y = height(x, z),
-        e = 0.4,
-        sx = (height(x + e, z) - height(x - e, z)) / (2 * e),
-        sz = (height(x, z + e) - height(x, z - e)) / (2 * e),
+        left = Math.max(0, i - 1), right = Math.min(nx - 1, i + 1),
+        near = Math.max(0, j - 1), far = Math.min(nz - 1, j + 1),
+        sx = (positions[(j * nx + right) * 3 + 1] - positions[(j * nx + left) * 3 + 1]) / ((right - left) * STEP),
+        sz = (positions[(far * nx + i) * 3 + 1] - positions[(near * nx + i) * 3 + 1]) / ((far - near) * STEP),
         nl = Math.hypot(sx, 1, sz);
-      positions.set([x, y, z], k);
       normals.set([-sx / nl, 1 / nl, -sz / nl], k);
       // Colour: fresh snow, trodden grey along the way, ash where the yard burned, bare rock on steep ground.
       const d = edge(x, z),
-        tread = Math.max(roadTrace(x, z), Math.min(1, -d / 3.4) * 0.45),
-        trodden = Math.max(0, tread) * (0.6 + noise(x * 0.42, z * 0.42) * 0.23),
+        tread = Math.max(compactedRoad(x, z), saturate(-d / 3.4) * 0.42),
+        trodden = tread * (0.68 + noise(x * 1.1, z * 0.52) * 0.25),
         ash = burnt(x, z) * (0.66 + noise(x * 0.75, z * 0.75) * 0.45),
-        steep = Math.max(0, Math.min(1, (Math.hypot(sx, sz) - 0.55) * 2.2)),
+        steep = saturate((Math.hypot(sx, sz) - 0.55) * 2.2),
         drift = 0.9 + noise(x * 0.22, z * 0.22) * 0.16,
         grout = paved(x, z) ? (1 - pavingSnow(x, z) * 0.93) * 0.77 : 0;
       for (let c = 0; c < 3; c++) {
         let v = SNOW[c] * drift;
-        v += (SNOW_DIM[c] * 0.72 - v) * trodden;
+        v += (SNOW_DIM[c] * 0.67 - v) * trodden;
         v += (ASH[c] - v) * Math.min(0.85, ash);
         v += (STONE_DARK[c] - v) * steep;
         v += (STONE_DARK[c] * 0.74 - v) * grout;
@@ -174,15 +218,17 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
     vec2 p = worldPosition.xz;
     float pixel = max(length(dFdx(p)), length(dFdy(p)));
     float fine = 1.0 - smoothstep(0.018, 0.068, pixel);
-    float mottled = pNoise(p * 3.8 + vec2(p.y * 0.63, p.x * -0.32));
-    float pores = pHash(floor(p * 31.0));
-    float seam = abs(pNoise(p * 2.2 + vec2(4.7, -5.1)) - 0.54);
-    float vein = (1.0 - smoothstep(0.014, 0.052, seam)) * smoothstep(0.25, 0.61, mottled);
+    float mottled = pNoise(p * 3.0 + vec2(p.y * 0.85, p.x * -0.40));
+    float pores = pHash(floor(p * 29.0));
+    float pits = smoothstep(0.7, 0.98, pores) * fine;
+    float seam = abs(pNoise(p * 2.7 + vec2(4.7, -5.1)) - 0.54);
+    float fracture = (1.0 - smoothstep(0.009, 0.036, seam)) * smoothstep(0.27, 0.72, mottled);
+    float deposit = (1.0 - smoothstep(0.023, 0.075, seam)) * smoothstep(0.47, 0.81, mottled);
     // Frost belongs to the whole path. Drift shapes continue across neighbouring flags.
-    float drift = pNoise(p * 0.67 + vec2(24.1, -8.5)) * 0.78 + mottled * 0.22;
-    float frost = smoothstep(0.47, 0.78, drift) * uCustom[0].y;
-    vec3 detail = vec3(0.80 + mottled * 0.30 + (pores - 0.5) * 0.13 * fine - vein * 0.13);
-    return vec4(color.rgb * (detail + frost * vec3(0.35, 0.40, 0.46)), color.a);
+    float drift = pNoise(p * 0.73 + vec2(24.1, -8.5)) * 0.83 + mottled * 0.17;
+    float frost = smoothstep(0.46, 0.80, drift) * uCustom[0].y;
+    vec3 detail = vec3(0.73 + mottled * 0.38 + (pores - 0.5) * 0.14 * fine - pits * 0.16 - fracture * 0.21);
+    return vec4(color.rgb * (detail + deposit * vec3(0.18, 0.17, 0.15) + frost * vec3(0.31, 0.35, 0.41)), color.a);
 }`;
 const PAVING_NORMAL_GLSL = `
 vec3 customNormal(vec3 normal, vec3 worldPosition, vec2 uv) {
@@ -199,7 +245,7 @@ const tinted = (a, b, t) => a.map((value, channel) => value + (b[channel] - valu
 function flagstone(builder, x, z, width, depth, angle, crown, tint, rand) {
   const cos = Math.cos(angle), sin = Math.sin(angle);
   const left = -width / 2, right = width / 2, back = -depth / 2, front = depth / 2;
-  const cut = () => 0.043 + rand() * 0.115;
+  const cut = () => Math.min(width, depth) * (0.026 + rand() * 0.15);
   const shape = [
     [left + cut(), back], [left, back + cut()], [left, front - cut()], [left + cut(), front],
     [right - cut(), front], [right, front - cut()], [right, back + cut()], [right - cut(), back]
@@ -209,21 +255,21 @@ function flagstone(builder, x, z, width, depth, angle, crown, tint, rand) {
     const localX = px + (rand() - 0.5) * 0.046, localZ = pz + (rand() - 0.5) * 0.046;
     const dx = localX * cos + localZ * sin, dz = localZ * cos - localX * sin;
     const base = height(x + dx, z + dz);
-    rim.push([x + dx, base + 0.011, z + dz]);
-    const bevel = 0.912 + rand() * 0.059;
-    face.push([x + dx * bevel, base + crown * (0.76 + rand() * 0.30), z + dz * bevel]);
+    rim.push([x + dx, base + 0.007, z + dz]);
+    const bevel = 0.903 + rand() * 0.070;
+    face.push([x + dx * bevel, base + crown * (0.76 + rand() * 0.28), z + dz * bevel]);
   }
   const center = [x, height(x, z) + crown * 0.97, z];
-  const frost = shade(SNOW_DIM, 0.80);
-  const faceTint = tinted(tint, frost, pavingSnow(x, z) * 0.44);
+  const frost = shade(SNOW_DIM, 0.76);
+  const faceTint = tinted(tint, frost, pavingSnow(x, z) * 0.36);
   for (let i = 0; i < rim.length; i += 2) {
     const side = face[(i + 1) % face.length];
-    const edgeTint = tinted(tint, frost, pavingSnow(side[0], side[2]) * 0.57);
+    const edgeTint = tinted(tint, frost, pavingSnow(side[0], side[2]) * 0.48);
     builder.sheet(center, face[i], side, face[(i + 2) % face.length], { tint: faceTint, tintB: edgeTint });
   }
   for (let i = 0; i < rim.length; i++) {
     const next = (i + 1) % rim.length;
-    builder.sheet(rim[i], rim[next], face[next], face[i], { tint: shade(tint, 0.59 + rand() * 0.14), tintB: faceTint });
+    builder.sheet(rim[i], rim[next], face[next], face[i], { tint: shade(tint, 0.71 + rand() * 0.15), tintB: faceTint });
   }
 }
 
@@ -232,14 +278,14 @@ function meltRunnel(builder, x, z, width, length, angle, rand) {
   const outer = [], inner = [];
   const cos = Math.cos(angle), sin = Math.sin(angle);
   const wet = rgb(0x738091), crust = shade(SNOW_DIM, 0.90), snow = shade(SNOW, 0.86);
-  const first = [x, height(x, z) + 0.011, z];
+  const first = [x, snowSurface(x, z) + 0.017, z];
   for (let i = 0; i < 12; i++) {
     const turn = i * Math.PI / 6;
     const u = Math.sin(turn) * width * (0.69 + rand() * 0.31), v = Math.cos(turn) * length * (0.76 + rand() * 0.24);
     const dx = u * cos + v * sin, dz = v * cos - u * sin;
-    outer.push([x + dx, height(x + dx, z + dz) + 0.006, z + dz]);
+    outer.push([x + dx, snowSurface(x + dx, z + dz) + 0.012, z + dz]);
     const irregular = 0.45 + rand() * 0.27;
-    inner.push([x + dx * irregular, height(x + dx * irregular, z + dz * irregular) + 0.010, z + dz * irregular]);
+    inner.push([x + dx * irregular, snowSurface(x + dx * irregular, z + dz * irregular) + 0.015, z + dz * irregular]);
   }
   for (let i = 0; i < inner.length; i += 2) {
     builder.sheet(first, inner[i], inner[(i + 1) % inner.length], inner[(i + 2) % inner.length], { tint: wet, tintB: crust });
@@ -253,7 +299,7 @@ function meltRunnel(builder, x, z, width, length, angle, rand) {
 function buildPaving(scene) {
   const rand = scatter(20261117);
   const flags = createBuilder(), sheen = createBuilder();
-  const stone = [0x616471, 0x555961, 0x676267, 0x5d636c, 0x585765].map(rgb);
+  const stone = [0x686c72, 0x505c65, 0x6b6763, 0x596366, 0x5e5e6c, 0x707272].map(rgb);
   const damp = [[-1.2, -11.7, 1.5], [1.5, -16.5, 1.24], [-5.8, -24.9, 2.0], [7.2, -31.5, 1.9], [-4.3, -36, 1.66], [0.1, 1.55, 1.25]];
   const runnels = [[1.18, 24.5, 0.42, 0.9, -0.24], [-1.1, 17.2, 0.35, 0.82, 0.24], [2.8, 10.1, 0.35, 0.79, 0.42], [-2.45, -2.1, 0.28, 0.70, 0.33]];
   const { x: cx, z: cz } = PLACES.court;
@@ -268,7 +314,7 @@ function buildPaving(scene) {
       if (z > 4 && rand() < frost * (z - 4) * 0.094) continue;
       const wet = frost < 0.64 && damp.some(([px, pz, reach]) => Math.hypot(x - px, (z - pz) * 0.78) < reach);
       const tint = shade(stone[Math.floor(rand() * stone.length)], (0.89 + rand() * 0.34) * (wet ? 0.77 : 1.0));
-      flagstone(wet ? sheen : flags, x, z, width - 0.039, depth - 0.034, (rand() - 0.5) * 0.048, 0.027 + rand() * 0.022, tint, rand);
+      flagstone(wet ? sheen : flags, x, z, width - 0.039, depth - 0.034, (rand() - 0.5) * 0.058, 0.020 + rand() * 0.025, tint, rand);
     }
     baseZ += depth;
   }
@@ -278,8 +324,26 @@ function buildPaving(scene) {
       const angle = ((i + (ring % 2) * 0.5) / count) * Math.PI * 2;
       const r = 1.2 + ring * 1.25;
       flagstone(flags, cx + Math.sin(angle) * r, cz + Math.cos(angle) * r,
-        Math.PI * 2 * r / count - 0.039, 1.18, angle, 0.047 + rand() * 0.014,
+        Math.PI * 2 * r / count - 0.039, 1.18, angle, 0.042 + rand() * 0.015,
         shade(stone[Math.floor(rand() * stone.length)], 1.05 + rand() * 0.14), rand);
+    }
+  }
+  // Old stone still shows through where feet wear down the road snow. The banks
+  // naturally cover the lower edges, so the flagstones merge into the same crust.
+  const roadRand = scatter(1637086557);
+  for (let front = 17.5; front < 39.7;) {
+    const depth = 0.89 + roadRand() * 0.69;
+    const z = front + depth / 2;
+    front += depth;
+    for (let left = roadCenter(z) - 2.63 + roadRand() * 0.28; left < roadCenter(z) + 2.14;) {
+      const width = 0.79 + roadRand() * 0.71, x = left + width / 2;
+      left += width;
+      const wear = compactedRoad(x, z);
+      if (wear <= 0.16 || roadRand() > 0.37 + wear * 0.54) continue;
+      const base = shade(stone[Math.floor(roadRand() * stone.length)], 0.83 + roadRand() * 0.36);
+      const tint = tinted(base, shade(SNOW_DIM, 0.9), 0.27 + (1 - wear) * 0.39);
+      flagstone(flags, x, z, width - 0.051, depth - 0.055, (roadRand() - 0.5) * 0.074,
+        0.011 + roadRand() * 0.027, tint, roadRand);
     }
   }
   for (const [x, z, width, length, angle] of runnels) meltRunnel(sheen, x, z, width, length, angle, rand);
@@ -294,8 +358,8 @@ function buildPaving(scene) {
     scene.addChild(mesh);
     return { material, mesh };
   }
-  surface(flags, 0.73, 0.64, 1);
-  const wet = surface(sheen, 0.31, 0.26, 0.28);
+  surface(flags, 0.83, 0.68, 1);
+  const wet = surface(sheen, 0.35, 0.30, 0.34);
   return { ...wet, nearReflection: (x, z) => damp.some(([px, pz]) => Math.hypot(x - px, z - pz) < 10.5) };
 }
 
@@ -350,7 +414,7 @@ function buildGrass(scene, rand, density) {
       keep = (d > -0.6 ? patch : patch * 0.12) * (1 - roadTrace(x, z) * 0.94) * (1 - burnt(x, z) * 0.9);
     if (rand() > keep) continue;
     if (ROUNDS.some((round) => Math.hypot(x - round.x, z - round.z) < round.r + 0.2)) continue;
-    places.push(x, height(x, z), z);
+    places.push(x, snowSurface(x, z, d), z);
   }
   const count = places.length / 3,
     grass = new InstancedMesh3D(b.geometry(), material, count, 3),
