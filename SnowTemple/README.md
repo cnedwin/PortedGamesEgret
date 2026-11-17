@@ -92,9 +92,13 @@ The dice fall differently every time, and these make each run play differently t
 
 ## Staged character loading · 角色分阶段加载
 
-SnowTemple opens with its stock character bodies once the scene is ready. After the first frame, an Egret asset group loads up to two character GLBs at a time. Once the group settles, successful roles prepare their shaders and replace the stock bodies one role at a time, keeping their existing rig, pose and equipment. A slow role can delay the visual upgrades. A failed role keeps its stock body and the other roles can still upgrade. Leaving the page cancels pending loads and releases the group when the page is discarded. Add `?characters=original` to keep the stock bodies for the entire session.
+The illustrated loading screen appears first. Lin Chong's selected GLB loads alongside the scene and is used for the first rendered frame, the title and the opening. If that request fails or reaches its 6.5-second deadline, the stock body remains in place for the visit. After the first frame, the other four roles use a separate Egret asset group with two concurrent loads. Successful downloads replace their stock bodies one at a time and reuse the existing rig, pose and equipment. Leaving the page cancels pending loads and releases the group when the page is discarded. Add `?characters=original` to use the stock bodies for the entire session.
 
-场景就绪后，《风雪山神庙》先用原版角色模型开放操作。首帧之后，白鹭资源组最多同时加载两个角色 GLB。组内任务结束后，成功的角色分批准备着色器并替换身体网格，沿用原有骨架、姿态和装备。单个角色加载慢会推迟外观升级。加载失败的角色继续用原模型，其余角色仍可升级。离开且浏览器销毁页面时，会取消还在进行的加载并释放资源组。加上 `?characters=original` 可全程使用原版模型。
+网页先显示雪路插画。林冲与场景并行加载，标题和开场从第一帧就使用新版模型。请求失败或超过 6.5 秒时，本次游玩使用内置备用模型。首帧之后，其他四个角色通过独立的白鹭资源组加载，最多两个并行。下载成功的角色依次换模，沿用原有骨架、姿态和装备。离开且浏览器销毁页面时，会取消进行中的加载并释放资源组。加上 `?characters=original` 可全程使用内置模型。
+
+The tables below record the original staged-loading benchmark. Lin Chong was still in the deferred group in that benchmark.
+
+下表保留首次分阶段加载的历史对照。测试时林冲仍在后台资源组中。
 
 | Windows foreground test · Windows 前台测试 | Previous · 改造前 | Staged · 分阶段加载 |
 |---|---:|---:|

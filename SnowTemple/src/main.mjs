@@ -26,7 +26,7 @@ import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { TIERS, grade, tierName } from './rules/tiers.mjs';
 import { AFFIXES } from './rules/yard.mjs';
 import { loadModels } from './view/models.mjs';
-import { loadCharacterGroup } from './view/characters.mjs';
+import { loadCharacterGroup, loadOpeningCharacter } from './view/characters.mjs';
 import { loadPropAtlas } from './view/prop-atlas.mjs';
 import { createSnowLook } from './view/look.mjs';
 import { createView } from './view/view.mjs';
@@ -92,35 +92,57 @@ async function main() {
   await new Promise((done) => setTimeout(done));
   const amount = { few: 0.5, some: 1, many: 1.6 }[settings.particles] ?? 1,
     // Model detail is its own choice; left to itself, a phone takes the light set.
-    detail = ['low', 'mid', 'high'].includes(params.get('models') ?? settings.models) ? (params.get('models') ?? settings.models) : coarse ? 'low' : 'high',
-    [models, loadedAtlas] = await Promise.all([loadModels(detail), loadPropAtlas(detail)]),
-    propAtlas = loadedAtlas ? scope.use(loadedAtlas).maps : undefined,
-    view = createView(scene, camera, models, {
-      detail,
-      reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, propAtlas });
+    detail = ['low', 'mid', 'high'].includes(params.get('models') ?? settings.models) ? (params.get('models') ?? settings.models) : coarse ? 'low' : 'high';
   const loadExternal = params.get('characters') !== 'original';
   const roleScope = engine.createScope();
   const roleLifetime = new AbortController();
-  const characterStatus = { level: detail, phase: loadExternal ? 'waiting' : 'disabled', loaded: [], failures: {} };
+  const characterStatus = { level: detail, phase: loadExternal ? 'opening' : 'disabled', loaded: [], failures: {} };
   status.characters = characterStatus;
+  let view, loop;
   scope.use({
     dispose() {
       roleLifetime.abort();
-      if (characterStatus.phase === 'waiting' || characterStatus.phase === 'loading') characterStatus.phase = 'cancelled';
+      if (['opening', 'waiting', 'loading'].includes(characterStatus.phase)) characterStatus.phase = 'cancelled';
       try {
-        view.disposeCharacters();
+        view?.disposeCharacters();
       } finally {
         roleScope.dispose();
       }
     }
   });
+  function onPageHide(event) {
+    if (event.persisted) return;
+    removeEventListener('pagehide', onPageHide);
+    loop?.dispose();
+    try {
+      scope.dispose();
+    } finally {
+      void engine.dispose().catch(console.error);
+    }
+  }
+  addEventListener('pagehide', onPageHide);
+
+  const opening = loadExternal ? loadOpeningCharacter(engine, roleScope, detail, roleLifetime.signal) : null;
+  const [models, loadedAtlas, firstBody] = await Promise.all([loadModels(detail), loadPropAtlas(detail), opening]);
+  roleLifetime.signal.throwIfAborted();
+  const hero = firstBody?.hero;
+  if (hero?.parts) characterStatus.loaded.push('hero');
+  else if (hero?.error) characterStatus.failures.hero = hero.error;
+  if (loadExternal) characterStatus.phase = 'waiting';
+  const propAtlas = loadedAtlas ? scope.use(loadedAtlas).maps : undefined;
+  view = createView(scene, camera, models, {
+    detail, characters: hero?.parts ? { hero: hero.parts } : undefined,
+    reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, propAtlas });
 
   async function startBackgroundCharacters() {
     const signal = roleLifetime.signal;
     if (signal.aborted) return;
     characterStatus.phase = 'loading';
     try {
-      const { group } = await loadCharacterGroup(engine, roleScope, detail, signal);
+      const { group } = await loadCharacterGroup(engine, roleScope, detail, signal, {
+        requested: ['lu', 'blade', 'shield', 'bow'],
+        available: firstBody?.available
+      });
       const leases = await group.ready;
       for (const { value } of leases) {
         if (signal.aborted) return;
@@ -621,18 +643,7 @@ async function main() {
     }
   };
   progress(1, '起风');
-  const loop = startWorld3DLoop(engine, fail);
-  function onPageHide(event) {
-    if (event.persisted) return;
-    removeEventListener('pagehide', onPageHide);
-    loop.dispose();
-    try {
-      scope.dispose();
-    } finally {
-      void engine.dispose().catch(console.error);
-    }
-  }
-  addEventListener('pagehide', onPageHide);
+  loop = startWorld3DLoop(engine, fail);
 }
 
 main().catch(fail);
