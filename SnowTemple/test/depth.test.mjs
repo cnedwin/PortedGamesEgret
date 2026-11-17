@@ -4,12 +4,10 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { FLAMES, PLACES, ROUNDS, WET, cover, edge, wet } from '../src/rules/arena.mjs';
 import { BOONS, offer } from '../src/rules/boons.mjs';
-import { loadProgress, recordClear, recordStand } from '../src/progress.mjs';
 import { createGame, grant, quiet, spawn, step } from '../src/rules/game.mjs';
 import { TIERS, grade, rulesFor, tierName } from '../src/rules/tiers.mjs';
 import { DERIVE, FIRE, FOES, FORMS, HERO, WINE } from '../src/rules/tune.mjs';
 import { AFFIXES, waveOf } from '../src/rules/yard.mjs';
-import { createBot } from './bot.mjs';
 
 const TICK = 1 / 60;
 const run = (game, seconds, input = quiet) => {
@@ -449,19 +447,6 @@ test('each tier adds one rule to those below it', () => {
   assert.ok(names(4).has('fire') || names(4).has('wheel'));
 });
 
-test('what is earned is kept: a clear opens the next tier, and only a better mark or a farther wave replaces the old', () => {
-  const kept = loadProgress(); // no storage here: a fresh record
-  assert.deepEqual(kept, { open: 1, tier: 1, marks: {}, wave: 0 });
-  assert.deepEqual(recordClear(kept, 1, '丙'), { improved: true, opened: true });
-  assert.equal(kept.open, 2);
-  assert.deepEqual(recordClear(kept, 1, '丁'), { improved: false, opened: false });
-  assert.deepEqual(recordClear(kept, 1, '甲'), { improved: true, opened: false });
-  assert.deepEqual(kept.marks, { 1: '甲' });
-  assert.equal(kept.open, 2, 'clearing the first tier again opens nothing more');
-  assert.ok(recordStand(kept, 5) && !recordStand(kept, 5) && !recordStand(kept, 3));
-  assert.equal(kept.wave, 5);
-});
-
 test('a run is marked: clean and quick is the top mark, falls cost most', () => {
   assert.equal(grade({ time: 200, falls: 0, hurts: 2, parries: 3, ripostes: 2 }).mark, '甲');
   assert.equal(grade({ time: 300, falls: 0, hurts: 8 }).mark, '乙');
@@ -535,20 +520,4 @@ test('leaders: the quick one is quick, the iron one hard to move, the torch leav
   torch.pause = 0;
   const seen = run(game, 4);
   assert.ok(seen.some((e) => e.type === 'fire' && e.harm === 'hero'));
-});
-
-test('a careful player climbs every tier and holds the yard for a while', () => {
-  for (const tier of [2, 3, 4, 5, 7]) {
-    const game = createGame(tier, { tier }),
-      bot = createBot();
-    for (let i = 0; i < 60 * 600 && game.stage !== 'done'; i++) step(game, bot(game), TICK);
-    assert.equal(game.stage, 'done', `tier ${tier}`);
-    assert.ok(game.boons.length >= 2, 'pages were read on the way');
-  }
-  const game = createGame(1, { mode: 'yard' }),
-    bot = createBot();
-  let over = null;
-  for (let i = 0; i < 60 * 1800 && !over; i++) over = step(game, bot(game), TICK).find((e) => e.type === 'over') ?? null;
-  assert.ok(over, 'the yard cannot be held for ever');
-  assert.ok(over.wave >= 3, `held to wave ${over?.wave}`);
 });

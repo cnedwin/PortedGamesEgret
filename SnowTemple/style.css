@@ -202,6 +202,8 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .panel .key.asking { color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
 .panel .foot { display: flex; justify-content: space-between; margin-top: 22px; }
 .panel .act { color: var(--snow); font-family: var(--script); letter-spacing: .3em; }
+/* The engine's performance readout sits just above the state panel, clear of the bars. */
+.egret-world3d-stats { top: auto !important; bottom: 84px; }
 #debug { position: absolute; left: 8px; bottom: 8px; font: 12px/1.5 ui-monospace, monospace; background: #000a; padding: 6px 9px; white-space: pre; display: none; }
 
 /* Hands on glass: a stick on the left, the deeds on the right. */

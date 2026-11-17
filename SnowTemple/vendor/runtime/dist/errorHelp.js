@@ -5,11 +5,14 @@
 /** The areas, longest names first where one begins with another. */
 const AREAS = [
     ['ANIMATION', 'the animation coordinator'],
+    ['ASSET_BUNDLE', 'an asset bundle'],
     ['ASSET_GROUP', 'an asset group'],
     ['ASSET_LEASE', 'an asset lease'],
     ['ASSET_MANAGER', 'the asset manager'],
     ['ASSET_PROVIDER', 'an asset provider'],
     ['ASSET', 'the asset manager'],
+    ['AUDIO_CUES', 'the sound cues'],
+    ['AUDIO_WAV', 'the WAV encoder'],
     ['AUDIO', 'the audio mixer'],
     ['BITMAP_BINDING', 'a bitmap binding'],
     ['BITMAP_BUTTON', 'a bitmap button'],
@@ -19,7 +22,9 @@ const AREAS = [
     ['BITMAP', 'a bitmap'],
     ['BOUNDS', 'a bounds query'],
     ['BROWSER_GAME', 'the browser game'],
+    ['BROWSER_IMAGE', 'the browser image reader'],
     ['BROWSER_STATS', 'the stats panel'],
+    ['BROWSER_STORAGE', 'the browser storage'],
     ['BROWSER_TEXT_EDITOR', 'the browser text editor'],
     ['BROWSER_TEXT_INPUT', 'the browser text input'],
     ['CAMERA', 'the camera'],
@@ -39,8 +44,10 @@ const AREAS = [
     ['FRAME', 'a frame'],
     ['GAMEPAD', 'gamepad input'],
     ['GRAPHICS', 'graphics'],
+    ['HEADLESS_RUN', 'a headless run'],
     ['HIT_TEST', 'a hit test'],
     ['HOVER_INPUT', 'hover input'],
+    ['INPUT_ACTIONS', 'the input actions'],
     ['KEYBOARD_FOCUS_SCOPE', 'a keyboard focus scope'],
     ['KEYBOARD_INPUT', 'keyboard input'],
     ['KEYBOARD', 'the keyboard'],
@@ -60,6 +67,9 @@ const AREAS = [
     ['PARTICLE', 'a particle emitter'],
     ['PHYSICS', 'the physics world'],
     ['POINTER_INPUT', 'pointer input'],
+    ['QUALITY_VARIANT', 'the quality variants'],
+    ['RANDOM', 'the random number generator'],
+    ['SAVE_STORE', 'the save store'],
     ['SCOPE', 'a scope'],
     ['SEQUENCE_RESET', 'a sequence reset slot'],
     ['SEQ_PLAYBACK', 'a sequence playback'],
@@ -98,7 +108,8 @@ const AREAS = [
     ['WEBGPU', 'the WebGPU Host'],
     ['WEB_PNG', 'the browser image provider'],
     ['WEB_RESOURCE', 'the browser resource source'],
-    ['WEB_TEXT', 'the browser text provider']
+    ['WEB_TEXT', 'the browser text provider'],
+    ['WORLD3D_OVERLAY', 'the World3D overlay']
 ];
 /** What went wrong, by ending, longest first. `{a}` is the area, `{o}` what stands between the area and the ending. */
 const ENDINGS = [

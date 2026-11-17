@@ -98,8 +98,11 @@ const POSED = ['hips', 'spine', 'head', 'armL', 'foreL', 'armR', 'foreR', 'legL'
 const ARTICULATED_POSED = [...POSED, 'footL', 'footR'];
 const bowCord = createCylinderGeometry3D({ radiusTop: 0.0045, radiusBottom: 0.0045, height: 1, radialSegments: 5 });
 const bowCordMaterial = createStandardMaterial3D({ color: 0xc9c0ae, roughness: 0.82 });
-/** Bowstrings as the renderer draws them once four bowmen are in view: one instanced batch. */
-export const bowstringBatch = () => new InstancedMesh3D(bowCord, bowCordMaterial, 1);
+/**
+ * Bowstrings as the renderer draws them: one by one, and as one instanced batch once four bowmen are in
+ * view. The bowmen arrive after the game has started, so neither would otherwise be ready before then.
+ */
+export const bowstringDraws = () => [new Mesh3D(bowCord, bowCordMaterial), new InstancedMesh3D(bowCord, bowCordMaterial, 1)];
 
 /** Build one figure of the given kind from the sculpted models. */
 export function createFigure(kind, models, detail = 'high', externalBody) {

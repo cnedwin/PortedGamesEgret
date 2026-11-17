@@ -4,11 +4,14 @@
 /** The areas in Chinese, in the order of the English ones. */
 export const ZH_AREAS = [
     ['ANIMATION', '动画协调器'],
+    ['ASSET_BUNDLE', '资源包'],
     ['ASSET_GROUP', '资源组'],
     ['ASSET_LEASE', '资源租约'],
     ['ASSET_MANAGER', '资源管理器'],
     ['ASSET_PROVIDER', '资源提供者'],
     ['ASSET', '资源管理器'],
+    ['AUDIO_CUES', '音效提示'],
+    ['AUDIO_WAV', 'WAV 编码'],
     ['AUDIO', '音频混音器'],
     ['BITMAP_BINDING', '位图绑定'],
     ['BITMAP_BUTTON', '位图按钮'],
@@ -18,7 +21,9 @@ export const ZH_AREAS = [
     ['BITMAP', '位图'],
     ['BOUNDS', '边界查询'],
     ['BROWSER_GAME', 'createBrowserGame '],
+    ['BROWSER_IMAGE', '浏览器图片读取'],
     ['BROWSER_STATS', '调试面板'],
+    ['BROWSER_STORAGE', '浏览器存储'],
     ['BROWSER_TEXT_EDITOR', '浏览器文本编辑器'],
     ['BROWSER_TEXT_INPUT', '浏览器文本输入'],
     ['CAMERA', '相机'],
@@ -38,8 +43,10 @@ export const ZH_AREAS = [
     ['FRAME', '帧'],
     ['GAMEPAD', '手柄输入'],
     ['GRAPHICS', 'graphics'],
+    ['HEADLESS_RUN', '无界面运行'],
     ['HIT_TEST', '命中测试'],
     ['HOVER_INPUT', '悬停输入'],
+    ['INPUT_ACTIONS', '输入动作'],
     ['KEYBOARD_FOCUS_SCOPE', '键盘焦点范围'],
     ['KEYBOARD_INPUT', '键盘输入'],
     ['KEYBOARD', '键盘'],
@@ -59,6 +66,9 @@ export const ZH_AREAS = [
     ['PARTICLE', '粒子发射器'],
     ['PHYSICS', '物理世界'],
     ['POINTER_INPUT', '指针输入'],
+    ['QUALITY_VARIANT', '画质变体'],
+    ['RANDOM', '随机数生成器'],
+    ['SAVE_STORE', '存档'],
     ['SCOPE', '作用域'],
     ['SEQUENCE_RESET', '序列重置槽'],
     ['SEQ_PLAYBACK', '序列播放'],
@@ -97,7 +107,8 @@ export const ZH_AREAS = [
     ['WEBGPU', 'WebGPU Host'],
     ['WEB_PNG', '浏览器图片提供者'],
     ['WEB_RESOURCE', '浏览器资源来源'],
-    ['WEB_TEXT', '浏览器文本提供者']
+    ['WEB_TEXT', '浏览器文本提供者'],
+    ['WORLD3D_OVERLAY', 'World3D 叠加层']
 ];
 export const ZH_ENDINGS = [
     ['OPTIONS_INVALID', '交给{a}的选项无效：缺少某一项、类型不对或超出范围。'],

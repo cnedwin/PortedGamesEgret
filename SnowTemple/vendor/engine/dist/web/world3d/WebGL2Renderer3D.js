@@ -4,7 +4,7 @@ import { SkinnedInstancedMesh3D } from '../../rendering/world3d/AnimationTexture
 import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
 import { RenderList3D } from '../../rendering/world3d/RenderList3D.js';
 import { CubeTexture3D, RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
-import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, outputToneMapping3D, planShadows3D, writeFrameBlock3D } from './frame3D.js';
+import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, outputToneMapping3D, planShadows3D, TILED_LIGHTS_3D, writeFrameBlock3D, writeTiledLights3D } from './frame3D.js';
 import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D } from './post3D.js';
 import { PostChainWebGL23D } from './postWebGL23D.js';
 import { WebGL2FrameMetrics3D } from './webGL2FrameMetrics3D.js';
@@ -48,6 +48,8 @@ export class WebGL2Renderer3D {
         triangles: 0,
         visited: 0,
         culled: 0,
+        lightsDropped: 0,
+        lightsTiled: 0,
         shadowMaps: 0,
         programs: 0,
         geometries: 0,
@@ -126,6 +128,7 @@ export class WebGL2Renderer3D {
             this.#post = undefined;
             this.clearMaterialPrograms();
             this.#frameBuffer = this.#emptyVao = null;
+            this.#tiledTexture = null;
             this.#shadowAtlas = this.#shadowFallback = undefined;
             this.#sceneDepth = undefined;
             this.#sceneDepthReady = false;
@@ -219,6 +222,38 @@ export class WebGL2Renderer3D {
     set autoInstancing(value) {
         this.#list.autoInstanceThreshold = value ? 8 : 0;
     }
+    /**
+     * Light point lights past the eight a frame lights directly through a tiled list: each pixel visits only the
+     * lights whose range reaches its screen tile, up to 32 a tile and 256 in all. On by default.
+     */
+    get tiledLights() {
+        return this.#list.tiledLights;
+    }
+    set tiledLights(value) {
+        this.#list.tiledLights = Boolean(value);
+    }
+    #tiledTable = new Float32Array(TILED_LIGHTS_3D.width * TILED_LIGHTS_3D.rows * 4);
+    #tiledTexture = null;
+    /** Writes the tiled lights for this view and binds their table; an empty table when there are none. */
+    bindTiledLights(camera, width, height, x, y) {
+        const gl = this.#gl;
+        const count = writeTiledLights3D(this.#frameData, this.#tiledTable, this.#list.tiledPointLights, camera.viewProjectionMatrix, width, height, false, x, y);
+        gl.activeTexture(gl.TEXTURE0 + TEXTURE_UNITS_3D.tiledLights);
+        if (!this.#tiledTexture) {
+            this.#tiledTexture = gl.createTexture();
+            gl.bindTexture(gl.TEXTURE_2D, this.#tiledTexture);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+            gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, TILED_LIGHTS_3D.width, TILED_LIGHTS_3D.rows, 0, gl.RGBA, gl.FLOAT, this.#tiledTable);
+        }
+        else
+            gl.bindTexture(gl.TEXTURE_2D, this.#tiledTexture);
+        if (count > 0)
+            gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, TILED_LIGHTS_3D.width, TILED_LIGHTS_3D.rows, gl.RGBA, gl.FLOAT, this.#tiledTable);
+        this.info.lightsTiled = count;
+    }
     /** Measure the WebGL2 renderer calls made synchronously by one application frame. */
     measureFrame(draw, options) {
         if (this.#disposed)
@@ -296,6 +331,7 @@ export class WebGL2Renderer3D {
         info.drawCalls = info.triangles = 0;
         info.visited = list.stats.visited;
         info.culled = list.stats.culled;
+        info.lightsDropped = list.stats.lightsDropped;
         this.resetState();
         this.bindFrameBlock();
         this.renderShadows(camera, this.shadowsEnabled && (reflection?.shadows ?? true));
@@ -344,6 +380,7 @@ export class WebGL2Renderer3D {
             });
             this.#frameData[FRAME_OFFSETS_3D.clipInfo + 2] = view ? view[2] : 1;
             this.#frameData[FRAME_OFFSETS_3D.clipInfo + 3] = view ? view[3] : 1;
+            this.bindTiledLights(camera, viewWidth, viewHeight, view ? Math.round(view[0] * width) : 0, view ? Math.round(view[1] * height) : 0);
             this.uploadFrameBlock();
             const flags = colorProgramFlags(Boolean(scene.fog), toneMapping, Boolean(scene.environment), Boolean(target));
             for (const item of list.opaque)
@@ -1106,6 +1143,9 @@ export class WebGL2Renderer3D {
         this.#resources.dispose();
         if (this.#frameBuffer)
             gl.deleteBuffer(this.#frameBuffer);
+        if (this.#tiledTexture)
+            gl.deleteTexture(this.#tiledTexture);
+        this.#tiledTexture = null;
         if (this.#emptyVao)
             gl.deleteVertexArray(this.#emptyVao);
         for (const atlas of [this.#shadowAtlas, this.#shadowFallback]) {

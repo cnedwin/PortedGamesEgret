@@ -70,7 +70,7 @@ The dice fall differently every time, and these make each run play differently t
 
 ## 画面与技术 · Picture and technology
 
-- 全部用引擎的 3D 模块（`@egret/engine/world3d`）和 WebGL 2 渲染器：带阴影的月光、最近的六盏灯火轮流点亮、泛光、环境光遮蔽、贴地的高度雾。
+- 全部用引擎的 3D 模块（`@egret/engine/world3d`）和 WebGL 2 渲染器：带阴影的月光、最近的六盏灯火轮流点亮、泛光、环境光遮蔽、贴地的高度雾。地上的火和烧着的人有自己的光：渲染器把八盏以外的点光按屏幕分块来照，只有火光照到的像素为它付出代价，没有东西烧着时不花任何开销（最低画质不开）。
 - 角色使用项目原创设定图在 Tripo Studio 制作，经过减面、贴图处理和蒙皮适配后，以 GLB 分高、中、低三档交付。电脑默认高档，手机默认低档。林冲和陆谦的手指、长兵器握点以及三类庄客的持械动作沿用现有绑定。兵器、石狮、香炉、石灯、山门、山神庙和草料场使用项目自制的几何和材质。角色素材的生成与分发依据见 [Tripo 条款](https://www.tripo3d.ai/terms)。
 - 成片枯草合批实例化绘制，顶点着色器里随阵风起伏，人走过会被拨开。
 - 枪光、法阵、地面预警和光柱是「网格加一段片元着色器」画的：扫掠、噪声条纹和侵蚀都在着色器里；火星、雪尘和飘雪是实例化的光点。
@@ -80,7 +80,7 @@ The dice fall differently every time, and these make each run play differently t
 - 声音：六段原创配乐随剧情转换，风雪、余火和山门环境独立混音。脚步、兵刃、格挡和回马枪使用专门制作的音效。`tools/render-audio.mjs` 可重建声音素材。
 - 设置里可调画质（自动、低、中、高）、粒子数量、声音和全部按键；自动画质会按帧率升降绘制分辨率。
 
-- Everything is drawn with the engine's 3D module (`@egret/engine/world3d`) and its WebGL 2 renderer: shadowed moonlight, the six nearest lamps lit at a time, bloom, ambient occlusion and low-lying height fog.
+- Everything is drawn with the engine's 3D module (`@egret/engine/world3d`) and its WebGL 2 renderer: shadowed moonlight, the six nearest lamps lit at a time, bloom, ambient occlusion and low-lying height fog. Fire on the ground and men alight cast light of their own: the renderer lights point lights past the eighth by screen tile, so only the pixels a fire reaches pay for it, and with nothing burning it costs nothing (off at the lowest quality).
 - The character meshes were generated in Tripo Studio from original concept art for this project, optimized at three detail levels and skinned to the game's existing rig. Desktop defaults to high detail and phones to low. The articulated hands, grip anchors and combat motions use the existing bindings. Weapons, stone lions, the censer, lanterns, halls and burnt-yard props use geometry and materials made for this game. See the [Tripo terms](https://www.tripo3d.ai/terms) for the generated character assets.
 - Tufts of dry grass render in one instanced draw, swaying with gusts in the vertex shader and parting round whoever walks through.
 - Spear light, the formation, the ground warnings and the columns of light are a mesh plus a fragment shader: the sweep, the grain and the erosion happen in the shader. Sparks, snow dust and falling snow are instanced dots.
@@ -127,23 +127,24 @@ Download, parsing and image decode can overlap. Upload timings measure time in W
 
 ```sh
 node --test test/*.test.mjs      # 规则测试 · rule tests
+node tools/balance.mjs           # 规则玩家把各重和守草料场各打六遍，列出用时、倒地、受伤、评等和所学；node tools/balance.mjs 12 3 只打第三重十二遍 · the rule-driven player plays every tier and the yard six times and lists time, falls, blows taken, mark and lessons; `12 3` plays tier 3 twelve times
 node tools/models.mjs            # 重新雕刻全部模型（约五分钟），或只雕点名的：node tools/models.mjs hero lu，或只雕一档 --level=mid · sculpt every model again (about five minutes), or only those named
 python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/tools/look.html?m=hero&yaw=0.4&y=1.6&d=0.8
 # 在仓库根目录运行，然后打开 /SnowTemple/ · run at the repository root, then open /SnowTemple/
 ```
 
-地址参数 · Address options: `?auto`（规则玩家代打 · a rule-driven player takes over），`?at=yard|gate|boss|rage`（从后面开始 · begin further in），`?quality=low|mid|high`，`?models=low|mid|high`，`?tier=3`（这一次按第几重打 · play this visit at a tier），`?mode=yard`（配合 `?auto` 守草料场 · with `?auto`, hold the yard），`?seed=7`（固定骰子 · fix the dice），`?debug`（状态面板，F3 开关 · state panel, F3 toggles）。
+地址参数 · Address options: `?auto`（规则玩家代打 · a rule-driven player takes over），`?at=yard|gate|boss|rage`（从后面开始 · begin further in），`?quality=low|mid|high`，`?models=low|mid|high`，`?tier=3`（这一次按第几重打 · play this visit at a tier），`?mode=yard`（配合 `?auto` 守草料场 · with `?auto`, hold the yard），`?seed=7`（固定骰子 · fix the dice），`?lights=direct|tiled`（不给或给火自己的光，不管画质 · leave fires without light of their own, or give it them, whatever the quality），`?debug`（状态面板和引擎的性能读数，F3 开关 · state panel and the engine's performance readout, F3 toggles）。
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
 | `src/rules/` | 地形、数值与战斗规则 · the ground, the numbers and the rules of the fight |
 | `src/view/` | 建模、场景、人物姿势、特效与镜头 · modelling, scenery, poses, effects and the camera |
 | `src/hud.mjs` `src/input.mjs` `src/audio.mjs` | 界面、输入、声音 · interface, input, sound |
-| `src/progress.mjs` | 存在浏览器里的进度：开到第几重、各重最好的评等、守得最远的一拨 · progress kept in the browser: tiers opened, best marks, farthest wave |
+| `src/progress.mjs` `src/saves.mjs` | 存在浏览器里的进度和设置，经引擎的存档库读写：带版本号，读不出的旧档另存不丢，写不进去也不报错 · progress and settings kept in the browser through the engine's save store: versioned, an unreadable save set aside rather than lost, a refused write never throws |
 | `tools/` `assets/` | 雕刻工具、模型定义与雕好的模型 · the sculptor, the model descriptions and the sculpted models |
 | `test/` | 规则测试与规则玩家 · rule tests and the rule-driven player |
 | `vendor/` | 引擎运行时副本，见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。它由引擎仓库里的 `tools/vendor-game.mjs` 生成：在构建好的引擎目录下运行 `node tools/vendor-game.mjs <本目录> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit`，再把 `vendor/importmap.json` 的内容贴进 `index.html` 的 import map（有测试核对两者一致）。测试通过 `vendor/node-register.mjs` 在 Node 里按页面用的名字找到引擎。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under the Apache-2.0 license; its source and version are in [vendor/SOURCE.md](vendor/SOURCE.md).
+`vendor/` holds a copy of the Egret Rebuild runtime under the Apache-2.0 license; its source and version are in [vendor/SOURCE.md](vendor/SOURCE.md). It is made by `tools/vendor-game.mjs` in the engine's repository: from a built engine checkout run `node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit`, then paste the contents of `vendor/importmap.json` into the import map in `index.html` (a test checks that the two agree). Tests find the engine in Node, under the names the page uses, through `vendor/node-register.mjs`.

@@ -14,7 +14,7 @@ import { BARS, PLACES } from '../rules/arena.mjs';
 import { HERO } from '../rules/tune.mjs';
 import { createBuilder, rgb } from './build.mjs';
 import { TINT, createEffects } from './effects.mjs';
-import { FALL_CONTACT, bowstringBatch, createFigure, foePose, heroPose, pose, validateCharacterBody } from './figures.mjs';
+import { FALL_CONTACT, bowstringDraws, createFigure, foePose, heroPose, pose, validateCharacterBody } from './figures.mjs';
 import { buildScenery, height, paved } from './scenery.mjs';
 
 const GRADE_TINT = [TINT.white, TINT.jade, TINT.gold];
@@ -42,7 +42,7 @@ function lootShape(kind) {
   return b.geometry();
 }
 
-export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false, shadowSize = 2048, characters = {}, propAtlas } = {}) {
+export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false, shadowSize = 2048, characters = {}, propAtlas, manyLights = false } = {}) {
   const view = { shake: 0, cine: null, zoom: 1, fogLights: [] };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
@@ -60,7 +60,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   const MOON = [-17, 29, -9];
 
   const scenery = buildScenery(scene, models, { density, propAtlas });
-  const fx = createEffects(scene, camera, { particles });
+  const fx = createEffects(scene, camera, { particles, manyLights });
   view.fx = fx;
   for (const lamp of scenery.lights) lamp.halo = { x: lamp.x, y: lamp.light.position[1] + 0.1, z: lamp.z, size: lamp.fire ? 3.4 : 2.15, colour: lamp.fire ? [1, 0.42, 0.14] : [1, 0.58, 0.26], strength: 0 };
   fx.setHalos(scenery.lights.map((lamp) => lamp.halo));
@@ -666,11 +666,20 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         fx.burst(patch.x + Math.sin(a) * r, 0.1, patch.z + Math.cos(a) * r, { count: 1, dir: [0, 1, 0], spread: 0.3, speed: 1.9, life: 0.65, size: 0.22, tint: TINT.fire, power: 3, rise: 2.6, drag: 1 });
       }
     }
+    if (manyLights) {
+      // Fire on the ground and men alight throw their own light, brightest while they burn well.
+      const burning = [];
+      for (const patch of game.fires) burning.push({ key: patch.id, x: patch.x, y: 0.9, z: patch.z, power: 6 * patch.r * Math.min(1, patch.life / 0.7), range: 5 + patch.r * 2.4 });
+      for (const foe of game.foes) if (foe.burning > 0 && foe.state !== 'dead') burning.push({ key: 'foe' + foe.id, x: foe.x, y: 1.3, z: foe.z, power: 7 * Math.min(1, foe.burning / 0.6), range: 6.5 });
+      fx.setFires(burning);
+    }
     for (const fire of fires)
       if (Math.hypot(fire.x - focus.x, fire.z - focus.z) < 34)
         for (let i = 0; i < 2; i++) fx.burst(fire.x + (Math.random() - 0.5) * fire.size * 2, fire.y - Math.random() * 1.6, fire.z + (Math.random() - 0.5) * fire.size * 2, { count: 1, dir: [0.25, 1, 0], spread: 0.3, speed: 2.2, life: 0.9, size: 0.26, tint: TINT.fire, power: 2.2, rise: 3, drag: 0.8 });
     const near = [...lit].sort((a, b) => a.distance - b.distance);
     view.fogLights = near;
+    // The six nearest lamps burn and the rest fade out. Every pixel pays for each of the first eight lights
+    // whether it is near one or not, and the lamps beyond the sixth are too far off to be missed.
     near.forEach((lamp, i) => {
       lamp.share += ((i < 6 ? 1 : 0) - lamp.share) * Math.min(1, dt * 3);
       lamp.light.intensity = lamp.intensity * lamp.share * (1 + Math.sin(clock * 11 + lamp.x) * lamp.flicker * 0.5 + Math.sin(clock * 23 + lamp.z) * lamp.flicker * 0.5);
@@ -719,9 +728,10 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         material.alphaMode = 'blend';
         return { mesh: thing.mesh, material, ...seen };
       });
-    // Eight like things in view are drawn as one instanced batch, which has a program of its own. A crowded
-    // yard gets there with four bowmen's strings, or with coins left lying.
-    const batches = [bowstringBatch(), new InstancedMesh3D((lootGeometry.coin ??= lootShape('coin')), lootMaterial, 1)].map((mesh) => ({ mesh, material: mesh.material, ...seen }));
+    // What is first drawn after the game has started would link its program in the middle of play. The
+    // bowmen's strings are such a thing; so are the instanced batches the renderer makes of eight like
+    // things in view, which a crowded yard reaches with four bowmen's strings or with coins left lying.
+    const batches = [...bowstringDraws(), new InstancedMesh3D((lootGeometry.coin ??= lootShape('coin')), lootMaterial, 1)].map((mesh) => ({ mesh, material: mesh.material, ...seen }));
     try {
       await renderer.preparePrograms([...faded, ...batches, ...fx.programs().map((request) => ({ ...request, ...seen }))]);
     } finally {

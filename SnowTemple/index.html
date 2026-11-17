@@ -9,16 +9,26 @@
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./chapter.css">
   <link rel="preload" as="image" href="./assets/boot-snow-road.webp" fetchpriority="high">
-  <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
+  <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host.
+       This map is vendor/importmap.json, pasted in. -->
   <script type="importmap">
     {
       "imports": {
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
         "@egret/engine": "./vendor/engine/dist/index.js",
         "@egret/engine/world3d": "./vendor/engine/dist/rendering/world3d/index.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
         "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
-        "@egret/runtime": "./vendor/runtime/dist/index.js",
-        "@egret/contracts": "./vendor/contracts/dist/index.js",
-        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js"
+        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js"
       }
     }
   </script>

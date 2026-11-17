@@ -684,7 +684,7 @@ export function buildScenery(scene, models, { density = 1, propAtlas } = {}) {
   const propMaterial = buildProps(scene, rand, material, glow, tall, lamps, models, propAtlas);
   const glowMesh = glow.mesh(glowMaterial, { shadow: false });
   scene.addChild(glowMesh);
-  // Lamps: the renderer lights a few point lights at a time, so only the nearest burn.
+  // Lamps: each has a light of its own; the view lets the nearest burn.
   const lights = lamps.map((lamp) => {
     const light = createPointLight3D({ color: lamp.color, intensity: 0, range: lamp.range });
     light.setPosition(lamp.x, lamp.y + height(lamp.x, lamp.z), lamp.z);

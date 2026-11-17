@@ -1,19 +1,9 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { registerHooks } from 'node:module';
 import { test } from 'node:test';
+import '../vendor/node-register.mjs';
 
-const aliases = {
-  '@egret/engine': '../vendor/engine/dist/index.js',
-  '@egret/engine/world3d': '../vendor/engine/dist/rendering/world3d/index.js',
-  '@egret/engine/webgl2/world3d': '../vendor/engine/dist/web/world3d/index.js',
-  '@egret/runtime': '../vendor/runtime/dist/index.js',
-  '@egret/contracts': '../vendor/contracts/dist/index.js',
-  '@egret/contracts/resources': '../vendor/contracts/dist/resources/index.js'
-};
-registerHooks({ resolve(name, context, next) {
-  return next(aliases[name] ? new URL(aliases[name], import.meta.url).href : name, context);
-} });
+// The engine is found under the names the page uses: the vendored copy brings its own Node loader.
 const { createEngine } = await import('@egret/engine');
 const { createWorld3DHost } = await import('@egret/engine/webgl2/world3d');
 const { loadCharacterGroup, loadOpeningCharacter } = await import('../src/view/characters.mjs');

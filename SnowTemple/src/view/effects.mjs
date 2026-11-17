@@ -168,7 +168,12 @@ export const TINT = {
   jade: [0.4, 1.0, 0.75]
 };
 
-export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
+/**
+ * Everything short-lived that is drawn over the scene. `manyLights` says the renderer lights every point
+ * light it is given (past the first eight, by screen tile): fire on the ground and burning men then cast
+ * light of their own, and more blows can flash at once.
+ */
+export function createEffects(scene, camera, { particles: amount = 1, manyLights = false } = {}) {
   const shapes = {
     arcWide: sectorGeometry(0.9, 3.5, 2.5),
     arcNarrow: sectorGeometry(0.6, 3.6, 1.0),
@@ -281,6 +286,8 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     snowMesh = makeDots(FLAKES, false),
     flakes = Array.from({ length: FLAKES }, (_, i) => ({ x: Math.random(), y: Math.random(), z: Math.random(), sway: Math.random() * 6.28, speed: 1.6 + (i % 5) * 0.45, size: 0.035 + (i % 4) * 0.014 }));
   const BOX = [44, 16, 34];
+  // Every flake has the same colour for good: written once, only where the flakes are is sent each frame.
+  for (let i = 0; i < FLAKES; i++) snowMesh.setColorAt(i, 0.92, 0.95, 1, 0.85);
 
   // ---- low mist, streaks of wind, and the glow round every lamp ------------------------------
   // Mist: wide soft sheets lying just over the ground, drifting with the wind, in three layers.
@@ -310,7 +317,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
   let printAt = 0;
 
   // ---- flashes of light ----------------------------------------------------------------------
-  const flashes = [0, 1].map(() => {
+  const flashes = Array.from({ length: manyLights ? 6 : 2 }, () => {
     const light = createPointLight3D({ color: 0xffffff, intensity: 0, range: 12 });
     scene.addChild(light);
     return { light, left: 0, life: 1, peak: 0 };
@@ -321,6 +328,28 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     slot.light.color.set(colour);
     slot.light.range = range;
     Object.assign(slot, { left: life, life, peak });
+  }
+
+  // ---- firelight: what burns on the ground or on a man lights the snow round it ------------------
+  const embers = Array.from({ length: manyLights ? 12 : 0 }, () => {
+    const light = createPointLight3D({ color: 0xff7a30, intensity: 0, range: 8 });
+    scene.addChild(light);
+    return { light, key: null, level: 0, want: 0 };
+  });
+  /**
+   * What is burning this frame: `{ key, x, y, z, power, range }` each. A fire keeps its light while it is
+   * listed and lets it die down when it is not; with more fires than lights the first listed are lit.
+   */
+  function setFires(list) {
+    for (const ember of embers) ember.want = 0;
+    for (const fire of list) {
+      const ember = embers.find((e) => e.key === fire.key) ?? embers.find((e) => e.level <= 0.01 && e.want === 0);
+      if (!ember) break;
+      if (ember.key !== fire.key) (ember.key = fire.key), (ember.level = 0);
+      ember.want = fire.power;
+      ember.light.setPosition(fire.x, fire.y, fire.z);
+      ember.light.range = fire.range;
+    }
   }
 
   // ---- the spears of the rain ----------------------------------------------------------------
@@ -427,7 +456,6 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
       place[1] = fall < 0 ? fall + BOX[1] : fall;
       place[2] = cz + ((((f.z * BOX[2] + clock * 0.5 - cz) % BOX[2]) + BOX[2]) % BOX[2]) - BOX[2] / 2;
       snowMesh.setTransformAt(i, place, face, f.size);
-      snowMesh.setColorAt(i, 0.92, 0.95, 1, 0.85);
     }
     snowMesh.count = FLAKES;
 
@@ -466,6 +494,11 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
       slot.left = Math.max(0, slot.left - dt);
       slot.light.intensity = slot.peak * Math.pow(slot.left / slot.life, 1.5);
     }
+    embers.forEach((ember, i) => {
+      ember.level += (ember.want - ember.level) * Math.min(1, dt * (ember.want > ember.level ? 9 : 4));
+      if (ember.want === 0 && ember.level < 0.01) (ember.level = 0), (ember.key = null);
+      ember.light.intensity = ember.level * (1 + Math.sin(clock * 13 + i * 2.1) * 0.16 + Math.sin(clock * 29 + i) * 0.1);
+    });
 
     // Footprints fade as the snow drifts back into them.
     let f = 0;
@@ -514,7 +547,11 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
       slot.left = 0;
       slot.light.intensity = 0;
     }
+    for (const ember of embers) {
+      ember.key = null;
+      ember.level = ember.want = ember.light.intensity = 0;
+    }
   }
 
-  return { spawn, release, programs, burst, flash, dropSpear, update, clear, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
+  return { spawn, release, programs, burst, flash, setFires, dropSpear, update, clear, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
 }
