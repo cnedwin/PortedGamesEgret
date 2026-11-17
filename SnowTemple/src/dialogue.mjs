@@ -1,42 +1,42 @@
 export const DIALOGUE = {
   "lin-opening": {
-    "text": "草料场烧起来了。这把火，是有人放的。",
-    "seconds": 2.819,
+    "text": "草料场烧了……有人纵火。",
+    "seconds": 2.848,
     "who": "林冲"
   },
   "lin-yard": {
-    "text": "还有人守着草料场。",
-    "seconds": 1.482,
+    "text": "拦路的，报上名来！",
+    "seconds": 2.168,
     "who": "林冲"
   },
   "lin-wave": {
-    "text": "庙那边又下来几个。",
-    "seconds": 1.56,
+    "text": "还来？好，尽管上！",
+    "seconds": 2.56,
     "who": "林冲"
   },
   "lin-gate": {
-    "text": "庙门的闩，落了。",
-    "seconds": 1.464,
+    "text": "陆谦，林冲来了。",
+    "seconds": 2.871,
     "who": "林冲"
   },
   "lu-meet": {
-    "text": "林教头。火没留住你，我只好在此等。",
-    "seconds": 2.718,
+    "text": "林教头……好硬的命。",
+    "seconds": 2.872,
     "who": "陆谦"
   },
   "lu-demand": {
-    "text": "太尉只要你一条命。莫叫我为难。",
-    "seconds": 2.387,
+    "text": "太尉要你的命。拿来。",
+    "seconds": 2.168,
     "who": "陆谦"
   },
   "lu-rage": {
-    "text": "我回不去了。你也休想走！",
-    "seconds": 1.949,
+    "text": "你也休想走！",
+    "seconds": 1.244,
     "who": "陆谦"
   },
   "lu-end": {
-    "text": "高太尉，不会放过你。",
-    "seconds": 1.704,
+    "text": "高太尉……不会放过你。",
+    "seconds": 2.96,
     "who": "陆谦"
   }
 }

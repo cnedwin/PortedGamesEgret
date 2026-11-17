@@ -1,5 +1,6 @@
 // The original score and Foley bank are rendered by tools/render-audio.mjs.
 const FILES = new URL('../assets/audio/', import.meta.url);
+const DIALOGUE_TAKE = '20261117';
 const SCENES = {
   title: ['title', 'wind'],
   road: ['road', 'wind'],
@@ -114,6 +115,7 @@ export function createAudio() {
     for (const id of ids) {
       if (speechFiles.has(id)) continue;
       const url = new URL('../assets/dialogue/' + id + '.mp3', import.meta.url);
+      url.searchParams.set('take', DIALOGUE_TAKE);
       const request = fetch(url).then(response => response.ok ? response.arrayBuffer() : null).catch(() => null);
       const file = { request, clip: null };
       speechFiles.set(id, file);

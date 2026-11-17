@@ -154,7 +154,7 @@ async function main() {
   };
   const LINES = {
     open: [[0.28, 'lin-opening']],
-    meet: [[0.08, 'lu-meet'], [2.8, 'lu-demand']],
+    meet: [[0.08, 'lu-meet'], [3.0, 'lu-demand']],
     rage: [[0.36, 'lu-rage']],
     end: [[0.62, 'lu-end']]
   };
