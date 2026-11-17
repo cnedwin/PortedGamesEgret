@@ -6,7 +6,8 @@
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { ANKLE_DEPTH, BIND, BONES, HANDS, JOINTS, YARD_BONES, YARD_GRIPS } from '../src/view/rig.mjs';
 import { pack, sculpt } from './sculpt.mjs';
-import { finishEquipment } from './equipment-detail.mjs';
+import { guardianLion, templeStele } from './carved-stone.mjs';
+import { finishEquipment, makeGlaiveBlade } from './equipment-detail.mjs';
 import { detailSceneMesh } from './scene-detail.mjs';
 
 const rgb = (hex) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255].map((v) => Math.pow(v, 2.2));
@@ -437,31 +438,20 @@ const THINGS = {
     const s = [
       { kind: 'cap', a: [0, 0, -1.0], b: [0, 0, 1.0], ra: 0.026, rb: 0.023, colour: rgb(0x56372a), k: 0.004 },
       { kind: 'cap', a: [0, 0, -1.15], b: [0, 0, -0.99], ra: 0.005, rb: 0.03, colour: iron, k: 0.004 },
-      { kind: 'egg', c: [0, 0.01, 1.02], r: [0.045, 0.06, 0.06], colour: bronze, k: 0.01 },
-      // Blackened socket, a pair of raised ribs, and red cloth beneath the collar.
-      { kind: 'cap', a: [0, 0, 0.993], b: [0, 0, 1.059], ra: 0.034, rb: 0.036, colour: iron, k: 0.005 },
-      { kind: 'egg', c: [0, 0, 0.985], r: [0.044, 0.047, 0.012], colour: brightBronze, k: 0.004 },
-      { kind: 'egg', c: [0, 0.008, 1.05], r: [0.041, 0.045, 0.01], colour: brightBronze, k: 0.004 },
+      // Narrow worked-metal socket, two ferrule rings, and a cloth binding.
+      { kind: 'cap', a: [0, 0, 0.993], b: [0, 0, 1.059], ra: 0.034, rb: 0.032, colour: iron, k: 0.005 },
+      { kind: 'egg', c: [0, 0, 0.985], r: [0.038, 0.039, 0.012], colour: brightBronze, k: 0.004 },
+      { kind: 'egg', c: [0, 0.003, 1.05], r: [0.033, 0.037, 0.01], colour: brightBronze, k: 0.004 },
       { kind: 'egg', c: [0, 0, 0.928], r: [0.037, 0.037, 0.012], colour: binding, k: 0.004 },
       { kind: 'egg', c: [0, 0, 0.95], r: [0.038, 0.038, 0.011], colour: rgb(0xb34435), k: 0.004 },
-      { kind: 'cap', a: [0, -0.04, 0.98], b: [0, -0.2, 0.9], ra: 0.03, rb: 0.055, colour: binding, k: 0.01, fold: { n: 9, amp: 0.012, from: 0.2 } }
+      { kind: 'cap', a: [0, -0.026, 0.967], b: [0, -0.156, 0.91], ra: 0.022, rb: 0.038, colour: binding, k: 0.009, fold: { n: 9, amp: 0.008, from: 0.2 } }
     ];
     for (let i = 0; i < 4; i++) s.push({ kind: 'egg', c: [0, 0, -0.6 + i * 0.4], r: [0.03, 0.03, 0.014], colour: bronze, k: 0.003 });
     for (const side of [-1, 1]) {
-      s.push({ kind: 'egg', c: [side * 0.04, 0.021, 1.02], r: [0.009, 0.011, 0.008], colour: brightBronze, k: 0.002 });
-      s.push({ kind: 'cap', a: [side * 0.02, -0.081, 0.957], b: [side * 0.033, -0.23, 0.9], ra: 0.016, rb: 0.011, colour: rgb(0xa33832), k: 0.005 });
+      s.push({ kind: 'egg', c: [side * 0.033, 0.012, 1.02], r: [0.006, 0.008, 0.006], colour: brightBronze, k: 0.002 });
+      s.push({ kind: 'cap', a: [side * 0.015, -0.06, 0.951], b: [side * 0.025, -0.175, 0.9], ra: 0.01, rb: 0.009, colour: rgb(0xa33832), k: 0.005 });
     }
-    return { solids: s, edge: [
-      // A positive curve along the cutting edge and a swept point. The darker face stands proud of its bevel.
-      { kind: 'egg', c: [0, 0.081, 1.49], r: [0.0105, 0.137, 0.462], turn: [-0.16, 0, 0], colour: rgb(0xcfdae1), k: 0.009 },
-      { kind: 'egg', c: [0, 0.156, 1.67], r: [0.011, 0.107, 0.279], turn: [-0.34, 0, 0], colour: rgb(0xd6e0e6), k: 0.009 },
-      { kind: 'egg', c: [0, 0.177, 1.866], r: [0.01, 0.085, 0.16], turn: [-0.64, 0, 0], colour: rgb(0xd3dde3), k: 0.009 },
-      { kind: 'egg', c: [0, 0.064, 1.492], r: [0.016, 0.111, 0.412], turn: [-0.13, 0, 0], colour: rgb(0x7d8e9d), k: 0.006, rough: { scale: 69, amp: 0.002 } },
-      { kind: 'egg', c: [0, -0.044, 1.177], r: [0.013, 0.065, 0.118], turn: [0.59, 0, 0], colour: rgb(0x71808b), k: 0.008 },
-      { kind: 'egg', c: [0, -0.018, 1.508], r: [0.018, 0.022, 0.342], turn: [-0.05, 0, 0], colour: rgb(0xa2afb8), k: 0.004 },
-      { kind: 'box', c: [0.016, 0.167, 1.484], h: [0.006, 0.035, 0.005], turn: [0.45, 0, 0], colour: rgb(0x606f7d), k: 0.002, round: 0.002, cut: true },
-      { kind: 'box', c: [-0.014, 0.119, 1.641], h: [0.006, 0.024, 0.005], turn: [-0.65, 0, 0], colour: rgb(0x657485), k: 0.002, round: 0.002, cut: true }
-    ] };
+    return { solids: s };
   },
   rattan() {
     const s = [];
@@ -554,34 +544,8 @@ function wallCap(s, x, y, z, half) {
 
 /** Stone and bronze that stand about the place, sculpted about their footing at the origin. */
 const PROPS = {
-  lion() {
-    const s = [], st = STONE, e = (c, r, more = {}) => s.push({ kind: 'egg', c, r, colour: st, k: 0.06, rough: { scale: 14, amp: 0.02 }, ...more });
-    s.push({ kind: 'box', c: [0, 0.4, 0], h: [0.62, 0.4, 0.78], colour: dim(st, 0.8), k: 0.02, round: 0.05, rough: { scale: 10, amp: 0.02 } });
-    s.push({ kind: 'box', c: [0, 0.84, 0], h: [0.68, 0.06, 0.84], colour: st, k: 0.02, round: 0.04 });
-    e([0, 1.35, -0.2], [0.42, 0.42, 0.5]); // haunches
-    e([0, 1.7, 0.12], [0.36, 0.5, 0.36]); // chest
-    for (const side of [1, -1]) {
-      s.push({ kind: 'cap', a: [side * 0.24, 1.7, 0.32], b: [side * 0.26, 0.98, 0.48], ra: 0.13, rb: 0.11, colour: st, k: 0.05 });
-      e([side * 0.26, 0.96, 0.56], [0.14, 0.09, 0.17], { k: 0.03 });
-      e([side * 0.36, 1.18, -0.2], [0.17, 0.28, 0.32], { k: 0.05 });
-      e([side * 0.22, 2.5, 0.2], [0.07, 0.1, 0.05], { k: 0.03 }); // ears
-      e([side * 0.13, 2.3, 0.5], [0.05, 0.04, 0.04], { k: 0.01, colour: dim(st, 0.4), cut: true }); // eyes
-    }
-    e([0, 2.22, 0.22], [0.34, 0.33, 0.34], { k: 0.05 }); // head
-    e([0, 2.12, 0.5], [0.2, 0.15, 0.16], { k: 0.04 }); // muzzle
-    e([0, 2.05, 0.6], [0.13, 0.04, 0.08], { k: 0.01, colour: dim(st, 0.35), cut: true });
-    // The mane: curls in rows round the neck.
-    for (let row = 0; row < 3; row++) for (let i = 0; i < 9; i++) {
-      const a = (i / 9) * Math.PI * 2 + row * 0.35;
-      if (Math.cos(a) > 0.55 && row < 2) continue;
-      e([Math.sin(a) * (0.34 + row * 0.03), 2.25 - row * 0.2, 0.18 - Math.cos(a) * -0.3 * 1 + (row * 0.02 - 0.3)], [0.1, 0.1, 0.1], { k: 0.025 });
-    }
-    e([0, 0.98, 0.72], [0.17, 0.17, 0.17], { k: 0.02 }); // the ball under the paw
-    s.push({ kind: 'egg', c: [0, 0.93, 0], r: [0.6, 0.05, 0.74], colour: SNOW, k: 0.03, rough: { scale: 20, amp: 0.03 } });
-    s.push({ kind: 'egg', c: [0, 2.56, 0.12], r: [0.26, 0.06, 0.26], colour: SNOW, k: 0.04, rough: { scale: 20, amp: 0.03 } });
-    s.push({ kind: 'egg', c: [0, 1.82, -0.42], r: [0.3, 0.07, 0.24], colour: SNOW, k: 0.05, rough: { scale: 20, amp: 0.03 } });
-    return s;
-  },
+  lion: guardianLion,
+  stele: templeStele,
   censer() {
     const s = [], bronze = rgb(0x4a5a50), pale = rgb(0x6f8a78);
     for (let i = 0; i < 3; i++) {
@@ -770,11 +734,16 @@ for (const [level, coarse] of Object.entries(LEVELS)) {
   for (const [name, make] of Object.entries(THINGS)) {
     const { solids, edge } = finishEquipment(name, make(), rgb);
     jobs.push([name, () => sculpt(solids, { cell: 0.0075 * thin, mottle: 0.05 })]);
-    if (edge) jobs.push([name + 'Edge', () => sculpt(edge.map((solid) => ({ ...solid, stuff: 3 })), { cell: 0.006 * thin, mottle: 0.03 })]);
+    if (name === 'glaive') jobs.push(['glaiveEdge', () => makeGlaiveBlade(rgb)]);
+    else if (edge) jobs.push([name + 'Edge', () => sculpt(edge.map((solid) => ({ ...solid, stuff: 3 })), { cell: 0.006 * thin, mottle: 0.03 })]);
   }
-  const CELL = { rock: 0.05, pine: 0.085, stack: 0.04, gate: 0.07, gateRoof: 0.08, temple: 0.16, lantern: 0.022 };
-  for (const [name, make] of Object.entries(PROPS)) jobs.push([name, () => detailSceneMesh(name,
-    sculpt(make(), { cell: (CELL[name] ?? 0.026) * (['gate', 'gateRoof', 'temple'].includes(name) ? built : coarse), mottle: 0.16 }), coarse)]);
+  const CELL = { rock: 0.05, pine: 0.085, stack: 0.04, gate: 0.07, gateRoof: 0.08, temple: 0.16, lantern: 0.022, stele: 0.023, lion: 0.027 };
+  for (const [name, make] of Object.entries(PROPS)) {
+    const keepCarving = ['gate', 'gateRoof', 'temple', 'stele'].includes(name);
+    const grid = name === 'lion' ? Math.min(coarse, 1.6) : keepCarving ? built : coarse;
+    jobs.push([name, () => detailSceneMesh(name,
+      sculpt(make(), { cell: (CELL[name] ?? 0.026) * grid, mottle: 0.16 }), coarse)]);
+  }
 
   // Models not asked for keep what was sculpted before.
   const old = existsSync(indexPath) && only.length ? { index: JSON.parse(readFileSync(indexPath, 'utf8')), bin: readFileSync(binPath) } : null,

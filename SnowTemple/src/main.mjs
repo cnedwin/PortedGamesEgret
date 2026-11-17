@@ -10,7 +10,7 @@
 //   ?debug       show the state panel (F3 toggles it)
 import { createEngine } from '@egret/engine';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
-import { createAtmosphere3D, createWebGL2Renderer3D, createWorld3DHost, createWorld3DView, startWorld3DLoop } from '@egret/engine/webgl2/world3d';
+import { createWebGL2Renderer3D, createWorld3DHost, createWorld3DView, startWorld3DLoop } from '@egret/engine/webgl2/world3d';
 import { createAudio } from './audio.mjs';
 import { captureTempleLoadout, createTempleReplay } from './chapter.mjs';
 import { createHud } from './hud.mjs';
@@ -20,6 +20,7 @@ import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { loadModels } from './view/models.mjs';
 import { loadCharacterBodies } from './view/characters.mjs';
+import { createSnowLook } from './view/look.mjs';
 import { createView } from './view/view.mjs';
 
 const params = new URLSearchParams(location.search),
@@ -76,10 +77,8 @@ async function main() {
   const scene = new Scene3D(),
     camera = createPerspectiveCamera3D({ fov: 36, near: 0.5, far: 260 });
   scene.addChild(camera);
-  Object.assign(renderer.postProcess, { enabled: true, bloom: true, bloomThreshold: 1.14, bloomKnee: 0.48, bloomIntensity: 0.29, bloomLevels: 6, fxaa: true, vignette: 0.36, contrast: 1.06, saturation: 1.02, ssao: level.ssao, ssaoRadius: 0.7, ssaoIntensity: 1.1 });
+  const updateLook = createSnowLook(renderer, level.ssao);
   renderer.shadowsEnabled = !!level.shadows;
-  const atmosphere = createAtmosphere3D({ fogColor: 0x30405e, fogDensity: 0.03, fogHeight: 0.2, fogFalloff: 0.32, shaftIntensity: 0 });
-  renderer.postProcess.custom = atmosphere.post;
 
   progress(0.45, '栽松，铺雪');
   await new Promise((done) => setTimeout(done));
@@ -368,7 +367,7 @@ async function main() {
     }
     view.mirror?.(renderer, game);
     if (mode === 'title') titleCamera();
-    atmosphere.update(camera, view.sunDirection);
+    updateLook(camera, view.sunDirection, mode === 'title' || !!view.cine, dt);
     hud.update(game, view);
     audio.update();
 

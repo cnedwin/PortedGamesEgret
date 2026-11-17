@@ -4,6 +4,7 @@
 import { Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createCylinderGeometry3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatSlerp } from '@egret/engine/world3d';
 import { LOCOMOTION, sampleLocomotion } from './locomotion.mjs';
 import { BIND, BONES, HANDS, JOINTS, YARD_BONES, YARD_GRIPS } from './rig.mjs';
+import { groundBoots } from './boot-contact.mjs';
 
 // Fine surface that the sculpted mesh is too coarse to carry, drawn per pixel from a pattern that stays
 // fixed to the figure: the threads of woven cloth, pores and flush on skin, the grain of leather, the
@@ -180,8 +181,9 @@ export function createFigure(kind, models, detail = 'high', externalBody) {
   root.setScale(look.size);
   const angles = {};
   for (const name of posed) angles[name] = [0, 0, 0];
-  const gait = { phase: 0, travelled: 0, speed: 0, heading: 0, walk: {}, run: {} };
-  return { kind, look, root, joints, rest, posed, angles, gait, string, held: 0, slide: 0, rightOpening: 0, lift: 0, tintBody, dispose, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
+  const gait = { phase: 0, travelled: 0, speed: 0, heading: 0, walk: {}, run: {}, contacts: {} };
+  const plants = { L: {}, R: {} };
+  return { kind, look, root, joints, rest, posed, angles, gait, plants, string, held: 0, slide: 0, rightOpening: 0, lift: 0, tintBody, dispose, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
 }
 
 // ---- poses --------------------------------------------------------------------------------
@@ -235,14 +237,24 @@ function stride(base, phase, reach, lean) {
 }
 
 const GAIT_BODY = ['hips', 'spine', 'head', 'legL', 'shinL', 'footL', 'legR', 'shinR', 'footR'];
-function capturedStride(base, gait, distance, speed, clock, travelled, strideDirection = 1) {
+function strideContact(contacts, name, weight) {
+  // Frame sampling can wobble the speed between walk and run. Keep a footfall
+  // latched across that small change until the capture approaches toe-off.
+  contacts[name] = weight >= (contacts[name] ? .34 : .66);
+  return contacts[name] ? Math.max(.55, weight) : Math.min(.54, weight);
+}
+
+function capturedStride(base, gait, distance, speed, clock, travelled, strideDirection = 1, runLength = 1) {
   const running = ease(span(speed, 1.85, 4.25)),
-    strideMeters = mix(LOCOMOTION.walk.strideMeters, LOCOMOTION.run.strideMeters, running);
+    strideMeters = mix(LOCOMOTION.walk.strideMeters, LOCOMOTION.run.strideMeters * runLength, running);
   gait.phase += strideDirection * distance / strideMeters;
   gait.phase -= Math.floor(gait.phase);
   const walk = sampleLocomotion('walk', gait.phase, gait.walk),
     run = sampleLocomotion('run', gait.phase, gait.run),
-    result = { ...base, lift: mix(walk.lift, run.lift, running), contactL: mix(walk.contactL, run.contactL, running), contactR: mix(walk.contactR, run.contactR, running) };
+    result = { ...base, lift: mix(walk.lift, run.lift, running) };
+  for (const name of ['contactL', 'contactR']) {
+    result[name] = strideContact(gait.contacts, name, mix(walk[name], run[name], running));
+  }
   for (const joint of GAIT_BODY) {
     const w = walk[joint],
       r = run[joint],
@@ -351,7 +363,22 @@ export function heroPose(hero, tune, clock, travelled, fallen = 0, gait, dt = 0)
     if (gait) {
       const trailing = ease(span(gait.speed, 2.1, 4.25));
       const carrying = { ...base, weapon: [mix(-0.22, 0.12, trailing), mix(1.1, 0.3, trailing), 0], armR: [0.34, 0, -0.25], grip: { strength: 1 - trailing } };
-      return [capturedStride(carrying, gait, distance, gait.speed, clock, travelled), 42];
+      // The game runs faster than the filmed jog. A longer cycle keeps the cadence
+      // under four steps per second at full input without altering movement speed.
+      const moving = capturedStride(carrying, gait, distance, gait.speed, clock, travelled, 1, 1.18);
+      moving.armL = [mix(base.armL[0], -.26 + gait.run.armL[0] * .57, trailing), 0, .17];
+      moving.foreL = [mix(base.foreL[0], -.91 + (gait.run.foreL[0] + 1.7) * .34, trailing), 0, 0];
+      moving.armR = [.34 + gait.run.armR[0] * .12 * trailing, 0, -.25];
+      moving.weapon[0] += gait.run.armR[0] * .20 * trailing;
+      moving.boots = { face: hero.face, lead: .06 * trailing };
+      const movingWeight = ease(span(gait.speed, .12, 1.4));
+      if (movingWeight < 1) {
+        const leaving = blend(base, moving, movingWeight);
+        leaving.contactL = moving.contactL * movingWeight;
+        leaving.contactR = moving.contactR * movingWeight;
+        return [leaving, 36];
+      }
+      return [moving, 42];
     }
     const pace = Math.min(1, Math.hypot(hero.vx, hero.vz) / tune.speed);
     const moving = stride({ ...base, weapon: [0.12, 0.3, 0], armR: [0.35, 0, -0.25] }, travelled / 2.3, 0.42 + 0.43 * pace, 0.07 + 0.15 * pace);
@@ -455,9 +482,14 @@ export function foePose(foe, clock, travelled, gait, dt = 0) {
       return [blend(through, base, ease(span(foe.t, move.recover * 0.35, move.recover))), 14];
     }
   }
-  if (foe.walking) return gait
-    ? [foe.kind === 'lu' ? capturedStride(base, gait, distance, gait.speed, clock, travelled) : yardStride(foe, base, gait, distance, clock, travelled), 40]
-    : [stride(base, travelled / 1.9, 0.6, 0.12), 16];
+  if (foe.walking) {
+    if (!gait) return [stride(base, travelled / 1.9, 0.6, 0.12), 16];
+    const moving = foe.kind === 'lu'
+      ? capturedStride(base, gait, distance, gait.speed, clock, travelled)
+      : yardStride(foe, base, gait, distance, clock, travelled);
+    moving.boots = { face: foe.face, lead: 0 };
+    return [moving, 40];
+  }
   const breath = Math.sin(clock * 1.6 + foe.id) * 0.02;
   return [{ ...base, lift: breath }, 10];
 }
@@ -474,6 +506,7 @@ export function pose(figure, target, rate, dt) {
   }
   figure.lift += ((target.lift ?? 0) - figure.lift) * k;
   joints.hips.setPosition(0, figure.rest.hips[1] + figure.lift, 0);
+  groundBoots(joints, figure.plants, target);
   if (figure.look.articulated) {
     poseGrip(figure, target, dt);
     return;
