@@ -63,7 +63,7 @@ export function createSnowLook(renderer, ssao) {
     saturation: 0.98, ssao, ssaoRadius: 0.67, ssaoIntensity: 1.14
   });
 
-  return (camera, lamps, cinematic, dt) => {
+  return (camera, lamps, cinematic, duel, dt) => {
     camera.updateWorldMatrix();
     const world = camera.matrixWorld, uniforms = film.uniforms;
     // The rotation-only camera basis maps world Y and the lights into view space.
@@ -85,6 +85,8 @@ export function createSnowLook(renderer, ssao) {
       const energy = Math.min(0.92, lamp.light.intensity * 0.055) * fade;
       uniforms[start + 3] = lamp.fire ? -energy : energy;
     }
-    post.vignette += ((cinematic ? 0.52 : 0.37) - post.vignette) * (1 - Math.exp(-dt * 5));
+    const blend = 1 - Math.exp(-dt * 5);
+    post.vignette += ((cinematic ? 0.52 : duel ? 0.43 : 0.37) - post.vignette) * blend;
+    post.brightness += ((duel ? 0.84 : 1) - post.brightness) * blend;
   };
 }

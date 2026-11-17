@@ -582,10 +582,11 @@ function buildRidges(b) {
   }
 }
 
-function buildProps(scene, rand, material, glow, tall, lights, models) {
+function buildProps(scene, rand, material, glow, tall, lights, models, propAtlas) {
   const b = createBuilder(),
     stone = createStandardMaterial3D({ vertexColors: true, roughness: 0.9, metallic: 0 }),
-    bronze = createStandardMaterial3D({ vertexColors: true, roughness: 0.45, metallic: 0.7 });
+    bronze = createStandardMaterial3D({ vertexColors: true, roughness: 0.45, metallic: 0.7 }),
+    sculpted = propAtlas ? createStandardMaterial3D({ ...propAtlas, vertexColors: true, metallic: 1, roughness: 1, normalScale: 0.49 }) : null;
   /** Stand a sculpted model on the ground. */
   const stand = (name, x, z, size, turn, material = stone, tallness = size) => {
     const mesh = new Mesh3D(models[name], material);
@@ -597,12 +598,13 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     scene.addChild(mesh);
     return mesh;
   };
-  const scorched = createStandardMaterial3D({ vertexColors: true, roughness: 0.95, color: 0x756054 }),
+  const scorched = sculpted ? sculpted.clone().setColor(0x96857c) :
+    createStandardMaterial3D({ vertexColors: true, roughness: 0.95, color: 0x756054 }),
     wood = createStandardMaterial3D({ vertexColors: true, roughness: 0.92 });
   for (const round of ROUNDS) {
     const { x, z, r } = round;
     if (round.kind === 'stack') {
-      stand('stack', x, z, r, x * 3, x > 0 ? scorched : wood);
+      stand('stack', x, z, r, x * 3, x > 0 ? scorched : sculpted ?? wood);
       if (x > 0) {
         // Split sheaves at the fire-facing edge, within the existing stack's snow skirt.
         const char = rgb(0x3c2925), fibre = rgb(0x795943);
@@ -616,7 +618,7 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     }
     else if (round.kind === 'rock') stand('rock', x, z, r * 0.95, rand() * 6);
     else if (round.kind === 'lantern') {
-      stand('lantern', x, z, 1, 0);
+      stand('lantern', x, z, 1, 0, sculpted ?? stone);
       glow.box(x, height(x, z) + 1.29, z, 0.26, 0.3, 0.26, { tint: [1, 0.62, 0.25] });
       lights.push({ x, y: 1.4, z, color: 0xffb66b, intensity: 11, range: 8.5, flicker: 0.1 });
     } else if (round.kind === 'brazier') {
@@ -625,14 +627,14 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     } else if (round.kind === 'cart') {
       buildCart(b, x, z);
     } else if (round.kind === 'censer') {
-      stand('censer', x, z, 1, 0, bronze);
+      stand('censer', x, z, 1, 0, sculpted ?? bronze);
       lights.push({ x, y: 2.6, z, color: 0xffb070, intensity: 30, range: 16, flicker: 0.2, fire: true });
     } else if (round.kind === 'lion') {
-      stand('lion', x, z, 0.9, x < 0 ? 0.25 : -0.25);
+      stand('lion', x, z, 0.9, x < 0 ? 0.25 : -0.25, sculpted ?? stone);
     } else if (round.kind === 'stele') {
       stand('stele', x, z, 1, 0);
     } else if (round.kind === 'pine') {
-      const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.9 }),
+      const cover = sculpted?.clone() ?? createStandardMaterial3D({ vertexColors: true, roughness: 0.9 }),
         mesh = stand('pine', x, z, 0.95, rand() * 6, cover, 1.1);
       tall.push({ x, z, r: 2.7, top: mesh.position[1] + 7.6, material: cover, mesh });
     }
@@ -655,17 +657,18 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     if (d > 1.2 && d < 4 && rand() < 0.5) stand('rock', x, z, 0.5 + rand() * 1.0, rand() * 6);
     else if (d > (z > 15 ? 6 : 4.5) && d < 22 && !(Math.abs(x) < 14 && z < -40)) {
       const size = 0.95 + rand() * 0.6;
-      stand('pine', x, z, size, rand() * 6, wood, size * (1 + rand() * 0.35));
+      stand('pine', x, z, size, rand() * 6, sculpted ?? wood, size * (1 + rand() * 0.35));
     }
   }
   scene.addChild(b.mesh(material));
   const ridges = createBuilder();
   buildRidges(ridges);
   scene.addChild(ridges.mesh(material, { shadow: false }));
+  return sculpted;
 }
 
 /** Build the whole place. Returns what the view animates: grass, doors, lamps and what may hide the hero. */
-export function buildScenery(scene, models, { density = 1 } = {}) {
+export function buildScenery(scene, models, { density = 1, propAtlas } = {}) {
   // Seed the dressing after the former shared paving stream so unaffected scenery keeps its layout.
   const rand = scatter(1683703667),
     material = createStandardMaterial3D({ vertexColors: true, roughness: 0.85, metallic: 0 }),
@@ -678,7 +681,7 @@ export function buildScenery(scene, models, { density = 1 } = {}) {
   const grass = buildGrass(scene, rand, density);
   const doors = buildGate(scene, rand, material, tall, models);
   buildTemple(scene, material, glow, models);
-  buildProps(scene, rand, material, glow, tall, lamps, models);
+  const propMaterial = buildProps(scene, rand, material, glow, tall, lamps, models, propAtlas);
   const glowMesh = glow.mesh(glowMaterial, { shadow: false });
   scene.addChild(glowMesh);
   // Lamps: the renderer lights a few point lights at a time, so only the nearest burn.
@@ -689,5 +692,5 @@ export function buildScenery(scene, models, { density = 1 } = {}) {
     return { ...lamp, light, share: 0 };
   });
   void ZONES;
-  return { grass, doors, lights, tall, glowMaterial, paving };
+  return { grass, doors, lights, tall, glowMaterial, paving, propMaterial };
 }

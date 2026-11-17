@@ -1,61 +1,17 @@
 // The sculpted models: one packed file, read once, turned into geometry the renderer can draw.
 // They are made by tools/models.mjs; see tools/sculpt.mjs for how.
 import { Attribute3D, createGeometry3D } from '@egret/engine/world3d';
+import { hasPropSurface, propSurfaceGeometry } from './prop-surface.mjs';
+import { loadModelPack } from './model-pack.mjs';
 
-const BODY_NAMES = new Set(['hero', 'blade', 'shield', 'bow', 'lu']);
-
-function sceneRange(index) {
-  let start, total = 0;
-  for (const [name, info] of Object.entries(index).sort((a, b) => a[1].offset - b[1].offset)) {
-    if (info.offset !== total || !Number.isSafeInteger(info.bytes) || info.bytes < 4 || info.bytes % 4 !== 0) return null;
-    if (BODY_NAMES.has(name)) {
-      if (!info.skinned || start !== undefined) return null;
-    } else {
-      start ??= total;
-    }
-    total += info.bytes;
-  }
-  return start > 0 && Number.isSafeInteger(total) ? { start, total } : null;
-}
-
-async function fullPack(url) {
-  const response = await fetch(url);
-  if (!response.ok) throw Error('Model pack HTTP ' + response.status);
-  return { bin: await response.arrayBuffer(), offset: 0 };
-}
-
-async function scenePack(url, range) {
-  const end = range.total - 1;
-  try {
-    const response = await fetch(url, { headers: { Range: 'bytes=' + range.start + '-' + end } });
-    if (response.status === 200) {
-      // Some local servers ignore Range and send the complete file once.
-      const bin = await response.arrayBuffer();
-      if (bin.byteLength === range.total) return { bin, offset: 0 };
-    } else if (response.status === 206 &&
-      response.headers.get('Content-Range') === 'bytes ' + range.start + '-' + end + '/' + range.total) {
-      const bin = await response.arrayBuffer();
-      if (bin.byteLength === range.total - range.start) return { bin, offset: range.start };
-    } else {
-      await response.body?.cancel();
-    }
-  } catch {
-    // A proxy or development server may reject byte ranges. Retry the ordinary file.
-  }
-  return fullPack(url);
-}
-
-/** Read the stock pack, or just its scene suffix when all five external bodies have been validated. */
+/** Read scene geometry and the stock body of any character unavailable as a GLB. */
 export async function loadModels(level = 'high', base = new URL('../../assets/', import.meta.url), replacementBodies) {
-  const url = new URL('models-' + level + '.bin', base);
-  const manifest = fetch(new URL('models-' + level + '.json', base)).then((response) => response.json());
-  const [index, candidates, preloaded] = await Promise.all([manifest, replacementBodies, replacementBodies ? null : fullPack(url)]);
-  const useReplacements = candidates && [...BODY_NAMES].every((name) => candidates[name]?.length > 0);
-  const range = useReplacements ? sceneRange(index) : null;
-  const { bin, offset } = preloaded ?? await (range ? scenePack(url, range) : fullPack(url));
+  const { index, skip, spans } = await loadModelPack(level, base, replacementBodies);
   const models = {};
   for (const [name, info] of Object.entries(index)) {
-    if (useReplacements && BODY_NAMES.has(name)) continue;
+    if (skip.has(name)) continue;
+    const { bin, offset } = spans.find(({ bin, offset }) =>
+      info.offset >= offset && info.offset + info.bytes <= offset + bin.byteLength);
     const n = info.count;
     let at = info.offset - offset;
     const take = (Type, length) => {
@@ -85,7 +41,8 @@ export async function loadModels(level = 'high', base = new URL('../../assets/',
     const joints = info.skinned ? take(Uint8Array, n * 4) : null,
       weights = info.skinned ? take(Uint8Array, n * 4) : null,
       indices = take(info.wide ? Uint32Array : Uint16Array, info.indices),
-      geometry = createGeometry3D({ positions, normals, colors, uvs, indices: info.wide ? indices : Uint32Array.from(indices) });
+      geometry = createGeometry3D(hasPropSurface(name) ? propSurfaceGeometry(info, positions, normals, colors, indices, stuff) :
+        { positions, normals, colors, uvs, indices: info.wide ? indices : Uint32Array.from(indices) });
     if (joints) {
       geometry.setAttribute('joints', new Attribute3D(Uint16Array.from(joints), 4));
       geometry.setAttribute('weights', new Attribute3D(Float32Array.from(weights, (w) => w / 255), 4));

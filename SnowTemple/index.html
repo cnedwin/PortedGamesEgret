@@ -8,6 +8,7 @@
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230b111c'/%3E%3Cpath d='M3 13 12 4' stroke='%23d8dee8' stroke-width='1.4'/%3E%3Cpath d='M12 4l2-2-.5 3z' fill='%23d8dee8'/%3E%3Ccircle cx='11' cy='5' r='1.5' fill='%23b3221c'/%3E%3C/svg%3E">
   <link rel="stylesheet" href="./style.css">
   <link rel="stylesheet" href="./chapter.css">
+  <link rel="preload" as="image" href="./assets/boot-snow-road.webp" fetchpriority="high">
   <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
   <script type="importmap">
     {
@@ -26,7 +27,10 @@
   <main id="game">
     <canvas id="stage" tabindex="0" aria-label="风雪山神庙：俯视角动作游戏。W A S D 移动，左键出枪，按住右键格挡，空格闪避。 / Snow at the Mountain Temple: a top-down action game. W A S D to move, left button to strike, hold right button to guard, Space to dodge."></canvas>
     <div id="ui"></div>
-    <div id="boot"><div class="boot-mark">风雪山神庙</div><div class="boot-bar"><i></i></div><div class="boot-note">扫雪</div></div>
+    <div id="boot">
+      <img class="boot-art" src="./assets/boot-snow-road.webp" alt="" width="896" height="560" fetchpriority="high" decoding="async" elementtiming="snow-road-preview">
+      <div class="boot-mark">风雪山神庙</div><div class="boot-bar"><i></i></div><div class="boot-note">扫雪</div>
+    </div>
     <section id="chapter-result" role="dialog" aria-modal="true" aria-labelledby="result-heading" hidden>
       <div class="result-paper">
         <div class="result-seal" aria-hidden="true">水浒</div>

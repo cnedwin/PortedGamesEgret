@@ -40,7 +40,7 @@ function lootShape(kind) {
   return b.geometry();
 }
 
-export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false, shadowSize = 2048, characters = {} } = {}) {
+export function createView(scene, camera, models, { density = 1, particles = 1, detail = 'high', reflect = false, shadowSize = 2048, characters = {}, propAtlas } = {}) {
   const view = { shake: 0, cine: null, zoom: 1, fogLights: [] };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
@@ -57,7 +57,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   scene.addChild(portraitFill);
   const MOON = [-17, 29, -9];
 
-  const scenery = buildScenery(scene, models, { density });
+  const scenery = buildScenery(scene, models, { density, propAtlas });
   const fx = createEffects(scene, camera, { particles });
   view.fx = fx;
   for (const lamp of scenery.lights) lamp.halo = { x: lamp.x, y: lamp.light.position[1] + 0.1, z: lamp.z, size: lamp.fire ? 3.4 : 2.15, colour: lamp.fire ? [1, 0.42, 0.14] : [1, 0.58, 0.26], strength: 0 };
@@ -128,7 +128,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
         pull = Math.min(3.2, d * 0.3);
       tx += (dx / d) * pull;
       tz += (dz / d) * pull;
-      zoom = 1.13 + Math.min(0.18, d * 0.013);
+      zoom = 1.025 + Math.min(0.26, d * 0.014);
     }
     // Keep threats at the edges of a narrow viewport in view.
     zoom *= Math.min(1.22, Math.max(1, 1.2 / camera.aspect));
@@ -452,8 +452,9 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     heroFigure.glow += ((cutting ? 3.2 : hero.counter > 0 ? 2 : 0.25) - heroFigure.glow) * Math.min(1, dt * 14);
     heroFigure.metal.emissiveIntensity = heroFigure.glow;
     heroFigure.flash = Math.max(0, heroFigure.flash - dt * 6);
-    const [heroRed, heroGreen, heroBlue] = heroFigure.look.fill;
-    heroFigure.tintBody(heroRed + heroFigure.flash * 0.9, heroGreen + heroFigure.flash * 0.2, heroBlue + heroFigure.flash * 0.15);
+    const [heroRed, heroGreen, heroBlue] = heroFigure.look.fill,
+      rim = game.stage === 'boss' && !view.cine ? 0.018 : 0;
+    heroFigure.tintBody(heroRed + rim * 0.55 + heroFigure.flash * 0.9, heroGreen + rim * 0.72 + heroFigure.flash * 0.2, heroBlue + rim + heroFigure.flash * 0.15);
     heroFigure.root.visible = !(hero.safe > 0 && hero.state === 'free' && Math.floor(clock * 14) % 2 === 0);
     if (hero.moving && hero.state === 'glide') {
       glideTrailTime += dt;
@@ -491,7 +492,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       figure.metal.emissiveIntensity = figure.glow;
       figure.flash = Math.max(0, figure.flash - dt * 7);
       const [red, green, blue] = figure.look.fill;
-      figure.tintBody(red + figure.flash, green + figure.flash * 0.9, blue + figure.flash * 0.8);
+      figure.tintBody(red + rim * 0.85 + figure.flash, green + rim * 0.48 + figure.flash * 0.9, blue + rim * 0.40 + figure.flash * 0.8);
       if (foe.kind === 'lu' && foe.phase === 2 && foe.state !== 'dead' && Math.random() < dt * 40) {
         const d = dirOf(foe.face);
         fx.burst(foe.x + d[0] * 1.2 - d[2] * 0.4, 1.5, foe.z + d[2] * 1.2 + d[0] * 0.4, { count: 1, dir: [0, 1, 0], spread: 0.5, speed: 1.6, life: 0.6, size: 0.16, tint: TINT.fire, power: 3.5, rise: 3 });
@@ -623,11 +624,24 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     mesh.setPosition(0, -1000, 0);
     mesh.frustumCulled = false;
     scene.addChild(mesh);
+    const mapped = scenery.propMaterial?.clone();
+    const fadedProp = mapped ? new Mesh3D(mesh.geometry, mapped) : null;
+    if (fadedProp) {
+      mapped.alphaMode = 'blend';
+      fadedProp.name = 'prop-fade-warmup';
+      fadedProp.setPosition(0, -1000, 0);
+      fadedProp.castShadow = false;
+      fadedProp.receiveShadow = true;
+      fadedProp.frustumCulled = false;
+      scene.addChild(fadedProp);
+    }
     const finishEffectWarmup = fx.prepareFirstDraw();
     return () => {
       mesh.removeFromParent();
+      fadedProp?.removeFromParent();
       mesh.geometry.dispose();
       material.dispose();
+      mapped?.dispose();
       finishEffectWarmup();
     };
   };

@@ -9,6 +9,7 @@ import { pack, sculpt } from './sculpt.mjs';
 import { guardianLion, templeStele } from './carved-stone.mjs';
 import { finishEquipment, makeGlaiveBlade } from './equipment-detail.mjs';
 import { detailSceneMesh } from './scene-detail.mjs';
+import { PROP_SURFACE } from '../src/view/prop-surface.mjs';
 
 const rgb = (hex) => [((hex >> 16) & 255) / 255, ((hex >> 8) & 255) / 255, (hex & 255) / 255].map((v) => Math.pow(v, 2.2));
 const dim = (c, k) => c.map((v) => v * k);
@@ -547,49 +548,59 @@ const PROPS = {
   lion: guardianLion,
   stele: templeStele,
   censer() {
-    const s = [], bronze = rgb(0x4a5a50), pale = rgb(0x6f8a78);
+    const s = [], bronze = rgb(0x5c6858), pale = rgb(0x86836a);
     for (let i = 0; i < 3; i++) {
       const a = i * 2.094 + 0.5;
       s.push({ kind: 'cap', a: [Math.cos(a) * 0.6, 0.06, Math.sin(a) * 0.6], b: [Math.cos(a) * 0.45, 0.8, Math.sin(a) * 0.45], ra: 0.13, rb: 0.16, colour: bronze, k: 0.04 });
       s.push({ kind: 'egg', c: [Math.cos(a) * 0.62, 0.08, Math.sin(a) * 0.62], r: [0.17, 0.09, 0.17], colour: bronze, k: 0.03 });
     }
-    s.push({ kind: 'egg', c: [0, 1.0, 0], r: [0.86, 0.42, 0.86], colour: bronze, k: 0.05, rough: { scale: 12, amp: 0.012 } });
-    s.push({ kind: 'egg', c: [0, 1.28, 0], r: [0.9, 0.07, 0.9], colour: pale, k: 0.02 });
     for (let i = 0; i < 16; i++) s.push({ kind: 'egg', c: [Math.cos(i * 0.3927) * 0.84, 1.0, Math.sin(i * 0.3927) * 0.84], r: [0.07, 0.13, 0.07], colour: pale, k: 0.02 });
     for (const side of [1, -1]) {
       s.push({ kind: 'cap', a: [side * 0.84, 1.3, 0], b: [side * 0.98, 1.72, 0], ra: 0.06, rb: 0.06, colour: bronze, k: 0.03 });
       s.push({ kind: 'cap', a: [side * 0.98, 1.72, 0], b: [side * 0.72, 1.74, 0], ra: 0.06, rb: 0.05, colour: bronze, k: 0.03 });
     }
-    s.push({ kind: 'egg', c: [0, 1.22, 0], r: [0.78, 0.16, 0.78], colour: rgb(0x1a1a1c), k: 0.03, cut: true });
-    s.push({ kind: 'egg', c: [0, 1.14, 0], r: [0.74, 0.07, 0.74], colour: rgb(0x8f8f86), k: 0.02, rough: { scale: 25, amp: 0.03 } }); // ash
-    return s;
+    s.push({ kind: 'egg', c: [0, 1.14, 0], r: [0.74, 0.07, 0.74], colour: rgb(0x8f8f86), stuff: PROP_SURFACE.stone, k: 0.02, rough: { scale: 25, amp: 0.03 } }); // ash
+    return s.map((solid) => ({ stuff: PROP_SURFACE.bronze, ...solid }));
   },
   pine() {
-    // A trunk and six tiers of drooping boughs, each bough with its load of snow.
-    const s = [], bark = rgb(0x2e221b), needle = rgb(0x1f3a2e);
-    s.push({ kind: 'cap', a: [0, -0.4, 0], b: [0.15, 6.6, 0], ra: 0.3, rb: 0.07, colour: bark, k: 0.1, rough: { scale: 5, amp: 0.1 } });
+    // Broken-up sprays protrude from the main boughs, with snow held above them.
+    const s = [], bark = rgb(0x433127), needle = rgb(0x2a4838);
+    s.push({ kind: 'cap', a: [0, -0.4, 0], b: [0.15, 6.6, 0], ra: 0.3, rb: 0.07, colour: bark, stuff: PROP_SURFACE.bark, k: 0.1, rough: { scale: 5, amp: 0.1 } });
     for (let tier = 0; tier < 6; tier++) {
       const y = 1.9 + tier * 0.92, reach = 2.5 - tier * 0.4, n = 8 - tier;
       for (let i = 0; i < n; i++) {
-        const a = (i / n) * Math.PI * 2 + tier * 0.7, c = Math.cos(a), z = Math.sin(a), tone = dim(needle, 0.75 + ((i * 7 + tier * 3) % 5) * 0.11);
-        s.push({ kind: 'cap', a: [c * 0.15, y + 0.25, z * 0.15], b: [c * reach, y - reach * 0.22, z * reach], ra: 0.3 + reach * 0.08, rb: 0.1, colour: tone, k: 0.16, rough: { scale: 7, amp: 0.2 } });
-        s.push({ kind: 'cap', a: [c * reach * 0.25, y + 0.42, z * reach * 0.25], b: [c * reach * 0.86, y + 0.06 - reach * 0.16, z * reach * 0.86], ra: 0.2 + reach * 0.05, rb: 0.08, colour: SNOW, k: 0.1, rough: { scale: 6, amp: 0.12 } });
+        const a = (i / n) * Math.PI * 2 + tier * 0.7 + Math.sin(i * 12.7 + tier) * 0.13;
+        const c = Math.cos(a), z = Math.sin(a), length = reach * (0.81 + ((i * 7 + tier * 5) % 9) * 0.022);
+        const tone = dim(needle, 0.77 + ((i * 7 + tier * 3) % 5) * 0.12);
+        s.push({ kind: 'cap', a: [c * 0.15, y + 0.24, z * 0.15], b: [c * length, y - length * 0.22, z * length], ra: 0.22 + reach * 0.056, rb: 0.10, colour: tone, stuff: PROP_SURFACE.needle, spray: true, k: 0.12, rough: { scale: 9, amp: 0.14 } });
+        s.push({ kind: 'cap', a: [c * length * 0.23, y + 0.40, z * length * 0.23], b: [c * length * 0.85, y + 0.05 - length * 0.18, z * length * 0.85], ra: 0.17 + reach * 0.046, rb: 0.076, colour: SNOW, stuff: PROP_SURFACE.snow, k: 0.08, rough: { scale: 8, amp: 0.12 } });
+        if (tier < 5 && i % 5 !== 1) {
+          const side = i % 2 ? 1 : -1;
+          const fork = a + side * 0.36;
+          const fx = Math.cos(fork), fz = Math.sin(fork);
+          s.push({ kind: 'cap', a: [c * length * 0.48, y - 0.02, z * length * 0.48], b: [fx * length * 0.85, y - length * 0.19, fz * length * 0.85], ra: 0.16 + length * 0.028, rb: 0.078, colour: dim(tone, 0.87), stuff: PROP_SURFACE.needle, k: 0.075, rough: { scale: 12, amp: 0.095 } });
+        }
       }
     }
-    s.push({ kind: 'cap', a: [0.12, 6.3, 0], b: [0.16, 7.5, 0], ra: 0.34, rb: 0.03, colour: needle, k: 0.12, rough: { scale: 7, amp: 0.16 } });
-    s.push({ kind: 'egg', c: [0.14, 6.9, 0], r: [0.22, 0.3, 0.22], colour: SNOW, k: 0.1 });
+    s.push({ kind: 'cap', a: [0.12, 6.3, 0], b: [0.16, 7.5, 0], ra: 0.31, rb: 0.03, colour: needle, stuff: PROP_SURFACE.needle, k: 0.12, rough: { scale: 9, amp: 0.16 } });
+    s.push({ kind: 'egg', c: [0.14, 6.9, 0], r: [0.22, 0.3, 0.22], colour: SNOW, stuff: PROP_SURFACE.snow, k: 0.1 });
     return s;
   },
   stack() {
     // A fodder stack: bound straw under a thatched cap, snow on the windward side.
-    const s = [], straw = rgb(0xb3924a);
+    const s = [], straw = rgb(0xa28a57);
     s.push({ kind: 'cap', a: [0, 0.2, 0], b: [0, 1.5, 0], ra: 0.92, rb: 0.98, colour: dim(straw, 0.8), k: 0.05, fold: { n: 46, amp: 0.035, from: 1 }, rough: { scale: 9, amp: 0.05 } });
     s.push({ kind: 'cap', a: [0, 1.75, 0], b: [0, 3.0, 0], ra: 1.02, rb: 0.1, colour: straw, k: 0.06, fold: { n: 34, amp: 0.05, from: 0.6 }, rough: { scale: 8, amp: 0.06 } });
     for (const y of [0.55, 1.15]) s.push({ kind: 'egg', c: [0, y, 0], r: [1.0, 0.05, 1.0], colour: dim(straw, 0.5), k: 0.02 });
     s.push({ kind: 'egg', c: [0, 3.0, 0], r: [0.16, 0.2, 0.16], colour: dim(straw, 0.6), k: 0.04 });
+    for (let i = 0; i < 12; i++) {
+      const a = i * 2.4, x = Math.cos(a), z = Math.sin(a), r = 0.97, y = 0.39 + ((i * 5) % 9) * 0.14;
+      s.push({ kind: 'cap', a: [x * (r - 0.05), y + 0.19, z * (r - 0.05)], b: [x * (r + 0.068), y - 0.09, z * (r + 0.068)],
+        ra: 0.045, rb: 0.026, colour: dim(straw, 0.75 + (i % 4) * 0.11), k: 0.021 });
+    }
     s.push({ kind: 'egg', c: [-0.3, 2.3, -0.2], r: [0.75, 0.55, 0.7], colour: SNOW, k: 0.12, rough: { scale: 6, amp: 0.1 } });
     s.push({ kind: 'egg', c: [0, 0.05, 0], r: [1.25, 0.1, 1.25], colour: SNOW, k: 0.1, rough: { scale: 5, amp: 0.1 } });
-    return s;
+    return s.map((solid) => ({ ...solid, stuff: solid.colour === SNOW ? PROP_SURFACE.snow : PROP_SURFACE.straw }));
   },
   gate() {
     // The wall to either side of the doorway under its tile cap, and the four posts of the gate house.
@@ -669,13 +680,12 @@ const PROPS = {
     s.push({ kind: 'box', c: [0, 0.26, 0], h: [0.24, 0.07, 0.24], colour: st, k: 0.02, round: 0.04 });
     s.push({ kind: 'cap', a: [0, 0.3, 0], b: [0, 1.0, 0], ra: 0.13, rb: 0.105, colour: st, k: 0.04, rough: { scale: 25, amp: 0.015 } });
     s.push({ kind: 'egg', c: [0, 0.66, 0], r: [0.15, 0.05, 0.15], colour: dim(st, 1.15), k: 0.02 });
+    for (const y of [0.31, 0.92]) s.push({ kind: 'egg', c: [0, y, 0], r: [0.168, 0.044, 0.165], colour: dim(st, 1.04), k: 0.016 });
     s.push({ kind: 'box', c: [0, 1.07, 0], h: [0.25, 0.06, 0.25], colour: st, k: 0.02, round: 0.04 });
     for (const [x, z] of [[1, 1], [1, -1], [-1, 1], [-1, -1]]) s.push({ kind: 'box', c: [x * 0.17, 1.3, z * 0.17], h: [0.04, 0.18, 0.04], colour: dim(st, 0.7), k: 0.01, round: 0.015 });
     s.push({ kind: 'box', c: [0, 1.5, 0], h: [0.25, 0.035, 0.25], colour: dim(st, 0.8), k: 0.015, round: 0.02 });
-    s.push({ kind: 'cap', a: [0, 1.5, 0], b: [0, 1.78, 0], ra: 0.36, rb: 0.05, colour: dim(st, 0.75), k: 0.03, fold: { n: 4, amp: 0.05, from: -1 } });
-    s.push({ kind: 'egg', c: [0, 1.84, 0], r: [0.07, 0.09, 0.07], colour: st, k: 0.02 });
-    s.push({ kind: 'cap', a: [0, 1.62, 0], b: [0, 1.82, 0], ra: 0.3, rb: 0.07, colour: SNOW, k: 0.05, rough: { scale: 14, amp: 0.06 } });
-    return s;
+    s.push({ kind: 'egg', c: [0, 1.785, 0], r: [0.059, 0.077, 0.059], colour: st, k: 0.02 });
+    return s.map((solid) => ({ ...solid, stuff: solid.colour === SNOW ? PROP_SURFACE.snow : PROP_SURFACE.stone }));
   },
   rock() {
     const s = [], dark = rgb(0x3c4048);
@@ -719,6 +729,11 @@ const args = process.argv.slice(2),
 mkdirSync(new URL('../assets/', import.meta.url), { recursive: true });
 const fullRig = bindPose(BONES),
   yardRig = bindPose(YARD_BONES);
+const stockParts = new Map();
+const lowBin = new URL('../assets/models-low.bin', import.meta.url);
+const lowIndex = new URL('../assets/models-low.json', import.meta.url);
+const lowStock = only.length && existsSync(lowBin) && existsSync(lowIndex) ?
+  { index: JSON.parse(readFileSync(lowIndex, 'utf8')), bin: readFileSync(lowBin) } : null;
 
 for (const [level, coarse] of Object.entries(LEVELS)) {
   if (wanted !== 'all' && wanted !== level) continue;
@@ -729,7 +744,8 @@ for (const [level, coarse] of Object.entries(LEVELS)) {
     built = Math.min(coarse, 1.3);
   for (const [name, look] of Object.entries(LOOKS)) {
     const full = name === 'hero' || name === 'lu';
-    jobs.push([name, () => sculptParts(person(look, full ? BONES : YARD_BONES), full ? fullRig : yardRig, coarse)]);
+    // The Tripo GLBs carry their own quality tiers. This is the same LOD for stock fallback in each pack.
+    jobs.push([name, () => sculptParts(person(look, full ? BONES : YARD_BONES), full ? fullRig : yardRig, LEVELS.low)]);
   }
   for (const [name, make] of Object.entries(THINGS)) {
     const { solids, edge } = finishEquipment(name, make(), rgb);
@@ -741,8 +757,10 @@ for (const [level, coarse] of Object.entries(LEVELS)) {
   for (const [name, make] of Object.entries(PROPS)) {
     const keepCarving = ['gate', 'gateRoof', 'temple', 'stele'].includes(name);
     const grid = name === 'lion' ? Math.min(coarse, 1.6) : keepCarving ? built : coarse;
-    jobs.push([name, () => detailSceneMesh(name,
-      sculpt(make(), { cell: (CELL[name] ?? 0.026) * grid, mottle: 0.16 }), coarse)]);
+    jobs.push([name, () => {
+      const solids = make();
+      return detailSceneMesh(name, sculpt(solids, { cell: (CELL[name] ?? 0.026) * grid, mottle: 0.16 }), coarse, solids);
+    }]);
   }
 
   // Models not asked for keep what was sculpted before.
@@ -751,16 +769,21 @@ for (const [level, coarse] of Object.entries(LEVELS)) {
     index = {};
   let offset = 0;
   for (const [name, make] of jobs) {
+    const stock = Object.hasOwn(LOOKS, name);
     let bytes, info;
-    if (old && !only.includes(name) && old.index[name]) {
-      info = old.index[name];
-      bytes = old.bin.subarray(info.offset, info.offset + info.bytes);
+    const previous = stock ? lowStock : old;
+    if (stockParts.has(name)) {
+      ({ bytes, info } = stockParts.get(name));
+    } else if (previous && !only.includes(name) && previous.index[name]) {
+      info = previous.index[name];
+      bytes = previous.bin.subarray(info.offset, info.offset + info.bytes);
     } else {
       const started = Date.now(),
         packed = pack(make());
       ({ bytes, info } = packed);
       console.log(`${level} ${name}: ${info.count} points, ${info.indices / 3} triangles, ${(bytes.length / 1024) | 0} KB, ${((Date.now() - started) / 1000).toFixed(1)} s`);
     }
+    if (stock) stockParts.set(name, { bytes, info });
     index[name] = { ...info, offset, bytes: bytes.length };
     chunks.push(bytes);
     offset += bytes.length;

@@ -76,12 +76,14 @@ function forEvent(event, alternate) {
 
 export function createAudio() {
   const buffers = new Map();
+  const speechFiles = new Map();
   const bankRequests = new Map();
   const banks = new Map();
   const channels = { music: {}, ambience: {} };
   const voices = new Set();
   const lastPlayed = new Map();
-  let context, master, music, ambience, fx, menu;
+  let context, master, music, ambience, fx, menu, dialogue;
+  let spoken, speechToken = 0;
   let enabled = true, paused = false, mood = 'road', request = 0;
   let listenerX = 0, listenerZ = 0, offset = 0;
   let layoutRequest, layout, pendingUi, duckedUntil = 0;
@@ -105,6 +107,57 @@ export function createAudio() {
       });
     }
     return buffers.get(name);
+  }
+
+  function prepareDialogue(...ids) {
+    if (!enabled) return;
+    for (const id of ids) {
+      if (speechFiles.has(id)) continue;
+      const url = new URL('../assets/dialogue/' + id + '.mp3', import.meta.url);
+      const request = fetch(url).then(response => response.ok ? response.arrayBuffer() : null).catch(() => null);
+      const file = { request, clip: null };
+      speechFiles.set(id, file);
+      request.then(bytes => { if (!bytes && speechFiles.get(id) === file) speechFiles.delete(id); });
+    }
+  }
+
+  function stopDialogue() {
+    speechToken++;
+    if (!spoken) return;
+    const previous = spoken;
+    spoken = null;
+    previous.stop();
+    mix();
+  }
+
+  async function speak(id) {
+    if (!context || !enabled || paused) return false;
+    stopDialogue();
+    if (context.state !== 'running') return false;
+    const token = speechToken, scheduled = performance.now();
+    prepareDialogue(id);
+    const file = speechFiles.get(id);
+    file.clip ??= file.request.then(bytes => bytes && context.decodeAudioData(bytes.slice(0))).catch(() => {
+      if (speechFiles.get(id) === file) speechFiles.delete(id);
+      return null;
+    });
+    const clip = await file.clip;
+    // A suspended audio clock does not measure time elapsed in the scene.
+    if (!clip || token !== speechToken || !enabled || paused || context.state !== 'running' || performance.now() - scheduled > 550) return false;
+    const source = context.createBufferSource();
+    source.buffer = clip;
+    source.connect(dialogue);
+    source.onended = () => {
+      source.disconnect();
+      if (spoken === source) {
+        spoken = null;
+        mix();
+      }
+    };
+    spoken = source;
+    mix();
+    source.start();
+    return true;
   }
 
   function prepareFoley(name) {
@@ -133,11 +186,11 @@ export function createAudio() {
     if (!context) return;
     const at = context.currentTime;
     master.gain.setTargetAtTime(enabled ? 0.87 : 0, at, 0.045);
-    ambience.gain.setTargetAtTime(paused ? 0.065 : 0.22, at, 0.16);
-    fx.gain.setTargetAtTime(paused ? 0.18 : 0.83, at, 0.085);
+    ambience.gain.setTargetAtTime(paused ? 0.065 : spoken ? 0.12 : 0.22, at, 0.16);
+    fx.gain.setTargetAtTime(paused ? 0.18 : spoken ? 0.53 : 0.83, at, 0.085);
     music.gain.cancelScheduledValues(at);
-    music.gain.setTargetAtTime(paused ? 0.15 : at < duckedUntil ? 0.19 : 0.42, at, 0.085);
-    if (!paused && at < duckedUntil) music.gain.setTargetAtTime(0.42, duckedUntil, 0.18);
+    music.gain.setTargetAtTime(paused ? 0.15 : spoken ? 0.14 : at < duckedUntil ? 0.19 : 0.42, at, 0.085);
+    if (!paused && !spoken && at < duckedUntil) music.gain.setTargetAtTime(0.42, duckedUntil, 0.18);
   }
 
   function crossfade(channel, clip, name, destination, duration) {
@@ -205,6 +258,7 @@ export function createAudio() {
         ambience = gain(0.22, master);
         fx = gain(0.83, master);
         menu = gain(0.64, master);
+        dialogue = gain(0.96, master);
       } catch {
         context = null;
         return Promise.resolve();
@@ -225,6 +279,7 @@ export function createAudio() {
     enabled = value;
     mix();
     if (!enabled) {
+      stopDialogue();
       pendingUi = null;
       return;
     }
@@ -234,6 +289,7 @@ export function createAudio() {
   function setPaused(value) {
     if (paused === value) return;
     paused = value;
+    if (paused) stopDialogue();
     mix();
   }
 
@@ -320,7 +376,7 @@ export function createAudio() {
   }
 
   return {
-    start, setMood, setOn, setPaused, play, playUi, update,
+    start, setMood, setOn, setPaused, play, playUi, update, speak, stopDialogue, prepareDialogue,
     gong: () => oneShot('gong', 0.53, 2, null, fx),
     setListener(x, z) {
       listenerX = x;
