@@ -430,7 +430,18 @@ async function main() {
       view.renderReflection(renderer);
       renderer.render(scene, camera);
     }, options);
-  view.warm();
+  if (bootStatus) bootStatus.textContent = bootChinese ? '正在准备首场战斗画面…' : 'Preparing the first combat view…';
+  // A second animation callback lets the loading message paint before the real
+  // reflection and main draws. The game clock and audio have not started.
+  await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const pixelRatio = Math.min(typeof devicePixelRatio === 'number' ? devicePixelRatio : 1, Number(params.get('ratio')) || 1.5);
+  // World3DView resizes on its first tick; these earlier draws need that size now.
+  renderer.resizeToDisplaySize(pixelRatio);
+  if (canvas.height > 0) camera.aspect = canvas.width / canvas.height;
+  status.warmup = { startedAt: performance.now() };
+  performance.mark('fps.boot.first-view.start');
+  Object.assign(status.warmup, view.warm(renderer, game), { finishedAt: performance.now() });
+  performance.mark('fps.boot.first-view.end');
   setMode('title');
   startWorld3DLoop(engine, fail);
 }

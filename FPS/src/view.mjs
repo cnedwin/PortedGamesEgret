@@ -1007,10 +1007,47 @@ export function createView(scene, camera, options = {}) {
     orient(tailRotor, 0, time * 34);
   };
 
-  /** Draw one sample of each effect off-screen, so first use in a fight does not stall to compile it. */
-  view.warm = () => {
-    for (const node of [dust, chips, sparks, blood, flashes, fire, smoke]) burst(node, 0, -40, 0, 1);
-    tracer(0, -40, 0, 0, -40, 6, 100);
+  /** Prepare the measured ordinary supply-body variants beneath the loading screen. */
+  view.warm = (renderer, game) => {
+    const emitters = [dust, chips, sparks, blood, flashes, fire, smoke];
+    const effects = () => {
+      for (const node of emitters) {
+        burst(node, 0, -40, 0, 1);
+        node.update(0); // Make one live instance without aging short-lived flashes away.
+      }
+      tracer(0, -40, 0, 0, -40, 6, 100);
+      updateTracers(0);
+    };
+    if (!renderer || !game) return effects();
+    const source = authoredCrate?.parts.body?.meshes[0];
+    const fixture = source ? new Mesh3D(source.geometry, source.material).setMatrix(source.matrix) : null;
+    if (fixture) {
+      fixture.name = 'boot-supply-body';
+      fixture.setPosition(fixture.position[0], fixture.position[1] - 40, fixture.position[2]);
+      fixture.frustumCulled = false;
+      fixture.castShadow = false;
+      fixture.receiveShadow = true;
+      // Title crates fold into instances. This one deliberately stays an ordinary
+      // mesh, matching the two first-use programs measured at the starting view.
+      fixture.renderOrder = 1000001;
+      scene.addChild(fixture);
+    }
+    try {
+      view.update(0, game, 'play', 0);
+      effects();
+      mirror.invalidate();
+      view.renderReflection(renderer);
+      renderer.render(scene, camera);
+      return { ordinarySupplyMeshes: fixture ? 1 : 0, reflection: mirrorOn };
+    } finally {
+      fixture?.removeFromParent();
+      // Geometry and PBR materials belong to the loaded asset, not this fixture.
+      for (const node of emitters) node.reset();
+      tracers.length = 0;
+      updateTracers(0);
+      view.update(0, game, 'title', 0);
+      mirror.invalidate();
+    }
   };
 
   return view;
