@@ -265,6 +265,7 @@ export class Graphics {
         this.fill = undefined;
         return this;
     }
+    /** Removes everything drawn and ends the fill and the line. Returns the graphics, so drawing can follow at once. */
     clear() {
         assertVisualMutable(this.owner);
         const state = visualOf(this.owner), changed = state.primitives.length !== 0 || state.shape !== undefined;
@@ -274,6 +275,7 @@ export class Graphics {
         this.line = undefined;
         if (changed)
             recordVisualChange(this.owner, VISUAL_CONTENT);
+        return this;
     }
     /**
      * A fill of an image. `lease` is the lease of a texture that is a whole image, not a part of an atlas. `matrix`

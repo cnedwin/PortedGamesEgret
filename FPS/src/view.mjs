@@ -21,6 +21,7 @@ import {
   createPhysicsWorld3D,
   createSpotLight3D,
 } from '@egret/engine/world3d';
+import { addModel } from './asset-models.mjs';
 import { createBuilder, orient, rgb } from './build.mjs';
 import { ENEMY_BODY, MISSION, PLAYER } from './data.mjs';
 import { createGun } from './gun.mjs';
@@ -45,6 +46,23 @@ const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export function createView(scene, camera, options = {}) {
   const view = { shake: 0, flash: 0 };
+  const models = options.models ?? {};
+  function visual(geometry, material, art, placement = {}) {
+    if (art) {
+      const pivot = new Object3D();
+      addModel(pivot, art, geometry.boundingBox, placement);
+      return pivot;
+    }
+    const mesh = new Mesh3D(geometry, material);
+    mesh.castShadow = true;
+    return mesh;
+  }
+  const uniformMount = (art, size, axis = 1) => {
+    const bounds = art.bounds, scale = size / (bounds[axis + 3] - bounds[axis]);
+    return { scale, position: [-(bounds[0] + bounds[3]) * scale / 2, -bounds[1] * scale,
+      -(bounds[2] + bounds[5]) * scale / 2] };
+  };
+  const mountedPoint = (transform, point) => point.map((value, axis) => value * transform.scale + transform.position[axis]);
 
   // ---- sky and light: first light over the valley ------------------------------------------
   const sky = skyTexture([0.72, 0.4, 0.56]);
@@ -59,7 +77,7 @@ export function createView(scene, camera, options = {}) {
   Object.assign(sun.shadow, { cascades: 3, cascadeDistance: 70, mapSize: options.shadowSize ?? 2048 });
   scene.addChild(sun);
 
-  const { wet, meshes } = buildScenery(scene, createSurfaces());
+  const { wet, meshes } = buildScenery(scene, createSurfaces(), models);
 
   // ---- rain: wet ground that mirrors the scene, and streaks falling round the camera -------
   const GROUND = [0, 1, 0, 0],
@@ -222,14 +240,17 @@ export function createView(scene, camera, options = {}) {
     kit.box(0, 0.93, 0.02, 0.76, 0.06, 0.56, { tint: rgb(0x23262a) });
     kit.box(0, 1.2, -0.2, 0.74, 0.5, 0.05, { tint: rgb(0x23262a), pitch: -0.18 });
     kit.cylinder(0.3, 1.5, -0.22, 0.012, 1.1, { sides: 6, tint: rgb(0x23262a) });
-    const body = new Mesh3D(kit.finish(), plainMaterial);
-    body.castShadow = true;
+    const terminalArt = models.terminal?.parts.body ?? models.terminal;
+    const terminalMount = terminalArt ? uniformMount(terminalArt, 1.85) : undefined;
+    const body = visual(kit.finish(), plainMaterial, terminalArt, { transform: terminalMount });
     node.addChild(body);
     const screenMaterial = createUnlitMaterial3D({ color: 0xffffff, map: screenLive, toneMapped: false });
     const screen = new Mesh3D(createQuadGeometry3D(), screenMaterial);
-    screen.setPosition(0, 1.2, -0.168);
-    screen.setScale(0.66, 0.42, 1);
-    orient(screen, 0, -0.18);
+    // Place the status texture over the authored chassis's recessed screen.
+    // Both bodies keep the same interactive point and live/done display.
+    screen.setPosition(...(terminalMount ? mountedPoint(terminalMount, [0, 0.75, 0.1845]) : [0, 1.2, -0.168]));
+    screen.setScale(terminalMount ? 0.202 * terminalMount.scale : 0.66, terminalMount ? 0.135 * terminalMount.scale : 0.42, 1);
+    orient(screen, 0, terminalMount ? -0.25 : -0.18);
     node.addChild(screen);
     scene.addChild(node);
     const light = createPointLight3D({ color: 0x58e0ff, intensity: 1.1, range: 4.5 });
@@ -266,16 +287,21 @@ export function createView(scene, camera, options = {}) {
       .box(0, 0.04, -0.31, 1.07, 0.08, 0.64, { tint: rgb(0x55664a) })
       .finish();
   let crates = [];
+  const authoredCrate = models['supply-crate'];
+  const crateMount = authoredCrate?.parts.body && authoredCrate.parts.lid ? uniformMount(authoredCrate, 1.05, 0) : undefined;
+  const hinge = crateMount ? [0, mountedPoint(crateMount, [0, authoredCrate.parts.body.bounds[4], 0])[1],
+    mountedPoint(crateMount, [0, 0, authoredCrate.bounds[5]])[2]] : [0, 0.52, 0.31];
   function buildCrates(game) {
     for (const crate of crates) crate.node.removeFromParent();
     crates = game.crates.map((crate) => {
       const node = new Object3D();
       node.setPosition(crate.x, 0, crate.z);
       orient(node, crate.turn);
-      const body = new Mesh3D(crateBody, plainMaterial),
-        lid = new Mesh3D(crateLid, plainMaterial);
-      body.castShadow = lid.castShadow = true;
-      lid.setPosition(0, 0.52, 0.31);
+      const body = visual(crateBody, plainMaterial, models['supply-body'] ?? authoredCrate?.parts.body, { transform: crateMount }),
+        lid = visual(crateLid, plainMaterial, models['supply-lid'] ?? authoredCrate?.parts.lid, {
+          transform: crateMount && { scale: crateMount.scale, position: crateMount.position.map((value, axis) => value - hinge[axis]) },
+        });
+      lid.setPosition(...hinge);
       node.addChild(body);
       node.addChild(lid);
       const best = Math.max(...crate.items.map((item) => item.rarity)),
@@ -284,7 +310,7 @@ export function createView(scene, camera, options = {}) {
         createBoxGeometry3D({ width: 0.9, height: 0.03, depth: 0.5 }),
         createUnlitMaterial3D({ color: [r, g, b], toneMapped: false }),
       );
-      glow.setPosition(0, 0.5, 0);
+      glow.setPosition(0, hinge[1] - 0.02, 0);
       glow.visible = false;
       node.addChild(glow);
       scene.addChild(node);
@@ -312,7 +338,7 @@ export function createView(scene, camera, options = {}) {
         friction: 0.8,
         layer: 1,
       });
-  const createSoldier = createSoldierFactory(propWorld),
+  const createSoldier = createSoldierFactory(propWorld, models),
     soldiers = new Map();
   function syncSoldiers(game, dt) {
     const p = game.player;
@@ -722,8 +748,13 @@ export function createView(scene, camera, options = {}) {
       for (const z of [-1.2, 1.2]) hull.box(side * 1.12, -0.95, z, 0.08, 0.7, 0.08, { tint: dark, roll: side * 0.35 });
       hull.box(side * 1.02, 0.1, 0.4, 0.04, 1.2, 1.8, { tint: rgb(0x10161a) });
     }
-    const body = new Mesh3D(hull.finish(), plainMaterial);
-    body.castShadow = true;
+    const authoredHull = models.helicopter?.parts.body ?? models.helicopter;
+    const hullMount = authoredHull ? uniformMount(authoredHull, 9, 2) : undefined;
+    if (hullMount) {
+      hullMount.position[1] -= 1.31;
+      hullMount.position[2] = -3.8 - authoredHull.bounds[2] * hullMount.scale;
+    }
+    const body = visual(hull.finish(), plainMaterial, authoredHull, { transform: hullMount });
     heli.addChild(body);
     const blades = createBuilder();
     for (let i = 0; i < 4; i++)
@@ -739,14 +770,16 @@ export function createView(scene, camera, options = {}) {
     const disc = new Mesh3D(blades.finish(), plainMaterial);
     disc.castShadow = true;
     rotor.addChild(disc);
-    rotor.setPosition(0, 1.65, 0);
+    rotor.setPosition(...(hullMount ? mountedPoint(hullMount, [0, 0.413, -0.09]) : [0, 1.65, 0]));
+    if (hullMount) rotor.setScale(0.935 * hullMount.scale / 13.6);
     heli.addChild(rotor);
     const small = new Mesh3D(
       createBuilder().box(0, 0, 0, 0.05, 1.7, 0.16, { tint: dark }).box(0, 0, 0, 0.05, 0.16, 1.7, { tint: dark }).finish(),
       plainMaterial,
     );
     tailRotor.addChild(small);
-    tailRotor.setPosition(0.14, 1.6, 6.9);
+    tailRotor.setPosition(...(hullMount ? mountedPoint(hullMount, [-0.028, 0.395, 0.427]) : [0.14, 1.6, 6.9]));
+    if (hullMount) tailRotor.setScale(0.13 * hullMount.scale / 1.7);
     heli.addChild(tailRotor);
     heli.visible = false;
     scene.addChild(heli);
@@ -756,7 +789,7 @@ export function createView(scene, camera, options = {}) {
   view.helicopter = 0;
 
   // ---- the weapon in hand ------------------------------------------------------------------
-  const gun = createGun(camera);
+  const gun = createGun(camera, models);
   // The weapon and its flash stay out of the ground's mirror image.
   for (const child of camera.children) child.traverse((node) => void (node.layers = 2));
   view.gun = gun;
@@ -927,7 +960,7 @@ export function createView(scene, camera, options = {}) {
       const want = item.crate.opened ? 1 : 0;
       if (item.open !== want) {
         item.open += Math.sign(want - item.open) * Math.min(Math.abs(want - item.open), dt * 4);
-        orient(item.lid, 0, -item.open * 1.9);
+        orient(item.lid, 0, item.open * 1.9);
         item.glow.visible = item.open > 0.3;
       }
     }
@@ -944,8 +977,7 @@ export function createView(scene, camera, options = {}) {
 
     // Grenades in flight.
     while (grenadeNodes.length < game.grenades.length) {
-      const node = new Mesh3D(grenadeGeometry, grenadeMaterial);
-      node.castShadow = true;
+      const node = visual(grenadeGeometry, grenadeMaterial, models.grenade);
       scene.addChild(node);
       grenadeNodes.push(node);
     }

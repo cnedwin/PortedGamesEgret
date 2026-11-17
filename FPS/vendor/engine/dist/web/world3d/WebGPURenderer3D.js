@@ -1,10 +1,11 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 import { linearToSrgb, mat3NormalFromMat4, mat4Invert } from '../../rendering/world3d/math3D.js';
+import { instanceStreamRevisions3D } from '../../rendering/world3d/Mesh3D.js';
 import { SkinnedInstancedMesh3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
 import { RenderList3D } from '../../rendering/world3d/RenderList3D.js';
 import { COMPRESSED_BLOCK_BYTES_3D, CubeTexture3D, RenderTarget3D, isCompressedPixels3D, isTexturePixels3D } from '../../rendering/world3d/Texture3D.js';
-import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, planShadows3D, writeFrameBlock3D } from './frame3D.js';
+import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, TILED_LIGHTS_3D, writeTiledLights3D, outputToneMapping3D, planShadows3D, writeFrameBlock3D } from './frame3D.js';
 import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D } from './post3D.js';
 import { PostChainWebGPU3D } from './postWebGPU3D.js';
 import { MATERIAL_BLOCK_BYTES_3D, MIPMAP_WGSL_3D, OBJECT_BLOCK_BYTES_3D, SKYBOX_WGSL_3D, buildMaterialWgsl3D, shaderFeatureKey3D } from './wgsl3D.js';
@@ -54,12 +55,15 @@ export class WebGPURenderer3D {
     autoClear = true;
     #post;
     #inPost = false;
+    #frameToneMapping = 'none';
     info = {
         frame: 0,
         drawCalls: 0,
         triangles: 0,
         visited: 0,
         culled: 0,
+        lightsDropped: 0,
+        lightsTiled: 0,
         shadowMaps: 0,
         programs: 0,
         geometries: 0,
@@ -73,6 +77,8 @@ export class WebGPURenderer3D {
     #list = new RenderList3D();
     #frameData = new Float32Array(FRAME_BLOCK_FLOATS_3D);
     #frameBuffer;
+    #tiledTable = new Float32Array(TILED_LIGHTS_3D.width * TILED_LIGHTS_3D.rows * 4);
+    #tiledBuffer;
     #frameLayout;
     #depthFrameLayout;
     #materialLayout;
@@ -175,7 +181,8 @@ export class WebGPURenderer3D {
                 { binding: 4, visibility: SHADER_STAGE.FRAGMENT, sampler: {} },
                 { binding: 5, visibility: SHADER_STAGE.FRAGMENT, texture: {} },
                 { binding: 6, visibility: SHADER_STAGE.FRAGMENT, sampler: {} },
-                { binding: 7, visibility: SHADER_STAGE.FRAGMENT, texture: { sampleType: 'depth' } }
+                { binding: 7, visibility: SHADER_STAGE.FRAGMENT, texture: { sampleType: 'depth' } },
+                { binding: 8, visibility: SHADER_STAGE.FRAGMENT, buffer: { type: 'read-only-storage' } }
             ]
         });
         this.#depthFrameLayout = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: both, buffer: {} }] });
@@ -202,6 +209,10 @@ export class WebGPURenderer3D {
         this.#frameBuffer = device.createBuffer({
             size: FRAME_BLOCK_FLOATS_3D * 4,
             usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST
+        });
+        this.#tiledBuffer = device.createBuffer({
+            size: this.#tiledTable.byteLength,
+            usage: BUFFER_USAGE.STORAGE | BUFFER_USAGE.COPY_DST
         });
         this.#objectBuffer = this.createObjectBuffer();
         this.#objectGroup = this.createObjectGroup();
@@ -650,26 +661,35 @@ export class WebGPURenderer3D {
         entry.wire?.buffer.destroy();
         entry.morph?.buffer.destroy();
     }
+    uploadInstances(entry, source, version) {
+        if (entry?.source === source && entry.version === version)
+            return entry;
+        const buffer = this.writeBuffer(entry, source, BUFFER_USAGE.VERTEX);
+        buffer.source = source;
+        buffer.version = version;
+        return buffer;
+    }
     instances(mesh, frame) {
+        const crowd = mesh instanceof SkinnedInstancedMesh3D ? mesh : undefined;
+        const revisions = crowd ? undefined : instanceStreamRevisions3D(mesh);
+        const matrices = crowd?.drawMatrices ?? mesh.instanceMatrices;
+        const matrixVersion = revisions?.matrices ?? mesh.instanceVersion;
         let entry = this.#instances.get(mesh);
-        if (!entry)
-            this.#instances.set(mesh, (entry = {
-                matrices: this.writeBuffer(undefined, mesh.instanceMatrices, BUFFER_USAGE.VERTEX),
-                colors: undefined,
-                version: -1,
-                lastFrame: frame
-            }));
-        entry.lastFrame = frame;
-        if (entry.version !== mesh.instanceVersion) {
-            const crowd = mesh instanceof SkinnedInstancedMesh3D ? mesh : undefined;
-            const colors = crowd ? crowd.drawColors : mesh.instanceColors;
-            entry.matrices = this.writeBuffer(entry.matrices, crowd?.drawMatrices ?? mesh.instanceMatrices, BUFFER_USAGE.VERTEX);
-            if (colors)
-                entry.colors = this.writeBuffer(entry.colors, colors, BUFFER_USAGE.VERTEX);
-            if (crowd)
-                entry.animation = this.writeBuffer(entry.animation, crowd.drawAnimation, BUFFER_USAGE.VERTEX);
-            entry.version = mesh.instanceVersion;
+        const resident = this.uploadInstances(entry?.matrices, matrices, matrixVersion);
+        if (!entry) {
+            entry = { matrices: resident, colors: undefined, lastFrame: frame };
+            this.#instances.set(mesh, entry);
         }
+        else
+            entry.matrices = resident;
+        entry.lastFrame = frame;
+        const colors = crowd ? crowd.drawColors : mesh.instanceColors;
+        if (colors)
+            entry.colors = this.uploadInstances(entry.colors, colors, revisions?.colors ?? mesh.instanceVersion);
+        else if (entry.colors)
+            entry.colors.source = undefined;
+        if (crowd)
+            entry.animation = this.uploadInstances(entry.animation, crowd.drawAnimation, mesh.instanceVersion);
         return entry;
     }
     /** Bind group holding the bone matrices and morph deltas for a mesh. */
@@ -922,7 +942,7 @@ export class WebGPURenderer3D {
                 ? { customKey: material.shader.key, customNormalWgsl: material.shader.wgslNormal }
                 : {}),
             reflectionMap: lit && material.shading === 'standard' && material.reflectionMap !== undefined,
-            toneMapped: !depthOnly && kind !== 'hdr' && this.toneMapping !== 'none' && material.toneMapped,
+            toneMapped: !depthOnly && this.#frameToneMapping !== 'none' && material.toneMapped,
             linearOutput: kind === 'target' || kind === 'hdr'
         };
     }
@@ -1124,7 +1144,7 @@ export class WebGPURenderer3D {
             (mesh.receiveShadow && this.#shadowCount > 0 ? 128 : 0) |
             (frameFlags.fog ? 256 : 0) |
             (frameFlags.environment ? 512 : 0) |
-            (this.toneMapping !== 'none' ? 1024 : 0) |
+            (this.#frameToneMapping !== 'none' ? 1024 : 0) |
             (instanced && mesh.instanceColorSize === 4 ? 2048 : 0) |
             (material.side === 'double' ? 4096 : material.side === 'back' ? 8192 : 0) |
             (mesh instanceof SkinnedInstancedMesh3D ? 16384 : 0) |
@@ -1345,7 +1365,7 @@ export class WebGPURenderer3D {
         data[16] = intensity;
         data[17] = kind === 'canvas' ? 0 : 1;
         data[18] = this.exposure;
-        data[19] = kind === 'hdr' ? 0 : this.toneMapping === 'aces' ? 2 : this.toneMapping === 'reinhard' ? 1 : 0;
+        data[19] = this.#frameToneMapping === 'aces' ? 2 : this.#frameToneMapping === 'reinhard' ? 1 : 0;
         device.queue.writeBuffer(this.#skyBuffer, 0, data);
         const cube = this.textureCube(texture), groupKey = texture.id + ':' + texture.version;
         if (!this.#skyGroup || this.#skyGroup.key !== groupKey) {
@@ -1375,6 +1395,13 @@ export class WebGPURenderer3D {
      * instanced draw each, in the main view and in shadow maps. On by default;
      * the meshes themselves are untouched.
      */
+    /** Point lights past the eight nearest are lit by screen tile, up to 256; false drops them instead. */
+    get tiledLights() {
+        return this.#list.tiledLights;
+    }
+    set tiledLights(value) {
+        this.#list.tiledLights = Boolean(value);
+    }
     get autoInstancing() {
         return this.#list.autoInstanceThreshold > 1;
     }
@@ -1382,34 +1409,57 @@ export class WebGPURenderer3D {
         this.#list.autoInstanceThreshold = value ? 8 : 0;
     }
     render(scene, camera, target) {
+        return this.renderView(scene, camera, target);
+    }
+    /** Draw the mirror directly with its own output, shadows and object selection. */
+    renderReflectionPass(scene, camera, pass) {
+        return this.renderView(scene, camera, pass.target, pass);
+    }
+    /** The retained mirror image must still belong to the live WebGPU device. */
+    reuseReflection(target) {
+        return !this.#disposed && !this.#lost && this.#targets.get(target)?.version === target.version;
+    }
+    renderView(scene, camera, target, reflection) {
         if (this.#disposed)
             throw new World3DError('WORLD3D_DISPOSED', 'renderer');
         if (this.#lost)
             return false;
-        if (this.postProcess.enabled && !this.#inPost)
+        if (!reflection && this.postProcess.enabled && !this.#inPost)
             return this.renderPost(scene, camera, target);
-        // Half-float targets keep scene-referred light; tone mapping happens when they are displayed.
         const device = this.device, list = this.#list, info = this.info, kind = target ? (target.format === 'rgba16f' ? 'hdr' : 'target') : 'canvas';
         if (target?.isDisposed)
             throw new World3DError('WORLD3D_DISPOSED', 'render target');
-        list.build(scene, camera);
+        this.#frameToneMapping = outputToneMapping3D(reflection?.toneMapping ?? this.toneMapping, target);
+        list.build(scene, camera, reflection);
         this.#serial++;
         this.#objectCount = 0;
         info.frame = list.frame;
         info.drawCalls = info.triangles = 0;
         info.visited = list.stats.visited;
         info.culled = list.stats.culled;
+        info.lightsDropped = list.stats.lightsDropped;
         const atlas = this.ensureShadowAtlas();
-        const plans = planShadows3D(this.#frameData, list, this.#shadowAtlasSize, this.shadowsEnabled, true, this.#shadowSlots, camera);
+        const plans = planShadows3D(this.#frameData, list, this.#shadowAtlasSize, this.shadowsEnabled && (reflection?.shadows ?? true), true, this.#shadowSlots, camera);
         this.#shadowCount = plans.length;
         const environment = scene.environment && !scene.environment.isDisposed ? this.textureCube(scene.environment) : undefined;
         writeFrameBlock3D(this.#frameData, scene, camera, list, this.#shadowSlots, {
             exposure: this.exposure,
-            toneMapping: kind === 'hdr' ? 'none' : this.toneMapping,
+            toneMapping: this.#frameToneMapping,
             environmentMaxMip: environment?.maxMip ?? 0
         });
         this.#frameData[FRAME_OFFSETS_3D.clipInfo + 2] = this.viewport ? this.viewport[2] : 1;
         this.#frameData[FRAME_OFFSETS_3D.clipInfo + 3] = this.viewport ? this.viewport[3] : 1;
+        {
+            // Lights past the eight in the frame block go to the tiled list, read by screen tile.
+            const fullWidth = target ? target.width : this.#context.getCurrentTexture().width, fullHeight = target ? target.height : this.#context.getCurrentTexture().height;
+            const rect = this.viewport;
+            const tileWidth = rect ? Math.max(Math.round(rect[2] * fullWidth), 1) : fullWidth, tileHeight = rect ? Math.max(Math.round(rect[3] * fullHeight), 1) : fullHeight;
+            const originX = rect ? Math.round(rect[0] * fullWidth) : 0, originY = rect ? Math.max(fullHeight - Math.round(rect[1] * fullHeight) - tileHeight, 0) : 0;
+            const tiled = writeTiledLights3D(this.#frameData, this.#tiledTable, list.tiledPointLights, camera.viewProjectionMatrix, tileWidth, tileHeight, true, originX, originY);
+            if (tiled > 0)
+                device.queue.writeBuffer(this.#tiledBuffer, 0, this.#tiledTable);
+            this.info.lightsTiled = tiled;
+        }
         device.queue.writeBuffer(this.#frameBuffer, 0, this.#frameData);
         // Surfaces that fade near solid geometry read its depth, drawn once before the frame.
         const soft = list.transparent.some(item => item.material.softness > 0);
@@ -1452,7 +1502,8 @@ export class WebGPURenderer3D {
                     { binding: 4, resource: environment?.sampler ?? this.#defaultSampler },
                     { binding: 5, resource: this.#white },
                     { binding: 6, resource: this.#grabSampler },
-                    { binding: 7, resource: sceneDepthView }
+                    { binding: 7, resource: sceneDepthView },
+                    { binding: 8, resource: { buffer: this.#tiledBuffer } }
                 ]
             });
             this.#frameGroupKey = frameKey;
@@ -1613,7 +1664,8 @@ export class WebGPURenderer3D {
                         { binding: 4, resource: environment?.sampler ?? this.#defaultSampler },
                         { binding: 5, resource: entry.view },
                         { binding: 6, resource: this.#grabSampler },
-                        { binding: 7, resource: sceneDepthView }
+                        { binding: 7, resource: sceneDepthView },
+                        { binding: 8, resource: { buffer: this.#tiledBuffer } }
                     ]
                 });
                 entry.key = frameKey;
@@ -1803,6 +1855,7 @@ export class WebGPURenderer3D {
         this.#pipelines.clear();
         this.#modules.clear();
         this.#frameBuffer.destroy();
+        this.#tiledBuffer.destroy();
         this.#objectBuffer.destroy();
         this.#skyBuffer?.destroy();
         this.#dummyBones.destroy();

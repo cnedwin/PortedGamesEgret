@@ -13,6 +13,7 @@
 //   ?stats=1         show frame timings and what was drawn
 import { createEngine } from '@egret/engine';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
+import { loadModels } from './asset-models.mjs';
 import { createAudio } from './audio.mjs';
 import { createBot } from './bot.mjs';
 import { createHud } from './hud.mjs';
@@ -37,6 +38,7 @@ const boot = document.querySelector('#boot');
 /** State for the browser console and for automated checks; the game never reads it. */
 const status = { error: '', frames: 0, mode: 'boot', game: undefined };
 globalThis.__cutoff = status;
+const modelsReady = params.get('art') === 'original' ? Promise.resolve(null) : loadModels(backend.loadGltfFromUrl3D);
 
 function fail(cause) {
   const box = document.querySelector('#error');
@@ -92,6 +94,11 @@ async function main() {
       })
     : backend.createWebGL2Renderer3D({ canvas, antialias: true, toneMapping: 'aces' });
   scope.use(renderer);
+  const gl = useWebGPU ? null : renderer.context;
+  const debugRenderer = gl?.getExtension('WEBGL_debug_renderer_info');
+  const adapter = debugRenderer ? gl.getParameter(debugRenderer.UNMASKED_RENDERER_WEBGL) : '';
+  // The shadow-receiving shader loses the context on this ANGLE D3D11 adapter.
+  const shadowCompatible = !/ANGLE .*RTX 5090 Laptop GPU \(0x00002C58\) Direct3D11\b/i.test(adapter);
   Object.assign(renderer.postProcess, {
     bloom: true,
     bloomThreshold: 1.15,
@@ -118,10 +125,14 @@ async function main() {
   status.stats = stats;
 
   const settings = loadSettings();
+  const modelBundle = await modelsReady;
+  if (modelBundle) scope.use(modelBundle);
+  const models = modelBundle?.models ?? {};
+  status.models = { loaded: Object.keys(models), failures: modelBundle?.failures ?? {} };
   const scene = new Scene3D();
   const camera = createPerspectiveCamera3D({ fov: settings.fov, near: 0.03, far: 460 });
   scene.addChild(camera);
-  const view = createView(scene, camera, { fov: settings.fov });
+  const view = createView(scene, camera, { fov: settings.fov, models });
   status.scene = scene;
   status.camera = camera;
 
@@ -138,7 +149,7 @@ async function main() {
       off = (name) => params.get(name) === '0';
     renderer.postProcess.enabled = !low && !off('post');
     renderer.postProcess.ssao = high && !off('ssao');
-    renderer.shadowsEnabled = !low && !off('shadows');
+    renderer.shadowsEnabled = !low && !off('shadows') && shadowCompatible;
     view.setShadowSize(high ? 2048 : 1024);
     view.setReflections(!low && !off('reflect'));
     focusOn = high && !off('dof');
