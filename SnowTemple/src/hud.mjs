@@ -52,7 +52,7 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     <div id="card"><b></b><i></i><span></span></div>
     <div id="veil"></div>
     <div id="title"><h1 class="name">风雪山神庙</h1><div class="seal">水浒　第一回</div><div class="entry"><div class="climb" hidden><button type="button" data-tier="-1" aria-label="低一重">‹</button><div class="tier"><b></b><small></small></div><button type="button" data-tier="1" aria-label="高一重">›</button></div><div class="ways"><button class="go" type="button" data-way="chapter" disabled>踏雪上路<span aria-hidden="true">›</span></button><button class="stand" type="button" data-way="yard" disabled>守草料场<small></small></button></div><div class="keys"><span class="key"></span><span class="tap">左手移动　右手出枪、格挡和闪避</span></div></div></div>
-    <div id="page" role="dialog" aria-label="枪谱残页" hidden><div class="leaf"><h2>枪谱残页</h2><p>还认得出三行，择一而习。</p><div class="lessons"></div></div></div>
+    <div id="page" role="dialog" aria-modal="true" aria-labelledby="page-title" aria-describedby="page-copy" tabindex="-1" hidden><div class="leaf"><h2 id="page-title">枪谱残页</h2><p id="page-copy">还认得出三行，择一而习。</p><div class="lessons"></div></div></div>
     <div class="corner"><button type="button" data-do="full">全屏</button><button type="button" data-do="set">设置</button></div>
     <div class="panel" id="settings" role="dialog" aria-label="设置" tabindex="-1"></div>
     <div id="debug"></div>`;
@@ -298,30 +298,52 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
 
   // ---- a page of the manual: three lessons, one to take ---------------------------------------
   const page = $('#page');
-  let pageSince = 0;
+  let pageSince = 0, previousFocus;
+  hud.closeChoice = () => {
+    if (page.hidden) return;
+    page.hidden = true;
+    previousFocus?.focus({ preventScroll: true });
+    previousFocus = null;
+  };
   const pick = (index) => {
     // Hands still busy with the fight must not choose by accident.
     if (page.hidden || performance.now() - pageSince < 420 || !page.querySelector(`[data-pick="${index}"]`)) return;
-    page.hidden = true;
+    hud.closeChoice();
     onPick(index);
   };
   hud.choose = (options) => {
+    if (page.hidden) previousFocus = document.activeElement;
     page.querySelector('.lessons').innerHTML = options
       .map((id, i) => `<button type="button" data-pick="${i}"><kbd>${i + 1}</kbd><b>${BOONS[id].name}</b><span>${BOONS[id].text}</span></button>`)
       .join('');
     page.hidden = false;
     pageSince = performance.now();
+    page.focus({ preventScroll: true });
   };
-  hud.closeChoice = () => (page.hidden = true);
   hud.choosing = () => !page.hidden;
   page.addEventListener('click', (event) => {
     const button = event.target.closest('[data-pick]');
     if (button) pick(Number(button.dataset.pick));
   });
   addEventListener('keydown', (event) => {
+    if (page.hidden) return;
+    if (event.key === 'Tab') {
+      const buttons = [...page.querySelectorAll('[data-pick]')];
+      const current = buttons.indexOf(document.activeElement);
+      const next = current < 0 ? (event.shiftKey ? buttons.length - 1 : 0)
+        : (current + (event.shiftKey ? -1 : 1) + buttons.length) % buttons.length;
+      event.preventDefault();
+      buttons[next]?.focus({ preventScroll: true });
+      return;
+    }
     const digit = /^(?:Digit|Numpad)([1-3])$/.exec(event.code);
-    if (digit && !page.hidden && !event.repeat) pick(Number(digit[1]) - 1);
-  });
+    const focused = (event.key === ' ' || event.key === 'Enter') && page.contains(document.activeElement)
+      ? document.activeElement.dataset.pick : undefined;
+    if (!digit && focused === undefined) return;
+    event.preventDefault();
+    event.stopPropagation();
+    if (!event.repeat) pick(digit ? Number(digit[1]) - 1 : Number(focused));
+  }, { capture: true });
 
   const panel = $('#settings');
   const CHOICES = {

@@ -73,3 +73,59 @@ test('a touch control has one owner; another finger cannot steal or release it',
   assert.equal(owner.owns(2), false);
   assert.equal(owner.claim(3), true);
 });
+
+test('releasing a canvas pointer over an overlay clears only its matching hold', () => {
+  const oldAdd = globalThis.addEventListener, oldDocument = globalThis.document;
+  const oldWidth = globalThis.innerWidth, oldHeight = globalThis.innerHeight;
+  const windowEvents = {}, canvasEvents = {};
+  globalThis.addEventListener = (type, listener) => { windowEvents[type] = listener; };
+  globalThis.document = { hidden: false, addEventListener() {} };
+  globalThis.innerWidth = globalThis.innerHeight = 100;
+  const pointer = (pointerType, pointerId, button, buttons, target) => ({
+    pointerType, pointerId, button, buttons, target, clientX: 50, clientY: 50, preventDefault() {}
+  });
+  try {
+    const canvas = { focus() {}, addEventListener(type, listener) { canvasEvents[type] = listener; } };
+    const input = createInput(canvas, { ...DEFAULT_KEYS });
+    const read = () => input.sample({ x: 0, z: 0 }, null);
+    // The spear-page overlay is a sibling of the canvas, so its pointerup
+    // reaches the window without passing through the canvas.
+    canvasEvents.pointerdown(pointer('mouse', 1, 2, 2));
+    assert.equal(read().guard, true, 'the canvas press starts guarding');
+    windowEvents.pointerup?.(pointer('touch', 1, 2, 0));
+    windowEvents.pointerup?.(pointer('mouse', 2, 2, 0));
+    assert.equal(read().guard, true, 'touch and unrelated mouse release leave this guard held');
+    windowEvents.pointerup?.(pointer('mouse', 1, 2, 0));
+    assert.equal(read().guard, false, 'release on the page unwinds this mouse guard');
+    canvasEvents.pointerdown(pointer('mouse', 1, 2, 2, canvas));
+    windowEvents.pointermove(pointer('mouse', 1, 0, 3, canvas));
+    const chord = read();
+    assert.equal(chord.guard, true);
+    assert.equal(chord.attack, true, 'the second button can press on the canvas');
+    assert.equal(chord.charge, true);
+    windowEvents.pointermove(pointer('mouse', 1, 2, 1, {}));
+    const inPage = read();
+    assert.equal(inPage.guard, false, 'releasing the first chord button over the page only ends guard');
+    assert.equal(inPage.charge, true);
+    windowEvents.pointerup(pointer('mouse', 1, 0, 0));
+    assert.equal(read().charge, false);
+    windowEvents.keydown({ code: 'KeyW', preventDefault() {} });
+    input.hold('guard', true);
+    canvasEvents.pointerdown(pointer('mouse', 1, 2, 2));
+    windowEvents.pointerup?.(pointer('mouse', 1, 2, 0));
+    assert.equal(read().guard, true);
+    input.hold('guard', false);
+    canvasEvents.pointerdown(pointer('pen', 3, 0, 1));
+    assert.equal(read().charge, true);
+    windowEvents.pointercancel?.(pointer('pen', 3, -1, 0));
+    const after = read();
+    assert.equal(after.charge, false);
+    assert.equal(after.guard, false);
+    assert.equal(after.mz, -1);
+    windowEvents.keyup({ code: 'KeyW' });
+    assert.equal(read().mz, 0);
+  } finally {
+    globalThis.addEventListener = oldAdd; globalThis.document = oldDocument;
+    globalThis.innerWidth = oldWidth; globalThis.innerHeight = oldHeight;
+  }
+});

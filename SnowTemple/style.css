@@ -149,6 +149,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 
 /* A page of the spear manual: old paper over the night, written down the page and read from the right. */
 #page:not([hidden]) { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 12px; pointer-events: auto; background: #05080dad; animation: page-in .28s ease-out; }
+#page:focus { outline: none; }
 @keyframes page-in { from { opacity: 0; } }
 .leaf { --paper: #dccfae; --written: #1d1a16; position: relative; max-width: min(620px, 100%); padding: clamp(14px, 3.5dvh, 26px) clamp(16px, 4vw, 34px) clamp(12px, 3dvh, 22px); color: var(--written); background: radial-gradient(ellipse at 30% 20%, #e9dfc4, var(--paper) 62%, #c4b48e); box-shadow: 0 18px 60px #000c; clip-path: polygon(0 3%, 2% 0, 31% 1.2%, 58% 0, 99% .8%, 100% 46%, 98.6% 71%, 100% 100%, 64% 98.8%, 37% 100%, 9% 98.6%, 0 100%, 1.2% 63%, 0 38%); transform: rotate(-.6deg); }
 .leaf h2 { margin: 0; font: 500 clamp(20px, 4.6dvh, 30px)/1.2 var(--script); letter-spacing: .5em; text-indent: .5em; text-align: center; }
@@ -160,6 +161,18 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .lessons b { flex: none; writing-mode: vertical-rl; font: 500 clamp(21px, 4.8dvh, 30px)/1.15 var(--script); letter-spacing: .14em; }
 .lessons span { flex: 1; min-height: 0; writing-mode: vertical-rl; font: 14px/1.75 var(--plain); letter-spacing: .08em; text-align: start; color: #3a332a; }
 @media (pointer: coarse) { .lessons kbd { display: none; } }
+/* Short screens have room for three cards, but little height for vertical descriptions. */
+@media (max-height: 420px), (max-width: 380px) {
+  .lessons button { height: auto; min-height: 108px; padding: 10px 8px; border: 1px solid #1d1a1633; border-top: 2px solid #8b3328; background: #f5e8c888; }
+  .lessons b { writing-mode: horizontal-tb; font-size: clamp(17px, 5dvh, 23px); letter-spacing: .06em; text-align: center; }
+  .lessons span { writing-mode: horizontal-tb; font-size: 14px; line-height: 1.5; letter-spacing: .02em; text-align: center; }
+}
+@media (max-width: 380px) {
+  .lessons { flex-direction: column; }
+  .lessons button { width: 100%; min-height: 56px; flex-direction: row; }
+  .lessons b { flex-basis: 5em; }
+  .lessons span { text-align: left; }
+}
 @media (prefers-reduced-motion: reduce) { #page:not([hidden]) { animation: none; } .leaf { transform: none; } }
 
 /* The title: the game's own scene behind it, the name written down the right as on a book's spine. */

@@ -5,6 +5,8 @@ import { quiet } from './rules/game.mjs';
 export const DEEDS = ['attack', 'guard', 'stars', 'rain', 'dodge', 'glide', 'drink'];
 export const DEFAULT_KEYS = { up: 'KeyW', down: 'KeyS', left: 'KeyA', right: 'KeyD', attack: 'Mouse0', guard: 'Mouse2', stars: 'KeyF', rain: 'KeyQ', dodge: 'Space', glide: 'ShiftLeft', drink: 'KeyE', bag: 'KeyB' };
 const HELD = new Set(['up', 'down', 'left', 'right', 'guard', 'glide']);
+const BUTTON_MASK = [1, 4, 2, 8, 16, 32];
+const desktopPointer = ({ pointerType }) => pointerType === 'mouse' || pointerType === 'pen';
 
 /** How a key is written on screen. */
 export function keyName(code) {
@@ -17,7 +19,9 @@ export function keyName(code) {
 }
 
 export function createInput(canvas, keys) {
-  const down = new Set(),
+  const keyboard = new Set(),
+    touch = new Set(),
+    canvasPointers = new Map(),
     pressed = new Set(),
     pointer = { x: 0.5, y: 0.5, seen: false },
     stick = { x: 0, z: 0 },
@@ -25,7 +29,14 @@ export function createInput(canvas, keys) {
   let asking = null, enabled = true;
 
   const actionOf = (code) => Object.keys(keys).find((action) => keys[action] === code);
-  function press(code, event) {
+  function held(action) {
+    if (keyboard.has(action) || touch.has(action)) return true;
+    for (const owner of canvasPointers.values()) {
+      for (const buttonAction of owner.buttons.values()) if (buttonAction === action) return true;
+    }
+    return false;
+  }
+  function press(code, event, owner) {
     if (asking) {
       // The next key or button pressed becomes the binding being asked for.
       event?.preventDefault();
@@ -37,13 +48,14 @@ export function createInput(canvas, keys) {
     const action = actionOf(code) ?? { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[code];
     if (!action) return;
     event?.preventDefault();
-    if (!down.has(action)) pressed.add(action);
-    down.add(action);
+    if (!held(action)) pressed.add(action);
+    if (owner) owner.buttons.set(event.button, action);
+    else keyboard.add(action);
     if (action === 'bag') listeners.bag();
   }
   function release(code) {
     const action = actionOf(code) ?? { ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right' }[code];
-    if (action) down.delete(action);
+    if (action) keyboard.delete(action);
   }
   addEventListener('keydown', (event) => {
     if (event.repeat) return void (actionOf(event.code) && event.preventDefault());
@@ -52,7 +64,9 @@ export function createInput(canvas, keys) {
   });
   addEventListener('keyup', (event) => release(event.code));
   function reset() {
-    down.clear();
+    keyboard.clear();
+    touch.clear();
+    canvasPointers.clear();
     pressed.clear();
     stick.x = stick.z = 0;
     pointer.seen = false;
@@ -62,18 +76,40 @@ export function createInput(canvas, keys) {
   addEventListener('blur', reset);
   document.addEventListener('visibilitychange', () => { if (document.hidden) reset(); });
   canvas.addEventListener('pointerdown', (event) => {
-    if (event.pointerType === 'touch') return;
+    if (!desktopPointer(event)) return;
     canvas.focus();
     pointer.seen = true;
-    listeners.any('Mouse' + event.button);
-    press('Mouse' + event.button, event);
+    const owner = { type: event.pointerType, buttons: new Map() };
+    canvasPointers.set(event.pointerId, owner);
+    const code = 'Mouse' + event.button;
+    listeners.any(code);
+    press(code, event, owner);
   });
-  addEventListener('pointerup', (event) => event.pointerType !== 'touch' && release('Mouse' + event.button));
+  // A chord only sends pointerup for the last button. Reconcile the actual
+  // button mask even if the pointer now lies over a dialog or toolbar.
+  function reconcilePointer(event, cancelled = false) {
+    const owner = canvasPointers.get(event.pointerId);
+    if (!owner || owner.type !== event.pointerType) return;
+    for (const [button, action] of owner.buttons) {
+      if (cancelled || !(event.buttons & BUTTON_MASK[button])) {
+        owner.buttons.delete(button);
+        if (cancelled && !held(action)) pressed.delete(action);
+      }
+    }
+    if (cancelled || !event.buttons) canvasPointers.delete(event.pointerId);
+    else return owner;
+  }
+  addEventListener('pointerup', (event) => reconcilePointer(event), true);
+  addEventListener('pointercancel', (event) => reconcilePointer(event, true), true);
   addEventListener('pointermove', (event) => {
-    if (event.pointerType === 'touch') return;
+    if (!desktopPointer(event)) return;
     pointer.x = event.clientX / innerWidth;
     pointer.y = event.clientY / innerHeight;
     pointer.seen = true;
+    const owner = reconcilePointer(event);
+    if (owner && event.target === canvas && (event.buttons & BUTTON_MASK[event.button]) !== 0 && !owner.buttons.has(event.button)) {
+      press('Mouse' + event.button, event, owner);
+    }
   });
 
   return {
@@ -96,15 +132,15 @@ export function createInput(canvas, keys) {
     hold(action, on) {
       if (!enabled) return;
       if (on) {
-        if (!down.has(action)) pressed.add(action);
-        down.add(action);
-      } else down.delete(action);
+        if (!held(action)) pressed.add(action);
+        touch.add(action);
+      } else touch.delete(action);
     },
     /** What is asked for this tick. `aim` is the ground point under the mouse, if a mouse is in use. */
     sample(hero, aim) {
       const input = quiet();
-      input.mx = (down.has('right') ? 1 : 0) - (down.has('left') ? 1 : 0) + stick.x;
-      input.mz = (down.has('down') ? 1 : 0) - (down.has('up') ? 1 : 0) + stick.z;
+      input.mx = (held('right') ? 1 : 0) - (held('left') ? 1 : 0) + stick.x;
+      input.mz = (held('down') ? 1 : 0) - (held('up') ? 1 : 0) + stick.z;
       if (aim && pointer.seen) {
         input.ax = aim[0] - hero.x;
         input.az = aim[1] - hero.z;
@@ -112,9 +148,9 @@ export function createInput(canvas, keys) {
         input.ax = input.mx;
         input.az = input.mz;
       }
-      for (const action of DEEDS) input[action] = HELD.has(action) ? down.has(action) : pressed.has(action);
+      for (const action of DEEDS) input[action] = HELD.has(action) ? held(action) : pressed.has(action);
       // The attack kept down gathers the heavy blow.
-      input.charge = down.has('attack');
+      input.charge = held('attack');
       pressed.clear();
       return input;
     }
