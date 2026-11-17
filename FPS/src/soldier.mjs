@@ -1,10 +1,11 @@
-// The enemy soldiers: jointed figures put together from boxes, one set of
-// shapes per kind, moved by a few lines of procedural animation (a walk
-// cycle, an aiming lean, a flinch when hit, and a fall).
+// Enemy figures use complete authored surfaces with a shared GPU skin template per role.
+// Native bone poses drive walking, aiming, recoil, reloads and falls.
+// The explicit original-art benchmark retains its procedural jointed figures.
 import { Mesh3D, Object3D, createRagdoll3D, createStandardMaterial3D } from '@egret/engine/world3d';
 import { addModel } from './asset-models.mjs';
 import { createBuilder, orient, rgb } from './build.mjs';
 import { createDetails } from './textures.mjs';
+import { prepareSoldierSkin, createSoldierSkin, soldierWeaponHold } from './soldier-skin.mjs';
 
 const SKIN = rgb(0xc9a27e),
   BLACK = rgb(0x1b1c1e),
@@ -193,7 +194,7 @@ function shapes(look, separateWeapon) {
   };
 }
 
-/** Builds soldiers of every kind; they share shapes and one material. */
+/** Each role shares its prepared geometry and materials; every actor owns its pose. */
 /**
  * `world` is a physics world holding the map, used only for bodies falling:
  * a soldier who is shot goes limp and drops as jointed rigid bodies. Without
@@ -215,8 +216,10 @@ export function createSoldierFactory(world, models = {}) {
     // Share the uniform's prepared arms when the heavy torso has no dedicated pair.
     if (kind === 'heavy' && art.upper && !art.arms) art.arms = models['soldier-rifle']?.parts.arms;
     const held = models['enemy-' + kind] ?? models['weapon-rifle'];
+    const skin = model && !Object.keys(art).length ? prepareSoldierSkin(model, kind) : undefined;
     const scale = model && art.upper ? 1.78 / (model.bounds[4] - model.bounds[1]) : undefined;
-    sets[kind] = { ...shapes(LOOKS[kind], Boolean(art.arms || held)), art, held, scale, ground: model?.bounds[1] ?? 0 };
+    const hold=skin && held ? soldierWeaponHold(held) : undefined;
+    sets[kind] = { ...(skin ? {} : shapes(LOOKS[kind], Boolean(art.arms || held))), art, held, hold, skin, scale, ground: model?.bounds[1] ?? 0 };
   }
 
   return function createSoldier(kind) {
@@ -235,20 +238,27 @@ export function createSoldierFactory(world, models = {}) {
       parent.addChild(pivot);
       return pivot;
     };
-    const root = new Object3D(),
-      body = new Object3D();
-    root.addChild(body);
-    const torsoSlot = Array.from(set.upper.boundingBox);
+    const skin = set.skin ? createSoldierSkin(set.skin, bulk, set.hold?.palms) : undefined;
+    const root = skin?.root ?? new Object3D(),
+      body = skin?.body ?? new Object3D();
+    if (!skin) root.addChild(body);
+    const torsoSlot = skin ? undefined : Array.from(set.upper.boundingBox);
     // The stock bounds include the radio antenna above the fabric.
-    torsoSlot[4] = 0.64;
-    const upper = part(set.upper, body, 0, HIP, 0, set.art.upper, torsoSlot, [0, HIP, 0]),
-      head = part(set.head, upper, 0, 0.62, 0, set.art.head, undefined, [0, HIP + 0.62, 0]),
-      shoulders = new Object3D();
-    shoulders.setPosition(0, 0.5, 0);
-    upper.addChild(shoulders);
-    part(set.arms, shoulders, 0, -0.5, 0, set.art.arms, undefined, [0, HIP, 0]);
-    if (set.weapon) part(set.weapon, shoulders, 0, -0.5, 0, set.held);
-    const legs = [-1, 1].map((side) => {
+    if (torsoSlot) torsoSlot[4] = 0.64;
+    const upper = skin?.upper ?? part(set.upper, body, 0, HIP, 0, set.art.upper, torsoSlot, [0, HIP, 0]),
+      head = skin?.head ?? part(set.head, upper, 0, 0.62, 0, set.art.head, undefined, [0, HIP + 0.62, 0]),
+      shoulders = skin?.shoulders ?? new Object3D();
+    if (!skin) {
+      shoulders.setPosition(0, 0.5, 0);
+      upper.addChild(shoulders);
+      part(set.arms, shoulders, 0, -0.5, 0, set.art.arms, undefined, [0, HIP, 0]);
+    }
+    if (skin && set.held) {
+      const weapon = new Object3D();
+      addModel(weapon, set.held, undefined, { transform:set.hold.transform });
+      shoulders.addChild(weapon);
+    } else if (set.weapon) part(set.weapon, shoulders, 0, -0.5, 0, set.held);
+    const legs = skin?.legs ?? [-1, 1].map((side) => {
       const which = side < 0 ? 'left' : 'right';
       const thigh = part(set.thighs[side < 0 ? 0 : 1], body, side * 0.1 * bulk, HIP, 0, set.art[which + '-thigh'], undefined, [side * 0.1 * bulk, HIP, 0]),
         shin = part(set.shin, thigh, 0, -THIGH, 0, set.art[which + '-shin'], undefined, [side * 0.1 * bulk, HIP - THIGH, 0]);

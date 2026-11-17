@@ -3,7 +3,7 @@
 // costs only a few draw calls.
 import { Mesh3D, createGeometry3D, createStandardMaterial3D, createUnlitMaterial3D } from '@egret/engine/world3d';
 import { batchModels } from './asset-models.mjs';
-import { repeatSceneModel } from './scene-modules.mjs';
+import { cropSceneModel, mergeSceneReliefs, repeatSceneModel } from './scene-modules.mjs';
 import { createBuilder, rgb } from './build.mjs';
 import { BOUNDS, BOXES, PLACES } from './level.mjs';
 import { weather } from './grime.mjs';
@@ -18,8 +18,8 @@ const BOX_MODELS = new Set([
   'penstock', 'tower',
 ]);
 const FACADES = {
-  plant: { west: -8, east: 16, north: -26, south: -8 },
-  office: { west: 22, east: 36, north: -20, south: 2 },
+  plant: { west: -8, east: 16, north: -26, south: -8, height: 8 },
+  office: { west: 22, east: 36, north: -20, south: 2, height: 4 },
 };
 
 /** Build the static scenery into `scene`. `surfaces` come from textures.mjs. */
@@ -31,7 +31,7 @@ export function buildScenery(scene, surfaces, models = {}) {
   const apron = createBuilder();
   const { concrete, asphalt, container, wall, wood, sandbag, metal, plain, glow } = groups;
   const placements = {};
-  const placementModels = {}, modules = new Map();
+  const placementModels = {}, modules = new Map(), facades = {};
   const placeModel = (role, at, w, h, d, yaw = 0, options = {}) => {
     const { model = models[role], key = role, ...fit } = options;
     placementModels[key] = model;
@@ -42,21 +42,32 @@ export function buildScenery(scene, surfaces, models = {}) {
     if (!modules.has(key)) modules.set(key, repeatSceneModel(models[role], axis, length, scale));
     return { key, model: modules.get(key) };
   };
-  // Keep the solid wall runs and their exact cutouts. The imported skin sits
-  // on the exterior only and leaves the original interior and door reveals.
+  // Lay a fixed-size window pattern across each full facade, then cut the
+  // original passages out of that pattern. Individual wall runs never stretch it.
   const placeFacade = (wall) => {
-    if (!models[wall.kind] || wall.h < 1.4) return;
+    if (!models[wall.kind]) return;
     const layout = FACADES[wall.kind], base = wall.y - wall.h / 2;
-    const skin = 0.10;
-    if (wall.w > 1.8 && (wall.z === layout.north || wall.z === layout.south)) {
+    let length, centre, segment, yaw, at;
+    if (wall.z === layout.north || wall.z === layout.south) {
       const south = wall.z === layout.south;
-      placeModel(wall.kind, [wall.x, base, wall.z + (south ? 1 : -1) * (wall.d / 2 + skin * 0.24)],
-        wall.w - 0.06, wall.h, skin, south ? 0 : Math.PI, { stretch: true });
-    } else if (wall.d > 1.8 && (wall.x === layout.west || wall.x === layout.east)) {
+      length = layout.east - layout.west;
+      centre = (wall.x - (layout.west + layout.east) / 2) * (south ? 1 : -1);
+      segment = wall.w;
+      yaw = south ? 0 : Math.PI;
+      at = [wall.x, 0, wall.z + (south ? 1 : -1) * wall.d / 2];
+    } else if (wall.x === layout.west || wall.x === layout.east) {
       const east = wall.x === layout.east;
-      placeModel(wall.kind, [wall.x + (east ? 1 : -1) * (wall.w / 2 + skin * 0.24), base, wall.z],
-        wall.d - 0.06, wall.h, skin, east ? Math.PI / 2 : -Math.PI / 2, { stretch: true });
-    }
+      length = layout.south - layout.north;
+      centre = (wall.z - (layout.north + layout.south) / 2) * (east ? -1 : 1);
+      segment = wall.d;
+      yaw = east ? Math.PI / 2 : -Math.PI / 2;
+      at = [wall.x + (east ? 1 : -1) * wall.w / 2, 0, wall.z];
+    } else return;
+    const source = models[wall.kind], scale = layout.height / (source.bounds[4] - source.bounds[1]);
+    const template = repeated(wall.kind, 0, length, scale).model, bounds = template.bounds;
+    const clipped = cropSceneModel(template, [centre - segment / 2, bounds[1] + base, bounds[2],
+      centre + segment / 2, bounds[1] + base + wall.h, bounds[5]]);
+    (facades[wall.kind] ??= []).push({ model: clipped, origin: [centre, 0, bounds[2]], at, yaw, depth: 0.14 / (bounds[5] - bounds[2]) });
   };
 
   const OLIVE = rgb(0x4d5a3c),
@@ -130,12 +141,11 @@ export function buildScenery(scene, surfaces, models = {}) {
       const role = b.kind, length = Math.max(b.w, b.d), depth = Math.min(b.w, b.d);
       const source = models[role].bounds, sourceHeight = source[4] - source[1];
       const rows = role === 'sandbag' ? 2 : 1;
-      const scale = Math.min(b.h / rows / sourceHeight, depth / (source[5] - source[2]));
-      const height = sourceHeight * scale, pedestal = b.h - height * rows;
+      const scale = b.h / rows / sourceHeight;
+      const height = sourceHeight * scale;
       const yaw = b.d > b.w ? Math.PI / 2 : 0, base = b.y - b.h / 2;
-      if (pedestal > 0.01) concrete.box(b.x, base + pedestal / 2, b.z, b.w, pedestal, b.d, { tile: 1.6, tint: shade(WHITE, 0.85) });
       for (let row = 0; row < rows; row++) {
-        placeModel(role, [b.x, base + pedestal + row * height, b.z], length, height, depth, yaw,
+        placeModel(role, [b.x, base + row * height, b.z], length, height, depth, yaw,
           { ...repeated(role, 0, length, scale), fit: 'height' });
       }
       continue;
@@ -143,9 +153,9 @@ export function buildScenery(scene, surfaces, models = {}) {
     if (models.crate && b.kind === 'crate') {
       const source = models.crate.bounds;
       const scale = Math.min(b.w / (source[3] - source[0]), b.d / (source[5] - source[2]));
-      const height = (source[4] - source[1]) * scale, pedestal = Math.max(0, b.h - height), base = b.y - b.h / 2;
-      for (const side of [-0.36, 0, 0.36]) wood.box(b.x + side * b.w, base + pedestal / 2, b.z, b.w * 0.18, pedestal, b.d, { tile: 0.5 });
-      placeModel('crate', [b.x, base + pedestal, b.z], b.w, height, b.d, 0, { fit: 'height' });
+      const base = b.y - b.h / 2;
+      placeModel('crate', [b.x, base, b.z], b.w, b.h, b.d, 0,
+        { ...repeated('crate', 1, b.h, scale), fit: 'height' });
       continue;
     }
     if (models.console && b.kind === 'console') {
@@ -164,7 +174,6 @@ export function buildScenery(scene, surfaces, models = {}) {
         const z = count === 1 ? b.z : b.z - (b.d - depth) / 2 + index * (b.d - depth) / (count - 1);
         placeModel('canopy', [b.x, b.y - b.h / 2, z], b.w, b.h, depth, 0, { fit: 'width' });
       }
-      plain.box(b.x, b.y - b.h / 2 + 0.025, b.z, b.w, 0.05, b.d, { tint: OLIVE });
       continue;
     }
     if (BOX_MODELS.has(b.kind) && models[b.kind]) {
@@ -525,7 +534,22 @@ export function buildScenery(scene, surfaces, models = {}) {
     }
   }
 
-  for (const [role, instances] of Object.entries(placements)) batchModels(scene, placementModels[role], instances, { shadow: !FACADES[role] });
+  for (const [role, instances] of Object.entries(placements)) {
+    const cells = new Map();
+    for (const instance of instances) {
+      // Let the engine cull each compact group independently for the main,
+      // mirror and shadow cameras. Geometry and PBR textures remain shared.
+      const spatial = role.startsWith('container/') || role.startsWith('crate/');
+      const key = spatial ? Math.floor(instance.at[0] / 8) + '/' + Math.floor(instance.at[2] / 8) : role;
+      if (!cells.has(key)) cells.set(key, []);
+      cells.get(key).push(instance);
+    }
+    for (const cell of cells.values()) batchModels(scene, placementModels[role], cell);
+  }
+  for (const [role, pieces] of Object.entries(facades)) {
+    const facade = mergeSceneReliefs(models[role].name, pieces);
+    batchModels(scene, facade, [{ slot: facade.bounds, at: [0, 0, 0] }], { shadow: false });
+  }
 
   // ---- lamps: a pole, an arm and a lit head (the lights themselves are added by the view) ---
   for (const [x, y, z] of PLACES.lamps) {

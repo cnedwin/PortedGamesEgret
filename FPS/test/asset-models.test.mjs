@@ -4,7 +4,7 @@ import { register } from 'node:module';
 import { test } from 'node:test';
 
 register('../tools/egret-resolve.mjs', import.meta.url);
-const { createBoxGeometry3D, createPerspectiveCamera3D, createStandardMaterial3D, Mesh3D, Object3D, Scene3D } = await import('@egret/engine/world3d');
+const { createBoxGeometry3D, createPerspectiveCamera3D, createStandardMaterial3D, loadGltf3D, Mesh3D, Object3D, Scene3D } = await import('@egret/engine/world3d');
 const { addModel, batchModels, describeModel, loadModels } = await import('../src/asset-models.mjs');
 const { repeatSceneModel } = await import('../src/scene-modules.mjs');
 const { createGame } = await import('../src/sim.mjs');
@@ -47,6 +47,40 @@ function source() {
   root.addChild(pivot);
   return root;
 }
+
+test('prepared hard surfaces retain face and vertex normal agreement after simplification', async () => {
+  for (const name of ['container', 'truck', 'booth']) {
+    const bytes = await readFile(new URL('../assets/models/' + name + '.glb', import.meta.url));
+    const asset = await loadGltf3D(bytes, { decodeImage: async () => ({ width: 1, height: 1, data: new Uint8Array([255, 255, 255, 255]) }) });
+    let corners = 0, surface = 0, reversedSurface = 0;
+    asset.scene.traverse(node => {
+      if (!(node instanceof Mesh3D)) return;
+      const positions = node.geometry.getAttribute('position').data;
+      const normals = node.geometry.getAttribute('normal').data, indices = node.geometry.index.data;
+      for (let face = 0; face < indices.length; face += 3) {
+        const offsets = [indices[face], indices[face + 1], indices[face + 2]].map(index => index * 3);
+        const [a, b, c] = offsets;
+        const ab = [0, 1, 2].map(axis => positions[b + axis] - positions[a + axis]);
+        const ac = [0, 1, 2].map(axis => positions[c + axis] - positions[a + axis]);
+        const normal = [ab[1]*ac[2]-ab[2]*ac[1], ab[2]*ac[0]-ab[0]*ac[2], ab[0]*ac[1]-ab[1]*ac[0]];
+        const length = Math.hypot(...normal);
+        if (length < 1e-12) continue;
+        let agreement = 0;
+        for (const offset of offsets) {
+          corners++;
+          agreement += normal[0]*normals[offset] + normal[1]*normals[offset + 1] + normal[2]*normals[offset + 2];
+        }
+        surface += length;
+        if (agreement < -3e-5*length) reversedSurface += length;
+      }
+    });
+    asset.dispose();
+    assert(corners > 1000);
+    // Weight by covered surface: a few tiny bevel faces must not outweigh a large folded wall.
+    // This guards the observed collapse regression; actual PBR views remain part of acceptance.
+    assert(reversedSurface / surface < 0.0025, name + ' has too much surface that disagrees with its smooth normals: ' + (100 * reversedSurface / surface).toFixed(2) + '%');
+  }
+});
 
 test('a named render part fits its joint-local bounds and keeps the source material', () => {
   const model = describeModel(source(), {
@@ -125,6 +159,21 @@ test('a missing role or invalid filename keeps the other visual replacements usa
   assert.equal(loads, 1);
   bundle.dispose();
   assert.equal(disposals, 1);
+});
+
+test('a production load failure releases completed art and prevents a mixed-generation scene', async (t) => {
+  let disposals = 0;
+  const manifest = JSON.parse(await readFile(new URL('../assets/models/index.json', import.meta.url), 'utf8'));
+  const fixture = Object.fromEntries(Object.keys(manifest).map(role => [role, { file: role === 'crate' ? 'failed.glb' : 'ready.glb' }]));
+  t.mock.method(globalThis, 'fetch', async () => ({ ok: true, json: async () => fixture }));
+  await assert.rejects(loadModels(async url => {
+    if (url.pathname.endsWith('/failed.glb')) throw Error('Download interrupted');
+    return { scene: source(), dispose() { disposals++; } };
+  }, { strict: true }), error => error.code === 'MODEL_LOAD_FAILED' && error.failures.crate.includes('Download interrupted'));
+  assert.equal(disposals, 1);
+  delete fixture['soldier-heavy'];
+  await assert.rejects(loadModels(async () => { throw Error('Should reject the incomplete index before downloading'); }, { strict: true }),
+    error => error.code === 'MODEL_LOAD_FAILED' && error.failures['soldier-heavy'].includes('missing'));
 });
 
 test('imported scene props and replacements follow the existing drawing and reload pivots', () => {

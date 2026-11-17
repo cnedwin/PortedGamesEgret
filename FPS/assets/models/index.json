@@ -1,39 +1,18 @@
 {
   "soldier-rifle": {
     "file": "soldier-rifle.glb",
-    "parts": {
-      "upper": "body",
-      "head": "head",
-      "arms": "arms",
-      "left-thigh": "thigh-left",
-      "right-thigh": "thigh-right",
-      "left-shin": "shin-left",
-      "right-shin": "shin-right"
-    }
+    "yaw": 3.141592653589793,
+    "parts": {}
   },
   "soldier-rush": {
     "file": "soldier-rush.glb",
-    "parts": {
-      "upper": "body",
-      "head": "head",
-      "arms": "arms",
-      "left-thigh": "thigh-left",
-      "right-thigh": "thigh-right",
-      "left-shin": "shin-left",
-      "right-shin": "shin-right"
-    }
+    "yaw": 3.141592653589793,
+    "parts": {}
   },
   "soldier-heavy": {
     "file": "soldier-heavy.glb",
-    "parts": {
-      "upper": "body",
-      "head": "head",
-      "left-thigh": "thigh-left",
-      "right-thigh": "thigh-right",
-      "left-shin": "shin-left",
-      "right-shin": "shin-right",
-      "arms": "arms"
-    }
+    "yaw": 3.141592653589793,
+    "parts": {}
   },
   "weapon-rifle": {
     "file": "weapon-rifle.glb",

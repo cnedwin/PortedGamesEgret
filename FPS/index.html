@@ -6,7 +6,7 @@
   <title>断流行动 / Operation Cutoff</title>
   <meta name="description" content="断流行动：基于新白鹭引擎开发的第一人称战术射击 Demo。 / Operation Cutoff, a first-person tactical shooter demo built with Egret Rebuild.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230c1114'/%3E%3Cpath d='M8 2v4M8 10v4M2 8h4M10 8h4' stroke='%235fe8b0' stroke-width='1.6'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./style.css">
+  <link rel="stylesheet" href="./style.css?v=20261118-art-restored">
   <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
   <script type="importmap">
     {
@@ -24,7 +24,29 @@
         "robust-predicates": "./vendor/robust-predicates/index.js",
         "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
         "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
-        "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js"
+        "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
+        "./src/asset-models.mjs": "./src/asset-models.mjs?v=20261118-art-restored",
+        "./src/audio.mjs": "./src/audio.mjs?v=20261118-art-restored",
+        "./src/bot.mjs": "./src/bot.mjs?v=20261118-art-restored",
+        "./src/build.mjs": "./src/build.mjs?v=20261118-art-restored",
+        "./src/data.mjs": "./src/data.mjs?v=20261118-art-restored",
+        "./src/grime.mjs": "./src/grime.mjs?v=20261118-art-restored",
+        "./src/gun.mjs": "./src/gun.mjs?v=20261118-art-restored",
+        "./src/hud.mjs": "./src/hud.mjs?v=20261118-art-restored",
+        "./src/input.mjs": "./src/input.mjs?v=20261118-art-restored",
+        "./src/level.mjs": "./src/level.mjs?v=20261118-art-restored",
+        "./src/main.mjs": "./src/main.mjs?v=20261118-art-restored",
+        "./src/model-shadows.mjs": "./src/model-shadows.mjs?v=20261118-art-restored",
+        "./src/music.mjs": "./src/music.mjs?v=20261118-art-restored",
+        "./src/scene-modules.mjs": "./src/scene-modules.mjs?v=20261118-art-restored",
+        "./src/scenery.mjs": "./src/scenery.mjs?v=20261118-art-restored",
+        "./src/sim.mjs": "./src/sim.mjs?v=20261118-art-restored",
+        "./src/soldier-skin.mjs": "./src/soldier-skin.mjs?v=20261118-art-restored",
+        "./src/soldier.mjs": "./src/soldier.mjs?v=20261118-art-restored",
+        "./src/stats.mjs": "./src/stats.mjs?v=20261118-art-restored",
+        "./src/text.mjs": "./src/text.mjs?v=20261118-art-restored",
+        "./src/textures.mjs": "./src/textures.mjs?v=20261118-art-restored",
+        "./src/view.mjs": "./src/view.mjs?v=20261118-art-restored"
       }
     }
   </script>
@@ -33,9 +55,9 @@
   <main id="game">
     <canvas id="stage" tabindex="0" aria-label="断流行动：第一人称射击。WASD 移动，鼠标瞄准，左键开火，右键瞄准，F 互动。 / Operation Cutoff: a first-person shooter. W A S D to move, mouse to look, left button to fire, right button to aim, F to use."></canvas>
     <div id="ui"></div>
-    <div id="boot"><div class="boot-mark">断流行动</div><div class="boot-sub">OPERATION CUTOFF</div><div class="boot-bar"><i></i></div></div>
+    <div id="boot"><div class="boot-mark">断流行动</div><div class="boot-sub">OPERATION CUTOFF</div><div class="boot-bar"><i></i></div><div id="boot-status" role="status">正在准备场景…</div></div>
     <div id="error" role="alert" hidden></div>
   </main>
-  <script type="module" src="./src/main.mjs"></script>
+  <script type="module" src="./src/main.mjs?v=20261118-art-restored"></script>
 </body>
 </html>

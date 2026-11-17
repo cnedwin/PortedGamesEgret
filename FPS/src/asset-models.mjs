@@ -1,16 +1,17 @@
 import {
   InstancedMesh3D, Mesh3D, Object3D, mat4Compose, mat4Multiply, quatFromEuler, vec3TransformMat4,
 } from '@egret/engine/world3d';
+import { addModelShadow } from './model-shadows.mjs';
 
 const DIRECTORY = new URL('../assets/models/', import.meta.url);
 const ROLES = [
   'soldier-rifle', 'soldier-rush', 'soldier-heavy', 'operator-hands',
-  'weapon-rifle', 'weapon-pistol', 'weapon-marksman', 'enemy-rifle', 'enemy-rush', 'enemy-heavy',
-  'booth', 'terminal', 'supply-crate', 'supply-body', 'supply-lid', 'truck', 'helicopter',
-  'dam', 'dam-step', 'compound', 'plant', 'office', 'roof', 'water-tower',
-  'container', 'crate', 'barrier', 'sandbag', 'canopy', 'post', 'generator', 'console', 'pipe-rack',
-  'cabinet', 'server', 'desk', 'sofa', 'transformer', 'leg', 'tank', 'barrel', 'pallet',
-  'tyres', 'reel', 'forklift', 'penstock', 'tower', 'grenade',
+  'weapon-rifle', 'weapon-pistol', 'weapon-marksman',
+  'booth', 'terminal', 'supply-crate', 'truck', 'helicopter',
+  'dam', 'plant', 'office', 'water-tower',
+  'container', 'crate', 'barrier', 'sandbag', 'canopy', 'generator', 'console', 'pipe-rack',
+  'cabinet', 'server', 'desk', 'sofa', 'transformer', 'barrel', 'pallet',
+  'tyres', 'reel', 'forklift', 'penstock', 'grenade',
 ];
 const ZERO = [0, 0, 0], ONE = [1, 1, 1];
 const IDENTITY = [0, 0, 0, 1];
@@ -77,31 +78,61 @@ export function describeModel(scene, { yaw = 0, pitch = 0, parts = {} } = {}) {
   return { bounds, meshes, parts: sections };
 }
 
-/** Keep stand-in art for failed or unavailable entries and release each shared GLB once. */
-export async function loadModels(loadGltf) {
+/** Production waits for the complete art set. Optional callers may inspect partial failures. */
+export async function loadModels(loadGltf, { strict = false, timeoutMs = 90000, onProgress = () => {} } = {}) {
   const models = {}, failures = {}, assets = new Map(), acquired = [];
-  const bundle = { models, failures, dispose() { for (const asset of acquired.splice(0)) asset.dispose(); } };
-  const signal = AbortSignal.timeout(12000);
+  let disposed = false;
+  const bundle = { models, failures, dispose() {
+    disposed = true;
+    for (const asset of acquired.splice(0)) asset.dispose();
+  } };
+  const fail = () => {
+    bundle.dispose();
+    const error = new Error('The game art could not be loaded completely. Please reload to retry.');
+    error.code = 'MODEL_LOAD_FAILED';
+    error.failures = { ...failures };
+    throw error;
+  };
+  const signal = AbortSignal.timeout(timeoutMs);
   const deadline = new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
   let manifest;
   try {
-    const response = await Promise.race([fetch(new URL('index.json', DIRECTORY), { signal }), deadline]);
+    const manifestUrl = new URL('index.json', DIRECTORY);
+    const revision = new URL(import.meta.url).searchParams.get('v');
+    if (revision) manifestUrl.searchParams.set('v', revision);
+    const response = await Promise.race([fetch(manifestUrl, { signal, cache: 'reload' }), deadline]);
     if (!response.ok) throw Error('Visual model index HTTP ' + response.status);
     manifest = await Promise.race([response.json(), deadline]);
     if (!manifest || typeof manifest !== 'object' || Array.isArray(manifest)) throw Error('Invalid visual model index');
   } catch (cause) {
     failures.manifest = String(cause?.message ?? cause);
+    if (strict) fail();
     return bundle;
   }
-  await Promise.all(ROLES.filter(role => Object.hasOwn(manifest, role)).map(async role => {
+  const roles = ROLES.filter(role => Object.hasOwn(manifest, role));
+  if (strict) {
+    for (const role of ROLES) if (!Object.hasOwn(manifest, role)) failures[role] = 'Required game art is missing from the index';
+    if (Object.keys(failures).length) fail();
+  }
+  if (!roles.length) {
+    failures.manifest = 'The visual model index is empty';
+    if (strict) fail();
+    return bundle;
+  }
+  let complete = 0;
+  onProgress({ complete, total: roles.length });
+  const revision = new URL(import.meta.url).searchParams.get('v');
+  await Promise.all(roles.map(async role => {
     try {
       const spec = manifest[role], file = spec?.file;
       if (typeof file !== 'string' || !/^[a-z0-9][a-z0-9_-]*(?:\.[a-z0-9_-]+)*\.glb$/i.test(file)) throw Error('Invalid GLB filename');
       if (!assets.has(file)) {
-        assets.set(file, loadGltf(new URL(file, DIRECTORY), { signal, maxBytes: 24 * 1024 * 1024 }).then(asset => {
-          if (signal.aborted) {
+        const url = new URL(file, DIRECTORY);
+        if (revision) url.searchParams.set('v', revision);
+        assets.set(file, loadGltf(url, { signal, maxBytes: 24 * 1024 * 1024 }).then(asset => {
+          if (signal.aborted || disposed) {
             asset.dispose();
-            signal.throwIfAborted();
+            throw signal.reason ?? new Error('Model load disposed');
           }
           acquired.push(asset);
           return asset;
@@ -113,8 +144,12 @@ export async function loadModels(loadGltf) {
       models[role] = { ...model, name: role };
     } catch (cause) {
       failures[role] = String(cause?.message ?? cause);
+    } finally {
+      complete++;
+      onProgress({ complete, total: roles.length, role });
     }
   }));
+  if (strict && Object.keys(failures).length) fail();
   return bundle;
 }
 
@@ -157,6 +192,7 @@ export function addModel(parent, model, slot, {
     mesh.castShadow = shadow;
     mesh.receiveShadow = true;
     mesh.frustumCulled = cull;
+    addModelShadow(mesh, shadow);
     group.addChild(mesh);
   }
   parent.addChild(group);
@@ -182,6 +218,7 @@ export function batchModels(parent, model, placements, {
     mesh.castShadow = shadow;
     mesh.receiveShadow = true;
     for (let index = 0; index < fitted.length; index++) mesh.setMatrixAt(index, mat4Multiply(matrix, fitted[index], part.matrix));
+    addModelShadow(mesh, shadow);
     parent.addChild(mesh);
   }
 }

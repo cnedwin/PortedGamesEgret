@@ -5,8 +5,8 @@
 const SMOOTH = 0.1; // share of each new sample in the running averages
 
 /**
- * `renderer` supplies `info.drawCalls` and `info.triangles` for the frame
- * just drawn. With `visible` false the numbers are still gathered (for
+ * `renderer.info` counts the last colour view, excluding shadow/depth passes.
+ * Use `stats.measure()` for per-pass submission counts. With `visible` false the numbers are still gathered (for
  * automated checks) but nothing is added to the page.
  */
 export function createStats(renderer, visible = true, root = document.body) {
@@ -59,8 +59,8 @@ export function createStats(renderer, visible = true, root = document.body) {
       shownAt = now;
       box.textContent =
         `${(1000 / Math.max(average.frame, 0.01)).toFixed(0)} fps   ${average.frame.toFixed(1)} ms   slowest ${stats.slowest.toFixed(0)} ms\n` +
-        `rules ${average.rules.toFixed(2)}   view ${average.view.toFixed(2)}   draw ${average.draw.toFixed(2)} ms\n` +
-        `${stats.drawCalls} draws   ${(stats.triangles / 1000).toFixed(0)}k triangles   ${enemies} enemies`;
+        `rules ${average.rules.toFixed(2)}   view ${average.view.toFixed(2)}   submit ${average.draw.toFixed(2)} ms\n` +
+        `${stats.drawCalls} main draws   ${(stats.triangles / 1000).toFixed(0)}k main triangles   ${enemies} enemies`;
     });
   };
   return stats;
