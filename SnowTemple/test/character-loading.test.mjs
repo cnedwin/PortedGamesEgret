@@ -16,7 +16,7 @@ registerHooks({ resolve(name, context, next) {
 } });
 const { createEngine } = await import('@egret/engine');
 const { createWorld3DHost } = await import('@egret/engine/webgl2/world3d');
-const { loadCharacterGroup } = await import('../src/view/characters.mjs');
+const { loadCharacterGroup, loadOpeningCharacter } = await import('../src/view/characters.mjs');
 const hero = await readFile(new URL('../assets/characters/hero-low.glb', import.meta.url));
 
 async function setup(t, fetchAsset, decode) {
@@ -93,4 +93,38 @@ test('a failed availability index rejects before requesting optional bodies', as
   await assert.rejects(loadCharacterGroup(engine, scope, 'low'), /Character index HTTP 503/);
   assert.equal(urls.length, 1);
   assert.ok(urls[0].endsWith('index.json'));
+});
+
+test('the opening loads the hero alone and shares availability with deferred roles', async t => {
+  const files = [];
+  const { engine, scope } = await setup(t, async url => {
+    const file = url.pathname.split('/').at(-1);
+    files.push(file);
+    if (file === 'index.json') return Response.json({ hero: ['low'], lu: ['low'] });
+    if (file === 'hero-low.glb') return new Response(hero);
+    return new Response(null, { status: 503 });
+  }, async () => ({ width: 1, height: 1, close() {} }));
+  const first = await loadOpeningCharacter(engine, scope, 'low');
+  assert.equal(first.hero.kind, 'hero');
+  assert.ok(first.hero.parts.length > 0);
+  assert.deepEqual(files, ['index.json', 'hero-low.glb']);
+  const { group } = await loadCharacterGroup(engine, scope, 'low', undefined, { requested: ['lu'], available: first.available });
+  assert.deepEqual((await group.ready).map(({ value }) => value), [{ kind: 'lu', error: 'Character HTTP 503' }]);
+  assert.deepEqual(files, ['index.json', 'hero-low.glb', 'lu-low.glb']);
+});
+
+test('a slow opening request yields a stable fallback and cancels its hero load', async t => {
+  const stopped = Promise.withResolvers();
+  const { engine, scope } = await setup(t, async (url, { signal }) => {
+    if (url.pathname.endsWith('index.json')) return Response.json({ hero: ['low'], lu: ['low'] });
+    assert.ok(url.pathname.endsWith('hero-low.glb'));
+    return new Promise((_, reject) => signal.addEventListener('abort', () => {
+      stopped.resolve();
+      reject(signal.reason);
+    }, { once: true }));
+  }, () => assert.fail('A cancelled request should not decode any texture'));
+  const first = await loadOpeningCharacter(engine, scope, 'low', undefined, 150);
+  assert.deepEqual(first.available, { hero: ['low'], lu: ['low'] });
+  assert.deepEqual(first.hero, { error: 'Character request timed out' });
+  await stopped.promise;
 });

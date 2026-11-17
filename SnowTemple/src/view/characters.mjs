@@ -136,11 +136,11 @@ async function loadCharacterIndex(pageSignal) {
 }
 
 /** Start the bounded asset group for the optional bodies advertised at this detail. */
-export async function loadCharacterGroup(engine, roleScope, level, pageSignal) {
+export async function loadCharacterGroup(engine, roleScope, level, pageSignal, { requested = ROLES, available } = {}) {
   if (!LEVELS.includes(level)) throw Error('Unknown character detail: ' + level);
-  const available = await loadCharacterIndex(pageSignal);
+  available ??= await loadCharacterIndex(pageSignal);
   pageSignal?.throwIfAborted();
-  const roles = ROLES.filter((kind) => Array.isArray(available?.[kind]) && available[kind].includes(level));
+  const roles = ROLES.filter((kind) => requested.includes(kind) && Array.isArray(available?.[kind]) && available[kind].includes(level));
   if (!registered.has(engine.assets)) {
     engine.assets.register(CHARACTER_BODY, { load: loadScopedCharacter, dispose: (body) => body.dispose?.() });
     registered.add(engine.assets);
@@ -155,4 +155,23 @@ export async function loadCharacterGroup(engine, roleScope, level, pageSignal) {
     void group.ready.then(detach, detach);
   }
   return { group, roles };
+}
+
+/** Resolve the opening body before the first scene, regardless of the speed of other roles. */
+export async function loadOpeningCharacter(engine, roleScope, level, pageSignal, timeoutMs = 6500) {
+  const deadline = characterDeadline(pageSignal, timeoutMs);
+  let available;
+  try {
+    available = await loadCharacterIndex(deadline.signal);
+    const { group } = await loadCharacterGroup(engine, roleScope, level, deadline.signal, { requested: ['hero'], available });
+    const [lease] = await group.ready;
+    deadline.signal.throwIfAborted();
+    return { available, hero: lease?.value ?? { error: 'Hero is missing from the character index' } };
+  } catch (cause) {
+    pageSignal?.throwIfAborted();
+    const error = deadline.signal.reason ?? cause;
+    return { available, hero: { error: String(error?.message ?? error) } };
+  } finally {
+    deadline.dispose();
+  }
 }
