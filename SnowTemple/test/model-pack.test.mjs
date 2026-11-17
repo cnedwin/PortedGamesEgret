@@ -1,16 +1,8 @@
 import assert from 'node:assert/strict';
-import { registerHooks } from 'node:module';
 import { test } from 'node:test';
+import '../vendor/node-register.mjs';
 
-const aliases = {
-  '@egret/engine/world3d': '../vendor/engine/dist/rendering/world3d/index.js',
-  '@egret/runtime': '../vendor/runtime/dist/index.js',
-  '@egret/contracts': '../vendor/contracts/dist/index.js',
-  '@egret/contracts/resources': '../vendor/contracts/dist/resources/index.js'
-};
-registerHooks({ resolve(name, context, next) {
-  return next(aliases[name] ? new URL(aliases[name], import.meta.url).href : name, context);
-} });
+// The engine is found under the names the page uses: the vendored copy brings its own Node loader.
 const { loadModels, loadStockCharacters } = await import('../src/view/models.mjs');
 
 test('shared fallback cancels both reads when the page closes', async t => {

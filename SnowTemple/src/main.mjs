@@ -10,17 +10,20 @@
 //   ?tier=3      play this visit at a tier of the climb, whatever has been opened
 //   ?mode=yard   with ?auto: hold the fodder yard instead of walking the chapter
 //   ?seed=7      fix the dice (they are fixed anyway under ?auto)
-//   ?debug       show the state panel (F3 toggles it)
+//   ?lights=direct | tiled   leave fires without light of their own, or give it them, whatever the quality
+//   ?debug       show the state panel and the engine's performance readout (F3 toggles them)
 import { createEngine } from '@egret/engine';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
-import { createWebGL2Renderer3D, createWorld3DHost, createWorld3DView, startWorld3DLoop } from '@egret/engine/webgl2/world3d';
+import { createDynamicResolution3D, createWebGL2Renderer3D, createWorld3DHost, createWorld3DStats, createWorld3DView, startWorld3DLoop } from '@egret/engine/webgl2/world3d';
+import { browserSaveStorage } from '@egret/engine/web/kit';
 import { createAudio } from './audio.mjs';
 import { DIALOGUE } from './dialogue.mjs';
 import { captureTempleLoadout, createTempleReplay } from './chapter.mjs';
 import { createHud } from './hud.mjs';
 import { DEFAULT_KEYS, createInput } from './input.mjs';
 import { createLessons } from './lessons.mjs';
-import { loadProgress, recordClear, recordStand, saveProgress } from './progress.mjs';
+import { openProgress, recordClear, recordStand } from './progress.mjs';
+import { openSave } from './saves.mjs';
 import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { TIERS, grade, tierName } from './rules/tiers.mjs';
@@ -45,24 +48,16 @@ function fail(cause) {
   console.error(cause);
 }
 
-const SETTINGS_KEY = 'snow-temple-settings';
+// Choices and progress are kept by the engine's save store in the page's storage. Where the page has none
+// (a private window, a blocked site) they are kept in memory and last for this visit only.
+const storage = browserSaveStorage(),
+  settingsSave = openSave(storage, 'snow-temple-settings', { defaults: () => ({}) });
 function loadSettings() {
-  const defaults = { quality: 'auto', models: 'auto', particles: 'some', sound: 'on', keys: { ...DEFAULT_KEYS } };
-  try {
-    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}');
-    return { ...defaults, ...saved, keys: { ...DEFAULT_KEYS, ...(saved.keys ?? {}) }, ...(params.get('quality') ? { quality: params.get('quality') } : {}) };
-  } catch {
-    return defaults;
-  }
+  const defaults = { quality: 'auto', models: 'auto', particles: 'some', sound: 'on', keys: { ...DEFAULT_KEYS } },
+    saved = settingsSave.data;
+  return { ...defaults, ...saved, keys: { ...DEFAULT_KEYS, ...(saved.keys ?? {}) }, ...(params.get('quality') ? { quality: params.get('quality') } : {}) };
 }
-function saveSettings(settings) {
-  // Private windows may refuse storage; the choices then last for this visit only.
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  } catch {
-    /* ignored */
-  }
-}
+const saveSettings = (settings) => settingsSave.save(settings);
 
 // What each quality level means: drawing scale, shadow map, grass, ambient occlusion.
 const LEVELS = {
@@ -87,6 +82,11 @@ async function main() {
   scene.addChild(camera);
   const updateLook = createSnowLook(renderer, level.ssao);
   renderer.shadowsEnabled = !!level.shadows;
+  // Past the eight point lights every pixel is lit by, the renderer lights more by screen tile, and only
+  // the pixels near them pay. That is where fire on the ground and burning men get their light, and the
+  // flashes of a crowded fight; with nothing burning it costs nothing. The lowest quality keeps to the eight.
+  const manyLights = { direct: false, tiled: true }[params.get('lights')] ?? level !== LEVELS.low;
+  renderer.tiledLights = manyLights;
 
   progress(0.45, '栽松，铺雪');
   await new Promise((done) => setTimeout(done));
@@ -139,7 +139,7 @@ async function main() {
   const propAtlas = loadedAtlas ? scope.use(loadedAtlas).maps : undefined;
   view = createView(scene, camera, models, {
     detail, characters: hero?.parts ? { hero: hero.parts } : undefined,
-    reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, propAtlas });
+    reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, propAtlas, manyLights });
 
   let yardReady = !loadExternal, templeReady = !loadExternal;
   async function prepareCharacters(requested, signal) {
@@ -216,7 +216,7 @@ async function main() {
   audio.setOn(settings.sound === 'on');
   // The pose the title is looked at in. Starting puts the player back at the chapter's entrance.
   const TITLE_POSE = { x: -0.2, z: 24.2, face: -2.65 },
-    saved = loadProgress();
+    { progress: saved, save: saveProgress } = openProgress(storage);
   let game = createGame(),
     mode = 'title',
     clock = 0,
@@ -233,15 +233,21 @@ async function main() {
     onStart: (way) => mode === 'title' && !hud.settingsOpen() && startGame(way === 'yard' ? 'yard' : ''),
     onTier(step) {
       saved.tier = Math.max(1, Math.min(saved.open, saved.tier + step));
-      saveProgress(saved);
+      saveProgress();
       hud.entry(saved);
       audio.playUi('select');
     },
     onPick: (index) => (pick = index)
   });
   hud.entry(saved);
+  // The engine's readout: frame time, this game's share of it, and what the renderer drew. The numbers are
+  // gathered either way; they are shown with the state panel.
+  let stats = createWorld3DStats(renderer, debug ? { container: document.querySelector('#game') } : {});
   input.on('any', (code) => {
-    if (code === 'F3') debug = !debug;
+    if (code !== 'F3') return;
+    debug = !debug;
+    stats.dispose();
+    stats = createWorld3DStats(renderer, debug ? { container: document.querySelector('#game') } : {});
   });
   const bot = params.has('auto') ? (await import('../test/bot.mjs')).createBot() : null;
 
@@ -310,7 +316,7 @@ async function main() {
     const yard = replay === 'yard' || (!replay && params.get('mode') === 'yard');
     if (replay === 'climb') {
       saved.tier = Math.min(saved.open, game.tier + 1);
-      saveProgress(saved);
+      saveProgress();
     }
     const at = replay ? '' : params.get('at');
     // The yard is always held under the first tier's rules, so the farthest wave means the same every time.
@@ -415,7 +421,7 @@ async function main() {
         else if (improved) news = '这一重里，这是最好的一回。';
       }
     }
-    saveProgress(saved);
+    saveProgress();
     result.querySelector('.result-mark').hidden = !marked;
     set('news', news);
     result.querySelector('[data-stat="news"]').hidden = !news;
@@ -546,11 +552,14 @@ async function main() {
   // ---- one frame ----------------------------------------------------------------------------
   const STEP = 1 / 60,
     none = [];
-  let slowFor = 0,
-    fps = 60,
-    fpsLow = 0,
-    fpsHigh = 0;
+  // Automatic quality lets the drawing scale follow the frame rate: down a quarter after 2.5 slow seconds,
+  // back up after 8 good ones, never below 0.7.
+  const pace = createDynamicResolution3D({ min: 0.7 / level.ratio, step: 0.25 / level.ratio, lowFps: 42, highFps: 57, downAfter: 2.5, upAfter: 8 });
+  let slowFor = 0;
   function frame(dt) {
+    stats.end();
+    stats.begin();
+    if (settings.quality === 'auto' && mode === 'play') ratio = level.ratio * pace.update(dt);
     status.frames++;
     if (status.frames === 2) {
       boot.classList.add('done');
@@ -607,7 +616,9 @@ async function main() {
         hud.veil(true);
       }
     }
+    stats.lap('rules');
     view.update(game, events, mode === 'play' ? (active && !game.choice ? dt * slowFor : 0) : dt, clock);
+    stats.lap('view');
     if (active && hud.staged && game.cine <= 0 && !view.cine) {
       hud.stage(false);
       hud.clearSpeech();
@@ -624,16 +635,9 @@ async function main() {
     updateLook(camera, view.fogLights, mode === 'title' || !!view.cine, game.stage === 'boss' && !view.cine, dt);
     hud.update(game, view);
     audio.update();
+    stats.lap('hud');
 
-    // Automatic quality: let the drawing scale follow the frame rate.
-    fps += (1 / Math.max(dt, 1e-3) - fps) * 0.05;
-    if (settings.quality === 'auto' && mode === 'play') {
-      fpsLow = fps < 42 ? fpsLow + dt : 0;
-      fpsHigh = fps > 57 ? fpsHigh + dt : 0;
-      if (fpsLow > 2.5 && ratio > 0.7) (ratio = Math.max(0.7, ratio - 0.25)), (fpsLow = 0);
-      if (fpsHigh > 8 && ratio < level.ratio) (ratio = Math.min(level.ratio, ratio + 0.25)), (fpsHigh = 0);
-    }
-    hud.debug(debug ? `状态: ${game.hero.state}  关: ${game.stage}  重: ${game.tier}  拨: ${game.wave}  过场: ${game.cine > 0 ? '是' : '否'}  所学: ${game.boons.join(' ') || '无'}\n位置: ${game.hero.x.toFixed(1)}, ${game.hero.z.toFixed(1)}  气血: ${game.hero.hp | 0}  枪意: ${game.hero.will | 0}\n帧率: ${fps.toFixed(0)}  绘制比例: ${ratio}  陆谦: ${game.boss.state} ${game.boss.hp | 0}` : null);
+    hud.debug(debug ? `状态: ${game.hero.state}  关: ${game.stage}  重: ${game.tier}  拨: ${game.wave}  过场: ${game.cine > 0 ? '是' : '否'}  所学: ${game.boons.join(' ') || '无'}\n位置: ${game.hero.x.toFixed(1)}, ${game.hero.z.toFixed(1)}  气血: ${game.hero.hp | 0}  枪意: ${game.hero.will | 0}\n帧率: ${stats.fps.toFixed(0)}  绘制比例: ${ratio.toFixed(2)}  灯: 分块 ${renderer.info.lightsTiled} 弃 ${renderer.info.lightsDropped}  陆谦: ${game.boss.state} ${game.boss.hp | 0}` : null);
   }
   Object.assign(game.hero, TITLE_POSE);
   function titleCamera() {
@@ -658,6 +662,9 @@ async function main() {
     hud,
     status,
     renderer,
+    get stats() {
+      return stats;
+    },
     progress: saved,
     places: PLACES,
     /** Play on by `seconds` at once, without waiting for frames; `until` may stop it early. */

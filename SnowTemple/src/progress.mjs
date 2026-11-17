@@ -1,25 +1,21 @@
 // What a player has earned across visits: how high the climb is open, the best mark at each tier, and
 // the farthest wave held in the yard. Kept in the browser; a private window simply starts from nothing.
+import { openSave } from './saves.mjs';
+
 const KEY = 'snow-temple-progress';
 const ORDER = '丁丙乙甲';
 
-export function loadProgress() {
-  const fresh = { open: 1, tier: 1, marks: {}, wave: 0 };
-  try {
-    const saved = JSON.parse(localStorage.getItem(KEY) ?? '{}');
-    const open = Math.max(1, Math.floor(saved.open) || 1);
-    return { open, tier: Math.min(open, Math.max(1, Math.floor(saved.tier) || 1)), marks: { ...(saved.marks ?? {}) }, wave: Math.max(0, Math.floor(saved.wave) || 0) };
-  } catch {
-    return fresh;
-  }
-}
-
-export function saveProgress(progress) {
-  try {
-    localStorage.setItem(KEY, JSON.stringify(progress));
-  } catch {
-    /* ignored */
-  }
+/**
+ * Open the progress kept in `storage`. `progress` is the record to read and change; `save()` writes it.
+ * Whatever was stored is brought within bounds first, so a hand-edited or damaged record cannot open
+ * a tier that does not follow from it.
+ */
+export function openProgress(storage) {
+  const store = openSave(storage, KEY, { defaults: () => ({}) }),
+    kept = store.data,
+    open = Math.max(1, Math.floor(kept.open) || 1),
+    progress = { open, tier: Math.min(open, Math.max(1, Math.floor(kept.tier) || 1)), marks: { ...(kept.marks ?? {}) }, wave: Math.max(0, Math.floor(kept.wave) || 0) };
+  return { progress, save: () => store.save(progress) };
 }
 
 /** A chapter cleared at `tier` with `mark`: the next tier opens, and a better mark replaces the old one. */

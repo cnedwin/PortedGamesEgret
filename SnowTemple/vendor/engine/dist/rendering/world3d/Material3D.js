@@ -54,6 +54,7 @@ export class Material3D extends Resource3D {
     alphaMode = 'opaque';
     /** Fragments below this alpha are discarded in 'mask' mode. */
     alphaCutoff = 0.5;
+    /** How a blended fragment combines with what is behind it. Used only when `alphaMode` is 'blend'. */
     blending = 'normal';
     depthTest = true;
     depthWrite = true;
@@ -156,7 +157,10 @@ export class Material3D extends Resource3D {
         this.opacity = options.opacity ?? 1;
         this.map = options.map;
         this.side = options.side ?? 'front';
-        this.alphaMode = options.alphaMode ?? (this.opacity < 1 ? 'blend' : 'opaque');
+        // Additive, multiply and premultiplied blending only take effect in the blended pass, so asking for one
+        // is asking for that pass.
+        this.alphaMode =
+            options.alphaMode ?? (this.opacity < 1 || (options.blending ?? 'normal') !== 'normal' ? 'blend' : 'opaque');
         this.alphaCutoff = options.alphaCutoff ?? 0.5;
         this.blending = options.blending ?? 'normal';
         this.depthTest = options.depthTest ?? true;
