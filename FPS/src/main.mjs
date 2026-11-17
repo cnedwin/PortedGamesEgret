@@ -36,15 +36,38 @@ const canvas = document.querySelector('#stage');
 const boot = document.querySelector('#boot');
 
 /** State for the browser console and for automated checks; the game never reads it. */
-const status = { error: '', frames: 0, mode: 'boot', game: undefined };
+const status = { error: '', frames: 0, mode: 'boot', game: undefined, buildVersion: new URL(import.meta.url).searchParams.get('v') ?? 'development' };
 globalThis.__cutoff = status;
-const modelsReady = params.get('art') === 'original' ? Promise.resolve(null) : loadModels(backend.loadGltfFromUrl3D);
+const bootChinese = pickLanguage(params.get('lang')) === 'zh';
+const bootStatus = document.querySelector('#boot-status');
+const modelsReady = params.get('art') === 'original' ? Promise.resolve({ bundle: null }) : loadModels(backend.loadGltfFromUrl3D, {
+  strict: true,
+  onProgress({ complete, total }) {
+    if (bootStatus) bootStatus.textContent = bootChinese ? `正在载入美术资源 ${complete} / ${total}` : `Loading game art ${complete} / ${total}`;
+    boot.classList.add('loading');
+    boot.querySelector('.boot-bar i').style.width = Math.max(2, complete / total * 100) + '%';
+  },
+}).then(bundle => ({ bundle }), error => ({ error }));
 
 function fail(cause) {
   const box = document.querySelector('#error');
-  box.textContent = '出错了 / Error: ' + (cause?.message ?? cause);
+  const artFailure = cause?.code === 'MODEL_LOAD_FAILED';
+  const message = artFailure
+    ? (bootChinese ? '美术资源加载未完成。请检查网络后重新加载。' : 'Game art could not finish loading. Check your connection and reload.')
+    : '出错了 / Error: ' + (cause?.message ?? cause);
+  box.textContent = message;
+  const retry = document.createElement('button');
+  retry.type = 'button';
+  retry.textContent = bootChinese ? '重新加载' : 'Reload';
+  retry.addEventListener('click', () => location.reload());
+  box.appendChild(document.createElement('br'));
+  box.appendChild(retry);
   box.hidden = false;
   status.error = String(cause?.stack ?? cause);
+  if (artFailure) {
+    status.models = { loaded: [], failures: cause.failures };
+    if (bootStatus) bootStatus.textContent = message;
+  }
 }
 
 // ---- saved choices -------------------------------------------------------------------------
@@ -125,7 +148,9 @@ async function main() {
   status.stats = stats;
 
   const settings = loadSettings();
-  const modelBundle = await modelsReady;
+  const art = await modelsReady;
+  if (art.error) throw art.error;
+  const modelBundle = art.bundle;
   if (modelBundle) scope.use(modelBundle);
   const models = modelBundle?.models ?? {};
   status.models = { loaded: Object.keys(models), failures: modelBundle?.failures ?? {} };
@@ -400,14 +425,18 @@ async function main() {
     onError: fail,
   });
   // For the console and automated checks: draw one extra frame and return what each pass cost (WebGL2 only).
-  stats.measure = () =>
+  stats.measure = (options) =>
     renderer.measureFrame?.(() => {
       view.renderReflection(renderer);
       renderer.render(scene, camera);
-    });
+    }, options);
   view.warm();
   setMode('title');
   startWorld3DLoop(engine, fail);
 }
 
-main().catch(fail);
+main().catch(cause => {
+  // Downloads may finish after renderer initialization failed. Release that unused art too.
+  void modelsReady.then(art => art.bundle?.dispose());
+  fail(cause);
+});

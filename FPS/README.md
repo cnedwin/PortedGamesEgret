@@ -97,7 +97,7 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 | `src/level.mjs` | 地图方块、关键位置、行走网格 · map blocks, named places, the walking grid |
 | `src/bot.mjs` | 代打玩家，用于自动检查和 `?auto=1` · a stand-in player for automated checks and `?auto=1` |
 | `src/view.mjs`，`src/scenery.mjs` | 场景、灯光、特效 · scene, lights, effects |
-| `src/soldier.mjs`，`src/gun.mjs` | 敌人模型与动画、手中的武器 · enemy models and animation, the weapon in hand |
+| `src/soldier.mjs`，`src/soldier-skin.mjs`，`src/gun.mjs` | 连续角色蒙皮与动画、手中的武器 · continuous character skinning and animation, the weapon in hand |
 | `assets/models/`，`src/asset-models.mjs` | GLB 美术和角色、道具的挂载清单 · GLB assets and the visual slot manifest |
 | `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |
 | `src/hud.mjs`，`src/text.mjs` | 界面与中英文文字 · interface and its Chinese and English text |

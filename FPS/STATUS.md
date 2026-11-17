@@ -18,13 +18,15 @@ This document records where this version stands: problems already solved, parts 
 
 ## 验证情况 · What has been verified
 
-- 白鹭运行时固定为 main 的 `264e17227b06298858a06b9fdfe0c4a3a427e13a`。40 项自动测试覆盖规则、输入、模型挂点、共享实例及动态部件。无界面 seed 3 在 357 秒撤离。
+- 白鹭运行时固定为 main 的 `264e17227b06298858a06b9fdfe0c4a3a427e13a`。49 项自动测试覆盖规则、输入、完整美术载入、模型挂点、连续蒙皮、硬表面保形、投影代理、共享实例及动态部件。
+- 本次美术修复在 PC 与三星 SM-F966U1 的真实 WebGL2 上检查了三类角色的持枪、侧面步行和蹲姿。角色诊断是受控相机检查，不能代替完整游玩。第一人称枪械另检查了瞄准、后坐、换弹和近裁切；场景保留原 UV、法线和金属粗糙度。公开版本整局与性能复跑结果见 [PR #82 的验收记录](https://github.com/cnedwin/PortedGamesEgret/pull/82)。
+- 以下两段 PC、三星整局数字属于美术修复前的历史基线，不能作为本次资源升级后的帧率结论。
 - PC 使用 RTX 5090 Laptop 和 Edge 157，在 1440×900、高画质下从正常标题页开始，以实际键鼠事件完成三终端、六次校准和登机结算，用时 360.85 秒。模型首帧加载齐全，无回退。以下整局帧间隔是比例修订前的设备基线。最后一次手套比例微调另做了 PC 瞄准、射击、换弹、切枪和暂停恢复复测。
 - 三星 SM-F966U1、Android 17 的 Chrome 真机在原生触屏视口 873×325 下，通过 CDP 触控事件从普通标题页进入并完成完整撤离，用时 384.22 秒，六次校准全部通过。23,164 帧平均约 60.31 FPS，P95/P99 为 16.7 毫秒，最大 33.2 毫秒。另用自动控制模式完成 356.73 秒整局。移动、转向与射击并发、触屏切枪、开镜、暂停恢复另有真机输入检查。
-- 本轮 PC 整局 P95 为 4.3 毫秒，最大帧间隔 175.1 毫秒，有两次相邻长任务。缺少对应的性能追踪，原因未定。样本包含约 5.6 秒辅助计算并行，应保留该测量条件。
+- 历史 PC 整局 P95 为 4.3 毫秒，最大帧间隔 175.1 毫秒，有两次相邻长任务。缺少对应的性能追踪，原因未定。样本包含约 5.6 秒辅助计算并行，应保留该测量条件。
 - 该 PC 的 ANGLE D3D11 阴影路径曾丢失 WebGL 上下文，目前仅对识别到的 RTX 5090 Laptop 适配器关闭实时阴影，SSAO、反射和后处理保留。三星高画质包含实时阴影。
 
-The runtime is pinned to the Egret main commit recorded above. All 40 automated checks pass. The physical PC completed the mission with trusted keyboard/mouse input. The physical Samsung completed a 384.22-second mission using CDP-injected multitouch events from the normal title, plus a separate automatic rendered run. Both completed all three terminals and extraction. PC frame timing includes two unresolved long tasks and a brief interval of auxiliary computation. The adapter-specific PC shadow fallback preserves the other high-quality effects.
+The runtime is pinned to the Egret main commit recorded above. All 49 automated checks pass. This revision checks continuous characters on physical PC and Samsung WebGL2 using controlled pose diagnostics, plus first-person aiming, recoil, reload and near-plane checks. The complete-run numbers above are historical, preceding this art repair. See [PR #82](https://github.com/cnedwin/PortedGamesEgret/pull/82) for current public-run results. The adapter-specific PC shadow fallback preserves the other high-quality effects.
 
 ### 验收边界 · Test boundaries
 
@@ -32,10 +34,10 @@ The runtime is pinned to the Egret main commit recorded above. All 40 automated 
 - PC 已验证页面全屏与鼠标锁定的状态及恢复。覆盖整块显示屏的原生窗口边界验收未完成。
 - 自动输入与自动控制用于可复跑验收，真实玩家的难度和熟练度分布还需要玩家反馈。
 - 音乐和声音沿用现有合成实现，本轮未做专门的人工听音验收。
-- 角色使用刚性分件和已有动作关节。重装兵采用按自身肩位对齐的生成制服手臂，手指没有逐指骨骼动画。
+- 角色使用完整连续网格、原始 UV/PBR、预烘权重和独立的 16 骨白鹭骨架；不再把身体切成刚性片。动作仍由程序驱动；左右各一组指节闭握，并非逐指动捕。
 - 地形、植被、地面、栏杆、标识和灯光等辅助元素沿用既有实现。
 
-This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGPU qualification, human difficulty assessment and listening tests remain outside this acceptance pass. Characters use rigid animated sections. The heavy uses generated uniform arm sections aligned to its own shoulders. Terrain, foliage, ground, rails, signs and lighting retain their existing implementation.
+This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGPU qualification, human difficulty assessment and listening tests remain outside this acceptance pass. Characters use continuous original-UV surfaces with baked weights and independent sixteen-bone Egret skeletons, driven procedurally rather than by motion capture. Terrain, foliage, ground, rails, signs and lighting retain their existing implementation.
 
 ## 已知问题 · Known issues
 
