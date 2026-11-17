@@ -82,9 +82,9 @@ The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webg
 | 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
 | 画面 · Look | 级联阴影、环境遮蔽、泛光、FXAA、ACES 色调映射 · cascaded shadows, ambient occlusion, bloom, FXAA, ACES tone mapping |
 
-所有模型、纹理、音效和配乐都由代码生成，项目不含图片或音频文件。枪声经过程序生成的混响（室外山谷、室内厂房各一套），配乐由一个小型音序器实时演奏，敌人逼近时逐层加入贝斯和鼓。
+角色、枪械外观和水电站道具使用经过减面、贴图压缩和挂点校准的 Tripo GLB。白鹭的 glTF 加载器读取内嵌材质，重复的场景道具共享实例批次。角色关节、换弹、终端交互和撤离演出由游戏驱动。枪声在山谷和厂房使用不同的实时混响，音序器随敌人逼近逐层加入贝斯和鼓。
 
-All models, textures, sounds and music are generated in code; the project contains no image or audio files. Gunfire is sent through generated reverbs (one for the open valley, one for indoors), and the score is played live by a small step sequencer that brings in bass and drums as enemies close in.
+Characters, weapon visuals and station props use Tripo GLB assets simplified, texture-compressed and fitted to the game's attachment points. Egret loads the embedded materials and draws repeated props as instances. The game drives character joints, reloads, terminal interactions and extraction. Gunfire uses different real-time reverbs in the valley and powerhouse, while a step sequencer brings in bass and drums as enemies close in.
 
 ## 目录 · Layout
 
@@ -98,6 +98,7 @@ All models, textures, sounds and music are generated in code; the project contai
 | `src/bot.mjs` | 代打玩家，用于自动检查和 `?auto=1` · a stand-in player for automated checks and `?auto=1` |
 | `src/view.mjs`，`src/scenery.mjs` | 场景、灯光、特效 · scene, lights, effects |
 | `src/soldier.mjs`，`src/gun.mjs` | 敌人模型与动画、手中的武器 · enemy models and animation, the weapon in hand |
+| `assets/models/`，`src/asset-models.mjs` | GLB 美术和角色、道具的挂载清单 · GLB assets and the visual slot manifest |
 | `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |
 | `src/hud.mjs`，`src/text.mjs` | 界面与中英文文字 · interface and its Chinese and English text |
 | `src/input.mjs`，`src/audio.mjs`，`src/music.mjs` | 键鼠与触屏、合成音效、随战况变化的配乐 · keyboard, mouse and touch; synthesised sound; a score that follows the fight |
@@ -108,9 +109,9 @@ All models, textures, sounds and music are generated in code; the project contai
 
 ## 运行与开发 · Running and development
 
-需要 Node.js 22 或更新版本，以及支持 WebGL2 的浏览器。
+在线游玩只需要支持 WebGL2 的浏览器。本地开发与自动测试需要 Node.js 22 或更新版本。
 
-Requires Node.js 22 or newer and a browser with WebGL2.
+Online play requires a browser with WebGL2. Local development and automated tests require Node.js 22 or newer.
 
 ```sh
 # 在仓库根目录启动任意静态服务器 · serve the repository root with any static server
@@ -133,6 +134,7 @@ node tools/headless.mjs 5 1       # 让代打玩家打 5 局，种子从 1 开�
 | `?ratio=1` | 限制设备像素比（默认 1.5） · cap the device pixel ratio (default 1.5) |
 | `?seed=123` | 固定随机种子 · fix the random seed |
 | `?auto=1` | 由代打玩家自动游玩 · let the stand-in player play |
+| `?art=original` | 以程序模型作画面对照 · use procedural models for visual comparisons |
 | `?stats=1` | 显示帧率、各阶段耗时、绘制次数与三角形数 · show the frame rate, the time each part of a frame takes, draw calls and triangles |
 
 ## 许可 · License
@@ -140,3 +142,7 @@ node tools/headless.mjs 5 1       # 让代打玩家打 5 局，种子从 1 开�
 引擎运行时副本遵循 Apache-2.0，见 `vendor/LICENSE` 与 `vendor/NOTICE`。
 
 The engine runtime copy is under Apache-2.0; see `vendor/LICENSE` and `vendor/NOTICE`.
+
+模型的生成来源和使用说明见 `assets/models/README.md`。
+
+See `assets/models/README.md` for the model source and usage notes.

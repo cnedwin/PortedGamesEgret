@@ -1,0 +1,171 @@
+{
+  "soldier-rifle": {
+    "file": "soldier-rifle.glb",
+    "parts": {
+      "upper": "body",
+      "head": "head",
+      "arms": "arms",
+      "left-thigh": "thigh-left",
+      "right-thigh": "thigh-right",
+      "left-shin": "shin-left",
+      "right-shin": "shin-right"
+    }
+  },
+  "soldier-rush": {
+    "file": "soldier-rush.glb",
+    "parts": {
+      "upper": "body",
+      "head": "head",
+      "arms": "arms",
+      "left-thigh": "thigh-left",
+      "right-thigh": "thigh-right",
+      "left-shin": "shin-left",
+      "right-shin": "shin-right"
+    }
+  },
+  "soldier-heavy": {
+    "file": "soldier-heavy.glb",
+    "parts": {
+      "upper": "body",
+      "head": "head",
+      "left-thigh": "thigh-left",
+      "right-thigh": "thigh-right",
+      "left-shin": "shin-left",
+      "right-shin": "shin-right",
+      "arms": "arms"
+    }
+  },
+  "weapon-rifle": {
+    "file": "weapon-rifle.glb",
+    "parts": {
+      "body": "body",
+      "magazine": "magazine"
+    }
+  },
+  "weapon-pistol": {
+    "file": "weapon-pistol.glb",
+    "parts": {
+      "body": "body",
+      "slide": "slide"
+    }
+  },
+  "weapon-marksman": {
+    "file": "weapon-marksman.glb",
+    "parts": {
+      "body": "body"
+    }
+  },
+  "supply-crate": {
+    "file": "supply-crate.glb",
+    "parts": {
+      "body": "body",
+      "lid": "lid"
+    }
+  },
+  "booth": {
+    "file": "booth.glb"
+  },
+  "terminal": {
+    "file": "terminal.glb"
+  },
+  "dam": {
+    "file": "dam.glb"
+  },
+  "helicopter": {
+    "file": "helicopter.glb",
+    "yaw": 3.141592653589793,
+    "parts": {
+      "body": "body"
+    }
+  },
+  "barrel": {
+    "file": "barrel.glb"
+  },
+  "barrier": {
+    "file": "barrier.glb",
+    "yaw": 1.5707963267948966
+  },
+  "container": {
+    "file": "container.glb",
+    "yaw": 3.141592653589793
+  },
+  "generator": {
+    "file": "generator.glb"
+  },
+  "plant": {
+    "file": "plant.glb"
+  },
+  "sandbag": {
+    "file": "sandbag.glb"
+  },
+  "truck": {
+    "file": "truck.glb",
+    "yaw": 3.141592653589793
+  },
+  "office": {
+    "file": "office.glb"
+  },
+  "crate": {
+    "file": "crate.glb"
+  },
+  "grenade": {
+    "file": "grenade.glb"
+  },
+  "desk": {
+    "file": "desk.glb"
+  },
+  "server": {
+    "file": "server.glb"
+  },
+  "sofa": {
+    "file": "sofa.glb"
+  },
+  "water-tower": {
+    "file": "water-tower.glb"
+  },
+  "penstock": {
+    "file": "penstock.glb",
+    "yaw": 1.5707963267948966
+  },
+  "cabinet": {
+    "file": "server.glb"
+  },
+  "console": {
+    "file": "desk.glb"
+  },
+  "forklift": {
+    "file": "forklift.glb",
+    "yaw": 1.5707963267948966
+  },
+  "pipe-rack": {
+    "file": "pipe-rack.glb",
+    "yaw": 1.5707963267948966
+  },
+  "pallet": {
+    "file": "pallet.glb"
+  },
+  "tyres": {
+    "file": "tyres.glb"
+  },
+  "reel": {
+    "file": "reel.glb"
+  },
+  "transformer": {
+    "file": "transformer.glb",
+    "yaw": 1.5707963267948966
+  },
+  "canopy": {
+    "file": "canopy.glb"
+  },
+  "operator-hands": {
+    "file": "operator-hands.glb",
+    "parts": {
+      "rifle-hands": "right",
+      "rifle-support": "left",
+      "pistol-hands": "pistol-grip",
+      "pistol-support": "pistol-support",
+      "marksman-hands": "right",
+      "marksman-support": "left"
+    }
+  }
+}

@@ -18,25 +18,24 @@ This document records where this version stands: problems already solved, parts 
 
 ## 验证情况 · What has been verified
 
-已验证 · Verified:
+- 白鹭运行时固定为 main 的 `264e17227b06298858a06b9fdfe0c4a3a427e13a`。40 项自动测试覆盖规则、输入、模型挂点、共享实例及动态部件。无界面 seed 3 在 357 秒撤离。
+- PC 使用 RTX 5090 Laptop 和 Edge 157，在 1440×900、高画质下从正常标题页开始，以实际键鼠事件完成三终端、六次校准和登机结算，用时 360.85 秒。模型首帧加载齐全，无回退。以下整局帧间隔是比例修订前的设备基线。最后一次手套比例微调另做了 PC 瞄准、射击、换弹、切枪和暂停恢复复测。
+- 三星 SM-F966U1、Android 17 的 Chrome 真机在原生触屏视口 873×325 下，通过 CDP 触控事件从普通标题页进入并完成完整撤离，用时 384.22 秒，六次校准全部通过。23,164 帧平均约 60.31 FPS，P95/P99 为 16.7 毫秒，最大 33.2 毫秒。另用自动控制模式完成 356.73 秒整局。移动、转向与射击并发、触屏切枪、开镜、暂停恢复另有真机输入检查。
+- 本轮 PC 整局 P95 为 4.3 毫秒，最大帧间隔 175.1 毫秒，有两次相邻长任务。缺少对应的性能追踪，原因未定。样本包含约 5.6 秒辅助计算并行，应保留该测量条件。
+- 该 PC 的 ANGLE D3D11 阴影路径曾丢失 WebGL 上下文，目前仅对识别到的 RTX 5090 Laptop 适配器关闭实时阴影，SSAO、反射和后处理保留。三星高画质包含实时阴影。
 
-- 规则有十七个自动测试（`node --test`），覆盖地图可达性、武器、敌人、校准、传输、撤离和确定性。
-- 无界面整局对局（`node tools/headless.mjs`）：八个常规种子均在约六分钟撤离。瞄准速度降至四分之一后八局通关七局。
-- 浏览器内用软件渲染（WebGL 2）逐项截图检查过：标题页、战斗、小地图、背包、瞄准镜、传输进度与信号中断提示、枪口火光、敌人近景、卡车、大坝、结算页，页面无报错。
+The runtime is pinned to the Egret main commit recorded above. All 40 automated checks pass. The physical PC completed the mission with trusted keyboard/mouse input. The physical Samsung completed a 384.22-second mission using CDP-injected multitouch events from the normal title, plus a separate automatic rendered run. Both completed all three terminals and extraction. PC frame timing includes two unresolved long tasks and a brief interval of auxiliary computation. The adapter-specific PC shadow fallback preserves the other high-quality effects.
 
-- Seventeen automated tests cover reachability, weapons, enemies, relay checks, uploads, extraction and determinism.
-- Whole runs without a page (`node tools/headless.mjs`): the stand-in player extracted in about six minutes in all eight runs. With aim slowed to a quarter, it extracted in seven of eight runs.
-- Checked by screenshot in a browser with software rendering (WebGL 2): title, combat, minimap, backpack, scope, transfer progress and the out-of-range warning, muzzle flash, a soldier up close, trucks, the dam, the debrief. No page errors.
+### 验收边界 · Test boundaries
 
-尚未验证 · Not yet verified:
+- 本轮以 WebGL2 为主，WebGPU 尚待独立真机验收。
+- PC 已验证页面全屏与鼠标锁定的状态及恢复。覆盖整块显示屏的原生窗口边界验收未完成。
+- 自动输入与自动控制用于可复跑验收，真实玩家的难度和熟练度分布还需要玩家反馈。
+- 音乐和声音沿用现有合成实现，本轮未做专门的人工听音验收。
+- 角色使用刚性分件和已有动作关节。重装兵采用按自身肩位对齐的生成制服手臂，手指没有逐指骨骼动画。
+- 地形、植被、地面、栏杆、标识和灯光等辅助元素沿用既有实现。
 
-| 项目 · Item | 说明 · Note |
-| --- | --- |
-| WebGPU 后端 · WebGPU backend | 自定义着色器都写了 WGSL 版本，但 `?backend=webgpu` 从未实际运行过 · every custom shader has a WGSL version, but `?backend=webgpu` has never actually been run |
-| 真人难度与时长 · Difficulty and length for a person | 六到八分钟为整局代打和真机输入复测估计，后续可通过玩家反馈校准 · six to eight minutes is estimated from stand-in runs and device input checks; player feedback can refine that estimate |
-| 声音听感 · How it sounds | 音效和配乐只检查过代码能运行，没有人听过整体混音 · sound and score are known to run; nobody has listened to the mix |
-| 敌人的动作 · Enemy animation | 开枪后坐、中弹扭身、蹲在掩体后、换弹、布娃娃倒地都没有截到过画面 · recoil, the flinch when hit, kneeling behind cover, reloading and the ragdoll fall have not been captured in a picture |
-| 包抄与扔手雷 · Flanking and grenades | 由规则测试和整局对局覆盖，没有在画面里看过完整过程 · covered by tests and whole runs, never watched from start to finish on screen |
+This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGPU qualification, human difficulty assessment and listening tests remain outside this acceptance pass. Characters use rigid animated sections. The heavy uses generated uniform arm sections aligned to its own shoulders. Terrain, foliage, ground, rails, signs and lighting retain their existing implementation.
 
 ## 已知问题 · Known issues
 
@@ -122,23 +121,16 @@ This document records where this version stands: problems already solved, parts 
 
 ## 模型细节 · Model detail
 
-所有模型都由 `src/build.mjs` 的方块、圆柱、锥形肢体和椭球在代码里拼成，没有外部模型文件。
+这一版把 Tripo 的角色、枪械外观和场景模型收在 `assets/models/`。清单把 GLB 绑到原有游戏挂点，原地图的行走、碰撞和交互使用现有数据。
 
-Every model is put together in code from the boxes, cylinders, tapered limbs and ellipsoids in `src/build.mjs`; there are no model files.
+This version stores the Tripo character, weapon and scenery models in `assets/models/`. The manifest attaches them to the existing game pivots. Traversal, collision and interaction use the original level data.
 
-| 模型 · Model | 已有 · Has | 还粗的地方 · Still coarse |
-| --- | --- | --- |
-| 突击步枪 · Assault rifle | 机匣、八面护木与导轨、枪管、导气箍与消音器、带镜片的全息瞄具、战术灯、瞄准模块、前握把、带托腮的伸缩枪托、防滑握把、弧形弹匣；开火、换弹、落地、切枪动作 · receiver, eight-sided handguard with rails, barrel with gas block and suppressor, holographic sight with a lens, light, aiming module, foregrip, sliding stock with a cheek rest, ridged grip, curved magazine; firing, reload, landing and switching motion | 没有拉机柄动作和抛壳口细节，表面磨损靠一张通用金属贴图 · no charging handle motion or ejection port detail, wear comes from one shared metal texture |
-| 精确射手步枪 · Marksman rifle | 在步枪基础上换成更长更重的枪管，加装带镜环、调节旋钮和镀膜镜片的瞄准镜 · the rifle's base with a longer, heavier barrel and a telescopic sight on rings with turrets and coated lenses | 与突击步枪共用大部分零件，外形区别不大；镜内是界面遮罩，不是真实的镜片画面 · shares most parts with the assault rifle and looks similar; the scope view is an overlay, not a rendered lens |
-| 手枪 · Pistol | 带防滑纹和抛壳口的套筒、照门准星、带导轨的握把座、扳机与护圈、套筒后坐和空仓挂机 · slide cycle, empty lock, serrations and an ejection port, sights, frame with a rail, trigger and guard | 无独立的拉套筒动作 · no separate manual slide action |
-| 手与袖子 · Hands and sleeves | 五指手套、迷彩袖子、袖口、手表、换弹时左手跟随弹匣 · gloved fingers, camouflage sleeves, cuffs, a watch and a support hand that follows the magazine | 手指保持握持姿势 · fingers keep their grip pose |
-| 敌人 · Soldiers | 头盔或绒线帽、风镜或护目镜、耳机与麦克风、脸（眼睛、瞳孔、鼻子、嘴）、防弹背心与弹匣袋、电台、腰带、背包、迷彩服、护肘护膝、靴子、枪；肩部关节带持枪、后坐、扭身；走、瞄、蹲、换弹姿态；布娃娃 · helmet or watch cap, goggles or glasses, headset with microphone, face (eyes, pupils, nose, mouth), plate carrier with magazine pouches, radio, belt kit, pack, camouflage, elbow and knee pads, boots, weapon; a shoulder joint for carrying, recoil and flinching; walking, aiming, kneeling and reloading poses; ragdoll | 肘和手腕不单独活动，没有骨骼蒙皮，三种兵只靠颜色和装备区分，没有死亡以外的受击倒地动作 · elbows and wrists do not move on their own, no skinned skeleton, the three kinds differ only in colour and gear, no knock-down short of death |
-| 卡车 · Trucks | 驾驶室、篷布货厢与骨架、格栅、保险杠、后视镜、排气管、轮拱、尾板、挡泥板、车灯 · cab, canvas bed with hoops, grille, bumper, mirrors, exhaust, wheel arches, tailgate, mud flaps, lamps | 车窗不透明，没有内饰，轮胎没有花纹 · windows are opaque, no interior, tyres have no tread |
-| 大坝 · Dam | 施工缝、加厚坝脚、三座闸房与钢索、检修楼梯、排水口、坝顶栏杆 · lift joints, a thicker foot, three gate houses with hoist ropes, a maintenance stair, drain outlets, a crest railing | 没有泄水的水流，立面仍是直壁，没有弧度 · no water coming through, and the face is still a straight wall with no curve |
-| 树 · Trees | 六层枝叶的杉树、分叉树干加叶团的阔叶树 · firs in six tiers, broad-leaved trees with a forked trunk and leaf masses | 没有单片叶子和随风摆动，背光时偏黑 · no individual leaves or sway, and too dark against the light |
-| 远山 · Hills | 一圈平滑着色的山体，顶点着色 · a ring of smooth-shaded hills with vertex colour | 没有贴图和植被，近看只有大色块 · no texture or vegetation, only broad patches of colour up close |
-| 厂房与办公楼 · Powerhouse and office | 门窗、室内设备、标牌、喷字、灯具 · doors and windows, equipment inside, signs, stencils, lamps | 窗户没有玻璃反射，室内陈设较少 · no reflection in the glass, and little furniture |
-| 直升机 · Helicopter | 机身、旋翼、尾桨、起落橇、舱门 · fuselage, rotor, tail rotor, skids, door | 机身由几个方块拼成，没有驾驶员，舱内是空的，登机没有动作 · the hull is a few boxes, with no pilot, an empty cabin and no boarding motion |
+| 模型 · Model | 游戏内表现 · In game |
+| --- | --- |
+| 三类敌人 · Three enemy types | 头、躯干和四肢沿用原有行走、瞄准、蹲伏及布娃娃关节 · head, torso and limbs use the existing locomotion, aim, crouch and ragdoll joints |
+| 三件第一人称装备 · Three first-person weapon visuals | 独立外形，沿用瞄准、开火、换弹、切换和光学遮罩 · separate silhouettes with the existing aim, fire, reload and switch animations and scope overlay |
+| 场景模型 · Station assets | 原有门洞、可行走地面、流水、实时灯光和交互挂点承载新外观 · new art fitted around existing passages, walkable floors, water, live lights and interaction anchors |
+| 撤离直升机 · Extraction helicopter | 贴图机身沿用游戏控制的主旋翼、尾桨和降落路径 · textured hull with game-driven main and tail rotors and landing path |
 
 ## 下一步建议 · Suggested next steps
 

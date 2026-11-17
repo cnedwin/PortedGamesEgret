@@ -1264,6 +1264,49 @@ body {
   }
 }
 
+@media (pointer: coarse) and (max-height: 400px) and (orientation: landscape) {
+  /* On short browser viewports the full mission card sits above the left stick. */
+  .touch .t-heal,
+  .touch .t-nade {
+    left: calc(max(34px, env(safe-area-inset-left)) + 113px);
+    bottom: max(78px, env(safe-area-inset-bottom));
+    width: 42px;
+    height: 42px;
+  }
+  .touch .t-nade {
+    left: calc(max(34px, env(safe-area-inset-left)) + 163px);
+  }
+  .hud.touching .ammo {
+    top: calc(max(12px, env(safe-area-inset-top)) + 92px);
+  }
+  .hud.touching .a-name {
+    font-size: 10px;
+  }
+  .hud.touching .a-count b {
+    font-size: 20px;
+  }
+  .hud.touching .a-slots {
+    display: none;
+  }
+  .hud.touching .feed {
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .hud.touching .feed-line {
+    font-size: 11px;
+  }
+  .hud.touching .feed-line:not(:first-child) {
+    display: none;
+  }
+  .hud.touching .lootlist {
+    top: auto;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    left: 50%;
+    right: auto;
+    transform: translateX(-50%);
+  }
+}
+
 @media (max-width: 720px) {
   .objective {
     min-width: 0;
