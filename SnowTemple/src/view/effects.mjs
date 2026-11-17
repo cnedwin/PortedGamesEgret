@@ -230,13 +230,20 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     item.pool.get(item.geometry).push(item);
   }
 
-  // Compile the shared effect program under the loading screen and return the pad
-  // to the pool without advancing the effect clock or seed.
+  // Draw the shared effect pad and fogged footprint variants once under the loader.
+  // Neither updates the effect clock or enters the real footprints' ring buffer.
   function prepareFirstDraw() {
     const item = takeEffect(shapes.pad, false);
     item.mesh.name = 'snow-fx-pad';
     item.mesh.setPosition(0, -1000, 0);
-    return () => release(item);
+    preparingFootprints = true;
+    printMesh.setTransformAt(0, [0, -1000, 0], [0, 0, 0, 1], PRINT);
+    printMesh.setColorAt(0, 0, 0, 0, 0);
+    return () => {
+      release(item);
+      preparingFootprints = false;
+      printMesh.count = 0;
+    };
   }
 
   // ---- sparks, embers, dust: one pool of bright dots ----------------------------------------
@@ -293,13 +300,14 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
   const printMaterial = createUnlitMaterial3D({ color: 0xffffff, alphaMode: 'blend', depthWrite: false });
   printMaterial.shader = dotShader;
   const printMesh = new InstancedMesh3D(createGeometry3D({ positions: [-0.5, 0, -0.5, 0.5, 0, -0.5, 0.5, 0, 0.5, -0.5, 0, 0.5], uvs: [0, 0, 1, 0, 1, 1, 0, 1], indices: [0, 2, 1, 0, 3, 2] }), printMaterial, 96, 4);
+  printMesh.name = 'snow-footprints';
   printMesh.frustumCulled = false;
   printMesh.castShadow = false;
   printMesh.count = 0;
   scene.addChild(printMesh);
   const prints = Array.from({ length: 96 }, () => ({ x: 0, z: 0, yaw: 0, age: 99 })),
     PRINT = [0.19, 1, 0.4];
-  let printAt = 0;
+  let printAt = 0, preparingFootprints = false;
 
   // ---- flashes of light ----------------------------------------------------------------------
   const flashes = [0, 1].map(() => {
@@ -451,7 +459,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
       printMesh.setTransformAt(f, place, axisAngle(0, 1, 0, step.yaw), PRINT);
       printMesh.setColorAt(f++, 0.1, 0.13, 0.24, 0.8 * Math.min(1, (16 - step.age) / 6));
     }
-    printMesh.count = f;
+    printMesh.count = preparingFootprints ? 1 : f;
 
     // Spears: fall along their lean, stand a moment, then sink away.
     let s = 0;

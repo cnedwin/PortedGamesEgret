@@ -367,7 +367,7 @@ async function main() {
     }
     view.mirror?.(renderer, game);
     if (mode === 'title') titleCamera();
-    updateLook(camera, view.sunDirection, mode === 'title' || !!view.cine, dt);
+    updateLook(camera, view.fogLights, mode === 'title' || !!view.cine, dt);
     hud.update(game, view);
     audio.update();
 
