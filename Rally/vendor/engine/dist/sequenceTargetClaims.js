@@ -4,8 +4,12 @@ export function createSequenceTargetClaims() {
     const targets = new WeakMap();
     let size = 0;
     return Object.freeze({
-        get size() { return size; },
-        has(target) { return targets.has(target); },
+        get size() {
+            return size;
+        },
+        has(target) {
+            return targets.has(target);
+        },
         acquire(target, token) {
             // Admission is callback-free; refusal never replaces a previous claimant.
             if (size >= 256)
@@ -21,6 +25,6 @@ export function createSequenceTargetClaims() {
                 return;
             targets.delete(target);
             size--;
-        },
+        }
     });
 }

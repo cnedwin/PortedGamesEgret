@@ -8,7 +8,12 @@ import { World3DError, requireCount3D } from '../../rendering/world3d/core3D.js'
 import { CubeTexture3D, RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 // Face axes in +X, -X, +Y, -Y, +Z, -Z order with the up vector that puts each image's top row where a cube map expects it.
 const FACES = [
-    [1, 0, 0, 0, 1, 0], [-1, 0, 0, 0, 1, 0], [0, 1, 0, 0, 0, -1], [0, -1, 0, 0, 0, 1], [0, 0, 1, 0, 1, 0], [0, 0, -1, 0, 1, 0],
+    [1, 0, 0, 0, 1, 0],
+    [-1, 0, 0, 0, 1, 0],
+    [0, 1, 0, 0, 0, -1],
+    [0, -1, 0, 0, 0, 1],
+    [0, 0, 1, 0, 1, 0],
+    [0, 0, -1, 0, 1, 0]
 ];
 /** Render six 90-degree views from `position` and return them as a cube texture with mipmaps. */
 export async function captureCubeTexture3D(renderer, scene, position, options = {}) {

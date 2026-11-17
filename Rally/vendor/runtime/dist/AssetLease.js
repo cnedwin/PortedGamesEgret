@@ -56,7 +56,9 @@ export function observeAssetLeaseRetirement(lease, onRetired) {
     return true;
 }
 /** Runtime-private identity guard; proxies and lookalikes cannot supply entitlement. */
-export function isAssetLease(value) { return states.has(value); }
+export function isAssetLease(value) {
+    return states.has(value);
+}
 /** Read the manager-owned value, without overridable getters or descriptor callbacks. */
 export function readAssetLeaseValue(value) {
     const state = states.get(value);

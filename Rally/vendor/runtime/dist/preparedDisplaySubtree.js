@@ -12,7 +12,9 @@ import { collectSubtreeSharedFrameContent } from './sharedFrameCapture.js';
 const scopeState = Object.getOwnPropertyDescriptor(Scope.prototype, 'state').get;
 const inherited = ['structureRevision', 'transformRevision', 'appearanceRevision', 'bindingRevision'];
 const affected = [...inherited, 'contentRevision'];
-function fault(code) { throw new EgretError('DISPLAY_SUBTREE_' + code); }
+function fault(code) {
+    throw new EgretError('DISPLAY_SUBTREE_' + code);
+}
 /** Genuine Stage assembly only. All tree overlays and publication tokens remain private. */
 export function createPreparedDisplayOperations(stage) {
     const engine = engineOf(stage);
@@ -57,15 +59,24 @@ export function createPreparedDisplayOperations(stage) {
         const children = full ? Array.from({ length: childCountOf(node) }, (_, i) => childAtOf(node, i)) : undefined;
         if (full)
             resource(node);
-        return { node, parent: parentOf(node), owners: ownership(node), keys, revisions: keys.map(key => state[key]), children };
+        return {
+            node,
+            parent: parentOf(node),
+            owners: ownership(node),
+            keys,
+            revisions: keys.map(key => state[key]),
+            children
+        };
     }
     function validate(plan) {
         engine.assertOpen();
         for (const item of plan.captures) {
             live(item.node);
             const state = visualOf(item.node), owners = ownership(item.node);
-            if (parentOf(item.node) !== item.parent || owners.length !== item.owners.length || owners.some((owner, i) => owner !== item.owners[i])
-                || item.keys.some((key, i) => state[key] !== item.revisions[i]))
+            if (parentOf(item.node) !== item.parent ||
+                owners.length !== item.owners.length ||
+                owners.some((owner, i) => owner !== item.owners[i]) ||
+                item.keys.some((key, i) => state[key] !== item.revisions[i]))
                 fault('STALE');
             if (item.children) {
                 if (childCountOf(item.node) !== item.children.length)
@@ -101,8 +112,12 @@ export function createPreparedDisplayOperations(stage) {
             assertContainer(target);
             if (pending.size >= 32 && !pending.has(target))
                 fault('LIMIT');
-            if (isStageRoot(target) || isStageRoot(candidate) || target === candidate || parentOf(candidate) !== undefined
-                || !isScope(ownerOf(target)) || !isScope(ownerOf(candidate)))
+            if (isStageRoot(target) ||
+                isStageRoot(candidate) ||
+                target === candidate ||
+                parentOf(candidate) !== undefined ||
+                !isScope(ownerOf(target)) ||
+                !isScope(ownerOf(candidate)))
                 fault('ROOT_INVALID');
             // Target plus candidate roots already consume two of the 4,096 node slots.
             // Refuse before the managed-child check clones the target's direct list.
@@ -169,14 +184,21 @@ export function createPreparedDisplayOperations(stage) {
             pending.set(target, token);
             return token;
         },
-        validate(token) { read(token); },
-        capture(token) { const plan = read(token); const result = collectSubtreeSharedFrameContent(stage, plan.target, plan.candidate); read(token); return result; },
+        validate(token) {
+            read(token);
+        },
+        capture(token) {
+            const plan = read(token);
+            const result = collectSubtreeSharedFrameContent(stage, plan.target, plan.candidate);
+            read(token);
+            return result;
+        },
         commit(token) {
             const plan = read(token);
             // No callbacks, allocations or further admission after the complete validation pass.
             publishPreparedChildren(plan.target, plan.previous, plan.next);
             dispose(token);
         },
-        dispose,
+        dispose
     });
 }

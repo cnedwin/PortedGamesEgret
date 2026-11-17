@@ -4,7 +4,12 @@
 import { setColor3D } from './Material3D.js';
 import { Object3D } from './Object3D.js';
 export const LIGHT3D_LIMITS = Object.freeze({
-    maxDirectional: 4, maxPoint: 8, maxSpot: 4, maxShadows: 4,
+    maxDirectional: 4,
+    maxPoint: 8,
+    /** Point lights with a range lit through the tiled list, beyond the eight lit directly. */
+    maxTiledPoint: 256,
+    maxSpot: 4,
+    maxShadows: 4
 });
 export class Light3D extends Object3D {
     lightType;
@@ -15,7 +20,18 @@ export class Light3D extends Object3D {
     range = 0;
     angle = Math.PI / 4;
     penumbra = 0.1;
-    shadow = { mapSize: 1024, bias: 0.0005, normalBias: 0.02, near: 0.1, far: 100, extent: 10, radius: 1, cascades: 1, cascadeDistance: 100, cascadeLambda: 0.7 };
+    shadow = {
+        mapSize: 1024,
+        bias: 0.0005,
+        normalBias: 0.02,
+        near: 0.1,
+        far: 100,
+        extent: 10,
+        radius: 1,
+        cascades: 1,
+        cascadeDistance: 100,
+        cascadeLambda: 0.7
+    };
     constructor(lightType = 'directional') {
         super('light');
         this.lightType = lightType;

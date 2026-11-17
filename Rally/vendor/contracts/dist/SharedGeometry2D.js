@@ -70,9 +70,13 @@ function elementLength(value, tag) {
     return byteLength / elementBytes;
 }
 function copyPayload(source, tag, length) {
-    const copy = tag === 'Float32Array' ? new Floats32(length) :
-        tag === 'Float64Array' ? new Floats64(length) :
-            tag === 'Uint16Array' ? new Indices16(length) : new Indices32(length);
+    const copy = tag === 'Float32Array'
+        ? new Floats32(length)
+        : tag === 'Float64Array'
+            ? new Floats64(length)
+            : tag === 'Uint16Array'
+                ? new Indices16(length)
+                : new Indices32(length);
     // Native allocation/copy failures escape. TypedArray set reads only the
     // intrinsic used range and cannot invoke the caller's iterator or species.
     apply(setElements, copy, [source]);
@@ -125,15 +129,16 @@ export function createSharedGeometry2D(input) {
     const vertexCount = positionsLength / 2;
     const indexCount = indicesLength;
     // G4: shape outranks capacity; both precede copies and canonical arrays.
-    if (!safeInteger(vertexCount) || !safeInteger(indexCount) ||
-        uvsLength !== positionsLength || lightColorsLength !== 4 * vertexCount || darkColorsLength !== 3 * vertexCount ||
-        !((vertexCount === 0 && indexCount === 0) ||
-            (vertexCount >= 3 && indexCount >= 3 && indexCount % 3 === 0))) {
+    if (!safeInteger(vertexCount) ||
+        !safeInteger(indexCount) ||
+        uvsLength !== positionsLength ||
+        lightColorsLength !== 4 * vertexCount ||
+        darkColorsLength !== 3 * vertexCount ||
+        !((vertexCount === 0 && indexCount === 0) || (vertexCount >= 3 && indexCount >= 3 && indexCount % 3 === 0))) {
         throw new RangeFault('Shared geometry array shape is invalid');
     }
     const logicalByteLength = 88 * vertexCount + 4 * indexCount;
-    if (vertexCount > 65536 || indexCount > 196608 ||
-        !safeInteger(logicalByteLength) || logicalByteLength > 4980736) {
+    if (vertexCount > 65536 || indexCount > 196608 || !safeInteger(logicalByteLength) || logicalByteLength > 4980736) {
         throw new RangeFault('Shared geometry capacity exceeded');
     }
     // G5 capacity above precedes all allocations below. G6 completes all five
@@ -150,8 +155,17 @@ export function createSharedGeometry2D(input) {
     const indices = canonical(indicesCopy, indicesLength, 'index', vertexCount);
     // Logical accounting describes canonical payload units, not physical heap
     // usage or an allocation guarantee. Only the completed frozen value is owned.
-    const geometry = freeze({ vertexCount, indexCount, triangleCount: indexCount / 3,
-        logicalByteLength, positions, uvs, lightColors, darkColors, indices });
+    const geometry = freeze({
+        vertexCount,
+        indexCount,
+        triangleCount: indexCount / 3,
+        logicalByteLength,
+        positions,
+        uvs,
+        lightColors,
+        darkColors,
+        indices
+    });
     apply(weakSet, owned, [geometry, true]);
     return geometry;
 }

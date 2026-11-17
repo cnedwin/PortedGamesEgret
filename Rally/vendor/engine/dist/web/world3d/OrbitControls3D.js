@@ -56,7 +56,7 @@ export class OrbitControls3D {
             ['pointerup', this.onPointerUp, undefined],
             ['pointercancel', this.onPointerUp, undefined],
             ['wheel', this.onWheel, { passive: false }],
-            ['contextmenu', this.onContextMenu, undefined],
+            ['contextmenu', this.onContextMenu, undefined]
         ];
         for (const [type, listener, listenerOptions] of this.#listeners)
             element.addEventListener(type, listener, listenerOptions);
@@ -70,8 +70,10 @@ export class OrbitControls3D {
         this.#theta = Math.atan2(x, z);
         this.#phi = Math.acos(Math.min(Math.max(y / this.#radius, -1), 1));
     }
-    onContextMenu = (event) => { if (this.enabled)
-        event.preventDefault(); };
+    onContextMenu = (event) => {
+        if (this.enabled)
+            event.preventDefault();
+    };
     onPointerDown = (event) => {
         if (!this.enabled)
             return;
@@ -108,7 +110,7 @@ export class OrbitControls3D {
             this.#pinch = distance;
             return;
         }
-        const panning = event.pointerType === 'mouse' && (event.buttons & 2) !== 0 || event.shiftKey;
+        const panning = (event.pointerType === 'mouse' && (event.buttons & 2) !== 0) || event.shiftKey;
         if (panning) {
             if (this.enablePan)
                 this.addPan(dx, dy, height);
@@ -117,15 +119,16 @@ export class OrbitControls3D {
         if (!this.enableRotate)
             return;
         // A drag across the element height turns the view by half a revolution.
-        this.#deltaTheta -= dx / height * Math.PI * this.rotateSpeed;
-        this.#deltaPhi -= dy / height * Math.PI * this.rotateSpeed;
+        this.#deltaTheta -= (dx / height) * Math.PI * this.rotateSpeed;
+        this.#deltaPhi -= (dy / height) * Math.PI * this.rotateSpeed;
     };
     addPan(dx, dy, height) {
         const camera = this.camera, m = camera.matrixWorld;
         // World units per pixel at the target's depth.
         const span = camera.projectionKind === 'perspective'
-            ? 2 * this.#radius * Math.tan(camera.fov * Math.PI / 360) / camera.zoom : camera.orthographicHeight / camera.zoom;
-        const scale = span / height * this.panSpeed;
+            ? (2 * this.#radius * Math.tan((camera.fov * Math.PI) / 360)) / camera.zoom
+            : camera.orthographicHeight / camera.zoom;
+        const scale = (span / height) * this.panSpeed;
         for (let i = 0; i < 3; i++)
             this.#pan[i] += (-dx * m[i] + dy * m[4 + i]) * scale;
     }
@@ -151,7 +154,11 @@ export class OrbitControls3D {
             this.#radius = Math.min(Math.max(this.#radius * this.#zoom, this.minDistance), this.maxDistance);
         for (let i = 0; i < 3; i++)
             this.target[i] += this.#pan[i];
-        const moving = Math.abs(this.#deltaTheta) + Math.abs(this.#deltaPhi) + Math.abs(this.#zoom - 1) + Math.hypot(this.#pan[0], this.#pan[1], this.#pan[2]) > 1e-6;
+        const moving = Math.abs(this.#deltaTheta) +
+            Math.abs(this.#deltaPhi) +
+            Math.abs(this.#zoom - 1) +
+            Math.hypot(this.#pan[0], this.#pan[1], this.#pan[2]) >
+            1e-6;
         // Frame-rate independent decay of the remaining motion.
         const keep = this.damping > 0 ? Math.pow(Math.min(this.damping, 0.999), dt * 60) : 0;
         this.#deltaTheta *= keep;

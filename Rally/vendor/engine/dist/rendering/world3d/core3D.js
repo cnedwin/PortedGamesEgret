@@ -47,10 +47,16 @@ export class Resource3D {
     #disposed = false;
     #listeners;
     /** Increases whenever content changed and a backend copy must be refreshed. */
-    get version() { return this.#version; }
-    get isDisposed() { return this.#disposed; }
+    get version() {
+        return this.#version;
+    }
+    get isDisposed() {
+        return this.#disposed;
+    }
     /** Mark CPU content as changed. */
-    touch() { this.#version++; }
+    touch() {
+        this.#version++;
+    }
     /** Returns an unsubscribe function. Listeners run once, in registration order. */
     onDispose(listener) {
         if (this.#disposed) {
@@ -58,7 +64,9 @@ export class Resource3D {
             return () => { };
         }
         (this.#listeners ??= new Set()).add(listener);
-        return () => { this.#listeners?.delete(listener); };
+        return () => {
+            this.#listeners?.delete(listener);
+        };
     }
     /** Idempotent. Listener failures are collected and rethrown after all have run. */
     dispose() {

@@ -6,11 +6,18 @@ import { Resource3D, World3DError, requireCount3D } from './core3D.js';
 export const TEXTURE3D_LIMITS = Object.freeze({ maxEdge: 8192, maxBytes: 268435456 });
 /** Bytes per 4x4 block of each compressed format. */
 export const COMPRESSED_BLOCK_BYTES_3D = Object.freeze({
-    'bc1': 8, 'bc3': 16, 'bc7': 16, 'etc2-rgb8': 8, 'etc2-rgba8': 16, 'astc-4x4': 16,
+    'bc1': 8,
+    'bc3': 16,
+    'bc7': 16,
+    'etc2-rgb8': 8,
+    'etc2-rgba8': 16,
+    'astc-4x4': 16
 });
 export function isCompressedPixels3D(source) {
-    return typeof source === 'object' && source !== null && Array.isArray(source.levels)
-        && typeof source.format === 'string';
+    return (typeof source === 'object' &&
+        source !== null &&
+        Array.isArray(source.levels) &&
+        typeof source.format === 'string');
 }
 export function isTexturePixels3D(source) {
     return typeof source === 'object' && source !== null && source.data instanceof Uint8Array;
@@ -89,7 +96,9 @@ export class Texture3D extends TextureBase3D {
         checkSource(source);
         this.#source = source;
     }
-    get source() { return this.#source; }
+    get source() {
+        return this.#source;
+    }
     /** Replace the pixel source and schedule a backend upload. */
     setSource(source) {
         this.assertLive();
@@ -99,7 +108,11 @@ export class Texture3D extends TextureBase3D {
     }
     /** True when offset, repeat or rotation differ from the identity transform. */
     get hasTransform() {
-        return this.offset[0] !== 0 || this.offset[1] !== 0 || this.repeat[0] !== 1 || this.repeat[1] !== 1 || this.rotation !== 0;
+        return (this.offset[0] !== 0 ||
+            this.offset[1] !== 0 ||
+            this.repeat[0] !== 1 ||
+            this.repeat[1] !== 1 ||
+            this.rotation !== 0);
     }
 }
 /** Six square faces in +X, -X, +Y, -Y, +Z, -Z order. */
@@ -143,13 +156,20 @@ export class RenderTarget3D extends Resource3D {
         this.format = options.format ?? 'rgba8';
         this.depthTexture = this.depth && (options.depthTexture ?? false);
         this.texture = new Texture3D(this, {
-            mipmaps: false, wrapS: options.wrapS ?? 'clamp', wrapT: options.wrapT ?? 'clamp',
-            magFilter: options.magFilter ?? 'linear', minFilter: options.minFilter ?? 'linear',
-            colorSpace: this.format === 'rgba16f' ? 'linear' : 'srgb',
+            mipmaps: false,
+            wrapS: options.wrapS ?? 'clamp',
+            wrapT: options.wrapT ?? 'clamp',
+            magFilter: options.magFilter ?? 'linear',
+            minFilter: options.minFilter ?? 'linear',
+            colorSpace: this.format === 'rgba16f' ? 'linear' : 'srgb'
         });
     }
-    get width() { return this.#width; }
-    get height() { return this.#height; }
+    get width() {
+        return this.#width;
+    }
+    get height() {
+        return this.#height;
+    }
     /** Reallocate the attachments at a new size; previous contents are discarded. */
     setSize(width, height) {
         this.assertLive();
@@ -185,7 +205,7 @@ export function createGradientCubeTexture3D(zenith, horizon, ground, size = 32) 
         for (let y = 0; y < edge; y++) {
             for (let x = 0; x < edge; x++) {
                 // Texel center on the cube surface, following the OpenGL cube-map face layout.
-                const s = (x + 0.5) / edge * 2 - 1, t = (y + 0.5) / edge * 2 - 1;
+                const s = ((x + 0.5) / edge) * 2 - 1, t = ((y + 0.5) / edge) * 2 - 1;
                 let dx = 0, dy = 0, dz = 0;
                 if (face === 0) {
                     dx = 1;

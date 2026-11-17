@@ -40,6 +40,7 @@ import {
 import { createGrandstand } from './grandstand.mjs';
 import { addStartGate } from './start-gate.mjs';
 import { TRACK, wrapAngle } from './track.mjs';
+import { createTrackModelBatch } from './track-models.mjs';
 import { treeModels } from './tree-models.mjs';
 
 const VERMILION = 0xc8321e,
@@ -154,6 +155,7 @@ function arrowTexture() {
  */
 export function createScenery(scene, track, options = {}) {
   const scenery = {};
+  const trackModels = options.trackModels ?? {};
   const chance = scatterSource(20260);
   const ground = track.terrainHeight;
   const here = {};
@@ -211,6 +213,12 @@ export function createScenery(scene, track, options = {}) {
     mesh.count = places.length;
     scene.addChild(mesh);
     return mesh;
+  };
+  const modelCopies = (role, shape, places, material, { shadow = true, stretch = false } = {}) => {
+    const batch = createTrackModelBatch(scene, trackModels[role], shape.boundingBox, places.length, { shadow, stretch });
+    if (!batch) return copies(shape, places, material, shadow);
+    places.forEach(([x, y, z, turn, size], index) => batch.setTransformAt(index, [x, y, z], yawQuat(turn), size));
+    batch.count = places.length;
   };
 
   // ---- terrain -----------------------------------------------------------------------
@@ -427,7 +435,7 @@ export function createScenery(scene, track, options = {}) {
     line.renderOrder = 2;
     scene.addChild(holder);
 
-    addStartGate(holder, span);
+    addStartGate(holder, span, trackModels['start-gate']);
   }
 
   // ---- lake --------------------------------------------------------------------------
@@ -549,8 +557,8 @@ export function createScenery(scene, track, options = {}) {
     }
     return [];
   };
-  copies(pagoda(5), [...site(0.03, 46, 1.25), ...site(0.255, -44, 1.1), ...site(0.79, 42)], lit({ roughness: 0.7 }));
-  copies(pagoda(3), [...site(0.45, 34, 0.9), ...site(0.9, -40)], lit({ roughness: 0.7 }));
+  modelCopies('pagoda', pagoda(5), [...site(0.03, 46, 1.25), ...site(0.255, -44, 1.1), ...site(0.79, 42)], lit({ roughness: 0.7 }));
+  modelCopies('pagoda', pagoda(3), [...site(0.45, 34, 0.9), ...site(0.9, -40)], lit({ roughness: 0.7 }));
   copies(
     pavilionShape,
     [...site(0.47, -34), ...site(0.66, -34, 1.1), ...site(0.14, 34), ...site(0.37, 36, 0.9)],
@@ -644,16 +652,18 @@ export function createScenery(scene, track, options = {}) {
 
   // ---- lanterns and banners along the road -------------------------------------------------
   {
-    const post = build([
+    const post = [
       [ROD, [0, 2.4, 0], [0.11, 4.8, 0.11], 0x3a2a20],
       [BOX, [0, 4.7, 0.55], [0.1, 0.1, 1.3], 0x3a2a20],
       [ROD, [0, 4.35, 1.1], [0.02, 0.5, 0.02], 0x222222],
+    ];
+    const lantern = [
       // The lantern is brighter than white so it glows through the bloom.
       [BALL, [0, 3.75, 1.1], [0.5, 0.58, 0.5], [1.55, 0.2, 0.12]],
       [ROD, [0, 4.28, 1.1], [0.25, 0.1, 0.25], GOLD],
       [ROD, [0, 3.22, 1.1], [0.25, 0.1, 0.25], GOLD],
       [ROD, [0, 2.9, 1.1], [0.05, 0.55, 0.05], [1.3, 0.75, 0.1]],
-    ]);
+    ];
     const posts = [];
     for (let i = 4; i < track.count; i += 9) {
       if (track.bridge[i]) continue;
@@ -662,7 +672,7 @@ export function createScenery(scene, track, options = {}) {
       // The arm points at the road.
       posts.push([at.x, at.y - 0.1, at.z, at.heading - (side * Math.PI) / 2, 1]);
     }
-    copies(post, posts, lit({ roughness: 0.5 }));
+    copies(build([...post, ...lantern]), posts, lit({ roughness: 0.5 }));
 
     const banner = build([
       [ROD, [0, 3.5, 0], [0.09, 7, 0.09], 0x3a2a20],
@@ -834,7 +844,7 @@ export function createScenery(scene, track, options = {}) {
     [SPHERE, [0.3, 0.86, 0.72], 0.2, [1.3, 0.2, 0.14]],
     [SPHERE, [0, 1.78, 0.84], [0.1, 0.06, 0.06], 0x2a2a2a],
   ]);
-  copies(lionShape, [
+  modelCopies('guardian-lion', lionShape, [
     ...track.lions.map((lion) => [lion.x, lion.y, lion.z, lion.heading + Math.PI, 0.95]),
     ...[-1, 1].map((side) => {
       const at = beside(0, side * (span + 3.4));
@@ -878,11 +888,11 @@ export function createScenery(scene, track, options = {}) {
         [BALL, [side * 2.95, 1.2, 0], 0.26, GOLD],
       ]),
     ]);
-    copies(
-      gateShape,
+    modelCopies(
+      'cloud-gate', gateShape,
       track.gates.map((gate) => [gate.x, gate.y, gate.z, gate.heading, 1]),
       lit({ roughness: 0.6 }),
-      false,
+      { shadow: false, stretch: true },
     );
   }
 

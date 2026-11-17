@@ -1,4 +1,4 @@
-import { assertManagedMutable } from './ui/managedState.js';
+import { assertManagedMutable } from "./ui/managedState.js";
 import { assertLive, isDisplayNode } from "./displayTreeState.js";
 import { engineOf } from "./ownership.js";
 import { EgretError } from "./EgretError.js";
@@ -23,11 +23,11 @@ export function recordVisualChange(node, changes) {
     if (state === undefined)
         return;
     state.changes++;
-    if (((changes & VISUAL_STRUCTURE) !== 0 && state.structureRevision >= REVISION_RESTART)
-        || ((changes & VISUAL_TRANSFORM) !== 0 && state.transformRevision >= REVISION_RESTART)
-        || ((changes & VISUAL_APPEARANCE) !== 0 && state.appearanceRevision >= REVISION_RESTART)
-        || ((changes & VISUAL_CONTENT) !== 0 && state.contentRevision >= REVISION_RESTART)
-        || ((changes & VISUAL_BINDING) !== 0 && state.bindingRevision >= REVISION_RESTART)) {
+    if (((changes & VISUAL_STRUCTURE) !== 0 && state.structureRevision >= REVISION_RESTART) ||
+        ((changes & VISUAL_TRANSFORM) !== 0 && state.transformRevision >= REVISION_RESTART) ||
+        ((changes & VISUAL_APPEARANCE) !== 0 && state.appearanceRevision >= REVISION_RESTART) ||
+        ((changes & VISUAL_CONTENT) !== 0 && state.contentRevision >= REVISION_RESTART) ||
+        ((changes & VISUAL_BINDING) !== 0 && state.bindingRevision >= REVISION_RESTART)) {
         state.structureRevision = 0;
         state.transformRevision = 0;
         state.appearanceRevision = 0;
@@ -47,11 +47,32 @@ export function recordVisualChange(node, changes) {
 }
 export function registerVisual(node) {
     states.set(node, {
-        structureRevision: 0, transformRevision: 0, appearanceRevision: 0, contentRevision: 0, bindingRevision: 0,
-        x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, alpha: 1,
-        anchorOffsetX: 0, anchorOffsetY: 0,
-        visible: true, renderEffect: undefined, sharedMaterial: null, renderBoundary: 'none', clipRect: undefined, primitives: [], shape: undefined,
-        sharedCapture: undefined, changes: 0, seenBy: 0,
+        structureRevision: 0,
+        transformRevision: 0,
+        appearanceRevision: 0,
+        contentRevision: 0,
+        bindingRevision: 0,
+        x: 0,
+        y: 0,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        skewX: 0,
+        skewY: 0,
+        name: "",
+        alpha: 1,
+        anchorOffsetX: 0,
+        anchorOffsetY: 0,
+        visible: true,
+        renderEffect: undefined,
+        sharedMaterial: null,
+        renderBoundary: "none",
+        clipRect: undefined,
+        primitives: [],
+        shape: undefined,
+        sharedCapture: undefined,
+        changes: 0,
+        seenBy: 0
     });
 }
 export function visualOf(node) {

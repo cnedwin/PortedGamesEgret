@@ -117,8 +117,8 @@ function inspectTarget(record) {
             cleanup(retire(record, cause));
             throw cause;
         }
-        if (cause instanceof EgretError
-            && (cause.code === 'BITMAP_RESOURCE_TEXTURE_REQUIRED' || cause.code === 'BITMAP_RESOURCE_BINDING_CHANGED'))
+        if (cause instanceof EgretError &&
+            (cause.code === 'BITMAP_RESOURCE_TEXTURE_REQUIRED' || cause.code === 'BITMAP_RESOURCE_BINDING_CHANGED'))
             throw conflict(record);
         const request = record.request;
         if (request !== undefined)
@@ -158,14 +158,21 @@ function active(record, request) {
 }
 function makeRequest(record) {
     let resolve, reject;
-    const promise = new Promise((yes, no) => { resolve = yes; reject = no; });
+    const promise = new Promise((yes, no) => {
+        resolve = yes;
+        reject = no;
+    });
     // A discarded returned Promise must not produce an unhandled rejection.
     void APPLY(THEN, promise, [undefined, IGNORE]);
-    return { promise, resolve, reject,
+    return {
+        promise,
+        resolve,
+        reject,
         controller: new CancellationController(diagnostic => {
             record.context.captureCleanup(diagnostic.cause);
             record.context.report(diagnostic);
-        }) };
+        })
+    };
 }
 function fulfilled(record, request, candidate) {
     let cell = candidate;
@@ -225,10 +232,19 @@ function replace(record, ref) {
         const acquired = record.acquisitions.acquire(ref, { signal: request.controller.signal });
         // Always observe started work, including synchronous loader supersession.
         const observed = APPLY(THEN, acquired, [
-            (lease) => { fulfilled(record, request, lease); },
-            (cause) => { rejected(record, request, cause); },
+            (lease) => {
+                fulfilled(record, request, lease);
+            },
+            (cause) => {
+                rejected(record, request, cause);
+            }
         ]);
-        void APPLY(THEN, observed, [undefined, (cause) => { rejected(record, request, cause); }]);
+        void APPLY(THEN, observed, [
+            undefined,
+            (cause) => {
+                rejected(record, request, cause);
+            }
+        ]);
     }
     catch (cause) {
         rejected(record, request, cause);
@@ -241,8 +257,14 @@ function handleFor(record) {
             throw new EgretError('BITMAP_RESOURCE_INVALID');
     };
     const handle = FREEZE({
-        get state() { receiver(this); return record.state; },
-        replace(ref) { receiver(this); return replace(record, ref); },
+        get state() {
+            receiver(this);
+            return record.state;
+        },
+        replace(ref) {
+            receiver(this);
+            return replace(record, ref);
+        },
         cancel(reason) {
             receiver(this);
             assertControl(record);
@@ -255,7 +277,10 @@ function handleFor(record) {
             request.reject(error);
             abort(record, request, error);
         },
-        dispose() { receiver(this); cleanup(retire(record, closingCause(record))); },
+        dispose() {
+            receiver(this);
+            cleanup(retire(record, closingCause(record)));
+        }
     });
     record.facade = handle;
     return handle;
@@ -273,8 +298,20 @@ export function createBitmapResourceSlotOwner(context, acquisitions, targets) {
                 throw new EgretError('BITMAP_RESOURCE_TARGET_BUSY');
             if (inventory.size >= 256)
                 throw new EgretError('BITMAP_RESOURCE_LIMIT');
-            const record = { context, acquisitions, operations, scope, bitmap, inventory, claims,
-                state: 'idle', expected, owned: undefined, request: undefined, facade: undefined };
+            const record = {
+                context,
+                acquisitions,
+                operations,
+                scope,
+                bitmap,
+                inventory,
+                claims,
+                state: 'idle',
+                expected,
+                owned: undefined,
+                request: undefined,
+                facade: undefined
+            };
             const handle = handleFor(record);
             claims.set(bitmap, record);
             inventory.add(record);
@@ -297,6 +334,6 @@ export function createBitmapResourceSlotOwner(context, acquisitions, targets) {
             // All slots are terminal/cleared before the first abort/disposer/diagnostic.
             for (const snapshot of snapshots)
                 cleanup(snapshot);
-        },
+        }
     });
 }

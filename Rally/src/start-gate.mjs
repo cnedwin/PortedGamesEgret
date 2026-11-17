@@ -1,6 +1,7 @@
 // The ceremonial starting gate. All untextured details share a static mesh.
 import { Mesh3D, createGeometry3D, createStandardMaterial3D } from '@egret/engine/world3d';
 import { BALL, BOX, ROD, SPHERE, build, canvasTexture, quads } from './shapes.mjs';
+import { addTrackModel } from './track-models.mjs';
 
 const LACQUER = 0x9c3028;
 const LACQUER_DARK = 0x672925;
@@ -144,7 +145,7 @@ function plaqueTexture() {
 }
 
 /** Mount the gateway at the holder's local origin; the existing column span clears the road. */
-export function addStartGate(holder, span) {
+export function addStartGate(holder, span, model) {
   const parts = [];
   for (const side of [-1, 1]) {
     const inner = side * span;
@@ -185,17 +186,35 @@ export function addStartGate(holder, span) {
       }
     }
   }
-  const gate = new Mesh3D(build(parts), createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.67 }));
-  gate.name = 'Start gate architecture';
-  gate.castShadow = true;
-  gate.receiveShadow = true;
-  holder.addChild(gate);
+  const structure = build(parts);
+  const imported = addTrackModel(holder, model, structure.boundingBox, { stretch: true });
+  if (!imported) {
+    const gate = new Mesh3D(structure, createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.67 }));
+    gate.name = 'Start gate architecture';
+    gate.castShadow = true;
+    gate.receiveShadow = true;
+    holder.addChild(gate);
+  }
+
+  // The imported gate's centre beam sits lower than the sculpted gate's plaque recess.
+  const signY = imported ? 7.2 : 9.80;
+  const halfWidth = imported ? 3.3 : plaqueWidth / 2;
+  const halfHeight = imported ? 0.825 : 1.27;
+  const depth = imported ? 0.54 : 0.981;
+  if (imported) {
+    const backing = new Mesh3D(
+      build([[BOX, [0, signY, 0], [halfWidth * 2 + 0.16, halfHeight * 2 + 0.14, depth * 2 - 0.04], LACQUER_DARK]]),
+      createStandardMaterial3D({ color: 0xffffff, vertexColors: true, roughness: 0.78 }),
+    );
+    backing.name = 'Start gate plaque mount';
+    holder.addChild(backing);
+  }
 
   // Mirrored horizontal axes leave the text readable from either direction.
   const faces = [-1, 1].map((face) => [
-    [0, 9.80, face * 0.981],
-    [face * plaqueWidth / 2, 0, 0],
-    [0, 1.27, 0],
+    [0, signY, face * depth],
+    [face * halfWidth, 0, 0],
+    [0, halfHeight, 0],
   ]);
   const plaque = new Mesh3D(quads(faces), createStandardMaterial3D({ color: 0xffffff, map: plaqueTexture(), roughness: 0.84 }));
   plaque.name = 'Start gate plaque';

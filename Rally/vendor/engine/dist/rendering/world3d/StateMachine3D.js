@@ -5,7 +5,11 @@
 // An interrupted fade keeps the weights it had reached, so poses never pop.
 import { AnimationMixer3D } from './Animation3D.js';
 import { World3DError, requireFinite3D } from './core3D.js';
-export const STATE_MACHINE3D_LIMITS = Object.freeze({ maxStates: 256, maxTransitions: 2048, maxTransitionsPerUpdate: 8 });
+export const STATE_MACHINE3D_LIMITS = Object.freeze({
+    maxStates: 256,
+    maxTransitions: 2048,
+    maxTransitionsPerUpdate: 8
+});
 export class AnimationStateMachine3D {
     mixer;
     /** Called after every state change, including forced ones. */
@@ -24,16 +28,26 @@ export class AnimationStateMachine3D {
         this.mixer = mixer;
     }
     /** Name of the active state; during a fade this is the state being faded in. */
-    get current() { return this.#current?.name; }
-    get isTransitioning() { return this.#fading; }
+    get current() {
+        return this.#current?.name;
+    }
+    get isTransitioning() {
+        return this.#fading;
+    }
     /** Play time of the active state in passes of its duration. */
-    get normalizedTime() { return this.#current?.normalizedTime ?? 0; }
+    get normalizedTime() {
+        return this.#current?.normalizedTime ?? 0;
+    }
     addState(name, options) {
         if (typeof name !== 'string' || name.length === 0 || name === '*' || this.#states.has(name))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'state name');
         if (this.#states.size >= STATE_MACHINE3D_LIMITS.maxStates)
             throw new World3DError('WORLD3D_BUDGET', 'states');
-        const entries = options.blend ? [...options.blend.clips].sort((a, b) => a.threshold - b.threshold) : options.clip ? [{ clip: options.clip, threshold: 0 }] : [];
+        const entries = options.blend
+            ? [...options.blend.clips].sort((a, b) => a.threshold - b.threshold)
+            : options.clip
+                ? [{ clip: options.clip, threshold: 0 }]
+                : [];
         if (entries.length === 0 || (options.blend && options.clip))
             throw new World3DError('WORLD3D_INPUT_INVALID', 'state needs a clip or a blend');
         for (const entry of entries)
@@ -46,8 +60,19 @@ export class AnimationStateMachine3D {
             return action;
         });
         this.#states.set(name, {
-            name, actions, thresholds: entries.map(entry => entry.threshold), blendParameter: options.blend?.parameter, loop, speed,
-            onEnter: options.onEnter, onExit: options.onExit, events: [], blendWeights: entries.map(() => 0), weight: 0, fadeFrom: 0, normalizedTime: 0,
+            name,
+            actions,
+            thresholds: entries.map(entry => entry.threshold),
+            blendParameter: options.blend?.parameter,
+            loop,
+            speed,
+            onEnter: options.onEnter,
+            onExit: options.onExit,
+            events: [],
+            blendWeights: entries.map(() => 0),
+            weight: 0,
+            fadeFrom: 0,
+            normalizedTime: 0
         });
         return this;
     }
@@ -65,8 +90,14 @@ export class AnimationStateMachine3D {
             if (typeof condition.parameter !== 'string' || condition.parameter.length === 0)
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'condition parameter');
         const duration = Math.max(0, requireFinite3D(options.duration ?? 0.2, 'transition duration'));
-        this.#transitions.push({ from: options.from, to: options.to, duration, conditions,
-            exitTime: options.exitTime === undefined ? undefined : requireFinite3D(options.exitTime, 'exitTime'), canInterrupt: options.canInterrupt ?? true });
+        this.#transitions.push({
+            from: options.from,
+            to: options.to,
+            duration,
+            conditions,
+            exitTime: options.exitTime === undefined ? undefined : requireFinite3D(options.exitTime, 'exitTime'),
+            canInterrupt: options.canInterrupt ?? true
+        });
         return this;
     }
     /** Run `callback` each time `state` passes `normalizedTime` (0 to 1 within one pass). */
@@ -83,10 +114,18 @@ export class AnimationStateMachine3D {
         this.#parameters.set(parameter, value);
         return this;
     }
-    get(parameter) { return this.#parameters.get(parameter); }
+    get(parameter) {
+        return this.#parameters.get(parameter);
+    }
     /** Raise a one-shot flag; the first transition that tests it consumes it. */
-    trigger(parameter) { this.#triggers.add(parameter); return this; }
-    resetTrigger(parameter) { this.#triggers.delete(parameter); return this; }
+    trigger(parameter) {
+        this.#triggers.add(parameter);
+        return this;
+    }
+    resetTrigger(parameter) {
+        this.#triggers.delete(parameter);
+        return this;
+    }
     /** Switch to `state` now, cross-fading over `duration` seconds. */
     play(state, duration = 0) {
         const next = this.#states.get(state);
@@ -127,12 +166,18 @@ export class AnimationStateMachine3D {
         if (value === undefined || condition.value === undefined)
             return false;
         switch (condition.op) {
-            case '>': return value > condition.value;
-            case '>=': return value >= condition.value;
-            case '<': return value < condition.value;
-            case '<=': return value <= condition.value;
-            case '==': return value === condition.value;
-            default: return value !== condition.value;
+            case '>':
+                return value > condition.value;
+            case '>=':
+                return value >= condition.value;
+            case '<':
+                return value < condition.value;
+            case '<=':
+                return value <= condition.value;
+            case '==':
+                return value === condition.value;
+            default:
+                return value !== condition.value;
         }
     }
     evaluate() {
@@ -178,13 +223,13 @@ export class AnimationStateMachine3D {
         for (let i = 0; i < count; i++) {
             const action = actions[i];
             action.weight = state.weight * blendWeights[i];
-            action.timeScale = duration > 0 ? state.speed * action.clip.duration / duration : state.speed;
+            action.timeScale = duration > 0 ? (state.speed * action.clip.duration) / duration : state.speed;
             if (state.weight > 0 && !action.isRunning)
                 action.play();
         }
         if (state.weight <= 0)
             return;
-        const before = state.normalizedTime, step = duration > 0 ? delta * state.speed / duration : 0;
+        const before = state.normalizedTime, step = duration > 0 ? (delta * state.speed) / duration : 0;
         let after = before + step;
         if (!state.loop)
             after = Math.min(after, 1);

@@ -1,0 +1,14 @@
+{
+  "lion-kart": { "file": "lion-kart.glb" },
+  "lion-head": { "file": "lion-head.glb" },
+  "panda-kart": { "file": "panda-kart.glb" },
+  "panda-driver": { "file": "panda-driver.glb" },
+  "monkey-kart": { "file": "monkey-kart.glb" },
+  "monkey-head": { "file": "monkey-head.glb" },
+  "guardian-lion": { "file": "guardian-lion.glb" },
+  "paper-lantern": { "file": "paper-lantern.glb" },
+  "pagoda": { "file": "pagoda.glb" },
+  "cloud-gate": { "file": "cloud-gate.glb" },
+  "drum": { "file": "drum.glb", "pitch": 1.5707963267948966 },
+  "start-gate": { "file": "start-gate.glb" }
+}
