@@ -9,7 +9,7 @@ import {
   createPointLight3D,
   createStandardMaterial3D
 } from '@egret/engine/world3d';
-import { PLACES, ROUNDS, WALLS, ZONES, edge } from '../rules/arena.mjs';
+import { PLACES, ROUNDS, WALLS, WET, ZONES, edge } from '../rules/arena.mjs';
 import { createBuilder, rgb, shade } from './build.mjs';
 
 const SNOW = rgb(0xdfe7f2),
@@ -300,7 +300,7 @@ function buildPaving(scene) {
   const rand = scatter(20261117);
   const flags = createBuilder(), sheen = createBuilder();
   const stone = [0x686c72, 0x505c65, 0x6b6763, 0x596366, 0x5e5e6c, 0x707272].map(rgb);
-  const damp = [[-1.2, -11.7, 1.5], [1.5, -16.5, 1.24], [-5.8, -24.9, 2.0], [7.2, -31.5, 1.9], [-4.3, -36, 1.66], [0.1, 1.55, 1.25]];
+  const damp = WET; // the same patches the rules let a dodge slide on
   const runnels = [[1.18, 24.5, 0.42, 0.9, -0.24], [-1.1, 17.2, 0.35, 0.82, 0.24], [2.8, 10.1, 0.35, 0.79, 0.42], [-2.45, -2.1, 0.28, 0.70, 0.33]];
   const { x: cx, z: cz } = PLACES.court;
   let row = 0;

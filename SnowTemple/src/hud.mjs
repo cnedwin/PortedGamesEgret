@@ -1,7 +1,10 @@
 // Everything written over the picture: the hero's bars, Lu Qian's, the row of deeds, the bag, the notes,
 // speech and title cards, the settings and the controls for hands on glass.
 import { DEEDS, DEFAULT_KEYS, keyName, createPointerOwner } from './input.mjs';
+import { BOONS } from './rules/boons.mjs';
+import { TIERS, tierName } from './rules/tiers.mjs';
 import { GRADES, HERO, LOOT } from './rules/tune.mjs';
+import { AFFIXES } from './rules/yard.mjs';
 
 // Small line drawings for the deeds, each on a 40 by 40 field.
 const ICONS = {
@@ -18,6 +21,9 @@ const DEED_NAMES = { attack: '出枪', guard: '格挡（按住）', stars: '寒�
 const ACTION_LABELS = { attack: '出枪', guard: '格挡', stars: '寒星', rain: '枪雨', dodge: '闪避', glide: '踏雪', drink: '饮酒' };
 const GOALS = { road: '往草料场去', yard: '清掉草料场里的人', gate: '上山神庙', boss: '', done: '' };
 const LOOT_MARKS = { coin: '钱', silver: '银', salve: '药', tonic: '丹', page: '谱' };
+const COUNT = '零一二三四五六七八九十';
+/** A tier as it is written: 第三重　火箭. */
+const tierLine = (tier) => `第${COUNT[tier] ?? tier}重　${tierName(tier)}`;
 
 const el = (tag, attrs = {}, html = '') => {
   const node = document.createElement(tag);
@@ -29,12 +35,12 @@ const icon = (name, className = '') => `<svg class="${className}" viewBox="0 0 4
 const actionFace = (name) => `${icon(name, 'action-icon')}${name === 'attack' ? icon('counter', 'counter-icon') : ''}<span class="action-label">${ACTION_LABELS[name]}</span>`;
 const bar = (kind) => `<div class="bar ${kind}">${kind === 'hp' ? '<i class="lag"></i>' : ''}<i class="fill"></i></div>`;
 
-export function createHud(root, input, settings, { onSettings, onStart, onUiSound }) {
+export function createHud(root, input, settings, { onSettings, onStart, onUiSound, onTier, onPick }) {
   root.innerHTML = `
     <div class="shade top"></div><div class="shade low"></div>
     <div id="hurt"></div>
     <div class="pips hud"></div>
-    <div id="me" class="hud">${bar('hp')}${bar('st')}${bar('will')}<div class="purse">银钱<b>0</b></div></div>
+    <div id="me" class="hud">${bar('hp')}${bar('st')}${bar('will')}<div class="row"><div class="purse">银钱<b>0</b></div><div class="state"><span data-chip="wine" hidden></span><span data-chip="edge" hidden>乘隙</span><span data-chip="full" title="葫芦一口未动，枪意涨得快" hidden>满壶养气</span></div></div><div class="lore"></div></div>
     <div id="goal" class="hud"></div>
     <div id="lord" class="hud"><div class="who"><b></b><span></span></div>${bar('hp')}<div class="bar posture"><i class="fill"></i></div></div>
     <div id="notes" class="hud"></div>
@@ -45,7 +51,8 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     <div id="speech"></div>
     <div id="card"><b></b><i></i><span></span></div>
     <div id="veil"></div>
-    <div id="title"><h1 class="name">风雪山神庙</h1><div class="seal">水浒　第一回</div><div class="entry"><button class="go" type="button" disabled>踏雪上路<span aria-hidden="true">›</span></button><div class="keys"><span class="key"></span><span class="tap">左手移动　右手出枪、格挡和闪避</span></div></div></div>
+    <div id="title"><h1 class="name">风雪山神庙</h1><div class="seal">水浒　第一回</div><div class="entry"><div class="climb" hidden><button type="button" data-tier="-1" aria-label="低一重">‹</button><div class="tier"><b></b><small></small></div><button type="button" data-tier="1" aria-label="高一重">›</button></div><div class="ways"><button class="go" type="button" data-way="chapter" disabled>踏雪上路<span aria-hidden="true">›</span></button><button class="stand" type="button" data-way="yard" disabled>守草料场<small></small></button></div><div class="keys"><span class="key"></span><span class="tap">左手移动　右手出枪、格挡和闪避</span></div></div></div>
+    <div id="page" role="dialog" aria-label="枪谱残页" hidden><div class="leaf"><h2>枪谱残页</h2><p>还认得出三行，择一而习。</p><div class="lessons"></div></div></div>
     <div class="corner"><button type="button" data-do="full">全屏</button><button type="button" data-do="set">设置</button></div>
     <div class="panel" id="settings" role="dialog" aria-label="设置" tabindex="-1"></div>
     <div id="debug"></div>`;
@@ -178,7 +185,8 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     const rows = Object.keys(LOOT)
       .filter((kind) => game.bag[kind] > 0)
       .map((kind) => `<li data-grade="${LOOT[kind].grade}"><span>${LOOT[kind].name}　${GRADES[LOOT[kind].grade]}</span><b>${game.bag[kind]}</b></li>`);
-    pack.querySelector('ul').innerHTML = rows.join('') || '<li><span>空</span></li>';
+    const learned = game.boons.map((id) => `<li class="learned"><span>${BOONS[id].name}</span><small>${BOONS[id].text}</small></li>`);
+    pack.querySelector('ul').innerHTML = (rows.join('') || '<li><span>空</span></li>') + learned.join('');
     pack.querySelector('.tag b').textContent = Object.values(game.bag).reduce((a, b) => a + b, 0);
   }
 
@@ -217,6 +225,7 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     hintKey.hidden = true;
     hintSymbol.hidden = true;
   };
+  hud.hinting = () => hintUntil > now;
   let speechTimer = 0;
   hud.say = (text, who = '', time = 3) => {
     const node = $('#speech');
@@ -231,12 +240,14 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     clearTimeout(speechTimer);
     $('#speech').classList.remove('on');
   };
+  let cardTimer = 0;
   hud.card = (title, under = '', time = 3.2) => {
     const node = $('#card');
     node.querySelector('b').textContent = title;
     node.querySelector('span').textContent = under;
     node.classList.add('on');
-    setTimeout(() => node.classList.remove('on'), time * 1000);
+    clearTimeout(cardTimer);
+    cardTimer = setTimeout(() => node.classList.remove('on'), time * 1000);
   };
   hud.veil = (on) => $('#veil').classList.toggle('on', on);
   hud.stage = (on) => {
@@ -253,14 +264,64 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
   };
 
   // ---- title and settings -------------------------------------------------------------------
-  $('#title').addEventListener('click', () => onStart());
+  // A click anywhere on the title takes the road; the two small arrows choose how high to climb, and the
+  // second button holds the yard instead.
+  $('#title').addEventListener('click', (event) => {
+    const button = event.target.closest('button');
+    if (button?.dataset.tier) return onTier(Number(button.dataset.tier));
+    onStart(button?.dataset.way ?? 'chapter');
+  });
   root.classList.add('idle');
   hud.hideTitle = () => {
     $('#title').classList.add('gone');
     $('#title').inert = true;
     root.classList.remove('idle');
   };
-  hud.ready = () => ($('#title .go').disabled = false);
+  hud.showTitle = () => {
+    $('#title').classList.remove('gone');
+    $('#title').inert = false;
+    root.classList.add('idle');
+  };
+  hud.ready = () => {
+    for (const button of root.querySelectorAll('#title [data-way]')) button.disabled = false;
+  };
+  /** What the title offers: the tier chosen, how high the climb is open, the best marks, the farthest wave. */
+  hud.entry = ({ tier, open, marks, wave }) => {
+    const climb = $('#title .climb');
+    climb.hidden = open <= 1;
+    climb.querySelector('b').textContent = tierLine(tier) + (marks[tier] ? `　${marks[tier]}等` : '');
+    climb.querySelector('small').textContent = tier > TIERS.length ? '所有人更耐打，下手更重。' : TIERS[tier - 1].text;
+    climb.querySelector('[data-tier="-1"]').disabled = tier <= 1;
+    climb.querySelector('[data-tier="1"]').disabled = tier >= open;
+    $('#title .stand small').textContent = wave > 0 ? `最远第 ${wave} 拨` : '一拨接一拨，倒下为止';
+  };
+
+  // ---- a page of the manual: three lessons, one to take ---------------------------------------
+  const page = $('#page');
+  let pageSince = 0;
+  const pick = (index) => {
+    // Hands still busy with the fight must not choose by accident.
+    if (page.hidden || performance.now() - pageSince < 420 || !page.querySelector(`[data-pick="${index}"]`)) return;
+    page.hidden = true;
+    onPick(index);
+  };
+  hud.choose = (options) => {
+    page.querySelector('.lessons').innerHTML = options
+      .map((id, i) => `<button type="button" data-pick="${i}"><kbd>${i + 1}</kbd><b>${BOONS[id].name}</b><span>${BOONS[id].text}</span></button>`)
+      .join('');
+    page.hidden = false;
+    pageSince = performance.now();
+  };
+  hud.closeChoice = () => (page.hidden = true);
+  hud.choosing = () => !page.hidden;
+  page.addEventListener('click', (event) => {
+    const button = event.target.closest('[data-pick]');
+    if (button) pick(Number(button.dataset.pick));
+  });
+  addEventListener('keydown', (event) => {
+    const digit = /^(?:Digit|Numpad)([1-3])$/.exec(event.code);
+    if (digit && !page.hidden && !event.repeat) pick(Number(digit[1]) - 1);
+  });
 
   const panel = $('#settings');
   const CHOICES = {
@@ -334,8 +395,13 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     lord = { box: $('#lord'), hp: $('#lord .hp .fill'), lag: $('#lord .hp .lag'), posture: $('#lord .posture .fill'), name: $('#lord .who b'), title: $('#lord .who span') },
     pips = $('.pips'),
     pipNodes = new Map();
+  const chips = Object.fromEntries([...root.querySelectorAll('#me [data-chip]')].map((node) => [node.dataset.chip, node])),
+    lore = $('#me .lore');
   let bagCount = -1,
-    goal = null;
+    goal = null,
+    loreOf = null,
+    loreCount = -1,
+    wine = -1;
   hud.update = (game, view) => {
     now = game.time;
     const hero = game.hero;
@@ -345,10 +411,27 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     scale(me.will, hero.will / HERO.will);
     me.willBar.classList.toggle('full', hero.will >= HERO.will);
     me.purse.textContent = game.coins;
-    if (goal !== game.stage) {
-      goal = game.stage;
-      $('#goal').textContent = GOALS[goal];
-      $('#goal').hidden = !GOALS[goal];
+    // What he is to do: in the yard stand, which wave; on the climb, how high.
+    const want = game.mode === 'yard' ? (game.wave ? `守住草料场　第 ${game.wave} 拨` : '守住草料场') : GOALS[game.stage] && game.tier > 1 ? `${GOALS[game.stage]}　${tierLine(game.tier)}` : GOALS[game.stage];
+    if (goal !== want) {
+      goal = want;
+      $('#goal').textContent = want;
+      $('#goal').hidden = !want;
+    }
+    // Wine in him, an opening after a slip, a gourd not yet touched; and what the pages have taught.
+    const tipsy = Math.ceil(hero.tipsy);
+    if (wine !== tipsy) {
+      wine = tipsy;
+      chips.wine.hidden = tipsy <= 0;
+      chips.wine.textContent = `酒意 ${tipsy}`;
+    }
+    chips.edge.hidden = hero.edge <= 0;
+    chips.full.hidden = hero.gourd < hero.maxGourd;
+    if (loreOf !== game || loreCount !== game.boons.length) {
+      loreOf = game;
+      loreCount = game.boons.length;
+      lore.innerHTML = game.boons.map((id) => `<span title="${BOONS[id].text}">${BOONS[id].name}</span>`).join('');
+      bagCount = -1; // the bag lists them too
     }
     const lu = game.boss,
       fighting = game.stage === 'boss' && lu.state !== 'dead';
@@ -397,12 +480,13 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     // A small bar over each hired man who has been hurt.
     const seen = new Set();
     for (const foe of game.foes) {
-      if (foe.kind === 'lu' || foe.state === 'dead' || foe.hp >= foe.maxHp) continue;
+      // A leader is named from the moment he walks in.
+      if (foe.kind === 'lu' || foe.state === 'dead' || (foe.hp >= foe.maxHp && !foe.elite)) continue;
       const [sx, sy, depth] = view.screen(foe.x, 2.25, foe.z);
       if (depth > 1 || sx < 0 || sx > 1) continue;
       let node = pipNodes.get(foe.id);
       if (!node) {
-        node = el('div', { class: 'pip' }, '<i></i>');
+        node = el('div', { class: foe.elite ? 'pip lead' : 'pip', ...(foe.elite ? { 'data-name': AFFIXES[foe.elite].name } : {}) }, '<i></i>');
         pips.append(node);
         pipNodes.set(foe.id, node);
       }

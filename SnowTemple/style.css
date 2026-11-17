@@ -45,8 +45,17 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 @keyframes pulse { 50% { filter: brightness(1.5); } }
 
 #me { position: absolute; left: max(18px, env(safe-area-inset-left)); top: max(16px, env(safe-area-inset-top)); width: min(300px, 42vw); display: grid; gap: 4px; }
-#me .purse { margin-top: 5px; font-family: var(--script); color: var(--dim); letter-spacing: .12em; }
+#me .row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 12px; margin-top: 5px; }
+#me .purse { font-family: var(--script); color: var(--dim); letter-spacing: .12em; }
 #me .purse b { color: var(--gold); margin-left: .5em; font-weight: 400; }
+/* What is at work in him just now, and what the pages have taught. */
+#me .state { display: flex; flex-wrap: wrap; gap: 5px; }
+#me .state span { padding: 2px 8px; font: 12px/1.5 var(--script); letter-spacing: .12em; background: #070b12cc; box-shadow: inset 0 0 0 1px #ffffff26; }
+#me .state [data-chip="wine"] { color: #ffd9a8; box-shadow: inset 0 0 0 1px #e2b86699; font-variant-numeric: tabular-nums; }
+#me .state [data-chip="edge"] { color: var(--ink); background: var(--frost); box-shadow: none; }
+#me .state [data-chip="full"] { color: var(--dim); }
+#me .lore { display: flex; flex-wrap: wrap; gap: 3px 9px; font: 13px/1.5 var(--script); letter-spacing: .1em; color: #f1dcae; text-shadow: 0 1px 5px #000; }
+#me .lore span::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 5px; background: var(--lacquer); transform: rotate(45deg) translateY(-2px); }
 #goal { position: absolute; right: max(18px, env(safe-area-inset-right)); top: max(16px, env(safe-area-inset-top)); font-family: var(--script); font-size: 18px; letter-spacing: .14em; text-align: right; text-shadow: 0 1px 6px #000; transition: opacity .6s; }
 #goal::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: .7em; background: var(--lacquer); transform: rotate(45deg) translateY(-2px); }
 
@@ -61,6 +70,8 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 .pips { position: absolute; inset: 0; }
 .pip { position: absolute; width: 54px; height: 6px; margin: -3px 0 0 -27px; background: #05080dcc; box-shadow: 0 0 0 1px #ffffff2e; }
 .pip i { display: block; height: 100%; background: #d6453a; transform-origin: left; }
+.pip.lead { width: 68px; margin-left: -34px; box-shadow: 0 0 0 1px var(--gold); }
+.pip.lead::before { content: attr(data-name); position: absolute; left: 50%; bottom: 9px; transform: translateX(-50%); padding: 0 6px; background: #070b12d9; color: var(--gold); font: 13px/1.5 var(--script); letter-spacing: .2em; text-indent: .2em; white-space: nowrap; }
 
 /* Each action has a distinct silhouette, a two-character caption and a separate key badge. */
 #deeds { position: absolute; left: 50%; bottom: max(21px, env(safe-area-inset-bottom)); transform: translateX(-50%); display: flex; gap: clamp(5px, 1vw, 11px); align-items: center; }
@@ -90,6 +101,9 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 #pack li b { font-weight: 400; color: var(--gold); }
 #pack li[data-grade="1"] span { color: var(--jade); }
 #pack li[data-grade="2"] span { color: var(--gold); }
+#pack li.learned { display: block; margin-top: 4px; padding-top: 4px; border-top: 1px solid #ffffff1f; line-height: 1.5; text-align: left; }
+#pack li.learned span { color: #f1dcae; }
+#pack li.learned small { display: block; max-width: 17em; color: var(--dim); font: 12px/1.5 var(--plain); }
 
 #notes { position: absolute; left: max(18px, env(safe-area-inset-left)); bottom: max(110px, 16vh); display: grid; gap: 6px; font-family: var(--script); }
 .note { padding: 5px 12px; background: linear-gradient(90deg, #070b12e6, #070b1200); border-left: 2px solid var(--dim); letter-spacing: .1em; animation: note 3.6s forwards; }
@@ -128,6 +142,21 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 #veil { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity 1.2s; }
 #veil.on { opacity: 1; }
 #hurt { position: absolute; inset: 0; box-shadow: inset 0 0 160px 40px #a0100c; opacity: 0; }
+
+/* A page of the spear manual: old paper over the night, written down the page and read from the right. */
+#page:not([hidden]) { position: absolute; inset: 0; z-index: 1; display: grid; place-items: center; padding: 12px; pointer-events: auto; background: #05080dad; animation: page-in .28s ease-out; }
+@keyframes page-in { from { opacity: 0; } }
+.leaf { --paper: #dccfae; --written: #1d1a16; position: relative; max-width: min(620px, 100%); padding: clamp(14px, 3.5dvh, 26px) clamp(16px, 4vw, 34px) clamp(12px, 3dvh, 22px); color: var(--written); background: radial-gradient(ellipse at 30% 20%, #e9dfc4, var(--paper) 62%, #c4b48e); box-shadow: 0 18px 60px #000c; clip-path: polygon(0 3%, 2% 0, 31% 1.2%, 58% 0, 99% .8%, 100% 46%, 98.6% 71%, 100% 100%, 64% 98.8%, 37% 100%, 9% 98.6%, 0 100%, 1.2% 63%, 0 38%); transform: rotate(-.6deg); }
+.leaf h2 { margin: 0; font: 500 clamp(20px, 4.6dvh, 30px)/1.2 var(--script); letter-spacing: .5em; text-indent: .5em; text-align: center; }
+.leaf p { margin: 4px 0 clamp(8px, 2.4dvh, 16px); text-align: center; font: 13px var(--script); letter-spacing: .2em; color: #5b4f3c; }
+.lessons { display: flex; flex-direction: row-reverse; justify-content: center; gap: clamp(6px, 1.6vw, 14px); }
+.lessons button { display: flex; flex-direction: column; align-items: center; gap: 9px; width: clamp(92px, 26vw, 168px); height: clamp(190px, 56dvh, 330px); padding: 10px 6px 12px; color: inherit; border-left: 1px solid #1d1a1633; border-right: 1px solid #1d1a1633; transition: background .15s; }
+.lessons button:hover, .lessons button:focus-visible { background: #b3221c1f; outline: none; box-shadow: inset 0 -4px 0 var(--lacquer); }
+.lessons kbd { flex: none; width: 26px; height: 26px; display: grid; place-items: center; background: var(--lacquer); color: #ffe9c4; font: 600 14px/1 var(--plain); }
+.lessons b { flex: none; writing-mode: vertical-rl; font: 500 clamp(21px, 4.8dvh, 30px)/1.15 var(--script); letter-spacing: .14em; }
+.lessons span { flex: 1; min-height: 0; writing-mode: vertical-rl; font: 14px/1.75 var(--plain); letter-spacing: .08em; text-align: start; color: #3a332a; }
+@media (pointer: coarse) { .lessons kbd { display: none; } }
+@media (prefers-reduced-motion: reduce) { #page:not([hidden]) { animation: none; } .leaf { transform: none; } }
 
 /* The title: the game's own scene behind it, the name written down the right as on a book's spine. */
 #title { position: absolute; inset: 0; pointer-events: auto; cursor: pointer; background: linear-gradient(90deg, #060a12d9 0, #060a1200 46%), linear-gradient(0deg, #060a12cc, #060a1200 40%); transition: opacity .9s; }
@@ -183,6 +212,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
   .pad[data-deed="stars"]::after, .pad[data-deed="rain"]::after, .pad.main.ready::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; background: conic-gradient(var(--meter, var(--frost)) calc(var(--charge, 0) * 100%), transparent 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px)); pointer-events: none; }
   .pad.ready::after { --meter: var(--gold); }
   .pad em { position: absolute; right: 0; top: -4px; font: 600 14px var(--plain); color: var(--gold); font-style: normal; pointer-events: none; }
+  #me .lore { display: none; } /* on glass the bag lists what has been learned */
   #pack { bottom: auto; right: auto; top: 92px; left: max(18px, env(safe-area-inset-left)); text-align: left; display: flex; flex-direction: column-reverse; }
   #pack ul { margin: 8px 0 0; }
   #lord { bottom: auto; top: 76px; }

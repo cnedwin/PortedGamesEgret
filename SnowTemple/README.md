@@ -1,8 +1,8 @@
 # Snow at the Mountain Temple · 风雪山神庙
 
-风雪山神庙是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的俯视角 3D 动作游戏 Demo，取材《水浒传》第十回。草料场起了火，林冲提着花枪、挑着酒葫芦，穿过烧剩的草料场上山神庙；陆谦在庙前等着他。一个场景、两拨庄客、一场分两段的首领战，单机，电脑和手机都能玩。
+风雪山神庙是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的俯视角 3D 动作游戏 Demo，取材《水浒传》第十回。草料场起了火，林冲提着花枪、挑着酒葫芦，穿过烧剩的草料场上山神庙；陆谦在庙前等着他。一个场景、两拨庄客、一场分两段的首领战，单机，电脑和手机都能玩；通关之后还有一重重添规则的山路，和一场守草料场的车轮战。
 
-Snow at the Mountain Temple is an independently developed top-down 3D action demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), from chapter ten of *Water Margin*. The fodder yard is on fire; Lin Chong, spear in hand and wine gourd on its shaft, goes up through what is left of the yard to the Mountain God's temple, where Lu Qian is waiting. One place, two parties of hired men and a boss fight in two parts; single-player, on desktop and on phones.
+Snow at the Mountain Temple is an independently developed top-down 3D action demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), from chapter ten of *Water Margin*. The fodder yard is on fire; Lin Chong, spear in hand and wine gourd on its shaft, goes up through what is left of the yard to the Mountain God's temple, where Lu Qian is waiting. One place, two parties of hired men and a boss fight in two parts; single-player, on desktop and on phones. After the first clear there is a climb of tiers that each add a rule, and a stand in the yard against wave after wave.
 
 [在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/SnowTemple/)
 
@@ -33,7 +33,7 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 - 地上的红色预警是敌人要打的范围：橙红的可以挡，偏紫红的（砸地、箭雨、地火）挡不住，只能闪。
 - **庄客**砍一刀，常常再补一刀。**牌手**会架开前两下轻击并立刻还手，第三下重击、寒星、绕后或弹反能破他。**弓手**拉满弓放箭，箭可以一枪挑落；每第三次改放箭雨。近战的同一时间只有一个上前，其余在外圈游走。
 - **陆谦**使朴刀：横扫、二连、突刺、砸地。他有一条架势条，弹反和回马枪涨得最快，打满他会跪下一阵。血量过半他踢翻火盆，刀上带火，添了三路地火和两圈旋斩。
-- 倒下的人会掉东西：铜钱、碎银、金创药（补一口酒，葫芦满时回血）、回气散（气力回满，一阵子回得更快）、枪谱残页（枪伤加一成，枪意加三成五）。走近自动拾取。
+- 倒下的人会掉东西：铜钱、碎银、金创药（补一口酒，葫芦满时回血）、回气散（气力回满，一阵子回得更快）、枪谱残页（枪意加三成五，并从三样本事里学一样，见下）。走近自动拾取。
 - **火盆**是歇脚处：烤一烤火，气血和酒葫芦都补满。倒下后从上一个火盆再来。
 
 - **The three cuts**: a thrust, a sweep and an overhead blow, the third a heavy one. Each cut turns to the nearest man near the line of aim and slides in to just within reach. When a blow lands the two of them hold still for an instant while everyone else carries on.
@@ -45,8 +45,28 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 - A red warning on the ground is where a blow will land: orange-red can be guarded, crimson (slams, volleys, ground fire) cannot and has to be dodged.
 - **Blades** cut and often cut again. **Shield men** turn the first two light cuts aside and answer at once; the heavy third cut, the stars, getting behind or a parry opens them. **Bowmen** draw and loose arrows that can be cut out of the air, and every third time loose a volley. Only one man at a time comes in to strike; the rest walk the ring.
 - **Lu Qian** carries a long broadsword: a sweep, two cuts, a lunge, a slam. He has a posture bar that parries and ripostes fill fastest; when it is full he kneels for a while. At half health he kicks over the brazier: the blade burns, and he adds three runs of ground fire and a double spin.
-- The fallen drop things: coins, silver, salve (one more drink, or health when the gourd is full), tonic (stamina filled and quicker to return for a while) and a page of the spear manual (a tenth more damage and a third of a bar of resolve). They are picked up by walking near.
+- The fallen drop things: coins, silver, salve (one more drink, or health when the gourd is full), tonic (stamina filled and quicker to return for a while) and a page of the spear manual (a third of a bar of resolve, and one of three lessons to learn, see below). They are picked up by walking near.
 - **Braziers** are resting places: warming his hands fills health and gourd. After a fall he rises at the last one.
+
+### 再走一遍 · Playing it again
+
+每一遍的骰子都不一样，下面这些让每一遍打法也不一样。
+
+- **枪谱残页三选一**：第一拨里最后倒下的人、牌手和头目各掉一页。捡起时战斗停住，纸上认得出三行，选一行学，这一遍一直有效：寒星变五道、寒星穿人、弹反回一口酒、弹反回满气力、闪过攻击后下一枪必定打断、重劈落点起火、枪雨更密、踏雪撞人、枪伤加两成、枪意涨得更快。数字键 1 2 3 或点选。
+- **连招里长出来的三招**：闪避后立刻出枪是**追身长刺**，够得更远；踏雪时出枪是**回身横扫**，扫一大圈；出枪后按住不放，下一枪**蓄成重劈**，耗气力，轻击打不动的人也吃这一下。出手之后按住格挡可以**收招**，少量气力换提前架枪。
+- **酒的取舍**：喝下去回血，并有十秒酒意，出枪重两成半，挨打也疼两成。葫芦一口没动时，枪意涨得快三成。
+- **场景**：把人打到火盆或烧着的草垛上，他会烧起来；草垛、石头和车挡得住箭；湿石板上闪避滑得更远。
+- **一重一重往上**：通关后开下一重，每重在前面的基础上添一条规则：第二拨添两个人（其中一个铁甲头目）；弓手改放火箭，落处起火；陆谦一开始就带火；葫芦只剩两口，敌人出手更快；再往上所有人更耐打、下手更重。结尾按用时、倒地、受伤、弹反和回马枪评甲乙丙丁，每重记最好的一回。
+- **守草料场**：标题上的第二个入口。不上山，只守草料场：一拨接一拨进来，人越来越多、越来越耐打、出手越来越快，第三拨起带一个头目（快手、铁甲或火把）。每守过两拨，地上落一页枪谱和一份金创药。这里没有火盆可歇，倒下就结束，记守到第几拨。
+
+The dice fall differently every time, and these make each run play differently too.
+
+- **A page, three lessons, one to take**: the last man of the first party, the shield man and any leader each drop a page. Picking one up stops the fight; three lines can still be read, and the one chosen holds for the rest of the run: five stars instead of three, stars that pass through men, a drink back from a parry, full stamina from a parry, a breaking cut after a dodge through a blow, fire where the heavy cut lands, a denser rain, a snow step that rams, a fifth more damage, or resolve that grows faster. Choose with 1, 2, 3 or by pointing.
+- **Three moves that grow out of the combo**: a strike straight out of a dodge is a **long thrust** that reaches farther; a strike during the snow step is a **running sweep** round a wide arc; keep the strike held after a cut and the next one **gathers into a heavy blow**, which costs stamina and moves men a light cut cannot. Holding guard once a blow is given **cuts it short**: a little stamina for a guard raised early.
+- **Wine has a price**: a drink mends, and for ten seconds he hits a quarter harder and is hit a fifth harder. While the gourd is untouched, resolve grows three tenths faster.
+- **The place takes part**: a man knocked against a brazier or the burning stack catches fire; stacks, the rock and the cart stop arrows; on wet flagstones a dodge slides farther.
+- **A climb of tiers**: clearing the chapter opens the next tier, each adding one rule to those below. Two more men with the second party, one of them a leader in iron; fire arrows that leave the ground burning; Lu Qian with his fire from the first blow; a gourd of two drinks and quicker enemies; beyond that, everyone tougher and harder-hitting. The run is marked 甲, 乙, 丙 or 丁 by time, falls, blows taken, parries and ripostes, and the best mark of each tier is kept.
+- **Holding the yard**: the second way in from the title. No temple, only the fodder yard: wave after wave walks in, more of them, tougher and quicker each time, with a leader from the third wave on (quick, iron-clad, or carrying a torch). Every second wave leaves a page and a salve. There is no brazier to rest at; a fall ends the stand, and the farthest wave is kept.
 
 ## 画面与技术 · Picture and technology
 
@@ -108,13 +128,14 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 # 在仓库根目录运行，然后打开 /SnowTemple/ · run at the repository root, then open /SnowTemple/
 ```
 
-地址参数 · Address options: `?auto`（规则玩家代打 · a rule-driven player takes over），`?at=yard|gate|boss|rage`（从后面开始 · begin further in），`?quality=low|mid|high`，`?models=low|mid|high`，`?debug`（状态面板，F3 开关 · state panel, F3 toggles）。
+地址参数 · Address options: `?auto`（规则玩家代打 · a rule-driven player takes over），`?at=yard|gate|boss|rage`（从后面开始 · begin further in），`?quality=low|mid|high`，`?models=low|mid|high`，`?tier=3`（这一次按第几重打 · play this visit at a tier），`?mode=yard`（配合 `?auto` 守草料场 · with `?auto`, hold the yard），`?seed=7`（固定骰子 · fix the dice），`?debug`（状态面板，F3 开关 · state panel, F3 toggles）。
 
 | 路径 · Path | 内容 · Contents |
 |---|---|
 | `src/rules/` | 地形、数值与战斗规则 · the ground, the numbers and the rules of the fight |
 | `src/view/` | 建模、场景、人物姿势、特效与镜头 · modelling, scenery, poses, effects and the camera |
 | `src/hud.mjs` `src/input.mjs` `src/audio.mjs` | 界面、输入、声音 · interface, input, sound |
+| `src/progress.mjs` | 存在浏览器里的进度：开到第几重、各重最好的评等、守得最远的一拨 · progress kept in the browser: tiers opened, best marks, farthest wave |
 | `tools/` `assets/` | 雕刻工具、模型定义与雕好的模型 · the sculptor, the model descriptions and the sculpted models |
 | `test/` | 规则测试与规则玩家 · rule tests and the rule-driven player |
 | `vendor/` | 引擎运行时副本，见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |

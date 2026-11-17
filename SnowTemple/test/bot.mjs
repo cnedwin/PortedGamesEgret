@@ -11,6 +11,11 @@ export function createBot({ skill = 1 } = {}) {
     const input = quiet(),
       hero = game.hero;
     tick++;
+    // A page lies open: take the first lesson.
+    if (game.choice) {
+      input.pick = 0;
+      return input;
+    }
     const foes = game.foes.filter((foe) => foe.state !== 'dead' && foe.state !== 'wait');
     let near = null,
       best = 1e9;
@@ -32,6 +37,14 @@ export function createBot({ skill = 1 } = {}) {
     input.az = near.z - hero.z;
     // Someone is winding up at us.
     const threat = foes.find((foe) => foe.state === 'windup' && foe.move && foe.t > foe.move.windup - 0.3 && (foe.move.shape === 'disc' ? Math.hypot(foe.aim.x - hero.x, foe.aim.z - hero.z) < foe.move.range + 1 : Math.hypot(foe.x - hero.x, foe.z - hero.z) < foe.move.range + 1.5));
+    // The second turn of a wheeling blade: step out of it.
+    const again = foes.find((foe) => foe.state === 'strike' && foe.t < 0 && Math.hypot(foe.x - hero.x, foe.z - hero.z) < foe.move.range + 1);
+    if (again && skill > 0) {
+      if (again.t > -0.14) input.dodge = true;
+      input.mx = hero.x - again.x || 1;
+      input.mz = hero.z - again.z;
+      return input;
+    }
     if (threat && skill > 0) {
       if (threat.move.unblockable || threat.move.shape === 'line') {
         if (threat.t > threat.move.windup - 0.12) {
@@ -46,7 +59,7 @@ export function createBot({ skill = 1 } = {}) {
       }
       return input;
     }
-    if (hero.hp < HERO.hp * 0.4 && hero.gourd > 0 && best > 4) input.drink = true;
+    if (hero.hp < HERO.hp * 0.4 && hero.gourd > 0 && (best > 4 || near.state === 'recover' || near.state === 'stagger' || near.state === 'down')) input.drink = true;
     else if (hero.will >= HERO.will && best < 7) input.rain = true;
     else if (hero.starsWait <= 0 && best < 12 && best > 3) input.stars = true;
     else if (best > 2.6) toward(near.x, near.z);

@@ -52,9 +52,9 @@ An independently developed 2D side-scrolling action demo built with Egret Rebuil
 
 ## Snow at the Mountain Temple · 风雪山神庙
 
-一款使用新白鹭引擎独立开发的俯视角 3D 动作游戏 Demo，取材《水浒传》第十回：雪夜，林冲提枪穿过烧剩的草料场上山神庙，与陆谦分两段决战。三段连招、格挡与弹反、回马枪、闪避、寒星和大招梨花枪雨；牌手会架开轻击还手，弓手的箭能挑落。场景、人物和兵器全部由代码建模，五万多丛枯草随风起伏，枪光、法阵和预警由着色器绘制。键鼠与触屏。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/SnowTemple/) · [说明与开发](SnowTemple/README.md)
+一款使用新白鹭引擎独立开发的俯视角 3D 动作游戏 Demo，取材《水浒传》第十回：雪夜，林冲提枪穿过烧剩的草料场上山神庙，与陆谦分两段决战。三段连招、格挡与弹反、回马枪、闪避、寒星和大招梨花枪雨；牌手会架开轻击还手，弓手的箭能挑落。枪谱残页三选一，通关后一重一重添规则，另有守草料场的车轮战。场景、人物和兵器全部由代码建模，五万多丛枯草随风起伏，枪光、法阵和预警由着色器绘制。键鼠与触屏。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/SnowTemple/) · [说明与开发](SnowTemple/README.md)
 
-An independently developed top-down 3D action demo built with Egret Rebuild, from chapter ten of *Water Margin*: on a night of snow Lin Chong takes his spear through the burnt fodder yard to the Mountain God’s temple and fights Lu Qian in two parts. Three cuts, guard and parry, a riposte, a dodge, the Three Stars and the Pear-Blossom Rain; shield men turn light cuts aside and answer, and a bowman’s arrows can be cut down. The place, the people and the weapons are modelled in code, more than fifty thousand tufts of dry grass sway in the wind, and the spear light, formation and warnings are drawn by shaders. Keyboard and mouse, and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/SnowTemple/) · [Guide and development](SnowTemple/README.md)
+An independently developed top-down 3D action demo built with Egret Rebuild, from chapter ten of *Water Margin*: on a night of snow Lin Chong takes his spear through the burnt fodder yard to the Mountain God’s temple and fights Lu Qian in two parts. Three cuts, guard and parry, a riposte, a dodge, the Three Stars and the Pear-Blossom Rain; shield men turn light cuts aside and answer, and a bowman’s arrows can be cut down. Pages of the manual offer one lesson of three, each clear opens a harder tier, and the yard can be held against wave after wave. The place, the people and the weapons are modelled in code, more than fifty thousand tufts of dry grass sway in the wind, and the spear light, formation and warnings are drawn by shaders. Keyboard and mouse, and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/SnowTemple/) · [Guide and development](SnowTemple/README.md)
 
 ## 参与维护 · Contributing
 

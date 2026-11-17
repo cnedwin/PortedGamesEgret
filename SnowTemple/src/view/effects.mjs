@@ -347,7 +347,8 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
 `
   });
   spearMaterial.color.set([1.3, 1.6, 2.1]);
-  const spearMesh = new InstancedMesh3D(spearShape.geometry(), spearMaterial, 32, 4);
+  const SPEARS = 48,
+    spearMesh = new InstancedMesh3D(spearShape.geometry(), spearMaterial, SPEARS, 4);
   spearMesh.frustumCulled = false;
   spearMesh.castShadow = false;
   spearMesh.count = 0;
@@ -488,7 +489,7 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
         dz = Math.cos(spear.turn) * spear.lean;
       const lift = before > 0 ? before * 46 : -0.15,
         remain = Math.min(1, Math.max(0, (before + 0.9) / 0.34));
-      if (before > 0.28 || remain <= 0 || s >= 32) continue;
+      if (before > 0.28 || remain <= 0 || s >= SPEARS) continue;
       place[0] = spear.x + dx * lift;
       place[1] = lift;
       place[2] = spear.z + dz * lift;
