@@ -118,3 +118,21 @@ export const LOOT = {
   page: { name: '枪谱残页', grade: 2 }
 };
 export const GRADES = ['凡', '良', '珍'];
+
+/** Moves that grow out of the three cuts. Each keeps the timing and the look of the cut it grows from. */
+export const FORMS = {
+  // Out of a dodge: a long thrust.
+  lunge: { base: 0, range: 4.6, arc: 0.6, damage: 21, lunge: 4.8, push: 2.2, recover: 0.3 },
+  // Out of the snow step: a running sweep.
+  sweep: { base: 1, range: 3.7, arc: 2.5, damage: 18, lunge: 3.4, push: 2.6, recover: 0.34 },
+  // The attack held down through a cut: a gathered overhead blow.
+  charge: { base: 2, range: 3.9, arc: 0.9, damage: 46, lunge: 2.8, push: 4.4, recover: 0.5, heavy: true, cost: 16 }
+};
+/** How long after a dodge the thrust is still there, how long a hold gathers the blow, what cancelling a cut into a guard costs. */
+export const DERIVE = { afterDodge: 0.28, hold: 0.36, cancelCost: 8 };
+
+/** Wine: for a while after a drink he hits harder and is hit harder; an untouched gourd feeds his resolve. */
+export const WINE = { tipsy: 10, deal: 1.25, take: 1.2, fullGourd: 1.3 };
+
+/** Fire on the ground and on a man: how often it bites, how hard, and how long a man burns. */
+export const FIRE = { tick: 0.5, damage: 6, burn: 4, hero: 5 };

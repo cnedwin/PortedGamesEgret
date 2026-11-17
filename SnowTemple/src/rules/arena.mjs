@@ -129,3 +129,24 @@ export function settle(p, radius, bars = []) {
   }
   return p;
 }
+
+/** Stone that meltwater keeps wet: `[x, z, reach]`, a little longer along the way than across it. */
+export const WET = [
+  [-1.2, -11.7, 1.5],
+  [1.5, -16.5, 1.24],
+  [-5.8, -24.9, 2.0],
+  [7.2, -31.5, 1.9],
+  [-4.3, -36, 1.66],
+  [0.1, 1.55, 1.25]
+];
+/** Whether a point is on wet stone, where a dodge slides farther. */
+export const wet = (x, z) => WET.some(([px, pz, reach]) => Math.hypot(x - px, (z - pz) * 0.78) < reach);
+
+/** What burns all night: the two braziers and the fodder stack that is still alight. */
+export const FLAMES = [
+  { x: PLACES.camp.x, z: PLACES.camp.z, r: 0.55 },
+  { x: PLACES.rest.x, z: PLACES.rest.z, r: 0.55 },
+  { x: 7.2, z: 9.8, r: 1.7 }
+];
+/** Whether something as big as a stack or a rock stands at a point: an arrow stops there. */
+export const cover = (x, z) => ROUNDS.some((round) => round.r >= 1.2 && Math.hypot(x - round.x, z - round.z) < round.r);
