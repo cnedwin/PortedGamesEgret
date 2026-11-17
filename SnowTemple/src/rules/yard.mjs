@@ -22,7 +22,7 @@ export const AFFIXES = {
 export function waveOf(n, rand) {
   const count = Math.min(3 + Math.floor(n / 2), 7),
     bows = Math.min(n >= 6 ? 3 : 2, Math.floor((n + 1) / 2)),
-    shields = n >= 2 ? Math.min(2, Math.floor(n / 3) + 1) : 0,
+    shields = n >= 6 ? 2 : n >= 2 ? 1 : 0,
     men = [],
     ways = [...WAYS];
   for (let i = 0; i < count; i++) {

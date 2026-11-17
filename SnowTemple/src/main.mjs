@@ -264,7 +264,8 @@ async function main() {
       saveProgress(saved);
     }
     const at = replay ? '' : params.get('at');
-    game = quickMeet ? createTempleReplay(templeLoadout, dice()) : createGame(dice(), { tier: Number(params.get('tier')) || saved.tier, mode: yard ? 'yard' : 'chapter' });
+    // The yard is always held under the first tier's rules, so the farthest wave means the same every time.
+    game = quickMeet ? createTempleReplay(templeLoadout, dice()) : createGame(dice(), yard ? { mode: 'yard' } : { tier: Number(params.get('tier')) || saved.tier });
     counted = !quickMeet && !yard && !at && !bot && !params.get('tier');
     pick = -1;
     hud.closeChoice();
@@ -452,14 +453,12 @@ async function main() {
         summary.kills++;
         break;
       case 'choice':
-        // A page lies open: the fight waits, and so do the hands.
-        input.setEnabled(false);
+        // A page lies open: the fight waits. Keys held stay held, so he walks on when it closes.
         hud.choose(e.options);
         audio.playUi('open');
         break;
       case 'boon':
         hud.closeChoice();
-        input.setEnabled(true);
         hud.note(`习得　${e.name}`, 2);
         audio.playUi('confirm');
         break;

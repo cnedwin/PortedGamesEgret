@@ -248,6 +248,7 @@ function startCut(game, hero, input, form = null) {
   hero.blow = cut;
   hero.heldFor = 0;
   hero.afterDodge = 0;
+  hero.guardRaised = false; // a guard already held when the cut began does not cut it short
   if (cut.cost) spend(hero, cut.cost);
   hero.queued = null;
   const aim = input.ax || input.az ? heading(input.ax, input.az) : hero.face,
@@ -448,6 +449,7 @@ function stepHero(game, input, dt) {
       const cut = hero.blow ?? HERO.cuts[hero.cut];
       if (input.attack && hero.t > 0.05) hero.queued = 'cut';
       hero.heldFor = input.charge ? hero.heldFor + dt : 0;
+      if (!input.guard) hero.guardRaised = true;
       // Slide in, but never past the man the cut is meant for.
       if (hero.t < cut.windup + cut.active && hero.lungeLeft > 0) {
         let go = Math.min(hero.lungeLeft, (cut.lunge / (cut.windup + cut.active)) * dt);
@@ -468,8 +470,9 @@ function stepHero(game, input, dt) {
         if (hero.cut === 2 && has(game, 'fireCut')) addFire(game, hero.x + Math.sin(hero.face) * 2.7, hero.z + Math.cos(hero.face) * 2.7, 2.1, 3.5, 'foes');
       }
       const end = cut.windup + cut.active + cut.recover;
-      // Once the blow is given, raising the guard cuts its recovery short.
-      if (hero.t >= cut.windup + cut.active && input.guard && hero.stamina > DERIVE.cancelCost) {
+      // Once the blow is given, raising the guard cuts its recovery short. The guard has to be raised
+      // for it: one held all along lets the cuts follow each other as before.
+      if (hero.t >= cut.windup + cut.active && input.guard && hero.guardRaised && hero.stamina > DERIVE.cancelCost) {
         spend(hero, DERIVE.cancelCost);
         hero.comboFor = 0;
         enter(hero, 'guard');
@@ -508,7 +511,8 @@ function stepHero(game, input, dt) {
       hero.z += hero.vz * dt * (0.35 + k);
       // An attack asked for in the dodge comes out of it as a long thrust.
       if (input.attack && hero.t > 0.08) hero.queued = 'lunge';
-      if (hero.queued === 'lunge' && hero.t >= HERO.dodge.time * 0.62 && !still) {
+      // With a riposte open he finishes the dodge first, and the strike becomes the riposte.
+      if (hero.queued === 'lunge' && hero.t >= HERO.dodge.time * 0.62 && !still && hero.counter <= 0) {
         startCut(game, hero, input, 'lunge');
         break;
       }
@@ -843,7 +847,8 @@ function chooseBossMove(game, foe, d) {
 
 /** Lay a patch of fire on the ground. `harm` says whom it burns: 'foes' or 'hero'. */
 function addFire(game, x, z, r, life, harm) {
-  const fire = { id: ++game.serial, x, z, r, life, harm, tick: 0 };
+  // The first bite waits a moment: time to step out of fire that has only just caught.
+  const fire = { id: ++game.serial, x, z, r, life, harm, tick: FIRE.grace };
   game.fires.push(fire);
   emit(game, 'fire', { ...fire });
 }
@@ -881,7 +886,8 @@ function stepFires(game, dt) {
     fire.life -= dt;
     fire.tick -= dt;
     if (fire.harm !== 'hero' || fire.tick > 0 || hero.state === 'dead' || game.cine > 0) continue;
-    if (Math.hypot(hero.x - fire.x, hero.z - fire.z) > fire.r || (hero.state === 'dodge' && hero.t < HERO.dodge.safe) || hero.state === 'rain') continue;
+    // Not while he is reeling from a blow, slipping through one, or in the middle of the rain or a riposte.
+    if (Math.hypot(hero.x - fire.x, hero.z - fire.z) > fire.r || hero.safe > 0 || (hero.state === 'dodge' && hero.t < HERO.dodge.safe) || hero.state === 'rain' || hero.state === 'riposte') continue;
     fire.tick = FIRE.tick;
     hero.hp -= FIRE.hero * game.rule.damage;
     emit(game, 'scorch', { x: hero.x, z: hero.z, amount: FIRE.hero });
@@ -1058,6 +1064,7 @@ function stepShots(game, dt) {
       let best = null,
         bestOff = 0.9;
       for (const foe of living(game)) {
+        if (shot.pierce?.includes(foe.id)) continue; // already through him
         const off = Math.abs(turnTo(shot.face, heading(foe.x - shot.x, foe.z - shot.z)));
         if (off < bestOff && Math.hypot(foe.x - shot.x, foe.z - shot.z) < 14) (bestOff = off), (best = foe);
       }
@@ -1234,7 +1241,7 @@ export function revive(game) {
   game.turn = 0;
   const lu = game.boss;
   if (lu.state !== 'dead') {
-    Object.assign(lu, { x: PLACES.court.x, z: PLACES.court.z - 3, hp: lu.maxHp, state: 'wait', face: 0, posture: 0, phase: 1, move: null, count: 0, freeze: 0 });
+    Object.assign(lu, { x: PLACES.court.x, z: PLACES.court.z - 3, hp: lu.maxHp, state: 'wait', face: 0, posture: 0, phase: 1, move: null, count: 0, freeze: 0, burning: 0, shoved: 0 });
     if (game.stage === 'boss') game.stage = 'gate';
     game.bars.court = false;
   }

@@ -54,9 +54,13 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 #me .state [data-chip="wine"] { color: #ffd9a8; box-shadow: inset 0 0 0 1px #e2b86699; font-variant-numeric: tabular-nums; }
 #me .state [data-chip="edge"] { color: var(--ink); background: var(--frost); box-shadow: none; }
 #me .state [data-chip="full"] { color: var(--dim); }
+#me .state i { font-style: normal; }
 #me .lore { display: flex; flex-wrap: wrap; gap: 3px 9px; font: 13px/1.5 var(--script); letter-spacing: .1em; color: #f1dcae; text-shadow: 0 1px 5px #000; }
 #me .lore span::before { content: ""; display: inline-block; width: 5px; height: 5px; margin-right: 5px; background: var(--lacquer); transform: rotate(45deg) translateY(-2px); }
 #goal { position: absolute; right: max(18px, env(safe-area-inset-right)); top: max(16px, env(safe-area-inset-top)); font-family: var(--script); font-size: 18px; letter-spacing: .14em; text-align: right; text-shadow: 0 1px 6px #000; transition: opacity .6s; }
+#goal small { margin-left: 1em; color: #c9d4e2; font-size: 13px; letter-spacing: .16em; }
+/* On a narrow screen the wave or the tier drops to a second line that ends above the corner buttons. */
+@media (max-width: 600px) { #goal { line-height: 1.25; } #goal small { display: block; margin: 0; font-size: 12px; line-height: 1.2; } }
 #goal::before { content: ""; display: inline-block; width: 7px; height: 7px; margin-right: .7em; background: var(--lacquer); transform: rotate(45deg) translateY(-2px); }
 
 #lord { position: absolute; left: 50%; bottom: max(124px, 16vh); width: min(560px, 70vw); transform: translateX(-50%); display: grid; gap: 4px; opacity: 0; transition: opacity .8s; }
@@ -212,7 +216,15 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
   .pad[data-deed="stars"]::after, .pad[data-deed="rain"]::after, .pad.main.ready::after { content: ""; position: absolute; inset: -1px; border-radius: inherit; background: conic-gradient(var(--meter, var(--frost)) calc(var(--charge, 0) * 100%), transparent 0); mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px)); pointer-events: none; }
   .pad.ready::after { --meter: var(--gold); }
   .pad em { position: absolute; right: 0; top: -4px; font: 600 14px var(--plain); color: var(--gold); font-style: normal; pointer-events: none; }
-  #me .lore { display: none; } /* on glass the bag lists what has been learned */
+  /* On glass the row under the bars has to stay one line, above the bag: the purse is its number alone, the
+     chips are small and never wrap, and the bag lists what has been learned. */
+  #me .row { gap: 9px; }
+  #me .row, #me .state { flex-wrap: nowrap; white-space: nowrap; }
+  #me .purse span, #me .state i, #me .lore { display: none; }
+  #me .purse b { margin-left: 0; }
+  #me .purse b::before { content: "钱"; margin-right: .4em; color: var(--dim); }
+  #me .state { gap: 4px; }
+  #me .state span { padding: 1px 6px; font-size: 11px; letter-spacing: .06em; }
   #pack { bottom: auto; right: auto; top: 92px; left: max(18px, env(safe-area-inset-left)); text-align: left; display: flex; flex-direction: column-reverse; }
   #pack ul { margin: 8px 0 0; }
   #lord { bottom: auto; top: 76px; }

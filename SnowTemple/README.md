@@ -53,20 +53,20 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 每一遍的骰子都不一样，下面这些让每一遍打法也不一样。
 
 - **枪谱残页三选一**：第一拨里最后倒下的人、牌手和头目各掉一页。捡起时战斗停住，纸上认得出三行，选一行学，这一遍一直有效：寒星变五道、寒星穿人、弹反回一口酒、弹反回满气力、闪过攻击后下一枪必定打断、重劈落点起火、枪雨更密、踏雪撞人、枪伤加两成、枪意涨得更快。数字键 1 2 3 或点选。
-- **连招里长出来的三招**：闪避后立刻出枪是**追身长刺**，够得更远；踏雪时出枪是**回身横扫**，扫一大圈；出枪后按住不放，下一枪**蓄成重劈**，耗气力，轻击打不动的人也吃这一下。出手之后按住格挡可以**收招**，少量气力换提前架枪。
-- **酒的取舍**：喝下去回血，并有十秒酒意，出枪重两成半，挨打也疼两成。葫芦一口没动时，枪意涨得快三成。
+- **连招里长出来的三招**：闪避后立刻出枪是**追身长刺**，够得更远；踏雪时出枪是**回身横扫**，扫一大圈；出枪后按住不放，下一枪**蓄成重劈**，耗气力，轻击打不动的人也吃这一下。出手之后再按下格挡可以**收招**，少量气力换提前架枪（一直按着格挡出枪则照常连招）。
+- **酒的取舍**：喝下去回血，并有十秒酒意，出枪重两成半，挨打也疼两成；满血时也可以为了酒意喝。葫芦一口没动时，枪意涨得快三成。
 - **场景**：把人打到火盆或烧着的草垛上，他会烧起来；草垛、石头和车挡得住箭；湿石板上闪避滑得更远。
 - **一重一重往上**：通关后开下一重，每重在前面的基础上添一条规则：第二拨添两个人（其中一个铁甲头目）；弓手改放火箭，落处起火；陆谦一开始就带火；葫芦只剩两口，敌人出手更快；再往上所有人更耐打、下手更重。结尾按用时、倒地、受伤、弹反和回马枪评甲乙丙丁，每重记最好的一回。
-- **守草料场**：标题上的第二个入口。不上山，只守草料场：一拨接一拨进来，人越来越多、越来越耐打、出手越来越快，第三拨起带一个头目（快手、铁甲或火把）。每守过两拨，地上落一页枪谱和一份金创药。这里没有火盆可歇，倒下就结束，记守到第几拨。
+- **守草料场**：标题上的第二个入口。不上山，只守草料场：一拨接一拨进来，人越来越多、越来越耐打、出手越来越快，第三拨起带一个头目（快手、铁甲或火把）。每守过两拨，地上落一页枪谱和一份金创药。这里没有火盆可歇，倒下就结束，记守到第几拨。守草料场不分重数，规则始终按第一重。
 
 The dice fall differently every time, and these make each run play differently too.
 
 - **A page, three lessons, one to take**: the last man of the first party, the shield man and any leader each drop a page. Picking one up stops the fight; three lines can still be read, and the one chosen holds for the rest of the run: five stars instead of three, stars that pass through men, a drink back from a parry, full stamina from a parry, a breaking cut after a dodge through a blow, fire where the heavy cut lands, a denser rain, a snow step that rams, a fifth more damage, or resolve that grows faster. Choose with 1, 2, 3 or by pointing.
-- **Three moves that grow out of the combo**: a strike straight out of a dodge is a **long thrust** that reaches farther; a strike during the snow step is a **running sweep** round a wide arc; keep the strike held after a cut and the next one **gathers into a heavy blow**, which costs stamina and moves men a light cut cannot. Holding guard once a blow is given **cuts it short**: a little stamina for a guard raised early.
-- **Wine has a price**: a drink mends, and for ten seconds he hits a quarter harder and is hit a fifth harder. While the gourd is untouched, resolve grows three tenths faster.
+- **Three moves that grow out of the combo**: a strike straight out of a dodge is a **long thrust** that reaches farther; a strike during the snow step is a **running sweep** round a wide arc; keep the strike held after a cut and the next one **gathers into a heavy blow**, which costs stamina and moves men a light cut cannot. Raising the guard once a blow is given **cuts it short**: a little stamina for a guard raised early (a guard held all along leaves the combo as it is).
+- **Wine has a price**: a drink mends, and for ten seconds he hits a quarter harder and is hit a fifth harder. He may drink at full health for that alone. While the gourd is untouched, resolve grows three tenths faster.
 - **The place takes part**: a man knocked against a brazier or the burning stack catches fire; stacks, the rock and the cart stop arrows; on wet flagstones a dodge slides farther.
 - **A climb of tiers**: clearing the chapter opens the next tier, each adding one rule to those below. Two more men with the second party, one of them a leader in iron; fire arrows that leave the ground burning; Lu Qian with his fire from the first blow; a gourd of two drinks and quicker enemies; beyond that, everyone tougher and harder-hitting. The run is marked 甲, 乙, 丙 or 丁 by time, falls, blows taken, parries and ripostes, and the best mark of each tier is kept.
-- **Holding the yard**: the second way in from the title. No temple, only the fodder yard: wave after wave walks in, more of them, tougher and quicker each time, with a leader from the third wave on (quick, iron-clad, or carrying a torch). Every second wave leaves a page and a salve. There is no brazier to rest at; a fall ends the stand, and the farthest wave is kept.
+- **Holding the yard**: the second way in from the title. No temple, only the fodder yard: wave after wave walks in, more of them, tougher and quicker each time, with a leader from the third wave on (quick, iron-clad, or carrying a torch). Every second wave leaves a page and a salve. There is no brazier to rest at; a fall ends the stand, and the farthest wave is kept. The stand is always fought under the first tier's rules.
 
 ## 画面与技术 · Picture and technology
 
