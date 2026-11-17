@@ -613,37 +613,21 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     fx.update(dt, clock);
   };
 
-  // The first roof or pine fade needs the lit, shadow-receiving blend program.
-  // Submit a clipped mesh once while loading so that exact main-pass variant is ready.
-  view.prepareFirstFrame = () => {
-    const material = createStandardMaterial3D({ vertexColors: true, alphaMode: 'blend' });
-    const box = createBuilder();
-    box.box(0, 0, 0, 1, 1, 1);
-    const mesh = box.mesh(material, { shadow: false });
-    mesh.name = 'scenery-fade-warmup';
-    mesh.setPosition(0, -1000, 0);
-    mesh.frustumCulled = false;
-    scene.addChild(mesh);
-    const mapped = scenery.propMaterial?.clone();
-    const fadedProp = mapped ? new Mesh3D(mesh.geometry, mapped) : null;
-    if (fadedProp) {
-      mapped.alphaMode = 'blend';
-      fadedProp.name = 'prop-fade-warmup';
-      fadedProp.setPosition(0, -1000, 0);
-      fadedProp.castShadow = false;
-      fadedProp.receiveShadow = true;
-      fadedProp.frustumCulled = false;
-      scene.addChild(fadedProp);
+  // The first roof or pine to fade, the first formation, footprint and falling spear each need a program
+  // that the opening frames never draw. Have the renderer link them under the loading screen.
+  view.preparePrograms = async (renderer) => {
+    // What every colour draw of this scene has in common.
+    const seen = { fog: Boolean(scene.fog), environment: Boolean(scene.environment), receiveShadows: renderer.shadowsEnabled },
+      faded = scenery.tall.map((thing) => {
+        const material = thing.material.clone();
+        material.alphaMode = 'blend';
+        return { mesh: thing.mesh, material, ...seen };
+      });
+    try {
+      await renderer.preparePrograms([...faded, ...fx.programs().map((request) => ({ ...request, ...seen }))]);
+    } finally {
+      for (const { material } of faded) material.dispose();
     }
-    const finishEffectWarmup = fx.prepareFirstDraw();
-    return () => {
-      mesh.removeFromParent();
-      fadedProp?.removeFromParent();
-      mesh.geometry.dispose();
-      material.dispose();
-      mapped?.dispose();
-      finishEffectWarmup();
-    };
   };
 
   // Only damp patches mirror the scene at the highest picture quality.
@@ -651,6 +635,10 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     const mirror = new PlanarReflection3D({ width: 640, height: 360 });
     mirror.interval = 4;
     mirror.layerMask = ~2;
+    // The main colour pass draws in linear light. The mirror does the same, so the two share their programs
+    // and the first wet stone links nothing new.
+    mirror.toneMapping = 'none';
+    let mirrored = false;
     const { material, mesh, nearReflection } = scenery.paving;
     const plane = [0, 1, 0, -0.05];
     const hidden = [mesh];
@@ -662,16 +650,10 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     view.mirror = (renderer, game) => {
       const near = nearReflection(game.hero.x, game.hero.z);
       material.reflectionStrength = near ? 0.36 : 0;
-      if (!near) return;
-      // The main color pass uses linear light and shadows. Match those program variants
-      // so the first wet stone doesn't synchronously link a second set of shaders.
-      const toneMapping = renderer.toneMapping;
-      renderer.toneMapping = 'none';
-      try {
-        mirror.render(renderer, scene, camera, plane, hidden);
-      } finally {
-        renderer.toneMapping = toneMapping;
-      }
+      // Away from the wet stone nothing is drawn; on coming back the picture is made afresh at once.
+      if (!near && mirrored) mirror.invalidate();
+      mirrored = near;
+      if (near) mirror.render(renderer, scene, camera, plane, hidden);
     };
   }
 

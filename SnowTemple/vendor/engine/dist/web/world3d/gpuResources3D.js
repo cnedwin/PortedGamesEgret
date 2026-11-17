@@ -12,6 +12,8 @@ const PRUNE_INTERVAL = 600;
 export class GpuResources3D {
     #gl;
     #programs = new Map();
+    #pendingPrograms = new Map();
+    #programsRetired;
     #geometries = new Map();
     #instances = new Map();
     #animations = new Map();
@@ -40,35 +42,134 @@ export class GpuResources3D {
         const cached = this.#programs.get(key);
         if (cached)
             return cached;
+        return this.finishProgram(this.startProgram(key, sources), false);
+    }
+    async preparePrograms(requests) {
+        const gl = this.#gl;
+        this.requireProgramContext();
+        if (!requests.some(({ key }) => !this.#programs.has(key)))
+            return;
+        const completion = gl.getExtension('KHR_parallel_shader_compile')?.COMPLETION_STATUS_KHR;
+        const pending = new Set();
+        let failure;
+        try {
+            for (const { key, sources } of requests)
+                if (!this.#programs.has(key))
+                    pending.add(this.startProgram(key, sources));
+        }
+        catch (error) {
+            // A later submission can fail after a shared program has already started.
+            // Drain the submitted entries so all waiters see a terminal result.
+            failure = { error };
+        }
+        while (pending.size) {
+            // The extension reports completion even for lost contexts. Never finalize an old handle.
+            this.requireProgramContext();
+            for (const entry of pending) {
+                if (!entry.result && completion !== undefined && !gl.getProgramParameter(entry.program, completion))
+                    continue;
+                try {
+                    this.finishProgram(entry, true);
+                }
+                catch (error) {
+                    failure ??= { error };
+                }
+                pending.delete(entry);
+            }
+            if (pending.size)
+                await new Promise(resolve => setTimeout(resolve, 0));
+        }
+        if (failure)
+            throw failure.error;
+    }
+    requireProgramContext() {
+        if (this.#programsRetired === 'disposed')
+            throw new World3DError('WORLD3D_DISPOSED', 'renderer');
+        if (this.#programsRetired === 'lost' || this.#gl.isContextLost())
+            throw new World3DError('WORLD3D_CONTEXT_LOST', 'program preparation');
+    }
+    startProgram(key, sources) {
+        this.requireProgramContext();
+        const existing = this.#pendingPrograms.get(key);
+        if (existing)
+            return existing;
         const gl = this.#gl;
         const { vertex, fragment } = sources();
-        const compile = (type, source) => {
-            const shader = gl.createShader(type);
-            if (!shader)
-                throw new World3DError('WORLD3D_CONTEXT_LOST', 'createShader');
-            gl.shaderSource(shader, source);
-            gl.compileShader(shader);
-            return shader;
-        };
-        const vs = compile(gl.VERTEX_SHADER, vertex), fs = compile(gl.FRAGMENT_SHADER, fragment);
-        const program = gl.createProgram();
-        if (!program)
-            throw new World3DError('WORLD3D_CONTEXT_LOST', 'createProgram');
-        gl.attachShader(program, vs);
-        gl.attachShader(program, fs);
-        gl.linkProgram(program);
-        // Compile status is only consulted on failure, keeping the fast path free of sync points.
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS) && !gl.isContextLost()) {
-            const log = [gl.getShaderInfoLog(vs), gl.getShaderInfoLog(fs), gl.getProgramInfoLog(program)]
-                .filter(Boolean)
-                .join('\n');
-            gl.deleteShader(vs);
-            gl.deleteShader(fs);
-            gl.deleteProgram(program);
-            throw new World3DError('WORLD3D_SHADER_FAILED', key + '\n' + log);
+        const shaders = [];
+        let program = null;
+        try {
+            for (const [type, source] of [
+                [gl.VERTEX_SHADER, vertex],
+                [gl.FRAGMENT_SHADER, fragment]
+            ]) {
+                const shader = gl.createShader(type);
+                if (!shader)
+                    throw new World3DError('WORLD3D_CONTEXT_LOST', 'createShader');
+                shaders.push(shader);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+            }
+            program = gl.createProgram();
+            if (!program)
+                throw new World3DError('WORLD3D_CONTEXT_LOST', 'createProgram');
+            for (const shader of shaders)
+                gl.attachShader(program, shader);
+            gl.linkProgram(program);
+            const entry = { key, program, shaders };
+            this.#pendingPrograms.set(key, entry);
+            return entry;
         }
-        gl.deleteShader(vs);
-        gl.deleteShader(fs);
+        catch (error) {
+            if (!gl.isContextLost()) {
+                for (const shader of shaders)
+                    gl.deleteShader(shader);
+                if (program)
+                    gl.deleteProgram(program);
+            }
+            throw error;
+        }
+    }
+    finishProgram(entry, restoreProgram) {
+        this.requireProgramContext();
+        const cached = entry.result;
+        if (cached) {
+            if ('error' in cached)
+                throw cached.error;
+            return cached.value;
+        }
+        const gl = this.#gl;
+        const { key, program, shaders } = entry;
+        try {
+            const linked = gl.getProgramParameter(program, gl.LINK_STATUS);
+            this.requireProgramContext();
+            if (!linked) {
+                // Shader logs are needed only when link validation has already failed.
+                const log = [...shaders.map(shader => gl.getShaderInfoLog(shader)), gl.getProgramInfoLog(program)]
+                    .filter(Boolean)
+                    .join('\n');
+                throw new World3DError('WORLD3D_SHADER_FAILED', key + '\n' + log);
+            }
+            const value = this.initializeProgram(program, restoreProgram);
+            this.requireProgramContext();
+            entry.result = { value };
+            this.#programs.set(key, value);
+            return value;
+        }
+        catch (error) {
+            entry.result = { error };
+            if (!gl.isContextLost())
+                gl.deleteProgram(program);
+            throw error;
+        }
+        finally {
+            this.#pendingPrograms.delete(key);
+            if (!gl.isContextLost())
+                for (const shader of shaders)
+                    gl.deleteShader(shader);
+        }
+    }
+    initializeProgram(program, restoreProgram) {
+        const gl = this.#gl;
         const uniforms = {};
         const count = gl.getProgramParameter(program, gl.ACTIVE_UNIFORMS);
         for (let i = 0; i < count; i++) {
@@ -82,7 +183,6 @@ export class GpuResources3D {
         const block = gl.getUniformBlockIndex(program, 'Frame');
         if (block !== gl.INVALID_INDEX)
             gl.uniformBlockBinding(program, block, 0);
-        gl.useProgram(program);
         const samplers = {
             uMap: TEXTURE_UNITS_3D.map,
             uNormalMap: TEXTURE_UNITS_3D.normalMap,
@@ -103,12 +203,19 @@ export class GpuResources3D {
             uMorphTexture: TEXTURE_UNITS_3D.morph,
             uSceneColor: TEXTURE_UNITS_3D.sceneColor
         };
-        for (const name in samplers)
-            if (uniforms[name])
-                gl.uniform1i(uniforms[name], samplers[name]);
-        const entry = { id: this.#nextProgramId++, program, uniforms };
-        this.#programs.set(key, entry);
-        return entry;
+        // Preparation runs between draws, so keep the program tracked by the renderer bound.
+        const previous = restoreProgram ? gl.getParameter(gl.CURRENT_PROGRAM) : undefined;
+        gl.useProgram(program);
+        try {
+            for (const name in samplers)
+                if (uniforms[name])
+                    gl.uniform1i(uniforms[name], samplers[name]);
+        }
+        finally {
+            if (previous !== undefined && previous !== program && !gl.isContextLost())
+                gl.useProgram(previous);
+        }
+        return { id: this.#nextProgramId++, program, uniforms };
     }
     // ---- geometry ----------------------------------------------------------------
     upload(target, entry, attribute) {
@@ -349,6 +456,7 @@ export class GpuResources3D {
                 layoutVersion: -1,
                 geometryId: -1,
                 capacityBytes: -1,
+                uploadedCount: 0,
                 lastFrame: frame
             }));
         }
@@ -362,7 +470,8 @@ export class GpuResources3D {
             entry.geometryId !== geometry.id ||
             (mesh.instanceColors !== undefined && !entry.colors) ||
             (animated !== undefined && !entry.animation);
-        if (entry.version !== mesh.instanceVersion) {
+        // A partial upload covers only the active prefix of this revision.
+        if (entry.version !== mesh.instanceVersion || count > entry.uploadedCount) {
             gl.bindBuffer(gl.ARRAY_BUFFER, entry.matrices);
             if (entry.capacityBytes === matrices.byteLength)
                 gl.bufferSubData(gl.ARRAY_BUFFER, 0, matrices, 0, count * 16);
@@ -389,6 +498,7 @@ export class GpuResources3D {
                     gl.bufferSubData(gl.ARRAY_BUFFER, 0, animated, 0, count * 12);
             }
             entry.version = mesh.instanceVersion;
+            entry.uploadedCount = count;
         }
         if (rebind) {
             gl.bindVertexArray(entry.vao);
@@ -721,6 +831,8 @@ export class GpuResources3D {
     }
     /** Forget every GPU handle without deleting it; used after the context was lost. */
     reset() {
+        this.#programsRetired = 'lost';
+        this.#pendingPrograms.clear();
         for (const entry of this.#geometries.values())
             entry.unsubscribe();
         for (const entry of this.#textures.values())
@@ -738,6 +850,13 @@ export class GpuResources3D {
     /** Delete every GPU object owned by this cache. */
     dispose() {
         const gl = this.#gl;
+        this.#programsRetired = 'disposed';
+        for (const { program, shaders } of this.#pendingPrograms.values()) {
+            for (const shader of shaders)
+                gl.deleteShader(shader);
+            gl.deleteProgram(program);
+        }
+        this.#pendingPrograms.clear();
         for (const geometry of [...this.#geometries.keys()]) {
             this.#geometries.get(geometry).unsubscribe();
             this.releaseGeometry(geometry);
