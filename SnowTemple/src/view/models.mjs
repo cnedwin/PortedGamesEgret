@@ -5,8 +5,8 @@ import { hasPropSurface, propSurfaceGeometry } from './prop-surface.mjs';
 import { loadModelPack } from './model-pack.mjs';
 
 /** Read scene geometry and the stock body of any character unavailable as a GLB. */
-export async function loadModels(level = 'high', base = new URL('../../assets/', import.meta.url), replacementBodies) {
-  const { index, skip, spans } = await loadModelPack(level, base, replacementBodies);
+export async function loadModels(level = 'high', base = new URL('../../assets/', import.meta.url), replacementBodies, signal) {
+  const { index, skip, spans } = await loadModelPack(level, base, replacementBodies, signal);
   const models = {};
   for (const [name, info] of Object.entries(index)) {
     if (skip.has(name)) continue;
@@ -50,4 +50,11 @@ export async function loadModels(level = 'high', base = new URL('../../assets/',
     models[name] = geometry;
   }
   return models;
+}
+
+/** Shared stock bodies, needed only when an external character is unavailable. */
+export function loadStockCharacters(base, pageSignal) {
+  const deadline = AbortSignal.timeout(8000);
+  const signal = pageSignal ? AbortSignal.any([pageSignal, deadline]) : deadline;
+  return loadModels('stock-characters', base, undefined, signal);
 }

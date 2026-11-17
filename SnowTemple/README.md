@@ -92,9 +92,9 @@ The dice fall differently every time, and these make each run play differently t
 
 ## Staged character loading · 角色分阶段加载
 
-The illustrated loading screen appears first. Lin Chong's selected GLB loads alongside the scene and is used for the first rendered frame, the title and the opening. If that request fails or reaches its 6.5-second deadline, the stock body remains in place for the visit. After the first frame, the other four roles use a separate Egret asset group with two concurrent loads. Successful downloads replace their stock bodies one at a time and reuse the existing rig, pose and equipment. Leaving the page cancels pending loads and releases the group when the page is discarded. Add `?characters=original` to use the stock bodies for the entire session.
+The illustrated loading screen appears first. Lin Chong's GLB loads alongside the scene and is used from the first rendered frame. The three yard roles load after the first frame with two concurrent requests. Lu Qian loads separately after them. Every role enters the scene with its chosen body and keeps it for the visit. If networking delays a body, combat waits until the relevant roles are ready. The three scene packs contain only scenery and equipment. Their former stock bodies share one separate pack, requested if a GLB is unavailable or if `?characters=original` is selected.
 
-网页先显示雪路插画。林冲与场景并行加载，标题和开场从第一帧就使用新版模型。请求失败或超过 6.5 秒时，本次游玩使用内置备用模型。首帧之后，其他四个角色通过独立的白鹭资源组加载，最多两个并行。下载成功的角色依次换模，沿用原有骨架、姿态和装备。离开且浏览器销毁页面时，会取消进行中的加载并释放资源组。加上 `?characters=original` 可全程使用内置模型。
+网页先显示雪路插画。林冲与场景并行加载，从第一帧就用新版模型。首帧后先分批加载草料场三类角色，再单独加载陆谦。每个角色从首次显示到本局结束沿用同一模型。网络慢时，相应角色准备好以后才进入战斗。三档场景包只包含场景和装备。旧身体合成一个备用包，只有新版资源无法使用或选择 `?characters=original` 时才请求。
 
 The tables below record the original staged-loading benchmark. Lin Chong was still in the deferred group in that benchmark.
 

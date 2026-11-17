@@ -16,15 +16,15 @@ function layout(index) {
   return scene > 0 && Number.isSafeInteger(total) ? { entries, scene, total } : null;
 }
 
-async function fullPack(url) {
-  const response = await fetch(url);
+async function fullPack(url, signal) {
+  const response = await fetch(url, { signal });
   if (!response.ok) throw new Error('Model pack HTTP ' + response.status);
   return { bin: await response.arrayBuffer(), offset: 0 };
 }
 
-async function rangedPack(url, start, end, total) {
+async function rangedPack(url, start, end, total, signal) {
   try {
-    const response = await fetch(url, { headers: { Range: 'bytes=' + start + '-' + end } });
+    const response = await fetch(url, { signal, headers: { Range: 'bytes=' + start + '-' + end } });
     if (response.status === 200) {
       // A static host can ignore Range. Keep the full file from that first response.
       const bin = await response.arrayBuffer();
@@ -37,6 +37,7 @@ async function rangedPack(url, start, end, total) {
       await response.body?.cancel();
     }
   } catch {
+    signal?.throwIfAborted();
     // Let the caller make one ordinary request if the host rejected a byte range.
   }
   return null;
@@ -55,31 +56,35 @@ function missingBodyRanges(entries, skip) {
   return ranges;
 }
 
-async function loadScenePack(url, index) {
+async function loadScenePack(url, index, signal) {
   const ranges = layout(index);
-  const scene = ranges && await rangedPack(url, ranges.scene, ranges.total - 1, ranges.total);
-  return { ranges, spans: [scene ?? await fullPack(url)] };
+  const scene = ranges && await rangedPack(url, ranges.scene, ranges.total - 1, ranges.total, signal);
+  return { ranges, spans: [scene ?? await fullPack(url, signal)] };
 }
 
-export async function loadModelPack(level, base, replacementBodies) {
+export async function loadModelPack(level, base, replacementBodies, signal) {
   const url = new URL('models-' + level + '.bin', base);
-  const manifest = fetch(new URL('models-' + level + '.json', base)).then((response) => {
+  const indexUrl = new URL('models-' + level + '.json', base);
+  // The index and binary must both use the offsets from the split scene packs.
+  url.searchParams.set('v', '2');
+  indexUrl.searchParams.set('v', '2');
+  const manifest = fetch(indexUrl, { signal }).then((response) => {
     if (!response.ok) throw new Error('Model index HTTP ' + response.status);
     return response.json();
   });
   // Start the scene transfer as soon as its offsets are known. External GLBs decode independently.
   const packed = replacementBodies
-    ? manifest.then((index) => loadScenePack(url, index))
-    : fullPack(url).then((span) => ({ spans: [span] }));
+    ? manifest.then((index) => loadScenePack(url, index, signal))
+    : fullPack(url, signal).then((span) => ({ spans: [span] }));
   const [index, candidates, { ranges, spans }] = await Promise.all([
     manifest, replacementBodies, packed
   ]);
   const skip = new Set([...BODY_NAMES].filter((name) => candidates?.[name]?.length > 0));
   if (spans[0].offset !== 0) {
     for (const { start, end } of missingBodyRanges(ranges.entries, skip)) {
-      const part = await rangedPack(url, start, end, ranges.total);
+      const part = await rangedPack(url, start, end, ranges.total, signal);
       if (!part || part.bin.byteLength === ranges.total) {
-        return { index, skip, spans: [part ?? await fullPack(url)] };
+        return { index, skip, spans: [part ?? await fullPack(url, signal)] };
       }
       spans.push(part);
     }
