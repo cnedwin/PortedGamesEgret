@@ -149,16 +149,6 @@ const DETAILS = {
       mesh.pin([side * 0.89, 1.72, 0], [side * 0.73, 1.729, 0], 0.053, GOLD);
     }
   },
-  lion(mesh) {
-    for (const side of [-1,1]) {
-      for (const y of [0.18,0.72]) mesh.box(0, y, side * 0.752, 1.2, 0.09, 0.07, SLATE);
-      mesh.box(side * 0.598, 0.46, 0, 0.055, 0.12, 1.46, STONE);
-      // A shallow eyebrow and two scroll ribs are carved into each side of the stone mask.
-      mesh.pin([side * 0.08, 2.335, 0.522], [side * 0.221, 2.344, 0.478], 0.024, STONE);
-      mesh.pin([side * 0.221, 2.344, 0.478], [side * 0.259, 2.306, 0.444], 0.024, SLATE);
-      mesh.pin([side * 0.14, 1.86, 0.306], [side * 0.237, 1.725, 0.375], 0.025, STONE);
-    }
-  },
   lantern(mesh) {
     for (const side of [-1,1]) {
       mesh.box(0, 1.151, side * 0.199, 0.416, 0.068, 0.044, SLATE);
@@ -172,6 +162,19 @@ const DETAILS = {
 
 /** Add the trim without adding a draw call or changing the original envelopes. */
 export function detailSceneMesh(name, base, coarse) {
+  if (name === 'stele') {
+    // Baked surface variation follows gravity on the slab. Keep raised snow
+    // on its cap clear, and don't add a second material or texture.
+    for (let i = 0; i < base.positions.length; i += 3) {
+      const x = base.positions[i], y = base.positions[i + 1], z = base.positions[i + 2];
+      if (y >= 3.16) continue;
+      const stain = Math.max(0, Math.sin(x * 40 + Math.sin(y * 2.2) * 0.48 + z * 47)) ** 6;
+      const salt = Math.sin(x * 24 + z * 9 + 2) * Math.sin(y * 7 - z * 21) * 0.05;
+      const damp = Math.max(0, 1 - y * 0.72) * 0.16;
+      const tone = 0.97 + salt - stain * 0.11 - damp;
+      for (let channel = 0; channel < 3; channel++) base.colours[i + channel] *= tone;
+    }
+  }
   const make = DETAILS[name];
   if (!make) return base;
   const detail = reliefMesh();

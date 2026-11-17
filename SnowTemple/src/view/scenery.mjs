@@ -393,19 +393,12 @@ function brazier(b, glow, x, z) {
     const a = (i / 8) * Math.PI * 2;
     b.ball(x + Math.cos(a) * 0.447, 0.758, z + Math.sin(a) * 0.447, 0.028, 0.024, 0.028, { tint: hammered, sides: 5, rings: 3 });
   }
-  glow.limb([x, 0.79, z], [x, 0.82, z], 0.4, 0.4, { tint: [1, 0.42, 0.1], sides: 10 });
-}
-
-function buildStele(mesh, x, z) {
-  mesh.box(x, 0.25, z, 1.5, 0.5, 0.87, { tint: STONE_DARK });
-  mesh.box(x, 0.503, z, 1.36, 0.15, 0.76, { tint: STONE, top: SNOW_DIM });
-  mesh.box(x, 1.87, z, 1.03, 2.58, 0.3, { tint: shade(STONE, 0.86) });
-  mesh.box(x, 3.2, z, 1.12, 0.15, 0.37, { tint: STONE, top: SNOW });
-  for (const side of [-1, 1]) mesh.box(x + side * 0.448, 1.91, z + 0.148, 0.061, 2.39, 0.039, { tint: STONE_DARK });
-  const motif = [[-0.265, 2.35], [-0.138, 2.47], [-0.063, 2.42], [0.095, 2.63], [0.267, 2.35]];
-  for (let i = 1; i < motif.length; i++) {
-    const [a, b] = [motif[i - 1], motif[i]];
-    mesh.limb([x + a[0], a[1], z + 0.161], [x + b[0], b[1], z + 0.161], 0.017, 0.017, { tint: SNOW_DIM, sides: 4 });
+  b.limb([x, 0.797, z], [x, 0.806, z], 0.408, 0.402, { tint: rgb(0x2b201e), sides: 12 });
+  for (let i = 0; i < 13; i++) {
+    const angle = i * 2.399963, radius = 0.093 * Math.sqrt(i),
+      px = x + Math.cos(angle) * radius, pz = z + Math.sin(angle) * radius;
+    b.ball(px, 0.812, pz, 0.085, 0.038, 0.063, { tint: rgb(i % 3 === 0 ? 0x743529 : 0x392822), sides: 5, rings: 3 });
+    if (i % 3 === 0) glow.ball(px + 0.016, 0.845, pz, 0.034, 0.011, 0.023, { tint: [1, 0.28, 0.06], sides: 5, rings: 3 });
   }
 }
 
@@ -477,13 +470,20 @@ function buildTemple(scene, material, glow, models) {
   hall.setPosition(x, 0, z);
   scene.addChild(hall);
   // Lamplight behind the door and the two lattice windows.
-  glow.box(x, 2.7, z + 1.95, 2.3, 3.5, 0.05, { tint: [1, 0.55, 0.2] });
+  glow.box(x, 2.7, z + 1.95, 2.26, 3.45, 0.05, { tint: [0.84, 0.4, 0.13] });
   for (const side of [1, -1]) glow.box(x + side * 5.6, 3.0, z + 1.98, 2.0, 1.7, 0.05, { tint: [0.9, 0.5, 0.2] });
 
-  // Keep the entrance readable behind the duel: a pale snow line and warm lanterns frame the red door.
+  // Lower wooden panels frame a lit lattice above and a narrow seam between the leaves.
   const details = createBuilder();
   const lattice = rgb(0x4b2c24);
   for (const side of [1, -1]) {
+    const leaf = x + side * 0.59, face = z + 2.17;
+    details.box(leaf, 1.83, face, 1.08, 1.74, 0.09, { tint: rgb(0x492b25) });
+    details.box(leaf, 2.64, face + 0.055, 1.09, 0.16, 0.035, { tint: lattice });
+    for (const stile of [-0.50, 0.50]) details.box(leaf + stile, 2.61, face + 0.055, 0.081, 3.31, 0.056, { tint: lattice });
+    for (const rail of [3.11, 3.59, 4.04]) details.box(leaf, rail, face + 0.04, 1.07, 0.070, 0.057, { tint: lattice });
+    details.box(leaf, 3.48, face + 0.062, 0.067, 1.53, 0.05, { tint: lattice });
+    details.ball(x + side * 0.23, 1.92, face + 0.07, 0.062, 0.064, 0.043, { tint: rgb(0x8d6841), sides: 8, rings: 4 });
     // Draw the muntins outside the emissive panes at every model detail level.
     // They share this existing trim mesh, and leave the recess open to lamplight.
     const wx = x + side * 5.6, wz = z + 2.195;
@@ -566,7 +566,7 @@ function buildProps(scene, rand, material, glow, tall, lights, models) {
     } else if (round.kind === 'lion') {
       stand('lion', x, z, 0.9, x < 0 ? 0.25 : -0.25);
     } else if (round.kind === 'stele') {
-      buildStele(b, x, z);
+      stand('stele', x, z, 1, 0);
     } else if (round.kind === 'pine') {
       const cover = createStandardMaterial3D({ vertexColors: true, roughness: 0.9 }),
         mesh = stand('pine', x, z, 0.95, rand() * 6, cover, 1.1);

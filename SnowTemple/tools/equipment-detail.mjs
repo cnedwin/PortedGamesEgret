@@ -24,11 +24,9 @@ export function finishEquipment(name, item, rgb) {
       }
       break;
     case 'glaive':
-      solids.push(rod([0, 0, 0.978], [0, 0.011, 1.089], 0.042, 0.032, blackSteel));
-      edge[3].colour = rgb(0x93a6b5);
+      solids.push(rod([0, 0, 0.987], [0, 0.004, 1.082], 0.035, 0.027, blackSteel));
       for (const side of [-1, 1]) {
-        solids.push(rod([side * 0.040, -0.013, 1.006], [side * 0.031, 0.020, 1.086], 0.006, 0.005, bronze));
-        edge.push(oval([side * 0.011, 0.069, 1.355], [0.006, 0.012, 0.043], steel));
+        solids.push(rod([side * 0.032, -0.01, 1.004], [side * 0.027, 0.012, 1.078], 0.005, 0.004, bronze));
       }
       break;
     case 'sabre':
@@ -68,4 +66,62 @@ export function finishEquipment(name, item, rgb) {
       break;
   }
   return item;
+}
+
+/** Lu's single-edged dao, with a separate spine, forged face and cutting bevel. */
+export function makeGlaiveBlade(rgb) {
+  const stations = [
+    // z, back, edge, half thickness
+    [1.04, -0.021, 0.028, 0.012],
+    [1.13, -0.032, 0.066, 0.012],
+    [1.28, -0.041, 0.102, 0.012],
+    [1.48, -0.039, 0.125, 0.011],
+    [1.65, -0.021, 0.148, 0.009],
+    [1.77, 0.014, 0.167, 0.007],
+    [1.86, 0.061, 0.176, 0.005],
+    [1.927, 0.123, 0.179, 0.003]
+  ];
+  const rings = stations.map(([z, back, edge, thick]) => {
+    const width = edge - back;
+    return [
+      [0, back, z],
+      [0.7 * thick, back + width * 0.055, z],
+      [thick, back + width * 0.14, z],
+      [0.72 * thick, edge - width * 0.205, z],
+      [0.08 * thick, edge, z],
+      [-0.08 * thick, edge, z],
+      [-0.72 * thick, edge - width * 0.205, z],
+      [-thick, back + width * 0.14, z],
+      [-0.7 * thick, back + width * 0.055, z]
+    ];
+  });
+  const tints = [0x697684, 0x97a5ae, 0x9ca9b4, 0xc7d2d9, 0xaab8c0, 0xc7d2d9, 0x9ca9b4, 0x97a5ae, 0x697684].map(rgb);
+  const positions = [], normals = [], colours = [], indices = [];
+  function face(points, tint) {
+    const [a, b, c] = points;
+    const u = b.map((v, i) => v - a[i]), v = c.map((value, i) => value - a[i]);
+    const n = [u[1] * v[2] - u[2] * v[1], u[2] * v[0] - u[0] * v[2], u[0] * v[1] - u[1] * v[0]];
+    const length = Math.hypot(...n), first = positions.length / 3;
+    for (const point of points) {
+      positions.push(...point);
+      normals.push(...n.map(value => value / length));
+      colours.push(...tint);
+    }
+    for (let i = 1; i + 1 < points.length; i++) indices.push(first, first + i, first + i + 1);
+  }
+  for (let i = 1; i < rings.length; i++) {
+    const previous = rings[i - 1], next = rings[i];
+    for (let j = 0; j < previous.length; j++) {
+      const k = (j + 1) % previous.length;
+      face([previous[j], previous[k], next[k], next[j]], tints[j]);
+    }
+  }
+  const last = rings.at(-1), point = [0, 0.176, 1.964];
+  for (let i = 0; i < last.length; i++) face([last[i], last[(i + 1) % last.length], point], tints[i]);
+  face([...rings[0]].reverse(), tints[0]);
+  return {
+    positions: Float32Array.from(positions), normals: Float32Array.from(normals), colours: Float32Array.from(colours),
+    stuffs: new Uint8Array(positions.length / 3).fill(3), indices: Uint32Array.from(indices),
+    lo: [-0.012, -0.041, 1.04], hi: [0.012, 0.179, 1.964]
+  };
 }

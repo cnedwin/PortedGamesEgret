@@ -44,11 +44,11 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   const view = { shake: 0, cine: null, zoom: 1 };
 
   // ---- night, snow and a cold moon ----------------------------------------------------------
-  scene.background = [0.016, 0.024, 0.044];
-  scene.fog = { kind: 'exponential', color: [0.031, 0.043, 0.071], density: 0.018 };
-  scene.addChild(createHemisphereLight3D({ color: 0x7489ad, groundColor: 0x2b3141, intensity: 0.39 }));
+  scene.background = [0.012, 0.017, 0.034];
+  scene.fog = { kind: 'exponential', color: [0.026, 0.036, 0.07], density: 0.016 };
+  scene.addChild(createHemisphereLight3D({ color: 0x8a9cbd, groundColor: 0x292c42, intensity: 0.32 }));
   scene.addChild(createAmbientLight3D({ intensity: 0.055 }));
-  const moon = createDirectionalLight3D({ color: 0xa5c2ef, intensity: 0.89, castShadow: true });
+  const moon = createDirectionalLight3D({ color: 0xb6c8ec, intensity: 0.82, castShadow: true });
   Object.assign(moon.shadow, { mapSize: shadowSize, extent: 24, near: 1, far: 90, cascades: 1 });
   scene.addChild(moon);
   // Soft camera-side fill lets the faces and forged edges read in the two low shots.
@@ -64,7 +64,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   const scenery = buildScenery(scene, models, { density });
   const fx = createEffects(scene, camera, { particles });
   view.fx = fx;
-  for (const lamp of scenery.lights) lamp.halo = { x: lamp.x, y: lamp.light.position[1] + 0.1, z: lamp.z, size: lamp.fire ? 4.2 : 2.6, colour: lamp.fire ? [1, 0.42, 0.14] : [1, 0.6, 0.25], strength: 0 };
+  for (const lamp of scenery.lights) lamp.halo = { x: lamp.x, y: lamp.light.position[1] + 0.1, z: lamp.z, size: lamp.fire ? 3.4 : 2.15, colour: lamp.fire ? [1, 0.42, 0.14] : [1, 0.58, 0.26], strength: 0 };
   fx.setHalos(scenery.lights.map((lamp) => lamp.halo));
 
   // ---- people -------------------------------------------------------------------------------
@@ -581,8 +581,8 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
       lamp.share += ((i < 6 ? 1 : 0) - lamp.share) * Math.min(1, dt * 3);
       lamp.light.intensity = lamp.intensity * lamp.share * (1 + Math.sin(clock * 11 + lamp.x) * lamp.flicker * 0.5 + Math.sin(clock * 23 + lamp.z) * lamp.flicker * 0.5);
     });
-    scenery.glowMaterial.emissiveIntensity = 2.08 + Math.sin(clock * 9) * 0.18;
-    for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? Math.min(1, lamp.share + 0.45) : 0;
+    scenery.glowMaterial.emissiveIntensity = 1.66 + Math.sin(clock * 9) * 0.13;
+    for (const lamp of lit) lamp.halo.strength = lamp.distance < 34 ? lamp.share * 0.83 : 0;
 
     moveCamera(game, dt, clock);
     // Fade the roof or a nearby tree only where it crosses the camera's sightline to the hero.
