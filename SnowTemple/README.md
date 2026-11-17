@@ -70,6 +70,35 @@ Keys can be changed under Settings. With a mouse the spear goes where the pointe
 - Six original pieces follow the chapter, with separate wind, ember and temple ambience. Footsteps, weapons, blocks and ripostes have dedicated sound cues. Regenerate the audio assets with `tools/render-audio.mjs`.
 - Settings cover picture quality (automatic, low, medium, high), particle amount, sound and every key; automatic quality moves the drawing resolution with the frame rate.
 
+## Staged character loading · 角色分阶段加载
+
+SnowTemple opens with its stock character bodies once the scene is ready. After the first frame, an Egret asset group loads up to two character GLBs at a time. Once the group settles, successful roles prepare their shaders and replace the stock bodies one role at a time, keeping their existing rig, pose and equipment. A slow role can delay the visual upgrades. A failed role keeps its stock body and the other roles can still upgrade. Leaving the page cancels pending loads and releases the group when the page is discarded. Add `?characters=original` to keep the stock bodies for the entire session.
+
+场景就绪后，《风雪山神庙》先用原版角色模型开放操作。首帧之后，白鹭资源组最多同时加载两个角色 GLB。组内任务结束后，成功的角色分批准备着色器并替换身体网格，沿用原有骨架、姿态和装备。单个角色加载慢会推迟外观升级。加载失败的角色继续用原模型，其余角色仍可升级。离开且浏览器销毁页面时，会取消还在进行的加载并释放资源组。加上 `?characters=original` 可全程使用原版模型。
+
+| Windows foreground test · Windows 前台测试 | Previous · 改造前 | Staged · 分阶段加载 |
+|---|---:|---:|
+| Cold page load to first movement, pair 1 · 冷启动到首次移动，第 1 对 | 3485.1 ms | 995.5 ms |
+| Cold page load to first movement, pair 2 · 冷启动到首次移动，第 2 对 | 701.8 ms | 674.3 ms |
+| Hero response delayed 1.8 s and archer HTTP 503 · 主角响应延迟 1.8 秒，弓手返回 HTTP 503 | 2416.4 ms | 635.5 ms |
+
+The baseline was `58554b3`. Both builds used the same assets and vendored Egret runtime `8b634fe`, Edge 157, WebGL2 (ANGLE D3D11 on an RTX 5090 Laptop GPU), high settings at 960 × 600, a local HTTP server and a fresh browser context with caching disabled per run. The clean runs went baseline–staged–staged–baseline in the same browser process. The first run also includes initial process warm-up effects. The endpoint is movement from a trusted keyboard event. The two pairs show the direction and variability on this setup.
+
+对照基线为 `58554b3`。两版使用相同素材和白鹭运行时 `8b634fe`，在 Edge 157、RTX 5090 Laptop GPU（WebGL2 / ANGLE D3D11）上以 960 × 600 高画质运行。本地 HTTP 服务保持一致，每次用独立浏览器会话并禁用缓存。正常场景按旧版、新版、新版、旧版的顺序在同一浏览器进程测量，首轮同时受到进程预热影响。终点是可信键盘事件实际推动角色移动。这两组数据反映本次环境中的收益方向和波动。
+
+| Stage in clean pair 2 · 第 2 对正常负载的分段数据 | Previous · 改造前 | Staged · 分阶段加载 |
+|---|---:|---:|
+| GLB data received by first movement · 首次移动前收到的 GLB 数据 | 12.10 MB | 5.52 MB |
+| Model pack unpacking · 模型包解包 | 73.8 ms | 97.6 ms |
+| GLB parse and image decode per role · 单角色 GLB 解析与图片解码 | 33.5–57.2 ms | 15.8–37.6 ms |
+| GLB parse and decode completed by first movement · 首次移动前完成解析解码的角色 | 5 | 0 |
+| Texture upload calls before first movement, CPU-side elapsed time · 首次移动前纹理上传调用的 CPU 侧耗时 | 23.4 ms | 2.5 ms |
+| Buffer upload calls before first movement, CPU-side elapsed time · 首次移动前缓冲上传调用的 CPU 侧耗时 | 6.2 ms | 9.2 ms |
+
+Download, parsing and image decode can overlap. Upload timings measure time in WebGL calls on the CPU. After all five roles register, the staged run has transferred about 2.99 MB more because it also requests the stock bodies. In the fault run, movement started before the delayed hero response and four roles eventually registered. In a separate navigation test, leaving the game closed a held request before response headers and released the role scope.
+
+下载、解析和图片解码可能重叠。上传数据记录的是 CPU 线程调用 WebGL 的耗时。五个角色均加载并注册后，新版因另行下载原版身体网格，累计传输约多 2.99 MB。故障模拟中，主角 GLB 响应前已可移动，最终四个角色成功注册。另一次离页测试确认，未返回响应头的请求被取消，角色资源作用域已释放。
+
 ## 开发 · Development
 
 ```sh

@@ -1,7 +1,7 @@
 // The people of the chapter: sculpted figures on a shared skeleton, and the poses that move them.
 // A figure faces +z; its left is +x. Poses are sets of joint angles; each frame every joint eases toward
 // the pose its state asks for, which is what gives the cuts their snap and the walk its weight.
-import { Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createCylinderGeometry3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatMultiply, quatNormalize, quatSlerp, vec3TransformQuat } from '@egret/engine/world3d';
+import { Geometry3D, MESH3D_LIMITS, Material3D, Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createCylinderGeometry3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatMultiply, quatNormalize, quatSlerp, vec3TransformQuat } from '@egret/engine/world3d';
 import { LOCOMOTION, sampleLocomotion } from './locomotion.mjs';
 import { BIND, BONES, HANDS, JOINTS, YARD_BONES, YARD_GRIPS } from './rig.mjs';
 import { groundBoots } from './boot-contact.mjs';
@@ -83,6 +83,17 @@ const LOOKS = {
   bow: { size: 0.98, off: 'longbow', offScale: 1.08, fill: [0.006, 0.008, 0.012] },
   lu: { size: 1.2, weapon: 'glaive', grip: 0.55, articulated: true, fill: [0.019, 0.006, 0.008] }
 };
+/** Check descriptors even when none of the actors of this kind have spawned. */
+export function validateCharacterBody(parts) {
+  for (const { geometry, material } of parts) {
+    if (!(geometry instanceof Geometry3D) || geometry.isDisposed) throw Error('Character body requires live geometry');
+    const materials = Array.isArray(material) ? material : [material];
+    if (!materials.length || materials.length > MESH3D_LIMITS.maxMaterials ||
+        materials.some(template => !(template instanceof Material3D) || template.isDisposed))
+      throw Error('Character body requires live materials');
+  }
+}
+
 const POSED = ['hips', 'spine', 'head', 'armL', 'foreL', 'armR', 'foreR', 'legL', 'shinL', 'legR', 'shinR', 'cloak', 'weapon', 'off'];
 const ARTICULATED_POSED = [...POSED, 'footL', 'footR'];
 const bowCord = createCylinderGeometry3D({ radiusTop: 0.0045, radiusBottom: 0.0045, height: 1, radialSegments: 5 });
@@ -117,48 +128,66 @@ export function createFigure(kind, models, detail = 'high', externalBody) {
   }
   root.updateWorldMatrices(true);
   const skeleton = new Skeleton3D(bones.map((name) => joints[name]));
-  const bodyMaterials = new Map();
-  function addBody(geometry, material) {
-    const body = new Mesh3D(geometry, material);
-    body.castShadow = true;
-    body.receiveShadow = true;
-    root.addChild(body);
-    body.bind(skeleton);
-  }
-  function instanceMaterial(template) {
-    let material = bodyMaterials.get(template);
-    if (!material) {
-      material = template.clone();
-      bodyMaterials.set(template, material);
+  const bindMatrix = root.matrixWorld.slice();
+  const bodyTint = [0, 0, 0];
+  function stageBody(parts, clone = true) {
+    validateCharacterBody(parts);
+    const materials = new Map();
+    function instanceMaterial(template) {
+      if (!materials.has(template)) materials.set(template, clone ? template.clone() : template);
+      return materials.get(template);
     }
-    return material;
-  }
-  if (externalBody?.length) {
-    for (const { geometry, material } of externalBody) {
-      addBody(geometry, Array.isArray(material) ? material.map(instanceMaterial) : instanceMaterial(material));
+    try {
+      const meshes = parts.map(({ geometry, material }) => {
+        const own = Array.isArray(material) ? material.map(instanceMaterial) : instanceMaterial(material);
+        const mesh = new Mesh3D(geometry, own);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        // Use the original bind space even if a late body arrives during a posed frame.
+        return mesh.bind(skeleton, bindMatrix);
+      });
+      const glow = [...materials.values()].map((material) => {
+        const authored = Array.from(material.emissive, (value) => value * material.emissiveIntensity);
+        const strength = Math.max(1, material.emissiveIntensity);
+        material.emissiveIntensity = strength;
+        return { material, authored, strength };
+      });
+      return { meshes, glow };
+    } catch (error) {
+      for (const material of materials.values()) material.dispose();
+      throw error;
     }
-  } else {
-    const cloth = dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.78, metallic: 0 }));
-    bodyMaterials.set(cloth, cloth);
-    addBody(models[kind], cloth);
   }
+  const cloth = externalBody?.length ? null : dress(createStandardMaterial3D({ vertexColors: true, roughness: 0.78, metallic: 0 }));
+  let body = cloth ? stageBody([{ geometry: models[kind], material: cloth }], false) : stageBody(externalBody);
+  for (const mesh of body.meshes) root.addChild(mesh);
+
   // Authoring emissive colour remains in place under the game's per-character hit and night fill.
-  const bodyGlow = [...bodyMaterials.values()].map((material) => {
-    const authored = Array.from(material.emissive, (value) => value * material.emissiveIntensity);
-    const strength = Math.max(1, material.emissiveIntensity);
-    material.emissiveIntensity = strength;
-    return { material, authored, strength };
-  });
   function tintBody(red, green, blue) {
-    for (const { material, authored, strength } of bodyGlow) {
-      material.emissive[0] = (authored[0] + red) / strength;
-      material.emissive[1] = (authored[1] + green) / strength;
-      material.emissive[2] = (authored[2] + blue) / strength;
-    }
+    bodyTint[0] = red;
+    bodyTint[1] = green;
+    bodyTint[2] = blue;
+    for (const { material, authored, strength } of body.glow)
+      for (let i = 0; i < 3; i++) material.emissive[i] = (authored[i] + bodyTint[i]) / strength;
+  }
+  function installBody(next) {
+    for (const mesh of next.meshes) root.addChild(mesh);
+    const previous = body;
+    body = next;
+    tintBody(...bodyTint);
+    for (const mesh of previous.meshes) mesh.removeFromParent();
+    return previous;
+  }
+  function disposeBody(body) {
+    for (const { material } of body.glow) material.dispose();
   }
   function dispose() {
+    if (!body) return;
+    const previous = body;
+    body = null;
     root.removeFromParent();
-    for (const material of bodyMaterials.values()) material.dispose();
+    for (const mesh of previous.meshes) mesh.removeFromParent();
+    disposeBody(previous);
     gear.dispose();
     metal.dispose();
   }
@@ -184,7 +213,7 @@ export function createFigure(kind, models, detail = 'high', externalBody) {
   for (const name of posed) angles[name] = [0, 0, 0];
   const gait = { phase: 0, travelled: 0, speed: 0, heading: 0, walk: {}, run: {}, contacts: {}, combat: {} };
   const plants = { L: {}, R: {} };
-  return { kind, look, root, joints, rest, posed, angles, gait, plants, string, held: 0, slide: 0, rightOpening: 0, lift: 0, tintBody, dispose, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
+  return { kind, look, root, joints, rest, posed, angles, gait, plants, string, held: 0, slide: 0, rightOpening: 0, lift: 0, tintBody, stageBody, installBody, disposeBody, dispose, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
 }
 
 // ---- poses --------------------------------------------------------------------------------

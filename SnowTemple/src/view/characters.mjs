@@ -1,10 +1,15 @@
 // Optional external bodies are packed in the same bind pose as the game's existing figures.
+import { createAssetRef, createAssetType } from '@egret/engine';
 import { Mesh3D, loadGltf3D } from '@egret/engine/world3d';
 import { BONES, YARD_BONES } from './rig.mjs';
 
 const PATH = new URL('../../assets/characters/', import.meta.url);
 const ROLES = ['hero', 'lu', 'blade', 'shield', 'bow'];
 const LEVELS = ['high', 'mid', 'low'];
+const CHARACTER_BODY = createAssetType('snowtemple.character-body', (value) =>
+  value !== null && typeof value === 'object' && ROLES.includes(value.kind) &&
+  (typeof value.error === 'string' || (value.parts?.length > 0 && typeof value.dispose === 'function')));
+const registered = new WeakSet();
 
 function bodyParts(root, palette) {
   const parts = [];
@@ -23,7 +28,7 @@ function bodyParts(root, palette) {
     if (node.matrixWorld.some((value, index) => Math.abs(value - (index % 5 === 0 ? 1 : 0)) > 0.0001)) {
       throw Error('Character mesh must use the game bind space');
     }
-    parts.push({ geometry: node.geometry, material: node.material });
+    parts.push({ mesh: node, geometry: node.geometry, material: node.material });
   });
   if (!parts.length) throw Error('Character has no body mesh');
   return parts;
@@ -33,6 +38,7 @@ async function loadCharacter(kind, level, signal) {
   const bitmaps = [];
   let asset, abandoned = false;
   const dispose = () => {
+    if (abandoned) return;
     abandoned = true;
     try {
       asset?.dispose();
@@ -41,53 +47,112 @@ async function loadCharacter(kind, level, signal) {
     }
   };
   try {
+    signal.throwIfAborted();
     const response = await fetch(new URL(kind + '-' + level + '.glb', PATH), { signal });
     if (!response.ok) throw Error('Character HTTP ' + response.status);
-    asset = await loadGltf3D(new Uint8Array(await response.arrayBuffer()), {
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    signal.throwIfAborted();
+    asset = await loadGltf3D(bytes, {
       decodeImage: async ({ bytes, mimeType }) => {
+        signal.throwIfAborted();
         if (!bytes) throw Error('Character texture must be embedded');
         const bitmap = await createImageBitmap(new Blob([bytes], { type: mimeType }), {
           colorSpaceConversion: 'none', premultiplyAlpha: 'none'
         });
-        if (abandoned) {
+        if (abandoned || signal.aborted) {
           bitmap.close();
+          signal.throwIfAborted();
           throw Error('Character asset already rejected');
         }
         bitmaps.push(bitmap);
         return bitmap;
       }
     });
+    signal.throwIfAborted();
     const palette = kind === 'hero' || kind === 'lu' ? BONES : YARD_BONES;
-    return { parts: bodyParts(asset.scene, palette), dispose };
+    const parts = bodyParts(asset.scene, palette);
+    return { kind, parts, dispose };
   } catch (error) {
     dispose();
     throw error;
   }
 }
 
-/** Select only the level advertised in the same-origin availability list. */
-export async function loadCharacterBodies(level, roles = ROLES) {
-  const bodies = {}, failures = {}, loaded = [];
-  const bundle = { bodies, failures, dispose: () => { for (const asset of loaded.splice(0)) asset.dispose(); } };
-  if (!LEVELS.includes(level)) return bundle;
-  const signal = AbortSignal.timeout(15000);
-  let available;
-  try {
-    const response = await fetch(new URL('index.json', PATH), { signal });
-    if (!response.ok) return bundle;
-    available = await response.json();
-  } catch {
-    return bundle;
-  }
-  await Promise.all(ROLES.filter((kind) => roles.includes(kind) &&
-    Array.isArray(available?.[kind]) && available[kind].includes(level)).map(async (kind) => {
-    try {
-      const asset = await loadCharacter(kind, level, signal);
-      loaded.push(asset);
-      bodies[kind] = asset.parts;
-    } catch (error) {
-      failures[kind] = error.message;
+function characterDeadline(parent, milliseconds) {
+  const controller = new AbortController();
+  const abort = () => controller.abort(parent.reason);
+  if (parent?.aborted) abort();
+  else parent?.addEventListener('abort', abort, { once: true });
+  const timer = setTimeout(() => controller.abort(new DOMException('Character request timed out', 'TimeoutError')), milliseconds);
+  return {
+    signal: controller.signal,
+    dispose() {
+      clearTimeout(timer);
+      parent?.removeEventListener('abort', abort);
     }
-  }));
-  return bundle;
+  };
+}
+
+async function loadScopedCharacter(ref, context) {
+  const [, kind, level] = ref.id.split('/');
+  const deadline = characterDeadline(context.signal, 15000);
+  const { signal } = deadline;
+  let interrupt;
+  let body;
+  try {
+    signal.throwIfAborted();
+    const cancelled = new Promise((_, reject) => {
+      interrupt = () => reject(signal.reason);
+      signal.addEventListener('abort', interrupt, { once: true });
+    });
+    // A browser image decode cannot be interrupted. Its eventual bitmap is closed by loadCharacter.
+    body = await Promise.race([loadCharacter(kind, level, signal), cancelled]);
+    signal.throwIfAborted();
+    return body;
+  } catch (error) {
+    body?.dispose();
+    if (context.signal.aborted) throw context.signal.reason;
+    // A failed optional role keeps its stock body without rejecting healthy members.
+    return { kind, error: String(error?.message ?? error) };
+  } finally {
+    if (interrupt) signal.removeEventListener('abort', interrupt);
+    deadline.dispose();
+  }
+}
+
+async function loadCharacterIndex(pageSignal) {
+  const deadline = characterDeadline(pageSignal, 8000);
+  const { signal } = deadline;
+  try {
+    signal.throwIfAborted();
+    const response = await fetch(new URL('index.json', PATH), { signal });
+    if (!response.ok) throw Error('Character index HTTP ' + response.status);
+    const available = await response.json();
+    signal.throwIfAborted();
+    return available;
+  } finally {
+    deadline.dispose();
+  }
+}
+
+/** Start the bounded asset group for the optional bodies advertised at this detail. */
+export async function loadCharacterGroup(engine, roleScope, level, pageSignal) {
+  if (!LEVELS.includes(level)) throw Error('Unknown character detail: ' + level);
+  const available = await loadCharacterIndex(pageSignal);
+  pageSignal?.throwIfAborted();
+  const roles = ROLES.filter((kind) => Array.isArray(available?.[kind]) && available[kind].includes(level));
+  if (!registered.has(engine.assets)) {
+    engine.assets.register(CHARACTER_BODY, { load: loadScopedCharacter, dispose: (body) => body.dispose?.() });
+    registered.add(engine.assets);
+  }
+  const refs = roles.map((kind) => createAssetRef(CHARACTER_BODY, 'snowtemple-character/' + kind + '/' + level));
+  const group = engine.createAssetGroup(roleScope, refs, { concurrency: 2 });
+  if (pageSignal) {
+    const abort = () => group.dispose();
+    if (pageSignal.aborted) abort();
+    else pageSignal.addEventListener('abort', abort, { once: true });
+    const detach = () => pageSignal.removeEventListener('abort', abort);
+    void group.ready.then(detach, detach);
+  }
+  return { group, roles };
 }
