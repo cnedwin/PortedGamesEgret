@@ -230,8 +230,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     item.pool.get(item.geometry).push(item);
   }
 
-  // Draw the shared effect pad and fogged footprint variants once under the loader.
-  // Neither updates the effect clock or enters the real footprints' ring buffer.
+  // Warm the real meshes below the horizon without advancing their game-time pools.
   function prepareFirstDraw() {
     const item = takeEffect(shapes.pad, false);
     item.mesh.name = 'snow-fx-pad';
@@ -239,10 +238,13 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     preparingFootprints = true;
     printMesh.setTransformAt(0, [0, -1000, 0], [0, 0, 0, 1], PRINT);
     printMesh.setColorAt(0, 0, 0, 0, 0);
+    spearMesh.setTransformAt(0, [0, -1000, 0], [0, 0, 0, 1], 1);
+    spearMesh.setColorAt(0, 0, 0, 0, 0);
     return () => {
       release(item);
       preparingFootprints = false;
       printMesh.count = 0;
+      spearMesh.count = 0;
     };
   }
 
@@ -327,9 +329,27 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
   const spearShape = createBuilder();
   spearShape.limb([0, 0.25, 0], [0, 2.4, 0], 0.03, 0.03, { tint: [0.6, 0.8, 1], sides: 5 });
   spearShape.limb([0, -0.3, 0], [0, 0.25, 0], 0.004, 0.09, { tint: [0.9, 0.97, 1], sides: 4, flat: 0.3 });
-  const spearMaterial = createUnlitMaterial3D({ color: 0xffffff, vertexColors: true, fog: false });
+  const spearMaterial = createUnlitMaterial3D({
+    color: 0xffffff, vertexColors: true, fog: false, alphaMode: 'blend', blending: 'additive', depthWrite: false
+  });
+  spearMaterial.shader = createCustomShader3D({
+    key: 'snow-spear-dissolve',
+    glsl: `
+vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
+    float remaining = color.a;
+    if (remaining <= 0.001) discard;
+    if (remaining > 0.998) return color;
+    vec3 cell = floor(worldPosition * vec3(24.0, 34.0, 24.0));
+    float crystal = fract(sin(dot(cell, vec3(12.9898, 78.233, 21.651))) * 43758.5453);
+    float edge = remaining - crystal;
+    if (edge < 0.0) discard;
+    float rim = 1.0 - smoothstep(0.0, 0.18, edge);
+    return vec4(color.rgb * 0.72 + vec3(0.42, 0.76, 1.05) * rim, smoothstep(0.0, 0.24, remaining));
+}
+`
+  });
   spearMaterial.color.set([1.3, 1.6, 2.1]);
-  const spearMesh = new InstancedMesh3D(spearShape.geometry(), spearMaterial, 32);
+  const spearMesh = new InstancedMesh3D(spearShape.geometry(), spearMaterial, 32, 4);
   spearMesh.frustumCulled = false;
   spearMesh.castShadow = false;
   spearMesh.count = 0;
@@ -461,28 +481,23 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     }
     printMesh.count = preparingFootprints ? 1 : f;
 
-    // Spears: fall along their lean, stand a moment, then sink away.
+    // Spears keep their shape through contact, then break up into cold light.
     let s = 0;
     for (const spear of falling) {
       spear.t += dt;
       const before = spear.at - spear.t,
         dx = Math.sin(spear.turn) * spear.lean,
         dz = Math.cos(spear.turn) * spear.lean;
-      let lift = 0,
-        size = 1;
-      if (before > 0) lift = before * 46;
-      else {
-        const after = -before;
-        if (after > 0.55) size = Math.max(0, 1 - (after - 0.55) / 0.3);
-        lift = -0.15;
-      }
-      if (before > 0.28 || size <= 0 || s >= 32) continue;
+      const lift = before > 0 ? before * 46 : -0.15,
+        remain = Math.min(1, Math.max(0, (before + 0.9) / 0.34));
+      if (before > 0.28 || remain <= 0 || s >= 32) continue;
       place[0] = spear.x + dx * lift;
-      place[1] = lift + (1 - size) * -0.6;
+      place[1] = lift;
       place[2] = spear.z + dz * lift;
-      spearMesh.setTransformAt(s++, place, axisAngle(dz, 0, -dx, Math.atan(Math.hypot(dx, dz))), [1, size, 1]);
+      spearMesh.setTransformAt(s, place, axisAngle(dz, 0, -dx, Math.atan(Math.hypot(dx, dz))), 1);
+      spearMesh.setColorAt(s++, 1, 1, 1, remain);
     }
-    spearMesh.count = s;
+    spearMesh.count = preparingFootprints ? 1 : s;
     falling = falling.filter((spear) => spear.t < spear.at + 0.9);
   }
 

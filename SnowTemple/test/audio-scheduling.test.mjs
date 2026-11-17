@@ -104,4 +104,32 @@ test('project audio plays one loop per bus and skips cues missed during mute or 
   next.resolve();
   await fading;
   assert.equal(scheduled.length, starts, 'a late decode cannot replace the current scene');
+
+  scheduled.length = 0;
+  const interrupted = Promise.withResolvers();
+  delay = { name: 'lin-opening.mp3', wait: interrupted.promise };
+  const firstLine = audio.speak('lin-opening');
+  clock.state = 'suspended';
+  interrupted.resolve();
+  assert.equal(await firstLine, false, 'speech must not queue on a paused browser audio context');
+  assert.equal(scheduled.length, 0);
+  clock.state = 'running';
+
+  let wall = 0;
+  const wallTimer = t.mock.method(performance, 'now', () => wall);
+  const late = Promise.withResolvers();
+  delay = { name: 'lu-end.mp3', wait: late.promise };
+  const lastLine = audio.speak('lu-end');
+  wall = 600;
+  late.resolve();
+  assert.equal(await lastLine, false, 'a late line is dropped even if the audio clock never advanced');
+  assert.equal(scheduled.length, 0);
+  wallTimer.mock.restore();
+
+  delay = null;
+  const failDecode = t.mock.method(clock, 'decodeAudioData', async () => { throw Error('broken clip'); });
+  assert.equal(await audio.speak('lu-rage'), false, 'a corrupt dialogue file is skipped');
+  failDecode.mock.restore();
+  assert.equal(await audio.speak('lu-rage'), true, 'a decode failure does not cache a permanently broken clip');
+  assert.equal(requests.filter((name) => name === 'lu-rage.mp3').length, 2);
 });

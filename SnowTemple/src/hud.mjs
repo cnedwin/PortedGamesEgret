@@ -17,6 +17,7 @@ const ICONS = {
 const DEED_NAMES = { attack: '出枪', guard: '格挡（按住）', stars: '寒星', rain: '梨花枪雨', dodge: '闪避', glide: '踏雪（按住）', drink: '饮酒', up: '向上', down: '向下', left: '向左', right: '向右', bag: '行囊' };
 const ACTION_LABELS = { attack: '出枪', guard: '格挡', stars: '寒星', rain: '枪雨', dodge: '闪避', glide: '踏雪', drink: '饮酒' };
 const GOALS = { road: '往草料场去', yard: '清掉草料场里的人', gate: '上山神庙', boss: '', done: '' };
+const LOOT_MARKS = { coin: '钱', silver: '银', salve: '药', tonic: '丹', page: '谱' };
 
 const el = (tag, attrs = {}, html = '') => {
   const node = document.createElement(tag);
@@ -133,9 +134,46 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
 
   // ---- bag ----------------------------------------------------------------------------------
   const pack = $('#pack');
+  const flights = new Map();
   const toggleBag = () => onUiSound(pack.classList.toggle('open') ? 'open' : 'close');
   pack.querySelector('.tag').addEventListener('click', toggleBag);
   input.on('bag', toggleBag);
+  hud.clearPickups = () => {
+    for (const animation of flights.values()) animation.cancel();
+    for (const node of flights.keys()) node.remove();
+    flights.clear();
+  };
+  hud.flyPickup = (kind, grade, x, y) => {
+    if (![x, y].every(value => Number.isFinite(value) && value >= 0 && value <= 1) ||
+      matchMedia('(prefers-reduced-motion: reduce)').matches || !Element.prototype.animate) return false;
+    const bounds = root.getBoundingClientRect(), target = pack.querySelector('.tag').getBoundingClientRect();
+    if (!bounds.width || !target.width) return false;
+    if (flights.size >= 8) {
+      const [node, old] = flights.entries().next().value;
+      old.cancel();
+      node.remove();
+      flights.delete(node);
+    }
+    const startX = x * bounds.width, startY = y * bounds.height,
+      dx = target.left - bounds.left + target.width / 2 - startX,
+      dy = target.top - bounds.top + target.height / 2 - startY;
+    const node = el('span', { class: 'loot-flight', 'data-grade': grade, 'aria-hidden': 'true' });
+    node.textContent = LOOT_MARKS[kind] ?? '物';
+    node.style.left = startX + 'px';
+    node.style.top = startY + 'px';
+    root.append(node);
+    const animation = node.animate([
+      { transform: 'translate(-50%, -50%) scale(.7)', opacity: 0.65 },
+      { offset: 0.42, transform: `translate(calc(-50% + ${dx * 0.4}px), calc(-50% + ${dy * 0.42 - 37}px)) scale(1.1)`, opacity: 1 },
+      { transform: `translate(calc(-50% + ${dx}px), calc(-50% + ${dy}px)) scale(.3)`, opacity: 0.12 }
+    ], { duration: 445, easing: 'cubic-bezier(.24,.4,.45,1)' });
+    flights.set(node, animation);
+    animation.onfinish = () => {
+      if (flights.delete(node)) hud.bump();
+      node.remove();
+    };
+    return true;
+  };
   function fillBag(game) {
     const rows = Object.keys(LOOT)
       .filter((kind) => game.bag[kind] > 0)

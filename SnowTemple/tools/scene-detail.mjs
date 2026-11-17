@@ -1,5 +1,6 @@
 // Small, hard-edged details complement the weathered, sculpted bodies. They are
 // packed into the same mesh and material as the object that carries them.
+import { PROP_SURFACE } from '../src/view/prop-surface.mjs';
 const ink = (hex) => [16, 8, 0].map((shift) => (((hex >> shift) & 255) / 255) ** 2.2);
 const OAK = ink(0x473428), VERMILION = ink(0x8b392d), EDGE = ink(0xb16c50),
   JADE = ink(0x315f61), SLATE = ink(0x566576), STONE = ink(0x81848a),
@@ -10,19 +11,20 @@ const subtract = (a, b) => a.map((v, i) => v - b[i]);
 const cross = (a, b) => [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
 const unit = (a) => { const length = Math.hypot(...a); return a.map((v) => v / length); };
 
-function reliefMesh() {
-  const positions = [], normals = [], colours = [], indices = [];
-  function vertex(point, normal, tint) {
+function reliefMesh(defaultSurface) {
+  const positions = [], normals = [], colours = [], surfaces = [], indices = [];
+  function vertex(point, normal, tint, surface = defaultSurface) {
     const index = positions.length / 3;
     positions.push(...point);
     normals.push(...normal);
     colours.push(...tint);
+    surfaces.push(surface);
     return index;
   }
-  function face(points, tint) {
+  function face(points, tint, surface) {
     const normal = unit(cross(subtract(points[1], points[0]), subtract(points[2], points[0])));
     const offset = positions.length / 3;
-    for (const point of points) vertex(point, normal, tint);
+    for (const point of points) vertex(point, normal, tint, surface);
     for (let corner = 1; corner + 1 < points.length; corner++) indices.push(offset, offset + corner, offset + corner + 1);
   }
   function box(x, y, z, w, h, d, tint) {
@@ -53,7 +55,22 @@ function reliefMesh() {
       for (let i = 0; i < sides; i++) indices.push(centre, rear[(i + 1) % sides], rear[i]);
     }
   }
-  return { positions, normals, colours, indices, box, pin };
+  function lathe(profile, sides) {
+    const rows = profile.map(([r,y,tint], i) => {
+      const [r0,y0] = profile[Math.max(0,i-1)], [r1,y1] = profile[Math.min(profile.length-1,i+1)];
+      const direction = unit([y1-y0,r0-r1,0]);
+      return Array.from({ length:sides }, (_, slice) => {
+        const angle = slice * Math.PI * 2 / sides, c = Math.cos(angle), s = Math.sin(angle);
+        return vertex([r*c,y,r*s], [direction[0]*c,direction[1],direction[0]*s], tint);
+      });
+    });
+    for (let i=1; i<rows.length; i++) for (let j=0; j<sides; j++) {
+      const next=(j+1)%sides, a=rows[i-1][j], b=rows[i][j], c=rows[i][next], d=rows[i-1][next];
+      if (profile[i][0] !== 0) indices.push(a,b,c);
+      if (profile[i-1][0] !== 0) indices.push(a,c,d);
+    }
+  }
+  return { positions, normals, colours, surfaces, indices, face, box, pin, lathe };
 }
 
 /** Thin pigmented trim lines, laid out as carpentry rather than floating decals. */
@@ -139,6 +156,12 @@ const DETAILS = {
     plaque(mesh, 6.25, 4.45, 1.35);
   },
   censer(mesh, detail) {
+    const dark = ink(0x4f5a4b), lip = ink(0x877853), cast = ink(0x66684e), ash = ink(0x57574e);
+    // One continuous cast shell: the lip turns inward to the ash-filled bowl.
+    mesh.lathe([[0,0.72,dark],[0.365,0.727,dark],[0.58,0.754,dark],[0.737,0.842,cast],[0.822,0.94,cast],
+      [0.851,1.064,cast],[0.850,1.152,BRONZE],[0.864,1.178,lip],[0.853,1.205,cast],
+      [0.825,1.228,cast],[0.89,1.255,lip],[0.9,1.283,lip],[0.878,1.31,lip],[0.81,1.311,PATINA],
+      [0.783,1.263,PATINA],[0.744,1.213,dark],[0.653,1.124,dark],[0.471,1.052,ash],[0,1.04,ash]], detail ? 56 : 36);
     for (let i = 0; i < 16; i++) {
       const a = i * Math.PI / 8, c = Math.cos(a), s = Math.sin(a);
       mesh.pin([c * 0.816, 1.075, s * 0.816], [c * 0.887, 1.075, s * 0.887], 0.04, i % 4 ? BRONZE : GOLD, 8);
@@ -157,11 +180,43 @@ const DETAILS = {
       mesh.box(0, 0.17, side * 0.292, 0.53, 0.038, 0.095, FROST);
     }
     mesh.pin([0,1.02,0],[0,1.04,0],0.225,STONE,10);
+    const roof = (width,y,kick) => [
+      [-width,y+kick,+width],[0,y,+width],[width,y+kick,+width],[width,y,0],
+      [width,y+kick,-width],[0,y,-width],[-width,y+kick,-width],[-width,y,0]
+    ];
+    const courses = [roof(0.249,1.516,0),roof(0.346,1.554,0.027),roof(0.306,1.591,0.018),
+      roof(0.208,1.645,0.009),roof(0.124,1.709,0.003),roof(0.049,1.749,0)];
+    for (let i=1; i<courses.length; i++) for (let j=0; j<8; j++) {
+      const next=(j+1)%8, outer=courses[i-1], inner=courses[i];
+      mesh.face([outer[j],outer[next],inner[next],inner[j]], i===1?SLATE:STONE);
+    }
+    // Leave some exposed stone around the upturned eaves under the frost.
+    const cover=[roof(0.292,1.605,0.014),roof(0.192,1.661,0.009),roof(0.111,1.724,0.004),roof(0.044,1.762,0)];
+    for (let i=1; i<cover.length; i++) for (let j=0; j<8; j++) {
+      const next=(j+1)%8, outer=cover[i-1], inner=cover[i];
+      mesh.face([outer[j],outer[next],inner[next],inner[j]], FROST, PROP_SURFACE.snow);
+    }
+  },
+  pine(mesh, detail, solids) {
+    const spans = detail ? 5 : 3;
+    for (const limb of solids) {
+      if (!limb.spray) continue;
+      const forward = unit(subtract(limb.b, limb.a)), side = unit(cross(forward,[0,1,0]));
+      for (let i=0; i<spans; i++) for (const sign of [-1,1]) {
+        const t=0.57+i*0.36/spans, length=0.16+0.24*(1-t);
+        const root = limb.a.map((v,j)=>v+(limb.b[j]-v)*t);
+        const tip = root.map((v,j)=>v+forward[j]*0.165+side[j]*sign*length+(j===1?-0.105:0));
+        const left=root.map((v,j)=>v-forward[j]*0.042+side[j]*sign*0.025);
+        const right=root.map((v,j)=>v+forward[j]*0.037+side[j]*sign*0.024+(j===1?0.033:0));
+        mesh.face([left,right,tip],limb.colour);
+        mesh.face([right,left,tip],limb.colour);
+      }
+    }
   }
 };
 
 /** Add the trim without adding a draw call or changing the original envelopes. */
-export function detailSceneMesh(name, base, coarse) {
+export function detailSceneMesh(name, base, coarse, solids) {
   if (name === 'stele') {
     // Baked surface variation follows gravity on the slab. Keep raised snow
     // on its cap clear, and don't add a second material or texture.
@@ -177,9 +232,16 @@ export function detailSceneMesh(name, base, coarse) {
   }
   const make = DETAILS[name];
   if (!make) return base;
-  const detail = reliefMesh();
-  make(detail, coarse === 1);
-  const offset = base.positions.length / 3, added = detail.positions.length / 3;
+  const surface = name === 'censer' ? PROP_SURFACE.bronze : name === 'pine' ? PROP_SURFACE.needle : PROP_SURFACE.stone;
+  const detail = reliefMesh(surface);
+  make(detail, coarse === 1, solids);
+  const offset = base.positions.length / 3;
+  const lo = [...base.lo], hi = [...base.hi];
+  for (let i=0; i<detail.positions.length; i++) {
+    const dim = i % 3;
+    lo[dim] = Math.min(lo[dim], detail.positions[i]);
+    hi[dim] = Math.max(hi[dim], detail.positions[i]);
+  }
   const combine = (source, copy) => {
     const result = new source.constructor(source.length + copy.length);
     result.set(source);
@@ -187,6 +249,6 @@ export function detailSceneMesh(name, base, coarse) {
     return result;
   };
   return { ...base, positions: combine(base.positions, detail.positions), normals: combine(base.normals, detail.normals),
-    colours: combine(base.colours, detail.colours), stuffs: combine(base.stuffs, new Uint8Array(added)),
-    indices: combine(base.indices, detail.indices.map((index) => index + offset)) };
+    colours: combine(base.colours, detail.colours), stuffs: combine(base.stuffs, detail.surfaces),
+    indices: combine(base.indices, detail.indices.map((index) => index + offset)), lo, hi };
 }

@@ -1,10 +1,11 @@
 // The people of the chapter: sculpted figures on a shared skeleton, and the poses that move them.
 // A figure faces +z; its left is +x. Poses are sets of joint angles; each frame every joint eases toward
 // the pose its state asks for, which is what gives the cuts their snap and the walk its weight.
-import { Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createCylinderGeometry3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatSlerp } from '@egret/engine/world3d';
+import { Mesh3D, Object3D, Skeleton3D, createCustomShader3D, createCylinderGeometry3D, createStandardMaterial3D, mat4LookAt, quatFromRotationMatrix, quatMultiply, quatNormalize, quatSlerp, vec3TransformQuat } from '@egret/engine/world3d';
 import { LOCOMOTION, sampleLocomotion } from './locomotion.mjs';
 import { BIND, BONES, HANDS, JOINTS, YARD_BONES, YARD_GRIPS } from './rig.mjs';
 import { groundBoots } from './boot-contact.mjs';
+import { applyCombatBody, attackTiming, sampleCombat } from './combat-motion.mjs';
 
 // Fine surface that the sculpted mesh is too coarse to carry, drawn per pixel from a pattern that stays
 // fixed to the figure: the threads of woven cloth, pores and flush on skin, the grain of leather, the
@@ -181,7 +182,7 @@ export function createFigure(kind, models, detail = 'high', externalBody) {
   root.setScale(look.size);
   const angles = {};
   for (const name of posed) angles[name] = [0, 0, 0];
-  const gait = { phase: 0, travelled: 0, speed: 0, heading: 0, walk: {}, run: {}, contacts: {} };
+  const gait = { phase: 0, travelled: 0, speed: 0, heading: 0, walk: {}, run: {}, contacts: {}, combat: {} };
   const plants = { L: {}, R: {} };
   return { kind, look, root, joints, rest, posed, angles, gait, plants, string, held: 0, slide: 0, rightOpening: 0, lift: 0, tintBody, dispose, metal, glow: 0, flash: 0, scale: look.size, sink: 0 };
 }
@@ -290,6 +291,26 @@ const CUTS = [
     { spine: [0.7, 0, 0], head: [-0.4, 0, 0], armR: [-0.95, 0, 0.1], foreR: [-0.2, 0, 0], weapon: [0.52, 0, 0], armL: [-0.9, 0, -0.1], foreL: [-0.4, 0, 0], legL: [-0.9, 0, 0.1], shinL: [1.1, 0, 0], legR: [0.5, 0, -0.1], shinR: [0.6, 0, 0], lift: -0.32, cloak: [0.9, 0, 0] }
   ]
 ];
+const CUT_CAPTURES = ['thrust', 'sweep', 'overhead'];
+
+function capturedAttack(base, draw, follow, capture, t, marks, gait) {
+  const sample = sampleCombat(capture, t, marks, gait?.combat);
+  const phase = sample.phase;
+  const pulled = { ...base, ...draw };
+  const carried = { ...base, ...follow };
+  // The capture has the actor's joints, not the game weapon's shaft. Send the
+  // edge through the existing hit direction first, then let the shaft follow on.
+  const impact = blend(pulled, carried, .89);
+  impact.weapon = [capture === 'overhead' ? .26 : .07, capture === 'sweep' || capture === 'slash' ? .12 : 0, 0];
+  let pose;
+  if (phase < .25) pose = blend(base, pulled, ease(phase * 4));
+  else if (phase < .5) pose = blend(pulled, impact, ease((phase - .25) * 4));
+  else if (phase < .75) pose = blend(impact, carried, ease((phase - .5) * 4));
+  else pose = blend(carried, base, ease((phase - .75) * 4));
+  const weight = ease(span(phase, 0, .20)) * (1 - ease(span(phase, .77, 1)));
+  pose.actionFloor = true;
+  return applyCombatBody(pose, sample, weight);
+}
 
 const HERO_POSES = {
   guard: { spine: [0.12, 0, 0], armR: [-1.0, 0, -0.35], foreR: [-0.9, 0, 0], weapon: [-0.2, 1.4, 0.2], armL: [-1.2, 0, 0.45], foreL: [-0.7, 0, 0], legL: [-0.35, 0, 0.16], shinL: [0.4, 0, 0], legR: [0.3, 0, -0.16], shinR: [0.35, 0, 0], lift: -0.12 },
@@ -336,16 +357,26 @@ export function heroPose(hero, tune, clock, travelled, fallen = 0, gait, dt = 0)
       const cut = tune.cuts[hero.cut],
         [back, through] = CUTS[hero.cut],
         transfer = Math.sin(Math.PI * span(hero.t, 0, cut.windup));
-      if (hero.t < cut.windup) return [{ ...base, ...back, grip: { strength: 1 - 0.52 * transfer, slide: -0.12 * transfer } }, 30];
-      if (hero.t < cut.windup + cut.active + 0.08) return [{ ...base, ...through, grip: { strength: 1, slide: hero.cut === 2 ? 0.1 : 0.045 } }, 46];
-      return [blend({ ...base, ...through }, base, ease(span(hero.t, cut.windup + cut.active + 0.08, cut.windup + cut.active + cut.recover))), 16];
+      const drawn = capturedAttack(base, back, through, CUT_CAPTURES[hero.cut], hero.t, attackTiming(cut.windup, cut.active, cut.recover), gait);
+      drawn.grip = { strength: 1 - .32 * transfer, slide: -.10 * transfer + .065 * ease(span(hero.t, cut.windup, cut.windup + cut.active)) };
+      return [drawn, hero.t < cut.windup + cut.active ? 82 : 36];
     }
-    case 'riposte':
-      return hero.t < tune.riposte.strike * 0.7 ? [{ ...base, ...CUTS[0][0], lift: -0.25 }, 40] : [{ ...base, ...CUTS[0][1], lift: -0.3 }, 50];
+    case 'riposte': {
+      const { strike, time } = tune.riposte;
+      const [back, through] = CUTS[0];
+      return [capturedAttack(base, back, through, 'thrust', hero.t, attackTiming(strike, .09, time - strike - .09), gait), 72];
+    }
     case 'guard':
       return [{ ...base, ...HERO_POSES.guard }, 26];
-    case 'dodge':
-      return [{ ...base, ...HERO_POSES.dodge, hips: [hero.t / tune.dodge.time < 0.8 ? 0.5 : 0, 0, 0] }, 26];
+    case 'dodge': {
+      const { safe, time } = tune.dodge;
+      const sampled = sampleCombat('duck', hero.t, [0, safe * .38, safe * .71, safe, time], gait?.combat);
+      const dip = Math.sin(Math.PI * sampled.phase);
+      const carried = blend(base, { ...base, ...HERO_POSES.dodge }, dip);
+      carried.grip = { strength: 1 - dip * .82 };
+      carried.actionFloor = true;
+      return [applyCombatBody(carried, sampled, dip), 57];
+    }
     case 'hurt':
       return reel(base, { ...base, ...HERO_POSES.hurt }, hero.t, hero.staggerFor ?? 0.4);
     case 'drink':
@@ -472,6 +503,17 @@ export function foePose(foe, clock, travelled, gait, dt = 0) {
       const action = foe.kind === 'shield' && move.name === 'bash' ? 'bash' : key,
         back = over(FOE_POSES[action + 'Back']),
         through = over(FOE_POSES[action + 'Through']);
+      const capture = foe.kind === 'blade' ? 'slash' : foe.kind === 'lu' &&
+        (key === 'arc' ? 'sweep' : key === 'line' ? 'thrust' : move.name === 'slam' ? 'overhead' : null);
+      if (capture) {
+        const contact = move.windup + move.active * .5;
+        const timing = attackTiming(move.windup, move.active, move.recover, contact);
+        const elapsed = foe.t + (foe.state === 'windup' ? 0 : move.windup + (foe.state === 'recover' ? move.active : 0));
+        const directed = capturedAttack(base, back, through, capture, elapsed, timing, gait);
+        // The cradle hand comes away to make room for the overhead lift.
+        if (move.name === 'slam') directed.grip = { strength: 1 - .92 * Math.sin(Math.PI * span(elapsed, 0, contact)) };
+        return [directed, foe.state === 'recover' ? 25 : 66];
+      }
       if (foe.state === 'windup') {
         const drawn = blend(base, back, ease(span(foe.t, 0, move.windup * 0.55)));
         // The high lift moves the shaft beyond the support arm before the overhead blow.
@@ -507,11 +549,55 @@ export function pose(figure, target, rate, dt) {
   figure.lift += ((target.lift ?? 0) - figure.lift) * k;
   joints.hips.setPosition(0, figure.rest.hips[1] + figure.lift, 0);
   groundBoots(joints, figure.plants, target);
+  if (target.actionFloor) fitActionFloor(figure);
   if (figure.look.articulated) {
     poseGrip(figure, target, dt);
     return;
   }
   poseYardGrips(figure, target);
+}
+
+const bootHeel = [0, -.073, -.052], bootToe = [0, -.073, .15];
+const localForward = [0, 0, 1], actionPoint = [0, 0, 0];
+const carriedFrom = [0, 0, 0], carriedTo = [0, 0, 0], carryTurn = [0, 0, 0, 1];
+const shaftLengths = { spear: [1.86, 1.24], glaive: [1.98, 1.22] };
+
+function fitActionFloor(figure) {
+  const { root, joints, look } = figure;
+  const floor = root.position[1];
+  const bootY = Math.min(joints.footL.localToWorld(actionPoint, bootHeel)[1],
+    joints.footL.localToWorld(actionPoint, bootToe)[1], joints.footR.localToWorld(actionPoint, bootHeel)[1],
+    joints.footR.localToWorld(actionPoint, bootToe)[1]);
+  if (bootY < floor - .009) {
+    joints.hips.setPosition(0, joints.hips.position[1] + floor - bootY - .009, 0);
+  }
+  const length = shaftLengths[look.weapon];
+  if (!length) return;
+  // The root stays on its gameplay path. Adjust the prop against the floor
+  // before the existing wrist constraint seats the right hand on the haft.
+  const handY = joints.palmR.getWorldPosition(actionPoint)[1];
+  const clearance = Math.max(0, handY - floor - .13) / look.size;
+  joints.weapon.updateWorldMatrix();
+  const shaft = joints.weapon.matrixWorld, scale = look.size;
+  const pitch = shaft[9] / scale;
+  const safe = Math.max(-clearance / length[0], Math.min(clearance / length[1], pitch));
+  if (Math.abs(safe - pitch) < .00001) return;
+  const horizontal = Math.hypot(shaft[8], shaft[10]);
+  const spread = Math.sqrt(Math.max(0, 1 - safe * safe));
+  const x = horizontal > .001 ? shaft[8] * spread / horizontal : 0;
+  const z = horizontal > .001 ? shaft[10] * spread / horizontal : spread;
+  const spine = joints.spine.matrixWorld;
+  for (let i = 0; i < 3; i++) {
+    carriedTo[i] = (spine[i * 4] * x + spine[i * 4 + 1] * safe + spine[i * 4 + 2] * z) / scale;
+  }
+  vec3TransformQuat(carriedFrom, localForward, joints.weapon.quaternion);
+  carryTurn[0] = carriedFrom[1] * carriedTo[2] - carriedFrom[2] * carriedTo[1];
+  carryTurn[1] = carriedFrom[2] * carriedTo[0] - carriedFrom[0] * carriedTo[2];
+  carryTurn[2] = carriedFrom[0] * carriedTo[1] - carriedFrom[1] * carriedTo[0];
+  carryTurn[3] = 1 + carriedFrom[0] * carriedTo[0] + carriedFrom[1] * carriedTo[1] + carriedFrom[2] * carriedTo[2];
+  quatNormalize(carryTurn, carryTurn);
+  quatMultiply(carryTurn, carryTurn, joints.weapon.quaternion);
+  joints.weapon.setQuaternion(...carryTurn);
 }
 
 const yardCenter = [0, 0, 0],

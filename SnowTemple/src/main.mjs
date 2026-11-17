@@ -12,6 +12,7 @@ import { createEngine } from '@egret/engine';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { createWebGL2Renderer3D, createWorld3DHost, createWorld3DView, startWorld3DLoop } from '@egret/engine/webgl2/world3d';
 import { createAudio } from './audio.mjs';
+import { DIALOGUE } from './dialogue.mjs';
 import { captureTempleLoadout, createTempleReplay } from './chapter.mjs';
 import { createHud } from './hud.mjs';
 import { DEFAULT_KEYS, createInput } from './input.mjs';
@@ -20,6 +21,7 @@ import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { loadModels } from './view/models.mjs';
 import { loadCharacterBodies } from './view/characters.mjs';
+import { loadPropAtlas } from './view/prop-atlas.mjs';
 import { createSnowLook } from './view/look.mjs';
 import { createView } from './view/view.mjs';
 
@@ -86,14 +88,16 @@ async function main() {
     // Model detail is its own choice; left to itself, a phone takes the light set.
     detail = ['low', 'mid', 'high'].includes(params.get('models') ?? settings.models) ? (params.get('models') ?? settings.models) : coarse ? 'low' : 'high',
     externalLoad = params.get('characters') === 'original' ? null : loadCharacterBodies(detail),
-    [models, external] = await Promise.all([
+    [models, external, loadedAtlas] = await Promise.all([
       loadModels(detail, undefined, externalLoad?.then(({ bodies }) => bodies)),
-      externalLoad
+      externalLoad,
+      loadPropAtlas(detail)
     ]),
+    propAtlas = loadedAtlas ? scope.use(loadedAtlas).maps : undefined,
     characters = external ? scope.use(external).bodies : undefined,
     view = createView(scene, camera, models, {
       detail,
-      reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, characters });
+      reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, characters, propAtlas });
   if (external) status.characters = { level: detail, loaded: Object.keys(characters).sort(), failures: external.failures };
   progress(0.9, '请陆虞候入座');
   await new Promise((done) => setTimeout(done));
@@ -149,13 +153,10 @@ async function main() {
     end: () => (k, g) => ({ eye: lerp3([g.hero.x + 4, 3, g.hero.z + 7], [g.hero.x + 10, 16, g.hero.z + 20], smooth(k)), look: [g.hero.x, 1.2, g.hero.z - k * 6] })
   };
   const LINES = {
-    open: [[0.4, '草料场烧起来了。这把火，是有人放的。', '']],
-    meet: [
-      [0.5, '林教头。火里没寻着你的骨头，我只好多等一夜。', '陆谦'],
-      [3.0, '太尉要的不过是你一条命，莫叫我为难。', '陆谦']
-    ],
-    rage: [[0.5, '我回不去了。你也休想走！', '陆谦']],
-    end: [[0.6, '……高太尉，不会放过你。', '陆谦']]
+    open: [[0.28, 'lin-opening']],
+    meet: [[0.08, 'lu-meet'], [2.8, 'lu-demand']],
+    rage: [[0.36, 'lu-rage']],
+    end: [[0.62, 'lu-end']]
   };
   let pending = [],
     titleCardAt = Infinity,
@@ -167,10 +168,16 @@ async function main() {
     quickMeet = false;
   const freshSummary = () => ({ time: 0, parries: 0, ripostes: 0, falls: 0 });
 
+  function speak(id) {
+    const line = DIALOGUE[id];
+    hud.say(line.text, line.who, line.seconds + 0.19);
+    audio.speak(id);
+  }
+
   function stage(id, time) {
     view.stage(time, SHOTS[id](), id === 'open' || id === 'meet');
     hud.stage(true);
-    pending = LINES[id].map(([at, text, who]) => ({ at: game.time + at, text, who }));
+    pending = LINES[id].map(([at, cue]) => ({ at: game.time + at, cue }));
     if (id === 'open') titleCardAt = game.time + 1.15;
   }
 
@@ -190,12 +197,15 @@ async function main() {
     ui.classList.remove('complete');
     input.setEnabled(true);
     audio.start();
+    audio.stopDialogue();
+    audio.prepareDialogue(...(quickMeet ? ['lu-rage', 'lu-end'] : ['lin-opening', 'lin-yard', 'lin-wave']));
     audio.setPaused(false);
     audio.setMood(quickMeet ? 'gate' : 'title');
     audio.playUi(replay ? 'confirm' : 'start');
     hud.hideTitle();
     hud.stage(false);
     hud.clearSpeech();
+    hud.clearPickups();
     hud.clearHint();
     hud.veil(false);
     view.resetRound(game);
@@ -262,15 +272,22 @@ async function main() {
         break;
       case 'stage':
         audio.setMood(e.stage === 'boss' ? 'boss1' : e.stage === 'done' ? 'end' : e.stage);
-        if (e.stage === 'gate') hud.say('庙门的闩，落了。', '', 3);
+        if (e.stage === 'yard') {
+          speak('lin-yard');
+          audio.prepareDialogue('lin-gate', 'lu-meet', 'lu-demand');
+        }
+        if (e.stage === 'gate') {
+          speak('lin-gate');
+          audio.prepareDialogue('lu-rage', 'lu-end');
+        }
         if (e.stage === 'boss' && !templeLoadout) templeLoadout = captureTempleLoadout(game);
         break;
       case 'party':
-        hud.say('庙那边又下来几个。', '', 2.6);
+        speak('lin-wave');
         break;
       case 'pickup':
         hud.note(e.note, e.grade);
-        hud.bump();
+        if (!hud.flyPickup(e.kind, e.grade, ...view.screen(e.x, 0.5, e.z))) hud.bump();
         break;
       case 'rest':
         hud.note('烤了烤火，伤口不疼了，葫芦也灌满了。', 1);
@@ -314,6 +331,7 @@ async function main() {
       finishShaderWarmup();
       boot.classList.add('done');
       hud.ready();
+      audio.prepareDialogue('lin-opening');
       if (params.has('auto') || params.get('at')) startGame();
     }
     dt = Math.min(dt, 0.1);
@@ -342,7 +360,7 @@ async function main() {
           onEvent(e);
         }
       }
-      for (const line of pending) if (!line.said && game.time >= line.at) (line.said = true), hud.say(line.text, line.who, 2.2);
+      for (const line of pending) if (!line.said && game.time >= line.at) (line.said = true), speak(line.cue);
       if (game.time >= titleCardAt) {
         titleCardAt = Infinity;
         hud.card('风雪山神庙', '第一回', 1.55);
@@ -367,7 +385,7 @@ async function main() {
     }
     view.mirror?.(renderer, game);
     if (mode === 'title') titleCamera();
-    updateLook(camera, view.fogLights, mode === 'title' || !!view.cine, dt);
+    updateLook(camera, view.fogLights, mode === 'title' || !!view.cine, game.stage === 'boss' && !view.cine, dt);
     hud.update(game, view);
     audio.update();
 

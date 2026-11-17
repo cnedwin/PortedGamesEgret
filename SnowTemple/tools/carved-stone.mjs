@@ -1,4 +1,5 @@
 // Sculpted as bare stone so the details receive the same light and shadow as the plinth.
+import { PROP_SURFACE } from '../src/view/prop-surface.mjs';
 const ink = (hex) => [16, 8, 0].map(shift => (((hex >> shift) & 255) / 255) ** 2.2);
 const GRANITE = ink(0x788184), CUT = ink(0x475055), LIGHT = ink(0x8a918f);
 const BASE = ink(0x616b70), SNOW = ink(0xd3e0e7);
@@ -23,7 +24,7 @@ export function guardianLion() {
   box([0, 0.338, 0], [0.585, 0.154, 0.73], { colour: GRANITE });
   box([0, 0.53, 0], [0.63, 0.051, 0.79], { colour: LIGHT });
   box([0, 0.594, 0], [0.66, 0.033, 0.807], { colour: BASE, round: 0.021 });
-  egg([0, 0.627, 0.065], [0.57, 0.034, 0.66], { colour: SNOW, rough: { scale: 8, amp: 0.028 } });
+  egg([0, 0.627, 0.065], [0.57, 0.034, 0.66], { colour: SNOW, stuff: PROP_SURFACE.snow, rough: { scale: 8, amp: 0.028 } });
 
   egg([0, 1.06, -0.22], [0.395, 0.46, 0.458], { k: 0.08 });
   egg([0, 1.47, 0.065], [0.42, 0.47, 0.389], { k: 0.076 });
@@ -83,7 +84,7 @@ export function guardianLion() {
       }
     }
   }
-  egg([0.025, 2.475, -0.027], [0.29, 0.105, 0.284], { colour: SNOW, k: 0.024, rough: { scale: 12, amp: 0.025 } });
+  egg([0.025, 2.475, -0.027], [0.29, 0.105, 0.284], { colour: SNOW, stuff: PROP_SURFACE.snow, k: 0.024, rough: { scale: 12, amp: 0.025 } });
   return solids;
 }
 
