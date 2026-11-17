@@ -4,14 +4,28 @@ import { SkinnedInstancedMesh3D } from '../../rendering/world3d/AnimationTexture
 import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
 import { RenderList3D } from '../../rendering/world3d/RenderList3D.js';
 import { CubeTexture3D, RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
-import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, planShadows3D, writeFrameBlock3D } from './frame3D.js';
+import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, outputToneMapping3D, planShadows3D, writeFrameBlock3D } from './frame3D.js';
 import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D } from './post3D.js';
 import { PostChainWebGL23D } from './postWebGL23D.js';
 import { WebGL2FrameMetrics3D } from './webGL2FrameMetrics3D.js';
 import { GpuResources3D } from './gpuResources3D.js';
 import { applyMaterialWebGL23D, buildMaterialDefinesWebGL23D, MATERIAL_VARIANT_WEBGL2_3D as V } from './materialWebGL23D.js';
 import { MAX_MORPH_INFLUENCES_3D, SKYBOX_SHADER_3D, TEXTURE_UNITS_3D, buildMaterialShader3D } from './shaders3D.js';
+function includesReflectionMesh(mesh, reflection, shadow) {
+    if (!shadow && (mesh.layers & reflection.layerMask) === 0)
+        return false;
+    for (let node = mesh; node; node = node.parent)
+        if (reflection.hidden.includes(node))
+            return false;
+    return true;
+}
 const IDENTITY4 = new Float32Array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1]);
+function colorProgramFlags(fog, toneMapping, environment, linear) {
+    return ((fog ? V.fog : 0) |
+        (toneMapping !== 'none' ? V.toneMapped : 0) |
+        (environment ? V.environment : 0) |
+        (linear ? V.linearOutput : 0));
+}
 export class WebGL2Renderer3D {
     canvas;
     toneMapping;
@@ -100,6 +114,7 @@ export class WebGL2Renderer3D {
             // Without preventDefault the browser never restores the context.
             event.preventDefault();
             this.#lost = true;
+            this.#resources.reset();
             this.#frameMetrics.reset(true);
             this.#validReflections = new WeakSet();
             options.onContextLost?.();
@@ -124,6 +139,43 @@ export class WebGL2Renderer3D {
     }
     get isContextLost() {
         return this.#lost || this.#gl.isContextLost();
+    }
+    /** Link and initialize the specified draw variants without submitting any draws. */
+    async preparePrograms(requests) {
+        if (this.#disposed)
+            throw new World3DError('WORLD3D_DISPOSED', 'renderer');
+        if (this.isContextLost)
+            throw new World3DError('WORLD3D_CONTEXT_LOST', 'program preparation');
+        const programs = [];
+        for (const request of requests) {
+            const { mesh, material, reflection } = request;
+            const target = reflection?.target ?? request.target;
+            if (reflection && request.target && reflection.target !== request.target)
+                throw new World3DError('WORLD3D_INPUT_INVALID', 'reflection program target');
+            const geometry = mesh.geometry;
+            if (geometry.isDisposed || material.isDisposed || target?.isDisposed)
+                throw new World3DError('WORLD3D_DISPOSED', 'program preparation input');
+            const pass = request.pass ?? 'color';
+            if (pass !== 'color' && pass !== 'shadow' && pass !== 'depth-prepass')
+                throw new World3DError('WORLD3D_INPUT_INVALID', 'program preparation pass');
+            const shadows = this.shadowsEnabled && (reflection?.shadows ?? true);
+            if (reflection &&
+                ((pass === 'shadow' && !shadows) || !includesReflectionMesh(mesh, reflection, pass === 'shadow')))
+                continue;
+            // The main post chain draws into a linear HDR scene target. The mirror uses its own output.
+            const post = !reflection && this.postProcess.enabled;
+            const toneMapping = post ? 'none' : outputToneMapping3D(reflection?.toneMapping ?? this.toneMapping, target);
+            const flags = pass === 'color'
+                ? colorProgramFlags(request.fog === true, toneMapping, request.environment === true, post || Boolean(target)) |
+                    (request.receiveShadows && (!reflection || shadows) ? V.receiveShadow : 0) |
+                    (request.softDepth ? V.softDepth : 0) |
+                    (request.transmission ? V.transmission : 0)
+                : V.depthOnly;
+            const morphs = geometry.morphTargets;
+            const morphAttributes = !morphs.length ? 0 : morphs.some(morph => morph.normal) ? 2 : 1;
+            programs.push(this.programRequest(material, this.meshProgramVariant(mesh, geometry, material, flags, morphAttributes)));
+        }
+        await this.#resources.preparePrograms(programs);
     }
     /** The underlying context, for advanced interop. Restore any state you change. */
     get context() {
@@ -185,16 +237,22 @@ export class WebGL2Renderer3D {
         const saved = this.#reflectionTarget;
         this.#reflectionTarget = target;
         try {
-            const rendered = this.render(scene, camera, target);
-            if (rendered) {
-                this.#validReflections.add(target);
-                this.#frameMetrics.recordReflection('rendered');
-            }
-            return rendered;
+            return this.recordReflection(target, this.render(scene, camera, target));
         }
         finally {
             this.#reflectionTarget = saved;
         }
+    }
+    /** Draw the mirror directly with its own output, shadows and object selection. */
+    renderReflectionPass(scene, camera, pass) {
+        return this.recordReflection(pass.target, this.renderMeasuredView(scene, camera, pass.target, 'reflection', pass));
+    }
+    recordReflection(target, rendered) {
+        if (rendered) {
+            this.#validReflections.add(target);
+            this.#frameMetrics.recordReflection('rendered');
+        }
+        return rendered;
     }
     /** The retained mirror image must still belong to the live WebGL2 context. */
     reuseReflection(target) {
@@ -203,19 +261,24 @@ export class WebGL2Renderer3D {
         this.#frameMetrics.recordReflection('reused');
         return true;
     }
-    renderMeasuredView(scene, camera, target, kind) {
+    renderMeasuredView(scene, camera, target, kind, reflection) {
         if (this.#disposed)
             throw new World3DError('WORLD3D_DISPOSED', 'renderer');
         if (this.isContextLost)
             return false;
         const viewIndex = this.#frameMetrics.beginView();
+        const post = !reflection && this.postProcess.enabled;
         if (viewIndex < 0)
-            return this.postProcess.enabled ? this.renderPost(scene, camera, target) : this.renderView(scene, camera, target);
+            return post
+                ? this.renderPost(scene, camera, target)
+                : this.renderView(scene, camera, target, 'color', reflection);
         const start = performance.now(), oldIndex = this.#viewIndex, oldKind = this.#viewKind;
         this.#viewIndex = viewIndex;
         this.#viewKind = kind;
         try {
-            return this.postProcess.enabled ? this.renderPost(scene, camera, target) : this.renderView(scene, camera, target);
+            return post
+                ? this.renderPost(scene, camera, target)
+                : this.renderView(scene, camera, target, 'color', reflection);
         }
         finally {
             this.#viewIndex = oldIndex;
@@ -223,20 +286,19 @@ export class WebGL2Renderer3D {
             this.#frameMetrics.endView(start);
         }
     }
-    renderView(scene, camera, target, passKind = 'color') {
+    renderView(scene, camera, target, passKind = 'color', reflection) {
         if (target?.isDisposed)
             throw new World3DError('WORLD3D_DISPOSED', 'render target');
         const gl = this.#gl, list = this.#list, info = this.info;
-        // Half-float targets keep scene-referred light; tone mapping happens when they are displayed.
-        const toneMapping = (this.#frameToneMapping = target?.format === 'rgba16f' ? 'none' : this.toneMapping);
-        list.build(scene, camera);
+        const toneMapping = (this.#frameToneMapping = outputToneMapping3D(reflection?.toneMapping ?? this.toneMapping, target));
+        list.build(scene, camera, reflection);
         info.frame = list.frame;
         info.drawCalls = info.triangles = 0;
         info.visited = list.stats.visited;
         info.culled = list.stats.culled;
         this.resetState();
         this.bindFrameBlock();
-        this.renderShadows(camera);
+        this.renderShadows(camera, this.shadowsEnabled && (reflection?.shadows ?? true));
         // Surfaces that fade near solid geometry read its depth, drawn once up front.
         this.#sceneDepthReady =
             list.transparent.some(item => item.material.softness > 0) && this.renderSceneDepth(camera, target);
@@ -283,10 +345,7 @@ export class WebGL2Renderer3D {
             this.#frameData[FRAME_OFFSETS_3D.clipInfo + 2] = view ? view[2] : 1;
             this.#frameData[FRAME_OFFSETS_3D.clipInfo + 3] = view ? view[3] : 1;
             this.uploadFrameBlock();
-            const flags = (scene.fog ? V.fog : 0) |
-                (toneMapping !== 'none' ? V.toneMapped : 0) |
-                (scene.environment ? V.environment : 0) |
-                (target ? V.linearOutput : 0);
+            const flags = colorProgramFlags(Boolean(scene.fog), toneMapping, Boolean(scene.environment), Boolean(target));
             for (const item of list.opaque)
                 this.draw(item, flags);
             if (background instanceof CubeTexture3D)
@@ -500,8 +559,8 @@ export class WebGL2Renderer3D {
         gl.bindFramebuffer(gl.FRAMEBUFFER, null);
         return { texture, framebuffer, size };
     }
-    renderShadows(camera) {
-        const gl = this.#gl, enabled = this.shadowsEnabled;
+    renderShadows(camera, enabled) {
+        const gl = this.#gl;
         // A shadow-free reflection can run before the main view. Keep its comparison sampler complete
         // without replacing the full atlas needed by the next pass.
         const atlas = enabled
@@ -665,6 +724,12 @@ export class WebGL2Renderer3D {
         let program = cache.variants.get(variant);
         if (program)
             return program;
+        const { key, sources } = this.programRequest(material, variant);
+        program = this.#resources.program(key, sources);
+        cache.variants.set(variant, program);
+        return program;
+    }
+    programRequest(material, variant) {
         const depthOnly = (variant & V.depthOnly) !== 0;
         const defines = buildMaterialDefinesWebGL23D(material, variant, depthOnly);
         const custom = depthOnly ? undefined : material.shader?.glsl, customVertex = material.shader?.glslVertex;
@@ -677,12 +742,13 @@ export class WebGL2Renderer3D {
             defines.push('CUSTOM_VERTEX');
         if (customNormal !== undefined)
             defines.push('CUSTOM_NORMAL');
-        program = this.#resources.program(defines.join(' ') +
-            (custom === undefined && customVertex === undefined && customNormal === undefined
-                ? ''
-                : '|' + material.shader.key), () => buildMaterialShader3D(defines, custom, customVertex, customNormal));
-        cache.variants.set(variant, program);
-        return program;
+        return {
+            key: defines.join(' ') +
+                (custom === undefined && customVertex === undefined && customNormal === undefined
+                    ? ''
+                    : '|' + material.shader.key),
+            sources: () => buildMaterialShader3D(defines, custom, customVertex, customNormal)
+        };
     }
     applyMaterial(program, material, depthOnly) {
         applyMaterialWebGL23D(this.#gl, program.uniforms, this.#resources, this.#scratch9, material, depthOnly);
@@ -747,14 +813,11 @@ export class WebGL2Renderer3D {
         }
     }
     // ---- drawing -----------------------------------------------------------------
-    draw(item, frameFlags, depthPass) {
-        const depthOnly = depthPass !== undefined, shadow = depthPass === 'shadow';
-        const gl = this.#gl, { mesh, geometry, material } = item, resources = this.#resources;
-        const gpu = resources.geometry(geometry);
+    meshProgramVariant(mesh, geometry, material, variant, morphAttributes) {
+        const depthOnly = (variant & V.depthOnly) !== 0;
         const instanced = mesh.isInstanced, skinned = mesh.skeleton !== undefined &&
             geometry.getAttribute('joints') !== undefined &&
             geometry.getAttribute('weights') !== undefined;
-        let variant = depthOnly ? V.depthOnly : frameFlags;
         if (geometry.getAttribute('normal'))
             variant |= V.normal;
         // Baked instances already fill the vertex inputs both backends can count on; they do without tangents, vertex colors and second coordinates.
@@ -781,28 +844,42 @@ export class WebGL2Renderer3D {
             variant |= V.color;
         if (skinned)
             variant |= V.skin;
-        if (gpu.morph)
-            variant |= V.morph | (gpu.morph.attributes === 2 ? V.morphNormals : 0);
+        if (morphAttributes > 0)
+            variant |= V.morph | (morphAttributes === 2 ? V.morphNormals : 0);
         if (instanced)
             variant |= V.instancing | (mesh.instanceColors ? V.instanceColor : 0);
-        const crowd = !skinned &&
+        if (!skinned &&
             mesh instanceof SkinnedInstancedMesh3D &&
             geometry.getAttribute('joints') !== undefined &&
-            geometry.getAttribute('weights') !== undefined
-            ? mesh
-            : undefined;
-        if (crowd)
+            geometry.getAttribute('weights') !== undefined)
             variant |= V.skinInstancing;
         if (instanced && mesh instanceof GpuParticles3D)
             variant |= V.gpuParticles;
-        if (!depthOnly && material.softness > 0 && this.#sceneDepthReady)
-            variant |= V.softDepth;
         if (geometry.topology === 'points')
             variant |= V.points;
-        if (!depthOnly && mesh.receiveShadow && this.#shadowCount > 0)
-            variant |= V.receiveShadow;
-        if (!depthOnly && material.transmission > 0 && this.#grabbed)
-            variant |= V.transmission;
+        if (!depthOnly) {
+            if (!(material.softness > 0))
+                variant &= ~V.softDepth;
+            if (!mesh.receiveShadow)
+                variant &= ~V.receiveShadow;
+            if (!(material.transmission > 0))
+                variant &= ~V.transmission;
+        }
+        return variant;
+    }
+    draw(item, frameFlags, depthPass) {
+        const depthOnly = depthPass !== undefined, shadow = depthPass === 'shadow';
+        const gl = this.#gl, { mesh, geometry, material } = item, resources = this.#resources;
+        const gpu = resources.geometry(geometry);
+        const flags = depthOnly
+            ? V.depthOnly
+            : frameFlags |
+                (this.#sceneDepthReady ? V.softDepth : 0) |
+                (this.#shadowCount > 0 ? V.receiveShadow : 0) |
+                (this.#grabbed ? V.transmission : 0);
+        const variant = this.meshProgramVariant(mesh, geometry, material, flags, gpu.morph?.attributes ?? 0);
+        const instanced = (variant & V.instancing) !== 0, skinned = (variant & V.skin) !== 0;
+        const crowd = (variant & V.skinInstancing) !== 0 ? mesh : undefined;
         const program = this.selectProgram(material, variant), u = program.uniforms, frame = this.#list.frame;
         if (program !== this.#program) {
             gl.useProgram(program.program);

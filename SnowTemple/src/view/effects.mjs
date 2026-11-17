@@ -230,22 +230,20 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
     item.pool.get(item.geometry).push(item);
   }
 
-  // Warm the real meshes below the horizon without advancing their game-time pools.
-  function prepareFirstDraw() {
-    const item = takeEffect(shapes.pad, false);
-    item.mesh.name = 'snow-fx-pad';
-    item.mesh.setPosition(0, -1000, 0);
-    preparingFootprints = true;
-    printMesh.setTransformAt(0, [0, -1000, 0], [0, 0, 0, 1], PRINT);
+  /** The draws that first happen in the middle of a fight, for the renderer to make ready beforehand. */
+  function programs() {
+    // A formation is drawn by the shared effect shader; any mesh and material of that kind stands for all.
+    const pad = takeEffect(shapes.pad, false);
+    release(pad);
+    // Footprints and spears carry a colour per instance. Give them their colour arrays now, so the
+    // programs made ready are the ones they will be drawn with; nothing shows while their counts are zero.
     printMesh.setColorAt(0, 0, 0, 0, 0);
-    spearMesh.setTransformAt(0, [0, -1000, 0], [0, 0, 0, 1], 1);
     spearMesh.setColorAt(0, 0, 0, 0, 0);
-    return () => {
-      release(item);
-      preparingFootprints = false;
-      printMesh.count = 0;
-      spearMesh.count = 0;
-    };
+    return [
+      { mesh: pad.mesh, material: pad.mesh.material },
+      { mesh: printMesh, material: printMesh.material },
+      { mesh: spearMesh, material: spearMesh.material }
+    ];
   }
 
   // ---- sparks, embers, dust: one pool of bright dots ----------------------------------------
@@ -309,7 +307,7 @@ export function createEffects(scene, camera, { particles: amount = 1 } = {}) {
   scene.addChild(printMesh);
   const prints = Array.from({ length: 96 }, () => ({ x: 0, z: 0, yaw: 0, age: 99 })),
     PRINT = [0.19, 1, 0.4];
-  let printAt = 0, preparingFootprints = false;
+  let printAt = 0;
 
   // ---- flashes of light ----------------------------------------------------------------------
   const flashes = [0, 1].map(() => {
@@ -479,7 +477,7 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
       printMesh.setTransformAt(f, place, axisAngle(0, 1, 0, step.yaw), PRINT);
       printMesh.setColorAt(f++, 0.1, 0.13, 0.24, 0.8 * Math.min(1, (16 - step.age) / 6));
     }
-    printMesh.count = preparingFootprints ? 1 : f;
+    printMesh.count = f;
 
     // Spears keep their shape through contact, then break up into cold light.
     let s = 0;
@@ -497,7 +495,7 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
       spearMesh.setTransformAt(s, place, axisAngle(dz, 0, -dx, Math.atan(Math.hypot(dx, dz))), 1);
       spearMesh.setColorAt(s++, 1, 1, 1, remain);
     }
-    spearMesh.count = preparingFootprints ? 1 : s;
+    spearMesh.count = s;
     falling = falling.filter((spear) => spear.t < spear.at + 0.9);
   }
 
@@ -517,5 +515,5 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
     }
   }
 
-  return { spawn, release, prepareFirstDraw, burst, flash, dropSpear, update, clear, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
+  return { spawn, release, programs, burst, flash, dropSpear, update, clear, sector, shapes, rgb, scar, setHalos: (list) => (halos = list), print: (x, z, yaw) => (prints[(printAt = (printAt + 1) % prints.length)] = { x, z, yaw, age: 0 }) };
 }

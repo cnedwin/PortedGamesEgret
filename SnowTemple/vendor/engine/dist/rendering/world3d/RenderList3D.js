@@ -66,7 +66,7 @@ export class RenderList3D {
     get frame() {
         return this.#frame;
     }
-    build(scene, camera) {
+    build(scene, camera, filter) {
         this.#override = scene.overrideMaterial && !scene.overrideMaterial.isDisposed ? scene.overrideMaterial : undefined;
         this.#frame++;
         this.#used = 0;
@@ -81,7 +81,7 @@ export class RenderList3D {
         this.stats.visited = this.stats.culled = 0;
         scene.updateWorldMatrices();
         camera.updateViewMatrices();
-        this.visit(scene, camera);
+        this.visit(scene, camera, filter?.layerMask ?? camera.layerMask, filter?.hidden);
         // The same items as last frame, in the same roles: last frame's order still groups them by material and geometry.
         if (!this.#same || this.#used !== this.#lastUsed) {
             const sorted = this.#sorted, pool = this.#pool;
@@ -292,20 +292,20 @@ export class RenderList3D {
             if (list.length === 0)
                 this.#casterGroups.delete(key);
     }
-    visit(object, camera) {
-        if (!object.visible)
+    visit(object, camera, layerMask, hidden) {
+        if (!object.visible || hidden?.includes(object))
             return;
         if (object instanceof Lod3D) {
             const eye = camera.matrixWorld;
             object.select(eye[12], eye[13], eye[14]);
         }
         if (object.kind === 'mesh')
-            this.addMesh(object, camera);
+            this.addMesh(object, camera, layerMask);
         else if (object.kind === 'light')
             this.addLight(object);
         const children = object.children;
         for (let i = 0; i < children.length; i++)
-            this.visit(children[i], camera);
+            this.visit(children[i], camera, layerMask, hidden);
     }
     addLight(light) {
         const intensity = light.intensity;
@@ -337,7 +337,7 @@ export class RenderList3D {
                 break;
         }
     }
-    addMesh(mesh, camera) {
+    addMesh(mesh, camera, layerMask) {
         // Meshes that build their geometry on demand (batches, camera-facing lines) do it here.
         mesh.beforeRender?.(camera);
         const geometry = mesh.geometry;
@@ -350,7 +350,7 @@ export class RenderList3D {
             mesh.refreshSource();
         if (mesh.castShadow)
             this.#casters.push(mesh);
-        if ((mesh.layers & camera.layerMask) === 0)
+        if ((mesh.layers & layerMask) === 0)
             return;
         const sphere = worldRenderSphere3D(mesh);
         if (mesh.frustumCulled && sphere && sphere[3] >= 0 && !frustumIntersectsSphere(camera.frustum, sphere)) {

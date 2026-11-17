@@ -1,6 +1,10 @@
 import { worldRenderSphere3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { LIGHT3D_LIMITS } from '../../rendering/world3d/Light3D.js';
 import { frustumFromMatrix, frustumIntersectsSphere, mat4Invert, mat4LookAt, mat4Multiply, mat4Orthographic, mat4Perspective, vec3TransformMat4 } from '../../rendering/world3d/math3D.js';
+/** Half-float targets keep scene-referred light until composition. */
+export function outputToneMapping3D(toneMapping, target) {
+    return target?.format === 'rgba16f' ? 'none' : toneMapping;
+}
 /** Size in floats of the Frame uniform block. */
 export const FRAME_BLOCK_FLOATS_3D = 352;
 /** Offsets, in floats, of the Frame block members. */
