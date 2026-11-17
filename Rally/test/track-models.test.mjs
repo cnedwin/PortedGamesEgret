@@ -93,6 +93,14 @@ test('race and selection mount model slots without moving pickups or obstacles',
   assert.ok(scene.getObjectByName('Start gate plaque'));
   assert.equal(scene.getObjectByName('drum').count, race.drums.length);
   assert.deepEqual({ drums: race.drums, boxes: race.boxes, lions: track.lions, gates: track.gates }, obstacles);
+  const charm = view.models[0].node.getObjectByName('Jade charm ring');
+  assert.equal(charm.visible, false);
+  assert.equal(charm.material.vertexColors, true);
+  assert.equal(charm.geometry.drawCount, 1920);
+  assert.ok(charm.geometry.getAttribute('color').data.every((channel) => channel === 1));
+  race.human.jade = 1;
+  view.update(1 / 60, race, 'race');
+  assert.equal(charm.visible, true);
   view.showcase(0);
   view.update(1 / 60, race, 'select');
   let lionKarts = 0;

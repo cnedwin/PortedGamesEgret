@@ -4,6 +4,7 @@
 // kart's ornament, and a head that turns with the steering. Models face +Z;
 // +X is the driver's left.
 import {
+  Attribute3D,
   Mesh3D,
   Object3D,
   createGlassMaterial3D,
@@ -505,6 +506,8 @@ const BADGES = quads([
 ]);
 const DOME = createSphereGeometry3D({ radius: 1, widthSegments: 24, heightSegments: 14 });
 const JADE_RING = createTorusGeometry3D({ radius: 1, tube: 0.06, radialSegments: 8, tubularSegments: 40 });
+// Neutral vertex color lets the charm use the opaque programs already drawn by the karts.
+JADE_RING.setAttribute('color', new Attribute3D(new Float32Array(JADE_RING.vertexCount * 3).fill(1), 3));
 const CLOUD = build([
   [SPHERE, [0, 0, 0], [1.5, 0.5, 1.9], WHITE],
   [SPHERE, [1.0, 0.1, 0.7], [0.8, 0.45, 0.9], WHITE],
@@ -624,8 +627,11 @@ export function createKartModel(racerIndex, trackModels = {}) {
   const jade = [0, 1].map((k) => {
     const ring = new Mesh3D(
       JADE_RING,
-      createStandardMaterial3D({ color: 0x35c98a, roughness: 0.15, metallic: 0.1, emissive: 0x1f9a6a, emissiveIntensity: 1.2 }),
+      createStandardMaterial3D({
+        color: 0x35c98a, vertexColors: true, roughness: 0.15, metallic: 0.1, emissive: 0x1f9a6a, emissiveIntensity: 1.2,
+      }),
     );
+    ring.name = 'Jade charm ring';
     ring.castShadow = false;
     ring.visible = false;
     ring.setPosition(0, 1.0, -0.1);
