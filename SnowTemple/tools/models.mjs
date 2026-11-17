@@ -1,8 +1,7 @@
-// Sculpts every model of the game at three levels of detail and writes each level to
-// assets/models-<level>.bin with an index beside it.
+// Sculpts scene and equipment models at three levels, plus one shared pack of fallback characters.
 //   node tools/models.mjs                     everything
-//   node tools/models.mjs --level=mid         one level
-//   node tools/models.mjs hero lu             only those named, at every level
+//   node tools/models.mjs --level=mid         one scenery level and the shared characters
+//   node tools/models.mjs hero lu             only those characters in the shared pack
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { ANKLE_DEPTH, BIND, BONES, HANDS, JOINTS, YARD_BONES, YARD_GRIPS } from '../src/view/rig.mjs';
 import { pack, sculpt } from './sculpt.mjs';
@@ -727,26 +726,55 @@ const args = process.argv.slice(2),
   wanted = args.find((arg) => arg.startsWith('--level='))?.slice(8) ?? 'all',
   only = args.filter((arg) => !arg.startsWith('--'));
 mkdirSync(new URL('../assets/', import.meta.url), { recursive: true });
-const fullRig = bindPose(BONES),
-  yardRig = bindPose(YARD_BONES);
-const stockParts = new Map();
-const lowBin = new URL('../assets/models-low.bin', import.meta.url);
-const lowIndex = new URL('../assets/models-low.json', import.meta.url);
-const lowStock = only.length && existsSync(lowBin) && existsSync(lowIndex) ?
-  { index: JSON.parse(readFileSync(lowIndex, 'utf8')), bin: readFileSync(lowBin) } : null;
 
-for (const [level, coarse] of Object.entries(LEVELS)) {
+function writeModelPack(stem, jobs) {
+  const binPath = new URL(`../assets/${stem}.bin`, import.meta.url),
+    indexPath = new URL(`../assets/${stem}.json`, import.meta.url);
+  // Models not asked for keep what was sculpted before.
+  const old = only.length && existsSync(indexPath) && existsSync(binPath) ?
+    { index: JSON.parse(readFileSync(indexPath, 'utf8')), bin: readFileSync(binPath) } : null,
+    chunks = [],
+    index = {};
+  let offset = 0;
+  for (const [name, make] of jobs) {
+    const previous = old?.index[name];
+    let bytes, info;
+    if (previous && !only.includes(name)) {
+      info = previous;
+      bytes = old.bin.subarray(info.offset, info.offset + info.bytes);
+    } else {
+      const started = Date.now(),
+        packed = pack(make());
+      ({ bytes, info } = packed);
+      console.log(`${stem} ${name}: ${info.count} points, ${info.indices / 3} triangles, ${(bytes.length / 1024) | 0} KB, ${((Date.now() - started) / 1000).toFixed(1)} s`);
+    }
+    index[name] = { ...info, offset, bytes: bytes.length };
+    chunks.push(bytes);
+    offset += bytes.length;
+  }
+  writeFileSync(binPath, Buffer.concat(chunks));
+  writeFileSync(indexPath, JSON.stringify(index));
+  console.log(`assets/${stem}.bin: ${(offset / 1024) | 0} KB`);
+}
+
+if (!only.length || only.some(name => Object.hasOwn(LOOKS, name))) {
+  const fullRig = bindPose(BONES),
+    yardRig = bindPose(YARD_BONES),
+    jobs = Object.entries(LOOKS).map(([name, look]) => [name, () => {
+      const full = name === 'hero' || name === 'lu';
+      const bones = full ? BONES : YARD_BONES;
+      // The shared fallback keeps the stock low detail used at every scenery quality.
+      return sculptParts(person(look, bones), full ? fullRig : yardRig, LEVELS.low);
+    }]);
+  writeModelPack('models-stock-characters', jobs);
+}
+
+const sceneryLevels = only.length && only.every(name => Object.hasOwn(LOOKS, name)) ? [] : Object.entries(LEVELS);
+for (const [level, coarse] of sceneryLevels) {
   if (wanted !== 'all' && wanted !== level) continue;
-  const binPath = new URL(`../assets/models-${level}.bin`, import.meta.url),
-    indexPath = new URL(`../assets/models-${level}.json`, import.meta.url),
-    jobs = [],
+  const jobs = [],
     thin = Math.min(coarse, 1.25),
     built = Math.min(coarse, 1.3);
-  for (const [name, look] of Object.entries(LOOKS)) {
-    const full = name === 'hero' || name === 'lu';
-    // The Tripo GLBs carry their own quality tiers. This is the same LOD for stock fallback in each pack.
-    jobs.push([name, () => sculptParts(person(look, full ? BONES : YARD_BONES), full ? fullRig : yardRig, LEVELS.low)]);
-  }
   for (const [name, make] of Object.entries(THINGS)) {
     const { solids, edge } = finishEquipment(name, make(), rgb);
     jobs.push([name, () => sculpt(solids, { cell: 0.0075 * thin, mottle: 0.05 })]);
@@ -762,33 +790,5 @@ for (const [level, coarse] of Object.entries(LEVELS)) {
       return detailSceneMesh(name, sculpt(solids, { cell: (CELL[name] ?? 0.026) * grid, mottle: 0.16 }), coarse, solids);
     }]);
   }
-
-  // Models not asked for keep what was sculpted before.
-  const old = existsSync(indexPath) && only.length ? { index: JSON.parse(readFileSync(indexPath, 'utf8')), bin: readFileSync(binPath) } : null,
-    chunks = [],
-    index = {};
-  let offset = 0;
-  for (const [name, make] of jobs) {
-    const stock = Object.hasOwn(LOOKS, name);
-    let bytes, info;
-    const previous = stock ? lowStock : old;
-    if (stockParts.has(name)) {
-      ({ bytes, info } = stockParts.get(name));
-    } else if (previous && !only.includes(name) && previous.index[name]) {
-      info = previous.index[name];
-      bytes = previous.bin.subarray(info.offset, info.offset + info.bytes);
-    } else {
-      const started = Date.now(),
-        packed = pack(make());
-      ({ bytes, info } = packed);
-      console.log(`${level} ${name}: ${info.count} points, ${info.indices / 3} triangles, ${(bytes.length / 1024) | 0} KB, ${((Date.now() - started) / 1000).toFixed(1)} s`);
-    }
-    if (stock) stockParts.set(name, { bytes, info });
-    index[name] = { ...info, offset, bytes: bytes.length };
-    chunks.push(bytes);
-    offset += bytes.length;
-  }
-  writeFileSync(binPath, Buffer.concat(chunks));
-  writeFileSync(indexPath, JSON.stringify(index));
-  console.log(`assets/models-${level}.bin: ${(offset / 1024) | 0} KB`);
+  writeModelPack(`models-${level}`, jobs);
 }

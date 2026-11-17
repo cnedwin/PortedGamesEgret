@@ -25,7 +25,7 @@ import { PLACES } from './rules/arena.mjs';
 import { begin, createGame, quiet, step } from './rules/game.mjs';
 import { TIERS, grade, tierName } from './rules/tiers.mjs';
 import { AFFIXES } from './rules/yard.mjs';
-import { loadModels } from './view/models.mjs';
+import { loadModels, loadStockCharacters } from './view/models.mjs';
 import { loadCharacterGroup, loadOpeningCharacter } from './view/characters.mjs';
 import { loadPropAtlas } from './view/prop-atlas.mjs';
 import { createSnowLook } from './view/look.mjs';
@@ -122,35 +122,43 @@ async function main() {
   }
   addEventListener('pagehide', onPageHide);
 
-  const opening = loadExternal ? loadOpeningCharacter(engine, roleScope, detail, roleLifetime.signal) : null;
-  const [models, loadedAtlas, firstBody] = await Promise.all([loadModels(detail), loadPropAtlas(detail), opening]);
+  let stock;
+  const loadStock = () => (stock ??= loadStockCharacters(undefined, roleLifetime.signal));
+  const opening = loadExternal ? loadOpeningCharacter(engine, roleScope, detail, roleLifetime.signal) : Promise.resolve(null);
+  const firstStock = opening.then(first => first?.hero?.parts ? null : loadStock());
+  const [models, loadedAtlas, firstBody, stockBodies] = await Promise.all([loadModels(detail), loadPropAtlas(detail), opening, firstStock]);
   roleLifetime.signal.throwIfAborted();
   const hero = firstBody?.hero;
   if (hero?.parts) characterStatus.loaded.push('hero');
   else if (hero?.error) characterStatus.failures.hero = hero.error;
+  if (stockBodies) {
+    if (loadExternal) models.hero = stockBodies.hero;
+    else Object.assign(models, stockBodies);
+  }
   if (loadExternal) characterStatus.phase = 'waiting';
   const propAtlas = loadedAtlas ? scope.use(loadedAtlas).maps : undefined;
   view = createView(scene, camera, models, {
     detail, characters: hero?.parts ? { hero: hero.parts } : undefined,
     reflect: level === LEVELS.high && !params.has('noreflect'), density: level.density, particles: amount, shadowSize: level.shadows || 1024, propAtlas });
 
-  async function startBackgroundCharacters() {
-    const signal = roleLifetime.signal;
-    if (signal.aborted) return;
-    characterStatus.phase = 'loading';
+  let yardReady = !loadExternal, templeReady = !loadExternal;
+  async function prepareCharacters(requested, signal) {
+    let values = new Map();
+    let groupError;
     try {
       const { group } = await loadCharacterGroup(engine, roleScope, detail, signal, {
-        requested: ['lu', 'blade', 'shield', 'bow'],
+        requested,
         available: firstBody?.available
       });
-      const leases = await group.ready;
-      for (const { value } of leases) {
-        if (signal.aborted) return;
-        const { kind, parts, error } = value;
-        if (error !== undefined) {
-          characterStatus.failures[kind] = error;
-          continue;
-        }
+      values = new Map((await group.ready).map(({ value }) => [value.kind, value]));
+    } catch (cause) {
+      groupError = String(cause?.message ?? cause);
+    }
+    for (const kind of requested) {
+      signal.throwIfAborted();
+      const { parts, error } = values.get(kind) ?? {};
+      let failure = error ?? groupError;
+      if (parts) {
         try {
           const programs = [];
           for (const { mesh, material } of parts) {
@@ -161,21 +169,40 @@ async function main() {
             }
           }
           await renderer.preparePrograms(programs);
-          // Give input and presentation a turn between role replacements.
+          // Give input and presentation a turn between role installations.
           await new Promise(resolve => requestAnimationFrame(resolve));
-          if (signal.aborted) return;
+          signal.throwIfAborted();
           view.useCharacterBody(kind, parts);
           characterStatus.loaded.push(kind);
+          continue;
         } catch (cause) {
-          if (signal.aborted) return;
-          characterStatus.failures[kind] = String(cause?.message ?? cause);
+          failure = String(cause?.message ?? cause);
         }
       }
+      signal.throwIfAborted();
+      characterStatus.failures[kind] = failure ?? 'Character is missing from the character index';
+      const fallback = (await loadStock())[kind];
+      signal.throwIfAborted();
+      if (!fallback) throw Error('Missing stock character: ' + kind);
+      models[kind] = fallback;
+    }
+  }
+
+  async function startBackgroundCharacters() {
+    const signal = roleLifetime.signal;
+    if (signal.aborted) return;
+    characterStatus.phase = 'loading';
+    try {
+      await prepareCharacters(['blade', 'shield', 'bow'], signal);
+      yardReady = true;
+      await prepareCharacters(['lu'], signal);
+      templeReady = true;
       characterStatus.phase = 'ready';
     } catch (cause) {
       if (signal.aborted) return;
       characterStatus.phase = 'failed';
       characterStatus.failures.group = String(cause?.message ?? cause);
+      fail(cause);
     }
   }
   progress(0.9, '请陆虞候入座');
@@ -541,7 +568,13 @@ async function main() {
     }
     let events = none;
     if (status.hold) dt = 0;
-    const active = mode === 'play' && !hud.settingsOpen();
+    const waiting = mode === 'play' && (
+      (!yardReady && (game.stage === 'yard' || (game.stage === 'road' && game.cine <= 0))) ||
+      (!templeReady && (game.stage === 'boss' || (game.stage === 'gate' && game.hero.z <= PLACES.gate.z)))
+    );
+    hud.waitForCharacters(waiting);
+    if (waiting) input.sample(game.hero, null);
+    const active = mode === 'play' && !hud.settingsOpen() && !waiting;
     audio.setPaused(hud.settingsOpen());
     audio.setListener(game.hero.x, game.hero.z);
     if (active) {

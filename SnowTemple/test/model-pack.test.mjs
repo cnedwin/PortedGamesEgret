@@ -11,7 +11,22 @@ const aliases = {
 registerHooks({ resolve(name, context, next) {
   return next(aliases[name] ? new URL(aliases[name], import.meta.url).href : name, context);
 } });
-const { loadModels } = await import('../src/view/models.mjs');
+const { loadModels, loadStockCharacters } = await import('../src/view/models.mjs');
+
+test('shared fallback cancels both reads when the page closes', async t => {
+  const reads = [];
+  t.mock.method(globalThis, 'fetch', (url, { signal }) => {
+    reads.push(url.pathname);
+    return new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }));
+  });
+  const page = new AbortController();
+  const failure = assert.rejects(loadStockCharacters(base, page.signal), { name: 'AbortError' });
+  page.abort();
+  await failure;
+  assert.deepEqual(reads.map(path => path.split('/').pop()).sort(), [
+    'models-stock-characters.bin', 'models-stock-characters.json'
+  ]);
+});
 
 const base = new URL('https://snowtemple.example.invalid/assets/');
 const roles = ['hero', 'blade', 'shield', 'bow', 'lu'];

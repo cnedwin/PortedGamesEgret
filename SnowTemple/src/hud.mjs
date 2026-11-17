@@ -51,6 +51,7 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     <div id="speech"></div>
     <div id="card"><b></b><i></i><span></span></div>
     <div id="veil"></div>
+    <div id="character-wait" role="status" hidden>正在准备战斗角色…</div>
     <div id="title"><h1 class="name">风雪山神庙</h1><div class="seal">水浒　第一回</div><div class="entry"><div class="climb" hidden><button type="button" data-tier="-1" aria-label="低一重">‹</button><div class="tier"><b></b><small></small></div><button type="button" data-tier="1" aria-label="高一重">›</button></div><div class="ways"><button class="go" type="button" data-way="chapter" disabled>踏雪上路<span aria-hidden="true">›</span></button><button class="stand" type="button" data-way="yard" disabled>守草料场<small></small></button></div><div class="keys"><span class="key"></span><span class="tap">左手移动　右手出枪、格挡和闪避</span></div></div></div>
     <div id="page" role="dialog" aria-modal="true" aria-labelledby="page-title" aria-describedby="page-copy" tabindex="-1" hidden><div class="leaf"><h2 id="page-title">枪谱残页</h2><p id="page-copy">还认得出三行，择一而习。</p><div class="lessons"></div></div></div>
     <div class="corner"><button type="button" data-do="full">全屏</button><button type="button" data-do="set">设置</button></div>
@@ -58,6 +59,10 @@ export function createHud(root, input, settings, { onSettings, onStart, onUiSoun
     <div id="debug"></div>`;
   const $ = (selector) => root.querySelector(selector);
   const hud = { staged: false };
+  const characterWait = $('#character-wait');
+  hud.waitForCharacters = (waiting) => {
+    if (characterWait.hidden === waiting) characterWait.hidden = !waiting;
+  };
 
   // ---- the row of deeds, for keys and for thumbs ---------------------------------------------
   const deeds = {},

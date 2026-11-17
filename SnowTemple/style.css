@@ -145,6 +145,7 @@ button:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
 #card span { color: var(--dim); letter-spacing: .5em; text-indent: .5em; }
 #veil { position: absolute; inset: 0; background: #000; opacity: 0; transition: opacity 1.2s; }
 #veil.on { opacity: 1; }
+#character-wait { position: absolute; left: 50%; bottom: 15vh; transform: translateX(-50%); padding: 8px 15px; white-space: nowrap; color: var(--snow); background: #070b12e6; border: 1px solid #e2b86666; font: 15px var(--script); letter-spacing: .12em; }
 #hurt { position: absolute; inset: 0; box-shadow: inset 0 0 160px 40px #a0100c; opacity: 0; }
 
 /* A page of the spear manual: old paper over the night, written down the page and read from the right. */

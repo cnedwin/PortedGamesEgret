@@ -77,6 +77,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
   function figureOf(foe) {
     let figure = figures.get(foe.id);
     if (!figure) {
+      if (!bodies[foe.kind] && !models[foe.kind]) return null;
       figure = createFigure(foe.kind, models, detail, bodies[foe.kind]);
       figure.metal.emissive.set([1, 0.3, 0.12]);
       figure.travel = 0;
@@ -556,6 +557,7 @@ export function createView(scene, camera, models, { density = 1, particles = 1, 
     // The others.
     for (const foe of game.foes) {
       const figure = figureOf(foe);
+      if (!figure) continue;
       figure.travel += Math.hypot(foe.x - figure.last.x, foe.z - figure.last.z);
       figure.last.x = foe.x;
       figure.last.z = foe.z;

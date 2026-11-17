@@ -16,12 +16,13 @@ registerHooks({ resolve(name, context, next) {
   return next(aliases[name] ? new URL(aliases[name], import.meta.url).href : name, context);
 } });
 const { createFigure, foePose, heroPose, pose } = await import('../src/view/figures.mjs');
-const { loadModels } = await import('../src/view/models.mjs');
+const { loadModels, loadStockCharacters } = await import('../src/view/models.mjs');
 const realFetch = globalThis.fetch;
 let models;
 try {
   globalThis.fetch = async (url) => new Response(await readFile(url));
   models = await loadModels('low');
+  Object.assign(models, await loadStockCharacters());
 } finally {
   globalThis.fetch = realFetch;
 }
