@@ -147,23 +147,25 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
       });
     }
 
-    function drawGauge(role, index, px, py) {
+    function drawGauge(role, index, px, py, emphasized) {
       let gauge = gaugeNodes.get(index);
       if (!gauge) {
         gauge = { node: gauges.addChild(scope.use(new Sprite())) };
         gaugeNodes.set(index, gauge);
       }
       gauge.node.visible = role.hp > 0;
-      gauge.node.x = Math.round(px - 18);
+      const span = emphasized ? 36 : 24;
+      gauge.node.alpha = emphasized ? 1 : .62;
+      gauge.node.x = Math.round(px - span / 2);
       gauge.node.y = Math.round(py - 55);
-      const hp = Math.max(0, Math.min(36, Math.ceil(36 * role.hp / role.maxHp)));
-      const posture = Math.max(0, Math.min(36, Math.ceil(36 * role.posture / role.maxPosture)));
-      if (gauge.hp === hp && gauge.posture === posture) return;
-      Object.assign(gauge, { hp, posture });
+      const hp = Math.max(0, Math.min(span, Math.ceil(span * role.hp / role.maxHp)));
+      const posture = emphasized ? Math.max(0, Math.min(span, Math.ceil(span * role.posture / role.maxPosture))) : 0;
+      if (gauge.hp === hp && gauge.posture === posture && gauge.span === span) return;
+      Object.assign(gauge, { hp, posture, span });
       const g = gauge.node.graphics;
       g.clear();
-      g.beginFill(0x1f1912, .88).drawRect(-1, -1, 38, 9).endFill();
-      if (hp) g.beginFill(role.side === 0 ? 0x83b376 : 0xc35a47).drawRect(0, 0, hp, 4).endFill();
+      g.beginFill(0x1f1912, .88).drawRect(-1, -1, span + 2, emphasized ? 9 : 5).endFill();
+      if (hp) g.beginFill(role.side === 0 ? 0x83b376 : 0xc35a47).drawRect(0, 0, hp, emphasized ? 4 : 3).endFill();
       if (posture) g.beginFill(0xe2bb58).drawRect(0, 5, posture, 2).endFill();
     }
 
@@ -229,8 +231,8 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
     function drawGrid(state, cursor, preview) {
       const ctx = gridContext;
       ctx.clearRect(0, 0, width, height);
-      if (!state.canAct) return;
-      const cells = state.selection?.cells ?? [];
+      if (state.result !== null) return;
+      const cells = state.canAct ? state.selection?.cells ?? [] : [];
       const rx = 18 * scale * root.scaleX, ry = 9 * scale * root.scaleY;
       const moving = state.selection?.type === 'move';
       function diamond({ x, y }, stroke, fill, lineWidth = 1) {
@@ -251,23 +253,38 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
         }
         ctx.stroke();
       }
-      if (cells.length) {
-        for (const cell of cells) diamond(cell, moving ? '#8bd5ca' : '#f5a17d', moving ? '#4acdb826' : '#fa775333');
-      } else diamond(state.turn, '#ffe1a3');
-      if (!preview) return;
-      for (const cell of preview.path ?? []) diamond(cell, '#c9fff1', '#49d9bc88', 2);
-      for (const cell of preview.cells ?? []) diamond(cell, '#ffd8a4', '#ee7d5480', 2);
-      diamond(cursor, '#fff0be', '#ffdb9170', 3);
-      for (const target of preview.targets ?? []) {
-        const [px, py] = project(target.x, target.y);
+
+      function markRole(role, color, acting) {
+        const [px, py] = project(role.x, role.y);
+        const x = root.x + px * root.scaleX, y = root.y + py * root.scaleY;
+        if (x < -rx || x > width + rx || y < -ry || y > height + ry) return;
         ctx.beginPath();
-        ctx.arc(root.x + px * root.scaleX, root.y + py * root.scaleY, Math.max(3, ry * .32), 0, 2 * Math.PI);
-        ctx.fillStyle = target.side === state.turn.side ? '#c9fff1' : '#ffad85';
-        ctx.fill();
-        ctx.strokeStyle = '#302119';
-        ctx.lineWidth = 2;
+        if (acting) ctx.ellipse(x, y, rx * .67, ry * .58, 0, 0, Math.PI * 2);
+        else {
+          // Two open chevrons leave the figure's feet visible inside the mark.
+          ctx.moveTo(x - rx * .51, y - ry * .45);
+          ctx.lineTo(x - rx * .78, y);
+          ctx.lineTo(x - rx * .51, y + ry * .45);
+          ctx.moveTo(x + rx * .51, y - ry * .45);
+          ctx.lineTo(x + rx * .78, y);
+          ctx.lineTo(x + rx * .51, y + ry * .45);
+        }
+        ctx.strokeStyle = '#251f18';
+        ctx.lineWidth = 4;
+        ctx.stroke();
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2.1;
         ctx.stroke();
       }
+
+      for (const cell of cells) diamond(cell, moving ? '#8bd5cabb' : '#f5a17dbb', moving ? '#4acdb81a' : '#fa775322');
+      if (state.canAct && preview) {
+        for (const cell of preview.path ?? []) diamond(cell, '#c9fff1', '#49d9bc66', 1.7);
+        for (const cell of preview.cells ?? []) diamond(cell, '#ffd8a4', '#ee7d543f', 1.7);
+        diamond(cursor, '#fff0be', '#ffdb9142', 2.7);
+        for (const target of preview.targets ?? []) markRole(target, target.side === state.turn.side ? '#baf7df' : '#ffb788', false);
+      }
+      if (state.turn && !state.turn.dead) markRole(state.turn, state.turn.side === 0 ? '#ffe4a4' : '#e99170', true);
     }
 
     function draw(state, cursor, preview) {
@@ -293,6 +310,7 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
         } else sorted.push(item);
       }
       for (const [index, gauge] of gaugeNodes) if (index >= state.roles.length) gauge.node.visible = false;
+      const dense = state.roles.filter(role => !role.dead).length >= 8;
       for (const [index, role] of state.roles.entries()) {
         const [px, py] = project(role.x, role.y);
         const [clip, elapsed] = motion(role, state.frame);
@@ -307,7 +325,8 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
         }
         if (role.breathless && role.hp > 0) sorted.push({ key: `stagger${index}`, group: 'title', id: 205,
           px: px - 5, py: py - height - 36 * scale, depth: py + 1, rotation: role.cooldown });
-        drawGauge(role, index, px, py - height);
+        const emphasized = !dense || role === state.turn || (preview?.targets ? preview.targets.includes(role) : role === state.target);
+        drawGauge(role, index, px, py - height, emphasized);
       }
       for (const [index, effect] of state.effects.entries()) {
         const group = effectGroup(effect.effectId);

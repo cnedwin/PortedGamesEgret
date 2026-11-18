@@ -1,4 +1,5 @@
 import { autoSlot, createSaveSlot, manualSlots } from '../../save-slot.mjs';
+import { describeSaveSlot } from '../../save-info.mjs';
 
 const preferenceKey = 'kys-game-preferences';
 const visualStyles = ['jyx2', 'enhanced', 'classic'];
@@ -36,7 +37,7 @@ export async function pickNativeSave() {
   return file ? (await nativeSaveRequest('import', file)).json() : undefined;
 }
 
-export function showTitle({ initial, baseline, autoSave, save, preferences, search }) {
+export function showTitle({ initial, baseline, autoSave, save, preferences, search, loadCatalog }) {
   const title = document.querySelector('#title-screen');
   const play = document.querySelector('#play-screen');
   const status = document.querySelector('#title-status');
@@ -108,7 +109,11 @@ export function showTitle({ initial, baseline, autoSave, save, preferences, sear
 
     async function loadSlots() {
       showPanel('讀取存檔', paragraph('正在讀取…'));
-      places ??= await fetch('/api/scenes').then(response => response.ok ? response.json() : []);
+      const [sceneNames, catalog] = await Promise.all([
+        places ?? fetch('/api/scenes').then(response => response.ok ? response.json() : []).catch(() => []),
+        loadCatalog().catch(() => undefined),
+      ]);
+      places = sceneNames;
       if (!dialog.open || slotHeading?.textContent !== '讀取存檔') return;
       const manual = await Promise.allSettled(manualSlots.map(async number => ({
         number, data: await createSaveSlot(initial.saveIdentity, number).read(),
@@ -119,11 +124,16 @@ export function showTitle({ initial, baseline, autoSave, save, preferences, sear
       const list = document.createElement('div');
       list.className = 'title-save-list';
       for (const { number, data } of entries) {
-        const where = data.flags?.finished ? '已通關' : data.location.id === 'world' ? '江湖大地圖'
-          : places.find(row => row.id === data.location.id)?.name ?? '原作場景';
-        const choice = button(`${number === autoSlot ? '自動存檔' : `第 ${number} 槽`} · ${where}`, () => void run(async () => {
+        const { location, detail } = describeSaveSlot(data, places, catalog?.roles);
+        const title = `${number === autoSlot ? '自動存檔' : `第 ${number} 槽`} · ${location}`;
+        const choice = button(title, () => void run(async () => {
           start(number === autoSlot ? data : await autoSave.write(data));
         }));
+        if (detail) {
+          const summary = document.createElement('small');
+          summary.textContent = detail;
+          choice.append(summary);
+        }
         choice.dataset.titleSlot = number;
         list.append(choice);
       }

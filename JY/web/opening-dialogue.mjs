@@ -295,13 +295,15 @@ export function createOpeningDialogue({
               dockPage = { url, heading: heading ?? '', counter: pages.length > 1 ? `${index + 1}/${pages.length}` : '', body: dockPages[index] };
               updateDock();
             }
-            onPage?.({ text: pageText, head, style, voice, page: index + 1, pages: pages.length });
+            onPage?.({ text: pageText, speaker: heading ?? overrideName ?? speakerName?.(head),
+              head, style, voice, page: index + 1, pages: pages.length });
           });
-          if (skipped) break;
+          if (skipped) return false;
         } finally {
           waiter = undefined;
         }
       }
+      return true;
     } finally {
       active = false;
       closeDock();
