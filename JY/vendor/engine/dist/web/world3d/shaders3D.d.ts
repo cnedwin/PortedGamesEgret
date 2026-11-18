@@ -29,6 +29,7 @@ export declare const TEXTURE_UNITS_3D: Readonly<{
     readonly sceneColor: 10;
     readonly reflectionMap: 11;
     readonly sceneDepth: 12;
+    readonly tiledLights: 13;
 }>;
 export declare const MAX_MORPH_INFLUENCES_3D = 8;
 export interface ShaderSources3D {

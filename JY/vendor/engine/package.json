@@ -144,9 +144,21 @@
       "types": "./dist/web/loop.d.ts",
       "import": "./dist/web/loop.js"
     },
+    "./kit": {
+      "types": "./dist/kit.d.ts",
+      "import": "./dist/kit.js"
+    },
+    "./web/kit": {
+      "types": "./dist/web/kit.d.ts",
+      "import": "./dist/web/kit.js"
+    },
     "./web/game": {
       "types": "./dist/web/game.d.ts",
       "import": "./dist/web/game.js"
+    },
+    "./play": {
+      "types": "./dist/web/play.d.ts",
+      "import": "./dist/web/play.js"
     },
     "./audio": {
       "types": "./dist/audio.d.ts",

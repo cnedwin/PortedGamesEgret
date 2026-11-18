@@ -4,7 +4,8 @@ import {
   createPlaneGeometry3D, createPointLight3D, createRingGeometry3D, createUnlitMaterial3D,
   setColor3D, vec3Cross, vec3Dot, vec3Normalize,
 } from '@egret/engine/world3d';
-import { createWebGL2Renderer3D, loadGltfFromUrl3D, loadTexture3D } from '@egret/engine/webgl2/world3d';
+import { loadGltfFromUrl3D, loadTexture3D } from '@egret/engine/webgl2/world3d';
+import { createWorldRenderer } from './world3d-renderer.mjs';
 import { createNativeBattleSprites } from './native-battle-sprites.mjs';
 import { addNativeSanctuary } from './native-sanctuary.mjs';
 import { addNativeOutdoorBattle } from './native-battle-outdoor.mjs';
@@ -188,7 +189,7 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
     const marker = flatMesh(scene, markerGeometry, own(createUnlitMaterial3D({ color: 0xf0cb80, side: 'double',
       alphaMode: 'blend', depthWrite: false, opacity: .88 })), 2);
     const impactGeometry = own(createRingGeometry3D({ innerRadius: .63, outerRadius: .76, thetaSegments: 32 }));
-    renderer = createWebGL2Renderer3D({ canvas, antialias: true, toneMapping: 'none', shadows: true,
+    renderer = createWorldRenderer({ canvas, antialias: true, toneMapping: 'none', shadows: true,
       // World3D gives each shadow one quadrant of the atlas.
       shadowAtlasSize: outdoor ? shadowResolution * 2 : shadowResolution,
       onContextLost() { lost = true; }, onContextRestored() { lost = false; } });

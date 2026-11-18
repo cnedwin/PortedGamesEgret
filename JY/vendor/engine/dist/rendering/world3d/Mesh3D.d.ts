@@ -61,6 +61,14 @@ export declare class Mesh3D extends Object3D {
     clone(recursive?: boolean): this;
     protected copyFrom(source: this): void;
 }
+interface InstanceStreamRevisions {
+    observed: number;
+    matrices: number;
+    colors: number;
+}
+declare const readInstanceStreamRevisions: unique symbol;
+/** Reconcile legacy bulk edits before a renderer checks either instance stream. */
+export declare function instanceStreamRevisions3D(mesh: InstancedMesh3D): Readonly<InstanceStreamRevisions>;
 /** Draw one geometry many times in a single call with per-instance transforms and colors. */
 export declare class InstancedMesh3D extends Mesh3D {
     #private;
@@ -82,6 +90,8 @@ export declare class InstancedMesh3D extends Mesh3D {
     setMatrixAt(index: number, matrix: ArrayLike<number>): void;
     setTransformAt(index: number, position: ArrayLike<number>, quaternion?: ArrayLike<number>, scale?: ArrayLike<number> | number): void;
     setColorAt(index: number, r: number, g: number, b: number, a?: number): void;
+    [readInstanceStreamRevisions](): InstanceStreamRevisions;
+    private touchInstanceStream;
     /** Sphere enclosing every instance, in world space. */
     get worldBoundingSphere(): Float32Array;
     private readonly localSphere;
@@ -94,4 +104,5 @@ export declare class Sprite3D extends Mesh3D {
     clone(): this;
 }
 export declare function createSprite3D(options?: SpriteMaterialOptions3D): Sprite3D;
+export {};
 //# sourceMappingURL=Mesh3D.d.ts.map

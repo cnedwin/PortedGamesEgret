@@ -3,6 +3,15 @@ import { Material3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
 import type { Object3D, Scene3D } from './Object3D.js';
 import { RenderTarget3D } from './Texture3D.js';
+/** Output and inclusion settings shared by reflection draws and program preparation. */
+export interface PlanarReflectionPass3D {
+    readonly target: RenderTarget3D;
+    /** Undefined uses the renderer's tone mapping. The target still owns its color encoding. */
+    readonly toneMapping: 'none' | 'reinhard' | 'aces' | undefined;
+    readonly shadows: boolean;
+    readonly layerMask: number;
+    readonly hidden: readonly Object3D[];
+}
 /** Anything that can draw a scene into a render target: both first-party renderers qualify. */
 export interface ReflectionRenderer3D {
     render(scene: Scene3D, camera: Camera3D, target?: RenderTarget3D): boolean;
@@ -10,6 +19,8 @@ export interface ReflectionRenderer3D {
     renderReflection?(scene: Scene3D, camera: Camera3D, target: RenderTarget3D): boolean;
     /** Allows the renderer to verify and record reuse of the previous mirror result. */
     reuseReflection?(target: RenderTarget3D): boolean;
+    /** Draw a configured mirror view without changing the main view settings. */
+    renderReflectionPass?(scene: Scene3D, camera: Camera3D, pass: PlanarReflectionPass3D): boolean;
     /** When present, post-processing is switched off while the mirror image is drawn. */
     readonly postProcess?: {
         enabled: boolean;
@@ -35,11 +46,17 @@ export declare class PlanarReflection3D {
     layerMask: number;
     /** false leaves shadows out of the mirror image, which saves the shadow passes for it. */
     shadows: boolean;
+    /** Override tone mapping in the mirror only. Undefined inherits the renderer's setting. */
+    toneMapping: PlanarReflectionPass3D['toneMapping'];
     constructor(options?: {
         readonly width?: number;
         readonly height?: number;
     });
     get texture(): RenderTarget3D['texture'];
+    /** Capture the reflection settings for this viewing camera and the excluded subtrees. */
+    createPass(camera: Camera3D, hidden?: readonly Object3D[]): PlanarReflectionPass3D;
+    /** Refresh on the next call, for example after a camera cut or a skipped region. */
+    invalidate(): void;
     /**
      * Place the mirror camera for a viewing camera and a world plane given as
      * [nx, ny, nz, d] with unit normal, where n . p + d = 0 and the normal
@@ -52,6 +69,7 @@ export declare class PlanarReflection3D {
      * `hidden`, normally the mirror itself, are left out of the image.
      */
     render(renderer: ReflectionRenderer3D, scene: Scene3D, camera: Camera3D, plane: ArrayLike<number>, hidden?: readonly Object3D[]): boolean;
+    private renderLegacy;
     dispose(): void;
 }
 export interface WaterOptions3D {

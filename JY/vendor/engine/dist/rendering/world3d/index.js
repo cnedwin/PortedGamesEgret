@@ -51,4 +51,6 @@ export { Trail3D, createTrail3D, TRAIL3D_LIMITS } from './Trail3D.js';
 export { createDecalGeometry3D, createDecal3D, DECAL3D_LIMITS } from './Decal3D.js';
 export { GpuParticles3D, createGpuParticles3D } from './GpuParticles3D.js';
 export { VolumetricFog3D, createVolumetricFog3D } from './VolumetricFog3D.js';
+export { createGeometryBuilder3D, linearColor3D, projectToViewport3D } from './GeometryBuilder3D.js';
+export { retargetAnimationClip3D } from './Retarget3D.js';
 //# sourceMappingURL=index.js.map

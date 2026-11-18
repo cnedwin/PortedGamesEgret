@@ -194,6 +194,29 @@ button:disabled { opacity: .55; cursor: default; }
   .title-content h1 { font-size: clamp(33px, 10.5vw, 48px); }
   .title-edition { margin-bottom: 24px; letter-spacing: .12em; }
 }
+
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  main:has(.title-screen:not([hidden])) { width: 100%; padding: 0; }
+  .title-screen {
+    min-height: 100svh;
+    align-content: center;
+    justify-items: start;
+    padding: max(16px, env(safe-area-inset-top)) max(20px, env(safe-area-inset-right))
+      max(16px, env(safe-area-inset-bottom)) max(clamp(20px, 5vw, 54px), env(safe-area-inset-left));
+    border: 0;
+    border-radius: 0;
+  }
+  .title-landscape .title-art { object-position: 60% 52%; }
+  .title-screen::after {
+    background: linear-gradient(90deg, #0c1213f5, #0c1213df 35%, #0c12134d 68%, transparent 90%);
+  }
+  .title-content { width: min(396px, 100%); }
+  .title-content h1 { font-size: clamp(30px, 5.25vw, 48px); }
+  .title-edition { margin: 6px 0 16px; }
+  .title-actions { grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+  .title-actions .title-journey { grid-column: span 3; min-height: 44px; padding-inline: 10px; font-size: 14px; }
+  .title-actions .title-library { grid-column: span 2; }
+}
 @media (max-width: 370px) {
   .explore-controls { gap: 4px; flex-wrap: wrap; }
 }
@@ -691,6 +714,26 @@ body[data-art="jyx2"] .jyx2-member-portrait {
 }
 
 @media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  main:has(> #play-screen:not([hidden])) { width: calc(100% - 16px); padding-block: 6px; }
+  #play-screen > .masthead { display: none; }
+  #play-screen:not([hidden]):not(:has(#game:is([data-trainer="battle"], [data-trainer="result"]))) {
+    --explore-rail: clamp(156px, 27vw, 214px);
+    --explore-stage: max(280px, calc((100svh - 88px) * 1.7778));
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) var(--explore-rail);
+    align-items: center;
+    gap: 12px;
+    width: min(100%, calc(var(--explore-stage) + var(--explore-rail) + 12px));
+    margin-inline: auto;
+  }
+  #play-screen:not(:has(#game:is([data-trainer="battle"], [data-trainer="result"]))) .screen { min-width: 0; }
+  #play-screen .explore-controls {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  #play-screen .explore-dpad { grid-column: 1 / -1; justify-self: center; }
+  #play-screen #open-menu { grid-column: 1 / -1; }
+  #play-screen .world-camera-toggle { min-height: 44px; }
   main:has(#game:is([data-trainer="battle"], [data-trainer="result"])) { padding-block: 6px; }
   #play-screen:has(#game:is([data-trainer="battle"], [data-trainer="result"])) > .masthead { display: none; }
   #play-screen:has(#game[data-trainer="battle"]) .screen {

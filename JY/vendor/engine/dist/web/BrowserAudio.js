@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
 import { createAudioMixer } from '@egret/engine/audio';
+const LIMITER = { threshold: -6, knee: 4, ratio: 12, attack: 0.003, release: 0.16 };
 /** Shorter than a click can be heard, long enough that a step in volume makes none. */
 const SMOOTH = 0.005;
 const gestures = ['pointerdown', 'pointerup', 'touchend', 'keydown', 'click'];
@@ -17,12 +18,13 @@ const at = (line, time) => time >= line.end
 export function createBrowserAudio(options = {}) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('AUDIO_OPTIONS_INVALID');
-    const { context: given, unlockTarget, pauseWhenHidden = true, onError, ...configuration } = options;
+    const { context: given, unlockTarget, pauseWhenHidden = true, onError, limiter: limit, ...configuration } = options;
     const Live = globalThis.AudioContext, page = globalThis.document;
     if ((given !== undefined && (given === null || typeof given !== 'object')) ||
         typeof pauseWhenHidden !== 'boolean' ||
         (onError !== undefined && typeof onError !== 'function') ||
-        (unlockTarget !== undefined && (unlockTarget === null || typeof unlockTarget.addEventListener !== 'function')))
+        (unlockTarget !== undefined && (unlockTarget === null || typeof unlockTarget.addEventListener !== 'function')) ||
+        (limit !== undefined && typeof limit !== 'boolean' && (limit === null || typeof limit !== 'object')))
         throw new EgretError('AUDIO_OPTIONS_INVALID');
     if (given === undefined && typeof Live !== 'function')
         throw new EgretError('AUDIO_HOST_UNAVAILABLE');
@@ -30,6 +32,21 @@ export function createBrowserAudio(options = {}) {
     /** Only an output that runs in real time can be suspended, resumed and locked. */
     const live = typeof Live === 'function' && context instanceof Live ? context : undefined;
     const buffers = new WeakMap();
+    // The limiter sits between the master volume and the speakers.
+    let limiter;
+    if (limit) {
+        const settings = { ...LIMITER, ...(limit === true ? {} : limit) };
+        for (const value of Object.values(settings))
+            if (!Number.isFinite(value))
+                throw new EgretError('AUDIO_OPTIONS_INVALID');
+        limiter = context.createDynamicsCompressor();
+        limiter.threshold.value = settings.threshold;
+        limiter.knee.value = settings.knee;
+        limiter.ratio.value = settings.ratio;
+        limiter.attack.value = settings.attack;
+        limiter.release.value = settings.release;
+        limiter.connect(context.destination);
+    }
     const nodes = new WeakMap();
     const streams = new WeakMap();
     /** The media elements that should be heard now. */
@@ -319,7 +336,7 @@ export function createBrowserAudio(options = {}) {
             return sound;
         },
         createBus(parent) {
-            const node = context.createGain(), target = parent === undefined ? context.destination : nodes.get(parent);
+            const node = context.createGain(), target = parent === undefined ? (limiter ?? context.destination) : nodes.get(parent);
             if (target === undefined)
                 throw new EgretError('AUDIO_BACKEND_FAILED');
             node.connect(target);
@@ -398,6 +415,7 @@ export function createBrowserAudio(options = {}) {
             closed = true;
             unlisten(armed);
             unlisten(pairs);
+            limiter?.disconnect();
             if (live !== undefined && given === undefined)
                 live.close().catch(report);
         }

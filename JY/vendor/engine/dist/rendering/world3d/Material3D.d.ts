@@ -59,6 +59,7 @@ export interface MaterialOptions3D {
     readonly side?: Side3D;
     readonly alphaMode?: AlphaMode3D;
     readonly alphaCutoff?: number;
+    /** Anything but 'normal' also makes 'blend' the default `alphaMode`. */
     readonly blending?: Blending3D;
     readonly depthTest?: boolean;
     readonly depthWrite?: boolean;
@@ -108,6 +109,7 @@ export declare class Material3D extends Resource3D {
     alphaMode: AlphaMode3D;
     /** Fragments below this alpha are discarded in 'mask' mode. */
     alphaCutoff: number;
+    /** How a blended fragment combines with what is behind it. Used only when `alphaMode` is 'blend'. */
     blending: Blending3D;
     depthTest: boolean;
     depthWrite: boolean;

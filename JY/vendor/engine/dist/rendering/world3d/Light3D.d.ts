@@ -4,6 +4,8 @@ export type LightType3D = 'ambient' | 'hemisphere' | 'directional' | 'point' | '
 export declare const LIGHT3D_LIMITS: Readonly<{
     readonly maxDirectional: 4;
     readonly maxPoint: 8;
+    /** Point lights with a range lit through the tiled list, beyond the eight lit directly. */
+    readonly maxTiledPoint: 256;
     readonly maxSpot: 4;
     readonly maxShadows: 4;
 }>;

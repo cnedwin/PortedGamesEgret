@@ -709,8 +709,12 @@ function assembleBrowserTextureProvider(options, owner) {
             if (!record(attributes))
                 throw fault('SURFACE_INVALID', new TypeError('Context attributes record required'));
             const alpha = read(attributes, 'alpha', signal), colorSpace = read(attributes, 'colorSpace', signal);
-            if (alpha !== true || colorSpace !== 'srgb')
-                throw fault('SURFACE_INVALID', new TypeError('Straight sRGB alpha readback requires explicit Canvas support'));
+            // A fresh native 2D canvas defaults to alpha-enabled sRGB. Some WebKit
+            // ports omit metadata for those defaults on the context and its readback.
+            const useNativeDefaults = suppliedMethods === undefined;
+            if ((alpha !== true && !(useNativeDefaults && alpha === undefined)) ||
+                (colorSpace !== 'srgb' && !(useNativeDefaults && colorSpace === undefined)))
+                throw fault('SURFACE_INVALID', new TypeError('Canvas backing must support sRGB with alpha'));
             const transform = read(drawing, 'setTransform', signal), draw = read(drawing, 'drawImage', signal), pixels = read(drawing, 'getImageData', signal);
             if (!functionValue(transform) || !functionValue(draw) || !functionValue(pixels))
                 throw fault('SURFACE_INVALID', new TypeError('Complete Canvas raster operations required'));
@@ -734,7 +738,7 @@ function assembleBrowserTextureProvider(options, owner) {
             if (!record(result))
                 throw fault('READBACK_INVALID', new TypeError('Complete image readback required'));
             const rw = read(result, 'width', signal), rh = read(result, 'height', signal), data = read(result, 'data', signal), cs = read(result, 'colorSpace', signal);
-            if (rw !== size.width || rh !== size.height || cs !== 'srgb')
+            if (rw !== size.width || rh !== size.height || (cs !== 'srgb' && !(useNativeDefaults && cs === undefined)))
                 throw fault('READBACK_INVALID', new TypeError('Image readback metadata differs'));
             let readback;
             try {

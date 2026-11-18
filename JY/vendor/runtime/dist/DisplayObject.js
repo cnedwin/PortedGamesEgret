@@ -5,7 +5,7 @@ import { registerDisplayHitNode, readDisplayHitState, writeDisplayHitArea, write
 import { queryDisplayBounds } from './displayBounds.js';
 import { queryDisplayPoint } from './displayCoordinates.js';
 import { EgretError } from './EgretError.js';
-import { assertVisualMutable, copyRect, finite, unit, registerVisual, visualOf, readAnchorOffset, writeAnchorOffset, recordVisualChange, VISUAL_TRANSFORM, VISUAL_APPEARANCE } from './displayVisualState.js';
+import { assertVisualMutable, copyRect, alphaOf, finite, invalidDisplayValue, registerVisual, visualOf, readAnchorOffset, writeAnchorOffset, recordVisualChange, VISUAL_TRANSFORM, VISUAL_APPEARANCE } from './displayVisualState.js';
 import { EventDispatcher } from './EventDispatcher.js';
 import { ASSERT_ATTACHABLE, ASSERT_BINDABLE, OWNERSHIP_CHILDREN } from './ownership.js';
 import { assertLive, isTerminated, parentOf, registerNode, terminateNode } from './displayTreeState.js';
@@ -57,7 +57,7 @@ export class DisplayObject extends EventDispatcher {
     set x(value) {
         assertVisualMutable(this);
         if (!finite(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('x', value);
         const state = visualOf(this), changed = !sameVisualValue(state.x, value);
         state.x = value;
         if (changed)
@@ -69,7 +69,7 @@ export class DisplayObject extends EventDispatcher {
     set y(value) {
         assertVisualMutable(this);
         if (!finite(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('y', value);
         const state = visualOf(this), changed = !sameVisualValue(state.y, value);
         state.y = value;
         if (changed)
@@ -95,7 +95,7 @@ export class DisplayObject extends EventDispatcher {
     set scaleX(value) {
         assertVisualMutable(this);
         if (!finite(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('scaleX', value);
         const state = visualOf(this), changed = !sameVisualValue(state.scaleX, value);
         state.scaleX = value;
         if (changed)
@@ -107,7 +107,7 @@ export class DisplayObject extends EventDispatcher {
     set scaleY(value) {
         assertVisualMutable(this);
         if (!finite(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('scaleY', value);
         const state = visualOf(this), changed = !sameVisualValue(state.scaleY, value);
         state.scaleY = value;
         if (changed)
@@ -119,7 +119,7 @@ export class DisplayObject extends EventDispatcher {
     set rotation(value) {
         assertVisualMutable(this);
         if (!finite(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('rotation', value);
         const state = visualOf(this), changed = !sameVisualValue(state.rotation, value);
         state.rotation = value;
         if (changed)
@@ -132,7 +132,7 @@ export class DisplayObject extends EventDispatcher {
     set skewX(value) {
         assertVisualMutable(this);
         if (!finite(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('skewX', value);
         const state = visualOf(this), changed = !sameVisualValue(state.skewX, value);
         state.skewX = value;
         if (changed)
@@ -145,7 +145,7 @@ export class DisplayObject extends EventDispatcher {
     set skewY(value) {
         assertVisualMutable(this);
         if (!finite(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('skewY', value);
         const state = visualOf(this), changed = !sameVisualValue(state.skewY, value);
         state.skewY = value;
         if (changed)
@@ -158,7 +158,7 @@ export class DisplayObject extends EventDispatcher {
     set name(value) {
         assertVisualMutable(this);
         if (typeof value !== 'string')
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('name', value);
         visualOf(this).name = value;
     }
     /**
@@ -184,10 +184,11 @@ export class DisplayObject extends EventDispatcher {
     }
     set alpha(value) {
         assertVisualMutable(this);
-        if (!unit(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
-        const state = visualOf(this), changed = !sameVisualValue(state.alpha, value);
-        state.alpha = value;
+        const alpha = alphaOf(value);
+        if (alpha === undefined)
+            throw invalidDisplayValue('alpha', value);
+        const state = visualOf(this), changed = !sameVisualValue(state.alpha, alpha);
+        state.alpha = alpha;
         if (changed)
             recordVisualChange(this, VISUAL_APPEARANCE);
     }
@@ -197,7 +198,7 @@ export class DisplayObject extends EventDispatcher {
     set visible(value) {
         assertVisualMutable(this);
         if (typeof value !== 'boolean')
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('visible', value);
         const state = visualOf(this), changed = !sameVisualValue(state.visible, value);
         state.visible = value;
         if (changed)
@@ -210,7 +211,7 @@ export class DisplayObject extends EventDispatcher {
     set sharedMaterial(value) {
         assertVisualMutable(this);
         if (value !== null && !isSharedMaterial2D(value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('sharedMaterial', value);
         const state = visualOf(this), changed = state.sharedMaterial !== value;
         state.sharedMaterial = value;
         if (changed)
@@ -232,7 +233,7 @@ export class DisplayObject extends EventDispatcher {
     set blendMode(value) {
         assertVisualMutable(this);
         if (typeof value !== 'string' || !Object.hasOwn(BLENDS, value))
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('blendMode', value);
         const blend = BLENDS[value];
         const state = visualOf(this), base = state.sharedMaterial;
         if (base === null && blend === 'normal')
@@ -268,7 +269,7 @@ export class DisplayObject extends EventDispatcher {
     set renderBoundary(value) {
         assertVisualMutable(this);
         if (value !== 'none' && value !== 'isolate')
-            throw new EgretError('DISPLAY_VALUE_INVALID');
+            throw invalidDisplayValue('renderBoundary', value);
         const state = visualOf(this), changed = state.renderBoundary !== value;
         state.renderBoundary = value;
         if (changed)

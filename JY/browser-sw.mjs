@@ -20,7 +20,8 @@ self.addEventListener('message', event => {
 
 function importedModules() {
   gameImports ??= Promise.all(enginePackages.map(async folder => {
-    const response = await fetch(new URL(`vendor/${folder}/package.json`, root));
+    // Revalidate package exports when a worker starts after an engine upgrade.
+    const response = await fetch(new URL(`vendor/${folder}/package.json`, root), { cache: 'no-cache' });
     if (!response.ok) throw Error('Cannot load the engine package manifest.');
     return [folder, await response.json()];
   })).then(manifests => makeGameImports(manifests,

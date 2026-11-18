@@ -3,7 +3,7 @@ import type { Geometry3D } from './Geometry3D.js';
 import { Light3D } from './Light3D.js';
 import type { Material3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
-import type { Scene3D } from './Object3D.js';
+import type { Object3D, Scene3D } from './Object3D.js';
 export interface RenderItem3D {
     mesh: Mesh3D;
     geometry: Geometry3D;
@@ -22,6 +22,8 @@ export interface RenderItem3D {
 export interface RenderStats3D {
     visited: number;
     culled: number;
+    /** Point and spot lights past the renderer's limits that the last build left out. */
+    lightsDropped: number;
 }
 export declare class RenderList3D {
     #private;
@@ -32,6 +34,13 @@ export declare class RenderList3D {
     readonly directionalLights: Light3D[];
     readonly pointLights: Light3D[];
     readonly spotLights: Light3D[];
+    /**
+     * Point lights past the eight a frame lights directly, nearest first: they are lit through the tiled light
+     * list instead, each only where its range reaches. Lights with no range are not among them.
+     */
+    readonly tiledPointLights: Light3D[];
+    /** Whether lights past the eight go to the tiled list (the renderer sets this) or are dropped. */
+    tiledLights: boolean;
     /** Summed ambient radiance, plus hemisphere sky and ground radiance. */
     readonly ambient: Float32Array<ArrayBuffer>;
     readonly hemisphereSky: Float32Array<ArrayBuffer>;
@@ -50,7 +59,10 @@ export declare class RenderList3D {
     };
     /** Monotonic frame id, used to update each skeleton once per frame. */
     get frame(): number;
-    build(scene: Scene3D, camera: Camera3D): void;
+    build(scene: Scene3D, camera: Camera3D, filter?: {
+        readonly layerMask: number;
+        readonly hidden: readonly Object3D[];
+    }): void;
     /** Copy the sorted opaque items out, replacing each long enough run of like meshes with one instanced item. */
     private fold;
     /** Shadow casters that share a geometry and a material are drawn into the shadow maps as one instanced mesh. */
@@ -61,6 +73,13 @@ export declare class RenderList3D {
     private retire;
     private visit;
     private addLight;
+    /**
+     * Keeps at most `limit` of the lights found, the ones that matter most to the camera: a light whose range
+     * reaches the camera before one that does not, then the brightest at the camera's distance. A light that
+     * casts a shadow counts as reaching. Kept lights stay in scene order, so a frame with no more lights than
+     * the limit is unchanged.
+     */
+    private keepLights;
     private addMesh;
     private push;
     /** Drop pooled references so retired scene content can be collected. */

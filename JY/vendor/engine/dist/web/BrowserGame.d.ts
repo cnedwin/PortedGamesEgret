@@ -1,4 +1,4 @@
-import type { AssetLease, Engine, Scope, Stage, SharedFrameOptions2D, Texture } from '@egret/engine';
+import type { AssetLease, DiagnosticHandler, Engine, Scope, Stage, SharedFrameOptions2D, Texture } from '@egret/engine';
 import type { TextField } from '@egret/engine/text';
 import type { BrowserFrameLoop } from './loop.js';
 import type { PointerInput } from './pointer.js';
@@ -98,6 +98,12 @@ export interface BrowserGame {
     /** Stops the loop and ends the input, the scope, the Engine and its Host. */
     dispose(): Promise<void>;
 }
+/**
+ * What a game does with the diagnostics of its Engine. An error the Engine can only report, such as a listener of
+ * pointer input that threw, which ends that input, is told as a failure of the loop is: to `onError`, or to the page,
+ * where the console shows it. Without this it was told to no one, and the game went on without its input.
+ */
+export declare function gameDiagnostics(onError: ((error: unknown) => void) | undefined): DiagnosticHandler;
 /**
  * Makes a game ready to draw: `await createBrowserGame({ canvas, width, height, update })`, then add display objects
  * to `game.stage`. Everything it makes is what the separate entries make; a game that outgrows it takes them apart.
