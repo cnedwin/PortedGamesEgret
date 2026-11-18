@@ -13,6 +13,7 @@ const magicStamina = 3;
 const dartStamina = 5;
 const bloodFrames = [13, 11, 14, 12, 10];
 const frameMs = 1000 / 60;
+const impactFraction = .35;
 const clamp = (value, minimum, maximum) => Math.max(minimum, Math.min(maximum, value));
 const distance = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 const sameCell = (a, b) => a.x === b.x && a.y === b.y;
@@ -95,6 +96,11 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
     freeze: 0, slow: 0, closeUp: 0, zoom: 1, shake: 0, shakeX: 0, shakeY: 0,
     focus: player ?? enemies[0] ?? { x: 0, y: 0 }, swordLight: 0, swordLightColor: 0xffffff,
     texts: [], blood: [], impacts: [],
+    get attackMotion() {
+      if (animation?.actor.action === 'attack') return {
+        key: animation.actor.key, progress: Math.min(1, animation.elapsed / animation.duration), impactAt: impactFraction,
+      };
+    },
   };
   const state = {
     id: battle.id ?? battle.battleId, roles, player, turn: null, round: 0, controlled: player,
@@ -777,7 +783,7 @@ export function createClassicBattle(battle, { rng = Math.random, tileWidth = 18,
         actor.actFrame = Math.floor(action.elapsed / 38);
         actor.picture = pictureOf(actor);
       }
-      if (progress >= .35 && action.impact) {
+      if (progress >= impactFraction && action.impact) {
         action.impact();
         action.impact = null;
       }

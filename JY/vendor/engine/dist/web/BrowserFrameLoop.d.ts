@@ -24,6 +24,13 @@ export interface BrowserFrameLoopOptions<F> {
     readonly update?: (deltaSeconds: number) => void;
     /** The longest step, in seconds. A tab that was hidden comes back with one step of this length. Defaults to 0.1, and is never more than the Engine's clock takes. */
     readonly maxStepSeconds?: number;
+    /**
+     * How much of a long gap is played back. A frame that took longer than `maxStepSeconds` is given as several
+     * steps of at most that length, up to this many seconds in all, before one frame is drawn; the rest of the gap
+     * is dropped. 0, the default, gives one step of the longest length, so a slow device plays slower instead of
+     * jumping. A tab that comes back from being hidden still loses the time it was hidden beyond this.
+     */
+    readonly catchUpSeconds?: number;
     /** Told once of what stopped the loop. Without it the failure is thrown from the display's callback, where the console shows it. */
     readonly onError?: (error: unknown) => void;
     /** The display's frame callback and its cancellation; `requestAnimationFrame` and `cancelAnimationFrame` by default. */

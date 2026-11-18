@@ -79,7 +79,8 @@ export declare class Graphics {
     drawArc(x: number, y: number, radius: number, startAngle: number, endAngle: number, anticlockwise?: boolean): this;
     /** Ends the fill. A path drawn under it is filled as it stands. */
     endFill(): this;
-    clear(): void;
+    /** Removes everything drawn and ends the fill and the line. Returns the graphics, so drawing can follow at once. */
+    clear(): this;
     /**
      * A fill of an image. `lease` is the lease of a texture that is a whole image, not a part of an atlas. `matrix`
      * places the image in the node: its pixel (x, y) is drawn at `a·x + c·y + tx`, `b·x + d·y + ty`; without it a pixel

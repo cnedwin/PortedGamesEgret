@@ -3,7 +3,8 @@ import {
   createAmbientLight3D, createCustomShader3D, createDirectionalLight3D, createGeometry3D, createPerspectiveCamera3D,
   mat4Compose, mat4Invert, mat4Multiply, vec3TransformDirection, vec3TransformMat4,
 } from '@egret/engine/world3d';
-import { createWebGL2Renderer3D, loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
+import { loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
+import { createWorldRenderer } from './world3d-renderer.mjs';
 import { cloneNativeSceneActor } from './native-scene-actor.mjs';
 
 const actorsDirectory = '/jyx2/inn3d-actors/';
@@ -467,7 +468,7 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
 
   try {
     if (requireInstancing && !instances) throw Error(`Scene ${sceneId} glTF must include native GPU instances.`);
-    renderer = createWebGL2Renderer3D({ canvas, shadowAtlasSize: 4096, toneMapping: 'none',
+    renderer = createWorldRenderer({ canvas, shadowAtlasSize: 4096, toneMapping: 'none',
       onContextLost() { lost = true; }, onContextRestored() { lost = false; } });
     interactiveProps = prepareProps?.(environment, spec);
     canvas.dataset.interactiveProps = String(interactiveProps?.slots.length ?? 0);

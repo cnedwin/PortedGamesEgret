@@ -7,12 +7,18 @@ import type { RenderList3D } from '../../rendering/world3d/RenderList3D.js';
 import type { PostProcessSettings3D } from './post3D.js';
 import type { CompressedFormat3D, RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 export type ToneMapping3D = 'none' | 'reinhard' | 'aces';
+/** Half-float targets keep scene-referred light until composition. */
+export declare function outputToneMapping3D(toneMapping: ToneMapping3D, target?: RenderTarget3D): ToneMapping3D;
 export interface Renderer3DInfo {
     frame: number;
     drawCalls: number;
     triangles: number;
     visited: number;
     culled: number;
+    /** Point and spot lights left out of the last frame because more were lit than the renderer draws. */
+    lightsDropped: number;
+    /** Point lights past the eight lit through the tiled list in the last frame. */
+    lightsTiled: number;
     shadowMaps: number;
     programs: number;
     geometries: number;
@@ -48,7 +54,7 @@ export interface Renderer3D extends Disposable {
     readRenderTargetPixels(target: RenderTarget3D): Promise<Uint8Array>;
 }
 /** Size in floats of the Frame uniform block. */
-export declare const FRAME_BLOCK_FLOATS_3D = 352;
+export declare const FRAME_BLOCK_FLOATS_3D = 360;
 /** Offsets, in floats, of the Frame block members. */
 export declare const FRAME_OFFSETS_3D: Readonly<{
     readonly viewProjection: 0;
@@ -77,6 +83,8 @@ export declare const FRAME_OFFSETS_3D: Readonly<{
     readonly pointShadow: 328;
     readonly clipPlanes: 332;
     readonly clipInfo: 348;
+    readonly tileGrid: 352;
+    readonly tileInfo: 356;
 }>;
 export interface FrameOutput3D {
     readonly exposure: number;
@@ -108,4 +116,27 @@ export declare function cascadeSplits3D(near: number, far: number, count: number
  * backends whose texture origin is the top row.
  */
 export declare function planShadows3D(data: Float32Array, list: RenderList3D, atlasSize: number, enabled: boolean, flipY: boolean, slots: Map<Light3D, number>, camera?: Camera3D): ShadowPlan3D[];
+/**
+ * The tiled light list: point lights past the eight a frame lights directly, and for each screen tile the lights
+ * whose range reaches into it. One RGBA32F table of `TILED_LIGHTS_3D.width` texels a row: lights from texel 0
+ * (two texels each: position and range, then colour), tile headers from `headerBase` (first index and count),
+ * then light indices four to a texel from `indexBase`.
+ */
+export declare const TILED_LIGHTS_3D: Readonly<{
+    readonly width: 512;
+    readonly rows: 17;
+    readonly maxLights: 256;
+    readonly headerBase: 512;
+    readonly maxTiles: 4096;
+    readonly indexBase: number;
+    readonly maxIndices: 16384;
+    readonly maxPerTile: 32;
+}>;
+/**
+ * Fills `table` with the lights and their tiles for a viewport of `width` by `height` pixels, and the tile members
+ * of the frame block. With no lights the frame block says so and the table is left alone. `yDown` is true where
+ * fragment coordinates count rows from the top (WebGPU), false where from the bottom (WebGL2). `originX` and
+ * `originY` are where the viewport starts in fragment coordinates.
+ */
+export declare function writeTiledLights3D(data: Float32Array, table: Float32Array, lights: readonly Light3D[], viewProjection: ArrayLike<number>, width: number, height: number, yDown: boolean, originX?: number, originY?: number): number;
 //# sourceMappingURL=frame3D.d.ts.map

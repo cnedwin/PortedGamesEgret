@@ -26,6 +26,8 @@ export function attachBattleControls(panel, canvas, { signal, getState, getModel
   const buttons = new Map([...panel.querySelectorAll('[data-battle-controls-phase="active"] button')]
     .map(button => [button.dataset.battleCommand, button]));
   const phases = [...panel.querySelectorAll('[data-battle-controls-phase]')];
+  const actionRail = panel.querySelector('.battle-actions');
+  const moreButton = actionRail.querySelector('.battle-more');
   const skillName = panel.querySelector('[data-battle-skill]');
   const confirmButton = panel.querySelector('[data-battle-controls-phase="confirm"] [data-battle-command="Enter"]');
   const fields = Object.fromEntries(['fighter', 'action', 'hp', 'mp', 'nearby', 'enemy', 'enemy-action', 'enemy-hp']
@@ -57,11 +59,18 @@ export function attachBattleControls(panel, canvas, { signal, getState, getModel
     if (meter.value !== value) meter.value = value;
   }
 
-  function showTarget(title, detail, vitals, tone) {
+  function showTarget(title, detail, vitals, tone, affected = '') {
     setText(fields.enemy, title);
     setText(fields['enemy-action'], detail);
     setText(fields['enemy-hp'], vitals);
     if (fields['enemy-action'].dataset.tone !== tone) fields['enemy-action'].dataset.tone = tone;
+    if (fields['enemy-action'].title !== affected) fields['enemy-action'].title = affected;
+  }
+
+  function showMore(open) {
+    const value = String(open);
+    if (moreButton.getAttribute('aria-expanded') !== value) moreButton.setAttribute('aria-expanded', value);
+    setText(moreButton, open ? '返回指令' : '更多');
   }
 
   function showReadout(actor, state, selection, preview, invalid) {
@@ -74,7 +83,7 @@ export function attachBattleControls(panel, canvas, { signal, getState, getModel
     showMeter('hp', actor.hp, actor.maxHp);
     showMeter('mp', actor.mp, actor.maxMp);
     const previewing = Boolean(selection);
-    const target = state.target !== actor && state.target;
+    const target = state.target !== actor && !state.target?.dead && state.target;
     const hideCard = !previewing && !target;
     if (fields.nearby.hidden !== hideCard) fields.nearby.hidden = hideCard;
     if (targetMeter.hidden !== previewing) targetMeter.hidden = previewing;
@@ -82,8 +91,8 @@ export function attachBattleControls(panel, canvas, { signal, getState, getModel
       showTarget('這格不可選', '', '請選擇高亮格', 'warning');
     } else if (preview) {
       const { type, path, targets = [], stamina, mp, strikes, stock } = preview;
-      const names = targets.slice(0, 2).map(role => role.name).join('、');
-      const targetLabel = targets.length > 2 ? `${names} 等 ${targets.length} 人` : names;
+      const names = targets.map(role => role.name);
+      const targetLabel = targets.length > 1 ? `${targets.length} 人 · ${names.slice(0, 2).join('、')}${targets.length > 2 ? '…' : ''}` : names[0];
       const detail = path ? `${path.length} / ${state.moveRange} 格` : targetLabel || '範圍內無目標';
       const costs = [];
       if (mp !== undefined) costs.push(`${strikes > 1 ? '首擊' : ''}內力 ${mp}`);
@@ -91,7 +100,8 @@ export function attachBattleControls(panel, canvas, { signal, getState, getModel
       if (stock !== undefined) costs.push(`用 1 件 · 持有 ${stock}`);
       if (strikes > 1) costs.push('連擊 2 次');
       if (type === 'status' && targets[0]) costs.push(`生命 ${targets[0].hp}/${targets[0].maxHp}`);
-      showTarget(preview.name || previewLabels[type], detail, costs.join(' · '), path || targets.length ? 'ready' : 'warning');
+      showTarget(preview.name || previewLabels[type], detail, costs.join(' · '), path || targets.length ? 'ready' : 'warning',
+        targets.length > 2 ? names.join('、') : '');
     } else if (selection) {
       showTarget(previewLabels[selection], '', '請選擇高亮格', 'active');
     } else if (target) {
@@ -109,6 +119,7 @@ export function attachBattleControls(panel, canvas, { signal, getState, getModel
         : prompt || state.pendingResult !== null ? undefined : 'active';
     if (next !== phase) {
       phase = next;
+      showMore(false);
       panel.hidden = !phase;
       for (const group of phases) group.hidden = group.dataset.battleControlsPhase !== phase;
     }
@@ -117,6 +128,11 @@ export function attachBattleControls(panel, canvas, { signal, getState, getModel
 
     const mode = canvas.dataset.battleCommandMode;
     const selection = state.selection?.type ?? (mode === 'attack' ? 'magic' : mode);
+    const selecting = String(Boolean(selection));
+    if (actionRail.dataset.selecting !== selecting) {
+      actionRail.dataset.selecting = selecting;
+      showMore(false);
+    }
     const canAct = Boolean(state.canAct && !state.auto);
     const actions = canAct ? getModel()?.listActions() ?? [] : [];
     const actor = state.turn ?? state.controlled ?? state.player;
@@ -138,12 +154,17 @@ export function attachBattleControls(panel, canvas, { signal, getState, getModel
     setDisabled('KeyQ', !canSwitch);
     setDisabled('KeyF', !canSwitch);
     setText(skillName, state.activeMagicName ?? '');
-    setText(buttons.get('Escape'), selection ? '取消選擇' : '認輸');
+    setText(buttons.get('Escape'), selection ? '取消' : '認輸');
   }
 
   panel.addEventListener('click', event => {
+    if (phase === 'active' && event.target.closest('.battle-more') === moreButton) {
+      showMore(moreButton.getAttribute('aria-expanded') === 'false');
+      return;
+    }
     const button = event.target.closest('button[data-battle-command]');
     if (!button || button.disabled || !phase || button.closest('[hidden]')) return;
+    showMore(false);
     canvas.focus({ preventScroll: true });
     press(button.dataset.battleCommand);
   }, { signal });

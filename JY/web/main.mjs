@@ -4,12 +4,14 @@ import { createTextRasterCache } from '@egret/engine/text';
 import { createCanvasTextRasterProvider } from '@egret/engine/web/text';
 import { createSharedWebGL2Host } from '@egret/engine/webgl2';
 import { createOpeningDialogue } from './opening-dialogue.mjs';
+import { createOpeningReading } from './opening-reading.mjs';
 import { loadOpening, openingEventId, playOpening } from './opening-event.mjs';
 import { createBattleView } from './battle-view.mjs';
 import { createBattleMenu } from './battle-menu.mjs';
 import { attachBattleControls } from './jyx2/ui/battle-controls.mjs';
 import { createBattleMusic } from './battle-music.mjs';
 import { autoSlot, createSaveSlot, manualSlots } from './save-slot.mjs';
+import { describeSaveSlot } from './save-info.mjs';
 import { createClassicBattle, resolveClassicTeam } from './classic-battle.mjs';
 import { canUseGear } from './battle-progression.mjs';
 import { loadTrainer, playTrainer, trainerEventId } from './trainer-event.mjs';
@@ -21,6 +23,7 @@ import { showWorldMenu } from './world-menu.mjs';
 import { attachGamepadInput } from './gamepad-input.mjs';
 import { nativeSaveRequest, pickNativeSave, readPreferences, returnToTitle, showTitle } from './jyx2/ui/game-shell.mjs';
 import { createWorldNavigation } from './jyx2/ui/world-navigation.mjs';
+import { createDialogueJournal } from './jyx2/ui/dialogue-journal.mjs';
 import { findTilePath, screenToTile } from './kys-navigation.mjs';
 import { createSceneAtmosphere } from './scene-atmosphere.mjs';
 import { hasJyx2Scene, loadJyx2Scene } from './jyx2/scene/home.mjs';
@@ -35,12 +38,17 @@ const hint = document.querySelector('#hint');
 const notice = document.querySelector('#notice');
 const battleResultPanel = document.querySelector('#battle-result');
 const battleResultText = document.querySelector('#battle-result-text');
+const battleResultDetails = document.querySelector('#battle-result-details');
 const battleContinue = document.querySelector('#battle-continue');
 const marker = document.querySelector('#event-marker');
 const menuToggle = document.querySelector('#open-menu');
 const exploreControls = document.querySelector('#explore-controls');
 const exploreDpad = document.querySelector('#explore-dpad');
 const mapInteract = exploreControls.querySelector('[data-map-command="Enter"]');
+const dialogueTools = exploreControls.querySelector('.dialogue-tools');
+const journalButton = document.querySelector('#open-dialogue-journal');
+const skipReadOpening = document.querySelector('#skip-read-opening');
+const openingExitGuide = document.querySelector('#opening-exit-guide');
 const touchExploration = matchMedia('(pointer: coarse)');
 const battleMenuPanel = document.querySelector('#battle-menu');
 const moves = new Map([
@@ -334,15 +342,20 @@ async function start() {
     ? baseline.location : previewLocations.get(previewName);
   const autoSave = createSaveSlot(preview ? `${initial.saveIdentity}:${previewName}-preview` : initial.saveIdentity);
   let save = await autoSave.read();
+  let catalogRequest;
+  const loadCatalog = () => catalogRequest ??= json('/api/catalog').catch(error => {
+    catalogRequest = undefined;
+    throw error;
+  });
   if (preview) baseline.location = { ...preview };
   if (!preview && (settings.get('title') === '1' || !save && settings.get('play') !== '1')) {
-    save = await showTitle({ initial, baseline, autoSave, save, preferences, search: settings });
+    save = await showTitle({ initial, baseline, autoSave, save, preferences, search: settings, loadCatalog });
   }
   const requestedStyle = settings.get('visual');
   const visualStyle = ['jyx2', 'classic', 'enhanced'].includes(requestedStyle) ? requestedStyle : preferences.visual;
   document.body.dataset.visual = visualStyle === 'classic' ? 'classic' : 'enhanced';
   document.body.dataset.art = visualStyle;
-  const catalog = await json('/api/catalog');
+  const catalog = await loadCatalog();
   const game = {
     initial, baseline, autoSave, save, catalog, visualStyle, sound: preferences.sound,
     programs: new Map(), sceneStates: new Map(), openingDone: save?.openingDone ?? false,
@@ -568,7 +581,17 @@ async function openMap(game, destination) {
   let forcedPlayerPicture;
   const openingPoses = new Map();
   const listeners = new AbortController();
+  const journal = createDialogueJournal(game.dialoguePages ??= [], {
+    signal: listeners.signal,
+    restoreFocus: () => canvas.focus({ preventScroll: true }),
+  });
+  const openingReading = opening && createOpeningReading(initial.saveIdentity);
+  let openingCommand;
+  let exitGuideTimer;
+  const openingExit = opening && scene.exits?.[0];
+  openingExitGuide.hidden = dialogueTools.hidden = true;
   const worldNavigation = isWorld && createWorldNavigation(canvas.parentElement, {
+    controls: exploreControls,
     signal: listeners.signal,
     cancel() {
       cancelWorldRoute();
@@ -647,8 +670,9 @@ async function openMap(game, destination) {
     bottomDocked: () => Boolean(map3dView),
     loadPortrait, speakerName: head => speakerNames.get(head),
     portraitUrl: id => `/art/${portraitGroup}/${id}.png`,
-    onPage({ text, head, style, voice, page, pages }) {
+    onPage({ text, speaker, head, style, voice, page, pages }) {
       Object.assign(canvas.dataset, { talkText: text, talkHead: head, talkStyle: style, talkVoice: voice, talkPage: page, talkPages: pages });
+      journal.record(speaker ?? (head < 0 ? '提示' : '對話'), text);
       if (openingActive) canvas.dataset.opening = 'talk';
       updateExploreControls();
       hint.textContent = `${touchExploration.matches ? '點畫面或按繼續' : '點擊畫面 / Enter 繼續'} · ${page}/${pages}`;
@@ -689,6 +713,8 @@ async function openMap(game, destination) {
     const canMove = !reading && !worldMenuActive && !eventEnded && !battle;
     exploreDpad.hidden = !canMove;
     mapInteract.textContent = reading ? '繼續' : '對話';
+    dialogueTools.hidden = !dialogue.waiting || !journal.hasEntries || Boolean(battle) || menu.active;
+    skipReadOpening.hidden = !openingActive || !openingReading.known(openingCommand);
   }
 
   function showCell() {
@@ -698,8 +724,13 @@ async function openMap(game, destination) {
     coordinates.textContent = `格点 ${x} · ${y}`;
     const event = eventAt(x, y);
     marker.textContent = event?.event3 > 0 ? `经过事件 ${event.event3}` : '';
+    const interaction = facingEvent();
+    const trainerNearby = hasTrainer && facingOffsets.some(([dx, dy]) =>
+      fits(scene, x + dx, y + dy) && eventAt(x + dx, y + dy)?.event1 === trainerEventId);
     hint.textContent = eventEnded ? '劇情完成 · 在江湖選單可返回主選單'
-      : facingEvent() ? (touchExploration.matches ? '點「對話」與面前人物交談' : 'Enter / 空格與 NPC 對話')
+      : interaction?.id === trainerEventId ? (touchExploration.matches ? '黑帝斯 · 點「對話」可開始試煉' : '黑帝斯 · 按 Enter 開始試煉')
+      : trainerNearby ? '面向黑帝斯，對話可開始試煉'
+      : interaction ? (touchExploration.matches ? '點「對話」與面前人物交談' : 'Enter / 空格與 NPC 對話')
       : scene.exits?.some(([ex, ey]) => x === ex && y === ey) ? '已到达原作出口'
       : touchExploration.matches ? '點選地圖尋路，或使用方向鍵移動'
         : isWorld && map3dView ? '方向鍵 / WASD 移動 · 點擊地名進入' : '方向鍵或 WASD 移動';
@@ -717,8 +748,12 @@ async function openMap(game, destination) {
     const view = {
       requestFrame,
       presentFrame,
-      talk: options => dialogue.talk(options),
+      async talk(options) {
+        if (openingReading.shouldSkip(openingCommand)) return;
+        if (await dialogue.talk(options)) openingReading.acknowledge(openingCommand);
+      },
       command(name, index) {
+        openingCommand = index;
         canvas.dataset.opening = 'running';
         canvas.dataset.command = String(index);
         canvas.dataset.commandName = name;
@@ -756,6 +791,10 @@ async function openMap(game, destination) {
       });
       canvas.dataset.opening = 'complete';
       showCell();
+      if (openingExit) {
+        openingExitGuide.hidden = false;
+        exitGuideTimer = setTimeout(() => { openingExitGuide.hidden = true; }, 18000);
+      }
     }).catch(error => {
       if (listeners.signal.aborted) return;
       canvas.dataset.opening = 'error';
@@ -912,7 +951,6 @@ async function openMap(game, destination) {
     const roles = new Map(game.roleState.map(role => [role.id, role]));
     for (const { expGot, levelsGained, ...role } of result.settlement) roles.set(role.id, { ...roles.get(role.id), ...role });
     await commitProgress({ inventory, roleState: [...roles.values()], lastBattle: { id: result.id, won: result.won } });
-    canvas.dataset.trainer = 'saved';
   }
 
   async function showItemReward(id, amount, phase) {
@@ -937,6 +975,7 @@ async function openMap(game, destination) {
     delete canvas.dataset.blocked;
     notice.hidden = true;
     let errorText;
+    let saving = false, saved = false;
     try {
       const program = game.trainer ??= await loadTrainer();
       await playTrainer({ program, inventory: game.inventory, view: {
@@ -946,7 +985,11 @@ async function openMap(game, destination) {
         },
         battle: fight,
         showItem: (id, amount) => showItemReward(id, amount, 'trainer'),
-        save: saveTrainer,
+        async save(inventory, result) {
+          saving = true;
+          await saveTrainer(inventory, result);
+          saved = true;
+        },
       } });
     } catch (error) {
       if (listeners.signal.aborted) return;
@@ -957,8 +1000,12 @@ async function openMap(game, destination) {
         trainerActive = false;
         menuToggle.disabled = false;
         showCell();
-        marker.textContent = errorText ? '事件 692 暫停' : `已自動存檔 · 勝 ${canvas.dataset.wins} / 負 ${canvas.dataset.losses}`;
-        if (errorText) hint.textContent = errorText;
+        if (errorText) {
+          hint.textContent = `${saving && !saved ? '自動存檔失敗' : '試煉結算未完成'} · ${errorText}`;
+        } else if (saved) {
+          hint.textContent = `試煉已記錄 · 勝 ${canvas.dataset.wins} / 負 ${canvas.dataset.losses} · 自動存檔完成`;
+          canvas.dataset.trainer = 'saved';
+        }
         requestFrame();
       }
     }
@@ -1282,10 +1329,11 @@ async function openMap(game, destination) {
       return { number, store, save: await store.read() };
     }));
     const choices = entries.filter(entry => !loading || entry.save).map(entry => {
-      const location = entry.save?.location;
-      const title = !location ? '空槽' : location.id === 'world' ? '江湖大地圖' : scenes.find(row => row.id === location.id)?.name ?? '原作場景';
+      const { location, detail } = describeSaveSlot(entry.save, scenes, catalog.roles);
       const name = entry.number === autoSlot ? '自動存檔 11' : `第 ${entry.number} 槽`;
-      return { label: `${name} · ${title}`, value: entry, dataset: { saveSlot: entry.number } };
+      const title = `${name} · ${location}`;
+      return { title, detail, label: detail ? `${title} · ${detail}` : title,
+        value: entry, dataset: { saveSlot: entry.number } };
     });
     if (!choices.length) {
       await showMessage('目前沒有存檔。');
@@ -1303,6 +1351,7 @@ async function openMap(game, destination) {
     updateExploreControls();
     try {
       await showWorldMenu({ menu, signal: listeners.signal, game, catalog, bagOnly, canUseGear, actions: {
+        history: journal.hasEntries ? () => journal.show() : undefined,
         useQuestItem(itemId) {
           const target = facingEvent('event2');
           return target ? dispatchEvent(target, itemId) : showMessage('這裡無法使用這件物品。');
@@ -1383,7 +1432,10 @@ async function openMap(game, destination) {
       crafting && `製成 ${catalog.items[crafting.itemId].name} × ${crafting.count}`,
     ].filter(Boolean));
     battleResultText.textContent = [state.result ? '勝利' : '戰敗', experience, ...progress].join(' · ');
-    hint.textContent = '點擊「繼續」或按 Enter / 空格返回場景';
+    battleResultDetails.hidden = !trainerActive;
+    battleResultDetails.textContent = trainerActive
+      ? `繼續後回到${scene.name}，記錄本場${state.result ? '勝利' : '戰敗'}並自動存檔。` : '';
+    hint.textContent = '點擊「繼續」或按 Enter / 空格';
     battleResultPanel.hidden = false;
     restoreMapKeyboardFocus();
   }
@@ -1613,6 +1665,10 @@ async function openMap(game, destination) {
     const hit = map3dView ? map3dView.pick(u, v) : screenToTile(u * width, v * height, root.x, root.y, scale);
     const exit = hit?.exit && scene.exits?.[0];
     const target = exit ? { x: exit[0], y: exit[1] } : hit;
+    queueWalk(target);
+  }
+
+  function queueWalk(target) {
     if (!target || !fits(scene, target.x, target.y)) {
       if (worldNavigation) {
         held = pointerWalk = undefined;
@@ -1635,6 +1691,7 @@ async function openMap(game, destination) {
     }
     pointerWalk = { path, target: canTalk || entrance ? target : undefined, entrance, destination };
     if (destination) worldNavigation.show('walking', destination.name, '沿路前往 · 點地面可改道');
+    return true;
   }
 
   function drawWorldRoute(x, y) {
@@ -1948,6 +2005,8 @@ async function openMap(game, destination) {
     if (closing) return Promise.resolve();
     closing = true;
     cancelAnimationFrame(request);
+    clearTimeout(exitGuideTimer);
+    openingExitGuide.hidden = dialogueTools.hidden = true;
     listeners.abort();
     battleResultPanel.hidden = true;
     menu.close();
@@ -1976,6 +2035,7 @@ async function openMap(game, destination) {
   }
 
   function pressGameKey(code, repeat, consume = () => {}) {
+    if (journal.open) return;
     if (!battle && !trainerActive && !eventActive) startMapMusic();
     if (openingActive) {
       if (moves.has(code) || ['Enter', 'Space', 'Escape'].includes(code)) consume();
@@ -2067,6 +2127,18 @@ async function openMap(game, destination) {
     canvas.focus({ preventScroll: true });
     pressGameKey(command, false);
     if (moves.has(command)) held = undefined;
+  }, { signal: listeners.signal });
+  journalButton.addEventListener('click', () => journal.show(), { signal: listeners.signal });
+  skipReadOpening.addEventListener('click', () => {
+    if (!openingActive || !dialogue.waiting || !openingReading.start(openingCommand)) return;
+    dialogueTools.hidden = true;
+    canvas.focus({ preventScroll: true });
+    if (dialogue.skip()) canvas.dataset.opening = 'running';
+  }, { signal: listeners.signal });
+  openingExitGuide.addEventListener('click', () => {
+    if (!openingExit || closing || openingActive || trainerActive || recruitActive || eventActive || worldMenuActive || battle) return;
+    canvas.focus({ preventScroll: true });
+    if (queueWalk({ x: openingExit[0], y: openingExit[1] })) openingExitGuide.hidden = true;
   }, { signal: listeners.signal });
   function restoreMapKeyboardFocus() {
     if (document.activeElement === canvas && document.visibilityState === 'visible') keyboard.focus('map');

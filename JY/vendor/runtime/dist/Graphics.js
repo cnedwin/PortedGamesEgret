@@ -1,5 +1,5 @@
 import { EgretError } from "./EgretError.js";
-import { assertVisualMutable, color, unit, finite, copyRect, visualOf, recordVisualChange, VISUAL_CONTENT } from "./displayVisualState.js";
+import { assertVisualMutable, color, alphaOf, finite, copyRect, visualOf, recordVisualChange, VISUAL_CONTENT } from "./displayVisualState.js";
 import { GRAPHICS_SHAPE_LIMITS, addOutline, addPath, arcPoints, bezierPoints, copyDrawing, createShapeState, curveSegments, drawingFits, ellipseOutline, roundRectOutline, shapeFits } from "./graphicsShape.js";
 import { isAssetLease, readAssetLeaseValue } from "./AssetLease.js";
 import { isTexture, readTextureSnapshot } from "./Texture.js";
@@ -49,10 +49,11 @@ export class Graphics {
     }
     beginFill(value, alpha = 1) {
         assertVisualMutable(this.owner);
-        if (!color(value) || !unit(alpha))
+        const held = alphaOf(alpha);
+        if (!color(value) || held === undefined)
             throw invalid();
         this.finishPath();
-        this.fill = { color: value, alpha };
+        this.fill = { color: value, alpha: held };
         return this;
     }
     /** The line of the shapes drawn after it: its width in the node's units, colour and alpha. No width, or 0, ends the line. */
@@ -61,7 +62,8 @@ export class Graphics {
         if (thickness !== undefined &&
             (!finite(thickness) || thickness < 0 || thickness > GRAPHICS_SHAPE_LIMITS.maxLineWidth))
             throw invalid();
-        if (!color(value) || !unit(alpha) || typeof options !== "object" || options === null)
+        const held = alphaOf(alpha);
+        if (!color(value) || held === undefined || typeof options !== "object" || options === null)
             throw invalid();
         const caps = options.caps ?? "none", joints = options.joints ?? "miter", miterLimit = options.miterLimit ?? 4, given = options.dash;
         if ((caps !== "none" && caps !== "round" && caps !== "square") ||
@@ -87,7 +89,7 @@ export class Graphics {
         this.line =
             thickness === undefined || thickness === 0
                 ? undefined
-                : { width: thickness, color: value, alpha, caps, joints, miterLimit, dash };
+                : { width: thickness, color: value, alpha: held, caps, joints, miterLimit, dash };
         return this;
     }
     /** A fill whose colour runs along the line from one point to another, and stays the end colours beyond them. */
@@ -265,6 +267,7 @@ export class Graphics {
         this.fill = undefined;
         return this;
     }
+    /** Removes everything drawn and ends the fill and the line. Returns the graphics, so drawing can follow at once. */
     clear() {
         assertVisualMutable(this.owner);
         const state = visualOf(this.owner), changed = state.primitives.length !== 0 || state.shape !== undefined;
@@ -274,6 +277,7 @@ export class Graphics {
         this.line = undefined;
         if (changed)
             recordVisualChange(this.owner, VISUAL_CONTENT);
+        return this;
     }
     /**
      * A fill of an image. `lease` is the lease of a texture that is a whole image, not a part of an atlas. `matrix`
@@ -489,8 +493,8 @@ function gradientStops(stops) {
     for (const stop of stops) {
         if (typeof stop !== "object" || stop === null)
             throw invalid();
-        const offset = stop.offset, alpha = stop.alpha ?? 1;
-        if (!finite(offset) || offset < before || offset > 1 || !color(stop.color) || !unit(alpha))
+        const offset = stop.offset, alpha = alphaOf(stop.alpha ?? 1);
+        if (!finite(offset) || offset < before || offset > 1 || !color(stop.color) || alpha === undefined)
             throw invalid();
         out.push({ offset, color: stop.color, alpha });
         before = offset;

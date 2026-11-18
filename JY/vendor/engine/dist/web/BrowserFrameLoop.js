@@ -30,10 +30,18 @@ export function createBrowserFrameLoop(options) {
         typeof request !== 'function' ||
         typeof cancel !== 'function')
         throw invalid();
-    const clockLimit = engine.clock?.maxDeltaSeconds, asked = options.maxStepSeconds ?? 0.1;
-    if (typeof clockLimit !== 'number' || !(clockLimit > 0) || typeof asked !== 'number' || !(asked > 0))
+    const clockLimit = engine.clock?.maxDeltaSeconds, asked = options.maxStepSeconds ?? 0.1, catchUp = options.catchUpSeconds ?? 0;
+    if (typeof clockLimit !== 'number' ||
+        !(clockLimit > 0) ||
+        typeof asked !== 'number' ||
+        !(asked > 0) ||
+        typeof catchUp !== 'number' ||
+        !(catchUp >= 0) ||
+        !Number.isFinite(catchUp))
         throw invalid();
     const maxStep = Math.min(asked, clockLimit);
+    // Steps of one long frame are capped too, so a stalled page cannot spend a frame catching up forever.
+    const maxStepsPerFrame = Math.max(1, Math.ceil(Math.max(catchUp, maxStep) / maxStep));
     let state = 'idle', handle, last;
     let seconds = 0, steps = 0, frames = 0, skipped = 0, failure;
     const tick = (milliseconds) => {
@@ -41,16 +49,24 @@ export function createBrowserFrameLoop(options) {
         if (state !== 'running')
             return;
         try {
-            // The clock is given the loop's own seconds, which never jump: a long gap counts as one step of the longest length.
-            const delta = last === undefined ? 0 : Math.min(maxStep, Math.max(0, (milliseconds - last) / 1000));
+            // The clock is given the loop's own seconds, which never jump. A long gap counts as one step of the longest
+            // length, or, with catchUpSeconds, as several such steps up to that much time.
+            const gap = last === undefined ? 0 : Math.max(0, (milliseconds - last) / 1000);
             last = milliseconds;
-            seconds += delta;
-            engine.advanceTime(seconds);
-            steps++;
-            update?.(delta);
-            // The update may have stopped or disposed the loop.
-            if (state !== 'running')
-                return;
+            let owed = catchUp > 0 ? Math.min(gap, Math.max(catchUp, maxStep)) : Math.min(gap, maxStep);
+            for (let step = 0; step < maxStepsPerFrame; step++) {
+                const delta = Math.min(maxStep, owed);
+                owed -= delta;
+                seconds += delta;
+                engine.advanceTime(seconds);
+                steps++;
+                update?.(delta);
+                // The update may have stopped or disposed the loop.
+                if (state !== 'running')
+                    return;
+                if (!(owed > 1e-9))
+                    break;
+            }
             if (host !== undefined && host.getStatus().pendingFrames >= limit)
                 skipped++;
             else {

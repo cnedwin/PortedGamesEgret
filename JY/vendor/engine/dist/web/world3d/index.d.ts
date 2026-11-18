@@ -1,5 +1,5 @@
 export { WebGL2Renderer3D, createWebGL2Renderer3D } from './WebGL2Renderer3D.js';
-export type { WebGL2Renderer3DOptions } from './WebGL2Renderer3D.js';
+export type { WebGL2ProgramVariant3D, WebGL2Renderer3DOptions } from './WebGL2Renderer3D.js';
 export type { World3DFrameMetrics, World3DFramePass, World3DGpuTiming, World3DPassKind, World3DViewKind } from './webGL2FrameMetrics3D.js';
 export type { Renderer3D, Renderer3DInfo, ToneMapping3D } from './frame3D.js';
 export { OrbitControls3D, createOrbitControls3D } from './OrbitControls3D.js';
@@ -25,4 +25,14 @@ export { FollowControls3D, createFollowControls3D } from './FollowControls3D.js'
 export type { FollowControlsOptions3D } from './FollowControls3D.js';
 export { Atmosphere3D, createAtmosphere3D } from './atmosphere3D.js';
 export type { AtmosphereOptions3D } from './atmosphere3D.js';
+export { WORLD3D_QUALITY_PRESETS, createDynamicResolution3D, createWorld3DApp, pickWorld3DBackend, pickWorld3DQuality, isSoftwareRendered3D } from './app3D.js';
+export type { DynamicResolution3D, DynamicResolutionOptions3D, World3DApp, World3DAppOptions, World3DBackend, World3DDeviceHints, World3DQuality, World3DQualityPreset, World3DShowOptions } from './app3D.js';
+export { createScreenMarkers3D } from './markers3D.js';
+export type { ScreenMarker3D, ScreenMarkerOptions3D, ScreenMarkers3D, ScreenMarkersOptions3D } from './markers3D.js';
+export { createWorld3DStats } from './stats3D.js';
+export type { World3DStats, World3DStatsOptions } from './stats3D.js';
+export { createWorld3DOverlay } from './overlay3D.js';
+export type { World3DOverlay, World3DOverlayOptions } from './overlay3D.js';
+export { play3d, PlayThing3D } from './BrowserPlay3D.js';
+export type { Play3DGame, Play3DOptions, PlayBurst3D, PlayCamera3D, PlayFollow3D, PlayPlace3D } from './BrowserPlay3D.js';
 //# sourceMappingURL=index.d.ts.map
