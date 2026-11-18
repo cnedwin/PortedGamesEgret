@@ -859,6 +859,33 @@ body[data-art="jyx2"] .jyx2-member-portrait {
   body .viewport .battle-menu:not([hidden]) .jyx2-bag-grid button[data-item-id] { padding: 1px; }
 }
 
+@media (pointer: coarse) and (orientation: landscape) and (max-height: 500px) {
+  body[data-art="jyx2"] .viewport .battle-menu[data-menu-variant="inventory"]:not([hidden]) {
+    width: min(660px, calc(100% - 24px));
+    height: min(420px, calc(100svh - 24px));
+  }
+  body[data-art="jyx2"] .battle-menu[data-menu-variant="inventory"] .jyx2-bag-content {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    grid-template-rows: minmax(0, 1fr);
+  }
+  body[data-art="jyx2"] .battle-menu[data-menu-variant="inventory"] .jyx2-bag-details {
+    grid-column: 1;
+    grid-row: 1;
+    max-height: none;
+  }
+  body[data-art="jyx2"] .battle-menu[data-menu-variant="inventory"] .jyx2-bag-grid {
+    grid-column: 2;
+    grid-row: 1;
+  }
+  body[data-art="jyx2"] .battle-menu[data-menu-variant="inventory"] .jyx2-bag-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+  }
+  body[data-art="jyx2"] .battle-menu[data-menu-variant="inventory"] .jyx2-bag-filters button {
+    flex: none;
+  }
+}
+
 .mobile-dialogue { display: none; }
 
 @media (max-width: 680px) and (orientation: portrait) {
