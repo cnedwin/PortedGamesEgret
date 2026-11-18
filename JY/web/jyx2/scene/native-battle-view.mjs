@@ -222,6 +222,29 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
     renderer.setSize(width, height, Math.min(2, Math.max(1.5, devicePixelRatio)));
     viewport.insertBefore(canvas, overlay);
 
+    function ensureActor(index, role) {
+      if (!contacts.has(index)) contacts.set(index, flatMesh(scene, shadowGeometry, shadowMaterial));
+      const model = models.get(role.id);
+      if (model && !actors.has(index)) actors.set(index, addActor(scene, model));
+      return actors.get(index);
+    }
+
+    async function prepareOpeningPrograms(roles) {
+      for (const [index, role] of roles.entries()) ensureActor(index, role);
+      const requests = [];
+      scene.traverse(mesh => {
+        if (!(mesh instanceof Mesh3D)) return;
+        const materials = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const material of materials) {
+          requests.push({ mesh, material, fog: Boolean(scene.fog), environment: Boolean(scene.environment),
+            receiveShadows: renderer.shadowsEnabled });
+          if (renderer.shadowsEnabled && mesh.castShadow) requests.push({ mesh, material, pass: 'shadow' });
+        }
+      });
+      // The engine can finish links during the existing loading screen on this arena's own context.
+      await renderer.preparePrograms(requests);
+    }
+
     function draw(state, x, y, zoom, frames = []) {
       if (lost || disposed) return;
       if (!active) {
@@ -253,7 +276,7 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
       for (const [index, role] of state.roles.entries()) {
         const motion = actorMotion(role, state.frame, attack);
         const x = role.x + (motion?.x ?? 0), y = role.y + (motion?.y ?? 0);
-        if (!contacts.has(index)) contacts.set(index, flatMesh(scene, shadowGeometry, shadowMaterial));
+        const actor = ensureActor(index, role);
         const shadow = contacts.get(index);
         shadow.visible = role.alpha > 0;
         const grounding = 1 / (1 + Math.max(0, role.z ?? 0) / 90);
@@ -263,13 +286,10 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
           marker.setPosition(x, .045, y).setScale(1.35 - motion.anticipation * .48);
           marker.material.opacity = .3 + motion.anticipation * .54;
         }
-        const model = models.get(role.id);
-        if (!model) {
+        if (!actor) {
           if (motion) poseBySprite.set(`r${index}`, motion);
           continue;
         }
-        if (!actors.has(index)) actors.set(index, addActor(scene, model));
-        const actor = actors.get(index);
         poseActor(actor, role, state.frame, delta, units, motion);
         if (!actor.root.visible) continue;
         visibleActors.push(role.id);
@@ -301,7 +321,7 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
       });
     }
 
-    return { name, actors: sourceModels, draw, dispose,
+    return { name, actors: sourceModels, draw, dispose, prepareOpeningPrograms,
       hasRole: id => models.has(Number(id)),
       setSpriteArt(art) {
         sprites?.dispose();

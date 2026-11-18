@@ -884,8 +884,12 @@ async function openMap(game, destination) {
       const usedItems = new Set([...inventory.keys(), ...spec.enemy.flatMap(role => role.carriedItems.map(item => item.id))]);
       const itemEffectIds = [0, 30, 36, ...[...usedItems].map(id => spec.items[id]).filter(item => item?.type === 4)
         .map(item => item.hiddenWeaponEffectId)];
+      const prepared = arena?.prepareOpeningPrograms(model.state.roles).catch(error => {
+        console.warn('白鷺 World3D 戰場程式預備未完成', error);
+      });
       view = await createBattleView({ engine, cache, spec, width, height, scale, loadArt, bakeGround, json, visualStyle: game.visualStyle, outputAlpha, arena,
         itemEffectIds, grid: battleGrid });
+      await prepared;
       listeners.signal.throwIfAborted();
       // Keep the Egret keyboard target active while the map layers are hidden.
       ground.visible = objects.visible = false;
@@ -921,6 +925,7 @@ async function openMap(game, destination) {
       sceneName.textContent = scene.name;
       notice.hidden = true;
       battleResultPanel.hidden = true;
+      if (!trainerActive) delete canvas.dataset.trainer;
       delete canvas.dataset.battlePrompt;
       showCell();
       requestFrame();
