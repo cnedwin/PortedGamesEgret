@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>五行牌阵 FivePhases</title>
+  <meta name="description" content="下半屏消除攒能量，上半屏用卡牌打出去。A card battler over a match-three board, built on Egret Rebuild.">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <script type="importmap">
+    {
+      "imports": {
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/camera": "./vendor/engine/dist/camera.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+        "@egret/engine/particles": "./vendor/engine/dist/particles.js",
+        "@egret/engine/resources": "./vendor/engine/dist/resources.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/engine/tilemap": "./vendor/engine/dist/tilemap.js",
+        "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+        "@egret/engine/web/game": "./vendor/engine/dist/web/game.js",
+        "@egret/engine/web/gamepad": "./vendor/engine/dist/web/gamepad.js",
+        "@egret/engine/webgl2": "./vendor/engine/dist/web/webgl2.js",
+        "@egret/engine/webgpu": "./vendor/engine/dist/web/webgpu.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <div id="app">
+    <div id="stage-box">
+      <canvas id="stage" aria-label="五行牌阵"></canvas>
+
+      <div id="hud">
+        <div class="topbar">
+          <div class="enemy-block">
+            <p class="enemy-name" id="enemy-name">山魈</p>
+            <div class="bar bar-enemy"><i id="enemy-hp"></i></div>
+            <p class="bar-text"><span id="enemy-hp-text"></span><em id="enemy-shield"></em></p>
+            <p class="intent" id="enemy-intent"></p>
+          </div>
+          <p class="turn" id="turn">第 1 回合</p>
+        </div>
+
+        <div class="hero-block">
+          <div class="bar bar-hero"><i id="hero-hp"></i></div>
+          <p class="bar-text"><span id="hero-hp-text"></span><em id="hero-shield"></em></p>
+        </div>
+
+        <div class="energy" id="energy" aria-label="能量"></div>
+        <div class="bonds" id="bonds" aria-label="羁绊"></div>
+
+        <div class="hand" id="hand" aria-label="手牌"></div>
+
+        <div class="board-touch" id="board-touch"></div>
+
+        <div class="footer">
+          <div class="steps" id="steps" aria-label="剩余步数"></div>
+          <button id="end-turn" type="button">结束回合</button>
+        </div>
+
+        <div class="chain" id="chain" aria-live="polite"></div>
+        <div class="banner" id="banner" aria-live="polite"></div>
+        <div class="floaters" id="floaters" aria-hidden="true"></div>
+      </div>
+
+      <div class="overlay is-on" id="overlay-title">
+        <div class="sheet">
+          <p class="kicker">五行相生　消除成阵</p>
+          <h1>五行牌阵<em>FivePhases</em></h1>
+          <p class="lede">下半屏消除攒能量，上半屏用卡牌打出去。<br>消除本身会掉新卡，卡与卡之间的羁绊改变你的消除策略。</p>
+          <ul class="howto">
+            <li><b>拖</b>相邻两格交换，三个以上同色即消。四连出消行块，五连出彩虹块，L 形出炸弹。</li>
+            <li>消掉什么颜色，就攒什么<b>能量</b>；卡牌按自己的元素收费。</li>
+            <li>敌人按<b>步数</b>倒计时，归零就打你一下。看清楚再消。</li>
+            <li>上一张牌生的元素，下一张牌<b>伤害 +50%</b>（木生火、火生土……）。</li>
+          </ul>
+          <button id="start" type="button" class="big">开阵</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="overlay-reward">
+        <div class="sheet">
+          <p class="kicker" id="reward-kicker">战罢</p>
+          <h2>选一张，进牌组</h2>
+          <div class="rewards" id="rewards"></div>
+          <button id="skip-reward" type="button" class="ghost">不拿了，继续</button>
+        </div>
+      </div>
+
+      <div class="overlay" id="overlay-over">
+        <div class="sheet">
+          <p class="kicker" id="over-kicker">阵破</p>
+          <h2 id="over-title">败了</h2>
+          <p class="lede" id="over-text"></p>
+          <button id="restart" type="button" class="big">再来一局</button>
+        </div>
+      </div>
+
+      <button id="mute" type="button" class="mute" aria-pressed="false">音</button>
+    </div>
+  </div>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

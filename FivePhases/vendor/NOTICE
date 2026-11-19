@@ -1,0 +1,13 @@
+First-party code and documentation: Apache-2.0; see LICENSE.
+
+Spine Runtimes (spine-core 4.3.13) by Esoteric Software LLC
+http://esotericsoftware.com/
+License: Spine Runtimes License Agreement. The unmodified license text is
+retained in spine-core/LICENSE. Integration is permitted under Section 2 of
+the Spine Editor License Agreement; each user of a product that includes
+the runtimes must hold their own Spine Editor license.
+
+robust-predicates 3.0.3 by Vladimir Agafonkin
+https://github.com/mourner/robust-predicates
+License: Unlicense. The unmodified license text is retained in
+robust-predicates/LICENSE.

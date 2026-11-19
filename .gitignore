@@ -1,2 +1,3 @@
-# Reports and pictures from tools/feel-test.mjs
+# Reports and pictures from tools/feel-test.mjs, and from FivePhases/tools/probe.mjs
 .feel/
+node_modules/

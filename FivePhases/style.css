@@ -1,0 +1,730 @@
+/* 五行牌阵 · 界面
+ *
+ * 画布画战场，DOM 画界面。两边靠 --u 对齐：--u 是「设计稿一个像素」在当前屏幕上
+ * 值多少真实像素，所有尺寸都写成 calc(N * var(--u))，于是任何屏幕比例下
+ * 位置和字号都同比例缩放，不会出现"手机上看还行，平板上一团糟"。
+ */
+
+:root {
+  --ink: #0d1117;
+  --ink-deep: #080a0e;
+  --panel: #161c25;
+  --panel-light: #1f2833;
+  --line: #2c3947;
+  --gold: #f0b45a;
+  --gold-deep: #8a6428;
+  --text: #dfe6f0;
+  --text-dim: #8b97a6;
+  --blood: #d94f4f;
+  --jade: #5fd0a0;
+  --u: 1px;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #05070a;
+  color: var(--text);
+  font-family: "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", system-ui, sans-serif;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+}
+
+#stage-box {
+  position: relative;
+  aspect-ratio: 750 / 1624;
+  height: min(100%, calc(100vw * 1624 / 750));
+  max-width: 100%;
+  background: var(--ink-deep);
+  overflow: hidden;
+  box-shadow: 0 0 calc(60 * var(--u)) rgba(0, 0, 0, 0.8);
+}
+
+#stage {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+#hud {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  font-size: calc(24 * var(--u));
+  line-height: 1.35;
+}
+
+/* ── 敌方 ───────────────────────────────────────────────────── */
+
+.topbar {
+  position: absolute;
+  left: calc(30 * var(--u));
+  right: calc(30 * var(--u));
+  top: calc(22 * var(--u));
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(16 * var(--u));
+}
+
+.enemy-block {
+  flex: 1;
+  max-width: calc(360 * var(--u));
+}
+
+.enemy-name {
+  margin: 0 0 calc(6 * var(--u));
+  font-size: calc(34 * var(--u));
+  font-weight: 700;
+  letter-spacing: calc(2 * var(--u));
+  color: #f4e6d0;
+  text-shadow: 0 0 calc(14 * var(--u)) rgba(240, 180, 90, 0.45), 0 calc(2 * var(--u)) calc(6 * var(--u)) #000;
+}
+
+.bar {
+  position: relative;
+  height: calc(16 * var(--u));
+  border-radius: calc(9 * var(--u));
+  background: rgba(6, 9, 13, 0.85);
+  border: calc(1.5 * var(--u)) solid rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+
+.bar > i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: inherit;
+  transition: width 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.bar-enemy > i {
+  background: linear-gradient(90deg, #8f2320, #e8564d 60%, #ff8a6b);
+  box-shadow: 0 0 calc(12 * var(--u)) rgba(232, 86, 77, 0.6);
+}
+
+.bar-hero > i {
+  background: linear-gradient(90deg, #1d6b4a, #45b184 60%, #7fe0b4);
+  box-shadow: 0 0 calc(12 * var(--u)) rgba(69, 177, 132, 0.5);
+}
+
+.bar-text {
+  display: flex;
+  gap: calc(10 * var(--u));
+  margin: calc(5 * var(--u)) 0 0;
+  font-size: calc(19 * var(--u));
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar-text em {
+  font-style: normal;
+  color: #7fb4e8;
+  opacity: 0;
+  transition: opacity 0.2s;
+}
+
+.bar-text em.is-on {
+  opacity: 1;
+}
+
+.intent {
+  margin: calc(8 * var(--u)) 0 0;
+  font-size: calc(21 * var(--u));
+  color: #e8c98a;
+  text-shadow: 0 calc(2 * var(--u)) calc(6 * var(--u)) #000;
+}
+
+.intent b {
+  color: var(--gold);
+  font-size: calc(24 * var(--u));
+}
+
+.intent b.is-now {
+  color: #ff6b6b;
+  animation: throb 0.8s ease-in-out infinite;
+}
+
+@keyframes throb {
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.turn {
+  margin: 0;
+  padding: calc(4 * var(--u)) calc(12 * var(--u));
+  font-size: calc(19 * var(--u));
+  color: var(--text-dim);
+  border: calc(1 * var(--u)) solid var(--line);
+  border-radius: calc(20 * var(--u));
+  background: rgba(13, 17, 23, 0.7);
+  white-space: nowrap;
+}
+
+/* ── 我方 ───────────────────────────────────────────────────── */
+
+.hero-block {
+  position: absolute;
+  left: calc(30 * var(--u));
+  width: calc(300 * var(--u));
+  top: calc(348 * var(--u));
+}
+
+/* ── 能量 ───────────────────────────────────────────────────── */
+
+.energy {
+  position: absolute;
+  inset: 0;
+}
+
+.chip {
+  position: absolute;
+  width: calc(96 * var(--u));
+  height: calc(66 * var(--u));
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  grid-auto-flow: column;
+  gap: calc(4 * var(--u));
+  border-radius: calc(14 * var(--u));
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--tint) 26%, transparent), rgba(8, 11, 15, 0.86));
+  border: calc(2 * var(--u)) solid color-mix(in srgb, var(--tint) 55%, transparent);
+  box-shadow: 0 0 calc(18 * var(--u)) color-mix(in srgb, var(--tint) 22%, transparent);
+  transition: opacity 0.2s, transform 0.2s, box-shadow 0.2s;
+}
+
+.chip b {
+  font-size: calc(26 * var(--u));
+  color: var(--tint);
+  text-shadow: 0 0 calc(10 * var(--u)) color-mix(in srgb, var(--tint) 60%, transparent);
+}
+
+.chip i {
+  font-style: normal;
+  font-size: calc(30 * var(--u));
+  font-weight: 700;
+  color: #f2f6fb;
+  font-variant-numeric: tabular-nums;
+}
+
+.chip.is-empty {
+  opacity: 0.45;
+}
+
+.chip.is-full {
+  box-shadow: 0 0 calc(26 * var(--u)) color-mix(in srgb, var(--tint) 60%, transparent);
+}
+
+.chip.is-pulse {
+  animation: chip-pulse 0.42s ease-out;
+}
+
+@keyframes chip-pulse {
+  0% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+  40% {
+    transform: translate(-50%, -50%) scale(1.22);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+/* ── 羁绊 ───────────────────────────────────────────────────── */
+
+.bonds {
+  position: absolute;
+  left: calc(360 * var(--u));
+  width: calc(360 * var(--u));
+  top: calc(586 * var(--u));
+  display: flex;
+  flex-wrap: wrap;
+  gap: calc(6 * var(--u));
+  justify-content: flex-end;
+}
+
+.bond {
+  padding: calc(3 * var(--u)) calc(10 * var(--u));
+  font-size: calc(17 * var(--u));
+  color: #e6cfa4;
+  border: calc(1 * var(--u)) solid rgba(240, 180, 90, 0.4);
+  border-radius: calc(12 * var(--u));
+  background: rgba(240, 180, 90, 0.09);
+  white-space: nowrap;
+}
+
+/* ── 手牌 ───────────────────────────────────────────────────── */
+
+.hand {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(660 * var(--u));
+  height: calc(168 * var(--u));
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: calc(8 * var(--u));
+  pointer-events: none;
+}
+
+.card {
+  pointer-events: auto;
+  position: relative;
+  width: calc(124 * var(--u));
+  height: calc(164 * var(--u));
+  padding: calc(26 * var(--u)) calc(8 * var(--u)) calc(8 * var(--u));
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: calc(2 * var(--u));
+  border-radius: calc(12 * var(--u));
+  border: calc(2 * var(--u)) solid color-mix(in srgb, var(--tint) 45%, #1a2029);
+  background: linear-gradient(170deg, color-mix(in srgb, var(--tint) 30%, #10151c) 0%, #0c1016 62%);
+  color: var(--text);
+  font-family: inherit;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.14s ease, box-shadow 0.18s ease, filter 0.18s ease;
+  filter: saturate(0.55) brightness(0.72);
+  box-shadow: 0 calc(4 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, 0.55);
+  overflow: hidden;
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border-top: calc(3 * var(--u)) solid color-mix(in srgb, var(--tint) 85%, transparent);
+  pointer-events: none;
+}
+
+.card.is-ready {
+  filter: none;
+  box-shadow: 0 0 calc(20 * var(--u)) color-mix(in srgb, var(--tint) 40%, transparent), 0 calc(4 * var(--u)) calc(10 * var(--u)) rgba(0, 0, 0, 0.55);
+}
+
+.card.is-ready:active {
+  transform: translateY(calc(-6 * var(--u))) scale(1.04);
+}
+
+.card.is-ult {
+  border-color: var(--gold);
+}
+
+.card-cost {
+  position: absolute;
+  left: calc(6 * var(--u));
+  top: calc(5 * var(--u));
+  width: calc(30 * var(--u));
+  height: calc(30 * var(--u));
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: calc(21 * var(--u));
+  font-weight: 700;
+  color: #12161c;
+  background: radial-gradient(circle at 35% 30%, #fff3d0, var(--gold) 70%);
+  box-shadow: 0 0 calc(10 * var(--u)) rgba(240, 180, 90, 0.55);
+}
+
+.card-name {
+  font-size: calc(21 * var(--u));
+  font-weight: 700;
+  letter-spacing: calc(1 * var(--u));
+  color: #f2ead9;
+}
+
+.card-elem {
+  font-size: calc(15 * var(--u));
+  color: var(--tint);
+  letter-spacing: calc(2 * var(--u));
+}
+
+.card-text {
+  margin-top: calc(2 * var(--u));
+  font-size: calc(15 * var(--u));
+  line-height: 1.3;
+  color: #b9c3d0;
+}
+
+/* ── 棋盘触控层 ─────────────────────────────────────────────── */
+
+.board-touch {
+  position: absolute;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+
+/* ── 底部 ───────────────────────────────────────────────────── */
+
+.footer {
+  position: absolute;
+  left: calc(30 * var(--u));
+  right: calc(30 * var(--u));
+  top: calc(1534 * var(--u));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.steps {
+  display: flex;
+  gap: calc(9 * var(--u));
+  align-items: center;
+}
+
+.dot {
+  width: calc(20 * var(--u));
+  height: calc(20 * var(--u));
+  border-radius: 50%;
+  border: calc(2 * var(--u)) solid rgba(240, 180, 90, 0.4);
+  background: transparent;
+  transition: background 0.2s, box-shadow 0.2s;
+}
+
+.dot.is-on {
+  background: radial-gradient(circle at 40% 35%, #ffe9b8, var(--gold) 70%);
+  box-shadow: 0 0 calc(14 * var(--u)) rgba(240, 180, 90, 0.7);
+}
+
+#end-turn {
+  pointer-events: auto;
+  padding: calc(10 * var(--u)) calc(28 * var(--u));
+  font-family: inherit;
+  font-size: calc(23 * var(--u));
+  font-weight: 600;
+  letter-spacing: calc(2 * var(--u));
+  color: #1a1208;
+  border: none;
+  border-radius: calc(28 * var(--u));
+  background: linear-gradient(180deg, #ffe1a6, var(--gold) 55%, #c98d34);
+  box-shadow: 0 calc(4 * var(--u)) calc(14 * var(--u)) rgba(0, 0, 0, 0.5), inset 0 calc(-2 * var(--u)) rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+}
+
+#end-turn:disabled {
+  filter: grayscale(0.7) brightness(0.6);
+  cursor: default;
+}
+
+/* ── 连锁与横幅 ─────────────────────────────────────────────── */
+
+.chain {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(1080 * var(--u));
+  text-align: center;
+  font-size: calc(64 * var(--u));
+  font-weight: 800;
+  letter-spacing: calc(4 * var(--u));
+  color: #fff;
+  text-shadow: 0 0 calc(24 * var(--u)) rgba(255, 200, 120, 0.9), 0 calc(4 * var(--u)) calc(12 * var(--u)) #000;
+  opacity: 0;
+  transform: scale(0.6);
+  pointer-events: none;
+}
+
+.chain.is-on {
+  animation: chain-pop 0.9s cubic-bezier(0.15, 1.3, 0.3, 1) forwards;
+}
+
+.chain[data-count="2"] {
+  font-size: calc(56 * var(--u));
+}
+
+.chain[data-count="3"] {
+  font-size: calc(68 * var(--u));
+  color: #ffe9b8;
+}
+
+.chain[data-count="4"] {
+  font-size: calc(80 * var(--u));
+  color: #ffcf5c;
+}
+
+.chain[data-count="5"],
+.chain[data-count="6"] {
+  font-size: calc(92 * var(--u));
+  color: #ff8a4c;
+  text-shadow: 0 0 calc(30 * var(--u)) rgba(255, 110, 60, 0.95), 0 calc(4 * var(--u)) calc(12 * var(--u)) #000;
+}
+
+@keyframes chain-pop {
+  0% {
+    opacity: 0;
+    transform: scale(0.5) rotate(-4deg);
+  }
+  22% {
+    opacity: 1;
+    transform: scale(1.12) rotate(1deg);
+  }
+  40% {
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.04) translateY(calc(-30 * var(--u)));
+  }
+}
+
+.banner {
+  position: absolute;
+  left: 0;
+  width: calc(430 * var(--u));
+  top: calc(424 * var(--u));
+  text-align: center;
+  font-size: calc(40 * var(--u));
+  font-weight: 700;
+  letter-spacing: calc(6 * var(--u));
+  color: #f6e7c8;
+  text-shadow: 0 0 calc(20 * var(--u)) rgba(240, 180, 90, 0.7), 0 calc(3 * var(--u)) calc(8 * var(--u)) #000;
+  opacity: 0;
+  transform: translateY(calc(10 * var(--u)));
+  transition: opacity 0.3s, transform 0.3s;
+  pointer-events: none;
+}
+
+.banner.is-on {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── 飘字 ───────────────────────────────────────────────────── */
+
+.floaters {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+
+.floater {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  font-size: calc(40 * var(--u));
+  font-weight: 800;
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 calc(3 * var(--u)) calc(10 * var(--u)) #000;
+  animation: float-up 0.95s ease-out forwards;
+  white-space: nowrap;
+}
+
+.floater-damage {
+  color: #ff8b7a;
+}
+
+.floater-heal {
+  color: #7fe0b4;
+}
+
+.floater-shield {
+  color: #9fd0ff;
+}
+
+.floater-info {
+  color: #f0d9a8;
+  font-size: calc(30 * var(--u));
+}
+
+@keyframes float-up {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -30%) scale(0.7);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, -60%) scale(1.14);
+  }
+  35% {
+    transform: translate(-50%, -70%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -150%) scale(0.94);
+  }
+}
+
+/* ── 覆盖层 ─────────────────────────────────────────────────── */
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: calc(40 * var(--u));
+  background: radial-gradient(circle at 50% 35%, rgba(12, 16, 22, 0.86), rgba(4, 6, 9, 0.97));
+  backdrop-filter: blur(calc(6 * var(--u)));
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.35s;
+  z-index: 5;
+}
+
+.overlay.is-on {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.sheet {
+  width: 100%;
+  max-width: calc(600 * var(--u));
+  text-align: center;
+}
+
+.kicker {
+  margin: 0 0 calc(8 * var(--u));
+  font-size: calc(20 * var(--u));
+  letter-spacing: calc(6 * var(--u));
+  color: var(--gold);
+}
+
+.sheet h1 {
+  margin: 0;
+  font-size: calc(76 * var(--u));
+  letter-spacing: calc(6 * var(--u));
+  color: #f6ead2;
+  text-shadow: 0 0 calc(30 * var(--u)) rgba(240, 180, 90, 0.4);
+}
+
+.sheet h1 em {
+  display: block;
+  margin-top: calc(2 * var(--u));
+  font-size: calc(20 * var(--u));
+  font-style: normal;
+  letter-spacing: calc(8 * var(--u));
+  color: var(--text-dim);
+}
+
+.sheet h2 {
+  margin: 0 0 calc(16 * var(--u));
+  font-size: calc(46 * var(--u));
+  color: #f6ead2;
+}
+
+.lede {
+  margin: calc(20 * var(--u)) 0;
+  font-size: calc(21 * var(--u));
+  line-height: 1.6;
+  color: #b9c3d0;
+}
+
+.howto {
+  margin: calc(18 * var(--u)) 0 calc(26 * var(--u));
+  padding: calc(16 * var(--u)) calc(20 * var(--u));
+  list-style: none;
+  text-align: left;
+  font-size: calc(19 * var(--u));
+  line-height: 1.65;
+  color: #a9b4c2;
+  border: calc(1 * var(--u)) solid var(--line);
+  border-radius: calc(14 * var(--u));
+  background: rgba(18, 23, 30, 0.7);
+}
+
+.howto li + li {
+  margin-top: calc(8 * var(--u));
+}
+
+.howto b {
+  color: var(--gold);
+}
+
+button.big {
+  pointer-events: auto;
+  margin-top: calc(8 * var(--u));
+  padding: calc(14 * var(--u)) calc(56 * var(--u));
+  font-family: inherit;
+  font-size: calc(30 * var(--u));
+  font-weight: 700;
+  letter-spacing: calc(6 * var(--u));
+  color: #1a1208;
+  border: none;
+  border-radius: calc(34 * var(--u));
+  background: linear-gradient(180deg, #ffe8bb, var(--gold) 55%, #c98d34);
+  box-shadow: 0 calc(6 * var(--u)) calc(20 * var(--u)) rgba(240, 180, 90, 0.35);
+  cursor: pointer;
+}
+
+button.ghost {
+  pointer-events: auto;
+  margin-top: calc(14 * var(--u));
+  padding: calc(8 * var(--u)) calc(24 * var(--u));
+  font-family: inherit;
+  font-size: calc(20 * var(--u));
+  color: var(--text-dim);
+  border: calc(1 * var(--u)) solid var(--line);
+  border-radius: calc(24 * var(--u));
+  background: transparent;
+  cursor: pointer;
+}
+
+.rewards {
+  display: flex;
+  gap: calc(16 * var(--u));
+  justify-content: center;
+  margin: calc(10 * var(--u)) 0 calc(6 * var(--u));
+}
+
+.rewards .card {
+  width: calc(160 * var(--u));
+  height: calc(212 * var(--u));
+  filter: none;
+  padding: calc(30 * var(--u)) calc(10 * var(--u)) calc(10 * var(--u));
+}
+
+.rewards .card .card-name {
+  font-size: calc(24 * var(--u));
+}
+
+.rewards .card .card-text {
+  font-size: calc(17 * var(--u));
+}
+
+.mute {
+  position: absolute;
+  right: calc(18 * var(--u));
+  top: calc(60 * var(--u));
+  width: calc(46 * var(--u));
+  height: calc(46 * var(--u));
+  pointer-events: auto;
+  border-radius: 50%;
+  border: calc(1 * var(--u)) solid var(--line);
+  background: rgba(10, 13, 18, 0.7);
+  color: var(--text-dim);
+  font-family: inherit;
+  font-size: calc(20 * var(--u));
+  cursor: pointer;
+  z-index: 6;
+}
+
+.mute[aria-pressed="true"] {
+  color: #ff8b7a;
+  border-color: #7a2b28;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .chain.is-on,
+  .floater,
+  .chip.is-pulse {
+    animation-duration: 0.01s;
+  }
+}

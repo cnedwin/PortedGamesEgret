@@ -56,6 +56,12 @@ An independently developed 2D side-scrolling action demo built with Egret Rebuil
 
 An independently developed top-down 3D action demo built with Egret Rebuild, from chapter ten of *Water Margin*: on a night of snow Lin Chong takes his spear through the burnt fodder yard to the Mountain God’s temple and fights Lu Qian in two parts. Three cuts, guard and parry, a riposte, a dodge, the Three Stars and the Pear-Blossom Rain; shield men turn light cuts aside and answer, and a bowman’s arrows can be cut down. Pages of the manual offer one lesson of three, each clear opens a harder tier, and the yard can be held against wave after wave. The place, the people and the weapons are modelled in code, more than fifty thousand tufts of dry grass sway in the wind, and the spear light, formation and warnings are drawn by shaders. Keyboard and mouse, and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/SnowTemple/) · [Guide and development](SnowTemple/README.md)
 
+## FivePhases · 五行牌阵
+
+一款使用新白鹭引擎独立开发的 2D 卡牌 + 三消混合游戏 Demo。上半屏是带立绘动效的卡牌回合对战，下半屏是消除盘：消掉什么颜色就攒什么能量，卡牌按自己的元素收费；消除本身还会掉新卡，而卡与卡之间的羁绊（剑盾同源、三昧、残响、连锁体质、星轨）反过来决定你该怎么消。五行既是消除的配色与五种形状，也是五个流派——火爆发、土护盾反击、金破甲暴击、水控场改盘、木持续成长，相生让下一张牌伤害 +50%，相克只作用于伤害、绝不改变棋盘。三关递进，关间奖励三选一。立绘是用代码按 Spine 槽位结构画出的占位件，骨骼、层序、轴心定死后只差填图。支持鼠标与触屏。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/FivePhases/) · [说明与开发](FivePhases/README.md)
+
+An independently developed 2D card battler over a match-three board, built with Egret Rebuild. The top half is turn-based card combat with animated portraits; the bottom half is the board: whatever colour you clear is the energy you gain, and every card is paid for in its own element. Clearing also drops new cards, and the bonds between them (sword and shield, samadhi, echo, chain body, star lane) decide how you should be matching. The five phases are at once the board's colours and five shapes, and five playstyles — fire bursts, earth shields and counters, metal pierces, water rearranges the board, wood grows — with the feeding cycle adding 50% to the next card and the overcoming cycle touching damage only, never the board. Three stages, with a pick-one-of-three reward between them. The portraits are placeholder pieces drawn in code to Spine's slot structure, with bones, layers and pivots fixed so that only the images are left to fill in. Mouse and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/FivePhases/) · [Guide and development](FivePhases/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)
