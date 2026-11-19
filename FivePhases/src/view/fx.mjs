@@ -159,23 +159,34 @@ export function createFx({ Sprite, scope, world, layer }) {
 
     if (flashLife > 0) {
       flashLife -= dt;
-      const k = Math.max(0, flashLife / flashMax);
+      const k = flashMax > 0 ? Math.max(0, flashLife / flashMax) : 0;
       if (flashSprite) {
         flashSprite.alpha = 0.75 * k;
-        flashSprite.visible = k > 0;
+        // 尾巴那几帧 alpha 已经不到 2%，白画一整块全屏矩形，不如不画
+        flashSprite.visible = k > 0.02;
       }
     }
 
     if (shakeTime > 0) {
-      shakeTime -= dt;
-      const k = Math.max(0, shakeTime / shakeTotal);
-      const power = shakePower * k * k;
-      world.x = (Math.random() - 0.5) * power * 2;
-      world.y = (Math.random() - 0.5) * power * 2;
-      if (shakeTime <= 0) {
+      shakeTime = Math.max(0, shakeTime - dt);
+      // 余量小于一帧就当震完了，直接归零。
+      //
+      // 不归零的话，最后那一帧的 k 会是 1e-17 这种值，power 再平方一次就到
+      // 1e-34 像素，world.x/y 变成一个"非零但极小"的数。引擎的坐标守卫
+      // （prepareRectangles2D 的 coordinate）对 |v| < 2^-100 是直接抛
+      // GeometryPreparationError('range') 的，不当作退化图形忽略——于是
+      // 整帧渲染失败。偏偏闪光层的矩形是从 (0,0) 画的，四个角全落在这个量级上，
+      // 所以只有"震屏 + 白闪"同一帧出现时才炸，而且十次里只炸一次。
+      if (shakeTime <= 1e-4) {
+        shakeTime = 0;
         shakePower = 0;
         world.x = 0;
         world.y = 0;
+      } else {
+        const k = shakeTime / shakeTotal;
+        const power = shakePower * k * k;
+        world.x = (Math.random() - 0.5) * power * 2;
+        world.y = (Math.random() - 0.5) * power * 2;
       }
     }
   }
