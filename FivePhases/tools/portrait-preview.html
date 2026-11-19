@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>部件清单预览 / Portrait parts preview</title>
+  <meta name="description" content="按部件清单绘制占位立绘，并显示骨骼、轴心与分层顺序，用来确认这套结构可以拆成 Spine。">
+  <style>
+    html, body { margin: 0; background: #0b0d11; overflow: hidden; }
+    canvas { display: block; }
+    #hud {
+      position: fixed; left: 12px; top: 12px; padding: 8px 10px;
+      font: 12px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace;
+      color: #dfe6f0; background: rgba(10, 13, 18, .78); border-radius: 6px;
+      pointer-events: none; white-space: pre;
+    }
+    #hud b { color: #ff8a3d; font-weight: 600; }
+    #hud .bad { color: #ff6b6b; }
+  </style>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <div id="hud"></div>
+  <script type="module">
+    import { drawOrder, boneIndex, lintPortrait } from '../src/portrait/fire.mjs';
+    import { portraitById, defaultPortrait } from '../src/portrait/index.mjs';
+
+    const query = new URLSearchParams(location.search);
+    const showBones = query.get('bones') !== '0';
+    const showLabels = query.get('labels') === '1';
+    const showBackdrop = query.get('bg') !== '0';
+
+    const portrait = portraitById(query.get('id')) ?? defaultPortrait;
+    const { width, height } = portrait.canvas;
+    const canvas = document.getElementById('stage');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+
+    // Fit the canvas to the window without changing its pixel size.
+    const fit = () => {
+      const scale = Math.min(innerWidth / width, innerHeight / height, 1);
+      canvas.style.width = `${width * scale}px`;
+      canvas.style.height = `${height * scale}px`;
+      canvas.style.marginLeft = `${(innerWidth - width * scale) / 2}px`;
+      canvas.style.marginTop = `${(innerHeight - height * scale) / 2}px`;
+    };
+    addEventListener('resize', fit);
+    fit();
+
+    const bones = boneIndex(portrait);
+    const colour = (name) => portrait.palette[name] ?? name;
+
+    /**
+     * 归一化路径 [-0.5, 0.5] 铺到 w×h 的框里。
+     * smooth 时用二次曲线穿过相邻点的中点：布料和头发要弧线，硬折角会像纸片。
+     */
+    function tracePath(points, w, h, smooth) {
+      const pts = points.map(([x, y]) => [x * w, y * h]);
+      ctx.beginPath();
+      if (!smooth) {
+        ctx.moveTo(pts[0][0], pts[0][1]);
+        for (let i = 1; i < pts.length; i += 1) ctx.lineTo(pts[i][0], pts[i][1]);
+        ctx.closePath();
+        return;
+      }
+      const mid = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const last = pts[pts.length - 1];
+      const first = mid(last, pts[0]);
+      ctx.moveTo(first[0], first[1]);
+      for (let i = 0; i < pts.length; i += 1) {
+        const cur = pts[i];
+        const next = pts[(i + 1) % pts.length];
+        const m = mid(cur, next);
+        ctx.quadraticCurveTo(cur[0], cur[1], m[0], m[1]);
+      }
+      ctx.closePath();
+    }
+
+    /** 一个部件的路径，居中在原点，由调用方负责平移与旋转。 */
+    function traceShape(part, w, h) {
+      const hw = w / 2;
+      const hh = h / 2;
+      if (part.shape === 'path') {
+        tracePath(part.points, w, h, part.smooth);
+        return;
+      }
+      ctx.beginPath();
+      if (part.shape === 'ellipse') {
+        ctx.ellipse(0, 0, hw, hh, 0, 0, Math.PI * 2);
+      } else if (part.shape === 'capsule') {
+        ctx.roundRect(-hw, -hh, w, h, Math.min(hw, hh));
+      } else if (part.shape === 'poly') {
+        // 上窄下宽的梯形，比矩形更像衣料
+        const top = hw * 0.82;
+        ctx.moveTo(-top, -hh);
+        ctx.lineTo(top, -hh);
+        ctx.lineTo(hw, hh);
+        ctx.lineTo(-hw, hh);
+        ctx.closePath();
+      } else {
+        ctx.roundRect(-hw, -hh, w, h, Math.min(hw, hh) * 0.35);
+      }
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, width, height);
+
+      // 棋盘底，用来看清哪些地方是真透明的
+      if (showBackdrop) {
+        const cell = 32;
+        for (let y = 0; y < height; y += cell) {
+          for (let x = 0; x < width; x += cell) {
+            ctx.fillStyle = ((x / cell + y / cell) & 1) ? '#15181e' : '#1b1f26';
+            ctx.fillRect(x, y, cell, cell);
+          }
+        }
+      }
+
+      // 部件按 layer 从后往前画
+      for (const part of drawOrder(portrait)) {
+        const bone = bones.get(part.bone);
+        if (!bone) continue;
+        const [w, h] = part.size;
+        const [dx, dy] = part.offset;
+        const [px, py] = part.pivot;
+
+        ctx.save();
+        ctx.translate(bone.x + dx, bone.y + dy);
+        ctx.rotate((part.rotation * Math.PI) / 180);
+        ctx.translate(-(px - 0.5) * w, -(py - 0.5) * h);
+
+        traceShape(part, w, h);
+        ctx.fillStyle = colour(part.color);
+        // 部件可以带自己的透明度：刀焰要透，才看得见底下的刀身
+        ctx.globalAlpha = part.alpha ?? 0.94;
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = 'rgba(8, 10, 14, .5)';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      if (!showBones) return;
+
+      // 骨骼：父到子的连线
+      ctx.strokeStyle = 'rgba(120, 220, 190, .75)';
+      ctx.lineWidth = 2;
+      for (const bone of portrait.bones) {
+        const parent = bone.parent ? bones.get(bone.parent) : null;
+        if (!parent) continue;
+        ctx.beginPath();
+        ctx.moveTo(parent.x, parent.y);
+        ctx.lineTo(bone.x, bone.y);
+        ctx.stroke();
+      }
+
+      // 骨骼点
+      for (const bone of portrait.bones) {
+        ctx.beginPath();
+        ctx.arc(bone.x, bone.y, 6, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(120, 220, 190, .95)';
+        ctx.fill();
+      }
+
+      // 轴心
+      for (const part of drawOrder(portrait)) {
+        const bone = bones.get(part.bone);
+        if (!bone) continue;
+        ctx.save();
+        ctx.translate(bone.x + part.offset[0], bone.y + part.offset[1]);
+        ctx.beginPath();
+        ctx.arc(0, 0, 4, 0, Math.PI * 2);
+        ctx.fillStyle = 'rgba(255, 211, 77, .95)';
+        ctx.fill();
+        if (showLabels) {
+          ctx.font = '13px ui-monospace, monospace';
+          ctx.fillStyle = 'rgba(223, 230, 240, .9)';
+          ctx.fillText(part.id, 8, -6);
+        }
+        ctx.restore();
+      }
+    }
+
+    draw();
+
+    const problems = lintPortrait(portrait);
+    const hud = document.getElementById('hud');
+    hud.innerHTML =
+      `${portrait.title} · ${portrait.name}   ${portrait.role}\n` +
+      `<b>${portrait.parts.length}</b> 部件   <b>${portrait.bones.length}</b> 骨骼\n` +
+      `?bones=0 隐藏骨骼   ?labels=1 显示部件名   ?bg=0 透明底\n` +
+      (problems.length
+        ? `<span class="bad">体检不通过：\n${problems.join('\n')}</span>`
+        : `体检通过`);
+    document.title = `${portrait.title} 部件预览`;
+  </script>
+</body>
+</html>

@@ -1,0 +1,847 @@
+{
+  "skeleton": {
+    "hash": "fire-portrait",
+    "spine": "4.1.0",
+    "x": 0,
+    "y": 0,
+    "width": 1024,
+    "height": 1536,
+    "images": "./",
+    "audio": ""
+  },
+  "bones": [
+    {
+      "name": "hip",
+      "x": 0,
+      "y": 386,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "spine",
+      "parent": "hip",
+      "x": 0,
+      "y": 150,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "chest",
+      "parent": "spine",
+      "x": 0,
+      "y": 170,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "neck",
+      "parent": "chest",
+      "x": 0,
+      "y": 130,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "head",
+      "parent": "neck",
+      "x": 0,
+      "y": 180,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "hair-tail",
+      "parent": "head",
+      "x": -144,
+      "y": 34,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "hair-lock-l",
+      "parent": "head",
+      "x": -112,
+      "y": 90,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "hair-lock-r",
+      "parent": "head",
+      "x": 112,
+      "y": 90,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "shoulder-near",
+      "parent": "chest",
+      "x": -168,
+      "y": 74,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "elbow-near",
+      "parent": "shoulder-near",
+      "x": -38,
+      "y": -140,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "hand-near",
+      "parent": "elbow-near",
+      "x": 50,
+      "y": -104,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "shoulder-far",
+      "parent": "chest",
+      "x": 168,
+      "y": 74,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "elbow-far",
+      "parent": "shoulder-far",
+      "x": 68,
+      "y": -130,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "hand-far",
+      "parent": "elbow-far",
+      "x": 42,
+      "y": -66,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "skirt-l",
+      "parent": "hip",
+      "x": -64,
+      "y": -26,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "skirt-r",
+      "parent": "hip",
+      "x": 64,
+      "y": -26,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    }
+  ],
+  "slots": [
+    {
+      "name": "hair-back",
+      "bone": "head",
+      "attachment": "hair-back"
+    },
+    {
+      "name": "hair-tail",
+      "bone": "hair-tail",
+      "attachment": "hair-tail"
+    },
+    {
+      "name": "skirt-under",
+      "bone": "hip",
+      "attachment": "skirt-under"
+    },
+    {
+      "name": "skirt-l",
+      "bone": "skirt-l",
+      "attachment": "skirt-l"
+    },
+    {
+      "name": "skirt-r",
+      "bone": "skirt-r",
+      "attachment": "skirt-r"
+    },
+    {
+      "name": "arm-far-upper",
+      "bone": "shoulder-far",
+      "attachment": "arm-far-upper"
+    },
+    {
+      "name": "elbow-far-joint",
+      "bone": "elbow-far",
+      "attachment": "elbow-far-joint"
+    },
+    {
+      "name": "arm-far-fore",
+      "bone": "elbow-far",
+      "attachment": "arm-far-fore"
+    },
+    {
+      "name": "hand-far",
+      "bone": "hand-far",
+      "attachment": "hand-far"
+    },
+    {
+      "name": "body-robe",
+      "bone": "spine",
+      "attachment": "body-robe"
+    },
+    {
+      "name": "sash",
+      "bone": "hip",
+      "attachment": "sash"
+    },
+    {
+      "name": "shoulder-near",
+      "bone": "shoulder-near",
+      "attachment": "shoulder-near"
+    },
+    {
+      "name": "arm-near-upper",
+      "bone": "shoulder-near",
+      "attachment": "arm-near-upper"
+    },
+    {
+      "name": "elbow-near-joint",
+      "bone": "elbow-near",
+      "attachment": "elbow-near-joint"
+    },
+    {
+      "name": "arm-near-fore",
+      "bone": "elbow-near",
+      "attachment": "arm-near-fore"
+    },
+    {
+      "name": "sword-grip",
+      "bone": "hand-near",
+      "attachment": "sword-grip"
+    },
+    {
+      "name": "sword-pommel",
+      "bone": "hand-near",
+      "attachment": "sword-pommel"
+    },
+    {
+      "name": "hand-near",
+      "bone": "hand-near",
+      "attachment": "hand-near"
+    },
+    {
+      "name": "sword-flame",
+      "bone": "hand-near",
+      "attachment": "sword-flame"
+    },
+    {
+      "name": "sword-blade",
+      "bone": "hand-near",
+      "attachment": "sword-blade"
+    },
+    {
+      "name": "sword-guard",
+      "bone": "hand-near",
+      "attachment": "sword-guard"
+    },
+    {
+      "name": "neck-part",
+      "bone": "neck",
+      "attachment": "neck-part"
+    },
+    {
+      "name": "collar",
+      "bone": "neck",
+      "attachment": "collar"
+    },
+    {
+      "name": "head-shape",
+      "bone": "head",
+      "attachment": "head-shape"
+    },
+    {
+      "name": "eye-white-l",
+      "bone": "head",
+      "attachment": "eye-white-l"
+    },
+    {
+      "name": "eye-iris-l",
+      "bone": "head",
+      "attachment": "eye-iris-l"
+    },
+    {
+      "name": "eye-shine-l",
+      "bone": "head",
+      "attachment": "eye-shine-l"
+    },
+    {
+      "name": "eye-lash-l",
+      "bone": "head",
+      "attachment": "eye-lash-l"
+    },
+    {
+      "name": "eye-white-r",
+      "bone": "head",
+      "attachment": "eye-white-r"
+    },
+    {
+      "name": "eye-iris-r",
+      "bone": "head",
+      "attachment": "eye-iris-r"
+    },
+    {
+      "name": "eye-shine-r",
+      "bone": "head",
+      "attachment": "eye-shine-r"
+    },
+    {
+      "name": "eye-lash-r",
+      "bone": "head",
+      "attachment": "eye-lash-r"
+    },
+    {
+      "name": "brow-l",
+      "bone": "head",
+      "attachment": "brow-l"
+    },
+    {
+      "name": "brow-r",
+      "bone": "head",
+      "attachment": "brow-r"
+    },
+    {
+      "name": "mouth",
+      "bone": "head",
+      "attachment": "mouth"
+    },
+    {
+      "name": "hair-fringe",
+      "bone": "head",
+      "attachment": "hair-fringe"
+    },
+    {
+      "name": "hair-lock-l",
+      "bone": "hair-lock-l",
+      "attachment": "hair-lock-l"
+    },
+    {
+      "name": "hair-lock-r",
+      "bone": "hair-lock-r",
+      "attachment": "hair-lock-r"
+    },
+    {
+      "name": "earring-l",
+      "bone": "head",
+      "attachment": "earring-l"
+    },
+    {
+      "name": "earring-r",
+      "bone": "head",
+      "attachment": "earring-r"
+    }
+  ],
+  "skins": [
+    {
+      "name": "default",
+      "attachments": {
+        "hair-back": {
+          "hair-back": {
+            "type": "region",
+            "x": 0,
+            "y": -180,
+            "rotation": 0,
+            "width": 400,
+            "height": 660,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "hair-tail": {
+          "hair-tail": {
+            "type": "region",
+            "x": -34.111,
+            "y": -136.812,
+            "rotation": -14,
+            "width": 76,
+            "height": 300,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "skirt-under": {
+          "skirt-under": {
+            "type": "region",
+            "x": 0,
+            "y": -158.4,
+            "rotation": 0,
+            "width": 290,
+            "height": 330,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "skirt-l": {
+          "skirt-l": {
+            "type": "region",
+            "x": 8.792,
+            "y": -167.77,
+            "rotation": 3,
+            "width": 330,
+            "height": 350,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "skirt-r": {
+          "skirt-r": {
+            "type": "region",
+            "x": -8.792,
+            "y": -167.77,
+            "rotation": -3,
+            "width": 330,
+            "height": 350,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "arm-far-upper": {
+          "arm-far-upper": {
+            "type": "region",
+            "x": 34.068,
+            "y": -65.167,
+            "rotation": 27.6,
+            "width": 108,
+            "height": 191,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "elbow-far-joint": {
+          "elbow-far-joint": {
+            "type": "region",
+            "x": 0,
+            "y": 0,
+            "rotation": 0,
+            "width": 104,
+            "height": 104,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "arm-far-fore": {
+          "arm-far-fore": {
+            "type": "region",
+            "x": 21.1,
+            "y": -33.12,
+            "rotation": 32.5,
+            "width": 96,
+            "height": 102,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "hand-far": {
+          "hand-far": {
+            "type": "region",
+            "x": 13.725,
+            "y": -25.134,
+            "rotation": 33,
+            "width": 60,
+            "height": 84,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "body-robe": {
+          "body-robe": {
+            "type": "region",
+            "x": 0,
+            "y": 30,
+            "rotation": 0,
+            "width": 392,
+            "height": 600,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "sash": {
+          "sash": {
+            "type": "region",
+            "x": 0,
+            "y": 6,
+            "rotation": 0,
+            "width": 318,
+            "height": 56,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "shoulder-near": {
+          "shoulder-near": {
+            "type": "region",
+            "x": 2,
+            "y": -4,
+            "rotation": 6,
+            "width": 132,
+            "height": 100,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "arm-near-upper": {
+          "arm-near-upper": {
+            "type": "region",
+            "x": -19.078,
+            "y": -70.219,
+            "rotation": -15.2,
+            "width": 112,
+            "height": 189,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "elbow-near-joint": {
+          "elbow-near-joint": {
+            "type": "region",
+            "x": 0,
+            "y": 0,
+            "rotation": 0,
+            "width": 106,
+            "height": 106,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "arm-near-fore": {
+          "arm-near-fore": {
+            "type": "region",
+            "x": 25.044,
+            "y": -52.037,
+            "rotation": 25.7,
+            "width": 100,
+            "height": 150,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "sword-grip": {
+          "sword-grip": {
+            "type": "region",
+            "x": -40.437,
+            "y": -57.75,
+            "rotation": -35,
+            "width": 46,
+            "height": 150,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "sword-pommel": {
+          "sword-pommel": {
+            "type": "region",
+            "x": -84.889,
+            "y": -121.235,
+            "rotation": 0,
+            "width": 56,
+            "height": 56,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "hand-near": {
+          "hand-near": {
+            "type": "region",
+            "x": 0,
+            "y": -43.44,
+            "rotation": 0,
+            "width": 82,
+            "height": 88,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "sword-flame": {
+          "sword-flame": {
+            "type": "region",
+            "x": 161.519,
+            "y": 230.673,
+            "rotation": 145,
+            "width": 92,
+            "height": 640,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "sword-blade": {
+          "sword-blade": {
+            "type": "region",
+            "x": 154.866,
+            "y": 221.171,
+            "rotation": 145,
+            "width": 44,
+            "height": 600,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "sword-guard": {
+          "sword-guard": {
+            "type": "region",
+            "x": 0,
+            "y": 0,
+            "rotation": 55,
+            "width": 164,
+            "height": 28,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "neck-part": {
+          "neck-part": {
+            "type": "region",
+            "x": 0,
+            "y": 34,
+            "rotation": 0,
+            "width": 84,
+            "height": 110,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "collar": {
+          "collar": {
+            "type": "region",
+            "x": 0,
+            "y": 10,
+            "rotation": 0,
+            "width": 204,
+            "height": 146,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "head-shape": {
+          "head-shape": {
+            "type": "region",
+            "x": 0,
+            "y": 0,
+            "rotation": 0,
+            "width": 216,
+            "height": 258,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "eye-white-l": {
+          "eye-white-l": {
+            "type": "region",
+            "x": -50,
+            "y": 2,
+            "rotation": 0,
+            "width": 70,
+            "height": 56,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "eye-iris-l": {
+          "eye-iris-l": {
+            "type": "region",
+            "x": -50,
+            "y": 0,
+            "rotation": 0,
+            "width": 48,
+            "height": 54,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "eye-shine-l": {
+          "eye-shine-l": {
+            "type": "region",
+            "x": -60,
+            "y": 12,
+            "rotation": 0,
+            "width": 16,
+            "height": 16,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "eye-lash-l": {
+          "eye-lash-l": {
+            "type": "region",
+            "x": -50,
+            "y": 27,
+            "rotation": 6,
+            "width": 80,
+            "height": 22,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "eye-white-r": {
+          "eye-white-r": {
+            "type": "region",
+            "x": 50,
+            "y": 2,
+            "rotation": 0,
+            "width": 70,
+            "height": 56,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "eye-iris-r": {
+          "eye-iris-r": {
+            "type": "region",
+            "x": 50,
+            "y": 0,
+            "rotation": 0,
+            "width": 48,
+            "height": 54,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "eye-shine-r": {
+          "eye-shine-r": {
+            "type": "region",
+            "x": 40,
+            "y": 12,
+            "rotation": 0,
+            "width": 16,
+            "height": 16,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "eye-lash-r": {
+          "eye-lash-r": {
+            "type": "region",
+            "x": 50,
+            "y": 27,
+            "rotation": -6,
+            "width": 80,
+            "height": 22,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "brow-l": {
+          "brow-l": {
+            "type": "region",
+            "x": -52,
+            "y": 50,
+            "rotation": 11,
+            "width": 56,
+            "height": 10,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "brow-r": {
+          "brow-r": {
+            "type": "region",
+            "x": 52,
+            "y": 50,
+            "rotation": -11,
+            "width": 56,
+            "height": 10,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "mouth": {
+          "mouth": {
+            "type": "region",
+            "x": 0,
+            "y": -90,
+            "rotation": 0,
+            "width": 30,
+            "height": 11,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "hair-fringe": {
+          "hair-fringe": {
+            "type": "region",
+            "x": 0,
+            "y": 112,
+            "rotation": 0,
+            "width": 306,
+            "height": 132,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "hair-lock-l": {
+          "hair-lock-l": {
+            "type": "region",
+            "x": -7.379,
+            "y": -140.807,
+            "rotation": -3,
+            "width": 96,
+            "height": 300,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "hair-lock-r": {
+          "hair-lock-r": {
+            "type": "region",
+            "x": 7.379,
+            "y": -140.807,
+            "rotation": 3,
+            "width": 96,
+            "height": 300,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "earring-l": {
+          "earring-l": {
+            "type": "region",
+            "x": -114,
+            "y": -50,
+            "rotation": 0,
+            "width": 24,
+            "height": 56,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "earring-r": {
+          "earring-r": {
+            "type": "region",
+            "x": 114,
+            "y": -50,
+            "rotation": 0,
+            "width": 24,
+            "height": 56,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        }
+      }
+    }
+  ],
+  "animations": {}
+}
