@@ -116,15 +116,14 @@ function paintBackdrop(g) {
   g.drawCircle(HERO_SPOT.x, HERO_SPOT.y - 60, 210);
   g.endFill();
 
-  // 地平线：两条极淡的横线，把上下两个角色"放在地上"
+  // 地平线：把敌人"放在地上"。我方那条不画——立绘的脚被手牌挡住，
+  // 画在胯高会变成一道横穿大腿的线。
   g.lineStyle(1.5, 0x2c3947, 0.55);
-  g.moveTo(0, 330).lineTo(STAGE.width, 330);
-  g.moveTo(0, 640).lineTo(STAGE.width, 640);
+  g.moveTo(0, ENEMY_SPOT.y + 108).lineTo(STAGE.width, ENEMY_SPOT.y + 108);
 
-  // 脚下的影子。没有影子，立绘就是贴纸浮在半空
+  // 脚下的影子。没有影子，敌人就是贴纸浮在半空
   g.beginFill(0x000000, 0.32);
   g.drawEllipse(ENEMY_SPOT.x - 110, ENEMY_SPOT.y + 108, 220, 34);
-  g.drawEllipse(HERO_SPOT.x - 66, HERO_SPOT.y + 68, 132, 24);
   g.endFill();
 
   // 棋盘底盘
@@ -393,7 +392,7 @@ function play(events) {
 
       case 'bond': {
         const bond = BONDS[event.id];
-        sequence.call(() => hud.banner(bond ? `${bond.name}　${bond.hint}` : event.id, 1100));
+        sequence.call(() => hud.banner(bond ? `${bond.name}　触发` : event.id, 1000));
         break;
       }
 

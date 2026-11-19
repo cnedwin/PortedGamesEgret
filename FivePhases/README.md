@@ -35,8 +35,9 @@ npx serve .            # 或 python -m http.server，起在仓库根目录
 测试与工具：
 
 ```bash
-node --test FivePhases/test/battle.test.mjs FivePhases/test/board.test.mjs
-node --test FivePhases/src/portrait/spine.test.mjs
+node --test FivePhases/test/battle.test.mjs FivePhases/test/board.test.mjs   # 37
+node --test FivePhases/src/portrait/spine.test.mjs                            # 11
+node --test FivePhases/src/view/portrait.test.mjs                             # 6
 node FivePhases/tools/spine-export.mjs     # → assets/spine/*.skeleton.json + *.manifest.json
 node FivePhases/tools/parts-table.mjs      # → docs/PORTRAIT-PARTS.md
 ```
@@ -47,6 +48,12 @@ node FivePhases/tools/parts-table.mjs      # → docs/PORTRAIT-PARTS.md
 node FivePhases/tools/probe.mjs --url http://127.0.0.1:8123/FivePhases/ \
   --wait 2000 --shot FivePhases/.feel/shot.png \
   --eval "window.fivephases.hint()"
+
+# 放大看细节：--clip x,y,w,h,倍数（页面坐标，不是设计坐标）
+node FivePhases/tools/probe.mjs --url http://127.0.0.1:8123/FivePhases/ \
+  --wait 2200 --size 540,1080 --clip "20,250,250,240,3" \
+  --shot FivePhases/.feel/hero.png \
+  --eval "window.fivephases.start()"
 ```
 
 页面暴露了 `window.fivephases`：`start()` / `stage(n)` / `swap(a,b)` / `play(uid)` / `endTurn()` / `hint()` / `stats()`。
@@ -78,6 +85,8 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 ```
 
 将来要提升画面品质，照 `assets/spine/<角色>.manifest.json` 里的 `size` 一张张出 PNG 就行，轴心位置已经写在 `pivot` 里，图集由打包器出。skeleton.json 不用动。
+
+绑定时有一处必须说清楚：**骨骼树只管变换，不管绘制顺序**。把部件直接挂在各自骨下看着很自然，但那样真正的顺序是骨骼树的深度优先遍历，`layer` 只决定同一根骨下几个部件的先后——子骨永远排在父骨自己的部件之前。踩到的结果是清单里 `blade` 写着 19、`robe` 写着 9，屏幕上整把刀被身体挡住，近侧手臂也藏在袍子里。所以部件放在一个平层里按 `layer` 排，骨骼只提供世界变换，改完骨骼调一次 `sync()`。`src/view/portrait.test.mjs` 钉住了这条：刀必须在袍子之后、近手在前远手在后、转肩骨刀要跟着走。
 
 ## 给引擎的两个实测结论 · Two findings for the engine
 

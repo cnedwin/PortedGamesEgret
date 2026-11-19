@@ -38,6 +38,7 @@ function parseArgs(argv) {
     else if (arg === '--wait') options.wait = Number(next());
     else if (arg === '--eval') options.eval.push(next());
     else if (arg === '--shot') options.shot = next();
+    else if (arg === '--clip') options.clip = next();
     else if (arg === '--size') options.size = next();
     else if (arg === '--port') options.port = Number(next());
     else if (arg === '--keep') options.keep = true;
@@ -238,7 +239,15 @@ async function main() {
       }
     }
 
-    const shot = await page.send('Page.captureScreenshot', { format: 'png' });
+    // --clip x,y,w,h[,scale]：只截一块，并按倍数放大。
+    // 看 8 像素高的眼睛、看描边有没有糊，全屏截图缩下来是没用的。
+    const clip = options.clip
+      ? (() => {
+          const [x, y, width, height, scale = 2] = String(options.clip).split(',').map(Number);
+          return { x, y, width, height, scale };
+        })()
+      : undefined;
+    const shot = await page.send('Page.captureScreenshot', { format: 'png', ...(clip ? { clip } : {}) });
     await mkdir(path.dirname(options.shot), { recursive: true });
     await writeFile(options.shot, Buffer.from(shot.data, 'base64'));
 

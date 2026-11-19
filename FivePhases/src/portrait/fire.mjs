@@ -188,9 +188,9 @@ const parts = [
   },
 
   // ── 远侧手臂（在身体背后） ──────────────────────────────────
-  limb('arm-far-upper', 'shoulder-far', 'elbow-far', { layer: 5, width: 108, color: 'main' }),
+  limb('arm-far-upper', 'shoulder-far', 'elbow-far', { layer: 5, width: 108, color: 'deep' }),
   joint('elbow-far-joint', 'elbow-far', 6, { size: 104, color: 'main' }),
-  limb('arm-far-fore', 'elbow-far', 'hand-far', { layer: 7, width: 96, color: 'main' }),
+  limb('arm-far-fore', 'elbow-far', 'hand-far', { layer: 7, width: 96, color: 'deep' }),
   {
     id: 'hand-far',
     bone: 'hand-far',
