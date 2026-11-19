@@ -217,8 +217,14 @@ function startBattle(index) {
 }
 
 /** 三个覆盖层收在一处开关，免得某条路径漏关一个，界面就卡死了。 */
+function setOverlayVisible(id, visible) {
+  const overlay = $(id);
+  overlay.inert = !visible;
+  overlay.classList.toggle('is-on', visible);
+}
+
 function hideOverlays() {
-  for (const id of ['overlay-title', 'overlay-reward', 'overlay-over']) $(id).classList.remove('is-on');
+  for (const id of ['overlay-title', 'overlay-reward', 'overlay-over']) setOverlayVisible(id, false);
 }
 
 function beginRun() {
@@ -273,7 +279,7 @@ function showReward() {
     });
     rewardsEl.append(button);
   }
-  $('overlay-reward').classList.add('is-on');
+  setOverlayVisible('overlay-reward', true);
 }
 
 function nextBattle() {
@@ -291,7 +297,7 @@ function showOver(result) {
     result === 'win'
       ? `三关全破，剩余气血 ${Math.round(battle.hero.hp)}，最高连锁 ${battle.bestChain} 层。`
       : `倒在第 ${run.index + 1} 关·${battle.enemy.name}，最高连锁 ${battle.bestChain} 层。`;
-  $('overlay-over').classList.add('is-on');
+  setOverlayVisible('overlay-over', true);
 }
 
 function cardMarkup(card) {
