@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>体感自测 / Feel self-test</title>
+  <meta name="description" content="feel 埋点框架的自测页：一个真的 7×7 三消，用来验证触控延迟、帧率、反馈完整率和连锁不吞。">
+  <style>
+    :root { color-scheme: dark; }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+      background: #0d0f13; color: #e8eaf0;
+      font: 13px/1.5 -apple-system, "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+      overscroll-behavior: none; touch-action: none; user-select: none;
+    }
+    #board {
+      display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px;
+      width: min(92vw, 420px); aspect-ratio: 1;
+      padding: 6px; background: #16191f; border-radius: 12px; touch-action: none;
+    }
+    .cell {
+      border-radius: 6px; transition: transform 90ms ease-out, opacity 90ms ease-out;
+      will-change: transform;
+    }
+    .cell.clearing { transform: scale(1.28); opacity: 0; }
+    .cell.falling { transform: translateY(-100%); }
+    .e0 { background: #e24b4a; border-radius: 4px; }
+    .e1 { background: #378add; border-radius: 50%; }
+    .e2 { background: #639922; border-radius: 50% 4px 50% 4px; }
+    .e3 { background: #d3d1c7; border-radius: 2px; }
+    .e4 { background: #ef9f27; border-radius: 0 50% 0 50%; }
+    #chain {
+      position: fixed; left: 50%; top: 26%; transform: translate(-50%, -50%) scale(.6);
+      font: 700 34px/1 -apple-system, system-ui, sans-serif; letter-spacing: 1px;
+      color: #ffd34d; opacity: 0; pointer-events: none; text-shadow: 0 0 18px rgba(255,211,77,.6);
+      transition: transform 120ms ease-out, opacity 120ms ease-out;
+    }
+    #chain.show { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+    #hint { color: #8b93a3; font-size: 12px; text-align: center; padding: 0 16px; }
+  </style>
+  <script type="importmap">
+    { "imports": { "#feel": "../feel/feel.mjs", "#feel-overlay": "../feel/overlay.mjs" } }
+  </script>
+</head>
+<body>
+  <div id="board" role="grid" aria-label="七乘七消除棋盘"></div>
+  <div id="chain" aria-live="polite"></div>
+  <p id="hint">拖动两格交换，连成三消。这个页面只做一件事：让 <code>feel-test</code> 有东西可测。</p>
+  <script type="module" src="./main.mjs"></script>
+</body>
+</html>
