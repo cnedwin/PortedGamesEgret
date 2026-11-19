@@ -4,42 +4,67 @@
 
 A 2D card battler over a match-three board, built on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). The top half is turn-based card combat with animated portraits; the bottom half is the board. Matching charges energy and drops new cards, and the bonds between cards change how you want to match. The five phases are at once the board's colours, five playstyles, and a bond network.
 
-**当前状态 · Status**：设计定稿，立绘部件管线与 Spine 导出已跑通，**游戏本体未开工**。这个目录现在只有设计文档、火角色的立绘部件清单和工具，没有可玩的构建。
+**当前状态 · Status**：**可玩**。三关（山魈 → 赤蛟 → 混沌）、消除攒能量、30 张卡、五条羁绊、奖励三选一、胜负结算全部跑通；逻辑层 37 例 + 立绘往返 11 例测试全过。
 
-Design is settled and the portrait rig pipeline works; the game itself has not been started. There is nothing playable in this directory yet.
+Playable. Three stages, match-to-charge-energy, 30 cards, five bonds, pick-one-of-three rewards, win and lose all work. 37 logic tests and 11 rig round-trip tests pass.
 
 ## 目录 · What is here
 
 | 路径 | 是什么 |
 |---|---|
 | [`DESIGN.md`](DESIGN.md) | 完整设计草案：布局、核心循环、爽感工程化、卡牌约束、羁绊、数值、演出分级、里程碑 |
-| [`docs/PORTRAIT-PARTS.md`](docs/PORTRAIT-PARTS.md) | 立绘部件明细表（16 骨 / 40 部件），由工具生成，不手写 |
-| `src/portrait/fire.mjs` | 火 · 焰的部件清单——占位图与真美术之间的合同 |
-| `src/portrait/spine.mjs` | 清单 ⇄ Spine 骨架的双向转换 |
-| `src/portrait/spine.test.mjs` | 往返测试：导出再读回来必须逐字段相等 |
-| `tools/portrait-preview.html` | 部件预览页，可开骨骼、轴心、部件名 |
-| `tools/spine-export.mjs` | 导出 Spine 4.1 骨架 + 美术交付单 |
-| `tools/parts-table.mjs` | 从清单生成 `docs/PORTRAIT-PARTS.md` |
-| `assets/spine/` | 导出的骨架与交付单 |
+| `index.html` / `style.css` | 页面与界面样式。画布画战场，DOM 画 HUD |
+| `src/main.mjs` | 入口：搭台、收输入、把事件表翻译成演出、走流程 |
+| `src/core/` | **纯逻辑，不 import 任何显示对象**。棋盘、卡牌、战斗状态机 |
+| `src/view/` | 表现层：棋盘视图、立绘绑定、粒子特效、演出队列、WebAudio 合成音 |
+| `src/ui/hud.mjs` | 血条、能量、手牌、步数、连锁、飘字（DOM） |
+| `src/portrait/` | 立绘部件清单 + Spine 双向转换 |
+| `test/` | 逻辑层测试，`node --test` 直接跑，不需要浏览器 |
+| `tools/` | 立绘预览、Spine 导出、无头浏览器探针 |
+| `vendor/` | 本作自带的一份引擎（与 LanternShadows 一致，每个 Demo 各带一份） |
 
-## 怎么跑 · Running the tools
-
-预览立绘（任意静态服务器起在仓库根目录）：
+## 怎么跑 · Running
 
 ```bash
-npx serve .        # 或 python -m http.server
-# 打开 /FivePhases/tools/portrait-preview.html
+npx serve .            # 或 python -m http.server，起在仓库根目录
+# 打开 /FivePhases/
 ```
 
-参数：`?bones=0` 隐藏骨骼，`?labels=1` 显示部件名，`?bg=0` 透明底，`?id=fire` 选角色。
+**必须走 HTTP**：`type="importmap"` 与 ES module 在 `file://` 下都不工作。
 
-导出与校验：
+测试与工具：
 
 ```bash
+node --test FivePhases/test/battle.test.mjs FivePhases/test/board.test.mjs
+node --test FivePhases/src/portrait/spine.test.mjs
 node FivePhases/tools/spine-export.mjs     # → assets/spine/*.skeleton.json + *.manifest.json
 node FivePhases/tools/parts-table.mjs      # → docs/PORTRAIT-PARTS.md
-node --test FivePhases/src/portrait/spine.test.mjs
 ```
+
+无头自查（AI 没有眼睛，用这个代替）：
+
+```bash
+node FivePhases/tools/probe.mjs --url http://127.0.0.1:8123/FivePhases/ \
+  --wait 2000 --shot FivePhases/.feel/shot.png \
+  --eval "window.fivephases.hint()"
+```
+
+页面暴露了 `window.fivephases`：`start()` / `stage(n)` / `swap(a,b)` / `play(uid)` / `endTurn()` / `hint()` / `stats()`。
+自动化测试和手感实测都从这里进，不靠像素点。
+
+## 结构上的一条硬线 · The one rule
+
+`src/core/` 不认识显示对象，也不自己播动画：它只改状态、吐一张事件表。
+`src/main.mjs` 拿到事件表，翻译成演出队列。
+
+```
+core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / hud / audio
+   （判定）                     （演出）
+```
+
+好处是判定和演出可以分别改、分别测：棋盘逻辑的 37 个测试在 Node 里跑，一帧都不用画。
+代价是事件表要设计得足够细——`clearStep`、`fall`、`energy`、`damage` 各是一条，
+少一条表现层就得去猜。
 
 ## 立绘为什么是代码画的 · Why the portraits are drawn in code
 
@@ -54,6 +79,18 @@ node --test FivePhases/src/portrait/spine.test.mjs
 
 将来要提升画面品质，照 `assets/spine/<角色>.manifest.json` 里的 `size` 一张张出 PNG 就行，轴心位置已经写在 `pivot` 里，图集由打包器出。skeleton.json 不用动。
 
-## 与引擎的关系 · Relation to the engine
+## 给引擎的两个实测结论 · Two findings for the engine
 
-这个仓库是 Egret Rebuild 的玩法验证场，每个游戏都是一次"用真实玩法压测引擎某条路径"的实验。本作要压的是：**2D 共享渲染在高频重绘下的稳定性**（棋盘每帧重绘）与 **Spine 立绘在卡面上的开销**。引擎升级后这个 Demo 要跟着适配。
+这个仓库是 Egret Rebuild 的玩法验证场，每个游戏都是一次"用真实玩法压测引擎某条路径"的实验。本作压的是 2D 共享渲染在高频重绘下的表现，撞到两件事：
+
+1. **每帧切换大量 `sprite.visible` 会撑爆几何预算。** 粒子池最初用 `visible = true/false` 开关，一次消除几十颗、连着几轮连锁，就会抛 `WEBGL2_GEOMETRY_RANGE ← Geometry preparation budget`（每帧 prepared vertices 上限 1,048,576）。改成"图形预画一次、运行期只改 `alpha`/缩放/位置"之后，同样的机器人狂点压测连跑五次零复现。
+2. **帧循环报错后停在 `failed`，画面还在但什么都不动了。** 这比崩溃更难查。`main.mjs` 里接了 `onError`：把真正的原因（`cause` 链）打出来，并有限次重启帧循环。引擎侧建议给 `createBrowserGame` 一个"渲染失败后重试"的选项——现在每个 Demo 都要自己写一遍。
+
+复现方式：`node FivePhases/tools/probe.mjs` 用 `window.fivephases` 让机器人以最快速度出牌与交换，看控制台。
+
+## 未做的部分 · Not done yet
+
+- 水 / 木 / 金 / 土四个角色的立绘清单（现在只有火）
+- 关间地图与事件节点（现在是固定三关）
+- 存档与卡组成长（奖励只在单局内有效）
+- 真机手感实测（`tools/feel-test.mjs` 还没写，需要连着安卓设备）

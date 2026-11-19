@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>引擎冒烟 / Engine smoke test</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #0b0d11; }
+    #stage { display: block; width: 100%; height: 100%; }
+  </style>
+  <script type="importmap">
+    {
+      "imports": {
+        "#egret-keyboard-input": "../vendor/engine/dist/keyboardInput.js",
+        "#egret-pointer-input": "../vendor/engine/dist/pointerInput.js",
+        "#egret-textured-frame-state": "../vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/contracts": "../vendor/contracts/dist/index.js",
+        "@egret/contracts/resources": "../vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "../vendor/engine/dist/index.js",
+        "@egret/engine/audio": "../vendor/engine/dist/audio.js",
+        "@egret/engine/camera": "../vendor/engine/dist/camera.js",
+        "@egret/engine/input/gamepad": "../vendor/engine/dist/gamepad.js",
+        "@egret/engine/particles": "../vendor/engine/dist/particles.js",
+        "@egret/engine/resources": "../vendor/engine/dist/resources.js",
+        "@egret/engine/text": "../vendor/engine/dist/text.js",
+        "@egret/engine/tilemap": "../vendor/engine/dist/tilemap.js",
+        "@egret/engine/web/audio": "../vendor/engine/dist/web/audio.js",
+        "@egret/engine/web/game": "../vendor/engine/dist/web/game.js",
+        "@egret/engine/web/gamepad": "../vendor/engine/dist/web/gamepad.js",
+        "@egret/engine/webgl2": "../vendor/engine/dist/web/webgl2.js",
+        "@egret/engine/webgpu": "../vendor/engine/dist/web/webgpu.js",
+        "@egret/runtime": "../vendor/runtime/dist/index.js",
+        "@egret/runtime/input": "../vendor/runtime/dist/input/index.js",
+        "@egret/runtime/text": "../vendor/runtime/dist/text/index.js",
+        "@egret/spine": "../vendor/spine/dist/index.js",
+        "@esotericsoftware/spine-core": "../vendor/spine-core/dist/index.js",
+        "robust-predicates": "../vendor/robust-predicates/index.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <canvas id="stage"></canvas>
+  <script type="module">
+    import { Sprite } from '@egret/engine';
+    import { createBrowserGame } from '@egret/engine/web/game';
+
+    const notes = [];
+    let t = 0;
+    let frames = 0;
+    const canvas = document.getElementById('stage');
+
+    async function start() {
+      const game = await createBrowserGame({
+        canvas,
+        width: 750,
+        height: 1624,
+        clearColor: 0x12161d,
+        backend: 'webgl2',
+        fit: 'contain',
+        pointer: false,
+        keyboard: false,
+        update,
+      });
+      const { engine, scope, stage } = game;
+      notes.push(`backend ${game.backend}`);
+
+      // 1. 圆角矩形 + 圆 + 路径填充，各画一个
+      const box = stage.addChild(scope.use(new Sprite()));
+      box.graphics.beginFill(0x2a6f97).drawRoundRect(40, 40, 200, 120, 18).endFill();
+      box.graphics.beginFill(0xe24b4a, 0.9).drawCircle(320, 100, 60).endFill();
+
+      // 2. 任意路径：菱形（火的形状）
+      const diamond = stage.addChild(scope.use(new Sprite()));
+      diamond.graphics
+        .beginFill(0xff8a3d)
+        .moveTo(480, 40)
+        .lineTo(560, 100)
+        .lineTo(480, 160)
+        .lineTo(400, 100)
+        .endFill();
+
+      // 3. 六边形（土的形状），带描边
+      const hex = stage.addChild(scope.use(new Sprite()));
+      hex.graphics.lineStyle(4, 0xf0b45a, 1);
+      hex.graphics.beginFill(0xd9a441);
+      for (let i = 0; i < 6; i += 1) {
+        const a = (Math.PI / 3) * i - Math.PI / 6;
+        const x = 660 + Math.cos(a) * 55;
+        const y = 100 + Math.sin(a) * 55;
+        if (i === 0) hex.graphics.moveTo(x, y);
+        else hex.graphics.lineTo(x, y);
+      }
+      hex.graphics.endFill();
+
+      // 4. 曲线：一片叶形（木的形状）
+      const leaf = stage.addChild(scope.use(new Sprite()));
+      leaf.graphics
+        .beginFill(0x4f9d69)
+        .moveTo(140, 260)
+        .curveTo(240, 180, 260, 300)
+        .curveTo(200, 380, 140, 260)
+        .endFill();
+
+      // 5. 渐变填充
+      const grad = stage.addChild(scope.use(new Sprite()));
+      grad.graphics
+        .beginLinearGradientFill(320, 180, 320, 380, [
+          { offset: 0, color: 0x5b8def, alpha: 1 },
+          { offset: 1, color: 0x1b2a4a, alpha: 1 },
+        ])
+        .drawRect(320, 180, 200, 200)
+        .endFill();
+
+      // 6. 变换：旋转、缩放、透明度
+      const turned = stage.addChild(scope.use(new Sprite()));
+      turned.graphics.beginFill(0xf6d9c6).drawRect(-50, -50, 100, 100).endFill();
+      turned.x = 640;
+      turned.y = 300;
+      turned.rotation = 25;
+      turned.scaleX = turned.scaleY = 1.2;
+
+      const faded = stage.addChild(scope.use(new Sprite()));
+      faded.graphics.beginFill(0xffffff).drawRect(60, 420, 160, 60).endFill();
+      faded.alpha = 0.45;
+
+      // 7. 文字
+      const label = await game.createLabel({ text: '五行牌阵 火', fontSize: 48, color: 0xffd166 });
+      label.display.x = 60;
+      label.display.y = 520;
+      stage.addChild(label.display);
+      await label.ready;
+
+      // 8. 每帧改一次位置，确认循环在跑
+      const runner = stage.addChild(scope.use(new Sprite()));
+      runner.graphics.beginFill(0x7bd88f).drawCircle(0, 0, 18).endFill();
+      runner.y = 640;
+
+      function update(seconds) {
+        t += seconds;
+        runner.x = 80 + ((Math.sin(t * 1.6) * 0.5 + 0.5) * 560);
+        frames += 1;
+      }
+
+      window.__smoke = {
+        ok: true,
+        notes,
+        frames: () => frames,
+        stageChildren: stage.numChildren,
+      };
+      document.title = '冒烟通过';
+    }
+
+    start().catch((error) => {
+      console.error(error);
+      window.__smoke = { ok: false, error: String(error?.message ?? error), code: error?.code, notes };
+      document.title = `冒烟失败：${error?.message ?? error}`;
+    });
+  </script>
+</body>
+</html>

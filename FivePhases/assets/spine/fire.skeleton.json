@@ -460,7 +460,7 @@
           "hand-far": {
             "type": "region",
             "x": 13.725,
-            "y": -25.134,
+            "y": -17.134,
             "rotation": 33,
             "width": 60,
             "height": 84,
@@ -486,8 +486,8 @@
             "x": 0,
             "y": 6,
             "rotation": 0,
-            "width": 318,
-            "height": 56,
+            "width": 300,
+            "height": 46,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -498,8 +498,8 @@
             "x": 2,
             "y": -4,
             "rotation": 6,
-            "width": 132,
-            "height": 100,
+            "width": 126,
+            "height": 96,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -543,11 +543,11 @@
         "sword-grip": {
           "sword-grip": {
             "type": "region",
-            "x": -40.437,
-            "y": -57.75,
+            "x": -37.202,
+            "y": -53.13,
             "rotation": -35,
-            "width": 46,
-            "height": 150,
+            "width": 44,
+            "height": 138,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -555,11 +555,11 @@
         "sword-pommel": {
           "sword-pommel": {
             "type": "region",
-            "x": -84.889,
-            "y": -121.235,
+            "x": -78.006,
+            "y": -111.405,
             "rotation": 0,
-            "width": 56,
-            "height": 56,
+            "width": 52,
+            "height": 52,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -568,7 +568,7 @@
           "hand-near": {
             "type": "region",
             "x": 0,
-            "y": -43.44,
+            "y": -29.44,
             "rotation": 0,
             "width": 82,
             "height": 88,
@@ -579,11 +579,11 @@
         "sword-flame": {
           "sword-flame": {
             "type": "region",
-            "x": 161.519,
-            "y": 230.673,
+            "x": 130.225,
+            "y": 185.98,
             "rotation": 145,
-            "width": 92,
-            "height": 640,
+            "width": 84,
+            "height": 516,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -591,11 +591,11 @@
         "sword-blade": {
           "sword-blade": {
             "type": "region",
-            "x": 154.866,
-            "y": 221.171,
+            "x": 121.311,
+            "y": 173.251,
             "rotation": 145,
-            "width": 44,
-            "height": 600,
+            "width": 40,
+            "height": 470,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -606,8 +606,8 @@
             "x": 0,
             "y": 0,
             "rotation": 55,
-            "width": 164,
-            "height": 28,
+            "width": 132,
+            "height": 26,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -651,11 +651,11 @@
         "eye-white-l": {
           "eye-white-l": {
             "type": "region",
-            "x": -50,
-            "y": 2,
+            "x": -46,
+            "y": -4,
             "rotation": 0,
-            "width": 70,
-            "height": 56,
+            "width": 62,
+            "height": 50,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -663,11 +663,11 @@
         "eye-iris-l": {
           "eye-iris-l": {
             "type": "region",
-            "x": -50,
-            "y": 0,
+            "x": -46,
+            "y": -6,
             "rotation": 0,
-            "width": 48,
-            "height": 54,
+            "width": 42,
+            "height": 46,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -675,8 +675,8 @@
         "eye-shine-l": {
           "eye-shine-l": {
             "type": "region",
-            "x": -60,
-            "y": 12,
+            "x": -56,
+            "y": 6,
             "rotation": 0,
             "width": 16,
             "height": 16,
@@ -687,11 +687,11 @@
         "eye-lash-l": {
           "eye-lash-l": {
             "type": "region",
-            "x": -50,
-            "y": 27,
-            "rotation": 6,
-            "width": 80,
-            "height": 22,
+            "x": -46,
+            "y": 18,
+            "rotation": 7,
+            "width": 70,
+            "height": 12,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -699,11 +699,11 @@
         "eye-white-r": {
           "eye-white-r": {
             "type": "region",
-            "x": 50,
-            "y": 2,
+            "x": 46,
+            "y": -4,
             "rotation": 0,
-            "width": 70,
-            "height": 56,
+            "width": 62,
+            "height": 50,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -711,11 +711,11 @@
         "eye-iris-r": {
           "eye-iris-r": {
             "type": "region",
-            "x": 50,
-            "y": 0,
+            "x": 46,
+            "y": -6,
             "rotation": 0,
-            "width": 48,
-            "height": 54,
+            "width": 42,
+            "height": 46,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -723,8 +723,8 @@
         "eye-shine-r": {
           "eye-shine-r": {
             "type": "region",
-            "x": 40,
-            "y": 12,
+            "x": 38,
+            "y": 6,
             "rotation": 0,
             "width": 16,
             "height": 16,
@@ -735,11 +735,11 @@
         "eye-lash-r": {
           "eye-lash-r": {
             "type": "region",
-            "x": 50,
-            "y": 27,
-            "rotation": -6,
-            "width": 80,
-            "height": 22,
+            "x": 46,
+            "y": 18,
+            "rotation": -7,
+            "width": 70,
+            "height": 12,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -747,11 +747,11 @@
         "brow-l": {
           "brow-l": {
             "type": "region",
-            "x": -52,
-            "y": 50,
+            "x": -54,
+            "y": 48,
             "rotation": 11,
-            "width": 56,
-            "height": 10,
+            "width": 50,
+            "height": 8,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -759,11 +759,11 @@
         "brow-r": {
           "brow-r": {
             "type": "region",
-            "x": 52,
-            "y": 50,
+            "x": 54,
+            "y": 48,
             "rotation": -11,
-            "width": 56,
-            "height": 10,
+            "width": 50,
+            "height": 8,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -772,10 +772,10 @@
           "mouth": {
             "type": "region",
             "x": 0,
-            "y": -90,
+            "y": -76,
             "rotation": 0,
-            "width": 30,
-            "height": 11,
+            "width": 26,
+            "height": 10,
             "scaleX": 1,
             "scaleY": 1
           }
@@ -784,10 +784,10 @@
           "hair-fringe": {
             "type": "region",
             "x": 0,
-            "y": 112,
+            "y": 110,
             "rotation": 0,
-            "width": 306,
-            "height": 132,
+            "width": 312,
+            "height": 140,
             "scaleX": 1,
             "scaleY": 1
           }
