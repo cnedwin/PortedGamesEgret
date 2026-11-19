@@ -66,8 +66,7 @@ export function buildPortrait({ portrait, Sprite, scope }) {
     sprite.graphics.endFill();
     // 描边把相邻部件分开，否则同色的头发和衣服会糊成一片。
     // 2px 在缩到 0.33 之后只剩半个像素，等于没有；3px 是能看见的下限。
-    sprite.graphics.lineStyle(3, 0x1a1210, 0.4);
-    tracePart(sprite.graphics, part, shiftX, shiftY);
+    // (描边暂时关掉，量一下代价)
 
     layer.addChild(sprite);
     drawn.push({ sprite, part, offset: part.offset, rotation: part.rotation, bone: part.bone });

@@ -250,9 +250,9 @@ const parts = [
     color: 'deep',
     image: null,
   },
-  limb('arm-near-upper', 'shoulder-near', 'elbow-near', { layer: 12, width: 112, color: 'main' }),
+  limb('arm-near-upper', 'shoulder-near', 'elbow-near', { layer: 12, width: 112, color: 'sleeve' }),
   joint('elbow-near-joint', 'elbow-near', 13, { size: 106, color: 'main' }),
-  limb('arm-near-fore', 'elbow-near', 'hand-near', { layer: 14, width: 100, color: 'main' }),
+  limb('arm-near-fore', 'elbow-near', 'hand-near', { layer: 14, width: 100, color: 'sleeve' }),
   {
     id: 'sword-grip',
     bone: 'hand-near',
@@ -596,6 +596,7 @@ export const fire = {
   // 取自 AI 参考图的配色，占位图按这套画，风格不会跑偏。
   palette: {
     main: '#e24b4a', // 朱红短打
+    sleeve: '#c73b39', // 近侧袖子，比袍子压深半档：没有描边之后，全靠这一档分出手臂
     deep: '#8f2320', // 深红内衬
     gold: '#f0b45a', // 金线滚边
     skin: '#f6d9c6',

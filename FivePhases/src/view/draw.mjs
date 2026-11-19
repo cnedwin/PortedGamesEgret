@@ -116,9 +116,16 @@ export function drawTile(graphics, { kind, special, size }) {
   const info = ELEMENT_COLORS[ELEMENT_KEYS[kind]];
   const r = size * 0.42;
 
-  // 底座：深色圆角方块，让相邻的格子有边界
-  graphics.beginFill(PALETTE.panel, 0.55).drawRoundRect(-r, -r, r * 2, r * 2, size * 0.16).endFill();
-  graphics.lineStyle(Math.max(1.5, size * 0.018), info ? info.deep : PALETTE.line, 0.9).drawRoundRect(-r, -r, r * 2, r * 2, size * 0.16);
+  // 底座 + 边框。
+  //
+  // 原来是"填充 + 描边"，描边是一圈圆角矩形的 stroke——这一笔在引擎里要
+  // 把轮廓摊成三角形带、每个圆角还要加圆形接头，49 格加起来吃掉整整 258k
+  // 每帧几何预算（全场 1,048,576 的四分之一）。改成"外圈实心 + 内圈实心盖上去"，
+  // 同样的样子，省掉四分之三。
+  const radius = size * 0.16;
+  const edge = Math.max(1.5, size * 0.018);
+  graphics.beginFill(info ? info.deep : PALETTE.line, 0.85).drawRoundRect(-r, -r, r * 2, r * 2, radius).endFill();
+  graphics.beginFill(PALETTE.panel, 0.92).drawRoundRect(-r + edge, -r + edge, (r - edge) * 2, (r - edge) * 2, Math.max(2, radius - edge)).endFill();
 
   if (!info) {
     // 万能块：五色环
