@@ -16,6 +16,12 @@ const fadingEffect = clipAlpha('kys-battle-effect-alpha', '.035');
 const naturalColor = [1, 1, 1];
 const outdoorColor = [.96, .91, .84];
 const indoorColor = [.89, .85, .79];
+const spriteAlphaCutoff = .22;
+
+export function createBattleSpriteMaterial(map, alphaMode = 'blend') {
+  return createUnlitMaterial3D({ map, side: 'double', toneMapped: false, alphaMode,
+    alphaCutoff: spriteAlphaCutoff, fog: false });
+}
 
 export function createNativeBattleSprites(art, units, outdoor) {
   const group = new Object3D();
@@ -65,8 +71,7 @@ export function createNativeBattleSprites(art, units, outdoor) {
       const pose = rolePoses?.get(frame.key);
       let slot = slots.get(frame.key);
       if (!slot) {
-        const material = createUnlitMaterial3D({ map: picture.map, side: 'double', toneMapped: false,
-          alphaMode: 'blend', fog: false });
+        const material = createBattleSpriteMaterial(picture.map);
         const mesh = group.addChild(new Mesh3D(picture.geometry, material));
         mesh.receiveShadow = false;
         slot = { mesh, material };
@@ -78,7 +83,7 @@ export function createNativeBattleSprites(art, units, outdoor) {
       const alphaMode = mask ? 'mask' : 'blend';
       const blending = frame.additive ? 'additive' : 'normal';
       if (material.alphaMode !== alphaMode || material.blending !== blending || slot.effect !== effect) {
-        Object.assign(material, { alphaMode, blending, alphaCutoff: .22,
+        Object.assign(material, { alphaMode, blending, alphaCutoff: spriteAlphaCutoff,
           shader: mask ? undefined : effect ? fadingEffect : fadingRole });
         material.touch();
       }
