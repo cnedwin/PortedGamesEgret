@@ -6,7 +6,7 @@ import {
 } from '@egret/engine/world3d';
 import { loadGltfFromUrl3D, loadTexture3D } from '@egret/engine/webgl2/world3d';
 import { createWorldRenderer } from './world3d-renderer.mjs';
-import { createNativeBattleSprites } from './native-battle-sprites.mjs';
+import { createBattleSpriteMaterial, createNativeBattleSprites } from './native-battle-sprites.mjs';
 import { addNativeSanctuary } from './native-sanctuary.mjs';
 import { addNativeOutdoorBattle } from './native-battle-outdoor.mjs';
 import { addNativeGenericBattle } from './native-battle-generic.mjs';
@@ -241,8 +241,20 @@ export async function createNativeBattleArena(overlay, spec, width, height, scal
           if (renderer.shadowsEnabled && mesh.castShadow) requests.push({ mesh, material, pass: 'shadow' });
         }
       });
-      // The engine can finish links during the existing loading screen on this arena's own context.
-      await renderer.preparePrograms(requests);
+      // Billboard actors have no scene meshes until their first draw. Only the program
+      // matters here, so the existing contact plane and texture stand in for the sprite art.
+      const spriteMaterial = roles.some(role => !models.has(role.id))
+        ? createBattleSpriteMaterial(contactMap, 'mask') : undefined;
+      if (spriteMaterial) {
+        const mesh = new Mesh3D(shadowGeometry, spriteMaterial);
+        mesh.receiveShadow = false;
+        requests.push({ mesh, material: spriteMaterial });
+      }
+      try {
+        await renderer.preparePrograms(requests);
+      } finally {
+        spriteMaterial?.dispose();
+      }
     }
 
     function draw(state, x, y, zoom, frames = []) {
