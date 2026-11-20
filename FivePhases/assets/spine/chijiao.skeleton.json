@@ -48,8 +48,8 @@
     {
       "name": "tail",
       "parent": "body",
-      "x": 224,
-      "y": -49,
+      "x": 329,
+      "y": 58,
       "rotation": 0,
       "scaleX": 1,
       "scaleY": 1
@@ -112,8 +112,8 @@
         "tide-tail": {
           "tide-tail": {
             "type": "region",
-            "x": 32.5,
-            "y": -43,
+            "x": -72.5,
+            "y": -150,
             "rotation": 0,
             "width": 227,
             "height": 332,
