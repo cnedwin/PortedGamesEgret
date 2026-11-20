@@ -1,8 +1,8 @@
 import { decodeSRGBByte } from './srgbBytes.js';
 /** The bytes of one group's uniform: 36 vectors of four floats. */
 export const EFFECT_UNIFORM_BYTES = 576;
-function fail() {
-    throw new RangeError('Shared effect limits or geometry are unsupported');
+function fail(detail) {
+    throw new RangeError('Shared effect limits or geometry are unsupported' + (detail === undefined ? '' : ': ' + detail));
 }
 function inverse(m, rect, ratio) {
     const det = m.a * m.d - m.b * m.c;
@@ -40,8 +40,14 @@ export function prepareEffects2D(frame, ratio, enabled) {
             continue;
         }
         if (command.reason === 'effect-enter') {
-            if (!enabled || !command.effect || groups.length >= 8 || stack.length >= 4)
+            if (!enabled)
+                fail('effects are off: make the Host with `effects: true`');
+            if (!command.effect)
                 fail();
+            if (groups.length >= 8)
+                fail('more than 8 effect groups in one frame');
+            if (stack.length >= 4)
+                fail('effect groups nested more than 4 deep');
             const e = command.effect, radius = Math.min(16, Math.ceil(e.blurRadius * ratio));
             if (!Number.isInteger(radius) || radius < 0 || radius > 16 || e.clips.length > 8)
                 fail();

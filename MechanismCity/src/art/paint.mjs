@@ -1,8 +1,7 @@
 // 由代码画出的图：粒子的光点、木屑、火花，以及计分用的位图字体页。
 // Pictures painted by the code at start: the soft dot of a particle, a splinter of wood, a spark, and the
-// page of the bitmap font for scores and combos. Each is painted on a canvas of the page and handed to the
-// engine as a texture the game leases, the way the engine's own examples do it.
-import { createAssetRef, createAssetType, createImageData2D, createTexture } from '@egret/engine';
+// page of the bitmap font for scores and combos. Each is painted on a canvas of the page; the browser game
+// turns a canvas into a leased texture in one step (`game.textureFromCanvas`).
 
 /** A canvas of a size, and its 2D context. */
 function surface(width, height) {
@@ -10,15 +9,6 @@ function surface(width, height) {
   canvas.width = width;
   canvas.height = height;
   return { canvas, context: canvas.getContext('2d', { willReadFrequently: true }) };
-}
-
-/** Hand a painted canvas to the engine and lease its texture under `scope`. */
-export async function leasePainted(engine, scope, name, canvas) {
-  const pixels = new Uint8Array(canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data),
-    texture = createTexture(createImageData2D({ width: canvas.width, height: canvas.height, pixels })),
-    type = createAssetType('mechanism-city-' + name, (value) => value === texture);
-  engine.assets.register(type, { load: async () => texture, dispose: () => texture.dispose() });
-  return scope.use(await engine.assets.acquire(createAssetRef(type, name)));
 }
 
 /** A white dot that fades to its edge: each particle tints and fades it. */

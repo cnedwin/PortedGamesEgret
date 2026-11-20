@@ -56,3 +56,18 @@ test('a save of another shape is started again, not thrown on', () => {
   const save = openSave(storage);
   assert.equal(save.data.open, 1);
 });
+
+test('a change that returns a value instead of editing in place is refused and not written', () => {
+  const storage = memory(),
+    save = openSave(storage);
+  save.update((data) => {
+    data.open = 3;
+  });
+  const before = storage.getItem(SAVE_KEY);
+  assert.equal(save.update((data) => (data.open = 5)), false);
+  assert.equal(storage.getItem(SAVE_KEY), before);
+  // The callback is given the live data, so what it changed before returning stays in memory, unwritten
+  // (ENGINE-NOTES.md, item 18). The game's callbacks are blocks that return nothing.
+  assert.equal(save.data.open, 5);
+  assert.equal(openSave(storage).data.open, 3);
+});

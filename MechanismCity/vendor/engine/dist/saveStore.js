@@ -87,6 +87,13 @@ export function createSaveStore(options) {
             keepAside(text);
         }
     }
+    // New data that fails the check is not kept or written: the save on disk stays the last good one.
+    const refuse = (value) => {
+        report('invalid', new TypeError('The new save data fails validate' +
+            (isObject(value) ? '' : ': it is ' + (value === null ? 'null' : typeof value) + ', not an object') +
+            '. A change that edits in place returns nothing; write it as a block.'));
+        return false;
+    };
     const write = () => {
         try {
             const envelope = { version, savedAt: new Date().toISOString(), data };
@@ -109,16 +116,24 @@ export function createSaveStore(options) {
             return loadedVersion;
         },
         save(next) {
-            if (next !== undefined)
+            if (next !== undefined) {
+                if (!validate(next))
+                    return refuse(next);
                 data = next;
+            }
             return write();
         },
         update(change) {
             if (typeof change !== 'function')
                 throw new EgretError('SAVE_STORE_OPTIONS_INVALID');
             const result = change(data);
-            if (result !== undefined)
+            if (result !== undefined) {
+                if (!validate(result))
+                    return refuse(result);
                 data = result;
+            }
+            else if (!validate(data))
+                return refuse(data);
             return write();
         },
         reset() {

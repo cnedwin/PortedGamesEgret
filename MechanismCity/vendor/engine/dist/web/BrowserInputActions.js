@@ -52,6 +52,9 @@ export function bindBrowserInputActions(actions, options = {}) {
         throw new EgretError('INPUT_ACTIONS_INVALID');
     const prevent = options.preventDefault ?? true;
     const pass = new Set(options.passKeys ?? ['F5', 'F11', 'F12']);
+    const skipPrevented = options.skipPrevented ?? false;
+    if (typeof skipPrevented !== 'boolean')
+        throw new EgretError('INPUT_ACTIONS_INVALID');
     const removers = [];
     const listen = (target, type, handler, opts) => {
         target.addEventListener(type, handler, opts);
@@ -64,7 +67,7 @@ export function bindBrowserInputActions(actions, options = {}) {
     };
     listen(keyTarget, 'keydown', event => {
         const e = event;
-        if (typing(e) || !e.code)
+        if (typing(e) || !e.code || (skipPrevented && e.defaultPrevented))
             return;
         const binding = 'Key:' + e.code;
         if (prevent && !pass.has(e.code) && bound(actions, binding))

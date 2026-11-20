@@ -27,8 +27,8 @@ export const MAP = {
   "#egret-keyboard-input": "./engine/dist/keyboardInput.js",
   "robust-predicates": "./robust-predicates/index.js",
   "#egret-textured-frame-state": "./engine/dist/internal/texturedFrameState.js",
-  "@egret/engine/web/game": "./engine/dist/web/game.js",
   "@egret/engine/input/hover": "./engine/dist/hover.js",
+  "@egret/engine/web/game": "./engine/dist/web/game.js",
   "@egret/engine/web/hover": "./engine/dist/web/hover.js",
   "@egret/engine/web/text": "./engine/dist/web/text.js"
 };

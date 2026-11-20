@@ -112,14 +112,13 @@ for (const [number, design] of LEVELS.entries()) {
   k.rock(WIDTH - 1, -SKY, WIDTH - 1, -1);
   k.rock(0, HEIGHT, WIDTH - 1, HEIGHT + FOOT - 1);
   dress(material, terrain);
-  // A rope names what it holds by a tag; in the map it is the id of that object, and the object is held.
+  // A rope names what it holds by a tag; in the map it is the id of that object.
   for (const entry of objects)
     if (entry.type === 'rope') {
       const held = tags.get(entry.properties.find((p) => p.name === 'holds').value);
       if (!held) throw new Error(`${design.id}: a rope holds an unknown tag`);
       entry.properties.find((p) => p.name === 'holds').value = held.id;
       entry.properties.find((p) => p.name === 'holds').type = 'int';
-      (held.properties ??= []).push({ name: 'held', type: 'bool', value: true });
     }
   const layer = (id, name, data) => ({ id, name, type: 'tilelayer', x: 0, y: 0, width: WIDTH, height: ROWS, opacity: 1, visible: true, data });
   const map = {
