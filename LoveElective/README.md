@@ -199,7 +199,7 @@ node tools/headless.mjs qingge bailu
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 216.6 ms over 26 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 心动选修课 校园恋爱养成游戏 点击或轻触进行操作 空格或回车继续对话 屏幕方向）；A2 读屏读出主要按钮（no named control in the accessibility tree）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（23 files refused; no uncaught error; no error screen with a retry）；E3 切到后台再回来不出错（nothing in the game watches visibility）。
 
 ## 已解决 · Solved
 

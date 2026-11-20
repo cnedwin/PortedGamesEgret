@@ -128,7 +128,7 @@ Serve this folder with any static file server to run it, for example `npx serve 
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（1 of 3 under 44×44: 开启背景音乐 110×40）；T3 不误触下拉刷新和双击缩放（overscroll free, touch-action auto, double-tap zoom on）；I1 中英文全可切换，英文下无中文（no way to choose English found）；S3 存储不可用不崩溃（did not start with storage refused）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 

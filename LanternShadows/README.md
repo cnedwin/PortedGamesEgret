@@ -213,7 +213,7 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（5 of 6 under 44×44: Straight to Nezh 325×36; Begin with act t 325×36; Straight to Erla 325）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 66.7 ms over 73 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 皮影戏台 桃 触屏操作）。
 
 ## 已解决 · Solved
 

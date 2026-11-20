@@ -53,7 +53,13 @@ async function settle(page, seconds = 60) {
         const game = window.egretGame;
         if (game && 'ready' in game) return game.ready ? 'ready' : 'waiting';
         const canvas = [...document.querySelectorAll('canvas')].find((c) => c.width > 0 && c.getBoundingClientRect().width > 0);
-        return canvas ? 'canvas' : 'waiting';
+        if (canvas) return 'canvas';
+        // A title made of page elements: a visible button or link to press.
+        const control = [...document.querySelectorAll('button, [role=button], a[href]')].find((el) => {
+          const r = el.getBoundingClientRect();
+          return r.width > 0 && r.height > 0 && r.top < innerHeight && getComputedStyle(el).visibility !== 'hidden';
+        });
+        return document.readyState === 'complete' && control ? 'canvas' : 'waiting';
       })
       .catch(() => 'waiting');
     if (state === 'ready') return Date.now() - start;
@@ -237,7 +243,14 @@ try {
       const page = await openPage(browser, url(), { width: w, height: h, touch });
       const took = await settle(page);
       const fit = await page.evaluate(() => {
-        const canvas = [...document.querySelectorAll('canvas')].map((c) => c.getBoundingClientRect()).sort((a, b) => b.width * b.height - a.width * a.height)[0];
+        // The picture: the largest visible canvas, or, for a screen made of page elements, the largest top-level box.
+        const boxes = [...document.querySelectorAll('canvas')].map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
+        if (!boxes.length)
+          for (let el = document.elementFromPoint(innerWidth / 2, innerHeight / 2); el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+            const r = el.getBoundingClientRect();
+            if (r.width > 0 && r.height > 0) boxes.push(r);
+          }
+        const canvas = boxes.sort((a, b) => b.width * b.height - a.width * a.height)[0];
         return {
           overflow: document.documentElement.scrollWidth - innerWidth,
           share: canvas ? Math.max(Math.min(canvas.width, innerWidth) / innerWidth, Math.min(canvas.height, innerHeight) / innerHeight) : 0

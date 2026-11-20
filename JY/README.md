@@ -89,7 +89,7 @@ Rights to the original works and artwork belong to their respective holders. Dis
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T3 不误触下拉刷新和双击缩放（overscroll free, touch-action auto, double-tap zoom on）；O1 横竖屏与窗口尺寸（1280×800: picture under half the window）；I1 中英文全可切换，英文下无中文（no way to choose English found）。
 
 ## 已解决 · Solved
 
