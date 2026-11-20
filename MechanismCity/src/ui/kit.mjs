@@ -14,6 +14,19 @@ export const SANS = '"Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Source H
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
 let serial = 0;
 
+/** A single engraved frame for menus, results, dialogue and settings. */
+export function paintPanel(g, width, height, alpha = 0.96) {
+  g.beginFill(0x070e12, alpha * 0.56).drawRoundRect(3, 5, width, height, 13, 13).endFill();
+  g.lineStyle(2, 0x92815e, 0.94);
+  g.beginLinearGradientFill(0, 0, width * 0.68, height, stops([0, 0x293d3b, alpha], [0.57, 0x172e32, alpha], [1, 0x0c1d24, alpha]))
+    .drawRoundRect(0, 0, width, height, 11, 11).endFill();
+  g.lineStyle(1, 0x756146, 0.7).drawRoundRect(7, 7, width - 14, height - 14, 8, 8).lineStyle(0);
+  for (const [x, y, sx, sy] of [[8, 8, 1, 1], [width - 8, 8, -1, 1], [8, height - 8, 1, -1], [width - 8, height - 8, -1, -1]]) {
+    g.lineStyle(2, 0xd4ac68, 0.9).moveTo(x, y + sy * 13).lineTo(x, y).lineTo(x + sx * 13, y).lineStyle(0);
+    g.beginFill(0xc38c50, 0.75).drawCircle(x + sx * 6, y + sy * 6, 1.7).endFill();
+  }
+}
+
 /**
  * The parts of one screen. Everything made through it is let go together when the screen closes:
  * controls, key bindings, keyboard stops, semantic nodes and labels.
@@ -81,14 +94,17 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
         focused = focusShown() && focusId() === id;
       g.clear();
       g.lineStyle(2, INK, 1);
-      const top = primary ? 0xc44a3a : 0x3a4a52,
-        bottom = primary ? 0x7a1e18 : 0x1e2a32;
-      g.beginLinearGradientFill(0, 0, 0, height, stops([0, pressed ? bottom : top], [1, pressed ? top : bottom]))
-        .drawRoundRect(0, pressed ? 2 : 0, width, height, 10, 10)
+      const top = primary ? 0x93492e : 0x3a5552,
+        base = primary ? 0x632a24 : 0x24393b,
+        bottom = primary ? 0x431e1b : 0x10252b;
+      g.beginLinearGradientFill(0, 0, 0, height, stops([0, pressed ? bottom : top], [0.44, base], [1, pressed ? top : bottom]))
+        .drawRoundRect(0, pressed ? 2 : 0, width, height, 8, 8)
         .endFill();
       g.lineStyle(1.5, state.enabled ? GOLD : 0x6a6050, state.enabled ? 0.85 : 0.5);
-      g.drawRoundRect(4, (pressed ? 2 : 0) + 4, width - 8, height - 8, 7, 7);
+      const dip = pressed ? 2 : 0;
+      g.drawRoundRect(4, dip + 4, width - 8, height - 8, 5, 5);
       g.lineStyle(0);
+      for (const x of [10, width - 10]) g.beginFill(0xe1b677, state.enabled ? 0.86 : 0.32).drawCircle(x, dip + 10, 1.65).endFill();
       ring.graphics.clear();
       if (focused) ring.graphics.lineStyle(3, 0xffe08a, 1).drawRoundRect(-4, -4, width + 8, height + 8, 14, 14).lineStyle(0);
       root.alpha = state.enabled ? 1 : disabledAlpha;
@@ -112,6 +128,7 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
       face,
       action,
       setText: (words2) => words.set(words2),
+      setName: (name2) => { name = name2; },
       setSub: (words2) => under?.set(words2),
       setEnabled(on) {
         state.enabled = on;
@@ -187,6 +204,7 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
       if (focused) g.lineStyle(3, 0xffe08a, 1).drawRoundRect(-10, -12, length + 20, 24, 12, 12).lineStyle(0);
       g.lineStyle(2, INK, 1).beginFill(0x2a2420, 0.9).drawRoundRect(0, -6, length, 12, 6, 6).endFill().lineStyle(0);
       g.beginLinearGradientFill(0, 0, length, 0, stops([0, 0x6a8a50], [0.6, GOLD], [1, LACQUER])).drawRoundRect(1, -5, Math.max(2, at - 1), 10, 5, 5).endFill();
+      for (let mark = 1; mark < 5; mark++) g.beginFill(0xf5d497, 0.48).drawRect(length * mark / 5, -4, 1, 8).endFill();
       const t = thumb.graphics;
       t.clear();
       t.lineStyle(2, INK, 1).beginRadialGradientFill(-3, -3, 14, stops([0, 0xfff2cc], [1, control.dragging ? LACQUER : GOLD])).drawCircle(0, 0, control.dragging ? 13 : 11).endFill().lineStyle(0);
@@ -212,10 +230,7 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
       g = sprite.graphics;
     sprite.x = x;
     sprite.y = y;
-    g.lineStyle(3, INK, 1);
-    g.beginLinearGradientFill(0, 0, 0, height, stops([0, 0x2a2622, alpha], [1, 0x14110e, alpha])).drawRoundRect(0, 0, width, height, 16, 16).endFill();
-    g.lineStyle(1.5, GOLD, 0.6).drawRoundRect(8, 8, width - 16, height - 16, 10, 10).lineStyle(0);
-    for (const [cx, cy] of [[14, 14], [width - 14, 14], [14, height - 14], [width - 14, height - 14]]) g.beginFill(LACQUER, 1).drawCircle(cx, cy, 4).endFill();
+    paintPanel(g, width, height, alpha);
     return sprite;
   }
 

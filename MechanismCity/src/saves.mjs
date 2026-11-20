@@ -25,15 +25,17 @@ export function openSave(storage) {
  * A level cleared: keep the better of the stars and of the score, and open the next level.
  * Returns what changed, for the result screen.
  */
-export function recordClear(data, index, { stars, score }, count) {
+export function recordClear(data, index, { stars, score, seal = false }, count) {
   const id = String(index + 1),
     before = data.levels[id] ?? { stars: 0, score: 0 },
     better = { stars: Math.max(before.stars, stars), score: Math.max(before.score, score) };
+  if (before.seal || seal) better.seal = true;
   data.levels[id] = better;
   const opened = index + 2 > data.open && index + 1 < count;
   if (opened) data.open = index + 2;
-  return { newStars: stars > before.stars, newBest: score > before.score, opened };
+  return { newStars: stars > before.stars, newBest: score > before.score, opened, ...(seal && !before.seal ? { newSeal: true } : {}) };
 }
 
 /** All the stars in the save. */
 export const totalStars = (data) => Object.values(data.levels).reduce((sum, level) => sum + (level.stars ?? 0), 0);
+export const totalSeals = (data) => Object.values(data.levels).filter((level) => level.seal === true).length;

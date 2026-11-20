@@ -7,15 +7,18 @@ import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createBrowserGame } from '@egret/engine/web/game';
 import { bindBrowserInputActions, browserSaveStorage } from '@egret/engine/web/kit';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
-import { paintDot, paintScoreFont, paintSplinter } from './art/paint.mjs';
+import { paintDot, paintDust, paintLockLights, paintScoreFont, paintSpark, paintSplinter, paintThunder } from './art/paint.mjs';
+import { createIllustrations } from './art/illustrations.mjs';
 import { createSound } from './audio/sound.mjs';
 import { openSave } from './saves.mjs';
 import { endingScreen, filmScreen, levelScreen, resultScreen, selectScreen, titleScreen } from './screens.mjs';
 import { openSettings } from './ui/settings.mjs';
+import { bindPortraitControls } from './ui/portrait-controls.mjs';
 
 const WIDTH = 960,
   HEIGHT = 540,
   canvas = document.querySelector('#stage'),
+  frameHost = document.querySelector('#frame'),
   params = new URLSearchParams(location.search);
 
 let screen = null,
@@ -29,9 +32,10 @@ const game = await createBrowserGame({
   height: HEIGHT,
   // WebGL 2 everywhere: it is what every browser this demo is for has, and it needs no probe.
   backend: params.get('backend') ?? 'webgl2',
+  pixelRatio: matchMedia('(pointer: coarse)').matches ? Math.min(window.devicePixelRatio || 1, 1.5) : undefined,
   effects: true,
   fit: 'contain',
-  fitTo: document.querySelector('#frame'),
+  fitTo: document.querySelector('#playfield'),
   clearColor: 0x0d1418,
   // Hover and the mouse wheel, for scrolling the list of levels.
   hover: true,
@@ -44,7 +48,11 @@ const { scope } = game;
 const textures = {
   terrain: await game.loadTexture(new URL('../levels/terrain.png', import.meta.url).href),
   dot: await game.textureFromCanvas(paintDot()),
-  splinter: await game.textureFromCanvas(paintSplinter())
+  splinter: await game.textureFromCanvas(paintSplinter()),
+  dust: await game.textureFromCanvas(paintDust()),
+  lockLights: await game.textureFromCanvas(paintLockLights()),
+  spark: await game.textureFromCanvas(paintSpark()),
+  thunder: await game.textureFromCanvas(paintThunder())
 };
 // The gold lettering of the score: its glyphs painted into one page, read by the engine's font parser.
 const painted = paintScoreFont(),
@@ -67,10 +75,12 @@ const actions = createInputActions({
   fire: { bindings: ['Key:Space', 'Key:KeyF', 'Pad:a'] },
   confirm: { bindings: ['Key:Enter'] },
   overview: { bindings: ['Key:KeyZ', 'Pad:y'] },
+  hint: { bindings: ['Key:KeyH'] },
   restart: { bindings: ['Key:KeyR'] },
   back: { bindings: ['Key:Escape', 'Pad:b'] }
 });
 const browserActions = scope.use(bindBrowserInputActions(actions, { keyTarget: canvas, skipPrevented: true, passKeys: ['Tab', 'F5', 'F11', 'F12'] }));
+const portraitControls = bindPortraitControls({ screen: () => screen, settingsOpen: () => Boolean(settings?.open || openingSettings) });
 
 const app = {
   game,
@@ -79,6 +89,7 @@ const app = {
   semantics,
   levels,
   textures,
+  art: createIllustrations(game),
   font,
   fontPages,
   actions,
@@ -132,6 +143,7 @@ async function show(name, options) {
   screen.name = name;
   lastFocus = '';
   canvas.dataset.screen = name;
+  frameHost.dataset.screen = name;
   semantics.publish();
   screen.focusFirst?.();
 }
@@ -144,7 +156,8 @@ function frame(seconds) {
     if (settings?.open) settings.close();
     else screen?.escape?.();
   }
-  screen?.update(seconds);
+  screen?.update?.(seconds);
+  portraitControls.sync();
   // Parts are painted again only when the keyboard focus moves or shows, not every frame.
   const focus = game.keyboard?.getSnapshot(),
     focusKey = `${focus?.focusedId}|${focus?.focusVisible}|${settings ? 1 : 0}`;

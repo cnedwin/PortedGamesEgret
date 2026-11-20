@@ -1,186 +1,222 @@
-# 画地形图块：levels/terrain.png，8 列 4 行，每格 32 像素。
-# Paints the terrain tileset, levels/terrain.png: 8 columns by 4 rows of 32-pixel tiles, in the order of
-# src/levels/tiles.mjs. Every stroke is drawn here; nothing is copied from elsewhere. Each tile is painted at
-# four times its size and scaled down, so its edges are soft.
+# 绘制地形图集：8 列 4 行，每格 32 像素，次序对应 src/levels/tiles.mjs。
+# Paint the terrain atlas in the order of src/levels/tiles.mjs. Each tile is drawn at 4x and downsampled.
 #
 #   python3 tools/paint-tiles.py
 import math
 import random
 from pathlib import Path
 
-from PIL import Image, ImageDraw, ImageFilter
+from PIL import Image, ImageDraw
 
 TILE, COLUMNS, ROWS, K = 32, 8, 4, 4
 S = TILE * K
-HERE = Path(__file__).resolve().parent
-OUT = HERE.parent / 'levels' / 'terrain.png'
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / 'levels' / 'terrain.png'
 
-STONE = (86, 92, 88)
-STONE_DARK = (58, 63, 62)
-STONE_LIGHT = (126, 132, 120)
-MOSS = (92, 120, 74)
-MOSS_LIGHT = (140, 168, 98)
-WOOD = (118, 78, 46)
-WOOD_DARK = (78, 50, 30)
-WOOD_LIGHT = (160, 112, 64)
-BRONZE = (64, 118, 108)
-BRONZE_DARK = (36, 74, 70)
-BRONZE_LIGHT = (128, 176, 150)
-PLASTER = (30, 38, 52)
-PLASTER_DARK = (22, 28, 40)
-TIMBER = (60, 34, 26)
-RED = (168, 44, 36)
-GOLD = (222, 176, 92)
+STONE = (76, 91, 85)
+MORTAR = (36, 48, 47)
+MOSS = (115, 132, 81)
+CEDAR = (121, 76, 47)
+TIMBER = (60, 42, 33)
+LACQUER = (129, 54, 40)
+BRONZE = (151, 110, 63)
+PATINA = (63, 101, 88)
+GOLD = (201, 152, 84)
+PLASTER = (36, 46, 48)
 
 
-def tile():
-    return Image.new('RGBA', (S, S), (0, 0, 0, 0))
+def tint(color, shift):
+    return tuple(max(0, min(255, channel + shift)) for channel in color)
 
 
-def speckle(draw, rng, colour, count, size, box=(0, 0, S, S)):
+def blend(first, second, amount):
+    return tuple(round(a + (b - a) * amount) for a, b in zip(first, second))
+
+
+def tile(top, bottom):
+    image = Image.new('RGBA', (S, S))
+    draw = ImageDraw.Draw(image)
+    for y in range(S):
+        draw.line((0, y, S - 1, y), fill=blend(top, bottom, y / (S - 1)))
+    return image
+
+
+def grain(draw, rng, color, count, box, *, length, variation):
+    left, top, right, bottom = box
     for _ in range(count):
-        x = rng.uniform(box[0], box[2])
-        y = rng.uniform(box[1], box[3])
-        r = rng.uniform(size * 0.4, size)
-        draw.ellipse([x - r, y - r, x + r, y + r], fill=colour)
+        x, y = rng.uniform(left, right), rng.uniform(top, bottom)
+        shift = rng.choice((-variation, variation))
+        draw.line((x, y, min(right, x + rng.uniform(1, length)), y + rng.randint(-2, 2)),
+                  fill=tint(color, shift), width=rng.choice((1, 1, 2)))
+
+
+def rivet(draw, x, y, r, color):
+    draw.ellipse((x - r, y - r + 1, x + r + 1, y + r + 2), fill=tint(color, -45))
+    draw.ellipse((x - r, y - r, x + r, y + r), fill=color)
+    draw.point((x - r / 2, y - r / 2), fill=tint(color, 50))
 
 
 def stone(seed, top=False, left=False, right=False, dark=False):
-    """Dressed stone in courses, the joints a little uneven; moss along an open top."""
+    """Two aligned stone courses, with a picked edge and moss along the exposed cap."""
     rng = random.Random(seed)
-    img = tile()
-    d = ImageDraw.Draw(img)
-    base = STONE_DARK if dark else STONE
-    d.rectangle([0, 0, S, S], fill=base)
-    speckle(d, rng, tuple(c + 10 for c in base), 40, 7)
-    speckle(d, rng, tuple(c - 12 for c in base), 30, 6)
-    # Two courses, the joint of the second offset.
-    joint = (34, 38, 38)
-    d.line([0, S // 2, S, S // 2], fill=joint, width=5)
-    off = rng.randint(S // 4, S * 3 // 4)
-    d.line([off, 0, off, S // 2], fill=joint, width=5)
-    d.line([(off + S // 2) % S, S // 2, (off + S // 2) % S, S], fill=joint, width=5)
-    # A light edge on each stone, where the moon catches it.
-    d.line([0, S // 2 + 4, S, S // 2 + 4], fill=tuple(c + 18 for c in base), width=2)
+    base = tint(STONE, -8 if dark else 0)
+    image = tile(tint(base, 11), tint(base, -13))
+    draw = ImageDraw.Draw(image)
+    half = S // 2
+    for y in (0, half):
+        joint = rng.randrange(31, 98)
+        skew = rng.randrange(-8, 9)
+        face = tint(base, rng.randrange(-9, 12))
+        draw.polygon(((0, y + 4), (joint - 2, y + 4), (joint + skew - 2, y + half - 3),
+                      (0, y + half - 3)), fill=face)
+        draw.line((joint, y + 1, joint + skew, y + half - 1), fill=MORTAR, width=4)
+        draw.line((joint + 4, y + 2, joint + skew + 4, y + half - 2), fill=tint(base, 15), width=2)
+        draw.line((0, y + 1, S, y + 1), fill=MORTAR, width=4)
+        draw.line((0, y + 5, S, y + 5), fill=tint(base, 19), width=2)
+        grain(draw, rng, base, 38, (0, y + 10, S, y + half - 5), length=18, variation=12)
+
+    if left or right:
+        edge = 3 if left else S - 4
+        shade = 10 if left else -10
+        draw.line((edge, 0, edge, S), fill=MORTAR, width=8)
+        draw.line((edge + shade / 2, 0, edge + shade / 2, S), fill=tint(base, shade), width=4)
     if top:
-        d.rectangle([0, 0, S, 14], fill=STONE_LIGHT)
-        for x in range(0, S, 6):
-            h = rng.randint(10, 26)
-            d.ellipse([x - 7, -h * 0.6, x + 9, h], fill=MOSS)
-        for x in range(0, S, 11):
-            d.ellipse([x - 4, 0, x + 6, rng.randint(6, 14)], fill=MOSS_LIGHT)
-    if left:
-        d.rectangle([0, 0, 10, S], fill=tuple(c - 14 for c in base))
-        d.line([10, 0, 10, S], fill=STONE_LIGHT, width=3)
-    if right:
-        d.rectangle([S - 10, 0, S, S], fill=tuple(c - 20 for c in base))
-    return img
+        draw.rectangle((0, 0, S, 11), fill=tint(MOSS, 8))
+        draw.line((0, 1, S, 1), fill=tint(MOSS, 43), width=3)
+        draw.line((0, 11, S, 11), fill=tint(base, -26), width=3)
+        for x in range(0, S, 8):
+            depth = rng.randrange(7, 21)
+            draw.polygon(((x - 5, 4), (x + 8, 3), (x + 4, depth), (x, depth - 2)),
+                         fill=tint(MOSS, rng.choice((-15, -5, 6, 16))))
+        grain(draw, rng, MOSS, 35, (0, 1, S, 16), length=10, variation=22)
+    return image
 
 
 def beam(top):
-    """A squared beam of pine, its grain running along it, pegged at both ends."""
+    """Cedar planks with a lit edge, dark joinery, and forged pegs."""
     rng = random.Random(7 if top else 8)
-    img = tile()
-    d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, S, S], fill=WOOD)
-    for y in range(4, S, 9):
-        d.line([0, y + rng.randint(-2, 2), S, y + rng.randint(-2, 2)], fill=WOOD_DARK if rng.random() < 0.5 else WOOD_LIGHT, width=2)
-    d.rectangle([0, 0, S, 6], fill=WOOD_LIGHT if top else WOOD_DARK)
-    d.rectangle([0, S - 6, S, S], fill=WOOD_DARK)
-    for x in (16, S - 20):
-        d.ellipse([x - 7, S // 2 - 7, x + 7, S // 2 + 7], fill=WOOD_DARK)
-        d.ellipse([x - 4, S // 2 - 4, x + 3, S // 2 + 3], fill=GOLD)
-    return img
+    image = tile(tint(CEDAR, 16 if top else 1), tint(CEDAR, -23))
+    draw = ImageDraw.Draw(image)
+    for y in range(9, S - 8, 7):
+        for _ in range(3):
+            x = rng.randint(-12, S - 20)
+            end = min(S, x + rng.randint(15, 75))
+            draw.line((x, y, (x + end) / 2, y + rng.randint(-4, 4), end, y),
+                      fill=tint(CEDAR, rng.choice((-31, -14, 12, 23))), width=rng.randint(1, 3))
+    draw.rectangle((0, 0, S, 6), fill=tint(CEDAR, 37 if top else -19))
+    draw.rectangle((0, S - 7, S, S), fill=TIMBER)
+    for x in (10, S - 11):
+        draw.rectangle((x - 4, 7, x + 4, S - 7), fill=tint(CEDAR, -20))
+        draw.line((x - 4, 7, x - 4, S - 7), fill=tint(CEDAR, 21), width=2)
+        for y in (25, S - 26):
+            rivet(draw, x, y, 4, tint(BRONZE, 12))
+    return image
 
 
 def bronze():
-    """Cast bronze, green with age, a band of cloud scrolls across it."""
-    img = tile()
-    d = ImageDraw.Draw(img)
-    d.rectangle([0, 0, S, S], fill=BRONZE)
-    d.rectangle([6, 6, S - 6, S - 6], outline=BRONZE_DARK, width=6)
-    for i in range(3):
-        cx = 22 + i * 42
-        d.arc([cx - 16, 44, cx + 16, 84], 180, 360, fill=BRONZE_LIGHT, width=5)
-        d.arc([cx - 8, 56, cx + 8, 72], 0, 180, fill=BRONZE_LIGHT, width=4)
-    return img
+    """Brushed cast bronze with verdigris at the edges and a square thunder engraving."""
+    rng = random.Random(19)
+    image = tile(tint(BRONZE, 22), tint(BRONZE, -35))
+    draw = ImageDraw.Draw(image)
+    grain(draw, rng, BRONZE, 110, (1, 2, S - 1, S - 3), length=37, variation=15)
+    draw.rectangle((4, 4, S - 5, S - 6), outline=tint(BRONZE, -61), width=5)
+    draw.rectangle((9, 9, S - 10, S - 11), outline=PATINA, width=4)
+    draw.line((12, 3, S - 12, 3), fill=tint(BRONZE, 38), width=3)
+    for x in (19, S - 20):
+        for y in (19, S - 20):
+            rivet(draw, x, y, 5, GOLD)
+
+    for x, y, direction in ((30, 45, 1), (S - 30, S - 45, -1)):
+        design = [(0, 0), (40, 0), (40, 24), (13, 24), (13, 10), (30, 10), (30, 16)]
+        line = [(x + direction * dx, y + direction * dy) for dx, dy in design]
+        draw.line([(px + 1, py + 2) for px, py in line], fill=tint(GOLD, 9), width=3)
+        draw.line(line, fill=tint(BRONZE, -48), width=4)
+    return image
 
 
 def wall(dark=False, window=False):
-    """The wall of a hall: plaster between posts and a rail, seen far back in the dark."""
-    img = tile()
-    d = ImageDraw.Draw(img)
+    """Low-contrast clay plaster with a cedar bay post or a recessed window."""
     rng = random.Random(31 if dark else 32)
-    d.rectangle([0, 0, S, S], fill=PLASTER)
-    speckle(d, rng, PLASTER_DARK, 18, 9)
-    # A post at the left of the bay where `dark` asks for one, and the rail across every bay.
+    image = tile(tint(PLASTER, 3), tint(PLASTER, -6))
+    draw = ImageDraw.Draw(image)
+    grain(draw, rng, PLASTER, 68, (1, 1, S - 2, S - 3), length=27, variation=7)
+    draw.rectangle((0, S - 17, S, S - 10), fill=tint(TIMBER, -5))
+    draw.line((0, S - 17, S, S - 17), fill=tint(TIMBER, 13), width=2)
     if dark:
-        d.rectangle([0, 0, 14, S], fill=TIMBER)
-        d.line([14, 0, 14, S], fill=(84, 52, 38), width=2)
-    d.rectangle([0, S - 18, S, S - 10], fill=TIMBER)
+        draw.rectangle((0, 0, 15, S), fill=TIMBER)
+        draw.line((14, 0, 14, S), fill=tint(TIMBER, 14), width=3)
     if window:
-        d.rectangle([24, 18, S - 14, S - 34], fill=(70, 58, 34))
-        # A lattice of squares, warm light behind it.
-        for i in range(1, 5):
-            x = 24 + i * (S - 38) / 5
-            d.line([x, 18, x, S - 34], fill=TIMBER, width=4)
-            y = 18 + i * (S - 52) / 5
-            d.line([24, y, S - 14, y], fill=TIMBER, width=4)
-        d.rectangle([24, 18, S - 14, S - 34], outline=TIMBER, width=6)
-    return img
+        draw.rectangle((19, 21, S - 19, S - 32), fill=tint(TIMBER, -16))
+        draw.rectangle((26, 27, S - 26, S - 39), fill=(101, 73, 49))
+        draw.line((23, S - 31, S - 22, S - 31), fill=tint(CEDAR, -8), width=3)
+        for x in (44, 64, 84):
+            draw.line((x, 26, x, S - 37), fill=tint(TIMBER, -4), width=4)
+        for y in (46, 68):
+            draw.line((25, y, S - 25, y), fill=tint(TIMBER, -4), width=4)
+    return image
 
 
 def lantern():
-    """A paper lantern hung from the wall: red, warm in the middle, gold at its ends."""
-    img = wall()
-    d = ImageDraw.Draw(img)
-    d.line([S // 2, 0, S // 2, 24], fill=(30, 20, 16), width=4)
-    d.rectangle([S // 2 - 22, 22, S // 2 + 22, 30], fill=GOLD)
-    d.ellipse([S // 2 - 34, 26, S // 2 + 34, 104], fill=RED)
-    d.ellipse([S // 2 - 18, 40, S // 2 + 18, 92], fill=(236, 120, 70))
-    for x in (-20, 0, 20):
-        d.line([S // 2 + x, 30, S // 2 + x * 0.7, 100], fill=(120, 30, 24), width=3)
-    d.rectangle([S // 2 - 22, 100, S // 2 + 22, 108], fill=GOLD)
-    d.line([S // 2, 108, S // 2, 124], fill=GOLD, width=4)
-    return img
+    """Ribbed cinnabar paper with a soft pool of warm light."""
+    image = wall()
+    draw = ImageDraw.Draw(image)
+    draw.line((64, 0, 64, 23), fill=tint(TIMBER, -15), width=4)
+    draw.ellipse((32, 21, 96, 101), fill=tint(LACQUER, -32))
+    draw.rounded_rectangle((35, 25, 93, 96), radius=24, fill=LACQUER)
+    draw.ellipse((47, 29, 81, 92), fill=(180, 80, 49))
+    draw.ellipse((56, 37, 72, 83), fill=(198, 111, 63))
+    for x in (46, 80):
+        draw.line((64 + (x - 64) * 0.35, 28, x, 46, x, 75, 64 + (x - 64) * 0.45, 94),
+                  fill=tint(LACQUER, -22), width=2)
+    draw.rectangle((46, 20, 82, 26), fill=GOLD)
+    draw.rectangle((48, 95, 80, 102), fill=tint(GOLD, -20))
+    draw.line((64, 103, 64, 119), fill=GOLD, width=4)
+    return image
 
 
 def banner(top):
-    """A long red banner in two tiles, a gold border and a mark of the city: the square and the compass."""
-    img = wall(dark=True)
-    d = ImageDraw.Draw(img)
-    d.rectangle([28, 0 if not top else 14, S - 28, S], fill=RED)
-    d.line([34, 0 if not top else 20, 34, S], fill=GOLD, width=3)
-    d.line([S - 34, 0 if not top else 20, S - 34, S], fill=GOLD, width=3)
+    """The city's carpenter-square and compass crest, on a two-cell cloth banner."""
+    image = wall(dark=True)
+    draw = ImageDraw.Draw(image)
+    start = 15 if top else 0
+    end = S if top else S - 22
+    draw.rectangle((28, start, 100, end), fill=LACQUER)
+    draw.rectangle((28, start, 37, end), fill=tint(LACQUER, -18))
+    draw.rectangle((86, start, 100, end), fill=tint(LACQUER, -15))
+    for x in (37, 91):
+        draw.line((x, start, x, end - 4), fill=tint(GOLD, -17), width=3)
     if top:
-        d.rectangle([20, 6, S - 20, 16], fill=TIMBER)
-        # A carpenter's square and a compass: the tools of the craft, in gold.
-        d.line([46, 44, 46, 96, 92, 96], fill=GOLD, width=6)
-        d.arc([52, 34, 92, 74], 200, 340, fill=GOLD, width=5)
-        d.line([72, 36, 60, 80], fill=GOLD, width=4)
-        d.line([72, 36, 84, 80], fill=GOLD, width=4)
+        draw.rectangle((21, 10, 107, 18), fill=tint(BRONZE, -23))
+        draw.line((46, 46, 46, 97, 83, 97), fill=GOLD, width=5)
+        draw.line((60, 83, 72, 47, 86, 83), fill=GOLD, width=4)
+        draw.arc((53, 51, 91, 90), 18, 161, fill=GOLD, width=3)
     else:
-        for i, x in enumerate(range(36, S - 30, 14)):
-            d.polygon([(x, S - 24), (x + 7, S - 4), (x + 14, S - 24)], fill=RED if i % 2 else (140, 32, 28))
-        d.rectangle([28, S - 30, S - 28, S - 24], fill=GOLD)
-    return img
+        draw.line((28, end - 4, 100, end - 4), fill=tint(GOLD, -17), width=3)
+        for x in range(29, 98, 9):
+            draw.polygon(((x, end), (x + 3, end + 14), (x + 6, end)), fill=tint(LACQUER, -12))
+    return image
 
 
 def gear():
-    """A bronze wheel set into the wall, with eight teeth."""
-    img = wall()
-    d = ImageDraw.Draw(img)
-    c, r = S / 2, 46
+    """A dark copper wheel recessed into the wall, with worn teeth and a warm hub."""
+    image = wall()
+    draw = ImageDraw.Draw(image)
+    center, radius = S / 2, 43
+    metal = tint(BRONZE, -31)
     for i in range(8):
-        a = i * math.pi / 4
-        d.polygon([(c + math.cos(a - 0.18) * r, c + math.sin(a - 0.18) * r), (c + math.cos(a - 0.12) * (r + 12), c + math.sin(a - 0.12) * (r + 12)), (c + math.cos(a + 0.12) * (r + 12), c + math.sin(a + 0.12) * (r + 12)), (c + math.cos(a + 0.18) * r, c + math.sin(a + 0.18) * r)], fill=BRONZE)
-    d.ellipse([c - r, c - r, c + r, c + r], fill=BRONZE)
-    d.ellipse([c - r + 10, c - r + 10, c + r - 10, c + r - 10], fill=BRONZE_DARK)
-    for i in range(4):
-        a = i * math.pi / 2 + math.pi / 4
-        d.line([c, c, c + math.cos(a) * (r - 10), c + math.sin(a) * (r - 10)], fill=BRONZE, width=8)
-    d.ellipse([c - 10, c - 10, c + 10, c + 10], fill=BRONZE_LIGHT)
-    return img
+        angle = i * math.pi / 4
+        tooth = [(angle - 0.2, radius), (angle - 0.13, radius + 9),
+                 (angle + 0.13, radius + 9), (angle + 0.2, radius)]
+        draw.polygon([(center + math.cos(a) * r, center + math.sin(a) * r) for a, r in tooth], fill=metal)
+    outer = (center - radius, center - radius, center + radius, center + radius)
+    draw.ellipse(outer, outline=metal, width=9)
+    draw.arc(outer, 180, 290, fill=tint(BRONZE, -4), width=2)
+    for i in range(6):
+        angle = i * math.tau / 6
+        draw.line((center, center, center + math.cos(angle) * (radius - 4),
+                   center + math.sin(angle) * (radius - 4)), fill=metal, width=7)
+    rivet(draw, center, center, 10, tint(BRONZE, -14))
+    return image
 
 
 ORDER = [
@@ -189,10 +225,10 @@ ORDER = [
     wall(), wall(dark=True), wall(window=True), lantern(), banner(True), banner(False), gear(),
 ]
 
-sheet = Image.new('RGBA', (COLUMNS * TILE, ROWS * TILE), (0, 0, 0, 0))
+sheet = Image.new('RGBA', (COLUMNS * TILE, ROWS * TILE))
 for index, art in enumerate(ORDER):
-    small = art.filter(ImageFilter.GaussianBlur(0.6)).resize((TILE, TILE), Image.LANCZOS)
+    small = art.resize((TILE, TILE), Image.Resampling.LANCZOS)
     sheet.paste(small, ((index % COLUMNS) * TILE, (index // COLUMNS) * TILE))
 OUT.parent.mkdir(parents=True, exist_ok=True)
 sheet.save(OUT, optimize=True)
-print('wrote', OUT.relative_to(HERE.parent), sheet.size)
+print('wrote', OUT.relative_to(ROOT), sheet.size)

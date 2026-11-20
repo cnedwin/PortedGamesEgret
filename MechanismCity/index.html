@@ -48,7 +48,31 @@
 </head>
 <body>
   <main id="frame">
-    <canvas id="stage" aria-label="千机巧匠 Mechanism City"></canvas>
+    <div id="playfield">
+      <canvas id="stage" aria-label="千机巧匠 Mechanism City"></canvas>
+    </div>
+    <section id="portrait-controls" aria-label="竖屏操作">
+      <div class="touch-heading">
+        <strong id="touch-level">机关城</strong>
+        <span id="touch-ammo"></span>
+      </div>
+      <label class="touch-power" for="touch-power">
+        <span>力度 <output id="touch-power-value">0</output></span>
+        <input type="range" id="touch-power" min="0" max="100" step="1">
+      </label>
+      <button type="button" class="touch-fire" data-touch-action="fire">发射</button>
+      <div class="touch-clue-row">
+        <p id="touch-clue" aria-live="polite"></p>
+        <button type="button" data-touch-action="closeHint" aria-label="关闭提示" hidden>关闭</button>
+      </div>
+      <div class="touch-options">
+        <button type="button" data-touch-action="overview">全景</button>
+        <button type="button" data-touch-action="restart">重来</button>
+        <button type="button" data-touch-action="menu">选关</button>
+        <button type="button" data-touch-action="hint">提示</button>
+        <button type="button" data-touch-action="settings">设置</button>
+      </div>
+    </section>
   </main>
   <noscript>这个游戏需要 JavaScript。· This game needs JavaScript.</noscript>
   <script type="module" src="src/main.mjs"></script>

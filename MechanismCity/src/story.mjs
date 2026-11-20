@@ -17,11 +17,11 @@ export const CHAPTERS = [
 
 export const chapterOf = (index) => CHAPTERS.findIndex((chapter) => chapter.levels.includes(index));
 
-/** Who speaks: a name and the colours of a small portrait drawn for them. */
+/** Speaker names and left-to-right positions in the portrait atlas. */
 export const SPEAKERS = {
-  qiao: { name: '阿巧', robe: 0x3f6f8a, trim: 0xe6b65c, hair: 0x1b1712 },
-  master: { name: '老钜子', robe: 0x5a4a3a, trim: 0xa8322a, hair: 0xd8d2c4 },
-  tube: { name: '传声铜管', robe: 0x3f7a6e, trim: 0x86c2a6, hair: 0x3f7a6e }
+  qiao: { name: '阿巧', portrait: 0 },
+  master: { name: '老钜子', portrait: 1 },
+  tube: { name: '传声铜管', portrait: 2 }
 };
 
 /** Lines before a level, by its index. */
@@ -72,7 +72,7 @@ export const BEFORE = {
     ['master', '沉丸更重，推得动木块。弹簧板会把它送上去。']
   ],
   11: [
-    ['master', '机枢之心有三把锁：石锁、木锁，还有闸门后的那一把。'],
+    ['master', '机枢之心有两把锁。先落石开第一把，再打开闸门后的锁。'],
     ['qiao', '三十年了。今天把它打开。']
   ]
 };

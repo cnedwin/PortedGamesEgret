@@ -192,12 +192,12 @@ export const GAMES = [
       en: 'The Mohist city has been shut for thirty years. Fire one pellet in and let its blocks, ropes and seesaws open the lock.',
     },
     intro: {
-      zh: '墨家机关城闭城三十年，少年工匠阿巧背着祖父的机关弩进城。按住向后拉弦，松手发射：弹丸撞翻木块、打碎木箱、擦断吊绳，跷跷板把木块抛上高台，弹簧再弹起来，压住踏板闸门才升起，机关接得越紧连击越高。每把锁认的东西不同，有的要弹丸，有的要石头或木块。三章十二关，标准发数内开锁得三星，关间有对白，开场有代码画出的短片。相机跟弹、撞击震屏、一键全景；碎木、火花、雷光都是粒子，声音全部合成。',
-      en: 'The Mohist city of mechanisms has been shut for thirty years, and Qiao, a young craftswoman, comes in with her grandfather’s crossbow. Press and pull back to draw, let go to fire: the pellet knocks blocks over, breaks crates and cuts hanging ropes; a seesaw throws a block up onto a ledge, a spring throws it again, and a gate lifts only while its plate is held down. The closer the mechanisms follow one another, the higher the combo. Each lock opens to something of its own, a pellet, a stone or a block. Three chapters and twelve levels, three stars for opening the lock within par, words between the levels and a film drawn in code at the start. The camera follows the pellet, shakes on impact and pulls back to the whole city; splinters, sparks and thunder are particles, and all the sound is synthesized.',
+      zh: '墨家机关城闭城三十年，少年工匠阿巧背着祖父的机关弩进城。插画序章和关间对白串起三章十二关。拉弦时，虚线标出弹丸预计首次碰到的位置。遇到难关，可以先读机关线索，再试试首发参考角度和力度。用弹丸打碎木箱、割断吊绳，或借跷跷板和弹簧开锁。标准发数内过关可得三星，完成每关的独立机关目标还能收集巧解印。',
+      en: 'The Mohist city has been shut for thirty years. Qiao enters with her grandfather’s crossbow, and an illustrated prologue and dialogue tell her story across twelve levels in three chapters. A dotted guide marks the pellet’s expected first contact. If you’re stuck, read the mechanism clue and try its suggested angle and power for the first shot. Break crates, cut ropes, and use seesaws and springs to open locks. Clear a level within par for three stars, and complete its optional mechanism goal to earn a Craft Seal.',
     },
     facts: {
-      zh: [['类型', '2D 物理弹射解谜'], ['技术', '2D 物理、瓦片地图、相机、粒子，WebGL2'], ['操作', '键鼠、手柄、触屏'], ['关卡', '三章十二关，每关一到三星']],
-      en: [['Genre', '2D physics puzzle'], ['Technology', '2D physics, tile maps, camera, particles, WebGL2'], ['Controls', 'Keyboard and mouse, gamepad, touch'], ['Levels', 'Three chapters, twelve levels, one to three stars each']],
+      zh: [['类型', '2D 物理弹射解谜'], ['技术', '2D 物理、瓦片地图、相机、粒子，WebGL2'], ['操作', '键鼠、手柄、触屏，支持手机竖屏'], ['关卡', '三章十二关，十二枚巧解印']],
+      en: [['Genre', '2D physics puzzle'], ['Technology', '2D physics, tile maps, camera, particles, WebGL2'], ['Controls', 'Keyboard and mouse, gamepad, portrait touch controls'], ['Levels', 'Three chapters, twelve levels, twelve Craft Seals']],
     },
     cover: 'cover.webp',
     shots: ['1.webp', '2.webp', '3.webp'],
