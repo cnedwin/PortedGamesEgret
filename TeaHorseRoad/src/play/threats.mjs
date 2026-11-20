@@ -44,6 +44,28 @@ function local(body, x, y, z) {
   return [r[0] * dx + r[3] * dy + r[6] * dz, r[1] * dx + r[4] * dy + r[7] * dz, r[2] * dx + r[5] * dy + r[8] * dz];
 }
 
+/** Index each obstacle in all the world-space cells its circle's bounding box touches. */
+function obstacleCells(obstacles) {
+  const cells = new Map();
+  for (const obstacle of obstacles) {
+    const { x, z, r } = obstacle,
+      left = Math.floor((x - r) / CELL),
+      right = Math.floor((x + r) / CELL),
+      top = Math.floor((z - r) / CELL),
+      bottom = Math.floor((z + r) / CELL);
+    for (let row = top; row <= bottom; row++) {
+      let columns = cells.get(row);
+      if (!columns) cells.set(row, (columns = new Map()));
+      for (let column = left; column <= right; column++) {
+        let nearby = columns.get(column);
+        if (!nearby) columns.set(column, (nearby = []));
+        nearby.push(obstacle);
+      }
+    }
+  }
+  return cells;
+}
+
 /**
  * The ground of an ambush as a navigation mesh: a square of `half` metres about its centre, cut in triangles on a
  * grid, with the ones that are too steep, under water or under an obstacle switched off.
@@ -72,13 +94,15 @@ function groundMesh(zone, heightAt, obstacles) {
         d = c + 1;
       indices.push(a, c, b, b, c, d);
     }
-  const nav = createNavMesh3D({ positions, indices }, { slopeLimit: 0.75 });
+  const nav = createNavMesh3D({ positions, indices }, { slopeLimit: 0.75 }),
+    cells = obstacleCells(obstacles);
   const centre = [0, 0, 0];
   for (let t = 0; t < nav.triangleCount; t++) {
     nav.center(t, centre);
     const wet = Math.abs(centre[2] - RIVER.z(centre[0])) < RIVER.halfWidth + 2 && centre[1] < RIVER.y + 3;
-    const blocked = obstacles.some((o) => Math.hypot(o.x - centre[0], o.z - centre[2]) < o.r);
-    if (wet || blocked) nav.setEnabled(t, false);
+    const nearby = cells.get(Math.floor(centre[2] / CELL))?.get(Math.floor(centre[0] / CELL));
+    // The bucket only narrows the search. Test the actual centroid against each obstacle's circle.
+    if (wet || nearby?.some((o) => Math.hypot(o.x - centre[0], o.z - centre[2]) < o.r)) nav.setEnabled(t, false);
   }
   return nav;
 }

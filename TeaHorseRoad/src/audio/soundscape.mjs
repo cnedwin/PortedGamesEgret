@@ -8,7 +8,7 @@
 // sound where they happen; the music and the interface are not placed. Every sound is made by synth.mjs, and nothing
 // sounds before the first key or touch, as browsers ask.
 import { createAudioListener3D, createPositionalAudio3D } from '@egret/engine/webgl2/world3d';
-import { RATE, SOUNDS, tune } from './synth.mjs';
+import { RATE, SOUNDS } from './synth.mjs';
 
 /**
  * The sound of the game. `camera` carries the listener; `waters` are the places with running water as `[x, y, z]`.
@@ -19,14 +19,13 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
   camera.addChild(listener);
   const context = listener.context,
     buffers = {};
+  const audioBuffer = (samples) => {
+    const made = context.createBuffer(1, samples.length, RATE);
+    made.copyToChannel(samples, 0);
+    return made;
+  };
   const buffer = (name) => {
-    if (!buffers[name]) {
-      const samples = SOUNDS[name](),
-        made = context.createBuffer(1, samples.length, RATE);
-      made.copyToChannel(samples, 0);
-      buffers[name] = made;
-    }
-    return buffers[name];
+    return buffers[name] ??= audioBuffer(SOUNDS[name]());
   };
 
   // Water: a loop at each place, heard within some tens of metres.
@@ -44,9 +43,12 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
     bells = [];
   let tuneSource = null,
     tuneMood = -1,
+    musicWorker = null,
+    starting = null,
     started = false,
     musicOn = music,
     bellTimer = [];
+  const tunes = [];
 
   /** Give each truck its engine and bells. */
   function attach(convoy) {
@@ -78,28 +80,52 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
     };
   }
 
-  /** Change the music to the calm tune or the tense one, or none. */
-  function setMood(mood) {
-    if (!started || mood === tuneMood) return;
-    tuneMood = mood;
+  function fadeTune() {
     if (tuneSource) {
       const old = tuneSource;
       old.gain.gain.setTargetAtTime(0, context.currentTime, 0.6);
       setTimeout(() => (old.stop(), old.removeFromParent(), old.dispose()), 2500);
       tuneSource = null;
     }
-    if (mood < 0 || !musicOn) return;
-    const name = mood === 1 ? 'tune-tense' : 'tune-calm';
-    if (!buffers[name]) {
-      const samples = mood === 1 ? tune({ bars: 8, tempo: 112, seed: 9, mood: 1 }) : tune({ bars: 16, tempo: 84, seed: 3, mood: 0 }),
-        made = context.createBuffer(1, samples.length, RATE);
-      made.copyToChannel(samples, 0);
-      buffers[name] = made;
-    }
-    tuneSource = createPositionalAudio3D(listener, { buffer: buffers[name], loop: true, volume: 0, spatial: false });
+  }
+
+  function playTune() {
+    const ready = tunes[tuneMood];
+    if (!started || !musicOn || tuneSource || !ready) return;
+    tuneSource = createPositionalAudio3D(listener, { buffer: ready, loop: true, volume: 0, spatial: false });
     camera.addChild(tuneSource);
     tuneSource.play();
     tuneSource.gain.gain.setTargetAtTime(0.32, context.currentTime, 0.8);
+  }
+
+  function prepareTunes() {
+    if (musicWorker || (tunes[0] && tunes[1])) return;
+    const worker = new Worker(new URL('./musicWorker.mjs', import.meta.url), { type: 'module' });
+    musicWorker = worker;
+    worker.onmessage = ({ data: { mood, samples } }) => {
+      if (musicWorker !== worker) return;
+      tunes[mood] = audioBuffer(samples);
+      // A worker result may arrive after a new mood or a mute.
+      if (mood === tuneMood) playTune();
+      if (tunes[0] && tunes[1]) {
+        worker.terminate();
+        musicWorker = null;
+      }
+    };
+    worker.onerror = (error) => {
+      worker.terminate();
+      if (musicWorker === worker) musicWorker = null;
+      console.warn('music worker', error.message);
+    };
+  }
+
+  /** Change to the calm tune, the tense tune, or silence without synthesizing in a frame. */
+  function setMood(mood) {
+    if (!started || mood === tuneMood) return;
+    tuneMood = mood;
+    fadeTune();
+    if (musicOn && mood >= 0) prepareTunes();
+    playTune();
   }
 
   return {
@@ -112,14 +138,19 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
     },
     /** Begin sounding, from a key or touch of the player's. */
     async start() {
-      if (started) return;
-      await listener.resume();
-      started = context.state === 'running';
-      if (!started) return;
-      for (const source of streams) source.play();
-      wind.play();
-      // The engines' voices are kept: their pitch is changed while they play (see ENGINE-NOTES).
-      for (const engine of engines) engine.voice = engine.source.play();
+      if (started) return starting;
+      // A touch press does not grant autoplay activation until release.
+      if (context.state !== 'running' && navigator.userActivation?.isActive === false) return;
+      starting ??= listener.resume().then(() => {
+        started = context.state === 'running';
+        if (!started) return;
+        for (const source of streams) source.play();
+        wind.play();
+        // The engines' voices stay alive so their pitch can follow the throttle.
+        for (const engine of engines) engine.voice = engine.source.play();
+        if (musicOn) prepareTunes();
+      }).finally(() => { starting = null; });
+      return starting;
     },
     set volume(value) {
       listener.volume = value;
@@ -129,9 +160,10 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
     },
     set music(on) {
       musicOn = on;
-      const mood = tuneMood;
-      tuneMood = -2;
-      setMood(on ? Math.max(0, mood) : -1);
+      if (on && started) {
+        prepareTunes();
+        playTune();
+      } else fadeTune();
     },
     /** Pause everything while the game is paused, by quieting the listener. */
     hush(on) {
@@ -161,6 +193,8 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
       listener.update();
     },
     dispose() {
+      musicWorker?.terminate();
+      musicWorker = null;
       listener.dispose();
     }
   };

@@ -29,3 +29,28 @@ test('the caravan tune loops in whole bars', () => {
   const calm = tune({ bars: 4, tempo: 84 });
   assert.equal(calm.length, Math.round(((4 * 4 * 60) / 84) * RATE));
 });
+
+test('the background music worker transfers complete calm and danger loops', async () => {
+  const original = globalThis.self;
+  const collected = [];
+  let closed = false;
+  globalThis.self = {
+    postMessage: (message, transfers) => collected.push({ message, transfers }),
+    close: () => { closed = true; }
+  };
+  try {
+    await import('../src/audio/musicWorker.mjs');
+    assert.equal(collected.length, 2);
+    assert.equal(closed, true);
+    for (const [index, [bars, tempo]] of [[16, 84], [8, 112]].entries()) {
+      const { message, transfers } = collected[index];
+      assert.equal(message.mood, index);
+      assert.ok(message.samples instanceof Float32Array);
+      assert.equal(message.samples.length, Math.round((bars * 4 * 60 * RATE) / tempo));
+      assert.deepEqual(transfers, [message.samples.buffer]);
+    }
+  } finally {
+    if (original === undefined) delete globalThis.self;
+    else globalThis.self = original;
+  }
+});
