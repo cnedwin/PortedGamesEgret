@@ -19,6 +19,7 @@ import { TRUCK } from '../models/truck.mjs';
 /** How close the convoy comes before an ambush wakes, and how far past it before it is put away. */
 const WAKE = 260,
   SLEEP = 320;
+const PREPARE_DISTANCE = 60;
 /** The grid of the navigation mesh, in metres. */
 const CELL = 3;
 
@@ -112,8 +113,21 @@ function groundMesh(zone, heightAt, obstacles) {
  * bursts, and `events(name, detail)` hears what happens (for the story, the sounds and the count of tea).
  */
 export function createThreats(scene, physics, { convoy, land, flora, effects, events = () => {} }) {
-  const zones = AMBUSHES.map((zone) => ({ ...zone, state: 'waiting', crowd: null, nav: null, members: [] }));
+  const zones = AMBUSHES.map((zone) => ({ ...zone, state: 'waiting', crowd: null, nav: null, members: [], prepared: [] }));
   const timers = { retarget: 0 };
+
+  function makeFigure(zone, index) {
+    return zone.kind === 'wolf' ? createWolf(index) : createBandit(index);
+  }
+
+  function discardPrepared(zone) {
+    for (const figure of zone.prepared) {
+      if (!figure) continue;
+      figure.mesh.geometry.dispose();
+      figure.bundle?.geometry.dispose();
+    }
+    zone.prepared.length = 0;
+  }
 
   /** Wake an ambush: lay its ground, and set its people or wolves in hiding off the road ahead. */
   function wake(zone) {
@@ -140,7 +154,8 @@ export function createThreats(scene, physics, { convoy, land, flora, effects, ev
         if (found && zone.nav.isEnabled(found.triangle)) spot = found.point;
       }
       if (!spot) continue;
-      const figure = zone.kind === 'wolf' ? createWolf(i) : createBandit(i);
+      const figure = zone.prepared[i] ?? makeFigure(zone, i);
+      if (i < zone.prepared.length) zone.prepared[i] = null;
       figure.root.setPosition(spot[0], spot[1], spot[2]);
       scene.addChild(figure.root);
       const agent = zone.crowd.addAgent({
@@ -154,6 +169,7 @@ export function createThreats(scene, physics, { convoy, land, flora, effects, ev
       if (zone.kind === 'bandit') member.ragdoll = createRagdoll3D(physics, figure.root, figure.parts, { layer: LAYER.body, mask: LAYER.ground | LAYER.prop | LAYER.body, friction: 0.7, linearDamping: 0.1, angularDamping: 0.4 });
       zone.members.push(member);
     }
+    discardPrepared(zone);
     // The bandits fell logs across the road ahead, so the convoy has to slow down where they wait. The logs are
     // dynamic bodies: a truck can shove them aside at a crawl; hit hard, they kick.
     zone.logs = [];
@@ -194,6 +210,7 @@ export function createThreats(scene, physics, { convoy, land, flora, effects, ev
 
   /** Put an ambush away: its figures, its ragdolls and its crowd. */
   function sleep(zone) {
+    discardPrepared(zone);
     for (const log of zone.logs ?? []) {
       physics.removeBody(log.body);
       log.mesh.removeFromParent();
@@ -418,8 +435,17 @@ export function createThreats(scene, physics, { convoy, land, flora, effects, ev
       timers.retarget -= seconds;
       const again = timers.retarget <= 0;
       if (again) timers.retarget = 0.4;
+      let prepared = false;
       for (const zone of zones) {
-        if (zone.state === 'waiting' && leadS > zone.s - WAKE && leadS < zone.s + zone.radius) wake(zone);
+        if (zone.state === 'waiting') {
+          const wakeAt = zone.s - WAKE;
+          if (leadS > wakeAt && leadS < zone.s + zone.radius) wake(zone);
+          else if (!prepared && leadS > wakeAt - PREPARE_DISTANCE && leadS <= wakeAt && zone.prepared.length < zone.count) {
+            // Spread the mesh builds across frames. Only wake() may attach and animate them.
+            zone.prepared.push(makeFigure(zone, zone.prepared.length));
+            prepared = true;
+          }
+        }
         if (zone.state !== 'awake') continue;
         if (leadS > zone.s + SLEEP + zone.radius) {
           sleep(zone);
@@ -450,6 +476,7 @@ export function createThreats(scene, physics, { convoy, land, flora, effects, ev
     reset(fromS) {
       for (const zone of zones) {
         if (zone.state === 'awake') sleep(zone);
+        else discardPrepared(zone);
         zone.state = fromS > zone.s + zone.radius ? 'done' : 'waiting';
       }
       for (const truck of convoy.trucks) truck.drag = 0;
