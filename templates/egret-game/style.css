@@ -23,6 +23,11 @@ body {
   display: block;
   outline: none;
   touch-action: none;
+  /* The night sky behind every screen. The engine clears to transparent and draws only what moves, so the sky costs
+     nothing per frame (as a full-screen gradient in the stage it halved the frame rate under software rendering). */
+  background:
+    radial-gradient(50% 45% at 50% 85%, rgba(240, 184, 90, 0.18), rgba(240, 184, 90, 0)),
+    linear-gradient(#0b1222 0%, #1d2a3e 65%, #2b3a4a 100%);
 }
 #loading {
   color: #f3ead6;

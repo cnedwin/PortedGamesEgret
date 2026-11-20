@@ -130,7 +130,7 @@ node tools/headless.mjs 4 7 17
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（7 of 16 under 44×44: Solo 45×26; +1 friend 72×26; +2 friends 81×26; +3 friends 82×26）；T3 不误触下拉刷新和双击缩放（overscroll held, touch-action auto, double-tap zoom on）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 783.4 ms over 13 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 果冻熊猫 动作游戏 移动 鼠标转视角 空格跳跃）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 

@@ -161,7 +161,7 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 12 under 44×44: 行囊0B 85×35; 全屏 64×35; 设置 64×35）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 2416.6 ms over 5 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；I3 长英文不溢出（cut off: 风雪山神庙）；E2 资源失败有错误界面和重试（9 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 

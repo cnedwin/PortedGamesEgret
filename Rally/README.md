@@ -175,7 +175,7 @@ node tools/headless.mjs 1 3 7
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 4 under 44×44: Sound: On 120×41; Quality: High 137×41）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 1749.9 ms over 7 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 锦绣飞车 赛车游戏 或上箭头加速 或下箭头刹车 或左右箭头转向）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 

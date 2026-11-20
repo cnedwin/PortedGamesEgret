@@ -20,26 +20,6 @@ function begin(app, prefix) {
 }
 
 /** The night sky behind every screen, with a soft glow low in the middle. */
-function backdrop(app, root, scope) {
-  const { width, height } = app.stage,
-    sky = root.addChild(scope.use(new Sprite())),
-    g = sky.graphics;
-  g.beginLinearGradientFill(0, 0, 0, height, [
-    { offset: 0, color: 0x0b1222, alpha: 1 },
-    { offset: 0.65, color: NIGHT, alpha: 1 },
-    { offset: 1, color: 0x2b3a4a, alpha: 1 }
-  ])
-    .drawRect(0, 0, width, height)
-    .endFill();
-  g.beginRadialGradientFill(width / 2, height * 0.85, width * 0.5, [
-    { offset: 0, color: AMBER, alpha: 0.18 },
-    { offset: 1, color: AMBER, alpha: 0 }
-  ])
-    .drawRect(0, 0, width, height)
-    .endFill();
-  return sky;
-}
-
 /** The lantern bearer: a cloaked figure holding a lit lantern out in front, facing `facing` (1 right, -1 left). */
 export function drawHero(g, facing = 1, sway = 0) {
   g.clear();
@@ -60,7 +40,6 @@ export async function titleScreen(app) {
   const s = begin(app, 'title'),
     { width, height } = app.stage,
     { kit, root, scope } = s;
-  backdrop(app, root, scope);
   const tall = height > width,
     left = tall ? 40 : Math.round(width * 0.1);
   await kit.label(root, t('title'), { x: left, y: tall ? 150 : 110, size: tall ? 60 : 72, weight: 800, color: 0xfff1d0 });
@@ -90,7 +69,6 @@ export async function playScreen(app) {
   const s = begin(app, 'play'),
     { width, height } = app.stage,
     { kit, root, scope } = s;
-  backdrop(app, root, scope);
   const world = (app.world = createWorld(app.seed)),
     // The field is drawn at the size of the rules' field, scaled to fit the stage above the controls.
     field = root.addChild(scope.use(new DisplayObjectContainer())),
@@ -187,7 +165,6 @@ export async function endScreen(app, { seconds, best, saved }) {
   const s = begin(app, 'end'),
     { width, height } = app.stage,
     { kit, root, scope } = s;
-  backdrop(app, root, scope);
   const panelWidth = Math.min(520, width - 48),
     x = (width - panelWidth) / 2,
     y = height / 2 - 170;
@@ -205,7 +182,6 @@ export async function settingsScreen(app) {
   const s = begin(app, 'settings'),
     { width, height } = app.stage,
     { kit, root, scope } = s;
-  backdrop(app, root, scope);
   const panelWidth = Math.min(520, width - 48),
     x = (width - panelWidth) / 2,
     y = Math.max(20, height / 2 - 200);

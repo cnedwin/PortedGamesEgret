@@ -58,9 +58,10 @@ const HARMLESS = [/favicon\.ico/, /GPU stall due to ReadPixels/, /Automatic fall
 
 /**
  * A page of the game at `url`, with its console errors and page errors collected in `page.problems`. `touch` makes a
- * touch screen; `reducedMotion` asks for less motion, which also makes screenshots steady.
+ * touch screen; `reducedMotion` asks for less motion, which also makes screenshots steady; `before(page)` runs before
+ * the page is opened.
  */
-export async function openPage(browser, url, { width = 960, height = 540, touch = false, reducedMotion = true, scale = 1 } = {}) {
+export async function openPage(browser, url, { width = 960, height = 540, touch = false, reducedMotion = true, scale = 1, before } = {}) {
   const context = await browser.newContext({ viewport: { width, height }, deviceScaleFactor: scale, hasTouch: touch, isMobile: touch, reducedMotion: reducedMotion ? 'reduce' : 'no-preference' });
   const page = await context.newPage();
   page.problems = [];
@@ -71,6 +72,8 @@ export async function openPage(browser, url, { width = 960, height = 540, touch 
   page.on('response', (response) => {
     if (response.status() >= 400 && !HARMLESS.some((pattern) => pattern.test(response.url()))) page.problems.push(`http ${response.status()}: ${response.url()}`);
   });
+  // `before(page)` runs ahead of the first request: init scripts, network or CPU throttling.
+  if (before) await before(page);
   await page.goto(url);
   return page;
 }

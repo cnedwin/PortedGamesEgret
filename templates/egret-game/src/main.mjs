@@ -102,7 +102,10 @@ async function boot() {
     backend: params.get('backend') ?? 'webgl2',
     fit: 'contain',
     fitTo: frameHost,
+    // The night sky is the canvas's own CSS background (style.css): drawn by the page once, not by the engine each
+    // frame. As a full-screen gradient or picture in the stage it halved the frame rate under software rendering.
     clearColor: 0x0b1222,
+    clearAlpha: 0,
     autoStart: false,
     update: (seconds) => frame(Math.min(seconds, 1 / 20))
   });

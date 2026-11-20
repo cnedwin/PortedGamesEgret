@@ -155,7 +155,7 @@ See `assets/models/README.md` for the model source and usage notes.
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 3 under 44×44: Deploy 132×43; Settings 132×43; Controls 132×43）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 15332.7 ms over 2 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 断流行动 第一人称射击 移动 鼠标瞄准 左键开火）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）。
 
 ## 已解决 · Solved
 

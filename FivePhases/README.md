@@ -123,7 +123,7 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 
 ## 已知问题 · Known issues
 
-（待补 · To be written）
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 2 under 44×44: 开阵 121×43; 静音 40×40）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 99.9 ms over 53 frames）；I1 中英文全可切换，英文下无中文（html lang "zh-CN", Chinese left: 五行牌阵 消除聚灵 出牌破阵 开阵 阵法说明）。
 
 ## 已解决 · Solved
 
