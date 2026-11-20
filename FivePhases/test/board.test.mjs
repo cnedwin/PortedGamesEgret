@@ -101,6 +101,35 @@ test('四连生成消行块，五连生成彩虹块', () => {
   assert.equal(fiveResult.spawned[0].kind, WILD);
 });
 
+test('交叉连成一组只留一个炸弹，各自独立的匹配照常生成特殊块', () => {
+  const board = fromRows(['.22....', '2222...', '.22..3.', '1..3333', '.....3.', '.......', '44444..']);
+  const firstCross = index(board, 2, 1);
+  const secondCross = index(board, 5, 3);
+  const rainbow = index(board, 2, 6);
+  board.special[secondCross] = ROW;
+
+  const result = findAndClear(board, { swap: [firstCross] });
+
+  assert.deepEqual(result.spawned, [
+    { index: firstCross, kind: METAL, special: BOMB },
+    { index: secondCross, kind: WATER, special: BOMB },
+    { index: rainbow, kind: WILD, special: RAINBOW },
+  ]);
+  assert.deepEqual(result.triggered, [{ index: secondCross, effect: ROW }]);
+  assert.ok(result.cleared.some((cell) => cell.index === index(board, 0, 3)));
+});
+
+test('全盘同色的交叉生成一个炸弹，其余 48 格消除', () => {
+  const board = fromRows(Array(7).fill('3333333'));
+  const swapped = index(board, 5, 5);
+
+  const result = findAndClear(board, { swap: [swapped] });
+
+  assert.equal(result.cleared.length, 48);
+  assert.deepEqual(result.spawned, [{ index: swapped, kind: WATER, special: BOMB }]);
+  assert.equal(findAndClear(board), null);
+});
+
 test('特殊块落在交换的那一格上，而不是随手挑一个', () => {
   const board = fromRows(['0000123', '1234012', '2340123', '3401234', '4012340', '0123401', '1234012']);
   const swapAt = index(board, 3, 0);

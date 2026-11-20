@@ -19,7 +19,7 @@ import { ease } from './sequence.mjs';
 const PER_COLOUR = 10;
 const RINGS = 4;
 
-export function createFx({ Sprite, scope, world, layer }) {
+export function createFx({ Sprite, scope, world, layer, flashLayer }) {
   // 分项开关：几何预算出问题时要能一项一项关掉，才知道是谁吃掉的
   const enabled = { burst: true, ring: true, flash: true, orb: true };
   const particles = [];
@@ -117,7 +117,7 @@ export function createFx({ Sprite, scope, world, layer }) {
     if (!flashSprite) {
       flashSprite = new Sprite();
       scope.use(flashSprite);
-      layer.addChild(flashSprite);
+      flashLayer.addChild(flashSprite);
       flashSprite.graphics.beginFill(0xffffff, 1).drawRect(0, 0, 750, 1624).endFill();
     }
     flashSprite.visible = true;
@@ -171,12 +171,7 @@ export function createFx({ Sprite, scope, world, layer }) {
       shakeTime = Math.max(0, shakeTime - dt);
       // 余量小于一帧就当震完了，直接归零。
       //
-      // 不归零的话，最后那一帧的 k 会是 1e-17 这种值，power 再平方一次就到
-      // 1e-34 像素，world.x/y 变成一个"非零但极小"的数。引擎的坐标守卫
-      // （prepareRectangles2D 的 coordinate）对 |v| < 2^-100 是直接抛
-      // GeometryPreparationError('range') 的，不当作退化图形忽略——于是
-      // 整帧渲染失败。偏偏闪光层的矩形是从 (0,0) 画的，四个角全落在这个量级上，
-      // 所以只有"震屏 + 白闪"同一帧出现时才炸，而且十次里只炸一次。
+      // 避免把不可见的余量写成接近零的非零坐标。
       if (shakeTime <= 1e-4) {
         shakeTime = 0;
         shakePower = 0;

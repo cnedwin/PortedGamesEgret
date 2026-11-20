@@ -21,7 +21,7 @@ import { ELEMENT_INFO, ELEMENT_ORDER, STARTER_DECK } from './core/cards.mjs';
 import { portraitById } from './portrait/index.mjs';
 import { createHud } from './ui/hud.mjs';
 import { createAudio } from './view/audio.mjs';
-import { createBoardView } from './view/board-view.mjs';
+import { cascadeTempo, createBoardView } from './view/board-view.mjs';
 import { PALETTE, drawEnemy } from './view/draw.mjs';
 import { createFx } from './view/fx.mjs';
 import { BOARD, ENEMY_SPOT, ENERGY_SLOTS, HERO_SPOT, STAGE, cellCentre } from './view/layout.mjs';
@@ -56,6 +56,7 @@ let enemySprite = null;
 let world = null;
 let boardLayer = null;
 let fxLayer = null;
+let flashLayer = null;
 /** 引擎的 Scope：所有显示对象都登记在它下面，关页面时统一回收。 */
 let gameScope = null;
 /** 引擎给的那个冻结对象，报错重启帧循环时要用。 */
@@ -149,12 +150,10 @@ function paintBackdrop(g) {
 function buildScene(game) {
   const { stage, scope } = game;
 
-  // world 是会被震屏的那一层。震屏移动 world 而不是相机：
-  // 相机一抖，背景和 UI 一起抖，那是"整个屏幕在动"；world 抖，只有战场在动。
-  world = stage.addChild(scope.use(new DisplayObjectContainer()));
-
-  const backdrop = world.addChild(scope.use(new Sprite()));
+  // 背景和整屏闪光固定在舞台上，避免震屏把贴边三角形裁成极细的碎片。
+  const backdrop = stage.addChild(scope.use(new Sprite()));
   paintBackdrop(backdrop.graphics);
+  world = stage.addChild(scope.use(new DisplayObjectContainer()));
 
   const enemyLayer = world.addChild(scope.use(new DisplayObjectContainer()));
   enemySprite = enemyLayer.addChild(scope.use(new Sprite()));
@@ -174,7 +173,8 @@ function buildScene(game) {
 
   boardLayer = world.addChild(scope.use(new DisplayObjectContainer()));
   fxLayer = world.addChild(scope.use(new DisplayObjectContainer()));
-  fx = createFx({ Sprite, scope, world, layer: fxLayer });
+  flashLayer = stage.addChild(scope.use(new DisplayObjectContainer()));
+  fx = createFx({ Sprite, scope, world, layer: fxLayer, flashLayer });
 }
 
 // ── 一局的开始与结束 ────────────────────────────────────────────
@@ -313,9 +313,8 @@ const locked = () => lock !== null || !battle || sequence.busy || battle.phase !
 
 // ── 演出：事件表 → 画面 ─────────────────────────────────────────
 //
-// 注意这里的调用时机：playClear / playFall 这些函数在**排进队列的那一刻**就把
-// sprite 的归属算好了（谁消失、谁下落到哪），动画只是事后补间。
-// 所以必须严格按事件顺序调用，否则下落会接错格子。
+// 按事件顺序排入队列。格子归属在各段开始或完成时更新，让下落能接上
+// 前一段刚生成的特殊块，也让下一次消除找到已经落定的方块。
 
 function playEnergy(event) {
   const index = ELEMENT_ORDER.indexOf(event.element);
@@ -335,6 +334,7 @@ function playEnergy(event) {
 
 function play(events) {
   hud.render(battle);
+  const tempo = cascadeTempo(events);
 
   for (const event of events) {
     switch (event.type) {
@@ -352,19 +352,23 @@ function play(events) {
         break;
 
       case 'clearStep': {
-        view.playClear(event, sequence, fx);
         const chain = event.chain ?? 1;
-        sequence.call(() => {
-          audio.clear(chain);
-          if (chain >= 2) hud.chain(chain);
-          if (event.combo) shake(16, 0.4);
-          else shake(2 + chain * 2.2, 0.16);
-        });
+        const durationScale = tempo(chain);
+        view.playClear(event, sequence, fx, durationScale);
+        // 快速连锁每三层报一次节拍，避免音效与反馈动画密集重叠。
+        if (durationScale === 1 || chain % 3 === 0) {
+          sequence.call(() => {
+            audio.clear(chain);
+            if (chain >= 2) hud.chain(chain);
+            if (event.combo) shake(16, 0.4);
+            else shake(2 + Math.min(chain, 6) * 2.2, 0.16);
+          });
+        }
         break;
       }
 
       case 'fall':
-        view.playFall(event, sequence);
+        view.playFall(event, sequence, tempo(event.chain));
         break;
 
       case 'paint':
@@ -836,6 +840,7 @@ async function boot() {
     hide(which, value) {
       const target = { board: boardLayer, hero: hero?.holder, enemy: enemySprite, fx: fxLayer }[which];
       if (target) target.visible = value !== false;
+      if (which === 'fx' && flashLayer) flashLayer.visible = value !== false;
     },
     start: beginRun,
     /** 直接跳到第 n 关，调美术和验收用。 */
