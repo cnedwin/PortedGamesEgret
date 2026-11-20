@@ -62,6 +62,12 @@ An independently developed top-down 3D action demo built with Egret Rebuild, fro
 
 An independently developed 2D card battler over a match-three board, built with Egret Rebuild. The top half is turn-based card combat with animated portraits; the bottom half is the board: whatever colour you clear is the energy you gain, and every card is paid for in its own element. Clearing also drops new cards, and the bonds between them (sword and shield, samadhi, echo, chain body, star lane) decide how you should be matching. The five phases are at once the board's colours and five shapes, and five playstyles — fire bursts, earth shields and counters, metal pierces, water rearranges the board, wood grows — with the feeding cycle adding 50% to the next card and the overcoming cycle touching damage only, never the board. Three stages, with a pick-one-of-three reward between them. The portraits are placeholder pieces drawn in code to Spine's slot structure, with bones, layers and pivots fixed so that only the images are left to fill in. Mouse and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/FivePhases/) · [Guide and development](FivePhases/README.md)
 
+## Mechanism City · 千机巧匠
+
+一款使用新白鹭引擎独立开发的 2D 物理弹射解谜游戏 Demo。墨家机关城闭城三十年，少年工匠阿巧用祖父留下的机关弩把弹丸射进城里，借木块、木箱、绳索、跷跷板、弹簧、踏板和滚石连锁触发，打开每一关的机关锁。三章十二关，每关一到三星，有开场短片和关卡间对白。关卡是 Tiled 瓦片地图，相机跟随弹丸、震屏、拉到全景；碎木、火花和雷光是粒子；声音全部合成。键盘、鼠标、手柄和触屏都能玩。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/MechanismCity/) · [说明与开发](MechanismCity/README.md)
+
+An independently developed 2D physics puzzle demo built with Egret Rebuild. The Mohist city of mechanisms has been shut for thirty years; Qiao fires pellets into it with her grandfather's crossbow and sets its blocks, crates, ropes, seesaws, springs, plates and stones going one after another until each level's lock opens. Three chapters, twelve levels, one to three stars each, with an opening film and words between the levels. The levels are Tiled maps; the camera follows the pellet, shakes and pulls back to the whole city; splinters, sparks and thunder are particles, and all the sound is synthesized. Keyboard, mouse, gamepad and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/MechanismCity/) · [Guide and development](MechanismCity/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)
