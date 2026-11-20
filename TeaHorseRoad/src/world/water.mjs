@@ -56,7 +56,9 @@ export function createWaters(scene, { quality = 'medium' } = {}) {
       depth: body.depth,
       segments: body.id === 'ford' ? (quality === 'low' ? 64 : 128) : quality === 'low' ? 32 : 64,
       ...body.options,
-      ...(body.id === 'lake' && quality === 'high' ? { reflectionSize: 512 } : {})
+      // Only High refreshes the mirror. Otherwise the default map would allocate
+      // a framebuffer on first sampling even though no reflection was rendered.
+      reflectionSize: quality === 'high' ? 512 : 0
     });
     water.setPosition(body.x, body.y, body.z);
     water.receiveShadow = true;

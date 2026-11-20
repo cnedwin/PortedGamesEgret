@@ -107,15 +107,19 @@ test('the first-use road shader keys are linked before any view draws', async ()
   shaders.clear();
   const previousLinks = linked;
   renderer.shadowsEnabled = false;
-  await prepareRoadPrograms(renderer, scene, camera, waters, { reflections: false });
+  for (const { water } of waters.bodies) water.removeFromParent();
+  const lowWaters = createWaters(scene, { quality: 'low' });
+  const lowChildren = [...scene.children];
+  await prepareRoadPrograms(renderer, scene, camera, lowWaters, { reflections: false });
   assert.deepEqual(shaders, new Set([
     ...sceneDepth,
     'SHADING_STANDARD USE_NORMAL USE_MAP USE_ENVIRONMENT LINEAR_OUTPUT',
     'SHADING_STANDARD USE_NORMAL USE_MAP USE_NORMAL_MAP DOUBLE_SIDED USE_ENVIRONMENT LINEAR_OUTPUT',
     'SHADING_STANDARD USE_NORMAL USE_INSTANCING USE_MAP USE_ENVIRONMENT LINEAR_OUTPUT',
-    'SHADING_STANDARD USE_NORMAL USE_SOFT_DEPTH DOUBLE_SIDED USE_ENVIRONMENT LINEAR_OUTPUT' + waterFeatures,
+    'SHADING_STANDARD USE_NORMAL USE_SOFT_DEPTH DOUBLE_SIDED USE_ENVIRONMENT LINEAR_OUTPUT' +
+      waterFeatures.replace(' USE_REFLECTION_MAP', ''),
     'SHADING_STANDARD USE_NORMAL USE_SKINNING USE_VERTEX_COLOR USE_ENVIRONMENT LINEAR_OUTPUT'
   ]));
   assert.equal(linked - previousLinks, 5);
-  assert.deepEqual(scene.children, initialChildren);
+  assert.deepEqual(scene.children, lowChildren);
 });

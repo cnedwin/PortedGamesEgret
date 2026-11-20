@@ -15,6 +15,7 @@ import { FLAG_RED, FONT, INK, PAPER, SAFFRON, SANS, STAGE, TURQUOISE } from './k
 import { SPEAKERS } from '../play/story.mjs';
 
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
+export const HUD_SEMANTICS = 'driving-hud';
 
 /**
  * Build the HUD on `game.stage` (`width` × `STAGE.height`). `stations` are `{ s, name }` along the road of `length` metres.
@@ -23,8 +24,15 @@ const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset,
  */
 export async function createHud(game, scope, kit, { width, font, fontPages, stations, length, touch, controls, semantics, onPause, onHorn, onCamera, onRecover }) {
   const H = STAGE.height,
-    root = game.stage.addChild(scope.use(new DisplayObjectContainer())),
+    root = scope.use(new DisplayObjectContainer()),
     keyboard = game.keyboard;
+  root.visible = false;
+  game.stage.addChild(root);
+  kit.own(semantics.add({
+    id: HUD_SEMANTICS,
+    role: 'group',
+    describe: () => ({ hidden: !root.visible, bounds: { x: 0, y: 0, width, height: H } })
+  }));
 
   // ---- top left: where we are -----------------------------------------------------------------------------------
   const route = root.addChild(scope.use(new Sprite()));
@@ -249,11 +257,12 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
 
   // The semantic nodes of what the HUD shows: the place, the tea, the speed and the subtitle.
   const status = { place: '', tea: '', speed: 0 };
-  kit.own(semantics.add({ id: 'hud-status', role: 'status', describe: () => ({ name: `${status.place}。茶 ${status.tea}。时速 ${status.speed} 公里。${lastLine}`, bounds: { x: 24, y: 20, width: routeWidth, height: 120 } }) }));
+  kit.own(semantics.add({ id: 'hud-status', parent: HUD_SEMANTICS, role: 'status', describe: () => ({ name: `${status.place}。茶 ${status.tea}。时速 ${status.speed} 公里。${lastLine}`, bounds: { x: 24, y: 20, width: routeWidth, height: 120 } }) }));
   for (const part of touchParts)
     kit.own(
       semantics.add({
         id: part.id,
+        parent: HUD_SEMANTICS,
         role: part.role,
         onActivate: part.press,
         describe: () => ({ name: part.name, bounds: semanticBoundsOf(part.target), ...(part.range ? { range: part.range() } : {}) })
