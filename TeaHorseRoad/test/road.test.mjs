@@ -54,3 +54,13 @@ test('the legs blend from tea hills through the gorge to the snow', () => {
   g.biomeAt(4200, b);
   assert.ok(b[2] > 0.9);
 });
+
+test('both bridge approaches overlap the suspended deck', () => {
+  const { from, to, y } = g.BRIDGE;
+  for (const s of [from - 3, from, from + 3, to - 3, to, to + 3]) {
+    const [x, , z] = g.pointAt(s);
+    assert.ok(Math.abs(g.heightAt(x, z) - y) < 0.45, `missing bridge approach at ${s} m`);
+  }
+  const [x, , z] = g.pointAt((from + to) / 2);
+  assert.ok(g.heightAt(x, z) < y - 10, 'the gorge stays open underneath the deck');
+});

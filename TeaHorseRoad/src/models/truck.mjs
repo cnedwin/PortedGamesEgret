@@ -1,29 +1,23 @@
-// 马帮越野车：车身、驾驶室、车斗、轮子和货物全部在代码里拼出来。
-// 车身用引擎的几何构建器合成一块网格（顶点色），玻璃、车灯、轮子和茶砖各是自己的网格；
-// 茶砖是一组实例，被抢一包少画一包。
-//
-// A caravan truck of the convoy: body, cab, bed, wheels and cargo all put together in code. The body is merged into one
-// mesh by the engine's geometry builder (vertex colours); the glass, the lamps, the wheels and the tea are meshes of
-// their own. The tea is one set of instances, drawn one fewer for each bundle taken.
+// 山地马帮货车，采用合并顶点色网格和实例化茶包。六个车轮由车辆物理独立驱动。
 import {
   InstancedMesh3D,
   Mesh3D,
   Object3D,
+  Shape3D,
   createBoxGeometry3D,
-  createCapsuleGeometry3D,
   createCylinderGeometry3D,
+  createExtrudeGeometry3D,
   createGeometryBuilder3D,
   createLatheGeometry3D,
   createSphereGeometry3D,
-  createStandardMaterial3D,
-  createTorusGeometry3D
+  createStandardMaterial3D
 } from '@egret/engine/world3d';
 
-/** The colours of the three trucks: lead red, indigo and olive, each with its trim. */
+/** Lacquer red, indigo and tea green each have their own roof and body trim. */
 export const LIVERIES = [
-  { body: 0x8a2a20, trim: 0xd8b25a, stripe: 0xf0e2b8, name: 'lead' },
-  { body: 0x2c4766, trim: 0xc9c2a6, stripe: 0xe9d9a8, name: 'indigo' },
-  { body: 0x55603a, trim: 0xb89a5a, stripe: 0xe2d2a0, name: 'olive' }
+  { body: 0x9b3029, trim: 0xc79453, stripe: 0xf2cf93, roof: 0xdbb387, name: 'lead' },
+  { body: 0x2e586a, trim: 0x8eaeac, stripe: 0xe3d6b1, roof: 0xbfc8b1, name: 'indigo' },
+  { body: 0x546047, trim: 0xb39c61, stripe: 0xe6ce9a, roof: 0xb9b386, name: 'olive' }
 ];
 
 /** Body dimensions, in metres, around the chassis body's centre of mass. */
@@ -37,186 +31,302 @@ export const TRUCK = {
   cargoSlots: 24
 };
 
+const TAU = Math.PI * 2;
+const AXLE = [0, 0, Math.PI / 2];
+const LENGTHWISE = [Math.PI / 2, 0, 0];
+const BOTH_SIDES = [-1, 1];
 const shared = new Map();
+
 function once(key, make) {
   if (!shared.has(key)) shared.set(key, make());
   return shared.get(key);
 }
 
-/** A tyre with a deep tread and a steel wheel, its axle along X, as the vehicle's wheel nodes expect. */
+function cylinder(radiusTop, radiusBottom, height, radialSegments = 12) {
+  return createCylinderGeometry3D({ radiusTop, radiusBottom, height, radialSegments });
+}
+
+function box(geometry, size, position, color, rotation) {
+  const unit = once('unit-box', () => createBoxGeometry3D());
+  geometry.add(unit, { scale: size, position, rotation, color });
+}
+
+/** A stamped panel, with clipped corners in its face. */
+function panel(geometry, size, position, color, rotation) {
+  const face = once('panel', () => {
+    const outline = new Shape3D([
+      [-0.4, -0.5], [0.4, -0.5], [0.5, -0.39], [0.5, 0.39],
+      [0.4, 0.5], [-0.4, 0.5], [-0.5, 0.39], [-0.5, -0.39]
+    ]);
+    return createGeometryBuilder3D().add(createExtrudeGeometry3D(outline, { depth: 1 }), { position: [0, 0, -0.5] }).build();
+  });
+  geometry.add(face, { position, rotation, scale: size, color });
+}
+
+/** Tyre carcass, staggered tread and steel hub with a contrasting outer rim. */
 function wheelGeometry() {
   return once('wheel', () => {
-    const r = TRUCK.wheelRadius,
-      w = 0.42,
-      b = createGeometryBuilder3D();
-    // The tyre: a rounded profile turned about its axle (the lathe turns about Y, so the part is turned to lie on X).
-    const profile = [];
-    for (let i = 0; i <= 10; i++) {
-      const a = -Math.PI / 2 + (i / 10) * Math.PI;
-      profile.push([r - 0.1 + 0.1 * Math.cos(a), (w / 2) * Math.sin(a)]);
-    }
-    const tyre = createLatheGeometry3D(
-      profile.map(([radius, y]) => [radius, y]),
-      { segments: 36 }
-    );
-    b.add(tyre, { rotation: [0, 0, Math.PI / 2], color: 0x1c1b1a });
-    // The tread: two staggered rows of lugs around the tyre.
-    const lug = createBoxGeometry3D({ width: 0.16, height: 0.07, depth: 0.12 });
-    for (let i = 0; i < 28; i++) {
-      const a = (i / 28) * Math.PI * 2;
-      for (const side of [-1, 1]) {
-        const off = side * 0.1 + (i % 2 ? 0.03 : -0.03);
-        b.add(lug, { position: [off, Math.cos(a) * (r - 0.005), Math.sin(a) * (r - 0.005)], rotation: [-a, 0, 0], color: 0x232120 });
+    const r = TRUCK.wheelRadius;
+    const b = createGeometryBuilder3D();
+    const tyre = createLatheGeometry3D([
+      [0.32, -0.202], [0.43, -0.208], [0.509, -0.191], [0.543, -0.142], [0.549, -0.106],
+      [0.549, 0.106], [0.543, 0.142], [0.509, 0.191], [0.43, 0.208], [0.32, 0.202]
+    ], { segments: 24 });
+    b.add(tyre, { rotation: AXLE, color: 0x2b2a26 });
+    for (let i = 0; i < 22; i++) {
+      for (const side of BOTH_SIDES) {
+        const angle = ((i + side * 0.16) / 22) * TAU;
+        box(b, [0.18, 0.055, 0.106], [side * 0.1, Math.cos(angle) * (r - 0.013), Math.sin(angle) * (r - 0.013)], 0x3a3730, [angle, 0, side * 0.23]);
       }
     }
-    // The wheel: a dished steel disc, a hub and eight bolts.
-    b.add(createCylinderGeometry3D({ radiusTop: r * 0.62, radiusBottom: r * 0.62, height: w * 0.86, radialSegments: 28 }), { rotation: [0, 0, Math.PI / 2], color: 0x6b6458 });
-    b.add(createCylinderGeometry3D({ radiusTop: 0.13, radiusBottom: 0.18, height: w + 0.04, radialSegments: 16 }), { rotation: [0, 0, Math.PI / 2], color: 0x3d3a35 });
-    const bolt = createCylinderGeometry3D({ radiusTop: 0.025, radiusBottom: 0.025, height: 0.06, radialSegments: 6 });
-    for (let i = 0; i < 8; i++) {
-      const a = (i / 8) * Math.PI * 2;
-      for (const side of [-1, 1]) b.add(bolt, { position: [side * (w / 2 + 0.02), Math.cos(a) * 0.24, Math.sin(a) * 0.24], rotation: [0, 0, Math.PI / 2], color: 0xa89c86 });
+    const rim = cylinder(0.319, 0.319, 0.426, 20);
+    const dish = cylinder(0.27, 0.27, 0.012, 20);
+    const hub = cylinder(0.106, 0.148, 0.056);
+    b.add(rim, { rotation: AXLE, color: 0xbab19c });
+    for (const side of BOTH_SIDES) {
+      b.add(dish, { position: [side * 0.216, 0, 0], rotation: AXLE, color: 0x62645e });
+      b.add(hub, { position: [side * 0.232, 0, 0], rotation: [0, 0, -side * Math.PI / 2], color: 0x8c8978 });
+      for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * TAU;
+        box(b, [0.02, 0.07, 0.038], [side * 0.224, Math.cos(angle) * 0.221, Math.sin(angle) * 0.221], 0x343730, [angle, 0, 0]);
+        const boltAngle = angle + TAU / 16;
+        box(b, [0.024, 0.034, 0.034], [side * 0.226, Math.cos(boltAngle) * 0.162, Math.sin(boltAngle) * 0.162], 0xc7bba1, [boltAngle, 0, 0]);
+      }
     }
     return b.build();
   });
 }
 
-/** One bundle of pressed tea: seven cakes wrapped in bamboo leaf and tied with bamboo strips. */
+/** Pressed tea cakes under folded dried bamboo, with binding and a paper seal. */
 function teaGeometry() {
   return once('tea', () => {
     const b = createGeometryBuilder3D();
-    b.add(createCylinderGeometry3D({ radiusTop: 0.2, radiusBottom: 0.21, height: 0.58, radialSegments: 14 }), { rotation: [Math.PI / 2, 0, 0], color: 0x8f7442 });
-    for (const z of [-0.2, 0, 0.2]) b.add(createTorusGeometry3D({ radius: 0.212, tube: 0.018, radialSegments: 6, tubularSegments: 16 }), { position: [0, 0, z], color: 0x6e5428 });
-    b.add(createCylinderGeometry3D({ radiusTop: 0.09, radiusBottom: 0.09, height: 0.6, radialSegments: 8 }), { rotation: [Math.PI / 2, 0, 0], position: [0, 0, 0], color: 0x8a6a36 });
+    const wrap = createLatheGeometry3D([
+      [0, -0.304], [0.153, -0.303], [0.197, -0.262],
+      [0.207, -0.18], [0.207, 0.18], [0.19, 0.264], [0.148, 0.304], [0, 0.305]
+    ], { segments: 10 });
+    const binding = createLatheGeometry3D([
+      [0.198, -0.027], [0.215, -0.021], [0.215, 0.021], [0.198, 0.027]
+    ], { segments: 10 });
+    b.add(wrap, { rotation: LENGTHWISE, color: 0xb7a474 });
+    for (let i = 0; i < 10; i++) {
+      const angle = (i / 10) * TAU;
+      const x = Math.sin(angle);
+      const y = -Math.cos(angle);
+      box(b, [0.024, 0.013, 0.452], [x * 0.201, y * 0.201, 0], i % 3 ? 0xd0ba87 : 0x84784e, [0, 0, angle]);
+    }
+    for (const z of [-0.169, 0.169]) b.add(binding, { position: [0, 0, z], rotation: LENGTHWISE, color: 0x716541 });
+    box(b, [0.128, 0.014, 0.175], [0, 0.207, 0.025], 0xe0cba0, [0, -0.16, 0]);
+    box(b, [0.051, 0.018, 0.063], [0.014, 0.215, 0.055], 0xa04835, [0, -0.16, 0]);
+    box(b, [0.143, 0.135, 0.015], [0, 0, 0.305], 0xe1cda4, [0, 0, Math.PI / 4]);
+    box(b, [0.068, 0.066, 0.016], [0, 0, 0.314], 0xa44d39, [0, 0, Math.PI / 4]);
     return b.build();
   });
 }
 
-/** The body, merged into one geometry: frame, cab, hood, bed, bumpers, rack, lamps' housings and the convoy's bell. */
+function wheelArch(inner, outer, width) {
+  // An open band leaves the tyre visible from outside the front wing.
+  const half = width / 2;
+  return createLatheGeometry3D(
+    [[inner, -half], [outer - 0.02, -half], [outer, -half + 0.018], [outer, half - 0.018], [outer - 0.02, half], [inner, half], [inner, -half]],
+    { segments: 14, phiStart: -0.36, phiLength: Math.PI + 0.72 }
+  );
+}
+
 function bodyGeometry(livery) {
   return once('body-' + livery.name, () => {
-    const b = createGeometryBuilder3D(),
-      box = (w, h, d) => createBoxGeometry3D({ width: w, height: h, depth: d }),
-      cyl = (r1, r2, h, seg = 16) => createCylinderGeometry3D({ radiusTop: r1, radiusBottom: r2, height: h, radialSegments: seg }),
-      hw = TRUCK.halfWidth;
-    const dark = 0x24221f,
-      steel = 0x55524b,
-      wood = 0x5e4027;
-    // Ladder frame and axles.
-    for (const x of [-0.55, 0.55]) b.add(box(0.14, 0.22, 6.2), { position: [x, -0.18, 0.05], color: dark });
-    for (const z of [TRUCK.frontAxle, ...TRUCK.rearAxles]) b.add(cyl(0.08, 0.08, 2.0, 10), { position: [0, TRUCK.wheelY, z], rotation: [0, 0, Math.PI / 2], color: dark });
-    // Cab: a rounded box with a sloped windscreen frame and a roof.
-    b.add(box(2.1, 1.05, 1.6), { position: [0, 0.62, -1.3], color: livery.body });
-    b.add(box(2.12, 0.08, 1.64), { position: [0, 1.18, -1.3], color: livery.trim });
-    b.add(box(1.96, 0.5, 1.35), { position: [0, 1.42, -1.22], color: livery.body });
-    b.add(box(2.0, 0.07, 1.42), { position: [0, 1.7, -1.22], color: dark });
-    // Hood: a long nose rounded on top, its louvres, and the grille.
-    b.add(box(1.7, 0.62, 1.55), { position: [0, 0.4, -2.85], color: livery.body });
-    b.add(cyl(0.85, 0.85, 1.55, 20), { position: [0, 0.68, -2.85], rotation: [Math.PI / 2, 0, 0], scale: [1, 0.24, 1], color: livery.body });
-    for (let i = 0; i < 5; i++) for (const s of [-1, 1]) b.add(box(0.02, 0.05, 0.5), { position: [s * 0.86, 0.5 - i * 0.08, -2.75], color: dark });
-    b.add(box(1.36, 0.6, 0.06), { position: [0, 0.38, -3.64], color: dark });
-    for (let i = 0; i < 9; i++) b.add(box(0.035, 0.52, 0.04), { position: [-0.56 + i * 0.14, 0.38, -3.67], color: 0xb9b1a0 });
-    // Fenders over the front wheels, running boards and steps.
-    for (const s of [-1, 1]) {
-      b.add(cyl(0.72, 0.72, 0.5, 18), { position: [s * 0.95, TRUCK.wheelY + 0.18, TRUCK.frontAxle], rotation: [0, 0, Math.PI / 2], scale: [1, 1, 1], color: livery.body });
-      b.add(box(0.36, 0.06, 1.5), { position: [s * 1.02, -0.12, -1.05], color: dark });
+    const b = createGeometryBuilder3D();
+    const frame = 0x333834;
+    const iron = 0x555b50;
+    const black = 0x252b27;
+    const brass = 0xaf8652;
+    const timbers = [0x674934, 0x835e3e, 0x936f4b, 0x785237];
+
+    // Box rails and drivetrain stay inside the wheel track.
+    for (const side of BOTH_SIDES) box(b, [0.17, 0.23, 6.25], [side * 0.56, -0.18, 0.03], frame);
+    const axle = cylinder(0.075, 0.075, 2.01, 8);
+    for (const z of [TRUCK.frontAxle, ...TRUCK.rearAxles]) {
+      b.add(axle, { position: [0, TRUCK.wheelY, z], rotation: AXLE, color: black });
     }
-    // Front bumper with a winch and tow hooks.
-    b.add(box(2.3, 0.22, 0.24), { position: [0, -0.04, -3.78], color: steel });
-    b.add(cyl(0.13, 0.13, 0.6, 12), { position: [0, -0.02, -3.92], rotation: [0, 0, Math.PI / 2], color: dark });
-    for (const s of [-1, 1]) b.add(createTorusGeometry3D({ radius: 0.07, tube: 0.025 }), { position: [s * 0.8, -0.08, -3.92], color: 0xb03a2a });
-    // Bed: a wooden deck with slatted sides and a tailboard, on two steel sills.
-    b.add(box(2.24, 0.12, 3.5), { position: [0, 0.16, 1.4], color: wood });
-    for (const s of [-1, 1]) {
-      for (let i = 0; i < 3; i++) b.add(box(0.06, 0.12, 3.5), { position: [s * hw, 0.36 + i * 0.2, 1.4], color: i === 2 ? livery.trim : wood });
-      for (let i = 0; i < 5; i++) b.add(box(0.08, 0.66, 0.08), { position: [s * hw, 0.5, -0.3 + i * 0.85], color: dark });
-      // A painted stripe along the cab door.
-      b.add(box(0.02, 0.1, 1.3), { position: [s * 1.06, 0.55, -1.3], color: livery.stripe });
-      // Mirrors on arms.
-      b.add(box(0.5, 0.04, 0.04), { position: [s * 1.25, 1.25, -1.95], color: dark });
-      b.add(box(0.06, 0.32, 0.2), { position: [s * 1.5, 1.25, -1.95], color: dark });
-      // Mud flaps behind the rear wheels.
-      b.add(box(0.5, 0.5, 0.03), { position: [s * 0.98, -0.42, 2.95], color: dark });
+
+    // Step-sided cab, dipped bonnet, and high-contrast roof edge.
+    panel(b, [2.08, 0.92, 1.59], [0, 0.64, -1.28], livery.body);
+    panel(b, [1.97, 0.55, 1.33], [0, 1.38, -1.22], livery.body);
+    panel(b, [2.08, 0.15, 1.48], [0, 1.704, -1.22], livery.roof);
+    box(b, [1.98, 0.073, 1.38], [0, 1.123, -1.22], livery.trim);
+    panel(b, [1.74, 0.65, 1.55], [0, 0.394, -2.845], livery.body);
+    panel(b, [1.67, 0.18, 1.46], [0, 0.722, -2.805], livery.body);
+    box(b, [0.048, 0.015, 1.36], [0, 0.811, -2.8], livery.trim);
+
+    // Open fenders and the lower side steps.
+    const wing = wheelArch(0.643, 0.75, 0.33);
+    const rolledEdge = wheelArch(0.704, 0.767, 0.055);
+    for (const s of BOTH_SIDES) {
+      b.add(wing, { position: [s * 0.991, -0.32, TRUCK.frontAxle], rotation: AXLE, color: livery.body });
+      b.add(rolledEdge, { position: [s * 1.167, -0.32, TRUCK.frontAxle], rotation: AXLE, color: livery.trim });
+      box(b, [0.38, 0.11, 1.08], [s * 1.03, -0.107, -0.86], iron);
+      box(b, [0.085, 0.07, 0.97], [s * 1.194, -0.06, -0.83], livery.trim);
+      for (let i = 0; i < 4; i++) {
+        box(b, [0.022, 0.018, 0.61], [s * 0.876, 0.53 - i * 0.078, -2.63], black);
+      }
+      box(b, [0.025, 0.1, 1.38], [s * 1.044, 0.68, -1.28], livery.stripe);
+      box(b, [0.046, 0.044, 0.216], [s * 1.061, 0.94, -0.77], black);
+      box(b, [0.05, 0.023, 0.145], [s * 1.077, 0.958, -0.77], brass);
+      box(b, [0.36, 0.042, 0.035], [s * 1.15, 1.217, -1.888], iron);
+      panel(b, [0.196, 0.252, 0.07], [s * 1.317, 1.269, -1.888], frame);
+      box(b, [0.15, 0.197, 0.015], [s * 1.317, 1.27, -1.847], 0x839a99);
+      box(b, [0.43, 0.475, 0.05], [s * 1.018, -0.319, 2.92], black);
+      box(b, [0.466, 0.132, 2.11], [s * 0.91, 0.073, 1.78], iron);
     }
-    b.add(box(2.24, 0.62, 0.08), { position: [0, 0.47, 3.15], color: wood });
-    b.add(box(2.28, 0.08, 0.1), { position: [0, 0.8, 3.16], color: livery.trim });
-    b.add(box(2.24, 0.9, 0.08), { position: [0, 0.6, -0.33], color: dark });
-    // A roof rack with a spare wheel and a rolled tarp.
-    for (const s of [-1, 1]) b.add(box(0.05, 0.05, 1.3), { position: [s * 0.95, 1.8, -1.2], color: steel });
-    for (const z of [-1.75, -1.2, -0.65]) b.add(box(1.95, 0.05, 0.05), { position: [0, 1.8, z], color: steel });
-    b.add(cyl(0.18, 0.18, 1.6, 12), { position: [0, 1.93, -0.85], rotation: [0, 0, Math.PI / 2], color: 0x8c7a56 });
-    // Exhaust stack beside the cab.
-    b.add(cyl(0.07, 0.07, 1.6, 10), { position: [-1.12, 1.2, -0.48], color: 0x3a3632 });
-    // Lamp housings, tail lamps and the convoy's bell with its red tassel.
-    for (const s of [-1, 1]) {
-      b.add(cyl(0.17, 0.19, 0.16, 16), { position: [s * 0.62, 0.78, -3.62], rotation: [Math.PI / 2, 0, 0], color: steel });
-      b.add(box(0.18, 0.12, 0.05), { position: [s * 0.95, 0.4, 3.2], color: 0x5a1010 });
+
+    // Ribbed radiator, sealed beams and bumper with the recovery winch.
+    panel(b, [1.47, 0.62, 0.087], [0, 0.397, -3.626], iron);
+    panel(b, [1.31, 0.495, 0.04], [0, 0.396, -3.68], black);
+    for (let i = 0; i < 8; i++) {
+      box(b, [0.036, 0.442, 0.026], [-0.49 + i * 0.14, 0.396, -3.709], 0x9d9682);
     }
-    b.add(cyl(0.012, 0.012, 0.3, 6), { position: [0, 0.98, -3.66], color: 0xc8a050 });
-    b.add(createSphereGeometry3D({ radius: 0.1, widthSegments: 12, heightSegments: 8 }), { position: [0, 0.78, -3.66], color: 0xc8a050 });
-    b.add(createCapsuleGeometry3D({ radius: 0.04, height: 0.3 }), { position: [0, 0.55, -3.68], color: 0xb02020 });
+    panel(b, [2.31, 0.244, 0.268], [0, -0.03, -3.763], frame);
+    box(b, [2.14, 0.069, 0.034], [0, -0.054, -3.914], iron);
+    const drum = cylinder(0.098, 0.098, 0.54, 12);
+    b.add(drum, { position: [0, 0.009, -3.936], rotation: AXLE, color: black });
+    const lightHousing = cylinder(0.186, 0.174, 0.157, 16);
+    for (const s of BOTH_SIDES) {
+      b.add(lightHousing, { position: [s * 0.642, 0.797, -3.534], rotation: [-Math.PI / 2, 0, 0], color: brass });
+      box(b, [0.111, 0.1, 0.105], [s * 0.79, -0.117, -3.926], livery.body, [0, 0, s * 0.14]);
+    }
+    b.add(cylinder(0.048, 0.117, 0.128), { position: [0, 0.767, -3.72], color: brass });
+    box(b, [0.047, 0.144, 0.039], [0, 0.635, -3.721], 0xb53b2f, [0, 0, -0.1]);
+
+    // Cargo bed with an exposed deck, tiered wood rails and a reinforced tailgate.
+    for (let i = 0; i < 7; i++) {
+      box(b, [0.306, 0.126, 3.48], [-0.955 + i * 0.318, 0.156, 1.406], timbers[i % timbers.length]);
+    }
+    for (const s of BOTH_SIDES) {
+      for (let i = 0; i < 3; i++) {
+        box(b, [0.072, 0.116, 3.48], [s * TRUCK.halfWidth, 0.358 + i * 0.2, 1.404], timbers[i + 1]);
+      }
+      for (const z of [-0.28, 0.83, 1.94, 3.09]) box(b, [0.102, 0.61, 0.107], [s * TRUCK.halfWidth, 0.496, z], frame);
+      box(b, [0.093, 0.049, 3.53], [s * TRUCK.halfWidth, 0.821, 1.405], livery.trim);
+      box(b, [0.069, 0.082, 3.48], [s * TRUCK.halfWidth, 0.215, 1.404], frame);
+      box(b, [0.245, 0.158, 0.09], [s * 0.887, 0.321, 3.231], black);
+    }
+    box(b, [2.23, 0.521, 0.102], [0, 0.51, 3.145], timbers[1]);
+    for (let i = 0; i < 3; i++) box(b, [2.12, 0.014, 0.014], [0, 0.36 + i * 0.149, 3.2], timbers[0]);
+    box(b, [2.28, 0.072, 0.123], [0, 0.8, 3.151], livery.trim);
+    box(b, [2.28, 0.173, 0.153], [0, 0.075, 3.16], frame);
+    box(b, [2.22, 0.8, 0.082], [0, 0.607, -0.33], timbers[0]);
+    for (const s of BOTH_SIDES) {
+      box(b, [0.105, 0.587, 0.057], [s * 0.776, 0.514, 3.218], frame);
+      box(b, [0.15, 0.076, 0.044], [s * 0.776, 0.697, 3.269], livery.trim);
+      box(b, [0.32, 0.051, 0.038], [s * 0.81, 0.13, 3.251], livery.stripe);
+    }
+    // The caravan's crest, picked out in brass on the enamelled rear plate.
+    panel(b, [0.79, 0.317, 0.043], [0, 0.532, 3.226], livery.trim);
+    panel(b, [0.735, 0.265, 0.022], [0, 0.532, 3.253], livery.body);
+    for (const [x, y, scale] of [[-0.171, 0.533, 0.745], [0, 0.578, 1], [0.171, 0.533, 0.745]]) {
+      box(b, [0.142 * scale, 0.026, 0.025], [x - 0.049 * scale, y, 3.269], livery.stripe, [0, 0, 0.84]);
+      box(b, [0.142 * scale, 0.026, 0.025], [x + 0.049 * scale, y, 3.27], livery.stripe, [0, 0, -0.84]);
+    }
+    box(b, [0.47, 0.019, 0.026], [0, 0.453, 3.269], livery.stripe);
+
+    // Expedition rack: spare, canvas roll, straps and capped exhaust.
+    for (const s of BOTH_SIDES) {
+      box(b, [0.055, 0.093, 1.28], [s * 0.896, 1.813, -1.211], frame);
+      box(b, [0.046, 0.048, 1.28], [s * 0.896, 1.884, -1.211], livery.trim);
+    }
+    for (const z of [-1.79, -1.23, -0.635]) box(b, [1.85, 0.049, 0.069], [0, 1.82, z], frame);
+    const spare = createLatheGeometry3D([[0.23, -0.122], [0.331, -0.122], [0.439, -0.102], [0.454, -0.056],
+      [0.454, 0.06], [0.418, 0.109], [0.32, 0.128], [0.23, 0.128]], { segments: 20 });
+    b.add(spare, { position: [-0.371, 1.909, -1.25], color: black });
+    b.add(cylinder(0.294, 0.31, 0.202, 20), { position: [-0.371, 1.909, -1.25], color: iron });
+    box(b, [0.752, 0.024, 0.077], [-0.373, 2.053, -1.246], brass, [0, -0.23, 0]);
+    b.add(cylinder(0.185, 0.168, 1.07), { position: [0.416, 1.962, -1.23], rotation: LENGTHWISE, color: 0x89907a });
+    const belt = cylinder(0.194, 0.194, 0.068);
+    for (const z of [-1.523, -0.92]) b.add(belt, { position: [0.416, 1.959, z], rotation: LENGTHWISE, color: 0x766344 });
+    b.add(cylinder(0.051, 0.051, 1.71, 10), { position: [-1.094, 1.155, -0.425], color: frame });
+    b.add(cylinder(0.078, 0.073, 0.46, 10), { position: [-1.094, 1.058, -0.425], color: iron });
+    b.add(cylinder(0.072, 0.064, 0.045, 10), { position: [-1.094, 2.024, -0.425], color: black });
     return b.build();
   });
 }
 
-const materials = {};
-function material(name, make) {
-  return (materials[name] ??= make());
+function glassGeometry() {
+  return once('glazing', () => {
+    const b = createGeometryBuilder3D();
+    for (const s of BOTH_SIDES) {
+      panel(b, [0.908, 0.421, 0.055], [s * 0.469, 1.396, -1.886], 0x526e76);
+      panel(b, [1.027, 0.414, 0.039], [s * 0.974, 1.392, -1.229], 0x3c5359, [0, Math.PI / 2, 0]);
+      box(b, [0.052, 0.375, 0.049], [s * 0.996, 1.391, -0.997], 0x303b37);
+      box(b, [0.674, 0.022, 0.015], [s * 0.48, 1.554, -1.918], 0x92a7a2);
+      box(b, [0.414, 0.026, 0.021], [s * 0.446, 1.225, -1.923], 0x313a37, [0, 0, 0.17]);
+    }
+    panel(b, [1.64, 0.362, 0.042], [0, 1.404, -0.551], 0x475c5b);
+    box(b, [1.33, 0.018, 0.02], [0, 1.543, -0.524], 0x89a1a0);
+    return b.build();
+  });
 }
 
-/**
- * A truck's picture: a node holding the body, the glass, the lamps and the cargo, and four wheel nodes for the vehicle
- * to place. `cargo.count` is how many bundles of tea show.
- */
+function headlampGeometry() {
+  return once('headlamps', () => {
+    const b = createGeometryBuilder3D();
+    const lens = createSphereGeometry3D({ radius: 0.149, widthSegments: 12, heightSegments: 6 });
+    for (const s of BOTH_SIDES) b.add(lens, { position: [s * 0.642, 0.797, -3.62], scale: [1, 1, 0.32] });
+    return b.build();
+  });
+}
+
+function markerLampGeometry() {
+  return once('marker-lamps', () => {
+    const b = createGeometryBuilder3D();
+    for (const x of [-0.62, 0, 0.62]) box(b, [0.121, 0.057, 0.069], [x, 1.759, -1.944], 0xfbaa4c);
+    for (const s of BOTH_SIDES) {
+      panel(b, [0.119, 0.106, 0.023], [s * 0.934, 0.321, 3.286], 0xe45c36);
+      panel(b, [0.063, 0.106, 0.022], [s * 0.831, 0.321, 3.286], 0xefbb69);
+    }
+    return b.build();
+  });
+}
+
+/** One truck, with six wheel nodes and a countable instanced cargo load. */
 export function createTruckModel(livery) {
   const root = new Object3D();
-  const paint = material('paint', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.62, metallic: 0.12 }));
+  const paint = once('paint-material', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.63, metallic: 0.1 }));
   const body = new Mesh3D(bodyGeometry(livery), paint);
   body.castShadow = true;
   body.receiveShadow = true;
   root.addChild(body);
 
-  // Glass: the windscreen in two panes, the side windows and the back window, dark and glossy.
-  const glass = material('glass', () => createStandardMaterial3D({ color: 0x18212a, roughness: 0.08, metallic: 0.55, environmentIntensity: 1.2 }));
-  const panes = createGeometryBuilder3D();
-  const pane = createBoxGeometry3D({ width: 0.9, height: 0.42, depth: 0.04 });
-  for (const s of [-1, 1]) panes.add(pane, { position: [s * 0.47, 1.43, -1.9], rotation: [-0.18, 0, 0] });
-  for (const s of [-1, 1]) panes.add(createBoxGeometry3D({ width: 0.04, height: 0.38, depth: 1.0 }), { position: [s * 0.99, 1.43, -1.18] });
-  panes.add(createBoxGeometry3D({ width: 1.6, height: 0.32, depth: 0.04 }), { position: [0, 1.43, -0.54] });
-  root.addChild(new Mesh3D(panes.build(), glass));
+  const glass = once('glass-material', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.16, metallic: 0.33, environmentIntensity: 1.1 }));
+  const lamp = once('lamp-material', () => createStandardMaterial3D({ color: 0xffe6b7, emissive: 0xffdfa2, emissiveIntensity: 1.25, roughness: 0.28 }));
+  const markers = once('markers-material', () => createStandardMaterial3D({ vertexColors: true, emissive: 0x682b17, emissiveIntensity: 0.5, roughness: 0.46 }));
+  root.addChild(new Mesh3D(glassGeometry(), glass));
+  root.addChild(new Mesh3D(headlampGeometry(), lamp));
+  root.addChild(new Mesh3D(markerLampGeometry(), markers));
 
-  // Head lamps that glow, and the amber running lamps on the roof.
-  const lamp = material('lamp', () => createStandardMaterial3D({ color: 0xfff4d8, emissive: 0xffe2a0, emissiveIntensity: 2.2, roughness: 0.2 }));
-  const lamps = createGeometryBuilder3D();
-  for (const s of [-1, 1]) lamps.add(createSphereGeometry3D({ radius: 0.14, widthSegments: 14, heightSegments: 10 }), { position: [s * 0.62, 0.78, -3.69], scale: [1, 1, 0.4] });
-  const amber = material('amber', () => createStandardMaterial3D({ color: 0xffb040, emissive: 0xff9a20, emissiveIntensity: 1.6 }));
-  const roof = createGeometryBuilder3D();
-  for (const x of [-0.6, -0.2, 0.2, 0.6]) roof.add(createBoxGeometry3D({ width: 0.12, height: 0.06, depth: 0.06 }), { position: [x, 1.76, -1.92] });
-  root.addChild(new Mesh3D(lamps.build(), lamp));
-  root.addChild(new Mesh3D(roof.build(), amber));
-
-  // The cargo: bundles of pressed tea in rows on the bed, two layers high.
-  const teaMaterial = material('tea', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.9 }));
-  const cargo = new InstancedMesh3D(teaGeometry(), teaMaterial, TRUCK.cargoSlots);
+  // Two layers. Removing instances starts with the topmost bundles at the rear.
+  const tea = once('tea-material', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.92 }));
+  const cargo = new InstancedMesh3D(teaGeometry(), tea, TRUCK.cargoSlots);
   cargo.castShadow = true;
+  const shades = [[1, 1, 1], [0.85, 0.9, 0.77], [0.99, 0.86, 0.68], [0.89, 0.96, 0.83], [0.79, 0.83, 0.71]];
   for (let i = 0; i < TRUCK.cargoSlots; i++) {
-    const layer = Math.floor(i / 12),
-      k = i % 12,
-      row = Math.floor(k / 4),
-      col = k % 4;
-    cargo.setTransformAt(i, [-0.78 + col * 0.52, 0.45 + layer * 0.4 + (row % 2) * 0.02, 0.15 + row * 0.62 + (layer ? 0.3 : 0)], [0, Math.sin(((k * 7) % 5) * 0.03), 0, 1], 1);
+    const layer = Math.floor(i / 12);
+    const row = Math.floor((i % 12) / 4);
+    const col = i % 4;
+    const yaw = ((i * 7) % 5 - 2) * 0.046;
+    const x = -0.774 + col * 0.516 + (layer ? (col % 2 ? -0.024 : 0.024) : 0);
+    cargo.setTransformAt(i, [x, 0.431 + layer * 0.399, 0.18 + row * 0.85 + layer * 0.16], [0, Math.sin(yaw / 2), 0, Math.cos(yaw / 2)], 1);
+    cargo.setColorAt(i, ...shades[(i * 7 + row) % shades.length]);
   }
-  cargo.count = TRUCK.cargoSlots;
   root.addChild(cargo);
 
-  // The wheels, each its own node, placed and spun by the vehicle.
-  const tyre = material('tyre', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.85, metallic: 0.1 }));
+  const tyre = once('tyre-material', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.87, metallic: 0.08 }));
   const wheels = [];
-  for (const z of [TRUCK.frontAxle, ...TRUCK.rearAxles])
-    for (const s of [-1, 1]) {
+  for (const z of [TRUCK.frontAxle, ...TRUCK.rearAxles]) {
+    for (const s of BOTH_SIDES) {
       const wheel = new Mesh3D(wheelGeometry(), tyre);
       wheel.castShadow = true;
       wheels.push({ node: wheel, position: [s * TRUCK.track, TRUCK.wheelY + 0.1, z], front: z === TRUCK.frontAxle });
     }
+  }
   return { root, body, cargo, wheels };
 }

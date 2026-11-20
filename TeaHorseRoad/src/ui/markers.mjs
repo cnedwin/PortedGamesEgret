@@ -5,7 +5,7 @@
 // to its edge (`clampToEdge`), an arrow pointing the way.
 import { createScreenMarkers3D } from '@egret/engine/webgl2/world3d';
 
-/** Markers for `stations` (`{ x, y, z, zh, en }`) and the `followers` (`{ node, zh }`) under `container`. */
+/** Markers for the route stations (`{ x, y, z, s, zh }`) and the convoy followers (`{ node, zh }`). */
 export function createMarkers(container, camera, { stations, followers }) {
   const markers = createScreenMarkers3D({ container, camera });
   const element = (className, words, sub) => {
@@ -17,11 +17,14 @@ export function createMarkers(container, camera, { stations, followers }) {
     arrow.className = 'arrow';
     pin.className = 'pin';
     name.textContent = words;
-    div.append(arrow, pin, name);
-    if (sub) {
+    const badge = document.createElement('span');
+    badge.className = 'badge';
+    badge.append(pin, name);
+    div.append(arrow, badge);
+    if (sub !== undefined) {
       const small = document.createElement('small');
       small.textContent = sub;
-      div.append(small);
+      badge.append(small);
     }
     container.append(div);
     return { div, arrow, small: div.querySelector('small') };
@@ -33,21 +36,22 @@ export function createMarkers(container, camera, { stations, followers }) {
   });
   const friendMarkers = followers.map((follower) => {
     const made = element('marker friend', follower.zh);
-    const marker = markers.add(made.div, { target: follower.node, offset: [0, 3.6, 0], clampToEdge: true, margin: 40, maxDistance: 600 });
+    const marker = markers.add(made.div, { target: follower.node, offset: [0, 3.6, 0], maxDistance: 115 });
     return { follower, marker, ...made };
   });
   let shown = true;
   return {
     /** Show only the next station, with its distance, and the trucks; call once a frame after the camera moves. */
-    update(nextIndex, from) {
+    update(nextIndex, routePosition) {
       container.style.display = shown ? '' : 'none';
       if (!shown) return;
       stationMarkers.forEach(({ station, div, small }, i) => {
         const on = i === nextIndex;
         div.style.visibility = on ? '' : 'hidden';
         if (on && small) {
-          const d = Math.hypot(station.x - from[0], station.z - from[2]);
-          small.textContent = d > 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d)} m`;
+          const d = Math.max(0, station.s - routePosition);
+          const distance = d >= 1000 ? `${(d / 1000).toFixed(1)} km` : `${Math.round(d)} m`;
+          if (small.textContent !== distance) small.textContent = distance;
         }
       });
       markers.update();

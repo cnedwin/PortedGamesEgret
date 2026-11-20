@@ -4,7 +4,7 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: #1b2430;
+  background: #101d1b;
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: none;
@@ -37,19 +37,29 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 2px;
-  color: #fff7e2;
-  text-shadow: 0 1px 3px #000c;
+  gap: 0;
+  color: #fff0cd;
   white-space: nowrap;
   transition: opacity 0.2s;
 }
+.marker[hidden] {
+  display: none;
+}
+.marker .badge {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  border: 1px solid #e8b56869;
+  background: #101d1be8;
+}
 .marker .pin {
-  width: 18px;
-  height: 18px;
-  border-radius: 50% 50% 50% 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
   transform: rotate(-45deg);
-  background: var(--tint, #e2b14c);
-  box-shadow: 0 0 0 2px #0008, 0 0 10px var(--tint, #e2b14c);
+  background: var(--tint, #e8b568);
 }
 .marker[data-on-edge] .pin {
   border-radius: 50%;
@@ -64,9 +74,11 @@ body {
 }
 .marker[data-on-edge] .arrow {
   display: block;
+  position: absolute;
+  top: -16px;
 }
 .marker.friend {
-  --tint: #7ec3d8;
+  --tint: #86bba7;
   font-size: 11px;
 }
 #loading {
@@ -74,20 +86,36 @@ body {
   inset: 0;
   margin: 0;
   display: grid;
-  place-content: center;
-  text-align: center;
+  align-content: center;
+  padding-inline: max(6vw, env(safe-area-inset-left));
   color: #f2e6c8;
-  font: 600 26px/1.6 "Noto Serif SC", "Songti SC", serif;
-  letter-spacing: 0.08em;
-  background: radial-gradient(circle at 50% 40%, #33465a, #141b24);
-  transition: opacity 0.6s;
+  font: 600 18px/1.45 "Noto Serif SC", "Songti SC", serif;
+  background: linear-gradient(90deg, #101d1bfa, #101d1b81 43%, transparent 75%), url("assets/dawn-convoy.webp") center / cover no-repeat #101d1b;
+  z-index: 4;
+  transition: opacity 0.45s, visibility 0.45s;
 }
-#loading span {
-  font-size: 14px;
-  opacity: 0.7;
+.loading-copy {
+  display: grid;
+  justify-items: start;
+  gap: 10px;
+}
+.loading-copy strong {
+  font-size: clamp(38px, 6vw, 88px);
+  line-height: 1.16;
+}
+.loading-title {
+  letter-spacing: 0.2em;
+  color: #e8b568;
+  padding-bottom: 22px;
+}
+[data-load-stage] {
+  padding-top: 12px;
+  border-top: 1px solid #e8b56875;
+  font: 500 14px/1.45 system-ui, sans-serif;
 }
 #loading.gone {
   opacity: 0;
+  visibility: hidden;
   pointer-events: none;
 }
 
@@ -99,14 +127,25 @@ body {
   margin: 0;
   z-index: 5;
   place-content: center;
+  gap: 8px;
   text-align: center;
   color: #f2e6c8;
   font: 600 24px/1.6 "Noto Serif SC", "Songti SC", serif;
-  background: #141b24f0;
+  background: linear-gradient(#101d1bc9, #101d1bfa), url("assets/dawn-convoy.webp") center / cover no-repeat #101d1b;
 }
 #rotate span {
   font-size: 14px;
   opacity: 0.7;
+}
+#rotate button {
+  justify-self: center;
+  margin-top: 12px;
+  border: 1px solid #e8b56894;
+  border-radius: 8px;
+  padding: 12px 18px;
+  color: #fff0cd;
+  background: #6b382a;
+  font: 600 14px system-ui, sans-serif;
 }
 @media (orientation: portrait) and (pointer: coarse) {
   #rotate {
@@ -115,7 +154,10 @@ body {
 }
 .marker small {
   font: 500 11px/1 "Noto Sans SC", sans-serif;
-  opacity: 0.85;
+  color: #e8b568;
+}
+@media (prefers-reduced-motion: reduce) {
+  #loading, .marker { transition: none; }
 }
 
 /* 结尾短片录制时的字幕（只在 ?film 模式里出现）。 The film's titles, shown only while it is recorded (?film). */

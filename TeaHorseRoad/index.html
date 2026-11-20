@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
-    <meta name="theme-color" content="#1b2430" />
+    <meta name="theme-color" content="#101d1b" />
     <title>茶马古道 · Tea Horse Road</title>
     <link rel="stylesheet" href="style.css" />
     <script type="importmap">
@@ -46,8 +46,18 @@
     <main id="frame">
       <canvas id="world" aria-hidden="true"></canvas>
       <div id="markers" aria-hidden="true"></div>
-      <p id="rotate">请把手机横过来<br /><span>Turn your phone sideways</span></p>
-      <p id="loading">茶马古道 · Tea Horse Road<br /><span>正在铺路 · Laying the road…</span></p>
+      <div id="rotate">
+        <strong>横屏驾驶</strong>
+        <span id="rotate-help">请把手机横过来 · Turn your phone sideways</span>
+        <button id="rotate-button" type="button" hidden>横屏全屏 · Play in landscape</button>
+      </div>
+      <div id="loading" role="status">
+        <div class="loading-copy">
+          <strong>茶马古道</strong>
+          <span class="loading-title">TEA HORSE ROAD</span>
+          <span data-load-stage>正在准备车队 · Preparing the convoy</span>
+        </div>
+      </div>
     </main>
     <script type="module" src="src/main.mjs"></script>
   </body>

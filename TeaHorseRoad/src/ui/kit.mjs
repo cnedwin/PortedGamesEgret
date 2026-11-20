@@ -10,12 +10,12 @@ import { DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createActionControl, createControlKeys, createRangeControl, createSelectionGroup, createToggleControl } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
 /** The palette: indigo cloth, saffron, the red, turquoise and white of the flags, and the paper of a waybill. */
-export const INK = 0x141a26,
-  INDIGO = 0x23304a,
-  SAFFRON = 0xe3a83e,
-  FLAG_RED = 0xb8392c,
-  TURQUOISE = 0x2e8c86,
-  PAPER = 0xf3e8d0;
+export const INK = 0x101d1b,
+  INDIGO = 0x293e39,
+  SAFFRON = 0xe8b568,
+  FLAG_RED = 0xba5239,
+  TURQUOISE = 0x549992,
+  PAPER = 0xf4e9cf;
 const GOLD = SAFFRON,
   LACQUER = FLAG_RED;
 
@@ -98,12 +98,12 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
         focused = focusShown() && focusId() === id;
       g.clear();
       g.lineStyle(2, INK, 1);
-      const top = primary ? 0xc4482e : 0x34466a,
-        bottom = primary ? 0x7c2216 : 0x1a2338;
+      const top = primary ? 0xaa4e33 : 0x2c473e,
+        bottom = primary ? 0x692d21 : 0x182924;
       g.beginLinearGradientFill(0, 0, 0, height, stops([0, pressed ? bottom : top], [1, pressed ? top : bottom]))
         .drawRoundRect(0, pressed ? 2 : 0, width, height, 10, 10)
         .endFill();
-      g.lineStyle(1.5, state.enabled ? GOLD : 0x6a6050, state.enabled ? 0.85 : 0.5);
+      g.lineStyle(1.5, state.enabled ? GOLD : 0x6a6050, state.enabled ? (primary ? 0.85 : 0.48) : 0.5);
       g.drawRoundRect(4, (pressed ? 2 : 0) + 4, width - 8, height - 8, 7, 7);
       g.lineStyle(0);
       ring.graphics.clear();

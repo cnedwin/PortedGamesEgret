@@ -10,9 +10,9 @@ import { lerp } from './noise.mjs';
 
 // Per leg: sky zenith and horizon, sun colour, fog colour (linear RGB) and density.
 const WEATHER = [
-  { zenith: [0.05, 0.18, 0.62], horizon: [0.5, 0.66, 0.84], ground: [0.2, 0.24, 0.18], sun: [1.0, 0.9, 0.74], fog: [0.52, 0.64, 0.78], density: 0.0007, height: 40 },
-  { zenith: [0.1, 0.24, 0.56], horizon: [0.58, 0.62, 0.68], ground: [0.2, 0.2, 0.18], sun: [1.0, 0.84, 0.64], fog: [0.52, 0.55, 0.6], density: 0.0013, height: 100 },
-  { zenith: [0.06, 0.2, 0.55], horizon: [0.6, 0.7, 0.84], ground: [0.45, 0.48, 0.54], sun: [1.0, 0.96, 0.9], fog: [0.6, 0.68, 0.8], density: 0.0011, height: 280 }
+  { zenith: [0.075, 0.25, 0.34], horizon: [0.65, 0.73, 0.68], ground: [0.16, 0.21, 0.17], sun: [1.0, 0.86, 0.68], fog: [0.49, 0.60, 0.56], density: 0.00082, height: 56 },
+  { zenith: [0.12, 0.26, 0.40], horizon: [0.72, 0.64, 0.52], ground: [0.23, 0.19, 0.14], sun: [1.0, 0.81, 0.59], fog: [0.62, 0.54, 0.47], density: 0.00115, height: 100 },
+  { zenith: [0.075, 0.19, 0.38], horizon: [0.52, 0.63, 0.74], ground: [0.35, 0.39, 0.50], sun: [1.0, 0.94, 0.83], fog: [0.57, 0.65, 0.76], density: 0.00105, height: 245 }
 ];
 
 /**
@@ -24,15 +24,15 @@ export function createSky(scene, renderer, { quality = 'medium' } = {}) {
   const skies = WEATHER.map((w) => createGradientCubeTexture3D(w.zenith, w.horizon, w.ground, 64));
   scene.background = skies[0];
   scene.environment = skies[0];
-  scene.environmentIntensity = 0.55;
+  scene.environmentIntensity = 0.49;
   // The sky is drawn brighter than it lights the land, so it reads as open air after tone mapping.
-  scene.backgroundIntensity = 1.9;
+  scene.backgroundIntensity = 1.64;
 
-  const hemisphere = createHemisphereLight3D({ color: 0xb4cdf0, groundColor: 0x4a4436, intensity: 0.55 });
+  const hemisphere = createHemisphereLight3D({ color: 0xb9d5d9, groundColor: 0x66503d, intensity: 0.55 });
   const ambient = createAmbientLight3D({ color: 0xffffff, intensity: 0.08 });
   const sun = createDirectionalLight3D({ color: 0xfff1d8, intensity: 2.6, castShadow: quality !== 'low' });
   // The sun stands high in the south-west of a late morning.
-  const toSun = [-0.42, 0.72, 0.55],
+  const toSun = [-0.57, 0.57, 0.58],
     l = Math.hypot(...toSun);
   for (let i = 0; i < 3; i++) toSun[i] /= l;
   if (quality !== 'low') {
@@ -58,9 +58,9 @@ export function createSky(scene, renderer, { quality = 'medium' } = {}) {
       post.fxaa = false;
       post.ssao = false;
     }
-    post.saturation = 1.06;
-    post.contrast = 1.04;
-    post.vignette = 0.18;
+    post.saturation = 1.01;
+    post.contrast = 1.08;
+    post.vignette = 0.15;
     if (post.bloom) {
       post.bloomThreshold = 1.4;
       post.bloomIntensity = 0.35;

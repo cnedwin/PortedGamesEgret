@@ -236,8 +236,9 @@ function heightAt(x, z, level = baseLevel(x, z)) {
     h = lerp(floor, h, Math.pow(k, 0.55));
   }
 
-  // The road, a level shelf eight metres wide, eased into the land on either side; on the bridge it is the bridge.
-  const onBridge = n.s > BRIDGE.from - 6 && n.s < BRIDGE.to + 6;
+  // Keep the banks under the first and last planks. The overlap also covers
+  // the two-metre terrain grid, which otherwise leaves a gap before the deck.
+  const onBridge = n.s > BRIDGE.from + 4 && n.s < BRIDGE.to - 4;
   if (!onBridge) {
     const shoulder = smoothstep(ROAD_HALF_WIDTH + 1, ROAD_HALF_WIDTH + 14, n.d);
     h = lerp(n.y - 0.05 * smoothstep(0, ROAD_HALF_WIDTH, n.d), h, shoulder);

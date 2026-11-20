@@ -86,10 +86,20 @@ function horse() {
 /** Chests of tea stacked and roped. */
 function chests() {
   const b = createGeometryBuilder3D();
-  const box = createBoxGeometry3D({ width: 0.8, height: 0.5, depth: 0.55 });
+  const plank = createBoxGeometry3D({ width: 0.8, height: 0.154, depth: 0.55 });
+  const rail = createBoxGeometry3D({ width: 0.09, height: 0.5, depth: 0.58 });
+  const lid = createBoxGeometry3D({ width: 0.82, height: 0.045, depth: 0.57 });
+  const seal = createBoxGeometry3D({ width: 0.13, height: 0.12, depth: 0.009 });
+  const tones = [0x836343, 0xa0865a, 0x8f704c, 0xb09262];
   for (const [x, y, z, r] of [[0, 0.25, 0, 0], [0.84, 0.25, 0.04, 0.05], [0.4, 0.75, 0.02, -0.08], [-0.1, 0.25, 0.62, 0.1]]) {
-    b.add(box, { position: [x, y, z], rotation: [0, r, 0], color: 0x7a5432 });
-    b.add(createBoxGeometry3D({ width: 0.82, height: 0.05, depth: 0.57 }), { position: [x, y + 0.08, z], rotation: [0, r, 0], color: 0x3a2818 });
+    const add = (geometry, dx, dy, dz, color) => b.add(geometry, {
+      position: [x + dx * Math.cos(r) + dz * Math.sin(r), y + dy, z - dx * Math.sin(r) + dz * Math.cos(r)],
+      rotation: [0, r, 0], color
+    });
+    for (let i = 0; i < 3; i++) add(plank, 0, (i - 1) * 0.166, 0, tones[(i + Math.round(x * 5) + 4) % 4]);
+    add(lid, 0, 0.244, 0, 0xa38256);
+    for (const side of [-1, 1]) add(rail, side * 0.31, 0, 0, 0x554536);
+    add(seal, 0, 0, 0.281, 0xa54f37);
   }
   return [b.build(), solid];
 }

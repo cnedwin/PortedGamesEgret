@@ -30,8 +30,28 @@ const mudMaterial = createStandardMaterial3D({
   roughness: 1,
   depthWrite: false
 });
-const lashing = createStandardMaterial3D({ color: 0x6a4e2a, roughness: 0.95 });
-const tarpMaterial = createStandardMaterial3D({ map: new Texture3D(clothPixels(128, [74, 84, 98]), { wrapS: 'repeat', wrapT: 'repeat', mipmaps: true }), side: 'double', roughness: 0.92 });
+const lashing = createStandardMaterial3D({ color: 0x8b633b, roughness: 0.95 });
+
+function tarpPixels() {
+  const cloth = clothPixels(128, [66, 97, 86]);
+  const hem = clothPixels(128, [185, 145, 95]);
+  for (let y = 0; y < cloth.height; y++) {
+    for (let x = 0; x < cloth.width; x++) {
+      const edge = Math.min(x, y, cloth.width - 1 - x, cloth.height - 1 - y);
+      if (edge < 4 || edge === 7) {
+        const i = (y * cloth.width + x) * 4;
+        cloth.data.set(hem.data.subarray(i, i + 4), i);
+      }
+    }
+  }
+  return cloth;
+}
+
+const tarpMaterial = createStandardMaterial3D({
+  map: new Texture3D(tarpPixels(), { wrapS: 'clamp', wrapT: 'clamp', mipmaps: true }),
+  side: 'double',
+  roughness: 0.93
+});
 
 /** Rotate a point given in a body's frame into the world. */
 function toWorld(body, local, out = [0, 0, 0]) {
@@ -54,26 +74,33 @@ function turn(body, local) {
   return [p[0] - body.position[0], p[1] - body.position[1], p[2] - body.position[2]];
 }
 
-/** Ropes over the cargo and a tarp over its back half, tied to the truck and moved by the wind of its going. */
+/** Ropes over the cargo and a short canvas over its leading row, moved by the wind of the truck. */
 function dressCargo(scene, physics, truck) {
   const body = truck.chassis,
     dressing = [];
-  // A box the tarp lies on, following the cargo; it touches nothing else in the world.
-  const bale = physics.createBody({ type: 'kinematic', shape: { type: 'box', halfExtents: [1.0, 0.36, 0.95] }, position: toWorld(body, [0, 0.72, 1.0]), layer: 0, mask: 0 });
-  for (const z of [0.3, 1.75]) {
-    const left = toWorld(body, [-1.12, 0.78, z]),
-      right = toWorld(body, [1.12, 0.78, z]);
-    const rope = createRope3D({ start: left, end: right, segments: 12, slack: 0.33, damping: 0.12, iterations: 8 });
-    // Draped over the top of the load: the middle points sit on it.
+  // The canvas and ropes rest on this invisible proxy for the two layers of wraps.
+  const loadCenter = [0, 0.68, 1.04];
+  const bale = physics.createBody({
+    type: 'kinematic',
+    shape: { type: 'box', halfExtents: [1.0, 0.386, 1.4] },
+    position: toWorld(body, loadCenter),
+    quaternion: body.quaternion,
+    layer: 0,
+    mask: 0
+  });
+  for (const z of [0.77, 2.02]) {
+    const left = toWorld(body, [-1.12, 0.8, z]);
+    const right = toWorld(body, [1.12, 0.8, z]);
+    const rope = createRope3D({ start: left, end: right, segments: 12, slack: 0.04, damping: 0.26, iterations: 8, colliders: [bale], thickness: 0.024 });
     for (let i = 0; i <= 12; i++) {
-      const t = i / 12,
-        lift = Math.sin(t * Math.PI) * 0.62;
-      rope.setPoint(i, left[0] + (right[0] - left[0]) * t, left[1] + (right[1] - left[1]) * t + lift, left[2] + (right[2] - left[2]) * t);
+      const edge = i / 6 - 1;
+      rope.setPoint(i, ...toWorld(body, [1.12 * edge, 0.8 + 0.312 * (1 - edge ** 8), z]));
     }
-    for (const i of [0, 3, 9, 12]) rope.pinPoint(i, body);
+    // A keeper over the load holds the lashing across the same row as the truck accelerates.
+    for (const i of [0, 1, 6, 11, 12]) rope.pinPoint(i, body);
     // The mesh's bounds are cached where it was made and not refreshed as it travels (see ENGINE-NOTES), so it is
     // never culled; it is a handful of triangles.
-    const mesh = rope.createMesh(lashing, 0.032, 5);
+    const mesh = rope.createMesh(lashing, 0.022, 5);
     mesh.frustumCulled = false;
     scene.addChild(mesh);
     dressing.push(rope);
@@ -82,14 +109,21 @@ function dressCargo(scene, physics, truck) {
   const tarp = createCloth3D({
     columns: 9,
     rows: 6,
-    origin: toWorld(body, [-1.15, 1.2, 0.75]),
-    right: turn(body, [2.3, 0, 0]),
-    down: turn(body, [0, 0, 1.35]),
+    origin: toWorld(body, [-1.16, 1.135, -0.18]),
+    right: turn(body, [2.32, 0, 0]),
+    down: turn(body, [0, 0, 0.82]),
     colliders: [bale],
     thickness: 0.05,
-    damping: 0.06,
-    iterations: 6
+    damping: 0.24,
+    iterations: 8
   });
+  for (let row = 0; row < tarp.rows; row++) {
+    for (let col = 0; col < tarp.columns; col++) {
+      const edge = (2 * col) / (tarp.columns - 1) - 1;
+      const z = -0.18 + (0.82 * row) / (tarp.rows - 1);
+      tarp.setPoint(tarp.indexOf(col, row), ...toWorld(body, [1.16 * edge, 1.135 - 0.255 * edge ** 8, z]));
+    }
+  }
   // Tied at its front edge and at the two back corners; the rest lies loose on the load.
   for (let c = 0; c < 9; c++) tarp.pin(c, 0, body);
   tarp.pin(0, 5, body);
@@ -109,7 +143,7 @@ function dressCargo(scene, physics, truck) {
     dressing,
     bale,
     update(seconds) {
-      const p = toWorld(body, [0, 0.72, 1.0]);
+      const p = toWorld(body, loadCenter);
       bale.setPosition(p[0], p[1], p[2]);
       bale.setQuaternion(...body.quaternion);
       // The air of the truck's going lifts the loose cloth.

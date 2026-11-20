@@ -8,7 +8,7 @@ import { InstancedMesh3D, createStandardMaterial3D } from '@egret/engine/world3d
 import { broadleafGeometry, farBroadleafGeometry, farPineGeometry, pineGeometry, stoneGeometry, teaBushGeometry, teaStripGeometry, tuftGeometry } from '../models/plants.mjs';
 import { LAYER, TILE } from './land.mjs';
 import { FORD, LAKE, RIVER, STATIONS, biomeAt, nearestRoad } from './route.mjs';
-import { noise2, seeded, smoothstep } from './noise.mjs';
+import { noise2, random2, seeded } from './noise.mjs';
 
 const foliage = createStandardMaterial3D({ vertexColors: true, roughness: 0.88, metallic: 0 });
 const stone = createStandardMaterial3D({ vertexColors: true, roughness: 0.92, metallic: 0 });
@@ -21,6 +21,26 @@ const NEAR_TREES = { low: 120, medium: 190, high: 260 };
 const TEA_NEAR = { low: 40, medium: 60, high: 80 };
 const SMALL = new Set(['tuft', 'scree']);
 const FAR = { pine: () => farPineGeometry(false), fir: () => farPineGeometry(true), broadleaf: () => farBroadleafGeometry() };
+
+/** Broad changes in leaf colour across a stand, with more gold on exposed tea terraces. */
+function tintAt(mesh, index, x, z, tea) {
+  const patch = noise2(x / 39, z / 39, 97),
+    light = 0.96 + patch * 0.17;
+  mesh.setColorAt(index, light + patch * 0.12, light, light - patch * (tea ? 0.23 : 0.08));
+}
+
+function teaRowZ(x, rowZ) {
+  return rowZ + 3.6 * noise2(x / 63, rowZ / 68, 94) + 0.9 * Math.sin(x / 29 + rowZ / 37);
+}
+
+// Rotate a row segment about local Z (slope), then about world Y (heading).
+function teaRotation(yaw, pitch) {
+  const sy = Math.sin(yaw / 2),
+    cy = Math.cos(yaw / 2),
+    sp = Math.sin(pitch / 2),
+    cp = Math.cos(pitch / 2);
+  return [sy * sp, sy * cp, cy * sp, cy * cp];
+}
 
 /** Whether nothing should grow here: the road and its verge, the stations, the water. */
 function bare(x, z, n) {
@@ -102,46 +122,57 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
       }
     }
 
-    // Tea in rows along the hillsides of the tea hills, in fields that come and go with the land. The tile is cut into
-    // 3 x 3 cells; near the camera a cell shows each bush, further off its rows as plain hedge strips.
+    // Tea rows follow gentle curves through the terraces. Their grid is anchored in world space so adjoining tiles
+    // follow the same rows. A cell draws individual bushes nearby and joined hedges in the distance.
     const CELL = TILE / 3,
+      xMin = cx - TILE / 2,
+      zMin = cz - TILE / 2,
+      teaStep = 2.05 / Math.sqrt(density),
       teaCells = Array.from({ length: 9 }, () => ({ bushes: [], strips: [] }));
-    const cellOf = (x, z) => teaCells[Math.min(2, Math.floor((z - cz + TILE / 2) / CELL)) * 3 + Math.min(2, Math.floor((x - cx + TILE / 2) / CELL))];
+    const cellOf = (x, z) => teaCells[Math.floor((z - zMin) / CELL) * 3 + Math.floor((x - xMin) / CELL)];
     biomeAt(nearestRoad(cx, cz, n).s, biome);
     if (biome[0] > 0.2) {
-      const row = 2.4,
-        step = 1.9 / Math.sqrt(density);
-      for (let z = cz - TILE / 2 + row / 2; z < cz + TILE / 2; z += row) {
-        let run = [];
-        // A strip covers up to four bushes standing in a row with no gap.
-        const strip = () => {
-          if (run.length) {
-            const [x0, y0, z0] = run[0],
-              [x1, y1, z1] = run[run.length - 1];
-            cellOf((x0 + x1) / 2, (z0 + z1) / 2).strips.push((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, x1 - x0 + step, Math.atan2(y1 - y0, x1 - x0 || 1));
-          }
+      const rowSpacing = 3.1,
+        maxSway = 4.65,
+        firstColumn = Math.ceil(xMin / teaStep - 0.5),
+        firstRow = Math.ceil((zMin - maxSway) / rowSpacing - 0.5);
+      for (let row = firstRow; (row + 0.5) * rowSpacing < zMin + TILE + maxSway; row++) {
+        const rowZ = (row + 0.5) * rowSpacing,
           run = [];
+        let activeCell = null;
+        const strip = () => {
+          if (!run.length) return;
+          const [x0, y0, z0, localHeading] = run[0],
+            [x1, y1, z1] = run[run.length - 1],
+            runLength = Math.hypot(x1 - x0, z1 - z0),
+            yaw = runLength ? Math.atan2(z0 - z1, x1 - x0) : localHeading,
+            pitch = runLength ? Math.atan2(y1 - y0, runLength) : 0;
+          activeCell.strips.push((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, Math.hypot(runLength, y1 - y0) + teaStep, yaw, pitch);
+          run.length = 0;
         };
-        for (let x = cx - TILE / 2 + step / 2; x < cx + TILE / 2; x += step) {
-          const field = noise2(x / 70, z / 70, 92) * 0.5 + 0.5;
-          const jx = x + (random() - 0.5) * 0.25,
-            jz = z + (random() - 0.5) * 0.2;
-          let ok = field >= 0.42;
-          if (ok) {
-            nearestRoad(jx, jz, n);
-            ok = !bare(jx, jz, n) && n.d >= 11;
-          }
-          if (ok) {
-            biomeAt(n.s, biome);
-            ok = random() <= biome[0] && slopeAt(jx, jz) <= 0.5;
-          }
-          if (!ok) {
+        for (let column = firstColumn; (column + 0.5) * teaStep < xMin + TILE; column++) {
+          const x = (column + 0.5) * teaStep,
+            z = teaRowZ(x, rowZ) + (random2(column, row, 96) - 0.5) * 0.18;
+          if (z < zMin || z >= zMin + TILE || noise2(x / 70, z / 70, 92) < -0.16) {
             strip();
             continue;
           }
-          const y = groundAt(jx, jz) - 0.1;
-          cellOf(jx, jz).bushes.push(jx, y, jz, 0.9 + random() * 0.2, (random() - 0.5) * 0.12, 0);
-          run.push([x, y, z]);
+          nearestRoad(x, z, n);
+          biomeAt(n.s, biome);
+          if (n.d < 11 || bare(x, z, n) || random2(column, row, 98) > biome[0] || slopeAt(x, z) > 0.5) {
+            strip();
+            continue;
+          }
+          const cell = cellOf(x, z),
+            y = groundAt(x, z) - 0.1,
+            yaw = Math.atan2(teaRowZ(x - 1, rowZ) - teaRowZ(x + 1, rowZ), 2),
+            size = 0.93 + random2(column, row, 99) * 0.15;
+          if (activeCell !== cell) {
+            strip();
+            activeCell = cell;
+          }
+          cell.bushes.push(x, y, z, size, yaw, 0);
+          run.push([x, y, z, yaw]);
           if (run.length === 4) strip();
         }
         strip();
@@ -157,11 +188,20 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
     const instances = (geometry, material, list, kind) => {
       const count = list.length / 6,
         mesh = new InstancedMesh3D(geometry, material, count);
+      const teaBush = kind === 'tea';
       for (let i = 0; i < count; i++) {
         const o = i * 6,
+          x = list[o],
+          z = list[o + 2],
+          scale = list[o + 3],
           yaw = list[o + 4],
-          tilt = list[o + 5];
-        mesh.setTransformAt(i, [list[o] - cx, list[o + 1], list[o + 2] - cz], [Math.sin(tilt / 2), Math.sin(yaw / 2) * Math.cos(tilt / 2), 0, Math.cos(yaw / 2) * Math.cos(tilt / 2)], list[o + 3]);
+          tilt = list[o + 5],
+          sy = Math.sin(yaw / 2),
+          cy = Math.cos(yaw / 2),
+          st = Math.sin(tilt / 2),
+          ct = Math.cos(tilt / 2);
+        mesh.setTransformAt(i, [x - cx, list[o + 1], z - cz], [cy * st, sy * ct, -sy * st, cy * ct], teaBush ? [scale * teaStep / 2.05, scale, scale] : scale);
+        if (material === foliage) tintAt(mesh, i, x, z, teaBush);
       }
       mesh.count = count;
       mesh.castShadow = quality !== 'low' && !SMALL.has(kind);
@@ -172,7 +212,7 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
     };
     for (const [kind, list] of kinds) {
       const geometry =
-        kind === 'pine' ? pineGeometry(false) : kind === 'fir' ? pineGeometry(true) : kind === 'broadleaf' ? broadleafGeometry() : kind === 'tea' ? teaBushGeometry() : kind === 'tuft' ? tuftGeometry(0x6f6a3a) : stoneGeometry(kind === 'boulder' ? 0 : kind === 'slab' ? 1 : 2);
+        kind === 'pine' ? pineGeometry(false) : kind === 'fir' ? pineGeometry(true) : kind === 'broadleaf' ? broadleafGeometry() : kind === 'tuft' ? tuftGeometry(0x6f6a3a) : stoneGeometry(kind === 'boulder' ? 0 : kind === 'slab' ? 1 : 2);
       const material = kind === 'boulder' || kind === 'slab' || kind === 'scree' ? stone : foliage,
         mesh = instances(geometry, material, list, kind);
       if (SMALL.has(kind)) small.push(mesh);
@@ -180,6 +220,7 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
         near.push(mesh);
         const copy = instances(FAR[kind](), material, list, kind);
         copy.castShadow = false;
+        copy.visible = false;
         far.push(copy);
       }
     }
@@ -187,15 +228,18 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
     teaCells.forEach((cell, i) => {
       if (!cell.bushes.length) return;
       const bushes = instances(teaBushGeometry(), foliage, cell.bushes, 'tea'),
-        count = cell.strips.length / 5,
+        count = cell.strips.length / 6,
         strips = new InstancedMesh3D(teaStripGeometry(), foliage, count);
       for (let k = 0; k < count; k++) {
-        const o = k * 5,
-          pitch = cell.strips[o + 4];
-        strips.setTransformAt(k, [cell.strips[o] - cx, cell.strips[o + 1], cell.strips[o + 2] - cz], [0, 0, Math.sin(pitch / 2), Math.cos(pitch / 2)], [cell.strips[o + 3], 1, 1]);
+        const o = k * 6,
+          x = cell.strips[o],
+          z = cell.strips[o + 2];
+        strips.setTransformAt(k, [x - cx, cell.strips[o + 1], z - cz], teaRotation(cell.strips[o + 4], cell.strips[o + 5]), [cell.strips[o + 3], 1, 1]);
+        tintAt(strips, k, x, z, true);
       }
       strips.count = count;
       strips.receiveShadow = true;
+      strips.visible = false;
       tile.terrain.addChild(strips);
       meshes.push(strips);
       tea.push({ bushes, strips, x: cx - TILE / 2 + ((i % 3) + 0.5) * CELL, z: cz - TILE / 2 + (Math.floor(i / 3) + 0.5) * CELL, distance: -1 });
@@ -227,12 +271,12 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
           d = Math.hypot(dx, dz);
         for (const cell of entry.tea) {
           const e = Math.hypot(Math.max(0, Math.abs(x - cell.x) - TILE / 6), Math.max(0, Math.abs(z - cell.z) - TILE / 6));
-          if (Math.abs(e - cell.distance) < 3) continue;
+          if (cell.distance >= 0 && Math.abs(e - cell.distance) < 3) continue;
           cell.distance = e;
           cell.bushes.visible = e < teaNear;
           cell.strips.visible = e >= teaNear && e < detail * 1.6;
         }
-        if (Math.abs(d - entry.distance) < 4) continue;
+        if (entry.distance >= 0 && Math.abs(d - entry.distance) < 4) continue;
         entry.distance = d;
         for (const mesh of entry.small) mesh.visible = d < detail;
         for (const mesh of entry.near) mesh.visible = d < nearTrees;

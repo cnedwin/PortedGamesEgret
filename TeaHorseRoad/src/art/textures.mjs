@@ -59,7 +59,7 @@ const clamp255 = (v) => (v < 0 ? 0 : v > 255 ? 255 : v);
 
 /** Grass in three moods: the deep green of the tea hills, the dry gold of the gorge, the brown turf of the high pass. */
 const GRASS = {
-  lush: { low: [34, 58, 22], high: [70, 104, 38], dry: [96, 98, 52] },
+  lush: { low: [38, 54, 34], high: [69, 90, 54], dry: [112, 106, 61] },
   dry: { low: [70, 66, 40], high: [120, 110, 70], dry: [150, 136, 100] },
   alpine: { low: [60, 58, 36], high: [104, 98, 62], dry: [136, 126, 96] }
 };
@@ -71,7 +71,7 @@ export function grassPixels(size = 256, mood = 'lush') {
       patch = tileFbm(u, v, 3, 3, 105),
       blade = random2(x, y, 103);
     const t = Math.min(1, Math.max(0, clump * 0.8 + fine * 0.4 - 0.1)),
-      d = Math.max(0, patch - 0.55) * 1.8;
+      d = Math.max(0, patch - 0.46) * 1.7;
     for (let k = 0; k < 3; k++) out[k] = clamp255(mix(mix(c.low[k], c.high[k], t), c.dry[k], d) * (0.82 + 0.3 * fine) + (blade > 0.975 ? 24 : 0));
   });
 }
@@ -83,9 +83,9 @@ export function soilPixels(size = 256) {
       grain = tileFbm(u, v, 48, 2, 202),
       pebble = tileNoise(u * 40, v * 40, 40, 203),
       speck = random2(x, y, 204);
-    let r = mix(98, 132, n) * (0.85 + 0.3 * grain),
-      g = mix(78, 100, n) * (0.85 + 0.3 * grain),
-      b = mix(58, 72, n) * (0.85 + 0.3 * grain);
+    let r = mix(92, 128, n) * (0.82 + 0.29 * grain),
+      g = mix(68, 95, n) * (0.82 + 0.29 * grain),
+      b = mix(50, 71, n) * (0.82 + 0.29 * grain);
     if (pebble > 0.88) {
       const k = (pebble - 0.88) / 0.12;
       r = mix(r, 118 + 30 * k, 0.6);
