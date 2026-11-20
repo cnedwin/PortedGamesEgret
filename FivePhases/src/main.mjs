@@ -229,13 +229,14 @@ function hideOverlays() {
 
 function beginRun() {
   hideOverlays();
-  run = { index: 0, heroHp: 1000, extra: [] };
+  run = { index: 0, heroHp: 1000, extra: [], bestChain: 0 };
   lock = null;
   startBattle(0);
 }
 
 /** 打完一关：先让演出把最后一帧画完，再切界面。 */
 function endOfBattle() {
+  run.bestChain = Math.max(run.bestChain, battle.bestChain);
   if (battle.over === 'win') {
     run.heroHp = Math.max(1, Math.round(battle.hero.hp));
     lock = 'pending';
@@ -295,8 +296,8 @@ function showOver(result) {
   $('over-title').textContent = result === 'win' ? '三关皆破' : '倒下了';
   $('over-text').textContent =
     result === 'win'
-      ? `三关全破，剩余气血 ${Math.round(battle.hero.hp)}，最高连锁 ${battle.bestChain} 层。`
-      : `倒在第 ${run.index + 1} 关·${battle.enemy.name}，最高连锁 ${battle.bestChain} 层。`;
+      ? `三关全破，剩余气血 ${Math.round(battle.hero.hp)}，最高连锁 ${run.bestChain} 层。`
+      : `倒在第 ${run.index + 1} 关·${battle.enemy.name}，最高连锁 ${run.bestChain} 层。`;
   setOverlayVisible('overlay-over', true);
 }
 
@@ -791,7 +792,7 @@ async function boot() {
   hud = createHud({ root: hudRoot, onCard: tryPlay, onEndTurn: tryEndTurn });
 
   // 先摆一局出来当封面：标题页背后是一张真棋盘，不是一张图
-  run = { index: 0, heroHp: 1000, extra: [] };
+  run = { index: 0, heroHp: 1000, extra: [], bestChain: 0 };
   startBattle(0);
 
   bindTouch(game);
@@ -846,7 +847,7 @@ async function boot() {
     /** 直接跳到第 n 关，调美术和验收用。 */
     stage(index) {
       hideOverlays();
-      run = { index, heroHp: 1000, extra: [] };
+      run = { index, heroHp: 1000, extra: [], bestChain: 0 };
       lock = null;
       startBattle(index);
     },
