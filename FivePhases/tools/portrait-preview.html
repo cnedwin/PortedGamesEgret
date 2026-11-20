@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <title>部件清单预览 / Portrait parts preview</title>
-  <meta name="description" content="按部件清单绘制占位立绘，并显示骨骼、轴心与分层顺序，用来确认这套结构可以拆成 Spine。">
+  <meta name="description" content="预览拆分后的立绘部件、骨骼、轴心与绘制顺序。">
   <style>
     html, body { margin: 0; background: #0b0d11; overflow: hidden; }
     canvas { display: block; }
@@ -23,13 +23,26 @@
   <script type="module">
     import { drawOrder, boneIndex, lintPortrait } from '../src/portrait/fire.mjs';
     import { portraitById, defaultPortrait } from '../src/portrait/index.mjs';
+    import { ATLAS_PORTRAITS, portraitFromAtlas } from '../src/portrait/atlas.mjs';
 
     const query = new URLSearchParams(location.search);
     const showBones = query.get('bones') !== '0';
     const showLabels = query.get('labels') === '1';
     const showBackdrop = query.get('bg') !== '0';
 
-    const portrait = portraitById(query.get('id')) ?? defaultPortrait;
+    const id = query.get('id') ?? defaultPortrait.id;
+    let portrait = portraitById(id) ?? defaultPortrait;
+    let atlas = null;
+    if (ATLAS_PORTRAITS.includes(id) && query.get('legacy') !== '1') {
+      const art = new URL(`../assets/portraits/${id}/`, location.href);
+      const response = await fetch(new URL('rig.json', art));
+      if (response.ok) {
+        atlas = new Image();
+        atlas.src = new URL('atlas.png', art).href;
+        await atlas.decode();
+        portrait = portraitFromAtlas(id, await response.json(), atlas.naturalWidth, atlas.naturalHeight);
+      }
+    }
     const { width, height } = portrait.canvas;
     const canvas = document.getElementById('stage');
     canvas.width = width;
@@ -48,7 +61,7 @@
     fit();
 
     const bones = boneIndex(portrait);
-    const colour = (name) => portrait.palette[name] ?? name;
+    const colour = (name) => portrait.palette?.[name] ?? name;
 
     /**
      * 归一化路径 [-0.5, 0.5] 铺到 w×h 的框里。
@@ -127,6 +140,11 @@
         ctx.save();
         ctx.translate(bone.x + dx, bone.y + dy);
         ctx.rotate((part.rotation * Math.PI) / 180);
+        if (atlas && part.rect) {
+          ctx.drawImage(atlas, ...part.rect, -px * w, -py * h, w, h);
+          ctx.restore();
+          continue;
+        }
         ctx.translate(-(px - 0.5) * w, -(py - 0.5) * h);
 
         traceShape(part, w, h);
@@ -186,14 +204,12 @@
 
     const problems = lintPortrait(portrait);
     const hud = document.getElementById('hud');
-    hud.innerHTML =
-      `${portrait.title} · ${portrait.name}   ${portrait.role}\n` +
-      `<b>${portrait.parts.length}</b> 部件   <b>${portrait.bones.length}</b> 骨骼\n` +
-      `?bones=0 隐藏骨骼   ?labels=1 显示部件名   ?bg=0 透明底\n` +
-      (problems.length
-        ? `<span class="bad">体检不通过：\n${problems.join('\n')}</span>`
-        : `体检通过`);
-    document.title = `${portrait.title} 部件预览`;
+    hud.textContent = [
+      `${portrait.name}   ${portrait.parts.length} 部件   ${portrait.bones.length} 骨骼`,
+      `?id=${id} &bones=0 隐藏骨骼   &labels=1 显示部件名   &bg=0 透明底`,
+      problems.length ? problems.join('\n') : '部件位置与顺序通过检查',
+    ].join('\n');
+    document.title = `${portrait.name} · 部件预览`;
   </script>
 </body>
 </html>

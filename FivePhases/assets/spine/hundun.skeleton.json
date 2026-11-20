@@ -1,0 +1,188 @@
+{
+  "skeleton": {
+    "hash": "hundun-portrait",
+    "spine": "4.1.0",
+    "x": 0,
+    "y": 0,
+    "width": 777,
+    "height": 777,
+    "images": "../portraits/hundun/parts/",
+    "audio": ""
+  },
+  "bones": [
+    {
+      "name": "root",
+      "x": 8.5,
+      "y": 44,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "body",
+      "parent": "root",
+      "x": 21,
+      "y": 273,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "head",
+      "parent": "body",
+      "x": -140,
+      "y": 136,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "mane",
+      "parent": "body",
+      "x": 19,
+      "y": 258,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "left-arm",
+      "parent": "body",
+      "x": -296,
+      "y": 40,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "right-arm",
+      "parent": "body",
+      "x": 54,
+      "y": 42,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "tail",
+      "parent": "body",
+      "x": 238,
+      "y": -24,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    }
+  ],
+  "slots": [
+    {
+      "name": "ink-mane",
+      "bone": "mane",
+      "attachment": "ink-mane"
+    },
+    {
+      "name": "rear-haunch",
+      "bone": "tail",
+      "attachment": "rear-haunch"
+    },
+    {
+      "name": "obsidian-body",
+      "bone": "body",
+      "attachment": "obsidian-body"
+    },
+    {
+      "name": "left-grip",
+      "bone": "left-arm",
+      "attachment": "left-grip"
+    },
+    {
+      "name": "ritual-mask",
+      "bone": "head",
+      "attachment": "ritual-mask"
+    },
+    {
+      "name": "right-grip",
+      "bone": "right-arm",
+      "attachment": "right-grip"
+    }
+  ],
+  "skins": [
+    {
+      "name": "default",
+      "attachments": {
+        "ink-mane": {
+          "ink-mane": {
+            "type": "region",
+            "x": 46,
+            "y": 10.5,
+            "rotation": 0,
+            "width": 560,
+            "height": 305,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "rear-haunch": {
+          "rear-haunch": {
+            "type": "region",
+            "x": 28,
+            "y": -10.5,
+            "rotation": 0,
+            "width": 178,
+            "height": 387,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "obsidian-body": {
+          "obsidian-body": {
+            "type": "region",
+            "x": -25,
+            "y": 45.5,
+            "rotation": 0,
+            "width": 608,
+            "height": 551,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "left-grip": {
+          "left-grip": {
+            "type": "region",
+            "x": -4.5,
+            "y": -103,
+            "rotation": 0,
+            "width": 209,
+            "height": 422,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "ritual-mask": {
+          "ritual-mask": {
+            "type": "region",
+            "x": -21.5,
+            "y": 13,
+            "rotation": 0,
+            "width": 349,
+            "height": 520,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "right-grip": {
+          "right-grip": {
+            "type": "region",
+            "x": -14.5,
+            "y": -87,
+            "rotation": 0,
+            "width": 261,
+            "height": 496,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        }
+      }
+    }
+  ],
+  "animations": {}
+}

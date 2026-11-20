@@ -122,11 +122,13 @@ export function createFx({ Sprite, scope, world, layer, flashLayer }) {
     }
     flashSprite.visible = true;
     flashSprite.alpha = alpha;
+    flashStrength = alpha;
     flashLife = seconds;
     flashMax = seconds;
   }
   let flashLife = 0;
   let flashMax = 0.18;
+  let flashStrength = 0;
 
   function update(dt) {
     for (const particle of particles) {
@@ -161,9 +163,8 @@ export function createFx({ Sprite, scope, world, layer, flashLayer }) {
       flashLife -= dt;
       const k = flashMax > 0 ? Math.max(0, flashLife / flashMax) : 0;
       if (flashSprite) {
-        flashSprite.alpha = 0.75 * k;
-        // 尾巴那几帧 alpha 已经不到 2%，白画一整块全屏矩形，不如不画
-        flashSprite.visible = k > 0.02;
+        flashSprite.alpha = flashStrength * k;
+        flashSprite.visible = flashSprite.alpha > 0.015;
       }
     }
 

@@ -1,0 +1,240 @@
+{
+  "name": "焰",
+  "canvas": {
+    "width": 635,
+    "height": 952
+  },
+  "anchor": [
+    264,
+    601
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "x": 264,
+      "y": 601
+    },
+    {
+      "id": "hip",
+      "parent": "root",
+      "x": 268,
+      "y": 316
+    },
+    {
+      "id": "chest",
+      "parent": "hip",
+      "x": 258,
+      "y": 241
+    },
+    {
+      "id": "head",
+      "parent": "chest",
+      "x": 239,
+      "y": 149
+    },
+    {
+      "id": "hair-tail",
+      "parent": "head",
+      "x": 217,
+      "y": 46
+    },
+    {
+      "id": "shoulder-far",
+      "parent": "chest",
+      "x": 177,
+      "y": 209
+    },
+    {
+      "id": "elbow-far",
+      "parent": "shoulder-far",
+      "x": 104,
+      "y": 324
+    },
+    {
+      "id": "shoulder-near",
+      "parent": "chest",
+      "x": 317,
+      "y": 205
+    },
+    {
+      "id": "elbow-near",
+      "parent": "shoulder-near",
+      "x": 403,
+      "y": 273
+    },
+    {
+      "id": "hand-near",
+      "parent": "elbow-near",
+      "x": 471,
+      "y": 252
+    },
+    {
+      "id": "skirt-r",
+      "parent": "hip",
+      "x": 275,
+      "y": 321
+    },
+    {
+      "id": "sash",
+      "parent": "skirt-r",
+      "x": 336,
+      "y": 353
+    }
+  ],
+  "parts": [
+    {
+      "id": "ponytail",
+      "bone": "hair-tail",
+      "at": [
+        11,
+        9
+      ],
+      "rect": [
+        391,
+        554,
+        224,
+        322
+      ]
+    },
+    {
+      "id": "boots",
+      "bone": "root",
+      "at": [
+        104,
+        824
+      ],
+      "rect": [
+        285,
+        912,
+        298,
+        125
+      ]
+    },
+    {
+      "id": "robe",
+      "bone": "skirt-r",
+      "at": [
+        6,
+        308
+      ],
+      "rect": [
+        3,
+        3,
+        430,
+        545
+      ]
+    },
+    {
+      "id": "far-sleeve",
+      "bone": "shoulder-far",
+      "at": [
+        73,
+        166
+      ],
+      "rect": [
+        621,
+        554,
+        155,
+        198
+      ]
+    },
+    {
+      "id": "far-bracer",
+      "bone": "elbow-far",
+      "at": [
+        3,
+        307
+      ],
+      "rect": [
+        3,
+        912,
+        136,
+        161
+      ]
+    },
+    {
+      "id": "torso",
+      "bone": "chest",
+      "at": [
+        114,
+        22
+      ],
+      "rect": [
+        3,
+        554,
+        382,
+        352
+      ]
+    },
+    {
+      "id": "near-sleeve",
+      "bone": "shoulder-near",
+      "at": [
+        287,
+        174
+      ],
+      "rect": [
+        145,
+        912,
+        134,
+        155
+      ]
+    },
+    {
+      "id": "near-bracer",
+      "bone": "elbow-near",
+      "at": [
+        388,
+        237
+      ],
+      "rect": [
+        589,
+        912,
+        100,
+        83
+      ]
+    },
+    {
+      "id": "sword-hand",
+      "bone": "hand-near",
+      "at": [
+        452,
+        15
+      ],
+      "rect": [
+        605,
+        3,
+        181,
+        375
+      ]
+    },
+    {
+      "id": "face",
+      "bone": "head",
+      "at": [
+        193,
+        29
+      ],
+      "rect": [
+        782,
+        554,
+        116,
+        181
+      ]
+    },
+    {
+      "id": "waist-sash",
+      "bone": "sash",
+      "at": [
+        292,
+        299
+      ],
+      "rect": [
+        439,
+        3,
+        160,
+        381
+      ]
+    }
+  ]
+}

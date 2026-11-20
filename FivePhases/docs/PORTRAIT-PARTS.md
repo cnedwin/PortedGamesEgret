@@ -1,105 +1,73 @@
-# 立绘部件清单
+# 五行牌阵立绘部件
 
-> 这份文档由 `FivePhases/tools/parts-table.mjs` 从 `src/portrait/*.mjs` 生成，**不要手改**。
-> 要改部件就改清单文件，然后 `node FivePhases/tools/parts-table.mjs` 重跑一遍。
+角色原画先按关节和层序裁成带透明度的区域。清单使用左上为原点的画布坐标，骨骼的局部变换和渲染层序分别保存。拼贴后以一个共享 PNG 图集渲染每个角色，单片 PNG 用于美术返修。
 
-## 换真美术的步骤
+在 Spine 4.1 导入对应的 `*.skeleton.json`，图像目录选择角色的 `parts/`。外部运行时可配合同名 `*.atlas` 和 `atlas.png` 使用。浏览器中打开 `tools/portrait-preview.html?id=fire` 可检查拼接、关节和轴心。游戏的待机、出招和受击曲线由白鹭端播放。
 
-1. 跑 `node FivePhases/tools/spine-export.mjs`，得到 `assets/spine/<角色>.skeleton.json` 和 `.manifest.json`。
-2. 照 manifest 的 `size` 一张张画/生成 PNG，轴心放在 `pivot` 指定的位置。
-3. 用 TexturePacker 或 Spine 自带打包器把 PNG 打成图集（atlas 由打包器出，不手拼）。
-4. 把图集和 skeleton.json 一起丢进游戏，`image` 字段就算接上了。
+更新切片时保留骨骼和部件的 ID。重新打包 `atlas.png`，在 `rig.json` 更新图集矩形和画布位置，再运行 `node FivePhases/tools/spine-export.mjs` 与 `node FivePhases/tools/parts-table.mjs`。
 
-骨骼、槽位、绘制顺序全在 skeleton.json 里，换图不用改它。
+## 焰
 
-## 坐标约定
+635 × 952 的绑定画布，12 根骨与 11 个部件。画面锚点 `264, 601`。
 
-清单用画布坐标（原点左上，y 向下，像素）。转 Spine 时：
+[立绘原画](../assets/portraits/fire/master.webp) · [绑定清单](../assets/portraits/fire/rig.json) · [Spine 骨架](../assets/spine/fire.skeleton.json) · [Atlas 数据](../assets/spine/fire.atlas)
 
-```
-spine_x = canvas_x - canvas.width / 2
-spine_y = canvas.height - canvas_y
-spine_rotation = -canvas_rotation
-```
+| 图层 | 部件 | 父骨 | 画布左上位置 |
+| --- | --- | --- | --- |
+| 0 | [ponytail](../assets/portraits/fire/parts/ponytail.png) | `hair-tail` | `11, 9` |
+| 1 | [boots](../assets/portraits/fire/parts/boots.png) | `root` | `104, 824` |
+| 2 | [robe](../assets/portraits/fire/parts/robe.png) | `skirt-r` | `6, 308` |
+| 3 | [far-sleeve](../assets/portraits/fire/parts/far-sleeve.png) | `shoulder-far` | `73, 166` |
+| 4 | [far-bracer](../assets/portraits/fire/parts/far-bracer.png) | `elbow-far` | `3, 307` |
+| 5 | [torso](../assets/portraits/fire/parts/torso.png) | `chest` | `114, 22` |
+| 6 | [near-sleeve](../assets/portraits/fire/parts/near-sleeve.png) | `shoulder-near` | `287, 174` |
+| 7 | [near-bracer](../assets/portraits/fire/parts/near-bracer.png) | `elbow-near` | `388, 237` |
+| 8 | [sword-hand](../assets/portraits/fire/parts/sword-hand.png) | `hand-near` | `452, 15` |
+| 9 | [face](../assets/portraits/fire/parts/face.png) | `head` | `193, 29` |
+| 10 | [waist-sash](../assets/portraits/fire/parts/waist-sash.png) | `sash` | `292, 299` |
 
-原点落在画布底边中心，人物正好站在 y = 0 上。附件存的是**图片中心**，
-清单里的 `offset` 是**轴心**，两者差一个按部件旋转摆过去的向量——转换脚本负责，别手算。
+## 山魈
 
-## 约定俗成的三件事
+777 × 777 的绑定画布，8 根骨与 7 个部件。画面锚点 `391, 739`。
 
-- **四肢从骨骼算，不手填角度**：`limb()` 按两根骨的位置推长度和朝向，骨骼一动胳膊跟着走。
-- **关节补一个同色圆**：两根胶囊在肘部交叠，不补就会被掐出一个细腰。
-- **绘制顺序即 layer 顺序**：Spine 的槽位顺序就是渲染顺序，导出时按 layer 排，别乱。
+[立绘原画](../assets/portraits/shanjiao/master.webp) · [绑定清单](../assets/portraits/shanjiao/rig.json) · [Spine 骨架](../assets/spine/shanjiao.skeleton.json) · [Atlas 数据](../assets/spine/shanjiao.atlas)
 
-## 五行 · 火 · 焰（fire）
+| 图层 | 部件 | 父骨 | 画布左上位置 |
+| --- | --- | --- | --- |
+| 0 | [left-leg](../assets/portraits/shanjiao/parts/left-leg.png) | `left-leg` | `75, 443` |
+| 1 | [right-leg](../assets/portraits/shanjiao/parts/right-leg.png) | `right-leg` | `410, 453` |
+| 2 | [left-forearm](../assets/portraits/shanjiao/parts/left-forearm.png) | `left-arm` | `5, 193` |
+| 3 | [torso](../assets/portraits/shanjiao/parts/torso.png) | `body` | `79, 67` |
+| 4 | [right-gauntlet](../assets/portraits/shanjiao/parts/right-gauntlet.png) | `right-arm` | `484, 118` |
+| 5 | [stone-mane](../assets/portraits/shanjiao/parts/stone-mane.png) | `mane` | `257, 2` |
+| 6 | [mask-and-beard](../assets/portraits/shanjiao/parts/mask-and-beard.png) | `head` | `167, 75` |
 
-- 职责：爆发直伤
-- 画布：1024 × 1536
-- 骨骼 **16** 根，部件 **40** 个
-- 体检通过
+## 赤蛟
 
-### 骨骼
+777 × 777 的绑定画布，7 根骨与 6 个部件。画面锚点 `388, 745`。
 
-| 骨骼 | 父骨 | 画布坐标 |
-| --- | --- | --- |
-| `hip` | — | 512, 1150 |
-| `spine` | `hip` | 512, 1000 |
-| `chest` | `spine` | 512, 830 |
-| `neck` | `chest` | 512, 700 |
-| `head` | `neck` | 512, 520 |
-| `hair-tail` | `head` | 368, 486 |
-| `hair-lock-l` | `head` | 400, 430 |
-| `hair-lock-r` | `head` | 624, 430 |
-| `shoulder-near` | `chest` | 344, 756 |
-| `elbow-near` | `shoulder-near` | 306, 896 |
-| `hand-near` | `elbow-near` | 356, 1000 |
-| `shoulder-far` | `chest` | 680, 756 |
-| `elbow-far` | `shoulder-far` | 748, 886 |
-| `hand-far` | `elbow-far` | 790, 952 |
-| `skirt-l` | `hip` | 448, 1176 |
-| `skirt-r` | `hip` | 576, 1176 |
+[立绘原画](../assets/portraits/chijiao/master.webp) · [绑定清单](../assets/portraits/chijiao/rig.json) · [Spine 骨架](../assets/spine/chijiao.skeleton.json) · [Atlas 数据](../assets/spine/chijiao.atlas)
 
-### 部件（按绘制顺序，后面的压前面的）
+| 图层 | 部件 | 父骨 | 画布左上位置 |
+| --- | --- | --- | --- |
+| 0 | [tide-tail](../assets/portraits/chijiao/parts/tide-tail.png) | `tail` | `529, 416` |
+| 1 | [far-claw](../assets/portraits/chijiao/parts/far-claw.png) | `left-arm` | `54, 324` |
+| 2 | [sea-mane](../assets/portraits/chijiao/parts/sea-mane.png) | `mane` | `293, 84` |
+| 3 | [coiled-body](../assets/portraits/chijiao/parts/coiled-body.png) | `body` | `50, 131` |
+| 4 | [horned-head](../assets/portraits/chijiao/parts/horned-head.png) | `head` | `15, 6` |
+| 5 | [front-claw](../assets/portraits/chijiao/parts/front-claw.png) | `right-arm` | `87, 419` |
 
-| # | 部件 | 挂骨 | 层 | 形状 | 尺寸 | 轴心 | 旋转 | 偏移 |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| 0 | `hair-back` | `head` | 0 | path·弧 | 400 × 660 | 0.5, 0.1 | 0° | 0, -84 |
-| 1 | `hair-tail` | `hair-tail` | 1 | path·弧 | 76 × 300 | 0.5, 0.03 | 14° | 0, 0 |
-| 2 | `skirt-under` | `hip` | 2 | path·直 | 290 × 330 | 0.5, 0.02 | 0° | 0, 0 |
-| 3 | `skirt-l` | `skirt-l` | 3 | path·直 | 330 × 350 | 0.5, 0.02 | -3° | 0, 0 |
-| 4 | `skirt-r` | `skirt-r` | 4 | path·直 | 330 × 350 | 0.5, 0.02 | 3° | 0, 0 |
-| 5 | `arm-far-upper` | `shoulder-far` | 5 | capsule | 108 × 191 | 0.5, 0.115 | -27.6° | 0, 0 |
-| 6 | `elbow-far-joint` | `elbow-far` | 6 | ellipse | 104 × 104 | 0.5, 0.5 | 0° | 0, 0 |
-| 7 | `arm-far-fore` | `elbow-far` | 7 | capsule | 96 × 102 | 0.5, 0.115 | -32.5° | 0, 0 |
-| 8 | `hand-far` | `hand-far` | 8 | ellipse | 60 × 84 | 0.5, 0.2 | -33° | 0, -4 |
-| 9 | `body-robe` | `spine` | 9 | path·直 | 392 × 600 | 0.5, 0.5 | 0° | 0, -30 |
-| 10 | `sash` | `hip` | 10 | rect | 300 × 46 | 0.5, 0.5 | 0° | 0, -6 |
-| 11 | `shoulder-near` | `shoulder-near` | 11 | ellipse | 126 × 96 | 0.5, 0.5 | -6° | 2, 4 |
-| 12 | `arm-near-upper` | `shoulder-near` | 12 | capsule | 112 × 189 | 0.5, 0.115 | 15.2° | 0, 0 |
-| 13 | `elbow-near-joint` | `elbow-near` | 13 | ellipse | 106 × 106 | 0.5, 0.5 | 0° | 0, 0 |
-| 14 | `arm-near-fore` | `elbow-near` | 14 | capsule | 100 × 150 | 0.5, 0.115 | -25.7° | 0, 0 |
-| 15 | `sword-grip` | `hand-near` | 15 | capsule | 44 × 138 | 0.5, 0.03 | 35° | 0, 0 |
-| 16 | `sword-pommel` | `hand-near` | 16 | ellipse | 52 × 52 | 0.5, 0.5 | 0° | -78.0, 111.4 |
-| 17 | `hand-near` | `hand-near` | 17 | ellipse | 82 × 88 | 0.5, 0.12 | 0° | 0, -4 |
-| 18 | `sword-flame` | `hand-near` | 18 | path·弧 | 84 × 516 | 0.5, 0.06 | -145° | 0, 0 |
-| 19 | `sword-blade` | `hand-near` | 19 | path·直 | 40 × 470 | 0.5, 0.05 | -145° | 0, 0 |
-| 20 | `sword-guard` | `hand-near` | 20 | rect | 132 × 26 | 0.5, 0.5 | -55° | 0, 0 |
-| 21 | `neck-part` | `neck` | 21 | path·直 | 84 × 110 | 0.5, 0.5 | 0° | 0, -34 |
-| 22 | `collar` | `neck` | 22 | path·直 | 204 × 146 | 0.5, 0.5 | 0° | 0, -10 |
-| 23 | `head-shape` | `head` | 23 | path·弧 | 216 × 258 | 0.5, 0.5 | 0° | 0, 0 |
-| 24 | `eye-white-l` | `head` | 24 | ellipse | 62 × 50 | 0.5, 0.5 | 0° | -46, 4 |
-| 25 | `eye-iris-l` | `head` | 25 | ellipse | 42 × 46 | 0.5, 0.5 | 0° | -46, 6 |
-| 26 | `eye-shine-l` | `head` | 26 | ellipse | 16 × 16 | 0.5, 0.5 | 0° | -56, -6 |
-| 27 | `eye-lash-l` | `head` | 27 | capsule | 70 × 12 | 0.5, 0.5 | -7° | -46, -18 |
-| 28 | `eye-white-r` | `head` | 28 | ellipse | 62 × 50 | 0.5, 0.5 | 0° | 46, 4 |
-| 29 | `eye-iris-r` | `head` | 29 | ellipse | 42 × 46 | 0.5, 0.5 | 0° | 46, 6 |
-| 30 | `eye-shine-r` | `head` | 30 | ellipse | 16 × 16 | 0.5, 0.5 | 0° | 38, -6 |
-| 31 | `eye-lash-r` | `head` | 31 | capsule | 70 × 12 | 0.5, 0.5 | 7° | 46, -18 |
-| 32 | `brow-l` | `head` | 32 | rect | 50 × 8 | 0.5, 0.5 | -11° | -54, -48 |
-| 33 | `brow-r` | `head` | 33 | rect | 50 × 8 | 0.5, 0.5 | 11° | 54, -48 |
-| 34 | `mouth` | `head` | 34 | ellipse | 26 × 10 | 0.5, 0.5 | 0° | 0, 76 |
-| 35 | `hair-fringe` | `head` | 35 | path·弧 | 312 × 140 | 0.5, 0.5 | 0° | 0, -110 |
-| 36 | `hair-lock-l` | `hair-lock-l` | 36 | path·弧 | 96 × 300 | 0.5, 0.03 | 3° | 0, 0 |
-| 37 | `hair-lock-r` | `hair-lock-r` | 37 | path·弧 | 96 × 300 | 0.5, 0.03 | -3° | 0, 0 |
-| 38 | `earring-l` | `head` | 38 | ellipse | 24 × 56 | 0.5, 0 | 0° | -114, 22 |
-| 39 | `earring-r` | `head` | 39 | ellipse | 24 × 56 | 0.5, 0 | 0° | 114, 22 |
+## 混沌
+
+777 × 777 的绑定画布，7 根骨与 6 个部件。画面锚点 `397, 733`。
+
+[立绘原画](../assets/portraits/hundun/master.webp) · [绑定清单](../assets/portraits/hundun/rig.json) · [Spine 骨架](../assets/spine/hundun.skeleton.json) · [Atlas 数据](../assets/spine/hundun.atlas)
+
+| 图层 | 部件 | 父骨 | 画布左上位置 |
+| --- | --- | --- | --- |
+| 0 | [ink-mane](../assets/portraits/hundun/parts/ink-mane.png) | `mane` | `203, 39` |
+| 1 | [rear-haunch](../assets/portraits/hundun/parts/rear-haunch.png) | `tail` | `595, 301` |
+| 2 | [obsidian-body](../assets/portraits/hundun/parts/obsidian-body.png) | `body` | `89, 139` |
+| 3 | [left-grip](../assets/portraits/hundun/parts/left-grip.png) | `left-arm` | `13, 312` |
+| 4 | [ritual-mask](../assets/portraits/hundun/parts/ritual-mask.png) | `head` | `82, 51` |
+| 5 | [right-grip](../assets/portraits/hundun/parts/right-grip.png) | `right-arm` | `327, 257` |

@@ -9,6 +9,7 @@ import assert from 'node:assert/strict';
 
 import { buildPortrait } from './portrait.mjs';
 import { defaultPortrait } from '../portrait/index.mjs';
+import { portraitFromAtlas } from '../portrait/atlas.mjs';
 
 /** Graphics 的每个方法都返回自己，能链式调用就够；图形本身这里不关心。 */
 function makeGraphics() {
@@ -99,4 +100,41 @@ test('骨骼清单里每根骨的父骨都存在', () => {
   for (const bone of defaultPortrait.bones) {
     if (bone.parent) assert.ok(ids.has(bone.parent), `${bone.id} 的父骨 ${bone.parent} 不存在`);
   }
+});
+
+test('bitmaps reuse an atlas lease and rotate about authored joint pivots', () => {
+  class FakeBitmap {
+    constructor(lease) { this.lease = lease; }
+  }
+  const textureLease = {};
+  const portrait = portraitFromAtlas('shanjiao', {
+    canvas: { width: 100, height: 140 },
+    anchor: [50, 90],
+    bones: [
+      { id: 'root', parent: null, x: 50, y: 90 },
+      { id: 'head', parent: 'root', x: 65, y: 36 },
+    ],
+    parts: [
+      { id: 'back', bone: 'root', rect: [2, 2, 20, 40], at: [35, 77] },
+      { id: 'face', bone: 'head', rect: [24, 2, 46, 40], at: [40, 11], pivot: [0.25, 0.75] },
+    ],
+  }, 80, 48);
+  const rig = buildPortrait({ portrait, Sprite: FakeSprite, Bitmap: FakeBitmap, scope, textureLease });
+  const [back, face] = rig.holder.children[0].children;
+  assert.equal(back.lease, textureLease);
+  assert.equal(face.lease, textureLease);
+  assert.deepEqual(back.sourceRect, { x: 2, y: 2, width: 20, height: 40 });
+  assert.deepEqual([face.x - face.anchorOffsetX, face.y - face.anchorOffsetY], [40, 11]);
+  rig.bones.get('head').rotation = 90;
+  rig.sync();
+  assert.ok(Math.abs(face.x - 60) < 1e-8 && Math.abs(face.y - 22.5) < 1e-8);
+  assert.equal(face.rotation, 90);
+  rig.place(520, 190, 0.5);
+  assert.deepEqual([rig.holder.x, rig.holder.y, rig.holder.scaleX], [495, 145, 0.5]);
+  rig.pose(0.5, 0);
+  const idleRotation = face.rotation;
+  rig.pose(0.5, 1);
+  assert.ok(face.rotation > idleRotation);
+  rig.pose(0.5, 0);
+  assert.equal(face.rotation, idleRotation);
 });

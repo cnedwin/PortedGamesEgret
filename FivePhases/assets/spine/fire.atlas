@@ -1,0 +1,28 @@
+../portraits/fire/atlas.png
+size: 1024,1076
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+pma: false
+ponytail
+  bounds: 391,554,224,322
+boots
+  bounds: 285,912,298,125
+robe
+  bounds: 3,3,430,545
+far-sleeve
+  bounds: 621,554,155,198
+far-bracer
+  bounds: 3,912,136,161
+torso
+  bounds: 3,554,382,352
+near-sleeve
+  bounds: 145,912,134,155
+near-bracer
+  bounds: 589,912,100,83
+sword-hand
+  bounds: 605,3,181,375
+face
+  bounds: 782,554,116,181
+waist-sash
+  bounds: 439,3,160,381

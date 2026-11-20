@@ -33,7 +33,7 @@ function spin(x, y, deg) {
  * 注意 attachment 的 (x, y) 在 Spine 里是**图片中心**，而清单里的 offset 是**轴心**。
  * 两者差一个「轴心到中心」的向量，得按部件自己的旋转摆过去，不能直接照抄。
  */
-export function toSpineSkeleton(portrait) {
+export function toSpineSkeleton(portrait, { images = './' } = {}) {
   const { width, height } = portrait.canvas;
   const halfW = width / 2;
   const sx = (x) => x - halfW;
@@ -93,7 +93,7 @@ export function toSpineSkeleton(portrait) {
       y: 0,
       width,
       height,
-      images: './',
+      images,
       audio: '',
     },
     bones,
@@ -174,7 +174,10 @@ export function toManifest(portrait) {
     name: portrait.name,
     canvas: portrait.canvas,
     format: 'PNG, RGBA8888, 像素尺寸与 size 完全一致，透明底',
-    note: '每张图按 size 输出，轴心在 pivot 指定的位置。换成真美术后 skeleton.json 不用改。',
+    note: portrait.atlas
+      ? '独立 PNG 保持原尺寸。offset 是骨骼到轴心的偏移，rect 是图集取样矩形。'
+      : '每张图按 size 输出，轴心在 pivot 指定的位置。换成真美术后 skeleton.json 不用改。',
+    ...(portrait.atlas ? { atlas: portrait.atlas, anchor: portrait.anchor } : {}),
     bones: portrait.bones.map((bone) => ({
       id: bone.id,
       parent: bone.parent,
@@ -190,6 +193,15 @@ export function toManifest(portrait) {
       pivot: part.pivot,
       rotation: part.rotation,
       offset: part.offset,
+      ...(part.rect ? { rect: part.rect } : {}),
     })),
   };
+}
+
+/** Spine 4.1 图集，部件名与 JSON 中的 region 附件名一致。 */
+export function toSpineAtlas(portrait, page = 'atlas.png') {
+  const { width, height } = portrait.atlas;
+  const regions = portrait.parts.map((part) => `${part.id}\n  bounds: ${part.rect.join(',')}`);
+  return [page, `size: ${width},${height}`, 'format: RGBA8888', 'filter: Linear,Linear',
+    'repeat: none', 'pma: false', ...regions, ''].join('\n');
 }

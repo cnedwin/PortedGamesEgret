@@ -27,17 +27,17 @@ export const cellCentre = (index) => ({
   y: BOARD.y + Math.floor(index / BOARD.size) * BOARD.cell + BOARD.cell / 2,
 });
 
-/** 立绘摆位。敌人往上抬、缩一圈，把 y 372 以下的右半屏让给能量面板。
- *
- * 缩放不是随手给的，按上下两条边界倒推：
- * - 上边界：横幅占 336–380、血条占 384–424，所以头顶不能高于 428。
- * - 下边界：手牌从 660 起，裙子再往下就被卡面挡住（挡住是对的，人站在卡后面）。
- * 骨骼清单里头顶在 y=340、胯在 1150，头顶到胯 810；胯落在 695，于是
- *   695 − 810 × s = 428  →  s ≈ 0.33
- * 0.33 时露出的是"头顶到大腿"——膝盖以下本来就被手牌挡住，等于一张半身像。
- * 0.2 时脸只有 12 像素高，五官全糊成一团红影。 */
-export const HERO_SPOT = { x: 152, y: 695, scale: 0.33 };
-export const ENEMY_SPOT = { x: 520, y: 190, width: 250, height: 250 };
+/** 各角色图集锚点和在战斗区的绘制宽度。 */
+export const HERO_SPOT = { x: 218, y: 767, width: 362 };
+export const ENEMY_SPOT = {
+  x: 520,
+  y: 190,
+  placement: {
+    shanjiao: { x: 522, y: 343, width: 316 },
+    chijiao: { x: 523, y: 349, width: 341 },
+    hundun: { x: 523, y: 348, width: 351 },
+  },
+};
 
 /** 能量面板的五个坑，按五行顺序。两列三行，最后一颗居中收尾。 */
 export const ENERGY_SLOTS = [

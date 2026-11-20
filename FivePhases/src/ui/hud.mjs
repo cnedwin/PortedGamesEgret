@@ -9,14 +9,28 @@
 // 代价是 HUD 和画布必须严格对齐——坐标统一从 layout.mjs 来。
 
 import { ELEMENT_INFO, ELEMENT_ORDER } from '../core/cards.mjs';
-import { ENERGY_CAP, HAND_CAP } from '../core/battle.mjs';
+import { ENERGY_CAP, STEPS_PER_TURN } from '../core/battle.mjs';
 import { ENERGY_SLOTS, STAGE } from '../view/layout.mjs';
 
 const pct = (value, total) => `${(value / total) * 100}%`;
 const at = (point) => ({ left: pct(point.x, STAGE.width), top: pct(point.y, STAGE.height) });
 
+function sigil(element, sizeClass = '') {
+  return `<svg class="sigil ${sizeClass}" aria-hidden="true"><use href="#sigil-${element}"></use></svg>`;
+}
+
+/** 手牌与奖励使用同一套面板和元素符纹。 */
+export function cardMarkup(card) {
+  return `<span class="card-cost">${card.cost}</span>
+    ${sigil(card.element, 'card-sigil')}
+    <span class="card-name">${card.name}</span>
+    <span class="card-elem">${ELEMENT_INFO[card.element].name}</span>
+    <span class="card-text">${card.text.replaceAll('\n', '<br>')}</span>`;
+}
+
 export function createHud({ root, onCard, onEndTurn }) {
   const enemyName = root.querySelector('#enemy-name');
+  const encounter = root.querySelector('#encounter');
   const enemyHp = root.querySelector('#enemy-hp');
   const enemyHpText = root.querySelector('#enemy-hp-text');
   const enemyShield = root.querySelector('#enemy-shield');
@@ -33,8 +47,41 @@ export function createHud({ root, onCard, onEndTurn }) {
   const bannerEl = root.querySelector('#banner');
   const bondsEl = root.querySelector('#bonds');
   const turnEl = root.querySelector('#turn');
+  const showDetails = root.querySelector('#show-hand-details');
+  const details = root.parentElement.querySelector('#hand-details');
+  const detailList = details.querySelector('#hand-detail-list');
+  const encounterLabels = { shanjiao: '第一阵 · 守林', chijiao: '第二阵 · 断桥', hundun: '第三阵 · 阵眼' };
 
   endTurn.addEventListener('click', () => onEndTurn());
+  let visibleHand = [];
+  let handSignature = '';
+  let bondSignature = '';
+
+  function renderDetails() {
+    detailList.replaceChildren();
+    for (const card of visibleHand) {
+      const info = ELEMENT_INFO[card.element];
+      const line = document.createElement('li');
+      line.style.setProperty('--tint', info.color);
+      line.innerHTML = `${sigil(card.element)}<div class="detail-heading"><strong>${card.name}</strong><span>${card.cost} ${info.name}能量</span></div><p></p>`;
+      line.querySelector('p').textContent = card.text;
+      detailList.append(line);
+    }
+  }
+
+  showDetails.addEventListener('click', () => {
+    if (!visibleHand.length || details.open) return;
+    renderDetails();
+    details.showModal();
+  });
+
+  const dots = Array.from({ length: STEPS_PER_TURN }, () => {
+    const dot = document.createElement('i');
+    dot.className = 'dot';
+    dot.setAttribute('aria-hidden', 'true');
+    stepsEl.append(dot);
+    return dot;
+  });
 
   // 能量：五个坑一次建好，之后只改数字
   const energyChips = new Map();
@@ -46,14 +93,14 @@ export function createHud({ root, onCard, onEndTurn }) {
     chip.style.setProperty('--tint', info.color);
     const slot = ENERGY_SLOTS[index];
     Object.assign(chip.style, at(slot));
-    chip.innerHTML = `<b>${info.name}</b><i>0</i>`;
+    chip.innerHTML = `${sigil(element)}<b>${info.name}</b><i>0</i>`;
     energyEl.append(chip);
     energyChips.set(element, chip);
   }
 
-  let handSignature = '';
-
   function renderHand(battle) {
+    visibleHand = battle.hand;
+    showDetails.disabled = !visibleHand.length;
     const signature = battle.hand.map((card) => `${card.uid}:${card.cost}`).join('|');
     if (signature === handSignature) {
       for (const button of handEl.children) {
@@ -64,6 +111,7 @@ export function createHud({ root, onCard, onEndTurn }) {
     }
     handSignature = signature;
     handEl.replaceChildren();
+    if (details.open) renderDetails();
 
     for (const card of battle.hand) {
       const info = ELEMENT_INFO[card.element];
@@ -77,12 +125,7 @@ export function createHud({ root, onCard, onEndTurn }) {
       const affordable = battle.energy[card.element] >= card.cost;
       button.classList.toggle('is-ready', affordable);
       if (card.ult) button.classList.add('is-ult');
-      button.innerHTML = `
-        <span class="card-cost">${card.cost}</span>
-        <span class="card-name">${card.name}</span>
-        <span class="card-elem">${info.name}</span>
-        <span class="card-text">${card.text.replaceAll('\n', '<br>')}</span>
-      `;
+      button.innerHTML = cardMarkup(card);
       button.addEventListener('click', (event) => {
         event.stopPropagation();
         onCard(card.uid);
@@ -93,6 +136,7 @@ export function createHud({ root, onCard, onEndTurn }) {
 
   function render(battle) {
     const enemy = battle.enemy;
+    encounter.textContent = encounterLabels[enemy.id] ?? enemy.title;
     enemyName.textContent = enemy.name;
     enemyHp.style.width = pct(Math.max(0, enemy.hp), enemy.maxHp);
     enemyHpText.textContent = `${Math.max(0, Math.ceil(enemy.hp))} / ${enemy.maxHp}`;
@@ -110,12 +154,8 @@ export function createHud({ root, onCard, onEndTurn }) {
     heroShield.classList.toggle('is-on', battle.hero.shield > 0);
 
     turnEl.textContent = `第 ${battle.turn} 回合`;
-    stepsEl.replaceChildren();
-    for (let i = 0; i < 3; i += 1) {
-      const dot = document.createElement('i');
-      dot.className = i < battle.steps ? 'dot is-on' : 'dot';
-      stepsEl.append(dot);
-    }
+    stepsEl.setAttribute('aria-label', `剩余 ${battle.steps} 步`);
+    dots.forEach((dot, index) => dot.classList.toggle('is-on', index < battle.steps));
 
     for (const [element, chip] of energyChips) {
       const value = battle.energy[element];
@@ -124,12 +164,16 @@ export function createHud({ root, onCard, onEndTurn }) {
       chip.classList.toggle('is-empty', value === 0);
     }
 
-    bondsEl.replaceChildren();
-    for (const id of battle.bonds) {
-      const tag = document.createElement('span');
-      tag.className = 'bond';
-      tag.textContent = BOND_LABELS[id] ?? id;
-      bondsEl.append(tag);
+    const bonds = battle.bonds.join('|');
+    if (bonds !== bondSignature) {
+      bondSignature = bonds;
+      bondsEl.replaceChildren();
+      for (const id of battle.bonds) {
+        const tag = document.createElement('span');
+        tag.className = 'bond';
+        tag.textContent = BOND_LABELS[id] ?? id;
+        bondsEl.append(tag);
+      }
     }
 
     renderHand(battle);
@@ -184,5 +228,9 @@ export function createHud({ root, onCard, onEndTurn }) {
     chip.classList.add('is-pulse');
   }
 
-  return { render, floater, chain, banner, pulse, resetHand: () => { handSignature = ''; } };
+  return {
+    render, floater, chain, banner, pulse,
+    resetHand: () => { handSignature = ''; },
+    closeDetails: () => { if (details.open) details.close(); },
+  };
 }

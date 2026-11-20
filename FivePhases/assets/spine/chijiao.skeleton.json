@@ -1,0 +1,188 @@
+{
+  "skeleton": {
+    "hash": "chijiao-portrait",
+    "spine": "4.1.0",
+    "x": 0,
+    "y": 0,
+    "width": 777,
+    "height": 777,
+    "images": "../portraits/chijiao/parts/",
+    "audio": ""
+  },
+  "bones": [
+    {
+      "name": "root",
+      "x": -0.5,
+      "y": 32,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "body",
+      "parent": "root",
+      "x": -2,
+      "y": 255,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "head",
+      "parent": "body",
+      "x": -108,
+      "y": 254,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "mane",
+      "parent": "head",
+      "x": 52,
+      "y": 66,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "tail",
+      "parent": "body",
+      "x": 329,
+      "y": 58,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "left-arm",
+      "parent": "body",
+      "x": -237,
+      "y": 91,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "right-arm",
+      "parent": "body",
+      "x": -150,
+      "y": 27,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    }
+  ],
+  "slots": [
+    {
+      "name": "tide-tail",
+      "bone": "tail",
+      "attachment": "tide-tail"
+    },
+    {
+      "name": "far-claw",
+      "bone": "left-arm",
+      "attachment": "far-claw"
+    },
+    {
+      "name": "sea-mane",
+      "bone": "mane",
+      "attachment": "sea-mane"
+    },
+    {
+      "name": "coiled-body",
+      "bone": "body",
+      "attachment": "coiled-body"
+    },
+    {
+      "name": "horned-head",
+      "bone": "head",
+      "attachment": "horned-head"
+    },
+    {
+      "name": "front-claw",
+      "bone": "right-arm",
+      "attachment": "front-claw"
+    }
+  ],
+  "skins": [
+    {
+      "name": "default",
+      "attachments": {
+        "tide-tail": {
+          "tide-tail": {
+            "type": "region",
+            "x": -72.5,
+            "y": -150,
+            "rotation": 0,
+            "width": 227,
+            "height": 332,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "far-claw": {
+          "far-claw": {
+            "type": "region",
+            "x": -33,
+            "y": 19.5,
+            "rotation": 0,
+            "width": 124,
+            "height": 111,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "sea-mane": {
+          "sea-mane": {
+            "type": "region",
+            "x": 77.5,
+            "y": -39,
+            "rotation": 0,
+            "width": 229,
+            "height": 250,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "coiled-body": {
+          "coiled-body": {
+            "type": "region",
+            "x": 18,
+            "y": 41.5,
+            "rotation": 0,
+            "width": 708,
+            "height": 635,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "horned-head": {
+          "horned-head": {
+            "type": "region",
+            "x": -61,
+            "y": 79.5,
+            "rotation": 0,
+            "width": 404,
+            "height": 301,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "front-claw": {
+          "front-claw": {
+            "type": "region",
+            "x": -43,
+            "y": -7,
+            "rotation": 0,
+            "width": 212,
+            "height": 102,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        }
+      }
+    }
+  ],
+  "animations": {}
+}

@@ -14,7 +14,7 @@
 //   · 骨骼树只管变换（纯数据，不是显示对象）；
 //   · 部件全放在一个平层里，按 layer 排序，那是唯一的绘制顺序；
 //   · 每个部件记住自己挂在哪根骨上，改完骨骼调一次 sync() 把世界变换写下去。
-// 接真美术时把 Graphics 换成 Bitmap，这一套一行都不用改。
+// 贴图和矢量共用变换，贴图部件从同一张 PNG 图集取像素。
 
 import { PALETTE, tracePart } from './draw.mjs';
 
@@ -27,8 +27,8 @@ const DEG = Math.PI / 180;
  * `holder` 是整个立绘的容器，`bones` 是骨骼 id 到变换节点的表，
  * 改完节点调 `sync()` 让部件跟上。
  */
-export function buildPortrait({ portrait, Sprite, scope }) {
-  const palette = Object.fromEntries(Object.entries(portrait.palette).map(([key, value]) => [key, hex(value)]));
+export function buildPortrait({ portrait, Sprite, scope, Bitmap, textureLease }) {
+  const palette = Object.fromEntries(Object.entries(portrait.palette ?? {}).map(([key, value]) => [key, hex(value)]));
 
   // 骨骼：纯变换，不参与绘制
   const bones = new Map();
@@ -51,22 +51,23 @@ export function buildPortrait({ portrait, Sprite, scope }) {
 
   const drawn = [];
   for (const part of [...portrait.parts].sort((a, b) => a.layer - b.layer)) {
-    const sprite = new Sprite();
-    scope.use(sprite);
     const [w, h] = part.size;
     const [px, py] = part.pivot;
-
-    // 轴心落到原点：图形整体挪一个「轴心到中心」的反向量
-    const shiftX = -(px - 0.5) * w;
-    const shiftY = -(py - 0.5) * h;
-
-    const fill = palette[part.color] ?? PALETTE.text;
-    sprite.graphics.beginFill(fill, 1);
-    tracePart(sprite.graphics, part, shiftX, shiftY);
-    sprite.graphics.endFill();
-    // 描边把相邻部件分开，否则同色的头发和衣服会糊成一片。
-    // 2px 在缩到 0.33 之后只剩半个像素，等于没有；3px 是能看见的下限。
-    // (描边暂时关掉，量一下代价)
+    let sprite;
+    if (part.rect) {
+      sprite = scope.use(new Bitmap(textureLease));
+      const [x, y, width, height] = part.rect;
+      sprite.sourceRect = { x, y, width, height };
+      sprite.anchorOffsetX = px * w;
+      sprite.anchorOffsetY = py * h;
+    } else {
+      sprite = scope.use(new Sprite());
+      // 矢量形状以中心绘制，换算到轴心作为局部原点。
+      const fill = palette[part.color] ?? PALETTE.text;
+      sprite.graphics.beginFill(fill, 1);
+      tracePart(sprite.graphics, part, (0.5 - px) * w, (0.5 - py) * h);
+      sprite.graphics.endFill();
+    }
 
     layer.addChild(sprite);
     drawn.push({ sprite, part, offset: part.offset, rotation: part.rotation, bone: part.bone });
@@ -103,6 +104,12 @@ export function buildPortrait({ portrait, Sprite, scope }) {
   const holder = new Sprite();
   scope.use(holder);
   holder.addChild(layer);
+  const [anchorX, anchorY] = portrait.anchor ?? [512, 1150];
+  const profile = MOTION_PROFILES[portrait.id] ?? [];
+  const motion = profile.flatMap(([name, sway, strike, lift = 0], index) => {
+    const bone = bones.get(name);
+    return bone ? [{ bone, restY: bone.y, sway, strike, lift, phase: index * 0.41 }] : [];
+  });
 
   return {
     holder,
@@ -110,14 +117,49 @@ export function buildPortrait({ portrait, Sprite, scope }) {
     sync,
     width: portrait.canvas.width,
     height: portrait.canvas.height,
-    /** 让立绘的某一点（默认胯部）落在 (x, y)，并按 scale 缩放。 */
-    place(x, y, scale, anchor = { x: 512, y: 1150 }) {
+    /** 让设定的画布锚点落在 (x, y)。 */
+    place(x, y, scale, anchor = { x: anchorX, y: anchorY }) {
       holder.scaleX = holder.scaleY = scale;
       holder.x = x - anchor.x * scale;
       holder.y = y - anchor.y * scale;
     },
+    /** attack 和 recoil 分别表示出招、受击的幅度，范围为 0 到 1。 */
+    pose(seconds, attack = 0, recoil = 0) {
+      const unit = portrait.canvas.height / 1024;
+      for (const { bone, restY, sway, strike, lift, phase } of motion) {
+        const wave = Math.sin(seconds * 1.9 + phase);
+        bone.rotation = wave * sway + (attack - recoil * 0.35) * strike;
+        bone.y = restY + wave * lift * unit;
+      }
+      sync();
+    },
   };
 }
+
+// 每行是骨名、待机摇摆角、出招角和纵向起伏。缺少的次要骨骼留给对应角色。
+const MOTION_PROFILES = {
+  fire: [
+    ['chest', 0.8, -1.8, 2.8], ['head', 0.7, 1.1, 1.0],
+    ['shoulder-near', 1.0, -13], ['elbow-near', 0.6, -6], ['hand-near', 0.35, -5],
+    ['shoulder-far', 0.8, 4], ['elbow-far', 0.6, 2],
+    ['hair-tail', 2.5, 6], ['hair-lock-l', 1.5, -2], ['hair-lock-r', 1.5, 2],
+    ['skirt-l', 1.2, 2], ['skirt-r', 1.2, -2], ['ribbon', 2.5, 7],
+  ],
+  shanjiao: [
+    ['root', 0.5, 1.5, 1.7], ['body', 1.3, -4, 1.8], ['head', 0.18, 0.72],
+    ['left-arm', 1.0, -12], ['right-arm', 0.18, 1.26], ['mane', 0.24, 0.64],
+  ],
+  chijiao: [
+    ['root', 0.8, -2.5, 2.7], ['body', 1.8, -4.5, 1.9], ['head', 1.3, -7],
+    // 尾骨在外弯的分片接缝。保留尾尖摆动，并把接缝的位移压在覆盖区内。
+    ['left-arm', 1.7, -8], ['right-arm', 1.7, 8], ['mane', 2.7, 5], ['tail', 0.8, 3.4],
+  ],
+  hundun: [
+    ['root', 1.0, -2, 3.1], ['body', 0.9, 2.5, 1.6], ['head', 0.8, -4],
+    // 后胯随躯干前冲。前爪只在肩甲的覆盖范围内单独转动。
+    ['left-arm', 1.3, -10], ['right-arm', 0.26, 2], ['mane', 2.3, 5],
+  ],
+};
 
 // ── 2D 仿射矩阵 ────────────────────────────────────────────────
 // 只用到平移、旋转、等比缩放，所以四元组 + 平移就够了：

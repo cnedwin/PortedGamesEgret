@@ -2,271 +2,283 @@
   "portrait": "fire",
   "name": "焰",
   "canvas": {
-    "width": 1024,
-    "height": 1536
+    "width": 635,
+    "height": 952
   },
   "format": "PNG, RGBA8888, 像素尺寸与 size 完全一致，透明底",
-  "note": "每张图按 size 输出，轴心在 pivot 指定的位置。换成真美术后 skeleton.json 不用改。",
+  "note": "独立 PNG 保持原尺寸。offset 是骨骼到轴心的偏移，rect 是图集取样矩形。",
+  "atlas": {
+    "width": 1024,
+    "height": 1076
+  },
+  "anchor": [
+    264,
+    601
+  ],
   "bones": [
     {
-      "id": "hip",
+      "id": "root",
       "parent": null,
       "at": [
-        512,
-        1150
+        264,
+        601
       ]
     },
     {
-      "id": "spine",
-      "parent": "hip",
+      "id": "hip",
+      "parent": "root",
       "at": [
-        512,
-        1000
+        268,
+        316
       ]
     },
     {
       "id": "chest",
-      "parent": "spine",
+      "parent": "hip",
       "at": [
-        512,
-        830
-      ]
-    },
-    {
-      "id": "neck",
-      "parent": "chest",
-      "at": [
-        512,
-        700
+        258,
+        241
       ]
     },
     {
       "id": "head",
-      "parent": "neck",
+      "parent": "chest",
       "at": [
-        512,
-        520
+        239,
+        149
       ]
     },
     {
       "id": "hair-tail",
       "parent": "head",
       "at": [
-        368,
-        486
-      ]
-    },
-    {
-      "id": "hair-lock-l",
-      "parent": "head",
-      "at": [
-        400,
-        430
-      ]
-    },
-    {
-      "id": "hair-lock-r",
-      "parent": "head",
-      "at": [
-        624,
-        430
-      ]
-    },
-    {
-      "id": "shoulder-near",
-      "parent": "chest",
-      "at": [
-        344,
-        756
-      ]
-    },
-    {
-      "id": "elbow-near",
-      "parent": "shoulder-near",
-      "at": [
-        306,
-        896
-      ]
-    },
-    {
-      "id": "hand-near",
-      "parent": "elbow-near",
-      "at": [
-        356,
-        1000
+        217,
+        46
       ]
     },
     {
       "id": "shoulder-far",
       "parent": "chest",
       "at": [
-        680,
-        756
+        177,
+        209
       ]
     },
     {
       "id": "elbow-far",
       "parent": "shoulder-far",
       "at": [
-        748,
-        886
+        104,
+        324
       ]
     },
     {
-      "id": "hand-far",
-      "parent": "elbow-far",
+      "id": "shoulder-near",
+      "parent": "chest",
       "at": [
-        790,
-        952
+        317,
+        205
       ]
     },
     {
-      "id": "skirt-l",
-      "parent": "hip",
+      "id": "elbow-near",
+      "parent": "shoulder-near",
       "at": [
-        448,
-        1176
+        403,
+        273
+      ]
+    },
+    {
+      "id": "hand-near",
+      "parent": "elbow-near",
+      "at": [
+        471,
+        252
       ]
     },
     {
       "id": "skirt-r",
       "parent": "hip",
       "at": [
-        576,
-        1176
+        275,
+        321
+      ]
+    },
+    {
+      "id": "sash",
+      "parent": "skirt-r",
+      "at": [
+        336,
+        353
       ]
     }
   ],
   "parts": [
     {
       "order": 0,
-      "id": "hair-back",
-      "file": "hair-back.png",
-      "bone": "head",
+      "id": "ponytail",
+      "file": "ponytail.png",
+      "bone": "hair-tail",
       "layer": 0,
       "size": [
-        400,
-        660
+        224,
+        322
       ],
       "pivot": [
         0.5,
-        0.1
+        0.5
       ],
       "rotation": 0,
       "offset": [
-        0,
-        -84
+        -94,
+        124
+      ],
+      "rect": [
+        391,
+        554,
+        224,
+        322
       ]
     },
     {
       "order": 1,
-      "id": "hair-tail",
-      "file": "hair-tail.png",
-      "bone": "hair-tail",
+      "id": "boots",
+      "file": "boots.png",
+      "bone": "root",
       "layer": 1,
       "size": [
-        76,
-        300
+        298,
+        125
       ],
       "pivot": [
         0.5,
-        0.03
+        0.5
       ],
-      "rotation": 14,
+      "rotation": 0,
       "offset": [
-        0,
-        0
+        -11,
+        285.5
+      ],
+      "rect": [
+        285,
+        912,
+        298,
+        125
       ]
     },
     {
       "order": 2,
-      "id": "skirt-under",
-      "file": "skirt-under.png",
-      "bone": "hip",
+      "id": "robe",
+      "file": "robe.png",
+      "bone": "skirt-r",
       "layer": 2,
       "size": [
-        290,
-        330
+        430,
+        545
       ],
       "pivot": [
         0.5,
-        0.02
+        0.5
       ],
       "rotation": 0,
       "offset": [
-        0,
-        0
+        -54,
+        259.5
+      ],
+      "rect": [
+        3,
+        3,
+        430,
+        545
       ]
     },
     {
       "order": 3,
-      "id": "skirt-l",
-      "file": "skirt-l.png",
-      "bone": "skirt-l",
+      "id": "far-sleeve",
+      "file": "far-sleeve.png",
+      "bone": "shoulder-far",
       "layer": 3,
       "size": [
-        330,
-        350
+        155,
+        198
       ],
       "pivot": [
         0.5,
-        0.02
+        0.5
       ],
-      "rotation": -3,
+      "rotation": 0,
       "offset": [
-        0,
-        0
+        -26.5,
+        56
+      ],
+      "rect": [
+        621,
+        554,
+        155,
+        198
       ]
     },
     {
       "order": 4,
-      "id": "skirt-r",
-      "file": "skirt-r.png",
-      "bone": "skirt-r",
+      "id": "far-bracer",
+      "file": "far-bracer.png",
+      "bone": "elbow-far",
       "layer": 4,
       "size": [
-        330,
-        350
+        136,
+        161
       ],
       "pivot": [
         0.5,
-        0.02
+        0.5
       ],
-      "rotation": 3,
+      "rotation": 0,
       "offset": [
-        0,
-        0
+        -33,
+        63.5
+      ],
+      "rect": [
+        3,
+        912,
+        136,
+        161
       ]
     },
     {
       "order": 5,
-      "id": "arm-far-upper",
-      "file": "arm-far-upper.png",
-      "bone": "shoulder-far",
+      "id": "torso",
+      "file": "torso.png",
+      "bone": "chest",
       "layer": 5,
       "size": [
-        108,
-        191
+        382,
+        352
       ],
       "pivot": [
         0.5,
-        0.115
+        0.5
       ],
-      "rotation": -27.6,
+      "rotation": 0,
       "offset": [
-        0,
-        0
+        47,
+        -43
+      ],
+      "rect": [
+        3,
+        554,
+        382,
+        352
       ]
     },
     {
       "order": 6,
-      "id": "elbow-far-joint",
-      "file": "elbow-far-joint.png",
-      "bone": "elbow-far",
+      "id": "near-sleeve",
+      "file": "near-sleeve.png",
+      "bone": "shoulder-near",
       "layer": 6,
       "size": [
-        104,
-        104
+        134,
+        155
       ],
       "pivot": [
         0.5,
@@ -274,59 +286,77 @@
       ],
       "rotation": 0,
       "offset": [
-        0,
-        0
+        37,
+        46.5
+      ],
+      "rect": [
+        145,
+        912,
+        134,
+        155
       ]
     },
     {
       "order": 7,
-      "id": "arm-far-fore",
-      "file": "arm-far-fore.png",
-      "bone": "elbow-far",
+      "id": "near-bracer",
+      "file": "near-bracer.png",
+      "bone": "elbow-near",
       "layer": 7,
       "size": [
-        96,
-        102
+        100,
+        83
       ],
       "pivot": [
         0.5,
-        0.115
+        0.5
       ],
-      "rotation": -32.5,
+      "rotation": 0,
       "offset": [
-        0,
-        0
+        35,
+        5.5
+      ],
+      "rect": [
+        589,
+        912,
+        100,
+        83
       ]
     },
     {
       "order": 8,
-      "id": "hand-far",
-      "file": "hand-far.png",
-      "bone": "hand-far",
+      "id": "sword-hand",
+      "file": "sword-hand.png",
+      "bone": "hand-near",
       "layer": 8,
       "size": [
-        60,
-        84
+        181,
+        375
       ],
       "pivot": [
         0.5,
-        0.2
+        0.5
       ],
-      "rotation": -33,
+      "rotation": 0,
       "offset": [
-        0,
-        -4
+        71.5,
+        -49.5
+      ],
+      "rect": [
+        605,
+        3,
+        181,
+        375
       ]
     },
     {
       "order": 9,
-      "id": "body-robe",
-      "file": "body-robe.png",
-      "bone": "spine",
+      "id": "face",
+      "file": "face.png",
+      "bone": "head",
       "layer": 9,
       "size": [
-        392,
-        600
+        116,
+        181
       ],
       "pivot": [
         0.5,
@@ -334,19 +364,25 @@
       ],
       "rotation": 0,
       "offset": [
-        0,
-        -30
+        12,
+        -29.5
+      ],
+      "rect": [
+        782,
+        554,
+        116,
+        181
       ]
     },
     {
       "order": 10,
-      "id": "sash",
-      "file": "sash.png",
-      "bone": "hip",
+      "id": "waist-sash",
+      "file": "waist-sash.png",
+      "bone": "sash",
       "layer": 10,
       "size": [
-        300,
-        46
+        160,
+        381
       ],
       "pivot": [
         0.5,
@@ -354,588 +390,14 @@
       ],
       "rotation": 0,
       "offset": [
-        0,
-        -6
-      ]
-    },
-    {
-      "order": 11,
-      "id": "shoulder-near",
-      "file": "shoulder-near.png",
-      "bone": "shoulder-near",
-      "layer": 11,
-      "size": [
-        126,
-        96
+        36,
+        136.5
       ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": -6,
-      "offset": [
-        2,
-        4
-      ]
-    },
-    {
-      "order": 12,
-      "id": "arm-near-upper",
-      "file": "arm-near-upper.png",
-      "bone": "shoulder-near",
-      "layer": 12,
-      "size": [
-        112,
-        189
-      ],
-      "pivot": [
-        0.5,
-        0.115
-      ],
-      "rotation": 15.2,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 13,
-      "id": "elbow-near-joint",
-      "file": "elbow-near-joint.png",
-      "bone": "elbow-near",
-      "layer": 13,
-      "size": [
-        106,
-        106
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 14,
-      "id": "arm-near-fore",
-      "file": "arm-near-fore.png",
-      "bone": "elbow-near",
-      "layer": 14,
-      "size": [
-        100,
-        150
-      ],
-      "pivot": [
-        0.5,
-        0.115
-      ],
-      "rotation": -25.7,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 15,
-      "id": "sword-grip",
-      "file": "sword-grip.png",
-      "bone": "hand-near",
-      "layer": 15,
-      "size": [
-        44,
-        138
-      ],
-      "pivot": [
-        0.5,
-        0.03
-      ],
-      "rotation": 35,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 16,
-      "id": "sword-pommel",
-      "file": "sword-pommel.png",
-      "bone": "hand-near",
-      "layer": 16,
-      "size": [
-        52,
-        52
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        -78.00639534374227,
-        111.40467802330288
-      ]
-    },
-    {
-      "order": 17,
-      "id": "hand-near",
-      "file": "hand-near.png",
-      "bone": "hand-near",
-      "layer": 17,
-      "size": [
-        82,
-        88
-      ],
-      "pivot": [
-        0.5,
-        0.12
-      ],
-      "rotation": 0,
-      "offset": [
-        0,
-        -4
-      ]
-    },
-    {
-      "order": 18,
-      "id": "sword-flame",
-      "file": "sword-flame.png",
-      "bone": "hand-near",
-      "layer": 18,
-      "size": [
-        84,
-        516
-      ],
-      "pivot": [
-        0.5,
-        0.06
-      ],
-      "rotation": -145,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 19,
-      "id": "sword-blade",
-      "file": "sword-blade.png",
-      "bone": "hand-near",
-      "layer": 19,
-      "size": [
-        40,
-        470
-      ],
-      "pivot": [
-        0.5,
-        0.05
-      ],
-      "rotation": -145,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 20,
-      "id": "sword-guard",
-      "file": "sword-guard.png",
-      "bone": "hand-near",
-      "layer": 20,
-      "size": [
-        132,
-        26
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": -55,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 21,
-      "id": "neck-part",
-      "file": "neck-part.png",
-      "bone": "neck",
-      "layer": 21,
-      "size": [
-        84,
-        110
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        0,
-        -34
-      ]
-    },
-    {
-      "order": 22,
-      "id": "collar",
-      "file": "collar.png",
-      "bone": "neck",
-      "layer": 22,
-      "size": [
-        204,
-        146
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        0,
-        -10
-      ]
-    },
-    {
-      "order": 23,
-      "id": "head-shape",
-      "file": "head-shape.png",
-      "bone": "head",
-      "layer": 23,
-      "size": [
-        216,
-        258
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 24,
-      "id": "eye-white-l",
-      "file": "eye-white-l.png",
-      "bone": "head",
-      "layer": 24,
-      "size": [
-        62,
-        50
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        -46,
-        4
-      ]
-    },
-    {
-      "order": 25,
-      "id": "eye-iris-l",
-      "file": "eye-iris-l.png",
-      "bone": "head",
-      "layer": 25,
-      "size": [
-        42,
-        46
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        -46,
-        6
-      ]
-    },
-    {
-      "order": 26,
-      "id": "eye-shine-l",
-      "file": "eye-shine-l.png",
-      "bone": "head",
-      "layer": 26,
-      "size": [
-        16,
-        16
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        -56,
-        -6
-      ]
-    },
-    {
-      "order": 27,
-      "id": "eye-lash-l",
-      "file": "eye-lash-l.png",
-      "bone": "head",
-      "layer": 27,
-      "size": [
-        70,
-        12
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": -7,
-      "offset": [
-        -46,
-        -18
-      ]
-    },
-    {
-      "order": 28,
-      "id": "eye-white-r",
-      "file": "eye-white-r.png",
-      "bone": "head",
-      "layer": 28,
-      "size": [
-        62,
-        50
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        46,
-        4
-      ]
-    },
-    {
-      "order": 29,
-      "id": "eye-iris-r",
-      "file": "eye-iris-r.png",
-      "bone": "head",
-      "layer": 29,
-      "size": [
-        42,
-        46
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        46,
-        6
-      ]
-    },
-    {
-      "order": 30,
-      "id": "eye-shine-r",
-      "file": "eye-shine-r.png",
-      "bone": "head",
-      "layer": 30,
-      "size": [
-        16,
-        16
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        38,
-        -6
-      ]
-    },
-    {
-      "order": 31,
-      "id": "eye-lash-r",
-      "file": "eye-lash-r.png",
-      "bone": "head",
-      "layer": 31,
-      "size": [
-        70,
-        12
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 7,
-      "offset": [
-        46,
-        -18
-      ]
-    },
-    {
-      "order": 32,
-      "id": "brow-l",
-      "file": "brow-l.png",
-      "bone": "head",
-      "layer": 32,
-      "size": [
-        50,
-        8
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": -11,
-      "offset": [
-        -54,
-        -48
-      ]
-    },
-    {
-      "order": 33,
-      "id": "brow-r",
-      "file": "brow-r.png",
-      "bone": "head",
-      "layer": 33,
-      "size": [
-        50,
-        8
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 11,
-      "offset": [
-        54,
-        -48
-      ]
-    },
-    {
-      "order": 34,
-      "id": "mouth",
-      "file": "mouth.png",
-      "bone": "head",
-      "layer": 34,
-      "size": [
-        26,
-        10
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        0,
-        76
-      ]
-    },
-    {
-      "order": 35,
-      "id": "hair-fringe",
-      "file": "hair-fringe.png",
-      "bone": "head",
-      "layer": 35,
-      "size": [
-        312,
-        140
-      ],
-      "pivot": [
-        0.5,
-        0.5
-      ],
-      "rotation": 0,
-      "offset": [
-        0,
-        -110
-      ]
-    },
-    {
-      "order": 36,
-      "id": "hair-lock-l",
-      "file": "hair-lock-l.png",
-      "bone": "hair-lock-l",
-      "layer": 36,
-      "size": [
-        96,
-        300
-      ],
-      "pivot": [
-        0.5,
-        0.03
-      ],
-      "rotation": 3,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 37,
-      "id": "hair-lock-r",
-      "file": "hair-lock-r.png",
-      "bone": "hair-lock-r",
-      "layer": 37,
-      "size": [
-        96,
-        300
-      ],
-      "pivot": [
-        0.5,
-        0.03
-      ],
-      "rotation": -3,
-      "offset": [
-        0,
-        0
-      ]
-    },
-    {
-      "order": 38,
-      "id": "earring-l",
-      "file": "earring-l.png",
-      "bone": "head",
-      "layer": 38,
-      "size": [
-        24,
-        56
-      ],
-      "pivot": [
-        0.5,
-        0
-      ],
-      "rotation": 0,
-      "offset": [
-        -114,
-        22
-      ]
-    },
-    {
-      "order": 39,
-      "id": "earring-r",
-      "file": "earring-r.png",
-      "bone": "head",
-      "layer": 39,
-      "size": [
-        24,
-        56
-      ],
-      "pivot": [
-        0.5,
-        0
-      ],
-      "rotation": 0,
-      "offset": [
-        114,
-        22
+      "rect": [
+        439,
+        3,
+        160,
+        381
       ]
     }
   ]

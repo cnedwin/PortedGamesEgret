@@ -4,20 +4,16 @@
 //   node FivePhases/tools/spine-export.mjs
 //   node FivePhases/tools/spine-export.mjs --id fire --out FivePhases/assets/spine
 //
-// 出两个文件：
-//   <id>.skeleton.json  Spine 4.1 骨架，导入后骨骼、槽位、绘制顺序都是现成的
-//   <id>.manifest.json  每个部件要一张多大的 PNG、轴心在哪、挂哪根骨
-//
-// 不出 atlas：图集是打包器（TexturePacker / Spine 自带打包）按 PNG 出的，
-// 手工拼一张假的 atlas 只会让人以为能用。交付单里已经把尺寸定死了。
+// 导出 Spine 4.1 骨架、部件清单，以及与已存在的 PNG 图集匹配的 .atlas。
 
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { portraits, portraitById } from '../src/portrait/index.mjs';
 import { lintPortrait } from '../src/portrait/fire.mjs';
-import { toSpineSkeleton, toManifest } from '../src/portrait/spine.mjs';
+import { ATLAS_PORTRAITS, portraitFromAtlas } from '../src/portrait/atlas.mjs';
+import { toSpineSkeleton, toManifest, toSpineAtlas } from '../src/portrait/spine.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 
@@ -41,13 +37,32 @@ function parseArgs(argv) {
   return options;
 }
 
-async function exportOne(portrait, outDir) {
+async function readPortrait(id) {
+  const art = path.join(here, '..', 'assets', 'portraits', id);
+  let input;
+  try {
+    input = await readFile(path.join(art, 'rig.json'), 'utf8');
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error;
+    return { portrait: portraitById(id), art: null };
+  }
+
+  const png = await readFile(path.join(art, 'atlas.png'));
+  if (png.length < 24 || !png.subarray(0, 8).equals(Buffer.from('89504e470d0a1a0a', 'hex')) ||
+      png.toString('ascii', 12, 16) !== 'IHDR') throw new Error(`无效的立绘图集 PNG：${id}`);
+  const portrait = portraitFromAtlas(id, JSON.parse(input), png.readUInt32BE(16), png.readUInt32BE(20));
+  return { portrait, art };
+}
+
+async function exportOne(portrait, art, outDir) {
   const problems = lintPortrait(portrait);
   if (problems.length) {
     throw new Error(`${portrait.id} 体检不通过，先修清单：\n  ${problems.join('\n  ')}`);
   }
 
-  const skeleton = toSpineSkeleton(portrait);
+  const relative = (file) => path.relative(outDir, file).split(path.sep).join('/');
+  const images = art ? `${relative(path.join(art, 'parts'))}/` : './';
+  const skeleton = toSpineSkeleton(portrait, { images });
   const manifest = toManifest(portrait);
 
   await mkdir(outDir, { recursive: true });
@@ -55,6 +70,8 @@ async function exportOne(portrait, outDir) {
   const manifestPath = path.join(outDir, `${portrait.id}.manifest.json`);
   await writeFile(skeletonPath, `${JSON.stringify(skeleton, null, 2)}\n`, 'utf8');
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, 'utf8');
+  const atlasPath = art ? path.join(outDir, `${portrait.id}.atlas`) : null;
+  if (atlasPath) await writeFile(atlasPath, toSpineAtlas(portrait, relative(path.join(art, 'atlas.png'))), 'utf8');
 
   return {
     id: portrait.id,
@@ -62,26 +79,33 @@ async function exportOne(portrait, outDir) {
     slots: skeleton.slots.length,
     skeletonPath,
     manifestPath,
+    atlasPath,
   };
 }
 
 async function main() {
   const options = parseArgs(process.argv.slice(2));
 
-  const targets = options.id ? [portraitById(options.id)].filter(Boolean) : portraits;
-  if (!targets.length) {
-    console.error(`没有这个角色：${options.id}。现有：${portraits.map((p) => p.id).join(' / ')}`);
+  const targets = [...new Set([...ATLAS_PORTRAITS, ...portraits.map((p) => p.id)])];
+  if (options.id && !targets.includes(options.id)) {
+    console.error(`没有这个角色：${options.id}。现有：${targets.join(' / ')}`);
     process.exit(1);
   }
 
-  for (const portrait of targets) {
-    const result = await exportOne(portrait, options.out);
+  for (const id of options.id ? [options.id] : targets) {
+    const { portrait, art } = await readPortrait(id);
+    if (!portrait) {
+      if (options.id) throw new Error(`找不到立绘源文件：${id}`);
+      continue;
+    }
+    const result = await exportOne(portrait, art, options.out);
     console.log(`${result.id}  ${result.bones} 骨  ${result.slots} 槽`);
     console.log(`  ${path.relative(process.cwd(), result.skeletonPath)}`);
     console.log(`  ${path.relative(process.cwd(), result.manifestPath)}`);
+    if (result.atlasPath) console.log(`  ${path.relative(process.cwd(), result.atlasPath)}`);
   }
 
-  console.log(`\n出图时按 manifest 里的 size 一张张导，打包成图集后 Spine 就能直接用。`);
+  console.log('\n将 skeleton.json 导入 Spine 4.1，图片目录指向对应角色的 parts/。');
 }
 
 main().catch((error) => {

@@ -1,0 +1,18 @@
+../portraits/chijiao/atlas.png
+size: 1024,948
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+pma: false
+tide-tail
+  bounds: 717,3,227,332
+far-claw
+  bounds: 648,644,124,111
+sea-mane
+  bounds: 413,644,229,250
+coiled-body
+  bounds: 3,3,708,635
+horned-head
+  bounds: 3,644,404,301
+front-claw
+  bounds: 778,644,212,102
