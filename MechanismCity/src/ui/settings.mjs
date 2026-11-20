@@ -27,9 +27,8 @@ export async function openSettings(game, { semantics, sound, settings, onChange,
   veil.hitArea = { x: 0, y: 0, width: 960, height: 540 };
 
   /**
-   * A leaf of the column: a sprite that can be pressed, made in the leaf's scope when the root prepares. The
-   * managed UI mounts only nodes of that scope, and the game's labels belong to the game's scope, so the words
-   * are laid over the committed leaves afterwards (see ENGINE-NOTES.md).
+   * A leaf of the column, made in the leaf's own scope when the root prepares: a sprite that can be pressed, and
+   * its words, a label of that scope, which ends with it.
    */
   function leaf(id, height, text, { size = 20, family = FONT, weight = 400, centred = false, colour = 0xf0e4c8 } = {}) {
     return {
@@ -39,7 +38,12 @@ export async function openSettings(game, { semantics, sound, settings, onChange,
           sprite = content.addChild(context.scope.use(new Sprite()));
         sprite.touchEnabled = true;
         sprite.hitArea = { x: 0, y: 0, width: context.width, height };
-        parts[id] = { sprite, width: context.width, height, words: { text, size, family, weight, centred, colour } };
+        const label = await game.createLabel({ text, fontSize: size, fontFamily: family, fontWeight: weight, color: colour, locale: 'zh', scope: context.scope });
+        await label.ready;
+        content.addChild(label.display);
+        label.display.x = centred ? (context.width - label.display.width) / 2 : 14;
+        label.display.y = (height - label.display.height) / 2;
+        parts[id] = { sprite, width: context.width, height };
         return { content, measuredHeight: height };
       }
     };
@@ -79,18 +83,6 @@ export async function openSettings(game, { semantics, sound, settings, onChange,
   const ready = await root.prepare();
   const result = root.commit(ready);
   if (result.postCommitErrors.length) console.warn('settings', result.postCommitErrors);
-  // The words, over the leaves where the column put them.
-  const writing = game.stage.addChild(scope.use(new DisplayObjectContainer()));
-  for (const part of Object.values(parts)) {
-    const { text, size, family, weight, centred, colour } = part.words,
-      label = await game.createLabel({ text, fontSize: size, fontFamily: family, fontWeight: weight, color: colour, locale: 'zh' });
-    owned.push(label);
-    await label.ready;
-    const at = part.sprite.localToGlobal(0, 0);
-    writing.addChild(label.display);
-    label.display.x = at.x + (centred ? (part.width - label.display.width) / 2 : 14);
-    label.display.y = at.y + (part.height - label.display.height) / 2;
-  }
 
   const focusId = () => keyboard?.getSnapshot().focusedId,
     shown = () => keyboard?.getSnapshot().focusVisible;

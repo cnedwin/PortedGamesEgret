@@ -3,9 +3,9 @@
 // Mohist machines built on it. The same code runs in the page and in Node, where the solver and the
 // tests play every level to its end.
 //
-// Everything that moves is a body of the engine's world. What the world does not have — a hinge for the
-// seesaw, a rope that holds a weight — is a rule here that moves bodies through the world's own calls:
-// a kinematic plank turned by its angle, a held weight that is a kinematic body until its rope is cut.
+// Everything that moves is a body of the engine's world. A weight hangs on a rope joint of the world and
+// falls when the joint is cut. What the world does not have — a hinge that tips a plank — is a rule here
+// that moves bodies through the world's own calls: the seesaw is a kinematic plank turned by its angle.
 // ENGINE-NOTES.md records why.
 import { createPhysicsWorld } from '@egret/engine/physics2d';
 import { BODY, LAYER, PELLETS, RULES } from './rules.mjs';
@@ -104,11 +104,10 @@ export function createLevelSim(map, { display = () => undefined, onEvent = () =>
         break;
       case 'block':
       case 'crate': {
-        const held = p.held === true;
         const part = addPart(
           object.type,
           {
-            kind: held ? 'kinematic' : 'dynamic',
+            kind: 'dynamic',
             shape: { kind: 'box', width: object.width, height: object.height },
             x: at.x,
             y: at.y,
@@ -124,11 +123,10 @@ export function createLevelSim(map, { display = () => undefined, onEvent = () =>
         break;
       }
       case 'stone': {
-        const radius = object.width / 2,
-          held = p.held === true;
+        const radius = object.width / 2;
         const part = addPart(
           'stone',
-          { kind: held ? 'kinematic' : 'dynamic', shape: { kind: 'circle', radius }, x: at.x, y: at.y, density: BODY.stone.density, friction: BODY.stone.friction, restitution: 0.15, layer: LAYER.loose },
+          { kind: 'dynamic', shape: { kind: 'circle', radius }, x: at.x, y: at.y, density: BODY.stone.density, friction: BODY.stone.friction, restitution: 0.15, layer: LAYER.loose },
           { ...spec, radius }
         );
         part.rolled = 0;
@@ -148,7 +146,7 @@ export function createLevelSim(map, { display = () => undefined, onEvent = () =>
         break;
       }
       case 'rope':
-        ropes.push({ id: object.id, x: object.x, y: object.y, length: object.height, holds: Number(p.holds), cut: false, sway: 0 });
+        ropes.push({ id: object.id, x: object.x, y: object.y, length: object.height, holds: Number(p.holds), cut: false });
         break;
       case 'gate': {
         const part = addPart('gate', { kind: 'kinematic', shape: { kind: 'box', width: object.width, height: object.height }, x: at.x, y: at.y, friction: 0.5, layer: LAYER.ground }, spec);
@@ -192,6 +190,10 @@ export function createLevelSim(map, { display = () => undefined, onEvent = () =>
     if (!weight) throw new Error(`Rope ${rope.id} holds nothing.`);
     weight.rope = rope;
     rope.weight = weight;
+    // The rope is tied to the top of what it holds, as long as it hangs; the weight can swing on it.
+    const top = weight.kind === 'stone' ? weight.spec.radius : weight.spec.height / 2;
+    rope.top = top;
+    rope.joint = world.addJoint({ kind: 'rope', a: weight.body, point: { x: rope.x, y: rope.y }, anchorA: { x: 0, y: -top } });
   }
 
   // ---- what touches what ---------------------------------------------------------------------
@@ -286,6 +288,7 @@ export function createLevelSim(map, { display = () => undefined, onEvent = () =>
     if (!part.alive) return;
     emit('break', { x: part.body.x, y: part.body.y, width: part.spec.width, height: part.spec.height });
     addScore(200, part.body);
+    // Removing the crate removes the rope's joint with it.
     if (part.rope && !part.rope.cut) part.rope.cut = true;
     removePart(part);
   }
@@ -351,55 +354,55 @@ export function createLevelSim(map, { display = () => undefined, onEvent = () =>
       else if (body.kind === 'dynamic') body.applyImpulse(((dx / (d || 1)) * push) * body.mass, ((dy / (d || 1)) * push - push * 0.35) * body.mass);
     }
     // A rope in the blast is cut.
-    for (const rope of ropes) if (!rope.cut && Math.hypot(rope.x - x, rope.y + rope.length / 2 - y) < r) cutRope(rope);
+    for (const rope of ropes) {
+      if (rope.cut) continue;
+      const end = ropeEnd(rope);
+      if (Math.hypot((rope.x + end.x) / 2 - x, (rope.y + end.y) / 2 - y) < r) cutRope(rope);
+    }
     removePart(pellet);
   }
 
   function cutRope(rope) {
     if (rope.cut) return;
     rope.cut = true;
-    const old = rope.weight;
-    emit('cut', { x: rope.x, y: rope.y + rope.length * 0.5 });
+    const end = ropeEnd(rope);
+    emit('cut', { x: (rope.x + end.x) / 2, y: (rope.y + end.y) / 2 });
     addScore(150, { x: rope.x, y: rope.y });
-    if (!old.alive) return;
-    // The weight was held still: from now on it falls, as a body of its own kind.
-    const body = old.body,
-      spec = old.spec,
-      shape = body.shape,
-      kind = old.kind;
-    removePart(old);
-    const fresh = addPart(
-      kind,
-      {
-        kind: 'dynamic',
-        shape,
-        x: body.x,
-        y: body.y,
-        density: kind === 'stone' ? BODY.stone.density : kind === 'crate' ? BODY.crate.density : BODY.block.density,
-        friction: kind === 'stone' ? BODY.stone.friction : BODY.block.friction,
-        restitution: kind === 'stone' ? 0.15 : 0.05,
-        layer: LAYER.loose
-      },
-      spec
-    );
-    fresh.hp = old.hp;
-    fresh.rolled = old.rolled ?? 0;
-    rope.weight = fresh;
-    emit('freed', { from: old, to: fresh });
+    if (rope.weight.alive) world.removeJoint(rope.joint);
+  }
+
+  /** Where the rope meets what it holds, now. */
+  function ropeEnd(rope) {
+    const body = rope.weight.body;
+    return { x: body.x, y: body.y - rope.top };
+  }
+
+  /** Whether two segments come within `reach` of each other. */
+  function segmentsMeet(ax, ay, bx, by, cx, cy, dx, dy, reach) {
+    const cross = (px, py, qx, qy, rx, ry) => (qx - px) * (ry - py) - (qy - py) * (rx - px);
+    const d1 = cross(cx, cy, dx, dy, ax, ay),
+      d2 = cross(cx, cy, dx, dy, bx, by),
+      d3 = cross(ax, ay, bx, by, cx, cy),
+      d4 = cross(ax, ay, bx, by, dx, dy);
+    if (d1 * d2 < 0 && d3 * d4 < 0) return true;
+    const toSegment = (px, py, sx, sy, ex, ey) => {
+      const lx = ex - sx,
+        ly = ey - sy,
+        t = Math.max(0, Math.min(1, ((px - sx) * lx + (py - sy) * ly) / (lx * lx + ly * ly || 1)));
+      return Math.hypot(px - (sx + lx * t), py - (sy + ly * t));
+    };
+    return Math.min(toSegment(ax, ay, cx, cy, dx, dy), toSegment(bx, by, cx, cy, dx, dy), toSegment(cx, cy, ax, ay, bx, by), toSegment(dx, dy, ax, ay, bx, by)) <= reach;
   }
 
   // A rope is cut by a pellet that passes through it: checked along the pellet's path each step.
   function ropeCuts(pellet, fromX, fromY) {
+    const { x, y } = pellet.body,
+      reach = pellet.body.shape.radius + 2;
     for (const rope of ropes) {
       if (rope.cut) continue;
-      const top = rope.y,
-        bottom = rope.y + rope.length;
-      const { x, y } = pellet.body;
-      if ((fromX - rope.x) * (x - rope.x) > 0 && Math.abs(x - rope.x) > 6 && Math.abs(fromX - rope.x) > 6) continue;
-      // Where the path crosses the rope's line.
-      const t = Math.abs(x - fromX) < 1e-6 ? 0.5 : (rope.x - fromX) / (x - fromX),
-        crossY = fromY + (y - fromY) * Math.min(1, Math.max(0, t));
-      if (crossY >= top && crossY <= bottom - 4) cutRope(rope);
+      // The pellet's path this step against the rope, from its anchor to a little above what it holds.
+      const end = ropeEnd(rope);
+      if (segmentsMeet(fromX, fromY, x, y, rope.x, rope.y, end.x, end.y - 4, reach)) cutRope(rope);
     }
   }
 

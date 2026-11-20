@@ -98,10 +98,19 @@ export async function filmScreen(app, { then = 'title' } = {}) {
   const ui = game.stage.addChild(scope.use(new DisplayObjectContainer()));
   const black = ui.addChild(scope.use(new Sprite()));
   black.graphics.beginFill(0x000000, 1).drawRect(0, 0, 960, 540).endFill();
-  // H.264 where the browser plays it, VP9 elsewhere: the film is in both forms.
-  const probe = document.createElement('video'),
-    file = probe.canPlayType('video/mp4; codecs="avc1.42E01E"') ? 'intro.mp4' : 'intro.webm';
-  const film = scope.use(createBrowserVideo({ assets: game.engine.assets, src: new URL('../media/' + file, import.meta.url).href, maxWidth: 960, muted: true }));
+  // The film is in two forms, VP9 and H.264; the browser plays the first it can.
+  const media = (file) => new URL('../media/' + file, import.meta.url).href;
+  const film = scope.use(
+    createBrowserVideo({
+      assets: game.engine.assets,
+      src: [
+        { src: media('intro.webm'), type: 'video/webm; codecs="vp9"' },
+        { src: media('intro.mp4'), type: 'video/mp4; codecs="avc1.42E01E"' }
+      ],
+      maxWidth: 960,
+      muted: true
+    })
+  );
   ui.addChild(film.display);
   let finished = false;
   const done = () => {
@@ -179,9 +188,10 @@ export async function selectScreen(app, { focus } = {}) {
   viewport.x = VIEW.x;
   viewport.y = VIEW.y;
   viewport.mask = { x: -8, y: -10, width: VIEW.width + 16, height: VIEW.height + 20 };
-  const wheelTarget = viewport.addChild(scope.use(new Sprite()));
-  wheelTarget.touchEnabled = true;
-  wheelTarget.hitArea = { x: 0, y: 0, width: VIEW.width, height: VIEW.height };
+  // Something under the cards to be over, so the wheel scrolls between them too.
+  const backing = viewport.addChild(scope.use(new Sprite()));
+  backing.touchEnabled = true;
+  backing.hitArea = { x: 0, y: 0, width: VIEW.width, height: VIEW.height };
   const strip = viewport.addChild(scope.use(new DisplayObjectContainer()));
   const contentLength = levels.length * (CARD.width + CARD.gap) + CARD.gap * 3;
 
@@ -253,13 +263,25 @@ export async function selectScreen(app, { focus } = {}) {
       viewportLength: VIEW.width,
       contentLength,
       thumb: { input: game.pointer, target: thumb, trackLength: VIEW.width },
-      ...(app.hover ? { wheel: { hover: app.hover, target: wheelTarget, lineLength: 120 } } : {}),
+      // A wheel over the viewport or any card in it: sideways wheels and trackpads scroll the strip.
+      ...(app.hover ? { wheel: { hover: app.hover, target: viewport, lineLength: 120 } } : {}),
       onScroll: (offset) => {
         strip.x = -offset;
         paintThumb();
       }
     })
   );
+  // An ordinary mouse wheel turns only up and down, which a sideways scroll control does not read; that turn
+  // scrolls the strip by the control's own `scrollBy` (ENGINE-NOTES.md, item 20).
+  if (app.hover)
+    kit.own({
+      dispose: viewport.on(app.hover.events.wheel, (event) => {
+        const { deltaX, deltaY, unit, zoom } = event.payload;
+        if (zoom || event.defaultPrevented || deltaX !== 0 || deltaY === 0) return;
+        const step = unit === 'pixel' ? deltaY : unit === 'line' ? deltaY * 120 : deltaY * VIEW.width;
+        if (scroll.scrollBy(step)) event.preventDefault();
+      })
+    });
   function paintThumb() {
     const { start, length } = scroll.thumb;
     thumb.graphics.clear();
@@ -386,7 +408,8 @@ export async function levelScreen(app, { index }) {
   });
   hud.setUsed(0);
 
-  // The city comes up out of the dark.
+  // The city comes up out of the dark. (A circle mask growing from the crossbow was measured and is too
+  // costly: see ENGINE-NOTES.md, item 3.)
   const dark = game.stage.addChild(scope.use(new Sprite()));
   dark.graphics.beginFill(0x000000, 1).drawRect(0, 0, 960, 540).endFill();
   animate(game.engine, scope, dark)
@@ -440,16 +463,13 @@ export async function levelScreen(app, { index }) {
       // Keys: A and D (or the arrows) turn the bow, W and S set the power, Space fires, Z the whole city.
       const busy = talking?.open || app.settingsOpen();
       if (!busy) {
-        const focus = game.keyboard?.getSnapshot(),
-          onSlider = focus?.focusVisible && focus.focusedId === hud.slider.id,
-          onButton = focus?.focusVisible && focus.focusedId && !onSlider;
-        // With the slider in focus its own keys move it; the arrows then do not turn the bow as well.
-        const turn = onSlider ? 0 : actions.value('turn'),
-          pull = onSlider ? 0 : actions.value('pull');
+        // Keys a focused button or the slider took do not come here (`skipPrevented`).
+        const turn = actions.value('turn'),
+          pull = actions.value('pull');
         if (turn || pull) level.setAim(level.aiming.angle + turn * 60 * seconds, level.aiming.power + pull * 45 * seconds);
-        if (actions.justPressed('fire') && !onButton) level.fire();
+        if (actions.justPressed('fire')) level.fire();
         if (actions.justPressed('overview')) level.toggleOverview();
-        if (actions.justPressed('restart') && !onButton) app.startLevel(index, { skipStory: true });
+        if (actions.justPressed('restart')) app.startLevel(index, { skipStory: true });
       }
       level.update(talking?.open ? 0 : seconds);
       // While words are spoken the controls step aside.

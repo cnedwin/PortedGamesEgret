@@ -11,8 +11,8 @@ const scopeState = Object.getOwnPropertyDescriptor(Scope.prototype, 'state').get
 const containerDispose = DisplayObjectContainer.prototype.dispose;
 const own = Object.prototype.hasOwnProperty;
 const MAX_UPDATES = 8192;
-function refuse(code = 'UI_CONTENT_INVALID') {
-    throw new EgretError(code);
+function refuse(code = 'UI_CONTENT_INVALID', reason) {
+    throw new EgretError(code, reason === undefined ? {} : { cause: new Error(reason) });
 }
 /** A callback-capable array exposes exactly one admitted finite capture boundary. */
 function captureArrayCount(value) {
@@ -66,30 +66,38 @@ export function createUiDisplayOperations(stage) {
     }
     function validateContent(content, scope) {
         if (scopeState.call(scope) !== 'open')
-            refuse('UI_CONTENT_INVALID');
+            refuse('UI_CONTENT_INVALID', 'the scope of the leaf is closed');
         const pending = [{ node: content, depth: 1 }];
         const seen = new Set();
         while (pending.length !== 0) {
             const { node, depth } = pending.pop();
-            if (!isDisplayNode(node) ||
-                isTerminated(node) ||
-                isStageRoot(node) ||
-                seen.has(node) ||
-                depth > 8 ||
-                seen.size >= 32 ||
-                ownerOf(node) !== scope ||
-                engineOf(node) !== engine ||
-                isManagedWrapper(node) ||
-                managedTerminal(node))
-                refuse();
+            const what = node === content ? 'the content' : 'a display object inside the content';
+            if (!isDisplayNode(node))
+                refuse('UI_CONTENT_INVALID', what + ' is not a display object');
+            if (isTerminated(node) || managedTerminal(node))
+                refuse('UI_CONTENT_INVALID', what + ' is disposed');
+            if (isStageRoot(node))
+                refuse('UI_CONTENT_INVALID', what + ' is the stage');
+            if (seen.has(node))
+                refuse('UI_CONTENT_INVALID', what + ' appears twice');
+            if (depth > 8 || seen.size >= 32)
+                refuse('UI_CONTENT_INVALID', 'the content has more than 32 display objects, or is deeper than 8');
+            if (ownerOf(node) !== scope)
+                refuse('UI_CONTENT_INVALID', what +
+                    ' does not belong to the scope of the leaf: make it with `context.scope.use(...)` in `prepare`, ' +
+                    'or give that scope to whatever makes it (such as `createLabel({ scope })`)');
+            if (engineOf(node) !== engine)
+                refuse('UI_CONTENT_INVALID', what + ' belongs to another Engine');
+            if (isManagedWrapper(node))
+                refuse('UI_CONTENT_INVALID', what + ' is a node the UI made itself');
             seen.add(node);
             const parent = parentOf(node);
             if (node === content && parent !== undefined && !managedBy(parent, authority))
-                refuse();
+                refuse('UI_CONTENT_INVALID', 'the content is already a child of another display object: remove it first');
             const childCount = childCountOf(node);
             // Refuse before allocating a frontier wider than the remaining subtree budget.
             if (childCount > 32 - seen.size - pending.length || (depth === 8 && childCount !== 0))
-                refuse();
+                refuse('UI_CONTENT_INVALID', 'the content has more than 32 display objects, or is deeper than 8');
             for (let index = 0; index < childCount; index++) {
                 const child = childAtOf(node, index);
                 if (parentOf(child) !== node)

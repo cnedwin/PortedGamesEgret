@@ -43,30 +43,29 @@ Every item is done through the engine's API; the table says where. What the engi
 
 | 能力 · Capability | 用在 · Used for | 文件 · File |
 |---|---|---|
-| `createPhysicsWorld` | 弹丸、木块、木箱、石头（dynamic）；跷跷板、吊着的重物、闸门（kinematic）；锁、踏板、弹簧（sensor）；地形碰撞体；`applyImpulse`、`queryRect`、接触事件 · pellets, blocks, crates, stones (dynamic); seesaws, hanging weights, gates (kinematic); locks, plates, springs (sensors); terrain colliders; impulses, rectangle queries, contact events | `src/sim/sim.mjs` |
+| `createPhysicsWorld` | 弹丸、木块、木箱、石头、吊着的重物（dynamic）；跷跷板、闸门（kinematic）；锁、踏板、弹簧（sensor）；地形碰撞体；吊绳是 `addJoint({ kind: 'rope' })`，切断用 `removeJoint`；`applyImpulse`、`queryRect`、接触事件 · pellets, blocks, crates, stones and hanging weights (dynamic); seesaws and gates (kinematic); locks, plates, springs (sensors); terrain colliders; ropes are `addJoint({ kind: 'rope' })`, cut with `removeJoint`; impulses, rectangle queries, contact events | `src/sim/sim.mjs` |
 | `importTiledMap` + `createTileMap` | 12 关都是 Tiled `.tmj`：背景层、地形层（带 `solid` 属性的瓦片生成碰撞体）、机关对象层；按相机视野 `cull` · twelve Tiled maps: backdrop, terrain (tiles with `solid` become colliders), mechanism objects; culled to the camera's view | `src/play/level.mjs`, `levels/*.tmj`, `tools/build-levels.mjs` |
 | `createCamera2D` | 跟随弹丸、按事件震屏、`zoomTo` 缩放到全景、`addLayer` 三层视差（远山、屋檐、雾） · follows the pellet, shakes on impacts, zooms out to the whole city, three parallax layers | `src/play/level.mjs`, `src/play/scenery.mjs` |
-| `createParticleEmitter` | 碎木、尘土、火花、雷光、锁开的金光、弹丸拖尾 · splinters, dust, sparks, thunder, the glint of an opened lock, the pellet's trail | `src/play/level.mjs` |
+| `createParticleEmitter` | 碎木、尘土、火花、雷光、锁开的金光、弹丸拖尾；发光的几种用 `blendMode: 'add'` · splinters, dust, sparks, thunder, the glint of an opened lock, the pellet's trail; the bright ones with `blendMode: 'add'` | `src/play/level.mjs` |
 | `blendMode` `add` / `screen` | 火花、雷光、拖尾、锁的光芒用 add；月晕和夜雾用 screen · sparks, thunder, trail and lock rays in add; the moon's halo and the mist in screen | `src/play/level.mjs`, `src/play/scenery.mjs` |
 | `renderEffect` glow / outline | 未开的锁描边、开锁后发光；标题字发光；选中的关卡卡片描边；结算星星发光 · locks outlined while shut and glowing once open; the title; the chosen level card; the stars of a result | `src/play/level.mjs`, `src/screens.mjs` |
 | `mask` | 选关列表的矩形裁剪（`mask = {x, y, width, height}`）；对白头像的圆形形状遮罩（`mask = sprite`） · the level strip clipped to a rectangle; the speaker's portrait cut round by a shape mask | `src/screens.mjs` |
 | `beginLinearGradientFill` / `beginRadialGradientFill` | 夜空、按钮、面板、滑条、木块与石头的明暗、月亮、开关的旋钮 · the night sky, buttons, panels, the slider, the shading of blocks and stones, the moon, the switch knobs | `src/play/scenery.mjs`, `src/art/shapes.mjs`, `src/ui/kit.mjs` |
-| `parseBitmapFont` + `createBitmapText` | 分数、连击、选关卡片上的「第N关」、结算分数；字页由代码画出 · the score, combos, "level N" on the cards, the result's score; the font page is painted in code | `src/art/paint.mjs`, `src/ui/hud.mjs`, `src/screens.mjs` |
-| `createUiRoot` | 设置卡：一列四个叶子（标题、音效、音乐、关闭）由托管界面排版、提交 · the settings card: a column of four leaves laid out and committed by the managed UI | `src/ui/settings.mjs` |
+| `parseBitmapFont` + `createBitmapText` | 分数、连击、选关卡片上的「第N关」、结算分数；字页由代码画出，经 `game.textureFromCanvas` 成为贴图 · the score, combos, "level N" on the cards, the result's score; the font page is painted in code and becomes a texture through `game.textureFromCanvas` | `src/art/paint.mjs`, `src/ui/hud.mjs`, `src/screens.mjs` |
+| `createUiRoot` | 设置卡：一列四个叶子（标题、音效、音乐、关闭）由托管界面排版、提交；每个叶子的文字是 `game.createLabel({ scope: context.scope })` · the settings card: a column of four leaves laid out and committed by the managed UI, each leaf's words a `game.createLabel({ scope: context.scope })` | `src/ui/settings.mjs` |
 | `createActionControl` | 所有按钮（开始、选关、发射、重来、下一关……） · every button | `src/ui/kit.mjs` |
 | `createRangeControl` | 发射力度滑条 · the power slider | `src/ui/kit.mjs`, `src/ui/hud.mjs` |
 | `createSelectionGroup` | 选关：12 张卡片单选，未解锁的不可选 · choosing one of twelve level cards, locked ones disabled | `src/screens.mjs` |
 | `createToggleControl` | 音效、音乐开关 · the sound and music switches | `src/ui/settings.mjs` |
-| `createScrollControl` | 选关列表横向滚动：拖滚动条、滚轮 · the level strip scrolls by its bar and the wheel | `src/screens.mjs` |
+| `createScrollControl` | 选关列表横向滚动：拖滚动条、滚轮（`game.hover`） · the level strip scrolls by its bar and the wheel (`game.hover`) | `src/screens.mjs` |
 | `createControlKeys` + 键盘焦点 · keyboard focus | 按钮、开关、滑条、关卡列表都能用键盘操作 · buttons, switches, the slider and the level list all work from the keyboard | `src/ui/kit.mjs`, `src/screens.mjs` |
 | `createUiSemantics` + `createBrowserSemantics` | 整个游戏一棵语义树，投影到页面供读屏器使用：按钮、开关、滑条、对话框、列表框与选项、状态播报 · one semantic tree for the whole game, projected into the page for screen readers | `src/main.mjs`, `src/ui/*.mjs`, `src/screens.mjs` |
 | `createSaveStore` | 星级、最高分、解锁进度、是否看过开场、声音设置 · stars, best scores, progress, whether the film was seen, sound settings | `src/saves.mjs` |
 | `createBrowserAudio` / `createAudioMixer` | 页面里：`createBrowserAudio` 的混音器，音乐与音效两条总线、限幅器；测试里：`createAudioMixer` 加记录后端验证总线分配和静音 · in the page, the mixer of `createBrowserAudio` with a music bus and an effects bus and a limiter; in the tests, `createAudioMixer` over a recording backend checks the buses and muting | `src/audio/sound.mjs`, `test/sound.test.mjs` |
-| `createBrowserVideo` | 开场短片（22 秒，代码生成） · the opening film (22 s, made in code) | `src/screens.mjs`, `media/`, `tools/make-intro.py` |
-| `createBrowserGame` | 画布、帧循环、指针与键盘输入、自适应缩放、文字标签、PNG 贴图 · the canvas, the loop, pointer and keyboard input, fitting the page, text labels, PNG textures | `src/main.mjs` |
+| `createBrowserVideo` | 开场短片（22 秒，代码生成），`src` 给 WebM 与 MP4 两个文件，浏览器播能播的那个 · the opening film (22 s, made in code), `src` listing a WebM and an MP4 for the browser to choose | `src/screens.mjs`, `media/`, `tools/make-intro.py` |
+| `createBrowserGame` | 画布、帧循环、指针、键盘与悬停输入（`hover: true`）、自适应缩放、文字标签、PNG 贴图、代码画的贴图（`textureFromCanvas`） · the canvas, the loop, pointer, keyboard and hover input (`hover: true`), fitting the page, text labels, PNG textures, textures painted in code (`textureFromCanvas`) | `src/main.mjs` |
 | `animate` | 标题入场、对白框淡出、连击数字弹出、结算星星逐个弹出、锁打开时的跳动、入场黑幕 · the title's entrance, dialogue fading, the combo pop, stars one by one, the lock's jump, the fade in | `src/screens.mjs`, `src/ui/hud.mjs`, `src/play/level.mjs` |
-| `createInputActions` + `bindBrowserInputActions` | 键盘与手柄的命名动作（转弩、力度、发射、全景、重来、返回） · named actions over keys and gamepads | `src/main.mjs` |
-| `createBrowserHoverInput` | 选关列表的滚轮 · the wheel on the level list | `src/main.mjs` |
+| `createInputActions` + `bindBrowserInputActions` | 键盘与手柄的命名动作（转弩、力度、发射、全景、重来、返回）；`skipPrevented` 让焦点控件用掉的键不再触发动作 · named actions over keys and gamepads; with `skipPrevented` a key a focused control took presses no action | `src/main.mjs` |
 
 ## 素材 · Assets
 
@@ -104,4 +103,4 @@ The tests replay the recorded solution of every level in Node through the same s
 | `levels/`, `media/` | 生成的地图、瓦片图、开场短片 · generated maps, tiles and film |
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
-引擎副本取自 Egret_rebuild 提交 `0e72ffb`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `0e72ffb`, copied by the engine's `tools/vendor-game.mjs`.
+引擎副本取自 Egret_rebuild 提交 `687037a`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `687037a`, copied by the engine's `tools/vendor-game.mjs`.

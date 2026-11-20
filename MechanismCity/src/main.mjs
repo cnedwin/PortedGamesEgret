@@ -5,10 +5,9 @@ import { parseBitmapFont } from '@egret/engine/bitmapfont';
 import { createInputActions } from '@egret/engine/kit';
 import { createUiSemantics } from '@egret/engine/ui/semantics';
 import { createBrowserGame } from '@egret/engine/web/game';
-import { createBrowserHoverInput } from '@egret/engine/web/hover';
 import { bindBrowserInputActions, browserSaveStorage } from '@egret/engine/web/kit';
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
-import { leasePainted, paintDot, paintScoreFont, paintSplinter } from './art/paint.mjs';
+import { paintDot, paintScoreFont, paintSplinter } from './art/paint.mjs';
 import { createSound } from './audio/sound.mjs';
 import { openSave } from './saves.mjs';
 import { endingScreen, filmScreen, levelScreen, resultScreen, selectScreen, titleScreen } from './screens.mjs';
@@ -34,34 +33,34 @@ const game = await createBrowserGame({
   fit: 'contain',
   fitTo: document.querySelector('#frame'),
   clearColor: 0x0d1418,
+  // Hover and the mouse wheel, for scrolling the list of levels.
+  hover: true,
   autoStart: false,
   update: (seconds) => frame(Math.min(seconds, 1 / 20))
 });
-const { engine, scope } = game;
+const { scope } = game;
 
 // What the city is drawn with: the terrain tiles from a PNG, and small textures painted on canvases.
 const textures = {
   terrain: await game.loadTexture(new URL('../levels/terrain.png', import.meta.url).href),
-  dot: await leasePainted(engine, scope, 'dot', paintDot()),
-  splinter: await leasePainted(engine, scope, 'splinter', paintSplinter())
+  dot: await game.textureFromCanvas(paintDot()),
+  splinter: await game.textureFromCanvas(paintSplinter())
 };
 // The gold lettering of the score: its glyphs painted into one page, read by the engine's font parser.
 const painted = paintScoreFont(),
   font = parseBitmapFont(painted.font),
-  fontPages = [await leasePainted(engine, scope, 'score-font', painted.canvas)];
+  fontPages = [await game.textureFromCanvas(painted.canvas)];
 
 const levels = await (await fetch(new URL('../levels/levels.json', import.meta.url))).json();
 const save = openSave(browserSaveStorage());
 const sound = await createSound(scope, save.data.settings);
 
-// Hover and wheel, for scrolling the list of levels with a mouse wheel.
-const hover = scope.use(createBrowserHoverInput({ engine, scope, canvas, width: WIDTH, height: HEIGHT }));
-
 // The semantic tree: one for the whole game, projected into the page for screen readers and for tests.
 const semantics = createUiSemantics();
 const projection = scope.use(createBrowserSemantics({ semantics, canvas, width: WIDTH, height: HEIGHT, label: '千机巧匠 · Mechanism City', onError: (cause) => console.warn('semantics', cause) }));
 
-// Named actions over keys and gamepads, read each frame.
+// Named actions over keys and gamepads, read each frame. A key a focused control took (Space on a button, the
+// arrows on the slider) presses no action as well.
 const actions = createInputActions({
   turn: { kind: 'axis', negative: ['Key:KeyA', 'Key:ArrowLeft', 'Pad:left'], positive: ['Key:KeyD', 'Key:ArrowRight', 'Pad:right'] },
   pull: { kind: 'axis', negative: ['Key:KeyS', 'Key:ArrowDown', 'Pad:down'], positive: ['Key:KeyW', 'Key:ArrowUp', 'Pad:up'] },
@@ -71,7 +70,7 @@ const actions = createInputActions({
   restart: { bindings: ['Key:KeyR'] },
   back: { bindings: ['Key:Escape', 'Pad:b'] }
 });
-const browserActions = scope.use(bindBrowserInputActions(actions, { keyTarget: canvas, passKeys: ['Tab', 'F5', 'F11', 'F12'] }));
+const browserActions = scope.use(bindBrowserInputActions(actions, { keyTarget: canvas, skipPrevented: true, passKeys: ['Tab', 'F5', 'F11', 'F12'] }));
 
 const app = {
   game,
@@ -83,7 +82,7 @@ const app = {
   font,
   fontPages,
   actions,
-  hover,
+  hover: game.hover,
   skipStory: false,
   settingsOpen: () => Boolean(settings?.open),
   /** Move to a screen by name; the one before is let go once the next is made. */
@@ -98,8 +97,9 @@ const app = {
   async openSettings() {
     if (settings?.open || openingSettings) return;
     openingSettings = true;
-    // The managed UI is prepared outside the press that asked for it: during input delivery the engine is busy.
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // A root may not be made while the press that asked for it is being delivered (only its prepare waits):
+    // leave the delivery through a settled promise first, as the engine's refusal says (ENGINE-NOTES.md, item 19).
+    await Promise.resolve();
     settings = await openSettings(game, {
       semantics,
       sound,

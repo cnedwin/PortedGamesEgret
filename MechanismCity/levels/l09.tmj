@@ -2679,14 +2679,7 @@
      "height": 57.6,
      "rotation": 0,
      "visible": true,
-     "ellipse": true,
-     "properties": [
-      {
-       "name": "held",
-       "type": "bool",
-       "value": true
-      }
-     ]
+     "ellipse": true
     },
     {
      "id": 5,

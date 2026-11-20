@@ -12,13 +12,18 @@ const at = (line, time) => time >= line.end
         ? line.from
         : line.from + ((line.to - line.from) * (time - line.start)) / (line.end - line.start);
 /**
- * Sound for a page on Web Audio. A page may not sound before the person has touched it: until
- * then the mixer is locked, music asked for waits, and the first touch or key lets it start.
+ * A Web Audio backend for a mixer the page makes itself with `createAudioMixer`:
+ *
+ *     const backend = createWebAudioBackend();
+ *     const mixer = createAudioMixer({ backend, locked: backend.locked });
+ *     backend.attach(mixer);
+ *
+ * `createBrowserAudio` does these three steps in one call.
  */
-export function createBrowserAudio(options = {}) {
+export function createWebAudioBackend(options = {}) {
     if (options === null || typeof options !== 'object' || Array.isArray(options))
         throw new EgretError('AUDIO_OPTIONS_INVALID');
-    const { context: given, unlockTarget, pauseWhenHidden = true, onError, limiter: limit, ...configuration } = options;
+    const { context: given, unlockTarget, pauseWhenHidden = true, onError, limiter: limit } = options;
     const Live = globalThis.AudioContext, page = globalThis.document;
     if ((given !== undefined && (given === null || typeof given !== 'object')) ||
         typeof pauseWhenHidden !== 'boolean' ||
@@ -53,6 +58,7 @@ export function createBrowserAudio(options = {}) {
     const sounding = new Set();
     const pairs = [];
     const armed = [];
+    let mixer;
     let closed = false, desired = true, output, silent;
     function report(cause) {
         if (onError !== undefined)
@@ -94,13 +100,13 @@ export function createBrowserAudio(options = {}) {
             follow();
             if (live.state === 'running') {
                 unlisten(armed);
-                mixer.setLocked(false);
+                mixer?.setLocked(false);
                 if (!desired)
                     live.suspend().catch(report);
             }
             else if (desired) {
                 arm();
-                mixer.setLocked(true);
+                mixer?.setLocked(true);
             }
         }
         catch (cause) {
@@ -270,6 +276,39 @@ export function createBrowserAudio(options = {}) {
         };
     }
     const backend = {
+        context,
+        get output() {
+            return output;
+        },
+        get locked() {
+            return live !== undefined && live.state !== 'running';
+        },
+        attach(made) {
+            if (mixer !== undefined || made === null || typeof made !== 'object')
+                throw new EgretError('AUDIO_OPTIONS_INVALID');
+            mixer = made;
+            if (live === undefined)
+                return;
+            listen(pairs, live, 'statechange', settle);
+            if (pauseWhenHidden && page !== undefined) {
+                const visibility = () => {
+                    try {
+                        if (page.visibilityState === 'hidden')
+                            made.suspend('hidden');
+                        else
+                            made.resume('hidden');
+                    }
+                    catch (cause) {
+                        report(cause);
+                    }
+                };
+                listen(pairs, page, 'visibilitychange', visibility);
+                if (page.visibilityState === 'hidden')
+                    made.suspend('hidden');
+            }
+            if (live.state !== 'running')
+                arm();
+        },
         get time() {
             return context.currentTime;
         },
@@ -420,51 +459,42 @@ export function createBrowserAudio(options = {}) {
                 live.close().catch(report);
         }
     };
+    return backend;
+}
+/**
+ * Sound for a page on Web Audio. A page may not sound before the person has touched it: until
+ * then the mixer is locked, music asked for waits, and the first touch or key lets it start.
+ */
+export function createBrowserAudio(options = {}) {
+    if (options === null || typeof options !== 'object' || Array.isArray(options))
+        throw new EgretError('AUDIO_OPTIONS_INVALID');
+    const { context: _context, unlockTarget: _target, pauseWhenHidden: _hidden, onError: _error, limiter: _limiter, ...configuration } = options;
+    // The backend reads its own options and no others.
+    const backend = createWebAudioBackend(options);
     let mixer;
     try {
-        mixer = createAudioMixer({ ...configuration, backend, locked: live !== undefined && live.state !== 'running' });
+        mixer = createAudioMixer({ ...configuration, backend, locked: backend.locked });
     }
     catch (cause) {
-        if (live !== undefined && given === undefined)
-            live.close().catch(report);
+        backend.close();
         throw cause;
     }
-    if (live !== undefined) {
+    try {
+        backend.attach(mixer);
+    }
+    catch (cause) {
         try {
-            listen(pairs, live, 'statechange', settle);
-            if (pauseWhenHidden && page !== undefined) {
-                const visibility = () => {
-                    try {
-                        if (page.visibilityState === 'hidden')
-                            mixer.suspend('hidden');
-                        else
-                            mixer.resume('hidden');
-                    }
-                    catch (cause) {
-                        report(cause);
-                    }
-                };
-                listen(pairs, page, 'visibilitychange', visibility);
-                if (page.visibilityState === 'hidden')
-                    mixer.suspend('hidden');
-            }
-            if (live.state !== 'running')
-                arm();
+            mixer.dispose();
         }
-        catch (cause) {
-            try {
-                mixer.dispose();
-            }
-            catch {
-                /* the first failure is the one told */
-            }
-            throw cause;
+        catch {
+            /* the first failure is the one told */
         }
+        throw cause;
     }
     return Object.freeze({
         mixer,
-        context,
-        output: output,
+        context: backend.context,
+        output: backend.output,
         dispose() {
             mixer.dispose();
         }

@@ -132,7 +132,7 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
   bow.y = bowAt.y;
   const aiming = { angle: bowAt.angle, power: bowAt.power, pulling: false };
 
-  // ---- particles: one emitter for each kind of debris, burst where something happens -------------------
+  // ---- particles: one emitter for each kind of debris, burst where something happens; what is bright adds up --
   const emitter = (options) => {
     const made = scope.use(createParticleEmitter({ running: false, rate: 0, maxParticles: 400, ...options }));
     effects.addChild(made.display);
@@ -140,15 +140,10 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
   };
   const splinters = emitter({ texture: textures.splinter, lifetime: [0.6, 1.2], speed: [120, 320], angle: [180, 360], gravity: { x: 0, y: 900 }, size: 16, endScale: 0.7, startColor: 0xd09a5a, endColor: 0x6a4424, endAlpha: 0, spin: 540, rotation: [0, 360], seed: 3 });
   const dust = emitter({ texture: textures.dot, lifetime: [0.5, 1.1], speed: [30, 110], angle: [190, 350], gravity: { x: 0, y: -20 }, drag: 1.5, size: 26, endScale: 2.2, startColor: 0xb8b0a0, endColor: 0x6a6660, startAlpha: 0.55, endAlpha: 0, seed: 5 });
-  const sparks = emitter({ texture: textures.dot, lifetime: [0.25, 0.6], speed: [160, 420], angle: [0, 360], gravity: { x: 0, y: 700 }, size: 9, endScale: 0.3, startColor: 0xfff0b0, endColor: 0xff7a20, endAlpha: 0, seed: 7 });
-  const thunder = emitter({ texture: textures.dot, lifetime: [0.3, 0.9], speed: [200, 560], angle: [0, 360], drag: 2, size: 22, endScale: 0.2, startColor: 0xe6f6ff, endColor: 0x3a78ff, endAlpha: 0, maxParticles: 300, seed: 9 });
-  const glints = emitter({ texture: textures.dot, lifetime: [0.6, 1.4], speed: [20, 90], angle: [240, 300], gravity: { x: 0, y: -60 }, size: 12, endScale: 0.2, startColor: 0xffe6a0, endColor: 0xffb040, endAlpha: 0, seed: 11 });
-  const trail = emitter({ texture: textures.dot, lifetime: [0.25, 0.45], speed: [0, 12], size: 11, endScale: 0.2, startColor: 0xffe2a0, endColor: 0xff8a40, startAlpha: 0.8, endAlpha: 0, seed: 13 });
-  // What is bright adds to what is under it.
-  trail.display.blendMode = 'add';
-  sparks.display.blendMode = 'add';
-  thunder.display.blendMode = 'add';
-  glints.display.blendMode = 'add';
+  const sparks = emitter({ texture: textures.dot, lifetime: [0.25, 0.6], speed: [160, 420], angle: [0, 360], gravity: { x: 0, y: 700 }, size: 9, endScale: 0.3, startColor: 0xfff0b0, endColor: 0xff7a20, endAlpha: 0, blendMode: 'add', seed: 7 });
+  const thunder = emitter({ texture: textures.dot, lifetime: [0.3, 0.9], speed: [200, 560], angle: [0, 360], drag: 2, size: 22, endScale: 0.2, startColor: 0xe6f6ff, endColor: 0x3a78ff, endAlpha: 0, maxParticles: 300, blendMode: 'add', seed: 9 });
+  const glints = emitter({ texture: textures.dot, lifetime: [0.6, 1.4], speed: [20, 90], angle: [240, 300], gravity: { x: 0, y: -60 }, size: 12, endScale: 0.2, startColor: 0xffe6a0, endColor: 0xffb040, endAlpha: 0, blendMode: 'add', seed: 11 });
+  const trail = emitter({ texture: textures.dot, lifetime: [0.25, 0.45], speed: [0, 12], size: 11, endScale: 0.2, startColor: 0xffe2a0, endColor: 0xff8a40, startAlpha: 0.8, endAlpha: 0, blendMode: 'add', seed: 13 });
   const burst = (stream, x, y, count) => {
     stream.x = x;
     stream.y = y;
@@ -313,16 +308,16 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
     sim.update(seconds);
     scenery.update(time);
 
-    // Ropes: from the anchor to the weight, swaying a little while they hold it.
+    // Ropes: from the anchor to where the joint holds the weight, which swings on it when struck.
     const rg = ropes.graphics;
     if (sim.ropes.length) rg.clear();
     for (const rope of sim.ropes) {
       if (rope.cut) continue;
       const weight = rope.weight.body,
-        top = weight.y - (weight.shape.kind === 'circle' ? weight.shape.radius : weight.shape.height / 2),
-        sway = Math.sin(time * 1.7 + rope.id) * 2.5;
-      rg.lineStyle(3, 0x3a2614, 1).moveTo(rope.x, rope.y).curveTo(rope.x + sway, (rope.y + top) / 2, weight.x, top);
-      rg.lineStyle(1.2, 0xc89a5a, 0.9).moveTo(rope.x, rope.y).curveTo(rope.x + sway, (rope.y + top) / 2, weight.x, top);
+        endX = weight.x,
+        endY = weight.y - rope.top;
+      rg.lineStyle(3, 0x3a2614, 1).moveTo(rope.x, rope.y).lineTo(endX, endY);
+      rg.lineStyle(1.2, 0xc89a5a, 0.9).moveTo(rope.x, rope.y).lineTo(endX, endY);
       rg.lineStyle(0);
       rg.beginFill(0x8a6a3a, 1).drawRect(rope.x - 6, rope.y - 4, 12, 6).endFill();
     }

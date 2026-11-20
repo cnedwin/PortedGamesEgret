@@ -18,7 +18,7 @@ test('every engine entry the game imports is in the copy', async () => {
   for (const folder of ['../src/', '../src/sim/', '../src/play/', '../src/ui/', '../src/art/', '../src/audio/', '../src/levels/'])
     for (const name of await readdir(new URL(folder, import.meta.url)))
       if (name.endsWith('.mjs')) for (const [, entry] of (await read(folder + name)).matchAll(/from '(@egret\/[^']+)'/g)) asked.add(entry);
-  assert.ok(asked.size >= 15, `only ${asked.size} entries`);
+  assert.ok(asked.size >= 12, `only ${asked.size} entries`);
   for (const entry of asked) {
     assert.ok(imports[entry], `${entry} is not in vendor/importmap.json`);
     await read('../' + imports[entry]);
