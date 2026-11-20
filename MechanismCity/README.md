@@ -126,6 +126,7 @@ The tests replay the recorded solution of every level in Node through the same s
 
 - 真显卡和真手机上没有测过帧时间。 · Frame times were not measured on a real GPU or phone.
 - 引擎方面仍未解决的见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 中标为「未解决 / open」的条目（径向渐变的三角形、被拒的 `update` 仍改内存、输入分发中不能建 UI 根、横向滚动控件不读竖向滚轮）。 · The engine's open items are those marked open in ENGINE-NOTES.
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（4 of 4 under 44×44: 开始 115×28; 选关 55×22; 开场短片 55×22; 设置 55×22）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 50.0 ms over 105 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（1 files refused; uncaught: pageerror: ASSET_LOAD_FAILED: A provider failed to load the ass）。
 
 ## 已解决 · Solved
 
