@@ -18,12 +18,13 @@ import {
   energyFor,
   enemyTurn,
   playCard,
+  previewSwap,
   rewardChoices,
   totalEnergy,
   swapAndSettle,
 } from '../src/core/battle.mjs';
 import { CARDS, STARTER_DECK, boardCards, cardById, pureDamageCards } from '../src/core/cards.mjs';
-import { findRuns, index } from '../src/core/board.mjs';
+import { BOMB, EARTH, FIRE, RAINBOW, ROW, WATER, WILD, findRuns, index } from '../src/core/board.mjs';
 
 const card = (id) => cardById(id);
 
@@ -141,6 +142,77 @@ test('交换一次扣一步、倒计时减一，交换不成的话原样退回',
   assert.equal(bad, null, '换不出三连就不该成立');
   assert.deepEqual([...battle2.board.kind], before, '棋盘要原样退回');
   assert.equal(battle2.steps, STEPS_PER_TURN, '不成立的交换不扣步数');
+});
+
+test('交换单个炸弹即使没有三连，预览与实际爆炸都以交换后的格子为中心', () => {
+  const battle = ready();
+  debugSetBoard(battle, ['0123401', '1234012', '2340123', '3401234', '4012340', '0123401', '1234012']);
+  battle.board.special[0] = BOMB;
+  const before = [[...battle.board.kind], [...battle.board.special]];
+
+  const preview = previewSwap(battle, 0, 1);
+  assert.deepEqual([[...battle.board.kind], [...battle.board.special]], before);
+  const clear = swapAndSettle(battle, 0, 1).find((event) => event.type === 'clearStep');
+
+  assert.ok(clear, '特殊块单独交换也会触发消除');
+  assert.deepEqual(clear.triggered, [{ index: 1, effect: BOMB }]);
+  assert.deepEqual(clear.cleared.map((cell) => cell.index), preview);
+  assert.deepEqual(preview.sort((a, b) => a - b), [0, 1, 2, 7, 8, 9]);
+});
+
+test('特殊块爆炸与自然四连合并结算，保留交换格上的新特殊块', () => {
+  for (const [from, to] of [[4, 3], [3, 4]]) {
+    const battle = ready();
+    debugSetBoard(battle, ['0001023', '1234012', '2340123', '3401234', '4012340', '0123401', '1234012']);
+    battle.board.special[from] = BOMB;
+
+    const preview = previewSwap(battle, from, to);
+    const clear = swapAndSettle(battle, from, to).find((event) => event.type === 'clearStep');
+
+    assert.deepEqual(clear.triggered, [{ index: to, effect: BOMB }]);
+    assert.deepEqual(clear.spawned, [{ index: 3, kind: FIRE, special: ROW }]);
+    assert.deepEqual(clear.cleared.map((cell) => cell.index), preview);
+    assert.ok(preview.includes(0) && preview.includes(11) && !preview.includes(3));
+  }
+});
+
+test('交换彩虹块清除相邻方块的颜色，交换两个特殊块仍全盘消除', () => {
+  const rows = ['0123401', '1234012', '2340123', '3401234', '4012340', '0123401', '1234012'];
+  const battle = ready();
+  debugSetBoard(battle, rows);
+  battle.board.kind[0] = WILD;
+  battle.board.special[0] = RAINBOW;
+
+  const preview = previewSwap(battle, 1, 0);
+  const clear = swapAndSettle(battle, 1, 0).find((event) => event.type === 'clearStep');
+
+  assert.ok(clear, '彩虹块单独交换也会触发消除');
+  assert.deepEqual(clear.triggered, [{ index: 1, effect: RAINBOW }]);
+  assert.deepEqual(clear.cleared.map((cell) => cell.index), preview);
+  assert.ok(clear.cleared.every((cell) => cell.index === 1 || cell.kind === EARTH));
+
+  const combo = ready();
+  debugSetBoard(combo, rows);
+  combo.board.kind[0] = WILD;
+  combo.board.special[0] = RAINBOW;
+  combo.board.special[1] = BOMB;
+  const comboPreview = previewSwap(combo, 0, 1);
+  const comboClear = swapAndSettle(combo, 0, 1).find((event) => event.type === 'clearStep');
+  assert.equal(comboClear.combo, true);
+  assert.equal(comboPreview.length, 49);
+  assert.deepEqual(comboClear.cleared.map((cell) => cell.index), comboPreview);
+});
+
+test('潮汐首轮补入水方块，提示保持水元素文本', () => {
+  const battle = ready({ seed: 12, deck: ['water-tide'] });
+  battle.energy.water = 10;
+
+  const events = playCard(battle, battle.hand[0].uid);
+  const firstFall = events.find((event) => event.type === 'fall');
+
+  assert.equal(events.find((event) => event.type === 'flood').kind, 'water');
+  assert.equal(firstFall.fills.length, 14);
+  assert.ok(firstFall.fills.every((fill) => fill.kind === WATER));
 });
 
 test('连锁会一直跑到没有可消的，棋盘始终满的', () => {

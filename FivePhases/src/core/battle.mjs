@@ -6,6 +6,7 @@
 import {
   ELEMENTS,
   EMPTY,
+  PLAIN,
   WILD,
   adjacent,
   collapse,
@@ -14,6 +15,7 @@ import {
   findRuns,
   hasMove,
   index,
+  previewClear,
   reshuffle,
   spreadSpecials,
   swapCells,
@@ -325,7 +327,9 @@ function applyEffect(battle, card, effect, events, round) {
       break;
     }
     case 'flood': {
-      battle.floodKind = effect.kind;
+      const colour = ELEMENTS.indexOf(effect.kind);
+      if (colour === -1) break;
+      battle.floodKind = colour;
       events.push({ type: 'flood', kind: effect.kind });
       break;
     }
@@ -457,6 +461,13 @@ function scorchBoard(battle, kind, events) {
 
 // ── 交换与连锁 ──────────────────────────────────────────────────
 
+// 本函数读已交换的棋盘。彩虹块取交换对象的颜色。
+function swapClearOptions(board, a, b) {
+  if (board.special[a] !== PLAIN) return { swap: [a, b], specialSeed: a, rainbowKind: board.kind[b] };
+  if (board.special[b] !== PLAIN) return { swap: [a, b], specialSeed: b, rainbowKind: board.kind[a] };
+  return { swap: [a, b] };
+}
+
 /**
  * 玩家把 a 拖到 b，并把这一手彻底走完：交换 → 清空 → 下落 → 再判定，直到没有可消的。
  *
@@ -477,11 +488,12 @@ export function swapAndSettle(battle, a, b) {
 
   const specialA = board.special[a];
   const specialB = board.special[b];
-  const specialSwap = specialA !== 0 || specialB !== 0;
+  const specialSwap = specialA !== PLAIN || specialB !== PLAIN;
+  const combo = specialA !== PLAIN && specialB !== PLAIN;
 
   swapCells(board, a, b);
-  const { runs } = findRuns(board);
-  if (!runs.length && !specialSwap) {
+  const result = combo ? null : findAndClear(board, swapClearOptions(board, a, b));
+  if (!combo && !result) {
     swapCells(board, a, b);
     return null;
   }
@@ -490,7 +502,7 @@ export function swapAndSettle(battle, a, b) {
   battle.enemy.countdown -= 1;
   const events = [{ type: 'swap', a, b, special: specialSwap }];
 
-  if (specialA !== 0 && specialB !== 0) {
+  if (combo) {
     // 两个特殊块一起换：全屏清。这是全场最该爽的一下，演出预算往这儿堆
     events.push({ type: 'combo' });
     const cells = [];
@@ -502,13 +514,8 @@ export function swapAndSettle(battle, a, b) {
     }
     events.push({ type: 'clearStep', chain: 1, cleared: cells, spawned: [], triggered: [], combo: true });
   } else {
-    // 只换了一个特殊块时，拿另一个的颜色去触发彩虹
-    const rainbowKind = specialA !== 0 ? board.kind[a] : board.kind[b];
-    const result = findAndClear(board, { swap: [a, b], rainbowKind: specialSwap ? rainbowKind : null });
-    if (result) {
-      events.push({ type: 'clearStep', chain: 1, ...result });
-      applyClearEnergy(battle, [events.at(-1)]);
-    }
+    events.push({ type: 'clearStep', chain: 1, ...result });
+    applyClearEnergy(battle, [events.at(-1)]);
   }
 
   events.push(...settle(battle, 1));
@@ -611,19 +618,19 @@ function applyClearEnergy(battle, events) {
  * 设计文档 4.1 那条"实时高亮将被消除的格子"靠它——不做这一步，玩家会觉得游戏不听话。
  */
 export function previewSwap(battle, a, b) {
+  if (battle.phase !== 'player' || battle.steps <= 0) return [];
   const board = battle.board;
   if (!adjacent(board, a, b)) return [];
   if (board.kind[a] === EMPTY || board.kind[b] === EMPTY) return [];
-  swapCells(board, a, b);
-  const { runs } = findRuns(board);
-  swapCells(board, a, b);
-  const cells = new Set();
-  for (const run of runs) for (const i of run.cells) cells.add(i);
-  if (board.special[a] !== 0 || board.special[b] !== 0) {
-    cells.add(a);
-    cells.add(b);
+  if (board.special[a] !== PLAIN && board.special[b] !== PLAIN) {
+    return [...board.kind.keys()].filter((i) => board.kind[i] !== EMPTY);
   }
-  return [...cells];
+  swapCells(board, a, b);
+  try {
+    return previewClear(board, swapClearOptions(board, a, b));
+  } finally {
+    swapCells(board, a, b);
+  }
 }
 
 // ── 回合 ────────────────────────────────────────────────────────

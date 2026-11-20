@@ -212,13 +212,10 @@ function mostCommonKind(board) {
   return best;
 }
 
-/**
- * 判定并清空一步。没有可消的返回 null。
- * `swap` 是刚交换的两格，用来决定特殊块落在哪、彩虹块吃哪个颜色。
- */
-export function findAndClear(board, { swap = [], rainbowKind = null } = {}) {
+/** 预览和实际消除共用的判定。特殊块交换后从它的新位置开始扩散。 */
+function planClear(board, { swap = [], specialSeed = null, rainbowKind = null } = {}) {
   const { runs, intersections } = findRuns(board);
-  if (!runs.length) return null;
+  if (!runs.length && specialSeed === null) return null;
 
   const clearSet = new Set();
   const runsByCrossing = new Map(intersections.map((i) => [i, []]));
@@ -228,6 +225,7 @@ export function findAndClear(board, { swap = [], rainbowKind = null } = {}) {
       runsByCrossing.get(i)?.push(run);
     }
   }
+  if (specialSeed !== null) clearSet.add(specialSeed);
 
   // 特殊块先定位置，再清空——否则刚生成的特殊块会被自己这一步清掉
   const spawned = [];
@@ -261,6 +259,19 @@ export function findAndClear(board, { swap = [], rainbowKind = null } = {}) {
 
   const { cells, triggered } = spreadSpecials(board, [...clearSet], { rainbowKind });
   for (const spawn of spawned) cells.delete(spawn.index);
+  return { cells, spawned, triggered, runs };
+}
+
+export function previewClear(board, options) {
+  return [...(planClear(board, options)?.cells ?? [])];
+}
+
+/** 判定并清空一步。没有可消的返回 null。 */
+export function findAndClear(board, options = {}) {
+  const plan = planClear(board, options);
+  if (!plan) return null;
+  const { cells, spawned, triggered, runs } = plan;
+  const runKind = runs[0]?.kind ?? board.kind[options.specialSeed];
 
   const cleared = [];
   for (const i of cells) {
@@ -278,8 +289,8 @@ export function findAndClear(board, { swap = [], rainbowKind = null } = {}) {
     cleared,
     spawned: spawned.filter((spawn) => board.kind[spawn.index] !== EMPTY),
     triggered,
-    runKind: runs[0].kind,
-    length: Math.max(...runs.map((run) => run.length)),
+    runKind,
+    length: Math.max(0, ...runs.map((run) => run.length)),
   };
 }
 
