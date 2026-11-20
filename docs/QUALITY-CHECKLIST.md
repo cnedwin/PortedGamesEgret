@@ -36,7 +36,7 @@ the template `templates/egret-game/` must pass.
 
 | 编号 · # | 标准 · Standard | 方法 · Method | 工具 · Tool | 方式 · How |
 |---|---|---|---|---|
-| L1 | 从打开网址到第一个可操作画面 ≤ 3 秒 · from the address to the first playable screen in 3 s or less | 固定限速：下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 4 倍，不用缓存；390×844 触屏视口。「可操作」= `window.egretGame.ready` 为真，没有这个标志的游戏取 load 事件后出现有尺寸的画布再等 1.5 秒 · fixed throttling (10/5 Mbps, 40 ms, CPU ×4, no cache) at 390 × 844; ready when `window.egretGame.ready` is true, otherwise a sized canvas after the load event plus 1.5 s | `tools/quality.mjs`（CDP 限速 · CDP throttling） | 自动 · automatic |
+| L1 | 从打开网址到第一个可操作画面 ≤ 3 秒 · from the address to the first playable screen in 3 s or less | 固定限速：下行 10 Mbps、上行 5 Mbps、往返 40 ms，CPU 降速 4 倍，不用缓存；390×844 触屏视口。「可操作」= `window.egretGame.ready` 为真，没有这个标志的游戏取 load 事件后出现有尺寸的画布再等 1.5 秒；画面由页面元素组成的，取出现可见按钮且网络空闲后再等 1.5 秒 · fixed throttling (10/5 Mbps, 40 ms, CPU ×4, no cache) at 390 × 844; ready when `window.egretGame.ready` is true, otherwise a sized canvas after the load event plus 1.5 s, or for a screen of page elements a visible button and a quiet network plus 1.5 s | `tools/quality.mjs`（CDP 限速 · CDP throttling） | 自动 · automatic |
 
 ## 4. 横竖屏与窗口尺寸 · Orientation and window size
 

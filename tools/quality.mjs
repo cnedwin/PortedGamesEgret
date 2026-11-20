@@ -43,7 +43,10 @@ const PASS = 'pass',
 const results = new Map();
 const record = (id, result, value = '') => results.set(id, { result, value: String(value) });
 
-/** Wait for the game: `window.egretGame.ready` when it says so, otherwise the load event and a drawn canvas. */
+/**
+ * Wait for the game: `window.egretGame.ready` when it says so; otherwise the load event and a drawn canvas, or for a
+ * screen of page elements a visible control and a quiet network.
+ */
 async function settle(page, seconds = 60) {
   const start = Date.now();
   await page.waitForLoadState('load', { timeout: seconds * 1000 }).catch(() => {});
@@ -59,10 +62,16 @@ async function settle(page, seconds = 60) {
           const r = el.getBoundingClientRect();
           return r.width > 0 && r.height > 0 && r.top < innerHeight && getComputedStyle(el).visibility !== 'hidden';
         });
-        return document.readyState === 'complete' && control ? 'canvas' : 'waiting';
+        return document.readyState === 'complete' && control ? 'page' : 'waiting';
       })
       .catch(() => 'waiting');
     if (state === 'ready') return Date.now() - start;
+    if (state === 'page') {
+      // A screen of page elements may still be a loading screen: wait until the network is quiet, then look again.
+      await page.waitForLoadState('networkidle', { timeout: Math.max(1000, seconds * 1000 - (Date.now() - start)) }).catch(() => {});
+      await page.waitForTimeout(1500);
+      return Date.now() - start;
+    }
     if (state === 'canvas') {
       await page.waitForTimeout(1500);
       return Date.now() - start;
@@ -242,11 +251,12 @@ try {
     for (const [w, h, touch] of SIZES) {
       const page = await openPage(browser, url(), { width: w, height: h, touch });
       const took = await settle(page);
+      await page.waitForTimeout(2000);
       const fit = await page.evaluate(() => {
-        // The picture: the largest visible canvas, or, for a screen made of page elements, the largest top-level box.
+        // The picture: the largest of the visible canvases and the boxes under the middle of the window (a screen made of
+        // page elements has no canvas showing).
         const boxes = [...document.querySelectorAll('canvas')].map((c) => c.getBoundingClientRect()).filter((r) => r.width > 0 && r.height > 0);
-        if (!boxes.length)
-          for (let el = document.elementFromPoint(innerWidth / 2, innerHeight / 2); el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+        for (let el = document.elementFromPoint(innerWidth / 2, innerHeight / 2); el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
             const r = el.getBoundingClientRect();
             if (r.width > 0 && r.height > 0) boxes.push(r);
           }
