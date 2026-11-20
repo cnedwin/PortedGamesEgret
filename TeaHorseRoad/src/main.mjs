@@ -545,6 +545,9 @@ async function finish() {
   });
   const media = (file) => new URL('../media/' + file, import.meta.url).href;
   await closeScreen();
+  // Without the film on the server, the account of the journey follows at once.
+  const present = await fetch(media('ending.mp4'), { method: 'HEAD' }).then((reply) => reply.ok, () => false);
+  if (!present) return results(record);
   screen = await filmScreen(ui, {
     film: [
       { src: media('ending.webm'), type: 'video/webm; codecs="vp9"' },
