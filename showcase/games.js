@@ -202,4 +202,26 @@ export const GAMES = [
     cover: 'cover.webp',
     shots: ['1.webp', '2.webp', '3.webp'],
   },
+  {
+    id: 'teahorse',
+    folder: 'TeaHorseRoad',
+    zh: '茶马古道',
+    en: 'Tea Horse Road',
+    accent: '#e3a83e',
+    genre: { zh: '3D 越野探索', en: '3D off-road journey' },
+    line: {
+      zh: '三辆越野车，七十二捆茶，从滇南茶山翻过雪山，送到高原驿站。',
+      en: 'Three trucks, seventy-two bundles of tea, from the tea hills of Yunnan over the snow mountains to the plateau.',
+    },
+    intro: {
+      zh: '你开着马帮车队的头车，带着两辆满载普洱茶砖的越野车上路：蹚过茶山里的浅滩，冲过有山匪埋伏的林子，一辆接一辆开过峡谷上的吊桥，再翻过飘雪的垭口。车慢下来山匪就会扒住车抢走一捆茶，撞倒他还能抢回来；垭口的狼会咬住车、扯开篷布，按喇叭能把它们吓跑。三个驿站可以扎营，帐篷、篝火和驮马摆好后会存下来，下次路过还在。一趟十分钟上下（扎营另算），有对白和结尾短片。地形沿路流式生成，篷布和经幡随风飘，被撞倒的山匪倒成布娃娃，发动机、溪水和马铃都是定位的声音。',
+      en: 'You drive the lead truck of a caravan of three, loaded with bricks of Pu-erh tea: through a ford in the tea hills, past the woods where bandits wait, one truck at a time over the rope bridge across the gorge, and through the snow at the high pass. Slow down and a bandit grabs hold and makes off with a bundle; knock him down and it comes back. Wolves at the pass hang on to the trucks and tear at the tarps until the horn sends them running. At each of the three stations the crew can make camp, and the tents, fire and pack horse are still there on the next journey. A run takes about ten minutes, more with camps, with lines along the way and a closing film. The land streams in along the road, tarps and prayer flags move in the wind, bandits fall as ragdolls, and the engines, the water and the caravan bells are placed in the scene.',
+    },
+    facts: {
+      zh: [['类型', '3D 越野探索'], ['技术', '载具物理、地形流、导航网格、布料与布娃娃，WebGL2'], ['操作', '键鼠、手柄、触屏'], ['时长', '一趟约 10 分钟，三个驿站']],
+      en: [['Genre', '3D off-road journey'], ['Technology', 'Vehicle physics, streamed terrain, navigation meshes, cloth and ragdolls, WebGL2'], ['Controls', 'Keyboard and mouse, gamepad, touch'], ['Length', 'About 10 minutes a journey, three stations']],
+    },
+    cover: 'cover.webp',
+    shots: ['1.webp', '2.webp', '3.webp'],
+  },
 ];

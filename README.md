@@ -68,6 +68,12 @@ An independently developed 2D card battler over a match-three board, built with 
 
 An independently developed 2D physics puzzle demo built with Egret Rebuild. The Mohist city of mechanisms has been shut for thirty years; Qiao fires pellets into it with her grandfather's crossbow and sets its blocks, crates, ropes, seesaws, springs, plates and stones going one after another until each level's lock opens. Three chapters, twelve levels, one to three stars each, with an opening film and words between the levels. The levels are Tiled maps; the camera follows the pellet, shakes and pulls back to the whole city; splinters, sparks and thunder are particles, and all the sound is synthesized. Keyboard, mouse, gamepad and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/MechanismCity/) · [Guide and development](MechanismCity/README.md)
 
+## Tea Horse Road · 茶马古道
+
+一款使用新白鹭引擎独立开发的 3D 越野探索游戏 Demo。你开着马帮车队的头车，带两辆满载茶砖的越野车从滇南普洱茶山出发，蹚过浅滩、冲过山匪埋伏的林子、开过峡谷上的吊桥、翻过飘雪的垭口，把七十二捆茶送到高原驿站。车慢下来山匪会扒车抢茶，撞倒他能抢回来；垭口的狼咬车扯篷布，按喇叭能吓跑。三个驿站可以扎营，营地布置会存下来。地形沿路流式生成，车是带悬挂的载具物理，山匪和狼按导航网格追车，被撞倒的山匪倒成布娃娃，篷布和经幡是布料模拟，发动机、溪水和马铃是定位声音；一趟十分钟上下（扎营另算），有对白和结尾短片。键盘、鼠标、手柄和触屏都能玩。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/TeaHorseRoad/) · [说明与开发](TeaHorseRoad/README.md)
+
+An independently developed 3D off-road demo built with Egret Rebuild. You drive the lead truck of a caravan of three, loaded with bricks of tea, from the tea hills of Pu'er in the south of Yunnan through a ford, past the woods where bandits wait, over a rope bridge across the gorge and through a snowy pass, to bring seventy-two bundles of tea to the plateau. Slow down and bandits grab tea off the trucks, and knocking one down wins it back; wolves at the pass hang on and tear at the tarps until the horn scares them off. At each of three stations the crew can make camp, and the camp is kept. The land streams in along the road, the trucks are vehicle physics with suspension, bandits and wolves chase across navigation meshes, a bandit who is hit falls as a ragdoll, the tarps and prayer flags are cloth, and the engines, water and bells are positional sound; a journey takes about ten minutes, more with camps, with lines along the way and a closing film. Keyboard, mouse, gamepad and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/TeaHorseRoad/) · [Guide and development](TeaHorseRoad/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)
