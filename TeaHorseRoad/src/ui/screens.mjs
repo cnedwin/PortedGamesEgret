@@ -5,7 +5,7 @@
 // pause, settings, stations, the camp — are cards from card.mjs.
 import { DisplayObjectContainer, Sprite, animate } from '@egret/engine';
 import { createBrowserVideo } from '@egret/engine/web/video';
-import { FONT, INK, PAPER, SAFFRON, SANS, STAGE, createScreenKit } from './kit.mjs';
+import { FLAG_RED, FONT, INK, PAPER, SAFFRON, SANS, STAGE, createScreenKit } from './kit.mjs';
 import { OPENING } from '../play/story.mjs';
 
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
@@ -19,26 +19,24 @@ export async function titleScreen(ui, { journey, best, onNew, onContinue, onSett
     scope = game.engine.createScope(),
     kit = createScreenKit(game, scope, { semantics, sound, prefix: 'title' }),
     root = game.stage.addChild(scope.use(new DisplayObjectContainer()));
-  // A wash of dusk across the left, where the words are.
+  // Give the live camera the right half of the title composition.
   const wash = root.addChild(scope.use(new Sprite()));
-  wash.graphics.beginLinearGradientFill(0, 0, width * 0.62, 0, stops([0, 0x0a0e18, 0.86], [0.7, 0x0a0e18, 0.45], [1, 0x0a0e18, 0])).drawRect(0, 0, width * 0.62, H).endFill();
+  wash.graphics.beginLinearGradientFill(0, 0, width * 0.71, 0, stops([0, INK, 0.98], [0.52, INK, 0.82], [1, INK, 0])).drawRect(0, 0, width * 0.71, H).endFill();
+  wash.graphics.beginLinearGradientFill(0, H * 0.8, 0, H, stops([0, INK, 0], [1, INK, 0.8])).drawRect(0, H * 0.8, width, H * 0.2).endFill();
   const left = Math.round(width * 0.07);
-  // The five colours, as a line of flags across the top.
-  const flags = root.addChild(scope.use(new Sprite()));
-  [0x2f6fb5, 0xf2efe6, 0xb8392c, 0x2e8c86, SAFFRON].forEach((colour, i) => {
-    for (let k = 0; k < 3; k++) {
-      const x = left + (k * 5 + i) * 34,
-        sag = Math.sin(((k * 5 + i) / 14) * Math.PI) * 14;
-      flags.graphics.lineStyle(1.5, INK, 0.8).beginFill(colour, 0.95).drawRect(x, v(52) + sag, 26, 32).endFill();
-    }
-  });
-  flags.graphics.lineStyle(2, 0xd8cca8, 0.8).moveTo(left - 10, v(50)).curveTo(left + 230, v(50) + 28, left + 500, v(50)).lineStyle(0);
-  await kit.label(root, '茶马古道', { x: left, y: v(140), size: 96, weight: 900, color: 0xf8ead0, family: FONT });
-  await kit.label(root, 'TEA HORSE ROAD', { x: left + 6, y: v(140) + 122, size: 26, weight: 600, color: SAFFRON, family: SANS });
-  await kit.label(root, '三辆车，七十二捆茶，从滇南茶山翻过雪山，送到高原驿站。', { x: left + 4, y: v(140) + 172, size: 20, color: PAPER, family: FONT });
-  await kit.label(root, 'Three trucks, seventy-two bundles of tea, over the snow mountains to the plateau.', { x: left + 4, y: v(140) + 204, size: 15, color: 0xc8bfa6, family: SANS });
+  const frame = root.addChild(scope.use(new Sprite())).graphics;
+  frame.lineStyle(1, SAFFRON, 0.58).moveTo(left, v(84)).lineTo(left + 352, v(84));
+  frame.moveTo(width - left - 72, v(64)).lineTo(width - left, v(64)).lineTo(width - left, v(136));
+  frame.moveTo(width - left, H - v(136)).lineTo(width - left, H - v(64)).lineTo(width - left - 72, H - v(64)).lineStyle(0);
+  frame.beginFill(FLAG_RED).drawRect(left + 352, v(112), 38, 38).endFill();
+  await kit.label(root, '滇南茶山  /  金沙峡谷  /  梅里雪山', { x: left, y: v(54), size: 16, color: SAFFRON, family: SANS });
+  await kit.label(root, '茶马古道', { x: left - 4, y: v(101), size: 84, weight: 900, color: PAPER, family: FONT });
+  await kit.label(root, '茶', { x: left + 358, y: v(116), size: 27, weight: 700, color: PAPER, family: FONT });
+  await kit.label(root, 'TEA HORSE ROAD', { x: left + 2, y: v(215), size: 23, weight: 700, color: SAFFRON, family: SANS });
+  await kit.label(root, '雪封山之前，把七十二捆茶送到高原。', { x: left, y: v(274), size: 24, color: PAPER, family: FONT });
+  await kit.label(root, 'Bring the tea caravan across the pass before the snow closes it.', { x: left, y: v(316), size: 16, color: 0xd7c9ac, family: SANS });
   const buttons = [];
-  let y = v(140) + 254;
+  let y = v(370);
   if (journey && journey.station > 0) {
     buttons.push(await kit.button({ x: left, y, width: 320, height: 58, text: '继续旅程', sub: `从 ${journey.stationName} 出发 · ${journey.cargoLeft} 捆茶`, primary: true, onActivate: onContinue, container: root, name: '继续旅程' }));
     y += 68;
@@ -47,7 +45,7 @@ export async function titleScreen(ui, { journey, best, onNew, onContinue, onSett
   y += 68;
   buttons.push(await kit.button({ x: left, y, width: 320, height: 50, text: '设置', sub: 'Settings', onActivate: onSettings, container: root, small: true }));
   if (best) await kit.label(root, `最好的一趟：送到 ${best.delivered} 捆 · ${Math.floor(best.seconds / 60)} 分 ${Math.round(best.seconds % 60)} 秒`, { x: left + 4, y: y + 62, size: 15, color: 0xd8c08a, family: SANS });
-  await kit.label(root, '基于新白鹭引擎独立开发的游戏 Demo · A demo built on the new Egret engine', { x: left + 4, y: H - 40, size: 13, color: 0x9a9480, family: SANS });
+  await kit.label(root, '基于新白鹭引擎开发 · Powered by Egret', { x: left, y: H - 38, size: 14, color: 0xcebb94, family: SANS });
   root.alpha = 0;
   animate(game.engine, scope, root).to({ alpha: 1 }, 0.8, 'quadOut').start();
   semantics.publish();
@@ -63,47 +61,65 @@ export async function titleScreen(ui, { journey, best, onNew, onContinue, onSett
 }
 
 /** The opening: card after card of words over the hills; a press or a key goes to the next. */
-export async function openingScreen(ui, { onDone }) {
+export async function openingScreen(ui, { onDone, startAt = 0 }) {
   const H = STAGE.height,
     { game, width, semantics, sound } = ui,
     scope = game.engine.createScope(),
     kit = createScreenKit(game, scope, { semantics, sound, prefix: 'opening' }),
     root = game.stage.addChild(scope.use(new DisplayObjectContainer()));
   const veil = root.addChild(scope.use(new Sprite()));
-  veil.graphics.beginLinearGradientFill(0, H * 0.45, 0, H, stops([0, 0x05080e, 0], [0.5, 0x05080e, 0.7], [1, 0x05080e, 0.9])).drawRect(0, 0, width, H).endFill();
+  veil.graphics.beginLinearGradientFill(0, H * 0.36, 0, H, stops([0, INK, 0], [0.56, INK, 0.8], [1, INK, 0.98])).drawRect(0, 0, width, H).endFill();
   veil.touchEnabled = true;
   veil.hitArea = { x: 0, y: 0, width, height: H };
   const words = root.addChild(scope.use(new DisplayObjectContainer()));
-  const zh = await kit.label(words, '', { x: 0, y: 0, size: 32, color: 0xf8ead0, family: FONT, weight: 600 });
-  const en = await kit.label(words, '', { x: 0, y: 52, size: 17, color: 0xc8bfa6, family: SANS });
-  let index = -1,
-    finished = false;
+  const zh = await kit.label(words, '', { x: 0, y: 0, size: 30, color: PAPER, family: FONT, weight: 700 });
+  const en = await kit.label(words, '', { x: 0, y: 46, size: 16, color: 0xd7c9ac, family: SANS });
+  const pages = root.addChild(scope.use(new Sprite()));
+  pages.x = width / 2 - 50;
+  pages.y = H - 112;
+  let index = startAt - 1,
+    finished = false,
+    changing = false;
   async function next() {
-    if (finished) return;
-    index++;
-    if (index >= OPENING.length) {
-      finished = true;
-      onDone();
-      return;
+    if (finished || changing) return;
+    changing = true;
+    try {
+      index++;
+      if (index >= OPENING.length) {
+        finished = true;
+        onDone();
+        return;
+      }
+      const card = OPENING[index];
+      await zh.set(card.zh);
+      await en.set(card.en);
+      zh.display.x = (width - zh.display.width) / 2;
+      en.display.x = (width - en.display.width) / 2;
+      words.y = H - 210;
+      words.alpha = 0;
+      animate(game.engine, scope, words).to({ alpha: 1 }, 0.45, 'quadOut').start();
+      pages.graphics.clear();
+      for (let i = 0; i < OPENING.length; i++) {
+        pages.graphics.beginFill(i === index ? SAFFRON : PAPER, i === index ? 1 : 0.3).drawRoundRect(27 * i, 0, 20, 3, 2, 2).endFill();
+      }
+      shownFor = 0;
+      semantics.publish();
+    } finally {
+      changing = false;
     }
-    const card = OPENING[index];
-    await zh.set(card.zh);
-    await en.set(card.en);
-    zh.display.x = (width - zh.display.width) / 2;
-    en.display.x = (width - en.display.width) / 2;
-    words.y = H - 210;
-    words.alpha = 0;
-    animate(game.engine, scope, words).to({ alpha: 1 }, 0.6, 'quadOut').start();
-    shownFor = 0;
-    semantics.publish();
   }
   let shownFor = 0;
   kit.own({ dispose: veil.on(game.pointer.events.tap, () => void next()) });
-  const skip = await kit.button({ x: width - 170, y: H - 74, width: 140, height: 48, text: '跳过 ›', name: '跳过开场', onActivate: () => ((index = OPENING.length - 1), next()), container: root, small: true });
+  const skip = await kit.button({ x: width - 184, y: H - 82, width: 152, height: 54, text: '跳过 ›', name: '跳过开场', onActivate: () => {
+    if (finished) return;
+    finished = true;
+    onDone();
+  }, container: root, small: true });
   kit.own(semantics.add({ id: 'opening-words', role: 'status', describe: () => ({ name: OPENING[Math.max(0, index)]?.zh ?? '', bounds: { x: 0, y: H - 210, width, height: 100 } }) }));
   await next();
   return {
     kit,
+    get index() { return Math.min(index, OPENING.length - 1); },
     focusFirst: () => skip.focus(false),
     confirm: () => next(),
     update(seconds) {

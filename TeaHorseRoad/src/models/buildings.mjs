@@ -28,11 +28,11 @@ const glow = createStandardMaterial3D({ color: 0xff6a3a, emissive: 0xff5020, emi
 const box = (w, h, d) => createBoxGeometry3D({ width: w, height: h, depth: d });
 const cyl = (r1, r2, h, seg = 12) => createCylinderGeometry3D({ radiusTop: r1, radiusBottom: r2, height: h, radialSegments: seg });
 
-const TIMBER = 0x7a2e22,
-  PLASTER = 0xd9d2c0,
-  TILE = 0x3b3f44,
-  STONE = 0x8a857a,
-  DARK = 0x2a2420;
+const TIMBER = 0x713f2d,
+  PLASTER = 0xc6ad88,
+  TILE = 0x353f3e,
+  STONE = 0x7f8172,
+  DARK = 0x332924;
 
 /** A roof: a curved, sweeping profile across `width`, extruded along `length`, with an upturned ridge. */
 function roof(builder, { width, length, height, y, x = 0, z = 0, color = TILE }) {
@@ -48,6 +48,28 @@ function roof(builder, { width, length, height, y, x = 0, z = 0, color = TILE })
   shape.lineTo(-half - 0.6, 0.25);
   const body = createExtrudeGeometry3D(shape, { depth: length + 1.2 });
   builder.add(body, { position: [x, y, z - (length + 1.2) / 2], color });
+  // Follow the extruded profile with segmented raised tile channels.
+  const channels = Math.ceil(length / 0.49);
+  const profile = (t) => [
+    (1 - t) ** 2 * (half + 0.6) + 2 * (1 - t) * t * half * 0.4,
+    (1 - t) ** 2 * 0.25 + 2 * (1 - t) * t * height * 0.35 + t * t * height
+  ];
+  const channelsColors = [0x515954, 0x444e48, 0x56635b, 0x414a45];
+  for (const side of [-1, 1]) {
+    for (let j = 0; j < 5; j++) {
+      const [a, ay] = profile(j / 5), [b, by] = profile((j + 1) / 5);
+      const tile = box(Math.hypot(b - a, by - ay) + 0.045, 0.065, 0.14);
+      const rotation = Math.atan2(by - ay, b - a);
+      for (let i = 0; i <= channels; i++) {
+        builder.add(tile, {
+          position: [x + side * (a + b) / 2, y + (ay + by) / 2 + 0.025, z - length / 2 + i * length / channels],
+          rotation: [0, 0, side === 1 ? rotation : Math.PI - rotation],
+          color: channelsColors[(i * 7 + j) % channelsColors.length]
+        });
+      }
+    }
+    builder.add(box(0.17, 0.21, length + 1.24), { position: [x + side * (half + 0.48), y + 0.12, z], color: 0x57483a });
+  }
   // Ridge with upturned ends.
   builder.add(box(0.36, 0.34, length + 1.4), { position: [x, y + height + 0.05, z], color: DARK });
   for (const s of [-1, 1]) builder.add(box(0.3, 0.8, 0.3), { position: [x, y + height + 0.35, z + s * (length / 2 + 0.6)], rotation: [s * 0.4, 0, 0], color: DARK });
@@ -59,18 +81,28 @@ export function hallGeometry({ width = 12, depth = 7, height = 3.6 } = {}) {
     hw = width / 2,
     hd = depth / 2;
   b.add(box(width + 1.6, 0.6, depth + 1.6), { position: [0, 0.3, 0], color: STONE });
+  const masonry = [0x8f8a78, 0x797b6d, 0x939082, 0x858273];
+  const blocks = Math.ceil(width / 0.9);
+  for (let i = 0; i < blocks; i++) {
+    const x = -hw + (i + 0.5) * width / blocks;
+    b.add(box(width / blocks - 0.025, 0.23, 0.09), { position: [x, 0.38, hd + 0.81], color: masonry[i % 4] });
+    b.add(box(width / blocks - 0.035, 0.16, 0.08), { position: [x + 0.16, 0.16, hd + 0.81], color: masonry[(i + 2) % 4] });
+  }
   for (let i = 0; i < 4; i++) b.add(box(2.4, 0.2, 0.6), { position: [0, 0.1 + i * 0.15, hd + 1.1 + (3 - i) * 0.3], color: STONE });
   // Walls set back behind the colonnade.
   b.add(box(width - 0.4, height, depth - 1.6), { position: [0, 0.6 + height / 2, -0.4], color: PLASTER });
   for (let i = 0; i <= 5; i++) {
     const x = -hw + (i * width) / 5;
+    b.add(box(0.66, 0.25, 0.66), { position: [x, 0.71, hd - 0.3], color: 0x999284 });
     b.add(cyl(0.2, 0.24, height + 0.2, 10), { position: [x, 0.6 + height / 2, hd - 0.3], color: TIMBER });
     b.add(cyl(0.2, 0.24, height + 0.2, 10), { position: [x, 0.6 + height / 2, -hd + 0.3], color: TIMBER });
+    b.add(box(0.65, 0.17, 0.55), { position: [x, 0.6 + height - 0.27, hd - 0.3], color: 0x344a43 });
+    b.add(box(0.9, 0.21, 0.55), { position: [x, 0.6 + height - 0.08, hd - 0.3], color: 0x626447 });
   }
   // Lattice doors and windows on the front wall.
   for (let i = 0; i < 5; i++) {
     const x = -hw + 1.2 + i * ((width - 2.4) / 4);
-    b.add(box(1.6, 2.4, 0.08), { position: [x, 0.6 + 1.3, hd - 1.15], color: TIMBER });
+    b.add(box(1.6, 2.4, 0.08), { position: [x, 0.6 + 1.3, hd - 1.15], color: 0x3d2b24 });
     for (let k = 0; k < 5; k++) b.add(box(1.5, 0.05, 0.1), { position: [x, 0.8 + k * 0.5, hd - 1.1], color: 0xb8742f });
     for (let k = 0; k < 4; k++) b.add(box(0.05, 2.3, 0.1), { position: [x - 0.6 + k * 0.4, 0.6 + 1.3, hd - 1.1], color: 0xb8742f });
   }
@@ -98,8 +130,11 @@ export function stableGeometry() {
   const b = createGeometryBuilder3D();
   b.add(box(10, 0.3, 4.4), { position: [0, 0.15, 0], color: STONE });
   b.add(box(10, 2.6, 0.2), { position: [0, 1.6, -2], color: 0x6e5236 });
+  for (let i = 0; i < 18; i++) {
+    b.add(box(0.023, 2.55, 0.04), { position: [-4.8 + i * 0.56, 1.6, -1.895], color: i % 3 ? 0x513d2d : 0x92724e });
+  }
   for (let i = 0; i <= 5; i++) b.add(cyl(0.14, 0.16, 2.8, 8), { position: [-5 + i * 2, 1.7, 2], color: 0x5a3c26 });
-  for (let i = 0; i < 4; i++) b.add(box(10, 0.1, 0.1), { position: [0, 0.9, 2.3 + i * 0.002], color: 0x5a3c26 });
+  for (const y of [0.82, 1.38]) b.add(box(10, 0.12, 0.15), { position: [0, y, 2.12], color: 0x765335 });
   b.add(box(10.8, 0.16, 5.2), { position: [0, 3.05, 0], rotation: [-0.22, 0, 0], color: 0x4a4038 });
   // Bales of fodder and a water trough.
   for (let i = 0; i < 3; i++) b.add(box(1.2, 0.7, 0.8), { position: [-3 + i * 1.3, 0.65, -1.2], color: 0xb39a52 });
@@ -113,7 +148,13 @@ export function archGeometry(span = 11) {
     h = span / 2;
   for (const x of [-h, -h * 0.42, h * 0.42, h]) {
     b.add(box(1.2, 0.8, 1.2), { position: [x, 0.4, 0], color: STONE });
+    b.add(box(0.91, 0.15, 0.91), { position: [x, 0.82, 0], color: 0xa4a18d });
     b.add(cyl(0.32, 0.36, 6.6, 12), { position: [x, 3.8, 0], color: TIMBER });
+    for (const y of [5.27, 5.68, 6.04]) {
+      const size = 0.72 + (y - 5.27) * 0.38;
+      b.add(box(size, 0.15, 0.69), { position: [x, y, 0], color: 0x4e644f });
+      b.add(box(size - 0.08, 0.045, 0.715), { position: [x, y + 0.07, 0], color: 0x956c39 });
+    }
   }
   b.add(box(span + 1.4, 0.5, 0.6), { position: [0, 6.6, 0], color: 0x2e5a4e });
   b.add(box(span + 1.4, 0.16, 0.62), { position: [0, 6.3, 0], color: 0xc89a3a });

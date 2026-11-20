@@ -28,63 +28,65 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
 
   // ---- top left: where we are -----------------------------------------------------------------------------------
   const route = root.addChild(scope.use(new Sprite()));
-  route.x = 24;
-  route.y = 22;
-  const routeWidth = Math.min(460, width * 0.36);
-  const place = await kit.label(root, '', { x: 28, y: 34, size: 24, color: PAPER, weight: 700 });
-  const next = await kit.label(root, '', { x: 28, y: 66, size: 15, color: 0xd8cca8, family: SANS });
+  route.x = 26;
+  route.y = 20;
+  const routeWidth = Math.min(310, width * 0.35);
+  const place = await kit.label(root, '', { x: 36, y: 26, size: 23, color: PAPER, weight: 700 });
+  const next = await kit.label(root, '', { x: 36, y: 58, size: 17, color: SAFFRON, family: SANS });
   function paintRoute(s) {
     const g = route.graphics;
     g.clear();
-    g.beginLinearGradientFill(0, 0, routeWidth + 40, 0, stops([0, 0x0c111c, 0.72], [1, 0x0c111c, 0])).drawRoundRect(-8, -8, routeWidth + 60, 132, 14, 14).endFill();
-    const y = 112;
-    g.lineStyle(4, 0x0b0f18, 0.9).moveTo(0, y).lineTo(routeWidth, y);
-    g.lineStyle(3, 0x8a7a5a, 1).moveTo(0, y).lineTo(routeWidth, y);
-    g.lineStyle(3, SAFFRON, 1).moveTo(0, y).lineTo((Math.max(0, Math.min(1, s / length)) * routeWidth), y);
+    g.lineStyle(1, SAFFRON, 0.25).beginFill(INK, 0.79).drawRoundRect(-8, -3, routeWidth + 36, 96, 12, 12).endFill();
+    const y = 78;
+    g.lineStyle(3, 0x625f48, 1).moveTo(10, y).lineTo(routeWidth + 10, y);
+    g.lineStyle(3, SAFFRON, 1).moveTo(10, y).lineTo(10 + Math.max(0, Math.min(1, s / length)) * routeWidth, y);
     g.lineStyle(0);
     for (const station of stations) {
-      const x = (station.s / length) * routeWidth,
+      const x = 10 + (station.s / length) * routeWidth,
         reached = s >= station.s - 5;
       g.lineStyle(2, INK, 1).beginFill(reached ? SAFFRON : 0x4a5468, 1).drawCircle(x, y, 6).endFill().lineStyle(0);
     }
-    const at = Math.max(0, Math.min(1, s / length)) * routeWidth;
-    g.lineStyle(2, INK, 1).beginFill(FLAG_RED, 1).moveTo(at, y - 6).lineTo(at - 7, y - 18).lineTo(at + 7, y - 18).lineTo(at, y - 6).endFill().lineStyle(0);
+    const at = 10 + Math.max(0, Math.min(1, s / length)) * routeWidth;
+    g.lineStyle(2, PAPER, 1).beginFill(FLAG_RED, 1).drawCircle(at, y, 5).endFill().lineStyle(0);
   }
 
   // ---- top right: the tea and the pause key -------------------------------------------------------------------
   const teaPanel = root.addChild(scope.use(new Sprite()));
-  teaPanel.x = width - 300;
+  teaPanel.x = width - 254;
   teaPanel.y = 20;
-  teaPanel.graphics.beginLinearGradientFill(0, 0, 200, 0, stops([0, 0x0c111c, 0], [0.3, 0x0c111c, 0.72])).drawRoundRect(0, 0, 200, 64, 12, 12).endFill();
-  // A bundle of tea, drawn: a wrapped cylinder end-on with its ties.
+  teaPanel.graphics.lineStyle(1, SAFFRON, 0.25).beginFill(INK, 0.8).drawRoundRect(0, 0, 160, 64, 12, 12).endFill();
+  // The bamboo parcel and its lacquer label echo the load visible on the truck.
   const bundle = root.addChild(scope.use(new Sprite()));
-  bundle.x = width - 236;
+  bundle.x = width - 229;
   bundle.y = 52;
-  bundle.graphics.lineStyle(2, INK, 1).beginFill(0x8f7442, 1).drawCircle(0, 0, 17).endFill();
-  bundle.graphics.lineStyle(2, 0x5a4424, 1).drawCircle(0, 0, 11).lineStyle(0).beginFill(0x5a4424, 1).drawCircle(0, 0, 4).endFill();
+  bundle.graphics.lineStyle(2, INK, 1).beginFill(0xbda578, 1).drawRoundRect(-15, -12, 30, 24, 7, 7).endFill().lineStyle(0);
+  bundle.graphics.beginFill(0x716447).drawRect(-9, -11, 4, 22).drawRect(5, -11, 4, 22).endFill();
+  bundle.graphics.beginFill(FLAG_RED).drawRoundRect(-4, -5, 8, 10, 2, 2).endFill();
   const tea = scope.use(createBitmapText({ font, pages: fontPages, text: '72/72', align: 'left', maxWidth: 160 }));
   root.addChild(tea.display);
-  tea.display.x = width - 210;
-  tea.display.y = 24;
-  tea.display.scaleX = tea.display.scaleY = 0.8;
+  tea.display.x = width - 205;
+  tea.display.y = 21;
+  tea.display.scaleX = tea.display.scaleY = 0.68;
+  await kit.label(root, '捆茶 · Tea cargo', { x: width - 204, y: 59, size: 13, color: 0xddc9a4, family: SANS });
   const pause = await kit.button({ x: width - 84, y: 20, width: 64, height: 60, text: 'Ⅱ', name: '暂停 Pause', onActivate: onPause, container: root, small: true });
 
   // ---- bottom right: the gauges ---------------------------------------------------------------------------------
   const dial = root.addChild(scope.use(new Sprite()));
-  const dialX = width - (touch ? 520 : 150),
-    dialY = H - 120;
+  const dialX = touch ? width / 2 : width - 136,
+    dialY = H - (touch ? 56 : 112);
   dial.x = dialX;
   dial.y = dialY;
   const speed = scope.use(createBitmapText({ font, pages: fontPages, text: '0', align: 'center', maxWidth: 140 }));
   root.addChild(speed.display);
   speed.display.x = dialX - 70;
-  speed.display.y = dialY - 24;
-  const unit = await kit.label(root, 'km/h', { x: dialX - 40, y: dialY + 30, size: 14, color: 0xcfc2a0, family: SANS, align: 'center', width: 80 });
+  speed.display.y = dialY - 33;
+  await kit.label(root, 'km/h', { x: dialX - 40, y: dialY + 15, size: 14, color: 0xcfc2a0, family: SANS, align: 'center', width: 80 });
   const odometer = scope.use(createBitmapText({ font, pages: fontPages, text: '0.00 km', align: 'center', maxWidth: 220 }));
   root.addChild(odometer.display);
   odometer.display.scaleX = odometer.display.scaleY = 0.5;
   odometer.display.x = dialX - 55;
-  odometer.display.y = dialY + 56;
+  odometer.display.y = dialY + 43;
+  odometer.display.visible = !touch;
   function paintDial(kmh) {
     const g = dial.graphics,
       r = 92,
@@ -92,6 +94,12 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
       sweep = Math.PI * 1.5,
       share = Math.min(1, kmh / 100);
     g.clear();
+    if (touch) {
+      g.lineStyle(1, SAFFRON, 0.25).beginFill(INK, 0.8).drawRoundRect(-66, -36, 132, 79, 12, 12).endFill();
+      g.lineStyle(4, 0x4f5949).moveTo(-43, 33).lineTo(43, 33);
+      g.lineStyle(4, kmh > 80 ? FLAG_RED : SAFFRON).moveTo(-43, 33).lineTo(-43 + share * 86, 33).lineStyle(0);
+      return;
+    }
     g.beginRadialGradientFill(0, 0, r + 10, stops([0, 0x0c111c, 0.8], [0.85, 0x0c111c, 0.6], [1, 0x0c111c, 0])).drawCircle(0, 0, r + 14).endFill();
     // The scale: a tick every 10 km/h, longer every 20; the red from 80.
     for (let i = 0; i <= 10; i++) {
@@ -104,16 +112,13 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
       startY = Math.sin(from) * (r - 26);
     g.lineStyle(6, 0x2a3346, 0.9).moveTo(startX, startY).drawArc(0, 0, r - 26, from, from + sweep);
     if (share > 0.005) g.lineStyle(6, kmh > 80 ? FLAG_RED : SAFFRON, 1).moveTo(startX, startY).drawArc(0, 0, r - 26, from, from + sweep * share);
-    // The needle.
-    const a = from + sweep * share;
-    g.lineStyle(4, INK, 1).moveTo(0, 0).lineTo(Math.cos(a) * (r - 4), Math.sin(a) * (r - 4));
-    g.lineStyle(2, FLAG_RED, 1).moveTo(0, 0).lineTo(Math.cos(a) * (r - 6), Math.sin(a) * (r - 6));
-    g.lineStyle(0).beginFill(INK, 1).drawCircle(0, 0, 6).endFill();
+    // The arc shows speed without drawing the needle across the numbers.
+    g.lineStyle(0);
   }
 
   // ---- subtitles ------------------------------------------------------------------------------------------------
   const subtitle = root.addChild(scope.use(new DisplayObjectContainer()));
-  subtitle.y = H - (touch ? 300 : 190);
+  subtitle.y = H - (touch ? 219 : 178);
   const subtitleBack = subtitle.addChild(scope.use(new Sprite()));
   const who = await kit.label(subtitle, '', { x: 0, y: 0, size: 16, color: SAFFRON, family: SANS, weight: 700 });
   const said = await kit.label(subtitle, '', { x: 0, y: 24, size: 24, color: PAPER, family: FONT });
@@ -130,7 +135,7 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
     subtitle.x = (width - w) / 2 + 24;
     for (const part of [who, said, saidEn]) part.display.x = (w - 48 - part.display.width) / 2;
     subtitleBack.graphics.clear();
-    subtitleBack.graphics.beginFill(0x0a0e16, 0.62).drawRoundRect(-24, -12, w, 98, 14, 14).endFill();
+    subtitleBack.graphics.lineStyle(1, SAFFRON, 0.28).beginFill(INK, 0.84).drawRoundRect(-24, -12, w, 98, 12, 12).endFill();
     subtitleTween?.stop?.();
     subtitle.alpha = 0;
     subtitleTween = animate(game.engine, scope, subtitle).to({ alpha: 1 }, 0.25).start();
@@ -148,17 +153,18 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
 
   // ---- touch controls -------------------------------------------------------------------------------------------
   const touchParts = [];
+  const driveControls = [];
   let recover = null;
   if (touch) {
     // Steering: a wide slider on the left, from full left to full right; it springs back to the middle.
-    const length = Math.min(360, width * 0.3),
+    const length = Math.min(270, width * 0.24),
       wheel = root.addChild(scope.use(new DisplayObjectContainer())),
       track = wheel.addChild(scope.use(new Sprite())),
       knob = wheel.addChild(scope.use(new Sprite()));
-    wheel.x = 60;
-    wheel.y = H - 110;
+    wheel.x = 68;
+    wheel.y = H - 66;
     track.touchEnabled = true;
-    track.hitArea = { x: -50, y: -70, width: length + 100, height: 140 };
+    track.hitArea = { x: -46, y: -58, width: length + 92, height: 108 };
     const steer = kit.own(
       createRangeControl({
         input: game.pointer,
@@ -178,6 +184,7 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
         }
       })
     );
+    driveControls.push(steer);
     if (keyboard) {
       kit.own(keyboard.registerTarget({ id: 'hud-steer', target: track }));
       kit.own(createControlKeys({ keyboard, target: track, kind: 'range', control: steer, page: 25 }));
@@ -185,8 +192,9 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
     function paintWheel() {
       const g = track.graphics;
       g.clear();
-      g.beginFill(0x000000, 0.001).drawRect(-50, -70, length + 100, 140).endFill();
-      g.lineStyle(3, INK, 0.9).beginFill(0x0c111c, 0.55).drawRoundRect(-36, -36, length + 72, 72, 36, 36).endFill();
+      g.beginFill(0x000000, 0.001).drawRect(-46, -58, length + 92, 108).endFill();
+      g.lineStyle(1.5, SAFFRON, 0.54).beginFill(INK, 0.75).drawRoundRect(-35, -35, length + 70, 70, 35, 35).endFill();
+      g.lineStyle(3, SAFFRON, 0.4).moveTo(0, 0).lineTo(length, 0);
       g.lineStyle(2, PAPER, 0.35).moveTo(length / 2, -26).lineTo(length / 2, 26).lineStyle(0);
       const k = knob.graphics;
       k.clear();
@@ -195,6 +203,7 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
       knob.x = steer.fraction * length;
     }
     paintWheel();
+    await kit.label(wheel, '方向 · Steer', { x: (length - 142) / 2, y: -57, size: 16, color: PAPER, align: 'center', width: 142, family: SANS });
     touchParts.push({ id: 'hud-steer', name: '方向 Steering', target: track, role: 'slider', range: () => ({ min: -1, max: 1, now: steer.value }) });
 
     // Pedals and buttons on the right, sized for thumbs.
@@ -208,25 +217,33 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
       await kit.label(holder, text, { x: 0, y: h / 2 - 20, size: 24, color: PAPER, weight: 700, align: 'center', width: w });
       await kit.label(holder, sub, { x: 0, y: h / 2 + 10, size: 12, color: 0xd8cca8, family: SANS, align: 'center', width: w });
       const action = kit.own(createActionControl({ input: game.pointer, target: face, onPressChange: (down) => (onHold(down), paint()) }));
+      driveControls.push(action);
       function paint() {
         const g = face.graphics;
         g.clear();
-        g.lineStyle(3, INK, 1).beginLinearGradientFill(0, 0, 0, h, stops([0, action.pressed ? colour : 0x2a3654, 0.92], [1, action.pressed ? 0x1a2236 : 0x121826, 0.92])).drawRoundRect(0, 0, w, h, 18, 18).endFill();
+        g.lineStyle(2, INK, 1).beginLinearGradientFill(0, 0, 0, h, stops([0, action.pressed ? colour : 0x293f38, 0.92], [1, 0x152420, 0.9])).drawRoundRect(0, 0, w, h, 18, 18).endFill();
         g.lineStyle(1.5, colour, 0.9).drawRoundRect(5, 5, w - 10, h - 10, 13, 13).lineStyle(0);
       }
       paint();
-      touchParts.push({ id: `hud-${name}`, name: `${text} ${sub}`, target: face, role: 'button', press: () => (action.press(), setTimeout(() => action.release(), 300)) });
+      let release;
+      kit.own({ dispose: () => clearTimeout(release) });
+      touchParts.push({ id: `hud-${name}`, name: `${text} ${sub}`, target: face, role: 'button', press: () => {
+        clearTimeout(release);
+        action.press();
+        release = setTimeout(() => action.release(), 300);
+      } });
       return { holder, action };
     };
-    await pedal(width - 170, H - 250, 140, 220, '油门', 'Throttle', TURQUOISE, (down) => (controls.throttle = down ? 1 : 0), 'throttle');
-    await pedal(width - 330, H - 170, 140, 140, '刹车', 'Brake', FLAG_RED, (down) => (controls.brake = down ? 1 : 0), 'brake');
-    const small = async (x, y, text, sub, onActivate, name) => {
-      const made = await kit.button({ x, y, width: 104, height: 54, text, sub, onActivate, name: `${text} ${sub}`, container: root, small: true });
+    await pedal(width - 146, H - 149, 119, 126, '油门', 'Throttle', TURQUOISE, (down) => (controls.throttle = down ? 1 : 0), 'throttle');
+    await pedal(width - 274, H - 116, 100, 93, '刹车', 'Brake', FLAG_RED, (down) => (controls.brake = down ? 1 : 0), 'brake');
+    const small = async (x, y, text, sub, onActivate) => {
+      const made = await kit.button({ x, y, width: 94, height: 62, text, sub, onActivate, name: `${text} ${sub}`, container: root, small: true });
+      driveControls.push(made.action);
       return made;
     };
-    await small(width - 330, H - 250, '喇叭', 'Horn', onHorn, 'horn');
-    await small(width - 450, H - 250, '视角', 'View', onCamera, 'camera');
-    recover = await small(width - 450, H - 170, '扶正', 'Right it', onRecover, 'recover');
+    await small(width - 254, H - 191, '喇叭', 'Horn', onHorn);
+    await small(width - 146, H - 221, '视角', 'View', onCamera);
+    recover = await small(width / 2 - 47, H - 160, '扶正', 'Recover', onRecover);
     recover.root.visible = false;
   }
 
@@ -251,12 +268,18 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
     root,
     say,
     async setPlace(name, nextName, nextDistance) {
-      status.place = name;
-      await place.set(name);
-      await next.set(nextName ? `下一站 ${nextName} · ${(nextDistance / 1000).toFixed(1)} km` : '');
+      const distance = nextDistance >= 1000 ? `${(nextDistance / 1000).toFixed(1)} km` : `${Math.round(nextDistance)} m`;
+      if (name !== status.place) {
+        status.place = name;
+        await place.set(name);
+      }
+      await next.set(nextName ? `${nextName} · ${distance}` : '');
     },
     setUpset(on) {
-      if (recover) recover.root.visible = on;
+      if (recover && recover.root.visible !== on) {
+        recover.root.visible = on;
+        subtitle.y = H - (on ? 253 : 219);
+      }
     },
     update(seconds, { s, kmh, cargo, capacity, odometerKm }) {
       const k = Math.round(kmh);
@@ -292,6 +315,10 @@ export async function createHud(game, scope, kit, { width, font, fontPages, stat
     },
     set visible(on) {
       root.visible = on;
+    },
+    setDriving(on) {
+      for (const control of driveControls) control.setEnabled(on);
+      if (!on) controls.steer = controls.throttle = controls.brake = 0;
     },
     focusFirst: () => pause.focus()
   };

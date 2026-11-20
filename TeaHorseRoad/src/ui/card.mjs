@@ -37,7 +37,8 @@ export async function openCard(game, { width: stageWidth, semantics, sound, rows
   keyboard?.focus(undefined);
   const shade = game.stage.addChild(scope.use(new Sprite()));
   shade.graphics.beginFill(0x05080e, veil).drawRect(0, 0, stageWidth, STAGE.height).endFill();
-  shade.touchEnabled = true;
+  // The camp editor leaves the surrounding world available to its orbit and placement tools.
+  shade.touchEnabled = veil > 0 || Boolean(onClose);
   shade.hitArea = { x: 0, y: 0, width: stageWidth, height: STAGE.height };
   const back = game.stage.addChild(scope.use(new Sprite())),
     holder = game.stage.addChild(scope.use(new DisplayObjectContainer()));
@@ -78,12 +79,12 @@ export async function openCard(game, { width: stageWidth, semantics, sound, rows
   });
   back.x = x;
   back.y = y;
+  back.touchEnabled = true;
+  back.hitArea = { x: 0, y: 0, width: cardWidth, height: total };
   const g = back.graphics;
-  g.lineStyle(3, INK, 1).beginLinearGradientFill(0, 0, 0, total, stops([0, 0x26324c, 0.97], [1, 0x111725, 0.97])).drawRoundRect(0, 0, cardWidth, total, 18, 18).endFill();
-  g.lineStyle(1.5, SAFFRON, 0.55).drawRoundRect(8, 8, cardWidth - 16, total - 16, 12, 12).lineStyle(0);
-  const flags = [0x2f6fb5, 0xf2efe6, 0xb8392c, 0x2e8c86, SAFFRON],
-    w = (cardWidth - 60) / flags.length;
-  flags.forEach((colour, i) => g.beginFill(colour, 0.95).drawRect(30 + i * w, 0, w - 3, 6).endFill());
+  g.lineStyle(2, INK, 1).beginLinearGradientFill(0, 0, 0, total, stops([0, 0x2b4037, 0.99], [1, INK, 0.98])).drawRoundRect(0, 0, cardWidth, total, 16, 16).endFill();
+  g.lineStyle(1.5, SAFFRON, 0.48).drawRoundRect(8, 8, cardWidth - 16, total - 16, 10, 10).lineStyle(0);
+  g.beginFill(SAFFRON, 0.9).drawRoundRect(cardWidth / 2 - 28, 7, 56, 3, 1, 1).endFill();
   back.alpha = 0;
   animate(game.engine, scope, back).to({ alpha: 1 }, 0.2, 'quadOut').start();
 

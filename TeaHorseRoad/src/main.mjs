@@ -59,6 +59,7 @@ let journey = save.data.journey;
 const startS = (station) => STATIONS[station].s + (station === 0 ? 0 : 14);
 let beginS = params.has('s') ? Number(params.get('s')) : startS(journey?.station ?? 0);
 const p0 = pointAt(beginS);
+loading.querySelector('[data-load-stage]').textContent = '正在铺设山路 · Preparing the mountain road';
 land.update(p0[0], p0[2]);
 while (!land.readyAround(p0[0], p0[2], 100)) {
   await new Promise((resolve) => setTimeout(resolve, 50));
@@ -108,8 +109,9 @@ async function buildOverlay() {
   );
 }
 await buildOverlay();
+loading.querySelector('[data-load-stage]').textContent = '车队即将出发 · Ready to depart';
 markers = createMarkers(document.querySelector('#markers'), camera, {
-  stations: landmarks.stations.map((station) => ({ x: station.x, y: station.y, z: station.z, zh: station.name })),
+  stations: landmarks.stations.map((station, index) => ({ x: station.x, y: station.y, z: station.z, s: STATIONS[index].s, zh: station.name })),
   followers: convoy.trucks.slice(1).map((truck, i) => ({ node: truck.model.root, zh: ['卓玛', '老马锅头'][i] }))
 });
 markers.visible = false;
@@ -117,12 +119,15 @@ markers.visible = false;
 // ---- the state of play ----------------------------------------------------------------------------------------------
 let state = 'title',
   paused = false,
+  pauseCard = null,
+  pauseVersion = 0,
   odometer = 0,
   nextStation = 1,
   said = new Set(),
   lineTurn = {},
   orbitAngle = 0,
-  campStation = -1;
+  campStation = -1,
+  endingRecord = null;
 
 /** The journey in the save, made fresh or carried on. */
 function cargoOf() {
@@ -188,6 +193,7 @@ async function buildHudNow() {
     onRecover: () => recover()
   });
   hud.kit = kit;
+  hud.setDriving(state === 'drive' && !paused);
   hud.dispose = () => {
     kit.dispose();
     hudScope.dispose();
@@ -200,7 +206,7 @@ async function buildHudNow() {
 async function updatePlace() {
   if (!hud) return;
   const leg = biomeAt(convoy.lead.s, [0, 0, 0]),
-    names = ['滇南茶山 · Tea hills', '金沙峡谷 · The gorge', '梅里雪山 · Snow mountains'],
+    names = ['滇南茶山', '金沙峡谷', '梅里雪山'],
     i = leg[2] > 0.5 ? 2 : leg[1] > 0.5 ? 1 : 0,
     next = landmarks.stations[nextStation];
   await hud.setPlace(names[i], next?.name, Math.max(0, (next?.s ?? 0) - convoy.lead.s));
@@ -262,7 +268,10 @@ async function showTitleNow() {
   screen.focusFirst();
 }
 
-async function startJourney(fresh) {
+const startJourney = (fresh) => busy(() => startJourneyNow(fresh));
+async function startJourneyNow(fresh) {
+  if (state !== 'title') return;
+  state = 'opening';
   void sound.start();
   if (fresh || !save.data.journey) {
     journey = freshJourney(convoy.trucks.map(() => TRUCK.cargoSlots));
@@ -275,7 +284,6 @@ async function startJourney(fresh) {
   placeConvoy(startS(journey.station));
   if (fresh && !params.has('quiet')) {
     await closeScreen();
-    state = 'opening';
     screen = await openingScreen(ui, { onDone: () => beginDriving() });
     screen.focusFirst();
   } else beginDriving();
@@ -288,42 +296,56 @@ async function beginDrivingNow() {
   paused = false;
   markers.visible = true;
   await setHud(true);
+  hud.setDriving(true);
   hud.focusFirst();
   sound.setMood(0);
   if (journey.station > 0) say({ who: 'master', ...STATION_LINES[journey.station] }, 4);
+  else if (!params.has('s')) say(touchScreen
+    ? { zh: '右手按住油门，左手拖动方向。停稳后按住刹车可倒车。', en: 'Hold the throttle and slide to steer. Hold brake at rest to reverse.' }
+    : { zh: 'W 加速，A / D 转向，S 刹车。停稳后按住 S 可倒车。', en: 'W to accelerate, A / D to steer, S to brake or reverse.' }, 6);
 }
 
 function pause(on) {
   if (state !== 'drive' || paused === on) return;
   paused = on;
+  const version = ++pauseVersion;
+  hud?.setDriving(!on);
   sound.hush(on);
   if (!on) {
     card?.close();
+    pauseCard?.close();
     card = null;
+    pauseCard = null;
+    hud?.focusFirst();
     return;
   }
-  openCard(ui.game, {
-    width: ui.width,
-    semantics: ui.semantics,
-    sound,
-    name: '暂停',
-    rows: [
-      { kind: 'title', zh: '暂停', en: 'Paused' },
-      { kind: 'button', text: '继续', sub: 'Resume', primary: true, onActivate: () => pause(false) },
-      { kind: 'button', text: '设置', sub: 'Settings', onActivate: () => openSettings() },
-      { kind: 'button', text: '回到上一驿站', sub: 'Back to the last station', onActivate: () => restartFromStation() },
-      { kind: 'button', text: '回到标题', sub: 'To the title', onActivate: () => showTitle() }
-    ]
+  // The engine's managed dialog requires an idle pointer router at mount.
+  // Wait for the pause button's own release dispatch, then retire other held fingers.
+  Promise.resolve().then(() => {
+    if (!paused || pauseVersion !== version) return;
+    ui.game.pointer.cancelAll('suspended');
+    return openCard(ui.game, {
+      width: ui.width,
+      semantics: ui.semantics,
+      sound,
+      name: '暂停',
+      rows: [
+        { kind: 'title', zh: '歇一歇', en: 'Paused' },
+        { kind: 'button', text: '继续', sub: 'Resume', primary: true, onActivate: () => pause(false) },
+        { kind: 'button', text: '设置', sub: 'Settings', onActivate: () => openSettings() },
+        { kind: 'button', text: '回到上一驿站', sub: 'Back to the last station', onActivate: () => restartFromStation() },
+        { kind: 'button', text: '回到标题', sub: 'To the title', onActivate: () => { pause(false); void showTitle(); } }
+      ]
+    });
   }).then((made) => {
-    card = made;
+    if (!made) return;
+    if (state === 'drive' && paused && pauseVersion === version) card = pauseCard = made;
+    else made.close();
   });
 }
 
 function restartFromStation() {
-  card?.close();
-  card = null;
-  paused = false;
-  sound.hush(false);
+  pause(false);
   journey = save.data.journey ?? journey;
   setCargo(journey.cargo);
   placeConvoy(startS(journey.station));
@@ -332,6 +354,7 @@ function restartFromStation() {
 const openSettings = (...args) => busy(() => openSettingsNow(...args));
 async function openSettingsNow() {
   const previous = card;
+  const initialTouch = settings.touch;
   const made = await openCard(ui.game, {
     width: ui.width,
     semantics: ui.semantics,
@@ -398,7 +421,6 @@ async function openSettingsNow() {
           save.update((data) => {
             data.settings.touch = value;
           });
-          if (hud) void buildHud().then(() => setHud(state === 'drive'));
         }
       },
       { kind: 'button', text: '好', sub: 'Done', primary: true, onActivate: () => made.close() }
@@ -406,6 +428,15 @@ async function openSettingsNow() {
     onClose: () => {
       if (card === made) card = previous;
       previous?.focusFirst?.();
+      if (!rebuilding && hud && initialTouch !== settings.touch) {
+        void buildHud().then(() => {
+          // Reattach the open pause dialog above the newly added controls.
+          if (state === 'drive' && paused) {
+            pause(false);
+            pause(true);
+          }
+        });
+      }
     }
   });
   card = made;
@@ -414,6 +445,8 @@ async function openSettingsNow() {
 // ---- stations and the camp ----------------------------------------------------------------------------------------
 async function arrive(index) {
   state = 'station';
+  hud?.setDriving(false);
+  ui.game.pointer.cancelAll('suspended');
   const station = landmarks.stations[index];
   sound.play('arrive', null, { volume: 0.9 });
   sound.setMood(0);
@@ -442,6 +475,7 @@ async function stationCardNow(index) {
     line = STATION_LINES[index],
     cargo = convoy.cargo;
   card?.close();
+  ui.game.pointer.cancelAll('suspended');
   card = await openCard(ui.game, {
     width: ui.width,
     semantics: ui.semantics,
@@ -464,6 +498,7 @@ function leaveStation() {
   card?.close();
   card = null;
   state = 'drive';
+  hud?.setDriving(true);
   hud?.focusFirst();
 }
 
@@ -532,13 +567,15 @@ function saveCamp(index) {
 }
 
 // ---- the end --------------------------------------------------------------------------------------------------------
-async function finish() {
+const finish = () => busy(finishNow);
+async function finishNow() {
   state = 'film';
   markers.visible = false;
   await setHud(false);
   sound.setMood(-1);
   const delivered = convoy.cargo,
     record = { delivered, seconds: Math.round(journey.seconds), stolen: journey.stolen, recovered: journey.recovered, knocked: journey.knocked };
+  endingRecord = record;
   save.update((data) => {
     data.best = better(data.best, record);
     data.journey = null;
@@ -593,13 +630,15 @@ let placeTimer = 0,
 function tick(dt) {
   if (filming) return;
   const step = Math.min(dt, 1 / 20);
-  const driving = state === 'drive' && !paused;
   const state0 = input.poll(step);
   if (input.pressed('pause')) {
-    if (state === 'drive') pause(!paused);
+    if (state === 'drive') {
+      if (paused && card && card !== pauseCard) card.close();
+      else pause(!paused);
+    }
     else if (card && (state === 'title' || state === 'end')) card.close();
   }
-  if (driving) {
+  if (state === 'drive' && !paused) {
     if (input.pressed('horn')) honk();
     if (input.pressed('camera')) nextView();
     if (input.pressed('recover')) recover();
@@ -677,13 +716,14 @@ function tick(dt) {
   if (state === 'title' || state === 'opening') {
     // A slow drift up the road ahead of the convoy, on the side away from the station's hall, looking back at it.
     orbitAngle += step * 0.04;
-    const s = lead.s + 34 + Math.sin(orbitAngle) * 8,
+    const title = state === 'title',
+      s = lead.s + 25 + Math.sin(orbitAngle) * 5,
       p = pointAt(s),
       [dx, dz] = directionAt(s),
-      x = p[0] + dz * 13,
-      z = p[2] - dx * 13;
-    camera.setPosition(x, land.heightAt(x, z) + 5.5 + Math.sin(orbitAngle * 0.7), z);
-    camera.lookAt(pos[0] - dz * 2, pos[1] + 1.5, pos[2] + dx * 2);
+      x = p[0] + dz * 10,
+      z = p[2] - dx * 10;
+    camera.setPosition(x, land.heightAt(x, z) + 4.3 + Math.sin(orbitAngle * 0.7) * 0.7, z);
+    camera.lookAt(pos[0] - dz * (title ? 9 : 2), pos[1] + 2.6, pos[2] + dx * (title ? 9 : 2));
   } else if (state !== 'camp' && !freeCamera) {
     let dy = convoy.heading() - follow.yaw;
     while (dy > Math.PI) dy -= Math.PI * 2;
@@ -700,7 +740,7 @@ function tick(dt) {
   effects.update(step, camera, biome);
   waters.update(step);
   sound.update(step, { snow: biome[2] });
-  if (state === 'drive' || state === 'station') markers.update(nextStation, pos);
+  if (state === 'drive' || state === 'station') markers.update(nextStation, lead.s);
   placeTimer -= step;
   if (placeTimer <= 0) {
     placeTimer = 1;
@@ -746,6 +786,7 @@ async function rebuildOverlay() {
   rebuilding = true;
   while (building > 0) await new Promise((resolve) => setTimeout(resolve, 50));
   const hudShown = state === 'drive' || state === 'station';
+  const openingIndex = state === 'opening' ? screen?.index : undefined;
   await closeScreen();
   hud?.dispose();
   await ui.overlay.dispose();
@@ -755,13 +796,15 @@ async function rebuildOverlay() {
     hud.root.visible = hudShown;
   }
   if (state === 'title') await showTitle();
+  else if (state === 'opening') screen = await openingScreen(ui, { onDone: () => beginDriving(), startAt: openingIndex });
   else if (state === 'station') await stationCard(journey.station);
   else if (state === 'camp') {
     camps[campStation].finish();
     await stationCard(campStation);
     state = 'station';
-  } else if (state === 'end') await showTitle();
+  } else if (state === 'film' || state === 'end') await results(endingRecord);
   if (paused) {
+    pauseCard = null;
     paused = false;
     pause(true);
   }
@@ -775,6 +818,22 @@ window.addEventListener('resize', () => {
     if (Math.abs(uiWidth() - ui.width) > ui.width * 0.1 || stageHeight() !== STAGE.height) void rebuildOverlay();
   }, 300);
 });
+
+const rotateButton = document.querySelector('#rotate-button'),
+  orientation = window.screen.orientation;
+if (document.documentElement.requestFullscreen && typeof orientation?.lock === 'function') {
+  rotateButton.hidden = false;
+  rotateButton.addEventListener('click', async () => {
+    const entered = !document.fullscreenElement;
+    try {
+      if (entered) await document.documentElement.requestFullscreen();
+      await orientation.lock('landscape');
+    } catch {
+      if (entered && document.fullscreenElement) await document.exitFullscreen().catch(() => {});
+      document.querySelector('#rotate-help').textContent = '请关闭系统方向锁定，再转动手机。';
+    }
+  });
+}
 
 // The first press anywhere lets the sound begin, as browsers ask.
 const wake = () => void sound.start();

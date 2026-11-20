@@ -1,8 +1,8 @@
 # Tea Horse Road · 茶马古道
 
-茶马古道是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 3D 越野探索游戏 Demo。你开着马帮车队的头车，带着另外两辆满载茶砖的越野车，从滇南普洱茶山出发，蹚过浅滩、穿过有山匪出没的林子、开过金沙峡谷上的吊桥，翻过飘雪的垭口，把七十二捆茶送到高原驿站。路上有陡坡、溪流、山匪和狼群；三个驿站可以扎营，营地布置会存下来。一趟十分钟上下（扎营另算），有剧情对白，结尾有短片（短片待美术提升后再录，见下）。键盘、鼠标、手柄和手机触屏都能玩。
+茶马古道是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 3D 越野探索游戏 Demo。你开着马帮车队的头车，带着另外两辆满载茶砖的越野车，从滇南普洱茶山出发，蹚过浅滩、穿过有山匪出没的林子、开过金沙峡谷上的吊桥，翻过飘雪的垭口，把七十二捆茶送到高原驿站。路上有陡坡、溪流、山匪和狼群；三个驿站可以扎营，营地布置会存下来。一趟十分钟上下（扎营另算），有剧情对白和抵达高原的结尾短片。键盘、鼠标、手柄和手机触屏都能玩。
 
-Tea Horse Road is an independently developed 3D off-road demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). You drive the lead truck of a caravan of three, each loaded with bricks of tea, from the tea hills of Pu'er in the south of Yunnan through a ford, a forest where bandits wait, over a rope bridge across the gorge and through a snowy pass, to bring seventy-two bundles of tea to the station on the plateau. The road has steep grades, streams, bandits and wolves; at each of the three stations the crew can make camp, and the camp is kept. A journey takes about ten minutes, more with camps, with lines along the way and a closing film (to be recorded once the art is improved; see below). Keyboard, mouse, gamepad and touch.
+Tea Horse Road is an independently developed 3D off-road demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). You drive the lead truck of a caravan of three, each loaded with bricks of tea, from the tea hills of Pu'er in the south of Yunnan through a ford, a forest where bandits wait, over a rope bridge across the gorge and through a snowy pass, to bring seventy-two bundles of tea to the station on the plateau. The road has steep grades, streams, bandits and wolves; at each of the three stations the crew can make camp, and the camp is kept. A journey takes about ten minutes, more with camps, with dialogue along the way and a closing film of the plateau arrival. Keyboard, mouse, gamepad and touch.
 
 [在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/TeaHorseRoad/)
 
@@ -18,6 +18,8 @@ Tea Horse Road is an independently developed 3D off-road demo built with [Egret 
 | 扶正 · Right the truck | R | Select | 翻车后出现「扶正」 · appears when rolled |
 | 手刹 · Handbrake | 空格 · Space | X | |
 | 暂停 · Pause | Esc / P | Start | 右上「Ⅱ」 |
+
+手机请横屏游玩。支持的浏览器也可以在竖屏提示里点「横屏全屏」。· Play in landscape on phones. Supported browsers can also enter fullscreen landscape from the rotate prompt.
 
 - **车队**：后两辆车自己沿路跟车、保持车距；掉队太远或翻车会被扶回路上。
 - **山匪**（林子、峡口）：在路上横了几根木头逼车队减速（木头是可以推开的刚体，撞得太猛会把车颠起来），再从路边树林里冲出来追车。车速快时撞上会把他撞倒；车慢下来被扒住一秒多，就会被抢走一捆茶——追上把他撞倒，茶还能抢回来。
@@ -67,7 +69,7 @@ Every item below is done through the engine's API; the table says where it shows
 | `parseBitmapFont` + `createBitmapText` | 速度表、里程表和车上剩下的茶；字页在画布上画出 · the speedometer, the odometer and the tea aboard; the font page is painted on a canvas | `src/art/hudfont.mjs`, `src/ui/hud.mjs` |
 | `createUiSemantics` + `createBrowserSemantics` | 一棵语义树投影到页面：按钮、滑条、开关、单选组、对话框（模态）、状态播报（地名、茶、时速、字幕） · one semantic tree projected into the page: buttons, sliders, switches, radio groups, modal dialogs, and a status with the place, the tea, the speed and the subtitles | `src/main.mjs`, `src/ui/*.mjs` |
 | `createSaveStore` | 旅程进度（到了哪站、每辆车的茶、路上的记录）、各驿站的营地文档、设置、最好的一趟 · the journey (station reached, tea on each truck, the record of the road), each station's camp document, settings and the best journey | `src/saves.mjs` |
-| `createBrowserVideo` | 结尾短片（21 秒，由游戏自己录下：`tools/make-ending.mjs`，WebM 与 MP4 两份放进 `media/`）。短片要等美术提升后再录，这一版还没有放进仓库；没有短片时到站直接进结算 · the closing film (21 s, recorded from the game itself by `tools/make-ending.mjs` as WebM and MP4 into `media/`). It will be recorded once the art is improved and is not in the repository yet; without it the journey goes straight to its account | `src/ui/screens.mjs`, `media/` |
+| `createBrowserVideo` | 结尾短片（21 秒，使用游戏内场景录制，按需加载 WebM 或 MP4）· the closing film (21 s, captured in-game and loaded on demand as WebM or MP4) | `src/ui/screens.mjs`, `media/` |
 | `@egret/engine/web/gamepad` | 手柄的扳机、摇杆和按键；撞人时震动 · the pad's triggers, sticks and buttons; rumble on a knock | `src/play/input.mjs` |
 | `createInputActions` + `bindBrowserInputActions` | 键盘的命名动作；`skipPrevented` 让焦点控件用掉的键不再开车 · named actions on the keys; with `skipPrevented` a key a focused control used does not drive | `src/play/input.mjs` |
 | `createWorld3DApp` | 后端与画质选择（低画质无阴影、无泛光）、色调映射、帧循环 · backend and quality (Low without shadows or bloom), tone mapping, the loop | `src/main.mjs` |
@@ -77,9 +79,9 @@ Every item below is done through the engine's API; the table says where it shows
 
 ## 素材 · Assets
 
-全部原创或由代码生成：地形、车、驿站、吊桥、白塔、人物、狼、树和石头都由代码建模；地面、木纹、布、经幡、泥点和粒子的贴图由 `src/art/textures.mjs` 逐像素画出；立体字的字形由 `tools/make-glyphs.py` 按笔画画出；发动机、水声、马铃、喇叭、狼嚎、吆喝和两段马帮小调由 `src/audio/synth.mjs` 合成；结尾短片由 `tools/make-ending.mjs` 在浏览器里逐帧录下游戏画面，再用 ffmpeg 编码。
+地形、三辆货车、茶叶和茶砖包装、驿站、吊桥、白塔、人物、狼、树和石头由代码建模。地面、木纹、布和粒子贴图由 `src/art/textures.mjs` 绘制，立体字由 `tools/make-glyphs.py` 生成，音乐和音效由 `src/audio/synth.mjs` 合成。载入画面的茶山插画 `assets/dawn-convoy.webp` 为本项目生成。结尾短片使用游戏内场景录制并用 FFmpeg 编码。
 
-Everything is original or made in code: the land, the trucks, the stations, the bridge, the stupa, the people, the wolves, trees and stones are modelled in code; the textures of ground, wood, cloth, flags, mud and particles are painted pixel by pixel in `src/art/textures.mjs`; the glyphs of the raised letters are drawn stroke by stroke by `tools/make-glyphs.py`; the engine, water, bells, horn, howls, shouts and the two caravan tunes are synthesized by `src/audio/synth.mjs`; the closing film is recorded frame by frame from the game in a browser by `tools/make-ending.mjs` and encoded with ffmpeg.
+The terrain, trucks, tea leaves and packages, stations, bridge, stupa, people, wolves, trees and rocks are modelled in code. `src/art/textures.mjs` paints the textures, `tools/make-glyphs.py` generates the 3D lettering and `src/audio/synth.mjs` synthesizes the music and sounds. The loading illustration `assets/dawn-convoy.webp` was generated for this demo. The closing film was captured in-game and encoded with FFmpeg.
 
 ## 开发 · Development
 
@@ -108,7 +110,7 @@ The tests check the road (its length, grades, the order of stations and ambushes
 | `src/models/` | 车、人物与狼、植物、建筑 · trucks, figures, plants, buildings |
 | `src/ui/` | 界面零件、卡片、HUD、屏幕标记、整屏画面 · interface parts, cards, the HUD, markers, screens |
 | `src/audio/`, `src/art/` | 合成声音；贴图、字形、仪表字体 · synthesized sound; textures, glyphs, the gauge font |
-| `media/` | 结尾短片（待录） · the closing film (to be recorded) |
+| `media/` | 结尾短片 · the closing film |
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
 引擎副本取自 Egret_rebuild 提交 `687037a`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `687037a`, copied by the engine's `tools/vendor-game.mjs`.
