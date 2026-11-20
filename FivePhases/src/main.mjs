@@ -38,6 +38,7 @@ const touch = $('board-touch');
 const rewardsEl = $('rewards');
 const startButton = $('start');
 const muteButton = $('mute');
+const attackCue = $('attack-cue');
 startButton.disabled = true;
 const startLabel = startButton.textContent;
 startButton.textContent = '正在备阵…';
@@ -61,8 +62,15 @@ let hero = null;
 let enemy = null;
 let enemySprite = null;
 const enemyRigs = new Map();
-const heroMotion = { attack: 0, recoil: 0 };
-const enemyMotion = { attack: 0, recoil: 0 };
+const heroMotion = { name: 'idle', time: 0 };
+const enemyMotion = { name: 'idle', time: 0 };
+const bossAttacks = {
+  shanjiao: { label: '山魈·沉肩', cue: 'guard', kind: 'wood', shake: 12 },
+  chijiao: { label: '赤蛟·卷潮', cue: 'cast', kind: 'water', shake: 15 },
+  hundun: { label: '混沌·踏阵', cue: 'boom', kind: 'earth', shake: 19 },
+};
+let lastImpact = null;
+let vitals = null;
 let world = null;
 let boardLayer = null;
 let paintTile = null;
@@ -77,8 +85,6 @@ let runtime = null;
 let run = null;
 /** 覆盖层锁：'title' / 'reward' / 'over' / 'pending' / null。非 null 时输入全关。 */
 let lock = 'title';
-
-let clock = 0;
 
 // ── 屏幕适配 ────────────────────────────────────────────────────
 // --u 是"设计稿一个像素"值多少真实像素。CSS 里所有尺寸都写成 calc(N * var(--u))，
@@ -146,8 +152,8 @@ function paintEnemy(id) {
   enemy.place(x, y, width / enemy.width);
   enemySprite.alpha = 1;
   enemySprite.visible = true;
-  enemyMotion.attack = enemyMotion.recoil = 0;
-  heroMotion.attack = heroMotion.recoil = 0;
+  setMotion(enemyMotion, 'idle');
+  setMotion(heroMotion, 'idle');
   hero.place(HERO_SPOT.x, HERO_SPOT.y, HERO_SPOT.width / hero.width);
 }
 
@@ -155,6 +161,9 @@ function startBattle(index) {
   sequence.clear();
   fx.clear();
   clearSelection();
+  closeAttackCue();
+  lastImpact = null;
+  vitals = null;
 
   battle = createBattle({
     seed: (Date.now() ^ (index * 7919)) >>> 0,
@@ -202,29 +211,25 @@ function beginRun() {
 /** 打完一关：先让演出把最后一帧画完，再切界面。 */
 function endOfBattle() {
   run.bestChain = Math.max(run.bestChain, battle.bestChain);
-  if (battle.over === 'win') {
+  const won = battle.over === 'win';
+  lock = 'pending';
+  setMotion(heroMotion, won ? 'win' : 'lose');
+  setMotion(enemyMotion, won ? 'lose' : 'win');
+  if (won) {
     run.heroHp = Math.max(1, Math.round(battle.hero.hp));
-    lock = 'pending';
-    // 敌人散掉
-    const originalScale = enemySprite.scaleX;
-    sequence.tween(420, (t) => {
-      enemySprite.alpha = 1 - t;
-      enemySprite.scaleX = enemySprite.scaleY = originalScale * (1 + 0.11 * t);
-      enemySprite.visible = enemySprite.alpha > 0.02;
-    });
-    sequence.call(() => {
-      fx.burst(ENEMY_SPOT.x, ENEMY_SPOT.y, null, 24);
-      fx.flash(0.4, 0.3);
-    });
-    setTimeout(() => {
-      if (run.index >= ENEMIES.length - 1) showOver('win');
-      else showReward();
-    }, 720);
+    audio.win();
+    fx.burst(ENEMY_SPOT.x, ENEMY_SPOT.y, null, 20);
+    fx.flash(0.18, 0.25);
   } else {
-    lock = 'pending';
-    sequence.call(() => fx.flash(0.55, 0.4));
-    setTimeout(() => showOver('lose'), 720);
+    audio.lose();
+    fx.flash(0.28, 0.3);
   }
+  const duration = Math.max(hero.clips[heroMotion.name].duration, enemy.clips[enemyMotion.name].duration);
+  sequence.wait(duration * 1000);
+  sequence.call(() => {
+    if (won && run.index < ENEMIES.length - 1) showReward();
+    else showOver(battle.over);
+  });
 }
 
 function showReward() {
@@ -288,16 +293,26 @@ function playEnergy(event) {
       ms: 280,
       onArrive: () => {
         hud.pulse(event.element);
-        hud.render(battle);
+        renderBattle();
       },
     });
   });
   // 球是并行飞的，不进队列等它——不然每消一次都要多等小半秒
 }
 
-function play(events) {
-  hud.render(battle);
+function snapshotVitals() {
+  const { hero, enemy } = battle;
+  return { hero: { hp: hero.hp, shield: hero.shield }, enemy: { hp: enemy.hp, shield: enemy.shield } };
+}
+
+// 逻辑已结算。画面上的血条和护盾沿演出队列逐次结算。
+const renderBattle = () => hud.render(battle, vitals ?? battle);
+
+function play(events, before) {
+  vitals = before;
+  renderBattle();
   const tempo = cascadeTempo(events);
+  let strikeCard = null;
 
   for (const event of events) {
     switch (event.type) {
@@ -353,8 +368,11 @@ function play(events) {
         break;
 
       case 'cast':
-        sequence.call(() => audio.cast(Boolean(event.card.ult)));
-        queueStrike(hero, heroMotion, 27, 94, 178);
+        if (events.some((entry) => entry.type === 'damage' && entry.to === 'enemy' && entry.source === event.card.name)) {
+          strikeCard = event.card;
+        } else {
+          queueAttack(hero, heroMotion, () => audio.cast(Boolean(event.card.ult)));
+        }
         break;
 
       case 'echo':
@@ -368,23 +386,35 @@ function play(events) {
       }
 
       case 'damage':
-        playDamage(event);
+        if (strikeCard?.name === event.source && event.to === 'enemy') {
+          const card = strikeCard;
+          queueAttack(hero, heroMotion, () => audio.cast(Boolean(card.ult)), () => showImpact(event));
+          strikeCard = null;
+        } else if (event.to === 'hero') {
+          const boss = bossAttacks[battle.enemy.id];
+          queueAttack(enemy, enemyMotion, () => {
+            attackCue.dataset.boss = battle.enemy.id;
+            attackCue.textContent = `${boss.label}　${event.source}`;
+            attackCue.classList.add('is-on');
+            audio[boss.cue]();
+          }, () => showImpact(event, boss));
+        } else {
+          sequence.call(() => showImpact(event));
+          sequence.wait(130);
+        }
         break;
 
       case 'absorb':
-        sequence.call(() => {
-          const at = event.to === 'hero' ? heroFloat() : enemyFloat();
-          hud.floater(`挡 ${event.amount}`, { ...at, kind: 'shield' });
-          hud.render(battle);
-        });
+        // 核心紧接着发出 damage，护盾和伤害数字共用它的命中关键帧。
         break;
 
       case 'shield':
         sequence.call(() => {
           audio.guard();
           const at = event.to === 'enemy' ? enemyFloat() : heroFloat();
+          vitals[event.to ?? 'hero'].shield += event.amount;
           hud.floater(`+盾 ${event.amount}`, { ...at, kind: 'shield' });
-          hud.render(battle);
+          renderBattle();
         });
         break;
 
@@ -392,9 +422,10 @@ function play(events) {
         sequence.call(() => {
           if (event.amount > 0) {
             audio.heal();
+            vitals.hero.hp += event.amount;
             hud.floater(`+${event.amount}`, { ...heroFloat(), kind: 'heal' });
           }
-          hud.render(battle);
+          renderBattle();
         });
         break;
 
@@ -406,15 +437,16 @@ function play(events) {
         sequence.call(() => {
           const at = event.to === 'hero' ? heroFloat() : enemyFloat();
           hud.floater(`毒 ${event.amount}`, { ...at, kind: 'info' });
-          hud.render(battle);
+          renderBattle();
         });
         break;
 
       case 'poisonTick':
         sequence.call(() => {
           const at = event.to === 'hero' ? heroFloat() : enemyFloat();
+          vitals[event.to].hp = Math.max(0, vitals[event.to].hp - event.amount);
           hud.floater(`-${event.amount}`, { ...at, kind: 'damage' });
-          hud.render(battle);
+          renderBattle();
         });
         sequence.wait(120);
         break;
@@ -448,15 +480,9 @@ function play(events) {
 
       case 'turn':
         sequence.call(() => {
-          hud.render(battle);
+          vitals.hero.shield = battle.hero.shield;
+          renderBattle();
           audio.draw();
-        });
-        break;
-
-      case 'over':
-        sequence.call(() => {
-          if (event.result === 'win') audio.win();
-          else audio.lose();
         });
         break;
 
@@ -467,6 +493,7 @@ function play(events) {
 
   // 收尾：把界面同步到最终状态，再看要不要切场景
   sequence.call(() => {
+    vitals = null;
     hud.render(battle);
     if (battle.over) endOfBattle();
   });
@@ -475,49 +502,84 @@ function play(events) {
 const heroFloat = () => ({ x: HERO_SPOT.x + 40, y: HERO_SPOT.y - 170 });
 const enemyFloat = () => ({ x: ENEMY_SPOT.x, y: ENEMY_SPOT.y - 30 });
 
-function playDamage(event) {
+function showImpact(event, boss) {
   const toHero = event.to === 'hero';
-  const impact = () => {
-    (toHero ? heroMotion : enemyMotion).recoil = 1;
-    if (event.amount > 0) {
-      hud.floater(`-${event.amount}`, { ...(toHero ? heroFloat() : enemyFloat()), kind: 'damage' });
-    }
-    if (toHero) {
-      audio.enemyHit();
-      shake(18, 0.3);
-      fx.flash(0.26, 0.16);
-    } else {
-      audio.hit();
-      shake(event.crit ? 16 : 9, 0.22);
-      fx.burst(ENEMY_SPOT.x, ENEMY_SPOT.y, null, event.crit ? 16 : 9);
-      fx.ring(ENEMY_SPOT.x, ENEMY_SPOT.y, PALETTE.gold, event.crit ? 150 : 100);
-    }
-    hud.render(battle);
+  const at = toHero ? heroFloat() : enemyFloat();
+  const shown = vitals[event.to];
+  const absorbed = event.total - event.amount;
+  const attacker = toHero ? enemyMotion : heroMotion;
+  lastImpact = {
+    actor: toHero ? 'enemy' : 'hero', boss: battle.enemy.id,
+    at: performance.now(), time: attacker.time, clip: attacker.name,
   };
-  if (toHero) queueStrike(enemy, enemyMotion, -70, 125, 214, impact);
-  else sequence.call(impact);
-  // 一小段顿帧。伤害数字要"落地"才有力，但太长会让连消变得拖沓
-  sequence.wait(80);
+  if (absorbed > 0) {
+    shown.shield = Math.max(0, shown.shield - absorbed);
+    hud.floater(`挡 ${absorbed}`, { ...at, x: at.x + 68, kind: 'shield' });
+  }
+  if (event.amount > 0) {
+    setMotion(toHero ? heroMotion : enemyMotion, 'hit');
+    shown.hp = Math.max(0, shown.hp - event.amount);
+    hud.floater(`-${event.amount}`, { ...at, kind: 'damage' });
+  }
+  if (boss) {
+    audio.enemyHit();
+    shake(boss.shake, 0.24);
+    fx.bossImpact(battle.enemy.id, at.x, at.y);
+    fx.burst(at.x, at.y, ELEMENT_ORDER.indexOf(boss.kind), 10);
+  } else {
+    audio.hit();
+    shake(event.crit ? 16 : 9, 0.22);
+    fx.burst(ENEMY_SPOT.x, ENEMY_SPOT.y, null, event.crit ? 16 : 9);
+    fx.ring(ENEMY_SPOT.x, ENEMY_SPOT.y, PALETTE.gold, event.crit ? 150 : 100);
+  }
+  renderBattle();
 }
 
 // ── 两个角色的动作 ──────────────────────────────────────────────
 
-/** 位移和关节幅度沿同一个时间轴。 */
-function queueStrike(rig, motion, travel, advance, recover, onImpact) {
-  let home;
-  sequence.call(() => { home = rig.holder.x; });
-  const apply = (amount) => {
-    rig.holder.x = home + travel * amount;
-    motion.attack = amount;
-  };
-  sequence.tween(advance, apply, { ease: ease.inQuad });
-  if (onImpact) sequence.call(onImpact);
-  sequence.tween(recover, (t) => apply(1 - t), { ease: ease.outQuad });
+function setMotion(motion, name) {
+  motion.name = name;
+  motion.time = 0;
+}
+
+function closeAttackCue() {
+  attackCue.classList.remove('is-on');
+  attackCue.textContent = '';
+}
+
+/** 关键帧和命中事件一起推进，即使一帧跨过事件，也只触发一次。 */
+function queueAttack(rig, motion, onWindup, onImpact) {
+  const { duration, events } = rig.clips.attack;
+  let marker = 0;
+  sequence.tween(duration * 1000, (progress) => {
+    motion.name = 'attack';
+    motion.time = progress * duration;
+    while (marker < events.length && events[marker][0] <= motion.time + 1e-8) {
+      const [time, event] = events[marker++];
+      if (event === 'windup') onWindup();
+      else {
+        motion.time = time;
+        onImpact?.();
+      }
+    }
+  }, {
+    ease: ease.linear,
+    done: () => {
+      setMotion(motion, 'idle');
+      if (motion === enemyMotion) closeAttackCue();
+    },
+  });
 }
 
 function posePortrait(rig, motion, dt) {
-  motion.recoil = Math.max(0, motion.recoil - dt * 5.5);
-  if (rig.holder.visible) rig.pose(clock, motion.attack, motion.recoil);
+  if (!rig.holder.visible) return;
+  const duration = rig.clips[motion.name].duration;
+  if (motion.name === 'idle') motion.time = (motion.time + dt) % duration;
+  else if (motion.name !== 'attack') {
+    motion.time = Math.min(duration, motion.time + dt);
+    if (motion.name === 'hit' && motion.time === duration) setMotion(motion, 'idle');
+  }
+  rig.sample(motion.name, motion.time);
 }
 
 // ── 操作 ────────────────────────────────────────────────────────
@@ -525,12 +587,13 @@ function posePortrait(rig, motion, dt) {
 function runSwap(a, b) {
   if (locked()) return;
   clearSelection();
+  const before = snapshotVitals();
   const events = swapAndSettle(battle, a, b);
   if (!events) {
     audio.refuse();
     return;
   }
-  play(events);
+  play(events, before);
 }
 
 function tryPlay(uid) {
@@ -550,15 +613,17 @@ function tryPlay(uid) {
     return;
   }
 
+  const before = snapshotVitals();
   const events = playCard(battle, uid);
-  if (events) play(events);
+  if (events) play(events, before);
 }
 
 function tryEndTurn() {
   if (locked()) return;
   clearSelection();
+  const before = snapshotVitals();
   const events = endTurn(battle);
-  play(events);
+  play(events, before);
 }
 
 // 拖动 / 点选
@@ -827,7 +892,10 @@ async function boot() {
         for (let i = 0; i < (node.numChildren ?? 0); i += 1) total += count(node.getChildAt(i));
         return total;
       };
-      return { nodes: world ? count(world) : 0, queued: sequence.pending, updateFaults };
+      return {
+        nodes: world ? count(world) : 0, queued: sequence.pending, updateFaults,
+        heroClip: heroMotion.name, enemyClip: enemyMotion.name, lastImpact,
+      };
     },
   };
 
@@ -841,7 +909,6 @@ let updateFaults = 0;
 function update(seconds) {
   // 切走标签页再回来，seconds 会是一个很大的值；不夹住的话补间会一帧跳完
   const dt = Math.min(Math.max(seconds, 0), 0.05);
-  clock += dt;
   // 一帧里抛出去，引擎只会报一句 FRAME_RENDER_FAILED，真正的原因就丢了。
   // 自己接住，把原始错误打出来——这是排查"画面卡住"唯一有用的线索。
   try {

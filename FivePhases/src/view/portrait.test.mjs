@@ -131,10 +131,10 @@ test('bitmaps reuse an atlas lease and rotate about authored joint pivots', () =
   assert.equal(face.rotation, 90);
   rig.place(520, 190, 0.5);
   assert.deepEqual([rig.holder.x, rig.holder.y, rig.holder.scaleX], [495, 145, 0.5]);
-  rig.pose(0.5, 0);
+  rig.sample('idle', 0.5);
   const idleRotation = face.rotation;
-  rig.pose(0.5, 1);
-  assert.ok(face.rotation > idleRotation);
-  rig.pose(0.5, 0);
+  rig.sample('attack', rig.clips.attack.events[1][0]);
+  assert.notEqual(face.rotation, idleRotation);
+  rig.sample('idle', 0.5);
   assert.equal(face.rotation, idleRotation);
 });

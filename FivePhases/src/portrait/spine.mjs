@@ -27,13 +27,35 @@ function spin(x, y, deg) {
   return [x * c - y * s, x * s + y * c];
 }
 
+function toSpineAnimations(portrait, boneById, clips) {
+  const animations = {};
+  const events = {};
+  for (const [name, clip] of Object.entries(clips)) {
+    const bones = {};
+    for (const [bone, keys] of Object.entries(clip.tracks)) {
+      if (!boneById.has(bone)) throw new Error(`${portrait.id}/${name}：找不到动画骨骼 ${bone}`);
+      const [lastTime, ...lastPose] = keys.at(-1);
+      // Spine 以最后一个关键帧确定时长。补上保留末姿的关键帧，与试玩的采样一致。
+      const frames = lastTime < clip.duration ? [...keys, [clip.duration, ...lastPose]] : keys;
+      bones[bone] = {
+        translate: frames.map(([time, x, y]) => ({ time, x: r3(x), y: r3(-y) })),
+        rotate: frames.map(([time, , , rotation]) => ({ time, value: r3(-rotation) })),
+      };
+    }
+    const markers = (clip.events ?? []).map(([time, eventName]) => ({ time, name: eventName }));
+    for (const marker of markers) events[marker.name] = {};
+    animations[name] = { bones, ...(markers.length ? { events: markers } : {}) };
+  }
+  return { ...(Object.keys(events).length ? { events } : {}), animations };
+}
+
 /**
  * 把部件清单导出成 Spine 4.1 骨架。
  *
  * 注意 attachment 的 (x, y) 在 Spine 里是**图片中心**，而清单里的 offset 是**轴心**。
  * 两者差一个「轴心到中心」的向量，得按部件自己的旋转摆过去，不能直接照抄。
  */
-export function toSpineSkeleton(portrait, { images = './' } = {}) {
+export function toSpineSkeleton(portrait, { images = './', clips = {} } = {}) {
   const { width, height } = portrait.canvas;
   const halfW = width / 2;
   const sx = (x) => x - halfW;
@@ -99,7 +121,7 @@ export function toSpineSkeleton(portrait, { images = './' } = {}) {
     bones,
     slots,
     skins: [{ name: 'default', attachments: skinAttachments }],
-    animations: {},
+    ...toSpineAnimations(portrait, byId, clips),
   };
 }
 

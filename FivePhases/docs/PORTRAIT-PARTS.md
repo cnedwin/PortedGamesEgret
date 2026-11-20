@@ -2,7 +2,7 @@
 
 角色原画先按关节和层序裁成带透明度的区域。清单使用左上为原点的画布坐标，骨骼的局部变换和渲染层序分别保存。拼贴后以一个共享 PNG 图集渲染每个角色，单片 PNG 用于美术返修。
 
-在 Spine 4.1 导入对应的 `*.skeleton.json`，图像目录选择角色的 `parts/`。外部运行时可配合同名 `*.atlas` 和 `atlas.png` 使用。浏览器中打开 `tools/portrait-preview.html?id=fire` 可检查拼接、关节和轴心。游戏的待机、出招和受击曲线由白鹭端播放。
+在 Spine 4.1 导入对应的 `*.skeleton.json`，图像目录选择角色的 `parts/`。外部运行时可配合同名 `*.atlas` 和 `atlas.png` 使用。浏览器中打开 `tools/portrait-preview.html?id=fire` 可检查拼接、关节和轴心。四套骨架各带待机、出招、受击、胜利和失败五段动作。白鹭播放与 Spine 导出共享的关键帧，出招段的 windup 提示起手，impact 同步受击动作、血量、护盾、特效和音效。
 
 更新切片时保留骨骼和部件的 ID。重新打包 `atlas.png`，在 `rig.json` 更新图集矩形和画布位置，再运行 `node FivePhases/tools/spine-export.mjs` 与 `node FivePhases/tools/parts-table.mjs`。
 

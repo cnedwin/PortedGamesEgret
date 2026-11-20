@@ -98,6 +98,32 @@ test('骨架能过 JSON，且过一遍不丢字段', () => {
   const copy = JSON.parse(JSON.stringify(skeleton));
   assert.deepEqual(copy, skeleton);
   assert.equal(copy.skeleton.spine, '4.1.0');
+  assert.deepEqual(copy.animations, {});
+  assert.equal(copy.events, undefined);
+});
+
+test('动作按 Spine 4.1 导出骨骼偏移、片段时长及事件', () => {
+  const attack = {
+    duration: 0.7,
+    tracks: { head: [[0, 0, 0, 0], [0.3, 4, -6, 20]] },
+    events: [[0.1, 'windup'], [0.3, 'impact']],
+  };
+  const skeleton = toSpineSkeleton(fire, { clips: { attack } });
+  assert.deepEqual(skeleton.events, { windup: {}, impact: {} });
+  assert.deepEqual(skeleton.animations.attack, {
+    bones: {
+      head: {
+        translate: [{ time: 0, x: 0, y: 0 }, { time: 0.3, x: 4, y: 6 }, { time: 0.7, x: 4, y: 6 }],
+        rotate: [{ time: 0, value: 0 }, { time: 0.3, value: -20 }, { time: 0.7, value: -20 }],
+      },
+    },
+    events: [{ time: 0.1, name: 'windup' }, { time: 0.3, name: 'impact' }],
+  });
+});
+
+test('导出时拒绝引用不存在的骨骼', () => {
+  const idle = { duration: 1, tracks: { missing: [[0, 0, 0, 0]] } };
+  assert.throws(() => toSpineSkeleton(fire, { clips: { idle } }), /fire.*idle.*missing/);
 });
 
 test('交付单把每个部件列且只列一次', () => {
