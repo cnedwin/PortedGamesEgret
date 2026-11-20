@@ -31,6 +31,7 @@ export const BEATS = { wood: 'earth', earth: 'water', water: 'fire', fire: 'meta
 export const ENERGY_CAP = 10;
 export const HAND_CAP = 5;
 export const STEPS_PER_TURN = 3;
+const MAX_CASCADE_STEPS = 41;
 
 /** 连锁倍率：1 / 1.25 / 1.6 / 2.0 / 2.5 / 3.0，第六层封顶。 */
 export const CHAIN_STEPS = [1, 1.25, 1.6, 2, 2.5, 3];
@@ -524,24 +525,26 @@ export function settle(battle, startChain = 1) {
   const events = [];
   const board = battle.board;
   let chain = startChain;
-  let guard = 0;
+  let clearedSteps = 0;
   for (;;) {
     const { drops, fills } = collapse(board, battle.rng, { fillKind: battle.floodKind });
     battle.floodKind = null;
     events.push({ type: 'fall', drops, fills, chain });
+    if (clearedSteps >= MAX_CASCADE_STEPS) break;
     const result = findAndClear(board, {});
     if (!result) break;
     chain += 1;
     events.push({ type: 'clearStep', chain, ...result });
     applyClearEnergy(battle, [events.at(-1)]);
-    guard += 1;
-    if (guard > 40) break;
+    clearedSteps += 1;
   }
 
   battle.turnChain = Math.max(battle.turnChain, chain);
   battle.bestChain = Math.max(battle.bestChain, chain);
 
-  if (!hasMove(board)) {
+  // 保护上限之后也先补满，再打散残余匹配，恢复到可操作局面。
+  const unfinished = clearedSteps >= MAX_CASCADE_STEPS && findRuns(board).runs.length > 0;
+  if (unfinished || !hasMove(board)) {
     reshuffle(board, battle.rng);
     events.push({ type: 'reshuffle' });
   }

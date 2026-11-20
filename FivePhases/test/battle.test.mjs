@@ -23,7 +23,7 @@ import {
   swapAndSettle,
 } from '../src/core/battle.mjs';
 import { CARDS, STARTER_DECK, boardCards, cardById, pureDamageCards } from '../src/core/cards.mjs';
-import { index } from '../src/core/board.mjs';
+import { findRuns, index } from '../src/core/board.mjs';
 
 const card = (id) => cardById(id);
 
@@ -153,6 +153,31 @@ test('连锁会一直跑到没有可消的，棋盘始终满的', () => {
   assert.ok(steps.length >= 1);
   // 连锁层数递增
   steps.forEach((step, i) => assert.equal(step.chain, i + 1));
+});
+
+test('归墟补成水盘后能正常连锁并回到可操作棋盘', () => {
+  const battle = ready({ seed: 12, deck: ['water-ult'] });
+  battle.energy.water = 10;
+
+  const events = playCard(battle, battle.hand[0].uid);
+  const steps = events.filter((event) => event.type === 'clearStep');
+
+  assert.equal(steps[0].cleared.length, 48);
+  assert.equal(steps[0].spawned.length, 1);
+  assert.ok(steps.every((step) => step.cleared.length > 0));
+  assert.ok([...battle.board.kind].every((value) => value !== -1));
+  assert.equal(findRuns(battle.board).runs.length, 0);
+});
+
+test('超长连锁达到保护上限时仍先补齐棋盘', () => {
+  const battle = ready({ seed: 2, deck: ['water-ult'] });
+  battle.energy.water = 10;
+
+  const events = playCard(battle, battle.hand[0].uid);
+
+  assert.equal(events.filter((event) => event.type === 'clearStep').at(-1).chain, 42);
+  assert.ok([...battle.board.kind].every((value) => value !== -1));
+  assert.equal(findRuns(battle.board).runs.length, 0);
 });
 
 test('敌人倒计时归零才出手，出手后重置', () => {

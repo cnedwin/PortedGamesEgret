@@ -221,34 +221,46 @@ export function findAndClear(board, { swap = [], rainbowKind = null } = {}) {
   if (!runs.length) return null;
 
   const clearSet = new Set();
-  for (const run of runs) for (const i of run.cells) clearSet.add(i);
+  const runsByCrossing = new Map(intersections.map((i) => [i, []]));
+  for (const run of runs) {
+    for (const i of run.cells) {
+      clearSet.add(i);
+      runsByCrossing.get(i)?.push(run);
+    }
+  }
 
   // 特殊块先定位置，再清空——否则刚生成的特殊块会被自己这一步清掉
   const spawned = [];
-  const taken = new Set();
-  const anchorOf = (cells) => {
-    const swapped = cells.find((i) => swap.includes(i));
-    if (swapped !== undefined) return swapped;
-    return cells[Math.floor(cells.length / 2)];
-  };
-
-  for (const at of intersections) {
-    if (taken.has(at)) continue;
-    const run = runs.find((item) => item.cells.includes(at));
-    spawned.push({ index: at, kind: run ? run.kind : board.kind[at], special: BOMB });
-    taken.add(at);
-  }
+  const ungrouped = new Set(runs);
   for (const run of runs) {
+    if (!ungrouped.delete(run)) continue;
+    const group = [run];
+    const crossings = new Set();
+    // 交叉相连的横竖串只留一个炸弹，保证每一步都会消掉方块。
+    for (const member of group) {
+      for (const i of member.cells) {
+        const touching = runsByCrossing.get(i);
+        if (!touching || crossings.has(i)) continue;
+        crossings.add(i);
+        for (const next of touching) {
+          if (ungrouped.delete(next)) group.push(next);
+        }
+      }
+    }
+
+    if (crossings.size > 0) {
+      const at = swap.find((i) => crossings.has(i)) ?? crossings.values().next().value;
+      spawned.push({ index: at, kind: runsByCrossing.get(at)[0].kind, special: BOMB });
+      continue;
+    }
     if (run.length < 4) continue;
-    const at = anchorOf(run.cells);
-    if (taken.has(at)) continue;
+    const at = run.cells.find((i) => swap.includes(i)) ?? run.cells[Math.floor(run.length / 2)];
     const special = run.length >= 5 ? RAINBOW : run.orientation === 'row' ? ROW : COL;
     spawned.push({ index: at, kind: run.length >= 5 ? WILD : run.kind, special });
-    taken.add(at);
   }
 
   const { cells, triggered } = spreadSpecials(board, [...clearSet], { rainbowKind });
-  for (const at of taken) cells.delete(at);
+  for (const spawn of spawned) cells.delete(spawn.index);
 
   const cleared = [];
   for (const i of cells) {

@@ -5,7 +5,7 @@
 //
 // 动画全部排进 sequence 串行播放；这里只负责"把事件表翻译成动作"。
 
-import { EMPTY, index } from '../core/board.mjs';
+import { ELEMENTS, EMPTY, PLAIN, index } from '../core/board.mjs';
 import { ease } from './sequence.mjs';
 import { drawTile } from './draw.mjs';
 
@@ -13,6 +13,15 @@ export const SWAP_MS = 110;
 export const CLEAR_MS = 170;
 export const FALL_MS = 240;
 export const SPAWN_MS = 150;
+// 极小或近透明的方块不可见，跳过会因浮点精度而退化的三角形。
+const MIN_VISIBLE_FRACTION = 0.03;
+
+/** 超长连锁完整播放首两层和收尾，其余层共用六层的演出时间。 */
+export function cascadeTempo(events) {
+  const last = events.findLast((event) => event.type === 'clearStep')?.chain ?? 0;
+  const middleScale = Math.min(1, 6 / Math.max(1, last - 3));
+  return (chain) => (chain > 2 && chain < last ? middleScale : 1);
+}
 
 export function createBoardView({ battle, Sprite, scope, layer, geometry }) {
   const { x, y, cell } = geometry;
@@ -98,16 +107,26 @@ export function createBoardView({ battle, Sprite, scope, layer, geometry }) {
   // ── 事件 → 动画 ────────────────────────────────────────────────
 
   function playSwap(event, sequence) {
-    const a = sprites[event.a];
-    const b = sprites[event.b];
-    if (!a || !b) return;
-    const fromA = { x: a.x, y: a.y };
-    const fromB = { x: b.x, y: b.y };
+    let a;
+    let b;
+    const fromA = centre(event.a);
+    const fromB = centre(event.b);
+    sequence.call(() => {
+      a = sprites[event.a];
+      b = sprites[event.b];
+    });
     sequence.tween(SWAP_MS, (t) => {
+      if (!a || !b) return;
       a.x = fromA.x + (fromB.x - fromA.x) * t;
       a.y = fromA.y + (fromB.y - fromA.y) * t;
       b.x = fromB.x + (fromA.x - fromB.x) * t;
       b.y = fromB.y + (fromA.y - fromB.y) * t;
+    }, {
+      done: () => {
+        if (!a || !b) return;
+        sprites[event.a] = b;
+        sprites[event.b] = a;
+      },
     });
   }
 
@@ -115,89 +134,92 @@ export function createBoardView({ battle, Sprite, scope, layer, geometry }) {
    * 清空。分两拍：先鼓一下（1.0 → 1.28），再缩没（→ 0）。
    * 只缩不放的话，消掉的瞬间像被抠掉了，没有"炸开"的感觉。
    */
-  function playClear(event, sequence, fx) {
+  function playClear(event, sequence, fx, durationScale = 1) {
     const cells = event.cleared ?? [];
-    const targets = [];
-    for (const cellInfo of cells) {
-      const sprite = sprites[cellInfo.index];
-      if (!sprite) continue;
-      targets.push({ sprite, cell: cellInfo });
-      sprites[cellInfo.index] = null;
-    }
-    if (!targets.length) return;
-
-    const big = event.combo ? 1.6 : 1.28;
-    const ms = event.combo ? 260 : CLEAR_MS;
-    sequence.tween(ms * 0.35, (t) => {
-      for (const { sprite } of targets) {
-        sprite.scaleX = sprite.scaleY = 1 + (big - 1) * t;
-      }
-    });
-    sequence.tween(ms * 0.65, (t) => {
-      for (const { sprite } of targets) {
+    if (cells.length) {
+      const targets = [];
+      const big = event.combo ? 1.6 : 1.28;
+      const ms = (event.combo ? 260 : CLEAR_MS) * durationScale;
+      sequence.call(() => {
+        for (const info of cells) {
+          const sprite = sprites[info.index];
+          if (!sprite) continue;
+          targets.push({ sprite, info });
+          sprites[info.index] = null;
+        }
+      });
+      sequence.tween(ms * 0.35, (t) => {
+        for (const { sprite } of targets) {
+          sprite.scaleX = sprite.scaleY = 1 + (big - 1) * t;
+        }
+      });
+      sequence.tween(ms * 0.65, (t) => {
         const k = 1 - t;
-        sprite.scaleX = sprite.scaleY = big * k;
-        sprite.alpha = k;
-      }
-    });
-    sequence.call(() => {
-      for (const { sprite } of targets) release(sprite);
-      for (const { cell: info } of targets) {
-        fx.burst(centre(info.index).x, centre(info.index).y, info.kind, event.combo ? 18 : 9);
-      }
-    });
+        for (const { sprite } of targets) {
+          sprite.scaleX = sprite.scaleY = big * k;
+          sprite.alpha = k;
+          sprite.visible = k > MIN_VISIBLE_FRACTION;
+        }
+      });
+      sequence.call(() => {
+        for (const { sprite, info } of targets) {
+          release(sprite);
+          const at = centre(info.index);
+          fx.burst(at.x, at.y, info.kind, event.combo ? 18 : 9);
+        }
+      });
+    }
 
     // 这一步生成的特殊块：从零弹出来
     const spawned = event.spawned ?? [];
     if (spawned.length) {
       sequence.call(() => {
         for (const spawn of spawned) {
-          const at = centre(spawn.index);
-          const sprite = makeSprite(spawn.kind, spawn.special, at);
+          // 普通块保留在特殊块的生成格，原地重画可避免把旧块留在显示列表中。
+          const sprite = sprites[spawn.index] ?? makeSprite(spawn.kind, spawn.special, centre(spawn.index));
+          if (sprites[spawn.index]) paint(sprite, spawn.kind, spawn.special);
           sprite.scaleX = sprite.scaleY = 0;
+          sprite.visible = false;
           sprites[spawn.index] = sprite;
         }
       });
-      sequence.tween(SPAWN_MS, (t) => {
+      sequence.tween(SPAWN_MS * durationScale, (t) => {
+        const k = ease.outBack(t);
         for (const spawn of spawned) {
           const sprite = sprites[spawn.index];
-          if (!sprite) continue;
-          const k = ease.outBack(t);
           sprite.scaleX = sprite.scaleY = k;
+          sprite.visible = k > MIN_VISIBLE_FRACTION;
         }
       });
     }
   }
 
   /** 下落：方块从原格滑到新格，越掉越快；新方块从棋盘上方掉进来。 */
-  function playFall(event, sequence) {
-    const next = new Array(sprites.length).fill(null);
+  function playFall(event, sequence, durationScale = 1) {
+    if (!event.drops.length && !event.fills.length) return;
     const moves = [];
-
-    for (const drop of event.drops) {
-      const sprite = sprites[drop.from];
-      if (!sprite) continue;
-      next[drop.to] = sprite;
-      moves.push({ sprite, to: centre(drop.to), fromY: sprite.y, fromX: sprite.x });
-    }
-
-    // 新方块只从棋盘顶行上面一点点起跳，不能真从屏幕外掉进来：
-    // 引擎没有裁剪，从棋盘上方三格起跳的方块会画到 HUD 和立绘上面去。
     const fresh = [];
-    for (const fill of event.fills) {
-      const at = centre(fill.index);
-      const fromY = Math.max(y + cell * 0.5 - cell * 0.1, at.y - cell * (0.55 + fill.y * 0.45));
-      const sprite = makeSprite(fill.kind, 0, { x: at.x, y: fromY });
-      sprite.alpha = 0.4;
-      next[fill.index] = sprite;
-      fresh.push({ sprite, to: at, fromY });
-    }
-
-    for (let i = 0; i < next.length; i += 1) if (!next[i] && sprites[i]) next[i] = sprites[i];
-    for (let i = 0; i < sprites.length; i += 1) sprites[i] = next[i];
-
-    if (!moves.length && !fresh.length) return;
-    sequence.tween(FALL_MS, (t) => {
+    sequence.call(() => {
+      const next = [...sprites];
+      for (const { from } of event.drops) next[from] = null;
+      for (const { from, to } of event.drops) {
+        const sprite = sprites[from];
+        if (!sprite) continue;
+        next[to] = sprite;
+        moves.push({ sprite, to: centre(to), fromY: sprite.y, fromX: sprite.x });
+      }
+      // 新块从棋盘顶行略上方落下，避免遮住 HUD 和立绘。
+      for (const fill of event.fills) {
+        const at = centre(fill.index);
+        const fromY = Math.max(y + cell * 0.5 - cell * 0.1, at.y - cell * (0.55 + fill.y * 0.45));
+        const sprite = makeSprite(fill.kind, PLAIN, { x: at.x, y: fromY });
+        sprite.alpha = 0.4;
+        next[fill.index] = sprite;
+        fresh.push({ sprite, to: at, fromY });
+      }
+      for (let i = 0; i < sprites.length; i += 1) sprites[i] = next[i];
+    });
+    sequence.tween(FALL_MS * durationScale, (t) => {
       const k = ease.inQuad(t);
       for (const move of moves) {
         move.sprite.x = move.fromX + (move.to.x - move.fromX) * k;
@@ -213,16 +235,14 @@ export function createBoardView({ battle, Sprite, scope, layer, geometry }) {
   /** 卡牌改了棋盘：直接重画受影响的格子，闪一下。 */
   function playRepaint(event, sequence) {
     const cells = event.cells ?? [];
+    const kind = ELEMENTS.indexOf(event.kind);
+    if (kind === EMPTY) return;
     sequence.call(() => {
       for (const i of cells) {
-        const sprite = sprites[i];
-        if (!sprite) {
-          const at = centre(i);
-          if (board.kind[i] === EMPTY) continue;
-          sprites[i] = makeSprite(board.kind[i], board.special[i], at);
-          continue;
-        }
-        paint(sprite, board.kind[i], board.special[i]);
+        // 逻辑棋盘已算到最终状态，重放时用出牌当时的颜色。
+        const sprite = sprites[i] ?? makeSprite(kind, PLAIN, centre(i));
+        if (sprites[i]) paint(sprite, kind, PLAIN);
+        sprites[i] = sprite;
         sprite.scaleX = sprite.scaleY = 1.25;
       }
     });
@@ -238,23 +258,26 @@ export function createBoardView({ battle, Sprite, scope, layer, geometry }) {
   /** 卡牌清了一整行/列：先亮再消失，然后交给下落。 */
   function playCleared(event, sequence, fx) {
     const cells = event.cells ?? [];
+    if (!cells.length) return;
     const targets = [];
-    for (const i of cells) {
-      const sprite = sprites[i];
-      if (!sprite) continue;
-      targets.push(sprite);
-      sprites[i] = null;
-    }
-    if (!targets.length) return;
+    sequence.call(() => {
+      for (const i of cells) {
+        const sprite = sprites[i];
+        if (!sprite) continue;
+        targets.push({ sprite, i });
+        sprites[i] = null;
+      }
+    });
     sequence.tween(180, (t) => {
-      for (const sprite of targets) {
+      for (const { sprite } of targets) {
         sprite.scaleX = sprite.scaleY = 1 + 0.3 * t;
         sprite.alpha = 1 - t;
+        sprite.visible = sprite.alpha > MIN_VISIBLE_FRACTION;
       }
     });
     sequence.call(() => {
-      for (const sprite of targets) release(sprite);
-      for (const i of cells) {
+      for (const { sprite, i } of targets) {
+        release(sprite);
         const at = centre(i);
         fx.burst(at.x, at.y, 0, 4);
       }
