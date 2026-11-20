@@ -17,6 +17,7 @@
 // 贴图和矢量共用变换，贴图部件从同一张 PNG 图集取像素。
 
 import { PALETTE, tracePart } from './draw.mjs';
+import { MOTION_CLIPS } from '../portrait/motion-clips.mjs';
 
 const hex = (value) => Number.parseInt(value.replace('#', ''), 16);
 const DEG = Math.PI / 180;
@@ -105,15 +106,17 @@ export function buildPortrait({ portrait, Sprite, scope, Bitmap, textureLease })
   scope.use(holder);
   holder.addChild(layer);
   const [anchorX, anchorY] = portrait.anchor ?? [512, 1150];
-  const profile = MOTION_PROFILES[portrait.id] ?? [];
-  const motion = profile.flatMap(([name, sway, strike, lift = 0], index) => {
+  const clips = MOTION_CLIPS[portrait.id] ?? {};
+  const animatedNames = new Set(Object.values(clips).flatMap((clip) => Object.keys(clip.tracks)));
+  const animated = [...animatedNames].flatMap((name) => {
     const bone = bones.get(name);
-    return bone ? [{ bone, restY: bone.y, sway, strike, lift, phase: index * 0.41 }] : [];
+    return bone ? [{ bone, restX: bone.x, restY: bone.y }] : [];
   });
 
   return {
     holder,
     bones,
+    clips,
     sync,
     width: portrait.canvas.width,
     height: portrait.canvas.height,
@@ -123,43 +126,31 @@ export function buildPortrait({ portrait, Sprite, scope, Bitmap, textureLease })
       holder.x = x - anchor.x * scale;
       holder.y = y - anchor.y * scale;
     },
-    /** attack 和 recoil 分别表示出招、受击的幅度，范围为 0 到 1。 */
-    pose(seconds, attack = 0, recoil = 0) {
-      const unit = portrait.canvas.height / 1024;
-      for (const { bone, restY, sway, strike, lift, phase } of motion) {
-        const wave = Math.sin(seconds * 1.9 + phase);
-        bone.rotation = wave * sway + (attack - recoil * 0.35) * strike;
-        bone.y = restY + wave * lift * unit;
+    /** 运行时和 Spine 导出使用同一组本地关键帧。每段动作从绑定姿态取偏移。 */
+    sample(name, seconds) {
+      const clip = clips[name];
+      if (!clip) return;
+      for (const { bone, restX, restY } of animated) {
+        const keys = clip.tracks[bone.id];
+        if (!keys) {
+          bone.x = restX;
+          bone.y = restY;
+          bone.rotation = 0;
+          continue;
+        }
+        let i = 1;
+        while (i < keys.length - 1 && keys[i][0] < seconds) i += 1;
+        const from = keys[i - 1];
+        const to = keys[i];
+        const t = Math.max(0, Math.min(1, (seconds - from[0]) / (to[0] - from[0])));
+        bone.x = restX + from[1] + (to[1] - from[1]) * t;
+        bone.y = restY + from[2] + (to[2] - from[2]) * t;
+        bone.rotation = from[3] + (to[3] - from[3]) * t;
       }
       sync();
     },
   };
 }
-
-// 每行是骨名、待机摇摆角、出招角和纵向起伏。缺少的次要骨骼留给对应角色。
-const MOTION_PROFILES = {
-  fire: [
-    ['chest', 0.8, -1.8, 2.8], ['head', 0.7, 1.1, 1.0],
-    ['shoulder-near', 1.0, -13], ['elbow-near', 0.6, -6], ['hand-near', 0.35, -5],
-    ['shoulder-far', 0.8, 4], ['elbow-far', 0.6, 2],
-    ['hair-tail', 2.5, 6], ['hair-lock-l', 1.5, -2], ['hair-lock-r', 1.5, 2],
-    ['skirt-l', 1.2, 2], ['skirt-r', 1.2, -2], ['ribbon', 2.5, 7],
-  ],
-  shanjiao: [
-    ['root', 0.5, 1.5, 1.7], ['body', 1.3, -4, 1.8], ['head', 0.18, 0.72],
-    ['left-arm', 1.0, -12], ['right-arm', 0.18, 1.26], ['mane', 0.24, 0.64],
-  ],
-  chijiao: [
-    ['root', 0.8, -2.5, 2.7], ['body', 1.8, -4.5, 1.9], ['head', 1.3, -7],
-    // 尾骨在外弯的分片接缝。保留尾尖摆动，并把接缝的位移压在覆盖区内。
-    ['left-arm', 1.7, -8], ['right-arm', 1.7, 8], ['mane', 2.7, 5], ['tail', 0.8, 3.4],
-  ],
-  hundun: [
-    ['root', 1.0, -2, 3.1], ['body', 0.9, 2.5, 1.6], ['head', 0.8, -4],
-    // 后胯随躯干前冲。前爪只在肩甲的覆盖范围内单独转动。
-    ['left-arm', 1.3, -10], ['right-arm', 0.26, 2], ['mane', 2.3, 5],
-  ],
-};
 
 // ── 2D 仿射矩阵 ────────────────────────────────────────────────
 // 只用到平移、旋转、等比缩放，所以四元组 + 平移就够了：

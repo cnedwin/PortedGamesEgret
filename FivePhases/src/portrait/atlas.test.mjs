@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import test from 'node:test';
-import { loadPortraitAtlas, portraitFromAtlas } from './atlas.mjs';
+import { ATLAS_PORTRAITS, loadPortraitAtlas, portraitFromAtlas } from './atlas.mjs';
+import { MOTION_CLIPS } from './motion-clips.mjs';
 import { toManifest, toSpineAtlas, toSpineSkeleton } from './spine.mjs';
 
 const authored = () => ({
@@ -54,4 +56,20 @@ test('runtime requests one engine texture lease for a complete portrait', async 
   assert.equal(rig.textureLease, textureLease);
   assert.equal(rig.portrait.parts.length, 2);
   assert.deepEqual(calls.map((url) => url.split('/').slice(-2)), [['shanjiao', 'rig.json'], ['shanjiao', 'atlas.png']]);
+});
+
+test('checked-in Spine files have the current motion tracks and cues for all portraits', async () => {
+  for (const id of ATLAS_PORTRAITS) {
+    const asset = (file) => readFile(new URL(`../../assets/${file}`, import.meta.url));
+    const [rig, png, exported] = await Promise.all([
+      asset(`portraits/${id}/rig.json`),
+      asset(`portraits/${id}/atlas.png`),
+      asset(`spine/${id}.skeleton.json`),
+    ]);
+    const portrait = portraitFromAtlas(id, JSON.parse(rig), png.readUInt32BE(16), png.readUInt32BE(20));
+    const images = `../portraits/${id}/parts/`;
+    const actual = JSON.parse(exported);
+    assert.deepEqual(Object.keys(actual.animations).sort(), ['attack', 'hit', 'idle', 'lose', 'win'], id);
+    assert.deepEqual(actual, toSpineSkeleton(portrait, { images, clips: MOTION_CLIPS[id] }), id);
+  }
 });

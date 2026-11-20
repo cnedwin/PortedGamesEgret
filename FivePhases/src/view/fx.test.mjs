@@ -10,6 +10,8 @@ class Sprite {
       drawRect() { return this; },
       drawCircle() { return this; },
       lineStyle() { return this; },
+      moveTo() { return this; },
+      lineTo() { return this; },
     };
   }
 }

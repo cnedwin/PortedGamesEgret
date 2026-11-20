@@ -18,12 +18,40 @@ import { ease } from './sequence.mjs';
 // 现在每个粒子的图形只画一次，之后只改位置、缩放、透明度——一帧里几何零变化。
 const PER_COLOUR = 10;
 const RINGS = 4;
+// 三种出手的剪影预先烘在显示对象上，命中时只动位置、缩放和透明度。
+const BOSS_MARKS = {
+  shanjiao: {
+    colour: 0xffcc85,
+    paths: [
+      [[-73, 40], [-31, -3], [12, -47]],
+      [[-43, 51], [-9, 6], [45, -46]],
+      [[-5, 56], [32, 9], [73, -38]],
+    ],
+  },
+  chijiao: {
+    colour: 0x81d8ff,
+    paths: [
+      [[-88, 16], [-57, -5], [-27, -8], [4, 7], [34, 12], [63, -4], [93, -29]],
+      [[-72, 40], [-41, 22], [-14, 24], [12, 39], [41, 38], [69, 19]],
+    ],
+  },
+  hundun: {
+    colour: 0xdabcff,
+    paths: [
+      [[0, -57], [55, -3], [0, 53], [-56, -3], [0, -57]],
+      [[-23, -13], [1, 0], [20, -8]],
+      [[1, 0], [-9, 25], [16, 38]],
+      [[1, 0], [13, -21], [6, -37]],
+    ],
+  },
+};
 
 export function createFx({ Sprite, scope, world, layer, flashLayer }) {
   // 分项开关：几何预算出问题时要能一项一项关掉，才知道是谁吃掉的
   const enabled = { burst: true, ring: true, flash: true, orb: true };
   const particles = [];
   const rings = [];
+  const bossMarks = new Map();
   let shakePower = 0;
   let shakeTime = 0;
   let flashSprite = null;
@@ -51,6 +79,28 @@ export function createFx({ Sprite, scope, world, layer, flashLayer }) {
     sprite.graphics.lineStyle(5, PALETTE.gold, 0.9).drawCircle(0, 0, 40);
     layer.addChild(sprite);
     rings.push({ sprite, life: 0, maxLife: 0, size: 0 });
+  }
+
+  for (const [id, { colour, paths }] of Object.entries(BOSS_MARKS)) {
+    const sprite = scope.use(new Sprite());
+    sprite.visible = false;
+    sprite.graphics.lineStyle(6, colour, 0.95);
+    for (const [first, ...rest] of paths) {
+      sprite.graphics.moveTo(...first);
+      for (const point of rest) sprite.graphics.lineTo(...point);
+    }
+    layer.addChild(sprite);
+    bossMarks.set(id, { sprite, life: 0 });
+  }
+
+  function bossImpact(id, x, y) {
+    const mark = bossMarks.get(id);
+    mark.life = 0.28;
+    mark.sprite.x = x;
+    mark.sprite.y = y;
+    mark.sprite.alpha = 1;
+    mark.sprite.scaleX = mark.sprite.scaleY = 0.8;
+    mark.sprite.visible = true;
   }
 
   /** 先找同色的空粒子，没有再退而求其次——颜色对不上也比不炸强。 */
@@ -159,6 +209,15 @@ export function createFx({ Sprite, scope, world, layer, flashLayer }) {
       item.sprite.alpha = 0.9 * (1 - k);
     }
 
+    for (const mark of bossMarks.values()) {
+      if (mark.life <= 0) continue;
+      mark.life = Math.max(0, mark.life - dt);
+      const t = mark.life / 0.28;
+      mark.sprite.visible = t > 0;
+      mark.sprite.alpha = Math.min(1, 1.6 * t);
+      mark.sprite.scaleX = mark.sprite.scaleY = 0.8 + (1 - t) * 0.55;
+    }
+
     if (flashLife > 0) {
       flashLife -= dt;
       const k = flashMax > 0 ? Math.max(0, flashLife / flashMax) : 0;
@@ -252,6 +311,7 @@ export function createFx({ Sprite, scope, world, layer, flashLayer }) {
   return {
     burst,
     ring,
+    bossImpact,
     shake,
     flash,
     orb(from, to, kind, options) {
@@ -273,6 +333,10 @@ export function createFx({ Sprite, scope, world, layer, flashLayer }) {
       for (const item of rings) {
         item.life = 0;
         item.sprite.alpha = 0;
+      }
+      for (const mark of bossMarks.values()) {
+        mark.life = 0;
+        mark.sprite.visible = false;
       }
       shakePower = 0;
       shakeTime = 0;

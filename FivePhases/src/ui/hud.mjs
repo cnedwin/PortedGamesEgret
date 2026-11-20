@@ -134,24 +134,25 @@ export function createHud({ root, onCard, onEndTurn }) {
     }
   }
 
-  function render(battle) {
+  function render(battle, vitals = battle) {
     const enemy = battle.enemy;
+    const { enemy: shownEnemy, hero: shownHero } = vitals;
     encounter.textContent = encounterLabels[enemy.id] ?? enemy.title;
     enemyName.textContent = enemy.name;
-    enemyHp.style.width = pct(Math.max(0, enemy.hp), enemy.maxHp);
-    enemyHpText.textContent = `${Math.max(0, Math.ceil(enemy.hp))} / ${enemy.maxHp}`;
-    enemyShield.textContent = enemy.shield > 0 ? `护盾 ${Math.ceil(enemy.shield)}` : '';
-    enemyShield.classList.toggle('is-on', enemy.shield > 0);
+    enemyHp.style.width = pct(Math.max(0, shownEnemy.hp), enemy.maxHp);
+    enemyHpText.textContent = `${Math.max(0, Math.ceil(shownEnemy.hp))} / ${enemy.maxHp}`;
+    enemyShield.textContent = shownEnemy.shield > 0 ? `护盾 ${Math.ceil(shownEnemy.shield)}` : '';
+    enemyShield.classList.toggle('is-on', shownEnemy.shield > 0);
 
     const next = enemy.moves[enemy.moveIndex % enemy.moves.length];
     if (battle.over) intent.textContent = '';
     else if (enemy.countdown <= 0) intent.innerHTML = `<b class="is-now">${next.name}</b> ${next.damage}`;
     else intent.innerHTML = `<b>${enemy.countdown}</b> 步后 ${next.name} ${next.damage}`;
 
-    heroHp.style.width = pct(Math.max(0, battle.hero.hp), battle.hero.maxHp);
-    heroHpText.textContent = `${Math.max(0, Math.ceil(battle.hero.hp))} / ${battle.hero.maxHp}`;
-    heroShield.textContent = battle.hero.shield > 0 ? `盾 ${Math.ceil(battle.hero.shield)}` : '';
-    heroShield.classList.toggle('is-on', battle.hero.shield > 0);
+    heroHp.style.width = pct(Math.max(0, shownHero.hp), battle.hero.maxHp);
+    heroHpText.textContent = `${Math.max(0, Math.ceil(shownHero.hp))} / ${battle.hero.maxHp}`;
+    heroShield.textContent = shownHero.shield > 0 ? `盾 ${Math.ceil(shownHero.shield)}` : '';
+    heroShield.classList.toggle('is-on', shownHero.shield > 0);
 
     turnEl.textContent = `第 ${battle.turn} 回合`;
     stepsEl.setAttribute('aria-label', `剩余 ${battle.steps} 步`);

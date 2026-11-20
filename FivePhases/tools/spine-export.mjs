@@ -4,7 +4,7 @@
 //   node FivePhases/tools/spine-export.mjs
 //   node FivePhases/tools/spine-export.mjs --id fire --out FivePhases/assets/spine
 //
-// 导出 Spine 4.1 骨架、部件清单，以及与已存在的 PNG 图集匹配的 .atlas。
+// 导出 Spine 4.1 骨架与动作、部件清单，以及与已存在的 PNG 图集匹配的 .atlas。
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -13,6 +13,7 @@ import { fileURLToPath } from 'node:url';
 import { portraits, portraitById } from '../src/portrait/index.mjs';
 import { lintPortrait } from '../src/portrait/fire.mjs';
 import { ATLAS_PORTRAITS, portraitFromAtlas } from '../src/portrait/atlas.mjs';
+import { MOTION_CLIPS } from '../src/portrait/motion-clips.mjs';
 import { toSpineSkeleton, toManifest, toSpineAtlas } from '../src/portrait/spine.mjs';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -62,7 +63,8 @@ async function exportOne(portrait, art, outDir) {
 
   const relative = (file) => path.relative(outDir, file).split(path.sep).join('/');
   const images = art ? `${relative(path.join(art, 'parts'))}/` : './';
-  const skeleton = toSpineSkeleton(portrait, { images });
+  const clips = art ? MOTION_CLIPS[portrait.id] : undefined;
+  const skeleton = toSpineSkeleton(portrait, { images, clips });
   const manifest = toManifest(portrait);
 
   await mkdir(outDir, { recursive: true });
