@@ -451,6 +451,8 @@ export function createLevelSim(map, { display = () => undefined, onEvent = () =>
   let carry = 0;
   /** Advance the level by `seconds`, in the world's fixed steps, the rules applied after each. */
   function update(seconds) {
+    // The initial settling pass already ran. Keep its positions until the player releases the first shot.
+    if (state.shotsFired === 0) return;
     carry += Math.min(seconds, 0.1);
     while (carry + 1e-9 >= RULES.step) {
       carry = Math.max(0, carry - RULES.step);

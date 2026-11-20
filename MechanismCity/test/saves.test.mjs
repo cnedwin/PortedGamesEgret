@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import '../vendor/node-register.mjs';
 
-const { openSave, recordClear, totalStars, SAVE_KEY } = await import('../src/saves.mjs');
+const { openSave, recordClear, totalStars, totalSeals, SAVE_KEY } = await import('../src/saves.mjs');
 
 function memory(initial = {}) {
   const items = new Map(Object.entries(initial));
@@ -41,6 +41,24 @@ test('the last level opens nothing past the end', () => {
   data.open = 12;
   assert.equal(recordClear(data, 11, { stars: 3, score: 1 }, 12).opened, false);
   assert.equal(data.open, 12);
+});
+
+test('a challenge seal survives a normal replay and reloads with earlier progress', () => {
+  const data = { levels: { '1': { stars: 3, score: 500 } }, open: 2, seenIntro: true, settings: { effects: false, music: true } };
+  const storage = memory({ [SAVE_KEY]: JSON.stringify({ version: 1, data }) });
+  const save = openSave(storage);
+  assert.equal(totalSeals(save.data), 0);
+  save.update((next) => {
+    assert.equal(recordClear(next, 0, { stars: 2, score: 450, seal: true }, 12).newSeal, true);
+  });
+  save.update((next) => {
+    assert.equal(recordClear(next, 0, { stars: 2, score: 480 }, 12).newSeal, undefined);
+  });
+  const again = openSave(storage);
+  assert.equal(totalSeals(again.data), 1);
+  assert.deepEqual(again.data.levels['1'], { stars: 3, score: 500, seal: true });
+  assert.equal(again.data.open, 2);
+  assert.equal(again.data.settings.effects, false);
 });
 
 test('settings are kept between visits', () => {

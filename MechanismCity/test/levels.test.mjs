@@ -58,3 +58,37 @@ test('the recorded aims win whether a shot is fired at once or after a pause', a
     }
   }
 });
+
+test('the last level stays solvable while the player reads and aims before the first shot', async () => {
+  const { createLevelSim } = await import('../src/sim/sim.mjs');
+  const last = levels.at(-1);
+  const sim = createLevelSim(loadMap(last.file));
+  for (let frame = 0; frame < 720; frame++) sim.update(1 / 60);
+  const shots = solutions[last.id].shots;
+  let next = 0;
+  for (let frame = 0; frame < 2400 && !sim.state.won && !sim.state.lost; frame++) {
+    if (next < shots.length && sim.ready()) assert.ok(sim.fire(...shots[next++]));
+    sim.update(1 / 60);
+  }
+  assert.ok(sim.state.won, 'Reading the final scene must leave both locks reachable');
+});
+
+test('all level locks have baked closed and open frames in the mechanism atlas', async () => {
+  const { createLevelSim } = await import('../src/sim/sim.mjs');
+  const { mechanismFrame } = await import('../src/art/mechanism-atlas.mjs');
+  const atlas = readFileSync(new URL('../art/mechanisms.png', import.meta.url));
+  const width = atlas.readUInt32BE(16);
+  const height = atlas.readUInt32BE(20);
+  for (const level of levels) {
+    createLevelSim(loadMap(level.file), {
+      display(kind, spec) {
+        if (kind !== 'lock') return;
+        for (const open of [false, true]) {
+          const frame = mechanismFrame(kind, spec, open);
+          assert.ok(frame, `${level.id} lock is missing its ${open ? 'open' : 'closed'} frame`);
+          assert.ok(frame.x + frame.width <= width && frame.y + frame.height <= height);
+        }
+      }
+    });
+  }
+});

@@ -1,31 +1,30 @@
 // 各个画面：标题、开场短片、选关、关卡、结算、结局。每个画面是一个作用域，离开时一起回收。
 // The screens: the title, the opening film, choosing a level, a level, its result and the end. Each screen
 // has a scope of its own and is let go whole when the game moves on.
-import { DisplayObjectContainer, Sprite, animate } from '@egret/engine';
+import { Bitmap, DisplayObjectContainer, Sprite, animate } from '@egret/engine';
 import { createBitmapText } from '@egret/engine/bitmapfont';
 import { createScrollControl, createSelectionGroup, createControlKeys } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
 import { createBrowserVideo } from '@egret/engine/web/video';
-import { GOLD, INK, LACQUER } from './art/shapes.mjs';
+import { placeIllustration } from './art/illustrations.mjs';
+import { GOLD, INK } from './art/shapes.mjs';
+import { CHALLENGES, createChallenge } from './challenges.mjs';
+import { CLUES, firstShot } from './clues.mjs';
 import { createLevel } from './play/level.mjs';
-import { createScenery } from './play/scenery.mjs';
-import { recordClear, totalStars } from './saves.mjs';
+import { recordClear, totalSeals, totalStars } from './saves.mjs';
 import { BEFORE, CHAPTERS, ENDING, INTRO_LINES, SPEAKERS, chapterOf } from './story.mjs';
 import { createHud } from './ui/hud.mjs';
 import { FONT, SANS, createScreenKit } from './ui/kit.mjs';
 
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
 
-/** A backdrop for the menus: the night sky and the city, without a level. */
-function backdrop(app, scope, chapter = 0) {
-  const root = app.game.stage.addChild(scope.use(new DisplayObjectContainer())),
-    scenery = createScenery(scope, { width: 1400, height: 800, chapter });
-  root.addChild(scenery.sky);
-  for (const layer of scenery.layers) {
-    root.addChild(layer.display);
-    layer.display.y = 40;
-  }
-  return { root, scenery, layers: scenery.layers };
+/** Static painted scenery keeps the menus legible and does not run a level in the background. */
+function backdrop(app, scope, texture) {
+  const root = app.game.stage.addChild(scope.use(new DisplayObjectContainer()));
+  placeIllustration(root, scope, texture, { focus: 0.54 });
+  const shade = root.addChild(scope.use(new Sprite()));
+  shade.graphics.beginLinearGradientFill(0, 0, 0, 540, stops([0, 0x09181b, 0.66], [0.52, 0x0a1618, 0.22], [1, 0x081518, 0.9]))
+    .drawRect(0, 0, 960, 540).endFill();
 }
 
 /** Five-petalled stars in a row: lit for the stars earned. */
@@ -39,7 +38,8 @@ function drawStars(g, count, { size = 12, gap = 30, x = 0, y = 0, of = 3 } = {})
         r = k % 2 ? size * 0.45 : size;
       points.push([cx + Math.cos(a) * r, y + Math.sin(a) * r]);
     }
-    g.lineStyle(1.5, INK, 1).beginFill(lit ? GOLD : 0x3a3530, 1).moveTo(...points[0]);
+    g.lineStyle(1.5, lit ? 0xf1cb83 : 0x6e7770, 1).beginLinearGradientFill(cx, y - size, cx, y + size,
+      lit ? stops([0, 0xffe9a3], [0.5, GOLD], [1, 0x88451e]) : stops([0, 0x405251], [1, 0x142426])).moveTo(...points[0]);
     for (const point of points.slice(1)) g.lineTo(...point);
     g.lineTo(...points[0]).endFill().lineStyle(0);
   }
@@ -50,38 +50,39 @@ export async function titleScreen(app) {
   const scope = app.game.engine.createScope(),
     { game, save, semantics } = app,
     kit = createScreenKit(game, scope, { semantics, sound: app.sound, prefix: 'title' });
-  const back = backdrop(app, scope, 0);
+  const cover = await app.art.cover();
   const ui = game.stage.addChild(scope.use(new DisplayObjectContainer()));
-  // The title, in the page's serif, glowing gold through the engine's glow effect.
+  placeIllustration(ui, scope, cover);
+  const shade = ui.addChild(scope.use(new Sprite()));
+  shade.graphics.beginLinearGradientFill(0, 0, 650, 0, stops([0, 0x08191d, 0.94], [0.35, 0x091c21, 0.72], [0.7, 0x092023, 0.22], [1, 0x07191b, 0]))
+    .drawRect(0, 0, 960, 540).endFill();
+  shade.graphics.beginLinearGradientFill(0, 454, 0, 540, stops([0, 0x09191b, 0], [1, 0x09191b, 0.75])).drawRect(0, 454, 960, 86).endFill();
   const titleBox = ui.addChild(scope.use(new DisplayObjectContainer()));
-  await kit.label(titleBox, '千机巧匠', { x: 0, y: 0, size: 76, weight: 800, color: 0xf2c870, align: 'center', width: 960 });
-  await kit.label(titleBox, 'MECHANISM CITY · 墨家机关城', { x: 0, y: 100, size: 18, color: 0xd8ccb0, family: SANS, align: 'center', width: 960 });
-  titleBox.y = 84;
-  titleBox.renderEffect = { glow: { color: 0xc8782c, blur: 10, strength: 2, alpha: 0.8 } };
+  const seal = titleBox.addChild(scope.use(new Sprite()));
+  seal.graphics.beginFill(0x8f3428, 1).drawRoundRect(56, 1, 28, 28, 4, 4).endFill();
+  seal.graphics.lineStyle(1, 0xe5a668, 1).drawRoundRect(59, 4, 22, 22, 2, 2).lineStyle(0);
+  await kit.label(titleBox, '墨', { x: 56, y: 5, size: 17, weight: 700, align: 'center', width: 28, color: 0xffe4b7 });
+  await kit.label(titleBox, '墨家机关城', { x: 95, y: 6, size: 17, weight: 600, color: 0xcda875 });
+  await kit.label(titleBox, '千机巧匠', { x: 53, y: 45, size: 79, weight: 800, color: 0xffe3a5 });
+  await kit.label(titleBox, 'MECHANISM CITY', { x: 59, y: 145, size: 16, weight: 600, color: 0xbfc9b9, family: SANS });
+  titleBox.y = 83;
   titleBox.alpha = 0;
-  animate(game.engine, scope, titleBox).to({ alpha: 1, y: 70 }, 0.9, 'cubicOut').start();
+  animate(game.engine, scope, titleBox).to({ alpha: 1, y: 68 }, 0.55, 'cubicOut').start();
   const rule = ui.addChild(scope.use(new Sprite()));
-  rule.graphics.beginLinearGradientFill(330, 0, 630, 0, stops([0, LACQUER, 0], [0.5, LACQUER, 1], [1, LACQUER, 0])).drawRect(330, 202, 300, 3).endFill();
+  rule.graphics.beginLinearGradientFill(58, 0, 403, 0, stops([0, 0xd09961, 0.86], [1, 0xd09961, 0])).drawRect(58, 237, 345, 2).endFill();
 
   const stars = totalStars(save.data),
     started = Object.keys(save.data.levels).length > 0;
   const buttons = [
-    await kit.button({ x: 380, y: 236, width: 200, height: 58, text: started ? '继续' : '开始', sub: started ? `已得 ${stars} / 36 星` : '进城开锁', primary: true, onActivate: () => (started ? app.go('select') : save.data.seenIntro ? app.startLevel(0) : app.go('film', { then: 'first' })), container: ui }),
-    await kit.button({ x: 380, y: 308, width: 200, height: 48, text: '选关', onActivate: () => app.go('select'), container: ui }),
-    await kit.button({ x: 380, y: 370, width: 200, height: 48, text: '开场短片', onActivate: () => app.go('film', { then: 'title' }), container: ui }),
-    await kit.button({ x: 380, y: 432, width: 200, height: 48, text: '设置', onActivate: () => app.openSettings(), container: ui })
+    await kit.button({ x: 56, y: 261, width: 280, height: 67, text: started ? '继续' : '开始', sub: started ? `已得 ${stars} / 36 星` : '进城开锁', primary: true, onActivate: () => (started ? app.go('select') : save.data.seenIntro ? app.startLevel(0) : app.go('film', { then: 'first' })), container: ui }),
+    await kit.button({ x: 56, y: 344, width: 133, height: 51, text: '选关', onActivate: () => app.go('select'), container: ui }),
+    await kit.button({ x: 202, y: 344, width: 134, height: 51, text: '开场短片', onActivate: () => app.go('film', { then: 'title' }), container: ui }),
+    await kit.button({ x: 56, y: 408, width: 133, height: 51, text: '设置', onActivate: () => app.openSettings(), container: ui })
   ];
-  await kit.label(ui, '基于新白鹭引擎独立开发的游戏 Demo · A game demo built on Egret Rebuild', { x: 0, y: 508, size: 12, color: 0x8a8070, family: SANS, align: 'center', width: 960 });
+  await kit.label(ui, '新白鹭引擎 · Egret Rebuild', { x: 57, y: 503, size: 14, color: 0xb3bab0, family: SANS });
   semantics.publish();
-  let time = 0;
   return {
     kit,
-    update(seconds) {
-      time += seconds;
-      back.scenery.update(time);
-      // The hills and roofs drift slowly behind the title.
-      back.layers.forEach((layer, i) => (layer.display.x = -120 + Math.sin(time * 0.05) * (20 + i * 40)));
-    },
     focusFirst: () => buttons[0].focus(),
     dispose() {
       kit.dispose();
@@ -105,7 +106,7 @@ export async function filmScreen(app, { then = 'title' } = {}) {
       assets: game.engine.assets,
       src: [
         { src: media('intro.webm'), type: 'video/webm; codecs="vp9"' },
-        { src: media('intro.mp4'), type: 'video/mp4; codecs="avc1.42E01E"' }
+        { src: media('intro.mp4'), type: 'video/mp4; codecs="avc1.42C01F"' }
       ],
       maxWidth: 960,
       muted: true
@@ -176,10 +177,11 @@ export async function selectScreen(app, { focus } = {}) {
     keyboard = game.keyboard;
   const open = save.data.open,
     chosenAt = Math.min(open - 1, focus ?? open - 1);
-  const back = backdrop(app, scope, chapterOf(chosenAt));
+  const chapterArt = await Promise.all(CHAPTERS.map((_, index) => app.art.chapter(index)));
+  backdrop(app, scope, chapterArt[chapterOf(chosenAt)]);
   const ui = game.stage.addChild(scope.use(new DisplayObjectContainer()));
   await kit.label(ui, '选 关', { x: 40, y: 26, size: 34, weight: 800, color: 0xf2c870 });
-  await kit.label(ui, `${totalStars(save.data)} / 36 星 · 拖动滚条、滚轮或方向键浏览`, { x: 40, y: 72, size: 14, color: 0xc8bba0, family: SANS });
+  await kit.label(ui, `${totalStars(save.data)} / 36 星　·　巧解印 ${totalSeals(save.data)} / ${levels.length}`, { x: 40, y: 72, size: 16, color: 0xd8cba8, family: SANS });
 
   // The strip of cards scrolls across; the viewport clips it to its rectangle (the node's `mask`).
   const VIEW = { x: 40, y: 112, width: 880, height: 300 },
@@ -207,25 +209,32 @@ export async function selectScreen(app, { focus } = {}) {
     card.y = 10;
     face.touchEnabled = true;
     face.hitArea = { x: 0, y: 0, width: CARD.width, height: CARD.height };
+    const painting = placeIllustration(card, scope, chapterArt[chapter], { x: 10, y: 56, width: CARD.width - 20, height: 79 });
+    painting.alpha = locked ? 0.34 : 0.85;
+    if (record?.seal) {
+      const stamp = card.addChild(scope.use(new Sprite()));
+      stamp.graphics.lineStyle(1, 0xf0ba72, 1).beginFill(0x91402e, 1)
+        .drawRoundRect(CARD.width - 45, 65, 27, 27, 4, 4).endFill().lineStyle(0);
+      await kit.label(card, '巧', { x: CARD.width - 45, y: 68, size: 17, color: 0xffe5ae, weight: 700, align: 'center', width: 27 });
+    }
     const number = scope.use(createBitmapText({ font, pages: fontPages, text: `第${index + 1}关`, align: 'center', maxWidth: CARD.width }));
     card.addChild(number.display);
-    number.display.y = 22;
-    await kit.label(card, level.title, { x: 0, y: 92, size: 26, weight: 700, color: locked ? 0x7a7060 : 0xf6e2b0, align: 'center', width: CARD.width });
-    await kit.label(card, level.en, { x: 0, y: 130, size: 13, color: 0xa89c84, family: SANS, align: 'center', width: CARD.width });
-    await kit.label(card, CHAPTERS[chapter].name, { x: 0, y: 156, size: 13, color: 0x8ab4a4, family: SANS, align: 'center', width: CARD.width });
+    number.display.y = 19;
+    await kit.label(card, level.title, { x: 0, y: 147, size: 23, weight: 700, color: locked ? 0xc7bba1 : 0xffe9b8, align: 'center', width: CARD.width });
+    await kit.label(card, level.en, { x: 0, y: 179, size: 12, color: 0xb7b9a9, family: SANS, align: 'center', width: CARD.width });
+    await kit.label(card, CHAPTERS[chapter].name, { x: 0, y: 199, size: 12, color: 0x9bc4b5, family: SANS, align: 'center', width: CARD.width });
     const starMark = card.addChild(scope.use(new Sprite()));
-    if (!locked) drawStars(starMark.graphics, record?.stars ?? 0, { x: CARD.width / 2 - 30, y: 204 });
+    if (!locked) drawStars(starMark.graphics, record?.stars ?? 0, { x: CARD.width / 2 - 26, y: 229, size: 9, gap: 26 });
     else {
       // A padlock where the stars would be, and the card in shadow.
       const chain = card.addChild(scope.use(new Sprite())),
         g = chain.graphics,
         cx = CARD.width / 2;
-      g.beginFill(0x000000, 0.4).drawRoundRect(0, 0, CARD.width, CARD.height, 14, 14).endFill();
-      g.lineStyle(4, 0x9a8a68, 1).drawArc(cx, 204, 10, Math.PI, 0).lineStyle(0);
-      g.lineStyle(2, INK, 1).beginFill(0x9a8a68, 1).drawRoundRect(cx - 16, 202, 32, 26, 5, 5).endFill().lineStyle(0);
-      g.beginFill(INK, 1).drawCircle(cx, 213, 3.5).drawRect(cx - 1.5, 214, 3, 8).endFill();
+      g.lineStyle(2, 0xb3986a, 1).drawArc(cx, 227, 6, Math.PI, 0).lineStyle(0);
+      g.lineStyle(1.5, 0xd2b684, 1).beginFill(0x806948, 1).drawRoundRect(cx - 10, 226, 20, 16, 3, 3).endFill().lineStyle(0);
+      g.beginFill(INK, 1).drawCircle(cx, 232, 2.2).drawRect(cx - 0.9, 233, 1.8, 5).endFill();
     }
-    if (record?.score) await kit.label(card, `最高 ${record.score}`, { x: 0, y: 232, size: 13, color: 0xd8c08a, family: SANS, align: 'center', width: CARD.width });
+    if (record?.score) await kit.label(card, `最高 ${record.score}`, { x: 0, y: 245, size: 12, color: 0xd8c08a, family: SANS, align: 'center', width: CARD.width });
     cards.push({ index, card, face, locked, chapter });
   }
 
@@ -294,6 +303,7 @@ export async function selectScreen(app, { focus } = {}) {
     else if (x + CARD.width - scroll.offset > VIEW.width) scroll.scrollTo(x + CARD.width - VIEW.width + CARD.gap);
   }
 
+  let shownObjective = '';
   function paint() {
     const focusVisible = keyboard?.getSnapshot().focusVisible && keyboard?.getSnapshot().focusedId === 'select-cards';
     for (const c of cards) {
@@ -301,15 +311,23 @@ export async function selectScreen(app, { focus } = {}) {
         selected = chosen === String(c.index);
       g.clear();
       g.lineStyle(3, INK, 1);
-      g.beginLinearGradientFill(0, 0, 0, CARD.height, stops([0, selected ? 0x4a3a2a : 0x2c2620], [1, 0x14110e])).drawRoundRect(0, 0, CARD.width, CARD.height, 14, 14).endFill();
-      g.lineStyle(selected ? 2.5 : 1.2, selected ? GOLD : 0x6a5a44, 1).drawRoundRect(8, 8, CARD.width - 16, CARD.height - 16, 10, 10).lineStyle(0);
+      const tint = [0x593a2a, 0x265052, 0x464a58][c.chapter];
+      g.beginLinearGradientFill(0, 0, 0, CARD.height, stops([0, tint], [0.53, 0x172a2b], [1, 0x0e1c20])).drawRoundRect(0, 0, CARD.width, CARD.height, 12, 12).endFill();
+      g.lineStyle(selected ? 2 : 1.2, selected ? GOLD : 0x827759, 1).drawRoundRect(5, 5, CARD.width - 10, CARD.height - 10, 8, 8).lineStyle(0);
+      g.beginFill(selected ? 0xddab63 : 0x6c5942, 0.78).drawRect(66, 137, 64, 1).endFill();
       // The chosen card is outlined by the engine's outline effect, and lifts a little.
       c.card.renderEffect = selected ? { outline: { color: focusVisible ? 0xffe08a : 0xe6b65c, width: focusVisible ? 3 : 2 } } : undefined;
       c.card.y = selected ? 2 : 10;
     }
     start.setSub(`第 ${Number(chosen) + 1} 关 · ${levels[Number(chosen)].title}`);
+    const goal = CHALLENGES[levels[Number(chosen)].id].label;
+    if (shownObjective !== goal) {
+      shownObjective = goal;
+      void objective.set(`巧解 · ${goal}`);
+    }
   }
 
+  const objective = await kit.label(ui, ' ', { x: 206, y: 490, size: 17, color: 0xdcb87d, weight: 600 });
   const start = await kit.button({ x: 960 - 40 - 220, y: 470, width: 220, height: 56, text: '开始此关', sub: ' ', primary: true, onActivate: () => app.startLevel(Number(chosen)), container: ui });
   await kit.button({ x: 40, y: 474, width: 140, height: 48, text: '‹ 返回', name: '返回标题', onActivate: () => app.go('title'), container: ui });
   paintThumb();
@@ -332,7 +350,7 @@ export async function selectScreen(app, { focus } = {}) {
         describe: () => {
           const r = save.data.levels[String(c.index + 1)];
           return {
-            name: `第${c.index + 1}关 ${levels[c.index].title}${c.locked ? '，未解锁' : r ? `，${r.stars} 星` : ''}`,
+            name: `第${c.index + 1}关 ${levels[c.index].title}${c.locked ? '，未解锁' : r ? `，${r.stars} 星${r.seal ? '，已得巧解印' : ''}` : ''}`,
             bounds: semanticBoundsOf(c.face),
             selected: chosen === String(c.index),
             disabled: c.locked,
@@ -343,12 +361,9 @@ export async function selectScreen(app, { focus } = {}) {
       })
     );
   semantics.publish();
-  let time = 0;
   return {
     kit,
-    update(seconds) {
-      time += seconds;
-      back.scenery.update(time);
+    update() {
       // Enter or Space on the cards starts the chosen level.
       const focus = keyboard?.getSnapshot();
       if (focus?.focusedId === 'select-cards' && (app.actions.justPressed('confirm') || app.actions.justPressed('fire'))) app.startLevel(Number(chosen));
@@ -371,18 +386,25 @@ export async function levelScreen(app, { index }) {
     chapter = chapterOf(index),
     kit = createScreenKit(game, scope, { semantics, sound: app.sound, prefix: 'level' });
   app.sound.music('city');
-  let hud = null;
+  const challenge = CHALLENGES[entry.id];
+  const runChallenge = createChallenge(entry.id);
+  let hud = null, talking = null, hint = null, over = false;
+  const [panorama, mechanisms] = await Promise.all([app.art.chapter(chapter), app.art.mechanisms()]);
   const level = await createLevel(game, {
     file: entry.file,
     chapter,
-    textures,
+    textures: { ...textures, panorama, mechanisms },
     scope,
     on: (event) => {
+      runChallenge.observe(event);
       const view = level?.camera.worldToScreen(event.x ?? 0, event.y ?? 0);
       app.sound.event(event, view ? view.x / 960 : 0.5);
       if (!hud) return;
       if (event.type === 'aim') hud.setPower(event.power);
-      if (event.type === 'shot') hud.setUsed(level.sim.state.shotsFired);
+      if (event.type === 'shot') {
+        hud.setUsed(level.sim.state.shotsFired);
+        if (hint) presentHint(null);
+      }
       if (event.type === 'score') {
         hud.setScore(level.sim.state.score);
         hud.showCombo(event.combo, event.points);
@@ -391,12 +413,38 @@ export async function levelScreen(app, { index }) {
       if (event.type === 'lose') finish(false);
     }
   });
+  function presentHint(next) {
+    hint = next;
+    hud.setHint(next);
+  }
+
+  async function toggleHint() {
+    if (over || talking?.open || app.settingsOpen() || !level.sim.ready() || level.aiming.pulling) return;
+    if (!hint) {
+      presentHint({ text: CLUES[entry.id], button: level.sim.state.shotsFired === 0 ? '对准' : '收起' });
+      return;
+    }
+    if (hint.button !== '对准') {
+      presentHint(null);
+      return;
+    }
+    const requested = hint;
+    const reference = await firstShot(entry.id);
+    if (scope.state !== 'open' || hint !== requested || level.sim.state.shotsFired || level.aiming.pulling || app.settingsOpen()) return;
+    if (reference) level.setAim(...reference);
+    presentHint({
+      text: reference ? '已对准首发参考轨迹。可以微调，也可以直接发射。' : CLUES[entry.id],
+      button: '收起',
+    });
+  }
+
   const map = level.map;
   hud = await createHud(game, scope, kit, {
     font,
     fontPages,
     title: `第${index + 1}关 · ${entry.title}`,
     subtitle: `${CHAPTERS[chapter].name} · ${entry.en} · ${map.properties.par} 发得三星`,
+    challenge: challenge.description,
     pellets: level.sim.level.shots,
     power: level.aiming.power,
     onPower: (value) => level.setAim(level.aiming.angle, value),
@@ -404,7 +452,9 @@ export async function levelScreen(app, { index }) {
     onOverview: () => level.toggleOverview(),
     onRestart: () => app.startLevel(index, { skipStory: true }),
     onMenu: () => app.go('select', { focus: index }),
-    onSettings: () => app.openSettings()
+    onSettings: () => app.openSettings(),
+    onHint: () => { void toggleHint(); },
+    onCloseHint: () => presentHint(null),
   });
   hud.setUsed(0);
 
@@ -419,11 +469,9 @@ export async function levelScreen(app, { index }) {
 
   // The words before the level, then the camera goes to the bow.
   const lines = BEFORE[index];
-  let talking = null;
   if (lines && !app.skipStory) talking = await dialogue(app, scope, kit, lines);
   setTimeout(() => level.lookAtBow(1.2), talking ? 0 : 900);
 
-  let over = false;
   async function finish(won) {
     if (over) return;
     over = true;
@@ -434,9 +482,9 @@ export async function levelScreen(app, { index }) {
     if (won) {
       let change = {};
       save.update((data) => {
-        change = recordClear(data, index, { stars, score: level.sim.state.score }, levels.length);
+        change = recordClear(data, index, { stars, score: level.sim.state.score, seal: runChallenge.earned }, levels.length);
       });
-      app.go('result', { index, won, stars, score: level.sim.state.score, shots: level.sim.state.shotsFired, change });
+      app.go('result', { index, won, stars, score: level.sim.state.score, shots: level.sim.state.shotsFired, seal: runChallenge.earned, change });
     } else app.go('result', { index, won, stars: 0, score: level.sim.state.score, shots: level.sim.state.shotsFired, change: {} });
   }
 
@@ -453,9 +501,26 @@ export async function levelScreen(app, { index }) {
       }
     })
   );
+  kit.own(semantics.add({
+    id: 'level-hint-status',
+    role: 'status',
+    describe: () => ({ name: hint ? `${hint.text} 巧解目标，${challenge.description}` : '', hidden: !hint, bounds: { x: 14, y: 411, width: 544, height: 104 } }),
+  }));
   return {
     kit,
     level,
+    levelTitle: entry.title,
+    get hint() { return hint; },
+    challenge: challenge.description,
+    touchActions: {
+      dialogue: () => talking?.next(),
+      overview: () => level.toggleOverview(),
+      restart: () => app.startLevel(index, { skipStory: true }),
+      menu: () => app.go('select', { focus: index }),
+      settings: () => app.openSettings(),
+      hint: () => { void toggleHint(); },
+      closeHint: () => presentHint(null),
+    },
     /** Whether words are being spoken over the level. */
     talking: () => Boolean(talking?.open),
     update(seconds) {
@@ -469,6 +534,7 @@ export async function levelScreen(app, { index }) {
         if (turn || pull) level.setAim(level.aiming.angle + turn * 60 * seconds, level.aiming.power + pull * 45 * seconds);
         if (actions.justPressed('fire')) level.fire();
         if (actions.justPressed('overview')) level.toggleOverview();
+        if (actions.justPressed('hint')) void toggleHint();
         if (actions.justPressed('restart')) app.startLevel(index, { skipStory: true });
       }
       level.update(talking?.open ? 0 : seconds);
@@ -477,7 +543,11 @@ export async function levelScreen(app, { index }) {
       hud.setReady(level.sim.ready());
       hud.update(seconds);
     },
-    escape: () => (talking?.open ? talking.skip() : app.go('select', { focus: index })),
+    escape() {
+      if (talking?.open) talking.skip();
+      else if (hint) presentHint(null);
+      else app.go('select', { focus: index });
+    },
     focusFirst: () => {},
     dispose() {
       kit.dispose();
@@ -489,6 +559,7 @@ export async function levelScreen(app, { index }) {
 /** Lines spoken in turn at the foot of the screen; a press, Space or Enter goes on. Returns its handle. */
 async function dialogue(app, scope, kit, lines, { onDone } = {}) {
   const { game, semantics } = app;
+  const speakers = await app.art.speakers();
   const box = game.stage.addChild(scope.use(new DisplayObjectContainer())),
     veil = box.addChild(scope.use(new Sprite()));
   veil.graphics.beginLinearGradientFill(0, 300, 0, 540, stops([0, 0x000000, 0], [1, 0x000000, 0.75])).drawRect(0, 300, 960, 240).endFill();
@@ -497,14 +568,17 @@ async function dialogue(app, scope, kit, lines, { onDone } = {}) {
   kit.panel({ x: 110, y: 384, width: 740, height: 132, container: box });
   // The portrait is cut to a round frame by a shape mask: a circle drawn once, so its image is made once.
   const frame = box.addChild(scope.use(new DisplayObjectContainer())),
-    portrait = frame.addChild(scope.use(new Sprite())),
+    portrait = frame.addChild(scope.use(new Bitmap(speakers))),
     round = frame.addChild(scope.use(new Sprite())),
     rim = box.addChild(scope.use(new Sprite()));
   frame.x = rim.x = 170;
   frame.y = rim.y = 452;
   round.graphics.beginFill(0xffffff, 1).drawCircle(0, 0, 44).endFill();
+  portrait.x = portrait.y = -44;
+  portrait.scaleX = portrait.scaleY = 88 / 256;
   portrait.mask = round;
   rim.graphics.lineStyle(2.5, GOLD, 0.9).drawCircle(0, 0, 45).lineStyle(0);
+  rim.graphics.lineStyle(1, 0x8b573d, 0.82).drawCircle(0, 0, 49).lineStyle(0);
   const name = await kit.label(box, ' ', { x: 236, y: 398, size: 20, weight: 700, color: 0xf2c870 });
   const first = await kit.label(box, ' ', { x: 236, y: 432, size: 21, color: 0xf0e4c8 });
   const second = await kit.label(box, ' ', { x: 236, y: 466, size: 21, color: 0xf0e4c8 });
@@ -512,14 +586,18 @@ async function dialogue(app, scope, kit, lines, { onDone } = {}) {
   let at = -1,
     open = true,
     shown = 0,
+    lineBreak = 26,
     full = '';
   const say = async () => {
     at++;
     if (at >= lines.length) return close();
     const [who, words] = lines[at],
       speaker = SPEAKERS[who];
-    drawPortrait(portrait.graphics, speaker);
+    portrait.sourceRect = { x: speaker.portrait * 256, y: 0, width: 256, height: 256 };
     full = words;
+    lineBreak = 26;
+    if (full.length === 27 && /[，。！？、；：）》」』]/u.test(full[26])) lineBreak = 27;
+    while (lineBreak < full.length && /[，。！？、；：）》」』]/u.test(full[lineBreak])) lineBreak--;
     shown = 0;
     await name.set(speaker.name);
     await first.set(' ');
@@ -559,45 +637,25 @@ async function dialogue(app, scope, kit, lines, { onDone } = {}) {
       time += seconds;
       hint.display.alpha = 0.6 + Math.sin(time * 4) * 0.4;
       if (app.actions.justPressed('fire') || app.actions.justPressed('confirm')) next();
-      // The words come a few at a time, as if spoken; two lines of up to twenty-six characters each.
+      // Reveal the words without leaving a closing punctuation mark at the start of a line.
       shown = Math.min(full.length, shown + seconds * 32);
       const count = Math.floor(shown);
       if (count !== lastShown) {
         lastShown = count;
         const words = full.slice(0, count);
-        void first.set(words.slice(0, 26) || ' ');
-        void second.set(words.slice(26) || ' ');
+        void first.set(words.slice(0, lineBreak) || ' ');
+        void second.set(words.slice(lineBreak) || ' ');
       }
     }
   };
 }
 
-/** A small portrait: a face in ink under a topknot, a collar in the speaker's colours. */
-function drawPortrait(g, speaker) {
-  g.clear();
-  // A square of lamplight behind the figure; the round mask trims it, and the robe, to the frame.
-  g.beginRadialGradientFill(-10, -18, 60, stops([0, 0x6a5238], [1, 0x1e1a16])).drawRect(-48, -48, 96, 96).endFill();
-  g.beginFill(speaker.robe, 1).moveTo(-52, 52).curveTo(0, 2, 52, 52).lineTo(-52, 52).endFill();
-  g.beginFill(speaker.trim, 1).moveTo(-10, 18).lineTo(0, 36).lineTo(10, 18).lineTo(-10, 18).endFill();
-  if (speaker === SPEAKERS.tube) {
-    g.beginFill(speaker.robe, 1).drawRect(-6, -10, 12, 34).endFill();
-    g.beginFill(speaker.trim, 1).moveTo(-4, -10).lineTo(-26, -32).lineTo(18, -32).lineTo(4, -10).endFill();
-    g.lineStyle(0);
-    return;
-  }
-  g.beginFill(0xe8d2b0, 1).drawEllipse(-15, -26, 30, 36).endFill();
-  g.beginFill(speaker.hair, 1).drawCircle(0, -34, 9).drawEllipse(-16, -30, 32, 12).endFill();
-  if (speaker === SPEAKERS.master) g.beginFill(speaker.hair, 1).moveTo(-8, 0).lineTo(0, 20).lineTo(8, 0).lineTo(-8, 0).endFill();
-  g.beginFill(INK, 1).drawCircle(-6, -10, 2).drawCircle(6, -10, 2).endFill();
-  g.lineStyle(0);
-}
-
 // ── The result of a level ──────────────────────────────────────────────────────────────────
-export async function resultScreen(app, { index, won, stars, score, shots, change }) {
+export async function resultScreen(app, { index, won, stars, score, shots, seal = false, change }) {
   const scope = app.game.engine.createScope(),
-    { game, semantics, levels, font, fontPages } = app,
+    { game, save, semantics, levels, font, fontPages } = app,
     kit = createScreenKit(game, scope, { semantics, sound: app.sound, prefix: 'result' });
-  const back = backdrop(app, scope, chapterOf(index));
+  backdrop(app, scope, await app.art.chapter(chapterOf(index)));
   const ui = game.stage.addChild(scope.use(new DisplayObjectContainer()));
   kit.panel({ x: 230, y: 70, width: 500, height: 400, container: ui });
   await kit.label(ui, won ? '机关锁开' : '弹丸用尽', { x: 230, y: 96, size: 38, weight: 800, color: won ? 0xf2c870 : 0xd8a090, align: 'center', width: 500 });
@@ -628,7 +686,12 @@ export async function resultScreen(app, { index, won, stars, score, shots, chang
   const notes = [`用了 ${shots} 发，${levels[index].par} 发内开锁得三星`];
   if (change.newBest) notes.push('新的最高分');
   if (change.opened) notes.push('下一关已解锁');
-  await kit.label(ui, won ? notes.join('　') : '再试一次：换个角度，或者先看看全景', { x: 230, y: 324, size: 15, color: 0xc8bba0, family: SANS, align: 'center', width: 500 });
+  await kit.label(ui, won ? notes.join('　') : '可以看全景找机关，或用提示试试首发角度', { x: 230, y: 316, size: 15, color: 0xc8bba0, family: SANS, align: 'center', width: 500 });
+  const challenge = CHALLENGES[levels[index].id];
+  const collected = save.data.levels[String(index + 1)]?.seal;
+  const stampText = seal ? `巧解印 · ${challenge.label}` : collected ? `已收藏巧解印 · ${challenge.label}` : `巧解目标 · ${challenge.label}`;
+  await kit.label(ui, stampText, { x: 230, y: 344, size: 16, color: collected ? 0xffca79 : 0xaac7b8, weight: seal ? 700 : 400, align: 'center', width: 500 });
+  kit.own(semantics.add({ id: 'result-challenge', role: 'status', describe: () => ({ name: stampText, bounds: { x: 230, y: 344, width: 500, height: 24 } }) }));
   const last = index + 1 >= levels.length;
   const buttons = [];
   if (won && !last) buttons.push(await kit.button({ x: 500, y: 380, width: 200, height: 56, text: '下一关 ›', primary: true, onActivate: () => app.startLevel(index + 1), container: ui }));
@@ -639,13 +702,8 @@ export async function resultScreen(app, { index, won, stars, score, shots, chang
   ui.y = 20;
   animate(game.engine, scope, ui).to({ alpha: 1, y: 0 }, 0.35, 'cubicOut').start();
   semantics.publish();
-  let time = 0;
   return {
     kit,
-    update(seconds) {
-      time += seconds;
-      back.scenery.update(time);
-    },
     escape: () => app.go('select', { focus: index }),
     focusFirst: () => buttons[0]?.focus(),
     dispose() {
@@ -660,7 +718,7 @@ export async function endingScreen(app) {
   const scope = app.game.engine.createScope(),
     { game, semantics, save } = app,
     kit = createScreenKit(game, scope, { semantics, sound: app.sound, prefix: 'ending' });
-  const back = backdrop(app, scope, 2);
+  backdrop(app, scope, await app.art.chapter(2));
   app.sound.play('victory');
   app.sound.music('title');
   const ui = game.stage.addChild(scope.use(new DisplayObjectContainer()));
@@ -681,12 +739,9 @@ export async function endingScreen(app) {
     }
   });
   semantics.publish();
-  let time = 0;
   return {
     kit,
     update(seconds) {
-      time += seconds;
-      back.scenery.update(time);
       if (talk.open) talk.update(seconds);
     },
     escape: () => app.go('select'),

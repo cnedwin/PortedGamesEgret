@@ -1,9 +1,4 @@
-// 由代码画出的图：粒子的光点、木屑、火花，以及计分用的位图字体页。
-// Pictures painted by the code at start: the soft dot of a particle, a splinter of wood, a spark, and the
-// page of the bitmap font for scores and combos. Each is painted on a canvas of the page; the browser game
-// turns a canvas into a leased texture in one step (`game.textureFromCanvas`).
-
-/** A canvas of a size, and its 2D context. */
+// Canvas textures are leased once by the game and tinted by its particle emitters.
 function surface(width, height) {
   const canvas = document.createElement('canvas');
   canvas.width = width;
@@ -11,39 +6,80 @@ function surface(width, height) {
   return { canvas, context: canvas.getContext('2d', { willReadFrequently: true }) };
 }
 
-/** A white dot that fades to its edge: each particle tints and fades it. */
-export function paintDot(size = 32) {
-  const { canvas, context } = surface(size, size),
-    glow = context.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
-  glow.addColorStop(0, 'rgba(255,255,255,1)');
-  glow.addColorStop(0.45, 'rgba(255,255,255,0.75)');
+function mist(context, x, y, radius, strength) {
+  const glow = context.createRadialGradient(x, y, 0, x, y, radius);
+  glow.addColorStop(0, 'rgba(255,255,255,' + strength + ')');
+  glow.addColorStop(0.42, 'rgba(255,255,255,' + strength * 0.62 + ')');
   glow.addColorStop(1, 'rgba(255,255,255,0)');
   context.fillStyle = glow;
-  context.fillRect(0, 0, size, size);
-  return canvas;
+  context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
 }
 
-/** A splinter: a thin white shard, tinted to wood or stone by the emitter. */
-export function paintSplinter() {
-  const { canvas, context } = surface(24, 24);
-  context.fillStyle = '#fff';
+function shard(context, points, fill) {
   context.beginPath();
-  context.moveTo(2, 13);
-  context.lineTo(18, 9);
-  context.lineTo(22, 12);
-  context.lineTo(6, 16);
+  context.moveTo(...points[0]);
+  for (const point of points.slice(1)) context.lineTo(...point);
   context.closePath();
+  context.fillStyle = fill;
   context.fill();
+}
+
+export function paintDot(size = 32) {
+  const { canvas, context } = surface(size, size);
+  mist(context, size / 2, size / 2, size / 2, 1);
   return canvas;
 }
 
-/** The characters of the score font: figures, signs and the few words the HUD prints in it. */
+export function paintDust() {
+  const { canvas, context } = surface(48, 48);
+  for (const [x, y, radius, alpha] of [[26, 26, 19, 0.33], [17, 22, 13, 0.42], [26, 19, 15, 0.29],
+    [30, 26, 13, 0.61], [16, 33, 11, 0.44], [36, 32, 7, 0.51], [34, 17, 9, 0.30]]) {
+    mist(context, x, y, radius, alpha);
+  }
+  return canvas;
+}
+
+export function paintSplinter() {
+  const { canvas, context } = surface(32, 32);
+  shard(context, [[2, 19], [12, 12], [25, 9], [30, 12], [24, 18], [17, 20], [9, 24]], '#b8b8b8');
+  shard(context, [[2, 19], [12, 12], [25, 9], [30, 12], [20, 13], [11, 18]], '#fff');
+  shard(context, [[8, 23], [16, 19], [24, 18], [25, 20], [13, 22]], '#737373');
+  return canvas;
+}
+
+export function paintSpark() {
+  const { canvas, context } = surface(32, 32);
+  mist(context, 16, 16, 15, 0.6);
+  shard(context, [[16, 2], [18, 13], [26, 16], [18, 19], [16, 30], [14, 19], [6, 16], [14, 13]], 'rgba(255,255,255,.95)');
+  mist(context, 16, 16, 5, 1);
+  return canvas;
+}
+
+export function paintThunder() {
+  const { canvas, context } = surface(40, 40);
+  mist(context, 19, 19, 20, 0.84);
+  shard(context, [[21, 4], [10, 22], [20, 19], [15, 36], [31, 15], [20, 18]], 'rgba(255,255,255,.83)');
+  return canvas;
+}
+
+/** Two soft lights in one texture, for a sealed lock and a released lock. */
+export function paintLockLights() {
+  const { canvas, context } = surface(128, 64);
+  for (const [index, color] of ['112,206,172', '255,191,94'].entries()) {
+    const x = 32 + 64 * index;
+    const glow = context.createRadialGradient(x, 32, 2, x, 32, 30);
+    glow.addColorStop(0, 'rgba(' + color + ',0.48)');
+    glow.addColorStop(0.52, 'rgba(' + color + ',0.19)');
+    glow.addColorStop(1, 'rgba(' + color + ',0)');
+    context.fillStyle = glow;
+    context.fillRect(index * 64, 0, 64, 64);
+  }
+  return canvas;
+}
+
+// Glyph frames follow the shape accepted by Egret's bitmap-font importer.
 export const FONT_CHARACTERS = '0123456789+×/:-连击星分第关';
 
-/**
- * The page of the score font, gold with an ink outline, and the font in the form Egret's texture merger
- * writes: one frame for each character on the page. The glyphs are drawn with the page's own serif face.
- */
 export function paintScoreFont() {
   const size = 40,
     cell = 52,
@@ -51,7 +87,7 @@ export function paintScoreFont() {
     rows = Math.ceil(FONT_CHARACTERS.length / columns),
     { canvas, context } = surface(columns * cell, rows * cell),
     frames = {};
-  context.font = `700 ${size}px "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", serif`;
+  context.font = '700 ' + size + 'px "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif';
   context.textBaseline = 'alphabetic';
   context.lineJoin = 'round';
   for (const [index, character] of [...FONT_CHARACTERS].entries()) {
@@ -62,11 +98,13 @@ export function paintScoreFont() {
       baseline = y + 42,
       left = x + Math.round((cell - advance) / 2);
     const gold = context.createLinearGradient(0, y + 6, 0, y + 46);
-    gold.addColorStop(0, '#fff3c4');
-    gold.addColorStop(0.5, '#f0c25a');
-    gold.addColorStop(1, '#b0722c');
-    context.lineWidth = 6;
-    context.strokeStyle = '#1b130d';
+    gold.addColorStop(0, '#fff3d8');
+    gold.addColorStop(0.32, '#ffe5a6');
+    gold.addColorStop(0.56, '#e7b766');
+    gold.addColorStop(0.61, '#d59e55');
+    gold.addColorStop(1, '#a46136');
+    context.lineWidth = 5.5;
+    context.strokeStyle = '#1b1815';
     context.strokeText(character, left, baseline);
     context.fillStyle = gold;
     context.fillText(character, left, baseline);

@@ -6,7 +6,7 @@ import { DisplayObjectContainer, Sprite, animate } from '@egret/engine';
 import { createActionControl, createControlKeys, createToggleControl, createUiRoot } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
 import { GOLD, INK } from '../art/shapes.mjs';
-import { FONT, SANS } from './kit.mjs';
+import { FONT, SANS, paintPanel } from './kit.mjs';
 
 const WIDTH = 360;
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
@@ -75,8 +75,7 @@ export async function openSettings(game, { semantics, sound, settings, onChange,
   const card = game.stage.addChildAt(scope.use(new Sprite()), game.stage.getChildIndex(veil) + 1);
   card.x = (960 - WIDTH) / 2;
   card.y = 110;
-  card.graphics.lineStyle(3, INK, 1).beginLinearGradientFill(0, 0, 0, 300, stops([0, 0x332c26], [1, 0x191512])).drawRoundRect(0, 0, WIDTH, 300, 18, 18).endFill();
-  card.graphics.lineStyle(1.5, GOLD, 0.7).drawRoundRect(8, 8, WIDTH - 16, 284, 12, 12).lineStyle(0);
+  paintPanel(card.graphics, WIDTH, 300);
   card.alpha = 0;
   animate(game.engine, scope, card).to({ alpha: 1 }, 0.2, 'quadOut').start();
 

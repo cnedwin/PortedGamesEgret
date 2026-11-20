@@ -2,7 +2,7 @@
 // One level, whole: the Tiled map read by the engine's importer and drawn by its tile map, the mechanisms
 // as bodies of its physics world, the 2D camera that follows the pellet, shakes and pulls back to show the
 // whole city, the particles of splinters, sparks and dust, glowing locks, and aiming the crossbow.
-import { DisplayObjectContainer, Sprite, animate } from '@egret/engine';
+import { Bitmap, DisplayObjectContainer, Sprite, animate } from '@egret/engine';
 import { createCamera2D } from '@egret/engine/camera';
 import { createParticleEmitter } from '@egret/engine/particles';
 import { createTileMap, importTiledMap } from '@egret/engine/tilemap';
@@ -17,13 +17,15 @@ import {
   drawPlate,
   drawPost,
   drawRamp,
+  drawRope,
   drawSpring,
   drawStand,
   drawStone
 } from '../art/shapes.mjs';
-import { RULES } from '../sim/rules.mjs';
+import { mechanismFrame } from '../art/mechanism-atlas.mjs';
 import { createLevelSim } from '../sim/sim.mjs';
 import { createScenery } from './scenery.mjs';
+import { projectTrajectory } from './trajectory.mjs';
 
 export const VIEW = { width: 960, height: 540 };
 const AIM = { minAngle: -85, maxAngle: 15, pullForFull: 190 };
@@ -36,7 +38,7 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
   const json = await (await fetch(new URL('../../levels/' + file, import.meta.url))).json(),
     map = importTiledMap(json);
   const root = game.stage.addChildAt(scope.use(new DisplayObjectContainer()), 0);
-  const scenery = createScenery(scope, { width: map.width * map.tileWidth, height: map.height * map.tileHeight, chapter });
+  const scenery = createScenery(scope, { width: map.width * map.tileWidth, height: map.height * map.tileHeight, chapter, panorama: textures.panorama });
   root.addChild(scenery.sky);
   for (const layer of scenery.layers) root.addChild(layer.display);
   const world = root.addChild(scope.use(new DisplayObjectContainer()));
@@ -54,9 +56,28 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
 
   // ---- each body's picture, made when the simulation makes the body ---------------------------------
   const pictures = new Map();
+  const baked = new WeakMap();
+  function paintBaked(sprite, kind, spec, active = false) {
+    const frame = mechanismFrame(kind, spec, active);
+    if (!frame || !textures.mechanisms) return false;
+    let image = baked.get(sprite);
+    if (!image) {
+      image = sprite.addChild(scope.use(new Bitmap(textures.mechanisms)));
+      baked.set(sprite, image);
+    }
+    const {x, y, width, height, originX, originY, scale} = frame;
+    image.sourceRect = {x, y, width, height};
+    image.x = originX;
+    image.y = originY;
+    image.scaleX = image.scaleY = 1 / scale;
+    return true;
+  }
+
   function display(kind, spec) {
     const sprite = bodies.addChild(scope.use(new Sprite())),
       g = sprite.graphics;
+    const isBaked = paintBaked(sprite, kind, spec);
+    if (isBaked && kind !== 'lock' && kind !== 'pellet') return sprite;
     switch (kind) {
       case 'block':
         drawBlock(g, spec.width, spec.height);
@@ -68,7 +89,7 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
         drawStone(g, spec.radius);
         break;
       case 'pellet': {
-        drawPellet(g, spec.type, spec.radius);
+        if (!isBaked) drawPellet(g, spec.type, spec.radius);
         if (spec.type === 'thunder') sprite.renderEffect = { glow: { color: 0x7ac8ff, blur: 6, strength: 2 } };
         break;
       }
@@ -91,12 +112,13 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
         drawRamp(g, spec.points);
         break;
       case 'lock': {
-        drawLock(g, spec.width, spec.height, false);
-        // A closed lock is ringed in bronze light; its rays burn brighter with `add` blending.
-        sprite.renderEffect = { outline: { color: 0x7fe0c0, width: 2, alpha: 0.85 } };
-        const rays = sprite.addChild(scope.use(new Sprite()));
-        rays.blendMode = 'add';
-        rays.graphics.beginRadialGradientFill(0, 0, spec.width, [{ offset: 0, color: 0x3a8a70, alpha: 0.5 }, { offset: 1, color: 0x000000, alpha: 0 }], spec.height * 1.2).drawEllipse(-spec.width, -spec.height * 1.2, spec.width * 2, spec.height * 2.4).endFill();
+        if (!isBaked) drawLock(g, spec.width, spec.height, false);
+        const rays = sprite.addChildAt(scope.use(new Bitmap(textures.lockLights)), 0);
+        rays.sourceRect = { x: 0, y: 0, width: 64, height: 64 };
+        rays.x = -spec.width * 0.85;
+        rays.y = -spec.height * 0.95;
+        rays.scaleX = -2 * rays.x / 64;
+        rays.scaleY = -2 * rays.y / 64;
         pictures.set(sprite, { rays });
         break;
       }
@@ -122,15 +144,32 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
       happen(event);
     }
   });
+  const ropePictures = sim.ropes.map((rope) => ({
+    rope, sprite: ropes.addChild(scope.use(new Sprite())), x: NaN, y: NaN,
+  }));
 
   // ---- the crossbow ------------------------------------------------------------------------------------
   const bowAt = sim.bow;
   bowStand.x = bowAt.x;
   bowStand.y = bowAt.y;
-  drawStand(bowStand.graphics);
+  if (!paintBaked(bowStand, 'stand')) drawStand(bowStand.graphics);
   bow.x = bowAt.x;
   bow.y = bowAt.y;
   const aiming = { angle: bowAt.angle, power: bowAt.power, pulling: false };
+  aim.name = 'trajectory-guide';
+  aim.visible = false;
+  const guide = Array.from({ length: 36 }, () => {
+    const dot = aim.addChild(scope.use(new Bitmap(textures.dot)));
+    dot.anchorOffsetX = dot.naturalWidth / 2;
+    dot.anchorOffsetY = dot.naturalHeight / 2;
+    dot.scaleX = dot.scaleY = 12 / dot.naturalWidth;
+    return dot;
+  });
+  const impact = aim.addChild(scope.use(new Sprite()));
+  impact.name = 'trajectory-contact';
+  impact.graphics.lineStyle(6, 0x2d1d11, 0.92).drawCircle(0, 0, 12)
+    .lineStyle(2.7, 0xffd77c).drawCircle(0, 0, 12)
+    .lineStyle(0).beginFill(0xffefbb).drawCircle(0, 0, 2.7).endFill();
 
   // ---- particles: one emitter for each kind of debris, burst where something happens; what is bright adds up --
   const emitter = (options) => {
@@ -139,10 +178,10 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
     return made;
   };
   const splinters = emitter({ texture: textures.splinter, lifetime: [0.6, 1.2], speed: [120, 320], angle: [180, 360], gravity: { x: 0, y: 900 }, size: 16, endScale: 0.7, startColor: 0xd09a5a, endColor: 0x6a4424, endAlpha: 0, spin: 540, rotation: [0, 360], seed: 3 });
-  const dust = emitter({ texture: textures.dot, lifetime: [0.5, 1.1], speed: [30, 110], angle: [190, 350], gravity: { x: 0, y: -20 }, drag: 1.5, size: 26, endScale: 2.2, startColor: 0xb8b0a0, endColor: 0x6a6660, startAlpha: 0.55, endAlpha: 0, seed: 5 });
-  const sparks = emitter({ texture: textures.dot, lifetime: [0.25, 0.6], speed: [160, 420], angle: [0, 360], gravity: { x: 0, y: 700 }, size: 9, endScale: 0.3, startColor: 0xfff0b0, endColor: 0xff7a20, endAlpha: 0, blendMode: 'add', seed: 7 });
-  const thunder = emitter({ texture: textures.dot, lifetime: [0.3, 0.9], speed: [200, 560], angle: [0, 360], drag: 2, size: 22, endScale: 0.2, startColor: 0xe6f6ff, endColor: 0x3a78ff, endAlpha: 0, maxParticles: 300, blendMode: 'add', seed: 9 });
-  const glints = emitter({ texture: textures.dot, lifetime: [0.6, 1.4], speed: [20, 90], angle: [240, 300], gravity: { x: 0, y: -60 }, size: 12, endScale: 0.2, startColor: 0xffe6a0, endColor: 0xffb040, endAlpha: 0, blendMode: 'add', seed: 11 });
+  const dust = emitter({ texture: textures.dust ?? textures.dot, lifetime: [0.5, 1.1], speed: [30, 110], angle: [190, 350], gravity: { x: 0, y: -20 }, drag: 1.5, size: 35, endScale: 2.2, startColor: 0xc2bea3, endColor: 0x746a5b, startAlpha: 0.61, endAlpha: 0, rotation: [0, 360], seed: 5 });
+  const sparks = emitter({ texture: textures.spark ?? textures.dot, lifetime: [0.25, 0.6], speed: [160, 420], angle: [0, 360], gravity: { x: 0, y: 700 }, size: 11, endScale: 0.3, startColor: 0xfff0b0, endColor: 0xff7a20, endAlpha: 0, rotation: [0, 180], blendMode: 'add', seed: 7 });
+  const thunder = emitter({ texture: textures.thunder ?? textures.dot, lifetime: [0.3, 0.9], speed: [200, 560], angle: [0, 360], drag: 2, size: 21, endScale: 0.2, startColor: 0xeafcff, endColor: 0x4f8de8, endAlpha: 0, rotation: [0, 360], maxParticles: 300, blendMode: 'add', seed: 9 });
+  const glints = emitter({ texture: textures.spark ?? textures.dot, lifetime: [0.6, 1.4], speed: [20, 90], angle: [240, 300], gravity: { x: 0, y: -60 }, size: 16, endScale: 0.2, startColor: 0xffe9ae, endColor: 0xffb040, endAlpha: 0, blendMode: 'add', seed: 11 });
   const trail = emitter({ texture: textures.dot, lifetime: [0.25, 0.45], speed: [0, 12], size: 11, endScale: 0.2, startColor: 0xffe2a0, endColor: 0xff8a40, startAlpha: 0.8, endAlpha: 0, blendMode: 'add', seed: 13 });
   const burst = (stream, x, y, count) => {
     stream.x = x;
@@ -237,33 +276,42 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
   const pad = root.addChild(scope.use(new Sprite()));
   pad.touchEnabled = true;
   pad.hitArea = { x: 0, y: 0, width: VIEW.width, height: VIEW.height };
-  const pull = { from: null };
+  let pull = null;
   const input = game.pointer;
+  function offsetFromPull(sample) {
+    if (pull === null || sample.session !== pull.session) return null;
+    const dx = sample.globalX - pull.globalX, dy = sample.globalY - pull.globalY;
+    return { dx, dy, length: Math.hypot(dx, dy) };
+  }
+  function aimFromPull({ dx, dy, length }) {
+    // The pellet flies opposite the pull.
+    setAim(Math.atan2(-dy, -dx) * 180 / Math.PI, length / AIM.pullForFull * 100);
+  }
+  function endPull() {
+    pull = null;
+    aiming.pulling = false;
+  }
   const stops = [
-    pad.on(input.events.begin, (event) => {
-      if (!sim.ready()) return;
-      pull.from = { x: event.payload.globalX, y: event.payload.globalY, angle: aiming.angle, power: aiming.power };
+    pad.on(input.events.begin, ({ payload }) => {
+      if (pull !== null || !sim.ready()) return;
+      pull = payload;
       aiming.pulling = true;
     }),
-    pad.on(input.events.move, (event) => {
-      if (!pull.from) return;
-      const dx = event.payload.globalX - pull.from.x,
-        dy = event.payload.globalY - pull.from.y,
-        length = Math.hypot(dx, dy);
-      if (length < 14) return;
-      // Pulling back aims the other way: the pellet flies opposite the pull.
-      setAim((Math.atan2(-dy, -dx) * 180) / Math.PI, Math.min(100, (length / AIM.pullForFull) * 100));
+    pad.on(input.events.move, ({ payload }) => {
+      const offset = offsetFromPull(payload);
+      if (offset && offset.length >= 14) aimFromPull(offset);
     }),
-    pad.on(input.events.end, (event) => {
-      if (!pull.from) return;
-      const moved = Math.hypot(event.payload.globalX - pull.from.x, event.payload.globalY - pull.from.y);
-      pull.from = null;
-      aiming.pulling = false;
-      if (moved > 24) fire();
+    pad.on(input.events.end, ({ payload }) => {
+      const release = offsetFromPull(payload);
+      if (!release) return;
+      endPull();
+      if (release.length > 24) {
+        aimFromPull(release);
+        fire();
+      }
     }),
-    pad.on(input.events.cancel, () => {
-      pull.from = null;
-      aiming.pulling = false;
+    pad.on(input.events.cancel, ({ payload }) => {
+      if (pull !== null && payload.session === pull.session) endPull();
     })
   ];
   scope.use({ dispose: () => stops.forEach((stop) => stop()) });
@@ -284,42 +332,53 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
     return true;
   }
 
-  /** Draw the first part of the flight the aim gives, as fading dots: only a guide, not the whole path. */
-  function drawAim() {
-    const g = aim.graphics;
-    g.clear();
-    if (!sim.ready()) return;
-    const start = sim.launch(aiming.angle, aiming.power),
-      dots = 16;
-    for (let i = 1; i <= dots; i++) {
-      const t = i * 0.035,
-        x = start.x + start.vx * t,
-        y = start.y + start.vy * t + 0.5 * RULES.gravity * t * t;
-      g.beginFill(0xf6e2a8, 0.85 * (1 - i / (dots + 2))).drawCircle(x, y, 3.2 - i * 0.1).endFill();
+  /** Show the projected flight up to the first contact with the city. */
+  function drawAim(ready) {
+    aim.visible = ready;
+    if (!ready) return;
+    const { points, contact } = projectTrajectory(sim, aiming.angle, aiming.power);
+    const count = Math.min(points.length, guide.length);
+    for (const [index, dot] of guide.entries()) {
+      const point = index < count ? points[Math.floor(index * (points.length - 1) / Math.max(1, count - 1))] : null;
+      dot.visible = !!point && (!contact || Math.hypot(point.x - contact.x, point.y - contact.y) > 14);
+      if (dot.visible) {
+        dot.x = point.x;
+        dot.y = point.y;
+        dot.alpha = 0.92 - 0.22 * index / count;
+      }
+    }
+    impact.visible = !!contact;
+    if (contact) {
+      impact.x = contact.x;
+      impact.y = contact.y;
     }
   }
 
   // ---- each frame -------------------------------------------------------------------------------------------
   let time = 0,
     wasReady = false,
-    drawn = '';
+    drawnAngle = NaN,
+    drawnPower = -1;
   function update(seconds) {
     time += seconds;
     sim.update(seconds);
     scenery.update(time);
 
     // Ropes: from the anchor to where the joint holds the weight, which swings on it when struck.
-    const rg = ropes.graphics;
-    if (sim.ropes.length) rg.clear();
-    for (const rope of sim.ropes) {
-      if (rope.cut) continue;
+    for (const picture of ropePictures) {
+      const { rope, sprite } = picture;
+      if (rope.cut) {
+        sprite.visible = false;
+        continue;
+      }
       const weight = rope.weight.body,
         endX = weight.x,
         endY = weight.y - rope.top;
-      rg.lineStyle(3, 0x3a2614, 1).moveTo(rope.x, rope.y).lineTo(endX, endY);
-      rg.lineStyle(1.2, 0xc89a5a, 0.9).moveTo(rope.x, rope.y).lineTo(endX, endY);
-      rg.lineStyle(0);
-      rg.beginFill(0x8a6a3a, 1).drawRect(rope.x - 6, rope.y - 4, 12, 6).endFill();
+      if (Math.abs(picture.x - endX) <= 0.125 && Math.abs(picture.y - endY) <= 0.125) continue;
+      picture.x = endX;
+      picture.y = endY;
+      sprite.graphics.clear();
+      drawRope(sprite.graphics, rope.x, rope.y, endX, endY);
     }
 
     for (const picture of lockPictures) {
@@ -327,8 +386,9 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
       const extra = pictures.get(picture.sprite);
       if (picture.lock.open && !picture.open) {
         picture.open = true;
-        drawLock(picture.sprite.graphics, picture.lock.part.spec.width, picture.lock.part.spec.height, true);
-        picture.sprite.renderEffect = { glow: { color: 0xffc860, blur: 10, strength: 3 } };
+        const spec = picture.lock.part.spec;
+        if (!paintBaked(picture.sprite, 'lock', spec, true)) drawLock(picture.sprite.graphics, spec.width, spec.height, true);
+        if (extra) extra.rays.sourceRect = { x: 64, y: 0, width: 64, height: 64 };
         animate(game.engine, scope, picture.sprite).to({ scaleX: 1.18, scaleY: 1.18 }, 0.12, 'quadOut').to({ scaleX: 1, scaleY: 1 }, 0.35, 'backOut').start();
       }
       if (extra) extra.rays.alpha = picture.open ? 0.9 + Math.sin(time * 6) * 0.1 : 0.45 + Math.sin(time * 2.4 + picture.lock.part.spec.x) * 0.2;
@@ -336,29 +396,31 @@ export async function createLevel(game, { file, chapter, textures, on = () => {}
     for (const picture of platePictures)
       if (picture.sprite && picture.plate.on !== picture.on) {
         picture.on = picture.plate.on;
-        drawPlate(picture.sprite.graphics, picture.plate.part.spec.width, picture.plate.part.spec.height, picture.on);
+        const spec = picture.plate.part.spec;
+        if (!paintBaked(picture.sprite, 'plate', spec, picture.on)) drawPlate(picture.sprite.graphics, spec.width, spec.height, picture.on);
       }
     // Drawings are made again only when what they show has changed.
     for (const picture of springPictures) {
       const squeeze = picture.pad.bounce > 0 ? Math.round((picture.pad.bounce / 0.3) * 20) / 20 : 0;
       if (picture.sprite && squeeze !== picture.squeeze) {
         picture.squeeze = squeeze;
-        drawSpring(picture.sprite.graphics, picture.pad.part.spec.width, picture.pad.part.spec.height, squeeze);
+        const spec = picture.pad.part.spec;
+        if (!paintBaked(picture.sprite, 'spring', spec, squeeze)) drawSpring(picture.sprite.graphics, spec.width, spec.height, squeeze);
       }
     }
 
     // The bow follows the aim; its string is drawn back as far as the power.
     bow.rotation = aiming.angle;
-    const draw = sim.ready() ? 0.25 + aiming.power / 140 : 0.05,
-      aimKey = `${draw}|${aiming.angle}|${sim.ready()}`;
-    if (aimKey !== drawn) {
-      drawn = aimKey;
-      drawBow(bow.graphics, draw);
-      drawAim();
+    const ready = sim.ready();
+    const draw = ready ? 0.25 + aiming.power / 140 : 0.05;
+    if (drawnPower !== draw) drawBow(bow.graphics, draw);
+    if (ready !== wasReady || (ready && (drawnAngle !== aiming.angle || drawnPower !== draw))) {
+      drawnAngle = aiming.angle;
+      drawAim(ready);
     }
+    drawnPower = draw;
 
     // The camera: back to the bow once the city is still again.
-    const ready = sim.ready();
     if (ready && !wasReady && !view.overviewHeld && view.mode === 'follow') lookAtBow(0.9);
     wasReady = ready;
     camera.update(seconds);
