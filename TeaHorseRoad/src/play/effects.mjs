@@ -247,7 +247,8 @@ export function createEffects(scene, physics, convoy, { land, water, quality = '
       local = [side * 1.15, -0.05 + Math.random() * 0.45, -2.6 + Math.random() * 5.4],
       at = toWorld(body, local),
       normal = turn(body, [side, 0, 0]);
-    const decal = createDecal3D(truck.model.body, mudMaterial, { position: at, normal, width: 0.5 + Math.random() * 0.5, height: 0.4 + Math.random() * 0.4, depth: 0.6, rotation: Math.random() * Math.PI });
+    const panel = local[2] >= -0.3 && truck.model.bed ? truck.model.bed : truck.model.body;
+    const decal = createDecal3D(panel, mudMaterial, { position: at, normal, width: 0.5 + Math.random() * 0.5, height: 0.4 + Math.random() * 0.4, depth: 0.6, rotation: Math.random() * Math.PI });
     if (decal) list.push(decal);
   }
 

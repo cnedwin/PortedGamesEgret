@@ -81,9 +81,9 @@ Every item below is done through the engine's API; the table says where it shows
 
 ## 素材 · Assets
 
-地形、三辆货车、茶叶和茶砖包装、驿站、吊桥、白塔、人物、狼、树和石头由代码建模。地面、木纹、布和粒子贴图由 `src/art/textures.mjs` 绘制，立体字由 `tools/make-glyphs.py` 生成，音乐和音效由 `src/audio/synth.mjs` 合成。载入画面的茶山插画 `assets/dawn-convoy.webp` 为本项目生成。结尾短片使用游戏内场景录制并用 FFmpeg 编码。
+头车驾驶室、近景茶丛、松树、雪冷杉和溪畔驿正厅使用为本项目生成并重新拟合的 Tripo GLB，置于 `assets/models/`。其余模型由代码生成，包括车轮、茶货、篷布、远景草木、桥梁和沿途道具。地面、木纹、布和粒子贴图由 `src/art/textures.mjs` 绘制，立体字由 `tools/make-glyphs.py` 生成，音乐和音效由 `src/audio/synth.mjs` 合成。载入画面的茶山插画 `assets/dawn-convoy.webp` 为本项目生成。结尾短片使用游戏内场景录制并用 FFmpeg 编码。
 
-The terrain, trucks, tea leaves and packages, stations, bridge, stupa, people, wolves, trees and rocks are modelled in code. `src/art/textures.mjs` paints the textures, `tools/make-glyphs.py` generates the 3D lettering and `src/audio/synth.mjs` synthesizes the music and sounds. The loading illustration `assets/dawn-convoy.webp` was generated for this demo. The closing film was captured in-game and encoded with FFmpeg.
+The lead truck cab, nearby tea shrubs, pines and snowy firs, and the Creek Station hall use Tripo GLB assets generated and fitted for this demo, stored in `assets/models/`. The other models are generated in code, including wheels, tea cargo, tarps, distant plants, bridges and roadside props. `src/art/textures.mjs` paints the textures, `tools/make-glyphs.py` generates the 3D lettering and `src/audio/synth.mjs` synthesizes the music and sounds. The loading illustration `assets/dawn-convoy.webp` was generated for this demo. The closing film was captured in-game and encoded with FFmpeg.
 
 ## 开发 · Development
 

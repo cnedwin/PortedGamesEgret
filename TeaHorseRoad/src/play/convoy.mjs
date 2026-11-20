@@ -28,9 +28,9 @@ function upOf(body) {
 }
 
 /** One truck: its chassis body, its vehicle, its picture and its cargo. */
-function createTruck(scene, physics, index, at) {
+function createTruck(scene, physics, index, at, cab) {
   const livery = LIVERIES[index],
-    model = createTruckModel(livery);
+    model = createTruckModel(livery, cab);
   scene.addChild(model.root);
   for (const wheel of model.wheels) scene.addChild(wheel.node);
   // The chassis: a frame and bed low down, the cab and hood above the front; its origin is the centre of mass.
@@ -105,9 +105,9 @@ function placeOnRoad(s, heightAt, lane = 0) {
  * The convoy on the road at distance `s`. `heightAt` gives the ground. Each frame: `drive(input, seconds)` before the
  * physics step, `afterStep()` after it.
  */
-export function createConvoy(scene, physics, heightAt, { s = 30, count = 3 } = {}) {
+export function createConvoy(scene, physics, heightAt, { s = 30, count = 3, leadCab = null } = {}) {
   const trucks = [];
-  for (let i = 0; i < count; i++) trucks.push(createTruck(scene, physics, i, placeOnRoad(Math.max(2, s - i * GAP), heightAt)));
+  for (let i = 0; i < count; i++) trucks.push(createTruck(scene, physics, i, placeOnRoad(Math.max(2, s - i * GAP), heightAt), i === 0 ? leadCab : null));
   const lead = trucks[0];
   const near = {};
 
