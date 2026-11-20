@@ -1,0 +1,214 @@
+{
+  "skeleton": {
+    "hash": "shanjiao-portrait",
+    "spine": "4.1.0",
+    "x": 0,
+    "y": 0,
+    "width": 777,
+    "height": 777,
+    "images": "../portraits/shanjiao/parts/",
+    "audio": ""
+  },
+  "bones": [
+    {
+      "name": "root",
+      "x": 2.5,
+      "y": 38,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "body",
+      "parent": "root",
+      "x": -10,
+      "y": 343,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "head",
+      "parent": "body",
+      "x": -69,
+      "y": 168,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "mane",
+      "parent": "head",
+      "x": 34,
+      "y": 103,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "left-arm",
+      "parent": "body",
+      "x": -211,
+      "y": 133,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "right-arm",
+      "parent": "body",
+      "x": 149,
+      "y": 158,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "left-leg",
+      "parent": "body",
+      "x": -83,
+      "y": -61,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    },
+    {
+      "name": "right-leg",
+      "parent": "body",
+      "x": 87,
+      "y": -60,
+      "rotation": 0,
+      "scaleX": 1,
+      "scaleY": 1
+    }
+  ],
+  "slots": [
+    {
+      "name": "left-leg",
+      "bone": "left-leg",
+      "attachment": "left-leg"
+    },
+    {
+      "name": "right-leg",
+      "bone": "right-leg",
+      "attachment": "right-leg"
+    },
+    {
+      "name": "left-forearm",
+      "bone": "left-arm",
+      "attachment": "left-forearm"
+    },
+    {
+      "name": "torso",
+      "bone": "body",
+      "attachment": "torso"
+    },
+    {
+      "name": "right-gauntlet",
+      "bone": "right-arm",
+      "attachment": "right-gauntlet"
+    },
+    {
+      "name": "stone-mane",
+      "bone": "mane",
+      "attachment": "stone-mane"
+    },
+    {
+      "name": "mask-and-beard",
+      "bone": "head",
+      "attachment": "mask-and-beard"
+    }
+  ],
+  "skins": [
+    {
+      "name": "default",
+      "attachments": {
+        "left-leg": {
+          "left-leg": {
+            "type": "region",
+            "x": -90,
+            "y": -146.5,
+            "rotation": 0,
+            "width": 266,
+            "height": 321,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "right-leg": {
+          "right-leg": {
+            "type": "region",
+            "x": 71.5,
+            "y": -142,
+            "rotation": 0,
+            "width": 259,
+            "height": 290,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "left-forearm": {
+          "left-forearm": {
+            "type": "region",
+            "x": -67.5,
+            "y": -143,
+            "rotation": 0,
+            "width": 195,
+            "height": 426,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "torso": {
+          "torso": {
+            "type": "region",
+            "x": -26,
+            "y": 5,
+            "rotation": 0,
+            "width": 552,
+            "height": 648,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "right-gauntlet": {
+          "right-gauntlet": {
+            "type": "region",
+            "x": 97.5,
+            "y": -133,
+            "rotation": 0,
+            "width": 287,
+            "height": 506,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "stone-mane": {
+          "stone-mane": {
+            "type": "region",
+            "x": 35,
+            "y": 38,
+            "rotation": 0,
+            "width": 248,
+            "height": 170,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        },
+        "mask-and-beard": {
+          "mask-and-beard": {
+            "type": "region",
+            "x": -15,
+            "y": 0.5,
+            "rotation": 0,
+            "width": 260,
+            "height": 305,
+            "scaleX": 1,
+            "scaleY": 1
+          }
+        }
+      }
+    }
+  ],
+  "animations": {}
+}

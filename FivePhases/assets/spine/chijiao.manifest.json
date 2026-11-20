@@ -1,0 +1,234 @@
+{
+  "portrait": "chijiao",
+  "name": "赤蛟",
+  "canvas": {
+    "width": 777,
+    "height": 777
+  },
+  "format": "PNG, RGBA8888, 像素尺寸与 size 完全一致，透明底",
+  "note": "独立 PNG 保持原尺寸。offset 是骨骼到轴心的偏移，rect 是图集取样矩形。",
+  "atlas": {
+    "width": 1024,
+    "height": 948
+  },
+  "anchor": [
+    388,
+    745
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "parent": null,
+      "at": [
+        388,
+        745
+      ]
+    },
+    {
+      "id": "body",
+      "parent": "root",
+      "at": [
+        386,
+        490
+      ]
+    },
+    {
+      "id": "head",
+      "parent": "body",
+      "at": [
+        278,
+        236
+      ]
+    },
+    {
+      "id": "mane",
+      "parent": "head",
+      "at": [
+        330,
+        170
+      ]
+    },
+    {
+      "id": "tail",
+      "parent": "body",
+      "at": [
+        610,
+        539
+      ]
+    },
+    {
+      "id": "left-arm",
+      "parent": "body",
+      "at": [
+        149,
+        399
+      ]
+    },
+    {
+      "id": "right-arm",
+      "parent": "body",
+      "at": [
+        236,
+        463
+      ]
+    }
+  ],
+  "parts": [
+    {
+      "order": 0,
+      "id": "tide-tail",
+      "file": "tide-tail.png",
+      "bone": "tail",
+      "layer": 0,
+      "size": [
+        227,
+        332
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        32.5,
+        43
+      ],
+      "rect": [
+        717,
+        3,
+        227,
+        332
+      ]
+    },
+    {
+      "order": 1,
+      "id": "far-claw",
+      "file": "far-claw.png",
+      "bone": "left-arm",
+      "layer": 1,
+      "size": [
+        124,
+        111
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -33,
+        -19.5
+      ],
+      "rect": [
+        648,
+        644,
+        124,
+        111
+      ]
+    },
+    {
+      "order": 2,
+      "id": "sea-mane",
+      "file": "sea-mane.png",
+      "bone": "mane",
+      "layer": 2,
+      "size": [
+        229,
+        250
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        77.5,
+        39
+      ],
+      "rect": [
+        413,
+        644,
+        229,
+        250
+      ]
+    },
+    {
+      "order": 3,
+      "id": "coiled-body",
+      "file": "coiled-body.png",
+      "bone": "body",
+      "layer": 3,
+      "size": [
+        708,
+        635
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        18,
+        -41.5
+      ],
+      "rect": [
+        3,
+        3,
+        708,
+        635
+      ]
+    },
+    {
+      "order": 4,
+      "id": "horned-head",
+      "file": "horned-head.png",
+      "bone": "head",
+      "layer": 4,
+      "size": [
+        404,
+        301
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -61,
+        -79.5
+      ],
+      "rect": [
+        3,
+        644,
+        404,
+        301
+      ]
+    },
+    {
+      "order": 5,
+      "id": "front-claw",
+      "file": "front-claw.png",
+      "bone": "right-arm",
+      "layer": 5,
+      "size": [
+        212,
+        102
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -43,
+        7
+      ],
+      "rect": [
+        778,
+        644,
+        212,
+        102
+      ]
+    }
+  ]
+}

@@ -4,9 +4,9 @@
 
 A 2D card battler over a match-three board, built on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). The top half is turn-based card combat with animated portraits; the bottom half is the board. Matching charges energy and drops new cards, and the bonds between cards change how you want to match. The five phases are at once the board's colours, five playstyles, and a bond network.
 
-**当前状态 · Status**：**可玩**。三关（山魈 → 赤蛟 → 混沌）、消除攒能量、30 张卡、五条羁绊、奖励三选一、胜负结算全部跑通；逻辑层 37 例 + 立绘往返 11 例测试全过。
+三关依次迎战山魈、赤蛟和混沌。战斗有 30 张卡、五行羁绊、奖励三选一以及胜败结算。四套矿彩立绘、标题画、战场画与原创音乐随游戏提供。
 
-Playable. Three stages, match-to-charge-energy, 30 cards, five bonds, pick-one-of-three rewards, win and lose all work. 37 logic tests and 11 rig round-trip tests pass.
+Play through three encounters with 30 cards, elemental bonds, pick-one-of-three rewards and a win or defeat screen. Four articulated portraits, illustrated screens and original music are bundled with the game.
 
 ## 目录 · What is here
 
@@ -16,9 +16,9 @@ Playable. Three stages, match-to-charge-energy, 30 cards, five bonds, pick-one-o
 | `index.html` / `style.css` | 页面与界面样式。画布画战场，DOM 画 HUD |
 | `src/main.mjs` | 入口：搭台、收输入、把事件表翻译成演出、走流程 |
 | `src/core/` | **纯逻辑，不 import 任何显示对象**。棋盘、卡牌、战斗状态机 |
-| `src/view/` | 表现层：棋盘视图、立绘绑定、粒子特效、演出队列、WebAudio 合成音 |
+| `src/view/` | 表现层：棋盘视图、立绘绑定、粒子特效、演出队列、Web Audio 配乐与音效 |
 | `src/ui/hud.mjs` | 血条、能量、手牌、步数、连锁、飘字（DOM） |
-| `src/portrait/` | 立绘部件清单 + Spine 双向转换 |
+| `src/portrait/` | 贴图骨架清单与 Spine 导出 |
 | `test/` | 逻辑层测试，`node --test` 直接跑，不需要浏览器 |
 | `tools/` | 立绘预览、Spine 导出、无头浏览器探针 |
 | `vendor/` | 本作自带的一份引擎（与 LanternShadows 一致，每个 Demo 各带一份） |
@@ -32,17 +32,15 @@ npx serve .            # 或 python -m http.server，起在仓库根目录
 
 **必须走 HTTP**：`type="importmap"` 与 ES module 在 `file://` 下都不工作。
 
-测试与工具：
+### 测试与美术工具
 
 ```bash
-node --test FivePhases/test/battle.test.mjs FivePhases/test/board.test.mjs   # 37
-node --test FivePhases/src/portrait/spine.test.mjs                            # 11
-node --test FivePhases/src/view/portrait.test.mjs                             # 6
-node FivePhases/tools/spine-export.mjs     # → assets/spine/*.skeleton.json + *.manifest.json
-node FivePhases/tools/parts-table.mjs      # → docs/PORTRAIT-PARTS.md
+node --test FivePhases/test/*.test.mjs FivePhases/src/portrait/*.test.mjs FivePhases/src/view/*.test.mjs
+node FivePhases/tools/spine-export.mjs
+node FivePhases/tools/parts-table.mjs
 ```
 
-无头自查（AI 没有眼睛，用这个代替）：
+浏览器诊断：
 
 ```bash
 node FivePhases/tools/probe.mjs --url http://127.0.0.1:8123/FivePhases/ \
@@ -69,26 +67,19 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
    （判定）                     （演出）
 ```
 
-好处是判定和演出可以分别改、分别测：棋盘逻辑的 37 个测试在 Node 里跑，一帧都不用画。
+好处是判定和演出可以分别改、分别测：棋盘逻辑的测试在 Node 里跑，一帧都不用画。
 代价是事件表要设计得足够细——`clearStep`、`fall`、`energy`、`damage` 各是一条，
 少一条表现层就得去猜。
 
-## 立绘为什么是代码画的 · Why the portraits are drawn in code
+## 立绘、界面与音频
 
-一开始打算用 AI 生成整张立绘，验证过可行（透明底、1024×1536 RGBA 正常）。但整张位图**拆不出骨骼**，等于把演出能力锁死——而这个 Demo 的卖点之一就是立绘要能动。
+四个角色使用同一套矿彩墨绘风格。每套都保存完整 `master.webp`、可编辑的透明部件、图集与关节清单。关节负责变换，独立绘制顺序保留头发、衣袍、持械手与护甲的层叠关系。游戏在白鹭 WebGL2 直接渲染这些部件。
 
-所以改成：先用代码按 Spine 的槽位结构画出占位件，把**骨骼、层序、尺寸、轴心、旋转**这五样定死，写成一份部件清单。这份清单就是合同：
+查看 [30 个部件和 Spine 接入步骤](docs/PORTRAIT-PARTS.md)。预览页可切换四套骨架，并显示关节和轴心。标题与战斗的插画位于 `assets/art/`。素材与生成记录见 [美术与音频来源](docs/ART-SOURCES.md)。
 
-```
-部件清单 ──现在：代码画形状，能跑能演能调
-        └─将来：只填 image 字段，换成真美术，骨骼与动画一行不改
-```
+配乐随标题与三场战斗切换，覆盖战斗结果时淡出。音效按换位、消除、连锁、出牌、受击、奖励及结算触发。浏览器在第一次有效点击或触控后启用声音，静音设定在本机保留。
 
-将来要提升画面品质，照 `assets/spine/<角色>.manifest.json` 里的 `size` 一张张出 PNG 就行，轴心位置已经写在 `pivot` 里，图集由打包器出。skeleton.json 不用动。
-
-绑定时有一处必须说清楚：**骨骼树只管变换，不管绘制顺序**。把部件直接挂在各自骨下看着很自然，但那样真正的顺序是骨骼树的深度优先遍历，`layer` 只决定同一根骨下几个部件的先后——子骨永远排在父骨自己的部件之前。踩到的结果是清单里 `blade` 写着 19、`robe` 写着 9，屏幕上整把刀被身体挡住，近侧手臂也藏在袍子里。所以部件放在一个平层里按 `layer` 排，骨骼只提供世界变换，改完骨骼调一次 `sync()`。`src/view/portrait.test.mjs` 钉住了这条：刀必须在袍子之后、近手在前远手在后、转肩骨刀要跟着走。
-
-## 给引擎的三个实测结论 · Three findings for the engine
+## 前期矢量版的引擎测量 · Earlier vector-rendering measurements
 
 这个仓库是 Egret Rebuild 的玩法验证场，每个游戏都是一次"用真实玩法压测引擎某条路径"的实验。本作压的是 2D 共享渲染在高频重绘下的表现，撞到两件事：
 
@@ -113,7 +104,5 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 
 ## 未做的部分 · Not done yet
 
-- 水 / 木 / 金 / 土四个角色的立绘清单（现在只有火）
 - 关间地图与事件节点（现在是固定三关）
 - 存档与卡组成长（奖励只在单局内有效）
-- 真机手感实测（`tools/feel-test.mjs` 还没写，需要连着安卓设备）

@@ -1,0 +1,234 @@
+{
+  "portrait": "hundun",
+  "name": "混沌",
+  "canvas": {
+    "width": 777,
+    "height": 777
+  },
+  "format": "PNG, RGBA8888, 像素尺寸与 size 完全一致，透明底",
+  "note": "独立 PNG 保持原尺寸。offset 是骨骼到轴心的偏移，rect 是图集取样矩形。",
+  "atlas": {
+    "width": 1024,
+    "height": 1370
+  },
+  "anchor": [
+    397,
+    733
+  ],
+  "bones": [
+    {
+      "id": "root",
+      "parent": null,
+      "at": [
+        397,
+        733
+      ]
+    },
+    {
+      "id": "body",
+      "parent": "root",
+      "at": [
+        418,
+        460
+      ]
+    },
+    {
+      "id": "head",
+      "parent": "body",
+      "at": [
+        278,
+        324
+      ]
+    },
+    {
+      "id": "mane",
+      "parent": "body",
+      "at": [
+        437,
+        202
+      ]
+    },
+    {
+      "id": "left-arm",
+      "parent": "body",
+      "at": [
+        122,
+        420
+      ]
+    },
+    {
+      "id": "right-arm",
+      "parent": "body",
+      "at": [
+        472,
+        418
+      ]
+    },
+    {
+      "id": "tail",
+      "parent": "body",
+      "at": [
+        656,
+        484
+      ]
+    }
+  ],
+  "parts": [
+    {
+      "order": 0,
+      "id": "ink-mane",
+      "file": "ink-mane.png",
+      "bone": "mane",
+      "layer": 0,
+      "size": [
+        560,
+        305
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        46,
+        -10.5
+      ],
+      "rect": [
+        3,
+        1062,
+        560,
+        305
+      ]
+    },
+    {
+      "order": 1,
+      "id": "rear-haunch",
+      "file": "rear-haunch.png",
+      "bone": "tail",
+      "layer": 1,
+      "size": [
+        178,
+        387
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        28,
+        10.5
+      ],
+      "rect": [
+        485,
+        560,
+        178,
+        387
+      ]
+    },
+    {
+      "order": 2,
+      "id": "obsidian-body",
+      "file": "obsidian-body.png",
+      "bone": "body",
+      "layer": 2,
+      "size": [
+        608,
+        551
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -25,
+        -45.5
+      ],
+      "rect": [
+        3,
+        3,
+        608,
+        551
+      ]
+    },
+    {
+      "order": 3,
+      "id": "left-grip",
+      "file": "left-grip.png",
+      "bone": "left-arm",
+      "layer": 3,
+      "size": [
+        209,
+        422
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -4.5,
+        103
+      ],
+      "rect": [
+        270,
+        560,
+        209,
+        422
+      ]
+    },
+    {
+      "order": 4,
+      "id": "ritual-mask",
+      "file": "ritual-mask.png",
+      "bone": "head",
+      "layer": 4,
+      "size": [
+        349,
+        520
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -21.5,
+        -13
+      ],
+      "rect": [
+        617,
+        3,
+        349,
+        520
+      ]
+    },
+    {
+      "order": 5,
+      "id": "right-grip",
+      "file": "right-grip.png",
+      "bone": "right-arm",
+      "layer": 5,
+      "size": [
+        261,
+        496
+      ],
+      "pivot": [
+        0.5,
+        0.5
+      ],
+      "rotation": 0,
+      "offset": [
+        -14.5,
+        87
+      ],
+      "rect": [
+        3,
+        560,
+        261,
+        496
+      ]
+    }
+  ]
+}

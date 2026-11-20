@@ -23,7 +23,12 @@ export function cascadeTempo(events) {
   return (chain) => (chain > 2 && chain < last ? middleScale : 1);
 }
 
-export function createBoardView({ battle, Sprite, scope, layer, geometry }) {
+function paintVectorTile(sprite, options) {
+  sprite.graphics.clear();
+  drawTile(sprite.graphics, options);
+}
+
+export function createBoardView({ battle, Sprite, scope, layer, geometry, paintTile = paintVectorTile }) {
   const { x, y, cell } = geometry;
   const board = battle.board;
   const sprites = new Array(board.size * board.size).fill(null);
@@ -35,13 +40,12 @@ export function createBoardView({ battle, Sprite, scope, layer, geometry }) {
   });
 
   function paint(sprite, kind, special) {
-    sprite.graphics.clear();
     if (kind === EMPTY) {
       sprite.visible = false;
       return;
     }
     sprite.visible = true;
-    drawTile(sprite.graphics, { kind, special, size });
+    paintTile(sprite, { kind, special, size });
   }
 
   // 方块走对象池。一场战斗会消掉上千个方块，每次都 new 一个 Sprite 的话，

@@ -13,20 +13,21 @@
 // 演出是串行的：队列非空时锁输入。玩家连点会把几段演出叠在一起，
 // 画面立刻变成一团乱麻（设计文档 10.2）。
 
-import { DisplayObjectContainer, Sprite } from '@egret/engine';
+import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createBrowserGame } from '@egret/engine/web/game';
 
 import { BONDS, ENEMIES, addCard, canPlay, createBattle, endTurn, playCard, previewSwap, rewardChoices, swapAndSettle } from './core/battle.mjs';
 import { ELEMENT_INFO, ELEMENT_ORDER, STARTER_DECK } from './core/cards.mjs';
-import { portraitById } from './portrait/index.mjs';
-import { createHud } from './ui/hud.mjs';
+import { ATLAS_PORTRAITS, loadPortraitAtlas } from './portrait/atlas.mjs';
+import { cardMarkup, createHud } from './ui/hud.mjs';
 import { createAudio } from './view/audio.mjs';
 import { cascadeTempo, createBoardView } from './view/board-view.mjs';
-import { PALETTE, drawEnemy } from './view/draw.mjs';
+import { PALETTE } from './view/draw.mjs';
 import { createFx } from './view/fx.mjs';
 import { BOARD, ENEMY_SPOT, ENERGY_SLOTS, HERO_SPOT, STAGE, cellCentre } from './view/layout.mjs';
 import { buildPortrait } from './view/portrait.mjs';
 import { createSequence, ease } from './view/sequence.mjs';
+import { createTilePainter } from './view/tile-atlas.mjs';
 
 const $ = (id) => document.getElementById(id);
 
@@ -35,6 +36,11 @@ const stageBox = $('stage-box');
 const hudRoot = $('hud');
 const touch = $('board-touch');
 const rewardsEl = $('rewards');
+const startButton = $('start');
+const muteButton = $('mute');
+startButton.disabled = true;
+const startLabel = startButton.textContent;
+startButton.textContent = '正在备阵…';
 
 const audio = createAudio();
 const sequence = createSequence();
@@ -52,9 +58,14 @@ let view = null;
 let hud = null;
 let fx = null;
 let hero = null;
+let enemy = null;
 let enemySprite = null;
+const enemyRigs = new Map();
+const heroMotion = { attack: 0, recoil: 0 };
+const enemyMotion = { attack: 0, recoil: 0 };
 let world = null;
 let boardLayer = null;
+let paintTile = null;
 let fxLayer = null;
 let flashLayer = null;
 /** 引擎的 Scope：所有显示对象都登记在它下面，关页面时统一回收。 */
@@ -67,7 +78,6 @@ let run = null;
 /** 覆盖层锁：'title' / 'reward' / 'over' / 'pending' / null。非 null 时输入全关。 */
 let lock = 'title';
 
-const heroBase = { holderX: 0, holderY: 0, shoulderNear: 0, chestY: 0, headY: 0 };
 let clock = 0;
 
 // ── 屏幕适配 ────────────────────────────────────────────────────
@@ -91,63 +101,15 @@ function placeTouchLayer() {
 
 // ── 背景 ────────────────────────────────────────────────────────
 function paintBackdrop(g) {
-  g.beginLinearGradientFill(0, 0, 0, STAGE.height, [
-    { offset: 0, color: 0x1b2433 },
-    { offset: 0.34, color: 0x121a25 },
-    { offset: 0.72, color: 0x0c1119 },
-    { offset: 1, color: 0x070a0e },
-  ]);
-  g.drawRect(0, 0, STAGE.width, STAGE.height);
-  g.endFill();
-
-  // 敌后一轮冷月：给上方一个视觉重心，也让立绘的剪影有东西衬
-  g.beginRadialGradientFill(ENEMY_SPOT.x, ENEMY_SPOT.y - 20, 250, [
-    { offset: 0, color: 0x40628a, alpha: 0.55 },
-    { offset: 0.55, color: 0x2a3f5c, alpha: 0.22 },
-    { offset: 1, color: 0x0d1420, alpha: 0 },
-  ]);
-  g.drawCircle(ENEMY_SPOT.x, ENEMY_SPOT.y - 20, 250);
-  g.endFill();
-
-  // 我方一侧的暖光，和上方的冷月对照
-  g.beginRadialGradientFill(HERO_SPOT.x, HERO_SPOT.y - 60, 210, [
-    { offset: 0, color: 0x8a4a2a, alpha: 0.34 },
-    { offset: 1, color: 0x0d1420, alpha: 0 },
-  ]);
-  g.drawCircle(HERO_SPOT.x, HERO_SPOT.y - 60, 210);
-  g.endFill();
-
-  // 地平线：把敌人"放在地上"。我方那条不画——立绘的脚被手牌挡住，
-  // 画在胯高会变成一道横穿大腿的线。
-  g.lineStyle(1.5, 0x2c3947, 0.55);
-  g.moveTo(0, ENEMY_SPOT.y + 108).lineTo(STAGE.width, ENEMY_SPOT.y + 108);
-
-  // 脚下的影子。没有影子，敌人就是贴纸浮在半空
-  g.beginFill(0x000000, 0.32);
-  g.drawEllipse(ENEMY_SPOT.x - 110, ENEMY_SPOT.y + 108, 220, 34);
-  g.endFill();
-
-  // 棋盘底盘
+  g.beginFill(0x080705, 0.52).drawEllipse(360, 309, 318, 36).endFill();
   const side = BOARD.cell * BOARD.size;
-  g.beginFill(0x090d13, 0.92);
-  g.drawRoundRect(BOARD.x - 16, BOARD.y - 16, side + 32, side + 32, 30);
-  g.endFill();
-  g.lineStyle(2, 0x2c3947, 0.9);
-  g.drawRoundRect(BOARD.x - 16, BOARD.y - 16, side + 32, side + 32, 30);
-  g.lineStyle(1, 0x1b242f, 0.9);
-  g.drawRoundRect(BOARD.x - 6, BOARD.y - 6, side + 12, side + 12, 22);
-
-  // 手牌托底：一条从棋盘到屏幕底部的暗带，让卡面浮起来
-  g.beginLinearGradientFill(0, 640, 0, 840, [
-    { offset: 0, color: 0x0a0e14, alpha: 0 },
-    { offset: 1, color: 0x0a0e14, alpha: 0.75 },
-  ]);
-  g.drawRect(0, 640, STAGE.width, 200);
-  g.endFill();
+  g.beginFill(0x41352a, 0.96).drawRoundRect(BOARD.x - 15, BOARD.y - 15, side + 30, side + 30, 28).endFill();
+  g.beginFill(0x9b7950, 0.86).drawRoundRect(BOARD.x - 11, BOARD.y - 11, side + 22, side + 22, 22).endFill();
+  g.beginFill(0x11191b, 0.98).drawRoundRect(BOARD.x - 8, BOARD.y - 8, side + 16, side + 16, 18).endFill();
 }
 
 // ── 搭台 ────────────────────────────────────────────────────────
-function buildScene(game) {
+function buildScene(game, atlases) {
   const { stage, scope } = game;
 
   // 背景和整屏闪光固定在舞台上，避免震屏把贴边三角形裁成极细的碎片。
@@ -156,20 +118,17 @@ function buildScene(game) {
   world = stage.addChild(scope.use(new DisplayObjectContainer()));
 
   const enemyLayer = world.addChild(scope.use(new DisplayObjectContainer()));
-  enemySprite = enemyLayer.addChild(scope.use(new Sprite()));
-  enemySprite.x = ENEMY_SPOT.x;
-  enemySprite.y = ENEMY_SPOT.y;
+  for (const id of ENEMIES.map((entry) => entry.id)) {
+    const rig = buildPortrait({ ...atlases.get(id), Bitmap, Sprite, scope });
+    rig.holder.visible = false;
+    enemyLayer.addChild(rig.holder);
+    enemyRigs.set(id, rig);
+  }
 
   const heroLayer = world.addChild(scope.use(new DisplayObjectContainer()));
-  hero = buildPortrait({ portrait: portraitById('fire'), Sprite, scope });
+  hero = buildPortrait({ ...atlases.get('fire'), Bitmap, Sprite, scope });
   heroLayer.addChild(hero.holder);
-  hero.place(HERO_SPOT.x, HERO_SPOT.y, HERO_SPOT.scale);
-
-  heroBase.holderX = hero.holder.x;
-  heroBase.holderY = hero.holder.y;
-  heroBase.shoulderNear = hero.bones.get('shoulder-near').rotation;
-  heroBase.chestY = hero.bones.get('chest').y;
-  heroBase.headY = hero.bones.get('head').y;
+  hero.place(HERO_SPOT.x, HERO_SPOT.y, HERO_SPOT.width / hero.width);
 
   boardLayer = world.addChild(scope.use(new DisplayObjectContainer()));
   fxLayer = world.addChild(scope.use(new DisplayObjectContainer()));
@@ -180,13 +139,16 @@ function buildScene(game) {
 // ── 一局的开始与结束 ────────────────────────────────────────────
 
 function paintEnemy(id) {
-  enemySprite.graphics.clear();
-  drawEnemy(enemySprite.graphics, { kind: id, w: ENEMY_SPOT.width, h: ENEMY_SPOT.height });
-  enemySprite.x = ENEMY_SPOT.x;
-  enemySprite.y = ENEMY_SPOT.y;
-  enemySprite.scaleX = 1;
-  enemySprite.scaleY = 1;
+  if (enemy) enemy.holder.visible = false;
+  enemy = enemyRigs.get(id);
+  enemySprite = enemy.holder;
+  const { x, y, width } = ENEMY_SPOT.placement[id];
+  enemy.place(x, y, width / enemy.width);
   enemySprite.alpha = 1;
+  enemySprite.visible = true;
+  enemyMotion.attack = enemyMotion.recoil = 0;
+  heroMotion.attack = heroMotion.recoil = 0;
+  hero.place(HERO_SPOT.x, HERO_SPOT.y, HERO_SPOT.width / hero.width);
 }
 
 function startBattle(index) {
@@ -208,9 +170,11 @@ function startBattle(index) {
     scope: gameScope,
     layer: boardLayer,
     geometry: { x: BOARD.x, y: BOARD.y, cell: BOARD.cell },
+    paintTile,
   });
 
   paintEnemy(battle.enemy.id);
+  if (lock !== 'title') audio.setScene(battle.enemy.id);
   hud.resetHand();
   hud.render(battle);
   hud.banner(`${battle.enemy.name}　${battle.enemy.title}`, 1700);
@@ -218,6 +182,7 @@ function startBattle(index) {
 
 /** 三个覆盖层收在一处开关，免得某条路径漏关一个，界面就卡死了。 */
 function setOverlayVisible(id, visible) {
+  if (visible) hud?.closeDetails();
   const overlay = $(id);
   overlay.inert = !visible;
   overlay.classList.toggle('is-on', visible);
@@ -241,9 +206,11 @@ function endOfBattle() {
     run.heroHp = Math.max(1, Math.round(battle.hero.hp));
     lock = 'pending';
     // 敌人散掉
+    const originalScale = enemySprite.scaleX;
     sequence.tween(420, (t) => {
       enemySprite.alpha = 1 - t;
-      enemySprite.scaleX = enemySprite.scaleY = 1 + 0.14 * t;
+      enemySprite.scaleX = enemySprite.scaleY = originalScale * (1 + 0.11 * t);
+      enemySprite.visible = enemySprite.alpha > 0.02;
     });
     sequence.call(() => {
       fx.burst(ENEMY_SPOT.x, ENEMY_SPOT.y, null, 24);
@@ -274,6 +241,7 @@ function showReward() {
     button.style.setProperty('--deep', ELEMENT_INFO[card.element].deep);
     button.innerHTML = cardMarkup(card);
     button.addEventListener('click', () => {
+      audio.reward();
       run.extra.push(card.id);
       addCard(battle, card);
       nextBattle();
@@ -292,6 +260,8 @@ function nextBattle() {
 
 function showOver(result) {
   lock = 'over';
+  audio.setScene(null);
+  $('overlay-over').dataset.outcome = result;
   $('over-kicker').textContent = result === 'win' ? '阵成' : '阵破';
   $('over-title').textContent = result === 'win' ? '三关皆破' : '倒下了';
   $('over-text').textContent =
@@ -299,14 +269,6 @@ function showOver(result) {
       ? `三关全破，剩余气血 ${Math.round(battle.hero.hp)}，最高连锁 ${run.bestChain} 层。`
       : `倒在第 ${run.index + 1} 关·${battle.enemy.name}，最高连锁 ${run.bestChain} 层。`;
   setOverlayVisible('overlay-over', true);
-}
-
-function cardMarkup(card) {
-  const info = ELEMENT_INFO[card.element];
-  return `<span class="card-cost">${card.cost}</span>
-    <span class="card-name">${card.name}</span>
-    <span class="card-elem">${info.name}</span>
-    <span class="card-text">${card.text.replaceAll('\n', '<br>')}</span>`;
 }
 
 // ── 锁 ──────────────────────────────────────────────────────────
@@ -391,10 +353,8 @@ function play(events) {
         break;
 
       case 'cast':
-        sequence.call(() => {
-          audio.cast(Boolean(event.card.ult));
-          heroCast();
-        });
+        sequence.call(() => audio.cast(Boolean(event.card.ult)));
+        queueStrike(hero, heroMotion, 27, 94, 178);
         break;
 
       case 'echo':
@@ -517,11 +477,8 @@ const enemyFloat = () => ({ x: ENEMY_SPOT.x, y: ENEMY_SPOT.y - 30 });
 
 function playDamage(event) {
   const toHero = event.to === 'hero';
-
-  // 打敌人时的前顶动作由 cast 事件负责，这里只管挨打的那一下
-  if (toHero) sequence.call(() => enemyStrike());
-
-  sequence.call(() => {
+  const impact = () => {
+    (toHero ? heroMotion : enemyMotion).recoil = 1;
     if (event.amount > 0) {
       hud.floater(`-${event.amount}`, { ...(toHero ? heroFloat() : enemyFloat()), kind: 'damage' });
     }
@@ -536,55 +493,31 @@ function playDamage(event) {
       fx.ring(ENEMY_SPOT.x, ENEMY_SPOT.y, PALETTE.gold, event.crit ? 150 : 100);
     }
     hud.render(battle);
-  });
+  };
+  if (toHero) queueStrike(enemy, enemyMotion, -70, 125, 214, impact);
+  else sequence.call(impact);
   // 一小段顿帧。伤害数字要"落地"才有力，但太长会让连消变得拖沓
   sequence.wait(80);
 }
 
 // ── 两个角色的动作 ──────────────────────────────────────────────
 
-/** 我方出牌：整个人往前一顶，肩一沉，刀就劈出去了。 */
-function heroCast() {
-  const base = heroBase.holderX;
-  const shoulder = heroBase.shoulderNear;
-  const arm = hero.bones.get('shoulder-near');
-  sequence.tween(90, (t) => {
-    hero.holder.x = base + 26 * t;
-    arm.rotation = shoulder - 34 * t;
-  }, { ease: ease.outQuad });
-  sequence.tween(190, (t) => {
-    hero.holder.x = base + 26 * (1 - t);
-    arm.rotation = shoulder - 34 * (1 - t);
-  }, { ease: ease.outQuad });
+/** 位移和关节幅度沿同一个时间轴。 */
+function queueStrike(rig, motion, travel, advance, recover, onImpact) {
+  let home;
+  sequence.call(() => { home = rig.holder.x; });
+  const apply = (amount) => {
+    rig.holder.x = home + travel * amount;
+    motion.attack = amount;
+  };
+  sequence.tween(advance, apply, { ease: ease.inQuad });
+  if (onImpact) sequence.call(onImpact);
+  sequence.tween(recover, (t) => apply(1 - t), { ease: ease.outQuad });
 }
 
-/** 敌人出手：往前压过来，再退回去。 */
-function enemyStrike() {
-  const base = ENEMY_SPOT.x;
-  sequence.tween(130, (t) => {
-    enemySprite.x = base - 86 * t;
-    enemySprite.scaleX = enemySprite.scaleY = 1 + 0.09 * t;
-  }, { ease: ease.inQuad });
-  sequence.tween(230, (t) => {
-    enemySprite.x = base - 86 * (1 - t);
-    enemySprite.scaleX = enemySprite.scaleY = 1.09 - 0.09 * t;
-  }, { ease: ease.outQuad });
-}
-
-/** 待机：呼吸、甩发、裙摆。幅度要小，大了像抽筋。 */
-function idle(t) {
-  const bones = hero.bones;
-  bones.get('chest').y = heroBase.chestY + Math.sin(t * 1.5) * 3.5;
-  bones.get('head').y = heroBase.headY + Math.sin(t * 1.5 + 0.5) * 2.2;
-  bones.get('hair-tail').rotation = Math.sin(t * 1.1) * 3.5;
-  bones.get('hair-lock-l').rotation = Math.sin(t * 1.35 + 0.7) * 2.6;
-  bones.get('hair-lock-r').rotation = Math.sin(t * 1.25 + 1.4) * 2.4;
-  bones.get('skirt-l').rotation = Math.sin(t * 1.05) * 1.8;
-  bones.get('skirt-r').rotation = -Math.sin(t * 1.05) * 1.8;
-
-  if (enemySprite.alpha > 0) {
-    enemySprite.y = ENEMY_SPOT.y + Math.sin(t * 1.2) * 6;
-  }
+function posePortrait(rig, motion, dt) {
+  motion.recoil = Math.max(0, motion.recoil - dt * 5.5);
+  if (rig.holder.visible) rig.pose(clock, motion.attack, motion.recoil);
 }
 
 // ── 操作 ────────────────────────────────────────────────────────
@@ -671,7 +604,6 @@ function isNeighbour(a, b) {
 
 function bindTouch(game) {
   touch.addEventListener('pointerdown', (event) => {
-    audio.unlock();
     if (locked()) return;
     const point = game.toStage(event.clientX, event.clientY);
     const cell = view.cellAt(point.x, point.y);
@@ -731,7 +663,10 @@ function bindTouch(game) {
     drag = null;
     select(cell);
   };
-  touch.addEventListener('pointerup', finish);
+  touch.addEventListener('pointerup', () => {
+    audio.unlock();
+    finish();
+  });
   touch.addEventListener('pointercancel', finish);
 }
 
@@ -773,6 +708,7 @@ async function boot() {
     width: STAGE.width,
     height: STAGE.height,
     clearColor: 0x080b10,
+    clearAlpha: 0,
     pixelRatio: Math.min(2, Math.max(1, window.devicePixelRatio || 1)),
     backend: 'webgl2',
     fit: 'contain',
@@ -787,30 +723,47 @@ async function boot() {
   runtime = game;
   gameScope = game.scope;
 
-  buildScene(game);
+  // 白鹭的 PNG 提供器一次最多接收四个任务。棋子载入后再并发解码角色。
+  const tileTexture = await game.loadTexture(new URL('../assets/art/tiles.png', import.meta.url).href);
+  const loadedPortraits = await Promise.all(ATLAS_PORTRAITS.map((id) => loadPortraitAtlas(game, id)));
+  paintTile = createTilePainter({ Bitmap, scope: gameScope, textureLease: tileTexture });
+  const atlases = new Map(loadedPortraits.map((data) => [data.portrait.id, data]));
+  buildScene(game, atlases);
 
   hud = createHud({ root: hudRoot, onCard: tryPlay, onEndTurn: tryEndTurn });
 
   // 先摆一局出来当封面：标题页背后是一张真棋盘，不是一张图
   run = { index: 0, heroHp: 1000, extra: [], bestChain: 0 };
   startBattle(0);
+  audio.setScene('title');
 
   bindTouch(game);
+  const title = $('overlay-title');
+  title.addEventListener('pointerup', audio.unlock, { once: true });
+  title.addEventListener('keydown', audio.unlock, { once: true });
 
-  $('start').addEventListener('click', () => {
+  const start = () => {
     audio.unlock();
+    audio.ui();
     beginRun();
+  };
+  startButton.addEventListener('click', start);
+  $('skip-reward').addEventListener('click', () => {
+    audio.ui();
+    nextBattle();
   });
+  $('restart').addEventListener('click', start);
 
-  $('skip-reward').addEventListener('click', nextBattle);
-
-  $('restart').addEventListener('click', beginRun);
-
-  $('mute').addEventListener('click', () => {
+  const syncMute = () => {
+    muteButton.setAttribute('aria-pressed', String(audio.muted));
+    muteButton.setAttribute('aria-label', audio.muted ? '恢复声音' : '静音');
+    muteButton.textContent = audio.muted ? '静' : '音';
+  };
+  syncMute();
+  muteButton.addEventListener('click', () => {
     audio.unlock();
-    const muted = audio.toggleMute();
-    $('mute').setAttribute('aria-pressed', String(muted));
-    $('mute').textContent = muted ? '静' : '音';
+    audio.toggleMute();
+    syncMute();
   });
 
   const resize = () => {
@@ -879,6 +832,8 @@ async function boot() {
   };
 
   game.loop.start();
+  startButton.textContent = startLabel;
+  startButton.disabled = false;
 }
 
 let updateFaults = 0;
@@ -892,7 +847,8 @@ function update(seconds) {
   try {
     sequence.update(dt);
     fx.update(dt);
-    idle(clock);
+    posePortrait(hero, heroMotion, dt);
+    posePortrait(enemy, enemyMotion, dt);
   } catch (error) {
     updateFaults += 1;
     if (updateFaults < 4) console.error(error);
@@ -900,4 +856,9 @@ function update(seconds) {
   }
 }
 
-boot().catch(report);
+boot().catch((cause) => {
+  report(cause);
+  startButton.textContent = '重新加载';
+  startButton.disabled = false;
+  startButton.addEventListener('click', () => window.location.reload(), { once: true });
+});

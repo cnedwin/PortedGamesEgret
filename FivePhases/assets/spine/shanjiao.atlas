@@ -1,0 +1,20 @@
+../portraits/shanjiao/atlas.png
+size: 1024,1262
+format: RGBA8888
+filter: Linear,Linear
+repeat: none
+pma: false
+left-leg
+  bounds: 204,657,266,321
+right-leg
+  bounds: 742,657,259,290
+left-forearm
+  bounds: 3,657,195,426
+torso
+  bounds: 3,3,552,648
+right-gauntlet
+  bounds: 561,3,287,506
+stone-mane
+  bounds: 3,1089,248,170
+mask-and-beard
+  bounds: 476,657,260,305
