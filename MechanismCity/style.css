@@ -1,0 +1,6 @@
+/* The page is the canvas and nothing else: every control is drawn by the engine. */
+html, body { margin: 0; height: 100%; background: #0d1418; overflow: hidden; overscroll-behavior: none; }
+body { touch-action: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; }
+#frame { position: fixed; inset: 0; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); box-sizing: border-box; }
+#stage { display: block; outline: none; }
+noscript { position: fixed; inset: 0; display: grid; place-items: center; color: #e8dcc0; font: 16px/1.6 sans-serif; }

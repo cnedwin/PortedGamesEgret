@@ -1,0 +1,98 @@
+[
+  {
+    "id": "l01",
+    "title": "初试机弩",
+    "en": "First Bolt",
+    "file": "l01.tmj",
+    "par": 1,
+    "pellets": 3
+  },
+  {
+    "id": "l02",
+    "title": "推木入槽",
+    "en": "Into the Slot",
+    "file": "l02.tmj",
+    "par": 1,
+    "pellets": 3
+  },
+  {
+    "id": "l03",
+    "title": "断绳落石",
+    "en": "Cut the Rope",
+    "file": "l03.tmj",
+    "par": 1,
+    "pellets": 3
+  },
+  {
+    "id": "l04",
+    "title": "跷板飞木",
+    "en": "The Seesaw",
+    "file": "l04.tmj",
+    "par": 1,
+    "pellets": 3
+  },
+  {
+    "id": "l05",
+    "title": "破箱滚石",
+    "en": "Splinters",
+    "file": "l05.tmj",
+    "par": 1,
+    "pellets": 3
+  },
+  {
+    "id": "l06",
+    "title": "弹簧高台",
+    "en": "Spring Board",
+    "file": "l06.tmj",
+    "par": 1,
+    "pellets": 3
+  },
+  {
+    "id": "l07",
+    "title": "踏板开闸",
+    "en": "The Floodgate",
+    "file": "l07.tmj",
+    "par": 2,
+    "pellets": 4
+  },
+  {
+    "id": "l08",
+    "title": "双锁",
+    "en": "Twin Locks",
+    "file": "l08.tmj",
+    "par": 2,
+    "pellets": 4
+  },
+  {
+    "id": "l09",
+    "title": "雷丸",
+    "en": "Thunder Pellet",
+    "file": "l09.tmj",
+    "par": 1,
+    "pellets": 3
+  },
+  {
+    "id": "l10",
+    "title": "连环机",
+    "en": "Chain Reaction",
+    "file": "l10.tmj",
+    "par": 2,
+    "pellets": 4
+  },
+  {
+    "id": "l11",
+    "title": "登高",
+    "en": "The Tower",
+    "file": "l11.tmj",
+    "par": 1,
+    "pellets": 3
+  },
+  {
+    "id": "l12",
+    "title": "机枢之心",
+    "en": "Heart of the Machine",
+    "file": "l12.tmj",
+    "par": 3,
+    "pellets": 5
+  }
+]
