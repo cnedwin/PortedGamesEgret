@@ -1,5 +1,7 @@
 # JY · 金庸群侠传致敬 Demo
 
+## 简介 · Introduction
+
 JY 是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的武侠网页游戏 Demo，向《金庸群侠传》、智冠公司和金庸先生致敬。游戏包含地图探索、剧情对白、队友招募、经典回合制战斗和浏览器存档。
 
 JY is an independently developed wuxia browser game demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). It pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. The game features exploration, story dialogue, companion recruitment, classic turn-based combat, and browser saves.
@@ -72,3 +74,37 @@ node --test
 Rights to the original works and artwork belong to their respective holders. Distributed artwork, engine files, and third-party components retain their copyright and license notices.
 
 [素材来源与许可 · Asset sources and licenses](ASSETS.md)
+
+## 玩法与操作 · How to play
+
+（待补 · To be written）
+
+## 引擎能力对照表 · Engine capabilities
+
+（待补 · To be written）
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 未完成 · Unfinished
+
+（待补 · To be written）
+
+## 目录结构 · Layout
+
+（待补 · To be written）
+
+## 引擎副本 · Engine copy
+
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `66437553eaf415be3bc91171ba8d1ededd97d3c9`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `66437553eaf415be3bc91171ba8d1ededd97d3c9`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

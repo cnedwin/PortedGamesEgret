@@ -1,5 +1,7 @@
 # Snow at the Mountain Temple · 风雪山神庙
 
+## 简介 · Introduction
+
 风雪山神庙是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的俯视角 3D 动作游戏 Demo，取材《水浒传》第十回。草料场起了火，林冲提着花枪、挑着酒葫芦，穿过烧剩的草料场上山神庙；陆谦在庙前等着他。一个场景、两拨庄客、一场分两段的首领战，单机，电脑和手机都能玩；通关之后还有一重重添规则的山路，和一场守草料场的车轮战。
 
 Snow at the Mountain Temple is an independently developed top-down 3D action demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), from chapter ten of *Water Margin*. The fodder yard is on fire; Lin Chong, spear in hand and wine gourd on its shaft, goes up through what is left of the yard to the Mountain God's temple, where Lu Qian is waiting. One place, two parties of hired men and a boss fight in two parts; single-player, on desktop and on phones. After the first clear there is a climb of tiers that each add a rule, and a stand in the yard against wave after wave.
@@ -148,3 +150,35 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 `vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。它由引擎仓库里的 `tools/vendor-game.mjs` 生成：在构建好的引擎目录下运行 `node tools/vendor-game.mjs <本目录> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit`，再把 `vendor/importmap.json` 的内容贴进 `index.html` 的 import map（有测试核对两者一致）。测试通过 `vendor/node-register.mjs` 在 Node 里按页面用的名字找到引擎。
 
 `vendor/` holds a copy of the Egret Rebuild runtime under the Apache-2.0 license; its source and version are in [vendor/SOURCE.md](vendor/SOURCE.md). It is made by `tools/vendor-game.mjs` in the engine's repository: from a built engine checkout run `node tools/vendor-game.mjs <this folder> @egret/engine @egret/engine/world3d @egret/engine/webgl2/world3d @egret/engine/kit @egret/engine/web/kit`, then paste the contents of `vendor/importmap.json` into the import map in `index.html` (a test checks that the two agree). Tests find the engine in Node, under the names the page uses, through `vendor/node-register.mjs`.
+
+## 引擎能力对照表 · Engine capabilities
+
+（待补 · To be written）
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 未完成 · Unfinished
+
+（待补 · To be written）
+
+## 目录结构 · Layout
+
+（待补 · To be written）
+
+## 引擎副本 · Engine copy
+
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `c049bc385441647ae3fc4bad96d9ff93cbf4fbb3`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `c049bc385441647ae3fc4bad96d9ff93cbf4fbb3`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+
+入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/kit`, `@egret/engine/web/kit`.

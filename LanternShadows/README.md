@@ -1,5 +1,7 @@
 # Lantern Shadows · 灯影·闹天宫
 
+## 简介 · Introduction
+
 灯影·闹天宫是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 2D 横版动作游戏 Demo，整出戏演在一块皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，孙悟空一路打上南天门。目前有三幕。**第一幕南天门**：十名天兵把守一路，哪吒踏着风火轮在门前拦路。**第二幕蟠桃园**：桃林里有持盾的力士和从空中扑下来的仙鹤，枝上的桃子可以打下来吃，出口由二郎神带着哮天犬把守。**第三幕兜率宫**：太上老君的丹房，地上的炉口轮流喷火，丹炉可以打翻去烧敌人，有扇火的童子和扔丹药的道士，最后是老君本人、他的金刚琢和八卦炉。每幕四五分钟，三幕演完有一行总评。
 
 Lantern Shadows is an independently developed 2D side-scrolling action demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), played as a shadow-puppet show: a lamp behind a cloth, carved and dyed leather puppets against it, and the Monkey King fighting his way to the Southern Gate of Heaven. Three acts are here. **Act one, the Southern Gate**: ten soldiers of heaven hold the road, and Nezha comes down on his wheels of wind and fire to bar the gate. **Act two, the Peach Orchard**: shield-bearers among the trees, cranes that stoop out of the air, peaches on the boughs to knock down and eat, and Erlang with his hound holding the way out. **Act three, the Tushita Palace**: Laozi's furnace room, where grates in the floor breathe fire by turns, a furnace can be knocked over to burn whoever is beyond it, a boy fans the flames and an alchemist throws pills, and at the end Laozi himself, with his Diamond Snare and the Eight Trigrams Furnace. Each is four or five minutes, and when all three are played their seals are told together.
@@ -204,3 +206,25 @@ node --test test/*.test.mjs        在本目录执行 · from this folder
 游戏代码与生成的美术以 Apache-2.0 发布。引擎运行库与其依赖的许可见 `vendor/NOTICE`；其中 Spine 运行库按 Spine Runtimes License Agreement 使用，要求使用者持有 Spine 编辑器授权。
 
 The game's code and its generated art are released under Apache-2.0. The engine runtime and its dependencies are listed in `vendor/NOTICE`; the Spine runtime among them is used under the Spine Runtimes License Agreement, which requires a Spine Editor license of whoever uses it.
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 未完成 · Unfinished
+
+（待补 · To be written）
+
+## 引擎副本 · Engine copy
+
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `2fb4646c1ccec058d31c6f93cc2193061add1979`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `2fb4646c1ccec058d31c6f93cc2193061add1979`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

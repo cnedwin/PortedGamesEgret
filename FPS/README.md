@@ -1,5 +1,7 @@
 # Operation Cutoff · 断流行动
 
+## 简介 · Introduction
+
 断流行动是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的第一人称战术射击游戏 Demo。黎明时分，一名特勤干员潜入被武装分子占据的水电站：找到堆场、厂房和办公楼里的三处数据终端并下载情报，沿途搜刮物资箱，顶住一波波增援，最后赶到停机坪登上直升机撤离。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/FPS/)
 
 Operation Cutoff is an independently developed first-person tactical shooter demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). At first light a lone operator slips into a hydropower station held by an armed militia: find the three data terminals in the cargo yard, the powerhouse and the office block and download them, search supply crates along the way, hold off wave after wave of reinforcements, then reach the helipad and board the helicopter. [Play online](https://cnedwin.github.io/PortedGamesEgret/FPS/)
@@ -146,3 +148,27 @@ The engine runtime copy is under Apache-2.0; see `vendor/LICENSE` and `vendor/NO
 模型的生成来源和使用说明见 `assets/models/README.md`。
 
 See `assets/models/README.md` for the model source and usage notes.
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 未完成 · Unfinished
+
+（待补 · To be written）
+
+## 引擎副本 · Engine copy
+
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `264e17227b06298858a06b9fdfe0c4a3a427e13a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `264e17227b06298858a06b9fdfe0c4a3a427e13a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+
+入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`.
