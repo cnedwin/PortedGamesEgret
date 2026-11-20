@@ -139,6 +139,8 @@ export function createSoundscape(scene, camera, { waters = [], volume = 0.8, mus
     /** Begin sounding, from a key or touch of the player's. */
     async start() {
       if (started) return starting;
+      // A touch press does not grant autoplay activation until release.
+      if (context.state !== 'running' && navigator.userActivation?.isActive === false) return;
       starting ??= listener.resume().then(() => {
         started = context.state === 'running';
         if (!started) return;

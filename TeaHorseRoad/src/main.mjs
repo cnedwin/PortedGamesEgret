@@ -69,9 +69,9 @@ while (!land.readyAround(p0[0], p0[2], 100)) {
 const convoy = createConvoy(scene, physics, land.heightAt, { s: beginS });
 const effects = createEffects(scene, physics, convoy, { land, water: waters, quality: app.quality });
 // Let the title and opening build while the first road shaders link. A quick start waits for the same work.
-const roadProgramsReady = app.backend === 'webgl2' && app.quality === 'high' && !params.has('film')
+const roadProgramsReady = app.backend === 'webgl2' && !params.has('film')
   ? new Promise((resolve) => setTimeout(resolve, 0))
-    .then(() => prepareRoadPrograms(app.renderer, scene, camera, waters))
+    .then(() => prepareRoadPrograms(app.renderer, scene, camera, waters, { reflections: app.quality === 'high' }))
     .catch((cause) => console.warn('Road shader preparation', cause))
   : null;
 const events = [];
@@ -843,10 +843,16 @@ if (document.documentElement.requestFullscreen && typeof orientation?.lock === '
   });
 }
 
-// The first press anywhere lets the sound begin, as browsers ask.
-const wake = () => void sound.start();
-window.addEventListener('pointerdown', wake, { once: true });
-window.addEventListener('keydown', wake, { once: true });
+// A touch grants audio activation on release. Keep listening until the context is running.
+function wake() {
+  void sound.start().then(() => {
+    if (!sound.started) return;
+    window.removeEventListener('pointerup', wake, true);
+    window.removeEventListener('keydown', wake, true);
+  });
+}
+window.addEventListener('pointerup', wake, true);
+window.addEventListener('keydown', wake, true);
 
 // ---- the closing film, recorded from the game itself (tools/make-ending.mjs) --------------------------------------
 let filming = false;

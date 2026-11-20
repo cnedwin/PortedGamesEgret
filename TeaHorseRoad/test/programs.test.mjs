@@ -83,4 +83,14 @@ test('the first-use road shader keys are linked before any view draws', async ()
   ]));
   assert.equal(linked, shaders.size);
   assert.deepEqual(scene.children, initialChildren);
+
+  shaders.clear();
+  const previousLinks = linked;
+  renderer.shadowsEnabled = false;
+  await prepareRoadPrograms(renderer, scene, camera, waters, { reflections: false });
+  assert.deepEqual(shaders, new Set([
+    'SHADING_STANDARD USE_NORMAL USE_SKINNING USE_VERTEX_COLOR USE_ENVIRONMENT LINEAR_OUTPUT'
+  ]));
+  assert.equal(linked - previousLinks, 1);
+  assert.deepEqual(scene.children, initialChildren);
 });
