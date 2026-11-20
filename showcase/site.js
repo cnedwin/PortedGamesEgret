@@ -7,6 +7,8 @@ const WORDS = {
   zh: {
     brand: '新白鹭引擎游戏 Demo',
     engine: '引擎源码',
+    matrix: '能力矩阵',
+    matrixLink: '每项引擎能力在哪个游戏里用到',
     repo: '游戏源码',
     all: '全部游戏',
     langButton: 'EN',
@@ -36,6 +38,8 @@ const WORDS = {
   en: {
     brand: 'Egret Rebuild Game Demos',
     engine: 'Engine source',
+    matrix: 'Capabilities',
+    matrixLink: 'Which game uses each engine capability',
     repo: 'Game source',
     all: 'All games',
     langButton: '中文',
