@@ -9,9 +9,9 @@ tokens printed and 1,000 as a file. Where an engine card already covers a lesson
 table proposes evidence for that card instead.
 
 去向 · Where they went: 新卡和证据都已提交到引擎仓库 [cnedwin/Egret_rebuild](https://github.com/cnedwin/Egret_rebuild)
-的 [PR #423](https://github.com/cnedwin/Egret_rebuild/pull/423)（分支 `claude/guide-cards-from-games`，尚待引擎仓库合并），通过了 `node tools/egret-guide.mjs` 的检索和 `tests/guide.test.mjs`
+的 [PR #423](https://github.com/cnedwin/Egret_rebuild/pull/423)（分支 `claude/guide-cards-from-games`，已合并），通过了 `node tools/egret-guide.mjs` 的检索和 `tests/guide.test.mjs`
 的名字、大小、索引、证据检查。下表「状态」一栏写明每条是否已进引擎。 · Both the new cards and the evidence went to an
-engine pull request ([#423](https://github.com/cnedwin/Egret_rebuild/pull/423), awaiting merge there) and passed its guide checks; the status column says which.
+engine pull request ([#423](https://github.com/cnedwin/Egret_rebuild/pull/423), merged there) and passed its guide checks; the status column says which.
 
 检查一张草稿 · To check a draft: copy it into the engine's `guide/cards/<area>/`, add its line to `guide/index.txt`,
 then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<question>"` there.
