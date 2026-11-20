@@ -1,5 +1,7 @@
 # Jinxiu Rally · 锦绣飞车
 
+## 简介 · Introduction
+
 锦绣飞车是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 3D 赛车游戏 Demo。八位带着中国元素的车手在“山水环道”上同场竞速：过牌楼、上山坡、穿 S 弯、跨石桥、绕发卡弯，漂移攒出加速，捡铜钱、穿祥云门、借前车尾流，绕开泥潭、石狮和滚动的大鼓，再用爆竹、蹴鞠、纸鸢、筋斗云和窜天猴扭转名次。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/Rally/)
 
 Jinxiu Rally is an independently developed 3D kart racing demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Eight racers drawn from Chinese tradition share the Mountain and Water Circuit: under the ceremonial gate, up the hill, through the S-bend, over the stone bridge and round the hairpin, drifting for boosts, collecting coins, threading cloud gates and tucking into slipstreams, steering round mud, stone lions and rolling drums, and turning the order around with firecrackers, cuju balls, kites, a somersault cloud and sky rockets. [Play online](https://cnedwin.github.io/PortedGamesEgret/Rally/)
@@ -166,3 +168,19 @@ node tools/headless.mjs 1 3 7
 `vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 `vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 未完成 · Unfinished
+
+（待补 · To be written）

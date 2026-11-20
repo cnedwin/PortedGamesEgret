@@ -1,5 +1,7 @@
 # FivePhases · 五行牌阵
 
+## 简介 · Introduction
+
 2D 卡牌 + 三消混合玩法 Demo，基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)。上半屏是带立绘与动效的卡牌回合对战，下半屏是消除盘；消除攒能量、也掉新卡，卡与卡之间的羁绊反过来改变你该怎么消。五行既是消除的配色，也是五个流派与羁绊网。
 
 A 2D card battler over a match-three board, built on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). The top half is turn-based card combat with animated portraits; the bottom half is the board. Matching charges energy and drops new cards, and the bonds between cards change how you want to match. The five phases are at once the board's colours, five playstyles, and a bond network.
@@ -106,3 +108,27 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 
 - 关间地图与事件节点（现在是固定三关）
 - 存档与卡组成长（奖励只在单局内有效）
+
+## 玩法与操作 · How to play
+
+（待补 · To be written）
+
+## 引擎能力对照表 · Engine capabilities
+
+（待补 · To be written）
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 引擎副本 · Engine copy
+
+（待补 · To be written）

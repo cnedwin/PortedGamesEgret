@@ -11,3 +11,12 @@ Keep game code, assets, documentation, and tests in the relevant game folder. Fo
 展示站（仓库根目录的 `index.html` 与 `showcase/`）列出了每个游戏。新增或大改一个游戏时，请同步更新 `showcase/games.js` 里的名称、介绍和资料，并把封面与截图放进 `showcase/media/<游戏 id>/`（WebP，宽度不超过 1600 像素）。
 
 The showcase site (`index.html` and `showcase/` at the repository root) lists every game. When adding a game or changing one substantially, update its names, introduction and facts in `showcase/games.js`, and put its cover and screenshots in `showcase/media/<game id>/` (WebP, at most 1600 pixels wide).
+
+## 工程标准 · Game project standard
+
+每个游戏目录按 [docs/GAME-STANDARD.md](docs/GAME-STANDARD.md) 组织：README 的九节、ENGINE-NOTES、QUALITY、Node 测试、浏览器验收和截图基线、引擎副本。新游戏用 `npm run create -- <目录名> --title "中文名 · English name"` 从模板开始；`node tools/check-standard.mjs` 检查全部游戏，现状见 [docs/STANDARD-STATUS.md](docs/STANDARD-STATUS.md)。
+
+Every game folder follows [docs/GAME-STANDARD.md](docs/GAME-STANDARD.md): the nine README sections, ENGINE-NOTES,
+QUALITY, Node tests, browser acceptance with screenshot baselines, and the engine copy. Start a new game from the
+template with `npm run create -- <folder> --title "中文名 · English name"`; `node tools/check-standard.mjs` checks every
+game, and [docs/STANDARD-STATUS.md](docs/STANDARD-STATUS.md) shows where each one stands.

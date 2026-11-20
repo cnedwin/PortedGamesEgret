@@ -1,5 +1,7 @@
 # Tea Horse Road · 茶马古道
 
+## 简介 · Introduction
+
 茶马古道是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 3D 越野探索游戏 Demo。你开着马帮车队的头车，带着另外两辆满载茶砖的越野车，从滇南普洱茶山出发，蹚过浅滩、穿过有山匪出没的林子、开过金沙峡谷上的吊桥，翻过飘雪的垭口，把七十二捆茶送到高原驿站。路上有陡坡、溪流、山匪和狼群；三个驿站可以扎营，营地布置会存下来。一趟十分钟上下（扎营另算），有剧情对白和抵达高原的结尾短片。键盘、鼠标、手柄和手机触屏都能玩。
 
 Tea Horse Road is an independently developed 3D off-road demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). You drive the lead truck of a caravan of three, each loaded with bricks of tea, from the tea hills of Pu'er in the south of Yunnan through a ford, a forest where bandits wait, over a rope bridge across the gorge and through a snowy pass, to bring seventy-two bundles of tea to the station on the plateau. The road has steep grades, streams, bandits and wolves; at each of the three stations the crew can make camp, and the camp is kept. A journey takes about ten minutes, more with camps, with dialogue along the way and a closing film of the plateau arrival. Keyboard, mouse, gamepad and touch.
@@ -114,3 +116,40 @@ The tests check the road (its length, grades, the order of stations and ambushes
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
 引擎副本取自 Egret_rebuild 提交 `687037a`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `687037a`, copied by the engine's `tools/vendor-game.mjs`.
+
+## 已验证 · Verified
+
+- `node --test test/*.test.mjs`：路（长度、坡度、驿站与埋伏的次序、路面高度）、存档、合成声音、引擎副本的 import map。 · The Node tests: the road, the save, the synthesized sound and the engine copy's import map.
+- 无头 Chromium（SwiftShader 软件渲染）：自动驾驶从出发跑到结局，没有控制台错误；手机横屏触屏模拟（844×390）下踏板、方向滑条、喇叭可用，能开到第一个驿站；营地存档后刷新能读回。这些在提交 `0899e4a` 上跑过。 · In headless Chromium with software rendering: an autopilot journey from the start to the ending with a clean console; touch on an emulated phone held sideways (844 × 390) driving to the first station; a saved camp read back after a reload — run at commit `0899e4a`.
+- GitHub Pages 上的线上页面在 `0899e4a` 部署后打开、开始并能驾驶。 · The live page on GitHub Pages opened, started and drove after `0899e4a` was deployed.
+
+## 已知问题 · Known issues
+
+- 真显卡和真手机上没有运行过，帧率没有测过。 · Not run on a real GPU or phone; frame rates were not measured.
+- 软件渲染下天空盒是黑的（见 ENGINE-NOTES），截图里天顶偏暗。 · Under software rendering the skybox is black (see ENGINE-NOTES), so pictures show a dark zenith.
+- 一趟的时长只按自动驾驶估计：全程最快约 4.7 分钟驾驶，真人估计十分钟上下，没有实测。 · A journey's length is estimated from the autopilot alone (about 4.7 minutes of driving at best); no player was timed.
+
+## 已解决 · Solved
+
+- 车上的篷布和捆绳开出几十米后消失：引擎布料与绳子的网格包围球不随顶点更新，被视锥剔除；车上的这几块网格关掉剔除（ENGINE-NOTES「布和绳的网格移动后被视锥剔除掉」）。 · Tarps and lashings vanished a few dozen metres on: the cloth and rope meshes keep stale bounds and are culled; those meshes are no longer culled.
+- 吊桥主索在桥下打折、捆绳松垮：`slack` 是多出来的比例，不是长度倍数（ENGINE-NOTES「绳子的 `slack`」）。 · The bridge cables folded under the deck and the lashings hung loose: `slack` is the extra share, not a length factor.
+- 篷布和经幡缩成一团：`Cloth3D` 的 `right` / `down` 是整条边。 · The tarps and flags collapsed: `right` and `down` of `Cloth3D` are whole edges.
+- 低画质一帧 630 万个三角形：草木改成按地块、按距离切换远近两种精度。 · 6.3 million triangles a frame on Low: plants switch between a near and a far shape by tile and distance.
+- 车在吊桥上翻下峡谷后扶正到谷底：桥两边加了路缘，扶正时取路面高度。 · A truck fallen off the bridge was righted at the bottom of the gorge: the deck has kerbs, and righting takes the road's height.
+
+## 未完成 · Unfinished
+
+- 结尾短片等美术提升后再录（`tools/make-ending.mjs`）；没有短片时到站直接进结算。 · The closing film is to be recorded once the art is improved; until then the journey goes straight to its account.
+- 真机帧时间、首屏时间的测量。 · Frame-time and start-up measurements on real devices.
+
+## 目录结构 · Layout
+
+见上面「开发 · Development」一节的目录表。 · See the table under Development above.
+
+## 引擎副本 · Engine copy
+
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `687037ac462c48dbfe00523312125b94072ffea4`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `687037ac462c48dbfe00523312125b94072ffea4`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+
+入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`, `@egret/engine/bitmapfont`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/web/game`, `@egret/engine/web/video`, `@egret/engine/web/gamepad`, `@egret/engine/input/gamepad`, `@egret/engine/text`, `@egret/engine/web/text`.

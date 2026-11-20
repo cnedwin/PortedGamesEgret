@@ -1,5 +1,7 @@
 # Mechanism City · 千机巧匠
 
+## 简介 · Introduction
+
 千机巧匠是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 2D 物理弹射解谜游戏 Demo。墨家机关城闭城三十年，城门、水轮、机枢一道道锁死。少年工匠阿巧背着祖父留下的机关弩进城：把弹丸射进去，借木块、绳索、跷跷板、弹簧、踏板和滚石连锁触发，打开每一关的机关锁。三章十二关，每关一到三星；有开场短片和关卡间对白。键盘、鼠标、手机触屏都能玩。
 
 Mechanism City is an independently developed 2D physics puzzle demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). For thirty years the Mohist city of mechanisms has kept its gates shut, its water wheels and its heart locked one behind another. Qiao, a young craftswoman, comes in with the crossbow her grandfather left her: fire pellets into the city and set its blocks, ropes, seesaws, springs, pressure plates and stones going one after another until each level's lock opens. Three chapters, twelve levels, one to three stars each, an opening film and words between the levels. Keyboard, mouse and touch.
@@ -114,3 +116,33 @@ The tests replay the recorded solution of every level in Node through the same s
 | `vendor/` | 引擎副本，见 `vendor/SOURCE.md` · the engine copy |
 
 引擎副本取自 Egret_rebuild 提交 `687037a`，由引擎仓库的 `tools/vendor-game.mjs` 复制。The engine copy is from Egret_rebuild commit `687037a`, copied by the engine's `tools/vendor-game.mjs`.
+
+## 已验证 · Verified
+
+- `node --test test/*.test.mjs`：关卡（每关的机关和锁都在、能被解开）、挑战、存档、合成声音、弹道预测、引擎副本的 import map。 · The Node tests: levels, challenges, the save, sound, the aiming trajectory and the engine copy's import map.
+- GitHub Pages 上的线上页面在 PR #95、#96 合并后打开并玩过第一关（无头 Chromium）。 · The live page was opened and its first level played after PRs #95 and #96 (headless Chromium).
+
+## 已知问题 · Known issues
+
+- 真显卡和真手机上没有测过帧时间。 · Frame times were not measured on a real GPU or phone.
+- 引擎方面仍未解决的见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 中标为「未解决 / open」的条目（径向渐变的三角形、被拒的 `update` 仍改内存、输入分发中不能建 UI 根、横向滚动控件不读竖向滚轮）。 · The engine's open items are those marked open in ENGINE-NOTES.
+
+## 已解决 · Solved
+
+见 [ENGINE-NOTES.md](ENGINE-NOTES.md) 中标为「已解决 / resolved」的条目：吊绳用 `rope` 关节、切断用 `removeJoint`；粒子 `blendMode: 'add'`；代码画的贴图用 `textureFromCanvas`；滚轮用悬停输入；焦点控件用掉的键用 `skipPrevented`；Web Audio 后端；视频的多个文件。 · See the items marked resolved in ENGINE-NOTES.
+
+## 未完成 · Unfinished
+
+- 真机帧时间、首屏时间的测量。 · Frame-time and start-up measurements on real devices.
+
+## 目录结构 · Layout
+
+见上面「开发 · Development」一节。 · See Development above.
+
+## 引擎副本 · Engine copy
+
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `687037ac462c48dbfe00523312125b94072ffea4`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `687037ac462c48dbfe00523312125b94072ffea4`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+
+入口 · Entries: `@egret/engine`, `@egret/engine/physics2d`, `@egret/engine/tilemap`, `@egret/engine/camera`, `@egret/engine/particles`, `@egret/engine/bitmapfont`, `@egret/engine/ui`, `@egret/engine/ui/semantics`, `@egret/engine/web/semantics`, `@egret/engine/kit`, `@egret/engine/web/kit`, `@egret/engine/audio`, `@egret/engine/web/audio`, `@egret/engine/web/video`, `@egret/engine/web/game`, `@egret/engine/web/hover`, `@egret/engine/text`, `@egret/engine/web/text`.

@@ -1,5 +1,7 @@
 # Wulin · 武林天下
 
+## 简介 · Introduction
+
 武林天下是为[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的武侠门派经营游戏 Demo。大昭承和年间，朝廷颁《禁武令》，江湖风雨欲来：从十二个门派里择一而掌，建山门、收弟子、排差事、练武学，与各派或战或和，直到一统江湖，或在武林大会上被推为盟主。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/Wulin/)
 
 Wulin is an independently developed wuxia sect management demo being built for [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). In the Chenghe years of the Zhao dynasty the court bans the carrying of arms, and the martial world stirs. Take charge of one of twelve sects: build its seat, take in disciples, set their work, train them in the arts, and fight or befriend the other sects until you rule them all, or until the Summit names you its leader. [Play online](https://cnedwin.github.io/PortedGamesEgret/Wulin/)
@@ -115,3 +117,33 @@ Serve this folder with any static file server to run it, for example `npx serve 
 动作预览可用 `tools/models.html?action=sword&phase=contact` 查看单个招式的命中姿势。去掉 `phase` 参数即可循环演练。 · Use `tools/models.html?action=sword&phase=contact` to inspect a move at its contact frame. Omit `phase` to loop the action.
 
 素材来源见 [ASSETS.md](ASSETS.md)。 · Asset sources are listed in [ASSETS.md](ASSETS.md).
+
+## 引擎能力对照表 · Engine capabilities
+
+（待补 · To be written）
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 未完成 · Unfinished
+
+（待补 · To be written）
+
+## 目录结构 · Layout
+
+（待补 · To be written）
+
+## 引擎副本 · Engine copy
+
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b6a392a61348a5ba53a48a0d4fbed514ffd87afe`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b6a392a61348a5ba53a48a0d4fbed514ffd87afe`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

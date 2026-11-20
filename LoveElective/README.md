@@ -1,5 +1,7 @@
 # Love Elective · 心动选修课
 
+## 简介 · Introduction
+
 心动选修课是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 2D 校园恋爱养成游戏 Demo。你是白鹭学院的大一新生，选了一门只有一份作业的选修课：在三十天后的星空祭之前，真正认识一个人，并把心意告诉她。七位性格各异的学姐分布在校园各处，每人有四章带分支的故事；你要安排每天的四段时间去上课、训练、打工、做任务、买礼物和换装，摸清每个人喜欢的相处距离。画面用分层视差做出纵深感。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/LoveElective/)
 
 Love Elective is an independently developed 2D campus romance and dress-up demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). You are a first-year student at Egret Academy who signs up for an elective with a single assignment: before the Star Festival thirty days from now, truly get to know one person and tell her how you feel. Seven seniors with very different personalities are spread across the campus, each with four branching story chapters. You plan the four parts of every day around classes, training, part-time work, tasks, presents and outfits, and learn how close each of them likes you to stand. Layered parallax gives the flat pictures depth. [Play online](https://cnedwin.github.io/PortedGamesEgret/LoveElective/)
@@ -190,3 +192,19 @@ node tools/headless.mjs qingge bailu
 `vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 `vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 未完成 · Unfinished
+
+（待补 · To be written）

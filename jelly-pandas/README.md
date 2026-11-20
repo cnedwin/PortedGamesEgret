@@ -1,5 +1,7 @@
 # Jelly Pandas · 果冻熊猫
 
+## 简介 · Introduction
+
 果冻熊猫是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的 3D 动作生存游戏 Demo。半透明的果冻熊猫要在玩具岛上抵挡越来越多的糖果大军十五分钟：玩具自动开火，软弹的身体本身也是武器，每次升级选一张强化卡，第 5、10、15 分钟各有一个 Boss。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/jelly-pandas/)
 
 Jelly Pandas is an independently developed 3D action survival demo built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). See-through jelly pandas hold a toy island for fifteen minutes against a growing candy horde: toys fire on their own, the wobbly body is a weapon too, every level brings an upgrade card, and a boss arrives at 5, 10 and 15 minutes. [Play online](https://cnedwin.github.io/PortedGamesEgret/jelly-pandas/)
@@ -121,3 +123,19 @@ node tools/headless.mjs 4 7 17
 `vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
 `vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+
+## 已验证 · Verified
+
+（待补 · To be written）
+
+## 已知问题 · Known issues
+
+（待补 · To be written）
+
+## 已解决 · Solved
+
+（待补 · To be written）
+
+## 未完成 · Unfinished
+
+（待补 · To be written）
