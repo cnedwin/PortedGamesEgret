@@ -354,7 +354,8 @@ button:disabled { cursor: default; }
   pointer-events: none;
 }
 .card.is-ult { border-color: #e8c085; }
-.card.is-ready:active { transform: translateY(calc(-5 * var(--u))); }
+.card.is-ready:not(:disabled):active { transform: translateY(calc(-5 * var(--u))); }
+.card:disabled { opacity: .66; cursor: default; }
 
 .card-cost {
   position: absolute;
@@ -909,7 +910,7 @@ button.big {
 }
 
 @media (hover: hover) {
-  #end-turn:not(:disabled):hover, .big:hover, .card.is-ready:hover, .ghost:hover,
+  #end-turn:not(:disabled):hover, .big:hover, .card.is-ready:not(:disabled):hover, .ghost:hover,
   .hand-reference:not(:disabled):hover, .mute:hover, .howto-panel > summary:hover {
     border-color: #f6deab;
     filter: brightness(1.08);

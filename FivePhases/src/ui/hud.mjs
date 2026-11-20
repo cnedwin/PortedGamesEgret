@@ -98,13 +98,14 @@ export function createHud({ root, onCard, onEndTurn }) {
     energyChips.set(element, chip);
   }
 
-  function renderHand(battle) {
+  function renderHand(battle, actionsLocked) {
     visibleHand = battle.hand;
     showDetails.disabled = !visibleHand.length;
     const signature = battle.hand.map((card) => `${card.uid}:${card.cost}`).join('|');
     if (signature === handSignature) {
       for (const button of handEl.children) {
         const card = battle.hand.find((item) => item.uid === button.dataset.uid);
+        button.disabled = actionsLocked;
         button.classList.toggle('is-ready', Boolean(card) && battle.energy[card.element] >= card.cost);
       }
       return;
@@ -117,6 +118,7 @@ export function createHud({ root, onCard, onEndTurn }) {
       const info = ELEMENT_INFO[card.element];
       const button = document.createElement('button');
       button.type = 'button';
+      button.disabled = actionsLocked;
       button.className = 'card';
       button.dataset.uid = card.uid;
       button.dataset.element = card.element;
@@ -134,7 +136,7 @@ export function createHud({ root, onCard, onEndTurn }) {
     }
   }
 
-  function render(battle, vitals = battle) {
+  function render(battle, { vitals = battle, resolving = false, enemyStrike = null } = {}) {
     const enemy = battle.enemy;
     const { enemy: shownEnemy, hero: shownHero } = vitals;
     encounter.textContent = encounterLabels[enemy.id] ?? enemy.title;
@@ -145,7 +147,8 @@ export function createHud({ root, onCard, onEndTurn }) {
     enemyShield.classList.toggle('is-on', shownEnemy.shield > 0);
 
     const next = enemy.moves[enemy.moveIndex % enemy.moves.length];
-    if (battle.over) intent.textContent = '';
+    if (enemyStrike) intent.innerHTML = `<b class="is-now">${enemyStrike.name}</b> ${enemyStrike.damage} · 出手中`;
+    else if (battle.over) intent.textContent = '';
     else if (enemy.countdown <= 0) intent.innerHTML = `<b class="is-now">${next.name}</b> ${next.damage}`;
     else intent.innerHTML = `<b>${enemy.countdown}</b> 步后 ${next.name} ${next.damage}`;
 
@@ -154,9 +157,10 @@ export function createHud({ root, onCard, onEndTurn }) {
     heroShield.textContent = shownHero.shield > 0 ? `盾 ${Math.ceil(shownHero.shield)}` : '';
     heroShield.classList.toggle('is-on', shownHero.shield > 0);
 
-    turnEl.textContent = `第 ${battle.turn} 回合`;
-    stepsEl.setAttribute('aria-label', `剩余 ${battle.steps} 步`);
-    dots.forEach((dot, index) => dot.classList.toggle('is-on', index < battle.steps));
+    const { turn, steps } = enemyStrike ? vitals : battle;
+    turnEl.textContent = `第 ${turn} 回合`;
+    stepsEl.setAttribute('aria-label', `剩余 ${steps} 步`);
+    dots.forEach((dot, index) => dot.classList.toggle('is-on', index < steps));
 
     for (const [element, chip] of energyChips) {
       const value = battle.energy[element];
@@ -177,8 +181,9 @@ export function createHud({ root, onCard, onEndTurn }) {
       }
     }
 
-    renderHand(battle);
-    endTurn.disabled = battle.phase !== 'player' || battle.over !== null;
+    const actionsLocked = resolving || battle.phase !== 'player' || battle.over !== null;
+    renderHand(battle, actionsLocked);
+    endTurn.disabled = actionsLocked;
   }
 
   const BOND_LABELS = {

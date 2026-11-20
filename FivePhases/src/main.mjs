@@ -71,6 +71,7 @@ const bossAttacks = {
 };
 let lastImpact = null;
 let vitals = null;
+let enemyStrike = null;
 let world = null;
 let boardLayer = null;
 let paintTile = null;
@@ -164,6 +165,7 @@ function startBattle(index) {
   closeAttackCue();
   lastImpact = null;
   vitals = null;
+  enemyStrike = null;
 
   battle = createBattle({
     seed: (Date.now() ^ (index * 7919)) >>> 0,
@@ -301,15 +303,22 @@ function playEnergy(event) {
 }
 
 function snapshotVitals() {
-  const { hero, enemy } = battle;
-  return { hero: { hp: hero.hp, shield: hero.shield }, enemy: { hp: enemy.hp, shield: enemy.shield } };
+  const { hero, enemy, turn, steps } = battle;
+  return { hero: { hp: hero.hp, shield: hero.shield }, enemy: { hp: enemy.hp, shield: enemy.shield }, turn, steps };
 }
 
 // 逻辑已结算。画面上的血条和护盾沿演出队列逐次结算。
-const renderBattle = () => hud.render(battle, vitals ?? battle);
+const renderBattle = () => hud.render(battle, {
+  vitals: vitals ?? battle,
+  resolving: vitals !== null,
+  enemyStrike,
+});
 
 function play(events, before) {
   vitals = before;
+  const incoming = events.find((event) => event.type === 'damage' && event.to === 'hero');
+  // 本次攻击播完再显示下一招和新回合，避免上下两处分别显示两招。
+  enemyStrike = incoming ? { name: incoming.source, damage: incoming.total } : null;
   renderBattle();
   const tempo = cascadeTempo(events);
   let strikeCard = null;
@@ -494,6 +503,7 @@ function play(events, before) {
   // 收尾：把界面同步到最终状态，再看要不要切场景
   sequence.call(() => {
     vitals = null;
+    enemyStrike = null;
     hud.render(battle);
     if (battle.over) endOfBattle();
   });
