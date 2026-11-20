@@ -7,6 +7,22 @@ import '../vendor/node-register.mjs';
 
 // The road is the engine's Catmull-Rom curve through the control points, sampled every two metres.
 const { geography: g, samples: ROAD_SAMPLES } = await import('../src/world/route.mjs');
+const { Scene3D } = await import('@egret/engine/world3d');
+const { createWaters } = await import('../src/world/water.mjs');
+
+test('water only creates mirror targets at the quality that updates them', () => {
+  for (const quality of ['low', 'medium', 'high']) {
+    const scene = new Scene3D();
+    const waters = createWaters(scene, { quality });
+    for (const { water } of waters.bodies) {
+      assert.equal(water.reflection?.target.width ?? 0, quality === 'high' ? 512 : 0, quality);
+      assert.equal(Boolean(water.material.reflectionMap), quality === 'high', quality);
+      assert.ok(water.material.transmission > 0);
+      assert.ok(water.material.softness > 0);
+      water.dispose();
+    }
+  }
+});
 
 test('the road runs about 4.6 km, its grades drivable and its bends not too tight', () => {
   const n = ROAD_SAMPLES.count,

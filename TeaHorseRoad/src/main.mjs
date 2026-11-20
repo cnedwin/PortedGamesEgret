@@ -21,8 +21,8 @@ import { EVENT_LINES, ROAD_LINES, STATION_LINES, ending } from './play/story.mjs
 import { createThreats } from './play/threats.mjs';
 import { better, freshJourney, openSave } from './saves.mjs';
 import { openCard } from './ui/card.mjs';
-import { STAGE } from './ui/kit.mjs';
-import { createHud } from './ui/hud.mjs';
+import { STAGE, createScreenKit } from './ui/kit.mjs';
+import { HUD_SEMANTICS, createHud } from './ui/hud.mjs';
 import { createMarkers } from './ui/markers.mjs';
 import { filmScreen, openingScreen, titleScreen } from './ui/screens.mjs';
 import { TRUCK } from './models/truck.mjs';
@@ -196,56 +196,64 @@ async function busy(work) {
   }
 }
 
-async function setHud(on) {
-  if (!on) {
-    hud?.dispose?.();
-    if (hud) hud.root.visible = false;
-    return;
-  }
-  if (!hud) await buildHud();
-  hud.root.visible = true;
+let pendingHud = null;
+function buildHud() {
+  if (pendingHud) return pendingHud;
+  if (hud) return Promise.resolve(hud);
+  pendingHud = busy(buildHudNow).finally(() => { pendingHud = null; });
+  return pendingHud;
 }
 
-let hudScope = null;
-const buildHud = () => busy(buildHudNow);
 async function buildHudNow() {
-  hud?.dispose();
-  hudScope = ui.game.engine.createScope();
-  const { createScreenKit } = await import('./ui/kit.mjs');
-  const kit = createScreenKit(ui.game, hudScope, { semantics: ui.semantics, sound, prefix: 'hud' });
+  const scope = ui.game.engine.createScope();
+  const kit = createScreenKit(ui.game, scope, { semantics: ui.semantics, sound, prefix: 'hud', semanticParent: HUD_SEMANTICS });
   const touch = settings.touch === 'on' || (settings.touch === 'auto' && touchScreen) || params.has('touch');
-  hud = await createHud(ui.game, hudScope, kit, {
-    width: ui.width,
-    font: gaugeFont,
-    fontPages: ui.pages,
-    stations: STATIONS.map((station) => ({ s: station.s })),
-    length: STATIONS[3].s,
-    touch,
-    controls: input.touch,
-    semantics: ui.semantics,
-    onPause: () => pause(true),
-    onHorn: () => honk(),
-    onCamera: () => nextView(),
-    onRecover: () => recover()
-  });
-  hud.kit = kit;
-  hud.setDriving(state === 'drive' && !paused);
-  hud.dispose = () => {
+  let overlay;
+  try {
+    overlay = await createHud(ui.game, scope, kit, {
+      width: ui.width,
+      font: gaugeFont,
+      fontPages: ui.pages,
+      stations: STATIONS.map((station) => ({ s: station.s })),
+      length: STATIONS[3].s,
+      touch,
+      controls: input.touch,
+      semantics: ui.semantics,
+      onPause: () => pause(true),
+      onHorn: () => honk(),
+      onCamera: () => nextView(),
+      onRecover: () => recover()
+    });
+    overlay.setDriving(state === 'drive' && !paused);
+    await updatePlace(overlay);
+    updateHud(0, overlay);
+  } catch (cause) {
     kit.dispose();
-    hudScope.dispose();
-    hudScope = null;
+    scope.dispose();
+    throw cause;
+  }
+  overlay.kit = kit;
+  overlay.dispose = () => {
+    kit.dispose();
+    scope.dispose();
     hud = null;
   };
-  await updatePlace();
+  hud = overlay;
+  return hud;
 }
 
-async function updatePlace() {
-  if (!hud) return;
+async function updatePlace(overlay = hud) {
+  if (!overlay) return;
   const leg = biomeAt(convoy.lead.s, [0, 0, 0]),
     names = ['滇南茶山', '金沙峡谷', '梅里雪山'],
     i = leg[2] > 0.5 ? 2 : leg[1] > 0.5 ? 1 : 0,
     next = landmarks.stations[nextStation];
-  await hud.setPlace(names[i], next?.name, Math.max(0, (next?.s ?? 0) - convoy.lead.s));
+  await overlay.setPlace(names[i], next?.name, Math.max(0, (next?.s ?? 0) - convoy.lead.s));
+}
+
+function updateHud(seconds, overlay = hud) {
+  const lead = convoy.lead;
+  overlay?.update(seconds, { s: lead.s, kmh: Math.abs(lead.vehicle.speed) * 3.6, cargo: convoy.cargo, capacity: convoy.capacity, odometerKm: odometer / 1000 });
 }
 
 /** Say a line in the subtitles. */
@@ -291,7 +299,7 @@ async function showTitleNow() {
   state = 'title';
   paused = false;
   markers.visible = false;
-  await setHud(false);
+  hud?.dispose();
   sound.setMood(0);
   const j = save.data.journey;
   screen = await titleScreen(ui, {
@@ -320,19 +328,28 @@ async function startJourneyNow(fresh) {
   placeConvoy(startS(journey.station));
   if (fresh && !params.has('quiet')) {
     await closeScreen();
-    screen = await openingScreen(ui, { onDone: () => beginDriving() });
-    screen.focusFirst();
+    await showOpening();
   } else beginDriving();
+}
+
+async function showOpening(startAt) {
+  screen = await openingScreen(ui, { onDone: () => beginDriving(), startAt });
+  screen.focusFirst();
+  // Assemble the controls behind the opening cards so Skip can reuse the same HUD.
+  void buildHud().catch((cause) => console.warn('Driving HUD preparation', cause));
 }
 
 const beginDriving = (...args) => busy(() => beginDrivingNow(...args));
 async function beginDrivingNow() {
   if (roadProgramsReady) await roadProgramsReady;
+  // Let a failed speculative build finish cleaning up before retrying the normal path.
+  if (pendingHud) await pendingHud.catch(() => {});
+  await buildHud();
   await closeScreen();
   state = 'drive';
   paused = false;
   markers.visible = true;
-  await setHud(true);
+  hud.root.visible = true;
   hud.setDriving(true);
   hud.focusFirst();
   sound.setMood(0);
@@ -466,7 +483,10 @@ async function openSettingsNow() {
       if (card === made) card = previous;
       previous?.focusFirst?.();
       if (!rebuilding && hud && initialTouch !== settings.touch) {
-        void buildHud().then(() => {
+        const wasVisible = hud.root.visible;
+        hud.dispose();
+        void buildHud().then((overlay) => {
+          overlay.root.visible = wasVisible;
           // Reattach the open pause dialog above the newly added controls.
           if (state === 'drive' && paused) {
             pause(false);
@@ -608,7 +628,7 @@ const finish = () => busy(finishNow);
 async function finishNow() {
   state = 'film';
   markers.visible = false;
-  await setHud(false);
+  hud?.dispose();
   sound.setMood(-1);
   const delivered = convoy.cargo,
     record = { delivered, seconds: Math.round(journey.seconds), stolen: journey.stolen, recovered: journey.recovered, knocked: journey.knocked };
@@ -781,9 +801,9 @@ function tick(dt) {
   placeTimer -= step;
   if (placeTimer <= 0) {
     placeTimer = 1;
-    void updatePlace();
+    if (state !== 'opening' && state !== 'title') void updatePlace();
   }
-  hud?.update(step, { s: lead.s, kmh: Math.abs(lead.vehicle.speed) * 3.6, cargo: convoy.cargo, capacity: convoy.capacity, odometerKm: odometer / 1000 });
+  if (state !== 'opening' && state !== 'title') updateHud(step);
   input.endFrame();
 }
 
@@ -798,7 +818,7 @@ function uiFrame(seconds) {
     lastFocus = key;
     screen?.kit?.repaint();
     card?.repaint();
-    hud?.kit?.repaint();
+    if (hud?.root.visible) hud.kit.repaint();
   }
   sinceSync += seconds;
   if (sinceSync > 0.15) {
@@ -833,7 +853,7 @@ async function rebuildOverlay() {
     hud.root.visible = hudShown;
   }
   if (state === 'title') await showTitle();
-  else if (state === 'opening') screen = await openingScreen(ui, { onDone: () => beginDriving(), startAt: openingIndex });
+  else if (state === 'opening') await showOpening(openingIndex);
   else if (state === 'station') await stationCard(journey.station);
   else if (state === 'camp') {
     camps[campStation].finish();
@@ -947,7 +967,7 @@ if (roadProgramsReady && params.has('s')) await roadProgramsReady;
 loading.classList.add('gone');
 if (params.has('film')) {
   filming = true;
-  await setHud(false);
+  hud?.dispose();
   setCargo(convoy.trucks.map(() => TRUCK.cargoSlots));
   // The ground under the convoy has to be in place before the trucks are set down on it.
   const from = pointAt(STATIONS[3].s - 230);
