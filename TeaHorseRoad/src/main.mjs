@@ -29,6 +29,7 @@ import { TRUCK } from './models/truck.mjs';
 import { createFlora } from './world/flora.mjs';
 import { createLand, LAYER } from './world/land.mjs';
 import { createLandmarks } from './world/landmarks.mjs';
+import { prepareRoadPrograms } from './world/programs.mjs';
 import { STATIONS, biomeAt, directionAt, pointAt } from './world/route.mjs';
 import { createSky } from './world/sky.mjs';
 import { createWaters } from './world/water.mjs';
@@ -67,6 +68,12 @@ while (!land.readyAround(p0[0], p0[2], 100)) {
 }
 const convoy = createConvoy(scene, physics, land.heightAt, { s: beginS });
 const effects = createEffects(scene, physics, convoy, { land, water: waters, quality: app.quality });
+// Let the title and opening build while the first road shaders link. A quick start waits for the same work.
+const roadProgramsReady = app.backend === 'webgl2' && !params.has('film')
+  ? new Promise((resolve) => setTimeout(resolve, 0))
+    .then(() => prepareRoadPrograms(app.renderer, scene, camera, waters, { reflections: app.quality === 'high' }))
+    .catch((cause) => console.warn('Road shader preparation', cause))
+  : null;
 const events = [];
 const threats = createThreats(scene, physics, { convoy, land, flora, effects, events: (name, detail) => events.push([name, detail]) });
 const input = createDriveInput({ onError: (cause) => console.warn('input', cause) });
@@ -291,6 +298,7 @@ async function startJourneyNow(fresh) {
 
 const beginDriving = (...args) => busy(() => beginDrivingNow(...args));
 async function beginDrivingNow() {
+  if (roadProgramsReady) await roadProgramsReady;
   await closeScreen();
   state = 'drive';
   paused = false;
@@ -835,10 +843,16 @@ if (document.documentElement.requestFullscreen && typeof orientation?.lock === '
   });
 }
 
-// The first press anywhere lets the sound begin, as browsers ask.
-const wake = () => void sound.start();
-window.addEventListener('pointerdown', wake, { once: true });
-window.addEventListener('keydown', wake, { once: true });
+// A touch grants audio activation on release. Keep listening until the context is running.
+function wake() {
+  void sound.start().then(() => {
+    if (!sound.started) return;
+    window.removeEventListener('pointerup', wake, true);
+    window.removeEventListener('keydown', wake, true);
+  });
+}
+window.addEventListener('pointerup', wake, true);
+window.addEventListener('keydown', wake, true);
 
 // ---- the closing film, recorded from the game itself (tools/make-ending.mjs) --------------------------------------
 let filming = false;
@@ -900,6 +914,7 @@ function filmFrame(t, dt) {
   }
 }
 
+if (roadProgramsReady && params.has('s')) await roadProgramsReady;
 loading.classList.add('gone');
 if (params.has('film')) {
   filming = true;

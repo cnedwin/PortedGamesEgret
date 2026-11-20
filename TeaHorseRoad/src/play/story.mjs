@@ -65,7 +65,9 @@ export const STATION_LINES = [
 export function ending(share) {
   if (share >= 0.9)
     return {
-      title: { zh: '茶到了，一捆不少', en: 'The tea arrived, almost every bundle' },
+      title: share >= 1
+        ? { zh: '茶到了，一捆不少', en: 'The tea arrived, every bundle' }
+        : { zh: '茶到了，只少了几捆', en: 'The tea arrived, almost every bundle' },
       lines: [
         { zh: '驿站的人迎出来，接过茶砖，煮了第一壶酥油茶。', en: 'The station\'s people came out, took the bricks, and brewed the first pot of butter tea.' },
         { zh: '老马锅头说：你爷爷那会儿，也是这么走过来的。', en: 'The master said: your grandfather came this way too.' }
