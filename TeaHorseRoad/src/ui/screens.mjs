@@ -153,7 +153,7 @@ export async function filmScreen(ui, { film, onDone }) {
   const skip = await kit.button({ x: width - 170, y: H - 74, width: 140, height: 48, text: '跳过 ›', name: '跳过结尾短片', onActivate: done, container: root, small: true });
   skip.root.alpha = 0;
   animate(game.engine, scope, skip.root).wait(1.5).to({ alpha: 1 }, 0.4).start();
-  kit.own(semantics.add({ id: 'film', role: 'img', describe: () => ({ name: '结尾短片：车队在黄昏驶进高原驿站，经幡在风里飘。', bounds: { x: 0, y: 0, width, height: H } }) }));
+  kit.own(semantics.add({ id: 'film', role: 'image', describe: () => ({ name: '结尾短片：车队在黄昏驶进高原驿站，经幡在风里飘。', bounds: { x: 0, y: 0, width, height: H } }) }));
   semantics.publish();
   let waited = 0;
   return {

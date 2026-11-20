@@ -843,6 +843,13 @@ if (params.has('film')) {
   filming = true;
   await setHud(false);
   setCargo(convoy.trucks.map(() => TRUCK.cargoSlots));
+  // The ground under the convoy has to be in place before the trucks are set down on it.
+  const from = pointAt(STATIONS[3].s - 230);
+  land.update(from[0], from[2]);
+  while (!land.readyAround(from[0], from[2], 260)) {
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    land.update(from[0], from[2]);
+  }
   placeConvoy(STATIONS[3].s - 230);
   const words = document.createElement('div');
   words.id = 'film-words';
