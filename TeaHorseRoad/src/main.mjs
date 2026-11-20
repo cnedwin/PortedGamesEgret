@@ -26,12 +26,14 @@ import { createHud } from './ui/hud.mjs';
 import { createMarkers } from './ui/markers.mjs';
 import { filmScreen, openingScreen, titleScreen } from './ui/screens.mjs';
 import { TRUCK } from './models/truck.mjs';
+import { loadRoadAsset } from './models/road-asset.mjs';
 import { createFlora } from './world/flora.mjs';
 import { createLand, LAYER } from './world/land.mjs';
 import { createLandmarks } from './world/landmarks.mjs';
 import { prepareRoadPrograms } from './world/programs.mjs';
 import { STATIONS, biomeAt, directionAt, pointAt } from './world/route.mjs';
 import { createSky } from './world/sky.mjs';
+import { loadPlantModel, preparePlantModel } from './world/vegetation.mjs';
 import { createWaters } from './world/water.mjs';
 
 const params = new URLSearchParams(location.search),
@@ -49,10 +51,25 @@ const scene = new Scene3D();
 const camera = createPerspectiveCamera3D({ fov: 58, near: 0.3, far: 9000 });
 scene.addChild(camera);
 const physics = createPhysicsWorld3D({ gravity: [0, -9.81, 0], fixedStep: 1 / 60, maxSubSteps: 4, solverSteps: 2, iterations: 4 });
+const leadCabReady = loadRoadAsset(app.scope, new URL('../assets/models/lead-truck-cab.glb', import.meta.url));
+const creekHallReady = loadRoadAsset(app.scope, new URL('../assets/models/creek-station-hall.glb', import.meta.url));
+const plantsReady = Promise.all(Object.entries({
+  tea: 'puer-tea-bush.glb',
+  pine: 'gorge-pine.glb',
+  fir: 'snow-fir.glb'
+}).map(async ([kind, file]) => {
+  const url = new URL('../assets/models/' + file, import.meta.url);
+  try {
+    return [kind, await loadPlantModel(kind, url)];
+  } catch (cause) {
+    console.warn('Optional vegetation model unavailable', url.href, cause);
+    return [kind, null];
+  }
+}));
 const sky = createSky(scene, app.renderer, { quality: app.quality });
 const flora = createFlora(scene, physics, { quality: app.quality });
 const land = await createLand(scene, physics, { quality: app.quality, onTile: flora.onTile });
-const landmarks = createLandmarks(scene, physics, { quality: app.quality });
+const landmarks = createLandmarks(scene, physics, { quality: app.quality, hallModel: await creekHallReady });
 const waters = createWaters(scene, { quality: app.quality });
 
 // Where a journey begins: the first station, a station of the save, or (for testing) a distance given in the address.
@@ -66,12 +83,24 @@ while (!land.readyAround(p0[0], p0[2], 100)) {
   await new Promise((resolve) => setTimeout(resolve, 50));
   land.update(p0[0], p0[2]);
 }
-const convoy = createConvoy(scene, physics, land.heightAt, { s: beginS });
+const plantModels = (await plantsReady).filter(([, model]) => model);
+for (const [kind, model] of plantModels) flora.setPlantModel(kind, app.scope.use(model));
+const convoy = createConvoy(scene, physics, land.heightAt, { s: beginS, leadCab: await leadCabReady });
 const effects = createEffects(scene, physics, convoy, { land, water: waters, quality: app.quality });
 // Let the title and opening build while the first road shaders link. A quick start waits for the same work.
 const roadProgramsReady = app.backend === 'webgl2' && !params.has('film')
   ? new Promise((resolve) => setTimeout(resolve, 0))
-    .then(() => prepareRoadPrograms(app.renderer, scene, camera, waters, { reflections: app.quality === 'high' }))
+    .then(async () => {
+      const reflections = app.quality === 'high';
+      // Seed each culling variant even when the first tile has none of that plant.
+      const warmedSides = new Set();
+      for (const [, model] of plantModels) {
+        if (warmedSides.has(model.material.side)) continue;
+        warmedSides.add(model.material.side);
+        await preparePlantModel(app.renderer, model, { scene, camera, waters, reflections });
+      }
+      await prepareRoadPrograms(app.renderer, scene, camera, waters, { reflections });
+    })
     .catch((cause) => console.warn('Road shader preparation', cause))
   : null;
 const events = [];

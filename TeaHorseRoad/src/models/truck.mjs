@@ -133,8 +133,8 @@ function wheelArch(inner, outer, width) {
   );
 }
 
-function bodyGeometry(livery) {
-  return once('body-' + livery.name, () => {
+function bodyGeometry(livery, fittedCab) {
+  return once(`${fittedCab ? 'bed' : 'body'}-${livery.name}`, () => {
     const b = createGeometryBuilder3D();
     const frame = 0x333834;
     const iron = 0x555b50;
@@ -149,53 +149,60 @@ function bodyGeometry(livery) {
       b.add(axle, { position: [0, TRUCK.wheelY, z], rotation: AXLE, color: black });
     }
 
-    // Step-sided cab, dipped bonnet, and high-contrast roof edge.
-    panel(b, [2.08, 0.92, 1.59], [0, 0.64, -1.28], livery.body);
-    panel(b, [1.97, 0.55, 1.33], [0, 1.38, -1.22], livery.body);
-    panel(b, [2.08, 0.15, 1.48], [0, 1.704, -1.22], livery.roof);
-    box(b, [1.98, 0.073, 1.38], [0, 1.123, -1.22], livery.trim);
-    panel(b, [1.74, 0.65, 1.55], [0, 0.394, -2.845], livery.body);
-    panel(b, [1.67, 0.18, 1.46], [0, 0.722, -2.805], livery.body);
-    box(b, [0.048, 0.015, 1.36], [0, 0.811, -2.8], livery.trim);
+    if (!fittedCab) {
+      // Step-sided cab, dipped bonnet, and high-contrast roof edge.
+      panel(b, [2.08, 0.92, 1.59], [0, 0.64, -1.28], livery.body);
+      panel(b, [1.97, 0.55, 1.33], [0, 1.38, -1.22], livery.body);
+      panel(b, [2.08, 0.15, 1.48], [0, 1.704, -1.22], livery.roof);
+      box(b, [1.98, 0.073, 1.38], [0, 1.123, -1.22], livery.trim);
+      panel(b, [1.74, 0.65, 1.55], [0, 0.394, -2.845], livery.body);
+      panel(b, [1.67, 0.18, 1.46], [0, 0.722, -2.805], livery.body);
+      box(b, [0.048, 0.015, 1.36], [0, 0.811, -2.8], livery.trim);
 
-    // Open fenders and the lower side steps.
-    const wing = wheelArch(0.643, 0.75, 0.33);
-    const rolledEdge = wheelArch(0.704, 0.767, 0.055);
-    for (const s of BOTH_SIDES) {
-      b.add(wing, { position: [s * 0.991, -0.32, TRUCK.frontAxle], rotation: AXLE, color: livery.body });
-      b.add(rolledEdge, { position: [s * 1.167, -0.32, TRUCK.frontAxle], rotation: AXLE, color: livery.trim });
-      box(b, [0.38, 0.11, 1.08], [s * 1.03, -0.107, -0.86], iron);
-      box(b, [0.085, 0.07, 0.97], [s * 1.194, -0.06, -0.83], livery.trim);
-      for (let i = 0; i < 4; i++) {
-        box(b, [0.022, 0.018, 0.61], [s * 0.876, 0.53 - i * 0.078, -2.63], black);
+      // Open fenders and the lower side steps.
+      const wing = wheelArch(0.643, 0.75, 0.33);
+      const rolledEdge = wheelArch(0.704, 0.767, 0.055);
+      for (const s of BOTH_SIDES) {
+        b.add(wing, { position: [s * 0.991, -0.32, TRUCK.frontAxle], rotation: AXLE, color: livery.body });
+        b.add(rolledEdge, { position: [s * 1.167, -0.32, TRUCK.frontAxle], rotation: AXLE, color: livery.trim });
+        box(b, [0.38, 0.11, 1.08], [s * 1.03, -0.107, -0.86], iron);
+        box(b, [0.085, 0.07, 0.97], [s * 1.194, -0.06, -0.83], livery.trim);
+        for (let i = 0; i < 4; i++) {
+          box(b, [0.022, 0.018, 0.61], [s * 0.876, 0.53 - i * 0.078, -2.63], black);
+        }
+        box(b, [0.025, 0.1, 1.38], [s * 1.044, 0.68, -1.28], livery.stripe);
+        box(b, [0.046, 0.044, 0.216], [s * 1.061, 0.94, -0.77], black);
+        box(b, [0.05, 0.023, 0.145], [s * 1.077, 0.958, -0.77], brass);
+        box(b, [0.36, 0.042, 0.035], [s * 1.15, 1.217, -1.888], iron);
+        panel(b, [0.196, 0.252, 0.07], [s * 1.317, 1.269, -1.888], frame);
+        box(b, [0.15, 0.197, 0.015], [s * 1.317, 1.27, -1.847], 0x839a99);
+        box(b, [0.43, 0.475, 0.05], [s * 1.018, -0.319, 2.92], black);
+        box(b, [0.466, 0.132, 2.11], [s * 0.91, 0.073, 1.78], iron);
       }
-      box(b, [0.025, 0.1, 1.38], [s * 1.044, 0.68, -1.28], livery.stripe);
-      box(b, [0.046, 0.044, 0.216], [s * 1.061, 0.94, -0.77], black);
-      box(b, [0.05, 0.023, 0.145], [s * 1.077, 0.958, -0.77], brass);
-      box(b, [0.36, 0.042, 0.035], [s * 1.15, 1.217, -1.888], iron);
-      panel(b, [0.196, 0.252, 0.07], [s * 1.317, 1.269, -1.888], frame);
-      box(b, [0.15, 0.197, 0.015], [s * 1.317, 1.27, -1.847], 0x839a99);
-      box(b, [0.43, 0.475, 0.05], [s * 1.018, -0.319, 2.92], black);
-      box(b, [0.466, 0.132, 2.11], [s * 0.91, 0.073, 1.78], iron);
-    }
 
-    // Ribbed radiator, sealed beams and bumper with the recovery winch.
-    panel(b, [1.47, 0.62, 0.087], [0, 0.397, -3.626], iron);
-    panel(b, [1.31, 0.495, 0.04], [0, 0.396, -3.68], black);
-    for (let i = 0; i < 8; i++) {
-      box(b, [0.036, 0.442, 0.026], [-0.49 + i * 0.14, 0.396, -3.709], 0x9d9682);
+      // Ribbed radiator, sealed beams and bumper with the recovery winch.
+      panel(b, [1.47, 0.62, 0.087], [0, 0.397, -3.626], iron);
+      panel(b, [1.31, 0.495, 0.04], [0, 0.396, -3.68], black);
+      for (let i = 0; i < 8; i++) {
+        box(b, [0.036, 0.442, 0.026], [-0.49 + i * 0.14, 0.396, -3.709], 0x9d9682);
+      }
+      panel(b, [2.31, 0.244, 0.268], [0, -0.03, -3.763], frame);
+      box(b, [2.14, 0.069, 0.034], [0, -0.054, -3.914], iron);
+      const drum = cylinder(0.098, 0.098, 0.54, 12);
+      b.add(drum, { position: [0, 0.009, -3.936], rotation: AXLE, color: black });
+      const lightHousing = cylinder(0.186, 0.174, 0.157, 16);
+      for (const s of BOTH_SIDES) {
+        b.add(lightHousing, { position: [s * 0.642, 0.797, -3.534], rotation: [-Math.PI / 2, 0, 0], color: brass });
+        box(b, [0.111, 0.1, 0.105], [s * 0.79, -0.117, -3.926], livery.body, [0, 0, s * 0.14]);
+      }
+      b.add(cylinder(0.048, 0.117, 0.128), { position: [0, 0.767, -3.72], color: brass });
+      box(b, [0.047, 0.144, 0.039], [0, 0.635, -3.721], 0xb53b2f, [0, 0, -0.1]);
+    } else {
+      for (const side of BOTH_SIDES) {
+        box(b, [0.43, 0.475, 0.05], [side * 1.018, -0.319, 2.92], black);
+        box(b, [0.466, 0.132, 2.11], [side * 0.91, 0.073, 1.78], iron);
+      }
     }
-    panel(b, [2.31, 0.244, 0.268], [0, -0.03, -3.763], frame);
-    box(b, [2.14, 0.069, 0.034], [0, -0.054, -3.914], iron);
-    const drum = cylinder(0.098, 0.098, 0.54, 12);
-    b.add(drum, { position: [0, 0.009, -3.936], rotation: AXLE, color: black });
-    const lightHousing = cylinder(0.186, 0.174, 0.157, 16);
-    for (const s of BOTH_SIDES) {
-      b.add(lightHousing, { position: [s * 0.642, 0.797, -3.534], rotation: [-Math.PI / 2, 0, 0], color: brass });
-      box(b, [0.111, 0.1, 0.105], [s * 0.79, -0.117, -3.926], livery.body, [0, 0, s * 0.14]);
-    }
-    b.add(cylinder(0.048, 0.117, 0.128), { position: [0, 0.767, -3.72], color: brass });
-    box(b, [0.047, 0.144, 0.039], [0, 0.635, -3.721], 0xb53b2f, [0, 0, -0.1]);
 
     // Cargo bed with an exposed deck, tiered wood rails and a reinforced tailgate.
     for (let i = 0; i < 7; i++) {
@@ -229,20 +236,24 @@ function bodyGeometry(livery) {
     }
     box(b, [0.47, 0.019, 0.026], [0, 0.453, 3.269], livery.stripe);
 
-    // Expedition rack: spare, canvas roll, straps and capped exhaust.
+    // Fit the retained canvas roll and spare on the smaller roof of the modeled cab.
+    const rackScale = fittedCab ? 0.66 : 1;
+    const rackZ = z => fittedCab ? -0.86 + (z + 1.22) * rackScale : z;
+    const rackY = y => fittedCab ? y - 0.05 : y;
     for (const s of BOTH_SIDES) {
-      box(b, [0.055, 0.093, 1.28], [s * 0.896, 1.813, -1.211], frame);
-      box(b, [0.046, 0.048, 1.28], [s * 0.896, 1.884, -1.211], livery.trim);
+      box(b, [0.055, 0.093, 1.28 * rackScale], [s * 0.896, rackY(1.813), rackZ(-1.211)], frame);
+      box(b, [0.046, 0.048, 1.28 * rackScale], [s * 0.896, rackY(1.884), rackZ(-1.211)], livery.trim);
     }
-    for (const z of [-1.79, -1.23, -0.635]) box(b, [1.85, 0.049, 0.069], [0, 1.82, z], frame);
+    for (const z of [-1.79, -1.23, -0.635]) box(b, [1.85, 0.049, 0.069], [0, rackY(1.82), rackZ(z)], frame);
     const spare = createLatheGeometry3D([[0.23, -0.122], [0.331, -0.122], [0.439, -0.102], [0.454, -0.056],
       [0.454, 0.06], [0.418, 0.109], [0.32, 0.128], [0.23, 0.128]], { segments: 20 });
-    b.add(spare, { position: [-0.371, 1.909, -1.25], color: black });
-    b.add(cylinder(0.294, 0.31, 0.202, 20), { position: [-0.371, 1.909, -1.25], color: iron });
-    box(b, [0.752, 0.024, 0.077], [-0.373, 2.053, -1.246], brass, [0, -0.23, 0]);
-    b.add(cylinder(0.185, 0.168, 1.07), { position: [0.416, 1.962, -1.23], rotation: LENGTHWISE, color: 0x89907a });
+    const spareScale = fittedCab ? [0.86, 1, 0.86] : [1, 1, 1];
+    b.add(spare, { position: [-0.371, rackY(1.909), rackZ(-1.25)], scale: spareScale, color: black });
+    b.add(cylinder(0.294, 0.31, 0.202, 20), { position: [-0.371, rackY(1.909), rackZ(-1.25)], scale: spareScale, color: iron });
+    box(b, [0.752 * spareScale[0], 0.024, 0.077], [-0.373, rackY(2.053), rackZ(-1.246)], brass, [0, -0.23, 0]);
+    b.add(cylinder(0.185, 0.168, 1.07 * rackScale), { position: [0.416, rackY(1.962), rackZ(-1.23)], rotation: LENGTHWISE, color: 0x89907a });
     const belt = cylinder(0.194, 0.194, 0.068);
-    for (const z of [-1.523, -0.92]) b.add(belt, { position: [0.416, 1.959, z], rotation: LENGTHWISE, color: 0x766344 });
+    for (const z of [-1.523, -0.92]) b.add(belt, { position: [0.416, rackY(1.959), rackZ(z)], rotation: LENGTHWISE, color: 0x766344 });
     b.add(cylinder(0.051, 0.051, 1.71, 10), { position: [-1.094, 1.155, -0.425], color: frame });
     b.add(cylinder(0.078, 0.073, 0.46, 10), { position: [-1.094, 1.058, -0.425], color: iron });
     b.add(cylinder(0.072, 0.064, 0.045, 10), { position: [-1.094, 2.024, -0.425], color: black });
@@ -266,19 +277,21 @@ function glassGeometry() {
   });
 }
 
-function headlampGeometry() {
-  return once('headlamps', () => {
+function headlampGeometry(fittedCab) {
+  return once(fittedCab ? 'cab-headlamps' : 'headlamps', () => {
     const b = createGeometryBuilder3D();
     const lens = createSphereGeometry3D({ radius: 0.149, widthSegments: 12, heightSegments: 6 });
-    for (const s of BOTH_SIDES) b.add(lens, { position: [s * 0.642, 0.797, -3.62], scale: [1, 1, 0.32] });
+    const mounts = fittedCab ? [[-0.843, 0.178, -3.388], [0.791, 0.19, -3.278]]
+      : BOTH_SIDES.map(side => [side * 0.642, 0.797, -3.62]);
+    for (const position of mounts) b.add(lens, { position, scale: fittedCab ? [0.77, 0.86, 0.27] : [1, 1, 0.32] });
     return b.build();
   });
 }
 
-function markerLampGeometry() {
-  return once('marker-lamps', () => {
+function markerLampGeometry(fittedCab) {
+  return once(fittedCab ? 'cab-marker-lamps' : 'marker-lamps', () => {
     const b = createGeometryBuilder3D();
-    for (const x of [-0.62, 0, 0.62]) box(b, [0.121, 0.057, 0.069], [x, 1.759, -1.944], 0xfbaa4c);
+    for (const x of [-0.62, 0, 0.62]) box(b, [0.121, 0.057, 0.069], [x, fittedCab ? 1.786 : 1.759, fittedCab ? -1.28 : -1.944], 0xfbaa4c);
     for (const s of BOTH_SIDES) {
       panel(b, [0.119, 0.106, 0.023], [s * 0.934, 0.321, 3.286], 0xe45c36);
       panel(b, [0.063, 0.106, 0.022], [s * 0.831, 0.321, 3.286], 0xefbb69);
@@ -288,10 +301,10 @@ function markerLampGeometry() {
 }
 
 /** One truck, with six wheel nodes and a countable instanced cargo load. */
-export function createTruckModel(livery) {
+export function createTruckModel(livery, cab = null) {
   const root = new Object3D();
   const paint = once('paint-material', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.63, metallic: 0.1 }));
-  const body = new Mesh3D(bodyGeometry(livery), paint);
+  const body = new Mesh3D(cab?.geometry ?? bodyGeometry(livery, false), cab?.material ?? paint);
   body.castShadow = true;
   body.receiveShadow = true;
   root.addChild(body);
@@ -299,9 +312,16 @@ export function createTruckModel(livery) {
   const glass = once('glass-material', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.16, metallic: 0.33, environmentIntensity: 1.1 }));
   const lamp = once('lamp-material', () => createStandardMaterial3D({ color: 0xffe6b7, emissive: 0xffdfa2, emissiveIntensity: 1.25, roughness: 0.28 }));
   const markers = once('markers-material', () => createStandardMaterial3D({ vertexColors: true, emissive: 0x682b17, emissiveIntensity: 0.5, roughness: 0.46 }));
-  root.addChild(new Mesh3D(glassGeometry(), glass));
-  root.addChild(new Mesh3D(headlampGeometry(), lamp));
-  root.addChild(new Mesh3D(markerLampGeometry(), markers));
+  let bed = null;
+  if (cab) {
+    bed = new Mesh3D(bodyGeometry(livery, true), paint);
+    bed.castShadow = bed.receiveShadow = true;
+    root.addChild(bed);
+  } else {
+    root.addChild(new Mesh3D(glassGeometry(), glass));
+  }
+  root.addChild(new Mesh3D(headlampGeometry(Boolean(cab)), lamp));
+  root.addChild(new Mesh3D(markerLampGeometry(Boolean(cab)), markers));
 
   // Two layers. Removing instances starts with the topmost bundles at the rear.
   const tea = once('tea-material', () => createStandardMaterial3D({ vertexColors: true, roughness: 0.92 }));
@@ -328,5 +348,5 @@ export function createTruckModel(livery) {
       wheels.push({ node: wheel, position: [s * TRUCK.track, TRUCK.wheelY + 0.1, z], front: z === TRUCK.frontAxle });
     }
   }
-  return { root, body, cargo, wheels };
+  return { root, body, bed, cargo, wheels };
 }

@@ -58,7 +58,8 @@ function bare(x, z, n) {
  */
 export function createFlora(scene, physics, { quality = 'medium' } = {}) {
   const density = DENSITY[quality] ?? 0.8,
-    placed = new Map();
+    placed = new Map(),
+    plantModels = new Map();
 
   function scatter(tile) {
     const cx = (tile.x + 0.5) * TILE,
@@ -182,7 +183,7 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
     // One set of instances per kind, under the tile's terrain so it goes with it. Trees also get a plain far copy; which
     // of the two shows, and whether the small things show at all, is decided each frame by the distance to the camera.
     const meshes = [],
-      near = [],
+      near = new Map(),
       far = [],
       small = [];
     const instances = (geometry, material, list, kind) => {
@@ -201,7 +202,7 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
           st = Math.sin(tilt / 2),
           ct = Math.cos(tilt / 2);
         mesh.setTransformAt(i, [x - cx, list[o + 1], z - cz], [cy * st, sy * ct, -sy * st, cy * ct], teaBush ? [scale * teaStep / 2.05, scale, scale] : scale);
-        if (material === foliage) tintAt(mesh, i, x, z, teaBush);
+        if (material !== stone) tintAt(mesh, i, x, z, teaBush);
       }
       mesh.count = count;
       mesh.castShadow = quality !== 'low' && !SMALL.has(kind);
@@ -211,23 +212,24 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
       return mesh;
     };
     for (const [kind, list] of kinds) {
+      const replacement = plantModels.get(kind);
       const geometry =
-        kind === 'pine' ? pineGeometry(false) : kind === 'fir' ? pineGeometry(true) : kind === 'broadleaf' ? broadleafGeometry() : kind === 'tuft' ? tuftGeometry(0x6f6a3a) : stoneGeometry(kind === 'boulder' ? 0 : kind === 'slab' ? 1 : 2);
+        replacement?.geometry ?? (kind === 'pine' ? pineGeometry(false) : kind === 'fir' ? pineGeometry(true) : kind === 'broadleaf' ? broadleafGeometry() : kind === 'tuft' ? tuftGeometry(0x6f6a3a) : stoneGeometry(kind === 'boulder' ? 0 : kind === 'slab' ? 1 : 2));
       const material = kind === 'boulder' || kind === 'slab' || kind === 'scree' ? stone : foliage,
-        mesh = instances(geometry, material, list, kind);
+        mesh = instances(geometry, replacement?.material ?? material, list, kind);
       if (SMALL.has(kind)) small.push(mesh);
       else if (FAR[kind]) {
-        near.push(mesh);
+        near.set(kind, mesh);
         const copy = instances(FAR[kind](), material, list, kind);
         copy.castShadow = false;
         copy.visible = false;
         far.push(copy);
       }
     }
-    const tea = [];
+    const tea = [], teaModel = plantModels.get('tea');
     teaCells.forEach((cell, i) => {
       if (!cell.bushes.length) return;
-      const bushes = instances(teaBushGeometry(), foliage, cell.bushes, 'tea'),
+      const bushes = instances(teaModel?.geometry ?? teaBushGeometry(), teaModel?.material ?? foliage, cell.bushes, 'tea'),
         count = cell.strips.length / 6,
         strips = new InstancedMesh3D(teaStripGeometry(), foliage, count);
       for (let k = 0; k < count; k++) {
@@ -259,6 +261,25 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
     nearTrees = NEAR_TREES[quality] ?? 190,
     teaNear = TEA_NEAR[quality] ?? 60;
   return {
+    /** Swap the near visual only. The caller retains the asset until it is removed or the scene closes. */
+    setPlantModel(kind, model) {
+      if (kind !== 'pine' && kind !== 'fir' && kind !== 'tea') throw new Error('Unknown near-plant kind: ' + kind);
+      if ((model ?? undefined) === plantModels.get(kind)) return;
+      if (model) plantModels.set(kind, model);
+      else plantModels.delete(kind);
+      const geometry = model?.geometry ?? (kind === 'tea' ? teaBushGeometry() : pineGeometry(kind === 'fir'));
+      const material = model?.material ?? foliage;
+      for (const { near, tea } of placed.values()) {
+        const batches = kind === 'tea' ? tea.map(({ bushes }) => bushes) : [near.get(kind)];
+        for (const mesh of batches) {
+          if (!mesh) continue;
+          mesh.geometry = geometry;
+          mesh.material = material;
+          // The engine caches instance bounds by this revision and count.
+          mesh.instanceVersion++;
+        }
+      }
+    },
     onTile(tile, what) {
       if (what === 'load') scatter(tile);
       else clear(tile);
@@ -279,7 +300,7 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
         if (entry.distance >= 0 && Math.abs(d - entry.distance) < 4) continue;
         entry.distance = d;
         for (const mesh of entry.small) mesh.visible = d < detail;
-        for (const mesh of entry.near) mesh.visible = d < nearTrees;
+        for (const mesh of entry.near.values()) mesh.visible = d < nearTrees;
         for (const mesh of entry.far) mesh.visible = d >= nearTrees;
       }
     },

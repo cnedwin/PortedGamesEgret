@@ -94,7 +94,7 @@ function flagLine(scene, from, to, { sag = 0.6, rows = 3, seed = 1 } = {}) {
  * Build every landmark into `scene`, with colliders in `physics`. Returns the stations with their yards, the bridge,
  * and `update(seconds, focus)` to move cloth and rope near `focus`.
  */
-export function createLandmarks(scene, physics, { quality = 'medium' } = {}) {
+export function createLandmarks(scene, physics, { quality = 'medium', hallModel } = {}) {
   const animated = [],
     stations = [];
   const stable = stableGeometry(),
@@ -118,7 +118,10 @@ export function createLandmarks(scene, physics, { quality = 'medium' } = {}) {
       yard = frameAt(station.s, side * 15),
       back = frameAt(station.s, side * 27),
       node = new Object3D();
-    const h = hall({ width: 12, depth: 7 });
+    const h = station.id === 'creek' && hallModel
+      ? new Mesh3D(hallModel.geometry, hallModel.material)
+      : hall({ width: 12, depth: 7 });
+    h.castShadow = h.receiveShadow = true;
     place(h, back);
     scene.addChild(h);
     const stall = new Mesh3D(stable, painted);
