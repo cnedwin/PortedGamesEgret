@@ -82,19 +82,48 @@ gong pull, torn edge, a drum figure, and the bridge. Each piece has a written pe
 - 执行 `node test/accept.mjs` 复跑浏览器键盘演奏、按键越界释放、暂停恢复、结算存档和节拍校准，并比对标题与结算截图。
 - 仓库根目录可以运行 `node tools/quality.mjs OperaDrums --no-write` 做自动品质检查。[QUALITY.md](QUALITY.md) 记录初版自动检查。
 
-## 文件 · Files
+## 已知问题 · Known issues
+
+- 没有在真机上运行过：手机和带显卡桌面上的触屏手感、帧时间、输出延迟和切回后的声音都「未运行」。延迟只在无头浏览器里量过，真机的耳机、蓝牙耳机延迟会大得多，要靠「跟着板敲来测」校准。 · Not run on a real device; output delay was measured only headless, and real headphones, Bluetooth above all, will be later — the tap measure is there for that.
+- 用浏览器协议发出的按键时刻不是真人的时刻，所以验收只断言真按键「得到了判定」，准不准由页面里按时钟敲的那一段来量。 · Keys sent through the browser protocol do not carry a player's timing, so the acceptance only checks that real keys are judged.
+- 手柄的键每帧读一次，时刻会晚到一帧（最多约 17 毫秒）；键盘和触屏用的是事件自己的时间戳。 · Gamepad buttons are read once a frame and may be up to a frame late; keys and touch use their events' own time stamps.
+- 页面上有两个音频输出：`play` 自己的和本作的混音器（ENGINE-NOTES 5），`play` 的那个只是静音。 · Two sound outputs on the page, `play`'s own only muted (item 5).
+- 读屏只在无头 Chromium 的无障碍树里查过名字。 · Screen-reader names were checked only in headless Chromium's accessibility tree.
+- [QUALITY.md](QUALITY.md) 是初版的记录，之后加了戏画、跟练和压轴，没有重新量；其中 E2「不读取任何图片」已不符合现状（现在读取 `assets/` 里的图）。 · QUALITY.md records the first version and was not measured again after the paintings, lesson and encore; its E2 note that no image is loaded is out of date.
+
+## 已解决 · Solved
+
+- 页面按钮上的 Tab 和 Space 失灵（ENGINE-NOTES 1）：捕获阶段先接住按键并停止传播。 · Tab and Space on the page's buttons (item 1): keys caught first.
+- 透明画布下面是黑的（ENGINE-NOTES 2）：开局后把 `play` 的盒子改成透明。 · The black holder (item 2), made clear.
+- 最密的谱上帧时间 p95 33 毫秒（ENGINE-NOTES 3）：音符改成方印（鼓）和菱形（锣），只用矩形，回到 16.7 毫秒；形状不同也让分不清红和金的人能区分两种音符。 · 33 ms p95 on the densest chart (item 3): the notes are rectangles now, which also tells them apart without colour.
+- 伴奏声部的位置比听到的早约 41 毫秒（ENGINE-NOTES 4）：用 `AudioContext.getOutputTimestamp()` 换算成「正在出声的那一秒」。 · The voice's position ahead of the sound (item 4), turned into what is heard.
+- `play` 返回前帧就开始了，入口里还没定义的常量被帧函数读到而报错：帧函数在入口准备好之前什么也不做。 · Frames began before the entry had finished; the frame does nothing until the page is ready.
+- 滚奏结束的那一刻正好是下一个音符时，最后几下会被判到下一个音符上：滚奏里的击打先归滚奏，结尾不含端点。 · Strokes at the end of a roll were judged on the next note; inside a roll strokes belong to the roll, and its end is not part of it.
+- 京胡曲调原先是随机走出的五声音阶句子：现在每首曲子有固定的主旋律，在过门里变奏。 · The fiddle once walked the scale at random; each song now has a written hook, varied in the bridges.
+
+## 未完成 · Unfinished
+
+- 真机验收（触屏、帧时间、延迟、声音）。 · Checks on real devices.
+- 加了戏画、跟练和压轴之后重新跑一遍 `tools/quality.mjs`，更新 QUALITY.md。 · Measure quality again and update QUALITY.md.
+- 更多曲目，以及按真实曲牌写的京胡旋律。 · More songs, and fiddle melodies from real tunes.
+- 正式曲目的分段练习和放慢播放（跟练只练四种技巧）。 · Practising a song by section or slowed down; the lesson teaches only four skills.
+
+## 目录结构 · Layout
 
 | 路径 · Path | 用途 · Purpose |
 |---|---|
 | `index.html`, `style.css` | 页面、import map、戏台框、敲击区、标题 / 暂停 / 结算 / 校准 · the page, the stage's box, the pads and the panels |
 | `src/main.mjs` | 入口：存档、语言、`play`、声音、击打、画面切换、校准 · the entry |
 | `src/view.mjs` | 高对比音符、节拍标线、乐器动画和判定 · moving notes, beat guides, instruments and judgement |
+| `src/encore-stage.mjs` | 压轴挑战的鼓势、爆发和倒数画面 · the encore's power, burst and countdown |
 | `assets/`, `src/stage-drawing.mjs` | 戏台与原创戏画、引擎绘制的谱字印章和器乐 · theatre paintings, note seals and instrument artwork |
 | `src/audio/synth.mjs`, `src/audio/render-audio.mjs` | 音乐与器乐合成、后台生成 · score and percussion synthesis and its worker |
 | `src/audio/sound.mjs` | 交给引擎混音器；曲子的时钟 · the engine's mixer; the song's clock |
 | `src/sim/songs.mjs` | 锣鼓经的点子和三首曲子 · the patterns and the songs |
 | `src/sim/chart.mjs` | 按难度排谱面 · charts by difficulty |
 | `src/sim/judge.mjs` | 判定、连击、得分、「彩」槽、名次 · the judging |
+| `src/sim/lesson.mjs`, `src/sim/feedback.mjs` | 跟练的四步和早、晚、漏、敲错的提示 · the lesson's steps and its feedback |
+| `src/sim/encore.mjs` | 压轴挑战的谱面与计分 · the encore's chart and scoring |
 | `src/sim/bot.mjs`, `tools/balance.mjs` | 电脑玩家和谱面检查 · the computer player and the chart check |
 | `src/i18n.mjs`, `src/saves.mjs` | 文字表、存档 · the words, the save |
 | `test/` | Node 测试、浏览器验收和截图基线 · tests, acceptance and baselines |
