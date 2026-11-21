@@ -354,6 +354,15 @@ export function createView(game) {
   return {
     ready,
     clear,
+    primeActorAtlas() {
+      const entry = take('boy', 'hero');
+      pose(entry.node, game.width / 2, game.height / 2, 1);
+      try {
+        game.engine.renderSharedFrame(game.browser.frame);
+      } finally {
+        give(entry);
+      }
+    },
     show(run, events, seconds) {
       if (!atlas) return;
       stamp++;
