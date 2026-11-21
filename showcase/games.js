@@ -313,4 +313,32 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'canal', folder: 'CanalWatch', kind: '2d',
+    scenes: [
+      { zh: "第十波 · 纤道上的刀盾兵", en: "Wave 10 · Shield-bearers on the towpath" },
+      { zh: "上闸关闭 · 升级弩楼", en: "Upper gate shut · Upgrading a crossbow tower" },
+      { zh: "第十二波 · 旗舰", en: "Wave 12 · The flagship" },
+    ],
+    zh: "漕河守闸", en: "Canal Watch",
+    genre: { zh: "塔防", en: "Tower defence" },
+    summary: { zh: "在汴河两岸建塔、关闸，挡住水陆两路的水寇十二波。", en: "Build towers and shut sluice gates on the Bian canal to stop twelve waves by water and by land." },
+    features: [
+      {
+        title: { zh: "一次调用的 play", en: "One call to play" },
+        description: { zh: "画布、帧循环、碎片、震屏、提示和加速暂停都来自引擎的 play。", en: "The canvas, the loop, bursts, shakes, notices, speed and pause all come from the engine's play." },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: "代码画图与合成声音", en: "Drawn and voiced in code" },
+        description: { zh: "塔、船、箭石火都用 Graphics 画；音效和配乐由引擎合成，不加载文件。", en: "Towers, boats, arrows, stones and fire are Graphics; effects and music are synthesized, with no files." },
+        source: 'src/view.mjs',
+      },
+      {
+        title: { zh: "规则与平衡测试", en: "Rules and balance runs" },
+        description: { zh: "规则不碰页面，电脑玩家按几种打法各打多局来调数值。", en: "The rules stay off the page, and a computer player tunes the numbers over many games." },
+        source: 'src/sim/world.mjs',
+      },
+    ],
+  },
 ];

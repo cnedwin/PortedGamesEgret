@@ -1,0 +1,357 @@
+/* 漕河守闸的页面：一卷绢本水墨。地图的绢底由页面画一次，画布透明，引擎只画会动的东西。
+   The page of Canal Watch: a scroll of ink on silk. The silk under the map is the page's, drawn once; the canvas is
+   clear, and the engine draws only what moves. */
+:root {
+  --silk: #e6d9b8;
+  --silk-deep: #d6c49a;
+  --ink: #2b2924;
+  --ink-soft: #5b564c;
+  --seal: #b3352b;
+  --celadon: #4f7769;
+  --bar: 52px;
+  --type: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #3a362e;
+  color: var(--ink);
+  font: 16px/1.45 var(--type);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#frame {
+  position: fixed;
+  inset: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+button {
+  font: inherit;
+  color: var(--ink);
+  background: var(--silk);
+  border: 1.5px solid var(--ink);
+  border-radius: 3px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button:hover {
+  background: #efe5ca;
+}
+button:focus-visible {
+  outline: 3px solid var(--seal);
+  outline-offset: 2px;
+}
+button.strong {
+  background: var(--seal);
+  border-color: var(--seal);
+  color: #f6eedb;
+}
+button[aria-disabled="true"] {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* The bar above the map. */
+#bar {
+  box-sizing: border-box;
+  width: var(--field-width);
+  min-height: var(--bar);
+  display: flex;
+  align-items: center;
+  gap: 4px 14px;
+  flex-wrap: wrap;
+  padding: 4px 6px;
+  color: #f1e7cf;
+}
+#bar[hidden] {
+  display: none;
+}
+#bar .stat {
+  margin: 0;
+  font-size: 17px;
+  white-space: nowrap;
+}
+#bar .tools {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+#bar button {
+  font-size: 14px;
+  padding: 0 10px;
+}
+#bar button.shut {
+  background: var(--ink);
+  color: #f1e7cf;
+}
+#bar button.cooling {
+  opacity: 0.65;
+}
+
+/* The map: a box of the stage's shape, as large as the window allows under the bar. */
+#field {
+  --field-width: min(100vw, calc((100dvh - var(--bar) - 8px) * 16 / 9));
+  position: relative;
+  width: var(--field-width);
+  aspect-ratio: 16 / 9;
+  background:
+    radial-gradient(70% 60% at 30% 40%, rgba(255, 250, 235, 0.5), rgba(255, 250, 235, 0) 70%),
+    linear-gradient(180deg, #e9ddbf, var(--silk) 55%, var(--silk-deep));
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.35), 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+#frame {
+  --field-width: min(100vw, calc((100dvh - var(--bar) - 8px) * 16 / 9));
+}
+#ground {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#plots {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+}
+#plots button {
+  position: absolute;
+  width: max(44px, 4.6%);
+  aspect-ratio: 1;
+  height: auto;
+  transform: translate(-50%, -50%);
+  padding: 0;
+  border-radius: 50%;
+  background: transparent;
+  border: 1.5px solid transparent;
+  pointer-events: auto;
+}
+#plots button:hover,
+#plots button[aria-expanded="true"] {
+  border-color: var(--seal);
+  background: rgba(179, 53, 43, 0.08);
+}
+
+/* The picker for a plot: next to it on a wide screen, under the map on a tall one. */
+#picker {
+  position: absolute;
+  z-index: 3;
+  width: min(280px, 46%);
+  box-sizing: border-box;
+  padding: 8px;
+  background: rgba(240, 230, 204, 0.97);
+  border: 1.5px solid var(--ink);
+  box-shadow: 4px 4px 0 rgba(43, 41, 36, 0.25);
+  display: grid;
+  gap: 6px;
+}
+#picker[hidden] {
+  display: none;
+}
+#picker h2 {
+  margin: 0 0 2px;
+  font-size: 16px;
+}
+#picker button {
+  text-align: left;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 0 8px;
+  padding: 4px 10px;
+  font-size: 15px;
+}
+#picker button small {
+  grid-column: 1 / -1;
+  color: var(--ink-soft);
+  font-size: 12px;
+  line-height: 1.3;
+}
+#picker button .cost {
+  color: var(--seal);
+}
+#keys {
+  margin: 6px 0 0;
+  width: var(--field-width);
+  color: #cfc4aa;
+  font-size: 12px;
+}
+
+/* The title, the menu and the end: a sheet of silk over the map. */
+.panel {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(43, 41, 36, 0.55);
+  overflow: auto;
+}
+.panel[hidden] {
+  display: none;
+}
+.sheet {
+  box-sizing: border-box;
+  width: min(560px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 22px 24px;
+  background: var(--silk);
+  border: 1.5px solid var(--ink);
+  box-shadow: 6px 6px 0 rgba(0, 0, 0, 0.3);
+}
+.sheet h1 {
+  margin: 0;
+  font-size: clamp(34px, 7vw, 52px);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  line-height: 1.1;
+}
+.sheet h1 .seal {
+  display: inline-block;
+  margin-left: 10px;
+  padding: 2px 5px;
+  font-size: 0.32em;
+  letter-spacing: 0;
+  vertical-align: middle;
+  color: #f6eedb;
+  background: var(--seal);
+  border-radius: 2px;
+}
+.sheet h2 {
+  margin: 14px 0 4px;
+  font-size: 18px;
+}
+.sheet p {
+  margin: 6px 0;
+}
+.sheet .demo {
+  color: var(--ink-soft);
+  font-size: 13px;
+}
+.sheet .notice {
+  padding: 6px 10px;
+  border-left: 3px solid var(--seal);
+  background: rgba(179, 53, 43, 0.08);
+}
+.sheet ul {
+  margin: 4px 0;
+  padding-left: 1.2em;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.choice {
+  display: grid;
+  text-align: left;
+  padding: 8px 14px;
+  min-width: 150px;
+}
+.choice small {
+  color: inherit;
+  opacity: 0.8;
+  font-size: 12px;
+}
+.stars {
+  color: var(--seal);
+  letter-spacing: 0.15em;
+}
+.quiet {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+#loading {
+  color: #f1e7cf;
+  opacity: 0.8;
+}
+@media (orientation: portrait) {
+  #frame {
+    justify-content: flex-start;
+    padding-top: max(8px, env(safe-area-inset-top));
+  }
+  #field {
+    --field-width: 100vw;
+  }
+  #frame {
+    --field-width: 100vw;
+  }
+  #picker {
+    top: calc(100% + 6px) !important;
+    left: 0 !important;
+    width: 100%;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+/* A phone on its side: the bar becomes a column on the left, so the map keeps the whole height. */
+@media (orientation: landscape) and (max-height: 560px) {
+  #frame {
+    flex-direction: row;
+    align-items: stretch;
+    --side: 148px;
+    --field-width: min(calc(100vw - var(--side) - 12px), calc((100dvh - 4px) * 16 / 9));
+  }
+  #field {
+    --field-width: min(calc(100vw - var(--side) - 12px), calc((100dvh - 4px) * 16 / 9));
+    align-self: center;
+  }
+  #bar {
+    width: var(--side);
+    flex-direction: column;
+    align-items: stretch;
+    gap: 4px;
+    padding: 6px 6px 6px 0;
+    overflow: auto;
+  }
+  #bar .stat {
+    font-size: 14px;
+  }
+  #bar .tools {
+    margin: 0;
+    flex-direction: column;
+  }
+  #bar button {
+    font-size: 13px;
+    line-height: 1.15;
+    padding: 2px 6px;
+  }
+  #keys {
+    display: none;
+  }
+  #picker button small {
+    display: none;
+  }
+  #picker {
+    gap: 4px;
+    padding: 6px;
+  }
+}
+/* The key list is for keyboards; on a touch screen it is left out. */
+@media (pointer: coarse) {
+  #keys {
+    display: none;
+  }
+}
