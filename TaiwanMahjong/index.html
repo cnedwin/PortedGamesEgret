@@ -3,11 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
-  <title>台灣十六張麻將 · Taiwan Sixteen-Tile Mahjong</title>
-  <meta name="description" content="台灣十六張麻將：玩家與三位電腦牌友同桌，補花、吃碰槓、算台數。基於新白鷺引擎獨立開發的遊戲 Demo。">
-  <meta name="theme-color" content="#0b3526">
+  <title>島夜雀室 · 台灣十六張麻將</title>
+  <meta name="description" content="島夜雀室：在雨夜的台灣牌室，與三位電腦牌友打十六張麻將。補花、吃碰槓，照台數結算。">
+  <meta name="theme-color" content="#0b2228">
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="style.css">
+  <link rel="preload" as="image" href="assets/rain-room.webp">
   <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
   <script type="importmap">
     {
@@ -45,9 +46,9 @@
         <span id="wallLeft"></span>
       </div>
       <div class="plate" data-seat="0"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
-      <div class="plate" data-seat="1"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
-      <div class="plate" data-seat="2"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
-      <div class="plate" data-seat="3"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
+      <div class="plate" data-seat="1"><i class="seal seatPortrait" aria-hidden="true"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
+      <div class="plate" data-seat="2"><i class="seal seatPortrait" aria-hidden="true"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
+      <div class="plate" data-seat="3"><i class="seal seatPortrait" aria-hidden="true"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
 
       <div id="handKeys" role="group"></div>
       <div id="actions" role="group"></div>
@@ -61,26 +62,30 @@
       <section id="title" class="panel title" hidden>
         <div class="titleArt" aria-hidden="true"></div>
         <div class="titleBody">
-          <h1 id="titleName"></h1>
-          <p id="tagline" class="tagline"></p>
+          <header class="titleHeading">
+            <p id="titleType" class="titleType"></p>
+            <h1 id="titleName"></h1>
+            <p id="tagline" class="tagline"></p>
+          </header>
           <p class="notice" hidden></p>
           <fieldset><legend id="lengthLegend"></legend><div class="choices" id="lengthChoices"></div></fieldset>
           <fieldset><legend id="levelLegend"></legend><div class="choices" id="levelChoices"></div></fieldset>
           <div class="people" id="people"></div>
-          <div class="row">
+          <div class="row titleActions">
             <button id="startButton" class="primary" type="button"></button>
             <button id="rulesButton" type="button"></button>
             <button id="recordButton" type="button"></button>
             <button id="settingsButton" type="button"></button>
             <button id="languageButton" type="button"></button>
           </div>
-          <p class="demo" id="demoLine"></p>
         </div>
       </section>
 
       <section id="result" class="panel sheet" hidden aria-labelledby="resultTitle">
-        <h2 id="resultTitle"></h2>
-        <p id="resultNote"></p>
+        <header class="resultHeading">
+          <i id="resultPortrait" class="seal portrait" aria-hidden="true" hidden></i>
+          <div><h2 id="resultTitle"></h2><p id="resultNote"></p></div>
+        </header>
         <div id="resultHand" class="tileRow"></div>
         <ul id="resultTai" class="taiList"></ul>
         <p id="resultTotal" class="taiTotal"></p>

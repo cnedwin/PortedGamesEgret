@@ -7,7 +7,7 @@
 // each hand's result and the final ranking are page panels.
 import { play } from '@egret/engine/play';
 import { browserSaveStorage } from '@egret/engine/web/kit';
-import { createFelt, drawTile } from './felt.mjs';
+import { createFelt } from './felt.mjs';
 import { getLanguage, onLanguage, setLanguage, startLanguage, t, tileName } from './i18n.mjs';
 import { handCentre, handSlots, riverSlot, STAGE } from './layout.mjs';
 import { LEVEL_NAMES, openSave, recordGame, recordHand } from './saves.mjs';
@@ -47,7 +47,14 @@ const WORD_AT = [
 const app = {
   game: null,
   save,
-  sound: null,
+  sound: createSound({
+    ...save.data.settings,
+    onSpeakerChanged(seat) {
+      for (const plate of $$('.plate[data-seat]')) {
+        plate.classList.toggle('speaking', seat !== null && Number(plate.dataset.seat) === seat);
+      }
+    }
+  }),
   felt: null,
   view: null,
   match: null,
@@ -57,6 +64,7 @@ const app = {
   human: null,
   seed: Number(params.get('seed') ?? Date.now() % 100000),
   last: null,
+  asidePlayed: false,
   hidden: new Set(),
   reveal: false,
   quitting: false
@@ -99,7 +107,7 @@ async function buildEngine(tall) {
   game.reducedMotion = save.data.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
   const lease = await game.browser.textureFromCanvas(app.atlas);
   app.view = createView(game, lease, { tall });
-  app.sound = createSound(game, { sound: save.data.settings.sound, music: save.data.settings.music, seed: app.seed });
+  app.sound.attach(game);
   app.game = game;
   if (pauseGate) game.pause();
   if (app.match?.hand && app.screen !== 'title' && app.felt) paintTable();
@@ -380,10 +388,11 @@ async function playHand() {
   const match = app.match;
   startHand(match);
   app.last = null;
+  app.asidePlayed = false;
   app.reveal = false;
   app.hidden.clear();
   let seen = 0;
-  app.sound.music('calm');
+  app.sound.music('table');
   paintTable();
   seen = await present(seen);
   while (!match.hand.result && !app.quitting) {
@@ -420,16 +429,18 @@ async function present(from) {
     switch (event.type) {
       case 'deal':
         paintTable();
-        app.sound.play('clack');
+        app.sound.play('deal');
+        if (match.history.length === 0) app.sound.say(1 + match.firstDealer % 3, 'opening');
         await wait(0.35);
         break;
       case 'flower':
         app.view.call(t('flower'), WORD_AT[event.seat], { size: 36, color: 0xf3d36b });
-        app.sound.play('flower');
+        app.sound.play('flower', event.seat);
         paintTable();
         await wait(0.3);
         break;
       case 'replace':
+        app.sound.play('draw', event.seat);
         break;
       case 'draw':
         if (event.seat === 0 && !app.autoplay) {
@@ -441,7 +452,7 @@ async function present(from) {
           await app.view.fly(kindOf(event.id), { x: CENTRE_FROM.x, y: CENTRE_FROM.y, scale: 0.3 }, slots.at(-1), 0.22);
           app.hidden.delete(event.id);
         }
-        app.sound.play('draw');
+        app.sound.play('draw', event.seat);
         paintTable();
         break;
       case 'discard': {
@@ -459,7 +470,10 @@ async function present(from) {
         paintTable();
         await app.view.fly(kindOf(event.id), fromPlace, to, 0.24);
         app.hidden.delete(event.id);
-        app.sound.play('clack');
+        app.sound.play('discard', event.seat);
+        if (!app.asidePlayed && !hand.result && liveLeft(hand) <= 26) {
+          app.asidePlayed = app.sound.say(event.seat, 'aside');
+        }
         paintTable();
         announce(`${nameOf(event.seat)} ${tileName(kindOf(event.id))}`);
         await wait(0.12);
@@ -470,8 +484,9 @@ async function present(from) {
       case 'kong':
       case 'addKong': {
         if (event.type === 'addKong') break;
-        app.view.call(t(event.type), WORD_AT[event.seat], { size: 68 });
-        app.sound.play(event.type === 'kong' ? 'kong' : 'call');
+        app.view.call(t(event.type), WORD_AT[event.seat], { size: 68, kind: event.type });
+        app.sound.play(event.type, event.seat);
+        app.sound.say(event.seat, event.type);
         if (event.id !== undefined) app.last = null;
         paintTable();
         announce(`${nameOf(event.seat)} ${t(event.type)}`);
@@ -481,9 +496,10 @@ async function present(from) {
       case 'win': {
         app.reveal = true;
         paintTable();
-        app.view.call(event.self ? t('selfDraw') : t('win'), WORD_AT[event.seat], { size: 96, big: true, color: 0xffd36b });
-        app.sound.play(event.seat === 0 ? 'win' : event.from === 0 ? 'lose' : 'win');
-        if (event.seat === 0) app.sound.music('triumph');
+        app.view.call(event.self ? t('selfDraw') : t('win'), WORD_AT[event.seat],
+          { size: 96, big: true, kind: event.self ? 'selfDraw' : 'win', color: 0xffedc6 });
+        app.sound.play(event.seat === 0 ? (event.self ? 'selfDraw' : 'win') : event.from === 0 ? 'dealIn' : 'opponentWin');
+        app.sound.say(event.seat, event.self ? 'selfDraw' : 'win');
         announce(event.self ? t('resultSelf', { name: nameOf(event.seat) }) : t('resultWin', { name: nameOf(event.seat) }));
         await wait(1.5);
         break;
@@ -492,6 +508,7 @@ async function present(from) {
         app.reveal = true;
         paintTable();
         app.view.call(t('resultDraw'), { x: 640, y: 360 }, { size: 72 });
+        app.sound.play('drawn');
         await wait(1.2);
         break;
     }
@@ -524,7 +541,8 @@ function showResult(entry) {
     match = app.match;
   return new Promise((resolve) => {
     const panel = $('#result');
-    const hand = match.hand;
+    const hand = match.hand, portrait = $('#resultPortrait');
+    portrait.hidden = result.kind === 'draw';
     if (result.kind === 'draw') {
       $('#resultTitle').textContent = t('resultDraw');
       $('#resultNote').textContent = t('resultDrawNote');
@@ -533,6 +551,8 @@ function showResult(entry) {
       $('#resultTotal').textContent = '';
     } else {
       const seat = result.seat;
+      portrait.dataset.seat = seat;
+      portrait.textContent = t(SEATS[seat].seal);
       $('#resultTitle').textContent = result.from === null ? t('resultSelf', { name: nameOf(seat) }) : t('resultWin', { name: nameOf(seat) });
       $('#resultNote').textContent = result.from === null ? t('paidByAll') : t('dealIn', { name: nameOf(result.from) });
       const player = hand.players[seat],
@@ -584,6 +604,7 @@ function showResult(entry) {
     app.resolveResult = next.onclick;
     panel.hidden = false;
     app.screen = 'result';
+    app.sound.music('result');
     next.focus();
   });
 }
@@ -623,7 +644,7 @@ function showFinal() {
   );
   $('#finalNote').textContent = best ? t('bestGame') : '';
   show('final');
-  app.sound.music(place === 1 ? 'triumph' : 'calm');
+  app.sound.music('result');
   $('#againButton').focus();
 }
 
@@ -634,6 +655,7 @@ function show(name) {
   table.classList.toggle('atTitle', name === 'title');
   app.screen = name;
   if (name === 'title') {
+    app.sound.music('title');
     app.view?.clear();
     app.felt?.paint({});
     paintTitle();
@@ -641,6 +663,7 @@ function show(name) {
 }
 
 function openPanel(id, returnTo) {
+  app.sound.play('ui');
   const panel = $('#' + id);
   panel.hidden = false;
   panel.returnTo = returnTo;
@@ -655,9 +678,9 @@ for (const id of ['rules', 'settings', 'record']) $(`#${id} .closeButton`).addEv
 
 function paintTitle() {
   document.title = t('pageTitle');
+  $('#titleType').textContent = t('titleType');
   $('#titleName').textContent = t('title');
   $('#tagline').textContent = t('tagline');
-  $('#demoLine').textContent = t('demo');
   const notice = $('#title .notice');
   const words = [problems.includes('corrupt') || problems.includes('unreadable') || problems.includes('invalid') ? t('saveBroken') : '', problems.includes('write') || problems.includes('refused') ? t('saveRefused') : ''].filter(Boolean);
   notice.hidden = words.length === 0;
@@ -691,10 +714,11 @@ function paintTitle() {
     )
   );
   $('#people').replaceChildren(
-    ...[1, 2, 3].map((seat) => {
+    ...[1, 3, 2].map((seat) => {
       const person = document.createElement('div');
       person.className = 'person';
-      person.innerHTML = '<i class="seal"></i><span><b></b><span></span></span>';
+      person.dataset.seat = seat;
+      person.innerHTML = '<i class="seal" aria-hidden="true"></i><span><b></b><span></span></span>';
       $('.seal', person).textContent = t(SEATS[seat].seal);
       $('b', person).textContent = nameOf(seat);
       $('span span', person).textContent = t(SEATS[seat].key + 'Note');
@@ -755,6 +779,7 @@ function paintSettings() {
   const rows = [
     toggle('sound', t('sound')),
     toggle('music', t('music')),
+    toggle('voice', t('voice')),
     [t('pace'), t(s.pace), () => setSetting('pace', s.pace === 'calm' ? 'brisk' : 'calm')],
     toggle('hints', t('hints')),
     toggle('reducedMotion', t('reducedMotion')),
@@ -782,11 +807,13 @@ function paintSettings() {
 }
 
 function setSetting(key, value) {
+  app.sound.play('ui');
   save.update((data) => {
     data.settings[key] = value;
   });
   if (key === 'sound') app.sound.setSound(value);
   if (key === 'music') app.sound.setMusic(value);
+  if (key === 'voice') app.sound.setVoice(value);
   if (key === 'reducedMotion' && app.game) app.game.reducedMotion = value || matchMedia('(prefers-reduced-motion: reduce)').matches;
   if (key === 'hints' && app.match?.hand) paintHand();
 }
@@ -862,10 +889,12 @@ function pause(on) {
     let resolve;
     const promise = new Promise((r) => (resolve = r));
     pauseGate = { promise, resolve };
+    app.sound.pause(true);
     app.game?.pause();
   } else if (!on && pauseGate) {
     const gateNow = pauseGate;
     pauseGate = null;
+    app.sound.pause(false);
     app.game?.resume();
     gateNow.resolve();
   }
@@ -903,7 +932,7 @@ $('#autoButton').addEventListener('click', () => {
 });
 
 $('#startButton').addEventListener('click', () => {
-  app.sound.play('select');
+  app.sound.play('ui');
   playGame().catch((error) => console.error(error));
 });
 $('#rulesButton').addEventListener('click', () => {
@@ -985,22 +1014,6 @@ async function boot() {
   await buildEngine(innerHeight > innerWidth);
   fit();
   app.felt = createFelt($('#felt'), atlas, kindOf);
-  // The title's picture: a few tiles leaning together.
-  const art = document.createElement('canvas');
-  art.width = 800;
-  art.height = 1080;
-  const g = art.getContext('2d');
-  g.scale(2, 2);
-  [
-    [31, 120, 150, -0.22, 1.05],
-    [32, 250, 160, 0.12, 1.05],
-    [9, 95, 330, -0.08, 0.95],
-    [18, 225, 340, 0.2, 0.95],
-    [0, 330, 300, 0.34, 0.85],
-    [34, 160, 470, -0.3, 0.8],
-    [27, 300, 470, 0.15, 0.8]
-  ].forEach(([kind, x, y, rotation, scale]) => drawTile(g, atlas, kind, { x, y, rotation, scale }));
-  $('.titleArt').append(art);
   onLanguage(() => {});
   document.documentElement.lang = getLanguage() === 'zh' ? 'zh-Hant' : 'en';
   paintRules();
@@ -1011,8 +1024,6 @@ async function boot() {
   $('#loading').hidden = true;
   show('title');
   $('#startButton').focus();
-  // The first touch of the page lets music begin.
-  addEventListener('pointerdown', () => app.screen !== 'loading' && app.sound.music(app.screen === 'title' ? 'calm' : 'calm'), { once: true });
   app.ready = true;
 }
 

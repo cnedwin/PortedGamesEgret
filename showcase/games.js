@@ -401,13 +401,13 @@ export const GAMES = [
   {
     id: 'mahjong', folder: 'TaiwanMahjong', kind: '2d',
     scenes: [
-      { zh: "牌局后段 · 打七万听二三条", en: "Late in a hand · A discard that makes the hand ready" },
-      { zh: "结算 · 独听、正花与庄家台数", en: "The result · Tai listed one by one" },
-      { zh: "英文标题 · 选圈数与牌友程度", en: "The title in English · Length and opponents" },
+      { zh: "島夜雀室 · 三位牌友等你入座", en: "Island Night Mahjong · Three players await" },
+      { zh: "牌局 · 小美碰牌", en: "At the table · Mei calls pong" },
+      { zh: "結算 · 自摸與各家分數", en: "Settlement · Self-draw and the table scores" },
     ],
-    zh: "台灣十六張麻將", en: "Taiwan Sixteen-Tile Mahjong",
-    genre: { zh: "麻将", en: "Mahjong" },
-    summary: { zh: "和三位性格不同的电脑牌友打台湾十六张，补花、吃碰槓、算台数。", en: "Taiwanese sixteen-tile mahjong against three computer players of their own character, with flowers, calls and tai." },
+    zh: "島夜雀室", en: "Island Night Mahjong",
+    genre: { zh: "台灣十六張麻將", en: "Taiwanese Mahjong" },
+    summary: { zh: "到雨夜巷弄裡的牌室，和三位有台灣國語配音的牌友打十六張，補花、吃碰槓、算台數。", en: "Play Taiwanese sixteen-tile mahjong with three voiced opponents in a rain-soaked neighborhood parlor." },
     features: [
       {
         title: { zh: "可由电脑打完的规则", en: "Rules a computer can play" },
@@ -415,8 +415,8 @@ export const GAMES = [
         source: 'src/sim/game.mjs',
       },
       {
-        title: { zh: "一张图集的牌", en: "Tiles from one atlas" },
-        description: { zh: "42 种牌面画在一张图集上，手牌和飞行的牌是同一张贴图上的 Bitmap，用 sourceRect 取牌面。", en: "The 42 faces share one atlas; the hand and flying tiles are Bitmaps of one texture, cut by sourceRect." },
+        title: { zh: "牌面圖集與叫牌演出", en: "Tile atlas and call effects" },
+        description: { zh: "42 種牌面共用一張圖集，手牌和飛行中的牌使用 Bitmap 的 sourceRect 取圖。叫牌由引擎繪製光紋和粒子。", en: "The 42 faces share one bitmap atlas via sourceRect. The engine animates flying tiles and draws the call effects and particles." },
         source: 'src/view.mjs',
       },
       {

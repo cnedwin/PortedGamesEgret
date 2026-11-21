@@ -48,6 +48,23 @@ test('settings, the setup and the record survive opening the save again', () => 
   assert.equal(again.data.record.firsts, 1);
 });
 
+test('adding the table voice control keeps a muted version-one save and its record', () => {
+  const data = freshSave();
+  delete data.settings.voice;
+  data.settings.sound = false;
+  data.settings.music = true;
+  data.record.wins = 3;
+  const storage = memory({ [SAVE_KEY]: JSON.stringify({ version: 1, savedAt: '', data }) });
+  const migrated = openSave(storage);
+  assert.equal(migrated.data.record.wins, 3);
+  assert.deepEqual([migrated.data.settings.voice, migrated.data.settings.music], [false, true]);
+  assert.equal(JSON.parse(storage.items.get(SAVE_KEY)).version, 2);
+  migrated.update((next) => {
+    next.settings.voice = true;
+  });
+  assert.deepEqual([openSave(storage).data.settings.voice, openSave(storage).data.settings.sound], [true, false]);
+});
+
 test('the record counts deal-ins and draws, and keeps only a better game', () => {
   const data = freshSave();
   recordHand(data, { kind: 'win', seat: 2, from: 0, score: { total: 3 } });
