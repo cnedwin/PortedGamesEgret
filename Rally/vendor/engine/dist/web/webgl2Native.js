@@ -102,6 +102,8 @@ export class GLNativeSession {
     cleanupFailure;
     recordOwners;
     timingSerial = null;
+    /** Working targets hold codes (RGBA8, mixed as a 2D canvas mixes) rather than light (SRGB8_ALPHA8). */
+    codedTargets = false;
     calls = new Map();
     qualifiedColorTargets = new WeakSet();
     qualifiedDepthTargets = new WeakMap();
@@ -491,7 +493,7 @@ export class GLNativeSession {
         const start = this.recordOwners ? this.startTiming() : undefined;
         try {
             for (const [name, expected] of [
-                [gl.FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, working ? gl.SRGB : gl.LINEAR],
+                [gl.FRAMEBUFFER_ATTACHMENT_COLOR_ENCODING, working && !this.codedTargets ? gl.SRGB : gl.LINEAR],
                 [gl.FRAMEBUFFER_ATTACHMENT_COMPONENT_TYPE, gl.UNSIGNED_NORMALIZED],
                 [gl.FRAMEBUFFER_ATTACHMENT_RED_SIZE, 8],
                 [gl.FRAMEBUFFER_ATTACHMENT_GREEN_SIZE, 8],
@@ -550,17 +552,17 @@ export class GLNativeSession {
         gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
         gl.pixelStorei(gl.UNPACK_COLORSPACE_CONVERSION_WEBGL, gl.NONE);
     }
-    texture(owner, width, height, working) {
+    texture(owner, width, height, working, levels = 1) {
         const gl = this.gl;
         gl.bindTexture(gl.TEXTURE_2D, owner.value);
-        gl.texStorage2D(gl.TEXTURE_2D, 1, working ? gl.SRGB8_ALPHA8 : gl.RGBA8, width, height);
+        gl.texStorage2D(gl.TEXTURE_2D, levels, working && !this.codedTargets ? gl.SRGB8_ALPHA8 : gl.RGBA8, width, height);
         for (const [name, value] of [
             [gl.TEXTURE_MIN_FILTER, gl.NEAREST],
             [gl.TEXTURE_MAG_FILTER, gl.NEAREST],
             [gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE],
             [gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE],
             [gl.TEXTURE_BASE_LEVEL, 0],
-            [gl.TEXTURE_MAX_LEVEL, 0]
+            [gl.TEXTURE_MAX_LEVEL, levels - 1]
         ])
             gl.texParameteri(gl.TEXTURE_2D, name, value);
     }

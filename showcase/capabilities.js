@@ -475,6 +475,10 @@ export const MATRIX = {
      "file": "MechanismCity/src/main.mjs"
     },
     {
+     "game": "Rally",
+     "file": "Rally/src/main.mjs"
+    },
+    {
      "game": "SnowTemple",
      "file": "SnowTemple/src/main.mjs"
     },

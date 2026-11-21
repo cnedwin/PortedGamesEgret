@@ -390,7 +390,7 @@ export function createHud(root, track, options = {}) {
     }
 
     wrong.textContent = kart.wrongWay ? t().wrongWay : '';
-    flash.style.opacity = view.flash;
+    flash.style.opacity = view.reducedMotion ? view.flash * 0.3 : view.flash;
     lines.style.opacity = kart.boost > 0 || kart.cloud > 0 ? 0.6 : kart.draft > 0.3 ? 0.25 : 0;
     if (bannerUntil && now > bannerUntil) {
       banner.className = 'banner';

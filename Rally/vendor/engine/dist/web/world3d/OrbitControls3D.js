@@ -1,5 +1,6 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 const EPSILON = 1e-4;
+/** Turns a camera around a target, pans and zooms it, with the mouse and touch. */
 export class OrbitControls3D {
     camera;
     element;
@@ -181,6 +182,7 @@ export class OrbitControls3D {
         this.#pointers.clear();
     }
 }
+/** Makes orbit controls for a camera on an element. */
 export function createOrbitControls3D(camera, element, options = {}) {
     return new OrbitControls3D(camera, element, options);
 }

@@ -144,11 +144,9 @@ export function canvasTexture(width, height, draw, options) {
   canvas.height = height;
   const context = canvas.getContext('2d');
   draw(context, width, height);
-  // A canvas counts rows from the top and a texture from the bottom, so the rows are copied in reverse.
-  const pixels = context.getImageData(0, 0, width, height).data,
-    data = new Uint8Array(pixels.length);
-  for (let y = 0; y < height; y++) data.set(pixels.subarray(y * width * 4, (y + 1) * width * 4), (height - 1 - y) * width * 4);
-  return new Texture3D({ width, height, data }, options);
+  // A canvas counts rows from the top and a texture from the bottom; `flipY` turns the rows over as they are uploaded.
+  const pixels = context.getImageData(0, 0, width, height).data;
+  return new Texture3D({ width, height, data: new Uint8Array(pixels.buffer, pixels.byteOffset, pixels.length) }, { ...options, flipY: true });
 }
 
 /** A repeatable random source for placing scenery, so the circuit looks the same on every visit. */

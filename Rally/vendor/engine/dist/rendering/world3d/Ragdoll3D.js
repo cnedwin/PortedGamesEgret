@@ -4,6 +4,7 @@
 // physics step. DOM-free and backend-independent.
 import { World3DError, requireFinite3D } from './core3D.js';
 import { mat4Compose, mat4Decompose, mat4Invert, mat4Multiply, quatNormalize } from './math3D.js';
+/** The most parts a ragdoll has. */
 export const RAGDOLL3D_LIMITS = Object.freeze({ maxParts: 64 });
 const world = new Float32Array(16), local = new Float32Array(16), inverse = new Float32Array(16);
 const place = new Float32Array(3), turn = new Float32Array(4), size = new Float32Array(3);
@@ -194,6 +195,7 @@ export class Ragdoll3D {
         this.deactivate();
     }
 }
+/** Makes a ragdoll of physics bodies that a skeleton follows. */
 export function createRagdoll3D(world, root, parts, options = {}) {
     return new Ragdoll3D(world, root, parts, options);
 }
