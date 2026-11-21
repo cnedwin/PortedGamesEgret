@@ -50,6 +50,7 @@
           <p id="pearlText"></p>
         </div>
         <div class="bar boss" id="bossBar" hidden><span></span><b id="bossText"></b></div>
+        <p id="bossAnnouncement" aria-hidden="true" hidden></p>
       </header>
       <p id="battleHint" hidden></p>
       <div id="seaStick" aria-hidden="true" hidden><span></span></div>
@@ -63,8 +64,26 @@
     <section id="end" class="panel" role="dialog" aria-modal="true" hidden></section>
     <p id="say" class="quiet" aria-live="polite"></p>
     <p id="loading">载入中 · Loading</p>
+    <section id="loadError" class="panel" role="alertdialog" aria-modal="true" aria-labelledby="loadErrorTitle" hidden>
+      <div class="sheet">
+        <h2 id="loadErrorTitle">载入失败 · Could not load</h2>
+        <p>请检查网络后重试。 · Check your connection and try again.</p>
+        <div class="row"><button id="reloadGame" class="strong" type="button">重新载入 · Reload game</button></div>
+      </div>
+    </section>
   </main>
   <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
-  <script type="module" src="src/main.mjs"></script>
+  <script type="module">
+    try {
+      await import('./src/main.mjs');
+    } catch (error) {
+      document.getElementById('loading')?.remove();
+      document.getElementById('loadError').hidden = false;
+      const reload = document.getElementById('reloadGame');
+      reload.addEventListener('click', () => location.reload(), { once: true });
+      reload.focus();
+      console.error(error);
+    }
+  </script>
 </body>
 </html>
