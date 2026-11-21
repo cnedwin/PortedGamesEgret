@@ -1,0 +1,325 @@
+/* 哪吒闹海的页面：夜里的东海和红纸剪出的哪吒。海面由页面画一次，画布透明，引擎只画会动的东西。
+   The page of Nezha Stirs the Sea: the East Sea at night and a Nezha cut from red paper. The sea is painted once by
+   the page; the canvas is clear, and the engine draws only what moves. */
+:root {
+  --sea: #0d2a3a;
+  --deep: #081a25;
+  --red: #d1342b;
+  --gold: #e8b84a;
+  --paper: #f4ecd8;
+  --mist: #9fb7c2;
+  --type: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", system-ui, sans-serif;
+  --head: "Noto Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: var(--deep);
+  color: var(--paper);
+  font: 15px/1.45 var(--type);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#frame {
+  position: fixed;
+  inset: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: grid;
+  place-items: center;
+}
+button {
+  font: inherit;
+  color: var(--paper);
+  background: #14384a;
+  border: 1.5px solid #3f7186;
+  border-radius: 6px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 12px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button:hover {
+  background: #1b4a60;
+}
+button:focus-visible {
+  outline: 3px solid var(--gold);
+  outline-offset: 2px;
+}
+button.strong {
+  background: var(--red);
+  border-color: var(--gold);
+  font-weight: 700;
+}
+button[aria-disabled="true"] {
+  opacity: 0.5;
+}
+button[aria-pressed="true"] {
+  border-color: var(--gold);
+  box-shadow: inset 0 0 0 2px var(--gold);
+}
+
+/* The sea: the stage's tall shape, as large as the window allows. */
+#field {
+  position: relative;
+  height: min(100dvh, calc(100vw * 16 / 9));
+  aspect-ratio: 9 / 16;
+  background: var(--sea);
+  overflow: hidden;
+}
+#ground {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#hud {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 0;
+  padding: 8px 10px 0;
+  display: grid;
+  gap: 4px;
+  pointer-events: none;
+}
+#hud[hidden] {
+  display: none;
+}
+#hud .row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+#hud p {
+  margin: 0;
+  white-space: nowrap;
+  text-shadow: 0 1px 2px #000;
+  font-variant-numeric: tabular-nums;
+}
+#hud button {
+  pointer-events: auto;
+  margin-left: auto;
+  font-size: 14px;
+}
+.bar {
+  position: relative;
+  flex: 1;
+  height: 18px;
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(244, 236, 216, 0.4);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar span {
+  position: absolute;
+  inset: 0;
+  transform-origin: left;
+  background: var(--red);
+}
+.bar b {
+  position: relative;
+  display: block;
+  font-size: 12px;
+  line-height: 18px;
+  padding-left: 6px;
+  text-shadow: 0 1px 1px #000;
+}
+.bar.xp {
+  height: 8px;
+}
+.bar.xp span {
+  background: var(--gold);
+}
+.bar.boss span {
+  background: #7d5ba6;
+}
+.bar[hidden] {
+  display: none;
+}
+#hud .small {
+  font-size: 13px;
+}
+
+/* The panels: the title, the level-ups, the market, the pause and the end. */
+.panel {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(5, 15, 22, 0.72);
+  overflow: auto;
+}
+.panel[hidden] {
+  display: none;
+}
+.sheet {
+  box-sizing: border-box;
+  width: min(720px, calc(100vw - 16px));
+  max-height: calc(100dvh - 16px);
+  overflow: auto;
+  padding: 16px 18px;
+  background: linear-gradient(180deg, #123345, #0b2333);
+  border: 2px solid var(--gold);
+  border-radius: 10px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+.sheet h1 {
+  margin: 0;
+  font: 700 clamp(34px, 8vw, 56px) / 1.1 var(--head);
+  color: var(--red);
+  text-shadow: 2px 2px 0 var(--gold);
+  letter-spacing: 0.08em;
+}
+.sheet h2 {
+  margin: 14px 0 6px;
+  font: 700 17px/1.3 var(--head);
+  color: var(--gold);
+}
+.sheet p {
+  margin: 6px 0;
+}
+.quietText {
+  color: var(--mist);
+  font-size: 13px;
+}
+.notice {
+  padding: 6px 10px;
+  border-left: 3px solid var(--red);
+  background: rgba(209, 52, 43, 0.15);
+}
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.card {
+  display: grid;
+  gap: 2px;
+  text-align: left;
+  padding: 8px 10px;
+  min-height: 64px;
+  align-content: start;
+}
+.card strong {
+  font-size: 15px;
+}
+.card small {
+  color: var(--mist);
+  font-size: 12px;
+}
+.card .price {
+  color: var(--gold);
+  font-weight: 700;
+}
+.offer {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border: 1.5px solid #3f7186;
+  border-radius: 8px;
+  background: #0f2e3f;
+}
+.offer.weapon {
+  border-color: rgba(232, 184, 74, 0.6);
+}
+.offer.sold {
+  opacity: 0.45;
+}
+.offer .name {
+  font-weight: 700;
+}
+.offer .row {
+  display: flex;
+  gap: 6px;
+}
+.offer .row button {
+  flex: 1;
+  white-space: nowrap;
+  padding: 0 8px;
+}
+.slots {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+}
+.slot {
+  min-height: 56px;
+  display: grid;
+  align-content: center;
+  text-align: center;
+  padding: 4px;
+  font-size: 13px;
+}
+.slot small {
+  color: var(--gold);
+}
+.slot.divine {
+  background: #5a1d1a;
+  border-color: var(--gold);
+}
+.slot.partner {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 2px var(--gold);
+}
+.slot.empty {
+  opacity: 0.4;
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+  align-items: center;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+  font-size: 13px;
+  color: var(--mist);
+}
+.chips b {
+  color: var(--paper);
+}
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 2px 12px;
+  font-size: 13px;
+}
+.stats .up {
+  color: #8fe388;
+}
+.stats .down {
+  color: #ff8a80;
+}
+.sheet .bigResult {
+  font: 700 clamp(28px, 6vw, 44px) / 1.2 var(--head);
+  color: var(--gold);
+  margin: 4px 0;
+}
+.quiet {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+#loading {
+  position: absolute;
+  color: var(--gold);
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

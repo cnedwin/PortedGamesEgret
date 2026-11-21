@@ -86,6 +86,12 @@ An independently developed 2D tower defence demo built with Egret Rebuild. On th
 
 An independently developed rhythm game demo of the Peking opera percussion, built with Egret Rebuild. You take the drummer's seat: the syllables of the percussion score (cang, cai, tai, ba, da, du) become seals and diamonds flowing towards the drum face, and you strike the drum or the gongs as they arrive; a big cang wants both hands for double points, and a long du is a roll. Three songs, The General Arms, Riding Through and Swift Wind, are made of common patterns of the traditional score, each on easy, normal and hard, over the clapper's beat and a jinghu fiddle in the bridges. The drum, gongs, cymbals, clapper and fiddle are all synthesized in code and played through the engine's mixer, and the song's time is the backing voice's position less the output delay, with a delay measure by striking along with the clapper. Chinese and English, keyboard, touch, mouse and gamepad. [Play online](https://cnedwin.github.io/PortedGamesEgret/OperaDrums/) · [Guide and development](OperaDrums/README.md)
 
+## Nezha Stirs the Sea · 哪吒闹海
+
+一款使用新白鹭引擎独立开发的割草肉鸽游戏 Demo。东海龙宫的虾兵蟹将涌上陈塘关，你操纵哪吒在海面上走位，乾坤圈、混天绫、火尖枪、金砖、风火轮和护体法罩自动出手。一局二十波，第十波夜叉、第二十波敖丙；每波之间进龙宫集市，用拾到的珍珠买法宝和宝物、锁定或刷新货架。两件同阶同名的法宝合成高一阶，两件三阶以上的配对法宝合成神器：乾坤圈加混天绫成缚龙圈，火尖枪加风火轮成火轮枪，金砖加法罩成镇龙金砖。三种哪吒形态和三档海况，规则在 Node 里能由电脑玩家整局打完并统计胜率。中英文，键盘、触屏、鼠标和手柄都能玩。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/NezhaSea/) · [说明与开发](NezhaSea/README.md)
+
+An independently developed survivors-like roguelite demo, built with Egret Rebuild. The Dragon King's shrimp and crab soldiers swarm Chentang Pass; you steer Nezha across the sea while the Universe Ring, the Red Silk Ribbon, the Fire-Tipped Spear, the Golden Brick, the Wind-Fire Wheels and the Guarding Dome strike on their own. A game is twenty waves, with the yaksha at wave ten and Ao Bing at twenty; between waves the Dragon Palace market sells treasures and trinkets for the pearls you gather, with locks and rerolls. Two treasures of a kind and tier merge into the next tier, and two paired treasures of the third tier or higher merge into a divine one. Three forms of Nezha and three sea states, with rules a bot plays through in Node to measure the odds. Chinese and English, keyboard, touch, mouse and gamepad. [Play online](https://cnedwin.github.io/PortedGamesEgret/NezhaSea/) · [Guide and development](NezhaSea/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)

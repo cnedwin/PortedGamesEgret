@@ -10,6 +10,7 @@ export const MATRIX = {
   "LanternShadows",
   "LoveElective",
   "MechanismCity",
+  "NezhaSea",
   "OperaDrums",
   "Rally",
   "SnowTemple",
@@ -463,6 +464,10 @@ export const MATRIX = {
      "file": "MechanismCity/src/audio/sound.mjs"
     },
     {
+     "game": "NezhaSea",
+     "file": "NezhaSea/src/i18n.mjs"
+    },
+    {
      "game": "OperaDrums",
      "file": "OperaDrums/src/audio/sound.mjs"
     },
@@ -492,6 +497,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
+    },
+    {
+     "game": "NezhaSea",
+     "file": "NezhaSea/src/main.mjs"
     },
     {
      "game": "OperaDrums",
@@ -542,6 +551,10 @@ export const MATRIX = {
     {
      "game": "CanalWatch",
      "file": "CanalWatch/src/main.mjs"
+    },
+    {
+     "game": "NezhaSea",
+     "file": "NezhaSea/src/sound.mjs"
     },
     {
      "game": "OperaDrums",

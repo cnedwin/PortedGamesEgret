@@ -369,4 +369,33 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'nezha', folder: 'NezhaSea', kind: '2d',
+    portraitGallery: true,
+    scenes: [
+      { zh: "第十四波 · 海面上的乾坤圈与火尖枪", en: "Wave fourteen · Ring and spear at sea" },
+      { zh: "龙宫集市 · 买宝、锁定与合成", en: "The Dragon Palace market · Buying, locking and merging" },
+      { zh: "第二十波 · 敖丙（英文）", en: "Wave twenty · Ao Bing (in English)" },
+    ],
+    zh: "哪吒闹海", en: "Nezha Stirs the Sea",
+    genre: { zh: "割草肉鸽", en: "Survivors-like roguelite" },
+    summary: { zh: "操纵哪吒挡住二十波龙宫水族，在集市里买法宝并合成神器。", en: "Steer Nezha through twenty waves of the Dragon King's soldiers, and buy and merge treasures into divine ones." },
+    features: [
+      {
+        title: { zh: "一次调用的 play", en: "One call to play" },
+        description: { zh: "画布、帧循环、虚拟摇杆、手柄、碎片、震屏和暂停都来自引擎的 play。", en: "The canvas, the loop, the touch stick, gamepad, bursts, shakes and pause all come from the engine's play." },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: "矩形拼出的剪纸精灵", en: "Paper-cut sprites from rectangles" },
+        description: { zh: "哪吒、水族兵、法宝和珍珠都用矩形拼成，按种类放池子反复用，上百个同屏也走快路径。", en: "Nezha, the soldiers, treasures and pearls are cut from rectangles and pooled by kind, so a hundred on screen stay on the fast path." },
+        source: 'src/view.mjs',
+      },
+      {
+        title: { zh: "可由电脑打完的规则", en: "Rules a bot can play" },
+        description: { zh: "波次、集市、合成和神器全在不依赖页面的规则里，电脑玩家在 Node 里整局打完来调平衡。", en: "Waves, the market, merging and divine recipes live in page-free rules, played through by a bot in Node to tune the balance." },
+        source: 'src/sim/world.mjs',
+      },
+    ],
+  },
 ];
