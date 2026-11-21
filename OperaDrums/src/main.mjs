@@ -36,6 +36,10 @@ let lastCoachLabel = '';
 let lastMissed = null;
 let lastLessonFeedback = { key: 'timingReady' };
 let lessonCounts = null;
+let encoreFeedback = null;
+const READY_CUE_DELAY = 0.075;
+const ENCORE_CUES = { start: 'rally', end: 'rally-end', break: 'rally-break' };
+const ENCORE_WORDS = { ready: 'encoreFull', start: 'encoreTrigger', end: 'encoreEnded', break: 'encoreBroken' };
 let chosenAct = SONGS[0];
 let chosenLevel = DIFFICULTIES[0];
 
@@ -229,10 +233,40 @@ const speedOf = () => app.mode === 'lesson' ? 275 : 260 * settings().speed;
 
 function updateRally(result, time) {
   if (!app.encore) return;
-  const { state, award, activated } = updateEncore(app.encore, result, app.run, time);
+  const previous = app.encore;
+  const { state, award, activated } = updateEncore(previous, result, app.run, time);
   app.encore = state;
   if (award) app.run.score += award;
-  if (activated) sound.cue?.('rally');
+
+  const phase = state.activeUntil > time ? 'active' : state.charge === ENCORE_POWER.capacity ? 'ready' : 'charge';
+  let cue = null;
+  if (activated) {
+    encoreFeedback.bonusStart = state.bonus - award;
+    cue = 'start';
+  } else if (previous.activeUntil && !state.activeUntil) {
+    cue = time < previous.activeUntil ? 'break' : 'end';
+  } else if (phase === 'ready' && encoreFeedback.phase !== 'ready') {
+    cue = 'ready';
+  }
+  if (encoreFeedback.phase !== phase) {
+    encoreFeedback.phase = phase;
+    view.setEncorePhase(phase);
+  }
+
+  if (cue) {
+    encoreFeedback.notice = { cue, time };
+    view.encoreCue(cue);
+    say(t(ENCORE_WORDS[cue]));
+    if (cue === 'ready') encoreFeedback.readyAt = time + READY_CUE_DELAY;
+    else sound.cue?.(ENCORE_CUES[cue]);
+  }
+  // Both contacts on the charging gong can also trigger the rally. In that case,
+  // play only its activation cue. This clock also holds while the game is paused.
+  if (phase !== 'ready') encoreFeedback.readyAt = null;
+  if (encoreFeedback.readyAt !== null && time >= encoreFeedback.readyAt) {
+    encoreFeedback.readyAt = null;
+    sound.cue?.('rally-ready');
+  }
 }
 
 function setLessonFeedback(feedback) {
@@ -249,7 +283,7 @@ function toggleLessonFeedback(visible) {
 
 function paintCoach(time) {
   const lesson = app.mode === 'lesson';
-  let label, hint, active = false;
+  let label, hint, displayPhase = 'lesson';
   if (lesson) {
     const step = app.lessonStep ?
       LESSON_STEPS.findIndex(({ skill }) => skill === app.lessonStep) : lessonStepAt(time);
@@ -258,15 +292,29 @@ function paintCoach(time) {
     hint = t(lessonCues[step]);
     coachRibbon.hidden = true;
   } else {
-    const { charge, activeUntil } = app.encore;
-    active = activeUntil > time;
-    const ready = charge >= ENCORE_POWER.capacity;
-    label = active ? t('encoreActive', { n: Math.ceil(activeUntil - time) }) :
-      t('encoreCharge', { n: charge, max: ENCORE_POWER.capacity });
-    hint = ready ? t('encoreReady') : active ? '' : t('encoreHint');
+    const { charge, activeUntil, bonus } = app.encore;
+    const { phase, notice, bonusStart } = encoreFeedback;
+    const age = notice ? time - notice.time : Infinity;
+    const roundBonus = () => t('encoreRoundBonus', { score: bonus - bonusStart });
+    displayPhase = phase;
+    if (phase === 'active') {
+      label = t('encoreActive', { n: Math.ceil(activeUntil - time) });
+      hint = age < 0.9 ? t('encoreTrigger') : roundBonus();
+    } else if (phase === 'ready') {
+      label = t('encoreFull');
+      hint = t('encoreReady');
+    } else if ((notice?.cue === 'end' || notice?.cue === 'break') && age < 1.15) {
+      displayPhase = notice.cue;
+      label = t(ENCORE_WORDS[notice.cue]);
+      hint = roundBonus();
+    } else {
+      label = t('encoreCharge', { n: charge, max: ENCORE_POWER.capacity });
+      hint = t('encoreHint');
+    }
     coachRibbon.hidden = false;
-    const value = active ? (activeUntil - time) / ENCORE_POWER.seconds * ENCORE_POWER.capacity : charge;
-    coachRibbon.value = Math.round(value * 10) / 10;
+    const value = phase === 'active' ? (activeUntil - time) / ENCORE_POWER.seconds * ENCORE_POWER.capacity : charge;
+    const rounded = Math.round(value * 10) / 10;
+    if (coachRibbon.value !== rounded) coachRibbon.value = rounded;
   }
   if (label + hint !== lastCoachLabel) {
     coachLabel.textContent = label;
@@ -274,7 +322,10 @@ function paintCoach(time) {
     coachRibbon.setAttribute('aria-label', t('encore'));
     lastCoachLabel = label + hint;
   }
-  coach.classList.toggle('rally', active);
+  if (coach.dataset.phase !== displayPhase) {
+    coach.dataset.phase = displayPhase;
+    pads.dataset.encorePhase = displayPhase;
+  }
 }
 
 // ---- Screens. ----
@@ -519,7 +570,9 @@ async function startSong(id, difficulty, { step = null, completed = [] } = {}) {
   app.lessonSkills = lesson ? new Set(completed) : null;
   lessonCounts = lesson ? { drum: 0, gong: 0, roll: 0 } : null;
   lastMissed = null;
+  delete pads.dataset.encorePhase;
   app.encore = encore ? createEncore() : null;
+  encoreFeedback = encore ? { phase: 'charge', notice: null, readyAt: null, bonusStart: 0 } : null;
   app.chart = lesson ? buildLesson(step) : buildChart(song, difficulty);
   toggleLessonFeedback(lesson);
   if (lesson) setLessonFeedback({ key: 'timingReady' });
@@ -626,6 +679,7 @@ function showEnd() {
   toggleLessonFeedback(false);
   view.clear();
   if (r.mode === 'lesson') return showLessonEnd(r.skills);
+  const nextEncore = r.cleared && r.mode === 'song' && app.song.id === 'qiba' && app.difficulty === 'easy';
   const root = sheet(
     panels.end,
     `<div class="end-head"><h2 id="endHeading">${t('curtainCall')}</h2><small>${r.mode === 'encore' ? songName(app.song) : t('resultTitle', { song: songName(app.song), level: levelName(app.difficulty) })}</small></div>
@@ -641,9 +695,15 @@ function showEnd() {
        ['maxCombo', r.maxCombo], ['rollCount', r.rolls], ['doubleCount', r.doubles]
      ].map(([label, count]) => `<div><dt>${t(label)}</dt><dd>${count}</dd></div>`).join('')}</dl>
      ${r.kept ? '' : `<p class="notice" role="status">${t('saveRefused')}</p>`}
-     <div class="row sheet-actions"><button type="button" class="strong" data-do="again">${t('again')}</button><button type="button" data-do="quit">${t('quit')}</button></div>`
+     ${nextEncore ? `<p class="encore-next-hint" id="encoreNextHint">${t('encoreNextHint')}</p>` : ''}
+     <div class="row sheet-actions">
+       ${nextEncore ? `<button type="button" class="strong" data-do="encore-next" aria-describedby="encoreNextHint">${t('encoreNext')}</button>` : ''}
+       <button type="button" class="${nextEncore ? '' : 'strong'}" data-do="again">${t('again')}</button>
+       <button type="button" data-do="quit">${t('quit')}</button>
+     </div>`
   );
   panels.end.setAttribute('aria-labelledby', 'endHeading');
+  root.querySelector('[data-do=encore-next]')?.addEventListener('click', () => startSong(ENCORE_SONG.id, 'normal'));
   root.querySelector('[data-do=again]').addEventListener('click', () => startSong(app.song.id, app.difficulty));
   root.querySelector('[data-do=quit]').addEventListener('click', () => showTitle());
   say(`${t(r.rank)}, ${t('score', { n: r.score })}`);

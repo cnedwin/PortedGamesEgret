@@ -59,18 +59,26 @@ export function createSound(scope, { on = true, music = 0.8 } = {}) {
   let voice = null;
   let clickAsset = null;
   let playback = 0;
+  let lastGongAt = -Infinity, ringingGong = null;
 
   const sound = {
     mixer,
     context,
     strike(name) {
       if (mixer.master.muted) return;
-      const effect = effects.get(name) ?? effects.get('drum');
+      const bigGong = name === 'cang';
+      const rapid = bigGong && context.currentTime - lastGongAt < 0.34;
+      const effect = effects.get(rapid ? 'cangRapid' : name) ?? effects.get('drum');
       if (!effect) return;
       // Repeat strokes have a restrained change in pitch; it never delays their onset.
       const count = strikeCounts.get(name) ?? 0;
       strikeCounts.set(name, (count + 1) % variations.length);
-      mixer.play(effect, { bus: 'effects', rate: variations[count], maxInstances: name === 'cang' ? 3 : 5 });
+      if (rapid && ringingGong?.state === 'playing') ringingGong.stop({ fade: 0.044 });
+      const hit = mixer.play(effect, { bus: 'effects', rate: variations[count], maxInstances: bigGong ? 3 : 5 });
+      if (bigGong) {
+        lastGongAt = context.currentTime;
+        ringingGong = rapid ? null : hit;
+      }
     },
     cue(name) {
       if (mixer.master.muted) return;
@@ -111,6 +119,8 @@ export function createSound(scope, { on = true, music = 0.8 } = {}) {
     },
     stop() {
       playback++;
+      lastGongAt = -Infinity;
+      ringingGong = null;
       voice?.stop();
       voice = null;
       clickAsset?.release();

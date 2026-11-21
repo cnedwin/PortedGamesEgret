@@ -97,3 +97,16 @@ test('a light gong and a rally still cut through the first phrase', () => {
   const afterStrike = rally.subarray(Math.round(0.080 * RATE), Math.round(0.220 * RATE));
   assert.ok(peakOf(afterStrike) >= 0.196 && peakOf(rally) < 0.28);
 });
+
+test('corresponding encore cues have quiet, distinct envelopes and fast gongs retain their full attack', () => {
+  const effects = effectsOf();
+  const offsets = [['rally-ready', 0.31], ['rally-end', 0.27], ['rally-break', 0.17]];
+  for (const [name, seconds] of offsets) {
+    assert.equal(effects[name]?.length / RATE, seconds);
+    assert.ok(peakOf(effects[name]) >= 0.12 && peakOf(effects[name]) < 0.28, name);
+  }
+  const full = effects.cang, rapid = effects.cangRapid;
+  assert.ok(rapid.length < full.length * 0.3);
+  assert.deepEqual(rapid.subarray(0, 0.11 * RATE), full.subarray(0, 0.11 * RATE));
+  assert.equal(rapid.at(-1), 0);
+});

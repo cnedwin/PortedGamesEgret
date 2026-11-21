@@ -37,7 +37,7 @@ Opera Drums is a Peking opera rhythm game built with [Egret Rebuild](https://git
 ## 跟练与压轴 · Lesson and encore
 
 - 「先跟练」沿用正式谱面的判定和击打声。跟板声依次练习单皮鼓、打锣、双手合击和滚奏，击打时会提示早、晚、漏拍或敲错的乐器；结尾可直接点没练成的项目只练该步。练习不写入曲目成绩。 · The lesson uses the same timing and strike sounds, teaches four skills with explicit feedback, and lets you retry an unfinished skill separately. It leaves regular scores alone.
-- 「压轴挑战」为独立的短谱。精准敲击蓄鼓势，蓄满后用双手敲中「仓」开启七秒基础分翻倍。漏拍会中断爆发。单独保存最好成绩。 · The encore is a short separate chart. Build power with accurate strikes, then hit a big gong with both hands for up to seven seconds of doubled base points. A miss interrupts the rally. It has its own best score.
+- 《起霸》易通关后可从结算页直接接打「压轴挑战」。压轴是独立的短谱。精准敲击蓄鼓势，蓄满后用双手敲中「仓」开启七秒基础分翻倍。鼓势蓄满时两侧锣键亮起，爆发中显示倒数与加成，漏拍与倒数结束有独立提示。单独保存压轴最好成绩。 · After clearing The General Arms on Easy, start the short encore from the curtain call. Build power with accurate strikes, then hit a big gong with both hands for up to seven seconds of doubled base points. Both gong pads highlight at full power, and the countdown distinguishes a missed note from a completed rally. The encore has its own best score.
 
 ## 锣鼓经与曲目 · The score and the songs
 

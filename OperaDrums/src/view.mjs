@@ -2,6 +2,7 @@
 import { LEAD } from './sim/chart.mjs';
 import { CLEAR, SCORE } from './sim/judge.mjs';
 import { ROMAN } from './sim/songs.mjs';
+import { createEncoreStage } from './encore-stage.mjs';
 import {
   ASH, BRONZE, CORAL, GOLD, INK, IVORY, JADE, LACQUER, NOTE_HALF, RED,
   drawImpact, drawLane, drawReceiver, drawSeal, drawStick, drawStrip, rect
@@ -33,6 +34,7 @@ export function createView(game, { words, roman }) {
   const { hitX, laneY, laneTop, laneBottom, gaugeY, gaugeLeft, gaugeRight, spawnX } = LAYOUT;
   sprite((g) => drawLane(g, LAYOUT), layers.lane);
   sprite(drawReceiver, layers.receiver, hitX, laneY);
+  const encoreStage = createEncoreStage(game, layers.receiver, LAYOUT);
 
   const guides = Array.from({ length: 12 }, () =>
     sprite((g) => {
@@ -266,6 +268,9 @@ export function createView(game, { words, roman }) {
   }
 
   return {
+    setEncorePhase: encoreStage.setEncorePhase,
+    encoreCue: encoreStage.encoreCue,
+
     reset(chart) {
       removeNotes();
       setScene(true);
@@ -276,6 +281,7 @@ export function createView(game, { words, roman }) {
       gaugeShown = -1;
       judgementAge = 99;
       rollFlash = 0;
+      encoreStage.reset();
       for (const ring of Object.values(impacts)) ring.alpha = 0;
       for (const kind of KINDS) strikes[kind] = 0;
       animateFeedback(0);
@@ -314,6 +320,7 @@ export function createView(game, { words, roman }) {
       combo.text = run.combo >= 2 ? String(run.combo) : '';
       comboLabel.text = run.combo >= 2 ? words('comboName') : '';
       animateFeedback(seconds);
+      encoreStage.step(seconds);
     },
 
     struck(kind, result, detail) {
@@ -351,6 +358,7 @@ export function createView(game, { words, roman }) {
 
     clear() {
       removeNotes();
+      encoreStage.reset();
       shownChart = null;
       setScene(false);
     }
