@@ -4,12 +4,12 @@
 // state), and the record of past terms. Kept by the engine's save store: versioned, an unreadable save set aside
 // rather than lost, and a write the browser refuses never throws.
 import { createSaveStore } from '@egret/engine/kit';
-import { DISTRICTS, NODE_SLOTS, PLOTS_PER_DISTRICT, SIDES } from './sim/world.mjs';
-import { RANKS } from './sim/data.mjs';
+import { CORE_WARDS, DISTRICTS, NODE_SLOTS, PLOTS_PER_DISTRICT, SIDES, STARTING_WARDS } from './sim/world.mjs';
+import { PETITIONS, RANKS, ZONES } from './sim/data.mjs';
 
 export const SAVE_KEY = 'peach-creek';
 const LEGACY_PLOTS = 8;
-const SAVE_VERSION = 2;
+const SAVE_VERSION = 3;
 
 export const freshSave = (language = 'zh') => ({
   county: null,
@@ -35,8 +35,14 @@ export function countyLooksRight(c) {
     c.nodes.length === NODE_SLOTS &&
     Array.isArray(c.districts) &&
     c.districts.length === DISTRICTS &&
+    c.districts.every((ward, i) => typeof ward?.open === 'boolean' &&
+      (i >= STARTING_WARDS || ward.open) && (ward.zone === null || ZONES.includes(ward.zone))) &&
     Boolean(c.res) &&
     Number.isFinite(c.res.coin) &&
+    (c.petition === null || PETITIONS.list.some(({ id }) => id === c.petition?.id)) &&
+    (c.petitionCount === undefined || level(c.petitionCount)) &&
+    (c.petitionRecent === undefined || (Array.isArray(c.petitionRecent) && c.petitionRecent.length <= PETITIONS.recent &&
+      c.petitionRecent.every((recent) => PETITIONS.list.some(({ id }) => id === recent)))) &&
     Array.isArray(c.works) &&
     Array.isArray(c.talents) &&
     sideLevels(c.defence?.wall) &&
@@ -48,12 +54,12 @@ export function countyLooksRight(c) {
 
 function migrateV1(data) {
   const county = data?.county;
-  if (county?.version !== 1 || county.plots?.length !== DISTRICTS * LEGACY_PLOTS) return data;
+  if (county?.version !== 1 || county.plots?.length !== CORE_WARDS * LEGACY_PLOTS) return data;
   const newParcel = (index) => Math.floor(index / LEGACY_PLOTS) * PLOTS_PER_DISTRICT + index % LEGACY_PLOTS;
   const remap = (reference) => {
     if (reference?.type === 'plot') reference.key = newParcel(reference.key);
   };
-  const plotArray = Array.from({ length: DISTRICTS * PLOTS_PER_DISTRICT }, () => ({ kind: null, level: 0 }));
+  const plotArray = Array.from({ length: CORE_WARDS * PLOTS_PER_DISTRICT }, () => ({ kind: null, level: 0 }));
   county.plots.forEach((plot, index) => { plotArray[newParcel(index)] = plot; });
   county.plots = plotArray;
   county.works.forEach(remap);
@@ -62,7 +68,24 @@ function migrateV1(data) {
   county.defence.wall = SIDES.map(() => county.defence.wall);
   county.defence.troops = SIDES.map(() => 0);
   if (county.raid.last) county.raid.last.side = ((county.seed >>> 0) + county.raid.last.n) % SIDES.length;
-  county.version = SAVE_VERSION;
+  county.version = 2;
+  return data;
+}
+
+/** Keep old lots and posts in place. Inland docks can run until a player claims a bank slot and moves them. */
+function migrateV2(data) {
+  const county = data?.county;
+  const previousRank = RANKS[county?.rank];
+  const corePlots = CORE_WARDS * PLOTS_PER_DISTRICT;
+  if (county?.version !== 2 || !previousRank || county.plots?.length !== corePlots || county.districts?.length !== CORE_WARDS) return data;
+  county.districts = Array.from({ length: DISTRICTS }, (_, i) => {
+    if (i >= CORE_WARDS) return { zone: null, open: false };
+    const first = i * PLOTS_PER_DISTRICT;
+    const occupied = county.plots.slice(first, first + PLOTS_PER_DISTRICT).some((plot) => plot.kind);
+    return { zone: county.districts[i].zone ?? null, open: i < previousRank.districts || occupied };
+  });
+  for (let i = corePlots; i < DISTRICTS * PLOTS_PER_DISTRICT; i++) county.plots.push({ kind: null, level: 0 });
+  county.version = 3;
   return data;
 }
 
@@ -70,7 +93,7 @@ export function openSave(storage, language = 'zh', onProblem = () => {}) {
   return createSaveStore({
     key: SAVE_KEY,
     version: SAVE_VERSION,
-    migrations: { 1: migrateV1 },
+    migrations: { 1: migrateV1, 2: migrateV2 },
     defaults: () => freshSave(language),
     storage,
     onProblem,

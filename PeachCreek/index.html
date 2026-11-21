@@ -40,15 +40,18 @@
     <div id="stage" aria-hidden="true"></div>
     <div id="ui" class="layer">
       <header id="top">
-        <div class="titleRow"><h1 id="county"></h1><span id="term"></span><div id="vitals"></div><button id="settingsButton" type="button" class="icon"></button></div>
+        <div class="titleRow"><h1 id="county"></h1><span id="term"></span><button id="almanac" type="button" class="icon"></button><div id="vitals"></div><button id="settingsButton" type="button" class="icon"></button></div>
         <ul id="resources" aria-live="off"></ul>
       </header>
       <div id="hits" role="group" tabindex="0"><div id="mapTargets"></div></div>
       <button id="taxBubble" type="button" hidden></button>
       <aside id="goalCard" hidden><span class="goalLabel"></span><b id="goalText"></b><button id="claimButton" type="button" hidden></button></aside>
       <button id="raidBanner" type="button" hidden></button>
+      <button id="petitionCall" type="button" hidden></button>
       <div id="mapTools" hidden>
+        <button id="countyFocus" type="button"></button>
         <button id="overview" type="button"></button>
+        <button id="frontiers" type="button"></button>
         <button id="zoomOut" type="button">−</button>
         <button id="zoomIn" type="button">+</button>
       </div>

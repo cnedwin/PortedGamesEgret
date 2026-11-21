@@ -15,21 +15,23 @@ harder one.
 
 ## 玩法与操作 · How to play
 
-- **坊区与选址**：六个坊共 72 块地，开局开放前三坊。开放空地可自行建造所有已解锁建筑。坊区规划只提供加成。靠近原料、住户和仓廪能改善经营，烟尘会拖累邻近民居，距离过远会增加运费；县城升格后，这些影响加重。 · **Wards and siting**: six wards hold 72 plots, three wards open at first. Build any unlocked structure on an available plot. Ward plans grant bonuses. Nearby supplies, residents and granaries help, while smoke and long hauling routes hurt. Poor siting matters more as the county grows.
-- **营建**：空地上选建筑，已有的建筑升级。工匠同时只能做几项工程，每人后面还能排三项。等级到 10、25、50、75 时产出翻倍。 · **Building**: choose a building for a free plot, or raise one a level. Builders work on a few things at once, each with three more waiting. Output doubles at levels 10, 25, 50 and 75.
+- **坊区与选址**：十二个坊共 144 块地，开局开放前三坊。在地图或「扩建」中选相连的新坊，自行决定扩建方向。近县衙适合开市，城边适合耕作，民居可建在任意开放地块。坊区规划提供加成，可以随时调整。长距离运输增加运费，烟尘会拖累邻近民居。 · **Wards and siting**: twelve wards hold 144 plots, with three open at first. Choose a neighboring ward to expand from the map or the expansion ledger. Trade benefits from being near the yamen, fields favor the outskirts, and homes can go on any open plot. Plans grant a bonus and can be changed. Long hauls increase costs and smoke hurts nearby homes.
+- **营建**：空地上选建筑，点已有建筑可比较升级前后的样式。建筑每级都有细节变化，重要等级会扩展整体轮廓。等级到 10、25、50、75 时产出翻倍。 · **Building**: choose what to build on a free plot, or select an existing building to compare its current and next appearance. Each level changes the details, and milestones change the silhouette. Output doubles at levels 10, 25, 50 and 75.
 - **产业链**：稻田产粮，粮酿酒；桑园产桑，桑织绸；山里的陶土和木柴烧瓷；茶园产茶。集市和码头把货卖成钱，但不卖县衙升格要用的货。 · **Chains**: paddies give grain, grain makes wine; mulberry makes silk; clay and wood fire porcelain; gardens grow tea. Markets and the dock sell goods for coin, but never what the yamen's next rise needs.
+- **特殊选址**：码头只能建在两个南岸坊的蓝色临水地块，工程簿可跳到这些地块。旧档里的陆上码头可以免费迁到水岸，保留等级、工程和人才。资源点按地形勘探开发。 · **Special sites**: docks require a blue waterfront plot in one of the two south-bank wards. Find them in the Works sheet. Old inland docks can move there for free and retain levels, work and talent. Survey the county for resource deposits.
 - **资源点**：县城北面山里有十二处，按顺序勘探，找到后开发成林场、采石场、陶土坑和铁矿。 · **Resource points**: twelve in the hills to the north, surveyed in turn and worked as woods, quarries, clay pits and iron mines.
 - **民生与人口**：民居给人住，医馆、书院、寺庙、戏楼、园林添民生；民生越高，人来得越快、税收越多。窑和酒坊有烟，太多会拉低民生。 · **People and livelihood**: houses give room; clinics, schools, temples, theatres and gardens add livelihood, which brings people faster and more tax. Kilns and breweries smoke, and too much smoke lowers it.
-- **县衙**：税银攒在县衙，点一下收进库（离开时最多攒几小时）。人口、民生和货物够了就能升格，升格要几分钟到半天的工期，升格后开放新坊、新建筑、更高等级和更多工匠。 · **The yamen**: taxes wait there until tapped (up to a few hours while away). With enough people, livelihood and goods it can rise a rank, which takes from minutes to half a day and opens wards, buildings, higher levels and builders.
+- **街巷**：人口增加后，街上会出现更多居民；农作、商铺、工坊和驻防会带来不同装束和用具的人物。 · **Street life**: as the population grows, more residents take to the streets. Farms, shops, workshops and garrisons bring workers with their own clothes and tools.
+- **县衙**：税银攒在县衙，点一下收进库（离开时最多攒几小时）。人口、民生和货物够了就能升格，升格需要几分钟到半天，并开放新建筑、更高等级和更多工匠。 · **The yamen**: taxes wait there until tapped (up to a few hours while away). With enough people, livelihood and goods it can rise a rank, which takes from minutes to half a day and opens buildings, higher levels and more builders.
 - **人才**：花声望访贤，二十位人才分吏、才、贤、杰四等，每 8 小时一次免费，最多 25 次之内必出贤才或杰才。人才可以派驻到建筑、资源点、城防，或任县丞、主簿、县尉，各看治、农、工、商、武一项；派驻的时间越长等级越高。 · **Talents**: fame calls on worthies — twenty of them in four ranks, a free call every eight hours, and a worthy or better within any 25 calls. Post them to buildings, resource points, the defences or the three offices, each reading one of rule, farming, craft, trade and arms; they grow while posted.
 - **城防**：四面城墙和门楼可以分别升格。升到上县后可调遣小队，乡勇营扩充预备兵力。来袭方向在警报中标出，守军、门楼和城墙按该方向计算战力。布防也能减轻守城失利的损失。 · **Defences**: upgrade each of the four walls and gatehouses separately. Squads can be assigned from upper-county rank, and the militia camp expands the reserve. The raid alert names the threatened approach. Its wall, gatehouse and squads determine defence and can limit losses.
-- **民情**：升到中县后大约每 40 分钟来一件民情（一次只等一件），两种处理各有得失。 · **Petitions**: from the middle county on, about one every forty minutes (one waits at a time), each with two answers that cost and give different things.
-- **季节和昼夜**：每 6 小时换一季，春天民生高、秋天粮多、冬天粮少；入夜按你本机的时间点灯。 · **Seasons and night**: a season every six hours (livelihood in spring, grain in autumn, less in winter); lanterns light by your own clock.
+- **民情**：上任约五分钟可处理第一件民情。之后按时节、县等抽取新事件，一次处理一件。作决定前可查看花费、收益和持续时间。 · **Petitions**: the first arrives about five minutes into office. Later cases depend on season and county rank, with one at a time. Each reply lists its cost, reward and any timed effects.
+- **季节和昼夜**：每 30 分钟换一季。春宜拓田、夏宜茶桑、秋宜储粮经商，冬季酒坊、织坊和瓷窑产量提高。点击上方节候查看各项变化和换季时间，入夜按本机时间点灯。 · **Seasons and night**: seasons turn every thirty minutes. Open paddies in spring, grow tea and mulberry in summer, store grain and sell goods in autumn, and run workshops in winter. The almanac shows details and the time to the next season. Lanterns light by your clock.
 
 | | 键盘 · Keyboard | 鼠标与触屏 · Mouse and touch |
 |---|---|---|
 | 移动地图 · Pan | 地图获得焦点后按方向键 · arrows with the map focused | 拖动 · drag |
-| 缩放或看全城 · Zoom or see the whole county | 全城与加减按钮 · Overview and zoom controls | 滚轮或加减按钮 · wheel or zoom controls |
+| 缩放或切换视野 · Zoom or change the map view | 全县、县城与加减按钮 · County map, town and zoom controls | 滚轮或加减按钮 · wheel or zoom controls |
 | 选地块、资源点、县衙、城防 · Choose a plot, point, the yamen, a defence | Tab / Shift+Tab，Enter | 点按 · tap |
 | 在单子里选择 · Choose in a sheet | Tab，Enter / Space | 点按 · tap |
 | 关单子、对话框 · Close a sheet or dialog | Esc | 「关闭」 · Close |

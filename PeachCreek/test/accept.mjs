@@ -54,6 +54,11 @@ try {
   await until(page, () => window.peach.screen === 'play');
   check(await state(page, () => document.querySelector('#title').hidden && document.querySelectorAll('#hits button').length > 20), 'Enter takes office and the map has its buttons');
   check(await state(page, () => document.querySelectorAll('#hits button[aria-label*="Gatehouse"]').length === 4), 'all four gatehouses have map controls');
+  await until(page, () => window.peach.app.view.activity().farmer > 0, 4);
+  check(await state(page, () => {
+    const people = window.peach.app.view.activity();
+    return people.total === 10 && people.farmer === 1 && people.resident === 9 && people.merchant === 0;
+  }), 'the starting paddy brings a farmer alongside the residents');
 
   const beforeDrag = await state(page, () => document.querySelector('#map').style.transform);
   await page.mouse.move(570, 360);
@@ -65,6 +70,7 @@ try {
     return map !== before && map === document.querySelector('#mapTargets').style.transform && document.querySelector('#sheet').hidden;
   }, beforeDrag), 'drag moves art and hit targets without opening a building sheet');
   await page.click('#overview');
+  await page.click('#countyFocus');
 
   // By keyboard alone: Tab to the first free plot, Enter, Enter on the first choice (a house).
   let found = false;
@@ -77,7 +83,7 @@ try {
   await page.waitForTimeout(200);
   check(await state(page, () => !document.querySelector('#sheet').hidden && document.activeElement?.classList.contains('choice')), 'Enter opens the plot sheet with the focus on the first choice');
   check(await state(page, () => document.querySelector('#sheetBody [data-kind="market"]')?.getAttribute('aria-disabled') !== 'true' &&
-    [...document.querySelectorAll('#sheetBody .planScore')].length >= 3), 'the residential ward offers markets and shows site efficiency');
+    [...document.querySelectorAll('#sheetBody .planScore')].length >= 3), 'the unplanned ward offers markets and shows site efficiency');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(200);
   check(await state(page, () => window.peach.app.state.works.some((w) => w.type === 'plot' && w.key === 1)), 'Enter on the first choice starts building a house');
@@ -92,6 +98,20 @@ try {
   check(away.built === 1, 'the house was finished while away');
   await page.keyboard.press('Enter');
   check(await state(page, () => document.querySelector('#away').hidden), 'Enter closes the welcome');
+
+  await page.click('#almanac');
+  check(await state(page, () => document.querySelector('.almanacSeason span')?.textContent.includes(' in ') &&
+    document.querySelector('#sheetBody .list li b')?.textContent.length > 1), 'the almanac shows the next season and current effects');
+  await page.keyboard.press('Escape');
+  check(await state(page, () => document.activeElement?.id === 'almanac'), 'closing the almanac restores focus');
+  await page.click('#petitionCall');
+  const offers = page.locator('.petitionChoices button');
+  check(await offers.count() === 2 && await offers.nth(1).locator('small').count() === 1,
+    'an early petition presents two choices with visible consequences');
+  await offers.nth(1).click();
+  check(await state(page, () => window.peach.app.state.petition === null && document.querySelector('#petitionCall').hidden),
+    'resolving the petition clears the notice');
+  await page.keyboard.press('Escape');
 
   // The taxes.
   const coin = await state(page, () => window.peach.app.state.res.coin);
@@ -116,13 +136,68 @@ try {
     s.res.wood = 3000;
     window.peach.tick();
   });
+  await page.click('#frontiers');
+  await page.locator('.frontierList').getByRole('button', { name: /Ward 7 / }).click();
+  await page.getByRole('button', { name: /Open this ward/ }).click();
+  check(await state(page, () => {
+    const { districts, plots } = window.peach.app.state;
+    return plots.length === 144 && districts[6].open && !districts[3].open && districts[6].zone === null;
+  }), 'the west ward can be opened first and starts as mixed use');
+  await page.keyboard.press('Escape');
+  await page.click('#countyFocus');
+  await page.locator('#hits button[aria-label^="Ward 1 2 ·"]').click();
+  check(await state(page, () => {
+    const drawings = [...document.querySelectorAll('.architecture canvas')];
+    return drawings.length === 2 && drawings[0].toDataURL() !== drawings[1].toDataURL();
+  }), 'upgrading a house shows distinct current and next illustrations');
+  await page.keyboard.press('Escape');
   await page.click('#tabs [data-tab="defence"]');
   const east = page.locator('.defenceSide').nth(1);
   await east.getByRole('button', { name: 'Deploy a squad' }).click();
   check(await state(page, () => window.peach.app.state.defence.troops.join(',') === '0,1,0,0'), 'one squad goes to the chosen side');
+  await until(page, () => window.peach.app.view.activity().guard === 1, 4);
+  check(await state(page, () => window.peach.app.view.activity().guard === 1), 'deploying a squad brings a guard to the county');
   await east.getByRole('button', { name: /Gatehouse/ }).click();
   await page.locator('#sheetBody .btn.primary').click();
   check(await state(page, () => window.peach.app.state.works.some((w) => w.type === 'tower' && w.key === 1)), 'only the selected gatehouse receives an upgrade order');
+  await page.click('#tabs [data-tab="city"]');
+
+  // The inland-Dock fixture represents a save made before the waterfront rule.
+  await page.evaluate(() => {
+    const s = window.peach.app.state;
+    s.rank = 3;
+    Object.assign(s.res, { coin: 120000, wood: 12000, stone: 9000 });
+    s.plots[4] = { kind: 'dock', level: 2 };
+    window.peach.tick();
+  });
+  await page.click('#countyFocus');
+  await page.locator('#hits button[aria-label^="Ward 1 3 ·"]').click();
+  check(await state(page, () => {
+    const dock = document.querySelector('#sheetBody [data-kind="dock"]');
+    return dock?.getAttribute('aria-disabled') === 'true' && dock.textContent.includes('blue waterfront plot');
+  }), 'the inland plot refuses a new dock and explains where it can be placed');
+  await page.keyboard.press('Escape');
+  await page.click('#frontiers');
+  await page.locator('.frontierList').getByRole('button', { name: /Ward 4 ·/ }).click();
+  await page.getByRole('button', { name: /Open this ward/ }).click();
+  await page.click('#tabs [data-tab="build"]');
+  await page.getByRole('button', { name: 'Find waterfront plots' }).click();
+  await page.getByRole('button', { name: /View river ward/ }).first().click();
+  await page.getByRole('button', { name: /Open this ward/ }).click();
+  await page.click('#tabs [data-tab="city"]');
+  await page.click('#countyFocus');
+  await page.locator('#hits button[aria-label^="Ward 1 5 ·"]').click();
+  await page.getByRole('button', { name: /Relocate the old dock/ }).click();
+  await page.getByRole('button', { name: 'Waterfront plot 1' }).click();
+  check(await state(page, () => {
+    const { plots, districts } = window.peach.app.state;
+    return districts[10].open && !plots[4].kind && plots[120].kind === 'dock' && plots[120].level === 2;
+  }), 'a legacy dock can move to a real waterfront lot and retains its level');
+  await page.click('#tabs [data-tab="build"]');
+  await page.getByRole('button', { name: 'Find waterfront plots' }).click();
+  await page.getByRole('button', { name: 'Waterfront plot 2' }).click();
+  await page.locator('#sheetBody [data-kind="dock"]').click();
+  check(await state(page, () => window.peach.app.state.works.some((w) => w.type === 'plot' && w.key === 121)), 'new dock construction starts at the waterfront');
   await page.click('#tabs [data-tab="city"]');
 
   // A reload: the county is still there.
@@ -135,12 +210,10 @@ try {
   await page.waitForTimeout(300);
   check((await state(page, () => JSON.stringify(window.peach.app.state.plots))) === before, 'the county is the one left behind');
   check(await state(page, () => window.peach.app.state.defence.troops[1] === 1), 'the garrison layout survives reload');
+  check(await state(page, () => window.peach.app.state.districts[6].open && window.peach.app.state.districts[10].open), 'the player-selected expansion survives reload');
 
-  // A broken save: the game starts again and says so, without an error.
-  // (Broken from a plain file of the same site, so the game's own save on leaving cannot write over it.)
-  await page.goto(`${server.url}${path}/style.css`);
-  await page.evaluate(() => localStorage.setItem('peach-creek', '{broken'));
-  page.problems.length = 0;
+  // Inject corruption when the next document starts, after the real save-on-exit.
+  await page.addInitScript(() => localStorage.setItem('peach-creek', '{broken'));
   await page.goto(`${server.url}${path}/?seed=1&lang=zh&hour=10`);
   await until(page, () => window.peach?.ready);
   check(await state(page, () => !document.querySelector('#title .notice').hidden && window.peach.app.state === null), 'a broken save is started again, and the title says so');
@@ -159,7 +232,7 @@ try {
     await until(page, () => window.peach.screen === 'play', 4);
     await page.setViewportSize({ width: 844, height: 390 });
     await until(page, () => getComputedStyle(document.querySelector('#rotateHint')).display === 'none', 4);
-    check(await state(page, () => window.peach.app.state.plots.length === 72), 'landscape resize keeps the county open');
+    check(await state(page, () => window.peach.app.state.plots.length === 144), 'landscape resize keeps the county open');
   }
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
