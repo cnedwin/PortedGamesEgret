@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>锣鼓经 · Opera Drums</title>
+  <meta name="description" content="锣鼓经：基于新白鹭引擎独立开发的京剧锣鼓节奏游戏 Demo。坐上鼓师之位，跟着锣鼓经敲鼓打锣。 · Opera Drums: a Peking opera percussion rhythm game demo made on its own with the new Egret engine.">
+  <meta name="theme-color" content="#1d1412">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+        "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+        "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="frame">
+    <div id="field">
+      <canvas id="ground" aria-hidden="true"></canvas>
+      <header id="hud" hidden>
+        <p id="songName"></p>
+        <p id="score"></p>
+        <button type="button" id="pauseButton"></button>
+      </header>
+      <p id="prompt" hidden></p>
+    </div>
+    <div id="pads" hidden>
+      <button type="button" class="pad gong" data-kind="gong" data-hand="d"></button>
+      <button type="button" class="pad drum" data-kind="drum" data-hand="f"></button>
+      <button type="button" class="pad drum" data-kind="drum" data-hand="j"></button>
+      <button type="button" class="pad gong" data-kind="gong" data-hand="k"></button>
+    </div>
+    <section id="title" class="panel" hidden></section>
+    <section id="menu" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <section id="end" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <section id="cal" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <p id="say" class="quiet" aria-live="polite"></p>
+    <p id="loading">载入中 · Loading</p>
+  </main>
+  <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

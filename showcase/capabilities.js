@@ -10,6 +10,7 @@ export const MATRIX = {
   "LanternShadows",
   "LoveElective",
   "MechanismCity",
+  "OperaDrums",
   "Rally",
   "SnowTemple",
   "TeaHorseRoad",
@@ -462,6 +463,10 @@ export const MATRIX = {
      "file": "MechanismCity/src/audio/sound.mjs"
     },
     {
+     "game": "OperaDrums",
+     "file": "OperaDrums/src/audio/sound.mjs"
+    },
+    {
      "game": "SnowTemple",
      "file": "SnowTemple/tools/balance.mjs"
     },
@@ -487,6 +492,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
+    },
+    {
+     "game": "OperaDrums",
+     "file": "OperaDrums/src/main.mjs"
     },
     {
      "game": "Rally",
@@ -533,6 +542,10 @@ export const MATRIX = {
     {
      "game": "CanalWatch",
      "file": "CanalWatch/src/sound.mjs"
+    },
+    {
+     "game": "OperaDrums",
+     "file": "OperaDrums/src/main.mjs"
     }
    ]
   },
@@ -554,6 +567,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/audio/sound.mjs"
+    },
+    {
+     "game": "OperaDrums",
+     "file": "OperaDrums/src/audio/sound.mjs"
     }
    ]
   },
