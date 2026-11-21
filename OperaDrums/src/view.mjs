@@ -316,16 +316,16 @@ export function createView(game, { words, roman }) {
       animateFeedback(seconds);
     },
 
-    struck(kind, result) {
-      const { type, note, judgement: rating, off } = result;
+    struck(kind, result, detail) {
+      const { type, note, judgement: rating } = result;
       if (type === 'judged') {
-        const ms = Math.round(off * 1000);
-        mark(rating, rating !== 'miss' && Number.isFinite(ms) ? (ms > 0 ? '+' : '') + ms + ' ms' : '');
+        mark(note.kind === kind ? rating : 'timingWrong', detail);
         hit(kind, rating === 'great' ? 0.92 : rating === 'ok' ? 0.68 : 0.31, Boolean(note.big && rating !== 'miss'));
         if (rating !== 'miss') spark(kind, note.big ? 16 : 7);
       } else if (type === 'double') {
         judgement.text = '×2';
         judgement.color = GOLD;
+        timing.text = '';
         judgementAge = 0;
         hit(kind, 1, true);
         spark(kind, 13);
@@ -339,11 +339,14 @@ export function createView(game, { words, roman }) {
           spark(kind, 4);
           rollFlash = 0.09;
         }
-      } else hit(kind, 0.25);
+      } else {
+        if (detail) mark('timingOffbeat', detail);
+        hit(kind, 0.25);
+      }
     },
 
-    missed(count) {
-      if (count) mark('miss');
+    missed() {
+      mark('timingMissed');
     },
 
     clear() {

@@ -12,7 +12,8 @@ import { getLanguage, onLanguage, setLanguage, startLanguage, t } from './i18n.m
 import { SPEEDS, openSave, recordRun } from './saves.mjs';
 import { LEAD, buildChart, songOf } from './sim/chart.mjs';
 import { ENCORE_POWER, ENCORE_SONG, createEncore, updateEncore } from './sim/encore.mjs';
-import { LESSON_CLICKS, LESSON_SONG, buildLesson, lessonStepAt } from './sim/lesson.mjs';
+import { explainStrike } from './sim/feedback.mjs';
+import { LESSON_SONG, LESSON_STEPS, buildLesson, lessonStepAt } from './sim/lesson.mjs';
 import { advance, createRun, resultOf, strike } from './sim/judge.mjs';
 import { DIFFICULTIES, SONGS } from './sim/songs.mjs';
 import { createView } from './view.mjs';
@@ -23,6 +24,8 @@ const params = new URLSearchParams(location.search),
   pads = $('#pads'),
   panels = { title: $('#title'), options: $('#options'), guide: $('#guide'), menu: $('#menu'), end: $('#end'), cal: $('#cal') };
 const progress = $('#songProgress');
+const frameRoot = $('#frame');
+const lessonFeedback = $('#lessonFeedback');
 const coach = $('#sessionCoach');
 const coachLabel = coach.querySelector('strong');
 const coachText = coach.querySelector('span');
@@ -30,6 +33,9 @@ const coachRibbon = coach.querySelector('progress');
 const lessonCues = ['practiceDrum', 'practiceGong', 'practiceDouble', 'practiceRoll'];
 const lessonSkills = ['Drum', 'Gong', 'Double', 'Roll'];
 let lastCoachLabel = '';
+let lastMissed = null;
+let lastLessonFeedback = { key: 'timingReady' };
+let lessonCounts = null;
 let chosenAct = SONGS[0];
 let chosenLevel = DIFFICULTIES[0];
 
@@ -50,6 +56,8 @@ const app = {
   song: null,
   mode: 'song',
   lessonSkills: null,
+  lessonStep: null,
+  lessonCompletedBefore: [],
   encore: null,
   difficulty: 'normal',
   chart: null,
@@ -109,11 +117,13 @@ function strikeAt(kind, hand, ms) {
     : result.type === 'roll' && kind === 'drum' ? 'roll' : free;
   sound.strike(effect);
   if (result.type === 'judged' && app.strokes.length < 2000) app.strokes.push({ judgement: result.judgement, off: result.off, at: time });
-  view.struck(kind, result);
+  const feedback = explainStrike(result, kind, time, app.chart.notes[app.run.next], lastMissed);
+  view.struck(kind, result, feedback ? t(feedback.key, feedback) : '');
   if (app.lessonSkills) {
-    if (met) app.lessonSkills.add(kind);
+    if (met && !result.note.big && ++lessonCounts[kind] >= 2) app.lessonSkills.add(kind);
     if (result.type === 'double') app.lessonSkills.add('double');
-    if (result.type === 'roll' && app.run.rolls >= 4) app.lessonSkills.add('roll');
+    if (result.type === 'roll' && kind === 'drum' && ++lessonCounts.roll >= 4) app.lessonSkills.add('roll');
+    if (feedback) setLessonFeedback(result.type === 'roll' && kind !== 'drum' ? { key: 'timingUseDrum' } : feedback);
   }
   updateRally(result, time);
 }
@@ -195,7 +205,12 @@ function frame(seconds) {
   if (app.screen !== 'play' || !app.run) return;
   const time = sound.heardAt() - settings().offset / 1000;
   app.time = time;
-  view.missed(advance(app.run, time).length);
+  const missed = advance(app.run, time);
+  if (missed.length) {
+    lastMissed = missed.at(-1);
+    view.missed();
+    if (app.lessonSkills) setLessonFeedback({ key: 'timingMissedHint' });
+  }
   view.show(app.run, time, speedOf(), seconds);
   if (app.run.score !== shownScore) {
     shownScore = app.run.score;
@@ -220,12 +235,26 @@ function updateRally(result, time) {
   if (activated) sound.cue?.('rally');
 }
 
+function setLessonFeedback(feedback) {
+  const text = t(feedback.key, feedback);
+  if (lessonFeedback.textContent !== text) lessonFeedback.textContent = text;
+  lessonFeedback.dataset.feedback = feedback.key;
+  lastLessonFeedback = feedback;
+}
+
+function toggleLessonFeedback(visible) {
+  lessonFeedback.hidden = !visible;
+  frameRoot.toggleAttribute('data-lesson', visible);
+}
+
 function paintCoach(time) {
   const lesson = app.mode === 'lesson';
   let label, hint, active = false;
   if (lesson) {
-    const step = lessonStepAt(time);
-    label = t('practiceCount', { n: step + 1 });
+    const step = app.lessonStep ?
+      LESSON_STEPS.findIndex(({ skill }) => skill === app.lessonStep) : lessonStepAt(time);
+    label = app.lessonStep ?
+      t('practiceSkill' + lessonSkills[step]) : t('practiceCount', { n: step + 1 });
     hint = t(lessonCues[step]);
     coachRibbon.hidden = true;
   } else {
@@ -331,6 +360,7 @@ function showTitle(focus) {
   $('#hud').hidden = true;
   $('#prompt').hidden = true;
   coach.hidden = true;
+  toggleLessonFeedback(false);
   pads.hidden = true;
   const encoreBest = bestEncoreLabel();
   const acts = SONGS.map((song) => `<button type="button" class="act" data-act="${song.id}" aria-pressed="false">
@@ -470,7 +500,7 @@ function updatePlayLabels() {
   labelPads();
 }
 
-async function startSong(id, difficulty) {
+async function startSong(id, difficulty, { step = null, completed = [] } = {}) {
   if (app.screen === 'loading') return;
   const lesson = id === LESSON_SONG.id;
   const encore = id === ENCORE_SONG.id;
@@ -484,9 +514,15 @@ async function startSong(id, difficulty) {
   field.dataset.act = encore ? 'jijifeng' : song.id;
   app.song = song;
   app.difficulty = difficulty;
-  app.lessonSkills = lesson ? new Set() : null;
+  app.lessonStep = lesson ? step : null;
+  app.lessonCompletedBefore = lesson ? completed : [];
+  app.lessonSkills = lesson ? new Set(completed) : null;
+  lessonCounts = lesson ? { drum: 0, gong: 0, roll: 0 } : null;
+  lastMissed = null;
   app.encore = encore ? createEncore() : null;
-  app.chart = lesson ? buildLesson() : buildChart(song, difficulty);
+  app.chart = lesson ? buildLesson(step) : buildChart(song, difficulty);
+  toggleLessonFeedback(lesson);
+  if (lesson) setLessonFeedback({ key: 'timingReady' });
   app.time = 0;
   app.run = null;
   app.result = null;
@@ -502,7 +538,7 @@ async function startSong(id, difficulty) {
   prompt.textContent = t('loading');
   prompt.hidden = false;
   try {
-    const voice = lesson ? await sound.clicks(LESSON_CLICKS, 60 / song.bpm, LEAD.seconds) : await sound.start(song);
+    const voice = lesson ? await sound.clicks(app.chart.beats + 2, 60 / song.bpm, LEAD.seconds) : await sound.start(song);
     if (!voice) throw new Error('The backing voice did not start.');
   } catch (cause) {
     console.warn('Opera Drums score could not start', cause);
@@ -545,7 +581,7 @@ function openMenu(focus) {
   root.querySelector('[data-do=resume]').addEventListener('click', closeMenu);
   root.querySelector('[data-do=restart]').addEventListener('click', () => {
     sound.resume();
-    startSong(app.song.id, app.difficulty);
+    startSong(app.song.id, app.difficulty, { step: app.lessonStep, completed: app.lessonCompletedBefore });
   });
   root.querySelector('[data-do=quit]').addEventListener('click', () => {
     sound.resume();
@@ -587,6 +623,7 @@ function showEnd() {
   pads.hidden = true;
   $('#hud').hidden = true;
   coach.hidden = true;
+  toggleLessonFeedback(false);
   view.clear();
   if (r.mode === 'lesson') return showLessonEnd(r.skills);
   const root = sheet(
@@ -618,15 +655,21 @@ function showLessonEnd(skills) {
   panels.end.setAttribute('aria-labelledby', 'endHeading');
   const root = sheet(panels.end, `<div class="end-head"><h2 id="endHeading">${t('practiceDone')}</h2><small>${t('practiceLearned', { n: finished.size })}</small></div>
     <ul class="skill-list">${lessonSkills.map((skill) => {
-      const done = finished.has(skill.toLowerCase());
-      return `<li data-done="${done}"><span>${t('practiceSkill' + skill)}</span>
-        <strong>${t(done ? 'practicePassed' : 'practiceAgain')}</strong></li>`;
+      const id = skill.toLowerCase();
+      const done = finished.has(id);
+      const title = t('practiceSkill' + skill);
+      return `<li data-done="${done}"><span>${title}</span>
+        ${done ? `<strong>${t('practicePassed')}</strong>` :
+          `<button type="button" data-retry-step="${id}" aria-label="${t('practiceRetryTitle', { skill: title })}">${t('practiceAgain')}</button>`}</li>`;
     }).join('')}</ul>
     <div class="row sheet-actions">
       <button type="button" class="strong" data-do="play-song">${t('play')}</button>
       <button type="button" data-do="again">${t('practiceRetry')}</button>
       <button type="button" data-do="quit">${t('quit')}</button>
     </div>`);
+  for (const button of root.querySelectorAll('[data-retry-step]')) {
+    button.addEventListener('click', () => startSong(LESSON_SONG.id, 'easy', { step: button.dataset.retryStep, completed: skills }));
+  }
   root.querySelector('[data-do="play-song"]').addEventListener('click', () => startSong(chosenAct.id, chosenLevel));
   root.querySelector('[data-do="again"]').addEventListener('click', () => startSong(LESSON_SONG.id, 'easy'));
   root.querySelector('[data-do="quit"]').addEventListener('click', () => showTitle('[data-practice]'));
@@ -738,6 +781,7 @@ onLanguage(() => {
   else if (app.screen === 'title') showTitle();
   else if (app.screen === 'menu') {
     updatePlayLabels();
+    if (app.lessonSkills) setLessonFeedback(lastLessonFeedback);
     app.screen = 'play';
     openMenu('[data-language]');
   }

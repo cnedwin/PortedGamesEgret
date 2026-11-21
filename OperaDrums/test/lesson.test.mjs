@@ -32,3 +32,17 @@ test('practice uses the real timing judge, two different hands, and timed rolls'
   assert.equal(run.doubles, 2);
   assert.equal(run.rolls, 4);
 });
+
+test('replaying one step brings just that skill in after a new count-in', () => {
+  for (const [index, step] of LESSON_STEPS.entries()) {
+    const complete = buildLesson();
+    const single = buildLesson(step.skill);
+    const right = LESSON_STEPS[index + 1]?.beat ?? complete.beats;
+    const expected = complete.notes.filter(note => note.beat >= step.beat && note.beat < right);
+    assert.deepEqual(single.notes.map(({ kind, big, roll }) => ({ kind, big, roll })),
+      expected.map(({ kind, big, roll }) => ({ kind, big, roll })));
+    assert.equal(single.notes[0].beat, LEAD.beats);
+    assert.ok(single.end < complete.end);
+    assert.ok(single.notes.at(-1).t + single.notes.at(-1).roll < single.end);
+  }
+});

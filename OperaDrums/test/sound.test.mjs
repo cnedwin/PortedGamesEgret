@@ -84,3 +84,16 @@ test('a roll has a distinct tight attack, and menu and result cues have differen
     assert.ok(peakOf(samples.slice(0, Math.round(RATE * 0.008))) > 0.07, `${name}: audible attack`);
   }
 });
+
+test('a light gong and a rally still cut through the first phrase', () => {
+  const { ling, tai, rally } = effectsOf();
+  const attack = (samples) => {
+    const window = samples.subarray(0, Math.round(0.028 * RATE));
+    return Math.sqrt(window.reduce((square, value) => square + value * value, 0) / window.length);
+  };
+  // Keep the light gong below the ordinary one, with enough body against the accompaniment.
+  assert.ok(attack(ling) >= 0.148 && attack(ling) <= 0.76 * attack(tai));
+  // The rally's two notes can be heard after the activating gong's onset.
+  const afterStrike = rally.subarray(Math.round(0.080 * RATE), Math.round(0.220 * RATE));
+  assert.ok(peakOf(afterStrike) >= 0.196 && peakOf(rally) < 0.28);
+});
