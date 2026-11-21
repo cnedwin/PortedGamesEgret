@@ -80,6 +80,12 @@ An independently developed 3D off-road demo built with Egret Rebuild. You drive 
 
 An independently developed 2D tower defence demo built with Egret Rebuild. On the Bian canal of the Northern Song, raiders' skiffs, junks and a flagship come down the water while men on foot and shield-bearers come along the towpath. Build crossbow towers, trebuchets, fire arrows and gong posts on twelve plots along the banks, each raised twice; two sluice gates hold the boats for a few seconds, and a sunk junk's crew jump ashore and walk on. Twelve waves on normal or hard, one to three stars by the lives kept. It is drawn as ink on silk: the map, the towers and the boats are drawn in code and the effects and music are synthesized by the engine, with no picture or sound file. Chinese and English, keyboard, mouse and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/CanalWatch/) · [Guide and development](CanalWatch/README.md)
 
+## Opera Drums · 锣鼓经
+
+一款使用新白鹭引擎独立开发的京剧锣鼓节奏游戏 Demo。你坐在鼓师的位置上：锣鼓经里的「仓、才、台、八、大、嘟」变成方印和菱形，从右边流向鼓面，到达时敲鼓或打锣；大的「仓」两只手一起敲得分加倍，长条的「嘟」是滚奏。三首曲子《起霸》《趟马》《急急风》由传统锣鼓经的常用点子拼成，各有易、中、难三档，伴奏是板眼和过门里的京胡。单皮鼓、小锣、大锣、铙钹、板和京胡的声音全部在代码里合成，交给引擎的混音器播放，曲子的时间取自伴奏声部的位置并扣除输出延迟；还有跟着板声敲的延迟校准。中英文，键盘、触屏、鼠标和手柄都能玩。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/OperaDrums/) · [说明与开发](OperaDrums/README.md)
+
+An independently developed rhythm game demo of the Peking opera percussion, built with Egret Rebuild. You take the drummer's seat: the syllables of the percussion score (cang, cai, tai, ba, da, du) become seals and diamonds flowing towards the drum face, and you strike the drum or the gongs as they arrive; a big cang wants both hands for double points, and a long du is a roll. Three songs, The General Arms, Riding Through and Swift Wind, are made of common patterns of the traditional score, each on easy, normal and hard, over the clapper's beat and a jinghu fiddle in the bridges. The drum, gongs, cymbals, clapper and fiddle are all synthesized in code and played through the engine's mixer, and the song's time is the backing voice's position less the output delay, with a delay measure by striking along with the clapper. Chinese and English, keyboard, touch, mouse and gamepad. [Play online](https://cnedwin.github.io/PortedGamesEgret/OperaDrums/) · [Guide and development](OperaDrums/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)

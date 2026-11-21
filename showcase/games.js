@@ -341,4 +341,32 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'drums', folder: 'OperaDrums', kind: '2d',
+    scenes: [
+      { zh: "急急风 · 难", en: "Swift Wind · Hard" },
+      { zh: "起霸 · 撕边的滚奏", en: "The General Arms · The opening roll" },
+      { zh: "趟马 · 英文下的拼音谱字", en: "Riding Through · Pinyin syllables in English" },
+    ],
+    zh: "锣鼓经", en: "Opera Drums",
+    genre: { zh: "京剧锣鼓节奏", en: "Opera percussion rhythm" },
+    summary: { zh: "坐上京剧鼓师之位，跟着锣鼓经敲鼓打锣。", en: "Take the drummer's seat of a Peking opera band and strike the percussion score." },
+    features: [
+      {
+        title: { zh: "引擎混音器与曲子时钟", en: "The mixer as the song's clock" },
+        description: { zh: "伴奏是混音器里的一个声部，曲子的时间取自它的位置并扣除输出延迟。", en: "The backing is one voice of the engine's mixer; the song's time is its position less the output delay." },
+        source: 'src/audio/sound.mjs',
+      },
+      {
+        title: { zh: "代码合成的锣鼓与京胡", en: "Gongs, drum and fiddle in code" },
+        description: { zh: "单皮鼓、小锣、大锣、铙钹、板和京胡都由数算出，编成 WAV 交给引擎。", en: "The drum, gongs, cymbals, clapper and jinghu are computed and handed to the engine as WAV." },
+        source: 'src/audio/synth.mjs',
+      },
+      {
+        title: { zh: "判定与谱面", en: "Judging and charts" },
+        description: { zh: "锣鼓经的点子按难度排谱，判定、连击和彩槽都能在 Node 里由电脑玩家整首打完。", en: "Patterns become charts by difficulty, judged with combo and gauge, all playable by a bot in Node." },
+        source: 'src/sim/judge.mjs',
+      },
+    ],
+  },
 ];

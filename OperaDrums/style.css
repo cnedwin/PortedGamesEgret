@@ -1,0 +1,301 @@
+/* 锣鼓经的页面：一座京剧戏台。黑漆、朱红、描金；戏台的背景由页面画一次，画布透明，引擎只画会动的东西。
+   The page of Opera Drums: a Peking opera stage in black lacquer, vermilion and gold. The stage behind is painted once
+   by the page; the canvas is clear, and the engine draws only what moves. */
+:root {
+  --lacquer: #1d1412;
+  --lacquer-soft: #2c201c;
+  --vermilion: #b8231e;
+  --gold: #d9a441;
+  --ivory: #f3e6c8;
+  --smoke: #a89b8c;
+  --type: "Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", Georgia, serif;
+}
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #120c0b;
+  color: var(--ivory);
+  font: 16px/1.45 var(--type);
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#frame {
+  position: fixed;
+  inset: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+button {
+  font: inherit;
+  color: var(--ivory);
+  background: var(--lacquer-soft);
+  border: 1.5px solid var(--gold);
+  border-radius: 4px;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 14px;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button:hover {
+  background: #3a2a24;
+}
+button:focus-visible {
+  outline: 3px solid var(--ivory);
+  outline-offset: 2px;
+}
+button.strong {
+  background: var(--vermilion);
+  border-color: var(--gold);
+}
+
+/* The stage: a box of the stage's shape, as large as the window allows. */
+#field {
+  position: relative;
+  width: min(100vw, calc(100dvh * 16 / 9));
+  aspect-ratio: 16 / 9;
+  background: #3a0d0b;
+}
+#ground {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+#hud {
+  position: absolute;
+  z-index: 2;
+  left: 0;
+  right: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 6px 10px 0 14px;
+  pointer-events: none;
+}
+#hud[hidden] {
+  display: none;
+}
+#hud p {
+  margin: 0;
+  font-size: clamp(14px, 2vw, 20px);
+  text-shadow: 0 1px 2px #000;
+}
+#songName {
+  color: var(--gold);
+}
+#score {
+  margin-left: auto !important;
+  font-variant-numeric: tabular-nums;
+}
+#hud button {
+  pointer-events: auto;
+  font-size: 15px;
+}
+#prompt {
+  position: absolute;
+  z-index: 2;
+  left: 50%;
+  top: 62%;
+  transform: translateX(-50%);
+  margin: 0;
+  padding: 10px 18px;
+  background: rgba(29, 20, 18, 0.85);
+  border: 1px solid var(--gold);
+  border-radius: 4px;
+  font-size: clamp(15px, 2.2vw, 22px);
+  white-space: nowrap;
+}
+#prompt[hidden] {
+  display: none;
+}
+
+/* The pads: across the foot of the stage on a wide screen, under it and large on a tall one. */
+#pads {
+  position: absolute;
+  z-index: 3;
+  bottom: max(6px, env(safe-area-inset-bottom));
+  left: 50%;
+  transform: translateX(-50%);
+  width: min(100vw, calc(100dvh * 16 / 9));
+  box-sizing: border-box;
+  padding: 0 8px;
+  display: grid;
+  grid-template-columns: 1fr 1.3fr 1.3fr 1fr;
+  gap: 8px;
+  height: min(22dvh, 120px);
+}
+#pads[hidden] {
+  display: none;
+}
+.pad {
+  height: 100%;
+  border-radius: 14px;
+  font-size: clamp(18px, 3vw, 30px);
+  font-weight: 700;
+  opacity: 0.82;
+}
+.pad.drum {
+  background: radial-gradient(circle at 50% 45%, #d8483a, var(--vermilion) 60%, #7a1511);
+}
+.pad.gong {
+  background: radial-gradient(circle at 50% 45%, #f0c76a, #b47e2c 65%, #6e4a17);
+  color: var(--lacquer);
+}
+.pad small {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  opacity: 0.75;
+}
+.pad.down {
+  opacity: 1;
+  filter: brightness(1.25);
+}
+
+/* The title, the menu, the end and the delay: a lacquer board over the stage. */
+.panel {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: grid;
+  place-items: center;
+  background: rgba(18, 12, 11, 0.6);
+  overflow: auto;
+}
+.panel[hidden] {
+  display: none;
+}
+.sheet {
+  box-sizing: border-box;
+  width: min(680px, calc(100vw - 24px));
+  max-height: calc(100dvh - 24px);
+  overflow: auto;
+  padding: 20px 24px;
+  background: linear-gradient(180deg, #2a1d19, var(--lacquer));
+  border: 2px solid var(--gold);
+  box-shadow: 0 0 0 4px var(--lacquer), 0 0 0 5px rgba(217, 164, 65, 0.5), 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+.sheet h1 {
+  margin: 0;
+  font-size: clamp(36px, 7vw, 58px);
+  letter-spacing: 0.12em;
+  color: var(--gold);
+  line-height: 1.1;
+}
+.sheet h2 {
+  margin: 16px 0 6px;
+  font-size: 18px;
+  color: var(--gold);
+}
+.sheet p {
+  margin: 6px 0;
+}
+.sheet .quietText {
+  color: var(--smoke);
+  font-size: 13px;
+}
+.sheet .notice {
+  padding: 6px 10px;
+  border-left: 3px solid var(--vermilion);
+  background: rgba(184, 35, 30, 0.15);
+}
+.sheet ul {
+  margin: 4px 0;
+  padding-left: 1.2em;
+}
+.song {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 4px 12px;
+  padding: 10px 0;
+  border-top: 1px solid rgba(217, 164, 65, 0.3);
+}
+.song h3 {
+  margin: 0;
+  font-size: 20px;
+}
+.song .about {
+  grid-column: 1;
+  margin: 0;
+  color: var(--smoke);
+  font-size: 13px;
+}
+.song .levels {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.level {
+  display: grid;
+  text-align: left;
+  min-width: 120px;
+  padding: 4px 12px;
+}
+.level small {
+  font-size: 12px;
+  color: var(--smoke);
+}
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 10px;
+  align-items: center;
+}
+.row .label {
+  min-width: 6em;
+}
+.rank {
+  font-size: clamp(30px, 6vw, 48px);
+  color: var(--gold);
+  margin: 4px 0;
+}
+.quiet {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+#loading {
+  color: var(--gold);
+  opacity: 0.8;
+}
+/* A phone held upright: the stage at the top and the pads, large, filling what is left. */
+@media (orientation: portrait) {
+  #frame {
+    justify-content: flex-start;
+  }
+  #field {
+    width: 100vw;
+  }
+  #pads {
+    position: fixed;
+    top: calc(100vw * 9 / 16 + 12px);
+    bottom: max(12px, env(safe-area-inset-bottom));
+    height: auto;
+    width: 100vw;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+  .pad.drum {
+    order: 1;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
