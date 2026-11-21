@@ -34,6 +34,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [play-turned-table](input/play-turned-table.txt) | TaiwanMahjong | ENGINE-NOTES 4（外层旋转时 play 拒绝启动；分三层、引擎竖着开）；提交 `936d1e6` | 同上 · the same |
 | [sequence-markers](animation/sequence-markers.txt) | NightWardens | ENGINE-NOTES 1（动画控制器的标记名重复时报错不说是哪一条）；帧走路、标记扬尘、随弹层暂停、影子画进帧里；提交 `886c81c` | 草稿，未提交引擎；在引擎 `a778bed` 的临时副本里过了 `tests/guide.test.mjs`（索引放在 World3D 一节末尾，因为索引已贴着 1500 token 的上限）· draft, not sent; passed the engine's guide tests in a scratch copy (indexed at the end of the World3D section, as the index sits at its 1,500-token budget) |
 | [two-colour-tints](render/two-colour-tints.txt) | NightWardens | 命中闪白、冰冻、灼烧、雷击定身都用材质的 `light` 和 `dark`，不另做帧；提交 `886c81c` | 同上 · the same |
+| [play-shape-nodes](render/play-shape-nodes.txt) | PeachCreek | ENGINE-NOTES 5（`game.rect` 和 `game.circle` 以中心定位、颜色画死，会变的形状用 sprite 重画 graphics）；提交 `3c3a780` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs`，中英文检索都能找到 · draft, not sent; passed the engine's guide tests in a scratch copy and is found by English and Chinese questions |
 
 ## 给已有卡片加证据 · Evidence for existing cards
 
@@ -61,6 +62,9 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | play-page-controls（本仓库草稿 · a draft here） | NezhaSea | `NezhaSea/src/main.mjs:454`、ENGINE-NOTES 1：哪吒仍靠 `game.keys.axis()` 走，只在页面按钮上接住按键 · keys stopped only on page buttons, so play still steers | 草稿 · draft |
 | still-background（本仓库草稿 · a draft here） | NezhaSea | `NezhaSea/src/ground.mjs:53`：剪纸海浪由页面画一次，放在透明画布下 · the paper-cut sea painted once under the clear canvas | 草稿 · draft |
 | frame-loop-backpressure | FivePhases | 同上第 3 条：帧循环报错后停在 `failed`，用 `onError` 有限次重启 · the loop stops at `failed`; bounded restarts from `onError` | 未进引擎：同上 · not added, same reason |
+| play-resolution（本仓库草稿 · a draft here） | PeachCreek | `PeachCreek/src/view.mjs:19`、ENGINE-NOTES 3、6：竖屏 720×1280 用 540×960 建 play、根节点缩放 0.75；`game.burst` 没有 `into`，位置要乘 0.75 换成世界坐标 · a tall stage at three quarters, and `burst` given world positions | 草稿 · draft |
+| still-background（本仓库草稿 · a draft here） | PeachCreek | `PeachCreek/src/paint.mjs:411`：整座县城（坊区、建筑、四季配色、夜灯）画在引擎画布下的页面画布上，只在变化时重画；引擎只画行人、小船和天气 · the whole county painted under the engine when it changes | 草稿 · draft |
+| balance-from-runs | PeachCreek | `PeachCreek/tools/pacing.mjs:14`：替身县令按三种作息（每 20 分钟、90 分钟、4 小时看一次，夜里睡觉）玩完两任，测试保证每种都不少于三天 · a stand-in plays two whole terms on three daily habits, each held to three days | 草稿，未提交引擎 · draft, not sent |
 
 ## 每个游戏 · By game
 
@@ -76,6 +80,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | CanalWatch | 5（2 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | NezhaSea | 4（1 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | TaiwanMahjong | 6（2 张新卡，4 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
+| PeachCreek | 4（1 张新卡，3 条证据） | 都是草稿，还没提交引擎；ENGINE-NOTES 6（`burst` 用世界坐标）并进了 play-resolution 的证据 · all drafts; item 6 went in as evidence for play-resolution |
 | FPS、jelly-pandas、Wulin、LanternShadows、LoveElective | 0 | 没有 ENGINE-NOTES 内容，也没有新的引擎相关修复提交；它们的经验已被引擎现有卡片引用（FPS 14 张、jelly-pandas 12 张、Wulin 5 张、LanternShadows 4 张、LoveElective 1 张） · no notes and no new engine-related fixes; already cited by the engine's cards |
 | still-background（本仓库草稿 · a draft here） | NightWardens | `NightWardens/src/screens.mjs:55`、ENGINE-NOTES 2：路面是一张图，放在画布下面单独的 `#road` 上（画在 WebGL 画布元素自己的 CSS 背景图在无头 Chromium 里不显示），最忙时 p50 从 66.6 ms 降到 33.3 ms · the road picture on its own `#road` under the canvas (a background picture on the WebGL canvas element itself was not drawn), the busiest frame from p50 66.6 to 33.3 ms | 草稿 · draft |
 | sprite-swarm（本仓库草稿 · a draft here） | NightWardens | `NightWardens/src/view/field.mjs:383`：同一图集的位图对象池，十几个邪祟加二十支符箭在 SwiftShader 下 p50 16.7 ms；每个邪祟多一张影子位图时是 33.3 ms，位图的个数就是代价 · pooled Bitmaps of one atlas at p50 16.7 ms with a dozen haunts and twenty bolts; a shadow bitmap per haunt made it 33.3 ms | 草稿 · draft |
