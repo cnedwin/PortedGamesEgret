@@ -21,7 +21,7 @@ const server = await serve(),
 const state = (page, fn) => page.evaluate(fn);
 let page;
 try {
-  page = await openPage(browser, `${server.url}${path}/?seed=1&lang=zh&hour=10`, { width: 450, height: 800 });
+  page = await openPage(browser, `${server.url}${path}/?seed=1&lang=zh&hour=10`, { width: 1280, height: 720 });
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await until(page, () => window.peach?.ready && window.peach.screen === 'title');
@@ -53,6 +53,18 @@ try {
   await page.keyboard.press('Enter');
   await until(page, () => window.peach.screen === 'play');
   check(await state(page, () => document.querySelector('#title').hidden && document.querySelectorAll('#hits button').length > 20), 'Enter takes office and the map has its buttons');
+  check(await state(page, () => document.querySelectorAll('#hits button[aria-label*="Gatehouse"]').length === 4), 'all four gatehouses have map controls');
+
+  const beforeDrag = await state(page, () => document.querySelector('#map').style.transform);
+  await page.mouse.move(570, 360);
+  await page.mouse.down();
+  await page.mouse.move(430, 290, { steps: 9 });
+  await page.mouse.up();
+  check(await page.evaluate((before) => {
+    const map = document.querySelector('#map').style.transform;
+    return map !== before && map === document.querySelector('#mapTargets').style.transform && document.querySelector('#sheet').hidden;
+  }, beforeDrag), 'drag moves art and hit targets without opening a building sheet');
+  await page.click('#overview');
 
   // By keyboard alone: Tab to the first free plot, Enter, Enter on the first choice (a house).
   let found = false;
@@ -64,6 +76,8 @@ try {
   await page.keyboard.press('Enter');
   await page.waitForTimeout(200);
   check(await state(page, () => !document.querySelector('#sheet').hidden && document.activeElement?.classList.contains('choice')), 'Enter opens the plot sheet with the focus on the first choice');
+  check(await state(page, () => document.querySelector('#sheetBody [data-kind="market"]')?.getAttribute('aria-disabled') !== 'true' &&
+    [...document.querySelectorAll('#sheetBody .planScore')].length >= 3), 'the residential ward offers markets and shows site efficiency');
   await page.keyboard.press('Enter');
   await page.waitForTimeout(200);
   check(await state(page, () => window.peach.app.state.works.some((w) => w.type === 'plot' && w.key === 1)), 'Enter on the first choice starts building a house');
@@ -93,6 +107,24 @@ try {
   }
   await page.click('#tabs [data-tab="city"]');
 
+  // A controlled later-rank fixture exercises the garrison UI without waiting
+  // through the multiplayer-hour economy. All orders use normal controls.
+  await page.evaluate(() => {
+    const s = window.peach.app.state;
+    s.rank = 2;
+    s.res.coin = 30000;
+    s.res.wood = 3000;
+    window.peach.tick();
+  });
+  await page.click('#tabs [data-tab="defence"]');
+  const east = page.locator('.defenceSide').nth(1);
+  await east.getByRole('button', { name: 'Deploy a squad' }).click();
+  check(await state(page, () => window.peach.app.state.defence.troops.join(',') === '0,1,0,0'), 'one squad goes to the chosen side');
+  await east.getByRole('button', { name: /Gatehouse/ }).click();
+  await page.locator('#sheetBody .btn.primary').click();
+  check(await state(page, () => window.peach.app.state.works.some((w) => w.type === 'tower' && w.key === 1)), 'only the selected gatehouse receives an upgrade order');
+  await page.click('#tabs [data-tab="city"]');
+
   // A reload: the county is still there.
   const before = await state(page, () => JSON.stringify(window.peach.app.state.plots));
   await page.evaluate(() => dispatchEvent(new Event('pagehide')));
@@ -102,6 +134,7 @@ try {
   await page.click('#startButton');
   await page.waitForTimeout(300);
   check((await state(page, () => JSON.stringify(window.peach.app.state.plots))) === before, 'the county is the one left behind');
+  check(await state(page, () => window.peach.app.state.defence.troops[1] === 1), 'the garrison layout survives reload');
 
   // A broken save: the game starts again and says so, without an error.
   // (Broken from a plain file of the same site, so the game's own save on leaving cannot write over it.)

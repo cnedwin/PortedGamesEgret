@@ -7,6 +7,7 @@
   <meta name="description" content="桃溪县令：宋朝背景的治愈系放置经营。作为县令修屋开田、规划坊区、访贤、开采、经商、守城，把下县治成一州。基于新白鹭引擎独立开发的游戏 Demo。">
   <meta name="theme-color" content="#f4efe1">
   <link rel="icon" href="data:,">
+  <link rel="preload" as="image" href="assets/title-watercolor.webp">
   <link rel="stylesheet" href="style.css">
   <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
   <script type="importmap">
@@ -42,10 +43,15 @@
         <div class="titleRow"><h1 id="county"></h1><span id="term"></span><div id="vitals"></div><button id="settingsButton" type="button" class="icon"></button></div>
         <ul id="resources" aria-live="off"></ul>
       </header>
-      <div id="hits" role="group"></div>
+      <div id="hits" role="group" tabindex="0"><div id="mapTargets"></div></div>
       <button id="taxBubble" type="button" hidden></button>
       <aside id="goalCard" hidden><span class="goalLabel"></span><b id="goalText"></b><button id="claimButton" type="button" hidden></button></aside>
       <button id="raidBanner" type="button" hidden></button>
+      <div id="mapTools" hidden>
+        <button id="overview" type="button"></button>
+        <button id="zoomOut" type="button">−</button>
+        <button id="zoomIn" type="button">+</button>
+      </div>
       <nav id="tabs" role="tablist"></nav>
       <section id="sheet" role="dialog" aria-modal="false" hidden><button class="sheetClose" type="button"></button><div id="sheetBody"></div></section>
       <div id="toasts" aria-live="polite"></div>
@@ -62,6 +68,7 @@
       <section id="settings" class="dialog" role="dialog" aria-labelledby="settingsTitle" hidden><h2 id="settingsTitle"></h2><div class="settingsList"></div><button class="closeButton" type="button"></button></section>
       <p id="loading" class="loading">桃溪 · Peach Creek</p>
     </div>
+    <span id="rotateHint"></span>
   </main>
   <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
   <script type="module" src="src/main.mjs"></script>

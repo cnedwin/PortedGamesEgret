@@ -1,12 +1,7 @@
-// 桃溪县的数值表：资源、县等、坊的区划、建筑、资源点、人才、来敌和民情。所有时间都是真实的秒，产出按每小时写。
-// 数值由 tools/pacing.mjs 的模拟玩家调过（醒着时每隔一段时间看一次、夜里睡八小时）：每二十分钟看一次约 3.5 天升到
-// 「州」，每一个半小时看一次约 5 天，每四小时看一次约 7.5 天；第二任各约 3、5、9 天。县衙每次升格的工期和所需的
-// 人口、货物把节奏压住（见 README「数值与节奏」）。
-// The numbers of Peach Creek: resources, ranks, district zones, buildings, resource points, talents, raids and
-// petitions. Times are real seconds; outputs are written per hour. Tuned by tools/pacing.mjs (a simulated player who
-// looks in every so often while awake and sleeps eight hours): looking in every twenty minutes reaches the prefecture
-// in about 3.5 days, every ninety minutes about 5, every four hours about 7.5; the second term about 3, 5 and 9. The
-// works on each rise of the yamen, and the people and goods each asks for, hold the pace (README, "Numbers and pace").
+// 桃溪县的数值表：资源、县等、坊的侧重、建筑、资源点、人才、来敌和民情。时间以秒计，产出按小时计。
+// tools/pacing.mjs 从不同上线频率复算升格、来敌和升迁节奏。
+// Peach Creek balance data. Times are seconds and outputs are per hour.
+// tools/pacing.mjs measures upgrades, raids and promotions at different visit intervals.
 
 export const HOUR = 3600;
 
@@ -47,13 +42,13 @@ export const RANKS = [
 ];
 export const FINAL_RANK = RANKS.length - 1;
 
-/** The five zones a ward may be planned as. */
+/** Optional ward focuses. The uses of individual lots stay free. */
 export const ZONES = ['home', 'market', 'farm', 'craft', 'garden'];
-/** A building in a ward of its own zone works this much better. */
+/** A building in a ward with its preferred focus works this much better. */
 export const ZONE_BONUS = 0.2;
 
 /**
- * Buildings on ward plots. `zone` lists where they may stand; `out` is per level per hour (coin, goods, people
+ * Buildings on ward plots. `zone` lists compatible planning themes; `out` is per level per hour (coin, goods, people
  * housed, livelihood points, fame); `use` is what each level eats an hour; `cost` the first level's price, each next
  * level ×`grow`; `time` the first level's works in seconds, ×1.16 a level up to `maxTime`.
  */
@@ -95,16 +90,16 @@ export const SURVEY_COST = (n) => Math.round(150 * 2.2 ** n);
 export const DEFENCE = {
   wall: { rank: 2, cost: { coin: 6000, wood: 600 }, grow: 1.16, time: 6 * 60, power: 30 },
   tower: { rank: 2, cost: { coin: 4000, wood: 500 }, grow: 1.16, time: 5 * 60, power: 22, count: 4 },
-  camp: { rank: 3, cost: { coin: 30000, wood: 2000 }, grow: 1.16, time: 15 * 60, power: 60 }
+  camp: { rank: 3, cost: { coin: 30000, wood: 2000 }, grow: 1.16, time: 15 * 60, power: 27 }
 };
 
 /** Raids: the first comes when the county becomes 上县; then one every `every` seconds. */
 export const RAIDS = {
   every: 4 * HOUR,
   warn: HOUR,
-  power: (n, rank, pop) => Math.round(40 * (1 + rank) * (pop / 300) ** 0.75 * (1 + 0.03 * n)),
+  power: (n, rank, pop) => Math.round(34 * (1 + rank) * (pop / 300) ** 0.66 * (1 + 0.014 * n)),
   kinds: ['bandits', 'pirates', 'rebels', 'raiders'],
-  /** A lost defence takes this share of coin and goods, and this much livelihood for two hours. */
+  /** An undefended loss takes this share of coin and goods, and this much livelihood for two hours. */
   loss: 0.15,
   sorrow: 10
 };

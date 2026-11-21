@@ -15,23 +15,25 @@ harder one.
 
 ## 玩法与操作 · How to play
 
-- **坊区**：城里六个坊，开局开放三个，随县等升格陆续开放。每个坊先定为居坊、市坊、农坊、工坊或园坊，同类建筑修在对应的坊里有加成；坊里一旦有了房子就不能再改。 · **Wards**: six in the town, three open at first and the rest as the county rises. Each is planned as homes, market, farms, crafts or gardens; buildings in their own kind of ward do better, and a ward cannot be replanned once built on.
+- **坊区与选址**：六个坊共 72 块地，开局开放前三坊。开放空地可自行建造所有已解锁建筑。坊区规划只提供加成。靠近原料、住户和仓廪能改善经营，烟尘会拖累邻近民居，距离过远会增加运费；县城升格后，这些影响加重。 · **Wards and siting**: six wards hold 72 plots, three wards open at first. Build any unlocked structure on an available plot. Ward plans grant bonuses. Nearby supplies, residents and granaries help, while smoke and long hauling routes hurt. Poor siting matters more as the county grows.
 - **营建**：空地上选建筑，已有的建筑升级。工匠同时只能做几项工程，每人后面还能排三项。等级到 10、25、50、75 时产出翻倍。 · **Building**: choose a building for a free plot, or raise one a level. Builders work on a few things at once, each with three more waiting. Output doubles at levels 10, 25, 50 and 75.
 - **产业链**：稻田产粮，粮酿酒；桑园产桑，桑织绸；山里的陶土和木柴烧瓷；茶园产茶。集市和码头把货卖成钱，但不卖县衙升格要用的货。 · **Chains**: paddies give grain, grain makes wine; mulberry makes silk; clay and wood fire porcelain; gardens grow tea. Markets and the dock sell goods for coin, but never what the yamen's next rise needs.
 - **资源点**：县城北面山里有十二处，按顺序勘探，找到后开发成林场、采石场、陶土坑和铁矿。 · **Resource points**: twelve in the hills to the north, surveyed in turn and worked as woods, quarries, clay pits and iron mines.
 - **民生与人口**：民居给人住，医馆、书院、寺庙、戏楼、园林添民生；民生越高，人来得越快、税收越多。窑和酒坊有烟，太多会拉低民生。 · **People and livelihood**: houses give room; clinics, schools, temples, theatres and gardens add livelihood, which brings people faster and more tax. Kilns and breweries smoke, and too much smoke lowers it.
 - **县衙**：税银攒在县衙，点一下收进库（离开时最多攒几小时）。人口、民生和货物够了就能升格，升格要几分钟到半天的工期，升格后开放新坊、新建筑、更高等级和更多工匠。 · **The yamen**: taxes wait there until tapped (up to a few hours while away). With enough people, livelihood and goods it can rise a rank, which takes from minutes to half a day and opens wards, buildings, higher levels and builders.
 - **人才**：花声望访贤，二十位人才分吏、才、贤、杰四等，每 8 小时一次免费，最多 25 次之内必出贤才或杰才。人才可以派驻到建筑、资源点、城防，或任县丞、主簿、县尉，各看治、农、工、商、武一项；派驻的时间越长等级越高。 · **Talents**: fame calls on worthies — twenty of them in four ranks, a free call every eight hours, and a worthy or better within any 25 calls. Post them to buildings, resource points, the defences or the three offices, each reading one of rule, farming, craft, trade and arms; they grow while posted.
-- **来敌**：升到上县后，每 4 小时有马贼、水寇、乱兵或流寇来犯，提前 1 小时报警，可以「击鼓」加四分之一战力。城墙、箭楼、乡勇营守城；守住有赏，守不住失去一成半的钱和货，民生下降两小时。 · **Raids**: from the upper county on, horse thieves, river pirates, mutineers or raiders come every four hours, warned an hour ahead, when the drums add a quarter to the defence. Walls, towers and the militia camp hold the town; a win pays, a loss takes 15 % of the coin and goods and saddens the town for two hours.
+- **城防**：四面城墙和门楼可以分别升格。升到上县后可调遣小队，乡勇营扩充预备兵力。来袭方向在警报中标出，守军、门楼和城墙按该方向计算战力。布防也能减轻守城失利的损失。 · **Defences**: upgrade each of the four walls and gatehouses separately. Squads can be assigned from upper-county rank, and the militia camp expands the reserve. The raid alert names the threatened approach. Its wall, gatehouse and squads determine defence and can limit losses.
 - **民情**：升到中县后大约每 40 分钟来一件民情（一次只等一件），两种处理各有得失。 · **Petitions**: from the middle county on, about one every forty minutes (one waits at a time), each with two answers that cost and give different things.
 - **季节和昼夜**：每 6 小时换一季，春天民生高、秋天粮多、冬天粮少；入夜按你本机的时间点灯。 · **Seasons and night**: a season every six hours (livelihood in spring, grain in autumn, less in winter); lanterns light by your own clock.
 
 | | 键盘 · Keyboard | 鼠标与触屏 · Mouse and touch |
 |---|---|---|
+| 移动地图 · Pan | 地图获得焦点后按方向键 · arrows with the map focused | 拖动 · drag |
+| 缩放或看全城 · Zoom or see the whole county | 全城与加减按钮 · Overview and zoom controls | 滚轮或加减按钮 · wheel or zoom controls |
 | 选地块、资源点、县衙、城防 · Choose a plot, point, the yamen, a defence | Tab / Shift+Tab，Enter | 点按 · tap |
 | 在单子里选择 · Choose in a sheet | Tab，Enter / Space | 点按 · tap |
 | 关单子、对话框 · Close a sheet or dialog | Esc | 「关闭」 · Close |
-| 收税 · Collect the taxes | Tab 到税银，Enter · Tab to the bubble, Enter | 点县衙上方的税银 · tap the bubble over the yamen |
+| 收税 · Collect the taxes | Tab 到税银，Enter · Tab to the tax button, Enter | 点地图左上的税银 · tap the tax button |
 
 设置里可以关音效、关配乐、减弱动画（系统设置了「减少动态效果」时自动减弱）和切换语言。The settings turn off the
 sound or the music, reduce motion (reduced already when the system asks) and switch the language.
@@ -40,7 +42,7 @@ sound or the music, reduce motion (reduced already when the system asks) and swi
 
 | 参考 · Reference | 学到的 · What we took | 没学的 · What we left |
 |---|---|---|
-| 《江南百景图》 · Jiangnan Hundred Scenes | 古城分区布局、人物有属性派驻到建筑、平和的画风 · zoned old-town layout, characters with stats posted to buildings, a calm look | 自由摆放和复杂的相邻规则，手机竖屏上太费手 · free placement and fiddly adjacency, too much for a phone held upright |
+| 《江南百景图》 · Jiangnan Hundred Scenes | 古城分区布局、人物有属性派驻到建筑、平和的画风 · zoned old-town layout, characters with stats posted to buildings, a calm look | 桃溪的选址以地块、运输与邻里为主 · Peach Creek uses parcels, hauling and neighboring uses |
 | 《这城有良田》等县令题材放置游戏 · county-magistrate idle games | 县令一级级升官的主线、访贤有稀有度和保底、民情二选一 · the climb through ranks, calls with rarity and pity, two-way petitions | 大量付费加速和体力，本作没有任何付费 · paid speed-ups and stamina; there is nothing to buy here |
 | AdVenture Capitalist、Idle Miner 一类放置游戏 · idle tycoons | 等级里程碑产出翻倍（10/25/50/75）、离线收益有上限且能靠建筑提高（仓廪） · output doubling at level milestones, capped offline earnings raised by buildings (granaries) | 无限重置和指数爆炸的数字，改成一任有终点、升迁后要求提高 · endless resets and runaway numbers; a term has an end, and promotion asks for more |
 | Clash of Clans 一类城建游戏 · base builders | 工匠是并行的工位、升级有真实工期、主建筑（县衙）卡住最高等级 · builders as parallel slots, real-time upgrades, the main building capping levels | 攻打别人的城，本作只守不攻 · attacking others; here the town only defends |
@@ -65,19 +67,15 @@ the whole term:
 
 | 玩家 · Player | 中县 | 上县 | 望县 | 紧县 | 雄县 | 州 | 第一任 · 1st term | 第二任 · 2nd term |
 |---|---|---|---|---|---|---|---|---|
-| 每 20 分钟看一次 · every 20 min | 0.7 | 4.5 | 15.2 | 39.8 | 59.9 | 83.5 | 3.5 天 · days | 3.0 天 · days |
-| 每 90 分钟看一次 · every 90 min | 0.7 | 8.8 | 27.1 | 60.5 | 84.5 | 123.2 | 5.1 天 · days | 5.0 天 · days |
-| 每 4 小时看一次 · every 4 h | 0.7 | 24.1 | 52.1 | 96.0 | 144.1 | 180.2 | 7.5 天 · days | 9.0 天 · days |
+| 每 20 分钟看一次 · every 20 min | 0.7 | 4.8 | 27.1 | 53.8 | 79.3 | 120.0 | 5.00 天 · days | 4.03 天 · days |
+| 每 90 分钟看一次 · every 90 min | 0.7 | 8.8 | 24.1 | 54.3 | 102.3 | 144.1 | 6.00 天 · days | 5.00 天 · days |
+| 每 4 小时看一次 · every 4 h | 0.7 | 24.1 | 48.0 | 96.0 | 152.2 | 228.2 | 9.51 天 · days | 9.00 天 · days |
 
-几个关键数：开局 600 钱、300 粮、200 木、30 人；每人每小时交 10 钱的税（乘民生系数），吃 0.5 粮；县衙每小时另有 600×（县等+1）的俸禄，保证开局不卡钱。升格工期是 10 分钟、1、3、6、8、12 小时。建筑的钱价按各自的增长率逐级上涨，木石铁按 1.08 倍上涨，工期每级乘 1.16、最长 8 小时。来敌战力 = 40 ×（县等+1）×（人口/300）^0.75 ×（1 + 0.03×第几次），所以只要城防跟着县城一起修就守得住；模拟玩家常来看的两种几乎全胜，每 4 小时来一次的约三分之一会输（不在的时候没人击鼓）。升迁后每一任的要求提高 80 %，产出和税收提高 20 %，人才留下。
+开局有 600 钱、300 粮、200 木和 30 人。每人每小时吃 0.5 粮，按民生交税，县衙另有俸禄。选址带来的运输和污染影响会随县等上升。来敌规模跟随县等、人口和轮次，战力与损失按受袭方向结算。
 
-Some key numbers: a start of 600 coin, 300 grain, 200 wood and 30 people; each person pays 10 coin an hour (times the
-livelihood) and eats half a grain; the yamen adds 600 × (rank + 1) an hour so the start never runs dry. Rising takes
-10 minutes, then 1, 3, 6, 8 and 12 hours. Coin prices grow by each building's own rate, wood, stone and iron by 1.08 a
-level, and works by 1.16 a level up to eight hours. A raid's strength is 40 × (rank + 1) × (people / 300)^0.75 ×
-(1 + 0.03 n), so defences kept up with the town hold; the two frequent players win nearly every raid, the four-hourly
-one loses about a third (nobody beats the drums while away). Each later term asks 80 % more and makes 20 % more, and
-the talents stay.
+Start with 600 coin, 300 grain, 200 wood and 30 people. Each person eats half a grain an hour and pays
+tax according to livelihood. The yamen also pays a stipend. Hauling and smoke matter more at higher ranks.
+Raids follow population, rank and raid count. Defence and losses are decided by the attacked approach.
 
 ## 引擎能力对照表 · Engine capabilities
 
@@ -88,8 +86,7 @@ the talents stay.
 | `game.tween` / `game.after` / `game.wait` | 来敌攻城的小戏（敌人逼近、箭楼放箭、胜负收场）、升格时的连串铜钱 · the small play of a raid (foes closing, towers shooting, the end), coins in a row on a rise | `src/view.mjs`, `src/main.mjs` |
 | `game.burst` / `game.flash` | 收税的铜钱、建成的光圈、升格的闪光、守城失败的红闪 · coins when taxes come in, a ring on a finished building, a flash on a rise, red on a lost raid | `src/view.mjs`, `src/main.mjs` |
 | `game.reducedMotion` | 系统或设置要求时不飘雪、不演攻城、数字直接消失 · no snow, no raid play and no floating when motion is reduced | `src/main.mjs`, `src/view.mjs` |
-| `game.sfx.define` / `play` / `muted` | 合成的铜钱、木槌、风铃、轻点、石声、战鼓、胜负音 · synthesized coins, mallet, chime, tap, stone, drum, win and loss | `src/sound.mjs` |
-| `game.music.play` / `volume` / `stop` | 平和的配乐，第一次点按后开始，可在设置里关掉 · calm music from the first touch, off in the settings | `src/sound.mjs` |
+| `createAudioMixer` / Web Audio | 首次交互后加载原创古琴、箫与溪流配乐，合成营建、布防、调兵等音效。配乐与音效可分别关闭。 · Original guqin, xiao and creek score loaded after the first interaction. Synthesized building, defence and deployment cues. Independent mute controls. | `src/sound.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 整座县城、设置和历任记录；坏档另存后重新开始，存储拒绝写入时在标题提示 · the whole county, the settings and the record of terms; a broken save set aside, a refusing storage told on the title | `src/saves.mjs`, `src/main.mjs` |
 | `createTextTable` + `pickLanguage` | 全部中英文文字，换语言时重写界面和地图上的坊名 · every word in both languages, written again with the ward names on the map when the language changes | `src/i18n.mjs` |
 
@@ -103,9 +100,8 @@ the talents stay.
 
 ## 已知问题 · Known issues
 
-- 真机（手机、桌面显卡）上没有运行过：触屏走一遍（T1）、中端手机帧时间（F2）、回到页面后的声音和计时（E4）都是「未运行」。 · Not run on a real device: touch (T1), mid-range phone frames (F2) and sound after coming back (E4) are not run.
-- 无头浏览器里桌面帧时间 p95 正好在 16.7 ms 上下，各次测量会在线上线下浮动。 · In the headless browser the desktop p95 sits right at 16.7 ms and wavers either side between runs.
-- 最小的手机上（宽 390）地图上的地块按钮约 41×42 像素，比 44 的建议略小；单子、标签页和对话框的按钮都够大。 · On the smallest phones (390 wide) the plot buttons on the map are about 41 × 42 px, a little under 44; sheets, tabs and dialogs are large enough.
+- 横屏触摸流程已用桌面浏览器的触控模拟验收。手机实机帧时间与扬声器听感仍待验收。 · A desktop browser's landscape touch emulation covered the touch flow. Phone frame pacing and speaker listening still need physical-device checks.
+- 手机在全城视图里可先用加号放大，再点选地块。 · On a phone, use zoom before selecting a plot if the overview is too small.
 - 数值只用模拟玩家调过，没有真人玩满三天的记录。 · The numbers were tuned with a simulated player only; no person has played a full three days.
 
 ## 已解决 · Solved
@@ -134,7 +130,8 @@ the talents stay.
 | `src/sim/bot.mjs`, `tools/pacing.mjs` | 模拟玩家和调节奏的工具 · the simulated player and the pacing tool |
 | `src/paint.mjs` | 县城的地图（四季配色、每种建筑、夜里的灯） · the county map (seasonal colours, every building, lanterns at night) |
 | `src/view.mjs` | 引擎画的会动的东西 · what the engine draws and moves |
-| `src/i18n.mjs`, `src/saves.mjs`, `src/sound.mjs` | 文字、存档、声音 · words, the save, sound |
+| `src/i18n.mjs`, `src/saves.mjs`, `src/sound.mjs` | 中英文、存档迁移、声音 · labels, save migration, sound |
+| `assets/` | 原创水彩封面、地景和配乐 · Original watercolor cover, terrain and score |
 | `test/*.test.mjs` | Node 测试 · Node tests |
 | `test/accept.mjs`, `test/baseline/` | 浏览器验收和截图基线 · browser acceptance and baselines |
 | `vendor/` | 引擎副本 · the engine copy |

@@ -4,9 +4,12 @@
 // state), and the record of past terms. Kept by the engine's save store: versioned, an unreadable save set aside
 // rather than lost, and a write the browser refuses never throws.
 import { createSaveStore } from '@egret/engine/kit';
-import { DISTRICTS, NODE_SLOTS, PLOTS_PER_DISTRICT } from './sim/world.mjs';
+import { DISTRICTS, NODE_SLOTS, PLOTS_PER_DISTRICT, SIDES } from './sim/world.mjs';
+import { RANKS } from './sim/data.mjs';
 
 export const SAVE_KEY = 'peach-creek';
+const LEGACY_PLOTS = 8;
+const SAVE_VERSION = 2;
 
 export const freshSave = (language = 'zh') => ({
   county: null,
@@ -15,13 +18,17 @@ export const freshSave = (language = 'zh') => ({
 });
 
 /** Whether a county from a save has the shape the rules expect. */
+const level = (number) => Number.isInteger(number) && number >= 0;
+const sideLevels = (list) => Array.isArray(list) && list.length === SIDES.length && list.every(level);
+
 export function countyLooksRight(c) {
   return (
     Boolean(c) &&
-    c.version === 1 &&
+    c.version === SAVE_VERSION &&
     Number.isFinite(c.time) &&
     Number.isInteger(c.rank) &&
     c.rank >= 0 &&
+    c.rank < RANKS.length &&
     Array.isArray(c.plots) &&
     c.plots.length === DISTRICTS * PLOTS_PER_DISTRICT &&
     Array.isArray(c.nodes) &&
@@ -31,14 +38,39 @@ export function countyLooksRight(c) {
     Boolean(c.res) &&
     Number.isFinite(c.res.coin) &&
     Array.isArray(c.works) &&
-    Array.isArray(c.talents)
+    Array.isArray(c.talents) &&
+    sideLevels(c.defence?.wall) &&
+    sideLevels(c.defence?.tower) &&
+    sideLevels(c.defence?.troops) &&
+    level(c.defence?.camp)
   );
+}
+
+function migrateV1(data) {
+  const county = data?.county;
+  if (county?.version !== 1 || county.plots?.length !== DISTRICTS * LEGACY_PLOTS) return data;
+  const newParcel = (index) => Math.floor(index / LEGACY_PLOTS) * PLOTS_PER_DISTRICT + index % LEGACY_PLOTS;
+  const remap = (reference) => {
+    if (reference?.type === 'plot') reference.key = newParcel(reference.key);
+  };
+  const plotArray = Array.from({ length: DISTRICTS * PLOTS_PER_DISTRICT }, () => ({ kind: null, level: 0 }));
+  county.plots.forEach((plot, index) => { plotArray[newParcel(index)] = plot; });
+  county.plots = plotArray;
+  county.works.forEach(remap);
+  county.talents.forEach((talent) => remap(talent.post));
+  county.log.forEach((entry) => remap(entry.work));
+  county.defence.wall = SIDES.map(() => county.defence.wall);
+  county.defence.troops = SIDES.map(() => 0);
+  if (county.raid.last) county.raid.last.side = ((county.seed >>> 0) + county.raid.last.n) % SIDES.length;
+  county.version = SAVE_VERSION;
+  return data;
 }
 
 export function openSave(storage, language = 'zh', onProblem = () => {}) {
   return createSaveStore({
     key: SAVE_KEY,
-    version: 1,
+    version: SAVE_VERSION,
+    migrations: { 1: migrateV1 },
     defaults: () => freshSave(language),
     storage,
     onProblem,
