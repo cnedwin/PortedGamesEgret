@@ -21,6 +21,7 @@ const NEAR_TREES = { low: 120, medium: 190, high: 260 };
 const TEA_NEAR = { low: 40, medium: 60, high: 80 };
 const SMALL = new Set(['tuft', 'scree']);
 const FAR = { pine: () => farPineGeometry(false), fir: () => farPineGeometry(true), broadleaf: () => farBroadleafGeometry() };
+const TREE = { pine: () => pineGeometry(false), fir: () => pineGeometry(true), broadleaf: broadleafGeometry };
 
 /** Broad changes in leaf colour across a stand, with more gold on exposed tea terraces. */
 function tintAt(mesh, index, x, z, tea) {
@@ -214,7 +215,7 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
     for (const [kind, list] of kinds) {
       const replacement = plantModels.get(kind);
       const geometry =
-        replacement?.geometry ?? (kind === 'pine' ? pineGeometry(false) : kind === 'fir' ? pineGeometry(true) : kind === 'broadleaf' ? broadleafGeometry() : kind === 'tuft' ? tuftGeometry(0x6f6a3a) : stoneGeometry(kind === 'boulder' ? 0 : kind === 'slab' ? 1 : 2));
+        replacement?.geometry ?? (TREE[kind] ? TREE[kind]() : kind === 'tuft' ? tuftGeometry(0x6f6a3a) : stoneGeometry(kind === 'boulder' ? 0 : kind === 'slab' ? 1 : 2));
       const material = kind === 'boulder' || kind === 'slab' || kind === 'scree' ? stone : foliage,
         mesh = instances(geometry, replacement?.material ?? material, list, kind);
       if (SMALL.has(kind)) small.push(mesh);
@@ -263,11 +264,11 @@ export function createFlora(scene, physics, { quality = 'medium' } = {}) {
   return {
     /** Swap the near visual only. The caller retains the asset until it is removed or the scene closes. */
     setPlantModel(kind, model) {
-      if (kind !== 'pine' && kind !== 'fir' && kind !== 'tea') throw new Error('Unknown near-plant kind: ' + kind);
+      if (kind !== 'tea' && !Object.hasOwn(TREE, kind)) throw new Error('Unknown near-plant kind: ' + kind);
       if ((model ?? undefined) === plantModels.get(kind)) return;
       if (model) plantModels.set(kind, model);
       else plantModels.delete(kind);
-      const geometry = model?.geometry ?? (kind === 'tea' ? teaBushGeometry() : pineGeometry(kind === 'fir'));
+      const geometry = model?.geometry ?? (kind === 'tea' ? teaBushGeometry() : TREE[kind]());
       const material = model?.material ?? foliage;
       for (const { near, tea } of placed.values()) {
         const batches = kind === 'tea' ? tea.map(({ bushes }) => bushes) : [near.get(kind)];
