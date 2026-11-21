@@ -511,6 +511,8 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
         // The warden fell: its pictures go, its clock stops.
         warden.body.visible = warden.stomp.visible = false;
         warden.controller.stop();
+        // A pending ward choice may pause the live walk below, but never a retired controller.
+        warden = null;
       } else {
         warden.stompTime = Math.max(0, warden.stompTime - seconds);
         warden.flash = Math.max(0, warden.flash - seconds);
