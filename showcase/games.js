@@ -460,4 +460,38 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'peach', folder: 'PeachCreek', kind: '2d',
+    portraitGallery: true,
+    scenes: [
+      { zh: "第三天 · 望县的秋天，税银攒在县衙上头", en: "Day three · Autumn in a notable county, the taxes waiting over the yamen" },
+      { zh: "入夜 · 民居和集市点起灯，溪上还有小船", en: "Nightfall · Lamps in the houses and markets, boats still on the creek" },
+      { zh: "县衙 · 升格所需一项项对齐", en: "The yamen · What the next rank asks for, one line at a time" },
+    ],
+    zh: "桃溪县令", en: "Magistrate of Peach Creek",
+    genre: { zh: "宋代放置经营", en: "Song-dynasty idle city-builder" },
+    summary: { zh: "从下县县令做起，规划坊区、开产业链、勘探访贤、守城升格，一任三天以上把桃溪治成一州；离开时县城照常运转。", en: "Start as magistrate of a lesser county: plan wards, open trade chains, survey and call on worthies, hold the walls and rise rank by rank to a prefecture over three days or more; the county goes on while you are away." },
+    features: [
+      {
+        title: { zh: "页面画布上的县城，引擎画会动的", en: "The county on a page canvas, the engine for what moves" },
+        description: { zh: "静止的坊区、建筑和四季配色画在引擎画布下面的页面画布上；play 以四分之三分辨率建，只画行人、小船、花瓣雪花、铜钱和攻城小戏。", en: "The still wards, buildings and seasonal colours are painted on a page canvas under the engine; play, made at three-quarter resolution, draws only the walkers, boats, petals and snow, coins and the raid." },
+        source: 'src/view.mjs',
+      },
+      {
+        title: { zh: "真实时间和离线补算", en: "Real time and catching up" },
+        description: { zh: "规则按真实秒数推进；离开再回来时只按仓廪的容量补算收成，税银攒在县衙等你来收，回来先看一张收获清单。", en: "The rules move with real seconds; an absence is counted only up to the granaries' capacity, the taxes wait at the yamen, and a return opens with a list of what came in." },
+        source: 'src/sim/world.mjs',
+      },
+      {
+        title: { zh: "模拟玩家调出来的节奏", en: "Pacing set by a simulated player" },
+        description: { zh: "替身县令按勤快、常来、偶尔来三种作息玩完一整任，测试保证三种都不少于三天，第二任也一样。", en: "A stand-in magistrate plays whole terms on three daily habits; the tests hold every habit to three days or more, the second term too." },
+        source: 'tools/pacing.mjs',
+      },
+      {
+        title: { zh: "引擎的存档库和文字表", en: "The engine's save store and text table" },
+        description: { zh: "整座县城存进有版本的存档，坏档另存后重新开始；中英文文字表切换时连地图上的坊名一起重画。", en: "The whole county goes into a versioned save, a broken one set aside; switching the text table repaints even the ward names on the map." },
+        source: 'src/saves.mjs',
+      },
+    ],
+  },
 ];

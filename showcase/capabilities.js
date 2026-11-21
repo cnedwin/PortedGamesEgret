@@ -13,6 +13,7 @@ export const MATRIX = {
   "NezhaSea",
   "NightWardens",
   "OperaDrums",
+  "PeachCreek",
   "Rally",
   "SnowTemple",
   "TaiwanMahjong",
@@ -517,6 +518,10 @@ export const MATRIX = {
      "file": "OperaDrums/src/audio/sound.mjs"
     },
     {
+     "game": "PeachCreek",
+     "file": "PeachCreek/src/i18n.mjs"
+    },
+    {
      "game": "SnowTemple",
      "file": "SnowTemple/tools/balance.mjs"
     },
@@ -558,6 +563,10 @@ export const MATRIX = {
     {
      "game": "OperaDrums",
      "file": "OperaDrums/src/main.mjs"
+    },
+    {
+     "game": "PeachCreek",
+     "file": "PeachCreek/src/main.mjs"
     },
     {
      "game": "Rally",
@@ -620,6 +629,10 @@ export const MATRIX = {
     {
      "game": "OperaDrums",
      "file": "OperaDrums/src/main.mjs"
+    },
+    {
+     "game": "PeachCreek",
+     "file": "PeachCreek/src/sound.mjs"
     },
     {
      "game": "TaiwanMahjong",
