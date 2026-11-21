@@ -26,6 +26,8 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [cloth-and-rope](world3d/cloth-and-rope.txt) | TeaHorseRoad | ENGINE-NOTES 1、9、10、11（布绳被剔除、整条边、`slack`、单向钉住） | 已提交引擎 PR · in the engine PR |
 | [terrain-stream-tiles](world3d/terrain-stream-tiles.txt) | TeaHorseRoad | ENGINE-NOTES 2、5、6、14（实例 LOD、地块距离、高度场原点、导航网格） | 已提交引擎 PR · in the engine PR |
 | [play-page-controls](input/play-page-controls.txt) | CanalWatch | ENGINE-NOTES 1、2、4（`play` 拦下 Tab 和 Space、透明画布的黑底盒子、画布在 `game.canvas`）；提交 `13dcd4b` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs` · draft, not sent; passed the engine's guide tests in a scratch copy |
+| [rhythm-clock](audio/rhythm-clock.txt) | OperaDrums | ENGINE-NOTES 4（声部位置比听到的早、换算到页面时间、事件时间戳、延迟校准）；提交 `6e7d5bb` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs` · draft, not sent; passed the engine's guide tests in a scratch copy |
+| [moving-shapes](perf/moving-shapes.txt) | OperaDrums | ENGINE-NOTES 3（每帧移动的圆和路径比矩形贵，文字打断合批）；提交 `6e7d5bb` | 同上 · the same |
 | [still-background](perf/still-background.txt) | CanalWatch | ENGINE-NOTES 3（静止地图每帧重画让软件渲染帧时间翻倍，改由页面画一次）；提交 `13dcd4b` | 同上 · the same |
 
 ## 给已有卡片加证据 · Evidence for existing cards
@@ -43,6 +45,9 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | balance-from-runs | CanalWatch | `CanalWatch/tools/balance.mjs`：电脑玩家按六种打法、两种难度各打 12 局，结果写进 README · a bot plays six ways on two difficulties, 12 games each | 草稿，未提交引擎 · draft, not sent |
 | two-languages | CanalWatch | `CanalWatch/src/i18n.mjs:181`：`createTextTable` 加 `missing()` 的测试，英文里不留中文 · the text table with a `missing()` test | 草稿，未提交引擎 · draft, not sent |
 | pause-and-overlays | CanalWatch | `CanalWatch/src/main.mjs:492`：切到后台时进行中的一局停在菜单上 · a hidden tab pauses the game behind the menu | 草稿，未提交引擎 · draft, not sent |
+| synthesized-audio | OperaDrums | `OperaDrums/src/audio/synth.mjs`：鼓、锣、钹、板、京胡都由数算出，`encodeWav` 后交给混音器 · every instrument computed and handed to the mixer as WAV | 草稿，未提交引擎 · draft, not sent |
+| balance-from-runs | OperaDrums | `OperaDrums/tools/balance.mjs`：电脑玩家按五种准度把九张谱各打 10 局 · a bot at five levels of steadiness plays nine charts 10 times each | 草稿，未提交引擎 · draft, not sent |
+| play-page-controls（本仓库草稿 · a draft here） | OperaDrums | `OperaDrums/src/main.mjs:112`、ENGINE-NOTES 1：敲击键和页面按钮同在时，捕获阶段接住按键 · keys caught first beside page buttons | 草稿 · draft |
 | frame-loop-backpressure | FivePhases | 同上第 3 条：帧循环报错后停在 `failed`，用 `onError` 有限次重启 · the loop stops at `failed`; bounded restarts from `onError` | 未进引擎：同上 · not added, same reason |
 
 ## 每个游戏 · By game
@@ -55,6 +60,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | FivePhases | 2（2 条证据，未进引擎） | 缺引擎提交号 · no engine pin |
 | Rally | 1（1 条证据） | 另一个修复 `ee391d0` 的水面倒影已被 world3d-draw-cost 引用 · its reflection fix is already cited |
 | JY | 1（1 条证据，未进引擎） | 修复 `04313eb`（经典战斗结算、密集数字）是游戏自己的规则，不是引擎经验 · a fix of the game's own rules |
+| OperaDrums | 5（2 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | CanalWatch | 5（2 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | FPS、jelly-pandas、Wulin、LanternShadows、LoveElective | 0 | 没有 ENGINE-NOTES 内容，也没有新的引擎相关修复提交；它们的经验已被引擎现有卡片引用（FPS 14 张、jelly-pandas 12 张、Wulin 5 张、LanternShadows 4 张、LoveElective 1 张） · no notes and no new engine-related fixes; already cited by the engine's cards |
 
