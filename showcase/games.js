@@ -119,7 +119,7 @@ export const GAMES = [
   {
     id: 'jy', folder: 'JY', kind: '3d',
     scenes: [
-      { zh: "3D 江湖地图 · 路线探索", en: "3D world map · Route exploration" },
+      { zh: "3D 江湖地图 · 河洛客栈外乘船寻路", en: "3D world map · Sailing near Heluo Inn" },
       { zh: "小虾米居 · 序章对白", en: "Xiaoxiami’s house · Prologue dialogue" },
       { zh: "密集战斗 · 移动格预览", en: "Crowded battle · Movement grid preview" },
     ],
@@ -203,9 +203,9 @@ export const GAMES = [
   {
     id: 'lantern', folder: 'LanternShadows', kind: '2d',
     scenes: [
-      { zh: "蟠桃园 · 悟空使出身外身", en: "Peach Orchard · Monkey King’s doubles" },
-      { zh: "南天门 · 哪吒登场", en: "Southern Gate · Nezha appears" },
-      { zh: "兜率宫 · 炉火与空中交锋", en: "Tushita Palace · Furnaces and aerial combat" },
+      { zh: "蟠桃园 · 悟空以身外身迎战天兵", en: "Peach Orchard · Sun Wukong and his doubles battle the heavenly guards" },
+      { zh: "南天门 · 悟空对阵脚踏风火轮的哪吒", en: "Southern Gate · Sun Wukong faces Nezha on his Wind-Fire Wheels" },
+      { zh: "兜率宫 · 炉火旁迎战太上老君", en: "Tushita Palace · Sun Wukong faces Laozi by the flames" },
     ],
     zh: "灯影·闹天宫", en: "Lantern Shadows",
     genre: { zh: "皮影横版动作", en: "Shadow-puppet action" },
@@ -232,9 +232,9 @@ export const GAMES = [
     id: 'fivephases', folder: 'FivePhases', kind: '2d',
     portraitGallery: true,
     scenes: [
-      { zh: "第二关 · 赤蛟与术士交锋", en: "Stage two · Duel with Chijiao" },
-      { zh: "第一关 · 山魈与五行消除棋盘", en: "Stage one · Shanjiao and the matching board" },
-      { zh: "第三关 · 浑沌战中出牌", en: "Stage three · Playing a card against Hundun" },
+      { zh: "第二关 · 赤蛟施展翻浪", en: "Stage two · Chijiao unleashes a wave" },
+      { zh: "第一关 · 山魈战中的消除连锁", en: "Stage one · Chain matches against Shanjiao" },
+      { zh: "第三关 · 焚心命中浑沌", en: "Stage three · Burning Heart strikes Hundun" },
     ],
     zh: "五行牌阵", en: "Five Phases",
     genre: { zh: "卡牌与三消", en: "Cards and match-three" },
