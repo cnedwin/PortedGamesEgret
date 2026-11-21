@@ -234,7 +234,7 @@ export const GAMES = [
     scenes: [
       { zh: "第二关 · 赤蛟施展翻浪", en: "Stage two · Chijiao unleashes a wave" },
       { zh: "第一关 · 山魈战中的消除连锁", en: "Stage one · Chain matches against Shanjiao" },
-      { zh: "第三关 · 焚心命中浑沌", en: "Stage three · Burning Heart strikes Hundun" },
+      { zh: "第三关 · 焚心命中混沌", en: "Stage three · Burning Heart strikes Hundun" },
     ],
     zh: "五行牌阵", en: "Five Phases",
     genre: { zh: "卡牌与三消", en: "Cards and match-three" },
