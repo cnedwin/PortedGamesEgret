@@ -156,18 +156,19 @@ The race rules (handling, rival driving, items, laps and places) can run a whole
 ## 已知问题 · Known issues
 
 - 湖面倒影每三帧才更新一次，快速转弯时倒影会略微滞后。 · The lake's reflection updates every third frame, so it lags a little in fast turns.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 4 under 44×44: Sound: On 120×41; Quality: High 137×41）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 1749.9 ms over 7 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 锦绣飞车 赛车游戏 或上箭头加速 或下箭头刹车 或左右箭头转向）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 4 under 44×44: Sound: On 120×41; Quality: High 137×41）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 1316.6 ms over 9 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 锦绣飞车 赛车游戏 或上箭头加速 或下箭头刹车 或左右箭头转向）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
-- 牌匾和横幅上的字上下颠倒：画布从上往下数行、贴图从下往上数，复制像素时逐行倒过来（`src/shapes.mjs`，`1330ced`，ENGINE-NOTES 第 1 条）。 · Writing on the banners and plaque was upside down; rows are copied in reverse (item 1).
+- 牌匾和横幅上的字上下颠倒：画布从上往下数行、贴图从下往上数。先是复制像素时逐行倒过来（`1330ced`），现在用 `Texture3D` 的 `flipY`（ENGINE-NOTES 第 1 条）。 · Writing on the banners and plaque was upside down; now the texture is made with `flipY` (item 1).
+- 系统要求减少动态效果时镜头仍在晃、雷电仍闪白：改用引擎的 `prefersReducedMotion()` / `watchReducedMotion()`（ENGINE-NOTES 第 4 条）。 · Reduced motion is now honoured through the engine's helpers (item 4).
 - 拿到玉佩时第一次绘制它的材质造成卡顿：给玉佩网格加中性的顶点色，复用赛车已经编译过的着色器（`b8b0c07`，ENGINE-NOTES 第 2 条）。 · The jade charm's first draw stalled; it now reuses the karts' programs (item 2).
 - 湖面倒影每帧都重画一次场景：改为每三帧更新一次（`src/scenery.mjs`，`ee391d0`，ENGINE-NOTES 第 3 条）。 · The lake's reflection redrew the scene every frame; it now updates every third frame (item 3).
 - 触屏操作不稳，已修正并稳定下来（`ee391d0`、`cde9ae4`）。 · The touch controls were fixed and steadied.
 
 ## 未完成 · Unfinished
 
-- 英文模式下页面上仍有中文（品质 I1），不读 `prefers-reduced-motion`（A3），资源加载失败没有错误界面和重试（E2）。 · Chinese left in English mode, no reduced-motion, no retry after a failed file.
+- 英文模式下页面上仍有中文（品质 I1），资源加载失败没有错误界面和重试（E2）。 · Chinese left in English mode, no retry after a failed file.
 - 真机上的帧时间和整局触屏验收。 · Frame times and a whole race by touch on real devices.
 
 ## 目录 · Layout
@@ -188,6 +189,6 @@ The race rules (handling, rival driving, items, laps and places) can run a whole
 
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `f1fbd9093c47dd83a770a0a13aa88901edc0b90d`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `f1fbd9093c47dd83a770a0a13aa88901edc0b90d`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.

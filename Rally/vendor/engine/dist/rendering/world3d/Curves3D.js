@@ -3,6 +3,7 @@
 // and tangents by parameter or by distance travelled, and feed the tube,
 // lathe, extrude and shape geometries. Points are plain [x, y, z] arrays.
 import { World3DError, requireCount3D, requireFinite3D } from './core3D.js';
+/** The most points and divisions a curve has. */
 export const CURVE3D_LIMITS = Object.freeze({ maxPoints: 65536, maxDivisions: 16384 });
 function point(value, field) {
     if (!value || value.length < 3)
@@ -136,6 +137,7 @@ function rotate(v, axis, angle) {
     const c = Math.cos(angle), s = Math.sin(angle), d = (axis[0] * v[0] + axis[1] * v[1] + axis[2] * v[2]) * (1 - c), k = cross(axis, v);
     return [v[0] * c + k[0] * s + axis[0] * d, v[1] * c + k[1] * s + axis[1] * d, v[2] * c + k[2] * s + axis[2] * d];
 }
+/** A straight line between two points, as a curve. */
 export class LineCurve3D extends Curve3D {
     start;
     end;
@@ -152,6 +154,7 @@ export class LineCurve3D extends Curve3D {
         return out;
     }
 }
+/** A quadratic Bézier curve through three control points. */
 export class QuadraticBezierCurve3D extends Curve3D {
     p0;
     p1;
@@ -169,6 +172,7 @@ export class QuadraticBezierCurve3D extends Curve3D {
         return out;
     }
 }
+/** A cubic Bézier curve through four control points. */
 export class CubicBezierCurve3D extends Curve3D {
     p0;
     p1;
@@ -341,6 +345,7 @@ export class Shape3D extends Path2D3D {
                 this.moveTo(p[0], p[1]);
     }
 }
+/** The signed area of a 2D polygon: positive when its points run counterclockwise. */
 export function signedArea2D(points) {
     let area = 0;
     for (let i = 0, j = points.length - 1; i < points.length; j = i++)

@@ -535,6 +535,7 @@ export class Water3D extends Mesh3D {
         this.reflection?.dispose();
     }
 }
+/** Makes a water surface with waves, reflections and foam. */
 export function createWater3D(options = {}) {
     return new Water3D(options);
 }

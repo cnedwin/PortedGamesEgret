@@ -4,6 +4,7 @@
 // into them, then call touch() on the attribute to schedule a GPU refresh.
 import { Resource3D, World3DError, requireCount3D } from './core3D.js';
 import { box3Empty, box3ExpandByPoint, sphereFromBox } from './math3D.js';
+/** The most vertices, indices, morph targets and groups a geometry has. */
 export const GEOMETRY3D_LIMITS = Object.freeze({
     maxVertices: 4194304,
     maxIndices: 12582912,
@@ -21,6 +22,7 @@ export const ATTRIBUTE_3D = Object.freeze({
     joints: 'joints',
     weights: 'weights'
 });
+/** One attribute of a geometry, such as positions: its data, how many numbers each vertex has, and whether they are normalized. */
 export class Attribute3D {
     data;
     itemSize;
@@ -48,6 +50,7 @@ export class Attribute3D {
         this.#version++;
     }
 }
+/** The vertices of a mesh: its attributes and indices, its groups and morph targets, and calls that compute normals and tangents. */
 export class Geometry3D extends Resource3D {
     topology = 'triangles';
     #attributes = new Map();
@@ -198,10 +201,16 @@ export class Geometry3D extends Resource3D {
     get boundingSphere() {
         return (this.#boundingSphere ??= sphereFromBox(new Float32Array(4), this.boundingBox));
     }
-    /** Call after editing position data in place. */
+    #boundsVersion = 0;
+    /** Counts `invalidateBounds` calls: what a mesh's world bounds are kept by, beside the structure version. */
+    get boundsVersion() {
+        return this.#boundsVersion;
+    }
+    /** Call after editing position data in place. Meshes of this geometry find their world bounds again. */
     invalidateBounds() {
         this.#boundingBox = undefined;
         this.#boundingSphere = undefined;
+        this.#boundsVersion++;
     }
     // ---- derived attributes ------------------------------------------------
     /** Area-weighted smooth normals for triangle geometry. */

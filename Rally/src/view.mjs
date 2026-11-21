@@ -30,7 +30,8 @@ export function createView(scene, camera, track, options = {}) {
   const scenery = createScenery(scene, track, options);
   const trackModels = options.trackModels ?? {};
   // `shake` is the camera shake still to play out and `flash` the brightness of the thunder's flash; both fade by themselves.
-  const view = { scenery, time: 0, shake: 0, flash: 0, models: [] };
+  // `reducedMotion`: the player asked for less motion, so the camera does not shake and the thunder flashes faintly.
+  const view = { scenery, time: 0, shake: 0, flash: 0, models: [], reducedMotion: false };
 
   /** An instanced mesh that starts empty and is refilled every frame. */
   const pool = (shape, capacity, material) => {
@@ -729,6 +730,7 @@ export function createView(scene, camera, track, options = {}) {
     rig.fov += (rig.fovTarget - rig.fov) * Math.min(1, dt * 6);
     camera.fov = rig.fov;
     camera.updateProjectionMatrix();
+    if (view.reducedMotion) view.shake = 0;
     if (view.shake > 0) {
       const p = camera.position,
         k = view.shake * view.shake * 0.5;

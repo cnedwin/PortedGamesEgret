@@ -11,6 +11,7 @@
 //   hud.mjs              the page around the canvas
 //   input.mjs, audio.mjs devices and sound
 import { createEngine } from '@egret/engine';
+import { prefersReducedMotion, watchReducedMotion } from '@egret/engine/web/kit';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { createAudio } from './audio.mjs';
 import { LAP_CHOICES, RACERS } from './data.mjs';
@@ -115,6 +116,9 @@ async function main() {
   const bundle = params.get('models') === 'original' ? null : scope.use(await loadTrackModels(backend.loadGltfFromUrl3D));
   status.models = { loaded: Object.keys(bundle?.models ?? {}), failures: bundle?.failures ?? {} };
   const view = createView(scene, camera, track, { trackModels: bundle?.models });
+  // Less motion when the system asks for it, and again whenever the player changes the setting.
+  view.reducedMotion = prefersReducedMotion();
+  scope.use({ dispose: watchReducedMotion((reduced) => (view.reducedMotion = reduced)) });
   const hud = createHud(document.querySelector('#ui'), track, {
     lang: settings.lang,
     stage: canvas,

@@ -43,6 +43,7 @@ function observeDeviceLoss(device, listener) {
         listener = undefined;
     };
 }
+/** Draws 3D scenes with WebGPU: set its size, render a scene from a camera, and read what it drew. */
 export class WebGPURenderer3D {
     canvas;
     device;
