@@ -25,6 +25,8 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [ui-callbacks](input/ui-callbacks.txt) | MechanismCity、TeaHorseRoad | 千机巧匠 19；茶马古道 19、20（回调不能返回 Promise、输入分发中不能建 UI 根） | 已提交引擎 PR · in the engine PR |
 | [cloth-and-rope](world3d/cloth-and-rope.txt) | TeaHorseRoad | ENGINE-NOTES 1、9、10、11（布绳被剔除、整条边、`slack`、单向钉住） | 已提交引擎 PR · in the engine PR |
 | [terrain-stream-tiles](world3d/terrain-stream-tiles.txt) | TeaHorseRoad | ENGINE-NOTES 2、5、6、14（实例 LOD、地块距离、高度场原点、导航网格） | 已提交引擎 PR · in the engine PR |
+| [play-page-controls](input/play-page-controls.txt) | CanalWatch | ENGINE-NOTES 1、2、4（`play` 拦下 Tab 和 Space、透明画布的黑底盒子、画布在 `game.canvas`）；提交 `13dcd4b` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs` · draft, not sent; passed the engine's guide tests in a scratch copy |
+| [still-background](perf/still-background.txt) | CanalWatch | ENGINE-NOTES 3（静止地图每帧重画让软件渲染帧时间翻倍，改由页面画一次）；提交 `13dcd4b` | 同上 · the same |
 
 ## 给已有卡片加证据 · Evidence for existing cards
 
@@ -38,6 +40,9 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | short-screen-hud | JY | 修复 `58783c3`：手机横屏下背包菜单改两栏（`web/style.css:862`） · the bag menu in two columns on a short landscape phone | 未进引擎：这张卡加上后超过 1000 token 的文件上限 · not added: the card would pass its 1,000-token file budget |
 | short-screen-hud | SnowTemple | 修复 `1c47df4`：窄屏和触屏上目标第二行、状态条下一行不再压住角落按钮 · the goal's second line no longer runs into the corner buttons | 未进引擎：同上 · not added, same reason |
 | read-engine-errors | FivePhases | README「前期矢量版的引擎测量」第 2 条：极小坐标让 `WEBGL2_GEOMETRY_RANGE` 整帧失败 · tiny coordinates fail the whole frame | 未进引擎：FivePhases 的引擎副本没有 `vendor/SOURCE.md`，证据缺引擎提交号（pin） · not added: no engine pin recorded |
+| balance-from-runs | CanalWatch | `CanalWatch/tools/balance.mjs`：电脑玩家按六种打法、两种难度各打 12 局，结果写进 README · a bot plays six ways on two difficulties, 12 games each | 草稿，未提交引擎 · draft, not sent |
+| two-languages | CanalWatch | `CanalWatch/src/i18n.mjs:181`：`createTextTable` 加 `missing()` 的测试，英文里不留中文 · the text table with a `missing()` test | 草稿，未提交引擎 · draft, not sent |
+| pause-and-overlays | CanalWatch | `CanalWatch/src/main.mjs:492`：切到后台时进行中的一局停在菜单上 · a hidden tab pauses the game behind the menu | 草稿，未提交引擎 · draft, not sent |
 | frame-loop-backpressure | FivePhases | 同上第 3 条：帧循环报错后停在 `failed`，用 `onError` 有限次重启 · the loop stops at `failed`; bounded restarts from `onError` | 未进引擎：同上 · not added, same reason |
 
 ## 每个游戏 · By game
@@ -50,6 +55,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | FivePhases | 2（2 条证据，未进引擎） | 缺引擎提交号 · no engine pin |
 | Rally | 1（1 条证据） | 另一个修复 `ee391d0` 的水面倒影已被 world3d-draw-cost 引用 · its reflection fix is already cited |
 | JY | 1（1 条证据，未进引擎） | 修复 `04313eb`（经典战斗结算、密集数字）是游戏自己的规则，不是引擎经验 · a fix of the game's own rules |
+| CanalWatch | 5（2 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | FPS、jelly-pandas、Wulin、LanternShadows、LoveElective | 0 | 没有 ENGINE-NOTES 内容，也没有新的引擎相关修复提交；它们的经验已被引擎现有卡片引用（FPS 14 张、jelly-pandas 12 张、Wulin 5 张、LanternShadows 4 张、LoveElective 1 张） · no notes and no new engine-related fixes; already cited by the engine's cards |
 
 收尾规则见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 6 节：以后每款游戏完成时产出 2–5 张草稿放在这里并登记。
