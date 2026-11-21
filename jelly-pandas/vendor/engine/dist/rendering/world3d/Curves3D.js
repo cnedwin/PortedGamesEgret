@@ -3,6 +3,7 @@
 // and tangents by parameter or by distance travelled, and feed the tube,
 // lathe, extrude and shape geometries. Points are plain [x, y, z] arrays.
 import { World3DError, requireCount3D, requireFinite3D } from './core3D.js';
+/** The most points and divisions a curve has. */
 export const CURVE3D_LIMITS = Object.freeze({ maxPoints: 65536, maxDivisions: 16384 });
 function point(value, field) {
     if (!value || value.length < 3)
@@ -15,7 +16,9 @@ export class Curve3D {
     arcLengthDivisions = 200;
     #lengths;
     /** Call after changing the curve's control points. */
-    invalidate() { this.#lengths = undefined; }
+    invalidate() {
+        this.#lengths = undefined;
+    }
     /** Cumulative chord lengths at each arc-length division. */
     getLengths() {
         const divisions = Math.max(1, Math.min(Math.floor(this.arcLengthDivisions), CURVE3D_LIMITS.maxDivisions));
@@ -25,14 +28,18 @@ export class Curve3D {
         this.getPoint(0, previous);
         for (let i = 1; i <= divisions; i++) {
             this.getPoint(i / divisions, current);
-            lengths[i] = lengths[i - 1] + Math.hypot(current[0] - previous[0], current[1] - previous[1], current[2] - previous[2]);
+            lengths[i] =
+                lengths[i - 1] + Math.hypot(current[0] - previous[0], current[1] - previous[1], current[2] - previous[2]);
             previous[0] = current[0];
             previous[1] = current[1];
             previous[2] = current[2];
         }
-        return this.#lengths = lengths;
+        return (this.#lengths = lengths);
     }
-    getLength() { const lengths = this.getLengths(); return lengths[lengths.length - 1]; }
+    getLength() {
+        const lengths = this.getLengths();
+        return lengths[lengths.length - 1];
+    }
     /** Parameter t that lies the fraction `u` of the way along the curve by distance. */
     parameterAt(u) {
         const lengths = this.getLengths(), last = lengths.length - 1, target = Math.min(Math.max(u, 0), 1) * lengths[last];
@@ -48,7 +55,9 @@ export class Curve3D {
         return (low + (span > 0 ? (target - lengths[low]) / span : 0)) / last;
     }
     /** Position the fraction `u` of the way along the curve, at constant speed. */
-    getPointAt(u, out) { return this.getPoint(this.parameterAt(u), out); }
+    getPointAt(u, out) {
+        return this.getPoint(this.parameterAt(u), out);
+    }
     /** Unit tangent at parameter `t`, by central difference. */
     getTangent(t, out = [0, 0, 0]) {
         const delta = 1e-4, a = this.getPoint(Math.max(t - delta, 0)), b = this.getPoint(Math.min(t + delta, 1));
@@ -58,7 +67,9 @@ export class Curve3D {
         out[2] = z / length;
         return out;
     }
-    getTangentAt(u, out) { return this.getTangent(this.parameterAt(u), out); }
+    getTangentAt(u, out) {
+        return this.getTangent(this.parameterAt(u), out);
+    }
     /** `divisions + 1` points at equal parameter steps. */
     getPoints(divisions = 32) {
         const count = Math.max(1, requireCount3D(divisions, 'divisions', CURVE3D_LIMITS.maxDivisions)), points = [];
@@ -114,17 +125,27 @@ export class Curve3D {
         return { tangents, normals, binormals };
     }
 }
-function cross(a, b) { return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]]; }
-function normalize(a) { const length = Math.hypot(a[0], a[1], a[2]) || 1; return [a[0] / length, a[1] / length, a[2] / length]; }
+function cross(a, b) {
+    return [a[1] * b[2] - a[2] * b[1], a[2] * b[0] - a[0] * b[2], a[0] * b[1] - a[1] * b[0]];
+}
+function normalize(a) {
+    const length = Math.hypot(a[0], a[1], a[2]) || 1;
+    return [a[0] / length, a[1] / length, a[2] / length];
+}
 /** Rotate `v` about a unit `axis` (Rodrigues). */
 function rotate(v, axis, angle) {
     const c = Math.cos(angle), s = Math.sin(angle), d = (axis[0] * v[0] + axis[1] * v[1] + axis[2] * v[2]) * (1 - c), k = cross(axis, v);
     return [v[0] * c + k[0] * s + axis[0] * d, v[1] * c + k[1] * s + axis[1] * d, v[2] * c + k[2] * s + axis[2] * d];
 }
+/** A straight line between two points, as a curve. */
 export class LineCurve3D extends Curve3D {
     start;
     end;
-    constructor(start, end) { super(); this.start = point(start, 'start'); this.end = point(end, 'end'); }
+    constructor(start, end) {
+        super();
+        this.start = point(start, 'start');
+        this.end = point(end, 'end');
+    }
     getPoint(t, out = [0, 0, 0]) {
         const a = this.start, b = this.end;
         out[0] = a[0] + (b[0] - a[0]) * t;
@@ -133,11 +154,17 @@ export class LineCurve3D extends Curve3D {
         return out;
     }
 }
+/** A quadratic Bézier curve through three control points. */
 export class QuadraticBezierCurve3D extends Curve3D {
     p0;
     p1;
     p2;
-    constructor(p0, p1, p2) { super(); this.p0 = point(p0, 'p0'); this.p1 = point(p1, 'p1'); this.p2 = point(p2, 'p2'); }
+    constructor(p0, p1, p2) {
+        super();
+        this.p0 = point(p0, 'p0');
+        this.p1 = point(p1, 'p1');
+        this.p2 = point(p2, 'p2');
+    }
     getPoint(t, out = [0, 0, 0]) {
         const k = 1 - t, a = k * k, b = 2 * k * t, c = t * t;
         for (let i = 0; i < 3; i++)
@@ -145,6 +172,7 @@ export class QuadraticBezierCurve3D extends Curve3D {
         return out;
     }
 }
+/** A cubic Bézier curve through four control points. */
 export class CubicBezierCurve3D extends Curve3D {
     p0;
     p1;
@@ -221,7 +249,11 @@ export class CatmullRomCurve3D extends Curve3D {
 /** Several curves joined end to end and traversed as one, by length. */
 export class CurvePath3D extends Curve3D {
     curves = [];
-    add(curve) { this.curves.push(curve); this.invalidate(); return this; }
+    add(curve) {
+        this.curves.push(curve);
+        this.invalidate();
+        return this;
+    }
     getPoint(t, out = [0, 0, 0]) {
         const curves = this.curves;
         if (curves.length === 0)
@@ -246,8 +278,13 @@ export class Path2D3D {
     points = [];
     /** Segments used for each curved command. */
     curveSegments = 12;
-    moveTo(x, y) { this.points.push([requireFinite3D(x, 'x'), requireFinite3D(y, 'y')]); return this; }
-    lineTo(x, y) { return this.moveTo(x, y); }
+    moveTo(x, y) {
+        this.points.push([requireFinite3D(x, 'x'), requireFinite3D(y, 'y')]);
+        return this;
+    }
+    lineTo(x, y) {
+        return this.moveTo(x, y);
+    }
     last() {
         const last = this.points[this.points.length - 1];
         if (!last)
@@ -277,9 +314,9 @@ export class Path2D3D {
             sweep -= Math.PI * 2;
         else if (!clockwise && sweep < 0)
             sweep += Math.PI * 2;
-        const n = Math.max(2, Math.ceil(Math.abs(sweep) / (Math.PI * 2) * this.curveSegments * 4));
+        const n = Math.max(2, Math.ceil((Math.abs(sweep) / (Math.PI * 2)) * this.curveSegments * 4));
         for (let i = 0; i <= n; i++) {
-            const angle = startAngle + sweep * i / n;
+            const angle = startAngle + (sweep * i) / n;
             this.points.push([cx + Math.cos(angle) * radius, cy + Math.sin(angle) * radius]);
         }
         return this;
@@ -287,7 +324,11 @@ export class Path2D3D {
     /** Outline without a repeated closing vertex. */
     contour() {
         const points = this.points.slice(), first = points[0], last = points[points.length - 1];
-        if (points.length > 1 && first && last && Math.abs(first[0] - last[0]) < 1e-9 && Math.abs(first[1] - last[1]) < 1e-9)
+        if (points.length > 1 &&
+            first &&
+            last &&
+            Math.abs(first[0] - last[0]) < 1e-9 &&
+            Math.abs(first[1] - last[1]) < 1e-9)
             points.pop();
         if (points.length < 3)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'outline needs three points');
@@ -297,10 +338,14 @@ export class Path2D3D {
 /** A filled outline with optional holes. */
 export class Shape3D extends Path2D3D {
     holes = [];
-    constructor(points) { super(); if (points)
-        for (const p of points)
-            this.moveTo(p[0], p[1]); }
+    constructor(points) {
+        super();
+        if (points)
+            for (const p of points)
+                this.moveTo(p[0], p[1]);
+    }
 }
+/** The signed area of a 2D polygon: positive when its points run counterclockwise. */
 export function signedArea2D(points) {
     let area = 0;
     for (let i = 0, j = points.length - 1; i < points.length; j = i++)
@@ -319,8 +364,13 @@ export function triangulateShape3D(contour, holes = []) {
     const vertices = outer.slice();
     // Working polygon as indices into `vertices`; holes are spliced in through bridges.
     let ring = outer.map((_, i) => i);
-    const prepared = holes.map(hole => { const copy = hole.slice(); if (signedArea2D(copy) > 0)
-        copy.reverse(); return copy; })
+    const prepared = holes
+        .map(hole => {
+        const copy = hole.slice();
+        if (signedArea2D(copy) > 0)
+            copy.reverse();
+        return copy;
+    })
         .sort((a, b) => Math.max(...b.map(p => p[0])) - Math.max(...a.map(p => p[0])));
     for (const hole of prepared) {
         const base = vertices.length;
@@ -358,7 +408,7 @@ export function triangulateShape3D(contour, holes = []) {
             best = 0;
         const loop = [];
         for (let i = 0; i <= hole.length; i++)
-            loop.push(base + (holeIndex + i) % hole.length);
+            loop.push(base + ((holeIndex + i) % hole.length));
         ring = [...ring.slice(0, best + 1), ...loop, ring[best], ...ring.slice(best + 1)];
     }
     const indices = [];

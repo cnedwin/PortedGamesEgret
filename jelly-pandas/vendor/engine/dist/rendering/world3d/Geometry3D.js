@@ -4,14 +4,25 @@
 // into them, then call touch() on the attribute to schedule a GPU refresh.
 import { Resource3D, World3DError, requireCount3D } from './core3D.js';
 import { box3Empty, box3ExpandByPoint, sphereFromBox } from './math3D.js';
+/** The most vertices, indices, morph targets and groups a geometry has. */
 export const GEOMETRY3D_LIMITS = Object.freeze({
-    maxVertices: 4194304, maxIndices: 12582912, maxMorphTargets: 256, maxGroups: 1024,
+    maxVertices: 4194304,
+    maxIndices: 12582912,
+    maxMorphTargets: 256,
+    maxGroups: 1024
 });
 /** Well-known attribute names understood by the built-in materials. */
 export const ATTRIBUTE_3D = Object.freeze({
-    position: 'position', normal: 'normal', tangent: 'tangent', uv: 'uv', uv1: 'uv1', color: 'color',
-    joints: 'joints', weights: 'weights',
+    position: 'position',
+    normal: 'normal',
+    tangent: 'tangent',
+    uv: 'uv',
+    uv1: 'uv1',
+    color: 'color',
+    joints: 'joints',
+    weights: 'weights'
 });
+/** One attribute of a geometry, such as positions: its data, how many numbers each vertex has, and whether they are normalized. */
 export class Attribute3D {
     data;
     itemSize;
@@ -29,10 +40,17 @@ export class Attribute3D {
         this.itemSize = itemSize;
         this.normalized = normalized;
     }
-    get count() { return this.data.length / this.itemSize; }
-    get version() { return this.#version; }
-    touch() { this.#version++; }
+    get count() {
+        return this.data.length / this.itemSize;
+    }
+    get version() {
+        return this.#version;
+    }
+    touch() {
+        this.#version++;
+    }
 }
+/** The vertices of a mesh: its attributes and indices, its groups and morph targets, and calls that compute normals and tangents. */
 export class Geometry3D extends Resource3D {
     topology = 'triangles';
     #attributes = new Map();
@@ -43,14 +61,28 @@ export class Geometry3D extends Resource3D {
     #boundingSphere;
     /** Structure version: attribute set, index or morph targets changed. */
     #layoutVersion = 1;
-    get attributes() { return this.#attributes; }
-    get index() { return this.#index; }
-    get groups() { return this.#groups; }
-    get morphTargets() { return this.#morphTargets; }
-    get layoutVersion() { return this.#layoutVersion; }
-    get vertexCount() { return this.#attributes.get('position')?.count ?? 0; }
+    get attributes() {
+        return this.#attributes;
+    }
+    get index() {
+        return this.#index;
+    }
+    get groups() {
+        return this.#groups;
+    }
+    get morphTargets() {
+        return this.#morphTargets;
+    }
+    get layoutVersion() {
+        return this.#layoutVersion;
+    }
+    get vertexCount() {
+        return this.#attributes.get('position')?.count ?? 0;
+    }
     /** Number of indices, or vertices when the geometry is not indexed. */
-    get drawCount() { return this.#index ? this.#index.count : this.vertexCount; }
+    get drawCount() {
+        return this.#index ? this.#index.count : this.vertexCount;
+    }
     setAttribute(name, attribute) {
         this.assertLive();
         if (!(attribute instanceof Attribute3D) || typeof name !== 'string' || name.length === 0)
@@ -63,7 +95,9 @@ export class Geometry3D extends Resource3D {
         this.touch();
         return this;
     }
-    getAttribute(name) { return this.#attributes.get(name); }
+    getAttribute(name) {
+        return this.#attributes.get(name);
+    }
     removeAttribute(name) {
         if (this.#attributes.delete(name)) {
             this.#layoutVersion++;
@@ -76,8 +110,11 @@ export class Geometry3D extends Resource3D {
         if (index === undefined)
             this.#index = undefined;
         else {
-            const data = ArrayBuffer.isView(index) ? index
-                : (this.vertexCount > 65535 ? new Uint32Array(index) : new Uint16Array(index));
+            const data = ArrayBuffer.isView(index)
+                ? index
+                : this.vertexCount > 65535
+                    ? new Uint32Array(index)
+                    : new Uint16Array(index);
             requireCount3D(data.length, 'index count', GEOMETRY3D_LIMITS.maxIndices);
             // An index past the vertex data would read outside the vertex buffers.
             const vertexCount = this.vertexCount;
@@ -103,13 +140,17 @@ export class Geometry3D extends Resource3D {
         this.#groups.push(Object.freeze({ start, count, materialIndex }));
         return this;
     }
-    clearGroups() { this.#groups = []; return this; }
+    clearGroups() {
+        this.#groups = [];
+        return this;
+    }
     setMorphTargets(targets) {
         this.assertLive();
         requireCount3D(targets.length, 'morph targets', GEOMETRY3D_LIMITS.maxMorphTargets);
         const expected = this.vertexCount * 3;
         for (const target of targets) {
-            if ((target.position && target.position.length !== expected) || (target.normal && target.normal.length !== expected)) {
+            if ((target.position && target.position.length !== expected) ||
+                (target.normal && target.normal.length !== expected)) {
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'morph target length');
             }
         }
@@ -154,16 +195,22 @@ export class Geometry3D extends Resource3D {
                 box[5] += grow[2];
             }
         }
-        return this.#boundingBox = box;
+        return (this.#boundingBox = box);
     }
     /** Local-space [x, y, z, radius]; radius is negative for an empty geometry. */
     get boundingSphere() {
-        return this.#boundingSphere ??= sphereFromBox(new Float32Array(4), this.boundingBox);
+        return (this.#boundingSphere ??= sphereFromBox(new Float32Array(4), this.boundingBox));
     }
-    /** Call after editing position data in place. */
+    #boundsVersion = 0;
+    /** Counts `invalidateBounds` calls: what a mesh's world bounds are kept by, beside the structure version. */
+    get boundsVersion() {
+        return this.#boundsVersion;
+    }
+    /** Call after editing position data in place. Meshes of this geometry find their world bounds again. */
     invalidateBounds() {
         this.#boundingBox = undefined;
         this.#boundingSphere = undefined;
+        this.#boundsVersion++;
     }
     // ---- derived attributes ------------------------------------------------
     /** Area-weighted smooth normals for triangle geometry. */

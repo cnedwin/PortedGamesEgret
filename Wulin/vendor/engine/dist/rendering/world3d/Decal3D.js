@@ -7,6 +7,7 @@ import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { Attribute3D, Geometry3D } from './Geometry3D.js';
 import { Mesh3D } from './Mesh3D.js';
 import { mat4Invert, mat4Multiply } from './math3D.js';
+/** The most triangles a decal has. */
 export const DECAL3D_LIMITS = Object.freeze({ maxTriangles: 262144 });
 /**
  * Cut the part of a mesh's surface that lies inside the decal box. The

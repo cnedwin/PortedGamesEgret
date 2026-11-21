@@ -1,5 +1,6 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 import { ParticleEmitter3D } from '../../rendering/world3d/Particles3D.js';
+/** Draws a scene from a camera on each tick of the Engine, updating its mixers and controls. */
 export class World3DView {
     renderer;
     scene;
@@ -71,6 +72,7 @@ export class World3DView {
         this.#subscription.dispose();
     }
 }
+/** Makes a view that draws a scene on each tick of the Engine's clock. */
 export function createWorld3DView(engine, scope, options) {
     return new World3DView(engine, scope, options);
 }

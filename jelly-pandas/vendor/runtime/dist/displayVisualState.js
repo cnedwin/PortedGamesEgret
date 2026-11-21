@@ -1,4 +1,4 @@
-import { assertManagedMutable } from './ui/managedState.js';
+import { assertManagedMutable } from "./ui/managedState.js";
 import { assertLive, isDisplayNode } from "./displayTreeState.js";
 import { engineOf } from "./ownership.js";
 import { EgretError } from "./EgretError.js";
@@ -23,11 +23,11 @@ export function recordVisualChange(node, changes) {
     if (state === undefined)
         return;
     state.changes++;
-    if (((changes & VISUAL_STRUCTURE) !== 0 && state.structureRevision >= REVISION_RESTART)
-        || ((changes & VISUAL_TRANSFORM) !== 0 && state.transformRevision >= REVISION_RESTART)
-        || ((changes & VISUAL_APPEARANCE) !== 0 && state.appearanceRevision >= REVISION_RESTART)
-        || ((changes & VISUAL_CONTENT) !== 0 && state.contentRevision >= REVISION_RESTART)
-        || ((changes & VISUAL_BINDING) !== 0 && state.bindingRevision >= REVISION_RESTART)) {
+    if (((changes & VISUAL_STRUCTURE) !== 0 && state.structureRevision >= REVISION_RESTART) ||
+        ((changes & VISUAL_TRANSFORM) !== 0 && state.transformRevision >= REVISION_RESTART) ||
+        ((changes & VISUAL_APPEARANCE) !== 0 && state.appearanceRevision >= REVISION_RESTART) ||
+        ((changes & VISUAL_CONTENT) !== 0 && state.contentRevision >= REVISION_RESTART) ||
+        ((changes & VISUAL_BINDING) !== 0 && state.bindingRevision >= REVISION_RESTART)) {
         state.structureRevision = 0;
         state.transformRevision = 0;
         state.appearanceRevision = 0;
@@ -47,11 +47,33 @@ export function recordVisualChange(node, changes) {
 }
 export function registerVisual(node) {
     states.set(node, {
-        structureRevision: 0, transformRevision: 0, appearanceRevision: 0, contentRevision: 0, bindingRevision: 0,
-        x: 0, y: 0, scaleX: 1, scaleY: 1, rotation: 0, alpha: 1,
-        anchorOffsetX: 0, anchorOffsetY: 0,
-        visible: true, renderEffect: undefined, sharedMaterial: null, renderBoundary: 'none', clipRect: undefined, primitives: [], shape: undefined,
-        sharedCapture: undefined, changes: 0, seenBy: 0,
+        structureRevision: 0,
+        transformRevision: 0,
+        appearanceRevision: 0,
+        contentRevision: 0,
+        bindingRevision: 0,
+        x: 0,
+        y: 0,
+        scaleX: 1,
+        scaleY: 1,
+        rotation: 0,
+        skewX: 0,
+        skewY: 0,
+        name: "",
+        alpha: 1,
+        anchorOffsetX: 0,
+        anchorOffsetY: 0,
+        visible: true,
+        renderEffect: undefined,
+        maskUses: 0,
+        sharedMaterial: null,
+        renderBoundary: "none",
+        clipRect: undefined,
+        primitives: [],
+        shape: undefined,
+        sharedCapture: undefined,
+        changes: 0,
+        seenBy: 0
     });
 }
 export function visualOf(node) {
@@ -81,11 +103,31 @@ export function assertVisualMutable(node) {
     assertLive(node);
     engineOf(node)?.assertOpen();
 }
+/** A refused display value: the error says which property was set and what it was given. */
+export function invalidDisplayValue(property, value) {
+    // An object is named by its kind alone: a refused value is never read.
+    const given = typeof value === "string"
+        ? JSON.stringify(value.length > 40 ? value.slice(0, 40) + "…" : value)
+        : value === null || (typeof value !== "object" && typeof value !== "function" && typeof value !== "symbol")
+            ? String(value)
+            : typeof value === "object"
+                ? "an object"
+                : "a " + typeof value;
+    return new EgretError("DISPLAY_VALUE_INVALID", { cause: new RangeError(`${property} was given ${given}`) });
+}
 export function finite(value) {
     return typeof value === "number" && Number.isFinite(value);
 }
 export function color(value) {
     return finite(value) && Number.isInteger(value) && value >= 0 && value <= 0xffffff;
+}
+/**
+ * An alpha as it is kept: a finite number, held to 0 and 1. A game's arithmetic often lands a hair outside (a fade
+ * that runs one step long, an easing that overshoots), and that is not worth stopping a frame for. What is not a
+ * finite number gives undefined, for the caller to refuse.
+ */
+export function alphaOf(value) {
+    return finite(value) ? (value < 0 ? 0 : value > 1 ? 1 : value) : undefined;
 }
 export function unit(value) {
     return finite(value) && value >= 0 && value <= 1;

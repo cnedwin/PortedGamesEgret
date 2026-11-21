@@ -112,7 +112,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 ## 已知问题 · Known issues
 
 - 海面倒影里不画阴影和小物件（植物、敌群、弹丸、拾取物、粒子），这是为了省绘制而有意去掉的。 · The sea's mirror leaves out shadows and small things on purpose, to save drawing.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（7 of 16 under 44×44: Solo 45×26; +1 friend 72×26; +2 friends 81×26; +3 friends 82×26）；T3 不误触下拉刷新和双击缩放（overscroll held, touch-action auto, double-tap zoom on）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 783.4 ms over 13 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 果冻熊猫 动作游戏 移动 鼠标转视角 空格跳跃）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（7 of 16 under 44×44: Solo 45×26; +1 friend 72×26; +2 friends 81×26; +3 friends 82×26）；T3 不误触下拉刷新和双击缩放（overscroll held, touch-action auto, double-tap zoom on）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 683.3 ms over 15 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 果冻熊猫 动作游戏 移动 鼠标转视角 空格跳跃）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
@@ -142,6 +142,6 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `db9772ee104e77b5c34e4c59bbc6f7dde7e90419`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `db9772ee104e77b5c34e4c59bbc6f7dde7e90419`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.

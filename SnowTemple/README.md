@@ -179,7 +179,7 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 - 网络慢时，相应角色的模型到了才开始战斗。 · On a slow network the fight waits until the roles it needs have arrived.
 - 标题「风雪山神庙」在 390 像素宽的屏幕上被截断（品质 I3）。 · The title is cut off on a 390-pixel-wide screen.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 12 under 44×44: 行囊0B 85×35; 全屏 64×35; 设置 64×35）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 2416.6 ms over 5 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；I3 长英文不溢出（cut off: 风雪山神庙）；E2 资源失败有错误界面和重试（9 files refused; no uncaught error; no error screen with a retry）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 12 under 44×44: 行囊0B 85×35; 全屏 64×35; 设置 64×35）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 2233.2 ms over 5 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；I3 长英文不溢出（cut off: 风雪山神庙）；E2 资源失败有错误界面和重试（9 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
@@ -201,8 +201,8 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `c049bc385441647ae3fc4bad96d9ff93cbf4fbb3`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `c049bc385441647ae3fc4bad96d9ff93cbf4fbb3`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/kit`, `@egret/engine/web/kit`.

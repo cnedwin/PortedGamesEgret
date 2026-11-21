@@ -3,7 +3,7 @@ import { colorFromHex } from '../../rendering/world3d/math3D.js';
 import { createCustomPost3D } from './post3D.js';
 // uniforms: [0] fog rgb, density; [1] falloff, base height, sky distance, shaft intensity;
 //           [2] sun uv, sun visibility, shaft length; [3] the camera's world Y axis in view space, camera height.
-const GLSL = /* glsl */ `
+const GLSL = (skyFog) => /* glsl */ `
 vec3 customPost(vec3 color, vec2 uv) {
     vec4 fog = uPostCustom[0], shape = uPostCustom[1], sun = uPostCustom[2], up = uPostCustom[3];
     vec3 view = unprojectDepth(uv, rawDepth(uv));
@@ -13,6 +13,8 @@ vec3 customPost(vec3 color, vec2 uv) {
         float rise = dot(up.xyz, view), slope = shape.x * rise;
         float thin = abs(slope) > 0.0001 ? (1.0 - exp(-slope)) / slope : 1.0;
         float depth = fog.a * exp(-shape.x * (up.w - shape.y)) * reach * thin;
+        // The sky lies on the far plane: it takes its own share of the fog.
+        depth *= mix(1.0, ${skyFog}, step(shape.z, reach));
         color = mix(fog.rgb, color, exp(-max(depth, 0.0)));
     }
     if (shape.w > 0.0 && sun.z > 0.0) {
@@ -35,7 +37,7 @@ vec3 customPost(vec3 color, vec2 uv) {
     return color;
 }
 `;
-const WGSL = /* wgsl */ `
+const WGSL = (skyFog) => /* wgsl */ `
 fn customPost(color: vec3f, uv: vec2f) -> vec3f {
     let fog = params.custom[0];
     let shape = params.custom[1];
@@ -51,7 +53,7 @@ fn customPost(color: vec3f, uv: vec2f) -> vec3f {
         let slope = shape.x * rise;
         var thin = 1.0;
         if (abs(slope) > 0.0001) { thin = (1.0 - exp(-slope)) / slope; }
-        let depth = fog.a * exp(-shape.x * (up.w - shape.y)) * reach * thin;
+        let depth = fog.a * exp(-shape.x * (up.w - shape.y)) * reach * thin * mix(1.0, ${skyFog}, step(shape.z, reach));
         result = mix(fog.rgb, result, exp(-max(depth, 0.0)));
     }
     if (shape.w > 0.0 && sun.z > 0.0) {
@@ -81,9 +83,21 @@ fn customPost(color: vec3f, uv: vec2f) -> vec3f {
  */
 export class Atmosphere3D {
     post;
+    /** How much of the fog lies over the sky, as given when it was made. */
+    skyFog;
     #scratch = [0, 0, 0];
     constructor(options = {}) {
-        this.post = createCustomPost3D({ key: 'world3d-atmosphere', glsl: GLSL, wgsl: WGSL });
+        const sky = options.skyFog ?? 1;
+        if (typeof sky !== 'number' || !(sky >= 0 && sky <= 1))
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'skyFog');
+        // A clear sky is a constant of the program: the sixteen numbers of the hook are all in use.
+        const constant = sky.toFixed(4);
+        this.skyFog = Number(constant);
+        this.post = createCustomPost3D({
+            key: sky === 1 ? 'world3d-atmosphere' : 'world3d-atmosphere-sky' + constant,
+            glsl: GLSL(constant),
+            wgsl: WGSL(constant)
+        });
         colorFromHex(this.post.uniforms, options.fogColor ?? 0xb4c4d4);
         this.fogDensity = options.fogDensity ?? 0.01;
         this.fogHeight = options.fogHeight ?? 0;
@@ -91,19 +105,45 @@ export class Atmosphere3D {
         this.shaftIntensity = options.shaftIntensity ?? 0.6;
         this.shaftLength = options.shaftLength ?? 0.6;
     }
-    get fogDensity() { return this.post.uniforms[3]; }
-    set fogDensity(value) { this.post.uniforms[3] = this.amount(value, 'fogDensity'); }
-    get fogFalloff() { return this.post.uniforms[4]; }
-    set fogFalloff(value) { this.post.uniforms[4] = this.amount(value, 'fogFalloff'); }
-    get fogHeight() { return this.post.uniforms[5]; }
-    set fogHeight(value) { this.post.uniforms[5] = requireFinite3D(value, 'fogHeight'); }
-    get shaftIntensity() { return this.post.uniforms[7]; }
-    set shaftIntensity(value) { this.post.uniforms[7] = this.amount(value, 'shaftIntensity'); }
-    get shaftLength() { return this.post.uniforms[11]; }
-    set shaftLength(value) { const length = this.amount(value, 'shaftLength'); if (length > 1)
-        throw new World3DError('WORLD3D_INPUT_INVALID', 'shaftLength'); this.post.uniforms[11] = length; }
+    get fogDensity() {
+        return this.post.uniforms[3];
+    }
+    set fogDensity(value) {
+        this.post.uniforms[3] = this.amount(value, 'fogDensity');
+    }
+    get fogFalloff() {
+        return this.post.uniforms[4];
+    }
+    set fogFalloff(value) {
+        this.post.uniforms[4] = this.amount(value, 'fogFalloff');
+    }
+    get fogHeight() {
+        return this.post.uniforms[5];
+    }
+    set fogHeight(value) {
+        this.post.uniforms[5] = requireFinite3D(value, 'fogHeight');
+    }
+    get shaftIntensity() {
+        return this.post.uniforms[7];
+    }
+    set shaftIntensity(value) {
+        this.post.uniforms[7] = this.amount(value, 'shaftIntensity');
+    }
+    get shaftLength() {
+        return this.post.uniforms[11];
+    }
+    set shaftLength(value) {
+        const length = this.amount(value, 'shaftLength');
+        if (length > 1)
+            throw new World3DError('WORLD3D_INPUT_INVALID', 'shaftLength');
+        this.post.uniforms[11] = length;
+    }
     /** Linear RGB fog color. */
-    setFogColor(r, g, b) { this.post.uniforms[0] = requireFinite3D(r, 'color'); this.post.uniforms[1] = requireFinite3D(g, 'color'); this.post.uniforms[2] = requireFinite3D(b, 'color'); }
+    setFogColor(r, g, b) {
+        this.post.uniforms[0] = requireFinite3D(r, 'color');
+        this.post.uniforms[1] = requireFinite3D(g, 'color');
+        this.post.uniforms[2] = requireFinite3D(b, 'color');
+    }
     /**
      * Refresh the camera and sun data. `sunDirection` is the direction the
      * sunlight travels in, as a directional light's world direction; pass
@@ -127,9 +167,9 @@ export class Atmosphere3D {
             return;
         // The sun sits far away against the light's travel; project that point to the screen.
         const far = camera.far * 0.5, at = this.#scratch;
-        at[0] = world[12] - dx / length * far;
-        at[1] = world[13] - dy / length * far;
-        at[2] = world[14] - dz / length * far;
+        at[0] = world[12] - (dx / length) * far;
+        at[1] = world[13] - (dy / length) * far;
+        at[2] = world[14] - (dz / length) * far;
         const forward = -(world[8] * -dx + world[9] * -dy + world[10] * -dz) / (length * sz);
         if (forward <= 0.05)
             return;
@@ -146,4 +186,7 @@ export class Atmosphere3D {
         return value;
     }
 }
-export function createAtmosphere3D(options = {}) { return new Atmosphere3D(options); }
+/** Makes height fog and light shafts for a scene. */
+export function createAtmosphere3D(options = {}) {
+    return new Atmosphere3D(options);
+}

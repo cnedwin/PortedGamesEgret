@@ -4,6 +4,7 @@
 // nothing per frame.
 import { World3DError, allocateId3D } from './core3D.js';
 import { mat4Compose, mat4Copy, mat4Decompose, mat4Identity, mat4Invert, mat4LookAt, mat4Multiply, quatFromAxisAngle, quatFromEuler, quatFromRotationMatrix, quatMultiply, quatNormalize, vec3TransformMat4 } from './math3D.js';
+/** How deep a scene nests, how many children a node has, and how long a name is, at most. */
 export const WORLD3D_LIMITS = Object.freeze({
     maxDepth: 256,
     maxChildren: 65536,
@@ -13,6 +14,7 @@ const UP = new Float32Array([0, 1, 0]);
 const scratchMatrix = new Float32Array(16);
 const scratchVector = new Float32Array(3);
 const scratchQuat = new Float32Array(4);
+/** A node of a 3D scene: its children, place, rotation and scale, and calls that move and find nodes. */
 export class Object3D {
     id = allocateId3D();
     kind;
@@ -32,6 +34,13 @@ export class Object3D {
     castShadow = false;
     receiveShadow = true;
     frustumCulled = true;
+    /**
+     * A mesh further from the camera than this, in world units, from the camera to the near side of its bounds, is not
+     * drawn and casts no shadow: for grass, trees and props that are too small to see far off. Infinity (the default)
+     * keeps it at any distance. For a near and a far version of the same thing, use `Lod3D`. Not written by
+     * `serializeScene3D`.
+     */
+    cullDistance = Infinity;
     /** Free-form application data; never read by the engine. */
     userData = {};
     #parent;
@@ -278,6 +287,7 @@ export class Object3D {
         this.castShadow = source.castShadow;
         this.receiveShadow = source.receiveShadow;
         this.frustumCulled = source.frustumCulled;
+        this.cullDistance = source.cullDistance;
         this.userData = { ...source.userData };
         this.#localDirty = true;
     }

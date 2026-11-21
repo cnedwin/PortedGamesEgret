@@ -1,5 +1,6 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 import { ParticleEmitter3D } from '../../rendering/world3d/Particles3D.js';
+/** Draws a scene from a camera on each tick of the Engine, updating its mixers and controls. */
 export class World3DView {
     renderer;
     scene;
@@ -23,10 +24,15 @@ export class World3DView {
         this.mixers = [...(options.mixers ?? [])];
         this.controls = options.controls;
         // The Scope owns this view: closing the Scope ends ticking before the Engine closes.
-        this.#subscription = engine.clock.onTick(scope, tick => { this.tick(tick.deltaSeconds, tick.elapsedSeconds); return undefined; });
+        this.#subscription = engine.clock.onTick(scope, tick => {
+            this.tick(tick.deltaSeconds, tick.elapsedSeconds);
+            return undefined;
+        });
         scope.use(this);
     }
-    get isDisposed() { return this.#disposed; }
+    get isDisposed() {
+        return this.#disposed;
+    }
     /** Advance and draw one frame. Normally driven by the Engine clock. */
     tick(deltaSeconds, elapsedSeconds) {
         if (this.#disposed || this.paused)
@@ -45,8 +51,10 @@ export class World3DView {
                 mixer.update(deltaSeconds);
             this.controls?.update(deltaSeconds);
             if (options.updateParticles ?? true) {
-                this.scene.traverse(object => { if (object instanceof ParticleEmitter3D && object.visible)
-                    object.update(deltaSeconds); });
+                this.scene.traverse(object => {
+                    if (object instanceof ParticleEmitter3D && object.visible)
+                        object.update(deltaSeconds);
+                });
             }
             this.renderer.render(this.scene, this.camera);
         }
@@ -64,6 +72,7 @@ export class World3DView {
         this.#subscription.dispose();
     }
 }
+/** Makes a view that draws a scene on each tick of the Engine's clock. */
 export function createWorld3DView(engine, scope, options) {
     return new World3DView(engine, scope, options);
 }

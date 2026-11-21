@@ -8,7 +8,14 @@
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { Geometry3D, createGeometry3D } from './Geometry3D.js';
 import { createMeshShape3D } from './PhysicsMesh3D.js';
-export const NAVIGATION3D_LIMITS = Object.freeze({ maxTriangles: 1048576, maxAgents: 4096, maxGridCells: 16777216, maxCellReferences: 8388608 });
+import { HeightField3D } from './Terrain3D.js';
+/** The most triangles, agents and grid cells navigation holds. */
+export const NAVIGATION3D_LIMITS = Object.freeze({
+    maxTriangles: 1048576,
+    maxAgents: 4096,
+    maxGridCells: 16777216,
+    maxCellReferences: 8388608
+});
 /** Twice the signed area of a triangle seen from above; the sign tells which side of a-b the point c lies on. */
 const side = (ax, az, bx, bz, cx, cz) => (cx - ax) * (bz - az) - (bx - ax) * (cz - az);
 /** Store a snapshot of each priority so reprioritizing a node cannot corrupt the heap. */
@@ -18,7 +25,9 @@ class Heap {
     constructor(score) {
         this.score = score;
     }
-    get size() { return this.#items.length; }
+    get size() {
+        return this.#items.length;
+    }
     push(index) {
         const items = this.#items;
         const item = { index, priority: this.score[index] };
@@ -59,6 +68,7 @@ class Heap {
         return undefined;
     }
 }
+/** The walkable surface of a level: find paths, nearest points and ray hits on it, and set the cost of its areas. */
 export class NavMesh3D {
     /** Welded corner positions, three floats each. */
     vertices;
@@ -114,13 +124,13 @@ export class NavMesh3D {
             throw new World3DError('WORLD3D_INPUT_INVALID', 'the geometry has no walkable triangles');
         this.vertices = Float32Array.from(vertices);
         this.triangles = Uint32Array.from(triangles);
-        const total = this.triangleCount = triangles.length / 3;
+        const total = (this.triangleCount = triangles.length / 3);
         // Two triangles are neighbors when they share an edge walked in opposite directions.
         this.neighbors = new Int32Array(total * 3).fill(-1);
         const edges = new Map(), vertexCount = vertices.length / 3;
         for (let t = 0; t < total; t++)
             for (let e = 0; e < 3; e++)
-                edges.set(triangles[t * 3 + e] * vertexCount + triangles[t * 3 + (e + 1) % 3], t * 3 + e);
+                edges.set(triangles[t * 3 + e] * vertexCount + triangles[t * 3 + ((e + 1) % 3)], t * 3 + e);
         for (const [key, slot] of edges) {
             const from = Math.floor(key / vertexCount), to = key % vertexCount, other = edges.get(to * vertexCount + from);
             if (other !== undefined)
@@ -154,10 +164,10 @@ export class NavMesh3D {
             minZ = Math.min(minZ, vertices[i + 2]);
             maxZ = Math.max(maxZ, vertices[i + 2]);
         }
-        const cell = this.#cellSize = Math.max(Math.sqrt((maxX - minX + 1e-6) * (maxZ - minZ + 1e-6) / total) * 1.5, 1e-3);
+        const cell = (this.#cellSize = Math.max(Math.sqrt(((maxX - minX + 1e-6) * (maxZ - minZ + 1e-6)) / total) * 1.5, 1e-3));
         this.#minX = minX;
         this.#minZ = minZ;
-        const columns = this.#columns = Math.min(Math.max(Math.ceil((maxX - minX) / cell), 1), 2048), rows = this.#rows = Math.min(Math.max(Math.ceil((maxZ - minZ) / cell), 1), 2048);
+        const columns = (this.#columns = Math.min(Math.max(Math.ceil((maxX - minX) / cell), 1), 2048)), rows = (this.#rows = Math.min(Math.max(Math.ceil((maxZ - minZ) / cell), 1), 2048));
         const spans = new Uint16Array(total * 4);
         let references = 0;
         for (let t = 0; t < total; t++) {
@@ -199,8 +209,12 @@ export class NavMesh3D {
             }
         }
     }
-    column(x) { return Math.min(Math.max(Math.floor((x - this.#minX) / this.#cellSize), 0), this.#columns - 1); }
-    row(z) { return Math.min(Math.max(Math.floor((z - this.#minZ) / this.#cellSize), 0), this.#rows - 1); }
+    column(x) {
+        return Math.min(Math.max(Math.floor((x - this.#minX) / this.#cellSize), 0), this.#columns - 1);
+    }
+    row(z) {
+        return Math.min(Math.max(Math.floor((z - this.#minZ) / this.#cellSize), 0), this.#rows - 1);
+    }
     /** Travel cost multiplier of a triangle (mud, shallow water); 1 by default. */
     setCost(triangle, cost) {
         const index = this.checked(triangle);
@@ -211,8 +225,12 @@ export class NavMesh3D {
         this.#minimumCost = this.#nonDefaultCostCount === 0 ? 1 : Math.min(this.#minimumCost, price);
     }
     /** Close or reopen a triangle, as for a door or a collapsed bridge. Paths and movement avoid closed triangles. */
-    setEnabled(triangle, enabled) { this.#enabled[this.checked(triangle)] = enabled ? 1 : 0; }
-    isEnabled(triangle) { return this.#enabled[this.checked(triangle)] === 1; }
+    setEnabled(triangle, enabled) {
+        this.#enabled[this.checked(triangle)] = enabled ? 1 : 0;
+    }
+    isEnabled(triangle) {
+        return this.#enabled[this.checked(triangle)] === 1;
+    }
     checked(triangle) {
         if (!Number.isInteger(triangle) || triangle < 0 || triangle >= this.triangleCount)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'navigation triangle');
@@ -297,10 +315,14 @@ export class NavMesh3D {
         const v = this.vertices, t = this.triangles, a = t[triangle * 3] * 3, b = t[triangle * 3 + 1] * 3, c = t[triangle * 3 + 2] * 3;
         const ux = v[b] - v[a], uy = v[b + 1] - v[a + 1], uz = v[b + 2] - v[a + 2], vx = v[c] - v[a], vy = v[c + 1] - v[a + 1], vz = v[c + 2] - v[a + 2];
         const ny = uz * vx - ux * vz;
-        return Math.abs(ny) < 1e-12 ? v[a + 1] : v[a + 1] - ((uy * vz - uz * vy) * (x - v[a]) + (ux * vy - uy * vx) * (z - v[a + 2])) / ny;
+        return Math.abs(ny) < 1e-12
+            ? v[a + 1]
+            : v[a + 1] - ((uy * vz - uz * vy) * (x - v[a]) + (ux * vy - uy * vx) * (z - v[a + 2])) / ny;
     }
     /** True when the two places can reach each other across open triangles. */
-    isReachable(a, b) { return this.search(a.triangle, b.triangle, b.point, 0) !== undefined && this.#reached; }
+    isReachable(a, b) {
+        return this.search(a.triangle, b.triangle, b.point, 0) !== undefined && this.#reached;
+    }
     #reached = false;
     /** A* over triangles. Returns the chain of triangles from start to the end, or to the open triangle nearest the end. */
     search(start, end, target, radius) {
@@ -338,12 +360,13 @@ export class NavMesh3D {
                 const next = this.neighbors[current * 3 + e];
                 if (next < 0 || closed[next] || !this.#enabled[next])
                     continue;
-                const a = tri[current * 3 + e] * 3, b = tri[current * 3 + (e + 1) % 3] * 3;
+                const a = tri[current * 3 + e] * 3, b = tri[current * 3 + ((e + 1) % 3)] * 3;
                 // A gap narrower than the agent cannot be passed.
                 if (radius > 0 && Math.hypot(v[b] - v[a], v[b + 1] - v[a + 1], v[b + 2] - v[a + 2]) < radius * 2)
                     continue;
                 const mx = (v[a] + v[b]) / 2, my = (v[a + 1] + v[b + 1]) / 2, mz = (v[a + 2] + v[b + 2]) / 2;
-                const step = Math.hypot(mx - entry[current * 3], my - entry[current * 3 + 1], mz - entry[current * 3 + 2]) * this.#cost[current], cost = g[current] + step;
+                const step = Math.hypot(mx - entry[current * 3], my - entry[current * 3 + 1], mz - entry[current * 3 + 2]) *
+                    this.#cost[current], cost = g[current] + step;
                 if (cost >= g[next])
                     continue;
                 g[next] = cost;
@@ -380,7 +403,7 @@ export class NavMesh3D {
             let e = 0;
             while (e < 3 && this.neighbors[current * 3 + e] !== next)
                 e++;
-            let a = tri[current * 3 + e] * 3, b = tri[current * 3 + (e + 1) % 3] * 3;
+            let a = tri[current * 3 + e] * 3, b = tri[current * 3 + ((e + 1) % 3)] * 3;
             this.center(current, middle);
             // Order the two ends so that "left" really is on the walker's left.
             if (side(middle[0], middle[2], v[b], v[b + 2], v[a], v[a + 2]) >= 0) {
@@ -499,7 +522,7 @@ export class NavMesh3D {
             // Find the edge the remaining move leaves through, if any.
             let exit = -1, exitAt = Infinity;
             for (let e = 0; e < 3; e++) {
-                const a = tri[triangle * 3 + e] * 3, b = tri[triangle * 3 + (e + 1) % 3] * 3, ax = v[a], az = v[a + 2], bx = v[b], bz = v[b + 2];
+                const a = tri[triangle * 3 + e] * 3, b = tri[triangle * 3 + ((e + 1) % 3)] * 3, ax = v[a], az = v[a + 2], bx = v[b], bz = v[b + 2];
                 const target = side(ax, az, bx, bz, tx, tz);
                 if (target >= -1e-12)
                     continue; // the target is on the inner side of this edge
@@ -527,11 +550,11 @@ export class NavMesh3D {
             if (++slides > 4)
                 break;
             blocked = true;
-            const a = tri[triangle * 3 + exit] * 3, b = tri[triangle * 3 + (exit + 1) % 3] * 3, ex = v[b] - v[a], ez = v[b + 2] - v[a + 2], size = Math.hypot(ex, ez) || 1;
+            const a = tri[triangle * 3 + exit] * 3, b = tri[triangle * 3 + ((exit + 1) % 3)] * 3, ex = v[b] - v[a], ez = v[b + 2] - v[a + 2], size = Math.hypot(ex, ez) || 1;
             const along = ((tx - v[a]) * ex + (tz - v[a + 2]) * ez) / (size * size);
             // Aim a hair inside the edge (its inner side is to the left of a-to-b seen from above) so the walk does not leave through it again.
-            tx = v[a] + ex * along + ez / size * 1e-4;
-            tz = v[a + 2] + ez * along - ex / size * 1e-4;
+            tx = v[a] + ex * along + (ez / size) * 1e-4;
+            tz = v[a + 2] + ez * along - (ex / size) * 1e-4;
         }
         return { triangle, point: [px, this.heightAt(triangle, px, pz), pz], blocked };
     }
@@ -546,7 +569,7 @@ export class NavMesh3D {
         const dx = to[0] - from.point[0], dz = to[2] - from.point[2], length = Math.hypot(dx, dz);
         if (length < 1e-9)
             return true;
-        const sx = -dz / length * radius, sz = dx / length * radius;
+        const sx = (-dz / length) * radius, sz = (dx / length) * radius;
         for (const sign of [1, -1]) {
             const shoulder = this.moveAlong(from, from.point[0] + sx * sign, from.point[2] + sz * sign);
             if (shoulder.blocked || this.trace(shoulder, to[0] + sx * sign, to[2] + sz * sign, undefined, true) < 1)
@@ -560,7 +583,9 @@ export class NavMesh3D {
      * means nothing is in the way. When `crossings` is given, the points
      * where the walk passes from one triangle to the next are appended to it.
      */
-    raycast(from, x, z, crossings) { return this.trace(from, x, z, crossings, false); }
+    raycast(from, x, z, crossings) {
+        return this.trace(from, x, z, crossings, false);
+    }
     trace(from, x, z, crossings, plainGroundOnly) {
         const v = this.vertices, tri = this.triangles, px = from.point[0], pz = from.point[2];
         let triangle = this.checked(from.triangle), previous = -1;
@@ -569,7 +594,7 @@ export class NavMesh3D {
             for (let e = 0; e < 3; e++) {
                 if (this.neighbors[triangle * 3 + e] === previous && previous >= 0)
                     continue;
-                const a = tri[triangle * 3 + e] * 3, b = tri[triangle * 3 + (e + 1) % 3] * 3, target = side(v[a], v[a + 2], v[b], v[b + 2], x, z);
+                const a = tri[triangle * 3 + e] * 3, b = tri[triangle * 3 + ((e + 1) % 3)] * 3, target = side(v[a], v[a + 2], v[b], v[b + 2], x, z);
                 if (target >= -1e-12)
                     continue;
                 const here = side(v[a], v[a + 2], v[b], v[b + 2], px, pz), along = here <= 0 ? 0 : here / (here - target);
@@ -617,7 +642,14 @@ export class NavMesh3D {
             w = 1 - w;
         }
         const a = tri[triangle * 3] * 3, b = tri[triangle * 3 + 1] * 3, c = tri[triangle * 3 + 2] * 3;
-        return { triangle, point: [v[a] + (v[b] - v[a]) * s + (v[c] - v[a]) * w, v[a + 1] + (v[b + 1] - v[a + 1]) * s + (v[c + 1] - v[a + 1]) * w, v[a + 2] + (v[b + 2] - v[a + 2]) * s + (v[c + 2] - v[a + 2]) * w] };
+        return {
+            triangle,
+            point: [
+                v[a] + (v[b] - v[a]) * s + (v[c] - v[a]) * w,
+                v[a + 1] + (v[b + 1] - v[a + 1]) * s + (v[c + 1] - v[a + 1]) * w,
+                v[a + 2] + (v[b + 2] - v[a + 2]) * s + (v[c + 2] - v[a + 2]) * w
+            ]
+        };
     }
     /** Line geometry of every triangle edge, for drawing the mesh while tuning a level. */
     createDebugGeometry(lift = 0.02) {
@@ -627,7 +659,7 @@ export class NavMesh3D {
                 const other = this.neighbors[t * 3 + e];
                 if (other > t)
                     continue; // shared edges are drawn once
-                const a = tri[t * 3 + e] * 3, b = tri[t * 3 + (e + 1) % 3] * 3;
+                const a = tri[t * 3 + e] * 3, b = tri[t * 3 + ((e + 1) % 3)] * 3;
                 positions.push(v[a], v[a + 1] + lift, v[a + 2], v[b], v[b + 1] + lift, v[b + 2]);
             }
         return createGeometry3D({ positions, topology: 'lines' });
@@ -639,6 +671,8 @@ export class NavMesh3D {
  * `slopeLimit` and faces pointing down are left out.
  */
 export function createNavMesh3D(source, options = {}) {
+    if (source instanceof HeightField3D)
+        return heightFieldNavMesh(source, options);
     if (source instanceof Geometry3D || (typeof source === 'object' && source !== null && 'traverse' in source)) {
         const shape = createMeshShape3D(source);
         return new NavMesh3D(shape.positions, shape.indices, options);
@@ -647,6 +681,54 @@ export function createNavMesh3D(source, options = {}) {
         throw new World3DError('WORLD3D_INPUT_INVALID', 'navigation source');
     return new NavMesh3D(source.positions, source.indices, options);
 }
+/** A grid of two triangles a cell over the ground of a height field, less the holes and what lies too low. */
+function heightFieldNavMesh(field, options) {
+    const [cx, cz] = options.center ?? [0, 0];
+    requireFinite3D(cx, 'center');
+    requireFinite3D(cz, 'center');
+    const region = options.region ?? {
+        x: cx - field.width / 2,
+        z: cz - field.depth / 2,
+        width: field.width,
+        depth: field.depth
+    };
+    const x0 = requireFinite3D(region.x, 'region'), z0 = requireFinite3D(region.z, 'region'), width = requirePositive3D(region.width, 'region'), depth = requirePositive3D(region.depth, 'region'), cell = requirePositive3D(options.cellSize ?? Math.min(field.cellWidth, field.cellDepth), 'cellSize'), floor = options.minHeight === undefined ? -Infinity : requireFinite3D(options.minHeight, 'minHeight');
+    const holes = (options.holes ?? []).map(hole => [
+        requireFinite3D(hole.x, 'hole'),
+        requireFinite3D(hole.z, 'hole'),
+        requirePositive3D(hole.radius, 'hole')
+    ]);
+    const columns = Math.ceil(width / cell - 1e-9), rows = Math.ceil(depth / cell - 1e-9);
+    if (columns * rows * 2 > NAVIGATION3D_LIMITS.maxTriangles)
+        throw new World3DError('WORLD3D_BUDGET', 'navigation triangles');
+    // Corners clamp to the field: a region past its edge stops at the edge.
+    const halfW = field.width / 2, halfD = field.depth / 2, positions = new Float32Array((columns + 1) * (rows + 1) * 3), open = new Uint8Array((columns + 1) * (rows + 1));
+    for (let row = 0; row <= rows; row++)
+        for (let column = 0; column <= columns; column++) {
+            const x = x0 + Math.min(column * cell, width), z = z0 + Math.min(row * cell, depth), lx = Math.max(-halfW, Math.min(halfW, x - cx)), lz = Math.max(-halfD, Math.min(halfD, z - cz)), y = field.heightAt(lx, lz), i = row * (columns + 1) + column;
+            positions[i * 3] = lx + cx;
+            positions[i * 3 + 1] = y;
+            positions[i * 3 + 2] = lz + cz;
+            open[i] =
+                y >= floor && holes.every(([hx, hz, r]) => (lx + cx - hx) ** 2 + (lz + cz - hz) ** 2 > r * r) ? 1 : 0;
+        }
+    const indices = [];
+    const add = (a, b, c) => {
+        if (open[a] && open[b] && open[c])
+            indices.push(a, b, c);
+    };
+    for (let row = 0; row < rows; row++)
+        for (let column = 0; column < columns; column++) {
+            const a = row * (columns + 1) + column, b = a + columns + 1;
+            // Counter-clockwise seen from above: (x, z), (x, z + 1), (x + 1, z), then (x + 1, z), (x, z + 1), (x + 1, z + 1).
+            add(a, b, a + 1);
+            add(a + 1, b, b + 1);
+        }
+    if (indices.length === 0)
+        throw new World3DError('WORLD3D_INPUT_INVALID', 'no walkable ground in the region');
+    return new NavMesh3D(positions, indices, options);
+}
+/** An agent of a crowd: where it is and how it moves; give it a target, or stop it. */
 export class NavAgent3D {
     position = [0, 0, 0];
     velocity = [0, 0, 0];
@@ -654,6 +736,10 @@ export class NavAgent3D {
     speed;
     acceleration;
     node;
+    /** Radians per second the node turns to face the way it walks; undefined leaves its turning to the game. */
+    turnSpeed;
+    /** The angle about the vertical axis the node faces, in radians, 0 facing -Z; kept while `turnSpeed` is set. */
+    heading = 0;
     userData;
     /** True once the agent has reached its target, or has none. */
     arrived = true;
@@ -670,14 +756,34 @@ export class NavAgent3D {
         this.speed = requirePositive3D(options.speed ?? 3.5, 'agent speed');
         this.acceleration = requirePositive3D(options.acceleration ?? 20, 'agent acceleration');
         this.node = options.node;
+        if (options.turnSpeed !== undefined)
+            this.turnSpeed =
+                options.turnSpeed === Infinity ? Infinity : requirePositive3D(options.turnSpeed, 'agent turn speed');
         this.userData = options.userData;
     }
     /** Walk to a point; the path is worked out on the next crowd update. */
-    setTarget(point) { this.target = [requireFinite3D(point[0], 'target'), requireFinite3D(point[1], 'target'), requireFinite3D(point[2], 'target')]; this.stale = true; this.arrived = false; this.closest = Infinity; this.stalled = 0; }
+    setTarget(point) {
+        this.target = [
+            requireFinite3D(point[0], 'target'),
+            requireFinite3D(point[1], 'target'),
+            requireFinite3D(point[2], 'target')
+        ];
+        this.stale = true;
+        this.arrived = false;
+        this.closest = Infinity;
+        this.stalled = 0;
+    }
     /** Stop where the agent stands. */
-    stop() { this.target = undefined; this.corners = []; this.arrived = true; this.stale = false; }
+    stop() {
+        this.target = undefined;
+        this.corners = [];
+        this.arrived = true;
+        this.stale = false;
+    }
     /** Remaining path corners, the next one first. */
-    get path() { return this.corners; }
+    get path() {
+        return this.corners;
+    }
 }
 /**
  * Agents walking on one navigation mesh. Each follows its own path and
@@ -707,12 +813,29 @@ export class NavCrowd3D {
         this.sync(agent);
         return agent;
     }
-    removeAgent(agent) { const index = this.agents.indexOf(agent); if (index >= 0)
-        this.agents.splice(index, 1); }
-    sync(agent) { const node = agent.node; if (node) {
-        node.position.set(agent.position);
-        node.markTransformDirty();
-    } }
+    removeAgent(agent) {
+        const index = this.agents.indexOf(agent);
+        if (index >= 0)
+            this.agents.splice(index, 1);
+    }
+    sync(agent, dt = 0) {
+        const node = agent.node;
+        if (node) {
+            node.position.set(agent.position);
+            const turn = agent.turnSpeed, vx = agent.velocity[0], vz = agent.velocity[2];
+            // Standing still, or nearly, keeps the way it faced.
+            if (turn !== undefined && dt > 0 && vx * vx + vz * vz > 1e-4) {
+                const wanted = Math.atan2(-vx, -vz);
+                let delta = wanted - agent.heading;
+                delta -= Math.round(delta / (2 * Math.PI)) * 2 * Math.PI;
+                const most = turn * dt;
+                agent.heading += Math.abs(delta) <= most ? delta : Math.sign(delta) * most;
+                agent.heading -= Math.round(agent.heading / (2 * Math.PI)) * 2 * Math.PI;
+                node.setQuaternion(0, Math.sin(agent.heading / 2), 0, Math.cos(agent.heading / 2));
+            }
+            node.markTransformDirty();
+        }
+    }
     /** Advance every agent by `deltaSeconds`. */
     update(deltaSeconds) {
         const dt = requireFinite3D(deltaSeconds, 'deltaSeconds'), agents = this.agents, mesh = this.navMesh;
@@ -727,7 +850,7 @@ export class NavCrowd3D {
             const k = key(agent.position[0], agent.position[2]);
             let list = buckets.get(k);
             if (!list)
-                buckets.set(k, list = []);
+                buckets.set(k, (list = []));
             list.push(agent);
         }
         for (const agent of agents) {
@@ -749,8 +872,8 @@ export class NavCrowd3D {
                     continue;
                 }
                 const speed = last ? Math.min(agent.speed, Math.sqrt(2 * agent.acceleration * distance)) : agent.speed;
-                wx = dx / distance * speed;
-                wz = dz / distance * speed;
+                wx = (dx / distance) * speed;
+                wz = (dz / distance) * speed;
                 break;
             }
             // In a crowd the exact spot may be taken: standing still close to it counts as arriving.
@@ -787,7 +910,7 @@ export class NavCrowd3D {
                                 continue;
                             // Agents standing on the same spot part along a direction of their own.
                             const away = distance > 1e-6 ? 1 / distance : 0, ax = away ? dx * away : Math.cos(agents.indexOf(agent)), az = away ? dz * away : Math.sin(agents.indexOf(agent));
-                            const push = (room * 1.5 - distance) / (room * 1.5) * agent.speed * this.separation * 1.5;
+                            const push = ((room * 1.5 - distance) / (room * 1.5)) * agent.speed * this.separation * 1.5;
                             wx += ax * push;
                             wz += az * push;
                         }
@@ -799,8 +922,8 @@ export class NavCrowd3D {
                 v[2] = wz;
             }
             else {
-                v[0] += ax / change * most;
-                v[2] += az / change * most;
+                v[0] += (ax / change) * most;
+                v[2] += (az / change) * most;
             }
             if (v[0] === 0 && v[2] === 0)
                 continue;
@@ -829,7 +952,7 @@ export class NavCrowd3D {
                             const dx = p[0] - other.position[0], dz = p[2] - other.position[2], distance = Math.hypot(dx, dz), overlap = agent.radius + other.radius - distance;
                             if (overlap <= 0 || distance < 1e-6)
                                 continue;
-                            const moved = mesh.moveAlong({ triangle: agent.triangle, point: p }, p[0] + dx / distance * overlap * 0.5, p[2] + dz / distance * overlap * 0.5);
+                            const moved = mesh.moveAlong({ triangle: agent.triangle, point: p }, p[0] + (dx / distance) * overlap * 0.5, p[2] + (dz / distance) * overlap * 0.5);
                             agent.triangle = moved.triangle;
                             p[0] = moved.point[0];
                             p[1] = moved.point[1];
@@ -839,10 +962,13 @@ export class NavCrowd3D {
             }
         }
         for (const agent of agents)
-            this.sync(agent);
+            this.sync(agent, dt);
     }
 }
-export function createNavCrowd3D(navMesh) { return new NavCrowd3D(navMesh); }
+/** Makes a crowd of agents that move along a navigation mesh and keep apart. */
+export function createNavCrowd3D(navMesh) {
+    return new NavCrowd3D(navMesh);
+}
 /**
  * Shortest path on a grid of cells, for tile maps. `cost(x, y)` returns the
  * finite positive price of entering a cell (including fractional costs).

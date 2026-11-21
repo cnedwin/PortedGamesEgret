@@ -5,8 +5,11 @@
 import { World3DError, requireCount3D } from './core3D.js';
 import { linearToSrgb, srgbToLinear } from './math3D.js';
 import { CubeTexture3D } from './Texture3D.js';
+/** The largest HDR image read. */
 export const HDR3D_LIMITS = Object.freeze({ maxEdge: 16384, maxPixels: 67108864 });
-function fail(detail) { throw new World3DError('WORLD3D_INPUT_INVALID', 'hdr: ' + detail); }
+function fail(detail) {
+    throw new World3DError('WORLD3D_INPUT_INVALID', 'hdr: ' + detail);
+}
 /** Decode a Radiance .hdr file (flat or run-length encoded, -Y +X orientation). */
 export function parseRgbe3D(bytes) {
     if (!(bytes instanceof Uint8Array))
@@ -41,13 +44,21 @@ export function parseRgbe3D(bytes) {
     if (!size)
         fail('orientation');
     const height = Number(size[1]), width = Number(size[2]);
-    if (width < 1 || height < 1 || width > HDR3D_LIMITS.maxEdge || height > HDR3D_LIMITS.maxEdge || width * height > HDR3D_LIMITS.maxPixels)
+    if (width < 1 ||
+        height < 1 ||
+        width > HDR3D_LIMITS.maxEdge ||
+        height > HDR3D_LIMITS.maxEdge ||
+        width * height > HDR3D_LIMITS.maxPixels)
         throw new World3DError('WORLD3D_BUDGET', 'hdr size');
     const data = new Float32Array(width * height * 3), scanline = new Uint8Array(width * 4);
     for (let y = 0; y < height; y++) {
         if (offset + 4 > bytes.length)
             fail('truncated');
-        if (width >= 8 && width < 32768 && bytes[offset] === 2 && bytes[offset + 1] === 2 && ((bytes[offset + 2] << 8) | bytes[offset + 3]) === width) {
+        if (width >= 8 &&
+            width < 32768 &&
+            bytes[offset] === 2 &&
+            bytes[offset + 1] === 2 &&
+            ((bytes[offset + 2] << 8) | bytes[offset + 3]) === width) {
             // New-style run-length encoding: the four channels are stored one after another.
             offset += 4;
             for (let channel = 0; channel < 4; channel++) {
@@ -124,7 +135,7 @@ export function createCubeTextureFromEquirect3D(image, options = {}) {
         for (let y = 0; y < edge; y++)
             for (let x = 0; x < edge; x++) {
                 // Texel center on the cube surface, following the OpenGL cube-map face layout.
-                const s = (x + 0.5) / edge * 2 - 1, t = (y + 0.5) / edge * 2 - 1;
+                const s = ((x + 0.5) / edge) * 2 - 1, t = ((y + 0.5) / edge) * 2 - 1;
                 let dx = 0, dy = 0, dz = 0;
                 if (face === 0) {
                     dx = 1;
@@ -158,7 +169,7 @@ export function createCubeTextureFromEquirect3D(image, options = {}) {
                 }
                 const length = Math.hypot(dx, dy, dz);
                 // Longitude wraps around +Y with -Z at the image center; latitude runs top to bottom.
-                const u = (Math.atan2(dx, -dz) / (Math.PI * 2) + 0.5) * width - 0.5, v = Math.acos(Math.min(Math.max(dy / length, -1), 1)) / Math.PI * height - 0.5;
+                const u = (Math.atan2(dx, -dz) / (Math.PI * 2) + 0.5) * width - 0.5, v = (Math.acos(Math.min(Math.max(dy / length, -1), 1)) / Math.PI) * height - 0.5;
                 const x0 = Math.floor(u), y0 = Math.floor(v), fx = u - x0, fy = v - y0;
                 sample[0] = sample[1] = sample[2] = 0;
                 texel(x0, y0, (1 - fx) * (1 - fy));
@@ -169,7 +180,7 @@ export function createCubeTextureFromEquirect3D(image, options = {}) {
                 for (let c = 0; c < 3; c++) {
                     const value = sample[c] * exposure;
                     // Reinhard-style shoulder scaled so `limit` maps to 1.
-                    data[o + c] = Math.round(linearToSrgb(Math.min(value * (1 + value / (limit * limit)) / (1 + value), 1)) * 255);
+                    data[o + c] = Math.round(linearToSrgb(Math.min((value * (1 + value / (limit * limit))) / (1 + value), 1)) * 255);
                 }
                 data[o + 3] = 255;
             }

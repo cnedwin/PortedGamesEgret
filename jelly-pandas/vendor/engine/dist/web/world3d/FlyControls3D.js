@@ -1,9 +1,15 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 const DEFAULT_KEYS = Object.freeze({
-    forward: ['KeyW', 'ArrowUp'], back: ['KeyS', 'ArrowDown'], left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'],
-    up: ['Space', 'KeyE'], down: ['KeyC', 'KeyQ'], sprint: ['ShiftLeft', 'ShiftRight'],
+    forward: ['KeyW', 'ArrowUp'],
+    back: ['KeyS', 'ArrowDown'],
+    left: ['KeyA', 'ArrowLeft'],
+    right: ['KeyD', 'ArrowRight'],
+    up: ['Space', 'KeyE'],
+    down: ['KeyC', 'KeyQ'],
+    sprint: ['ShiftLeft', 'ShiftRight']
 });
 const LIMIT = Math.PI / 2 - 0.001;
+/** Moves a camera with the keyboard and mouse, walking or flying. */
 export class FlyControls3D {
     camera;
     element;
@@ -41,7 +47,10 @@ export class FlyControls3D {
         const m = camera.matrixWorld, fx = -m[8], fy = -m[9], fz = -m[10], length = Math.hypot(fx, fy, fz) || 1;
         this.pitch = Math.asin(Math.min(Math.max(fy / length, -1), 1));
         this.yaw = Math.atan2(-fx, -fz);
-        const root = element.ownerDocument, listen = (target, type, listener) => { target.addEventListener(type, listener); this.#listeners.push([target, type, listener]); };
+        const root = element.ownerDocument, listen = (target, type, listener) => {
+            target.addEventListener(type, listener);
+            this.#listeners.push([target, type, listener]);
+        };
         listen(element, 'pointerdown', event => {
             if (!this.enabled)
                 return;
@@ -54,8 +63,13 @@ export class FlyControls3D {
                 element.setPointerCapture?.(event.pointerId);
             }
         });
-        listen(element, 'pointerup', event => { this.#dragging = false; element.releasePointerCapture?.(event.pointerId); });
-        listen(element, 'pointercancel', () => { this.#dragging = false; });
+        listen(element, 'pointerup', event => {
+            this.#dragging = false;
+            element.releasePointerCapture?.(event.pointerId);
+        });
+        listen(element, 'pointercancel', () => {
+            this.#dragging = false;
+        });
         listen(root, 'pointermove', event => {
             if (!this.enabled || !(this.pointerLock ? root.pointerLockElement === element : this.#dragging))
                 return;
@@ -64,21 +78,37 @@ export class FlyControls3D {
             this.pitch = Math.min(Math.max(this.pitch - move.movementY * this.lookSpeed, -LIMIT), LIMIT);
         });
         const view = root.defaultView ?? globalThis;
-        listen(view, 'keydown', event => { if (this.enabled && this.isLooking(root))
-            this.#down.add(event.code); });
-        listen(view, 'keyup', event => { this.#down.delete(event.code); });
+        listen(view, 'keydown', event => {
+            if (this.enabled && this.isLooking(root))
+                this.#down.add(event.code);
+        });
+        listen(view, 'keyup', event => {
+            this.#down.delete(event.code);
+        });
         // Keys released while the window is unfocused never send keyup.
-        listen(view, 'blur', () => { this.#down.clear(); this.#dragging = false; });
+        listen(view, 'blur', () => {
+            this.#down.clear();
+            this.#dragging = false;
+        });
     }
-    isLooking(root) { return !this.pointerLock || root.pointerLockElement === this.element; }
+    isLooking(root) {
+        return !this.pointerLock || root.pointerLockElement === this.element;
+    }
     /** True while the pointer is captured for looking around. */
-    get isLocked() { return this.element.ownerDocument.pointerLockElement === this.element; }
+    get isLocked() {
+        return this.element.ownerDocument.pointerLockElement === this.element;
+    }
     /** Release pointer lock, as when opening a menu. */
-    unlock() { if (this.isLocked)
-        this.element.ownerDocument.exitPointerLock(); }
-    pressed(action) { for (const code of action)
-        if (this.#down.has(code))
-            return true; return false; }
+    unlock() {
+        if (this.isLocked)
+            this.element.ownerDocument.exitPointerLock();
+    }
+    pressed(action) {
+        for (const code of action)
+            if (this.#down.has(code))
+                return true;
+        return false;
+    }
     update(deltaSeconds) {
         if (this.#disposed)
             return;
@@ -95,9 +125,9 @@ export class FlyControls3D {
         let x = fx * ahead + rx * side, y = fy * ahead + lift, z = fz * ahead + rz * side;
         const length = Math.hypot(x, y, z), speed = this.moveSpeed * (this.pressed(keys.sprint) ? this.sprintMultiplier : 1);
         if (length > 0) {
-            x = x / length * speed;
-            y = y / length * speed;
-            z = z / length * speed;
+            x = (x / length) * speed;
+            y = (y / length) * speed;
+            z = (z / length) * speed;
         }
         // Ease toward the wanted velocity; the factor is frame-rate independent.
         const keep = this.damping > 0 ? Math.pow(this.damping, dt * 60) : 0, v = this.velocity;
@@ -125,6 +155,7 @@ export class FlyControls3D {
         this.#down.clear();
     }
 }
+/** Makes fly controls for a camera on an element. */
 export function createFlyControls3D(camera, element, options = {}) {
     return new FlyControls3D(camera, element, options);
 }

@@ -1,16 +1,25 @@
 import { World3DError } from '../../rendering/world3d/core3D.js';
 import { linearToSrgb, mat3NormalFromMat4, mat4Invert } from '../../rendering/world3d/math3D.js';
+import { instanceStreamRevisions3D } from '../../rendering/world3d/Mesh3D.js';
 import { SkinnedInstancedMesh3D } from '../../rendering/world3d/AnimationTexture3D.js';
 import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
 import { RenderList3D } from '../../rendering/world3d/RenderList3D.js';
 import { COMPRESSED_BLOCK_BYTES_3D, CubeTexture3D, RenderTarget3D, isCompressedPixels3D, isTexturePixels3D } from '../../rendering/world3d/Texture3D.js';
-import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, planShadows3D, writeFrameBlock3D } from './frame3D.js';
+import { FRAME_BLOCK_FLOATS_3D, FRAME_OFFSETS_3D, TILED_LIGHTS_3D, writeTiledLights3D, outputToneMapping3D, planShadows3D, writeFrameBlock3D } from './frame3D.js';
 import { createPostProcessSettings3D, outlineActive3D, postViewFromCamera3D } from './post3D.js';
 import { PostChainWebGPU3D } from './postWebGPU3D.js';
-import { MATERIAL_BLOCK_BYTES_3D, MAX_MORPH_INFLUENCES_WGSL_3D, MIPMAP_WGSL_3D, OBJECT_BLOCK_BYTES_3D, SKYBOX_WGSL_3D, buildMaterialWgsl3D, shaderFeatureKey3D, } from './wgsl3D.js';
+import { MATERIAL_BLOCK_BYTES_3D, MIPMAP_WGSL_3D, OBJECT_BLOCK_BYTES_3D, SKYBOX_WGSL_3D, buildMaterialWgsl3D, shaderFeatureKey3D } from './wgsl3D.js';
+import { convertVertexAttribute3D, packMorphStorage3D, packWireIndices3D, writeObjectMorph3D } from './webgpuPacking3D.js';
 // WebGPU flag values, spelled out so this module needs no global constant namespaces.
 const SHADER_STAGE = Object.freeze({ VERTEX: 1, FRAGMENT: 2 });
-const BUFFER_USAGE = Object.freeze({ MAP_READ: 1, COPY_DST: 8, INDEX: 16, VERTEX: 32, UNIFORM: 64, STORAGE: 128 });
+const BUFFER_USAGE = Object.freeze({
+    MAP_READ: 1,
+    COPY_DST: 8,
+    INDEX: 16,
+    VERTEX: 32,
+    UNIFORM: 64,
+    STORAGE: 128
+});
 const TEXTURE_USAGE = Object.freeze({ COPY_SRC: 1, COPY_DST: 2, TEXTURE_BINDING: 4, RENDER_ATTACHMENT: 16 });
 const MAP_MODE_READ = 1;
 const ATTRIBUTE_SLOTS = ['position', 'normal', 'uv', 'tangent', 'color', 'joints', 'weights', 'uv1'];
@@ -30,8 +39,11 @@ function observeDeviceLoss(device, listener) {
         listener = undefined;
         callback?.(info);
     });
-    return () => { listener = undefined; };
+    return () => {
+        listener = undefined;
+    };
 }
+/** Draws 3D scenes with WebGPU: set its size, render a scene from a camera, and read what it drew. */
 export class WebGPURenderer3D {
     canvas;
     device;
@@ -44,7 +56,20 @@ export class WebGPURenderer3D {
     autoClear = true;
     #post;
     #inPost = false;
-    info = { frame: 0, drawCalls: 0, triangles: 0, visited: 0, culled: 0, shadowMaps: 0, programs: 0, geometries: 0, textures: 0 };
+    #frameToneMapping = 'none';
+    info = {
+        frame: 0,
+        drawCalls: 0,
+        triangles: 0,
+        visited: 0,
+        culled: 0,
+        lightsDropped: 0,
+        lightsTiled: 0,
+        shadowMaps: 0,
+        programs: 0,
+        geometries: 0,
+        textures: 0
+    };
     #context;
     #format;
     #sampleCount;
@@ -53,6 +78,8 @@ export class WebGPURenderer3D {
     #list = new RenderList3D();
     #frameData = new Float32Array(FRAME_BLOCK_FLOATS_3D);
     #frameBuffer;
+    #tiledTable = new Float32Array(TILED_LIGHTS_3D.width * TILED_LIGHTS_3D.rows * 4);
+    #tiledBuffer;
     #frameLayout;
     #depthFrameLayout;
     #materialLayout;
@@ -134,14 +161,20 @@ export class WebGPURenderer3D {
         this.shadowsEnabled = options.shadows ?? true;
         this.#shadowAtlasSize = Math.min(options.shadowAtlasSize ?? 2048, device.limits.maxTextureDimension2D);
         // The canvas image is copied when see-through surfaces need what lies behind them.
-        context.configure({ device, format: this.#format, alphaMode: this.#alpha ? 'premultiplied' : 'opaque', usage: TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.COPY_SRC });
+        context.configure({
+            device,
+            format: this.#format,
+            alphaMode: this.#alpha ? 'premultiplied' : 'opaque',
+            usage: TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.COPY_SRC
+        });
         const filtering = [];
         for (let i = 0; i < 7; i++) {
             filtering.push({ binding: 1 + i * 2, visibility: SHADER_STAGE.FRAGMENT, texture: {} });
             filtering.push({ binding: 2 + i * 2, visibility: SHADER_STAGE.FRAGMENT, sampler: {} });
         }
         const both = SHADER_STAGE.VERTEX | SHADER_STAGE.FRAGMENT;
-        this.#frameLayout = device.createBindGroupLayout({ entries: [
+        this.#frameLayout = device.createBindGroupLayout({
+            entries: [
                 { binding: 0, visibility: both, buffer: {} },
                 { binding: 1, visibility: SHADER_STAGE.FRAGMENT, texture: { sampleType: 'depth' } },
                 { binding: 2, visibility: SHADER_STAGE.FRAGMENT, sampler: { type: 'comparison' } },
@@ -150,31 +183,63 @@ export class WebGPURenderer3D {
                 { binding: 5, visibility: SHADER_STAGE.FRAGMENT, texture: {} },
                 { binding: 6, visibility: SHADER_STAGE.FRAGMENT, sampler: {} },
                 { binding: 7, visibility: SHADER_STAGE.FRAGMENT, texture: { sampleType: 'depth' } },
-            ] });
+                { binding: 8, visibility: SHADER_STAGE.FRAGMENT, buffer: { type: 'read-only-storage' } }
+            ]
+        });
         this.#depthFrameLayout = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: both, buffer: {} }] });
-        this.#materialLayout = device.createBindGroupLayout({ entries: [{ binding: 0, visibility: both, buffer: {} }, ...filtering] });
-        this.#objectLayout = device.createBindGroupLayout({ entries: [
-                { binding: 0, visibility: both, buffer: { hasDynamicOffset: true, minBindingSize: OBJECT_BLOCK_BYTES_3D } },
-            ] });
-        this.#skinLayout = device.createBindGroupLayout({ entries: [
+        this.#materialLayout = device.createBindGroupLayout({
+            entries: [{ binding: 0, visibility: both, buffer: {} }, ...filtering]
+        });
+        this.#objectLayout = device.createBindGroupLayout({
+            entries: [
+                { binding: 0, visibility: both, buffer: { hasDynamicOffset: true, minBindingSize: OBJECT_BLOCK_BYTES_3D } }
+            ]
+        });
+        this.#skinLayout = device.createBindGroupLayout({
+            entries: [
                 { binding: 0, visibility: SHADER_STAGE.VERTEX, buffer: { type: 'read-only-storage' } },
-                { binding: 1, visibility: SHADER_STAGE.VERTEX, buffer: { type: 'read-only-storage' } },
-            ] });
-        this.#pipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [this.#frameLayout, this.#materialLayout, this.#objectLayout, this.#skinLayout] });
-        this.#depthPipelineLayout = device.createPipelineLayout({ bindGroupLayouts: [this.#depthFrameLayout, this.#materialLayout, this.#objectLayout, this.#skinLayout] });
-        this.#frameBuffer = device.createBuffer({ size: FRAME_BLOCK_FLOATS_3D * 4, usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST });
+                { binding: 1, visibility: SHADER_STAGE.VERTEX, buffer: { type: 'read-only-storage' } }
+            ]
+        });
+        this.#pipelineLayout = device.createPipelineLayout({
+            bindGroupLayouts: [this.#frameLayout, this.#materialLayout, this.#objectLayout, this.#skinLayout]
+        });
+        this.#depthPipelineLayout = device.createPipelineLayout({
+            bindGroupLayouts: [this.#depthFrameLayout, this.#materialLayout, this.#objectLayout, this.#skinLayout]
+        });
+        this.#frameBuffer = device.createBuffer({
+            size: FRAME_BLOCK_FLOATS_3D * 4,
+            usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST
+        });
+        this.#tiledBuffer = device.createBuffer({
+            size: this.#tiledTable.byteLength,
+            usage: BUFFER_USAGE.STORAGE | BUFFER_USAGE.COPY_DST
+        });
         this.#objectBuffer = this.createObjectBuffer();
         this.#objectGroup = this.createObjectGroup();
-        const white = this.#whiteTexture = device.createTexture({ size: [1, 1], format: 'rgba8unorm', usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST });
+        const white = (this.#whiteTexture = device.createTexture({
+            size: [1, 1],
+            format: 'rgba8unorm',
+            usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST
+        }));
         device.queue.writeTexture({ texture: white }, new Uint8Array([255, 255, 255, 255]), {}, [1, 1]);
         this.#white = white.createView();
-        const whiteCube = this.#whiteCubeTexture = device.createTexture({ size: [1, 1, 6], format: 'rgba8unorm', usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST });
+        const whiteCube = (this.#whiteCubeTexture = device.createTexture({
+            size: [1, 1, 6],
+            format: 'rgba8unorm',
+            usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST
+        }));
         for (let face = 0; face < 6; face++)
             device.queue.writeTexture({ texture: whiteCube, origin: [0, 0, face] }, new Uint8Array([255, 255, 255, 255]), {}, [1, 1]);
         this.#whiteCube = whiteCube.createView({ dimension: 'cube' });
         this.#defaultSampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear', mipmapFilter: 'linear' });
         this.#shadowSampler = device.createSampler({ compare: 'less-equal', magFilter: 'linear', minFilter: 'linear' });
-        this.#grabSampler = device.createSampler({ magFilter: 'linear', minFilter: 'linear', addressModeU: 'clamp-to-edge', addressModeV: 'clamp-to-edge' });
+        this.#grabSampler = device.createSampler({
+            magFilter: 'linear',
+            minFilter: 'linear',
+            addressModeU: 'clamp-to-edge',
+            addressModeV: 'clamp-to-edge'
+        });
         this.#dummyBones = device.createBuffer({ size: 64, usage: BUFFER_USAGE.STORAGE });
         this.#dummyMorph = device.createBuffer({ size: 16, usage: BUFFER_USAGE.STORAGE });
         this.#dummySkin = this.createSkinGroup(this.#dummyBones, this.#dummyMorph);
@@ -183,7 +248,9 @@ export class WebGPURenderer3D {
             options.onDeviceLost?.(info.message);
         });
     }
-    get isDeviceLost() { return this.#lost; }
+    get isDeviceLost() {
+        return this.#lost;
+    }
     setSize(width, height, pixelRatio = 1) {
         const w = Math.max(1, Math.floor(width * pixelRatio)), h = Math.max(1, Math.floor(height * pixelRatio));
         if (!Number.isFinite(w) || !Number.isFinite(h))
@@ -206,21 +273,37 @@ export class WebGPURenderer3D {
     }
     // ---- small GPU helpers -----------------------------------------------------
     createObjectBuffer() {
-        return this.device.createBuffer({ size: this.#objectCapacity * OBJECT_BLOCK_BYTES_3D, usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST });
+        return this.device.createBuffer({
+            size: this.#objectCapacity * OBJECT_BLOCK_BYTES_3D,
+            usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST
+        });
     }
     createObjectGroup() {
-        return this.device.createBindGroup({ layout: this.#objectLayout, entries: [{ binding: 0, resource: { buffer: this.#objectBuffer, size: OBJECT_BLOCK_BYTES_3D } }] });
+        return this.device.createBindGroup({
+            layout: this.#objectLayout,
+            entries: [{ binding: 0, resource: { buffer: this.#objectBuffer, size: OBJECT_BLOCK_BYTES_3D } }]
+        });
     }
     createSkinGroup(bones, morph) {
-        return this.device.createBindGroup({ layout: this.#skinLayout, entries: [{ binding: 0, resource: { buffer: bones } }, { binding: 1, resource: { buffer: morph } }] });
+        return this.device.createBindGroup({
+            layout: this.#skinLayout,
+            entries: [
+                { binding: 0, resource: { buffer: bones } },
+                { binding: 1, resource: { buffer: morph } }
+            ]
+        });
     }
     /** Write `data` into a buffer of at least its size, recreating the buffer when it must grow. */
     writeBuffer(entry, data, usage, length = data.length) {
-        const bytes = Math.max(4, Math.ceil(length * data.BYTES_PER_ELEMENT / 4) * 4);
+        const bytes = Math.max(4, Math.ceil((length * data.BYTES_PER_ELEMENT) / 4) * 4);
         let target = entry;
         if (!target || target.bytes < bytes) {
             target?.buffer.destroy();
-            target = { buffer: this.device.createBuffer({ size: bytes, usage: usage | BUFFER_USAGE.COPY_DST }), version: -1, bytes };
+            target = {
+                buffer: this.device.createBuffer({ size: bytes, usage: usage | BUFFER_USAGE.COPY_DST }),
+                version: -1,
+                bytes
+            };
         }
         // Uint16 index data may end on a 2-byte boundary; pad the final write to 4 bytes.
         if ((length * data.BYTES_PER_ELEMENT) % 4 === 0)
@@ -233,14 +316,21 @@ export class WebGPURenderer3D {
         return target;
     }
     sampler(texture) {
-        const anisotropy = texture.magFilter === 'linear' && texture.minFilter === 'linear' && texture.mipmaps ? Math.min(Math.max(Math.floor(texture.anisotropy), 1), 16) : 1;
+        const anisotropy = texture.magFilter === 'linear' && texture.minFilter === 'linear' && texture.mipmaps
+            ? Math.min(Math.max(Math.floor(texture.anisotropy), 1), 16)
+            : 1;
         const key = texture.wrapS + texture.wrapT + texture.magFilter + texture.minFilter + texture.mipmaps + anisotropy;
         let sampler = this.#samplers.get(key);
         if (!sampler) {
             const wrap = (mode) => mode === 'clamp' ? 'clamp-to-edge' : mode === 'mirror' ? 'mirror-repeat' : 'repeat';
             sampler = this.device.createSampler({
-                addressModeU: wrap(texture.wrapS), addressModeV: wrap(texture.wrapT), addressModeW: 'clamp-to-edge',
-                magFilter: texture.magFilter, minFilter: texture.minFilter, mipmapFilter: texture.mipmaps ? 'linear' : 'nearest', maxAnisotropy: anisotropy,
+                addressModeU: wrap(texture.wrapS),
+                addressModeV: wrap(texture.wrapT),
+                addressModeW: 'clamp-to-edge',
+                magFilter: texture.magFilter,
+                minFilter: texture.minFilter,
+                mipmapFilter: texture.mipmaps ? 'linear' : 'nearest',
+                maxAnisotropy: anisotropy
             });
             this.#samplers.set(key, sampler);
         }
@@ -269,21 +359,46 @@ export class WebGPURenderer3D {
         if (!pipeline) {
             const module = device.createShaderModule({ code: MIPMAP_WGSL_3D });
             pipeline = device.createRenderPipeline({
-                layout: 'auto', vertex: { module, entryPoint: 'vertexMain' }, fragment: { module, entryPoint: 'fragmentMain', targets: [{ format }] },
-                primitive: { topology: 'triangle-list' },
+                layout: 'auto',
+                vertex: { module, entryPoint: 'vertexMain' },
+                fragment: { module, entryPoint: 'fragmentMain', targets: [{ format }] },
+                primitive: { topology: 'triangle-list' }
             });
             this.#mipPipelines.set(format, pipeline);
         }
         const encoder = device.createCommandEncoder();
         for (let layer = 0; layer < layers; layer++) {
             for (let level = 1; level < texture.mipLevelCount; level++) {
-                const source = texture.createView({ dimension: '2d', baseMipLevel: level - 1, mipLevelCount: 1, baseArrayLayer: layer, arrayLayerCount: 1 });
-                const pass = encoder.beginRenderPass({ colorAttachments: [{
-                            view: texture.createView({ dimension: '2d', baseMipLevel: level, mipLevelCount: 1, baseArrayLayer: layer, arrayLayerCount: 1 }),
-                            loadOp: 'clear', storeOp: 'store',
-                        }] });
+                const source = texture.createView({
+                    dimension: '2d',
+                    baseMipLevel: level - 1,
+                    mipLevelCount: 1,
+                    baseArrayLayer: layer,
+                    arrayLayerCount: 1
+                });
+                const pass = encoder.beginRenderPass({
+                    colorAttachments: [
+                        {
+                            view: texture.createView({
+                                dimension: '2d',
+                                baseMipLevel: level,
+                                mipLevelCount: 1,
+                                baseArrayLayer: layer,
+                                arrayLayerCount: 1
+                            }),
+                            loadOp: 'clear',
+                            storeOp: 'store'
+                        }
+                    ]
+                });
                 pass.setPipeline(pipeline);
-                pass.setBindGroup(0, device.createBindGroup({ layout: pipeline.getBindGroupLayout(0), entries: [{ binding: 0, resource: source }, { binding: 1, resource: this.#defaultSampler }] }));
+                pass.setBindGroup(0, device.createBindGroup({
+                    layout: pipeline.getBindGroupLayout(0),
+                    entries: [
+                        { binding: 0, resource: source },
+                        { binding: 1, resource: this.#defaultSampler }
+                    ]
+                }));
                 pass.draw(3);
                 pass.end();
             }
@@ -295,9 +410,10 @@ export class WebGPURenderer3D {
         if (width > limit || height > limit)
             throw new World3DError('WORLD3D_BUDGET', 'texture size');
         return this.device.createTexture({
-            size: [width, height, layers], format: texture.colorSpace === 'srgb' ? 'rgba8unorm-srgb' : 'rgba8unorm',
+            size: [width, height, layers],
+            format: texture.colorSpace === 'srgb' ? 'rgba8unorm-srgb' : 'rgba8unorm',
             mipLevelCount: texture.mipmaps ? Math.floor(Math.log2(Math.max(width, height))) + 1 : 1,
-            usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST | TEXTURE_USAGE.RENDER_ATTACHMENT,
+            usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST | TEXTURE_USAGE.RENDER_ATTACHMENT
         });
     }
     textureEntry(texture, create) {
@@ -311,12 +427,19 @@ export class WebGPURenderer3D {
             entry.view = view;
         }
         else {
-            const created = { texture: gpu, view, sampler: this.#defaultSampler, version: -1, maxMip: 0, unsubscribe: texture.onDispose(() => {
+            const created = {
+                texture: gpu,
+                view,
+                sampler: this.#defaultSampler,
+                version: -1,
+                maxMip: 0,
+                unsubscribe: texture.onDispose(() => {
                     const current = this.#textures.get(texture);
                     if (current && this.#textures.delete(texture))
                         current.texture.destroy();
-                }) };
-            this.#textures.set(texture, entry = created);
+                })
+            };
+            this.#textures.set(texture, (entry = created));
         }
         previous?.destroy();
         entry.sampler = this.sampler(texture);
@@ -340,8 +463,10 @@ export class WebGPURenderer3D {
                 const block = COMPRESSED_BLOCK_BYTES_3D[source.format];
                 // The base size must be block-aligned; smaller mips are padded to whole blocks on upload.
                 const gpu = this.device.createTexture({
-                    size: [Math.ceil(source.width / 4) * 4, Math.ceil(source.height / 4) * 4], format, mipLevelCount: source.levels.length,
-                    usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST,
+                    size: [Math.ceil(source.width / 4) * 4, Math.ceil(source.height / 4) * 4],
+                    format,
+                    mipLevelCount: source.levels.length,
+                    usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST
                 });
                 let width = gpu.width, height = gpu.height;
                 source.levels.forEach((level, mipLevel) => {
@@ -363,9 +488,12 @@ export class WebGPURenderer3D {
     }
     compressedFormat(format, srgb) {
         const table = {
-            'bc1': ['texture-compression-bc', 'bc1-rgba-unorm'], 'bc3': ['texture-compression-bc', 'bc3-rgba-unorm'], 'bc7': ['texture-compression-bc', 'bc7-rgba-unorm'],
-            'etc2-rgb8': ['texture-compression-etc2', 'etc2-rgb8unorm'], 'etc2-rgba8': ['texture-compression-etc2', 'etc2-rgba8unorm'],
-            'astc-4x4': ['texture-compression-astc', 'astc-4x4-unorm'],
+            'bc1': ['texture-compression-bc', 'bc1-rgba-unorm'],
+            'bc3': ['texture-compression-bc', 'bc3-rgba-unorm'],
+            'bc7': ['texture-compression-bc', 'bc7-rgba-unorm'],
+            'etc2-rgb8': ['texture-compression-etc2', 'etc2-rgb8unorm'],
+            'etc2-rgba8': ['texture-compression-etc2', 'etc2-rgba8unorm'],
+            'astc-4x4': ['texture-compression-astc', 'astc-4x4-unorm']
         };
         const entry = table[format];
         if (!entry || !this.device.features.has(entry[0]))
@@ -396,10 +524,19 @@ export class WebGPURenderer3D {
         if (target.width > limit || target.height > limit)
             throw new World3DError('WORLD3D_BUDGET', 'render target size');
         const color = this.device.createTexture({
-            size: [target.width, target.height], format: target.format === 'rgba16f' ? HDR_FORMAT : TARGET_FORMAT,
-            usage: TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_SRC,
+            size: [target.width, target.height],
+            format: target.format === 'rgba16f' ? HDR_FORMAT : TARGET_FORMAT,
+            usage: TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_SRC
         });
-        const depth = target.depth ? this.device.createTexture({ size: [target.width, target.height], format: DEPTH_FORMAT, usage: target.depthTexture ? TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.TEXTURE_BINDING : TEXTURE_USAGE.RENDER_ATTACHMENT }) : undefined;
+        const depth = target.depth
+            ? this.device.createTexture({
+                size: [target.width, target.height],
+                format: DEPTH_FORMAT,
+                usage: target.depthTexture
+                    ? TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.TEXTURE_BINDING
+                    : TEXTURE_USAGE.RENDER_ATTACHMENT
+            })
+            : undefined;
         if (entry) {
             entry.color.destroy();
             entry.depth?.destroy();
@@ -409,36 +546,28 @@ export class WebGPURenderer3D {
             entry.depthView = depth?.createView();
         }
         else {
-            const created = { color, colorView: color.createView(), depth, depthView: depth?.createView(), version: -1, unsubscribe: target.onDispose(() => {
+            const created = {
+                color,
+                colorView: color.createView(),
+                depth,
+                depthView: depth?.createView(),
+                version: -1,
+                unsubscribe: target.onDispose(() => {
                     const current = this.#targets.get(target);
                     if (current && this.#targets.delete(target)) {
                         current.color.destroy();
                         current.depth?.destroy();
                     }
-                }) };
-            this.#targets.set(target, entry = created);
+                })
+            };
+            this.#targets.set(target, (entry = created));
         }
         entry.version = target.version;
         return entry;
     }
     // ---- geometry ---------------------------------------------------------------
     convert(name, attribute) {
-        const data = attribute.data;
-        // Joint indices stay integers; everything else is uploaded as 32-bit floats,
-        // which sidesteps the vertex formats WebGPU does not offer.
-        if (name === 'joints')
-            return data instanceof Uint32Array ? data : Uint32Array.from(data);
-        if (data instanceof Float32Array)
-            return data;
-        const out = new Float32Array(data.length);
-        if (!attribute.normalized) {
-            out.set(data);
-            return out;
-        }
-        const signed = data instanceof Int8Array || data instanceof Int16Array, max = signed ? (data instanceof Int8Array ? 127 : 32767) : (data instanceof Uint8Array ? 255 : data instanceof Uint16Array ? 65535 : 4294967295);
-        for (let i = 0; i < data.length; i++)
-            out[i] = signed ? Math.max(data[i] / max, -1) : data[i] / max;
-        return out;
+        return convertVertexAttribute3D(name, attribute);
     }
     geometry(geometry) {
         let entry = this.#geometries.get(geometry);
@@ -446,8 +575,16 @@ export class WebGPURenderer3D {
         if (entry && entry.serial === this.#serial)
             return entry;
         if (!entry) {
-            const created = { buffers: new Map(), index: undefined, wire: undefined, morph: undefined, layoutVersion: -1, serial: -1, unsubscribe: geometry.onDispose(() => this.releaseGeometry(geometry)) };
-            this.#geometries.set(geometry, entry = created);
+            const created = {
+                buffers: new Map(),
+                index: undefined,
+                wire: undefined,
+                morph: undefined,
+                layoutVersion: -1,
+                serial: -1,
+                unsubscribe: geometry.onDispose(() => this.releaseGeometry(geometry))
+            };
+            this.#geometries.set(geometry, (entry = created));
         }
         for (const name of ATTRIBUTE_SLOTS) {
             const attribute = geometry.getAttribute(name), current = entry.buffers.get(name);
@@ -467,9 +604,16 @@ export class WebGPURenderer3D {
         const index = geometry.index;
         if (index) {
             if (!entry.index || entry.index.version !== index.version) {
-                const data = index.data instanceof Uint32Array || index.data instanceof Uint16Array ? index.data : Uint16Array.from(index.data);
+                const data = index.data instanceof Uint32Array || index.data instanceof Uint16Array
+                    ? index.data
+                    : Uint16Array.from(index.data);
                 const next = this.writeBuffer(entry.index, data, BUFFER_USAGE.INDEX);
-                entry.index = { buffer: next.buffer, bytes: next.bytes, version: index.version, format: data instanceof Uint32Array ? 'uint32' : 'uint16' };
+                entry.index = {
+                    buffer: next.buffer,
+                    bytes: next.bytes,
+                    version: index.version,
+                    format: data instanceof Uint32Array ? 'uint32' : 'uint16'
+                };
             }
         }
         else if (entry.index) {
@@ -482,19 +626,7 @@ export class WebGPURenderer3D {
             const targets = geometry.morphTargets;
             if (targets.length > 0) {
                 const vertexCount = geometry.vertexCount, channels = targets.some(target => target.normal) ? 2 : 1;
-                const data = new Float32Array(targets.length * channels * vertexCount * 4);
-                targets.forEach((target, t) => {
-                    [target.position, target.normal].slice(0, channels).forEach((source, k) => {
-                        if (!source)
-                            return;
-                        const base = (t * channels + k) * vertexCount * 4;
-                        for (let v = 0; v < vertexCount; v++) {
-                            data[base + v * 4] = source[v * 3];
-                            data[base + v * 4 + 1] = source[v * 3 + 1];
-                            data[base + v * 4 + 2] = source[v * 3 + 2];
-                        }
-                    });
-                });
+                const data = packMorphStorage3D(targets, channels, vertexCount);
                 if (data.byteLength > this.device.limits.maxStorageBufferBindingSize)
                     throw new World3DError('WORLD3D_BUDGET', 'morph target data');
                 entry.morph = { buffer: this.writeBuffer(undefined, data, BUFFER_USAGE.STORAGE).buffer, channels, vertexCount };
@@ -509,13 +641,13 @@ export class WebGPURenderer3D {
     wireframe(geometry, entry) {
         if (entry.wire && entry.wire.version === geometry.version)
             return entry.wire;
-        const source = geometry.index?.data, triangles = Math.floor(geometry.drawCount / 3), lines = new Uint32Array(triangles * 6);
-        for (let t = 0; t < triangles; t++) {
-            const a = source ? source[t * 3] : t * 3, b = source ? source[t * 3 + 1] : t * 3 + 1, c = source ? source[t * 3 + 2] : t * 3 + 2;
-            lines.set([a, b, b, c, c, a], t * 6);
-        }
+        const lines = packWireIndices3D(geometry);
         entry.wire?.buffer.destroy();
-        const wire = { buffer: this.writeBuffer(undefined, lines, BUFFER_USAGE.INDEX).buffer, count: lines.length, version: geometry.version };
+        const wire = {
+            buffer: this.writeBuffer(undefined, lines, BUFFER_USAGE.INDEX).buffer,
+            count: lines.length,
+            version: geometry.version
+        };
         entry.wire = wire;
         return wire;
     }
@@ -530,21 +662,35 @@ export class WebGPURenderer3D {
         entry.wire?.buffer.destroy();
         entry.morph?.buffer.destroy();
     }
+    uploadInstances(entry, source, version) {
+        if (entry?.source === source && entry.version === version)
+            return entry;
+        const buffer = this.writeBuffer(entry, source, BUFFER_USAGE.VERTEX);
+        buffer.source = source;
+        buffer.version = version;
+        return buffer;
+    }
     instances(mesh, frame) {
+        const crowd = mesh instanceof SkinnedInstancedMesh3D ? mesh : undefined;
+        const revisions = crowd ? undefined : instanceStreamRevisions3D(mesh);
+        const matrices = crowd?.drawMatrices ?? mesh.instanceMatrices;
+        const matrixVersion = revisions?.matrices ?? mesh.instanceVersion;
         let entry = this.#instances.get(mesh);
-        if (!entry)
-            this.#instances.set(mesh, entry = { matrices: this.writeBuffer(undefined, mesh.instanceMatrices, BUFFER_USAGE.VERTEX), colors: undefined, version: -1, lastFrame: frame });
-        entry.lastFrame = frame;
-        if (entry.version !== mesh.instanceVersion) {
-            const crowd = mesh instanceof SkinnedInstancedMesh3D ? mesh : undefined;
-            const colors = crowd ? crowd.drawColors : mesh.instanceColors;
-            entry.matrices = this.writeBuffer(entry.matrices, crowd?.drawMatrices ?? mesh.instanceMatrices, BUFFER_USAGE.VERTEX);
-            if (colors)
-                entry.colors = this.writeBuffer(entry.colors, colors, BUFFER_USAGE.VERTEX);
-            if (crowd)
-                entry.animation = this.writeBuffer(entry.animation, crowd.drawAnimation, BUFFER_USAGE.VERTEX);
-            entry.version = mesh.instanceVersion;
+        const resident = this.uploadInstances(entry?.matrices, matrices, matrixVersion);
+        if (!entry) {
+            entry = { matrices: resident, colors: undefined, lastFrame: frame };
+            this.#instances.set(mesh, entry);
         }
+        else
+            entry.matrices = resident;
+        entry.lastFrame = frame;
+        const colors = crowd ? crowd.drawColors : mesh.instanceColors;
+        if (colors)
+            entry.colors = this.uploadInstances(entry.colors, colors, revisions?.colors ?? mesh.instanceVersion);
+        else if (entry.colors)
+            entry.colors.source = undefined;
+        if (crowd)
+            entry.animation = this.uploadInstances(entry.animation, crowd.drawAnimation, mesh.instanceVersion);
         return entry;
     }
     /** Bind group holding the bone matrices and morph deltas for a mesh. */
@@ -557,14 +703,19 @@ export class WebGPURenderer3D {
             // Baked poses are uploaded once and stay until the table is disposed.
             let table = this.#animations.get(crowd);
             if (!table) {
-                table = this.device.createBuffer({ size: crowd.data.byteLength, usage: BUFFER_USAGE.STORAGE | BUFFER_USAGE.COPY_DST });
+                table = this.device.createBuffer({
+                    size: crowd.data.byteLength,
+                    usage: BUFFER_USAGE.STORAGE | BUFFER_USAGE.COPY_DST
+                });
                 this.device.queue.writeBuffer(table, 0, crowd.data.buffer, crowd.data.byteOffset, crowd.data.byteLength);
                 this.#animations.set(crowd, table);
                 const created = table;
-                crowd.onDispose(() => { if (this.#animations.get(crowd) === created) {
-                    created.destroy();
-                    this.#animations.delete(crowd);
-                } });
+                crowd.onDispose(() => {
+                    if (this.#animations.get(crowd) === created) {
+                        created.destroy();
+                        this.#animations.delete(crowd);
+                    }
+                });
             }
             bonesBuffer = table;
         }
@@ -573,7 +724,15 @@ export class WebGPURenderer3D {
             let bones = this.#bones.get(skeleton);
             if (!bones || bones.count !== count) {
                 bones?.buffer.destroy();
-                bones = { buffer: this.device.createBuffer({ size: Math.max(count, 1) * 64, usage: BUFFER_USAGE.STORAGE | BUFFER_USAGE.COPY_DST }), version: -1, count, lastFrame: frame };
+                bones = {
+                    buffer: this.device.createBuffer({
+                        size: Math.max(count, 1) * 64,
+                        usage: BUFFER_USAGE.STORAGE | BUFFER_USAGE.COPY_DST
+                    }),
+                    version: -1,
+                    count,
+                    lastFrame: frame
+                };
                 this.#bones.set(skeleton, bones);
             }
             bones.lastFrame = frame;
@@ -595,12 +754,21 @@ export class WebGPURenderer3D {
     material(material) {
         let entry = this.#materials.get(material);
         if (!entry) {
-            const buffer = this.device.createBuffer({ size: MATERIAL_BLOCK_BYTES_3D, usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST });
-            const created = { buffer, group: undefined, key: '', serial: -1, unsubscribe: material.onDispose(() => {
+            const buffer = this.device.createBuffer({
+                size: MATERIAL_BLOCK_BYTES_3D,
+                usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST
+            });
+            const created = {
+                buffer,
+                group: undefined,
+                key: '',
+                serial: -1,
+                unsubscribe: material.onDispose(() => {
                     if (this.#materials.delete(material))
                         buffer.destroy();
-                }) };
-            this.#materials.set(material, entry = created);
+                })
+            };
+            this.#materials.set(material, (entry = created));
         }
         if (entry.serial === this.#serial && entry.group)
             return entry.group;
@@ -680,8 +848,25 @@ export class WebGPURenderer3D {
         const entries = [{ binding: 0, resource: { buffer: entry.buffer } }];
         let key = '';
         // Ground layers borrow the slots of the maps they stand in for; a missing layer reads the first.
-        (splat ? [splat.layers[0], material.normalMap, splat.layers[3] ?? splat.layers[0], splat.layers[2] ?? splat.layers[0], splat.layers[1] ?? splat.layers[0], splat.weights, material.reflectionMap]
-            : [material.map, material.normalMap, material.metallicRoughnessMap, material.occlusionMap, material.emissiveMap, material.lightMap, material.reflectionMap]).forEach((texture, i) => {
+        (splat
+            ? [
+                splat.layers[0],
+                material.normalMap,
+                splat.layers[3] ?? splat.layers[0],
+                splat.layers[2] ?? splat.layers[0],
+                splat.layers[1] ?? splat.layers[0],
+                splat.weights,
+                material.reflectionMap
+            ]
+            : [
+                material.map,
+                material.normalMap,
+                material.metallicRoughnessMap,
+                material.occlusionMap,
+                material.emissiveMap,
+                material.lightMap,
+                material.reflectionMap
+            ]).forEach((texture, i) => {
             const gpu = texture && !texture.isDisposed ? this.texture2d(texture) : undefined;
             entries.push({ binding: 1 + i * 2, resource: gpu?.view ?? this.#white }, { binding: 2 + i * 2, resource: gpu?.sampler ?? this.#defaultSampler });
             key += (gpu?.key ?? '-') + '|';
@@ -704,49 +889,96 @@ export class WebGPURenderer3D {
         // A draw may bind eight vertex buffers. Baked instances use them up, so they do without tangents, vertex colors and second coordinates.
         const baked = instanced && !skinning && mesh instanceof SkinnedInstancedMesh3D;
         return {
-            shading: material.shading, depthOnly,
+            shading: material.shading,
+            depthOnly,
             normal: gpu.buffers.has('normal') && (!depthOnly || material.shader?.wgslVertex !== undefined),
-            uv: uv && (!depthOnly || (material.map !== undefined && material.alphaMode !== 'opaque') || material.shader?.wgslVertex !== undefined),
+            uv: uv &&
+                (!depthOnly ||
+                    (material.map !== undefined && material.alphaMode !== 'opaque') ||
+                    material.shader?.wgslVertex !== undefined),
             tangent: lit && uv && material.normalMap !== undefined && gpu.buffers.has('tangent') && !baked,
             vertexColor: material.vertexColors && gpu.buffers.has('color') && !baked,
-            skinning, morph: gpu.morph !== undefined, morphNormals: gpu.morph?.channels === 2,
-            skinInstancing: instanced && !skinning && mesh instanceof SkinnedInstancedMesh3D && gpu.buffers.has('joints') && gpu.buffers.has('weights'),
+            skinning,
+            morph: gpu.morph !== undefined,
+            morphNormals: gpu.morph?.channels === 2,
+            skinInstancing: instanced &&
+                !skinning &&
+                mesh instanceof SkinnedInstancedMesh3D &&
+                gpu.buffers.has('joints') &&
+                gpu.buffers.has('weights'),
             splat: !depthOnly && uv && material.splat !== undefined,
-            gpuParticles: instanced && !depthOnly && mesh instanceof GpuParticles3D, softDepth: !depthOnly && material.softness > 0 && this.#softDepth,
-            instancing: instanced, instanceColor: instanced && !depthOnly && mesh.instanceColors !== undefined,
-            billboard: material.billboard && !material.screenSpace, screenSpace: material.screenSpace,
+            gpuParticles: instanced && !depthOnly && mesh instanceof GpuParticles3D,
+            softDepth: !depthOnly && material.softness > 0 && this.#softDepth,
+            instancing: instanced,
+            instanceColor: instanced && !depthOnly && mesh.instanceColors !== undefined,
+            billboard: material.billboard && !material.screenSpace,
+            screenSpace: material.screenSpace,
             map: uv && material.map !== undefined && (!depthOnly || material.alphaMode !== 'opaque'),
             mapFromTarget: !depthOnly && uv && material.map?.source instanceof RenderTarget3D,
             normalMap: lit && uv && material.normalMap !== undefined,
             metallicRoughnessMap: lit && uv && material.metallicRoughnessMap !== undefined && material.shading === 'standard',
             occlusionMap: lit && (uv || occlusionUv1) && material.occlusionMap !== undefined,
-            uv1: (occlusionUv1 || emissiveUv1 || lightUv1) && !baked, occlusionUv1: occlusionUv1 && !baked, emissiveUv1: emissiveUv1 && !baked, lightMap, lightUv1: lightUv1 && !baked,
+            uv1: (occlusionUv1 || emissiveUv1 || lightUv1) && !baked,
+            occlusionUv1: occlusionUv1 && !baked,
+            emissiveUv1: emissiveUv1 && !baked,
+            lightMap,
+            lightUv1: lightUv1 && !baked,
             transmission: !depthOnly && this.#grabbed && material.shading === 'standard' && material.transmission > 0,
             emissiveMap: !depthOnly && (uv || emissiveUv1) && material.emissiveMap !== undefined && material.shading !== 'matcap',
-            alphaMask: material.alphaMode === 'mask', alphaBlend: material.alphaMode === 'blend',
+            alphaMask: material.alphaMode === 'mask',
+            alphaBlend: material.alphaMode === 'blend',
             premultipliedAlpha: !depthOnly && material.alphaMode === 'blend' && material.blending === 'premultiplied',
-            flatShading: material.flatShading, doubleSided: material.side === 'double',
+            flatShading: material.flatShading,
+            doubleSided: material.side === 'double',
             receiveShadow: lit && mesh.receiveShadow && this.#shadowCount > 0,
-            environment: lit && frameFlags.environment, fog: !depthOnly && frameFlags.fog && material.fog,
-            ...(!depthOnly && material.shader?.wgsl !== undefined ? { customKey: material.shader.key, customWgsl: material.shader.wgsl } : {}),
-            ...(material.shader?.wgslVertex !== undefined ? { customKey: material.shader.key, customVertexWgsl: material.shader.wgslVertex } : {}),
-            ...(lit && material.shader?.wgslNormal !== undefined ? { customKey: material.shader.key, customNormalWgsl: material.shader.wgslNormal } : {}),
+            environment: lit && frameFlags.environment,
+            fog: !depthOnly && frameFlags.fog && material.fog,
+            ...(!depthOnly && material.shader?.wgsl !== undefined
+                ? { customKey: material.shader.key, customWgsl: material.shader.wgsl }
+                : {}),
+            ...(material.shader?.wgslVertex !== undefined
+                ? { customKey: material.shader.key, customVertexWgsl: material.shader.wgslVertex }
+                : {}),
+            ...(lit && material.shader?.wgslNormal !== undefined
+                ? { customKey: material.shader.key, customNormalWgsl: material.shader.wgslNormal }
+                : {}),
             reflectionMap: lit && material.shading === 'standard' && material.reflectionMap !== undefined,
-            toneMapped: !depthOnly && kind !== 'hdr' && this.toneMapping !== 'none' && material.toneMapped, linearOutput: kind === 'target' || kind === 'hdr',
+            toneMapped: !depthOnly && this.#frameToneMapping !== 'none' && material.toneMapped,
+            linearOutput: kind === 'target' || kind === 'hdr'
         };
     }
     pipeline(features, item, gpu, kind, mirrored, wire) {
         const { geometry, material, mesh } = item, shadow = kind === 'depth', depthOnly = shadow || kind === 'scene-depth';
         const featureKey = shaderFeatureKey3D(features);
-        const topology = wire ? 'line-list' : geometry.topology === 'triangles' ? 'triangle-list' : geometry.topology === 'lines' ? 'line-list'
-            : geometry.topology === 'line-strip' ? 'line-strip' : 'point-list';
+        const topology = wire
+            ? 'line-list'
+            : geometry.topology === 'triangles'
+                ? 'triangle-list'
+                : geometry.topology === 'lines'
+                    ? 'line-list'
+                    : geometry.topology === 'line-strip'
+                        ? 'line-strip'
+                        : 'point-list';
         // Shadow maps draw both faces: closed and open meshes then cast alike.
         const cull = shadow || material.side === 'double' || material.billboard ? 'none' : material.side === 'back' ? 'front' : 'back';
         const blend = !depthOnly && material.alphaMode === 'blend' ? material.blending : 'off';
         const depthWrite = shadow || material.depthWrite, offset = shadow ? '1.5,2' : material.polygonOffset ? material.polygonOffset.join(',') : '';
         const colorSize = geometry.getAttribute('color')?.itemSize ?? 4, instanceColorSize = mesh.isInstanced ? mesh.instanceColorSize : 4;
         const strip = topology === 'line-strip' && gpu.index ? gpu.index.format : '';
-        const key = [featureKey, kind, topology, cull, mirrored ? 'cw' : 'ccw', blend, depthWrite, material.depthTest, offset, colorSize, instanceColorSize, strip].join('/');
+        const key = [
+            featureKey,
+            kind,
+            topology,
+            cull,
+            mirrored ? 'cw' : 'ccw',
+            blend,
+            depthWrite,
+            material.depthTest,
+            offset,
+            colorSize,
+            instanceColorSize,
+            strip
+        ].join('/');
         let pipeline = this.#pipelines.get(key);
         if (pipeline)
             return pipeline;
@@ -769,37 +1001,82 @@ export class WebGPURenderer3D {
         add(features.skinning || features.skinInstancing === true, 6, 'float32x4', 16);
         add(features.uv1, 7, 'float32x2', 8);
         if (features.instancing) {
-            buffers.push({ arrayStride: 64, stepMode: 'instance', attributes: [0, 1, 2, 3].map(column => ({ shaderLocation: 8 + column, offset: column * 16, format: 'float32x4' })) });
+            buffers.push({
+                arrayStride: 64,
+                stepMode: 'instance',
+                attributes: [0, 1, 2, 3].map(column => ({
+                    shaderLocation: 8 + column,
+                    offset: column * 16,
+                    format: 'float32x4'
+                }))
+            });
         }
         if (features.instanceColor) {
-            buffers.push({ arrayStride: instanceColorSize * 4, stepMode: 'instance', attributes: [{ shaderLocation: 12, offset: 0, format: instanceColorSize === 3 ? 'float32x3' : 'float32x4' }] });
+            buffers.push({
+                arrayStride: instanceColorSize * 4,
+                stepMode: 'instance',
+                attributes: [{ shaderLocation: 12, offset: 0, format: instanceColorSize === 3 ? 'float32x3' : 'float32x4' }]
+            });
         }
         if (features.skinInstancing)
-            buffers.push({ arrayStride: 48, stepMode: 'instance', attributes: [0, 1, 2].map(part => ({ shaderLocation: 13 + part, offset: part * 16, format: 'float32x4' })) });
-        const blendState = blend === 'off' ? undefined
-            : blend === 'additive' ? { color: { srcFactor: 'src-alpha', dstFactor: 'one' }, alpha: { srcFactor: 'zero', dstFactor: 'one' } }
-                : blend === 'multiply' ? { color: { srcFactor: 'dst', dstFactor: 'zero' }, alpha: { srcFactor: 'zero', dstFactor: 'one' } }
-                    : blend === 'premultiplied' ? { color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } }
-                        : { color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' }, alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' } };
+            buffers.push({
+                arrayStride: 48,
+                stepMode: 'instance',
+                attributes: [0, 1, 2].map(part => ({
+                    shaderLocation: 13 + part,
+                    offset: part * 16,
+                    format: 'float32x4'
+                }))
+            });
+        const blendState = blend === 'off'
+            ? undefined
+            : blend === 'additive'
+                ? { color: { srcFactor: 'src-alpha', dstFactor: 'one' }, alpha: { srcFactor: 'zero', dstFactor: 'one' } }
+                : blend === 'multiply'
+                    ? { color: { srcFactor: 'dst', dstFactor: 'zero' }, alpha: { srcFactor: 'zero', dstFactor: 'one' } }
+                    : blend === 'premultiplied'
+                        ? {
+                            color: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' },
+                            alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }
+                        }
+                        : {
+                            color: { srcFactor: 'src-alpha', dstFactor: 'one-minus-src-alpha' },
+                            alpha: { srcFactor: 'one', dstFactor: 'one-minus-src-alpha' }
+                        };
         const needsFragment = !depthOnly || features.alphaMask || features.alphaBlend;
         const filled = topology === 'triangle-list';
         const descriptor = {
             label: key,
             layout: depthOnly ? this.#depthPipelineLayout : this.#pipelineLayout,
             vertex: { module, entryPoint: 'vertexMain', buffers },
-            primitive: { topology, cullMode: cull, frontFace: mirrored ? 'cw' : 'ccw', ...(strip ? { stripIndexFormat: strip } : {}) },
+            primitive: {
+                topology,
+                cullMode: cull,
+                frontFace: mirrored ? 'cw' : 'ccw',
+                ...(strip ? { stripIndexFormat: strip } : {})
+            },
             depthStencil: {
-                format: depthOnly ? SHADOW_FORMAT : DEPTH_FORMAT, depthWriteEnabled: depthWrite,
+                format: depthOnly ? SHADOW_FORMAT : DEPTH_FORMAT,
+                depthWriteEnabled: depthWrite,
                 depthCompare: material.depthTest || shadow ? 'less-equal' : 'always',
                 // Depth bias applies to filled triangles only.
                 ...(filled && shadow ? { depthBias: 2, depthBiasSlopeScale: 1.5 } : {}),
-                ...(filled && !shadow && material.polygonOffset ? { depthBias: Math.round(material.polygonOffset[1]), depthBiasSlopeScale: material.polygonOffset[0] } : {}),
+                ...(filled && !shadow && material.polygonOffset
+                    ? { depthBias: Math.round(material.polygonOffset[1]), depthBiasSlopeScale: material.polygonOffset[0] }
+                    : {})
             },
             multisample: { count: kind === 'canvas' ? this.#sampleCount : 1 },
-            ...(needsFragment ? { fragment: {
-                    module, entryPoint: 'fragmentMain',
-                    targets: depthOnly ? [] : [{ format: this.colorFormat(kind), ...(blendState ? { blend: blendState } : {}) }],
-                } } : {}),
+            ...(needsFragment
+                ? {
+                    fragment: {
+                        module,
+                        entryPoint: 'fragmentMain',
+                        targets: depthOnly
+                            ? []
+                            : [{ format: this.colorFormat(kind), ...(blendState ? { blend: blendState } : {}) }]
+                    }
+                }
+                : {})
         };
         pipeline = this.device.createRenderPipeline(descriptor);
         this.#pipelines.set(key, pipeline);
@@ -822,35 +1099,7 @@ export class WebGPURenderer3D {
             }
         }
         if (gpu.morph) {
-            // Keep the strongest influences; the shader blends at most a fixed number.
-            const weights = mesh.morphWeights, indices = o + 48, values = o + 56;
-            let count = 0;
-            for (let i = 0; i < weights.length; i++) {
-                const weight = weights[i];
-                if (weight === 0)
-                    continue;
-                if (count < MAX_MORPH_INFLUENCES_WGSL_3D) {
-                    ints[indices + count] = i;
-                    floats[values + count] = weight;
-                    count++;
-                    continue;
-                }
-                let weakest = 0;
-                for (let k = 1; k < count; k++)
-                    if (Math.abs(floats[values + k]) < Math.abs(floats[values + weakest]))
-                        weakest = k;
-                if (Math.abs(weight) > Math.abs(floats[values + weakest])) {
-                    ints[indices + weakest] = i;
-                    floats[values + weakest] = weight;
-                }
-            }
-            // Baked instances take their morph weights from the table; the shader only needs to know how many targets to read.
-            if (mesh instanceof SkinnedInstancedMesh3D && !mesh.skeleton)
-                count = Math.min(MAX_MORPH_INFLUENCES_WGSL_3D, mesh.animations.morphCount, mesh.geometry.morphTargets.length);
-            ints[o + 44] = gpu.morph.vertexCount;
-            ints[o + 45] = gpu.morph.channels;
-            ints[o + 46] = count;
-            ints[o + 47] = 0;
+            writeObjectMorph3D(mesh, gpu, floats, ints, o);
         }
         else
             ints[o + 46] = 0;
@@ -881,37 +1130,74 @@ export class WebGPURenderer3D {
         if (instances <= 0 || this.#objectCount >= this.#objectCapacity)
             return;
         const world = mesh.matrixWorld;
-        const determinant = world[0] * (world[5] * world[10] - world[6] * world[9]) - world[4] * (world[1] * world[10] - world[2] * world[9])
-            + world[8] * (world[1] * world[6] - world[2] * world[5]);
+        const determinant = world[0] * (world[5] * world[10] - world[6] * world[9]) -
+            world[4] * (world[1] * world[10] - world[2] * world[9]) +
+            world[8] * (world[1] * world[6] - world[2] * world[5]);
         const wire = material.wireframe && kind !== 'depth' && geometry.topology === 'triangles';
         // Everything that selects a pipeline besides the material and geometry themselves,
         // packed into one number so the common case is a single map lookup.
-        const bits = (kind === 'canvas' ? 0 : kind === 'target' ? 1 : kind === 'depth' ? 2 : kind === 'hdr' ? 3 : 65536) | (wire ? 4 : 0) | (determinant < 0 ? 8 : 0) | (instanced ? 16 : 0)
-            | (instanced && mesh.instanceColors ? 32 : 0) | (mesh.skeleton ? 64 : 0) | (mesh.receiveShadow && this.#shadowCount > 0 ? 128 : 0)
-            | (frameFlags.fog ? 256 : 0) | (frameFlags.environment ? 512 : 0) | (this.toneMapping !== 'none' ? 1024 : 0)
-            | (instanced && mesh.instanceColorSize === 4 ? 2048 : 0)
-            | (material.side === 'double' ? 4096 : material.side === 'back' ? 8192 : 0) | (mesh instanceof SkinnedInstancedMesh3D ? 16384 : 0) | (mesh instanceof GpuParticles3D ? 32768 : 0);
+        const bits = (kind === 'canvas' ? 0 : kind === 'target' ? 1 : kind === 'depth' ? 2 : kind === 'hdr' ? 3 : 65536) |
+            (wire ? 4 : 0) |
+            (determinant < 0 ? 8 : 0) |
+            (instanced ? 16 : 0) |
+            (instanced && mesh.instanceColors ? 32 : 0) |
+            (mesh.skeleton ? 64 : 0) |
+            (mesh.receiveShadow && this.#shadowCount > 0 ? 128 : 0) |
+            (frameFlags.fog ? 256 : 0) |
+            (frameFlags.environment ? 512 : 0) |
+            (this.#frameToneMapping !== 'none' ? 1024 : 0) |
+            (instanced && mesh.instanceColorSize === 4 ? 2048 : 0) |
+            (material.side === 'double' ? 4096 : material.side === 'back' ? 8192 : 0) |
+            (mesh instanceof SkinnedInstancedMesh3D ? 16384 : 0) |
+            (mesh instanceof GpuParticles3D ? 32768 : 0);
         let cache = this.#drawVariants.get(material);
         if (!cache || cache.version !== material.version)
-            this.#drawVariants.set(material, cache = { version: material.version, variants: new Map() });
+            this.#drawVariants.set(material, (cache = { version: material.version, variants: new Map() }));
         // Material fields that select shader features or pipeline state. They are read every
         // draw so plain assignments (a new map, another blend mode) need no touch().
         const map = material.map;
-        const surface = (map ? 1 : 0) | (map?.source instanceof RenderTarget3D ? 2 : 0) | (material.normalMap ? 4 : 0) | (material.metallicRoughnessMap ? 8 : 0)
-            | (material.occlusionMap ? 16 : 0) | (material.emissiveMap ? 32 : 0) | (material.alphaMode === 'mask' ? 64 : material.alphaMode === 'blend' ? 128 : 0)
-            | (material.blending === 'premultiplied' ? 256 : material.blending === 'additive' ? 32768 : material.blending === 'multiply' ? 65536 : 0)
-            | (material.flatShading ? 512 : 0) | (material.vertexColors ? 1024 : 0) | (material.billboard ? 2048 : 0) | (material.screenSpace ? 4096 : 0)
-            | (material.depthTest ? 8192 : 0) | (material.depthWrite ? 16384 : 0) | (material.fog ? 131072 : 0) | (material.toneMapped ? 262144 : 0)
-            | (material.polygonOffset ? 524288 : 0) | (material.occlusionMap?.channel === 1 ? 1048576 : 0) | (material.emissiveMap?.channel === 1 ? 2097152 : 0)
-            | (material.lightMap ? 4194304 : 0) | (material.lightMap?.channel === 1 ? 8388608 : 0) | (material.reflectionMap ? 16777216 : 0) | (material.softness > 0 && this.#softDepth ? 33554432 : 0) | (material.splat ? 67108864 : 0);
+        const surface = (map ? 1 : 0) |
+            (map?.source instanceof RenderTarget3D ? 2 : 0) |
+            (material.normalMap ? 4 : 0) |
+            (material.metallicRoughnessMap ? 8 : 0) |
+            (material.occlusionMap ? 16 : 0) |
+            (material.emissiveMap ? 32 : 0) |
+            (material.alphaMode === 'mask' ? 64 : material.alphaMode === 'blend' ? 128 : 0) |
+            (material.blending === 'premultiplied'
+                ? 256
+                : material.blending === 'additive'
+                    ? 32768
+                    : material.blending === 'multiply'
+                        ? 65536
+                        : 0) |
+            (material.flatShading ? 512 : 0) |
+            (material.vertexColors ? 1024 : 0) |
+            (material.billboard ? 2048 : 0) |
+            (material.screenSpace ? 4096 : 0) |
+            (material.depthTest ? 8192 : 0) |
+            (material.depthWrite ? 16384 : 0) |
+            (material.fog ? 131072 : 0) |
+            (material.toneMapped ? 262144 : 0) |
+            (material.polygonOffset ? 524288 : 0) |
+            (material.occlusionMap?.channel === 1 ? 1048576 : 0) |
+            (material.emissiveMap?.channel === 1 ? 2097152 : 0) |
+            (material.lightMap ? 4194304 : 0) |
+            (material.lightMap?.channel === 1 ? 8388608 : 0) |
+            (material.reflectionMap ? 16777216 : 0) |
+            (material.softness > 0 && this.#softDepth ? 33554432 : 0) |
+            (material.splat ? 67108864 : 0);
         const variantKey = surface * 131072 + bits;
         let byGeometry = cache.variants.get(geometry.id);
         if (!byGeometry)
-            cache.variants.set(geometry.id, byGeometry = new Map());
+            cache.variants.set(geometry.id, (byGeometry = new Map()));
         let variant = byGeometry.get(variantKey);
         if (!variant || variant.layoutVersion !== gpu.layoutVersion) {
             const built = this.features(item, gpu, kind, frameFlags);
-            variant = { features: built, pipeline: this.pipeline(built, item, gpu, kind, determinant < 0 && !built.skinning, wire), layoutVersion: gpu.layoutVersion };
+            variant = {
+                features: built,
+                pipeline: this.pipeline(built, item, gpu, kind, determinant < 0 && !built.skinning, wire),
+                layoutVersion: gpu.layoutVersion
+            };
             byGeometry.set(variantKey, variant);
         }
         const features = variant.features;
@@ -933,8 +1219,10 @@ export class WebGPURenderer3D {
         // Vertex bindings depend on the geometry and on which attributes this variant reads.
         if (instanced || this.#boundVertices !== variant || this.#boundPipeline !== variant.pipeline) {
             let slot = 0;
-            const bind = (enabled, name) => { if (enabled)
-                pass.setVertexBuffer(slot++, gpu.buffers.get(name).buffer); };
+            const bind = (enabled, name) => {
+                if (enabled)
+                    pass.setVertexBuffer(slot++, gpu.buffers.get(name).buffer);
+            };
             bind(true, 'position');
             bind(features.normal, 'normal');
             bind(features.uv, 'uv');
@@ -973,10 +1261,17 @@ export class WebGPURenderer3D {
         if (kind !== 'depth' && kind !== 'scene-depth') {
             this.info.drawCalls++;
             if (!wire && geometry.topology === 'triangles')
-                this.info.triangles += item.count / 3 * instances;
+                this.info.triangles += (item.count / 3) * instances;
         }
     }
-    depthItem = { mesh: undefined, geometry: undefined, material: undefined, start: 0, count: 0, depth: 0 };
+    depthItem = {
+        mesh: undefined,
+        geometry: undefined,
+        material: undefined,
+        start: 0,
+        count: 0,
+        depth: 0
+    };
     drawDepth(pass, mesh) {
         const geometry = mesh.geometry, item = this.depthItem, groups = geometry.groups, flags = { fog: false, environment: false };
         if (geometry.topology !== 'triangles')
@@ -1003,7 +1298,11 @@ export class WebGPURenderer3D {
     ensureShadowAtlas() {
         if (!this.#shadowTexture) {
             const size = this.#shadowAtlasSize;
-            this.#shadowTexture = this.device.createTexture({ size: [size, size], format: SHADOW_FORMAT, usage: TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.TEXTURE_BINDING });
+            this.#shadowTexture = this.device.createTexture({
+                size: [size, size],
+                format: SHADOW_FORMAT,
+                usage: TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.TEXTURE_BINDING
+            });
             this.#shadowView = this.#shadowTexture.createView();
         }
         return this.#shadowView;
@@ -1014,8 +1313,21 @@ export class WebGPURenderer3D {
             this.#canvasDepth?.destroy();
             this.#canvasColor?.destroy();
             const size = [texture.width, texture.height];
-            this.#canvasDepth = this.device.createTexture({ size, format: DEPTH_FORMAT, sampleCount: this.#sampleCount, usage: TEXTURE_USAGE.RENDER_ATTACHMENT });
-            this.#canvasColor = this.#sampleCount > 1 ? this.device.createTexture({ size, format: this.#format, sampleCount: this.#sampleCount, usage: TEXTURE_USAGE.RENDER_ATTACHMENT }) : undefined;
+            this.#canvasDepth = this.device.createTexture({
+                size,
+                format: DEPTH_FORMAT,
+                sampleCount: this.#sampleCount,
+                usage: TEXTURE_USAGE.RENDER_ATTACHMENT
+            });
+            this.#canvasColor =
+                this.#sampleCount > 1
+                    ? this.device.createTexture({
+                        size,
+                        format: this.#format,
+                        sampleCount: this.#sampleCount,
+                        usage: TEXTURE_USAGE.RENDER_ATTACHMENT
+                    })
+                    : undefined;
             this.#canvasKey = key;
         }
         return { color: this.#canvasColor?.createView(), depth: this.#canvasDepth.createView() };
@@ -1029,19 +1341,22 @@ export class WebGPURenderer3D {
             return;
         let pipeline = this.#pipelines.get(key);
         if (!pipeline) {
-            this.#skyLayout ??= device.createBindGroupLayout({ entries: [
+            this.#skyLayout ??= device.createBindGroupLayout({
+                entries: [
                     { binding: 0, visibility: SHADER_STAGE.VERTEX | SHADER_STAGE.FRAGMENT, buffer: {} },
                     { binding: 1, visibility: SHADER_STAGE.FRAGMENT, texture: { viewDimension: 'cube' } },
-                    { binding: 2, visibility: SHADER_STAGE.FRAGMENT, sampler: {} },
-                ] });
+                    { binding: 2, visibility: SHADER_STAGE.FRAGMENT, sampler: {} }
+                ]
+            });
             const module = device.createShaderModule({ code: SKYBOX_WGSL_3D, label: 'skybox' });
             pipeline = device.createRenderPipeline({
-                label: key, layout: device.createPipelineLayout({ bindGroupLayouts: [this.#skyLayout] }),
+                label: key,
+                layout: device.createPipelineLayout({ bindGroupLayouts: [this.#skyLayout] }),
                 vertex: { module, entryPoint: 'vertexMain' },
                 fragment: { module, entryPoint: 'fragmentMain', targets: [{ format: this.colorFormat(kind) }] },
                 primitive: { topology: 'triangle-list' },
                 depthStencil: { format: DEPTH_FORMAT, depthWriteEnabled: false, depthCompare: 'less-equal' },
-                multisample: { count: kind === 'canvas' ? this.#sampleCount : 1 },
+                multisample: { count: kind === 'canvas' ? this.#sampleCount : 1 }
             });
             this.#pipelines.set(key, pipeline);
         }
@@ -1051,13 +1366,21 @@ export class WebGPURenderer3D {
         data[16] = intensity;
         data[17] = kind === 'canvas' ? 0 : 1;
         data[18] = this.exposure;
-        data[19] = kind === 'hdr' ? 0 : this.toneMapping === 'aces' ? 2 : this.toneMapping === 'reinhard' ? 1 : 0;
+        data[19] = this.#frameToneMapping === 'aces' ? 2 : this.#frameToneMapping === 'reinhard' ? 1 : 0;
         device.queue.writeBuffer(this.#skyBuffer, 0, data);
         const cube = this.textureCube(texture), groupKey = texture.id + ':' + texture.version;
         if (!this.#skyGroup || this.#skyGroup.key !== groupKey) {
-            this.#skyGroup = { key: groupKey, group: device.createBindGroup({ layout: this.#skyLayout, entries: [
-                        { binding: 0, resource: { buffer: this.#skyBuffer } }, { binding: 1, resource: cube.view }, { binding: 2, resource: cube.sampler },
-                    ] }) };
+            this.#skyGroup = {
+                key: groupKey,
+                group: device.createBindGroup({
+                    layout: this.#skyLayout,
+                    entries: [
+                        { binding: 0, resource: { buffer: this.#skyBuffer } },
+                        { binding: 1, resource: cube.view },
+                        { binding: 2, resource: cube.sampler }
+                    ]
+                })
+            };
         }
         pass.setPipeline(pipeline);
         pass.setBindGroup(0, this.#skyGroup.group);
@@ -1073,54 +1396,117 @@ export class WebGPURenderer3D {
      * instanced draw each, in the main view and in shadow maps. On by default;
      * the meshes themselves are untouched.
      */
-    get autoInstancing() { return this.#list.autoInstanceThreshold > 1; }
-    set autoInstancing(value) { this.#list.autoInstanceThreshold = value ? 8 : 0; }
+    /** Point lights past the eight nearest are lit by screen tile, up to 256; false drops them instead. */
+    get tiledLights() {
+        return this.#list.tiledLights;
+    }
+    set tiledLights(value) {
+        this.#list.tiledLights = Boolean(value);
+    }
+    get autoInstancing() {
+        return this.#list.autoInstanceThreshold > 1;
+    }
+    set autoInstancing(value) {
+        this.#list.autoInstanceThreshold = value ? 8 : 0;
+    }
     render(scene, camera, target) {
+        return this.renderView(scene, camera, target);
+    }
+    /** Draw the mirror directly with its own output, shadows and object selection. */
+    renderReflectionPass(scene, camera, pass) {
+        return this.renderView(scene, camera, pass.target, pass);
+    }
+    /** The retained mirror image must still belong to the live WebGPU device. */
+    reuseReflection(target) {
+        return !this.#disposed && !this.#lost && this.#targets.get(target)?.version === target.version;
+    }
+    renderView(scene, camera, target, reflection) {
         if (this.#disposed)
             throw new World3DError('WORLD3D_DISPOSED', 'renderer');
         if (this.#lost)
             return false;
-        if (this.postProcess.enabled && !this.#inPost)
+        if (!reflection && this.postProcess.enabled && !this.#inPost)
             return this.renderPost(scene, camera, target);
-        // Half-float targets keep scene-referred light; tone mapping happens when they are displayed.
         const device = this.device, list = this.#list, info = this.info, kind = target ? (target.format === 'rgba16f' ? 'hdr' : 'target') : 'canvas';
         if (target?.isDisposed)
             throw new World3DError('WORLD3D_DISPOSED', 'render target');
-        list.build(scene, camera);
+        this.#frameToneMapping = outputToneMapping3D(reflection?.toneMapping ?? this.toneMapping, target);
+        list.build(scene, camera, reflection);
         this.#serial++;
         this.#objectCount = 0;
         info.frame = list.frame;
         info.drawCalls = info.triangles = 0;
         info.visited = list.stats.visited;
         info.culled = list.stats.culled;
+        info.lightsDropped = list.stats.lightsDropped;
         const atlas = this.ensureShadowAtlas();
-        const plans = planShadows3D(this.#frameData, list, this.#shadowAtlasSize, this.shadowsEnabled, true, this.#shadowSlots, camera);
+        const plans = planShadows3D(this.#frameData, list, this.#shadowAtlasSize, this.shadowsEnabled && (reflection?.shadows ?? true), true, this.#shadowSlots, camera);
         this.#shadowCount = plans.length;
         const environment = scene.environment && !scene.environment.isDisposed ? this.textureCube(scene.environment) : undefined;
-        writeFrameBlock3D(this.#frameData, scene, camera, list, this.#shadowSlots, { exposure: this.exposure, toneMapping: kind === 'hdr' ? 'none' : this.toneMapping, environmentMaxMip: environment?.maxMip ?? 0 });
+        writeFrameBlock3D(this.#frameData, scene, camera, list, this.#shadowSlots, {
+            exposure: this.exposure,
+            toneMapping: this.#frameToneMapping,
+            environmentMaxMip: environment?.maxMip ?? 0
+        });
         this.#frameData[FRAME_OFFSETS_3D.clipInfo + 2] = this.viewport ? this.viewport[2] : 1;
         this.#frameData[FRAME_OFFSETS_3D.clipInfo + 3] = this.viewport ? this.viewport[3] : 1;
+        {
+            // Lights past the eight in the frame block go to the tiled list, read by screen tile.
+            const fullWidth = target ? target.width : this.#context.getCurrentTexture().width, fullHeight = target ? target.height : this.#context.getCurrentTexture().height;
+            const rect = this.viewport;
+            const tileWidth = rect ? Math.max(Math.round(rect[2] * fullWidth), 1) : fullWidth, tileHeight = rect ? Math.max(Math.round(rect[3] * fullHeight), 1) : fullHeight;
+            const originX = rect ? Math.round(rect[0] * fullWidth) : 0, originY = rect ? Math.max(fullHeight - Math.round(rect[1] * fullHeight) - tileHeight, 0) : 0;
+            const tiled = writeTiledLights3D(this.#frameData, this.#tiledTable, list.tiledPointLights, camera.viewProjectionMatrix, tileWidth, tileHeight, true, originX, originY);
+            if (tiled > 0)
+                device.queue.writeBuffer(this.#tiledBuffer, 0, this.#tiledTable);
+            this.info.lightsTiled = tiled;
+        }
         device.queue.writeBuffer(this.#frameBuffer, 0, this.#frameData);
         // Surfaces that fade near solid geometry read its depth, drawn once before the frame.
         const soft = list.transparent.some(item => item.material.softness > 0);
         const softWidth = target ? target.width : this.#context.getCurrentTexture().width, softHeight = target ? target.height : this.#context.getCurrentTexture().height;
-        if (soft && (!this.#sceneDepth || this.#sceneDepth.texture.width !== softWidth || this.#sceneDepth.texture.height !== softHeight)) {
+        if (soft &&
+            (!this.#sceneDepth ||
+                this.#sceneDepth.texture.width !== softWidth ||
+                this.#sceneDepth.texture.height !== softHeight)) {
             this.#sceneDepth?.texture.destroy();
             this.#sceneDepth?.buffer.destroy();
-            const texture = device.createTexture({ size: [softWidth, softHeight], format: SHADOW_FORMAT, usage: TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.TEXTURE_BINDING });
+            const texture = device.createTexture({
+                size: [softWidth, softHeight],
+                format: SHADOW_FORMAT,
+                usage: TEXTURE_USAGE.RENDER_ATTACHMENT | TEXTURE_USAGE.TEXTURE_BINDING
+            });
             const buffer = device.createBuffer({ size: 128, usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST });
-            this.#sceneDepth = { texture, view: texture.createView(), buffer, group: device.createBindGroup({ layout: this.#depthFrameLayout, entries: [{ binding: 0, resource: { buffer } }] }) };
+            this.#sceneDepth = {
+                texture,
+                view: texture.createView(),
+                buffer,
+                group: device.createBindGroup({
+                    layout: this.#depthFrameLayout,
+                    entries: [{ binding: 0, resource: { buffer } }]
+                })
+            };
             this.#sceneDepthSerial++;
         }
         this.#softDepth = soft;
         const sceneDepthView = soft ? this.#sceneDepth.view : atlas;
-        const frameKey = (environment ? scene.environment.id + ':' + scene.environment.version : '-') + (soft ? '|d' + this.#sceneDepthSerial : '');
+        const frameKey = (environment ? scene.environment.id + ':' + scene.environment.version : '-') +
+            (soft ? '|d' + this.#sceneDepthSerial : '');
         if (!this.#frameGroup || this.#frameGroupKey !== frameKey) {
-            this.#frameGroup = device.createBindGroup({ layout: this.#frameLayout, entries: [
-                    { binding: 0, resource: { buffer: this.#frameBuffer } }, { binding: 1, resource: atlas }, { binding: 2, resource: this.#shadowSampler },
-                    { binding: 3, resource: environment?.view ?? this.#whiteCube }, { binding: 4, resource: environment?.sampler ?? this.#defaultSampler },
-                    { binding: 5, resource: this.#white }, { binding: 6, resource: this.#grabSampler }, { binding: 7, resource: sceneDepthView },
-                ] });
+            this.#frameGroup = device.createBindGroup({
+                layout: this.#frameLayout,
+                entries: [
+                    { binding: 0, resource: { buffer: this.#frameBuffer } },
+                    { binding: 1, resource: atlas },
+                    { binding: 2, resource: this.#shadowSampler },
+                    { binding: 3, resource: environment?.view ?? this.#whiteCube },
+                    { binding: 4, resource: environment?.sampler ?? this.#defaultSampler },
+                    { binding: 5, resource: this.#white },
+                    { binding: 6, resource: this.#grabSampler },
+                    { binding: 7, resource: sceneDepthView },
+                    { binding: 8, resource: { buffer: this.#tiledBuffer } }
+                ]
+            });
             this.#frameGroupKey = frameKey;
         }
         // Size the per-draw uniform buffer before any pass references its bind group.
@@ -1141,12 +1527,21 @@ export class WebGPURenderer3D {
         const encoder = device.createCommandEncoder();
         if (plans.length > 0) {
             this.resetPassState();
-            const pass = encoder.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: atlas, depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store' } });
+            const pass = encoder.beginRenderPass({
+                colorAttachments: [],
+                depthStencilAttachment: { view: atlas, depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store' }
+            });
             for (const plan of plans) {
                 let slot = this.#depthFrames[plan.slot];
                 if (!slot) {
                     const buffer = device.createBuffer({ size: 128, usage: BUFFER_USAGE.UNIFORM | BUFFER_USAGE.COPY_DST });
-                    slot = this.#depthFrames[plan.slot] = { buffer, group: device.createBindGroup({ layout: this.#depthFrameLayout, entries: [{ binding: 0, resource: { buffer } }] }) };
+                    slot = this.#depthFrames[plan.slot] = {
+                        buffer,
+                        group: device.createBindGroup({
+                            layout: this.#depthFrameLayout,
+                            entries: [{ binding: 0, resource: { buffer } }]
+                        })
+                    };
                 }
                 device.queue.writeBuffer(slot.buffer, 0, plan.matrix);
                 pass.setViewport(plan.x, plan.y, plan.tile, plan.tile, 0, 1);
@@ -1163,7 +1558,10 @@ export class WebGPURenderer3D {
             device.queue.writeBuffer(depth.buffer, 0, camera.viewProjectionMatrix);
             device.queue.writeBuffer(depth.buffer, 64, camera.viewMatrix);
             this.resetPassState();
-            const pass = encoder.beginRenderPass({ colorAttachments: [], depthStencilAttachment: { view: depth.view, depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store' } });
+            const pass = encoder.beginRenderPass({
+                colorAttachments: [],
+                depthStencilAttachment: { view: depth.view, depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp: 'store' }
+            });
             const rect = this.viewport;
             if (rect) {
                 const w = Math.max(Math.round(rect[2] * softWidth), 1), h = Math.max(Math.round(rect[3] * softHeight), 1);
@@ -1174,7 +1572,10 @@ export class WebGPURenderer3D {
             const none = { fog: false, environment: false };
             // Scene depth follows the main view's culling and material offset.
             for (const item of list.opaque) {
-                if (item.geometry.topology === 'triangles' && item.material.depthWrite && !item.material.billboard && !item.material.screenSpace)
+                if (item.geometry.topology === 'triangles' &&
+                    item.material.depthWrite &&
+                    !item.material.billboard &&
+                    !item.material.screenSpace)
                     this.draw(pass, item, 'scene-depth', none);
             }
             pass.end();
@@ -1182,7 +1583,8 @@ export class WebGPURenderer3D {
         const background = scene.background;
         // sRGB targets encode on write, so they are cleared with linear values.
         const encode = target ? (value) => value : linearToSrgb;
-        const clearValue = Array.isArray(background) ? [encode(background[0]), encode(background[1]), encode(background[2]), 1]
+        const clearValue = Array.isArray(background)
+            ? [encode(background[0]), encode(background[1]), encode(background[2]), 1]
             : [0, 0, 0, (target || this.#alpha) && !background ? 0 : 1];
         let colorAttachment, depthView, outputWidth, outputHeight, outputTexture;
         // See-through surfaces read a copy of everything drawn before them, which splits the pass in two.
@@ -1201,7 +1603,8 @@ export class WebGPURenderer3D {
         else {
             const current = this.#context.getCurrentTexture(), attachments = this.canvasAttachments(current), view = current.createView();
             // The multisampled color is kept so a later view of the same frame can load it.
-            colorAttachment = attachments.color ? { view: attachments.color, resolveTarget: view, clearValue, loadOp, storeOp: 'store' }
+            colorAttachment = attachments.color
+                ? { view: attachments.color, resolveTarget: view, clearValue, loadOp, storeOp: 'store' }
                 : { view, clearValue, loadOp, storeOp: 'store' };
             depthView = attachments.depth;
             outputTexture = current;
@@ -1210,7 +1613,10 @@ export class WebGPURenderer3D {
         }
         this.resetPassState();
         const depthStoreOp = target?.depthTexture || grab ? 'store' : 'discard';
-        let pass = encoder.beginRenderPass({ colorAttachments: [colorAttachment], depthStencilAttachment: { view: depthView, depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp } });
+        let pass = encoder.beginRenderPass({
+            colorAttachments: [colorAttachment],
+            depthStencilAttachment: { view: depthView, depthClearValue: 1, depthLoadOp: 'clear', depthStoreOp }
+        });
         const view = this.viewport;
         const frame = () => {
             if (!view)
@@ -1236,21 +1642,44 @@ export class WebGPURenderer3D {
             pass.end();
             const format = this.colorFormat(kind);
             let entry = this.#grabs.get(kind);
-            if (!entry || entry.texture.width !== outputWidth || entry.texture.height !== outputHeight || entry.texture.format !== format) {
+            if (!entry ||
+                entry.texture.width !== outputWidth ||
+                entry.texture.height !== outputHeight ||
+                entry.texture.format !== format) {
                 entry?.texture.destroy();
-                const texture = device.createTexture({ size: [outputWidth, outputHeight], format, usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST });
-                this.#grabs.set(kind, entry = { texture, view: texture.createView(), group: undefined, key: '' });
+                const texture = device.createTexture({
+                    size: [outputWidth, outputHeight],
+                    format,
+                    usage: TEXTURE_USAGE.TEXTURE_BINDING | TEXTURE_USAGE.COPY_DST
+                });
+                this.#grabs.set(kind, (entry = { texture, view: texture.createView(), group: undefined, key: '' }));
             }
             if (!entry.group || entry.key !== frameKey) {
-                entry.group = device.createBindGroup({ layout: this.#frameLayout, entries: [
-                        { binding: 0, resource: { buffer: this.#frameBuffer } }, { binding: 1, resource: atlas }, { binding: 2, resource: this.#shadowSampler },
-                        { binding: 3, resource: environment?.view ?? this.#whiteCube }, { binding: 4, resource: environment?.sampler ?? this.#defaultSampler },
-                        { binding: 5, resource: entry.view }, { binding: 6, resource: this.#grabSampler }, { binding: 7, resource: sceneDepthView },
-                    ] });
+                entry.group = device.createBindGroup({
+                    layout: this.#frameLayout,
+                    entries: [
+                        { binding: 0, resource: { buffer: this.#frameBuffer } },
+                        { binding: 1, resource: atlas },
+                        { binding: 2, resource: this.#shadowSampler },
+                        { binding: 3, resource: environment?.view ?? this.#whiteCube },
+                        { binding: 4, resource: environment?.sampler ?? this.#defaultSampler },
+                        { binding: 5, resource: entry.view },
+                        { binding: 6, resource: this.#grabSampler },
+                        { binding: 7, resource: sceneDepthView },
+                        { binding: 8, resource: { buffer: this.#tiledBuffer } }
+                    ]
+                });
                 entry.key = frameKey;
             }
             encoder.copyTextureToTexture({ texture: outputTexture }, { texture: entry.texture }, [outputWidth, outputHeight]);
-            pass = encoder.beginRenderPass({ colorAttachments: [{ ...colorAttachment, loadOp: 'load' }], depthStencilAttachment: { view: depthView, depthLoadOp: 'load', depthStoreOp: target?.depthTexture ? 'store' : 'discard' } });
+            pass = encoder.beginRenderPass({
+                colorAttachments: [{ ...colorAttachment, loadOp: 'load' }],
+                depthStencilAttachment: {
+                    view: depthView,
+                    depthLoadOp: 'load',
+                    depthStoreOp: target?.depthTexture ? 'store' : 'discard'
+                }
+            });
             frame();
             this.resetPassState();
             pass.setBindGroup(0, entry.group);
@@ -1276,7 +1705,7 @@ export class WebGPURenderer3D {
             throw new World3DError('WORLD3D_DISPOSED', 'render target');
         const current = target ? undefined : this.#context.getCurrentTexture();
         const width = target ? target.width : current.width, height = target ? target.height : current.height;
-        const post = this.#post ??= new PostChainWebGPU3D(this.device);
+        const post = (this.#post ??= new PostChainWebGPU3D(this.device));
         post.scene.setSize(Math.max(width, 1), Math.max(height, 1));
         this.#inPost = true;
         try {
@@ -1294,7 +1723,13 @@ export class WebGPURenderer3D {
         let maskView;
         if (outlineActive3D(this.postProcess)) {
             post.mask.setSize(Math.max(width, 1), Math.max(height, 1));
-            const saved = { layerMask: camera.layerMask, override: scene.overrideMaterial, background: scene.background, shadows: this.shadowsEnabled, planes: scene.clippingPlanes };
+            const saved = {
+                layerMask: camera.layerMask,
+                override: scene.overrideMaterial,
+                background: scene.background,
+                shadows: this.shadowsEnabled,
+                planes: scene.clippingPlanes
+            };
             camera.layerMask = this.postProcess.outlineLayers;
             scene.overrideMaterial = post.maskMaterial;
             scene.background = [0, 0, 0];
@@ -1349,11 +1784,17 @@ export class WebGPURenderer3D {
             throw new World3DError('WORLD3D_CONTEXT_LOST', 'readback');
         const device = this.device, entry = this.target(target), width = target.width, height = target.height;
         // Buffer rows must be padded to a multiple of 256 bytes.
-        const bytesPerRow = Math.ceil(width * 4 / 256) * 256;
-        const buffer = device.createBuffer({ size: bytesPerRow * height, usage: BUFFER_USAGE.COPY_DST | BUFFER_USAGE.MAP_READ });
+        const bytesPerRow = Math.ceil((width * 4) / 256) * 256;
+        const buffer = device.createBuffer({
+            size: bytesPerRow * height,
+            usage: BUFFER_USAGE.COPY_DST | BUFFER_USAGE.MAP_READ
+        });
         try {
             const encoder = device.createCommandEncoder();
-            encoder.copyTextureToBuffer({ texture: entry.color }, { buffer, bytesPerRow, rowsPerImage: height }, [width, height]);
+            encoder.copyTextureToBuffer({ texture: entry.color }, { buffer, bytesPerRow, rowsPerImage: height }, [
+                width,
+                height
+            ]);
             device.queue.submit([encoder.finish()]);
             await buffer.mapAsync(MAP_MODE_READ);
             const mapped = new Uint8Array(buffer.getMappedRange()), out = new Uint8Array(width * height * 4);
@@ -1415,6 +1856,7 @@ export class WebGPURenderer3D {
         this.#pipelines.clear();
         this.#modules.clear();
         this.#frameBuffer.destroy();
+        this.#tiledBuffer.destroy();
         this.#objectBuffer.destroy();
         this.#skyBuffer?.destroy();
         this.#dummyBones.destroy();
@@ -1433,7 +1875,9 @@ export class WebGPURenderer3D {
         try {
             this.#context.unconfigure();
         }
-        catch { /* The canvas may already be detached. */ }
+        catch {
+            /* The canvas may already be detached. */
+        }
         if (this.#ownsDevice)
             this.device.destroy();
     }
@@ -1447,7 +1891,9 @@ export async function createWebGPURenderer3D(options) {
         return new WebGPURenderer3D(options, options.device, false);
     if (typeof navigator === 'undefined' || !navigator.gpu)
         throw new World3DError('WORLD3D_CONTEXT_UNAVAILABLE', 'webgpu');
-    const adapter = await navigator.gpu.requestAdapter({ powerPreference: options.powerPreference ?? 'high-performance' });
+    const adapter = await navigator.gpu.requestAdapter({
+        powerPreference: options.powerPreference ?? 'high-performance'
+    });
     if (!adapter)
         throw new World3DError('WORLD3D_CONTEXT_UNAVAILABLE', 'webgpu adapter');
     let device;

@@ -1,3 +1,4 @@
+/** The largest capacity a ByteWriter has, in bytes. */
 export const BYTE_WRITER_LIMITS = Object.freeze({ maxBytes: 16777216 });
 // Capture native slot access and writes once. Caller properties, iterators and
 // species do not participate in admission, append or snapshot ownership.
@@ -102,20 +103,50 @@ export class ByteWriter {
         // Failed construction publishes no state; intrinsic faults escape intact.
         apply(weakSet, states, [this, { bytes, view, capacity: size, length: 0, endian: order, disposed: false }]);
     }
-    get capacity() { return stateOf(this).capacity; }
-    get length() { return stateOf(this).length; }
-    get remainingCapacity() { const state = stateOf(this); return state.capacity - state.length; }
-    get disposed() { return stateOf(this).disposed; }
-    get endian() { return stateOf(this).endian; }
-    set endian(value) { const state = openState(this); state.endian = byteOrder(value); }
-    writeByte(value) { appendScalar(this, value, 1, signedByte, -128, 127); }
-    writeUnsignedByte(value) { appendScalar(this, value, 1, unsignedByte, 0, 255); }
-    writeShort(value) { appendScalar(this, value, 2, signedShort, -32768, 32767); }
-    writeUnsignedShort(value) { appendScalar(this, value, 2, unsignedShort, 0, 65535); }
-    writeInt(value) { appendScalar(this, value, 4, signedInt, -2147483648, 2147483647); }
-    writeUnsignedInt(value) { appendScalar(this, value, 4, unsignedInt, 0, 4294967295); }
-    writeFloat(value) { appendScalar(this, value, 4, float); }
-    writeDouble(value) { appendScalar(this, value, 8, double); }
+    get capacity() {
+        return stateOf(this).capacity;
+    }
+    get length() {
+        return stateOf(this).length;
+    }
+    get remainingCapacity() {
+        const state = stateOf(this);
+        return state.capacity - state.length;
+    }
+    get disposed() {
+        return stateOf(this).disposed;
+    }
+    get endian() {
+        return stateOf(this).endian;
+    }
+    set endian(value) {
+        const state = openState(this);
+        state.endian = byteOrder(value);
+    }
+    writeByte(value) {
+        appendScalar(this, value, 1, signedByte, -128, 127);
+    }
+    writeUnsignedByte(value) {
+        appendScalar(this, value, 1, unsignedByte, 0, 255);
+    }
+    writeShort(value) {
+        appendScalar(this, value, 2, signedShort, -32768, 32767);
+    }
+    writeUnsignedShort(value) {
+        appendScalar(this, value, 2, unsignedShort, 0, 65535);
+    }
+    writeInt(value) {
+        appendScalar(this, value, 4, signedInt, -2147483648, 2147483647);
+    }
+    writeUnsignedInt(value) {
+        appendScalar(this, value, 4, unsignedInt, 0, 4294967295);
+    }
+    writeFloat(value) {
+        appendScalar(this, value, 4, float);
+    }
+    writeDouble(value) {
+        appendScalar(this, value, 8, double);
+    }
     writeBytes(source) {
         const state = openState(this);
         const width = sourceLength(source);

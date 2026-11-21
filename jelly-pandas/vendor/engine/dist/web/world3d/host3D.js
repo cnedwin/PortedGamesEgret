@@ -14,7 +14,7 @@ export function createWorld3DHost(canvas) {
         setTimeout(callback, delayMs) {
             const timer = setTimeout(callback, delayMs);
             return () => clearTimeout(timer);
-        },
+        }
     };
 }
 /**
@@ -51,5 +51,10 @@ export function startWorld3DLoop(engine, onError) {
         }
     };
     request = requestAnimationFrame(frame);
-    return { dispose() { stopped = true; cancelAnimationFrame(request); } };
+    return {
+        dispose() {
+            stopped = true;
+            cancelAnimationFrame(request);
+        }
+    };
 }
