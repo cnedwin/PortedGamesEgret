@@ -2,20 +2,31 @@
 
 ## 简介 · Introduction
 
-漕河守闸是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的游戏 Demo，一款塔防。北宋汴河上，水寇的快艇、楼船和旗舰顺流而下，纤道上还有轻步匪和刀盾兵摸过来。在河岸的十二个建造位上建弩楼、砲车、火箭台和铜锣哨，必要时关上闸门把船拦住几秒，守住城门十二波。画面是绢本水墨的样子，没有一张图片、一个声音文件：地图用代码画，音效和配乐由引擎在代码里合成。
+漕河守闸是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的塔防 Demo。北宋汴河上，水寇的快艇、楼船和旗舰顺流而下，轻步匪和刀盾兵沿纤道逼近。在河岸的十二个建造位建弩楼、砲车、火箭台和铜锣哨，适时关闸拦船，守住城门十二波。标题页使用为本项目生成的雨夜汴河插画。战场底图由 Canvas 绘制，白鹭实时绘制塔、敌人、水闸和战斗特效，并混合本作原创的配乐与音效。
 
 Canal Watch is a game demo made on its own with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the new
 Egret engine: a tower defence. On the Bian canal of the Northern Song, raiders' skiffs, junks and a flagship come
 down the water while men on foot and shield-bearers come along the towpath. Build crossbow towers, trebuchets, fire
 arrows and gong posts on twelve plots along the banks, shut a sluice gate to hold the boats for a few seconds when it
-counts, and keep the city gate for twelve waves. It is drawn as ink on silk, with no picture and no sound file: the
-map is drawn in code, and the effects and the music are made in code by the engine.
+counts, and keep the city gate for twelve waves. The title illustration of the Bian Canal in the rain was generated
+for this game. Canvas paints the battlefield backdrop. Egret renders towers, enemies, gates and combat effects
+in real time and mixes the original score with the synthesized effects.
 
 [在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/CanalWatch/)
 
+## 双闸截漕 · Sluice Intercept
+
+标题页可进入五波短关，以 ×1 速度正常布防约需 5–6 分钟。第一波水陆同时来敌，第二波开始有载人楼船。上闸适合提前布置砲车和岸防，船员上岸后需要多走一段。下闸靠近城门，可以多打一段水路，但也要在近处接住上岸的船员。点船或「登陆预判」可以看到它此刻沉没的大致上岸点。战报分别记录两闸截停的船只、上岸船员和漏进城的船员。
+
+Select Sluice Intercept on the title screen for a five-wave challenge that takes about 5–6 minutes at ×1.
+The first wave attacks by water and land. Junks carry crews from wave two. An upstream defence trades early
+tower investment for more time to catch crews on the towpath. The lower gate gives towers longer to fire on boats,
+with less room to catch crews before the wall. Select a ship or use Landing preview to see where its crew would land
+if it sank now. The report tracks ships held at each gate and crews ashore, stopped and leaked.
+
 ## 玩法与操作 · How to play
 
-**目标 · Goal**：挡住十二波敌人，城门的命不归零。守住时按剩下的命给星：剩九成以上三颗，五成以上两颗，其余一颗；两种难度各记最好的星数。 · Stop twelve waves before the gate's lives run out. A held game earns stars by the lives kept: three for nine tenths or more, two for half or more, otherwise one; the best on each difficulty is kept.
+**标准守城 · Standard defence**：挡住十二波敌人，城门的命不归零。守住时按剩下的命给星：剩九成以上三颗，五成以上两颗，其余一颗；两种难度各记最好的星数。 · Stop twelve waves before the gate's lives run out. A held game earns stars by the lives kept: three for nine tenths or more, two for half or more, otherwise one; the best on each difficulty is kept.
 
 **规则 · Rules**
 
@@ -46,6 +57,8 @@ map is drawn in code, and the effects and the music are made in code by the engi
 
 游戏没有手柄操作。切到别的标签页时，进行中的一局会停在菜单上。设置在标题和菜单里：音效、配乐、减弱动画（系统设了「减少动态效果」时自动减弱）、中英文。 · There are no gamepad controls. Switching to another tab pauses a game in play behind the menu. The settings, on the title and in the menu: sound, music, reduced motion (on already when the system asks), and the language.
 
+触屏先点塔种预览花费与射程，再点「建造」确认。备战提示会指出第一波的进攻路线，并在波次间预告水路和纤道的来敌。 · On touch screens, choose a tower to preview its cost and range, then tap Build to confirm. The preparation cue identifies the first wave’s route and previews water and towpath raiders between waves.
+
 ## 引擎能力对照表 · Engine capabilities
 
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
@@ -53,13 +66,12 @@ map is drawn in code, and the effects and the music are made in code by the engi
 | `play`（`@egret/engine/play`） | 一次调用建好画布、帧循环和地图框里的透明舞台 · one call makes the canvas, the loop and the clear stage inside the map's box | `src/main.mjs` |
 | `game.sprite` + Graphics | 四种塔（每级多一点红）、五种敌人、箭石火、闸门、射程圈，全用代码画 · the towers (a red pip a level), the raiders, arrows, stones and fire, the gates and the reach rings, all drawn in code | `src/view.mjs` |
 | `game.rect`、`game.circle`、图层精灵 · layer sprites | 血条、火苗；塔、敌人、箭石分层，后建的塔也在敌人后面 · health bars and flames; towers, raiders and shots in layers | `src/view.mjs` |
-| `game.burst`、`game.shake`、`game.flash` | 石头落地、敌人倒下、楼船沉没的碎片；有敌人进城时一抖一闪（减弱动画时不抖、闪得淡） · bursts for stones, falls and sinkings; a shake and a flash when a raider gets in | `src/view.mjs` |
+| `game.burst`、`game.shake` | 投石尘浪和落水、沉船碎片、失守反馈。减弱动画时保留静态命中标记 · debris, water impacts, and a breach cue. Reduced motion keeps static hit markers | `src/combat-fx.mjs` |
 | `game.text` + `game.tween` | 击退时飘起的「+银子」· the floating silver on a kill | `src/view.mjs` |
 | `game.toast` | 「第 n 波来了」「旗舰来了」· the wave notices | `src/main.mjs` |
 | `game.timeScale`、`pause`、`resume`、`after` | ×1/×2/×3 加速、菜单暂停、结算前的停顿 · the speeds, the pause behind the menu, the beat before the end | `src/main.mjs` |
 | `game.reducedMotion` | 设置里的「减弱动画」，没设时跟随系统 · the reduced-motion setting, following the system unless set | `src/main.mjs` |
-| `game.sfx.define` / `play` | 弩、砲、火、石头砸地、沉船、进城、闸门、建塔、开波的合成音效 · synthesized effects for every tower and event | `src/sound.mjs` |
-| `game.music.play` + `intensity` | 「紧张」配乐，越往后的波声部越多 · the 'tense' music, more parts as the waves go on | `src/sound.mjs` |
+| `createBrowserAudio` + `game.sfx` | 后台合成琴笛、战鼓和器械声，交给白鹭混音。配乐随战况切换，两类音量各自控制 · original plucked strings, flute, drums and foley synthesized off-thread, with separate music and effects buses in Egret | `src/sound.mjs` |
 | `createTextTable` + `pickLanguage`（`@egret/engine/kit`） | 中英文文字表、`missing()` 检查两种语言齐全、按浏览器语言开局 · the word table, `missing()` to check both languages, the browser's language at the start | `src/i18n.mjs` |
 | `browserLanguages`、`prefersReducedMotion`（`@egret/engine/web/kit`） | 开局的语言；关掉「减弱动画」时回到系统设置 · the first language; the system's motion setting when the game's is turned off | `src/main.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 设置和两种难度的最好星数；坏档另存后重新开始，存储拒绝写入时提示 · settings and best stars; a broken save set aside, a refusing storage told | `src/saves.mjs`, `src/main.mjs` |

@@ -5,8 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
   <title>漕河守闸 · Canal Watch</title>
   <meta name="description" content="漕河守闸：基于新白鹭引擎独立开发的塔防游戏 Demo。守住汴河上的城门十二波，四种塔、两道水闸、中英文。 · Canal Watch: a tower defence demo made on its own with the new Egret engine.">
-  <meta name="theme-color" content="#2b2924">
+  <meta name="theme-color" content="#101c1c">
   <link rel="icon" href="data:,">
+  <link rel="preload" href="assets/canal-dusk.webp" as="image" fetchpriority="high">
   <link rel="stylesheet" href="style.css">
   <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
   <script type="importmap">
@@ -36,9 +37,11 @@
 <body>
   <main id="frame">
     <header id="bar" hidden>
-      <p class="stat" id="silver"></p>
-      <p class="stat" id="lives"></p>
-      <p class="stat" id="wave"></p>
+      <div class="stats">
+        <p class="stat" id="silver"></p>
+        <p class="stat" id="lives"></p>
+        <p class="stat" id="wave"></p>
+      </div>
       <div class="tools">
         <button type="button" id="gate0" data-gate="0"></button>
         <button type="button" id="gate1" data-gate="1"></button>
@@ -47,6 +50,7 @@
         <button type="button" id="menuButton"></button>
       </div>
     </header>
+    <p id="guide" class="game-guide" hidden></p>
     <div id="field">
       <canvas id="ground" aria-hidden="true"></canvas>
       <div id="plots"></div>
