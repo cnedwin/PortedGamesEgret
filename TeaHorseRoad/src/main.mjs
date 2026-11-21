@@ -31,6 +31,7 @@ import { createFlora } from './world/flora.mjs';
 import { createLand, LAYER } from './world/land.mjs';
 import { createLandmarks } from './world/landmarks.mjs';
 import { createProgramBatcher, prepareRoadPrograms } from './world/programs.mjs';
+import { createRiverbank } from './world/riverbank.mjs';
 import { STATIONS, biomeAt, directionAt, pointAt } from './world/route.mjs';
 import { createSky } from './world/sky.mjs';
 import { loadPlantModel, preparePlantModel } from './world/vegetation.mjs';
@@ -53,25 +54,46 @@ const scene = new Scene3D();
 const camera = createPerspectiveCamera3D({ fov: 58, near: 0.3, far: 9000 });
 scene.addChild(camera);
 const physics = createPhysicsWorld3D({ gravity: [0, -9.81, 0], fixedStep: 1 / 60, maxSubSteps: 4, solverSteps: 2, iterations: 4 });
-const leadCabReady = loadRoadAsset(app.scope, new URL('../assets/models/lead-truck-cab.glb', import.meta.url));
-const creekHallReady = loadRoadAsset(app.scope, new URL('../assets/models/creek-station-hall.glb', import.meta.url));
+const modelUrl = (name) => new URL('../assets/models/' + name + '.glb', import.meta.url);
+const roadAsset = (name) => loadRoadAsset(app.scope, modelUrl(name));
+const leadCabReady = roadAsset('lead-truck-cab');
+const sceneryReady = Promise.all(Object.entries({
+  creek: 'creek-station-hall',
+  gorge: 'gorge-station-hall',
+  plateau: 'plateau-station-hall',
+  stable: 'caravan-stable',
+  gate: 'tea-road-paifang',
+  tower: 'rope-bridge-tower',
+  board: 'rope-bridge-board',
+  slate: 'riverbank-slate'
+}).map(async ([kind, name]) => [kind, await roadAsset(name)]));
+const sky = createSky(scene, app.renderer, { quality: app.quality });
+const flora = createFlora(scene, physics, { quality: app.quality });
 const plantsReady = Promise.all(Object.entries({
-  tea: 'puer-tea-bush.glb',
-  pine: 'gorge-pine.glb',
-  fir: 'snow-fir.glb'
-}).map(async ([kind, file]) => {
-  const url = new URL('../assets/models/' + file, import.meta.url);
+  tea: 'puer-tea-bush',
+  pine: 'gorge-pine',
+  fir: 'snow-fir',
+  broadleaf: 'dian-broadleaf'
+}).map(async ([kind, name]) => {
+  const url = modelUrl(name);
   try {
-    return [kind, await loadPlantModel(kind, url)];
+    const model = app.scope.use(await loadPlantModel(kind, url));
+    flora.setPlantModel(kind, model);
+    return [kind, model];
   } catch (cause) {
     console.warn('Optional vegetation model unavailable', url.href, cause);
     return [kind, null];
   }
 }));
-const sky = createSky(scene, app.renderer, { quality: app.quality });
-const flora = createFlora(scene, physics, { quality: app.quality });
 const land = await createLand(scene, physics, { quality: app.quality, onTile: flora.onTile });
-const landmarks = createLandmarks(scene, physics, { quality: app.quality, hallModel: await creekHallReady });
+const scenery = Object.fromEntries(await sceneryReady);
+const landmarks = createLandmarks(scene, physics, {
+  quality: app.quality,
+  hallModel: scenery.creek,
+  stationArt: { gorge: scenery.gorge, plateau: scenery.plateau, gate: scenery.gate, stable: scenery.stable },
+  bridgeArt: { tower: scenery.tower, board: scenery.board }
+});
+createRiverbank(scene, scenery.slate, { quality: app.quality });
 const waters = createWaters(scene, { quality: app.quality });
 
 // Where a journey begins: the first station, a station of the save, or (for testing) a distance given in the address.
@@ -86,7 +108,6 @@ while (!land.readyAround(p0[0], p0[2], 100)) {
   land.update(p0[0], p0[2]);
 }
 const plantModels = (await plantsReady).filter(([, model]) => model);
-for (const [kind, model] of plantModels) flora.setPlantModel(kind, app.scope.use(model));
 const convoy = createConvoy(scene, physics, land.heightAt, { s: beginS, leadCab: await leadCabReady });
 const effects = createEffects(scene, physics, convoy, { land, water: waters, quality: app.quality });
 // Let the 2D title build while the road links. Do not let the first 3D draw claim an unfinished program.

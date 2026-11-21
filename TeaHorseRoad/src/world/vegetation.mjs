@@ -1,8 +1,8 @@
 import { loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
 import { InstancedMesh3D, Mesh3D, mat4Compose, mat4Determinant, mergeGeometries3D, transformGeometry3D } from '@egret/engine/world3d';
-import { pineGeometry, teaBushGeometry } from '../models/plants.mjs';
+import { broadleafGeometry, pineGeometry, teaBushGeometry } from '../models/plants.mjs';
 
-const FACE_LIMIT = { pine: 300, fir: 240, tea: 96 };
+const FACE_LIMIT = { pine: 300, fir: 240, tea: 96, broadleaf: 320 };
 const MAX_BYTES = 512 * 1024;
 const MAX_TEXTURE_EDGE = 1024;
 
@@ -45,7 +45,7 @@ export function fitPlantModel(kind, asset) {
   const geometry = mergeGeometries3D([source]);
   try {
     transformGeometry3D(geometry, mesh.matrixWorld);
-    const stock = kind === 'tea' ? teaBushGeometry() : pineGeometry(kind === 'fir');
+    const stock = kind === 'tea' ? teaBushGeometry() : kind === 'broadleaf' ? broadleafGeometry() : pineGeometry(kind === 'fir');
     const target = stock.boundingBox, bounds = geometry.boundingBox;
     const size = [0, 1, 2].map((axis) => bounds[axis + 3] - bounds[axis]);
     if (!size.every((span) => Number.isFinite(span) && span > 0)) throw new Error('Near-plant mesh has no solid bounds');

@@ -81,9 +81,9 @@ Every item below is done through the engine's API; the table says where it shows
 
 ## 素材 · Assets
 
-头车驾驶室、近景茶丛、松树、雪冷杉和溪畔驿正厅使用为本项目生成并重新拟合的 Tripo GLB，置于 `assets/models/`。其余模型由代码生成，包括车轮、茶货、篷布、远景草木、桥梁和沿途道具。地面、木纹、布和粒子贴图由 `src/art/textures.mjs` 绘制，立体字由 `tools/make-glyphs.py` 生成，音乐和音效由 `src/audio/synth.mjs` 合成。载入画面的茶山插画 `assets/dawn-convoy.webp` 为本项目生成。结尾短片使用游戏内场景录制并用 FFmpeg 编码。
+头车驾驶室、近处的茶丛和三类常见树木、溪畔驿与沿途驿站的正厅、马棚、牌坊、吊桥塔架与桥板、河岸岩石采用为本项目生成并重新拟合的 Tripo GLB，置于 `assets/models/`。桥板使用单张烘焙贴图和 12 个三角面，桥索、部分道具和远景植被由游戏生成。水反射、流动、涉水判定和桥梁碰撞沿用原有实现。地面、木纹、布和粒子贴图由 `src/art/textures.mjs` 绘制，立体字由 `tools/make-glyphs.py` 生成，音乐和音效由 `src/audio/synth.mjs` 合成。载入画面的茶山插画 `assets/dawn-convoy.webp` 为本项目生成。结尾短片使用游戏内场景录制并用 FFmpeg 编码。
 
-The lead truck cab, nearby tea shrubs, pines and snowy firs, and the Creek Station hall use Tripo GLB assets generated and fitted for this demo, stored in `assets/models/`. The other models are generated in code, including wheels, tea cargo, tarps, distant plants, bridges and roadside props. `src/art/textures.mjs` paints the textures, `tools/make-glyphs.py` generates the 3D lettering and `src/audio/synth.mjs` synthesizes the music and sounds. The loading illustration `assets/dawn-convoy.webp` was generated for this demo. The closing film was captured in-game and encoded with FFmpeg.
+The lead cab, nearby tea shrubs and three common tree types, station halls, stables, the paifang, bridge towers and boards, and riverbank rocks use Tripo GLBs generated and fitted for this demo in `assets/models/`. Each bridge board uses one baked texture atlas and 12 triangles. The game still generates the suspension ropes, distant vegetation and smaller props. Water flow, reflections, fording and bridge collision use the existing systems. `src/art/textures.mjs` paints the procedural textures, `tools/make-glyphs.py` generates the 3D lettering and `src/audio/synth.mjs` synthesizes the music and sounds. The loading illustration `assets/dawn-convoy.webp` was generated for this demo. The closing film was captured in-game and encoded with FFmpeg.
 
 ## 开发 · Development
 

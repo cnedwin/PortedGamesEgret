@@ -16,6 +16,7 @@ import {
   createRope3D,
   createStandardMaterial3D
 } from '@egret/engine/world3d';
+import { signText } from '../art/font.mjs';
 import { flagPixels, woodPixels } from '../art/textures.mjs';
 import { archGeometry, hall, lanternMesh, maniGeometry, materials, poleGeometry, signBoard, stableGeometry, stele, stupaGeometry } from '../models/buildings.mjs';
 import { LAYER } from './land.mjs';
@@ -60,6 +61,22 @@ function place(node, frame, lift = 0) {
   return node;
 }
 
+/** Reject a fitted gate with a post, threshold or other triangle over the central driving lane. */
+function gateClearsLane(geometry) {
+  const position = geometry.getAttribute('position');
+  const indices = geometry.index?.data;
+  if (geometry.topology !== 'triangles' || position?.itemSize !== 3 || geometry.drawCount < 3) return false;
+  const data = position.data;
+  for (let i = 0; i + 2 < geometry.drawCount; i += 3) {
+    const a = (indices ? indices[i] : i) * 3,
+      b = (indices ? indices[i + 1] : i + 1) * 3,
+      c = (indices ? indices[i + 2] : i + 2) * 3;
+    if (Math.min(data[a], data[b], data[c]) < 1.7 && Math.max(data[a], data[b], data[c]) > -1.7 &&
+        Math.min(data[a + 1], data[b + 1], data[c + 1]) < 4.8 && Math.max(data[a + 1], data[b + 1], data[c + 1]) > -0.05) return false;
+  }
+  return true;
+}
+
 /** A line of prayer flags between two points, as cloth pinned along its top edge. */
 function flagLine(scene, from, to, { sag = 0.6, rows = 3, seed = 1 } = {}) {
   const length = Math.hypot(to[0] - from[0], to[1] - from[1], to[2] - from[2]),
@@ -94,22 +111,37 @@ function flagLine(scene, from, to, { sag = 0.6, rows = 3, seed = 1 } = {}) {
  * Build every landmark into `scene`, with colliders in `physics`. Returns the stations with their yards, the bridge,
  * and `update(seconds, focus)` to move cloth and rope near `focus`.
  */
-export function createLandmarks(scene, physics, { quality = 'medium', hallModel } = {}) {
+export function createLandmarks(scene, physics, { quality = 'medium', hallModel, stationArt = {}, bridgeArt } = {}) {
   const animated = [],
     stations = [];
-  const stable = stableGeometry(),
-    painted = materials.painted;
+  const painted = materials.painted,
+    stable = stationArt.stable ?? { geometry: stableGeometry(), material: painted },
+    halls = { start: hallModel, creek: hallModel, gorge: stationArt.gorge, plateau: stationArt.plateau };
 
   // ---- The start: a gateway over the road, the tea house of the hills, and a stele with the name.
   {
-    const gate = new Mesh3D(archGeometry(11), painted);
+    const frame = frameAt(STATIONS[0].s + 46, 0, { face: 'along' });
+    const model = stationArt.gate;
+    const fitted = model && gateClearsLane(model.geometry);
+    const gate = fitted ? new Mesh3D(model.geometry, model.material) : new Mesh3D(archGeometry(11), painted);
     gate.castShadow = true;
-    place(gate, frameAt(STATIONS[0].s + 46, 0, { face: 'along' }));
+    place(gate, frame);
     scene.addChild(gate);
-    const board = signBoard(['茶马古道', 'TEA HORSE ROAD'], { width: 4.6, height: 4.9 });
-    place(board, frameAt(STATIONS[0].s + 46, 0, { face: 'along' }), 0.2);
-    board.setRotation(0, frameAt(STATIONS[0].s + 46, 0, { face: 'along' }).yaw + Math.PI, 0);
-    scene.addChild(board);
+    if (fitted) {
+      // The fitted gate already has a red fascia. Mount the legible game lettering on it.
+      const plaque = new Object3D();
+      plaque.setPosition(0, 5.35, 0.18);
+      const chinese = new Mesh3D(signText('茶马古道', { size: 0.53 }), materials.gilt);
+      chinese.setPosition(0, 0.42, 0);
+      plaque.addChild(chinese);
+      plaque.addChild(new Mesh3D(signText('TEA HORSE ROAD', { size: 0.235 }), materials.gilt));
+      gate.addChild(plaque);
+    } else {
+      const board = signBoard(['茶马古道', 'TEA HORSE ROAD'], { width: 4.6, height: 4.9 });
+      place(board, frame, 0.2);
+      board.setRotation(0, frame.yaw + Math.PI, 0);
+      scene.addChild(board);
+    }
   }
 
   // ---- The stations: a hall facing the road, a stable, lanterns, a banner and a stele with the name.
@@ -118,13 +150,12 @@ export function createLandmarks(scene, physics, { quality = 'medium', hallModel 
       yard = frameAt(station.s, side * 15),
       back = frameAt(station.s, side * 27),
       node = new Object3D();
-    const h = station.id === 'creek' && hallModel
-      ? new Mesh3D(hallModel.geometry, hallModel.material)
-      : hall({ width: 12, depth: 7 });
+    const model = halls[station.id];
+    const h = model ? new Mesh3D(model.geometry, model.material) : hall({ width: 12, depth: 7 });
     h.castShadow = h.receiveShadow = true;
     place(h, back);
     scene.addChild(h);
-    const stall = new Mesh3D(stable, painted);
+    const stall = new Mesh3D(stable.geometry, stable.material);
     stall.castShadow = true;
     place(stall, frameAt(station.s + 16, side * 22));
     scene.addChild(stall);
@@ -132,12 +163,18 @@ export function createLandmarks(scene, physics, { quality = 'medium', hallModel 
     const marker = stele(name, english);
     place(marker, frameAt(station.s - 12, side * (ROAD_HALF_WIDTH + 2.5)));
     scene.addChild(marker);
-    // Lanterns hang either side of the hall's door.
-    for (const k of [-1, 1]) {
-      const lantern = lanternMesh(),
-        f = frameAt(station.s + k * 3.4, side * 21.6);
-      lantern.setPosition(f.x, back.y + 4.2, f.z);
-      scene.addChild(lantern);
+    // The fitted plateau façade already has lamps either side of its door.
+    const lanternSides = station.id === 'plateau' && model ? [] : [-1, 1];
+    for (const k of lanternSides) {
+      const lantern = lanternMesh();
+      if (model && model !== hallModel) {
+        lantern.setPosition(k * 3.4, 4.2, Math.max(5.4, model.geometry.boundingBox[5] + 0.14));
+        h.addChild(lantern);
+      } else {
+        const f = frameAt(station.s + k * 3.4, side * 21.6);
+        lantern.setPosition(f.x, back.y + 4.2, f.z);
+        scene.addChild(lantern);
+      }
     }
     // A banner on a tall pole by the road, the station's welcome.
     const pole = new Mesh3D(poleGeometry(9), painted),
@@ -176,7 +213,12 @@ export function createLandmarks(scene, physics, { quality = 'medium', hallModel 
     // Planks across the deck, each a little uneven.
     const count = Math.round((length + 6) / 0.45),
       random = seeded(5),
-      planks = new InstancedMesh3D(createBoxGeometry3D({ width: halfWidth * 2, height: 0.12, depth: 0.4 }), plankMaterial, count),
+      board = bridgeArt?.board,
+      planks = new InstancedMesh3D(
+        board?.geometry ?? createBoxGeometry3D({ width: halfWidth * 2, height: 0.12, depth: 0.4 }),
+        board?.material ?? plankMaterial,
+        count
+      ),
       yaw = Math.atan2(-dx, -dz);
     for (let i = 0; i < count; i++) {
       const t = i / (count - 1),
@@ -231,18 +273,31 @@ export function createLandmarks(scene, physics, { quality = 'medium', hallModel 
       [a, -1],
       [b, 1]
     ]) {
-      const node = new Mesh3D(poleGeometry(6.5), painted);
-      for (const s of [-1, 1]) {
-        const post = node.clone();
-        post.setPosition(end[0] + rx * s * (halfWidth + 0.3) + dx * sign * 1.5, y - 0.3, end[2] + rz * s * (halfWidth + 0.3) + dz * sign * 1.5);
-        scene.addChild(post);
-        towerTops.push([end[0] + rx * s * (halfWidth + 0.3) + dx * sign * 1.5, y + 6.0, end[2] + rz * s * (halfWidth + 0.3) + dz * sign * 1.5]);
+      const x = end[0] + dx * sign * 1.5,
+        z = end[2] + dz * sign * 1.5,
+        tower = bridgeArt?.tower;
+      if (tower) {
+        const portal = new Mesh3D(tower.geometry, tower.material);
+        portal.castShadow = portal.receiveShadow = true;
+        portal.setPosition(x, y, z);
+        portal.setRotation(0, yaw, 0);
+        scene.addChild(portal);
+      } else {
+        const pole = poleGeometry(6.5);
+        for (const s of [-1, 1]) {
+          const post = new Mesh3D(pole, painted);
+          post.setPosition(x + rx * s * (halfWidth + 0.3), y - 0.3, z + rz * s * (halfWidth + 0.3));
+          scene.addChild(post);
+        }
+        const beam = new Mesh3D(createBoxGeometry3D({ width: halfWidth * 2 + 1.2, height: 0.3, depth: 0.3 }), plankMaterial);
+        beam.setPosition(x, y + 6.0, z);
+        beam.setRotation(0, yaw, 0);
+        scene.addChild(beam);
       }
-      const beam = new Mesh3D(createBoxGeometry3D({ width: halfWidth * 2 + 1.2, height: 0.3, depth: 0.3 }), plankMaterial);
-      beam.setPosition(end[0] + dx * sign * 1.5, y + 6.0, end[2] + dz * sign * 1.5);
-      beam.setRotation(0, yaw, 0);
-      scene.addChild(beam);
-      animated.push(flagLine(scene, [end[0] + rx * (halfWidth + 0.3) + dx * sign * 1.5, y + 5.6, end[2] + rz * (halfWidth + 0.3) + dz * sign * 1.5], [end[0] - rx * (halfWidth + 0.3) + dx * sign * 1.5, y + 5.6, end[2] - rz * (halfWidth + 0.3) + dz * sign * 1.5], { sag: 0.5, seed: 11 + sign }));
+      for (const s of [-1, 1]) {
+        towerTops.push([x + rx * s * (halfWidth + 0.3), y + 6.0, z + rz * s * (halfWidth + 0.3)]);
+      }
+      animated.push(flagLine(scene, [x + rx * (halfWidth + 0.3), y + 5.6, z + rz * (halfWidth + 0.3)], [x - rx * (halfWidth + 0.3), y + 5.6, z - rz * (halfWidth + 0.3)], { sag: 0.5, seed: 11 + sign }));
     }
     // The main cables, tower to tower on each side, a little longer than the span so they dip to just above the hand
     // ropes; and the hand rope along each side of the deck, a run of short ropes from hanger to hanger.
