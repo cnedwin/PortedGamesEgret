@@ -2,20 +2,31 @@
 
 ## 简介 · Introduction
 
-漕河守闸是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的游戏 Demo，一款塔防。北宋汴河上，水寇的快艇、楼船和旗舰顺流而下，纤道上还有轻步匪和刀盾兵摸过来。在河岸的十二个建造位上建弩楼、砲车、火箭台和铜锣哨，必要时关上闸门把船拦住几秒，守住城门十二波。画面是绢本水墨的样子，没有一张图片、一个声音文件：地图用代码画，音效和配乐由引擎在代码里合成。
+漕河守闸是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的塔防 Demo。北宋汴河上，水寇的快艇、楼船和旗舰顺流而下，轻步匪和刀盾兵沿纤道逼近。在河岸的十二个建造位建弩楼、砲车、火箭台和铜锣哨，适时关闸拦船，守住城门十二波。标题页使用为本项目生成的雨夜汴河插画。战场底图由 Canvas 绘制，塔、敌人、水闸和战斗特效由白鹭实时绘制，配乐和音效由引擎合成。
 
 Canal Watch is a game demo made on its own with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the new
 Egret engine: a tower defence. On the Bian canal of the Northern Song, raiders' skiffs, junks and a flagship come
 down the water while men on foot and shield-bearers come along the towpath. Build crossbow towers, trebuchets, fire
 arrows and gong posts on twelve plots along the banks, shut a sluice gate to hold the boats for a few seconds when it
-counts, and keep the city gate for twelve waves. It is drawn as ink on silk, with no picture and no sound file: the
-map is drawn in code, and the effects and the music are made in code by the engine.
+counts, and keep the city gate for twelve waves. The title illustration of the Bian Canal in the rain was generated
+for this game. Canvas paints the battlefield backdrop. Egret renders towers, enemies, gates and combat effects
+in real time and synthesizes the soundtrack and sound effects.
 
 [在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/CanalWatch/)
 
+## 双闸截漕 · Sluice Intercept
+
+标题页可进入五波短关，以 ×1 速度正常布防约需 5–6 分钟。第一波水陆同时来敌，第二波开始有载人楼船。上闸适合提前布置砲车和岸防，船员上岸后需要多走一段。下闸靠近城门，可以多打一段水路，但也要在近处接住上岸的船员。点船或「登陆预判」可以看到它此刻沉没的大致上岸点。战报分别记录两闸截停的船只、上岸船员和漏进城的船员。
+
+Select Sluice Intercept on the title screen for a five-wave challenge that takes about 5–6 minutes at ×1.
+The first wave attacks by water and land. Junks carry crews from wave two. An upstream defence trades early
+tower investment for more time to catch crews on the towpath. The lower gate gives towers longer to fire on boats,
+with less room to catch crews before the wall. Select a ship or use Landing preview to see where its crew would land
+if it sank now. The report tracks ships held at each gate and crews ashore, stopped and leaked.
+
 ## 玩法与操作 · How to play
 
-**目标 · Goal**：挡住十二波敌人，城门的命不归零。守住时按剩下的命给星：剩九成以上三颗，五成以上两颗，其余一颗；两种难度各记最好的星数。 · Stop twelve waves before the gate's lives run out. A held game earns stars by the lives kept: three for nine tenths or more, two for half or more, otherwise one; the best on each difficulty is kept.
+**标准守城 · Standard defence**：挡住十二波敌人，城门的命不归零。守住时按剩下的命给星：剩九成以上三颗，五成以上两颗，其余一颗；两种难度各记最好的星数。 · Stop twelve waves before the gate's lives run out. A held game earns stars by the lives kept: three for nine tenths or more, two for half or more, otherwise one; the best on each difficulty is kept.
 
 **规则 · Rules**
 
@@ -45,6 +56,8 @@ map is drawn in code, and the effects and the music are made in code by the engi
 | 暂停与菜单 · Pause and menu | P 或 Esc · P or Esc | 「菜单」· Menu | 同左 · the same |
 
 游戏没有手柄操作。切到别的标签页时，进行中的一局会停在菜单上。设置在标题和菜单里：音效、配乐、减弱动画（系统设了「减少动态效果」时自动减弱）、中英文。 · There are no gamepad controls. Switching to another tab pauses a game in play behind the menu. The settings, on the title and in the menu: sound, music, reduced motion (on already when the system asks), and the language.
+
+触屏先点塔种预览花费与射程，再点「建造」确认。备战提示会指出第一波的进攻路线，并在波次间预告水路和纤道的来敌。 · On touch screens, choose a tower to preview its cost and range, then tap Build to confirm. The preparation cue identifies the first wave’s route and previews water and towpath raiders between waves.
 
 ## 引擎能力对照表 · Engine capabilities
 
