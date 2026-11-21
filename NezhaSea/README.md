@@ -2,17 +2,9 @@
 
 ## 简介 · Introduction
 
-哪吒闹海是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的游戏 Demo，一款割草类肉鸽。东海龙王纵容三太子兴风作浪，虾兵蟹将、水母、鲨卒、河豚和海螺兵一波波涌上岸；哪吒只管走位，乾坤圈、混天绫、火尖枪、金砖、风火轮、九龙神火罩自己出手。结构学《土豆兄弟》：二十波，每波之间先升级、再进龙宫集市买法宝和宝物；再加一点合成玩法：同样两件同阶的法宝合成高一阶，乾坤圈配混天绫、火尖枪配风火轮、金砖配九龙神火罩，两件都到三阶就合成神器。第十波是巡海夜叉，第二十波是三太子敖丙。画面是红纸剪出的哪吒和夜里的东海，声音和配乐由引擎在代码里合成，不加载任何图片或声音文件。
+《哪吒闹海》是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)开发的生存动作游戏。守住陈塘关二十波，靠走位避开敌群，让法宝自动攻击。珍珠可用来升级、买法宝和合成神器。第十波迎战巡海夜叉，第二十波迎战敖丙。
 
-Nezha Stirs the Sea is a game demo made on its own with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the
-new Egret engine: a survivors-like roguelite. The Dragon King lets his third son raise the sea, and wave after wave of
-shrimp soldiers, crab generals, jellyfish, sharks, pufferfish and conch soldiers storm the shore; Nezha only moves,
-and her treasures — the Universe Ring, the Sky Ribbon, the Fire Spear, the Golden Brick, the Wind-Fire Wheels and the
-Nine-Dragon Dome — strike by themselves. It is built like Brotato: twenty waves, with level-ups and then the Dragon
-Palace market between them; and with a little merging: two of the same treasure and tier make the next tier, and the
-Ring with the Ribbon, the Spear with the Wheels and the Brick with the Dome, both at tier three, make a divine
-treasure. The sea yaksha comes on wave ten, and Ao Bing, the third prince, on wave twenty. It is drawn as a Nezha cut
-from red paper on the night sea; the sound and music are made in code by the engine, with no picture or sound file.
+Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Hold Chentang Pass for twenty waves. Move through the enemy shoals while your treasures strike automatically. Spend pearls on upgrades and combine treasures in the Dragon Palace market. The Patrol Yaksha and Ao Bing guard waves ten and twenty.
 
 [在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/NezhaSea/)
 
@@ -32,12 +24,12 @@ from red paper on the night sea; the sound and music are made in code by the eng
 
 | | 键盘 · Keyboard | 手柄 · Gamepad | 触屏 · Touch |
 |---|---|---|---|
-| 走 · Move | WASD、方向键 · WASD, arrows | 左摇杆、十字键 · left stick, d-pad | 手指按住海面拖 · hold and drag on the sea |
+| 走 · Move | WASD、方向键 · WASD, arrows | 左摇杆、十字键 · left stick, d-pad | 在海面任意位置按住并拖动 · hold and drag anywhere on the sea |
 | 暂停 · Pause | P、Esc | | 「暂停」· Pause |
 | 升级 · Level-up | 1–4，或 Tab 加 Enter · or Tab and Enter | | 点 · tap |
 | 集市 · Market | Tab、Enter、Space；Esc 取消选中 · Esc to unpick | | 点 · tap |
 
-设置在标题和暂停菜单里：声音、配乐、减弱动画（系统设了「减少动态效果」时自动减弱）、中英文。切到别的标签页时，进行中的一波停在暂停菜单上。 · Settings on the title and in the pause menu: sound, music, reduced motion, and the language. Switching tabs pauses a wave behind the menu.
+设置在标题和暂停菜单里。音效和配乐可独立关闭，减弱动画（系统设了「减少动态效果」时自动减弱）、中英文。切到别的标签页时，进行中的一波停在暂停菜单上。 · Settings are on the title and in the pause menu. Music and effects have independent mute switches. Switching tabs pauses a wave behind the menu.
 
 ## 法宝、神器与宝物 · Treasures and items
 
@@ -71,43 +63,39 @@ from red paper on the night sea; the sound and music are made in code by the eng
 | 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
 |---|---|---|
 | `play`（`@egret/engine/play`） | 一次调用建好竖屏 540×960 的透明画布和帧循环 · the clear 540 × 960 canvas and the loop from one call | `src/main.mjs` |
-| `game.keys.axis()` | 键盘、手柄摇杆和手指摇杆合成一个移动方向 · keys, the gamepad stick and the finger's stick as one direction | `src/main.mjs` |
-| `game.touchStick` | 手机上按住拖动的摇杆 · the hold-and-drag stick on a phone | `src/main.mjs` |
-| `game.sprite` + Graphics | 哪吒、八种水族兵和首领、法宝出手全用矩形拼的剪纸；精灵按种类放进池子反复用 · Nezha, the soldiers, the bosses and the strokes, cut from rectangles; sprites kept in pools by kind | `src/view.mjs` |
+| `game.keys.axis()` | 键盘及手柄输入由引擎提供，触屏摇杆有独立的触点归属 · engine keyboard and gamepad input, with independent touch ownership | `src/main.mjs` |
+| Pointer Events | 战场接管单个触点，越界继续追踪，取消和暂停时归零 · a single owned contact continues outside the field and resets on cancel and pause | `src/sea-stick.mjs` |
+| Egret Bitmap + Graphics | 三种哪吒、六类水族兵、两位首领和法宝共用一张运行时画集，动态特效按类型复用 · pooled actors on one shared runtime atlas, with separate weapon effects | `src/view.mjs`, `src/actor-art.mjs` |
 | `game.burst`、`game.shake`、`game.flash`、`game.text` | 击退、砸落、升级的碎片；受伤一抖；合成神器一闪；伤害数字（减弱动画时不抖不闪） · bursts, a shake when hurt, a flash for a divine merge, damage numbers | `src/view.mjs`, `src/main.mjs` |
 | `game.toast` | 首领登场的提示 · the boss notices | `src/main.mjs` |
 | `game.pause`、`resume`、`after` | 暂停菜单、结算前的停顿 · the pause menu, the beat before the end | `src/main.mjs` |
-| `game.sfx.define` / `play`、`game.music` | 每种出手、击退、珍珠、受伤、升级、首领锣、合成的合成音效；波次里「战斗」、集市里「平静」的配乐 · synthesized effects; 'battle' music in a wave, 'calm' in the market | `src/sound.mjs` |
+| Egret Web Audio mixer | 标题、战斗、首领和集市原创配乐，跨场景淡入淡出，21 种反馈音效；采样在 Worker 内合成 · four score loops, crossfades and 21 synthesized effects | `src/sound.mjs`, `src/audio-synth.mjs` |
 | `createTextTable` + `pickLanguage` | 中英文文字表，`missing()` 检查两种语言齐全 · the word table, checked complete | `src/i18n.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 解锁、最远波次、设置；坏档另存后重新开始 · unlocks, furthest waves, settings; a broken save set aside | `src/saves.mjs` |
 | `browserLanguages`、`prefersReducedMotion` | 开局的语言；关掉「减弱动画」时回到系统设置 · the first language; the system's motion setting | `src/main.mjs` |
 
+## 美术与玩法界面 · Art and interface
+
+- `assets/` 的陈塘关封面、战场、龙宫集市和三张形态立绘为本 Demo 生成的原创插画。绘制角色画集、配乐和音效的源码一并收录。 · The cover, battlefield, market and three form portraits in `assets/` are original illustrations generated for this demo. The source for the actor atlas, score and sound effects ships with the game.
+- 手机集市可切换「货架」和「我的法宝」。珍珠余额和「下一波」始终可见，选中法宝后可查看合成结果。 · On mobile, switch between stock and your treasures. The wallet and Next wave stay visible, and selecting a treasure previews any available merge.
+
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs`（Node 22，31 项全部通过）：三种哪吒的开局；走位和边界；水族兵冒在离哪吒远处、冒出来前打不到；乾坤圈去回各打一次、混天绫只扫前方、火尖枪一条线、金砖砸一片、九龙神火罩一圈、风火轮每个冷却打一次；暴击翻倍、护甲减伤、闪避有上限；珍珠掉落吸取和升级；一波结束收珍珠、付收成、先升级后集市；首领波要打倒首领；买法宝、槽满时自动合成或拒绝、买宝物加属性；同阶合成到四阶为止；三阶以上的配对合成神器、二阶不行、神器不再合成；神器两种出手都有；换一批越来越贵、留着的货不被换、卖掉退钱、最后一件不能卖；下一波回满血；输赢；同种子同结果；电脑玩家在风平 4 局至少守住 3 局、站着不动必输；存档（新档、最远波次、解锁、坏档、版本过新、存储拒绝写入）；文字齐全、英文里没有中文；引擎副本。 · All 31 Node tests pass.
-- `node test/accept.mjs`（无头 Chromium 153，SwiftShader 软件渲染，540×960）：标题焦点在「出海」；Tab 选难度、Space 关声音并存档、切英文后所有按钮读英文；Enter 出海；按住 D 哪吒右移；P 暂停后不动、Esc 继续；第一波结束先升级、按 1 选完进集市；Tab 到货架按 Enter 买下；选一件法宝后能合成的那件写「合成……」、Enter 合成到下一阶；三阶的乾坤圈和混天绫合成擒龙圈绫；出发去第二波；血尽失守、最远波次存档；再出海；第二十波首领倒下即守住，解锁另外两种哪吒，标题上都能选；坏档提示。标题和结算两张截图基线一致，控制台没有错误。 · The whole walk by keyboard in headless Chromium with software rendering, two baselines matching and a clean console.
-- `node ../tools/quality.mjs NezhaSea`：自动项全部达标，见 [QUALITY.md](QUALITY.md)。 · Every automatic item passes.
-- 另量 · Also measured（无头 SwiftShader）：标题 p95 16.8 ms；第 9、16 波电脑玩家打到中途（场上二十到四十个兵、一两百颗珍珠）p95 16.8 ms；把场上兵数顶到上限 140 个时 p95 33.3 ms（540×960 和 1280×800 都是）。规则本身一步 0.47 毫秒（Node，140 个兵）。 · The title and mid-game waves at 16.8 ms p95; 140 soldiers, the most the field holds, at 33.3 ms; the rules take 0.47 ms a step.
+在 `NezhaSea` 目录运行 `node --test test/*.test.mjs` 和 `node test/accept.mjs`，覆盖规则、存档、中英文、界面键盘流程、购买、合成及结算基线。Chromium 的胜负和解锁界面用测试场景驱动。
+
+Windows Chrome 与三星 Fold7 实机检查首波、暂停、升级和集市。Fold7 使用浏览器触控事件验证任意位置起手、拖出画面、取消及第二触点，并在横竖屏复测购买、换货、合成和进入下一波。 · Windows Chrome and a Samsung Fold7 covered the first wave, pause, level-up and market. Browser touch input exercised pointer ownership, orientation changes, purchases, restocking and merging on the Fold7.
 
 ## 已知问题 · Known issues
 
-- 没有在真机上运行过：触屏摇杆、手柄、手机帧时间都「未运行」。 · Not run on a real device; the touch stick, a gamepad and phone frame times are not run.
-- 场上兵数到上限 140 时，无头软件渲染下帧时间 p95 33 毫秒（见上）。 · At 140 soldiers, frame time is 33 ms p95 under software rendering.
-- 电脑玩家比人好躲，平衡表里的守住率会比真人高。 · The computer player dodges better than people, so the table above is kinder than real play.
-- 读屏只在无头 Chromium 的无障碍树里查过名字。 · Screen-reader names were checked only in headless Chromium.
+白鹭输入、透明画布和软件渲染的历史测量与复现见 [ENGINE-NOTES.md](ENGINE-NOTES.md)。 · See the engine notes for input, transparent canvas and software-rendering measurements.
 
 ## 已解决 · Solved
 
-- 页面按钮上的 Tab 和 Space 失灵（ENGINE-NOTES 1）：只在焦点在页面按钮或面板上时，于捕获阶段先接住 Tab、Space、Enter 和方向键；别的按键照常交给 `play`，所以 WASD 和方向键在海面上仍然能走。 · Tab and Space on the page's buttons (item 1): caught first only while a page button or panel has the focus; other keys still reach `play`.
-- 透明画布下面是黑的（ENGINE-NOTES 2）：开局后把 `play` 的盒子改成透明。 · The black holder (item 2), made clear.
-- 一开始想用贴图（`Bitmap`）画兵，原型里 100 个共用一张贴图的 Bitmap 就到 p95 33 毫秒，而 200 个矩形精灵是 16.7 毫秒（ENGINE-NOTES 3）：所有会动的东西都改用矩形拼。 · Bitmaps sharing one texture cost more than rectangles in a prototype (item 3); everything that moves is cut from rectangles.
-- 神器的第二种出手和第一种共用冷却、一直不出手：给第二种出手单独的冷却。 · A divine treasure's second stroke shared the first one's cooldown and never fired; it has its own now.
-- 平衡：第一版里前几波买不起第二件法宝、后期又从不受伤。加了开局 15 颗珍珠和每波 4 颗、调低一阶价格、后期水族兵按平方变强、出手更重、成群冒出、缩短法宝的射程。 · Balance: at first a second treasure was out of reach early and nothing hurt late; starting and per-wave pearls, cheaper first tiers, soldiers growing by the square late, harder hits, shoals, and shorter reaches.
+窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. Pause releases the battlefield touch stick.
 
 ## 未完成 · Unfinished
 
-- 真机验收。 · Checks on real devices.
-- 更多哪吒的样子、法宝和宝物；无尽模式。 · More forms, treasures and items; an endless mode.
+本轮发布前尚未实测物理手柄、完整二十波和扬声器听感。 · Physical gamepad input, a full twenty-wave session and speaker listening are pending separate checks.
 
 ## 目录结构 · Layout
 
@@ -116,8 +104,9 @@ from red paper on the night sea; the sound and music are made in code by the eng
 | `index.html`, `style.css` | 页面、import map、海面框、顶栏、标题 / 升级 / 集市 / 暂停 / 结算 · the page and its panels |
 | `src/main.mjs` | 入口：存档、语言、`play`、每帧、集市与合成、画面切换 · the entry |
 | `src/view.mjs` | 哪吒、水族兵、法宝出手、珍珠、水弹，按种类放池子 · what moves, pooled |
-| `src/ground.mjs` | 海面（只画一次） · the sea, painted once |
-| `src/sound.mjs` | 合成音效和配乐 · effects and music |
+| `assets/`, `src/actor-art.mjs` | 场景、立绘与角色画集 · backgrounds, portraits and actor atlas |
+| `src/sea-stick.mjs` | 战场触屏输入 · captured touch input |
+| `src/sound.mjs`, `src/audio-synth.mjs`, `src/audio-render.mjs` | 配乐、音效和后台合成 · music, effects and worker synthesis |
 | `src/sim/data.mjs` | 哪吒、法宝、神器、宝物、水族兵、难度、波次的数字 · the numbers |
 | `src/sim/world.mjs` | 规则：一波、出手、珍珠、升级、集市、合成 · the rules |
 | `src/sim/bot.mjs`, `tools/balance.mjs` | 电脑玩家和平衡脚本 · the computer player and the balance script |

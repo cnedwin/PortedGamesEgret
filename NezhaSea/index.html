@@ -36,13 +36,14 @@
 <body>
   <main id="frame">
     <div id="field">
-      <canvas id="ground" aria-hidden="true"></canvas>
+      <div id="ground" aria-hidden="true"></div>
       <header id="hud" hidden>
-        <div class="row">
-          <div class="bar hp" id="hpBar" role="meter" aria-valuemin="0"><span></span><b id="hpText"></b></div>
+        <div class="hud-top">
           <p id="waveText"></p>
+          <p id="timerText"></p>
           <button type="button" id="pauseButton"></button>
         </div>
+        <div class="bar hp" id="hpBar" role="meter" aria-valuemin="0"><span></span><b id="hpText"></b></div>
         <div class="row small">
           <div class="bar xp" id="xpBar" aria-hidden="true"><span></span></div>
           <p id="levelText"></p>
@@ -50,8 +51,12 @@
         </div>
         <div class="bar boss" id="bossBar" hidden><span></span><b id="bossText"></b></div>
       </header>
+      <p id="battleHint" hidden></p>
+      <div id="seaStick" aria-hidden="true" hidden><span></span></div>
     </div>
     <section id="title" class="panel" hidden></section>
+    <section id="guide" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <section id="options" class="panel" role="dialog" aria-modal="true" hidden></section>
     <section id="levelUp" class="panel" role="dialog" aria-modal="true" hidden></section>
     <section id="shop" class="panel" role="dialog" aria-modal="true" hidden></section>
     <section id="menu" class="panel" role="dialog" aria-modal="true" hidden></section>

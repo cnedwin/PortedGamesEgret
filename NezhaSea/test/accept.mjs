@@ -40,6 +40,9 @@ try {
   await page.keyboard.press('Enter');
   await until(page, () => window.nezhaSea.app.danger === 1);
   check(/浪急/.test(await focused()), 'Enter chooses it and the focus stays');
+  check(await tabTo(/^设置$/, true), 'Shift+Tab reaches the separate Settings dialog');
+  await page.keyboard.press('Enter');
+  await until(page, () => window.nezhaSea.screen === 'options');
   check(await tabTo(/声音：开/), 'Tab reaches the sound switch');
   await page.keyboard.press('Space');
   await until(page, () => window.nezhaSea.app.save.data.settings.sound === false);
@@ -48,6 +51,8 @@ try {
   check(await tabTo(/切换到英文/), 'Tab reaches the language switch');
   await page.keyboard.press('Enter');
   await until(page, () => document.documentElement.lang === 'en');
+  await page.keyboard.press('Escape');
+  await until(page, () => window.nezhaSea.screen === 'title');
   const names = await state(() => [...document.querySelectorAll('button')].filter((b) => !b.closest('[hidden]')).map((b) => b.getAttribute('aria-label') || b.textContent).join('|'));
   check(!/[\u3400-\u9fff]/.test(names.replace('中文', '')) && /Set out/.test(names), `in English every button reads in English: ${names.slice(0, 90)}…`);
 
@@ -142,7 +147,7 @@ try {
   check(/Nezha falls back/.test(await state(() => document.querySelector('#end h2').textContent)), 'with no health left Nezha falls back');
   const saved = await state(() => JSON.parse(localStorage.getItem('nezha-sea')).data);
   check(saved.best.boy?.[1] === 2 && saved.plays === 1, `the furthest wave is kept (${JSON.stringify(saved.best)})`);
-  await state(() => document.querySelectorAll('#end .sheet p').forEach((p) => (p.style.visibility = 'hidden')));
+  await state(() => document.querySelectorAll('#end .sheet p, #end .run-totals dd').forEach((p) => (p.style.visibility = 'hidden')));
   const end = await matchBaseline(page, GAME, 'end');
   check(end.written || end.passed, `the end looks as its baseline (${(end.share * 100).toFixed(2)}% differs)`);
   check(/Set out again/.test(await focused()), `the end offers another game first (${await focused()})`);

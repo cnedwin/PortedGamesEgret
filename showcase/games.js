@@ -383,12 +383,12 @@ export const GAMES = [
     features: [
       {
         title: { zh: "一次调用的 play", en: "One call to play" },
-        description: { zh: "画布、帧循环、虚拟摇杆、手柄、碎片、震屏和暂停都来自引擎的 play。", en: "The canvas, the loop, the touch stick, gamepad, bursts, shakes and pause all come from the engine's play." },
+        description: { zh: "白鹭 play 提供透明画布、帧循环、键盘和手柄输入，以及战斗粒子、震屏和暂停接口。", en: "Egret play provides the transparent canvas, game loop, keyboard and gamepad input, combat particles, screen shake and pause." },
         source: 'src/main.mjs',
       },
       {
-        title: { zh: "矩形拼出的剪纸精灵", en: "Paper-cut sprites from rectangles" },
-        description: { zh: "哪吒、水族兵、法宝和珍珠都用矩形拼成，按种类放池子反复用，上百个同屏也走快路径。", en: "Nezha, the soldiers, treasures and pearls are cut from rectangles and pooled by kind, so a hundred on screen stay on the fast path." },
+        title: { zh: "共享角色图集与战斗特效", en: "Shared actor atlas and combat effects" },
+        description: { zh: "白鹭 Bitmap 共用运行时图集绘制哪吒、水族兵、首领和法宝，Graphics 绘制武器轨迹与首领预警。", en: "Egret Bitmap draws Nezha, sea soldiers, bosses and treasures from a shared runtime atlas, with Graphics for weapon trails and boss telegraphs." },
         source: 'src/view.mjs',
       },
       {
