@@ -68,7 +68,17 @@ await play({
     view = createView(game);
     await yieldStartup();
     sound = createSound(game, { on: settings().sound, music: settings().music });
-    return view.ready;
+    await view.ready;
+    if (game.browser.backend === 'webgpu') {
+      // Submit the shared actor texture once, before the live loop can request it in consecutive frames.
+      game.canvas.style.visibility = 'hidden';
+      await yieldStartup();
+      view.primeActorAtlas();
+      const deadline = performance.now() + 100;
+      while (game.browser.host.getStatus().pendingFrames > 0 && performance.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 4));
+      }
+    }
   },
   update: (seconds) => frame(seconds),
   onError: (cause) => console.error(cause)
@@ -669,6 +679,7 @@ document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
 document.title = t('pageTitle');
 $('#loading').remove();
 showTitle();
+game.canvas.style.removeProperty('visibility');
 ready = true;
 
 // For tests and for anyone curious, from the console.

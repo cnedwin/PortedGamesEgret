@@ -1,5 +1,34 @@
 // Original ink-sea score and foley. Mono PCM makes four loopable themes inexpensive to decode.
 export const RATE = 32000;
+
+// These scores are mono. Encode their 16-bit PCM in the same task that renders the samples.
+function monoWav(samples) {
+  const bytes = new Uint8Array(44 + samples.length * 2);
+  const header = new DataView(bytes.buffer);
+  header.setUint32(0, 0x52494646); // RIFF
+  header.setUint32(4, bytes.length - 8, true);
+  header.setUint32(8, 0x57415645); // WAVE
+  header.setUint32(12, 0x666d7420); // fmt
+  header.setUint32(16, 16, true);
+  header.setUint16(20, 1, true); // PCM
+  header.setUint16(22, 1, true); // mono
+  header.setUint32(24, RATE, true);
+  header.setUint32(28, RATE * 2, true);
+  header.setUint16(32, 2, true);
+  header.setUint16(34, 16, true);
+  header.setUint32(36, 0x64617461); // data
+  header.setUint32(40, bytes.length - 44, true);
+  for (let frame = 0; frame < samples.length; frame++) {
+    const sample = Math.max(-1, Math.min(1, samples[frame] || 0));
+    header.setInt16(44 + frame * 2, Math.round(sample * (sample < 0 ? 32768 : 32767)), true);
+  }
+  return bytes;
+}
+
+export function renderWavs(phase) {
+  const tracks = phase ? { track: loopOf(phase) } : effectSamples();
+  return Object.fromEntries(Object.entries(tracks).map(([name, samples]) => [name, monoWav(samples)]));
+}
 const TAU = 2 * Math.PI;
 const hz = midi => 440 * 2 ** ((midi - 69) / 12);
 const buffer = seconds => new Float32Array(Math.ceil(seconds * RATE));
