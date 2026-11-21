@@ -14,6 +14,7 @@ import {
   isTexture,
   createSharedMaterial2D,
 } from '@egret/engine';
+import { createBrowserFrameLoop } from '@egret/engine/web/loop';
 
 export const W = 1280;
 export const H = 720;
@@ -135,9 +136,7 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
   const tickers = new Set();
   const kept = [];
   let serial = 0,
-    failed = false,
-    lastTime,
-    gameTime = 0;
+    failed = false;
 
   const stage = {
     engine,
@@ -263,29 +262,19 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
         for (const fn of [...tickers]) fn(dt, tick.elapsedSeconds);
         return undefined;
       });
-      const loop = now => {
-        if (failed) return;
-        requestAnimationFrame(loop);
-        // The engine clock refuses large jumps, so a slow frame is fed to it as
-        // several smaller steps; after a long pause (a hidden tab) time simply resumes.
-        let behind = Math.min((now - (lastTime ?? now)) / 1000, 0.5);
-        lastTime = now;
-        const step = engine.clock.maxDeltaSeconds * 0.9;
-        try {
-          do {
-            gameTime += Math.min(behind, step);
-            behind -= step;
-            engine.advanceTime(gameTime);
-          } while (behind > 0);
-          // Submit a frame only when the host has finished the previous one.
-          const status = host.getStatus();
-          if (status.state === 'failed') throw Object.assign(new Error('The graphics device stopped working.'), { code: status.firstFailure?.code });
-          if (status.pendingFrames === 0) engine.renderSharedFrame(frame);
-        } catch (error) {
-          stage.fail(error);
-        }
-      };
-      requestAnimationFrame(loop);
+      // The engine's frame loop steps the clock in pieces it accepts (a slow frame is played back for up to half a
+      // second; after a hidden tab time simply resumes) and draws only when the host has finished the last frame.
+      const loop = createBrowserFrameLoop({
+        engine,
+        host,
+        frame,
+        maxPendingFrames: 1,
+        maxStepSeconds: engine.clock.maxDeltaSeconds * 0.9,
+        catchUpSeconds: 0.5,
+        onError: error => stage.fail(error),
+      });
+      scope.use(loop);
+      loop.start();
     },
   };
 

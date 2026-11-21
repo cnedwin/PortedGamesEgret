@@ -163,7 +163,7 @@ The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. 
 | 同一张文字贴图放进两个带 `clipRect` 的容器：一个显示已完成的行，一个显示正在出现的行 · one text texture in two containers with `clipRect`: finished lines in one, the growing line in the other | 对话逐字显示 · Text writing itself out | `src/screens/story.mjs` |
 | 分层换装人物使用独立的眨眼贴图 · layered dress-up figures use a separate blink texture | 眨眼 · Blinking | `src/art/figure.mjs` |
 | `globalToLocal`、`localToGlobal` 把指针换算到面板坐标 · convert the pointer into panel coordinates | 点击判定 · Tap detection | `src/engine/ui.mjs` |
-| `engine.advanceTime` 驱动 `engine.clock.onTick`，补间、粒子和打字效果都挂在这一个时钟上 · tweens, particles and text all run from this one clock | 动画与计时 · Animation and timing | `src/engine/stage.mjs` |
+| `createBrowserFrameLoop` 推进引擎时钟并绘制，`engine.clock.onTick`，补间、粒子和打字效果都挂在这一个时钟上 · tweens, particles and text all run from this one clock | 动画与计时 · Animation and timing | `src/engine/stage.mjs` |
 | `Sprite.graphics` 的纯色矩形 · solid rectangles | 淡入淡出、悬停高亮 · Fades and hover highlight | `src/engine/stage.mjs` |
 
 音乐和音效由 Web Audio 合成。时间、属性、好感、拉扯、心愿、校园事件、任务、结局和回忆规则可脱离页面运行，在 Node 中玩完整个学期。
@@ -181,14 +181,14 @@ Music and sound are synthesised with Web Audio. The time, stats, affection, push
 
 - 手机竖屏时舞台式界面显示不全，要横屏才能完整观看。 · On a phone held upright the stage layout is cut down; it needs landscape.
 - 界面全部画在画布上，读屏读不到按钮名称。 · The whole interface is drawn on the canvas, so screen readers find no named buttons.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 216.6 ms over 26 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 心动选修课 校园恋爱养成游戏 点击或轻触进行操作 空格或回车继续对话 屏幕方向）；A2 读屏读出主要按钮（no named control in the accessibility tree）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（23 files refused; no uncaught error; no error screen with a retry）；E3 切到后台再回来不出错（nothing in the game watches visibility）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 133.4 ms over 34 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 心动选修课 校园恋爱养成游戏 点击或轻触进行操作 空格或回车继续对话 屏幕方向）；A2 读屏读出主要按钮（no named control in the accessibility tree）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（23 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
 - 衣橱里饰边的染色控件和渲染出错（`25aa14e`）；每位角色的服装染色没有记住（`282f651`，存档按角色保存染色）。 · The wardrobe's trim dye controls and drawing; dyes are now remembered per character.
 - 衣橱人物比例和服装贴合重做（`a1aa57b`、`7a6c6d9`）。 · The wardrobe figure's proportions and the fit of the garments were rebuilt.
-- 慢的一帧一次交给引擎时钟会被拒绝（`CLOCK_DELTA_LIMIT`）：拆成几步推进，隐藏标签页回来后时间直接继续（ENGINE-NOTES 第 1 条）。 · A slow frame given to the clock at once was refused; it is fed in smaller steps (item 1).
-- 每个 `requestAnimationFrame` 都提交一帧会让宿主积压：只在上一帧完成后提交（ENGINE-NOTES 第 2 条）。 · Submitting on every animation frame backs the host up; a frame is submitted only when the last has finished (item 2).
+- 慢的一帧一次交给引擎时钟会被拒绝（`CLOCK_DELTA_LIMIT`）：拆成几步推进，隐藏标签页回来后时间直接继续；现在由引擎的 `createBrowserFrameLoop` 来做（ENGINE-NOTES 第 1 条）。 · A slow frame given to the clock at once was refused; it is fed in smaller steps (item 1).
+- 每个 `requestAnimationFrame` 都提交一帧会让宿主积压：只在上一帧完成后提交；现在由引擎的帧循环在宿主忙时跳帧（ENGINE-NOTES 第 2 条）。 · Submitting on every animation frame backs the host up; a frame is submitted only when the last has finished (item 2).
 
 ## 未完成 · Unfinished
 
@@ -214,6 +214,6 @@ Music and sound are synthesised with Web Audio. The time, stats, affection, push
 
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `b6a392a61348a5ba53a48a0d4fbed514ffd87afe`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `b6a392a61348a5ba53a48a0d4fbed514ffd87afe`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
