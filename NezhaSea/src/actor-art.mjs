@@ -361,7 +361,8 @@ export async function createBattleAtlas(game) {
     regions.set(key,frames);
   }
   const canvas = Object.assign(document.createElement('canvas'), {width,height:y+row});
-  const ctx = canvas.getContext('2d');
+  // Egret reads the finished pixels once for the texture. Keep this staging canvas CPU-backed.
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
   ctx.lineJoin = 'round'; ctx.lineCap = 'round';
   for (const frames of regions.values()) for (const frame of frames) {
     const { bounds, draw, pose, originX, originY } = frame;
