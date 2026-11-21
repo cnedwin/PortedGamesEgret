@@ -11,8 +11,23 @@ const { stoneGeometry } = await import('../src/models/plants.mjs');
 const { createConvoy } = await import('../src/play/convoy.mjs');
 const { createEffects } = await import('../src/play/effects.mjs');
 const { createLandmarks } = await import('../src/world/landmarks.mjs');
-const { prepareRoadPrograms } = await import('../src/world/programs.mjs');
+const { createProgramBatcher, prepareRoadPrograms } = await import('../src/world/programs.mjs');
 const { createWaters } = await import('../src/world/water.mjs');
+
+test('program preparation yields to the loading page before each bounded batch', async () => {
+  for (const parallel of [true, false]) {
+    const calls = [];
+    const renderer = {
+      context: { getExtension: () => parallel ? {} : null },
+      async preparePrograms(batch) { calls.push(batch); }
+    };
+    const prepare = createProgramBatcher(renderer, async () => { calls.push('paint'); });
+    await prepare([1, 2, 3, 4, 5]);
+    assert.deepEqual(calls, parallel
+      ? ['paint', [1, 2, 3, 4], 'paint', [5]]
+      : ['paint', [1], 'paint', [2], 'paint', [3], 'paint', [4], 'paint', [5]]);
+  }
+});
 
 test('the first-use road shader keys are linked before any view draws', async () => {
   // Keep WebGL off this test machine. The production renderer still selects the keys and deduplicates links.
@@ -62,6 +77,9 @@ test('the first-use road shader keys are linked before any view draws', async ()
   const field = createHeightField3D({ width: 1, depth: 1, columns: 2, rows: 2, heights: new Float32Array(4) });
   scene.addChild(createTerrain3D(field, createTerrainMaterial3D({ layers: [texture, texture, texture, texture], weights: texture })));
   scene.addChild(new InstancedMesh3D(stoneGeometry(0), createStandardMaterial3D({ vertexColors: true }), 1));
+  const backdrop = new Mesh3D(stoneGeometry(0), createStandardMaterial3D({ vertexColors: true }));
+  backdrop.receiveShadow = false;
+  scene.addChild(backdrop);
   const initialChildren = [...scene.children];
 
   await prepareRoadPrograms(renderer, scene, camera, waters);
@@ -69,6 +87,17 @@ test('the first-use road shader keys are linked before any view draws', async ()
   const mirror = 'TONE_MAPPED LINEAR_OUTPUT';
   const standardMirror = 'USE_ENVIRONMENT ' + mirror;
   const waterFeatures = ' USE_TRANSMISSION USE_REFLECTION_MAP CUSTOM_FRAGMENT CUSTOM_VERTEX CUSTOM_NORMAL|world3d-water';
+  const roadColor = (shadows) => [
+    ...[
+      '', 'USE_MAP ', 'USE_INSTANCING USE_MAP ', 'USE_MAP DOUBLE_SIDED ', 'USE_MAP ALPHA_MASK DOUBLE_SIDED ',
+      'USE_MAP USE_NORMAL_MAP DOUBLE_SIDED ', 'USE_MAP ALPHA_BLEND ', 'USE_VERTEX_COLOR ',
+      'USE_INSTANCING USE_VERTEX_COLOR ', 'USE_INSTANCING USE_VERTEX_COLOR USE_INSTANCE_COLOR ',
+      'USE_SPLAT ', 'USE_SKINNING USE_VERTEX_COLOR '
+    ].map((features) => 'SHADING_STANDARD USE_NORMAL ' + features + shadows + 'USE_ENVIRONMENT LINEAR_OUTPUT'),
+    'SHADING_STANDARD USE_NORMAL USE_VERTEX_COLOR USE_ENVIRONMENT LINEAR_OUTPUT',
+    'SHADING_UNLIT USE_MAP ALPHA_BLEND USE_VERTEX_COLOR DOUBLE_SIDED LINEAR_OUTPUT',
+    'SHADING_UNLIT USE_NORMAL USE_INSTANCING GPU_PARTICLES BILLBOARD USE_MAP ALPHA_BLEND USE_INSTANCE_COLOR DOUBLE_SIDED LINEAR_OUTPUT'
+  ];
   const sceneDepth = [
     'DEPTH_ONLY USE_NORMAL',
     'DEPTH_ONLY USE_NORMAL USE_MAP',
@@ -93,12 +122,9 @@ test('the first-use road shader keys are linked before any view draws', async ()
     'SHADING_STANDARD USE_NORMAL USE_MAP ALPHA_BLEND ' + standardMirror,
     'SHADING_STANDARD USE_NORMAL USE_MAP ALPHA_MASK DOUBLE_SIDED ' + standardMirror,
     ...sceneDepth,
-    'SHADING_STANDARD USE_NORMAL USE_MAP RECEIVE_SHADOW USE_ENVIRONMENT LINEAR_OUTPUT',
-    'SHADING_STANDARD USE_NORMAL USE_MAP USE_NORMAL_MAP DOUBLE_SIDED RECEIVE_SHADOW USE_ENVIRONMENT LINEAR_OUTPUT',
-    'SHADING_STANDARD USE_NORMAL USE_INSTANCING USE_MAP RECEIVE_SHADOW USE_ENVIRONMENT LINEAR_OUTPUT',
+    ...roadColor('RECEIVE_SHADOW '),
     'SHADING_STANDARD USE_NORMAL USE_SOFT_DEPTH DOUBLE_SIDED RECEIVE_SHADOW USE_ENVIRONMENT LINEAR_OUTPUT' + waterFeatures,
     'DEPTH_ONLY USE_NORMAL USE_SKINNING USE_VERTEX_COLOR',
-    'SHADING_STANDARD USE_NORMAL USE_SKINNING USE_VERTEX_COLOR RECEIVE_SHADOW USE_ENVIRONMENT LINEAR_OUTPUT',
     'SHADING_STANDARD USE_NORMAL USE_SKINNING USE_VERTEX_COLOR ' + standardMirror
   ]));
   assert.equal(linked, shaders.size);
@@ -113,13 +139,11 @@ test('the first-use road shader keys are linked before any view draws', async ()
   await prepareRoadPrograms(renderer, scene, camera, lowWaters, { reflections: false });
   assert.deepEqual(shaders, new Set([
     ...sceneDepth,
-    'SHADING_STANDARD USE_NORMAL USE_MAP USE_ENVIRONMENT LINEAR_OUTPUT',
-    'SHADING_STANDARD USE_NORMAL USE_MAP USE_NORMAL_MAP DOUBLE_SIDED USE_ENVIRONMENT LINEAR_OUTPUT',
-    'SHADING_STANDARD USE_NORMAL USE_INSTANCING USE_MAP USE_ENVIRONMENT LINEAR_OUTPUT',
+    ...roadColor(''),
     'SHADING_STANDARD USE_NORMAL USE_SOFT_DEPTH DOUBLE_SIDED USE_ENVIRONMENT LINEAR_OUTPUT' +
       waterFeatures.replace(' USE_REFLECTION_MAP', ''),
-    'SHADING_STANDARD USE_NORMAL USE_SKINNING USE_VERTEX_COLOR USE_ENVIRONMENT LINEAR_OUTPUT'
   ]));
-  assert.equal(linked - previousLinks, 5);
+  // The near shadowed variants were new; the unlit variants and the far backdrop were already ready.
+  assert.equal(linked - previousLinks, 12);
   assert.deepEqual(scene.children, lowChildren);
 });

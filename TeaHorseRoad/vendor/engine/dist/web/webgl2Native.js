@@ -429,6 +429,33 @@ export class GLNativeSession {
             throw glFailure(value === 1285 ? 'WEBGL2_OUT_OF_MEMORY' : value === 37442 ? 'WEBGL2_CONTEXT_LOST' : 'WEBGL2_VALIDATION', value);
     }
     program(vertex, fragment) {
+        return this.finishProgram(this.submitProgram(vertex, fragment, true));
+    }
+    /** A missing extension keeps callers on the original synchronous path. */
+    preparePrograms(sources, wait) {
+        this.gate();
+        const getExtension = this.context.getExtension;
+        this.gate();
+        const extension = typeof getExtension === 'function'
+            ? getExtension.call(this.context, 'KHR_parallel_shader_compile')
+            : null;
+        this.gate();
+        const completion = extension?.COMPLETION_STATUS_KHR;
+        this.gate();
+        if (completion === 0x91b1)
+            return this.prepareParallelPrograms(sources, completion, wait);
+    }
+    async prepareParallelPrograms(sources, completion, wait) {
+        const batch = sources.map(([vertex, fragment]) => this.submitProgram(vertex, fragment, false));
+        let pending = batch;
+        while (pending.length) {
+            pending = pending.filter(({ program }) => !this.gl.getProgramParameter(program, completion));
+            if (pending.length)
+                await wait();
+        }
+        return batch.map(entry => this.finishProgram(entry));
+    }
+    submitProgram(vertex, fragment, verifyCompile) {
         const gl = this.gl, v = this.create('Shader', 0, gl.VERTEX_SHADER), f = this.create('Shader', 0, gl.FRAGMENT_SHADER);
         for (const [owner, source] of [
             [v, vertex],
@@ -437,15 +464,25 @@ export class GLNativeSession {
             const shader = owner.value;
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+            if (verifyCompile && !gl.getShaderParameter(shader, gl.COMPILE_STATUS))
                 throw new Error(gl.getShaderInfoLog(shader) ?? 'Shader compilation');
         }
         const p = this.create('Program'), program = p.value;
         gl.attachShader(program, v.value);
         gl.attachShader(program, f.value);
         gl.linkProgram(program);
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS))
+        return { program, v, f, verifyCompile };
+    }
+    finishProgram({ program, v, f, verifyCompile }) {
+        const gl = this.gl;
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            if (!verifyCompile) {
+                for (const shader of [v.value, f.value])
+                    if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS))
+                        throw new Error(gl.getShaderInfoLog(shader) ?? 'Shader compilation');
+            }
             throw new Error(gl.getProgramInfoLog(program) ?? 'Program link');
+        }
         gl.detachShader(program, v.value);
         gl.detachShader(program, f.value);
         const vSafe = this.cleanup(v), fSafe = this.cleanup(f);

@@ -11,7 +11,7 @@ import { OPENING } from '../play/story.mjs';
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
 
 /** The title: the name, a line about the road, and the ways in. */
-export async function titleScreen(ui, { journey, best, onNew, onContinue, onSettings }) {
+export async function titleScreen(ui, { journey, best, onNew, onContinue, onSettings, animateIn = true }) {
   const H = STAGE.height,
     // The title is laid out for 720 units; on a shorter stage it closes up.
     v = (y) => Math.round((y * H) / 720),
@@ -46,8 +46,10 @@ export async function titleScreen(ui, { journey, best, onNew, onContinue, onSett
   buttons.push(await kit.button({ x: left, y, width: 320, height: 50, text: '设置', sub: 'Settings', onActivate: onSettings, container: root, small: true }));
   if (best) await kit.label(root, `最好的一趟：送到 ${best.delivered} 捆 · ${Math.floor(best.seconds / 60)} 分 ${Math.round(best.seconds % 60)} 秒`, { x: left + 4, y: y + 62, size: 15, color: 0xd8c08a, family: SANS });
   await kit.label(root, '基于新白鹭引擎开发 · Powered by Egret', { x: left, y: H - 38, size: 14, color: 0xcebb94, family: SANS });
-  root.alpha = 0;
-  animate(game.engine, scope, root).to({ alpha: 1 }, 0.8, 'quadOut').start();
+  if (animateIn) {
+    root.alpha = 0;
+    animate(game.engine, scope, root).to({ alpha: 1 }, 0.8, 'quadOut').start();
+  }
   semantics.publish();
   return {
     kit,
