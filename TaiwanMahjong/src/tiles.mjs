@@ -15,10 +15,10 @@ export const BACK = 42;
 const FRAMES = 43;
 
 const FONT = '"Noto Serif TC", "Noto Serif CJK TC", "Songti TC", "PMingLiU", "MingLiU", "Noto Serif SC", "Songti SC", serif';
-const INK = '#1d2a44',
-  RED = '#b8261f',
-  GREEN = '#1f7a4a',
-  BLUE = '#1f4f9a';
+const INK = '#212739',
+  RED = '#ad222c',
+  GREEN = '#176445',
+  BLUE = '#23547e';
 
 const NUMERALS = ['一', '二', '三', '四', '伍', '六', '七', '八', '九'];
 const HONOURS = ['東', '南', '西', '北', '中', '發', ''];
@@ -34,7 +34,8 @@ export function paintAtlas(make = () => document.createElement('canvas')) {
   const canvas = make();
   canvas.width = COLUMNS * CELL.width;
   canvas.height = Math.ceil(FRAMES / COLUMNS) * CELL.height;
-  const g = canvas.getContext('2d');
+  // The single atlas is read back once for Egret. Keep that staging canvas CPU-backed.
+  const g = canvas.getContext('2d', { willReadFrequently: true });
   for (let kind = 0; kind < FRAMES; kind++) {
     const { x, y } = frameOf(kind);
     g.save();
@@ -59,72 +60,143 @@ function rounded(g, x, y, w, h, r) {
   g.closePath();
 }
 
-/** The tile's body: a jade base under an ivory face. */
+/** A lacquered heel under the ceramic cap, both lit from the upper left. */
+function paintHeel(g, w, h) {
+  g.fillStyle = 'rgba(4,14,23,0.36)';
+  rounded(g, 3, 6, w - 1, h - 2, 15);
+  g.fill();
+  g.fillStyle = 'rgba(5,13,20,0.52)';
+  rounded(g, 2, 4, w, h - 2, 15);
+  g.fill();
+  const heel = g.createLinearGradient(0, h - 27, w * 0.24, h);
+  heel.addColorStop(0, '#347d68');
+  heel.addColorStop(0.38, '#276257');
+  heel.addColorStop(0.75, '#173d42');
+  heel.addColorStop(1, '#0b252c');
+  g.fillStyle = heel;
+  rounded(g, 1, 1, w - 1, h - 2, 14);
+  g.fill();
+  const bounce = g.createLinearGradient(7, 0, w - 10, 0);
+  bounce.addColorStop(0, 'rgba(153,219,187,0.34)');
+  bounce.addColorStop(0.48, 'rgba(153,219,187,0.14)');
+  bounce.addColorStop(1, 'rgba(153,219,187,0)');
+  g.fillStyle = bounce;
+  rounded(g, 9, h - 9, w - 18, 3, 1.5);
+  g.fill();
+}
+
+/** The glaze has its own bevel and a slender copper joint above the jade heel. */
 function paintBody(g) {
   const { width: w, height: h, face } = TILE;
-  g.fillStyle = 'rgba(0,0,0,0.28)';
-  rounded(g, 3, 5, w - 2, h - 2, 14);
+  paintHeel(g, w, h);
+  const seam = g.createLinearGradient(3, 0, w - 3, 0);
+  seam.addColorStop(0, '#b37856');
+  seam.addColorStop(0.29, '#e5b782');
+  seam.addColorStop(1, '#795844');
+  g.fillStyle = seam;
+  rounded(g, 4, face - 4, w - 7, 9, 4);
   g.fill();
-  const jade = g.createLinearGradient(0, face - 20, 0, h);
-  jade.addColorStop(0, '#3f9a6c');
-  jade.addColorStop(1, '#1d5f3f');
-  g.fillStyle = jade;
-  rounded(g, 0, 0, w, h - 2, 14);
+
+  // The lower and right edges show the thickness of the ivory above the seam.
+  const edge = g.createLinearGradient(5, 9, w, face);
+  edge.addColorStop(0, '#fffef8');
+  edge.addColorStop(0.5, '#e9d7ba');
+  edge.addColorStop(0.82, '#dac1a0');
+  edge.addColorStop(1, '#b89b77');
+  g.fillStyle = edge;
+  rounded(g, 0, 0, w, face + 2, 15);
   g.fill();
-  const ivory = g.createLinearGradient(0, 0, 0, face);
-  ivory.addColorStop(0, '#fffdf6');
-  ivory.addColorStop(0.7, '#f6efdc');
-  ivory.addColorStop(1, '#e8dcbf');
-  g.fillStyle = ivory;
-  rounded(g, 0, 0, w, face, 14);
+
+  const faceLight = g.createLinearGradient(15, 1, w * 0.7, face - 7);
+  faceLight.addColorStop(0, '#fffef7');
+  faceLight.addColorStop(0.36, '#faf4e5');
+  faceLight.addColorStop(0.76, '#f4ead5');
+  faceLight.addColorStop(1, '#e7d6b7');
+  g.fillStyle = faceLight;
+  rounded(g, 1, 1, w - 5, face - 8, 14);
   g.fill();
-  g.strokeStyle = 'rgba(120,98,60,0.35)';
+  g.save();
+  g.clip();
+  const glaze = g.createLinearGradient(10, 4, w * 0.42, 53);
+  glaze.addColorStop(0, 'rgba(255,255,255,0.66)');
+  glaze.addColorStop(1, 'rgba(255,255,255,0)');
+  g.fillStyle = glaze;
+  g.fillRect(0, 0, w, 59);
+  g.restore();
+
+  g.strokeStyle = 'rgba(255,255,250,0.84)';
   g.lineWidth = 1.5;
-  rounded(g, 1, 1, w - 2, face - 2, 13);
+  g.lineCap = 'round';
+  g.beginPath();
+  g.moveTo(5, 78);
+  g.lineTo(5, 16);
+  g.quadraticCurveTo(5, 5, 17, 5);
+  g.lineTo(w * 0.64, 5);
   g.stroke();
-  g.fillStyle = 'rgba(255,255,255,0.7)';
-  rounded(g, 6, 4, w - 12, 8, 4);
-  g.fill();
+  g.strokeStyle = 'rgba(115,75,46,0.28)';
+  g.beginPath();
+  g.moveTo(18, face - 6);
+  g.lineTo(w - 18, face - 6);
+  g.quadraticCurveTo(w - 4, face - 6, w - 4, face - 20);
+  g.stroke();
 }
 
 function paintBack(g) {
   const { width: w, height: h } = TILE;
-  g.fillStyle = 'rgba(0,0,0,0.28)';
-  rounded(g, 3, 5, w - 2, h - 2, 14);
+  paintHeel(g, w, h);
+  const bevel = g.createLinearGradient(3, 0, w, h - 7);
+  bevel.addColorStop(0, '#7eae93');
+  bevel.addColorStop(0.66, '#386657');
+  bevel.addColorStop(1, '#183641');
+  g.fillStyle = bevel;
+  rounded(g, 0, 0, w, h - 7, 14);
   g.fill();
   const jade = g.createLinearGradient(0, 0, w, h);
-  jade.addColorStop(0, '#47a676');
-  jade.addColorStop(1, '#1b5a3b');
+  jade.addColorStop(0, '#408f83');
+  jade.addColorStop(0.52, '#1d5c5d');
+  jade.addColorStop(1, '#133946');
   g.fillStyle = jade;
-  rounded(g, 0, 0, w, h - 2, 14);
+  rounded(g, 2, 2, w - 7, h - 19, 13);
   g.fill();
-  g.strokeStyle = 'rgba(255,255,255,0.22)';
-  g.lineWidth = 3;
-  rounded(g, 10, 10, w - 20, h - 24, 9);
+
+  g.strokeStyle = '#c68e65';
+  g.lineWidth = 2.5;
+  rounded(g, 7, 7, w - 14, h - 27, 10);
   g.stroke();
-  // A lattice of small diamonds.
-  g.fillStyle = 'rgba(255,255,255,0.12)';
-  for (let row = 0; row < 7; row++)
-    for (let col = 0; col < 4; col++) {
-      const cx = 26 + col * 23 + (row % 2) * 11,
-        cy = 28 + row * 17;
-      g.beginPath();
-      g.moveTo(cx, cy - 6);
-      g.lineTo(cx + 6, cy);
-      g.lineTo(cx, cy + 6);
-      g.lineTo(cx - 6, cy);
-      g.fill();
-    }
-  g.fillStyle = 'rgba(255,255,255,0.5)';
-  rounded(g, 6, 4, w - 12, 6, 3);
+  g.strokeStyle = 'rgba(178,211,167,0.49)';
+  g.lineWidth = 1.5;
+  rounded(g, 13, 13, w - 26, h - 39, 7);
+  g.stroke();
+  // The back is symmetric so a rotated, concealed tile reads as the same design.
+  g.save();
+  g.translate(w / 2, (h - 12) / 2);
+  g.strokeStyle = '#d3a177';
+  g.lineWidth = 2.8;
+  g.beginPath();
+  g.arc(0, 0, 25, 0, 2 * Math.PI);
+  g.stroke();
+  for (let i = 0; i < 8; i++) {
+    g.rotate(Math.PI / 4);
+    g.beginPath();
+    g.moveTo(0, -8);
+    g.quadraticCurveTo(7, -19, 0, -24);
+    g.quadraticCurveTo(-7, -19, 0, -8);
+    g.stroke();
+  }
+  g.fillStyle = '#f0ca8e';
+  g.beginPath();
+  g.arc(0, 0, 4, 0, 2 * Math.PI);
   g.fill();
+  g.restore();
 }
 
 function text(g, words, x, y, size, color, weight = 700) {
-  g.fillStyle = color;
   g.font = `${weight} ${size}px ${FONT}`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
+  g.fillStyle = 'rgba(255,251,235,0.63)';
+  g.fillText(words, x + 1, y + 1.7);
+  g.fillStyle = color;
   g.fillText(words, x, y);
 }
 
@@ -176,11 +248,16 @@ function sprig(g, flower, color) {
 }
 
 function ring(g, x, y, r, color) {
+  // The narrow engraved rim helps low-scale river tiles hold their edges.
+  g.fillStyle = '#4b473c';
+  g.beginPath();
+  g.arc(x, y + 0.65, r + 0.75, 0, Math.PI * 2);
+  g.fill();
   g.fillStyle = color;
   g.beginPath();
   g.arc(x, y, r, 0, Math.PI * 2);
   g.fill();
-  g.fillStyle = '#fbf6e7';
+  g.fillStyle = '#fbf0d9';
   g.beginPath();
   g.arc(x, y, r * 0.68, 0, Math.PI * 2);
   g.fill();
@@ -243,11 +320,14 @@ function stick(g, x, y, height, color, angle = 0) {
   g.save();
   g.translate(x, y);
   g.rotate(angle);
-  const w = 11;
+  const w = 13;
+  g.fillStyle = 'rgba(62,49,35,0.56)';
+  rounded(g, -w / 2 + 0.6, -height / 2 + 1.1, w, height, 5);
+  g.fill();
   g.fillStyle = color;
   rounded(g, -w / 2, -height / 2, w, height, 5);
   g.fill();
-  g.fillStyle = 'rgba(255,255,255,0.35)';
+  g.fillStyle = 'rgba(251,240,210,0.46)';
   g.fillRect(-w / 2 + 2, -height / 2 + 3, 2.5, height - 6);
   g.fillStyle = 'rgba(0,0,0,0.35)';
   for (const at of [-0.5, 0, 0.5]) g.fillRect(-w / 2 - 1, at * (height - 8) - 1.5, w + 2, 3);
@@ -280,52 +360,63 @@ function bamboo(g, rank) {
   });
 }
 
-/** The one of bamboo: a bird on a branch. */
+/** The one of bamboo: a Taiwan blue magpie on a branch. */
 function bird(g) {
   g.save();
-  g.translate(TILE.width / 2, TILE.face / 2 + 4);
-  // Tail.
-  for (let i = -2; i <= 2; i++) {
-    g.fillStyle = i % 2 ? BLUE : GREEN;
-    g.beginPath();
-    g.ellipse(-20 + i * 2, 22, 9, 30, -0.5 + i * 0.25, 0, Math.PI * 2);
-    g.fill();
-  }
-  // Body and wing.
-  g.fillStyle = GREEN;
-  g.beginPath();
-  g.ellipse(6, -2, 26, 18, -0.4, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = RED;
-  g.beginPath();
-  g.ellipse(0, 2, 14, 9, -0.6, 0, Math.PI * 2);
-  g.fill();
-  // Head, eye, beak and crest.
-  g.fillStyle = BLUE;
-  g.beginPath();
-  g.arc(24, -24, 12, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#fff';
-  g.beginPath();
-  g.arc(27, -26, 3.5, 0, Math.PI * 2);
-  g.fill();
-  g.fillStyle = '#d99a1e';
-  g.beginPath();
-  g.moveTo(34, -24);
-  g.lineTo(46, -20);
-  g.lineTo(34, -18);
-  g.fill();
-  g.fillStyle = RED;
-  g.beginPath();
-  g.ellipse(18, -38, 4, 8, -0.4, 0, Math.PI * 2);
-  g.fill();
-  // Branch.
-  g.strokeStyle = '#7a4a22';
+  g.translate(TILE.width / 2, TILE.face / 2);
+
+  g.strokeStyle = '#926143';
   g.lineWidth = 5;
   g.lineCap = 'round';
   g.beginPath();
-  g.moveTo(-40, 44);
-  g.lineTo(36, 30);
+  g.moveTo(-40, 42);
+  g.quadraticCurveTo(-3, 32, 37, 34);
+  g.stroke();
+
+  g.fillStyle = '#294d78';
+  g.beginPath();
+  g.moveTo(-11, 0);
+  g.quadraticCurveTo(-27, 18, -45, 51);
+  g.quadraticCurveTo(-43, 59, -37, 58);
+  g.quadraticCurveTo(-20, 48, 1, 16);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#f1e6c9';
+  g.lineWidth = 4;
+  g.beginPath();
+  g.moveTo(-41, 51);
+  g.lineTo(-25, 36);
+  g.stroke();
+
+  g.fillStyle = '#3b7199';
+  g.beginPath();
+  g.ellipse(5, -1, 27, 18, -0.52, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#f8ebcf';
+  g.beginPath();
+  g.ellipse(-1, 3, 12, 4.5, -0.54, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = INK;
+  g.beginPath();
+  g.arc(25, -23, 13, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#ffc96f';
+  g.beginPath();
+  g.arc(28, -26, 3.5, 0, Math.PI * 2);
+  g.fill();
+  g.fillStyle = '#c43c2d';
+  g.beginPath();
+  g.moveTo(35, -25);
+  g.lineTo(48, -21);
+  g.lineTo(35, -17);
+  g.closePath();
+  g.fill();
+  g.strokeStyle = '#c43c2d';
+  g.lineWidth = 3;
+  g.beginPath();
+  g.moveTo(5, 14);
+  g.lineTo(13, 33);
+  g.lineTo(20, 34);
   g.stroke();
   g.restore();
 }

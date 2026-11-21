@@ -1,8 +1,8 @@
-# 台灣十六張麻將 · Taiwan Sixteen-Tile Mahjong
+# 島夜雀室 · Island Night Mahjong
 
 ## 简介 · Introduction
 
-基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild) 独立开发的游戏 Demo：台湾十六张麻将，玩家和三位电脑牌友同桌。补花、吃碰槓、截胡、搶槓、流局连庄，按台湾常见的台数表算台，底加台结算。三位电脑牌友各有性格：阿德稳健，看到危险就收手；小美急攻，能吃就吃、能碰就碰；老陈爱做大牌，凑清一色、混一色和碰碰胡。牌友程度分入门、普通、高手；可以打一圈（东风圈）或一将（四圈）。界面用繁体中文，也有英文；键盘、触屏、鼠标都能玩，有听牌提示、托管、战绩和存档。
+《島夜雀室》是一款使用[新白鷺引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild) 開發的台灣十六張麻將 Demo。雨夜裡，阿德、小美和老陳等你一起打牌。阿德看牌河、重防守，小美看準時機就吃碰，老陳偏好清一色、混一色與碰碰胡。可打東風圈或一將，支援台灣繁體中文與英文、鍵盤、滑鼠及觸控。
 
 An independently developed game demo on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild): Taiwanese
 sixteen-tile mahjong, the player against three computer players. Flowers, chows, pongs and kongs, the nearest winner
@@ -12,7 +12,17 @@ calls whatever helps, and Old Chen chases one-suit and all-pong hands. Opponents
 the East round or a full four rounds. Traditional Chinese or English; keyboard, touch and mouse; ready hints,
 auto-play, a record and a save.
 
-[在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/TaiwanMahjong/)
+[線上試玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/TaiwanMahjong/)
+
+## 美術與聲音 · Art and sound
+
+封面以台灣雨夜巷弄與鐵窗花為背景。封面、頭像和牌桌上的小立繪是為本 Demo 製作的原創生成插畫，分別收在 `assets/rain-room.webp`、`opponents.webp` 與 `seat-portraits.webp`。牌面圖集描出象牙白釉面、倒角、刻紋與深青牌底。吃、碰、槓、胡和自摸各有不同的印章、光紋和粒子。
+
+大廳、對局和結算各有一首以同一主題改編的原創配樂，以電鋼琴、撥弦、刷鼓和細雨聲營造夜間牌室的氛圍。三首 MP3 收在 `assets/audio/`，可用 `node tools/compose-score.mjs` 搭配 FFmpeg 重建。摸牌、落牌、吃、碰、槓、補花、胡牌與自摸等音效由白鷺合成，配樂與音效可分開關閉。
+
+三位牌友各有開局招呼、牌局短句和吃、碰、槓、胡、自摸的台灣國語。語音由 [PrimeTTS v2.1](https://huggingface.co/Luigi/PrimeTTS/tree/main/v21_mbistft_16k) 合成，讀音使用 [PrismVoice-TW](https://huggingface.co/PrismLive/PrismVoice-TW) 的注音詞典與麻將讀音校訂。21 段預錄音訊打包在 `assets/audio/voices.json`，用 `tools/compose-voices.py` 製作。遊玩時直接播放內建音訊。語音、音效與配樂各有獨立開關。
+
+The cover, headshots and table portraits are original generated illustrations. The hand uses a drawn tile atlas with glazed ivory faces and jade backs. Three original scores and 21 bundled Taiwan Mandarin clips accompany the game. Music, effects and speech can be muted independently.
 
 ## 玩法与操作 · How to play
 
@@ -77,10 +87,9 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 | `play`（`@egret/engine/play`） | 透明画布、帧循环、暂停；宽屏和竖屏各开一种 · the clear canvas, the loop and pause; made wide or tall | `src/main.mjs` |
 | `game.browser.textureFromCanvas` + `Bitmap.sourceRect` | 42 种牌面画在一张图集上，手牌和飞行的牌各取一块 · one atlas of 42 faces, each hand or flying tile a rectangle of it | `src/view.mjs`, `src/tiles.mjs` |
 | `game.tween`（缓动 · easing `cubicOut`、`backOut`） | 牌打出、摸进的飞行，选中时抬起，吃碰胡的大字弹出 · tiles flying, rising when chosen, the call words popping | `src/view.mjs` |
-| `game.text`、`game.burst`、`game.flash`、`game.shake` | 吃、碰、槓、胡、补花的大字和火花；胡牌时闪光和震动 · the words and sparks of calls and wins; flash and shake on a win | `src/view.mjs` |
+| `game.text`、`game.burst`、`Graphics` | 吃、碰、槓、胡、自摸的印章、震圈、牌形與粒子 · call stamps, impact rings, tile silhouettes and particles | `src/view.mjs` |
 | `game.rect`、`game.sprite` | 听牌提示的金点；分层的容器 · the gold ready dots; the layers | `src/view.mjs` |
-| `game.sfx.define` / `play` | 落牌、摸牌、吃碰、槓、胡、补花和按钮声，全部合成 · every sound synthesised | `src/sound.mjs` |
-| `game.music` | 从容的配乐，胡牌时换成欢庆的一段 · calm music, triumphant after a win | `src/sound.mjs` |
+| `game.sfx.define` / `play` | 合成落牌、摸牌、吃、碰、槓、胡及補花等音效，依座位區分左右聲道 · synthesized table sounds with seat-based stereo placement | `src/sound.mjs` |
 | `game.pause`、`resume`、`reducedMotion` | 暂停菜单；减弱动画 · the pause menu; reduced motion | `src/main.mjs` |
 | `createTextTable` + `pickLanguage` | 繁体中文和英文文字表，开局按浏览器语言 · the words, by the browser's language | `src/i18n.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 设置、上次的选择和战绩；坏档另存后重开 · settings, the last setup and the record; a broken save set aside | `src/saves.mjs` |
@@ -90,14 +99,14 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 - `node --test test/*.test.mjs`（Node 22，29 项全部通过）：向听数、听牌和拆牌；台数表的每一类（平胡、门清一摸三、独听、暗刻是否算、碰碰胡、清混字一色、大小三元和四喜、全求半求、正花和花槓、海底河底槓上开花抢槓、天地人胡）；只有下家能吃、碰优先于吃、截胡、抢槓、补花从牌尾、流局连庄、换庄、一将打满四圈；每把收支和为零；存档（新档、写入再读、坏档、版本过新、不合法的设置、存储拒绝写入、战绩怎么记）；文字（两种语言齐全、占位符一致、42 种牌和每类台都有名字、英文里没有中文、界面代码不写死中文）；引擎副本的 import map 和规则不碰页面。 · All 29 Node tests pass.
 - `node test/accept.mjs`（无头 Chromium 153，SwiftShader，1280×720）：标题第一个按钮有焦点；Tab 和 Enter、Space 选一将、高手再改回东风圈并存档；设置里关音效存档、Esc 关闭后焦点回去；规则面板列出台数和截胡；切英文后标题按钮全是英文、再切回；Enter 开局后用真按键 Enter 选中一张牌（它被抬起）、再按 Enter 打进牌河，轮到吃碰时按 Esc 过；暂停后 1.5 秒内牌局没有任何事件、Esc 继续；托管打到一局结算（收支和为零、有台数或流局）、战绩记下一局；托管打完一圈看到四家排名、战绩记下一将；回首页；坏档提示。标题和规则两张截图基线一致，控制台没有错误。 · The whole walk in headless Chromium, two baselines matching and a clean console.
 - `node ../tools/quality.mjs TaiwanMahjong`：自动项全部达标，见 [QUALITY.md](QUALITY.md)。另外量了牌局中：轮到玩家时和托管打到一局中段，帧时间 p95 都是 16.8 ms（无头、软件渲染）。 · Every automatic item passes; in play, 16.8 ms p95 both waiting on the player and mid-hand.
-- 竖屏（390×844）截图检查过：牌桌转 90° 后和横屏一样大，手牌由竖着开的引擎画出。 · Checked in a 390 × 844 screenshot: the table turned and as large as when wide.
+- 本版以 Windows Chrome 與 Galaxy Z Fold7 上的 Chrome 驗證開局、選牌、出牌、吃牌、暫停續玩和單局結算。Fold7 另測橫向畫面及配樂與音效的獨立開關。 · The current version was tested on Windows and a Galaxy Z Fold7 through a hand, including a chow, pause and settlement. The Fold7 landscape run also covered the independent audio switches.
 
 ## 已知问题 · Known issues
 
-- 没有在真机上运行过：手机和带显卡桌面上的触屏手感、帧时间、声音都「未运行」。 · Not run on a real device.
+- 裝置上的音效驗證涵蓋播放事件、聲音訊號和設定。仍待使用手機喇叭實聽整局的混音。 · Device checks covered playback, signal and settings. The complete mix through phone speakers still needs a listening pass.
 - 手机横屏（高 390 像素）时一张手牌约 35×52 CSS 像素，比 44 像素的触控建议窄；十七张牌要排在一行里，宽不了更多。 · On a phone held sideways (390 px tall) a hand tile is about 35 × 52 CSS px, narrower than the 44 px advice; seventeen tiles must fit one row.
 - 像素比 1 的屏幕上，手牌（引擎画，四分之三分辨率）比桌上静止的牌（页面画，全分辨率）稍软（ENGINE-NOTES 3）。 · On a ratio-1 screen the hand, drawn by the engine at three-quarter resolution, is slightly softer than the still tiles (item 3).
-- 屏幕方向一变就重开引擎，正在飞的那张牌会直接落到位，配乐从头开始（ENGINE-NOTES 4）。 · Turning the screen makes the engine again: a tile in flight lands at once and the music starts over (item 4).
+- 螢幕轉向時會重建牌桌畫布，飛行中的牌會直接落到位。配樂維持原本的播放進度。 · Turning the screen recreates the table renderer. Tiles in flight land at once, and music keeps its position.
 - 台数表是台湾常见的一种，各地牌桌的规矩不尽相同（例如天地人胡的台数、花槓算法）；没有天听、地听、嚦咕嚦咕和过水。 · The tai table is one common Taiwanese table; tables differ, and some hands are left out.
 - 电脑牌友不读别家的牌河推理听什么，防守只看危险程度的粗略估计；老陈为做大牌放槍偏多。 · The computer players do not read rivers for waits; defence is a rough danger estimate, and Old Chen deals in more for his big hands.
 - 读屏只在无头 Chromium 的无障碍树里查过名字。 · Screen-reader names were checked only in headless Chromium's accessibility tree.
@@ -115,7 +124,7 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 
 ## 未完成 · Unfinished
 
-- 真机验收（触屏、帧时间、声音）。 · Checks on real devices.
+- 手機喇叭實聽，以及低階手機的幀率與觸控驗收。 · A listening pass on phone speakers, and frame pacing and touch checks on lower-end phones.
 - 牌河推理（别家可能在听什么）和更细的防守。 · Reading rivers for waits, and finer defence.
 - 可选的规则：天听、地听、嚦咕嚦咕、过水、不同的台数表。 · Optional rules and other tai tables.
 - 牌局回放和每一手的复盘。 · Replays and a review of each hand.
@@ -130,7 +139,7 @@ quarter of their discards are not the best) and hardly defend; experts defend ha
 | `src/layout.mjs` | 桌上每张牌的位置和方向 · where each tile sits |
 | `src/felt.mjs` | 静止的牌桌（页面 canvas） · the still table |
 | `src/view.mjs` | 引擎画的手牌、飞行的牌、大字和火花 · the engine's part |
-| `src/sound.mjs` | 合成音效和配乐 · sound |
+| `src/sound.mjs`, `src/voice.mjs`, `assets/audio/` | 音效合成、配樂、牌友語音與獨立靜音 · synthesized effects, music, table voices and independent mute |
 | `src/sim/hand.mjs`, `game.mjs`, `score.mjs` | 向听数、对局规则、台数 · shanten, the game, tai |
 | `src/sim/bot.mjs`, `tools/balance.mjs` | 电脑牌友和对局统计 · the computer players and their numbers |
 | `src/i18n.mjs`, `src/saves.mjs` | 文字表、存档 · the words, the save |
