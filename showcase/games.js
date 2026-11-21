@@ -12,7 +12,7 @@ export const GAMES = [
     ],
     zh: "茶马古道", en: "Tea Horse Road",
     genre: { zh: "车队穿越", en: "Convoy driving" },
-    summary: { zh: "护送七十二捆茶，穿过浅滩、吊桥和高原山路。", en: "Escort 72 bundles of tea across fords, a rope bridge and highland roads." },
+    summary: { zh: "护送七十二捆茶，穿过浅滩、吊桥和高原山路。", en: "Escort 72 bundles of tea through a ford, over a rope bridge and along highland roads." },
     features: [
       {
         title: { zh: "流式地形", en: "Streamed terrain" },
