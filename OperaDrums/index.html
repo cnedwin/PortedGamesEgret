@@ -37,11 +37,14 @@
 <body>
   <main id="frame">
     <div id="field">
-      <canvas id="ground" aria-hidden="true"></canvas>
+      <div id="ground" aria-hidden="true"></div>
       <header id="hud" hidden>
-        <p id="songName"></p>
+        <div class="now-playing">
+          <p id="songName"></p>
+          <progress id="songProgress" max="100" value="0"></progress>
+        </div>
         <p id="score"></p>
-        <button type="button" id="pauseButton"></button>
+        <button type="button" id="pauseButton" class="pause-control"></button>
       </header>
       <p id="prompt" hidden></p>
     </div>
@@ -52,6 +55,8 @@
       <button type="button" class="pad gong" data-kind="gong" data-hand="k"></button>
     </div>
     <section id="title" class="panel" hidden></section>
+    <section id="options" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <section id="guide" class="panel" role="dialog" aria-modal="true" hidden></section>
     <section id="menu" class="panel" role="dialog" aria-modal="true" hidden></section>
     <section id="end" class="panel" role="dialog" aria-modal="true" hidden></section>
     <section id="cal" class="panel" role="dialog" aria-modal="true" hidden></section>

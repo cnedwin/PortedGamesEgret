@@ -20,7 +20,7 @@ const server = await serve(),
   check = (ok, words) => checks.push([Boolean(ok), words]);
 let page;
 const state = (expression, argument) => page.evaluate(expression, argument);
-const focused = () => state(() => document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName);
+const focused = () => state(() => (document.activeElement?.getAttribute('aria-label') || document.activeElement?.textContent || document.activeElement?.tagName)?.trim());
 const tabTo = async (pattern, back = false) => {
   for (let i = 0; i < 40 && !pattern.test(await focused()); i++) await page.keyboard.press(back ? 'Shift+Tab' : 'Tab');
   return pattern.test(await focused());
@@ -33,9 +33,17 @@ try {
   await page.waitForTimeout(600);
   const title = await matchBaseline(page, GAME, 'title');
   check(title.written || title.passed, `title looks as its baseline (${(title.share * 100).toFixed(2)}% differs)`);
-  check(/起霸，易/.test(await focused()), `the title opens on the first song's first level (${await focused()})`);
+  check(await focused() === '起霸', `the title opens on the first act (${await focused()})`);
 
   // Settings by keyboard: the sound off, then English.
+  check(await tabTo(/^怎么敲$/), 'Tab reaches the illustrated controls guide');
+  await page.keyboard.press('Enter');
+  await until(page, () => window.operaDrums.screen === 'guide');
+  check(await page.locator('#guide [data-sample]').count() === 2, 'the guide offers drum and gong practice');
+  await page.keyboard.press('Escape');
+  check(await tabTo(/^设置$/), 'Tab reaches Settings');
+  await page.keyboard.press('Enter');
+  await until(page, () => window.operaDrums.screen === 'options');
   check(await tabTo(/声音：开/), 'Tab reaches the sound switch');
   await page.keyboard.press('Space');
   await until(page, () => window.operaDrums.app.save.data.settings.sound === false);
@@ -45,13 +53,17 @@ try {
   check(await tabTo(/切换到英文/), 'Tab reaches the language switch');
   await page.keyboard.press('Enter');
   await until(page, () => document.documentElement.lang === 'en');
+  await page.keyboard.press('Escape');
+  await until(page, () => window.operaDrums.screen === 'title');
   const names = await state(() => [...document.querySelectorAll('button')].filter((b) => !b.closest('[hidden]')).map((b) => b.getAttribute('aria-label') || b.textContent).join('|'));
-  check(!/[\u3400-\u9fff]/.test(names.replace('中文', '')) && /Swift Wind, Easy/.test(names), `in English every button reads in English: ${names.slice(0, 100)}…`);
+  check(!/[\u3400-\u9fff]/.test(names.replace('中文', '')) && /Swift Wind/.test(names), `in English every button reads in English: ${names.slice(0, 100)}…`);
 
   // A song: Swift Wind on easy, from the keyboard.
-  check(await tabTo(/^Swift Wind, Easy/, true), 'Shift+Tab reaches Swift Wind on easy');
+  check(await tabTo(/^Swift Wind$/), 'Tab reaches Swift Wind');
   await page.keyboard.press('Enter');
-  await until(page, () => window.operaDrums.screen === 'play');
+  check(await tabTo(/^Take the stage · Swift Wind · Easy$/), 'the primary action announces the act and difficulty');
+  await page.keyboard.press('Enter');
+  await until(page, () => window.operaDrums.screen === 'play', 15);
   check(true, 'Enter starts the song once its backing is ready');
   // The first notes by real keys, pressed as each comes due on the song's clock.
   const firsts = await state(() => window.operaDrums.app.chart.notes.filter((note) => !note.roll).slice(0, 4).map((note) => ({ t: note.t, kind: note.kind })));
@@ -61,10 +73,14 @@ try {
   }
   const struck = await state(() => window.operaDrums.app.strokes.length);
   check(struck >= 3, `F and D strike the notes as they come (${struck} of 4 judged; the timing of keys sent through the browser protocol is not the player's)`);
-  const padBefore = await state(() => window.operaDrums.app.run.rolls + window.operaDrums.app.strokes.length + window.operaDrums.app.run.counts.miss);
-  await page.locator('.pad.drum').first().dispatchEvent('pointerdown', { pointerId: 7, isPrimary: true });
-  const padAfter = await state(() => window.operaDrums.app.strokes.length);
-  check(padAfter >= 0 && padBefore >= 0, 'a press on a drum pad strikes the drum without an error');
+  const drum = page.locator('.pad.drum').first();
+  const hitBox = await drum.boundingBox();
+  await page.mouse.move(hitBox.x + hitBox.width / 2, hitBox.y + hitBox.height / 2);
+  await page.mouse.down();
+  check(await drum.evaluate((pad) => pad.classList.contains('down')), 'a pressed pad lights immediately');
+  await page.mouse.move(5, 5);
+  await page.mouse.up();
+  check(!(await drum.evaluate((pad) => pad.classList.contains('down'))), 'release outside clears the captured pad');
 
   await page.keyboard.press('p');
   await until(page, () => window.operaDrums.screen === 'menu' && window.operaDrums.game.paused);
@@ -108,7 +124,7 @@ try {
   const saved = await state(() => JSON.parse(localStorage.getItem('opera-drums')).data.best.jijifeng?.easy);
   check(saved && saved.rank === result.rank && saved.score === result.score, `the run is kept as the best (${JSON.stringify(saved)})`);
   // The end, with the rank and the numbers hidden: they change a little from run to run.
-  await state(() => document.querySelectorAll('#end .sheet p').forEach((p) => (p.style.visibility = 'hidden')));
+  await state(() => document.querySelectorAll('#end .sheet p, #end .stats dd').forEach((p) => (p.style.visibility = 'hidden')));
   await page.waitForTimeout(300);
   const end = await matchBaseline(page, GAME, 'end');
   check(end.written || end.passed, `the end looks as its baseline (${(end.share * 100).toFixed(2)}% differs)`);
@@ -116,14 +132,21 @@ try {
   await page.keyboard.press('Tab');
   await page.keyboard.press('Enter');
   await until(page, () => window.operaDrums.screen === 'title');
-  check(new RegExp(result.score).test(await state(() => document.querySelector('[data-song=jijifeng][data-level=easy]').textContent)), 'the song list shows the best score');
+  check(new RegExp(result.score).test(await state(() => document.querySelector('#title [data-level=easy]').textContent)), 'the song list shows the best score');
 
   // The delay: strokes with the clapper's clicks.
+  check(await tabTo(/^Settings$/), 'Tab reaches Settings after returning to the song list');
+  await page.keyboard.press('Enter');
   check(await tabTo(/Measure it by tapping/), 'Tab reaches the delay measure');
   await page.keyboard.press('Enter');
   await until(page, () => !document.querySelector('#cal').hidden);
   await page.keyboard.press('Enter');
   await until(page, () => window.operaDrums.screen === 'cal');
+  const tapTarget = page.locator('[data-cal-tap]');
+  check(await tapTarget.evaluate((entry) => {
+    const r = entry.getBoundingClientRect();
+    return document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2) === entry;
+  }), 'the calibration pad inside the dialog can receive touch');
   await state(
     () =>
       new Promise((done) => {

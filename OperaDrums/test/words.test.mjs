@@ -1,9 +1,4 @@
-// 文字：每一句都有中英两种、占位符一致、英文里没有中文；曲名和说明也有两种；界面代码里不写死中文。锣鼓经的字是谱
-// 本身（songs.mjs 和按字选声音的 sound.mjs），戏台匾上的「出将」「入相」是画（ground.mjs），这三处除外。
-// Words: every line in Chinese and English, with the same placeholders, and no Chinese in the English; the songs'
-// names and notes in both too; the interface code writes no Chinese itself. The score's syllables (songs.mjs, and
-// sound.mjs, which picks a sound by syllable) and the plaques painted over the stage doors (ground.mjs) are the
-// exceptions.
+// Every interface string is localised. Percussion syllables belong to the score and the sound lookup.
 import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import { test } from 'node:test';
@@ -36,7 +31,7 @@ test('the browser language picks the starting language', () => {
 test('no Chinese is written into the interface code outside the word table', async () => {
   const CJK = /[㐀-鿿]/;
   const files = [];
-  const exceptions = new Set(['../src/i18n.mjs', '../src/sim/songs.mjs', '../src/audio/sound.mjs', '../src/ground.mjs']);
+  const exceptions = new Set(['../src/i18n.mjs', '../src/sim/songs.mjs', '../src/audio/sound.mjs']);
   for (const folder of ['../src/', '../src/sim/', '../src/audio/'])
     for (const name of await readdir(new URL(folder, import.meta.url))) if (name.endsWith('.mjs') && !exceptions.has(folder + name)) files.push(folder + name);
   for (const file of files) {
