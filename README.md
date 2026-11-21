@@ -98,6 +98,12 @@ An independently developed survivors-like roguelite demo, built with Egret Rebui
 
 A Taiwanese sixteen-tile mahjong demo built with Egret Rebuild. Sit down with Ah-De, Mei and Old Chen in a rainy neighborhood parlor. Each opponent has an illustrated portrait, a distinct play style and Taiwan Mandarin voice lines. Flowers, calls, dealer repeats and base-plus-tai scoring follow Taiwanese play. Supports keyboard, mouse and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/TaiwanMahjong/) · [Guide and development](TaiwanMahjong/README.md)
 
+## Night Wardens · 镇邪司
+
+一款使用新白鹭引擎独立开发的竖屏塔防射击 Demo。城楼上只有一把会自己瞄准的符弩，纸人、鬼火、僵尸、灯笼鬼和鬼新娘一夜夜压向城门；击杀掉出魂珠，升级时从三道符法里选一道（连弩、速射、穿心、火符、雷引、墨斗线、八卦镜……），天雷符蓄满能劈遍全场。三夜各有首领：城隍庙外的纸扎大将、乱葬岗的白无常、鬼市的旱魃，每夜三到五分钟。所有画面、音效和配乐都用代码生成；邪祟出自同一张图集，首领的走路由引擎的动画控制器推动，特效是粒子发射器。规则能由替身玩家在 Node 里整夜跑完来调平衡。中英文，竖屏和横屏，触屏、键盘、鼠标和手柄都能玩。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/NightWardens/) · [说明与开发](NightWardens/README.md)
+
+An independently developed tower shooter demo for a phone held upright, built with Egret Rebuild. One talisman crossbow on the wall aims by itself while paper dolls, ghost fire, jiangshi, lantern ghosts and the ghost bride press on the gate night after night; the banished drop souls, and each level offers one ward of three (volley, haste, pierce, fire, the thunder chain, the ink line, the bagua mirror and more), while a full thunder talisman strikes the whole road. Each of the three nights has its warden, the Paper General, White Impermanence and the Drought Fiend, and runs three to five minutes. Every picture, sound and tune is made in code; the haunts come from one atlas, the wardens walk on the engine's sequence controller, and the effects are particle emitters. A stand-in player plays whole nights in Node to set the balance. Chinese and English, tall or wide, touch, keyboard, mouse and gamepad. [Play online](https://cnedwin.github.io/PortedGamesEgret/NightWardens/) · [Guide and development](NightWardens/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)
