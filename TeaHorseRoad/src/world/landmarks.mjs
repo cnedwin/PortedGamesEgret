@@ -130,9 +130,9 @@ export function createLandmarks(scene, physics, { quality = 'medium', hallModel,
     if (fitted) {
       // The fitted gate already has a red fascia. Mount the legible game lettering on it.
       const plaque = new Object3D();
-      plaque.setPosition(0, 5.35, 0.18);
-      const chinese = new Mesh3D(signText('茶马古道', { size: 0.53 }), materials.gilt);
-      chinese.setPosition(0, 0.42, 0);
+      plaque.setPosition(0, 5.76, 0.18);
+      const chinese = new Mesh3D(signText('茶马古道', { size: 0.50 }), materials.gilt);
+      chinese.setPosition(0, 0.29, 0);
       plaque.addChild(chinese);
       plaque.addChild(new Mesh3D(signText('TEA HORSE ROAD', { size: 0.235 }), materials.gilt));
       gate.addChild(plaque);
