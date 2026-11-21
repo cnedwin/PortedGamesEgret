@@ -10,7 +10,9 @@ import { browserLanguages, browserSaveStorage, prefersReducedMotion } from '@egr
 import { STROKE_SOUND, createSound } from './audio/sound.mjs';
 import { getLanguage, onLanguage, setLanguage, startLanguage, t } from './i18n.mjs';
 import { SPEEDS, openSave, recordRun } from './saves.mjs';
-import { buildChart, songOf } from './sim/chart.mjs';
+import { LEAD, buildChart, songOf } from './sim/chart.mjs';
+import { ENCORE_POWER, ENCORE_SONG, createEncore, updateEncore } from './sim/encore.mjs';
+import { LESSON_CLICKS, LESSON_SONG, buildLesson, lessonStepAt } from './sim/lesson.mjs';
 import { advance, createRun, resultOf, strike } from './sim/judge.mjs';
 import { DIFFICULTIES, SONGS } from './sim/songs.mjs';
 import { createView } from './view.mjs';
@@ -21,6 +23,13 @@ const params = new URLSearchParams(location.search),
   pads = $('#pads'),
   panels = { title: $('#title'), options: $('#options'), guide: $('#guide'), menu: $('#menu'), end: $('#end'), cal: $('#cal') };
 const progress = $('#songProgress');
+const coach = $('#sessionCoach');
+const coachLabel = coach.querySelector('strong');
+const coachText = coach.querySelector('span');
+const coachRibbon = coach.querySelector('progress');
+const lessonCues = ['practiceDrum', 'practiceGong', 'practiceDouble', 'practiceRoll'];
+const lessonSkills = ['Drum', 'Gong', 'Double', 'Roll'];
+let lastCoachLabel = '';
 let chosenAct = SONGS[0];
 let chosenLevel = DIFFICULTIES[0];
 
@@ -39,6 +48,9 @@ const app = {
   save,
   screen: 'title',
   song: null,
+  mode: 'song',
+  lessonSkills: null,
+  encore: null,
   difficulty: 'normal',
   chart: null,
   run: null,
@@ -98,6 +110,12 @@ function strikeAt(kind, hand, ms) {
   sound.strike(effect);
   if (result.type === 'judged' && app.strokes.length < 2000) app.strokes.push({ judgement: result.judgement, off: result.off, at: time });
   view.struck(kind, result);
+  if (app.lessonSkills) {
+    if (met) app.lessonSkills.add(kind);
+    if (result.type === 'double') app.lessonSkills.add('double');
+    if (result.type === 'roll' && app.run.rolls >= 4) app.lessonSkills.add('roll');
+  }
+  updateRally(result, time);
 }
 
 const padContacts = new Map();
@@ -148,6 +166,9 @@ window.addEventListener(
     } else if (app.screen === 'menu' && event.key === 'Escape') {
       event.preventDefault();
       closeMenu();
+    } else if (app.screen === 'encoreGuide' && event.key === 'Escape') {
+      event.preventDefault();
+      showTitle('[data-encore]');
     } else if ((app.screen === 'options' || app.screen === 'guide') && event.key === 'Escape') {
       event.preventDefault();
       showTitle(`[data-open="${app.screen}"]`);
@@ -185,9 +206,47 @@ function frame(seconds) {
     shownProgress = progressPercent;
     progress.value = progressPercent;
   }
+  if (app.encore) updateRally(null, time);
+  if (app.mode !== 'song') paintCoach(time);
   if (app.run.done) finish();
 }
-const speedOf = () => 260 * settings().speed;
+const speedOf = () => app.mode === 'lesson' ? 275 : 260 * settings().speed;
+
+function updateRally(result, time) {
+  if (!app.encore) return;
+  const { state, award, activated } = updateEncore(app.encore, result, app.run, time);
+  app.encore = state;
+  if (award) app.run.score += award;
+  if (activated) sound.cue?.('rally');
+}
+
+function paintCoach(time) {
+  const lesson = app.mode === 'lesson';
+  let label, hint, active = false;
+  if (lesson) {
+    const step = lessonStepAt(time);
+    label = t('practiceCount', { n: step + 1 });
+    hint = t(lessonCues[step]);
+    coachRibbon.hidden = true;
+  } else {
+    const { charge, activeUntil } = app.encore;
+    active = activeUntil > time;
+    const ready = charge >= ENCORE_POWER.capacity;
+    label = active ? t('encoreActive', { n: Math.ceil(activeUntil - time) }) :
+      t('encoreCharge', { n: charge, max: ENCORE_POWER.capacity });
+    hint = ready ? t('encoreReady') : active ? '' : t('encoreHint');
+    coachRibbon.hidden = false;
+    const value = active ? (activeUntil - time) / ENCORE_POWER.seconds * ENCORE_POWER.capacity : charge;
+    coachRibbon.value = Math.round(value * 10) / 10;
+  }
+  if (label + hint !== lastCoachLabel) {
+    coachLabel.textContent = label;
+    coachText.textContent = hint;
+    coachRibbon.setAttribute('aria-label', t('encore'));
+    lastCoachLabel = label + hint;
+  }
+  coach.classList.toggle('rally', active);
+}
 
 // ---- Screens. ----
 function openPanel(name) {
@@ -203,7 +262,11 @@ const sheet = (panel, html) => {
   return panel.firstElementChild;
 };
 const levelName = (difficulty) => t(difficulty);
-const songName = (song) => (getLanguage() === 'zh' ? song.zh : song.en);
+const songName = (song) => {
+  if (song.id === LESSON_SONG.id) return t('practiceName');
+  if (song.id === ENCORE_SONG.id) return t('encore');
+  return (getLanguage() === 'zh' ? song.zh : song.en);
+};
 let lastSaid = '';
 function say(words) {
   const live = $('#say');
@@ -267,7 +330,9 @@ function showTitle(focus) {
   view.clear();
   $('#hud').hidden = true;
   $('#prompt').hidden = true;
+  coach.hidden = true;
   pads.hidden = true;
+  const encoreBest = bestEncoreLabel();
   const acts = SONGS.map((song) => `<button type="button" class="act" data-act="${song.id}" aria-pressed="false">
       <img src="assets/${song.id}.webp" width="520" height="693" alt=""><span>${songName(song)}</span></button>`).join('');
   const levels = DIFFICULTIES.map((level) => `<button type="button" class="level" data-level="${level}" aria-pressed="false">
@@ -282,13 +347,17 @@ function showTitle(focus) {
       ${notice ? `<p class="notice" role="status">${t(notice)}</p>` : ''}
     </header>
     <div class="program">
-      <div class="program-head"><h2>${t('songs')}</h2></div>
+      <div class="program-head"><h2>${t('songs')}</h2>
+        <button class="encore-button" type="button" data-encore>
+          <span>${t('encore')}</span>${encoreBest ? `<small>${encoreBest}</small>` : ''}
+        </button>
+      </div>
       <div class="acts">${acts}</div>
       <div class="playbill">
         <div class="act-meta"><span class="about"></span><output></output></div>
         <div class="levels" role="group" aria-label="${t('chooseLevel')}">${levels}</div>
         <div class="launch">
-          <p class="hint"><span class="key-hint">${t('keysHint')}</span><span class="touch-hint">${t('touchHint')}</span></p>
+          <button type="button" data-practice>${t('practice')}</button>
           <button type="button" class="strong" data-start>${t('play')}</button>
         </div>
       </div>
@@ -319,12 +388,34 @@ function showTitle(focus) {
       paintSelection();
     });
   }
+  root.querySelector('[data-practice]').addEventListener('click', () => startSong(LESSON_SONG.id, 'easy'));
+  root.querySelector('[data-encore]').addEventListener('click', () => showEncore());
   root.querySelector('[data-start]').addEventListener('click', () => startSong(chosenAct.id, chosenLevel));
   root.querySelector('[data-open="guide"]').addEventListener('click', showGuide);
   root.querySelector('[data-open="options"]').addEventListener('click', () => showOptions());
   paintSelection();
   openPanel('title');
   (root.querySelector(focus || `[data-act="${chosenAct.id}"]`))?.focus({ preventScroll: true });
+}
+
+function bestEncoreLabel() {
+  const best = save.data.best[ENCORE_SONG.id]?.normal;
+  return best ? t('bestOf', { rank: t(best.rank), score: best.score }) : '';
+}
+
+function showEncore() {
+  app.screen = 'encoreGuide';
+  sound.cue?.('open');
+  panels.guide.setAttribute('aria-labelledby', 'guideHeading');
+  const root = sheet(panels.guide, `<h2 id="guideHeading">${t('encore')}</h2>
+    <p>${t('encoreBrief')}</p>
+    <div class="row sheet-actions">
+      <button type="button" class="strong" data-do="encore">${t('play')}</button>
+      <button type="button" data-do="close">${t('close')}</button>
+    </div>`);
+  root.querySelector('[data-do="encore"]').addEventListener('click', () => startSong(ENCORE_SONG.id, 'normal'));
+  root.querySelector('[data-do="close"]').addEventListener('click', () => showTitle('[data-encore]'));
+  openPanel('guide');
 }
 
 function showGuide() {
@@ -338,7 +429,11 @@ function showGuide() {
       <button type="button" data-sample="drum"><i class="note-mark drum" aria-hidden="true"></i> ${t('sampleDrum')}</button>
       <button type="button" data-sample="tai"><i class="note-mark gong" aria-hidden="true"></i> ${t('sampleGong')}</button>
     </div>
-    <div class="row sheet-actions"><button type="button" class="strong" data-do="close" data-focus>${t('close')}</button></div>`);
+    <div class="row sheet-actions">
+      <button type="button" class="strong" data-do="practice" data-focus>${t('practice')}</button>
+      <button type="button" data-do="close">${t('close')}</button>
+    </div>`);
+  root.querySelector('[data-do="practice"]').addEventListener('click', () => startSong(LESSON_SONG.id, 'easy'));
   for (const button of root.querySelectorAll('[data-sample]')) button.addEventListener('click', () => sound.strike(button.dataset.sample));
   root.querySelector('[data-do="close"]').addEventListener('click', () => showTitle('[data-open="guide"]'));
   openPanel('guide');
@@ -367,7 +462,8 @@ function labelPads() {
 }
 
 function updatePlayLabels() {
-  $('#songName').textContent = `${songName(app.song)} · ${levelName(app.difficulty)}`;
+  $('#songName').textContent = app.mode === 'song' ?
+    `${songName(app.song)} · ${levelName(app.difficulty)}` : songName(app.song);
   $('#score').textContent = t('score', { n: app.run?.score ?? 0 });
   progress.setAttribute('aria-label', t('scoreProgress'));
   $('#pauseButton').textContent = t('pause');
@@ -376,14 +472,22 @@ function updatePlayLabels() {
 
 async function startSong(id, difficulty) {
   if (app.screen === 'loading') return;
-  const song = songOf(id);
-  chosenAct = song;
-  chosenLevel = difficulty;
+  const lesson = id === LESSON_SONG.id;
+  const encore = id === ENCORE_SONG.id;
+  const song = lesson ? LESSON_SONG : encore ? ENCORE_SONG : songOf(id);
+  app.mode = lesson ? 'lesson' : encore ? 'encore' : 'song';
+  if (app.mode === 'song') {
+    chosenAct = song;
+    chosenLevel = difficulty;
+  }
   if (notice === 'audioError') notice = null;
-  field.dataset.act = song.id;
+  field.dataset.act = encore ? 'jijifeng' : song.id;
   app.song = song;
   app.difficulty = difficulty;
-  app.chart = buildChart(song, difficulty);
+  app.lessonSkills = lesson ? new Set() : null;
+  app.encore = encore ? createEncore() : null;
+  app.chart = lesson ? buildLesson() : buildChart(song, difficulty);
+  app.time = 0;
   app.run = null;
   app.result = null;
   app.screen = 'loading';
@@ -398,9 +502,8 @@ async function startSong(id, difficulty) {
   prompt.textContent = t('loading');
   prompt.hidden = false;
   try {
-    await sound.prepare(song);
-    if (sound.state === 'locked') prompt.textContent = t('tapToStart');
-    if (!(await sound.start(song))) throw new Error('The backing voice did not start.');
+    const voice = lesson ? await sound.clicks(LESSON_CLICKS, 60 / song.bpm, LEAD.seconds) : await sound.start(song);
+    if (!voice) throw new Error('The backing voice did not start.');
   } catch (cause) {
     console.warn('Opera Drums score could not start', cause);
     notice = 'audioError';
@@ -412,6 +515,12 @@ async function startSong(id, difficulty) {
   shownScore = -1;
   shownProgress = -1;
   app.screen = 'play';
+  coach.hidden = app.mode === 'song';
+  if (!coach.hidden) {
+    coachText.setAttribute('aria-live', lesson ? 'polite' : 'off');
+    coachRibbon.max = ENCORE_POWER.capacity;
+    paintCoach(0);
+  }
   $('#pauseButton').disabled = false;
   openPanel(null);
   if (game.paused) game.resume();
@@ -461,12 +570,15 @@ function closeMenu() {
 function finish() {
   const result = resultOf(app.run);
   let best = false;
-  const kept = save.update((data) => void (best = recordRun(data, app.song.id, app.difficulty, result)));
+  const isLesson = app.mode === 'lesson';
+  const kept = isLesson || save.update((data) => {
+    best = recordRun(data, app.song.id, app.difficulty, result, { count: app.mode === 'song' });
+  });
   if (!kept) notice = 'saveRefused';
-  app.result = { ...result, best, kept };
+  app.result = { ...result, best, kept, mode: app.mode, skills: [...(app.lessonSkills ?? [])] };
   app.screen = 'end';
   sound.stop();
-  sound.cue?.(result.cleared ? 'clear' : 'retry');
+  sound.cue?.(isLesson || result.cleared ? 'clear' : 'retry');
   showEnd();
 }
 
@@ -474,15 +586,18 @@ function showEnd() {
   const r = app.result;
   pads.hidden = true;
   $('#hud').hidden = true;
+  coach.hidden = true;
   view.clear();
+  if (r.mode === 'lesson') return showLessonEnd(r.skills);
   const root = sheet(
     panels.end,
     `<div class="end-head"><h2 id="endHeading">${t('curtainCall')}</h2><small>${t('resultTitle', { song: songName(app.song), level: levelName(app.difficulty) })}</small></div>
      <div class="end-lead">
-       <img src="assets/${app.song.id}.webp" alt="">
+       <img src="assets/${r.mode === 'encore' ? 'jijifeng' : app.song.id}.webp" alt="">
        <div><p class="rank" data-rank="${r.rank}">${t(r.rank)}</p>
        <p class="end-score">${t('score', { n: r.score })}</p>
-       ${r.best ? `<p class="new-best">${t('newBest')}</p>` : ''}</div>
+       ${r.best ? `<p class="new-best">${t('newBest')}</p>` : ''}
+       ${app.encore ? `<p class="encore-bonus">${t('encoreBonus', { n: app.encore.rallies, score: app.encore.bonus })}</p>` : ''}</div>
      </div>
      <dl class="stats">${[
        ['great', r.counts.great], ['ok', r.counts.ok], ['miss', r.counts.miss],
@@ -495,6 +610,27 @@ function showEnd() {
   root.querySelector('[data-do=again]').addEventListener('click', () => startSong(app.song.id, app.difficulty));
   root.querySelector('[data-do=quit]').addEventListener('click', () => showTitle());
   say(`${t(r.rank)}, ${t('score', { n: r.score })}`);
+  openPanel('end');
+}
+
+function showLessonEnd(skills) {
+  const finished = new Set(skills);
+  panels.end.setAttribute('aria-labelledby', 'endHeading');
+  const root = sheet(panels.end, `<div class="end-head"><h2 id="endHeading">${t('practiceDone')}</h2><small>${t('practiceLearned', { n: finished.size })}</small></div>
+    <ul class="skill-list">${lessonSkills.map((skill) => {
+      const done = finished.has(skill.toLowerCase());
+      return `<li data-done="${done}"><span>${t('practiceSkill' + skill)}</span>
+        <strong>${t(done ? 'practicePassed' : 'practiceAgain')}</strong></li>`;
+    }).join('')}</ul>
+    <div class="row sheet-actions">
+      <button type="button" class="strong" data-do="play-song">${t('play')}</button>
+      <button type="button" data-do="again">${t('practiceRetry')}</button>
+      <button type="button" data-do="quit">${t('quit')}</button>
+    </div>`);
+  root.querySelector('[data-do="play-song"]').addEventListener('click', () => startSong(chosenAct.id, chosenLevel));
+  root.querySelector('[data-do="again"]').addEventListener('click', () => startSong(LESSON_SONG.id, 'easy'));
+  root.querySelector('[data-do="quit"]').addEventListener('click', () => showTitle('[data-practice]'));
+  say(t('practiceLearned', { n: finished.size }));
   openPanel('end');
 }
 
