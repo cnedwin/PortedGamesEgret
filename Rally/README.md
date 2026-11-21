@@ -149,6 +149,7 @@ The race rules (handling, rival driving, items, laps and places) can run a whole
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb` 后：34 项 Node 测试通过；无头 Chromium 下标题画面牌匾文字方向正确，进入比赛并按住油门 40 秒无控制台错误。 · After the engine update: 34 tests pass, the plaque reads the right way up, and a started race runs clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：34 项全部通过（车辆手感、对手驾驶、道具、圈数与名次、输入、赛道美术与模型）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 34 tests pass.
 - 2026-11-20 `node tools/quality.mjs Rally` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 赛道几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium; its frame time says nothing of real devices.
 - 没有记录在案的真机整局验收。 · No recorded whole race on a real device.

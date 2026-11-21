@@ -172,6 +172,7 @@ Music and sound are synthesised with Web Audio. The time, stats, affection, push
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb`、改用引擎帧循环后：25 项 Node 测试和无页面一学期通过；无头 Chromium 下标题与升级前逐像素相同，开始新学期、打开手机、切走标签页再回来都无控制台错误。 · After the engine update and the move to the engine's frame loop: 25 tests and a headless term pass; the title is unchanged, and a new term, the phone and a hidden tab run clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：25 项全部通过（时间、属性、好感、拉扯、心愿、校园事件、任务、结局、回忆和存档规则）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 25 tests pass.
 - `tools/headless.mjs` 可以不开页面玩完一个学期，用来检查规则和数值改动；本次没有重新记录它的输出。 · `tools/headless.mjs` plays a whole term without a page; its output was not recorded this time.
 - 2026-11-20 `node tools/quality.mjs LoveElective` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。 · The 16 automatic quality items in headless Chromium, see QUALITY.md.

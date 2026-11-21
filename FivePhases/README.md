@@ -115,6 +115,7 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb` 后：`test/`、`src/portrait/`、`src/view/` 下 76 项 Node 测试通过；无头 Chromium 下机器人 90 秒内交换 72 次、结束 24 个回合，无控制台错误。 · After the engine update: 76 tests pass and a robot's 90 seconds of play run clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：49 项全部通过（棋盘、战斗、棋盘视图）。另有 `src/portrait/`、`src/view/` 下的测试，本次没有跑。 · `node --test test/*.test.mjs` at commit `fc1dacb` with Node 22.23.4: all 49 pass; the tests under `src/portrait/` and `src/view/` were not run this time.
 - 2026-11-20 `node tools/quality.mjs FivePhases` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。 · The 16 automatic quality items in headless Chromium, see QUALITY.md.
 - 上面「前期矢量版的引擎测量」一节记录的压测：`tools/probe.mjs` 让机器人以最快速度出牌和交换，几何预算问题修复后连跑九次没有复现。 · The stress runs recorded above: after the geometry fix, nine runs of the fastest robot play showed no recurrence.

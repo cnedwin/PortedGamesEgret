@@ -184,6 +184,7 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb`、重新打包后：85 项 Node 测试通过；无头 Chromium 下打包页面和 `?dev` 都能开始，第一幕和第三幕各打 20 秒无控制台错误（`?clones=200` 时的 Spine 实例上限报错升级前后都有，见已知问题）。 · After the engine update and a new pack: 85 tests pass, both the packed page and ?dev start, and acts one and three play clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：85 项全部通过（三幕的规则、Boss、分身、资源清单与校验和、打包文件不比源码旧）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 85 tests pass, including the check that the packed file is not older than its sources.
 - 2026-11-20 `node tools/quality.mjs LanternShadows` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下桌面帧时间 p95 为 66.7 ms，不代表真显卡。 · The 16 automatic quality items in headless Chromium with software rendering; the frame time there says nothing of a real GPU.
 - 没有记录在案的真机整局验收。 · No recorded whole-game run on a real device.

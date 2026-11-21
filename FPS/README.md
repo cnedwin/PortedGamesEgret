@@ -130,6 +130,7 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb` 后：51 项 Node 测试通过；无头 Chromium 下标题画面与升级前逐像素相同，`?auto=1` 自动游玩 40–60 秒无控制台错误，中等画质下 `renderer.info.lightsTiled` 为 2。 · After the engine update on 2026-11-21: 51 tests pass, the title is pixel for pixel as before, and automatic play runs clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：51 项全部通过（规则、输入、美术载入、模型挂点、连续蒙皮、投影代理、启动预绘）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 51 tests pass.
 - 2026-11-20 `node tools/quality.mjs FPS` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 场景几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium with software rendering, see QUALITY.md; its frame time says nothing of real devices.
 - 据 [STATUS.md](STATUS.md) 记录的真机检查：PC（RTX 5090 Laptop、Edge 157）与三星 SM-F966U1（Android 17、Chrome）上检查了三类角色的持枪、步行和蹲姿，第一人称枪械的瞄准、后坐、换弹和近裁切；公开版本的整局与性能复跑见 [PR #82 的验收记录](https://github.com/cnedwin/PortedGamesEgret/pull/82)。STATUS.md 里的两段整局帧率是美术修复前的历史基线。 · Device checks recorded in STATUS.md, on a PC and a Samsung phone; the public-run results are in PR #82. The whole-run frame rates there predate the art repair.

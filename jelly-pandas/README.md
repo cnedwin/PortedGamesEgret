@@ -105,6 +105,7 @@ The game uses Egret World3D and draws with WebGL2 by default. Each part maps to 
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb` 后：24 项 Node 测试和无页面整局通过；无头 Chromium 下开局后移动、跳跃 35 秒无控制台错误。 · After the engine update: 24 tests and a headless run pass, and 35 s of play run clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：24 项全部通过（规则、熊猫、输入）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 24 tests pass.
 - 提交 `ddd18ce` 记录的测量：高画质、约 190 个敌人的忙碌时刻，每帧三角形从 480 万降到 100 万以下，绘制次数从约 500 降到约 340；四只熊猫无页面整局的规则每步从 1.59 ms 降到 1.28 ms。测量的设备和浏览器没有记录。 · Recorded in `ddd18ce`: triangles a frame from 4.8 million to under 1 million and draw calls from about 500 to 340 in a busy moment; a rules step from 1.59 to 1.28 ms. The device used was not recorded.
 - 2026-11-20 `node tools/quality.mjs jelly-pandas` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium; its frame time says nothing of real devices.

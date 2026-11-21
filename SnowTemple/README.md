@@ -171,6 +171,7 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb` 后：87 项 Node 测试通过；无头 Chromium 下 `?auto` 自动游玩 60 秒无控制台错误。 · After the engine update: 87 tests pass and 60 s of automatic play run clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：87 项全部通过（规则、数值、规则玩家通关、存档、输入、动作、角色加载、声音、引擎副本）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 87 tests pass, including the rule-driven player finishing the chapter.
 - 2026-11-20 `node tools/quality.mjs SnowTemple` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 场景几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium; its frame time says nothing of real devices.
 - 上面「角色分阶段加载」一节记录的 Windows 前台测试（Edge 157、RTX 5090 Laptop、WebGL2），对照的是改造前后的冷启动到首次移动。那是 `58554b3` 时的历史基线，之后没有重测。 · The Windows timings in the staged-loading section are a historical baseline at `58554b3`, not measured again since.

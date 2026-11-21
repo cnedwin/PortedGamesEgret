@@ -440,7 +440,12 @@ export const MATRIX = {
    "id": "@egret/engine/web/loop",
    "kind": "entry",
    "label": "@egret/engine/web/loop",
-   "games": []
+   "games": [
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/stage.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/kit",
