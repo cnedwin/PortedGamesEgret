@@ -48,9 +48,15 @@ export async function serve({ root = ROOT, throttle = 0 } = {}) {
   return { url: `http://127.0.0.1:${server.address().port}/`, close: () => new Promise((done) => server.close(done)) };
 }
 
-/** Headless Chromium. Without a GPU it draws through SwiftShader, which every result here says. */
+/**
+ * Headless Chromium. Without a GPU it draws through SwiftShader, which every result here says. `CHROMIUM_PATH` names a
+ * Chromium or Chrome already on the machine, for where Playwright's own download is not available.
+ */
 export async function launch() {
-  return chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
+  return chromium.launch({
+    ...(process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {}),
+    args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required']
+  });
 }
 
 /** Messages that say nothing about the game: a missing page icon. */

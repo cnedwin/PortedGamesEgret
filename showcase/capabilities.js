@@ -1,6 +1,6 @@
 // 由 tools/capability-matrix.mjs 生成，不要手改 · Made by tools/capability-matrix.mjs; do not edit by hand.
 export const MATRIX = {
- "commit": "b5628eb9997b67cf6163a388f5aa06f321f3833a",
+ "commit": "a778bed53ecdbf9c65e9abc5624d4b3751a4331d",
  "games": [
   "CanalWatch",
   "FivePhases",
@@ -11,6 +11,7 @@ export const MATRIX = {
   "LoveElective",
   "MechanismCity",
   "NezhaSea",
+  "NightWardens",
   "OperaDrums",
   "Rally",
   "SnowTemple",
@@ -55,6 +56,10 @@ export const MATRIX = {
     {
      "game": "NezhaSea",
      "file": "NezhaSea/src/actor-art.mjs"
+    },
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/screens.mjs"
     },
     {
      "game": "Rally",
@@ -104,7 +109,12 @@ export const MATRIX = {
    "id": "@egret/engine/layout",
    "kind": "entry",
    "label": "@egret/engine/layout",
-   "games": []
+   "games": [
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/screens.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/web/input",
@@ -271,6 +281,10 @@ export const MATRIX = {
      "file": "MechanismCity/src/screens.mjs"
     },
     {
+     "game": "NightWardens",
+     "file": "NightWardens/src/screens.mjs"
+    },
+    {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/ui/card.mjs"
     }
@@ -280,7 +294,12 @@ export const MATRIX = {
    "id": "@egret/engine/animation",
    "kind": "entry",
    "label": "@egret/engine/animation",
-   "games": []
+   "games": [
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/view/field.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/paragraph",
@@ -339,7 +358,12 @@ export const MATRIX = {
    "id": "@egret/engine/input/gamepad",
    "kind": "entry",
    "label": "@egret/engine/input/gamepad",
-   "games": []
+   "games": [
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/main.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/web/gamepad",
@@ -349,6 +373,10 @@ export const MATRIX = {
     {
      "game": "LanternShadows",
      "file": "LanternShadows/src/input.mjs"
+    },
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/main.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -398,6 +426,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/play/level.mjs"
+    },
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/view/field.mjs"
     }
    ]
   },
@@ -477,6 +509,10 @@ export const MATRIX = {
      "file": "NezhaSea/src/i18n.mjs"
     },
     {
+     "game": "NightWardens",
+     "file": "NightWardens/tools/balance.mjs"
+    },
+    {
      "game": "OperaDrums",
      "file": "OperaDrums/src/audio/sound.mjs"
     },
@@ -514,6 +550,10 @@ export const MATRIX = {
     {
      "game": "NezhaSea",
      "file": "NezhaSea/src/main.mjs"
+    },
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/main.mjs"
     },
     {
      "game": "OperaDrums",
@@ -557,6 +597,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
+    },
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/main.mjs"
     }
    ]
   },
@@ -587,7 +631,12 @@ export const MATRIX = {
    "id": "@egret/engine/audio",
    "kind": "entry",
    "label": "@egret/engine/audio",
-   "games": []
+   "games": [
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/audio/sound.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/web/audio",
@@ -601,6 +650,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/audio/sound.mjs"
+    },
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/audio/sound.mjs"
     },
     {
      "game": "OperaDrums",
@@ -618,6 +671,10 @@ export const MATRIX = {
      "file": "MechanismCity/src/main.mjs"
     },
     {
+     "game": "NightWardens",
+     "file": "NightWardens/src/main.mjs"
+    },
+    {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/main.mjs"
     }
@@ -631,6 +688,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
+    },
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/main.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -678,6 +739,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/play/level.mjs"
+    },
+    {
+     "game": "NightWardens",
+     "file": "NightWardens/src/view/field.mjs"
     }
    ]
   },

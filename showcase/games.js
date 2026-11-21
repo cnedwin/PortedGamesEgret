@@ -426,4 +426,38 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'wardens', folder: 'NightWardens', kind: '2d',
+    portraitGallery: true,
+    scenes: [
+      { zh: "第三夜 · 鬼市里的旱魃与满天符箭", en: "Night three · The Drought Fiend in the ghost market under a sky of bolts" },
+      { zh: "升级 · 三道符法选一道", en: "A level gained · One ward of three" },
+      { zh: "第一夜 · 纸扎大将走上城隍庙外的路", en: "Night one · The Paper General on the temple road" },
+    ],
+    zh: "镇邪司", en: "Night Wardens",
+    genre: { zh: "竖屏塔防射击", en: "Tall-screen tower shooter" },
+    summary: { zh: "一把会自己瞄准的符弩守城门，三夜挡住纸人、僵尸和鬼新娘，升级时挑符法，子时打倒首领。", en: "One self-aiming talisman crossbow keeps the gate for three nights against paper dolls, jiangshi and the ghost bride; pick a ward at each level and bring down the warden at midnight." },
+    features: [
+      {
+        title: { zh: "图集帧动画与动画控制器", en: "Atlas frames and a sequence controller" },
+        description: { zh: "邪祟从同一张图集的对象池里取用，按自己的年纪取走路帧；首领的走路由 animation 入口的控制器在引擎时钟上推动，脚步标记扬起尘土。", en: "Haunts come pooled from one atlas, each showing the walk frame of its own age; a warden walks on the engine's clock through the animation entry's controller, its footfall markers raising dust." },
+        source: 'src/view/field.mjs',
+      },
+      {
+        title: { zh: "粒子与双色着色", en: "Particles and two-colour tints" },
+        description: { zh: "火星、纸屑、鬼火、烟、尘土和雾是粒子发射器；命中闪白、冰冻、灼烧和雷击定身是材质的双色着色。", en: "Sparks, paper scraps, ghost fire, smoke, dust and mist are particle emitters; the hit flash, frost, fire and the thunder's stun are two-colour material tints." },
+        source: 'src/view/field.mjs',
+      },
+      {
+        title: { zh: "自建混音器上的合成音效", en: "Made sounds on the game's own mixer" },
+        description: { zh: "音效和配乐在代码里合成，交给游戏自建的引擎混音器，冷却和同时发声上限让满屏击杀也清楚。", en: "Sounds and music are synthesized in code and played on an engine mixer the game makes itself; cooldowns and voice caps keep a road full of kills clear." },
+        source: 'src/audio/sound.mjs',
+      },
+      {
+        title: { zh: "替身能整夜打完的规则", en: "Rules a stand-in plays through" },
+        description: { zh: "出怪、符法、天雷和首领全在不依赖页面的规则里，替身玩家用 runHeadless 把三夜各跑一批种子来调平衡。", en: "Spawns, wards, the thunder and the wardens live in page-free rules; a stand-in plays batches of seeds on every night through runHeadless to set the balance." },
+        source: 'src/sim/world.mjs',
+      },
+    ],
+  },
 ];

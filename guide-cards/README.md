@@ -32,6 +32,8 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [sprite-swarm](perf/sprite-swarm.txt) | NezhaSea | ENGINE-NOTES 3（共用贴图的 Bitmap 比矩形精灵贵得多，改用矩形加精灵池）；提交 `9b3d926` | 同上 · the same |
 | [play-resolution](perf/play-resolution.txt) | TaiwanMahjong | ENGINE-NOTES 3（play 没有分辨率选项，1280×720 空画布 p95 33 ms；开 960×540 加根节点缩放）；提交 `936d1e6` | 同上 · the same |
 | [play-turned-table](input/play-turned-table.txt) | TaiwanMahjong | ENGINE-NOTES 4（外层旋转时 play 拒绝启动；分三层、引擎竖着开）；提交 `936d1e6` | 同上 · the same |
+| [sequence-markers](animation/sequence-markers.txt) | NightWardens | ENGINE-NOTES 1（动画控制器的标记名重复时报错不说是哪一条）；帧走路、标记扬尘、随弹层暂停、影子画进帧里；提交 `886c81c` | 草稿，未提交引擎；在引擎 `a778bed` 的临时副本里过了 `tests/guide.test.mjs`（索引放在 World3D 一节末尾，因为索引已贴着 1500 token 的上限）· draft, not sent; passed the engine's guide tests in a scratch copy (indexed at the end of the World3D section, as the index sits at its 1,500-token budget) |
+| [two-colour-tints](render/two-colour-tints.txt) | NightWardens | 命中闪白、冰冻、灼烧、雷击定身都用材质的 `light` 和 `dark`，不另做帧；提交 `886c81c` | 同上 · the same |
 
 ## 给已有卡片加证据 · Evidence for existing cards
 
@@ -75,6 +77,12 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | NezhaSea | 4（1 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | TaiwanMahjong | 6（2 张新卡，4 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | FPS、jelly-pandas、Wulin、LanternShadows、LoveElective | 0 | 没有 ENGINE-NOTES 内容，也没有新的引擎相关修复提交；它们的经验已被引擎现有卡片引用（FPS 14 张、jelly-pandas 12 张、Wulin 5 张、LanternShadows 4 张、LoveElective 1 张） · no notes and no new engine-related fixes; already cited by the engine's cards |
+| still-background（本仓库草稿 · a draft here） | NightWardens | `NightWardens/src/screens.mjs:55`、ENGINE-NOTES 2：路面是一张图，放在画布下面单独的 `#road` 上（画在 WebGL 画布元素自己的 CSS 背景图在无头 Chromium 里不显示），最忙时 p50 从 66.6 ms 降到 33.3 ms · the road picture on its own `#road` under the canvas (a background picture on the WebGL canvas element itself was not drawn), the busiest frame from p50 66.6 to 33.3 ms | 草稿 · draft |
+| sprite-swarm（本仓库草稿 · a draft here） | NightWardens | `NightWardens/src/view/field.mjs:383`：同一图集的位图对象池，十几个邪祟加二十支符箭在 SwiftShader 下 p50 16.7 ms；每个邪祟多一张影子位图时是 33.3 ms，位图的个数就是代价 · pooled Bitmaps of one atlas at p50 16.7 ms with a dozen haunts and twenty bolts; a shadow bitmap per haunt made it 33.3 ms | 草稿 · draft |
+| touch-controls | NightWardens | `NightWardens/src/screens.mjs:230`：`pointer.observe` 按触点的 session 记住拖动符弩的那根手指，另一根手指同时按天雷键 · the steering finger kept by its contact's session while another presses the thunder seal | 草稿，未提交引擎 · draft, not sent |
+| balance-from-runs | NightWardens | `NightWardens/tools/balance.mjs:29`：`runHeadless` 让替身玩家按两种移动快慢把三夜各跑 12 个种子，结果写进 README · the stand-in at two speeds plays 12 seeds of each night | 草稿，未提交引擎 · draft, not sent |
+| save-update-callbacks | NightWardens | `NightWardens/test/saves.test.mjs:88`：测试钉住「表达式箭头的 `update` 被拒、数据不变」 · a test pins the refusal of an expression arrow | 草稿，未提交引擎 · draft, not sent |
+| choose-entry | NightWardens | `NightWardens/src/main.mjs:159`：`createBrowserGame` 的后端用 `auto`（有 WebGPU 适配器就用），`?backend=webgl2` 可指定 · `backend: 'auto'` with a `?backend=` override | 草稿，未提交引擎 · draft, not sent |
 
 注意：本目录的新卡草稿若一次全部加进引擎索引，`guide/index.txt` 会超出它的 token 上限（五张一起时 1565 token），提交引擎时需要合并或精简索引行；分批放进去时每批都通过了 `tests/guide.test.mjs`。
 

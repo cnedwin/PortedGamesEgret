@@ -1,5 +1,5 @@
 {
-  "commit": "b5628eb9997b67cf6163a388f5aa06f321f3833a",
+  "commit": "a778bed53ecdbf9c65e9abc5624d4b3751a4331d",
   "entries": [
     "@egret/engine",
     "@egret/engine/webgpu",
