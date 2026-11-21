@@ -1,7 +1,6 @@
 // Independently mix the score and the action. Music transitions use the engine's own crossfade.
-import { encodeWav } from '@egret/engine/kit';
 import { createBrowserAudio } from '../vendor/engine/dist/web/audio.js';
-import { RATE, effectSamples, loopOf } from './audio-synth.mjs';
+import { renderWavs } from './audio-synth.mjs';
 
 const MOODS = { title: .66, battle: .65, boss: .64, market: .62 };
 const ALIASES = { gong: 'boss' };
@@ -37,7 +36,7 @@ async function renderOffThread(signal, phase) {
       if (signal.aborted) throw error;
     }
   }
-  return phase ? { track: loopOf(phase) } : effectSamples();
+  return renderWavs(phase);
 }
 
 /** The score keeps its position under the music switch, and the effects switch is separate. */
@@ -51,11 +50,10 @@ export function createSound(game, { on = true, music = true } = {}) {
   musicBus.setMuted(!music);
   effectBus.setMuted(!on);
   const recent = new Map(), effects = new Map(), songs = new Map();
-  const decode = (samples) => mixer.decode(encodeWav([samples], RATE));
 
   // Decode short effects once. A cold title never waits for their synthesis.
-  renderOffThread(owner.signal).then((tracks) => Promise.all(Object.entries(tracks).map(async ([name, samples]) => {
-    effects.set(name, await decode(samples));
+  renderOffThread(owner.signal).then((tracks) => Promise.all(Object.entries(tracks).map(async ([name, wav]) => {
+    effects.set(name, await mixer.decode(wav));
   }))).catch(() => {});
 
   let generation = 0, wanted = null, playing = null, intensity = 0.3;
@@ -64,7 +62,7 @@ export function createSound(game, { on = true, music = true } = {}) {
     const revision = ++generation;
     let waiting = songs.get(phase);
     if (!waiting) {
-      waiting = renderOffThread(owner.signal, phase).then(({ track }) => decode(track)).catch((error) => {
+      waiting = renderOffThread(owner.signal, phase).then(({ track }) => mixer.decode(track)).catch((error) => {
         songs.delete(phase);
         throw error;
       });
