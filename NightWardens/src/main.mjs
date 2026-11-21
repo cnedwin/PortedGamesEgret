@@ -1,9 +1,9 @@
 // 页面入口：建好游戏、存档、声音、语义树、键位和手柄，载入图集，然后在画面之间切换。舞台按屏幕的方向定：
-// 竖着是 540×960（手机竖拿，最自然的玩法），横着是 960×540；手机一转，画面层整个重建，存档不受影响。
+// 竖着宽 540、高 960 到 1170（随屏幕比例，手机竖拿，最自然的玩法），横着是 960×540；手机一转，画面层整个重建，存档不受影响。
 // 渲染后端默认 auto：浏览器给得出 WebGPU 适配器就用 WebGPU，否则用 WebGL2；`?backend=webgl2` 可以指定。
 // The page's entry: makes the game, the save, the sound, the semantic tree, the keys and the gamepads, loads the
-// atlases, then moves between the screens. The stage follows the screen: 540 × 960 when tall (a phone held upright,
-// the natural way to play), 960 × 540 when wide; when a phone is turned the view is made again and the save is
+// atlases, then moves between the screens. The stage follows the screen: 540 wide and 960 to 1170 tall when tall (a
+// phone held upright, the natural way to play), 960 × 540 when wide; when a phone is turned the view is made again and the save is
 // untouched. The backend is "auto" by default: WebGPU where the browser gives an adapter, WebGL2 otherwise;
 // `?backend=webgl2` picks one.
 import { createInputActions } from '@egret/engine/kit';
@@ -141,7 +141,10 @@ async function loadArt(game) {
 /** Make the view for the screen's current shape: a new canvas, a new game, the same app and save. */
 async function boot() {
   const tall = frameHost.clientHeight >= frameHost.clientWidth * 0.9;
-  app.stage = tall ? { width: 540, height: 960 } : { width: 960, height: 540 };
+  // A tall stage takes the screen's own shape, up to a modern phone's: the extra height goes under the road, where
+  // the thumbs are.
+  const tallHeight = Math.round(Math.min(1170, Math.max(960, (540 * frameHost.clientHeight) / Math.max(1, frameHost.clientWidth))));
+  app.stage = tall ? { width: 540, height: tallHeight } : { width: 960, height: 540 };
   const canvas = document.createElement('canvas');
   canvas.id = 'stage';
   canvas.tabIndex = 0;

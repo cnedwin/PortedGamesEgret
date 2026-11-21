@@ -61,7 +61,10 @@ function roadBackdrop(app, ground, field) {
   // A background position in percent places the picture's same point on the box's: x / (box - picture).
   const atX = width - field.width > 1 ? field.x / (width - field.width) : 0,
     atY = height - field.height > 1 ? field.y / (height - field.height) : 0;
-  app.setRoad(`${panels}url(${roadUrl(ground)}) ${pct(atX)} ${pct(atY)} / ${pct(field.width / width)} ${pct(field.height / height)} no-repeat, #05060c`);
+  // Under the road on a long phone: the wall's grey falling away to the dark, where the thunder seal sits.
+  const bottom = (field.y + field.height) / height,
+    under = bottom < 0.999 ? `, linear-gradient(transparent ${pct(bottom)}, #2a2b34 ${pct(bottom)}, #101118 ${pct(Math.min(1, bottom + 0.08))}, #05060c)` : '';
+  app.setRoad(`${panels}url(${roadUrl(ground)}) ${pct(atX)} ${pct(atY)} / ${pct(field.width / width)} ${pct(field.height / height)} no-repeat${under}, #05060c`);
 }
 /** The title: the name, the ways in, and a few haunts drifting up the road. */
 export async function titleScreen(app) {
@@ -212,8 +215,9 @@ export async function playScreen(app, { night = 1 } = {}) {
   art.wardens[plan.boss] ??= await loadWardenAtlas(app.game, plan.boss);
   const field = createField(app, scope, world, { ...art, warden: art.wardens[plan.boss] }, { reducedMotion: app.reducedMotion });
   root.addChild(field.root);
-  // The field fills the height; a tall stage leaves a band at the top for the bars, a wide one panels at the sides.
-  const scale = tall ? (height - 60) / FIELD.height : height / FIELD.height;
+  // The field fills the height; a tall stage leaves a band at the top for the bars (and, on a long phone, room under
+  // the road for the thunder seal and a thumb), a wide one panels at the sides.
+  const scale = tall ? Math.min(1, (height - 60) / FIELD.height) : height / FIELD.height;
   field.root.scaleX = field.root.scaleY = scale;
   field.root.x = (width - FIELD.width * scale) / 2;
   field.root.y = tall ? 60 : 0;
@@ -222,7 +226,8 @@ export async function playScreen(app, { night = 1 } = {}) {
   // Steering by touch or mouse: a finger on the road leads the crossbow; it keeps that finger until it lifts.
   const pad = root.addChild(scope.use(new Sprite()));
   pad.touchEnabled = true;
-  pad.hitArea = { x: field.root.x, y: field.root.y, width: FIELD.width * scale, height: FIELD.height * scale };
+  // On a tall stage the room under the road steers too.
+  pad.hitArea = { x: field.root.x, y: field.root.y, width: FIELD.width * scale, height: tall ? height - field.root.y : FIELD.height * scale };
   let steering = null,
     steerX = null;
   const toField = (globalX) => (globalX - field.root.x) / scale;
@@ -252,9 +257,9 @@ export async function playScreen(app, { night = 1 } = {}) {
       .endFill();
   }
   const L = tall
-    ? { name: [16, 8], level: [16, 36], progress: [150, 44, 220, 9], wall: [384, 44, 140, 9], wallLabel: [384, 20], souls: [0, 60, width, 4], pause: [width - 118, 6, 104, 34], thunder: [width - 70, height - 86, 46], hint: [16, height - 30] }
+    ? { name: [16, 8], level: [16, 36], progress: [192, 44, 180, 9], wall: [388, 44, 136, 9], wallLabel: [388, 20], souls: [0, 60, width, 4], pause: [width - 118, 6, 104, 34], thunder: [width - 70, height - 86, 46], hint: [16, height - 30] }
     : { name: [20, 22], level: [20, 120], progress: [field.root.x + FIELD.width * scale + 20, 64, 280, 10], wall: [20, 86, 270, 12], wallLabel: [20, 58], souls: [20, 152, 270, 6], pause: [width - 130, 20, 110, 44], thunder: [width - 160, height - 140, 52], hint: [field.root.x + FIELD.width * scale + 20, height - 40] };
-  await kit.label(hud, t(`nightShort${night}`), { x: L.name[0], y: L.name[1], size: tall ? 20 : 24, weight: 700, color: 0xfff1d0 });
+  await kit.label(hud, t(`nightShort${night}`), { x: L.name[0], y: L.name[1], size: tall ? 18 : 24, weight: 700, color: 0xfff1d0 });
   const levelLabel = await kit.label(hud, t('levelShort', { level: world.level }), { x: L.level[0], y: L.level[1], size: 16, color: AMBER, family: SANS });
   await kit.label(hud, t('wall'), { x: L.wallLabel[0], y: L.wallLabel[1], size: 14, color: 0xd8d0bc, family: SANS });
   const progressLabel = await kit.label(hud, t('midnight'), { x: L.progress[0], y: L.progress[1] - 24, size: 14, color: 0xd8d0bc, family: SANS });

@@ -42,7 +42,7 @@ made in code; the game loads no image or audio file.
 | 选符法 · Choose a ward | 1 2 3，或方向键加 Enter · or arrows and Enter | 点卡片 · click a card | 点卡片 · tap a card | 十字键加 A · d-pad and A |
 | 暂停与继续 · Pause, go on | Esc 或 P | 「暂停」· Pause | 同左 · the same | Start |
 
-手柄被击中、放天雷和首领倒下时会震动（浏览器和手柄支持时）。设置在标题里：声音、减弱动画（关掉震屏和雾，系统设了「减少动态效果」时自动减弱）、中英文。窗口横过来时，场地居中，两侧显示状态和已得符法。 · The pad shakes on hits, thunder and a warden's fall, where the browser and pad allow. The settings, on the title: sound, reduced motion (no shaking and no mist; on already when the system asks), and the language. On a wide window the road sits in the middle with the bars and the wards held at the sides.
+手柄被击中、放天雷和首领倒下时会震动（浏览器和手柄支持时）。设置在标题里：声音、减弱动画（关掉震屏和雾，系统设了「减少动态效果」时自动减弱）、中英文。窗口横过来时，场地居中，两侧显示状态和已得符法；手机竖拿时舞台随屏幕变高，路面下面放天雷键，那里也能拖动。 · The pad shakes on hits, thunder and a warden's fall, where the browser and pad allow. The settings, on the title: sound, reduced motion (no shaking and no mist; on already when the system asks), and the language. On a wide window the road sits in the middle with the bars and the wards held at the sides; on a long upright phone the stage grows with the screen, with the thunder seal under the road, where dragging steers too.
 
 ## 美术、声音与加载 · Art, sound and loading
 
@@ -124,6 +124,7 @@ rules and runaway numbers, while feel and difficulty still need people to play.
 - 灯笼鬼停在半路吐火，符弩只打离墙最近的，替身玩家第二、三夜全输：会吐火的算作近 260，优先挨打。 · Lantern ghosts stopped halfway and spat fire while the crossbow shot only the nearest to the wall, so the stand-in lost every second and third night; a spitter now counts as 260 nearer.
 - 开局四五秒没有一箭：射程 620 够不着刚出现的纸人，改成 760，覆盖整条可见的路。 · No shot for the first few seconds: a reach of 620 did not cover newly come paper dolls; 760 covers the whole road in view.
 - 选完符法后空格放不出天雷：键盘焦点还停在已隐藏的卡片上，空格被它接走；弹层关闭时清掉焦点。 · After a ward was chosen Space did not call the thunder: the focus stayed on a hidden card, which took the key; closing an overlay now clears the focus.
+- 390×844 的手机竖屏上画面上下有黑边，英文夜名压住进度条：竖屏舞台的高度改为随屏幕比例（960–1170），多出的高度放在路面下面，天雷键落在拇指的位置，这块也能拖动符弩；状态栏重新排位。 · On a 390 × 844 phone the picture had bands above and below, and the English night name ran into the progress bar: the tall stage now takes the screen's shape (960 to 1170 high), the extra room sits under the road with the thunder seal under the thumb and steering there too, and the bars were laid out again.
 - 暂停后按 Esc 不能继续：Esc 绑的是「暂停」，而暂停时再暂停什么也不做；改成按一下切换。 · Escape did not resume, as it was bound to pause, which did nothing when paused; it now toggles.
 
 ## 未完成 · Unfinished
