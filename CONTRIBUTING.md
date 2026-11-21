@@ -8,9 +8,11 @@ Bug reports, discussions, and pull requests are welcome. For a bug, include the 
 
 Keep game code, assets, documentation, and tests in the relevant game folder. For gameplay or rendering changes, include verification steps in your pull request. Include the source and applicable copyright notices for any new assets.
 
-展示站（仓库根目录的 `index.html` 与 `showcase/`）列出了每个游戏。新增或大改一个游戏时，请同步更新 `showcase/games.js` 里的名称、介绍和资料，并把封面与截图放进 `showcase/media/<游戏 id>/`（WebP，宽度不超过 1600 像素）。
+展示站从 `showcase/games.js` 读取案例。新增游戏时，在文件里加一条记录，填写中英文标题、简介、2D 或 3D 分类，以及至少三项能从游戏源码核实的引擎能力。把一张实机封面和两张场景截图放进 `showcase/media/<游戏 id>/`，文件名为 `cover.webp`、`detail-1.webp`、`detail-2.webp`（宽度不超过 1600 像素），再给每张图写中英文说明。首页和详情页会自动纳入该案例。
 
-The showcase site (`index.html` and `showcase/` at the repository root) lists every game. When adding a game or changing one substantially, update its names, introduction and facts in `showcase/games.js`, and put its cover and screenshots in `showcase/media/<game id>/` (WebP, at most 1600 pixels wide).
+The showcase reads its catalog from `showcase/games.js`. Add an entry with Chinese and English titles and summaries, a 2D or 3D category, and at least three engine capabilities with links to their implementation files. Put the gameplay cover and two scene captures in `showcase/media/<game id>/` as `cover.webp`, `detail-1.webp` and `detail-2.webp` (at most 1600 pixels wide), and write a caption in both languages for each. The directory and case page use this entry automatically.
+
+提交前运行 `npm run check:showcase` 检查案例、源码路径、能力矩阵和图片。 Run `npm run check:showcase` to verify the catalog, source paths, matrix and images.
 
 ## 工程标准 · Game project standard
 

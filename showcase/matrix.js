@@ -9,7 +9,8 @@ const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;',
 
 const WORDS = {
   zh: {
-    brand: '新白鹭引擎游戏 Demo',
+    brand: '白鹭游戏案例',
+    all: '全部游戏',
     engine: '引擎源码',
     langButton: 'EN',
     langLabel: 'Switch to English',
@@ -24,10 +25,11 @@ const WORDS = {
     none: '还没有游戏用到',
     used: (game, file) => `${game} 在 ${file} 里用到`,
     foot: '由 tools/capability-matrix.mjs 从游戏源码生成。',
-    pageTitle: '引擎能力矩阵 · 新白鹭引擎游戏 Demo',
+    pageTitle: '引擎能力矩阵 · 新白鹭引擎游戏案例',
   },
   en: {
-    brand: 'Egret Rebuild Game Demos',
+    brand: 'Egret Showcase',
+    all: 'All games',
     engine: 'Engine source',
     langButton: '中文',
     langLabel: '切换到中文',
@@ -42,7 +44,7 @@ const WORDS = {
     none: 'No game uses it yet',
     used: (game, file) => `${game} uses it in ${file}`,
     foot: 'Made from the games’ source by tools/capability-matrix.mjs.',
-    pageTitle: 'Engine capability matrix · Egret Rebuild Game Demos',
+    pageTitle: 'Engine capability matrix · Egret Rebuild Game Showcase',
   },
 };
 
@@ -94,6 +96,7 @@ function render() {
   const button = $('.lang');
   button.textContent = t.langButton;
   button.setAttribute('aria-label', t.langLabel);
+  $('.brand').href = $('.catalog-link').href = `./?lang=${lang}`;
   $('[data-table="entries"]').innerHTML = table(MATRIX.rows.filter((row) => row.kind !== 'api'));
   $('[data-table="apis"]').innerHTML = table(MATRIX.rows.filter((row) => row.kind === 'api'));
   $('.matrix-gaps').innerHTML = MATRIX.rows
@@ -107,6 +110,9 @@ function render() {
 
 $('.lang').addEventListener('click', () => {
   lang = lang === 'zh' ? 'en' : 'zh';
+  const url = new URL(location.href);
+  url.searchParams.set('lang', lang);
+  history.replaceState(null, '', url);
   try {
     localStorage.setItem('egret-demos-lang', lang);
   } catch {

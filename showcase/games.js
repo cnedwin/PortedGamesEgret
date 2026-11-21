@@ -1,227 +1,316 @@
-// The games shown on the front page, in the order they appear.
-// Each entry names its folder, both titles, a short line for the selection
-// strip, a longer introduction in each language, a few facts, and the
-// pictures kept in showcase/media/<id>/. `accent` tints that game's page.
+// Add one entry and a matching media/<id>/ directory when adding a case.
+// A feature's source is relative to the game's folder.
+export const FEATURED_ID = 'snow';
 
 export const GAMES = [
   {
-    id: 'fps',
-    folder: 'FPS',
-    zh: '断流行动',
-    en: 'Operation Cutoff',
-    accent: '#7fe0a8',
-    genre: { zh: '第一人称战术射击', en: 'First-person tactical shooter' },
-    line: {
-      zh: '潜入水电站，守住情报传输，赶在增援合围前登机撤离。',
-      en: 'Slip into a hydro station, hold the data uplinks and make the helicopter before the net closes.',
-    },
-    intro: {
-      zh: '黎明时分，一名特勤干员潜入被武装分子占据的青岚水电站。你要在堆场、厂房和办公楼接入三处数据终端，守在终端附近直到情报传完，再顶住一波波增援赶到停机坪登机撤离。敌人会换弹、找掩体、从侧面包抄，也会朝你藏身的地方扔手雷。物资箱里有按稀有度分色的贵重物品、枪械配件和补给，背包却只有十二格。雨里的湿地面映出倒影，探照灯投下阴影，中弹的敌人会软倒在地。整座电站、每个角色、所有贴图和声音都由代码即时生成，不下载任何素材。',
-      en: 'At first light an operator slips into the Qinglan hydro station, held by an armed militia. Plug in at three data terminals in the cargo yard, the powerhouse and the office block, stay close while each one sends its data, then fight through the reinforcements to the helipad. Enemies reload, take cover, work round your flank and throw grenades at where you hide. Crates hold valuables coloured by rarity, weapon attachments and supplies, and the backpack only has twelve slots. Wet ground mirrors the floodlights, the lights cast shadows, and soldiers go limp when they fall. The station, every soldier, every texture and every sound is made in code as the page loads.',
-    },
-    facts: {
-      zh: [['画面', '3D，WebGL2 与 WebGPU'], ['操作', '键鼠、触屏'], ['语言', '中文、英文']],
-      en: [['Graphics', '3D, WebGL2 and WebGPU'], ['Controls', 'Keyboard and mouse, touch'], ['Languages', 'Chinese, English']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp', '4.webp'],
+    id: 'teahorse', folder: 'TeaHorseRoad', kind: '3d',
+    scenes: [
+      { zh: "滇南茶山 · 车队驶向牌坊", en: "Tea hills · Convoy approaching the gate" },
+      { zh: "浅滩 · 车队涉水", en: "Ford · Convoy crossing" },
+      { zh: "金沙峡谷 · 木吊桥", en: "Gorge · Timber suspension bridge" },
+    ],
+    zh: "茶马古道", en: "Tea Horse Road",
+    genre: { zh: "车队穿越", en: "Convoy driving" },
+    summary: { zh: "护送七十二捆茶，穿过浅滩、吊桥和高原山路。", en: "Escort 72 bundles of tea across fords, a rope bridge and highland roads." },
+    features: [
+      {
+        title: { zh: "流式地形", en: "Streamed terrain" },
+        description: { zh: "按距离载入地块并切换细节，工作线程准备碰撞树与植被布置。", en: "Distance-based tiles and terrain detail use collision trees and planting data prepared in workers." },
+        source: 'src/world/land.mjs',
+      },
+      {
+        title: { zh: "六轮车辆物理", en: "Six-wheel vehicle physics" },
+        description: { zh: "车身与射线车轮模拟悬挂、驱动与地面接触。", en: "Rigid chassis and raycast wheels simulate suspension, drive and road contact." },
+        source: 'src/play/convoy.mjs',
+      },
+      {
+        title: { zh: "动态水面", en: "Dynamic water" },
+        description: { zh: "浅滩和峡谷使用三维水面，高画质下更新镜面倒影。", en: "World3D animates the ford and river, with planar reflections at high quality." },
+        source: 'src/world/water.mjs',
+      },
+    ],
   },
   {
-    id: 'jy',
-    folder: 'JY',
-    zh: '金庸群侠传',
-    en: 'A Tribute to Heroes of Jin Yong',
-    accent: '#d9a866',
-    genre: { zh: '武侠角色扮演', en: 'Wuxia role-playing' },
-    line: {
-      zh: '走进金庸笔下的江湖，结识书中人物，组队踏上经典回合制征途。',
-      en: 'Walk into the world of Jin Yong’s novels, meet its heroes and lead a party through classic turn-based battles.',
-    },
-    intro: {
-      zh: '向《金庸群侠传》、智冠公司与金庸先生致敬的武侠网页游戏。你在小虾米居醒来，一脚踏进金庸笔下的江湖：在三维的江湖大地图上行走，穿过客栈、山门、河岸与海滨，与书中人物交谈，招募队友，组成自己的队伍。战斗沿用经典的回合制格子战，移动路线、武学范围和暗器目标都能先预览再确认。场景、人物和光影由新白鹭引擎的三维渲染实时绘制，带有骨骼动画、实时阴影、环境光遮蔽和随高度变化的雾气。进度保存在浏览器里，电脑、手机和手柄都能操作。',
-      en: 'A wuxia browser game paying tribute to Heroes of Jin Yong, Soft-World and Jin Yong. You wake in Xiaoxiami’s house and step into the world of Jin Yong’s novels: walk a three-dimensional world map past inns, sect gates, riverbanks and the coast, talk with characters from the books, recruit companions and build your own party. Battles keep the classic turn-based grid, and every move, skill area and thrown weapon can be previewed before you confirm it. Scenes, characters and light are drawn live by the new Egret engine, with skeletal animation, real-time shadows, ambient occlusion and height-based haze. Progress is kept in the browser, and it plays with a mouse, touch or a gamepad.',
-    },
-    facts: {
-      zh: [['画面', '3D，WebGL2'], ['操作', '鼠标、触屏、键盘、手柄'], ['首次载入', '约 37 MB 游戏数据']],
-      en: [['Graphics', '3D, WebGL2'], ['Controls', 'Mouse, touch, keyboard, gamepad'], ['First launch', 'About 37 MB of game data']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp'],
+    id: 'fps', folder: 'FPS', kind: '3d',
+    scenes: [
+      { zh: "青岚水电站 · 堆场交锋", en: "Qinglan station · Cargo yard encounter" },
+      { zh: "水电站 · 第一人称视角", en: "Hydro station · First-person view" },
+      { zh: "厂区 · 情报终端", en: "Power station · Intelligence terminal" },
+    ],
+    zh: "断流行动", en: "Operation Cutoff",
+    genre: { zh: "第一人称射击", en: "First-person shooter" },
+    summary: { zh: "穿越青岚水电站的堆场与厂房，完成任务后撤离。", en: "Cross a hydro station’s yard and powerhouse, finish the objective and extract." },
+    features: [
+      {
+        title: { zh: "WebGL2 与 WebGPU", en: "WebGL2 and WebGPU" },
+        description: { zh: "电站默认用 WebGL2 绘制，也可切换到 World3D 的 WebGPU 后端。", en: "The station uses WebGL2 by default and can switch to the World3D WebGPU backend." },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: "glTF 场景资产", en: "glTF scene assets" },
+        description: { zh: "角色和场景模型由引擎加载，重复道具可以实例复用。", en: "The engine loads characters and props, including repeated instances." },
+        source: 'src/asset-models.mjs',
+      },
+      {
+        title: { zh: "角色骨骼蒙皮", en: "Skeletal skinning" },
+        description: { zh: "士兵骨骼驱动上身、手臂和腿部姿态。", en: "Skinned skeletons drive the soldiers’ upper bodies, arms and legs." },
+        source: 'src/soldier-skin.mjs',
+      },
+    ],
   },
   {
-    id: 'wulin',
-    folder: 'Wulin',
-    zh: '武林天下',
-    en: 'Wulin',
-    accent: '#d6b25e',
-    genre: { zh: '武侠门派经营', en: 'Wuxia sect management' },
-    line: {
-      zh: '执掌一派，建山门、收弟子，在群雄之间或战或和。',
-      en: 'Lead a sect, raise its seat and its disciples, and fight or befriend the rest of the martial world.',
-    },
-    intro: {
-      zh: '禁武令已下，山门未闭。你从十二个门派中择一而掌，开局便是总舵掌门：兴建与扩建山门里的建筑，在招贤榜前收录弟子，为每个人安排修练、采集、制造或行侠的差事，让他们从杂役一步步晋升为亲传。新局有数年立足期，抓紧扩建、延揽门徒、理顺收支；之后便要与各派或战或和，开设分舵、出兵攻伐，直到一统江湖或被推为武林盟主。交战时双方自动交手，你可以随时暂停、调速、点选敌人集火或撤退。山门与江湖大地图都由新白鹭引擎以三维绘制，存档可导入导出，还内置修改器。目前仍在持续开发。',
-      en: 'The ban on martial arts has been proclaimed, but the sect gates stay open. Take charge of one of twelve sects as the leader at its seat: put up and enlarge buildings, take in disciples at the recruiting board, and give each one work, whether practising an art, gathering, crafting or doing good deeds, until they rise from servant to personal disciple. A new campaign starts with years of truce to grow in; after that you settle new ground, march on your neighbours or make peace, until you rule the martial world or are named its leader. Battles play out on their own while you pause, change speed, pick targets or call a retreat. The seat and the world map are drawn in 3D by the new Egret engine, saves can be exported and imported, and there is a built-in editor. Still in active development.',
-    },
-    facts: {
-      zh: [['画面', '3D 山门、江湖与战斗，WebGL2'], ['操作', '鼠标、触屏、键盘'], ['状态', '开发中']],
-      en: [['Graphics', '3D seat, world map and battles, WebGL2'], ['Controls', 'Mouse, touch, keyboard'], ['Status', 'In development']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp', '4.webp'],
+    id: 'snow', folder: 'SnowTemple', kind: '3d',
+    imageFocus: '75% center',
+    scenes: [
+      { zh: "雪路 · 林冲执枪", en: "Snow road · Lin Chong" },
+      { zh: "草料场 · 近身交锋", en: "Fodder yard · Close combat" },
+      { zh: "山神庙 · 陆谦对决", en: "Mountain temple · Lu Qian duel" },
+    ],
+    zh: "风雪山神庙", en: "Snow Temple",
+    genre: { zh: "武侠动作", en: "Wuxia action" },
+    summary: { zh: "风雪夜，林冲从草料场一路打到山神庙。", en: "Fight through a snowy night as Lin Chong, from the fodder yard to the mountain temple." },
+    features: [
+      {
+        title: { zh: "动态分辨率", en: "Dynamic resolution" },
+        description: { zh: "自动画质下，雪路与战斗会随帧率调整 3D 绘制分辨率。", en: "On auto quality, the 3D render scale follows frame rate on the snowy road and in combat." },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: "glTF 角色模型", en: "glTF characters" },
+        description: { zh: "用白鹭加载林冲、陆谦等角色的网格与贴图，服务近景武打。", en: "Egret loads textured meshes for Lin Chong, Lu Qian and the other fighters." },
+        source: 'src/view/characters.mjs',
+      },
+      {
+        title: { zh: "实例化战斗特效", en: "Instanced combat effects" },
+        description: { zh: "用实例批次绘制部分粒子、脚印与落枪演出。", en: "Instance batches draw effects such as particles, footprints and falling spears." },
+        source: 'src/view/effects.mjs',
+      },
+    ],
   },
   {
-    id: 'rally',
-    folder: 'Rally',
-    zh: '锦绣飞车',
-    en: 'Jinxiu Rally',
-    accent: '#ff5a3c',
-    genre: { zh: '3D 卡丁车竞速', en: '3D kart racing' },
-    line: {
-      zh: '醒狮、熊猫、美猴王同场飙车，漂移、道具、抢第一。',
-      en: 'A lion dancer, a panda and the Monkey King race for first place with drifts and items.',
-    },
-    intro: {
-      zh: '八位带着中国元素的车手同场竞速：醒狮、熊猫、美猴王、玉兔、青龙、秦俑、京剧花脸和虎头娃。山水环道穿过牌楼、石桥、宝塔和长城，路上有铜钱可捡、祥云门可穿、尾流可借，也有泥潭、石狮和滚鼓需要绕开。过弯时漂移能攒出加速，再用爆竹、蹴鞠、纸鸢、金钟罩、雷公鼓、筋斗云等十二种道具扭转名次。比赛分三个级别，可选一圈、三圈或五圈，其余七位车手由电脑驾驶。键盘、手柄和触屏都能玩，音乐和音效都由浏览器即时合成。',
-      en: 'Eight racers with a Chinese flavour share the grid: a lion dancer, a panda, the Monkey King, the Jade Rabbit, the Azure Dragon, a terracotta warrior, a Peking opera mask and a child in a tiger hat. The Mountain and Water Circuit runs past a ceremonial gate, a stone bridge, pagodas and the long wall, with coins to collect, cloud gates to thread and slipstreams to use, and mud, stone lions and rolling drums to avoid. Drift through corners to build a boost, then turn the race with twelve items, from firecrackers, cuju balls and kites to a golden bell, a thunder drum and a somersault cloud. There are three classes over one, three or five laps, with the other seven drivers run by the computer. It plays with a keyboard, a gamepad or touch, and its music and sound are made live in the browser.',
-    },
-    facts: {
-      zh: [['画面', '3D，WebGL2 与 WebGPU'], ['操作', '键盘、手柄、触屏'], ['语言', '中文、英文']],
-      en: [['Graphics', '3D, WebGL2 and WebGPU'], ['Controls', 'Keyboard, gamepad, touch'], ['Languages', 'Chinese, English']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp'],
+    id: 'rally', folder: 'Rally', kind: '3d',
+    scenes: [
+      { zh: "山水环道 · 牌楼下起跑", en: "Circuit · Starting under the gate" },
+      { zh: "红旗赛段 · 并行争位", en: "Red-banner section · Racing side by side" },
+      { zh: "灯笼路段 · 加速冲刺", en: "Lantern section · Boosting through" },
+    ],
+    zh: "锦绣飞车", en: "Jinxiu Rally",
+    genre: { zh: "卡丁车竞速", en: "Kart racing" },
+    summary: { zh: "绕过牌楼、石桥和长城，用漂移、尾流和道具争抢第一。", en: "Drift past gates, bridges and the Great Wall, using items and slipstreams to race for first." },
+    features: [
+      {
+        title: { zh: "赛道水面倒影", en: "Track water reflections" },
+        description: { zh: "高画质下，湖面每隔三帧更新一次赛道倒影。", en: "On high quality, the lake updates its track reflection every third frame." },
+        source: 'src/scenery.mjs',
+      },
+      {
+        title: { zh: "看台合批与实例化", en: "Merged and instanced grandstands" },
+        description: { zh: "看台观众合并成网格，挥旗观众以实例绘制。", en: "Spectators share a merged mesh, and waving flag bearers are instanced." },
+        source: 'src/grandstand.mjs',
+      },
+      {
+        title: { zh: "glTF 赛道模型", en: "glTF track models" },
+        description: { zh: "白鹭加载赛道资产，并将它们接入实时场景。", en: "Egret loads track assets and places them in the live scene." },
+        source: 'src/track-models.mjs',
+      },
+    ],
   },
   {
-    id: 'pandas',
-    folder: 'jelly-pandas',
-    zh: '果冻熊猫',
-    en: 'Jelly Pandas',
-    accent: '#ff8fc4',
-    genre: { zh: '3D 动作生存', en: '3D action survival' },
-    line: {
-      zh: '半透明的果冻熊猫，在玩具岛上顶住糖果大军十五分钟。',
-      en: 'See-through jelly pandas hold a toy island against a candy horde for fifteen minutes.',
-    },
-    intro: {
-      zh: '半透明的果冻熊猫被困在玩具岛上，要独自或带着伙伴，在糖果大军的围攻下坚持十五分钟。八只熊猫各带一件看家玩具，十二种会自动开火的玩具可以升级，满级后还能进化；大跳、下砸、肚皮撞和翻滚能把成群的敌人撞飞，每五分钟还有一个首领登场。熊猫的身体是半透明、会晃动的果冻，岛上有水面倒影、实时阴影和环境光遮蔽，糖果敌人成群结队地涌来。可以单人游玩，也能带上最多三位由游戏操控的伙伴，支持键鼠、手柄和触屏。',
-      en: 'See-through jelly pandas are stranded on a toy island and must hold out for fifteen minutes against a candy horde, alone or with friends. Each of the eight pandas starts with its own toy, and twelve self-firing toys level up and, at full strength, evolve. Super jumps, slams, belly bumps and rolls send crowds of enemies flying, and a boss arrives every five minutes. The pandas are wobbly, see-through jelly, and the island has water reflections, real-time shadows and ambient occlusion while the candy army pours in. Play alone or bring up to three friends steered by the game, with keyboard and mouse, a gamepad or touch.',
-    },
-    facts: {
-      zh: [['画面', '3D，WebGL2 与 WebGPU'], ['操作', '键鼠、手柄、触屏'], ['语言', '中文、英文']],
-      en: [['Graphics', '3D, WebGL2 and WebGPU'], ['Controls', 'Keyboard and mouse, gamepad, touch'], ['Languages', 'Chinese, English']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp'],
+    id: 'jy', folder: 'JY', kind: '3d',
+    scenes: [
+      { zh: "3D 江湖地图 · 路线探索", en: "3D world map · Route exploration" },
+      { zh: "小虾米居 · 序章对白", en: "Xiaoxiami’s house · Prologue dialogue" },
+      { zh: "密集战斗 · 移动格预览", en: "Crowded battle · Movement grid preview" },
+    ],
+    zh: "金庸群侠传", en: "A Tribute to Heroes of Jin Yong",
+    genre: { zh: "武侠角色扮演", en: "Wuxia role-playing" },
+    summary: { zh: "走江湖、访客栈、招募同伴，体验经典回合制战斗。向《金庸群侠传》、智冠公司与金庸先生致敬。", en: "Explore inns, recruit companions and fight classic turn-based battles. A tribute to Heroes of Jin Yong, Soft-World and Jin Yong." },
+    features: [
+      {
+        title: { zh: "三维场景与模型加载", en: "3D scenes and model loading" },
+        description: { zh: "客栈用原生 World3D 场景加载 glTF 角色和环境模型。", en: "Inns load character and environment models through native World3D." },
+        source: 'web/jyx2/scene/native-inn-view.mjs',
+      },
+      {
+        title: { zh: "角色骨骼动画", en: "Character skeletal animation" },
+        description: { zh: "骨骼绑定与动画混合驱动原生剧情角色。", en: "Skinning and animation mixers bring native scene characters to life." },
+        source: 'web/jyx2/scene/native-scene-actor.mjs',
+      },
+      {
+        title: { zh: "战场实例化", en: "Instanced battle terrain" },
+        description: { zh: "重复地形与布景共享实例，服务于回合制战场。", en: "Repeated terrain and scenery share instances on the turn-based battlefield." },
+        source: 'web/jyx2/scene/native-battle-terrain.mjs',
+      },
+    ],
   },
   {
-    id: 'love',
-    folder: 'LoveElective',
-    zh: '心动选修课',
-    en: 'Love Elective',
-    accent: '#f28aa8',
-    genre: { zh: '校园恋爱养成', en: 'Campus romance and dress-up' },
-    line: {
-      zh: '三十天后的星空祭之前，真正认识一个人，并把心意告诉她。',
-      en: 'Before the Star Festival thirty days away, truly get to know one person and tell her how you feel.',
-    },
-    intro: {
-      zh: '大一新生选了一门只有一份作业的选修课：在三十天后的星空祭之前，真正认识一个人，并把心意告诉她。七位性格各异的学姐，各有四章带分支的故事和两种结局。每天分为四个时段，你可以去上课、训练、打工、接任务、挑礼物，慢慢摸清每个人喜欢的相处距离，太近或太远都会让关系变化。衣橱里有四十件服饰，每一件都能自由染色。每天还有学姐的小心愿、十八种校园偶遇，结局与成就会记进跨学期的回忆册。分层视差的校园场景带来伪 2.5D 的纵深感，支持中英文切换，鼠标和触屏都能操作。',
-      en: 'A first-year student signs up for an elective with a single assignment: before the Star Festival thirty days away, truly get to know one person and tell her how you feel. Seven seniors with very different personalities each have four branching story chapters and two endings. Each day has four parts for classes, training, part-time work, tasks and choosing presents, and slowly you learn how close each of them likes you to stand; too close or too far changes things. The wardrobe holds forty pieces, each freely dyeable. Each day brings a senior’s small wish and the chance of one of eighteen campus encounters, and endings and achievements go into an album kept across terms. Layered parallax scenes give the campus a pseudo-2.5D depth, the story switches between Chinese and English, and it plays with a mouse or touch.',
-    },
-    facts: {
-      zh: [['画面', '2D 分层视差，WebGL2 与 WebGPU'], ['操作', '鼠标、触屏'], ['语言', '中文、英文']],
-      en: [['Graphics', '2D layered parallax, WebGL2 and WebGPU'], ['Controls', 'Mouse, touch'], ['Languages', 'Chinese, English']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp'],
+    id: 'wulin', folder: 'Wulin', kind: '3d',
+    scenes: [
+      { zh: "华山 · 山门营造", en: "Mount Hua · Sect construction" },
+      { zh: "江湖大地图", en: "Realm map" },
+      { zh: "弟子档案", en: "Disciple dossier" },
+    ],
+    zh: "武林天下", en: "Wulin",
+    genre: { zh: "武侠门派经营", en: "Wuxia sect management" },
+    summary: { zh: "执掌山门、经营产业、招徒布阵，在江湖大地图上决定和战。", en: "Build a sect, run its businesses and train disciples before choosing war or peace." },
+    features: [
+      {
+        title: { zh: "大地图实例化", en: "Instanced realm map" },
+        description: { zh: "房屋等重复地标在三维江湖大地图上成批绘制。", en: "Repeating landmarks are instanced across the 3D realm map." },
+        source: 'src/view/realm.mjs',
+      },
+      {
+        title: { zh: "山门射线点选", en: "Ray picking at the seat" },
+        description: { zh: "将鼠标或触屏位置投到三维场景，选中建筑和空地。", en: "Projects cursor or touch positions into the scene to select buildings and empty plots." },
+        source: 'src/view/seat.mjs',
+      },
+      {
+        title: { zh: "战斗动作骨骼", en: "Battle animation rigs" },
+        description: { zh: "角色骨骼与动画混合器驱动交战姿态。", en: "Skeletons and animation mixers drive the combat figures." },
+        source: 'src/view/figure.mjs',
+      },
+    ],
   },
   {
-    id: 'lantern',
-    folder: 'LanternShadows',
-    zh: '灯影·闹天宫',
-    en: 'Lantern Shadows',
-    accent: '#e0a21a',
-    genre: { zh: '皮影横版动作', en: 'Shadow-puppet side-scrolling action' },
-    line: {
-      zh: '一块幕布、一盏灯，皮影孙悟空打上南天门，一把毫毛变出一百个自己。',
-      en: 'One cloth, one lamp, and a shadow-puppet Monkey King storming the gate of heaven, a hundred of him at once.',
-    },
-    intro: {
-      zh: '整出戏演在皮影戏的幕布上：灯在幕后，镂空上色的皮偶贴着幕布，远处的天宫在灯影里是虚的。孙悟空一路打上南天门，平扫、上挑、劈砸三下一套，每一下打中都有一记锣鼓，整台戏跟着定格、震动。第一幕有十名天兵把守：枪兵出枪前先放平枪杆，弓手的箭可以一棍打落，筋斗云能从枪尖里穿过去；五个桃是他的体力，落幕时盖一枚印评定这一场。南天门前哪吒踏风火轮拦路，分三段打：火尖枪，能一棍打回去的乾坤圈，最后现出三头六臂，风火轮碾过的地面会烧起来。打中三十棍可以使一次身外身：一把毫毛吹出一百个小悟空围着敌人打，两千五百多根骨骼同时在动，台口实时写出帧率。第二幕蟠桃园换了布景和地面：持盾的力士要用上挑破盾或者绕到背后，仙鹤从空中沿直线扑下来，枝上的桃子可以打下来吃；出口由二郎神把守，他会变成鹰俯冲，会法天象地长到一倍半高，哮天犬不时从背后冲过来。皮偶是 Spine 骨骼动画，每片皮都由代码画出，关卡是瓦片地图，锣鼓声是算出来的。第三幕兜率宫是太上老君的丹房：炉口轮流喷火，丹炉可以打翻去烧敌人；老君的金刚琢会套走金箍棒，八卦炉要硬撑过去，出炉炼成火眼金睛。',
-      en: 'The whole play is on the cloth of a shadow-puppet booth: a lamp behind it, carved and dyed leather puppets against it, and the halls of heaven out of focus in the distance. The Monkey King fights his way to the Southern Gate with a sweep, a lift and a smash; every blow that lands has its beat of percussion, and the stage holds still and shudders with it. Ten soldiers of heaven hold the first act: a spearman levels his spear before he thrusts, an archer’s arrow can be knocked out of the air, and the cloud roll passes through a spear point. Five peaches are his strength, and a seal is set on the act as the curtain falls. Before the gate Nezha comes down on his wheels of wind and fire and fights in three phases: the fire-tipped spear, the Universe Ring that the staff can send back at him, and at last three heads and six arms, on wheels that leave the ground burning. Thirty blows landed earn the body beyond the body: a tuft of hair blown into a hundred small Monkey Kings who mob whoever is near, more than two and a half thousand bones moving at once, with the frame rate written at the foot of the booth. Act two, the Peach Orchard, changes the scenery and the ground: a shield-bearer has to have his shield lifted aside or be got behind, cranes stoop out of the air along a straight line, and the peaches on the boughs can be knocked down and eaten; Erlang holds the way out, changing into a hawk to stoop, growing to half as tall again, with his hound running in from behind. The puppets are Spine skeletons drawn by code, the levels are tile maps, and the percussion is worked out from numbers. Act three, the Tushita Palace, is Laozi’s furnace room, where grates breathe fire by turns and a furnace can be knocked over to burn whoever is beyond it; Laozi’s Diamond Snare takes the staff, and his furnace has to be lasted out, to come from it with eyes of fire.',
-    },
-    facts: {
-      zh: [['画面', '2D 骨骼动画，WebGL2 与 WebGPU'], ['操作', '键盘、手柄、触屏'], ['状态', '三幕全，各有 Boss']],
-      en: [['Graphics', '2D skeletal animation, WebGL2 and WebGPU'], ['Controls', 'Keyboard, gamepad, touch'], ['Status', 'All three acts, each with its boss']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp'],
+    id: 'pandas', folder: 'jelly-pandas', kind: '3d',
+    scenes: [
+      { zh: "玩具岛 · 糖果大军", en: "Toy island · Candy horde" },
+      { zh: "果冻熊猫 · 角色与装备", en: "Jelly Pandas · Roster and gear" },
+      { zh: "玩具岛 · 蓄力跃起", en: "Toy island · Charged jump" },
+    ],
+    zh: "果冻熊猫", en: "Jelly Pandas",
+    genre: { zh: "动作生存", en: "Action survival" },
+    summary: { zh: "用会回弹的果冻熊猫下砸、翻滚、升级玩具，顶住糖果大军。", en: "Slam, roll and upgrade toys as a jiggly panda holding off a candy horde." },
+    features: [
+      {
+        title: { zh: "果冻形变", en: "Jelly deformation" },
+        description: { zh: "Jelly3D 表现跳跃、落地和撞击时的挤压回弹。", en: "Jelly3D adds squash and rebound to jumps, landings and impacts." },
+        source: 'src/panda.mjs',
+      },
+      {
+        title: { zh: "实例化与粒子", en: "Instancing and particles" },
+        description: { zh: "成群敌人和攻击演出采用实例网格与 3D 粒子。", en: "Crowds and attacks use instanced meshes and 3D particles." },
+        source: 'src/view.mjs',
+      },
+      {
+        title: { zh: "双图形后端", en: "Dual graphics backends" },
+        description: { zh: "玩具岛默认使用 WebGL2，也支持切换到 WebGPU。", en: "The toy island defaults to WebGL2 and can switch to WebGPU." },
+        source: 'src/main.mjs',
+      },
+    ],
   },
   {
-    id: 'snow',
-    folder: 'SnowTemple',
-    zh: '风雪山神庙',
-    en: 'Snow at the Mountain Temple',
-    accent: '#9cc8f2',
-    genre: { zh: '俯视角 3D 动作', en: 'Top-down 3D action' },
-    line: {
-      zh: '雪夜，草料场起火。林冲提枪上山神庙，陆谦在庙前等他。',
-      en: 'A night of snow, the fodder yard on fire. Lin Chong takes his spear up to the Mountain God’s temple, where Lu Qian waits.',
-    },
-    intro: {
-      zh: '取材《水浒传》第十回的一章：穿过烧剩的草料场，打退两拨庄客，进山门，在庙前与陆谦分两段决战。花枪三段连招，出手会转向并滑步到刚好够得着；按住格挡，掐准了是弹反，挡住之后可以回一记回马枪；闪避能打断一切动作，从刀锋里穿过去时间会慢一瞬。寒星是三道会偏向敌人的枪芒，枪意攒满可以放梨花枪雨：脚下开阵，二十六杆枪从天而降。牌手会架开轻击立刻还手，弓手的箭能一枪挑落，近战同一时间只有一人上前。捡到枪谱残页可以从三样本事里学一样，通关后山路一重一重添规则，另有守草料场的车轮战。场景、人物和兵器全部由代码建模，五万多丛枯草随风起伏、被人拨开，枪光、法阵和地面预警都是网格加着色器画的，声音由振荡器和噪声合成。电脑用键鼠，手机有摇杆和按钮，按键可改。',
-      en: 'One chapter from the tenth of Water Margin: through what is left of the fodder yard, past two parties of hired men, in at the gate, and a fight in two parts with Lu Qian before the temple. The spear has three cuts that turn to their man and slide in to just within reach; hold to guard, time it and it is a parry, and after any block there is a riposte to be taken; the dodge breaks out of anything, and slipping through a blade slows the moment. Three Stars are bolts of spear light that lean toward a foe, and a full bar of resolve pays for the Pear-Blossom Rain: a formation opens underfoot and twenty-six spears fall from the sky. Shield men turn light cuts aside and answer at once, a bowman’s arrow can be cut out of the air, and only one man comes in to strike at a time. A page of the spear manual teaches one of three lessons, each clear opens a tier with one more rule, and the yard can be held against wave after wave. The place, the people and the weapons are all modelled in code; more than fifty thousand tufts of dry grass sway in the wind and part round whoever walks through; the spear light, the formation and the ground warnings are meshes drawn by shaders, and the sound is synthesized. Keyboard and mouse on desktop, a stick and buttons on phones, and every key can be changed.',
-    },
-    facts: {
-      zh: [['类型', '俯视角 3D 动作'], ['技术', '3D 模块，WebGL2，代码建模'], ['操作', '键鼠、触屏'], ['语言', '中文']],
-      en: [['Genre', 'Top-down 3D action'], ['Technology', '3D module, WebGL2, modelled in code'], ['Controls', 'Keyboard and mouse, touch'], ['Languages', 'Chinese']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp'],
+    id: 'lantern', folder: 'LanternShadows', kind: '2d',
+    scenes: [
+      { zh: "蟠桃园 · 悟空使出身外身", en: "Peach Orchard · Monkey King’s doubles" },
+      { zh: "南天门 · 哪吒登场", en: "Southern Gate · Nezha appears" },
+      { zh: "兜率宫 · 炉火与空中交锋", en: "Tushita Palace · Furnaces and aerial combat" },
+    ],
+    zh: "灯影·闹天宫", en: "Lantern Shadows",
+    genre: { zh: "皮影横版动作", en: "Shadow-puppet action" },
+    summary: { zh: "在皮影幕布上挥棍、上挑、召分身，闯过南天门、蟠桃园和兜率宫。", en: "Sweep, lift and summon doubles on the shadow-puppet screen across three heavenly stages." },
+    features: [
+      {
+        title: { zh: "Spine 皮偶骨骼", en: "Spine puppet rigs" },
+        description: { zh: "加载 Spine 骨骼和附件，驱动分片皮偶和分身动作。", en: "Spine skeletons and attachments animate the segmented puppets and their doubles." },
+        source: 'src/puppets.mjs',
+      },
+      {
+        title: { zh: "Tiled 瓦片地图", en: "Tiled tile maps" },
+        description: { zh: "以瓦片地图组织三幕布景，配合横向卷轴。", en: "Tile maps organise the three stages as the camera scrolls." },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: "2D 粒子效果", en: "2D particles" },
+        description: { zh: "粒子发射器表现命中与舞台演出。", en: "Particle emitters drive hits and stage effects." },
+        source: 'src/main.mjs',
+      },
+    ],
   },
   {
-    id: 'mechanism',
-    folder: 'MechanismCity',
-    zh: '千机巧匠',
-    en: 'Mechanism City',
-    accent: '#e6b65c',
-    genre: { zh: '2D 物理弹射解谜', en: '2D physics puzzle' },
-    line: {
-      zh: '墨家机关城闭城三十年。射一发弹丸进去，让木块、绳索和跷跷板替你开锁。',
-      en: 'The Mohist city has been shut for thirty years. Fire one pellet in and let its blocks, ropes and seesaws open the lock.',
-    },
-    intro: {
-      zh: '墨家机关城闭城三十年，少年工匠阿巧背着祖父的机关弩进城。插画序章和关间对白串起三章十二关。拉弦时，虚线标出弹丸预计首次碰到的位置。遇到难关，可以先读机关线索，再试试首发参考角度和力度。用弹丸打碎木箱、割断吊绳，或借跷跷板和弹簧开锁。标准发数内过关可得三星，完成每关的独立机关目标还能收集巧解印。',
-      en: 'The Mohist city has been shut for thirty years. Qiao enters with her grandfather’s crossbow, and an illustrated prologue and dialogue tell her story across twelve levels in three chapters. A dotted guide marks the pellet’s expected first contact. If you’re stuck, read the mechanism clue and try its suggested angle and power for the first shot. Break crates, cut ropes, and use seesaws and springs to open locks. Clear a level within par for three stars, and complete its optional mechanism goal to earn a Craft Seal.',
-    },
-    facts: {
-      zh: [['类型', '2D 物理弹射解谜'], ['技术', '2D 物理、瓦片地图、相机、粒子，WebGL2'], ['操作', '键鼠、手柄、触屏，支持手机竖屏'], ['关卡', '三章十二关，十二枚巧解印']],
-      en: [['Genre', '2D physics puzzle'], ['Technology', '2D physics, tile maps, camera, particles, WebGL2'], ['Controls', 'Keyboard and mouse, gamepad, portrait touch controls'], ['Levels', 'Three chapters, twelve levels, twelve Craft Seals']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp'],
+    id: 'fivephases', folder: 'FivePhases', kind: '2d',
+    portraitGallery: true,
+    scenes: [
+      { zh: "第二关 · 赤蛟与术士交锋", en: "Stage two · Duel with Chijiao" },
+      { zh: "第一关 · 山魈与五行消除棋盘", en: "Stage one · Shanjiao and the matching board" },
+      { zh: "第三关 · 浑沌战中出牌", en: "Stage three · Playing a card against Hundun" },
+    ],
+    zh: "五行牌阵", en: "Five Phases",
+    genre: { zh: "卡牌与三消", en: "Cards and match-three" },
+    summary: { zh: "用五色消除积攒能量，搭配牌组，连闯三关。", en: "Build elemental energy through matching, then combo your cards across three stages." },
+    features: [
+      {
+        title: { zh: "2D 显示列表", en: "2D display lists" },
+        description: { zh: "棋盘、角色与战斗界面放在独立显示层。", en: "Board, portraits and combat UI live on separate display layers." },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: "纹理图集与位图", en: "Texture atlases and bitmaps" },
+        description: { zh: "棋子位图复用纹理图集区域，为连锁演出提供贴图。", en: "Tile bitmaps reuse atlas regions for the match effects." },
+        source: 'src/view/tile-atlas.mjs',
+      },
+      {
+        title: { zh: "立绘分片动画", en: "Layered portrait animation" },
+        description: { zh: "通过白鹭 Sprite 与 Bitmap 组合分片，播放姿态与出招关键帧。", en: "Egret Sprites and Bitmaps assemble separate pieces for pose and attack keyframes." },
+        source: 'src/view/portrait.mjs',
+      },
+    ],
   },
   {
-    id: 'teahorse',
-    folder: 'TeaHorseRoad',
-    zh: '茶马古道',
-    en: 'Tea Horse Road',
-    accent: '#e3a83e',
-    genre: { zh: '3D 越野探索', en: '3D off-road journey' },
-    line: {
-      zh: '三辆越野车，七十二捆茶，从滇南茶山翻过雪山，送到高原驿站。',
-      en: 'Three trucks, seventy-two bundles of tea, from the tea hills of Yunnan over the snow mountains to the plateau.',
-    },
-    intro: {
-      zh: '你开着马帮车队的头车，带着两辆满载普洱茶砖的越野车上路：蹚过茶山里的浅滩，冲过有山匪埋伏的林子，一辆接一辆开过峡谷上的吊桥，再翻过飘雪的垭口。车慢下来山匪就会扒住车抢走一捆茶，撞倒他还能抢回来；垭口的狼会咬住车、扯开篷布，按喇叭能把它们吓跑。三个驿站可以扎营，帐篷、篝火和驮马摆好后会存下来，下次路过还在。一趟十分钟上下（扎营另算），有对白和结尾短片。地形沿路流式生成，篷布和经幡随风飘，被撞倒的山匪倒成布娃娃，发动机、溪水和马铃都是定位的声音。',
-      en: 'You drive the lead truck of a caravan of three, loaded with bricks of Pu-erh tea: through a ford in the tea hills, past the woods where bandits wait, one truck at a time over the rope bridge across the gorge, and through the snow at the high pass. Slow down and a bandit grabs hold and makes off with a bundle; knock him down and it comes back. Wolves at the pass hang on to the trucks and tear at the tarps until the horn sends them running. At each of the three stations the crew can make camp, and the tents, fire and pack horse are still there on the next journey. A run takes about ten minutes, more with camps, with lines along the way and a closing film. The land streams in along the road, tarps and prayer flags move in the wind, bandits fall as ragdolls, and the engines, the water and the caravan bells are placed in the scene.',
-    },
-    facts: {
-      zh: [['类型', '3D 越野探索'], ['技术', '载具物理、地形流、导航网格、布料与布娃娃，WebGL2'], ['操作', '键鼠、手柄、触屏'], ['时长', '一趟约 10 分钟，三个驿站']],
-      en: [['Genre', '3D off-road journey'], ['Technology', 'Vehicle physics, streamed terrain, navigation meshes, cloth and ragdolls, WebGL2'], ['Controls', 'Keyboard and mouse, gamepad, touch'], ['Length', 'About 10 minutes a journey, three stations']],
-    },
-    cover: 'cover.webp',
-    shots: ['1.webp', '2.webp', '3.webp'],
+    id: 'love', folder: 'LoveElective', kind: '2d',
+    scenes: [
+      { zh: "校园地图", en: "Campus map" },
+      { zh: "序章对白", en: "Prologue dialogue" },
+      { zh: "衣橱与配色", en: "Wardrobe and colours" },
+    ],
+    zh: "心动选修课", en: "Love Elective",
+    genre: { zh: "校园恋爱养成", en: "Campus romance and dress-up" },
+    summary: { zh: "在星空祭之前认识一个人，也找到自己的穿搭风格。", en: "Get to know someone before the Star Festival while finding your own style." },
+    features: [
+      {
+        title: { zh: "图层视差", en: "Layered parallax" },
+        description: { zh: "远景、人物和前景以不同幅度移动，形成校园的纵深。", en: "Layers move by different amounts to give campus scenes depth." },
+        source: 'src/engine/world.mjs',
+      },
+      {
+        title: { zh: "2D 位图与染色", en: "2D bitmaps and tinting" },
+        description: { zh: "白鹭舞台负责位图绘制、颜色变化和基于引擎时钟的过渡。", en: "The Egret stage handles bitmaps, tinting and transitions on the engine clock." },
+        source: 'src/engine/stage.mjs',
+      },
+      {
+        title: { zh: "换装分层合成", en: "Layered wardrobe preview" },
+        description: { zh: "叠加服饰和装饰，预览搭配及每件单品的配色。", en: "Layers accessories and garments to preview outfits and per-item colours." },
+        source: 'src/screens/wardrobe.mjs',
+      },
+    ],
+  },
+  {
+    id: 'mechanism', folder: 'MechanismCity', kind: '2d',
+    scenes: [
+      { zh: "初试机弩 · 月下瞄准", en: "First ballista · Aiming by moonlight" },
+      { zh: "弹簧高台 · 轨迹引导与反弹", en: "Spring platform · Trajectory hints and rebounds" },
+      { zh: "机枢之心 · 配重与杠杆", en: "Heart of the Machine · Counterweights and levers" },
+    ],
+    zh: "千机巧匠", en: "Mechanism City",
+    genre: { zh: "物理解谜", en: "Physics puzzles" },
+    summary: { zh: "摆好机关，预判弹道，用反弹和绳索解开关卡。", en: "Arrange mechanisms, track the trajectory and use rebounds and ropes to solve each room." },
+    features: [
+      {
+        title: { zh: "2D 物理与关节", en: "2D physics and joints" },
+        description: { zh: "绳索等机关接入刚体与关节，和弹射路径联动。", en: "Ropes and mechanisms use rigid bodies and joints alongside shot trajectories." },
+        source: 'src/sim/sim.mjs',
+      },
+      {
+        title: { zh: "Tiled 关卡与粒子", en: "Tiled levels and particles" },
+        description: { zh: "导入瓦片地图组织关卡，用粒子展示机关触发与破坏。", en: "Imported tile maps organise levels; particles show trigger and impact effects." },
+        source: 'src/play/level.mjs',
+      },
+      {
+        title: { zh: "托管菜单布局", en: "Managed menu layout" },
+        description: { zh: "设置菜单通过引擎托管 UI 排列开关和操作。", en: "The settings menu uses the engine’s managed UI to lay out controls and toggles." },
+        source: 'src/ui/settings.mjs',
+      },
+    ],
   },
 ];
