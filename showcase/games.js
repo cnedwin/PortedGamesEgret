@@ -44,7 +44,7 @@ export const GAMES = [
     features: [
       {
         title: { zh: "WebGL2 与 WebGPU", en: "WebGL2 and WebGPU" },
-        description: { zh: "电站默认用 WebGL2 绘制，也可切换到 World3D 的 WebGPU 后端。", en: "The station uses WebGL2 by default and can switch to the World3D WebGPU backend." },
+        description: { zh: "默认使用 WebGL2。在支持 WebGPU 的设备和浏览器上，可在试玩网址加上 ?backend=webgpu，启用白鹭 World3D 的 WebGPU 后端。", en: "WebGL2 is the default. On supported devices and browsers, add ?backend=webgpu to the game URL to enable Egret’s World3D WebGPU backend." },
         source: 'src/main.mjs',
       },
       {
@@ -65,9 +65,9 @@ export const GAMES = [
     scenes: [
       { zh: "雪路 · 林冲执枪", en: "Snow road · Lin Chong" },
       { zh: "草料场 · 近身交锋", en: "Fodder yard · Close combat" },
-      { zh: "山神庙 · 陆谦对决", en: "Mountain temple · Lu Qian duel" },
+      { zh: "山神庙 · 林冲与陆谦对峙", en: "Mountain temple · Lin Chong faces Lu Qian" },
     ],
-    zh: "风雪山神庙", en: "Snow Temple",
+    zh: "风雪山神庙", en: "Snow at the Mountain Temple",
     genre: { zh: "武侠动作", en: "Wuxia action" },
     summary: { zh: "风雪夜，林冲从草料场一路打到山神庙。", en: "Fight through a snowy night as Lin Chong, from the fodder yard to the mountain temple." },
     features: [
@@ -92,7 +92,7 @@ export const GAMES = [
     id: 'rally', folder: 'Rally', kind: '3d',
     scenes: [
       { zh: "山水环道 · 牌楼下起跑", en: "Circuit · Starting under the gate" },
-      { zh: "红旗赛段 · 并行争位", en: "Red-banner section · Racing side by side" },
+      { zh: "红旗赛段 · 追赶前车", en: "Red-banner section · Chasing the kart ahead" },
       { zh: "灯笼路段 · 加速冲刺", en: "Lantern section · Boosting through" },
     ],
     zh: "锦绣飞车", en: "Jinxiu Rally",
@@ -106,7 +106,7 @@ export const GAMES = [
       },
       {
         title: { zh: "看台合批与实例化", en: "Merged and instanced grandstands" },
-        description: { zh: "看台观众合并成网格，挥旗观众以实例绘制。", en: "Spectators share a merged mesh, and waving flag bearers are instanced." },
+        description: { zh: "看台观众合并成网格，挥动的旗帜以实例绘制。", en: "Spectators share a merged mesh, and their waving flags are instanced." },
         source: 'src/grandstand.mjs',
       },
       {
@@ -147,9 +147,9 @@ export const GAMES = [
   {
     id: 'wulin', folder: 'Wulin', kind: '3d',
     scenes: [
-      { zh: "华山 · 山门营造", en: "Mount Hua · Sect construction" },
+      { zh: "华山 · 山门与建筑布局", en: "Mount Hua · Sect grounds and building layout" },
       { zh: "江湖大地图", en: "Realm map" },
-      { zh: "弟子档案", en: "Disciple dossier" },
+      { zh: "华山 · 掌门陆孤舟档案", en: "Mount Hua · Sect leader Lu Guzhou’s dossier" },
     ],
     zh: "武林天下", en: "Wulin",
     genre: { zh: "武侠门派经营", en: "Wuxia sect management" },
@@ -175,8 +175,8 @@ export const GAMES = [
   {
     id: 'pandas', folder: 'jelly-pandas', kind: '3d',
     scenes: [
-      { zh: "玩具岛 · 糖果大军", en: "Toy island · Candy horde" },
-      { zh: "果冻熊猫 · 角色与装备", en: "Jelly Pandas · Roster and gear" },
+      { zh: "玩具岛 · 下砸击退糖果群", en: "Toy island · Slamming into the candy horde" },
+      { zh: "果冻熊猫 · 角色与初始玩具", en: "Jelly Pandas · Panda selection and starter toys" },
       { zh: "玩具岛 · 蓄力跃起", en: "Toy island · Charged jump" },
     ],
     zh: "果冻熊猫", en: "Jelly Pandas",
@@ -195,7 +195,7 @@ export const GAMES = [
       },
       {
         title: { zh: "双图形后端", en: "Dual graphics backends" },
-        description: { zh: "玩具岛默认使用 WebGL2，也支持切换到 WebGPU。", en: "The toy island defaults to WebGL2 and can switch to WebGPU." },
+        description: { zh: "默认使用 WebGL2。在支持 WebGPU 的设备和浏览器上，可在试玩网址加上 ?backend=webgpu 来启用 WebGPU。", en: "WebGL2 is the default. On supported devices and browsers, add ?backend=webgpu to the game URL to enable WebGPU." },
         source: 'src/main.mjs',
       },
     ],
@@ -280,8 +280,8 @@ export const GAMES = [
       },
       {
         title: { zh: "换装分层合成", en: "Layered wardrobe preview" },
-        description: { zh: "叠加服饰和装饰，预览搭配及每件单品的配色。", en: "Layers accessories and garments to preview outfits and per-item colours." },
-        source: 'src/screens/wardrobe.mjs',
+        description: { zh: "游戏把服饰、配件和每件单品的配色合成角色贴图，再由白鹭在舞台上绘制全身预览。", en: "The game composites garments, accessories and per-item colours into a character texture. Egret draws the resulting full-body preview on stage." },
+        source: 'src/engine/world.mjs',
       },
     ],
   },
@@ -289,7 +289,7 @@ export const GAMES = [
     id: 'mechanism', folder: 'MechanismCity', kind: '2d',
     scenes: [
       { zh: "初试机弩 · 月下瞄准", en: "First ballista · Aiming by moonlight" },
-      { zh: "弹簧高台 · 轨迹引导与反弹", en: "Spring platform · Trajectory hints and rebounds" },
+      { zh: "弹簧高台 · 预览弹簧板落点", en: "Spring Board · Previewing the landing point on the spring" },
       { zh: "机枢之心 · 配重与杠杆", en: "Heart of the Machine · Counterweights and levers" },
     ],
     zh: "千机巧匠", en: "Mechanism City",
