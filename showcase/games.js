@@ -260,9 +260,9 @@ export const GAMES = [
   {
     id: 'love', folder: 'LoveElective', kind: '2d',
     scenes: [
-      { zh: "校园地图", en: "Campus map" },
-      { zh: "序章对白", en: "Prologue dialogue" },
-      { zh: "衣橱与配色", en: "Wardrobe and colours" },
+      { zh: "首页 · 星空祭前的校园", en: "Title screen · Campus before the Star Festival" },
+      { zh: "男主衣橱 · 衬衫与西装叠穿", en: "Protagonist's wardrobe · Layered shirt and blazer" },
+      { zh: "唐蜜衣橱 · 蝴蝶结衬衫与长袜配色", en: "Tang Mi's wardrobe · Bow blouse and stocking colours" },
     ],
     zh: "心动选修课", en: "Love Elective",
     genre: { zh: "校园恋爱养成", en: "Campus romance and dress-up" },
@@ -402,8 +402,8 @@ export const GAMES = [
     id: 'mahjong', folder: 'TaiwanMahjong', kind: '2d',
     scenes: [
       { zh: "島夜雀室 · 三位牌友等你入座", en: "Island Night Mahjong · Three players await" },
-      { zh: "牌局 · 小美碰牌", en: "At the table · Mei calls pong" },
-      { zh: "結算 · 自摸與各家分數", en: "Settlement · Self-draw and the table scores" },
+      { zh: "牌局 · 胡牌金印與十六張牌面", en: "At the table · Win seal and sixteen-tile hand" },
+      { zh: "結算 · 胡牌台數與四家分數", en: "Settlement · Winning tai and scores for all four players" },
     ],
     zh: "島夜雀室", en: "Island Night Mahjong",
     genre: { zh: "台灣十六張麻將", en: "Taiwanese Mahjong" },
@@ -430,9 +430,9 @@ export const GAMES = [
     id: 'wardens', folder: 'NightWardens', kind: '2d',
     portraitGallery: true,
     scenes: [
-      { zh: "第三夜 · 鬼市里的旱魃与满天符箭", en: "Night three · The Drought Fiend in the ghost market under a sky of bolts" },
-      { zh: "升级 · 三道符法选一道", en: "A level gained · One ward of three" },
-      { zh: "第一夜 · 纸扎大将走上城隍庙外的路", en: "Night one · The Paper General on the temple road" },
+      { zh: "首页 · 月下城楼", en: "Title screen · The moonlit city gate" },
+      { zh: "鬼市 · 子时旱魃现身", en: "Ghost market · The Drought Fiend arrives at midnight" },
+      { zh: "天雷符 · 雷电击中成群邪祟", en: "Thunder talisman · Lightning strikes a crowd of haunts" },
     ],
     zh: "镇邪司", en: "Night Wardens",
     genre: { zh: "竖屏塔防射击", en: "Tall-screen tower shooter" },
@@ -462,11 +462,10 @@ export const GAMES = [
   },
   {
     id: 'peach', folder: 'PeachCreek', kind: '2d',
-    portraitGallery: true,
     scenes: [
-      { zh: "第三天 · 望县的秋天，税银攒在县衙上头", en: "Day three · Autumn in a notable county, the taxes waiting over the yamen" },
-      { zh: "入夜 · 民居和集市点起灯，溪上还有小船", en: "Nightfall · Lamps in the houses and markets, boats still on the creek" },
-      { zh: "县衙 · 升格所需一项项对齐", en: "The yamen · What the next rank asks for, one line at a time" },
+      { zh: "横屏县城 · 水彩溪流与十二坊", en: "County panorama · Watercolour creek and twelve wards" },
+      { zh: "营建 · 当前建筑与下一级预览", en: "Construction · Current building and next level preview" },
+      { zh: "民情 · 在两项决策之间取舍", en: "Petition · Weighing two decisions for the county" },
     ],
     zh: "桃溪县令", en: "Magistrate of Peach Creek",
     genre: { zh: "宋代放置经营", en: "Song-dynasty idle city-builder" },
