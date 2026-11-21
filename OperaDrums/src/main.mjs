@@ -8,7 +8,6 @@
 import { play } from '@egret/engine/play';
 import { browserLanguages, browserSaveStorage, prefersReducedMotion } from '@egret/engine/web/kit';
 import { STROKE_SOUND, createSound } from './audio/sound.mjs';
-import { paintStage } from './ground.mjs';
 import { getLanguage, onLanguage, setLanguage, startLanguage, t } from './i18n.mjs';
 import { SPEEDS, openSave, recordRun } from './saves.mjs';
 import { buildChart, songOf } from './sim/chart.mjs';
@@ -20,7 +19,10 @@ const params = new URLSearchParams(location.search),
   $ = (selector) => document.querySelector(selector),
   field = $('#field'),
   pads = $('#pads'),
-  panels = { title: $('#title'), menu: $('#menu'), end: $('#end'), cal: $('#cal') };
+  panels = { title: $('#title'), options: $('#options'), guide: $('#guide'), menu: $('#menu'), end: $('#end'), cal: $('#cal') };
+const progress = $('#songProgress');
+let chosenAct = SONGS[0];
+let chosenLevel = DIFFICULTIES[0];
 
 // The save, and what went wrong with it, said on the title.
 let notice = null;
@@ -66,13 +68,16 @@ await play({
   update: (seconds) => frame(seconds),
   onError: (cause) => console.error(cause)
 });
-// The stage is the page's, painted once under a clear canvas; the box play put the canvas in is made clear.
-paintStage($('#ground'));
+// The illustrated backdrop is a static CSS layer under the engine canvas.
 Object.assign(game.canvas.parentElement.style, { background: 'transparent', zIndex: '1', position: 'absolute', inset: '0' });
 game.canvas.setAttribute('role', 'img');
 game.canvas.setAttribute('aria-label', t('stage'));
 game.sfx.muted = true;
-if (settings().reducedMotion) game.reducedMotion = true;
+function syncMotion() {
+  game.reducedMotion = settings().reducedMotion || prefersReducedMotion();
+  document.documentElement.dataset.reduced = game.reducedMotion;
+}
+syncMotion();
 const sound = await createSound(game.scope, { on: settings().sound, music: settings().music });
 
 // ---- Strokes. ----
@@ -82,31 +87,48 @@ const PAD_KEYS = { 'pad:a': ['drum', 'pa'], 'pad:down': ['drum', 'pd'], 'pad:b':
 /** A stroke of `kind` by `hand` at page time `ms`. */
 function strikeAt(kind, hand, ms) {
   if (app.screen === 'cal') return calTap(ms, kind);
-  if (app.screen !== 'play' || !app.run) {
-    sound.strike(kind === 'drum' ? 'drum' : 'tai');
-    return;
-  }
+  if (app.screen !== 'play' || !app.run) return;
   const time = sound.heardAt(ms) - settings().offset / 1000;
   const result = strike(app.run, kind, time, hand);
-  if (result.type !== 'double') {
-    const met = result.type === 'judged' && result.judgement !== 'miss' && result.note.kind === kind;
-    sound.strike(met ? STROKE_SOUND[result.note.syllable] : kind === 'drum' ? 'drum' : 'tai');
-  }
+  const met = result.type === 'judged' && result.judgement !== 'miss' && result.note.kind === kind;
+  const free = kind === 'drum' ? 'drum' : 'tai';
+  const effect = met ? STROKE_SOUND[result.note.syllable]
+    : result.type === 'double' ? 'double'
+    : result.type === 'roll' && kind === 'drum' ? 'roll' : free;
+  sound.strike(effect);
   if (result.type === 'judged' && app.strokes.length < 2000) app.strokes.push({ judgement: result.judgement, off: result.off, at: time });
   view.struck(kind, result);
 }
 
+const padContacts = new Map();
+function releasePads() {
+  for (const [pad, contacts] of padContacts) {
+    contacts.clear();
+    pad.classList.remove('down');
+  }
+}
 for (const pad of pads.querySelectorAll('.pad')) {
   const { kind, hand } = pad.dataset;
+  const contacts = new Set();
+  padContacts.set(pad, contacts);
   pad.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0 || app.screen !== 'play') return;
     event.preventDefault();
+    pad.setPointerCapture(event.pointerId);
+    contacts.add(event.pointerId);
     pad.classList.add('down');
     strikeAt(kind, `${hand}${event.pointerId}`, event.timeStamp);
   });
-  for (const type of ['pointerup', 'pointercancel', 'pointerleave']) pad.addEventListener(type, () => pad.classList.remove('down'));
-  // A pad pressed from the keyboard (Enter or Space on it) strikes too; a click that a pointer made has struck already.
+  const release = (event) => {
+    contacts.delete(event.pointerId);
+    pad.classList.toggle('down', contacts.size > 0);
+  };
+  for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) pad.addEventListener(type, release);
+  pad.addEventListener('contextmenu', (event) => event.preventDefault());
+  // Keyboard and assistive-technology activation have not fired pointerdown.
   pad.addEventListener('click', (event) => event.detail === 0 && strikeAt(kind, hand, event.timeStamp));
 }
+window.addEventListener('blur', releasePads);
 
 // Keys are caught first, in the capture phase: play keeps Tab and Space from the page's buttons otherwise.
 window.addEventListener(
@@ -126,7 +148,10 @@ window.addEventListener(
     } else if (app.screen === 'menu' && event.key === 'Escape') {
       event.preventDefault();
       closeMenu();
-    } else if (app.screen === 'cal' && event.key === 'Escape') {
+    } else if ((app.screen === 'options' || app.screen === 'guide') && event.key === 'Escape') {
+      event.preventDefault();
+      showTitle(`[data-open="${app.screen}"]`);
+    } else if ((app.screen === 'cal' || app.screen === 'calIdle') && event.key === 'Escape') {
       event.preventDefault();
       endCalibration(true);
     }
@@ -134,11 +159,14 @@ window.addEventListener(
   true
 );
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden' && app.screen === 'play') openMenu();
+  if (document.visibilityState !== 'hidden') return;
+  releasePads();
+  if (app.screen === 'play') openMenu();
 });
 
 // ---- Each frame: the song's time from the sound, the notes missed, the view and the bar. ----
 let shownScore = -1;
+let shownProgress = -1;
 function frame(seconds) {
   if (!ready) return;
   for (const [key, [kind, hand]] of Object.entries(PAD_KEYS)) if (game.keys.pressed(key)) strikeAt(kind, hand, performance.now());
@@ -152,6 +180,11 @@ function frame(seconds) {
     shownScore = app.run.score;
     $('#score').textContent = t('score', { n: app.run.score });
   }
+  const progressPercent = Math.round(100 * Math.max(0, Math.min(1, time / app.chart.end)));
+  if (shownProgress !== progressPercent) {
+    shownProgress = progressPercent;
+    progress.value = progressPercent;
+  }
   if (app.run.done) finish();
 }
 const speedOf = () => 260 * settings().speed;
@@ -159,10 +192,11 @@ const speedOf = () => 260 * settings().speed;
 // ---- Screens. ----
 function openPanel(name) {
   for (const [key, panel] of Object.entries(panels)) panel.hidden = key !== name;
-  const covered = name !== null && name !== 'cal';
+  const covered = name !== null;
   field.inert = covered;
-  pads.inert = covered;
-  if (name) panels[name].querySelector('button')?.focus();
+  pads.inert = covered || app.screen === 'loading';
+  if (covered) releasePads();
+  if (name) (panels[name].querySelector('[data-focus]:not([hidden])') ?? panels[name].querySelector('button:not([hidden])'))?.focus({ preventScroll: true });
 }
 const sheet = (panel, html) => {
   panel.innerHTML = `<div class="sheet">${html}</div>`;
@@ -177,14 +211,20 @@ function say(words) {
   lastSaid = live.textContent;
 }
 
-function settingsHtml() {
+function settingsHtml({ calibrate = true } = {}) {
   const s = settings();
   const toggle = (key, on) => `<button type="button" data-toggle="${key}" aria-pressed="${on}">${t('switchState', { name: t(key), state: t(on ? 'on' : 'off') })}</button>`;
-  return `
+  const stepper = (key, label, value, atMin, atMax) => `<div class="row step-field"><span class="label">${t(label)}</span>
+    <button type="button" data-step="${key}:-1" aria-label="${t(label)} −" aria-disabled="${atMin}">−</button>
+    <output>${value}</output>
+    <button type="button" data-step="${key}:1" aria-label="${t(label)} +" aria-disabled="${atMax}">+</button></div>`;
+  return `<div class="prefs">
     <div class="row">${toggle('sound', s.sound)}${toggle('reducedMotion', s.reducedMotion)}<button type="button" data-language aria-label="${t('languageName')}" lang="${getLanguage() === 'zh' ? 'en' : 'zh-CN'}">${t('language')}</button></div>
-    <div class="row"><span class="label">${t('musicVolume')}</span><button type="button" data-step="music:-1" aria-label="${t('musicVolume')} −">−</button><span>${Math.round(s.music * 100)}%</span><button type="button" data-step="music:1" aria-label="${t('musicVolume')} +">+</button></div>
-    <div class="row"><span class="label">${t('speed')}</span><button type="button" data-step="speed:-1" aria-label="${t('speed')} −">−</button><span>×${s.speed}</span><button type="button" data-step="speed:1" aria-label="${t('speed')} +">+</button></div>
-    <div class="row"><span class="label">${t('offset')}</span><button type="button" data-step="offset:-1" aria-label="${t('offset')}: ${t('offsetEarlier')}">−</button><span>${t('offsetValue', { n: s.offset })}</span><button type="button" data-step="offset:1" aria-label="${t('offset')}: ${t('offsetLater')}">+</button><button type="button" data-calibrate>${t('calibrate')}</button></div>`;
+    ${stepper('music', 'musicVolume', Math.round(s.music * 100) + '%', s.music <= 0, s.music >= 1)}
+    ${stepper('speed', 'speed', '×' + s.speed, s.speed === SPEEDS[0], s.speed === SPEEDS.at(-1))}
+    ${stepper('offset', 'offset', t('offsetValue', { n: s.offset }), s.offset <= -300, s.offset >= 300)}
+    ${calibrate ? `<button class="opt-calibrate" type="button" data-calibrate>${t('calibrate')}</button>` : ''}
+    </div>`;
 }
 
 function wireSettings(root, redraw) {
@@ -194,11 +234,12 @@ function wireSettings(root, redraw) {
         value = !settings()[key];
       setSetting(key, value);
       if (key === 'sound') sound.setOn(value);
-      if (key === 'reducedMotion') game.reducedMotion = value || prefersReducedMotion();
+      if (key === 'reducedMotion') syncMotion();
       redraw(`[data-toggle="${key}"]`);
     });
   for (const button of root.querySelectorAll('[data-step]'))
     button.addEventListener('click', () => {
+      if (button.getAttribute('aria-disabled') === 'true') return;
       const [key, way] = button.dataset.step.split(':'),
         step = Number(way),
         s = settings();
@@ -227,46 +268,119 @@ function showTitle(focus) {
   $('#hud').hidden = true;
   $('#prompt').hidden = true;
   pads.hidden = true;
-  const best = save.data.best;
-  const songs = SONGS.map((song) => {
-    const levels = DIFFICULTIES.map((difficulty) => {
-      const kept = best[song.id]?.[difficulty];
-      const note = kept ? t('bestOf', { rank: t(kept.rank), score: kept.score }) : t('bestNone');
-      return `<button type="button" class="level${difficulty === 'normal' ? ' strong' : ''}" data-song="${song.id}" data-level="${difficulty}" aria-label="${t('playChart', { song: songName(song), level: levelName(difficulty) })}, ${note}"><span>${levelName(difficulty)}</span><small>${note}</small></button>`;
-    }).join('');
-    return `<div class="song"><h3>${songName(song)}</h3><p class="about">${getLanguage() === 'zh' ? song.noteZh : song.noteEn} · ${t('bpm', { n: song.bpm })}</p><div class="levels">${levels}</div></div>`;
-  }).join('');
-  const root = sheet(
-    panels.title,
-    `<h1>${t('title')}</h1>
-     <p>${t('tagline')}</p>
-     <p class="quietText">${t('demo')}</p>
-     ${notice ? `<p class="notice" role="status">${t(notice)}</p>` : ''}
-     <h2>${t('songs')}</h2>${songs}
-     <h2>${t('howTitle')}</h2>
-     <ul><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li></ul>
-     <p class="quietText">${t('keysLine')}</p>
-     <h2>${t('settings')}</h2>${settingsHtml()}`
-  );
-  for (const button of root.querySelectorAll('[data-song]')) button.addEventListener('click', () => startSong(button.dataset.song, button.dataset.level));
-  wireSettings(root, (selector) => showTitle(selector));
+  const acts = SONGS.map((song) => `<button type="button" class="act" data-act="${song.id}" aria-pressed="false">
+      <img src="assets/${song.id}.webp" width="520" height="693" alt=""><span>${songName(song)}</span></button>`).join('');
+  const levels = DIFFICULTIES.map((level) => `<button type="button" class="level" data-level="${level}" aria-pressed="false">
+      <span>${levelName(level)}</span><small></small></button>`).join('');
+  const root = sheet(panels.title, `
+    <header class="brand">
+      <div class="brand-rule"></div><h1>${t('title')}</h1><p class="tagline">${t('tagline')}</p>
+      <div class="title-tools">
+        <button type="button" data-open="guide">${t('howTitle')}</button>
+        <button type="button" data-open="options">${t('settings')}</button>
+      </div>
+      ${notice ? `<p class="notice" role="status">${t(notice)}</p>` : ''}
+    </header>
+    <div class="program">
+      <div class="program-head"><h2>${t('songs')}</h2></div>
+      <div class="acts">${acts}</div>
+      <div class="playbill">
+        <div class="act-meta"><span class="about"></span><output></output></div>
+        <div class="levels" role="group" aria-label="${t('chooseLevel')}">${levels}</div>
+        <div class="launch">
+          <p class="hint"><span class="key-hint">${t('keysHint')}</span><span class="touch-hint">${t('touchHint')}</span></p>
+          <button type="button" class="strong" data-start>${t('play')}</button>
+        </div>
+      </div>
+    </div>`);
+  const paintSelection = () => {
+    for (const button of root.querySelectorAll('[data-act]')) button.setAttribute('aria-pressed', button.dataset.act === chosenAct.id);
+    root.querySelector('.act-meta .about').textContent = getLanguage() === 'zh' ? chosenAct.noteZh : chosenAct.noteEn;
+    root.querySelector('.act-meta output').textContent = t('bpm', { n: chosenAct.bpm });
+    for (const button of root.querySelectorAll('[data-level]')) {
+      const level = button.dataset.level;
+      const kept = save.data.best[chosenAct.id]?.[level];
+      button.setAttribute('aria-pressed', level === chosenLevel);
+      button.querySelector('small').textContent = kept ? t('bestOf', { rank: t(kept.rank), score: kept.score }) : t('bestNone');
+    }
+    root.querySelector('[data-start]').setAttribute('aria-label', t('startChart', { song: songName(chosenAct), level: levelName(chosenLevel) }));
+  };
+  for (const button of root.querySelectorAll('[data-act]')) {
+    button.addEventListener('click', () => {
+      chosenAct = songOf(button.dataset.act);
+      sound.cue?.('select');
+      paintSelection();
+    });
+  }
+  for (const button of root.querySelectorAll('[data-level]')) {
+    button.addEventListener('click', () => {
+      chosenLevel = button.dataset.level;
+      sound.cue?.('select');
+      paintSelection();
+    });
+  }
+  root.querySelector('[data-start]').addEventListener('click', () => startSong(chosenAct.id, chosenLevel));
+  root.querySelector('[data-open="guide"]').addEventListener('click', showGuide);
+  root.querySelector('[data-open="options"]').addEventListener('click', () => showOptions());
+  paintSelection();
   openPanel('title');
-  // A preference just changed keeps the focus on its control.
-  if (focus) root.querySelector(focus)?.focus();
-  else if (app.song) root.querySelector(`[data-song="${app.song.id}"][data-level="${app.difficulty}"]`)?.focus();
+  (root.querySelector(focus || `[data-act="${chosenAct.id}"]`))?.focus({ preventScroll: true });
+}
+
+function showGuide() {
+  app.screen = 'guide';
+  sound.cue?.('open');
+  panels.guide.setAttribute('aria-labelledby', 'guideHeading');
+  const root = sheet(panels.guide, `<h2 id="guideHeading">${t('howTitle')}</h2>
+    <ol><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li></ol>
+    <p class="quietText">${t('keysLine')}</p>
+    <div class="row">
+      <button type="button" data-sample="drum"><i class="note-mark drum" aria-hidden="true"></i> ${t('sampleDrum')}</button>
+      <button type="button" data-sample="tai"><i class="note-mark gong" aria-hidden="true"></i> ${t('sampleGong')}</button>
+    </div>
+    <div class="row sheet-actions"><button type="button" class="strong" data-do="close" data-focus>${t('close')}</button></div>`);
+  for (const button of root.querySelectorAll('[data-sample]')) button.addEventListener('click', () => sound.strike(button.dataset.sample));
+  root.querySelector('[data-do="close"]').addEventListener('click', () => showTitle('[data-open="guide"]'));
+  openPanel('guide');
+}
+
+function showOptions(focus) {
+  if (app.screen === 'title') sound.cue?.('open');
+  app.screen = 'options';
+  panels.options.setAttribute('aria-labelledby', 'optionsHeading');
+  const root = sheet(panels.options, `<h2 id="optionsHeading">${t('settings')}</h2>
+    ${settingsHtml()}
+    <div class="row sheet-actions"><button type="button" class="strong" data-do="close">${t('close')}</button></div>`);
+  root.querySelector('[data-do="close"]').addEventListener('click', () => showTitle('[data-open="options"]'));
+  wireSettings(root, showOptions);
+  openPanel('options');
+  if (focus) root.querySelector(focus)?.focus({ preventScroll: true });
 }
 
 function labelPads() {
   for (const pad of pads.querySelectorAll('.pad')) {
     const kind = pad.dataset.kind,
       key = pad.dataset.hand.toUpperCase();
-    pad.innerHTML = `${t(`${kind}Pad`)}<small>${key}</small>`;
+    pad.innerHTML = `<i class="pad-mark" aria-hidden="true"></i><span>${t(`${kind}Pad`)}</span><kbd>${key}</kbd>`;
     pad.setAttribute('aria-label', t(`${kind}PadName`, { key }));
   }
 }
 
+function updatePlayLabels() {
+  $('#songName').textContent = `${songName(app.song)} · ${levelName(app.difficulty)}`;
+  $('#score').textContent = t('score', { n: app.run?.score ?? 0 });
+  progress.setAttribute('aria-label', t('scoreProgress'));
+  $('#pauseButton').textContent = t('pause');
+  labelPads();
+}
+
 async function startSong(id, difficulty) {
+  if (app.screen === 'loading') return;
   const song = songOf(id);
+  chosenAct = song;
+  chosenLevel = difficulty;
+  if (notice === 'audioError') notice = null;
+  field.dataset.act = song.id;
   app.song = song;
   app.difficulty = difficulty;
   app.chart = buildChart(song, difficulty);
@@ -276,26 +390,34 @@ async function startSong(id, difficulty) {
   openPanel(null);
   view.reset(app.chart, speedOf());
   $('#hud').hidden = false;
-  $('#songName').textContent = `${songName(song)} · ${levelName(difficulty)}`;
-  $('#score').textContent = t('score', { n: 0 });
-  $('#pauseButton').textContent = t('pause');
-  labelPads();
+  updatePlayLabels();
+  progress.value = 0;
+  $('#pauseButton').disabled = true;
   pads.hidden = false;
   const prompt = $('#prompt');
   prompt.textContent = t('loading');
   prompt.hidden = false;
-  await sound.prepare(song);
-  if (app.song !== song || app.screen !== 'loading') return;
-  if (sound.state === 'locked') prompt.textContent = t('tapToStart');
-  await sound.start(song);
+  try {
+    await sound.prepare(song);
+    if (sound.state === 'locked') prompt.textContent = t('tapToStart');
+    if (!(await sound.start(song))) throw new Error('The backing voice did not start.');
+  } catch (cause) {
+    console.warn('Opera Drums score could not start', cause);
+    notice = 'audioError';
+    return showTitle('[data-start]');
+  }
   prompt.hidden = true;
   app.run = createRun(app.chart);
   app.strokes = [];
   shownScore = -1;
+  shownProgress = -1;
   app.screen = 'play';
+  $('#pauseButton').disabled = false;
+  openPanel(null);
   if (game.paused) game.resume();
   say(`${songName(song)} · ${levelName(difficulty)}`);
-  pads.querySelector('.drum')?.focus({ preventScroll: true });
+  if (document.hidden) openMenu();
+  else pads.querySelector('.drum')?.focus({ preventScroll: true });
 }
 $('#pauseButton').addEventListener('click', () => openMenu());
 
@@ -308,7 +430,7 @@ function openMenu(focus) {
     panels.menu,
     `<h2 id="menuHeading">${t('paused')}</h2>
      <div class="row"><button type="button" class="strong" data-do="resume">${t('resume')}</button><button type="button" data-do="restart">${t('restart')}</button><button type="button" data-do="quit">${t('quit')}</button></div>
-     <h2>${t('settings')}</h2>${settingsHtml().replace(/<button type="button" data-calibrate>[^<]*<\/button>/, '')}`
+     <details class="pause-settings"${focus ? ' open' : ''}><summary>${t('settings')}</summary>${settingsHtml({ calibrate: false })}</details>`
   );
   panels.menu.setAttribute('aria-labelledby', 'menuHeading');
   root.querySelector('[data-do=resume]').addEventListener('click', closeMenu);
@@ -343,6 +465,8 @@ function finish() {
   if (!kept) notice = 'saveRefused';
   app.result = { ...result, best, kept };
   app.screen = 'end';
+  sound.stop();
+  sound.cue?.(result.cleared ? 'clear' : 'retry');
   showEnd();
 }
 
@@ -353,13 +477,19 @@ function showEnd() {
   view.clear();
   const root = sheet(
     panels.end,
-    `<h2 id="endHeading">${t('resultTitle', { song: songName(app.song), level: levelName(app.difficulty) })}</h2>
-     <p class="rank">${t(r.rank)}</p>
-     <p>${t('score', { n: r.score })}</p>
-     <p>${t('resultNote', { great: r.counts.great, ok: r.counts.ok, miss: r.counts.miss, combo: r.maxCombo, rolls: r.rolls, doubles: r.doubles })}</p>
-     ${r.best ? `<p><strong>${t('newBest')}</strong></p>` : ''}
+    `<div class="end-head"><h2 id="endHeading">${t('curtainCall')}</h2><small>${t('resultTitle', { song: songName(app.song), level: levelName(app.difficulty) })}</small></div>
+     <div class="end-lead">
+       <img src="assets/${app.song.id}.webp" alt="">
+       <div><p class="rank" data-rank="${r.rank}">${t(r.rank)}</p>
+       <p class="end-score">${t('score', { n: r.score })}</p>
+       ${r.best ? `<p class="new-best">${t('newBest')}</p>` : ''}</div>
+     </div>
+     <dl class="stats">${[
+       ['great', r.counts.great], ['ok', r.counts.ok], ['miss', r.counts.miss],
+       ['maxCombo', r.maxCombo], ['rollCount', r.rolls], ['doubleCount', r.doubles]
+     ].map(([label, count]) => `<div><dt>${t(label)}</dt><dd>${count}</dd></div>`).join('')}</dl>
      ${r.kept ? '' : `<p class="notice" role="status">${t('saveRefused')}</p>`}
-     <div class="row"><button type="button" class="strong" data-do="again">${t('again')}</button><button type="button" data-do="quit">${t('quit')}</button></div>`
+     <div class="row sheet-actions"><button type="button" class="strong" data-do="again">${t('again')}</button><button type="button" data-do="quit">${t('quit')}</button></div>`
   );
   panels.end.setAttribute('aria-labelledby', 'endHeading');
   root.querySelector('[data-do=again]').addEventListener('click', () => startSong(app.song.id, app.difficulty));
@@ -370,57 +500,90 @@ function showEnd() {
 
 // ---- The delay: strokes with the clapper's clicks show how late a player's strokes come after the sound. ----
 const CAL = { beats: 16, gap: 0.6, lead: 1, needed: 8 };
-const cal = { taps: [], voice: null, done: false };
+const cal = { taps: new Map(), voice: null, done: false };
 function calSheet(message) {
   const root = sheet(
     panels.cal,
     `<h2 id="calHeading">${t('calTitle')}</h2>
      <p>${t('calHow', { n: CAL.needed })}</p>
-     <p id="calCount" aria-live="polite">${message ?? ''}</p>
-     <div class="row"><button type="button" class="strong" data-do="start">${t('calStart')}</button><button type="button" data-do="close">${t('close')}</button></div>`
+     <p id="calCount" role="status">${message ?? ''}</p>
+     <button type="button" data-cal-tap hidden>${t('calTap')}</button>
+     ${settings().sound ? '' : `<p>${t('calNeedsSound')}</p>`}
+     <div class="row sheet-actions"><button type="button" class="strong" data-do="${settings().sound ? 'start' : 'sound'}">${t(settings().sound ? 'calStart' : 'enableSound')}</button><button type="button" data-do="close">${t('close')}</button></div>`
   );
   panels.cal.setAttribute('aria-labelledby', 'calHeading');
-  root.querySelector('[data-do=start]').addEventListener('click', startCalibration);
+  root.querySelector('[data-do=start]')?.addEventListener('click', startCalibration);
+  root.querySelector('[data-do=sound]')?.addEventListener('click', () => {
+    setSetting('sound', true);
+    sound.setOn(true);
+    openCalibration();
+  });
   root.querySelector('[data-do=close]').addEventListener('click', () => endCalibration(true));
-  return root;
+  const tap = root.querySelector('[data-cal-tap]');
+  tap.addEventListener('pointerdown', (event) => {
+    if (event.button === 0) calTap(event.timeStamp, 'drum');
+  });
+  tap.addEventListener('click', (event) => {
+    if (event.detail === 0) calTap(event.timeStamp, 'drum');
+  });
 }
+
 function openCalibration() {
   app.screen = 'calIdle';
   calSheet();
   openPanel('cal');
 }
+
 async function startCalibration() {
-  cal.taps = [];
+  if (app.screen !== 'calIdle') return;
+  cal.taps.clear();
   cal.done = false;
-  labelPads();
-  pads.hidden = false;
+  cal.voice = null;
   app.screen = 'cal';
-  $('#calCount').textContent = t('calCount', { n: 0, total: CAL.needed });
-  cal.voice = await sound.clicks(CAL.beats, CAL.gap, CAL.lead);
+  const tap = $('[data-cal-tap]');
+  tap.hidden = false;
+  tap.focus({ preventScroll: true });
+  $('#cal [data-do=start]').hidden = true;
+  $('#calCount').textContent = t('calCount', { n: 0, total: CAL.beats });
+  try {
+    cal.voice = await sound.clicks(CAL.beats, CAL.gap, CAL.lead);
+  } catch {
+    if (app.screen !== 'cal') return;
+    sound.stop();
+    app.screen = 'calIdle';
+    calSheet(t('audioError'));
+    openPanel('cal');
+  }
 }
+
 function calTap(ms, kind) {
+  if (app.screen !== 'cal' || !cal.voice) return;
   sound.strike(kind === 'drum' ? 'drum' : 'tai');
-  const heard = sound.heardAt(ms),
-    beat = Math.round((heard - CAL.lead) / CAL.gap);
+  const heard = sound.heardAt(ms);
+  const beat = Math.round((heard - CAL.lead) / CAL.gap);
   if (beat < 0 || beat >= CAL.beats) return;
   const late = heard - (CAL.lead + beat * CAL.gap);
-  if (Math.abs(late) > 0.25) return;
-  cal.taps.push(late);
-  $('#calCount').textContent = t('calCount', { n: cal.taps.length, total: CAL.needed });
+  if (Math.abs(late) > 0.25 || cal.taps.has(beat)) return;
+  cal.taps.set(beat, late);
+  $('#calCount').textContent = t('calCount', { n: cal.taps.size, total: CAL.beats });
 }
+
 function calFrame() {
-  if (!cal.done && cal.voice && cal.voice.state === 'ended') endCalibration(false);
+  if (cal.done || !cal.voice) return;
+  if (cal.voice.state === 'ended') return endCalibration(false);
+  const elapsed = sound.heardAt() - CAL.lead;
+  $('[data-cal-tap]').classList.toggle('beat', elapsed >= 0 && elapsed % CAL.gap < 0.10);
 }
+
 function endCalibration(closing) {
   cal.done = true;
   sound.stop();
-  pads.hidden = true;
-  if (closing) return showTitle('[data-calibrate]');
+  if (closing) return showOptions('[data-calibrate]');
   let message = t('calFew');
-  if (cal.taps.length >= CAL.needed) {
-    const sorted = [...cal.taps].sort((a, b) => a - b),
-      median = sorted[Math.floor(sorted.length / 2)],
-      ms = Math.round(median * 1000);
+  if (cal.taps.size >= CAL.needed) {
+    const sorted = [...cal.taps.values()].sort((a, b) => a - b);
+    const median = sorted[Math.floor(sorted.length / 2)];
+    const ms = Math.round(median * 1000);
     setSetting('offset', Math.max(-300, Math.min(300, ms)));
     message = t('calDone', { n: ms });
   }
@@ -435,8 +598,10 @@ onLanguage(() => {
   document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
   document.title = t('pageTitle');
   game.canvas.setAttribute('aria-label', t('stage'));
-  if (app.screen === 'title') showTitle('[data-language]');
+  if (app.screen === 'options') showOptions('[data-language]');
+  else if (app.screen === 'title') showTitle();
   else if (app.screen === 'menu') {
+    updatePlayLabels();
     app.screen = 'play';
     openMenu('[data-language]');
   }

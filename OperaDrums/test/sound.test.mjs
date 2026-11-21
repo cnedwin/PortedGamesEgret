@@ -4,8 +4,8 @@
 // song, every clapper click falls on a beat, and every note of the fiddle is in a bridge, on the scale and on a beat.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { RATE, SCALE, backingOf, ban, cai, cang, clicksOf, drum, fiddle, ling, peakOf, tai } from '../src/audio/synth.mjs';
-import { LEAD, timeAt, timelineOf } from '../src/sim/chart.mjs';
+import { RATE, SCALE, backingOf, ban, cai, cang, clicksOf, drum, effectsOf, fiddle, ling, peakOf, tai } from '../src/audio/synth.mjs';
+import { LEAD, buildChart, timeAt, timelineOf } from '../src/sim/chart.mjs';
 import { SONGS } from '../src/sim/songs.mjs';
 
 const finite = (samples) => samples.every((v) => Number.isFinite(v));
@@ -31,7 +31,9 @@ test('the backing of each song lasts the song, stays below full scale and plays 
   for (const song of SONGS) {
     const { samples, tune } = backingOf(song);
     const { sections, beats } = timelineOf(song);
-    assert.ok(samples.length / RATE >= timeAt(song, beats), song.id);
+    assert.ok(samples.length / RATE >= buildChart(song).end + 0.49, song.id);
+    const close = Math.round(timeAt(song, beats) * RATE);
+    assert.ok(peakOf(samples.slice(close, close + RATE / 2)) > 0.13, song.id + ': closing accent');
     assert.ok(finite(samples) && peakOf(samples) < 1, `${song.id}: ${peakOf(samples)}`);
     assert.ok(tune.length > 10, song.id);
     const bridges = sections.filter((section) => section.cell === 'guomen');
@@ -61,5 +63,16 @@ test('the clicks for setting the delay fall where they are said to', () => {
     const at = Math.round((1 + i * 0.6) * RATE);
     assert.ok(peakOf(samples.slice(at, at + 200)) > 0.3, `click ${i}`);
     assert.ok(peakOf(samples.slice(at - 600, at - 200)) < 0.05, `quiet before click ${i}`);
+  }
+});
+
+test('a roll has a distinct tight attack, and menu and result cues have different envelopes', () => {
+  const effects = effectsOf();
+  assert.ok(effects.roll.length < effects.drum.length);
+  assert.notDeepEqual(effects.da, effects.drum);
+  assert.ok(effects.clear.length > effects.retry.length && effects.retry.length > effects.open.length);
+  for (const [name, samples] of Object.entries(effects)) {
+    assert.ok(finite(samples) && peakOf(samples) <= 0.85, name);
+    assert.ok(peakOf(samples.slice(0, Math.round(RATE * 0.008))) > 0.07, `${name}: audible attack`);
   }
 });
