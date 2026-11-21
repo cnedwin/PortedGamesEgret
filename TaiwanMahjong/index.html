@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>台灣十六張麻將 · Taiwan Sixteen-Tile Mahjong</title>
+  <meta name="description" content="台灣十六張麻將：玩家與三位電腦牌友同桌，補花、吃碰槓、算台數。基於新白鷺引擎獨立開發的遊戲 Demo。">
+  <meta name="theme-color" content="#0b3526">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+        "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="frame">
+    <div id="back" class="layer"><canvas id="felt" aria-hidden="true"></canvas></div>
+    <div id="stage" aria-hidden="true"></div>
+    <div id="table" class="layer">
+
+      <div id="centre" aria-live="off">
+        <span class="seatWind" data-seat="0"></span><span class="seatWind" data-seat="1"></span><span class="seatWind" data-seat="2"></span><span class="seatWind" data-seat="3"></span>
+        <b id="roundLine"></b>
+        <span id="wallLeft"></span>
+      </div>
+      <div class="plate" data-seat="0"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
+      <div class="plate" data-seat="1"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
+      <div class="plate" data-seat="2"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
+      <div class="plate" data-seat="3"><i class="seal"></i><span class="who"></span><span class="badges"></span><b class="score"></b></div>
+
+      <div id="handKeys" role="group"></div>
+      <div id="actions" role="group"></div>
+      <div id="hint" aria-live="polite"></div>
+      <div id="tools">
+        <button id="autoButton" type="button" aria-pressed="false"></button>
+        <button id="pauseButton" type="button"></button>
+      </div>
+      <p id="announce" class="sr" aria-live="assertive"></p>
+
+      <section id="title" class="panel title" hidden>
+        <div class="titleArt" aria-hidden="true"></div>
+        <div class="titleBody">
+          <h1 id="titleName"></h1>
+          <p id="tagline" class="tagline"></p>
+          <p class="notice" hidden></p>
+          <fieldset><legend id="lengthLegend"></legend><div class="choices" id="lengthChoices"></div></fieldset>
+          <fieldset><legend id="levelLegend"></legend><div class="choices" id="levelChoices"></div></fieldset>
+          <div class="people" id="people"></div>
+          <div class="row">
+            <button id="startButton" class="primary" type="button"></button>
+            <button id="rulesButton" type="button"></button>
+            <button id="recordButton" type="button"></button>
+            <button id="settingsButton" type="button"></button>
+            <button id="languageButton" type="button"></button>
+          </div>
+          <p class="demo" id="demoLine"></p>
+        </div>
+      </section>
+
+      <section id="result" class="panel sheet" hidden aria-labelledby="resultTitle">
+        <h2 id="resultTitle"></h2>
+        <p id="resultNote"></p>
+        <div id="resultHand" class="tileRow"></div>
+        <ul id="resultTai" class="taiList"></ul>
+        <p id="resultTotal" class="taiTotal"></p>
+        <table id="resultPay" class="payTable"></table>
+        <div class="row"><button id="nextButton" class="primary" type="button"></button></div>
+      </section>
+
+      <section id="final" class="panel sheet" hidden aria-labelledby="finalTitle">
+        <h2 id="finalTitle"></h2>
+        <ol id="finalRanks" class="ranks"></ol>
+        <p id="finalNote"></p>
+        <div class="row"><button id="againButton" class="primary" type="button"></button><button id="homeButton" type="button"></button></div>
+      </section>
+
+      <section id="rules" class="panel sheet wide" hidden aria-labelledby="rulesTitle">
+        <h2 id="rulesTitle"></h2>
+        <div class="rulesBody"><div class="rulesText"></div><div class="taiTable"></div></div>
+        <div class="row"><button class="closeButton" type="button"></button></div>
+      </section>
+
+      <section id="settings" class="panel sheet" hidden aria-labelledby="settingsTitle">
+        <h2 id="settingsTitle"></h2>
+        <div class="settingsList"></div>
+        <div class="row"><button class="closeButton" type="button"></button></div>
+      </section>
+
+      <section id="record" class="panel sheet" hidden aria-labelledby="recordTitle">
+        <h2 id="recordTitle"></h2>
+        <dl class="recordList"></dl>
+        <div class="row"><button class="closeButton" type="button"></button></div>
+      </section>
+
+      <section id="menu" class="panel sheet small" hidden aria-labelledby="menuTitle">
+        <h2 id="menuTitle"></h2>
+        <div class="column">
+          <button id="resumeButton" class="primary" type="button"></button>
+          <button id="menuRules" type="button"></button>
+          <button id="menuSettings" type="button"></button>
+          <button id="quitButton" type="button"></button>
+        </div>
+      </section>
+
+      <div id="chowPick" class="panel sheet small" hidden><h2 id="chowTitle"></h2><div class="column" id="chowChoices"></div></div>
+      <p id="loading" class="loading">洗牌中 · Shuffling</p>
+    </div>
+  </main>
+  <noscript>這個遊戲需要 JavaScript · This game needs JavaScript.</noscript>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>
