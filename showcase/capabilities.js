@@ -14,6 +14,7 @@ export const MATRIX = {
   "OperaDrums",
   "Rally",
   "SnowTemple",
+  "TaiwanMahjong",
   "TeaHorseRoad",
   "Wulin"
  ],
@@ -52,12 +53,20 @@ export const MATRIX = {
      "file": "MechanismCity/src/art/illustrations.mjs"
     },
     {
+     "game": "NezhaSea",
+     "file": "NezhaSea/src/actor-art.mjs"
+    },
+    {
      "game": "Rally",
      "file": "Rally/src/main.mjs"
     },
     {
      "game": "SnowTemple",
      "file": "SnowTemple/src/main.mjs"
+    },
+    {
+     "game": "TaiwanMahjong",
+     "file": "TaiwanMahjong/src/view.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -476,6 +485,10 @@ export const MATRIX = {
      "file": "SnowTemple/tools/balance.mjs"
     },
     {
+     "game": "TaiwanMahjong",
+     "file": "TaiwanMahjong/src/i18n.mjs"
+    },
+    {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/play/input.mjs"
     }
@@ -513,6 +526,10 @@ export const MATRIX = {
     {
      "game": "SnowTemple",
      "file": "SnowTemple/src/main.mjs"
+    },
+    {
+     "game": "TaiwanMahjong",
+     "file": "TaiwanMahjong/src/main.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -554,11 +571,15 @@ export const MATRIX = {
     },
     {
      "game": "NezhaSea",
-     "file": "NezhaSea/src/sound.mjs"
+     "file": "NezhaSea/src/main.mjs"
     },
     {
      "game": "OperaDrums",
      "file": "OperaDrums/src/main.mjs"
+    },
+    {
+     "game": "TaiwanMahjong",
+     "file": "TaiwanMahjong/src/sound.mjs"
     }
    ]
   },
