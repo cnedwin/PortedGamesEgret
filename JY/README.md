@@ -112,6 +112,7 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb` 后：59 项 Node 测试通过；无头 Chromium 下下载原版数据、开始新游戏、第一个 3D 房间画出并走动，无控制台错误，与升级前相同。 · After the engine update: 59 tests pass, and a new game starts and walks in the first 3D room with a clean console, as before.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：59 项全部通过（原版数据格式、导航、事件、招募、经典战斗、原版存档、手柄映射）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 59 tests pass.
 - 2026-11-20 `node tools/quality.mjs JY` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。首屏一项量的是第一次下载并检查约 37.5 MB 原版数据的过程。 · The 16 automatic quality items in headless Chromium; the start-up item measured the first download and check of the original data.
 - 没有在真机上做过记录在案的整局验收。 · No recorded whole-game acceptance on a real device.
@@ -150,6 +151,6 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `66437553eaf415be3bc91171ba8d1ededd97d3c9`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `66437553eaf415be3bc91171ba8d1ededd97d3c9`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

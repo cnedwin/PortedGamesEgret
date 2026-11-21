@@ -1,4 +1,4 @@
-import type { ImageData2D, Rectangle2D, SharedGeometry2D } from '@egret/contracts';
+import type { ImageData2D, Matrix2D, Rectangle2D, SharedGeometry2D } from '@egret/contracts';
 import type { ShapeGradient } from './graphicsFill.js';
 import type { AssetLease } from './AssetLease.js';
 import type { Texture } from './Texture.js';
@@ -140,5 +140,31 @@ export declare function shapeFits(vertices: number, indices: number): boolean;
 export declare function drawingFits(drawing: ShapeDrawing): boolean;
 /** The geometries and bounds of a node's shapes, or undefined while they hold no triangle. */
 export declare function resolveShape(shape: ShapeState): ResolvedShape | undefined;
+/** The image of a mask, the region of it that is whole, and where it lies in the masked node's units. */
+export interface ShapeMaskImage {
+    readonly image: ImageData2D;
+    readonly region: {
+        readonly packed: Rectangle2D;
+        readonly logicalWidth: number;
+        readonly logicalHeight: number;
+        readonly trimX: 0;
+        readonly trimY: 0;
+        readonly quarterTurn: 0;
+    };
+    readonly rect: Rectangle2D;
+}
+/** The most pixels a side of a mask's image has, and how many samples a pixel takes on each side. */
+export declare const SHAPE_MASK_LIMITS: Readonly<{
+    maxEdge: 2048;
+    samples: 4;
+}>;
+/**
+ * The image of what a mask draws, its filled rectangles and its drawing placed by `matrix` in the masked node's units,
+ * at `scale` pixels to a unit of that node. `mask` is what the image is kept for.
+ */
+export declare function shapeMaskImage(mask: object, primitives: readonly {
+    readonly rect: Rectangle2D;
+    readonly alpha: number;
+}[], shape: ResolvedShape | undefined, matrix: Matrix2D, scale: number): ShapeMaskImage;
 export {};
 //# sourceMappingURL=graphicsShape.d.ts.map

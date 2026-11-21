@@ -31,6 +31,10 @@ export interface UiEnginePort {
     keyboardScope(input: KeyboardInput, owner: object): UiKeyboardScope;
     assertOpen(): void;
     assertIdle(): void;
+    /** Neither a frame is drawn nor input delivered now. */
+    isIdle(): boolean;
+    /** Refuses while a frame is drawn; input being delivered is allowed. */
+    assertNotDrawing(): void;
     isEngineScope(value: unknown): value is Scope;
     createScope(): Scope;
     scope(value: unknown): UiScopePort;

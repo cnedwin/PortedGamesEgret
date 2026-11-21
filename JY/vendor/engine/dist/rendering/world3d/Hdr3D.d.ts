@@ -1,5 +1,6 @@
 import { CubeTexture3D } from './Texture3D.js';
 import type { TexturePixels3D } from './Texture3D.js';
+/** The largest HDR image read. */
 export declare const HDR3D_LIMITS: Readonly<{
     readonly maxEdge: 16384;
     readonly maxPixels: 67108864;
@@ -12,6 +13,7 @@ export interface HdrImage3D {
 }
 /** Decode a Radiance .hdr file (flat or run-length encoded, -Y +X orientation). */
 export declare function parseRgbe3D(bytes: Uint8Array): HdrImage3D;
+/** How an equirectangular image is turned into a cube: its size, exposure and brightest value. */
 export interface EquirectOptions3D {
     /** Edge of each cube face in texels. */
     readonly size?: number;

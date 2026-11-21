@@ -1,4 +1,5 @@
 import type { AudioMixer, AudioSound, AudioVoice } from './audioTypes.js';
+/** A named sound effect: its takes, its bus and volume, and how often and how many at once it plays. */
 export interface AudioCueDefinition {
     /** The takes; one is chosen each time. */
     readonly sounds: readonly AudioSound[];
@@ -13,6 +14,7 @@ export interface AudioCueDefinition {
     /** At most this many voices of the cue at once; the oldest gives its place. Defaults to 4. */
     readonly maxVoices?: number;
 }
+/** How one play of a cue differs: its volume, pan and rate. */
 export interface AudioCuePlayOptions {
     /** Multiplies the cue's volume, as for distance. */
     readonly volume?: number;
@@ -20,6 +22,7 @@ export interface AudioCuePlayOptions {
     /** Multiplies the chosen rate. */
     readonly rate?: number;
 }
+/** Sound effects by name, each with its takes, cool-down and voice limit. */
 export interface AudioCues {
     /** Plays a take of the cue, or nothing when it is cooling down. */
     play(name: string, options?: AudioCuePlayOptions): AudioVoice | undefined;
@@ -27,6 +30,7 @@ export interface AudioCues {
     stop(name: string, fade?: number): void;
     readonly names: readonly string[];
 }
+/** The clock and the random numbers cues choose by; give your own for tests and replays. */
 export interface AudioCuesOptions {
     /** Seconds now; `performance.now()` by default. Tests and replays give their own clock. */
     readonly now?: () => number;

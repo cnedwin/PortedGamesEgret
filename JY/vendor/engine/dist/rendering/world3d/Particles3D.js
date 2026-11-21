@@ -7,6 +7,7 @@ import { setColor3D, createSpriteMaterial3D } from './Material3D.js';
 import { mat4Invert, mat4MaxScaleOnAxis } from './math3D.js';
 import { InstancedMesh3D } from './Mesh3D.js';
 import { createQuadGeometry3D } from './primitives3D.js';
+/** The most particles an emitter holds, and the longest step it takes. */
 export const PARTICLES3D_LIMITS = Object.freeze({ maxParticles: 262144, maxStepSeconds: 0.25 });
 function range(value, fallback, field) {
     if (value === undefined)
@@ -22,6 +23,7 @@ function range(value, fallback, field) {
 }
 const STRIDE = 8; // px, py, pz, vx, vy, vz, age, life
 const scratchInverse = new Float32Array(16);
+/** Emits particles on the CPU: burst some, update it each frame, or reset it. */
 export class ParticleEmitter3D extends InstancedMesh3D {
     rate;
     lifetime;
@@ -268,6 +270,7 @@ export class ParticleEmitter3D extends InstancedMesh3D {
         throw new World3DError('WORLD3D_INPUT_INVALID', 'a particle emitter cannot be cloned; create a new one from the same options');
     }
 }
+/** Makes a particle emitter. */
 export function createParticleEmitter3D(options = {}) {
     return new ParticleEmitter3D(options);
 }

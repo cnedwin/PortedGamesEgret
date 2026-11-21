@@ -2,6 +2,7 @@ import type { DisplayObject, EventType, Scope } from '@egret/runtime';
 import type { Engine } from './Engine.js';
 /** Pointers that can be over the scene without pressing it. A finger cannot. */
 export type HoverPointerType = 'mouse' | 'pen';
+/** Whether hover input passes input on, holds it, or has closed. */
 export type HoverInputState = 'active' | 'suspended' | 'closed';
 /**
  * Why a target stopped being hovered: the pointer went to another target or to none, left the
@@ -10,7 +11,9 @@ export type HoverInputState = 'active' | 'suspended' | 'closed';
  * suspended, disposed or failed.
  */
 export type HoverLeaveReason = 'target' | 'outside' | 'contact' | 'pointercancel' | 'owner' | 'viewport' | 'blur' | 'hidden' | 'pagehide' | 'suspended' | 'dispose' | 'error';
+/** What a wheel's deltas count: pixels, lines or pages. */
 export type WheelUnit = 'pixel' | 'line' | 'page';
+/** A pointer moving over the surface without a press: which pointer, where and when. */
 export interface HoverSample {
     readonly pointerId: number;
     readonly pointerType: HoverPointerType;
@@ -28,6 +31,7 @@ export interface HoverTransition extends HoverPoint {
     /** On an enter, what the pointer left in the same movement. On a leave, what it is going to. */
     readonly related?: DisplayObject;
 }
+/** A turn of a wheel: where the pointer is, how far it turned in each axis, in what unit and when. */
 export interface WheelSample {
     readonly globalX: number;
     readonly globalY: number;
@@ -40,10 +44,12 @@ export interface WheelSample {
     /** The platform's zoom modifier was held, as a pinch on a trackpad also reports. */
     readonly zoom?: boolean;
 }
+/** A wheel sample in order, with the viewport it was taken in. */
 export interface WheelPoint extends WheelSample {
     readonly sequence: number;
     readonly viewportRevision: number;
 }
+/** A target that a pointer entered, moved over or left, and why it left. */
 export interface HoverNotification {
     readonly kind: 'enter' | 'move' | 'leave';
     readonly point: HoverPoint;
@@ -53,12 +59,14 @@ export interface HoverNotification {
     /** On an enter, what the pointer left in the same movement. On a leave, what it is going to. */
     readonly related?: DisplayObject;
 }
+/** A wheel turn and the target it went to, and whether that target took it. */
 export interface WheelNotification {
     readonly point: WheelPoint;
     readonly target: DisplayObject | undefined;
     /** A listener on the target path prevented the default. */
     readonly consumed: boolean;
 }
+/** Hover input to make: its engine and scope, the surface's size, its limits, and what is called. */
 export interface HoverInputOptions {
     readonly engine: Engine;
     readonly scope: Scope;
@@ -72,6 +80,7 @@ export interface HoverInputOptions {
     /** Runs after the target path of a wheel. Returning true consumes a wheel nothing else consumed. */
     readonly onWheel?: (notification: WheelNotification) => boolean | void;
 }
+/** The event types hover input dispatches: enter, move, leave and wheel. */
 export interface HoverInputEvents {
     readonly enter: EventType<HoverTransition>;
     readonly move: EventType<HoverPoint>;
@@ -80,6 +89,7 @@ export interface HoverInputEvents {
     }>;
     readonly wheel: EventType<WheelPoint>;
 }
+/** Where a pointer hovers and the target under it. */
 export interface HoverState {
     readonly point: HoverPoint;
     readonly target: DisplayObject | undefined;

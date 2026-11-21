@@ -143,6 +143,7 @@ export class Texture {
             ]);
     }
 }
+/** A texture of a whole image or of a rectangle of it. */
 export function createTexture(image, sourceRect) {
     if (!isImageData2D(image))
         throw new EgretError("TEXTURE_IMAGE_INVALID", { cause: new TypeError("Authentic ImageData2D required") });

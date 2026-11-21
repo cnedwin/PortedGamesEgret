@@ -10,13 +10,21 @@ import type { PointerInput } from '../pointerInputTypes.js';
  * and is not recognized here.
  */
 export type ScrollAxis = 'x' | 'y';
+/** How the wheel scrolls: the hover input, the target, and how far one line is. */
 export interface ScrollWheelOptions {
     readonly hover: HoverInput;
     /** The viewport. A wheel over it or over a descendant scrolls. */
     readonly target: DisplayObject;
     /** Logical units of one wheel line. Defaults to 40. */
     readonly lineLength?: number;
+    /**
+     * Reads the other axis of the wheel when its own is still: an ordinary mouse wheel, which turns only up and down,
+     * then scrolls a sideways list. Leave it off for a list inside a page that scrolls the other way, whose wheel should
+     * scroll the page. Defaults to false.
+     */
+    readonly crossAxis?: boolean;
 }
+/** A scroll thumb to drag: its input and target, its track's length and its shortest length. */
 export interface ScrollThumbOptions {
     readonly input: PointerInput;
     /** The thumb of the scrollbar. One contact drags it. */
@@ -26,6 +34,7 @@ export interface ScrollThumbOptions {
     /** The shortest the thumb is drawn. Defaults to 16, and is never more than the track. */
     readonly minimumLength?: number;
 }
+/** A scroll control to make: its axis, the lengths of its viewport and content, its wheel and thumb, and what it calls. */
 export interface ScrollControlOptions {
     /** The axis of the stage the offset moves along. Defaults to 'y'. */
     readonly axis?: ScrollAxis;
@@ -39,11 +48,13 @@ export interface ScrollControlOptions {
     readonly onScroll?: (offset: number) => void;
     readonly onDragChange?: (dragging: boolean) => void;
 }
+/** Where the thumb is on its track and how long it is. */
 export interface ScrollThumb {
     /** Where the thumb begins on its track, and how long it is, in logical units. */
     readonly start: number;
     readonly length: number;
 }
+/** Scrolling along one axis: the offset and its maximum, the thumb, and calls that scroll by lines, pages or to the ends. */
 export interface ScrollControl {
     readonly axis: ScrollAxis;
     readonly offset: number;
@@ -68,5 +79,6 @@ export interface ScrollControl {
     setEnabled(enabled: boolean): void;
     dispose(): void;
 }
+/** Scrolls content past a viewport along one axis, by wheel, by dragging a thumb, or by calls. */
 export declare function createScrollControl(options: ScrollControlOptions): ScrollControl;
 //# sourceMappingURL=scrollControl.d.ts.map

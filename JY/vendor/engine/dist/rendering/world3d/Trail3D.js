@@ -7,6 +7,7 @@ import { World3DError, requireCount3D, requireFinite3D, requirePositive3D } from
 import { Attribute3D, Geometry3D } from './Geometry3D.js';
 import { createUnlitMaterial3D, setColor3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most points a trail has. */
 export const TRAIL3D_LIMITS = Object.freeze({ maxPoints: 4096 });
 /**
  * Add the trail to the scene itself, not under the object it follows: its
@@ -187,6 +188,7 @@ export class Trail3D extends Mesh3D {
         this.geometry.invalidateBounds();
     }
 }
+/** Makes a ribbon that follows a moving object and fades behind it. */
 export function createTrail3D(options = {}) {
     return new Trail3D(options);
 }

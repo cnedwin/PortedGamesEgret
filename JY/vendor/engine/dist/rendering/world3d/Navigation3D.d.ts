@@ -1,23 +1,48 @@
 import { Geometry3D } from './Geometry3D.js';
 import type { Object3D } from './Object3D.js';
+import { HeightField3D } from './Terrain3D.js';
+/** The most triangles, agents and grid cells navigation holds. */
 export declare const NAVIGATION3D_LIMITS: Readonly<{
     readonly maxTriangles: 1048576;
     readonly maxAgents: 4096;
     readonly maxGridCells: 16777216;
     readonly maxCellReferences: 8388608;
 }>;
+/** A point on a navigation mesh as x, y and z. */
 export type NavPoint3D = [number, number, number];
+/** A navigation mesh to make: the steepest walkable slope, and how close vertices are welded. */
 export interface NavMeshOptions3D {
     /** Steepest walkable slope in radians. Defaults to 45 degrees. */
     readonly slopeLimit?: number;
     /** Corners closer than this are treated as one, which joins triangles that only touch. Defaults to 0.001. */
     readonly weldTolerance?: number;
+    /** From a height field only: where its centre is in the world, `[x, z]`. Defaults to `[0, 0]`. */
+    readonly center?: readonly [number, number];
+    /** From a height field only: the world rectangle to cover, `{ x, z, width, depth }` from its -X, -Z corner. Defaults to the whole field. */
+    readonly region?: {
+        readonly x: number;
+        readonly z: number;
+        readonly width: number;
+        readonly depth: number;
+    };
+    /** From a height field only: the size of a cell of the mesh, in world units. Defaults to the field's own cell. */
+    readonly cellSize?: number;
+    /** From a height field only: circles `{ x, z, radius }` in the world left out, around rocks, trees and posts. */
+    readonly holes?: readonly {
+        readonly x: number;
+        readonly z: number;
+        readonly radius: number;
+    }[];
+    /** From a height field only: ground lower than this is left out, as under water. */
+    readonly minHeight?: number;
 }
+/** Where a point is on a navigation mesh: its triangle and the point itself. */
 export interface NavLocation3D {
     /** Index of the triangle the point lies on. */
     readonly triangle: number;
     readonly point: NavPoint3D;
 }
+/** How a path is found: the agent's radius, whether it follows the ground, and how far its ends may snap. */
 export interface NavPathOptions3D {
     /** Keeps the path this far from the mesh edges at corners, and rules out gaps narrower than twice this. */
     readonly agentRadius?: number;
@@ -26,6 +51,7 @@ export interface NavPathOptions3D {
     /** How far the start and end may lie from the mesh. Defaults to 2. */
     readonly snapDistance?: number;
 }
+/** A path found on a navigation mesh: its points, whether it reaches the goal, and its length. */
 export interface NavPath3D {
     readonly points: NavPoint3D[];
     /** False when the end could not be reached and the path stops at the closest reachable place. */
@@ -33,6 +59,7 @@ export interface NavPath3D {
     /** Length of the path. */
     readonly length: number;
 }
+/** The walkable surface of a level: find paths, nearest points and ray hits on it, and set the cost of its areas. */
 export declare class NavMesh3D {
     #private;
     /** Welded corner positions, three floats each. */
@@ -99,10 +126,11 @@ export declare class NavMesh3D {
  * meshes are merged with their world transforms. Faces steeper than
  * `slopeLimit` and faces pointing down are left out.
  */
-export declare function createNavMesh3D(source: Geometry3D | Object3D | {
+export declare function createNavMesh3D(source: Geometry3D | Object3D | HeightField3D | {
     readonly positions: ArrayLike<number>;
     readonly indices?: ArrayLike<number>;
 }, options?: NavMeshOptions3D): NavMesh3D;
+/** An agent to add: where it starts, its radius, speed and acceleration, and the node it moves. */
 export interface NavAgentOptions3D {
     readonly position: ArrayLike<number>;
     readonly radius?: number;
@@ -112,8 +140,14 @@ export interface NavAgentOptions3D {
     readonly acceleration?: number;
     /** Scene node moved with the agent; it must not have a transformed parent. */
     readonly node?: Object3D;
+    /**
+     * Turn the node to face the way the agent walks, about the vertical axis, at most this many radians per second; its
+     * local -Z is its front. Undefined (the default) leaves the node's turning to the game; Infinity turns at once.
+     */
+    readonly turnSpeed?: number;
     readonly userData?: unknown;
 }
+/** An agent of a crowd: where it is and how it moves; give it a target, or stop it. */
 export declare class NavAgent3D {
     readonly position: NavPoint3D;
     readonly velocity: NavPoint3D;
@@ -121,6 +155,10 @@ export declare class NavAgent3D {
     speed: number;
     acceleration: number;
     node: Object3D | undefined;
+    /** Radians per second the node turns to face the way it walks; undefined leaves its turning to the game. */
+    turnSpeed: number | undefined;
+    /** The angle about the vertical axis the node faces, in radians, 0 facing -Z; kept while `turnSpeed` is set. */
+    heading: number;
     userData: unknown;
     /** True once the agent has reached its target, or has none. */
     arrived: boolean;
@@ -156,7 +194,9 @@ export declare class NavCrowd3D {
     /** Advance every agent by `deltaSeconds`. */
     update(deltaSeconds: number): void;
 }
+/** Makes a crowd of agents that move along a navigation mesh and keep apart. */
 export declare function createNavCrowd3D(navMesh: NavMesh3D): NavCrowd3D;
+/** How a grid path is found: whether it moves diagonally, and how many cells it visits at most. */
 export interface GridPathOptions3D {
     /** Allow diagonal steps (never cutting a blocked corner). Defaults to true. */
     readonly diagonal?: boolean;

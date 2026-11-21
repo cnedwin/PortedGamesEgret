@@ -1,3 +1,4 @@
+/** The most bytes a decompression gives. */
 export declare const COMPRESSION3D_LIMITS: Readonly<{
     readonly maxOutputBytes: 536870912;
 }>;

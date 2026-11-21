@@ -2,6 +2,7 @@ import { type CustomShader3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
 import type { Object3D } from './Object3D.js';
 import type { RigidBody3D } from './Physics3D.js';
+/** How a jelly wobbles: its stiffness and damping, how far it squashes, how it reacts, and how it idles. */
 export interface JellyOptions3D {
     /** How many times per second the shape swings back and forth after a knock. Defaults to 3.5. */
     readonly stiffness?: number;
@@ -71,5 +72,6 @@ export declare class Jelly3D {
     /** Where the shader puts a world-space point, for tests and for attaching things to the surface. */
     deform(out: Float32Array | Float64Array | number[], x: number, y: number, z: number): typeof out;
 }
+/** Makes an object squash, stretch and wobble like jelly as it moves. */
 export declare function createJelly3D(target: Object3D, options?: JellyOptions3D): Jelly3D;
 //# sourceMappingURL=Jelly3D.d.ts.map

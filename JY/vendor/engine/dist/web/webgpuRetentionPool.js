@@ -24,7 +24,8 @@ export function createWebGPURetentionPool(session, diagnostics) {
             request.mipLevelCount !== 1 ||
             request.depthOrArrayLayers !== 1 ||
             (request.kind === 'color'
-                ? request.format !== 'rgba8unorm-srgb' || request.usage !== 20 || request.recipe !== 'egret.srgb-pma8-target/1'
+                ? !((request.format === 'rgba8unorm-srgb' && request.recipe === 'egret.srgb-pma8-target/1') ||
+                    (request.format === 'rgba8unorm' && request.recipe === 'egret.encoded-srgb-pma8-target/1')) || request.usage !== 20
                 : request.format !== 'depth32float' ||
                     request.usage !== 16 ||
                     request.recipe !== 'egret.shared-reverse-depth/1')) {

@@ -3,6 +3,10 @@ import type { DisplayObject, Engine, Graphics, Motion, Scope } from '@egret/engi
 import type { Random } from '@egret/engine/kit';
 import type { BrowserGame, BrowserGameBackend } from './game.js';
 import type { SfxRecipe } from './playSfx.js';
+import type { PlayStickOptions, PlayTouchButtonOptions } from './playTouch.js';
+import type { MusicOptions, MusicMood } from './playMusic.js';
+import type { PlayBar, PlayBarOptions, PlayMenuOptions, PlaySayOptions, PlayToastOptions } from './playWidgets.js';
+/** A whole small game to start: its size and background, where it goes on the page, its setup and update, its seed, backend and save key. */
 export interface PlayOptions {
     /** The size of the stage, in the game's own units: whole numbers above 0. The canvas is scaled to fit. */
     readonly width: number;
@@ -25,9 +29,21 @@ export interface PlayOptions {
     readonly seed?: number | string;
     /** `'auto'` unless given. */
     readonly backend?: 'auto' | BrowserGameBackend;
+    /**
+     * How translucent things mix with what is under them. `'srgb'` unless given: as a 2D canvas and Egret 5 mix
+     * them, so a white at 10% over a dark ground is a faint white. `'linear'` mixes light as it is, as the engine
+     * does by default; translucent light colours then look stronger.
+     */
+    readonly blendSpace?: 'linear' | 'srgb';
     /** Under what name `game.save` keeps its values in the page's storage. The page's path unless given. */
     readonly saveKey?: string;
+    /**
+     * Less motion for a player who asks for it: shakes are left out and flashes are faint. The system's
+     * `prefers-reduced-motion` unless given, followed as the player changes it; `game.reducedMotion` changes it later.
+     */
+    readonly reducedMotion?: boolean;
 }
+/** Text to show: where, how large, its color and alignment, whether bold, its layer, baseline and locale. */
 export interface PlayTextOptions {
     readonly x?: number;
     readonly y?: number;
@@ -65,6 +81,43 @@ export declare class PlayText extends Sprite {
     get size(): number;
     set size(value: number);
 }
+/** A map of tiles to make: the size of a tile, where its top left corner is, its colours, which characters are solid, and its layer. */
+export interface PlayTilesOptions {
+    /** The width and height of one tile; 32 unless given. */
+    readonly size?: number;
+    readonly x?: number;
+    readonly y?: number;
+    /** The colour of each character's tiles; `#` is grey and the rest are not drawn unless given. */
+    readonly colors?: Readonly<Record<string, number>>;
+    /** The characters that are solid; `'#'` unless given. */
+    readonly solid?: string;
+    readonly layer?: Sprite;
+}
+/** A map of tiles: read and change its cells, and push a sprite out of its solid ones. */
+export interface PlayTiles {
+    /** The sprite the tiles are drawn in. */
+    readonly sprite: Sprite;
+    readonly columns: number;
+    readonly rows: number;
+    readonly size: number;
+    /** The character of a cell, or `''` outside the map. */
+    at(column: number, row: number): string;
+    /** Changes the character of a cell and draws the map again. */
+    set(column: number, row: number, character: string): void;
+    /** The cell under a point of the layer the map is in: `{ column, row }`. */
+    cellAt(x: number, y: number): {
+        column: number;
+        row: number;
+    };
+    /** Whether a point of the layer the map is in is on a solid tile. */
+    solidAt(x: number, y: number): boolean;
+    /** How far to move `a` out of the solid tiles it overlaps, `{ x, y }`, or `undefined` when it overlaps none. */
+    pushOut(a: DisplayObject): {
+        x: number;
+        y: number;
+    } | undefined;
+}
+/** The keyboard of a play game: what is held, pressed and released, and axes from the arrow and WASD keys. */
 export interface PlayKeys {
     /** Whether any of the keys is held. A key is `'left'`, `'right'`, `'up'`, `'down'`, `'space'`, `'enter'`, `'escape'`, `'shift'`, a letter, a digit, or a `KeyboardEvent.code`. */
     down(...keys: string[]): boolean;
@@ -86,6 +139,7 @@ export interface PlayKeys {
         y: number;
     };
 }
+/** The pointer of a play game: where it is, what it pressed, swipes, wheel and pointer lock. */
 export interface PlayPointer {
     /** Where the mouse, pen or finger is, on the stage. It follows the mouse whether or not a button is held. */
     readonly x: number;
@@ -122,6 +176,16 @@ export type PlayMotion<T extends object> = Motion<T> & {
     /** Resolves when the motion has finished or been stopped: `await game.tween(s).to({ x: 9 }, 0.2).done`. */
     readonly done: Promise<void>;
 };
+/** An image to show: where, how large, whether smoothed, and its layer. */
+export interface PlayImageOptions {
+    readonly x?: number;
+    readonly y?: number;
+    readonly width?: number;
+    readonly height?: number;
+    readonly smooth?: boolean;
+    readonly layer?: 'ui' | 'world' | Sprite;
+}
+/** A button to show: where, how large, its colors, text size and layer. */
 export interface PlayButtonOptions {
     readonly x: number;
     readonly y: number;
@@ -151,6 +215,26 @@ export interface PlayLoop {
     stop(seconds?: number): void;
     readonly stopped: boolean;
 }
+/** The music of a play game: play or stop it, and set its intensity, volume and mood. */
+export interface PlayMusic {
+    /**
+     * Writes a piece in a mood (`'calm'`, `'mystery'`, `'tense'`, `'battle'` or `'triumph'`), or from
+     * `{ mood, seed, tempo, bars }`, and loops it; a piece already playing fades out. It is heard once the page has had
+     * its first key or click. A restart stops it.
+     */
+    play(mood?: MusicMood | MusicOptions): Promise<void>;
+    /** Fades the music out over `seconds`, 1 unless given. */
+    stop(seconds?: number): void;
+    /**
+     * 0 to 1, 0.5 unless set: how much of the piece plays. The pad of held chords always; the bass from about 0.2, the
+     * drums from about 0.5, the tune from about 0.75. A change is heard over a second or so.
+     */
+    intensity: number;
+    /** 0 to 1, 0.6 unless set; the volume and the mute of the sound effects apply too. */
+    volume: number;
+    readonly mood: MusicMood | undefined;
+}
+/** The sound effects of a play game: play or loop one by name, define new ones, and set the volume. */
 export interface PlaySfx {
     /** Plays an effect by name: one of `names`. `pitch` is 1 as written, 2 an octave up. */
     play(name: string, options?: {
@@ -176,6 +260,7 @@ export interface PlaySfx {
     volume: number;
     muted: boolean;
 }
+/** A burst of particles: its color and count, how fast and how long they fly, their size and gravity. */
 export interface PlayBurstOptions {
     readonly color?: number;
     /** How many pieces; 12 unless given. */
@@ -195,6 +280,7 @@ export interface PlayBurstOptions {
  * When it is a promise, as an `async` function returns, its failure is told as the function's own would be.
  */
 export declare function tapListener(callback: () => unknown, fail: (cause: unknown) => void): () => void;
+/** Everything a small game is given: its world, UI and view, keys and pointer, sound and random numbers, and calls that make, move, test and time things. */
 export interface PlayGame {
     readonly width: number;
     readonly height: number;
@@ -248,6 +334,13 @@ export interface PlayGame {
     } | undefined;
     /** Whether the middles of what two sprites draw are within `distance` of each other: a test of circles. */
     near(a: DisplayObject, b: DisplayObject, distance: number): boolean;
+    /**
+     * A map of tiles from rows of characters, drawn as one sprite: `game.tiles(['#####', '#...#', '#####'], { size: 32 })`.
+     * `#` is solid unless `solid` says which characters are; `colors` gives each character its colour.
+     */
+    tiles(rows: readonly string[], options?: PlayTilesOptions): PlayTiles;
+    /** The colour a fraction `t` of the way from `a` to `b`, both `0xRRGGBB`: `game.mix(0x000000, 0xffffff, 0.5)`. */
+    mix(a: number, b: number, t: number): number;
     /** Moves numbers of an object over time: `game.tween(s).to({ x: 100, alpha: 0 }, 0.3, 'quadOut')`. It starts by itself. */
     tween<T extends object>(target: T): PlayMotion<T>;
     /** Calls a function once, after seconds of play. The function returned calls it off. */
@@ -256,9 +349,11 @@ export interface PlayGame {
     wait(seconds: number): Promise<void>;
     /** Calls a function again and again, seconds of play apart. The function returned ends it. */
     every(seconds: number, callback: () => void): () => void;
-    /** Shakes the world by up to `amount` units for `seconds`. */
+    /** Whether shakes are left out and flashes faint, for a player who asks for less motion. A settings menu may change it. */
+    reducedMotion: boolean;
+    /** Shakes the world by up to `amount` units for `seconds`. Nothing while `reducedMotion` is on. */
     shake(amount?: number, seconds?: number): void;
-    /** Covers the stage with a colour that fades away over `seconds`. */
+    /** Covers the stage with a colour that fades away over `seconds`; faintly while `reducedMotion` is on. */
     flash(color?: number, seconds?: number): void;
     /** Stops play for a moment, as a hard hit does: no updates and no timers for `seconds`. */
     hitStop(seconds?: number): void;
@@ -273,9 +368,40 @@ export interface PlayGame {
     readonly paused: boolean;
     /**
      * Starts the game again: everything in the world and the `ui` layer is removed, timers and tweens are called
-     * off, and `setup` runs again. Updates begin when it has finished.
+     * off, and `setup` runs again. Concurrent requests share one promise. Updates resume on success; a failed setup can be retried.
      */
     restart(): Promise<void>;
+    /**
+     * A picture from an address (a PNG beside the page, say), its middle at `x`, `y`, scaled to `width` and `height`.
+     * Given one of the two, it keeps its shape; given neither, its own size. It is smooth, and drawn from its smaller
+     * copies when small, unless `smooth: false`, which keeps every texel sharp, for pixel art. It goes on the world
+     * layer unless given another, and is a sprite to move, turn, fade and remove.
+     */
+    image(url: string, options?: PlayImageOptions): Promise<Sprite>;
+    /** A bar of health, time or power, on the ui layer unless given another; set its `value` and it slides there. */
+    bar(options: PlayBarOptions): PlayBar;
+    /** A short notice at the top of the stage that fades after `seconds`; several stack. */
+    toast(words: string, options?: PlayToastOptions): void;
+    /**
+     * A box of words at the bottom of the stage, shown letter by letter, with a name above it when `who` is given. A
+     * press of Space, Enter or Z or a tap shows the rest, and another closes it. With `choices` it gives the index of
+     * the answer chosen by the arrows and Enter or by a tap; without, it gives undefined. Boxes asked for while one is
+     * open wait their turn. A restart closes it, and the promise is then not answered.
+     */
+    say(words: string, options?: PlaySayOptions): Promise<number | undefined>;
+    /** A list to choose from in the middle of the stage, with a title when given; it gives the index chosen. */
+    menu(items: readonly string[], options?: PlayMenuOptions): Promise<number>;
+    /** Whether a box of words or a menu is open: an update can then leave the game alone. */
+    readonly asking: boolean;
+    /**
+     * A stick on the glass, near the bottom left unless placed, that counts in `keys.axis()`. It is shown once a finger
+     * has touched the stage, or at once with `always`.
+     */
+    touchStick(options?: PlayStickOptions): Sprite;
+    /** A round button on the glass that holds a key while a finger is on it: `keys.down('space')` sees it. */
+    touchButton(words: string, options: PlayTouchButtonOptions): Sprite;
+    /** Music made in code, in a mood, whose parts come in as `intensity` rises. */
+    readonly music: PlayMusic;
     /** The game `play` is built on: its Engine, scope, loop and input, for what this entry does not cover. */
     readonly browser: BrowserGame;
     readonly engine: Engine;

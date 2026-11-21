@@ -8,6 +8,7 @@
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { Path2D3D, Shape3D, signedArea2D } from './Curves3D.js';
 import { createExtrudeGeometry3D, createShapeGeometry3D } from './geometries3D.js';
+/** The most characters, font bytes and glyph points 3D text has. */
 export const TEXT3D_LIMITS = Object.freeze({
     maxCharacters: 4096,
     maxFontBytes: 67108864,
@@ -23,6 +24,7 @@ function inside(point, polygon) {
     }
     return hit;
 }
+/** A font that gives the outlines of text for 3D text geometry. */
 export class Font3D {
     unitsPerEm;
     ascender;

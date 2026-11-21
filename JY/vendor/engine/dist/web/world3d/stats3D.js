@@ -3,6 +3,7 @@
 // parts of a frame, and what the renderer drew. It tells a slow device apart
 // from a slow game. The numbers are gathered whether or not they are shown.
 import { World3DError } from '../../rendering/world3d/core3D.js';
+/** Makes a panel that shows a 3D view's frame times and draws. */
 export function createWorld3DStats(renderer, options = {}) {
     if (!renderer?.info)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'renderer');

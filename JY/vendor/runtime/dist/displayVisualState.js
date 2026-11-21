@@ -65,6 +65,7 @@ export function registerVisual(node) {
         anchorOffsetY: 0,
         visible: true,
         renderEffect: undefined,
+        maskUses: 0,
         sharedMaterial: null,
         renderBoundary: "none",
         clipRect: undefined,

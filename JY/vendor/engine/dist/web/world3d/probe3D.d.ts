@@ -1,6 +1,7 @@
 import type { Scene3D } from '../../rendering/world3d/Object3D.js';
 import { CubeTexture3D } from '../../rendering/world3d/Texture3D.js';
 import type { Renderer3D } from './frame3D.js';
+/** How a cube is captured around a point: its size, near and far planes, and layers. */
 export interface CubeCaptureOptions3D {
     /** Edge of each face in texels. */
     readonly size?: number;

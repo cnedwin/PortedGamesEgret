@@ -2,41 +2,49 @@
 // Allocation-free 3D math over caller-owned numeric storage. Matrices are
 // column-major with column vectors; cameras look down negative view Z.
 // Every function writes into `out` and tolerates `out` aliasing an input.
+/** How close two numbers must be to count as equal. */
 export const EPSILON_3D = 1e-8;
 // ---- vec3 -----------------------------------------------------------------
+/** Sets a vector's x, y and z. */
 export function vec3Set(out, x, y, z) {
     out[0] = x;
     out[1] = y;
     out[2] = z;
     return out;
 }
+/** Copies a vector. */
 export function vec3Copy(out, a) {
     out[0] = a[0];
     out[1] = a[1];
     out[2] = a[2];
     return out;
 }
+/** Adds two vectors. */
 export function vec3Add(out, a, b) {
     out[0] = a[0] + b[0];
     out[1] = a[1] + b[1];
     out[2] = a[2] + b[2];
     return out;
 }
+/** Takes one vector from another. */
 export function vec3Sub(out, a, b) {
     out[0] = a[0] - b[0];
     out[1] = a[1] - b[1];
     out[2] = a[2] - b[2];
     return out;
 }
+/** Multiplies a vector by a number. */
 export function vec3Scale(out, a, s) {
     out[0] = a[0] * s;
     out[1] = a[1] * s;
     out[2] = a[2] * s;
     return out;
 }
+/** The dot product of two vectors. */
 export function vec3Dot(a, b) {
     return a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
 }
+/** The cross product of two vectors. */
 export function vec3Cross(out, a, b) {
     const ax = a[0], ay = a[1], az = a[2], bx = b[0], by = b[1], bz = b[2];
     out[0] = ay * bz - az * by;
@@ -44,9 +52,11 @@ export function vec3Cross(out, a, b) {
     out[2] = ax * by - ay * bx;
     return out;
 }
+/** The length of a vector. */
 export function vec3Length(a) {
     return Math.hypot(a[0], a[1], a[2]);
 }
+/** The distance between two points. */
 export function vec3Distance(a, b) {
     return Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]);
 }
@@ -59,6 +69,7 @@ export function vec3Normalize(out, a) {
     out[2] = a[2] * inverse;
     return out;
 }
+/** The point a fraction of the way from one vector to another. */
 export function vec3Lerp(out, a, b, t) {
     out[0] = a[0] + (b[0] - a[0]) * t;
     out[1] = a[1] + (b[1] - a[1]) * t;
@@ -83,6 +94,7 @@ export function vec3TransformDirection(out, a, m) {
     out[2] = m[2] * x + m[6] * y + m[10] * z;
     return out;
 }
+/** Turns a vector by a quaternion. */
 export function vec3TransformQuat(out, a, q) {
     const x = a[0], y = a[1], z = a[2], qx = q[0], qy = q[1], qz = q[2], qw = q[3];
     // t = 2 * cross(q.xyz, v); v' = v + qw * t + cross(q.xyz, t)
@@ -93,6 +105,7 @@ export function vec3TransformQuat(out, a, q) {
     return out;
 }
 // ---- quaternion (x, y, z, w) -----------------------------------------------
+/** Sets a quaternion to no rotation. */
 export function quatIdentity(out) {
     out[0] = 0;
     out[1] = 0;
@@ -100,6 +113,7 @@ export function quatIdentity(out) {
     out[3] = 1;
     return out;
 }
+/** Copies a quaternion. */
 export function quatCopy(out, a) {
     out[0] = a[0];
     out[1] = a[1];
@@ -107,6 +121,7 @@ export function quatCopy(out, a) {
     out[3] = a[3];
     return out;
 }
+/** Scales a quaternion to length 1. */
 export function quatNormalize(out, a) {
     const length = Math.hypot(a[0], a[1], a[2], a[3]);
     if (length === 0)
@@ -118,6 +133,7 @@ export function quatNormalize(out, a) {
     out[3] = a[3] * inverse;
     return out;
 }
+/** Multiplies two quaternions: the rotation of b, then a. */
 export function quatMultiply(out, a, b) {
     const ax = a[0], ay = a[1], az = a[2], aw = a[3], bx = b[0], by = b[1], bz = b[2], bw = b[3];
     out[0] = ax * bw + aw * bx + ay * bz - az * by;
@@ -126,6 +142,7 @@ export function quatMultiply(out, a, b) {
     out[3] = aw * bw - ax * bx - ay * by - az * bz;
     return out;
 }
+/** A quaternion that turns by an angle about an axis. */
 export function quatFromAxisAngle(out, axis, radians) {
     const half = radians * 0.5, s = Math.sin(half);
     const length = Math.hypot(axis[0], axis[1], axis[2]) || 1;
@@ -223,6 +240,7 @@ export function quatFromRotationMatrix(out, m) {
     return out;
 }
 // ---- mat4 -------------------------------------------------------------------
+/** Sets a 4x4 matrix to the identity. */
 export function mat4Identity(out) {
     out[0] = 1;
     out[1] = 0;
@@ -242,6 +260,7 @@ export function mat4Identity(out) {
     out[15] = 1;
     return out;
 }
+/** Copies a 4x4 matrix. */
 export function mat4Copy(out, a) {
     for (let i = 0; i < 16; i++)
         out[i] = a[i];
@@ -310,6 +329,7 @@ export function mat4Decompose(m, t, q, s) {
     s[1] = sy;
     s[2] = sz;
 }
+/** The determinant of a 4x4 matrix. */
 export function mat4Determinant(m) {
     const a00 = m[0], a01 = m[1], a02 = m[2], a03 = m[3], a10 = m[4], a11 = m[5], a12 = m[6], a13 = m[7];
     const a20 = m[8], a21 = m[9], a22 = m[10], a23 = m[11], a30 = m[12], a31 = m[13], a32 = m[14], a33 = m[15];
@@ -410,6 +430,7 @@ export function mat4Perspective(out, verticalFov, aspect, near, far) {
     out[15] = 0;
     return out;
 }
+/** Sets a 4x4 matrix to an orthographic projection. */
 export function mat4Orthographic(out, left, right, bottom, top, near, far) {
     const w = 1 / (right - left), h = 1 / (top - bottom), d = 1 / (near - far);
     mat4Identity(out);
@@ -438,6 +459,7 @@ export function mat3NormalFromMat4(out, m) {
     out[8] = (a00 * a11 - a01 * a10) * d;
     return out;
 }
+/** The largest scale a 4x4 matrix applies along an axis. */
 export function mat4MaxScaleOnAxis(m) {
     const x = m[0] * m[0] + m[1] * m[1] + m[2] * m[2];
     const y = m[4] * m[4] + m[5] * m[5] + m[6] * m[6];
@@ -445,14 +467,17 @@ export function mat4MaxScaleOnAxis(m) {
     return Math.sqrt(Math.max(x, y, z));
 }
 // ---- bounds: box = [minX, minY, minZ, maxX, maxY, maxZ], sphere = [x, y, z, radius]
+/** Sets a box to empty. */
 export function box3Empty(out) {
     out[0] = out[1] = out[2] = Infinity;
     out[3] = out[4] = out[5] = -Infinity;
     return out;
 }
+/** Whether a box is empty. */
 export function box3IsEmpty(box) {
     return box[3] < box[0] || box[4] < box[1] || box[5] < box[2];
 }
+/** Grows a box to hold a point. */
 export function box3ExpandByPoint(box, x, y, z) {
     if (x < box[0])
         box[0] = x;
@@ -467,6 +492,7 @@ export function box3ExpandByPoint(box, x, y, z) {
     if (z > box[5])
         box[5] = z;
 }
+/** The box that holds two boxes. */
 export function box3Union(out, a, b) {
     out[0] = Math.min(a[0], b[0]);
     out[1] = Math.min(a[1], b[1]);
@@ -496,6 +522,7 @@ export function box3Transform(out, box, m) {
     out[5] = max[2];
     return out;
 }
+/** The sphere around a box. */
 export function sphereFromBox(out, box) {
     if (box3IsEmpty(box)) {
         out[0] = out[1] = out[2] = 0;
@@ -508,6 +535,7 @@ export function sphereFromBox(out, box) {
     out[3] = Math.hypot(box[3] - box[0], box[4] - box[1], box[5] - box[2]) / 2;
     return out;
 }
+/** Moves and scales a sphere by a 4x4 matrix. */
 export function sphereTransform(out, sphere, m) {
     const radius = sphere[3];
     vec3TransformMat4(out, sphere, m);
@@ -515,6 +543,7 @@ export function sphereTransform(out, sphere, m) {
     return out;
 }
 // ---- frustum: six inward planes [nx, ny, nz, d] from a view-projection matrix
+/** The six planes of the frustum a projection-view matrix sees. */
 export function frustumFromMatrix(out, m) {
     const rows = [0, 1, 2];
     let o = 0;
@@ -534,6 +563,7 @@ export function frustumFromMatrix(out, m) {
     }
     return out;
 }
+/** Whether a sphere is at least partly inside a frustum. */
 export function frustumIntersectsSphere(frustum, sphere) {
     const x = sphere[0], y = sphere[1], z = sphere[2], negativeRadius = -sphere[3];
     for (let o = 0; o < 24; o += 4) {
@@ -542,6 +572,7 @@ export function frustumIntersectsSphere(frustum, sphere) {
     }
     return true;
 }
+/** Whether a box is at least partly inside a frustum. */
 export function frustumIntersectsBox(frustum, box) {
     for (let o = 0; o < 24; o += 4) {
         const nx = frustum[o], ny = frustum[o + 1], nz = frustum[o + 2];
@@ -620,9 +651,11 @@ export function rayIntersectTriangle(out, origin, direction, p, a, b, c, cull) {
     return true;
 }
 // ---- color -------------------------------------------------------------------
+/** Turns an sRGB color value into a linear one. */
 export function srgbToLinear(value) {
     return value <= 0.04045 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
 }
+/** Turns a linear color value into an sRGB one. */
 export function linearToSrgb(value) {
     return value <= 0.0031308 ? value * 12.92 : 1.055 * Math.pow(value, 1 / 2.4) - 0.055;
 }
@@ -633,8 +666,10 @@ export function colorFromHex(out, hex) {
     out[2] = srgbToLinear((hex & 255) / 255);
     return out;
 }
+/** The value, kept between `min` and `max`. */
 export function clamp(value, min, max) {
     return value < min ? min : value > max ? max : value;
 }
+/** Degrees times this are radians. */
 export const DEG_TO_RAD_3D = Math.PI / 180;
 //# sourceMappingURL=math3D.js.map

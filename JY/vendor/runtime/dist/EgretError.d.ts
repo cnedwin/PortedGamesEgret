@@ -1,3 +1,4 @@
+/** What an EgretError can carry besides its code: the error or value that caused it. */
 export interface EgretErrorOptions {
     readonly cause?: unknown;
     readonly cleanupErrors?: readonly unknown[];

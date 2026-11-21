@@ -7,5 +7,6 @@ interface SurfaceBinding {
 }
 /** Private browser assembly authority; never exported by the optional public entry. */
 export declare function bindPointerSurface(input: PointerInput): SurfaceBinding;
+/** Pointer input for the stage: touches, mouse buttons and pens become contacts delivered to the nodes under them. */
 export declare function createPointerInput(options: PointerInputOptions): PointerInput;
 //# sourceMappingURL=pointerInput.d.ts.map

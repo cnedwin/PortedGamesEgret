@@ -5,11 +5,13 @@ import type { Material3D } from './Material3D.js';
 import type { Camera3D } from './Camera3D.js';
 import { InstancedMesh3D, type Mesh3D } from './Mesh3D.js';
 import type { Object3D } from './Object3D.js';
+/** The most bone matrices, clips and frames a second an animation texture holds. */
 export declare const ANIMATION_TEXTURE3D_LIMITS: Readonly<{
     readonly maxMatrices: 2097152;
     readonly maxClips: 256;
     readonly maxFps: 240;
 }>;
+/** One clip baked into an animation texture: its name, first frame, frame count and length. */
 export interface BakedClip3D {
     readonly name: string;
     /** First frame of the clip in the table. */
@@ -47,6 +49,7 @@ export declare class AnimationTexture3D extends Resource3D {
      */
     framesAt(clip: number, time: number, loop: boolean, out: Float32Array | number[], offset?: number): void;
 }
+/** How many frames a second clips are baked at. */
 export interface BakeAnimationOptions3D {
     /** Poses stored per second of each clip. Default 30. */
     readonly fps?: number;
@@ -59,6 +62,7 @@ export interface BakeAnimationOptions3D {
  * morph targets where a clip animates them.
  */
 export declare function bakeAnimationTexture3D(root: Object3D, mesh: Mesh3D, clips: readonly AnimationClip3D[], options?: BakeAnimationOptions3D): AnimationTexture3D;
+/** How an instance plays a baked clip: from when, how fast, whether it loops and how long it fades. */
 export interface InstanceClipOptions3D {
     /** Where in the clip to start, in seconds. Default 0. */
     readonly time?: number;
@@ -69,6 +73,7 @@ export interface InstanceClipOptions3D {
     /** Seconds to cross-fade from the clip the instance is playing now, which keeps running while it fades. Default 0. */
     readonly fade?: number;
 }
+/** How an instance blends two baked clips: from when, how fast, whether they loop and stay in step. */
 export interface InstanceBlendOptions3D {
     readonly time?: number;
     readonly speed?: number;
@@ -153,5 +158,6 @@ export declare class SkinnedInstancedMesh3D extends InstancedMesh3D {
 }
 /** A baked skin can extend beyond the available sphere, including when a bone scales in place. */
 export declare function worldRenderSphere3D(mesh: Mesh3D): Float32Array | undefined;
+/** Makes many skinned instances of one mesh, each playing baked clips from an animation texture. */
 export declare function createSkinnedInstancedMesh3D(geometry: Geometry3D, material: Material3D | Material3D[], animations: AnimationTexture3D, capacity: number, instanceColorSize?: 3 | 4): SkinnedInstancedMesh3D;
 //# sourceMappingURL=AnimationTexture3D.d.ts.map

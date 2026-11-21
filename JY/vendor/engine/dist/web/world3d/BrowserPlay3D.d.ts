@@ -66,10 +66,64 @@ export declare class PlayThing3D {
     /** Its colour, `0xRRGGBB`. What is not a colour is not taken; a model keeps the colours it has. */
     get color(): number;
     set color(value: number);
+    /**
+     * How much it shines with its own colour, lit or not: 0 (the default) not at all, 1 as bright as its colour,
+     * more for a lamp or a screen. A thing that glows is not hidden by fog. A model keeps the materials it has.
+     */
+    get glow(): number;
+    set glow(value: number);
+    /**
+     * How much of it is seen, 0 to 1: 1 (the default) is solid, less lets what is behind it show through, as glass, a
+     * ghost or, with `glow`, a beam of light, whose light is added to what is behind it. A see-through thing casts no
+     * shadow. A model keeps the materials it has.
+     */
+    get opacity(): number;
+    set opacity(value: number);
     /** Whether `game.remove` has taken it out of the world. Setting it afterwards does nothing that is seen. */
     get removed(): boolean;
     /** Used by game removal and teardown; only resources made for this thing are retired. */
     leave(): void;
+}
+/**
+ * A lamp: light from a point of the world that fades out by `range`. It is placed and changed by plain numbers, and
+ * `game.remove` puts it out. Up to eight are lit fully; more are lit by a coarser way.
+ */
+export declare class PlayLamp3D {
+    #private;
+    readonly node: Light3D;
+    constructor(color: number, intensity: number, range: number);
+    get x(): number;
+    set x(value: number);
+    get y(): number;
+    set y(value: number);
+    get z(): number;
+    set z(value: number);
+    get color(): number;
+    set color(value: number);
+    /** How bright it is; 0 is dark. */
+    get intensity(): number;
+    set intensity(value: number);
+    /** How far it reaches before it has faded out, in units of the world. */
+    get range(): number;
+    set range(value: number);
+    get visible(): boolean;
+    set visible(value: boolean);
+    get removed(): boolean;
+    leave(): void;
+}
+/** A lamp to light: how bright, and how far it reaches. */
+export interface PlayLampOptions3D {
+    /** How bright it is: 4 unless given. */
+    readonly intensity?: number;
+    /** How far it reaches: 8 unless given. */
+    readonly range?: number;
+}
+/** What falls from the sky: snow, rain, or nothing. */
+export type PlayWeather3D = 'snow' | 'rain' | 'none';
+/** Weather to show: how much rain or snow. */
+export interface PlayWeatherOptions3D {
+    /** How much falls: 1 unless given, from 0 to 3. */
+    readonly amount?: number;
 }
 /** The camera: where it is and what it looks at, by plain numbers. */
 export interface PlayCamera3D {
@@ -82,6 +136,7 @@ export interface PlayCamera3D {
     lookAt(x: number, y: number, z: number): void;
     readonly node: Camera3D;
 }
+/** How the camera follows: where it sits behind, how smoothly, and whether it turns with the target. */
 export interface PlayFollow3D {
     /** Where the camera stays from the thing: 0, 4 and 8 unless given, which is above and behind. */
     readonly x?: number;
@@ -94,7 +149,13 @@ export interface PlayFollow3D {
      * `{ y: 3, z: 7, turn: true }` is above and behind whichever way the thing faces. False unless given.
      */
     readonly turn?: boolean;
+    /**
+     * How far above the thing the camera looks: 0 unless given. A tall tower or a sky the thing moves under is framed by
+     * looking higher; the camera keeps its place.
+     */
+    readonly lookY?: number;
 }
+/** A burst of particles: its color and count, how fast and how long they fly, their size and gravity. */
 export interface PlayBurst3D {
     readonly color?: number;
     readonly count?: number;
@@ -105,6 +166,29 @@ export interface PlayBurst3D {
 }
 type Body = PlayThing3D | DisplayObject;
 /** What `play3d` gives: everything `play` gives for the interface and the game's time, and a world of things. */
+export type PlayLookName3D = 'day' | 'dusk' | 'night' | 'fog' | 'snow';
+/** How a 3D play game looks: its background and sky, its ground, its light and sun, and its fog. */
+export interface PlayLook3D {
+    /** What is behind everything, and the colour of the fog. */
+    readonly background?: number;
+    /** The colour of the light from above. */
+    readonly sky?: number;
+    /** The colour of the light from below. */
+    readonly ground?: number;
+    /** How strong the light from above and below is, 0 to 16: 0.22 at night, 0.9 by day. */
+    readonly light?: number;
+    /** The colour of the sun. */
+    readonly sun?: number;
+    /** How strong the sun is, 0 to 16: 0.35 at night, 2.4 by day. */
+    readonly sunIntensity?: number;
+    /** The side the sun shines from, as `[x, y, z]`; y up. */
+    readonly sunFrom?: readonly [number, number, number];
+    /** How thick the air is: 0 is clear, 0.02 a haze, 0.06 a fog. */
+    readonly fog?: number;
+}
+/** The looks every game is given, by name. */
+export declare const PLAY_LOOKS_3D: Readonly<Record<PlayLookName3D, Required<PlayLook3D>>>;
+/** Everything a small 3D game is given: its scene and camera, its input, and calls that make, move and light things. */
 export interface Play3DGame extends Omit<PlayGame, 'remove' | 'near' | 'overlaps' | 'hits' | 'hitsAll' | 'pushOut' | 'burst' | 'shake' | 'onTap'> {
     readonly scene: Scene3D;
     readonly camera: PlayCamera3D;
@@ -112,6 +196,12 @@ export interface Play3DGame extends Omit<PlayGame, 'remove' | 'near' | 'overlaps
     readonly sun: Light3D;
     /** The World3D app under the game, for what this does not cover. */
     readonly app: World3DApp;
+    /**
+     * The light and air of the world: `'day'`, `'dusk'`, `'night'`, `'fog'` or `'snow'`, or the parts of one to change:
+     * `{ background, sky, ground, light, sun, sunIntensity, sunFrom, fog }`, colours as `0xRRGGBB`, `sunFrom` the side
+     * the sun shines from as `[x, y, z]`, and `fog` its thickness, 0 for none. A restart keeps it.
+     */
+    look(look: PlayLookName3D | PlayLook3D): void;
     /** A box of this width, height and depth, its middle at the place given. */
     box(width: number, height: number, depth: number, color: number, at?: PlayPlace3D): PlayThing3D;
     /** A ball. */
@@ -132,8 +222,8 @@ export interface Play3DGame extends Omit<PlayGame, 'remove' | 'near' | 'overlaps
      * nearest thing hit gets it. A sprite of the interface is given to `onTap` of `play` as before.
      */
     onTap(target: PlayThing3D | DisplayObject, callback: () => unknown): void;
-    /** Takes a thing out of the world, or a sprite off the interface. */
-    remove(body: Body): void;
+    /** Takes a thing or a lamp out of the world, or a sprite off the interface. */
+    remove(body: Body | PlayLamp3D): void;
     /** Whether the middles of two things are within a distance: the sum of their radii unless given. */
     near(a: Body, b: Body, distance?: number): boolean;
     /** Whether two things overlap, taken as upright boxes. */
@@ -155,7 +245,21 @@ export interface Play3DGame extends Omit<PlayGame, 'remove' | 'near' | 'overlaps
     shake(amount?: number, seconds?: number): void;
     /** Throws small pieces out from a point of the world. */
     burst(x: number, y: number, z: number, options?: PlayBurst3D): void;
+    /**
+     * Makes things one: a group that is placed, turned, scaled, tweened and tested as one thing, with the things in
+     * it where they are within it. Their places are now from the group's place, which is `at`, 0 unless given. Test
+     * the group, not its parts, for overlaps; removing the group removes its parts.
+     */
+    group(parts: readonly PlayThing3D[], at?: PlayPlace3D): PlayThing3D;
+    /** A lamp at a place: light of a colour that fades out by its range. */
+    lamp(color: number, at?: PlayPlace3D, options?: PlayLampOptions3D): PlayLamp3D;
+    /**
+     * Snow or rain falling around what the camera looks at, or `'none'` to stop it. `{ amount }` is how much, 1
+     * unless given. A restart keeps it.
+     */
+    weather(kind: PlayWeather3D, options?: PlayWeatherOptions3D): void;
 }
+/** A small 3D game to start: its setup and update, and the options of a 2D play game. */
 export interface Play3DOptions extends Omit<PlayOptions, 'setup' | 'update' | 'canvas'> {
     readonly setup?: (game: Play3DGame) => void | Promise<void>;
     readonly update?: (seconds: number, game: Play3DGame) => void;

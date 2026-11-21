@@ -5,6 +5,7 @@
 // to drive, brake and resist sliding sideways. DOM-free and backend-independent.
 import { World3DError, requireFinite3D, requirePositive3D } from './core3D.js';
 import { raycastExcludingBody3D } from './Physics3D.js';
+/** The most wheels a vehicle has. */
 export const VEHICLE3D_LIMITS = Object.freeze({ maxWheels: 16 });
 const down = new Float64Array(3), forward = new Float64Array(3), side = new Float64Array(3), from = new Float64Array(3), v = new Float64Array(3), w = new Float64Array(3), grip = new Float64Array(3);
 /**
@@ -220,6 +221,7 @@ export class Vehicle3D {
         }
     }
 }
+/** Makes a vehicle of wheels on raycast suspension under a chassis body. */
 export function createVehicle3D(world, chassis, options) {
     return new Vehicle3D(world, chassis, options);
 }

@@ -11,13 +11,13 @@ export interface RetentionTargetRequest {
     readonly id: number;
     readonly width: number;
     readonly height: number;
-    readonly format: 'rgba8unorm-srgb' | 'depth32float';
+    readonly format: 'rgba8unorm-srgb' | 'rgba8unorm' | 'depth32float';
     readonly usage: 20 | 16;
     readonly byteLength: number;
     readonly sampleCount: 1;
     readonly mipLevelCount: 1;
     readonly depthOrArrayLayers: 1;
-    readonly recipe: 'egret.srgb-pma8-target/1' | 'egret.shared-reverse-depth/1';
+    readonly recipe: 'egret.srgb-pma8-target/1' | 'egret.encoded-srgb-pma8-target/1' | 'egret.shared-reverse-depth/1';
 }
 export type RetentionRequest = RetentionBufferRequest | RetentionTargetRequest;
 export type RetentionHandle = ((RetentionBufferRequest & {

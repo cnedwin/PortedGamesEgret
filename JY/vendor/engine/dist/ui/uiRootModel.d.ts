@@ -89,7 +89,9 @@ export interface TokenState {
 }
 export declare function withoutSources(tree: UiLayoutTree): UiLayoutTree;
 export declare function preparationError(cause: unknown, cleanupErrors: unknown[]): EgretError;
-export declare function fail(code: string): never;
+export declare function fail(code: string, reason?: string): never;
+/** Why a root is busy with its own work: a preparation that has not settled, or a commit being made. */
+export declare function failBusy(preparing: boolean): never;
 export declare function next(value: number): number;
 export declare function number(value: number, min: number, max: number): number;
 export declare function viewport(value: Readonly<{

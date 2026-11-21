@@ -1,9 +1,12 @@
+/** What kind of node an object is. */
 export type Object3DKind = 'object' | 'scene' | 'mesh' | 'camera' | 'light' | 'bone';
+/** How deep a scene nests, how many children a node has, and how long a name is, at most. */
 export declare const WORLD3D_LIMITS: Readonly<{
     readonly maxDepth: 256;
     readonly maxChildren: 65536;
     readonly maxNameLength: 256;
 }>;
+/** A node of a 3D scene: its children, place, rotation and scale, and calls that move and find nodes. */
 export declare class Object3D {
     #private;
     readonly id: number;
@@ -24,6 +27,13 @@ export declare class Object3D {
     castShadow: boolean;
     receiveShadow: boolean;
     frustumCulled: boolean;
+    /**
+     * A mesh further from the camera than this, in world units, from the camera to the near side of its bounds, is not
+     * drawn and casts no shadow: for grass, trees and props that are too small to see far off. Infinity (the default)
+     * keeps it at any distance. For a near and a far version of the same thing, use `Lod3D`. Not written by
+     * `serializeScene3D`.
+     */
+    cullDistance: number;
     /** Free-form application data; never read by the engine. */
     userData: Record<string, unknown>;
     constructor(kind?: Object3DKind);
@@ -76,6 +86,7 @@ export declare class Object3D {
     clone(recursive?: boolean): this;
     protected copyFrom(source: this): void;
 }
+/** Fog that fades a scene into a color: linearly between two distances, or exponentially by a density. */
 export type Fog3D = {
     readonly kind: 'linear';
     readonly color: readonly [number, number, number];

@@ -95,6 +95,7 @@ export function pickWorld3DBackend(query, fallback = 'webgl2') {
     const asked = params(query)?.get('backend');
     return asked === 'webgpu' || asked === 'webgl2' ? asked : fallback;
 }
+/** Makes a resolution scale that drops when frames are slow and rises when they are fast. */
 export function createDynamicResolution3D(options = {}) {
     const min = options.min ?? 0.6, max = options.max ?? 1, step = options.step ?? 0.15, lowFps = options.lowFps ?? 45, highFps = options.highFps ?? 57, downAfter = options.downAfter ?? 1.5, upAfter = options.upAfter ?? 6;
     const numbers = [min, max, step, lowFps, highFps, downAfter, upAfter];

@@ -1,8 +1,8 @@
 # 引擎笔记 · Engine notes
 
-本游戏发现的新白鹭引擎（提交 `6643755`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
+本游戏发现的新白鹭引擎（最初为提交 `6643755`，2026-11-21 升级到 `b5628eb`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。
 
-The faults found in the new Egret engine (commit `6643755`) while making this game, and suggestions,
+The faults found in the new Egret engine (first `6643755`, `b5628eb` since 2026-11-21) while making this game, and suggestions,
 written as in part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md).
 
 ### 1. 同时准备很多文字时超出文字缓存的预算 · Preparing many texts at once passes the text cache's budget — 部分解决 / partly resolved

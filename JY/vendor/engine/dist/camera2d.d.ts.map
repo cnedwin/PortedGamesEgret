@@ -1,1 +1,1 @@
-{"version":3,"file":"camera2d.d.ts","sourceRoot":"","sources":["../src/camera2d.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EACV,QAAQ,EACR,eAAe,EAQhB,MAAM,kBAAkB,CAAC;AAuF1B;;;GAGG;AACH,wBAAgB,cAAc,CAAC,OAAO,EAAE,eAAe,GAAG,QAAQ,CAiYjE"}
+{"version":3,"file":"camera2d.d.ts","sourceRoot":"","sources":["../src/camera2d.ts"],"names":[],"mappings":"AAEA,OAAO,KAAK,EACV,QAAQ,EACR,eAAe,EAQhB,MAAM,kBAAkB,CAAC;AAuF1B;;;GAGG;AACH,wBAAgB,cAAc,CAAC,OAAO,EAAE,eAAe,GAAG,QAAQ,CAyYjE"}

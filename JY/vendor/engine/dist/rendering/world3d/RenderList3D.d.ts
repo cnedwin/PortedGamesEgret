@@ -4,6 +4,7 @@ import { Light3D } from './Light3D.js';
 import type { Material3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
 import type { Object3D, Scene3D } from './Object3D.js';
+/** One thing to draw: its mesh, geometry and material, its range, its depth and order. */
 export interface RenderItem3D {
     mesh: Mesh3D;
     geometry: Geometry3D;
@@ -19,12 +20,14 @@ export interface RenderItem3D {
     /** What else must match for meshes to share an instanced draw: layers, receiving shadows, being instanceable at all. */
     group?: number;
 }
+/** What building a render list counted: nodes visited, culled, and lights dropped. */
 export interface RenderStats3D {
     visited: number;
     culled: number;
     /** Point and spot lights past the renderer's limits that the last build left out. */
     lightsDropped: number;
 }
+/** What a camera sees, sorted for drawing: opaque and transparent items, shadow casters and lights. */
 export declare class RenderList3D {
     #private;
     readonly opaque: RenderItem3D[];

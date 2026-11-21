@@ -13,6 +13,7 @@ export type ParticleShape = {
     readonly radius: number;
     readonly edge?: boolean;
 };
+/** An emitter to make: its texture and how many particles, and how they are born, move, grow, fade and turn. */
 export interface ParticleEmitterOptions {
     /** The image of each particle: the whole of the texture. */
     readonly texture: AssetLease<Texture>;
@@ -57,7 +58,13 @@ export interface ParticleEmitterOptions {
     readonly running?: boolean;
     /** Seconds after which it stops by itself. Defaults to running until stopped. */
     readonly duration?: number;
+    /**
+     * How the particles are combined with what is under them, as `DisplayObject.blendMode`: `add` for glows and sparks.
+     * Defaults to `normal`. The same as setting `blendMode` on `emitter.display` after it is made.
+     */
+    readonly blendMode?: 'normal' | 'add' | 'multiply' | 'screen' | 'erase';
 }
+/** An emitter as it is now: how many particles live, were born and were refused, and its time. */
 export interface ParticleSnapshot {
     readonly alive: number;
     readonly born: number;
@@ -66,6 +73,7 @@ export interface ParticleSnapshot {
     readonly running: boolean;
     readonly time: number;
 }
+/** One live particle: where it is and how fast it moves, its age, scale, alpha, color and rotation. */
 export interface ParticleView {
     readonly x: number;
     readonly y: number;

@@ -2,7 +2,7 @@
 // A game in a page from one call: a Host chosen for the browser, an Engine, a scope, pointer and keyboard input and
 // a frame loop, each made the way its own entry makes it, and all of them ended by one dispose.
 import { EgretError } from '@egret/runtime';
-import { createAssetRef, createAssetType, createEngineForProfile, isTexture, SHARED_FRAME_PROFILE_2D } from '@egret/engine';
+import { createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture, SHARED_FRAME_PROFILE_2D } from '@egret/engine';
 import { createBrowserTextureProvider } from './image.js';
 import { createTextField, createTextRasterCache } from '@egret/engine/text';
 import { createBrowserFrameLoop } from './loop.js';
@@ -55,7 +55,7 @@ export async function createBrowserGame(options) {
     if (options === null || typeof options !== 'object')
         throw invalid();
     const { canvas, width, height, update, onError } = options;
-    const asked = options.backend ?? 'auto', clearColor = options.clearColor ?? 0, clearAlpha = options.clearAlpha ?? 1;
+    const asked = options.backend ?? 'auto', clearColor = options.clearColor ?? 0, clearAlpha = options.clearAlpha ?? 1, blendSpace = options.blendSpace ?? 'linear', enableEffects = options.effects ?? false;
     const device = Number(globalThis.devicePixelRatio), pixelRatio = options.pixelRatio ?? (device > 0 ? Math.min(device, 2) : 1);
     if (canvas === null ||
         typeof canvas !== 'object' ||
@@ -71,17 +71,19 @@ export async function createBrowserGame(options) {
         clearColor > 0xffffff ||
         typeof clearAlpha !== 'number' ||
         !(clearAlpha >= 0 && clearAlpha <= 1) ||
+        (blendSpace !== 'linear' && blendSpace !== 'srgb') ||
+        typeof enableEffects !== 'boolean' ||
         (update !== undefined && typeof update !== 'function') ||
         (onError !== undefined && typeof onError !== 'function') ||
-        [options.pointer, options.keyboard, options.autoStart, options.stats].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
+        [options.pointer, options.keyboard, options.hover, options.autoStart, options.stats].some(flag => flag !== undefined && typeof flag !== 'boolean') ||
         !['none', 'contain', 'cover', 'stretch'].includes(options.fit ?? 'none') ||
         (options.fitTo !== undefined && (options.fitTo === null || typeof options.fitTo !== 'object')))
         throw invalid();
     const backend = await chooseBackend(asked);
     // Only the chosen backend's module is loaded.
     const host = backend === 'webgpu'
-        ? (await import('./webgpu.js')).createSharedWebGPUHost({ canvas, pixelRatio })
-        : (await import('./webgl2.js')).createSharedWebGL2Host({ canvas, pixelRatio });
+        ? (await import('./webgpu.js')).createSharedWebGPUHost({ canvas, pixelRatio, blendSpace, enableEffects })
+        : (await import('./webgl2.js')).createSharedWebGL2Host({ canvas, pixelRatio, blendSpace, enableEffects });
     let engine;
     try {
         engine = await createEngineForProfile({ host, onDiagnostic: gameDiagnostics(onError) }, SHARED_FRAME_PROFILE_2D);
@@ -100,6 +102,16 @@ export async function createBrowserGame(options) {
         const scope = engine.createScope(), frame = Object.freeze({ width, height, clearColor, clearAlpha });
         const pointer = options.pointer === false ? undefined : createBrowserPointerInput({ engine, scope, width, height });
         const keyboard = options.keyboard === false ? undefined : createBrowserKeyboardInput({ engine, scope });
+        const hover = options.hover === true
+            ? scope.use((await import('./hover.js')).createBrowserHoverInput({
+                engine,
+                scope,
+                canvas,
+                width,
+                height,
+                ...(onError === undefined ? {} : { onError })
+            }))
+            : undefined;
         const panel = (stats = options.stats === true ? createBrowserStatsPanel({ canvas, label: backend }) : undefined);
         let drawn;
         // With a panel, the loop draws through a step that keeps the frame, and each step tells the panel what the last one did.
@@ -126,6 +138,7 @@ export async function createBrowserGame(options) {
                         panel.sample({
                             ...(drawn === undefined ? {} : { frame: drawn }),
                             pendingFrames: host.getStatus().pendingFrames,
+                            drawCalls: host.getFrameDrawCalls(),
                             frames: now.frames,
                             skipped: now.skipped
                         });
@@ -154,6 +167,46 @@ export async function createBrowserGame(options) {
             }
         });
         engine.assets.register(imageType, images);
+        // Textures painted in code: each call puts its texture under a key of its own, and its lease ends it.
+        const paintedType = createAssetType('egret.browser-game.painted', isTexture), painted = new Map();
+        let paintedCount = 0;
+        engine.assets.register(paintedType, {
+            async load(ref) {
+                const texture = painted.get(ref.id);
+                painted.delete(ref.id);
+                if (texture === undefined)
+                    throw invalid();
+                return texture;
+            },
+            dispose(texture) {
+                texture.dispose();
+            }
+        });
+        const leasePixels = async (width, height, pixels) => {
+            if (!whole(width) ||
+                !whole(height) ||
+                !(pixels instanceof Uint8Array || pixels instanceof Uint8ClampedArray) ||
+                pixels.length !== width * height * 4)
+                throw invalid();
+            let texture;
+            try {
+                texture = createTexture(createImageData2D({ width, height, pixels: new Uint8Array(pixels) }));
+            }
+            catch (cause) {
+                // Larger than the 2D image limits: 4,096 pixels on an edge, 4,194,304 in all.
+                throw new EgretError('BROWSER_GAME_OPTIONS_INVALID', { cause });
+            }
+            const key = 'painted-' + ++paintedCount;
+            painted.set(key, texture);
+            try {
+                return scope.use(await engine.assets.acquire(createAssetRef(paintedType, key), { signal: scope.signal }));
+            }
+            finally {
+                // Not loaded (the scope ended first): the texture is ended here.
+                if (painted.delete(key))
+                    texture.dispose();
+            }
+        };
         // The canvas in its element: sized now and whenever the element changes size. The stage keeps its own units.
         const fit = options.fit ?? 'none', holder = options.fitTo ?? canvas.parentElement;
         let watcher;
@@ -194,11 +247,14 @@ export async function createBrowserGame(options) {
             else
                 labelsDrawing--;
         };
-        async function createLabel(given = {}) {
-            if (given === null || typeof given !== 'object')
+        async function createLabel(options = {}) {
+            if (options === null || typeof options !== 'object')
+                throw invalid();
+            const { scope: owner = scope, ...given } = options;
+            if (owner === null || typeof owner !== 'object')
                 throw invalid();
             textCache ??= import('./text.js').then(text => createTextRasterCache(engine.assets, { provider: text.createCanvasTextRasterProvider() }));
-            const field = createTextField(engine, scope, await textCache);
+            const field = createTextField(engine, owner, await textCache);
             let now = {
                 text: '',
                 fontFamily: 'sans-serif',
@@ -304,12 +360,57 @@ export async function createBrowserGame(options) {
             loop: made,
             pointer,
             keyboard,
+            hover,
             stats: panel,
             createLabel,
             async loadTexture(url) {
                 if (typeof url !== 'string' || url === '')
                     throw invalid();
                 return scope.use(await engine.assets.acquire(createAssetRef(imageType, url), { signal: scope.signal }));
+            },
+            textureFromPixels: leasePixels,
+            async textureFromCanvas(source) {
+                if (source === null || typeof source !== 'object' || typeof source.getContext !== 'function')
+                    throw invalid();
+                const { width, height } = source;
+                if (!whole(width) || !whole(height))
+                    throw invalid();
+                let context = source.getContext('2d');
+                if (context === null) {
+                    // A canvas of another kind of context: drawn onto a 2D canvas of its size, and read there.
+                    const copy = typeof OffscreenCanvas === 'function'
+                        ? new OffscreenCanvas(width, height)
+                        : Object.assign(document.createElement('canvas'), { width, height });
+                    context = copy.getContext('2d');
+                    if (context === null)
+                        throw invalid();
+                    context.drawImage(source, 0, 0);
+                }
+                return leasePixels(width, height, context.getImageData(0, 0, width, height).data);
+            },
+            padHitArea(node, cssPixels = 44) {
+                if (node === null ||
+                    typeof node !== 'object' ||
+                    typeof node.getBounds !== 'function' ||
+                    !(typeof cssPixels === 'number' && cssPixels >= 0 && Number.isFinite(cssPixels)))
+                    throw invalid();
+                const drawn = node.getBounds(), box = canvas.getBoundingClientRect(), perCss = box.width > 0 && box.height > 0 ? Math.max(width / box.width, height / box.height) : 1;
+                // The node's own units: undo its scale on the stage.
+                const scaleX = Math.abs(node.scaleX) || 1, scaleY = Math.abs(node.scaleY) || 1;
+                const wide = Math.max(drawn.width, (cssPixels * perCss) / scaleX), tall = Math.max(drawn.height, (cssPixels * perCss) / scaleY);
+                const area = Object.freeze({
+                    x: drawn.x - (wide - drawn.width) / 2,
+                    y: drawn.y - (tall - drawn.height) / 2,
+                    width: wide,
+                    height: tall
+                });
+                node.hitArea = area;
+                return area;
+            },
+            get unitsPerCssPixel() {
+                const box = canvas.getBoundingClientRect();
+                // Before the page lays the canvas out, one unit is one pixel.
+                return box.width > 0 && box.height > 0 ? Math.max(width / box.width, height / box.height) : 1;
             },
             toStage(clientX, clientY) {
                 const box = canvas.getBoundingClientRect();

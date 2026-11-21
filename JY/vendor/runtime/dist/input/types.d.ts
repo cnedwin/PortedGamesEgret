@@ -1,6 +1,10 @@
+/** What made a pointer: a mouse, a finger or a pen. */
 export type PointerType = "mouse" | "touch" | "pen";
+/** What happened to a pointer: it went down, moved, went up or was cancelled. */
 export type PointerEventKind = "begin" | "move" | "end" | "cancel";
+/** Whether a pointer router passes input on, holds it, or has closed. */
 export type PointerRouterState = "active" | "suspended" | "closed";
+/** Why a pointer was cancelled. */
 export type PointerCancelReason = "pointercancel" | "lostcapture" | "blur" | "hidden" | "pagehide" | "viewport" | "owner" | "suspended" | "dispose" | "error";
 declare const sessionIdentity: unique symbol;
 /** Only the creating router admits this frozen identity; host IDs may be reused. */
@@ -11,6 +15,7 @@ export interface PointerSession {
     readonly pointerId: number;
     readonly pointerType: PointerType;
 }
+/** Where a pointer is on the stage, which buttons it holds, and when, with its pressure and size where the device gives them. */
 export interface PointerUpdate {
     readonly globalX: number;
     readonly globalY: number;
@@ -20,6 +25,7 @@ export interface PointerUpdate {
     readonly width?: number;
     readonly height?: number;
 }
+/** One pointer's state at one moment: which pointer it is, what made it and where it is. */
 export interface PointerSample extends PointerUpdate {
     readonly pointerId: number;
     readonly pointerType: PointerType;

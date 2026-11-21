@@ -48,6 +48,7 @@ export interface TextEditorHostPort {
 }
 /** Browser-only package alias; the public UI entry never exposes native session operations. */
 export declare function bindTextEditorHost(editor: UiTextEditor, hooks: HostHooks): TextEditorHostPort;
+/** A text editor drawn by the engine, its text and selection kept by the platform's text input. */
 export declare function createUiTextEditor(options: UiTextEditorOptions): UiTextEditor;
 export { requireUiEngine as requireEditorEngine } from '../internal/uiFactoryState.js';
 //# sourceMappingURL=textEditor.d.ts.map

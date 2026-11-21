@@ -105,6 +105,7 @@ function canonical(source, length, kind, vertexCount) {
     setPrototypeOf(output, arrayPrototype);
     return freeze(output);
 }
+/** Copies and checks a mesh into a shared geometry that renderers can draw; malformed arrays are refused. */
 export function createSharedGeometry2D(input) {
     if (typeof input !== 'object' || input === null)
         throw new TypeFault('Shared geometry descriptor must be an object');

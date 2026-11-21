@@ -35,6 +35,7 @@ export interface CustomShader3D {
     /** Four vec4 parameters, written by the application (time, colors, thresholds). */
     readonly uniforms: Float32Array;
 }
+/** Makes a material drawn by shaders of your own. */
 export declare function createCustomShader3D(input: {
     readonly key: string;
     readonly glsl?: string;
@@ -45,12 +46,17 @@ export declare function createCustomShader3D(input: {
     readonly wgslNormal?: string;
     readonly uniforms?: ArrayLike<number>;
 }): CustomShader3D;
+/** How a material is lit: not at all, Lambert, Phong, physically based, toon, or by a matcap. */
 export type Shading3D = 'unlit' | 'lambert' | 'phong' | 'standard' | 'toon' | 'matcap';
+/** Which sides of a material's triangles are drawn. */
 export type Side3D = 'front' | 'back' | 'double';
+/** How a material's alpha is used: ignored, cut at a threshold, or blended. */
 export type AlphaMode3D = 'opaque' | 'mask' | 'blend';
+/** How a material's color mixes with what is behind it. */
 export type Blending3D = 'normal' | 'additive' | 'multiply' | 'premultiplied';
 /** A color as 0xRRGGBB sRGB hex or linear RGB components. */
 export type ColorInput3D = number | readonly [number, number, number];
+/** A material to make: its color and maps, its sides and alpha, its blending and depth, and its emission, normals and occlusion. */
 export interface MaterialOptions3D {
     readonly name?: string;
     readonly color?: ColorInput3D;
@@ -76,10 +82,12 @@ export interface MaterialOptions3D {
     readonly flatShading?: boolean;
     readonly wireframe?: boolean;
 }
+/** A Phong material's specular color and shininess. */
 export interface PhongMaterialOptions3D extends MaterialOptions3D {
     readonly specular?: ColorInput3D;
     readonly shininess?: number;
 }
+/** A physically based material's metalness and roughness, and how much the environment lights it. */
 export interface StandardMaterialOptions3D extends MaterialOptions3D {
     readonly metallic?: number;
     readonly roughness?: number;
@@ -87,12 +95,14 @@ export interface StandardMaterialOptions3D extends MaterialOptions3D {
     readonly metallicRoughnessMap?: Texture3D;
     readonly environmentIntensity?: number;
 }
+/** A sprite material: whether sprites shrink with distance, and their rotation. */
 export interface SpriteMaterialOptions3D extends MaterialOptions3D {
     /** Keep a constant on-screen size regardless of distance. */
     readonly sizeAttenuation?: boolean;
     /** Rotation about the view axis in radians. */
     readonly rotation?: number;
 }
+/** Writes a color into a float array as red, green and blue. */
 export declare function setColor3D(out: Float32Array, input: ColorInput3D): Float32Array;
 /**
  * One material class carries the superset of surface parameters; `shading`

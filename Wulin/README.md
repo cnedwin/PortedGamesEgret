@@ -134,6 +134,7 @@ Serve this folder with any static file server to run it, for example `npx serve 
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb` 后：80 项 Node 测试通过；无头 Chromium 下从标题走到入主山门、3D 山门画出，工具页面 `models.html`、`seat.html`、`realm.html` 无控制台错误；浏览器存储被拒绝时也能开始（品质 S3）。 · After the engine update: 80 tests pass, the game runs from the title into the seat, the tool pages load clean, and it starts with storage refused.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：80 项全部通过（规则、弟子、卧底、开局、首次守山、山门布局与建造、人物动作、场景、声音）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 80 tests pass.
 - 2026-11-20 `node tools/quality.mjs Wulin` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。 · The 16 automatic quality items in headless Chromium, see QUALITY.md.
 - 节奏、声望和名位上限用 `tools/headless.mjs`、`tools/balance.mjs`、`tools/stacking.mjs` 的整局推演定下（`9a5f865`、`b5b0de9`）；本次没有重新记录推演输出。 · Pacing and limits were set from whole-game runs of the tools; their output was not recorded this time.

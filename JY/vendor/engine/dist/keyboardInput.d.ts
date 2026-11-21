@@ -8,5 +8,6 @@ interface Binding {
 }
 /** Private browser binding reuses the genuine eager Engine authority. */
 export declare function bindKeyboardSurface(input: KeyboardInput): Binding;
+/** Keyboard input for the stage: key events go to the focused target, and focus moves with Tab. */
 export declare function createKeyboardInput(options: KeyboardInputOptions): KeyboardInput;
 //# sourceMappingURL=keyboardInput.d.ts.map

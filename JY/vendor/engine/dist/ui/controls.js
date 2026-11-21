@@ -24,6 +24,7 @@ function direction(x, y) {
     const scale = length > 1 ? 1 / length : 1;
     return Object.freeze({ x: x * scale, y: y * scale });
 }
+/** A virtual stick on a target: dragging inside its radius gives a direction. */
 export function createMovementControl(options) {
     checkOptions(options);
     const { input, target, radius, onMovement } = options;
@@ -154,6 +155,7 @@ export function createMovementControl(options) {
         }
     });
 }
+/** A button on a target: a press and release inside it activates it. */
 export function createActionControl(options) {
     checkOptions(options);
     const { input, target, onActivate, onPressChange } = options;

@@ -31,6 +31,7 @@ export interface ActionKeysOptions extends ControlKeysTarget {
     };
     readonly onPressChange?: (pressed: boolean) => void;
 }
+/** Keys for a toggle: which kind of toggle, the control, and what is called when its press changes. */
 export interface ToggleKeysOptions extends ControlKeysTarget {
     readonly kind: 'toggle';
     readonly control: {
@@ -98,12 +99,15 @@ export interface MovementKeysOptions extends ControlKeysTarget {
     readonly keys?: 'arrows' | 'wasd' | 'both';
     readonly onPressChange?: (pressed: boolean) => void;
 }
+/** Keys for one control: an action, a toggle, a text field or a selection group. */
 export type ControlKeysOptions = ActionKeysOptions | ToggleKeysOptions | TextFieldKeysOptions | SelectionKeysOptions | ScrollKeysOptions | RangeKeysOptions | MovementKeysOptions;
+/** Keys bound to a control: which are pressed now; dispose of it to unbind them. */
 export interface ControlKeys {
     /** Whether a key of this binding is held: an activation that waits for its release, or a direction. */
     readonly pressed: boolean;
     dispose(): void;
 }
+/** Binds the keyboard to a control: Space and Enter press an action or a toggle, arrows move a selection. */
 export declare function createControlKeys(options: ControlKeysOptions): ControlKeys;
 export {};
 //# sourceMappingURL=controlKeys.d.ts.map

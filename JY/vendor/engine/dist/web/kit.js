@@ -4,4 +4,5 @@ export { createBrowserImageTextureProvider, decodeBrowserImage, fitBrowserImageS
 export { bindBrowserInputActions, browserSaveStorage, createTouchButton, createTouchStick } from './BrowserInputActions.js';
 export { openBrowserAssetBundle } from './BrowserAssetBundle.js';
 export { openBrowserBundleCache, openIndexedDBSaveStorage } from './BrowserStorage.js';
+export { browserLanguages, prefersReducedMotion, watchReducedMotion } from './BrowserPreferences.js';
 //# sourceMappingURL=kit.js.map

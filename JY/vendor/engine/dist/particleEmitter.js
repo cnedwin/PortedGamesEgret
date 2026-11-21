@@ -87,6 +87,14 @@ export function createParticleEmitter(options) {
     };
     const pick = (pair) => (pair[0] === pair[1] ? pair[0] : mix(pair[0], pair[1], random()));
     const display = new DisplayObjectContainer();
+    if (o.blendMode !== undefined) {
+        try {
+            display.blendMode = o.blendMode;
+        }
+        catch {
+            throw new EgretError('PARTICLE_OPTIONS_INVALID');
+        }
+    }
     let mesh;
     function spawn(count) {
         for (let n = 0; n < count; n++) {

@@ -4,6 +4,7 @@ import { CancellationController, EgretError } from '@egret/runtime';
 import type { AssetLoadContext, AssetRef } from '@egret/runtime';
 import type { ManifestBinding } from '#egret-manifest-resources';
 declare const MANIFEST_BYTE_SOURCE: unique symbol;
+/** A manifest byte source to make: its profile, the URL it fetches from, its deadline and retries. */
 export interface ManifestByteSourceOptions {
     /** Explicit SFNT-only admission; the original image/metadata limits stay unchanged. */
     readonly profile?: 'font-sfnt/1';
@@ -23,11 +24,13 @@ interface ManifestByteSourceCounters {
     readonly borrowedChunkBytes: number;
     readonly quarantinedJobs: number;
 }
+/** How many reads a byte source has now and at most, and whether it was full. */
 export interface ManifestByteSourceStatus {
     readonly current: ManifestByteSourceCounters;
     readonly highWater: ManifestByteSourceCounters;
     readonly saturated: boolean;
 }
+/** Reads a manifest's files over the network and checks their digests. */
 export interface ManifestByteSource {
     readonly profile: 'manifest-sha256-browser-v1';
     readonly isClosed: boolean;
@@ -142,6 +145,7 @@ export declare class ManifestPngOwner {
     close(): Promise<void>;
 }
 export declare function requireManifestByteSource(source: unknown): ManifestPngOwner;
+/** Reads a manifest's files from a base URL, checking each one's length and SHA-256. */
 export declare function createManifestByteSource(manifest: AdmittedResourceManifest, bindings: readonly ManifestBinding[], options: ManifestByteSourceOptions): ManifestByteSource;
 export {};
 //# sourceMappingURL=ManifestByteSource.d.ts.map

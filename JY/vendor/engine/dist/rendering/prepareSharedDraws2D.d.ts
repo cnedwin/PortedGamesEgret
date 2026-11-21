@@ -64,6 +64,8 @@ export interface PreparedSharedFrame2D {
     readonly budget: TexturedPreparationBudget2D;
     readonly geometryBytes: number;
     readonly pageBytes: number;
+    /** For each page of the frame, how many levels it is uploaded with: 1, or all of them when a draw samples its smaller copies. */
+    readonly pageLevels: readonly number[];
     readonly upload: number;
     readonly retention?: SharedPreparationRetention2D;
     readonly retained?: readonly (RetainedSharedDraw2D | undefined)[];

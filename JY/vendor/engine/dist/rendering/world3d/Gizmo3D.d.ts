@@ -1,15 +1,19 @@
 import type { Camera3D } from './Camera3D.js';
 import { Object3D } from './Object3D.js';
+/** Whether a gizmo moves, turns or scales what it is attached to. */
 export type GizmoMode3D = 'translate' | 'rotate' | 'scale';
+/** Whether a gizmo's axes are the world's or the object's own. */
 export type GizmoSpace3D = 'world' | 'local';
 /** A single axis, a plane spanned by two axes, or 'xyz' for the center handle of the scale mode. */
 export type GizmoHandle3D = 'x' | 'y' | 'z' | 'xy' | 'yz' | 'xz' | 'xyz';
+/** A gizmo to make: its mode, its space and its size. */
 export interface TransformGizmoOptions3D {
     readonly mode?: GizmoMode3D;
     readonly space?: GizmoSpace3D;
     /** Length of the handles as a share of the view height. Defaults to 0.18. */
     readonly size?: number;
 }
+/** Handles to move, turn or scale an object by dragging them, with snapping. */
 export declare class TransformGizmo3D extends Object3D {
     #private;
     readonly camera: Camera3D;
@@ -71,5 +75,6 @@ export declare class TransformGizmo3D extends Object3D {
     /** Release the handle geometry and materials. */
     dispose(): void;
 }
+/** Makes a transform gizmo seen by a camera. */
 export declare function createTransformGizmo3D(camera: Camera3D, options?: TransformGizmoOptions3D): TransformGizmo3D;
 //# sourceMappingURL=Gizmo3D.d.ts.map

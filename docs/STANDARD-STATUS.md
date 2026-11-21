@@ -20,7 +20,7 @@ Made by `node tools/check-standard.mjs --write`; the standard is [GAME-STANDARD.
 | README: sections in order | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | README: play link and engine link | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | README: capability table (… | 文件 · File) | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| README: engine commit as in vendor/SOURCE.md | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| README: engine commit as in vendor/SOURCE.md | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | ENGINE-NOTES.md | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | ENGINE-NOTES: numbered items | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | ENGINE-NOTES: status, what happens, workaround, suggestion in every item | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
@@ -30,12 +30,12 @@ Made by `node tools/check-standard.mjs --write`; the standard is [GAME-STANDARD.
 | tests cover the rules | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | test/accept.mjs (browser acceptance) | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ |
 | test/baseline/*.png | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ |
-| vendor/SOURCE.md with the engine commit | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| index.html import map = vendor/importmap.json | – | ✔ | ✔ | – | – | – | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| vendor/SOURCE.md with the engine commit | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| index.html import map = vendor/importmap.json | ✔ | ✔ | ✔ | – | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 
 ## 每个游戏缺的项 · What each game lacks
 
-- **FivePhases**: README: engine commit as in vendor/SOURCE.md (no commit); tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures); vendor/SOURCE.md with the engine commit
+- **FivePhases**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **FPS**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **jelly-pandas**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **JY**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)

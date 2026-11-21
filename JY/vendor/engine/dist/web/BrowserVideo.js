@@ -3,6 +3,19 @@ import { EgretError } from '@egret/runtime';
 import { createImageData2D } from '@egret/contracts';
 import { createVideo } from '@egret/engine/video';
 const invalid = () => new EgretError('VIDEO_OPTIONS_INVALID');
+/** A list of files: not empty, no more than 16, each an address or an address and a type that are not empty. */
+function choices(list) {
+    return (Array.isArray(list) &&
+        list.length > 0 &&
+        list.length <= 16 &&
+        list.every(item => typeof item === 'string'
+            ? item.length > 0
+            : item !== null &&
+                typeof item === 'object' &&
+                typeof item.src === 'string' &&
+                item.src.length > 0 &&
+                (item.type === undefined || (typeof item.type === 'string' && item.type.length > 0))));
+}
 /**
  * A video played by a page's video element and shown as a display object. Each picture the element presents is drawn
  * into a canvas of the size it is shown at, read back, and leased as a texture; a picture not yet changed is not read.
@@ -13,7 +26,7 @@ export function createBrowserVideo(options) {
     const { assets, src, stream, element: given, loop = false, muted = true, volume = 1, maxWidth = 1280, crossOrigin } = options;
     const kinds = [src, stream, given].filter(value => value !== undefined).length;
     if (kinds !== 1 ||
-        (src !== undefined && (typeof src !== 'string' || src.length === 0)) ||
+        (src !== undefined && !(typeof src === 'string' ? src.length > 0 : choices(src))) ||
         (stream !== undefined && (typeof MediaStream === 'undefined' || !(stream instanceof MediaStream))) ||
         (given !== undefined && !(given instanceof HTMLVideoElement)) ||
         typeof loop !== 'boolean' ||
@@ -109,8 +122,20 @@ export function createBrowserVideo(options) {
     ];
     for (const [name, listener] of events)
         element.addEventListener(name, listener);
-    if (src !== undefined)
+    if (typeof src === 'string')
         element.src = src;
+    else if (src !== undefined)
+        for (const item of src) {
+            const child = document.createElement('source');
+            if (typeof item === 'string')
+                child.src = item;
+            else {
+                child.src = item.src;
+                if (item.type !== undefined)
+                    child.type = item.type;
+            }
+            element.appendChild(child);
+        }
     else if (stream !== undefined)
         element.srcObject = stream;
     if (element.readyState >= 2) {
@@ -198,6 +223,7 @@ export function createBrowserVideo(options) {
             // A page's own element is left as it was given; one made here lets go of what it was playing.
             if (given === undefined) {
                 element.removeAttribute('src');
+                element.replaceChildren();
                 element.srcObject = null;
                 element.load();
             }

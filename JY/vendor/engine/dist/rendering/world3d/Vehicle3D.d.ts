@@ -1,8 +1,10 @@
 import type { Object3D } from './Object3D.js';
 import { type PhysicsWorld3D, type RigidBody3D } from './Physics3D.js';
+/** The most wheels a vehicle has. */
 export declare const VEHICLE3D_LIMITS: Readonly<{
     readonly maxWheels: 16;
 }>;
+/** A wheel to add: where, its radius and suspension, whether it steers or drives, its grip and the node it turns. */
 export interface WheelOptions3D {
     /** Where the suspension is attached, in the chassis's local frame. */
     readonly position: readonly [number, number, number];
@@ -24,6 +26,7 @@ export interface WheelOptions3D {
     /** Node placed at the wheel's center and turned with it; give it to a mesh whose axle is its local X axis. */
     readonly node?: Object3D;
 }
+/** A vehicle to make: its wheels, its engine and brakes, its steering, its top speed and how it rolls. */
 export interface VehicleOptions3D {
     readonly wheels: readonly WheelOptions3D[];
     /** Force the engine shares between the driven wheels at full throttle. */
@@ -43,6 +46,7 @@ export interface VehicleOptions3D {
     /** Bodies the wheels' rays may land on. Defaults to everything. */
     readonly mask?: number;
 }
+/** A wheel of a vehicle: its suspension and grip, and whether it touches the ground. */
 export interface Wheel3D {
     readonly position: Float64Array;
     radius: number;
@@ -93,5 +97,6 @@ export declare class Vehicle3D {
     /** Apply suspension, engine, brakes and tyre grip for the coming step of `deltaSeconds`. */
     update(deltaSeconds: number): void;
 }
+/** Makes a vehicle of wheels on raycast suspension under a chassis body. */
 export declare function createVehicle3D(world: PhysicsWorld3D, chassis: RigidBody3D, options: VehicleOptions3D): Vehicle3D;
 //# sourceMappingURL=Vehicle3D.d.ts.map

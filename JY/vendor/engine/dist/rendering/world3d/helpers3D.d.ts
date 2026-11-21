@@ -36,6 +36,7 @@ export declare class Lod3D extends Object3D {
     select(x: number, y: number, z: number): void;
     clone(): this;
 }
+/** A screen layer to make: its order and opacity, whether it updates itself, and which way its rows run. */
 export interface ScreenLayerOptions3D {
     /** 'overlay' draws after the scene with blending; 'underlay' draws first and is covered by it. */
     readonly order?: 'overlay' | 'underlay';
@@ -61,5 +62,6 @@ export declare class ScreenLayer3D extends Mesh3D {
     dispose(): void;
     clone(): this;
 }
+/** Makes a picture drawn over the whole screen, above or below the scene. */
 export declare function createScreenLayer3D(source: TextureSource3D, options?: ScreenLayerOptions3D): ScreenLayer3D;
 //# sourceMappingURL=helpers3D.d.ts.map

@@ -3,6 +3,7 @@ import { Attribute3D, Geometry3D } from './Geometry3D.js';
 import { Material3D } from './Material3D.js';
 import { mat3NormalFromMat4, mat4Identity } from './math3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most items, vertices and line points a batch holds. */
 export const BATCH3D_LIMITS = Object.freeze({ maxItems: 65536, maxVertices: 4194304, maxLinePoints: 65536 });
 const IDENTITY = mat4Identity(new Float32Array(16));
 /**
@@ -320,9 +321,11 @@ export class FatLine3D extends Mesh3D {
         this.material.dispose();
     }
 }
+/** Makes a mesh that draws many geometries with one material in one draw. */
 export function createBatchedMesh3D(material) {
     return new BatchedMesh3D(material);
 }
+/** Makes a line of a given thickness through points. */
 export function createFatLine3D(points, options = {}) {
     return new FatLine3D(points, options);
 }

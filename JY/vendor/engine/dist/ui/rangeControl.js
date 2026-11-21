@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { EgretError } from '@egret/runtime';
 const finite = (value) => typeof value === 'number' && Number.isFinite(value);
+/** A slider on a target: dragging along its track or pressing keys sets a value between its least and greatest. */
 export function createRangeControl(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_CONTROL_OPTIONS');

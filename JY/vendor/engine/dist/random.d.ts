@@ -1,3 +1,4 @@
+/** Random numbers from a seed, repeatable: numbers, ranges, choices, shuffles and normal values. */
 export interface Random {
     /** A number in [0, 1). */
     next(): number;

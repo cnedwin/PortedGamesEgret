@@ -17,12 +17,14 @@ export interface CustomPost3D {
     /** Four vec4 parameters written by the application. */
     readonly uniforms: Float32Array;
 }
+/** Makes a post-processing pass of your own shader. */
 export declare function createCustomPost3D(input: {
     readonly key: string;
     readonly glsl?: string;
     readonly wgsl?: string;
     readonly uniforms?: ArrayLike<number>;
 }): CustomPost3D;
+/** What is done to a frame after it is drawn: bloom, antialiasing, color, vignette, ambient occlusion, depth of field and outlines. */
 export interface PostProcessSettings3D {
     /** Master switch. While false the renderer draws directly and nothing here costs anything. */
     enabled: boolean;
@@ -82,9 +84,11 @@ export declare function outlineActive3D(settings: PostProcessSettings3D): boolea
 /** Post uniform layout: a, b, flags, custom[4], outline and inverse projection. */
 export declare const POST_PARAMS_FLOATS_3D = 48;
 export declare function writePostParams3D(out: Float32Array, a: ArrayLike<number>, b: ArrayLike<number>, view: PostView3D, aoEnabled: boolean, width: number, height: number, custom?: CustomPost3D, outline?: PostProcessSettings3D): void;
+/** The most bloom levels. */
 export declare const POST3D_LIMITS: Readonly<{
     readonly maxBloomLevels: 8;
 }>;
+/** Post-processing settings with every effect off. */
 export declare function createPostProcessSettings3D(): PostProcessSettings3D;
 /** Number of bloom levels that fit the output size. */
 export declare function bloomLevelCount3D(settings: PostProcessSettings3D, width: number, height: number): number;

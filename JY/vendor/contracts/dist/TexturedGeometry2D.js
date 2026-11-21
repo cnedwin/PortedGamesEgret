@@ -102,6 +102,7 @@ function canonical(source, length, kind, vertexCount) {
     }
     return freeze(result);
 }
+/** Copies and checks a textured mesh; malformed arrays are refused with a TypeError. */
 export function createTexturedGeometry2D(input) {
     if (typeof input !== 'object' || input === null)
         throw new TypeFault('Textured geometry descriptor must be an object');
@@ -158,6 +159,7 @@ export function createTexturedGeometry2D(input) {
     apply(weakSet, owned, [geometry, true]);
     return geometry;
 }
+/** Whether a value is a geometry made by `createTexturedGeometry2D`, without reading any of its properties. */
 export function isTexturedGeometry2D(value) {
     // WeakMap identity performs no property read, even on revoked Proxies.
     return typeof value === 'object' && value !== null && apply(weakHas, owned, [value]);

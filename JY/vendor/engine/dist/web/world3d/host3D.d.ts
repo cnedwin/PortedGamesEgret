@@ -4,6 +4,7 @@ import type { Disposable, HostAdapter } from '@egret/contracts';
  * owns the WebGL context, so this host has no device to start or close.
  */
 export declare function createWorld3DHost(canvas: HTMLCanvasElement | OffscreenCanvas): HostAdapter;
+/** What drives a 3D view: an Engine's clock and the call that advances it. */
 export interface World3DLoopSource {
     advanceTime(sourceSeconds: number): unknown;
     readonly clock: {

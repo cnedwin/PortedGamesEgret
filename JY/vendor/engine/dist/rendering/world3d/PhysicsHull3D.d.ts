@@ -1,8 +1,10 @@
 import { Geometry3D } from './Geometry3D.js';
+/** The most points a convex hull keeps and is made from. */
 export declare const PHYSICS_HULL3D_LIMITS: Readonly<{
     readonly maxPoints: 64;
     readonly maxInputPoints: 1048576;
 }>;
+/** A convex hull as a physics shape. */
 export declare class ConvexHullShape3D {
     /** Corner points, three floats each, around the body origin. */
     readonly points: Float32Array;

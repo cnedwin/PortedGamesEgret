@@ -35,9 +35,12 @@ function fail(reason) {
     throw noteOwnedPreparationFailure(new GeometryPreparationError(reason));
 }
 export function coordinate(value) {
-    if (!Number.isFinite(value) || (value !== 0 && (Math.abs(value) < MINIMUM || Math.abs(value) > MAXIMUM)))
+    if (!Number.isFinite(value) || Math.abs(value) > MAXIMUM)
         fail('range');
-    return value === 0 ? 0 : value;
+    // A magnitude below 2^-100 pixels is nothing at any scale a frame is drawn at. It comes from a transform that
+    // is all but the identity, such as a shake that has died away or a turn of a millionth of a degree. It is
+    // taken as zero rather than refused, so the exact predicates never meet a number that small.
+    return Math.abs(value) < MINIMUM ? 0 : value;
 }
 export function same(a, b) {
     return a.x === b.x && a.y === b.y;

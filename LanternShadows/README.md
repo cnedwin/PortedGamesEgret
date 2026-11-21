@@ -184,12 +184,14 @@ The game's code and its generated art are released under Apache-2.0. The engine 
 
 ## 已验证 · Verified
 
+- 2026-11-21 引擎副本升级到 `b5628eb`、重新打包后：85 项 Node 测试通过；无头 Chromium 下打包页面和 `?dev` 都能开始，第一幕和第三幕各打 20 秒无控制台错误（`?clones=200` 时的 Spine 实例上限报错升级前后都有，见已知问题）。 · After the engine update and a new pack: 85 tests pass, both the packed page and ?dev start, and acts one and three play clean.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：85 项全部通过（三幕的规则、Boss、分身、资源清单与校验和、打包文件不比源码旧）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 85 tests pass, including the check that the packed file is not older than its sources.
 - 2026-11-20 `node tools/quality.mjs LanternShadows` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下桌面帧时间 p95 为 66.7 ms，不代表真显卡。 · The 16 automatic quality items in headless Chromium with software rendering; the frame time there says nothing of a real GPU.
 - 没有记录在案的真机整局验收。 · No recorded whole-game run on a real device.
 
 ## 已知问题 · Known issues
 
+- `?clones` 设得太大（例如 200）时，同台的 Spine 实例超过引擎每个骨骼的 128 个上限，多出的分身建不出来，控制台报 `SPINE_INSTANCE_LIMIT_FAILED`（ENGINE-NOTES 第 3 条）；默认的一百个不会碰到。 · A large `?clones` (200, say) passes the engine's limit of 128 Spine instances; the default hundred does not.
 - 画面太慢时会自动收回一部分分身（写了 `?clones` 就不收），所以慢的设备上身外身的分身数会少于一百。 · On a slow device some clones are sent back, so fewer than a hundred appear unless `?clones` is given.
 - 第一次加载页面要先下载打包文件和第一幕的全部文件，改过 `src/`、`vendor/` 或 `assets/` 后必须重新运行 `tools/bundle.mjs`，否则页面跑的是旧代码（测试会指出来）。 · After a change under `src/`, `vendor/` or `assets/` the page runs old code until `tools/bundle.mjs` is run again (a test says so).
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（5 of 6 under 44×44: Straight to Nezh 325×36; Begin with act t 325×36; Straight to Erla 325）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 66.7 ms over 73 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 皮影戏台 桃 触屏操作）。
@@ -233,6 +235,6 @@ test/                   规则与资源的检查 · checks of the rules and the 
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `2fb4646c1ccec058d31c6f93cc2193061add1979`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `2fb4646c1ccec058d31c6f93cc2193061add1979`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

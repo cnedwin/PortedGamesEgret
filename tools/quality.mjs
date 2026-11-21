@@ -186,7 +186,7 @@ try {
       document.dispatchEvent(new Event('visibilitychange'));
     });
     await page.waitForTimeout(1500);
-    const listens = /visibilitychange|document\.hidden|visibilityState/.test(sourceText) || /createBrowserGame/.test(sourceText);
+    const listens = /visibilitychange|document\.hidden|visibilityState/.test(sourceText) || /createBrowserGame|createBrowserFrameLoop|startWorld3DLoop/.test(sourceText);
     record('E3', page.problems.length === before && listens ? PASS : FAIL, page.problems.length !== before ? page.problems.slice(before, before + 2).join(' | ') : listens ? 'no errors; the game or the engine loop watches visibility' : 'nothing in the game watches visibility');
 
     // S keys · what the game wrote while standing open.

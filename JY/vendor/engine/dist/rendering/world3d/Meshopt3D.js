@@ -5,6 +5,7 @@
 // three post-decoding filters. It needs no WebAssembly and no dependency, so
 // glTF files compressed this way load without a decoder hook.
 import { World3DError } from './core3D.js';
+/** The largest stride and count of meshopt data. */
 export const MESHOPT3D_LIMITS = Object.freeze({ maxStride: 256, maxElements: 268435456 });
 const bad = (detail) => new World3DError('WORLD3D_GLTF_INVALID', 'meshopt ' + detail);
 /** Vertex codec: each byte of the element is stored as deltas against the previous element, in groups of sixteen. */

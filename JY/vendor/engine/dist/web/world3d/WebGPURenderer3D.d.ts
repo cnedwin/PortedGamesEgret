@@ -5,6 +5,7 @@ import { RenderTarget3D } from '../../rendering/world3d/Texture3D.js';
 import type { CompressedFormat3D } from '../../rendering/world3d/Texture3D.js';
 import type { PostProcessSettings3D } from './post3D.js';
 import type { Renderer3D, Renderer3DInfo, ToneMapping3D } from './frame3D.js';
+/** A WebGPU renderer to make: its canvas and device, its tone mapping and exposure, its shadows, and what is called when the device is lost. */
 export interface WebGPURenderer3DOptions {
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;
     /** Four-sample multisampling of the canvas pass. Defaults to true. */
@@ -22,6 +23,7 @@ export interface WebGPURenderer3DOptions {
     /** Called once when the device is lost. Create a new renderer to continue. */
     readonly onDeviceLost?: (message: string) => void;
 }
+/** Draws 3D scenes with WebGPU: set its size, render a scene from a camera, and read what it drew. */
 export declare class WebGPURenderer3D implements Renderer3D {
     #private;
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;

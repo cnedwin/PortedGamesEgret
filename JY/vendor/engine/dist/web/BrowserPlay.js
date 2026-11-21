@@ -5,13 +5,17 @@
 // shake, a flash and a hit stop. Everything is built from the public entries, which stay there for a game that
 // outgrows this one.
 import { EgretError } from '@egret/runtime';
-import { Sprite, animate } from '@egret/engine';
+import { Bitmap, Sprite, animate, createSharedMaterial2D } from '@egret/engine';
 import { createRandom, encodeWav } from '@egret/engine/kit';
 import { createBrowserAudio } from './audio.js';
 import { createBrowserGamepadInput } from './gamepad.js';
 import { createBrowserGame } from './game.js';
 import { createBrowserFrameLoop } from './loop.js';
 import { SFX_PRESETS, isSfxRecipe, synthesizeSfx } from './playSfx.js';
+import { createPlayWidgets } from './playWidgets.js';
+import { prefersReducedMotion, watchReducedMotion } from './BrowserPreferences.js';
+import { createPlayTouch } from './playTouch.js';
+import { MUSIC_PARTS, composeMusic, musicMix } from './playMusic.js';
 /** A line of text: a sprite to place, fade, tween and remove like any other, with words that can be changed. */
 export class PlayText extends Sprite {
     #text;
@@ -92,7 +96,26 @@ const KEY_NAMES = {
 };
 /** Keys a game uses that would otherwise scroll or move about the page. */
 const KEPT_FROM_PAGE = new Set(['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Space', 'Tab']);
+/** The buttons of a pad a key name may be, as `'pad:a'`: the standard layout, by where each button is. */
+const PAD_BUTTONS = Object.freeze([
+    'a',
+    'b',
+    'x',
+    'y',
+    'l1',
+    'r1',
+    'l2',
+    'r2',
+    'select',
+    'start',
+    'up',
+    'down',
+    'left',
+    'right'
+]);
 function codeOf(key) {
+    if (/^pad:/i.test(key))
+        return 'Pad:' + key.slice(4).toLowerCase();
     const named = KEY_NAMES[key.toLowerCase()];
     if (named !== undefined)
         return named;
@@ -103,6 +126,8 @@ function codeOf(key) {
     return key;
 }
 const SWIPE = 24;
+// A picture is smooth, and read from its smaller copies when drawn small; or sharp, every texel kept.
+const SMOOTH = createSharedMaterial2D({ filter: 'linear', mipmapFilter: 'linear' }), SHARP = createSharedMaterial2D({});
 const PIECES = 256;
 /** A loop of `sfx.loop`. Its voice starts once its sound is made, which is at once for the effects every game has. */
 class PlayingLoop {
@@ -225,6 +250,17 @@ export async function play(options) {
         throw invalid('update is a function');
     if (onError !== undefined && typeof onError !== 'function')
         throw invalid('onError is a function');
+    if (options.reducedMotion !== undefined && typeof options.reducedMotion !== 'boolean')
+        throw invalid('reducedMotion is true or false');
+    // Given, it is the game's; not given, it follows the system's setting.
+    let reduced = options.reducedMotion ?? prefersReducedMotion(), followSystem = options.reducedMotion === undefined;
+    const unwatchMotion = watchReducedMotion(next => {
+        if (followSystem)
+            reduced = next;
+    });
+    const blendSpace = options.blendSpace ?? 'srgb';
+    if (blendSpace !== 'linear' && blendSpace !== 'srgb')
+        throw invalid("blendSpace is 'srgb' or 'linear'");
     const page = options.canvas?.ownerDocument ?? options.parent?.ownerDocument ?? globalThis.document;
     if (page === undefined)
         throw invalid('play needs a page');
@@ -253,6 +289,9 @@ export async function play(options) {
         height,
         clearColor: options.transparent === true ? 0 : background,
         ...(options.transparent === true ? { clearAlpha: 0 } : {}),
+        blendSpace,
+        // Masks, glows, outlines, blurs and colour matrices are drawn, as Egret 5 code expects of them.
+        effects: true,
         autoStart: false,
         keyboard: false,
         ...(holder === undefined ? {} : { fit: 'contain', fitTo: holder }),
@@ -318,7 +357,7 @@ export async function play(options) {
         }
     });
     const layer = () => stage.addChild(scope.use(new Sprite()));
-    const world = layer(), effects = layer(), ui = layer(), cover = layer();
+    const world = layer(), effects = layer(), ui = layer(), glass = layer(), cover = layer();
     const view = { x: 0, y: 0 };
     const random = createRandom(options.seed ?? Date.now() + ':' + Math.random());
     // Keys: a set of what is held, and what changed since the last update.
@@ -348,7 +387,7 @@ export async function play(options) {
         for (const code of held)
             cameUp.add(code);
         held.clear();
-        point.down = false;
+        pointerOwner = undefined;
     };
     const any = (set, keys) => keys.some(key => set.has(codeOf(String(key))));
     // A gamepad, where the page has them: polled once a step. Its sticks count in `axis` and `look`.
@@ -371,16 +410,41 @@ export async function play(options) {
             return { x: 0, y: 0 };
         }
     };
+    // The buttons of the first pad count as keys named `pad:a` and so on: held, pressed and let go as keys are.
+    const pollPadButtons = () => {
+        const pad = pads?.input.pads[0];
+        for (const name of PAD_BUTTONS) {
+            let down = false;
+            try {
+                down = pad !== undefined && pad.standard && pad.pressed(name);
+            }
+            catch {
+                down = false;
+            }
+            const code = 'Pad:' + name;
+            if (down && !held.has(code)) {
+                held.add(code);
+                wentDown.add(code);
+            }
+            else if (!down && held.has(code) && !touchHeld.has(code)) {
+                held.delete(code);
+                cameUp.add(code);
+            }
+        }
+    };
+    // Keys a finger holds through a button on the glass, and where a stick on the glass is.
+    const touchHeld = new Set(), touchStick = { x: 0, y: 0 };
     const keys = {
         down: (...names) => any(held, names),
         pressed: (...names) => any(wentDown, names),
         released: (...names) => any(cameUp, names),
         axis() {
-            let x = (any(held, ['right', 'd']) ? 1 : 0) - (any(held, ['left', 'a']) ? 1 : 0), y = (any(held, ['down', 's']) ? 1 : 0) - (any(held, ['up', 'w']) ? 1 : 0);
+            let x = (any(held, ['right', 'd', 'pad:right']) ? 1 : 0) - (any(held, ['left', 'a', 'pad:left']) ? 1 : 0), y = (any(held, ['down', 's', 'pad:down']) ? 1 : 0) - (any(held, ['up', 'w', 'pad:up']) ? 1 : 0);
             const length = x !== 0 && y !== 0 ? Math.SQRT1_2 : 1;
             x *= length;
             y *= length;
-            const pushed = stick('left');
+            // A stick on the glass, then the pad's left stick, when no key is held.
+            const pushed = touchStick.x !== 0 || touchStick.y !== 0 ? touchStick : stick('left');
             if (x === 0 && y === 0 && (pushed.x !== 0 || pushed.y !== 0)) {
                 const reach = Math.hypot(pushed.x, pushed.y);
                 return reach > 1 ? { x: pushed.x / reach, y: pushed.y / reach } : pushed;
@@ -396,7 +460,6 @@ export async function play(options) {
         dx: 0,
         dy: 0,
         wheel: 0,
-        down: false,
         pressed: false,
         released: false,
         swipe: undefined,
@@ -405,7 +468,14 @@ export async function play(options) {
     };
     // The first move a page sees has no move before it, and some browsers give it the whole way from the corner.
     let seenMove = false;
+    // This convenience view follows one drag; the shared UI router still receives every contact.
+    let pointerOwner;
     const moved = (event) => {
+        touch.move(event);
+        if (pointerOwner !== undefined
+            ? event.pointerId !== pointerOwner
+            : event.pointerType === 'touch' || event.buttons !== 0)
+            return;
         if (seenMove || page.pointerLockElement === surface) {
             if (finite(event.movementX))
                 point.dx += event.movementX;
@@ -432,8 +502,15 @@ export async function play(options) {
     // that places something wherever the stage is pressed would place it under its own buttons.
     let tappable = [];
     const pointerDown = (event) => {
+        // A finger on a stick or a button on the glass is that control's, and not the game's pointer.
+        if (touch.claim(event)) {
+            event.preventDefault();
+            return;
+        }
+        if (pointerOwner !== undefined)
+            return;
+        pointerOwner = event.pointerId;
         place(event);
-        point.down = true;
         tappable = tappable.filter(node => !node.isDisposed);
         point.pressed = !tappable.some(node => pointer.over(node));
         point.fromX = point.x;
@@ -442,17 +519,22 @@ export async function play(options) {
         win.focus?.();
     };
     const pointerUp = (event) => {
-        place(event);
-        if (!point.down)
+        if (touch.end(event))
             return;
-        point.down = false;
+        if (event.pointerId !== pointerOwner)
+            return;
+        pointerOwner = undefined;
+        place(event);
         point.released = true;
         const dx = point.x - point.fromX, dy = point.y - point.fromY;
         if (Math.max(Math.abs(dx), Math.abs(dy)) >= SWIPE)
             point.swipe = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : dy > 0 ? 'down' : 'up';
     };
-    const pointerCancel = () => {
-        point.down = false;
+    const pointerCancel = (event) => {
+        if (touch.end(event))
+            return;
+        if (event.pointerId === pointerOwner)
+            pointerOwner = undefined;
     };
     const pointer = {
         get x() {
@@ -462,7 +544,7 @@ export async function play(options) {
             return point.y;
         },
         get down() {
-            return point.down;
+            return pointerOwner !== undefined;
         },
         get pressed() {
             return point.pressed;
@@ -596,6 +678,78 @@ export async function play(options) {
             muted = Boolean(value);
             for (const each of loops)
                 each.heard(muted ? 0 : volume);
+        }
+    };
+    // Music: the parts of one piece looped together, each a loop whose loudness follows the intensity.
+    let musicParts = [], musicIntensity = 0.5, musicVolume = 0.6, musicMood, musicTicket = 0;
+    const musicTick = (seconds) => {
+        if (musicParts.length === 0)
+            return;
+        const mix = musicMix(musicIntensity), rate = Math.min(1, seconds / 1.5);
+        for (const entry of musicParts) {
+            const wanted = musicVolume * mix[entry.part];
+            if (Math.abs(wanted - entry.level) < 1e-3)
+                continue;
+            entry.level += (wanted - entry.level) * rate;
+            entry.loop.volume = entry.level;
+        }
+    };
+    const endMusic = (seconds) => {
+        musicTicket++;
+        for (const { loop } of musicParts)
+            loop.stop(seconds);
+        musicParts = [];
+        musicMood = undefined;
+    };
+    const music = {
+        async play(given = 'calm') {
+            const chosen = typeof given === 'string' ? { mood: given } : (given ?? {});
+            if (chosen === null || typeof chosen !== 'object')
+                throw invalid('music.play takes a mood or { mood, seed, tempo, bars }');
+            let piece;
+            try {
+                piece = composeMusic(chosen, RATE);
+            }
+            catch (cause) {
+                throw invalid(cause instanceof Error ? cause.message : 'music.play takes a mood');
+            }
+            const ticket = ++musicTicket;
+            const made = await Promise.all(MUSIC_PARTS.map(part => audio.mixer.decode(encodeWav([piece.parts[part]], piece.rate)).catch(() => undefined)));
+            // A newer piece, a stop or the end of the game came while this one was being made.
+            if (ticket !== musicTicket || disposed)
+                return;
+            for (const { loop } of musicParts)
+                loop.stop(1.2);
+            const mix = musicMix(musicIntensity);
+            musicParts = MUSIC_PARTS.map((part, index) => {
+                const level = musicVolume * mix[part], loop = new PlayingLoop(() => made[index], audio.mixer, level, 1, 0, 1.2);
+                loops.add(loop);
+                loop.heard(muted ? 0 : volume);
+                if (paused)
+                    loop.hold(true);
+                return { part, loop, level };
+            });
+            musicMood = piece.mood;
+        },
+        stop(seconds = 1) {
+            endMusic(finite(seconds) && seconds >= 0 ? seconds : 1);
+        },
+        get intensity() {
+            return musicIntensity;
+        },
+        set intensity(value) {
+            if (finite(value))
+                musicIntensity = Math.max(0, Math.min(1, value));
+        },
+        get volume() {
+            return musicVolume;
+        },
+        set volume(value) {
+            if (finite(value))
+                musicVolume = Math.max(0, Math.min(1, value));
+        },
+        get mood() {
+            return musicMood;
         }
     };
     let timers = [];
@@ -751,9 +905,16 @@ export async function play(options) {
     // `update` throws does, and is told the same way.
     let failure;
     let disposal;
-    const fail = (cause) => {
-        failure ??= { cause };
-    };
+    let setupRequest;
+    // Publish the promise before invoking code that can reenter restart or disposal.
+    function pending() {
+        let resolve, reject;
+        const promise = new Promise((done, fail) => {
+            resolve = done;
+            reject = fail;
+        });
+        return { promise, resolve, reject };
+    }
     function step(real, seconds) {
         if (failure !== undefined) {
             const { cause } = failure;
@@ -762,6 +923,7 @@ export async function play(options) {
         }
         try {
             pads?.poll();
+            pollPadButtons();
         }
         catch {
             // A pad that cannot be read is not there.
@@ -773,6 +935,11 @@ export async function play(options) {
             stopped <= 0 &&
             version === generation &&
             playLoop.state === 'running';
+        // Bars, boxes of words and menus answer while the game is paused, as buttons do, and while `setup` awaits one.
+        if (!disposed && playLoop.state === 'running') {
+            widgets.tick(real);
+            musicTick(real);
+        }
         if (api === undefined || paused || disposed || playLoop.state !== 'running') {
             endFrame();
             return;
@@ -861,7 +1028,7 @@ export async function play(options) {
         world.y = effects.y = dy - view.y;
         if (flashLeft > 0) {
             flashLeft -= real;
-            cover.alpha = Math.max(0, flashLeft / flashSpan) * 0.85;
+            cover.alpha = Math.max(0, flashLeft / flashSpan) * (reduced ? 0.3 : 0.85);
             if (flashLeft <= 0)
                 cover.visible = false;
         }
@@ -877,6 +1044,76 @@ export async function play(options) {
     })();
     const kept = new Map();
     const saveKey = (key) => 'egret.play:' + (options.saveKey ?? win.location?.pathname ?? '') + ':' + key;
+    function resetRound() {
+        endMusic(0.3);
+        widgets.reset();
+        touch.reset();
+        touchHeld.clear();
+        touchStick.x = touchStick.y = 0;
+        timers = [];
+        stopLoops();
+        stopMotions();
+        for (const made of [world, ui, glass])
+            while (made.numChildren > 0)
+                game.remove(made.getChildAt(0));
+        endRemoved();
+        for (const piece of pieces) {
+            piece.life = 0;
+            piece.node.visible = false;
+        }
+        view.x = view.y = 0;
+        time = 0;
+        timeScale = 1;
+        paused = false;
+        stopped = shakeLeft = flashLeft = 0;
+        cover.visible = false;
+    }
+    function runSetup(restarting) {
+        if (setupRequest !== undefined)
+            return setupRequest.promise;
+        const request = pending();
+        setupRequest = request;
+        generation++;
+        api = undefined;
+        void (async () => {
+            try {
+                if (restarting) {
+                    failure = undefined;
+                    resetRound();
+                }
+                if (disposed)
+                    return;
+                await setup?.(game);
+                if (disposed)
+                    return;
+                // A tap that returned an unsuccessful restart may have failed the loop.
+                // An explicit retry resumes it, while a deliberately stopped loop stays idle.
+                if (restarting && playLoop.state === 'failed')
+                    playLoop.start();
+                api = game;
+                request.resolve();
+            }
+            catch (cause) {
+                // Failed setup may already have placed objects or scheduled work.
+                // Keep updates suspended and leave a clean scene for the next attempt.
+                if (restarting && !disposed) {
+                    try {
+                        resetRound();
+                    }
+                    catch (cleanupFailure) {
+                        request.reject(new AggregateError([cause, cleanupFailure], 'Play restart and cleanup failed'));
+                        return;
+                    }
+                }
+                request.reject(cause);
+            }
+            finally {
+                if (setupRequest === request)
+                    setupRequest = undefined;
+            }
+        })();
+        return request.promise;
+    }
     const game = {
         width,
         height,
@@ -975,7 +1212,14 @@ export async function play(options) {
             if (browser.pointer === undefined)
                 return;
             node.touchEnabled = true;
-            node.on(browser.pointer.events.tap, tapListener(callback, fail));
+            node.on(browser.pointer.events.tap, () => {
+                const round = generation;
+                tapListener(callback, cause => {
+                    // A delayed input callback belongs to the round that received the press.
+                    if (!disposed && generation === round)
+                        failure ??= { cause };
+                })();
+            });
             if (!tappable.includes(node))
                 tappable.push(node);
         },
@@ -1038,6 +1282,107 @@ export async function play(options) {
             const dx = (first.left + first.right - second.left - second.right) / 2, dy = (first.top + first.bottom - second.top - second.bottom) / 2;
             return dx * dx + dy * dy <= distance * distance;
         },
+        tiles(rows, o = {}) {
+            if (!Array.isArray(rows) || rows.length === 0 || rows.some(row => typeof row !== 'string'))
+                throw invalid('tiles takes rows of characters');
+            const size = finite(o?.size) && o.size > 0 ? o.size : 32, solid = typeof o?.solid === 'string' ? o.solid : '#', colors = { '#': 0x6b7280, ...(o?.colors ?? {}) }, cells = rows.map(row => [...row]), columns = Math.max(...cells.map(row => row.length)), node = game.sprite(undefined, o?.layer ?? world);
+            node.x = finite(o?.x) ? o.x : 0;
+            node.y = finite(o?.y) ? o.y : 0;
+            const draw = () => {
+                const g = node.graphics.clear();
+                // An empty fill over the whole map keeps its bounds those of the map.
+                g.beginFill(0, 0)
+                    .drawRect(0, 0, columns * size, cells.length * size)
+                    .endFill();
+                for (let row = 0; row < cells.length; row++)
+                    for (let column = 0; column < cells[row].length; column++) {
+                        const color = colors[cells[row][column]];
+                        if (colour(color))
+                            g.beginFill(color)
+                                .drawRect(column * size, row * size, size, size)
+                                .endFill();
+                    }
+            };
+            draw();
+            const at = (column, row) => cells[row]?.[column] ?? '';
+            const cellAt = (x, y) => ({
+                column: Math.floor((x - node.x) / size),
+                row: Math.floor((y - node.y) / size)
+            });
+            const corner = (column, row) => node.localToGlobal(column * size, row * size);
+            return {
+                sprite: node,
+                columns,
+                rows: cells.length,
+                size,
+                at,
+                set(column, row, character) {
+                    if (cells[row] === undefined || column < 0 || column >= columns || typeof character !== 'string')
+                        return;
+                    cells[row][column] = character.slice(0, 1) || ' ';
+                    draw();
+                },
+                cellAt,
+                solidAt(x, y) {
+                    const cell = cellAt(x, y);
+                    return solid.includes(at(cell.column, cell.row) || '\u0000');
+                },
+                pushOut(a) {
+                    if (!seen(a) || !seen(node))
+                        return undefined;
+                    const first = boxOf(a);
+                    if (first === undefined)
+                        return undefined;
+                    const origin = corner(0, 0), far = corner(1, 1), unitX = far.x - origin.x, unitY = far.y - origin.y;
+                    if (!(unitX > 0) || !(unitY > 0))
+                        return undefined;
+                    let moveX = 0, moveY = 0;
+                    // Out of the most overlapped solid tile first, then of what still overlaps, a few times at most.
+                    for (let round = 0; round < 4; round++) {
+                        const box = {
+                            left: first.left + moveX,
+                            right: first.right + moveX,
+                            top: first.top + moveY,
+                            bottom: first.bottom + moveY
+                        };
+                        let best, most = 0;
+                        const c0 = Math.floor((box.left - origin.x) / unitX), c1 = Math.floor((box.right - origin.x) / unitX), r0 = Math.floor((box.top - origin.y) / unitY), r1 = Math.floor((box.bottom - origin.y) / unitY);
+                        for (let row = Math.max(0, r0); row <= Math.min(cells.length - 1, r1); row++)
+                            for (let column = Math.max(0, c0); column <= Math.min(columns - 1, c1); column++) {
+                                if (!solid.includes(at(column, row) || '\u0000'))
+                                    continue;
+                                const cell = {
+                                    left: origin.x + column * unitX,
+                                    right: origin.x + (column + 1) * unitX,
+                                    top: origin.y + row * unitY,
+                                    bottom: origin.y + (row + 1) * unitY
+                                };
+                                if (!meet(box, cell, 0))
+                                    continue;
+                                const area = (Math.min(box.right, cell.right) - Math.max(box.left, cell.left)) *
+                                    (Math.min(box.bottom, cell.bottom) - Math.max(box.top, cell.top));
+                                if (area <= most)
+                                    continue;
+                                most = area;
+                                const left = cell.left - box.right, right = cell.right - box.left, up = cell.top - box.bottom, down = cell.bottom - box.top;
+                                const x = -left < right ? left : right, y = -up < down ? up : down;
+                                best = Math.abs(x) < Math.abs(y) ? { x, y: 0 } : { x: 0, y };
+                            }
+                        if (best === undefined)
+                            break;
+                        moveX += best.x;
+                        moveY += best.y;
+                    }
+                    return moveX === 0 && moveY === 0 ? undefined : { x: moveX, y: moveY };
+                }
+            };
+        },
+        mix(a, b, t) {
+            if (!colour(a) || !colour(b) || !finite(t))
+                throw invalid('mix takes two colours 0xRRGGBB and a number');
+            const k = Math.min(1, Math.max(0, t)), part = (shift) => Math.round(((a >> shift) & 255) + (((b >> shift) & 255) - ((a >> shift) & 255)) * k) << shift;
+            return part(16) | part(8) | part(0);
+        },
         tween(target) {
             const motion = animate(engine, scope, target);
             let settle;
@@ -1056,8 +1401,19 @@ export async function play(options) {
         },
         after: (seconds, callback) => timer(seconds, callback, false),
         every: (seconds, callback) => timer(seconds, callback, true),
+        get reducedMotion() {
+            return reduced;
+        },
+        set reducedMotion(value) {
+            if (typeof value !== 'boolean')
+                throw invalid('reducedMotion is true or false');
+            reduced = value;
+            followSystem = false;
+            if (value)
+                shakeLeft = 0;
+        },
         shake(amount = 6, seconds = 0.25) {
-            if (!finite(amount) || !finite(seconds) || amount <= 0 || seconds <= 0)
+            if (reduced || !finite(amount) || !finite(seconds) || amount <= 0 || seconds <= 0)
                 return;
             shakeAmount = Math.max(shakeLeft > 0 ? shakeAmount : 0, Math.min(amount, Math.max(width, height)));
             shakeLeft = shakeSpan = Math.min(seconds, 5);
@@ -1067,7 +1423,7 @@ export async function play(options) {
                 return;
             cover.graphics.clear().beginFill(color).drawRect(0, 0, width, height).endFill();
             cover.visible = true;
-            cover.alpha = 0.85;
+            cover.alpha = reduced ? 0.3 : 0.85;
             flashLeft = flashSpan = Math.min(seconds, 5);
         },
         hitStop(seconds = 0.06) {
@@ -1160,36 +1516,42 @@ export async function play(options) {
         get paused() {
             return paused;
         },
-        async restart() {
-            if (disposed)
-                return;
-            generation++;
-            // No update runs while the game is taken down and set up again.
-            api = undefined;
-            timers = [];
-            stopLoops();
-            stopMotions();
-            for (const made of [world, ui])
-                while (made.numChildren > 0)
-                    game.remove(made.getChildAt(0));
-            endRemoved();
-            for (const piece of pieces) {
-                piece.life = 0;
-                piece.node.visible = false;
-            }
-            view.x = view.y = 0;
-            time = 0;
-            timeScale = 1;
-            paused = false;
-            stopped = shakeLeft = flashLeft = 0;
-            cover.visible = false;
-            try {
-                await setup?.(game);
-            }
-            finally {
-                api = game;
-            }
+        restart() {
+            return disposed ? Promise.resolve() : runSetup(true);
         },
+        async image(url, o = {}) {
+            if (typeof url !== 'string' || url === '')
+                throw invalid('image takes the address of a picture');
+            if (o === null || typeof o !== 'object')
+                throw invalid('the options of an image are an object');
+            const into = o.layer === undefined || o.layer === 'world' ? world : o.layer === 'ui' ? ui : o.layer;
+            if (!(into instanceof Sprite) || into.isDisposed)
+                throw invalid("layer is 'ui', 'world' or a sprite");
+            const lease = await browser.loadTexture(url);
+            const holder = scope.use(new Sprite()), picture = scope.use(new Bitmap(lease));
+            picture.sharedMaterial = o.smooth === false ? SHARP : SMOOTH;
+            const own = { width: picture.width, height: picture.height }, w = finite(o.width) && o.width > 0 ? o.width : undefined, h = finite(o.height) && o.height > 0 ? o.height : undefined;
+            const sx = w !== undefined ? w / own.width : h !== undefined ? h / own.height : 1, sy = h !== undefined ? h / own.height : sx;
+            picture.scaleX = sx;
+            picture.scaleY = sy;
+            picture.x = (-own.width * sx) / 2;
+            picture.y = (-own.height * sy) / 2;
+            holder.addChild(picture);
+            holder.x = finite(o.x) ? o.x : 0;
+            holder.y = finite(o.y) ? o.y : 0;
+            into.addChild(holder);
+            return holder;
+        },
+        bar: options => widgets.bar(options),
+        toast: (words, options) => widgets.toast(words, options),
+        say: (words, options) => widgets.say(words, options),
+        menu: (items, options) => widgets.menu(items, options),
+        get asking() {
+            return widgets.asking;
+        },
+        touchStick: options => touch.stick(options),
+        touchButton: (words, options) => touch.button(words, options),
+        music,
         browser,
         engine,
         scope,
@@ -1197,25 +1559,75 @@ export async function play(options) {
         dispose() {
             if (disposal !== undefined)
                 return disposal;
+            const close = pending();
+            disposal = close.promise;
             disposed = true;
-            stopLoops();
-            for (const [target, type, listener] of listening)
-                target.removeEventListener(type, listener);
-            disposal = browser.dispose().finally(() => holder?.remove());
+            api = undefined;
+            unwatchMotion();
+            // Caller-controlled loading can outlive the game. Release its waiters now;
+            // late completion cannot re-enable updates or restart the closed loop.
+            setupRequest?.reject(new EgretError('SCOPE_CLOSED'));
+            setupRequest = undefined;
+            void (async () => {
+                try {
+                    stopLoops();
+                    for (const [target, type, listener] of listening)
+                        target.removeEventListener(type, listener);
+                    await browser.dispose();
+                }
+                finally {
+                    holder?.remove();
+                }
+            })().then(close.resolve, close.reject);
             return disposal;
         }
     };
     cover.visible = false;
+    // A menu or a box of words that the first `setup` awaits starts the frames, so it is seen and answered. Otherwise
+    // they start when `setup` has finished, as they always have. The game's own steps, timers and tweens begin then.
+    const widgets = createPlayWidgets(game, () => {
+        if (!disposed && browser.loop.state === 'idle')
+            browser.loop.start();
+    });
+    const touch = createPlayTouch(game, {
+        hold(key) {
+            const code = codeOf(key);
+            touchHeld.add(code);
+            if (!held.has(code)) {
+                held.add(code);
+                wentDown.add(code);
+            }
+        },
+        letGo(key) {
+            const code = codeOf(key);
+            touchHeld.delete(code);
+            if (held.delete(code))
+                cameUp.add(code);
+        },
+        stick(x, y) {
+            touchStick.x = x;
+            touchStick.y = y;
+        },
+        toStage: (x, y) => browser.toStage(x, y),
+        layer: glass
+    });
     try {
         await Promise.all(Object.entries(SFX_PRESETS).map(([name, recipe]) => make(name, recipe)));
-        await setup?.(game);
+        await runSetup(false);
+        if (disposed)
+            throw new EgretError('SCOPE_CLOSED');
+        if (browser.loop.state === 'idle')
+            browser.loop.start();
     }
     catch (cause) {
-        await game.dispose();
+        try {
+            await game.dispose();
+        }
+        catch (cleanupFailure) {
+            throw new AggregateError([cause, cleanupFailure], 'Play setup and cleanup failed');
+        }
         throw cause;
     }
-    api = game;
-    browser.loop.start();
     return game;
 }
 //# sourceMappingURL=BrowserPlay.js.map

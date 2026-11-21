@@ -5,7 +5,9 @@
 // bevels and furniture.
 import { World3DError } from './core3D.js';
 import { Geometry3D } from './Geometry3D.js';
+/** The most points a convex hull keeps and is made from. */
 export const PHYSICS_HULL3D_LIMITS = Object.freeze({ maxPoints: 64, maxInputPoints: 1048576 });
+/** A convex hull as a physics shape. */
 export class ConvexHullShape3D {
     /** Corner points, three floats each, around the body origin. */
     points;

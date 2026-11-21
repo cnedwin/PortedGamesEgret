@@ -1,5 +1,7 @@
 import type { Disposable } from "@egret/contracts";
+/** The order of the bytes of a multi-byte number. */
 export type ByteOrder = "bigEndian" | "littleEndian";
+/** The largest snapshot a ByteReader reads, in bytes. */
 export declare const BYTE_READER_LIMITS: Readonly<{
     readonly maxBytes: 16777216;
 }>;

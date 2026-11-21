@@ -17,6 +17,7 @@ const METHODS = {
     range: ['stepBy', 'toMin', 'toMax'],
     movement: ['setDirection']
 };
+/** Binds the keyboard to a control: Space and Enter press an action or a toggle, arrows move a selection. */
 export function createControlKeys(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_CONTROL_OPTIONS');

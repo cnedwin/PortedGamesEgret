@@ -1,4 +1,5 @@
 import type { UiSemantics } from '@egret/engine/ui/semantics';
+/** Browser semantics to make: the semantic tree, the canvas and its size, its label, and what is called on an error. */
 export interface BrowserSemanticsOptions {
     readonly semantics: UiSemantics;
     /** The canvas the Engine draws on. Its CSS rectangle is mapped to the logical width and height. */
@@ -14,6 +15,7 @@ export interface BrowserSemanticsOptions {
      */
     readonly onError?: (cause: unknown) => void;
 }
+/** The semantic tree projected as elements over the canvas, for screen readers: sync it after the tree changes. */
 export interface BrowserSemantics {
     readonly state: 'active' | 'closed';
     /** The element that holds the projection. It is invisible and takes no pointer. */

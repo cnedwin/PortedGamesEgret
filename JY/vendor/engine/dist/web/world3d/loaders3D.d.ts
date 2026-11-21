@@ -2,6 +2,7 @@ import type { GltfAsset3D, GltfLoadOptions3D } from '../../rendering/world3d/Glt
 import type { Ktx2Options3D } from '../../rendering/world3d/Ktx23D.js';
 import { CubeTexture3D, Texture3D } from '../../rendering/world3d/Texture3D.js';
 import type { TextureOptions3D } from '../../rendering/world3d/Texture3D.js';
+/** How a 3D asset is loaded: a signal that cancels it, and the most bytes it reads. */
 export interface LoadOptions3D {
     readonly signal?: AbortSignal;
     /** Upper bound for one downloaded file, in bytes. Defaults to 256 MiB. */

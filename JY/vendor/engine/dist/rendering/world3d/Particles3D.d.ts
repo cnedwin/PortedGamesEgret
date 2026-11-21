@@ -1,11 +1,14 @@
 import type { Blending3D, ColorInput3D } from './Material3D.js';
 import { InstancedMesh3D } from './Mesh3D.js';
 import type { Texture3D } from './Texture3D.js';
+/** The most particles an emitter holds, and the longest step it takes. */
 export declare const PARTICLES3D_LIMITS: Readonly<{
     readonly maxParticles: 262144;
     readonly maxStepSeconds: 0.25;
 }>;
+/** The shape particles are born in. */
 export type ParticleShape3D = 'point' | 'sphere' | 'box';
+/** An emitter to make: how many particles and how often, how long they live, how they move, grow, change color and fade, and where they are born. */
 export interface ParticleEmitterOptions3D {
     /** Maximum number of live particles. */
     readonly capacity?: number;
@@ -42,6 +45,7 @@ export interface ParticleEmitterOptions3D {
     /** Stop emitting after this many seconds; 0 emits forever. */
     readonly duration?: number;
 }
+/** Emits particles on the CPU: burst some, update it each frame, or reset it. */
 export declare class ParticleEmitter3D extends InstancedMesh3D {
     #private;
     rate: number;
@@ -81,5 +85,6 @@ export declare class ParticleEmitter3D extends InstancedMesh3D {
     reset(): void;
     clone(): this;
 }
+/** Makes a particle emitter. */
 export declare function createParticleEmitter3D(options?: ParticleEmitterOptions3D): ParticleEmitter3D;
 //# sourceMappingURL=Particles3D.d.ts.map

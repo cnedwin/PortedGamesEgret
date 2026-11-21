@@ -46,7 +46,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/bitmapfont` | 2 |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
 | `@egret/engine/video` | 0 |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/video` | 2 |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
-| `@egret/engine/web/loop` | 0 |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/loop` | 1 |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |
 | `@egret/engine/kit` | 3 |  |  |  |  |  |  | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](SnowTemple/tools/balance.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) |  |
 | `@egret/engine/web/kit` | 6 |  | [✔](FPS/src/main.mjs) |  |  |  |  | [✔](MechanismCity/src/main.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/main.mjs) |
 | `@egret/engine/web/game` | 3 | [✔](FivePhases/src/main.mjs) |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |
@@ -101,7 +101,7 @@ Capabilities fewer than two games use: one example at most. A new game is a good
 | `@egret/engine/input/gamepad` | 无 · none |
 | `@egret/engine/physics2d` | [MechanismCity](MechanismCity/src/sim/sim.mjs) |
 | `@egret/engine/video` | 无 · none |
-| `@egret/engine/web/loop` | 无 · none |
+| `@egret/engine/web/loop` | [LoveElective](LoveElective/src/engine/stage.mjs) |
 | `@egret/engine/play` | 无 · none |
 | `@egret/engine/audio` | 无 · none |
 | `@egret/spine` | [LanternShadows](LanternShadows/src/puppets.mjs) |
