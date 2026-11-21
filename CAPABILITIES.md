@@ -1,10 +1,10 @@
 # 引擎能力矩阵 · Engine capability matrix
 
-由 `node tools/capability-matrix.mjs` 生成，不要手改；`--check` 检查它是否过期。行是引擎能力，列是游戏，✔ 链接到用这项能力的文件（游戏 README 能力对照表写了文件的，用 README 写的）。入口的全列表取自引擎 `packages/engine/package.json` 的 `exports`（引擎提交 `6bdfbe5`），没有游戏用到的也列出；只统计游戏自己的代码，不含 `vendor/`、测试和工具。
+由 `node tools/capability-matrix.mjs` 生成，不要手改；`--check` 检查它是否过期。行是引擎能力，列是游戏，✔ 链接到用这项能力的文件（游戏 README 能力对照表写了文件的，用 README 写的）。入口的全列表取自引擎 `packages/engine/package.json` 的 `exports`（引擎提交 `b5628eb`），没有游戏用到的也列出；只统计游戏自己的代码，不含 `vendor/`、测试和工具。
 
 Made by `node tools/capability-matrix.mjs`; do not edit by hand, and `--check` says whether it is out of date. Rows are
 engine capabilities and columns games; each ✔ links the file that uses it (the one named in the game's README
-capability table, when it names one). The entries are the `exports` of the engine's `packages/engine/package.json` (engine commit `6bdfbe5`),
+capability table, when it names one). The entries are the `exports` of the engine's `packages/engine/package.json` (engine commit `b5628eb`),
 used or not; only each game's own code is read, not `vendor/`, tests or tools. The same table is on the showcase site
 (`capabilities.html`).
 
@@ -12,16 +12,16 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 
 | 能力 · Capability | 游戏数 · Games | FivePhases | FPS | jelly-pandas | JY | LanternShadows | LoveElective | MechanismCity | Rally | SnowTemple | TeaHorseRoad | Wulin |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| `@egret/engine` | 11 | [✔](FivePhases/src/main.mjs) | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/battle-view.mjs) | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/stage.mjs) | [✔](MechanismCity/src/art/illustrations.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) | [✔](Wulin/src/view/stage.mjs) |
+| `@egret/engine` | 11 | [✔](FivePhases/src/main.mjs) | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/main.mjs) | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/stage.mjs) | [✔](MechanismCity/src/art/illustrations.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/ui/card.mjs) | [✔](Wulin/src/view/stage.mjs) |
 | `@egret/engine/webgpu` | 1 |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |
-| `@egret/engine/text` | 1 |  |  |  | [✔](JY/web/battle-view.mjs) |  |  |  |  |  |  |  |
+| `@egret/engine/text` | 1 |  |  |  | [✔](JY/web/opening-dialogue.mjs) |  |  |  |  |  |  |  |
 | `@egret/engine/layout` | 0 |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/input` | 0 |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/image` | 0 |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/text` | 1 |  |  |  | [✔](JY/web/main.mjs) |  |  |  |  |  |  |  |
 | `@egret/engine/webgl2` | 2 |  |  |  | [✔](JY/web/main.mjs) |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |
 | `@egret/engine/world3d` | 7 |  | [✔](FPS/src/asset-models.mjs) | [✔](jelly-pandas/src/island.mjs) | [✔](JY/web/jyx2/home3d/native-exit-effect.mjs) |  |  |  | [✔](Rally/src/grandstand.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/art/font.mjs) | [✔](Wulin/src/view/arena-effects.mjs) |
-| `@egret/engine/webgl2/world3d` | 7 |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/jyx2/home3d/native-exit-effect.mjs) |  |  |  | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/audio/soundscape.mjs) | [✔](Wulin/src/view/stage.mjs) |
+| `@egret/engine/webgl2/world3d` | 7 |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/jyx2/scene/world3d-renderer.mjs) |  |  |  | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/audio/soundscape.mjs) | [✔](Wulin/src/view/stage.mjs) |
 | `@egret/engine/webgpu/world3d` | 4 |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) |  |  |  |  | [✔](Rally/src/main.mjs) |  |  | [✔](Wulin/src/view/stage.mjs) |
 | `@egret/engine/resources` | 0 |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/resources` | 0 |  |  |  |  |  |  |  |  |  |  |  |
@@ -47,7 +47,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/video` | 0 |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/video` | 2 |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
 | `@egret/engine/web/loop` | 0 |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/kit` | 3 |  |  |  |  |  |  | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](SnowTemple/src/saves.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) |  |
+| `@egret/engine/kit` | 3 |  |  |  |  |  |  | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](SnowTemple/tools/balance.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) |  |
 | `@egret/engine/web/kit` | 3 |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) |  |
 | `@egret/engine/web/game` | 3 | [✔](FivePhases/src/main.mjs) |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |
 | `@egret/engine/play` | 0 |  |  |  |  |  |  |  |  |  |  |  |
@@ -80,7 +80,7 @@ Capabilities fewer than two games use: one example at most. A new game is a good
 | 能力 · Capability | 用到的游戏 · Used by |
 |---|---|
 | `@egret/engine/webgpu` | [LoveElective](LoveElective/src/engine/stage.mjs) |
-| `@egret/engine/text` | [JY](JY/web/battle-view.mjs) |
+| `@egret/engine/text` | [JY](JY/web/opening-dialogue.mjs) |
 | `@egret/engine/layout` | 无 · none |
 | `@egret/engine/web/input` | 无 · none |
 | `@egret/engine/web/image` | 无 · none |

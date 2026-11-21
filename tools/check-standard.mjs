@@ -29,6 +29,9 @@ export const SECTIONS = [
   { key: 'layout', heading: '## 目录结构 · Layout', match: /^layout|structure|what is here/i },
   { key: 'engineCopy', heading: '## 引擎副本 · Engine copy', match: /engine copy|vendored engine|engine and licen/i }
 ];
+/** The line a game writes in ENGINE-NOTES when it met no engine fault. */
+export const NONE_RECORDED = /^\*\*没有记录到引擎问题 · No engine issues recorded\*\*/m;
+
 export const PLACEHOLDER = '（待补 · To be written）';
 
 /** The game folders: every top-level folder with an engine copy, and the template. */
@@ -121,9 +124,11 @@ export function checkGame(folder, { root = ROOT, fix = false } = {}) {
   row('ENGINE-NOTES.md', notes !== null);
   if (notes !== null) {
     const items = notesItems(notes);
-    row('ENGINE-NOTES: numbered items', items.length > 0, `${items.length} items`);
+    // A game that met no engine fault says so in one line of its own, rather than inventing an item.
+    const none = items.length === 0 && NONE_RECORDED.test(notes);
+    row('ENGINE-NOTES: numbered items', items.length > 0 || none, none ? 'none recorded' : `${items.length} items`);
     const bad = items.filter((item) => !item.status || !item.parts.every(Boolean));
-    row('ENGINE-NOTES: status, what happens, workaround, suggestion in every item', items.length > 0 && bad.length === 0, bad.length ? `incomplete: ${bad.map((item) => item.number).join(', ')}` : '');
+    row('ENGINE-NOTES: status, what happens, workaround, suggestion in every item', none || (items.length > 0 && bad.length === 0), bad.length ? `incomplete: ${bad.map((item) => item.number).join(', ')}` : '');
   }
 
   row('QUALITY.md', existsSync(join(dir, 'QUALITY.md')));
