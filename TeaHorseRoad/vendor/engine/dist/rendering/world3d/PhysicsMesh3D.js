@@ -9,6 +9,51 @@ import { Mesh3D } from './Mesh3D.js';
 import { Object3D } from './Object3D.js';
 /** The most triangles a mesh shape has, and how many a leaf of its tree holds. */
 export const PHYSICS_MESH3D_LIMITS = Object.freeze({ maxTriangles: 4194304, leafTriangles: 4 });
+const preparedMesh = Symbol('prepared mesh');
+
+function checkPreparedMesh(positions, indices, nodeBounds, nodeLeft, nodeStart, nodeCount) {
+    const invalid = () => new World3DError('WORLD3D_INPUT_INVALID', 'prepared mesh buffers');
+    const viewIs = (view, type) => view instanceof type && view.buffer instanceof ArrayBuffer;
+    if (!viewIs(positions, Float32Array) || !viewIs(indices, Uint32Array) ||
+        !viewIs(nodeBounds, Float32Array) || !viewIs(nodeLeft, Int32Array) ||
+        !viewIs(nodeStart, Int32Array) || !viewIs(nodeCount, Int32Array))
+        throw invalid();
+    const vertices = positions.length / 3, triangles = indices.length / 3, nodes = nodeLeft.length;
+    if (vertices < 3 || !Number.isInteger(vertices) || triangles < 1 || !Number.isInteger(triangles) ||
+        triangles > PHYSICS_MESH3D_LIMITS.maxTriangles || !nodes || nodes > 2 * triangles - 1 ||
+        nodeBounds.length !== nodes * 6 || nodeStart.length !== nodes || nodeCount.length !== nodes ||
+        nodeStart[0] !== 0 || nodeCount[0] !== triangles)
+        throw invalid();
+    for (let i = 0; i < positions.length; i++)
+        if (!Number.isFinite(positions[i]))
+            throw invalid();
+    for (let i = 0; i < indices.length; i++)
+        if (indices[i] >= vertices)
+            throw invalid();
+    // Children follow their parents in this layout. Record each once and bound traversal stack use.
+    const depth = new Uint8Array(nodes);
+    depth[0] = 1;
+    for (let node = 0; node < nodes; node++) {
+        const offset = node * 6, child = nodeLeft[node], start = nodeStart[node], count = nodeCount[node];
+        if (!depth[node] || start < 0 || count < 1 || start + count > triangles)
+            throw invalid();
+        for (let axis = 0; axis < 3; axis++) {
+            const low = nodeBounds[offset + axis], high = nodeBounds[offset + 3 + axis];
+            if (!Number.isFinite(low) || !Number.isFinite(high) || low > high)
+                throw invalid();
+        }
+        if (child === -1) {
+            if (count > PHYSICS_MESH3D_LIMITS.leafTriangles)
+                throw invalid();
+            continue;
+        }
+        if (child <= node || child + 1 >= nodes || depth[child] || depth[child + 1] || depth[node] > 61 ||
+            nodeStart[child] !== start || nodeStart[child + 1] !== start + nodeCount[child] ||
+            nodeCount[child] + nodeCount[child + 1] !== count)
+            throw invalid();
+        depth[child] = depth[child + 1] = depth[node] + 1;
+    }
+}
 /** A triangle mesh as a physics shape, for bodies that do not move. */
 export class TriangleMeshShape3D {
     /** Vertex positions, three floats each, in the shape's local space. */
@@ -25,6 +70,19 @@ export class TriangleMeshShape3D {
     #nodeCount;
     #stack = new Int32Array(64);
     constructor(positions, indices) {
+        if (positions === preparedMesh) {
+            const { positions, indices: sorted, nodeBounds, nodeLeft, nodeStart, nodeCount } = indices ?? {};
+            checkPreparedMesh(positions, sorted, nodeBounds, nodeLeft, nodeStart, nodeCount);
+            this.positions = positions;
+            this.indices = sorted;
+            this.triangleCount = sorted.length / 3;
+            this.#nodeBounds = nodeBounds;
+            this.#nodeLeft = nodeLeft;
+            this.#nodeStart = nodeStart;
+            this.#nodeCount = nodeCount;
+            this.bounds.set(nodeBounds.subarray(0, 6));
+            return;
+        }
         if (!positions || positions.length < 9 || positions.length % 3 !== 0)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'mesh positions');
         const vertexCount = positions.length / 3, source = indices ?? Array.from({ length: vertexCount }, (_, i) => i);
@@ -125,6 +183,23 @@ export class TriangleMeshShape3D {
         this.#nodeStart = nodeStart.slice(0, used);
         this.#nodeCount = nodeCount.slice(0, used);
         this.bounds.set(this.#nodeBounds.subarray(0, 6));
+    }
+    /**
+     * Internal buffers for transferring a newly created shape to another thread.
+     * Do not mutate them or use this shape once its buffers have been transferred.
+     */
+    exportBuffers() {
+        return {
+            positions: this.positions, indices: this.indices, nodeBounds: this.#nodeBounds,
+            nodeLeft: this.#nodeLeft, nodeStart: this.#nodeStart, nodeCount: this.#nodeCount
+        };
+    }
+    /**
+     * Adopt buffers from exportBuffers on the same engine version. Collision data is
+     * trusted and the receiving shape takes ownership without copying or building a tree.
+     */
+    static fromBuffers(buffers) {
+        return new TriangleMeshShape3D(preparedMesh, buffers);
     }
     /** Call `visit` with each triangle index whose bounds may touch the box. */
     query(minX, minY, minZ, maxX, maxY, maxZ, visit) {
