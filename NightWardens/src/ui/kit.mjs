@@ -5,16 +5,16 @@
 // controls (`createActionControl` pressed, `createToggleControl` on or off, `createRangeControl` a value,
 // `createSelectionGroup` the chosen one), their keys are bound by `createControlKeys`, and what a screen reader finds is
 // a node of the engine's semantic tree. This file only paints each state; a new game changes its colours and shapes here.
-import { DisplayObjectContainer, Sprite } from '@egret/engine';
+import { Bitmap, DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createActionControl, createControlKeys, createRangeControl, createSelectionGroup, createToggleControl } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
 /** The palette: a night blue, an amber accent, a red for the main button, a teal for what is on, and paper. */
-export const INK = 0x0e1420,
-  NIGHT = 0x1d2a3e,
-  AMBER = 0xf0b85a,
-  RED = 0xb8503a,
-  TEAL = 0x3f9a92,
-  PAPER = 0xf3ead6;
+export const INK = 0x080f1b,
+  NIGHT = 0x142333,
+  AMBER = 0xdcb777,
+  RED = 0xb74432,
+  TEAL = 0x83c7b7,
+  PAPER = 0xf5ead2;
 const GOLD = AMBER,
   LACQUER = RED;
 
@@ -23,6 +23,24 @@ export const SANS = '"Noto Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microso
 
 const stops = (...pairs) => pairs.map(([offset, color, alpha = 1]) => ({ offset, color, alpha }));
 let serial = 0;
+let measureCanvas;
+
+function wrapped(text, width, size, family, weight) {
+  measureCanvas ??= document.createElement('canvas');
+  const g = measureCanvas.getContext('2d');
+  g.font = `${weight} ${size}px ${family}`;
+  const result = [];
+  for (const paragraph of String(text).split('\n')) {
+    const tokens = /\s/.test(paragraph) ? paragraph.split(/(\s+)/) : [...paragraph];
+    let line = '';
+    for (const token of tokens) {
+      if (line && g.measureText(line + token).width > width) { result.push(line.trim()); line = token.trimStart(); }
+      else line += token;
+    }
+    result.push(line.trim());
+  }
+  return result.join('\n');
+}
 
 /**
  * The parts of one screen. Everything made through it is let go together when the screen closes:
@@ -38,8 +56,9 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
   const focusShown = () => keyboard?.getSnapshot().focusVisible;
 
   /** A line of text in the page's fonts, made by the game, placed when its words are ready. */
-  async function label(container, text, { x = 0, y = 0, size = 22, color = 0xf0e4c8, family = FONT, weight = 400, align = 'left', width } = {}) {
-    const made = await game.createLabel({ text, fontSize: size, color, fontFamily: family, fontWeight: weight, locale });
+  async function label(container, text, { x = 0, y = 0, size = 22, color = PAPER, family = FONT, weight = 400, align = 'left', width, wrap = false } = {}) {
+    const prepare = value => wrap && width ? wrapped(value, width, size, family, weight) : value;
+    const made = await game.createLabel({ text: prepare(text), fontSize: size, lineHeight: Math.round(size * 1.38), color, fontFamily: family, fontWeight: weight, locale });
     own({ dispose: () => made.dispose() });
     container.addChild(made.display);
     const place = () => {
@@ -52,11 +71,37 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
     return {
       display: made.display,
       async set(words) {
-        made.text = words;
+        made.text = prepare(words);
         await made.ready;
         place();
       }
     };
+  }
+
+  /** Crop a real scene painting once, rather than add another live full-screen layer. */
+  async function sceneImage(container, url, { x = 0, y = 0, width, height, index } = {}) {
+    const source = new Image();
+    source.src = url;
+    try {
+      await source.decode();
+    } catch {
+      // A missing illustration must not stop the player opening a night.
+      return null;
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(width * 2);
+    canvas.height = Math.ceil(height * 2);
+    const g = canvas.getContext('2d'), scale = Math.max(canvas.width / source.naturalWidth, canvas.height / source.naturalHeight);
+    const sw = canvas.width / scale, sh = canvas.height / scale;
+    g.drawImage(source, (source.naturalWidth - sw) / 2, (source.naturalHeight - sh) * .38, sw, sh, 0, 0, canvas.width, canvas.height);
+    // textureFromCanvas already gives this lease to the game's outer scope.
+    // Retire it early with an adapter, rather than claim it for a second scope.
+    const lease = await game.textureFromCanvas(canvas);
+    scope.use({ dispose: () => lease.release() });
+    const bitmap = scope.use(new Bitmap(lease));
+    if (index === undefined) container.addChild(bitmap); else container.addChildAt(bitmap, index);
+    bitmap.x = x; bitmap.y = y; bitmap.scaleX = bitmap.scaleY = .5;
+    return bitmap;
   }
 
   /** A keyboard stop on `target`, with the keys of its kind bound to its control. */
@@ -71,7 +116,8 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
    * A lacquered button with words on it. `onActivate` runs on a press that is released on it, on Space or
    * Enter while it holds the focus, and when assistive technology activates it.
    */
-  async function button({ x, y, width = 160, height = 48, text, sub, onActivate, name = text, primary = false, container = parent, small = false, disabledAlpha = 0.45 }) {
+  async function button({ x, y, width = 160, height = 48, text, sub, onActivate, name = text, primary = false, container = parent, small = false, disabledAlpha = 0.62,
+    tone = 'night', imageUrl, titleSize = small ? 19 : 24, detailSize = 17, textY, subY, textAlign = 'center', inset = 22, accent = GOLD } = {}) {
     const id = `${prefix}-button-${++serial}`;
     const root = container.addChild(scope.use(new DisplayObjectContainer())),
       ring = root.addChild(scope.use(new Sprite())),
@@ -80,8 +126,11 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
     root.y = y;
     face.touchEnabled = true;
     face.hitArea = { x: 0, y: 0, width, height };
-    const words = await label(root, text, { x: 0, y: (sub ? height * 0.1 : (height - (small ? 18 : 22) * 1.25) / 2), size: small ? 18 : 22, align: 'center', width, color: primary ? 0xfff2d6 : 0xf0e4c8, weight: 600 });
-    const under = sub ? await label(root, sub, { x: 0, y: height * 0.62, size: 12, align: 'center', width, color: 0xc8bba0, family: SANS }) : null;
+    const scene = imageUrl ? await sceneImage(root, imageUrl, { x: 2, y: 2, width: width - 4, height: height - 4, index: 1 }) : null;
+    const titleY = textY ?? (sub ? height * .16 : (height - titleSize * 1.25) / 2),
+      detailY = subY ?? height * .57;
+    const words = await label(root, text, { x: inset, y: titleY, size: titleSize, align: textAlign, width: width - inset * 2, color: tone === 'paper' ? 0x382c26 : PAPER, weight: 700, wrap: true });
+    const under = sub ? await label(root, sub, { x: inset, y: detailY, size: detailSize, align: textAlign, width: width - inset * 2, color: tone === 'paper' ? 0x5b5146 : 0xd8cbb1, family: SANS, wrap: true }) : null;
     const state = { enabled: true };
     const action = own(createActionControl({ input, target: face, onActivate: () => {
         sound?.play('tap');
@@ -94,18 +143,23 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
         focused = focusShown() && focusId() === id;
       g.clear();
       g.lineStyle(2, INK, 1);
-      const top = primary ? 0xb8503a : 0x2a3c56,
-        bottom = primary ? 0x6e2c20 : 0x151f30;
-      g.beginLinearGradientFill(0, 0, 0, height, stops([0, pressed ? bottom : top], [1, pressed ? top : bottom]))
-        .drawRoundRect(0, pressed ? 2 : 0, width, height, 10, 10)
+      const paper = tone === 'paper', quiet = tone === 'quiet';
+      const top = paper ? 0xf4e8ce : primary ? 0xbd4d38 : 0x1b2c3c,
+        bottom = paper ? 0xdcc9a6 : primary ? 0x75271f : 0x0b1725;
+      g.beginLinearGradientFill(0, 0, 0, height, scene
+        ? stops([0, INK, pressed ? .45 : .12], [.45, INK, .2], [1, INK, .94])
+        : stops([0, pressed ? bottom : top, quiet ? .72 : 1], [1, pressed ? top : bottom, quiet ? .88 : 1]))
+        .drawRoundRect(0, pressed ? 2 : 0, width, height, 5, 5)
         .endFill();
-      g.lineStyle(1.5, state.enabled ? GOLD : 0x6a6050, state.enabled ? (primary ? 0.85 : 0.48) : 0.5);
-      g.drawRoundRect(4, (pressed ? 2 : 0) + 4, width - 8, height - 8, 7, 7);
+      g.lineStyle(primary ? 2 : 1, state.enabled ? accent : 0x887655, state.enabled ? (primary ? .95 : .66) : .5);
+      g.drawRoundRect(4, (pressed ? 2 : 0) + 4, width - 8, height - 8, 3, 3);
+      g.lineStyle(0).beginFill(accent, paper ? .8 : .65).drawRect(12, height - 10, 18, 2).drawRect(width - 30, height - 10, 18, 2).endFill();
       g.lineStyle(0);
       ring.graphics.clear();
       if (focused) ring.graphics.lineStyle(3, 0xffe08a, 1).drawRoundRect(-4, -4, width + 8, height + 8, 14, 14).lineStyle(0);
       root.alpha = state.enabled ? 1 : disabledAlpha;
-      words.display.y = (sub ? height * 0.1 : (height - (small ? 18 : 22) * 1.25) / 2) + (pressed ? 2 : 0);
+      words.display.y = titleY + (pressed ? 2 : 0);
+      if (under) under.display.y = detailY + (pressed ? 2 : 0);
     }
     painters.push(paint);
     paint();
@@ -292,14 +346,15 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
     sprite.x = x;
     sprite.y = y;
     g.lineStyle(3, INK, 1);
-    g.beginLinearGradientFill(0, 0, 0, height, stops([0, 0x26324c, alpha], [1, 0x121826, alpha])).drawRoundRect(0, 0, width, height, 16, 16).endFill();
-    g.lineStyle(1.5, GOLD, 0.6).drawRoundRect(8, 8, width - 16, height - 16, 10, 10).lineStyle(0);
-    g.beginFill(GOLD, 0.9).drawRect(20, 0, width - 40, 4).endFill();
+    g.beginLinearGradientFill(0, 0, 0, height, stops([0, 0x1c2c3d, alpha], [1, 0x0b1421, alpha])).drawRoundRect(0, 0, width, height, 6, 6).endFill();
+    g.lineStyle(1, GOLD, .72).drawRect(7, 7, width - 14, height - 14).lineStyle(0);
+    g.beginFill(GOLD, .9).drawRect(22, 0, 34, 3).drawRect(width - 56, height - 3, 34, 3).endFill();
     return sprite;
   }
 
   return {
     label,
+    sceneImage,
     button,
     toggle,
     slider,

@@ -1,10 +1,5 @@
-// 美术：所有的画都在这里用代码画在 2D 画布上——纸人、鬼火、僵尸、灯笼鬼、鬼新娘、三位首领、符弩、符箭、魂珠，
-// 还有三夜的路面。没有图片文件：每帧是一个 draw(g) 函数，在以帧中心为原点、以规则单位为长度的坐标里画。
-// atlas.mjs 把它们按 2 倍分辨率排进一张图集，交给引擎做纹理。
-// The art: everything is painted here in code on a 2D canvas — paper dolls, ghost fire, jiangshi, lantern ghosts, the
-// ghost bride, the three wardens, the crossbow, its bolts, souls, and the road of each night. There are no picture
-// files: each frame is a draw(g) function in coordinates centred on the frame, in rule units. atlas.mjs packs them at
-// twice that resolution into one atlas and hands it to the engine as a texture.
+// 战场精灵和粒子纹理绘制在以帧中心为原点的 2D 画布上，由 atlas.mjs 打包。
+// Battlefield sprites and particle textures are painted in frame-local coordinates and packed by atlas.mjs.
 
 const TAU = Math.PI * 2;
 
@@ -100,7 +95,9 @@ export function paperDoll(g, f) {
     g.stroke();
   }
   // A red sash.
-  poly(g, [[-9, 7], [9, 7], [10, 10], [-10, 10]], '#b3242a');
+  poly(g, [[-9, 7], [9, 7], [10, 10], [-10, 10]], linear(g, -9, 0, 9, 0, [[0, '#6e2028'], [0.5, '#d66349'], [1, '#92283a']]));
+  poly(g, [[0, 8], [5, 9], [7, 21], [2, 18]], '#ab3434', '#61202c', 0.65);
+  glyph(g, -3, 15, 5, '#92392e');
   // Arms as stiff paper strips.
   for (const side of [-1, 1]) {
     g.save();
@@ -113,7 +110,7 @@ export function paperDoll(g, f) {
   }
   // Head: a flat paper face, black hair, two red cheeks and a thin smile.
   outline(g, () => g.arc(0, -12, 9, 0, TAU));
-  ellipse(g, 0, -12, 9, 9, '#f7f2e6');
+  ellipse(g, 0, -12, 9, 9, radial(g, -3, -15, 1, 15, [[0, '#fff4d8'], [0.65, '#e9d6b7'], [1, '#b48d76']]));
   g.beginPath();
   g.arc(0, -14, 9.2, Math.PI * 1.02, Math.PI * 1.98);
   g.lineTo(6, -16);
@@ -147,6 +144,13 @@ export function wisp(g, f) {
   g.bezierCurveTo(-12, 6, sway - 8, -4, 0, -18 * tall);
   g.fillStyle = linear(g, 0, -18, 0, 13, [[0, 'rgba(120,255,200,0.2)'], [0.5, '#4fe0a4'], [1, '#1f9a78']]);
   g.fill();
+  g.beginPath();
+  g.moveTo(sway * 0.7 - 2, -14 * tall);
+  g.quadraticCurveTo(sway + 6, -6, 4, 0);
+  g.quadraticCurveTo(9, 8, 0, 11);
+  g.strokeStyle = 'rgba(196,255,216,0.65)';
+  g.lineWidth = 0.8;
+  g.stroke();
   ellipse(g, 0, 5, 5.5, 6.5, radial(g, 0, 5, 0, 7, [[0, '#f4fff8'], [1, 'rgba(190,255,225,0.6)']]));
   // Two hollow eyes.
   ellipse(g, -2.2, 3, 1.3, 1.8, '#0c2a22');
@@ -175,6 +179,8 @@ export function jiangshi(g, f) {
   robe();
   g.fillStyle = linear(g, 0, -8, 0, 20, [[0, '#2c3a68'], [1, '#18203c']]);
   g.fill();
+  poly(g, [[-10, -7], [0, -1], [9, -7], [5, -2], [0, 2], [-6, -1]], '#828cab', '#202940', 0.6);
+  poly(g, [[-14, 16], [14, 16], [15, 20], [-15, 20]], '#29345a', '#778293', 0.65);
   poly(g, [[-6, 0], [6, 0], [6, 11], [-6, 11]], '#b88a2e', '#5e4310', 1);
   g.strokeStyle = '#e0c06a';
   g.lineWidth = 0.9;
@@ -234,6 +240,13 @@ export function lanternGhost(g, f) {
     g.ellipse(0, 0, Math.abs(x), 15, 0, 0, TAU);
     g.stroke();
   }
+  g.strokeStyle = 'rgba(255,181,121,0.55)';
+  g.lineWidth = 0.65;
+  for (const x of [7, 13]) {
+    g.beginPath();
+    g.ellipse(0, 0, x, 14.5, 0, Math.PI * 1.1, Math.PI * 1.88);
+    g.stroke();
+  }
   poly(g, [[-8, -17], [8, -17], [7, -14], [-7, -14]], '#2a1c12');
   poly(g, [[-7, 14], [7, 14], [8, 17], [-8, 17]], '#2a1c12');
   // One eye, wide open.
@@ -279,6 +292,13 @@ export function ghostBride(g, f) {
   g.moveTo(-17, 18);
   g.quadraticCurveTo(0, 25, 17, 18);
   g.stroke();
+  for (const side of [-1, 1]) {
+    g.beginPath();
+    g.moveTo(side * 8, 15);
+    g.quadraticCurveTo(side * 16, 24, side * (17 + flutter), 33);
+    g.stroke();
+    for (let i = 0; i < 3; i++) ellipse(g, side * (7 + i * 3), 25 + i * 2, 0.85, 0.85, '#edc58a');
+  }
   // Pale hands folded.
   ellipse(g, -4, 2, 3.4, 2.6, '#efe3dc');
   ellipse(g, 4, 2, 3.4, 2.6, '#efe3dc');
@@ -532,59 +552,89 @@ export function droughtDemon(g, f) {
 
 /** The crossbow seen from behind and above, pointing up (rotation 0 = up). */
 export function crossbow(g) {
-  // The stock.
-  poly(g, [[-6, -30], [6, -30], [8, 26], [-8, 26]], '#6a3e1c', 'rgba(8,6,12,0.95)', 3);
-  g.fillStyle = 'rgba(255,220,160,0.18)';
-  g.fillRect(-2, -28, 3, 52);
-  // The bow arms, lacquered red with gold tips.
+  const brass = linear(g, -8, 0, 8, 0, [[0, '#724822'], [0.30, '#e2b568'], [0.58, '#f6d297'], [1, '#966738']]);
+  const lacquer = linear(g, 0, -18, 0, 8, [[0, '#e77654'], [0.35, '#ad483b'], [1, '#521c26']]);
+  ellipse(g, 0, 13, 26, 15, 'rgba(3,6,12,0.32)');
+  poly(g, [[-5, -31], [5, -31], [8, 18], [6, 27], [-6, 27], [-8, 18]], linear(g, -8, 0, 8, 0, [[0, '#241517'], [0.4, '#875037'], [0.65, '#5b2d24'], [1, '#2a171b']]), '#0b0b14', 2.5);
+  poly(g, [[-5, -29], [5, -29], [4, 11], [-4, 11]], brass, '#4f3222', 0.9);
+  poly(g, [[-2.4, -25], [2.4, -25], [2.6, 7], [-2.6, 7]], '#412725');
+  // Laminate the swept bow arms with lacquer and bronze fittings.
   g.lineCap = 'round';
-  g.lineWidth = 8;
-  g.strokeStyle = 'rgba(8,6,12,0.95)';
   g.beginPath();
-  g.moveTo(-34, -6);
-  g.quadraticCurveTo(0, -30, 34, -6);
+  g.moveTo(-35, -5);
+  g.bezierCurveTo(-24, -1, -14, -23, 0, -12);
+  g.bezierCurveTo(14, -23, 24, -1, 35, -5);
+  g.lineWidth = 9.5;
+  g.strokeStyle = '#0e0b16';
   g.stroke();
-  g.lineWidth = 5;
-  g.strokeStyle = '#b3242a';
+  g.lineWidth = 6.5;
+  g.strokeStyle = lacquer;
   g.stroke();
-  for (const side of [-1, 1]) ellipse(g, side * 34, -6, 3.5, 3.5, '#e3b84a');
-  // The string, and a talisman bolt laid in it.
-  g.lineWidth = 1.2;
-  g.strokeStyle = '#efe6cf';
-  g.beginPath();
-  g.moveTo(-34, -6);
-  g.lineTo(0, 8);
-  g.lineTo(34, -6);
-  g.stroke();
-  poly(g, [[-3, -26], [3, -26], [3, 6], [-3, 6]], '#f1d14a', '#6e4c10', 0.8);
-  // A bronze bagua plate at the grip.
-  ellipse(g, 0, 16, 9, 9, '#b98a34');
-  g.strokeStyle = '#5e4310';
   g.lineWidth = 1;
+  g.strokeStyle = 'rgba(255,198,140,0.77)';
+  g.stroke();
+  for (const side of [-1, 1]) {
+    ellipse(g, side * 34, -5, 4.2, 3.7, '#c59354');
+    ellipse(g, side * 34, -5, 1.4, 1.4, '#ffe5af');
+    poly(g, [[side * 13, -16], [side * 18, -14], [side * 18, -9], [side * 13, -11]], '#a67a4a', '#452628', 0.85);
+  }
+  g.lineWidth = 1.1;
+  g.strokeStyle = '#ecdbb7';
+  g.beginPath();
+  g.moveTo(-34, -5);
+  g.lineTo(0, 8);
+  g.lineTo(34, -5);
+  g.stroke();
+  const paper = linear(g, 0, -28, 0, 8, [[0, '#ffe9ad'], [0.5, '#e8ad5b'], [1, '#b67c3f']]);
+  poly(g, [[0, -31], [3.2, -25], [3.2, 6], [-3.2, 6], [-3.2, -25]], paper, '#543221', 0.75);
+  glyph(g, 0, -16, 6.5, '#a2392b');
+  ellipse(g, 0, 17, 10, 10, '#161821');
+  ellipse(g, 0, 17, 8.9, 8.9, brass);
+  g.strokeStyle = '#513427';
+  g.lineWidth = 0.85;
   for (let i = 0; i < 8; i++) {
-    const a = (i / 8) * TAU;
+    const angle = i * TAU / 8;
+    const x = Math.cos(angle), y = Math.sin(angle);
     g.beginPath();
-    g.moveTo(Math.cos(a) * 4, 16 + Math.sin(a) * 4);
-    g.lineTo(Math.cos(a) * 8, 16 + Math.sin(a) * 8);
+    g.moveTo(x * 4.6, 17 + y * 4.6);
+    g.lineTo(x * 7.4, 17 + y * 7.4);
     g.stroke();
   }
-  ellipse(g, 0, 16, 3, 3, '#1a1a22');
+  ellipse(g, 0, 17, 3.8, 3.8, '#1c2530');
+  ellipse(g, -0.8, 16.2, 1.45, 1.45, '#f7d28d');
 }
 
 /** The tower the crossbow stands on: a roofed platform over the gate. */
 export function gateTower(g) {
-  ellipse(g, 0, 26, 50, 8, 'rgba(0,0,0,0.4)');
-  poly(g, [[-44, -4], [44, -4], [40, 24], [-40, 24]], '#5a3022', 'rgba(8,6,12,0.95)', 3);
+  ellipse(g, 0, 18, 48, 4, 'rgba(0,0,0,0.46)');
+  poly(g, [[-43, -6], [43, -6], [39, 17], [-39, 17]], linear(g, 0, -6, 0, 18, [[0, '#653738'], [0.52, '#41252b'], [1, '#231a22']]), '#0b0d16', 2);
   for (const x of [-30, -10, 10, 30]) {
-    g.fillStyle = '#3e1e14';
-    g.fillRect(x - 2, -2, 4, 24);
+    g.fillStyle = '#271c24';
+    g.fillRect(x - 2, -2, 4, 17);
+    g.fillStyle = '#825747';
+    g.fillRect(x - 2, 0, 1, 14);
   }
-  poly(g, [[-48, -10], [48, -10], [44, -2], [-44, -2]], '#2a2a32', 'rgba(8,6,12,0.95)', 2);
+  poly(g, [[-50, -12], [-36, -9], [36, -9], [50, -12], [43, -1], [-43, -1]], linear(g, 0, -12, 0, 0, [[0, '#74727a'], [0.48, '#3d4653'], [1, '#20232f']]), '#0c101a', 1.6);
+  g.strokeStyle = '#b08a61';
+  g.lineWidth = 0.8;
+  g.beginPath();
+  g.moveTo(-48, -11);
+  g.quadraticCurveTo(0, -4, 48, -11);
+  g.stroke();
+  for (let x = -36; x <= 36; x += 8) {
+    g.beginPath();
+    g.moveTo(x, -7);
+    g.lineTo(x, -2);
+    g.strokeStyle = '#202532';
+    g.stroke();
+  }
+  poly(g, [[-6, 1], [6, 1], [6, 13], [-6, 13]], '#d9a563', '#502d22', 1.1);
+  glyph(g, 0, 7, 6, '#9d302c');
   for (const side of [-1, 1]) {
-    ellipse(g, side * 40, 8, 6, 8, '#c8302a');
+    ellipse(g, side * 39, 7, 5.5, 7, radial(g, side * 39, 6, 0, 7, [[0, '#ffd186'], [0.36, '#ea7147'], [1, '#9d312e']]));
     g.save();
     g.globalCompositeOperation = 'lighter';
-    ellipse(g, side * 40, 8, 14, 14, radial(g, side * 40, 8, 0, 14, [[0, 'rgba(255,170,90,0.6)'], [1, 'rgba(255,90,40,0)']]));
+    ellipse(g, side * 39, 7, 13, 13, radial(g, side * 39, 7, 0, 13, [[0, 'rgba(255,170,90,0.42)'], [1, 'rgba(255,90,40,0)']]));
     g.restore();
   }
 }
@@ -660,238 +710,3 @@ export const PARTICLES = {
       ellipse(g, s * x, s * y, s * r, s * r, radial(g, s * x, s * y, 0, s * r, [[0, 'rgba(255,255,255,0.6)'], [1, 'rgba(255,255,255,0)']]));
   }
 };
-
-// ——— The roads of the three nights, with the wall at the bottom. In rule units: 540 × 900. ———
-
-/** A small seeded random for the painting, so the road looks the same each time. */
-function painterChance(seed) {
-  let a = seed >>> 0;
-  return () => {
-    a = (a + 0x6d2b79f5) >>> 0;
-    let t = Math.imul(a ^ (a >>> 15), a | 1);
-    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
-
-function stonePath(g, r, { tone = [46, 50, 62], width = 300 } = {}) {
-  const left = 270 - width / 2;
-  g.fillStyle = `rgb(${tone.join(',')})`;
-  g.fillRect(left, 0, width, 812);
-  for (let y = 0; y < 812; y += 28) {
-    const offset = (y / 28) % 2 ? 0 : 20;
-    for (let x = left - offset; x < left + width; x += 40) {
-      const shade = 0.85 + r() * 0.3;
-      g.fillStyle = `rgb(${tone.map((c) => Math.round(c * shade)).join(',')})`;
-      g.fillRect(Math.max(left, x + 1), y + 1, Math.min(38, left + width - x - 1), 26);
-    }
-  }
-  // Cracks and moss.
-  g.strokeStyle = 'rgba(10,10,14,0.5)';
-  g.lineWidth = 1.2;
-  for (let i = 0; i < 40; i++) {
-    const x = left + r() * width,
-      y = r() * 800;
-    g.beginPath();
-    g.moveTo(x, y);
-    g.lineTo(x + (r() - 0.5) * 30, y + r() * 20);
-    g.stroke();
-  }
-  for (let i = 0; i < 30; i++) ellipse(g, left + r() * width, r() * 800, 4 + r() * 8, 2 + r() * 4, 'rgba(60,90,60,0.35)');
-  // The edges of the road.
-  g.fillStyle = 'rgba(0,0,0,0.35)';
-  g.fillRect(left - 6, 0, 6, 812);
-  g.fillRect(left + width, 0, 6, 812);
-}
-
-function lanternPost(g, x, y, colour = '#c8302a', glowColour = 'rgba(255,150,80,') {
-  g.fillStyle = '#2a1c14';
-  g.fillRect(x - 2, y - 40, 4, 44);
-  g.fillRect(x - 10, y - 42, 20, 3);
-  ellipse(g, x, y - 30, 7, 9, colour);
-  g.save();
-  g.globalCompositeOperation = 'lighter';
-  ellipse(g, x, y - 30, 40, 40, radial(g, x, y - 30, 0, 40, [[0, glowColour + '0.45)'], [1, glowColour + '0)']]));
-  g.restore();
-}
-
-function wallAndGate(g) {
-  // The battlements along the bottom: grey brick, crenellations, red lanterns, the gate's roof in the middle.
-  g.fillStyle = '#3a3c46';
-  g.fillRect(0, 812, 540, 88);
-  for (let y = 818; y < 900; y += 12)
-    for (let x = ((y - 818) / 12) % 2 ? -14 : 0; x < 540; x += 28) {
-      g.fillStyle = `rgba(${70 + ((x * 7 + y) % 18)},${72 + ((x * 3 + y) % 14)},${84 + ((x + y) % 16)},1)`;
-      g.fillRect(x + 1, y + 1, 26, 10);
-    }
-  for (let x = 0; x < 540; x += 36) {
-    g.fillStyle = '#4a4c58';
-    g.fillRect(x + 4, 798, 22, 18);
-    g.fillStyle = 'rgba(255,255,255,0.08)';
-    g.fillRect(x + 4, 798, 22, 3);
-  }
-  g.fillStyle = 'rgba(0,0,0,0.45)';
-  g.fillRect(0, 812, 540, 4);
-  for (const x of [60, 150, 390, 480]) lanternPost(g, x, 842);
-}
-
-function fog(g, colour) {
-  g.fillStyle = linear(g, 0, 0, 0, 260, [[0, colour.replace('A', '0.75')], [1, colour.replace('A', '0')]]);
-  g.fillRect(0, 0, 540, 260);
-}
-
-/** 城隍庙外: the road outside the city god's temple — red walls, incense, stone lions. */
-function temple(g) {
-  const r = painterChance(11);
-  g.fillStyle = '#141824';
-  g.fillRect(0, 0, 540, 900);
-  stonePath(g, r);
-  // Red temple walls on both sides with grey tiled tops.
-  for (const side of [0, 1]) {
-    const x = side ? 425 : 0;
-    g.fillStyle = linear(g, x, 0, x + 115, 0, side ? [[0, '#5e1c1c'], [1, '#3a1010']] : [[0, '#3a1010'], [1, '#5e1c1c']]);
-    g.fillRect(x, 0, 115, 812);
-    g.fillStyle = '#23252e';
-    g.fillRect(side ? 425 : 100, 0, 15, 812);
-    for (let y = 0; y < 812; y += 10) {
-      g.fillStyle = y % 20 ? '#30323c' : '#1c1e26';
-      g.fillRect(side ? 425 : 100, y, 15, 6);
-    }
-  }
-  // Incense burner far up the road, stone lions near the gate.
-  ellipse(g, 270, 120, 34, 12, '#2a2a30');
-  poly(g, [[244, 120], [296, 120], [290, 80], [250, 80]], '#4a3a2a', '#1a140e', 2);
-  for (const x of [256, 270, 284]) {
-    g.strokeStyle = 'rgba(220,210,200,0.35)';
-    g.lineWidth = 1.5;
-    g.beginPath();
-    g.moveTo(x, 78);
-    g.bezierCurveTo(x - 8, 60, x + 8, 40, x, 20);
-    g.stroke();
-  }
-  for (const x of [140, 400]) {
-    ellipse(g, x, 760, 20, 8, 'rgba(0,0,0,0.4)');
-    poly(g, [[x - 16, 760], [x + 16, 760], [x + 12, 724], [x - 12, 724]], '#5a5c66', '#1c1d24', 2);
-    ellipse(g, x, 716, 14, 12, '#686a74');
-  }
-  for (const y of [180, 380, 580]) {
-    lanternPost(g, 118, y);
-    lanternPost(g, 422, y);
-  }
-  fog(g, 'rgba(30,40,70,A)');
-  wallAndGate(g);
-}
-
-/** 乱葬岗: the graveyard hill — earth, crooked tombstones, bare trees, paper money. */
-function graves(g) {
-  const r = painterChance(23);
-  g.fillStyle = linear(g, 0, 0, 0, 812, [[0, '#16201c'], [1, '#2a2a22']]);
-  g.fillRect(0, 0, 540, 900);
-  for (let i = 0; i < 400; i++) ellipse(g, r() * 540, r() * 812, 2 + r() * 6, 1 + r() * 3, `rgba(${60 + r() * 30},${56 + r() * 20},${40 + r() * 16},0.6)`);
-  // A worn path.
-  g.fillStyle = 'rgba(80,70,52,0.55)';
-  g.beginPath();
-  g.moveTo(190, 0);
-  g.bezierCurveTo(140, 300, 400, 500, 200, 812);
-  g.lineTo(340, 812);
-  g.bezierCurveTo(520, 500, 260, 300, 350, 0);
-  g.fill();
-  // Tombstones, leaning.
-  for (let i = 0; i < 22; i++) {
-    const x = r() * 520 + 10,
-      y = 60 + r() * 700,
-      lean = (r() - 0.5) * 0.4;
-    g.save();
-    g.translate(x, y);
-    g.rotate(lean);
-    ellipse(g, 0, 2, 16, 5, 'rgba(0,0,0,0.4)');
-    poly(g, [[-10, 0], [10, 0], [10, -26], [0, -32], [-10, -26]], '#5a5e5a', '#1a1c1a', 2);
-    g.fillStyle = 'rgba(20,20,20,0.6)';
-    g.fillRect(-2, -24, 4, 18);
-    g.restore();
-  }
-  // Bare trees at the sides.
-  for (const [x, y, s] of [[40, 200, 1], [500, 340, 1.2], [30, 560, 0.9], [510, 680, 1]]) {
-    g.strokeStyle = '#120e0c';
-    g.lineCap = 'round';
-    const branch = (bx, by, angle, length, width) => {
-      if (length < 8) return;
-      const ex = bx + Math.cos(angle) * length,
-        ey = by + Math.sin(angle) * length;
-      g.lineWidth = width;
-      g.beginPath();
-      g.moveTo(bx, by);
-      g.lineTo(ex, ey);
-      g.stroke();
-      branch(ex, ey, angle - 0.45 - r() * 0.2, length * 0.68, width * 0.65);
-      branch(ex, ey, angle + 0.4 + r() * 0.2, length * 0.62, width * 0.65);
-    };
-    branch(x, y, -Math.PI / 2, 60 * s, 9 * s);
-  }
-  // Paper money scattered.
-  for (let i = 0; i < 50; i++) {
-    g.save();
-    g.translate(r() * 540, r() * 800);
-    g.rotate(r() * TAU);
-    g.fillStyle = r() < 0.5 ? 'rgba(230,220,190,0.7)' : 'rgba(220,180,90,0.7)';
-    g.fillRect(-4, -3, 8, 6);
-    g.restore();
-  }
-  fog(g, 'rgba(40,70,60,A)');
-  wallAndGate(g);
-}
-
-/** 鬼市: the ghost market — a street of shuttered stalls under green lanterns, banners hanging. */
-function market(g) {
-  const r = painterChance(37);
-  g.fillStyle = '#0f1218';
-  g.fillRect(0, 0, 540, 900);
-  stonePath(g, r, { tone: [40, 44, 50], width: 330 });
-  // Stalls on both sides: roofs, counters, banners.
-  for (const side of [0, 1])
-    for (let y = 40; y < 780; y += 120) {
-      const x = side ? 440 : 0;
-      g.fillStyle = '#2a1e18';
-      g.fillRect(x, y, 100, 96);
-      poly(g, side ? [[430, y - 6], [540, y - 6], [540, y + 14], [440, y + 10]] : [[0, y - 6], [110, y - 6], [100, y + 10], [0, y + 14]], '#1e2028', '#0a0a0e', 2);
-      g.fillStyle = '#4a3020';
-      g.fillRect(side ? 440 : 10, y + 60, 90, 10);
-      const banner = side ? 446 : 82;
-      g.fillStyle = r() < 0.5 ? '#6a1a1e' : '#1e3a5a';
-      g.fillRect(banner, y + 14, 12, 40);
-      g.fillStyle = 'rgba(240,220,180,0.75)';
-      g.font = 'bold 9px serif';
-      g.textAlign = 'center';
-      ['當', '茶', '酒', '藥', '燭', '紙'].forEach((c, i) => i === Math.floor(r() * 6) && g.fillText(c, banner + 6, y + 36));
-      lanternPost(g, side ? 432 : 108, y + 70, '#2aa070', 'rgba(90,255,170,');
-    }
-  // Strings of lanterns across the road.
-  for (const y of [160, 420, 660]) {
-    g.strokeStyle = 'rgba(20,16,14,0.9)';
-    g.lineWidth = 1.2;
-    g.beginPath();
-    g.moveTo(100, y);
-    g.quadraticCurveTo(270, y + 40, 440, y);
-    g.stroke();
-    for (let i = 1; i < 8; i++) {
-      const t = i / 8,
-        x = 100 + t * 340,
-        yy = y + 4 * 40 * t * (1 - t);
-      ellipse(g, x, yy + 8, 5, 6, i % 2 ? '#2aa070' : '#c8302a');
-      g.save();
-      g.globalCompositeOperation = 'lighter';
-      ellipse(g, x, yy + 8, 16, 16, radial(g, x, yy + 8, 0, 16, [[0, i % 2 ? 'rgba(90,255,170,0.35)' : 'rgba(255,140,80,0.35)'], [1, 'rgba(0,0,0,0)']]));
-      g.restore();
-    }
-  }
-  fog(g, 'rgba(30,60,50,A)');
-  wallAndGate(g);
-}
-
-export const GROUNDS = { temple, graves, market };
-
-/** A dark edge around the field, drawn once and laid over everything but the interface. */
-export function vignette(g, w, h) {
-  g.fillStyle = radial(g, w / 2, h * 0.55, Math.min(w, h) * 0.35, Math.max(w, h) * 0.75, [[0, 'rgba(0,0,0,0)'], [1, 'rgba(0,0,8,0.72)']]);
-  g.fillRect(0, 0, w, h);
-}

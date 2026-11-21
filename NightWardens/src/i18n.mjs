@@ -18,10 +18,14 @@ export const WORDS = {
   sound: { zh: '声音', en: 'Sound' },
   reducedMotion: { zh: '减弱动画', en: 'Reduce motion' },
   saveRefused: { zh: '浏览器没有让游戏存档（可能是隐私模式），本次进度不会保留。', en: 'The browser did not let the game save (perhaps a private window); this progress will not be kept.' },
+  saveShort: { zh: '本次进度未能保存', en: 'This run could not be saved.' },
   saveReset: { zh: '存档读不懂，已重新开始；旧存档另存了一份。', en: 'The save could not be read and was started again; the old one was kept aside.' },
 
   // Choosing a night.
   chooseNight: { zh: '选一夜', en: 'Choose a night' },
+  nightOrdinal1: { zh: '壹', en: 'I' },
+  nightOrdinal2: { zh: '贰', en: 'II' },
+  nightOrdinal3: { zh: '叁', en: 'III' },
   night1: { zh: '第一夜 · 城隍庙外', en: 'Night One · The Temple Road' },
   night2: { zh: '第二夜 · 乱葬岗', en: 'Night Two · Graveyard Hill' },
   night3: { zh: '第三夜 · 鬼市', en: 'Night Three · The Ghost Market' },
@@ -37,6 +41,7 @@ export const WORDS = {
   levelShort: { zh: '{level} 级', en: 'Lv {level}' },
   midnight: { zh: '子时将至', en: 'Midnight nears' },
   thunder: { zh: '天雷', en: 'Thunder' },
+  thunderReady: { zh: '施放天雷', en: 'Strike now' },
   thunderName: { zh: '天雷符：劈遍全场', en: 'Thunder talisman: strike the whole road' },
   pause: { zh: '暂停', en: 'Pause' },
   paused: { zh: '暂停', en: 'Paused' },

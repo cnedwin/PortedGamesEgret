@@ -58,14 +58,45 @@ function mix(out, part, seconds, gain = 1) {
   return out;
 }
 
+/** Give short transients room for their resonant tail and keep their combined peak below full scale. */
+function layered(seconds, parts) {
+  const out = new Float32Array(Math.round(seconds * RATE));
+  for (const [part, at = 0, gain = 1] of parts) mix(out, part, at, gain);
+  let peak = 0;
+  for (const value of out) peak = Math.max(peak, Math.abs(value));
+  const scale = peak > .86 ? .86 / peak : 1;
+  const edge = Math.round(.003 * RATE);
+  for (let index = 0; index < out.length; index++) out[index] *= scale * Math.min(1, index / edge, (out.length - 1 - index) / edge);
+  return out;
+}
+
 /** The sounds of the game, by name. */
 export const SOUNDS = {
   tap: () => tone(760, 0.12, { decay: 40, partials: [[1, 1], [2.7, 0.2]] }),
-  shot: () => mix(tone(520, 0.12, { decay: 45, partials: [[1, 1], [2.02, 0.35]], gain: 0.22, slide: -1.6 }), noise(0.08, { decay: 70, gain: 0.25, colour: 0.2 }), 0),
-  hit: () => mix(noise(0.1, { decay: 55, gain: 0.45, colour: 0.75, seed: 3 }), tone(180, 0.1, { decay: 40, gain: 0.25 }), 0),
-  crit: () => mix(noise(0.14, { decay: 35, gain: 0.5, colour: 0.5, seed: 5 }), tone(1320, 0.18, { decay: 25, partials: [[1, 1], [1.5, 0.4]], gain: 0.18 }), 0),
-  paper: () => noise(0.22, { decay: 16, gain: 0.35, colour: 0.15, seed: 9 }),
-  pop: () => mix(tone(300, 0.2, { decay: 22, gain: 0.3, slide: -1.2 }), noise(0.12, { decay: 30, gain: 0.3, colour: 0.55, seed: 11 }), 0),
+  shot: () => layered(.15, [
+    [tone(225, .1, { decay: 48, partials: [[1, 1], [2.7, .2]], gain: .24, slide: -1.3 })],
+    [noise(.07, { decay: 55, gain: .3, colour: .35, seed: 41 })],
+    [noise(.1, { decay: 34, gain: .13, colour: .1, seed: 43 }), .018]
+  ]),
+  hit: () => layered(.13, [
+    [noise(.08, { decay: 50, gain: .48, colour: .32, seed: 3 })],
+    [tone(175, .12, { decay: 35, gain: .31, slide: -.8 })]
+  ]),
+  crit: () => layered(.28, [
+    [noise(.1, { decay: 35, gain: .55, colour: .4, seed: 5 })],
+    [tone(118, .19, { decay: 22, gain: .32, slide: -.6 })],
+    [tone(1175, .25, { decay: 16, partials: [[1, 1], [2.76, .25]], gain: .16 }), .008]
+  ]),
+  paper: () => layered(.26, [
+    [noise(.19, { decay: 18, gain: .36, colour: .13, seed: 9 })],
+    [noise(.1, { decay: 30, gain: .17, colour: .22, seed: 47 }), .045],
+    [tone(740, .22, { decay: 20, gain: .08 }), .03]
+  ]),
+  pop: () => layered(.3, [
+    [tone(245, .24, { decay: 17, gain: .27, slide: -1.4 })],
+    [noise(.15, { decay: 25, gain: .3, colour: .6, seed: 11 })],
+    [tone(590, .2, { decay: 20, gain: .09 }), .045]
+  ]),
   bite: () => mix(tone(70, 0.35, { decay: 12, partials: [[1, 1], [2, 0.3]], gain: 0.55 }), noise(0.25, { decay: 16, gain: 0.4, colour: 0.85, seed: 13 }), 0),
   spit: () => tone(240, 0.3, { decay: 10, gain: 0.18, slide: 1.5, partials: [[1, 1], [1.5, 0.5]] }),
   soul: () => tone(1560, 0.16, { decay: 28, partials: [[1, 1], [2, 0.2]], gain: 0.12 }),
@@ -75,10 +106,19 @@ export const SOUNDS = {
     return out;
   },
   ward: () => tone(220, 1.4, { decay: 3.2, partials: [[1, 1], [2.76, 0.45], [5.4, 0.2], [8.9, 0.08]], gain: 0.3 }),
-  chain: () => mix(noise(0.18, { decay: 18, gain: 0.3, colour: 0.05, seed: 17 }), tone(900, 0.18, { decay: 20, gain: 0.1, slide: -2 }), 0),
+  chain: () => layered(.23, [
+    [noise(.065, { decay: 34, gain: .4, colour: .08, seed: 17 })],
+    [tone(985, .18, { decay: 21, gain: .13, slide: -1.5 })],
+    [noise(.09, { decay: 35, gain: .16, colour: .15, seed: 53 }), .035]
+  ]),
   mirror: () => tone(880, 0.6, { decay: 5, partials: [[1, 1], [1.5, 0.6], [2, 0.3]], gain: 0.16, slide: 0.3 }),
   ink: () => noise(0.4, { decay: 7, gain: 0.25, colour: 0.4, seed: 19, attack: 30 }),
-  thunder: () => mix(noise(1.6, { decay: 2.6, gain: 0.7, colour: 0.9, seed: 23 }), noise(0.2, { decay: 30, gain: 0.6, colour: 0.1, seed: 29 }), 0),
+  thunder: () => layered(1.35, [
+    [noise(.17, { decay: 24, gain: .64, colour: .1, seed: 29 })],
+    [tone(56, 1.15, { decay: 4, partials: [[1, 1], [1.47, .35]], gain: .35 }), .025],
+    [noise(1.2, { decay: 3.7, gain: .7, colour: .9, seed: 23 }), .04],
+    [noise(.22, { decay: 12, gain: .19, colour: .55, seed: 59 }), .14]
+  ]),
   stomp: () => mix(tone(48, 0.7, { decay: 6, partials: [[1, 1], [1.5, 0.4]], gain: 0.7 }), noise(0.5, { decay: 8, gain: 0.35, colour: 0.9, seed: 31 }), 0),
   boss: () => {
     // A great gong struck twice.
@@ -86,6 +126,16 @@ export const SOUNDS = {
       gong = tone(98, 2.6, { decay: 1.6, partials: [[1, 1], [2.32, 0.6], [3.9, 0.35], [5.1, 0.2]], gain: 0.42, attack: 120 });
     return mix(mix(out, gong, 0), gong, 0.55, 0.7);
   },
+  alert: () => layered(.8, [
+    [tone(196, .7, { decay: 4.5, partials: [[1, 1], [2.32, .4]], gain: .25 })],
+    [tone(147, .48, { decay: 5, partials: [[1, 1], [2.76, .25]], gain: .2 }), .23]
+  ]),
+  bossDown: () => layered(2.1, [
+    [noise(.3, { decay: 14, gain: .5, colour: .65, seed: 61 })],
+    [tone(73.42, 1.7, { decay: 2.7, partials: [[1, 1], [2.32, .45], [3.9, .15]], gain: .36 })],
+    [tone(587.33, 1.25, { decay: 3.5, partials: [[1, 1], [2.76, .2]], gain: .16 }), .18],
+    [noise(.5, { decay: 6, gain: .15, colour: .2, seed: 67 }), .05]
+  ]),
   won: () => {
     const out = new Float32Array(Math.round(2.2 * RATE));
     [0, 2, 4, 7, 9, 12].forEach((step, i) => mix(out, tone(523.25 * 2 ** (step / 12), 1.2, { decay: 3.5, partials: [[1, 1], [2, 0.25]], gain: 0.18 }), i * 0.13));
@@ -132,11 +182,11 @@ export function nightMusic() {
 /** How each sound plays: cooldowns, voices at once and a spread of pitch, so many at once stay clear. */
 const CUES = {
   tap: {},
-  shot: { cooldown: 0.05, maxVoices: 3, rate: [0.92, 1.08], volume: [0.5, 0.7] },
-  hit: { cooldown: 0.03, maxVoices: 4, rate: [0.85, 1.15], volume: [0.5, 0.8] },
-  crit: { cooldown: 0.08, maxVoices: 2, rate: [0.95, 1.05] },
-  paper: { cooldown: 0.05, maxVoices: 3, rate: [0.8, 1.2], volume: [0.5, 0.8] },
-  pop: { cooldown: 0.05, maxVoices: 3, rate: [0.85, 1.2], volume: [0.5, 0.8] },
+  shot: { cooldown: 0.075, maxVoices: 2, rate: [0.96, 1.04], volume: [.45, .58] },
+  hit: { cooldown: 0.055, maxVoices: 3, rate: [0.94, 1.06], volume: [.55, .7] },
+  crit: { cooldown: 0.12, maxVoices: 2, rate: [0.98, 1.02], volume: .82 },
+  paper: { cooldown: 0.075, maxVoices: 2, rate: [.94, 1.08], volume: [.42, .58] },
+  pop: { cooldown: 0.075, maxVoices: 2, rate: [.94, 1.06], volume: [.5, .65] },
   bite: { cooldown: 0.12, maxVoices: 2, rate: [0.9, 1.1] },
   spit: { cooldown: 0.2, maxVoices: 2, rate: [0.9, 1.1] },
   soul: { cooldown: 0.04, maxVoices: 3, rate: [0.9, 1.3], volume: 0.6 },
@@ -148,6 +198,8 @@ const CUES = {
   thunder: { maxVoices: 1 },
   stomp: { cooldown: 0.4, maxVoices: 1 },
   boss: { maxVoices: 1 },
+  alert: { cooldown: 1, maxVoices: 1, volume: .8 },
+  bossDown: { maxVoices: 1, volume: .9 },
   won: { maxVoices: 1 },
   lost: { maxVoices: 1 }
 };

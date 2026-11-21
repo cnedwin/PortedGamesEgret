@@ -2,7 +2,7 @@
 
 ## 简介 · Introduction
 
-镇邪司是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的竖屏塔防射击 Demo。你是守城门的镇邪人，城楼上只有一把符弩：它会自动瞄准、连发符箭。纸人、鬼火、僵尸、灯笼鬼和鬼新娘从路的尽头一波波压过来。打散它们会掉出魂珠，攒满就升一级，从三道符法里挑一道：连弩、速射、穿心、火符、雷引、寒符、墨斗线、八卦镜……天雷符蓄满后能一次劈遍全场。撑到子时，首领会现身：城隍庙外的纸扎大将、乱葬岗的白无常、鬼市的旱魃。把它打倒、清空路面，这一夜就守住了。三夜各三到五分钟。画面、声音和音乐全部用代码生成，没有图片和音频文件。
+镇邪司是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的竖屏塔防射击 Demo。你是守城门的镇邪人，城楼上只有一把符弩：它会自动瞄准、连发符箭。纸人、鬼火、僵尸、灯笼鬼和鬼新娘从路的尽头一波波压过来。打散它们会掉出魂珠，攒满就升一级，从三道符法里挑一道：连弩、速射、穿心、火符、雷引、寒符、墨斗线、八卦镜……天雷符蓄满后能一次劈遍全场。撑到子时，首领会现身：城隍庙外的纸扎大将、乱葬岗的白无常、鬼市的旱魃。把它打倒、清空路面，这一夜就守住了。三夜各三到五分钟。
 
 Night Wardens is a game demo made on its own with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the new
 Egret engine: a tower shooter for a phone held upright. You keep the city gate at night, with one talisman crossbow on
@@ -11,8 +11,7 @@ press down the road in waves. Each one banished drops a soul; enough souls gain 
 three: volley, haste, pierce, fire talismans, the thunder chain, frost, the ink line, the bagua mirror and more. A
 full thunder talisman strikes the whole road at once. At midnight a warden comes: the Paper General on the temple
 road, White Impermanence on the graveyard hill, the Drought Fiend in the ghost market. Bring it down and clear the
-road, and the night is held. Each of the three nights runs three to five minutes. Every picture, sound and tune is
-made in code; the game loads no image or audio file.
+road, and the night is held. Each of the three nights runs three to five minutes.
 
 [在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/NightWardens/)
 
@@ -46,9 +45,10 @@ made in code; the game loads no image or audio file.
 
 ## 美术、声音与加载 · Art, sound and loading
 
-- 所有画面在 `src/art/paint.mjs` 里用 2D 画布画出：五种邪祟的走路帧、三位首领、符弩、符箭、魂珠，以及三夜的路面和城墙。`src/art/atlas.mjs` 按两倍分辨率把它们排进一张图集交给引擎；首领各有一张图集，只在它那一夜载入。路面画一次，做成页面里画布下面那层 `#road` 的背景，引擎只画会动的东西。 · Everything is painted in code on a 2D canvas: the haunts' walks, the wardens, the crossbow, bolts, souls and the three roads. The atlas packs them at twice their size for the engine; each warden's atlas loads only on its night. The road is painted once as the background of the page's `#road` under the canvas, and the engine draws only what moves.
+- 横屏、竖屏城楼封面与三夜战场是为本 Demo 生成的场景插画，压成 WebP 后放在 `assets/art/`。战场图在白鹭画布下方静态合成，路心留暗，方便看清敌人和符法。 · Original generated paintings cover the gate in portrait and landscape and the three battlefields. Their WebP plates sit behind the Egret canvas, with quiet center lanes for haunts and ward effects.
+- 五种邪祟、三位首领、符弩和弹道仍由 `src/art/paint.mjs` 绘制，按两倍分辨率打包，首领图集按关载入。朱砂符印、暴击、元素拖尾和首领预警跟随原有战斗事件。 · The haunts, wardens, crossbow and bolts are still painted in code and packed at twice their size. Each warden atlas loads with its night. Seal hits, crits, elemental trails and warden warnings use the existing combat timing.
 - 音效和配乐在 `src/audio/sound.mjs` 里合成成采样，编码成 WAV 交给引擎的混音器。配乐是 16 秒循环：低沉的弦音、木鱼和五声音阶的拨弦。 · Sounds and music are synthesized as samples and handed to the engine's mixer as WAV; the music is a 16-second loop of a bowed drone, a wooden fish and pentatonic plucks.
-- 首屏只载引擎副本和游戏脚本（约 2 MB），在 10 Mbps、CPU 降速 4 倍时 1.5 秒内可以操作（见 QUALITY.md）。 · The first screen loads only the engine copy and the scripts (about 2 MB) and is playable within 1.5 s at 10 Mbps with the CPU slowed four times.
+- 标题预载城楼封面，战场图在选夜时供预览使用。 · The title preloads the gate painting. The night picker requests the battlefield previews.
 
 ## 规则与平衡 · Rules and balance
 
@@ -106,11 +106,12 @@ rules and runaway numbers, while feel and difficulty still need people to play.
 - `node test/accept.mjs`（无头 Chromium 153，SwiftShader 软件渲染，540×960 与 960×540）：只用键盘——标题 Enter 到选夜，新档只开第一夜，Enter 开第一夜；→ 键移动符弩；符弩自己射击并击杀；鼠标在路面上按住把符弩领过去；Esc 暂停时整夜不动，再按 Esc 继续；升级时按 2 选第二道符法；天雷充满后空格放出；替身快进到首领将至量帧时间；整夜守住后结算、存档记星并开第二夜；切到英文后按钮读英文；Esc 回选夜；存档改坏后标题提示并重新开始；横屏窗口进入宽舞台。标题和选夜两张截图基线一致，控制台没有错误。 · The whole path by keyboard plus a mouse drag in headless Chromium, two baselines matching and a clean console.
 - `node ../tools/quality.mjs NightWardens`：自动项全部达标，见 [QUALITY.md](QUALITY.md)。桌面帧时间 p95 16.8 ms（标题，无头 SwiftShader）；最忙的场景（第一夜首领将至）p95 33.4 ms，第三夜 190 秒 p50 16.7 ms，同一环境。 · Every automatic item passes; p95 16.8 ms on the title, 33.4 ms p95 in the busiest scene and 16.7 ms p50 on night three at 190 s, headless and software-drawn.
 - `tools/balance.mjs`：结果见上一节 · results in the section above.
+- Windows Edge 实机走通第一夜开场、键鼠移动、暂停、自然选符和天雷。固定种子复跑第一夜后期及首领，各约 4.2 秒，WebGL2 的帧间隔 p95 均为 4.3 ms，WebGPU 均为 4.3 ms。 · On a Windows PC, keyboard and mouse steering, pause, ward selection and naturally charged Thunder passed. Fixed-seed samples of about 4.2 seconds in the late and warden fights had a 4.3 ms p95 on both WebGL2 and WebGPU.
+- Galaxy Z Fold7 的 Chrome 原生竖屏使用 WebGPU。从标题打开第一夜，触摸拖动符弩、暂停继续、自然升级选符和满雷施放均通过。首夜开场 90 帧样本的帧间隔 p95 为 16.7 ms。 · Chrome on a physical Galaxy Z Fold7 used WebGPU in native portrait. Touch steering, pause and resume, a naturally earned ward and a full Thunder seal passed in the opening of night one. The opening 90-frame sample had a 16.7 ms p95.
 
 ## 已知问题 · Known issues
 
-- 没有在真机（手机、带显卡的桌面）上运行过；触屏走完一局、中端手机帧时间、切回后台后的声音和计时都「未运行」。帧时间只在 2 核容器的软件渲染里量过：最忙时 p95 33 ms、p50 16.7 ms，标题画面 p95 在 16.8 ms 和 33.3 ms 之间来回（模板自己的标题在这里也一样）。 · Not run on a real phone or a desktop with a GPU; touch play, phone frame times and sound after coming back are not run. Frame times come only from software rendering on a two-core container: p95 33 ms and p50 16.7 ms at the busiest, and 16.8 or 33.3 ms on the title from run to run (as with the template's own title there).
-- WebGPU 后端只在代码里选用，没有在有 WebGPU 的浏览器里跑过；无头 Chromium 没有适配器，所以以上结果全是 WebGL2。 · The WebGPU backend is chosen in code but has not been run in a browser that has it; headless Chromium has no adapter, so every result above is WebGL2.
+- 手机整夜通关、中端设备后期帧时间、切回后台后的声音和计时仍待实机复测。 · Full nights on a phone, late-game frame pacing on midrange devices, and audio and clocks after backgrounding remain to be checked.
 - 手柄只在代码里接上了：十字键、摇杆、A、B、Start 和震动没有用真手柄试过。 · The gamepad is wired in code only; the d-pad, stick, A, B, Start and the rumble have not been tried with a real pad.
 - 读屏只在无头 Chromium 的无障碍树里查过名字，没有用真读屏器走过。 · Screen-reader names were checked only in headless Chromium's accessibility tree, not with a real screen reader.
 - 平衡只来自替身玩家；真人的难度感受还没有试过。 · The balance comes only from the stand-in; how hard it feels to people has not been tried.
@@ -129,7 +130,7 @@ rules and runaway numbers, while feel and difficulty still need people to play.
 
 ## 未完成 · Unfinished
 
-- 真机上的触屏、帧时间、后台切回和 WebGPU 后端 · touch, frame time, coming back and the WebGPU backend on real devices.
+- 手机完整三夜的触控、后期帧时间和后台切回复测 · full-night touch play, late-game frame pacing and background-resume checks on phones.
 - 无尽模式和每日挑战（固定种子） · an endless mode and a daily challenge on a fixed seed.
 - 更多邪祟和首领的招式（白无常的锁链拉人、旱魃的火圈） · more haunts and warden moves (White Impermanence's chain, the Drought Fiend's ring of fire).
 - 符法组合的专属效果（例如火符加雷引） · effects for combinations of wards, such as fire with the thunder chain.
@@ -142,7 +143,8 @@ rules and runaway numbers, while feel and difficulty still need people to play.
 | `src/main.mjs` | 建游戏、存档、声音、手柄、语义树和键位，在画面之间切换 · makes the game, save, sound, pads, semantics and keys; moves between screens |
 | `src/screens.mjs` | 标题、选夜、守城（状态栏、三选一、暂停）、结算、设置 · title, nights, the watch (bars, ward choice, pause), end, settings |
 | `src/view/field.mjs` | 战场画面：对象池、帧动画、首领动画控制器、粒子、着色、震屏 · the battlefield: pools, frames, the warden's controller, particles, tints, shake |
-| `src/art/paint.mjs`、`src/art/atlas.mjs` | 用代码画的全部美术，以及图集、精灵表和帧片段 · every picture, painted in code; the atlases, sheet and clips |
+| `assets/art/` | 封面和三夜的 WebP 场景 · WebP cover and three battlefield paintings |
+| `src/art/paint.mjs`、`src/art/atlas.mjs` | 程序绘制的战场精灵、图集和帧片段 · procedural battle sprites, atlases and clips |
 | `src/sim/` | 规则（`world.mjs`）、数字（`data.mjs`）、随机数、替身玩家 · the rules, the numbers, chance and the stand-in |
 | `src/audio/sound.mjs` | 合成的音效和配乐，混音器与音效提示 · made sounds and music, the mixer and cues |
 | `src/ui/kit.mjs` | 按钮、开关、面板和文字 · buttons, switches, panels and words |
