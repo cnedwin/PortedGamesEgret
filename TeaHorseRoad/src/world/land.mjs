@@ -1,11 +1,12 @@
 // 地形：近处是引擎的按视距加载地块（createTerrainStream3D），每块由工作线程算出高度场，
-// 用四层地面纹理按权重图混合，并加一个三角网碰撞体；远处是一整块低精度的远山，带雪顶。
+// 用四层地面纹理按权重图混合，并接入工作线程准备的碰撞体和植被。远处是一整块低精度的远山。
 //
 // The land: near the convoy, tiles streamed in by distance (`createTerrainStream3D`), each a height field worked out by
-// the terrain workers, drawn with four ground textures blended by a weight map, and given a triangle-mesh collider;
+// the terrain workers, drawn with four ground textures blended by a weight map, with worker-built collision and plants;
 // beyond them, one low-detail field of far mountains with snow on their heads.
 import {
   Texture3D,
+  TriangleMeshShape3D,
   createHeightField3D,
   createStandardMaterial3D,
   createTerrain3D,
@@ -62,7 +63,7 @@ function createWorkers(count) {
 export async function createLand(scene, physics, { quality = 'medium', onTile } = {}) {
   const workers = createWorkers(quality === 'low' ? 1 : 2),
     layers = [0, 1, 2].map((leg) => groundLayers(leg)),
-    weightsOf = new Map(),
+    preparedTiles = new WeakMap(),
     bodies = new Map();
   const viewDistance = quality === 'low' ? 330 : quality === 'medium' ? 460 : 560;
 
@@ -74,31 +75,34 @@ export async function createLand(scene, physics, { quality = 'medium', onTile } 
     async load(tx, tz) {
       const cx = (tx + 0.5) * TILE,
         cz = (tz + 0.5) * TILE;
-      const tile = await workers.ask({ type: 'tile', cx, cz, size: TILE, columns: COLUMNS, weightSize: WEIGHTS });
-      weightsOf.set(tx + ',' + tz, tile.weights);
-      return createHeightField3D({ columns: COLUMNS, rows: COLUMNS, width: TILE, depth: TILE, heights: tile.heights });
+      const tile = await workers.ask({ type: 'tile', tx, tz, cx, cz, size: TILE, columns: COLUMNS, weightSize: WEIGHTS, quality });
+      const field = createHeightField3D({ columns: COLUMNS, rows: COLUMNS, width: TILE, depth: TILE, heights: tile.heights });
+      const mesh = TriangleMeshShape3D.fromBuffers(tile.collision);
+      // Key the worker result by this request's field. Retired requests can be collected without publishing.
+      preparedTiles.set(field, { weights: tile.weights, flora: tile.flora, mesh });
+      return field;
     },
     // Each tile blends the four ground layers by its own weight map, which covers the tile once.
-    material(tx, tz) {
-      const key = tx + ',' + tz,
-        weights = new Texture3D({ width: WEIGHTS, height: WEIGHTS, data: weightsOf.get(key) }, { colorSpace: 'linear', wrapS: 'clamp', wrapT: 'clamp', mipmaps: false, flipY: false });
-      weightsOf.delete(key);
+    material(tx, tz, field) {
+      const weights = new Texture3D({ width: WEIGHTS, height: WEIGHTS, data: preparedTiles.get(field).weights }, { colorSpace: 'linear', wrapS: 'clamp', wrapT: 'clamp', mipmaps: false, flipY: false });
       // The grass of the leg the tile's middle belongs to.
       const leg = legAt(nearestRoad((tx + 0.5) * TILE, (tz + 0.5) * TILE, {}).s);
       return createTerrainMaterial3D({ layers: layers[leg], weights, repeat: [34, 40, 22, 26], roughness: 0.95, metallic: 0 });
     },
     onLoad(tile) {
+      const { mesh, flora } = preparedTiles.get(tile.field);
+      preparedTiles.delete(tile.field);
       tile.terrain.setShadows(false, true);
       const body = physics.createBody({
         type: 'static',
-        shape: tile.field.createShape(),
+        shape: { type: 'mesh', mesh },
         position: [(tile.x + 0.5) * TILE, 0, (tile.z + 0.5) * TILE],
         friction: 0.9,
         layer: LAYER.ground,
         userData: { kind: 'ground' }
       });
       bodies.set(tile, body);
-      onTile?.(tile, 'load');
+      onTile?.(tile, 'load', flora);
     },
     onUnload(tile) {
       const body = bodies.get(tile);
