@@ -174,6 +174,46 @@ try {
     await until(page, () => !window.egretGame.view.offerOpen && !window.egretGame.view.world.offer, 4);
   }
   check(true, '19 consecutive ward choices open, accept keyboard input, and close');
+
+  // The earlier fast-forward never drew a live warden before defeating it. Let the
+  // real view build its walk controller, then defeat it while a haunt survives
+  // and the warden's soul opens an upgrade choice.
+  await page.evaluate(() => window.egretGame.app.go('play', { night: 1 }));
+  await page.evaluate(async () => {
+    const { createBot } = await import('./src/sim/bot.mjs'),
+      { step } = await import('./src/sim/world.mjs'),
+      world = window.egretGame.view.world,
+      bot = createBot(world);
+    while (world.time < world.plan.bossAt - 0.075 && world.state === 'play') {
+      const input = bot.think();
+      if (!world.offer) step(world, input, 1 / 60);
+    }
+    if (world.offer) bot.think();
+  });
+  await until(page, () => {
+    const world = window.egretGame.view.world;
+    return world.boss?.age >= 0.12 && world.haunts.some((haunt) => haunt !== world.boss && !haunt.dead && haunt.y >= -20);
+  }, 4);
+  await page.evaluate(() => {
+    const world = window.egretGame.view.world;
+    world.boss.hp = 1;
+    world.boss.y = 100;
+    world.haunts.find((haunt) => haunt !== world.boss && !haunt.dead && haunt.y >= -20).hp = 10000;
+    world.souls = world.need - 1;
+    world.orbs.push({ x: world.turret.x, y: 700, soul: 1, time: 0 });
+    world.thunder = 1;
+  });
+  await page.locator('#stage').focus();
+  await page.keyboard.press('Space');
+  await until(page, () => {
+    const world = window.egretGame.view?.world;
+    return world?.bossFell && !world.boss;
+  }, 4);
+  await until(page, () => window.egretGame.view.offerOpen, 5);
+  const afterWarden = await page.evaluate(() => window.egretGame.view.world.time);
+  await page.keyboard.press('Digit1');
+  await page.waitForFunction((time) => window.egretGame.view?.world?.time > time + 0.1, afterWarden, { timeout: 4000 });
+  check(true, 'the rendered warden can fall, open a ward choice, and resume the night');
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {
