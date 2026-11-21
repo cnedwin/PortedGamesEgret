@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>哪吒闹海 · Nezha Stirs the Sea</title>
+  <meta name="description" content="哪吒闹海：基于新白鹭引擎独立开发的割草类肉鸽游戏 Demo。哪吒守陈塘关二十波，波间在龙宫集市买法宝、合成神器。 · Nezha Stirs the Sea: a survivors-like roguelite demo made on its own with the new Egret engine.">
+  <meta name="theme-color" content="#0d2a3a">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
+  <script type="importmap">
+    {
+      "imports": {
+        "@egret/contracts": "./vendor/contracts/dist/index.js",
+        "@egret/runtime": "./vendor/runtime/dist/index.js",
+        "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+        "@egret/engine": "./vendor/engine/dist/index.js",
+        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
+        "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+        "@egret/engine/text": "./vendor/engine/dist/text.js",
+        "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+        "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+        "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+        "robust-predicates": "./vendor/robust-predicates/index.js",
+        "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+        "@egret/engine/play": "./vendor/engine/dist/web/play.js",
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js"
+      }
+    }
+  </script>
+</head>
+<body>
+  <main id="frame">
+    <div id="field">
+      <canvas id="ground" aria-hidden="true"></canvas>
+      <header id="hud" hidden>
+        <div class="row">
+          <div class="bar hp" id="hpBar" role="meter" aria-valuemin="0"><span></span><b id="hpText"></b></div>
+          <p id="waveText"></p>
+          <button type="button" id="pauseButton"></button>
+        </div>
+        <div class="row small">
+          <div class="bar xp" id="xpBar" aria-hidden="true"><span></span></div>
+          <p id="levelText"></p>
+          <p id="pearlText"></p>
+        </div>
+        <div class="bar boss" id="bossBar" hidden><span></span><b id="bossText"></b></div>
+      </header>
+    </div>
+    <section id="title" class="panel" hidden></section>
+    <section id="levelUp" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <section id="shop" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <section id="menu" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <section id="end" class="panel" role="dialog" aria-modal="true" hidden></section>
+    <p id="say" class="quiet" aria-live="polite"></p>
+    <p id="loading">载入中 · Loading</p>
+  </main>
+  <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

@@ -10,66 +10,66 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 
 ## 入口 · Entries
 
-| 能力 · Capability | 游戏数 · Games | CanalWatch | FivePhases | FPS | jelly-pandas | JY | LanternShadows | LoveElective | MechanismCity | OperaDrums | Rally | SnowTemple | TeaHorseRoad | Wulin |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| `@egret/engine` | 11 |  | [✔](FivePhases/src/main.mjs) | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/main.mjs) | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/stage.mjs) | [✔](MechanismCity/src/art/illustrations.mjs) |  | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/ui/card.mjs) | [✔](Wulin/src/view/stage.mjs) |
-| `@egret/engine/webgpu` | 1 |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |
-| `@egret/engine/text` | 1 |  |  |  |  | [✔](JY/web/opening-dialogue.mjs) |  |  |  |  |  |  |  |  |
-| `@egret/engine/layout` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/input` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/image` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/text` | 1 |  |  |  |  | [✔](JY/web/main.mjs) |  |  |  |  |  |  |  |  |
-| `@egret/engine/webgl2` | 2 |  |  |  |  | [✔](JY/web/main.mjs) |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |
-| `@egret/engine/world3d` | 7 |  |  | [✔](FPS/src/asset-models.mjs) | [✔](jelly-pandas/src/island.mjs) | [✔](JY/web/jyx2/home3d/native-exit-effect.mjs) |  |  |  |  | [✔](Rally/src/grandstand.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/art/font.mjs) | [✔](Wulin/src/view/arena-effects.mjs) |
-| `@egret/engine/webgl2/world3d` | 7 |  |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/jyx2/scene/world3d-renderer.mjs) |  |  |  |  | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/audio/soundscape.mjs) | [✔](Wulin/src/view/stage.mjs) |
-| `@egret/engine/webgpu/world3d` | 4 |  |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) |  |  |  |  |  | [✔](Rally/src/main.mjs) |  |  | [✔](Wulin/src/view/stage.mjs) |
-| `@egret/engine/resources` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/resources` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/input` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/pointer` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/ui` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
-| `@egret/engine/animation` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/paragraph` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/paragraph` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/keyboard` | 1 |  |  |  |  | [✔](JY/web/main.mjs) |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/text-input` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/ui/editing` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/editing` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/input/hover` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/hover` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/input/gamepad` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/gamepad` | 2 |  |  |  |  |  | [✔](LanternShadows/src/input.mjs) |  |  |  |  |  | [✔](TeaHorseRoad/src/play/input.mjs) |  |
-| `@egret/engine/camera` | 2 |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |
-| `@egret/engine/tilemap` | 2 |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |
-| `@egret/engine/particles` | 2 |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |
-| `@egret/engine/physics2d` | 1 |  |  |  |  |  |  |  | [✔](MechanismCity/src/sim/sim.mjs) |  |  |  |  |  |
-| `@egret/engine/bitmapfont` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
-| `@egret/engine/video` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/video` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
-| `@egret/engine/web/loop` | 1 |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |
-| `@egret/engine/kit` | 5 | [✔](CanalWatch/src/i18n.mjs) |  |  |  |  |  |  | [✔](MechanismCity/src/audio/sound.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  | [✔](SnowTemple/tools/balance.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) |  |
-| `@egret/engine/web/kit` | 8 | [✔](CanalWatch/src/main.mjs) |  | [✔](FPS/src/main.mjs) |  |  |  |  | [✔](MechanismCity/src/main.mjs) | [✔](OperaDrums/src/main.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/main.mjs) |
-| `@egret/engine/web/game` | 3 |  | [✔](FivePhases/src/main.mjs) |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |  |
-| `@egret/engine/play` | 2 | [✔](CanalWatch/src/main.mjs) |  |  |  |  |  |  |  | [✔](OperaDrums/src/main.mjs) |  |  |  |  |
-| `@egret/engine/audio` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/web/audio` | 3 |  |  |  |  |  | [✔](LanternShadows/src/sound.mjs) |  | [✔](MechanismCity/src/audio/sound.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  |  |  |  |
-| `@egret/engine/ui/semantics` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
-| `@egret/engine/web/semantics` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
-| `@egret/spine` | 1 |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |
-| `@egret/spine/web` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/contracts/resources` | 1 |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |
+| 能力 · Capability | 游戏数 · Games | CanalWatch | FivePhases | FPS | jelly-pandas | JY | LanternShadows | LoveElective | MechanismCity | NezhaSea | OperaDrums | Rally | SnowTemple | TeaHorseRoad | Wulin |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| `@egret/engine` | 11 |  | [✔](FivePhases/src/main.mjs) | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/main.mjs) | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/stage.mjs) | [✔](MechanismCity/src/art/illustrations.mjs) |  |  | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/ui/card.mjs) | [✔](Wulin/src/view/stage.mjs) |
+| `@egret/engine/webgpu` | 1 |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |
+| `@egret/engine/text` | 1 |  |  |  |  | [✔](JY/web/opening-dialogue.mjs) |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/layout` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/input` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/image` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/text` | 1 |  |  |  |  | [✔](JY/web/main.mjs) |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/webgl2` | 2 |  |  |  |  | [✔](JY/web/main.mjs) |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |
+| `@egret/engine/world3d` | 7 |  |  | [✔](FPS/src/asset-models.mjs) | [✔](jelly-pandas/src/island.mjs) | [✔](JY/web/jyx2/home3d/native-exit-effect.mjs) |  |  |  |  |  | [✔](Rally/src/grandstand.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/art/font.mjs) | [✔](Wulin/src/view/arena-effects.mjs) |
+| `@egret/engine/webgl2/world3d` | 7 |  |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/jyx2/scene/world3d-renderer.mjs) |  |  |  |  |  | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/audio/soundscape.mjs) | [✔](Wulin/src/view/stage.mjs) |
+| `@egret/engine/webgpu/world3d` | 4 |  |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) |  |  |  |  |  |  | [✔](Rally/src/main.mjs) |  |  | [✔](Wulin/src/view/stage.mjs) |
+| `@egret/engine/resources` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/resources` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/input` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/pointer` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/ui` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
+| `@egret/engine/animation` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/paragraph` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/paragraph` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/keyboard` | 1 |  |  |  |  | [✔](JY/web/main.mjs) |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/text-input` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/ui/editing` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/editing` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/input/hover` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/hover` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/input/gamepad` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/gamepad` | 2 |  |  |  |  |  | [✔](LanternShadows/src/input.mjs) |  |  |  |  |  |  | [✔](TeaHorseRoad/src/play/input.mjs) |  |
+| `@egret/engine/camera` | 2 |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |
+| `@egret/engine/tilemap` | 2 |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |
+| `@egret/engine/particles` | 2 |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |
+| `@egret/engine/physics2d` | 1 |  |  |  |  |  |  |  | [✔](MechanismCity/src/sim/sim.mjs) |  |  |  |  |  |  |
+| `@egret/engine/bitmapfont` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
+| `@egret/engine/video` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/video` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
+| `@egret/engine/web/loop` | 1 |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |
+| `@egret/engine/kit` | 6 | [✔](CanalWatch/src/i18n.mjs) |  |  |  |  |  |  | [✔](MechanismCity/src/audio/sound.mjs) | [✔](NezhaSea/src/i18n.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  | [✔](SnowTemple/tools/balance.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) |  |
+| `@egret/engine/web/kit` | 9 | [✔](CanalWatch/src/main.mjs) |  | [✔](FPS/src/main.mjs) |  |  |  |  | [✔](MechanismCity/src/main.mjs) | [✔](NezhaSea/src/main.mjs) | [✔](OperaDrums/src/main.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/main.mjs) |
+| `@egret/engine/web/game` | 3 |  | [✔](FivePhases/src/main.mjs) |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |  |  |
+| `@egret/engine/play` | 3 | [✔](CanalWatch/src/main.mjs) |  |  |  |  |  |  |  | [✔](NezhaSea/src/sound.mjs) | [✔](OperaDrums/src/main.mjs) |  |  |  |  |
+| `@egret/engine/audio` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/engine/web/audio` | 3 |  |  |  |  |  | [✔](LanternShadows/src/sound.mjs) |  | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](OperaDrums/src/audio/sound.mjs) |  |  |  |  |
+| `@egret/engine/ui/semantics` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
+| `@egret/engine/web/semantics` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
+| `@egret/spine` | 1 |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |  |
+| `@egret/spine/web` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| `@egret/contracts/resources` | 1 |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |  |
 
 ## 关键 API · Key APIs
 
-| 能力 · Capability | 游戏数 · Games | CanalWatch | FivePhases | FPS | jelly-pandas | JY | LanternShadows | LoveElective | MechanismCity | OperaDrums | Rally | SnowTemple | TeaHorseRoad | Wulin |
-|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| 粒子发射器 · Particle emitter (`createParticleEmitter`) | 2 |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |
-| 2D 物理关节 · 2D physics joints (`addJoint`) | 1 |  |  |  |  |  |  |  | [✔](MechanismCity/src/sim/sim.mjs) |  |  |  |  |  |
-| 托管界面根节点 · Managed UI root (`createUiRoot`) | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/ui/settings.mjs) |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
-| 网页视频 · Browser video (`createBrowserVideo`) | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
-| 文字输入框 · Text input (`createTextInput`) | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
-| Spine 骨骼动画 · Spine skeletons (`Spine`) | 1 |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |
-| 多点触控 · Multi-touch (`multi-touch`) | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| 能力 · Capability | 游戏数 · Games | CanalWatch | FivePhases | FPS | jelly-pandas | JY | LanternShadows | LoveElective | MechanismCity | NezhaSea | OperaDrums | Rally | SnowTemple | TeaHorseRoad | Wulin |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| 粒子发射器 · Particle emitter (`createParticleEmitter`) | 2 |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |
+| 2D 物理关节 · 2D physics joints (`addJoint`) | 1 |  |  |  |  |  |  |  | [✔](MechanismCity/src/sim/sim.mjs) |  |  |  |  |  |  |
+| 托管界面根节点 · Managed UI root (`createUiRoot`) | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/ui/settings.mjs) |  |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
+| 网页视频 · Browser video (`createBrowserVideo`) | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
+| 文字输入框 · Text input (`createTextInput`) | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
+| Spine 骨骼动画 · Spine skeletons (`Spine`) | 1 |  |  |  |  |  | [✔](LanternShadows/src/puppets.mjs) |  |  |  |  |  |  |  |  |
+| 多点触控 · Multi-touch (`multi-touch`) | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 
 ## 缺口 · Gaps
 
