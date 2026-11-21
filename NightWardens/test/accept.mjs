@@ -158,6 +158,22 @@ try {
   await page.evaluate(() => window.egretGame.app.go('play', { night: 1 }));
   await screenIs('play');
   check((await page.evaluate(() => window.egretGame.app.stage.width)) === 960, 'a wide window plays on the wide stage');
+
+  // Late in a real night there are more choices than the text cache can retain at once.
+  // Open and close that many through the normal controls without waiting for the spawns.
+  await until(page, () => Boolean(window.egretGame.view?.world));
+  for (let level = 2; level <= 20; level++) {
+    await page.evaluate((level) => {
+      const world = window.egretGame.view.world;
+      world.level = level;
+      world.owed = 1;
+      world.offer = ['volley', 'haste', 'pierce'];
+    }, level);
+    await until(page, () => window.egretGame.view.offerOpen, 4);
+    await page.keyboard.press('Digit2');
+    await until(page, () => !window.egretGame.view.offerOpen && !window.egretGame.view.world.offer, 4);
+  }
+  check(true, '19 consecutive ward choices open, accept keyboard input, and close');
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {

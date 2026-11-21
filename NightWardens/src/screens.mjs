@@ -19,10 +19,10 @@ import { createField } from './view/field.mjs';
 const STEP = 1 / 60;
 
 /** A screen's common parts: its scope, its kit and its root container. */
-function begin(app, prefix) {
+function begin(app, prefix, parent = app.game.stage) {
   const scope = app.game.engine.createScope(),
     kit = createScreenKit(app.game, scope, { semantics: app.semantics, sound: app.sound, prefix, locale: getLanguage() }),
-    root = app.game.stage.addChild(scope.use(new DisplayObjectContainer()));
+    root = parent.addChild(scope.use(new DisplayObjectContainer()));
   return { scope, kit, root, dispose: () => (kit.dispose(), scope.dispose()) };
 }
 
@@ -314,12 +314,10 @@ export async function playScreen(app, { night = 1 } = {}) {
   }
 
   // ——— The choice of wards. ———
-  let overlay = null,
-    building = false;
-  async function openOffer() {
-    building = true;
-    const offer = world.offer,
-      node = root.addChild(scope.use(new DisplayObjectContainer())),
+  // Hide nothing in place: old dialog labels hold raster leases until disposed.
+  let overlay = null;
+  async function buildOffer(dialog) {
+    const { offer, scope, kit, root: node } = dialog,
       dim = node.addChild(scope.use(new Sprite()));
     dim.graphics.beginFill(0x020308, 0.62).drawRect(0, 0, width, height).endFill();
     dim.touchEnabled = true;
@@ -327,7 +325,7 @@ export async function playScreen(app, { night = 1 } = {}) {
     const cardSize = tall ? { width: width - 64, height: 144 } : { width: 276, height: 238 },
       plan2 = planLinearLayout({ axis: tall ? 'vertical' : 'horizontal', items: offer.map(() => cardSize), gap: tall ? 16 : 20, crossAlign: 'center' }),
       originX = (width - plan2.width) / 2,
-      originY = (height - plan2.height) / 2 + (tall ? 30 : 30);
+      originY = (height - plan2.height) / 2 + 30;
     await kit.label(node, t('chooseWard', { level: world.level }), { x: 0, y: originY - 64, size: 28, weight: 700, color: PAPER, align: 'center', width });
     const cards = [];
     for (const placement of plan2.placements) {
@@ -356,32 +354,33 @@ export async function playScreen(app, { night = 1 } = {}) {
       cards.push(card);
     }
     if (!app.touch) await kit.label(node, t('pickKeys'), { x: 0, y: originY + plan2.height + 20, size: 15, color: 0xa8a090, align: 'center', width, family: SANS });
-    overlay = { node, cards, offer };
-    building = false;
+    dialog.cards = cards;
     app.sound.play('level');
     app.padMenus(true);
     cards[0].focus(!app.touch);
   }
+  function openOffer() {
+    const dialog = overlay = { ...begin(app, 'play', root), offer: world.offer, cards: null };
+    void buildOffer(dialog).catch((cause) => {
+      if (dialog.scope.state === 'open') throw cause;
+    });
+  }
   function pick(id) {
-    if (!overlay || !choose(world, id)) return;
+    if (!overlay?.cards || !choose(world, id)) return;
     app.sound.play('ward');
     app.rumble(0.3, 120);
-    overlay.node.visible = false;
-    overlay.cards.forEach((card) => card.setEnabled(false));
-    overlay = null;
     // The focus leaves the hidden cards, so Space on the road is the thunder again and not a card's key.
     app.game.keyboard?.focus(undefined);
+    overlay.dispose();
+    overlay = null;
     app.padMenus(false);
     quietThunder = 0.3;
-    void showWards();
   }
 
   // ——— Pause. ———
   let paused = null;
-  async function pause() {
-    if (paused || ended || overlay) return;
-    const node = root.addChild(scope.use(new DisplayObjectContainer()));
-    paused = { node };
+  async function buildPause(dialog) {
+    const { scope, kit, root: node } = dialog;
     const dim = node.addChild(scope.use(new Sprite()));
     dim.graphics.beginFill(0x020308, 0.7).drawRect(0, 0, width, height).endFill();
     dim.touchEnabled = true;
@@ -393,16 +392,22 @@ export async function playScreen(app, { night = 1 } = {}) {
     await kit.label(node, t('paused'), { x, y: y + 34, size: 30, weight: 800, color: 0xfff1d0, align: 'center', width: w });
     const resume = await kit.button({ x: x + 30, y: y + 100, width: w - 60, height: 60, text: t('resume'), primary: true, container: node, onActivate: () => unpause() });
     await kit.button({ x: x + 30, y: y + 180, width: w - 60, height: 60, text: t('retreat'), container: node, onActivate: () => app.go('nights') });
-    paused.resume = resume;
+    dialog.resume = resume;
     app.padMenus(true);
     resume.focus(!app.touch);
   }
+  function pause() {
+    if (paused || ended || world.offer) return;
+    const dialog = paused = begin(app, 'play', root);
+    void buildPause(dialog).catch((cause) => {
+      if (dialog.scope.state === 'open') throw cause;
+    });
+  }
   function unpause() {
-    if (!paused) return;
-    paused.node.visible = false;
-    paused.resume.setEnabled(false);
-    paused = null;
+    if (!paused?.resume) return;
     app.game.keyboard?.focus(undefined);
+    paused.dispose();
+    paused = null;
     app.padMenus(false);
     quietThunder = 0.3;
   }
@@ -480,13 +485,25 @@ export async function playScreen(app, { night = 1 } = {}) {
 
   return {
     ...s,
+    kit: {
+      repaint() {
+        kit.repaint();
+        overlay?.kit.repaint();
+        paused?.kit.repaint();
+      }
+    },
+    dispose() {
+      overlay?.dispose();
+      paused?.dispose();
+      s.dispose();
+    },
     world,
     field,
     focusFirst: () => {},
     // Escape, P or the pad's start button pause, and the same again goes on.
     pause: () => (paused ? unpause() : pause()),
     escape: () => (paused ? unpause() : pause()),
-    pick: (index) => overlay && pick(overlay.offer[index]),
+    pick: (index) => overlay?.cards && pick(overlay.offer[index]),
     update(seconds) {
       if (ended) {
         field.update(seconds, []);
@@ -499,8 +516,11 @@ export async function playScreen(app, { night = 1 } = {}) {
       }
       if (paused) return;
       if (world.offer) {
-        if (!overlay && !building) void openOffer();
-        if (overlay) for (const [i, key] of ['pick1', 'pick2', 'pick3'].entries()) if (app.actions.justPressed(key) && overlay.offer[i]) pick(overlay.offer[i]);
+        if (!overlay) openOffer();
+        if (overlay?.cards) {
+          const index = ['pick1', 'pick2', 'pick3'].findIndex((key) => app.actions.justPressed(key));
+          if (index !== -1 && overlay.offer[index]) pick(overlay.offer[index]);
+        }
         field.update(seconds, []);
         refreshHud();
         return;
@@ -530,7 +550,7 @@ export async function playScreen(app, { night = 1 } = {}) {
       if (world.state !== 'play') ended = 1.6;
     },
     get offerOpen() {
-      return Boolean(overlay);
+      return Boolean(overlay?.cards);
     },
     get pausedNow() {
       return Boolean(paused);

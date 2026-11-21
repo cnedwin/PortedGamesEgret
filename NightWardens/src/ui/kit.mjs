@@ -58,7 +58,7 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
   /** A line of text in the page's fonts, made by the game, placed when its words are ready. */
   async function label(container, text, { x = 0, y = 0, size = 22, color = PAPER, family = FONT, weight = 400, align = 'left', width, wrap = false } = {}) {
     const prepare = value => wrap && width ? wrapped(value, width, size, family, weight) : value;
-    const made = await game.createLabel({ text: prepare(text), fontSize: size, lineHeight: Math.round(size * 1.38), color, fontFamily: family, fontWeight: weight, locale });
+    const made = await game.createLabel({ scope, text: prepare(text), fontSize: size, lineHeight: Math.round(size * 1.38), color, fontFamily: family, fontWeight: weight, locale });
     own({ dispose: () => made.dispose() });
     container.addChild(made.display);
     const place = () => {
