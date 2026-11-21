@@ -331,12 +331,12 @@ export const GAMES = [
       },
       {
         title: { zh: "实时图形与登陆预判", en: "Live graphics and landing preview" },
-        description: { zh: "Graphics 绘制塔、船和战斗特效，也会在纤道上标出选中楼船的预计登陆点。", en: "Graphics draws towers, boats and combat effects and marks where the crew of a selected junk would land." },
+        description: { zh: "Graphics 绘制器械动作、船桨和命中反馈，也会在纤道上标出选中楼船的预计登陆点。", en: "Graphics animates machinery, oars and impacts, and marks where the crew of a selected junk would land." },
         source: 'src/view.mjs',
       },
       {
         title: { zh: "合成音效与配乐", en: "Synthesized sound and music" },
-        description: { zh: "引擎合成投石、沉船和闸门等音效，并随波次改变配乐强度。", en: "The engine synthesizes effects for stone impacts, sinking ships and gates. Music intensity follows wave progress." },
+        description: { zh: "白鹭分别混合原创配乐与合成音效，随备战、交战和旗舰登场切换音乐。", en: "Egret mixes the original score and synthesized effects independently. Music changes for preparation, combat and the flagship." },
         source: 'src/sound.mjs',
       },
     ],
