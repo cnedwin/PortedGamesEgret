@@ -25,6 +25,8 @@ const PAD_BUTTONS = [
     'home'
 ];
 const PAD_DEAD_ZONE = 0.12;
+// PointerEvent.button order: primary, middle, secondary, back, forward, pen eraser.
+const POINTER_BUTTON_MASKS = [1, 4, 2, 8, 16, 32];
 function bound(actions, binding) {
     for (const name of actions.names)
         for (const slot of ['bindings', 'negative', 'positive', 'up', 'down', 'left', 'right', 'sticks']) {
@@ -50,6 +52,9 @@ export function bindBrowserInputActions(actions, options = {}) {
         throw new EgretError('INPUT_ACTIONS_INVALID');
     const prevent = options.preventDefault ?? true;
     const pass = new Set(options.passKeys ?? ['F5', 'F11', 'F12']);
+    const skipPrevented = options.skipPrevented ?? false;
+    if (typeof skipPrevented !== 'boolean')
+        throw new EgretError('INPUT_ACTIONS_INVALID');
     const removers = [];
     const listen = (target, type, handler, opts) => {
         target.addEventListener(type, handler, opts);
@@ -62,7 +67,7 @@ export function bindBrowserInputActions(actions, options = {}) {
     };
     listen(keyTarget, 'keydown', event => {
         const e = event;
-        if (typing(e) || !e.code)
+        if (typing(e) || !e.code || (skipPrevented && e.defaultPrevented))
             return;
         const binding = 'Key:' + e.code;
         if (prevent && !pass.has(e.code) && bound(actions, binding))
@@ -88,17 +93,28 @@ export function bindBrowserInputActions(actions, options = {}) {
         });
     if (options.pointerTarget) {
         const target = options.pointerTarget;
-        listen(target, 'pointerdown', event => {
+        const mouseButton = (event, pressed) => {
             const e = event;
             if (e.pointerType === 'touch')
                 return;
-            actions.press('Mouse:' + e.button);
-        });
-        listen(win, 'pointerup', event => {
-            const e = event;
-            if (e.pointerType !== 'touch')
-                actions.release('Mouse:' + e.button);
-        });
+            if (e.type === 'pointermove') {
+                // A chord changes one button on pointermove. Ordinary motion reports button -1.
+                const mask = POINTER_BUTTON_MASKS[e.button];
+                if (mask === undefined || Boolean(e.buttons & mask) !== pressed)
+                    return;
+            }
+            const binding = 'Mouse:' + e.button;
+            if (pressed)
+                actions.press(binding);
+            else
+                actions.release(binding);
+        };
+        const pressMouse = (event) => mouseButton(event, true);
+        const releaseMouse = (event) => mouseButton(event, false);
+        listen(target, 'pointerdown', pressMouse);
+        listen(target, 'pointermove', pressMouse);
+        listen(win, 'pointermove', releaseMouse);
+        listen(win, 'pointerup', releaseMouse);
         listen(target, 'contextmenu', event => {
             if (bound(actions, 'Mouse:2'))
                 event.preventDefault();

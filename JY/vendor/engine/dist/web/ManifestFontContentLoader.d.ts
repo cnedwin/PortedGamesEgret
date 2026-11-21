@@ -2,6 +2,7 @@ import type { Engine } from '@egret/engine';
 import type { FontContentLoader } from '@egret/engine/resources';
 import type { AdmittedResourceManifest } from '@egret/contracts/resources';
 import type { ManifestByteSource, ManifestByteSourceOptions } from './ManifestByteSource.js';
+/** A font content loader for a manifest, with the byte source it reads from. */
 export interface ManifestFontContentLoader {
     readonly loader: FontContentLoader;
     readonly source: ManifestByteSource;

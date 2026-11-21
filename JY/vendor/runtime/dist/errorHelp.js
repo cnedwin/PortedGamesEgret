@@ -90,6 +90,7 @@ const AREAS = [
     ['TEXT_PLAN', 'a text plan'],
     ['TEXT', 'text'],
     ['TILEMAP', 'a tile map'],
+    ['TIMER', 'a timer'],
     ['TWEEN', 'a tween'],
     ['UI_CONTROL', 'a UI control'],
     ['UI_KEYBOARD', 'UI keyboard navigation'],
@@ -259,6 +260,7 @@ const WRITTEN = {
     UI_LAYER_MANAGER_OWNED: 'This Engine already has a UI layer manager. An Engine has one.',
     UI_LAYER_ROOT_OWNED: 'This UI root already belongs to a layer.',
     UI_LAYOUT_UNSTABLE: 'The layout of the UI did not settle in eight rounds: a size keeps changing something it depends on.',
+    UI_CONTENT_INVALID: 'What a UI leaf or row gave as its content cannot be shown there. The leaf or row, and the reason, are in cause.',
     UI_ROW_NOT_REALIZED: 'The row is not on screen now, so there is nothing of it to act on. Scroll it into view first.',
     UI_ROW_RETAINED: 'A row that is in use was removed from its list or changed under it.',
     UI_SEMANTICS_DESCRIPTION: 'A field of a UI semantics entry is not valid. The entry and the field are in cause.',
@@ -383,6 +385,7 @@ export function setErrorLanguage(value) {
         throw new TypeError('The language of errors is "en" or "zh".');
     language = value;
 }
+/** The language error messages are written in. */
 export function getErrorLanguage() {
     return language;
 }

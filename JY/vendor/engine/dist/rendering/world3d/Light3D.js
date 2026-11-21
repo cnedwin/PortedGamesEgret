@@ -3,6 +3,7 @@
 // Z axis, matching cameras and glTF punctual lights. Colors are linear RGB.
 import { setColor3D } from './Material3D.js';
 import { Object3D } from './Object3D.js';
+/** The most directional, point, tiled point and spot lights a scene lights, and the most shadows. */
 export const LIGHT3D_LIMITS = Object.freeze({
     maxDirectional: 4,
     maxPoint: 8,
@@ -11,6 +12,7 @@ export const LIGHT3D_LIMITS = Object.freeze({
     maxSpot: 4,
     maxShadows: 4
 });
+/** A light in a scene: its kind and its shadow. */
 export class Light3D extends Object3D {
     lightType;
     color = new Float32Array([1, 1, 1]);
@@ -78,11 +80,13 @@ export function createHemisphereLight3D(options = {}) {
 export function createDirectionalLight3D(options = {}) {
     return base(new Light3D('directional'), options);
 }
+/** Makes a light that shines from a point in every direction. */
 export function createPointLight3D(options = {}) {
     const light = base(new Light3D('point'), options);
     light.range = options.range ?? 0;
     return light;
 }
+/** Makes a light that shines from a point in a cone. */
 export function createSpotLight3D(options = {}) {
     const light = base(new Light3D('spot'), options);
     light.range = options.range ?? 0;

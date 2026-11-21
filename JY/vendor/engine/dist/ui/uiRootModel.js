@@ -29,8 +29,14 @@ export function preparationError(cause, cleanupErrors) {
         return cause;
     return new EgretError(cause instanceof EgretError ? cause.code : 'UI_PREPARE_FAILED', { cause, cleanupErrors });
 }
-export function fail(code) {
-    throw new EgretError(code);
+export function fail(code, reason) {
+    throw new EgretError(code, reason === undefined ? {} : { cause: new Error(reason) });
+}
+/** Why a root is busy with its own work: a preparation that has not settled, or a commit being made. */
+export function failBusy(preparing) {
+    fail('UI_BUSY', preparing
+        ? 'an earlier prepare() of this root has not settled yet: await it, then prepare again'
+        : 'a commit of this root is being made');
 }
 export function next(value) {
     if (value >= Number.MAX_SAFE_INTEGER)

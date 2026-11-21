@@ -62,6 +62,16 @@ export declare class Graphics {
      * square is where it is.
      */
     beginGradientFill(type: "linear" | "radial", colors: readonly number[], alphas: readonly number[], ratios: readonly number[], matrix?: GradientBoxMatrix): this;
+    /**
+     * Gives the line set by `lineStyle` a gradient instead of its colour, as older code gives it: the arguments of
+     * `beginGradientFill`. Its width, ends, corners and dashes stay; its colours and alphas are the gradient's. It does
+     * nothing while there is no line, and the next `lineStyle` ends it.
+     */
+    lineGradientStyle(type: "linear" | "radial", colors: readonly number[], alphas: readonly number[], ratios: readonly number[], matrix?: GradientBoxMatrix): this;
+    /** Gives the line a gradient along the line from one point to another, as `beginLinearGradientFill` gives a fill. */
+    lineLinearGradientStyle(x0: number, y0: number, x1: number, y1: number, stops: readonly GradientColorStop[]): this;
+    /** Gives the line a gradient from a centre outwards, as `beginRadialGradientFill` gives a fill. */
+    lineRadialGradientStyle(x: number, y: number, radius: number, stops: readonly GradientColorStop[], radiusY?: number): this;
     drawRect(x: number, y: number, width: number, height: number): this;
     drawCircle(x: number, y: number, radius: number): this;
     /** An ellipse inside the rectangle of this corner and size. */
@@ -89,6 +99,7 @@ export declare class Graphics {
      */
     beginBitmapFill(lease: AssetLease<Texture>, matrix?: GradientBoxMatrix, repeat?: boolean): this;
     private gradient;
+    private lineGradient;
     private paintRequired;
     /** The node's triangles, begun with the rectangles it has drawn so far. */
     private shape;

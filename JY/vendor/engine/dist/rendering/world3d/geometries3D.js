@@ -60,6 +60,7 @@ export function createRingGeometry3D(options = {}) {
         }
     return build(l);
 }
+/** Makes a torus knot. */
 export function createTorusKnotGeometry3D(options = {}) {
     const radius = requirePositive3D(options.radius ?? 0.5, 'radius'), tube = requirePositive3D(options.tube ?? 0.15, 'tube');
     const ts = count(options.tubularSegments, 96, 3, 'tubularSegments'), rs = count(options.radialSegments, 12, 3, 'radialSegments');
@@ -133,12 +134,15 @@ function mix(a, b, t) {
     return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t, a[2] + (b[2] - a[2]) * t];
 }
 const PHI = (1 + Math.sqrt(5)) / 2, INVERSE_PHI = 1 / PHI;
+/** Makes a tetrahedron. */
 export function createTetrahedronGeometry3D(options = {}) {
     return createPolyhedronGeometry3D([1, 1, 1, -1, -1, 1, -1, 1, -1, 1, -1, -1], [2, 1, 0, 0, 3, 2, 1, 3, 0, 2, 3, 1], options);
 }
+/** Makes an octahedron. */
 export function createOctahedronGeometry3D(options = {}) {
     return createPolyhedronGeometry3D([1, 0, 0, -1, 0, 0, 0, 1, 0, 0, -1, 0, 0, 0, 1, 0, 0, -1], [0, 2, 4, 0, 4, 3, 0, 3, 5, 0, 5, 2, 1, 2, 5, 1, 5, 3, 1, 3, 4, 1, 4, 2], options);
 }
+/** Makes an icosahedron. */
 export function createIcosahedronGeometry3D(options = {}) {
     return createPolyhedronGeometry3D([
         -1,
@@ -182,6 +186,7 @@ export function createIcosahedronGeometry3D(options = {}) {
         2, 3, 2, 6, 3, 6, 8, 3, 8, 9, 4, 9, 5, 2, 4, 11, 6, 2, 10, 8, 6, 7, 9, 8, 1
     ], options);
 }
+/** Makes a dodecahedron. */
 export function createDodecahedronGeometry3D(options = {}) {
     const r = INVERSE_PHI, t = PHI;
     return createPolyhedronGeometry3D([

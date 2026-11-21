@@ -95,37 +95,12 @@ export class Graphics {
     /** A fill whose colour runs along the line from one point to another, and stays the end colours beyond them. */
     beginLinearGradientFill(x0, y0, x1, y1, stops) {
         assertVisualMutable(this.owner);
-        numbers(x0, y0, x1, y1);
-        const dx = x1 - x0, dy = y1 - y0, square = dx * dx + dy * dy;
-        if (!(square > 0) || !finite(1 / square))
-            throw invalid();
-        return this.gradient({
-            radial: false,
-            a: dx / square,
-            c: dy / square,
-            tx: -(x0 * dx + y0 * dy) / square,
-            b: 0,
-            d: 0,
-            ty: 0,
-            stops: gradientStops(stops)
-        });
+        return this.gradient(linearGradient(x0, y0, x1, y1, stops));
     }
     /** A fill whose colour runs from a centre out to a circle, or to an ellipse when `radiusY` is given, and stays the last colour beyond it. */
     beginRadialGradientFill(x, y, radius, stops, radiusY = radius) {
         assertVisualMutable(this.owner);
-        numbers(x, y, radius, radiusY);
-        if (!(radius > 0) || !(radiusY > 0) || !finite(1 / radius) || !finite(1 / radiusY))
-            throw invalid();
-        return this.gradient({
-            radial: true,
-            a: 1 / radius,
-            c: 0,
-            tx: -x / radius,
-            b: 0,
-            d: 1 / radiusY,
-            ty: -y / radiusY,
-            stops: gradientStops(stops)
-        });
+        return this.gradient(radialGradient(x, y, radius, stops, radiusY));
     }
     /**
      * A gradient fill as older code gives it: "linear" or "radial", colours, alphas, ratios from 0 to 255, and a matrix
@@ -134,46 +109,26 @@ export class Graphics {
      */
     beginGradientFill(type, colors, alphas, ratios, matrix) {
         assertVisualMutable(this.owner);
-        if ((type !== "linear" && type !== "radial") ||
-            !Array.isArray(colors) ||
-            !Array.isArray(alphas) ||
-            !Array.isArray(ratios) ||
-            colors.length !== alphas.length ||
-            colors.length !== ratios.length)
-            throw invalid();
-        const m = matrix ?? { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
-        if (typeof m !== "object" || m === null)
-            throw invalid();
-        numbers(m.a, m.b, m.c, m.d, m.tx, m.ty);
-        for (const ratio of ratios)
-            if (!finite(ratio) || ratio < 0 || ratio > 255)
-                throw invalid();
-        const det = m.a * m.d - m.b * m.c, stops = gradientStops(colors.map((value, i) => ({ offset: ratios[i] / 255, color: value, alpha: alphas[i] })));
-        if (det === 0 || !finite(1 / det))
-            throw invalid();
-        // The node's point in the square's units, then along the square for a linear gradient or out from its centre for a radial one.
-        const ia = m.d / det, ic = -m.c / det, itx = (m.c * m.ty - m.d * m.tx) / det, ib = -m.b / det, id = m.a / det, ity = (m.b * m.tx - m.a * m.ty) / det;
-        if (type === "linear")
-            return this.gradient({
-                radial: false,
-                a: ia / 1638.4,
-                c: ic / 1638.4,
-                tx: itx / 1638.4 + 0.5,
-                b: 0,
-                d: 0,
-                ty: 0,
-                stops
-            });
-        return this.gradient({
-            radial: true,
-            a: ia / 819.2,
-            c: ic / 819.2,
-            tx: itx / 819.2,
-            b: ib / 819.2,
-            d: id / 819.2,
-            ty: ity / 819.2,
-            stops
-        });
+        return this.gradient(legacyGradient(type, colors, alphas, ratios, matrix));
+    }
+    /**
+     * Gives the line set by `lineStyle` a gradient instead of its colour, as older code gives it: the arguments of
+     * `beginGradientFill`. Its width, ends, corners and dashes stay; its colours and alphas are the gradient's. It does
+     * nothing while there is no line, and the next `lineStyle` ends it.
+     */
+    lineGradientStyle(type, colors, alphas, ratios, matrix) {
+        assertVisualMutable(this.owner);
+        return this.lineGradient(legacyGradient(type, colors, alphas, ratios, matrix));
+    }
+    /** Gives the line a gradient along the line from one point to another, as `beginLinearGradientFill` gives a fill. */
+    lineLinearGradientStyle(x0, y0, x1, y1, stops) {
+        assertVisualMutable(this.owner);
+        return this.lineGradient(linearGradient(x0, y0, x1, y1, stops));
+    }
+    /** Gives the line a gradient from a centre outwards, as `beginRadialGradientFill` gives a fill. */
+    lineRadialGradientStyle(x, y, radius, stops, radiusY = radius) {
+        assertVisualMutable(this.owner);
+        return this.lineGradient(radialGradient(x, y, radius, stops, radiusY));
     }
     drawRect(x, y, width, height) {
         assertVisualMutable(this.owner);
@@ -324,12 +279,18 @@ export class Graphics {
         return this;
     }
     gradient(gradient) {
-        for (const value of [gradient.a, gradient.b, gradient.c, gradient.d, gradient.tx, gradient.ty])
-            if (!finite(value))
-                throw invalid();
         this.finishPath();
         const first = gradient.stops[0];
         this.fill = { color: first.color, alpha: first.alpha, gradient };
+        return this;
+    }
+    lineGradient(gradient) {
+        const line = this.line;
+        if (line === undefined)
+            return this;
+        this.finishPath();
+        const first = gradient.stops[0];
+        this.line = { ...line, color: first.color, alpha: first.alpha, gradient };
         return this;
     }
     paintRequired() {
@@ -483,6 +444,89 @@ export class Graphics {
         recordVisualChange(this.owner, VISUAL_CONTENT);
         return this;
     }
+}
+/** A gradient along the line from one point to another. */
+function linearGradient(x0, y0, x1, y1, stops) {
+    numbers(x0, y0, x1, y1);
+    const dx = x1 - x0, dy = y1 - y0, square = dx * dx + dy * dy;
+    if (!(square > 0) || !finite(1 / square))
+        throw invalid();
+    return checked({
+        radial: false,
+        a: dx / square,
+        c: dy / square,
+        tx: -(x0 * dx + y0 * dy) / square,
+        b: 0,
+        d: 0,
+        ty: 0,
+        stops: gradientStops(stops)
+    });
+}
+/** A gradient from a centre out to a circle, or to an ellipse of the two radii. */
+function radialGradient(x, y, radius, stops, radiusY) {
+    numbers(x, y, radius, radiusY);
+    if (!(radius > 0) || !(radiusY > 0) || !finite(1 / radius) || !finite(1 / radiusY))
+        throw invalid();
+    return checked({
+        radial: true,
+        a: 1 / radius,
+        c: 0,
+        tx: -x / radius,
+        b: 0,
+        d: 1 / radiusY,
+        ty: -y / radiusY,
+        stops: gradientStops(stops)
+    });
+}
+/** A gradient as older code gives it, its square of 1638.4 units placed by the matrix. */
+function legacyGradient(type, colors, alphas, ratios, matrix) {
+    if ((type !== "linear" && type !== "radial") ||
+        !Array.isArray(colors) ||
+        !Array.isArray(alphas) ||
+        !Array.isArray(ratios) ||
+        colors.length !== alphas.length ||
+        colors.length !== ratios.length)
+        throw invalid();
+    const m = matrix ?? { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 };
+    if (typeof m !== "object" || m === null)
+        throw invalid();
+    numbers(m.a, m.b, m.c, m.d, m.tx, m.ty);
+    for (const ratio of ratios)
+        if (!finite(ratio) || ratio < 0 || ratio > 255)
+            throw invalid();
+    const det = m.a * m.d - m.b * m.c, stops = gradientStops(colors.map((value, i) => ({ offset: ratios[i] / 255, color: value, alpha: alphas[i] })));
+    if (det === 0 || !finite(1 / det))
+        throw invalid();
+    // The node's point in the square's units, then along the square for a linear gradient or out from its centre for a radial one.
+    const ia = m.d / det, ic = -m.c / det, itx = (m.c * m.ty - m.d * m.tx) / det, ib = -m.b / det, id = m.a / det, ity = (m.b * m.tx - m.a * m.ty) / det;
+    if (type === "linear")
+        return checked({
+            radial: false,
+            a: ia / 1638.4,
+            c: ic / 1638.4,
+            tx: itx / 1638.4 + 0.5,
+            b: 0,
+            d: 0,
+            ty: 0,
+            stops
+        });
+    return checked({
+        radial: true,
+        a: ia / 819.2,
+        c: ic / 819.2,
+        tx: itx / 819.2,
+        b: ib / 819.2,
+        d: id / 819.2,
+        ty: ity / 819.2,
+        stops
+    });
+}
+/** A gradient whose map is of finite numbers. */
+function checked(gradient) {
+    for (const value of [gradient.a, gradient.b, gradient.c, gradient.d, gradient.tx, gradient.ty])
+        if (!finite(value))
+            throw invalid();
+    return gradient;
 }
 /** Two to sixteen colours in order of their places, as a gradient keeps them. */
 function gradientStops(stops) {

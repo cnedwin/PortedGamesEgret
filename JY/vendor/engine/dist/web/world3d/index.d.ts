@@ -25,6 +25,8 @@ export { FollowControls3D, createFollowControls3D } from './FollowControls3D.js'
 export type { FollowControlsOptions3D } from './FollowControls3D.js';
 export { Atmosphere3D, createAtmosphere3D } from './atmosphere3D.js';
 export type { AtmosphereOptions3D } from './atmosphere3D.js';
+export { createCanvasFont3D } from './canvasFont3D.js';
+export type { CanvasFontOptions3D } from './canvasFont3D.js';
 export { WORLD3D_QUALITY_PRESETS, createDynamicResolution3D, createWorld3DApp, pickWorld3DBackend, pickWorld3DQuality, isSoftwareRendered3D } from './app3D.js';
 export type { DynamicResolution3D, DynamicResolutionOptions3D, World3DApp, World3DAppOptions, World3DBackend, World3DDeviceHints, World3DQuality, World3DQualityPreset, World3DShowOptions } from './app3D.js';
 export { createScreenMarkers3D } from './markers3D.js';
@@ -33,6 +35,6 @@ export { createWorld3DStats } from './stats3D.js';
 export type { World3DStats, World3DStatsOptions } from './stats3D.js';
 export { createWorld3DOverlay } from './overlay3D.js';
 export type { World3DOverlay, World3DOverlayOptions } from './overlay3D.js';
-export { play3d, PlayThing3D } from './BrowserPlay3D.js';
-export type { Play3DGame, Play3DOptions, PlayBurst3D, PlayCamera3D, PlayFollow3D, PlayPlace3D } from './BrowserPlay3D.js';
+export { play3d, PlayThing3D, PlayLamp3D, PLAY_LOOKS_3D } from './BrowserPlay3D.js';
+export type { Play3DGame, Play3DOptions, PlayBurst3D, PlayCamera3D, PlayFollow3D, PlayLampOptions3D, PlayLook3D, PlayLookName3D, PlayPlace3D, PlayWeather3D, PlayWeatherOptions3D } from './BrowserPlay3D.js';
 //# sourceMappingURL=index.d.ts.map

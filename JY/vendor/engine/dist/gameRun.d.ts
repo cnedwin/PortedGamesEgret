@@ -1,5 +1,6 @@
 /** Quality tiers from lowest to highest, as World3D names them. */
 export declare const QUALITY_TIERS: readonly ["low", "medium", "high"];
+/** One of the quality tiers, from the lowest to the highest. */
 export type QualityTier = (typeof QUALITY_TIERS)[number];
 /**
  * Of several variants of one asset, the one for `quality`: an exact tier, or else the nearest below, or else the
@@ -16,6 +17,7 @@ export interface HeadlessGame<Input> {
     /** One step of `seconds` with the stand-in player's input. */
     update(seconds: number, input: Input): void;
 }
+/** A game run without a screen: the game and player to make for each seed, when it is done, and the step. */
 export interface HeadlessRunOptions<G extends HeadlessGame<Input>, Input> {
     /** A new game for a seed. */
     readonly createGame: (seed: number) => G;
@@ -34,6 +36,7 @@ export interface HeadlessRunOptions<G extends HeadlessGame<Input>, Input> {
     /** Milliseconds now; `performance.now()` by default. */
     readonly now?: () => number;
 }
+/** What one seed's headless run did: whether it finished, its seconds and steps, its timings and its summary. */
 export interface HeadlessRunResult {
     readonly seed: number;
     /** False when the run reached `maxSeconds` without `done`. */

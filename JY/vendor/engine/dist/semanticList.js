@@ -15,6 +15,7 @@ export function semanticBoxOf(root, id) {
 }
 const text = (value) => typeof value === 'string' && value.length >= 1 && value.length <= 128 && !value.includes('\0');
 const optional = (value, type) => value === undefined || typeof value === type;
+/** Semantic nodes for a list control and its rows, kept in step with the control. */
 export function createUiListSemantics(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_SEMANTICS_OPTIONS');

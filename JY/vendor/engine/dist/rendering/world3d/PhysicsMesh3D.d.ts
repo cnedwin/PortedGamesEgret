@@ -1,9 +1,11 @@
 import { Geometry3D } from './Geometry3D.js';
 import { Object3D } from './Object3D.js';
+/** The most triangles a mesh shape has, and how many a leaf of its tree holds. */
 export declare const PHYSICS_MESH3D_LIMITS: Readonly<{
     readonly maxTriangles: 4194304;
     readonly leafTriangles: 4;
 }>;
+/** A triangle mesh as a physics shape, for bodies that do not move. */
 export declare class TriangleMeshShape3D {
     #private;
     /** Vertex positions, three floats each, in the shape's local space. */

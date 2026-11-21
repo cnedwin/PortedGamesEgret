@@ -8,6 +8,11 @@
 import { EgretError } from '@egret/runtime';
 const isObject = (value) => typeof value === 'object' && value !== null;
 /** Opens the save under `options.key`, migrating an older one. */
+/** A deep copy: by `structuredClone` where the platform has it, else through JSON, as the save is stored. */
+function copyOf(value) {
+    const clone = globalThis.structuredClone;
+    return typeof clone === 'function' ? clone(value) : JSON.parse(JSON.stringify(value));
+}
 export function createSaveStore(options) {
     if (!isObject(options))
         throw new EgretError('SAVE_STORE_OPTIONS_INVALID');
@@ -87,6 +92,13 @@ export function createSaveStore(options) {
             keepAside(text);
         }
     }
+    // New data that fails the check is not kept or written: the save on disk stays the last good one.
+    const refuse = (value) => {
+        report('invalid', new TypeError('The new save data fails validate' +
+            (isObject(value) ? '' : ': it is ' + (value === null ? 'null' : typeof value) + ', not an object') +
+            '. A change that edits in place returns nothing; write it as a block.'));
+        return false;
+    };
     const write = () => {
         try {
             const envelope = { version, savedAt: new Date().toISOString(), data };
@@ -109,16 +121,23 @@ export function createSaveStore(options) {
             return loadedVersion;
         },
         save(next) {
-            if (next !== undefined)
+            if (next !== undefined) {
+                if (!validate(next))
+                    return refuse(next);
                 data = next;
+            }
             return write();
         },
         update(change) {
             if (typeof change !== 'function')
                 throw new EgretError('SAVE_STORE_OPTIONS_INVALID');
-            const result = change(data);
-            if (result !== undefined)
-                data = result;
+            // A copy, so that a change refused, or one that throws halfway, does not reach the data.
+            const draft = copyOf(data);
+            const result = change(draft);
+            const next = result === undefined ? draft : result;
+            if (!validate(next))
+                return refuse(next);
+            data = next;
             return write();
         },
         reset() {

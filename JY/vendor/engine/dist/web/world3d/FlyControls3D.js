@@ -9,6 +9,7 @@ const DEFAULT_KEYS = Object.freeze({
     sprint: ['ShiftLeft', 'ShiftRight']
 });
 const LIMIT = Math.PI / 2 - 0.001;
+/** Moves a camera with the keyboard and mouse, walking or flying. */
 export class FlyControls3D {
     camera;
     element;
@@ -154,6 +155,7 @@ export class FlyControls3D {
         this.#down.clear();
     }
 }
+/** Makes fly controls for a camera on an element. */
 export function createFlyControls3D(camera, element, options = {}) {
     return new FlyControls3D(camera, element, options);
 }

@@ -1,5 +1,6 @@
 import type { Disposable } from "@egret/contracts";
 import type { ByteOrder } from "./ByteReader.js";
+/** The largest capacity a ByteWriter has, in bytes. */
 export declare const BYTE_WRITER_LIMITS: Readonly<{
     readonly maxBytes: 16777216;
 }>;

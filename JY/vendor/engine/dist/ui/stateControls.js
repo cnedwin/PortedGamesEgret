@@ -27,6 +27,7 @@ function within(root, node) {
     }
     return false;
 }
+/** Tells whether a pointer hovers over a target. */
 export function createHoverControl(options) {
     const { hover, onHoverChange } = record(options);
     const target = displayTarget(options.target);
@@ -116,6 +117,7 @@ export function createHoverControl(options) {
         }
     });
 }
+/** A checkbox or switch on a target: a press and release inside it toggles it. */
 export function createToggleControl(options) {
     const { input, target, onChange, onPressChange } = record(options);
     let checked = options.checked ?? false;
@@ -178,6 +180,7 @@ export function createToggleControl(options) {
         }
     });
 }
+/** Radio buttons or tabs: one item of the group is selected at a time. */
 export function createSelectionGroup(options) {
     const { input, onChange } = record(options);
     const { items, wrap = true } = options;

@@ -20,6 +20,7 @@ const weakHas = WeakMap.prototype.has;
 const weakGet = WeakMap.prototype.get;
 const weakSet = WeakMap.prototype.set;
 const owned = new WeakMap();
+/** The largest image accepted: its longest edge and its number of pixels. */
 export const IMAGE_LIMITS_2D = freeze({
     // One image is at most 2048 x 2048 pixels, or any other shape of that area within the edge bound.
     maxSourceEdge: 4096,
@@ -56,6 +57,7 @@ function cloneBytes(source, length) {
     apply(setBytes, result, [source]);
     return result;
 }
+/** Copies the pixels into an image this module owns; a wrong size or pixel count is refused with a TypeError. */
 export function createImageData2D(input) {
     if (typeof input !== 'object' || input === null)
         throw new TypeFault('Image descriptor must be an object');
@@ -116,9 +118,11 @@ export function createImageData2D(input) {
     apply(weakSet, owned, [image, copy]);
     return image;
 }
+/** Whether a value is an image made by `createImageData2D`, without reading any of its properties. */
 export function isImageData2D(value) {
     return typeof value === 'object' && value !== null && apply(weakHas, owned, [value]);
 }
+/** A fresh copy of an image's pixels, which the caller owns. */
 export function copyImageData2DPixels(image) {
     // Identity authentication performs no property reads on forged/proxied values.
     if (!isImageData2D(image))

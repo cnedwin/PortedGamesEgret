@@ -1,5 +1,6 @@
 import { type ColorInput3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** Volumetric fog to make: its color and density, its height and falloff, its distance, and how much the sun and lights shine through it. */
 export interface VolumetricFogOptions3D {
     readonly color?: ColorInput3D;
     /** Fog thickness per world unit at `height`. Default 0.02. */
@@ -51,5 +52,6 @@ export declare class VolumetricFog3D extends Mesh3D {
     private face;
     private amount;
 }
+/** Makes fog that light shines through. */
 export declare function createVolumetricFog3D(options?: VolumetricFogOptions3D): VolumetricFog3D;
 //# sourceMappingURL=VolumetricFog3D.d.ts.map

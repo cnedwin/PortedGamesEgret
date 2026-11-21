@@ -1,5 +1,6 @@
 import { Shape3D } from './Curves3D.js';
 import type { Geometry3D } from './Geometry3D.js';
+/** The most characters, font bytes and glyph points 3D text has. */
 export declare const TEXT3D_LIMITS: Readonly<{
     readonly maxCharacters: 4096;
     readonly maxFontBytes: 67108864;
@@ -15,6 +16,7 @@ export interface GlyphOutline3D {
     readonly advance: number;
     readonly commands: readonly number[];
 }
+/** A font for 3D text: its metrics, family, and its glyphs' outlines. */
 export interface FontSource3D {
     readonly unitsPerEm: number;
     readonly ascender: number;
@@ -25,6 +27,7 @@ export interface FontSource3D {
     /** Outline for a Unicode code point, or undefined when the font lacks it. */
     readonly glyph: (codePoint: number) => GlyphOutline3D | undefined;
 }
+/** How 3D text is laid out: its size, curve detail, spacing, line height and alignment. */
 export interface TextLayoutOptions3D {
     /** Height of the em square in world units. Defaults to 1. */
     readonly size?: number;
@@ -37,12 +40,14 @@ export interface TextLayoutOptions3D {
     /** How lines are placed against x = 0. Defaults to 'left'. */
     readonly align?: 'left' | 'center' | 'right';
 }
+/** 3D text to make: how deep it is extruded, and in how many steps. */
 export interface TextGeometryOptions3D extends TextLayoutOptions3D {
     /** Thickness along +Z. Zero gives flat text. Defaults to a fifth of the size. */
     readonly depth?: number;
     /** Subdivisions along the depth. */
     readonly steps?: number;
 }
+/** A font that gives the outlines of text for 3D text geometry. */
 export declare class Font3D {
     #private;
     readonly unitsPerEm: number;

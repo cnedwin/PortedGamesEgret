@@ -71,11 +71,12 @@ function address(value) {
     }
     return value;
 }
+/** Checks and freezes a material for shared meshes; values out of range are refused. */
 export function createSharedMaterial2D(input) {
     if (typeof input !== 'object' || input === null || isArray(input)) {
         throw new TypeFault('Shared material descriptor must be a record');
     }
-    // Complete the twelve top-level reads before examining either tuple.
+    // Complete the thirteen top-level reads before examining either tuple.
     const lightInput = read(input, 'light');
     const darkInput = read(input, 'dark');
     const blendInput = read(input, 'blend');
@@ -88,6 +89,7 @@ export function createSharedMaterial2D(input) {
     const minInput = read(input, 'minFilter');
     const magInput = read(input, 'magFilter');
     const anisotropyInput = read(input, 'maxAnisotropy');
+    const mipmapInput = read(input, 'mipmapFilter');
     if (lightInput !== undefined)
         tupleBrand(lightInput);
     if (darkInput !== undefined)
@@ -148,6 +150,12 @@ export function createSharedMaterial2D(input) {
     }
     if (maxAnisotropy !== 1)
         throw new TypeFault('Shared material option is unsupported');
+    const mipmapFilter = mipmapInput === undefined ? 'none' : mipmapInput;
+    if (mipmapFilter !== 'none' && mipmapFilter !== 'linear')
+        throw new TypeFault('Shared material option is unsupported');
+    // Smaller copies are blended, so they need the linear filter that blends the texels of each.
+    if (mipmapFilter === 'linear' && selectedFilter !== 'linear')
+        throw new TypeFault('Shared material option is unsupported');
     if (minFilter !== selectedFilter ||
         magFilter !== selectedFilter ||
         (samplingDomain === 'region' && (addressU !== 'clamp-to-edge' || addressV !== 'clamp-to-edge')) ||
@@ -168,7 +176,8 @@ export function createSharedMaterial2D(input) {
         mipLevel: 0,
         minFilter,
         magFilter,
-        maxAnisotropy: 1
+        maxAnisotropy: 1,
+        mipmapFilter
     });
     apply(weakSet, owned, [material, true]);
     return material;

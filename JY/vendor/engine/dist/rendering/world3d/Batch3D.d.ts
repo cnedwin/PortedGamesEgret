@@ -3,6 +3,7 @@ import { Geometry3D } from './Geometry3D.js';
 import { Material3D } from './Material3D.js';
 import type { ColorInput3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most items, vertices and line points a batch holds. */
 export declare const BATCH3D_LIMITS: Readonly<{
     readonly maxItems: 65536;
     readonly maxVertices: 4194304;
@@ -37,6 +38,7 @@ export declare class BatchedMesh3D extends Mesh3D {
     /** Release the combined geometry. The material stays with its owner. */
     dispose(): void;
 }
+/** A thick line to make: its width, whether that width is in screen pixels, its color and whether it closes. */
 export interface FatLineOptions3D {
     /** Width in world units, or in pixels when `screenSpace` is set. */
     readonly width?: number;
@@ -66,6 +68,8 @@ export declare class FatLine3D extends Mesh3D {
     /** Release the line's own geometry and material. */
     dispose(): void;
 }
+/** Makes a mesh that draws many geometries with one material in one draw. */
 export declare function createBatchedMesh3D(material: Material3D): BatchedMesh3D;
+/** Makes a line of a given thickness through points. */
 export declare function createFatLine3D(points: ArrayLike<number> | readonly ArrayLike<number>[], options?: FatLineOptions3D): FatLine3D;
 //# sourceMappingURL=Batch3D.d.ts.map

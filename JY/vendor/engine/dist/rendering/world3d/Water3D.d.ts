@@ -72,6 +72,7 @@ export declare class PlanarReflection3D {
     private renderLegacy;
     dispose(): void;
 }
+/** Water to make: its size and detail, its waves and ripples, its colors and clarity, its reflections, foam and caustics. */
 export interface WaterOptions3D {
     /** Size of the surface along X and Z. Defaults: 100 each. */
     readonly width?: number;
@@ -153,6 +154,7 @@ export declare class Water3D extends Mesh3D {
     /** Release the geometry, the material and the mirror image. */
     dispose(): void;
 }
+/** Makes a water surface with waves, reflections and foam. */
 export declare function createWater3D(options?: WaterOptions3D): Water3D;
 /**
  * The material Water3D uses, for a water surface on your own geometry: a

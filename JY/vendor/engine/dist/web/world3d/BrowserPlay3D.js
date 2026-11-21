@@ -2,13 +2,16 @@
 // A whole small 3D game from one call. The picture is a World3D app; everything else is `play`, drawn clear over
 // it on a canvas of its own: the keys, the pointer, sound, timers, tweens, text and buttons. What is added here is
 // what a 3D game makes its world of: boxes, balls and a ground that are placed by plain numbers, a camera that
-// follows, a sun, tests of distance and overlap, and pieces thrown out by a hit.
+// follows, a sun, tests of distance and overlap, and pieces thrown out by a hit; things grouped to move as one,
+// things that glow, lamps, and snow or rain.
 import { EgretError } from '@egret/runtime';
 import { play } from '../play.js';
 import { Object3D, Scene3D } from '../../rendering/world3d/Object3D.js';
 import { Mesh3D } from '../../rendering/world3d/Mesh3D.js';
 import { createPerspectiveCamera3D } from '../../rendering/world3d/Camera3D.js';
-import { createDirectionalLight3D, createHemisphereLight3D } from '../../rendering/world3d/Light3D.js';
+import { createDirectionalLight3D, createHemisphereLight3D, createPointLight3D } from '../../rendering/world3d/Light3D.js';
+import { GpuParticles3D } from '../../rendering/world3d/GpuParticles3D.js';
+import { Texture3D } from '../../rendering/world3d/Texture3D.js';
 import { createStandardMaterial3D, setColor3D } from '../../rendering/world3d/Material3D.js';
 import { createBoxGeometry3D, createCylinderGeometry3D, createSphereGeometry3D } from '../../rendering/world3d/primitives3D.js';
 import { linearColor3D } from '../../rendering/world3d/GeometryBuilder3D.js';
@@ -60,6 +63,8 @@ export class PlayThing3D {
     middleZ;
     #material;
     #color;
+    #glow = 0;
+    #shadow;
     #turn = [0, 0, 0];
     #removed = false;
     /**
@@ -185,6 +190,61 @@ export class PlayThing3D {
             return;
         this.#color = value;
         setColor3D(this.#material.color, value);
+        if (this.#glow > 0)
+            setColor3D(this.#material.emissive, value);
+    }
+    /**
+     * How much it shines with its own colour, lit or not: 0 (the default) not at all, 1 as bright as its colour,
+     * more for a lamp or a screen. A thing that glows is not hidden by fog. A model keeps the materials it has.
+     */
+    get glow() {
+        return this.#glow;
+    }
+    set glow(value) {
+        if (!finite(value) || value < 0 || this.#material === undefined)
+            return;
+        this.#glow = value;
+        setColor3D(this.#material.emissive, value > 0 ? this.#color : 0);
+        this.#material.emissiveIntensity = value;
+        // What glows is seen through the fog and the snow, as a lighthouse or a lantern is at night.
+        this.#material.fog = value === 0;
+        this.#blend();
+    }
+    /** A see-through thing that glows adds its light to what is behind it, as a beam does; any other mixes over it. */
+    #blend() {
+        if (this.#material === undefined)
+            return;
+        this.#material.blending = this.#glow > 0 && this.#material.opacity < 1 ? 'additive' : 'normal';
+        // Fog, blending and the alpha mode choose the shader, so a change of them is told to the material.
+        this.#material.touch();
+    }
+    /**
+     * How much of it is seen, 0 to 1: 1 (the default) is solid, less lets what is behind it show through, as glass, a
+     * ghost or, with `glow`, a beam of light, whose light is added to what is behind it. A see-through thing casts no
+     * shadow. A model keeps the materials it has.
+     */
+    get opacity() {
+        return this.#material?.opacity ?? 1;
+    }
+    set opacity(value) {
+        if (!finite(value) || this.#material === undefined)
+            return;
+        const opacity = Math.min(1, Math.max(0, value)), solid = opacity >= 1;
+        this.#material.opacity = opacity;
+        this.#material.alphaMode = solid ? 'opaque' : 'blend';
+        this.#material.depthWrite = solid;
+        this.#blend();
+        if (this.node instanceof Mesh3D) {
+            // It keeps the shadow it had when it is made solid again.
+            if (!solid && this.#shadow === undefined) {
+                this.#shadow = this.node.castShadow;
+                this.node.castShadow = false;
+            }
+            else if (solid && this.#shadow !== undefined) {
+                this.node.castShadow = this.#shadow;
+                this.#shadow = undefined;
+            }
+        }
     }
     /** Whether `game.remove` has taken it out of the world. Setting it afterwards does nothing that is seen. */
     get removed() {
@@ -200,6 +260,133 @@ export class PlayThing3D {
         cleanUp([() => this.node.removeFromParent(), () => geometry?.dispose(), () => this.#material?.dispose()]);
     }
 }
+/**
+ * A lamp: light from a point of the world that fades out by `range`. It is placed and changed by plain numbers, and
+ * `game.remove` puts it out. Up to eight are lit fully; more are lit by a coarser way.
+ */
+export class PlayLamp3D {
+    node;
+    #color;
+    #removed = false;
+    constructor(color, intensity, range) {
+        this.#color = color;
+        this.node = createPointLight3D({ color, intensity, range });
+    }
+    get x() {
+        return this.node.position[0];
+    }
+    set x(value) {
+        if (finite(value))
+            this.node.setPosition(value, this.node.position[1], this.node.position[2]);
+    }
+    get y() {
+        return this.node.position[1];
+    }
+    set y(value) {
+        if (finite(value))
+            this.node.setPosition(this.node.position[0], value, this.node.position[2]);
+    }
+    get z() {
+        return this.node.position[2];
+    }
+    set z(value) {
+        if (finite(value))
+            this.node.setPosition(this.node.position[0], this.node.position[1], value);
+    }
+    get color() {
+        return this.#color;
+    }
+    set color(value) {
+        if (!colour(value))
+            return;
+        this.#color = value;
+        setColor3D(this.node.color, value);
+    }
+    /** How bright it is; 0 is dark. */
+    get intensity() {
+        return this.node.intensity;
+    }
+    set intensity(value) {
+        if (finite(value) && value >= 0)
+            this.node.intensity = value;
+    }
+    /** How far it reaches before it has faded out, in units of the world. */
+    get range() {
+        return this.node.range;
+    }
+    set range(value) {
+        if (above(value))
+            this.node.range = value;
+    }
+    get visible() {
+        return this.node.visible;
+    }
+    set visible(value) {
+        this.node.visible = value === true;
+    }
+    get removed() {
+        return this.#removed;
+    }
+    leave() {
+        if (this.#removed)
+            return;
+        this.#removed = true;
+        this.node.removeFromParent();
+    }
+}
+/** The looks every game is given, by name. */
+export const PLAY_LOOKS_3D = Object.freeze({
+    day: {
+        background: 0x8ec5ff,
+        sky: 0xcfe3ff,
+        ground: 0x4a5a3a,
+        light: 0.9,
+        sun: 0xfff4e0,
+        sunIntensity: 2.4,
+        sunFrom: [8, 16, 10],
+        fog: 0.006
+    },
+    dusk: {
+        background: 0xd98a62,
+        sky: 0xffc18a,
+        ground: 0x2b2238,
+        light: 0.7,
+        sun: 0xff9a5a,
+        sunIntensity: 2,
+        sunFrom: [16, 5, 6],
+        fog: 0.018
+    },
+    night: {
+        background: 0x0b1020,
+        sky: 0x3a4a78,
+        ground: 0x08080c,
+        light: 0.22,
+        sun: 0x9fb8ff,
+        sunIntensity: 0.35,
+        sunFrom: [-6, 14, 8],
+        fog: 0.015
+    },
+    fog: {
+        background: 0xb8c0c8,
+        sky: 0xdfe5ea,
+        ground: 0x6b7076,
+        light: 0.9,
+        sun: 0xffffff,
+        sunIntensity: 1,
+        sunFrom: [8, 16, 10],
+        fog: 0.06
+    },
+    snow: {
+        background: 0xdfe8f2,
+        sky: 0xe6eef8,
+        ground: 0x8a96a6,
+        light: 0.7,
+        sun: 0xfff8f0,
+        sunIntensity: 1.4,
+        sunFrom: [8, 14, 12],
+        fog: 0.025
+    }
+});
 const PIECES = 96;
 /** How deep a ground is under its top. */
 const GROUND_DEPTH = 8;
@@ -286,8 +473,8 @@ export async function play3d(options) {
         throw invalid('update is a function');
     if (options.canvas !== undefined)
         throw invalid('play3d makes its own canvases');
-    let game, app, deep, unplace;
-    let clearing = false, closing = false, worldDisposed = false, generation = 0;
+    let game, app, creatingApp, deep, unplace;
+    let clearing = false, closing = false, generation = 0;
     let disposal;
     const admit = () => {
         if (clearing || closing)
@@ -307,14 +494,126 @@ export async function play3d(options) {
     sun.shadow.extent = 24;
     sun.shadow.far = 120;
     const things = new Set();
+    // The parts of each group, which leave with it; and the lamps that are lit.
+    const groups = new WeakMap(), grouped = new WeakSet();
+    const lamps = new Set();
+    // What falls, made when first asked for and kept over what the camera looks at.
+    // A soft round dot that every flake and drop is drawn with, made when first needed.
+    let dot, streak;
+    const dotTexture = () => {
+        if (dot !== undefined)
+            return dot;
+        const size = 16, data = new Uint8Array(4 * size * size);
+        for (let y = 0; y < size; y++)
+            for (let x = 0; x < size; x++) {
+                const d = Math.hypot(x + 0.5 - size / 2, y + 0.5 - size / 2) / (size / 2);
+                data.set([255, 255, 255, Math.round(255 * Math.max(0, Math.min(1, (1 - d) * 2.5)))], 4 * (y * size + x));
+            }
+        return (dot = new Texture3D({ width: size, height: size, data }, { wrapS: 'clamp', wrapT: 'clamp' }));
+    };
+    // A drop of rain is seen as a streak: a thin upright line, brightest in its middle and fading to its ends.
+    const streakTexture = () => {
+        if (streak !== undefined)
+            return streak;
+        const width = 8, height = 32, data = new Uint8Array(4 * width * height);
+        for (let y = 0; y < height; y++)
+            for (let x = 0; x < width; x++) {
+                const across = Math.max(0, 1 - Math.abs(x + 0.5 - width / 2) / 1.5), along = Math.sin((Math.PI * (y + 0.5)) / height);
+                data.set([255, 255, 255, Math.round(255 * Math.min(1, across) * along)], 4 * (y * width + x));
+            }
+        return (streak = new Texture3D({ width, height, data }, { wrapS: 'clamp', wrapT: 'clamp' }));
+    };
+    let falling, fallingKind = 'none', fallingAmount = 1;
+    const fall = (kind, amount) => {
+        if (kind === fallingKind && amount === fallingAmount)
+            return;
+        falling?.removeFromParent();
+        falling?.dispose();
+        falling = undefined;
+        fallingKind = kind;
+        fallingAmount = amount;
+        if (kind === 'none' || amount === 0)
+            return;
+        const snow = kind === 'snow';
+        // A box of sky over what is looked at; flakes are left where they fall as the camera moves.
+        falling = new GpuParticles3D({
+            count: Math.max(1, Math.round((snow ? 1600 : 2400) * amount)),
+            lifetime: snow ? [5, 7] : [0.9, 1.1],
+            speed: snow ? [0.4, 0.9] : [16, 20],
+            direction: [snow ? 0.15 : 0.05, -1, 0],
+            spread: snow ? 0.5 : 0.04,
+            gravity: [0, snow ? -0.4 : -6, 0],
+            startSize: snow ? [0.12, 0.22] : [0.3, 0.42],
+            startColor: snow ? 0xffffff : 0xa8bcd8,
+            startOpacity: snow ? 0.95 : 0.55,
+            endOpacity: snow ? 0.9 : 0.5,
+            fadeIn: 0.05,
+            fadeOut: 0.15,
+            shape: 'box',
+            extents: [22, 0.5, 22],
+            loop: true,
+            space: 'world',
+            seed: 7,
+            map: snow ? dotTexture() : streakTexture()
+        });
+        falling.castShadow = false;
+        falling.receiveShadow = false;
+        falling.setPosition(aim[0], aim[1] + (snow ? 9 : 16), aim[2]);
+        scene.addChild(falling);
+    };
     // The camera: where the game put it, what it looks at, and how far a shake has it out of place.
     const base = [0, 6, 12], aim = [0, 0, 0], shaken = [0, 0, 0];
-    let followed, turning = false, offset = [0, 4, 8], smooth = 6, shakeAmount = 0, shakeLeft = 0, shakeSpan = 1;
+    let followed, turning = false, lookAbove = 0, offset = [0, 4, 8], smooth = 6, shakeAmount = 0, shakeLeft = 0, shakeSpan = 1;
+    // The side the sun shines from; a look changes it.
+    const sunFrom = [8, 16, 10];
+    const look = (given) => {
+        const chosen = typeof given === 'string' ? PLAY_LOOKS_3D[given] : given;
+        if (chosen === undefined || chosen === null || typeof chosen !== 'object')
+            throw invalid("look is 'day', 'dusk', 'night', 'fog' or 'snow', or { background, sky, ground, sun, fog }");
+        const hex = (value) => Number.isInteger(value) && value >= 0 && value <= 0xffffff;
+        // A strength given a colour, as 0x2a3550 for `light`, would light the world white: it is refused instead.
+        for (const key of ['light', 'sunIntensity'])
+            if (chosen[key] !== undefined && !(finite(chosen[key]) && chosen[key] >= 0 && chosen[key] <= 16))
+                throw invalid(key +
+                    ' is how strong the light is, 0 to 16 (night 0.22, day 0.9); its colour is ' +
+                    (key === 'light' ? 'sky' : 'sun'));
+        if (hex(chosen.background)) {
+            scene.background = linearColor3D(chosen.background);
+            if (scene.fog !== undefined)
+                scene.fog = { ...scene.fog, color: linearColor3D(chosen.background) };
+        }
+        if (hex(chosen.sky))
+            setColor3D(sky.color, chosen.sky);
+        if (hex(chosen.ground))
+            setColor3D(sky.groundColor, chosen.ground);
+        if (finite(chosen.light) && chosen.light >= 0)
+            sky.intensity = chosen.light;
+        if (hex(chosen.sun))
+            setColor3D(sun.color, chosen.sun);
+        if (finite(chosen.sunIntensity) && chosen.sunIntensity >= 0)
+            sun.intensity = chosen.sunIntensity;
+        const from = chosen.sunFrom;
+        if (Array.isArray(from) && from.length === 3 && from.every(finite) && from[1] > 0) {
+            sunFrom[0] = from[0];
+            sunFrom[1] = from[1];
+            sunFrom[2] = from[2];
+        }
+        if (finite(chosen.fog) && chosen.fog >= 0) {
+            const color = Array.isArray(scene.background)
+                ? scene.background
+                : linearColor3D(background);
+            scene.fog =
+                chosen.fog === 0
+                    ? undefined
+                    : { kind: 'exponential', color: [...color], density: chosen.fog };
+        }
+        settle();
+    };
     const settle = () => {
         eye.setPosition(base[0] + shaken[0], base[1] + shaken[1], base[2] + shaken[2]);
         eye.lookAt(aim[0], aim[1], aim[2]);
         // The sun keeps its direction and stays over what is looked at, so its shadows are there.
-        sun.setPosition(aim[0] + 8, aim[1] + 16, aim[2] + 10);
+        sun.setPosition(aim[0] + sunFrom[0], aim[1] + sunFrom[1], aim[2] + sunFrom[2]);
         sun.lookAt(aim[0], aim[1], aim[2]);
     };
     const camera = {
@@ -377,7 +676,8 @@ export async function play3d(options) {
     const isThing = (body) => body instanceof PlayThing3D;
     // Taps on things: found by a ray from the camera through the pointer when it goes down.
     const taps = new Map(), ray = new Raycaster3D();
-    let tapFailure;
+    // A tap reports errors to the scene that received it. A returned restart may reject after that scene is gone.
+    let tapErrors = {};
     const tapped = (flat) => {
         if (taps.size === 0 || !flat.pointer.pressed)
             return;
@@ -401,15 +701,17 @@ export async function play3d(options) {
                 if (thing === undefined || !thing.visible)
                     continue;
                 const callback = taps.get(thing);
+                const owner = tapErrors;
+                const fail = (cause) => {
+                    owner.failure ??= { cause };
+                };
                 try {
                     const result = callback();
                     if (result !== null && result !== undefined && typeof result.then === 'function')
-                        result.then(undefined, cause => {
-                            tapFailure ??= { cause };
-                        });
+                        result.then(undefined, fail);
                 }
                 catch (cause) {
-                    tapFailure ??= { cause };
+                    fail(cause);
                 }
                 return;
             }
@@ -421,9 +723,11 @@ export async function play3d(options) {
         clearing = true;
         generation++;
         try {
-            const leaving = [...things];
+            const leaving = [...things], unlit = [...lamps];
             things.clear();
+            lamps.clear();
             taps.clear();
+            tapErrors = {};
             for (const piece of pieces) {
                 piece.life = 0;
                 piece.thing.visible = false;
@@ -435,25 +739,48 @@ export async function play3d(options) {
             aim[0] = aim[1] = aim[2] = 0;
             shakeLeft = 0;
             shaken[0] = shaken[1] = shaken[2] = 0;
-            cleanUp(leaving.map(thing => () => thing.leave()));
+            cleanUp([...leaving.map(thing => () => thing.leave()), ...unlit.map(lamp => () => lamp.leave())]);
         }
         finally {
             clearing = false;
         }
     };
-    const disposeWorld = () => {
+    const disposeWorld = async () => {
         beginClosing();
-        if (worldDisposed)
-            return;
-        worldDisposed = true;
-        cleanUp([
-            clear,
-            ...pieces.map(piece => () => piece.thing.leave()),
-            () => pieceShape.dispose(),
-            () => unplace?.(),
-            () => app?.dispose(),
-            () => deep?.remove()
-        ]);
+        const failures = [];
+        // Join only the SDK factory. Application setup may still be waiting on an unrelated download.
+        if (creatingApp !== undefined) {
+            try {
+                await creatingApp;
+            }
+            catch (cause) {
+                failures.push(cause);
+            }
+        }
+        try {
+            cleanUp([
+                clear,
+                ...pieces.map(piece => () => piece.thing.leave()),
+                () => pieceShape.dispose(),
+                () => fall('none', 0),
+                () => dot?.dispose(),
+                () => streak?.dispose(),
+                () => unplace?.(),
+                () => app?.dispose(),
+                () => deep?.remove()
+            ]);
+        }
+        catch (cause) {
+            failures.push(cause);
+        }
+        try {
+            // World3DApp is a synchronous Disposable. Its Engine owns the shared asynchronous close result.
+            await app?.engine.dispose();
+        }
+        catch (cause) {
+            failures.push(cause);
+        }
+        throwCleanupFailures(failures);
     };
     // Where the camera keeps to by a thing: its offset, turned with the thing when asked.
     const placeBy = (thing) => {
@@ -471,7 +798,7 @@ export async function play3d(options) {
             base[1] = base[1] + (y - base[1]) * share;
             base[2] = base[2] + (z - base[2]) * share;
             aim[0] = followed.x;
-            aim[1] = followed.y;
+            aim[1] = followed.y + lookAbove;
             aim[2] = followed.z;
         }
         if (shakeLeft > 0) {
@@ -479,6 +806,10 @@ export async function play3d(options) {
             const reach = shakeLeft > 0 ? shakeAmount * (shakeLeft / shakeSpan) : 0;
             for (let i = 0; i < 3; i++)
                 shaken[i] = (Math.random() * 2 - 1) * reach;
+        }
+        if (falling !== undefined) {
+            falling.setPosition(aim[0], aim[1] + (fallingKind === 'snow' ? 9 : 16), aim[2]);
+            falling.update(seconds);
         }
         for (const piece of pieces) {
             if (piece.life <= 0)
@@ -498,6 +829,7 @@ export async function play3d(options) {
     };
     const extend = (flat) => {
         const added = {
+            look,
             box(width, height, depth, color, at = {}) {
                 admit();
                 if (!above(width) || !above(height) || !above(depth))
@@ -566,15 +898,82 @@ export async function play3d(options) {
                 taps.set(target, callback);
             },
             remove(body) {
-                if (isThing(body)) {
+                if (body instanceof PlayLamp3D) {
+                    lamps.delete(body);
+                    body.leave();
+                }
+                else if (isThing(body)) {
                     things.delete(body);
                     taps.delete(body);
                     if (followed === body)
                         followed = undefined;
                     body.leave();
+                    for (const part of groups.get(body) ?? [])
+                        whole.remove(part);
                 }
                 else
                     flat.remove(body);
+            },
+            group(parts, at = {}) {
+                admit();
+                if (!Array.isArray(parts) || parts.length === 0 || !parts.every(isThing))
+                    throw invalid('group takes a list of things');
+                if (parts.some(part => part.removed || !things.has(part) || grouped.has(part)) ||
+                    new Set(parts).size !== parts.length)
+                    throw invalid('a group is made of things of the world not in a group, each once');
+                if (at === null || typeof at !== 'object')
+                    throw invalid('a place is an object with x, y and z');
+                const { x, y, z } = at;
+                admit();
+                // The box of the parts where they are, as the group's own.
+                const low = [Infinity, Infinity, Infinity], high = [-Infinity, -Infinity, -Infinity];
+                for (const part of parts) {
+                    const box = boxOf(part);
+                    for (let k = 0; k < 3; k++) {
+                        low[k] = Math.min(low[k], box[k] - box[k + 3]);
+                        high[k] = Math.max(high[k], box[k] + box[k + 3]);
+                    }
+                }
+                const node = new Object3D();
+                for (const part of parts) {
+                    part.node.removeFromParent();
+                    node.addChild(part.node);
+                }
+                const thing = new PlayThing3D(node, 0xffffff, [0, 1, 2].map(k => (high[k] - low[k]) / 2), [0, 1, 2].map(k => (high[k] + low[k]) / 2));
+                node.setPosition(finite(x) ? x : 0, finite(y) ? y : 0, finite(z) ? z : 0);
+                scene.addChild(node);
+                things.add(thing);
+                groups.set(thing, [...parts]);
+                for (const part of parts)
+                    grouped.add(part);
+                return thing;
+            },
+            lamp(color, at = {}, o = {}) {
+                admit();
+                if (!colour(color))
+                    throw invalid('a colour is a number from 0 to 0xffffff');
+                if (at === null || typeof at !== 'object')
+                    throw invalid('a place is an object with x, y and z');
+                if (o === null || typeof o !== 'object')
+                    throw invalid('a lamp takes { intensity, range }');
+                const { x, y, z } = at;
+                const intensity = finite(o.intensity) && o.intensity >= 0 ? o.intensity : 4, range = above(o.range) ? o.range : 8;
+                admit();
+                const lamp = new PlayLamp3D(color, intensity, range);
+                lamp.node.setPosition(finite(x) ? x : 0, finite(y) ? y : 0, finite(z) ? z : 0);
+                scene.addChild(lamp.node);
+                lamps.add(lamp);
+                return lamp;
+            },
+            weather(kind, o = {}) {
+                admit();
+                if (kind !== 'snow' && kind !== 'rain' && kind !== 'none')
+                    throw invalid("weather is 'snow', 'rain' or 'none'");
+                if (o === null || typeof o !== 'object')
+                    throw invalid('weather takes { amount }');
+                const amount = finite(o.amount) ? Math.max(0, Math.min(3, o.amount)) : 1;
+                admit();
+                fall(kind, amount);
             },
             near(a, b, distance) {
                 if (!isThing(a) || !isThing(b))
@@ -618,10 +1017,11 @@ export async function play3d(options) {
                 offset = [finite(where.x) ? where.x : 0, finite(where.y) ? where.y : 4, finite(where.z) ? where.z : 8];
                 smooth = finite(where.smooth) && where.smooth >= 0 ? where.smooth : 6;
                 turning = where.turn === true;
+                lookAbove = finite(where.lookY) ? where.lookY : 0;
                 // It starts where it will stay, and does not fly in from where the camera was.
                 [base[0], base[1], base[2]] = placeBy(thing);
                 aim[0] = thing.x;
-                aim[1] = thing.y;
+                aim[1] = thing.y + lookAbove;
                 aim[2] = thing.z;
             },
             hitStop(seconds = 0.06) {
@@ -687,7 +1087,7 @@ export async function play3d(options) {
                         failures.push(cause);
                     }
                     try {
-                        disposeWorld();
+                        await disposeWorld();
                     }
                     catch (cause) {
                         failures.push(cause);
@@ -742,10 +1142,18 @@ export async function play3d(options) {
                     observer?.disconnect();
                     win.removeEventListener('resize', place);
                 };
-                app = await createWorld3DApp(under, {
+                creatingApp = createWorld3DApp(under, {
                     backend: options.backend === 'webgpu' ? 'webgpu' : 'webgl2',
                     ...(options.onError === undefined ? {} : { onError: options.onError })
                 });
+                try {
+                    app = await creatingApp;
+                }
+                finally {
+                    creatingApp = undefined;
+                }
+                if (closing || given.scope.state !== 'open')
+                    throw new EgretError('SCOPE_CLOSED');
                 scene.addChild(eye);
                 scene.addChild(sky);
                 scene.addChild(sun);
@@ -755,8 +1163,24 @@ export async function play3d(options) {
             }
             else
                 clear();
-            await setup?.(game);
-            settle();
+            try {
+                await setup?.(game);
+                if (closing || given.scope.state !== 'open')
+                    throw new EgretError('SCOPE_CLOSED');
+                settle();
+            }
+            catch (cause) {
+                // A failed setup may already have attached borrowed models and allocated owned primitives.
+                if (!closing) {
+                    try {
+                        clear();
+                    }
+                    catch (cleanupFailure) {
+                        throw new AggregateError([cause, cleanupFailure], 'Play3D setup and rollback failed');
+                    }
+                }
+                throw cause;
+            }
         },
         update(seconds) {
             if (game === undefined)
@@ -770,9 +1194,9 @@ export async function play3d(options) {
                 current.browser.loop.state === 'running';
             if (!running())
                 return;
-            if (tapFailure !== undefined) {
-                const { cause } = tapFailure;
-                tapFailure = undefined;
+            if (tapErrors.failure !== undefined) {
+                const { cause } = tapErrors.failure;
+                delete tapErrors.failure;
                 throw cause;
             }
             tapped(current);
@@ -783,11 +1207,17 @@ export async function play3d(options) {
                 return;
             after(seconds);
         }
-    }).catch((cause) => {
+    }).catch(async (cause) => {
         try {
-            disposeWorld();
+            // A callback may have closed the published game while its initial setup was pending.
+            if (game === undefined)
+                await disposeWorld();
+            else
+                await game.dispose();
         }
         catch (cleanupFailure) {
+            if (cause === cleanupFailure)
+                throw cause;
             throw new AggregateError([cause, cleanupFailure], 'Play3D setup and cleanup failed');
         }
         throw cause;

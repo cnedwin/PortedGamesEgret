@@ -41,6 +41,8 @@ export declare class GLNativeSession {
     } | undefined;
     recordOwners: GLNativeOwner[] | undefined;
     timingSerial: number | null;
+    /** Working targets hold codes (RGBA8, mixed as a 2D canvas mixes) rather than light (SRGB8_ALPHA8). */
+    codedTargets: boolean;
     private readonly calls;
     private readonly qualifiedColorTargets;
     private readonly qualifiedDepthTargets;
@@ -65,6 +67,6 @@ export declare class GLNativeSession {
     workingAttachment(color: WebGLTexture, depth: WebGLRenderbuffer | null): void;
     attachment(working: boolean): void;
     reset(width: number, height: number): void;
-    texture(owner: GLNativeOwner, width: number, height: number, working: boolean): void;
+    texture(owner: GLNativeOwner, width: number, height: number, working: boolean, levels?: number): void;
 }
 //# sourceMappingURL=webgl2Native.d.ts.map

@@ -15,6 +15,7 @@ function clip(text, limit) {
     }
     return text.slice(0, index);
 }
+/** A text field on a target: pressing it opens the platform's editing, and the value is committed or cancelled. */
 export function createTextFieldControl(options) {
     if (options === null || typeof options !== 'object')
         throw new EgretError('UI_CONTROL_OPTIONS');

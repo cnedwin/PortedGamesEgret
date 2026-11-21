@@ -8,6 +8,7 @@ import type { CompressedFormat3D } from '../../rendering/world3d/Texture3D.js';
 import type { PostProcessSettings3D } from './post3D.js';
 import type { Renderer3D, Renderer3DInfo, ToneMapping3D } from './frame3D.js';
 import type { World3DFrameMetrics } from './webGL2FrameMetrics3D.js';
+/** A WebGL2 renderer to make: its canvas and context, its tone mapping and exposure, its shadows, and what is called when the context is lost and restored. */
 export interface WebGL2Renderer3DOptions {
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;
     readonly antialias?: boolean;
@@ -38,6 +39,7 @@ export interface WebGL2ProgramVariant3D {
     readonly softDepth?: boolean;
     readonly transmission?: boolean;
 }
+/** Draws 3D scenes with WebGL2: set its size, render a scene from a camera, and read what it drew. */
 export declare class WebGL2Renderer3D implements Renderer3D {
     #private;
     readonly canvas: HTMLCanvasElement | OffscreenCanvas;
@@ -129,5 +131,6 @@ export declare class WebGL2Renderer3D implements Renderer3D {
     /** Release every GPU object and detach from the canvas. Idempotent. */
     dispose(): void;
 }
+/** Makes a renderer that draws 3D scenes with WebGL2. */
 export declare function createWebGL2Renderer3D(options: WebGL2Renderer3DOptions): WebGL2Renderer3D;
 //# sourceMappingURL=WebGL2Renderer3D.d.ts.map

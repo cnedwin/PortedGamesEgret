@@ -1,5 +1,6 @@
 import { FollowCamera3D } from '../../rendering/world3d/Character3D.js';
 import { World3DError } from '../../rendering/world3d/core3D.js';
+/** Turns and zooms a follow camera with the mouse and touch. */
 export class FollowControls3D {
     element;
     /** The camera rig; read `follow.yaw` or call `follow.moveDirection()` to steer a character relative to the view. */
@@ -111,6 +112,7 @@ export class FollowControls3D {
             this.element.releasePointerCapture(id);
     }
 }
+/** Makes follow controls for a follow camera on an element. */
 export function createFollowControls3D(camera, element, target, options = {}) {
     return new FollowControls3D(camera, element, target, options);
 }

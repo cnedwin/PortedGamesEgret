@@ -1,4 +1,5 @@
 import type { DisplayObject } from '@egret/runtime';
+/** A 2D vector of the physics world. */
 export interface PhysicsVector {
     readonly x: number;
     readonly y: number;
@@ -17,6 +18,7 @@ export type PhysicsShape = {
 };
 /** A static body never moves; a kinematic one moves by its speed alone and pushes; a dynamic one is moved by everything. */
 export type PhysicsBodyKind = 'static' | 'kinematic' | 'dynamic';
+/** A body to add: its kind and shape, where it is and how it moves, its material, its layers and what it moves. */
 export interface PhysicsBodyOptions {
     readonly kind?: PhysicsBodyKind;
     readonly shape: PhysicsShape;
@@ -44,10 +46,13 @@ export interface PhysicsBodyOptions {
     /** Whatever the game keeps with the body. */
     readonly data?: unknown;
 }
+/** A body in the physics world: its place and motion, its material and layers, and the calls that push it. */
 export interface PhysicsBody {
     readonly id: number;
+    /** What it is now; `setKind` changes it. */
     readonly kind: PhysicsBodyKind;
     readonly shape: PhysicsShape;
+    /** Infinity unless it is dynamic. */
     readonly mass: number;
     readonly sensor: boolean;
     readonly state: 'active' | 'removed';
@@ -66,6 +71,12 @@ export interface PhysicsBody {
     applyImpulse(x: number, y: number): void;
     /** Adds to the force on the body for the next step. */
     applyForce(x: number, y: number): void;
+    /**
+     * Makes it static, kinematic or dynamic, keeping its place, its contacts, its joints and what the game keeps with it:
+     * a weight held up until its rope is cut, a crate that falls once struck. A static body stops; one made dynamic has the
+     * mass of its density, as given when it was added. The change takes effect from the next step.
+     */
+    setKind(kind: PhysicsBodyKind): void;
     /** The box around the body, in the world. */
     bounds(): {
         readonly x: number;
@@ -74,6 +85,36 @@ export interface PhysicsBody {
         readonly height: number;
     };
 }
+/**
+ * A joint to add between two bodies, or between a body and a fixed point of the world. `'distance'` keeps the two
+ * anchors at one length, as a rod; `'rope'` keeps them no further apart than it, and lets them come closer, as a rope.
+ * A distance joint of length 0 pins a body to a point, as a pendulum's bob is pinned to its string.
+ */
+export interface PhysicsJointOptions {
+    readonly kind: 'distance' | 'rope';
+    readonly a: PhysicsBody;
+    /** The other body. Without it the joint holds `a` to `point`, a place in the world. */
+    readonly b?: PhysicsBody;
+    readonly point?: PhysicsVector;
+    /** Where on each body the joint is held, from its centre, turned with the body's angle. Default to the centre. */
+    readonly anchorA?: PhysicsVector;
+    readonly anchorB?: PhysicsVector;
+    /** Defaults to the distance between the anchors when the joint is added. */
+    readonly length?: number;
+    /** How firmly a distance joint keeps its length, from above 0 (a soft spring) to 1 (a rod). Defaults to 1. */
+    readonly stiffness?: number;
+}
+/** A joint of the world: its kind, its bodies and its length, which can change, as a rope that is wound in. */
+export interface PhysicsJoint {
+    readonly kind: 'distance' | 'rope';
+    readonly a: PhysicsBody;
+    readonly b: PhysicsBody | undefined;
+    readonly state: 'active' | 'removed';
+    length: number;
+    /** How far apart its anchors are now. */
+    distance(): number;
+}
+/** Two bodies that began or ended touching, with the normal between them. */
 export interface PhysicsContact {
     readonly type: 'begin' | 'end';
     readonly a: PhysicsBody;
@@ -83,6 +124,7 @@ export interface PhysicsContact {
     /** One of the two is a sensor: nothing was pushed. */
     readonly sensor: boolean;
 }
+/** What a ray hit: the body, where, its normal, and how far along the ray. */
 export interface PhysicsRayHit {
     readonly body: PhysicsBody;
     readonly point: PhysicsVector;
@@ -90,6 +132,7 @@ export interface PhysicsRayHit {
     /** How far along the ray, from 0 at its start to 1 at its end. */
     readonly fraction: number;
 }
+/** Where a moved body ended up, and the normals of what it hit on the way. */
 export interface PhysicsMoveResult {
     readonly x: number;
     readonly y: number;
@@ -98,6 +141,7 @@ export interface PhysicsMoveResult {
     /** The normals of what it slid along, pointing away from it. */
     readonly normals: readonly PhysicsVector[];
 }
+/** A physics world to make: its gravity, its step and iterations, and its limits. */
 export interface PhysicsWorldOptions {
     /** Units a second, every second. Defaults to 0 across and 0 down. */
     readonly gravity?: PhysicsVector;
@@ -115,6 +159,7 @@ export interface PhysicsWorldOptions {
     /** The most bodies, 1 to 65536. Defaults to 4096. */
     readonly maxBodies?: number;
 }
+/** A grid of solid tiles to collide with: its size in tiles, its tile size, which are solid and where it is. */
 export interface PhysicsTileColliders {
     readonly columns: number;
     readonly rows: number;
@@ -128,6 +173,7 @@ export interface PhysicsTileColliders {
     readonly layer?: number;
     readonly friction?: number;
 }
+/** The physics world as it is now: its bodies, contacts and steps. */
 export interface PhysicsSnapshot {
     readonly bodies: number;
     readonly contacts: number;
@@ -146,7 +192,15 @@ export interface PhysicsWorld {
     addTileColliders(grid: PhysicsTileColliders): readonly PhysicsBody[];
     /** Takes the time given in fixed steps, and leaves the rest for the next update. Returns the steps taken. */
     step(seconds: number): number;
-    /** Told each contact that begins and ends, after the step it happened in. */
+    /** Joins two bodies, or a body and a point. A joint goes with either of its bodies when that is removed. */
+    addJoint(options: PhysicsJointOptions): PhysicsJoint;
+    removeJoint(joint: PhysicsJoint): void;
+    readonly joints: readonly PhysicsJoint[];
+    /**
+     * Told each contact that begins and ends, after the step it happened in, once that step is done. A listener may change
+     * the world: add and remove bodies and joints, push bodies, change their kind. What it changes takes effect from the
+     * next step, and a body it removes tells the end of its contacts at once. It may not call `step`.
+     */
     onContact(listener: (contact: PhysicsContact) => void): () => void;
     /** The bodies whose shapes hold a point, or meet a rectangle. */
     queryPoint(x: number, y: number, mask?: number): readonly PhysicsBody[];

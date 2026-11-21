@@ -56,9 +56,14 @@ export declare class SkeletonHelper3D extends LineHelper3D {
     constructor(root: Object3D, color?: ColorInput3D);
     update(): void;
 }
+/** Makes lines that show an object's bounding box. */
 export declare function createBoxHelper3D(target: Object3D, color?: ColorInput3D): BoxHelper3D;
+/** Makes an arrow from a point in a direction. */
 export declare function createArrowHelper3D(direction: ArrayLike<number>, origin?: ArrayLike<number>, length?: number, color?: ColorInput3D): ArrowHelper3D;
+/** Makes lines that show what a camera sees. */
 export declare function createCameraHelper3D(camera: Camera3D, color?: ColorInput3D): CameraHelper3D;
+/** Makes lines that show where a light is and where it shines. */
 export declare function createLightHelper3D(light: Light3D, size?: number, color?: ColorInput3D): LightHelper3D;
+/** Makes lines that show the bones of a skeleton. */
 export declare function createSkeletonHelper3D(root: Object3D, color?: ColorInput3D): SkeletonHelper3D;
 //# sourceMappingURL=debug3D.d.ts.map

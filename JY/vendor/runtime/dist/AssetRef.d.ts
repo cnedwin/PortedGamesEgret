@@ -10,6 +10,7 @@ export interface AssetRef<T> {
     readonly type: AssetType<T>;
     readonly id: string;
 }
+/** Makes an asset type from a name and a check that a loaded value is of that type. */
 export declare function createAssetType<T>(name: string, is: (value: unknown) => value is T): AssetType<T>;
 /** Keep the caller's valid ID byte-for-byte; whitespace is not normalization. */
 export declare function createAssetRef<T>(type: AssetType<T>, id: string): AssetRef<T>;

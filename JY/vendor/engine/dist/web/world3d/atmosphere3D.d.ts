@@ -1,5 +1,6 @@
 import type { Camera3D } from '../../rendering/world3d/Camera3D.js';
 import { type CustomPost3D } from './post3D.js';
+/** An atmosphere to make: its fog's color, density and height, and its light shafts. */
 export interface AtmosphereOptions3D {
     /** Fog color, 0xRRGGBB. Default a pale blue-grey. */
     readonly fogColor?: number;
@@ -9,6 +10,11 @@ export interface AtmosphereOptions3D {
     readonly fogHeight?: number;
     /** How quickly the fog thins with height, per world unit; 0 gives uniform fog. Default 0.08. */
     readonly fogFalloff?: number;
+    /**
+     * How much of the fog lies over the sky itself, from 0 (a clear sky, fog only on what stands before it) to 1 (the
+     * sky fogged as if it were the far plane, which greys the horizon). Default 1, as before. Fixed when made.
+     */
+    readonly skyFog?: number;
     /** Brightness of the light shafts; 0 turns them off. Default 0.6. */
     readonly shaftIntensity?: number;
     /** How far the shafts reach across the screen, 0 to 1. Default 0.6. */
@@ -22,6 +28,8 @@ export interface AtmosphereOptions3D {
 export declare class Atmosphere3D {
     #private;
     readonly post: CustomPost3D;
+    /** How much of the fog lies over the sky, as given when it was made. */
+    readonly skyFog: number;
     constructor(options?: AtmosphereOptions3D);
     get fogDensity(): number;
     set fogDensity(value: number);
@@ -43,5 +51,6 @@ export declare class Atmosphere3D {
     update(camera: Camera3D, sunDirection?: ArrayLike<number>): void;
     private amount;
 }
+/** Makes height fog and light shafts for a scene. */
 export declare function createAtmosphere3D(options?: AtmosphereOptions3D): Atmosphere3D;
 //# sourceMappingURL=atmosphere3D.d.ts.map

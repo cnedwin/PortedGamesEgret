@@ -1,11 +1,15 @@
 import type { AssetLease, DisplayObjectContainer, Mesh2D, Texture } from '@egret/runtime';
 import type { TexturedGeometry2D } from '@egret/contracts';
+/** The value of a tile map property. */
 export type TileMapPropertyValue = string | number | boolean;
+/** The properties of a map, layer, tile or object, by name. */
 export type TileMapProperties = Readonly<Record<string, TileMapPropertyValue>>;
+/** One frame of an animated tile: the tile it shows and for how long. */
 export interface TileAnimationFrame {
     readonly tileId: number;
     readonly duration: number;
 }
+/** A tileset: its tiles' size and count, its image, and the properties and animations of its tiles. */
 export interface TileSetData {
     readonly name: string;
     /** The global id of the first tile of the set. */
@@ -28,6 +32,7 @@ export interface TileSetData {
         readonly type?: string;
     }>;
 }
+/** A layer of tiles: its name, size, offset, opacity and parallax, and its tiles' global ids. */
 export interface TileLayerData {
     readonly type: 'tile';
     readonly name: string;
@@ -46,6 +51,7 @@ export interface TileLayerData {
     /** A global id with its flip flags in the top three bits, row by row. 0 is no tile. */
     readonly data: Uint32Array;
 }
+/** An object of an object layer: its place and size, its shape or tile, its text and properties. */
 export interface TileMapObject {
     readonly id: number;
     readonly name: string;
@@ -66,6 +72,7 @@ export interface TileMapObject {
     readonly text?: string;
     readonly properties: TileMapProperties;
 }
+/** A layer of objects: its name, offset, opacity and objects. */
 export interface ObjectLayerData {
     readonly type: 'object';
     readonly name: string;
@@ -76,6 +83,7 @@ export interface ObjectLayerData {
     readonly properties: TileMapProperties;
     readonly objects: readonly TileMapObject[];
 }
+/** A layer of a map: tiles or objects. */
 export type TileMapLayerData = TileLayerData | ObjectLayerData;
 /** A map as plain, frozen data: what a tile map is made from. */
 export interface TileMapData {
@@ -92,10 +100,12 @@ export interface TileMapData {
     /** Back to front. Layers inside groups are given with the names of their groups before theirs, `group/layer`. */
     readonly layers: readonly TileMapLayerData[];
 }
+/** Tilesets kept in files of their own, for importing a map from Tiled. */
 export interface TiledImportOptions {
     /** Tilesets kept in files of their own, by the `source` the map names, as the JSON Tiled writes for them. */
     readonly tilesets?: Readonly<Record<string, unknown>>;
 }
+/** What a cell holds: its tile, tileset and flips, and the tile's properties. */
 export interface TileInfo {
     /** The global id, without flip flags. */
     readonly gid: number;
@@ -107,6 +117,7 @@ export interface TileInfo {
     readonly flippedDiagonally: boolean;
     readonly properties: TileMapProperties;
 }
+/** A chunk of a layer drawn as one: its first cell, whether it shows, and its meshes. */
 export interface TileMapChunk {
     /** The first cell of the chunk. */
     readonly column: number;
@@ -120,12 +131,14 @@ export interface TileMapChunk {
         readonly tiles: number;
     }[];
 }
+/** A layer as drawn: its name and data, its display object and its chunks. */
 export interface TileMapLayer {
     readonly name: string;
     readonly data: TileLayerData;
     readonly display: DisplayObjectContainer;
     readonly chunks: readonly TileMapChunk[];
 }
+/** A tile map to make: its map, its tileset textures and the size of its chunks. */
 export interface TileMapOptions {
     readonly map: TileMapData;
     /** The image of each tileset that is drawn, by its name. A set without one cannot be drawn. */

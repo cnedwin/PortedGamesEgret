@@ -223,6 +223,7 @@ export class VolumetricFog3D extends Mesh3D {
         return value;
     }
 }
+/** Makes fog that light shines through. */
 export function createVolumetricFog3D(options = {}) {
     return new VolumetricFog3D(options);
 }

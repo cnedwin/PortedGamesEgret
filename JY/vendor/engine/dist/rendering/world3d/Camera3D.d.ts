@@ -1,4 +1,5 @@
 import { Object3D } from './Object3D.js';
+/** A perspective camera to make: its vertical field of view, aspect ratio and near and far planes. */
 export interface PerspectiveCameraOptions3D {
     /** Vertical field of view in degrees. */
     readonly fov?: number;
@@ -6,6 +7,7 @@ export interface PerspectiveCameraOptions3D {
     readonly near?: number;
     readonly far?: number;
 }
+/** An orthographic camera to make: the height it sees, its aspect ratio and near and far planes. */
 export interface OrthographicCameraOptions3D {
     /** Visible world height; width follows from the aspect ratio. */
     readonly height?: number;
@@ -13,6 +15,7 @@ export interface OrthographicCameraOptions3D {
     readonly near?: number;
     readonly far?: number;
 }
+/** A camera: its projection, and calls that turn screen points into rays and world points into screen points. */
 export declare class Camera3D extends Object3D {
     #private;
     readonly projectionKind: 'perspective' | 'orthographic';
@@ -52,6 +55,8 @@ export declare class Camera3D extends Object3D {
     clone(recursive?: boolean): this;
     protected copyFrom(source: this): void;
 }
+/** Makes a perspective camera. */
 export declare function createPerspectiveCamera3D(options?: PerspectiveCameraOptions3D): Camera3D;
+/** Makes an orthographic camera. */
 export declare function createOrthographicCamera3D(options?: OrthographicCameraOptions3D): Camera3D;
 //# sourceMappingURL=Camera3D.d.ts.map

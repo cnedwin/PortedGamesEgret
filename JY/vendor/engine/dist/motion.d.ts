@@ -2,7 +2,9 @@ import type { Scope } from '@egret/runtime';
 import type { Engine } from './Engine.js';
 /** How a step runs from its start to its end: a name, or a function from 0–1 to 0–1 (it may pass both on the way). */
 export type MotionEasing = MotionEasingName | ((fraction: number) => number);
+/** The name of an easing a motion step can use. */
 export type MotionEasingName = 'linear' | 'quadIn' | 'quadOut' | 'quadInOut' | 'cubicIn' | 'cubicOut' | 'cubicInOut' | 'quartIn' | 'quartOut' | 'quartInOut' | 'sineIn' | 'sineOut' | 'sineInOut' | 'expoIn' | 'expoOut' | 'expoInOut' | 'backIn' | 'backOut' | 'backInOut' | 'elasticOut' | 'bounceOut';
+/** Whether a motion is idle, running, paused, finished or stopped. */
 export type MotionState = 'idle' | 'running' | 'paused' | 'finished' | 'stopped';
 /** A chain of steps for one object. Steps are added before `start`; the calls return the motion, so they chain. */
 export interface Motion<T extends object> {

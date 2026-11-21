@@ -15,6 +15,7 @@ export declare const TEXTURE_ASSET_3D: AssetType<Texture3D>;
 export declare const CUBE_TEXTURE_ASSET_3D: AssetType<CubeTexture3D>;
 /** A scene document written by serializeScene3D. The reference id is the JSON file URL. */
 export declare const SCENE_ASSET_3D: AssetType<DeserializedScene3D>;
+/** How a 3D app loads assets: how URLs are resolved, how many bytes, and how textures and compressed data are decoded. */
 export interface World3DAssetOptions {
     /** Map a reference id to the URL to download. Defaults to using the id as the URL. */
     readonly resolveUrl?: (id: string) => string;

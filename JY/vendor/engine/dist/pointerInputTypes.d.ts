@@ -2,6 +2,7 @@ import type { DisplayObject, EventType, Scope } from '@egret/runtime';
 import type { PointerCancelReason, PointerContact, PointerEventKind, PointerRouter } from '@egret/runtime/input';
 import type { Engine } from './Engine.js';
 export type { PointerCancelReason, PointerContact, PointerEventKind, PointerSample, PointerSession, PointerType, PointerUpdate, PointerRouterState } from '@egret/runtime/input';
+/** A pointer contact and the target it went to, and why it was cancelled. */
 export interface PointerNotification {
     readonly kind: PointerEventKind;
     readonly contact: PointerContact;
@@ -10,6 +11,7 @@ export interface PointerNotification {
     /** Present on a terminal `end`: whether the event was actually dispatched to a target path. */
     readonly delivered?: boolean;
 }
+/** Pointer input to make: its engine and scope, the surface's size, its limits, and what is called. */
 export interface PointerInputOptions {
     readonly engine: Engine;
     readonly scope: Scope;
@@ -19,6 +21,7 @@ export interface PointerInputOptions {
     readonly capacity?: number;
     readonly onContact?: (notification: PointerNotification) => void;
 }
+/** The event types pointer input dispatches: begin, move, end, cancel and tap. */
 export interface PointerInputEvents {
     readonly begin: EventType<PointerContact>;
     readonly move: EventType<PointerContact>;

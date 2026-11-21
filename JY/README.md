@@ -150,6 +150,6 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `66437553eaf415be3bc91171ba8d1ededd97d3c9`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `66437553eaf415be3bc91171ba8d1ededd97d3c9`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).

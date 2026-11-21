@@ -38,6 +38,7 @@ export type RemoteShape3D = {
         readonly quaternion?: readonly [number, number, number, number];
     }[];
 };
+/** A body to add to a physics world in a worker. */
 export interface RemoteBodyOptions3D {
     readonly type?: BodyType3D;
     readonly shape: RemoteShape3D;
@@ -57,6 +58,7 @@ export interface RemoteBodyOptions3D {
     readonly node?: Object3D;
     readonly userData?: unknown;
 }
+/** A joint to add to a physics world in a worker. */
 export interface RemoteJointOptions3D {
     readonly type: JointType3D;
     readonly bodyA: RemoteBody3D;
@@ -75,6 +77,7 @@ export interface RemoteJointOptions3D {
     readonly damping?: number;
     readonly collideConnected?: boolean;
 }
+/** What a ray hit in a physics world in a worker. */
 export interface RemoteRaycastHit3D {
     readonly body: RemoteBody3D;
     readonly distance: number;
@@ -117,6 +120,7 @@ export declare class RemoteBody3D {
     applyForce(x: number, y: number, z: number): void;
     remove(): void;
 }
+/** A joint of a physics world in a worker; remove it to take it out. */
 export declare class RemoteJoint3D {
     #private;
     readonly id: number;
@@ -169,6 +173,7 @@ export declare class PhysicsClient3D {
     /** Stop listening and answer every waiting ray with nothing. The worker itself is the caller's to end. */
     dispose(): void;
 }
+/** Connects to a physics world run in a worker, through a message port. */
 export declare function connectPhysics3D(port: PhysicsPort3D, options?: PhysicsWorldOptions3D): PhysicsClient3D;
 export {};
 //# sourceMappingURL=PhysicsRemote3D.d.ts.map

@@ -8,11 +8,12 @@ export async function createEngineForProfile(options, profile) {
     if (profile !== SHARED_FRAME_PROFILE_2D)
         throw new EgretError('ENGINE_RENDER_PROFILE_UNSUPPORTED');
     const host = options.host;
-    let advertisement, shared;
+    let advertisement, shared, space;
     try {
         const source = host;
         advertisement = source.sharedFrameProfile;
         shared = source.renderSharedFrame;
+        space = source.sharedBlendSpace;
     }
     catch (cause) {
         throw new EgretError('INVALID_RENDERER', { cause });
@@ -20,6 +21,9 @@ export async function createEngineForProfile(options, profile) {
     if (advertisement !== SHARED_FRAME_PROFILE_2D)
         throw new EgretError('ENGINE_RENDER_PROFILE_UNSUPPORTED');
     if (typeof shared !== 'function')
+        throw new EgretError('INVALID_RENDERER');
+    // The space the renderer mixes in; its frames record it. Linear light unless the renderer says otherwise.
+    if (space !== undefined && space !== 'linear' && space !== 'srgb')
         throw new EgretError('INVALID_RENDERER');
     const diagnostic = options.onDiagnostic;
     const stableOptions = { host, ...(diagnostic === undefined ? {} : { onDiagnostic: diagnostic }) };
@@ -34,9 +38,8 @@ export async function createEngineForProfile(options, profile) {
         throw new EgretError('CLOCK_OPTIONS_INVALID', { cause });
     }
     const clockOptions = admitGameClockOptions(clockValue);
-    return startEngine(stableOptions, timeoutMs, {
-        shared: shared,
-        sharedProfile: profile
-    }, clockOptions);
+    // The Engine reads the renderer's blend space beside the declared ports.
+    const ports = Object.assign({ shared: shared, sharedProfile: profile }, { sharedBlendSpace: space === 'srgb' ? 'srgb' : 'linear' });
+    return startEngine(stableOptions, timeoutMs, ports, clockOptions);
 }
 //# sourceMappingURL=createEngineForProfile.js.map

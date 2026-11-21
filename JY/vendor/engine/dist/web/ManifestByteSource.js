@@ -929,6 +929,7 @@ export function requireManifestByteSource(source) {
         throw fault('SOURCE_INVALID');
     return owner;
 }
+/** Reads a manifest's files from a base URL, checking each one's length and SHA-256. */
 export function createManifestByteSource(manifest, bindings, options) {
     const owner = new ManifestPngOwner(manifest, bindings, options);
     const source = freeze({

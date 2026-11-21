@@ -44,6 +44,7 @@ export interface SemanticListSource {
         }): void;
     };
 }
+/** What one row of a list says: its name, whether it is selected or disabled, its level and its place. */
 export interface SemanticListRow {
     /** What the row is called. An option and a menu item need a name; a list item may leave it to the nodes inside it. */
     readonly name?: string;
@@ -61,6 +62,7 @@ export interface SemanticListRow {
         readonly size: number;
     };
 }
+/** Semantics for a list control: its tree and list, its role and name, and how its rows are described. */
 export interface UiListSemanticsOptions {
     readonly semantics: UiSemantics;
     readonly root: SemanticListSource;
@@ -97,6 +99,7 @@ export interface UiListSemanticsOptions {
     /** Called after the node of a row was added, so that nodes inside it can be added under `id`. They go with the row. */
     readonly onRowAdded?: (key: string, id: string) => void;
 }
+/** The semantic nodes of a list control and its rows; sync it when the rows change. */
 export interface UiListSemantics {
     readonly id: string;
     /** The id of the node of a row, whether or not the row shows now. */
@@ -118,5 +121,6 @@ export interface UiListSemantics {
  * call it from `describe`. A box the root has not laid out has no size, at the origin of the root.
  */
 export declare function semanticBoxOf(root: Pick<SemanticListSource, 'snapshot'>, id: string): SemanticBounds;
+/** Semantic nodes for a list control and its rows, kept in step with the control. */
 export declare function createUiListSemantics(options: UiListSemanticsOptions): UiListSemantics;
 //# sourceMappingURL=semanticList.d.ts.map

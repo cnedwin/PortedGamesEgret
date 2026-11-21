@@ -10,6 +10,11 @@ export interface BrowserStatsSample {
     /** Frames drawn and frames skipped so far, as a frame loop's `snapshot()` gives them. */
     readonly frames?: number;
     readonly skipped?: number;
+    /**
+     * The draw calls the Host made for its last frame, `host.getFrameDrawCalls()`: fewer than the
+     * frame's commands when they are batched, more when effects need passes of their own.
+     */
+    readonly drawCalls?: number;
 }
 /** The numbers the panel shows, as of its last refresh. */
 export interface BrowserStatsSnapshot {
@@ -24,7 +29,10 @@ export interface BrowserStatsSnapshot {
     readonly pendingFrames: number;
     readonly frames: number;
     readonly skipped: number;
+    /** The draw calls the Host made for the last frame, or 0 when they were not given. */
+    readonly drawCalls: number;
 }
+/** A stats panel to make: the canvas it sits over, its label, and how often it updates. */
 export interface BrowserStatsPanelOptions {
     /** The canvas the panel lies over: it is placed at the canvas's top left corner. */
     readonly canvas: HTMLCanvasElement;
@@ -33,6 +41,7 @@ export interface BrowserStatsPanelOptions {
     /** How often the text changes, in milliseconds. 500 unless given; at least 100. */
     readonly intervalMs?: number;
 }
+/** A panel over the canvas showing frame rate and frame times: sample each frame. */
 export interface BrowserStatsPanel {
     /** The panel's element, a child of the page's body. */
     readonly element: HTMLElement;
@@ -42,5 +51,6 @@ export interface BrowserStatsPanel {
     /** Removes the panel from the page. */
     dispose(): void;
 }
+/** Puts a panel over the canvas that shows frame rate and frame times. */
 export declare function createBrowserStatsPanel(options: BrowserStatsPanelOptions): BrowserStatsPanel;
 //# sourceMappingURL=BrowserStatsPanel.d.ts.map

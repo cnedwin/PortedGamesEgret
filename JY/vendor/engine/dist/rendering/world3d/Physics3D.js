@@ -10,6 +10,7 @@ import { ConvexHullShape3D } from './PhysicsHull3D.js';
 import { TriangleMeshShape3D } from './PhysicsMesh3D.js';
 import { StaticTree, rayShape } from './PhysicsQueries3D.js';
 export const raycastExcludingBody3D = Symbol('physics raycast excluding one body');
+/** The most bodies, substeps, solver steps, contacts a pair keeps and parts of a compound. */
 export const PHYSICS3D_LIMITS = Object.freeze({
     maxBodies: 16384,
     maxSubSteps: 8,
@@ -28,6 +29,7 @@ function cross(out, a, b) {
 }
 const clamp = (value, low, high) => (value < low ? low : value > high ? high : value);
 let nextBodyId = 1;
+/** A body in a physics world: its kind, shape and mass, its material and layers, and calls that move and push it. */
 export class RigidBody3D {
     id = nextBodyId++;
     type;
@@ -1518,6 +1520,7 @@ function pivotVelocity(out, body, r) {
     return out;
 }
 const SLOP = 0.01, BAUMGARTE = 0.15, SLEEP_LINEAR = 0.15, SLEEP_ANGULAR = 0.2, SLEEP_DELAY = 0.5;
+/** A 3D physics world: add bodies and joints, step it, and cast rays and shapes through it. */
 export class PhysicsWorld3D {
     gravity = v3(0, -9.81, 0);
     fixedStep;
@@ -2826,9 +2829,11 @@ export class CharacterController3D {
         }
     }
 }
+/** Makes a 3D physics world. */
 export function createPhysicsWorld3D(options = {}) {
     return new PhysicsWorld3D(options);
 }
+/** Makes a capsule that walks and slides along what it hits, for a character. */
 export function createCharacterController3D(world, options = {}) {
     return new CharacterController3D(world, options);
 }
