@@ -6,7 +6,7 @@ import { W, H } from './stage.mjs';
 import { ambient, SCENE_W, SCENE_H } from '../art/scenes.mjs';
 import { loadCampusScene, paintCampusScene } from '../art/campus-art.mjs';
 import { hasLayeredHead, hasStoryPortrait, paintStoryCharacter } from '../art/character-art.mjs';
-import { drawFigure, FIGURE_W, FIGURE_H, FIGURE_TOP } from '../art/figure.mjs';
+import { drawFigure, drawWardrobeFigure, FIGURE_W, FIGURE_H, FIGURE_TOP } from '../art/figure.mjs';
 import { footAnchor, metrics } from '../art/body.mjs';
 import { heart, star, ellipse, rgba } from '../art/draw.mjs';
 
@@ -179,7 +179,8 @@ export function createWorld(stage) {
           feet.forEach(({ x, toe }, i) => shadow(x - FIGURE_W / 2 + (i ? 1 : -1) * toe * .28, 34, .43));
           g.restore();
         }
-        if (!portrait || !paintStoryCharacter(g, spec)) drawFigure(g, spec, { blink });
+        if (full) drawWardrobeFigure(g, spec, { blink });
+        else if (!portrait || !paintStoryCharacter(g, spec)) drawFigure(g, spec, { blink });
       });
     const body = paintFigure(false, [0, 0, FIGURE_W, crop]);
     const ready = a.pic.show(body, body.res, 'actor:' + id);
