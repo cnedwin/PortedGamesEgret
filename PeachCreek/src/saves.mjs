@@ -1,13 +1,12 @@
-// 存档：设置（语言、音效、配乐、减弱动画）、这一任的整座县城（规则的全部状态），和历任的记录。由引擎的存档库读写：
-// 有版本号，读不懂的旧档放到一边而不是丢掉，浏览器拒绝写入（隐私模式、空间满）也不报错。
-// The save: the settings (language, sound, music, reduced motion), this term's whole county (every bit of the rules'
-// state), and the record of past terms. Kept by the engine's save store: versioned, an unreadable save set aside
-// rather than lost, and a write the browser refuses never throws.
+// Each county has its own progress and term record. Preferences are shared across the three slots.
+// The engine keeps unreadable data under the slot's backup key and reports storage errors without throwing.
 import { createSaveStore } from '@egret/engine/kit';
 import { CORE_WARDS, DISTRICTS, NODE_SLOTS, PLOTS_PER_DISTRICT, SIDES, STARTING_WARDS } from './sim/world.mjs';
 import { PETITIONS, RANKS, ZONES } from './sim/data.mjs';
 
 export const SAVE_KEY = 'peach-creek';
+const SLOT_KEYS = [SAVE_KEY, SAVE_KEY + '-slot-2', SAVE_KEY + '-slot-3'];
+const PREFERENCES_KEY = SAVE_KEY + '-preferences';
 const LEGACY_PLOTS = 8;
 const SAVE_VERSION = 3;
 
@@ -89,9 +88,13 @@ function migrateV2(data) {
   return data;
 }
 
-export function openSave(storage, language = 'zh', onProblem = () => {}) {
+const settingsLookRight = (settings) => Boolean(settings) &&
+  (settings.language === 'zh' || settings.language === 'en') &&
+  ['sound', 'music', 'reducedMotion'].every((key) => typeof settings[key] === 'boolean');
+
+function openCountySave(key, storage, language, onProblem) {
   return createSaveStore({
-    key: SAVE_KEY,
+    key,
     version: SAVE_VERSION,
     migrations: { 1: migrateV1, 2: migrateV2 },
     defaults: () => freshSave(language),
@@ -99,12 +102,30 @@ export function openSave(storage, language = 'zh', onProblem = () => {}) {
     onProblem,
     validate: (data) => {
       if (!data || typeof data !== 'object') return false;
-      const s = data.settings;
-      if (!s || (s.language !== 'zh' && s.language !== 'en') || !['sound', 'music', 'reducedMotion'].every((k) => typeof s[k] === 'boolean')) return false;
+      if (!settingsLookRight(data.settings)) return false;
       if (!data.record || !Number.isInteger(data.record.terms)) return false;
       return data.county === null || countyLooksRight(data.county);
     }
   });
+}
+
+export function openSave(storage, language = 'zh', onProblem = () => {}) {
+  return openCountySave(SAVE_KEY, storage, language, onProblem);
+}
+
+export function openSaveSlots(storage, language = 'zh', onProblem = () => {}) {
+  // Slot one keeps the original key and format, so it can still load or migrate single-slot progress.
+  const slots = SLOT_KEYS.map((key) => openCountySave(key, storage, language, onProblem));
+  const legacySettings = slots[0].data.settings;
+  const preferences = createSaveStore({
+    key: PREFERENCES_KEY,
+    version: 1,
+    defaults: () => ({ ...legacySettings }),
+    storage,
+    onProblem,
+    validate: settingsLookRight
+  });
+  return { slots, preferences };
 }
 
 /** A term finished: count it, and keep the fastest in hours. Returns whether it is the fastest. */

@@ -67,8 +67,13 @@
         <div class="titleButtons"><button id="startButton" class="primary" type="button"></button><button id="titleSettings" type="button"></button><button id="languageButton" type="button"></button></div>
         <p class="demo" id="demoLine"></p>
       </section>
+      <section id="saveSlots" class="dialog" role="dialog" aria-modal="true" aria-labelledby="saveSlotsTitle" hidden>
+        <h2 id="saveSlotsTitle"></h2>
+        <div id="saveSlotList"></div>
+        <button id="closeSaveSlots" class="closeButton" type="button"></button>
+      </section>
       <section id="away" class="dialog" role="dialog" aria-labelledby="awayTitle" hidden><h2 id="awayTitle"></h2><div id="awayBody"></div><button id="awayOk" class="primary" type="button"></button></section>
-      <section id="settings" class="dialog" role="dialog" aria-labelledby="settingsTitle" hidden><h2 id="settingsTitle"></h2><div class="settingsList"></div><button class="closeButton" type="button"></button></section>
+      <section id="settings" class="dialog" role="dialog" aria-labelledby="settingsTitle" hidden><h2 id="settingsTitle"></h2><div class="settingsList"></div><button class="closeButton" type="button"></button><button id="returnToTitle" type="button" hidden></button></section>
       <p id="loading" class="loading">桃溪 · Peach Creek</p>
     </div>
     <span id="rotateHint"></span>
