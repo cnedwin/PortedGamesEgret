@@ -1,6 +1,6 @@
 {
-  "inputs": "407c962397bf94e194caed40272fb6078e1842e354e7683ca0a6fe9257d0a719",
+  "inputs": "204d89483be532d2aef1d751f0c05ce14f38f840f43d13e06f1f44cc90891af5",
   "esbuild": "0.28.2",
-  "modules": 264,
-  "bytes": 971336
+  "modules": 270,
+  "bytes": 1013778
 }

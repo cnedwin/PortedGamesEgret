@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 import { Engine, AssetManager, AssetLease, Scope, Texture, createAssetType, createAssetRef, isTexture, CancellationController, EgretError, createTexture, createImageData2D, copyImageData2DPixels } from '@egret/engine';
 import { createManifestAssetBinding } from '@egret/engine/resources';
-import { admitSpineCatalog, selectSpineDependencies, spineFault } from './catalog.js';
+import { admitSpineCatalog, selectSpineDependencies, spineFault, spineOptions } from './catalog.js';
 import { parseSpineSetup } from './parse.js';
 import { registerSpineAsset } from './assetAuthority.js';
 import { registerResetLoader } from './resetAuthority.js';
@@ -284,7 +284,7 @@ export function createSpineContentLoader(engine, ownerScope, manifest, factory, 
                     fee = sourceFee;
                     for (let i = 2; i < acquired.length; i++)
                         pages.push(acquired[i]);
-                    parsed = parseSpineSetup(source.id, sourceData, atlasText, atlas.settings.pageNames, atlas.dependencies, pages, allowPrerelease);
+                    parsed = parseSpineSetup(source.id, sourceData, atlasText, spineOptions(atlas).pageNames, atlas.dependencies, pages, allowPrerelease);
                     checkContext(context);
                     // Each premultiplied page is replaced by its straight copy, which this setup pays for: four bytes a pixel.
                     for (let i = 0; i < parsed.info.pages.length; i++) {

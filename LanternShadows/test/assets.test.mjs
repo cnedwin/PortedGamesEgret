@@ -141,6 +141,8 @@ test('the page can find every module it asks for', () => {
     for (const entry of fs.readdirSync(path.join(ROOT, dir), { withFileTypes: true })) {
       const file = path.join(dir, entry.name);
       if (entry.isDirectory()) scan(file);
+      // vendor/node-register.mjs and node-resolve.mjs find the engine for Node; the page never loads them.
+      else if (/^vendor\/node-(register|resolve)\.mjs$/.test(file.split(path.sep).join('/'))) continue;
       else if (file.endsWith('.mjs') || file.endsWith('.js')) for (const match of read(file).toString().matchAll(/^\s*(?:import|export)\b[^;'"`]*?\bfrom\s*['"]([^'"\n]+)['"]/gm)) match[1].startsWith('.') ? assert.ok(fs.existsSync(path.join(ROOT, dir, match[1])), `${file} → ${match[1]}`) : asked.add(match[1]);
     }
   };
