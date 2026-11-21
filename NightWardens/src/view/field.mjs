@@ -26,6 +26,7 @@ import { HAUNTS } from '../sim/data.mjs';
 import { FIELD, SOUL_FLIGHT } from '../sim/world.mjs';
 
 const DEG = 180 / Math.PI;
+const GOLD = 0xf0cf83, VERMILION = 0xce5a47, IVORY = 0xfff4d7, LIGHTNING = 0xc7b6ff;
 
 /** Anchor a bitmap at the centre of its `width` × `height` atlas pixels and draw it at `scale` of them. */
 function centre(bitmap, width, height, scale = 1 / RES) {
@@ -61,12 +62,15 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
   // The road itself is the page's picture behind the canvas (screens.mjs); the engine draws what lies on it.
   const cracksLayer = layer(),
     inkLayer = layer(),
+    warningSprite = shaker.addChild(use(new Sprite())),
     bodyLayer = layer(),
     barLayer = layer(),
     lowFx = layer(),
+    trailSprite = shaker.addChild(use(new Sprite())),
     boltLayer = layer(),
     turretLayer = layer(),
     highFx = layer(),
+    impactSprite = shaker.addChild(use(new Sprite())),
     zapSprite = shaker.addChild(use(new Sprite())),
     flashSprite = shaker.addChild(use(new Sprite()));
   flashSprite.graphics.beginFill(0xe8f0ff, 1).drawRect(-20, -20, FIELD.width + 40, FIELD.height + 40).endFill();
@@ -80,13 +84,14 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
     return e;
   };
   const fx = {
-    sparks: emitter(highFx, { texture: art.particles.glow, blendMode: 'add', lifetime: [0.12, 0.3], speed: [140, 340], size: 7, startColor: 0xfff2b0, endColor: 0xff7020, endScale: 0.3, drag: 3, maxParticles: 600 }),
-    scraps: emitter(lowFx, { texture: art.particles.scrap, lifetime: [0.6, 1.1], speed: [60, 210], angle: [200, 340], gravity: { x: 0, y: 300 }, drag: 1.2, size: 8, spin: [-540, 540], rotation: [0, 360], startColor: 0xf6f0e2, endColor: 0xbfb294, startAlpha: 1, endAlpha: 0 }),
-    ghostfire: emitter(highFx, { texture: art.particles.glow, blendMode: 'add', lifetime: [0.3, 0.75], speed: [40, 150], gravity: { x: 0, y: -140 }, size: 15, startColor: 0xb8ffe0, endColor: 0x1f9a78, endScale: 0.2 }),
-    smoke: emitter(lowFx, { texture: art.particles.smoke, lifetime: [0.6, 1.2], speed: [18, 60], size: 40, startScale: 0.6, endScale: 1.7, startColor: 0xa6a6b6, endColor: 0x3a3a4a, startAlpha: 0.55, endAlpha: 0, maxParticles: 200 }),
-    embers: emitter(highFx, { texture: art.particles.glow, blendMode: 'add', lifetime: [0.35, 0.8], speed: [10, 50], angle: [240, 300], gravity: { x: 0, y: -150 }, size: 8, startColor: 0xffd070, endColor: 0xff3000, endScale: 0.2 }),
-    gold: emitter(highFx, { texture: art.particles.glow, blendMode: 'add', lifetime: [0.4, 0.9], speed: [80, 280], drag: 2.2, size: 11, startColor: 0xfff0b0, endColor: 0xff9a30, endScale: 0.2 }),
-    dust: emitter(lowFx, { texture: art.particles.smoke, lifetime: [0.7, 1.4], speed: [40, 140], angle: [180, 360], drag: 2, size: 46, startScale: 0.5, endScale: 1.8, startColor: 0x8a7a64, endColor: 0x3a3226, startAlpha: 0.6, endAlpha: 0, maxParticles: 160 }),
+    sparks: emitter(highFx, { texture: art.particles.glow, blendMode: 'add', lifetime: [0.1, 0.24], speed: [100, 260], size: 5, startColor: IVORY, endColor: VERMILION, endScale: 0.15, drag: 4, maxParticles: 160 }),
+    scraps: emitter(lowFx, { texture: art.particles.scrap, lifetime: [0.35, 0.7], speed: [55, 180], angle: [195, 345], gravity: { x: 0, y: 260 }, drag: 1.8, size: 7, spin: [-420, 420], rotation: [0, 360], startColor: 0xf6dca1, endColor: VERMILION, startAlpha: 1, endAlpha: 0, maxParticles: 128 }),
+    ghostfire: emitter(highFx, { texture: art.particles.glow, blendMode: 'add', lifetime: [0.22, 0.55], speed: [35, 120], gravity: { x: 0, y: -120 }, size: 12, startColor: 0xb8ffe0, endColor: 0x278b89, endScale: 0.15, maxParticles: 100 }),
+    smoke: emitter(lowFx, { texture: art.particles.smoke, lifetime: [0.4, 0.85], speed: [18, 55], size: 29, startScale: 0.6, endScale: 1.4, startColor: 0x8592a9, endColor: 0x253348, startAlpha: 0.4, endAlpha: 0, maxParticles: 60 }),
+    embers: emitter(highFx, { texture: art.particles.glow, blendMode: 'add', lifetime: [0.2, 0.55], speed: [15, 65], angle: [235, 305], gravity: { x: 0, y: -120 }, size: 6, startColor: GOLD, endColor: VERMILION, endScale: 0.15, maxParticles: 96 }),
+    gold: emitter(highFx, { texture: art.particles.glow, blendMode: 'add', lifetime: [0.25, 0.6], speed: [75, 240], drag: 3, size: 8, startColor: IVORY, endColor: GOLD, endScale: 0.15, maxParticles: 160 }),
+    frost: emitter(highFx, { texture: art.particles.scrap, blendMode: 'add', lifetime: [0.14, 0.35], speed: [60, 150], size: 4, rotation: [0, 360], spin: [-90, 90], startColor: 0xe0f7ff, endColor: 0x86bde5, endScale: 0.3, maxParticles: 64 }),
+    dust: emitter(lowFx, { texture: art.particles.smoke, lifetime: [0.4, 0.9], speed: [35, 110], angle: [180, 360], drag: 3, size: 31, startScale: 0.5, endScale: 1.5, startColor: 0x9a8c73, endColor: 0x343b46, startAlpha: 0.45, endAlpha: 0, maxParticles: 60 }),
     mist: emitter(highFx, {
       texture: art.particles.smoke,
       running: !reducedMotion,
@@ -109,7 +114,11 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
   };
   fx.mist.x = FIELD.width / 2;
   fx.mist.y = 150;
+  let burstBudget = 160;
   const burst = (e, x, y, count) => {
+    count = Math.min(burstBudget, Math.ceil(count * (reducedMotion ? 0.5 : 1)));
+    if (!count) return;
+    burstBudget -= count;
     e.x = x;
     e.y = y;
     e.burst(count);
@@ -134,6 +143,7 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
     const entry = pool.pop();
     if (entry) {
       entry.body.visible = true;
+      entry.flash = entry.kick = 0;
       return entry;
     }
     // Shadows are painted into the frames themselves: one bitmap a haunt.
@@ -143,7 +153,7 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
     player.applyAt(0);
     centre(body, w * RES, h * RES);
     const bar = HAUNTS[kind].elite || kind === 'lantern' ? barLayer.addChild(use(new Sprite())) : null;
-    return { kind, body, player, bar, flash: 0, shownHp: -1, w, h };
+    return { kind, body, player, bar, flash: 0, kick: 0, kickX: 0, kickY: 0, shownHp: -1, w, h };
   }
   function releaseHaunt(id) {
     const entry = live.get(id);
@@ -221,6 +231,7 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
   let zapsDrawn = false;
   /** A jagged line through `points`, fading over `life` seconds. */
   function zap(points, { life = 0.22, colour = 0xbfe4ff, width = 3, jag = 10 } = {}) {
+    if (zaps.length >= 40) zaps.shift();
     const path = [];
     for (let i = 0; i < points.length; i++) {
       if (i > 0) {
@@ -257,12 +268,90 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
           .endFill();
         continue;
       }
-      g.lineStyle(z.width * 3, z.colour, 0.25 * fade);
+      g.lineStyle(z.width * 3, z.colour, 0.18 * fade);
       z.path.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y)));
-      g.lineStyle(z.width, 0xffffff, 0.95 * fade);
+      g.lineStyle(z.width, 0xfff5e4, 0.95 * fade);
       z.path.forEach(([x, y], k) => (k ? g.lineTo(x, y) : g.moveTo(x, y)));
       g.lineStyle(0);
     }
+  }
+
+  // Short, local talisman strokes retain a readable impact without covering neighbouring enemies.
+  const impacts = [];
+  let impactsDrawn = false;
+  function seal(x, y, size, colour = GOLD, life = .22) {
+    if (impacts.length >= 56) impacts.shift();
+    impacts.push({ x, y, size, colour, life, age: 0 });
+  }
+  function drawImpacts(seconds) {
+    if (!impacts.length && !impactsDrawn) return;
+    const g = impactSprite.graphics;
+    g.clear();
+    impactsDrawn = impacts.length > 0;
+    for (let i = impacts.length - 1; i >= 0; i--) {
+      const mark = impacts[i];
+      mark.age += seconds;
+      if (mark.age >= mark.life) { impacts.splice(i, 1); continue; }
+      const phase = mark.age / mark.life, fade = 1 - phase;
+      const r = mark.size * (.45 + .7 * phase);
+      g.lineStyle(1.2, mark.colour, fade * .8).drawCircle(mark.x, mark.y, r);
+      for (let ray = 0; ray < 4; ray++) {
+        const angle = ray * Math.PI / 2 + Math.PI / 4;
+        const dx = Math.cos(angle), dy = Math.sin(angle);
+        g.lineStyle(2 * fade + .5, mark.colour, fade)
+          .moveTo(mark.x + dx * r * .48, mark.y + dy * r * .48)
+          .lineTo(mark.x + dx * r * 1.32, mark.y + dy * r * 1.32);
+      }
+      g.lineStyle(0).beginFill(IVORY, Math.max(0, 1 - phase * 4) * .8)
+        .drawCircle(mark.x, mark.y, Math.max(1, r * .22)).endFill();
+    }
+  }
+
+  let warningsDrawn = false;
+  function drawWarnings() {
+    const g = warningSprite.graphics;
+    if (warningsDrawn) g.clear();
+    warningsDrawn = false;
+    let count = 0;
+    for (const haunt of world.haunts) {
+      if (haunt.dead || haunt.stun > 0 || haunt.y <= 40 || count >= 12) continue;
+      const kind = HAUNTS[haunt.kind];
+      const shooting = kind.shoot && haunt.shootTimer < .6;
+      const summoning = kind.summon && haunt.summonTimer < .8;
+      const stomping = kind.stomp && haunt.stompTimer < .7;
+      if (!shooting && !summoning && !stomping) continue;
+      warningsDrawn = true;
+      count++;
+      const time = shooting ? haunt.shootTimer / .6 : summoning ? haunt.summonTimer / .8 : haunt.stompTimer / .7;
+      const radius = haunt.radius + 6 + (1 - time) * 5;
+      const alpha = .35 + (1 - time) * .45;
+      const y = haunt.y + haunt.radius * .55;
+      g.lineStyle(1.5, VERMILION, alpha).drawEllipse(haunt.x - radius, y - radius * .36, radius * 2, radius * .72);
+      g.lineStyle(1, GOLD, alpha * .65).drawEllipse(haunt.x - radius + 4, y - radius * .36 + 2, radius * 2 - 8, radius * .72 - 4);
+      if (shooting) {
+        g.lineStyle(1, VERMILION, alpha * .25).moveTo(haunt.x, haunt.y + haunt.radius).lineTo(haunt.x, FIELD.wallY);
+        g.lineStyle(0).beginFill(VERMILION, alpha * .6).drawRect(haunt.x - 10, FIELD.wallY - 3, 20, 3).endFill();
+      }
+    }
+  }
+
+  let trailsDrawn = false;
+  function drawTrails() {
+    if (!world.bolts.length && !world.spits.length && !trailsDrawn) return;
+    const g = trailSprite.graphics;
+    g.clear();
+    trailsDrawn = world.bolts.length > 0 || world.spits.length > 0;
+    for (const bolt of world.bolts.slice(0, 96)) {
+      const length = Math.hypot(bolt.vx, bolt.vy) || 1;
+      const dx = bolt.vx / length, dy = bolt.vy / length;
+      const colour = bolt.chain ? LIGHTNING : world.wards.fire ? VERMILION : world.wards.frost ? 0xa3d6ef : GOLD;
+      g.lineStyle(bolt.chain ? 5 : 3, colour, .18).moveTo(bolt.x - dx * 28, bolt.y - dy * 28).lineTo(bolt.x, bolt.y);
+      g.lineStyle(1.1, bolt.chain ? IVORY : colour, .65).moveTo(bolt.x - dx * 15, bolt.y - dy * 15).lineTo(bolt.x, bolt.y);
+    }
+    for (const spit of world.spits.slice(0, 40)) {
+      g.lineStyle(4, VERMILION, .16).moveTo(spit.x, spit.y - 23).lineTo(spit.x, spit.y);
+    }
+    g.lineStyle(0);
   }
 
   // ——— The ink line, drawn while it lies across the road. ———
@@ -293,48 +382,63 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
     switch (event.type) {
       case 'hit': {
         const entry = live.get(event.id);
-        if (entry) entry.flash = 0.07;
+        if (entry) {
+          entry.flash = .075;
+          entry.kick = reducedMotion ? 0 : event.crit ? 6 : 3;
+          const dx = event.x - world.turret.x, dy = event.y - FIELD.turretY, distance = Math.hypot(dx, dy) || 1;
+          entry.kickX = dx / distance;
+          entry.kickY = dy / distance;
+        }
         if (warden?.haunt?.id === event.id) warden.flash = 0.06;
         burst(fx.sparks, event.x, event.y, event.crit ? 10 : 3);
+        seal(event.x, event.y, event.crit ? 16 : 8, event.crit ? IVORY : GOLD, event.crit ? .27 : .16);
+        if (world.wards.fire) burst(fx.embers, event.x, event.y, 3);
+        if (world.wards.frost) burst(fx.frost, event.x, event.y, 4);
         if (event.crit) burst(fx.gold, event.x, event.y, 6);
         break;
       }
       case 'kill': {
         const { x, y, kind } = event;
+        seal(x, y, event.boss ? 66 : 19, event.cause === 'thunder' ? LIGHTNING : VERMILION, event.boss ? .65 : .28);
         if (kind === 'paper' || kind === 'general') burst(fx.scraps, x, y, kind === 'general' ? 60 : 12);
         if (kind === 'wisp' || kind === 'lantern' || kind === 'wuchang') burst(fx.ghostfire, x, y, kind === 'wuchang' ? 50 : 10);
         if (kind === 'jiangshi' || kind === 'bride' || kind === 'hanba') burst(fx.smoke, x, y, kind === 'hanba' ? 30 : 5);
         if (kind === 'lantern' || kind === 'hanba') burst(fx.embers, x, y, 16);
         if (event.boss) {
-          burst(fx.gold, x, y, 80);
+          burst(fx.gold, x, y, 52);
           shakeBy(12);
-          flashSprite.alpha = 0.55;
+          flashSprite.alpha = reducedMotion ? .08 : .24;
           flashSprite.visible = true;
         }
         releaseHaunt(event.id);
         break;
       }
       case 'bite':
+        seal(event.x, FIELD.wallY, 25, VERMILION, .24);
         burst(fx.dust, event.x, FIELD.wallY, 4);
         crackAt(event.x);
         shakeBy(Math.min(8, 2 + event.amount * 0.4));
         break;
       case 'shot':
-        recoil = 5;
+        recoil = reducedMotion ? 0 : 5;
+        seal(world.turret.x + Math.cos(world.turret.aim) * 28, FIELD.turretY + Math.sin(world.turret.aim) * 28, 7, GOLD, .1);
         break;
       case 'chain':
-        zap(event.points, { colour: 0x8ccfff });
+        zap(event.points, { colour: LIGHTNING, life: .17, width: 2.4, jag: 12 });
+        for (const [x, y] of event.points) seal(x, y, 12, LIGHTNING, .2);
         break;
       case 'thunder':
-        flashSprite.alpha = 0.7;
+        flashSprite.alpha = reducedMotion ? .08 : .28;
         flashSprite.visible = true;
         shakeBy(12);
-        for (const [x, y] of event.points.slice(0, 28)) {
-          zap([[x + (Math.random() - 0.5) * 60, -40], [x, y]], { life: 0.35, colour: 0xa8d8ff, width: 3.5, jag: 26 });
+        for (const [x, y] of event.points.slice(0, 18)) {
+          zap([[x + (Math.random() - 0.5) * 60, -40], [x, y]], { life: .25, colour: LIGHTNING, width: 3, jag: 26 });
+          seal(x, y, 26, LIGHTNING, .3);
           burst(fx.sparks, x, y, 5);
         }
         break;
       case 'mirror':
+        if (zaps.length >= 40) zaps.shift();
         zaps.push({ kind: 'beam', x: event.x, life: 0.4, age: 0 });
         burst(fx.gold, event.x, FIELD.turretY - 30, 12);
         break;
@@ -342,6 +446,7 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
         burst(fx.ghostfire, event.x, event.y + 10, 4);
         break;
       case 'stomp':
+        seal(event.x, event.y + (warden?.h ?? 70) * .35, 55, VERMILION, .45);
         if (warden) {
           warden.stompTime = 0.45;
           burst(fx.dust, event.x, event.y + warden.h * 0.35, 18);
@@ -349,6 +454,7 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
         shakeBy(9);
         break;
       case 'summon':
+        seal(event.x, event.y, 34, VERMILION, .4);
         burst(fx.ghostfire, event.x, event.y, 14);
         break;
       case 'level':
@@ -376,8 +482,9 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
       // A jiangshi's frame follows its hop: up while it leaps.
       const time = haunt.kind === 'jiangshi' ? ((haunt.age + haunt.phase) % 1 < 0.42 ? HAUNT_ART.jiangshi.seconds : 0) : haunt.stun > 0 ? 0 : haunt.age + haunt.phase;
       entry.player.applyAt(time);
-      entry.body.x = haunt.x;
-      entry.body.y = haunt.y - lift - (haunt.kind === 'jiangshi' && (haunt.age + haunt.phase) % 1 < 0.42 ? Math.sin((((haunt.age + haunt.phase) % 1) / 0.42) * Math.PI) * 10 : 0);
+      entry.kick = Math.max(0, entry.kick - seconds * 38);
+      entry.body.x = haunt.x + entry.kickX * entry.kick;
+      entry.body.y = haunt.y + entry.kickY * entry.kick - lift - (haunt.kind === 'jiangshi' && (haunt.age + haunt.phase) % 1 < 0.42 ? Math.sin((((haunt.age + haunt.phase) % 1) / 0.42) * Math.PI) * 10 : 0);
       entry.body.alpha = Math.min(1, haunt.age * 3);
       entry.flash = Math.max(0, entry.flash - seconds);
       entry.body.sharedMaterial = entry.flash > 0 ? TINTS.flash : haunt.stun > 0 ? TINTS.stun : haunt.slow > 0 ? TINTS.frost : haunt.burn > 0 ? TINTS.burn : null;
@@ -458,6 +565,7 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
     root,
     /** Draw one frame: `events` are what happened since the last frame. */
     update(seconds, events) {
+      burstBudget = 160;
       for (const event of events) show(event);
       placeHaunts(seconds);
       placeFlyers();
@@ -468,6 +576,9 @@ export function createField(app, scope, world, art, { reducedMotion = false } = 
       crossbow.y = FIELD.turretY - Math.sin(world.turret.aim) * recoil;
       tower.x = world.turret.x;
       drawInk();
+      drawWarnings();
+      drawTrails();
+      drawImpacts(seconds);
       drawZaps(seconds);
       flashSprite.alpha = Math.max(0, flashSprite.alpha - seconds * 2.5);
       flashSprite.visible = flashSprite.alpha > 0;

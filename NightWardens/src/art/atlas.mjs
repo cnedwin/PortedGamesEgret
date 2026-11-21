@@ -119,24 +119,8 @@ export async function loadParticleTexture(game, name, size = 32) {
   return game.textureFromCanvas(canvas);
 }
 
-/**
- * A night's road with its wall and dark edge, as a picture for the page itself (a data URL) at `res` pixels per unit.
- * The page draws it once as the canvas's CSS background, behind the menus and under the watch, so the engine draws
- * no full-screen picture each frame (one costs about 16 ms a frame under software rendering; QUALITY.md).
- */
-const roads = new Map();
-export function roadUrl(name, res = 1.5) {
-  const key = `${name}@${res}`;
-  if (!roads.has(key)) {
-    const canvas = document.createElement('canvas');
-    canvas.width = Math.round(540 * res);
-    canvas.height = Math.round(900 * res);
-    const g = canvas.getContext('2d');
-    g.scale(res, res);
-    paint.GROUNDS[name](g);
-    paint.vignette(g, 540, 900);
-    roads.set(key, canvas.toDataURL('image/jpeg', 0.9));
-  }
-  return roads.get(key);
+/** The browser composites the still scenery behind the moving Egret canvas. */
+export function roadUrl(name) {
+  return new URL(`../../assets/art/${name}.webp`, import.meta.url).href;
 }
 
