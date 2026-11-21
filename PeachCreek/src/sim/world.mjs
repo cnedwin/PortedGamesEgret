@@ -5,30 +5,42 @@
 // and promotion. Free of the page and the engine; the page, the tests and the pacing tool all use it.
 import {
   BUILDINGS, BUILDING_STAT, DEFENCE, FINAL_RANK, GOODS, HOUR, MILESTONES, NODES, OFFICES, PEOPLE, PETITIONS, PROMOTION,
-  RAIDS, RANKS, RARITY, RECRUIT, RESOURCES, SEASONS, START, SURVEY_COST, SURVEY_ORDER, SURVEY_TIME, TALENTS, ZONE_BONUS
+  RAIDS, RANKS, RARITY, RECRUIT, RESOURCES, SEASONS, START, SURVEY_COST, SURVEY_ORDER, SURVEY_TIME, TALENTS, ZONES, ZONE_BONUS
 } from './data.mjs';
 
 export const DISTRICT_COLS = 3;
 export const DISTRICT_ROWS = 2;
-export const DISTRICTS = DISTRICT_COLS * DISTRICT_ROWS;
+export const CORE_WARDS = DISTRICT_COLS * DISTRICT_ROWS;
+export const WARD_POSITIONS = Object.freeze([
+  [0, 0], [1, 0], [2, 0], [0, 1], [1, 1], [2, 1],
+  [-1, 0], [-1, 1], [3, 0], [3, 1], [0, 2], [2, 2]
+].map((position) => Object.freeze(position)));
+export const DISTRICTS = WARD_POSITIONS.length;
+export const STARTING_WARDS = 3;
 export const PLOT_COLS = 4;
 export const PLOT_ROWS = 3;
 export const PLOTS_PER_DISTRICT = PLOT_COLS * PLOT_ROWS;
 export const SIDES = Object.freeze(['north', 'east', 'south', 'west']);
+const wardNeighbours = WARD_POSITIONS.map(([x, y]) =>
+  WARD_POSITIONS.flatMap(([otherX, otherY], index) => Math.abs(x - otherX) + Math.abs(y - otherY) === 1 ? [index] : [])
+);
 export function plotPosition(index) {
-  const ward = Math.floor(index / PLOTS_PER_DISTRICT),
+  const [x, y] = WARD_POSITIONS[Math.floor(index / PLOTS_PER_DISTRICT)],
     parcel = index % PLOTS_PER_DISTRICT;
-  return { x: (ward % DISTRICT_COLS) * PLOT_COLS + parcel % PLOT_COLS, y: Math.floor(ward / DISTRICT_COLS) * PLOT_ROWS + Math.floor(parcel / PLOT_COLS) };
+  return { x: x * PLOT_COLS + parcel % PLOT_COLS, y: y * PLOT_ROWS + Math.floor(parcel / PLOT_COLS) };
 }
 const positions = Array.from({ length: DISTRICTS * PLOTS_PER_DISTRICT }, (_, index) => plotPosition(index));
-/** A dock can serve as an inland goods depot, but only the river bank offers direct shipping. */
-export const RIVERSIDE = new Set(positions.flatMap(({ y }, index) => y === DISTRICT_ROWS * PLOT_ROWS - 1 ? [index] : []));
+/** Only the first row past the southern bridge touches the river. */
+export const RIVERSIDE = new Set(positions.flatMap(({ y }, index) => y === DISTRICT_ROWS * PLOT_ROWS ? [index] : []));
 const walk = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
 const distances = positions.map((a) => positions.map((b) => walk(a, b)));
 const cityWidth = DISTRICT_COLS * PLOT_COLS,
   cityHeight = DISTRICT_ROWS * PLOT_ROWS;
 const gates = [{ x: cityWidth / 2, y: 0 }, { x: cityWidth - 1, y: cityHeight / 2 }, { x: cityWidth / 2, y: cityHeight - 1 }, { x: 0, y: cityHeight / 2 }];
 const gateDistances = positions.map((a) => Math.min(...gates.map((b) => walk(a, b))));
+const yamen = { x: (cityWidth - 1) / 2, y: -1 };
+const yamenDistances = positions.map((a) => walk(a, yamen));
+const countryside = positions.map(({ x, y }) => Math.max(0, 3 - Math.min(x, cityWidth - x - 1, cityHeight - y - 1)) / 3);
 export const NODE_SLOTS = 12;
 
 /** A small seeded generator (mulberry32). */
@@ -48,7 +60,7 @@ export function createCounty({ seed = 1, now = 0, term = 0, talents = [] } = {})
   const res = {};
   for (const key of Object.keys(RESOURCES)) res[key] = START[key] ?? 0;
   return {
-    version: 2,
+    version: 3,
     seed,
     rolls: 0,
     term,
@@ -60,9 +72,13 @@ export function createCounty({ seed = 1, now = 0, term = 0, talents = [] } = {})
     fame: START.fame,
     life: 50,
     pendingTax: 0,
-    districts: Array.from({ length: DISTRICTS }, (_, i) => ({ zone: ['home', 'farm', 'market'][i] ?? null })),
+    districts: Array.from({ length: DISTRICTS }, (_, i) => ({ zone: null, open: i < STARTING_WARDS })),
     // The village the magistrate finds: a house, a paddy and a woodland in use.
-    plots: Array.from({ length: DISTRICTS * PLOTS_PER_DISTRICT }, (_, i) => (i === 0 ? { kind: 'house', level: 2 } : i === PLOTS_PER_DISTRICT ? { kind: 'paddy', level: 1 } : { kind: null, level: 0 })),
+    plots: Array.from({ length: DISTRICTS * PLOTS_PER_DISTRICT }, (_, i) => {
+      if (i === 0) return { kind: 'house', level: 2 };
+      if (i === 2 * PLOTS_PER_DISTRICT + PLOT_COLS - 1) return { kind: 'paddy', level: 1 };
+      return { kind: null, level: 0 };
+    }),
     nodes: Array.from({ length: NODE_SLOTS }, (_, i) => ({ kind: SURVEY_ORDER[i], found: i === 0, level: i === 0 ? 1 : 0 })),
     surveys: 1,
     defence: { wall: SIDES.map(() => 0), tower: SIDES.map(() => 0), troops: SIDES.map(() => 0), camp: 0 },
@@ -73,7 +89,9 @@ export function createCounty({ seed = 1, now = 0, term = 0, talents = [] } = {})
     freeRecruitAt: now,
     raid: { n: 0, next: null, drums: false, last: null },
     petition: null,
-    nextPetition: now + 15 * 60,
+    nextPetition: now + PETITIONS.first,
+    petitionCount: 0,
+    petitionRecent: [],
     moods: [],
     goal: 0,
     log: [],
@@ -114,11 +132,50 @@ export function needFor(state, rank) {
   return out;
 }
 
-export const seasonOf = (state) => Math.floor((state.time - state.started) / SEASONS.length) % 4;
+const seasonIndex = (state) => Math.floor(Math.max(0, state.time - state.started) / SEASONS.length);
+const seasonEnd = (state) => state.started + (seasonIndex(state) + 1) * SEASONS.length;
+export const seasonOf = (state) => seasonIndex(state) % SEASONS.effects.length;
+export function seasonInfo(state) {
+  const season = seasonOf(state);
+  return {
+    season,
+    remaining: Math.max(0, seasonEnd(state) - state.time),
+    effects: SEASONS.effects[season],
+    next: (season + 1) % SEASONS.effects.length
+  };
+}
 export const builders = (state) => RANKS[state.rank].builders;
 export const maxLevel = (state) => RANKS[state.rank].maxLevel;
-export const districtsOpen = (state) => RANKS[state.rank].districts;
+export const wardIsOpen = (state, ward) => Number.isInteger(ward) && state.districts[ward]?.open === true;
+export const districtsOpen = (state) => state.districts.filter((ward) => ward.open).length;
 export const offlineCap = (state) => Math.min(16, 4 + state.plots.reduce((sum, p) => sum + (p.kind === 'granary' ? BUILDINGS.granary.store * p.level : 0), 0)) * HOUR;
+
+/** The surrounding land only suggests a use; players choose a focus and each building independently. */
+export function wardRecommendation(ward) {
+  const position = WARD_POSITIONS[ward];
+  if (!position) return null;
+  const [x, y] = position;
+  if (x === 1 && y === 0) return 'market';
+  return x <= 0 || x >= DISTRICT_COLS - 1 || y >= DISTRICT_ROWS ? 'farm' : null;
+}
+
+/** An undeveloped ward may be acquired from any adjacent open ward. The fee rises with the town's footprint. */
+export function expansionQuote(state, ward) {
+  if (!Number.isInteger(ward) || !state.districts[ward]) return { cost: null, why: 'none' };
+  if (wardIsOpen(state, ward)) return { cost: null, why: 'open' };
+  const bought = Math.max(0, districtsOpen(state) - STARTING_WARDS);
+  const cost = { coin: 360 + bought * (140 + 260 * bought), wood: 65 + bought * 40 };
+  if (!wardNeighbours[ward].some((other) => wardIsOpen(state, other))) return { cost, why: 'adjacent' };
+  return afford(state, cost) ? { cost } : { cost, why: 'cost' };
+}
+
+export function expandWard(state, ward) {
+  const offer = expansionQuote(state, ward);
+  if (offer.why) return offer;
+  pay(state, offer.cost);
+  state.districts[ward].open = true;
+  return offer;
+}
 
 /** The talent posted somewhere, and its bonus for that place's attribute (0–about 1.2). */
 function talentAt(state, post) {
@@ -154,28 +211,34 @@ const nearest = (index, sites, fallback) => {
 };
 
 const LOCAL_INPUT = { brewery: 'paddy', loom: 'mulberry' };
+const GROWING = new Set(['paddy', 'mulberry', 'teaGarden']);
+const WORKSHOP_GOODS = new Set(['wine', 'silk', 'porcelain']);
 
 function parcelPlan(state, index, kind, sites) {
   const spec = BUILDINGS[kind];
   if (!spec || !positions[index]) return { multiplier: 1, access: 1, smoke: 0, linked: true, upkeep: 0 };
   const trade = Boolean(spec.sell || spec.visitors),
+    urbanTrade = trade && !spec.riverside,
     services = Boolean(spec.life && !spec.house),
     input = LOCAL_INPUT[kind],
     stage = 0.35 + state.rank * 0.11;
   const homes = Math.min(nearest(index, sites.house, 8), nearest(index, sites.manor, 8)),
     marketDistance = Math.min(nearest(index, sites.market, 8), nearest(index, sites.dock, 8)),
     reach = Math.min(gateDistances[index], marketDistance);
+  // Keep historic shipping rates until an old dock on the former shoreline is relocated.
+  const oldBank = positions[index].y === DISTRICT_ROWS * PLOT_ROWS - 1 && state.plots[index].kind === kind;
   const haul = input ? nearest(index, sites[input], 9) : kind === 'kiln' ? gateDistances[index] + 1 : 0,
-    inland = Boolean(spec.riverside && !RIVERSIDE.has(index)),
+    inland = Boolean(spec.riverside && !RIVERSIDE.has(index) && !oldBank),
     linked = input ? haul <= 4 : spec.riverside ? !inland : true;
   const travel = (trade ? reach * 0.065 : 0) + (services ? homes * 0.048 : 0) + (input || kind === 'kiln' ? haul * 0.045 : 0);
   const access = Math.max(0.45, 1 - travel * stage - (inland ? 0.35 : 0));
   const neighbours = (sites[kind] ?? []).filter((other) => other !== index && distances[index][other] <= 2).length,
     crowding = trade || spec.smoke ? Math.max(0, neighbours - 1) * 0.035 * stage : 0,
-    proximity = input && linked ? (5 - haul) * 0.04 : 0;
+    proximity = input && linked ? (5 - haul) * 0.04 : 0,
+    siting = urbanTrade ? Math.max(0, 0.19 - yamenDistances[index] * 0.026) : GROWING.has(kind) ? Math.min(0.16, countryside[index] * 0.16) : 0;
   const smoke = spec.smoke ? spec.smoke * (homes <= 1 ? 2.3 : homes <= 3 ? 1.3 : 0.38) : 0;
   return {
-    multiplier: Math.max(0.4, access + proximity - crowding),
+    multiplier: Math.max(0.4, access + proximity + siting - crowding),
     access,
     smoke,
     linked,
@@ -227,8 +290,8 @@ export function rates(state) {
     r.smoke += plan.smoke * level;
     if (spec.sell) (spec.export ? (r.export += spec.sell * scaled) : (r.sell += spec.sell * scaled));
     for (const [key, value] of Object.entries(spec.out ?? {})) {
-      const seasonal = season[key] ?? 1,
-        visitors = spec.visitors ? 0.5 + state.life / 100 : 1;
+      const seasonal = WORKSHOP_GOODS.has(key) ? season.craft ?? 1 : season[key] ?? 1,
+        visitors = spec.visitors ? (0.5 + state.life / 100) * (season.visitors ?? 1) : 1;
       if (key === 'fame') r.fame += value * scaled;
       else if (key === 'coin') r.coin += value * scaled * visitors;
       else add(r.make, key, value * scaled * seasonal * (1 + giftOf(state, key)));
@@ -243,7 +306,7 @@ export function rates(state) {
     const spec = NODES[node.kind],
       talent = talentAt(state, { type: 'node', key: i });
     const boost = (1 + (talent ? talentPower(talent, 'craft') * 0.6 : 0)) * (1 + officeBonus(state, 'deputy', 0.25)) * (1 + PROMOTION.bonus * state.term);
-    for (const [key, value] of Object.entries(spec.out)) add(r.make, key, value * node.level * milestone(node.level) * boost);
+    for (const [key, value] of Object.entries(spec.out)) add(r.make, key, value * node.level * milestone(node.level) * boost * (season[key] ?? 1));
   });
   add(r.use, 'grain', state.pop * PEOPLE.eat);
   r.fame *= 1 + giftOf(state, 'fame');
@@ -328,9 +391,11 @@ export function advance(state, now, { active = true } = {}) {
 }
 
 function nextEventAt(state) {
-  let next = Infinity;
+  let next = seasonEnd(state);
   for (const work of state.works) if (work.ends !== null) next = Math.min(next, work.ends);
+  for (const mood of state.moods) if (mood.until > state.time) next = Math.min(next, mood.until);
   if (state.raid.next) next = Math.min(next, state.raid.next);
+  if (!state.petition && state.nextPetition > state.time) next = Math.min(next, state.nextPetition);
   return next;
 }
 
@@ -356,26 +421,25 @@ function tick(state, seconds, share, report) {
   }
   state.res.grain = Math.max(0, state.res.grain - r.use.grain * hours);
   // Markets sell, dearest first, keeping two hours of grain; the dock pays more.
-  let dock = r.export * hours,
-    market = r.sell * hours;
+  const channels = [
+    { remaining: r.export * hours, premium: 1.4 },
+    { remaining: r.sell * hours, premium: 1 }
+  ];
   // Markets keep back what the next rank asks for, and two hours of grain.
   const need = needFor(state, state.rank + 1) ?? {};
   for (const goods of GOODS) {
     const keep = Math.max(need[goods] ?? 0, goods === 'grain' ? r.use.grain * 2 : 0);
     let stock = Math.max(0, state.res[goods] - keep);
-    for (const [cap, price] of [
-      [dock, RESOURCES[goods].price * 1.4],
-      [market, RESOURCES[goods].price]
-    ]) {
-      const units = Math.min(stock, cap === dock ? dock : market);
+    for (const channel of channels) {
+      const units = Math.min(stock, channel.remaining);
       if (units <= 0) continue;
+      const proceeds = units * RESOURCES[goods].price * channel.premium;
       stock -= units;
+      channel.remaining -= units;
       state.res[goods] -= units;
-      state.res.coin += units * price;
-      report.sold += units * price;
-      state.stats.sold += units * price;
-      if (cap === dock) dock -= units;
-      else market -= units;
+      state.res.coin += proceeds;
+      report.sold += proceeds;
+      state.stats.sold += proceeds;
     }
   }
   state.res.coin = Math.max(0, state.res.coin + (r.coin + r.salary - r.planning.upkeep) * hours);
@@ -389,7 +453,8 @@ function tick(state, seconds, share, report) {
   const starving = state.res.grain <= 0 && (r.make.grain ?? 0) < r.use.grain;
   const target = starving ? state.pop * 0.9 : r.house,
     pace = Math.max(-0.3, Math.min(1.5, (state.life - 35) / 30));
-  const k = (Math.LN2 / PEOPLE.growHalfLife) * seconds * share;
+  const halfLife = state.rank === 0 ? PEOPLE.villageGrowHalfLife : PEOPLE.growHalfLife;
+  const k = (Math.LN2 / halfLife) * seconds * share;
   if (target > state.pop) state.pop += (target - state.pop) * Math.min(1, k * Math.max(0, pace));
   else state.pop += (target - state.pop) * Math.min(1, k * 0.5);
   if (pace < 0) state.pop *= 1 + pace * 0.02 * (seconds / HOUR);
@@ -411,8 +476,8 @@ function settle(state, report) {
   state.works = state.works.filter((w) => w.ends === null || w.ends > state.time);
   startQueued(state);
   if (state.raid.next && state.raid.next <= state.time) report.raids.push(fight(state));
-  if (!state.petition && state.time >= state.nextPetition && state.rank >= 1) {
-    state.petition = { id: PETITIONS.list[Math.floor(random(state) * PETITIONS.list.length)].id, at: state.time };
+  if (!state.petition && state.time >= state.nextPetition) {
+    drawPetition(state);
     report.petitions++;
   }
   state.moods = state.moods.filter((m) => m.until > state.time);
@@ -434,7 +499,9 @@ function finishWork(state, work) {
     if (state.rank === 2 && !state.raid.next) state.raid.next = state.time + RAIDS.every;
     if (state.rank === FINAL_RANK) state.termDone = true;
   }
-  state.log.unshift({ at: work.ends, type: 'done', work: { type: work.type, key: work.key, level: work.level } });
+  const completed = { type: work.type, key: work.key, level: work.level };
+  if (work.type === 'plot') completed.kind = state.plots[work.key].kind;
+  state.log.unshift({ at: work.ends, type: 'done', work: completed });
   state.log.length = Math.min(state.log.length, 40);
 }
 
@@ -499,7 +566,8 @@ function blocked(state, price, level) {
 export function canPlace(state, index, kind) {
   if (!Number.isInteger(index) || !state.plots[index] || !Object.hasOwn(BUILDINGS, kind)) return 'none';
   const spec = BUILDINGS[kind], ward = Math.floor(index / PLOTS_PER_DISTRICT);
-  if (ward >= districtsOpen(state)) return 'closed';
+  if (spec.riverside && !RIVERSIDE.has(index)) return 'river';
+  if (!wardIsOpen(state, ward)) return 'closed';
   if (state.rank < spec.rank) return 'rank';
   if (state.plots[index].kind) return 'taken';
   return null;
@@ -514,6 +582,7 @@ export function quote(state, target) {
   if (target.type === 'plot') {
     const plot = state.plots[key];
     if (!plot) return { why: 'none' };
+    if (!RIVERSIDE.has(key) && (BUILDINGS[plot.kind]?.riverside || BUILDINGS[target.kind]?.riverside)) return { why: 'river' };
     if (!plot.kind) {
       const why = canPlace(state, key, target.kind);
       if (why) return { why };
@@ -555,12 +624,31 @@ export function upgrade(state, target) {
   return { work };
 }
 
-/** Plan a ward as a zone; only an empty ward may change. */
+/** Choose or clear the optional ward focus. Existing buildings and works stay in place. */
 export function zone(state, ward, zoneKey) {
-  if (ward >= districtsOpen(state)) return { why: 'closed' };
-  const plots = state.plots.slice(ward * PLOTS_PER_DISTRICT, (ward + 1) * PLOTS_PER_DISTRICT);
-  if (plots.some((p) => p.kind)) return { why: 'built' };
+  if (!wardIsOpen(state, ward)) return { why: 'closed' };
+  if (zoneKey !== null && !ZONES.includes(zoneKey)) return { why: 'none' };
   state.districts[ward].zone = zoneKey;
+  return {};
+}
+
+/** Move a dock inherited from an older layout, keeping its building level, work and assigned talent. */
+export function moveDock(state, from, to) {
+  if (!Number.isInteger(from) || !Number.isInteger(to) || !state.plots[to]) return { why: 'none' };
+  const dock = state.plots[from];
+  if (dock?.kind !== 'dock' || RIVERSIDE.has(from)) return { why: 'none' };
+  if (!RIVERSIDE.has(to)) return { why: 'river' };
+  if (!wardIsOpen(state, Math.floor(to / PLOTS_PER_DISTRICT))) return { why: 'closed' };
+  if (state.plots[to].kind || state.works.some((work) => work.type === 'plot' && work.key === to)) return { why: 'taken' };
+  const move = (ref) => {
+    if (ref?.type === 'plot' && ref.key === from) ref.key = to;
+  };
+  state.plots[to] = dock;
+  state.plots[from] = { kind: null, level: 0 };
+  for (const work of state.works) move(work);
+  for (const talent of state.talents) move(talent.post);
+  // Older logs looked up the building at the original plot, which is now empty.
+  for (const { work } of state.log) if (work?.type === 'plot' && work.key === from) work.kind ??= dock.kind;
   return {};
 }
 
@@ -677,23 +765,66 @@ export function trainTalents(state, hours) {
   }
 }
 
+const petitionRandom = (state, salt) => seeded((state.seed ^ Math.imul(state.petitionCount ?? 0, 0x9e3779b9) ^ salt) >>> 0)();
+
+function drawPetition(state) {
+  const season = seasonOf(state),
+    eligible = PETITIONS.list.filter((p) => p.seasons.includes(season) && (p.rank ?? 0) <= state.rank),
+    recent = state.petitionRecent ?? [],
+    fresh = eligible.filter((p) => !recent.includes(p.id)),
+    pool = fresh.length ? fresh : eligible.filter((p) => p.id !== recent.at(-1));
+  const id = !state.petitionCount && !recent.length && season === 0
+    ? 'seedFair'
+    : pool[Math.floor(petitionRandom(state, 0x9632) * pool.length)].id;
+  state.petition = { id, at: state.time, season };
+  state.petitionCount = (state.petitionCount ?? 0) + 1;
+  state.petitionRecent = [...recent, id].slice(-PETITIONS.recent);
+}
+
+/** Read the actual changes this choice would make, with a two-hour reserve for feeding the county. */
+export function petitionOffer(state, choice) {
+  const spec = PETITIONS.list.find((p) => p.id === state.petition?.id);
+  if (!spec || (choice !== 'a' && choice !== 'b')) return { why: 'none' };
+  const effect = spec[choice],
+    scale = PETITIONS.scale[state.rank] * Math.sqrt(1 + PROMOTION.grow * state.term),
+    delta = {};
+  for (const key of ['coin', 'grain', 'wood']) {
+    if (effect[key]) delta[key] = Math.sign(effect[key]) * Math.round(Math.abs(effect[key]) * scale);
+  }
+  if (effect.fame) delta.fame = effect.fame;
+  const offer = { delta, life: effect.life ?? 0, sellBoost: effect.sellBoost ?? 0, duration: (effect.minutes ?? 0) * 60, talent: Boolean(effect.talent) };
+  const short = ['coin', 'grain', 'wood'].some((key) => {
+    const guard = key === 'grain' ? Math.ceil(state.pop * PEOPLE.eat * 2) : 0;
+    return delta[key] < 0 && state.res[key] + delta[key] < guard;
+  });
+  return short ? { ...offer, why: 'cost' } : offer;
+}
+
 /** Answer the waiting petition with 'a' or 'b'. */
 export function answer(state, choice) {
-  if (!state.petition) return { why: 'none' };
-  const spec = PETITIONS.list.find((p) => p.id === state.petition.id),
-    effect = spec[choice];
-  for (const key of ['coin', 'grain', 'wood']) if (effect[key]) state.res[key] = Math.max(0, state.res[key] * (1 + effect[key]));
-  if (effect.fame) state.fame += effect.fame;
-  if (effect.life || effect.sellBoost) state.moods.push({ life: effect.life ?? 0, sellBoost: effect.sellBoost ?? 0, until: state.time + (effect.hours ?? 2) * HOUR, why: spec.id });
-  let talent = null;
-  if (effect.talent) talent = recruitFree(state);
+  const offer = petitionOffer(state, choice);
+  if (offer.why) return offer;
+  const { id } = state.petition;
+  for (const [key, value] of Object.entries(offer.delta)) {
+    if (key === 'fame') state.fame += value;
+    else state.res[key] += value;
+  }
+  if (offer.duration) state.moods.push({ life: offer.life, sellBoost: offer.sellBoost, until: state.time + offer.duration, why: id });
+  const talent = offer.talent ? recruitFree(state) : null;
+  if (!state.petitionRecent?.includes(id)) {
+    state.petitionRecent = [...(state.petitionRecent ?? []), id].slice(-PETITIONS.recent);
+    state.petitionCount ??= 1;
+  }
   state.petition = null;
-  state.nextPetition = state.time + PETITIONS.every;
+  state.nextPetition = state.time + PETITIONS.every + Math.round(petitionRandom(state, 0xaf23) * PETITIONS.jitter);
   return { talent };
 }
 function recruitFree(state) {
+  const next = state.freeRecruitAt;
   state.freeRecruitAt = -Infinity;
-  return recruit(state);
+  const result = recruit(state);
+  state.freeRecruitAt = next;
+  return result;
 }
 
 /** Begin a new term after the county reached 州: talents and the rank of office carry over. */

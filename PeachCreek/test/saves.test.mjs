@@ -8,7 +8,7 @@ import { test } from 'node:test';
 import '../vendor/node-register.mjs';
 
 const { SAVE_KEY, freshSave, openSave, recordTerm, countyLooksRight } = await import('../src/saves.mjs');
-const { advance, createCounty } = await import('../src/sim/world.mjs');
+const { advance, answer, createCounty, expandWard, moveDock, plotPlan, rates, wardIsOpen } = await import('../src/sim/world.mjs');
 
 function memory(initial = {}, { refuse = false } = {}) {
   const items = new Map(Object.entries(initial));
@@ -32,6 +32,7 @@ test('a fresh save speaks the page language and holds no county yet', () => {
 test('the settings and the whole county come back after opening the save again', () => {
   const storage = memory(),
     county = createCounty({ seed: 5, now: 1000 });
+  assert.equal(expandWard(county, 8).why, undefined);
   advance(county, 1000 + 3600, { active: false });
   openSave(storage).update((data) => {
     data.settings.language = 'en';
@@ -41,6 +42,8 @@ test('the settings and the whole county come back after opening the save again',
   assert.equal(again.data.settings.language, 'en');
   assert.ok(countyLooksRight(again.data.county));
   assert.deepEqual(again.data.county, JSON.parse(JSON.stringify(county)));
+  assert.equal(wardIsOpen(again.data.county, 3), false);
+  assert.equal(wardIsOpen(again.data.county, 8), true);
 });
 
 test('the record counts terms and keeps only the fastest', () => {
@@ -56,6 +59,7 @@ test('an earlier 48-lot save keeps its built sites, personnel, work, walls and s
   const data = freshSave('en'), county = data.county = createCounty({ seed: 6 });
   county.version = 1;
   county.rank = 3;
+  county.districts = Array.from({ length: 6 }, (_, i) => ({ zone: ['home', 'farm', 'market'][i] ?? null }));
   county.plots = Array.from({ length: 48 }, () => ({ kind: null, level: 0 }));
   county.plots[35] = { kind: 'clinic', level: 2 };
   county.defence = { wall: 2, tower: [1, 2, 3, 4], camp: 1 };
@@ -71,7 +75,7 @@ test('an earlier 48-lot save keeps its built sites, personnel, work, walls and s
   assert.equal(opened.loadedVersion, 1);
   assert.equal(opened.data.settings.language, 'en');
   assert.equal(opened.data.record.terms, 2);
-  assert.equal(loaded.plots.length, 72);
+  assert.equal(loaded.plots.length, 144);
   assert.deepEqual(loaded.plots[51], { kind: 'clinic', level: 2 });
   assert.equal(loaded.talents[0].post.key, 51);
   assert.equal(loaded.log[0].work.key, 51);
@@ -81,6 +85,70 @@ test('an earlier 48-lot save keeps its built sites, personnel, work, walls and s
   assert.equal(loaded.plots[51].level, 3);
   assert.deepEqual(loaded.defence.wall, [3, 3, 3, 3]);
   assert.deepEqual(loaded.defence.troops, [0, 0, 0, 0]);
+});
+
+test('a 72-lot save retains historic building and work positions, holdings and acquired wards', () => {
+  const data = freshSave('en'), county = data.county = createCounty({ seed: 7, now: 1000 });
+  county.version = 2;
+  county.rank = 2;
+  delete county.petitionCount;
+  delete county.petitionRecent;
+  county.petition = { id: 'flood', at: 1000 };
+  county.districts = Array.from({ length: 6 }, (_, i) => ({ zone: ['home', 'farm', 'market', 'garden'][i] ?? null }));
+  county.plots = Array.from({ length: 72 }, () => ({ kind: null, level: 0 }));
+  county.plots[12] = { kind: 'paddy', level: 1 };
+  county.plots[55] = { kind: 'temple', level: 4 };
+  county.res.coin = 4321;
+  county.defence.wall[3] = 3;
+  county.defence.troops[2] = 12;
+  county.works.push({ type: 'plot', key: 55, level: 5, starts: 1000, ends: 1010, duration: 10 });
+  county.talents.push({ id: 'suShi', post: { type: 'plot', key: 55 }, level: 1, exp: 0, stars: 1 });
+  const opened = openSave(memory({ [SAVE_KEY]: JSON.stringify({ version: 2, data }) }));
+  const loaded = opened.data.county;
+  assert.ok(countyLooksRight(loaded));
+  assert.equal(opened.loadedVersion, 2);
+  assert.deepEqual(loaded.plots.slice(0, 72), county.plots);
+  assert.deepEqual(loaded.res, county.res);
+  assert.deepEqual(loaded.defence, county.defence);
+  assert.deepEqual(loaded.talents, county.talents);
+  assert.deepEqual(loaded.works, county.works);
+  assert.deepEqual(loaded.petition, county.petition);
+  assert.ok(!answer(loaded, 'b').why);
+  assert.deepEqual(loaded.petitionRecent, ['flood']);
+  assert.deepEqual(loaded.districts.slice(0, 6).map((ward) => ward.zone), county.districts.map((ward) => ward.zone));
+  assert.deepEqual(loaded.districts.map((ward) => ward.open), [true, true, true, true, true, false, false, false, false, false, false, false]);
+  advance(loaded, 1020);
+  assert.equal(loaded.plots[55].level, 5);
+});
+
+test('an older dock keeps shipping before a bank opens, and keeps its migration after reloading', () => {
+  const data = freshSave(), county = data.county = createCounty({ seed: 8 });
+  county.version = 2;
+  county.rank = 3;
+  county.districts = Array.from({ length: 6 }, () => ({ zone: null }));
+  county.plots.length = 72;
+  const old = 68, bank = 120;
+  county.plots[old] = { kind: 'dock', level: 2 };
+  county.talents.push({ id: 'suShi', post: { type: 'plot', key: old }, level: 1, exp: 0, stars: 1 });
+  county.works.push({ type: 'plot', key: old, level: 3, starts: 0, ends: 100, duration: 100 });
+  county.res.coin = 10000;
+  const storage = memory({ [SAVE_KEY]: JSON.stringify({ version: 2, data }) });
+  const opened = openSave(storage), loaded = opened.data.county;
+  assert.ok(rates(loaded).export > 0);
+  assert.equal(plotPlan(loaded, old).linked, true, 'the former bank still has its legacy route');
+  assert.equal(moveDock(loaded, old, bank).why, 'closed');
+  assert.equal(loaded.plots[old].level, 2);
+  assert.equal(loaded.works[0].key, old);
+  assert.ok(!expandWard(loaded, 10).why);
+  assert.ok(!moveDock(loaded, old, bank).why);
+  opened.update((save) => { save.county = loaded; });
+  const again = openSave(storage).data.county;
+  assert.deepEqual(again.plots[old], { kind: null, level: 0 });
+  assert.deepEqual(again.plots[bank], { kind: 'dock', level: 2 });
+  assert.equal(again.talents[0].post.key, bank);
+  assert.equal(again.works[0].key, bank);
+  advance(again, 110);
+  assert.equal(again.plots[bank].level, 3);
 });
 
 test('a broken save is started again and the old text kept aside', () => {

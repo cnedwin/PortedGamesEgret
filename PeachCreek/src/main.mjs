@@ -8,7 +8,8 @@
 import { play } from '@egret/engine/play';
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { amount, buildingAbout, buildingName, duration, getLanguage, onLanguage, setLanguage, startLanguage, t } from './i18n.mjs';
-import { LAYOUT, MAP, loadTerrain, paintCounty, STAGE } from './paint.mjs';
+import { CORE_BOUNDS, LAYOUT, MAP, loadTerrain, paintCounty, STAGE } from './paint.mjs';
+import { paintBuilding, paintFacility } from './building-art.mjs';
 import { countyLooksRight, openSave, recordTerm } from './saves.mjs';
 import { createSound } from './sound.mjs';
 import { BUILDINGS, DEFENCE, FINAL_RANK, GOODS, HOUR, MILESTONES, NODES, OFFICES, PETITIONS, RAIDS, RANKS, RECRUIT, SURVEY_COST, SURVEY_TIME, TALENTS, ZONES } from './sim/data.mjs';
@@ -49,7 +50,9 @@ function fit() {
 addEventListener('resize', fit);
 
 // Hit regions, scenery and animated actors all share this world-space camera.
-const overviewZoom = Math.min(STAGE.width / MAP.width, STAGE.height / MAP.height);
+// Leave room for the HUD so all four gates and the far-bank plots fit the overview.
+const overviewZoom = Math.min(STAGE.width / MAP.width, (STAGE.height - 114) / MAP.height);
+const coreZoom = Math.min(STAGE.width / CORE_BOUNDS.width, STAGE.height / CORE_BOUNDS.height);
 const camera = { x: 0, y: 0, zoom: overviewZoom };
 const hits = $('#hits'), targets = $('#mapTargets');
 let drag = null, ignoreClick = false;
@@ -71,7 +74,14 @@ function zoomAround(zoom, screenX = STAGE.width / 2, screenY = STAGE.height / 2)
   const next = Math.max(overviewZoom, Math.min(1.4, zoom));
   setCamera(camera.x + screenX / camera.zoom - screenX / next, camera.y + screenY / camera.zoom - screenY / next, next);
 }
+function showCounty() {
+  setCamera(CORE_BOUNDS.x + (CORE_BOUNDS.width - STAGE.width / coreZoom) / 2,
+    CORE_BOUNDS.y + (CORE_BOUNDS.height - STAGE.height / coreZoom) / 2, coreZoom);
+}
+$('#countyFocus').addEventListener('click', showCounty);
 $('#overview').addEventListener('click', () => setCamera(0, 0, overviewZoom));
+$('#frontiers').addEventListener('click', () => openTarget({ type: 'frontier' }));
+$('#almanac').addEventListener('click', () => openTarget({ type: 'almanac' }));
 $('#zoomOut').addEventListener('click', () => zoomAround(camera.zoom / 1.2));
 $('#zoomIn').addEventListener('click', () => zoomAround(camera.zoom * 1.2));
 hits.addEventListener('wheel', (event) => {
@@ -137,7 +147,8 @@ function panKey(event) {
 
 // ——— Painting the map ———
 const mapCanvas = $('#map'),
-  mapScale = Math.min(matchMedia('(pointer: coarse)').matches ? 1.25 : 1.5, Math.max(1, devicePixelRatio || 1));
+  pixelBudget = matchMedia('(pointer: coarse)').matches ? 4_800_000 : 6_400_000,
+  mapScale = Math.min(1.5, Math.sqrt(pixelBudget / (MAP.width * MAP.height)), devicePixelRatio || 1);
 mapCanvas.width = Math.ceil(MAP.width * mapScale);
 mapCanvas.height = Math.ceil(MAP.height * mapScale);
 mapCanvas.style.width = `${MAP.width}px`;
@@ -166,16 +177,24 @@ function paintMap(force = false) {
     season: seasonOf(s),
     night,
     building,
-    wardOpen: (i) => i < districtsOpen(s),
-    labels: { ward: wardLabel, side: sideName }
+    wardOpen: (i) => rules.wardIsOpen(s, i),
+    wardState: (i) => wardState(s, i),
+    labels: { ward: wardLabel, side: sideName, yamen: () => t('yamenName') }
   });
   app.view?.setWeather(seasonOf(s), night);
 }
 function wardLabel(i) {
   const s = app.state,
     zone = s.districts[i].zone;
-  if (i >= districtsOpen(s)) return `${t('ward', { n: i + 1 })} · ${t(RANKS.findIndex((r) => r.districts > i) >= 0 ? 'r' + RANKS.findIndex((r) => r.districts > i) : 'r6')}`;
-  return zone ? `${t('ward', { n: i + 1 })} · ${t('zone' + cap(zone))}` : `${t('ward', { n: i + 1 })} · ${t('chooseLand')}`;
+  const recommendation = rules.wardRecommendation(i);
+  const name = t('ward', { n: i + 1 });
+  if (!rules.wardIsOpen(s, i)) return `${name} · ${t(wardState(s, i) === 'available' ? 'claimableLand' : 'outerLand')}`;
+  if (zone) return `${name} · ${t('zone' + cap(zone))}`;
+  return `${name} · ${t(recommendation ? 'site' + cap(recommendation) : 'chooseLand')}`;
+}
+function wardState(s, index) {
+  if (rules.wardIsOpen(s, index)) return 'owned';
+  return ['adjacent', 'none'].includes(rules.expansionQuote(s, index).why) ? 'locked' : 'available';
 }
 const cap = (w) => w[0].toUpperCase() + w.slice(1);
 const sideName = (i) => t('side' + cap(SIDES[i] ?? SIDES[0]));
@@ -211,12 +230,16 @@ function buildHits() {
     make({ type: 'node', key: i }, r, n.found ? `${buildingName(n.kind)} · ${t('level', { n: n.level })}` : t('hidden'));
   });
   LAYOUT.wards.forEach((w, i) => {
+    if (!rules.wardIsOpen(s, i)) {
+      make({ type: 'ward', key: i }, w, wardLabel(i));
+      return;
+    }
     make({ type: 'ward', key: i }, w.label, wardLabel(i));
-    if (i >= districtsOpen(s)) return;
     for (let p = 0; p < PLOTS_PER_DISTRICT; p++) {
       const index = i * PLOTS_PER_DISTRICT + p,
         plot = s.plots[index];
-      make({ type: 'plot', key: index }, LAYOUT.plots[index], `${t('ward', { n: i + 1 })} ${p + 1} · ${plot.kind ? `${buildingName(plot.kind)} ${t('level', { n: plot.level })}` : t('empty')}`);
+      const name = plot.kind ? `${buildingName(plot.kind)} ${t('level', { n: plot.level })}` : t(rules.RIVERSIDE.has(index) ? 'riverPlot' : 'empty');
+      make({ type: 'plot', key: index }, LAYOUT.plots[index], `${t('ward', { n: i + 1 })} ${p + 1} · ${name}`);
     }
   });
   const focusedTarget = document.activeElement?.dataset?.target;
@@ -229,7 +252,11 @@ const SHOWN = ['coin', 'grain', 'wood', 'stone', 'iron', 'silk', 'porcelain', 't
 function paintTop() {
   const s = app.state,
     r = rates(s);
-  $('#county').textContent = t('countyLine', { rank: t('r' + s.rank), season: t('season' + seasonOf(s)) });
+  $('#county').textContent = t('countyLine', { rank: t('r' + s.rank) });
+  const season = seasonOf(s), almanac = $('#almanac');
+  almanac.textContent = t('season' + season);
+  almanac.dataset.season = season;
+  almanac.setAttribute('aria-label', t('almanacLabel', { season: t('season' + season) }));
   // The term shows from the second one on.
   $('#term').textContent = s.term ? t('term', { n: s.term + 1 }) : '';
   const net = (k) => (k === 'coin' ? r.tax + r.coin + r.salary : (r.make[k] ?? 0) - (r.use[k] ?? 0));
@@ -267,6 +294,9 @@ function paintTop() {
   const soon = s.raid.next && s.raid.next - s.time < RAIDS.warn * 2;
   banner.hidden = app.screen !== 'play' || !soon;
   if (soon) banner.textContent = `${sideName(raidSide(s))} · ${t('nextRaid', { kind: t('raid_' + RAIDS.kinds[s.raid.n % RAIDS.kinds.length]), time: duration(s.raid.next - s.time) })}`;
+  const call = $('#petitionCall');
+  call.hidden = app.screen !== 'play' || !s.petition;
+  if (s.petition) call.textContent = t('petitionWaiting');
   // Tabs with something waiting.
   $('#tabs [data-tab="affairs"]')?.classList.toggle('waiting', Boolean(s.petition));
   const dot = (tab, on) => {
@@ -281,6 +311,24 @@ function paintTop() {
   dot('defence', Boolean(soon));
 }
 const rewardWords = (reward) => Object.entries(reward).map(([k, v]) => `${t(k)} ${amount(v)}`).join(' · ');
+const signed = (n) => (n >= 0 ? '+' : '−') + amount(Math.abs(n));
+
+function petitionSheet(s) {
+  const { id, season } = s.petition;
+  return el('div', { className: 'petition' },
+    Number.isInteger(season) ? el('small', { className: 'petitionSeason', textContent: t('season' + season) }) : null,
+    el('p', { textContent: t('p_' + id) }),
+    el('div', { className: 'petitionChoices' },
+      ...['a', 'b'].map((choice) => {
+        const offer = rules.petitionOffer(s, choice);
+        const detail = Object.entries(offer.delta).filter(([, n]) => n).map(([k, n]) => `${t(k)} ${signed(n)}`);
+        if (offer.life) detail.push(t('petitionMood', { n: signed(offer.life), time: duration(offer.duration) }));
+        if (offer.sellBoost > 0) detail.push(t('petitionSales', { n: amount(offer.sellBoost * 100), time: duration(offer.duration) }));
+        if (offer.talent) detail.push(t('petitionTalent'));
+        if (offer.why === 'cost') detail.push(t('petitionCost'));
+        return button(t('p' + choice + '_' + id), () => decide(choice), { note: detail.join(' · '), disabled: Boolean(offer.why) });
+      })));
+}
 
 // ——— Tabs ———
 const TABS = ['city', 'build', 'talent', 'affairs', 'defence'];
@@ -336,7 +384,9 @@ function closeSheet() {
     app.tab = 'city';
     paintTabs();
     $(`#tabs [data-tab="${was.tab}"]`)?.focus();
-  } else if (was) $$('#hits button').find((b) => b.dataset.target === JSON.stringify(was))?.focus();
+  } else if (was?.type === 'almanac') $('#almanac').focus();
+  else if (was?.type === 'frontier') $('#frontiers').focus();
+  else if (was) $$('#hits button').find((b) => b.dataset.target === JSON.stringify(was))?.focus();
 }
 $('.sheetClose').addEventListener('click', closeSheet);
 
@@ -363,6 +413,7 @@ function whyWords(q, price) {
   if (q.why === 'builders') return t('queueFull');
   if (q.why === 'maxLevel') return t('maxLevelReached', { n: maxLevel(app.state) });
   if (q.why === 'rank') return t('needRank', { rank: t('r' + (q.rank ?? '')) });
+  if (q.why === 'river') return t('riverOnly');
   if (q.why === 'working') return t('waiting');
   return '';
 }
@@ -386,6 +437,43 @@ function layoutNote(plan) {
     plan.upkeep > 0.5 ? t('haulCost', { n: amount(plan.upkeep) }) : ''
   ].filter(Boolean);
   return [score, ...detail].join(' · ');
+}
+
+const previewCache = new Map();
+function architecture(kind, level, ceiling, { facility = false, side = 0, rank = false } = {}) {
+  const season = seasonOf(app.state);
+  const proposed = !rank && level === 0;
+  const levels = proposed ? [1] : level < ceiling ? [level, level + 1] : [level];
+  return el('div', { className: 'architecture' }, ...levels.map((shown, index) => {
+    const key = `${kind}:${shown}:${season}:${facility}:${side}`;
+    let image = previewCache.get(key);
+    if (!image) {
+      image = el('canvas', { width: 320, height: 190 });
+      const context = image.getContext('2d');
+      const rect = { x: 12, y: 7, w: 296, h: 175 };
+      if (facility) paintFacility(context, kind, shown, rect, season, { side });
+      else paintBuilding(context, kind, shown, rect, season);
+      if (previewCache.size >= 36) previewCache.delete(previewCache.keys().next().value);
+      previewCache.set(key, image);
+    }
+    const canvas = el('canvas', { width: image.width, height: image.height });
+    canvas.setAttribute('aria-hidden', 'true');
+    canvas.getContext('2d').drawImage(image, 0, 0);
+    const caption = rank ? t('r' + shown) : t(proposed || index ? 'nextArchitecture' : 'currentArchitecture', { n: shown });
+    return el('figure', {}, canvas, el('figcaption', { textContent: caption }));
+  }));
+}
+
+function expansionReason(quote) {
+  if (quote.why === 'adjacent') return t('connectedLand');
+  if (quote.why === 'cost') return t('notEnough', { what: shortWords(quote.cost) });
+  return '';
+}
+
+function showOnMap(type, key) {
+  const rect = rectOf({ type, key }), zoom = Math.max(coreZoom, camera.zoom);
+  setCamera(rect.x + rect.w / 2 - STAGE.width * 0.39 / zoom, rect.y + rect.h / 2 - STAGE.height / (2 * zoom), zoom);
+  openTarget({ type, key });
 }
 
 /** A line for what a building makes at a level (before talents and zones). */
@@ -440,6 +528,53 @@ function postLine(place) {
 const talentLine = (talent) => t('talentLine', { rarity: t('rarity_' + TALENTS.find((x) => x.id === talent.id).rarity), level: talent.level, stars: talent.stars });
 
 const TARGET_SHEETS = {
+  harbor({ key }) {
+    const s = app.state;
+    const byWard = new Map();
+    for (const index of rules.RIVERSIDE) {
+      const ward = Math.floor(index / PLOTS_PER_DISTRICT);
+      if (!byWard.has(ward)) byWard.set(ward, []);
+      byWard.get(ward).push(index);
+    }
+    return [
+      el('h2', { textContent: t(key === undefined ? 'harborSites' : 'moveDock') }),
+      el('p', { textContent: t(key === undefined ? 'harborHint' : 'moveDockHint') }),
+      ...[...byWard].flatMap(([ward, plots]) => {
+        const open = rules.wardIsOpen(s, ward);
+        const free = plots.filter((index) => !s.plots[index].kind);
+        return [
+          el('h3', { textContent: t('ward', { n: ward + 1 }) }),
+          !open ? button(t('viewHarborWard'), () => showOnMap('ward', ward), { note: t('expandLand'), kind: 'jade' })
+            : free.length ? el('div', { className: 'choices' }, ...free.map((index) =>
+              button(t('harborLot', { n: index % PLOTS_PER_DISTRICT + 1 }), () => {
+                if (key === undefined) return showOnMap('plot', index);
+                const result = rules.moveDock(s, key, index);
+                if (result.why) return toast(t('harborUnavailable'));
+                app.sound.play('chime');
+                afterChange(true);
+                persist(true);
+                showOnMap('plot', index);
+              }))) : el('p', { className: 'muted', textContent: t('harborFull') })
+        ];
+      })
+    ];
+  },
+  almanac() {
+    const current = rules.seasonInfo(app.state);
+    const seasonEffects = Object.entries(current.effects).flatMap(([key, factor]) => {
+      const change = key === 'life' ? factor : Math.round((factor - 1) * 100);
+      return change ? [el('li', {}, el('span', { className: 'grow', textContent: t('effect_' + key) }),
+        el('b', { textContent: signed(change) + (key === 'life' ? '' : '%') }))] : [];
+    });
+    return [
+      el('h2', { textContent: t('almanacTitle') }),
+      el('div', { className: 'almanacSeason' },
+        el('b', { textContent: t('season' + current.season) }),
+        el('span', { textContent: t('nextSeason', { season: t('season' + current.next), time: duration(current.remaining) }) })),
+      el('ul', { className: 'list' }, ...seasonEffects),
+      el('p', { className: 'muted', textContent: t('seasonAdvice' + current.season) })
+    ];
+  },
   plot({ key }) {
     const s = app.state,
       plot = s.plots[key],
@@ -448,7 +583,7 @@ const TARGET_SHEETS = {
       const choices = Object.keys(BUILDINGS).sort((a, b) => BUILDINGS[a].rank - BUILDINGS[b].rank);
       return [
         el('h2', { textContent: `${t('ward', { n: ward + 1 })} · ${t('empty')} ${key % PLOTS_PER_DISTRICT + 1}` }),
-        el('p', { className: 'muted', textContent: t('emptyNote') }),
+        el('p', { className: 'muted', textContent: t(rules.RIVERSIDE.has(key) ? 'riverPlotNote' : 'emptyNote') }),
         el(
           'div',
           { className: 'choices' },
@@ -472,13 +607,15 @@ const TARGET_SHEETS = {
         )
       ];
     }
-    const spec = BUILDINGS[plot.kind];
+    const spec = BUILDINGS[plot.kind], inlandDock = plot.kind === 'dock' && !rules.RIVERSIDE.has(key);
     return [
       el('h2', { textContent: `${buildingName(plot.kind)} · ${t('level', { n: plot.level })}` }),
+      architecture(plot.kind, plot.level, inlandDock ? plot.level : maxLevel(s)),
       el('p', { textContent: buildingAbout(plot.kind) }),
       el('p', { className: 'muted', textContent: outputWords(plot.kind, Math.max(1, plot.level)) }),
       el('p', { className: 'planScore', textContent: layoutNote(plotPlan(s, key)) }),
       ...upgradeBlock({ type: 'plot', key }, spec, plot.level),
+      inlandDock ? button(t('moveDock'), () => openSheet({ type: 'harbor', key }), { note: t('moveDockHint'), kind: 'jade' }) : null,
       postLine({ type: 'plot', key }),
       el('div', { className: 'row' }, button(t('demolish'), () => {
         rules.demolish(s, key);
@@ -489,20 +626,35 @@ const TARGET_SHEETS = {
   },
   ward({ key }) {
     const s = app.state;
-    if (key >= districtsOpen(s)) return [el('h2', { textContent: t('ward', { n: key + 1 }) }), el('p', { textContent: t('wardClosed', { rank: t('r' + RANKS.findIndex((r) => r.districts > key)) }) })];
-    const built = s.plots.slice(key * PLOTS_PER_DISTRICT, (key + 1) * PLOTS_PER_DISTRICT).some((p) => p.kind);
+    const recommendation = rules.wardRecommendation(key);
+    if (!rules.wardIsOpen(s, key)) {
+      const quote = rules.expansionQuote(s, key);
+      return [
+        el('h2', { textContent: `${t('ward', { n: key + 1 })} · ${t('expandLand')}` }),
+        el('p', { className: 'muted', textContent: t('expandNote') }),
+        recommendation ? el('p', { className: 'planScore', textContent: t('recommend' + cap(recommendation)) }) : null,
+        quote.cost ? button(t('claimWard'), () => {
+          const result = rules.expandWard(s, key);
+          if (result.why) return toast(expansionReason(result));
+          app.sound.play('chime');
+          app.view.built(LAYOUT.wards[key].label);
+          afterChange(true);
+          persist(true);
+        }, { note: [priceWords(quote.cost), expansionReason(quote)].filter(Boolean).join(' · '), disabled: Boolean(quote.why), kind: 'primary' })
+        : el('p', { className: 'muted', textContent: expansionReason(quote) })
+      ];
+    }
     return [
       el('h2', { textContent: `${t('ward', { n: key + 1 })} · ${t('planWard')}` }),
-      el('p', { className: 'muted', textContent: built ? t('wardBuilt') : t('planNote') }),
+      el('p', { className: 'muted', textContent: t('planNote') }),
+      recommendation ? el('p', { className: 'planScore', textContent: t('recommend' + cap(recommendation)) }) : null,
       el(
         'div',
         { className: 'choices' },
-        ...ZONES.map((zone) => {
-          const b = el('button', { type: 'button', className: 'choice' }, el('b', { textContent: t('zone' + cap(zone)) }), el('small', { textContent: t('note' + cap(zone)) }));
+        ...[...ZONES, null].map((zone) => {
+          const b = el('button', { type: 'button', className: 'choice' }, el('b', { textContent: t(zone ? 'zone' + cap(zone) : 'zoneNone') }), el('small', { textContent: t(zone ? 'note' + cap(zone) : 'clearPlanNote') }));
           b.setAttribute('aria-pressed', String(s.districts[key].zone === zone));
-          if (built) b.setAttribute('aria-disabled', 'true');
           b.addEventListener('click', () => {
-            if (built) return;
             rules.zone(s, key, zone);
             app.sound.play('tap');
             afterChange();
@@ -511,6 +663,23 @@ const TARGET_SHEETS = {
           return b;
         })
       )
+    ];
+  },
+  frontier() {
+    const s = app.state;
+    const unclaimed = LAYOUT.wards.map((_, index) => index).filter((index) => !rules.wardIsOpen(s, index));
+    const options = unclaimed.map((index) => ({
+      index, quote: rules.expansionQuote(s, index)
+    }));
+    options.sort((a, b) => Number(a.quote.why === 'adjacent') - Number(b.quote.why === 'adjacent'));
+    return [
+      el('h2', { textContent: t('expandLand') }),
+      el('p', { textContent: t('expandedCount', { n: districtsOpen(s), all: LAYOUT.wards.length }) }),
+      el('p', { className: 'muted', textContent: t('expandNote') }),
+      options.length ? el('ul', { className: 'list frontierList' }, ...options.map(({ index, quote }) =>
+        el('li', {}, button(wardLabel(index), () => showOnMap('ward', index), {
+          note: [quote.cost && priceWords(quote.cost), expansionReason(quote)].filter(Boolean).join(' · ')
+        })))) : el('p', { textContent: t('allLandClaimed') })
     ];
   },
   node({ key }) {
@@ -528,6 +697,7 @@ const TARGET_SHEETS = {
     return [
       el('h2', { textContent: `${buildingName(node.kind)} · ${t('level', { n: node.level })}` }),
       el('p', { textContent: buildingAbout(node.kind) }),
+      architecture(node.kind, node.level, maxLevel(s), { facility: true }),
       el('p', { className: 'muted', textContent: outputWords(node.kind, Math.max(1, node.level), NODES[node.kind]) }),
       ...upgradeBlock({ type: 'node', key }, NODES[node.kind], node.level),
       postLine({ type: 'node', key })
@@ -537,7 +707,10 @@ const TARGET_SHEETS = {
     const s = app.state,
       need = needFor(s, s.rank + 1),
       works = s.works.find((w) => w.type === 'rank');
-    const parts = [el('h2', { textContent: t('yamenTitle', { rank: t('r' + s.rank) }) })];
+    const parts = [
+      el('h2', { textContent: t('yamenTitle', { rank: t('r' + s.rank) }) }),
+      architecture('yamen', s.rank, FINAL_RANK, { facility: true, rank: true })
+    ];
     if (s.pendingTax >= 1) parts.push(button(t('collect'), collect, { note: t('taxWaiting', { n: amount(s.pendingTax) }), kind: 'jade' }));
     if (!need) {
       parts.push(el('p', { textContent: t('topRank') }), el('p', { className: 'muted', textContent: t('promoteNote') }), button(t('promote'), promote, { kind: 'primary' }));
@@ -601,6 +774,7 @@ function defenceSheet(target) {
     level = target.type === 'camp' ? s.defence.camp : s.defence[target.type][side];
   return [
     el('h2', { textContent: `${targetName(target)} · ${t('level', { n: level })}` }),
+    target.type === 'wall' ? null : architecture(target.type === 'tower' ? 'gate' : 'camp', level, maxLevel(s), { facility: true, side }),
     el('p', { textContent: target.type === 'tower' ? t('gateNote') : t('about_' + target.type) }),
     el('p', { className: 'muted', textContent: `${t('power', { n: amount(defencePower(s, side)) })} · ${t('defenceAdd', { n: amount(spec.power) })}` }),
     ...upgradeBlock(target, spec, level),
@@ -650,6 +824,8 @@ const TAB_SHEETS = {
     s.nodes.forEach((n, i) => n.found && n.level > 0 && items.push({ target: { type: 'node', key: i }, name: buildingName(n.kind), level: n.level, spec: NODES[n.kind] }));
     return [
       el('h2', { textContent: t('worksTitle') }),
+      button(t('expandLand'), () => openSheet({ type: 'frontier' }), { kind: 'jade' }),
+      button(t('harborSites'), () => openSheet({ type: 'harbor' }), { kind: 'jade' }),
       el('p', { className: 'muted', textContent: t('choosePlotHint') }),
       el('p', { className: 'planScore', textContent: t('countyLayout', { n: Math.round(rates(s).planning.efficiency * 100) }) }),
       el('p', { className: 'muted', textContent: t('builders', { busy: busy(s), all: builders(s), queued: rules.queued(s), cap: builders(s) * rules.QUEUE_PER_BUILDER }) }),
@@ -716,10 +892,8 @@ const TAB_SHEETS = {
       if (goal.check(s)) parts.push(button(t('claim'), claim, { kind: 'jade' }));
     } else parts.push(el('p', { textContent: t('allGoals') }));
     parts.push(el('h3', { textContent: t('petition') }));
-    if (s.petition) {
-      const id = s.petition.id;
-      parts.push(el('div', { className: 'petition' }, el('p', { textContent: t('p_' + id) }), el('div', { className: 'row' }, button(t('pa_' + id), () => decide('a')), button(t('pb_' + id), () => decide('b')))));
-    } else parts.push(el('p', { className: 'muted', textContent: t('noPetition') }));
+    if (s.petition) parts.push(petitionSheet(s));
+    else parts.push(el('p', { className: 'muted', textContent: t('noPetition') }));
     parts.push(el('h3', { textContent: t('log') }));
     parts.push(el('ul', { className: 'list' }, ...s.log.slice(0, 12).map((entry) => el('li', {}, el('span', { className: 'grow', textContent: logWords(entry) })))));
     return parts;
@@ -756,7 +930,7 @@ function placeName(post) {
 }
 function workName(w) {
   const s = app.state;
-  if (w.type === 'plot') return `${buildingName(s.plots[w.key].kind)} → ${w.level}`;
+  if (w.type === 'plot') return `${buildingName(w.kind ?? s.plots[w.key].kind)} → ${w.level}`;
   if (w.type === 'node') return `${buildingName(s.nodes[w.key].kind)} → ${w.level}`;
   if (w.type === 'survey') return t('survey');
   if (w.type === 'rank') return t('rankUp', { rank: t('r' + w.level) });
@@ -788,10 +962,12 @@ function claim() {
 }
 function decide(choice) {
   const r = rules.answer(app.state, choice);
+  if (r.why) return;
   app.sound.play('tap');
   if (r.talent?.talent) talentArrived(r.talent);
   toast(t('answered'));
   afterChange();
+  persist(true);
 }
 function doRecruit() {
   const r = recruit(app.state);
@@ -829,6 +1005,12 @@ function promote() {
 $('#taxBubble').addEventListener('click', collect);
 $('#claimButton').addEventListener('click', claim);
 $('#raidBanner').addEventListener('click', () => openTab('defence'));
+$('#petitionCall').addEventListener('click', () => {
+  openTab('affairs');
+  const petition = $('.petition');
+  petition?.scrollIntoView({ block: 'nearest' });
+  $('button:not([aria-disabled="true"])', petition ?? $('#sheetBody'))?.focus({ preventScroll: true });
+});
 
 // ——— Toasts ———
 function toast(words) {
@@ -860,7 +1042,7 @@ function tick() {
     report = advance(s, now(), { active: true });
   trainTalents(s, (s.time - before) / HOUR);
   present(report);
-  app.view.setPeople(Math.min(40, 4 + Math.floor(s.pop / 60)));
+  app.view.setCountyActivity(s);
   afterChange(false, true);
 }
 function present(report) {
@@ -938,6 +1120,8 @@ function paintTitle() {
   $('#tagline').textContent = t('tagline');
   $('#demoLine').textContent = t('demo');
   $('#overview').textContent = t('mapOverview');
+  $('#countyFocus').textContent = t('mapCounty');
+  $('#frontiers').textContent = t('expandLand');
   $('#hits').setAttribute('aria-label', t('mapControls'));
   $('#zoomIn').setAttribute('aria-label', t('mapZoomIn'));
   $('#zoomOut').setAttribute('aria-label', t('mapZoomOut'));
@@ -1022,7 +1206,7 @@ $('#startButton').addEventListener('click', (event) => {
   app.screen = 'play';
   $('#title').hidden = true;
   $('#mapTools').hidden = false;
-  app.view.setPeople(Math.min(40, 4 + Math.floor(app.state.pop / 60)));
+  app.view.setCountyActivity(app.state);
   afterChange(true);
   welcomeBack();
   // From the keyboard the focus goes on to the map; after a click or a tap it is let go, so no frame shows.
@@ -1062,7 +1246,7 @@ async function boot() {
   game.reducedMotion = save.data.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
   app.game = game;
   app.view = createView(game);
-  setCamera(0, 0);
+  showCounty();
   app.sound = createSound(game, { sound: save.data.settings.sound, music: save.data.settings.music });
   const saved = save.data.county;
   app.state = saved && countyLooksRight(saved) ? JSON.parse(JSON.stringify(saved)) : null;

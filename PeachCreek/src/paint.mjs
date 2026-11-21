@@ -1,11 +1,14 @@
 // The map is painted at world size. The main view scrolls the painting, hit areas
 // and Egret effects together, so a camera move does not rasterize the city again.
-import { DISTRICT_COLS, DISTRICT_ROWS, NODE_SLOTS, PLOT_COLS, PLOTS_PER_DISTRICT, PLOT_ROWS, RIVERSIDE } from './sim/world.mjs';
+import { CORE_WARDS, NODE_SLOTS, PLOT_COLS, PLOTS_PER_DISTRICT, PLOT_ROWS, RIVERSIDE, WARD_POSITIONS, wardRecommendation } from './sim/world.mjs';
+import { paintBuilding, paintFacility, paintWallDetail } from './building-art.mjs';
 
 export const STAGE = { width: 1280, height: 720 };
-export const MAP = { width: 1840, height: 1200 };
+export const MAP = { width: 2960, height: 1620 };
+export const CORE_BOUNDS = { x: 560, y: 0, width: 1840, height: 1200 };
 
-const CITY = { left: 145, right: 1695, top: 256, bottom: 1003 };
+const CORE_X = CORE_BOUNDS.x;
+const CITY = { left: CORE_X + 145, right: CORE_X + 1695, top: 256, bottom: 1003 };
 const CENTER = { x: (CITY.left + CITY.right) / 2, y: (CITY.top + CITY.bottom) / 2 };
 const TERRAIN_URL = new URL('../assets/creek-landscape.webp', import.meta.url);
 let terrain;
@@ -24,10 +27,9 @@ export async function loadTerrain() {
 /** Geometry shared by the map painting, transparent controls, and effects. */
 export const LAYOUT = (() => {
   const wards = [], plots = [];
-  for (let i = 0; i < DISTRICT_COLS * DISTRICT_ROWS; i++) {
-    const col = i % DISTRICT_COLS;
-    const x = 193 + col * 490;
-    const y = 356 + Math.floor(i / DISTRICT_COLS) * 300;
+  for (const [col, row] of WARD_POSITIONS) {
+    const x = col === -1 ? 52 : col === 3 ? MAP.width - 526 : CORE_X + 193 + col * 490;
+    const y = row === 2 ? 1270 : 356 + row * 300;
     wards.push({ x, y, w: 474, h: 45 + PLOT_ROWS * 78, label: { x: x + 12, y: y + 2, w: 160, h: 30 } });
     for (let p = 0; p < PLOTS_PER_DISTRICT; p++) {
       const localCol = p % PLOT_COLS;
@@ -59,10 +61,10 @@ export const LAYOUT = (() => {
   ];
   return {
     wards, plots, nodes, walls, gates, towers: gates, wall: walls[0], gate: gates[0],
-    camp: { x: 1395, y: 267, w: 185, h: 78 },
-    yamen: { x: 805, y: 267, w: 230, h: 81 },
+    camp: { x: CORE_X + 1395, y: 267, w: 185, h: 78 },
+    yamen: { x: CORE_X + 783, y: 267, w: 274, h: 81 },
     river: { y: 1060, h: 140 },
-    roads: { street: CENTER.x, rows: [343, 641, 945], spines: [676, CENTER.x, 1165] }
+    roads: { street: CENTER.x, rows: [343, 641, 945], spines: [CORE_X + 676, CENTER.x, CORE_X + 1165] }
   };
 })();
 
@@ -82,23 +84,13 @@ export function hit(x, y) {
 
 // ——— The palette, by season ———
 const SEASON = [
-  { grass: '#bcdca3', grass2: '#a7cf8f', hill: '#a9cdb3', tree: '#86b98f', bloom: '#f4b8c6', roofCap: null },
-  { grass: '#a4d08c', grass2: '#8fc27a', hill: '#94c3a1', tree: '#6faa7e', bloom: '#f6d36b', roofCap: null },
-  { grass: '#d8cf93', grass2: '#cdbf7d', hill: '#c9c49a', tree: '#d99a5a', bloom: '#e8794f', roofCap: null },
-  { grass: '#e7ecec', grass2: '#d9e2e3', hill: '#dfe6ea', tree: '#9fb7b4', bloom: '#ffffff', roofCap: '#ffffff' }
+  { grass: '#bcdca3', grass2: '#a7cf8f', hill: '#a9cdb3', tree: '#86b98f', bloom: '#f4b8c6', water: '#809c8633' },
+  { grass: '#a4d08c', grass2: '#8fc27a', hill: '#94c3a1', tree: '#6faa7e', bloom: '#f6d36b', water: '#408f943d' },
+  { grass: '#d8cf93', grass2: '#cdbf7d', hill: '#c9c49a', tree: '#d99a5a', bloom: '#e8794f', water: '#658d8338' },
+  { grass: '#e7ecec', grass2: '#d9e2e3', hill: '#dfe6ea', tree: '#9fb7b4', bloom: '#ffffff', water: '#627d974d' }
 ];
 const C = {
-  paper: '#f4efe1',
   ink: '#4c5a5c',
-  roof: '#5f7481',
-  wall: '#f7f1e2',
-  wood: '#b78459',
-  woodDark: '#8d5f3c',
-  lacquer: '#c6584a',
-  gold: '#e2b45a',
-  water: '#8fc6c8',
-  waterLight: '#bfe2dd',
-  stone: '#b9b4a8',
   zone: { home: '#efe0c4', market: '#f1d9b0', farm: '#cfe3b0', craft: '#d9cfc2', garden: '#d4e8cf' }
 };
 
@@ -152,85 +144,6 @@ function wash(g, x, y, w, h, color, seed = 1) {
   }
 }
 
-/** A roof with upturned eaves, from (x, y) its left eave, width w. */
-function roof(g, x, y, w, h, color = C.roof, cap = null) {
-  const ridge = y - h * 0.66;
-  polygon(g, [[x - 4, y + h], [x + w * .19, y], [x + w * .28, ridge], [x + w * .83, ridge], [x + w * .8, y]],
-    gradient(g, x, ridge, x, y + h, '#94acaa', color), 'rgba(68,77,71,.44)');
-  polygon(g, [[x + w * .8, y], [x + w * .83, ridge], [x + w * 1.05, y + h * .52], [x + w + 4, y + h]],
-    '#718582', 'rgba(68,77,71,.48)');
-  g.fillStyle = gradient(g, x, y, x, y + h, color, '#516668');
-  g.beginPath();
-  g.moveTo(x - 4, y + h);
-  g.quadraticCurveTo(x + w * 0.1, y + h * 0.7, x + w * 0.2, y);
-  g.lineTo(x + w * 0.8, y);
-  g.quadraticCurveTo(x + w * 0.9, y + h * 0.7, x + w + 4, y + h);
-  g.quadraticCurveTo(x + w / 2, y + h * 0.82, x - 4, y + h);
-  g.fill();
-  g.strokeStyle = 'rgba(228,236,212,.32)';
-  g.lineWidth = 0.65;
-  const ribs = Math.max(6, Math.floor(w / 6));
-  for (let i = 1; i < ribs; i++) {
-    const progress = i / ribs;
-    g.beginPath();
-    g.moveTo(x + w * (.20 + progress * .60), y + 1);
-    g.quadraticCurveTo(x + w * (.12 + progress * .76), y + h * .62, x + w * (.04 + progress * .92), y + h * .89);
-    g.stroke();
-  }
-  g.strokeStyle = 'rgba(40,60,56,.72)';
-  g.lineWidth = 1.1;
-  g.beginPath();
-  g.moveTo(x - 5, y + h - 2);
-  g.quadraticCurveTo(x + w / 2, y + h * .95, x + w + 5, y + h - 2);
-  g.stroke();
-  g.fillStyle = C.ink;
-  g.fillRect(x + w * 0.18, y - 2, w * 0.64, 3);
-  if (cap) {
-    g.fillStyle = cap;
-    g.globalAlpha = 0.85;
-    g.fillRect(x + w * 0.2, y - 2, w * 0.6, 5);
-    g.globalAlpha = 1;
-  }
-}
-/** A hall: walls, pillars, a door, a roof. */
-function hall(g, cx, base, w, h, { roofColor = C.roof, wallColor = C.wall, storeys = 1, cap = null, door = true, lantern = false } = {}) {
-  const x = cx - w / 2;
-  const shade = g.createRadialGradient(cx + 8, base + 2, 0, cx + 8, base + 2, w * .68);
-  shade.addColorStop(0, 'rgba(70,82,66,.26)');
-  shade.addColorStop(1, 'transparent');
-  g.fillStyle = shade;
-  g.beginPath();
-  g.ellipse(cx + 7, base + 1, w * .64, Math.max(5, h * .28), 0, 0, Math.PI * 2);
-  g.fill();
-  for (let s = 0; s < storeys; s++) {
-    const sw = w * (1 - s * 0.16),
-      sx = cx - sw / 2,
-      top = base - h * (s + 1) - s * 10;
-    const depth = Math.max(5, sw * .12);
-    polygon(g, [[sx + sw, top], [sx + sw + depth, top - depth * .55], [sx + sw + depth, top + h - depth * .55], [sx + sw, top + h]],
-      gradient(g, sx + sw, top, sx + sw + depth, top, '#aea58a', '#d3c8ac'), 'rgba(86,78,58,.45)');
-    g.fillStyle = gradient(g, sx, top, sx + sw, top + h, wallColor, '#e3d6b8');
-    g.fillRect(sx, top, sw, h - 3);
-    g.fillStyle = '#ac9b82';
-    g.fillRect(sx - 1, top + h - 2.5, sw + 2, 3);
-    g.fillStyle = C.wood;
-    g.fillRect(sx + 1, top, 2, h - 3);
-    g.fillRect(sx + sw - 3, top, 2, h - 3);
-    g.fillStyle = 'rgba(79,100,97,.62)';
-    for (const fraction of [.22, .72]) g.fillRect(sx + sw * fraction, top + h * .29, sw * .10, h * .32);
-    if (door && s === 0) {
-      g.fillStyle = C.woodDark;
-      g.fillRect(cx - 5, base - h * 0.62, 10, h * 0.62);
-      g.fillStyle = '#cfab76';
-      g.fillRect(cx - 6, base - h * .64, 12, 2);
-    }
-    roof(g, sx - 3, top - Math.max(11, h * .43), sw + 6, Math.max(12, h * .45), roofColor, cap);
-  }
-  if (lantern) {
-    blob(g, x + 4, base - h + 6, 3.5, C.lacquer);
-    blob(g, x + w - 4, base - h + 6, 3.5, C.lacquer);
-  }
-}
 function tree(g, x, y, r, color, bloom = null) {
   g.fillStyle = 'rgba(84,97,70,.18)';
   g.beginPath();
@@ -259,231 +172,90 @@ function tree(g, x, y, r, color, bloom = null) {
   }
 }
 
-/** Draw a building of `kind` at `level` in plot rect `r`. */
-export function drawBuilding(g, kind, level, r, season) {
-  const cx = r.x + r.w / 2,
-    base = r.y + r.h - 8,
-    pal = SEASON[season],
-    tier = level >= 25 ? 2 : level >= 10 ? 1 : 0,
-    cap = pal.roofCap;
-  const shadow = () => {
-    g.fillStyle = 'rgba(60,70,60,0.15)';
-    g.beginPath();
-    g.ellipse(cx, base + 2, r.w * 0.42, 6, 0, 0, Math.PI * 2);
-    g.fill();
-  };
-  switch (kind) {
-    case 'house':
-      shadow();
-      hall(g, cx - 10, base, 34, 20, { cap });
-      if (tier >= 1) hall(g, cx + 16, base, 26, 16, { cap });
-      if (tier >= 2) hall(g, cx - 8, base - 26, 22, 12, { cap, door: false });
-      tree(g, r.x + r.w - 10, base - 34, 7, pal.tree, season === 0 ? pal.bloom : null);
-      break;
-    case 'manor':
-      shadow();
-      g.fillStyle = C.wall;
-      g.fillRect(r.x + 6, base - 22, r.w - 12, 22);
-      hall(g, cx, base - 6, 46, 22, { storeys: tier >= 1 ? 2 : 1, cap, lantern: true });
-      break;
-    case 'paddy':
-    case 'mulberry':
-    case 'teaGarden': {
-      const green = kind === 'paddy' ? (season === 2 ? '#e2c46a' : season === 3 ? '#e9eeee' : '#8fcf7e') : kind === 'mulberry' ? pal.tree : '#6aa77a';
-      g.fillStyle = kind === 'paddy' ? C.waterLight : '#d8c9a5';
-      round(g, r.x + 4, r.y + 14, r.w - 8, r.h - 18, 6);
-      g.fill();
-      const rows = 3 + tier;
-      for (let i = 0; i < rows; i++)
-        for (let j = 0; j < 5; j++) {
-          const x = r.x + 12 + j * ((r.w - 24) / 4),
-            y = r.y + 22 + i * ((r.h - 34) / Math.max(1, rows - 1));
-          if (kind === 'mulberry') tree(g, x, y - 2, 5, green);
-          else if (kind === 'teaGarden') blob(g, x, y, 5, green);
-          else (g.fillStyle = green), g.fillRect(x - 1, y - 5, 2, 8), g.fillRect(x - 4, y - 3, 2, 6);
-        }
-      if (kind === 'paddy' && tier >= 1) hall(g, r.x + 16, r.y + 26, 18, 10, { cap, door: false });
-      break;
-    }
-    case 'brewery':
-      shadow();
-      hall(g, cx - 6, base, 40, 22, { cap });
-      for (let i = 0; i < 2 + tier; i++) blob(g, r.x + r.w - 12 - i * 9, base - 6, 5, '#9a6b45');
-      break;
-    case 'loom':
-      shadow();
-      hall(g, cx, base, 48, 22, { cap, storeys: tier >= 2 ? 2 : 1 });
-      g.fillStyle = ['#e7a3b0', '#9cc8d8', '#f2d48a'][level % 3];
-      g.fillRect(r.x + 6, base - 34, 8, 26);
-      g.fillRect(r.x + r.w - 14, base - 34, 8, 26);
-      break;
-    case 'kiln':
-      shadow();
-      g.fillStyle = '#c28a62';
-      g.beginPath();
-      g.ellipse(cx + 8, base - 12, 22, 16, 0, Math.PI, 0);
-      g.fill();
-      g.fillRect(cx + 22, base - 40, 8, 26);
-      hall(g, cx - 18, base, 26, 16, { cap });
-      blob(g, cx - 2, base - 6, 4, '#ffffff');
-      blob(g, cx + 6, base - 6, 4, '#7fa6c8');
-      break;
-    case 'market':
-      shadow();
-      for (let i = 0; i < 2 + Math.min(1, tier); i++) {
-        const x = r.x + 6 + i * 24;
-        g.fillStyle = C.wood;
-        g.fillRect(x + 2, base - 18, 2, 18);
-        g.fillRect(x + 18, base - 18, 2, 18);
-        g.fillStyle = ['#e78f7c', '#f0c46a', '#8fc2c8'][i % 3];
-        g.beginPath();
-        g.moveTo(x - 2, base - 16);
-        g.lineTo(x + 11, base - 26);
-        g.lineTo(x + 24, base - 16);
-        g.fill();
-        blob(g, x + 7, base - 6, 3, '#f2d48a');
-        blob(g, x + 14, base - 6, 3, '#c76b5a');
+function oval(g, x, y, rx, ry, color, tilt = 0) {
+  g.beginPath();
+  g.ellipse(x, y, rx, ry, tilt, 0, Math.PI * 2);
+  g.fillStyle = color;
+  g.fill();
+}
+
+function meadowTree(g, x, y, r, season, accent = false) {
+  if (season === 3) {
+    oval(g, x + r * .32, y + r * .84, r * 1.12, r * .30, '#f6faf7d9', -.13);
+    if (accent) {
+      const foot = y + r * .79;
+      strokePath(g, [[x - r * .3, foot], [x, y + r * .18], [x - r * .09, y - r * .76]], '#777873', r * .13);
+      for (const [dx, dy] of [[-.55, -.26], [.45, -.45], [-.34, -.72], [.38, -.85]]) {
+        strokePath(g, [[x, y + r * Math.abs(dx) * .18], [x + r * dx * .57, y + r * dy * .68], [x + r * dx, y + r * dy]], '#8b8980', r * .066);
+        strokePath(g, [[x + r * dx * .61, y + r * dy * .70], [x + r * dx * .93, y + r * dy * .89]], '#e6eee9', r * .059);
       }
-      if (tier >= 2) hall(g, cx, base - 26, 36, 14, { cap, door: false });
-      break;
-    case 'teahouse':
-    case 'inn':
-      shadow();
-      hall(g, cx, base, kind === 'inn' ? 52 : 40, 22, { storeys: kind === 'inn' ? (tier >= 1 ? 3 : 2) : tier >= 1 ? 2 : 1, cap, lantern: true });
-      g.fillStyle = kind === 'inn' ? C.lacquer : '#7ea87a';
-      g.fillRect(r.x + r.w - 14, base - 46, 3, 40);
-      g.fillRect(r.x + r.w - 22, base - 46, 9, 14);
-      break;
-    case 'dock':
-      g.fillStyle = C.wood;
-      g.fillRect(r.x + 6, base - 10, r.w - 12, 8);
-      for (let i = 0; i < 4; i++) g.fillRect(r.x + 10 + i * 18, base - 4, 3, 12);
-      hall(g, r.x + 22, base - 10, 26, 14, { cap });
-      g.fillStyle = '#8d5f3c';
-      g.beginPath();
-      g.ellipse(r.x + r.w - 20, base + 6, 16, 4, 0, 0, Math.PI);
-      g.fill();
-      g.fillStyle = C.wall;
-      g.fillRect(r.x + r.w - 22, base - 16, 2, 20);
-      g.beginPath();
-      g.moveTo(r.x + r.w - 20, base - 16);
-      g.lineTo(r.x + r.w - 6, base - 2);
-      g.lineTo(r.x + r.w - 20, base - 2);
-      g.fill();
-      break;
-    case 'clinic':
-    case 'school':
-    case 'temple':
-      shadow();
-      hall(g, cx, base, 44, 22, { storeys: tier >= 1 ? 2 : 1, cap, roofColor: kind === 'temple' ? '#b4584a' : C.roof, wallColor: kind === 'temple' ? '#f5e2c6' : C.wall });
-      if (kind === 'clinic') blob(g, r.x + 10, base - 24, 5, '#e2b45a'), blob(g, r.x + 10, base - 16, 6, '#e2b45a');
-      if (kind === 'school') tree(g, r.x + r.w - 10, base - 30, 8, '#7fb48f');
-      if (kind === 'temple') blob(g, cx, base - 8, 3, C.gold);
-      break;
-    case 'theatre':
-      shadow();
-      g.fillStyle = C.wood;
-      g.fillRect(r.x + 8, base - 22, r.w - 16, 22);
-      g.fillStyle = C.lacquer;
-      g.fillRect(r.x + 14, base - 20, r.w - 28, 14);
-      roof(g, r.x + 6, base - 36, r.w - 12, 15, C.roof, cap);
-      for (let i = 0; i < 3; i++) blob(g, r.x + 20 + i * 18, base - 12, 3, ['#f2d48a', '#9cc8d8', '#f4b8c6'][i]);
-      break;
-    case 'garden':
-      g.fillStyle = C.waterLight;
-      g.beginPath();
-      g.ellipse(cx - 6, base - 18, 22, 12, 0, 0, Math.PI * 2);
-      g.fill();
-      blob(g, cx + 22, base - 12, 6, C.stone);
-      tree(g, r.x + 14, base - 40, 10, pal.tree, pal.bloom);
-      if (tier >= 1) hall(g, cx + 14, base - 30, 22, 10, { cap, door: false });
-      if (tier >= 2) tree(g, r.x + r.w - 12, base - 46, 9, pal.tree, pal.bloom);
-      break;
-    case 'pagoda': {
-      shadow();
-      const storeys = 3 + tier * 2;
-      for (let s = 0; s < storeys; s++) {
-        const w = 34 - s * 3,
-          y = base - 12 - s * 11;
-        g.fillStyle = C.wall;
-        g.fillRect(cx - w / 2 + 3, y, w - 6, 10);
-        roof(g, cx - w / 2, y - 5, w, 7, C.roof, cap);
-      }
-      g.fillStyle = C.gold;
-      g.fillRect(cx - 1, base - 18 - storeys * 11, 2, 10);
-      break;
+      return;
     }
-    case 'granary':
-      shadow();
-      g.fillStyle = '#d9bf8e';
-      g.beginPath();
-      g.ellipse(cx, base - 14, 18, 14, 0, 0, Math.PI * 2);
-      g.fill();
-      g.fillRect(cx - 18, base - 14, 36, 14);
-      roof(g, cx - 22, base - 34, 44, 12, '#a9874f', cap);
-      break;
+    tree(g, x, y, r, '#859d93');
+    for (let i = 0; i < 5; i++) {
+      const dx = (i - 2) * r * .30;
+      oval(g, x + dx, y - r * (.34 + (i % 3) * .13), r * (.25 + i % 2 * .11), r * .16, '#f4f7eee3', .13);
+    }
+    return;
   }
-  // The level, small, in a corner.
-  if (level > 0) {
-    g.fillStyle = 'rgba(244,239,225,0.9)';
-    round(g, r.x + 2, r.y + 2, level >= 10 ? 22 : 16, 14, 7);
-    g.fill();
-    g.fillStyle = C.ink;
-    g.font = '600 10px system-ui, sans-serif';
-    g.textAlign = 'left';
-    g.textBaseline = 'middle';
-    g.fillText(String(level), r.x + 6, r.y + 9);
+  if (season === 2) {
+    const amber = accent || Math.floor(x) % 3 === 0;
+    tree(g, x, y, r, amber ? '#b76f4d' : '#c59349', amber ? '#d29a57' : '#e7b75e');
+    for (let i = 0; i < 8; i++) {
+      oval(g, x + r * (i * .28 - .82), y + r * (.73 + i % 3 * .13), r * .079, r * .036, i % 2 ? '#ba784db3' : '#daa44da6', i);
+    }
+    return;
+  }
+  const { tree: canopy, bloom } = SEASON[season];
+  tree(g, x, y, r, season === 0 && accent ? '#cc949d' : canopy, accent ? bloom : null);
+}
+
+function willow(g, x, y, r, season) {
+  const wash = season === 2 ? '#ad9756' : season === 3 ? '#8b9484' : '#6d9876';
+  const twig = season === 2 ? '#a28b5a' : season === 3 ? '#85867e' : '#698e6e';
+  const highlight = season === 2 ? '#d6b571' : season === 3 ? '#dfeae5' : '#adc28a';
+  oval(g, x + r * .32, y + r * .69, r * 1.03, r * .24, season === 3 ? '#889e9b22' : '#626f5b38');
+  g.beginPath();
+  g.moveTo(x - r * .17, y + r * .77);
+  g.quadraticCurveTo(x + r * .18, y + r * .43, x - r * .19, y - r * .57);
+  g.strokeStyle = '#7e7764';
+  g.lineWidth = r * .16;
+  g.stroke();
+  for (let i = 0; i < 8; i++) {
+    const dx = (i - 3.5) * r * .27;
+    const anchor = y - r * (.43 + (i % 4) * .1);
+    const tip = y + r * (.29 + (i * 5 % 7) * .09);
+    if (season !== 3) oval(g, x + dx, anchor + r * .20, r * .27, r * (.29 + i % 2 * .14), wash + '71', i < 4 ? .22 : -.19);
+    g.beginPath();
+    g.moveTo(x - r * .16, y - r * .25);
+    g.quadraticCurveTo(x + dx * 1.19, anchor - r * .39, x + dx, tip);
+    g.strokeStyle = twig;
+    g.lineWidth = r * .047;
+    g.stroke();
+    if (season !== 3) {
+      const leaf = r * (.06 + (i % 3) * .013);
+      for (let j = 0; j < 4; j++) {
+        oval(g, x + dx * (.98 + j * .085), tip - r * (j * .14 + .14), leaf, leaf * 2.6, i % 2 ? highlight + 'b2' : wash + 'be', -.33 + j * .12);
+      }
+    } else if (i % 3 === 0) {
+      oval(g, x + dx * .52, anchor + r * .04, r * .25, r * .075, highlight + 'e8', i * .12 - .4);
+    }
   }
 }
 
 function drawNode(g, kind, level, found, r, season) {
-  const pal = SEASON[season],
-    cx = r.x + r.w / 2,
-    base = r.y + r.h - 6;
-  if (!found) {
-    g.globalAlpha = 0.55;
-    blob(g, cx - 14, base - 22, 18, '#e9eef0');
-    blob(g, cx + 10, base - 18, 20, '#e9eef0');
-    g.globalAlpha = 1;
-    g.fillStyle = C.ink;
-    g.font = '600 18px serif';
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    g.fillText('?', cx, base - 22);
+  if (found) {
+    paintFacility(g, kind, level, r, season);
     return;
   }
-  if (kind === 'forest') for (let i = 0; i < 5; i++) tree(g, r.x + 12 + i * 15, base - 20 - (i % 2) * 10, 10, pal.tree);
-  else if (kind === 'quarry' || kind === 'iron') {
-    g.fillStyle = kind === 'iron' ? '#7d8288' : '#bdb7aa';
-    g.beginPath();
-    g.moveTo(r.x + 6, base);
-    g.lineTo(r.x + 26, base - 44);
-    g.lineTo(r.x + 46, base - 26);
-    g.lineTo(r.x + 62, base - 50);
-    g.lineTo(r.x + r.w - 4, base);
-    g.fill();
-    if (kind === 'iron') for (let i = 0; i < 4; i++) blob(g, r.x + 24 + i * 10, base - 14, 2.5, '#c86e4a');
-  } else {
-    g.fillStyle = '#c98f68';
-    g.beginPath();
-    g.ellipse(cx, base - 10, 30, 12, 0, 0, Math.PI * 2);
-    g.fill();
-    g.fillStyle = '#a96c47';
-    g.beginPath();
-    g.ellipse(cx, base - 11, 18, 6, 0, 0, Math.PI * 2);
-    g.fill();
-  }
-  if (level > 0) {
-    hall(g, r.x + r.w - 14, base, 18, 10, { door: false, cap: pal.roofCap });
-    g.fillStyle = 'rgba(244,239,225,0.9)';
-    round(g, r.x + 2, r.y + 2, level >= 10 ? 22 : 16, 14, 7);
-    g.fill();
-    g.fillStyle = C.ink;
-    g.font = '600 10px system-ui, sans-serif';
-    g.textAlign = 'left';
-    g.textBaseline = 'middle';
-    g.fillText(String(level), r.x + 6, r.y + 9);
-  }
+  const cx = r.x + r.w / 2, y = r.y + r.h - 28;
+  blob(g, cx - 14, y, 18, '#e9eef0', .55);
+  blob(g, cx + 10, y + 4, 20, '#e9eef0', .55);
+  g.fillStyle = C.ink;
+  g.font = '600 18px serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText('?', cx, y);
 }
 
 const FIELDS = new Set(['paddy', 'mulberry', 'teaGarden']);
@@ -506,14 +278,250 @@ function road(g, points, width) {
   g.lineCap = 'butt';
 }
 
+function outlyingRoads(g, season) {
+  const { wards, roads } = LAYOUT;
+  for (const [north, south, verge] of [[wards[6], wards[7], 549], [wards[8], wards[9], MAP.width - 549]]) {
+    const x = north.x + north.w / 2;
+    road(g, [[x, north.y - 12], [verge, north.y - 12], [verge, south.y + south.h + 19], [x, south.y + south.h + 19]], 15);
+    for (let i = 0; i < 7; i++) {
+      const px = north.x + 23 + i * 67;
+      meadowTree(g, px, 319 - (i % 3) * 11, 10 + (i * 4) % 9, season, i % 3 !== 1);
+      if (i % 2 === 0) meadowTree(g, px + 24, 997 - (i % 3) * 6, 12 + (i * 3) % 7, season);
+    }
+  }
+  const west = wards[10], east = wards[11];
+  const backRoad = west.y + west.h + 19;
+  road(g, [[roads.street, 1202], [roads.street, backRoad]], 25);
+  road(g, [[west.x - 28, west.y + 53], [west.x - 28, backRoad], [east.x + east.w + 26, backRoad], [east.x + east.w + 26, east.y + 53]], 17);
+  for (const ward of [west, east]) {
+    // The wharves meet the river at the front. Goods and foot traffic use the land behind them.
+    road(g, [[ward.x - 27, ward.y + 117], [ward.x + ward.w + 26, ward.y + 117], [ward.x + ward.w + 26, backRoad]], 12);
+  }
+  for (let i = 0; i < 28; i++) {
+    const x = 53 + i * 104 + (i % 5) * 7;
+    const y = 1583 - (i % 3) * 11;
+    if (Math.abs(x - roads.street) > 33) meadowTree(g, x, y, 13 + (i * 3) % 8, season, i % 3 === 0);
+  }
+}
+
+function waterScenery(g, season) {
+  const { width } = MAP;
+  const { y, h } = LAYOUT.river;
+  g.fillStyle = gradient(g, 0, y + 12, 0, y + h, SEASON[season].water, 'transparent');
+  g.fillRect(0, y, width, h);
+  const glint = ['#fff2cf72', '#e5f4df91', '#f5dbab8b', '#e2f3fa98'][season];
+  for (let i = 0; i < 45; i++) {
+    const x = i * 65 + 8;
+    const yy = y + 23 + (i * 17) % 94;
+    const span = 11 + (i * 13) % 47;
+    g.beginPath();
+    g.moveTo(x, yy);
+    g.quadraticCurveTo(x + span * .63, yy - 3 + i % 4, x + span, yy + .5);
+    g.strokeStyle = glint;
+    g.lineWidth = i % 4 === 0 ? 1.7 : .9;
+    g.stroke();
+    if (i % 5 === 0) strokePath(g, [[x + 9, yy + 4], [x + 23, yy + 4.5]], glint, .8);
+  }
+
+  // The center of the river stays open for the boats. Snow and ice collect on the shallows.
+  if (season === 3) {
+    for (let i = 0; i < 37; i++) {
+      const x = i * 82 + ((i * 7) % 17);
+      const north = i % 3 === 0;
+      const yy = north ? y + 3 + (i * 5) % 12 : y + h - 16 + Math.sin(x / 84) * 9;
+      const span = 20 + (i * 16) % 31;
+      polygon(g, [[x - span, yy - 1], [x - span * .50, yy - 7], [x + span * .52, yy - 8], [x + span, yy - 1],
+        [x + span * .47, yy + 4], [x - span * .66, yy + 5]], i % 3 ? '#f0f7f2b8' : '#d2e7e8bf');
+      strokePath(g, [[x - span * .45, yy], [x - span * .25, yy - 2], [x + span * .24, yy + .5]], '#94b4bc64', .85);
+    }
+  }
+
+  for (const [x, offset, size] of [[214, 18, 24], [450, -17, 34], [745, 18, 35], [930, -19, 28], [1120, 18, 32],
+    [1314, 19, 22], [1663, 19, 25], [1900, 19, 36], [2181, -18, 30], [2420, 18, 30], [2667, -19, 34], [2830, 18, 27]]) {
+    const shore = offset < 0 ? y : y + h;
+    const base = shore + offset;
+    const waterY = shore + (offset < 0 ? 9 : -15);
+    const ripple = season === 3 ? '#c9d5d36b' : '#62846f47';
+    for (let i = 0; i < 5; i++) oval(g, x + 4 + i % 3 * 7, waterY + i * 3 - 6, size * (.43 - i * .05), 1.15, ripple, -.04);
+    willow(g, x, base - size * .46, size, season);
+    if (season === 1 && offset > 0) lotus(g, x - 45, waterY - 14, size % 7);
+    if (season === 0 && offset < 0) meadowTree(g, x + size * 1.03, base - 7, size * .55, season, true);
+  }
+}
+
+let inletArt;
+
+function inletTexture(season, span, depth) {
+  if (inletArt?.season === season && inletArt.source === terrain) return inletArt.canvas;
+  const canvas = document.createElement('canvas');
+  canvas.width = span + 224;
+  canvas.height = depth + 18;
+  const g = canvas.getContext('2d');
+  const { width, height } = canvas;
+  const shallows = ['#9dc4b5', '#89b6aa', '#b1b897', '#c4dadd'][season];
+  const deep = ['#709c96', '#5f9da2', '#859c85', '#829da8'][season];
+  g.fillStyle = gradient(g, 0, 0, 0, height, deep, shallows);
+  g.fillRect(0, 0, width, height);
+  if (terrain) {
+    const { naturalWidth: tw, naturalHeight: th } = terrain;
+    g.globalAlpha = .74;
+    g.drawImage(terrain, tw * .20, th * .881, tw * .59, th * .071, 0, 0, width, height);
+    g.globalAlpha = 1;
+  }
+  g.globalCompositeOperation = 'destination-in';
+  const fade = g.createLinearGradient(0, 0, 0, height);
+  fade.addColorStop(0, '#0000');
+  fade.addColorStop(.17, '#0006');
+  fade.addColorStop(.42, '#000f');
+  fade.addColorStop(1, '#000f');
+  g.fillStyle = fade;
+  g.fillRect(0, 0, width, height);
+  // Feather the curves within this small tile so their pigment joins the paper behind them.
+  g.filter = 'blur(3px)';
+  g.fillStyle = '#fff';
+  g.beginPath();
+  g.moveTo(4, 0);
+  g.bezierCurveTo(35, 28, 84, 46, 88, 70);
+  g.bezierCurveTo(95, 105, 91, depth - 19, 112, depth - 2);
+  g.bezierCurveTo(187, depth + 10, span + 40, depth + 6, span + 112, depth - 3);
+  g.bezierCurveTo(span + 124, depth - 13, span + 122, 105, span + 139, 72);
+  g.bezierCurveTo(span + 156, 40, span + 166, 39, width - 6, 0);
+  g.closePath();
+  g.fill();
+  inletArt = { source: terrain, season, canvas };
+  return canvas;
+}
+
+function shoreInlets(g, season) {
+  const tide = LAYOUT.river.y + LAYOUT.river.h - 14;
+  const mouths = LAYOUT.wards.filter((_, index) => RIVERSIDE.has(index * PLOTS_PER_DISTRICT));
+  for (const ward of mouths) {
+    const x = ward.x + 8;
+    const right = ward.x + ward.w - 13;
+    const lip = ward.y + 48;
+    const upper = tide - 38;
+    g.drawImage(inletTexture(season, right - x, lip - upper), x - 112, upper);
+    for (let i = 0; i < 13; i++) {
+      const xx = x + 11 + i * 34;
+      const yy = lip - 81 + (i * 23) % 59;
+      strokePath(g, [[xx, yy], [xx + 11, yy - 1.5], [xx + 31, yy]], '#edf0dba1', .9);
+      if (i % 2 === 0) strokePath(g, [[xx + 4, yy + 7], [xx + 19, yy + 6]], '#648a8350', .8);
+    }
+    for (const [px, side] of [[x, -1], [right, 1]]) {
+      for (let i = 0; i < 8; i++) {
+        const yy = tide + 17 + i * 14;
+        const xx = px + side * (24 - i * 2.1) + (i % 3 - 1) * 6.5;
+        const stone = season === 3 ? '#bcc6bb' : '#aba386';
+        oval(g, xx + 3, yy + 3, 12 - i * .52, 4, '#65786540', -.14);
+        polygon(g, [[xx - 7, yy + 1], [xx - 3, yy - 4], [xx + 4, yy - 3], [xx + 8, yy + 1], [xx + 2, yy + 4]], stone);
+        if (i % 3 === 1) {
+          for (let j = -1; j <= 1; j++) {
+            strokePath(g, [[xx + j * 2, yy], [xx + j * 6 + side * 2, yy - 8 + j]], '#778d64', 1.2);
+          }
+        }
+      }
+    }
+  }
+}
+
+function quayEdge(g, r) {
+  const x = r.x + 6, y = r.y + 4, w = r.w - 12;
+  strokePath(g, [[x, y], [x + w, y + 1]], '#3d767c', 3.2);
+  strokePath(g, [[x + 2, y - 2], [x + w - 2, y - 1]], '#e7f5e9bf', 1.1);
+  for (const xx of [x + 5, x + w - 7]) {
+    g.fillStyle = '#407d7a';
+    g.fillRect(xx, y - 3, 2.4, 6);
+  }
+}
+
+function mooredBoat(g, x, y, side) {
+  oval(g, x + 2, y + 5, 19, 5, '#4d77724f', -.13);
+  polygon(g, [[x - 16, y], [x + 17, y - 3], [x + 12, y + 5], [x - 9, y + 6]], '#9f7350', '#765a43');
+  strokePath(g, [[x - 10, y + 1], [x + 12, y - 1]], '#d6ac78', 1.15);
+  strokePath(g, [[x, y + 1], [x + side, y - 16]], '#80583e', 1.3);
+  polygon(g, [[x + side, y - 16], [x + side * 12, y - 4], [x + side, y - 3]], '#e2c898', '#a39575');
+  strokePath(g, [[x + 1, y + 7], [x + 14, y + 6]], '#e8ebe39c', 1);
+}
+
+function dockJetty(g, r, level, season) {
+  const center = r.x + r.w * .49;
+  const y = r.y + 8;
+  const length = 49 + Math.min(20, level * .55);
+  const tip = y - length;
+  const width = 10 + Math.min(7, level * .16);
+  const rim = season === 3 ? '#d1c8ac' : '#cfad7d';
+  const shade = '#81674e';
+  polygon(g, [[center - width - 1, y], [center - width + 2, tip], [center + width + 3, tip - 1], [center + width + 5, y + 1]], '#486d674b');
+  polygon(g, [[center - width, y], [center - width + 1, tip - 4], [center + width - 3, tip - 5], [center + width, y]], rim, shade);
+  for (let i = 0; i < length; i += 6) {
+    const yy = tip + i;
+    strokePath(g, [[center - width + 1, yy], [center + width - 2, yy - 1.1]], '#987952a1', .8);
+  }
+  for (const xx of [center - width + 1, center + width - 2]) {
+    for (const yy of [tip - 2, y - length * .57, y - 7]) {
+      g.fillStyle = shade;
+      g.fillRect(xx - 1, yy - 4, 3, 9);
+      oval(g, xx + .5, yy - 4, 1.55, .9, '#dcbe90');
+    }
+  }
+  const boatX = center + width + 17;
+  const boatY = tip + 13;
+  strokePath(g, [[center + width - 2, tip + 2], [boatX - 10, boatY + 2]], '#a68f6a', .9);
+  mooredBoat(g, boatX, boatY, 1);
+  if (level >= 10) mooredBoat(g, center - width - 15, y - length * .49, -1);
+}
+
+function lotus(g, x, y, shift) {
+  for (const [dx, dy, r] of [[-19, 3, 15], [5, -6, 11], [24, 4, 13], [38, 11, 10]]) {
+    const cx = x + dx + shift;
+    const yy = y + dy;
+    oval(g, cx + 1.7, yy + 2, r * 1.04, r * .42, '#416c5c46');
+    oval(g, cx, yy, r, r * .35, r > 12 ? '#698e68c9' : '#8fa977d6', -.09);
+    strokePath(g, [[cx - r * .06, yy - 1], [cx + r * .45, yy - r * .23], [cx + r * .78, yy - r * .17]], '#a1b78dac', .9);
+    if (r > 12) {
+      oval(g, cx, yy - 4, r * .32, r * .13, '#ca7f93', -.1);
+      oval(g, cx - 2, yy - 6, r * .13, r * .23, '#f4c3c5', -.53);
+      oval(g, cx + 1.9, yy - 6, r * .13, r * .2, '#f2afbf', .55);
+      oval(g, cx, yy - 4.5, r * .08, r * .055, '#e5ba77');
+    }
+  }
+}
+
+function groundDrifts(g, season) {
+  const color = season === 3 ? '#e9f0eae8' : '#e2ad648f';
+  for (const [x, y, r] of [[238, 1044, 53], [478, 990, 48], [680, 952, 59], [995, 1041, 48], [1253, 1018, 52],
+    [1672, 1047, 66], [1980, 1029, 62], [2254, 1051, 51], [2450, 1007, 62], [2733, 1030, 62], [2920, 990, 65],
+    [318, 1255, 80], [650, 1260, 52], [990, 1230, 47], [1220, 1260, 52], [1802, 1233, 64], [2210, 1231, 52],
+    [2490, 1251, 86], [2855, 1283, 65], [2704, 1534, 58], [367, 1530, 62]]) {
+    const paint = g.createRadialGradient(x, y, 2, x, y, r);
+    paint.addColorStop(0, color);
+    paint.addColorStop(1, 'transparent');
+    oval(g, x, y, r, r * .42, paint, -.07);
+    if (season === 3) oval(g, x - r * .15, y + 3, r * .32, r * .08, '#f8faf5b4', -.07);
+  }
+}
+
 function landscape(g, season) {
   const { width, height } = MAP;
   const pal = SEASON[season];
+  const { y: riverY, h: riverHeight } = LAYOUT.river;
   if (terrain) {
-    g.drawImage(terrain, 0, 0, width, height);
-    const tint = ['transparent', 'rgba(111,157,91,.14)', 'rgba(210,143,71,.17)', 'rgba(229,240,240,.56)'][season];
-    g.fillStyle = tint;
-    g.fillRect(0, 0, width, height);
+    const { width: coreWidth, height: coreHeight } = CORE_BOUNDS;
+    const { naturalWidth: tw, naturalHeight: th } = terrain;
+    const sliceWidth = tw * CORE_X / coreWidth;
+    g.drawImage(terrain, CORE_X, 0, coreWidth, coreHeight);
+    // Continue the river and mountain wash along the county's edges.
+    g.save();
+    g.translate(CORE_X, 0);
+    g.scale(-1, 1);
+    g.drawImage(terrain, 0, 0, sliceWidth, th, 0, 0, CORE_X, coreHeight);
+    g.restore();
+    g.save();
+    g.translate(width, 0);
+    g.scale(-1, 1);
+    g.drawImage(terrain, tw - sliceWidth, 0, sliceWidth, th, 0, 0, CORE_X, coreHeight);
+    g.restore();
+    g.drawImage(terrain, tw * .26, th * .41, tw * .5, th * .33, 0, coreHeight, width, height - coreHeight);
   } else {
     g.fillStyle = gradient(g, 0, 0, 0, height, '#f4e8d3', pal.grass);
     g.fillRect(0, 0, width, height);
@@ -527,35 +535,48 @@ function landscape(g, season) {
     }
     wash(g, 0, 215, width, 850, pal.grass2, 7);
     const bank = [];
-    for (let x = 0; x <= width; x += 17) bank.push([x, LAYOUT.river.y + Math.sin(x / 68) * 8]);
-    bank.push([width, height], [0, height]);
-    polygon(g, bank, gradient(g, 0, LAYOUT.river.y, 0, height, '#82b6b2', '#aecbc0'));
+    for (let x = 0; x <= width; x += 20) bank.push([x, riverY + Math.sin(x / 68) * 8]);
+    bank.push([width, riverY + riverHeight], [0, riverY + riverHeight]);
+    polygon(g, bank, gradient(g, 0, riverY, 0, riverY + riverHeight, '#82b6b2', '#aecbc0'));
     for (let i = 0; i < 21; i++) {
-      tree(g, ((i * 141) % width) + 18, 137 + (i % 4) * 13, 14 + (i % 7) * 2, pal.tree, season === 0 ? pal.bloom : null);
+      meadowTree(g, ((i * 141) % width) + 18, 137 + (i % 4) * 13, 14 + (i % 7) * 2, season, i % 3 === 0);
     }
   }
-  for (let i = 0; i < 22; i++) {
-    const x = i * 84 + 19;
-    const y = LAYOUT.river.y + 25 + (i % 4) * 23;
-    g.beginPath();
-    g.moveTo(x, y);
-    g.quadraticCurveTo(x + 18, y - 4, x + 40, y + 1);
-    g.strokeStyle = 'rgba(245,244,214,.28)';
-    g.lineWidth = 1.1;
-    g.stroke();
+  // Southern sandbanks and reeds mask the transition to cultivable land.
+  const bank = [];
+  for (let x = 0; x <= width; x += 20) {
+    bank.push([x, riverY + riverHeight - 12 + Math.sin(x / 84) * 10 + Math.sin(x / 26) * 3]);
   }
+  bank.push([width, riverY + riverHeight + 28], [0, riverY + riverHeight + 28]);
+  polygon(g, bank, gradient(g, 0, riverY + riverHeight - 26, 0, riverY + riverHeight + 28, '#708a79', 'rgba(174,172,122,0)'));
+  const tint = ['transparent', '#71995f2d', '#cf96473a', '#dbe8ee94'][season];
+  g.fillStyle = tint;
+  g.fillRect(0, 0, width, height);
+  if (season === 2 || season === 3) groundDrifts(g, season);
+  shoreInlets(g, season);
+  const reeds = ['#5b795985', '#66854d99', '#a086589b', '#a0967a85'][season];
+  for (let i = 0; i < 45; i++) {
+    const x = 31 + i * 67 + (i % 7) * 9;
+    if (Math.abs(x - CENTER.x) < 48) continue;
+    const y = riverY + riverHeight - 9 + Math.sin(x / 84) * 10;
+    for (let j = -2; j <= 2; j++) {
+      strokePath(g, [[x + j * 3, y + 4], [x + j * 8, y - 4 - (j + i) % 10]], reeds, 1.3);
+    }
+  }
+  waterScenery(g, season);
 }
 
 function bridge(g) {
   const x = CENTER.x, y = LAYOUT.river.y - 14;
-  polygon(g, [[x - 29, y - 4], [x + 27, y - 4], [x + 33, MAP.height], [x - 35, MAP.height]],
-    gradient(g, x, y, x + 35, MAP.height, '#eedbb1', '#b9a582'), 'rgba(110,95,68,.44)');
-  for (let yy = y + 10; yy < MAP.height; yy += 13) {
+  const end = LAYOUT.river.y + LAYOUT.river.h + 18;
+  polygon(g, [[x - 29, y - 4], [x + 27, y - 4], [x + 33, end], [x - 35, end]],
+    gradient(g, x, y, x + 35, end, '#eedbb1', '#b9a582'), 'rgba(110,95,68,.44)');
+  for (let yy = y + 10; yy < end; yy += 13) {
     strokePath(g, [[x - 29, yy], [x + 29, yy + 1]], 'rgba(123,97,67,.34)', 1);
   }
-  strokePath(g, [[x - 28, y], [x - 32, MAP.height]], '#897052', 4);
-  strokePath(g, [[x + 28, y], [x + 32, MAP.height]], '#897052', 4);
-  for (let yy = y + 1; yy < MAP.height; yy += 26) {
+  strokePath(g, [[x - 28, y], [x - 32, end]], '#897052', 4);
+  strokePath(g, [[x + 28, y], [x + 32, end]], '#897052', 4);
+  for (let yy = y + 1; yy < end; yy += 26) {
     for (const sign of [-1, 1]) {
       g.fillStyle = '#a0855d';
       g.fillRect(x + sign * 30 - 2, yy - 6, 5, 9);
@@ -563,18 +584,19 @@ function bridge(g) {
   }
 }
 
-function wallPiece(g, x1, y1, x2, y2, level) {
+function wallPiece(g, x1, y1, x2, y2, level, season) {
   const width = 17 + Math.min(4, Math.floor(level / 5)) * 2;
   const height = 16 + Math.min(level, 15) * .72;
   const horizontal = y1 === y2;
-  const top = level ? '#c9c8b6' : '#cbbfa2';
+  const frost = season === 3;
+  const top = frost ? '#dde7e0' : level ? '#c9c8b6' : '#cbbfa2';
   const face = level ? '#a9ab9d' : '#aa9c7d';
   g.lineWidth = 1;
   if (horizontal) {
     polygon(g, [[x1, y1], [x2, y2], [x2, y2 + height], [x1, y1 + height]],
       gradient(g, x1, y1, x1, y1 + height, top, face), 'rgba(100,99,77,.46)');
     polygon(g, [[x1, y1 - width], [x2, y2 - width], [x2, y2], [x1, y1]],
-      gradient(g, x1, y1 - width, x1, y1, '#ece3ca', top), 'rgba(111,106,81,.46)');
+      gradient(g, x1, y1 - width, x1, y1, frost ? '#f1f5ed' : '#ece3ca', top), 'rgba(111,106,81,.46)');
     for (let x = x1 + 4; x < x2 - 8; x += 26) {
       g.fillStyle = top;
       g.fillRect(x, y1 - width - 5, 12, 9);
@@ -584,7 +606,7 @@ function wallPiece(g, x1, y1, x2, y2, level) {
     }
   } else {
     polygon(g, [[x1 - width * .48, y1 - 11], [x1 + width * .52, y1 - 11], [x2 + width * .52, y2 - 11], [x2 - width * .48, y2 - 11]],
-      gradient(g, x1 - width * .48, y1, x1 + width * .52, y1, '#f0e6cb', top), 'rgba(111,106,81,.50)');
+      gradient(g, x1 - width * .48, y1, x1 + width * .52, y1, frost ? '#f1f5ed' : '#f0e6cb', top), 'rgba(111,106,81,.50)');
     polygon(g, [[x1 + width * .52, y1 - 11], [x1 + width * .69, y1 + height], [x2 + width * .69, y2 + height], [x2 + width * .52, y2 - 11]],
       face, 'rgba(111,106,81,.40)');
     for (let y = y1; y < y2 - 9; y += 24) {
@@ -595,7 +617,7 @@ function wallPiece(g, x1, y1, x2, y2, level) {
   }
 }
 
-function drawSide(g, side, defence, pal, words) {
+function drawSide(g, side, defence, season, words) {
   const gate = LAYOUT.gates[side];
   const x = gate.x + gate.w / 2;
   const y = gate.y + gate.h / 2;
@@ -604,33 +626,18 @@ function drawSide(g, side, defence, pal, words) {
   const troops = defence.troops?.[side] ?? 0;
   if (side === 0 || side === 2) {
     const yy = side === 0 ? CITY.top : CITY.bottom;
-    wallPiece(g, CITY.left - 6, yy, x - 41, yy, wall);
-    wallPiece(g, x + 41, yy, CITY.right + 9, yy, wall);
+    wallPiece(g, CITY.left - 6, yy, x - 41, yy, wall, season);
+    wallPiece(g, x + 41, yy, CITY.right + 9, yy, wall, season);
   } else {
     const xx = side === 1 ? CITY.right : CITY.left;
-    wallPiece(g, xx, CITY.top, xx, y - 32, wall);
-    wallPiece(g, xx, y + 39, xx, CITY.bottom, wall);
+    wallPiece(g, xx, CITY.top, xx, y - 32, wall, season);
+    wallPiece(g, xx, y + 39, xx, CITY.bottom, wall, season);
   }
 
+  paintWallDetail(g, LAYOUT.walls[side], wall, season, { side });
+  paintFacility(g, 'gate', tower, gate, season, { side });
   const foot = gate.y + gate.h - 7;
   const roofWidth = side % 2 ? 75 : 98;
-  polygon(g, [[x - roofWidth * .55, foot - 29], [x + roofWidth * .55, foot - 29], [x + roofWidth * .50, foot + 3], [x - roofWidth * .53, foot + 3]],
-    gradient(g, x, foot - 30, x, foot + 3, '#d2c5a4', '#8c8974'), 'rgba(95,90,68,.67)');
-  hall(g, x, foot - 23, roofWidth, 23, {
-    storeys: tower >= 5 ? 2 : 1,
-    roofColor: tower ? '#557e73' : '#778c81',
-    wallColor: '#eee0b8',
-    cap: pal.roofCap,
-    lantern: true
-  });
-  g.beginPath();
-  g.moveTo(x - 13, foot + 2);
-  g.lineTo(x - 13, foot - 12);
-  g.quadraticCurveTo(x, foot - 30, x + 13, foot - 12);
-  g.lineTo(x + 13, foot + 2);
-  g.fillStyle = '#5a5845';
-  g.fill();
-  strokePath(g, [[x - 14, foot + 3], [x + 14, foot + 3]], '#bca379', 2);
   // A cloth banner and visible guard figures respond to actual garrison strength.
   for (const sign of [-1, 1]) {
     const bx = x + sign * (roofWidth * .53);
@@ -653,30 +660,22 @@ function drawSide(g, side, defence, pal, words) {
   }
 }
 
-function drawCourtyard(g, state, pal, season) {
+function drawCourtyard(g, state, season, words) {
   const { yamen, camp } = LAYOUT;
   round(g, yamen.x + 2, yamen.y + 38, yamen.w - 4, yamen.h - 38, 7);
-  g.fillStyle = 'rgba(243,229,197,.95)';
+  g.fillStyle = season === 3 ? '#edf0df' : 'rgba(243,229,197,.95)';
   g.fill();
   for (let x = yamen.x + 12; x < yamen.x + yamen.w - 10; x += 14) {
     strokePath(g, [[x, yamen.y + yamen.h - 17], [x + 1, yamen.y + yamen.h - 4]], 'rgba(135,114,77,.24)', 1);
   }
-  const base = yamen.y + yamen.h - 6;
-  hall(g, CENTER.x, base, 122, 29, { storeys: state.rank >= 3 ? 2 : 1, cap: pal.roofCap, roofColor: '#57746d', lantern: true });
-  hall(g, yamen.x + 25, base - 2, 32, 17, { cap: pal.roofCap });
-  hall(g, yamen.x + yamen.w - 30, base - 2, 32, 17, { cap: pal.roofCap });
-  if (state.defence.camp) {
-    for (let i = 0; i < 3; i++) {
-      const x = camp.x + 13 + i * 52;
-      const y = camp.y + 63;
-      polygon(g, [[x - 4, y], [x + 14, y - 34], [x + 36, y], [x + 32, y + 5]],
-        '#e6cc9a', 'rgba(133,112,79,.64)');
-      polygon(g, [[x + 10, y], [x + 16, y - 17], [x + 22, y]], '#9d8864');
-    }
-  }
-  const plant = season === 0 ? '#edabad' : pal.bloom;
+  paintFacility(g, 'yamen', state.rank, yamen, season);
+  if (state.defence.camp) paintFacility(g, 'camp', state.defence.camp, camp, season);
   for (const [dx, dy, size] of [[-190, 282, 26], [-148, 261, 18], [165, 263, 22], [225, 284, 26], [-684, 270, 30], [-620, 267, 20], [610, 276, 24]]) {
-    tree(g, CENTER.x + dx, dy + 32, size, season === 0 && Math.abs(dx) < 250 ? '#d79ea0' : pal.tree, plant);
+    meadowTree(g, CENTER.x + dx, dy + 32, size, season, Math.abs(dx) < 250);
+  }
+  if (words) {
+    const w = Math.min(106, Math.max(51, words.length * 8 + 10));
+    badge(g, words, { x: yamen.x + yamen.w - w - 6, y: yamen.y + yamen.h - 22, w, h: 19 }, true);
   }
 }
 
@@ -694,11 +693,42 @@ function badge(g, text, rect, open) {
   g.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2 + .5, rect.w - 9);
 }
 
+function wardGround(g, ward, access, recommendation, outer, index) {
+  if (!outer && access === 'owned') return;
+  const x = ward.x + 5, y = ward.y + 33, w = ward.w - 10, h = ward.h - 34;
+  const available = access === 'available';
+  if (outer) {
+    wash(g, x - 22, y - 12, w + 44, h + 24, '#899878', index + 10);
+    const line = [[x + 15, y + 1], [x + w - 12, y], [x + w, y + 14], [x + w - 4, y + h - 11],
+      [x + w - 16, y + h], [x + 8, y + h - 3], [x, y + h - 17], [x + 3, y + 14]];
+    polygon(g, line, available ? 'rgba(237,224,163,.58)' : 'rgba(190,199,155,.32)');
+    g.setLineDash(available ? [7, 4] : []);
+    strokePath(g, [...line, line[0]], available ? 'rgba(167,120,64,.82)' : 'rgba(117,134,94,.36)', available ? 2.5 : 1.4);
+    g.setLineDash([]);
+    if (recommendation === 'farm' && access !== 'owned') {
+      for (let i = 1; i < 9; i++) {
+        const ry = y + 10 + i * 23;
+        g.beginPath();
+        g.moveTo(x + 19, ry);
+        g.quadraticCurveTo(x + w * .50, ry - 12, x + w - 19, ry + 4);
+        g.strokeStyle = 'rgba(124,140,84,.35)';
+        g.lineWidth = 1.3;
+        g.stroke();
+      }
+    }
+  } else {
+    g.fillStyle = 'rgba(221,224,201,.36)';
+    round(g, x, y, w, h, 15);
+    g.fill();
+  }
+}
+
 function plotGround(g, r, open, hasBuilding, riverside, tone) {
   const x = r.x + 3, y = r.y + 6, w = r.w - 7, h = r.h - 10;
   const fill = hasBuilding ? 'rgba(186,159,107,.33)' :
-    riverside ? 'rgba(202,227,203,.38)' : tone;
+    riverside ? '#b4d7ccbc' : tone;
   polygon(g, [[x + 5, y], [x + w, y + 2], [x + w - 4, y + h], [x, y + h - 1]], fill);
+  if (riverside) quayEdge(g, r);
   if (!open && !hasBuilding) return;
   g.lineWidth = .9;
   g.setLineDash(hasBuilding ? [] : [4, 4]);
@@ -727,8 +757,8 @@ function scaffold(g, r, newBuild) {
 }
 
 /** Draw the county at its full world extent. The camera only changes the layer transforms. */
-export function paintCounty(g, { state, season, night = 0, wardOpen, labels, building }) {
-  const pal = SEASON[season];
+export function paintCounty(g, { state, season, night = 0, wardOpen, labels, building, wardState }) {
+  if (!Number.isInteger(season) || season < 0 || season >= SEASON.length) season = 0;
   g.save();
   landscape(g, season);
   const { left, right, top, bottom } = CITY;
@@ -738,43 +768,46 @@ export function paintCounty(g, { state, season, night = 0, wardOpen, labels, bui
   for (const yy of [LAYOUT.roads.rows[0], LAYOUT.roads.rows[2]]) road(g, [[left + 13, yy], [right - 10, yy]], 21);
   for (const x of LAYOUT.roads.spines) road(g, [[x, LAYOUT.roads.rows[0]], [x, LAYOUT.roads.rows[2]]], x === CENTER.x ? 21 : 13);
   road(g, [[CENTER.x, 941], [CENTER.x, LAYOUT.river.y - 10]], 39);
+  outlyingRoads(g, season);
   bridge(g);
-  drawSide(g, 0, state.defence, pal, labels.side?.(0));
-  drawSide(g, 1, state.defence, pal, labels.side?.(1));
-  drawSide(g, 3, state.defence, pal, labels.side?.(3));
+  drawSide(g, 0, state.defence, season, labels.side?.(0));
+  drawSide(g, 1, state.defence, season, labels.side?.(1));
+  drawSide(g, 3, state.defence, season, labels.side?.(3));
   state.nodes.forEach((node, i) => drawNode(g, node.kind, node.level, node.found, LAYOUT.nodes[i], season));
-  drawCourtyard(g, state, pal, season);
+  drawCourtyard(g, state, season, labels.yamen?.());
 
   LAYOUT.wards.forEach((ward, i) => {
-    const open = wardOpen(i);
-    const zone = state.districts[i].zone;
-    const tone = ['rgba(246,221,178,.22)', 'rgba(252,243,207,.32)', 'rgba(226,227,183,.36)'][i % 3];
-    if (!open) {
-      g.fillStyle = 'rgba(221,224,201,.36)';
-      round(g, ward.x + 6, ward.y + 32, ward.w - 12, ward.h - 35, 15);
-      g.fill();
-    }
+    const access = wardState?.(i) ?? (wardOpen(i) ? 'owned' : 'locked');
+    const open = access === 'owned';
+    const recommendation = wardRecommendation(i);
+    const zone = state.districts[i]?.zone;
+    const farmland = ['#d3e2ac66', '#c2d79c72', '#e0bc7980', '#e6eee273'];
+    const tone = recommendation === 'market' ? 'rgba(248,219,167,.36)' :
+      recommendation === 'farm' ? farmland[season] : 'rgba(247,234,196,.30)';
+    wardGround(g, ward, access, recommendation, i >= CORE_WARDS, i);
     for (let p = 0; p < PLOTS_PER_DISTRICT; p++) {
       const index = i * PLOTS_PER_DISTRICT + p;
       const plot = state.plots[index];
       const rect = LAYOUT.plots[index];
-      plotGround(g, rect, open, plot?.kind, RIVERSIDE.has(index), tone);
+      const riverfront = RIVERSIDE.has(index);
+      plotGround(g, rect, open, plot?.kind, riverfront, tone);
       if (plot?.kind) {
-        drawBuilding(g, plot.kind, plot.level, rect, season);
+        if (riverfront && plot.kind === 'dock' && plot.level > 0) dockJetty(g, rect, plot.level, season);
+        if (plot.level > 0) paintBuilding(g, plot.kind, plot.level, rect, season);
         if (building?.has(index)) scaffold(g, rect, plot.level === 0);
       } else if (!open && (p + i) % 3 === 0) {
-        tree(g, rect.x + 42, rect.y + 43, 10, pal.tree, season === 0 ? pal.bloom : null);
+        meadowTree(g, rect.x + 42, rect.y + 43, 10, season, (p + i) % 2 === 0);
       }
     }
     if (zone) wash(g, ward.x + 13, ward.y + 9, 155, 16, C.zone[zone], i + 13);
-    badge(g, labels.ward(i), ward.label, open);
+    badge(g, labels.ward(i), ward.label, access !== 'locked');
   });
   for (let i = 0; i < 15; i++) {
-    const x = 208 + i * 98;
+    const x = CORE_X + 208 + i * 98;
     if (Math.abs(x - CENTER.x) < 54) continue;
-    tree(g, x, bottom - 34, 12 + (i % 4) * 2, pal.tree, season === 0 ? '#edb2aa' : null);
+    meadowTree(g, x, bottom - 34, 12 + (i % 4) * 2, season, i % 4 !== 1);
   }
-  drawSide(g, 2, state.defence, pal, labels.side?.(2));
+  drawSide(g, 2, state.defence, season, labels.side?.(2));
 
   if (night > 0) {
     g.fillStyle = `rgba(45,61,91,${night * .35})`;

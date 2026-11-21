@@ -6,14 +6,15 @@
 // back soonest. tools/pacing.mjs measures a term with it; the tests check a term can be finished.
 import { BUILDINGS, DEFENCE, NODES, RAIDS, RANKS, TALENTS, STATS, BUILDING_STAT, OFFICES } from './data.mjs';
 import {
-  afford, answer, busy, builders, queued, canPlace, claimGoal, collectTax, defencePower, districtsOpen, drums, freeRecruit, needFor,
-  PLOTS_PER_DISTRICT, SIDES, plotPlan, post, quote, raidPower, raidSide, rankUp, rates, recruit, recruitPrice,
-  stationTroops, survey, troopCapacity, upgrade, zone
+  afford, answer, busy, builders, queued, canPlace, claimGoal, collectTax, defencePower, districtsOpen, drums, expandWard,
+  expansionQuote, freeRecruit, needFor, PLOTS_PER_DISTRICT, SIDES, STARTING_WARDS, petitionOffer, plotPlan, post, quote, raidPower,
+  raidSide, rankUp, rates, recruit, recruitPrice, stationTroops, survey, troopCapacity, upgrade, wardIsOpen, zone
 } from './world.mjs';
 
 const FILLER = ['survey', 'coin', 'fill-pop', 'materials'];
 const CAP = { house: 10, manor: 6, paddy: 6, mulberry: 4, teaGarden: 4, market: 4, brewery: 2, loom: 3, kiln: 3, teahouse: 2, inn: 2, dock: 2, clinic: 2, school: 2, temple: 2, theatre: 2, garden: 2, pagoda: 1, granary: 2 };
-const PLAN = ['home', 'farm', 'market', 'craft', 'farm', 'home'];
+const PLAN = ['home', 'market', 'farm', 'craft', 'farm', 'home', 'farm', 'craft', 'farm', 'home', 'farm', 'garden'];
+const EXPANSION_ORDER = [3, 4, 5, 6, 8, 10, 11, 7, 9];
 const SERVICES = ['clinic', 'teahouse', 'garden', 'school', 'temple', 'theatre', 'pagoda'];
 const MAKERS = { wood: { node: 'forest' }, stone: { node: 'quarry' }, iron: { node: 'iron' }, clay: { node: 'clay' }, mulberry: { plot: 'mulberry' }, silk: { plot: 'loom' }, porcelain: { plot: 'kiln' }, tea: { plot: 'teaGarden' }, grain: { plot: 'paddy' }, wine: { plot: 'brewery' } };
 const INPUTS = { silk: 'mulberry', porcelain: 'clay' };
@@ -24,7 +25,7 @@ export function visit(state) {
   let done = 0;
   collectTax(state);
   while (claimGoal(state)) done++;
-  if (state.petition) answer(state, 'a'), done++;
+  if (state.petition && !answer(state, petitionChoice(state)).why) done++;
   while (freeRecruit(state) || state.fame >= recruitPrice(state) * 1.0) {
     if (recruit(state).why) break;
     done++;
@@ -33,11 +34,11 @@ export function visit(state) {
   if (state.rank >= 2) {
     const side = raidSide(state), capacity = troopCapacity(state);
     SIDES.forEach((_, i) => stationTroops(state, i, 0));
-    if (raidIsNear(state)) stationTroops(state, side, capacity);
+    // The announced approach is known hours ahead, even if the next visit misses the warning window.
+    if (state.raid.next) stationTroops(state, side, capacity);
     else SIDES.forEach((_, i) => stationTroops(state, i, Math.floor(capacity / SIDES.length) + Number(i < capacity % SIDES.length)));
   }
   if (state.raid.next && state.raid.next - state.time < RAIDS.warn) drums(state);
-  for (let w = 0; w < districtsOpen(state); w++) if (!state.districts[w].zone) zone(state, w, PLAN[w]);
   if (!rankUp(state).why) done++;
   // Fill the queue going round the wants, so none starves; keep the coin the next rank needs once the rest is near.
   const need = needFor(state, state.rank + 1);
@@ -48,6 +49,16 @@ export function visit(state) {
     const rest = Object.entries(need).filter(([k]) => k !== 'coin');
     if (rest.every(([k, v]) => (k === 'pop' ? state.pop : k === 'life' ? state.life : state.res[k]) >= v)) saving.coin = need.coin;
   }
+  if (districtsOpen(state) < STARTING_WARDS + state.rank) {
+    const next = EXPANSION_ORDER.find((ward) => {
+      const offer = expansionQuote(state, ward);
+      return !offer.why && Object.entries(offer.cost).every(([key, value]) => state.res[key] - value >= (saving[key] ?? 0));
+    });
+    if (next !== undefined && !expandWard(state, next).why) done++;
+  }
+  state.districts.forEach(({ zone: focus }, ward) => {
+    if (!focus && wardIsOpen(state, ward)) zone(state, ward, PLAN[ward]);
+  });
   const capacity = builders(state) * 4;
   // A target saved for since an earlier visit is tried first; until it is bought, others keep its price.
   wanted = null;
@@ -74,6 +85,14 @@ export function visit(state) {
     if (!any) break;
   }
   return done;
+}
+
+function petitionChoice(state) {
+  const a = petitionOffer(state, 'a');
+  if (a.why) return 'b';
+  // Preserve the money for immediate construction in a village with several hours of grain on hand.
+  if (state.petition.id === 'seedFair' && state.res.grain > state.pop * 2) return 'b';
+  return 'a';
 }
 
 const level = (state, kind) => state.plots.filter((p) => p.kind === kind).reduce((s, p) => s + p.level, 0);
@@ -195,7 +214,10 @@ function serve(state, key, r) {
     return null;
   }
   if (key === 'coin') {
-    for (const kind of ['market', 'house', 'teahouse', 'inn', 'dock', 'theatre', 'brewery']) {
+    const earners = state.rank >= 4
+      ? ['inn', 'teahouse', 'market', 'house', 'dock', 'theatre', 'brewery']
+      : ['market', 'house', 'teahouse', 'inn', 'dock', 'theatre', 'brewery'];
+    for (const kind of earners) {
       if (state.rank < BUILDINGS[kind].rank || (kind === 'house' && state.rank > 0 && r.house >= populationGoal * 1.16)) continue;
       const step = tryPlot(state, kind);
       if (step) return step;

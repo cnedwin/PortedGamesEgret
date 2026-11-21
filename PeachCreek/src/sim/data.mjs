@@ -22,14 +22,14 @@ export const RESOURCES = {
 /** Goods the markets sell, dearest first. */
 export const GOODS = ['porcelain', 'tea', 'silk', 'wine', 'grain'];
 
-export const START = { coin: 600, grain: 300, wood: 200, stone: 0, iron: 0, mulberry: 0, clay: 0, wine: 0, silk: 0, tea: 0, porcelain: 0, pop: 30, fame: 0 };
+export const START = { coin: 720, grain: 300, wood: 200, stone: 0, iron: 0, mulberry: 0, clay: 0, wine: 0, silk: 0, tea: 0, porcelain: 0, pop: 30, fame: 0 };
 
 /** Each person eats this much grain an hour and pays this much tax an hour (before livelihood). */
-export const PEOPLE = { eat: 0.5, tax: 10, salary: 600, growHalfLife: 900 };
+export const PEOPLE = { eat: 0.5, tax: 10, salary: 600, growHalfLife: 900, villageGrowHalfLife: 720 };
 
 /**
- * County ranks. `maxLevel` caps every building, `builders` is how many works run at once, `districts` how many of
- * the six wards are open. `need` is what the yamen needs to rise to this rank, and `time` its works in seconds.
+ * County ranks. `maxLevel` caps every building, `builders` is how many works run at once, `districts` preserves the
+ * old automatic ward count for save migration. `need` is what the yamen needs to rise, and `time` its works in seconds.
  */
 export const RANKS = [
   { key: 'r0', maxLevel: 5, builders: 2, districts: 3, need: null, time: 0 },
@@ -138,25 +138,42 @@ export const BUILDING_STAT = { house: 'rule', manor: 'rule', paddy: 'farm', mulb
 export const OFFICES = { deputy: 'rule', registrar: 'trade', sheriff: 'arms' };
 export const RECRUIT = { fame: (n) => Math.round(60 * 1.22 ** n), pity: 25, freeEvery: 8 * HOUR, levelExp: (lv) => Math.round(2 * 1.25 ** lv), maxLevel: 20 };
 
-/** Seasons turn every six hours of real time. */
-export const SEASONS = { length: 6 * HOUR, effects: [{ grain: 1.1, life: 2 }, { tea: 1.2, mulberry: 1.15 }, { grain: 1.25 }, { grain: 0.8, sell: 1.15, life: -2 }] };
+/** A two-hour year. Except for life points, each seasonal effect is an output multiplier. */
+export const SEASONS = {
+  length: 30 * 60,
+  effects: [
+    { grain: 1.12, wood: 1.08, life: 2 },
+    { grain: 0.92, tea: 1.22, mulberry: 1.16, wood: 0.94 },
+    { grain: 1.24, sell: 1.10, visitors: 1.10 },
+    { grain: 0.82, craft: 1.14, visitors: 0.88, life: -2 }
+  ]
+};
 
-/** Petitions come about every forty minutes while the magistrate is there; each has two answers. */
+const allSeasons = [0, 1, 2, 3];
+/** A petition has two outcomes. Costs and material grants scale by rank, never by treasury balance. */
 export const PETITIONS = {
-  every: 40 * 60,
+  first: 5 * 60,
+  every: 18 * 60,
+  jitter: 8 * 60,
+  recent: 3,
+  scale: [1, 2, 5, 12, 25, 50, 80],
   list: [
-    { id: 'lanterns', a: { coin: -0.05, life: 6, hours: 3 }, b: { fame: 20 } },
-    { id: 'bridge', a: { coin: -0.08, life: 4, hours: 6, fame: 30 }, b: { life: -3, hours: 2 } },
-    { id: 'wedding', a: { coin: -0.02, fame: 25 }, b: { life: 2, hours: 2 } },
-    { id: 'drought', a: { grain: -0.25, life: 6, hours: 4 }, b: { life: -6, hours: 3, coin: 0.05 } },
-    { id: 'scholar', a: { coin: -0.06, talent: true }, b: { fame: 15 } },
-    { id: 'merchants', a: { sellBoost: 0.3, hours: 4 }, b: { coin: 0.04 } },
-    { id: 'flood', a: { wood: -0.2, life: 5, hours: 4 }, b: { life: -8, hours: 3 } },
-    { id: 'monk', a: { coin: -0.03, fame: 40 }, b: { life: 2, hours: 2 } },
-    { id: 'harvest', a: { grain: 0.3 }, b: { life: 5, hours: 4 } },
-    { id: 'thief', a: { coin: -0.02, life: 3, hours: 3 }, b: { fame: 10, life: -2, hours: 2 } },
-    { id: 'kite', a: { life: 4, hours: 3 }, b: { fame: 12 } },
-    { id: 'cats', a: { grain: -0.02, life: 3, hours: 6 }, b: { fame: 6 } }
+    { id: 'seedFair', seasons: [0], a: { coin: -45, grain: 90 }, b: { fame: 16, life: 2, minutes: 18 } },
+    { id: 'dragonBoat', seasons: [1], rank: 1, a: { wood: -24, life: 3, sellBoost: 0.18, minutes: 24 }, b: { coin: 48, fame: 12 } },
+    { id: 'granaryCheck', seasons: [2], rank: 1, a: { wood: -16, grain: 105, life: 2, minutes: 20 }, b: { coin: 54 } },
+    { id: 'winterSoup', seasons: [3], a: { grain: -40, life: 5, minutes: 24 }, b: { fame: 10, sellBoost: 0.1, minutes: 16 } },
+    { id: 'lanterns', seasons: [0, 3], a: { coin: -50, life: 5, sellBoost: 0.1, minutes: 24 }, b: { fame: 14 } },
+    { id: 'bridge', seasons: [0, 1, 2], rank: 1, a: { coin: -75, life: 4, fame: 20, minutes: 28 }, b: { life: -1, minutes: 14 } },
+    { id: 'wedding', seasons: allSeasons, a: { coin: -25, fame: 26 }, b: { life: 2, minutes: 20 } },
+    { id: 'drought', seasons: [1], rank: 2, a: { grain: -55, life: 4, minutes: 24 }, b: { life: -2, minutes: 18 } },
+    { id: 'scholar', seasons: allSeasons, rank: 2, a: { coin: -85, talent: true }, b: { fame: 22 } },
+    { id: 'merchants', seasons: [1, 2], rank: 1, a: { sellBoost: 0.24, minutes: 25 }, b: { coin: 60 } },
+    { id: 'flood', seasons: [0, 1], rank: 2, a: { wood: -36, life: 4, minutes: 26 }, b: { life: -3, minutes: 18 } },
+    { id: 'monk', seasons: allSeasons, a: { coin: -35, fame: 32 }, b: { life: 2, minutes: 22 } },
+    { id: 'harvest', seasons: [2], a: { grain: 90 }, b: { life: 4, minutes: 22 } },
+    { id: 'thief', seasons: allSeasons, rank: 1, a: { coin: -20, life: 3, minutes: 18 }, b: { fame: 8, life: -1, minutes: 12 } },
+    { id: 'kite', seasons: [0, 1, 2], a: { life: 3, minutes: 20 }, b: { fame: 12 } },
+    { id: 'cats', seasons: allSeasons, a: { grain: -12, life: 3, minutes: 24 }, b: { fame: 8 } }
   ]
 };
 
