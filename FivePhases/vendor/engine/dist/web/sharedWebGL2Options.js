@@ -20,7 +20,8 @@ const DEFAULTS = Object.freeze({
     // Read and judged after every earlier option, so their arrival changes no earlier refusal.
     maxFrameRegions: 4096,
     maxFramePageBytes: 67108864,
-    maxReadyPageBytes: 134217728
+    maxReadyPageBytes: 134217728,
+    blendSpace: 'linear'
 });
 const KEYS = [
     'canvas',
@@ -46,7 +47,8 @@ const KEYS = [
     'measureSharedFrames',
     'maxFrameRegions',
     'maxFramePageBytes',
-    'maxReadyPageBytes'
+    'maxReadyPageBytes',
+    'blendSpace'
 ];
 function object(value) {
     return typeof value === 'object' && value !== null;
@@ -73,6 +75,10 @@ export function admitSharedWebGL2Options(input) {
         }
         else if (key === 'outputAlpha') {
             if (value !== 'premultiplied' && value !== 'opaque')
+                throw new TypeError(key);
+        }
+        else if (key === 'blendSpace') {
+            if (value !== 'linear' && value !== 'srgb')
                 throw new TypeError(key);
         }
         else {

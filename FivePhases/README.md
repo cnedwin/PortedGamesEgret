@@ -121,9 +121,8 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 
 ## 已知问题 · Known issues
 
-- 引擎副本没有记录提交号（缺 `vendor/SOURCE.md`），而且早于修掉极小坐标报错的 `66f7c59`。 · The engine copy has no recorded commit and predates `66f7c59`.
 - 只有中文界面，`<html lang>` 也固定为中文（品质 I1）。 · Chinese only.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 2 under 44×44: 开阵 121×43; 静音 40×40）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 99.9 ms over 53 frames）；I1 中英文全可切换，英文下无中文（html lang "zh-CN", Chinese left: 五行牌阵 消除聚灵 出牌破阵 开阵 阵法说明）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 2 under 44×44: 开阵 121×43; 静音 40×40）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 66.7 ms over 74 frames）；I1 中英文全可切换，英文下无中文（html lang "zh-CN", Chinese left: 五行牌阵 消除聚灵 出牌破阵 开阵 阵法说明）。
 
 ## 已解决 · Solved
 
@@ -154,6 +153,6 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 
 ## 引擎副本 · Engine copy
 
-`vendor/` 是本作自带的一份引擎（入口 `@egret/engine`、`@egret/engine/web/game`），但没有 `vendor/SOURCE.md`，复制时的引擎提交号没有记录。按代码判断，它早于引擎 `66f7c59`（2026-11-17，2D 几何把极小坐标当作 0）。按标准 `vendor/` 只由引擎仓库的 `tools/vendor-game.mjs` 生成，下次升级时用它重新生成，提交号就会写进 `vendor/SOURCE.md`。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制（入口 `@egret/engine`、`@egret/engine/web/game`），见 [vendor/SOURCE.md](vendor/SOURCE.md)。2026-11-21 之前的副本没有记录提交号，早于引擎 `66f7c59`。
 
-`vendor/` holds this game's copy of the engine (entries `@egret/engine` and `@egret/engine/web/game`), but there is no `vendor/SOURCE.md` and the engine commit was not recorded. From its code it predates engine `66f7c59` (2026-11-17). The standard has `vendor/` made only by the engine's `tools/vendor-game.mjs`; the next update made that way will write the commit into `vendor/SOURCE.md`.
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs` (entries `@egret/engine` and `@egret/engine/web/game`); see [vendor/SOURCE.md](vendor/SOURCE.md). The copy before 2026-11-21 had no recorded commit and predated engine `66f7c59`.

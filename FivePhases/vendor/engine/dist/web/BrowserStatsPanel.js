@@ -15,6 +15,7 @@ function trianglesOf(frame) {
     }
     return triangles;
 }
+/** Puts a panel over the canvas that shows frame rate and frame times. */
 export function createBrowserStatsPanel(options) {
     if (options === null || typeof options !== 'object')
         throw invalid();
@@ -38,7 +39,7 @@ export function createBrowserStatsPanel(options) {
     element.setAttribute('aria-hidden', 'true');
     page.body.appendChild(element);
     let closed = false, last, since, seen = 0, longest = 0, shown = false;
-    let commands = -1, triangles = -1, geometries = -1, pages = -1, pending = -1, frames = -1, skipped = -1;
+    let commands = -1, triangles = -1, geometries = -1, pages = -1, pending = -1, frames = -1, skipped = -1, drawCalls = -1;
     let current = Object.freeze({
         fps: 0,
         longestFrameMs: 0,
@@ -48,7 +49,8 @@ export function createBrowserStatsPanel(options) {
         pages: 0,
         pendingFrames: 0,
         frames: 0,
-        skipped: 0
+        skipped: 0,
+        drawCalls: 0
     });
     const text = (value) => (value < 0 ? '-' : String(value));
     function refresh(now) {
@@ -62,7 +64,8 @@ export function createBrowserStatsPanel(options) {
             pages: Math.max(0, pages),
             pendingFrames: Math.max(0, pending),
             frames: Math.max(0, frames),
-            skipped: Math.max(0, skipped)
+            skipped: Math.max(0, skipped),
+            drawCalls: Math.max(0, drawCalls)
         });
         const box = canvas.getBoundingClientRect();
         element.style.left = box.left + 'px';
@@ -76,6 +79,8 @@ export function createBrowserStatsPanel(options) {
                 ' ms\n' +
                 'commands ' +
                 text(commands) +
+                '  draws ' +
+                text(drawCalls) +
                 '  triangles ' +
                 text(triangles) +
                 '\n' +
@@ -115,6 +120,7 @@ export function createBrowserStatsPanel(options) {
             pending = count(sample.pendingFrames, pending);
             frames = count(sample.frames, frames);
             skipped = count(sample.skipped, skipped);
+            drawCalls = count(sample.drawCalls, drawCalls);
             if (last !== undefined && now > last) {
                 seen++;
                 longest = Math.max(longest, now - last);

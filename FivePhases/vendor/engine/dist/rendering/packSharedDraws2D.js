@@ -1,5 +1,6 @@
 import { qualifySharedUVIn, sharedFailure, sharedUVDomain } from './prepareSharedDraws2D.js';
 import { packedOrientation } from './packedOrientation.js';
+import { sharedPageLevels2D } from './sharedColor2D.js';
 /**
  * One vertex is thirteen f32 values: x y u v r g b a dr dg db slot opacity. `slot` is the place of the
  * draw's region in its window of the region table, and `opacity` the opacity of the draw; both are the
@@ -20,6 +21,8 @@ export const SHARED_REGION_WINDOW_2D = 341, SHARED_REGION_WINDOW_BYTES_2D = 1636
  */
 export const SHARED_BATCH_PAGES_2D = 8, SHARED_NO_PAGE_2D = 0xffffffff;
 const ROW = SHARED_VERTEX_BYTES_2D / 4, BLOCK = 128, NO_PAGES = Object.freeze([]);
+/** The height, in backing pixels, under which a triangle that turns the wrong way counts as collapsed. */
+const SLIVER_HEIGHT = 1 / 1024;
 // One polygon's represented corners. Packing is synchronous and calls no caller code, so the storage is shared.
 let corners = new Float32Array(64 * ROW);
 const address = (value) => (value === 'repeat' ? 1 : value === 'mirror-repeat' ? 2 : 0);
@@ -43,8 +46,45 @@ export function packSharedRegions2D(frame) {
     }
     return table;
 }
+/** How many times a number halves exactly: the trailing zero bits of a whole number, and as many as wanted for 0. */
+const halvings = (value) => (value === 0 ? 32 : 31 - Math.clz32(value & -value));
+/**
+ * Which smaller copies of its page a draw that asks for them may read, as words 9 and 10 of its block: the
+ * deepest level, and how the draw finds its texels on a level. A draw that samples its whole page, upright
+ * and untrimmed, scales its coordinates by the size of each level (mode 1), as a GPU does, and reads every
+ * level. A draw of a region of a page shared with other regions reads only the levels on which every edge of
+ * the region, of its trim and of its content, falls between two texels (mode 0): there its texels are exactly
+ * the means of its own texels, and none of a neighbour's.
+ */
+function mipReach(draw, frame) {
+    const region = draw.region, page = frame.pages[region.pageIndex].source, deepest = sharedPageLevels2D(page.width, page.height) - 1, p = region.packed;
+    if (draw.material.samplingDomain === 'page' ||
+        (region.quarterTurn === 0 &&
+            p.x === 0 &&
+            p.y === 0 &&
+            p.width === page.width &&
+            p.height === page.height &&
+            region.trimX === 0 &&
+            region.trimY === 0 &&
+            region.logicalWidth === p.width &&
+            region.logicalHeight === p.height))
+        return [1, deepest];
+    let reach = deepest;
+    for (const edge of [
+        p.x,
+        p.y,
+        p.width,
+        p.height,
+        region.trimX,
+        region.trimY,
+        region.logicalWidth,
+        region.logicalHeight
+    ])
+        reach = Math.min(reach, halvings(edge));
+    return [0, reach];
+}
 /** Writes the block of one draw at float index `f` of a buffer seen as floats and as words. Every word it does not write is zero. */
-function writeBlock(floats, words, f, width, height, draw) {
+function writeBlock(floats, words, f, width, height, draw, frame) {
     // Float and word indices of this draw's block: twelve floats, then twenty words from byte 48.
     // The block holds what is the same for a whole batch. The third float, once the opacity, stays zero: the
     // opacity is in each vertex. Of the first eleven words, once the region, the first eight name the pages
@@ -79,6 +119,12 @@ function writeBlock(floats, words, f, width, height, draw) {
                 : material.regionIsolation === 'strict'
                     ? 3
                     : 2;
+        if (material.mipmapFilter === 'linear') {
+            const [mode, deepest] = mipReach(draw, frame);
+            words[w + 8] = 1;
+            words[w + 9] = deepest;
+            words[w + 10] = mode;
+        }
         words[w + 11] = material.samplingDomain === 'page' ? 1 : 0;
         words[w + 12] = address(material.addressU);
         words[w + 13] = address(material.addressV);
@@ -129,7 +175,9 @@ export function packSharedDraws2D(prepared) {
         if (other !== undefined &&
             other.material === draw.material &&
             other.pageIndex === draw.pageIndex &&
-            other.command.kind === draw.command.kind)
+            other.command.kind === draw.command.kind &&
+            // The levels a draw with smaller copies may read depend on its region.
+            (draw.material.mipmapFilter !== 'linear' || other.region === draw.region))
             return beside.uniform;
         if (block === blockEnd) {
             const blocks = new ArrayBuffer(BLOCKS * BLOCK);
@@ -139,7 +187,7 @@ export function packSharedDraws2D(prepared) {
             block = 0;
             blockEnd = BLOCKS * BLOCK;
         }
-        writeBlock(blockFloats, blockWords, block >> 2, prepared.width, prepared.height, draw);
+        writeBlock(blockFloats, blockWords, block >> 2, prepared.width, prepared.height, draw, prepared.frame);
         block += BLOCK;
         return blockBytes.subarray(block - BLOCK, block);
     };
@@ -149,10 +197,12 @@ export function packSharedDraws2D(prepared) {
         if (other !== undefined &&
             other.material === draw.material &&
             other.pageIndex === draw.pageIndex &&
-            other.command.kind === draw.command.kind)
+            other.command.kind === draw.command.kind &&
+            // The levels a draw with smaller copies may read depend on its region.
+            (draw.material.mipmapFilter !== 'linear' || other.region === draw.region))
             return beside.uniform;
         const own = new ArrayBuffer(BLOCK);
-        writeBlock(new Float32Array(own), new Uint32Array(own), 0, prepared.width, prepared.height, draw);
+        writeBlock(new Float32Array(own), new Uint32Array(own), 0, prepared.width, prepared.height, draw, prepared.frame);
         return new Uint8Array(own);
     };
     let fresh, rested;
@@ -282,10 +332,21 @@ export function packSharedDraws2D(prepared) {
                     // Preparation normalizes clockwise backing-space polygons. A
                     // represented reversal refuses; a represented collapse stays a barrier.
                     const sign = packedOrientation(corners[0], corners[1], corners[b], corners[b + 1], corners[c], corners[c + 1], budget);
-                    if (!Number.isFinite(sign) || sign < 0)
+                    if (!Number.isFinite(sign))
                         sharedFailure('precision');
                     if (sign === 0)
                         continue;
+                    if (sign < 0) {
+                        // A reversal thinner than a thousandth of a pixel is a collapse that rounding tipped over, as where a
+                        // corner of a turned rectangle all but touches the edge of the view and its two crossings of that edge
+                        // land a rounding error apart. It covers nothing, so it is left out like a collapse; a reversal with
+                        // any body to it still refuses.
+                        const ux = corners[b] - corners[0], uy = corners[b + 1] - corners[1], vx = corners[c] - corners[0], vy = corners[c + 1] - corners[1], wx = vx - ux, wy = vy - uy;
+                        const longest = Math.sqrt(Math.max(ux * ux + uy * uy, vx * vx + vy * vy, wx * wx + wy * wy));
+                        if (!(Math.abs(ux * vy - uy * vx) <= longest * SLIVER_HEIGHT))
+                            sharedFailure('precision');
+                        continue;
+                    }
                     for (let k = 0; k < ROW; k++) {
                         rows[used + k] = corners[k];
                         rows[used + ROW + k] = corners[b + k];

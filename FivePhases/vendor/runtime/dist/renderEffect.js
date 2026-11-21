@@ -1,5 +1,5 @@
 import { readBitmapState as bitmapCaptureState } from './bitmapDisplayState.js';
-import { assertLive } from './displayTreeState.js';
+import { assertLive, isDisplayNode } from './displayTreeState.js';
 import { engineOf } from './ownership.js';
 import { assertVisualMutable, copyRect, visualOf, recordVisualChange, VISUAL_APPEARANCE } from './displayVisualState.js';
 import { EgretError } from './EgretError.js';
@@ -49,7 +49,7 @@ export function setRenderEffect(node, input) {
     if (input !== undefined) {
         if (input === null || typeof input !== 'object')
             throw new EgretError('DISPLAY_EFFECT_INVALID');
-        const radius = input.blurRadius ?? 0, mask = input.alphaMask, rect = input.maskRect;
+        const radius = input.blurRadius ?? 0, mask = input.alphaMask, rect = input.maskRect, shapeMask = input.shapeMask;
         if (!Number.isInteger(radius) || radius < 0 || radius > 8)
             throw new EgretError('DISPLAY_EFFECT_INVALID');
         let bounds;
@@ -67,6 +67,15 @@ export function setRenderEffect(node, input) {
         }
         else if (rect !== undefined)
             throw new EgretError('DISPLAY_EFFECT_INVALID');
+        if (shapeMask !== undefined) {
+            if (mask !== undefined || shapeMask === null || typeof shapeMask !== 'object' || !isDisplayNode(shapeMask))
+                throw new EgretError('DISPLAY_EFFECT_MASK_INVALID');
+            assertLive(shapeMask);
+            if (engineOf(shapeMask) !== engineOf(node))
+                throw new EgretError('ENGINE_MISMATCH');
+            if (shapeMask === node)
+                throw new EgretError('DISPLAY_EFFECT_MASK_INVALID');
+        }
         const matrix = input.colorMatrix === undefined ? undefined : readMatrix(input.colorMatrix);
         const glow = input.glow === undefined ? undefined : readGlow(input.glow), outline = input.outline === undefined ? undefined : readOutline(input.outline);
         if (glow !== undefined && outline !== undefined)
@@ -74,6 +83,7 @@ export function setRenderEffect(node, input) {
         value = Object.freeze({
             blurRadius: radius,
             ...(mask === undefined ? {} : { alphaMask: mask, maskRect: bounds }),
+            ...(shapeMask === undefined ? {} : { shapeMask }),
             ...(matrix === undefined ? {} : { colorMatrix: matrix }),
             ...(glow === undefined ? {} : { glow }),
             ...(outline === undefined ? {} : { outline })
@@ -81,6 +91,18 @@ export function setRenderEffect(node, input) {
     }
     // Descriptor reads may execute application getters; publish only after life recheck.
     assertVisualMutable(node);
-    visualOf(node).renderEffect = value;
+    const state = visualOf(node), before = state.renderEffect?.shapeMask, after = value?.shapeMask;
+    state.renderEffect = value;
     recordVisualChange(node, VISUAL_APPEARANCE);
+    // A node that becomes a mask stops being drawn; one no longer a mask of anything is drawn again.
+    if (before !== after) {
+        if (before !== undefined && !before.isDisposed) {
+            visualOf(before).maskUses--;
+            recordVisualChange(before, VISUAL_APPEARANCE);
+        }
+        if (after !== undefined) {
+            visualOf(after).maskUses++;
+            recordVisualChange(after, VISUAL_APPEARANCE);
+        }
+    }
 }
