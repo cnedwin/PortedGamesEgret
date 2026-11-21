@@ -49,6 +49,8 @@ const app = {
   }
 };
 
+// The input stays gated until the atlas and mixer are ready. Separate their startup work from the title layout.
+const yieldStartup = () => globalThis.scheduler?.yield?.() ?? new Promise((resolve) => setTimeout(resolve, 0));
 // ---- The engine. Frames begin as soon as play is set up; they do nothing until the page is ready. ----
 let game,
   view,
@@ -60,9 +62,11 @@ await play({
   parent: field,
   transparent: true,
   seed: app.seed,
-  setup(made) {
+  async setup(made) {
     game = made;
+    await yieldStartup();
     view = createView(game);
+    await yieldStartup();
     sound = createSound(game, { on: settings().sound, music: settings().music });
     return view.ready;
   },
@@ -660,6 +664,7 @@ onLanguage(() => {
     openMenu('[data-language]');
   }
 });
+await yieldStartup();
 document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
 document.title = t('pageTitle');
 $('#loading').remove();

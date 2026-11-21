@@ -1,10 +1,10 @@
 # 引擎笔记 · Engine notes
 
-做这款游戏时发现的新白鹭引擎（提交 `b5628eb`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。数字都在无头 Chromium 153 + SwiftShader（没有显卡）下量得，不代表真机。
+做这款游戏时发现的新白鹭引擎（提交 `b5628eb`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。第 1 至 3 条的历史数据来自无头 Chromium 153 + SwiftShader。第 4 条使用带硬件加速的 Windows Chrome。
 
 The faults found in the new Egret engine (commit `b5628eb`) while making this game, and suggestions, written as in
-part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). Every number was measured in headless Chromium 153 with
-SwiftShader (no GPU), and says nothing of real devices.
+part 3 of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). Sections 1 to 3 describe historical checks in headless Chromium 153 with
+SwiftShader. Section 4 uses Windows Chrome with hardware acceleration.
 
 ### 1. `play` 让页面按钮上的 Tab 和 Space 失灵 · `play` takes Tab and Space from the page's buttons — 未解决 / open
 
@@ -26,3 +26,10 @@ SwiftShader (no GPU), and says nothing of real devices.
 - 绕过办法：放弃贴图，哪吒、水族兵、法宝和珍珠全用 `drawRect` 拼成剪纸的样子（`src/view.mjs`），精灵按种类放池子反复用。正式游戏里第 9、16 波中途 p95 16.8 ms，兵数顶到上限 140 个时 p95 33.3 ms。 · Workaround: no textures; everything that moves is cut from `drawRect`, with sprites pooled by kind. Mid-game waves run at 16.8 ms p95, and 140 soldiers at 33.3 ms.
 - 建议：查一查贴图路径在软件渲染下为什么这么慢（每帧的 `getError` 和同步等待也许可以少一些）；在 Graphics 或浏览器图片的文档里写明，大量移动的小精灵用矩形比用贴图便宜，以及量的环境。 · Suggestion: look into why the texture path is so slow under software rendering (fewer `getError` calls and waits a frame, perhaps), and say in the docs that many small moving sprites are cheaper as rectangles than as textures, with where it was measured.
 - 状态：未解决。 · Status: open.
+
+### 4. 自带混音器时跳过 `play` 内置音频启动 · Skip built-in audio startup when supplying a custom mixer — 未解决 / open
+
+- 现象：在 Windows Chrome 157、RTX 5090 Laptop GPU、WebGPU、冷浏览器配置下，公开版三次追踪的首段引擎任务为 106、66、68 毫秒。调用栈包含 `BrowserPlay.play → createBrowserAudio → new AudioContext` 和默认音效的合成与解码，发生在应用的 `setup` 之前。用同机同服务端对照，CPU 图集画布消除了 69.9–78.8 毫秒的图集同步读回，标题布局仍约 34 毫秒并独立执行。修改后剩余约 154 毫秒的最长任务来自应用第二次构造音频上下文。 · In three public Chrome 157 WebGPU cold traces on Windows, the first engine task took 106, 66 and 68 ms. Its stack included the native audio context constructor and default effect preparation before application setup. A matched local comparison removed the 69.9–78.8 ms GPU readback and separated title layout. The remaining roughly 154 ms task came from constructing the application's second audio context.
+- 绕过办法：Demo 在标题开放前分批初始化图集与音频，并保留自己的配乐、音效和独立静音。 · Initialize the atlas and mixer in separate startup tasks while keeping both ready before Start. Keep the custom score and effects on independent buses.
+- 复现：用本游戏随附的 import map，在空页面调用 `await play({ width: 540, height: 960, parent, setup() { performance.mark('setup'); } })`。用全新 Chrome 配置在导航前录制 Performance，检查 `setup` 标记之前的默认音频初始化。拥有自定义声音的应用可在 `setup` 里另外调用一次 `createBrowserAudio`，观察第二个上下文。 · Use this game's import map and call `play` on an empty page with a `setup` mark. Start recording before navigating from a fresh Chrome profile. Call `createBrowserAudio` again inside setup to reproduce the custom-mixer case.
+- 建议：支持关闭 `play` 的内置音频初始化，或注入可共享的混音器。验收时确认自定义混音模式只创建一个上下文，`setup` 前不准备默认音效，默认调用、暂停和释放的行为仍正常，并一起测点击到首帧。 · Support skipping built-in audio initialization or injecting a shared mixer. Verify one context, no stock prewarm in the opt-out mode, compatible default/pause/disposal behavior and unchanged click-to-first-frame latency.
