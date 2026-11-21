@@ -10,6 +10,7 @@ evidence:
   - { repo: cnedwin/PortedGamesEgret, path: CanalWatch/ENGINE-NOTES.md, line: 9, commit: 13dcd4b46bc1cf9103cc45cd59d00e73e58ab5f9, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
   - { repo: cnedwin/PortedGamesEgret, path: CanalWatch/ENGINE-NOTES.md, line: 16, commit: 13dcd4b46bc1cf9103cc45cd59d00e73e58ab5f9, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
   - { repo: cnedwin/PortedGamesEgret, path: CanalWatch/ENGINE-NOTES.md, line: 30, commit: 13dcd4b46bc1cf9103cc45cd59d00e73e58ab5f9, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: NezhaSea/src/main.mjs, line: 454, commit: 9b3d9263f16bbfda9be05128a7c623408daf947f, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
 engine: b5628eb9997b67cf6163a388f5aa06f321f3833a
 ---
 
@@ -28,6 +29,15 @@ window.addEventListener('keydown', (event) => {
 
 `game.keys` hears nothing after this, so read every shortcut in that listener.
 
+When the player still moves by `game.keys.axis()`, stop those keys only while a page button or panel has them:
+
+```js
+const KEPT = new Set(['Tab', ' ', 'Enter', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown']);
+window.addEventListener('keydown', (event) => {
+  if (event.target.closest?.('button, .panel') && KEPT.has(event.key)) event.stopPropagation();
+}, true);
+```
+
 **A clear canvas with `parent`.** `play({ parent, transparent: true })` puts the canvas in a holder whose inline style is `background:#000`, so the page under it does not show. Clear it once `play` has returned:
 
 ```js
@@ -42,4 +52,4 @@ Rules:
 - Give each button an `aria-label` that says what is there now ("Plot 6: crossbow tower level 1"), and keep it at least 44 CSS pixels.
 - Check it in a browser: Tab from the first button must reach the next, and Space on a focused button must press it.
 
-Learnt from Canal Watch (ENGINE-NOTES 1, 2 and 4).
+Learnt from Canal Watch (ENGINE-NOTES 1, 2 and 4) and Nezha Stirs the Sea (ENGINE-NOTES 1).

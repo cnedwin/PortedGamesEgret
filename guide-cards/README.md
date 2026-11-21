@@ -29,6 +29,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [rhythm-clock](audio/rhythm-clock.txt) | OperaDrums | ENGINE-NOTES 4（声部位置比听到的早、换算到页面时间、事件时间戳、延迟校准）；提交 `6e7d5bb` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs` · draft, not sent; passed the engine's guide tests in a scratch copy |
 | [moving-shapes](perf/moving-shapes.txt) | OperaDrums | ENGINE-NOTES 3（每帧移动的圆和路径比矩形贵，文字打断合批）；提交 `6e7d5bb` | 同上 · the same |
 | [still-background](perf/still-background.txt) | CanalWatch | ENGINE-NOTES 3（静止地图每帧重画让软件渲染帧时间翻倍，改由页面画一次）；提交 `13dcd4b` | 同上 · the same |
+| [sprite-swarm](perf/sprite-swarm.txt) | NezhaSea | ENGINE-NOTES 3（共用贴图的 Bitmap 比矩形精灵贵得多，改用矩形加精灵池）；提交 `9b3d926` | 同上 · the same |
 
 ## 给已有卡片加证据 · Evidence for existing cards
 
@@ -48,6 +49,9 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | synthesized-audio | OperaDrums | `OperaDrums/src/audio/synth.mjs`：鼓、锣、钹、板、京胡都由数算出，`encodeWav` 后交给混音器 · every instrument computed and handed to the mixer as WAV | 草稿，未提交引擎 · draft, not sent |
 | balance-from-runs | OperaDrums | `OperaDrums/tools/balance.mjs`：电脑玩家按五种准度把九张谱各打 10 局 · a bot at five levels of steadiness plays nine charts 10 times each | 草稿，未提交引擎 · draft, not sent |
 | play-page-controls（本仓库草稿 · a draft here） | OperaDrums | `OperaDrums/src/main.mjs:112`、ENGINE-NOTES 1：敲击键和页面按钮同在时，捕获阶段接住按键 · keys caught first beside page buttons | 草稿 · draft |
+| balance-from-runs | NezhaSea | `NezhaSea/tools/balance.mjs`：电脑玩家用三种形态、三档海况各打 12 局，另有「不动」「不买」两种对照 · a bot plays three forms on three dangers, 12 games each, with two controls | 草稿，未提交引擎 · draft, not sent |
+| play-page-controls（本仓库草稿 · a draft here） | NezhaSea | `NezhaSea/src/main.mjs:454`、ENGINE-NOTES 1：哪吒仍靠 `game.keys.axis()` 走，只在页面按钮上接住按键 · keys stopped only on page buttons, so play still steers | 草稿 · draft |
+| still-background（本仓库草稿 · a draft here） | NezhaSea | `NezhaSea/src/ground.mjs:53`：剪纸海浪由页面画一次，放在透明画布下 · the paper-cut sea painted once under the clear canvas | 草稿 · draft |
 | frame-loop-backpressure | FivePhases | 同上第 3 条：帧循环报错后停在 `failed`，用 `onError` 有限次重启 · the loop stops at `failed`; bounded restarts from `onError` | 未进引擎：同上 · not added, same reason |
 
 ## 每个游戏 · By game
@@ -62,7 +66,12 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | JY | 1（1 条证据，未进引擎） | 修复 `04313eb`（经典战斗结算、密集数字）是游戏自己的规则，不是引擎经验 · a fix of the game's own rules |
 | OperaDrums | 5（2 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | CanalWatch | 5（2 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
+| NezhaSea | 4（1 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | FPS、jelly-pandas、Wulin、LanternShadows、LoveElective | 0 | 没有 ENGINE-NOTES 内容，也没有新的引擎相关修复提交；它们的经验已被引擎现有卡片引用（FPS 14 张、jelly-pandas 12 张、Wulin 5 张、LanternShadows 4 张、LoveElective 1 张） · no notes and no new engine-related fixes; already cited by the engine's cards |
+
+注意：本目录的新卡草稿若一次全部加进引擎索引，`guide/index.txt` 会超出它的 token 上限（五张一起时 1565 token），提交引擎时需要合并或精简索引行；分批放进去时每批都通过了 `tests/guide.test.mjs`。
+
+Note: added to the engine's index all at once, the new drafts here push `guide/index.txt` past its token budget (1,565 tokens with five together), so sending them needs merged or shorter index lines; added in batches, each batch passed `tests/guide.test.mjs`.
 
 收尾规则见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 6 节：以后每款游戏完成时产出 2–5 张草稿放在这里并登记。
 
