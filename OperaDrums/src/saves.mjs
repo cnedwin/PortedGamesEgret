@@ -52,8 +52,8 @@ export function openSave(storage, language = 'zh', onProblem = () => {}) {
  * A run of `song` on `difficulty` ended with `result`. The best keeps the better rank, and the higher score within
  * the same rank. Returns whether it is a new best.
  */
-export function recordRun(data, song, difficulty, result) {
-  data.plays++;
+export function recordRun(data, song, difficulty, result, { count = true } = {}) {
+  if (count) data.plays++;
   const kept = data.best[song]?.[difficulty];
   const better = !kept || betterRank(result.rank, kept.rank) || (result.rank === kept.rank && result.score > kept.score);
   if (better) {

@@ -34,13 +34,18 @@ Opera Drums is a Peking opera rhythm game built with [Egret Rebuild](https://git
 
 **设置 · Settings**（标题和暂停菜单里 · on the title and in the pause menu）：声音开关、伴奏音量、音符流速（×1 到 ×3）、延迟校准（±10 毫秒一档，或者「跟着板敲来测」：跟着 16 下板声敲，须跟准至少 8 拍，每拍只计一次，取偏移的中位数）、减弱动画（系统设了「减少动态效果」时自动减弱）、中英文。英文下音符上写拼音（cang、tai…）。 · Sound, backing volume, note speed (×1 to ×3), delay (in steps of 10 ms, or measured with 16 clapper beats, accepting one strike per beat and taking the median of at least eight), reduced motion, and the language. In English the notes show the syllables in pinyin.
 
+## 跟练与压轴 · Lesson and encore
+
+- 「先跟练」沿用正式谱面的判定和击打声。跟板声依次练习单皮鼓、打锣、双手合击和滚奏，结尾显示练成的项目。练习不写入曲目成绩。 · The lesson uses the same timing and strike sounds, teaches four skills, and leaves regular scores alone.
+- 「压轴挑战」为独立的短谱。精准敲击蓄鼓势，蓄满后用双手敲中「仓」开启七秒基础分翻倍。漏拍会中断爆发。单独保存最好成绩。 · The encore is a short separate chart. Build power with accurate strikes, then hit a big gong with both hands for up to seven seconds of doubled base points. A miss interrupts the rally. It has its own best score.
+
 ## 锣鼓经与曲目 · The score and the songs
 
-曲子由这些点子拼成（`src/sim/songs.mjs`），写法按常见锣鼓经简化改编，不是逐字的传统谱：四击头、急急风、冲头、长锤、夺头、扫头、小锣抽头、撕边、鼓点子，以及京胡奏曲调、单皮鼓守板眼的过门。三首曲子各有固定的五声京胡动机，随过门变奏。伴奏以板声提示正拍，以弱击和乐句停顿给玩家的击打留出空间。
+曲子由这些点子拼成（`src/sim/songs.mjs`），写法按常见锣鼓经简化改编，不是逐字的传统谱：四击头、急急风、冲头、长锤、夺头、扫头、小锣抽头、撕边、鼓点子，以及京胡奏曲调、单皮鼓守板眼的过门。三首曲子各有固定的五声主旋律。京胡与弹拨声部交替应答，主旋律贯穿演奏并在过门变奏，板鼓用轻重与停顿给玩家击打留出空间。
 
 The songs are made of these patterns (`src/sim/songs.mjs`), simplified from their usual written forms and not
 copied stroke for stroke: four strikes, swift wind, rushing head, long hammer, seizing head, sweeping head, the small
-gong pull, torn edge, a drum figure, and the bridge. Each piece has a written pentatonic fiddle motif. The arrangement varies through the bridges and leaves space for player hits.
+gong pull, torn edge, a drum figure, and the bridge. Each piece has a written pentatonic hook, voiced by bowed and plucked parts with room for player hits. The hook returns in varied form through the performance.
 
 | 曲目 · Song | 每分钟拍数 · BPM | 长度 · Length | 易 · Easy | 中 · Normal | 难 · Hard |
 |---|---|---|---|---|---|
