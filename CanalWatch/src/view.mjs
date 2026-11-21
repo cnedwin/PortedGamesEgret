@@ -2,6 +2,8 @@
 // The moving scene: place the towers, raiders, gates and feedback from the simulation.
 import { GATES, PLOTS, RAIDERS, TOWERS, WIDTH } from './sim/data.mjs';
 import { WAYS } from './sim/world.mjs';
+import { createCombatEffects } from './combat-fx.mjs';
+import { poseFall, poseGate, poseRaider, poseShot, poseTower } from './motion.mjs';
 
 /** Draw one connected stroke with rounded corners. */
 function strokePath(g, points, width, color, alpha) {
@@ -42,62 +44,83 @@ function roof(g, y, half, peak, color) {
   strokePath(g, [[-half + 4, y + 1], [half - 3, y + 1]], 1.3, LIME, .85);
 }
 
-function drawWatchtower(g, level) {
+function drawCrossbow(g, y) {
+  strokePath(g, [[-8, y + 2], [9, y]], 4.4, SOOT, 1);
+  strokePath(g, [[-8, y + 2], [9, y]], 2.2, SILK, 1);
+  g.lineStyle(2, JADE, 1, { caps: 'round' }).moveTo(3, y - 4).curveTo(10, y - 3, 9, y)
+    .curveTo(10, y + 3, 3, y + 4).lineStyle(0);
+  strokePath(g, [[3, y - 4], [-1, y + 1], [3, y + 4]], 1, LIME, 1);
+}
+
+function drawWatchtower(g, level, rigged) {
   polygon(g, SOOT, [[-15, 11], [-13, -22], [13, -22], [15, 11]]);
   g.beginFill(0x655245).drawRect(-11, -21, 22, 30).endFill();
   g.beginFill(0x3d3630).drawRect(4, -21, 7, 30).endFill();
   g.beginFill(SOOT).drawRect(-8, -16, 16, 10).endFill();
-  g.beginFill(JADE).drawRect(-5, -13, 10, 2.6).endFill();
   g.beginFill(LAMP).drawRect(-3, 0, 6, 8).endFill();
   roof(g, -4, 17, 9, 0x365c55);
   roof(g, -19, 14, 9 + level * 2, 0x4e756c);
+  if (!rigged) drawCrossbow(g, -10.5);
   if (level) {
     strokePath(g, [[10, -9], [10, 7]], 2.5, LACQUER, 1);
     g.beginFill(LAMP).drawCircle(10, 6, 2.3).endFill();
   }
 }
 
-function drawThrower(g, level) {
+function drawThrowerArm(g, level, y) {
+  const tip = y - 14 - level * 3;
+  strokePath(g, [[-14, y + 11], [17, tip]], 6, SOOT, 1);
+  strokePath(g, [[-14, y + 10], [17, tip]], 2.8, SILK, 1);
+  strokePath(g, [[17, tip], [20, tip + 8], [16, tip + 12]], 1.8, BRASS, 1);
+  g.beginFill(SOOT).drawRoundRect(-19, y + 7, 11, 13, 3).endFill();
+  g.beginFill(LACQUER).drawRect(-17, y + 9, 7, 5).endFill();
+  g.beginFill(BRASS).drawCircle(0, y, 4).endFill();
+  g.beginFill(SOOT).drawCircle(0, y, 1.8).endFill();
+}
+
+function drawThrower(g, level, rigged) {
   g.beginFill(0x786858).drawRect(-17, 5, 34, 7).endFill();
   g.beginFill(LIME).drawRect(-16, 6, 11, 3).drawRect(2, 6, 13, 3).endFill();
   strokePath(g, [[-15, 7], [-5, -15], [6, -15], [15, 7]], 6, SOOT, 1);
   strokePath(g, [[-15, 7], [-5, -15], [6, -15], [15, 7]], 2.8, 0xa5794f, 1);
   strokePath(g, [[-10, 4], [6, -9], [14, 5]], 2.1, LIME, 1);
-  const tip = -28 - level * 3;
-  strokePath(g, [[-14, -3], [17, tip]], 6, SOOT, 1);
-  strokePath(g, [[-14, -4], [17, tip]], 2.8, SILK, 1);
-  strokePath(g, [[17, tip], [20, tip + 8], [16, tip + 12]], 1.8, BRASS, 1);
-  g.beginFill(SOOT).drawRoundRect(-19, -7, 11, 13, 3).endFill();
-  g.beginFill(LACQUER).drawRect(-17, -5, 7, 5).endFill();
-  g.beginFill(BRASS).drawCircle(0, -14, 4).endFill();
-  g.beginFill(SOOT).drawCircle(0, -14, 1.8).endFill();
+  if (!rigged) drawThrowerArm(g, level, -14);
 }
 
-function drawBeacon(g, level) {
-  polygon(g, SOOT, [[-16, 10], [-14, -12], [14, -12], [16, 10]]);
-  g.beginFill(0x7d3c32).drawRect(-13, -10, 26, 17).endFill();
-  g.beginFill(LACQUER).drawRect(-14, -7, 4, 16).drawRect(10, -7, 4, 16).endFill();
-  g.beginFill(SOOT).drawRect(-7, -9, 14, 12).endFill();
-  g.beginFill(LAMP).drawRect(-4, -6, 8, 6).endFill();
+function drawBlaze(g, level) {
   g.beginFill(0xf4793f, .2).drawCircle(0, -19, 16).endFill();
   g.beginFill(0xf28145).moveTo(-10, -12).curveTo(-15, -23, -5, -25)
     .curveTo(-2, -29, -5, -33 - level * 2).curveTo(6, -32, 7, -21)
     .lineTo(10, -25).curveTo(15, -15, 7, -10).lineTo(-10, -12).endFill();
   g.beginFill(LAMP).moveTo(-6, -12).curveTo(-7, -18, 2, -23).curveTo(7, -18, 6, -12).lineTo(-6, -12).endFill();
-  polygon(g, BRASS, [[-17, -13], [17, -13], [11, -8], [-11, -8]]);
   g.beginFill(0xffedbd).drawCircle(8, -34 - level, 1.5).drawCircle(-8, -29, 1.2).endFill();
 }
 
-function drawGong(g, level) {
+function drawBeacon(g, level, rigged) {
+  polygon(g, SOOT, [[-16, 10], [-14, -12], [14, -12], [16, 10]]);
+  g.beginFill(0x7d3c32).drawRect(-13, -10, 26, 17).endFill();
+  g.beginFill(LACQUER).drawRect(-14, -7, 4, 16).drawRect(10, -7, 4, 16).endFill();
+  g.beginFill(SOOT).drawRect(-7, -9, 14, 12).endFill();
+  g.beginFill(LAMP).drawRect(-4, -6, 8, 6).endFill();
+  if (!rigged) drawBlaze(g, level);
+  polygon(g, BRASS, [[-17, -13], [17, -13], [11, -8], [-11, -8]]);
+}
+
+function drawGongDisc(g, y) {
+  strokePath(g, [[0, y - 12], [0, y - 7]], 1.5, SILK, .9);
+  g.beginFill(SOOT).drawCircle(0, y, 12.7).endFill();
+  g.beginFill(SILK).drawCircle(0, y, 10.7).endFill();
+  g.beginFill(BRASS).drawCircle(.6, y + .6, 8.6).endFill();
+  g.beginFill(0x80532f).drawCircle(1.4, y + 1.1, 5.8).endFill();
+  g.beginFill(LAMP).drawCircle(-.7, y - 1.1, 3.2).endFill();
+}
+
+function drawGong(g, level, rigged) {
   strokePath(g, [[-14, 9], [-14, -21], [14, -21], [14, 9]], 6, SOOT, 1);
   strokePath(g, [[-14, 7], [-14, -20], [14, -20], [14, 7]], 2.7, LACQUER, 1);
   roof(g, -22, 17, 7 + level, 0x626255);
   strokePath(g, [[-6, -19], [-4, -13], [4, -13], [6, -19]], 1.5, SILK, .85);
-  g.beginFill(SOOT).drawCircle(0, -4, 12.7).endFill();
-  g.beginFill(SILK).drawCircle(0, -4, 10.7).endFill();
-  g.beginFill(BRASS).drawCircle(.6, -3.4, 8.6).endFill();
-  g.beginFill(0x80532f).drawCircle(1.4, -2.9, 5.8).endFill();
-  g.beginFill(LAMP).drawCircle(-.7, -5.1, 3.2).endFill();
+  if (!rigged) drawGongDisc(g, -4);
   g.beginFill(LACQUER).drawRect(-16, 6, 4, 4).drawRect(12, 6, 4, 4).endFill();
 }
 
@@ -105,25 +128,34 @@ const TOWER_ART = { crossbow: drawWatchtower, trebuchet: drawThrower, fire: draw
 
 /** A tower shares its plot's centre, with a stone foundation and illuminated rank. */
 export function drawTower(g, kind, level) {
+  drawTowerBase(g, kind, level, false);
+}
+
+function drawTowerBase(g, kind, level, rigged) {
   g.clear();
   g.beginFill(SOOT, .56).drawEllipse(-22, 6, 44, 18).endFill();
   polygon(g, SOOT, [[-19, 6], [18, 6], [21, 14], [15, 19], [-17, 19], [-21, 14]]);
   polygon(g, 0x70685b, [[-18, 7], [17, 7], [20, 13], [-20, 13]]);
   g.beginFill(LIME).drawRect(-15, 11, 30, 2.4).endFill();
-  TOWER_ART[kind](g, level);
+  TOWER_ART[kind](g, level, rigged);
   g.beginFill(SOOT).drawRoundRect(-11, 13, 22, 7.5, 3).endFill();
   for (let i = 0; i < 3; i++) g.beginFill(i <= level ? TOWER_LIGHT[kind] : 0x6c6857).drawCircle(-6 + i * 6, 16.7, 2.05).endFill();
 }
 
-function drawFoot(g, armoured) {
-  g.beginFill(SOOT, .5).drawEllipse(-12, 5, 24, 9).endFill();
+function drawFootBody(g, armoured) {
   polygon(g, SOOT, [[-8, -4], [5, -5], [9, 8], [3, 11], [-8, 9]]);
   polygon(g, armoured ? 0x586966 : 0x975743, [[-6, -3], [4, -4], [5, 7], [-7, 7]]);
-  strokePath(g, [[-3, 5], [-6, 11]], 2.8, SOOT, 1);
-  strokePath(g, [[2, 5], [4, 11]], 2.8, SOOT, 1);
   g.beginFill(SILK).drawCircle(0, -7, 4.4).endFill();
   polygon(g, SOOT, [[-9, -7], [-4, -13], [3, -14], [9, -8], [5, -7]]);
   strokePath(g, [[-5, -4], [5, -4]], 2.3, 0xcf634c, 1);
+}
+
+function drawLeg(g, near) {
+  strokePath(g, [[0, 0], [near ? 1 : -1, 4], [near ? 2 : -3, 8], [near ? 4 : -1, 8]], 4.4, SOOT, 1);
+  strokePath(g, [[0, 0], [near ? 1 : -1, 4], [near ? 2 : -3, 7]], 1.9, near ? 0xb28b66 : SHALE, 1);
+}
+
+function drawGear(g, armoured) {
   if (armoured) {
     polygon(g, SOOT, [[7, -10], [14, -7], [15, 4], [8, 11], [3, 6], [3, -6]]);
     polygon(g, BRASS, [[7, -7], [11, -5], [12, 3], [8, 7], [5, 3], [5, -4]]);
@@ -145,18 +177,29 @@ function drawSail(g, x, top, width, height, color) {
   strokePath(g, [[x - 1, top - 4], [x - 1, top + height + 5]], 1.8, SHALE, 1);
 }
 
-/** Vessels are laid out along local X so bows and wakes follow the canal. */
-function drawRaider(g, kind) {
-  if (RAIDERS[kind].way === 'road') {
-    drawFoot(g, kind === 'shield');
-    return;
-  }
-  const small = kind === 'skiff', leader = kind === 'flagship';
-  const length = small ? 16 : leader ? 32 : 23, beam = small ? 5.7 : leader ? 9.5 : 7.6;
+const BOATS = {
+  skiff: { length: 16, beam: 5.7, oar: 11, sails: [] },
+  junk: { length: 23, beam: 7.6, oar: 13, sails: [[-8, -3, 14, 18, SILK]] },
+  flagship: { length: 32, beam: 9.5, oar: 16, sails: [[-8, -4, 16, 24, 0xb35e4c], [11, -3, 12, 16, SILK]] }
+};
+
+function drawWake(g, { length, beam }) {
   for (const side of [-1, 1]) {
-    g.lineStyle(1.3, JADE, .72, { caps: 'round' }).moveTo(-length - 13, side * (beam + 6))
+    g.lineStyle(1.8, JADE, .86, { caps: 'round' }).moveTo(-length - 16, side * (beam + 7))
       .curveTo(-length / 2, side * (beam + 1), length / 2, side * (beam + 2)).lineStyle(0);
+    strokePath(g, [[-length - 21, side * (beam + 3)], [-length - 14, side * beam], [-length - 9, side * (beam - 1)]], 1.4, SILK, .5);
   }
+}
+
+function drawOar(g, length) {
+  strokePath(g, [[0, -2], [-1, length]], 3, SOOT, 1);
+  strokePath(g, [[0, -1], [-1, length - 1]], 1.7, BRASS, 1);
+  polygon(g, SILK, [[-2.5, length - 3], [.7, length - 3], [1, length + 2], [-3.2, length + 1]]);
+}
+
+/** Hulls are laid out along local X so bows and wakes follow the canal. */
+function drawHull(g, kind, { length, beam }) {
+  const small = kind === 'skiff', leader = kind === 'flagship';
   polygon(g, SOOT, [[-length - 1, -beam], [length - 6, -beam - 2], [length + 2, -2], [length, 5], [length - 9, beam + 2], [-length + 5, beam + 1]]);
   polygon(g, leader ? 0x8a483d : 0x73503c, [[-length + 2, -beam + 1], [length - 6, -beam], [length, -2], [length - 7, beam - 3], [-length + 4, beam - 1]]);
   strokePath(g, [[-length + 5, beam - 1], [length - 7, beam - 2], [length - 1, 1]], 1.7, LIME, 1);
@@ -168,27 +211,58 @@ function drawRaider(g, kind) {
   } else {
     g.beginFill(SOOT).drawRoundRect(-length + 4, -beam, 12, beam + 2, 3).endFill();
     g.beginFill(LAMP).drawRect(-length + 6, -3, 4, 3).drawRect(length - 11, -2, 3, 3).endFill();
-    drawSail(g, -8, leader ? -28 : -21, leader ? 16 : 14, leader ? 24 : 18, leader ? 0xb35e4c : SILK);
     if (leader) {
-      drawSail(g, 11, -19, 12, 16, SILK);
       polygon(g, LACQUER, [[-24, -18], [-13, -17], [-17, -12], [-23, -13]]);
       strokePath(g, [[-24, -20], [-24, -2]], 1.6, BRASS, 1);
     }
   }
 }
 
-function drawSluice(g) {
+function buildRaiderRig(game, anchor, kind) {
+  const boat = BOATS[kind];
+  if (!boat) {
+    game.sprite((g) => g.beginFill(SOOT, .5).drawEllipse(-12, 5, 24, 9).endFill(), anchor);
+    const visual = game.sprite(undefined, anchor);
+    const legs = [-3, 2.3].map((x, i) => {
+      const leg = game.sprite((g) => drawLeg(g, i === 1), visual);
+      leg.x = x;
+      leg.y = 5;
+      return leg;
+    });
+    const armoured = kind === 'shield';
+    game.sprite((g) => drawFootBody(g, armoured), visual);
+    const gear = game.sprite((g) => drawGear(g, armoured), visual);
+    return { visual, legs, gear };
+  }
+  const wake = game.sprite((g) => drawWake(g, boat), anchor);
+  const visual = game.sprite(undefined, anchor);
+  const oars = [-1, 1].map((side) => {
+    const oar = game.sprite((g) => drawOar(g, boat.oar), visual);
+    oar.x = -boat.length * .15;
+    oar.y = side * boat.beam;
+    oar.scaleY = side;
+    return [side, oar];
+  });
+  game.sprite((g) => drawHull(g, kind, boat), visual);
+  const sails = boat.sails.map(([x, y, width, height, color]) => {
+    const sail = game.sprite((g) => drawSail(g, 0, -height, width, height, color), visual);
+    sail.x = x;
+    sail.y = y;
+    return sail;
+  });
+  return { visual, wake, oars, sails };
+}
+
+function drawSluiceLeaf(g, side) {
   const reach = WIDTH.water / 2 + 4;
-  g.beginFill(SOOT).drawRoundRect(-7, -reach, 14, reach * 2, 3).endFill();
-  g.beginFill(0x673f34).drawRect(-4.7, -reach + 2, 9.4, reach * 2 - 4).endFill();
-  for (let y = -reach + 6; y < reach; y += 8) {
-    g.beginFill(0x995a40).drawRect(-4.5, y, 8.8, 3.7).endFill();
+  const start = side < 0 ? 0 : -reach;
+  g.beginFill(SOOT).drawRoundRect(-7, start, 14, reach, 3).endFill();
+  g.beginFill(0x673f34).drawRect(-4.7, start + 2, 9.4, reach - 4).endFill();
+  for (let y = start + 5; y < start + reach - 2; y += 7) {
+    g.beginFill(0x995a40).drawRect(-4.5, y, 8.8, 3.3).endFill();
     g.beginFill(BRASS).drawCircle(2.3, y + 1, 1.2).endFill();
   }
-  strokePath(g, [[-5, -reach + 1], [-5, reach - 1]], 1.6, LAMP, .85);
-  for (const side of [-1, 1]) {
-    strokePath(g, [[-10, side * 6], [-15, side * 12], [-25, side * 14]], 1.6, JADE, .75);
-  }
+  strokePath(g, [[-5, start + 1], [-5, start + reach - 1]], 1.6, LAMP, .85);
 }
 
 function drawGateMarker(g, status) {
@@ -204,40 +278,35 @@ function drawGateMarker(g, status) {
 
 function drawShot(g, type) {
   if (type === 'blast') {
+    strokePath(g, [[-25, 1], [-16, 1], [-6, 0]], 3.4, SOOT, .74);
+    strokePath(g, [[-23, 1], [-14, 1], [-8, 0]], 1.8, SILK, .6);
     polygon(g, SOOT, [[-6, -3], [-2, -6], [5, -5], [7, 0], [3, 6], [-5, 4]]);
     polygon(g, LIME, [[-4, -2], [-1, -5], [4, -4], [5, 0], [-2, 1]]);
     strokePath(g, [[-8, -1], [-15, 2]], 2.3, SILK, .7);
   } else if (type === 'fire') {
+    strokePath(g, [[-30, 3], [-21, -2], [-13, 1]], 3.6, LACQUER, .7);
+    strokePath(g, [[-26, 2], [-19, 0], [-12, 0]], 1.7, LAMP, .83);
     polygon(g, 0xcd5239, [[-14, 1], [-7, -4], [3, -4], [7, 0], [3, 4], [-7, 3]]);
     polygon(g, LAMP, [[-10, 0], [2, -2], [7, 0], [2, 2]]);
     g.beginFill(0xffeac1).drawCircle(3, 0, 1.6).endFill();
   } else {
+    strokePath(g, [[-24, 0], [-12, 0]], 1.5, JADE, .73);
     strokePath(g, [[-10, 0], [7, 0]], 3.4, SOOT, 1);
     strokePath(g, [[-7, 0], [5, 0]], 1.65, SILK, 1);
     polygon(g, JADE, [[3, -3], [9, 0], [3, 3]]);
   }
 }
 
-function drawAccent(g, style) {
-  g.clear();
-  if (style === 'blast') {
-    g.lineStyle(1.2, SOOT, .8).drawCircle(0, 0, 12).lineStyle(0);
-    g.lineStyle(1.4, SILK, .9, { dash: [6, 4] }).drawCircle(0, 0, 10.6).lineStyle(0);
-    g.beginFill(BRASS, .26).drawCircle(0, 0, 7).endFill();
-  } else if (style === 'gate') {
-    for (const y of [-9, 0, 9]) strokePath(g, [[-10, y + 2], [-2, y - 2], [7, y + 1]], 2.3, JADE, .95);
-  } else {
-    const fire = style === 'fire';
-    g.beginFill(fire ? 0xce5138 : JADE, .4).drawCircle(0, 0, 6).endFill();
-    g.beginFill(fire ? LAMP : SILK).drawCircle(0, 0, 2.3).endFill();
-    const rays = [[[-6, -3], [-3, -2]], [[1, -5], [1, -3]], [[3, 0], [9, 0]], [[2, 3], [4, 5]]];
-    for (const ray of rays) strokePath(g, ray, 1.6, fire ? LAMP : JADE, 1);
-  }
-}
+const MECHANISM_ART = {
+  crossbow: (g) => drawCrossbow(g, 0),
+  trebuchet: (g, level) => drawThrowerArm(g, level, 0),
+  fire: drawBlaze,
+  gong: (g) => drawGongDisc(g, 8)
+};
 
 /**
- * The moving part of the view. `show(world, events, seconds)` is called each frame: it makes and moves the sprites for
- * what the world holds, and plays what the events say.
+ * Place stable anchors from simulation state. Legs, oars, machinery and transient reactions
+ * move in the visual layers only.
  */
 export function createView(game, { sound }) {
   // Layers, back to front, so a tower built late is still behind the raiders and the shots.
@@ -246,59 +315,50 @@ export function createView(game, { sound }) {
       bars: game.sprite(), shots: game.sprite(), accents: game.sprite(), words: game.sprite() };
   reach.visible = landing.visible = false;
   let reachKey = '', landingKey = '';
-  const towers = new Map(),
-    raiders = new Map(),
-    shots = new Map(),
-    floats = new Set();
+  const towers = new Map(), raiders = new Map(), shots = new Map();
+  const alive = new Set(), flying = new Set();
+  const effects = createCombatEffects(game, { sound, layers });
+  let previousTime;
   const gates = GATES.map((gate) => {
     const p = WAYS.water.at(gate.at);
-    const leaf = game.sprite(drawSluice, layers.gates);
-    const marker = game.sprite(undefined, layers.gates);
-    for (const node of [leaf, marker]) {
-      node.x = p.x;
-      node.y = p.y;
-      node.rotation = (p.angle * 180) / Math.PI;
-      node.visible = false;
-    }
-    return { leaf, marker, status: '' };
+    const anchor = game.sprite(undefined, layers.gates);
+    anchor.x = p.x;
+    anchor.y = p.y;
+    anchor.rotation = p.angle * 180 / Math.PI;
+    anchor.visible = false;
+    const leaves = [-1, 1].map((side) => {
+      const leaf = game.sprite((g) => drawSluiceLeaf(g, side), anchor);
+      leaf.y = side * (WIDTH.water / 2 + 4);
+      return [side, leaf];
+    });
+    const marker = game.sprite(undefined, anchor);
+    return { anchor, leaves, marker, status: '', pose: 0, target: 0, start: 0, changedAt: -Infinity };
   });
-  const accents = Array.from({ length: 12 }, () => {
-    const sprite = game.sprite(undefined, layers.accents);
-    sprite.visible = false;
-    return { sprite, style: '', until: 0, span: 0 };
-  });
-  let nextAccent = 0;
-
-  function accent(time, style, x, y, rotation = 0, scale = 1) {
-    if (game.reducedMotion) return;
-    const entry = accents[nextAccent];
-    nextAccent = (nextAccent + 1) % accents.length;
-    if (entry.style !== style) {
-      drawAccent(entry.sprite.graphics, style);
-      entry.style = style;
-    }
-    entry.span = style === 'blast' ? .36 : .24;
-    entry.until = time + entry.span;
-    const sprite = entry.sprite;
-    sprite.x = x;
-    sprite.y = y;
-    sprite.rotation = rotation;
-    sprite.scaleX = sprite.scaleY = scale;
-    sprite.alpha = 1;
-    sprite.visible = true;
-  }
 
   function towerSprite(tower) {
     let entry = towers.get(tower.plot);
     if (!entry || entry.kind !== tower.kind) {
       if (entry) game.remove(entry.sprite);
-      entry = { kind: tower.kind, level: -1, sprite: game.sprite(undefined, layers.towers) };
-      entry.sprite.x = tower.x;
-      entry.sprite.y = tower.y;
+      const sprite = game.sprite(undefined, layers.towers);
+      const work = game.sprite(undefined, sprite);
+      sprite.x = tower.x;
+      sprite.y = tower.y;
+      entry = { kind: tower.kind, level: -1, sprite, work, firedAt: -Infinity, nextGong: 0 };
+      if (tower.kind === 'gong') {
+        entry.mallet = game.sprite((g) => {
+          strokePath(g, [[0, 0], [10, -6]], 3.5, SOOT, 1);
+          strokePath(g, [[0, 0], [10, -6]], 1.8, LIME, 1);
+          g.beginFill(LACQUER).drawCircle(10, -6, 3.2).endFill();
+        }, sprite);
+        entry.mallet.x = -15;
+        entry.mallet.y = 4;
+      }
       towers.set(tower.plot, entry);
     }
     if (entry.level !== tower.level) {
-      drawTower(entry.sprite.graphics, tower.kind, tower.level);
+      drawTowerBase(entry.sprite.graphics, tower.kind, tower.level, true);
+      entry.work.graphics.clear();
+      MECHANISM_ART[tower.kind](entry.work.graphics, tower.level);
       entry.level = tower.level;
     }
     return entry;
@@ -307,7 +367,8 @@ export function createView(game, { sound }) {
   function raiderSprite(raider) {
     let entry = raiders.get(raider.id);
     if (!entry) {
-      const body = game.sprite((g) => drawRaider(g, raider.kind), layers.raiders);
+      const body = game.sprite(undefined, layers.raiders);
+      const rig = buildRaiderRig(game, body, raider.kind);
       const radius = RAIDERS[raider.kind].radius;
       const back = game.rect(0, 0, radius * 2 + 2, 5.2, SOOT, layers.bars);
       const bar = game.rect(0, 0, radius * 2, 2.7, 0xe38163, layers.bars);
@@ -318,22 +379,15 @@ export function createView(game, { sound }) {
         polygon(g, LACQUER, [[-5, 3], [-5, -2], [-1, -5], [0, -8], [5, -3], [5, 2], [2, 5]]);
         polygon(g, LAMP, [[-3, 3], [-2, -1], [1, -4], [3, 2], [1, 4]]);
       }, layers.bars);
-      entry = { body, back, bar, flame, slow, radius, boat: raider.way === 'water' };
+      entry = { body, rig, back, bar, flame, slow, radius, boat: raider.way === 'water',
+        distance: raider.s, drive: 1, hp: raider.max, hitAt: -Infinity, fellAt: null };
       raiders.set(raider.id, entry);
     }
     return entry;
   }
 
-  function float(x, y, words, color) {
-    if (floats.size >= 14) return;
-    const label = game.text(words, { x, y: y - 21, size: 17, color, align: 'center', bold: true, layer: layers.words });
-    floats.add(label);
-    game
-      .tween(label)
-      .to({ y: y - (game.reducedMotion ? 21 : 45), alpha: 0 }, 0.85, 'quadOut')
-      .onFinish(() => {
-        if (floats.delete(label)) game.remove(label);
-      });
+  function removeRaider(entry) {
+    for (const part of [entry.body, entry.back, entry.bar, entry.flame, entry.slow]) game.remove(part);
   }
 
   return {
@@ -401,6 +455,10 @@ export function createView(game, { sound }) {
     },
 
     show(world, events) {
+      const time = world.time, reducedMotion = game.reducedMotion;
+      const dt = previousTime === undefined ? 0 : Math.max(0, time - previousTime);
+      previousTime = time;
+
       // Towers: made when built, drawn again when raised, removed when sold.
       for (const [plot, entry] of towers)
         if (!world.towers[plot]) {
@@ -409,14 +467,50 @@ export function createView(game, { sound }) {
         }
       for (const tower of world.towers) if (tower) towerSprite(tower);
 
-      // Raiders: each follows the rules' place; boats turn with the canal, men do not.
-      const alive = new Set();
+      let hits, fallen, visualEvents = events;
+      for (const event of events) {
+        if (event.type === 'shot') {
+          const entry = towers.get(event.from);
+          if (entry) entry.firedAt = time;
+        } else if (event.type === 'hit') {
+          (hits ??= []).push(event);
+        } else if (event.type === 'kill') {
+          (fallen ??= new Map()).set(event.id, event);
+        }
+      }
+      for (const tower of world.towers) {
+        if (!tower) continue;
+        const entry = towers.get(tower.plot);
+        if (tower.kind === 'gong' && time >= entry.nextGong) {
+          const range = TOWERS.gong.levels[tower.level].range;
+          if (world.raiders.some((raider) => raider.hp > 0 &&
+              (raider.x - tower.x) ** 2 + (raider.y - tower.y) ** 2 <= range ** 2)) {
+            entry.firedAt = time;
+            entry.nextGong = time + 1.65;
+            if (visualEvents === events) visualEvents = events.slice();
+            visualEvents.push({ type: 'gong', x: tower.x, y: tower.y, radius: range });
+          } else {
+            entry.nextGong = time + 0.18;
+          }
+        }
+        poseTower(entry, tower, time, reducedMotion);
+      }
+
+      // Each anchor follows the rules' place while its child rig animates locally.
+      alive.clear();
       for (const raider of world.raiders) {
         alive.add(raider.id);
         const entry = raiderSprite(raider);
         entry.body.x = raider.x;
         entry.body.y = raider.y;
         entry.body.rotation = entry.boat ? (raider.angle * 180) / Math.PI : 0;
+        if (entry.hp > raider.hp && hits?.some((event) => {
+          if (event.id === raider.id) return true;
+          const reach = event.splash + entry.radius;
+          return event.splash && (event.x - raider.x) ** 2 + (event.y - raider.y) ** 2 <= reach ** 2;
+        })) entry.hitAt = time;
+        entry.hp = raider.hp;
+        poseRaider(entry, raider, time, dt, WAYS[raider.way].length, reducedMotion);
         entry.slow.visible = raider.slow > 0;
         entry.slow.x = raider.x;
         entry.slow.y = raider.y;
@@ -429,19 +523,27 @@ export function createView(game, { sound }) {
         entry.back.visible = entry.bar.visible = share < 1 || raider.kind === 'flagship';
         entry.flame.visible = raider.burnLeft > 0;
         if (entry.flame.visible) {
-          const sway = game.reducedMotion ? 0 : Math.sin(world.time * 15 + raider.id);
+          const sway = reducedMotion ? 0 : Math.sin(time * 15 + raider.id);
           entry.flame.x = raider.x + sway * 1.8;
           entry.flame.y = raider.y - 6 - Math.abs(sway) * 2.1;
         }
       }
-      for (const [id, entry] of raiders)
-        if (!alive.has(id)) {
-          for (const part of [entry.body, entry.back, entry.bar, entry.flame, entry.slow]) game.remove(part);
-          raiders.delete(id);
+      for (const [id, entry] of raiders) {
+        if (alive.has(id)) continue;
+        const terminal = fallen?.get(id);
+        if (!reducedMotion && terminal) {
+          entry.body.x = terminal.x;
+          entry.body.y = terminal.y;
+          entry.fellAt = time;
+          entry.back.visible = entry.bar.visible = entry.flame.visible = entry.slow.visible = false;
         }
+        if (!reducedMotion && entry.fellAt !== null && poseFall(entry, time)) continue;
+        removeRaider(entry);
+        raiders.delete(id);
+      }
 
-      // Shots: an arrow is a short stroke, a stone flies in an arc, a fire arrow is a spark.
-      const flying = new Set();
+      // Projectile bodies and trails share the tangent of the same flight.
+      flying.clear();
       for (const shot of world.shots) {
         flying.add(shot.id);
         let sprite = shots.get(shot.id);
@@ -449,10 +551,7 @@ export function createView(game, { sound }) {
           sprite = game.sprite((g) => drawShot(g, shot.type), layers.shots);
           shots.set(shot.id, sprite);
         }
-        const k = Math.min(1, shot.t / shot.flight);
-        sprite.x = shot.x0 + (shot.x - shot.x0) * k;
-        sprite.y = shot.y0 + (shot.y - shot.y0) * k - (shot.type === 'blast' ? Math.sin(k * Math.PI) * 60 : 0);
-        sprite.rotation = (Math.atan2(shot.y - shot.y0, shot.x - shot.x0) * 180) / Math.PI;
+        poseShot(sprite, shot, reducedMotion);
       }
       for (const [id, sprite] of shots)
         if (!flying.has(id)) {
@@ -465,72 +564,31 @@ export function createView(game, { sound }) {
         const status = gate.shutLeft > 0 ? 'closed' : gate.cooldownLeft > 0 ? 'cooling' : 'ready';
         if (status !== entry.status) {
           entry.status = status;
-          entry.leaf.visible = status === 'closed';
           drawGateMarker(entry.marker.graphics, status);
-          entry.marker.visible = true;
+          entry.anchor.visible = true;
         }
+        poseGate(entry, status === 'closed', time, reducedMotion);
       });
-      for (const entry of accents) if (entry.sprite.visible) {
-        const fraction = (entry.until - world.time) / entry.span;
-        entry.sprite.visible = !game.reducedMotion && fraction > 0;
-        if (entry.sprite.visible) entry.sprite.alpha = Math.sqrt(Math.min(1, fraction));
-      }
-
-      // What happened: sounds, bursts, floating numbers and a shake for what reached the wall.
-      let shotSounds = 0, bursts = 0;
-      for (const event of events) {
-        if (event.type === 'shot') {
-          if (shotSounds++ < 2) sound('shot', event.tower);
-          const tower = world.towers[event.from];
-          if (tower) {
-            const angle = tower.angle;
-            accent(world.time, event.tower === 'fire' ? 'fire' : 'pierce',
-              tower.x + Math.cos(angle) * 13, tower.y + Math.sin(angle) * 10 - 5, angle * 180 / Math.PI, .85);
-          }
-        } else if (event.type === 'hit') {
-          const style = TOWERS[event.tower].kind;
-          accent(world.time, style, event.x, event.y, 0, event.splash ? Math.min(event.splash, 46) / 12 : 1);
-          if (event.splash) {
-            if (!game.reducedMotion && bursts++ < 4) game.burst(event.x, event.y, { color: LIME, count: 7, speed: 76, life: .3, size: 2.1 });
-            sound('crash');
-          }
-        } else if (event.type === 'kill') {
-          if (!game.reducedMotion && bursts++ < 4) {
-            game.burst(event.x, event.y, { color: RAIDERS[event.kind].way === 'water' ? JADE : BRASS, count: event.kind === 'flagship' ? 23 : 7, speed: 91, life: .41, size: 2 });
-          }
-          float(event.x, event.y, `+${event.bounty}`, LAMP);
-          sound(event.kind === 'flagship' || event.kind === 'junk' ? 'sink' : 'down');
-        } else if (event.type === 'leak') {
-          if (!game.reducedMotion) game.shake(3, .17);
-          const water = RAIDERS[event.kind]?.way === 'water';
-          accent(world.time, 'fire', 936, water ? 340 : 446, 0, 2.1);
-          sound('leak');
-        } else if (event.type === 'gate' && event.open) {
-          const leaf = gates[event.gate].leaf;
-          accent(world.time, 'gate', leaf.x, leaf.y, leaf.rotation, 1.25);
-          sound('gate');
-        } else if (event.type === 'ashore') {
-          accent(world.time, 'gate', event.x, event.y);
-        }
-      }
+      effects.show(world, visualEvents);
     },
 
     /** Every sprite of the moving part taken away, for a new game. */
     clear() {
       for (const entry of towers.values()) game.remove(entry.sprite);
-      for (const entry of raiders.values()) for (const part of [entry.body, entry.back, entry.bar, entry.flame, entry.slow]) game.remove(part);
+      for (const entry of raiders.values()) removeRaider(entry);
       for (const sprite of shots.values()) game.remove(sprite);
-      for (const label of floats) game.remove(label);
       towers.clear();
       raiders.clear();
       shots.clear();
-      floats.clear();
+      previousTime = undefined;
       reach.visible = landing.visible = false;
       for (const entry of gates) {
-        entry.leaf.visible = entry.marker.visible = false;
+        entry.anchor.visible = false;
         entry.status = '';
+        entry.pose = entry.target = entry.start = 0;
+        entry.changedAt = -Infinity;
       }
-      for (const entry of accents) entry.sprite.visible = false;
+      effects.clear();
     }
   };
 }

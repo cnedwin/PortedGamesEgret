@@ -2,7 +2,7 @@
 
 ## 简介 · Introduction
 
-漕河守闸是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的塔防 Demo。北宋汴河上，水寇的快艇、楼船和旗舰顺流而下，轻步匪和刀盾兵沿纤道逼近。在河岸的十二个建造位建弩楼、砲车、火箭台和铜锣哨，适时关闸拦船，守住城门十二波。标题页使用为本项目生成的雨夜汴河插画。战场底图由 Canvas 绘制，塔、敌人、水闸和战斗特效由白鹭实时绘制，配乐和音效由引擎合成。
+漕河守闸是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的塔防 Demo。北宋汴河上，水寇的快艇、楼船和旗舰顺流而下，轻步匪和刀盾兵沿纤道逼近。在河岸的十二个建造位建弩楼、砲车、火箭台和铜锣哨，适时关闸拦船，守住城门十二波。标题页使用为本项目生成的雨夜汴河插画。战场底图由 Canvas 绘制，白鹭实时绘制塔、敌人、水闸和战斗特效，并混合本作原创的配乐与音效。
 
 Canal Watch is a game demo made on its own with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the new
 Egret engine: a tower defence. On the Bian canal of the Northern Song, raiders' skiffs, junks and a flagship come
@@ -10,7 +10,7 @@ down the water while men on foot and shield-bearers come along the towpath. Buil
 arrows and gong posts on twelve plots along the banks, shut a sluice gate to hold the boats for a few seconds when it
 counts, and keep the city gate for twelve waves. The title illustration of the Bian Canal in the rain was generated
 for this game. Canvas paints the battlefield backdrop. Egret renders towers, enemies, gates and combat effects
-in real time and synthesizes the soundtrack and sound effects.
+in real time and mixes the original score with the synthesized effects.
 
 [在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/CanalWatch/)
 
@@ -66,13 +66,12 @@ if it sank now. The report tracks ships held at each gate and crews ashore, stop
 | `play`（`@egret/engine/play`） | 一次调用建好画布、帧循环和地图框里的透明舞台 · one call makes the canvas, the loop and the clear stage inside the map's box | `src/main.mjs` |
 | `game.sprite` + Graphics | 四种塔（每级多一点红）、五种敌人、箭石火、闸门、射程圈，全用代码画 · the towers (a red pip a level), the raiders, arrows, stones and fire, the gates and the reach rings, all drawn in code | `src/view.mjs` |
 | `game.rect`、`game.circle`、图层精灵 · layer sprites | 血条、火苗；塔、敌人、箭石分层，后建的塔也在敌人后面 · health bars and flames; towers, raiders and shots in layers | `src/view.mjs` |
-| `game.burst`、`game.shake`、`game.flash` | 石头落地、敌人倒下、楼船沉没的碎片；有敌人进城时一抖一闪（减弱动画时不抖、闪得淡） · bursts for stones, falls and sinkings; a shake and a flash when a raider gets in | `src/view.mjs` |
+| `game.burst`、`game.shake` | 投石尘浪和落水、沉船碎片、失守反馈。减弱动画时保留静态命中标记 · debris, water impacts, and a breach cue. Reduced motion keeps static hit markers | `src/combat-fx.mjs` |
 | `game.text` + `game.tween` | 击退时飘起的「+银子」· the floating silver on a kill | `src/view.mjs` |
 | `game.toast` | 「第 n 波来了」「旗舰来了」· the wave notices | `src/main.mjs` |
 | `game.timeScale`、`pause`、`resume`、`after` | ×1/×2/×3 加速、菜单暂停、结算前的停顿 · the speeds, the pause behind the menu, the beat before the end | `src/main.mjs` |
 | `game.reducedMotion` | 设置里的「减弱动画」，没设时跟随系统 · the reduced-motion setting, following the system unless set | `src/main.mjs` |
-| `game.sfx.define` / `play` | 弩、砲、火、石头砸地、沉船、进城、闸门、建塔、开波的合成音效 · synthesized effects for every tower and event | `src/sound.mjs` |
-| `game.music.play` + `intensity` | 「紧张」配乐，越往后的波声部越多 · the 'tense' music, more parts as the waves go on | `src/sound.mjs` |
+| `createBrowserAudio` + `game.sfx` | 后台合成琴笛、战鼓和器械声，交给白鹭混音。配乐随战况切换，两类音量各自控制 · original plucked strings, flute, drums and foley synthesized off-thread, with separate music and effects buses in Egret | `src/sound.mjs` |
 | `createTextTable` + `pickLanguage`（`@egret/engine/kit`） | 中英文文字表、`missing()` 检查两种语言齐全、按浏览器语言开局 · the word table, `missing()` to check both languages, the browser's language at the start | `src/i18n.mjs` |
 | `browserLanguages`、`prefersReducedMotion`（`@egret/engine/web/kit`） | 开局的语言；关掉「减弱动画」时回到系统设置 · the first language; the system's motion setting when the game's is turned off | `src/main.mjs` |
 | `createSaveStore` + `browserSaveStorage` | 设置和两种难度的最好星数；坏档另存后重新开始，存储拒绝写入时提示 · settings and best stars; a broken save set aside, a refusing storage told | `src/saves.mjs`, `src/main.mjs` |

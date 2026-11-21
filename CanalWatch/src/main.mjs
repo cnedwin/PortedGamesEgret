@@ -443,7 +443,7 @@ function shutGate(index) {
   if (result.ok) {
     sound('gate');
     showFeedback('gateBoatHint', { gate });
-    view.show(world, []);
+    view.show(world, [{ type: 'gate', gate: index, open: false }]);
   } else if (result.why === 'cooling') {
     const { shutLeft, cooldownLeft } = world.gates[index];
     showFeedback(shutLeft > 0 ? 'gateShut' : 'gateCooling', { gate, s: Math.ceil(shutLeft || cooldownLeft) });
@@ -466,8 +466,9 @@ function say(words) {
 
 function announceWave(wave) {
   feedback = null;
-  sound('wave');
-  const words = wavesOf(app.world)[wave].some((group) => group.kind === 'flagship') ? t('flagship') : t('waveStarts', { n: wave + 1 });
+  const flagship = wavesOf(app.world)[wave].some((group) => group.kind === 'flagship');
+  sound(flagship ? 'flagship' : 'wave');
+  const words = flagship ? t('flagship') : t('waveStarts', { n: wave + 1 });
   say(words);
   game.toast(words, { seconds: 2.2, color: 0xf1e7cf });
 }
@@ -487,7 +488,13 @@ function frame(seconds) {
     else if (event.type === 'gate' && event.open) say(t('gateOpenSay', { gate: t(event.gate ? 'gateLower' : 'gateUpper') }));
     else if (event.type === 'won' || event.type === 'lost') finish(world);
   }
-  if (world.state === 'wave' || world.state === 'break') sound.music((world.wave + 1) / wavesOf(world).length);
+  if (app.screen === 'play') {
+    const total = wavesOf(world).length;
+    const flagship = world.wave === total - 1 &&
+      (world.queue.some(raider => raider.kind === 'flagship') || world.raiders.some(raider => raider.kind === 'flagship'));
+    const preparing = world.state === 'ready' || (world.state === 'break' && !world.raiders.length);
+    sound.music((world.wave + 1) / total, flagship ? 'boss' : preparing ? 'ready' : 'battle');
+  }
   sinceBar += seconds / Math.max(1, app.speed);
   if (sinceBar > 0.1 || events.length) {
     sinceBar = 0;
@@ -604,6 +611,7 @@ function openMenu(focusKey) {
   if (app.screen !== 'play') return;
   closePicker();
   game.pause();
+  sound.pauseMusic();
   app.screen = 'menu';
   landingPreview.clear();
   syncLandingButton(app.world);
@@ -641,8 +649,8 @@ function finish(world) {
   const kept = intercept !== null || save.update((data) => void (best = recordGame(data, app.difficulty, stars)));
   if (!kept) notice = 'saveRefused';
   app.result = { won: world.state === 'won', stars, best, lives: world.lives, wave: world.wave + 1, waves: wavesOf(world).length, kills: world.kills, kept, intercept };
-  game.sfx.play(world.state === 'won' ? 'win' : 'lose');
   sound.stopMusic();
+  sound(world.state === 'won' ? 'win' : 'lose');
   app.screen = 'end';
   landingPreview.clear();
   syncLandingButton(world);
