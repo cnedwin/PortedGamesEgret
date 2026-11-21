@@ -74,6 +74,12 @@ An independently developed 2D physics puzzle demo built with Egret Rebuild. The 
 
 An independently developed 3D off-road demo built with Egret Rebuild. You drive the lead truck of a caravan of three, loaded with bricks of tea, from the tea hills of Pu'er in the south of Yunnan through a ford, past the woods where bandits wait, over a rope bridge across the gorge and through a snowy pass, to bring seventy-two bundles of tea to the plateau. Slow down and bandits grab tea off the trucks, and knocking one down wins it back; wolves at the pass hang on and tear at the tarps until the horn scares them off. At each of three stations the crew can make camp, and the camp is kept. The land streams in along the road, the trucks are vehicle physics with suspension, bandits and wolves chase across navigation meshes, a bandit who is hit falls as a ragdoll, the tarps and prayer flags are cloth, and the engines, water and bells are positional sound; a journey takes about ten minutes, more with camps, with lines along the way and a closing film. Keyboard, mouse, gamepad and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/TeaHorseRoad/) · [Guide and development](TeaHorseRoad/README.md)
 
+## Canal Watch · 漕河守闸
+
+一款使用新白鹭引擎独立开发的 2D 塔防游戏 Demo。北宋汴河上，水寇的快艇、楼船和旗舰顺流而下，轻步匪和刀盾兵沿纤道摸向城门。在河岸十二个建造位上建弩楼、砲车、火箭台和铜锣哨，每种升两级；上下两道水闸能把船拦在闸前几秒，楼船沉了船上的人还会跳上岸。十二波，寻常与险峻两种难度，按剩下的命给一到三星。画面是绢本水墨的样子，地图、塔和船都用代码画，音效和配乐由引擎合成，没有一个图片或声音文件。中英文，键盘、鼠标和触屏都能玩。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/CanalWatch/) · [说明与开发](CanalWatch/README.md)
+
+An independently developed 2D tower defence demo built with Egret Rebuild. On the Bian canal of the Northern Song, raiders' skiffs, junks and a flagship come down the water while men on foot and shield-bearers come along the towpath. Build crossbow towers, trebuchets, fire arrows and gong posts on twelve plots along the banks, each raised twice; two sluice gates hold the boats for a few seconds, and a sunk junk's crew jump ashore and walk on. Twelve waves on normal or hard, one to three stars by the lives kept. It is drawn as ink on silk: the map, the towers and the boats are drawn in code and the effects and music are synthesized by the engine, with no picture or sound file. Chinese and English, keyboard, mouse and touch. [Play online](https://cnedwin.github.io/PortedGamesEgret/CanalWatch/) · [Guide and development](CanalWatch/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)

@@ -2,6 +2,7 @@
 export const MATRIX = {
  "commit": "b5628eb9997b67cf6163a388f5aa06f321f3833a",
  "games": [
+  "CanalWatch",
   "FivePhases",
   "FPS",
   "jelly-pandas",
@@ -453,6 +454,10 @@ export const MATRIX = {
    "label": "@egret/engine/kit",
    "games": [
     {
+     "game": "CanalWatch",
+     "file": "CanalWatch/src/i18n.mjs"
+    },
+    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/audio/sound.mjs"
     },
@@ -471,6 +476,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/web/kit",
    "games": [
+    {
+     "game": "CanalWatch",
+     "file": "CanalWatch/src/main.mjs"
+    },
     {
      "game": "FPS",
      "file": "FPS/src/main.mjs"
@@ -520,7 +529,12 @@ export const MATRIX = {
    "id": "@egret/engine/play",
    "kind": "entry",
    "label": "@egret/engine/play",
-   "games": []
+   "games": [
+    {
+     "game": "CanalWatch",
+     "file": "CanalWatch/src/sound.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/audio",
