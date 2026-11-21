@@ -7,6 +7,7 @@
 import { World3DError, requireCount3D, requireFinite3D, requirePositive3D } from './core3D.js';
 import { Attribute3D, Geometry3D } from './Geometry3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most points and colliders cloth and ropes hold. */
 export const CLOTH3D_LIMITS = Object.freeze({ maxPoints: 16384, maxColliders: 32 });
 /** Points and links shared by ropes and cloth. */
 class Strands3D {
@@ -89,7 +90,9 @@ class Strands3D {
     }
     /**
      * Hold a point where it is now. With a body, the point keeps its place on
-     * that body and follows it as the body moves and turns.
+     * that body and follows it as the body moves and turns. The pin is one-way:
+     * the cloth or rope follows the body and never pulls on it, so a tarp on a
+     * truck does not slow the truck.
      */
     pinPoint(index, body) {
         this.check(index);
@@ -489,9 +492,11 @@ export class Cloth3D extends Strands3D {
         mesh.geometry.invalidateBounds();
     }
 }
+/** Makes a rope of points that hangs and swings. */
 export function createRope3D(options) {
     return new Rope3D(options);
 }
+/** Makes a sheet of cloth that hangs, folds and blows. */
 export function createCloth3D(options) {
     return new Cloth3D(options);
 }

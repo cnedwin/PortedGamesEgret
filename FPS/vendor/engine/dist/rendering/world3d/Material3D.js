@@ -3,6 +3,7 @@
 // values are linear RGB; factories accept 0xRRGGBB sRGB hex for convenience.
 import { Resource3D, World3DError } from './core3D.js';
 import { colorFromHex } from './math3D.js';
+/** Makes a material drawn by shaders of your own. */
 export function createCustomShader3D(input) {
     if (!input || typeof input.key !== 'string' || input.key.length === 0 || /[\s|/]/.test(input.key))
         throw new World3DError('WORLD3D_INPUT_INVALID', 'shader key');
@@ -27,6 +28,7 @@ export function createCustomShader3D(input) {
         uniforms
     });
 }
+/** Writes a color into a float array as red, green and blue. */
 export function setColor3D(out, input) {
     if (typeof input === 'number')
         colorFromHex(out, input);

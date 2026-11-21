@@ -5,11 +5,13 @@
 // An interrupted fade keeps the weights it had reached, so poses never pop.
 import { AnimationMixer3D } from './Animation3D.js';
 import { World3DError, requireFinite3D } from './core3D.js';
+/** The most states and transitions a state machine has, and how many transitions it takes in one update. */
 export const STATE_MACHINE3D_LIMITS = Object.freeze({
     maxStates: 256,
     maxTransitions: 2048,
     maxTransitionsPerUpdate: 8
 });
+/** Plays clips by state, moving between states when their conditions are met. */
 export class AnimationStateMachine3D {
     mixer;
     /** Called after every state change, including forced ones. */
@@ -271,6 +273,7 @@ export class AnimationStateMachine3D {
         this.#triggers.clear();
     }
 }
+/** Makes an animation state machine that drives a mixer. */
 export function createAnimationStateMachine3D(mixer) {
     return new AnimationStateMachine3D(mixer);
 }

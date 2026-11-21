@@ -1,8 +1,8 @@
 import { decodeSRGBByte } from './srgbBytes.js';
 /** The bytes of one group's uniform: 36 vectors of four floats. */
 export const EFFECT_UNIFORM_BYTES = 576;
-function fail() {
-    throw new RangeError('Shared effect limits or geometry are unsupported');
+function fail(detail) {
+    throw new RangeError('Shared effect limits or geometry are unsupported' + (detail === undefined ? '' : ': ' + detail));
 }
 function inverse(m, rect, ratio) {
     const det = m.a * m.d - m.b * m.c;
@@ -31,6 +31,8 @@ function inverse(m, rect, ratio) {
 export function prepareEffects2D(frame, ratio, enabled) {
     const groups = [], stack = [];
     let depth = 0;
+    // A frame that mixes stored codes holds a glow's colour as its codes; one that mixes light, as linear light.
+    const channel = frame.colorRecipe === 'egret.srgb-pma/1' ? (code) => (code & 255) / 255 : decodeSRGBByte;
     for (const command of frame.commands) {
         if (command.kind !== 'barrier') {
             if (stack.length && frame.materials[command.materialIndex]?.blend === 'add-preserve')
@@ -38,8 +40,14 @@ export function prepareEffects2D(frame, ratio, enabled) {
             continue;
         }
         if (command.reason === 'effect-enter') {
-            if (!enabled || !command.effect || groups.length >= 8 || stack.length >= 4)
+            if (!enabled)
+                fail('effects are off: make the Host with `effects: true`');
+            if (!command.effect)
                 fail();
+            if (groups.length >= 8)
+                fail('more than 8 effect groups in one frame');
+            if (stack.length >= 4)
+                fail('effect groups nested more than 4 deep');
             const e = command.effect, radius = Math.min(16, Math.ceil(e.blurRadius * ratio));
             if (!Number.isInteger(radius) || radius < 0 || radius > 16 || e.clips.length > 8)
                 fail();
@@ -47,8 +55,8 @@ export function prepareEffects2D(frame, ratio, enabled) {
             uniform[0] = radius;
             uniform[2] = e.clips.length;
             let spread = 0;
-            // Vector 28: whether there is a colour matrix, the kind of spread, its radius and its strength; 29: its colour in linear
-            // light and its alpha; 30: its offset in backing pixels, inner and knockout; 31-35: the matrix, by rows, and its offsets.
+            // Vector 28: whether there is a colour matrix, the kind of spread, its radius and its strength; 29: its colour as the
+            // target holds it (linear light, or the code in an sRGB blend space) and its alpha; 30: its offset in backing pixels, inner and knockout; 31-35: the matrix, by rows, and its offsets.
             if (e.colorMatrix !== undefined) {
                 if (e.colorMatrix.length !== 20 || e.colorMatrix.some(v => !Number.isFinite(v)))
                     fail();
@@ -70,9 +78,9 @@ export function prepareEffects2D(frame, ratio, enabled) {
                 uniform[113] = g.kind === 'outline' ? 2 : 1;
                 uniform[114] = spread;
                 uniform[115] = g.strength;
-                uniform[116] = decodeSRGBByte(g.color >> 16);
-                uniform[117] = decodeSRGBByte(g.color >> 8);
-                uniform[118] = decodeSRGBByte(g.color);
+                uniform[116] = channel(g.color >> 16);
+                uniform[117] = channel(g.color >> 8);
+                uniform[118] = channel(g.color);
                 uniform[119] = g.alpha;
                 uniform[120] = Math.round(g.offsetX * ratio);
                 uniform[121] = Math.round(g.offsetY * ratio);

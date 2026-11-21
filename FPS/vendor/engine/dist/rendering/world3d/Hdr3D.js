@@ -5,6 +5,7 @@
 import { World3DError, requireCount3D } from './core3D.js';
 import { linearToSrgb, srgbToLinear } from './math3D.js';
 import { CubeTexture3D } from './Texture3D.js';
+/** The largest HDR image read. */
 export const HDR3D_LIMITS = Object.freeze({ maxEdge: 16384, maxPixels: 67108864 });
 function fail(detail) {
     throw new World3DError('WORLD3D_INPUT_INVALID', 'hdr: ' + detail);

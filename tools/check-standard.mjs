@@ -152,7 +152,11 @@ export function checkGame(folder, { root = ROOT, fix = false } = {}) {
     const pasted = /<script type="importmap">([\s\S]*?)<\/script>/.exec(page)?.[1];
     let same = false;
     try {
-      same = JSON.stringify(JSON.parse(pasted)) === JSON.stringify(JSON.parse(map));
+      // Every entry of the engine copy is in the page, as written; the page may add its own (its modules with a
+      // cache tag, say).
+      const want = JSON.parse(map).imports,
+        have = JSON.parse(pasted).imports;
+      same = Object.entries(want).every(([name, file]) => have[name] === file);
     } catch {
       same = false;
     }

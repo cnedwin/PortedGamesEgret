@@ -43,7 +43,8 @@ const KEYS = [
     'outputAlpha',
     'recovery',
     'enableEffects',
-    ...PAGE_KEYS
+    ...PAGE_KEYS,
+    'blendSpace'
 ];
 function object(value) {
     return typeof value === 'object' && value !== null;
@@ -116,9 +117,12 @@ export function admitSharedWebGPUOptions(input) {
             throw new RangeError(key);
         pages[key] = value;
     }
+    const blendSpace = captured.blendSpace === undefined ? 'linear' : captured.blendSpace;
+    if (blendSpace !== 'linear' && blendSpace !== 'srgb')
+        throw new TypeError('blendSpace');
     return {
         surface: captured.canvas,
-        configuration: Object.freeze({ ...configuration, enableEffects, outputAlpha, recovery, ...pages }),
+        configuration: Object.freeze({ ...configuration, enableEffects, outputAlpha, recovery, ...pages, blendSpace }),
         borrowed: kind === 'borrow' ? borrowed : undefined,
         callback: captured.onDiagnostic
     };

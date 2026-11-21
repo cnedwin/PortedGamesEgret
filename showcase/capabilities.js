@@ -467,6 +467,10 @@ export const MATRIX = {
    "label": "@egret/engine/web/kit",
    "games": [
     {
+     "game": "FPS",
+     "file": "FPS/src/main.mjs"
+    },
+    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
     },

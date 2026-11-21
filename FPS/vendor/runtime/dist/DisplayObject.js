@@ -5,10 +5,10 @@ import { registerDisplayHitNode, readDisplayHitState, writeDisplayHitArea, write
 import { queryDisplayBounds } from './displayBounds.js';
 import { queryDisplayPoint } from './displayCoordinates.js';
 import { EgretError } from './EgretError.js';
-import { assertVisualMutable, copyRect, finite, invalidDisplayValue, unit, registerVisual, visualOf, readAnchorOffset, writeAnchorOffset, recordVisualChange, VISUAL_TRANSFORM, VISUAL_APPEARANCE } from './displayVisualState.js';
+import { assertVisualMutable, copyRect, alphaOf, finite, invalidDisplayValue, registerVisual, visualOf, readAnchorOffset, writeAnchorOffset, recordVisualChange, VISUAL_TRANSFORM, VISUAL_APPEARANCE } from './displayVisualState.js';
 import { EventDispatcher } from './EventDispatcher.js';
 import { ASSERT_ATTACHABLE, ASSERT_BINDABLE, OWNERSHIP_CHILDREN } from './ownership.js';
-import { assertLive, isTerminated, parentOf, registerNode, terminateNode } from './displayTreeState.js';
+import { assertLive, isDisplayNode, isTerminated, parentOf, registerNode, terminateNode } from './displayTreeState.js';
 /** Egret's names of blend modes, and the blends of the shared material they are. */
 const BLENDS = Object.freeze({
     normal: 'normal',
@@ -184,10 +184,11 @@ export class DisplayObject extends EventDispatcher {
     }
     set alpha(value) {
         assertVisualMutable(this);
-        if (!unit(value))
+        const alpha = alphaOf(value);
+        if (alpha === undefined)
             throw invalidDisplayValue('alpha', value);
-        const state = visualOf(this), changed = !sameVisualValue(state.alpha, value);
-        state.alpha = value;
+        const state = visualOf(this), changed = !sameVisualValue(state.alpha, alpha);
+        state.alpha = alpha;
         if (changed)
             recordVisualChange(this, VISUAL_APPEARANCE);
     }
@@ -249,7 +250,8 @@ export class DisplayObject extends EventDispatcher {
             addressV: base?.addressV,
             regionIsolation: base?.regionIsolation,
             minFilter: base?.minFilter,
-            magFilter: base?.magFilter
+            magFilter: base?.magFilter,
+            mipmapFilter: base?.mipmapFilter
         });
         state.sharedMaterial = next;
         recordVisualChange(this, VISUAL_APPEARANCE);
@@ -260,6 +262,31 @@ export class DisplayObject extends EventDispatcher {
     }
     set renderEffect(value) {
         setRenderEffect(this, value);
+    }
+    /**
+     * Egret's `mask`. A display object masks this one with its Graphics, as `renderEffect = { shapeMask }`, and is not
+     * drawn while it masks; a rectangle in this object's own units clips it, as `clipRect`. `undefined` or `null` takes
+     * either away. Reading it gives the shape mask, else the clip rectangle. Setting a shape mask keeps the effect's other
+     * parts and replaces an image mask.
+     */
+    get mask() {
+        return visualOf(this).renderEffect?.shapeMask ?? visualOf(this).clipRect;
+    }
+    set mask(value) {
+        assertVisualMutable(this);
+        const effect = visualOf(this).renderEffect;
+        const { alphaMask: _image, maskRect: _area, shapeMask: _shape, ...rest } = effect ?? {};
+        const others = effect === undefined ? undefined : rest;
+        if (value !== null && value !== undefined && isDisplayNode(value)) {
+            setRenderEffect(this, { ...others, shapeMask: value });
+            this.clipRect = undefined;
+            return;
+        }
+        if (effect?.shapeMask !== undefined) {
+            const kept = others !== undefined && Object.entries(others).some(([key, v]) => key !== 'blurRadius' || v !== 0);
+            setRenderEffect(this, kept ? others : undefined);
+        }
+        this.clipRect = value === null || value === undefined ? undefined : value;
     }
     /** An ordering boundary is metadata, not another display or resource owner. */
     get renderBoundary() {

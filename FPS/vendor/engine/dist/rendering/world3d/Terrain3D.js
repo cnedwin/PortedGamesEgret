@@ -11,6 +11,7 @@ import { mat4Invert, vec3TransformMat4 } from './math3D.js';
 import { Mesh3D } from './Mesh3D.js';
 import { Object3D } from './Object3D.js';
 import { TriangleMeshShape3D } from './PhysicsMesh3D.js';
+/** The largest height field, chunk and number of levels and chunks terrain has, and the most streamed tiles. */
 export const TERRAIN3D_LIMITS = Object.freeze({
     maxSamplesPerSide: 4097,
     maxChunkCells: 254,
@@ -204,6 +205,7 @@ export class HeightField3D {
         return { type: 'mesh', mesh: new TriangleMeshShape3D(positions, indices) };
     }
 }
+/** Makes a grid of heights for terrain and physics. */
 export function createHeightField3D(options) {
     return new HeightField3D(options);
 }
@@ -580,6 +582,7 @@ export class Terrain3D extends Object3D {
         return geometry;
     }
 }
+/** Makes terrain from a height field, drawn in chunks at levels of detail. */
 export function createTerrain3D(field, material, options = {}) {
     return new Terrain3D(field, material, options);
 }
@@ -604,6 +607,7 @@ export function createTerrainMaterial3D(options) {
     });
     return material;
 }
+/** Terrain loaded in tiles around the camera: read heights, and update it as the camera moves. */
 export class TerrainStream3D extends Object3D {
     tileSize;
     viewDistance;
@@ -628,6 +632,18 @@ export class TerrainStream3D extends Object3D {
         if (this.#loadsPerUpdate === 0)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'loadsPerUpdate');
         this.#options = options;
+    }
+    #viewer;
+    /**
+     * How far the viewer of the last `update` is from the nearest point of a tile, in world units: for showing the
+     * things a game scattered on it in more or less detail. 0 inside it; Infinity before the first update.
+     */
+    distanceOf(tile) {
+        const viewer = this.#viewer;
+        if (viewer === undefined)
+            return Infinity;
+        const size = this.tileSize, [x, z] = viewer;
+        return Math.hypot(Math.max(tile.x * size - x, 0, x - (tile.x + 1) * size), Math.max(tile.z * size - z, 0, z - (tile.z + 1) * size));
     }
     get tiles() {
         return [...this.#tiles.values()];
@@ -668,6 +684,7 @@ export class TerrainStream3D extends Object3D {
             throw new World3DError('WORLD3D_BUDGET', 'terrain stream tile range');
         }
         const near = (tx, tz) => Math.hypot(Math.max(tx * size - x, 0, x - (tx + 1) * size), Math.max(tz * size - z, 0, z - (tz + 1) * size));
+        this.#viewer = [x, z];
         this.#updating = true;
         try {
             for (const [key, tile] of this.#tiles)
@@ -737,7 +754,13 @@ export class TerrainStream3D extends Object3D {
                     return;
                 terrain.setPosition((x + 0.5) * this.tileSize, 0, (z + 0.5) * this.tileSize);
                 this.addChild(terrain);
-                const tile = Object.freeze({ x, z, field, terrain });
+                const tile = Object.freeze({
+                    x,
+                    z,
+                    field,
+                    terrain,
+                    center: Object.freeze([(x + 0.5) * this.tileSize, (z + 0.5) * this.tileSize])
+                });
                 this.#tiles.set(key, tile);
                 this.#requests.delete(key);
                 staged = undefined;
@@ -797,6 +820,7 @@ export class TerrainStream3D extends Object3D {
         this.#lastFailure = Object.freeze({ x: location.x, z: location.z, phase, cause });
     }
 }
+/** Makes terrain that loads and unloads tiles around a point. */
 export function createTerrainStream3D(options) {
     return new TerrainStream3D(options);
 }

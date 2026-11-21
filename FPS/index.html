@@ -6,7 +6,7 @@
   <title>断流行动 / Operation Cutoff</title>
   <meta name="description" content="断流行动：基于新白鹭引擎开发的第一人称战术射击 Demo。 / Operation Cutoff, a first-person tactical shooter demo built with Egret Rebuild.">
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' fill='%230c1114'/%3E%3Cpath d='M8 2v4M8 10v4M2 8h4M10 8h4' stroke='%235fe8b0' stroke-width='1.6'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./style.css?v=20261118-art-restored-r2">
+  <link rel="stylesheet" href="./style.css?v=20261121-engine-b5628eb">
   <!-- The engine is a copy inside this folder (see vendor/SOURCE.md), so the game runs from any static host. -->
   <script type="importmap">
     {
@@ -23,30 +23,35 @@
         "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
         "robust-predicates": "./vendor/robust-predicates/index.js",
         "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+        "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+        "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+        "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+        "@egret/engine/input/gamepad": "./vendor/engine/dist/gamepad.js",
         "@egret/engine/webgl2/world3d": "./vendor/engine/dist/web/world3d/index.js",
         "@egret/engine/webgpu/world3d": "./vendor/engine/dist/web/world3d/webgpu.js",
-        "./src/asset-models.mjs": "./src/asset-models.mjs?v=20261118-art-restored-r2",
-        "./src/audio.mjs": "./src/audio.mjs?v=20261118-art-restored-r2",
-        "./src/bot.mjs": "./src/bot.mjs?v=20261118-art-restored-r2",
-        "./src/build.mjs": "./src/build.mjs?v=20261118-art-restored-r2",
-        "./src/data.mjs": "./src/data.mjs?v=20261118-art-restored-r2",
-        "./src/grime.mjs": "./src/grime.mjs?v=20261118-art-restored-r2",
-        "./src/gun.mjs": "./src/gun.mjs?v=20261118-art-restored-r2",
-        "./src/hud.mjs": "./src/hud.mjs?v=20261118-art-restored-r2",
-        "./src/input.mjs": "./src/input.mjs?v=20261118-art-restored-r2",
-        "./src/level.mjs": "./src/level.mjs?v=20261118-art-restored-r2",
-        "./src/main.mjs": "./src/main.mjs?v=20261118-art-restored-r2",
-        "./src/model-shadows.mjs": "./src/model-shadows.mjs?v=20261118-art-restored-r2",
-        "./src/music.mjs": "./src/music.mjs?v=20261118-art-restored-r2",
-        "./src/scene-modules.mjs": "./src/scene-modules.mjs?v=20261118-art-restored-r2",
-        "./src/scenery.mjs": "./src/scenery.mjs?v=20261118-art-restored-r2",
-        "./src/sim.mjs": "./src/sim.mjs?v=20261118-art-restored-r2",
-        "./src/soldier-skin.mjs": "./src/soldier-skin.mjs?v=20261118-art-restored-r2",
-        "./src/soldier.mjs": "./src/soldier.mjs?v=20261118-art-restored-r2",
-        "./src/stats.mjs": "./src/stats.mjs?v=20261118-art-restored-r2",
-        "./src/text.mjs": "./src/text.mjs?v=20261118-art-restored-r2",
-        "./src/textures.mjs": "./src/textures.mjs?v=20261118-art-restored-r2",
-        "./src/view.mjs": "./src/view.mjs?v=20261118-art-restored-r2"
+        "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+        "./src/asset-models.mjs": "./src/asset-models.mjs?v=20261121-engine-b5628eb",
+        "./src/audio.mjs": "./src/audio.mjs?v=20261121-engine-b5628eb",
+        "./src/bot.mjs": "./src/bot.mjs?v=20261121-engine-b5628eb",
+        "./src/build.mjs": "./src/build.mjs?v=20261121-engine-b5628eb",
+        "./src/data.mjs": "./src/data.mjs?v=20261121-engine-b5628eb",
+        "./src/grime.mjs": "./src/grime.mjs?v=20261121-engine-b5628eb",
+        "./src/gun.mjs": "./src/gun.mjs?v=20261121-engine-b5628eb",
+        "./src/hud.mjs": "./src/hud.mjs?v=20261121-engine-b5628eb",
+        "./src/input.mjs": "./src/input.mjs?v=20261121-engine-b5628eb",
+        "./src/level.mjs": "./src/level.mjs?v=20261121-engine-b5628eb",
+        "./src/main.mjs": "./src/main.mjs?v=20261121-engine-b5628eb",
+        "./src/model-shadows.mjs": "./src/model-shadows.mjs?v=20261121-engine-b5628eb",
+        "./src/music.mjs": "./src/music.mjs?v=20261121-engine-b5628eb",
+        "./src/scene-modules.mjs": "./src/scene-modules.mjs?v=20261121-engine-b5628eb",
+        "./src/scenery.mjs": "./src/scenery.mjs?v=20261121-engine-b5628eb",
+        "./src/sim.mjs": "./src/sim.mjs?v=20261121-engine-b5628eb",
+        "./src/soldier-skin.mjs": "./src/soldier-skin.mjs?v=20261121-engine-b5628eb",
+        "./src/soldier.mjs": "./src/soldier.mjs?v=20261121-engine-b5628eb",
+        "./src/stats.mjs": "./src/stats.mjs?v=20261121-engine-b5628eb",
+        "./src/text.mjs": "./src/text.mjs?v=20261121-engine-b5628eb",
+        "./src/textures.mjs": "./src/textures.mjs?v=20261121-engine-b5628eb",
+        "./src/view.mjs": "./src/view.mjs?v=20261121-engine-b5628eb"
       }
     }
   </script>
@@ -58,6 +63,6 @@
     <div id="boot"><div class="boot-mark">断流行动</div><div class="boot-sub">OPERATION CUTOFF</div><div class="boot-bar"><i></i></div><div id="boot-status" role="status">正在准备场景…</div></div>
     <div id="error" role="alert" hidden></div>
   </main>
-  <script type="module" src="./src/main.mjs?v=20261118-art-restored-r2"></script>
+  <script type="module" src="./src/main.mjs?v=20261121-engine-b5628eb"></script>
 </body>
 </html>
