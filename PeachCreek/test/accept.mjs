@@ -19,6 +19,16 @@ const server = await serve(),
   checks = [],
   check = (ok, words) => checks.push([Boolean(ok), words]);
 const state = (page, fn) => page.evaluate(fn);
+async function pickSlot(page, number) {
+  await page.click('#startButton');
+  await page.locator(`#saveSlotList [data-slot="${number}"]`).click();
+  await until(page, () => window.peach.screen === 'play');
+}
+async function returnToTitle(page) {
+  await page.click('#settingsButton');
+  await Promise.all([page.waitForNavigation(), page.click('#returnToTitle')]);
+  await until(page, () => window.peach?.ready && window.peach.screen === 'title');
+}
 let page;
 try {
   page = await openPage(browser, `${server.url}${path}/?seed=1&lang=zh&hour=10`, { width: 1280, height: 720 });
@@ -37,7 +47,7 @@ try {
   check(settings.written || settings.passed, `settings look as their baseline (${(settings.share * 100).toFixed(2)}% differs)`);
   await page.keyboard.press('Space');
   await page.waitForTimeout(200);
-  check((await state(page, () => JSON.parse(localStorage.getItem('peach-creek')).data.settings.sound)) === false, 'Space on the focused switch turns the sound off and saves it');
+  check((await state(page, () => JSON.parse(localStorage.getItem('peach-creek-preferences')).data.sound)) === false, 'Space on the focused switch turns the sound off and saves the shared preference');
   await page.keyboard.press('Escape');
   check(await state(page, () => document.querySelector('#settings').hidden && document.activeElement?.id === 'titleSettings'), 'Escape closes the settings and gives the focus back');
 
@@ -50,6 +60,13 @@ try {
 
   // Take office with Enter.
   await page.focus('#startButton');
+  await page.keyboard.press('Enter');
+  check(await state(page, () => document.querySelectorAll('#saveSlotList .empty').length === 3 &&
+    document.activeElement?.dataset.slot === '1'), 'the title opens three empty save slots and focuses slot one');
+  await page.keyboard.press('Escape');
+  check(await state(page, () => document.querySelector('#saveSlots').hidden &&
+    document.activeElement?.id === 'startButton'), 'Escape closes the save picker and restores focus');
+  await page.keyboard.press('Enter');
   await page.keyboard.press('Enter');
   await until(page, () => window.peach.screen === 'play');
   check(await state(page, () => document.querySelector('#title').hidden && document.querySelectorAll('#hits button').length > 20), 'Enter takes office and the map has its buttons');
@@ -206,17 +223,41 @@ try {
   await page.reload();
   await until(page, () => window.peach?.ready);
   check(/Back to Peach Creek|回到桃溪/.test(await state(page, () => document.querySelector('#startButton').textContent)), 'after a reload the title offers to go back');
-  await page.click('#startButton');
+  await pickSlot(page, 1);
   await page.waitForTimeout(300);
   check((await state(page, () => JSON.stringify(window.peach.app.state.plots))) === before, 'the county is the one left behind');
   check(await state(page, () => window.peach.app.state.defence.troops[1] === 1), 'the garrison layout survives reload');
   check(await state(page, () => window.peach.app.state.districts[6].open && window.peach.app.state.districts[10].open), 'the player-selected expansion survives reload');
 
+  await returnToTitle(page);
+  await pickSlot(page, 2);
+  check(await state(page, () => window.peach.app.slot === 1 && window.peach.app.state.rank === 0 &&
+    !window.peach.app.state.districts[6].open), 'slot two starts a separate county');
+  await page.click('#frontiers');
+  await page.locator('.frontierList').getByRole('button', { name: /Ward 9 ·|第9坊/ }).click();
+  await page.getByRole('button', { name: /Open this ward|开垦此坊/ }).click();
+  await page.keyboard.press('Escape');
+  await returnToTitle(page);
+  await pickSlot(page, 3);
+  check(await state(page, () => window.peach.app.slot === 2 && !window.peach.app.state.districts[8].open &&
+    JSON.parse(localStorage.getItem('peach-creek-slot-2')).data.county.districts[8].open),
+    'slot three starts fresh and switching keeps the second county’s expansion');
+  await returnToTitle(page);
+  await pickSlot(page, 1);
+  check(await state(page, () => window.peach.app.state.districts[10].open &&
+    !window.peach.app.state.districts[8].open && JSON.parse(localStorage.getItem('peach-creek-slot-3')).data.county.rank === 0),
+    'slot one retains its own county and slot three was saved');
+
   // Inject corruption when the next document starts, after the real save-on-exit.
   await page.addInitScript(() => localStorage.setItem('peach-creek', '{broken'));
   await page.goto(`${server.url}${path}/?seed=1&lang=zh&hour=10`);
   await until(page, () => window.peach?.ready);
-  check(await state(page, () => !document.querySelector('#title .notice').hidden && window.peach.app.state === null), 'a broken save is started again, and the title says so');
+  await page.click('#startButton');
+  check(await state(page, () => !document.querySelector('#title .notice').hidden &&
+    document.querySelector('[data-slot="1"]').classList.contains('empty') &&
+    document.querySelectorAll('#saveSlotList .saveSlot:not(.empty)').length === 2 &&
+    window.peach.app.state === null), 'a corrupt first slot leaves the other two counties intact');
+  await page.keyboard.press('Escape');
   await page.setViewportSize({ width: 411, height: 813 });
   await until(page, () => getComputedStyle(document.querySelector('#rotateHint')).display !== 'none', 4);
   const portraitFits = await page.evaluate(() => {
@@ -228,8 +269,7 @@ try {
   });
   check(portraitFits, 'a narrow portrait viewport retains its full frame and a tappable title');
   if (portraitFits) {
-    await page.click('#startButton');
-    await until(page, () => window.peach.screen === 'play', 4);
+    await pickSlot(page, 2);
     await page.setViewportSize({ width: 844, height: 390 });
     await until(page, () => getComputedStyle(document.querySelector('#rotateHint')).display === 'none', 4);
     check(await state(page, () => window.peach.app.state.plots.length === 144), 'landscape resize keeps the county open');

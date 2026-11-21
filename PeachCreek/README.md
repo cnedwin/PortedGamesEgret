@@ -15,6 +15,8 @@ harder one.
 
 ## 玩法与操作 · How to play
 
+标题页可选三个独立存档。每座县城分别自动保存和结算离线收益，语言和音频设置通用。旧存档在第一槽。在县城里可从设置选择「保存并返回标题」。 · Choose from three save slots on the title screen. Each county saves and earns offline income independently, with shared language and audio settings. Existing progress appears in slot one. Use Settings to save and return to the title.
+
 - **坊区与选址**：十二个坊共 144 块地，开局开放前三坊。在地图或「扩建」中选相连的新坊，自行决定扩建方向。近县衙适合开市，城边适合耕作，民居可建在任意开放地块。坊区规划提供加成，可以随时调整。长距离运输增加运费，烟尘会拖累邻近民居。 · **Wards and siting**: twelve wards hold 144 plots, with three open at first. Choose a neighboring ward to expand from the map or the expansion ledger. Trade benefits from being near the yamen, fields favor the outskirts, and homes can go on any open plot. Plans grant a bonus and can be changed. Long hauls increase costs and smoke hurts nearby homes.
 - **营建**：空地上选建筑，点已有建筑可比较升级前后的样式。建筑每级都有细节变化，重要等级会扩展整体轮廓。等级到 10、25、50、75 时产出翻倍。 · **Building**: choose what to build on a free plot, or select an existing building to compare its current and next appearance. Each level changes the details, and milestones change the silhouette. Output doubles at levels 10, 25, 50 and 75.
 - **产业链**：稻田产粮，粮酿酒；桑园产桑，桑织绸；山里的陶土和木柴烧瓷；茶园产茶。集市和码头把货卖成钱，但不卖县衙升格要用的货。 · **Chains**: paddies give grain, grain makes wine; mulberry makes silk; clay and wood fire porcelain; gardens grow tea. Markets and the dock sell goods for coin, but never what the yamen's next rise needs.

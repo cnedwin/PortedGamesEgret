@@ -10,7 +10,7 @@ import { browserSaveStorage } from '@egret/engine/web/kit';
 import { amount, buildingAbout, buildingName, duration, getLanguage, onLanguage, setLanguage, startLanguage, t } from './i18n.mjs';
 import { CORE_BOUNDS, LAYOUT, MAP, loadTerrain, paintCounty, STAGE } from './paint.mjs';
 import { paintBuilding, paintFacility } from './building-art.mjs';
-import { countyLooksRight, openSave, recordTerm } from './saves.mjs';
+import { openSaveSlots, recordTerm } from './saves.mjs';
 import { createSound } from './sound.mjs';
 import { BUILDINGS, DEFENCE, FINAL_RANK, GOODS, HOUR, MILESTONES, NODES, OFFICES, PETITIONS, RAIDS, RANKS, RECRUIT, SURVEY_COST, SURVEY_TIME, TALENTS, ZONES } from './sim/data.mjs';
 import * as rules from './sim/world.mjs';
@@ -28,10 +28,10 @@ const el = (tag, props = {}, ...children) => {
 };
 
 // ——— Save, language, time ———
-const problems = [];
-const save = openSave(browserSaveStorage(), startLanguage(navigator.languages ?? [navigator.language]), (p) => problems.push(p.kind));
-setLanguage(params.get('lang') ?? save.data.settings.language);
-const app = { game: null, view: null, sound: null, state: null, screen: 'loading', tab: 'city', sheet: null, offset: 0, lastPaint: '', lastSave: 0, ready: false };
+const problems = new Set();
+const { slots, preferences } = openSaveSlots(browserSaveStorage(), startLanguage(navigator.languages ?? [navigator.language]), (p) => problems.add(p.kind));
+setLanguage(params.get('lang') ?? preferences.data.language);
+const app = { game: null, view: null, sound: null, state: null, slot: null, screen: 'loading', tab: 'city', sheet: null, offset: 0, lastPaint: '', ready: false };
 /** Real time in seconds (tests may move it on with `offset`). */
 const now = () => Date.now() / 1000 + app.offset;
 let stageScale = 1;
@@ -994,8 +994,10 @@ function promote() {
   const s = app.state,
     next = rules.promote(s, now());
   if (!next) return;
-  save.update((data) => {
+  const county = JSON.parse(JSON.stringify(next));
+  slots[app.slot].update((data) => {
     recordTerm(data, (s.time - s.started) / HOUR);
+    data.county = county;
   });
   app.state = next;
   afterChange(true);
@@ -1063,8 +1065,11 @@ function present(report) {
   for (const raid of report.raids) {
     const kind = t('raid_' + raid.kind);
     app.view.raid(raid.won, raid.side).then(() => {
+      if (app.screen !== 'play') return;
       app.sound.play(raid.won ? 'win' : 'lose');
       toast(raid.won ? t('raidWon', { kind, coin: amount(raid.loot) }) : t('raidLost', { kind }));
+    }).catch((error) => {
+      if (app.screen === 'play') console.error(error);
     });
   }
   if (report.petitions) toast(t('petition'));
@@ -1072,11 +1077,12 @@ function present(report) {
 
 let lastPersist = 0;
 function persist(force = false) {
+  if (app.slot === null || !app.state) return false;
   const at = Date.now();
   if (!force && at - lastPersist < 5000) return;
   lastPersist = at;
   const county = JSON.parse(JSON.stringify(app.state));
-  save.update((data) => {
+  return slots[app.slot].update((data) => {
     data.county = county;
   });
 }
@@ -1126,19 +1132,19 @@ function paintTitle() {
   $('#zoomIn').setAttribute('aria-label', t('mapZoomIn'));
   $('#zoomOut').setAttribute('aria-label', t('mapZoomOut'));
   $('#rotateHint').textContent = t('rotateHint');
-  $('#startButton').textContent = save.data.county ? t('continue') : t('start');
+  $('#startButton').textContent = slots.some((slot) => slot.data.county) ? t('continue') : t('start');
   $('#titleSettings').textContent = t('settings');
   const lang = $('#languageButton');
   lang.textContent = getLanguage() === 'zh' ? t('english') : t('chinese');
   lang.setAttribute('aria-label', t('switchLanguage'));
   const notice = $('#title .notice'),
-    words = [problems.some((p) => ['corrupt', 'unreadable', 'invalid', 'too-new'].includes(p)) ? t('saveBroken') : '', problems.includes('write-failed') ? t('saveRefused') : ''].filter(Boolean);
+    words = [['corrupt', 'unreadable', 'invalid', 'too-new', 'too-old', 'migration-failed'].some((p) => problems.has(p)) ? t('saveBroken') : '', problems.has('write-failed') ? t('saveRefused') : ''].filter(Boolean);
   notice.hidden = !words.length;
   notice.textContent = words.join(' ');
   $('#settingsButton').replaceChildren(el('span', { className: 'pill', textContent: t('settings') }));
 }
 function paintSettings() {
-  const s = save.data.settings,
+  const s = preferences.data,
     list = $('#settings .settingsList');
   $('#settingsTitle').textContent = t('settings');
   const rows = [
@@ -1155,12 +1161,12 @@ function paintSettings() {
       b.addEventListener('click', () => {
         if (key === 'language') switchLanguage();
         else
-          save.update((data) => {
-            data.settings[key] = !data.settings[key];
+          preferences.update((settings) => {
+            settings[key] = !settings[key];
           });
-        if (key === 'sound') app.sound.setSound(save.data.settings.sound);
-        if (key === 'music') app.sound.setMusic(save.data.settings.music);
-        if (key === 'reducedMotion' && app.game) app.game.reducedMotion = save.data.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+        if (key === 'sound') app.sound.setSound(preferences.data.sound);
+        if (key === 'music') app.sound.setMusic(preferences.data.music);
+        if (key === 'reducedMotion' && app.game) app.game.reducedMotion = preferences.data.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
         paintSettings();
         $('#set' + i + 'v').focus();
       });
@@ -1168,6 +1174,9 @@ function paintSettings() {
     })
   );
   $('#settings .closeButton').textContent = t('close');
+  const title = $('#returnToTitle');
+  title.hidden = app.screen !== 'play';
+  title.textContent = t('returnToTitle');
 }
 function openSettings(from) {
   paintSettings();
@@ -1181,11 +1190,25 @@ $('#settings .closeButton').addEventListener('click', () => {
 });
 $('#settingsButton').addEventListener('click', () => openSettings($('#settingsButton')));
 $('#titleSettings').addEventListener('click', () => openSettings($('#titleSettings')));
+$('#returnToTitle').addEventListener('click', async (event) => {
+  if (!persist(true)) return toast(t('saveRefused'));
+  event.currentTarget.disabled = true;
+  $('#ui').inert = true;
+  app.slot = null;
+  app.screen = 'loading';
+  // Release this county's audio, view and scene animations before navigating.
+  try {
+    await app.game.dispose();
+  } catch (error) {
+    console.warn(error);
+  }
+  location.reload();
+});
 function switchLanguage() {
   const next = getLanguage() === 'zh' ? 'en' : 'zh';
   setLanguage(next);
-  save.update((data) => {
-    data.settings.language = next;
+  preferences.update((settings) => {
+    settings.language = next;
   });
 }
 $('#languageButton').addEventListener('click', () => {
@@ -1200,9 +1223,41 @@ onLanguage(() => {
   if (app.screen === 'play') afterChange(true);
 });
 
-$('#startButton').addEventListener('click', (event) => {
+function openSlotPicker() {
+  const list = $('#saveSlotList');
+  $('#saveSlotsTitle').textContent = t('saveSlotsTitle');
+  $('#closeSaveSlots').textContent = t('close');
+  list.replaceChildren(...slots.map((slot, index) => {
+    const county = slot.data.county;
+    const detail = county ? t('saveSlotCounty', {
+      rank: t('r' + county.rank), term: (county.term ?? 0) + 1, people: amount(county.pop ?? 0)
+    }) : t('saveSlotEmpty');
+    const entry = el('button', { type: 'button', className: county ? 'saveSlot' : 'saveSlot empty' },
+      el('strong', { textContent: t('saveSlot', { n: index + 1 }) }), el('small', { textContent: detail }));
+    entry.dataset.slot = index + 1;
+    entry.addEventListener('click', (event) => enterCounty(index, event.detail === 0));
+    return entry;
+  }));
+  $('#saveSlots').hidden = false;
+  $('#title').inert = true;
+  ($('.saveSlot:not(.empty)', list) ?? $('.saveSlot', list)).focus();
+}
+
+function closeSlotPicker() {
+  $('#saveSlots').hidden = true;
+  $('#title').inert = false;
+  $('#startButton').focus();
+}
+
+function enterCounty(index, keyboard) {
+  if (app.screen !== 'title') return;
+  const saved = slots[index].data.county;
+  app.slot = index;
+  app.state = saved ? JSON.parse(JSON.stringify(saved)) : rules.createCounty({
+    seed: Number(params.get('seed') ?? Math.floor(Math.random() * 1e6)), now: now()
+  });
+  closeSlotPicker();
   app.sound.start();
-  if (!app.state) app.state = rules.createCounty({ seed: Number(params.get('seed') ?? Math.floor(Math.random() * 1e6)), now: now() });
   app.screen = 'play';
   $('#title').hidden = true;
   $('#mapTools').hidden = false;
@@ -1211,9 +1266,11 @@ $('#startButton').addEventListener('click', (event) => {
   welcomeBack();
   // From the keyboard the focus goes on to the map; after a click or a tap it is let go, so no frame shows.
   if (!$('#away').hidden) return;
-  if (event.detail === 0) ($('#taxBubble:not([hidden])') ?? $('#hits button'))?.focus();
+  if (keyboard) ($('#taxBubble:not([hidden])') ?? $('#hits button'))?.focus();
   else document.activeElement?.blur();
-});
+}
+$('#startButton').addEventListener('click', openSlotPicker);
+$('#closeSaveSlots').addEventListener('click', closeSlotPicker);
 
 // ——— Keys ———
 // play takes Tab, Space and the arrows on the window for its own keys; this game reads none of play's keys, so every
@@ -1222,6 +1279,18 @@ addEventListener(
   'keydown',
   (event) => {
     event.stopPropagation();
+    if (!$('#saveSlots').hidden) {
+      if (event.key === 'Escape') closeSlotPicker();
+      else if (event.key === 'Tab') {
+        const buttons = $$('#saveSlots button');
+        const end = event.shiftKey ? buttons[0] : buttons.at(-1);
+        if (document.activeElement === end) {
+          event.preventDefault();
+          (event.shiftKey ? buttons.at(-1) : buttons[0]).focus();
+        }
+      }
+      return;
+    }
     if (event.key !== 'Escape') {
       if (hits.contains(document.activeElement)) panKey(event);
       return;
@@ -1243,13 +1312,11 @@ async function boot() {
   });
   // The holder play makes under a clear canvas is black; the map shows through (ENGINE-NOTES 2).
   if (game.canvas.parentElement) game.canvas.parentElement.style.background = 'transparent';
-  game.reducedMotion = save.data.settings.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
+  game.reducedMotion = preferences.data.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
   app.game = game;
   app.view = createView(game);
   showCounty();
-  app.sound = createSound(game, { sound: save.data.settings.sound, music: save.data.settings.music });
-  const saved = save.data.county;
-  app.state = saved && countyLooksRight(saved) ? JSON.parse(JSON.stringify(saved)) : null;
+  app.sound = createSound(game, { sound: preferences.data.sound, music: preferences.data.music });
   document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
   paintTitle();
   paintTabs();

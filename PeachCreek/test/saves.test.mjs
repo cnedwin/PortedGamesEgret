@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import '../vendor/node-register.mjs';
 
-const { SAVE_KEY, freshSave, openSave, recordTerm, countyLooksRight } = await import('../src/saves.mjs');
+const { SAVE_KEY, freshSave, openSave, openSaveSlots, recordTerm, countyLooksRight } = await import('../src/saves.mjs');
 const { advance, answer, createCounty, expandWard, moveDock, plotPlan, rates, wardIsOpen } = await import('../src/sim/world.mjs');
 
 function memory(initial = {}, { refuse = false } = {}) {
@@ -44,6 +44,75 @@ test('the settings and the whole county come back after opening the save again',
   assert.deepEqual(again.data.county, JSON.parse(JSON.stringify(county)));
   assert.equal(wardIsOpen(again.data.county, 3), false);
   assert.equal(wardIsOpen(again.data.county, 8), true);
+});
+
+test('the old save is slot one and supplies initial preferences without rewriting progress', () => {
+  const storage = memory();
+  openSave(storage, 'en').update((data) => {
+    data.settings.sound = false;
+    data.settings.reducedMotion = true;
+    data.county = createCounty({ seed: 45, now: 1000 });
+    recordTerm(data, 90);
+  });
+  const original = storage.getItem(SAVE_KEY);
+  const { slots, preferences } = openSaveSlots(storage, 'zh');
+
+  assert.equal(slots.length, 3);
+  assert.equal(slots[0].data.county.seed, 45);
+  assert.deepEqual(slots[0].data.record, { terms: 1, fastest: 90 });
+  assert.equal(slots[1].data.county, null);
+  assert.equal(slots[2].data.county, null);
+  assert.deepEqual(preferences.data, { language: 'en', sound: false, music: true, reducedMotion: true });
+  assert.deepEqual([...storage.items.keys()], [SAVE_KEY]);
+
+  preferences.update((settings) => {
+    settings.language = 'zh';
+    settings.music = false;
+  });
+  assert.equal(storage.getItem(SAVE_KEY), original);
+  assert.deepEqual(openSaveSlots(storage, 'en').preferences.data, {
+    language: 'zh', sound: false, music: false, reducedMotion: true
+  });
+});
+
+test('all three slots keep independent counties, time stamps and term records', () => {
+  const storage = memory();
+  const { slots } = openSaveSlots(storage);
+  for (const [index, slot] of slots.entries()) {
+    slot.update((data) => {
+      data.county = createCounty({ seed: index + 10, now: 1000 + index * 600 });
+      recordTerm(data, 84 + index);
+    });
+  }
+  const first = storage.getItem(SAVE_KEY);
+  const third = storage.getItem(SAVE_KEY + '-slot-3');
+  slots[1].update((data) => {
+    advance(data.county, 2100, { active: false });
+    recordTerm(data, 82);
+  });
+  const again = openSaveSlots(storage).slots;
+  assert.deepEqual(again.map((slot) => slot.data.county.seed), [10, 11, 12]);
+  assert.deepEqual(again.map((slot) => slot.data.county.time), [1000, 2100, 2200]);
+  assert.deepEqual(again.map((slot) => slot.data.record), [
+    { terms: 1, fastest: 84 }, { terms: 2, fastest: 82 }, { terms: 1, fastest: 86 }
+  ]);
+  assert.equal(storage.getItem(SAVE_KEY), first);
+  assert.equal(storage.getItem(SAVE_KEY + '-slot-3'), third);
+});
+
+test('an unreadable second slot is backed up without discarding the others', () => {
+  const storage = memory();
+  const { slots } = openSaveSlots(storage);
+  for (const index of [0, 2]) {
+    slots[index].update((data) => { data.county = createCounty({ seed: 1 + index, now: 1000 }); });
+  }
+  const secondKey = SAVE_KEY + '-slot-2';
+  storage.setItem(secondKey, '{not json');
+  const problems = [];
+  const again = openSaveSlots(storage, 'zh', (problem) => problems.push(problem)).slots;
+  assert.deepEqual(again.map((slot) => slot.data.county?.seed ?? null), [1, null, 3]);
+  assert.equal(storage.getItem(secondKey + '.unread'), '{not json');
+  assert.deepEqual(problems.map(({ key }) => key), [secondKey]);
 });
 
 test('the record counts terms and keeps only the fastest', () => {
