@@ -541,7 +541,7 @@ export const MATRIX = {
    "games": [
     {
      "game": "CanalWatch",
-     "file": "CanalWatch/src/sound.mjs"
+     "file": "CanalWatch/src/main.mjs"
     },
     {
      "game": "OperaDrums",

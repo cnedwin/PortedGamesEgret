@@ -50,7 +50,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/kit` | 5 | [✔](CanalWatch/src/i18n.mjs) |  |  |  |  |  |  | [✔](MechanismCity/src/audio/sound.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  | [✔](SnowTemple/tools/balance.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) |  |
 | `@egret/engine/web/kit` | 8 | [✔](CanalWatch/src/main.mjs) |  | [✔](FPS/src/main.mjs) |  |  |  |  | [✔](MechanismCity/src/main.mjs) | [✔](OperaDrums/src/main.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/main.mjs) |
 | `@egret/engine/web/game` | 3 |  | [✔](FivePhases/src/main.mjs) |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |  |
-| `@egret/engine/play` | 2 | [✔](CanalWatch/src/sound.mjs) |  |  |  |  |  |  |  | [✔](OperaDrums/src/main.mjs) |  |  |  |  |
+| `@egret/engine/play` | 2 | [✔](CanalWatch/src/main.mjs) |  |  |  |  |  |  |  | [✔](OperaDrums/src/main.mjs) |  |  |  |  |
 | `@egret/engine/audio` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/audio` | 3 |  |  |  |  |  | [✔](LanternShadows/src/sound.mjs) |  | [✔](MechanismCity/src/audio/sound.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  |  |  |  |
 | `@egret/engine/ui/semantics` | 2 |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
