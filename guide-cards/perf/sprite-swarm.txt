@@ -7,6 +7,7 @@ local: [take, give, pools, make]
 evidence:
   - { repo: cnedwin/PortedGamesEgret, path: NezhaSea/src/view.mjs, line: 142, commit: 9b3d9263f16bbfda9be05128a7c623408daf947f, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
   - { repo: cnedwin/PortedGamesEgret, path: NezhaSea/ENGINE-NOTES.md, line: 23, commit: 9b3d9263f16bbfda9be05128a7c623408daf947f, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: TaiwanMahjong/ENGINE-NOTES.md, line: 37, commit: 936d1e620d68027d54e4fcc7eba047b0248d7ff7, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
 engine: b5628eb9997b67cf6163a388f5aa06f321f3833a
 ---
 
@@ -36,4 +37,6 @@ Rules:
 - Cap what is on the field in the rules, not the view, so the bot and the page agree.
 - Rotated rectangles stay cheap; circles and paths that move do not (see moving-shapes).
 
-Learnt from Nezha Stirs the Sea (ENGINE-NOTES 3).
+Still Bitmaps cost the same: 250 tiles cut from one atlas by `sourceRect`, none moving, ran at 50 ms p50 / 66.7 ms p95 on a 1280 × 720 play. Tiles at rest go on a page canvas under the engine's, painted again only when they change (see still-background).
+
+Learnt from Nezha Stirs the Sea (ENGINE-NOTES 3) and Taiwan Sixteen-Tile Mahjong (ENGINE-NOTES 5).

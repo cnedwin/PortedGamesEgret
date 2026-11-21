@@ -1,0 +1,32 @@
+---
+id: play-resolution
+title: Draw play at a lower resolution: a smaller stage, a scaled root and a pinned canvas
+applies: [play]
+triggers: [play, "resolution", "pixel ratio", "large stage slow", "1280x720 slow", "full screen canvas slow", "frame time", "software rendering", "降低分辨率", "画布太大", "帧时间", "全屏画布卡"]
+local: [root, host]
+evidence:
+  - { repo: cnedwin/PortedGamesEgret, path: TaiwanMahjong/src/main.mjs, line: 96, commit: 936d1e620d68027d54e4fcc7eba047b0248d7ff7, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: TaiwanMahjong/src/view.mjs, line: 17, commit: 936d1e620d68027d54e4fcc7eba047b0248d7ff7, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+  - { repo: cnedwin/PortedGamesEgret, path: TaiwanMahjong/ENGINE-NOTES.md, line: 23, commit: 936d1e620d68027d54e4fcc7eba047b0248d7ff7, pin: b5628eb9997b67cf6163a388f5aa06f321f3833a }
+engine: b5628eb9997b67cf6163a388f5aa06f321f3833a
+---
+
+# Draw play at a lower resolution: a smaller stage, a scaled root and a pinned canvas
+
+At engine `b5628eb` a `play` canvas has width × height × device ratio pixels, whatever its holder, and play has no resolution option. In headless Chromium with SwiftShader an empty `play({ width: 1280, height: 720 })` ran at 33.4 ms p95; 960 × 540 at 16.8 ms. A game that needs a 1280 × 720 stage can let play draw three quarters of it:
+
+```js
+const game = await play({ width: 960, height: 540, parent: host, transparent: true });
+const root = game.sprite(() => {}, game.world);   // everything the game draws goes under root
+root.scaleX = root.scaleY = 0.75;                 // stage units of 1280 x 720
+// CSS: #host { width: 960px; height: 540px; transform: scale(1.3333); transform-origin: 0 0 }
+//      #host canvas { width: 960px !important; height: 540px !important }  (play sets its own inline size)
+```
+
+Rules:
+
+- Measure the empty stage first; the cost there is the floor for everything drawn on it.
+- Draw under your own root, not on `game.world`, and give play-drawn effects (`game.burst`) world positions: stage × 0.75.
+- On a ratio-2 screen the canvas is still 1920 wide; on ratio 1 the engine's part is slightly softer, so keep text and still art on page layers.
+
+Learnt from Taiwan Sixteen-Tile Mahjong (ENGINE-NOTES 3), where title and play went from 33.4 to 16.8 ms p95.
