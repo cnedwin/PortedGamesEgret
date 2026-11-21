@@ -12,8 +12,13 @@ const imports = {
   "#egret-keyboard-input": "./engine/dist/keyboardInput.js",
   "robust-predicates": "./robust-predicates/index.js",
   "#egret-textured-frame-state": "./engine/dist/internal/texturedFrameState.js",
+  "@egret/engine/input/hover": "./engine/dist/hover.js",
+  "@egret/engine/kit": "./engine/dist/kit.js",
+  "@egret/engine/audio": "./engine/dist/audio.js",
+  "@egret/engine/input/gamepad": "./engine/dist/gamepad.js",
   "@egret/engine/webgl2/world3d": "./engine/dist/web/world3d/index.js",
-  "@egret/engine/webgpu/world3d": "./engine/dist/web/world3d/webgpu.js"
+  "@egret/engine/webgpu/world3d": "./engine/dist/web/world3d/webgpu.js",
+  "@egret/engine/web/kit": "./engine/dist/web/kit.js"
 };
 const base = document.currentScript.src;
 for (const name of Object.keys(imports)) imports[name] = new URL(imports[name], base).href;

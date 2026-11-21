@@ -45,7 +45,8 @@ export const RARITY_COLOURS = [
 const clamp01 = (v) => Math.max(0, Math.min(1, v));
 
 export function createView(scene, camera, options = {}) {
-  const view = { shake: 0, flash: 0 };
+  // `reducedMotion`: the player asked for less motion, so the camera does not shake and blasts flash faintly.
+  const view = { shake: 0, flash: 0, reducedMotion: false };
   const models = options.models ?? {};
   function visual(geometry, material, art, placement = {}) {
     if (art) {
@@ -140,10 +141,16 @@ export function createView(scene, camera, options = {}) {
   }
 
   // Lamps. Indoors they carry the scene; outdoors they only warm the ground at dawn.
-  // The renderer lights with a handful of point lights at a time, so only the
-  // ones nearest the camera are lit; the rest fade out.
+  // The renderer lights eight point lights fully and, with tiled lighting, the
+  // rest by screen tile (each lamp has a range). Without tiling only the ones
+  // nearest the camera are lit and the rest fade out.
   const NEAR_LIGHTS = 5,
     managed = [];
+  let allLamps = false;
+  /** Light every lamp (the renderer tiles those past its eighth) or only the nearest few. */
+  view.setTiledLamps = (on) => {
+    allLamps = Boolean(on);
+  };
   const manage = (light, x, z) => {
     managed.push({ light, x, z, full: light.intensity, share: 0, distance: 0 });
     light.intensity = 0;
@@ -189,7 +196,7 @@ export function createView(scene, camera, options = {}) {
     for (const item of managed) item.distance = Math.hypot(item.x - cx, item.z - cz);
     managed.sort((a, b) => a.distance - b.distance);
     managed.forEach((item, i) => {
-      const want = i < NEAR_LIGHTS && item.full > 0 ? 1 : 0;
+      const want = (allLamps || i < NEAR_LIGHTS) && item.full > 0 ? 1 : 0;
       item.share += Math.sign(want - item.share) * Math.min(Math.abs(want - item.share), dt * 2.5);
       item.light.intensity = item.full * item.share;
     });
@@ -922,9 +929,9 @@ export function createView(scene, camera, options = {}) {
     // Camera: at the eye when playing, circling the station on the title screen.
     view.shake *= Math.exp(-dt * 9);
     view.flash *= Math.exp(-dt * 12);
-    blast.intensity = view.flash * 60;
+    blast.intensity = view.flash * (view.reducedMotion ? 20 : 60);
     if (playing) {
-      const s = view.shake,
+      const s = view.reducedMotion ? 0 : view.shake,
         jx = (Math.sin(time * 61) + Math.sin(time * 37.7)) * 0.006 * s,
         jy = (Math.sin(time * 53.3) + Math.cos(time * 41.1)) * 0.006 * s;
       camera.setPosition(p.x, p.y + p.eye, p.z);

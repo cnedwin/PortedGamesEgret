@@ -12,6 +12,7 @@
 //   ?auto=1          let the stand-in player play
 //   ?stats=1         show frame timings and what was drawn
 import { createEngine } from '@egret/engine';
+import { prefersReducedMotion, watchReducedMotion } from '@egret/engine/web/kit';
 import { Scene3D, createPerspectiveCamera3D } from '@egret/engine/world3d';
 import { loadModels } from './asset-models.mjs';
 import { createAudio } from './audio.mjs';
@@ -159,6 +160,10 @@ async function main() {
   scene.addChild(camera);
   const view = createView(scene, camera, { fov: settings.fov, models });
   status.scene = scene;
+  status.renderer = renderer;
+  // Less motion when the system asks for it, and again whenever the player changes the setting.
+  view.reducedMotion = prefersReducedMotion();
+  scope.use({ dispose: watchReducedMotion((reduced) => (view.reducedMotion = reduced)) });
   status.camera = camera;
 
   let focusOn = true;
@@ -178,6 +183,9 @@ async function main() {
     view.setShadowSize(high ? 2048 : 1024);
     view.setReflections(!low && !off('reflect'));
     focusOn = high && !off('dof');
+    // Every lamp lit, those past the eighth by screen tile, except at low quality or with `?lights=near`.
+    renderer.tiledLights = !low && params.get('lights') !== 'near';
+    view.setTiledLamps(renderer.tiledLights === true);
     if (!focusOn) renderer.postProcess.dof = false;
   }
   applyQuality();

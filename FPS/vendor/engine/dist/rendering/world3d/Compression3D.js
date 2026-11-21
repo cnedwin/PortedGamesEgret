@@ -5,6 +5,7 @@
 // on whole buffers. Zstandard dictionaries are not supported, and checksums
 // are skipped rather than verified.
 import { World3DError } from './core3D.js';
+/** The most bytes a decompression gives. */
 export const COMPRESSION3D_LIMITS = Object.freeze({ maxOutputBytes: 536870912 });
 const bad = (detail) => new World3DError('WORLD3D_INPUT_INVALID', 'compressed data: ' + detail);
 const tooBig = () => new World3DError('WORLD3D_BUDGET', 'decompressed size');

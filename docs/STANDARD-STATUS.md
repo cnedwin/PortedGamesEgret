@@ -31,12 +31,12 @@ Made by `node tools/check-standard.mjs --write`; the standard is [GAME-STANDARD.
 | test/accept.mjs (browser acceptance) | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ |
 | test/baseline/*.png | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ |
 | vendor/SOURCE.md with the engine commit | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| index.html import map = vendor/importmap.json | – | ✘ | – | – | – | – | ✔ | ✔ | ✔ | ✔ | – | ✔ |
+| index.html import map = vendor/importmap.json | – | ✔ | – | – | – | – | ✔ | ✔ | ✔ | ✔ | – | ✔ |
 
 ## 每个游戏缺的项 · What each game lacks
 
 - **FivePhases**: README: engine commit as in vendor/SOURCE.md (no commit); tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures); vendor/SOURCE.md with the engine commit
-- **FPS**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures); index.html import map = vendor/importmap.json
+- **FPS**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **jelly-pandas**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **JY**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **LanternShadows**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)

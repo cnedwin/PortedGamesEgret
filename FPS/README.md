@@ -136,18 +136,19 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 已知问题 · Known issues
 
-- 只点亮离镜头最近的五盏灯，远处的灯只有发光贴片 · Only the nearest five lamps are lit; distant lamps only glow.
+- 低画质下只点亮离镜头最近的五盏灯（中、高画质下全部点亮）；`?lights=near` 可在任何画质下回到这种做法 · At low quality only the nearest five lamps are lit (all of them at medium and high); `?lights=near` asks for that at any quality.
 - 杉树在阴影里偏黑，背光时层次看不清 · Firs go nearly black in shade.
 - 代打程序（`?auto=1`）不搜物资箱，自动演示里看不到搜集和背包 · The stand-in player never searches crates.
 - 阵亡后从头开始；配件只作用于突击步枪，捡到即装、不能卸下 · Death restarts the run; attachments fit only the assault rifle.
 - RTX 5090 Laptop + ANGLE D3D11 上没有实时阴影（为避免丢失上下文而关闭） · No live shadows on that one adapter.
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 3 under 44×44: Deploy 132×43; Settings 132×43; Controls 132×43）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 15332.7 ms over 2 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 断流行动 第一人称射击 移动 鼠标瞄准 左键开火）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）。
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-21，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 3 under 44×44: Deploy 132×43; Settings 132×43; Controls 132×43）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 7849.7 ms over 2 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 断流行动 第一人称射击 移动 鼠标瞄准 左键开火）。
 
 ## 已解决 · Solved
 
 - 第一次出现补给箱时约 130 ms 的两次停顿：启动时在加载提示下把两种材质路径真实预绘一遍（`src/view.mjs` 的 `view.warm`），见 ENGINE-NOTES 第 4 条。 · Two stalls of about 130 ms when the first crate appeared: both material paths are drawn once under the loading screen (ENGINE-NOTES item 4).
 - 加色混合的太阳光晕、枪口火光、红点画成不透明方块：材质设 `alphaMode: 'blend'`、`blending: 'additive'`（ENGINE-NOTES 第 2 条）。 · Additive glows drew as opaque squares (item 2).
-- 超过八盏的点光源不生效：只点亮离镜头最近的五盏并按距离渐隐（ENGINE-NOTES 第 1 条）。 · Lights past the eighth had no effect; the nearest five are lit and faded by distance (item 1).
+- 超过八盏的点光源不生效：先是只点亮最近的五盏并按距离渐隐；引擎有了分块照明之后，中、高画质下所有灯都点亮（ENGINE-NOTES 第 1 条）。 · Lights past the eighth had no effect; now every lamp is lit at medium and high quality through the engine's tiled lights (item 1).
+- 系统"减少动态效果"打开时镜头仍在晃：改用引擎的 `prefersReducedMotion()` / `watchReducedMotion()`，开启时不晃镜头、爆炸闪光减弱（ENGINE-NOTES 第 5 条）。 · The camera shook even with reduced motion asked for; the engine's reduced-motion helpers now turn the shake off (item 5).
 - RTX 5090 Laptop 的 ANGLE D3D11 下接收阴影的着色器丢失 WebGL 上下文：只对这一适配器关闭实时阴影（ENGINE-NOTES 第 3 条）。 · The shadow shader lost the context on one adapter; shadows are off for that adapter only (item 3).
 - 带护甲中弹时界面报错、守卫在出生点就发现干员、新增箱体挡路、枪在阴影里纯黑、瞄准镜被枪身挡住、一局不到一分钟等，完整清单见 [STATUS.md](STATUS.md)「已经解决的问题」。 · The rest (an error when hit with armour, guards spotting the start, blocked posts, a black rifle, the scope view, runs under a minute) are listed in STATUS.md.
 
@@ -179,8 +180,8 @@ Characters, weapon visuals and station props use Tripo GLB assets simplified, te
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `264e17227b06298858a06b9fdfe0c4a3a427e13a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `264e17227b06298858a06b9fdfe0c4a3a427e13a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
 
 入口 · Entries: `@egret/engine`, `@egret/engine/world3d`, `@egret/engine/webgl2/world3d`, `@egret/engine/webgpu/world3d`.

@@ -1,3 +1,4 @@
+/** The largest capacity a ByteWriter has, in bytes. */
 export const BYTE_WRITER_LIMITS = Object.freeze({ maxBytes: 16777216 });
 // Capture native slot access and writes once. Caller properties, iterators and
 // species do not participate in admission, append or snapshot ownership.

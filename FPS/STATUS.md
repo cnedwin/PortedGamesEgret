@@ -18,7 +18,7 @@ This document records where this version stands: problems already solved, parts 
 
 ## 验证情况 · What has been verified
 
-- 白鹭运行时固定为 main 的 `264e17227b06298858a06b9fdfe0c4a3a427e13a`。51 项自动测试覆盖规则、输入、完整美术载入、模型挂点、连续蒙皮、硬表面保形、投影代理、共享实例、启动预绘及动态部件。
+- 白鹭运行时固定为 main 的 `b5628eb9997b67cf6163a388f5aa06f321f3833a`（2026-11-21 从 `264e172` 升级，51 项测试照常通过）。51 项自动测试覆盖规则、输入、完整美术载入、模型挂点、连续蒙皮、硬表面保形、投影代理、共享实例、启动预绘及动态部件。
 - 本次美术修复在 PC 与三星 SM-F966U1 的真实 WebGL2 上检查了三类角色的持枪、侧面步行和蹲姿。角色诊断是受控相机检查，不能代替完整游玩。第一人称枪械另检查了瞄准、后坐、换弹和近裁切；场景保留原 UV、法线和金属粗糙度。公开版本整局与性能复跑结果见 [PR #82 的验收记录](https://github.com/cnedwin/PortedGamesEgret/pull/82)。
 - 以下两段 PC、三星整局数字属于美术修复前的历史基线，不能作为本次资源升级后的帧率结论。
 - PC 使用 RTX 5090 Laptop 和 Edge 157，在 1440×900、高画质下从正常标题页开始，以实际键鼠事件完成三终端、六次校准和登机结算，用时 360.85 秒。模型首帧加载齐全，无回退。以下整局帧间隔是比例修订前的设备基线。最后一次手套比例微调另做了 PC 瞄准、射击、换弹、切枪和暂停恢复复测。
@@ -43,7 +43,7 @@ This batch focuses on WebGL2. Full-monitor native PC fullscreen, dedicated WebGP
 
 | 问题 · Issue | 影响 · Effect |
 | --- | --- |
-| 同时只点亮最近的五盏灯 · Only the nearest five lamps are lit | 引擎每帧最多八盏点光源，远处的灯只有发光贴片没有照明 · the engine lights at most eight point lights a frame, so distant lamps glow without lighting anything |
+| 低画质下只点亮最近的五盏灯 · At low quality only the nearest five lamps are lit | 中、高画质下所有灯都亮，第八盏以后由引擎按屏幕分块照亮；低画质为省开销仍只点亮最近的五盏 · at medium and high every lamp is lit, those past the eighth by screen tile; low quality keeps the nearest five to save cost |
 | 杉树在阴影里偏黑 · Firs go nearly black in shade | 背光时层次看不清 · the tiers are hard to read against the light |
 | 代打程序不搜物资箱 · The stand-in player never searches crates | 自动演示里看不到搜集和背包 · the automatic demo shows no looting or backpack |
 | 阵亡后从头开始 · Death restarts the whole run | 当前没有任务检查点 · the mission currently has no checkpoints |
