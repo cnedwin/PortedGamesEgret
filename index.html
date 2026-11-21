@@ -3,52 +3,73 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#0c1d22">
-  <title>新白鹭引擎游戏 Demo</title>
-  <meta name="description" content="基于新白鹭引擎 Egret Rebuild 开发的网页游戏 Demo：断流行动、金庸群侠传、武林天下、锦绣飞车、果冻熊猫、心动选修课。">
+  <meta name="theme-color" content="#101412">
+  <meta name="description" content="新白鹭引擎 Egret Rebuild 的可玩游戏案例、最新实机截图和引擎能力源码。">
+  <title>新白鹭引擎游戏案例</title>
   <link rel="icon" href="showcase/egret.svg" type="image/svg+xml">
   <link rel="stylesheet" href="showcase/site.css">
 </head>
 <body>
+  <a class="skip-link" href="#content" data-act="skip" data-t="skip">跳到内容</a>
   <header class="bar">
-    <a class="brand" href="#/" aria-label="返回全部游戏">
-      <img src="showcase/egret.svg" alt="" width="34" height="34">
-      <span class="brand-name" data-t="brand">新白鹭引擎游戏 Demo</span>
-    </a>
-    <nav class="bar-links">
-      <a href="capabilities.html" data-t="matrix">能力矩阵</a>
-      <a href="https://github.com/cnedwin/Egret_rebuild" data-t="engine">引擎源码</a>
-      <button class="lang" type="button" data-act="lang" aria-label="Switch to English">EN</button>
-    </nav>
+    <div class="bar-inner">
+      <a class="brand" href="#/">
+        <img src="showcase/egret.svg" alt="" width="38" height="38">
+        <span data-t="brand">白鹭游戏案例</span>
+      </a>
+      <nav class="bar-links" aria-label="站点导航" data-t-label="navigation">
+        <a class="matrix-link" href="capabilities.html" data-t="matrix">能力矩阵</a>
+        <a class="engine-link" href="https://github.com/cnedwin/Egret_rebuild" data-t="engine">引擎源码</a>
+        <button class="lang" type="button" data-act="lang" aria-label="Switch to English">EN</button>
+      </nav>
+    </div>
   </header>
 
-  <!-- The front page: every game in a strip, then a word about the engine. -->
-  <main id="home" class="home">
-    <h1 class="sr-only" data-t="brand">新白鹭引擎游戏 Demo</h1>
-    <section class="strip" aria-label="全部游戏" data-t-label="all"></section>
-    <section class="engine">
-      <h2 data-t="engineTitle">同一个引擎，七种玩法</h2>
-      <p data-t="engineText"></p>
-      <ul class="engine-facts" data-t-list="engineFacts"></ul>
-      <p class="engine-more"><a href="capabilities.html" data-t="matrixLink">每项引擎能力在哪个游戏里用到</a></p>
-    </section>
+  <main id="content" tabindex="-1">
+    <div id="home">
+      <section class="hero shell" aria-labelledby="home-title">
+        <div class="hero-copy">
+          <h1 id="home-title" tabindex="-1"><span data-t="heroEngine">新白鹭引擎</span><span data-t="heroCases">游戏案例</span></h1>
+          <p class="hero-lead" data-t="heroLead">浏览可直接试玩的游戏，查看实机画面和背后的引擎实现。</p>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" data-act="browse" data-t="browse">浏览游戏</button>
+            <a class="btn btn-secondary matrix-link" href="capabilities.html" data-t="matrix">能力矩阵</a>
+          </div>
+        </div>
+        <div class="featured"></div>
+      </section>
+      <section class="catalog shell" id="catalog" aria-labelledby="catalog-title">
+        <div class="catalog-header">
+          <div>
+            <h2 id="catalog-title" tabindex="-1" data-t="all">全部游戏</h2>
+            <p class="catalog-count" aria-live="polite"></p>
+          </div>
+          <div class="filters" role="group" data-t-label="filterLabel" aria-label="筛选游戏"></div>
+        </div>
+        <div class="game-grid"></div>
+      </section>
+      <noscript><p class="shell">启用 JavaScript 后可浏览游戏与截图。You can also browse the project repository below.</p></noscript>
+    </div>
+
+    <article id="game" class="case shell" hidden></article>
   </main>
 
-  <!-- One game: filled in when its address is opened. -->
-  <main id="game" class="game" hidden></main>
-
-  <dialog class="viewer" aria-label="截图">
-    <img alt="">
-    <button type="button" class="viewer-close" data-act="close" aria-label="关闭">×</button>
-    <button type="button" class="viewer-step prev" data-act="prev" aria-label="上一张">‹</button>
-    <button type="button" class="viewer-step next" data-act="next" aria-label="下一张">›</button>
+  <dialog class="viewer" aria-label="截图" data-t-label="gallery">
+    <figure><img alt=""><figcaption class="viewer-caption" aria-live="polite"></figcaption></figure>
+    <button type="button" class="viewer-close" data-act="close" aria-label="关闭" data-t-label="close">×</button>
+    <button type="button" class="viewer-step prev" data-act="prev" aria-label="上一张" data-t-label="prev">‹</button>
+    <button type="button" class="viewer-step next" data-act="next" aria-label="下一张" data-t-label="next">›</button>
   </dialog>
 
   <footer class="foot">
-    <p data-t="foot"></p>
-    <p><a href="https://github.com/cnedwin/PortedGamesEgret" data-t="repo">游戏源码</a></p>
+    <div class="foot-inner shell">
+      <p data-t="foot">新白鹭引擎 · 游戏案例</p>
+      <nav aria-label="项目链接" data-t-label="projectLinks">
+        <a href="https://github.com/cnedwin/Egret_rebuild" data-t="engine">引擎源码</a>
+        <a href="https://github.com/cnedwin/PortedGamesEgret" data-t="repo">游戏源码</a>
+      </nav>
+    </div>
   </footer>
-
   <script type="module" src="showcase/site.js"></script>
 </body>
 </html>
