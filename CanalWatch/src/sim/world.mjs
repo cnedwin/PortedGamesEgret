@@ -21,6 +21,7 @@ import {
   WAVE_BONUS,
   stars
 } from './data.mjs';
+import { INTERCEPT_PACING, INTERCEPT_WAVES } from './intercept.mjs';
 
 /** A small seeded random source (mulberry32), so the same seed gives the same game. */
 export function seeded(seed) {
@@ -74,15 +75,25 @@ export function makePath(points) {
 
 export const WAYS = { water: makePath(PATHS.water), road: makePath(PATHS.road) };
 
+/** The nearest point on the towpath to a boat's current position, before crew spread out. */
+export function landingPoint(raider) {
+  const { s, distance } = WAYS.road.nearest(raider.x, raider.y);
+  return { ...WAYS.road.at(s), s, distance };
+}
+
 /** Seconds a stone, an arrow and a fire arrow take to cross 100 units. */
 const FLIGHT = { pierce: 100 / 560, blast: 100 / 280, fire: 100 / 400 };
 
 /** A new game. `difficulty` is `normal` or `hard`. */
-export function createWorld(seed = 1, difficulty = 'normal') {
-  const rules = DIFFICULTY[difficulty] ?? DIFFICULTY.normal;
+export function createWorld(seed = 1, difficulty = 'normal', { mode = 'standard' } = {}) {
+  const rules = DIFFICULTY[difficulty] ?? DIFFICULTY.normal,
+    intercept = mode === 'intercept';
   return {
     seed,
     difficulty: DIFFICULTY[difficulty] ? difficulty : 'normal',
+    mode: intercept ? 'intercept' : 'standard',
+    waves: intercept ? INTERCEPT_WAVES : WAVES,
+    ...(intercept && { intercept: { held: GATES.map(() => 0), landed: 0, crewStopped: 0, crewLeaked: 0 } }),
     random: seeded(seed),
     time: 0,
     silver: rules.silver,
@@ -92,7 +103,7 @@ export function createWorld(seed = 1, difficulty = 'normal') {
     /** `ready` before the first wave, then `wave` while one is coming, `break` between, and `won` or `lost`. */
     state: 'ready',
     wave: -1,
-    breakLeft: BREAK * 2.5,
+    breakLeft: intercept ? INTERCEPT_PACING.ready : BREAK * 2.5,
     queue: [],
     towers: PLOTS.map(() => null),
     raiders: [],
@@ -179,7 +190,7 @@ function startWave(world) {
   world.state = 'wave';
   world.breakLeft = 0;
   world.silver += WAVE_BONUS.base + WAVE_BONUS.per * world.wave;
-  for (const group of WAVES[world.wave])
+  for (const group of world.waves[world.wave])
     for (let i = 0; i < group.count; i++) world.queue.push({ kind: group.kind, at: world.time + (group.delay ?? 0) + i * group.gap });
   world.queue.sort((a, b) => a.at - b.at);
 }
@@ -221,12 +232,17 @@ function hurt(world, raider, amount, events, by) {
   const spec = RAIDERS[raider.kind];
   world.silver += spec.bounty;
   world.kills++;
+  if (world.intercept && raider.crewFrom !== undefined) world.intercept.crewStopped++;
   events.push({ type: 'kill', id: raider.id, kind: raider.kind, x: raider.x, y: raider.y, bounty: spec.bounty, by });
   // A sinking boat's crew jump ashore and go on along the towpath from the nearest point of it.
   if (spec.crew) {
-    const ashore = WAYS.road.nearest(raider.x, raider.y);
+    const ashore = landingPoint(raider);
     for (let i = 0; i < spec.crew; i++) {
       const man = spawn(world, 'raider', 'road', Math.max(0, ashore.s - 10 + i * 12));
+      if (world.intercept) {
+        man.crewFrom = raider.id;
+        world.intercept.landed++;
+      }
       events.push({ type: 'ashore', id: man.id, x: man.x, y: man.y, from: raider.id });
     }
   }
@@ -283,9 +299,9 @@ export function step(world, seconds) {
     const raider = spawn(world, world.queue.shift().kind);
     events.push({ type: 'spawn', id: raider.id, kind: raider.kind });
   }
-  if (world.state === 'wave' && !world.queue.length && world.wave < WAVES.length - 1) {
+  if (world.state === 'wave' && !world.queue.length && world.wave < world.waves.length - 1) {
     world.state = 'break';
-    world.breakLeft = BREAK;
+    world.breakLeft = world.intercept ? INTERCEPT_PACING.break : BREAK;
   }
 
   // Gates.
@@ -305,19 +321,32 @@ export function step(world, seconds) {
   }
 
   // Raiders move, burn and reach the wall. A boat stops behind a shut gate, and the boats behind it stop in a queue.
-  const held = new Map();
+  const held = new Map(),
+    gateFor = world.intercept && world.gates.some((gate) => gate.shutLeft > 0) ? new Map() : undefined,
+    touchingGate = gateFor && new Set();
   for (const raider of world.raiders.filter(isBoat).sort((a, b) => b.s - a.s)) {
-    const gate = world.gates.find((g) => g.shutLeft > 0 && raider.s <= g.at);
-    if (!gate) continue;
-    const behind = held.get(gate) ?? gate.at - 14;
-    const radius = RAIDERS[raider.kind].radius;
+    const index = world.gates.findIndex((gate) => gate.shutLeft > 0 && raider.s <= gate.at);
+    if (index === -1) continue;
+    const gate = world.gates[index];
+    const first = held.get(gate),
+      behind = first ?? gate.at - 14,
+      { radius, speed } = RAIDERS[raider.kind];
     held.set(gate, Math.min(behind, raider.s + radius) - radius * 2 - 4);
     raider.limit = Math.min(behind - radius, gate.at - 14);
+    if (touchingGate) {
+      // The existing spacing also separates ships travelling far upstream. A counted queue must extend to the gate.
+      const reached = raider.s + speed * (1 - raider.slow) * dt > raider.limit;
+      if (reached && (first === undefined || touchingGate.has(gate))) {
+        touchingGate.add(gate);
+        gateFor.set(raider, index);
+      } else touchingGate.delete(gate);
+    }
   }
   for (const raider of world.raiders) {
     const spec = RAIDERS[raider.kind];
     const path = WAYS[raider.way];
-    let next = raider.s + spec.speed * (1 - raider.slow) * dt;
+    const free = raider.s + spec.speed * (1 - raider.slow) * dt;
+    let next = free;
     if (raider.limit !== undefined && isBoat(raider)) next = Math.max(raider.s, Math.min(next, raider.limit));
     raider.limit = undefined;
     raider.s = next;
@@ -326,11 +355,20 @@ export function step(world, seconds) {
       raider.burnLeft -= dt;
       hurt(world, raider, raider.burn * dt, events, 'fire');
     }
+    // The queue also sets limits for approaching boats. Only count a surviving boat once its motion is clipped.
+    if (gateFor && raider.hp > 0 && next < free) {
+      const index = gateFor.get(raider);
+      if (index !== undefined && !((raider.heldAt ?? 0) & (1 << index))) {
+        raider.heldAt = (raider.heldAt ?? 0) | (1 << index);
+        world.intercept.held[index]++;
+      }
+    }
     if (raider.hp > 0 && raider.s >= path.length) {
       raider.hp = 0;
       raider.leaked = true;
       world.lives -= spec.leak;
       world.leaked++;
+      if (world.intercept && raider.crewFrom !== undefined) world.intercept.crewLeaked++;
       events.push({ type: 'leak', id: raider.id, kind: raider.kind, lives: spec.leak });
     }
   }
@@ -398,7 +436,7 @@ export function step(world, seconds) {
     world.lives = 0;
     world.state = 'lost';
     events.push({ type: 'lost', wave: world.wave });
-  } else if (world.wave === WAVES.length - 1 && !world.queue.length && !world.raiders.length) {
+  } else if (world.wave === world.waves.length - 1 && !world.queue.length && !world.raiders.length) {
     world.state = 'won';
     events.push({ type: 'won', stars: stars(world.lives, world.livesAtStart) });
   }
