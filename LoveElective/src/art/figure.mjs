@@ -950,28 +950,35 @@ const FIT_OFFSETS = {
   m: [0, 0, 36, 19, 0, 0],
   f: [0, 0, 29, 15, 0, 0],
 };
-let wardrobeCanvas;
+let wardrobeSource;
+let wardrobeFitted;
+
+function createWardrobeLayer() {
+  const canvas = document.createElement('canvas');
+  canvas.width = FIGURE_W;
+  canvas.height = FIGURE_H;
+  return canvas.getContext('2d');
+}
 
 /** Refit the full-length outfit as one painted layer. The feet stay on the
  * same floor, and the skin, fabric seams and accessories share every joint. */
 export function drawWardrobeFigure(g, spec, { blink = false } = {}) {
-  if (!wardrobeCanvas) {
-    wardrobeCanvas = document.createElement('canvas');
-    wardrobeCanvas.width = FIGURE_W;
-    wardrobeCanvas.height = FIGURE_H;
-  }
-  const painter = wardrobeCanvas.getContext('2d');
+  const painter = wardrobeSource ??= createWardrobeLayer();
+  const fitted = wardrobeFitted ??= createWardrobeLayer();
   painter.clearRect(0, 0, FIGURE_W, FIGURE_H);
   drawFigure(painter, spec, { blink, headScale: .965 });
+  fitted.clearRect(0, 0, FIGURE_W, FIGURE_H);
 
   const offsets = spec.sex === 'm' ? FIT_OFFSETS.m : FIT_OFFSETS.f;
+  // Join the rows in figure pixels before any fractional preview scaling.
   for (let i = 1; i < FIT_ROWS.length; i++) {
     const row = FIT_ROWS[i - 1];
     const sourceHeight = FIT_ROWS[i] - row;
     const fittedRow = row + offsets[i - 1];
     const fittedHeight = sourceHeight + offsets[i] - offsets[i - 1];
-    g.drawImage(wardrobeCanvas, 0, row, FIGURE_W, sourceHeight, 0, fittedRow, FIGURE_W, fittedHeight);
+    fitted.drawImage(painter.canvas, 0, row, FIGURE_W, sourceHeight, 0, fittedRow, FIGURE_W, fittedHeight);
   }
+  g.drawImage(fitted.canvas, 0, 0);
 }
 
 /** A plain mannequin used behind garments in shop and wardrobe thumbnails. */
