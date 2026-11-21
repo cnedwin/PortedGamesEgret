@@ -120,27 +120,57 @@ Serve this folder with any static file server to run it, for example `npx serve 
 
 ## 引擎能力对照表 · Engine capabilities
 
-（待补 · To be written）
+| 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
+|---|---|---|
+| `@egret/engine` `createEngine`；`createWorld3DHost` | 引擎、时钟和 3D 宿主 · the engine, its clock and the 3D host | `src/view/stage.mjs` |
+| `@egret/engine/webgl2/world3d` `createWebGL2Renderer3D`；`@egret/engine/webgpu/world3d` `createWebGPURenderer3D` | 默认 WebGL2，可选 WebGPU；按设备分画质，手机不开阴影和后期 · WebGL2 by default, WebGPU on request; phones get no shadows or post-processing | `src/view/stage.mjs` |
+| `createWorld3DView`、`startWorld3DLoop` | 由引擎时钟驱动的帧循环 · the frame loop driven by the engine clock | `src/view/stage.mjs` |
+| `Scene3D`、`createDirectionalLight3D`、`createHemisphereLight3D` | 山门、天下地图和战阵三个场景，日月随时辰转动 · the seat, the realm map and the arena, light turning with the hour | `src/view/stage.mjs`、`src/view/realm.mjs` |
+| `InstancedMesh3D`、`createGeometry3D` | 地图上的村落、宝塔、稻田、树木、船只和行军队列 · hamlets, pagodas, paddies, trees, junks and marching columns | `src/view/realm.mjs`、`src/view/flora.mjs` |
+| `Raycaster3D` | 在山门里点选建筑和人物 · picking buildings and people in the seat | `src/view/seat.mjs` |
+| `Skeleton3D`、`Bone3D`、`AnimationMixer3D` | 人物是骨架上的蒙皮身体，播放烘好的动作 · skinned figures playing baked clips | `src/view/figure.mjs` |
+| `createAnimationClip3D` | 招式动作的关键帧 · the keyframes of each move | `src/view/figure-motion.mjs` |
+| `createUnlitMaterial3D` | 战阵里的刀光和特效 · blade light and effects in the arena | `src/view/arena-effects.mjs` |
 
 ## 已验证 · Verified
 
-（待补 · To be written）
+- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：80 项全部通过（规则、弟子、卧底、开局、首次守山、山门布局与建造、人物动作、场景、声音）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 80 tests pass.
+- 2026-11-20 `node tools/quality.mjs Wulin` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。 · The 16 automatic quality items in headless Chromium, see QUALITY.md.
+- 节奏、声望和名位上限用 `tools/headless.mjs`、`tools/balance.mjs`、`tools/stacking.mjs` 的整局推演定下（`9a5f865`、`b5b0de9`）；本次没有重新记录推演输出。 · Pacing and limits were set from whole-game runs of the tools; their output was not recorded this time.
+- 没有记录在案的真机验收。 · No recorded run on a real device.
 
 ## 已知问题 · Known issues
 
+- 浏览器存储不可用（无痕模式或被禁用）时游戏起不来：`src/main.mjs` 启动时直接访问 `localStorage` 建立存档槽、配乐和旁白设置，没有兜底（品质 S3）。 · When browser storage is refused the game does not start: `src/main.mjs` reaches `localStorage` directly at start-up with no fallback.
+- 手机上双击会缩放页面，没有防止下拉刷新（T3）；「开启背景音乐」按钮高 40 像素，小于 44（T2）。 · Double-tap zooms the page and pull-to-refresh is not held on phones; the music button is 40 px tall.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（1 of 3 under 44×44: 开启背景音乐 110×40）；T3 不误触下拉刷新和双击缩放（overscroll free, touch-action auto, double-tap zoom on）；I1 中英文全可切换，英文下无中文（no way to choose English found）；S3 存储不可用不崩溃（did not start with storage refused）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
-（待补 · To be written）
+- 开局改成可以直接上手的序章（`e526ab0`）。 · The start became a playable prologue.
+- 战斗前预热阵容旁白（`761ea74`）；战斗音效和画面的打击点对齐（`f5a87bd`）。 · Lineup narration is warmed up before combat; combat sounds land with the visible blows.
+- 对话框里的操作不再冲掉提示（`3d595cd`）；论剑大会的进度得以保留（`cdc3efd`）。 · Dialog actions keep the feedback; Sword Meet progress is kept.
+- 首次守山的改进（`6aa0c59`），鹤翼阵和其他常见阵法拉平（`fd3f8d3`），后期加成叠加设了上限（`b5b0de9`）。 · The first home defense, the crane formation and late-game stacking.
 
 ## 未完成 · Unfinished
 
-（待补 · To be written）
+- 只有中文界面，没有英文切换（品质 I1）。 · Chinese only.
+- 浏览器存储不可用（无痕模式、被禁用）时游戏起不来（S3），见已知问题。 · The game does not start when browser storage is refused.
+- 资源加载失败时没有错误界面和重试（E2）；真机上的帧时间和触屏验收。 · No retry after a failed file; no measurements on real devices.
 
 ## 目录结构 · Layout
 
-（待补 · To be written）
+| 路径 · Path | 内容 · Contents |
+|---|---|
+| `src/core/` | 规则：门派、弟子、江湖、战斗、论剑、卧底、存档，不依赖页面 · the rules, with no page |
+| `src/data/` | 武学、门派、地点、货物、江湖事件等数据 · arts, sects, places, goods and events |
+| `src/ui/`、`src/main.mjs` | 界面、序章、配乐、旁白和音效 · the interface, prologue, score, narration and sound |
+| `src/view/` | 3D 画面：山门、天下地图、战阵、人物与动作 · the 3D picture: seat, realm, arena, figures and moves |
+| `art-handoff/`、`assets/` | 立绘、场景画、界面样式和模型 · portraits, paintings, interface styles and models |
+| `tools/` | 无页面推演、平衡、阵法、加成测算、模型查看与引擎副本更新 · headless runs, balance, formations, stacking, viewers and vendoring |
+| `docs/数据设定.md` | 数据设计文档 · the data design |
+| `test/` | Node 测试 · Node tests |
+| `vendor/` | 引擎副本 · the engine copy |
 
 ## 引擎副本 · Engine copy
 

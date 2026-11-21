@@ -153,27 +153,51 @@ python3 -m http.server 4180      # 模型查看器 · model viewer: /SnowTemple/
 
 ## 引擎能力对照表 · Engine capabilities
 
-（待补 · To be written）
+| 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
+|---|---|---|
+| `@egret/engine` `createEngine` | 引擎和时钟 · the engine and its clock | `src/main.mjs` |
+| `@egret/engine/webgl2/world3d` `createWebGL2Renderer3D`、`createWorld3DView`、`startWorld3DLoop` | WebGL2 绘制和由引擎时钟驱动的帧循环 · WebGL2 drawing and the frame loop driven by the engine clock | `src/main.mjs` |
+| `renderer.tiledLights` | 地上的火和烧着的人按屏幕分块照亮（八盏以外的点光） · fire on the ground and burning men lit by screen tile | `src/main.mjs` |
+| `renderer.preparePrograms` | 加载画面下预编译淡出的屋顶、法阵、脚印、落枪等迟出现的着色器 · late programs prepared under the loading screen | `src/view/view.mjs` |
+| `createDynamicResolution3D` | 自动画质按帧率升降绘制分辨率 · automatic quality moves the drawing scale with the frame rate | `src/main.mjs` |
+| `createWorld3DStats` | `?debug` 的引擎性能读数 · the engine's performance readout under `?debug` | `src/main.mjs` |
+| `PlanarReflection3D` | 最高画质下湿石板的倒影 · the wet flagstones' mirror at the highest quality | `src/view/view.mjs` |
+| `loadGltf3D`、`Skeleton3D` | 林冲、陆谦和庄客的蒙皮模型 · the skinned characters | `src/view/characters.mjs`、`src/view/figures.mjs` |
+| `InstancedMesh3D`、`createCustomShader3D` | 随风起伏、会被拨开的成片枯草；枪光、法阵和预警的片元着色器 · grass swaying and parting; the spear light, formation and warnings | `src/view/figures.mjs`、`src/view/effects.mjs` |
+| `createCustomPost3D` | 自定义后期处理 · custom post-processing | `src/view/look.mjs` |
+| `@egret/engine/kit` `createSaveStore` | 带版本号的进度和设置存档 · versioned progress and settings | `src/saves.mjs` |
+| `@egret/engine/web/kit` `browserSaveStorage` | 浏览器存储，写不进去也不报错 · the browser's storage, a refused write never throws | `src/main.mjs` |
+| `@egret/engine/kit` `runHeadless` | `tools/balance.mjs` 用规则玩家无页面打各重 · the rule-driven player runs every tier without a page | `tools/balance.mjs` |
 
 ## 已验证 · Verified
 
-（待补 · To be written）
+- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：87 项全部通过（规则、数值、规则玩家通关、存档、输入、动作、角色加载、声音、引擎副本）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 87 tests pass, including the rule-driven player finishing the chapter.
+- 2026-11-20 `node tools/quality.mjs SnowTemple` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 场景几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium; its frame time says nothing of real devices.
+- 上面「角色分阶段加载」一节记录的 Windows 前台测试（Edge 157、RTX 5090 Laptop、WebGL2），对照的是改造前后的冷启动到首次移动。那是 `58554b3` 时的历史基线，之后没有重测。 · The Windows timings in the staged-loading section are a historical baseline at `58554b3`, not measured again since.
 
 ## 已知问题 · Known issues
 
+- 网络慢时，相应角色的模型到了才开始战斗。 · On a slow network the fight waits until the roles it needs have arrived.
+- 标题「风雪山神庙」在 390 像素宽的屏幕上被截断（品质 I3）。 · The title is cut off on a 390-pixel-wide screen.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 12 under 44×44: 行囊0B 85×35; 全屏 64×35; 设置 64×35）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 2416.6 ms over 5 frames）；I1 中英文全可切换，英文下无中文（no way to choose English found）；I3 长英文不溢出（cut off: 风雪山神庙）；E2 资源失败有错误界面和重试（9 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
-（待补 · To be written）
+- 淡出的屋顶和松树、法阵、脚印、落枪等第一次出现时链接着色器卡顿：先是在加载时把隐藏网格画一帧（`43466ba`、`8e152a4`），引擎 `8b634fe` 之后改用 `renderer.preparePrograms`（`58554b3`，ENGINE-NOTES 第 1 条）。 · Late programs stalled on first use; first a hidden frame, then the engine's `preparePrograms` (item 1).
+- 湿石板倒影要在每次镜像绘制前后切换渲染器的色调映射：改为给镜像单独设色调映射（`58554b3`，ENGINE-NOTES 第 2 条）。 · The mirror switched the renderer's tone mapping around each draw; it now has its own (item 2).
+- 地上的火只能和灯争八盏点光：改用分块照明，火光只让被照到的像素付出代价（`e99e4e4`，ENGINE-NOTES 第 3 条）。 · Fires competed with the lamps for eight lights; they are now lit by screen tile (item 3).
+- 首屏太慢：角色分阶段加载（`87f213a`、`491d29a`、`d6da5ce`）。上面表里第 1 对冷启动到首次移动从 3485 ms 降到 996 ms，第 2 对差别很小（702 → 674 ms）。 · A slow start; characters load in stages (see the table above for the measured pairs).
+- 组合键只在最后一个键松开时收到 `pointerup`，按住的动作卡住：按真实按键位掩码对账（`b26ad51`）；窄屏和触屏上目标第二行压住角落按钮、桌面 HUD 淡入淡出时闪烁（`1c47df4`、`f26f5a2`）。 · Chorded mouse buttons stuck; the goal line ran into the corner buttons on narrow screens; the desktop HUD flickered in fades.
 
 ## 未完成 · Unfinished
 
-（待补 · To be written）
+- 只有中文界面，没有英文切换（品质 I1）。 · Chinese only.
+- 资源加载失败时没有错误界面和重试（E2）。新版角色模型拿不到时会改用旧身体包，其他文件失败没有提示。 · No error screen with a retry when a file fails; only a missing character model falls back to the stock bodies.
+- 真机上的帧时间和整局触屏验收。 · Frame times and a whole run by touch on real devices.
 
 ## 目录结构 · Layout
 
-（待补 · To be written）
+见上面「开发 · Development」一节的目录表。 · See the table under Development above.
 
 ## 引擎副本 · Engine copy
 

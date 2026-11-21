@@ -81,49 +81,6 @@ Touch screens get on-screen buttons, and the kart accelerates by itself. Tap the
 
 Three classes (Stroll, Gallop, Gale) set the speed and how well the rivals drive, over 1, 3 or 5 laps. The title screen switches picture quality (high, medium, low) and language; lower the quality if the frame rate drops.
 
-## 引擎用法 · How it uses the engine
-
-游戏使用白鹭 World3D，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
-
-The game uses Egret World3D and draws with WebGL2 by default. Each part maps to an engine feature as follows.
-
-| 部分 · Part | 引擎功能 · Engine feature |
-|---|---|
-| 赛道中心线 · The circuit's centre line | `CatmullRomCurve3D` 闭合曲线，等距取样 · closed curve, sampled at equal distances |
-| 路面、路肩、围墙、桥面 · Road, kerbs, walls, bridge deck | `createGeometry3D` 沿赛道生成的带状网格 · strips generated along the track |
-| 车手、座驾、地标与道具 · Racers, karts, landmarks and props | 白鹭 glTF 加载器读取内嵌 PBR 贴图的 GLB，也支持带顶点色的程序网格 · Egret's glTF loader reads GLBs with embedded PBR textures alongside vertex-coloured procedural meshes |
-| 轮胎 · Tyres | `createLatheGeometry3D` 旋转成形 · spun from an outline |
-| 树木、花草、灯笼、旌旗、观众、仙鹤、长城、群山 · Trees, verge plants, lanterns, banners, crowd, cranes, long wall, mountains | `InstancedMesh3D` 逐实例变换与颜色 · per-instance transform and colour |
-| 道具箱、铜钱、滚鼓与飞行中的道具 · Item boxes, coins, drums and items in flight | 每帧重填的 `InstancedMesh3D` · refilled every frame |
-| 湖面 · The lake | `createWater3D` 波浪与倒影 · waves and reflection |
-| 金钟罩 · The golden bell | `createGlassMaterial3D` |
-| 漂移火花、尾焰、尘土、泥浆、花瓣、烟花 · Drift sparks, flames, dust, mud, petals, fireworks | `createParticleEmitter3D` |
-| 加速拖尾、漂移胎痕 · Boost trails, drift tyre marks | `createTrail3D` |
-| 冲击波光环 · Shock rings | `createRingGeometry3D` + 叠加混合 · additive blending |
-| 路面、草地、牌匾、横幅、车徽贴图 · Road, turf, plaque, banner and badge textures | 由像素或画布生成的 `Texture3D` · made from pixels or a canvas |
-| 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
-| 画面 · Look | 级联阴影、天空环境光、雾、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, fog, ambient occlusion, bloom, FXAA |
-
-比赛规则（车辆手感、对手驾驶、道具、圈数与名次）可以在 Node 中整局运行。画面使用程序网格和 [Tripo 模型](assets/track-models/README.md)，音乐和音效由代码生成。
-
-The race rules (handling, rival driving, items, laps and places) can run a whole race in Node. The visuals use procedural meshes and [Tripo models](assets/track-models/README.md). Music and sound effects are generated in code.
-
-## 目录 · Layout
-
-| 路径 · Path | 内容 · Contents |
-|---|---|
-| `index.html`, `style.css` | 页面与界面样式 · the page and interface styles |
-| `src/main.mjs` | 启动与每帧流程 · start-up and the frame |
-| `src/track.mjs` | 赛道，规则与场景共用 · the circuit, shared by the rules and the scenery |
-| `src/sim.mjs` | 比赛规则，不依赖页面 · the rules of a race, no page needed |
-| `src/data.mjs` | 车手、道具、级别、数值和双语文字 · racers, items, classes, numbers and text in both languages |
-| `src/scenery.mjs` | 赛道与周围的景物 · the circuit and the land around it |
-| `src/racers.mjs`, `src/shapes.mjs` | 车手与座驾模型，建模用的基础件 · racer and kart models, and the building blocks they are made from |
-| `src/view.mjs` | 车辆、道具、特效和镜头 · karts, items, effects and the camera |
-| `src/hud.mjs`, `src/input.mjs`, `src/audio.mjs` | 界面、输入、音效 · interface, input, sound |
-| `tools/`, `test/` | 无页面运行与规则测试 · headless run and rule tests |
-| `vendor/` | 引擎运行时副本 · the engine runtime copy |
-
 ## 运行与开发 · Run and develop
 
 游戏是纯静态页面，无需构建。在本目录启动任意静态文件服务器，然后打开显示的地址：
@@ -163,24 +120,74 @@ Run a whole race without a page (class 0 to 2, laps and seed are optional). The 
 node tools/headless.mjs 1 3 7
 ```
 
-## 引擎与许可 · Engine and license
+## 引擎用法 · How it uses the engine
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+游戏使用白鹭 World3D，默认以 WebGL2 绘制。各部分对应的引擎功能如下。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.
+The game uses Egret World3D and draws with WebGL2 by default. Each part maps to an engine feature as follows.
+
+| 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
+|---|---|---|
+| `CatmullRomCurve3D` 闭合曲线，等距取样 · closed curve, sampled at equal distances | 赛道中心线 · The circuit's centre line | `src/track.mjs` |
+| `createGeometry3D` 沿赛道生成的带状网格 · strips generated along the track | 路面、路肩、围墙、桥面 · Road, kerbs, walls, bridge deck | `src/tree-models.mjs` |
+| 白鹭 glTF 加载器读取内嵌 PBR 贴图的 GLB，也支持带顶点色的程序网格 · Egret's glTF loader reads GLBs with embedded PBR textures alongside vertex-coloured procedural meshes | 车手、座驾、地标与道具 · Racers, karts, landmarks and props | `src/track-models.mjs` |
+| `createLatheGeometry3D` 旋转成形 · spun from an outline | 轮胎 · Tyres | `src/racers.mjs` |
+| `InstancedMesh3D` 逐实例变换与颜色 · per-instance transform and colour | 树木、花草、灯笼、旌旗、观众、仙鹤、长城、群山 · Trees, verge plants, lanterns, banners, crowd, cranes, long wall, mountains | `src/scenery.mjs` |
+| 每帧重填的 `InstancedMesh3D` · refilled every frame | 道具箱、铜钱、滚鼓与飞行中的道具 · Item boxes, coins, drums and items in flight | `src/scenery.mjs` |
+| `createWater3D` 波浪与倒影 · waves and reflection | 湖面 · The lake | `src/scenery.mjs` |
+| `createGlassMaterial3D` | 金钟罩 · The golden bell | `src/racers.mjs` |
+| `createParticleEmitter3D` | 漂移火花、尾焰、尘土、泥浆、花瓣、烟花 · Drift sparks, flames, dust, mud, petals, fireworks | `src/view.mjs` |
+| `createTrail3D` | 加速拖尾、漂移胎痕 · Boost trails, drift tyre marks | `src/view.mjs` |
+| `createRingGeometry3D` + 叠加混合 · additive blending | 冲击波光环 · Shock rings | `src/view.mjs` |
+| 由像素或画布生成的 `Texture3D` · made from pixels or a canvas | 路面、草地、牌匾、横幅、车徽贴图 · Road, turf, plaque, banner and badge textures | `src/shapes.mjs` |
+| Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` | 帧循环 · Frame loop | `src/main.mjs` |
+| 级联阴影、天空环境光、雾、环境遮蔽、泛光、FXAA · cascaded shadows, sky lighting, fog, ambient occlusion, bloom, FXAA | 画面 · Look | `src/main.mjs` |
+
+比赛规则（车辆手感、对手驾驶、道具、圈数与名次）可以在 Node 中整局运行。画面使用程序网格和 [Tripo 模型](assets/track-models/README.md)，音乐和音效由代码生成。
+
+The race rules (handling, rival driving, items, laps and places) can run a whole race in Node. The visuals use procedural meshes and [Tripo models](assets/track-models/README.md). Music and sound effects are generated in code.
 
 ## 已验证 · Verified
 
-（待补 · To be written）
+- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：34 项全部通过（车辆手感、对手驾驶、道具、圈数与名次、输入、赛道美术与模型）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 34 tests pass.
+- 2026-11-20 `node tools/quality.mjs Rally` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 赛道几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium; its frame time says nothing of real devices.
+- 没有记录在案的真机整局验收。 · No recorded whole race on a real device.
 
 ## 已知问题 · Known issues
 
+- 湖面倒影每三帧才更新一次，快速转弯时倒影会略微滞后。 · The lake's reflection updates every third frame, so it lags a little in fast turns.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 4 under 44×44: Sound: On 120×41; Quality: High 137×41）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 1749.9 ms over 7 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 锦绣飞车 赛车游戏 或上箭头加速 或下箭头刹车 或左右箭头转向）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）；E2 资源失败有错误界面和重试（1 files refused; no uncaught error; no error screen with a retry）。
 
 ## 已解决 · Solved
 
-（待补 · To be written）
+- 牌匾和横幅上的字上下颠倒：画布从上往下数行、贴图从下往上数，复制像素时逐行倒过来（`src/shapes.mjs`，`1330ced`，ENGINE-NOTES 第 1 条）。 · Writing on the banners and plaque was upside down; rows are copied in reverse (item 1).
+- 拿到玉佩时第一次绘制它的材质造成卡顿：给玉佩网格加中性的顶点色，复用赛车已经编译过的着色器（`b8b0c07`，ENGINE-NOTES 第 2 条）。 · The jade charm's first draw stalled; it now reuses the karts' programs (item 2).
+- 湖面倒影每帧都重画一次场景：改为每三帧更新一次（`src/scenery.mjs`，`ee391d0`，ENGINE-NOTES 第 3 条）。 · The lake's reflection redrew the scene every frame; it now updates every third frame (item 3).
+- 触屏操作不稳，已修正并稳定下来（`ee391d0`、`cde9ae4`）。 · The touch controls were fixed and steadied.
 
 ## 未完成 · Unfinished
 
-（待补 · To be written）
+- 英文模式下页面上仍有中文（品质 I1），不读 `prefers-reduced-motion`（A3），资源加载失败没有错误界面和重试（E2）。 · Chinese left in English mode, no reduced-motion, no retry after a failed file.
+- 真机上的帧时间和整局触屏验收。 · Frame times and a whole race by touch on real devices.
+
+## 目录 · Layout
+
+| 路径 · Path | 内容 · Contents |
+|---|---|
+| `index.html`, `style.css` | 页面与界面样式 · the page and interface styles |
+| `src/main.mjs` | 启动与每帧流程 · start-up and the frame |
+| `src/track.mjs` | 赛道，规则与场景共用 · the circuit, shared by the rules and the scenery |
+| `src/sim.mjs` | 比赛规则，不依赖页面 · the rules of a race, no page needed |
+| `src/data.mjs` | 车手、道具、级别、数值和双语文字 · racers, items, classes, numbers and text in both languages |
+| `src/scenery.mjs` | 赛道与周围的景物 · the circuit and the land around it |
+| `src/racers.mjs`, `src/shapes.mjs` | 车手与座驾模型，建模用的基础件 · racer and kart models, and the building blocks they are made from |
+| `src/view.mjs` | 车辆、道具、特效和镜头 · karts, items, effects and the camera |
+| `src/hud.mjs`, `src/input.mjs`, `src/audio.mjs` | 界面、输入、音效 · interface, input, sound |
+| `tools/`, `test/` | 无页面运行与规则测试 · headless run and rule tests |
+| `vendor/` | 引擎运行时副本 · the engine runtime copy |
+
+## 引擎与许可 · Engine and license
+
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `f1fbd9093c47dd83a770a0a13aa88901edc0b90d`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0; engine commit `f1fbd9093c47dd83a770a0a13aa88901edc0b90d`; see [vendor/SOURCE.md](vendor/SOURCE.md) for its source and version.

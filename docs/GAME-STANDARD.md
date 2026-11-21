@@ -66,6 +66,10 @@ least these four, in each language:
 - **建议 · Suggestion**：引擎应该怎么改，或文档该怎么写 · what the engine or its documents should change.
 - **状态 · Status**：与标题一致；解决时写提交号 · as in the heading; the commit when resolved.
 
+开发中确实没有遇到引擎问题的游戏，不要编条目，写一行 `**没有记录到引擎问题 · No engine issues recorded**`，后面说明查过哪些来源（修复提交、代码注释、README）。
+
+A game that truly met no engine fault invents no item: it writes one line, `**没有记录到引擎问题 · No engine issues recorded**`, followed by what was looked through (fix commits, code comments, the README).
+
 已解决或已写入文档的条目可以不再写建议；也可以按「原来 / 引擎提交 / 本作现在」三段写（见 MechanismCity）。`tools/check-standard.mjs` 按这些字样检查每一条。
 
 An item the engine has resolved or documented may drop its suggestion, and an item may be written as "before / the engine commit / this game now" (as in MechanismCity). `tools/check-standard.mjs` looks for these words in every item.

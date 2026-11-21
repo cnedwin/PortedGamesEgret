@@ -54,61 +54,6 @@ On PC, Deploy and Resume request mouse lock so you can turn by moving the mouse.
 
 Settings cover graphics quality (high, medium, low), look sensitivity, field of view, volume, Y inversion and language. Lower the quality if the frame rate drops.
 
-## 引擎用法 · How it uses the engine
-
-游戏使用白鹭 World3D，默认以 WebGL2 绘制，加 `?backend=webgpu` 可改用 WebGPU。各部分对应的引擎功能如下。
-
-The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webgpu` to draw with WebGPU. Each part maps to an engine feature as follows.
-
-| 部分 · Part | 引擎功能 · Engine feature |
-|---|---|
-| 干员行走、跳跃、上台阶 · The operator walking, jumping and stepping up | `createCharacterMotor3D` + `PhysicsWorld3D` |
-| 地图碰撞 · Map collision | 每个方块一个静态盒体 · one static box body per block |
-| 子弹、视线、爆炸遮挡 · Bullets, sight lines, blast cover | `PhysicsWorld3D.raycast` |
-| 手雷 · Grenades | 带连续碰撞的动态球体 · dynamic spheres with continuous collision |
-| 敌人寻路与互相避让 · Enemy path finding and avoidance | `createNavMesh3D` + `createNavCrowd3D` |
-| 场景 · Scenery | 按表面合并成少量网格，世界尺度纹理坐标 · merged into a few meshes per surface, with world-scale texture coordinates |
-| 表面 · Surfaces | 程序生成的颜色贴图与法线贴图，`createStandardMaterial3D` · generated colour and normal maps |
-| 风化：雨痕、墙脚积尘、地面污渍 · Weathering: rain streaks, dirt at the foot of walls, stains on the ground | `createCustomShader3D` 片元钩子，按世界坐标计算 · fragment hook, worked out from world position |
-| 湿地面倒影 · The wet ground's mirror image | `PlanarReflection3D` + 材质的 `reflectionMap` · the material's `reflectionMap` |
-| 雨滴涟漪 · Rings where raindrops land | `createCustomShader3D` 法线钩子 · normal hook |
-| 掉漆与锈蚀 · Chipped paint and rust | `createCustomShader3D` 片元钩子 · fragment hook |
-| 景深与受伤时的画面 · Depth of field and the picture when hurt | 后期处理的景深、饱和度、暗角 · post-processing depth of field, saturation, vignette |
-| 晨雾与光柱 · Morning mist and light shafts | `createAtmosphere3D`，接入后期处理的自定义通道 · through the custom post-processing pass |
-| 曳光弹 · Tracers | `InstancedMesh3D` |
-| 弹孔与爆炸焦痕 · Bullet marks and scorch | `createDecal3D`，贴合被击中的表面 · laid onto the surface that was hit |
-| 敌人中弹倒地 · Soldiers falling when shot | `createRagdoll3D`，在画面自用的物理世界里 · in a physics world of the view's own |
-| 探照灯 · Floodlights | `createSpotLight3D` 投射阴影，加可见光锥 · casting shadows, with visible beams |
-| 枪口火光、尘土、火花、爆炸、水雾 · Muzzle flash, dust, sparks, blasts, mist | `createParticleEmitter3D`，`createPointLight3D` |
-| 天空与雾 · Sky and haze | 程序绘制的 `CubeTexture3D`（云、日晕），线性雾 · a painted `CubeTexture3D` (clouds, sun glow), linear fog |
-| 帧循环 · Frame loop | Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` |
-| 画面 · Look | 级联阴影、环境遮蔽、泛光、FXAA、ACES 色调映射 · cascaded shadows, ambient occlusion, bloom, FXAA, ACES tone mapping |
-
-角色、枪械外观和水电站道具使用经过减面、贴图压缩和挂点校准的 Tripo GLB。白鹭的 glTF 加载器读取内嵌材质，重复的场景道具共享实例批次。角色关节、换弹、终端交互和撤离演出由游戏驱动。枪声在山谷和厂房使用不同的实时混响，音序器随敌人逼近逐层加入贝斯和鼓。
-
-Characters, weapon visuals and station props use Tripo GLB assets simplified, texture-compressed and fitted to the game's attachment points. Egret loads the embedded materials and draws repeated props as instances. The game drives character joints, reloads, terminal interactions and extraction. Gunfire uses different real-time reverbs in the valley and powerhouse, while a step sequencer brings in bass and drums as enemies close in.
-
-## 目录 · Layout
-
-| 路径 · Path | 内容 · Contents |
-|---|---|
-| `index.html`，`style.css` | 页面、界面样式 · the page and interface styles |
-| `src/main.mjs` | 入口：启动引擎，驱动每一帧 · entry point: starts the engine and runs each frame |
-| `src/sim.mjs` | 规则：干员、武器、敌人、终端、物资、撤离，不含任何绘制 · the rules: operator, weapons, enemies, terminals, loot, extraction, with no drawing in them |
-| `src/data.mjs` | 数值 · tuning numbers |
-| `src/level.mjs` | 地图方块、关键位置、行走网格 · map blocks, named places, the walking grid |
-| `src/bot.mjs` | 代打玩家，用于自动检查和 `?auto=1` · a stand-in player for automated checks and `?auto=1` |
-| `src/view.mjs`，`src/scenery.mjs` | 场景、灯光、特效 · scene, lights, effects |
-| `src/soldier.mjs`，`src/soldier-skin.mjs`，`src/gun.mjs` | 连续角色蒙皮与动画、手中的武器 · continuous character skinning and animation, the weapon in hand |
-| `assets/models/`，`src/asset-models.mjs` | GLB 美术和角色、道具的挂载清单 · GLB assets and the visual slot manifest |
-| `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |
-| `src/hud.mjs`，`src/text.mjs` | 界面与中英文文字 · interface and its Chinese and English text |
-| `src/input.mjs`，`src/audio.mjs`，`src/music.mjs` | 键鼠与触屏、合成音效、随战况变化的配乐 · keyboard, mouse and touch; synthesised sound; a score that follows the fight |
-| `src/stats.mjs` | `?stats=1` 的性能读数 · the performance readout for `?stats=1` |
-| `test/`，`tools/` | 规则测试、无页面整局试玩 · tests of the rules, whole runs without a page |
-| `STATUS.md` | 现状与待办：验证情况、已知问题、未完成的功能、模型细节 · status and backlog: what is verified, known issues, unfinished features, model detail |
-| `vendor/` | 引擎运行时副本，来源见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |
-
 ## 运行与开发 · Running and development
 
 在线游玩只需要支持 WebGL2 的浏览器。本地开发与自动测试需要 Node.js 22 或更新版本。
@@ -149,21 +94,88 @@ The engine runtime copy is under Apache-2.0; see `vendor/LICENSE` and `vendor/NO
 
 See `assets/models/README.md` for the model source and usage notes.
 
+## 引擎用法 · How it uses the engine
+
+游戏使用白鹭 World3D，默认以 WebGL2 绘制，加 `?backend=webgpu` 可改用 WebGPU。各部分对应的引擎功能如下。
+
+The game uses Egret World3D and draws with WebGL2 by default; add `?backend=webgpu` to draw with WebGPU. Each part maps to an engine feature as follows.
+
+| 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
+|---|---|---|
+| `createCharacterMotor3D` + `PhysicsWorld3D` | 干员行走、跳跃、上台阶 · The operator walking, jumping and stepping up | `src/sim.mjs` |
+| 每个方块一个静态盒体 · one static box body per block | 地图碰撞 · Map collision | `src/sim.mjs` |
+| `PhysicsWorld3D.raycast` | 子弹、视线、爆炸遮挡 · Bullets, sight lines, blast cover | `src/sim.mjs` |
+| 带连续碰撞的动态球体 · dynamic spheres with continuous collision | 手雷 · Grenades | `src/sim.mjs` |
+| `createNavMesh3D` + `createNavCrowd3D` | 敌人寻路与互相避让 · Enemy path finding and avoidance | `src/sim.mjs` |
+| 按表面合并成少量网格，世界尺度纹理坐标 · merged into a few meshes per surface, with world-scale texture coordinates | 场景 · Scenery | `src/scenery.mjs` |
+| 程序生成的颜色贴图与法线贴图，`createStandardMaterial3D` · generated colour and normal maps | 表面 · Surfaces | `src/scenery.mjs` |
+| `createCustomShader3D` 片元钩子，按世界坐标计算 · fragment hook, worked out from world position | 风化：雨痕、墙脚积尘、地面污渍 · Weathering: rain streaks, dirt at the foot of walls, stains on the ground | `src/grime.mjs` |
+| `PlanarReflection3D` + 材质的 `reflectionMap` · the material's `reflectionMap` | 湿地面倒影 · The wet ground's mirror image | `src/view.mjs` |
+| `createCustomShader3D` 法线钩子 · normal hook | 雨滴涟漪 · Rings where raindrops land | `src/grime.mjs` |
+| `createCustomShader3D` 片元钩子 · fragment hook | 掉漆与锈蚀 · Chipped paint and rust | `src/grime.mjs` |
+| 后期处理的景深、饱和度、暗角 · post-processing depth of field, saturation, vignette | 景深与受伤时的画面 · Depth of field and the picture when hurt | `src/main.mjs` |
+| `createAtmosphere3D`，接入后期处理的自定义通道 · through the custom post-processing pass | 晨雾与光柱 · Morning mist and light shafts | `src/main.mjs` |
+| `InstancedMesh3D` | 曳光弹 · Tracers | `src/view.mjs` |
+| `createDecal3D`，贴合被击中的表面 · laid onto the surface that was hit | 弹孔与爆炸焦痕 · Bullet marks and scorch | `src/view.mjs` |
+| `createRagdoll3D`，在画面自用的物理世界里 · in a physics world of the view's own | 敌人中弹倒地 · Soldiers falling when shot | `src/soldier.mjs` |
+| `createSpotLight3D` 投射阴影，加可见光锥 · casting shadows, with visible beams | 探照灯 · Floodlights | `src/view.mjs` |
+| `createParticleEmitter3D`，`createPointLight3D` | 枪口火光、尘土、火花、爆炸、水雾 · Muzzle flash, dust, sparks, blasts, mist | `src/view.mjs` |
+| 程序绘制的 `CubeTexture3D`（云、日晕），线性雾 · a painted `CubeTexture3D` (clouds, sun glow), linear fog | 天空与雾 · Sky and haze | `src/textures.mjs` |
+| Engine 时钟 · Engine clock，`createWorld3DView`，`startWorld3DLoop` | 帧循环 · Frame loop | `src/main.mjs` |
+| 级联阴影、环境遮蔽、泛光、FXAA、ACES 色调映射 · cascaded shadows, ambient occlusion, bloom, FXAA, ACES tone mapping | 画面 · Look | `src/main.mjs` |
+
+角色、枪械外观和水电站道具使用经过减面、贴图压缩和挂点校准的 Tripo GLB。白鹭的 glTF 加载器读取内嵌材质，重复的场景道具共享实例批次。角色关节、换弹、终端交互和撤离演出由游戏驱动。枪声在山谷和厂房使用不同的实时混响，音序器随敌人逼近逐层加入贝斯和鼓。
+
+Characters, weapon visuals and station props use Tripo GLB assets simplified, texture-compressed and fitted to the game's attachment points. Egret loads the embedded materials and draws repeated props as instances. The game drives character joints, reloads, terminal interactions and extraction. Gunfire uses different real-time reverbs in the valley and powerhouse, while a step sequencer brings in bass and drums as enemies close in.
+
 ## 已验证 · Verified
 
-（待补 · To be written）
+- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：51 项全部通过（规则、输入、美术载入、模型挂点、连续蒙皮、投影代理、启动预绘）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 51 tests pass.
+- 2026-11-20 `node tools/quality.mjs FPS` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)；软件渲染下 3D 场景几乎画不动，帧时间一项不代表真机。 · The 16 automatic quality items in headless Chromium with software rendering, see QUALITY.md; its frame time says nothing of real devices.
+- 据 [STATUS.md](STATUS.md) 记录的真机检查：PC（RTX 5090 Laptop、Edge 157）与三星 SM-F966U1（Android 17、Chrome）上检查了三类角色的持枪、步行和蹲姿，第一人称枪械的瞄准、后坐、换弹和近裁切；公开版本的整局与性能复跑见 [PR #82 的验收记录](https://github.com/cnedwin/PortedGamesEgret/pull/82)。STATUS.md 里的两段整局帧率是美术修复前的历史基线。 · Device checks recorded in STATUS.md, on a PC and a Samsung phone; the public-run results are in PR #82. The whole-run frame rates there predate the art repair.
 
 ## 已知问题 · Known issues
 
+- 只点亮离镜头最近的五盏灯，远处的灯只有发光贴片 · Only the nearest five lamps are lit; distant lamps only glow.
+- 杉树在阴影里偏黑，背光时层次看不清 · Firs go nearly black in shade.
+- 代打程序（`?auto=1`）不搜物资箱，自动演示里看不到搜集和背包 · The stand-in player never searches crates.
+- 阵亡后从头开始；配件只作用于突击步枪，捡到即装、不能卸下 · Death restarts the run; attachments fit only the assault rifle.
+- RTX 5090 Laptop + ANGLE D3D11 上没有实时阴影（为避免丢失上下文而关闭） · No live shadows on that one adapter.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（3 of 3 under 44×44: Deploy 132×43; Settings 132×43; Controls 132×43）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 15332.7 ms over 2 frames）；I1 中英文全可切换，英文下无中文（html lang "en", Chinese left: 断流行动 第一人称射击 移动 鼠标瞄准 左键开火）；A3 尊重 prefers-reduced-motion（prefers-reduced-motion is not read）。
 
 ## 已解决 · Solved
 
-（待补 · To be written）
+- 第一次出现补给箱时约 130 ms 的两次停顿：启动时在加载提示下把两种材质路径真实预绘一遍（`src/view.mjs` 的 `view.warm`），见 ENGINE-NOTES 第 4 条。 · Two stalls of about 130 ms when the first crate appeared: both material paths are drawn once under the loading screen (ENGINE-NOTES item 4).
+- 加色混合的太阳光晕、枪口火光、红点画成不透明方块：材质设 `alphaMode: 'blend'`、`blending: 'additive'`（ENGINE-NOTES 第 2 条）。 · Additive glows drew as opaque squares (item 2).
+- 超过八盏的点光源不生效：只点亮离镜头最近的五盏并按距离渐隐（ENGINE-NOTES 第 1 条）。 · Lights past the eighth had no effect; the nearest five are lit and faded by distance (item 1).
+- RTX 5090 Laptop 的 ANGLE D3D11 下接收阴影的着色器丢失 WebGL 上下文：只对这一适配器关闭实时阴影（ENGINE-NOTES 第 3 条）。 · The shadow shader lost the context on one adapter; shadows are off for that adapter only (item 3).
+- 带护甲中弹时界面报错、守卫在出生点就发现干员、新增箱体挡路、枪在阴影里纯黑、瞄准镜被枪身挡住、一局不到一分钟等，完整清单见 [STATUS.md](STATUS.md)「已经解决的问题」。 · The rest (an error when hit with armour, guards spotting the start, blocked posts, a black rifle, the scope view, runs under a minute) are listed in STATUS.md.
 
 ## 未完成 · Unfinished
 
-（待补 · To be written）
+- WebGPU 后端没有做过单独的真机验收；覆盖整块显示屏的原生全屏、真人难度评估和专门的听音检查都没做（STATUS.md「验收边界」）。 · No device test of the WebGPU backend, native full-monitor fullscreen, human difficulty assessment or listening test.
+- 没有检查点和难度选择，只有一张地图、一个任务；背包是等大的十二格，不能丢弃；只有三把枪、两种配件；敌人没有小队配合，喊话没有语音；没有手柄支持。完整清单与下一步建议见 [STATUS.md](STATUS.md)。 · No checkpoints, difficulty or second map; a twelve-slot backpack; three guns and two attachments; no squad tactics or voiced callouts; no gamepad. See STATUS.md.
+
+## 目录 · Layout
+
+| 路径 · Path | 内容 · Contents |
+|---|---|
+| `index.html`，`style.css` | 页面、界面样式 · the page and interface styles |
+| `src/main.mjs` | 入口：启动引擎，驱动每一帧 · entry point: starts the engine and runs each frame |
+| `src/sim.mjs` | 规则：干员、武器、敌人、终端、物资、撤离，不含任何绘制 · the rules: operator, weapons, enemies, terminals, loot, extraction, with no drawing in them |
+| `src/data.mjs` | 数值 · tuning numbers |
+| `src/level.mjs` | 地图方块、关键位置、行走网格 · map blocks, named places, the walking grid |
+| `src/bot.mjs` | 代打玩家，用于自动检查和 `?auto=1` · a stand-in player for automated checks and `?auto=1` |
+| `src/view.mjs`，`src/scenery.mjs` | 场景、灯光、特效 · scene, lights, effects |
+| `src/soldier.mjs`，`src/soldier-skin.mjs`，`src/gun.mjs` | 连续角色蒙皮与动画、手中的武器 · continuous character skinning and animation, the weapon in hand |
+| `assets/models/`，`src/asset-models.mjs` | GLB 美术和角色、道具的挂载清单 · GLB assets and the visual slot manifest |
+| `src/build.mjs`，`src/textures.mjs`，`src/grime.mjs` | 几何体拼装、程序纹理、风化着色器 · geometry building, generated textures, the weathering shader |
+| `src/hud.mjs`，`src/text.mjs` | 界面与中英文文字 · interface and its Chinese and English text |
+| `src/input.mjs`，`src/audio.mjs`，`src/music.mjs` | 键鼠与触屏、合成音效、随战况变化的配乐 · keyboard, mouse and touch; synthesised sound; a score that follows the fight |
+| `src/stats.mjs` | `?stats=1` 的性能读数 · the performance readout for `?stats=1` |
+| `test/`，`tools/` | 规则测试、无页面整局试玩 · tests of the rules, whole runs without a page |
+| `STATUS.md` | 现状与待办：验证情况、已知问题、未完成的功能、模型细节 · status and backlog: what is verified, known issues, unfinished features, model detail |
+| `vendor/` | 引擎运行时副本，来源见 `vendor/SOURCE.md` · a copy of the engine runtime, see `vendor/SOURCE.md` |
 
 ## 引擎副本 · Engine copy
 

@@ -1,6 +1,6 @@
 // 由 tools/capability-matrix.mjs 生成，不要手改 · Made by tools/capability-matrix.mjs; do not edit by hand.
 export const MATRIX = {
- "commit": "6bdfbe56463082ef25b2501027c5f6d4364e81fa",
+ "commit": "b5628eb9997b67cf6163a388f5aa06f321f3833a",
  "games": [
   "FivePhases",
   "FPS",
@@ -34,7 +34,7 @@ export const MATRIX = {
     },
     {
      "game": "JY",
-     "file": "JY/web/battle-view.mjs"
+     "file": "JY/web/main.mjs"
     },
     {
      "game": "LanternShadows",
@@ -58,7 +58,7 @@ export const MATRIX = {
     },
     {
      "game": "TeaHorseRoad",
-     "file": "TeaHorseRoad/src/play/input.mjs"
+     "file": "TeaHorseRoad/src/ui/card.mjs"
     },
     {
      "game": "Wulin",
@@ -84,7 +84,7 @@ export const MATRIX = {
    "games": [
     {
      "game": "JY",
-     "file": "JY/web/battle-view.mjs"
+     "file": "JY/web/opening-dialogue.mjs"
     }
    ]
   },
@@ -182,7 +182,7 @@ export const MATRIX = {
     },
     {
      "game": "JY",
-     "file": "JY/web/jyx2/home3d/native-exit-effect.mjs"
+     "file": "JY/web/jyx2/scene/world3d-renderer.mjs"
     },
     {
      "game": "Rally",
@@ -453,7 +453,7 @@ export const MATRIX = {
     },
     {
      "game": "SnowTemple",
-     "file": "SnowTemple/src/saves.mjs"
+     "file": "SnowTemple/tools/balance.mjs"
     },
     {
      "game": "TeaHorseRoad",

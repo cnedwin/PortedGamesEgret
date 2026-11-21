@@ -106,7 +106,9 @@ function usesOf(folder, keys) {
     if (!existsSync(join(ROOT, path))) continue;
     for (const id of found.keys()) {
       const short = id.replace('@egret/engine/', '').replace('@egret/', '');
-      if (row.names.includes('`' + id + '`') || row.names.includes(id) || (id.startsWith('@egret') && row.names.includes(short) && short.length > 3)) found.set(id, path);
+      // A whole name only: `@egret/engine/webgl2` must not match inside `@egret/engine/webgl2/world3d`.
+      const whole = (name) => new RegExp(`(^|[^\\w/@-])${name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w/-])`).test(row.names);
+      if (whole(id) || (id.startsWith('@egret') && short.length > 3 && whole(short))) found.set(id, path);
     }
   }
   return found;

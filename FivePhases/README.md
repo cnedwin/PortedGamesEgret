@@ -2,28 +2,28 @@
 
 ## 简介 · Introduction
 
-2D 卡牌 + 三消混合玩法 Demo，基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)。上半屏是带立绘与动效的卡牌回合对战，下半屏是消除盘；消除攒能量、也掉新卡，卡与卡之间的羁绊反过来改变你该怎么消。五行既是消除的配色，也是五个流派与羁绊网。
+2D 卡牌 + 三消混合玩法 Demo，基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)。上半屏是带立绘与动效的卡牌回合对战，下半屏是消除盘；消除攒能量、也掉新卡，卡与卡之间的羁绊反过来改变你该怎么消。五行既是消除的配色，也是五个流派与羁绊网。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/FivePhases/)
 
-A 2D card battler over a match-three board, built on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). The top half is turn-based card combat with animated portraits; the bottom half is the board. Matching charges energy and drops new cards, and the bonds between cards change how you want to match. The five phases are at once the board's colours, five playstyles, and a bond network.
+A 2D card battler over a match-three board, built on [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). The top half is turn-based card combat with animated portraits; the bottom half is the board. Matching charges energy and drops new cards, and the bonds between cards change how you want to match. The five phases are at once the board's colours, five playstyles, and a bond network. [Play online](https://cnedwin.github.io/PortedGamesEgret/FivePhases/)
 
 三关依次迎战山魈、赤蛟和混沌。战斗有 30 张卡、五行羁绊、奖励三选一以及胜败结算。四套矿彩立绘、标题画、战场画与原创音乐随游戏提供。
 
 Play through three encounters with 30 cards, elemental bonds, pick-one-of-three rewards and a win or defeat screen. Four articulated portraits, illustrated screens and original music are bundled with the game.
 
-## 目录 · What is here
+## 玩法与操作 · How to play
 
-| 路径 | 是什么 |
+下半屏的 7×7 消除盘：点一格再点相邻的一格交换，连成三个或以上同色即消除，连锁越长攒的能量越多，也会掉落新卡。上半屏是回合制卡牌对战：用能量从手牌里出牌攻击或防守，按「结束回合」让敌人行动。卡牌按五行结成羁绊，改变你该优先消哪种颜色。三关依次迎战山魈、赤蛟和混沌，每关胜利后从三张奖励卡里选一张。
+
+The lower half is a 7 × 7 board: tap a tile, then a neighbouring one, to swap them; three or more of a colour in a line clear, longer chains charge more energy and drop new cards. The upper half is turn-based card combat: spend energy to play cards from the hand, then press End turn for the enemy to act. Cards form bonds by the five phases, which change which colour you want to match. Three encounters in turn, with a pick of one reward card from three after each win.
+
+| 操作 · Action | 触屏和鼠标 · Touch and mouse |
 |---|---|
-| [`DESIGN.md`](DESIGN.md) | 完整设计草案：布局、核心循环、爽感工程化、卡牌约束、羁绊、数值、演出分级、里程碑 |
-| `index.html` / `style.css` | 页面与界面样式。画布画战场，DOM 画 HUD |
-| `src/main.mjs` | 入口：搭台、收输入、把事件表翻译成演出、走流程 |
-| `src/core/` | **纯逻辑，不 import 任何显示对象**。棋盘、卡牌、战斗状态机 |
-| `src/view/` | 表现层：棋盘视图、立绘绑定、粒子特效、演出队列、Web Audio 配乐与音效 |
-| `src/ui/hud.mjs` | 血条、能量、手牌、步数、连锁、飘字（DOM） |
-| `src/portrait/` | 贴图骨架清单与 Spine 导出 |
-| `test/` | 逻辑层测试，`node --test` 直接跑，不需要浏览器 |
-| `tools/` | 立绘预览、Spine 导出、无头浏览器探针 |
-| `vendor/` | 本作自带的一份引擎（与 LanternShadows 一致，每个 Demo 各带一份） |
+| 交换 · Swap | 点一格，再点相邻一格 · tap a tile, then a neighbour |
+| 出牌 · Play a card | 点手牌 · tap a card in the hand |
+| 结束回合 · End the turn | 「结束回合」按钮 · the End turn button |
+| 静音 · Mute | 静音按钮（本机记住） · the mute button, remembered on this device |
+
+震屏在系统开启「减弱动态效果」时关闭。 · Screen shake is off when the system asks for reduced motion.
 
 ## 怎么跑 · Running
 
@@ -104,31 +104,56 @@ core/battle.mjs  ──事件表──▶  main.mjs  ──▶  sequence / fx / 
 
 复现方式：`node FivePhases/tools/probe.mjs` 用 `window.fivephases` 让机器人以最快速度出牌与交换，看控制台。
 
+## 引擎能力对照表 · Engine capabilities
+
+| 引擎入口 / API · Entry / API | 在本游戏中的用途 · Use in this game | 文件 · File |
+|---|---|---|
+| `@egret/engine/web/game` `createBrowserGame` | 画布、2D 舞台、帧循环和 `onError`；帧循环失败时报出原因并有限次重启 · canvas, 2D stage, frame loop and `onError`, with bounded restarts after a failure | `src/main.mjs` |
+| `game.toStage` | 把触点换算成棋盘格 · turning a touch into a board cell | `src/main.mjs` |
+| `Sprite`、`Bitmap`、`DisplayObjectContainer` | 棋盘格子池、立绘部件、粒子特效 · the pooled board tiles, portrait parts and particles | `src/view/board-view.mjs`、`src/view/portrait.mjs`、`src/view/fx.mjs` |
+| `Sprite.graphics` | 棋盘格的实心圆角块和特效形状 · solid rounded tiles and effect shapes | `src/view/draw.mjs` |
+
+## 已验证 · Verified
+
+- 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：49 项全部通过（棋盘、战斗、棋盘视图）。另有 `src/portrait/`、`src/view/` 下的测试，本次没有跑。 · `node --test test/*.test.mjs` at commit `fc1dacb` with Node 22.23.4: all 49 pass; the tests under `src/portrait/` and `src/view/` were not run this time.
+- 2026-11-20 `node tools/quality.mjs FivePhases` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。 · The 16 automatic quality items in headless Chromium, see QUALITY.md.
+- 上面「前期矢量版的引擎测量」一节记录的压测：`tools/probe.mjs` 让机器人以最快速度出牌和交换，几何预算问题修复后连跑九次没有复现。 · The stress runs recorded above: after the geometry fix, nine runs of the fastest robot play showed no recurrence.
+
+## 已知问题 · Known issues
+
+- 引擎副本没有记录提交号（缺 `vendor/SOURCE.md`），而且早于修掉极小坐标报错的 `66f7c59`。 · The engine copy has no recorded commit and predates `66f7c59`.
+- 只有中文界面，`<html lang>` 也固定为中文（品质 I1）。 · Chinese only.
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 2 under 44×44: 开阵 121×43; 静音 40×40）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 99.9 ms over 53 frames）；I1 中英文全可切换，英文下无中文（html lang "zh-CN", Chinese left: 五行牌阵 消除聚灵 出牌破阵 开阵 阵法说明）。
+
+## 已解决 · Solved
+
+- 几何预算超限（`WEBGL2_GEOMETRY_RANGE`）：棋盘描边改为两层实心块，立绘不再描边，静态一帧从约 754k 降到 268k 个预备顶点（`142ee83`，ENGINE-NOTES 第 1 条）。 · The geometry budget: outlines became two solid fills, the portraits lost their outlines, a still frame went from about 754k to 268k prepared vertices (item 1).
+- 震屏收尾时坐标落到 `1e-32` 量级，整帧渲染失败：余量小于一帧就归零（`fa55164`，ENGINE-NOTES 第 2 条）。 · The dying shake left coordinates near `1e-32` and failed the frame; it now snaps to zero (item 2).
+- 帧循环失败后画面冻住：`onError` 打出原因链并最多重启五次（ENGINE-NOTES 第 3 条）。 · A failed loop froze the picture; `onError` reports the cause and restarts it up to five times (item 3).
+- 立绘部件的绘制顺序（`e4a68fd`）；隐藏的浮层仍拦截输入（`eeb8973`）；深层连锁时棋盘动画不稳（`024b5b1`）；潮汐填充和特殊格触发（`f667521`）。 · Portrait draw order, hidden overlays taking input, deep cascades, tide fills and special tiles.
+
 ## 未做的部分 · Not done yet
 
 - 关间地图与事件节点（现在是固定三关）
 - 存档与卡组成长（奖励只在单局内有效）
 
-## 玩法与操作 · How to play
+## 目录 · What is here
 
-（待补 · To be written）
-
-## 引擎能力对照表 · Engine capabilities
-
-（待补 · To be written）
-
-## 已验证 · Verified
-
-（待补 · To be written）
-
-## 已知问题 · Known issues
-
-- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-20，无头 Chromium + SwiftShader · headless, software rendering）：T2 触控区 ≥ 44×44 CSS px（2 of 2 under 44×44: 开阵 121×43; 静音 40×40）；F1 桌面帧时间 p95 ≤ 16.7 ms（p95 99.9 ms over 53 frames）；I1 中英文全可切换，英文下无中文（html lang "zh-CN", Chinese left: 五行牌阵 消除聚灵 出牌破阵 开阵 阵法说明）。
-
-## 已解决 · Solved
-
-（待补 · To be written）
+| 路径 | 是什么 |
+|---|---|
+| [`DESIGN.md`](DESIGN.md) | 完整设计草案：布局、核心循环、爽感工程化、卡牌约束、羁绊、数值、演出分级、里程碑 |
+| `index.html` / `style.css` | 页面与界面样式。画布画战场，DOM 画 HUD |
+| `src/main.mjs` | 入口：搭台、收输入、把事件表翻译成演出、走流程 |
+| `src/core/` | **纯逻辑，不 import 任何显示对象**。棋盘、卡牌、战斗状态机 |
+| `src/view/` | 表现层：棋盘视图、立绘绑定、粒子特效、演出队列、Web Audio 配乐与音效 |
+| `src/ui/hud.mjs` | 血条、能量、手牌、步数、连锁、飘字（DOM） |
+| `src/portrait/` | 贴图骨架清单与 Spine 导出 |
+| `test/` | 逻辑层测试，`node --test` 直接跑，不需要浏览器 |
+| `tools/` | 立绘预览、Spine 导出、无头浏览器探针 |
+| `vendor/` | 本作自带的一份引擎（与 LanternShadows 一致，每个 Demo 各带一份） |
 
 ## 引擎副本 · Engine copy
 
-（待补 · To be written）
+`vendor/` 是本作自带的一份引擎（入口 `@egret/engine`、`@egret/engine/web/game`），但没有 `vendor/SOURCE.md`，复制时的引擎提交号没有记录。按代码判断，它早于引擎 `66f7c59`（2026-11-17，2D 几何把极小坐标当作 0）。按标准 `vendor/` 只由引擎仓库的 `tools/vendor-game.mjs` 生成，下次升级时用它重新生成，提交号就会写进 `vendor/SOURCE.md`。
+
+`vendor/` holds this game's copy of the engine (entries `@egret/engine` and `@egret/engine/web/game`), but there is no `vendor/SOURCE.md` and the engine commit was not recorded. From its code it predates engine `66f7c59` (2026-11-17). The standard has `vendor/` made only by the engine's `tools/vendor-game.mjs`; the next update made that way will write the commit into `vendor/SOURCE.md`.
