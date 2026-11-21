@@ -52,7 +52,8 @@ button.strong {
   --safe-bottom: max(8px, env(safe-area-inset-bottom));
   --gutter: max(10px, env(safe-area-inset-left), env(safe-area-inset-right));
   --pads-height: clamp(56px, 15dvh, 112px);
-  --stage-width: min(100%, calc((100dvh - var(--pads-height) - var(--safe-top) - var(--safe-bottom) - 10px) * 16 / 9));
+  --readout-space: 0px;
+  --stage-width: min(100%, calc((100dvh - var(--pads-height) - var(--safe-top) - var(--safe-bottom) - var(--readout-space) - 10px) * 16 / 9));
   position: fixed;
   inset: 0;
   display: flex;
@@ -64,6 +65,24 @@ button.strong {
   isolation: isolate;
   background: radial-gradient(ellipse at 50% 27%, #35251d, #141612 72%);
 }
+#frame[data-lesson] { --readout-space: 40px; }
+#lessonFeedback {
+  flex: none;
+  width: var(--stage-width);
+  min-height: 30px;
+  margin: 0;
+  padding: 4px 8px;
+  border: 1px solid #936947;
+  border-radius: 5px;
+  background: #261e17;
+  color: #fff0d6;
+  font-size: clamp(12px, 2.5vmin, 16px);
+  font-weight: 650;
+  text-align: center;
+}
+#lessonFeedback[data-feedback="timingEarly"],
+#lessonFeedback[data-feedback="timingLate"],
+#lessonFeedback[data-feedback="timingMissedHint"] { color: #ffcf95; }
 #field {
   position: relative;
   flex: none;
@@ -365,6 +384,7 @@ button.strong {
 .skill-list li {
   display: flex;
   justify-content: space-between;
+  align-items: center;
   gap: 5px;
   padding: 8px;
   background: #2a2018;
@@ -372,7 +392,10 @@ button.strong {
   border-radius: 4px;
 }
 .skill-list li[data-done=true] strong { color: var(--gold); }
-.skill-list li[data-done=false] strong { color: var(--muted); }
+.skill-list [data-retry-step] {
+  padding-inline: 9px;
+  color: var(--gold);
+}
 .encore-bonus { color: var(--gold); font-size: .85em; }
 .acts {
   display: grid;

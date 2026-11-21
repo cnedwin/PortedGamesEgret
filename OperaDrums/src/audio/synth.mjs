@@ -110,7 +110,7 @@ export function tai(gain = 0.56, light = false) {
   texture(body, 2850, 1.5, seeded(light ? 88 : 83), 0.26, 44);
   return strikeShape(body, gain, 0.07);
 }
-export const ling = () => tai(0.32, true);
+export const ling = () => tai(0.40, true);
 
 /** Cymbals flash and wash away instead of sounding like a steady hiss. */
 export function cai(gain = 0.56) {
@@ -359,9 +359,10 @@ export function cueOf(name) {
     return mix(out, pluck(74, 0.2, false), 0.026, 0.23);
   }
   if (name === 'rally') {
+    // Leave room for both gong attacks, then answer them with two higher notes.
     mix(out, drum(0.37, 'roll'), 0, 0.44);
-    mix(out, pluck(69, 0.25, true), 0.052, 0.18);
-    return mix(out, pluck(74, 0.21, true), 0.118, 0.19);
+    mix(out, pluck(81, 0.14, true), 0.082, 0.251);
+    return mix(out, pluck(86, 0.17, true), 0.154, 0.237);
   }
   if (name === 'clear') {
     mix(out, pluck(74, 0.42, false), 0, 0.31);
