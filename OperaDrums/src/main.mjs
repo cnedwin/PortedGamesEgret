@@ -591,7 +591,7 @@ function showEnd() {
   if (r.mode === 'lesson') return showLessonEnd(r.skills);
   const root = sheet(
     panels.end,
-    `<div class="end-head"><h2 id="endHeading">${t('curtainCall')}</h2><small>${t('resultTitle', { song: songName(app.song), level: levelName(app.difficulty) })}</small></div>
+    `<div class="end-head"><h2 id="endHeading">${t('curtainCall')}</h2><small>${r.mode === 'encore' ? songName(app.song) : t('resultTitle', { song: songName(app.song), level: levelName(app.difficulty) })}</small></div>
      <div class="end-lead">
        <img src="assets/${r.mode === 'encore' ? 'jijifeng' : app.song.id}.webp" alt="">
        <div><p class="rank" data-rank="${r.rank}">${t(r.rank)}</p>
