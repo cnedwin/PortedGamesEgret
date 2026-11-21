@@ -372,7 +372,28 @@ button.strong {
 }
 #sessionCoach strong { flex: none; color: var(--gold); }
 #sessionCoach progress { width: clamp(44px, 18%, 128px); height: 5px; accent-color: var(--gold); }
-#sessionCoach.rally { background: #73381d; border-color: #ffcf81; }
+#sessionCoach[data-phase="ready"] {
+  background: #342916;
+  border-color: #ffe1a1;
+  box-shadow: inset 0 0 0 1px #e5ad573f;
+}
+#pads[data-encore-phase="ready"] .pad.gong {
+  border-color: #ffe0a2;
+  box-shadow: inset 0 0 0 2px #fff0bdb8, inset 0 0 18px #ffdc8242;
+}
+#sessionCoach[data-phase="active"] {
+  background: #73381d;
+  border-color: #ffcf81;
+}
+#sessionCoach[data-phase="active"] strong { color: #fff4cf; }
+#sessionCoach[data-phase="end"] { border-color: #a68c5f; }
+#sessionCoach[data-phase="break"] { background: #492a24; border-color: #d88872; }
+#sessionCoach[data-phase="break"] strong { color: #ffd2b6; }
+.encore-next-hint {
+  color: var(--gold);
+  font-size: clamp(12px, 2.2vmin, 15px);
+}
+#end .encore-next-hint + .sheet-actions { margin-top: 8px; }
 .skill-list {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -569,7 +590,8 @@ button.strong {
     gap: 10px 14px;
     padding: 12px 16px;
   }
-  #end .end-head, #end .sheet-actions, #end .notice { grid-column: 1 / -1; }
+  #end .end-head, #end .sheet-actions, #end .notice, #end .encore-next-hint { grid-column: 1 / -1; }
+  #end .encore-next-hint { margin: 0; }
   #end .end-lead { margin: 0; gap: 10px; }
   #end .end-lead img { height: min(29dvh, 122px); }
   #end .stats div { padding: 4px; }

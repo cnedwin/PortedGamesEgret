@@ -351,12 +351,26 @@ export function clicksOf(beats, gap, lead = 0.5) {
   return out;
 }
 
+const CUE_SECONDS = { clear: 1.15, retry: 0.65, rally: 0.36, 'rally-ready': 0.31, 'rally-end': 0.27, 'rally-break': 0.17 };
+
 export function cueOf(name) {
-  const out = buffer(name === 'clear' ? 1.15 : name === 'retry' ? 0.65 : name === 'rally' ? 0.36 : 0.25);
+  const out = buffer(CUE_SECONDS[name] ?? 0.25);
   if (name === 'select') return mix(out, ban(false), 0, 0.36);
   if (name === 'open') {
     mix(out, drum(0.47, 'roll'), 0, 0.49);
     return mix(out, pluck(74, 0.2, false), 0.026, 0.23);
+  }
+  if (name === 'rally-ready') {
+    mix(out, pluck(69, 0.16, true), 0, 0.20);
+    return mix(out, pluck(74, 0.18, true), 0.095, 0.22);
+  }
+  if (name === 'rally-end') {
+    mix(out, pluck(74, 0.14, true), 0, 0.20);
+    return mix(out, pluck(62, 0.16, true), 0.094, 0.18);
+  }
+  if (name === 'rally-break') {
+    mix(out, drum(0.42, 'roll'), 0, 0.40);
+    return mix(out, pluck(57, 0.115, true), 0.047, 0.16);
   }
   if (name === 'rally') {
     // Leave room for both gong attacks, then answer them with two higher notes.
@@ -377,6 +391,7 @@ export function cueOf(name) {
 export const double = () => tai(0.47, true);
 
 export function effectsOf() {
+  const bronze = cang();
   return {
     drum: drum(),
     da: drum(0.82, 'da'),
@@ -385,11 +400,16 @@ export function effectsOf() {
     tai: tai(),
     ling: ling(),
     cai: cai(),
-    cang: cang(),
+    cang: bronze,
+    // Keep the same mallet attack and damp the tail when consecutive gongs are close together.
+    cangRapid: fadeTail(bronze.slice(0, Math.round(0.39 * RATE)), 0.28),
     select: cueOf('select'),
     open: cueOf('open'),
     clear: cueOf('clear'),
     retry: cueOf('retry'),
-    rally: cueOf('rally')
+    rally: cueOf('rally'),
+    'rally-ready': cueOf('rally-ready'),
+    'rally-end': cueOf('rally-end'),
+    'rally-break': cueOf('rally-break')
   };
 }
