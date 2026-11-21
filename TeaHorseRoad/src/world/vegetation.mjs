@@ -81,7 +81,9 @@ export async function loadPlantModel(kind, url, { signal } = {}) {
 }
 
 /** Prepare the mapped, tinted instance variant before any tile switches to it. */
-export async function preparePlantModel(renderer, model, { scene, camera, waters, reflections }) {
+export async function preparePlantModel(renderer, model, {
+  scene, camera, waters, reflections, prepare = (requests) => renderer.preparePrograms(requests)
+}) {
   if (typeof renderer.preparePrograms !== 'function') return;
   const { geometry, material } = model;
   const mesh = new InstancedMesh3D(geometry, material, 1);
@@ -93,5 +95,5 @@ export async function preparePlantModel(renderer, model, { scene, camera, waters
   ];
   const ford = reflections && waters.bodies.find(({ id }) => id === 'ford')?.water;
   if (ford?.reflection) requests.push({ mesh, material, ...lighting, reflection: ford.reflection.createPass(camera, [ford]) });
-  await renderer.preparePrograms(requests);
+  await prepare(requests);
 }

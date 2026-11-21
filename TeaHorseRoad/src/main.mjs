@@ -30,7 +30,7 @@ import { loadRoadAsset } from './models/road-asset.mjs';
 import { createFlora } from './world/flora.mjs';
 import { createLand, LAYER } from './world/land.mjs';
 import { createLandmarks } from './world/landmarks.mjs';
-import { prepareRoadPrograms } from './world/programs.mjs';
+import { createProgramBatcher, prepareRoadPrograms } from './world/programs.mjs';
 import { STATIONS, biomeAt, directionAt, pointAt } from './world/route.mjs';
 import { createSky } from './world/sky.mjs';
 import { loadPlantModel, preparePlantModel } from './world/vegetation.mjs';
@@ -43,6 +43,8 @@ const params = new URLSearchParams(location.search),
 const save = openSave(browserSaveStorage());
 const settings = save.data.settings;
 const touchScreen = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+const loadStage = loading.querySelector('[data-load-stage]');
+const waitForPaint = () => new Promise((resolve) => requestAnimationFrame(() => setTimeout(resolve, 0)));
 
 // ---- the 3D world -------------------------------------------------------------------------------------------------
 const askedQuality = params.get('quality') ?? (settings.quality !== 'auto' ? settings.quality : undefined);
@@ -77,7 +79,7 @@ let journey = save.data.journey;
 const startS = (station) => STATIONS[station].s + (station === 0 ? 0 : 14);
 let beginS = params.has('s') ? Number(params.get('s')) : startS(journey?.station ?? 0);
 const p0 = pointAt(beginS);
-loading.querySelector('[data-load-stage]').textContent = '正在铺设山路 · Preparing the mountain road';
+loadStage.textContent = '正在铺设山路 · Preparing the mountain road';
 land.update(p0[0], p0[2]);
 while (!land.readyAround(p0[0], p0[2], 100)) {
   await new Promise((resolve) => setTimeout(resolve, 50));
@@ -87,19 +89,21 @@ const plantModels = (await plantsReady).filter(([, model]) => model);
 for (const [kind, model] of plantModels) flora.setPlantModel(kind, app.scope.use(model));
 const convoy = createConvoy(scene, physics, land.heightAt, { s: beginS, leadCab: await leadCabReady });
 const effects = createEffects(scene, physics, convoy, { land, water: waters, quality: app.quality });
-// Let the title and opening build while the first road shaders link. A quick start waits for the same work.
+// Let the 2D title build while the road links. Do not let the first 3D draw claim an unfinished program.
+loadStage.textContent = '正在准备场景光影 · Preparing scene lighting';
 const roadProgramsReady = app.backend === 'webgl2' && !params.has('film')
-  ? new Promise((resolve) => setTimeout(resolve, 0))
+  ? waitForPaint()
     .then(async () => {
       const reflections = app.quality === 'high';
+      const prepare = createProgramBatcher(app.renderer, waitForPaint);
       // Seed each culling variant even when the first tile has none of that plant.
       const warmedSides = new Set();
       for (const [, model] of plantModels) {
         if (warmedSides.has(model.material.side)) continue;
         warmedSides.add(model.material.side);
-        await preparePlantModel(app.renderer, model, { scene, camera, waters, reflections });
+        await preparePlantModel(app.renderer, model, { scene, camera, waters, reflections, prepare });
       }
-      await prepareRoadPrograms(app.renderer, scene, camera, waters, { reflections });
+      await prepareRoadPrograms(app.renderer, scene, camera, waters, { reflections, prepare });
     })
     .catch((cause) => console.warn('Road shader preparation', cause))
   : null;
@@ -145,7 +149,6 @@ async function buildOverlay() {
   );
 }
 await buildOverlay();
-loading.querySelector('[data-load-stage]').textContent = '车队即将出发 · Ready to depart';
 markers = createMarkers(document.querySelector('#markers'), camera, {
   stations: landmarks.stations.map((station, index) => ({ x: station.x, y: station.y, z: station.z, s: STATIONS[index].s, zh: station.name })),
   followers: convoy.trucks.slice(1).map((truck, i) => ({ node: truck.model.root, zh: ['卓玛', '老马锅头'][i] }))
@@ -154,6 +157,7 @@ markers.visible = false;
 
 // ---- the state of play ----------------------------------------------------------------------------------------------
 let state = 'title',
+  startupReady = false,
   paused = false,
   pauseCard = null,
   pauseVersion = 0,
@@ -307,14 +311,15 @@ async function showTitleNow() {
     best: save.data.best,
     onNew: () => startJourney(true),
     onContinue: () => startJourney(false),
-    onSettings: () => openSettings()
+    onSettings: () => startupReady && openSettings(),
+    animateIn: startupReady
   });
-  screen.focusFirst();
+  if (startupReady) screen.focusFirst();
 }
 
 const startJourney = (fresh) => busy(() => startJourneyNow(fresh));
 async function startJourneyNow(fresh) {
-  if (state !== 'title') return;
+  if (state !== 'title' || !startupReady) return;
   state = 'opening';
   void sound.start();
   if (fresh || !save.data.journey) {
@@ -341,7 +346,6 @@ async function showOpening(startAt) {
 
 const beginDriving = (...args) => busy(() => beginDrivingNow(...args));
 async function beginDrivingNow() {
-  if (roadProgramsReady) await roadProgramsReady;
   // Let a failed speculative build finish cleaning up before retrying the normal path.
   if (pendingHud) await pendingHud.catch(() => {});
   await buildHud();
@@ -828,12 +832,18 @@ function uiFrame(seconds) {
   }
 }
 
-app.show(scene, camera, {
-  onUpdate: (dt) => {
-    tick(dt);
-    if (app.quality === 'high') waters.beforeRender(app.renderer, scene, camera);
-  }
-});
+function showWorld() {
+  return new Promise((resolve) => {
+    app.show(scene, camera, {
+      onUpdate: (dt) => {
+        tick(dt);
+        if (app.quality === 'high') waters.beforeRender(app.renderer, scene, camera);
+        // Resolve on the first update. The draw finishes in this tick before the title is uncovered.
+        resolve();
+      }
+    });
+  });
+}
 
 // The interface is laid out for the shape of the screen; when that changes much (a phone turned), it is laid out again.
 let relayout = null;
@@ -963,8 +973,13 @@ function filmFrame(t, dt) {
   }
 }
 
-if (roadProgramsReady && params.has('s')) await roadProgramsReady;
-loading.classList.add('gone');
+const direct = params.has('film') || params.has('s');
+await Promise.all([roadProgramsReady, direct ? null : showTitle()]);
+const worldReady = showWorld();
+if (direct) {
+  startupReady = true;
+  loading.classList.add('gone');
+}
 if (params.has('film')) {
   filming = true;
   hud?.dispose();
@@ -988,7 +1003,16 @@ if (params.has('film')) {
   journey.station = Math.max(0, STATIONS.findLastIndex((station) => station.s <= beginS));
   placeConvoy(beginS);
   void beginDriving();
-} else await showTitle();
+} else {
+  await worldReady;
+  await waitForPaint();
+  while (rebuilding) await waitForPaint();
+  startupReady = true;
+  screen.focusFirst();
+  ui.semantics.publish();
+  ui.projection.sync();
+  loading.classList.add('gone');
+}
 
 // For tests and the curious, from the console.
 window.teaHorseRoad = {
