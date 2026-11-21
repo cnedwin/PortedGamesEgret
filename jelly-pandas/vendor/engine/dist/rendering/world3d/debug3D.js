@@ -53,9 +53,15 @@ export class LineHelper3D extends Mesh3D {
         p[at + 4] = b[1];
         p[at + 5] = b[2];
     }
-    commit() { this.#attribute.touch(); this.geometry.invalidateBounds(); }
+    commit() {
+        this.#attribute.touch();
+        this.geometry.invalidateBounds();
+    }
     /** Release the helper's own geometry and material. */
-    dispose() { this.geometry.dispose(); this.material.dispose(); }
+    dispose() {
+        this.geometry.dispose();
+        this.material.dispose();
+    }
 }
 const BOX_EDGES = [0, 1, 1, 3, 3, 2, 2, 0, 4, 5, 5, 7, 7, 6, 6, 4, 0, 4, 1, 5, 2, 6, 3, 7];
 /** Wire box around an object's world bounds. */
@@ -99,7 +105,16 @@ export class ArrowHelper3D extends LineHelper3D {
         const ux = Math.abs(y) < 0.99 ? -z : 0, uy = Math.abs(y) < 0.99 ? 0 : -z, uz = Math.abs(y) < 0.99 ? x : y, us = Math.hypot(ux, uy, uz) || 1;
         const u = [ux / us, uy / us, uz / us], v = [y * u[2] - z * u[1], z * u[0] - x * u[2], x * u[1] - y * u[0]], w = head * 0.4;
         this.segment(0, o, tip);
-        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([a, b], i) => this.segment(1 + i, tip, [back[0] + (u[0] * a + v[0] * b) * w, back[1] + (u[1] * a + v[1] * b) * w, back[2] + (u[2] * a + v[2] * b) * w]));
+        [
+            [1, 0],
+            [-1, 0],
+            [0, 1],
+            [0, -1]
+        ].forEach(([a, b], i) => this.segment(1 + i, tip, [
+            back[0] + (u[0] * a + v[0] * b) * w,
+            back[1] + (u[1] * a + v[1] * b) * w,
+            back[2] + (u[2] * a + v[2] * b) * w
+        ]));
         this.commit();
     }
 }
@@ -147,14 +162,21 @@ export class LightHelper3D extends LineHelper3D {
     update() {
         const light = this.light;
         light.updateWorldMatrices();
-        const m = light.matrixWorld, o = [m[12], m[13], m[14]], axis = (c) => { const x = m[c * 4], y = m[c * 4 + 1], z = m[c * 4 + 2], s = Math.hypot(x, y, z) || 1; return [x / s, y / s, z / s]; };
+        const m = light.matrixWorld, o = [m[12], m[13], m[14]], axis = (c) => {
+            const x = m[c * 4], y = m[c * 4 + 1], z = m[c * 4 + 2], s = Math.hypot(x, y, z) || 1;
+            return [x / s, y / s, z / s];
+        };
         const right = axis(0), up = axis(1), back = axis(2), forward = [-back[0], -back[1], -back[2]];
-        const along = (a, b, c, x, y, z) => [o[0] + a[0] * x + b[0] * y + c[0] * z, o[1] + a[1] * x + b[1] * y + c[1] * z, o[2] + a[2] * x + b[2] * y + c[2] * z];
+        const along = (a, b, c, x, y, z) => [
+            o[0] + a[0] * x + b[0] * y + c[0] * z,
+            o[1] + a[1] * x + b[1] * y + c[1] * z,
+            o[2] + a[2] * x + b[2] * y + c[2] * z
+        ];
         this.positions.fill(0);
         let next = 0;
         const ring = (a, b, c, radius, offset) => {
             for (let i = 0; i < RING; i++) {
-                const t0 = i / RING * Math.PI * 2, t1 = (i + 1) / RING * Math.PI * 2;
+                const t0 = (i / RING) * Math.PI * 2, t1 = ((i + 1) / RING) * Math.PI * 2;
                 this.segment(next++, along(a, b, c, Math.cos(t0) * radius, Math.sin(t0) * radius, offset), along(a, b, c, Math.cos(t1) * radius, Math.sin(t1) * radius, offset));
             }
         };
@@ -167,13 +189,23 @@ export class LightHelper3D extends LineHelper3D {
         else if (light.lightType === 'spot') {
             const length = light.range > 0 ? light.range : this.size, radius = Math.tan(Math.min(light.angle, 1.5)) * length;
             ring(right, up, forward, radius, length);
-            [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([x, y]) => this.segment(next++, o, along(right, up, forward, x * radius, y * radius, length)));
+            [
+                [1, 0],
+                [-1, 0],
+                [0, 1],
+                [0, -1]
+            ].forEach(([x, y]) => this.segment(next++, o, along(right, up, forward, x * radius, y * radius, length)));
         }
         else {
             const half = this.size * 0.25;
             ring(right, up, forward, half, 0);
             this.segment(next++, o, along(right, up, forward, 0, 0, this.size));
-            [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([x, y]) => this.segment(next++, along(right, up, forward, x * half, y * half, 0), along(right, up, forward, x * half, y * half, this.size * 0.6)));
+            [
+                [1, 0],
+                [-1, 0],
+                [0, 1],
+                [0, -1]
+            ].forEach(([x, y]) => this.segment(next++, along(right, up, forward, x * half, y * half, 0), along(right, up, forward, x * half, y * half, this.size * 0.6)));
         }
         this.commit();
     }
@@ -184,8 +216,10 @@ export class SkeletonHelper3D extends LineHelper3D {
     bones;
     constructor(root, color = 0x00ffaa) {
         const bones = [];
-        root.traverse(node => { if (node instanceof Bone3D && node.parent instanceof Bone3D)
-            bones.push(node); });
+        root.traverse(node => {
+            if (node instanceof Bone3D && node.parent instanceof Bone3D)
+                bones.push(node);
+        });
         super(Math.max(bones.length, 1), color, 'skeleton-helper');
         this.root = root;
         this.bones = bones;
@@ -198,12 +232,30 @@ export class SkeletonHelper3D extends LineHelper3D {
     }
     update() {
         this.root.updateWorldMatrices();
-        this.bones.forEach((bone, i) => { const a = bone.matrixWorld, b = bone.parent.matrixWorld; this.segment(i, [a[12], a[13], a[14]], [b[12], b[13], b[14]]); });
+        this.bones.forEach((bone, i) => {
+            const a = bone.matrixWorld, b = bone.parent.matrixWorld;
+            this.segment(i, [a[12], a[13], a[14]], [b[12], b[13], b[14]]);
+        });
         this.commit();
     }
 }
-export function createBoxHelper3D(target, color) { return new BoxHelper3D(target, color); }
-export function createArrowHelper3D(direction, origin, length, color) { return new ArrowHelper3D(direction, origin, length, color); }
-export function createCameraHelper3D(camera, color) { return new CameraHelper3D(camera, color); }
-export function createLightHelper3D(light, size, color) { return new LightHelper3D(light, size, color); }
-export function createSkeletonHelper3D(root, color) { return new SkeletonHelper3D(root, color); }
+/** Makes lines that show an object's bounding box. */
+export function createBoxHelper3D(target, color) {
+    return new BoxHelper3D(target, color);
+}
+/** Makes an arrow from a point in a direction. */
+export function createArrowHelper3D(direction, origin, length, color) {
+    return new ArrowHelper3D(direction, origin, length, color);
+}
+/** Makes lines that show what a camera sees. */
+export function createCameraHelper3D(camera, color) {
+    return new CameraHelper3D(camera, color);
+}
+/** Makes lines that show where a light is and where it shines. */
+export function createLightHelper3D(light, size, color) {
+    return new LightHelper3D(light, size, color);
+}
+/** Makes lines that show the bones of a skeleton. */
+export function createSkeletonHelper3D(root, color) {
+    return new SkeletonHelper3D(root, color);
+}

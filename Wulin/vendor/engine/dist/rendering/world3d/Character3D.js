@@ -294,9 +294,11 @@ export class FollowCamera3D {
         camera.lookAt(pivot[0], pivot[1], pivot[2]);
     }
 }
+/** Makes a character motor that walks, jumps and climbs steps in a physics world. */
 export function createCharacterMotor3D(world, options = {}) {
     return new CharacterMotor3D(world, options);
 }
+/** Makes a camera that follows a target and keeps out of walls. */
 export function createFollowCamera3D(camera, target, options = {}) {
     return new FollowCamera3D(camera, target, options);
 }

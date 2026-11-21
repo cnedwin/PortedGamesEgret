@@ -1,5 +1,6 @@
 import { packSharedDraws2D, packSharedRegions2D, SHARED_REGION_WINDOW_2D, SHARED_REGION_WINDOW_BYTES_2D } from '../rendering/packSharedDraws2D.js';
 import { noteOwnedPreparationFailure } from '../rendering/ownedPreparationFailure2D.js';
+import { sharedPageChainBytes2D } from '../rendering/sharedColor2D.js';
 import { SharedStorageError2D, planSharedStorageFees2D, withSharedReadbackLayout2D, checkSharedCapacity2D as checkSharedStorageCapacity2D, materializeSharedPages2D as materializeSharedStoragePages2D } from './sharedSubmissionStorage2D.js';
 // Retain the existing error constructor identity and private WebGPU callable types.
 export { SharedStorageError2D } from './sharedSubmissionStorage2D.js';
@@ -28,11 +29,16 @@ export function planSharedSubmission2D(prepared, options, hardware, owner, readb
             SHARED_REGION_WINDOW_BYTES_2D >
             hardware.maxBufferSize)
         failDevice();
-    const views = prepared.frame.pages.map(page => {
-        const image = page.source;
+    const views = prepared.frame.pages.map((page, index) => {
+        const image = page.source, levels = prepared.pageLevels?.[index] ?? 1;
         if (image.width > hardware.maxTextureDimension2D || image.height > hardware.maxTextureDimension2D)
             failDevice();
-        return { image, region: { x: 0, y: 0, width: image.width, height: image.height }, byteLength: image.byteLength };
+        return {
+            image,
+            region: { x: 0, y: 0, width: image.width, height: image.height },
+            byteLength: levels === 1 ? image.byteLength : sharedPageChainBytes2D(image.width, image.height, levels),
+            levels
+        };
     });
     const projectionPlan = {
         views,

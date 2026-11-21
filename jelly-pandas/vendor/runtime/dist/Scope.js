@@ -1,4 +1,4 @@
-import { cleanupManagedWrapper } from './ui/managedState.js';
+import { cleanupManagedWrapper } from "./ui/managedState.js";
 import { CancellationController } from "./CancellationController.js";
 import { EgretError } from "./EgretError.js";
 import { claimOwner, commitBinding, engineOf, ownerOf, preflightBinding, validateBinding } from "./ownership.js";
@@ -6,7 +6,9 @@ export let createScope;
 const CREATION_TOKEN = Symbol("egret.scopeFactory");
 const scopes = new WeakSet();
 /** Runtime-private identity for owner-chain lifetime validation. */
-export function isScope(value) { return scopes.has(value); }
+export function isScope(value) {
+    return scopes.has(value);
+}
 const activeRegistrations = new WeakSet();
 function cleanup(value) {
     if (cleanupManagedWrapper(value))
@@ -31,7 +33,7 @@ export class Scope {
         scopes.add(this);
         this.#engine = engine;
         this.#onClosed = onClosed;
-        this.#controller = new CancellationController((diagnostic) => {
+        this.#controller = new CancellationController(diagnostic => {
             this.#engine.captureCleanup(diagnostic.cause);
             this.#engine.report(diagnostic);
         });
@@ -40,7 +42,9 @@ export class Scope {
     static {
         createScope = (engine, onClosed) => new Scope(engine, onClosed, CREATION_TOKEN);
     }
-    get state() { return this.#currentState; }
+    get state() {
+        return this.#currentState;
+    }
     /** Accept one cleanup owner after callback-free validation of the current tree. */
     use(value) {
         if (activeRegistrations.has(value))

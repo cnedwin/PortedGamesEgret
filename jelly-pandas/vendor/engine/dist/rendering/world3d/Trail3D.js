@@ -7,6 +7,7 @@ import { World3DError, requireCount3D, requireFinite3D, requirePositive3D } from
 import { Attribute3D, Geometry3D } from './Geometry3D.js';
 import { createUnlitMaterial3D, setColor3D } from './Material3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most points a trail has. */
 export const TRAIL3D_LIMITS = Object.freeze({ maxPoints: 4096 });
 /**
  * Add the trail to the scene itself, not under the object it follows: its
@@ -45,8 +46,13 @@ export class Trail3D extends Mesh3D {
         geometry.setAttribute('uv', uvs);
         geometry.setIndex(indices);
         const material = createUnlitMaterial3D({
-            alphaMode: 'blend', blending: options.blending ?? 'additive', depthWrite: false, side: 'double', vertexColors: true, fog: false,
-            ...(options.map === undefined ? {} : { map: options.map }),
+            alphaMode: 'blend',
+            blending: options.blending ?? 'additive',
+            depthWrite: false,
+            side: 'double',
+            vertexColors: true,
+            fog: false,
+            ...(options.map === undefined ? {} : { map: options.map })
         });
         super(geometry, material);
         this.name = 'trail';
@@ -71,7 +77,9 @@ export class Trail3D extends Mesh3D {
         this.beforeRender = (camera) => this.build(camera);
     }
     /** Points currently in the trail, the moving head included. */
-    get pointCount() { return this.#count + (this.#hasHead ? 1 : 0); }
+    get pointCount() {
+        return this.#count + (this.#hasHead ? 1 : 0);
+    }
     /** Age every point, drop the expired ones, and follow the target. */
     update(deltaSeconds) {
         const dt = requireFinite3D(deltaSeconds, 'deltaSeconds'), points = this.#points;
@@ -104,15 +112,21 @@ export class Trail3D extends Mesh3D {
         this.#count = kept + 1;
     }
     /** Remove every point, as after teleporting the target. */
-    clear() { this.#count = 0; this.#hasHead = false; }
+    clear() {
+        this.#count = 0;
+        this.#hasHead = false;
+    }
     /** Release the geometry and the material. */
-    dispose() { this.geometry.dispose(); if (!Array.isArray(this.material))
-        this.material.dispose(); }
+    dispose() {
+        this.geometry.dispose();
+        if (!Array.isArray(this.material))
+            this.material.dispose();
+    }
     build(camera) {
         const positions = this.#positions.data, colors = this.#colors.data, uvs = this.#uvs.data;
         const points = this.#points, head = this.#head, live = this.#hasHead ? this.#count + 1 : 0, eye = camera.matrixWorld;
         // Point k of the ribbon: the head first, then the recorded points.
-        const px = (k) => k === 0 ? head[0] : points[(k - 1) * 4], py = (k) => k === 0 ? head[1] : points[(k - 1) * 4 + 1], pz = (k) => k === 0 ? head[2] : points[(k - 1) * 4 + 2];
+        const px = (k) => (k === 0 ? head[0] : points[(k - 1) * 4]), py = (k) => (k === 0 ? head[1] : points[(k - 1) * 4 + 1]), pz = (k) => (k === 0 ? head[2] : points[(k - 1) * 4 + 2]);
         let lastX = 0, lastY = 0, lastZ = 0;
         for (let i = 0; i < this.capacity; i++) {
             const k = Math.min(i, live - 1), o = i * 2;
@@ -174,4 +188,7 @@ export class Trail3D extends Mesh3D {
         this.geometry.invalidateBounds();
     }
 }
-export function createTrail3D(options = {}) { return new Trail3D(options); }
+/** Makes a ribbon that follows a moving object and fades behind it. */
+export function createTrail3D(options = {}) {
+    return new Trail3D(options);
+}

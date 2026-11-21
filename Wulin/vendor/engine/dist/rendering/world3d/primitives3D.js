@@ -146,6 +146,7 @@ export function createCylinderGeometry3D(options = {}) {
     }
     return builder.build();
 }
+/** Makes a cone. */
 export function createConeGeometry3D(options = {}) {
     return createCylinderGeometry3D({
         radiusTop: 0,

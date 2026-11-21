@@ -485,6 +485,10 @@ export const MATRIX = {
     {
      "game": "TeaHorseRoad",
      "file": "TeaHorseRoad/src/main.mjs"
+    },
+    {
+     "game": "Wulin",
+     "file": "Wulin/src/main.mjs"
     }
    ]
   },

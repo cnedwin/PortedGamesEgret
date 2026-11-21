@@ -14,23 +14,33 @@ import { Bone3D, InstancedMesh3D, Mesh3D, Skeleton3D } from './Mesh3D.js';
 import { Object3D, Scene3D } from './Object3D.js';
 import { ParticleEmitter3D } from './Particles3D.js';
 import { RenderTarget3D, Texture3D, isCompressedPixels3D, isTexturePixels3D } from './Texture3D.js';
+/** The format name of a saved scene document. */
 export const SCENE_DOCUMENT_FORMAT_3D = 'egret.world3d.scene';
+/** The version of the scene document format. */
 export const SCENE_DOCUMENT_VERSION_3D = 1;
-export const SERIALIZE3D_LIMITS = Object.freeze({ maxNodes: 65536, maxEmbeddedTextureBytes: 1048576, maxDocumentBytes: 268435456 });
+/** The most nodes, embedded texture bytes and document bytes a scene document has. */
+export const SERIALIZE3D_LIMITS = Object.freeze({
+    maxNodes: 65536,
+    maxEmbeddedTextureBytes: 1048576,
+    maxDocumentBytes: 268435456
+});
 const ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 function encodeBase64(bytes) {
     let out = '';
     for (let i = 0; i < bytes.length; i += 3) {
         const a = bytes[i], b = bytes[i + 1], c = bytes[i + 2];
-        out += ALPHABET[a >> 2] + ALPHABET[((a & 3) << 4) | ((b ?? 0) >> 4)]
-            + (b === undefined ? '=' : ALPHABET[((b & 15) << 2) | ((c ?? 0) >> 6)]) + (c === undefined ? '=' : ALPHABET[c & 63]);
+        out +=
+            ALPHABET[a >> 2] +
+                ALPHABET[((a & 3) << 4) | ((b ?? 0) >> 4)] +
+                (b === undefined ? '=' : ALPHABET[((b & 15) << 2) | ((c ?? 0) >> 6)]) +
+                (c === undefined ? '=' : ALPHABET[c & 63]);
     }
     return out;
 }
 function decodeBase64(text) {
     if (typeof text !== 'string' || text.length % 4 !== 0)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'saved scene: base64');
-    const padding = text.endsWith('==') ? 2 : text.endsWith('=') ? 1 : 0, out = new Uint8Array(text.length / 4 * 3 - padding);
+    const padding = text.endsWith('==') ? 2 : text.endsWith('=') ? 1 : 0, out = new Uint8Array((text.length / 4) * 3 - padding);
     let o = 0;
     for (let i = 0; i < text.length; i += 4) {
         let bits = 0;
@@ -49,7 +59,14 @@ function decodeBase64(text) {
     }
     return out;
 }
-const ARRAY_TYPES = { f32: Float32Array, u32: Uint32Array, u16: Uint16Array, u8: Uint8Array, i16: Int16Array, i8: Int8Array };
+const ARRAY_TYPES = {
+    f32: Float32Array,
+    u32: Uint32Array,
+    u16: Uint16Array,
+    u8: Uint8Array,
+    i16: Int16Array,
+    i8: Int8Array
+};
 function packArray(data) {
     const type = Object.keys(ARRAY_TYPES).find(tag => data instanceof ARRAY_TYPES[tag]);
     return { type, data: encodeBase64(new Uint8Array(data.buffer, data.byteOffset, data.byteLength)) };
@@ -84,9 +101,45 @@ function plainData(value, depth = 0) {
     }
     return out;
 }
-const MATERIAL_SCALARS = ['opacity', 'side', 'alphaMode', 'alphaCutoff', 'blending', 'depthTest', 'depthWrite', 'vertexColors', 'fog', 'toneMapped', 'visible',
-    'emissiveIntensity', 'normalScale', 'occlusionStrength', 'flatShading', 'wireframe', 'shininess', 'toonSteps', 'clearcoat', 'clearcoatRoughness', 'lightMapIntensity', 'reflectionStrength', 'reflectionDistortion', 'softness', 'sheen', 'sheenRoughness', 'transmission', 'ior', 'thickness', 'metallic', 'roughness', 'environmentIntensity', 'billboard',
-    'screenSpace', 'sizeAttenuation', 'rotation', 'pointSize'];
+const MATERIAL_SCALARS = [
+    'opacity',
+    'side',
+    'alphaMode',
+    'alphaCutoff',
+    'blending',
+    'depthTest',
+    'depthWrite',
+    'vertexColors',
+    'fog',
+    'toneMapped',
+    'visible',
+    'emissiveIntensity',
+    'normalScale',
+    'occlusionStrength',
+    'flatShading',
+    'wireframe',
+    'shininess',
+    'toonSteps',
+    'clearcoat',
+    'clearcoatRoughness',
+    'lightMapIntensity',
+    'reflectionStrength',
+    'reflectionDistortion',
+    'softness',
+    'sheen',
+    'sheenRoughness',
+    'transmission',
+    'ior',
+    'thickness',
+    'metallic',
+    'roughness',
+    'environmentIntensity',
+    'billboard',
+    'screenSpace',
+    'sizeAttenuation',
+    'rotation',
+    'pointSize'
+];
 const MATERIAL_MAPS = ['map', 'emissiveMap', 'normalMap', 'occlusionMap', 'metallicRoughnessMap', 'lightMap'];
 const NODE_FLAGS = ['visible', 'layers', 'renderOrder', 'castShadow', 'receiveShadow', 'frustumCulled'];
 /** Write the subtree under `root` as JSON-safe data. */
@@ -104,8 +157,18 @@ export function serializeScene3D(root, options = {}) {
         if (known !== undefined)
             return known;
         const entry = {
-            name: value.name, wrapS: value.wrapS, wrapT: value.wrapT, magFilter: value.magFilter, minFilter: value.minFilter, mipmaps: value.mipmaps,
-            colorSpace: value.colorSpace, flipY: value.flipY, anisotropy: value.anisotropy, offset: [...value.offset], repeat: [...value.repeat], rotation: value.rotation,
+            name: value.name,
+            wrapS: value.wrapS,
+            wrapT: value.wrapT,
+            magFilter: value.magFilter,
+            minFilter: value.minFilter,
+            mipmaps: value.mipmaps,
+            colorSpace: value.colorSpace,
+            flipY: value.flipY,
+            anisotropy: value.anisotropy,
+            offset: [...value.offset],
+            repeat: [...value.repeat],
+            rotation: value.rotation
         };
         if (value.channel === 1)
             entry['channel'] = 1;
@@ -115,8 +178,14 @@ export function serializeScene3D(root, options = {}) {
         else if (isTexturePixels3D(source) && source.data.byteLength <= SERIALIZE3D_LIMITS.maxEmbeddedTextureBytes) {
             entry['pixels'] = { width: source.width, height: source.height, data: encodeBase64(source.data) };
         }
-        else if (isCompressedPixels3D(source) && source.levels.reduce((sum, level) => sum + level.byteLength, 0) <= SERIALIZE3D_LIMITS.maxEmbeddedTextureBytes) {
-            entry['compressed'] = { width: source.width, height: source.height, format: source.format, levels: source.levels.map(encodeBase64) };
+        else if (isCompressedPixels3D(source) &&
+            source.levels.reduce((sum, level) => sum + level.byteLength, 0) <= SERIALIZE3D_LIMITS.maxEmbeddedTextureBytes) {
+            entry['compressed'] = {
+                width: source.width,
+                height: source.height,
+                format: source.format,
+                levels: source.levels.map(encodeBase64)
+            };
         }
         else
             return undefined; // Host images, render targets and large textures need a key.
@@ -128,7 +197,13 @@ export function serializeScene3D(root, options = {}) {
         const known = materialIds.get(value);
         if (known !== undefined)
             return known;
-        const entry = { name: value.name, shading: value.shading, color: [...value.color], emissive: [...value.emissive], specular: [...value.specular] };
+        const entry = {
+            name: value.name,
+            shading: value.shading,
+            color: [...value.color],
+            emissive: [...value.emissive],
+            specular: [...value.specular]
+        };
         for (const field of MATERIAL_SCALARS)
             entry[field] = value[field];
         if (value.polygonOffset)
@@ -146,15 +221,32 @@ export function serializeScene3D(root, options = {}) {
         const known = geometryIds.get(value);
         if (known !== undefined)
             return known;
+        const key = options.geometryKey?.(value);
+        if (typeof key === 'string' && key.length > 0) {
+            geometryIds.set(value, geometries.length);
+            geometries.push({ key });
+            return geometries.length - 1;
+        }
         const attributes = {};
         for (const [name, attribute] of value.attributes)
-            attributes[name] = { ...packArray(attribute.data), itemSize: attribute.itemSize, normalized: attribute.normalized };
-        const entry = { name: value.name, topology: value.topology, attributes, groups: value.groups.map(group => ({ ...group })) };
+            attributes[name] = {
+                ...packArray(attribute.data),
+                itemSize: attribute.itemSize,
+                normalized: attribute.normalized
+            };
+        const entry = {
+            name: value.name,
+            topology: value.topology,
+            attributes,
+            groups: value.groups.map(group => ({ ...group }))
+        };
         if (value.index)
             entry['index'] = packArray(value.index.data);
         if (value.morphTargets.length > 0) {
             entry['morphTargets'] = value.morphTargets.map(target => ({
-                name: target.name, ...(target.position ? { position: packArray(target.position) } : {}), ...(target.normal ? { normal: packArray(target.normal) } : {}),
+                name: target.name,
+                ...(target.position ? { position: packArray(target.position) } : {}),
+                ...(target.normal ? { normal: packArray(target.normal) } : {})
             }));
         }
         geometryIds.set(value, geometries.length);
@@ -166,8 +258,12 @@ export function serializeScene3D(root, options = {}) {
             throw new World3DError('WORLD3D_BUDGET', 'saved scene nodes');
         const id = nodes.length;
         const entry = {
-            name: object.name, type: 'object', position: [...object.position], quaternion: [...object.quaternion], scale: [...object.scale],
-            ...(parent === undefined ? {} : { parent }),
+            name: object.name,
+            type: 'object',
+            position: [...object.position],
+            quaternion: [...object.quaternion],
+            scale: [...object.scale],
+            ...(parent === undefined ? {} : { parent })
         };
         for (const flag of NODE_FLAGS)
             entry[flag] = object[flag];
@@ -189,13 +285,29 @@ export function serializeScene3D(root, options = {}) {
         }
         else if (object instanceof Camera3D) {
             entry['type'] = 'camera';
-            Object.assign(entry, { projection: object.projectionKind, fov: object.fov, orthographicHeight: object.orthographicHeight, aspect: object.aspect,
-                near: object.near, far: object.far, zoom: object.zoom, layerMask: object.layerMask });
+            Object.assign(entry, {
+                projection: object.projectionKind,
+                fov: object.fov,
+                orthographicHeight: object.orthographicHeight,
+                aspect: object.aspect,
+                near: object.near,
+                far: object.far,
+                zoom: object.zoom,
+                layerMask: object.layerMask
+            });
         }
         else if (object instanceof Light3D) {
             entry['type'] = 'light';
-            Object.assign(entry, { lightType: object.lightType, color: [...object.color], groundColor: [...object.groundColor], intensity: object.intensity,
-                range: object.range, angle: object.angle, penumbra: object.penumbra, shadow: { ...object.shadow } });
+            Object.assign(entry, {
+                lightType: object.lightType,
+                color: [...object.color],
+                groundColor: [...object.groundColor],
+                intensity: object.intensity,
+                range: object.range,
+                angle: object.angle,
+                penumbra: object.penumbra,
+                shadow: { ...object.shadow }
+            });
         }
         else if (object instanceof Mesh3D) {
             entry['type'] = object instanceof InstancedMesh3D ? 'instanced' : 'mesh';
@@ -239,7 +351,17 @@ export function serializeScene3D(root, options = {}) {
         }
         node['skeleton'] = id;
     }
-    return { format: SCENE_DOCUMENT_FORMAT_3D, version: SCENE_DOCUMENT_VERSION_3D, root: 0, nodes, geometries, materials, textures, skeletons, skipped };
+    return {
+        format: SCENE_DOCUMENT_FORMAT_3D,
+        version: SCENE_DOCUMENT_VERSION_3D,
+        root: 0,
+        nodes,
+        geometries,
+        materials,
+        textures,
+        skeletons,
+        skipped
+    };
 }
 function vector(value, length, field) {
     if (!Array.isArray(value) || value.length !== length || !value.every(Number.isFinite))
@@ -269,13 +391,32 @@ export function deserializeScene3D(saved, options = {}) {
             }
             let source;
             if (entry['pixels'])
-                source = { width: entry['pixels'].width, height: entry['pixels'].height, data: decodeBase64(entry['pixels'].data) };
+                source = {
+                    width: entry['pixels'].width,
+                    height: entry['pixels'].height,
+                    data: decodeBase64(entry['pixels'].data)
+                };
             else if (entry['compressed'])
-                source = { width: entry['compressed'].width, height: entry['compressed'].height, format: entry['compressed'].format, levels: entry['compressed'].levels.map(decodeBase64) };
+                source = {
+                    width: entry['compressed'].width,
+                    height: entry['compressed'].height,
+                    format: entry['compressed'].format,
+                    levels: entry['compressed'].levels.map(decodeBase64)
+                };
             else
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'saved scene: texture source');
-            const texture = new Texture3D(source, { name: entry['name'], wrapS: entry['wrapS'], wrapT: entry['wrapT'], magFilter: entry['magFilter'], minFilter: entry['minFilter'],
-                mipmaps: entry['mipmaps'], colorSpace: entry['colorSpace'], flipY: entry['flipY'], anisotropy: entry['anisotropy'], channel: entry['channel'] });
+            const texture = new Texture3D(source, {
+                name: entry['name'],
+                wrapS: entry['wrapS'],
+                wrapT: entry['wrapT'],
+                magFilter: entry['magFilter'],
+                minFilter: entry['minFilter'],
+                mipmaps: entry['mipmaps'],
+                colorSpace: entry['colorSpace'],
+                flipY: entry['flipY'],
+                anisotropy: entry['anisotropy'],
+                channel: entry['channel']
+            });
             texture.offset.set(vector(entry['offset'], 2, 'texture offset'));
             texture.repeat.set(vector(entry['repeat'], 2, 'texture repeat'));
             texture.rotation = entry['rotation'] ?? 0;
@@ -303,6 +444,19 @@ export function deserializeScene3D(saved, options = {}) {
                     material[field] = textures[entry[field]];
         }
         for (const entry of doc['geometries']) {
+            if (typeof entry['key'] === 'string') {
+                const resolved = options.resolveGeometry?.(entry['key']);
+                if (resolved instanceof Geometry3D) {
+                    geometries.push(resolved);
+                    continue;
+                }
+                // A missing reference gives an empty geometry instead of failing the whole scene.
+                const empty = new Geometry3D();
+                empty.name = entry['key'];
+                created.push(empty);
+                geometries.push(empty);
+                continue;
+            }
             const geometry = new Geometry3D();
             created.push(geometry);
             geometries.push(geometry);
@@ -320,8 +474,9 @@ export function deserializeScene3D(saved, options = {}) {
                 geometry.addGroup(group['start'], group['count'], group['materialIndex']);
             if (entry['morphTargets']) {
                 geometry.setMorphTargets(entry['morphTargets'].map((target) => ({
-                    name: target['name'], ...(target['position'] ? { position: unpackArray(target['position']) } : {}),
-                    ...(target['normal'] ? { normal: unpackArray(target['normal']) } : {}),
+                    name: target['name'],
+                    ...(target['position'] ? { position: unpackArray(target['position']) } : {}),
+                    ...(target['normal'] ? { normal: unpackArray(target['normal']) } : {})
                 })));
             }
         }
@@ -373,7 +528,9 @@ export function deserializeScene3D(saved, options = {}) {
                 case 'mesh':
                 case 'instanced': {
                     const geometry = pick(geometries, entry['geometry'], 'mesh geometry');
-                    const material = Array.isArray(entry['material']) ? entry['material'].map(index => pick(materials, index, 'mesh material')) : pick(materials, entry['material'], 'mesh material');
+                    const material = Array.isArray(entry['material'])
+                        ? entry['material'].map(index => pick(materials, index, 'mesh material'))
+                        : pick(materials, entry['material'], 'mesh material');
                     if (entry['type'] === 'instanced') {
                         const mesh = new InstancedMesh3D(geometry, material, entry['capacity'], entry['instanceColorSize'] === 4 ? 4 : 3);
                         mesh.count = Math.min(entry['count'], mesh.capacity);
@@ -400,7 +557,8 @@ export function deserializeScene3D(saved, options = {}) {
                 case 'lod':
                     node = new Lod3D();
                     break;
-                default: node = new Object3D();
+                default:
+                    node = new Object3D();
             }
             node.name = typeof entry['name'] === 'string' ? entry['name'] : '';
             node.position.set(vector(entry['position'], 3, 'position'));
@@ -444,14 +602,18 @@ export function deserializeScene3D(saved, options = {}) {
         });
         let disposed = false;
         return Object.freeze({
-            root, cameras: Object.freeze(cameras), geometries: Object.freeze(geometries), materials: Object.freeze(materials), textures: Object.freeze(ownedTextures),
+            root,
+            cameras: Object.freeze(cameras),
+            geometries: Object.freeze(geometries),
+            materials: Object.freeze(materials),
+            textures: Object.freeze(ownedTextures),
             dispose() {
                 if (disposed)
                     return;
                 disposed = true;
                 for (const resource of created)
                     resource.dispose();
-            },
+            }
         });
     }
     catch (cause) {

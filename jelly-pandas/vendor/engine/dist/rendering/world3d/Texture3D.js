@@ -3,15 +3,25 @@
 // or an opaque host image (ImageBitmap, canvas, video) that only a backend
 // interprets, which keeps this module DOM-free.
 import { Resource3D, World3DError, requireCount3D } from './core3D.js';
+/** The largest texture edge and size. */
 export const TEXTURE3D_LIMITS = Object.freeze({ maxEdge: 8192, maxBytes: 268435456 });
 /** Bytes per 4x4 block of each compressed format. */
 export const COMPRESSED_BLOCK_BYTES_3D = Object.freeze({
-    'bc1': 8, 'bc3': 16, 'bc7': 16, 'etc2-rgb8': 8, 'etc2-rgba8': 16, 'astc-4x4': 16,
+    'bc1': 8,
+    'bc3': 16,
+    'bc7': 16,
+    'etc2-rgb8': 8,
+    'etc2-rgba8': 16,
+    'astc-4x4': 16
 });
+/** Whether a value holds compressed pixels. */
 export function isCompressedPixels3D(source) {
-    return typeof source === 'object' && source !== null && Array.isArray(source.levels)
-        && typeof source.format === 'string';
+    return (typeof source === 'object' &&
+        source !== null &&
+        Array.isArray(source.levels) &&
+        typeof source.format === 'string');
 }
+/** Whether a value holds plain pixels. */
 export function isTexturePixels3D(source) {
     return typeof source === 'object' && source !== null && source.data instanceof Uint8Array;
 }
@@ -78,6 +88,7 @@ class TextureBase3D extends Resource3D {
         this.anisotropy = options.anisotropy ?? 1;
     }
 }
+/** A texture for 3D materials; set its source to change its picture. */
 export class Texture3D extends TextureBase3D {
     #source;
     /** UV transform applied as: uv' = rotate(uv * repeat) + offset. */
@@ -89,7 +100,9 @@ export class Texture3D extends TextureBase3D {
         checkSource(source);
         this.#source = source;
     }
-    get source() { return this.#source; }
+    get source() {
+        return this.#source;
+    }
     /** Replace the pixel source and schedule a backend upload. */
     setSource(source) {
         this.assertLive();
@@ -99,7 +112,11 @@ export class Texture3D extends TextureBase3D {
     }
     /** True when offset, repeat or rotation differ from the identity transform. */
     get hasTransform() {
-        return this.offset[0] !== 0 || this.offset[1] !== 0 || this.repeat[0] !== 1 || this.repeat[1] !== 1 || this.rotation !== 0;
+        return (this.offset[0] !== 0 ||
+            this.offset[1] !== 0 ||
+            this.repeat[0] !== 1 ||
+            this.repeat[1] !== 1 ||
+            this.rotation !== 0);
     }
 }
 /** Six square faces in +X, -X, +Y, -Y, +Z, -Z order. */
@@ -143,13 +160,20 @@ export class RenderTarget3D extends Resource3D {
         this.format = options.format ?? 'rgba8';
         this.depthTexture = this.depth && (options.depthTexture ?? false);
         this.texture = new Texture3D(this, {
-            mipmaps: false, wrapS: options.wrapS ?? 'clamp', wrapT: options.wrapT ?? 'clamp',
-            magFilter: options.magFilter ?? 'linear', minFilter: options.minFilter ?? 'linear',
-            colorSpace: this.format === 'rgba16f' ? 'linear' : 'srgb',
+            mipmaps: false,
+            wrapS: options.wrapS ?? 'clamp',
+            wrapT: options.wrapT ?? 'clamp',
+            magFilter: options.magFilter ?? 'linear',
+            minFilter: options.minFilter ?? 'linear',
+            colorSpace: this.format === 'rgba16f' ? 'linear' : 'srgb'
         });
     }
-    get width() { return this.#width; }
-    get height() { return this.#height; }
+    get width() {
+        return this.#width;
+    }
+    get height() {
+        return this.#height;
+    }
     /** Reallocate the attachments at a new size; previous contents are discarded. */
     setSize(width, height) {
         this.assertLive();
@@ -173,19 +197,33 @@ export class RenderTarget3D extends Resource3D {
 }
 /**
  * Procedural sky cube: a vertical gradient from `ground` through `horizon` to
- * `zenith`, in sRGB bytes. Useful as a background and a soft light probe.
+ * `zenith`, in sRGB. Useful as a background and a soft light probe.
+ *
+ * Colours are bytes, 0 to 255. Colours whose nine numbers are all from 0 to 1,
+ * as the other colours of the 3D world are written, are read as fractions of
+ * 255: `[0.4, 0.6, 1]` is the same sky as `[102, 153, 255]`. (Given as
+ * fractions before this, a sky was nearly black.)
  */
 export function createGradientCubeTexture3D(zenith, horizon, ground, size = 32) {
     const edge = requireCount3D(size, 'cube size', 1024);
     if (edge < 2)
         throw new World3DError('WORLD3D_INPUT_INVALID', 'cube size');
+    const all = [...zenith, ...horizon, ...ground];
+    if (all.length !== 9 || !all.every(v => typeof v === 'number' && v >= 0 && v <= 255))
+        throw new World3DError('WORLD3D_INPUT_INVALID', 'sky colour');
+    if (all.every(v => v <= 1)) {
+        const bytes = (c) => c.map(v => v * 255);
+        zenith = bytes(zenith);
+        horizon = bytes(horizon);
+        ground = bytes(ground);
+    }
     const faces = [];
     for (let face = 0; face < 6; face++) {
         const data = new Uint8Array(edge * edge * 4);
         for (let y = 0; y < edge; y++) {
             for (let x = 0; x < edge; x++) {
                 // Texel center on the cube surface, following the OpenGL cube-map face layout.
-                const s = (x + 0.5) / edge * 2 - 1, t = (y + 0.5) / edge * 2 - 1;
+                const s = ((x + 0.5) / edge) * 2 - 1, t = ((y + 0.5) / edge) * 2 - 1;
                 let dx = 0, dy = 0, dz = 0;
                 if (face === 0) {
                     dx = 1;

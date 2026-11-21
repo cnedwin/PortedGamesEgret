@@ -22,7 +22,12 @@ export function closeHost(host, timeoutMs, releaseSurface, errors, onDiagnostic)
                 releaseSurface();
             if (callerSettled) {
                 if (failed)
-                    reportDiagnostic(onDiagnostic, { code: "HOST_CLOSE_LATE_FAILURE", phase: "engine", severity: "error", cause });
+                    reportDiagnostic(onDiagnostic, {
+                        code: "HOST_CLOSE_LATE_FAILURE",
+                        phase: "engine",
+                        severity: "error",
+                        cause
+                    });
                 return;
             }
             callerSettled = true;

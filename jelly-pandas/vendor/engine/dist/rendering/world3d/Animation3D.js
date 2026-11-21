@@ -5,7 +5,9 @@
 import { World3DError, requireCount3D, requireFinite3D } from './core3D.js';
 import { quatNormalize, quatSlerp } from './math3D.js';
 import { Mesh3D } from './Mesh3D.js';
+/** The most tracks, keys and actions animations hold. */
 export const ANIMATION3D_LIMITS = Object.freeze({ maxTracks: 4096, maxKeys: 1048576, maxActions: 256 });
+/** A named animation: its tracks and its length in seconds. */
 export class AnimationClip3D {
     name;
     tracks;
@@ -30,12 +32,20 @@ export class AnimationClip3D {
             if (!Number.isSafeInteger(perKey) || perKey < 1 || perKey !== fixed)
                 throw new World3DError('WORLD3D_INPUT_INVALID', 'track values');
             end = Math.max(end, times[times.length - 1]);
-            return Object.freeze({ targetName: input.targetName, path: input.path, times, values, interpolation, size: perKey });
+            return Object.freeze({
+                targetName: input.targetName,
+                path: input.path,
+                times,
+                values,
+                interpolation,
+                size: perKey
+            });
         }));
         this.name = name;
         this.duration = duration === undefined ? end : requireFinite3D(duration, 'clip duration');
     }
 }
+/** Makes a clip from its name and tracks; malformed tracks are refused. */
 export function createAnimationClip3D(input) {
     return new AnimationClip3D(input.name ?? '', input.tracks, input.duration);
 }
@@ -128,7 +138,13 @@ class PropertyMix {
         }
         else if (this.path === 'quaternion') {
             // Keep both rotations in the same hemisphere before the weighted sum.
-            const sign = accumulated[0] * sample[0] + accumulated[1] * sample[1] + accumulated[2] * sample[2] + accumulated[3] * sample[3] < 0 ? -weight : weight;
+            const sign = accumulated[0] * sample[0] +
+                accumulated[1] * sample[1] +
+                accumulated[2] * sample[2] +
+                accumulated[3] * sample[3] <
+                0
+                ? -weight
+                : weight;
             for (let i = 0; i < 4; i++)
                 accumulated[i] += sample[i] * sign;
         }
@@ -162,6 +178,7 @@ class PropertyMix {
             this.target.markTransformDirty();
     }
 }
+/** One clip playing on a mixer: play, stop and reset it, fade it in or out, or cross-fade to another. */
 export class AnimationAction3D {
     clip;
     /** Blend weight before fading is applied. */
@@ -186,14 +203,22 @@ export class AnimationAction3D {
         this.clip = clip;
         this.#bound = bound;
     }
-    get time() { return this.#time; }
-    set time(value) { this.#time = Math.max(0, Math.min(this.clip.duration, requireFinite3D(value, 'time'))); }
-    get isRunning() { return this.#running; }
+    get time() {
+        return this.#time;
+    }
+    set time(value) {
+        this.#time = Math.max(0, Math.min(this.clip.duration, requireFinite3D(value, 'time')));
+    }
+    get isRunning() {
+        return this.#running;
+    }
     /** Weight actually applied this frame, including any fade in progress. */
     get effectiveWeight() {
         if (!this.#running)
             return 0;
-        const fade = this.#fadeDuration > 0 ? this.#fadeFrom + (this.#fadeTo - this.#fadeFrom) * Math.min(1, this.#fadeElapsed / this.#fadeDuration) : this.#fadeTo;
+        const fade = this.#fadeDuration > 0
+            ? this.#fadeFrom + (this.#fadeTo - this.#fadeFrom) * Math.min(1, this.#fadeElapsed / this.#fadeDuration)
+            : this.#fadeTo;
         return this.weight * fade;
     }
     play() {
@@ -213,8 +238,12 @@ export class AnimationAction3D {
         this.#fadeDuration = this.#fadeElapsed = 0;
         return this;
     }
-    fadeIn(seconds) { return this.fade(0, 1, seconds); }
-    fadeOut(seconds) { return this.fade(this.currentFade(), 0, seconds); }
+    fadeIn(seconds) {
+        return this.fade(0, 1, seconds);
+    }
+    fadeOut(seconds) {
+        return this.fade(this.currentFade(), 0, seconds);
+    }
     /** Fade this action out while fading `next` in over the same interval. */
     crossFadeTo(next, seconds) {
         this.fadeOut(seconds);
@@ -222,7 +251,9 @@ export class AnimationAction3D {
         return this;
     }
     currentFade() {
-        return this.#fadeDuration > 0 ? this.#fadeFrom + (this.#fadeTo - this.#fadeFrom) * Math.min(1, this.#fadeElapsed / this.#fadeDuration) : this.#fadeTo;
+        return this.#fadeDuration > 0
+            ? this.#fadeFrom + (this.#fadeTo - this.#fadeFrom) * Math.min(1, this.#fadeElapsed / this.#fadeDuration)
+            : this.#fadeTo;
     }
     fade(from, to, seconds) {
         this.#fadeFrom = from;
@@ -299,8 +330,10 @@ export class AnimationMixer3D {
             return existing;
         requireCount3D(this.#actions.size + 1, 'actions', ANIMATION3D_LIMITS.maxActions);
         const names = new Map();
-        this.root.traverse(object => { if (object.name && !names.has(object.name))
-            names.set(object.name, object); });
+        this.root.traverse(object => {
+            if (object.name && !names.has(object.name))
+                names.set(object.name, object);
+        });
         const bound = [];
         for (const track of clip.tracks) {
             const target = names.get(track.targetName);
@@ -316,7 +349,7 @@ export class AnimationMixer3D {
             const key = target.id + ':' + track.path;
             let mix = this.#mixes.get(key);
             if (!mix)
-                this.#mixes.set(key, mix = new PropertyMix(target, track.path, track.size));
+                this.#mixes.set(key, (mix = new PropertyMix(target, track.path, track.size)));
             if (track.size > this.#scratch.length)
                 this.#scratch = new Float32Array(track.size);
             bound.push({ track, mix, hint: { index: 0 } });

@@ -16,6 +16,7 @@
 //   ../art-handoff/    portraits, scene paintings and the interface's style sheets
 // The 3D modules are loaded once a game starts, and where a device cannot draw
 // them the scene paintings stand in and fights are settled in writing.
+import { browserSaveStorage } from '@egret/engine/web/kit';
 import { artUrl, loadArt, portraitUrl } from '../art-handoff/assets.mjs';
 import { ART_BY_ID, ARTS, CLASSES, CLASS_KEYS, levelOf, unmetNeeds } from './data/arts.mjs';
 import { DIFFICULTIES, FOCUSES, MERIDIANS, RELIC_BY_ID, RELICS, SCENARIOS } from './data/extras.mjs';
@@ -57,14 +58,29 @@ const app = document.querySelector('#app'),
   viewBox = document.querySelector('#view'),
   dialog = document.querySelector('#dialog'),
   announcement = document.querySelector('#announcement');
-const slots = createSlots(localStorage);
+// The page's storage when the browser lets the game write it (the engine probes it); otherwise, in a private
+// window or with storage turned off, one kept in memory for this visit, so the game still starts.
+const storage = browserSaveStorage().persistent ? localStorage : memoryStorage();
+function memoryStorage() {
+  const kept = new Map();
+  return {
+    get length() {
+      return kept.size;
+    },
+    key: (i) => [...kept.keys()][i] ?? null,
+    getItem: (key) => (kept.has(key) ? kept.get(key) : null),
+    setItem: (key, value) => void kept.set(key, String(value)),
+    removeItem: (key) => void kept.delete(key),
+  };
+}
+const slots = createSlots(storage);
 const clips = createClipAudio();
-const music = createSoundtrack(localStorage, clips);
-const feedbackAudio = createFeedbackAudio(localStorage);
-const worldAmbience = createWorldAmbience(localStorage, clips);
+const music = createSoundtrack(storage, clips);
+const feedbackAudio = createFeedbackAudio(storage);
+const worldAmbience = createWorldAmbience(storage, clips);
 const spatialAudio = createSpatialAudio(clips, worldAmbience);
 const combatAudio = createCombatAudio(clips, feedbackAudio);
-const voice = createVoice(localStorage, undefined, { clips, onSpeaking(active) {
+const voice = createVoice(storage, undefined, { clips, onSpeaking(active) {
   music.duck(active);
   worldAmbience.duck(active);
   spatialAudio.duck(active);
@@ -204,7 +220,7 @@ const leaderOf = (sectId) => world.persons[world.sects[sectId].leaderId];
 const picture = { stage: null, seat: null, realm: null, tried: false, modules: null };
 const storedQuality = () => {
   try {
-    return localStorage.getItem('wulin-quality');
+    return storage.getItem('wulin-quality');
   } catch {
     return null;
   }
@@ -1224,7 +1240,7 @@ const SHEETS = {
   settings() {
     return ['游戏设置', `${formRow('画质', `<select data-change="quality">${options([['', '自动'], ['high', '高'], ['medium', '中'], ['low', '低（省电）']], storedQuality() ?? '')}</select>`)}
       <p class="caption">${picture.stage ? '改动画质后会重新载入页面，进度先自动保存。' : '这台设备画不了 3D，山门以画卷示意，战斗以文字结算。'}</p>
-      ${formRow('季报', `<select data-change="season">${options([['on', '每季一报'], ['off', '不报']], localStorage.getItem('wulin-season') ?? 'on')}</select>`)}
+      ${formRow('季报', `<select data-change="season">${options([['on', '每季一报'], ['off', '不报']], storage.getItem('wulin-season') ?? 'on')}</select>`)}
       <section class="audio-settings"><h3>${icon('sound')} 音乐与声音</h3>
         ${formRow('背景音乐', `<select data-change="music">${options([['on', '开启'], ['off', '静音']], music.on ? 'on' : 'off')}</select>`)}
         ${formRow('音乐音量', `<input type="range" min="0" max="1" step="0.05" data-change="music-volume" value="${music.volume}">`)}
@@ -1422,7 +1438,7 @@ function enter(next, text = '', { guide = false } = {}) {
 let modApplied = '';
 const modNote = () => modApplied;
 try {
-  const kept = localStorage.getItem('wulin-mod');
+  const kept = storage.getItem('wulin-mod');
   if (kept) {
     const result = applyMod(JSON.parse(kept));
     if (result.ok) modApplied = `${result.name}（改动 ${result.changed} 处，新增事件 ${result.added} 条）`;
@@ -1438,7 +1454,7 @@ function loadMod() {
     try {
       const text = await input.files[0].text();
       if (!applyMod(JSON.parse(text)).ok) throw new Error('bad pack');
-      localStorage.setItem('wulin-mod', text);
+      storage.setItem('wulin-mod', text);
       if (world) slots.write('auto', world, autoLabel());
       location.reload();
     } catch {
@@ -1727,7 +1743,7 @@ const actions = {
   'mod-load': loadMod,
   'mod-clear'() {
     try {
-      localStorage.removeItem('wulin-mod');
+      storage.removeItem('wulin-mod');
     } catch {
       return;
     }
@@ -1822,7 +1838,7 @@ const actions = {
 const changes = {
   'arts-person': (_, value) => (ui.person = Number(value)),
   sort: (_, value) => Object.assign(ui, { sortKey: value, sortUp: false }),
-  season: (_, value) => localStorage.setItem('wulin-season', value),
+  season: (_, value) => storage.setItem('wulin-season', value),
   voice: (_, value) => voice.set({ on: value === 'on' }),
   'voice-volume': (_, value) => voice.set({ volume: Number(value) }),
   music: (_, value) => music.set({ on: value === 'on' }),
@@ -1834,7 +1850,7 @@ const changes = {
   quality(_, value) {
     slots.write('auto', world, autoLabel());
     try {
-      value ? localStorage.setItem('wulin-quality', value) : localStorage.removeItem('wulin-quality');
+      value ? storage.setItem('wulin-quality', value) : storage.removeItem('wulin-quality');
     } catch {
       return;
     }
@@ -2001,7 +2017,7 @@ function openSeason() {
   const was = ui.season,
     now = takeStock();
   ui.season = now;
-  if (!was || localStorage.getItem('wulin-season') === 'off' || !membersOf(world, me()).length) return;
+  if (!was || storage.getItem('wulin-season') === 'off' || !membersOf(world, me()).length) return;
   const since = chronicleEntries(world).filter((r) => r.day >= was.day && r.type !== 'moment');
   // Who came on this season: the days worth remembering first, then the latest of the rest.
   const told = new Set(world.log.filter((r) => r.type === 'moment' && r.day >= was.day).map((r) => r.text));
@@ -2037,7 +2053,7 @@ setInterval(() => {
   const before = world.day;
   const protection = openingProtection(world);
   const warningDay = protection?.active ? protection.until - 30 : -1;
-  const seasonReport = localStorage.getItem('wulin-season') !== 'off';
+  const seasonReport = storage.getItem('wulin-season') !== 'off';
   for (let i = 0; i < ui.speed && !world.pending && !world.outcome && !world.tourney; i++) {
     advanceDay(world);
     if (world.day === warningDay || seasonReport && world.day % 90 === 0) break;

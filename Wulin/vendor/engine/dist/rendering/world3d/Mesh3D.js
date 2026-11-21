@@ -7,7 +7,9 @@ import { Material3D, createSpriteMaterial3D } from './Material3D.js';
 import { box3Empty, box3ExpandByPoint, mat4Compose, mat4Copy, mat4Identity, mat4Invert, mat4Multiply, sphereFromBox, sphereTransform } from './math3D.js';
 import { Object3D } from './Object3D.js';
 import { createQuadGeometry3D } from './primitives3D.js';
+/** The most bones, instances and materials a mesh has. */
 export const MESH3D_LIMITS = Object.freeze({ maxBones: 1024, maxInstances: 1048576, maxMaterials: 64 });
+/** A bone of a skeleton. */
 export class Bone3D extends Object3D {
     constructor() {
         super('bone');
@@ -64,6 +66,7 @@ export class Skeleton3D {
         this.version++;
     }
 }
+/** A geometry drawn with materials, with its morph weights and skeleton. */
 export class Mesh3D extends Object3D {
     geometry;
     /** false leaves the mesh out of ray picking, as for effects whose drawn shape is not their geometry. */
@@ -153,7 +156,9 @@ export class Mesh3D extends Object3D {
         if (this.skeleton)
             return this.skinnedBounds();
         // Compared as numbers: this runs for every mesh on every frame.
-        const geometry = this.geometry, version = geometry.version, world = this.worldVersion;
+        const geometry = this.geometry, 
+        // A geometry whose points moved in place (cloth, a rope, a trail) has new bounds without a new structure.
+        version = geometry.version * 4294967296 + geometry.boundsVersion, world = this.worldVersion;
         if (geometry !== this.#sphereGeometry || version !== this.#sphereVersion || world !== this.#sphereWorld) {
             sphereTransform(this.#worldSphere, geometry.boundingSphere, this.matrixWorld);
             this.#sphereGeometry = geometry;
@@ -189,6 +194,11 @@ export class Mesh3D extends Object3D {
     }
 }
 const scratchScale = new Float32Array(3);
+const readInstanceStreamRevisions = Symbol('instanceStreamRevisions3D');
+/** Reconcile legacy bulk edits before a renderer checks either instance stream. */
+export function instanceStreamRevisions3D(mesh) {
+    return mesh[readInstanceStreamRevisions]();
+}
 /** Draw one geometry many times in a single call with per-instance transforms and colors. */
 export class InstancedMesh3D extends Mesh3D {
     capacity;
@@ -202,9 +212,13 @@ export class InstancedMesh3D extends Mesh3D {
     instanceColorSize;
     /** Bump after editing instance arrays directly. */
     instanceVersion = 1;
+    #streamRevisions = { observed: 1, matrices: 1, colors: 1 };
     /** Multiplies each instance's bounding radius, for instances that move beyond the geometry, such as animated ones. */
     boundsScale = 1;
     #boundsVersion = 0;
+    #boundsCount = -1;
+    #boundsGeometry = undefined;
+    #boundsShape = -1;
     #instanceSphere = new Float32Array(4);
     constructor(geometry, material, capacity, instanceColorSize = 3) {
         super(geometry, material);
@@ -225,14 +239,14 @@ export class InstancedMesh3D extends Mesh3D {
             throw new World3DError('WORLD3D_INPUT_INVALID', 'instance index');
         for (let i = 0; i < 16; i++)
             this.instanceMatrices[index * 16 + i] = matrix[i];
-        this.instanceVersion++;
+        this.touchInstanceStream('matrices');
     }
     setTransformAt(index, position, quaternion = [0, 0, 0, 1], scale = 1) {
         if (!Number.isSafeInteger(index) || index < 0 || index >= this.capacity)
             throw new World3DError('WORLD3D_INPUT_INVALID', 'instance index');
         const s = typeof scale === 'number' ? ((scratchScale[0] = scratchScale[1] = scratchScale[2] = scale), scratchScale) : scale;
         mat4Compose(this.instanceMatrices.subarray(index * 16, index * 16 + 16), position, quaternion, s);
-        this.instanceVersion++;
+        this.touchInstanceStream('matrices');
     }
     setColorAt(index, r, g, b, a = 1) {
         if (!Number.isSafeInteger(index) || index < 0 || index >= this.capacity)
@@ -243,12 +257,31 @@ export class InstancedMesh3D extends Mesh3D {
         colors[index * size + 2] = b;
         if (size === 4)
             colors[index * size + 3] = a;
-        this.instanceVersion++;
+        this.touchInstanceStream('colors');
+    }
+    [readInstanceStreamRevisions]() {
+        const revisions = this.#streamRevisions;
+        if (revisions.observed !== this.instanceVersion) {
+            revisions.observed = this.instanceVersion;
+            revisions.matrices++;
+            revisions.colors++;
+        }
+        return revisions;
+    }
+    touchInstanceStream(stream) {
+        // A raw write can precede a narrow setter before either stream reaches a renderer.
+        const revisions = this[readInstanceStreamRevisions]();
+        revisions.observed = ++this.instanceVersion;
+        revisions[stream]++;
     }
     /** Sphere enclosing every instance, in world space. */
     get worldBoundingSphere() {
         const sphere = this.#instanceSphere;
-        if (this.#boundsVersion !== this.instanceVersion) {
+        const shape = this.geometry.version * 4294967296 + this.geometry.boundsVersion;
+        if (this.#boundsVersion !== this.instanceVersion ||
+            this.#boundsCount !== this.count ||
+            this.#boundsGeometry !== this.geometry ||
+            this.#boundsShape !== shape) {
             const base = this.geometry.boundingSphere, box = box3Empty(new Float32Array(6)), m = this.instanceMatrices;
             let radius = 0;
             for (let i = 0; i < this.count; i++) {
@@ -261,6 +294,9 @@ export class InstancedMesh3D extends Mesh3D {
             if (this.localSphere[3] >= 0)
                 this.localSphere[3] += radius;
             this.#boundsVersion = this.instanceVersion;
+            this.#boundsCount = this.count;
+            this.#boundsGeometry = this.geometry;
+            this.#boundsShape = shape;
         }
         return sphereTransform(sphere, this.localSphere, this.matrixWorld);
     }
@@ -294,6 +330,7 @@ export class Sprite3D extends Mesh3D {
         return copy;
     }
 }
+/** Makes a sprite: a picture that always faces the camera. */
 export function createSprite3D(options = {}) {
     return new Sprite3D(createSpriteMaterial3D(options));
 }

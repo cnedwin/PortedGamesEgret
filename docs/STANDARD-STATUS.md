@@ -31,7 +31,7 @@ Made by `node tools/check-standard.mjs --write`; the standard is [GAME-STANDARD.
 | test/accept.mjs (browser acceptance) | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ |
 | test/baseline/*.png | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✘ | ✔ |
 | vendor/SOURCE.md with the engine commit | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| index.html import map = vendor/importmap.json | – | ✔ | – | – | – | – | ✔ | ✔ | ✔ | ✔ | – | ✔ |
+| index.html import map = vendor/importmap.json | – | ✔ | ✔ | – | – | – | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 
 ## 每个游戏缺的项 · What each game lacks
 

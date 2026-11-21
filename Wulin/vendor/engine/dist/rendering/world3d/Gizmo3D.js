@@ -27,6 +27,7 @@ const unit = (a) => {
     return [a[0] / size, a[1] / size, a[2] / size];
 };
 const snap = (value, step) => step !== undefined && step > 0 ? Math.round(value / step) * step : value;
+/** Handles to move, turn or scale an object by dragging them, with snapping. */
 export class TransformGizmo3D extends Object3D {
     camera;
     mode;
@@ -506,6 +507,7 @@ export class TransformGizmo3D extends Object3D {
                 entry.material.dispose();
     }
 }
+/** Makes a transform gizmo seen by a camera. */
 export function createTransformGizmo3D(camera, options = {}) {
     return new TransformGizmo3D(camera, options);
 }

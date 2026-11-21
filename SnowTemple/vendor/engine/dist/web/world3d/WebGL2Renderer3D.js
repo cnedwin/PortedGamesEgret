@@ -26,6 +26,7 @@ function colorProgramFlags(fog, toneMapping, environment, linear) {
         (environment ? V.environment : 0) |
         (linear ? V.linearOutput : 0));
 }
+/** Draws 3D scenes with WebGL2: set its size, render a scene from a camera, and read what it drew. */
 export class WebGL2Renderer3D {
     canvas;
     toneMapping;
@@ -1167,6 +1168,7 @@ export class WebGL2Renderer3D {
         }
     }
 }
+/** Makes a renderer that draws 3D scenes with WebGL2. */
 export function createWebGL2Renderer3D(options) {
     return new WebGL2Renderer3D(options);
 }

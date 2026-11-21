@@ -47,7 +47,7 @@ export class CharacterMotor3D {
             if (this.#pushScale <= 0 || body.type !== 'dynamic' || Math.abs(ny) > 0.5)
                 return;
             // Push no harder than needed to move the body at the character's own pace.
-            const size = Math.hypot(nx, nz) || 1, x = nx / size, z = nz / size, v = this.velocity, carry = this.#carry;
+            const size = Math.sqrt(nx * nx + nz * nz) || 1, x = nx / size, z = nz / size, v = this.velocity, carry = this.#carry;
             const closing = (v[0] + carry[0] - body.linearVelocity[0]) * x + (v[2] + carry[2] - body.linearVelocity[2]) * z;
             const impulse = Math.min(this.pushForce * this.#pushScale, closing * body.mass);
             if (impulse > 0)
@@ -57,10 +57,16 @@ export class CharacterMotor3D {
         this.#wasGrounded = this.settle(0, 0, 0);
         this.#platform = this.#ground;
     }
-    get position() { return this.controller.position; }
+    get position() {
+        return this.controller.position;
+    }
     /** True when the character stands on walkable ground, including the edge of a step. */
-    get isGrounded() { return this.#wasGrounded; }
-    get groundBody() { return this.#platform; }
+    get isGrounded() {
+        return this.#wasGrounded;
+    }
+    get groundBody() {
+        return this.#platform;
+    }
     /**
      * Move the capsule and report whether it ends up standing. The capsule's
      * own test needs a walkable contact; perched on the lip of a step its round
@@ -130,23 +136,23 @@ export class CharacterMotor3D {
         else if (!grounded)
             v[1] = Math.max(v[1] - this.gravity * dt, -this.maxFallSpeed);
         // 3. Horizontal motion: head toward the wished velocity, quickly on the ground and weakly in the air.
-        const rate = this.acceleration * (grounded && !this.jumped ? 1 : this.airControl) * dt, ax = wishX - v[0], az = wishZ - v[2], gap = Math.hypot(ax, az);
+        const rate = this.acceleration * (grounded && !this.jumped ? 1 : this.airControl) * dt, ax = wishX - v[0], az = wishZ - v[2], gap = Math.sqrt(ax * ax + az * az);
         if (gap <= rate || !(rate < Infinity)) {
             v[0] = wishX;
             v[2] = wishZ;
         }
         else {
-            v[0] += ax / gap * rate;
-            v[2] += az / gap * rate;
+            v[0] += (ax / gap) * rate;
+            v[2] += (az / gap) * rate;
         }
         // 4. Move, climbing a step when a low ledge blocks the way.
-        const dx = v[0] * dt, dz = v[2] * dt, dy = v[1] * dt, wanted = Math.hypot(dx, dz);
+        const dx = v[0] * dt, dz = v[2] * dt, dy = v[1] * dt, wanted = Math.sqrt(dx * dx + dz * dz);
         const startX = p[0], startY = p[1], startZ = p[2];
         this.#pushScale = dt;
         let standing = this.settle(dx, dy, dz), ground = this.#ground, ceiling = c.hitCeiling;
         this.#pushScale = 0;
         if (grounded && !this.jumped && this.stepHeight > 0 && wanted > 1e-6) {
-            const made = (p[0] - startX) * dx / wanted + (p[2] - startZ) * dz / wanted;
+            const made = ((p[0] - startX) * dx) / wanted + ((p[2] - startZ) * dz) / wanted;
             if (made < wanted * 0.75) {
                 const plainX = p[0], plainY = p[1], plainZ = p[2];
                 p[0] = startX;
@@ -155,7 +161,7 @@ export class CharacterMotor3D {
                 c.move(0, this.stepHeight, 0);
                 const lifted = p[1] - startY;
                 c.move(dx, 0, dz);
-                const landed = this.settle(0, -lifted - this.stepHeight, 0), stepped = (p[0] - startX) * dx / wanted + (p[2] - startZ) * dz / wanted;
+                const landed = this.settle(0, -lifted - this.stepHeight, 0), stepped = ((p[0] - startX) * dx) / wanted + ((p[2] - startZ) * dz) / wanted;
                 // Keep the climb only when it ends standing, got farther, and did not vault higher than a step.
                 if (landed && stepped > made + 1e-4 && p[1] - startY <= this.stepHeight + c.skin * 4) {
                     standing = true;
@@ -282,11 +288,17 @@ export class FollowCamera3D {
         if (allowed <= this.currentDistance || !(this.recovery > 0) || !(deltaSeconds > 0))
             this.currentDistance = allowed;
         else
-            this.currentDistance += (allowed - this.currentDistance) * Math.min(deltaSeconds / this.recovery * 3, 1);
+            this.currentDistance += (allowed - this.currentDistance) * Math.min((deltaSeconds / this.recovery) * 3, 1);
         const d = this.currentDistance, camera = this.camera;
         camera.setPosition(pivot[0] + bx * d, pivot[1] + by * d, pivot[2] + bz * d);
         camera.lookAt(pivot[0], pivot[1], pivot[2]);
     }
 }
-export function createCharacterMotor3D(world, options = {}) { return new CharacterMotor3D(world, options); }
-export function createFollowCamera3D(camera, target, options = {}) { return new FollowCamera3D(camera, target, options); }
+/** Makes a character motor that walks, jumps and climbs steps in a physics world. */
+export function createCharacterMotor3D(world, options = {}) {
+    return new CharacterMotor3D(world, options);
+}
+/** Makes a camera that follows a target and keeps out of walls. */
+export function createFollowCamera3D(camera, target, options = {}) {
+    return new FollowCamera3D(camera, target, options);
+}

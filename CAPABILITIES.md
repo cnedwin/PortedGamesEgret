@@ -48,7 +48,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/video` | 2 |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |
 | `@egret/engine/web/loop` | 0 |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/kit` | 3 |  |  |  |  |  |  | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](SnowTemple/tools/balance.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) |  |
-| `@egret/engine/web/kit` | 5 |  | [✔](FPS/src/main.mjs) |  |  |  |  | [✔](MechanismCity/src/main.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) |  |
+| `@egret/engine/web/kit` | 6 |  | [✔](FPS/src/main.mjs) |  |  |  |  | [✔](MechanismCity/src/main.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/main.mjs) |
 | `@egret/engine/web/game` | 3 | [✔](FivePhases/src/main.mjs) |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |
 | `@egret/engine/play` | 0 |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/audio` | 0 |  |  |  |  |  |  |  |  |  |  |  |
