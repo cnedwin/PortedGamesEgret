@@ -127,6 +127,16 @@ button:focus-visible, summary:focus-visible { outline: 2px solid #ffdab0; outlin
 .bar.xp span { background: #dcb474; }
 .bar.boss { border-color: #b78fbc; }
 .bar.boss span { background: linear-gradient(90deg,#594580,#9c69a9); }
+#bossAnnouncement {
+  padding: 3px 6px;
+  border: 1px solid #ac7c64;
+  border-radius: 4px;
+  background: #372934f5;
+  color: #ffe3ae;
+  text-align: center;
+  font-weight: 750;
+  font-size: clamp(11px,2.4vmin,15px);
+}
 
 #battleHint {
   position: absolute;

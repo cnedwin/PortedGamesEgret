@@ -86,7 +86,7 @@ function frame(seconds) {
   view.show(run, events, seconds);
   hear(events);
   sinceBar += seconds;
-  if (sinceBar > 0.1 || events.some((e) => e.type === 'level' || e.type === 'hurt')) {
+  if (sinceBar > 0.1 || events.some((e) => e.type === 'level' || e.type === 'hurt' || e.type === 'boss')) {
     sinceBar = 0;
     drawBar();
   }
@@ -107,7 +107,6 @@ function hear(events) {
     else if (event.type === 'boss') {
       sound('boss');
       say(t(event.kind === 'yaksha' ? 'bossYaksha' : 'bossAoBing'));
-      game.toast(t(event.kind === 'yaksha' ? 'bossYaksha' : 'bossAoBing'), { seconds: 2.5, color: 0xf4ecd8 });
     } else if (event.type === 'waveEnd') sound('wave', { volume: 0.64 });
   }
   if (app.run && app.run.phase === 'wave') sound.music(app.run.boss ? 'boss' : 'battle', app.run.wave / WAVES);
@@ -130,13 +129,17 @@ function drawBar() {
   put($('#waveText'), t('wave', { n: run.wave, total: WAVES }));
   put($('#timerText'), boss ? t('bossLeft') : t('waveLeft', { s: Math.ceil(run.waveLeft) }));
   const hint = $('#battleHint');
-  hint.hidden = app.screen !== 'play' || waveSeconds(run.wave) - run.waveLeft > (run.wave === 1 ? 4.5 : 1.6);
+  const elapsed = waveSeconds(run.wave) - run.waveLeft;
+  hint.hidden = app.screen !== 'play' || !!boss || elapsed > (run.wave === 1 ? 4.5 : 1.6);
   if (!hint.hidden) put(hint, run.wave === 1 ? controlHint() + ' ' + t('visualTip') : t('wavePrepare', { n: run.wave }));
   $('#xpBar span').style.transform = `scaleX(${Math.min(1, run.xp / xpToLevel(run.level))})`;
   put($('#levelText'), t('level', { n: run.level }));
   put($('#pearlText'), t('pearls', { n: run.pearls }));
   put($('#pauseButton'), t('pause'));
   $('#bossBar').hidden = !boss;
+  const announcement = $('#bossAnnouncement');
+  announcement.hidden = !boss || app.screen !== 'play' || elapsed > 2.5;
+  if (!announcement.hidden) put(announcement, t(boss.kind === 'yaksha' ? 'bossYaksha' : 'bossAoBing'));
   if (boss) {
     $('#bossBar span').style.transform = `scaleX(${Math.max(0, boss.hp / boss.max)})`;
     put($('#bossText'), t(boss.kind === 'yaksha' ? 'yaksha' : 'aoBing'));
@@ -152,6 +155,7 @@ function openPanel(name, focus) {
   if (name) {
     stick.reset();
     $('#battleHint').hidden = true;
+    $('#bossAnnouncement').hidden = true;
     const panel = panels[name];
     const target = (focus ? panel.querySelector(focus) : null) ?? panel.querySelector('[data-focus]') ?? panel.querySelector('button:not([aria-disabled="true"])');
     target?.focus({ preventScroll: true });

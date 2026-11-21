@@ -67,7 +67,6 @@ Nezha Stirs the Sea is a survival action game built with [Egret Rebuild](https:/
 | Pointer Events | 战场接管单个触点，越界继续追踪，取消和暂停时归零 · a single owned contact continues outside the field and resets on cancel and pause | `src/sea-stick.mjs` |
 | Egret Bitmap + Graphics | 三种哪吒、六类水族兵、两位首领和法宝共用一张运行时画集，动态特效按类型复用 · pooled actors on one shared runtime atlas, with separate weapon effects | `src/view.mjs`, `src/actor-art.mjs` |
 | `game.burst`、`game.shake`、`game.flash`、`game.text` | 击退、砸落、升级的碎片；受伤一抖；合成神器一闪；伤害数字（减弱动画时不抖不闪） · bursts, a shake when hurt, a flash for a divine merge, damage numbers | `src/view.mjs`, `src/main.mjs` |
-| `game.toast` | 首领登场的提示 · the boss notices | `src/main.mjs` |
 | `game.pause`、`resume`、`after` | 暂停菜单、结算前的停顿 · the pause menu, the beat before the end | `src/main.mjs` |
 | Egret Web Audio mixer | 标题、战斗、首领和集市原创配乐，跨场景淡入淡出，21 种反馈音效；采样在 Worker 内合成 · four score loops, crossfades and 21 synthesized effects | `src/sound.mjs`, `src/audio-synth.mjs` |
 | `createTextTable` + `pickLanguage` | 中英文文字表，`missing()` 检查两种语言齐全 · the word table, checked complete | `src/i18n.mjs` |
@@ -92,6 +91,8 @@ Windows Chrome 与三星 Fold7 实机检查首波、暂停、升级和集市。F
 ## 已解决 · Solved
 
 窄屏集市的购买、选中和合成分成两个切换页，下一波入口固定在底部。暂停会清除战场摇杆的触点。 · The compact market separates stock from equipped treasures and pins the next-wave action. Pause releases the battlefield touch stick.
+
+首领登场提示显示在独立的血条下方，文字不会被顶栏盖住。 · Boss introductions appear directly below the boss health bar.
 
 ## 未完成 · Unfinished
 

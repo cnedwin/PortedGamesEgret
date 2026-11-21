@@ -155,6 +155,22 @@ try {
   await until(page, () => window.nezhaSea.screen === 'play' && window.nezhaSea.app.run.wave === 1);
   check(true, 'Enter sets out again');
 
+  // Put the next run at wave 10 to check the introduction separately from the port's playthrough.
+  await state(() => {
+    const run = window.nezhaSea.app.run;
+    run.wave = 10;
+    run.waveLeft = 45;
+    run.time = 3;
+  });
+  await until(page, () => !document.querySelector('#bossAnnouncement').hidden);
+  check(await state(() => {
+    const notice = document.querySelector('#bossAnnouncement');
+    const meter = document.querySelector('#bossBar');
+    return /sea yaksha/i.test(notice.textContent) && notice.getBoundingClientRect().top >= meter.getBoundingClientRect().bottom;
+  }), 'the boss introduction is visible below its health bar');
+  await until(page, () => document.querySelector('#bossAnnouncement').hidden);
+  check(true, 'the boss introduction clears after the opening');
+
   // A won game: the twentieth wave's boss falls.
   await state(() => {
     const run = window.nezhaSea.app.run;

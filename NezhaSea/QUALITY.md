@@ -45,6 +45,6 @@ this file; items by hand or on a device are marked not run until someone runs th
 ## 人工与真机结果 · By hand and on devices
 
 - A1m、S4：由本目录的 `test/accept.mjs` 在无头 Chromium 里覆盖——只用键盘走完标题、选难度、设置、出海、走动、暂停、升级、集市里买、合成、合成神器、下一波、失守、再出海、守住和回标题；存档改坏后标题显示提示并重新开始。没有由人另做，也没有用真读屏。 · Covered by this folder's acceptance script in headless Chromium: the whole game by keyboard, and the notice after a broken save. Not done again by a person, nor with a real screen reader.
-- I2：画布上的字只有伤害数字（数字）和首领登场的提示（`game.toast`，取自文字表）；语言只在标题和暂停菜单里切换。没有另做人工检查。 · The canvas shows only damage numbers and the boss notices from the word table; the language is switched on the title and in the pause menu. Not checked by hand.
+- I2：画布上的字是伤害数字。首领登场提示取自文字表，显示在血条下方。可从标题或暂停菜单切换语言。 · The canvas shows damage numbers. Boss notices from the word table appear below the boss health bar. Change languages on the title or pause menu.
 - 另量 · Also measured：第 9、16 波中途 p95 16.8 ms；场上兵数顶到上限 140 时 p95 33.3 ms（无头 SwiftShader，540×960 和 1280×800）。 · Mid-game waves at 16.8 ms p95; 140 soldiers at 33.3 ms, headless.
 - T1、F2、E4：未运行 · not run.
