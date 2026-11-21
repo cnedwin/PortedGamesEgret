@@ -12,10 +12,10 @@ Made by `node tools/check-standard.mjs --write`; the standard is [GAME-STANDARD.
 | README: 玩法与操作 · How to play | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | README: 引擎能力对照表 · Engine capabilities | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | README: 已验证 · Verified | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| README: 已知问题 · Known issues | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| README: 已解决 · Solved | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| README: 未完成 · Unfinished | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ |
-| README: 目录结构 · Layout | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✘ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| README: 已知问题 · Known issues | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| README: 已解决 · Solved | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| README: 未完成 · Unfinished | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
+| README: 目录结构 · Layout | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | README: 引擎副本 · Engine copy | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | README: sections in order | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
 | README: play link and engine link | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ | ✔ |
@@ -44,7 +44,7 @@ Made by `node tools/check-standard.mjs --write`; the standard is [GAME-STANDARD.
 - **LoveElective**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **MechanismCity**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **NezhaSea**: 全部达标 · all met
-- **OperaDrums**: README: 已知问题 · Known issues (missing); README: 已解决 · Solved (missing); README: 未完成 · Unfinished (missing); README: 目录结构 · Layout (missing)
+- **OperaDrums**: 全部达标 · all met
 - **Rally**: tests cover the save; test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **SnowTemple**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
 - **TeaHorseRoad**: test/accept.mjs (browser acceptance); test/baseline/*.png (0 pictures)
