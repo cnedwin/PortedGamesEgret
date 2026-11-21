@@ -1,455 +1,385 @@
-// 画面：用引擎的 play 画哪吒、水族兵、法宝的出手、珍珠和水弹。所有会动的东西都只用矩形拼成剪纸的样子——每帧移动
-// 的矩形在引擎里最省（见 ENGINE-NOTES）；同类的精灵放在池子里反复用。画面只读规则的状态和事件，不改它们。
-// The view: Nezha, the sea soldiers, the treasures' strokes, the pearls and the water, drawn with the engine's play.
-// Everything that moves is cut from rectangles, like paper cuts — moving rectangles are what the engine draws most
-// cheaply (see ENGINE-NOTES) — and sprites of a kind are kept in pools and used again. The view only reads the
-// state and the events of the rules, and never changes them.
+// Egret draws the shared actor atlas, combat telegraphs and pooled effects. The view reads the run and events.
+import { createBattleAtlas } from './actor-art.mjs';
 import { ENEMIES } from './sim/data.mjs';
 import { PLAYER, specOf, statsOf } from './sim/world.mjs';
 
-export const RED = 0xd1342b,
-  GOLD = 0xe8b84a,
-  SKIN = 0xf2d0a4,
-  INK = 0x14202b,
-  PAPER = 0xf4ecd8,
-  SEA = 0x0d2a3a;
+export const RED = 0xd1342b, GOLD = 0xe8b84a, SKIN = 0xf2d0a4, INK = 0x14202b, PAPER = 0xffefd2, SEA = 0x0d2a3a;
+export { PLAYER };
 
-/** Rectangles, as `[x, y, width, height, colour, alpha]`. */
-const paint = (g, parts) => {
-  for (const [x, y, w, h, color, alpha = 1] of parts) g.beginFill(color, alpha).drawRect(x, y, w, h).endFill();
-};
-
-/** Nezha, facing right: hair in two buns, a red tunic, the ring at her neck, a wheel under each foot. */
-function drawNezha(g) {
-  paint(g, [
-    [-11, 10, 8, 6, GOLD],
-    [3, 10, 8, 6, GOLD],
-    [-9, 12, 4, 2, RED],
-    [5, 12, 4, 2, RED],
-    [-8, -6, 16, 17, RED],
-    [-9, -7, 18, 3, GOLD],
-    [-7, -18, 14, 12, SKIN],
-    [-9, -24, 6, 6, INK],
-    [3, -24, 6, 6, INK],
-    [-7, -19, 14, 3, INK],
-    [2, -13, 2, 2, INK],
-    [-3, -10, 3, 1, RED],
-    [8, -4, 4, 9, SKIN]
-  ]);
-}
-
-/** Each soldier, facing right, by kind. */
-const SOLDIERS = {
-  shrimp: (g) =>
-    paint(g, [
-      [-17, -6, 5, 12, 0x2f8f86],
-      [-12, -4, 8, 8, 0x46b3a8],
-      [-4, -5, 8, 10, 0x46b3a8],
-      [4, -4, 7, 8, 0x5cc8bc],
-      [10, -6, 10, 1, PAPER, 0.8],
-      [10, 5, 10, 1, PAPER, 0.8],
-      [7, -3, 2, 2, INK]
-    ]),
-  crab: (g) =>
-    paint(g, [
-      [-16, -12, 4, 2, 0x2a5f62],
-      [-16, 10, 4, 2, 0x2a5f62],
-      [-18, -4, 4, 2, 0x2a5f62],
-      [-18, 3, 4, 2, 0x2a5f62],
-      [-12, -9, 24, 18, 0x2f6f73],
-      [-9, -7, 18, 4, 0x3f8a8e],
-      [12, -15, 8, 8, 0x3f8a8e],
-      [12, 7, 8, 8, 0x3f8a8e],
-      [7, -4, 3, 3, PAPER],
-      [7, 2, 3, 3, PAPER]
-    ]),
-  jelly: (g) =>
-    paint(g, [
-      [-10, -11, 20, 12, 0x9ad1d4, 0.9],
-      [-7, -14, 14, 4, 0xc5e8ea, 0.9],
-      [-8, 1, 2, 10, 0x9ad1d4, 0.75],
-      [-3, 1, 2, 13, 0x9ad1d4, 0.75],
-      [2, 1, 2, 11, 0x9ad1d4, 0.75],
-      [7, 1, 2, 8, 0x9ad1d4, 0.75]
-    ]),
-  shark: (g) =>
-    paint(g, [
-      [-22, -8, 6, 16, 0x2f4766],
-      [-16, -6, 28, 12, 0x3d5a80],
-      [12, -4, 7, 8, 0x3d5a80],
-      [-5, -13, 9, 7, 0x2f4766],
-      [-12, 2, 22, 4, 0x98a8c0],
-      [9, -3, 2, 2, PAPER]
-    ]),
-  puffer: (g) =>
-    paint(g, [
-      [-12, -12, 24, 24, 0xc9d66b],
-      [-8, 2, 16, 8, 0xe9edb8],
-      [-16, -2, 4, 4, 0x8e9b3c],
-      [12, -2, 4, 4, 0x8e9b3c],
-      [-2, -16, 4, 4, 0x8e9b3c],
-      [-2, 12, 4, 4, 0x8e9b3c],
-      [-13, -13, 3, 3, 0x8e9b3c],
-      [10, -13, 3, 3, 0x8e9b3c],
-      [4, -6, 3, 3, INK]
-    ]),
-  conch: (g) =>
-    paint(g, [
-      [-11, -8, 22, 18, 0xd8c3a5],
-      [-7, -14, 14, 7, 0xe7d7bd],
-      [-3, -19, 6, 6, 0xf2e6d0],
-      [-9, 0, 10, 8, 0xb89b74],
-      [8, -2, 6, 4, 0xb89b74]
-    ]),
-  yaksha: (g) =>
-    paint(g, [
-      [22, -44, 3, 74, GOLD],
-      [16, -46, 15, 3, GOLD],
-      [16, -52, 3, 7, GOLD],
-      [28, -52, 3, 7, GOLD],
-      [-18, -18, 36, 40, 0x4a2c5e],
-      [-14, -12, 28, 6, 0x6b4a85],
-      [-12, -34, 24, 17, 0x3b6ea5],
-      [-12, -42, 5, 9, PAPER],
-      [7, -42, 5, 9, PAPER],
-      [-6, -29, 4, 4, GOLD],
-      [3, -29, 4, 4, GOLD],
-      [-5, -21, 10, 2, PAPER],
-      [-20, 22, 12, 6, 0x2c1a38],
-      [8, 22, 12, 6, 0x2c1a38]
-    ]),
-  aoBing: (g) =>
-    paint(g, [
-      [-22, -16, 40, 32, 0xdfeaf2],
-      [-18, -12, 32, 6, 0xffffff],
-      [14, -10, 12, 20, 0xdfeaf2],
-      [-16, -28, 4, 14, GOLD],
-      [8, -28, 4, 14, GOLD],
-      [-20, -32, 6, 4, GOLD],
-      [10, -32, 6, 4, GOLD],
-      [24, 4, 18, 2, GOLD],
-      [24, -6, 18, 2, GOLD],
-      [6, -6, 5, 5, 0x3b6ea5],
-      [20, -2, 6, 4, 0x8aa2b8]
-    ])
-};
+const TURN = 180 / Math.PI;
+const TWO_PI = Math.PI * 2;
 const UPRIGHT = new Set(['crab', 'jelly', 'puffer', 'conch', 'yaksha']);
-const BODY = (g) => paint(g, [[-13, -13, 26, 26, 0xdfeaf2], [-9, -9, 18, 18, 0xc9dbe8], [-3, -16, 6, 5, GOLD]]);
+const EFFECT_LIMIT = 44;
+const POSE_RATE = { shrimp: 13, crab: 10, jelly: 5, shark: 9, puffer: 7, conch: 6, yaksha: 7, aoBing: 8 };
+const clamp = (value) => Math.max(0, Math.min(1, value));
 
-/** The moving part of the view, from the engine's play. */
 export function createView(game) {
-  const layers = { drops: game.sprite(), soldiers: game.sprite(), shots: game.sprite(), hero: game.sprite(), strokes: game.sprite(), words: game.sprite() };
+  const layers = {
+    warning: game.sprite(), drops: game.sprite(), body: game.sprite(), soldiers: game.sprite(),
+    shots: game.sprite(), hero: game.sprite(), strokes: game.sprite(), words: game.sprite()
+  };
+  let atlas;
+  const ready = createBattleAtlas(game).then((loaded) => { atlas = loaded; });
   const pools = new Map();
-  const take = (key, make) => {
-    const list = pools.get(key) ?? [];
-    pools.set(key, list);
-    const sprite = list.pop() ?? make();
-    sprite.visible = true;
-    sprite.alpha = 1;
-    sprite.scaleX = sprite.scaleY = 1;
-    sprite.rotation = 0;
-    return sprite;
-  };
-  const give = (key, sprite) => {
-    sprite.visible = false;
-    pools.get(key).push(sprite);
-  };
+  const live = { soldiers: new Map(), drops: new Map(), shots: new Map(), spits: new Map() };
+  const effects = [], numbers = [], textPool = [], wheels = [], body = [], trail = [];
+  let stamp = 0, avatar = null, lastX = 0, lastY = 0, cast = 0, bodyClock = 0, dragonId = -1;
 
-  // Nezha, and the wheels and shadows of her orbiting treasures.
-  // Drawn a little larger than the rules' circles, so a phone shows them clearly; the circles stay as they are.
-  const LOOK = 1.4;
-  const hero = game.sprite(drawNezha, layers.hero);
-  hero.scaleY = 1.5;
-  const ribbon = game.sprite((g) => paint(g, [[-30, -2, 30, 4, RED, 0.85], [-44, -1, 16, 2, RED, 0.6]]), layers.hero);
-  const live = { soldiers: new Map(), drops: new Map(), shots: new Map(), spits: new Map(), wheels: [] };
-  const strokes = [];
-  const numbers = [];
-  const tail = [],
-    body = [];
-  let tailTime = 0;
-
-  function soldierSprite(enemy) {
-    let entry = live.soldiers.get(enemy.id);
-    if (!entry) {
-      const sprite = take(`soldier:${enemy.kind}`, () => {
-        const s = game.sprite(SOLDIERS[enemy.kind], layers.soldiers);
-        s.kind = enemy.kind;
-        return s;
-      });
-      entry = { sprite, kind: enemy.kind };
-      live.soldiers.set(enemy.id, entry);
-    }
+  function take(key, layer) {
+    const slot = layer + ':' + key;
+    if (!pools.has(slot)) pools.set(slot, []);
+    const entry = pools.get(slot).pop() ?? { ...atlas.image(key, layers[layer]), key, slot };
+    entry.node.visible = true;
+    entry.node.alpha = 1;
+    entry.node.rotation = 0;
+    entry.hit = 0;
+    entry.flip = 1;
+    entry.warning = null;
+    entry.frame(0);
     return entry;
   }
 
-  function stroke(make, life, update) {
-    const sprite = make();
-    strokes.push({ sprite, life, age: 0, update });
+  function give(entry) {
+    if (entry.warning) {
+      give(entry.warning);
+      entry.warning = null;
+    }
+    entry.node.visible = false;
+    pools.get(entry.slot).push(entry);
   }
 
-  function float(x, y, words, color) {
-    if (numbers.length >= 10) return;
-    const label = game.text(words, { x, y: y - 16, size: 14, color, align: 'center', bold: true, layer: layers.words });
+  function sync(map, objects, keyOf, layer, paint) {
+    for (const data of objects) {
+      let entry = map.get(data.id);
+      if (!entry) {
+        entry = take(keyOf(data), layer);
+        map.set(data.id, entry);
+      }
+      entry.stamp = stamp;
+      paint(entry, data);
+    }
+    for (const [id, entry] of map) if (entry.stamp !== stamp) {
+      give(entry);
+      map.delete(id);
+    }
+  }
+
+  function pose(node, x, y, sx, sy = sx, rotation = 0) {
+    node.x = x;
+    node.y = y;
+    node.scaleX = sx / atlas.density;
+    node.scaleY = sy / atlas.density;
+    node.rotation = rotation;
+  }
+
+  function renderHero(run, seconds, reduced) {
+    const p = run.player;
+    if (avatar?.key !== run.hero) {
+      if (avatar) give(avatar);
+      avatar = take(run.hero, 'hero');
+      lastX = p.x;
+      lastY = p.y;
+    }
+    const moving = Math.abs(p.x - lastX) + Math.abs(p.y - lastY) > 0.27;
+    lastX = p.x;
+    lastY = p.y;
+    const face = Math.cos(p.facing);
+    if (Math.abs(face) > 0.15) avatar.flip = face > 0 ? 1 : -1;
+    cast = Math.max(0, cast - seconds * 5.6);
+    const hover = reduced ? 0 : Math.sin(run.time * (moving ? 17 : 6)) * (moving ? 1.7 : 1);
+    const lean = moving && !reduced ? Math.sin(run.time * 15) * 4 + avatar.flip * 5 : 0;
+    if (!reduced) avatar.frame(Math.floor(run.time * (moving ? 11 : 4)));
+    const lift = 1 + cast * 0.09;
+    pose(avatar.node, p.x, p.y + hover, avatar.flip * lift, 1 - cast * 0.045, lean);
+    avatar.node.alpha = p.guard > 0 ? 0.76 + 0.24 * clamp(1 - p.guard / PLAYER.guard) : 1;
+  }
+
+  function renderWheels(run, reduced) {
+    let index = 0;
+    const range = statsOf(run).range;
+    const p = run.player;
+    for (const weapon of run.weapons) {
+      const spec = specOf(weapon);
+      if (spec.kind !== 'orbit') continue;
+      const key = weapon.divine ? 'heavenWheel' : 'wheel';
+      const reach = spec.reach * (1 + range / 100);
+      for (let k = 0; k < spec.count; k++, index++) {
+        let wheel = wheels[index];
+        if (wheel?.key !== key) {
+          if (wheel) give(wheel);
+          wheel = wheels[index] = take(key, 'shots');
+        }
+        const angle = weapon.angle + k / spec.count * TWO_PI;
+        wheel.node.visible = true;
+        const size = weapon.divine ? 1.13 : 0.92;
+        pose(wheel.node, p.x + Math.cos(angle) * reach, p.y + Math.sin(angle) * reach, size, size, reduced ? angle * TURN : run.time * 690 + k * 45);
+      }
+    }
+    for (let i = index; i < wheels.length; i++) wheels[i].node.visible = false;
+  }
+
+  function drawWarning(entry, enemy, run, reduced) {
+    const spitting = enemy.kind === 'conch' && enemy.rising <= 0 && enemy.act > 0 && enemy.act < 0.28;
+    const key = enemy.state === 'fuse' ? 'warning'
+      : enemy.state === 'aim' ? 'aim'
+      : enemy.state === 'cast' ? 'iceWake' : spitting ? 'spitAim' : null;
+    if (entry.warning && entry.warning.key !== key) {
+      give(entry.warning);
+      entry.warning = null;
+    }
+    if (!key) return;
+    entry.warning ??= take(key, 'warning');
+    const { node } = entry.warning;
+    const size = ENEMIES[enemy.kind].radius;
+    if (key === 'aim') {
+      const reach = ENEMIES[enemy.kind].speed * (enemy.kind === 'shark' ? 2.38 : 2.4);
+      pose(node, enemy.x, enemy.y, reach / 84, size / 10, (enemy.dir ?? 0) * TURN);
+      node.alpha = reduced ? 0.78 : 0.78 + Math.sin(run.time * 19) * 0.10;
+    } else if (key === 'warning') {
+      pose(node, enemy.x, enemy.y, 64 / 55);
+      node.alpha = 0.67 + 0.21 * clamp(1 - enemy.stateLeft / 0.75);
+    } else if (key === 'spitAim') {
+      const p = run.player;
+      const turn = Math.atan2(p.y - enemy.y, p.x - enemy.x) * TURN;
+      pose(node, enemy.x, enemy.y, 0.54, 0.65, turn);
+      node.alpha = 0.48 + 0.32 * clamp(1 - enemy.act / 0.28);
+    } else {
+      pose(node, enemy.x, enemy.y, 77 / 54);
+      node.alpha = 0.42 * clamp(enemy.stateLeft * 2);
+    }
+  }
+
+  function renderEnemy(entry, enemy, run, seconds, reduced) {
+    const spec = ENEMIES[enemy.kind];
+    const birth = clamp(1 - enemy.rising / (spec.boss ? 1.2 : 0.7));
+    const fuse = enemy.state === 'fuse' ? clamp(1 - enemy.stateLeft / 0.75) : 0;
+    const charging = enemy.state === 'charge';
+    const aimed = enemy.state === 'aim';
+    const moving = Boolean(enemy.vx || enemy.vy);
+    entry.hit = Math.max(0, entry.hit - seconds * 5.5);
+    if (enemy.vx) entry.flip = enemy.vx < 0 ? -1 : 1;
+    const cycle = run.time * POSE_RATE[enemy.kind] + enemy.id * 0.83;
+    if (!reduced) entry.frame(Math.floor(cycle));
+    const height = reduced ? 0 : Math.sin(cycle * 1.44) * (enemy.kind === 'jelly' ? 2.8 : 1.1);
+    const aim = aimed || charging ? enemy.dir : moving ? Math.atan2(enemy.vy, enemy.vx) : entry.node.rotation / TURN;
+    const swelling = 1 + fuse * 0.3;
+    const model = (0.64 + birth * 0.36) * swelling;
+    const recoil = reduced ? 0 : entry.hit * 0.11;
+    const baseAngle = UPRIGHT.has(enemy.kind) ? (reduced ? 0 : Math.sin(cycle) * 4 + entry.flip * (charging ? 12 : 0)) : (aim ?? 0) * TURN;
+    pose(entry.node, enemy.x, enemy.y + height, (UPRIGHT.has(enemy.kind) ? entry.flip : 1) * model * (1 + recoil), model * (1 - recoil), baseAngle);
+    entry.node.alpha = Math.max(0.12, birth) * (1 - entry.hit * 0.22);
+    drawWarning(entry, enemy, run, reduced);
+  }
+
+  function renderDragon(run, seconds) {
+    const boss = run.boss?.kind === 'aoBing' ? run.boss : null;
+    if (boss?.id !== dragonId) {
+      dragonId = boss?.id ?? -1;
+      bodyClock = 0;
+      trail.length = 0;
+    }
+    if (boss) {
+      bodyClock += seconds;
+      if (bodyClock >= 0.038 || trail.length === 0) {
+        bodyClock %= 0.038;
+        trail.unshift({ x: boss.x, y: boss.y });
+        if (trail.length > 36) trail.length = 36;
+      }
+    }
+    for (let i = 0; i < 6; i++) {
+      const at = boss ? trail[(i + 1) * 4] : null;
+      if (!at) {
+        if (body[i]) body[i].node.visible = false;
+        continue;
+      }
+      const entry = body[i] ??= take('dragonSegment', 'body');
+      const ahead = trail[(i + 1) * 4 - 1];
+      const rotate = Math.atan2(ahead.y - at.y, ahead.x - at.x) * TURN;
+      const size = 1.22 - i * 0.13;
+      pose(entry.node, at.x, at.y, size, size, rotate);
+      entry.node.alpha = 0.91 - i * 0.05;
+      entry.node.visible = true;
+    }
+  }
+
+  function visual(key, x, y, sx, sy = sx, turn = 0, life = 0.28, priority = false) {
+    if (effects.length >= EFFECT_LIMIT) {
+      if (!priority) return;
+      give(effects.shift().entry);
+    }
+    const entry = take(key, 'strokes');
+    pose(entry.node, x, y, sx, sy, turn);
+    effects.push({ entry, x, y, sx, sy, turn, life, age: 0, sinking: key in ENEMIES });
+  }
+
+  function float(x, y, words, color, crit = false) {
+    if (numbers.length >= 12) return;
+    const label = textPool.pop() ?? game.text('', {x: 0, y: 0, size: 15, color: PAPER, align: 'center', bold: true, layer: layers.words});
+    label.text = words;
+    label.color = color;
+    label.size = crit ? 20 : 15;
+    label.x = x;
+    label.y = y - 17;
+    label.alpha = 1;
+    label.visible = true;
     numbers.push({ label, age: 0 });
   }
 
-  /** Everything put away, for a new game or the title. */
+  function presentEvents(run, events, reduced) {
+    let hits = 0, splashes = 0, pickup = false;
+    for (const event of events) {
+      switch (event.type) {
+        case 'sweep':
+          cast = 1;
+          visual(event.weapon === 'bindDragon' ? 'dragonSweep' : 'sweep', event.x, event.y, event.reach / 56, event.reach / 56, event.angle * TURN, 0.22, true);
+          break;
+        case 'thrust':
+          cast = 1;
+          visual(event.weapon === 'fireSpear' ? 'fireThrust' : 'thrust', event.x, event.y, event.reach / 92, event.width / 16, event.angle * TURN, 0.18, true);
+          break;
+        case 'nova':
+          cast = 1;
+          visual(event.weapon === 'dragonBrick' ? 'dragonNova' : 'nova', event.x, event.y, event.reach / 55, event.reach / 55, 0, 0.32, true);
+          break;
+        case 'land':
+          visual(event.weapon === 'dragonBrick' ? 'dragonImpact' : 'impact', event.x, event.y, event.splash / 55, event.splash / 55, 22, 0.33, true);
+          if (!reduced) game.burst(event.x, event.y, { color: GOLD, count: 9, speed: 108, life: 0.26, size: 3 });
+          break;
+        case 'throw':
+        case 'lob':
+          cast = 1;
+          break;
+        case 'hit': {
+          const hit = live.soldiers.get(event.id);
+          if (hit) hit.hit = 1;
+          if (event.crit || hits++ < 3) {
+            visual('spark', event.x, event.y, event.crit ? 0.9 : 0.48, event.crit ? 0.9 : 0.48, event.id % 3 * 24, 0.16);
+            float(event.x, event.y, String(event.damage), event.crit ? GOLD : PAPER, event.crit);
+          }
+          break;
+        }
+        case 'spawn':
+        case 'sink':
+        case 'kill': {
+          const boss = ENEMIES[event.kind]?.boss;
+          if (boss || splashes++ < 4) visual(boss ? 'iceWake' : 'waterWake', event.x, event.y, boss ? 1.45 : 0.36, boss ? 1.45 : 0.36, event.id % 3 * 18, boss ? 0.64 : 0.32, boss);
+          if (event.type === 'kill' && (boss || splashes <= 2)) {
+            visual(event.kind, event.x, event.y, 1, 1, 0, boss ? 0.54 : 0.23, boss);
+            if (!reduced) game.burst(event.x, event.y, { color: boss ? GOLD : 0x80dfd6, count: boss ? 23 : 5, speed: boss ? 130 : 95, life: 0.3, size: 2.6 });
+          }
+          break;
+        }
+        case 'boss': {
+          const boss = run.boss;
+          if (boss) visual(boss.kind === 'aoBing' ? 'iceWake' : 'warning', boss.x, boss.y, 1.58, 1.58, 0, 0.6, true);
+          break;
+        }
+        case 'summon':
+        case 'spit':
+        case 'ice': {
+          const enemy = live.soldiers.get(event.id)?.node;
+          if (enemy) visual(event.type === 'ice' ? 'iceWake' : event.type === 'spit' ? 'spark' : 'waterWake', enemy.x, enemy.y, event.type === 'spit' ? 0.56 : 0.94, event.type === 'spit' ? 0.56 : 0.94, 0, 0.31, event.type !== 'spit');
+          break;
+        }
+        case 'burst':
+          visual('warning', event.x, event.y, event.radius / 55, event.radius / 55, 0, 0.33, true);
+          break;
+        case 'hurt':
+          visual('warning', event.x, event.y, 0.47, 0.47, 0, 0.23, true);
+          if (!reduced) game.shake(2, 0.12);
+          float(event.x, event.y - 13, '-' + event.amount, 0xff8b77, true);
+          break;
+        case 'dodge':
+          visual('waterWake', event.x, event.y, 0.51, 0.51, 0, 0.30, true);
+          break;
+        case 'pearl':
+          pickup = true;
+          break;
+        case 'level':
+          visual('dragonNova', run.player.x, run.player.y, 0.79, 0.79, 0, 0.36, true);
+          break;
+      }
+    }
+    if (pickup) visual('spark', run.player.x + 12, run.player.y - 19, 0.44, 0.44, 22, 0.20);
+  }
+
+  function fadeEffects(seconds, reduced) {
+    for (let i = effects.length - 1; i >= 0; i--) {
+      const effect = effects[i];
+      effect.age += seconds;
+      const fraction = clamp(effect.age / effect.life);
+      if (fraction === 1) {
+        give(effect.entry);
+        effects.splice(i, 1);
+        continue;
+      }
+      const zoom = reduced ? 1 : effect.sinking ? 1 - 0.40 * fraction : 0.88 + 0.15 * fraction;
+      const sink = effect.sinking && !reduced ? fraction : 0;
+      pose(effect.entry.node, effect.x, effect.y + 12 * sink, effect.sx * zoom, effect.sy * zoom, effect.turn + 22 * sink);
+      effect.entry.node.alpha = (1 - fraction) ** 0.8;
+    }
+    for (let i = numbers.length - 1; i >= 0; i--) {
+      const { label } = numbers[i];
+      const age = numbers[i].age += seconds;
+      if (age >= 0.66) {
+        label.visible = false;
+        textPool.push(label);
+        numbers.splice(i, 1);
+      } else {
+        label.y -= seconds * (reduced ? 0 : 37);
+        label.alpha = 1 - age / 0.66;
+      }
+    }
+  }
+
   function clear() {
-    for (const [, entry] of live.soldiers) give(`soldier:${entry.kind}`, entry.sprite);
-    live.soldiers.clear();
-    for (const [, sprite] of live.drops) give('drop', sprite);
-    live.drops.clear();
-    for (const [key, map] of [
-      ['shots', live.shots],
-      ['spits', live.spits]
-    ])
-      for (const [, entry] of map) give(entry.key, entry.sprite);
-    live.shots.clear();
-    live.spits.clear();
-    for (const s of strokes) game.remove(s.sprite);
-    strokes.length = 0;
-    for (const n of numbers) game.remove(n.label);
-    numbers.length = 0;
-    for (const w of live.wheels) w.visible = false;
-    for (const s of body) s.visible = false;
-    tail.length = 0;
-    hero.visible = ribbon.visible = false;
+    for (const map of Object.values(live)) {
+      for (const entry of map.values()) give(entry);
+      map.clear();
+    }
+    for (const effect of effects) give(effect.entry);
+    for (const { label } of numbers) {
+      label.visible = false;
+      textPool.push(label);
+    }
+    for (const entry of wheels) entry.node.visible = false;
+    for (const entry of body) if (entry) entry.node.visible = false;
+    if (avatar) { give(avatar); avatar = null; }
+    cast = 0;
+    bodyClock = 0;
+    dragonId = -1;
+    trail.length = effects.length = numbers.length = 0;
   }
 
   return {
+    ready,
     clear,
     show(run, events, seconds) {
-      const p = run.player;
-      hero.visible = ribbon.visible = true;
-      hero.x = p.x;
-      hero.y = p.y;
-      const left = Math.cos(p.facing) < -0.1;
-      hero.scaleX = left ? -1.5 : 1.5;
-      hero.alpha = p.guard > 0 && Math.floor(run.time * 20) % 2 ? 0.35 : 1;
-      ribbon.x = p.x;
-      ribbon.y = p.y - 3;
-      ribbon.scaleX = ribbon.scaleY = 1.4;
-      ribbon.rotation = ((p.facing * 180) / Math.PI) + Math.sin(run.time * 9) * 12;
-
-      // Orbiting treasures: the wheels, drawn where the rules turn them.
-      let wheel = 0;
-      const range = statsOf(run).range;
-      run.weapons.forEach((weapon) => {
-        const spec = specOf(weapon);
-        if (spec.kind !== 'orbit') return;
-        const reach = spec.reach * (1 + range / 100);
-        for (let k = 0; k < spec.count; k++, wheel++) {
-          let sprite = live.wheels[wheel];
-          if (!sprite) {
-            sprite = live.wheels[wheel] = game.sprite((g) => paint(g, [[-8, -8, 16, 16, GOLD], [-5, -5, 10, 10, RED], [-2, -2, 4, 4, GOLD]]), layers.shots);
-          }
-          const a = weapon.angle + (k / spec.count) * Math.PI * 2;
-          sprite.visible = true;
-          sprite.x = p.x + Math.cos(a) * reach;
-          sprite.y = p.y + Math.sin(a) * reach;
-          sprite.rotation = (run.time * 720) % 360;
-          sprite.scaleX = sprite.scaleY = weapon.divine ? 1.3 : 1;
+      if (!atlas) return;
+      stamp++;
+      const reduced = game.reducedMotion;
+      renderHero(run, seconds, reduced);
+      renderWheels(run, reduced);
+      renderDragon(run, seconds);
+      sync(live.soldiers, run.enemies, (enemy) => enemy.kind, 'soldiers', (entry, enemy) => renderEnemy(entry, enemy, run, seconds, reduced));
+      sync(live.drops, run.drops, (drop) => drop.value > 2 ? 'largePearl' : 'pearl', 'drops', (entry, drop) => {
+        const pulse = reduced ? 0 : Math.sin(run.time * 5 + drop.id) * 0.08;
+        const size = entry.key === 'largePearl' ? 1.22 : 0.95;
+        pose(entry.node, drop.x, drop.y, size + pulse);
+      });
+      sync(live.shots, run.shots, (shot) => shot.type === 'ring' ? (shot.weapon === 'bindDragon' ? 'dragonRing' : 'ring') : (shot.weapon === 'dragonBrick' ? 'dragonBrick' : 'brick'), 'shots', (entry, shot) => {
+        if (shot.type === 'ring') {
+          pose(entry.node, shot.x, shot.y, 1, 1, reduced ? shot.angle * TURN : run.time * 705 + shot.id * 23);
+        } else {
+          const t = clamp(shot.t / shot.flight);
+          pose(entry.node, shot.x0 + (shot.x - shot.x0) * t, shot.y0 + (shot.y - shot.y0) * t - Math.sin(t * Math.PI) * 68, 0.94, 0.94, reduced ? 0 : t * 340);
         }
       });
-      for (let i = wheel; i < live.wheels.length; i++) live.wheels[i].visible = false;
-
-      // Soldiers: rising from the water, then moving; the dragon prince trails a body.
-      const seen = new Set();
-      for (const enemy of run.enemies) {
-        seen.add(enemy.id);
-        const { sprite } = soldierSprite(enemy);
-        sprite.x = enemy.x;
-        sprite.y = enemy.y;
-        const rising = enemy.rising > 0;
-        sprite.alpha = rising ? Math.max(0.15, 1 - enemy.rising / (ENEMIES[enemy.kind].boss ? 1.2 : 0.7)) : 1;
-        const grow = LOOK * (rising ? 0.6 + 0.4 * sprite.alpha : enemy.state === 'fuse' ? 1 + (0.75 - enemy.stateLeft) * 0.6 : 1);
-        if (UPRIGHT.has(enemy.kind)) {
-          sprite.scaleX = (enemy.vx ?? 0) < 0 ? -grow : grow;
-          sprite.scaleY = grow;
-        } else {
-          sprite.scaleX = sprite.scaleY = grow;
-          if (!rising && (enemy.vx || enemy.vy)) sprite.rotation = (Math.atan2(enemy.vy, enemy.vx) * 180) / Math.PI;
-        }
-        if (enemy.state === 'aim' && Math.floor(run.time * 16) % 2) sprite.alpha = 0.5;
-        if (enemy.kind === 'aoBing') {
-          tailTime += seconds;
-          if (tailTime > 0.05) {
-            tailTime = 0;
-            tail.unshift({ x: enemy.x, y: enemy.y });
-            tail.length = Math.min(tail.length, 40);
-          }
-        }
-      }
-      for (const [id, entry] of live.soldiers)
-        if (!seen.has(id)) {
-          give(`soldier:${entry.kind}`, entry.sprite);
-          live.soldiers.delete(id);
-        }
-      // Ao Bing's body: six scales following where his head has been.
-      const boss = run.boss?.kind === 'aoBing' ? run.boss : null;
-      for (let i = 0; i < 6; i++) {
-        const segment = (body[i] ??= game.sprite(BODY, layers.soldiers));
-        const at = tail[(i + 1) * 5];
-        segment.visible = Boolean(boss && at);
-        if (segment.visible) {
-          segment.x = at.x;
-          segment.y = at.y;
-          segment.rotation = 45;
-          segment.scaleX = segment.scaleY = 1 - i * 0.08;
-        }
-      }
-      if (!boss) tail.length = 0;
-
-      // Pearls.
-      const pearls = new Set();
-      for (const drop of run.drops) {
-        pearls.add(drop.id);
-        let sprite = live.drops.get(drop.id);
-        if (!sprite) {
-          sprite = take('drop', () => game.sprite((g) => paint(g, [[-4, -4, 8, 8, PAPER], [-2, -2, 4, 4, 0xbfe6ff]]), layers.drops));
-          sprite.rotation = 45;
-          live.drops.set(drop.id, sprite);
-        }
-        sprite.x = drop.x;
-        sprite.y = drop.y;
-      }
-      for (const [id, sprite] of live.drops)
-        if (!pearls.has(id)) {
-          give('drop', sprite);
-          live.drops.delete(id);
-        }
-
-      // Thrown rings and lobbed bricks.
-      const flying = new Set();
-      for (const shot of run.shots) {
-        flying.add(shot.id);
-        let entry = live.shots.get(shot.id);
-        if (!entry) {
-          const key = shot.type === 'ring' ? 'ring' : 'brick';
-          const sprite = take(key, () =>
-            game.sprite(
-              (g) =>
-                key === 'ring'
-                  ? paint(g, [[-10, -10, 20, 4, GOLD], [-10, 6, 20, 4, GOLD], [-10, -10, 4, 20, GOLD], [6, -10, 4, 20, GOLD]])
-                  : paint(g, [[-10, -6, 20, 12, GOLD], [-10, -6, 20, 3, 0xf7d98a], [-10, 3, 20, 3, 0xb88a2a]]),
-              layers.shots
-            )
-          );
-          entry = { sprite, key };
-          live.shots.set(shot.id, entry);
-        }
-        if (shot.type === 'ring') {
-          entry.sprite.x = shot.x;
-          entry.sprite.y = shot.y;
-          entry.sprite.rotation = (run.time * 900) % 360;
-        } else {
-          const k = Math.min(1, shot.t / shot.flight);
-          entry.sprite.x = shot.x0 + (shot.x - shot.x0) * k;
-          entry.sprite.y = shot.y0 + (shot.y - shot.y0) * k - Math.sin(k * Math.PI) * 70;
-          entry.sprite.rotation = k * 360;
-        }
-      }
-      for (const [id, entry] of live.shots)
-        if (!flying.has(id)) {
-          give(entry.key, entry.sprite);
-          live.shots.delete(id);
-        }
-
-      // The soldiers' water, and Ao Bing's ice.
-      const wet = new Set();
-      for (const spit of run.spits) {
-        wet.add(spit.id);
-        let entry = live.spits.get(spit.id);
-        if (!entry) {
-          const key = spit.ice ? 'ice' : 'spit';
-          const sprite = take(key, () => game.sprite((g) => paint(g, key === 'ice' ? [[-6, -6, 12, 12, 0xeaf6ff], [-3, -3, 6, 6, 0x9ad1f0]] : [[-5, -5, 10, 10, 0x6fd3e0], [-2, -2, 4, 4, PAPER]]), layers.shots));
-          sprite.rotation = 45;
-          entry = { sprite, key };
-          live.spits.set(spit.id, entry);
-        }
-        entry.sprite.x = spit.x;
-        entry.sprite.y = spit.y;
-      }
-      for (const [id, entry] of live.spits)
-        if (!wet.has(id)) {
-          give(entry.key, entry.sprite);
-          live.spits.delete(id);
-        }
-
-      // What happened this step.
-      const reduced = game.reducedMotion;
-      let hits = 0;
-      for (const event of events) {
-        if (event.type === 'sweep') {
-          const fan = (event.arc * Math.PI) / 180;
-          for (let k = 0; k < 5; k++) {
-            const a = event.angle - fan / 2 + (fan * k) / 4;
-            stroke(
-              () => {
-                const s = game.sprite((g) => paint(g, [[0, -3, event.reach, 6, RED, 0.8]]), layers.strokes);
-                s.x = event.x;
-                s.y = event.y;
-                s.rotation = (a * 180) / Math.PI;
-                return s;
-              },
-              0.18
-            );
-          }
-        } else if (event.type === 'thrust') {
-          stroke(
-            () => {
-              const s = game.sprite((g) => paint(g, [[0, -event.width / 4, event.reach, event.width / 2, GOLD, 0.9], [event.reach - 10, -event.width / 2, 12, event.width, RED]]), layers.strokes);
-              s.x = event.x;
-              s.y = event.y;
-              s.rotation = (event.angle * 180) / Math.PI;
-              return s;
-            },
-            0.14
-          );
-        } else if (event.type === 'nova') {
-          stroke(
-            () => {
-              const s = game.sprite((g) => g.lineStyle(6, 0xff7a3d, 0.9).drawCircle(0, 0, event.reach).lineStyle(0), layers.strokes);
-              s.x = event.x;
-              s.y = event.y;
-              s.scaleX = s.scaleY = 0.4;
-              return s;
-            },
-            0.3,
-            (s, k) => (s.scaleX = s.scaleY = 0.4 + 0.6 * k)
-          );
-        } else if (event.type === 'land') game.burst(event.x, event.y, { color: GOLD, count: 10, speed: 140, life: 0.3, size: 3 });
-        else if (event.type === 'burst') game.burst(event.x, event.y, { color: 0xc9d66b, count: 18, speed: 200, life: 0.4, size: 3 });
-        else if (event.type === 'kill') game.burst(event.x, event.y, { color: PAPER, count: ENEMIES[event.kind].boss ? 40 : 6, speed: 120, life: 0.35, size: 2.5 });
-        else if (event.type === 'hit' && (event.crit || hits++ < 3)) float(event.x, event.y, String(event.damage), event.crit ? GOLD : PAPER);
-        else if (event.type === 'hurt') {
-          if (!reduced) game.shake(4, 0.15);
-          float(event.x, event.y - 10, `-${event.amount}`, 0xff6b5b);
-        } else if (event.type === 'level') game.burst(p.x, p.y, { color: GOLD, count: 16, speed: 160, life: 0.5, size: 3 });
-      }
-      for (let i = strokes.length - 1; i >= 0; i--) {
-        const s = strokes[i];
-        s.age += seconds;
-        const k = Math.min(1, s.age / s.life);
-        s.sprite.alpha = 1 - k;
-        s.update?.(s.sprite, k);
-        if (k >= 1) {
-          game.remove(s.sprite);
-          strokes.splice(i, 1);
-        }
-      }
-      for (let i = numbers.length - 1; i >= 0; i--) {
-        const n = numbers[i];
-        n.age += seconds;
-        n.label.y -= seconds * (reduced ? 10 : 40);
-        n.label.alpha = 1 - n.age / 0.7;
-        if (n.age >= 0.7) {
-          game.remove(n.label);
-          numbers.splice(i, 1);
-        }
-      }
+      sync(live.spits, run.spits, (spit) => spit.ice ? 'ice' : 'spit', 'shots', (entry, spit) => {
+        pose(entry.node, spit.x, spit.y, 0.84, 0.84, Math.atan2(spit.vy, spit.vx) * TURN);
+      });
+      presentEvents(run, events, reduced);
+      fadeEffects(seconds, reduced);
     }
   };
 }
-
-export { PLAYER };

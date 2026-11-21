@@ -7,9 +7,9 @@
 import { play } from '@egret/engine/play';
 import { browserLanguages, browserSaveStorage, prefersReducedMotion } from '@egret/engine/web/kit';
 import { getLanguage, onLanguage, setLanguage, startLanguage, t } from './i18n.mjs';
-import { paintSea } from './ground.mjs';
+import { createSeaStick } from './sea-stick.mjs';
 import { openSave, recordGame } from './saves.mjs';
-import { DANGER, DIVINE, FIELD, HEROES, HERO_KINDS, ITEMS, WAVES, xpToLevel } from './sim/data.mjs';
+import { DANGER, DIVINE, FIELD, HEROES, HERO_KINDS, ITEMS, WAVES, waveSeconds, xpToLevel } from './sim/data.mjs';
 import * as rules from './sim/world.mjs';
 import { createSound } from './sound.mjs';
 import { createView } from './view.mjs';
@@ -17,7 +17,13 @@ import { createView } from './view.mjs';
 const params = new URLSearchParams(location.search),
   $ = (selector) => document.querySelector(selector),
   field = $('#field'),
-  panels = { title: $('#title'), levelUp: $('#levelUp'), shop: $('#shop'), menu: $('#menu'), end: $('#end') };
+  panels = { title: $('#title'), guide: $('#guide'), options: $('#options'), levelUp: $('#levelUp'), shop: $('#shop'), menu: $('#menu'), end: $('#end') };
+const stick = createSeaStick(field, $('#seaStick'), () => app.screen === 'play');
+const compactMarket = matchMedia('(max-width: 480px), (max-height: 490px), (pointer: coarse) and (max-width: 900px)');
+let marketNote = null;
+let marketPane = 'offers';
+let marketScroll = {};
+const controlHint = () => t(matchMedia('(pointer: coarse)').matches ? 'controlTouch' : 'controlKeys');
 
 let notice = null;
 const save = openSave(browserSaveStorage(), startLanguage(browserLanguages()), (problem) => {
@@ -58,15 +64,14 @@ await play({
     game = made;
     view = createView(game);
     sound = createSound(game, { on: settings().sound, music: settings().music });
-    // A finger held anywhere on the sea and dragged moves Nezha; it counts in game.keys.axis().
-    game.touchStick({ radius: 56 });
+    return view.ready;
   },
   update: (seconds) => frame(seconds),
   onError: (cause) => console.error(cause)
 });
-paintSea($('#ground'));
 Object.assign(game.canvas.parentElement.style, { background: 'transparent', position: 'absolute', inset: '0', zIndex: '1' });
 game.canvas.setAttribute('role', 'img');
+game.canvas.tabIndex = -1;
 game.canvas.setAttribute('aria-label', t('stage'));
 if (settings().reducedMotion) game.reducedMotion = true;
 
@@ -75,7 +80,7 @@ let sinceBar = 0;
 function frame(seconds) {
   if (!ready || app.screen !== 'play' || !app.run) return;
   const run = app.run;
-  const axis = game.keys.axis();
+  const axis = stick.active ? stick.vector : game.keys.axis();
   const events = [];
   for (let left = seconds; left > 1e-6 && run.phase === 'wave'; left -= 1 / 30) events.push(...rules.step(run, Math.min(left, 1 / 30), axis));
   view.show(run, events, seconds);
@@ -100,12 +105,12 @@ function hear(events) {
     else if (event.type === 'hurt') sound('ouch', { every: 0.2 });
     else if (event.type === 'level') sound('levelUp');
     else if (event.type === 'boss') {
-      sound('gong');
+      sound('boss');
       say(t(event.kind === 'yaksha' ? 'bossYaksha' : 'bossAoBing'));
       game.toast(t(event.kind === 'yaksha' ? 'bossYaksha' : 'bossAoBing'), { seconds: 2.5, color: 0xf4ecd8 });
-    } else if (event.type === 'waveEnd') sound('gong', { volume: 0.6 });
+    } else if (event.type === 'waveEnd') sound('wave', { volume: 0.64 });
   }
-  if (app.run && app.run.phase === 'wave') sound.music('battle', app.run.wave / WAVES);
+  if (app.run && app.run.phase === 'wave') sound.music(app.run.boss ? 'boss' : 'battle', app.run.wave / WAVES);
 }
 
 // ---- The bar. ----
@@ -122,7 +127,11 @@ function drawBar() {
   hpBar.setAttribute('aria-valuenow', String(hp));
   hpBar.setAttribute('aria-label', t('hpName'));
   const boss = run.boss;
-  put($('#waveText'), `${t('wave', { n: run.wave, total: WAVES })} · ${boss ? t('bossLeft') : t('waveLeft', { s: Math.ceil(run.waveLeft) })}`);
+  put($('#waveText'), t('wave', { n: run.wave, total: WAVES }));
+  put($('#timerText'), boss ? t('bossLeft') : t('waveLeft', { s: Math.ceil(run.waveLeft) }));
+  const hint = $('#battleHint');
+  hint.hidden = app.screen !== 'play' || waveSeconds(run.wave) - run.waveLeft > (run.wave === 1 ? 4.5 : 1.6);
+  if (!hint.hidden) put(hint, run.wave === 1 ? controlHint() + ' ' + t('visualTip') : t('wavePrepare', { n: run.wave }));
   $('#xpBar span').style.transform = `scaleX(${Math.min(1, run.xp / xpToLevel(run.level))})`;
   put($('#levelText'), t('level', { n: run.level }));
   put($('#pearlText'), t('pearls', { n: run.pearls }));
@@ -136,10 +145,17 @@ function drawBar() {
 $('#pauseButton').addEventListener('click', () => openMenu());
 
 // ---- Screens. ----
-function openPanel(name) {
+function openPanel(name, focus) {
   for (const [key, panel] of Object.entries(panels)) panel.hidden = key !== name;
   field.inert = name !== null;
-  if (name) panels[name].querySelector('button:not([aria-disabled="true"])')?.focus();
+  $('#seaStick').hidden = name !== null || app.screen !== 'play';
+  if (name) {
+    stick.reset();
+    $('#battleHint').hidden = true;
+    const panel = panels[name];
+    const target = (focus ? panel.querySelector(focus) : null) ?? panel.querySelector('[data-focus]') ?? panel.querySelector('button:not([aria-disabled="true"])');
+    target?.focus({ preventScroll: true });
+  }
 }
 const sheet = (panel, html) => {
   panel.innerHTML = `<div class="sheet">${html}</div>`;
@@ -154,6 +170,14 @@ function say(words) {
 const escape = (text) => String(text).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const weaponName = (weapon) => t(weapon.kind);
 const tierName = (weapon) => (weapon.divine ? t('divineTier') : t('tier', { n: weapon.tier + 1 }));
+const RELIC_MARKS = {
+  ring: '◉', ribbon: '≋', spear: '↑', brick: '▰', wheels: '✺', dome: '♨',
+  bindDragon: '◎', fireSpear: '✵', dragonBrick: '✦',
+  lotusRoot: '❋', peach: '●', dragonScale: '◆', elixir: '✧', windCharm: '≈',
+  conch: '◈', coral: '✿', shell: '▱', primordialPearl: '◐', seaPearl: '◉', goldLotus: '❀',
+  demonMirror: '◇', drumOfWar: '▣', dragonPearl: '✶', heavenlyArmor: '⬒', skyRing: '◎'
+};
+const relicMark = (kind) => `<span class="relic-mark" data-relic="${kind}" aria-hidden="true">${RELIC_MARKS[kind] ?? '✧'}</span>`;
 const signed = (value) => `${value > 0 ? '+' : ''}${Math.round(value * 10) / 10}`;
 const statsText = (stats) =>
   Object.entries(stats)
@@ -187,48 +211,84 @@ function showTitle(focus) {
   app.screen = 'title';
   app.run = null;
   view.clear();
-  sound.music('calm', 0.2);
+  sound.music('title', 0.2);
   if (game.paused) game.resume();
   $('#hud').hidden = true;
   const unlocked = save.data.unlocked;
   if (!unlocked.includes(app.hero)) app.hero = 'boy';
   const best = save.data.best;
   const heroes = HERO_KINDS.map((hero) => {
-    const open = unlocked.includes(hero),
-      reached = best[hero]?.[app.danger];
+    const open = unlocked.includes(hero), reached = best[hero]?.[app.danger];
     const record = !open ? t(HEROES[hero].unlock === 'win' ? 'unlockWin' : 'unlockWave10') : reached > WAVES ? t('bestWon') : reached ? t('bestWave', { n: reached }) : t('noBest');
-    return `<button type="button" class="card" data-hero="${hero}" aria-pressed="${app.hero === hero}" ${open ? '' : 'aria-disabled="true"'}><strong>${t(hero)}${open ? '' : ` · ${t('locked')}`}</strong><small>${t(`${hero}Note`)}</small><small class="price">${record}</small></button>`;
+    return `<button type="button" class="hero-card" data-hero="${hero}" aria-pressed="${app.hero === hero}" ${open ? '' : 'aria-disabled="true"'}>
+        <img src="assets/${hero}.webp" width="440" height="587" alt="">
+        <span class="hero-label"><strong>${t(hero)}</strong><small>${record}</small></span></button>`;
   }).join('');
-  const dangers = DANGER.map((_, danger) => `<button type="button" class="card" data-danger="${danger}" aria-pressed="${app.danger === danger}"><strong>${t(`danger${danger}`)}</strong><small>${t(`danger${danger}Note`)}</small></button>`).join('');
-  const root = sheet(
-    panels.title,
-    `<h1>${t('title')}</h1>
-     <p>${t('tagline')}</p>
-     <p class="quietText">${t('demo')}</p>
-     ${notice ? `<p class="notice" role="status">${t(notice)}</p>` : ''}
-     <div class="row"><button type="button" class="strong" data-start>${t('start')}</button></div>
-     <h2>${t('chooseHero')}</h2><div class="cards">${heroes}</div>
-     <h2>${t('chooseDanger')}</h2><div class="cards">${dangers}</div>
-     <h2>${t('howTitle')}</h2>
-     <ul><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li></ul>
-     <p class="quietText">${t('keysLine')}</p>
-     <h2>${t('settings')}</h2>${settingsHtml()}`
-  );
-  root.querySelector('[data-start]').addEventListener('click', () => startGame());
-  for (const button of root.querySelectorAll('[data-hero]'))
+  const dangers = DANGER.map((_, danger) => `<button type="button" data-danger="${danger}" aria-pressed="${app.danger === danger}">${t(`danger${danger}`)}</button>`).join('');
+  const root = sheet(panels.title, `
+    <div class="title-copy">
+      <h1>${t('title')}</h1>
+      <p class="title-line">${t('titleLine')}</p>
+      ${notice ? `<p class="notice" role="status">${t(notice)}</p>` : ''}
+      <div class="title-actions">
+        <button type="button" class="strong" data-start data-focus>${t('start')}</button>
+        <button type="button" data-open="guide">${t('howTitle')}</button>
+        <button type="button" data-open="options">${t('settings')}</button>
+      </div>
+      <div class="title-picker">
+        <h2>${t('chooseHero')}</h2>
+        <div class="hero-deck">${heroes}</div>
+        <p class="choice-note">${t(`${app.hero}Note`)}</p>
+        <h2>${t('chooseDanger')}</h2>
+        <div class="danger-picker">${dangers}</div>
+        <p class="choice-note">${t(`danger${app.danger}Note`)}</p>
+      </div>
+    </div>`);
+  root.querySelector('[data-start]').addEventListener('click', startGame);
+  root.querySelector('[data-open=guide]').addEventListener('click', showGuide);
+  root.querySelector('[data-open=options]').addEventListener('click', () => showOptions());
+  for (const button of root.querySelectorAll('[data-hero]')) {
     button.addEventListener('click', () => {
       if (!unlocked.includes(button.dataset.hero)) return say(t('locked'));
       app.hero = button.dataset.hero;
+      sound('select', { every: 0.13 });
       showTitle(`[data-hero="${app.hero}"]`);
     });
-  for (const button of root.querySelectorAll('[data-danger]'))
+  }
+  for (const button of root.querySelectorAll('[data-danger]')) {
     button.addEventListener('click', () => {
       app.danger = Number(button.dataset.danger);
+      sound('select', { every: 0.13 });
       showTitle(`[data-danger="${app.danger}"]`);
     });
-  wireSettings(root, (selector) => showTitle(selector));
-  openPanel('title');
-  if (focus) root.querySelector(focus)?.focus();
+  }
+  openPanel('title', focus);
+}
+
+function showGuide() {
+  app.screen = 'guide';
+  const root = sheet(panels.guide, `<h2 id="guideHeading">${t('howTitle')}</h2>
+    <p class="lead">${controlHint()}</p>
+    <ol><li>${t('how1')}</li><li>${t('how2')}</li><li>${t('how3')}</li></ol>
+    <p class="quietText">${t('keysLine')}</p>
+    <div class="row sheet-actions">
+      <button type="button" class="strong" data-start>${t('start')}</button>
+      <button type="button" data-close>${t('closed')}</button>
+    </div>`);
+  panels.guide.setAttribute('aria-labelledby', 'guideHeading');
+  root.querySelector('[data-start]').addEventListener('click', startGame);
+  root.querySelector('[data-close]').addEventListener('click', () => showTitle('[data-open=guide]'));
+  openPanel('guide');
+}
+
+function showOptions(focus) {
+  app.screen = 'options';
+  const root = sheet(panels.options, `<h2 id="optionsHeading">${t('settings')}</h2>
+    ${settingsHtml()}<div class="row sheet-actions"><button type="button" class="strong" data-close>${t('closed')}</button></div>`);
+  panels.options.setAttribute('aria-labelledby', 'optionsHeading');
+  root.querySelector('[data-close]').addEventListener('click', () => showTitle('[data-open=options]'));
+  wireSettings(root, showOptions);
+  openPanel('options', focus);
 }
 
 function startGame() {
@@ -236,8 +296,12 @@ function startGame() {
   app.run = rules.createRun({ seed: app.seed, hero: app.hero, danger: app.danger });
   app.result = null;
   app.picked = null;
+  marketNote = null;
   app.screen = 'play';
+  stick.reset();
   view.clear();
+  sound('wave');
+  sound.music('battle', 1 / WAVES);
   $('#hud').hidden = false;
   drawBar();
   openPanel(null);
@@ -255,25 +319,48 @@ function showLevelUp() {
   const root = sheet(
     panels.levelUp,
     `<h2 id="levelHeading">${t('levelUpTitle', { n: run.pending })}</h2>
-     <p class="quietText">${t('levelUpHow')}</p>
-     <div class="cards">${run.choices.map((choice, i) => `<button type="button" class="card" data-choice="${i}"><strong>${i + 1} · ${statsText(choice.stats)}</strong></button>`).join('')}</div>`
+     <p class="lead">${t('levelUpHow')}</p>
+     <div class="cards levelling">${run.choices.map((choice, i) => `<button type="button" class="card" data-choice="${i}">
+       <kbd>${i + 1}</kbd>${Object.entries(choice.stats).map(([name, value]) => `<b class="raise-value">${signed(value)}</b><strong>${t(name)}</strong>`).join('')}
+     </button>`).join('')}</div>`
   );
   panels.levelUp.setAttribute('aria-labelledby', 'levelHeading');
   for (const button of root.querySelectorAll('[data-choice]')) button.addEventListener('click', () => chooseLevel(Number(button.dataset.choice)));
-  sound.music('calm', 0.3);
+  sound.music('market', 0.3);
   openPanel('levelUp');
 }
 function chooseLevel(index) {
   const run = app.run;
   if (!rules.chooseLevelUp(run, index).ok) return;
+  sound('confirm', { every: 0.12 });
   app.screen = 'between';
   if (run.phase === 'levelUp') showLevelUp();
   else showShop();
 }
 
 // ---- The market. ----
+function marketMessage(key, values, warning = false) {
+  marketNote = { key, values, warning };
+  say(t(key, values));
+}
+
 function showShop(focus) {
   const run = app.run;
+  const panel = panels.shop;
+  const continuing = app.screen === 'shop';
+  const detailOpen = continuing && Boolean(panel.querySelector('details')?.open);
+  if (continuing) {
+    const previousPane = panel.dataset.marketPane;
+    if (previousPane) marketScroll[previousPane] = panel.querySelector('.market-content').scrollTop;
+    else marketScroll.desktop = panel.scrollTop;
+  } else {
+    marketNote = null;
+    marketPane = 'offers';
+    marketScroll = {};
+  }
+  const compact = compactMarket.matches;
+  if (compact) panel.dataset.marketPane = marketPane;
+  else delete panel.dataset.marketPane;
   app.screen = 'shop';
   drawBar();
   const stats = rules.statsOf(run);
@@ -283,19 +370,25 @@ function showShop(focus) {
         label = offer.type === 'weapon' ? `${name} · ${t('tier', { n: offer.tier + 1 })}` : name,
         note = offer.type === 'weapon' ? t(`${offer.kind}Note`) : statsText(ITEMS[offer.kind].stats),
         poor = run.pearls < offer.price;
-      return `<div class="offer ${offer.type}${offer.sold ? ' sold' : ''}"><span class="name">${escape(label)}</span><small class="quietText">${escape(note)}</small>
+      return `<article class="offer ${offer.type}${offer.sold ? ' sold' : ''}${offer.locked ? ' reserved' : ''}">
+        <div class="offer-heading">${relicMark(offer.kind)}<span class="name">${escape(label)}</span></div>
+        <small class="quietText">${escape(note)}</small>
         <div class="row"><button type="button" data-buy="${i}" ${offer.sold || poor ? 'aria-disabled="true"' : ''} aria-label="${escape(offer.sold ? t('sold') : t('buyName', { name: label, price: offer.price }))}">${offer.sold ? t('sold') : t('buy', { price: offer.price })}</button>
-        <button type="button" data-lock="${i}" aria-pressed="${offer.locked}" ${offer.sold ? 'aria-disabled="true"' : ''} aria-label="${escape(t('lockName', { name: label }))}">${offer.locked ? t('unlock') : t('lock')}</button></div></div>`;
+        <button type="button" data-lock="${i}" aria-pressed="${offer.locked}" ${offer.sold ? 'aria-disabled="true"' : ''} aria-label="${escape(t('lockName', { name: label }))}">${offer.locked ? t('unlock') : t('lock')}</button></div></article>`;
     })
     .join('');
   const picked = app.picked;
+  let mergePreview;
   const slots = Array.from({ length: run.slots }, (_, i) => {
     const weapon = run.weapons[i];
-    if (!weapon) return `<button type="button" class="slot empty" aria-disabled="true">${t('emptySlot')}</button>`;
+    if (!weapon) return `<button type="button" class="slot empty" aria-disabled="true" tabindex="-1">${t('emptySlot')}</button>`;
     const partner = picked !== null && picked !== i && rules.mergeResult(run, picked, i);
     const label = `${weaponName(weapon)} · ${tierName(weapon)}`;
-    const name = partner ? t('mergeInto', { name: `${t(partner.kind)} · ${partner.divine ? t('divineTier') : t('tier', { n: partner.tier + 1 })}` }) : label;
-    return `<button type="button" class="slot${weapon.divine ? ' divine' : ''}${partner ? ' partner' : ''}" data-slot="${i}" aria-pressed="${picked === i}" aria-label="${escape(name)}">${escape(weaponName(weapon))}<small>${escape(tierName(weapon))}</small></button>`;
+    const resultName = partner ? `${t(partner.kind)} · ${tierName(partner)}` : '';
+    if (partner) mergePreview = resultName;
+    const name = partner ? t('mergeInto', { name: resultName }) : label;
+    return `<button type="button" class="slot${weapon.divine ? ' divine' : ''}${partner ? ' partner' : ''}" data-slot="${i}" aria-pressed="${picked === i}" aria-label="${escape(name)}">${relicMark(weapon.kind)}<span class="slot-name">${escape(weaponName(weapon))}</span><small>${escape(tierName(weapon))}</small>
+      ${partner ? `<small class="merge-label">${escape(compact ? t('mergeWith') : name)}</small>` : ''}</button>`;
   }).join('');
   const pickedWeapon = picked !== null ? run.weapons[picked] : null;
   const recipes = Object.entries(DIVINE)
@@ -307,38 +400,83 @@ function showShop(focus) {
   const statRows = Object.entries(stats)
     .map(([key, value]) => `<span class="${value > 0 && key !== 'maxHp' && key !== 'crit' ? 'up' : value < 0 ? 'down' : ''}">${t(key)} ${Math.round(value * 10) / 10}</span>`)
     .join('');
+  const previewingMerge = compact && marketPane === 'gear' && Boolean(mergePreview);
+  const feedback = previewingMerge
+    ? t('mergePreview', { name: mergePreview })
+    : marketNote ? t(marketNote.key, marketNote.values) : t(compact && marketPane === 'offers' ? 'reserveHint' : 'tapToMerge');
+  const bar = `<div class="market-bar">
+       <p class="market-feedback${previewingMerge ? ' merge-preview' : marketNote?.warning ? ' warning' : ''}" role="status">${feedback}</p>
+       <button type="button" class="strong" data-next aria-label="${t('nextWaveName', { n: run.wave + 1 })}">${t('nextWave')}</button>
+     </div>`;
+  const treasureCount = { n: run.weapons.length, max: run.slots };
+  const tabs = compact ? `<div class="market-tabs" role="group" aria-label="${t('marketSections')}">
+       <button type="button" data-market-tab="offers" aria-controls="marketOffers" aria-pressed="${marketPane === 'offers'}" ${marketPane === 'offers' ? 'data-focus' : ''}>${t('offers')}</button>
+       <button type="button" data-market-tab="gear" aria-controls="marketGear" aria-pressed="${marketPane === 'gear'}" ${marketPane === 'gear' ? 'data-focus' : ''}>${t('marketGear', treasureCount)}</button>
+     </div>` : '';
   const root = sheet(
-    panels.shop,
-    `<h2 id="shopHeading">${t('shopTitle', { n: run.wave })} · ${t('pearls', { n: run.pearls })}</h2>
-     <h2>${t('offers')}</h2><div class="cards">${offers}</div>
-     <div class="row"><button type="button" data-reroll aria-label="${t('rerollName', { price: rules.rerollPrice(run) })}" ${run.pearls < rules.rerollPrice(run) ? 'aria-disabled="true"' : ''}>${t('reroll', { price: rules.rerollPrice(run) })}</button>
-       <button type="button" class="strong" data-next aria-label="${t('nextWaveName', { n: run.wave + 1 })}">${t('nextWave')}</button></div>
-     <h2>${t('yourTreasures', { n: run.weapons.length, max: run.slots })}</h2>
-     <p class="quietText">${pickedWeapon ? t('selected', { name: `${weaponName(pickedWeapon)} · ${tierName(pickedWeapon)}` }) : t('tapToMerge')}</p>
+    panel,
+    `<header class="market-head">
+       <h2 id="shopHeading">${t(compact ? 'shopTitleCompact' : 'shopTitle', { n: run.wave })}</h2>
+       <span class="pearl-wallet">${t('pearls', { n: run.pearls })}</span>
+     </header>
+     ${compact ? tabs : bar}
+     <div class="market-content">
+     <div id="marketOffers" data-market-pane="offers"${compact && marketPane !== 'offers' ? ' hidden' : ''}>
+     ${compact ? '' : `<h3>${t('offers')}</h3>`}
+     <div class="cards market-offers">${offers}</div>
+     <div class="row"><button type="button" data-reroll aria-label="${t('rerollName', { price: rules.rerollPrice(run) })}" ${run.pearls < rules.rerollPrice(run) ? 'aria-disabled="true"' : ''}>${t('reroll', { price: rules.rerollPrice(run) })}</button></div>
+     </div>
+     <div id="marketGear" data-market-pane="gear"${compact && marketPane !== 'gear' ? ' hidden' : ''}>
+     ${compact ? '' : `<h3>${t('yourTreasures', treasureCount)}</h3>`}
+     <p class="quietText">${pickedWeapon ? t('selected', { name: `${weaponName(pickedWeapon)} · ${tierName(pickedWeapon)}` }) : t('mergeAdvice')}</p>
      <div class="slots">${slots}</div>
      ${pickedWeapon ? `<div class="row"><button type="button" data-sell ${run.weapons.length <= 1 ? 'aria-disabled="true"' : ''} aria-label="${escape(t('sellName', { name: weaponName(pickedWeapon), price: rules.sellPrice(run, picked) }))}">${t('sell', { price: rules.sellPrice(run, picked) })}</button><button type="button" data-cancel>${t('cancelPick')}</button></div>` : ''}
-     <p class="quietText">${t('recipes')}${recipes}</p>
-     <h2>${t('items')}</h2><div class="chips">${items || t('noItems')}</div>
-     <h2>${t('stats')}</h2><div class="stats">${statRows}</div>`
+     <details class="market-details"${detailOpen ? ' open' : ''}><summary>${t('details')}</summary>
+       <p class="quietText">${t('recipes')}${recipes}</p>
+       <h3>${t('items')}</h3><div class="chips">${items || t('noItems')}</div>
+       <h3>${t('stats')}</h3><div class="stats">${statRows}</div>
+     </details>
+     </div>
+     </div>
+     ${compact ? bar : ''}`
   );
-  panels.shop.setAttribute('aria-labelledby', 'shopHeading');
+  panel.setAttribute('aria-labelledby', 'shopHeading');
+  for (const button of root.querySelectorAll('[data-market-tab]'))
+    button.addEventListener('click', () => {
+      if (marketPane === button.dataset.marketTab) return;
+      marketPane = button.dataset.marketTab;
+      sound('select');
+      showShop(`[data-market-tab="${marketPane}"]`);
+    });
   for (const button of root.querySelectorAll('[data-buy]'))
     button.addEventListener('click', () => {
       const result = rules.buy(run, Number(button.dataset.buy));
-      if (!result.ok) return say(t(result.why === 'pearls' ? 'notEnough' : result.why === 'full' ? 'full' : 'sold'));
-      if (result.merged) {
+      const focus = `[data-buy="${button.dataset.buy}"]`;
+      if (!result.ok) {
+        marketMessage(result.why === 'pearls' ? 'notEnough' : result.why === 'full' ? 'full' : 'sold', undefined, true);
+      } else if (result.merged) {
         sound('merge');
-        say(t('merged', { name: weaponName(run.weapons[result.slot]) }));
-      } else sound('pearl');
-      showShop(`[data-buy="${button.dataset.buy}"]`);
+        marketMessage('merged', { name: weaponName(run.weapons[result.slot]) });
+      } else {
+        sound('acquire');
+        marketMessage('boughtGood', { name: t(run.shop.offers[Number(button.dataset.buy)].kind) });
+      }
+      showShop(focus);
     });
   for (const button of root.querySelectorAll('[data-lock]'))
     button.addEventListener('click', () => {
-      rules.toggleLock(run, Number(button.dataset.lock));
+      const index = Number(button.dataset.lock);
+      if (run.shop.offers[index].sold) return;
+      rules.toggleLock(run, index);
+      sound('select');
+      marketMessage(run.shop.offers[index].locked ? 'preserveOffer' : 'releaseOffer');
       showShop(`[data-lock="${button.dataset.lock}"]`);
     });
   root.querySelector('[data-reroll]').addEventListener('click', () => {
-    if (!rules.reroll(run).ok) return say(t('notEnough'));
+    if (rules.reroll(run).ok) {
+      sound('select');
+      marketMessage('restocked');
+    } else marketMessage('notEnough', undefined, true);
     showShop('[data-reroll]');
   });
   root.querySelector('[data-next]').addEventListener('click', () => {
@@ -346,6 +484,9 @@ function showShop(focus) {
     rules.nextWave(run);
     app.screen = 'play';
     openPanel(null);
+    game.canvas.focus({ preventScroll: true });
+    sound('wave');
+    sound.music(run.boss ? 'boss' : 'battle', run.wave / WAVES);
     drawBar();
     say(t('wave', { n: run.wave, total: WAVES }));
   });
@@ -363,52 +504,68 @@ function showShop(focus) {
       }
       app.picked = null;
       sound(result.divine ? 'divine' : 'merge');
-      say(t(result.divine ? 'divineMade' : 'merged', { name: t(result.kind) }));
+      marketMessage(result.divine ? 'divineMade' : 'merged', { name: t(result.kind) });
       if (result.divine && !game.reducedMotion) game.flash(0xe8b84a, 0.25);
       showShop(`[data-slot="${Math.min(result.slot, run.weapons.length - 1)}"]`);
     });
   root.querySelector('[data-sell]')?.addEventListener('click', () => {
+    const slot = app.picked;
+    const name = weaponName(run.weapons[app.picked]);
     if (!rules.sell(run, app.picked).ok) return;
     app.picked = null;
-    sound('pearl');
-    showShop('[data-next]');
+    sound('sell');
+    marketMessage('soldGood', { name });
+    showShop(`[data-slot="${Math.min(slot, run.weapons.length - 1)}"]`);
   });
   root.querySelector('[data-cancel]')?.addEventListener('click', () => {
+    const slot = app.picked;
     app.picked = null;
-    showShop('[data-next]');
+    showShop(`[data-slot="${slot}"]`);
   });
-  sound.music('calm', 0.3);
-  openPanel('shop');
-  if (focus) root.querySelector(focus)?.focus();
+  sound.music('market', 0.3);
+  openPanel('shop', focus);
+  if (compact) root.querySelector('.market-content').scrollTop = marketScroll[marketPane] ?? 0;
+  else panel.scrollTop = marketScroll.desktop ?? 0;
 }
+
+compactMarket.addEventListener('change', () => {
+  if (app.screen !== 'shop') return;
+  const visiblePane = document.activeElement?.closest('[data-market-pane]');
+  if (visiblePane) marketPane = visiblePane.dataset.marketPane;
+  showShop();
+});
 
 // ---- Pause. ----
 function openMenu(focus) {
   if (app.screen !== 'play') return;
   game.pause();
+  sound.pause();
   app.screen = 'menu';
   const root = sheet(
     panels.menu,
     `<h2 id="menuHeading">${t('paused')}</h2>
-     <div class="row"><button type="button" class="strong" data-do="resume">${t('resume')}</button><button type="button" data-do="quit">${t('quit')}</button></div>
+     <p class="lead">${t('wave', { n: app.run.wave, total: WAVES })}</p>
+     <div class="row sheet-actions"><button type="button" class="strong" data-do="resume">${t('resume')}</button><button type="button" data-do="quit">${t('quit')}</button></div>
      <h2>${t('settings')}</h2>${settingsHtml()}`
   );
   panels.menu.setAttribute('aria-labelledby', 'menuHeading');
   root.querySelector('[data-do=resume]').addEventListener('click', closeMenu);
   root.querySelector('[data-do=quit]').addEventListener('click', () => {
     game.resume();
+    sound.resume();
     showTitle();
   });
   wireSettings(root, (selector) => {
     app.screen = 'play';
     openMenu(selector);
   });
-  openPanel('menu');
-  if (focus) root.querySelector(focus)?.focus();
+  openPanel('menu', focus);
 }
 function closeMenu() {
   app.screen = 'play';
   openPanel(null);
+  game.canvas.focus({ preventScroll: true });
+  sound.resume();
   game.resume();
 }
 
@@ -422,8 +579,11 @@ function finish() {
   if (!kept) notice = 'saveRefused';
   app.result = { won, wave: run.wave, kills: run.kills, level: run.level, merges: run.merges, divines: run.divines, ...record, kept };
   app.screen = 'end';
+  stick.reset();
+  $('#seaStick').hidden = true;
+  $('#battleHint').hidden = true;
   sound.stopMusic();
-  game.sfx.play(won ? 'win' : 'lose');
+  sound(won ? 'win' : 'lose');
   game.after(game.reducedMotion ? 0.2 : 1.2, showEnd);
 }
 function showEnd() {
@@ -433,9 +593,12 @@ function showEnd() {
   view.clear();
   const root = sheet(
     panels.end,
-    `<h2 id="endHeading" class="bigResult">${t(r.won ? 'won' : 'lost')}</h2>
-     <p>${r.won ? t('wonNote') : t('lostNote', { wave: r.wave })}</p>
-     <p>${t('runNote', { kills: r.kills, level: r.level, merges: r.merges, divines: r.divines })}</p>
+    `<div class="end-hero"><img src="assets/${app.hero}.webp" alt=""><div>
+       <h2 id="endHeading" class="bigResult">${t(r.won ? 'won' : 'lost')}</h2>
+       <p>${r.won ? t('wonNote') : t('lostNote', { wave: r.wave })}</p>
+     </div></div>
+     <dl class="run-totals">${[['wavesStat', r.wave], ['killsStat', r.kills], ['mergesStat', r.merges], ['divineStat', r.divines]].map(([label, count]) =>
+       `<div><dt>${t(label)}</dt><dd>${count}</dd></div>`).join('')}</dl>
      ${r.best ? `<p><strong>${t('newBest')}</strong></p>` : ''}
      ${r.unlocked.map((hero) => `<p class="notice">${t('unlocked', { name: t(hero) })}</p>`).join('')}
      ${r.kept ? '' : `<p class="notice" role="status">${t('saveRefused')}</p>`}
@@ -455,11 +618,14 @@ window.addEventListener(
   'keydown',
   (event) => {
     const onButton = event.target instanceof HTMLElement && event.target.closest('button, .panel');
-    if (onButton && KEPT.has(event.key)) event.stopPropagation();
+    if ((onButton || app.screen !== 'play') && KEPT.has(event.key)) event.stopPropagation();
     const key = event.key.toLowerCase();
     if (app.screen === 'play' && (key === 'escape' || key === 'p')) {
       event.preventDefault();
       openMenu();
+    } else if ((app.screen === 'guide' || app.screen === 'options') && key === 'escape') {
+      event.preventDefault();
+      showTitle(`[data-open="${app.screen}"]`);
     } else if (app.screen === 'menu' && key === 'escape') {
       event.preventDefault();
       closeMenu();
@@ -467,8 +633,9 @@ window.addEventListener(
       event.preventDefault();
       chooseLevel(Number(key) - 1);
     } else if (app.screen === 'shop' && key === 'escape' && app.picked !== null) {
+      const slot = app.picked;
       app.picked = null;
-      showShop('[data-next]');
+      showShop(marketPane === 'gear' || !compactMarket.matches ? `[data-slot="${slot}"]` : undefined);
     }
   },
   true
@@ -481,8 +648,10 @@ onLanguage(() => {
   document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
   document.title = t('pageTitle');
   game.canvas.setAttribute('aria-label', t('stage'));
-  if (app.screen === 'title') showTitle('[data-language]');
+  if (app.screen === 'options') showOptions('[data-language]');
+  else if (app.screen === 'title') showTitle();
   else if (app.screen === 'menu') {
+    drawBar();
     app.screen = 'play';
     openMenu('[data-language]');
   }
