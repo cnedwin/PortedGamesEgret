@@ -42,7 +42,7 @@ function fit() {
     top = (innerHeight - STAGE.height * s) / 2;
   stageScale = s;
   $('#frame').classList.toggle('compact', s < 0.72);
-  $('#frame').classList.toggle('portrait', innerHeight > innerWidth);
+  $('#frame').classList.toggle('portrait-view', innerHeight > innerWidth);
   for (const layer of [$('#back'), $('#ui')]) layer.style.transform = `translate(${left}px, ${top}px) scale(${s})`;
   $('#stage').style.transform = `translate(${left}px, ${top}px) scale(${(s * 4) / 3})`;
 }

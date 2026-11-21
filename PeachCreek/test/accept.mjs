@@ -144,6 +144,23 @@ try {
   await page.goto(`${server.url}${path}/?seed=1&lang=zh&hour=10`);
   await until(page, () => window.peach?.ready);
   check(await state(page, () => !document.querySelector('#title .notice').hidden && window.peach.app.state === null), 'a broken save is started again, and the title says so');
+  await page.setViewportSize({ width: 411, height: 813 });
+  await until(page, () => getComputedStyle(document.querySelector('#rotateHint')).display !== 'none', 4);
+  const portraitFits = await page.evaluate(() => {
+    const frame = document.querySelector('#frame'),
+      start = document.querySelector('#startButton'),
+      rect = start.getBoundingClientRect();
+    return frame.getBoundingClientRect().width === innerWidth && frame.scrollTop === 0 &&
+      start.contains(document.elementFromPoint(rect.x + rect.width / 2, rect.y + rect.height / 2));
+  });
+  check(portraitFits, 'a narrow portrait viewport retains its full frame and a tappable title');
+  if (portraitFits) {
+    await page.click('#startButton');
+    await until(page, () => window.peach.screen === 'play', 4);
+    await page.setViewportSize({ width: 844, height: 390 });
+    await until(page, () => getComputedStyle(document.querySelector('#rotateHint')).display === 'none', 4);
+    check(await state(page, () => window.peach.app.state.plots.length === 72), 'landscape resize keeps the county open');
+  }
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {
