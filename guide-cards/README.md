@@ -30,6 +30,8 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [moving-shapes](perf/moving-shapes.txt) | OperaDrums | ENGINE-NOTES 3（每帧移动的圆和路径比矩形贵，文字打断合批）；提交 `6e7d5bb` | 同上 · the same |
 | [still-background](perf/still-background.txt) | CanalWatch | ENGINE-NOTES 3（静止地图每帧重画让软件渲染帧时间翻倍，改由页面画一次）；提交 `13dcd4b` | 同上 · the same |
 | [sprite-swarm](perf/sprite-swarm.txt) | NezhaSea | ENGINE-NOTES 3（共用贴图的 Bitmap 比矩形精灵贵得多，改用矩形加精灵池）；提交 `9b3d926` | 同上 · the same |
+| [play-resolution](perf/play-resolution.txt) | TaiwanMahjong | ENGINE-NOTES 3（play 没有分辨率选项，1280×720 空画布 p95 33 ms；开 960×540 加根节点缩放）；提交 `936d1e6` | 同上 · the same |
+| [play-turned-table](input/play-turned-table.txt) | TaiwanMahjong | ENGINE-NOTES 4（外层旋转时 play 拒绝启动；分三层、引擎竖着开）；提交 `936d1e6` | 同上 · the same |
 
 ## 给已有卡片加证据 · Evidence for existing cards
 
@@ -49,6 +51,10 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | synthesized-audio | OperaDrums | `OperaDrums/src/audio/synth.mjs`：鼓、锣、钹、板、京胡都由数算出，`encodeWav` 后交给混音器 · every instrument computed and handed to the mixer as WAV | 草稿，未提交引擎 · draft, not sent |
 | balance-from-runs | OperaDrums | `OperaDrums/tools/balance.mjs`：电脑玩家按五种准度把九张谱各打 10 局 · a bot at five levels of steadiness plays nine charts 10 times each | 草稿，未提交引擎 · draft, not sent |
 | play-page-controls（本仓库草稿 · a draft here） | OperaDrums | `OperaDrums/src/main.mjs:112`、ENGINE-NOTES 1：敲击键和页面按钮同在时，捕获阶段接住按键 · keys caught first beside page buttons | 草稿 · draft |
+| balance-from-runs | TaiwanMahjong | `TaiwanMahjong/tools/balance.mjs`：四家电脑整圈对打，比较难度（一高手对三入门、一入门对三普通）和三种性格 · whole rounds among four computer players, comparing levels and characters | 草稿，未提交引擎 · draft, not sent |
+| save-update-callbacks | TaiwanMahjong | `TaiwanMahjong/src/main.mjs:607`、ENGINE-NOTES 6：表达式箭头的返回值被当成新存档，选择没存上 · an expression arrow's value taken as the new save | 草稿 · draft |
+| sprite-swarm（本仓库草稿 · a draft here） | TaiwanMahjong | ENGINE-NOTES 5：两百五十个静止 Bitmap 也慢，静止的牌改画在页面 canvas · still Bitmaps too, moved to a page canvas | 草稿 · draft |
+| still-background（本仓库草稿 · a draft here） | TaiwanMahjong | `TaiwanMahjong/src/felt.mjs:87`：牌河、副露、别家手牌画在引擎画布下，变化时重画 · rivers, melds and hands painted under the engine when they change | 草稿 · draft |
 | balance-from-runs | NezhaSea | `NezhaSea/tools/balance.mjs`：电脑玩家用三种形态、三档海况各打 12 局，另有「不动」「不买」两种对照 · a bot plays three forms on three dangers, 12 games each, with two controls | 草稿，未提交引擎 · draft, not sent |
 | play-page-controls（本仓库草稿 · a draft here） | NezhaSea | `NezhaSea/src/main.mjs:454`、ENGINE-NOTES 1：哪吒仍靠 `game.keys.axis()` 走，只在页面按钮上接住按键 · keys stopped only on page buttons, so play still steers | 草稿 · draft |
 | still-background（本仓库草稿 · a draft here） | NezhaSea | `NezhaSea/src/ground.mjs:53`：剪纸海浪由页面画一次，放在透明画布下 · the paper-cut sea painted once under the clear canvas | 草稿 · draft |
@@ -67,6 +73,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | OperaDrums | 5（2 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | CanalWatch | 5（2 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | NezhaSea | 4（1 张新卡，3 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
+| TaiwanMahjong | 6（2 张新卡，4 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | FPS、jelly-pandas、Wulin、LanternShadows、LoveElective | 0 | 没有 ENGINE-NOTES 内容，也没有新的引擎相关修复提交；它们的经验已被引擎现有卡片引用（FPS 14 张、jelly-pandas 12 张、Wulin 5 张、LanternShadows 4 张、LoveElective 1 张） · no notes and no new engine-related fixes; already cited by the engine's cards |
 
 注意：本目录的新卡草稿若一次全部加进引擎索引，`guide/index.txt` 会超出它的 token 上限（五张一起时 1565 token），提交引擎时需要合并或精简索引行；分批放进去时每批都通过了 `tests/guide.test.mjs`。
