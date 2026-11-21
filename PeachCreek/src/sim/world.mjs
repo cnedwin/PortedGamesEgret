@@ -8,12 +8,27 @@ import {
   RAIDS, RANKS, RARITY, RECRUIT, RESOURCES, SEASONS, START, SURVEY_COST, SURVEY_ORDER, SURVEY_TIME, TALENTS, ZONE_BONUS
 } from './data.mjs';
 
-export const DISTRICTS = 6;
-export const PLOTS_PER_DISTRICT = 8;
-/** Wards next to each other (two columns of three, the river along the bottom). */
-export const NEIGHBOURS = [[1, 2], [0, 3], [0, 3, 4], [1, 2, 5], [2, 5], [3, 4]];
-/** Plots on the river bank, where a dock may stand. */
-export const RIVERSIDE = new Set([36, 37, 38, 39, 44, 45, 46, 47]);
+export const DISTRICT_COLS = 3;
+export const DISTRICT_ROWS = 2;
+export const DISTRICTS = DISTRICT_COLS * DISTRICT_ROWS;
+export const PLOT_COLS = 4;
+export const PLOT_ROWS = 3;
+export const PLOTS_PER_DISTRICT = PLOT_COLS * PLOT_ROWS;
+export const SIDES = Object.freeze(['north', 'east', 'south', 'west']);
+export function plotPosition(index) {
+  const ward = Math.floor(index / PLOTS_PER_DISTRICT),
+    parcel = index % PLOTS_PER_DISTRICT;
+  return { x: (ward % DISTRICT_COLS) * PLOT_COLS + parcel % PLOT_COLS, y: Math.floor(ward / DISTRICT_COLS) * PLOT_ROWS + Math.floor(parcel / PLOT_COLS) };
+}
+const positions = Array.from({ length: DISTRICTS * PLOTS_PER_DISTRICT }, (_, index) => plotPosition(index));
+/** A dock can serve as an inland goods depot, but only the river bank offers direct shipping. */
+export const RIVERSIDE = new Set(positions.flatMap(({ y }, index) => y === DISTRICT_ROWS * PLOT_ROWS - 1 ? [index] : []));
+const walk = (a, b) => Math.abs(a.x - b.x) + Math.abs(a.y - b.y);
+const distances = positions.map((a) => positions.map((b) => walk(a, b)));
+const cityWidth = DISTRICT_COLS * PLOT_COLS,
+  cityHeight = DISTRICT_ROWS * PLOT_ROWS;
+const gates = [{ x: cityWidth / 2, y: 0 }, { x: cityWidth - 1, y: cityHeight / 2 }, { x: cityWidth / 2, y: cityHeight - 1 }, { x: 0, y: cityHeight / 2 }];
+const gateDistances = positions.map((a) => Math.min(...gates.map((b) => walk(a, b))));
 export const NODE_SLOTS = 12;
 
 /** A small seeded generator (mulberry32). */
@@ -33,7 +48,7 @@ export function createCounty({ seed = 1, now = 0, term = 0, talents = [] } = {})
   const res = {};
   for (const key of Object.keys(RESOURCES)) res[key] = START[key] ?? 0;
   return {
-    version: 1,
+    version: 2,
     seed,
     rolls: 0,
     term,
@@ -50,7 +65,7 @@ export function createCounty({ seed = 1, now = 0, term = 0, talents = [] } = {})
     plots: Array.from({ length: DISTRICTS * PLOTS_PER_DISTRICT }, (_, i) => (i === 0 ? { kind: 'house', level: 2 } : i === PLOTS_PER_DISTRICT ? { kind: 'paddy', level: 1 } : { kind: null, level: 0 })),
     nodes: Array.from({ length: NODE_SLOTS }, (_, i) => ({ kind: SURVEY_ORDER[i], found: i === 0, level: i === 0 ? 1 : 0 })),
     surveys: 1,
-    defence: { wall: 0, tower: [0, 0, 0, 0], camp: 0 },
+    defence: { wall: SIDES.map(() => 0), tower: SIDES.map(() => 0), troops: SIDES.map(() => 0), camp: 0 },
     works: [],
     talents: talents.map((t) => ({ ...t, post: null })),
     recruits: 0,
@@ -124,7 +139,56 @@ const officeBonus = (state, office, scale) => {
   return talent ? talentPower(talent, OFFICES[office]) * scale : 0;
 };
 
-/** How much better a plot's building works: its ward's zone, its talent, the deputy and the rank of office. */
+function planningSites(state) {
+  const sites = {};
+  state.plots.forEach(({ kind, level }, index) => {
+    if (kind && level > 0) (sites[kind] ??= []).push(index);
+  });
+  return sites;
+}
+
+const nearest = (index, sites, fallback) => {
+  let result = fallback;
+  for (const other of sites ?? []) if (other !== index) result = Math.min(result, distances[index][other]);
+  return result;
+};
+
+const LOCAL_INPUT = { brewery: 'paddy', loom: 'mulberry' };
+
+function parcelPlan(state, index, kind, sites) {
+  const spec = BUILDINGS[kind];
+  if (!spec || !positions[index]) return { multiplier: 1, access: 1, smoke: 0, linked: true, upkeep: 0 };
+  const trade = Boolean(spec.sell || spec.visitors),
+    services = Boolean(spec.life && !spec.house),
+    input = LOCAL_INPUT[kind],
+    stage = 0.35 + state.rank * 0.11;
+  const homes = Math.min(nearest(index, sites.house, 8), nearest(index, sites.manor, 8)),
+    marketDistance = Math.min(nearest(index, sites.market, 8), nearest(index, sites.dock, 8)),
+    reach = Math.min(gateDistances[index], marketDistance);
+  const haul = input ? nearest(index, sites[input], 9) : kind === 'kiln' ? gateDistances[index] + 1 : 0,
+    inland = Boolean(spec.riverside && !RIVERSIDE.has(index)),
+    linked = input ? haul <= 4 : spec.riverside ? !inland : true;
+  const travel = (trade ? reach * 0.065 : 0) + (services ? homes * 0.048 : 0) + (input || kind === 'kiln' ? haul * 0.045 : 0);
+  const access = Math.max(0.45, 1 - travel * stage - (inland ? 0.35 : 0));
+  const neighbours = (sites[kind] ?? []).filter((other) => other !== index && distances[index][other] <= 2).length,
+    crowding = trade || spec.smoke ? Math.max(0, neighbours - 1) * 0.035 * stage : 0,
+    proximity = input && linked ? (5 - haul) * 0.04 : 0;
+  const smoke = spec.smoke ? spec.smoke * (homes <= 1 ? 2.3 : homes <= 3 ? 1.3 : 0.38) : 0;
+  return {
+    multiplier: Math.max(0.4, access + proximity - crowding),
+    access,
+    smoke,
+    linked,
+    upkeep: Math.max(0, state.rank - 1) * (trade ? reach * 1.3 : 0) + Math.max(0, state.rank - 1) * haul * 0.85
+  };
+}
+
+/** Show the effect of a building in this particular spot before committing to construction. */
+export function plotPlan(state, index, kind = state.plots[index]?.kind) {
+  return parcelPlan(state, index, kind, planningSites(state));
+}
+
+/** Contributions from a parcel's optional ward focus, talent, deputy and rank of office. */
 function plotBoost(state, index) {
   const plot = state.plots[index],
     spec = BUILDINGS[plot.kind],
@@ -140,23 +204,27 @@ function plotBoost(state, index) {
 
 /** Rates an hour right now: { make, use, house, lifePoints, beauty, smoke, sell, export, fame, coin }. */
 export function rates(state) {
-  const season = SEASONS.effects[seasonOf(state)];
-  const r = { make: {}, use: {}, house: 0, lifePoints: 0, beauty: 0, smoke: 0, sell: 0, export: 0, fame: 0, coin: 0 };
+  const season = SEASONS.effects[seasonOf(state)],
+    sites = planningSites(state);
+  const planning = { efficiency: 1, upkeep: 0, pollution: 0 };
+  const r = { make: {}, use: {}, house: 0, lifePoints: 0, beauty: 0, smoke: 0, sell: 0, export: 0, fame: 0, coin: 0, planning };
+  let totalLevel = 0, effectiveLevel = 0;
   const add = (bag, key, value) => (bag[key] = (bag[key] ?? 0) + value);
   state.plots.forEach((plot, i) => {
     if (!plot.kind || plot.level === 0) return;
     const spec = BUILDINGS[plot.kind],
       boost = plotBoost(state, i),
       level = plot.level,
-      scaled = level * milestone(level) * boost;
+      plan = parcelPlan(state, i, plot.kind, sites),
+      base = level * milestone(level) * boost,
+      scaled = base * plan.multiplier;
+    effectiveLevel += plan.multiplier * level;
+    totalLevel += level;
+    planning.upkeep += plan.upkeep * level;
     if (spec.house) r.house += spec.house * level * (1 + 0.1 * Math.floor(level / 10));
-    if (spec.life) r.lifePoints += spec.life * level ** 0.8 * boost;
+    if (spec.life) r.lifePoints += spec.life * level ** 0.8 * boost * plan.multiplier;
     if (spec.beauty) r.beauty += spec.beauty * level ** 0.8;
-    if (spec.smoke) {
-      const ward = Math.floor(i / PLOTS_PER_DISTRICT),
-        nearHomes = NEIGHBOURS[ward].some((n) => state.districts[n].zone === 'home');
-      r.smoke += spec.smoke * level * (nearHomes ? 1 : 0.3);
-    }
+    r.smoke += plan.smoke * level;
     if (spec.sell) (spec.export ? (r.export += spec.sell * scaled) : (r.sell += spec.sell * scaled));
     for (const [key, value] of Object.entries(spec.out ?? {})) {
       const seasonal = season[key] ?? 1,
@@ -165,8 +233,11 @@ export function rates(state) {
       else if (key === 'coin') r.coin += value * scaled * visitors;
       else add(r.make, key, value * scaled * seasonal * (1 + giftOf(state, key)));
     }
-    for (const [key, value] of Object.entries(spec.use ?? {})) add(r.use, key, value * level * milestone(level) * boost);
+    for (const [key, value] of Object.entries(spec.use ?? {})) add(r.use, key, value * base);
   });
+  if (totalLevel) planning.efficiency = effectiveLevel / totalLevel;
+  planning.pollution = r.smoke;
+  planning.upkeep += state.defence.troops.reduce((sum, count) => sum + count, 0) * 2;
   state.nodes.forEach((node, i) => {
     if (!node.found || node.level === 0) return;
     const spec = NODES[node.kind],
@@ -204,13 +275,28 @@ export function livelihood(state, r = rates(state)) {
 /** The strength of the next raid: raiders come for what the county has. */
 export const raidPower = (state) => RAIDS.power(state.raid.n, state.rank, state.pop);
 
-/** The power a defence musters now. */
-export function defencePower(state) {
+/** The raid report announces which quarter is under threat. */
+export const raidSide = (state) => ((state.seed >>> 0) + state.raid.n) % SIDES.length;
+export const troopCapacity = (state) => state.rank < 2 ? 0 : 12 + (state.rank - 2) * 3 + state.defence.camp * 4;
+
+/** Set a side's garrison without exceeding the county's available troops. */
+export function stationTroops(state, side, count) {
+  if (!Number.isInteger(side) || !SIDES[side] || !Number.isInteger(count) || count < 0) return { why: 'none' };
+  if (state.rank < 2) return { why: 'rank' };
+  const other = state.defence.troops.reduce((sum, value, i) => i === side ? sum : sum + value, 0);
+  if (count + other > troopCapacity(state)) return { why: 'troops' };
+  state.defence.troops[side] = count;
+  return {};
+}
+
+/** Fortifications and soldiers on the threatened side, supported by the common camp. */
+export function defencePower(state, side = raidSide(state)) {
   const d = state.defence;
   const m = (l) => l * milestone(l);
-  let power = m(d.wall) * DEFENCE.wall.power + d.tower.reduce((s, l) => s + m(l) * DEFENCE.tower.power, 0) + m(d.camp) * DEFENCE.camp.power;
+  let power = m(d.wall[side]) * DEFENCE.wall.power + m(d.tower[side]) * DEFENCE.tower.power +
+    m(d.camp) * DEFENCE.camp.power + d.troops[side] * 9;
   power *= 1 + officeBonus(state, 'sheriff', 0.5) + giftOf(state, 'defence');
-  for (const key of ['wall', 'camp']) {
+  for (const key of ['wall', 'camp', `wall:${side}`, `tower:${side}`]) {
     const talent = talentAt(state, { type: 'defence', key });
     if (talent) power *= 1 + talentPower(talent, 'arms') * 0.3;
   }
@@ -292,7 +378,7 @@ function tick(state, seconds, share, report) {
       else market -= units;
     }
   }
-  state.res.coin += (r.coin + r.salary) * hours;
+  state.res.coin = Math.max(0, state.res.coin + (r.coin + r.salary - r.planning.upkeep) * hours);
   state.fame += r.fame * hours;
   // Taxes wait at the yamen until collected, up to as many hours as an absence counts.
   const taxCap = r.tax * (offlineCap(state) / HOUR),
@@ -338,7 +424,10 @@ function finishWork(state, work) {
   if (work.type === 'plot') state.plots[work.key].level = work.level;
   else if (work.type === 'node') state.nodes[work.key].level = work.level;
   else if (work.type === 'tower') state.defence.tower[work.key] = work.level;
-  else if (work.type === 'wall' || work.type === 'camp') state.defence[work.type] = work.level;
+  else if (work.type === 'wall') {
+    if (work.key === 'wall') state.defence.wall.fill(work.level); // Work started before the old shared wall was split.
+    else state.defence.wall[work.key] = work.level;
+  } else if (work.type === 'camp') state.defence.camp = work.level;
   else if (work.type === 'survey') state.nodes[work.key].found = true;
   else if (work.type === 'rank') {
     state.rank = work.level;
@@ -351,19 +440,22 @@ function finishWork(state, work) {
 
 function fight(state) {
   const power = raidPower(state),
-    defence = defencePower(state),
+    side = raidSide(state),
+    defence = defencePower(state, side),
     roll = 0.9 + random(state) * 0.2,
     won = defence >= power * roll,
     kind = RAIDS.kinds[state.raid.n % RAIDS.kinds.length];
-  const result = { at: state.raid.next, n: state.raid.n, kind, power, defence, won, loot: 0, lost: {} };
+  const result = { at: state.raid.next, n: state.raid.n, kind, side, power, defence, won, loot: 0, lost: {} };
   if (won) {
     result.loot = Math.round(power * 40);
     state.res.coin += result.loot;
     state.fame += Math.round(power / 3);
     state.stats.raidsWon++;
   } else {
+    // Even a losing garrison buys time to move some goods out of reach.
+    const loss = RAIDS.loss * (1 - 0.65 * Math.min(1, defence / Math.max(1, power)));
     for (const key of ['coin', ...GOODS]) {
-      const amount = Math.floor(state.res[key] * RAIDS.loss);
+      const amount = Math.floor(state.res[key] * loss);
       state.res[key] -= amount;
       result.lost[key] = amount;
     }
@@ -374,7 +466,7 @@ function fight(state) {
   state.raid.n++;
   state.raid.drums = false;
   state.raid.next = state.raid.next + RAIDS.every;
-  state.log.unshift({ at: result.at, type: 'raid', won, kind });
+  state.log.unshift({ at: result.at, type: 'raid', won, kind, side });
   return result;
 }
 
@@ -405,38 +497,47 @@ function blocked(state, price, level) {
 
 /** Can a plot take this building? */
 export function canPlace(state, index, kind) {
-  const spec = BUILDINGS[kind],
-    ward = Math.floor(index / PLOTS_PER_DISTRICT),
-    zone = state.districts[ward].zone;
-  if (ward >= districtsOpen(state) || !zone) return 'closed';
+  if (!Number.isInteger(index) || !state.plots[index] || !Object.hasOwn(BUILDINGS, kind)) return 'none';
+  const spec = BUILDINGS[kind], ward = Math.floor(index / PLOTS_PER_DISTRICT);
+  if (ward >= districtsOpen(state)) return 'closed';
   if (state.rank < spec.rank) return 'rank';
-  if (!spec.zone.includes(zone)) return 'zone';
-  if (spec.riverside && !RIVERSIDE.has(index)) return 'river';
   if (state.plots[index].kind) return 'taken';
   return null;
 }
 
+const workKey = (state, target) => target.key ?? (target.type === 'wall' ? raidSide(state) : target.type);
+
 /** What upgrading (or first building) a target would cost and take: { price, time, level, why }. */
 export function quote(state, target) {
   let spec, level;
+  const key = workKey(state, target);
   if (target.type === 'plot') {
-    const plot = state.plots[target.key];
+    const plot = state.plots[key];
+    if (!plot) return { why: 'none' };
+    if (!plot.kind) {
+      const why = canPlace(state, key, target.kind);
+      if (why) return { why };
+    }
     spec = BUILDINGS[plot.kind ?? target.kind];
     level = plot.level;
   } else if (target.type === 'node') {
-    const node = state.nodes[target.key];
+    const node = state.nodes[key];
+    if (!node) return { why: 'none' };
     spec = NODES[node.kind];
     level = node.level;
     if (!node.found) return { why: 'hidden' };
-  } else if (target.type === 'tower') {
-    spec = DEFENCE.tower;
-    level = state.defence.tower[target.key];
-  } else {
+  } else if (target.type === 'tower' || target.type === 'wall') {
+    if (!Number.isInteger(key) || !SIDES[key]) return { why: 'none' };
     spec = DEFENCE[target.type];
-    level = state.defence[target.type];
+    level = state.defence[target.type][key];
+  } else if (target.type === 'camp') {
+    spec = DEFENCE.camp;
+    level = state.defence.camp;
+  } else {
+    return { why: 'none' };
   }
   if (state.rank < spec.rank) return { why: 'rank' };
-  if (state.works.some((w) => w.type === target.type && w.key === (target.key ?? target.type))) return { why: 'working' };
+  if (state.works.some((w) => w.type === target.type && (w.key === key || (w.type === 'wall' && w.key === 'wall')))) return { why: 'working' };
   const price = priceOf(spec, level),
     time = worksTime(state, worksOf(spec, level));
   return { price, time, level: level + 1, why: blocked(state, price, level + 1) };
@@ -444,15 +545,11 @@ export function quote(state, target) {
 
 /** Build or upgrade a target ({type: plot|node|wall|tower|camp, key, kind?}). Returns the work or a reason. */
 export function upgrade(state, target) {
-  if (target.type === 'plot' && !state.plots[target.key].kind) {
-    const why = canPlace(state, target.key, target.kind);
-    if (why) return { why };
-  }
   const q = quote(state, target);
   if (q.why) return { why: q.why };
   pay(state, q.price);
   if (target.type === 'plot' && !state.plots[target.key].kind) state.plots[target.key].kind = target.kind;
-  const work = { type: target.type, key: target.key ?? target.type, level: q.level, starts: null, ends: null, duration: q.time };
+  const work = { type: target.type, key: workKey(state, target), level: q.level, starts: null, ends: null, duration: q.time };
   state.works.push(work);
   startQueued(state);
   return { work };
@@ -618,7 +715,7 @@ export const GOALS = [
   { id: 'posted', check: (s) => s.talents.some((t) => t.post), reward: { wood: 300 } },
   { id: 'brewery', check: (s) => s.plots.some((p) => p.kind === 'brewery' && p.level > 0), reward: { coin: 1500 } },
   { id: 'rank2', check: (s) => s.rank >= 2, reward: { coin: 6000, fame: 120 } },
-  { id: 'wall', check: (s) => s.defence.wall >= 1, reward: { stone: 600 } },
+  { id: 'wall', check: (s) => s.defence.wall.some((level) => level >= 1), reward: { stone: 600 } },
   { id: 'silk', check: (s) => s.plots.some((p) => p.kind === 'loom' && p.level > 0), reward: { coin: 12000 } },
   { id: 'rank3', check: (s) => s.rank >= 3, reward: { coin: 60000, fame: 300 } },
   { id: 'porcelain', check: (s) => s.plots.some((p) => p.kind === 'kiln' && p.level > 0), reward: { coin: 100000 } },

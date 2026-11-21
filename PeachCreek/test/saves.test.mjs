@@ -52,6 +52,37 @@ test('the record counts terms and keeps only the fastest', () => {
   assert.equal(data.record.terms, 3);
 });
 
+test('an earlier 48-lot save keeps its built sites, personnel, work, walls and settings', () => {
+  const data = freshSave('en'), county = data.county = createCounty({ seed: 6 });
+  county.version = 1;
+  county.rank = 3;
+  county.plots = Array.from({ length: 48 }, () => ({ kind: null, level: 0 }));
+  county.plots[35] = { kind: 'clinic', level: 2 };
+  county.defence = { wall: 2, tower: [1, 2, 3, 4], camp: 1 };
+  county.works.push({ type: 'plot', key: 35, level: 3, starts: 0, ends: 10, duration: 10 });
+  county.works.push({ type: 'wall', key: 'wall', level: 3, starts: 0, ends: 11, duration: 11 });
+  county.talents.push({ id: 'suShi', post: { type: 'plot', key: 35 }, level: 1, exp: 0, stars: 1 });
+  county.log.push({ at: 0, type: 'done', work: { type: 'plot', key: 35, level: 2 } });
+  data.record.terms = 2;
+  const store = memory({ [SAVE_KEY]: JSON.stringify({ version: 1, data }) });
+  const opened = openSave(store);
+  const loaded = opened.data.county;
+  assert.ok(countyLooksRight(loaded));
+  assert.equal(opened.loadedVersion, 1);
+  assert.equal(opened.data.settings.language, 'en');
+  assert.equal(opened.data.record.terms, 2);
+  assert.equal(loaded.plots.length, 72);
+  assert.deepEqual(loaded.plots[51], { kind: 'clinic', level: 2 });
+  assert.equal(loaded.talents[0].post.key, 51);
+  assert.equal(loaded.log[0].work.key, 51);
+  assert.deepEqual(loaded.defence.wall, [2, 2, 2, 2]);
+  assert.deepEqual(loaded.defence.tower, [1, 2, 3, 4]);
+  advance(loaded, 20);
+  assert.equal(loaded.plots[51].level, 3);
+  assert.deepEqual(loaded.defence.wall, [3, 3, 3, 3]);
+  assert.deepEqual(loaded.defence.troops, [0, 0, 0, 0]);
+});
+
 test('a broken save is started again and the old text kept aside', () => {
   const problems = [],
     storage = memory({ [SAVE_KEY]: '{not json' }),

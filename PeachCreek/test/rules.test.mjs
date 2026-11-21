@@ -91,7 +91,7 @@ test('markets never sell goods the next rank asks for', () => {
   const s = fresh();
   s.rank = 2;
   s.districts[2].zone = 'market';
-  s.plots[16] = { kind: 'market', level: 30 };
+  s.plots[2 * W.PLOTS_PER_DISTRICT] = { kind: 'market', level: 30 };
   const keep = W.needFor(s, 3).silk;
   s.res.silk = keep + 100;
   W.advance(s, 2 * HOUR, { active: true });
@@ -99,20 +99,43 @@ test('markets never sell goods the next rank asks for', () => {
   assert.ok(s.res.silk < keep + 100, 'the rest was sold');
 });
 
-test('a ward can be planned until something is built in it', () => {
+test('all open parcels accept mixed buildings and focus never gates construction', () => {
   const s = fresh();
+  assert.equal(s.plots.length, 72);
   assert.deepEqual(W.zone(s, 2, 'craft'), {});
   assert.equal(s.districts[2].zone, 'craft');
   assert.equal(W.zone(s, 0, 'farm').why, 'built');
   assert.equal(W.zone(s, 5, 'home').why, 'closed');
-  // Buildings go only in their own kind of ward, and the dock only by the river.
-  assert.equal(W.canPlace(s, 1, 'paddy'), 'zone');
+  assert.equal(W.canPlace(s, 1, 'paddy'), null);
+  assert.equal(W.canPlace(s, 2, 'brewery'), 'rank');
   s.rank = 1;
-  s.districts[4].zone = 'market';
-  assert.equal(W.canPlace(s, 36, 'dock'), 'closed');
+  assert.equal(s.districts[3].zone, null);
+  assert.equal(W.canPlace(s, 3 * W.PLOTS_PER_DISTRICT, 'brewery'), null);
+  assert.equal(W.canPlace(s, 4 * W.PLOTS_PER_DISTRICT, 'house'), 'closed');
   s.rank = 4;
-  assert.equal(W.canPlace(s, 33, 'dock'), 'river');
-  assert.equal(W.canPlace(s, 36, 'dock'), null);
+  assert.equal(W.canPlace(s, 1, 'dock'), null);
+  assert.equal(W.canPlace(s, 5 * W.PLOTS_PER_DISTRICT, 'dock'), null);
+  const bank = [...W.RIVERSIDE][0];
+  assert.ok(W.plotPlan(s, bank, 'dock').multiplier > W.plotPlan(s, 1, 'dock').multiplier);
+});
+
+test('a nearby supplier lowers upkeep and smoky industry away from homes protects livelihood', () => {
+  const make = (rank, brewery) => {
+    const s = fresh();
+    s.rank = rank;
+    s.districts.forEach((ward) => { ward.zone = null; });
+    s.plots.forEach((_, i) => { s.plots[i] = { kind: null, level: 0 }; });
+    s.plots[0] = { kind: 'house', level: 4 };
+    s.plots[70] = { kind: 'paddy', level: 12 };
+    s.plots[brewery] = { kind: 'brewery', level: 12 };
+    return s;
+  };
+  const good = make(5, 69), bad = make(5, 1);
+  const goodRates = W.rates(good), badRates = W.rates(bad);
+  assert.ok(goodRates.make.wine > badRates.make.wine * 1.3);
+  assert.ok(goodRates.planning.upkeep < badRates.planning.upkeep);
+  assert.ok(W.livelihood(good, goodRates) > W.livelihood(bad, badRates));
+  assert.ok(W.plotPlan(bad, 1).access < W.plotPlan(make(1, 1), 1).access);
 });
 
 test('raids: lost with no defence, won with enough, and the drums add power', () => {
@@ -130,12 +153,14 @@ test('raids: lost with no defence, won with enough, and the drums add power', ()
   const strong = fresh();
   strong.rank = 2;
   strong.pop = 400;
-  strong.defence = { wall: 10, tower: [8, 8, 8, 8], camp: 0 };
+  strong.defence.wall.fill(10);
+  strong.defence.tower.fill(8);
   strong.raid.next = strong.time + 10;
   const coin = strong.res.coin;
   W.advance(strong, strong.time + 20, { active: true });
   assert.equal(strong.raid.last.won, true);
   assert.ok(strong.res.coin > coin);
+  assert.equal(strong.raid.last.side, (strong.seed >>> 0) % W.SIDES.length);
 
   const drummed = fresh();
   drummed.raid.next = drummed.time + 2 * HOUR;
@@ -143,10 +168,28 @@ test('raids: lost with no defence, won with enough, and the drums add power', ()
   const plain = W.defencePower(drummed);
   drummed.raid.next = drummed.time + RAIDS.warn;
   assert.deepEqual(W.drums(drummed), {});
-  drummed.defence.wall = 3;
+  drummed.defence.wall.fill(3);
   plain === 0 || assert.ok(W.defencePower(drummed) > plain);
   const without = { ...drummed, raid: { ...drummed.raid, drums: false } };
   assert.ok(W.defencePower(drummed) > W.defencePower(without));
+});
+
+test('walls, gates and troop deployments defend only their own side', () => {
+  const s = rich(fresh());
+  assert.equal(W.stationTroops(s, 0, 1).why, 'rank');
+  s.rank = 2;
+  assert.ok(W.upgrade(s, { type: 'wall', key: 0 }).work);
+  assert.ok(W.upgrade(s, { type: 'tower', key: 1 }).work);
+  W.advance(s, 10 * 60);
+  assert.deepEqual(s.defence.wall, [1, 0, 0, 0]);
+  assert.deepEqual(s.defence.tower, [0, 1, 0, 0]);
+  assert.deepEqual(W.stationTroops(s, 0, W.troopCapacity(s)), {});
+  assert.equal(W.stationTroops(s, 1, 1).why, 'troops');
+  assert.ok(W.defencePower(s, 0) > W.defencePower(s, 1));
+  assert.deepEqual(W.stationTroops(s, 0, 0), {});
+  assert.deepEqual(W.stationTroops(s, 1, W.troopCapacity(s)), {});
+  assert.ok(W.defencePower(s, 1) > W.defencePower(s, 0));
+  assert.equal(W.defencePower(s), W.defencePower(s, W.raidSide(s)));
 });
 
 test('rising a rank needs people, livelihood and goods, takes its time and opens more', () => {

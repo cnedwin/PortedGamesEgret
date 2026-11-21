@@ -7,7 +7,8 @@
 import { BUILDINGS, DEFENCE, NODES, RAIDS, RANKS, TALENTS, STATS, BUILDING_STAT, OFFICES } from './data.mjs';
 import {
   afford, answer, busy, builders, queued, canPlace, claimGoal, collectTax, defencePower, districtsOpen, drums, freeRecruit, needFor,
-  PLOTS_PER_DISTRICT, post, quote, raidPower, rankUp, rates, recruit, recruitPrice, survey, upgrade, zone
+  PLOTS_PER_DISTRICT, SIDES, plotPlan, post, quote, raidPower, raidSide, rankUp, rates, recruit, recruitPrice,
+  stationTroops, survey, troopCapacity, upgrade, zone
 } from './world.mjs';
 
 const FILLER = ['survey', 'coin', 'fill-pop', 'materials'];
@@ -29,6 +30,12 @@ export function visit(state) {
     done++;
   }
   placeTalents(state);
+  if (state.rank >= 2) {
+    const side = raidSide(state), capacity = troopCapacity(state);
+    SIDES.forEach((_, i) => stationTroops(state, i, 0));
+    if (raidIsNear(state)) stationTroops(state, side, capacity);
+    else SIDES.forEach((_, i) => stationTroops(state, i, Math.floor(capacity / SIDES.length) + Number(i < capacity % SIDES.length)));
+  }
   if (state.raid.next && state.raid.next - state.time < RAIDS.warn) drums(state);
   for (let w = 0; w < districtsOpen(state); w++) if (!state.districts[w].zone) zone(state, w, PLAN[w]);
   if (!rankUp(state).why) done++;
@@ -70,6 +77,11 @@ export function visit(state) {
 }
 
 const level = (state, kind) => state.plots.filter((p) => p.kind === kind).reduce((s, p) => s + p.level, 0);
+const raidIsNear = (state) => state.raid.next && state.raid.next - state.time < RAIDS.warn;
+function defenceSide(state) {
+  return raidIsNear(state) ? raidSide(state) : SIDES.reduce((weakest, _, side) =>
+    defencePower(state, side) < defencePower(state, weakest) ? side : weakest, raidSide(state));
+}
 
 function tryPlot(state, kind, reserve) {
   // Upgrade the lowest of that kind, or build a new one if that is cheaper.
@@ -82,11 +94,19 @@ function tryPlot(state, kind, reserve) {
   // A new building only when there is room to spare or none of this kind yet.
   const home = BUILDINGS[kind].zone[0],
     wardZone = (i) => state.districts[Math.floor(i / PLOTS_PER_DISTRICT)].zone;
-  const frees = state.plots
-    .map((p, i) => i)
-    .filter((i) => !state.plots[i].kind && !canPlace(state, i, kind))
-    .sort((a, b) => (wardZone(a) === home ? 0 : 1) - (wardZone(b) === home ? 0 : 1));
-  const free = own.length < (CAP[kind] ?? 2) && (frees.length > 2 || own.length === 0 || own.every(({ p }) => p.level >= 8)) ? frees[0] ?? -1 : -1;
+  const frees = state.plots.map((_, i) => i).filter((i) => !canPlace(state, i, kind));
+  let free = -1;
+  if (own.length < (CAP[kind] ?? 2) && (frees.length > 2 || own.length === 0 || own.every(({ p }) => p.level >= 8))) {
+    let bestPlan = -Infinity;
+    for (const index of frees) {
+      const plan = plotPlan(state, index, kind);
+      const score = plan.multiplier * (wardZone(index) === home ? 1.2 : 1) - plan.smoke * 0.14 - plan.upkeep * 0.007;
+      if (score > bestPlan) {
+        bestPlan = score;
+        free = index;
+      }
+    }
+  }
   if (free >= 0) {
     const q = quote(state, { type: 'plot', key: free, kind });
     options.push({ target: { type: 'plot', key: free, kind }, q });
@@ -132,10 +152,10 @@ function wantsOf(state) {
   const net = (key) => (r.make[key] ?? 0) - (r.use[key] ?? 0);
   const farming = state.works.some((w) => w.type === 'plot' && state.plots[w.key].kind === 'paddy');
   if (!farming && net('grain') < r.use.grain * 0.15 + 5) wants.push('grain');
-  if (state.rank >= 2 && state.raid.next && defencePower(state) < raidPower(state) * 1.3) wants.push('defence');
+  if (state.rank >= 2 && state.raid.next && defencePower(state, defenceSide(state)) < raidPower(state) * 1.15) wants.push('defence');
   for (const [key, value] of Object.entries(need)) {
     if (key === 'pop') {
-      if (r.house < value * 1.05 || state.pop > r.house * 0.9) wants.push('pop');
+      if (r.house < value * 1.1 || (state.rank === 0 && state.pop > r.house * 0.9)) wants.push('pop');
     } else if (key === 'life') {
       if (state.life < value + 3) wants.push('life');
     } else if (key !== 'coin' && state.res[key] < value) wants.push(key);
@@ -149,7 +169,8 @@ function wantsOf(state) {
 /** One step towards a want. */
 function serve(state, key, r) {
   if (key === 'defence') {
-    const options = [{ type: 'wall' }, ...[0, 1, 2, 3].map((k) => ({ type: 'tower', key: k })), { type: 'camp' }].map((t) => ({ target: t, q: quote(state, t) }));
+    const side = defenceSide(state);
+    const options = [{ type: 'wall', key: side }, { type: 'tower', key: side }, { type: 'camp' }].map((t) => ({ target: t, q: quote(state, t) }));
     return best(state, options);
   }
   if (key === 'survey') return state.works.some((w) => w.type === 'survey') || state.res.coin < (saved.coin ?? 0) * 1.5 ? null : survey(state);
@@ -160,7 +181,11 @@ function serve(state, key, r) {
     }
     return null;
   }
-  if (key === 'pop' || key === 'fill-pop') return (state.rank >= 3 && tryPlot(state, 'manor')) || tryPlot(state, 'house');
+  const populationGoal = needFor(state, state.rank + 1)?.pop ?? state.pop;
+  if (key === 'pop' || key === 'fill-pop') {
+    if (state.rank > 0 && r.house >= populationGoal * 1.16) return null;
+    return (state.rank >= 3 && tryPlot(state, 'manor')) || tryPlot(state, 'house');
+  }
   if (key === 'life') {
     for (const kind of SERVICES) {
       if (state.rank < BUILDINGS[kind].rank) continue;
@@ -171,7 +196,7 @@ function serve(state, key, r) {
   }
   if (key === 'coin') {
     for (const kind of ['market', 'house', 'teahouse', 'inn', 'dock', 'theatre', 'brewery']) {
-      if (state.rank < BUILDINGS[kind].rank) continue;
+      if (state.rank < BUILDINGS[kind].rank || (kind === 'house' && state.rank > 0 && r.house >= populationGoal * 1.16)) continue;
       const step = tryPlot(state, kind);
       if (step) return step;
     }

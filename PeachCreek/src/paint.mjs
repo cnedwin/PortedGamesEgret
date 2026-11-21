@@ -1,71 +1,82 @@
-// 桃溪县的地图：720×1280 的竖版画面上，远山与资源点、城墙城门和箭楼、县衙、六个坊的地面与建筑、溪水与码头，按季节
-// 和昼夜换颜色。全部用 2D canvas 一笔一笔画，画在引擎画布下面，只在城里有变化或换季、入夜时重画（见 ENGINE-NOTES）。
-// The map of Peach Creek on a 720 × 1280 upright page: the far hills and resource points, the wall with its gate
-// and towers, the yamen, the six wards with their ground and buildings, the creek and the docks, coloured by season
-// and by day or night. All drawn stroke by stroke on a 2D canvas under the engine's, and drawn again only when the
-// county changes, the season turns or night falls.
-import { NODE_SLOTS, PLOTS_PER_DISTRICT } from './sim/world.mjs';
+// The map is painted at world size. The main view scrolls the painting, hit areas
+// and Egret effects together, so a camera move does not rasterize the city again.
+import { DISTRICT_COLS, DISTRICT_ROWS, NODE_SLOTS, PLOT_COLS, PLOTS_PER_DISTRICT, PLOT_ROWS, RIVERSIDE } from './sim/world.mjs';
 
-export const STAGE = { width: 720, height: 1280 };
+export const STAGE = { width: 1280, height: 720 };
+export const MAP = { width: 1840, height: 1200 };
 
-/** Where everything is. */
+const CITY = { left: 145, right: 1695, top: 256, bottom: 1003 };
+const CENTER = { x: (CITY.left + CITY.right) / 2, y: (CITY.top + CITY.bottom) / 2 };
+const TERRAIN_URL = new URL('../assets/creek-landscape.webp', import.meta.url);
+let terrain;
+
+export async function loadTerrain() {
+  const image = new Image();
+  image.src = TERRAIN_URL.href;
+  try {
+    await image.decode();
+    terrain = image;
+  } catch {
+    // Drawing by code is also the fallback for unsupported or unavailable art.
+  }
+}
+
+/** Geometry shared by the map painting, transparent controls, and effects. */
 export const LAYOUT = (() => {
-  const wards = [],
-    plots = [];
-  const cols = [24, 372],
-    rows = [412, 624, 836],
-    w = 324,
-    h = 196;
-  for (let i = 0; i < 6; i++) {
-    const x = cols[i % 2],
-      y = rows[Math.floor(i / 2)];
-    wards.push({ x, y, w, h, label: { x: x + 8, y: y + 4, w: 120, h: 26 } });
+  const wards = [], plots = [];
+  for (let i = 0; i < DISTRICT_COLS * DISTRICT_ROWS; i++) {
+    const col = i % DISTRICT_COLS;
+    const x = 193 + col * 490;
+    const y = 356 + Math.floor(i / DISTRICT_COLS) * 300;
+    wards.push({ x, y, w: 474, h: 45 + PLOT_ROWS * 78, label: { x: x + 12, y: y + 2, w: 160, h: 30 } });
     for (let p = 0; p < PLOTS_PER_DISTRICT; p++) {
-      const px = x + 6 + (p % 4) * 79,
-        py = y + 32 + Math.floor(p / 4) * 82;
-      plots.push({ x: px, y: py, w: 75, h: 78 });
+      const localCol = p % PLOT_COLS;
+      const median = col === 1 && localCol >= PLOT_COLS / 2 ? 13 : 0;
+      plots.push({
+        x: x + 12 + localCol * 112 + median,
+        y: y + 42 + Math.floor(p / PLOT_COLS) * 78,
+        w: 102, h: 73
+      });
     }
   }
-  const nodes = [];
-  for (let i = 0; i < NODE_SLOTS; i++) {
-    const row = Math.floor(i / 6),
-      col = i % 6;
-    nodes.push({ x: 22 + col * 114 + (row ? 50 : 0), y: 132 + row * 76, w: 84, h: 66 });
-  }
+  const nodeRows = [263, 365, 469, 704, 806, 906];
+  const nodes = Array.from({ length: NODE_SLOTS }, (_, i) => ({
+    x: i % 2 ? CITY.right + 24 : CITY.left - 118,
+    y: nodeRows[Math.floor(i / 2)] + (i % 2) * 39,
+    w: 94, h: 61
+  }));
+  const walls = [
+    { x: CITY.left, y: CITY.top - 17, w: CITY.right - CITY.left, h: 43 },
+    { x: CITY.right - 14, y: CITY.top + 22, w: 34, h: CITY.bottom - CITY.top - 22 },
+    { x: CITY.left, y: CITY.bottom - 18, w: CITY.right - CITY.left, h: 48 },
+    { x: CITY.left - 20, y: CITY.top + 22, w: 34, h: CITY.bottom - CITY.top - 22 }
+  ];
+  const gates = [
+    { x: CENTER.x - 64, y: CITY.top - 65, w: 128, h: 94 },
+    { x: CITY.right - 53, y: CENTER.y - 53, w: 106, h: 106 },
+    { x: CENTER.x - 68, y: CITY.bottom - 68, w: 136, h: 101 },
+    { x: CITY.left - 53, y: CENTER.y - 53, w: 106, h: 106 }
+  ];
   return {
-    wards,
-    plots,
-    nodes,
-    wall: { x: 0, y: 286, w: 720, h: 34 },
-    gate: { x: 316, y: 270, w: 88, h: 60 },
-    towers: [
-      { x: 40, y: 262, w: 56, h: 66 },
-      { x: 232, y: 262, w: 56, h: 66 },
-      { x: 432, y: 262, w: 56, h: 66 },
-      { x: 624, y: 262, w: 56, h: 66 }
-    ],
-    camp: { x: 120, y: 336, w: 110, h: 66 },
-    yamen: { x: 280, y: 334, w: 160, h: 72 },
-    granaryNote: null,
-    river: { y: 1040, h: 76 },
-    roads: { street: 360, rows: [618, 830, 1036] }
+    wards, plots, nodes, walls, gates, towers: gates, wall: walls[0], gate: gates[0],
+    camp: { x: 1395, y: 267, w: 185, h: 78 },
+    yamen: { x: 805, y: 267, w: 230, h: 81 },
+    river: { y: 1060, h: 140 },
+    roads: { street: CENTER.x, rows: [343, 641, 945], spines: [676, CENTER.x, 1165] }
   };
 })();
 
 const inside = (r, x, y) => x >= r.x && x <= r.x + r.w && y >= r.y && y <= r.y + r.h;
-/** What is at a point of the stage: { type, key } or null. */
 export function hit(x, y) {
-  let i = LAYOUT.plots.findIndex((r) => inside(r, x, y));
-  if (i >= 0) return { type: 'plot', key: i };
-  i = LAYOUT.wards.findIndex((w) => inside(w.label, x, y));
-  if (i >= 0) return { type: 'ward', key: i };
-  i = LAYOUT.nodes.findIndex((r) => inside(r, x, y));
-  if (i >= 0) return { type: 'node', key: i };
+  for (const [type, rects] of [
+    ['tower', LAYOUT.gates], ['plot', LAYOUT.plots], ['ward', LAYOUT.wards.map(ward => ward.label)],
+    ['node', LAYOUT.nodes], ['wall', LAYOUT.walls]
+  ]) {
+    const key = rects.findIndex((rect) => inside(rect, x, y));
+    if (key !== -1) return { type, key };
+  }
   if (inside(LAYOUT.yamen, x, y)) return { type: 'yamen' };
-  i = LAYOUT.towers.findIndex((r) => inside(r, x, y));
-  if (i >= 0) return { type: 'tower', key: i };
   if (inside(LAYOUT.camp, x, y)) return { type: 'camp' };
-  if (inside(LAYOUT.wall, x, y) || inside(LAYOUT.gate, x, y)) return { type: 'wall' };
   return null;
 }
 
@@ -80,7 +91,6 @@ const C = {
   paper: '#f4efe1',
   ink: '#4c5a5c',
   roof: '#5f7481',
-  roofLight: '#89a0ab',
   wall: '#f7f1e2',
   wood: '#b78459',
   woodDark: '#8d5f3c',
@@ -89,7 +99,6 @@ const C = {
   water: '#8fc6c8',
   waterLight: '#bfe2dd',
   stone: '#b9b4a8',
-  path: '#e9dcc0',
   zone: { home: '#efe0c4', market: '#f1d9b0', farm: '#cfe3b0', craft: '#d9cfc2', garden: '#d4e8cf' }
 };
 
@@ -103,23 +112,54 @@ function round(g, x, y, w, h, r) {
   g.closePath();
 }
 function blob(g, x, y, r, color, alpha = 1) {
-  g.globalAlpha = alpha;
+  const opacity = g.globalAlpha;
+  g.globalAlpha = opacity * alpha;
   g.fillStyle = color;
   g.beginPath();
   g.arc(x, y, r, 0, Math.PI * 2);
   g.fill();
-  g.globalAlpha = 1;
+  g.globalAlpha = opacity;
 }
-/** A soft watercolour wash: a few overlapping translucent blobs. */
+function polygon(g, points, fill, stroke) {
+  g.beginPath();
+  g.moveTo(...points[0]);
+  for (const point of points.slice(1)) g.lineTo(...point);
+  g.closePath();
+  g.fillStyle = fill;
+  g.fill();
+  if (stroke) {
+    g.strokeStyle = stroke;
+    g.stroke();
+  }
+}
+function gradient(g, x0, y0, x1, y1, a, b) {
+  const paint = g.createLinearGradient(x0, y0, x1, y1);
+  paint.addColorStop(0, a);
+  paint.addColorStop(1, b);
+  return paint;
+}
+
+/** A thin pigment wash with uneven edges. */
 function wash(g, x, y, w, h, color, seed = 1) {
   let a = seed * 9301 + 49297;
   const rnd = () => ((a = (a * 9301 + 49297) % 233280) / 233280);
-  for (let i = 0; i < 7; i++) blob(g, x + rnd() * w, y + rnd() * h, Math.max(w, h) * (0.25 + rnd() * 0.25), color, 0.12);
+  for (let i = 0; i < 14; i++) {
+    const px = x + rnd() * w, py = y + rnd() * h, r = Math.min(w, h) * (0.1 + rnd() * 0.29);
+    const paint = g.createRadialGradient(px, py, 0, px, py, r);
+    paint.addColorStop(0, color);
+    paint.addColorStop(1, 'transparent');
+    blob(g, px, py, r, paint, 0.15);
+  }
 }
 
 /** A roof with upturned eaves, from (x, y) its left eave, width w. */
 function roof(g, x, y, w, h, color = C.roof, cap = null) {
-  g.fillStyle = color;
+  const ridge = y - h * 0.66;
+  polygon(g, [[x - 4, y + h], [x + w * .19, y], [x + w * .28, ridge], [x + w * .83, ridge], [x + w * .8, y]],
+    gradient(g, x, ridge, x, y + h, '#94acaa', color), 'rgba(68,77,71,.44)');
+  polygon(g, [[x + w * .8, y], [x + w * .83, ridge], [x + w * 1.05, y + h * .52], [x + w + 4, y + h]],
+    '#718582', 'rgba(68,77,71,.48)');
+  g.fillStyle = gradient(g, x, y, x, y + h, color, '#516668');
   g.beginPath();
   g.moveTo(x - 4, y + h);
   g.quadraticCurveTo(x + w * 0.1, y + h * 0.7, x + w * 0.2, y);
@@ -127,14 +167,22 @@ function roof(g, x, y, w, h, color = C.roof, cap = null) {
   g.quadraticCurveTo(x + w * 0.9, y + h * 0.7, x + w + 4, y + h);
   g.quadraticCurveTo(x + w / 2, y + h * 0.82, x - 4, y + h);
   g.fill();
-  g.strokeStyle = C.roofLight;
-  g.lineWidth = 1;
-  for (let i = 1; i < 5; i++) {
+  g.strokeStyle = 'rgba(228,236,212,.32)';
+  g.lineWidth = 0.65;
+  const ribs = Math.max(6, Math.floor(w / 6));
+  for (let i = 1; i < ribs; i++) {
+    const progress = i / ribs;
     g.beginPath();
-    g.moveTo(x + w * (0.2 + i * 0.12), y + 2);
-    g.lineTo(x + w * (0.15 + i * 0.14), y + h * 0.85);
+    g.moveTo(x + w * (.20 + progress * .60), y + 1);
+    g.quadraticCurveTo(x + w * (.12 + progress * .76), y + h * .62, x + w * (.04 + progress * .92), y + h * .89);
     g.stroke();
   }
+  g.strokeStyle = 'rgba(40,60,56,.72)';
+  g.lineWidth = 1.1;
+  g.beginPath();
+  g.moveTo(x - 5, y + h - 2);
+  g.quadraticCurveTo(x + w / 2, y + h * .95, x + w + 5, y + h - 2);
+  g.stroke();
   g.fillStyle = C.ink;
   g.fillRect(x + w * 0.18, y - 2, w * 0.64, 3);
   if (cap) {
@@ -147,20 +195,36 @@ function roof(g, x, y, w, h, color = C.roof, cap = null) {
 /** A hall: walls, pillars, a door, a roof. */
 function hall(g, cx, base, w, h, { roofColor = C.roof, wallColor = C.wall, storeys = 1, cap = null, door = true, lantern = false } = {}) {
   const x = cx - w / 2;
+  const shade = g.createRadialGradient(cx + 8, base + 2, 0, cx + 8, base + 2, w * .68);
+  shade.addColorStop(0, 'rgba(70,82,66,.26)');
+  shade.addColorStop(1, 'transparent');
+  g.fillStyle = shade;
+  g.beginPath();
+  g.ellipse(cx + 7, base + 1, w * .64, Math.max(5, h * .28), 0, 0, Math.PI * 2);
+  g.fill();
   for (let s = 0; s < storeys; s++) {
     const sw = w * (1 - s * 0.16),
       sx = cx - sw / 2,
       top = base - h * (s + 1) - s * 10;
-    g.fillStyle = wallColor;
-    g.fillRect(sx, top, sw, h);
+    const depth = Math.max(5, sw * .12);
+    polygon(g, [[sx + sw, top], [sx + sw + depth, top - depth * .55], [sx + sw + depth, top + h - depth * .55], [sx + sw, top + h]],
+      gradient(g, sx + sw, top, sx + sw + depth, top, '#aea58a', '#d3c8ac'), 'rgba(86,78,58,.45)');
+    g.fillStyle = gradient(g, sx, top, sx + sw, top + h, wallColor, '#e3d6b8');
+    g.fillRect(sx, top, sw, h - 3);
+    g.fillStyle = '#ac9b82';
+    g.fillRect(sx - 1, top + h - 2.5, sw + 2, 3);
     g.fillStyle = C.wood;
-    g.fillRect(sx, top, 3, h);
-    g.fillRect(sx + sw - 3, top, 3, h);
+    g.fillRect(sx + 1, top, 2, h - 3);
+    g.fillRect(sx + sw - 3, top, 2, h - 3);
+    g.fillStyle = 'rgba(79,100,97,.62)';
+    for (const fraction of [.22, .72]) g.fillRect(sx + sw * fraction, top + h * .29, sw * .10, h * .32);
     if (door && s === 0) {
       g.fillStyle = C.woodDark;
       g.fillRect(cx - 5, base - h * 0.62, 10, h * 0.62);
+      g.fillStyle = '#cfab76';
+      g.fillRect(cx - 6, base - h * .64, 12, 2);
     }
-    roof(g, sx - 3, top - 13, sw + 6, 15, roofColor, cap);
+    roof(g, sx - 3, top - Math.max(11, h * .43), sw + 6, Math.max(12, h * .45), roofColor, cap);
   }
   if (lantern) {
     blob(g, x + 4, base - h + 6, 3.5, C.lacquer);
@@ -168,12 +232,31 @@ function hall(g, cx, base, w, h, { roofColor = C.roof, wallColor = C.wall, store
   }
 }
 function tree(g, x, y, r, color, bloom = null) {
-  g.fillStyle = C.woodDark;
-  g.fillRect(x - 1.5, y, 3, r * 0.9);
-  blob(g, x, y, r, color);
-  blob(g, x - r * 0.5, y + r * 0.2, r * 0.7, color);
-  blob(g, x + r * 0.5, y + r * 0.25, r * 0.7, color);
-  if (bloom) for (let i = 0; i < 5; i++) blob(g, x + Math.cos(i * 1.3) * r * 0.7, y + Math.sin(i * 1.7) * r * 0.5, 2.2, bloom);
+  g.fillStyle = 'rgba(84,97,70,.18)';
+  g.beginPath();
+  g.ellipse(x + r * .58, y + r * .96, r * 1.04, r * .34, -.24, 0, Math.PI * 2);
+  g.fill();
+  g.strokeStyle = '#82694f';
+  g.lineWidth = Math.max(1, r * .1);
+  g.beginPath();
+  g.moveTo(x, y + r * .95);
+  g.quadraticCurveTo(x - r * .14, y + r * .34, x + r * .05, y - r * .68);
+  g.moveTo(x, y + r * .53);
+  g.lineTo(x - r * .58, y - r * .26);
+  g.moveTo(x, y + r * .30);
+  g.lineTo(x + r * .45, y - r * .40);
+  g.stroke();
+  for (let i = 0; i < 14; i++) {
+    const angle = i * 2.4, distance = r * (i % 7) / 8;
+    const px = x + Math.cos(angle) * distance, py = y + Math.sin(angle) * distance * .68;
+    blob(g, px, py, r * (.31 + (i % 4) * .095), i % 4 === 0 ? '#617d68' : color, .57);
+  }
+  if (bloom) {
+    for (let i = 0; i < 15; i++) {
+      const a = i * 2.67, rr = r * (.35 + (i % 6) * .12);
+      blob(g, x + Math.cos(a) * rr, y + Math.sin(a) * rr * .72, Math.max(1.1, r * (i % 3 + 2) * .039), bloom, .78);
+    }
+  }
 }
 
 /** Draw a building of `kind` at `level` in plot rect `r`. */
@@ -403,239 +486,314 @@ function drawNode(g, kind, level, found, r, season) {
   }
 }
 
-/**
- * Paint the county. `view` = { state, season, night (0–1), wardOpen(i), zoneName(z), labels: { ward(i) } , focus }.
- */
 const FIELDS = new Set(['paddy', 'mulberry', 'teaGarden']);
 
-export function paintCounty(g, view) {
-  const { state, season, night = 0 } = view,
-    pal = SEASON[season];
-  // Paper and sky.
-  g.fillStyle = C.paper;
-  g.fillRect(0, 0, STAGE.width, STAGE.height);
-  const sky = g.createLinearGradient(0, 100, 0, 300);
-  sky.addColorStop(0, '#dfe9ea');
-  sky.addColorStop(1, C.paper);
-  g.fillStyle = sky;
-  g.fillRect(0, 100, STAGE.width, 200);
-  // Far hills in two washes.
-  g.fillStyle = '#cbdad8';
+function strokePath(g, points, color, width) {
   g.beginPath();
-  g.moveTo(0, 210);
-  for (let x = 0; x <= 720; x += 40) g.lineTo(x, 150 + Math.sin(x / 70) * 26 + Math.sin(x / 23) * 6);
-  g.lineTo(720, 300);
-  g.lineTo(0, 300);
-  g.fill();
-  g.fillStyle = pal.hill;
-  g.beginPath();
-  g.moveTo(0, 250);
-  for (let x = 0; x <= 720; x += 30) g.lineTo(x, 210 + Math.sin(x / 55 + 1) * 22);
-  g.lineTo(720, 300);
-  g.lineTo(0, 300);
-  g.fill();
-  wash(g, 0, 120, 720, 180, pal.hill, 3);
-  state.nodes.forEach((node, i) => drawNode(g, node.kind, node.level, node.found, LAYOUT.nodes[i], season));
-  // The town ground.
-  g.fillStyle = pal.grass;
-  g.fillRect(0, 300, STAGE.width, LAYOUT.river.y - 300);
-  wash(g, 0, 300, 720, 740, pal.grass2, 7);
-  // Streets.
-  g.fillStyle = C.path;
-  g.fillRect(LAYOUT.roads.street - 12, 320, 24, LAYOUT.river.y - 320);
-  for (const y of LAYOUT.roads.rows.slice(0, 2)) g.fillRect(0, y - 7, STAGE.width, 14);
-  g.fillRect(0, 404, STAGE.width, 10);
-  // The wall, the gate and the towers.
-  const d = state.defence;
-  g.fillStyle = d.wall > 0 ? '#c9c1b1' : 'rgba(160,150,130,0.35)';
-  g.fillRect(0, LAYOUT.wall.y + 6, STAGE.width, d.wall > 0 ? 22 : 8);
-  if (d.wall > 0) {
-    g.fillStyle = '#b3ab9a';
-    for (let x = 0; x < 720; x += 18) g.fillRect(x, LAYOUT.wall.y, 10, 8);
-  }
-  hall(g, 360, LAYOUT.gate.y + LAYOUT.gate.h - 4, 70, 26, { storeys: d.wall >= 10 ? 2 : 1, cap: pal.roofCap, roofColor: '#56676f', lantern: true });
-  LAYOUT.towers.forEach((r, i) => {
-    const level = d.tower[i];
-    if (level === 0) {
-      g.strokeStyle = 'rgba(76,90,92,0.35)';
-      g.setLineDash([4, 4]);
-      g.strokeRect(r.x + 8, r.y + 20, r.w - 16, r.h - 24);
-      g.setLineDash([]);
-      return;
-    }
-    g.fillStyle = C.wood;
-    g.fillRect(r.x + 14, r.y + 24, 4, r.h - 26);
-    g.fillRect(r.x + r.w - 18, r.y + 24, 4, r.h - 26);
-    hall(g, r.x + r.w / 2, r.y + 34, 34, 14, { door: false, cap: pal.roofCap });
-  });
-  if (d.camp > 0) {
-    for (let i = 0; i < 3; i++) {
-      g.fillStyle = '#e8dcc0';
-      g.beginPath();
-      g.moveTo(LAYOUT.camp.x + 10 + i * 32, LAYOUT.camp.y + 56);
-      g.lineTo(LAYOUT.camp.x + 24 + i * 32, LAYOUT.camp.y + 30);
-      g.lineTo(LAYOUT.camp.x + 38 + i * 32, LAYOUT.camp.y + 56);
-      g.fill();
-    }
-    g.fillStyle = C.lacquer;
-    g.fillRect(LAYOUT.camp.x + 100, LAYOUT.camp.y + 14, 3, 40);
-    g.fillRect(LAYOUT.camp.x + 103, LAYOUT.camp.y + 14, 12, 9);
-  }
-  // The yamen.
-  const y = LAYOUT.yamen;
-  g.fillStyle = 'rgba(60,70,60,0.15)';
-  g.fillRect(y.x + 6, y.y + y.h - 6, y.w - 12, 8);
-  g.fillStyle = C.wall;
-  g.fillRect(y.x + 4, y.y + 30, y.w - 8, y.h - 30);
-  hall(g, y.x + y.w / 2, y.y + y.h, 96, 26, { storeys: state.rank >= 3 ? 2 : 1, cap: pal.roofCap, roofColor: '#53646d', lantern: true });
-  hall(g, y.x + 20, y.y + y.h, 30, 18, { cap: pal.roofCap });
-  hall(g, y.x + y.w - 20, y.y + y.h, 30, 18, { cap: pal.roofCap });
-  g.fillStyle = C.lacquer;
-  g.fillRect(y.x + y.w / 2 - 14, y.y + 10 - (state.rank >= 3 ? 24 : 0), 28, 12);
-  // Wards.
-  LAYOUT.wards.forEach((ward, i) => {
-    const open = view.wardOpen(i),
-      zone = state.districts[i].zone;
-    if (!open) {
-      g.fillStyle = 'rgba(233,238,240,0.75)';
-      round(g, ward.x, ward.y, ward.w, ward.h, 14);
-      g.fill();
-      wash(g, ward.x, ward.y, ward.w, ward.h, '#ffffff', i + 2);
-    } else {
-      g.fillStyle = zone ? C.zone[zone] : 'rgba(255,255,255,0.25)';
-      g.globalAlpha = zone ? 0.75 : 1;
-      round(g, ward.x, ward.y, ward.w, ward.h, 14);
-      g.fill();
-      g.globalAlpha = 1;
-      g.strokeStyle = zone ? 'rgba(140,110,70,0.35)' : 'rgba(76,90,92,0.45)';
-      g.setLineDash(zone ? [] : [6, 5]);
-      g.lineWidth = 1.5;
-      round(g, ward.x, ward.y, ward.w, ward.h, 14);
-      g.stroke();
-      g.setLineDash([]);
-    }
-    // The ward's name on a little board.
-    g.fillStyle = open ? (zone ? '#fbf6ea' : '#fff7d6') : 'rgba(251,246,234,0.7)';
-    round(g, ward.label.x, ward.label.y, ward.label.w, ward.label.h, 8);
-    g.fill();
-    g.strokeStyle = 'rgba(140,110,70,0.5)';
-    g.stroke();
-    g.fillStyle = C.ink;
-    g.font = '600 14px "Noto Serif SC", "Songti SC", serif';
-    g.textAlign = 'left';
-    g.textBaseline = 'middle';
-    g.fillText(view.labels.ward(i), ward.label.x + 8, ward.label.y + ward.label.h / 2 + 1);
-    if (!open) return;
-    for (let p = 0; p < PLOTS_PER_DISTRICT; p++) {
-      const index = i * PLOTS_PER_DISTRICT + p,
-        plot = state.plots[index],
-        r = LAYOUT.plots[index];
-      if (!plot.kind) {
-        g.strokeStyle = 'rgba(120,100,70,0.28)';
-        g.setLineDash([3, 4]);
-        round(g, r.x + 4, r.y + 6, r.w - 8, r.h - 10, 8);
-        g.stroke();
-        g.setLineDash([]);
-        continue;
+  g.moveTo(...points[0]);
+  for (const point of points.slice(1)) g.lineTo(...point);
+  g.strokeStyle = color;
+  g.lineWidth = width;
+  g.stroke();
+}
+
+function road(g, points, width) {
+  g.lineJoin = 'round';
+  g.lineCap = 'round';
+  strokePath(g, points, 'rgba(136,113,70,.23)', width + 5);
+  strokePath(g, points, 'rgba(234,217,177,.84)', width);
+  strokePath(g, points, 'rgba(255,248,220,.27)', width * .52);
+  g.lineCap = 'butt';
+}
+
+function landscape(g, season) {
+  const { width, height } = MAP;
+  const pal = SEASON[season];
+  if (terrain) {
+    g.drawImage(terrain, 0, 0, width, height);
+    const tint = ['transparent', 'rgba(111,157,91,.14)', 'rgba(210,143,71,.17)', 'rgba(229,240,240,.56)'][season];
+    g.fillStyle = tint;
+    g.fillRect(0, 0, width, height);
+  } else {
+    g.fillStyle = gradient(g, 0, 0, 0, height, '#f4e8d3', pal.grass);
+    g.fillRect(0, 0, width, height);
+    for (let layer = 0; layer < 2; layer++) {
+      const shore = [[0, 205]];
+      for (let x = 0; x <= width; x += 21) {
+        shore.push([x, 94 + layer * 39 + Math.sin(x / (88 + layer * 40)) * 33 + Math.sin(x / (39 + layer * 12)) * 14]);
       }
-      drawBuilding(g, plot.kind, plot.level, r, season);
-      if (plot.level === 0) {
-        // A new building: a veil and a scaffold over the whole plot.
-        g.fillStyle = 'rgba(244,239,225,0.55)';
-        round(g, r.x + 4, r.y + 6, r.w - 8, r.h - 10, 8);
-        g.fill();
-        g.strokeStyle = C.woodDark;
-        g.lineWidth = 1.5;
-        for (let k = 0; k < 3; k++) {
-          g.beginPath();
-          g.moveTo(r.x + 14 + k * 22, r.y + r.h - 10);
-          g.lineTo(r.x + 14 + k * 22, r.y + 22);
-          g.stroke();
-        }
-        g.beginPath();
-        g.moveTo(r.x + 10, r.y + 40);
-        g.lineTo(r.x + r.w - 10, r.y + 40);
-        g.stroke();
-        g.lineWidth = 1;
-      } else if (view.building?.has(index)) {
-        // Being raised a level: the building stays in sight, with a bamboo frame and a red pennant at its side.
-        const x = r.x + r.w - 14,
-          top = r.y + 18,
-          foot = r.y + r.h - 10;
-        g.strokeStyle = C.woodDark;
-        g.lineWidth = 1.5;
-        g.beginPath();
-        g.moveTo(x, foot);
-        g.lineTo(x, top);
-        g.moveTo(x + 7, foot);
-        g.lineTo(x + 7, top + 8);
-        for (let y = top + 12; y < foot; y += 12) {
-          g.moveTo(x - 1, y);
-          g.lineTo(x + 8, y);
-        }
-        g.stroke();
-        g.lineWidth = 1;
-        g.fillStyle = '#c6584a';
-        g.beginPath();
-        g.moveTo(x, top);
-        g.lineTo(x + 12, top + 4);
-        g.lineTo(x, top + 8);
-        g.closePath();
-        g.fill();
-      }
+      shore.push([width, 205]);
+      polygon(g, shore, layer ? pal.hill : '#aebfc0');
     }
-  });
-  // Trees along the street.
-  for (let i = 0; i < 6; i++) tree(g, 360, 440 + i * 100, 6, pal.tree, season === 0 ? pal.bloom : null);
-  // The creek, a bridge and the far bank.
-  const river = LAYOUT.river;
-  g.fillStyle = C.water;
-  g.beginPath();
-  g.moveTo(0, river.y);
-  for (let x = 0; x <= 720; x += 20) g.lineTo(x, river.y + Math.sin(x / 60) * 6);
-  g.lineTo(720, river.y + river.h);
-  for (let x = 720; x >= 0; x -= 20) g.lineTo(x, river.y + river.h + Math.sin(x / 50 + 2) * 5);
-  g.fill();
-  g.strokeStyle = C.waterLight;
-  g.lineWidth = 2;
-  for (let k = 0; k < 9; k++) {
-    const x = 30 + k * 78,
-      yy = river.y + 22 + (k % 3) * 16;
+    wash(g, 0, 215, width, 850, pal.grass2, 7);
+    const bank = [];
+    for (let x = 0; x <= width; x += 17) bank.push([x, LAYOUT.river.y + Math.sin(x / 68) * 8]);
+    bank.push([width, height], [0, height]);
+    polygon(g, bank, gradient(g, 0, LAYOUT.river.y, 0, height, '#82b6b2', '#aecbc0'));
+    for (let i = 0; i < 21; i++) {
+      tree(g, ((i * 141) % width) + 18, 137 + (i % 4) * 13, 14 + (i % 7) * 2, pal.tree, season === 0 ? pal.bloom : null);
+    }
+  }
+  for (let i = 0; i < 22; i++) {
+    const x = i * 84 + 19;
+    const y = LAYOUT.river.y + 25 + (i % 4) * 23;
     g.beginPath();
-    g.moveTo(x, yy);
-    g.quadraticCurveTo(x + 14, yy - 5, x + 28, yy);
+    g.moveTo(x, y);
+    g.quadraticCurveTo(x + 18, y - 4, x + 40, y + 1);
+    g.strokeStyle = 'rgba(245,244,214,.28)';
+    g.lineWidth = 1.1;
     g.stroke();
   }
+}
+
+function bridge(g) {
+  const x = CENTER.x, y = LAYOUT.river.y - 14;
+  polygon(g, [[x - 29, y - 4], [x + 27, y - 4], [x + 33, MAP.height], [x - 35, MAP.height]],
+    gradient(g, x, y, x + 35, MAP.height, '#eedbb1', '#b9a582'), 'rgba(110,95,68,.44)');
+  for (let yy = y + 10; yy < MAP.height; yy += 13) {
+    strokePath(g, [[x - 29, yy], [x + 29, yy + 1]], 'rgba(123,97,67,.34)', 1);
+  }
+  strokePath(g, [[x - 28, y], [x - 32, MAP.height]], '#897052', 4);
+  strokePath(g, [[x + 28, y], [x + 32, MAP.height]], '#897052', 4);
+  for (let yy = y + 1; yy < MAP.height; yy += 26) {
+    for (const sign of [-1, 1]) {
+      g.fillStyle = '#a0855d';
+      g.fillRect(x + sign * 30 - 2, yy - 6, 5, 9);
+    }
+  }
+}
+
+function wallPiece(g, x1, y1, x2, y2, level) {
+  const width = 17 + Math.min(4, Math.floor(level / 5)) * 2;
+  const height = 16 + Math.min(level, 15) * .72;
+  const horizontal = y1 === y2;
+  const top = level ? '#c9c8b6' : '#cbbfa2';
+  const face = level ? '#a9ab9d' : '#aa9c7d';
   g.lineWidth = 1;
-  g.fillStyle = '#c9b48f';
+  if (horizontal) {
+    polygon(g, [[x1, y1], [x2, y2], [x2, y2 + height], [x1, y1 + height]],
+      gradient(g, x1, y1, x1, y1 + height, top, face), 'rgba(100,99,77,.46)');
+    polygon(g, [[x1, y1 - width], [x2, y2 - width], [x2, y2], [x1, y1]],
+      gradient(g, x1, y1 - width, x1, y1, '#ece3ca', top), 'rgba(111,106,81,.46)');
+    for (let x = x1 + 4; x < x2 - 8; x += 26) {
+      g.fillStyle = top;
+      g.fillRect(x, y1 - width - 5, 12, 9);
+      g.fillStyle = 'rgba(113,109,88,.5)';
+      g.fillRect(x + 11, y1 - width - 5, 2, 9);
+      strokePath(g, [[x, y1 + height * .48], [x + 21, y1 + height * .48]], 'rgba(120,114,90,.28)', 1);
+    }
+  } else {
+    polygon(g, [[x1 - width * .48, y1 - 11], [x1 + width * .52, y1 - 11], [x2 + width * .52, y2 - 11], [x2 - width * .48, y2 - 11]],
+      gradient(g, x1 - width * .48, y1, x1 + width * .52, y1, '#f0e6cb', top), 'rgba(111,106,81,.50)');
+    polygon(g, [[x1 + width * .52, y1 - 11], [x1 + width * .69, y1 + height], [x2 + width * .69, y2 + height], [x2 + width * .52, y2 - 11]],
+      face, 'rgba(111,106,81,.40)');
+    for (let y = y1; y < y2 - 9; y += 24) {
+      g.fillStyle = top;
+      g.fillRect(x1 - width * .62, y - 10, 6, 11);
+      strokePath(g, [[x1 - width * .16, y], [x1 + width * .49, y + 1]], 'rgba(120,114,90,.36)', 1);
+    }
+  }
+}
+
+function drawSide(g, side, defence, pal, words) {
+  const gate = LAYOUT.gates[side];
+  const x = gate.x + gate.w / 2;
+  const y = gate.y + gate.h / 2;
+  const wall = defence.wall[side] ?? 0;
+  const tower = defence.tower[side] ?? 0;
+  const troops = defence.troops?.[side] ?? 0;
+  if (side === 0 || side === 2) {
+    const yy = side === 0 ? CITY.top : CITY.bottom;
+    wallPiece(g, CITY.left - 6, yy, x - 41, yy, wall);
+    wallPiece(g, x + 41, yy, CITY.right + 9, yy, wall);
+  } else {
+    const xx = side === 1 ? CITY.right : CITY.left;
+    wallPiece(g, xx, CITY.top, xx, y - 32, wall);
+    wallPiece(g, xx, y + 39, xx, CITY.bottom, wall);
+  }
+
+  const foot = gate.y + gate.h - 7;
+  const roofWidth = side % 2 ? 75 : 98;
+  polygon(g, [[x - roofWidth * .55, foot - 29], [x + roofWidth * .55, foot - 29], [x + roofWidth * .50, foot + 3], [x - roofWidth * .53, foot + 3]],
+    gradient(g, x, foot - 30, x, foot + 3, '#d2c5a4', '#8c8974'), 'rgba(95,90,68,.67)');
+  hall(g, x, foot - 23, roofWidth, 23, {
+    storeys: tower >= 5 ? 2 : 1,
+    roofColor: tower ? '#557e73' : '#778c81',
+    wallColor: '#eee0b8',
+    cap: pal.roofCap,
+    lantern: true
+  });
   g.beginPath();
-  g.moveTo(330, river.y - 4);
-  g.quadraticCurveTo(360, river.y + 24, 390, river.y - 4);
-  g.lineTo(390, river.y + river.h + 6);
-  g.quadraticCurveTo(360, river.y + river.h - 18, 330, river.y + river.h + 6);
+  g.moveTo(x - 13, foot + 2);
+  g.lineTo(x - 13, foot - 12);
+  g.quadraticCurveTo(x, foot - 30, x + 13, foot - 12);
+  g.lineTo(x + 13, foot + 2);
+  g.fillStyle = '#5a5845';
   g.fill();
-  g.fillStyle = pal.grass2;
-  g.fillRect(0, river.y + river.h, 720, 1180 - river.y - river.h);
-  for (let i = 0; i < 9; i++) tree(g, 30 + i * 82, river.y + river.h + 26, 9, pal.tree, season === 0 ? pal.bloom : null);
-  // Night: a blue wash, and lantern light at every building people live or work in (not over the fields).
+  strokePath(g, [[x - 14, foot + 3], [x + 14, foot + 3]], '#bca379', 2);
+  // A cloth banner and visible guard figures respond to actual garrison strength.
+  for (const sign of [-1, 1]) {
+    const bx = x + sign * (roofWidth * .53);
+    strokePath(g, [[bx, foot - 11], [bx, foot - 51]], '#9a7552', 2.2);
+    polygon(g, [[bx, foot - 49], [bx + sign * 19, foot - 46], [bx + sign * 14, foot - 40], [bx, foot - 40]],
+      troops ? '#bc6654' : '#a3a287');
+  }
+  for (let i = 0; i < Math.min(8, troops); i++) {
+    const xx = x + (i < 4 ? -1 : 1) * (22 + (i % 4) * 6);
+    g.fillStyle = '#5f8178';
+    g.fillRect(xx - 1.6, foot - 8, 3.3, 7.5);
+    blob(g, xx, foot - 9.8, 1.7, '#eacfa3');
+  }
+  if (words) {
+    const textWidth = Math.max(44, Math.min(124, words.length * 7.5 + 13));
+    const sign = side === 0
+      ? { x: x + roofWidth * .66, y: foot - 33, w: textWidth, h: 23 }
+      : { x: x - textWidth / 2, y: foot + 7, w: textWidth, h: 23 };
+    badge(g, words, sign, true);
+  }
+}
+
+function drawCourtyard(g, state, pal, season) {
+  const { yamen, camp } = LAYOUT;
+  round(g, yamen.x + 2, yamen.y + 38, yamen.w - 4, yamen.h - 38, 7);
+  g.fillStyle = 'rgba(243,229,197,.95)';
+  g.fill();
+  for (let x = yamen.x + 12; x < yamen.x + yamen.w - 10; x += 14) {
+    strokePath(g, [[x, yamen.y + yamen.h - 17], [x + 1, yamen.y + yamen.h - 4]], 'rgba(135,114,77,.24)', 1);
+  }
+  const base = yamen.y + yamen.h - 6;
+  hall(g, CENTER.x, base, 122, 29, { storeys: state.rank >= 3 ? 2 : 1, cap: pal.roofCap, roofColor: '#57746d', lantern: true });
+  hall(g, yamen.x + 25, base - 2, 32, 17, { cap: pal.roofCap });
+  hall(g, yamen.x + yamen.w - 30, base - 2, 32, 17, { cap: pal.roofCap });
+  if (state.defence.camp) {
+    for (let i = 0; i < 3; i++) {
+      const x = camp.x + 13 + i * 52;
+      const y = camp.y + 63;
+      polygon(g, [[x - 4, y], [x + 14, y - 34], [x + 36, y], [x + 32, y + 5]],
+        '#e6cc9a', 'rgba(133,112,79,.64)');
+      polygon(g, [[x + 10, y], [x + 16, y - 17], [x + 22, y]], '#9d8864');
+    }
+  }
+  const plant = season === 0 ? '#edabad' : pal.bloom;
+  for (const [dx, dy, size] of [[-190, 282, 26], [-148, 261, 18], [165, 263, 22], [225, 284, 26], [-684, 270, 30], [-620, 267, 20], [610, 276, 24]]) {
+    tree(g, CENTER.x + dx, dy + 32, size, season === 0 && Math.abs(dx) < 250 ? '#d79ea0' : pal.tree, plant);
+  }
+}
+
+function badge(g, text, rect, open) {
+  round(g, rect.x, rect.y, rect.w, rect.h, 5);
+  g.fillStyle = open ? 'rgba(253,244,216,.96)' : 'rgba(234,231,209,.84)';
+  g.fill();
+  g.lineWidth = 1;
+  g.strokeStyle = 'rgba(126,111,74,.42)';
+  g.stroke();
+  g.fillStyle = '#4d5e4c';
+  g.font = '600 14px "Noto Serif SC", "Songti SC", serif';
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  g.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2 + .5, rect.w - 9);
+}
+
+function plotGround(g, r, open, hasBuilding, riverside, tone) {
+  const x = r.x + 3, y = r.y + 6, w = r.w - 7, h = r.h - 10;
+  const fill = hasBuilding ? 'rgba(186,159,107,.33)' :
+    riverside ? 'rgba(202,227,203,.38)' : tone;
+  polygon(g, [[x + 5, y], [x + w, y + 2], [x + w - 4, y + h], [x, y + h - 1]], fill);
+  if (!open && !hasBuilding) return;
+  g.lineWidth = .9;
+  g.setLineDash(hasBuilding ? [] : [4, 4]);
+  strokePath(g, [[x + 5, y], [x + w, y + 2], [x + w - 4, y + h], [x, y + h - 1], [x + 5, y]], 'rgba(118,108,68,.46)', 1.1);
+  g.setLineDash([]);
+  if (!hasBuilding) {
+    const cx = x + w / 2, cy = y + h / 2 + 1;
+    blob(g, cx, cy, 10, '#f6edc9', .57);
+    strokePath(g, [[cx - 5, cy], [cx + 5, cy]], 'rgba(119,103,64,.54)', 1.15);
+    strokePath(g, [[cx, cy - 5], [cx, cy + 5]], 'rgba(119,103,64,.54)', 1.15);
+  }
+}
+
+function scaffold(g, r, newBuild) {
+  if (newBuild) {
+    g.fillStyle = 'rgba(253,242,213,.47)';
+    g.fillRect(r.x + 5, r.y + 5, r.w - 10, r.h - 9);
+  }
+  const x = newBuild ? r.x + 24 : r.x + r.w - 17;
+  const foot = r.y + r.h - 7, top = r.y + 20, width = newBuild ? 44 : 9;
+  strokePath(g, [[x, foot], [x, top], [x + width, top + 6], [x + width, foot]], '#9e7852', 1.8);
+  for (let y = top + 12; y < foot; y += 13) {
+    strokePath(g, [[x - 1, y], [x + width + 2, y + 3]], '#8f6845', 1.2);
+  }
+  polygon(g, [[x, top], [x + 13, top + 3], [x + 1, top + 9]], '#bf6e58');
+}
+
+/** Draw the county at its full world extent. The camera only changes the layer transforms. */
+export function paintCounty(g, { state, season, night = 0, wardOpen, labels, building }) {
+  const pal = SEASON[season];
+  g.save();
+  landscape(g, season);
+  const { left, right, top, bottom } = CITY;
+  const roadY = LAYOUT.roads.rows[1];
+  road(g, [[0, roadY - 2], [MAP.width, roadY - 2]], 21);
+  road(g, [[CENTER.x, 118], [CENTER.x, top + 24]], 33);
+  for (const yy of [LAYOUT.roads.rows[0], LAYOUT.roads.rows[2]]) road(g, [[left + 13, yy], [right - 10, yy]], 21);
+  for (const x of LAYOUT.roads.spines) road(g, [[x, LAYOUT.roads.rows[0]], [x, LAYOUT.roads.rows[2]]], x === CENTER.x ? 21 : 13);
+  road(g, [[CENTER.x, 941], [CENTER.x, LAYOUT.river.y - 10]], 39);
+  bridge(g);
+  drawSide(g, 0, state.defence, pal, labels.side?.(0));
+  drawSide(g, 1, state.defence, pal, labels.side?.(1));
+  drawSide(g, 3, state.defence, pal, labels.side?.(3));
+  state.nodes.forEach((node, i) => drawNode(g, node.kind, node.level, node.found, LAYOUT.nodes[i], season));
+  drawCourtyard(g, state, pal, season);
+
+  LAYOUT.wards.forEach((ward, i) => {
+    const open = wardOpen(i);
+    const zone = state.districts[i].zone;
+    const tone = ['rgba(246,221,178,.22)', 'rgba(252,243,207,.32)', 'rgba(226,227,183,.36)'][i % 3];
+    if (!open) {
+      g.fillStyle = 'rgba(221,224,201,.36)';
+      round(g, ward.x + 6, ward.y + 32, ward.w - 12, ward.h - 35, 15);
+      g.fill();
+    }
+    for (let p = 0; p < PLOTS_PER_DISTRICT; p++) {
+      const index = i * PLOTS_PER_DISTRICT + p;
+      const plot = state.plots[index];
+      const rect = LAYOUT.plots[index];
+      plotGround(g, rect, open, plot?.kind, RIVERSIDE.has(index), tone);
+      if (plot?.kind) {
+        drawBuilding(g, plot.kind, plot.level, rect, season);
+        if (building?.has(index)) scaffold(g, rect, plot.level === 0);
+      } else if (!open && (p + i) % 3 === 0) {
+        tree(g, rect.x + 42, rect.y + 43, 10, pal.tree, season === 0 ? pal.bloom : null);
+      }
+    }
+    if (zone) wash(g, ward.x + 13, ward.y + 9, 155, 16, C.zone[zone], i + 13);
+    badge(g, labels.ward(i), ward.label, open);
+  });
+  for (let i = 0; i < 15; i++) {
+    const x = 208 + i * 98;
+    if (Math.abs(x - CENTER.x) < 54) continue;
+    tree(g, x, bottom - 34, 12 + (i % 4) * 2, pal.tree, season === 0 ? '#edb2aa' : null);
+  }
+  drawSide(g, 2, state.defence, pal, labels.side?.(2));
+
   if (night > 0) {
-    g.fillStyle = `rgba(32, 44, 84, ${0.48 * night})`;
-    g.fillRect(0, 100, STAGE.width, 1080);
+    g.fillStyle = `rgba(45,61,91,${night * .35})`;
+    g.fillRect(0, 0, MAP.width, MAP.height);
     g.globalCompositeOperation = 'lighter';
-    const glow = (x, yy, r) => {
-      const gr = g.createRadialGradient(x, yy, 0, x, yy, r);
-      gr.addColorStop(0, `rgba(255, 196, 110, ${0.55 * night})`);
-      gr.addColorStop(1, 'rgba(255, 196, 110, 0)');
-      g.fillStyle = gr;
-      g.fillRect(x - r, yy - r, r * 2, r * 2);
+    const glow = (x, y, radius) => {
+      const light = g.createRadialGradient(x, y, 0, x, y, radius);
+      light.addColorStop(0, `rgba(251,173,94,${.44 * night})`);
+      light.addColorStop(1, 'rgba(255,196,110,0)');
+      g.fillStyle = light;
+      g.fillRect(x - radius, y - radius, radius * 2, radius * 2);
     };
     state.plots.forEach((plot, i) => {
-      if (!plot.kind || plot.level === 0 || FIELDS.has(plot.kind)) return;
+      if (!plot.kind || !plot.level || FIELDS.has(plot.kind)) return;
       const r = LAYOUT.plots[i];
-      glow(r.x + r.w / 2, r.y + r.h - 22, 26);
+      glow(r.x + r.w / 2, r.y + r.h - 24, 28);
     });
-    glow(360, LAYOUT.yamen.y + 40, 60);
-    glow(360, LAYOUT.gate.y + 30, 40);
-    g.globalCompositeOperation = 'source-over';
+    glow(CENTER.x, LAYOUT.yamen.y + 54, 52);
+    for (const gate of LAYOUT.gates) glow(gate.x + gate.w / 2, gate.y + gate.h - 30, 33);
   }
+  g.restore();
 }

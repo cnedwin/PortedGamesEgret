@@ -5,6 +5,7 @@
 // to each rank, raids won and lost, and the final people and livelihood. Awake from eight in the morning to midnight,
 // visiting every so often for a few minutes; eight hours asleep (an absence counts up to the granaries' cap). The
 // first day starts with an hour of steady play.
+import { pathToFileURL } from 'node:url';
 import { HOUR, RANKS, FINAL_RANK } from '../src/sim/data.mjs';
 import { advance, createCounty, promote, trainTalents } from '../src/sim/world.mjs';
 import { visit } from '../src/sim/bot.mjs';
@@ -45,7 +46,7 @@ export function playTerm({ every, seed = 1, limit = 10 * 24 * HOUR, after = null
   return { state, reached: reached.map((s) => s / HOUR), hours: (now - start) / HOUR };
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
   for (const [name, every] of Object.entries(HABITS)) {
     const { state, reached, hours } = playTerm({ every });
     console.log(`\n${name} (a visit every ${every / 60} min while awake)`);
