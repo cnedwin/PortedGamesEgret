@@ -92,6 +92,12 @@ An independently developed rhythm game demo of the Peking opera percussion, buil
 
 An independently developed survivors-like roguelite demo, built with Egret Rebuild. The Dragon King's shrimp and crab soldiers swarm Chentang Pass; you steer Nezha across the sea while the Universe Ring, the Red Silk Ribbon, the Fire-Tipped Spear, the Golden Brick, the Wind-Fire Wheels and the Guarding Dome strike on their own. A game is twenty waves, with the yaksha at wave ten and Ao Bing at twenty; between waves the Dragon Palace market sells treasures and trinkets for the pearls you gather, with locks and rerolls. Two treasures of a kind and tier merge into the next tier, and two paired treasures of the third tier or higher merge into a divine one. Three forms of Nezha and three sea states, with rules a bot plays through in Node to measure the odds. Chinese and English, keyboard, touch, mouse and gamepad. [Play online](https://cnedwin.github.io/PortedGamesEgret/NezhaSea/) · [Guide and development](NezhaSea/README.md)
 
+## Taiwan Sixteen-Tile Mahjong · 台灣十六張麻將
+
+一款使用新白鹭引擎独立开发的台湾十六张麻将游戏 Demo。玩家和三位电脑牌友同桌：稳健的阿德、急攻的小美、爱做大牌的老陈，程度分入门、普通、高手。补花、吃碰槓、截胡、抢槓、流局连庄都按台湾十六张的打法，按常见台数表算台、底加台结算，结算面板逐项列出台数。有听牌提示、托管、战绩和存档；界面繁体中文和英文，键盘、触屏、鼠标都能玩，竖着拿手机时牌桌自动转向。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/TaiwanMahjong/) · [说明与开发](TaiwanMahjong/README.md)
+
+An independently developed demo of Taiwanese sixteen-tile mahjong, built with Egret Rebuild. The player sits with three computer players — steady Ah-De, eager Mei and Old Chen who chases big hands — at three levels. Flowers, chows, pongs and kongs, the nearest winner on a discard, robbing a kong and the dealer keeping the deal all follow Taiwanese play, with a common tai table, base-plus-tai payment and every tai listed at the end of a hand. Ready hints, auto-play, a record and a save; traditional Chinese and English, keyboard, touch and mouse, and the table turns itself on an upright phone. [Play online](https://cnedwin.github.io/PortedGamesEgret/TaiwanMahjong/) · [Guide and development](TaiwanMahjong/README.md)
+
 ## 参与维护 · Contributing
 
 欢迎通过 Issues 报告问题，通过 Discussions 提出想法，也欢迎提交 Pull Request。 [参与指南](CONTRIBUTING.md)

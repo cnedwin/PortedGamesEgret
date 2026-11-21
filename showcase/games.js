@@ -398,4 +398,32 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'mahjong', folder: 'TaiwanMahjong', kind: '2d',
+    scenes: [
+      { zh: "牌局后段 · 打七万听二三条", en: "Late in a hand · A discard that makes the hand ready" },
+      { zh: "结算 · 独听、正花与庄家台数", en: "The result · Tai listed one by one" },
+      { zh: "英文标题 · 选圈数与牌友程度", en: "The title in English · Length and opponents" },
+    ],
+    zh: "台灣十六張麻將", en: "Taiwan Sixteen-Tile Mahjong",
+    genre: { zh: "麻将", en: "Mahjong" },
+    summary: { zh: "和三位性格不同的电脑牌友打台湾十六张，补花、吃碰槓、算台数。", en: "Taiwanese sixteen-tile mahjong against three computer players of their own character, with flowers, calls and tai." },
+    features: [
+      {
+        title: { zh: "可由电脑打完的规则", en: "Rules a computer can play" },
+        description: { zh: "向听数、对局和台数都在不依赖页面的规则里，四家电脑在 Node 里整将对打来比较难度和性格。", en: "Shanten, play and tai live in page-free rules; four computer players play whole games in Node to compare levels and characters." },
+        source: 'src/sim/game.mjs',
+      },
+      {
+        title: { zh: "一张图集的牌", en: "Tiles from one atlas" },
+        description: { zh: "42 种牌面画在一张图集上，手牌和飞行的牌是同一张贴图上的 Bitmap，用 sourceRect 取牌面。", en: "The 42 faces share one atlas; the hand and flying tiles are Bitmaps of one texture, cut by sourceRect." },
+        source: 'src/view.mjs',
+      },
+      {
+        title: { zh: "静态牌桌加引擎动画", en: "A still table under the engine" },
+        description: { zh: "桌上静止的牌画在引擎画布下面的页面 canvas 上，只在变化时重画；引擎只画手牌、飞行的牌和大字。", en: "Tiles at rest are painted on a page canvas under the engine's, only when they change; the engine draws the hand, the flights and the words." },
+        source: 'src/felt.mjs',
+      },
+    ],
+  },
 ];
