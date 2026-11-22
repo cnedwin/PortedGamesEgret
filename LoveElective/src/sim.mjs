@@ -7,6 +7,7 @@ import { PLACES, SLOTS_OF_DAY, DAYS_IN_TERM, DATE_SPOTS } from './data/places.mj
 import { QUESTS } from './data/quests.mjs';
 import { EVENTS } from './data/events.mjs';
 import { PERKS, ACHIEVEMENTS } from './data/memories.mjs';
+import { BAILU_ZERO_STAGES, freshBailuZero } from './data/bailu-zero.mjs';
 
 export const SAVE_VERSION = 1;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -67,6 +68,7 @@ export function newGame(options = {}) {
     perk: null,
     wish: null,
     eventDay: 0,
+    bailuZero: freshBailuZero(),
   };
   const perk = PERKS.find(x => x.id === options.perk);
   if (perk) {
@@ -344,6 +346,7 @@ export function applyEffect(s, girl, fx = {}) {
   if (fx.flag) s.flags[fx.flag] = true;
   if (fx.item) s.bag[fx.item] = (s.bag[fx.item] ?? 0) + 1;
   if (fx.energy) s.energy = clamp(s.energy + fx.energy, 0, 100);
+  if (fx.bailuZero) chooseBailuZero(s, fx.bailuZero.key, fx.bailuZero.value);
   return gained;
 }
 
@@ -626,6 +629,7 @@ export function deserialize(text) {
     s.perk ??= null;
     s.wish ??= null;
     s.eventDay ??= 0;
+    restoreBailuZero(s);
     recoverLegacyDyes(s.hero, [HERO.wear]);
     for (const id of HEROINE_IDS) recoverLegacyDyes(s.girls[id], Object.values(HEROINES[id].outfits));
     return s;
@@ -633,6 +637,52 @@ export function deserialize(text) {
     return null;
   }
 }
+
+// The optional interlude has its own resumable scene progress and one-time
+// effects. Calendar, main chapters and normal confession rules remain intact.
+function restoreBailuZero(s){
+ const previous=s.bailuZero??{},fresh=freshBailuZero();
+ s.bailuZero={...fresh,...previous,version:1,stage:Number.isInteger(previous.stage)?clamp(previous.stage,0,5):0,
+  clues:Array.isArray(previous.clues)?[...new Set(previous.clues.filter(id=>['mail','roster','timer'].includes(id)))]:[]};
+ const p=s.bailuZero.playback;
+ if(p&&p.id===`bailu-zero-${s.bailuZero.stage}`&&p.done&&p.choices){p.cursor=typeof p.cursor==='string'?p.cursor:'0';}
+ else s.bailuZero.playback=null;
+}
+export function bailuZeroStatus(s){
+ const q=s.bailuZero??freshBailuZero(),unlocked=(s.girls?.bailu?.chapter??0)>=2;
+ return{unlocked,stage:q.stage,complete:q.stage>=5,ending:q.ending,next:BAILU_ZERO_STAGES[q.stage]??null};
+}
+export function beginBailuZero(s){
+ if(!bailuZeroStatus(s).unlocked)return null;
+ if(!s.bailuZero)restoreBailuZero(s);
+ const q=s.bailuZero;if(q.stage>=5)return null;
+ const id=`bailu-zero-${q.stage}`;
+ if(q.playback?.id!==id)q.playback={id,cursor:'0',done:{},choices:{}};
+ return q.playback;
+}
+export function chooseBailuZero(s,key,value){
+ const q=s.bailuZero;if(!q||!bailuZeroStatus(s).unlocked||q.stage>=5)return false;
+ const permitted={archive:[1,['public','ask']],outfit:[2,['own','night']],distance:[3,['close','space']],reading:[3,['read','wait']],ending:[4,['renew','farewell']]};
+ const rule=permitted[key];if(!rule||q.stage!==rule[0]||!rule[1].includes(value))return false;
+ const field=key==='outfit'?'outfitChoice':key;
+ if(q[field])return q[field]===value;
+ q[field]=value;
+ if(key==='outfit'){
+  const g=s.girls.bailu;for(const id of ['cardigan','scarf'])if(!g.gifted.includes(id))g.gifted.push(id);
+  if(value==='night')for(const id of ['cardigan','scarf'])if(!pieces(g.wear).some(p=>p.id===id))toggleWear(s,'bailu',id);
+ }
+ return true;
+}
+export function finishBailuZero(s,stage){
+ const q=s.bailuZero;if(!q||!Number.isInteger(stage)||stage<0||stage>=BAILU_ZERO_STAGES.length||q.stage!==stage||!bailuZeroStatus(s).unlocked)return false;
+ if(stage===1&&!q.archive||stage===2&&!q.outfitChoice||stage===3&&(!q.distance||!q.reading)||stage===4&&!q.ending)return false;
+ const clue={0:'mail',1:'roster',3:'timer'}[stage];if(clue&&!q.clues.includes(clue))q.clues.push(clue);
+ if(stage===2)q.outfit=clone({wear:s.girls.bailu.wear,dyes:s.girls.bailu.dyes});
+ addAffection(s,'bailu',2,false);q.stage++;q.playback=null;
+ if(q.stage===5)s.flags['bailu-zero:'+q.ending]=true;
+ return true;
+}
+export function bailuZeroMatches(s,condition){const[key,value]=condition.split(':');return s.bailuZero?.[key]===value;}
 
 // ------------------------------------------------------------------ randomness
 

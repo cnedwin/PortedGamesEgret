@@ -9,6 +9,7 @@ import { HEROINES, HEROINE_IDS, LEVELS, STATS } from '../data/cast.mjs';
 import { PLACES } from '../data/places.mjs';
 import { GIFTS, SUPPLIES, CLOTHES, STYLES } from '../data/items.mjs';
 import * as sim from '../sim.mjs';
+import { BAILU_ZERO_TITLE, BAILU_ZERO_CLUES } from '../data/bailu-zero.mjs';
 
 const TABS = [
   ['girls', ['学姐', 'Seniors']],
@@ -16,6 +17,7 @@ const TABS = [
   ['bag', ['背包', 'Bag']],
   ['me', ['我', 'Me']],
   ['system', ['设置', 'Settings']],
+  ['letter', ['回信', 'Letters']],
 ];
 const QUESTS_PER_PAGE = 5;
 
@@ -43,6 +45,23 @@ export function openPhone(game, tab = 'girls') {
     }
 
     const pages = {
+      letter(p){
+        const status=sim.bailuZeroStatus(s),q=s.bailuZero;
+        p.text(L(BAILU_ZERO_TITLE),40,104,{size:29,weight:750,color:THEME.violet});
+        p.text(L(['白露特別篇 · 全員成年 · 獨立保存，不消耗日常時段','Bai Lu interlude · Adult cast · Separately tracked; no daily time spent']),40,148,{size:15,color:THEME.soft,maxW:890});
+        if(!status.unlocked){p.text(L(['讀完白露的第二章後，這封回信會確定出現。','This letter becomes available after Bai Lu’s second chapter.']),40,208,{size:21,color:THEME.ink,maxW:870});return;}
+        if(status.complete){
+          p.text(L(q.ending==='renew'?['已完成：第三個名字','Complete: The Third Name']:['已完成：不再等待的星光','Complete: Starlight Without Waiting']),40,200,{size:24,weight:750,color:THEME.rose});
+          p.text(L(q.distance==='close'?['你們曾明確詢問彼此的意願，牽著手走下天台。','You asked each other clearly and left the roof hand in hand.']:['你們保留舒服的距離，也替下次觀星留了一張椅子。','You kept a comfortable distance and saved a seat for next time.']),40,248,{size:18,maxW:850,lineH:28});
+        }else{
+          p.text(`${status.stage+1}/5 · ${L(status.next.name)}`,40,200,{size:24,weight:750,color:THEME.rose});
+          p.text(L(status.next.hint),40,245,{size:19,maxW:850,lineH:28});
+          p.button(624,520,298,54,L(q.playback?['從保存的對話繼續','Resume saved conversation']:['前往下一段約定','Go to next appointment']),()=>close('bailu-zero'),{kind:'primary',size:18});
+        }
+        p.text(L(['調查紀錄','Investigation notes']),40,324,{size:21,weight:750,color:THEME.violet});
+        (q.clues??[]).forEach((id,i)=>p.text('✓ '+L(BAILU_ZERO_CLUES[id]),40,366+i*40,{size:18,maxW:850}));
+        if(!(q.clues??[]).length)p.text(L(['下一次約定會留下第一條線索。','The next appointment holds your first clue.']),40,366,{size:18,color:THEME.soft});
+      },
       girls(p) {
         HEROINE_IDS.forEach((id, i) => {
           const h = HEROINES[id],
@@ -310,6 +329,18 @@ export function openPhone(game, tab = 'girls') {
           200,
           { size: 14, color: THEME.faint, maxW: 400 },
         );
+        if(game.audio.settings){
+          const settings=game.audio.settings();
+          [['music',['配樂','Music']],['voice',['語音','Voice']],['effects',['音效','Effects']]].forEach(([bus,label],i)=>{
+            const y=278+i*86,value=settings[bus];
+            p.text(L(label),520,y,{size:18,weight:750,color:THEME.ink});
+            p.text(Math.round(value.volume*100)+'%',716,y,{size:16,color:THEME.soft,align:'right'});
+            p.button(748,y-6,174,36,L(value.muted?['已靜音 · 開啟','Muted · enable']:['開啟中 · 靜音','Enabled · mute']),()=>{game.audio.setBus(bus,{muted:!value.muted});repaint();},{size:13});
+            p.button(520,y+30,44,30,'−',()=>{game.audio.setBus(bus,{volume:Math.max(0,value.volume-.1)});repaint();},{size:18});
+            p.bar(578,y+39,272,10,value.volume,1,{color:THEME.violet,color2:THEME.pink});
+            p.button(878,y+30,44,30,'+',()=>{game.audio.setBus(bus,{volume:Math.min(1,value.volume+.1)});repaint();},{size:18});
+          });
+        }
       },
     };
 

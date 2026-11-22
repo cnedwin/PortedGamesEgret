@@ -12,6 +12,8 @@ const CHORDS = [
 const BEAT = 0.42;
 const RATE = 32000;
 const hz = semitone => 220 * 2 ** (semitone / 12);
+const SCENE_MUSIC = new Set(['bailu-zero-night', 'bailu-zero-mystery', 'bailu-zero-warm']);
+const SETTINGS_KEY = 'love-elective-audio-v1';
 
 /** Notes are [frequency, start, length, volume, waveform]. */
 function tune() {
@@ -73,9 +75,58 @@ async function render(notes, duration, loop = false) {
 
 export function createAudio() {
   const sounds = new Map();
+  const files = new Map(), pendingFiles = new Map();
   let host, preparing, disposed = false, lastError;
+  let desiredMusic = 'campus', musicRequest = 0, voiceRequest = 0, currentVoice, lastVoice;
   const audio = { muted: false };
   const report = error => { lastError = error?.code ?? error?.message ?? String(error); };
+  const preferences = {
+    music: { muted: false, volume: 0.80 },
+    effects: { muted: false, volume: 1 },
+    voice: { muted: false, volume: 1 },
+  };
+  try {
+    const saved = JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? 'null');
+    for (const name of Object.keys(preferences)) {
+      const value = saved?.[name];
+      if (typeof value?.muted === 'boolean') preferences[name].muted = value.muted;
+      if (Number.isFinite(value?.volume) && value.volume >= 0 && value.volume <= 1) preferences[name].volume = value.volume;
+    }
+  } catch { /* Defaults apply when browser storage is unavailable. */ }
+
+  function mixMusic() {
+    const speech = currentVoice && currentVoice.state !== 'ended' && !preferences.voice.muted && !audio.muted;
+    host?.mixer.bus('music').setVolume(preferences.music.volume * (speech ? 0.28 : 1), { fade: 0.20 });
+  }
+
+  async function loadFile(kind, id) {
+    const key = kind + '/' + id;
+    if (files.has(key)) return files.get(key);
+    if (pendingFiles.has(key)) return pendingFiles.get(key);
+    const loading = (async () => {
+      const response = await fetch(new URL('../assets/audio/' + key + '.mp3', import.meta.url),
+        { signal: AbortSignal.timeout(15000) });
+      if (!response.ok) throw new Error('Audio ' + response.status + ' ' + id);
+      const bytes = await response.arrayBuffer();
+      if (disposed) return;
+      const sound = await host.mixer.decode(bytes);
+      if (disposed) { sound.release(); return; }
+      files.set(key, sound);
+      return sound;
+    })().finally(() => { pendingFiles.delete(key); });
+    pendingFiles.set(key, loading);
+    return loading;
+  }
+
+  async function applyMusic() {
+    const requested = desiredMusic, token = ++musicRequest;
+    try {
+      const sound = requested === 'campus' ? sounds.get('music') : await loadFile('music', requested);
+      if (!sound || disposed || token !== musicRequest || requested !== desiredMusic) return;
+      host.mixer.playMusic(sound, { bus: 'music', fade: 0.65 });
+      mixMusic();
+    } catch (error) { report(error); }
+  }
 
   async function prepare() {
     if (preparing) return preparing;
@@ -94,9 +145,7 @@ export function createAudio() {
       add('music', tune(), CHORDS.length * 8 * BEAT, true),
       ...Object.entries(EFFECTS).map(([name, notes]) =>
         add(name, notes, Math.max(...notes.map(note => note[1] + note[2])) + 0.01)),
-    ]).then(() => {
-      if (!disposed && sounds.has('music')) current.mixer.playMusic(sounds.get('music'), { fade: 0.15 });
-    }).catch(report).finally(() => { preparing = undefined; });
+    ]).catch(report).finally(() => { preparing = undefined; });
     return preparing;
   }
 
@@ -106,10 +155,10 @@ export function createAudio() {
     try {
       host ??= createBrowserAudio({
         muted: audio.muted, limiter: true, pauseWhenHidden: true,
-        buses: ['music', 'effects'], onError: report,
+        buses: Object.entries(preferences).map(([name, value]) => ({ name, ...value })), onError: report,
       });
       if (host.context.state === 'suspended') void host.context.resume().catch(report);
-      return prepare();
+      return prepare().then(() => { if (!disposed) return applyMusic(); }).catch(report);
     } catch (error) {
       report(error);
       return Promise.resolve();
@@ -118,13 +167,14 @@ export function createAudio() {
   audio.setMuted = muted => {
     audio.muted = Boolean(muted);
     host?.mixer.master.setMuted(audio.muted);
+    mixMusic();
   };
   /** kind: 'tap' | 'good' | 'bad' | 'heart' | 'page'. */
   audio.play = kind => {
-    if (!host || disposed || audio.muted || !Object.hasOwn(EFFECTS, kind)) return;
+    if (!host || disposed || audio.muted || preferences.effects.muted || !Object.hasOwn(EFFECTS, kind)) return;
     const play = () => {
       const sound = sounds.get(kind);
-      if (!disposed && !audio.muted && sound) {
+      if (!disposed && !audio.muted && !preferences.effects.muted && sound) {
         try { host.mixer.play(sound, { bus: 'effects', maxInstances: 4 }); }
         catch (error) { report(error); }
       }
@@ -132,12 +182,62 @@ export function createAudio() {
     if (sounds.has(kind)) play();
     else void prepare().then(play).catch(report);
   };
-  audio.snapshot = () => ({ ...host?.mixer.snapshot(), error: lastError });
+  /** The regular campus tune returns when the special episode closes. */
+  audio.setMusic = scene => {
+    if (scene !== 'campus' && !SCENE_MUSIC.has(scene)) return Promise.resolve();
+    desiredMusic = scene;
+    return audio.unlock();
+  };
+  audio.stopVoice = () => {
+    voiceRequest++;
+    currentVoice?.stop({ fade: 0.04 });
+    currentVoice = undefined;
+    mixMusic();
+  };
+  /** Resolves on playback start; dialogue advance never waits for speech to end. */
+  audio.voice = async id => {
+    audio.stopVoice();
+    if (!/^bailu-zero-(0[1-9]|1[0-9]|2[0-2])$/.test(id)) return null;
+    lastVoice = id;
+    const token = voiceRequest;
+    try {
+      await audio.unlock();
+      if (disposed || token !== voiceRequest || audio.muted || preferences.voice.muted) return null;
+      const sound = await loadFile('voice', id);
+      if (!sound || disposed || token !== voiceRequest || audio.muted || preferences.voice.muted) return null;
+      const voice = host.mixer.play(sound, { bus: 'voice', maxInstances: 1 });
+      if (voice.state === 'ended') return null;
+      currentVoice = voice;
+      mixMusic();
+      void voice.ended.then(() => {
+        if (currentVoice === voice) { currentVoice = undefined; mixMusic(); }
+      });
+      return voice;
+    } catch (error) { report(error); return null; }
+  };
+  audio.replayVoice = () => lastVoice ? audio.voice(lastVoice) : Promise.resolve(null);
+  audio.settings = () => Object.fromEntries(Object.entries(preferences).map(([name, values]) => [name, { ...values }]));
+  audio.setBus = (name, values) => {
+    if (!Object.hasOwn(preferences, name) || !values) return;
+    const value = preferences[name];
+    if (typeof values.muted === 'boolean') value.muted = values.muted;
+    if (Number.isFinite(values.volume)) value.volume = Math.max(0, Math.min(1, values.volume));
+    host?.mixer.bus(name).setMuted(value.muted);
+    if (name === 'voice' && value.muted) audio.stopVoice();
+    if (name !== 'music') host?.mixer.bus(name).setVolume(value.volume, { fade: 0.10 });
+    mixMusic();
+    try { localStorage.setItem(SETTINGS_KEY, JSON.stringify(preferences)); } catch { /* Session settings still work. */ }
+  };
+  audio.snapshot = () => ({ ...host?.mixer.snapshot(), musicScene: desiredMusic,
+    voiceId: currentVoice ? lastVoice : undefined, voicePosition: currentVoice?.position, error: lastError });
   audio.dispose = () => {
     if (disposed) return;
+    audio.stopVoice();
     disposed = true;
+    musicRequest++;
     host?.dispose();
     sounds.clear();
+    files.clear();
   };
   return audio;
 }

@@ -12,13 +12,13 @@ const PER_PAGE = 8;
 const ACTOR_X = 408;
 
 /** Open the wardrobe for 'hero' or a senior's id. Resolves when it is closed. */
-export function openWardrobe(game, who) {
+export function openWardrobe(game, who, options = {}) {
   const { ui, world, L } = game,
     s = game.state,
     hero = who === 'hero';
   return new Promise(resolve => {
     const tabs = hero ? ['top', 'bottom', 'outer', 'shoes', 'legs', 'acc', 'hair'] : ['top', 'bottom', 'dress', 'outer', 'shoes', 'legs', 'acc'];
-    const view = { tab: 'top', page: 0, selected: sim.wearOf(s, who).top?.id ?? null, channel: 0 };
+    const view = { tab: options.tab??'top', page: 0, selected: sim.wearOf(s, who)[options.tab??'top']?.id ?? null, channel: 0 };
     const panel = ui.panel({ x: 560, y: 86, w: 690, h: 624, res: 1.25 });
     const stylePanel = ui.panel({ x: 22, y: 86, w: 236, h: 330, res: 1.25 });
     game.showHud(null);
@@ -259,6 +259,7 @@ export function openWardrobe(game, who) {
     }
 
     function refresh(redress = true) {
+      if(redress&&options.invited)game.save();
       if (redress) showActor();
       panel.paint(paint);
       stylePanel.paint(paintStyle);

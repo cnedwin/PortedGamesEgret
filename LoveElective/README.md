@@ -17,6 +17,7 @@ Love Elective is an independently developed 2D campus romance and dress-up demo 
 | 选择选项 · Pick an option | 点击，或数字键 1–3 · click, or keys 1–3 |
 | 跳过剧情 · Skip a scene | 对话框右上角“跳过”，或 Ctrl · the Skip button on the dialogue box, or Ctrl |
 | 关闭弹窗 · Close a pop-up | Esc，或点“关闭” · Esc, or the Close button |
+| 键盘焦点 · Keyboard focus | Tab / Shift+Tab 移动，Enter / Space 激活，方向键切换页签 · move with Tab / Shift+Tab, activate with Enter / Space, switch tabs with the arrow keys |
 
 - 每天分为上午、下午、傍晚、夜晚。在校园地图上选地点，在那里做一件事会用掉一段时间；教学楼、图书馆等地方夜间关闭。
 - 体力不够时回宿舍小憩或睡觉。第三十天夜晚过后进入星空祭。
@@ -41,6 +42,16 @@ Love Elective is an independently developed 2D campus romance and dress-up demo 
 每位学姐的四章故事在她常在的地点发生：第一次相遇是第一章，之后的章节需要足够的好感和她看重的属性。地图上的金色星星表示有新的故事。手机里可以查看每个人现在在哪、下一章还差什么。
 
 Each senior's four chapters take place where she usually is. The first meeting is chapter one; later chapters need enough affection and enough of the stat she respects. A gold star on the map marks a new story. The phone shows where everyone is and what the next chapter still needs.
+
+### 白露特別篇 · Letters from Member Zero
+
+读完白露第二章后，从校园地图的回信卡或游戏手机的「回信」页进入。五次约定涵盖查找公开线索、一起挑选与染色观星服、决定是否打开来信和两种社团结局。对话中可以保存后稍后继续，特别篇不占用日常时段。
+
+After Bai Lu's second chapter, open the letter card on the campus map or the Letters tab on the in-game phone. Five appointments span public clues, choosing and dyeing a stargazing outfit, deciding when to open the letter, and two endings for the club. Save and resume during a conversation. The episode uses no daily time slots.
+
+内置 22 句台湾国语合成对白和三首原创场景配乐。对白框可以重听，手机设置可分别调整配乐、语音和音效。
+
+The episode includes 22 synthesized Taiwanese Mandarin lines and three original scene tracks. Replay voiced lines in the dialogue box, or adjust music, voice and effects separately in the phone settings. [音讯制作 · Audio credits](assets/audio/README.md)
 
 ### 好感与拉扯 · Affection and push-and-pull
 
@@ -163,6 +174,7 @@ The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. 
 | 同一张文字贴图放进两个带 `clipRect` 的容器：一个显示已完成的行，一个显示正在出现的行 · one text texture in two containers with `clipRect`: finished lines in one, the growing line in the other | 对话逐字显示 · Text writing itself out | `src/screens/story.mjs` |
 | 分层换装人物使用独立的眨眼贴图 · layered dress-up figures use a separate blink texture | 眨眼 · Blinking | `src/art/figure.mjs` |
 | `createBrowserPointerInput`、`createBrowserHoverInput`、`createBrowserKeyboardInput` · Browser pointer, hover and keyboard input | 引擎处理原生输入和失焦取消，游戏按绘制面板的区域和层序分派操作 · Egret handles native input and cancellation; painted panels define targets and order | `src/engine/stage.mjs`、`src/engine/ui.mjs` |
+| `createUiSemantics`、`createBrowserSemantics` · Accessible control semantics | 为画布按钮、页签和弹窗提供名称、焦点、状态和读屏接口 · Names, focus, state and accessibility projection for canvas buttons, tabs and dialogs | `src/engine/ui-semantics.mjs` |
 | `createBrowserFrameLoop`、`engine.createTween`、`after` · Frame loop, tweens and timers | 淡入淡出、演出等待、粒子与逐字显示共用引擎时钟 · Fades, scripted waits, particles and text use the engine clock | `src/engine/stage.mjs` |
 | `createBrowserAudio` · Browser audio | 背景乐循环、提示音、静音和后台暂停交给引擎混音器 · The engine mixer handles music looping, effects, mute and tab suspension | `src/audio.mjs` |
 | `Sprite.graphics` 的纯色矩形 · solid rectangles | 淡入淡出、悬停高亮 · Fades and hover highlight | `src/engine/stage.mjs` |

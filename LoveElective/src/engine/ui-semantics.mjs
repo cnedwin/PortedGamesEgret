@@ -60,8 +60,8 @@ export function createPanelSemantics(ui, stage, { width, height }) {
   }
   function topModal() { return ui.panels.filter(panel => panel.modal && shown(panel)).at(-1); }
   function actionable(entry) {
-    return entry?.control && shown(entry.panel) && !entry.control.disabled && typeof entry.control.hit.tap === 'function'
-      && (!topModal() || entry.panel === topModal());
+    return Boolean(entry?.control && shown(entry.panel) && !entry.control.disabled && typeof entry.control.hit.tap === 'function'
+      && (!topModal() || entry.panel === topModal()));
   }
   function order() {
     return [...entries.values()].filter(actionable).sort((a, b) =>

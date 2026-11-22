@@ -1,0 +1,41 @@
+[
+  {
+    "id": "bailu-zero-night",
+    "bpm": 72,
+    "seconds": 80.0,
+    "bars": 24,
+    "notes": 116,
+    "bytes": 1281087,
+    "peak": 0.35353973507881165,
+    "rmsDbFS": -23.000000432125564,
+    "seamJump": 3.335397923365235e-05,
+    "decodedSeamJump": 0.00016413332195952535,
+    "sha256": "71fc91aec0ea020c67be849c7d0f9cb054ce8fd612f00053f78d5440aa92b0e9"
+  },
+  {
+    "id": "bailu-zero-mystery",
+    "bpm": 84,
+    "seconds": 68.57142857142857,
+    "bars": 24,
+    "notes": 126,
+    "bytes": 1098021,
+    "peak": 0.33923354744911194,
+    "rmsDbFS": -22.999999518003015,
+    "seamJump": 0.00019207829609513283,
+    "decodedSeamJump": 0.00016905739903450012,
+    "sha256": "5b93c9b9d1dffdacb86c64b42e9858b2c9bc9e36208eed658e5a2ddd63c75168"
+  },
+  {
+    "id": "bailu-zero-warm",
+    "bpm": 78,
+    "seconds": 73.84614512471656,
+    "bars": 24,
+    "notes": 131,
+    "bytes": 1182449,
+    "peak": 0.370596319437027,
+    "rmsDbFS": -22.999999518003015,
+    "seamJump": 0.00026045646518468857,
+    "decodedSeamJump": 0.0003038588911294937,
+    "sha256": "f0c601cce201350f1655f2a5db77a92a3c0053d6b20a07b78a06be539be06124"
+  }
+]
