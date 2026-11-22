@@ -329,6 +329,19 @@ kbd { font: inherit; font-size: 10px; color: #d9c49e; border: 1px solid #a591606
 [data-profession="ritualist"] #class-skill { background: linear-gradient(#644e3b,#3c2827); border-color: #c69269; }
 [data-profession="ritualist"] .class-emblem { color: #ffc49d; }
 @media (max-width: 620px) and (orientation: portrait) {
+  .late-boss-focus .task {
+    display: grid; grid-template-columns: minmax(0,1fr) auto; align-items: center;
+    gap: 4px; width: min(208px,51vw); padding: 4px;
+  }
+  .late-boss-focus .task-heading { display: contents; }
+  .late-boss-focus #quest-title, .late-boss-focus #map-name,
+  .late-boss-focus #quest-text:not(.expanded) { display: none; }
+  .late-boss-focus #track {
+    grid-area: 1 / 1; min-height: 44px; margin: 0; overflow: hidden;
+    text-overflow: ellipsis; white-space: nowrap;
+  }
+  .late-boss-focus #quest-toggle { display: block; grid-area: 1 / 2; min-height: 44px; padding: 3px 7px; font-size: 11px; }
+  .late-boss-focus #quest-text { grid-column: 1 / -1; padding: 2px 5px 5px; }
   .profession-card { padding: 12px; }
   #profession-choices { grid-template-columns: 1fr; gap: 7px; margin: 9px 0; }
   #profession-choices button { grid-template-columns: clamp(73px,26vw,120px) 1fr; align-items: center; }
