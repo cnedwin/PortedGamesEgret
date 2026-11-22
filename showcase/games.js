@@ -4,6 +4,34 @@ export const FEATURED_ID = 'snow';
 
 export const GAMES = [
   {
+    id: 'fengshen', folder: 'FengshenChronicle', kind: '2d',
+    scenes: [
+      { zh: '西岐城 · 姜尚授命', en: 'Xiqi · Jiang Shang’s commission' },
+      { zh: '岐山古道 · 获得破邪剑', en: 'Qishan Trail · A new sword' },
+      { zh: '岐山古道 · 乾坤圈迎战邪将', en: 'Qishan Trail · The ring meets the warlord' },
+    ],
+    zh: '封神 · 西岐战纪', en: 'Fengshen Chronicle',
+    genre: { zh: '单机动作角色扮演', en: 'Single-player action RPG' },
+    summary: { zh: '扮演玄甲，领姜尚之命出西岐，拾取并换上新装备，以乾坤圈击败古道邪将。', en: 'Play as Xuanjia, take Jiang Shang’s commission, gear up on the trail and defeat the warlord with the returning ring.' },
+    features: [
+      {
+        title: { zh: '原生 2D 与 WebGL2', en: 'Native 2D and WebGL2' },
+        description: { zh: '以白鹭浏览器游戏容器统一游戏循环和画布缩放，支持 PC 及触屏。', en: 'Egret’s browser game host drives the loop and scales the canvas for desktop and touch.' },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: '位图图集与遮挡排序', en: 'Bitmap atlas and depth sorting' },
+        description: { zh: '角色动作与战斗特效复用白鹭图集，人物、建筑和道具按脚底纵坐标排列。', en: 'Actors and effects share an Egret texture atlas. Sprites and scenery sort by their ground position.' },
+        source: 'src/view.mjs',
+      },
+      {
+        title: { zh: '动态图形与共享材质', en: 'Vector graphics and shared materials' },
+        description: { zh: '战斗落点用白鹭 Graphics 绘制，乾坤圈和命中反馈复用共享 2D 材质。', en: 'Egret Graphics draws telegraphs. Ring and hit effects reuse shared 2D materials.' },
+        source: 'src/view.mjs',
+      },
+    ],
+  },
+  {
     id: 'teahorse', folder: 'TeaHorseRoad', kind: '3d',
     scenes: [
       { zh: "滇南茶山 · 车队驶向牌坊", en: "Tea hills · Convoy approaching the gate" },
