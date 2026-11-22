@@ -1,6 +1,6 @@
 {
   "provenance": "First-party assets generated with the built-in image_gen tool for FengshenChronicle. No third-party source artwork.",
-  "createdAt": "2026-11-22T04:08:13.489Z",
+  "createdAt": "2026-11-22T04:57:01.897Z",
   "generationId": "01a1b862-47d1-76c2-a957-9c33df799dfe",
   "prompts": "PROMPTS.md",
   "conversion": {
@@ -48,7 +48,43 @@
       "alphaDifferentPixels": 0,
       "maxAlphaDifference": 0,
       "solidRgbRmse": 4.201021660797534
+    },
+    {
+      "file": "rpg-buildings.webp",
+      "bytes": 546374,
+      "sha256": "cc182bd63febac4506a756b2b465b5a7aa0120afb646b1a77832bf16c3311806",
+      "width": 1536,
+      "height": 1024,
+      "sourceFile": "exec-f5d6d330-432b-4e7a-94a9-9e84815ecbec.png",
+      "sourceSha256": "37ab572335cad0a01d664f42d2e2c8b3dd515a72b8d052a76b6e2e958ca57a8c",
+      "alphaDifferentPixels": 0,
+      "maxAlphaDifference": 0,
+      "solidRgbRmse": 5.254624303329663
+    },
+    {
+      "file": "village-animals.webp",
+      "bytes": 351616,
+      "sha256": "d24dc30d5e731a8dfea1c69800247f01be1a3c75fd16daea30025c9a3fdea481",
+      "width": 1774,
+      "height": 887,
+      "sourceFile": "exec-7d7ca909-bd39-4a3f-b478-4781b0dad053.png",
+      "sourceSha256": "f34058850502b368c66f6eb2483a28b81db979f6efd901f1866cfecd1884a85c",
+      "alphaDifferentPixels": 0,
+      "maxAlphaDifference": 0,
+      "solidRgbRmse": 4.232031680117997
+    },
+    {
+      "file": "rpg-forge.webp",
+      "bytes": 356402,
+      "sha256": "b525f2c73d6a5e68a708ad1377c873cf3d437d6a60f936368f04ad43f96d60b0",
+      "width": 1254,
+      "height": 1254,
+      "sourceFile": "exec-1e917aac-c830-434c-8d8a-a8178171e511.png",
+      "sourceSha256": "bc3647f815506e8ce05e7548719f061ecf8c8b5a081b39532b5c828ec7a7204e",
+      "alphaDifferentPixels": 0,
+      "maxAlphaDifference": 0,
+      "solidRgbRmse": 5.0113480220701865
     }
   ],
-  "totalBytes": 1336036
+  "totalBytes": 2590428
 }

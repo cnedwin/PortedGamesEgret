@@ -17,3 +17,5 @@ Use case: stylized-concept. Asset type: premium production hand-painted transpar
 ## Composition notes
 
 The generated prop arrangements are cropped individually using explicit rectangles, rather than assuming a perfect generated grid. Ground materials exclude the atlas divider pixels, then opposite halves are blended into periodic textures without mirroring. Landscape painting respects the original map dimensions and obstacle foot pivots. Long cliff footprints use overlapping illustrated outcrops. Ground corridors receive only paving; substantial new props stay inside existing solid footprints or at the perimeter.
+
+The later town, military outpost and animal source prompts are recorded in [EXPANSION_PROMPTS.md](EXPANSION_PROMPTS.md).

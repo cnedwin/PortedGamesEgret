@@ -56,3 +56,15 @@ Three looped themes and sixteen cues were decoded and checked for length and pea
 进一步修整玄甲步态。常服与鳞衣采用前后各四个独立行走姿态，左右脚交替落地，以实际位移推进步态。两套装甲与其他人物、特效分成三张图集，保留画质并符合单张纹理容量。停步回站姿，转向和换装时持刀贴光仍跟随刀刃。32 张原生姿态检查覆盖四种装备组合、两个视角和四个行走相位。
 
 Xuanjia's gait now uses four grounded phases per view. Actual displacement advances the animation, and each pose carries its own blade-glow anchor. Three texture atlases separate the two armor sets and the other actors and effects. Native pose checks covered all 32 combinations of gear, view and gait phase.
+
+## 扩章数值 · Expansion balance
+
+| 项目 | 验证值 |
+|---|---|
+| 玄甲开局 | 攻击 17，气血 100，24 文，回春散 5 份 |
+| 古道与铜关军功 | 分别 100、160 文，各只领一次 |
+| 药铺 | 回春散 12 文一份，32 文三份，单份回复 45 气血 |
+| 铜关阵主 | 760 气血、28 基础攻击，具有突进、横风和范围砸击 |
+| 怒气 | 造成伤害 ×0.25 + 每次命中 2；受伤 ×0.8 + 3；100 怒释放，0.42 秒蓄力 |
+
+25 项规则及存档测试包含普通动作全路线。低配与高配近战实打伤害为 17 和 41，均实战击败阵主。重复演武重生敌军和战利品，主支线奖赏不重复；三店同品买回价高于回收价，购买、出售与金币变化逐项断言。

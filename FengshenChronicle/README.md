@@ -2,9 +2,9 @@
 
 ## 简介 · Introduction
 
-基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)的原创封神题材单机动作 RPG。当前第一章包含西岐城与岐山古道，玄甲受托除祟，拾取装备，施展乾坤圈，击败邪将后回城复命。游戏资源随目录提供，进度保存在当前浏览器的三个存档位。
+基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)的原创封神题材单机动作 RPG。玄甲从西岐城揭开「古道除祟」与「铜关回风」两章，沿途可采药、回收旧甲，选择不同的支线奖赏。演武旧营提供可重复的遭遇战，药铺、铁匠铺和杂货商为出门前的整备点。进度保存在当前浏览器的三个存档位。
 
-An original single-player action RPG built with Egret Rebuild. This first chapter connects Xiqi town and the Qishan road. Accept Jiang Shang's commission, equip earned loot, use the returning Universe Ring, defeat the corrupted general and report back. All game resources are local to this folder, with three saves in the current browser.
+An original single-player action RPG built with Egret Rebuild. Xuanjia investigates the Qishan Trail and Bronze Pass across two chapters. Gather herbs, salvage old armor and choose side-quest rewards. The training camp offers repeatable encounters, while three town shops provide supplies and gear. Three saves live in the current browser.
 
 角色和装备采用原创生成插画，西岐城使用暖赭色石材、木构和灯火，古道使用冷青岩壁和青铜遗迹。角色姿态、刀光、受击、首领预警和乾坤圈往返均在原生 2D 显示树中表现。场景原画来源见 [场景素材清单](assets/world/SOURCES.json)。
 
@@ -25,16 +25,19 @@ Speak with Jiang Shang, take the ring and leave through the eastern portal. Six 
 | 接战 · Engage | 点击敌人追击与普攻 · click an enemy | 点敌人 · tap an enemy |
 | 攻击 · Attack | 空格或「攻击」· Space or Attack | 「攻击」· Attack |
 | 法宝 · Artifact | Q 或「乾坤圈」· Q or Universe Ring | 「乾坤圈」· Universe Ring |
+| 怒技 · Rage | R 或「怒技」· R or Rage | 「怒技」· Rage |
 | 回血 · Heal | 1 或「回春散」· 1 or Healing Powder | 「回春散」· Healing Powder |
 | 交谈、传送、拾取 · Interact and collect | 走近后点对应按钮 · use the nearby action | 对应按钮 · nearby action |
 | 装备 · Equip | B 或「行囊」，再点装备 · B or Bag, then Equip | 「行囊」内装备 · Equip in Bag |
 | 暂停与存档 · Pause and save | Esc 或「暂停」· Esc or Pause | 「暂停」· Pause |
 
-军需官每十二文出售一份回春散。回城恢复气血并至少补给到三份。力竭可返回西岐，保留已拾取装备和任务进度。存档位属于当前浏览器和站点，清除站点数据也会清除存档。
+在行囊可更换武器、副手、护甲、战靴、戒印和主动法宝。乾坤圈五秒冷却，回风幡有三次近身脉冲与短暂护体，八秒冷却。造成伤害及受击累积怒气，满怒可用有短前摇的范围怒技。按 J 打开札记可切换追踪主任务或支线。
+
+药铺每十二文出售一份回春散，也可买三份装。铁匠卖兵器和护具，杂货商卖行装、戒环与法宝。回城恢复气血并至少补给到三份。力竭可返回西岐，保留已拾取装备和任务进度。存档位属于当前浏览器和站点。
 
 暂停菜单可独立调整配乐和音效，或一键静音。城镇、古道和首领战使用各自的原创曲目。稀有装备穿戴后会发光，重击与乾坤圈命中带有短促震屏。浏览器启用减少动态效果时会关闭震屏。
 
-The quartermaster sells healing powder for twelve coins. Returning to town restores health and supplies at least three powders. On defeat, return to Xiqi with collected equipment and quest progress. Saves belong to this browser and site. Clearing site data removes them. Gamepad controls are outside this chapter's implemented controls.
+Equip a weapon, offhand, armor, boots, ring and active artifact from the bag. The returning ring has a five-second cooldown, and the Wind Banner gives three close-range pulses and a brief ward on an eight-second cooldown. Dealing and taking damage fills Rage. Open the journal with J to track a main or side quest. The apothecary, blacksmith and general merchant sell different supplies. Returning to Xiqi restores health and supplies at least three powders. Saves belong to this browser and site.
 
 The pause menu has separate music and effects controls and a global mute. Three original compositions cover town, the trail, and the boss. Rare gear glows while equipped. Heavy hits and ring impacts briefly shake the camera, with reduced-motion mode disabling the shake.
 
@@ -50,6 +53,10 @@ The pause menu has separate music and effects controls and a global mute. Three 
 | `Scope`、纹理租约 · Scope and texture leases | 界面切换和场景图集的生命周期 · texture and view lifetime | `src/art/paint.mjs`, `src/view.mjs` |
 
 ## 已验证 · Verified
+
+25 项规则和存档测试通过。正常操作模拟走完两章、两条支线、三家买卖和两轮演武，验证旧存档护符迁移、法宝卸下保存、材料采集与主线奖励去重。引擎和设备验收记录见 [验收记录](QUALITY.md)。
+
+Twenty-five rules and persistence tests passed. A normal-action simulation completed both chapters, both side quests, transactions at the three stores and two repeat runs. Tests cover legacy gear and skill saves, resources and one-time rewards. See [Quality](QUALITY.md) for devices and render checks.
 
 14 项规则与存档测试通过。Windows PC（Edge）与三星 Fold7 横屏（Chrome）均使用 WebGL2，从新档正常玩到复命，并刷新网页续档，保留任务、装备和背包。完整操作和帧间隔见 [验收记录](QUALITY.md)。
 
@@ -73,9 +80,9 @@ Click movement routes around solid rectangles and diagonal speed is normalized. 
 
 ## 未完成 · Unfinished
 
-本章之外的剧情、其他修行路线与后续地图尚未制作。当前交付目标为两张地图的一条完整单机任务流程。
+当前故事推进到铜关两章，旧营可以重复挑战。人物多职业与铜关之后的剧情属于后续内容。
 
-Later chapters, additional cultivation paths and further maps are future work. This delivery targets one complete single-player quest across two maps.
+The current story covers two chapters through Bronze Pass and a repeatable camp. Additional classes and later story chapters are future work.
 
 ## 目录结构 · Layout
 

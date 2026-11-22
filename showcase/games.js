@@ -7,12 +7,12 @@ export const GAMES = [
     id: 'fengshen', folder: 'FengshenChronicle', kind: '2d',
     scenes: [
       { zh: '西岐城 · 姜尚授命', en: 'Xiqi · Jiang Shang’s commission' },
-      { zh: '岐山古道 · 获得破邪剑', en: 'Qishan Trail · A new sword' },
-      { zh: '岐山古道 · 乾坤圈迎战邪将', en: 'Qishan Trail · The ring meets the warlord' },
+      { zh: '西岐城 · 五部位换装', en: 'Xiqi · Equipped gear and artifact' },
+      { zh: '演武旧营 · 铜关卫盾战利品', en: 'Training camp · Vanguard shield loot' },
     ],
     zh: '封神 · 西岐战纪', en: 'Fengshen Chronicle',
     genre: { zh: '单机动作角色扮演', en: 'Single-player action RPG' },
-    summary: { zh: '扮演玄甲，领姜尚之命出西岐，拾取并换上新装备，以乾坤圈击败古道邪将。', en: 'Play as Xuanjia, take Jiang Shang’s commission, gear up on the trail and defeat the warlord with the returning ring.' },
+    summary: { zh: '从西岐追查古道与铜关的异变，完成主支线、换装交易，在演武旧营反复迎战。', en: 'Investigate the trail and Bronze Pass, choose quest rewards, trade and equip gear, and fight repeatable camp battles.' },
     features: [
       {
         title: { zh: '原生 2D 与 WebGL2', en: 'Native 2D and WebGL2' },
