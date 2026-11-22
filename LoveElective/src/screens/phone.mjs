@@ -10,6 +10,7 @@ import { PLACES } from '../data/places.mjs';
 import { GIFTS, SUPPLIES, CLOTHES, STYLES } from '../data/items.mjs';
 import * as sim from '../sim.mjs';
 import { BAILU_ZERO_TITLE, BAILU_ZERO_CLUES } from '../data/bailu-zero.mjs';
+import { SOCIAL_IDS } from '../data/social-stories.mjs';
 
 const TABS = [
   ['girls', ['学姐', 'Seniors']],
@@ -18,6 +19,7 @@ const TABS = [
   ['me', ['我', 'Me']],
   ['system', ['设置', 'Settings']],
   ['letter', ['回信', 'Letters']],
+  ['social', ['邀約', 'Invites']],
 ];
 const QUESTS_PER_PAGE = 5;
 
@@ -45,6 +47,25 @@ export function openPhone(game, tab = 'girls') {
     }
 
     const pages = {
+      social(p){
+        SOCIAL_IDS.forEach((id,i)=>{
+          const status=sim.socialStatus(s,id),q=s.socialStories[id],y=96+i*150;
+          p.card(26,y,928,140,{r:16,fill:'#f9f1ec',shadow:.08});game.avatar(p,status.lead,42,y+16,64);
+          p.text(L(status.name),124,y+12,{size:21,weight:750,color:HEROINES[status.lead].color});
+          p.text(`${L(HEROINES[status.lead].name)} · ${L(status.venue)}`,124,y+44,{size:14,color:THEME.soft});
+          if(!status.unlocked)p.text(L([`第二章完成 · 好感 ${status.aff} 後收到邀請`,`Invitation after chapter 2 and ${status.aff} affection`]),124,y+82,{size:16,color:THEME.faint,maxW:600});
+          else{
+            const detail=status.complete?L([`可直接稱呼名字 · 話題：${q.topics.join('、')}`,`First-name familiarity · Topic: ${L(status.topic)}`]):L(status.hint);
+            p.text(detail,124,y+78,{size:15,color:THEME.soft,maxW:570,lineH:22});
+            const playable=!status.complete||status.followupAvailable;
+            p.button(746,y+74,190,44,L(!status.complete?(q.playback?['繼續約定','Resume']:status.stage===0?['接受邀請','Accept invitation']:['穿好了，赴約','Dressed; meet her']):playable?['接續話題／赴約','Continue / meet']:['約定已實現','Promise fulfilled']),()=>close('social:'+id),{kind:'primary',size:15,disabled:!playable});
+            if(status.complete){
+              const label=q.followup==='done'?['已赴約','Fulfilled']:q.invitation?.accepted?['已約好','Planned']:['待回覆','Open invite'];
+              p.text(`${L(label)} · ${L(status.invitation)}`,124,y+110,{size:13,color:THEME.faint,maxW:575});
+            }
+          }
+        });
+      },
       letter(p){
         const status=sim.bailuZeroStatus(s),q=s.bailuZero;
         p.text(L(BAILU_ZERO_TITLE),40,104,{size:29,weight:750,color:THEME.violet});
@@ -356,16 +377,16 @@ export function openPhone(game, tab = 'girls') {
     function paint(p) {
       p.sheet(0, 0, 980, 612, { accent: THEME.violet });
       TABS.forEach(([id, label], i) => {
-        const x = 26 + i * 132;
-        p.segment(x, 26, 122, 46, L(label), view.tab === id, () => {
+        const x = 26 + i * 114;
+        p.segment(x, 26, 104, 46, L(label), view.tab === id, () => {
           view.tab = id;
           view.page = 0;
           view.confirm = false;
           repaint();
-        }, { size: 18 });
+        }, { size: 16 });
       });
       const ready = sim.visibleQuests(s).filter(x => x.state === 'ready').length;
-      if (ready) p.chip(String(ready), 26 + 132 + 96, 20, { color: THEME.rose, size: 12, h: 20, padX: 7 });
+      if (ready) p.chip(String(ready), 26 + 114 + 88, 20, { color: THEME.rose, size: 12, h: 20, padX: 7 });
       p.button(858, 28, 96, 42, L(['关闭', 'Close']), () => close(), { kind: 'dark', size: 16 });
       pages[view.tab](p);
     }

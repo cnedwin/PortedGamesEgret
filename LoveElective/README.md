@@ -53,6 +53,16 @@ After Bai Lu's second chapter, open the letter card on the campus map or the Let
 
 The episode includes 22 synthesized Taiwanese Mandarin lines and three original scene tracks. Replay voiced lines in the dialogue box, or adjust music, voice and effects separately in the phone settings. [音讯制作 · Audio credits](assets/audio/README.md)
 
+### 课余邀约 · After-class invitations
+
+校园地图的「查看邀約」会打开游戏手机的「邀約」页。读完林夏第二章且好感达到 20，可参加「泳池晚風」。唐蜜和白露的第二章读完且好感达到 35 后，分别开放「睡衣與不加糖的可可」和「浴衣、茶與窗外的星光」。三场都是成年角色的课余活动。
+
+活动分为试衣和赴约两段。运动泳装、缎面睡衣、浴衣和配件会进对应角色的衣橱，可自由叠穿和染色。赴约时会显示当时选定的服装和配色。靠近、回应和留白有不同的后续对白。新的称呼、话题和下次邀约记在手机，下次普通聊天也能接续。选改天可以之后再约。
+
+Open **Invites** from the campus map. Lin Xia's poolside outing opens after chapter two at 20 affection. Tang Mi's pyjama gathering and Bai Lu's bathhouse tea visit open after their second chapters at 35 affection. The outing first saves both outfits and dyes, then brings them into the meeting. Your choices carry into the next conversation, where you can follow through on the invitation or defer it.
+
+泳池、公共休息室和浴场茶室使用为本作生成的原创背景。邀约补配 15 句台湾国语合成对白，并加入原创校园日常主题。对白期间会自动压低配乐。 [音讯制作 · Audio credits](assets/audio/README.md)
+
 ### 好感与拉扯 · Affection and push-and-pull
 
 - **聊天**：每段时间可以和在场的学姐聊一次，并选择这次的距离：靠近一步、自然相处或留点余白。每个人喜欢的距离不同——有人喜欢你主动，有人需要空间。聊过几次后，她觉得舒服的范围会显示在“拉扯”条上；落在范围内好感涨得最快，太急或太疏远都会适得其反。

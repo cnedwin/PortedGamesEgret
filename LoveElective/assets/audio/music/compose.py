@@ -1,4 +1,4 @@
-"""Original White Dew scene scores. Python, NumPy and lameenc render all notes.
+"""Original campus and White Dew scene scores. Python, NumPy and FFmpeg render all notes.
 No sampled recordings or third-party compositions are used.
 Run python compose.py OUTPUT_DIRECTORY --ffmpeg PATH. Keep WAV masters outside the web build.
 """
@@ -29,6 +29,9 @@ def voice(note, seconds, kind, rng):
         for ratio, level in ((1, .64), (2.001, .16), (3, .07)):
             out += level * np.sin(TAU * f * ratio * t + .009 * np.sin(t * 2.1))
         out *= attack * release * (.94 + .06 * np.sin(t * .9))
+    elif kind == "brush":
+        out = np.convolve(rng.normal(0, 1, len(t)), np.ones(13)/13, mode="same")
+        out *= np.exp(-t*32) * (1-np.exp(-t*400))
     else:
         bright = kind == "bell"
         nylon = kind == "nylon"
@@ -55,6 +58,10 @@ MYSTERY_CHORDS = [
     "D3 A3 F4 E5", "Bb2 F3 D4 A4", "G2 D3 Bb3 E4", "A2 E3 C4 G4",
     "D3 A3 E4 F4", "C3 G3 D4 E4", "Bb2 F3 A3 D5", "A2 E3 G3 B4",
 ]
+SOCIAL_CHORDS = [
+    "F2 C3 A3 E4", "C3 G3 E4 D5", "D3 A3 F4 A4", "A2 E3 C4 G4",
+    "Bb2 F3 D4 A4", "C3 G3 E4 B4", "F2 C3 A3 D5", "C3 G3 D4 E4",
+]
 MELODIES = {
     "bailu-zero-night": [
         "E4:0.3:1.5 B4:2.6:0.7", "A4:1.1:1.7", "G4:0.6:0.8 E4:2.4:1.0", "D4:1.3:1.6",
@@ -72,20 +79,28 @@ MELODIES = {
         "F4:0.5:0.8 A4:1.8:0.7 C5:3.0:0.6", "B4:0.8:1.2 G4:2.8:0.7",
         "E4:0.5:1.0 D4:2.1:0.7 C4:3.1:0.6", "D4:1.0:1.1 E4:2.8:0.6",
     ],
+    "campus-social-day": [
+        "A4:0.3:0.7 C5:1.65:0.6 D5:2.8:0.7", "G4:0.65:0.8 E4:2.2:1.0",
+        "F4:0.3:0.6 A4:1.4:0.7 G4:2.9:0.8", "E4:0.9:1.3 C4:3.0:0.6",
+        "D4:0.5:0.6 F4:1.7:0.7 A4:2.8:0.8", "G4:0.7:0.7 E4:2.0:0.7 D4:3.2:0.4",
+        "C5:0.3:0.9 A4:1.7:0.9 F4:3.0:0.6", "E4:0.8:1.2 G4:2.8:0.6",
+    ],
 }
 
 def score(name, bpm, chords, seed, output, ffmpeg):
     beat = 60 / bpm
-    frames = round(24 * 4 * beat * RATE)
+    social = name == "campus-social-day"
+    bars = 32 if social else 24
+    frames = round(bars * 4 * beat * RATE)
     mix = np.zeros((frames,2),dtype=np.float32)
     rng = np.random.default_rng(seed)
     events = []
-    for bar in range(24):
+    for bar in range(bars):
         root, fifth, third, high = chords[bar % 8].split()
         section = bar // 8
         for offset,pitch,length,gain,kind,pan in (
             (.06,root,2.6,.26,"piano",-.07),
-            (1.2,fifth,1.1,.15,"nylon" if name.endswith("warm") else "piano",-.27),
+            (1.2,fifth,1.1,.15,"nylon" if name.endswith("warm") or social else "piano",-.27),
             (2.6,third,1.2,.125,"piano",.26),
         ):
             if section == 1 and bar % 2 and offset == 2.6:
@@ -93,11 +108,16 @@ def score(name, bpm, chords, seed, output, ffmpeg):
             events.append((bar*4+offset,pitch,length,gain,kind,pan))
         if bar % 2 == 0:
             events.append((bar*4+.1,third,6.5,.058 if section != 1 else .043,"pad",.04))
+        if social:
+            events.append((bar*4+2.15,fifth,.55,.095,"nylon",-.29))
+            if section in (0,3) and bar%2 == 0:
+                for offset in (1.0,3.0):
+                    events.append((bar*4+offset,"C4",.15,.038,"brush",.21))
         if section != 1 or bar % 4 in (2,3):
             for token in MELODIES[name][bar%8].split():
                 pitch,offset,length=token.split(":")
                 events.append((bar*4+float(offset)+rng.uniform(-.022,.022),pitch,float(length),
-                               .15 if name.endswith("mystery") else .235,
+                               .15 if name.endswith("mystery") else .18 if social else .235,
                                "bell" if name.endswith("mystery") else "piano",.13))
         if section == 2 and bar % 2 == 0:
             events.append((bar*4+3.2,high,.65,.080,"nylon",-.31))
@@ -131,7 +151,7 @@ def score(name, bpm, chords, seed, output, ffmpeg):
     restored=np.frombuffer(decoded,"<f4").reshape(-1,2)
     if len(restored)!=frames or np.max(np.abs(restored))>.8:
         raise ValueError("Music roundtrip changed frame count or exceeded headroom")
-    return {"id":name,"bpm":bpm,"seconds":frames/RATE,"bars":24,
+    return {"id":name,"bpm":bpm,"seconds":frames/RATE,"bars":bars,
             "notes":len(events),"bytes":len(encoded),"peak":float(np.max(np.abs(mix))),
             "rmsDbFS":20*np.log10(float(np.sqrt(np.mean(mix**2)))),
             "seamJump":float(np.max(np.abs(mix[0]-mix[-1]))),
@@ -142,6 +162,7 @@ def main():
     parser=argparse.ArgumentParser(description=__doc__)
     parser.add_argument("output",type=Path)
     parser.add_argument("--ffmpeg",required=True)
+    parser.add_argument("--only",choices=tuple(MELODIES))
     args=parser.parse_args()
     args.output.mkdir(parents=True,exist_ok=True)
     report=[]
@@ -149,7 +170,10 @@ def main():
         ("bailu-zero-night",72,NIGHT_CHORDS,77261),
         ("bailu-zero-mystery",84,MYSTERY_CHORDS,77262),
         ("bailu-zero-warm",78,WARM_CHORDS,77263),
+        ("campus-social-day",92,SOCIAL_CHORDS,88061),
     ):
+        if args.only and name != args.only:
+            continue
         row=score(name,bpm,chords,seed,args.output,args.ffmpeg)
         report.append(row)
         print(json.dumps(row),flush=True)

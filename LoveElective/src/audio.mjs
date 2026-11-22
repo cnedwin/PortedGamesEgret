@@ -12,7 +12,7 @@ const CHORDS = [
 const BEAT = 0.42;
 const RATE = 32000;
 const hz = semitone => 220 * 2 ** (semitone / 12);
-const SCENE_MUSIC = new Set(['bailu-zero-night', 'bailu-zero-mystery', 'bailu-zero-warm']);
+const SCENE_MUSIC = new Set(['bailu-zero-night', 'bailu-zero-mystery', 'bailu-zero-warm', 'campus-social-day']);
 const SETTINGS_KEY = 'love-elective-audio-v1';
 
 /** Notes are [frequency, start, length, volume, waveform]. */
@@ -78,6 +78,7 @@ export function createAudio() {
   const files = new Map(), pendingFiles = new Map();
   let host, preparing, disposed = false, lastError;
   let desiredMusic = 'campus', musicRequest = 0, voiceRequest = 0, currentVoice, lastVoice;
+  let musicDecode = Promise.resolve();
   const audio = { muted: false };
   const report = error => { lastError = error?.code ?? error?.message ?? String(error); };
   const preferences = {
@@ -99,6 +100,16 @@ export function createAudio() {
     host?.mixer.bus('music').setVolume(preferences.music.volume * (speech ? 0.28 : 1), { fade: 0.20 });
   }
 
+  function releaseRetiredMusic() {
+    const current = host?.mixer.music?.sound;
+    for (const [key, sound] of files) {
+      if (key.startsWith('music/') && sound !== current) {
+        sound.release();
+        files.delete(key);
+      }
+    }
+  }
+
   async function loadFile(kind, id) {
     const key = kind + '/' + id;
     if (files.has(key)) return files.get(key);
@@ -109,8 +120,23 @@ export function createAudio() {
       if (!response.ok) throw new Error('Audio ' + response.status + ' ' + id);
       const bytes = await response.arrayBuffer();
       if (disposed) return;
-      const sound = await host.mixer.decode(bytes);
+      const decode = async () => {
+        if (disposed) return;
+        if (kind === 'music' && id !== (desiredMusic === 'campus' ? 'campus-social-day' : desiredMusic)) return;
+        // Only the playing music and its replacement need decoded samples.
+        // A fast second transition retires the oldest fading deck first.
+        if (kind === 'music') releaseRetiredMusic();
+        return host.mixer.decode(bytes);
+      };
+      const task = kind === 'music' ? musicDecode.then(decode) : decode();
+      if (kind === 'music') musicDecode = task.catch(() => {});
+      const sound = await task;
+      if (!sound) return;
       if (disposed) { sound.release(); return; }
+      if (kind === 'music' && id !== (desiredMusic === 'campus' ? 'campus-social-day' : desiredMusic)) {
+        sound.release();
+        return;
+      }
       files.set(key, sound);
       return sound;
     })().finally(() => { pendingFiles.delete(key); });
@@ -121,9 +147,17 @@ export function createAudio() {
   async function applyMusic() {
     const requested = desiredMusic, token = ++musicRequest;
     try {
-      const sound = requested === 'campus' ? sounds.get('music') : await loadFile('music', requested);
+      const cue = requested === 'campus' ? 'campus-social-day' : requested;
+      let sound;
+      try { sound = await loadFile('music', cue); }
+      catch (error) {
+        report(error);
+        if (requested === 'campus') sound = sounds.get('music');
+      }
       if (!sound || disposed || token !== musicRequest || requested !== desiredMusic) return;
+      const before = host.mixer.music;
       host.mixer.playMusic(sound, { bus: 'music', fade: 0.65 });
+      if (before && before.sound !== sound) void before.ended.then(releaseRetiredMusic);
       mixMusic();
     } catch (error) { report(error); }
   }
@@ -150,7 +184,7 @@ export function createAudio() {
   }
 
   /** Entered directly from the player's touch or key to unlock browser sound. */
-  audio.unlock = () => {
+  function unlock() {
     if (disposed) return Promise.resolve();
     try {
       host ??= createBrowserAudio({
@@ -158,12 +192,13 @@ export function createAudio() {
         buses: Object.entries(preferences).map(([name, value]) => ({ name, ...value })), onError: report,
       });
       if (host.context.state === 'suspended') void host.context.resume().catch(report);
-      return prepare().then(() => { if (!disposed) return applyMusic(); }).catch(report);
+      return prepare();
     } catch (error) {
       report(error);
       return Promise.resolve();
     }
-  };
+  }
+  audio.unlock = () => unlock().then(() => { if (!disposed) void applyMusic(); }).catch(report);
   audio.setMuted = muted => {
     audio.muted = Boolean(muted);
     host?.mixer.master.setMuted(audio.muted);
@@ -186,7 +221,7 @@ export function createAudio() {
   audio.setMusic = scene => {
     if (scene !== 'campus' && !SCENE_MUSIC.has(scene)) return Promise.resolve();
     desiredMusic = scene;
-    return audio.unlock();
+    return unlock().then(() => { if (!disposed) return applyMusic(); }).catch(report);
   };
   audio.stopVoice = () => {
     voiceRequest++;
@@ -197,11 +232,11 @@ export function createAudio() {
   /** Resolves on playback start; dialogue advance never waits for speech to end. */
   audio.voice = async id => {
     audio.stopVoice();
-    if (!/^bailu-zero-(0[1-9]|1[0-9]|2[0-2])$/.test(id)) return null;
+    if (!/^(bailu-zero-(0[1-9]|1[0-9]|2[0-2])|social-(pool|pajama|lounge)-0[1-5])$/.test(id)) return null;
     lastVoice = id;
     const token = voiceRequest;
     try {
-      await audio.unlock();
+      await unlock();
       if (disposed || token !== voiceRequest || audio.muted || preferences.voice.muted) return null;
       const sound = await loadFile('voice', id);
       if (!sound || disposed || token !== voiceRequest || audio.muted || preferences.voice.muted) return null;

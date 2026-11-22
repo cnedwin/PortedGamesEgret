@@ -19,7 +19,7 @@ export function openWardrobe(game, who, options = {}) {
   return new Promise(resolve => {
     const tabs = hero ? ['top', 'bottom', 'outer', 'shoes', 'legs', 'acc', 'hair'] : ['top', 'bottom', 'dress', 'outer', 'shoes', 'legs', 'acc'];
     const view = { tab: options.tab??'top', page: 0, selected: sim.wearOf(s, who)[options.tab??'top']?.id ?? null, channel: 0 };
-    const panel = ui.panel({ x: 560, y: 86, w: 690, h: 624, res: 1.25 });
+    const panel = ui.panel({ x: 560, y: 86, w: 690, h: 624, res: 1.25, modal:Boolean(options.invited) });
     const stylePanel = ui.panel({ x: 22, y: 86, w: 236, h: 330, res: 1.25 });
     game.showHud(null);
 
@@ -131,7 +131,7 @@ export function openWardrobe(game, who, options = {}) {
             }
             refresh();
           },
-          { r: 12 },
+          { r: 12, label: L(isHair ? HAIRSTYLES[id].name : CLOTHES[id].name) },
         );
       });
       if (view.selected && CLOTHES[view.selected] && items.length <= 4) {
@@ -272,6 +272,7 @@ export function openWardrobe(game, who, options = {}) {
       if (hero) await world.hideActor();
       resolve();
     }
+    if(options.invited)panel.dismiss=close;
 
     world.hideActor().then(() => {
       showActor();
