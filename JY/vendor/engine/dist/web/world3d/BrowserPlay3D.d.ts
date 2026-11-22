@@ -1,4 +1,5 @@
 import type { DisplayObject } from '@egret/runtime';
+import { play } from '../play.js';
 import type { PlayGame, PlayOptions } from '../play.js';
 import { Object3D, Scene3D } from '../../rendering/world3d/Object3D.js';
 import type { Geometry3D } from '../../rendering/world3d/Geometry3D.js';
@@ -280,7 +281,15 @@ export declare function pushOut3D(a: PlayThing3D, b: PlayThing3D): {
     y: number;
     z: number;
 } | undefined;
+interface Play3DSurface {
+    readonly ready?: Promise<World3DApp>;
+    show?(scene: Scene3D, camera: Camera3D): void;
+    unplace?(): void;
+    remove?(): void;
+}
 /** Starts a 3D game in the page. See the guide `play3d.md`. */
 export declare function play3d(options: Play3DOptions): Promise<Play3DGame>;
+/** Internal host entry. The flat session owns input and UI; the surface presents the original scene. */
+export declare function createPlay3DSession(options: Play3DOptions, startFlat: typeof play, attach: (given: PlayGame, options: Play3DOptions) => Play3DSurface): Promise<Play3DGame>;
 export {};
 //# sourceMappingURL=BrowserPlay3D.d.ts.map

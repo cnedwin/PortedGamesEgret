@@ -288,7 +288,7 @@ const server = createServer(async (request, response) => {
       const manifest = await readOptional(join(webRoot, 'jyx2', 'actors', 'manifest.json'));
       if (!manifest) return send(204, mime['.json']);
     }
-    const isWeb = /^\/(?:index\.html|main\.mjs|opening-(?:dialogue|event|reading)\.mjs|battle-(?:view|music|menu)\.mjs|world-menu\.mjs|scene-atmosphere\.mjs|gamepad-input\.mjs|trainer-event\.mjs|save-(?:slot|info)\.mjs|style\.css)$/.test(asset)
+    const isWeb = /^\/(?:index\.html|main\.mjs|opening-(?:dialogue|event|reading)\.mjs|battle-(?:view|music|menu)\.mjs|world-menu\.mjs|scene-atmosphere\.mjs|gamepad-input\.mjs|trainer-event\.mjs|save-(?:slot|info)\.mjs|wav-effects\.mjs|style\.css)$/.test(asset)
       || /^\/jyx2\/(?:ui|scene|effects|actors|inn3d|inn3d-actors|home3d|home3d-actors)\/[a-z0-9][a-z0-9_.-]*\.(?:mjs|css|json|png|webp|jpg|bin|glb)$/i.test(asset);
     const isVendor = /^\/vendor\/(?:engine|runtime|contracts|robust-predicates)\/[a-z0-9_./-]+\.js$/i.test(asset);
     if (!isWeb && !isVendor) return missing();

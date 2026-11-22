@@ -15,7 +15,7 @@ import { SFX_PRESETS, isSfxRecipe, synthesizeSfx } from './playSfx.js';
 import { createPlayWidgets } from './playWidgets.js';
 import { prefersReducedMotion, watchReducedMotion } from './BrowserPreferences.js';
 import { createPlayTouch } from './playTouch.js';
-import { MUSIC_PARTS, composeMusic, musicMix } from './playMusic.js';
+import { MUSIC_MOODS, MUSIC_PARTS, composeMusic, musicMix } from './playMusic.js';
 /** A line of text: a sprite to place, fade, tween and remove like any other, with words that can be changed. */
 export class PlayText extends Sprite {
     #text;
@@ -141,11 +141,14 @@ class PlayingLoop {
         this.#volume = Math.max(0, Math.min(1, volume));
         this.#pitch = Math.max(0.25, Math.min(4, pitch));
         this.#pan = Math.max(-1, Math.min(1, pan));
-        const made = sound();
-        if (made === undefined)
+        if (mixer === undefined) {
+            this.#stopped = true;
+            return;
+        }
+        if (sound === undefined)
             return;
         try {
-            this.#voice = mixer.play(made, {
+            this.#voice = mixer.play(sound, {
                 loop: true,
                 volume: 0,
                 rate: this.#pitch,
@@ -250,6 +253,8 @@ export async function play(options) {
         throw invalid('update is a function');
     if (onError !== undefined && typeof onError !== 'function')
         throw invalid('onError is a function');
+    if (options.audio !== undefined && typeof options.audio !== 'boolean')
+        throw invalid('audio is true or false');
     if (options.reducedMotion !== undefined && typeof options.reducedMotion !== 'boolean')
         throw invalid('reducedMotion is true or false');
     // Given, it is the game's; not given, it follows the system's setting.
@@ -606,13 +611,15 @@ export async function play(options) {
     ];
     for (const [target, type, listener] of listening)
         target.addEventListener(type, listener, { passive: false });
-    // Sound: every effect is made and decoded before the game is set up, so the first one plays at once.
-    const audio = scope.use(createBrowserAudio({ limiter: true }));
+    // Only the built-in mixer belongs to this game. Opting out also skips its browser gesture listeners.
+    const mixer = options.audio === false ? undefined : scope.use(createBrowserAudio({ limiter: true })).mixer;
     const sounds = new Map();
     const RATE = 22050;
     const make = async (name, recipe) => {
+        if (mixer === undefined)
+            return;
         try {
-            sounds.set(name, await audio.mixer.decode(encodeWav([synthesizeSfx(recipe, RATE)], RATE)));
+            sounds.set(name, await mixer.decode(encodeWav([synthesizeSfx(recipe, RATE)], RATE)));
         }
         catch {
             // A page without sound still plays the game.
@@ -633,11 +640,11 @@ export async function play(options) {
                     cause: new Error(`"${String(name)}" is not one of: ${[...names].join(', ')}`)
                 });
             const sound = sounds.get(name);
-            if (sound === undefined || muted)
+            if (mixer === undefined || sound === undefined || muted)
                 return;
             const loud = Math.max(0, Math.min(1, (finite(given.volume) ? given.volume : 1) * volume)), rate = Math.max(0.25, Math.min(4, finite(given.pitch) ? given.pitch : 1)), pan = Math.max(-1, Math.min(1, finite(given.pan) ? given.pan : 0));
             try {
-                audio.mixer.play(sound, { volume: loud, rate, pan, maxInstances: 6 });
+                mixer.play(sound, { volume: loud, rate, pan, maxInstances: 6 });
             }
             catch {
                 // Sound never stops a game.
@@ -648,7 +655,9 @@ export async function play(options) {
                 throw new EgretError('PLAY_SFX_UNKNOWN', {
                     cause: new Error(`"${String(name)}" is not one of: ${[...names].join(', ')}`)
                 });
-            const made = new PlayingLoop(() => sounds.get(name), audio.mixer, finite(given.volume) ? given.volume : 1, finite(given.pitch) ? given.pitch : 1, finite(given.pan) ? given.pan : 0, finite(given.fadeIn) ? given.fadeIn : 0);
+            const made = new PlayingLoop(sounds.get(name), mixer, finite(given.volume) ? given.volume : 1, finite(given.pitch) ? given.pitch : 1, finite(given.pan) ? given.pan : 0, finite(given.fadeIn) ? given.fadeIn : 0);
+            if (mixer === undefined)
+                return made;
             loops.add(made);
             made.heard(muted ? 0 : volume);
             return made;
@@ -706,6 +715,11 @@ export async function play(options) {
             const chosen = typeof given === 'string' ? { mood: given } : (given ?? {});
             if (chosen === null || typeof chosen !== 'object')
                 throw invalid('music.play takes a mood or { mood, seed, tempo, bars }');
+            if (mixer === undefined) {
+                if (!MUSIC_MOODS.includes(chosen.mood ?? 'calm'))
+                    throw invalid('the mood of music is one of: ' + MUSIC_MOODS.join(', '));
+                return;
+            }
             let piece;
             try {
                 piece = composeMusic(chosen, RATE);
@@ -714,7 +728,7 @@ export async function play(options) {
                 throw invalid(cause instanceof Error ? cause.message : 'music.play takes a mood');
             }
             const ticket = ++musicTicket;
-            const made = await Promise.all(MUSIC_PARTS.map(part => audio.mixer.decode(encodeWav([piece.parts[part]], piece.rate)).catch(() => undefined)));
+            const made = await Promise.all(MUSIC_PARTS.map(part => mixer.decode(encodeWav([piece.parts[part]], piece.rate)).catch(() => undefined)));
             // A newer piece, a stop or the end of the game came while this one was being made.
             if (ticket !== musicTicket || disposed)
                 return;
@@ -722,7 +736,7 @@ export async function play(options) {
                 loop.stop(1.2);
             const mix = musicMix(musicIntensity);
             musicParts = MUSIC_PARTS.map((part, index) => {
-                const level = musicVolume * mix[part], loop = new PlayingLoop(() => made[index], audio.mixer, level, 1, 0, 1.2);
+                const level = musicVolume * mix[part], loop = new PlayingLoop(made[index], mixer, level, 1, 0, 1.2);
                 loops.add(loop);
                 loop.heard(muted ? 0 : volume);
                 if (paused)
@@ -1612,7 +1626,8 @@ export async function play(options) {
         layer: glass
     });
     try {
-        await Promise.all(Object.entries(SFX_PRESETS).map(([name, recipe]) => make(name, recipe)));
+        if (mixer !== undefined)
+            await Promise.all(Object.entries(SFX_PRESETS).map(([name, recipe]) => make(name, recipe)));
         await runSetup(false);
         if (disposed)
             throw new EgretError('SCOPE_CLOSED');

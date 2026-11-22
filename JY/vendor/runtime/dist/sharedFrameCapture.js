@@ -516,6 +516,7 @@ function captureSharedContent(stage, readBitmap, tree = liveTree, keeping = fals
             pageIndex = pages.length;
             pages.push(freeze({
                 source: image,
+                ...(image === SHAPE_PAGE ? { builtin: 'solid-white' } : {}),
                 sourceRepresentation: 'egret.srgb-straight-rgba8/1',
                 canonicalRepresentation: 'egret.alpha8-capped-srgb-pma8/1'
             }));

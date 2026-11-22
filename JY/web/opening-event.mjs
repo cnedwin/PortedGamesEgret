@@ -18,7 +18,7 @@ export async function loadOpening() {
   return { commands, pictures: [...pictures], portraits: [...portraits] };
 }
 
-export async function playOpening({ opening, scene, slot, signal, view, sound = true }) {
+export async function playOpening({ opening, scene, slot, signal, view }) {
   const framePeriod = 1000 / 60;
   let presented = 0;
 
@@ -58,12 +58,9 @@ export async function playOpening({ opening, scene, slot, signal, view, sound = 
       view.requestFrame();
     },
     setTowards(direction) { view.setFacing(direction); },
-    async playWave(id) {
+    playWave(id) {
       if (id !== 24) throw new Error(`未接入音效 ${id}`);
-      if (!sound) return;
-      const audio = new Audio(`/audio/wave/${id}.wav`);
-      signal.addEventListener('abort', () => audio.pause(), { once: true });
-      await audio.play().catch(() => {});
+      return view.wave(id);
     },
     modifyEvent(...args) {
       modifySceneEvent(scene, slot, ...args);

@@ -1,5 +1,7 @@
 import { Bitmap, Sprite, copyImageData2DPixels, createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture } from '@egret/engine';
 import { createBrowserKeyboardInput } from '@egret/engine/web/keyboard';
+import { createBrowserGamepadInput } from '@egret/engine/web/gamepad';
+import { createBrowserAudio } from '@egret/engine/web/audio';
 import { createTextRasterCache } from '@egret/engine/text';
 import { createCanvasTextRasterProvider } from '@egret/engine/web/text';
 import { createSharedWebGL2Host } from '@egret/engine/webgl2';
@@ -10,6 +12,7 @@ import { createBattleView } from './battle-view.mjs';
 import { createBattleMenu } from './battle-menu.mjs';
 import { attachBattleControls } from './jyx2/ui/battle-controls.mjs';
 import { createBattleMusic } from './battle-music.mjs';
+import { createWavEffects } from './wav-effects.mjs';
 import { autoSlot, createSaveSlot, manualSlots } from './save-slot.mjs';
 import { describeSaveSlot } from './save-info.mjs';
 import { createClassicBattle, resolveClassicTeam } from './classic-battle.mjs';
@@ -581,6 +584,15 @@ async function openMap(game, destination) {
   let forcedPlayerPicture;
   const openingPoses = new Map();
   const listeners = new AbortController();
+  const effects = scope.use(createWavEffects({ createAudio: createBrowserAudio, enabled: game.sound }));
+  const activateEffects = event => { if (event.isTrusted && !event.repeat) effects.activate(); };
+  for (const type of ['keydown', 'pointerup']) {
+    document.addEventListener(type, activateEffects, { capture: true, signal: listeners.signal });
+  }
+  if (navigator.userActivation?.hasBeenActive) effects.activate();
+  if (!game.openingDone && opening?.commands.some(({ name, args }) => name === 'PlayWave' && args[0] === 24)) {
+    void effects.preload('wave', 24);
+  }
   const journal = createDialogueJournal(game.dialoguePages ??= [], {
     signal: listeners.signal,
     restoreFocus: () => canvas.focus({ preventScroll: true }),
@@ -748,6 +760,7 @@ async function openMap(game, destination) {
     const view = {
       requestFrame,
       presentFrame,
+      wave: id => effects.play('wave', id, { signal: listeners.signal }),
       async talk(options) {
         if (openingReading.shouldSkip(openingCommand)) return;
         if (await dialogue.talk(options)) openingReading.acknowledge(openingCommand);
@@ -775,7 +788,7 @@ async function openMap(game, destination) {
         requestFrame();
       },
     };
-    void playOpening({ opening, scene, slot, signal: listeners.signal, view, sound: game.sound }).then(async () => {
+    void playOpening({ opening, scene, slot, signal: listeners.signal, view }).then(async () => {
       forcedPlayerPicture = undefined;
       openingPoses.clear();
       await presentFrame();
@@ -815,20 +828,18 @@ async function openMap(game, destination) {
       if (saved) Object.assign(role, saved);
     }
     listeners.signal.throwIfAborted();
-    const soundPlayers = new Map();
+    let soundSession = new AbortController();
+    let soundSignal = AbortSignal.any([listeners.signal, soundSession.signal]);
     let view;
     let arena;
     let musicLive = false;
     function playSound(group, id) {
-      if (!game.sound || !Number.isInteger(id) || id < 0 || id > 99) return;
-      const path = `/audio/${group}/${id}.wav`;
-      let audio = soundPlayers.get(path);
-      if (!audio) {
-        audio = new Audio(path);
-        soundPlayers.set(path, audio);
-      }
-      audio.currentTime = 0;
-      void audio.play().catch(() => {});
+      void effects.play(group, id, { signal: soundSignal });
+    }
+    function resetSound() {
+      soundSession.abort();
+      soundSession = new AbortController();
+      soundSignal = AbortSignal.any([listeners.signal, soundSession.signal]);
     }
     try {
       const roster = spec.party.map(roleId => spec.roster.find(role => role.id === roleId));
@@ -848,6 +859,15 @@ async function openMap(game, destination) {
       });
       const selected = spec.autoTeamMate[0] >= 0 ? undefined : await menu.chooseTeam(roster, listeners.signal);
       spec.team = resolveClassicTeam(spec, selected);
+      // Warm a bounded set of opening skills while the arena and actors load.
+      const skillIds = new Set([...spec.team, ...spec.enemy]
+        .flatMap(role => (role.learnedMagics ?? []).slice(0, 2).map(skill => skill.id)));
+      for (const id of [...skillIds].slice(0, 6)) {
+        const skill = spec.magics[id];
+        if (!skill) continue;
+        void effects.preload('wave', skill.soundId);
+        void effects.preload('hit', skill.effectId);
+      }
       Object.assign(canvas.dataset, { trainer: 'loading', battleTeam: spec.team.map(role => role.id).join(',') });
       notice.hidden = false;
       notice.textContent = '正在讀取原作戰場與人物動畫…';
@@ -900,20 +920,20 @@ async function openMap(game, destination) {
       marker.textContent = '經典回合制';
       notice.hidden = true;
       await new Promise((resolve, reject) => {
-        battle = { model, makeModel, view, arena, resolve, reject, soundPlayers, lastTime: performance.now() };
+        battle = { model, makeModel, view, arena, resolve, reject, resetSound, lastTime: performance.now() };
         canvas.dataset.battleAllies = model.state.roles.filter(role => role.side === 0).map(role => role.id).join(',');
         canvas.dataset.trainer = 'battle';
       });
       const state = battle.model.state;
       return { id, name: spec.name, won: state.result, settlement: state.settlement, inventoryDelta: state.inventoryDelta };
     } finally {
+      soundSession.abort();
       menu.close();
       musicActive = musicLive = false;
       music.stop();
       mapMusicStarted = false;
       if (!closing) startMapMusic();
       Object.assign(canvas.dataset, { battleMusic: 'stopped', battleMusicLevel: 0 });
-      for (const audio of soundPlayers.values()) audio.pause();
       battle = undefined;
       delete canvas.dataset.battleCommandMode;
       delete canvas.dataset.battlePreview;
@@ -1262,7 +1282,7 @@ async function openMap(game, destination) {
           setPosition(nextX, nextY) { x = nextX; y = nextY; cameraOverride = undefined; requestFrame(); },
           travel: travelScript,
           hidePlayer() { hiddenPlayer = true; requestFrame(); },
-          wave(id) { if (game.sound) void new Audio(`/audio/wave/${id}.wav`).play().catch(() => {}); },
+          wave(id) { void effects.play('wave', id, { signal: listeners.signal }); },
           music(id) { mapTrack = id; music.stop(); mapMusicStarted = false; startMapMusic(); },
           shop(stock, money) {
             return menu.choose(`商店 · 銀兩 ${money}`, stock.filter(row => row.count > 0 && row.price <= money).map(row => ({
@@ -1277,8 +1297,7 @@ async function openMap(game, destination) {
           { label: '讀取自動存檔', value: 'retry', dataset: { defeatAction: 'retry' } },
           { label: '返回主選單', value: 'title', dataset: { defeatAction: 'title' } },
         ], listeners.signal);
-        if (command === 'title') returnToTitle();
-        else location.reload();
+        await leaveGame(command === 'title' ? returnToTitle : () => location.reload());
         return;
       }
       if (result.ended === 'complete') result.flags.finished = true;
@@ -1383,22 +1402,22 @@ async function openMap(game, destination) {
           const entry = await chooseSaveSlot(true);
           if (!entry) return;
           if (entry.number !== autoSlot) await game.autoSave.write(entry.save);
-          location.reload();
+          await leaveGame(() => location.reload());
         },
         async new() {
           if (!await menu.askJoin(listeners.signal, '開始新遊戲並替換自動存檔？')) return;
           await game.autoSave.write(game.baseline);
-          location.reload();
+          await leaveGame(() => location.reload());
         },
         async title() {
           await commitProgress();
-          returnToTitle();
+          await leaveGame(returnToTitle);
         },
         async import() {
           const imported = await pickNativeSave();
           if (!imported) return;
           await game.autoSave.write(imported);
-          location.reload();
+          await leaveGame(() => location.reload());
         },
         async export() {
           await commitProgress();
@@ -1582,7 +1601,7 @@ async function openMap(game, destination) {
       if (isConfirm(code)) {
         if (prompt === 'surrender') model.surrender();
         else {
-          for (const audio of battle.soundPlayers.values()) audio.pause();
+          battle.resetSound();
           battle.model = battle.makeModel();
           battle.drawnFrame = undefined;
           battle.lastTime = performance.now();
@@ -2006,6 +2025,11 @@ async function openMap(game, destination) {
     );
   }
 
+  async function leaveGame(navigate) {
+    await close().catch(error => console.warn('遊戲資源清理未完成', error));
+    navigate();
+  }
+
   function close() {
     if (closing) return Promise.resolve();
     closing = true;
@@ -2097,7 +2121,7 @@ async function openMap(game, destination) {
     dirty = true;
   }, { signal: scope.signal });
   engine.stage.on(keyboard.events.cancel, () => { held = undefined; dirty = true; }, { signal: scope.signal });
-  attachGamepadInput(canvas, { keyboard, signal: listeners.signal, getMode() {
+  attachGamepadInput(canvas, { keyboard, createInput: createBrowserGamepadInput, signal: listeners.signal, getMode() {
     if (closing) return undefined;
     if (canvas.dataset.trainer === 'team' && menu.active) return 'team';
     if (battle && battle.model.state.result === null && !canvas.dataset.battlePrompt) return 'battle';

@@ -21,7 +21,7 @@ const mistColor = Array.from(colorFromHex(new Float32Array(3), worldMist.color))
 
 function createMarker(name) {
   const canvas = document.createElement('canvas');
-  const context = canvas.getContext('2d', { willReadFrequently: true });
+  const context = canvas.getContext('2d');
   const font = '600 26px "Microsoft JhengHei", "Noto Serif CJK TC", serif';
   context.font = font;
   canvas.width = Math.ceil(context.measureText(name).width + 44);
