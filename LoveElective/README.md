@@ -162,13 +162,14 @@ The game uses Egret's shared-frame 2D profile and draws with WebGL2 by default. 
 | `createSharedMaterial2D` 的线性光色为角色染上黄昏或夜色，并统一使用线性过滤 · the light colour of a shared material tints characters for dusk and night, with linear filtering throughout | 昼夜光线 · Time-of-day light | `src/engine/stage.mjs` |
 | 同一张文字贴图放进两个带 `clipRect` 的容器：一个显示已完成的行，一个显示正在出现的行 · one text texture in two containers with `clipRect`: finished lines in one, the growing line in the other | 对话逐字显示 · Text writing itself out | `src/screens/story.mjs` |
 | 分层换装人物使用独立的眨眼贴图 · layered dress-up figures use a separate blink texture | 眨眼 · Blinking | `src/art/figure.mjs` |
-| `globalToLocal`、`localToGlobal` 把指针换算到面板坐标 · convert the pointer into panel coordinates | 点击判定 · Tap detection | `src/engine/ui.mjs` |
-| `createBrowserFrameLoop` 推进引擎时钟并绘制，`engine.clock.onTick`，补间、粒子和打字效果都挂在这一个时钟上 · tweens, particles and text all run from this one clock | 动画与计时 · Animation and timing | `src/engine/stage.mjs` |
+| `createBrowserPointerInput`、`createBrowserHoverInput`、`createBrowserKeyboardInput` · Browser pointer, hover and keyboard input | 引擎处理原生输入和失焦取消，游戏按绘制面板的区域和层序分派操作 · Egret handles native input and cancellation; painted panels define targets and order | `src/engine/stage.mjs`、`src/engine/ui.mjs` |
+| `createBrowserFrameLoop`、`engine.createTween`、`after` · Frame loop, tweens and timers | 淡入淡出、演出等待、粒子与逐字显示共用引擎时钟 · Fades, scripted waits, particles and text use the engine clock | `src/engine/stage.mjs` |
+| `createBrowserAudio` · Browser audio | 背景乐循环、提示音、静音和后台暂停交给引擎混音器 · The engine mixer handles music looping, effects, mute and tab suspension | `src/audio.mjs` |
 | `Sprite.graphics` 的纯色矩形 · solid rectangles | 淡入淡出、悬停高亮 · Fades and hover highlight | `src/engine/stage.mjs` |
 
-音乐和音效由 Web Audio 合成。时间、属性、好感、拉扯、心愿、校园事件、任务、结局和回忆规则可脱离页面运行，在 Node 中玩完整个学期。
+音乐和音效由游戏的音符生成，再由白鹭混音器播放。时间、属性、好感、拉扯、心愿、校园事件、任务、结局和回忆规则可脱离页面运行，在 Node 中玩完整个学期。
 
-Music and sound are synthesised with Web Audio. The time, stats, affection, push-and-pull, wish, campus event, task, ending and memory rules can run a whole term in Node without a page.
+The game synthesises music and effects from its notes and plays them through the Egret mixer. The time, stats, affection, push-and-pull, wish, campus event, task, ending and memory rules can run a whole term in Node without a page.
 
 ## 已验证 · Verified
 
@@ -215,6 +216,6 @@ Music and sound are synthesised with Web Audio. The time, stats, affection, push
 
 ## 引擎与许可 · Engine and license
 
-`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `d43ce973b2b5114010c9a291c833aee54acd5ab8`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+`vendor/` 中是新白鹭引擎的运行时副本，采用 Apache-2.0 许可，引擎提交 `c1570b0878d1be8716d06320206f51a62f9e3f32`，来源和版本见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `d43ce973b2b5114010c9a291c833aee54acd5ab8`.
+`vendor/` holds a copy of the Egret Rebuild runtime under Apache-2.0. See [vendor/SOURCE.md](vendor/SOURCE.md) for the source and engine commit `c1570b0878d1be8716d06320206f51a62f9e3f32`.

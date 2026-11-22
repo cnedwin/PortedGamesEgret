@@ -6,6 +6,7 @@ import {
   Bitmap,
   Sprite,
   DisplayObjectContainer,
+  after,
   createAssetRef,
   createAssetType,
   createEngineForProfile,
@@ -15,6 +16,9 @@ import {
   createSharedMaterial2D,
 } from '@egret/engine';
 import { createBrowserFrameLoop } from '@egret/engine/web/loop';
+import { createBrowserHoverInput } from '@egret/engine/web/hover';
+import { createBrowserKeyboardInput } from '@egret/engine/web/keyboard';
+import { createBrowserPointerInput } from '@egret/engine/web/pointer';
 
 export const W = 1280;
 export const H = 720;
@@ -205,20 +209,52 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
      * Returns a promise that resolves when the tween ends or is replaced.
      */
     tween(target, to, seconds, { ease = 'out', delay = 0 } = {}) {
-      for (const t of tweens)
-        if (t.target === target && Object.keys(to).some(k => k in t.to)) {
-          tweens.delete(t);
-          t.done();
-        }
-      return new Promise(done => {
-        const from = {};
-        const t = { target, to, from, seconds: Math.max(0.0001, seconds), time: -delay, ease: EASE[ease], done, started: false };
-        tweens.add(t);
+      const properties = Object.keys(to);
+      for (const active of tweens) {
+        if (active.target === target && properties.some(key => key in active.to)) active.cancel();
+      }
+      return new Promise(resolve => {
+        let deferred, motion;
+        const finish = () => {
+          tweens.delete(entry);
+          resolve();
+        };
+        const entry = { target, to, cancel() {
+          deferred?.cancel();
+          motion?.dispose();
+          finish();
+        } };
+        const start = () => {
+          const from = properties.map(key => target[key]);
+          // The engine owns the time and lifecycle. Retain the game's existing easing curves.
+          motion = engine.createTween(scope, {
+            from: 0,
+            to: 1,
+            durationSeconds: Math.max(0.0001, seconds),
+            onUpdate(progress) {
+              const value = EASE[ease](progress);
+              try {
+                for (const [index, key] of properties.entries()) {
+                  target[key] = progress === 1 ? to[key] : from[index] + (to[key] - from[index]) * value;
+                }
+              } catch {
+                // A screen may dispose a display object before its transition completes.
+                queueMicrotask(entry.cancel);
+              }
+              return undefined;
+            },
+            onComplete: finish,
+          });
+          motion.start();
+        };
+        tweens.add(entry);
+        if (delay > 0) deferred = after(engine, scope, delay, start);
+        else start();
       });
     },
 
     wait(seconds) {
-      return stage.tween({ v: 0 }, { v: 1 }, seconds, { ease: 'linear' });
+      return new Promise(resolve => after(engine, scope, seconds, resolve));
     },
 
     /** Call fn(dt, time) every frame until the returned function is called. */
@@ -238,27 +274,6 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
       stage.root.sharedMaterial = stage.material(1, 1, 1, 1, 'normal');
       engine.clock.onTick(scope, tick => {
         const dt = Math.min(0.05, tick.deltaSeconds);
-        for (const t of [...tweens]) {
-          t.time += dt;
-          if (t.time < 0) continue;
-          if (!t.started) {
-            t.started = true;
-            for (const k of Object.keys(t.to)) t.from[k] = t.target[k];
-          }
-          const p = Math.min(1, t.time / t.seconds),
-            e = t.ease(p);
-          try {
-            for (const k of Object.keys(t.to)) t.target[k] = t.from[k] + (t.to[k] - t.from[k]) * e;
-          } catch {
-            tweens.delete(t);
-            t.done();
-            continue;
-          }
-          if (p >= 1) {
-            tweens.delete(t);
-            t.done();
-          }
-        }
         for (const fn of [...tickers]) fn(dt, tick.elapsedSeconds);
         return undefined;
       });
@@ -278,11 +293,7 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
     },
   };
 
-  // ---- input, converted to game coordinates
-  const toGame = event => {
-    const r = canvas.getBoundingClientRect();
-    return [((event.clientX - r.left) / r.width) * W, ((event.clientY - r.top) / r.height) * H];
-  };
+  // The painted panels still own hit regions and modal order. Egret owns native input and coordinate mapping.
   const handlers = { down: new Set(), up: new Set(), move: new Set(), key: new Set() };
   stage.on = (kind, fn) => {
     handlers[kind].add(fn);
@@ -291,31 +302,63 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
   const emit = (kind, ...args) => {
     for (const fn of [...handlers[kind]]) fn(...args);
   };
-  canvas.addEventListener('pointerdown', e => {
-    const [x, y] = toGame(e);
-    Object.assign(stage.pointer, { x, y, down: true });
-    canvas.setPointerCapture?.(e.pointerId);
-    emit('down', x, y, e);
-    e.preventDefault();
+  const keyboard = createBrowserKeyboardInput({ engine, scope });
+  // The artwork is a composite bitmap. A non-rendering hit area keeps hover
+  // tracking across the whole stage, including the empty space between panels.
+  const inputSurface = stage.root.addChild(new Sprite());
+  inputSurface.touchEnabled = true;
+  inputSurface.hitArea = { x: 0, y: 0, width: W, height: H };
+  keyboard.registerTarget({ id: 'campus-shortcuts', target: inputSurface, tabIndex: -1 });
+  keyboard.focus('campus-shortcuts');
+  inputSurface.on(keyboard.events.keyDown, event => {
+    const key = event.payload;
+    if (!key.repeat) emit('key', key.key, event);
   });
-  canvas.addEventListener('pointermove', e => {
-    const [x, y] = toGame(e);
-    Object.assign(stage.pointer, { x, y });
-    emit('move', x, y, e);
+  if (document.activeElement === document.body) canvas.focus({ preventScroll: true });
+
+  let activeContact = null;
+  createBrowserPointerInput({
+    engine, scope, width: W, height: H,
+    onContact({ kind, contact }) {
+      const { globalX: x, globalY: y, session, buttons } = contact;
+      const { pointerType } = session;
+      if (kind === 'begin') {
+        if (activeContact || (pointerType !== 'touch' && !(buttons & 1))) return;
+        activeContact = session;
+        canvas.focus({ preventScroll: true });
+        Object.assign(stage.pointer, { x, y, down: true });
+        emit('down', x, y);
+        return;
+      }
+      if (activeContact !== session) return;
+      if (kind === 'move') {
+        Object.assign(stage.pointer, { x, y });
+        emit('move', x, y, session);
+        return;
+      }
+      activeContact = null;
+      stage.pointer.down = false;
+      if (kind === 'cancel') emit('up', -1, -1, session);
+      else {
+        Object.assign(stage.pointer, { x, y });
+        emit('up', x, y, session);
+      }
+    },
   });
-  canvas.addEventListener('pointerup', e => {
-    const [x, y] = toGame(e);
-    Object.assign(stage.pointer, { x, y, down: false });
-    emit('up', x, y, e);
-  });
-  canvas.addEventListener('pointercancel', () => {
-    stage.pointer.down = false;
-    emit('up', -1, -1, null);
+  createBrowserHoverInput({
+    canvas, engine, scope, width: W, height: H, onError: stage.fail,
+    onHover({ kind, point, reason }) {
+      if (activeContact) return;
+      if (kind === 'leave') {
+        if (reason !== 'target') emit('move', -1, -1, point);
+        return;
+      }
+      const { globalX: x, globalY: y } = point;
+      Object.assign(stage.pointer, { x, y });
+      emit('move', x, y, point);
+    },
   });
   canvas.addEventListener('contextmenu', e => e.preventDefault());
-  window.addEventListener('keydown', e => {
-    if (!e.repeat) emit('key', e.key, e);
-  });
 
   return stage;
 }
