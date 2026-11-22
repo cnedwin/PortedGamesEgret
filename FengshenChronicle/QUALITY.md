@@ -48,3 +48,7 @@ The first public revision passed the full route and reload on PC and the Fold7 i
 美术版的场景、角色、装备、动作与特效使用本地贴图。角色与特效分两张白鹭图集，符合单纹理 4,194,304 像素上限。路线、战斗计算与存档代码均为同一版本。PC 本机静态预览复跑整章和读档，操作和装备数值符合首章基线。
 
 The art revision divides illustrations and effects between two Egret atlases within the engine's per-image pixel limit. Rules and save code match the first public revision. The full local PC route and reload passed on the new art.
+
+视听资源含 3 段独立循环配乐和 16 个事件音效。全部 19 个文件经过完整解码、样本长度和峰值检查，来源及量测见 [音频清单](assets/audio/SOURCES.json)。镜头脉冲由命中触发，峰值位移上限为 9 个舞台像素。震屏的投影与输入使用同一组偏移，减弱动态模式与暂停时停止震动。
+
+Three looped themes and sixteen cues were decoded and checked for length and peaks. Camera shake comes from hit events, uses the same offset for rendering and picking, and is capped at nine stage pixels. Reduced-motion mode and pause suppress the shake.

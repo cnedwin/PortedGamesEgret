@@ -74,15 +74,20 @@ function brush(g) {
   }
 }
 function ringTrail(g, returning) {
-  const bright = returning ? '#a2c5b8' : '#e5bd72';
+  const bright = returning ? '#e5edb7' : '#ffd884';
   g.save();
   g.scale(1, .65);
+  const wash = g.createLinearGradient(-45, 0, 32, 0);
+  wash.addColorStop(0, 'rgba(221,151,47,0)');
+  wash.addColorStop(.72, returning ? 'rgba(201,234,164,.24)' : 'rgba(250,192,80,.3)');
+  wash.addColorStop(1, 'rgba(255,241,190,.72)');
+  polygon(g, [[-45,-11],[14,-18],[31,0],[14,18],[-45,11],[-12,0]], wash);
   for (let i = 0; i < 3; i++) {
     g.beginPath();
     g.arc(-7 + i * 5, 0, 24 - i * 3, -.95, 1.13);
     g.strokeStyle = bright;
-    g.globalAlpha = .58 - i * .13;
-    g.lineWidth = 3 - i * .6;
+    g.globalAlpha = .88 - i * .17;
+    g.lineWidth = 4 - i * .7;
     g.stroke();
   }
   g.globalAlpha = .8;
@@ -91,6 +96,47 @@ function ringTrail(g, returning) {
   if (returning) {
     polygon(g, [[17, -6], [30, 0], [17, 6], [21, 0]], '#e8ead2');
     stroke(g, [[-30, 0], [-12, 0]], '#95b9ad', 1);
+  }
+  g.restore();
+}
+function glow(g, size, flare = false) {
+  const radius = size * .48;
+  const wash = g.createRadialGradient(0, 0, 0, 0, 0, radius);
+  wash.addColorStop(0, flare ? 'rgba(255,252,223,1)' : 'rgba(255,230,153,.85)');
+  wash.addColorStop(.15, 'rgba(255,225,137,.75)');
+  wash.addColorStop(.4, 'rgba(245,173,56,.25)');
+  wash.addColorStop(1, 'rgba(220,125,25,0)');
+  g.fillStyle = wash;
+  g.fillRect(-size / 2, -size / 2, size, size);
+  if (flare) {
+    polygon(g, [[-42,0],[-5,-4],[0,-35],[4,-4],[42,0],[4,4],[0,35],[-4,4]], 'rgba(255,242,188,.8)');
+    stroke(g, [[-21,13],[22,-14]], 'rgba(255,239,189,.7)', 1.2);
+  }
+}
+function streak(g) {
+  const wash = g.createLinearGradient(-60, 0, 58, 0);
+  wash.addColorStop(0, 'rgba(220,134,30,0)');
+  wash.addColorStop(.5, 'rgba(246,192,85,.4)');
+  wash.addColorStop(.82, 'rgba(255,238,174,.95)');
+  wash.addColorStop(1, 'rgba(255,246,210,0)');
+  polygon(g, [[-62,-1],[-13,-9],[47,-4],[62,0],[44,4],[-12,9]], wash);
+  stroke(g, [[-42,0],[43,0]], '#fff0bd', 1.4);
+  stroke(g, [[-21,-8],[23,-5]], 'rgba(247,197,105,.65)', 1);
+  stroke(g, [[-31,8],[11,6]], 'rgba(247,197,105,.45)', 1);
+}
+function shock(g) {
+  g.save();
+  g.scale(1, .68);
+  for (let i = 0; i < 3; i++) {
+    g.beginPath();
+    g.arc(0, 0, 43 + i * 3, 0, TAU);
+    g.strokeStyle = ['rgba(255,243,188,.95)', 'rgba(249,203,108,.6)', 'rgba(195,131,49,.24)'][i];
+    g.lineWidth = [2.8, 3, 5][i];
+    g.stroke();
+  }
+  for (let i = 0; i < 8; i++) {
+    const a = i * TAU / 8;
+    stroke(g, [[Math.cos(a)*32,Math.sin(a)*32],[Math.cos(a)*52,Math.sin(a)*52]], '#ffe7a8', 1.6);
   }
   g.restore();
 }
@@ -129,8 +175,27 @@ export const FX_FRAMES = [
   entry('fx-ringreturn', 92, 64, g => ringTrail(g, true)),
   entry('fx-dust', 96, 48, brush),
   entry('fx-sigil', 104, 104, sigil),
-  entry('fx-talisman', 32, 64, talisman)
+  entry('fx-talisman', 32, 64, talisman),
+  entry('fx-glow', 64, 64, g => glow(g,64)),
+  entry('fx-flare', 96, 96, g => glow(g,96,true)),
+  entry('fx-streak', 128, 40, streak),
+  entry('fx-shock', 112, 80, shock)
 ];
+
+// Painted blade coordinates relative to each source illustration's foot pin.
+// The glow follows the held blade in idle, stride, thrust and hurt poses.
+const WEAPON_PINS = [[226,429],[681,436],[1115,426],[1589,424],[222,871],[638,868],[1087,872],[1591,851]];
+const WEAPON_LINES = [
+  [[61,377],[128,253]], [[485,349],[556,232]], [[1304,281],[1198,230]], [[1473,367],[1447,249]],
+  [[378,782],[314,696]], [[771,791],[713,710]], [[1311,502],[1211,535]], [[1710,806],[1655,731]]
+];
+export const WEAPON_ANCHORS = WEAPON_LINES.map(([tip,guard], index) => {
+  const pin = WEAPON_PINS[index], scale = .285;
+  const dx = (tip[0] - guard[0]) * scale, dy = (tip[1] - guard[1]) * scale;
+  return Object.freeze({ x: ((tip[0]+guard[0])*.5-pin[0])*scale,
+    y: ((tip[1]+guard[1])*.5-pin[1])*scale, tipX:(tip[0]-pin[0])*scale,
+    tipY:(tip[1]-pin[1])*scale, length:Math.hypot(dx,dy), rotation:Math.atan2(dy,dx)*180/Math.PI });
+});
 
 /** Render-only pose. All times are seconds since an observed rule event. */
 export function combatPose({ time = 0, step = 0, walking = false, kind = 'hero',

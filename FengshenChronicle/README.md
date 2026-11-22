@@ -32,7 +32,11 @@ Speak with Jiang Shang, take the ring and leave through the eastern portal. Six 
 
 军需官每十二文出售一份回春散。回城恢复气血并至少补给到三份。力竭可返回西岐，保留已拾取装备和任务进度。存档位属于当前浏览器和站点，清除站点数据也会清除存档。
 
+暂停菜单可独立调整配乐和音效，或一键静音。城镇、古道和首领战使用各自的原创曲目。稀有装备穿戴后会发光，重击与乾坤圈命中带有短促震屏。浏览器启用减少动态效果时会关闭震屏。
+
 The quartermaster sells healing powder for twelve coins. Returning to town restores health and supplies at least three powders. On defeat, return to Xiqi with collected equipment and quest progress. Saves belong to this browser and site. Clearing site data removes them. Gamepad controls are outside this chapter's implemented controls.
+
+The pause menu has separate music and effects controls and a global mute. Three original compositions cover town, the trail, and the boss. Rare gear glows while equipped. Heavy hits and ring impacts briefly shake the camera, with reduced-motion mode disabling the shake.
 
 ## 引擎能力对照表 · Engine capabilities
 

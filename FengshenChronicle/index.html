@@ -84,7 +84,14 @@
     <section class="card compact" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <h2 id="pause-title">暂歇</h2>
       <p id="save-status" role="status"></p>
-      <div class="menu"><button class="primary" id="resume">继续战斗</button><button id="save">保存进度</button><button id="audio">音效开启</button><button id="return-title">返回标题</button></div>
+      <div class="menu">
+        <button class="primary" id="resume">继续战斗</button>
+        <button id="save">保存进度</button>
+        <button id="audio" aria-pressed="true">声音开启</button>
+        <label class="mix-control"><span>配乐</span><input id="music-volume" type="range" min="0" max="100" aria-label="配乐音量"></label>
+        <label class="mix-control"><span>音效</span><input id="effects-volume" type="range" min="0" max="100" aria-label="音效音量"></label>
+        <button id="return-title">返回标题</button>
+      </div>
     </section>
   </div>
   <div class="overlay" id="death-panel" hidden>
