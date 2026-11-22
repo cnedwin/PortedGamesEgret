@@ -147,6 +147,7 @@ export function createWorld(stage) {
     }
     const scale = full ? 0.665 : 1.24,
       crop = full ? FIGURE_H : 600;
+    const frameWidth = portrait && portrait.name !== spec.id ? 520 : FIGURE_W;
     const res = full ? 1.5 : 1.0;
     const id = portrait ? `portrait:${portrait.key}` : `fitting:${key ?? JSON.stringify(spec)}`;
     if (!world.actor) {
@@ -187,9 +188,9 @@ export function createWorld(stage) {
           g.restore();
         }
         if (full) drawWardrobeFigure(g, spec, { blink });
-        else paintStoryCharacter(g, portrait.image);
+        else paintStoryCharacter(g, portrait.image, frameWidth);
       });
-    const body = paintFigure(false, [0, 0, FIGURE_W, crop]);
+    const body = paintFigure(false, [0, 0, frameWidth, crop]);
     const ready = a.pic.show(body, body.res, 'actor:' + id);
     if (portrait || a.illustratedHead) {
       a.blink.clear();
@@ -204,7 +205,7 @@ export function createWorld(stage) {
     if (token !== actorToken) return;
     a.id = id;
     tintActor();
-    a.w = FIGURE_W * scale;
+    a.w = frameWidth * scale;
     a.h = crop * scale;
     a.baseY = full ? H - a.h - 6 : 64;
     if (fresh || a.x !== x) {

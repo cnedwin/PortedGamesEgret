@@ -149,14 +149,14 @@ export async function loadStoryPortrait(spec) {
   return image && { name: spec.id, key: spec.id, image };
 }
 
-/** Frame the portrait into the same visible stage area as the bust rig. */
-export function paintStoryCharacter(g, image) {
+/** Preserve the outfit framing when the sprite includes wide hair or sleeves. */
+export function paintStoryCharacter(g, image, frameWidth) {
   const sourceWidth = image.naturalWidth ?? image.width;
   const sourceHeight = image.naturalHeight ?? image.height;
-  const scale = Math.min(392 / sourceWidth, 552 / sourceHeight);
+  const scale = Math.min((frameWidth - 8) / sourceWidth, 552 / sourceHeight);
   const width = sourceWidth * scale;
   const height = sourceHeight * scale;
-  g.drawImage(image, (400 - width) / 2, 600 - height, width, height);
+  g.drawImage(image, (frameWidth - width) / 2, 600 - height, width, height);
 }
 
 /** Draw a cropped head-and-shoulders card independently of stage scaling. */
