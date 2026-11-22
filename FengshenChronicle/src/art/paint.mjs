@@ -2,7 +2,7 @@ import { FX_FRAMES } from './effects.mjs';
 import { loadLandscape } from './landscape.mjs';
 
 const RESOLUTION = 2;
-const ACTOR_FILES = ['hero', 'hero-elite', 'actors', 'foe-moves'];
+const ACTOR_FILES = ['hero', 'hero-elite', 'actors', 'foe-moves', 'hero-walk', 'hero-elite-walk'];
 const GEAR_FILES = ['bronze-sword', 'iron-sword', 'linen-armor', 'scale-armor', 'jade-seal', 'potion', 'gold', 'ring'];
 
 // Source coordinates are in the original illustration sheets. The pin is the
@@ -11,6 +11,24 @@ const HERO_PINS = [[226,429],[681,436],[1115,426],[1589,424],[222,871],[638,868]
 const SWORDS = [
   [[61,377],[128,253]], [[485,349],[556,232]], [[1304,281],[1198,230]], [[1473,367],[1447,249]],
   [[378,782],[314,696]], [[771,791],[713,710]], [[1311,502],[1211,535]], [[1710,806],[1655,731]]
+];
+const WALK_ART = [
+  {
+    pins: [[228,428],[676,424],[1121,428],[1567,426],[223,874],[668,862],[1111,874],[1558,864]],
+    blades: [
+      [[108,370],[151,254]], [[559,375],[600,255]], [[1004,373],[1045,257]], [[1453,377],[1496,256]],
+      [[366,808],[303,699]], [[797,809],[738,702]], [[1247,807],[1188,695]], [[1694,807],[1635,701]]
+    ],
+    opposite: {2:[1038,305,186,127],3:[1505,302,141,129],6:[1014,746,207,132],7:[1497,744,123,125]}
+  },
+  {
+    pins: [[229,422],[675,418],[1118,421],[1563,419],[223,865],[670,858],[1109,864],[1559,856]],
+    blades: [
+      [[101,399],[156,252]], [[553,400],[602,251]], [[996,399],[1043,251]], [[1441,400],[1492,252]],
+      [[370,819],[301,687]], [[808,819],[743,693]], [[1256,818],[1187,692]], [[1696,822],[1632,692]]
+    ],
+    opposite: {2:[1043,304,180,123],3:[1497,303,142,123],6:[1024,747,183,121],7:[1491,744,130,123]}
+  }
 ];
 const ENEMIES = ['raider', 'wolf', 'shaman', 'boss'];
 const CAST = [
@@ -40,8 +58,8 @@ function cutout(g, image, sheetSize, bounds, pin, scale) {
   g.drawImage(image, x * scaleX, y * scaleY, w * scaleX, h * scaleY, (x - pin[0]) * scale, (y - pin[1]) * scale, w * scale, h * scale);
 }
 
-function paintHeldSword(g, pose, pin, scale, color) {
-  const [[tipX,tipY],[guardX,guardY]] = SWORDS[pose];
+function paintHeldSword(g, sword, pin, scale, color) {
+  const [[tipX,tipY],[guardX,guardY]] = sword;
   // Keep the sharp highlight on painted pixels in this frame, including when
   // the blade crosses a transparent gap during the lunge.
   g.save();
@@ -54,6 +72,35 @@ function paintHeldSword(g, pose, pin, scale, color) {
   g.lineCap = 'round';
   g.stroke();
   g.restore();
+}
+
+function bladeAnchor(sword, pin, scale) {
+  const [tip, guard] = sword.map(([x,y]) => [(x - pin[0]) * scale, (y - pin[1]) * scale]);
+  const dx = tip[0] - guard[0], dy = tip[1] - guard[1];
+  return {
+    x: (tip[0] + guard[0]) / 2, y: (tip[1] + guard[1]) / 2,
+    tipX: tip[0], tipY: tip[1],
+    length: Math.hypot(dx,dy), rotation: Math.atan2(dy,dx) * 180 / Math.PI
+  };
+}
+
+function paintWalk(g, sheet, index, art, bladeColor) {
+  const pin = art.pins[index], scale = .285, sheetSize = [1774,887];
+  cutout(g, sheet, sheetSize, sheetCell(index), pin, scale);
+  const patch = art.opposite[index];
+  if (patch) {
+    // The two contacts use opposite leading legs. Mirror only the stance
+    // inside its trouser/boot patch, leaving the torso and weapon anchored.
+    const [sx,sy,w,h] = patch;
+    const x = (sx - pin[0]) * scale, y = (sy - pin[1]) * scale;
+    g.clearRect(x,y,w * scale,h * scale);
+    g.save();
+    g.translate(x * 2 + w * scale,0);
+    g.scale(-1,1);
+    cutout(g, sheet, sheetSize, patch, pin, scale);
+    g.restore();
+  }
+  if (bladeColor) paintHeldSword(g,art.blades[index],pin,scale,bladeColor);
 }
 
 function fitItem(g, image, w, h) {
@@ -111,7 +158,7 @@ async function texture(game, scope, canvas) {
 
 async function atlasPage(game, scope, entries, frames, page) {
   // Egret accepts at most 4,194,304 pixels per source image. Keep the
-  // protagonist's equipment poses together and pack other sprites separately.
+  // protagonist poses grouped by armor and pack other sprites separately.
   const pad = 4, maxWidth = 2048;
   entries.sort((a, b) => b.h - a.h || b.w - a.w);
   let x = pad, y = pad, row = 0;
@@ -136,8 +183,8 @@ async function atlasPage(game, scope, entries, frames, page) {
     g.scale(RESOLUTION, RESOLUTION);
     entry.draw(g);
     g.restore();
-    const { x, y, width, height, w, h, pivotY } = entry;
-    frames[entry.key] = { x, y, width, height, w, h, pivotY, page };
+    const { x, y, width, height, w, h, pivotY, weaponAnchor } = entry;
+    frames[entry.key] = { x, y, width, height, w, h, pivotY, page, weaponAnchor };
   }
   return texture(game, scope, atlas);
 }
@@ -149,27 +196,31 @@ export async function buildArt(game, scope, maps) {
     Promise.all(GEAR_FILES.map(name => loadImage('gear/' + name)))
   ]);
   const gear = Object.fromEntries(GEAR_FILES.map((key, i) => [key,gearSheets[i]]));
-  const [standard, elite, cast, actions] = actorSheets;
+  const [standard, elite, cast, actions, standardWalk, eliteWalk] = actorSheets;
   const entries = [], aliases = {};
-  const add = (key, w, h, draw, pivotY = h / 2) => entries.push({key, w, h, draw, pivotY});
+  const add = (key, w, h, draw, pivotY = h / 2, weaponAnchor) => entries.push({key, w, h, draw, pivotY, weaponAnchor});
 
   const heroStates = [
-    ['hero', standard, null], ['heroSteel', standard, '#e6f3e7'],
-    ['heroElite', elite, '#8c7754'], ['heroEliteSteel', elite, null]
+    ['hero', standard, null, standardWalk, WALK_ART[0]], ['heroSteel', standard, '#e6f3e7', standardWalk, WALK_ART[0]],
+    ['heroElite', elite, '#8c7754', eliteWalk, WALK_ART[1]], ['heroEliteSteel', elite, null, eliteWalk, WALK_ART[1]]
   ];
-  for (const [kind, sheet, blade] of heroStates) {
+  for (const [kind, sheet, blade, walkSheet, walkArt] of heroStates) {
     for (const back of [false,true]) {
       const label = kind + (back ? 'Back' : '');
-      for (const [column, pose] of ['0','1','attack','hurt'].entries()) {
-        const index = (back ? 4 : 0) + column;
+      const first = back ? 4 : 0;
+      for (const [column, pose] of [[0,'0'],[2,'attack'],[3,'hurt']]) {
+        const index = first + column;
         const pin = HERO_PINS[index], scale = .285;
         add(label + ':' + pose, 156, 146, g => {
           cutout(g, sheet, [1774,887], sheetCell(index), pin, scale);
-          if (blade) paintHeldSword(g, index, pin, scale, blade);
+          if (blade) paintHeldSword(g, SWORDS[index], pin, scale, blade);
         }, 128);
       }
-      aliases[label + ':2'] = label + ':0';
-      aliases[label + ':3'] = label + ':1';
+      for (let phase=0; phase<4; phase++) {
+        const index = first + phase;
+        add(label + ':walk' + phase,156,146,g => paintWalk(g,walkSheet,index,walkArt,blade),128,
+          bladeAnchor(walkArt.blades[index],walkArt.pins[index],.285));
+      }
       aliases[label + ':fallen'] = label + ':hurt';
     }
   }
@@ -214,8 +265,10 @@ export async function buildArt(game, scope, maps) {
   }
 
   const frames = {}, atlases = [];
-  atlases.push(await atlasPage(game, scope, entries.filter(entry => entry.key.startsWith('hero')), frames, 0));
-  atlases.push(await atlasPage(game, scope, entries.filter(entry => !entry.key.startsWith('hero')), frames, 1));
+  const plainHero = entry => entry.key.startsWith('hero') && !entry.key.startsWith('heroElite');
+  atlases.push(await atlasPage(game, scope, entries.filter(plainHero), frames, 0));
+  atlases.push(await atlasPage(game, scope, entries.filter(entry => entry.key.startsWith('heroElite')), frames, 1));
+  atlases.push(await atlasPage(game, scope, entries.filter(entry => !entry.key.startsWith('hero')), frames, 2));
   for (const [alias,source] of Object.entries(aliases)) frames[alias] = frames[source];
 
   const grounds={}, structures={};

@@ -3,7 +3,7 @@
 import { Bitmap, DisplayObjectContainer, Sprite, createSharedMaterial2D } from '@egret/engine';
 import { MAPS } from './sim/data.mjs';
 import { buildArt } from './art/paint.mjs';
-import { combatPose, WEAPON_ANCHORS } from './art/effects.mjs';
+import { advanceHeroGait, combatPose, weaponAnchorForFrame, WEAPON_ANCHORS } from './art/effects.mjs';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -169,11 +169,18 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
   }
   function bodyFrame(body, groundShadow, kind, who, id) {
     const motion = motionFor(id), angle = Number.isFinite(who.facing) ? who.facing : Math.PI / 2;
-    const back = Math.sin(angle) < -.36, mirror = Math.cos(angle) < -.22 ? -1 : 1;
+    let back = Math.sin(angle) < -.36, mirror = Math.cos(angle) < -.22 ? -1 : 1;
     const dead = Boolean(who.dead || who.action === 'dead');
-    const walking = !dead && (who.action === 'walk' || who.state === 'walk');
-    const distance = motion.x === null ? 0 : Math.hypot(who.x - motion.x, who.y - motion.y);
-    if (walking && distance < 80) motion.step += distance / (kind === 'wolf' ? 78 : 68) * TAU;
+    let walking = !dead && (who.action === 'walk' || who.state === 'walk');
+    const dx = motion.x === null ? 0 : who.x - motion.x, dy = motion.y === null ? 0 : who.y - motion.y;
+    const distance = Math.hypot(dx, dy), isHero = id === 'hero';
+    if (isHero) {
+      advanceHeroGait(motion, dx, dy, walking, angle, time,
+        dead || time - motion.attackAt < .38 || time - motion.hurtAt < .25);
+      walking = walking && motion.walking;
+      back = motion.back;
+      mirror = motion.mirror;
+    } else if (walking && distance < 80) motion.step += distance / (kind === 'wolf' ? 78 : 68) * TAU;
     motion.x = who.x;
     motion.y = who.y;
     const windup = who.telegraph ? clamp(1 - who.telegraph.remaining / who.telegraph.total, 0, 1) : 0;
@@ -183,7 +190,8 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
     const prefix = `${kind}${back ? 'Back' : ''}`;
     const actionKey = pose.action && `${prefix}:${pose.action}`;
     const hasPose = actionKey && art.frames[actionKey];
-    const frame = setFrame(body, hasPose ? actionKey : `${prefix}:${pose.frame}`);
+    const walkKey = isHero && walking && `${prefix}:walk${pose.frame}`;
+    const frame = setFrame(body, hasPose ? actionKey : walkKey && art.frames[walkKey] ? walkKey : `${prefix}:${pose.frame}`);
     const direction = time - motion.attackAt < .38 && motion.direction !== null ? motion.direction : angle;
     body.x = who.x + Math.cos(direction) * pose.x;
     body.y = who.y + Math.sin(direction) * pose.x * .55 + pose.y;
@@ -202,7 +210,9 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
     groundShadow.y = who.y + 1;
     groundShadow.visible = body.visible;
     groundShadow.alpha = dead ? pose.alpha * .65 : 1;
-    if (walking && !reducedMotion && time - motion.dustAt > .28 && distance > .25) {
+    const planted = (pose.frame === 0 || pose.frame === 2) && motion.footFrame !== pose.frame;
+    motion.footFrame = walking ? pose.frame : -1;
+    if (walking && !reducedMotion && distance > .25 && (isHero ? planted : time - motion.dustAt > .28)) {
       spawnFx('fx-brush', who.x, who.y + 1, { life: .34, scale: kind === 'boss' ? .75 : .45, vy: -3, alpha: .62 });
       motion.dustAt = time;
     }
@@ -448,9 +458,7 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
     }
     if (anchorFrame !== hero.frameKey) {
       anchorFrame = hero.frameKey;
-      const suffix = anchorFrame.slice(anchorFrame.lastIndexOf(':') + 1);
-      const poseIndex = suffix === 'attack' ? 2 : suffix === 'hurt' ? 3 : Number(suffix) % 2;
-      weaponAnchor = WEAPON_ANCHORS[(anchorFrame.includes('Back') ? 4 : 0) + poseIndex];
+      weaponAnchor = weaponAnchorForFrame(anchorFrame, art.frames[anchorFrame]);
     }
     const anchor = weaponAnchor;
     const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 3.8) * .08;

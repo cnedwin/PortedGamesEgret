@@ -197,17 +197,75 @@ export const WEAPON_ANCHORS = WEAPON_LINES.map(([tip,guard], index) => {
     tipY:(tip[1]-pin[1])*scale, length:Math.hypot(dx,dy), rotation:Math.atan2(dy,dx)*180/Math.PI });
 });
 
+export function weaponAnchorForFrame(key, frame) {
+  const anchor = frame?.weaponAnchor;
+  if (anchor && ['x','y','tipX','tipY','length','rotation'].every(name => Number.isFinite(anchor[name]))) return anchor;
+  const suffix = key.slice(key.lastIndexOf(':') + 1);
+  // Dedicated walking sheets have their own weapon pins. Until supplied,
+  // use that orientation's idle pin rather than interpreting "walk2" as NaN.
+  const index = suffix === 'attack' ? 2 : suffix === 'hurt' || suffix === 'fallen' ? 3
+    : /^\d+$/.test(suffix) ? Number(suffix) % 2 : 0;
+  return WEAPON_ANCHORS[(key.includes('Back') ? 4 : 0) + index];
+}
+
+export const HERO_STRIDE = 128;
+export function heroGaitFrame(step) {
+  const phase = ((step % TAU) + TAU) % TAU / TAU;
+  // Alternate contact and passing poses. Contact bears weight a little longer.
+  return phase < .3 ? 0 : phase < .5 ? 1 : phase < .8 ? 2 : 3;
+}
+
+/** Mutates only the view's private motion record, never an actor or save. */
+export function advanceHeroGait(motion, dx, dy, requestedWalk, facing, time, combat = false) {
+  const distance = Math.hypot(dx, dy);
+  if (!Number.isFinite(motion.step)) motion.step = 0;
+  if (typeof motion.back !== 'boolean') motion.back = Math.sin(facing) < -.36;
+  if (motion.mirror !== 1 && motion.mirror !== -1) motion.mirror = Math.cos(facing) < -.22 ? -1 : 1;
+  if (!Number.isFinite(motion.lastMovedAt)) motion.lastMovedAt = -Infinity;
+  if (!Number.isFinite(motion.gaitFacing)) motion.gaitFacing = facing;
+  const moving = requestedWalk && distance > .08 && distance < 80;
+  if (moving) {
+    motion.lastMovedAt = time;
+    motion.gaitFacing = Math.atan2(dy, dx);
+    motion.step += distance / HERO_STRIDE * TAU;
+  }
+  // A render can occur between two fixed simulation steps at high refresh
+  // rates. Keep its gait instead of flashing idle on every zero-distance frame.
+  motion.walking = requestedWalk && (moving || time - motion.lastMovedAt < .05);
+  if (!motion.walking || combat) motion.step = 0;
+  const angle = combat || !requestedWalk ? facing : motion.gaitFacing;
+  const horizontal = Math.cos(angle), vertical = Math.sin(angle);
+  if (combat) {
+    // Preserve the existing exact attack direction and hit presentation.
+    motion.back = vertical < -.36;
+    motion.mirror = horizontal < -.22 ? -1 : 1;
+  } else {
+    if (vertical < -.48) motion.back = true;
+    else if (vertical > -.15) motion.back = false;
+    // Near a vertical heading, preserve which side the character is showing.
+    if (horizontal < -.32) motion.mirror = -1;
+    else if (horizontal > .32) motion.mirror = 1;
+  }
+  return motion;
+}
+
 /** Render-only pose. All times are seconds since an observed rule event. */
 export function combatPose({ time = 0, step = 0, walking = false, kind = 'hero',
   attackAge = Infinity, hurtAge = Infinity, deathAge = Infinity, windup = 0, dead = false,
   reducedMotion = false } = {}) {
-  const wolf = kind === 'wolf', boss = kind === 'boss';
+  const wolf = kind === 'wolf', boss = kind === 'boss', hero = kind.startsWith('hero');
   const pose = { x: 0, y: 0, rotation: 0, scaleX: 1, scaleY: 1, alpha: 1, action: null, frame: 0 };
   if (walking) {
-    pose.frame = Math.floor(((step % TAU) + TAU) % TAU / TAU * 4) % 4;
-    pose.y = -Math.abs(Math.sin(step)) * (wolf ? 2.6 : 1.5);
-    pose.rotation = Math.sin(step) * (wolf ? 1.2 : 1.4);
-    pose.scaleY = 1 + Math.cos(step * 2) * .006;
+    pose.frame = hero ? heroGaitFrame(step) : Math.floor(((step % TAU) + TAU) % TAU / TAU * 4) % 4;
+    if (hero) {
+      // Foot pins stay on the ground. Painted legs supply the weight transfer;
+      // lifting and squashing the whole illustration made armour appear to hop.
+      pose.rotation = Math.sin(step) * .18;
+    } else {
+      pose.y = -Math.abs(Math.sin(step)) * (wolf ? 2.6 : 1.5);
+      pose.rotation = Math.sin(step) * (wolf ? 1.2 : 1.4);
+      pose.scaleY = 1 + Math.cos(step * 2) * .006;
+    }
   } else pose.scaleY = 1 + Math.sin(time * 2.3) * .003;
   if (windup > 0 && !dead) {
     const p = smooth(windup);
