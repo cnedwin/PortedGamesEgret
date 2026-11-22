@@ -66,7 +66,8 @@ test('rapid cues share one decode and the latest cue restarts the same sample', 
   assert.equal(await second, true);
   assert.equal(await effects.play('wave', 24), true);
   assert.equal(calls.created.length, 1);
-  assert.deepEqual(calls.created[0].buses, ['effects']);
+  assert.deepEqual(calls.created[0].buses, [{ name: 'effects', volume: 0.78 }]);
+  assert.equal(calls.created[0].limiter, true);
   assert.deepEqual(calls.fetched.map(([path]) => path), ['/audio/wave/24.wav']);
   assert.deepEqual(calls.decoded, ['/audio/wave/24.wav']);
   assert.equal(calls.voices.length, 2);

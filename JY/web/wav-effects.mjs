@@ -48,7 +48,8 @@ export function createWavEffects({ createAudio, enabled = true, fetchBytes = rea
   function setup() {
     if (!enabled || lifetime.signal.aborted) return;
     try {
-      audio ??= createAudio({ buses: ['effects'], onError() {} });
+      // Different clips overlap in dense fights. Keep headroom on the WAV bus.
+      audio ??= createAudio({ buses: [{ name: 'effects', volume: 0.78 }], limiter: true, onError() {} });
       return audio;
     } catch {
       // Audio availability does not affect the event or battle rules.
