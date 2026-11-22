@@ -6,7 +6,7 @@ This project pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. The
 
 - 原版数据包音色库 · Original data pack soundfont `mid.sf2` · GS sound set (16 bit), © 1996 Roland Corporation U.S.
 - [美术社区许可 · Artwork community license](web/jyx2/COMMUNITY_LICENSE_FOR_JYX2.md)
-- [角色动画 · Character animation](web/jyx2/actors/SOURCE.md) · [角色模型 · Character models](web/jyx2/actors/story-models.json)
+- [角色动画 · Character animation](web/jyx2/actors/SOURCE.md) · [剧情角色 · Story models](web/jyx2/actors/story-models.json) · [战斗角色 · Battle models](web/jyx2/actors/battle-model-sources.json)
 - [主選單山水插畫 · Title-screen landscape](web/title-art/wuxia-dawn.webp) · 为本 Demo 生成的原创武侠场景 · Original generated wuxia landscape for this demo.
 - [界面 · UI artwork](web/jyx2/ui/SOURCE.md) · [立绘 · Portraits](web/portraits/SOURCE.md)
 - [大地图 · World assets](web/jyx2/scene/WORLD-SOURCE.md) · [战场 · Battle assets](web/jyx2/scene/BATTLE-SOURCE.md) · [剧情道具 · Story props](web/jyx2/scene/STORY-PROPS-SOURCE.md)
@@ -14,9 +14,9 @@ This project pays tribute to *Heroes of Jin Yong*, Soft-World, and Jin Yong. The
 - [第三方组件 · Third-party components](third-party/)
 - [随附原作代码许可 · Upstream code license](licenses/KYS-CODE-LICENSE.txt) · [原作补充条款 · Upstream additional terms](https://github.com/scarsty/kys-cpp/blob/fe4ad958243b495c4144695f4a9c9fa1f82eddde/readme.md#授权)
 
-网页版的張三丰使用原版运行数据中的图像。
+探索场景中的張三丰使用原版运行数据中的图像，战斗使用 JYX2 的張真人模型。
 
-The browser game displays Zhang Sanfeng using the artwork from the original runtime data.
+Zhang Sanfeng uses the original runtime artwork during exploration and the JYX2 Zhang Zhenren model in battle.
 
 - [浏览器 SQLite · sql.js](third-party/sql.js/LICENSE)
 - [浏览器解压 · 7-Zip WebAssembly](browser/vendor/sevenzip-wasm/)
