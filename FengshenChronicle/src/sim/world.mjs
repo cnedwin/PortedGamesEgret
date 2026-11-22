@@ -108,7 +108,7 @@ function validPoint(mapId, x, y, radius) {
     && !map.obstacles.some(rect => x > rect.x - radius && x < rect.x + rect.width + radius
       && y > rect.y - radius && y < rect.y + rect.height + radius);
 }
-function clearLine(mapId, from, to, radius) {
+export function clearLine(mapId, from, to, radius) {
   const steps = Math.ceil(distance(from, to) / 12);
   for (let index = 1; index <= steps; index++) {
     const phase = index / steps;

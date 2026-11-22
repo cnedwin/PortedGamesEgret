@@ -4,6 +4,7 @@ import { CAMPAIGN_CHAPTERS, CHAPTER, ITEMS, MAPS, SIDE_QUESTS } from './sim/data
 import { PROFESSIONS } from './sim/arsenal.mjs';
 import { sideQuestUnlocked } from './sim/progression.mjs';
 import { createSession, dispatch, nextRecovery, update } from './sim/world.mjs';
+import { tideEscapeGuide } from './sim/tide-guide.mjs';
 import { isMuted, readSlot, setMuted, writeSlot } from './saves.mjs';
 import { createSound } from './audio.mjs';
 import { affixText, campaignObjective, createProfessionPicker, createRpgPanels, destinations, gearUrl } from './rpg-ui.mjs';
@@ -41,7 +42,7 @@ let game, view, size = sizeFor(), stageCanvas = canvas, state = createSession(),
 let ready = false, slot = 1, muted = isMuted(storage);
 let pauseOnBlur = false, saveAge = 0, hudAge = 0, noticeFor = 0, savedAt = 0;
 let activePointer = null, stickX = 0, stickY = 0, holdingAttack = false, pendingAction = null;
-let contextPerson, contextDrop, route, orientationTimer, rebuilding = false;
+let contextPerson, contextDrop, route, tideGuide, orientationTimer, rebuilding = false;
 let questFocus = 'main';
 const bag = createInventoryPanel({current:() => state, command:panelCommand});
 const rpg = createRpgPanels({
@@ -219,12 +220,22 @@ function renderHud() {
   const bossNearby = Boolean(boss && range(boss, hero) < 520);
   $('boss-hud').hidden = !bossNearby;
   $('hud').classList.toggle('late-boss-focus', bossNearby && Boolean(CAMPAIGN_CHAPTERS[state.mapId]));
+  tideGuide = null;
   if (boss) {
     setText('boss-name',boss.name);
     $('boss-fill').style.transform = 'scaleX(' + boss.hp / boss.maxHp + ')';
     const warning = boss.telegraph?.skillId ? boss.telegraph : null;
     $('boss-warning').hidden = !warning;
-    if (warning) setText('boss-warning', warning.name + ' · ' + warning.hint);
+    if (bossNearby && size.width < size.height && field.clientWidth <= 620) {
+      tideGuide = tideEscapeGuide(state.mapId, hero, warning);
+    }
+    if (warning) {
+      let hint = warning.hint;
+      if (tideGuide?.kind === 'outer') hint = '沿箭头向' + tideGuide.direction + '退到外缘，也可进青色内圈。';
+      if (tideGuide?.kind === 'inner') hint = '外撤路线太远，沿箭头进青色内圈。';
+      if (tideGuide?.kind === 'safe') hint = '站位安全，留在红区外。';
+      setText('boss-warning', warning.name + ' · ' + hint);
+    }
   }
   const people = [...map.npcs,...(map.portals ?? [map.portal])].filter(person => range(person, hero) <= 135);
   contextPerson = people.sort((a, b) => range(a, hero) - range(b, hero))[0];
@@ -440,7 +451,7 @@ function frame(seconds) {
   }
   // Finish a falling pose behind the result panel while combat remains paused.
   const animate = !document.hidden && !pauseOnBlur && (phase === 'play' || phase === 'dead' || phase === 'won');
-  if (phase !== 'title') view.update(state, animate ? dt : 0, events);
+  if (phase !== 'title') view.update(state, animate ? dt : 0, events, phase === 'play' ? tideGuide : null);
 }
 
 function drift(event) {
@@ -610,7 +621,8 @@ window.addEventListener('pagehide', () => saveGame());
 const diagnostics = Object.freeze({
   inspect: () => ({
     ready, phase, backend: game?.backend, state: structuredClone(state), slot,
-    hud: { history: structuredClone(history), savedAt, notice: $('notice').hidden ? '' : $('notice').textContent },
+    hud: { history: structuredClone(history), savedAt, tideGuide: structuredClone(tideGuide),
+      notice: $('notice').hidden ? '' : $('notice').textContent },
     audio: sound.inspect()
   }),
   point: worldPoint,
