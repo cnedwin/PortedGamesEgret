@@ -9,13 +9,14 @@ This game uses Egret Rebuild `c1570b0`. The integration notes and remaining game
 
 - **手柄采样 · Controller sampling**：`createBrowserGamepadInput` 负责发现手柄和读取标准按键、摇杆。JY 保留模式键位、回中后再生效和战斗斜向输入。 · The engine reads standard controller buttons and axes. JY retains the per-mode bindings, release-to-rearm behavior, and battle diagonals.
 - **大地图 Canvas 贴图 · World-map canvas textures**：地标和船尾浪花直接用 `Texture3D` 上传 Canvas。引擎负责翻转方向，项目移除了从 Canvas 取像素和逐行复制。 · Markers and the boat wake upload canvas sources through `Texture3D`, which handles orientation.
+- **剧情与战斗 WAV · Story and battle WAV cues**：通过 `createBrowserAudio` 播放。开场和战斗加载时预解码少量首发音效，同一 WAV 重播时停止前一声。战斗重开或离场时清理该场的排队和正在播放的音效。 · Opening and battle loading warm a small set of clips. Replaying a WAV stops its previous instance. A restart or scene exit cancels pending and playing cues.
 
 ## 仍由项目处理 · Remaining game-side handling
 
 | 范围 · Area | 当前处理和后续迁移条件 · Current handling and migration condition |
 |---|---|
 | 地图 GPU 图层 · GPU map layers | 已用引擎的共享图层。游戏负责分块、重用及截取时暂时隐藏舞台内容。引擎的预备子树捕获会一并捕获同级对象，需先把地图缓存与当前画面隔离，再回归透明度和设备恢复。 · Shared layers are native. The game owns paging and reuse, and temporarily hides stage content for capture. Prepared subtree capture includes siblings, so isolate the cache stage and check alpha and recovery before switching. |
-| 音频 · Audio | 剧情和战斗 WAV 可改用 `createBrowserAudio` 的音效总线。迁移需对照首声延迟、快速重复、静音和页面退出。MIDI/SoundFont 由现有合成器负责。 · The engine mixer can own the WAV sound effects after timing, repeat, mute and exit checks. Keep the existing MIDI and SoundFont synthesizer. |
+| 音乐 · Music | 原版 MIDI 和 SoundFont 继续由现有合成器负责。剧情和战斗的 WAV 由白鹭音效总线负责。 · The original synthesizer plays MIDI and SoundFont music. The Egret effects bus handles story and combat WAVs. |
 | 触控和场景选择 · Touch and picking | 场景已用 `Raycaster3D`。触屏方向键和悬停目前由 DOM 监听处理，可逐步迁到引擎输入入口。格子判定、角色可见区域和路径规则属于游戏层。 · Scene picking uses `Raycaster3D`. Browser pointer input can take over capture and hover in stages. Grid selection, actor visibility rules, and pathfinding remain gameplay logic. |
 | 阴影兼容 · Shadow compatibility | 仍对 RTX 5090 Laptop 的指定 ANGLE D3D11 路径关闭阴影。需在原硬件上开启阴影复跑骨骼人物，确认上下文稳定后才移除。 · The driver-specific shadow guard stays until a hardware run with shadowed skinned actors confirms context stability. |
 

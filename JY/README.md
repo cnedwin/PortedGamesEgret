@@ -110,6 +110,7 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 | `@egret/engine/web/keyboard` `createBrowserKeyboardInput` | 大地图和战斗的键盘输入 · keyboard input on the map and in battle | `web/main.mjs` |
 | `@egret/engine/web/gamepad` `createBrowserGamepadInput` | 浏览器手柄采样，接入 JY 的行走、菜单和战斗按键 · browser controller sampling feeding JY's movement, menu and battle bindings | `web/main.mjs`、`web/gamepad-input.mjs` |
 | `Texture3D(canvas, { flipY: true })` | 直接上传大地图地标和船尾浪花的 Canvas 贴图 · direct canvas uploads for map markers and the boat wake | `web/jyx2/scene/native-world-canvas-texture.mjs` |
+| `@egret/engine/web/audio` `createBrowserAudio` | 剧情、出招和受击 WAV 共用一个音效总线 · one effects bus for story, attack and impact WAV cues | `web/wav-effects.mjs` |
 | `Bitmap`、`NineSliceBitmap`、`createSharedMaterial2D` | 立绘、对白框和战斗界面 · portraits, the dialogue frame and the battle interface | `web/opening-dialogue.mjs`、`web/battle-view.mjs` |
 
 ## 已验证 · Verified
