@@ -14,6 +14,10 @@ const RATE = 32000;
 const hz = semitone => 220 * 2 ** (semitone / 12);
 const SCENE_MUSIC = new Set(['bailu-zero-night', 'bailu-zero-mystery', 'bailu-zero-warm', 'campus-social-day']);
 const SETTINGS_KEY = 'love-elective-audio-v1';
+const DIALOGUE_MUSIC_LEVEL = 0.23;
+const DIALOGUE_MUSIC_ATTACK = 0.04;
+const DIALOGUE_MUSIC_HOLD_MS = 120;
+const DIALOGUE_MUSIC_RELEASE = 0.36;
 
 /** Notes are [frequency, start, length, volume, waveform]. */
 function tune() {
@@ -78,6 +82,7 @@ export function createAudio() {
   const files = new Map(), pendingFiles = new Map();
   let host, preparing, disposed = false, lastError;
   let desiredMusic = 'campus', musicRequest = 0, voiceRequest = 0, currentVoice, lastVoice;
+  let musicDucked = false, musicRecovery;
   let musicDecode = Promise.resolve();
   const audio = { muted: false };
   const report = error => { lastError = error?.code ?? error?.message ?? String(error); };
@@ -96,8 +101,29 @@ export function createAudio() {
   } catch { /* Defaults apply when browser storage is unavailable. */ }
 
   function mixMusic() {
-    const speech = currentVoice && currentVoice.state !== 'ended' && !preferences.voice.muted && !audio.muted;
-    host?.mixer.bus('music').setVolume(preferences.music.volume * (speech ? 0.28 : 1), { fade: 0.20 });
+    const bus = host?.mixer.bus('music');
+    const volume = preferences.music.volume * (musicDucked ? DIALOGUE_MUSIC_LEVEL : 1);
+    // Reapplying the same target restarts the engine's fade during scene changes.
+    if (bus && bus.volume !== volume) {
+      bus.setVolume(volume, { fade: musicDucked ? DIALOGUE_MUSIC_ATTACK : DIALOGUE_MUSIC_RELEASE });
+    }
+  }
+
+  function duckMusicForVoice() {
+    clearTimeout(musicRecovery);
+    musicRecovery = undefined;
+    musicDucked = true;
+    mixMusic();
+  }
+
+  function recoverMusicAfterVoice() {
+    if (!musicDucked || musicRecovery !== undefined) return;
+    // Bridge the voice fade-out and brief gaps between adjacent lines.
+    musicRecovery = setTimeout(() => {
+      musicRecovery = undefined;
+      musicDucked = false;
+      mixMusic();
+    }, DIALOGUE_MUSIC_HOLD_MS);
   }
 
   function releaseRetiredMusic() {
@@ -227,7 +253,7 @@ export function createAudio() {
     voiceRequest++;
     currentVoice?.stop({ fade: 0.04 });
     currentVoice = undefined;
-    mixMusic();
+    recoverMusicAfterVoice();
   };
   /** Resolves on playback start; dialogue advance never waits for speech to end. */
   audio.voice = async id => {
@@ -240,15 +266,25 @@ export function createAudio() {
       if (disposed || token !== voiceRequest || audio.muted || preferences.voice.muted) return null;
       const sound = await loadFile('voice', id);
       if (!sound || disposed || token !== voiceRequest || audio.muted || preferences.voice.muted) return null;
+      duckMusicForVoice();
       const voice = host.mixer.play(sound, { bus: 'voice', maxInstances: 1 });
-      if (voice.state === 'ended') return null;
+      if (voice.state === 'ended') {
+        recoverMusicAfterVoice();
+        return null;
+      }
       currentVoice = voice;
-      mixMusic();
       void voice.ended.then(() => {
-        if (currentVoice === voice) { currentVoice = undefined; mixMusic(); }
+        if (currentVoice === voice) {
+          currentVoice = undefined;
+          recoverMusicAfterVoice();
+        }
       });
       return voice;
-    } catch (error) { report(error); return null; }
+    } catch (error) {
+      if (token === voiceRequest) recoverMusicAfterVoice();
+      report(error);
+      return null;
+    }
   };
   audio.replayVoice = () => lastVoice ? audio.voice(lastVoice) : Promise.resolve(null);
   audio.settings = () => Object.fromEntries(Object.entries(preferences).map(([name, values]) => [name, { ...values }]));
@@ -268,6 +304,7 @@ export function createAudio() {
   audio.dispose = () => {
     if (disposed) return;
     audio.stopVoice();
+    clearTimeout(musicRecovery);
     disposed = true;
     musicRequest++;
     host?.dispose();
