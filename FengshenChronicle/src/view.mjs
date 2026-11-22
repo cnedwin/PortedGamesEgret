@@ -34,6 +34,7 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
   const groundLane = container(world), underLane = container(world), depthLane = container(world), fxLane = container(world);
   const warning = underLane.addChild(use(new Sprite())), pathLine = underLane.addChild(use(new Sprite()));
   const warningOutline = fxLane.addChild(use(new Sprite()));
+  const tideRoute = fxLane.addChild(use(new Sprite()));
   const camera = { x: 0, y: 0, zoom: 1, width, height, mapId: null };
   const scenery = {}, grounds = {}, actors = new Map(), drops = new Map(), motions = new Map();
   const portalEntries = [], ambientEntries = [], gatherNodes = new Map(), projectileNodes = new Map(), projectilePool = [];
@@ -605,6 +606,35 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
     }
     if (state.hero.ward > 0) g.lineStyle(1.8, 0xb8e1c0, .6).drawEllipse(state.hero.x - 29, state.hero.y - 15, 58, 26).lineStyle(0);
   }
+
+  function drawTideRoute(state, guide) {
+    const g = tideRoute.graphics;
+    g.clear();
+    if (!guide?.target || !state.enemies.some(foe => foe.telegraph?.kind === 'undertow' && !foe.dead)) return;
+    const hero = state.hero;
+    const {x, y} = guide.target;
+    const distance = Math.hypot(x - hero.x, y - hero.y);
+    if (distance < 12) return;
+    const dx = (x - hero.x) / distance;
+    const dy = (y - hero.y) / distance;
+    const start = Math.min(24, distance * .25);
+    const tip = Math.min(88, distance);
+    function arrow(width, color) {
+      const tx = hero.x + dx * tip, ty = hero.y + dy * tip;
+      g.lineStyle(width, color, .96)
+        .moveTo(hero.x + dx * start, hero.y + dy * start).lineTo(tx, ty)
+        .moveTo(tx - dx * 14 - dy * 8, ty - dy * 14 + dx * 8).lineTo(tx, ty)
+        .lineTo(tx - dx * 14 + dy * 8, ty - dy * 14 - dx * 8).lineStyle(0);
+    }
+    arrow(9, 0x123128);
+    arrow(4, 0xb4ffe5);
+    g.beginFill(0x9deccc, .72);
+    for (let step = tip + 14; step < distance - 8; step += 20) {
+      g.drawCircle(hero.x + dx * step, hero.y + dy * step, 3);
+    }
+    g.endFill().lineStyle(5, 0x123128, .85).drawCircle(x, y, 8)
+      .lineStyle(2.5, 0xb4ffe5, 1).drawCircle(x, y, 8).lineStyle(0);
+  }
   function updateAmbient(dt, depth) {
     let count = 0;
     for (const entry of ambientEntries) {
@@ -810,7 +840,7 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
       n.root.alpha = clamp((.72 - n.age) / .25, 0, 1);
     }
   }
-  function update(state, dt = 1 / 60, list = []) {
+  function update(state, dt = 1 / 60, list = [], tideGuide = null) {
     if (disposed || !state || !MAPS[state.mapId]) return;
     dt = clamp(Number.isFinite(dt) ? dt : 0, 0, .2);
     time += dt;
@@ -819,6 +849,7 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
     events(state, list);
     updateCamera(state, dt);
     drawWarnings(state);
+    drawTideRoute(state, tideGuide);
     drawPath(state);
     const equipped = slot => state.inventory?.find(item => item.uid === state.equipment?.[slot])?.itemId;
     const armor = equipped('armor') === 'scale-armor', steel = ['iron-sword', 'wind-sword'].includes(equipped('weapon'));
