@@ -4,6 +4,7 @@ import { Bitmap, DisplayObjectContainer, Sprite, createSharedMaterial2D } from '
 import { MAPS } from './sim/data.mjs';
 import { buildArt } from './art/paint.mjs';
 import { advanceHeroGait, combatPose, weaponAnchorForFrame, WEAPON_ANCHORS } from './art/effects.mjs';
+import { traceCapsuleCross } from './art/forecast-geometry.mjs';
 
 const TAU = Math.PI * 2;
 const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
@@ -521,9 +522,9 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
         g.lineStyle(2,0xe2b17c,.97).drawCircle(mark.x,mark.y,radius).lineStyle(2,0x99d3b5,.95).drawCircle(mark.x,mark.y,inner).lineStyle(0);
         g.beginFill(0x4a9878,.06).drawCircle(mark.x,mark.y,inner).endFill();
       }else if(mark.shape==='cross'){
-        const a=(mark.width??64)/2,x=mark.x,y=mark.y,r=radius,points=[[-r,-a],[-a,-a],[-a,-r],[a,-r],[a,-a],[r,-a],[r,a],[a,a],[a,r],[-a,r],[-a,a],[-r,a]];
-        g.lineStyle(2,0xe4aa73,.95).beginFill(fill,.13+p*.15).moveTo(x+points[0][0],y+points[0][1]);
-        for(const[dx,dy]of points.slice(1))g.lineTo(x+dx,y+dy);g.lineTo(x+points[0][0],y+points[0][1]).endFill().lineStyle(0);
+        g.lineStyle(2,0xe4aa73,.95).beginFill(fill,.13+p*.15);
+        traceCapsuleCross(g,mark.x,mark.y,radius,mark.width??70);
+        g.endFill().lineStyle(0);
       }else{
         g.lineStyle(5,friendly?0x243c31:0x301e1b,.88).beginFill(fill,.09+p*.15).drawCircle(mark.x,mark.y,radius).endFill();
         g.lineStyle(1.6,friendly?0xffdf91:p>.75?0xffe4a4:0xda9870,.97).drawCircle(mark.x,mark.y,radius);
@@ -532,15 +533,17 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
       // all filled danger areas stay below scenery; bodies remain readable.
       outline.lineStyle(1.2,friendly?0xf4d98f:0xf0bb88,.58);
       if(mark.shape==='cross'){
-        const a=(mark.width??64)/2,x=mark.x,y=mark.y,r=radius,points=[[-r,-a],[-a,-a],[-a,-r],[a,-r],[a,-a],[r,-a],[r,a],[a,a],[a,r],[-a,r],[-a,a],[-r,a]];
-        outline.moveTo(x+points[0][0],y+points[0][1]);for(const[dx,dy]of points.slice(1))outline.lineTo(x+dx,y+dy);outline.lineTo(x+points[0][0],y+points[0][1]);
+        traceCapsuleCross(outline,mark.x,mark.y,radius,mark.width??70);
       }else outline.drawCircle(mark.x,mark.y,radius);
       if(mark.shape==='ring'&&mark.innerRadius>0)outline.lineStyle(1.3,0xa9e5c3,.75).drawCircle(mark.x,mark.y,mark.innerRadius);
       outline.lineStyle(0);
-      g.lineStyle(3.5, 0xf2c578, 1).drawArc(mark.x, mark.y, Math.max(4, radius - 4), -Math.PI / 2, -Math.PI / 2 + p * TAU);
+      g.lineStyle(3.5, 0xf2c578, 1);
+      if(mark.shape==='cross')traceCapsuleCross(g,mark.x,mark.y,radius,mark.width??70,p);
+      else g.drawArc(mark.x, mark.y, Math.max(4, radius - 4), -Math.PI / 2, -Math.PI / 2 + p * TAU);
       for (let i = 0; i < 4; i++) {
         const angle = i * Math.PI / 2, dx = Math.cos(angle), dy = Math.sin(angle);
-        const cx = mark.x + dx * (radius + 6), cy = mark.y + dy * (radius + 6);
+        const tip = radius + (mark.shape==='cross'?(mark.width??70)/2:0) + 6;
+        const cx = mark.x + dx * tip, cy = mark.y + dy * tip;
         g.lineStyle(2, 0xf3d29a, .9).moveTo(cx - dy * 5 - dx * 5, cy + dx * 5 - dy * 5)
           .lineTo(cx, cy).lineTo(cx + dy * 5 - dx * 5, cy - dx * 5 - dy * 5);
       }

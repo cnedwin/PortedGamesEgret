@@ -30,7 +30,7 @@ export function lateBossForecast(state,foe){
   if(cycle===0)Object.assign(mark,{kind:'fire-sequence',name:'三烽追爆',hint:'三个落点会依次爆开，沿空隙持续移动。',radius:72,
    followUps:[{x:hero.x-110,y:hero.y,radius:66,delay:.46},{x:hero.x+110,y:hero.y,radius:66,delay:.92},
     ...(phase===2?[{x:hero.x,y:hero.y-110,radius:60,delay:1.38}]:[])]});
-  else if(cycle===1)Object.assign(mark,{kind:'siege-cross',name:'十字镇门',hint:'沿斜向进入青色空隙，避开横竖火线。',
+  else if(cycle===1)Object.assign(mark,{kind:'siege-cross',name:'十字镇门',hint:'向斜角空地走，离开横竖火线。',
    x:foe.x,y:foe.y,shape:'cross',radius:310,width:74,total:1.25,
    safeZones:[{x:foe.x-145,y:foe.y-145,radius:64},{x:foe.x+145,y:foe.y+145,radius:64}]});
   else Object.assign(mark,{kind:'command-channel',name:'镇将军令',hint:'攻击首领打断号令，阻止援军。进入内圈也能避开震波。',

@@ -216,7 +216,9 @@ function renderHud() {
   $('track').hidden = !route;
   if (route) setText('track', '寻路 · ' + targetName(route));
   const boss = state.enemies.find(enemy => enemy.boss && !enemy.dead);
-  $('boss-hud').hidden = !boss || range(boss, hero) >= 520;
+  const bossNearby = Boolean(boss && range(boss, hero) < 520);
+  $('boss-hud').hidden = !bossNearby;
+  $('hud').classList.toggle('late-boss-focus', bossNearby && Boolean(CAMPAIGN_CHAPTERS[state.mapId]));
   if (boss) {
     setText('boss-name',boss.name);
     $('boss-fill').style.transform = 'scaleX(' + boss.hp / boss.maxHp + ')';
