@@ -1,11 +1,18 @@
 import { CHAPTER, ENEMIES, EQUIPMENT_SLOTS, ITEMS, MAPS, QUEST } from './data.mjs';
 import { addResource, afterKill, bagSize, enterRoom, grantItem, grantRing, makeEnemy, openDialogue,
   restoreRpg, rpgDefaults, rpgSnapshot, syncRoom, townAction } from './progression.mjs';
+import {PROFESSIONS,canEquip,equipmentStats,professionStats,rareWeaponFor} from './arsenal.mjs';
+import {claimCampaign} from './campaign.mjs';
+import {forecastHits,lateBossForecast} from './campaign-ai.mjs';
 
 const STEP = 1 / 60, HERO_RADIUS = 18, SPEED = 185, CELL = 40;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const copy = value => JSON.parse(JSON.stringify(value));
+const RECOVERY_ITEMS=Object.freeze([
+  Object.freeze({itemId:'potion',key:'potions',name:'回春散',heal:45}),
+  Object.freeze({itemId:'recovery-pill',key:'tonics',name:'回春丹',heal:65})
+]);
 
 function emit(state, type, detail = {}) {
   state.pendingEvents.push({ type, ...detail });
@@ -13,31 +20,39 @@ function emit(state, type, detail = {}) {
 const enemy = makeEnemy;
 function stats(state, restore = false) {
   const hero = state.hero;
-  let attack = 2 + hero.level * 2, defense = 1, bonusHp = 0, speed = SPEED;
+  const role=PROFESSIONS[state.profession]??PROFESSIONS.guard,base=professionStats(role.id,hero.level);
+  let {attack,defense,speed}=base,bonusHp=0;
   for (const slot of EQUIPMENT_SLOTS) {
     const uid = state.equipment[slot];
     const instance = state.inventory.find(item => item.uid === uid);
     const item = ITEMS[instance?.itemId];
-    attack += item?.attack ?? 0;
-    defense += item?.defense ?? 0;
-    bonusHp += item?.maxHp ?? 0;
-    speed += item?.speed ?? 0;
+    const values=equipmentStats(item,instance?.affixes);
+    attack += values.attack;
+    defense += values.defense;
+    bonusHp += values.maxHp;
+    speed += values.speed;
   }
   hero.attack = attack;
   hero.defense = defense;
-  hero.maxHp = 100 + (hero.level - 1) * 15 + bonusHp;
+  hero.maxHp = base.maxHp + bonusHp;
   hero.speed = speed;
+  hero.classId=role.id;hero.reach=role.reach;hero.classSkillName=role.active.name;hero.classCooldownMax=role.active.cooldown;
+  hero.rageName=role.rage.name;
   hero.hp = restore ? hero.maxHp : Math.min(hero.hp, hero.maxHp);
   hero.needXp = hero.level * 35;
 }
 
-export function createSession(snapshot = null) {
+export function createSession(snapshot = null,options={}) {
+  const requested=typeof options==='string'?options:options.profession;
+  const profession=snapshot?.version===1?(PROFESSIONS[snapshot.profession]?snapshot.profession:'guard'):(PROFESSIONS[requested]?requested:'guard');
+  const role=PROFESSIONS[profession];
   const state = {
-    version: 1, mapId: 'city', phase: 'play', time: 0, seed: 74123, nextId: 20, accumulator: 0,
+    profession,
+    version: 1, mapId: 'city', phase: 'play', time: 0, seed: Number.isSafeInteger(options.seed)?options.seed>>>0:74123, nextId: 20, accumulator: 0,
     hero: { id: 'hero', name: '玄甲', ...MAPS.city.spawn, radius: HERO_RADIUS, facing: -Math.PI / 2,
       hp: 100, maxHp: 100, level: 1, xp: 0, needXp: 35, attack: 17, defense: 2, gold: 24, potions: 5,
-      action: 'idle', actionTimer: 0, cooldown: 0, invulnerable: 0, anger: 0, ward: 0, speed: SPEED },
-    inventory: [{ uid: 'starter-sword', itemId: 'bronze-sword' }, { uid: 'starter-armor', itemId: 'linen-armor' }],
+      action: 'idle', actionTimer: 0, cooldown: 0, invulnerable: 0, anger: 0, ward: 0, speed: SPEED,classCooldown:0,tonics:0 },
+    inventory: [{ uid: 'starter-sword', itemId: role.starterWeapon }, { uid: 'starter-armor', itemId: 'linen-armor' }],
     equipment: { weapon: 'starter-sword', offhand: null, armor: 'starter-armor', boots: null, ring: null, skill: null, charm: null },
     quest: { stage: 'unaccepted', kills: 0 },
     flags: { artifactOwned: false, firstWeaponDropped: false, armorDropped: false, bossDefeated: false },
@@ -46,6 +61,7 @@ export function createSession(snapshot = null) {
     targetId: null, moveTarget: null, path: [], autoAttack: false, repath: 0, pendingStrike: null,
     pendingEvents: [], events: [], notice: ''
   };
+  state.hero.name=role.name;stats(state,true);
   if (snapshot?.version === 1 && Object.hasOwn(MAPS, snapshot.mapId) && snapshot.hero && Array.isArray(snapshot.inventory)
       && snapshot.quest && Object.hasOwn(QUEST.descriptions, snapshot.quest.stage) && snapshot.trailState
       && Array.isArray(snapshot.trailState.enemies) && Array.isArray(snapshot.trailState.drops)) {
@@ -67,11 +83,13 @@ export function createSession(snapshot = null) {
       restoreRpg(state, saved);
       if (!validPoint(state.mapId, state.hero.x, state.hero.y, HERO_RADIUS)) Object.assign(state.hero, MAPS[state.mapId].spawn);
       stats(state);
+      state.hero.classCooldown=clamp(Number.isFinite(saved.hero.classCooldown)?saved.hero.classCooldown:0,0,role.active.cooldown);
+      state.hero.tonics=clamp(Number.isSafeInteger(saved.hero.tonics)?saved.hero.tonics:0,0,99);
       state.artifact.cooldown = Math.max(0, saved.artifactCooldown ?? 0);
       if (state.phase === 'dead') state.hero.action = 'dead';
       state.pendingEvents = [];
     } catch {
-      return createSession();
+      return createSession(null,options);
     }
   }
   return state;
@@ -168,8 +186,8 @@ function questStage(state, stage) {
   state.quest.stage = stage;
   emit(state, 'quest', { stage, text: QUEST.descriptions[stage], kills: state.quest.kills });
 }
-function drop(state, itemId, x, y, amount = 1) {
-  const item = { id: `drop-${state.nextId++}`, itemId, x, y, amount };
+function drop(state, itemId, x, y, amount = 1, affixes) {
+  const item = { id: `drop-${state.nextId++}`, itemId, x, y, amount,...(affixes&&Object.keys(affixes).length?{affixes}:{}) };
   state.drops.push(item); emit(state, 'loot', { ...item, name: ITEMS[itemId].name });
 }
 function hurtEnemy(state, foe, amount, cause) {
@@ -179,6 +197,13 @@ function hurtEnemy(state, foe, amount, cause) {
   foe.hp = Math.max(0, foe.hp - damage);
   if (cause !== 'rage') state.hero.anger = clamp(state.hero.anger + actual * .25 + 2, 0, 100);
   emit(state, 'hit', { id: foe.id, x: foe.x, y: foe.y, amount: damage, cause });
+  if(foe.telegraph?.channeling&&foe.hp>0){
+    foe.channelDamage=(foe.channelDamage??0)+actual;
+    if(foe.channelDamage>=foe.telegraph.breakDamage){
+      foe.telegraph=null;foe.state='idle';foe.cooldown=1.1;foe.channelDamage=0;
+      emit(state,'interrupt',{id:foe.id,x:foe.x,y:foe.y,reason:'channel-break'});
+    }
+  }
   if (foe.hp > 0) return;
   foe.dead = true; foe.state = 'dead'; foe.telegraph = null;
   emit(state, 'kill', { id: foe.id, kind: foe.kind, x: foe.x, y: foe.y, boss: foe.boss });
@@ -199,8 +224,8 @@ function hurtEnemy(state, foe, amount, cause) {
   state.quest.kills++;
   if (!state.flags.firstWeaponDropped) {
     state.flags.firstWeaponDropped = true;
-    drop(state, 'iron-sword', foe.x - 14, foe.y - 5);
-    talk(state, '破邪剑落地了！走近拾取，在背包中装备，攻击力将明显提高。');
+    drop(state, state.profession==='guard'?'iron-sword':rareWeaponFor(state.profession,1), foe.x - 14, foe.y - 5);
+    talk(state, '适合本职业的兵器落地了！走近拾取，在行囊中装备，攻击力将明显提高。');
   } else if (state.quest.kills >= 4 && !state.flags.armorDropped) {
     state.flags.armorDropped = true; drop(state, 'scale-armor', foe.x - 14, foe.y);
   } else if (random(state) < .38) drop(state, 'potion', foe.x - 10, foe.y);
@@ -227,15 +252,61 @@ function hurtHero(state, amount, foe) {
   }
 }
 function melee(state) {
-  const hero = state.hero;
+  const hero = state.hero,role=PROFESSIONS[state.profession];
   if (hero.cooldown > 0 || hero.actionTimer > 0) return false;
   const selected = state.enemies.find(foe => foe.id === state.targetId && !foe.dead);
-  const target = selected ?? state.enemies.filter(foe => !foe.dead && distance(foe, hero) < 88).sort((a, b) => distance(a, hero) - distance(b, hero))[0];
+  const target = selected ?? state.enemies.filter(foe => !foe.dead && distance(foe, hero) < role.reach).sort((a, b) => distance(a, hero) - distance(b, hero))[0];
   if (target) hero.facing = Math.atan2(target.y - hero.y, target.x - hero.x);
-  hero.action = 'attack'; hero.actionTimer = .32; hero.cooldown = .48;
-  state.pendingStrike = { remaining: .12, targetId: target?.id, angle: hero.facing };
-  emit(state, 'attack', { id: 'hero', x: hero.x, y: hero.y, direction: hero.facing,
-    targetX: target?.x ?? hero.x + Math.cos(hero.facing) * 65, targetY: target?.y ?? hero.y + Math.sin(hero.facing) * 65 });
+  const limit=target?Math.min(1,role.reach/Math.max(1,distance(target,hero))):1;
+  const x=target?hero.x+(target.x-hero.x)*limit:hero.x+Math.cos(hero.facing)*Math.min(160,role.reach),
+    y=target?hero.y+(target.y-hero.y)*limit:hero.y+Math.sin(hero.facing)*Math.min(160,role.reach);
+  hero.action = 'attack'; hero.actionTimer = role.id==='guard'?.32:.36; hero.cooldown = role.attackCooldown;
+  if(role.id==='ritualist')scheduleCast(state,{kind:'sigil',x,y,radius:48,remaining:role.attackWindup,total:role.attackWindup,damage:hero.attack,cause:'sigil',pulses:1,life:role.attackWindup});
+  else state.pendingStrike = { remaining: role.attackWindup, targetId: target?.id, angle: hero.facing,profession:role.id };
+  emit(state, 'attack', { id: 'hero', x: hero.x, y: hero.y, direction: hero.facing,profession:role.id,
+    attackKind:role.id==='guard'?'melee':role.id==='ranger'?'arrow':'sigil',targetX:x,targetY:y });
+  return true;
+}
+function aimPoint(state,action,range){
+  const hero=state.hero;
+  const selected=state.enemies.find(foe=>foe.id===state.targetId&&!foe.dead)
+    ??state.enemies.filter(foe=>!foe.dead&&distance(foe,hero)<=range).sort((a,b)=>distance(a,hero)-distance(b,hero))[0];
+  const point=Number.isFinite(action?.x+action?.y)?action:selected;
+  if(!point)return{x:hero.x+Math.cos(hero.facing)*Math.min(range,150),y:hero.y+Math.sin(hero.facing)*Math.min(range,150)};
+  const length=distance(point,hero),scale=Math.min(1,range/Math.max(1,length));
+  return{x:hero.x+(point.x-hero.x)*scale,y:hero.y+(point.y-hero.y)*scale};
+}
+function scheduleCast(state,cast){
+  if(state.casts.length>=10)return;
+  const id=`cast-${state.nextId++}`;
+  state.casts.push({id,interval:0,slow:0,...cast});
+  emit(state,'playerForecast',{id,kind:cast.kind,x:cast.x,y:cast.y,radius:cast.radius,duration:cast.remaining,profession:state.profession});
+}
+function launchArrow(state,angle,damage,{range=260,pierce=1,skillId='basic-arrow',volleyHits=null}={}){
+  if(state.projectiles.length>=24)return;
+  const id=`arrow-${state.nextId++}`,speed=850;
+  state.projectiles.push({id,ownerId:'hero',kind:'arrow',skillId,x:state.hero.x,y:state.hero.y,dx:Math.cos(angle),dy:Math.sin(angle),
+    speed,remaining:range/speed,damage,pierce,hitIds:[],volleyHits});
+  emit(state,'projectile',{id,kind:'arrow',skillId,x:state.hero.x,y:state.hero.y,direction:angle,profession:state.profession});
+}
+function castClassSkill(state,action={}){
+  const hero=state.hero,role=PROFESSIONS[state.profession],active=role.active;
+  if(hero.classCooldown>0)return false;
+  hero.classCooldown=active.cooldown;hero.ward=Math.max(hero.ward,active.ward);hero.action='attack';hero.actionTimer=.35;
+  const point=aimPoint(state,action,active.range),angle=Math.atan2(point.y-hero.y,point.x-hero.x);
+  hero.facing=angle;
+  emit(state,'classSkill',{profession:role.id,skillId:active.id,name:active.name,x:hero.x,y:hero.y,targetX:point.x,targetY:point.y,radius:active.radius,duration:active.duration});
+  if(role.id==='guard'){
+    for(const foe of state.enemies)if(!foe.dead&&distance(hero,foe)<=active.radius+foe.radius){
+      foe.guard=0;foe.shieldClock=1.6;hurtEnemy(state,foe,Math.round(hero.attack*active.damageMultiplier),'classSkill');
+      const d=Math.max(1,distance(hero,foe)),end={x:foe.x+(foe.x-hero.x)/d*18,y:foe.y+(foe.y-hero.y)/d*18};
+      if(!foe.dead&&!foe.boss&&validPoint(state.mapId,end.x,end.y,foe.radius)){foe.x=end.x;foe.y=end.y;}
+    }
+  }else if(role.id==='ranger'){
+    const volleyHits=Object.create(null);
+    for(const offset of [-.16,0,.16])launchArrow(state,angle+offset,Math.round(hero.attack*active.damageMultiplier),{range:active.range,pierce:2,skillId:active.id,volleyHits});
+  }else scheduleCast(state,{kind:'spirit-array',skillId:active.id,x:point.x,y:point.y,radius:active.radius,remaining:.25,total:.25,
+    damage:Math.round(hero.attack*active.damageMultiplier),cause:'classSkill',pulses:3,interval:.8,life:active.duration,slow:.55});
   return true;
 }
 
@@ -259,12 +330,14 @@ function castArtifact(state, target = {}) {
   emit(state, 'artifactCast', { x: hero.x, y: hero.y, direction: angle });
   return true;
 }
-function castRage(state) {
-  const hero = state.hero;
+function castRage(state,action={}) {
+  const hero = state.hero,role=PROFESSIONS[state.profession],data=role.rage;
   if (hero.anger < 100 || state.rage.phase !== 'idle') return false;
   hero.anger = 0;
-  Object.assign(state.rage, { phase: 'charging', remaining: .42, x: hero.x, y: hero.y, radius: 185 });
-  emit(state, 'rageTelegraph', { x: hero.x, y: hero.y, radius: 185, duration: .42 });
+  const point=role.id==='guard'?hero:aimPoint(state,action,data.range),windup=role.id==='guard'?.42:data.windup;
+  Object.assign(state.rage, { phase: 'charging', remaining: windup, x: point.x, y: point.y, radius:role.id==='guard'?185:data.radius,
+    skillId:data.id,profession:role.id });
+  emit(state, 'rageTelegraph', { x: point.x, y: point.y, radius:state.rage.radius,duration:windup,skillId:data.id,profession:role.id });
   return true;
 }
 function updateSkills(state, seconds) {
@@ -288,9 +361,10 @@ function updateSkills(state, seconds) {
     rage.remaining -= seconds;
     if (rage.remaining <= 0) {
       rage.phase = 'idle';
-      emit(state, 'rage', { x: rage.x, y: rage.y, radius: rage.radius });
+      emit(state, 'rage', { x: rage.x, y: rage.y, radius: rage.radius,skillId:rage.skillId,profession:state.profession });
       for (const foe of state.enemies) if (!foe.dead && distance(rage, foe) <= rage.radius + foe.radius) {
-        const amount = Math.round(46 + hero.level * 8 + hero.attack * .5);
+        const amount = state.profession==='guard'?Math.round(46 + hero.level * 8 + hero.attack * .5)
+          :Math.round(hero.attack*PROFESSIONS[state.profession].rage.damageMultiplier+hero.level*6);
         hurtEnemy(state, foe, amount, 'rage');
         emit(state, 'rageHit', { id: foe.id, x: foe.x, y: foe.y, amount });
       }
@@ -330,13 +404,58 @@ function updateArtifact(state, seconds) {
     emit(state, 'artifactReturn', { x: ring.x, y: ring.y });
   }
 }
+function updatePlayerSpells(state,seconds){
+  for(const foe of state.enemies)foe.slow=0;
+  for(let i=state.casts.length-1;i>=0;i--){
+    const cast=state.casts[i];cast.life-=seconds;cast.remaining-=seconds;
+    if(cast.slow&&cast.life>0)for(const foe of state.enemies)if(!foe.dead&&distance(cast,foe)<=cast.radius+foe.radius)foe.slow=cast.slow;
+    if(cast.remaining<=0&&cast.pulses>0){
+      cast.pulses--;cast.remaining+=cast.interval;
+      emit(state,'castHit',{id:cast.id,kind:cast.kind,skillId:cast.skillId,x:cast.x,y:cast.y,radius:cast.radius,profession:state.profession});
+      const multiplier=cast.kind==='spirit-array'?[1,.65,.5][cast.pulseIndex??0]:1;
+      for(const foe of state.enemies)if(!foe.dead&&distance(cast,foe)<=cast.radius+foe.radius)hurtEnemy(state,foe,Math.round(cast.damage*multiplier),cast.cause);
+      cast.pulseIndex=(cast.pulseIndex??0)+1;
+    }
+    if(cast.pulses<=0&&cast.life<=0)state.casts.splice(i,1);
+  }
+  for(let i=state.projectiles.length-1;i>=0;i--){
+    const p=state.projectiles[i],before={x:p.x,y:p.y},travel=p.speed*Math.min(seconds,Math.max(0,p.remaining));
+    p.x+=p.dx*travel;p.y+=p.dy*travel;p.remaining-=seconds;
+    for(const foe of state.enemies){
+      if(foe.dead||p.hitIds.includes(foe.id)||segmentDistance(foe,before,p)>foe.radius+7)continue;
+      p.hitIds.push(foe.id);
+      const repeats=p.volleyHits?.[foe.id]??0,multiplier=p.volleyHits?(repeats===0?1:repeats===1?.2:.1):1;
+      if(p.volleyHits)p.volleyHits[foe.id]=repeats+1;
+      hurtEnemy(state,foe,Math.round(p.damage*multiplier),p.skillId==='basic-arrow'?'arrow':'classSkill-arrow');
+      emit(state,'projectileHit',{id:p.id,targetId:foe.id,x:foe.x,y:foe.y,skillId:p.skillId,profession:state.profession});
+      if(p.hitIds.length>=p.pierce){p.remaining=0;break;}
+    }
+    if(p.remaining<=0)state.projectiles.splice(i,1);
+  }
+}
+export function nextRecovery(hero){
+  const missing=Math.max(0,hero.maxHp-hero.hp);if(!missing)return null;
+  const small=RECOVERY_ITEMS[0],large=RECOVERY_ITEMS[1],hasSmall=hero.potions>0,hasLarge=hero.tonics>0;
+  if(missing<=small.heal&&hasSmall)return small;
+  if(hasLarge)return large;
+  return hasSmall?small:null;
+}
 
 function planEnemyAttack(state, foe, data) {
+  const late=lateBossForecast(state,foe);if(late)return late;
   const hero = state.hero;
   let kind = foe.kind === 'shaman' || foe.kind === 'slinger' ? 'bolt' : 'slash';
   let x = hero.x, y = hero.y, radius = kind === 'bolt' ? 47 : foe.boss ? 70 : 40, total = data.windup;
   let extra = [];
-  if (foe.kind === 'windlord') {
+  if(foe.kind==='wolf'||foe.kind==='fenwolf'){
+    kind=foe.attacks%2?'pounce':'slash';radius=foe.kind==='fenwolf'?47:40;total=data.windup;
+  }else if(foe.kind==='sentinel'){
+    kind=foe.attacks%2?'cleave':'slam';radius=kind==='slam'?120:78;total=kind==='slam'?1.08:.9;
+    if(kind==='slam'){x=foe.x;y=foe.y;}
+  }else if(foe.kind==='channeler'){
+    return{kind:'channel-bolt',name:'聚潮咒',hint:'攻击可以打断吟唱，也可先离开落点。',skillId:'channeler-bolt',pattern:'channel-bolt',
+      x,y,radius:60,total:1.25,remaining:1.25,extra:[],channeling:true,breakDamage:18};
+  }else if (foe.kind === 'windlord') {
     const cycle = (foe.attacks - 1) % 3;
     kind = cycle === 0 ? 'dash' : cycle === 1 ? 'crosswind' : 'slam';
     radius = cycle === 2 ? 160 : 62;
@@ -353,21 +472,42 @@ function planEnemyAttack(state, foe, data) {
   } else if (foe.kind === 'slinger' && foe.attacks % 2 === 0) {
     extra = [{ x: hero.x - 85, y: hero.y + 25, radius: 40 }, { x: hero.x + 85, y: hero.y + 25, radius: 40 }];
   }
-  return { kind, x, y, radius, remaining: total, total, extra };
+  const names={slash:'横扫',pounce:'扑咬',bolt:'落咒',cleave:'蓄力劈击',slam:'震地',dash:'突进',crosswind:'回风三叠'};
+  return { kind,skillId:foe.kind+'-'+kind,pattern:kind,name:names[kind]??kind,hint:kind==='slam'?'远离脚下蓄力圈。':'侧移离开固定落点。', x, y, radius, remaining: total, total, extra };
+}
+function updateHazards(state,seconds){
+  for(let i=state.hazards.length-1;i>=0;i--){
+    const mark=state.hazards[i],owner=state.enemies.find(foe=>foe.id===mark.ownerId);
+    if(!owner||owner.dead){state.hazards.splice(i,1);continue;}
+    mark.remaining-=seconds;
+    if(mark.remaining<=0){
+      emit(state,'hazardAttack',{...mark});
+      if(forecastHits(state.hero,mark))hurtHero(state,mark.damage,owner);
+      state.hazards.splice(i,1);
+    }
+  }
 }
 function updateEnemies(state, seconds) {
   for (const foe of state.enemies) {
     if (foe.dead || state.phase !== 'play') continue;
     const data = ENEMIES[foe.kind];
     foe.guard = Math.max(0, (foe.guard ?? 0) - seconds);
+    if(foe.kind==='sentinel'){
+      foe.shieldClock=(foe.shieldClock??0)+seconds;
+      foe.guard=foe.shieldClock%4<1.45?.25:0;
+      foe.shielded=foe.guard>0;
+    }
+    if(foe.kind==='riverLord'||foe.kind==='warMarshal'){
+      const phase=foe.hp/foe.maxHp<=.5?2:1;
+      if(foe.bossPhase!==phase){foe.bossPhase=phase;if(phase===2)emit(state,'bossPhase',{id:foe.id,phase,x:foe.x,y:foe.y});}
+    }
     foe.cooldown = Math.max(0, foe.cooldown - seconds);
     if (foe.telegraph) {
       foe.telegraph.remaining -= seconds;
       if (foe.telegraph.remaining > 0) continue;
       const attack = foe.telegraph;
-      emit(state, 'enemyAttack', { id: foe.id, x: foe.x, y: foe.y, targetX: attack.x, targetY: attack.y,
-        radius: attack.radius, kind: attack.kind, extra: attack.extra ?? [] });
-      if (attack.kind === 'dash') {
+      emit(state, 'enemyAttack', { ...attack,id: foe.id, x: foe.x, y: foe.y, targetX: attack.x, targetY: attack.y });
+      if (attack.kind === 'dash'||attack.kind==='pounce') {
         const length = distance(foe, attack), travel = Math.max(0, length - foe.radius - HERO_RADIUS - 2);
         const end = { x: foe.x + (attack.x - foe.x) / Math.max(1, length) * travel,
           y: foe.y + (attack.y - foe.y) / Math.max(1, length) * travel };
@@ -375,8 +515,22 @@ function updateEnemies(state, seconds) {
           foe.x = end.x; foe.y = end.y;
         }
       }
-      if ([attack, ...(attack.extra ?? [])].some(mark => distance(state.hero, mark) <= mark.radius + HERO_RADIUS))
+      if ([attack, ...(attack.extra ?? [])].some(mark => forecastHits(state.hero,mark)))
         hurtHero(state, data.attack * (attack.kind === 'slam' ? 1.3 : 1) * (1 + Math.min(4, (foe.run ?? 1) - 1) * .04), foe);
+      for(const wave of attack.followUps??[]){
+        const mark={id:`hazard-${state.nextId++}`,ownerId:foe.id,kind:attack.kind,name:attack.name,hint:attack.hint,
+          total:wave.delay,remaining:wave.delay,damage:data.attack,...wave};
+        if(state.hazards.length<18){state.hazards.push(mark);emit(state,'hazardTelegraph',{...mark});}
+      }
+      if(attack.summon&&state.enemies.filter(enemy=>!enemy.dead).length<12){
+        for(const side of [-1,1]){
+          const point={x:foe.x+side*100,y:foe.y+100};
+          if(validPoint(state.mapId,point.x,point.y,22)){
+            const add=makeEnemy(side<0?'fenwolf':'channeler',point.x,point.y,`reinforcement-${state.nextId++}`,foe.run);
+            state.enemies.push(add);emit(state,'summon',{id:add.id,kind:add.kind,x:add.x,y:add.y});
+          }
+        }
+      }
       foe.telegraph = null; foe.cooldown = data.cooldown; foe.state = 'idle';
       continue;
     }
@@ -386,15 +540,24 @@ function updateEnemies(state, seconds) {
     if (d <= data.range && foe.cooldown <= 0) {
       foe.attacks++;
       foe.telegraph = planEnemyAttack(state, foe, data);
+      foe.channelDamage=0;
       foe.state = 'windup';
-      emit(state, 'telegraph', { id: foe.id, x: foe.telegraph.x, y: foe.telegraph.y, radius: foe.telegraph.radius,
-        duration: foe.telegraph.total, kind: foe.telegraph.kind, extra: foe.telegraph.extra });
+      emit(state, 'telegraph', { ...foe.telegraph,id:foe.id,duration:foe.telegraph.total });
+    }else if(foe.kind==='channeler'&&d<160&&foe.cooldown>0){
+      const angle=Math.atan2(foe.y-state.hero.y,foe.x-state.hero.x);
+      move(state,foe,Math.cos(angle)*data.speed*seconds,Math.sin(angle)*data.speed*seconds);foe.state='walk';
     } else if (d > data.range * .83) {
       foe.repath -= seconds;
       if (foe.repath <= 0 || !foe.path.length) {
-        foe.path = findPath(state.mapId, foe, state.hero, foe.radius); foe.repath = .6;
+        let goal=state.hero;
+        if((foe.kind==='wolf'||foe.kind==='fenwolf')&&d<250){
+          const angle=Math.atan2(foe.y-state.hero.y,foe.x-state.hero.x)+(foe.id.length%2?.45:-.45);
+          const flank={x:state.hero.x+Math.cos(angle)*48,y:state.hero.y+Math.sin(angle)*48};
+          if(validPoint(state.mapId,flank.x,flank.y,foe.radius))goal=flank;
+        }
+        foe.path = findPath(state.mapId, foe, goal, foe.radius); foe.repath = .6;
       }
-      foe.state = follow(state, foe, foe.path, data.speed * seconds) ? 'walk' : 'idle';
+      foe.state = follow(state, foe, foe.path, data.speed * (foe.slow||1) * seconds) ? 'walk' : 'idle';
     } else foe.state = 'idle';
   }
 }
@@ -437,14 +600,17 @@ export function dispatch(state, action) {
     }
     case 'attack': return melee(state);
     case 'artifact': return castArtifact(state, action);
-    case 'rage': return castRage(state);
-    case 'potion':
-      if (state.hero.potions <= 0 || state.hero.hp >= state.hero.maxHp) return false;
-      state.hero.potions--; state.hero.hp = Math.min(state.hero.maxHp, state.hero.hp + 45);
-      emit(state, 'heal', { x: state.hero.x, y: state.hero.y, amount: 45 }); return true;
+    case 'rage': return castRage(state,action);
+    case 'classSkill':return castClassSkill(state,action);
+    case 'potion':{
+      const recovery=nextRecovery(state.hero);if(!recovery)return false;
+      state.hero[recovery.key]--;const amount=Math.min(recovery.heal,state.hero.maxHp-state.hero.hp);
+      state.hero.hp+=amount;emit(state,'heal',{x:state.hero.x,y:state.hero.y,amount,itemId:recovery.itemId});return true;
+    }
     case 'equip': {
       const instance = state.inventory.find(entry => entry.uid === action.uid), item = ITEMS[instance?.itemId];
       if (!item?.slot) return false;
+      if(!canEquip(item,state.profession,state.hero.level))return false;
       if (item.slot === 'skill' && state.artifact.phase !== 'idle') return false;
       state.equipment[item.slot] = instance.uid; stats(state);
       emit(state, 'equip', { uid: instance.uid, itemId: instance.itemId, name: item.name }); return true;
@@ -463,8 +629,9 @@ export function dispatch(state, action) {
       if (!item || distance(item, state.hero) > 100) return false;
       if (ITEMS[item.itemId].slot && bagSize(state) >= 30) { talk(state, '背包已满，请先整理。物品仍留在地上。'); return false; }
       if (item.itemId === 'gold') state.hero.gold += item.amount;
-      else if (item.itemId === 'potion') state.hero.potions = Math.min(99, state.hero.potions + item.amount);
-      else if (!addResource(state, item.itemId, item.amount)) state.inventory.push({ uid: `item-${state.nextId++}`, itemId: item.itemId });
+      else if (ITEMS[item.itemId].consumable||item.itemId==='potion'){
+        const key=ITEMS[item.itemId].consumable??'potions';state.hero[key]=Math.min(99,(state.hero[key]??0)+item.amount);
+      }else if (!addResource(state, item.itemId, item.amount)) state.inventory.push({ uid: `item-${state.nextId++}`, itemId: item.itemId,...(item.affixes?{affixes:item.affixes}:{}) });
       state.drops.splice(state.drops.indexOf(item), 1);
       emit(state, 'pickup', { id: item.id, itemId: item.itemId, name: ITEMS[item.itemId].name, amount: item.amount, x: item.x, y: item.y }); return true;
     }
@@ -476,6 +643,9 @@ export function dispatch(state, action) {
         if (state.quest.stage === 'unaccepted') { talk(state, '先向姜尚领取除祟之托，再出城。'); return false; }
         if (person.to === 'pass' && !['active', 'return', 'complete'].includes(state.chapter.stage)) {
           talk(state, '铜关阵门尚未开放，先平定古道，再向姜尚领命。'); return false;
+        }
+        if((person.to==='ford'||person.to==='siege')&&!['active','return','complete'].includes(state.campaign[person.to].stage)){
+          talk(state,'此地阵门尚未开放，先向姜尚复命并领取下一章。');return false;
         }
         changeMap(state, person.to); return true;
       }
@@ -490,9 +660,13 @@ export function dispatch(state, action) {
         } else if (state.chapter.stage === 'return' && !state.chapter.rewarded) {
           if (!grantItem(state, 'wind-boots')) return false;
           state.hero.gold += 160; state.chapter.stage = 'complete'; state.chapter.rewarded = true;
+          if(state.campaign.ford.stage==='locked')state.campaign.ford.stage='offer';
           emit(state, 'chapter', { id: CHAPTER.id, stage: 'complete' });
           emit(state, 'campaignComplete', { x: state.hero.x, y: state.hero.y });
-        } else talk(state, QUEST.descriptions[state.quest.stage]);
+        } else {
+          const claimed=claimCampaign(state,grantItem);if(claimed===false)return false;
+          if(claimed===null)talk(state,QUEST.descriptions[state.quest.stage]);
+        }
       }
       return openDialogue(state, action.id);
     }
@@ -507,13 +681,17 @@ function tick(state, seconds, input) {
   hero.cooldown = Math.max(0, hero.cooldown - seconds);
   hero.actionTimer = Math.max(0, hero.actionTimer - seconds);
   hero.invulnerable = Math.max(0, hero.invulnerable - seconds);
+  hero.classCooldown=Math.max(0,hero.classCooldown-seconds);
   if (Number.isFinite(input.aimX + input.aimY)) hero.facing = Math.atan2(input.aimY - hero.y, input.aimX - hero.x);
   if (state.pendingStrike) {
     state.pendingStrike.remaining -= seconds;
     if (state.pendingStrike.remaining <= 0) {
       const strike = state.pendingStrike;
       const foe = state.enemies.find(entry => entry.id === strike.targetId && !entry.dead);
-      if (foe && distance(hero, foe) <= 88) hurtEnemy(state, foe, hero.attack, 'melee');
+      if(strike.profession==='ranger'){
+        const angle=foe?Math.atan2(foe.y-hero.y,foe.x-hero.x):strike.angle;
+        launchArrow(state,angle,hero.attack,{range:PROFESSIONS.ranger.reach+24});
+      }else if (foe && distance(hero, foe) <= PROFESSIONS[state.profession].reach) hurtEnemy(state, foe, hero.attack, 'melee');
       state.pendingStrike = null;
     }
   }
@@ -527,7 +705,7 @@ function tick(state, seconds, input) {
     walking = true;
   } else {
     const foe = state.autoAttack && state.enemies.find(entry => entry.id === state.targetId && !entry.dead);
-    if (foe && distance(hero, foe) > 70) {
+    if (foe && distance(hero, foe) > PROFESSIONS[state.profession].chaseRange) {
       state.repath -= seconds;
       if (state.repath <= 0 || !state.path.length) { state.path = findPath(state.mapId, hero, foe, HERO_RADIUS); state.repath = .35; }
       walking = follow(state, hero, state.path, hero.speed * seconds);
@@ -541,9 +719,12 @@ function tick(state, seconds, input) {
   if (input.attack) melee(state);
   if (input.artifact) castArtifact(state, { x: input.aimX, y: input.aimY });
   if (input.rage) castRage(state);
+  if(input.classSkill)castClassSkill(state,{x:input.aimX,y:input.aimY});
   if (hero.actionTimer <= 0) hero.action = walking ? 'walk' : 'idle';
   updateArtifact(state, seconds);
   updateSkills(state, seconds);
+  updatePlayerSpells(state,seconds);
+  updateHazards(state,seconds);
   if (state.mapId !== 'city') updateEnemies(state, seconds);
 }
 

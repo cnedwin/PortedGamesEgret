@@ -180,6 +180,10 @@ export const FX_FRAMES = [
   entry('fx-flare', 96, 96, g => glow(g,96,true)),
   entry('fx-streak', 128, 40, streak),
   entry('fx-shock', 112, 80, shock)
+  ,entry('fx-arrow',96,22,g=>{
+    stroke(g,[[-40,0],[35,0]],'#d4bd84',2);stroke(g,[[-30,-5],[-21,0],[-30,5]],'#6ca798',2);
+    polygon(g,[[43,0],[30,-5],[33,0],[30,5]],'#eff1ca');stroke(g,[[27,0],[40,0]],'#b6d8d0',1);
+  })
 ];
 
 // Painted blade coordinates relative to each source illustration's foot pin.

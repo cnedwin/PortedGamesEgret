@@ -25,10 +25,21 @@ try {
   checks.push([title.written || title.passed, `title screenshot (${(title.share * 100).toFixed(2)}% changed)`]);
 
   await page.locator('#new-game').click();
+  const choices = page.locator('#profession-choices button');
+  assert.equal(await choices.count(), 3);
+  await choices.filter({hasText:'方士'}).click();
+  assert.equal(await page.locator('#profession-confirm').textContent(), '以方士启程');
+  await page.keyboard.press('Escape');
+  assert(await page.locator('#profession-panel').isHidden());
+  assert(await page.locator('#continue-game').isHidden());
+  await page.locator('#new-game').click();
+  await page.locator('#profession-confirm').click();
   await waitPhase('play');
   const initial = await inspect();
   assert.equal(initial.state.mapId, 'city');
   assert.equal(initial.state.quest.stage, 'unaccepted');
+  assert.equal(initial.state.profession, 'guard');
+  checks.push([true, 'the class selection changes the confirmation and Escape leaves the empty save untouched']);
   const city = await matchBaseline(page, gameDir, 'city-desktop');
   checks.push([city.written || city.passed, `Xiqi screenshot (${(city.share * 100).toFixed(2)}% changed)`]);
 
@@ -65,6 +76,12 @@ try {
   assert((await inspect()).state.artifact.cooldown > 0);
   await page.waitForFunction(() => window.egretGame.inspect().state.artifact.phase === 'idle', null, { timeout: 6000 });
   checks.push([true, 'the visible artifact button launches the ring and it returns']);
+
+  await page.locator('#stage').focus();
+  await page.keyboard.press('KeyX');
+  await page.waitForFunction(() => window.egretGame.inspect().state.hero.classCooldown > 0);
+  assert((await inspect()).hud.history.some(event => event.type === 'classSkill' && event.skillId === 'shield-break'));
+  checks.push([true, 'X triggers the selected class skill and starts its cooldown']);
 
   await page.locator('#inventory').click();
   await waitPhase('inventory');

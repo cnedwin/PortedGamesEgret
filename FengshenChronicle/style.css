@@ -206,3 +206,77 @@ kbd { font: inherit; font-size: 10px; color: #d9c49e; border: 1px solid #a591606
   .dialogue-npc { top: var(--top); }
 }
 @media (prefers-reduced-motion: reduce) { .dialogue-overlay figure { transition: none; } }
+
+#profession-panel {
+  background: radial-gradient(ellipse at 50% 25%, #7d603247, #10191bef 74%), #111c1dca;
+}
+.profession-card { width: min(900px,100%); padding: clamp(13px,3vw,25px); }
+#profession-choices { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 9px; margin: 15px 0; }
+#profession-choices button {
+  --role-accent: #e5b566;
+  text-align: left; padding: 0; overflow: hidden;
+  display: grid; align-content: start; height: 100%;
+  background: radial-gradient(ellipse at 50% 25%,#66513180,transparent 65%), #152824;
+}
+#profession-choices [data-profession="ritualist"] { --role-accent: #f0ae85; background-color: #332621; }
+#profession-choices [data-profession="ranger"] { --role-accent: #91ddd2; background-color: #172e30; }
+#profession-choices [aria-pressed="true"] { border-color: var(--role-accent); box-shadow: inset 0 0 0 2px var(--role-accent); }
+#profession-choices img {
+  display: block; width: 100%; max-height: min(34vh,240px); object-fit: contain; object-position: center top;
+  mask-image: linear-gradient(#000 77%,transparent 100%);
+}
+#profession-choices button div { padding: 8px clamp(9px,2vw,17px) 14px; display: grid; gap: 5px; }
+#profession-choices small { color: var(--role-accent); font-size: 11px; letter-spacing: .12em; }
+#profession-choices strong { font: 700 clamp(20px,3vw,30px)/1.13 "Songti SC","SimSun",serif; color: var(--paper); }
+#profession-choices span { font-size: 13px; line-height: 1.46; color: #e0d4b8; }
+#profession-choices b { color: var(--role-accent); font-size: 12px; line-height: 1.4; }
+.profession-card footer { display: flex; justify-content: flex-end; }
+#profession-confirm { min-width: min(175px,100%); min-height: 44px; }
+#profession-cancel { white-space: nowrap; }
+.locked-offer { opacity: .77; }
+.forge-card { background: linear-gradient(146deg,#423526,#1e2924 78%); }
+.forge-recipe { display: flex; align-items: center; gap: 8px; color: var(--paper); }
+.forge-recipe select { min-height: 44px; min-width: 0; flex: 1; color: #f5e4bd; background: #2b362d; border: 1px solid #b89b61; border-radius: 4px; padding: 5px 9px; }
+#forge-materials li { display: block; padding: 0; }
+#forge-materials li:not(:has(label)) { padding: 10px 12px; font-size: 13px; color: var(--muted); }
+#forge-materials label { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 10px; padding: 6px 10px; cursor: pointer; }
+#forge-materials input { width: 20px; height: 20px; accent-color: #e6b167; }
+#forge-materials li:has(:checked) { border-color: #e6b167; }
+#forge-feedback { color: #ffd98e; }
+#forge-submit { display: block; width: 100%; min-height: 44px; }
+[data-tier="fine"] b { color: #f2d489; }
+[data-tier="fine"] .gear-mark { border-color: #c5a96ba6; background: radial-gradient(#685938,#31261f); }
+[data-tier="legendary"] b { color: #ffc57a; }
+[data-tier="legendary"] .gear-mark { border-color: #f0a363c0; background: radial-gradient(#814d2f,#332126); }
+#boss-warning { margin-top: 5px; color: #ffe0a7; font-size: 11px; line-height: 1.35; }
+#class-skill { border-color: #ad9966; background: linear-gradient(#4d513b,#272f29); }
+.class-emblem { display: block; font: 700 20px/29px "Songti SC","SimSun",serif; color: #efcf89; }
+[data-profession="ranger"] #class-skill { background: linear-gradient(#315b51,#233938); border-color: #82b8a3; }
+[data-profession="ranger"] .class-emblem { color: #a4eef0; }
+[data-profession="ritualist"] #class-skill { background: linear-gradient(#644e3b,#3c2827); border-color: #c69269; }
+[data-profession="ritualist"] .class-emblem { color: #ffc49d; }
+@media (max-width: 620px) and (orientation: portrait) {
+  .profession-card { padding: 12px; }
+  #profession-choices { grid-template-columns: 1fr; gap: 7px; margin: 9px 0; }
+  #profession-choices button { grid-template-columns: clamp(73px,26vw,120px) 1fr; align-items: center; }
+  #profession-choices img { height: clamp(91px,16vh,124px); width: 100%; object-fit: cover; object-position: center 26%; mask-image: linear-gradient(90deg,#000 74%,transparent 100%); }
+  #profession-choices button div { padding: 7px 10px 7px 0; gap: 3px; }
+  #profession-choices strong { font-size: 22px; }
+  #profession-choices span { font-size: 12px; }
+  .actions { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); width: min(62vw,256px); justify-items: stretch; }
+  .actions button { min-width: 0; white-space: nowrap; min-height: 50px; }
+  .actions #class-skill { grid-column: 3; grid-row: 1; }
+  .actions #attack { grid-column: 3; grid-row: 2; }
+  .actions #rage { grid-column: 2; grid-row: 2; }
+  .actions .action-mark { width: 24px; height: 24px; }
+  .actions .rage-emblem, .actions .class-emblem { line-height: 24px; }
+  .actions #class-skill-clock:not(:empty), .actions #artifact-clock:not(:empty), .actions #potion-count { position: absolute; top: 3px; right: 4px; }
+  .utility { bottom: calc(var(--bottom) + 112px); }
+  #interactions { bottom: calc(var(--bottom) + 165px); }
+  #notice { bottom: calc(var(--bottom) + 265px); }
+}
+@media (max-height: 495px) and (orientation: landscape) {
+  #profession-choices { margin-block: 9px; }
+  #profession-choices img { max-height: min(30dvh,150px); }
+  #profession-choices button div { padding-block: 4px 9px; }
+}

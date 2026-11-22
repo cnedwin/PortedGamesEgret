@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {createSession,createSaveSnapshot,dispatch,update} from '../src/sim/world.mjs';
 import {ITEMS,MAPS} from '../src/sim/data.mjs';
+import {canEquip,equipmentStats} from '../src/sim/arsenal.mjs';
 
 // This oracle only uses a new game, normal movement/combat/interactions and real
 // earned drops. It never teleports actors, edits HP, injects loot or grants gold.
@@ -21,9 +22,9 @@ test('a new character finishes both chapters, branching errands and two challeng
     travel(MAPS[state.mapId].portals.find(portal=>portal.id===id));assert(dispatch(state,{type:'interact',id}));
   }
   function equipBest(){
-    const score=item=>{const data=ITEMS[item.itemId];return(data.attack??0)+(data.defense??0)*2+(data.maxHp??0)*.1+(data.speed??0)*.1;};
+    const score=item=>{const data=equipmentStats(ITEMS[item.itemId],item.affixes);return data.attack+data.defense*2+data.maxHp*.1+data.speed*.1;};
     for(const slot of ['weapon','offhand','armor','boots','ring']){
-      const best=state.inventory.filter(item=>ITEMS[item.itemId].slot===slot).sort((a,b)=>score(b)-score(a))[0];
+      const best=state.inventory.filter(item=>ITEMS[item.itemId].slot===slot&&canEquip(ITEMS[item.itemId],state.profession,state.hero.level)).sort((a,b)=>score(b)-score(a))[0];
       if(best)assert(dispatch(state,{type:'equip',uid:best.uid}));
     }
   }
@@ -82,7 +83,8 @@ test('a new character finishes both chapters, branching errands and two challeng
   assert.equal(history.filter(e=>(e.type==='quest'||e.type==='chapter'||e.type==='sideQuest')&&e.stage==='complete').length,completedEvents);
   assert.equal(state.chapter.rewarded,true);assert.equal(state.sideQuests.herbs.choice,'herbs-medicine');assert.equal(state.sideQuests.parts.choice,'parts-shield');
   assert(history.some(e=>e.type==='artifactHit'&&e.phase==='return'));assert(history.some(e=>e.type==='skillPulse'));assert(history.some(e=>e.type==='rage'));
-  assert(state.inventory.some(item=>item.itemId==='vanguard-shield'));assert(state.inventory.some(item=>item.itemId==='march-boots'));
+  assert(state.inventory.some(item=>item.itemId==='vanguard-shield'));
+  assert(state.inventory.some(item=>ITEMS[item.itemId].slot==='boots'&&ITEMS[item.itemId].tier==='common'),'repeat challenges award forgeable basic gear; extra high rarity is rolled');
   for(const [vendor,itemId]of [['smith','bronze-sword'],['apothecary','potion'],['merchant','silver-ring']]){
     talk(vendor);assert(dispatch(state,{type:'dialogueAction',id:'open-shop'}));
     const offer=state.shop.offers.find(offer=>offer.itemId===itemId),gold=state.hero.gold,potions=state.hero.potions;
