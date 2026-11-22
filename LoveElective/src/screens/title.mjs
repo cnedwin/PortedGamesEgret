@@ -105,6 +105,22 @@ export function titleScreen(game) {
       });
     }
 
+    function revealCover() {
+      let elapsed = 0;
+      let previous;
+      function frame(now) {
+        if (ending) return;
+        // The cover is shown on display frames. Catch-up time from a blocked
+        // startup frame should not skip the visible transition.
+        if (previous !== undefined) elapsed += Math.min(now - previous, 34);
+        previous = now;
+        const progress = Math.min(1, elapsed / 280);
+        artwork.node.alpha = progress * progress * (3 - 2 * progress);
+        if (progress < 1) requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+
     function finish(result) {
       if (ending) return;
       ending = true;
@@ -125,7 +141,7 @@ export function titleScreen(game) {
     void loadCover().then(async image => {
       if (!image || ending) return;
       await artwork.paint(W, H, 1, g => coverImage(g, image));
-      if (!ending && artwork.bitmap) stage.tween(artwork.node, { alpha: 1 }, 0.28);
+      if (!ending && artwork.bitmap) revealCover();
     }).catch(stage.fail);
     ui.keys = key => {
       if (key === 'Enter') finish(game.hasSave() ? 'continue' : 'new');
