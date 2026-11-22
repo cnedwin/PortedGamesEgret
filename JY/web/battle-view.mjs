@@ -313,13 +313,13 @@ export async function createBattleView({ engine, cache, spec, width, height, sca
       const dense = state.roles.filter(role => !role.dead).length >= 8;
       for (const [index, role] of state.roles.entries()) {
         const [px, py] = project(role.x, role.y);
-        const [clip, elapsed] = motion(role, state.frame);
-        const renderedActor = actors?.frame(role.id, clip, role.facing, elapsed);
-        const group = renderedActor === undefined ? groupFor(role) : actorGroup;
-        const ids = available.get(group);
-        const id = renderedActor ?? (art.has(artKey(group, role.picture)) ? role.picture : ids?.[0]);
         const height = role.z ?? 0;
         if (!arena?.hasRole(role.id)) {
+          const [clip, elapsed] = motion(role, state.frame);
+          const renderedActor = actors?.frame(role.id, clip, role.facing, elapsed);
+          const group = renderedActor === undefined ? groupFor(role) : actorGroup;
+          const ids = available.get(group);
+          const id = renderedActor ?? (art.has(artKey(group, role.picture)) ? role.picture : ids?.[0]);
           paint({ key: `r${index}`, group, id, px: px + role.shakeX, py: py - height, depth: py, alpha: role.alpha,
             rotation: renderedActor === undefined ? role.rotation : 0 }, { x: role.x, y: role.y, z: height, shakeX: role.shakeX });
         }
