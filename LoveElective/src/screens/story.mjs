@@ -167,7 +167,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       const pw = beside ? 700 : 900,
         px = beside ? 540 : 190;
       const h = options.length * 78 + (checkpoint?74:20),
-        panel = ui.panel({ x: px, y: (470 - h) / 2 + 30, w: pw, h, res: 1.25, modal: true });
+        panel = ui.panel({ x: px, y: (470 - h) / 2 + 30, w: pw, h, res: 1.25, modal: true, title: L(['劇情選擇','Story choices']) });
       ui.keys = key => {
         if(key==='Escape'&&checkpoint){cancelled=true;choose(null);return;}
         const n = Number(key);

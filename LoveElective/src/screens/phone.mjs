@@ -27,7 +27,7 @@ export function openPhone(game, tab = 'girls') {
     s = game.state;
   return new Promise(resolve => {
     const view = { tab, page: 0, confirm: false };
-    const panel = ui.panel({ x: 150, y: 80, w: 980, h: 620, res: 1.2, modal: true });
+    const panel = ui.panel({ x: 150, y: 80, w: 980, h: 620, res: 1.2, modal: true, title: L(['遊戲手機','In-game phone']) });
     const close = result => {
       panel.close();
       resolve(result);
@@ -329,16 +329,25 @@ export function openPhone(game, tab = 'girls') {
           200,
           { size: 14, color: THEME.faint, maxW: 400 },
         );
-        if(game.audio.settings){
-          const settings=game.audio.settings();
-          [['music',['配樂','Music']],['voice',['語音','Voice']],['effects',['音效','Effects']]].forEach(([bus,label],i)=>{
-            const y=278+i*86,value=settings[bus];
-            p.text(L(label),520,y,{size:18,weight:750,color:THEME.ink});
-            p.text(Math.round(value.volume*100)+'%',716,y,{size:16,color:THEME.soft,align:'right'});
-            p.button(748,y-6,174,36,L(value.muted?['已靜音 · 開啟','Muted · enable']:['開啟中 · 靜音','Enabled · mute']),()=>{game.audio.setBus(bus,{muted:!value.muted});repaint();},{size:13});
-            p.button(520,y+30,44,30,'−',()=>{game.audio.setBus(bus,{volume:Math.max(0,value.volume-.1)});repaint();},{size:18});
-            p.bar(578,y+39,272,10,value.volume,1,{color:THEME.violet,color2:THEME.pink});
-            p.button(878,y+30,44,30,'+',()=>{game.audio.setBus(bus,{volume:Math.min(1,value.volume+.1)});repaint();},{size:18});
+        if (game.audio.settings) {
+          const settings = game.audio.settings();
+          const tracks = [['music', ['配樂','Music']], ['voice', ['語音','Voice']], ['effects', ['音效','Effects']]];
+          tracks.forEach(([bus, [zh, en]], i) => {
+            const y = 278 + i * 86, value = settings[bus];
+            const percent = Math.round(value.volume * 100) + '%';
+            const change = options => {
+              game.audio.setBus(bus, options);
+              repaint();
+            };
+            p.text(L([zh,en]), 520, y, { size:18, weight:750, color:THEME.ink });
+            p.text(percent, 716, y, { size:16, color:THEME.soft, align:'right' });
+            p.button(748, y - 6, 174, 36, L(value.muted ? ['已靜音 · 開啟','Muted · enable'] : ['開啟中 · 靜音','Enabled · mute']),
+              () => change({ muted:!value.muted }), { size:13, accessibleName:L(value.muted ? [`開啟${zh}`,`Enable ${en}`] : [`靜音${zh}`,`Mute ${en}`]) });
+            p.button(520, y + 30, 44, 30, '−', () => change({ volume:Math.max(0,value.volume - .1) }),
+              { size:18, accessibleName:L([`調低${zh}，目前 ${percent}`,`Decrease ${en} volume, currently ${percent}`]) });
+            p.bar(578, y + 39, 272, 10, value.volume, 1, { color:THEME.violet, color2:THEME.pink });
+            p.button(878, y + 30, 44, 30, '+', () => change({ volume:Math.min(1,value.volume + .1) }),
+              { size:18, accessibleName:L([`調高${zh}，目前 ${percent}`,`Increase ${en} volume, currently ${percent}`]) });
           });
         }
       },

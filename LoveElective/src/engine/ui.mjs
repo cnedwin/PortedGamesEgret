@@ -150,7 +150,7 @@ export class Painter {
   }
 
   /** Button styles used by titles, dialogue and transaction panels. */
-  button(x, y, w, h, label, tap, { kind = 'plain', disabled = false, size = 18, sub, icon, r = 10, color } = {}) {
+  button(x, y, w, h, label, tap, { kind = 'plain', disabled = false, size = 18, sub, icon, r = 10, color, accessibleName } = {}) {
     const g = this.g;
     const radius = Math.min(r, h / 2, 12);
     const path = rrect(x, y, w, h, radius);
@@ -182,7 +182,7 @@ export class Painter {
     this.text(label, tx, top, { size, weight: 750, color: ink, align: 'center' });
     if (sub) this.text(sub, x + w / 2, y + h / 2 + 5, { size: size * .68, color: ink, align: 'center', alpha: .82 });
     g.restore();
-    this.hit(x, y, w, h, tap, { r: radius, label: sub ? `${label} · ${sub}` : label, disabled });
+    this.hit(x, y, w, h, tap, { r: radius, label: accessibleName ?? (sub ? `${label} · ${sub}` : label), disabled });
   }
 
   /** A small rounded label. */
@@ -246,12 +246,13 @@ export class Painter {
  *   panel.dismiss = fn    called when a pop-up is tapped beside, or Escape is pressed
  */
 export class Panel {
-  constructor(ui, { x = 0, y = 0, w = W, h = H, res = 1.25, parent, modal = false }) {
+  constructor(ui, { x = 0, y = 0, w = W, h = H, res = 1.25, parent, modal = false, title }) {
     this.ui = ui;
     this.w = w;
     this.h = h;
     this.res = res;
     this.modal = modal;
+    this.title = title;
     this.hits = [];
     this.controls = [];
     this.words = [];
@@ -270,7 +271,7 @@ export class Panel {
     this.hits = [];
     this.controls = [];
     this.words = [];
-    this.label = undefined;
+    this.label = this.title;
     const canvas = this.ui.stage.canvas(this.w, this.h, this.res, g => draw(new Painter(g, this)));
     this.pic.show(canvas, canvas.res);
     this.ui.accessibility?.invalidate();
