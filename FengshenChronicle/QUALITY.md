@@ -52,3 +52,7 @@ The art revision divides illustrations and effects between two Egret atlases wit
 视听资源含 3 段独立循环配乐和 16 个事件音效。全部 19 个文件经过完整解码、样本长度和峰值检查，来源及量测见 [音频清单](assets/audio/SOURCES.json)。镜头脉冲由命中触发，峰值位移上限为 9 个舞台像素。震屏的投影与输入使用同一组偏移，减弱动态模式与暂停时停止震动。
 
 Three looped themes and sixteen cues were decoded and checked for length and peaks. Camera shake comes from hit events, uses the same offset for rendering and picking, and is capped at nine stage pixels. Reduced-motion mode and pause suppress the shake.
+
+进一步修整玄甲步态。常服与鳞衣采用前后各四个独立行走姿态，左右脚交替落地，以实际位移推进步态。两套装甲与其他人物、特效分成三张图集，保留画质并符合单张纹理容量。停步回站姿，转向和换装时持刀贴光仍跟随刀刃。32 张原生姿态检查覆盖四种装备组合、两个视角和四个行走相位。
+
+Xuanjia's gait now uses four grounded phases per view. Actual displacement advances the animation, and each pose carries its own blade-glow anchor. Three texture atlases separate the two armor sets and the other actors and effects. Native pose checks covered all 32 combinations of gear, view and gait phase.
