@@ -80,9 +80,50 @@
     </div>
   </div>
   <div class="overlay" id="inventory-panel" hidden>
-    <section class="card" role="dialog" aria-modal="true" aria-labelledby="inventory-title">
-      <header><div><div class="chapter" id="inventory-profession">玄甲</div><h2 id="inventory-title">行囊与装备</h2></div><button id="close-inventory" aria-label="关闭行囊">关闭</button></header>
-      <p id="equipment-stats"></p><div id="equipment-slots"></div><ul id="equipment-list" class="item-list"></ul>
+    <section class="card bag-card" role="dialog" aria-modal="true" aria-labelledby="inventory-title">
+      <header class="bag-header">
+        <div><div id="inventory-profession"></div><h2 id="inventory-title">行囊</h2></div>
+        <div class="bag-header-actions"><span id="bag-capacity"></span><button id="close-inventory" aria-label="关闭行囊">关闭 <kbd>Esc</kbd></button></div>
+      </header>
+      <div class="bag-tabs" role="tablist" aria-label="行囊分类">
+        <button type="button" id="bag-tab-equipment" role="tab" aria-controls="bag-equipment" aria-selected="true">装备</button>
+        <button type="button" id="bag-tab-stats" role="tab" aria-controls="bag-stats" aria-selected="false" tabindex="-1">属性</button>
+        <button type="button" id="bag-tab-items" role="tab" aria-controls="bag-items" aria-selected="false" tabindex="-1">道具</button>
+      </div>
+      <section class="bag-page" id="bag-equipment" role="tabpanel" aria-labelledby="bag-tab-equipment" tabindex="0">
+        <div class="bag-stat-strip" id="equipment-stats"></div>
+        <div class="bag-equipment-grid">
+          <div class="bag-worn"><h3>穿戴栏</h3><div id="equipment-slots"></div></div>
+          <div class="bag-spares">
+            <div class="bag-list-header"><h3 id="bag-list-title">全部装备</h3><button type="button" id="bag-show-all" hidden>查看全部</button></div>
+            <ul id="equipment-list" class="item-list"></ul>
+          </div>
+        </div>
+      </section>
+      <section class="bag-page" id="bag-stats" role="tabpanel" aria-labelledby="bag-tab-stats" tabindex="0" hidden>
+        <div class="bag-profile">
+          <img id="bag-portrait" alt="">
+          <div>
+            <h3 id="bag-profile-name"></h3><p id="bag-profile-role"></p>
+            <div class="bag-vitals"><span>气血</span><output id="bag-hp"></output></div>
+            <progress id="bag-hp-meter" aria-label="气血"></progress>
+            <div class="bag-vitals"><span>经验</span><output id="bag-xp"></output></div>
+            <progress id="bag-xp-meter" aria-label="经验"></progress>
+          </div>
+        </div>
+        <h3 class="bag-section-title">基础与装备加成</h3>
+        <dl class="bag-attributes" id="bag-attributes"></dl>
+        <h3 class="bag-section-title">战斗技能</h3>
+        <ul class="bag-abilities" id="bag-abilities"></ul>
+      </section>
+      <section class="bag-page" id="bag-items" role="tabpanel" aria-labelledby="bag-tab-items" tabindex="0" hidden>
+        <div class="bag-stat-strip"><span id="bag-item-health"></span><span id="bag-item-coins"></span></div>
+        <h3 class="bag-section-title">消耗品</h3>
+        <ul class="item-list" id="bag-consumables"></ul>
+        <h3 class="bag-section-title">材料与任务物品</h3>
+        <ul class="item-list" id="bag-materials"></ul>
+      </section>
+      <div class="bag-feedback" id="bag-feedback" role="status" hidden></div>
     </section>
   </div>
   <section class="dialogue-overlay" id="dialogue-panel" role="dialog" aria-modal="true" aria-labelledby="dialogue-name" hidden>
