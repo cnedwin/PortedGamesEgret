@@ -68,3 +68,7 @@ Xuanjia's gait now uses four grounded phases per view. Actual displacement advan
 | 怒气 | 造成伤害 ×0.25 + 每次命中 2；受伤 ×0.8 + 3；100 怒释放，0.42 秒蓄力 |
 
 25 项规则及存档测试包含普通动作全路线。低配与高配近战实打伤害为 17 和 41，均实战击败阵主。重复演武重生敌军和战利品，主支线奖赏不重复；三店同品买回价高于回收价，购买、出售与金币变化逐项断言。
+
+扩章浏览器验收使用同一份运行文件。Windows PC（Edge 158）以键鼠完成两章、两支线交付、买靴卖旧剑、五部位装备、法宝卸下和更换、怒技、演武旧营以及实际刷新续档。Fold7（Android 17、Chrome 157，真实竖屏 411 × 813 CSS px）以触屏完成古道首章、两支线、买卖、五部位换装、怒技与乾坤圈装卸和刷新续档。铜关完整通关及旧营新系统以 PC 和规则测试结果为准。手机旋转、原标签与设备设置已恢复。
+
+Both browsers used matching runtime files. PC completed the expanded campaign through Bronze Pass and the repeatable camp. The physical Fold7 in portrait completed the first chapter, both side quests, shopping, five equipment slots, rage, artifact equip and removal, and a true reload. Bronze Pass and the camp were covered by PC and rules tests.
