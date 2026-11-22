@@ -4,6 +4,12 @@
 
 A collection of browser game demos built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Each game lives in its own directory and can be run and maintained independently. [Visit the showcase](https://cnedwin.github.io/PortedGamesEgret/)
 
+## Fengshen Chronicle · 封神 · 西岐战纪
+
+以《封神演义》为灵感的原生白鹭 2D 网页动作 RPG。第一章可用玄甲在西岐城接任务，沿岐山古道打怪、拾装，使用乾坤圈击败邪将后回城复命。支持键鼠、触屏和浏览器本地存档。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/) · [操作说明](FengshenChronicle/README.md)
+
+An original browser action RPG inspired by *Investiture of the Gods*, built with native Egret 2D. Take Jiang Shang’s commission in Xiqi, find and equip loot on the Qishan Trail, then defeat its warlord with the returning ring. Supports desktop, touch, and local browser saves. [Play online](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/) · [Guide](FengshenChronicle/README.md)
+
 ## JY · 金庸群侠传致敬 Demo
 
 一款使用新白鹭引擎独立开发的武侠网页游戏 Demo。玩家可以探索江湖、与人物交谈、招募队友并组队出战。作品向《金庸群侠传》、智冠公司与金庸先生致敬。 [在线试玩](https://cnedwin.github.io/PortedGamesEgret/JY/) · [完整版使用说明](JY/README.md)

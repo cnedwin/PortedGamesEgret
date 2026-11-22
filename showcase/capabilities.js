@@ -3,6 +3,7 @@ export const MATRIX = {
  "commit": "a778bed53ecdbf9c65e9abc5624d4b3751a4331d",
  "games": [
   "CanalWatch",
+  "FengshenChronicle",
   "FivePhases",
   "FPS",
   "jelly-pandas",
@@ -27,6 +28,10 @@ export const MATRIX = {
    "label": "@egret/engine",
    "games": [
     {
+     "game": "FengshenChronicle",
+     "file": "FengshenChronicle/src/view.mjs"
+    },
+    {
      "game": "FivePhases",
      "file": "FivePhases/src/main.mjs"
     },
@@ -40,7 +45,7 @@ export const MATRIX = {
     },
     {
      "game": "JY",
-     "file": "JY/web/main.mjs"
+     "file": "JY/web/battle-view.mjs"
     },
     {
      "game": "LanternShadows",
@@ -60,7 +65,11 @@ export const MATRIX = {
     },
     {
      "game": "NightWardens",
-     "file": "NightWardens/src/screens.mjs"
+     "file": "NightWardens/src/art/atlas.mjs"
+    },
+    {
+     "game": "PeachCreek",
+     "file": "PeachCreek/src/view.mjs"
     },
     {
      "game": "Rally",
@@ -102,7 +111,7 @@ export const MATRIX = {
    "games": [
     {
      "game": "JY",
-     "file": "JY/web/opening-dialogue.mjs"
+     "file": "JY/web/battle-view.mjs"
     }
    ]
   },
@@ -205,7 +214,7 @@ export const MATRIX = {
     },
     {
      "game": "JY",
-     "file": "JY/web/jyx2/scene/world3d-renderer.mjs"
+     "file": "JY/web/jyx2/home3d/native-exit-effect.mjs"
     },
     {
      "game": "Rally",
@@ -511,7 +520,7 @@ export const MATRIX = {
     },
     {
      "game": "NightWardens",
-     "file": "NightWardens/tools/balance.mjs"
+     "file": "NightWardens/src/audio/sound.mjs"
     },
     {
      "game": "OperaDrums",
@@ -523,7 +532,7 @@ export const MATRIX = {
     },
     {
      "game": "SnowTemple",
-     "file": "SnowTemple/tools/balance.mjs"
+     "file": "SnowTemple/src/saves.mjs"
     },
     {
      "game": "TaiwanMahjong",
@@ -596,6 +605,10 @@ export const MATRIX = {
    "label": "@egret/engine/web/game",
    "games": [
     {
+     "game": "FengshenChronicle",
+     "file": "FengshenChronicle/src/main.mjs"
+    },
+    {
      "game": "FivePhases",
      "file": "FivePhases/src/main.mjs"
     },
@@ -632,11 +645,11 @@ export const MATRIX = {
     },
     {
      "game": "PeachCreek",
-     "file": "PeachCreek/src/sound.mjs"
+     "file": "PeachCreek/src/main.mjs"
     },
     {
      "game": "TaiwanMahjong",
-     "file": "TaiwanMahjong/src/sound.mjs"
+     "file": "TaiwanMahjong/src/main.mjs"
     }
    ]
   },
