@@ -1,9 +1,10 @@
 import { FX_FRAMES } from './effects.mjs';
 import { loadLandscape } from './landscape.mjs';
+import { gearArt, gearArtFiles } from '../rpg-ui.mjs';
+import { ITEMS } from '../sim/data.mjs';
 
 const RESOLUTION = 2;
-const ACTOR_FILES = ['hero', 'hero-elite', 'actors', 'foe-moves', 'hero-walk', 'hero-elite-walk'];
-const GEAR_FILES = ['bronze-sword', 'iron-sword', 'linen-armor', 'scale-armor', 'jade-seal', 'potion', 'gold', 'ring'];
+const ACTOR_FILES = ['hero','hero-elite','actors','foe-moves','hero-walk','hero-elite-walk','townsfolk'];
 
 // Source coordinates are in the original illustration sheets. The pin is the
 // ground contact, so swapping gear or moving to another pose keeps feet aligned.
@@ -150,6 +151,17 @@ function paintQuest(g) {
   g.fillRect(-1.5,-7,3,8); g.fillRect(-1.5,4,3,3);
 }
 
+function paintWorldLabel(g, name, accent) {
+  g.fillStyle = '#172320d9';
+  g.beginPath(); g.roundRect(-63,-11,126,21,4); g.fill();
+  g.strokeStyle = accent; g.lineWidth = 1;
+  g.stroke();
+  g.font = '600 13px "Microsoft YaHei","Noto Sans CJK SC",sans-serif';
+  g.fillStyle = '#f4ddaa';
+  g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.fillText(name,0,0,119);
+}
+
 async function texture(game, scope, canvas) {
   const lease = await game.textureFromCanvas(canvas);
   scope.use({ dispose: () => lease.release() });
@@ -193,10 +205,10 @@ export async function buildArt(game, scope, maps) {
   const [landscape, actorSheets, gearSheets] = await Promise.all([
     loadLandscape(),
     Promise.all(ACTOR_FILES.map(name => loadImage('actors/' + name))),
-    Promise.all(GEAR_FILES.map(name => loadImage('gear/' + name)))
+    Promise.all(gearArtFiles.map(name => loadImage('gear/' + name)))
   ]);
-  const gear = Object.fromEntries(GEAR_FILES.map((key, i) => [key,gearSheets[i]]));
-  const [standard, elite, cast, actions, standardWalk, eliteWalk] = actorSheets;
+  const gear = Object.fromEntries(gearArtFiles.map((key, i) => [key,gearSheets[i]]));
+  const [standard, elite, cast, actions, standardWalk, eliteWalk,town] = actorSheets;
   const entries = [], aliases = {};
   const add = (key, w, h, draw, pivotY = h / 2, weaponAnchor) => entries.push({key, w, h, draw, pivotY, weaponAnchor});
 
@@ -214,7 +226,7 @@ export async function buildArt(game, scope, maps) {
         add(label + ':' + pose, 156, 146, g => {
           cutout(g, sheet, [1774,887], sheetCell(index), pin, scale);
           if (blade) paintHeldSword(g, SWORDS[index], pin, scale, blade);
-        }, 128);
+        }, 128, bladeAnchor(SWORDS[index],pin,scale));
       }
       for (let phase=0; phase<4; phase++) {
         const index = first + phase;
@@ -226,6 +238,7 @@ export async function buildArt(game, scope, maps) {
   }
 
   for (const {kind,bounds,pin,height} of CAST) {
+    if (kind === 'smith') continue;
     const width = kind === 'boss' ? 216 : kind === 'wolf' ? 166 : 146;
     const pivot = height + 7;
     add(kind + ':0',width,pivot+19,g => cutout(g,cast,[1536,1024],bounds,pin,height/bounds[3]),pivot);
@@ -245,13 +258,30 @@ export async function buildArt(game, scope, maps) {
     for (const frame of ['0','1','2','3','attack','hurt','fallen']) aliases[kind+'Back:'+frame]=kind+':'+frame;
   }
 
-  for (const [key,image] of Object.entries(gear)) {
-    add('item:' + key,52,52,g => fitItem(g,image,key === 'gold' ? 30 : 45,key === 'gold' ? 32 : 46));
+  const residentKinds = ['smith','apothecary','merchant','scout'];
+  const townSize = [town.naturalWidth,town.naturalHeight], cellW = townSize[0]/2, cellH = townSize[1]/2;
+  for (const [index,kind] of residentKinds.entries()) {
+    const x = index%2*cellW, y = Math.floor(index/2)*cellH;
+    const pin = [x + cellW*.52,y + cellH*.94], scale = 116/cellH;
+    add(kind+':0',148,138,g => cutout(g,town,townSize,[x,y,cellW,cellH],pin,scale),117);
+    for (const pose of ['1','2','3','attack','hurt','fallen']) aliases[kind+':'+pose] = kind+':0';
+    for (const pose of ['0','1','2','3','attack','hurt','fallen']) aliases[kind+'Back:'+pose] = kind+':0';
   }
+
+  for (const [key,image] of Object.entries(gear)) {
+    add('gear:' + key,52,52,g => fitItem(g,image,key === 'gold' ? 30 : 45,key === 'gold' ? 32 : 46));
+  }
+  for (const id of Object.keys(ITEMS)) aliases['item:' + id] = 'gear:' + gearArt(id);
   add('ring',62,52,g => fitItem(g,gear.ring,57,47));
   add('portal',128,76,paintGate);
   add('quest',34,48,paintQuest);
   for (const fx of FX_FRAMES) add(fx.key,fx.w,fx.h,fx.draw,fx.pivotY);
+  for (const frame of landscape.ambientFrames ?? []) add(frame.key,frame.w,frame.h,
+    g => landscape.paintAmbient(g,frame.kind,frame.frame),frame.pivotY);
+  for (const [id,map] of Object.entries(maps)) {
+    for (const npc of map.npcs) add('npc-tag:'+npc.id,130,24,g => paintWorldLabel(g,npc.name,'#bb9a62'));
+    for (const portal of map.portals ?? [map.portal]) add('portal:'+id+':'+portal.id,130,24,g => paintWorldLabel(g,portal.name,'#8ab9b0'));
+  }
   for (const [key,target] of Object.entries({
     gold:'item:gold', potion:'item:potion', sword:'item:iron-sword', armor:'item:scale-armor', seal:'item:jade-seal',
     slash:'fx-cut:2', impact:'fx-impact:1', dust:'fx-dust', heal:'fx-sigil', level:'fx-sigil'
@@ -269,7 +299,29 @@ export async function buildArt(game, scope, maps) {
   atlases.push(await atlasPage(game, scope, entries.filter(plainHero), frames, 0));
   atlases.push(await atlasPage(game, scope, entries.filter(entry => entry.key.startsWith('heroElite')), frames, 1));
   atlases.push(await atlasPage(game, scope, entries.filter(entry => !entry.key.startsWith('hero')), frames, 2));
+  const boots = entries.filter(entry => entry.key.startsWith('hero')).map(entry => ({
+    key:'boots:'+entry.key, w:90, h:56, pivotY:48,
+    draw(g) {
+      entry.draw(g);
+      const blade = entry.weaponAnchor;
+      if (!blade) return;
+      // The skirt/boot crop shares the actor's ground contact. Exclude any
+      // blade pixels that touch the crop before adding the shoe material.
+      g.save();
+      g.globalCompositeOperation = 'destination-out';
+      g.lineWidth = 9;
+      g.lineCap = 'round';
+      g.beginPath(); g.moveTo(blade.tipX,blade.tipY);
+      g.lineTo(blade.x*2-blade.tipX,blade.y*2-blade.tipY);
+      g.stroke();
+      g.restore();
+    }
+  }));
+  atlases.push(await atlasPage(game,scope,boots,frames,3));
   for (const [alias,source] of Object.entries(aliases)) frames[alias] = frames[source];
+  for (const [alias,source] of Object.entries(aliases)) {
+    if (alias.startsWith('hero') && frames['boots:'+source]) frames['boots:'+alias] = frames['boots:'+source];
+  }
 
   const grounds={}, structures={};
   for (const [id,map] of Object.entries(maps)) {
@@ -290,5 +342,6 @@ export async function buildArt(game, scope, maps) {
       structures[id].push({lease:propLease,x:obstacle.x+width/2,y:obstacle.y+height,pivotX,pivotY,kind});
     }
   }
-  return { atlas: atlases[0], atlases, frames, grounds, structures, res: RESOLUTION };
+  const ambientActors = Object.fromEntries(Object.keys(maps).map(id => [id,landscape.ambientActors?.(id,maps[id]) ?? []]));
+  return { atlas: atlases[0], atlases, frames, grounds, structures, ambientActors, res: RESOLUTION };
 }

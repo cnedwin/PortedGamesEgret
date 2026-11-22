@@ -6,9 +6,9 @@ A collection of browser game demos built with [Egret Rebuild](https://github.com
 
 ## Fengshen Chronicle · 封神 · 西岐战纪
 
-以《封神演义》为灵感的原生白鹭 2D 网页动作 RPG。第一章可用玄甲在西岐城接任务，沿岐山古道打怪、拾装，使用乾坤圈击败邪将后回城复命。支持键鼠、触屏和浏览器本地存档。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/) · [操作说明](FengshenChronicle/README.md)
+以《封神演义》为灵感的原生白鹭 2D 网页动作 RPG。玄甲从西岐城查明岐山古道与铜关的异变，采药、回收旧甲、挑选装备奖赏，在演武旧营反复迎战。镇上三家商铺提供补给，乾坤圈与回风幡可换装，满怒可放出范围大招。支持键鼠、触屏和浏览器本地存档。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/) · [操作说明](FengshenChronicle/README.md)
 
-An original browser action RPG inspired by *Investiture of the Gods*, built with native Egret 2D. Take Jiang Shang’s commission in Xiqi, find and equip loot on the Qishan Trail, then defeat its warlord with the returning ring. Supports desktop, touch, and local browser saves. [Play online](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/) · [Guide](FengshenChronicle/README.md)
+An original browser action RPG inspired by *Investiture of the Gods*, built with native Egret 2D. Investigate the Qishan Trail and Bronze Pass, gather materials, choose quest rewards, trade gear at three shops, and take on repeatable camp battles. Switch between two active artifacts and unleash an area attack at full rage. Supports desktop, touch, and local browser saves. [Play online](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/) · [Guide](FengshenChronicle/README.md)
 
 ## JY · 金庸群侠传致敬 Demo
 

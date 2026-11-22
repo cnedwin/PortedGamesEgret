@@ -51,7 +51,15 @@ try {
   await page.locator('#track').click();
   await page.waitForFunction(() => window.egretGame.inspect().state.quest.stage === 'hunt', null, { timeout: 10000 });
   assert((await inspect()).state.flags.artifactOwned);
+  await waitPhase('dialogue');
+  const heroArt = await page.locator('.dialogue-hero').boundingBox();
+  const npcArt = await page.locator('.dialogue-npc').boundingBox();
+  assert(heroArt && npcArt && heroArt.x < npcArt.x && heroArt.y > npcArt.y);
+  await page.locator('#dialogue-next').click();
+  await page.locator('#dialogue-close').click();
+  await waitPhase('play');
   checks.push([true, 'the visible quest route walks to Jiang Shang, then the nearby action accepts his quest and ring']);
+  checks.push([true, 'two illustrated dialogue positions and dismissal work through normal controls']);
 
   await page.locator('#artifact').click();
   assert((await inspect()).state.artifact.cooldown > 0);

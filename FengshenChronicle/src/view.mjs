@@ -15,6 +15,8 @@ const JADE = createSharedMaterial2D({ light: [.81, 1, .93, 1], dark: [.015, .065
 const CINNABAR = createSharedMaterial2D({ light: [1, .62, .36, 1], dark: [.18, .035, .015] });
 const GOLD_LIGHT = createSharedMaterial2D({ light: [1, .9, .62, 1], blend: 'screen' });
 const JADE_LIGHT = createSharedMaterial2D({ light: [.68, 1, .85, 1], blend: 'screen' });
+const TEAL_LIGHT = createSharedMaterial2D({ light: [.12, .86, 1, 1], dark: [.01, .18, .3], blend: 'screen' });
+const MARCH_BOOT = createSharedMaterial2D({ light: [1, .86, .65, 1], dark: [.045, .018, .005] });
 const FX_LIMIT = 76;
 const FX_FALLBACKS = {
   'fx-cut': 'slash', 'fx-impact': 'impact', 'fx-spark': 'impact', 'fx-splinter': 'dust',
@@ -32,6 +34,7 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
   const warning = underLane.addChild(use(new Sprite())), pathLine = underLane.addChild(use(new Sprite()));
   const camera = { x: 0, y: 0, zoom: 1, width, height, mapId: null };
   const scenery = {}, grounds = {}, actors = new Map(), drops = new Map(), motions = new Map();
+  const portalEntries = [], ambientEntries = [], gatherNodes = new Map();
   const effects = [], effectPool = [], numbers = [], numberPool = [];
   let time = 0, lastState, activeMap = null, disposed = false, fxMade = 0, numberMade = 0;
   let ringClock = 0, lastRing = null;
@@ -39,7 +42,8 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
   let shakeCursor = 0;
   const frameStats = { actors: 0, scenery: 0, effects: 0, effectsCreated: 0, effectLimit: FX_LIMIT,
     shakeX: 0, shakeY: 0, gearGlows: 0,
-    textures: (art.atlases?.length ?? 1) + 2 + Object.values(art.structures).reduce((n, list) => n + list.length, 0), native2D: true };
+    ambient: 0, gatherables: 0, portals: 0,
+    textures: (art.atlases?.length ?? 1) + Object.keys(art.grounds).length + Object.values(art.structures).reduce((n, list) => n + list.length, 0), native2D: true };
 
   function frameKey(key) {
     if (art.frames[key]) return key;
@@ -47,7 +51,8 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
   }
   function setFrame(bitmap, requested) {
     const key = frameKey(requested), frame = art.frames[key];
-    if (!frame || bitmap.frameKey === key) return frame;
+    if (!frame) { bitmap.visible = false; return; }
+    if (bitmap.frameKey === key) return frame;
     const lease = art.atlases?.[frame.page ?? 0] ?? art.atlas;
     // Changing the lease resets its crop. Always bind the new page first.
     if (bitmap.textureLease !== lease) bitmap.textureLease = lease;
@@ -84,13 +89,14 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
       return { node, y: structure.y, id: `scenery:${id}:${index}` };
     });
   }
-  const portal = sprite('portal', underLane), heroShadow = shadow(27), hero = sprite('heroBack:0', depthLane);
+  const heroShadow = shadow(27), hero = sprite('heroBack:0', depthLane);
   const heroSelection = underLane.addChild(use(new Sprite()));
   const artifact = sprite('ring', fxLane), charm = sprite('seal', depthLane), quest = sprite('quest', fxLane);
   const gearBack = container(depthLane), gearFront = container(depthLane);
   const armorGlow = sprite('fx-glow', gearBack), shoulderLeft = sprite('fx-glow', gearFront), shoulderRight = sprite('fx-glow', gearFront);
   const weaponGlow = sprite('fx-streak', gearFront), weaponFlare = sprite('fx-glow', gearFront);
   const charmGlow = sprite('fx-glow', gearFront), charmSigil = sprite('fx-sigil', gearFront);
+  const offhand = sprite('seal', gearFront), boots = sprite('heroBack:0', gearFront);
   const artifactGlow = sprite('fx-glow', fxLane);
   const gearGroups = [gearBack, gearFront];
   const shoulderNodes = [shoulderLeft, shoulderRight];
@@ -98,7 +104,22 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
   gearFront.addChild(charm);
   for (const node of [weaponGlow,weaponFlare,shoulderLeft,shoulderRight,artifactGlow]) node.sharedMaterial = GOLD_LIGHT;
   for (const node of [armorGlow,charmGlow,charmSigil]) node.sharedMaterial = JADE_LIGHT;
-  artifact.visible = charm.visible = quest.visible = false;
+  artifact.visible = charm.visible = quest.visible = offhand.visible = boots.visible = false;
+  for (const [mapId, map] of Object.entries(MAPS)) {
+    for (const point of map.portals ?? [map.portal]) {
+      const body = sprite('portal', underLane), labelKey = `portal:${mapId}:${point.id}`;
+      const label = art.frames[labelKey] ? sprite(labelKey, fxLane) : null;
+      body.x = point.x; body.y = point.y; body.visible = false;
+      if (label) { label.x = point.x; label.y = point.y - 65; label.visible = false; }
+      portalEntries.push({ mapId, point, body, label });
+    }
+    for (const source of art.ambientActors?.[mapId] ?? []) {
+      const body = sprite(`ambient:${source.kind}:0`, depthLane), groundShadow = shadow(source.kind === 'dog' ? 14 : 7);
+      body.visible = groundShadow.visible = false;
+      ambientEntries.push({ ...source, mapId, body, shadow: groundShadow, routeIndex: 1,
+        distance: 0, wait: source.phase ?? 0, mirror: 1 });
+    }
+  }
 
   function impulse(power, life, direction = 0) {
     if (reducedMotion) return;
@@ -143,17 +164,17 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
     camera.mapId = activeMap;
     for (const [id, bitmap] of Object.entries(grounds)) bitmap.visible = id === activeMap;
     for (const [id, list] of Object.entries(scenery)) for (const entry of list) entry.node.visible = id === activeMap;
-    for (const actor of actors.values()) actor.body.visible = actor.bar.visible = actor.shadow.visible = false;
+    for (const actor of actors.values()) { actor.body.visible = actor.bar.visible = actor.shadow.visible = false; if (actor.tag) actor.tag.visible = false; }
     for (const drop of drops.values()) drop.body.visible = drop.glow.visible = drop.beam.visible = false;
+    for (const entry of gatherNodes.values()) entry.body.visible = entry.glow.visible = false;
+    for (const entry of ambientEntries) entry.body.visible = entry.shadow.visible = entry.mapId === activeMap;
+    for (const entry of portalEntries) entry.body.visible = entry.mapId === activeMap;
     for (const fx of effects) { fx.body.visible = false; effectPool.push(fx); }
     for (const n of numbers) { n.root.visible = false; numberPool.push(n); }
     effects.length = numbers.length = 0;
     motions.clear();
     ringClock = 0;
     lastRing = null;
-    const point = MAPS[activeMap].portal;
-    portal.x = point.x;
-    portal.y = point.y;
     updateCamera(state, 0, true);
   }
   function motionFor(id) {
@@ -164,7 +185,8 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
   function actorEntry(id, kind) {
     if (!actors.has(id)) actors.set(id, { id, body: sprite(`${kind}:0`, depthLane),
       shadow: shadow(kind === 'boss' ? 39 : kind === 'wolf' ? 31 : 22),
-      bar: fxLane.addChild(use(new Sprite())), kind, hp: -1, maxHp: 0 });
+      bar: fxLane.addChild(use(new Sprite())), kind, hp: -1, maxHp: 0,
+      tag: id.startsWith('npc:') && art.frames[`npc-tag:${id.slice(4)}`] ? sprite(`npc-tag:${id.slice(4)}`, fxLane) : null });
     return actors.get(id);
   }
   function bodyFrame(body, groundShadow, kind, who, id) {
@@ -311,7 +333,7 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
           const source = event.sourceId ? state.enemies.find(foe => foe.id === event.sourceId) : state.hero;
           const angle = source ? Math.atan2(y - source.y, x - source.x) : 0;
           burst(x, y - 42, { direction: angle,
-            enemy: event.id === 'hero', jade: event.cause === 'artifact' });
+            enemy: event.id === 'hero', jade: event.cause === 'artifact' || event.cause === 'wind' });
           number(event.amount, x, y, event.id === 'hero');
           if (event.cause !== 'artifact') impulse(event.id === 'hero' ? (source?.boss ? 7.5 : 4.4) : 3.3,
             event.id === 'hero' ? .2 : .14, angle);
@@ -347,8 +369,42 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
             spawnFx('fx-shock', tx, ty, { life: .32, scale: .6, endScale: 4.6, tint: GOLD_LIGHT });
           } else spawnFx('fx-cut', tx, ty - 34, { life: .2, frames: 4, scale: event.radius > 50 ? 1.2 : .83,
             rotation: degrees(direction) + 55, tint: CINNABAR });
+          for (const mark of event.extra ?? []) {
+            spawnFx('fx-shock', mark.x, mark.y, { life: .3, scale: .35, endScale: mark.radius / 16, tint: CINNABAR });
+            spawnFx('fx-cut', mark.x, mark.y - 20, { life: .23, frames: 4, scale: 1, rotation: degrees(direction) + 55, tint: CINNABAR });
+          }
           break;
         }
+        case 'skillCast':
+          spawnFx('fx-sigil', x, y, { life: .55, scale: event.radius / 52, endScale: 1.06, tint: JADE, alpha: .75 });
+          spawnFx('fx-talisman', x, y - 58, { life: .85, scale: .7, vy: -13, tint: JADE });
+          break;
+        case 'skillPulse':
+          spawnFx('fx-shock', x, y, { life: .42, scale: .6, endScale: event.radius / 27, tint: JADE_LIGHT, alpha: .8 });
+          for (let i = 0; i < (reducedMotion ? 2 : 5); i++) {
+            const angle = i * TAU / 5 + event.pulse * .7;
+            spawnFx('fx-cut', x + Math.cos(angle) * 80, y + Math.sin(angle) * 65 - 14,
+              { life: .34, frames: 4, scale: 1.15, rotation: degrees(angle) + 70, tint: JADE, alpha: .8 });
+          }
+          break;
+        case 'rageTelegraph':
+          spawnFx('fx-glow', x, y - 38, { life: event.duration ?? .42, scale: 1.2, endScale: 1.8, tint: GOLD_LIGHT, alpha: .65 });
+          break;
+        case 'rage':
+          impulse(8, .32, -.3);
+          spawnFx('fx-flare', x, y - 35, { life: .22, scale: 2.25, endScale: 1.25, tint: GOLD_LIGHT });
+          spawnFx('fx-shock', x, y, { life: .48, scale: .55, endScale: event.radius / 16, tint: GOLD_LIGHT });
+          spawnFx('fx-sigil', x, y, { life: .52, scale: event.radius / 52, endScale: 1.06, tint: GOLD, alpha: .8 });
+          for (let i = 0; i < (reducedMotion ? 2 : 6); i++) {
+            const angle = i * TAU / 6;
+            spawnFx('fx-dust', x + Math.cos(angle) * 46, y + Math.sin(angle) * 30,
+              { life: .55, scale: 1.2, vx: Math.cos(angle) * 100, vy: Math.sin(angle) * 65, alpha: .7 });
+          }
+          break;
+        case 'rageHit':
+          // The paired rule `hit` already owns the damage number and recoil.
+          spawnFx('fx-sigil', x, y - 40, { life: .28, scale: .7, endScale: 1.45, tint: GOLD });
+          break;
         case 'kill': {
           motionFor(event.id).deathAt = time;
           spawnFx('fx-dust', x, y + 2, { life: .6, delay: .18, scale: event.boss ? 1.9 : .9, endScale: 1.4, vy: -4 });
@@ -388,6 +444,9 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
           impulse(1.8, .09, 0);
           lastRing = null;
           break;
+        case 'gather':
+          spawnFx('fx-sigil', x, y - 12, { life: .55, scale: .45, vy: -20, tint: JADE });
+          break;
         case 'pickup':
           spawnFx('fx-spark', x, y - 12, { life: .35, scale: .7, rotation: -60, vy: -40, tint: GOLD });
           break;
@@ -401,13 +460,11 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
   function drawWarnings(state) {
     const g = warning.graphics;
     g.clear();
-    for (const foe of state.enemies) {
-      const mark = foe.telegraph;
-      if (!mark || foe.dead) continue;
-      const p = clamp(1 - mark.remaining / Math.max(.01, mark.total), 0, 1), radius = mark.radius;
+    const drawMark = (mark, p, kind, friendly = false) => {
+      const radius = mark.radius;
       // Exact collision footprint, with a dark keyline readable on either map.
-      g.lineStyle(5, 0x301e1b, .88).beginFill(0xa44331, .09 + p * .15).drawCircle(mark.x, mark.y, radius).endFill();
-      g.lineStyle(1.6, p > .75 ? 0xffe4a4 : 0xda9870, .97).drawCircle(mark.x, mark.y, radius);
+      g.lineStyle(5, friendly ? 0x243c31 : 0x301e1b, .88).beginFill(friendly ? 0xc89a50 : 0xa44331, .09 + p * .15).drawCircle(mark.x, mark.y, radius).endFill();
+      g.lineStyle(1.6, friendly ? 0xffdf91 : p > .75 ? 0xffe4a4 : 0xda9870, .97).drawCircle(mark.x, mark.y, radius);
       g.lineStyle(3.5, 0xf2c578, 1).drawArc(mark.x, mark.y, Math.max(4, radius - 4), -Math.PI / 2, -Math.PI / 2 + p * TAU);
       for (let i = 0; i < 4; i++) {
         const angle = i * Math.PI / 2, dx = Math.cos(angle), dy = Math.sin(angle);
@@ -415,12 +472,21 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
         g.lineStyle(2, 0xf3d29a, .9).moveTo(cx - dy * 5 - dx * 5, cy + dx * 5 - dy * 5)
           .lineTo(cx, cy).lineTo(cx + dy * 5 - dx * 5, cy - dx * 5 - dy * 5);
       }
-      const cross = mark.kind === 'slam' ? 16 : 9;
+      const cross = kind === 'slam' ? 16 : 9;
       g.lineStyle(2, 0xf7d49b, .7 + p * .25).moveTo(mark.x, mark.y - cross).lineTo(mark.x + cross, mark.y)
         .lineTo(mark.x, mark.y + cross).lineTo(mark.x - cross, mark.y).lineTo(mark.x, mark.y - cross).lineStyle(0);
-      if (mark.kind === 'bolt') g.lineStyle(1.5, 0xf0bb7a, .45 + p * .3)
-        .moveTo(foe.x, foe.y - 24).lineTo(mark.x, mark.y).lineStyle(0);
+    };
+    for (const foe of state.enemies) {
+      const mark = foe.telegraph;
+      if (!mark || foe.dead) continue;
+      const p = clamp(1 - mark.remaining / Math.max(.01, mark.total), 0, 1);
+      for (const target of [mark, ...(mark.extra ?? [])]) {
+        drawMark(target, p, mark.kind);
+        if (['bolt', 'dash', 'crosswind'].includes(mark.kind)) g.lineStyle(mark.kind === 'dash' ? 3 : 1.5, 0xf0bb7a, .35 + p * .3)
+          .moveTo(foe.x, foe.y - 24).lineTo(target.x, target.y).lineStyle(0);
+      }
     }
+    if (state.rage?.phase === 'charging') drawMark(state.rage, clamp(1 - state.rage.remaining / .42, 0, 1), 'slam', true);
   }
   function drawPath(state) {
     const g = pathLine.graphics;
@@ -429,8 +495,18 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
       const { x, y } = state.moveTarget;
       g.lineStyle(1.4, 0xe3c78b, .75).moveTo(x, y - 6).lineTo(x + 10, y).lineTo(x, y + 6).lineTo(x - 10, y).lineTo(x, y - 6).lineStyle(0);
     }
-    portal.alpha = reducedMotion ? .65 : .61 + Math.sin(time * 1.4) * .12;
-    portal.rotation = 0;
+    let portalsVisible = 0;
+    for (const entry of portalEntries) {
+      const active = entry.mapId === activeMap;
+      entry.body.visible = active;
+      if (entry.label) entry.label.visible = active;
+      if (!active) continue;
+      portalsVisible++;
+      const returning = entry.point.to === 'city' && (state.quest?.stage === 'return' || state.chapter?.stage === 'return');
+      entry.body.alpha = returning ? .85 : reducedMotion ? .65 : .61 + Math.sin(time * 1.4) * .12;
+      entry.body.rotation = 0;
+    }
+    frameStats.portals = portalsVisible;
     heroSelection.graphics.clear().lineStyle(1, 0xe5cf92, .3)
       .drawEllipse(state.hero.x - 21, state.hero.y - 8, 42, 16).lineStyle(0);
     if (state.targetId) {
@@ -442,9 +518,55 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
           .lineTo(foe.x + side * (r - 5), foe.y + 8).lineStyle(0);
       }
     }
-    if (activeMap === 'trail' && ['return', 'complete'].includes(state.quest?.stage)) portal.alpha = .85;
+    if (state.skillEffect) {
+      g.lineStyle(2, 0x90d8ba, .43).drawCircle(state.hero.x, state.hero.y, state.skillEffect.radius).lineStyle(0);
+    }
+    if (state.hero.ward > 0) g.lineStyle(1.8, 0xb8e1c0, .6).drawEllipse(state.hero.x - 29, state.hero.y - 15, 58, 26).lineStyle(0);
   }
-  function updateGear(state, armor, steel, epic) {
+  function updateAmbient(dt, depth) {
+    let count = 0;
+    for (const entry of ambientEntries) {
+      const visible = entry.mapId === activeMap;
+      entry.body.visible = entry.shadow.visible = visible;
+      if (!visible) continue;
+      count++;
+      let walking = false;
+      if (!reducedMotion && dt > 0 && entry.route?.length > 1) {
+        if (entry.wait > 0) entry.wait -= dt;
+        else {
+          const target = entry.route[entry.routeIndex % entry.route.length], dx = target.x - entry.x, dy = target.y - entry.y;
+          const distance = Math.hypot(dx, dy), step = Math.min(distance, entry.speed * dt);
+          if (distance > .1) { entry.x += dx / distance * step; entry.y += dy / distance * step; entry.distance += step; walking = true; if (Math.abs(dx) > 1) entry.mirror = dx < 0 ? -1 : 1; }
+          if (distance <= step + .1) { entry.routeIndex = (entry.routeIndex + 1) % entry.route.length; entry.wait = entry.kind === 'hen' ? 1.7 + (entry.phase ?? 0) * .2 : .7; }
+        }
+      }
+      const frame = walking ? Math.floor(entry.distance / (entry.kind === 'dog' ? 11 : 5) + (entry.phase ?? 0)) % 4
+        : !reducedMotion && entry.kind === 'hen' && Math.sin(time * 2 + (entry.phase ?? 0)) > .2 ? 2 : 0;
+      setFrame(entry.body, `ambient:${entry.kind}:${frame}`);
+      entry.body.x = entry.shadow.x = entry.x; entry.body.y = entry.shadow.y = entry.y;
+      entry.body.scaleX = entry.mirror / art.res; entry.body.scaleY = 1 / art.res;
+      depth.push({ node: entry.body, y: entry.y, id: entry.id });
+    }
+    frameStats.ambient = count;
+  }
+  function updateGatherables(state, depth) {
+    const live = new Set();
+    for (const plant of state.gatherables ?? []) {
+      if (plant.collected) continue;
+      const id = `${activeMap}:${plant.id}`, key = `item:${plant.itemId ?? 'qingxin-herb'}`;
+      let entry = gatherNodes.get(id);
+      if (!entry) { entry = { body: sprite(key, depthLane), glow: sprite('fx-sigil', underLane) }; gatherNodes.set(id, entry); }
+      live.add(id); entry.body.visible = entry.glow.visible = true; setFrame(entry.body, key);
+      entry.body.x = entry.glow.x = plant.x; entry.body.y = plant.y - 7; entry.glow.y = plant.y;
+      entry.body.scaleX = entry.body.scaleY = .7 / art.res;
+      entry.glow.scaleX = .38 / art.res; entry.glow.scaleY = .19 / art.res;
+      entry.glow.sharedMaterial = JADE_LIGHT; entry.glow.alpha = reducedMotion ? .5 : .43 + Math.sin(time * 1.6 + plant.x) * .1;
+      depth.push({ node: entry.body, y: plant.y, id: `gather:${id}` });
+    }
+    for (const [id, entry] of gatherNodes) if (!live.has(id)) entry.body.visible = entry.glow.visible = false;
+    frameStats.gatherables = live.size;
+  }
+  function updateGear(state, armor, steel, equipped) {
     const alive = state.hero.action !== 'dead';
     gearBack.visible = gearFront.visible = alive;
     frameStats.gearGlows = 0;
@@ -461,6 +583,7 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
       weaponAnchor = weaponAnchorForFrame(anchorFrame, art.frames[anchorFrame]);
     }
     const anchor = weaponAnchor;
+    const wind = equipped('weapon') === 'wind-sword';
     const pulse = reducedMotion ? 1 : 1 + Math.sin(time * 3.8) * .08;
     const striking = time - motionFor('hero').attackAt > .09 && time - motionFor('hero').attackAt < .27;
     weaponGlow.x = anchor.x;
@@ -469,10 +592,12 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
     weaponGlow.scaleX = anchor.length / 112 / art.res;
     weaponGlow.scaleY = (steel ? .59 : .24) / art.res;
     weaponGlow.alpha = (steel ? .7 : .2) * pulse + (striking ? .17 : 0);
+    weaponGlow.sharedMaterial = wind ? TEAL_LIGHT : GOLD_LIGHT;
     weaponFlare.x = anchor.tipX;
     weaponFlare.y = anchor.tipY;
     weaponFlare.scaleX = weaponFlare.scaleY = (steel ? .49 : .19) / art.res;
     weaponFlare.alpha = steel ? .55 * pulse : .17;
+    weaponFlare.sharedMaterial = wind ? TEAL_LIGHT : GOLD_LIGHT;
     armorGlow.visible = shoulderLeft.visible = shoulderRight.visible = armor;
     if (armor) {
       armorGlow.x = striking ? 5 : 0;
@@ -488,19 +613,51 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
         node.alpha = .5 * pulse;
       }
     }
-    charm.visible = charmGlow.visible = charmSigil.visible = epic;
-    if (epic) {
-      charm.x = charmGlow.x = charmSigil.x = 15;
-      charm.y = charmGlow.y = charmSigil.y = -34;
-      charm.scaleX = charm.scaleY = .27 / art.res;
+    const ringSlot = Object.hasOwn(state.equipment ?? {}, 'ring') ? 'ring' : 'charm', ringId = equipped(ringSlot);
+    const ringKey = `item:${ringId}`;
+    charm.visible = charmGlow.visible = Boolean(ringId && art.frames[ringKey]);
+    charmSigil.visible = charm.visible && ['jade-seal', 'storm-ring'].includes(ringId);
+    if (charm.visible) {
+      setFrame(charm, ringKey);
+      // The grip is the endpoint opposite the tip, not a floating waist charm.
+      charm.x = charmGlow.x = charmSigil.x = anchor.x * 2 - anchor.tipX + 1;
+      charm.y = charmGlow.y = charmSigil.y = anchor.y * 2 - anchor.tipY + 1;
+      charm.scaleX = charm.scaleY = .25 / art.res;
       charm.alpha = 1;
-      charmGlow.scaleX = charmGlow.scaleY = .65 / art.res;
-      charmGlow.alpha = .65 * pulse;
-      charmSigil.scaleX = charmSigil.scaleY = .35 / art.res;
-      charmSigil.alpha = .7;
+      charm.sharedMaterial = null;
+      charmGlow.scaleX = charmGlow.scaleY = .25 / art.res;
+      charmGlow.alpha = .5 * pulse;
+      charmSigil.scaleX = charmSigil.scaleY = .14 / art.res;
+      charmSigil.alpha = .55;
       charmSigil.rotation = reducedMotion ? 0 : time * 15;
     }
-    frameStats.gearGlows = 2 + (armor ? 3 : 0) + (epic ? 2 : 0);
+    const offhandId = equipped('offhand'), offhandKey = `item:${offhandId}`;
+    offhand.visible = Boolean(offhandId && art.frames[offhandKey]);
+    if (offhand.visible) {
+      setFrame(offhand, offhandKey);
+      const back = hero.frameKey.includes('Back'), attacking = hero.frameKey.endsWith(':attack'), hurt = hero.frameKey.endsWith(':hurt');
+      const frame = art.frames[hero.frameKey], point = frame?.offhandAnchor ?? {
+        x: back ? hurt ? -2 : attacking ? -29 : -31 : hurt ? 9 : 21,
+        y: back ? -88 : -73, width: back ? 46 : 48, height: 52, rotation: back ? 17 : -13
+      };
+      offhand.x = point.x; offhand.y = point.y; offhand.rotation = point.rotation ?? 0;
+      const icon = art.frames[offhandKey];
+      offhand.scaleX = (point.width ?? 48) / icon.w / art.res;
+      offhand.scaleY = (point.height ?? 52) / icon.h / art.res;
+      offhand.sharedMaterial = offhandId === 'vanguard-shield' ? JADE : null;
+    }
+    const bootsId = equipped('boots'), bootsKey = `boots:${hero.frameKey}`;
+    boots.visible = Boolean(bootsId && art.frames[bootsKey]);
+    if (boots.visible) {
+      setFrame(boots, bootsKey);
+      boots.x = boots.y = boots.rotation = 0;
+      boots.scaleX = boots.scaleY = 1 / art.res;
+      boots.sharedMaterial = bootsId === 'wind-boots' ? JADE : MARCH_BOOT;
+    }
+    frameStats.gearGlows = 2 + (armor ? 3 : 0) + (charm.visible ? 1 : 0) + (charmSigil.visible ? 1 : 0);
+    frameStats.gear = { weapon: equipped('weapon') ?? null, offhand: offhand.visible ? offhandId : null,
+      boots: boots.visible ? bootsId : null, ring: charm.visible ? ringId : null, heroFrame: hero.frameKey,
+      bootsFrame: boots.visible ? bootsKey : null };
   }
   function updateArtifact(state, dt) {
     const ring = state.artifact;
@@ -575,30 +732,32 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
     drawWarnings(state);
     drawPath(state);
     const equipped = slot => state.inventory?.find(item => item.uid === state.equipment?.[slot])?.itemId;
-    const armor = equipped('armor') === 'scale-armor', steel = equipped('weapon') === 'iron-sword', epic = equipped('charm') === 'jade-seal';
+    const armor = equipped('armor') === 'scale-armor', steel = ['iron-sword', 'wind-sword'].includes(equipped('weapon'));
     const requestedKind = armor ? (steel ? 'heroEliteSteel' : 'heroElite') : (steel ? 'heroSteel' : 'hero');
     const heroKind = art.frames[`${requestedKind}:0`] ? requestedKind : armor ? 'heroElite' : 'hero';
     bodyFrame(hero, heroShadow, heroKind, state.hero, 'hero');
-    updateGear(state, armor, steel, epic);
+    updateGear(state, armor, steel, equipped);
     const depth = [...scenery[activeMap], { node: gearBack, y: state.hero.y - .1, id: 'gear-back' },
       { node: hero, y: state.hero.y, id: 'hero' }, { node: gearFront, y: state.hero.y + .1, id: 'gear-front' }], seen = new Set();
     for (const npc of MAPS[activeMap].npcs) {
-      const kind = npc.id === 'elder' ? 'elder' : 'smith', entry = actorEntry(`npc:${npc.id}`, kind);
+      const requested = art.frames[`${npc.id}:0`] ? npc.id : npc.artKind ?? (npc.id === 'elder' ? 'elder' : 'smith');
+      const kind = art.frames[`${requested}:0`] ? requested : 'elder', entry = actorEntry(`npc:${npc.id}`, kind);
       seen.add(entry.id);
       entry.body.visible = true;
       entry.bar.visible = false;
-      bodyFrame(entry.body, entry.shadow, kind, { ...npc, facing: Math.PI / 2 }, entry.id);
+      const frame = bodyFrame(entry.body, entry.shadow, kind, { ...npc, facing: Math.PI / 2 }, entry.id);
+      if (entry.tag) { entry.tag.visible = true; entry.tag.x = npc.x; entry.tag.y = npc.y - (frame?.pivotY ?? 100) - 17; }
       depth.push({ node: entry.body, y: npc.y, id: entry.id });
     }
     for (const foe of state.enemies) {
-      const entry = actorEntry(foe.id, foe.kind);
+      const kind = foe.artKind ?? foe.kind, entry = actorEntry(foe.id, kind);
       seen.add(entry.id);
       entry.body.visible = true;
-      const frame = bodyFrame(entry.body, entry.shadow, foe.kind, foe, foe.id);
+      const frame = bodyFrame(entry.body, entry.shadow, kind, foe, foe.id);
       health(entry, foe, frame);
       depth.push({ node: entry.body, y: foe.y, id: entry.id });
     }
-    for (const [id, entry] of actors) if (!seen.has(id)) entry.body.visible = entry.bar.visible = entry.shadow.visible = false;
+    for (const [id, entry] of actors) if (!seen.has(id)) { entry.body.visible = entry.bar.visible = entry.shadow.visible = false; if (entry.tag) entry.tag.visible = false; }
     const liveDrops = new Set();
     for (const drop of state.drops) {
       const legacy = drop.itemId === 'gold' ? 'gold' : drop.itemId === 'potion' ? 'potion'
@@ -610,8 +769,8 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
       setFrame(entry.body, key);
       liveDrops.add(drop.id);
       entry.body.visible = entry.glow.visible = true;
-      const rare = drop.itemId === 'iron-sword' || drop.itemId === 'scale-armor' || drop.itemId === 'jade-seal';
-      const seal = drop.itemId === 'jade-seal';
+      const rare = !['gold', 'potion', 'qingxin-herb', 'scrap-iron'].includes(drop.itemId);
+      const seal = ['jade-seal', 'storm-ring', 'verdant-ring', 'wind-sword', 'wind-boots'].includes(drop.itemId);
       entry.beam.visible = rare;
       entry.body.x = drop.x;
       entry.body.y = drop.y - 10 + (reducedMotion ? 0 : Math.sin(time * 2.2 + drop.x) * 1.5);
@@ -636,11 +795,14 @@ export async function createView(game, scope, { width = 1280, height = 720, redu
       depth.push({ node: entry.body, y: drop.y, id: `drop:${drop.id}` });
     }
     for (const [id, drop] of drops) if (!liveDrops.has(id)) drop.body.visible = drop.glow.visible = drop.beam.visible = false;
+    updateGatherables(state, depth);
+    updateAmbient(dt, depth);
     depth.sort((a, b) => a.y - b.y || a.id.localeCompare(b.id));
     for (const entry of depth) depthLane.setChildIndex(entry.node, depthLane.numChildren - 1);
     updateArtifact(state, dt);
     const elder = MAPS[activeMap].npcs.find(npc => npc.id === 'elder');
-    quest.visible = Boolean(elder && ['unaccepted', 'return'].includes(state.quest?.stage));
+    quest.visible = Boolean(elder && (['unaccepted', 'return'].includes(state.quest?.stage)
+      || state.quest?.stage === 'complete' && ['locked', 'offer', 'return'].includes(state.chapter?.stage)));
     if (quest.visible) {
       quest.x = elder.x;
       const frame = art.frames['elder:0'];

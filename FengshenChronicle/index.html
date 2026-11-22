@@ -36,7 +36,7 @@
   <div id="field" aria-label="游戏场景"><canvas id="stage" aria-label="游戏地图"></canvas></div>
   <section id="title" aria-labelledby="game-title">
     <div class="title-content">
-      <p class="chapter">封神演义 · 第一章</p>
+      <p class="chapter">封神演义</p>
       <h1 id="game-title"><span>封神</span>西岐战纪</h1>
       <p class="title-line">西岐城外，古道有祟。玄甲奉令出城。</p>
       <div class="title-actions">
@@ -59,8 +59,8 @@
       <p id="quest-text"></p>
       <button id="track" hidden></button>
     </section>
-    <div class="utility"><button id="inventory">行囊 <kbd>B</kbd></button><button id="pause">暂停 <kbd>Esc</kbd></button></div>
-    <section class="boss" id="boss-hud" hidden><b>蚀甲邪将</b><div class="meter hp"><i id="boss-fill"></i></div></section>
+    <div class="utility"><button id="journal">札记 <kbd>J</kbd></button><button id="inventory">行囊 <kbd>B</kbd></button><button id="pause">暂停 <kbd>Esc</kbd></button></div>
+    <section class="boss" id="boss-hud" hidden><b id="boss-name"></b><div class="meter hp"><i id="boss-fill"></i></div></section>
     <aside id="notice" role="status" hidden></aside>
     <aside id="interactions">
       <button class="primary" id="interact" hidden></button>
@@ -70,14 +70,40 @@
     <div id="joystick" aria-label="移动摇杆"><span></span></div>
     <div class="actions" aria-label="战斗操作">
       <button id="potion"><img class="action-mark" src="./assets/gear/potion.webp" alt="">回春散 <b id="potion-count"></b><kbd>1</kbd></button>
-      <button id="artifact" disabled><img class="action-mark" src="./assets/gear/ring.webp" alt="">乾坤圈 <b id="artifact-clock"></b><kbd>Q</kbd></button>
+      <button id="artifact" disabled><img id="skill-icon" class="action-mark" src="./assets/gear/ring.webp" alt=""><span id="skill-name">法宝</span> <b id="artifact-clock"></b><kbd>Q</kbd></button>
+      <button id="rage" title="攻击与受击会积累怒气，满怒可发动范围大招" disabled><span class="rage-emblem" aria-hidden="true">震</span>怒技 <b id="anger-count">0%</b><kbd>R</kbd></button>
       <button id="attack"><img id="weapon-icon" class="action-mark" src="./assets/gear/bronze-sword.webp" alt="">攻击 <kbd>空格</kbd></button>
     </div>
   </div>
   <div class="overlay" id="inventory-panel" hidden>
     <section class="card" role="dialog" aria-modal="true" aria-labelledby="inventory-title">
       <header><div><div class="chapter">玄甲</div><h2 id="inventory-title">行囊与装备</h2></div><button id="close-inventory" aria-label="关闭行囊">关闭</button></header>
-      <p id="equipment-stats"></p><ul id="equipment-list"></ul>
+      <p id="equipment-stats"></p><div id="equipment-slots"></div><ul id="equipment-list" class="item-list"></ul>
+    </section>
+  </div>
+  <section class="dialogue-overlay" id="dialogue-panel" role="dialog" aria-modal="true" aria-labelledby="dialogue-name" hidden>
+    <div class="dialogue-light"></div>
+    <figure class="dialogue-hero"><img src="./assets/portraits/hero.webp" alt="玄甲"></figure>
+    <figure class="dialogue-npc"><img id="dialogue-npc-art" alt=""></figure>
+    <button id="dialogue-close" aria-label="结束交谈">离开</button>
+    <div class="dialogue-caption">
+      <h2 id="dialogue-name"></h2>
+      <p id="dialogue-text" aria-live="polite"></p>
+      <div id="dialogue-options"></div>
+      <button id="dialogue-next" class="primary">继续 <kbd>Enter</kbd></button>
+    </div>
+  </section>
+  <div class="overlay" id="shop-panel" hidden>
+    <section class="card shop-card" role="dialog" aria-modal="true" aria-labelledby="shop-title">
+      <header><div><h2 id="shop-title"></h2><p id="shop-coins"></p></div><button id="shop-close">离开</button></header>
+      <nav class="shop-tabs" aria-label="交易分类"><button id="shop-buy-tab" aria-pressed="true">货品</button><button id="shop-sell-tab" aria-pressed="false">出售</button></nav>
+      <p id="shop-status" role="status"></p><ul id="shop-list" class="item-list"></ul>
+    </section>
+  </div>
+  <div class="overlay" id="journal-panel" hidden>
+    <section class="card journal-card" role="dialog" aria-modal="true" aria-labelledby="journal-title">
+      <header><h2 id="journal-title">西岐札记</h2><button id="journal-close">关闭</button></header>
+      <div id="journal-entries"></div>
     </section>
   </div>
   <div class="overlay" id="pause-panel" hidden>
@@ -103,8 +129,8 @@
   </div>
   <div class="overlay" id="victory-panel" hidden>
     <section class="card compact" role="dialog" aria-modal="true" aria-labelledby="victory-title">
-      <p class="chapter">古道除祟</p><h2 id="victory-title">邪将已伏</h2>
-      <p>拾取掉落的镇邪印，回西岐向姜尚复命。</p>
+      <p class="chapter" id="victory-chapter">古道除祟</p><h2 id="victory-title">邪将已伏</h2>
+      <p id="victory-text">拾取掉落的镇邪印，回西岐向姜尚复命。</p>
       <button class="primary" id="victory-continue">返回战场</button>
     </section>
   </div>
