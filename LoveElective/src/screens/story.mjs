@@ -9,6 +9,7 @@ import { HEROINES, STATS } from '../data/cast.mjs';
 import { GIFTS, SUPPLIES, CLOTHES } from '../data/items.mjs';
 import { SLOTS_OF_DAY } from '../data/places.mjs';
 import * as sim from '../sim.mjs';
+import { openWardrobe } from './wardrobe.mjs';
 
 const BOX = { x: 58, y: 506, w: 1164, h: 198 };
 const TEXT = { x: 58, y: 62, w: 1010, size: 25, lineH: 40 };
@@ -19,10 +20,12 @@ const REVEAL_SPEED = 1150;
  * Play `script`. `girl` is the senior the choices affect.
  * Resolves when the script has finished and the dialogue box is gone.
  */
-export async function playScript(game, script, { girl = null, keepActor = false, light } = {}) {
+export async function playScript(game, script, { girl = null, keepActor = false, light, checkpoint = null } = {}) {
   const { stage, ui, world, L } = game;
   const lightNow = () => light ?? (game.state ? SLOTS_OF_DAY[game.state.slot].light : 'day');
-  let skipping = false;
+  let skipping = false, cancelled = false, nextVoice = null;
+  const saveCheckpoint=()=>{if(checkpoint)game.save();};
+  const pause=()=>{cancelled=true;game.audio.stopVoice?.();advance?.();};
 
   // The box itself, repainted when the speaker changes.
   const box = ui.panel({ ...BOX, res: 1.25 });
@@ -44,6 +47,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   ui.keys = key => {
     if (key === ' ' || key === 'Enter') advance?.();
     if (key === 'Control') skipping = true;
+    if (key === 'Escape' && checkpoint) pause();
   };
   box.node.alpha = 0;
   stage.tween(box.node, { alpha: 1 }, 0.25);
@@ -64,8 +68,13 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       }
       p.button(BOX.w - 122, 36, 96, 38, L(['跳过', 'Skip']), () => {
         skipping = true;
+        game.audio.stopVoice?.();
         advance?.();
       }, { kind: 'plain', size: 15 });
+      if(checkpoint){
+        p.button(BOX.w-250,36,118,38,L(['稍後繼續','Resume later']),pause,{kind:'plain',size:14});
+        p.button(BOX.w-364,36,104,38,L(['重聽','Replay voice']),()=>game.audio.replayVoice?.(),{kind:'plain',size:14});
+      }
       g.fillStyle = accent;
       g.fill(poly([[BOX.w - 64, BOX.h - 42], [BOX.w - 47, BOX.h - 42], [BOX.w - 55.5, BOX.h - 30]]));
     });
@@ -73,6 +82,10 @@ export async function playScript(game, script, { girl = null, keepActor = false,
 
   /** Show one line of text and wait for a tap. */
   async function say(name, color, text, style = {}) {
+    game.audio.stopVoice?.();
+    game.storyStatus={id:checkpoint?.id??null,cursor:checkpoint?.cursor??null,speaker:name,text,choices:[],paused:false};
+    if(nextVoice&&!skipping){Promise.resolve(game.audio.voice?.(nextVoice)).catch(()=>{});}
+    nextVoice=null;
     paintBox(name, color);
     const measure = document.createElement('canvas').getContext('2d');
     measure.font = `${style.weight ?? 500} ${TEXT.size}px ${FONT}`;
@@ -131,6 +144,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       });
       // The first tap finishes writing the line; the next one moves on.
       advance = () => {
+        if(cancelled){end();return;}
         if (!finished) {
           line = lines.length;
           x = 0;
@@ -152,9 +166,10 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       if (beside) world.moveActor(300);
       const pw = beside ? 700 : 900,
         px = beside ? 540 : 190;
-      const h = options.length * 78 + 20,
-        panel = ui.panel({ x: px, y: (470 - h) / 2 + 30, w: pw, h, res: 1.25, modal: true });
+      const h = options.length * 78 + (checkpoint?74:20),
+        panel = ui.panel({ x: px, y: (470 - h) / 2 + 30, w: pw, h, res: 1.25, modal: true, title: L(['劇情選擇','Story choices']) });
       ui.keys = key => {
+        if(key==='Escape'&&checkpoint){cancelled=true;choose(null);return;}
         const n = Number(key);
         if (n >= 1 && n <= options.length) choose(options[n - 1]);
       };
@@ -162,6 +177,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         ui.keys = k => {
           if (k === ' ' || k === 'Enter') advance?.();
           if (k === 'Control') skipping = true;
+          if (k === 'Escape' && checkpoint) pause();
         };
         panel.close();
         if (beside) world.moveActor(actorX);
@@ -175,6 +191,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
           const size = p.measure(L(o.t), 21, 600) > pw - 90 ? 16 : 21;
           p.text(L(o.t), 62, y + (size === 21 ? 17 : 12), { size, weight: 600, maxW: pw - 90, lineH: 20 });
           p.hit(0, y, pw, 62, () => choose(o), { r: 12 });
+          if(checkpoint&&i===options.length-1)p.button(pw-212,h-52,196,40,L(['保存並稍後繼續','Save and resume later']),()=>{cancelled=true;choose(null);},{size:14});
         }),
       );
       panel.node.alpha = 0;
@@ -183,10 +200,27 @@ export async function playScript(game, script, { girl = null, keepActor = false,
     });
   }
 
-  async function run(steps) {
-    for (const step of steps) {
+  async function run(steps,prefix='') {
+    for (let index=0;index<steps.length;index++) {
+      if(cancelled)return;
+      const step=steps[index],key=prefix+index;
       const [op, a, b, c] = step;
-      if (op === 'bg') {
+      const completed=Boolean(checkpoint?.done[key]);
+      if(checkpoint){checkpoint.cursor=key;saveCheckpoint();}
+      // Visual setup is reconstructed on resume. Completed dialogue, effects
+      // and wardrobe actions are not replayed; committed choices are retained.
+      if(completed&&!['bg','in','out','music','voice','pick','branch'].includes(op)){nextVoice=null;continue;}
+      if(op==='voice'){nextVoice=a;continue;}
+      if(op==='music'){game.audio.setMusic?.(a);continue;}
+      if(op==='branch'){
+        const match=sim.bailuZeroMatches(game.state,a);await run(match?b:c,key+(match?'.yes.':'.no.'));
+      }else if(op==='wardrobe'){
+        game.audio.stopVoice?.();game.storyStatus={id:checkpoint?.id??null,cursor:key,wardrobe:a,choices:[]};
+        await openWardrobe(game,a,{tab:'outer',invited:true});
+      }else if(op==='outfit-note'){
+        const wear=game.state.girls.bailu.wear,outer=CLOTHES[wear.outer?.id];
+        await say(null,THEME.soft,outer?L([`她把你們選的${outer.name[0]}披上，留住了剛才調好的配色。`,`She puts on the ${outer.name[1]}, keeping the colours you chose together.`]):L(['她保留了自己喜歡的造型，另外把一條備用圍巾放進袋子。','She keeps the look she likes and packs a spare scarf.']));
+      }else if (op === 'bg') {
         if (shownActor === 'professor') {
           shownActor = null;
           await world.hideActor();
@@ -194,7 +228,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         await world.setScene(a, b ?? lightNow());
       } else if (op === 'in') {
         shownActor = a;
-        await world.showActor(game.spec(a, b), { view: 'bust', x: W / 2 });
+        await world.showActor(game.spec(a, b), { view: 'bust', x: W / 2, enter: !completed });
       } else if (op === 'out') {
         shownActor = null;
         await world.hideActor();
@@ -217,8 +251,13 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         }
         await say(L(['温教授', 'Professor Wen']), '#8a6fd0', L([a, b]));
       } else if (op === 'pick') {
-        const option = await pick(a);
-        if (option.fx && game.state) {
+        game.audio.stopVoice?.();
+        game.storyStatus={id:checkpoint?.id??null,cursor:key,choices:a.map(o=>L(o.t)),text:'',paused:false};
+        const retained=checkpoint?.choices[key],previous=Number.isInteger(retained)&&retained>=0&&retained<a.length;
+        const option = previous?a[retained]:await pick(a);
+        if(!option)return;
+        if(checkpoint&&!previous)checkpoint.choices[key]=a.indexOf(option);
+        if (!previous&&option.fx && game.state) {
           const gained = sim.applyEffect(game.state, girl, option.fx);
           if (gained > 0) {
             game.toast(`♥ ${L(['好感', 'Affection'])} +${gained}`, 'good');
@@ -233,16 +272,20 @@ export async function playScript(game, script, { girl = null, keepActor = false,
           if (item) parts.push(`${L(['获得', 'Got'])} ${L(item.name)}`);
           if (parts.length) game.toast(parts.join('  ·  '), 'good');
         }
-        if (option.then) await run(option.then);
+        saveCheckpoint();
+        if (option.then) await run(option.then,key+'.choice'+a.indexOf(option)+'.');
       } else if (HEROINES[op]) {
         // A senior speaks: update her expression first.
         if (shownActor === op || world.actor) await world.showActor(game.spec(op, a), { view: 'bust', x: world.actor?.x ?? W / 2 });
         await say(L(HEROINES[op].name), HEROINES[op].color, L([b, c]));
       }
+      if(checkpoint&&!cancelled){checkpoint.done[key]=true;saveCheckpoint();}
     }
   }
 
   await run(script);
+  game.audio.stopVoice?.();
+  game.storyStatus={id:checkpoint?.id??null,paused:cancelled,choices:[]};
   advance = null;
   ui.background = null;
   ui.keys = null;
@@ -251,4 +294,5 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   textB.destroy();
   box.close();
   if (!keepActor) await world.hideActor();
+  return {completed:!cancelled};
 }

@@ -1,0 +1,204 @@
+{
+  "language": "zh-TW",
+  "generation": "Offline PrimeTTS v2.1 synthetic speech, Xinran preset",
+  "cues": [
+    {
+      "id": "bailu-zero-01",
+      "speaker": "bailu",
+      "tone": "夜晚、遲疑後鼓起勇氣",
+      "text": "今晚十一點十七分，你可以陪我留一下嗎？",
+      "file": "bailu-zero-01.mp3",
+      "seconds": 3.5153125,
+      "sha256": "6cdbcbf04443a002d9c432af44c93408e0358c4856b1a9d0843b581ebf302cb8"
+    },
+    {
+      "id": "bailu-zero-02",
+      "speaker": "bailu",
+      "tone": "淡淡玩笑、尾句害羞",
+      "text": "不是約會。……如果你希望是，也可以。",
+      "file": "bailu-zero-02.mp3",
+      "seconds": 3.1016875,
+      "sha256": "c76f1af2f6388182065dd6205019f8bf2d930340b0297040f53e9ddf357fb427"
+    },
+    {
+      "id": "bailu-zero-03",
+      "speaker": "bailu",
+      "tone": "壓低聲音、帶疑惑",
+      "text": "這封信，每晚都會準時寄到。寄件人卻不在社員名冊裡。",
+      "file": "bailu-zero-03.mp3",
+      "seconds": 4.8798125,
+      "sha256": "94044aef0f693ec0535600f5a7766ef64bae03872595e208728ffbc52ab9da32"
+    },
+    {
+      "id": "bailu-zero-04",
+      "speaker": "bailu",
+      "tone": "坦白、停頓",
+      "text": "我知道密碼。只是，還沒有準備好看最後一封。",
+      "file": "bailu-zero-04.mp3",
+      "seconds": 4.2233125,
+      "sha256": "1d2167472d076354f7fd0e6233caec522d9d0fbfcafbbc2d912f7d953f5196de"
+    },
+    {
+      "id": "bailu-zero-05",
+      "speaker": "qingge",
+      "tone": "平穩、尊重隱私",
+      "text": "公開的社團紀錄可以借你們。私人的信，請先問過本人。",
+      "file": "bailu-zero-05.mp3",
+      "seconds": 4.654,
+      "sha256": "87fd50717814370c5123b0dbe7526d2b0c53d80cdcd08a367d6ad29ecfedc7c9"
+    },
+    {
+      "id": "bailu-zero-06",
+      "speaker": "zhiwei",
+      "tone": "理性、稍帶俏皮",
+      "text": "先別急著說鬧鬼。讓我看看寄送時間。",
+      "file": "bailu-zero-06.mp3",
+      "seconds": 3.456625,
+      "sha256": "aa37bf8b6962c3c9286f041a9116e97074c16da4899a29732700c6671e05f86d"
+    },
+    {
+      "id": "bailu-zero-07",
+      "speaker": "zhiwei",
+      "tone": "解開謎題、溫和",
+      "text": "這是定時寄送的觀測紀錄。零號社員，是共用帳號。",
+      "file": "bailu-zero-07.mp3",
+      "seconds": 4.5978125,
+      "sha256": "b1cb77eb893b24e68d7b2e35e27f53db96eea809491585a6ab21a2c1fcff58c8"
+    },
+    {
+      "id": "bailu-zero-08",
+      "speaker": "bailu",
+      "tone": "鬆一口氣、略微哽咽",
+      "text": "原來她留下的，不是叫我一直等下去。",
+      "file": "bailu-zero-08.mp3",
+      "seconds": 3.1515,
+      "sha256": "335f4a1be1c76d19b91f04f9b7644ac133983693cd22871a535e2b76808a178e"
+    },
+    {
+      "id": "bailu-zero-09",
+      "speaker": "bailu",
+      "tone": "主動邀請、親近",
+      "text": "今晚會冷。你幫我看看，這件外套適不適合觀星？",
+      "file": "bailu-zero-09.mp3",
+      "seconds": 4.4571875,
+      "sha256": "0f91bd206c6d1e979a9d85fcf8c7cc7d9f71cd0c1d5c1534b79d0e860dbb0527"
+    },
+    {
+      "id": "bailu-zero-10",
+      "speaker": "bailu",
+      "tone": "含蓄甜、自然輕笑",
+      "text": "顏色很好看。我更在意的，是能不能和你待久一點。",
+      "file": "bailu-zero-10.mp3",
+      "seconds": 4.041375,
+      "sha256": "be4abb1f9d516884fb603b9fa60a58d882cab9ebe26653d30d396aed69d53612"
+    },
+    {
+      "id": "bailu-zero-11",
+      "speaker": "bailu",
+      "tone": "真誠、柔和",
+      "text": "你不用為了我，穿成不喜歡的樣子。",
+      "file": "bailu-zero-11.mp3",
+      "seconds": 2.6500625,
+      "sha256": "cd48cc3568ef635999c48b948fa0df18743f308ddfe929b1fb98a06dd34e9cb0"
+    },
+    {
+      "id": "bailu-zero-12",
+      "speaker": "bailu",
+      "tone": "輕聲邀請、害羞但明確",
+      "text": "你可以坐近一點。……我是說，如果你也願意。",
+      "file": "bailu-zero-12.mp3",
+      "seconds": 3.825625,
+      "sha256": "8188b83c6c63658c62bbfa0e367306a9d5b903540e9a02d619ad66654ec559f7"
+    },
+    {
+      "id": "bailu-zero-13",
+      "speaker": "bailu",
+      "tone": "牽手分支、安心微笑",
+      "text": "那就把手借我一下。冷的時候，我會自己說。",
+      "file": "bailu-zero-13.mp3",
+      "seconds": 3.8449375,
+      "sha256": "afea82672f9d994886df017e97d776ff1a134b2b7742a834522652139b28aab8"
+    },
+    {
+      "id": "bailu-zero-14",
+      "speaker": "bailu",
+      "tone": "留白分支、放鬆",
+      "text": "這個距離也很好。你不用靠近，才算陪著我。",
+      "file": "bailu-zero-14.mp3",
+      "seconds": 3.7935,
+      "sha256": "f5dfce7f69c97c33b2fdc07f33ccaa61a4c9679978bca623e9dda90e51d81bdf"
+    },
+    {
+      "id": "bailu-zero-15",
+      "speaker": "bailu",
+      "tone": "閱信前、慎重但堅定",
+      "text": "我想讀了。這一次，你可以陪我一起看嗎？",
+      "file": "bailu-zero-15.mp3",
+      "seconds": 3.4594375,
+      "sha256": "97b2f57d83b016528997042ebe71b5da43bbab6828823f054e4678f3898d6239"
+    },
+    {
+      "id": "bailu-zero-16",
+      "speaker": "bailu",
+      "tone": "暫緩閱信分支、感激",
+      "text": "謝謝你沒有替我決定。今晚先看星星，好嗎？",
+      "file": "bailu-zero-16.mp3",
+      "seconds": 3.9421875,
+      "sha256": "a71655ead55819ab0b5b99f9d016959ddbbcd1da39ec686cfa7c33f923cb0502"
+    },
+    {
+      "id": "bailu-zero-17",
+      "speaker": "bailu",
+      "tone": "最終選擇前、釋然",
+      "text": "我想留下的，也許不是這間社團，而是有人一起抬頭的晚上。",
+      "file": "bailu-zero-17.mp3",
+      "seconds": 5.2885,
+      "sha256": "305ae33273562d315a923240bbed228662039c26ab270d74e1b4e2b094c798cb"
+    },
+    {
+      "id": "bailu-zero-18",
+      "speaker": "zhiwei",
+      "tone": "續社結尾、嘴硬熱心",
+      "text": "第三個名字，我來寫。先說好，我不是每天都能熬夜。",
+      "file": "bailu-zero-18.mp3",
+      "seconds": 4.3499375,
+      "sha256": "46263240d204cf32b4b3ae9eea0ede2730ae0d906739f770655fa420194379a9"
+    },
+    {
+      "id": "bailu-zero-19",
+      "speaker": "bailu",
+      "tone": "續社結尾、明亮期待",
+      "text": "那就從明天開始，寫我們自己的觀測紀錄。",
+      "file": "bailu-zero-19.mp3",
+      "seconds": 3.6533125,
+      "sha256": "85a079aa14d94c7c439505f96a9a9ac859e011358a5678046d2c46c355194534"
+    },
+    {
+      "id": "bailu-zero-20",
+      "speaker": "bailu",
+      "tone": "告別結尾、平靜帶淚但不悲慘",
+      "text": "關掉終端，不是忘記她。我只是，終於可以往前走了。",
+      "file": "bailu-zero-20.mp3",
+      "seconds": 4.8145625,
+      "sha256": "ceabe45d31c9e6941e800e8268ac46b00116edb9e134a390fab18868185e9c55"
+    },
+    {
+      "id": "bailu-zero-21",
+      "speaker": "bailu",
+      "tone": "親近回響、真誠告白",
+      "text": "下次等流星的時候，我想先等到你。",
+      "file": "bailu-zero-21.mp3",
+      "seconds": 3.2315625,
+      "sha256": "67e6a557d4e3007cd3ac182ed74e14ece2103c36126946ba450b1ef09f5a9d0e"
+    },
+    {
+      "id": "bailu-zero-22",
+      "speaker": "bailu",
+      "tone": "留白回響、溫柔期待",
+      "text": "下次也坐在這裡吧。不用說話，我知道你在。",
+      "file": "bailu-zero-22.mp3",
+      "seconds": 3.7793125,
+      "sha256": "8d758fba0d7b124a381ddcd4ffa5dfa95655af3b73111e799c4665aa1891542a"
+    }
+  ]
+}

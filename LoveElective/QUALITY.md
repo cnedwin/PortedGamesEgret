@@ -41,3 +41,13 @@ this file; items by hand or on a device are marked not run until someone runs th
 | E4 | 切回后声音和计时正常 · Sound and timers right after coming back | 真机 · device | 未运行 · not run |  |
 
 自动项不达标 · Automatic items failing: F1, I1, A2, A3, E2。真机项（T1、F2、E4）和人工项（I2、A1m、S4）未运行，除非上表另有记录 · Device and by-hand items were not run unless the table says otherwise.
+
+## 白露特別篇与原生可访问控件 · Bai Lu interlude and native accessibility
+
+用 Windows PC Edge 158 验收白鹭语义树及 Chromium 可访问树。标题按钮有可读名称，手机页签有选中状态，弹窗限制焦点，Escape 关闭后恢复到打开控件。焦点移出画布再返回后，Tab、Shift+Tab 和页签方向键可再次操作。配乐、语音和音效的静音按钮与音量按钮各有独立名称。
+
+旧 v1 格式测试档在 PC 继续到第 8 天，保留体力、金钱、属性和已穿服饰的染色。另从按旧规则推进到白露第二章的存档实际操作五个节点，取得三条线索、染色外套、选择读信和牵手或留白，并分别走到两个结局。对白中途保存并刷新可从同一句恢复。两个结局保留日程、原章节进度和染过的外套，完成后再次刷新仍能续档。
+
+25 个 MP3 均由 Edge 的原生 Web Audio 解码。白露首句通过游戏内重听按钮重新播放，语音期间配乐增益从 0.800 降至 0.224。角色语音为本地合成，音乐为原创，来源见 [音讯制作 · Audio credits](assets/audio/README.md)。
+
+三星 Galaxy Z Fold7（SM-F966U1，Android 17，Chrome 157）在 960 × 411 CSS px 横屏完成同一组触屏回归。旧格式存档、两条结局和刷新续档均通过。使用浏览器的可访问树核对标题按钮、回信页签、手机弹窗和三组音量按钮。调整语音音量时，其余两路设置保持原值。白露首句在手机混音器的播放进度实际推进至 0.163 秒，同期配乐增益为 0.224。未进行扬声器声学测量或 TalkBack 逐句朗读验收。零页面与资源错误，测试标签和设备常亮设置已恢复。

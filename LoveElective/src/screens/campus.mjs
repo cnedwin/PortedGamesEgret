@@ -11,12 +11,15 @@ import { HEROINES, LEVELS, STATS } from '../data/cast.mjs';
 import { PLACES, PLACE_IDS, SLOTS_OF_DAY, DATE_SPOTS } from '../data/places.mjs';
 import { GIFTS, CLOTHES } from '../data/items.mjs';
 import { CHAPTERS_SCRIPT } from '../story/chapters.mjs';
+import { bailuMainChapter } from '../story/bailu-zero.mjs';
 import { CHAT_LINES, GIFT_LINES, DATE_LINES, JEALOUS_LINES } from '../story/lines.mjs';
 import * as sim from '../sim.mjs';
 import { playScript } from './story.mjs';
 import { openPhone } from './phone.mjs';
 import { openShop } from './shop.mjs';
 import { openWardrobe } from './wardrobe.mjs';
+import { openBailuZero } from './bailu-zero.mjs';
+import { BAILU_ZERO_TITLE } from '../data/bailu-zero.mjs';
 
 const pickOne = list => list[Math.floor(Math.random() * list.length)];
 const lightOf = s => SLOTS_OF_DAY[s.slot].light;
@@ -27,7 +30,8 @@ export async function campus(game) {
   while (!game.state.finale && !game.quit) {
     const place = await mapScreen(game);
     if (!place) break;
-    await placeScreen(game, place);
+    if(place==='bailu-zero')await openBailuZero(game);
+    else await placeScreen(game, place);
     game.save();
   }
   game.hideHud();
@@ -112,6 +116,13 @@ function mapScreen(game) {
           color: '#ffffff',
           align: 'center',
         });
+        const letter=sim.bailuZeroStatus(s);
+        if(letter.unlocked&&!letter.complete){
+          p.card(24,572,596,80,{r:14,fill:rgba('#272038',.97),stroke:'#c9a13e',shadow:.24});
+          p.text('✉ '+L(BAILU_ZERO_TITLE),42,581,{size:20,weight:750,color:'#f6d897'});
+          p.text(`${letter.stage+1}/5 · ${L(letter.next.name)}`,42,612,{size:15,color:'#fff8eb'});
+          p.button(412,591,190,44,L(s.bailuZero.playback?['繼續特別篇','Resume interlude']:['前往特別篇','Go to interlude']),()=>go('bailu-zero'),{kind:'primary',size:16});
+        }
       });
     }
 
@@ -125,7 +136,8 @@ function mapScreen(game) {
       if (result === 'quit') {
         game.quit = true;
         leave(null);
-      } else refresh();
+      } else if(result==='bailu-zero')leave('bailu-zero');
+      else refresh();
     }
     // The map and its labels shift by different amounts as the pointer moves, so labels float above it.
     const stop = stage.onTick(dt => {
@@ -187,7 +199,7 @@ async function placeScreen(game, placeId) {
       const chapter = sim.chapterAt(s, girl, placeId);
       if (!chapter) continue;
       game.hideHud();
-      await playScript(game, CHAPTERS_SCRIPT[girl][chapter], { girl });
+      await playScript(game, (girl==='bailu'&&bailuMainChapter(s,chapter))||CHAPTERS_SCRIPT[girl][chapter], { girl });
       sim.finishChapter(s, girl, chapter);
       game.save();
       game.toast(`${L(HEROINES[girl].name)} · ${L(['故事第 ', 'Story chapter '])}${chapter}${L([' 章 完成', ' complete'])}`, 'good');
@@ -219,7 +231,7 @@ async function placeScreen(game, placeId) {
       if (moved) break;
     } else if (choice.type === 'act') {
       const act = choice.act;
-      if (act.special === 'quests') await openPhone(game, 'quests');
+      if (act.special === 'quests') {const result=await openPhone(game,'quests');if(result==='bailu-zero'){await game.fadeOut(.2);await openBailuZero(game);break;}}
       else if (act.special === 'wardrobe') await openWardrobe(game, 'hero');
       else if (act.special?.startsWith('shop:')) await openShop(game, act.special.slice(5));
       else if (act.special === 'sleep') {
