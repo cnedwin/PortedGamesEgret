@@ -101,6 +101,9 @@ try {
   assert.equal((await inspect()).state.equipment.weapon,weapon);
   await page.locator('#bag-tab-stats').click();
   assert.equal(Number(await attackTotal.textContent()),attack);
+  const artifactRow = page.locator('#bag-abilities li').filter({hasText:'乾坤圈'});
+  assert.deepEqual(await artifactRow.locator('kbd').allTextContents(), ['Q']);
+  assert.match(await artifactRow.locator('small').textContent(), /^投出金圈/);
   await page.locator('#bag-tab-items').click();
   assert(await page.locator('#bag-consumables [data-use-item="potion"]').isDisabled());
   assert(await page.locator('#bag-materials li').count() >= 2);
