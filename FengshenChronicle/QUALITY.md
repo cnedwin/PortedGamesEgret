@@ -38,3 +38,13 @@ Each row uses 90 browser rAF intervals per window. These are short cadence sampl
 ## 运行文件 · Runtime identity
 
 PC 与 Fold7 运行文件清单摘要（SHA-256）：`3d483b57453089c044a7f77bad019c3905373d7ce06e248adee2996a6e16baec`。截图保存与帧采样均为实际设备输出。
+
+## 公开首章与美术重做 · Public chapter and art revision
+
+首次公开版 `97f3b3f` 在 PC、Fold7 横屏和真实竖屏均跑完首章并刷新续档。竖屏为原生 1080 × 2520，Chrome 视口 411 × 813 CSS px。复测发现拾取按钮出现时，原有归营按钮会移动。新布局为两者保留独立位置。
+
+The first public revision passed the full route and reload on PC and the Fold7 in physical landscape and portrait. A newly available pickup could shift the return control. The updated layout assigns the two buttons fixed rows.
+
+美术版的场景、角色、装备、动作与特效使用本地贴图。角色与特效分两张白鹭图集，符合单纹理 4,194,304 像素上限。路线、战斗计算与存档代码均为同一版本。PC 本机静态预览复跑整章和读档，操作和装备数值符合首章基线。
+
+The art revision divides illustrations and effects between two Egret atlases within the engine's per-image pixel limit. Rules and save code match the first public revision. The full local PC route and reload passed on the new art.

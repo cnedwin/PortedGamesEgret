@@ -25,6 +25,7 @@ function sizeFor() {
 }
 const range = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const panelIds = { title: 'title', inventory: 'inventory-panel', pause: 'pause-panel', dead: 'death-panel', won: 'victory-panel' };
+const gearUrl = itemId => new URL('../assets/gear/' + itemId + '.webp', import.meta.url).href;
 
 let game, view, size = sizeFor(), stageCanvas = canvas, state = createSession(), phase = 'title';
 let ready = false, slot = 1, muted = isMuted(storage);
@@ -132,6 +133,9 @@ function questDestination(map) {
 
 function renderHud() {
   const hero = state.hero, map = MAPS[state.mapId];
+  const weapon = state.inventory.find(item => item.uid === state.equipment.weapon)?.itemId ?? 'bronze-sword';
+  const icon = $('weapon-icon'), iconUrl = gearUrl(weapon);
+  if (icon.src !== iconUrl) icon.src = iconUrl;
   $('hp-fill').style.transform = 'scaleX(' + hero.hp / hero.maxHp + ')';
   $('xp-fill').style.transform = 'scaleX(' + hero.xp / hero.needXp + ')';
   setText('hp-text', Math.ceil(hero.hp) + ' / ' + hero.maxHp);
@@ -169,8 +173,12 @@ function renderInventory() {
     const equipped = state.equipment[item.slot] === instance.uid;
     const current = state.inventory.find(entry => entry.uid === state.equipment[item.slot]);
     const currentItem = ITEMS[current?.itemId];
-    const row = document.createElement('li'), summary = document.createElement('div'), name = document.createElement('b'), details = document.createElement('small'), button = document.createElement('button');
+    const row = document.createElement('li'), art = document.createElement('img'), summary = document.createElement('div');
+    const name = document.createElement('b'), details = document.createElement('small'), button = document.createElement('button');
     row.dataset.tier = item.tier;
+    art.className = 'gear-mark';
+    art.alt = '';
+    art.src = gearUrl(item.id);
     name.textContent = item.name;
     const attribute = value => value ? (value > 0 ? '+' : '') + value : '±0';
     const comparison = equipped ? '' : '　·　变化 ' + attribute((item.attack ?? 0) - (currentItem?.attack ?? 0)) + ' 攻 / ' + attribute((item.defense ?? 0) - (currentItem?.defense ?? 0)) + ' 防';
@@ -182,7 +190,7 @@ function renderInventory() {
     button.textContent = equipped ? '已装备' : '装备';
     button.setAttribute('aria-label', item.name + (equipped ? '已装备' : '装备'));
     summary.append(name, details);
-    row.append(summary, button);
+    row.append(art, summary, button);
     return row;
   });
   $('equipment-list').replaceChildren(...rows);
@@ -303,7 +311,9 @@ function frame(seconds) {
       if (noticeFor <= 0) $('notice').hidden = true;
     }
   }
-  if (phase !== 'title') view.update(state, phase === 'play' && !pauseOnBlur ? dt : 0, events);
+  // Finish a falling pose behind the result panel while combat remains paused.
+  const animate = !document.hidden && !pauseOnBlur && (phase === 'play' || phase === 'dead' || phase === 'won');
+  if (phase !== 'title') view.update(state, animate ? dt : 0, events);
 }
 
 function drift(event) {

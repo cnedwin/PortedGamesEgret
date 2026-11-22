@@ -6,6 +6,10 @@
 
 An original single-player action RPG built with Egret Rebuild. This first chapter connects Xiqi town and the Qishan road. Accept Jiang Shang's commission, equip earned loot, use the returning Universe Ring, defeat the corrupted general and report back. All game resources are local to this folder, with three saves in the current browser.
 
+角色和装备采用原创生成插画，西岐城使用暖赭色石材、木构和灯火，古道使用冷青岩壁和青铜遗迹。角色姿态、刀光、受击、首领预警和乾坤圈往返均在原生 2D 显示树中表现。场景原画来源见 [场景素材清单](assets/world/SOURCES.json)。
+
+Original generated illustrations depict the cast and equipment. Amber stone, timber, and lanterns distinguish Xiqi from the blue-green cliffs and bronze ruins of the trail. Character poses, attacks, strikes, telegraphs, and the returning ring run on Egret's native 2D display list.
+
 预定静态部署路径为 [FengshenChronicle](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/)。本地开发结果与线上部署状态分别记录在 `QUALITY.md`。
 
 ## 玩法与操作 · How to play
@@ -54,6 +58,10 @@ Fourteen rule and persistence tests passed. Windows PC (Edge) and a physical Gal
 The current interface is Simplified Chinese. Save transfer across browsers and gamepad controls are not implemented. Device visuals, touch and frame behaviour require the recorded target environment.
 
 ## 已解决 · Solved
+
+移动端的互动和拾取使用固定位置，可以在两者同时出现时直接选择归营或拾取。
+
+On touch screens, interact and pickup stay in their own positions when both actions are available.
 
 点击移动绕开实体矩形，斜向移动保持相同速度。法宝飞行中保存会保留伤害与冷却，拾取后的物品不会因读档重复出现。首次击杀保证获得可见的装备提升。
 
