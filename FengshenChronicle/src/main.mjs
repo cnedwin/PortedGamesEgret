@@ -1,12 +1,13 @@
 import { createBrowserGame } from '@egret/engine/web/game';
 import { createView } from './view.mjs';
-import { CAMPAIGN_CHAPTERS, CHAPTER, EQUIPMENT_SLOTS, ITEMS, MAPS, SIDE_QUESTS } from './sim/data.mjs';
-import { AFFIX_LABELS, PROFESSIONS, canEquip, equipmentStats } from './sim/arsenal.mjs';
-import { bagSize, sideQuestUnlocked } from './sim/progression.mjs';
+import { CAMPAIGN_CHAPTERS, CHAPTER, ITEMS, MAPS, SIDE_QUESTS } from './sim/data.mjs';
+import { PROFESSIONS } from './sim/arsenal.mjs';
+import { sideQuestUnlocked } from './sim/progression.mjs';
 import { createSession, dispatch, nextRecovery, update } from './sim/world.mjs';
 import { isMuted, readSlot, setMuted, writeSlot } from './saves.mjs';
 import { createSound } from './audio.mjs';
-import { affixText, campaignObjective, createProfessionPicker, createRpgPanels, destinations, gearUrl, slotNames, tierNames } from './rpg-ui.mjs';
+import { affixText, campaignObjective, createProfessionPicker, createRpgPanels, destinations, gearUrl } from './rpg-ui.mjs';
+import { createInventoryPanel } from './inventory-ui.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('stage'), field = $('field'), joystick = $('joystick');
@@ -41,8 +42,8 @@ let ready = false, slot = 1, muted = isMuted(storage);
 let pauseOnBlur = false, saveAge = 0, hudAge = 0, noticeFor = 0, savedAt = 0;
 let activePointer = null, stickX = 0, stickY = 0, holdingAttack = false, pendingAction = null;
 let contextPerson, contextDrop, route, orientationTimer, rebuilding = false;
-let inventorySlot = null;
 let questFocus = 'main';
+const bag = createInventoryPanel({current:() => state, command:panelCommand});
 const rpg = createRpgPanels({
   command: panelCommand, current: () => state, tracked: () => questFocus,
   track(id) { questFocus = id; showPhase('play'); }
@@ -73,7 +74,7 @@ function showPhase(nextPhase) {
   $('hud').inert = phase !== 'play';
   if (phase === 'play') renderHud();
   if (phase === 'title') refreshTitle();
-  if (phase === 'inventory') renderInventory();
+  if (phase === 'inventory') bag.open();
   if (phase === 'pause') saveStatus();
   if (phase === 'dialogue') rpg.renderDialogue();
   if (phase === 'shop') rpg.renderShop();
@@ -135,7 +136,7 @@ function startGame(record = null, profession = 'guard') {
   setText('class-skill-name',role.active.name);
   savedAt = record?.savedAt ?? 0;
   pendingAction = null;
-  inventorySlot = null;
+  bag.reset();
   questFocus = 'main';
   history.length = 0;
   noticeFor = 0;
@@ -258,67 +259,6 @@ function renderHud() {
   setText('anger-count',anger >= 100 ? '满' : anger + '%');
 }
 
-function renderInventory() {
-  const role = PROFESSIONS[state.profession ?? 'guard'];
-  setText('inventory-profession',role.name + ' · ' + role.weaponType);
-  setText('equipment-stats', '攻击 ' + state.hero.attack + '　防御 ' + state.hero.defense + '　气血 ' + state.hero.maxHp +
-    '　行囊 ' + bagSize(state) + ' / 30　药草 ' +
-    (state.resources?.herb ?? 0) + '　甲片 ' + (state.resources?.parts ?? 0) + '　回春散 ' +
-    state.hero.potions + '　回春丹 ' + (state.hero.tonics ?? 0));
-  $('equipment-slots').replaceChildren(...EQUIPMENT_SLOTS.map(slot => {
-    const button = document.createElement('button');
-    const equipped = state.inventory.find(entry => entry.uid === state.equipment[slot]);
-    const image = document.createElement('img'), label = document.createElement('span');
-    const type = document.createElement('small'), title = document.createElement('strong');
-    button.type = 'button';
-    button.className = 'equipment-slot';
-    button.dataset.filter = slot;
-    button.setAttribute('aria-pressed',String(inventorySlot === slot));
-    type.textContent = slotNames[slot];
-    title.textContent = equipped ? ITEMS[equipped.itemId].name : '空位';
-    image.alt = '';
-    image.src = gearUrl(equipped?.itemId ?? ({weapon:role.starterWeapon,offhand:'bronze-shield',armor:'linen-armor',boots:'cloth-boots',ring:'bronze-ring',skill:'qiankun-ring'})[slot]);
-    label.append(type,title); button.append(image,label);
-    return button;
-  }));
-  const rows = state.inventory.filter(instance => !inventorySlot || ITEMS[instance.itemId].slot === inventorySlot).map(instance => {
-    const item = ITEMS[instance.itemId];
-    const equipped = state.equipment[item.slot] === instance.uid;
-    const current = state.inventory.find(entry => entry.uid === state.equipment[item.slot]);
-    const currentItem = ITEMS[current?.itemId];
-    const stats = equipmentStats(item, instance.affixes);
-    const equippedStats = equipmentStats(currentItem, current?.affixes);
-    const row = document.createElement('li'), art = document.createElement('img'), summary = document.createElement('div');
-    const name = document.createElement('b'), details = document.createElement('small'), button = document.createElement('button');
-    row.dataset.tier = item.tier;
-    art.className = 'gear-mark';
-    art.alt = '';
-    art.src = gearUrl(item.id);
-    name.textContent = item.name;
-    const changes = Object.entries(AFFIX_LABELS).flatMap(([key,label]) => {
-      const change = stats[key] - equippedStats[key];
-      return change ? [label + ' ' + (change > 0 ? '+' : '') + change] : [];
-    });
-    const comparison = equipped ? '' : '　·　更换后 ' + (changes.join(' / ') || '属性持平');
-    const roll = affixText(instance);
-    details.textContent = item.slot === 'skill' ? item.description : (tierNames[item.tier] ?? '装备') + ' · 攻 ' +
-      stats.attack + '　防 ' + stats.defense + (stats.maxHp ? '　气血 +' + stats.maxHp : '') +
-      (stats.speed ? '　移速 +' + stats.speed : '') + (roll ? '　·　词条 ' + roll : '') + comparison;
-    button.type = 'button';
-    button.className = equipped ? 'unequip' : 'equip';
-    button.dataset.uid = instance.uid;
-    button.dataset.slot = item.slot;
-    button.disabled = !equipped && !canEquip(item, role.id, state.hero.level);
-    button.textContent = equipped ? '卸下' : !button.disabled ? '装备' :
-      (state.hero.level < item.requiredLevel ? 'Lv.' + item.requiredLevel + ' 装备' : '职业不符');
-    button.setAttribute('aria-label', item.name + (equipped ? '卸下' : '装备'));
-    summary.append(name, details);
-    row.append(art, summary, button);
-    return row;
-  });
-  $('equipment-list').replaceChildren(...rows);
-}
-
 function syncMusic() {
   const hasBoss = state.enemies.some(enemy => enemy.boss && !enemy.dead);
   sound.setScene(state.mapId === 'city' ? 'city' : state.quest.stage === 'boss' || hasBoss ? 'boss' : 'trail');
@@ -424,10 +364,11 @@ function syncPanels() {
 function panelCommand(action) {
   if (!['shop','dialogue','forge','inventory'].includes(phase)) return;
   const changed = dispatch(state,action);
-  consumeEvents(update(state,0));
+  const events = update(state,0);
+  consumeEvents(events);
   if (changed) saveGame();
   syncPanels();
-  if (phase === 'inventory') renderInventory();
+  if (phase === 'inventory') bag.render(events);
 }
 
 function fieldPress(event) {
@@ -575,20 +516,6 @@ $('retry').addEventListener('click', () => {
   showPhase('play');
   saveGame();
   renderHud();
-});
-$('equipment-list').addEventListener('click', event => {
-  const button = event.target.closest('.equip,.unequip');
-  if (!button) return;
-  panelCommand(button.classList.contains('equip') ? {type:'equip',uid:button.dataset.uid} : {type:'unequip',slot:button.dataset.slot});
-  $('close-inventory').focus({ preventScroll: true });
-});
-$('equipment-slots').addEventListener('click', event => {
-  const slot = event.target.closest('[data-filter]')?.dataset.filter;
-  if (!slot) return;
-  inventorySlot = inventorySlot === slot ? null : slot;
-  renderInventory();
-  const next = $('equipment-slots').querySelector('[data-filter="' + slot + '"]');
-  next?.focus({preventScroll:true});
 });
 $('slot').addEventListener('change', event => { slot = Number(event.target.value); refreshTitle(); });
 $('new-game').addEventListener('click', () => {

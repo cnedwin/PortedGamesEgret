@@ -28,7 +28,7 @@ export const gearUrl = itemId => new URL('../assets/gear/' + gearArt(itemId) + '
 const portraits = new Set(['hero','elder','smith','apothecary','merchant','scout','ritualist','ranger']);
 const portraitUrl = id => new URL('../assets/portraits/' + (portraits.has(id) ? id : 'scout') + '.webp', import.meta.url).href;
 const $ = id => document.getElementById(id);
-const professionPortrait = id => portraitUrl(id === 'guard' ? 'hero' : id);
+export const professionPortrait = id => portraitUrl(id === 'guard' ? 'hero' : id);
 const roleLabels = { guard:'持盾近战', ritualist:'远程群攻', ranger:'远程追击' };
 export const tierNames = { common:'基础', fine:'精锻', rare:'稀有', epic:'史诗', legendary:'传说' };
 

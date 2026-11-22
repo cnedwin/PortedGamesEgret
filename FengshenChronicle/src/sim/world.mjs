@@ -9,7 +9,7 @@ const STEP = 1 / 60, HERO_RADIUS = 18, SPEED = 185, CELL = 40;
 const clamp = (value, min, max) => Math.min(max, Math.max(min, value));
 const distance = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const copy = value => JSON.parse(JSON.stringify(value));
-const RECOVERY_ITEMS=Object.freeze([
+export const RECOVERY_ITEMS=Object.freeze([
   Object.freeze({itemId:'potion',key:'potions',name:'回春散',heal:45}),
   Object.freeze({itemId:'recovery-pill',key:'tonics',name:'回春丹',heal:65})
 ]);
@@ -603,7 +603,9 @@ export function dispatch(state, action) {
     case 'rage': return castRage(state,action);
     case 'classSkill':return castClassSkill(state,action);
     case 'potion':{
-      const recovery=nextRecovery(state.hero);if(!recovery)return false;
+      const recovery=Object.hasOwn(action,'itemId')
+        ?RECOVERY_ITEMS.find(item=>item.itemId===action.itemId):nextRecovery(state.hero);
+      if(!recovery||state.hero.hp>=state.hero.maxHp||!(state.hero[recovery.key]>=1))return false;
       state.hero[recovery.key]--;const amount=Math.min(recovery.heal,state.hero.maxHp-state.hero.hp);
       state.hero.hp+=amount;emit(state,'heal',{x:state.hero.x,y:state.hero.y,amount,itemId:recovery.itemId});return true;
     }

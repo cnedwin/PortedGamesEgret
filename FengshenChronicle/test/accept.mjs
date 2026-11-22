@@ -86,9 +86,27 @@ try {
   await page.locator('#inventory').click();
   await waitPhase('inventory');
   assert(await page.locator('#equipment-list li').count() >= 2);
+  await page.locator('#equipment-slots [data-filter="weapon"]').click();
+  assert.equal(await page.locator('#equipment-list .unequip').count(), 1);
+  const weapon = (await inspect()).state.equipment.weapon;
+  const attack = (await inspect()).state.hero.attack;
+  await page.locator('#equipment-list .unequip').click();
+  await page.locator('#bag-tab-equipment').focus();
+  await page.keyboard.press('ArrowRight');
+  assert.equal(await page.locator('#bag-tab-stats').getAttribute('aria-selected'),'true');
+  const attackTotal = page.locator('#bag-attributes [data-stat="attack"] strong');
+  assert(Number(await attackTotal.textContent()) < attack);
+  await page.keyboard.press('ArrowLeft');
+  await page.locator('#equipment-list .equip').click();
+  assert.equal((await inspect()).state.equipment.weapon,weapon);
+  await page.locator('#bag-tab-stats').click();
+  assert.equal(Number(await attackTotal.textContent()),attack);
+  await page.locator('#bag-tab-items').click();
+  assert(await page.locator('#bag-consumables [data-use-item="potion"]').isDisabled());
+  assert(await page.locator('#bag-materials li').count() >= 2);
   await page.locator('#close-inventory').click();
   await waitPhase('play');
-  checks.push([true, 'the inventory shows the earned character equipment and closes normally']);
+  checks.push([true, 'inventory tabs support keyboard selection, compare worn gear and prevent use at full health']);
 
   await page.locator('#pause').click();
   await waitPhase('pause');

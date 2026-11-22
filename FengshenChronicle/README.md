@@ -29,10 +29,10 @@ Choose a class, speak with Jiang Shang, and take the ring. Six banishments revea
 | 怒技 · Rage | R 或「怒技」· R or Rage | 「怒技」· Rage |
 | 回血 · Heal | 1 或「回春散」· 1 or Healing Powder | 「回春散」· Healing Powder |
 | 交谈、传送、拾取 · Interact and collect | 走近后点对应按钮 · use the nearby action | 对应按钮 · nearby action |
-| 装备 · Equip | B 或「行囊」，再点装备 · B or Bag, then Equip | 「行囊」内装备 · Equip in Bag |
+| 行囊 · Bag | B 或「行囊」· B or Bag | 点「行囊」· Tap Bag |
 | 暂停与存档 · Pause and save | Esc 或「暂停」· Esc or Pause | 「暂停」· Pause |
 
-在行囊可更换武器、副手、护甲、战靴、戒印和主动法宝。乾坤圈五秒冷却，回风幡有三次近身脉冲与短暂护体，八秒冷却。造成伤害及受击累积怒气，满怒可用有短前摇的范围怒技。按 J 打开札记可切换追踪主任务或支线。
+行囊分为「装备」「属性」「道具」。点武器、副手、护甲、战靴、戒印或主动法宝栏筛选同部位物品，穿戴前可看属性差值。「属性」展示基础能力与装备加成，「道具」可以指定使用回春散或回春丹，也能查看材料和任务物品。乾坤圈五秒冷却，回风幡有三次近身脉冲与短暂护体，八秒冷却。造成伤害及受击累积怒气，满怒可用有短前摇的范围怒技。按 J 打开札记可切换追踪主任务或支线。
 
 药铺每十二文出售一份回春散，8 级可买恢复 65 气血的回春丹。用药键优先选够用的较小剂量，缺口超过所有持有的规格时使用效果最强的一种。铁铺卖基础兵器和护具，杂货商卖基础战靴与戒环。三家店在 4、8、12 级逐级开放货品。稀有、史诗、传说装备来自战斗，部分装备是剧情固定奖励。铁铺在 3、7、11 级开放精锻、重锻和百炼，以同部位未装备的基础装备、甲片和铜钱合成带随机词条的装备。回城恢复气血并至少补给到三份回春散。力竭回城保留已拾装备与任务进度。
 
@@ -40,7 +40,7 @@ Vendors unlock higher tiers of basic stock at levels 4, 8, and 12. Rare, epic, a
 
 暂停菜单可独立调整配乐和音效，或一键静音。城镇、古道和首领战使用各自的原创曲目。稀有装备穿戴后会发光，重击与乾坤圈命中带有短促震屏。浏览器启用减少动态效果时会关闭震屏。
 
-Equip a weapon, offhand, armor, boots, ring and active artifact from the bag. The returning ring has a five-second cooldown, and the Wind Banner gives three close-range pulses and a brief ward on an eight-second cooldown. Dealing and taking damage fills Rage. Open the journal with J to track a main or side quest. The apothecary, blacksmith and general merchant sell different supplies. Returning to Xiqi restores health and supplies at least three powders. Saves belong to this browser and site.
+The bag has Equipment, Attributes, and Items tabs. Filter by equipped slot and compare stats before equipping, inspect base and gear bonuses, or choose the recovery item to use. The returning ring has a five-second cooldown, and the Wind Banner gives three close-range pulses and a brief ward on an eight-second cooldown. Dealing and taking damage fills Rage. Open the journal with J to track a main or side quest. Returning to Xiqi restores health and supplies at least three powders. Saves belong to this browser and site.
 
 The pause menu has separate music and effects controls and a global mute. Three original compositions cover town, the trail, and the boss. Rare gear glows while equipped. Heavy hits and ring impacts briefly shake the camera, with reduced-motion mode disabling the shake.
 
