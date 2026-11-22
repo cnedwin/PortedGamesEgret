@@ -1,0 +1,54 @@
+{
+  "provenance": "First-party assets generated with the built-in image_gen tool for FengshenChronicle. No third-party source artwork.",
+  "createdAt": "2026-11-22T04:08:13.489Z",
+  "generationId": "01a1b862-47d1-76c2-a957-9c33df799dfe",
+  "prompts": "PROMPTS.md",
+  "conversion": {
+    "encoder": "sharp/libvips WebP",
+    "quality": 86,
+    "alphaQuality": 100,
+    "effort": 6,
+    "dimensions": "original authored dimensions preserved"
+  },
+  "runtimeComposition": "src/art/landscape.mjs crops the authored sheets, removes low alpha haze, blends seamless terrain textures, and paints only cached map/prop canvases at their original dimensions and foot pivots. No additional GPU textures are introduced by the source sheets.",
+  "originals": "Original generated PNGs retained outside the project worktree; exact generation filenames and checksums are recorded below.",
+  "assets": [
+    {
+      "file": "terrain-materials.webp",
+      "bytes": 346784,
+      "sha256": "12ebbde53947ef234985bfef4e85e731d5be4f439a965b37898c437fc70dccbe",
+      "width": 1254,
+      "height": 1254,
+      "sourceFile": "exec-84cc0aeb-c39e-4f64-841c-193947c20ce5.png",
+      "sourceSha256": "48f2bb246016146e6e67941c22a3abee47da80b1b2fedb2f9a77556ece0c183a",
+      "alphaDifferentPixels": 0,
+      "maxAlphaDifference": 0,
+      "solidRgbRmse": 3.554210819710745
+    },
+    {
+      "file": "city-props.webp",
+      "bytes": 504246,
+      "sha256": "ba6b89d3ef24416697b787309f4ba1f8648a8a5d41242f9dbb4ea9731eb2bfb6",
+      "width": 1536,
+      "height": 1024,
+      "sourceFile": "exec-4010bd5f-20b7-4275-8618-2bc2a95f21ed.png",
+      "sourceSha256": "7a09d9d106a9fb39c571f7a166264efb5378ee2730a5ef78a3fc7a8b5c520f93",
+      "alphaDifferentPixels": 0,
+      "maxAlphaDifference": 0,
+      "solidRgbRmse": 5.245445295785403
+    },
+    {
+      "file": "trail-props.webp",
+      "bytes": 485006,
+      "sha256": "134890a59a897f2625f0e4b834024b35d054c2e8ff2a2893f8f499ab69c0c934",
+      "width": 1536,
+      "height": 1024,
+      "sourceFile": "exec-51eeabdd-46f0-40e8-8159-c001d3b399c0.png",
+      "sourceSha256": "c60082665e00f49705571b26a6c16b9fd9015621f33e4049f9ee4694c9f6082a",
+      "alphaDifferentPixels": 0,
+      "maxAlphaDifference": 0,
+      "solidRgbRmse": 4.201021660797534
+    }
+  ],
+  "totalBytes": 1336036
+}

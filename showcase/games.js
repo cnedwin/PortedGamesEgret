@@ -20,8 +20,8 @@ export const GAMES = [
         source: 'src/main.mjs',
       },
       {
-        title: { zh: '位图图集与遮挡排序', en: 'Bitmap atlas and depth sorting' },
-        description: { zh: '角色动作与战斗特效复用白鹭图集，人物、建筑和道具按脚底纵坐标排列。', en: 'Actors and effects share an Egret texture atlas. Sprites and scenery sort by their ground position.' },
+        title: { zh: '分图集与遮挡排序', en: 'Packed atlases and depth sorting' },
+        description: { zh: '角色姿态、不同装备和特效打包进白鹭位图图集，人物、建筑和道具按脚底纵坐标排列。', en: 'Egret texture atlases pack character poses, equipped variants and effects. Sprites and scenery sort by their ground position.' },
         source: 'src/view.mjs',
       },
       {

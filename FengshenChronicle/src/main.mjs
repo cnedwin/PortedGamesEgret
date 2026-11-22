@@ -12,7 +12,7 @@ const storage = {
   setItem: (key, value) => window.localStorage.setItem(key, value)
 };
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-const sound = createSound();
+const sound = createSound(storage);
 const keys = new Set();
 const history = [];
 const autoSaveEvents = new Set(['portal', 'quest', 'pickup', 'equip', 'kill', 'death']);
@@ -25,6 +25,7 @@ function sizeFor() {
 }
 const range = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const panelIds = { title: 'title', inventory: 'inventory-panel', pause: 'pause-panel', dead: 'death-panel', won: 'victory-panel' };
+const gearUrl = itemId => new URL('../assets/gear/' + itemId + '.webp', import.meta.url).href;
 
 let game, view, size = sizeFor(), stageCanvas = canvas, state = createSession(), phase = 'title';
 let ready = false, slot = 1, muted = isMuted(storage);
@@ -106,6 +107,7 @@ function startGame(record = null) {
   $('notice').hidden = true;
   $('new-confirm').hidden = true;
   showPhase(state.phase === 'dead' ? 'dead' : 'play');
+  syncMusic();
   view.update(state, 0, []);
   if (!record) {
     saveGame();
@@ -132,6 +134,9 @@ function questDestination(map) {
 
 function renderHud() {
   const hero = state.hero, map = MAPS[state.mapId];
+  const weapon = state.inventory.find(item => item.uid === state.equipment.weapon)?.itemId ?? 'bronze-sword';
+  const icon = $('weapon-icon'), iconUrl = gearUrl(weapon);
+  if (icon.src !== iconUrl) icon.src = iconUrl;
   $('hp-fill').style.transform = 'scaleX(' + hero.hp / hero.maxHp + ')';
   $('xp-fill').style.transform = 'scaleX(' + hero.xp / hero.needXp + ')';
   setText('hp-text', Math.ceil(hero.hp) + ' / ' + hero.maxHp);
@@ -169,8 +174,12 @@ function renderInventory() {
     const equipped = state.equipment[item.slot] === instance.uid;
     const current = state.inventory.find(entry => entry.uid === state.equipment[item.slot]);
     const currentItem = ITEMS[current?.itemId];
-    const row = document.createElement('li'), summary = document.createElement('div'), name = document.createElement('b'), details = document.createElement('small'), button = document.createElement('button');
+    const row = document.createElement('li'), art = document.createElement('img'), summary = document.createElement('div');
+    const name = document.createElement('b'), details = document.createElement('small'), button = document.createElement('button');
     row.dataset.tier = item.tier;
+    art.className = 'gear-mark';
+    art.alt = '';
+    art.src = gearUrl(item.id);
     name.textContent = item.name;
     const attribute = value => value ? (value > 0 ? '+' : '') + value : '±0';
     const comparison = equipped ? '' : '　·　变化 ' + attribute((item.attack ?? 0) - (currentItem?.attack ?? 0)) + ' 攻 / ' + attribute((item.defense ?? 0) - (currentItem?.defense ?? 0)) + ' 防';
@@ -182,17 +191,32 @@ function renderInventory() {
     button.textContent = equipped ? '已装备' : '装备';
     button.setAttribute('aria-label', item.name + (equipped ? '已装备' : '装备'));
     summary.append(name, details);
-    row.append(summary, button);
+    row.append(art, summary, button);
     return row;
   });
   $('equipment-list').replaceChildren(...rows);
+}
+
+function syncMusic() {
+  sound.setScene(state.mapId === 'city' ? 'city' : state.quest.stage === 'boss' ? 'boss' : 'trail');
+}
+
+function eventSound(event) {
+  let cue = event.type;
+  if (cue === 'hit') {
+    if (event.cause === 'artifact') return;
+    if (event.id === 'hero') cue = 'hero-hurt';
+  } else if (cue === 'telegraph' && event.id === 'boss') cue = 'telegraphBoss';
+  else if (cue === 'loot' && ['rare', 'epic'].includes(ITEMS[event.itemId]?.tier)) cue = 'rareLoot';
+  const pan = Number.isFinite(event.x) ? (event.x - state.hero.x) / 420 : 0;
+  sound.play(cue, pan);
 }
 
 function consumeEvents(events) {
   let autosave = false;
   for (const event of events) {
     history.push({ ...event, mapId: state.mapId, time: state.time });
-    sound.play(event.type);
+    eventSound(event);
     autosave ||= autoSaveEvents.has(event.type);
     switch (event.type) {
       case 'talk': notify(event.text, 5.5); break;
@@ -206,6 +230,7 @@ function consumeEvents(events) {
       case 'victory': showPhase('won'); break;
     }
   }
+  if (events.some(event => event.type === 'portal' || event.type === 'quest')) syncMusic();
   if (history.length > 180) history.splice(0, history.length - 180);
   if (autosave) saveGame();
 }
@@ -303,7 +328,9 @@ function frame(seconds) {
       if (noticeFor <= 0) $('notice').hidden = true;
     }
   }
-  if (phase !== 'title') view.update(state, phase === 'play' && !pauseOnBlur ? dt : 0, events);
+  // Finish a falling pose behind the result panel while combat remains paused.
+  const animate = !document.hidden && !pauseOnBlur && (phase === 'play' || phase === 'dead' || phase === 'won');
+  if (phase !== 'title') view.update(state, animate ? dt : 0, events);
 }
 
 function drift(event) {
@@ -365,7 +392,7 @@ $('close-inventory').addEventListener('click', () => showPhase('play'));
 $('pause').addEventListener('click', () => showPhase('pause'));
 $('resume').addEventListener('click', () => showPhase('play'));
 $('save').addEventListener('click', () => saveGame(true));
-$('return-title').addEventListener('click', () => { saveGame(); showPhase('title'); });
+$('return-title').addEventListener('click', () => { saveGame(); showPhase('title'); sound.setScene('city'); });
 $('victory-continue').addEventListener('click', () => showPhase('play'));
 $('retry').addEventListener('click', () => {
   dispatch(state, { type: 'retry' });
@@ -400,10 +427,23 @@ $('audio').addEventListener('click', () => {
   sound.setMute(muted);
   setMuted(storage, muted);
   if (!muted) sound.unlock();
-  setText('audio', muted ? '音效关闭' : '音效开启');
+  $('audio').setAttribute('aria-pressed', String(!muted));
+  setText('audio', muted ? '声音关闭' : '声音开启');
 });
-setText('audio', muted ? '音效关闭' : '音效开启');
+setText('audio', muted ? '声音关闭' : '声音开启');
+$('audio').setAttribute('aria-pressed', String(!muted));
+for (const [channel, level] of Object.entries(sound.inspect().levels)) {
+  const slider = $(channel + '-volume');
+  slider.value = String(Math.round(level * 100));
+  slider.addEventListener('input', () => sound.setLevel(channel, Number(slider.value) / 100));
+}
 $('game-shell').addEventListener('pointerdown', () => sound.unlock(), { capture: true, passive: true });
+$('game-shell').addEventListener('click', event => {
+  const button = event.target.closest('button');
+  if (!button) return;
+  if (event.detail === 0) sound.unlock();
+  if (button.closest('.card, .utility, .title-actions')) sound.play('ui');
+}, { capture: true });
 
 document.addEventListener('keydown', event => {
   if (event.altKey || event.metaKey || event.ctrlKey || event.target.tagName === 'SELECT') return;
@@ -432,6 +472,7 @@ document.addEventListener('keyup', event => keys.delete(event.code));
 window.addEventListener('blur', () => { pauseOnBlur = true; clearInput(); });
 window.addEventListener('focus', () => { pauseOnBlur = false; });
 document.addEventListener('visibilitychange', () => {
+  sound.setVisible(!document.hidden);
   if (document.hidden) { clearInput(); saveGame(); }
 });
 window.addEventListener('pagehide', () => saveGame());
@@ -439,7 +480,8 @@ window.addEventListener('pagehide', () => saveGame());
 const diagnostics = Object.freeze({
   inspect: () => ({
     ready, phase, backend: game?.backend, state: structuredClone(state), slot,
-    hud: { history: structuredClone(history), savedAt, notice: $('notice').hidden ? '' : $('notice').textContent }
+    hud: { history: structuredClone(history), savedAt, notice: $('notice').hidden ? '' : $('notice').textContent },
+    audio: sound.inspect()
   }),
   point: worldPoint,
   target: id => {

@@ -38,3 +38,17 @@ Each row uses 90 browser rAF intervals per window. These are short cadence sampl
 ## 运行文件 · Runtime identity
 
 PC 与 Fold7 运行文件清单摘要（SHA-256）：`3d483b57453089c044a7f77bad019c3905373d7ce06e248adee2996a6e16baec`。截图保存与帧采样均为实际设备输出。
+
+## 公开首章与美术重做 · Public chapter and art revision
+
+首次公开版 `97f3b3f` 在 PC、Fold7 横屏和真实竖屏均跑完首章并刷新续档。竖屏为原生 1080 × 2520，Chrome 视口 411 × 813 CSS px。复测发现拾取按钮出现时，原有归营按钮会移动。新布局为两者保留独立位置。
+
+The first public revision passed the full route and reload on PC and the Fold7 in physical landscape and portrait. A newly available pickup could shift the return control. The updated layout assigns the two buttons fixed rows.
+
+美术版的场景、角色、装备、动作与特效使用本地贴图。角色与特效分两张白鹭图集，符合单纹理 4,194,304 像素上限。路线、战斗计算与存档代码均为同一版本。PC 本机静态预览复跑整章和读档，操作和装备数值符合首章基线。
+
+The art revision divides illustrations and effects between two Egret atlases within the engine's per-image pixel limit. Rules and save code match the first public revision. The full local PC route and reload passed on the new art.
+
+视听资源含 3 段独立循环配乐和 16 个事件音效。全部 19 个文件经过完整解码、样本长度和峰值检查，来源及量测见 [音频清单](assets/audio/SOURCES.json)。镜头脉冲由命中触发，峰值位移上限为 9 个舞台像素。震屏的投影与输入使用同一组偏移，减弱动态模式与暂停时停止震动。
+
+Three looped themes and sixteen cues were decoded and checked for length and peaks. Camera shake comes from hit events, uses the same offset for rendering and picking, and is capped at nine stage pixels. Reduced-motion mode and pause suppress the shake.

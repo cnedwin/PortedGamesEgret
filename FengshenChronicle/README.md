@@ -6,6 +6,10 @@
 
 An original single-player action RPG built with Egret Rebuild. This first chapter connects Xiqi town and the Qishan road. Accept Jiang Shang's commission, equip earned loot, use the returning Universe Ring, defeat the corrupted general and report back. All game resources are local to this folder, with three saves in the current browser.
 
+角色和装备采用原创生成插画，西岐城使用暖赭色石材、木构和灯火，古道使用冷青岩壁和青铜遗迹。角色姿态、刀光、受击、首领预警和乾坤圈往返均在原生 2D 显示树中表现。场景原画来源见 [场景素材清单](assets/world/SOURCES.json)。
+
+Original generated illustrations depict the cast and equipment. Amber stone, timber, and lanterns distinguish Xiqi from the blue-green cliffs and bronze ruins of the trail. Character poses, attacks, strikes, telegraphs, and the returning ring run on Egret's native 2D display list.
+
 预定静态部署路径为 [FengshenChronicle](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/)。本地开发结果与线上部署状态分别记录在 `QUALITY.md`。
 
 ## 玩法与操作 · How to play
@@ -28,7 +32,11 @@ Speak with Jiang Shang, take the ring and leave through the eastern portal. Six 
 
 军需官每十二文出售一份回春散。回城恢复气血并至少补给到三份。力竭可返回西岐，保留已拾取装备和任务进度。存档位属于当前浏览器和站点，清除站点数据也会清除存档。
 
+暂停菜单可独立调整配乐和音效，或一键静音。城镇、古道和首领战使用各自的原创曲目。稀有装备穿戴后会发光，重击与乾坤圈命中带有短促震屏。浏览器启用减少动态效果时会关闭震屏。
+
 The quartermaster sells healing powder for twelve coins. Returning to town restores health and supplies at least three powders. On defeat, return to Xiqi with collected equipment and quest progress. Saves belong to this browser and site. Clearing site data removes them. Gamepad controls are outside this chapter's implemented controls.
+
+The pause menu has separate music and effects controls and a global mute. Three original compositions cover town, the trail, and the boss. Rare gear glows while equipped. Heavy hits and ring impacts briefly shake the camera, with reduced-motion mode disabling the shake.
 
 ## 引擎能力对照表 · Engine capabilities
 
@@ -54,6 +62,10 @@ Fourteen rule and persistence tests passed. Windows PC (Edge) and a physical Gal
 The current interface is Simplified Chinese. Save transfer across browsers and gamepad controls are not implemented. Device visuals, touch and frame behaviour require the recorded target environment.
 
 ## 已解决 · Solved
+
+移动端的互动和拾取使用固定位置，可以在两者同时出现时直接选择归营或拾取。
+
+On touch screens, interact and pickup stay in their own positions when both actions are available.
 
 点击移动绕开实体矩形，斜向移动保持相同速度。法宝飞行中保存会保留伤害与冷却，拾取后的物品不会因读档重复出现。首次击杀保证获得可见的装备提升。
 
