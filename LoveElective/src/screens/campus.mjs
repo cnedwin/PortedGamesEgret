@@ -19,6 +19,8 @@ import { openPhone } from './phone.mjs';
 import { openShop } from './shop.mjs';
 import { openWardrobe } from './wardrobe.mjs';
 import { openBailuZero } from './bailu-zero.mjs';
+import { openSocialStory } from './social-stories.mjs';
+import { SOCIAL_IDS } from '../data/social-stories.mjs';
 import { BAILU_ZERO_TITLE } from '../data/bailu-zero.mjs';
 
 const pickOne = list => list[Math.floor(Math.random() * list.length)];
@@ -31,6 +33,7 @@ export async function campus(game) {
     const place = await mapScreen(game);
     if (!place) break;
     if(place==='bailu-zero')await openBailuZero(game);
+    else if(place.startsWith('social:'))await openSocialStory(game,place.slice(7));
     else await placeScreen(game, place);
     game.save();
   }
@@ -123,6 +126,13 @@ function mapScreen(game) {
           p.text(`${letter.stage+1}/5 · ${L(letter.next.name)}`,42,612,{size:15,color:'#fff8eb'});
           p.button(412,591,190,44,L(s.bailuZero.playback?['繼續特別篇','Resume interlude']:['前往特別篇','Go to interlude']),()=>go('bailu-zero'),{kind:'primary',size:16});
         }
+        const invitations=SOCIAL_IDS.map(id=>sim.socialStatus(s,id)),available=invitations.filter(q=>q.unlocked&&(!q.complete||q.followupAvailable));
+        if(available.length){
+          p.card(790,572,456,80,{r:14,fill:rgba('#272038',.97),stroke:'#bd8fa0',shadow:.24});
+          p.text(L(['課餘邀約','Social invitations']),808,582,{size:20,weight:750,color:'#f4c6d5'});
+          p.text(L([`${available.length} 段約定可繼續 · 自願參加`,`${available.length} invitations ready · participation is optional`]),808,614,{size:14,color:'#fff8eb'});
+          p.button(1066,587,162,46,L(['查看邀約','View invitations']),()=>phone('social'),{kind:'primary',size:16});
+        }
       });
     }
 
@@ -131,12 +141,13 @@ function mapScreen(game) {
       paintPins();
       game.showHud(phone);
     };
-    async function phone() {
-      const result = await openPhone(game);
+    async function phone(tab) {
+      const result = await openPhone(game,typeof tab==='string'?tab:'girls');
       if (result === 'quit') {
         game.quit = true;
         leave(null);
       } else if(result==='bailu-zero')leave('bailu-zero');
+      else if(typeof result==='string'&&result.startsWith('social:'))leave(result);
       else refresh();
     }
     // The map and its labels shift by different amounts as the pointer moves, so labels float above it.
@@ -231,7 +242,7 @@ async function placeScreen(game, placeId) {
       if (moved) break;
     } else if (choice.type === 'act') {
       const act = choice.act;
-      if (act.special === 'quests') {const result=await openPhone(game,'quests');if(result==='bailu-zero'){await game.fadeOut(.2);await openBailuZero(game);break;}}
+      if (act.special === 'quests') {const result=await openPhone(game,'quests');if(result==='bailu-zero'){await game.fadeOut(.2);await openBailuZero(game);break;}else if(typeof result==='string'&&result.startsWith('social:')){await game.fadeOut(.2);await openSocialStory(game,result.slice(7));break;}}
       else if (act.special === 'wardrobe') await openWardrobe(game, 'hero');
       else if (act.special?.startsWith('shop:')) await openShop(game, act.special.slice(5));
       else if (act.special === 'sleep') {
@@ -382,6 +393,7 @@ async function girlScreen(game, girl) {
     const choice = await girlMenu(game, girl);
     if (choice.type === 'bye') break;
     if (choice.type === 'chat') {
+      const followup=sim.socialFollowUpReady(s,girl);
       const r = sim.chat(s, girl, choice.approach);
       const [expr, zh, en] = pickOne(CHAT_LINES[girl][r.zone]);
       const [note, tone] = ZONE_NOTE[r.zone];
@@ -389,6 +401,7 @@ async function girlScreen(game, girl) {
       if (r.gain > 0) game.audio.play('good');
       await line([girl, expr, zh, en], gainText(r.gain), r.gain > 0 ? 'good' : 'bad');
       if (r.wish) wishGranted(game, girl, r.wish);
+      if(followup){await openSocialStory(game,followup,{returnToPlace:true});await world.showActor(game.spec(girl,'smile'),{x:X});}
     } else if (choice.type === 'gift') {
       const item = await giftPicker(game);
       if (!item) continue;
@@ -509,7 +522,7 @@ function girlMenu(game, girl) {
       const canChat = sim.canChat(s, girl);
       p.text(
         canChat
-          ? L(['聊天 · 选择这次的距离', 'Chat · choose your distance this time'])
+          ? L(sim.socialFollowUpReady(s,girl)?['聊天 · 接續上次的約定','Chat · continue your shared promise']:['聊天 · 选择这次的距离', 'Chat · choose your distance this time'])
           : L(['这个时段已经聊过了', 'You have already talked this part of the day']),
         30,
         222,

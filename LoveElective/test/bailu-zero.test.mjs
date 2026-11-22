@@ -67,7 +67,7 @@ test('all 22 voiced script lines exactly match the Traditional Chinese productio
  const found=new Map();
  const walk=steps=>{for(let i=0;i<steps.length;i++){const st=steps[i];if(st[0]==='voice'){const next=steps[i+1];found.set(st[1],{speaker:next[0],text:next[2]});}if(st[0]==='pick')for(const o of st[1])walk(o.then??[]);if(st[0]==='branch'){walk(st[2]);walk(st[3]);}}};
  for(let stage=0;stage<5;stage++)walk(bailuZeroScript(stage));assert.equal(found.size,22);
- for(const cue of manifest.cues){assert.deepEqual(found.get(cue.id),{speaker:cue.speaker,text:cue.text},cue.id);}
+ for(const cue of manifest.cues.filter(cue=>cue.id.startsWith('bailu-zero-'))){assert.deepEqual(found.get(cue.id),{speaker:cue.speaker,text:cue.text},cue.id);}
 });
 
 test('the actual authored scripts select different endings and retain the requested space/read callbacks',()=>{

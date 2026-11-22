@@ -1,7 +1,6 @@
 // Plays a story script (see src/story/chapters.mjs for the step format):
 // backgrounds, a senior on screen, the dialogue box with text that writes
 // itself out, choices, and the effects of those choices on the save.
-import { hasStoryPortrait } from '../art/character-art.mjs';
 import { W } from '../engine/stage.mjs';
 import { THEME, FONT, SERIF, wrapText } from '../engine/ui.mjs';
 import { rgba, rrect, poly } from '../art/draw.mjs';
@@ -20,12 +19,16 @@ const REVEAL_SPEED = 1150;
  * Play `script`. `girl` is the senior the choices affect.
  * Resolves when the script has finished and the dialogue box is gone.
  */
-export async function playScript(game, script, { girl = null, keepActor = false, light, checkpoint = null } = {}) {
+export async function playScript(game, script, { girl = null, keepActor = false, light, checkpoint = null, outfit = null } = {}) {
   const { stage, ui, world, L } = game;
   const lightNow = () => light ?? (game.state ? SLOTS_OF_DAY[game.state.slot].light : 'day');
   let skipping = false, cancelled = false, nextVoice = null;
   const saveCheckpoint=()=>{if(checkpoint)game.save();};
   const pause=()=>{cancelled=true;game.audio.stopVoice?.();advance?.();};
+  const actorSpec = (who, expression) => {
+    const spec = game.spec(who, expression);
+    return who === girl && outfit ? { ...spec, wear: outfit.lead.wear } : spec;
+  };
 
   // The box itself, repainted when the speaker changes.
   const box = ui.panel({ ...BOX, res: 1.25 });
@@ -52,7 +55,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   box.node.alpha = 0;
   stage.tween(box.node, { alpha: 1 }, 0.25);
 
-  function paintBox(name, color) {
+  function paintBox(name, color, voiced) {
     box.paint(p => {
       const g = p.g;
       const accent = color ?? THEME.violet;
@@ -73,7 +76,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       }, { kind: 'plain', size: 15 });
       if(checkpoint){
         p.button(BOX.w-250,36,118,38,L(['稍後繼續','Resume later']),pause,{kind:'plain',size:14});
-        p.button(BOX.w-364,36,104,38,L(['重聽','Replay voice']),()=>game.audio.replayVoice?.(),{kind:'plain',size:14});
+        if (voiced) p.button(BOX.w-364,36,104,38,L(['重聽','Replay voice']),()=>game.audio.replayVoice?.(),{kind:'plain',size:14});
       }
       g.fillStyle = accent;
       g.fill(poly([[BOX.w - 64, BOX.h - 42], [BOX.w - 47, BOX.h - 42], [BOX.w - 55.5, BOX.h - 30]]));
@@ -84,9 +87,10 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   async function say(name, color, text, style = {}) {
     game.audio.stopVoice?.();
     game.storyStatus={id:checkpoint?.id??null,cursor:checkpoint?.cursor??null,speaker:name,text,choices:[],paused:false};
-    if(nextVoice&&!skipping){Promise.resolve(game.audio.voice?.(nextVoice)).catch(()=>{});}
+    const voiced = Boolean(nextVoice && !skipping);
+    if (voiced) Promise.resolve(game.audio.voice?.(nextVoice)).catch(()=>{});
     nextVoice=null;
-    paintBox(name, color);
+    paintBox(name, color, voiced);
     const measure = document.createElement('canvas').getContext('2d');
     measure.font = `${style.weight ?? 500} ${TEXT.size}px ${FONT}`;
     let lines = wrapText(measure, text, TEXT.w),
@@ -190,7 +194,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
           p.chip(String(i + 1), 14, y + 16, { color: THEME.rose, size: 16, h: 30, padX: 11 });
           const size = p.measure(L(o.t), 21, 600) > pw - 90 ? 16 : 21;
           p.text(L(o.t), 62, y + (size === 21 ? 17 : 12), { size, weight: 600, maxW: pw - 90, lineH: 20 });
-          p.hit(0, y, pw, 62, () => choose(o), { r: 12 });
+          p.hit(0, y, pw, 62, () => choose(o), { r: 12, label: L(o.t) });
           if(checkpoint&&i===options.length-1)p.button(pw-212,h-52,196,40,L(['保存並稍後繼續','Save and resume later']),()=>{cancelled=true;choose(null);},{size:14});
         }),
       );
@@ -216,7 +220,18 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         const match=sim.bailuZeroMatches(game.state,a);await run(match?b:c,key+(match?'.yes.':'.no.'));
       }else if(op==='wardrobe'){
         game.audio.stopVoice?.();game.storyStatus={id:checkpoint?.id??null,cursor:key,wardrobe:a,choices:[]};
-        await openWardrobe(game,a,{tab:'outer',invited:true});
+        box.node.visible = false;
+        try {
+          await openWardrobe(game,a,{tab:b?.tab??'outer',invited:true});
+        } finally {
+          box.node.visible = true;
+        }
+      }else if(op==='social-outfit-note'){
+        const status=sim.socialStatus(game.state,a),lead=game.state.girls[status.lead];
+        const leadNames=sim.pieces(lead.wear).map(piece=>CLOTHES[piece.id]).filter(Boolean).map(item=>L(item.name)).join(' · ');
+        const heroNames=sim.pieces(game.state.hero.wear).map(piece=>CLOTHES[piece.id]).filter(Boolean).map(item=>L(item.name)).join(' · ');
+        await say(null,THEME.soft,L([`她選的穿搭：${leadNames}。`,`Her chosen outfit: ${leadNames}.`]));
+        await say(null,THEME.soft,L([`你選的穿搭：${heroNames}。`,`Your chosen outfit: ${heroNames}.`]));
       }else if(op==='outfit-note'){
         const wear=game.state.girls.bailu.wear,outer=CLOTHES[wear.outer?.id];
         await say(null,THEME.soft,outer?L([`她把你們選的${outer.name[0]}披上，留住了剛才調好的配色。`,`She puts on the ${outer.name[1]}, keeping the colours you chose together.`]):L(['她保留了自己喜歡的造型，另外把一條備用圍巾放進袋子。','She keeps the look she likes and packs a spare scarf.']));
@@ -228,7 +243,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         await world.setScene(a, b ?? lightNow());
       } else if (op === 'in') {
         shownActor = a;
-        await world.showActor(game.spec(a, b), { view: 'bust', x: W / 2, enter: !completed });
+        await world.showActor(actorSpec(a, b), { view: 'bust', x: W / 2, enter: !completed });
       } else if (op === 'out') {
         shownActor = null;
         await world.hideActor();
@@ -245,7 +260,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       } else if (op === 'th') {
         await say(L(['我', 'Me']), THEME.sky, `（${L([a, b])}）`, { color: THEME.soft, italic: game.lang !== 'zh' });
       } else if (op === 'pf') {
-        if (!skipping && shownActor !== 'professor' && hasStoryPortrait({ id: 'professor' })) {
+        if (!skipping && shownActor !== 'professor') {
           shownActor = 'professor';
           await world.showActor({ id: 'professor' }, { view: 'bust', x: W / 2 });
         }
@@ -276,7 +291,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         if (option.then) await run(option.then,key+'.choice'+a.indexOf(option)+'.');
       } else if (HEROINES[op]) {
         // A senior speaks: update her expression first.
-        if (shownActor === op || world.actor) await world.showActor(game.spec(op, a), { view: 'bust', x: world.actor?.x ?? W / 2 });
+        if (shownActor === op || world.actor) await world.showActor(actorSpec(op, a), { view: 'bust', x: world.actor?.x ?? W / 2 });
         await say(L(HEROINES[op].name), HEROINES[op].color, L([b, c]));
       }
       if(checkpoint&&!cancelled){checkpoint.done[key]=true;saveCheckpoint();}

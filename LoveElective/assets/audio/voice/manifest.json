@@ -199,6 +199,141 @@
       "file": "bailu-zero-22.mp3",
       "seconds": 3.7793125,
       "sha256": "8d758fba0d7b124a381ddcd4ffa5dfa95655af3b73111e799c4665aa1891542a"
+    },
+    {
+      "tone": "爽朗、自然邀請",
+      "id": "social-pool-01",
+      "speaker": "linxia",
+      "text": "晚上的泳池人比較少。你想一起來練習嗎？",
+      "file": "social-pool-01.mp3",
+      "seconds": 3.2324375,
+      "sha256": "2c91684ba2786d40ca5fb3c4b9b021b03e4c18e08261de3a56d9df86831e0356"
+    },
+    {
+      "tone": "認真但不嚴肅",
+      "id": "social-pool-02",
+      "speaker": "linxia",
+      "text": "不用比快。你說停，我們就停。",
+      "file": "social-pool-02.mp3",
+      "seconds": 2.8018125,
+      "sha256": "d04829e4f1c9ab59d8e8844db9a572c64c5c54d88098f60c729567b32ffab8be"
+    },
+    {
+      "tone": "有耐心、先確認意願",
+      "id": "social-pool-03",
+      "speaker": "linxia",
+      "text": "你要我靠近一點教，還是先在旁邊示範？",
+      "file": "social-pool-03.mp3",
+      "seconds": 3.406,
+      "sha256": "6102e75bcac860965f6d4ad6f1d7a79b39952c2e54a78a9549b1ad4de4b6a04a"
+    },
+    {
+      "tone": "近距離但坦然、清楚詢問",
+      "id": "social-pool-04",
+      "speaker": "linxia",
+      "text": "好，那我先問一聲。可以扶一下你的手臂嗎？",
+      "file": "social-pool-04.mp3",
+      "seconds": 3.4039375,
+      "sha256": "686c383c9cdac69309124810143ffd3ab25f567c870ac744b01f49f60977f124"
+    },
+    {
+      "tone": "明亮微笑、拉近稱呼",
+      "id": "social-pool-05",
+      "speaker": "linxia",
+      "text": "以後叫我林夏就好。下次的起跳練習，記得算我一個。",
+      "file": "social-pool-05.mp3",
+      "seconds": 4.3734375,
+      "sha256": "5e26fb3b3f37b8e301c80d8cd1b8c53f945cd06d38744a32e3f51bddbc73a9e5"
+    },
+    {
+      "tone": "輕快招呼、含笑",
+      "id": "social-pajama-01",
+      "speaker": "tangmi",
+      "text": "今天是公共休息室的睡衣小聚。要不要替你留一杯熱可可？",
+      "file": "social-pajama-01.mp3",
+      "seconds": 4.821,
+      "sha256": "dae716784f754ed7e9a7654386073eeb492f28c37c2e66f17b87cd474dedc61e"
+    },
+    {
+      "tone": "俏皮而界線明確",
+      "id": "social-pajama-02",
+      "speaker": "tangmi",
+      "text": "我想穿得舒服一點，不代表什麼都可以喔。",
+      "file": "social-pajama-02.mp3",
+      "seconds": 3.34925,
+      "sha256": "7cccf2db3a8ae1bbb6171c4a8d63775188c7625714a6578f5849fe0bd1388f55"
+    },
+    {
+      "tone": "放鬆、真誠",
+      "id": "social-pajama-03",
+      "speaker": "tangmi",
+      "text": "你想聊聊，還是一起安靜吃點心？",
+      "file": "social-pajama-03.mp3",
+      "seconds": 2.8768125,
+      "sha256": "221d15fc628f32393a698189d567a877c56a4728f72c5169668ecd527b2e98f0"
+    },
+    {
+      "tone": "鬆口氣、溫柔",
+      "id": "social-pajama-04",
+      "speaker": "tangmi",
+      "text": "你願意先問我，我就不用一直猜你的意思。",
+      "file": "social-pajama-04.mp3",
+      "seconds": 3.04725,
+      "sha256": "23cfcfb94e0ba62c61d86e0cbe7dc6726854498ee1be7868e9a187dedd56f361"
+    },
+    {
+      "tone": "真心期待、少一點營業笑",
+      "id": "social-pajama-05",
+      "speaker": "tangmi",
+      "text": "下次不用點招牌甜。跟我說你今天真正想喝什麼就好。",
+      "file": "social-pajama-05.mp3",
+      "seconds": 4.643375,
+      "sha256": "9b9f18d0eb46ad5cac2c4958d74050bf6f43f3bb303a8aad4a7fe9fc6e01d5f0"
+    },
+    {
+      "tone": "平靜介紹、輕聲",
+      "id": "social-lounge-01",
+      "speaker": "bailu",
+      "text": "泡湯之後，這裡的公共休息室可以坐到九點。",
+      "file": "social-lounge-01.mp3",
+      "seconds": 4.133,
+      "sha256": "5110f916b6a811f57d2217cd74b3e72680e511f6274d73aa1dce5543affb6739"
+    },
+    {
+      "tone": "放鬆、帶一點笑",
+      "id": "social-lounge-02",
+      "speaker": "bailu",
+      "text": "浴衣穿好了。我們就在這裡喝茶，不用趕著靠近。",
+      "file": "social-lounge-02.mp3",
+      "seconds": 4.348625,
+      "sha256": "718ca049f570cec006b9529262385ec116ab8416e0415ef32e44b4abc853092b"
+    },
+    {
+      "tone": "溫柔但明確、主動說明",
+      "id": "social-lounge-03",
+      "speaker": "bailu",
+      "text": "如果想坐近一點，先問我就好。",
+      "file": "social-lounge-03.mp3",
+      "seconds": 2.7035,
+      "sha256": "3405ce24281a75052074b9ca69c8a921b9a32a0064edf26210fba1130e6daaff"
+    },
+    {
+      "tone": "安心、感謝",
+      "id": "social-lounge-04",
+      "speaker": "bailu",
+      "text": "這樣的距離很舒服。謝謝你記得我說過的話。",
+      "file": "social-lounge-04.mp3",
+      "seconds": 3.77675,
+      "sha256": "0cb3b6e7282fb8d532a740fdd72d7f2ef5ccd6c849a62a8fa6809312c627dece"
+    },
+    {
+      "tone": "淡淡期待",
+      "id": "social-lounge-05",
+      "speaker": "bailu",
+      "text": "下次說好一起來，也可以只喝茶、看看夜景。",
+      "file": "social-lounge-05.mp3",
+      "seconds": 3.9896875,
+      "sha256": "98d1d90db19a125e8990a62ed297305c5152b7520229b5523843ccfec285d5fc"
     }
   ]
 }

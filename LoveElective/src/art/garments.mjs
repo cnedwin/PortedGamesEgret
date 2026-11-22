@@ -444,6 +444,146 @@ function legwear(g, B, c, from, alpha = 1, band) {
 
 /** slot: top | bottom | dress | outer | shoes | legs | acc. `only` limits a piece to one build. */
 export const GARMENTS = {
+  // ---- evening invitations
+  'swim-rashguard': {
+    slot: 'top',
+    c: ['#24475d', '#81d6cb'],
+    torso(g, B, base, trim) {
+      const path = torso(g, B, base, { ease: 2, hem: 472 });
+      g.save();
+      g.clip(path);
+      for (const side of [-1, 1]) {
+        const curve = smooth([
+          [CX + side * (B.nw + 4), 241],
+          [CX + side * (B.bust - 4), 312],
+          [CX + side * (B.waist - 3), 426],
+        ], false);
+        stroke(g, curve, trim, 3.4);
+      }
+      g.restore();
+    },
+    sleeves(g, B, base, trim) {
+      sleeves(g, B, base, .58, 1.4, 0, trim);
+    },
+  },
+  'swim-trunks': {
+    slot: 'bottom',
+    c: ['#1b3d59', '#58bfbc'],
+    iconFrame: [105, 384, 190, 235],
+    bottom(g, B, base, trim) {
+      const hem = 603;
+      const path = trousers(g, B, base, { w: 6, end: hem });
+      g.save();
+      g.clip(path);
+      for (const side of [-1, 1]) {
+        const [leg, width] = legAt(B, side, hem);
+        const tape = smooth([
+          [CX + side * (B.waist - 5), 398],
+          [CX + side * (B.hip - 2), 460],
+          [leg + side * (width + 1), hem],
+        ], false);
+        stroke(g, tape, trim, 4);
+      }
+      g.restore();
+      stroke(g, smooth([[CX - 3, 403], [CX - 8, 412], [CX - 5, 425]], false), trim, 1.7);
+      stroke(g, smooth([[CX + 3, 403], [CX + 7, 411], [CX + 5, 421]], false), trim, 1.7);
+    },
+  },
+  'swim-onepiece': {
+    slot: 'dress',
+    only: 'f',
+    c: ['#173f62', '#56cdd3'],
+    iconFrame: [113, 222, 174, 365],
+    dress(g, B, base, trim) {
+      trousers(g, B, base, { w: 1, end: 568 });
+      const path = torso(g, B, base, { ease: 2, hem: 462 });
+      g.save();
+      g.clip(path);
+      for (const side of [-1, 1]) {
+        const panel = smooth([
+          [CX + side * (B.nw + 2), 239],
+          [CX + side * (B.bust - 3), 316],
+          [CX + side * (B.waist - 11), 398],
+          [CX + side * (B.hip - 6), 462],
+        ], false);
+        stroke(g, panel, shade(base, -.38), 13, .7);
+        stroke(g, panel, trim, 3.2, .92);
+      }
+      g.restore();
+    },
+  },
+  'pajama-top': {
+    slot: 'top',
+    c: ['#9e5e82', '#eee0df'],
+    torso(g, B, base, trim) {
+      torso(g, B, base, { ease: 10, hem: 490 });
+      lapels(g, B, shade(base, .15), 320);
+      stroke(g, poly([[CX, 319], [CX, 484]], false), trim, 2.1, .88);
+      buttons(g, CX + 6, 342, 459, 4, trim);
+      const pocket = CX - B.bust * .46;
+      stroke(g, smooth([[pocket - 10, 330], [pocket + 11, 330], [pocket + 8, 354], [pocket - 9, 352]], true), trim, 1.6, .86);
+    },
+    sleeves(g, B, base, trim) {
+      sleeves(g, B, base, 1, 7, 0, trim);
+    },
+  },
+  'pajama-bottom': {
+    slot: 'bottom',
+    c: ['#96587e', '#eee0df'],
+    bottom(g, B, base, trim) {
+      const end = 882;
+      const path = trousers(g, B, base, { w: 8, end, taper: 2 });
+      g.save();
+      g.clip(path);
+      for (const side of [-1, 1]) {
+        const [leg, width] = legAt(B, side, end - 8);
+        stroke(g, smooth([[leg - width - 9, end - 9], [leg, end - 6], [leg + width + 9, end - 10]], false), trim, 2.3);
+      }
+      g.restore();
+    },
+  },
+  'lounge-robe': {
+    slot: 'outer',
+    c: ['#638086', '#ddd1ad'],
+    iconFrame: [84, 217, 232, 485],
+    torso(g, B, base, trim) {
+      jacket(g, B, base, { ease: 9, hem: 680, breakY: 394, flare: 16 });
+      const seam = smooth([[CX - B.nw - 7, 235], [CX - 18, 285], [CX + 2, 345], [CX + 27, 402]], false);
+      stroke(g, seam, shade(base, -.32), 11);
+      stroke(g, seam, trim, 4.2);
+      const belt = smooth([[CX - B.waist - 5, 400], [CX - 12, 405], [CX + B.waist + 5, 398]], false);
+      stroke(g, belt, shade(trim, -.3), 11);
+      stroke(g, belt, trim, 7);
+      fill(g, ellipse(CX + 18, 403, 7, 4), shade(trim, .24));
+      stroke(g, smooth([[CX + 17, 402], [CX + 21, 424], [CX + 13, 454]], false), trim, 4.5);
+    },
+    sleeves(g, B, base, trim) {
+      sleeves(g, B, base, .84, 10, 1.5, trim);
+    },
+  },
+  'spa-slippers': {
+    slot: 'shoes',
+    c: ['#c9bda9', '#71878b'],
+    shoes(g, B, base, trim) {
+      for (const side of [-1, 1]) {
+        const { at, ground, tip } = shoe(g, B, side, base, { top: 910, sole: shade(base, -.35), soleH: 7 });
+        stroke(g, smooth([at(-8, ground - 18), at(2, ground - 20), at(tip - 4, ground - 12)], false), trim, 3.5, .9);
+      }
+    },
+  },
+  'overknee-stockings': {
+    slot: 'legs',
+    only: 'f',
+    c: ['#36364f', '#d4c0c9'],
+    legs(g, B, base, trim) {
+      const top = 624;
+      legwear(g, B, base, top, 1, trim);
+      for (const side of [-1, 1]) {
+        const [leg, width] = legAt(B, side, top + 5);
+        for (const offset of [-.60, -.30, 0, .30, .60]) fill(g, ellipse(leg + width * offset, top + 5, 1.15, 1.15), shade(trim, .44));
+      }
+    },
+  },
   // ---- tops
   shirt: {
     slot: 'top',
@@ -1918,7 +2058,7 @@ export function drawGarmentIcon(g, id, size, colors, mannequin) {
     && drawCatalogueArt(g, id, 0, 0, size)) return;
   const sex = def.only ?? 'f',
     B = metrics(sex);
-  const [x, y, w, h] = ICON_FRAME[def.slot === 'acc' ? def.zone : def.slot];
+  const [x, y, w, h] = def.iconFrame ?? ICON_FRAME[def.slot === 'acc' ? def.zone : def.slot];
   const k = Math.min(size / w, size / h);
   g.save();
   g.beginPath();

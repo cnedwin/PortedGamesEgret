@@ -53,6 +53,16 @@ After Bai Lu's second chapter, open the letter card on the campus map or the Let
 
 The episode includes 22 synthesized Taiwanese Mandarin lines and three original scene tracks. Replay voiced lines in the dialogue box, or adjust music, voice and effects separately in the phone settings. [音讯制作 · Audio credits](assets/audio/README.md)
 
+### 课余邀约 · After-class invitations
+
+校园地图的「查看邀約」会打开游戏手机的「邀約」页。读完林夏第二章且好感达到 20，可参加「泳池晚風」。唐蜜和白露的第二章读完且好感达到 35 后，分别开放「睡衣與不加糖的可可」和「浴衣、茶與窗外的星光」。三场都是成年角色的课余活动。
+
+活动分为试衣和赴约两段。运动泳装、缎面睡衣、浴衣和配件会进对应角色的衣橱，可自由叠穿和染色。赴约时会显示当时选定的服装和配色。靠近、回应和留白有不同的后续对白。新的称呼、话题和下次邀约记在手机，下次普通聊天也能接续。选改天可以之后再约。
+
+Open **Invites** from the campus map. Lin Xia's poolside outing opens after chapter two at 20 affection. Tang Mi's pyjama gathering and Bai Lu's bathhouse tea visit open after their second chapters at 35 affection. The outing first saves both outfits and dyes, then brings them into the meeting. Your choices carry into the next conversation, where you can follow through on the invitation or defer it.
+
+泳池、公共休息室和浴场茶室使用为本作生成的原创背景。邀约补配 15 句台湾国语合成对白，并加入原创校园日常主题。对白期间会自动压低配乐。 [音讯制作 · Audio credits](assets/audio/README.md)
+
 ### 好感与拉扯 · Affection and push-and-pull
 
 - **聊天**：每段时间可以和在场的学姐聊一次，并选择这次的距离：靠近一步、自然相处或留点余白。每个人喜欢的距离不同——有人喜欢你主动，有人需要空间。聊过几次后，她觉得舒服的范围会显示在“拉扯”条上；落在范围内好感涨得最快，太急或太疏远都会适得其反。
@@ -113,9 +123,9 @@ On the night of the Star Festival you may confess to any senior at 55 affection 
 
 ## 美术与画面 · Art direction
 
-封面、九位角色的剧情立绘、校园地图、场景、前景装饰和商品图采用为本 Demo 生成的插画。对白使用角色的默认造型插画。换装预览将独立绘制的角色头部与衣服、配饰分层组合，染色和换发型也能即时显示。场景把背景、人物和前景放在不同深度，保留昼夜色调与视差。
+封面、九位角色的立绘、校园地图、场景、前景装饰和商品图采用为本 Demo 生成的插画。对白使用完整立绘。七位学姐的日常装与约会装各有独立插画，泳池练习、睡衣聚会、浴场茶室和观星各有自己的活动立绘。活动图的服装染色只影响布料，保留原有脸部、发色和光影。自由叠穿时，对白选用最接近的完整造型插画，逐件搭配和即时染色可在衣橱查看。场景以分层视差和昼夜光线呈现。
 
-The cover, nine character portraits, campus map, locations, foreground props, and catalogue art were generated for this demo. Dialogue uses the illustrated default looks. The dress-up system layers illustrated heads with clothing and accessories and updates dyes and hairstyles live. Background, characters, and foreground sit on different depth planes with parallax and time-of-day lighting.
+The cover, nine character portraits, campus map, locations, foreground props, and catalogue art were generated for this demo. Dialogue uses full illustrations, with separate casual and date looks for all seven seniors and activity portraits for the pool, pyjama gathering, tea lounge, and stargazing. Activity fabric takes dye without affecting the face or hair. Dialogue picks the closest illustrated silhouette for mixed outfits, and the wardrobe shows each individual piece and dye live. The scene uses layered parallax and time-of-day lighting.
 
 手机使用横屏可完整观看舞台式界面。
 

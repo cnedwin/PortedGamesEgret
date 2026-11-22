@@ -39,6 +39,8 @@ export const CLOTHES = {
   jersey: { name: ['运动球衣', 'Sports Jersey'], slot: 'top', price: 120, charm: 2, styles: { sporty: 3, fresh: 1 } },
   sailor: { name: ['水手服上衣', 'Sailor Top'], slot: 'top', price: 240, charm: 3, styles: { preppy: 2, cute: 2 }, only: 'f' },
   blouse: { name: ['蝴蝶结衬衫', 'Ribbon Blouse'], slot: 'top', price: 220, charm: 3, styles: { cute: 2, elegant: 2 }, only: 'f' },
+  'swim-rashguard': { name: ['拼色防晒泳衣', 'Swim Rash Guard'], slot: 'top', price: 0, charm: 2, styles: { sporty: 3, fresh: 1 } },
+  'pajama-top': { name: ['缎面睡衣上装', 'Satin Pajama Shirt'], slot: 'top', price: 0, charm: 2, styles: { elegant: 2, cute: 2 } },
 
   slacks: { name: ['修身西裤', 'Slim Slacks'], slot: 'bottom', singleDye: true, price: 0, charm: 2, styles: { preppy: 2, elegant: 1 } },
   jeans: { name: ['水洗牛仔裤', 'Washed Jeans'], slot: 'bottom', price: 0, charm: 1, styles: { fresh: 2, street: 1 } },
@@ -46,24 +48,30 @@ export const CLOTHES = {
   shorts: { name: ['运动短裤', 'Track Shorts'], slot: 'bottom', price: 90, charm: 1, styles: { sporty: 3, fresh: 1 } },
   pleated: { name: ['百褶裙', 'Pleated Skirt'], slot: 'bottom', price: 200, charm: 3, styles: { preppy: 2, cute: 2 }, only: 'f' },
   longskirt: { name: ['及踝长裙', 'Long Skirt'], slot: 'bottom', price: 230, charm: 3, styles: { artsy: 3, elegant: 1 }, only: 'f' },
+  'swim-trunks': { name: ['抽绳泳裤', 'Drawstring Swim Shorts'], slot: 'bottom', price: 0, charm: 1, styles: { sporty: 2, fresh: 1 } },
+  'pajama-bottom': { name: ['缎面睡裤', 'Satin Pajama Trousers'], slot: 'bottom', price: 0, charm: 2, styles: { elegant: 2, fresh: 1 } },
 
   sundress: { name: ['夏日连衣裙', 'Sundress'], slot: 'dress', price: 320, charm: 5, styles: { cute: 3, fresh: 2 }, only: 'f' },
   gown: { name: ['星夜礼服', 'Starlit Gown'], slot: 'dress', price: 680, charm: 8, styles: { elegant: 5, cool: 1 }, only: 'f' },
+  'swim-onepiece': { name: ['竞速连身泳装', 'Racing Swimsuit'], slot: 'dress', price: 0, charm: 4, styles: { sporty: 4, fresh: 2 }, only: 'f' },
 
   blazer: { name: ['学院西装', 'Academy Blazer'], slot: 'outer', price: 320, charm: 4, styles: { preppy: 3, elegant: 1 } },
   cardigan: { name: ['软糯开衫', 'Soft Cardigan'], slot: 'outer', price: 210, charm: 3, styles: { cute: 2, artsy: 2 } },
   varsity: { name: ['棒球夹克', 'Varsity Jacket'], slot: 'outer', price: 280, charm: 4, styles: { street: 2, sporty: 2 } },
   trench: { name: ['长款风衣', 'Trench Coat'], slot: 'outer', price: 460, charm: 6, styles: { elegant: 3, cool: 2 } },
   denim: { name: ['牛仔外套', 'Denim Jacket'], slot: 'outer', price: 240, charm: 3, styles: { street: 2, fresh: 2 } },
+  'lounge-robe': { name: ['细纹棉布浴衣', 'Cotton Lounge Robe'], slot: 'outer', price: 0, charm: 2, styles: { elegant: 2, artsy: 2 } },
 
   sneakers: { name: ['小白鞋', 'White Sneakers'], slot: 'shoes', price: 0, charm: 1, styles: { fresh: 1, sporty: 1, street: 1 } },
   loafers: { name: ['乐福鞋', 'Loafers'], slot: 'shoes', price: 180, charm: 2, styles: { preppy: 2, elegant: 1 } },
   boots: { name: ['马丁靴', 'Lace-up Boots'], slot: 'shoes', price: 260, charm: 3, styles: { cool: 2, street: 2 } },
   heels: { name: ['细跟鞋', 'Heels'], slot: 'shoes', price: 260, charm: 3, styles: { elegant: 3 }, only: 'f' },
+  'spa-slippers': { name: ['棉布休息鞋', 'Cotton Lounge Slippers'], slot: 'shoes', price: 0, charm: 1, styles: { fresh: 1, artsy: 1 } },
 
   socks: { name: ['短袜', 'Ankle Socks'], slot: 'legs', price: 20, charm: 0, styles: { fresh: 1 } },
   kneesocks: { name: ['及膝袜', 'Knee Socks'], slot: 'legs', price: 60, charm: 1, styles: { preppy: 1, cute: 1 }, only: 'f' },
   thighhighs: { name: ['过膝袜', 'Thigh-highs'], slot: 'legs', price: 80, charm: 2, styles: { cute: 2 }, only: 'f' },
+  'overknee-stockings': { name: ['珠边过膝袜', 'Pearl-trim Over-knee Socks'], slot: 'legs', price: 0, charm: 2, styles: { cute: 2, elegant: 1 }, only: 'f' },
   tights: { name: ['连裤袜', 'Tights'], slot: 'legs', singleDye: true, price: 70, charm: 2, styles: { elegant: 2 }, only: 'f' },
 
   glasses: { zone: 'face', name: ['圆框眼镜', 'Round Glasses'], slot: 'acc', price: 120, charm: 2, styles: { preppy: 1, artsy: 2 } },

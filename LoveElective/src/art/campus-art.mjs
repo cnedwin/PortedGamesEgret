@@ -4,6 +4,8 @@ import { drawCampusMap } from './map.mjs';
 const locations = new Set(["gate","classroom","library","field","artroom","musicroom","lab","cafe","rooftop","dorm","street","festival"]);
 const imageRequests = new Map();
 const outside = new Set(['gate', 'field', 'rooftop', 'street', 'festival']);
+// These original paintings already carry their evening lighting and foreground.
+const eveningPaintings = { pool: 'field', lounge: 'dorm', 'bath-lounge': 'cafe' };
 const foreground = {
   gate: ['sakura', -52, -53, 300, 1],
   classroom: ['pothos', 1092, 539, 190, 0.72],
@@ -81,6 +83,10 @@ function front(g, image, settings, light) {
 
 /** Load only the currently requested location and its foreground cutout. */
 export async function loadCampusScene(id) {
+  if (Object.hasOwn(eveningPaintings, id)) {
+    const painting = await campusImage(id);
+    return painting ? { painting } : null;
+  }
   if (!locations.has(id)) return null;
   const settings = foreground[id];
   const [painting, prop] = await Promise.all([campusImage(id), campusImage(settings[0])]);
@@ -90,12 +96,12 @@ export async function loadCampusScene(id) {
 /** A matte painting behind the actor, and a transparent independent near plane. */
 export function paintCampusScene(g, id, plane, light, art) {
   if (!art) {
-    drawScene(g, id, plane, light);
+    drawScene(g, eveningPaintings[id] ?? id, plane, light);
     return;
   }
   if (plane === 'mid') {
     cover(g, art.painting);
-    if (id !== 'festival') grade(g, light, outside.has(id));
+    if (id !== 'festival' && !Object.hasOwn(eveningPaintings, id)) grade(g, light, outside.has(id));
     rim(g, light);
   } else if (plane === 'near' && art.prop) front(g, art.prop, art.settings, light);
 }
