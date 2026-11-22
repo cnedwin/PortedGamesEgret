@@ -17,7 +17,9 @@ const imports = {
   "#egret-keyboard-input": "./engine/dist/keyboardInput.js",
   "@egret/engine/web/keyboard": "./engine/dist/web/keyboard.js",
   "@egret/engine/audio": "./engine/dist/audio.js",
-  "@egret/engine/web/audio": "./engine/dist/web/audio.js"
+  "@egret/engine/web/audio": "./engine/dist/web/audio.js",
+  "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
+  "@egret/engine/web/semantics": "./engine/dist/web/semantics.js"
 };
 const base = document.currentScript.src;
 for (const name of Object.keys(imports)) imports[name] = new URL(imports[name], base).href;

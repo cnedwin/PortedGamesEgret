@@ -308,13 +308,28 @@ export async function createStage(canvas, { backend = 'webgl2', pixelRatio = 1, 
   const inputSurface = stage.root.addChild(new Sprite());
   inputSurface.touchEnabled = true;
   inputSurface.hitArea = { x: 0, y: 0, width: W, height: H };
-  keyboard.registerTarget({ id: 'campus-shortcuts', target: inputSurface, tabIndex: -1 });
-  keyboard.focus('campus-shortcuts');
+  const shortcutId = 'campus-shortcuts';
+  keyboard.registerTarget({ id: shortcutId, target: inputSurface, tabIndex: -1 });
+  const focusShortcuts = () => {
+    if (document.hidden || document.activeElement !== canvas) return;
+    const { state, focusedId } = keyboard.getSnapshot();
+    if (state === 'active' && focusedId !== shortcutId) keyboard.focus(shortcutId);
+  };
+  // Egret releases held keys and logical focus on blur. Rebind when the canvas owns DOM focus again.
+  canvas.addEventListener('focus', focusShortcuts);
+  window.addEventListener('focus', focusShortcuts);
+  document.addEventListener('visibilitychange', focusShortcuts);
+  scope.use({ dispose() {
+    canvas.removeEventListener('focus', focusShortcuts);
+    window.removeEventListener('focus', focusShortcuts);
+    document.removeEventListener('visibilitychange', focusShortcuts);
+  } });
   inputSurface.on(keyboard.events.keyDown, event => {
     const key = event.payload;
     if (!key.repeat) emit('key', key.key, event);
   });
   if (document.activeElement === document.body) canvas.focus({ preventScroll: true });
+  focusShortcuts();
 
   let activeContact = null;
   createBrowserPointerInput({

@@ -18,7 +18,9 @@ export const MAP = {
   "#egret-keyboard-input": "./engine/dist/keyboardInput.js",
   "@egret/engine/web/keyboard": "./engine/dist/web/keyboard.js",
   "@egret/engine/audio": "./engine/dist/audio.js",
-  "@egret/engine/web/audio": "./engine/dist/web/audio.js"
+  "@egret/engine/web/audio": "./engine/dist/web/audio.js",
+  "@egret/engine/ui/semantics": "./engine/dist/semantics.js",
+  "@egret/engine/web/semantics": "./engine/dist/web/semantics.js"
 };
 export function resolve(specifier, context, next) {
   const file = MAP[specifier];

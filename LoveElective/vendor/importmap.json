@@ -17,6 +17,8 @@
     "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
     "@egret/engine/web/keyboard": "./vendor/engine/dist/web/keyboard.js",
     "@egret/engine/audio": "./vendor/engine/dist/audio.js",
-    "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js"
+    "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js"
   }
 }
