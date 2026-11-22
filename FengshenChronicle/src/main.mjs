@@ -1,10 +1,12 @@
 import { createBrowserGame } from '@egret/engine/web/game';
 import { createView } from './view.mjs';
-import { CHAPTER, EQUIPMENT_SLOTS, ITEMS, MAPS, QUEST, SIDE_QUESTS } from './sim/data.mjs';
-import { createSession, dispatch, update } from './sim/world.mjs';
+import { CAMPAIGN_CHAPTERS, CHAPTER, EQUIPMENT_SLOTS, ITEMS, MAPS, SIDE_QUESTS } from './sim/data.mjs';
+import { AFFIX_LABELS, PROFESSIONS, canEquip, equipmentStats } from './sim/arsenal.mjs';
+import { bagSize, sideQuestUnlocked } from './sim/progression.mjs';
+import { createSession, dispatch, nextRecovery, update } from './sim/world.mjs';
 import { isMuted, readSlot, setMuted, writeSlot } from './saves.mjs';
 import { createSound } from './audio.mjs';
-import { createRpgPanels, destinations, gearUrl, slotNames } from './rpg-ui.mjs';
+import { affixText, campaignObjective, createProfessionPicker, createRpgPanels, destinations, gearUrl, slotNames, tierNames } from './rpg-ui.mjs';
 
 const $ = id => document.getElementById(id);
 const canvas = $('stage'), field = $('field'), joystick = $('joystick');
@@ -16,7 +18,9 @@ const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const sound = createSound(storage);
 const keys = new Set();
 const history = [];
-const autoSaveEvents = new Set(['portal','quest','chapter','sideQuest','pickup','equip','unequip','buy','sell','gather','reward','kill','death']);
+const autoSaveEvents = new Set(['portal','quest','chapter','campaign','sideQuest','pickup','equip','unequip','buy','sell','forge','gather','reward','kill','death']);
+const prizedTiers = ['rare','epic','legendary'];
+const roleEmblems = {guard:'盾',ritualist:'符',ranger:'翎'};
 const controlKeys = new Set(['KeyW', 'KeyA', 'KeyS', 'KeyD', 'ArrowUp', 'ArrowLeft', 'ArrowDown', 'ArrowRight']);
 function sizeFor() {
   const aspect = field.clientWidth / Math.max(1, field.clientHeight);
@@ -25,9 +29,11 @@ function sizeFor() {
   return { width, height };
 }
 const range = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
+const isGatherable = target => target.kind === 'herb' || Boolean(target.questId);
+const targetName = target => target.name ?? ITEMS[target.itemId]?.name ?? '目标';
 const panelIds = {
   title:'title', inventory:'inventory-panel', pause:'pause-panel', dead:'death-panel', won:'victory-panel',
-  dialogue:'dialogue-panel', shop:'shop-panel', journal:'journal-panel'
+  dialogue:'dialogue-panel', shop:'shop-panel', forge:'forge-panel', journal:'journal-panel'
 };
 
 let game, view, size = sizeFor(), stageCanvas = canvas, state = createSession(), phase = 'title';
@@ -41,6 +47,7 @@ const rpg = createRpgPanels({
   command: panelCommand, current: () => state, tracked: () => questFocus,
   track(id) { questFocus = id; showPhase('play'); }
 });
+const professions = createProfessionPicker(profession => startGame(null, profession));
 
 sound.setMute(muted);
 
@@ -70,10 +77,11 @@ function showPhase(nextPhase) {
   if (phase === 'pause') saveStatus();
   if (phase === 'dialogue') rpg.renderDialogue();
   if (phase === 'shop') rpg.renderShop();
+  if (phase === 'forge') rpg.renderForge();
   if (phase === 'journal') rpg.renderJournal();
   const focus = {
     title:'new-game', play:'stage', inventory:'close-inventory', pause:'resume', dead:'retry', won:'victory-continue',
-    dialogue:'dialogue-next', shop:'shop-close', journal:'journal-close'
+    dialogue:'dialogue-next', shop:'shop-close', forge:'forge-recipe', journal:'journal-close'
   }[phase];
   $(focus)?.focus({ preventScroll: true });
 }
@@ -86,7 +94,8 @@ function refreshTitle() {
   let description = '';
   if (record.status === 'ok') {
     const save = record.snapshot;
-    description = [MAPS[save.mapId]?.name, save.quest?.stage === 'complete' ? '古道已平定' : ('玄甲 · ' + (save.hero?.level ?? 1) + ' 级')].filter(Boolean).join(' · ');
+    description = [MAPS[save.mapId]?.name, (PROFESSIONS[save.profession] ?? PROFESSIONS.guard).name,
+      'Lv.' + (save.hero?.level ?? 1)].filter(Boolean).join(' · ');
   }
   if (record.status === 'invalid') description = '此存档无法读取，可另选存档位或重新开始。';
   if (record.status === 'unavailable') description = '浏览器禁止使用本地存档，本次游玩仍可继续。';
@@ -113,9 +122,17 @@ function saveGame(explicit = false) {
   return false;
 }
 
-function startGame(record = null) {
+function startGame(record = null, profession = 'guard') {
   if (!ready) return;
-  state = createSession(record?.snapshot);
+  const seed = record ? undefined : crypto.getRandomValues(new Uint32Array(1))[0];
+  state = createSession(record?.snapshot ?? null, {profession,seed});
+  const role = PROFESSIONS[state.profession ?? 'guard'];
+  $('hud').dataset.profession = role.id;
+  setText('profession-name', role.name);
+  $('class-skill').title = role.active.description;
+  $('rage').title = role.rage.name + ' · ' + role.rage.description + ' 攻击与受击时积怒。';
+  setText('class-mark',roleEmblems[role.id]);
+  setText('class-skill-name',role.active.name);
   savedAt = record?.savedAt ?? 0;
   pendingAction = null;
   inventorySlot = null;
@@ -142,37 +159,41 @@ function notify(text, seconds = 3.1) {
 }
 
 function questDestination(map) {
-  const stage = state.quest.stage;
+  const mission = campaignObjective(state), stage = mission.progress?.stage ?? 'locked';
+  const elder = map.npcs.find(npc => npc.id === 'elder');
+  const nearest = targets => targets.sort((a,b) => range(a,state.hero) - range(b,state.hero))[0];
+  const exitTo = id => (map.portals ?? [map.portal]).find(portal => portal?.to === id);
   const side = state.sideQuests?.[questFocus];
-  if (side && side.stage !== 'complete') {
+  if (side && side.stage !== 'complete' && sideQuestUnlocked(state,questFocus)) {
+    const sideMap = {herbs:'trail',parts:'trail',ferry:'ford',beacons:'siege'}[questFocus];
     if (map.id === 'city') {
-      if (['available','ready'].includes(side.stage)) return map.npcs.find(npc => npc.id === SIDE_QUESTS[questFocus].npcId);
-      return stage === 'unaccepted' ? map.npcs.find(npc => npc.id === 'elder') : map.portal;
+      if (['available','ready'].includes(side.stage)) {
+        return map.npcs.find(npc => npc.id === SIDE_QUESTS[questFocus].npcId);
+      }
+      if (stage === 'unaccepted') return elder;
+      return exitTo(sideMap) ?? elder;
     }
-    if (side.stage === 'ready') return map.portal;
-    const options = questFocus === 'herbs' ? (state.gatherables ?? []).filter(point => !point.collected) :
-      [...state.drops.filter(drop => drop.itemId === 'scrap-iron'),...state.enemies.filter(enemy => !enemy.dead)];
-    return options.sort((a,b) => range(a,state.hero) - range(b,state.hero))[0] ?? map.portal;
+    if (side.stage === 'ready' || map.id !== sideMap) return map.portal;
+    const targets = questFocus === 'parts' ?
+      [...state.drops.filter(drop => drop.itemId === 'scrap-iron'),...state.enemies.filter(enemy => !enemy.dead)] :
+      (state.gatherables ?? []).filter(point => !point.collected &&
+        (point.questId === questFocus || (questFocus === 'herbs' && point.kind === 'herb')));
+    return nearest(targets) ?? map.portal;
   }
-  const chapter = state.chapter?.stage;
-  if (stage === 'complete') {
-    if (map.id === 'city') {
-      if (chapter === 'active') return map.portals.find(portal => portal.id === 'pass-gate');
-      if (chapter === 'complete') return map.npcs.find(npc => npc.id === 'scout');
-      return map.npcs.find(npc => npc.id === 'elder');
-    }
-    if (map.id === 'trail' || chapter === 'return') return map.portal;
-    return state.enemies.filter(enemy => !enemy.dead).sort((a,b) => range(a,state.hero) - range(b,state.hero))[0] ?? map.portal;
+  if (map.id === 'city') {
+    if ([mission.huntStage,'boss'].includes(stage)) return exitTo(mission.mapId) ?? elder;
+    if (stage === 'complete') return map.npcs.find(npc => npc.id === 'scout');
+    return elder;
   }
-  if (map.id === 'city') return stage === 'unaccepted' || stage === 'return' ? map.npcs[0] : map.portal;
-  if (stage === 'return') return map.portal;
-  if (stage === 'boss') return state.enemies.find(enemy => enemy.boss && !enemy.dead);
-  return state.enemies.filter(enemy => !enemy.dead).sort((a, b) => range(a, state.hero) - range(b, state.hero))[0];
+  if (stage === 'return' || (map.id !== mission.mapId && map.id !== 'trial')) return map.portal;
+  const alive = state.enemies.filter(enemy => !enemy.dead);
+  return (stage === 'boss' ? alive.find(enemy => enemy.boss) : nearest(alive)) ?? map.portal;
 }
 
 function renderHud() {
   const hero = state.hero, map = MAPS[state.mapId];
-  const weapon = state.inventory.find(item => item.uid === state.equipment.weapon)?.itemId ?? 'bronze-sword';
+  const role = PROFESSIONS[state.profession ?? 'guard'];
+  const weapon = state.inventory.find(item => item.uid === state.equipment.weapon)?.itemId ?? role.starterWeapon;
   const icon = $('weapon-icon'), iconUrl = gearUrl(weapon);
   if (icon.src !== iconUrl) icon.src = iconUrl;
   $('hp-fill').style.transform = 'scaleX(' + hero.hp / hero.maxHp + ')';
@@ -181,29 +202,30 @@ function renderHud() {
   setText('level', 'Lv.' + hero.level);
   setText('wallet', hero.gold + ' 文');
   setText('map-name', map.name);
-  const newChapter = state.quest.stage === 'complete' && state.chapter;
-  const title = newChapter ? CHAPTER.name : QUEST.name;
-  const count = newChapter && state.mapId === 'pass' && newChapter.stage === 'active' ? ' · ' + Math.min(newChapter.kills,CHAPTER.requiredKills) + ' / ' + CHAPTER.requiredKills
-    : state.quest.stage === 'hunt' ? ' · ' + state.quest.kills + ' / ' + QUEST.requiredKills : '';
+  const {data,progress,huntStage} = campaignObjective(state);
+  const stage = progress?.stage ?? 'locked';
+  const count = stage === huntStage ? ' · ' + Math.min(progress.kills,data.requiredKills) + ' / ' + data.requiredKills : '';
   const side = state.sideQuests?.[questFocus];
-  if (side?.stage === 'complete') questFocus = 'main';
+  if (side && (side.stage === 'complete' || !sideQuestUnlocked(state,questFocus))) questFocus = 'main';
   const sideInfo = SIDE_QUESTS[questFocus];
-  setText('quest-title', sideInfo ? sideInfo.name + ' · ' + Math.min(side?.amount ?? 0, sideInfo.required) + ' / ' + sideInfo.required : title + count);
-  setText('quest-text', sideInfo ? sideInfo.description : state.mapId === 'trial' ? '击败演武镇将取得战利品。清场后可由归营阵返回。' :
-    newChapter ? CHAPTER.descriptions[newChapter.stage] : QUEST.descriptions[state.quest.stage]);
+  setText('quest-title', sideInfo ? sideInfo.name + ' · ' + Math.min(side?.amount ?? 0, sideInfo.required) + ' / ' + sideInfo.required : data.name + count);
+  setText('quest-text', side?.stage === 'ready' ? '回西岐交付任务并选择报酬。' : sideInfo ? sideInfo.description :
+    state.mapId === 'trial' ? '击败演武镇将取得战利品。清场后可由归营阵返回。' : data.descriptions[stage]);
   route = questDestination(map);
   $('track').hidden = !route;
-  if (route) setText('track', '寻路 · ' + (route === map.portal ? (map.id === 'city' ? '古道出口' : '归营阵') :
-    route.name ?? ITEMS[route.itemId]?.name ?? '目标'));
+  if (route) setText('track', '寻路 · ' + targetName(route));
   const boss = state.enemies.find(enemy => enemy.boss && !enemy.dead);
   $('boss-hud').hidden = !boss || range(boss, hero) >= 520;
   if (boss) {
     setText('boss-name',boss.name);
     $('boss-fill').style.transform = 'scaleX(' + boss.hp / boss.maxHp + ')';
+    const warning = boss.telegraph?.skillId ? boss.telegraph : null;
+    $('boss-warning').hidden = !warning;
+    if (warning) setText('boss-warning', warning.name + ' · ' + warning.hint);
   }
   const people = [...map.npcs,...(map.portals ?? [map.portal])].filter(person => range(person, hero) <= 135);
   contextPerson = people.sort((a, b) => range(a, hero) - range(b, hero))[0];
-  contextDrop = [...state.drops,...(state.gatherables ?? []).filter(node => !node.collected)].filter(drop => range(drop, hero) <= (drop.kind === 'herb' ? 76 : 95))
+  contextDrop = [...state.drops,...(state.gatherables ?? []).filter(node => !node.collected)].filter(drop => range(drop, hero) <= (isGatherable(drop) ? 76 : 95))
     .sort((a, b) => range(a, hero) - range(b, hero))[0];
   $('interact').hidden = !contextPerson;
   $('pickup').hidden = !contextDrop;
@@ -211,15 +233,25 @@ function renderHud() {
     const label = contextPerson.to ? contextPerson.name : '与' + contextPerson.name + '交谈';
     setText('interact', label);
   }
-  if (contextDrop) setText('pickup', (contextDrop.kind === 'herb' ? '采集 · ' : '拾取 · ') + ITEMS[contextDrop.itemId].name);
-  setText('potion-count', '×' + hero.potions);
-  $('potion').disabled = !hero.potions || hero.hp >= hero.maxHp;
+  if (contextDrop) {
+    const verb = {herb:'采集',rescue:'解救',beacon:'拆除'}[contextDrop.kind] ?? '拾取';
+    setText('pickup', verb + ' · ' + targetName(contextDrop));
+  }
+  const recovery = nextRecovery(hero);
+  const recoveryKey = recovery?.key ?? (hero.potions || !hero.tonics ? 'potions' : 'tonics');
+  setText('potion-name', recoveryKey === 'tonics' ? '回春丹' : '回春散');
+  setText('potion-count', '×' + (hero[recoveryKey] ?? 0));
+  $('potion').disabled = !recovery;
+  const supply = '回春散 ' + hero.potions + ' 份 · 回春丹 ' + (hero.tonics ?? 0) + ' 枚';
+  if ($('potion').title !== supply) $('potion').title = supply;
   const activeSkill = state.inventory.find(item => item.uid === state.equipment.skill)?.itemId;
   $('artifact').disabled = !activeSkill || state.artifact.cooldown > .001;
   setText('skill-name', activeSkill ? ITEMS[activeSkill].name : '法宝');
   const skillIcon = gearUrl(activeSkill ?? 'qiankun-ring');
   if ($('skill-icon').src !== skillIcon) $('skill-icon').src = skillIcon;
   setText('artifact-clock', activeSkill && state.artifact.cooldown > .001 ? Math.ceil(state.artifact.cooldown) + 's' : '');
+  $('class-skill').disabled = (hero.classCooldown ?? 0) > .001;
+  setText('class-skill-clock',hero.classCooldown > .001 ? Math.ceil(hero.classCooldown) + 's' : '');
   const anger = Math.floor(hero.anger ?? 0);
   $('rage').disabled = anger < 100;
   $('rage').classList.toggle('ready',anger >= 100);
@@ -227,8 +259,12 @@ function renderHud() {
 }
 
 function renderInventory() {
+  const role = PROFESSIONS[state.profession ?? 'guard'];
+  setText('inventory-profession',role.name + ' · ' + role.weaponType);
   setText('equipment-stats', '攻击 ' + state.hero.attack + '　防御 ' + state.hero.defense + '　气血 ' + state.hero.maxHp +
-    '　行囊 ' + state.inventory.length + ' / 30　药草 ' + (state.resources?.herb ?? 0) + '　甲片 ' + (state.resources?.parts ?? 0));
+    '　行囊 ' + bagSize(state) + ' / 30　药草 ' +
+    (state.resources?.herb ?? 0) + '　甲片 ' + (state.resources?.parts ?? 0) + '　回春散 ' +
+    state.hero.potions + '　回春丹 ' + (state.hero.tonics ?? 0));
   $('equipment-slots').replaceChildren(...EQUIPMENT_SLOTS.map(slot => {
     const button = document.createElement('button');
     const equipped = state.inventory.find(entry => entry.uid === state.equipment[slot]);
@@ -241,7 +277,7 @@ function renderInventory() {
     type.textContent = slotNames[slot];
     title.textContent = equipped ? ITEMS[equipped.itemId].name : '空位';
     image.alt = '';
-    image.src = gearUrl(equipped?.itemId ?? ({weapon:'bronze-sword',offhand:'bronze-shield',armor:'linen-armor',boots:'cloth-boots',ring:'bronze-ring',skill:'qiankun-ring'})[slot]);
+    image.src = gearUrl(equipped?.itemId ?? ({weapon:role.starterWeapon,offhand:'bronze-shield',armor:'linen-armor',boots:'cloth-boots',ring:'bronze-ring',skill:'qiankun-ring'})[slot]);
     label.append(type,title); button.append(image,label);
     return button;
   }));
@@ -250,6 +286,8 @@ function renderInventory() {
     const equipped = state.equipment[item.slot] === instance.uid;
     const current = state.inventory.find(entry => entry.uid === state.equipment[item.slot]);
     const currentItem = ITEMS[current?.itemId];
+    const stats = equipmentStats(item, instance.affixes);
+    const equippedStats = equipmentStats(currentItem, current?.affixes);
     const row = document.createElement('li'), art = document.createElement('img'), summary = document.createElement('div');
     const name = document.createElement('b'), details = document.createElement('small'), button = document.createElement('button');
     row.dataset.tier = item.tier;
@@ -257,15 +295,22 @@ function renderInventory() {
     art.alt = '';
     art.src = gearUrl(item.id);
     name.textContent = item.name;
-    const attribute = value => value ? (value > 0 ? '+' : '') + value : '±0';
-    const comparison = equipped ? '' : '　·　变化 ' + attribute((item.attack ?? 0) - (currentItem?.attack ?? 0)) + ' 攻 / ' + attribute((item.defense ?? 0) - (currentItem?.defense ?? 0)) + ' 防';
-    details.textContent = item.slot === 'skill' ? item.description : '攻 ' + (item.attack ?? 0) + '　防 ' + (item.defense ?? 0) +
-      (item.maxHp ? '　气血 +' + item.maxHp : '') + (item.speed ? '　移速 +' + item.speed : '') + comparison;
+    const changes = Object.entries(AFFIX_LABELS).flatMap(([key,label]) => {
+      const change = stats[key] - equippedStats[key];
+      return change ? [label + ' ' + (change > 0 ? '+' : '') + change] : [];
+    });
+    const comparison = equipped ? '' : '　·　更换后 ' + (changes.join(' / ') || '属性持平');
+    const roll = affixText(instance);
+    details.textContent = item.slot === 'skill' ? item.description : (tierNames[item.tier] ?? '装备') + ' · 攻 ' +
+      stats.attack + '　防 ' + stats.defense + (stats.maxHp ? '　气血 +' + stats.maxHp : '') +
+      (stats.speed ? '　移速 +' + stats.speed : '') + (roll ? '　·　词条 ' + roll : '') + comparison;
     button.type = 'button';
     button.className = equipped ? 'unequip' : 'equip';
     button.dataset.uid = instance.uid;
     button.dataset.slot = item.slot;
-    button.textContent = equipped ? '卸下' : '装备';
+    button.disabled = !equipped && !canEquip(item, role.id, state.hero.level);
+    button.textContent = equipped ? '卸下' : !button.disabled ? '装备' :
+      (state.hero.level < item.requiredLevel ? 'Lv.' + item.requiredLevel + ' 装备' : '职业不符');
     button.setAttribute('aria-label', item.name + (equipped ? '卸下' : '装备'));
     summary.append(name, details);
     row.append(art, summary, button);
@@ -284,14 +329,17 @@ function eventSound(event) {
   if (cue === 'hit') {
     if (event.cause === 'artifact') return;
     if (event.id === 'hero') cue = 'hero-hurt';
-  } else if (cue === 'telegraph' && event.id === 'boss') cue = 'telegraphBoss';
-  else if (cue === 'loot' && ['rare', 'epic'].includes(ITEMS[event.itemId]?.tier)) cue = 'rareLoot';
+  } else if (cue === 'telegraph' && (event.skillId || event.id === 'boss')) cue = 'telegraphBoss';
+  else if (cue === 'bossPhase') cue = 'telegraphBoss';
+  else if (cue === 'hazardAttack') cue = 'enemyAttack';
+  else if (cue === 'interrupt') cue = 'equip';
+  else if (cue === 'loot' && prizedTiers.includes(ITEMS[event.itemId]?.tier)) cue = 'rareLoot';
   else if (cue === 'rage') cue = 'artifactHit';
-  else if (cue === 'rageTelegraph' || cue === 'skillCast') cue = 'artifactCast';
-  else if (cue === 'skillPulse') cue = 'artifactReturn';
+  else if (cue === 'rageTelegraph' || cue === 'skillCast' || cue === 'classSkill') cue = 'artifactCast';
+  else if (cue === 'skillPulse' || cue === 'classPulse') cue = 'artifactReturn';
   else if (cue === 'gather') cue = 'pickup';
   else if (cue === 'buy' || cue === 'sell') cue = 'pickup';
-  else if (cue === 'chapter' || cue === 'sideQuest') cue = 'quest';
+  else if (cue === 'chapter' || cue === 'campaign' || cue === 'sideQuest' || cue === 'forge') cue = 'quest';
   const pan = Number.isFinite(event.x) ? (event.x - state.hero.x) / 420 : 0;
   sound.play(cue, pan);
 }
@@ -304,24 +352,32 @@ function consumeEvents(events) {
     autosave ||= autoSaveEvents.has(event.type);
     switch (event.type) {
       case 'talk': notify(event.text, 5.5); break;
-      case 'loot': if (['rare','epic'].includes(ITEMS[event.itemId]?.tier)) notify('掉落 · ' + ITEMS[event.itemId].name); break;
+      case 'loot': if (prizedTiers.includes(ITEMS[event.itemId]?.tier)) notify('掉落 · ' + ITEMS[event.itemId].name); break;
       case 'pickup': if (ITEMS[event.itemId].slot) notify('已拾取 · ' + event.name + '，可在行囊中装备'); break;
       case 'equip': notify('已装备 · ' + event.name); break;
-      case 'level': notify('玄甲晋升至 ' + event.level + ' 级'); break;
+      case 'level': notify((PROFESSIONS[state.profession] ?? PROFESSIONS.guard).name + '晋升至 ' + event.level + ' 级'); break;
       case 'portal': notify('进入 · ' + MAPS[state.mapId].name); break;
-      case 'gather': notify('已采集 · ' + (ITEMS[event.itemId]?.name ?? '清心草')); break;
+      case 'gather': notify('已完成 · ' + (event.name ?? ITEMS[event.itemId]?.name ?? '调查目标')); break;
       case 'buy': rpg.tradeFeedback('购得' + ITEMS[event.itemId].name + '，支出 ' + event.price + ' 文。'); break;
       case 'sell': rpg.tradeFeedback('卖出' + ITEMS[event.itemId].name + '，收入 ' + event.gold + ' 文。'); break;
+      case 'forge': {
+        const roll = affixText(event);
+        rpg.forgeFeedback('炼成' + ITEMS[event.itemId].name + (roll ? ' · ' + roll : ''));
+        break;
+      }
       case 'bossSpawn': notify('敌军主将已现身'); break;
+      case 'bossPhase': notify('首领进入第二阶段，招式间隔缩短'); break;
+      case 'interrupt': notify('已打断首领蓄力', 1.8); break;
       case 'death': showPhase('dead'); break;
       case 'victory':
-        setText('victory-chapter',state.mapId === 'pass' ? CHAPTER.name : state.mapId === 'trial' ? '演武旧营' : QUEST.name);
+        setText('victory-chapter',CAMPAIGN_CHAPTERS[state.mapId]?.name ??
+          (state.mapId === 'pass' ? CHAPTER.name : state.mapId === 'trial' ? '演武旧营' : MAPS.trail.name));
         setText('victory-title',state.mapId === 'trial' ? '演武告捷' : '敌将已伏');
         setText('victory-text',state.mapId === 'trial' ? '没有退兵的急令，先收拢战利品，再返回西岐。' : '收好战利品，经归营阵回城，向姜尚复命。');
         showPhase('won'); break;
     }
   }
-  if (events.some(event => ['portal','quest','chapter','bossSpawn','victory'].includes(event.type))) syncMusic();
+  if (events.some(event => ['portal','quest','chapter','campaign','bossSpawn','victory'].includes(event.type))) syncMusic();
   if (history.length > 180) history.splice(0, history.length - 180);
   if (autosave) saveGame();
 }
@@ -334,7 +390,7 @@ function interact() {
 }
 
 function pickUp() {
-  if (phase === 'play' && contextDrop) dispatch(state, { type: contextDrop.kind === 'herb' ? 'gather' : 'pickup', id: contextDrop.id });
+  if (phase === 'play' && contextDrop) dispatch(state, { type: isGatherable(contextDrop) ? 'gather' : 'pickup', id: contextDrop.id });
 }
 
 function combat(type) {
@@ -353,18 +409,20 @@ function entity(id) {
 }
 
 function syncPanels() {
-  if (!['play','dialogue','shop'].includes(phase)) return;
-  const next = state.shop ? 'shop' : state.dialogue ? 'dialogue' : 'play';
+  if (!['play','dialogue','shop','forge'].includes(phase)) return;
+  const next = state.forge ? 'forge' : state.shop ? 'shop' : state.dialogue ? 'dialogue' : 'play';
   if (next !== phase) {
     pendingAction = null;
     if (next === 'shop') rpg.resetShop();
+    if (next === 'forge') rpg.resetForge();
     showPhase(next);
   } else if (next === 'shop') rpg.renderShop();
   else if (next === 'dialogue') rpg.renderDialogue();
+  else if (next === 'forge') rpg.renderForge();
 }
 
 function panelCommand(action) {
-  if (!['shop','dialogue','inventory'].includes(phase)) return;
+  if (!['shop','dialogue','forge','inventory'].includes(phase)) return;
   const changed = dispatch(state,action);
   consumeEvents(update(state,0));
   if (changed) saveGame();
@@ -383,7 +441,7 @@ function fieldPress(event) {
   const candidates = [
     ...state.enemies.filter(enemy => !enemy.dead).map(enemy => ({ target: enemy, type: 'target', distance: 34 })),
     ...state.drops.map(drop => ({ target: drop, type: 'pickup', distance: 20 })),
-    ...destinations(state).map(target => ({target, type: target.kind === 'herb' ? 'gather' : 'interact', distance: target.kind === 'herb' ? 22 : 39 }))
+    ...destinations(state).map(target => ({target, type: isGatherable(target) ? 'gather' : 'interact', distance: isGatherable(target) ? 25 : 39 }))
   ].map(candidate => {
     const projected = view.screenAt(candidate.target.x, candidate.target.y);
     const feet = range({ x, y }, projected);
@@ -424,7 +482,7 @@ function frame(seconds) {
     }
     events = update(state, dt, { moveX, moveY, attack: holdingAttack || keys.has('Space') });
     if (events.length) consumeEvents(events);
-    if (state.dialogue || state.shop) syncPanels();
+    if (state.dialogue || state.shop || state.forge) syncPanels();
     saveAge += dt;
     if (saveAge >= 12) saveGame();
     hudAge += dt;
@@ -480,6 +538,7 @@ $('attack').addEventListener('pointerdown', event => {
 for (const type of ['pointerup', 'pointercancel', 'lostpointercapture']) $('attack').addEventListener(type, () => { holdingAttack = false; });
 $('attack').addEventListener('click', event => { if (event.detail === 0) combat('attack'); });
 $('artifact').addEventListener('click', () => combat('artifact'));
+$('class-skill').addEventListener('click', () => combat('classSkill'));
 $('rage').addEventListener('click', () => combat('rage'));
 $('potion').addEventListener('click', () => combat('potion'));
 $('interact').addEventListener('click', interact);
@@ -494,7 +553,7 @@ $('track').addEventListener('click', () => {
   pendingAction = null;
   if (route.hp !== undefined) dispatch(state, { type: 'target', id: route.id });
   else {
-    const type = route.kind === 'herb' ? 'gather' : route.itemId ? 'pickup' : 'interact';
+    const type = isGatherable(route) ? 'gather' : route.itemId ? 'pickup' : 'interact';
     const reach = type === 'gather' ? 76 : type === 'pickup' ? 95 : 130;
     if (range(route,state.hero) > reach) dispatch(state,{type:'moveTo',x:route.x,y:route.y});
     else dispatch(state,{type,id:route.id});
@@ -536,11 +595,19 @@ $('new-game').addEventListener('click', () => {
   const record = readSlot(storage, slot);
   if (record.status === 'ok') {
     $('new-confirm').hidden = false;
+    $('title').inert = true;
     $('new-cancel').focus();
-  } else startGame();
+  } else professions.open();
 });
-$('new-cancel').addEventListener('click', () => { $('new-confirm').hidden = true; $('new-game').focus(); });
-$('new-overwrite').addEventListener('click', () => startGame());
+$('new-cancel').addEventListener('click', () => {
+  $('new-confirm').hidden = true;
+  $('title').inert = false;
+  $('new-game').focus();
+});
+$('new-overwrite').addEventListener('click', () => {
+  $('new-confirm').hidden = true;
+  professions.open();
+});
 $('continue-game').addEventListener('click', () => {
   const record = readSlot(storage, slot);
   if (record.status === 'ok') startGame(record);
@@ -569,16 +636,19 @@ $('game-shell').addEventListener('click', event => {
 }, { capture: true });
 
 document.addEventListener('keydown', event => {
-  if (event.altKey || event.metaKey || event.ctrlKey || event.target.tagName === 'SELECT') return;
+  if (event.altKey || event.metaKey || event.ctrlKey) return;
   const code = event.code;
   if (code === 'Escape') {
     if (phase === 'title' && !$('new-confirm').hidden) $('new-cancel').click();
+    else if (phase === 'title' && !$('profession-panel').hidden) professions.close();
     else if (phase === 'dialogue') panelCommand({type:'closeDialogue'});
     else if (phase === 'shop') panelCommand({type:'closeShop'});
+    else if (phase === 'forge') panelCommand({type:'closeForge'});
     else if (phase === 'play') showPhase('pause');
     else if (phase === 'pause' || phase === 'inventory' || phase === 'journal') showPhase('play');
     return;
   }
+  if (event.target.tagName === 'SELECT') return;
   if (phase === 'dialogue' && code === 'Enter' && !event.repeat && !$('dialogue-next').hidden) {
     event.preventDefault(); rpg.nextLine(); return;
   }
@@ -595,7 +665,7 @@ document.addEventListener('keydown', event => {
     keys.add(code);
     if (code === 'Space' && !event.repeat) combat('attack');
   } else if (!event.repeat) {
-    const action = { KeyQ: () => combat('artifact'), KeyR: () => combat('rage'), KeyE: interact, KeyF: pickUp, Digit1: () => combat('potion') }[code];
+    const action = { KeyQ: () => combat('artifact'), KeyX: () => combat('classSkill'), KeyR: () => combat('rage'), KeyE: interact, KeyF: pickUp, Digit1: () => combat('potion') }[code];
     action?.();
   }
 }, { capture: true });

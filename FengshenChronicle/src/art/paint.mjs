@@ -2,6 +2,8 @@ import { FX_FRAMES } from './effects.mjs';
 import { loadLandscape } from './landscape.mjs';
 import { gearArt, gearArtFiles } from '../rpg-ui.mjs';
 import { ITEMS } from '../sim/data.mjs';
+import { loadProfessionArt } from './professions.mjs';
+import { yieldArtPreparation } from './prepare.mjs';
 
 const RESOLUTION = 2;
 const ACTOR_FILES = ['hero','hero-elite','actors','foe-moves','hero-walk','hero-elite-walk','townsfolk'];
@@ -168,12 +170,13 @@ async function texture(game, scope, canvas) {
   return lease;
 }
 
-async function atlasPage(game, scope, entries, frames, page) {
+async function atlasPage(game, scope, entries, frames, page, sizes) {
   // Egret accepts at most 4,194,304 pixels per source image. Keep the
   // protagonist poses grouped by armor and pack other sprites separately.
   const pad = 4, maxWidth = 2048;
   entries.sort((a, b) => b.h - a.h || b.w - a.w);
   let x = pad, y = pad, row = 0;
+  let painted=0;
   for (const entry of entries) {
     const width = entry.w * RESOLUTION, height = entry.h * RESOLUTION;
     if (x + width + pad > maxWidth) { x = pad; y += row + pad; row = 0; }
@@ -184,6 +187,7 @@ async function atlasPage(game, scope, entries, frames, page) {
   const atlas = document.createElement('canvas');
   atlas.width = maxWidth;
   atlas.height = y + row + pad;
+  sizes[page]={width:atlas.width,height:atlas.height,pixels:atlas.width*atlas.height};
   if (atlas.width * atlas.height > 4194304) throw Error('Illustration atlas page exceeds Egret texture capacity');
   const g = atlas.getContext('2d');
   for (const entry of entries) {
@@ -195,22 +199,29 @@ async function atlasPage(game, scope, entries, frames, page) {
     g.scale(RESOLUTION, RESOLUTION);
     entry.draw(g);
     g.restore();
-    const { x, y, width, height, w, h, pivotY, weaponAnchor } = entry;
-    frames[entry.key] = { x, y, width, height, w, h, pivotY, page, weaponAnchor };
+    const { x, y, width, height, w, h, pivotY, weaponAnchor, offhandAnchor } = entry;
+    frames[entry.key] = { x, y, width, height, w, h, pivotY, page, weaponAnchor, offhandAnchor };
+    if(++painted%8===0)await yieldArtPreparation();
   }
-  return texture(game, scope, atlas);
+  await yieldArtPreparation();
+  const lease=await texture(game,scope,atlas);
+  await yieldArtPreparation();
+  return lease;
 }
 
 export async function buildArt(game, scope, maps) {
-  const [landscape, actorSheets, gearSheets] = await Promise.all([
+  const [landscape, actorSheets, gearSheets, professionArt] = await Promise.all([
     loadLandscape(),
     Promise.all(ACTOR_FILES.map(name => loadImage('actors/' + name))),
-    Promise.all(gearArtFiles.map(name => loadImage('gear/' + name)))
+    Promise.all(gearArtFiles.map(name => loadImage('gear/' + name))),
+    loadProfessionArt(loadImage)
   ]);
   const gear = Object.fromEntries(gearArtFiles.map((key, i) => [key,gearSheets[i]]));
   const [standard, elite, cast, actions, standardWalk, eliteWalk,town] = actorSheets;
   const entries = [], aliases = {};
   const add = (key, w, h, draw, pivotY = h / 2, weaponAnchor) => entries.push({key, w, h, draw, pivotY, weaponAnchor});
+  entries.push(...professionArt.entries);
+  Object.assign(aliases,professionArt.aliases);
 
   const heroStates = [
     ['hero', standard, null, standardWalk, WALK_ART[0]], ['heroSteel', standard, '#e6f3e7', standardWalk, WALK_ART[0]],
@@ -275,10 +286,12 @@ export async function buildArt(game, scope, maps) {
   add('ring',62,52,g => fitItem(g,gear.ring,57,47));
   add('portal',128,76,paintGate);
   add('quest',34,48,paintQuest);
+  add('node:beacon',70,82,g=>landscape.paintGatherable(g),72);
   for (const fx of FX_FRAMES) add(fx.key,fx.w,fx.h,fx.draw,fx.pivotY);
   for (const frame of landscape.ambientFrames ?? []) add(frame.key,frame.w,frame.h,
     g => landscape.paintAmbient(g,frame.kind,frame.frame),frame.pivotY);
   for (const [id,map] of Object.entries(maps)) {
+    await yieldArtPreparation();
     for (const npc of map.npcs) add('npc-tag:'+npc.id,130,24,g => paintWorldLabel(g,npc.name,'#bb9a62'));
     for (const portal of map.portals ?? [map.portal]) add('portal:'+id+':'+portal.id,130,24,g => paintWorldLabel(g,portal.name,'#8ab9b0'));
   }
@@ -294,15 +307,16 @@ export async function buildArt(game, scope, maps) {
     });
   }
 
-  const frames = {}, atlases = [];
+  const frames = {}, atlases = [], atlasSizes=[];
   const plainHero = entry => entry.key.startsWith('hero') && !entry.key.startsWith('heroElite');
-  atlases.push(await atlasPage(game, scope, entries.filter(plainHero), frames, 0));
-  atlases.push(await atlasPage(game, scope, entries.filter(entry => entry.key.startsWith('heroElite')), frames, 1));
-  atlases.push(await atlasPage(game, scope, entries.filter(entry => !entry.key.startsWith('hero')), frames, 2));
-  const boots = entries.filter(entry => entry.key.startsWith('hero')).map(entry => ({
+  atlases.push(await atlasPage(game, scope, entries.filter(plainHero), frames, 0,atlasSizes));
+  atlases.push(await atlasPage(game, scope, entries.filter(entry => entry.key.startsWith('heroElite')), frames, 1,atlasSizes));
+  atlases.push(await atlasPage(game, scope, entries.filter(entry => !entry.key.startsWith('hero') && !entry.group), frames, 2,atlasSizes));
+  const boots = entries.filter(entry => entry.key.startsWith('hero') || entry.group==='profession').map(entry => ({
     key:'boots:'+entry.key, w:90, h:56, pivotY:48,
     draw(g) {
       entry.draw(g);
+      if(entry.eraseWeapon){entry.eraseWeapon(g);return;}
       const blade = entry.weaponAnchor;
       if (!blade) return;
       // The skirt/boot crop shares the actor's ground contact. Exclude any
@@ -317,18 +331,22 @@ export async function buildArt(game, scope, maps) {
       g.restore();
     }
   }));
-  atlases.push(await atlasPage(game,scope,boots,frames,3));
+  atlases.push(await atlasPage(game,scope,boots,frames,3,atlasSizes));
+  atlases.push(await atlasPage(game,scope,entries.filter(entry=>entry.group==='profession'),frames,4,atlasSizes));
+  atlases.push(await atlasPage(game,scope,entries.filter(entry=>entry.group==='campaignEnemy'),frames,5,atlasSizes));
   for (const [alias,source] of Object.entries(aliases)) frames[alias] = frames[source];
   for (const [alias,source] of Object.entries(aliases)) {
-    if (alias.startsWith('hero') && frames['boots:'+source]) frames['boots:'+alias] = frames['boots:'+source];
+    if (frames['boots:'+source]) frames['boots:'+alias] = frames['boots:'+source];
   }
 
   const grounds={}, structures={};
   for (const [id,map] of Object.entries(maps)) {
+    await yieldArtPreparation();
     const ground=document.createElement('canvas');
     ground.width=map.width; ground.height=map.height;
     landscape.paintGround(ground.getContext('2d'),id,map);
     const lease=await texture(game,scope,ground);
+    await yieldArtPreparation();
     grounds[id]={lease,width:ground.width,height:ground.height};
     structures[id]=[];
     for (const [i,obstacle] of map.obstacles.entries()) {
@@ -337,11 +355,12 @@ export async function buildArt(game, scope, maps) {
       canvas.width=width+100; canvas.height=height+extra+40;
       const pivotX=canvas.width/2, pivotY=canvas.height-22, context=canvas.getContext('2d');
       context.translate(pivotX,pivotY);
-      landscape.paintStructure(context,kind,width,height,i);
+      landscape.paintStructure(context,kind,width,height,i,id);
       const propLease=await texture(game,scope,canvas);
       structures[id].push({lease:propLease,x:obstacle.x+width/2,y:obstacle.y+height,pivotX,pivotY,kind});
+      if(i%3===2)await yieldArtPreparation();
     }
   }
   const ambientActors = Object.fromEntries(Object.keys(maps).map(id => [id,landscape.ambientActors?.(id,maps[id]) ?? []]));
-  return { atlas: atlases[0], atlases, frames, grounds, structures, ambientActors, res: RESOLUTION };
+  return { atlas: atlases[0], atlases, atlasSizes, frames, grounds, structures, ambientActors, res: RESOLUTION };
 }

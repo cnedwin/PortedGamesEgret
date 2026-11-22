@@ -2,21 +2,21 @@
 
 ## 简介 · Introduction
 
-基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)的原创封神题材单机动作 RPG。玄甲从西岐城揭开「古道除祟」与「铜关回风」两章，沿途可采药、回收旧甲，选择不同的支线奖赏。演武旧营提供可重复的遭遇战，药铺、铁匠铺和杂货商为出门前的整备点。进度保存在当前浏览器的三个存档位。
+基于新白鹭引擎的原创封神题材单机动作 RPG。玄甲、方士和游侠从西岐启程，走过「古道除祟」「铜关回风」「丹霞渡」「朝歌外城」四章。沿途采药、回收旧甲、寻回受困舟人和拆除烽阵，每条支线可选不同的报酬。铜关、丹霞渡、朝歌外城和演武旧营可反复挑战。进度保存在当前浏览器的三个存档位。[新白鹭引擎](https://github.com/cnedwin/Egret_rebuild)
 
-An original single-player action RPG built with Egret Rebuild. Xuanjia investigates the Qishan Trail and Bronze Pass across two chapters. Gather herbs, salvage old armor and choose side-quest rewards. The training camp offers repeatable encounters, while three town shops provide supplies and gear. Three saves live in the current browser.
+An original single-player action RPG built with Egret Rebuild. Play as a Vanguard, Ritualist, or Ranger through the Qishan Trail, Bronze Pass, Danxia Ford, and Chaoge's outer city. Side quests follow missing ferrymen and siege beacons alongside herb gathering and armored salvage. Three saves live in the current browser.
 
-角色和装备采用原创生成插画，西岐城使用暖赭色石材、木构和灯火，古道使用冷青岩壁和青铜遗迹。角色姿态、刀光、受击、首领预警和乾坤圈往返均在原生 2D 显示树中表现。场景原画来源见 [场景素材清单](assets/world/SOURCES.json)。
+角色和装备采用原创生成插画。西岐以暖色灯火为主，丹霞渡以赤岩和青水区分地形，朝歌外城用深色城墙衬托火线。角色姿态、刀光、受击、首领预警和乾坤圈往返均在原生 2D 显示树中表现。[首两章素材清单](assets/world/SOURCES.json) · [新场景与职业素材清单](assets/world/CAMPAIGN_SOURCES.json)
 
 Original generated illustrations depict the cast and equipment. Amber stone, timber, and lanterns distinguish Xiqi from the blue-green cliffs and bronze ruins of the trail. Character poses, attacks, strikes, telegraphs, and the returning ring run on Egret's native 2D display list.
 
-预定静态部署路径为 [FengshenChronicle](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/)。本地开发结果与线上部署状态分别记录在 `QUALITY.md`。
+[打开网页试玩](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/)。设备和版本记录见 [验收记录](QUALITY.md)。
 
 ## 玩法与操作 · How to play
 
-先向姜尚领取任务与乾坤圈，再经城东传送阵出城。击败六名邪祟可逼出古道深处的蚀甲邪将。首次击杀必掉破邪剑，拾取后在行囊中装备。乾坤圈去程、回程各可命中一次，五秒冷却。敌人脚下的预警圈标出即将落下的攻击，移动可避开。首领倒下后拾取镇邪印，经古道归营阵回城，向姜尚复命。
+新档先选职业，再向姜尚领取任务与乾坤圈。消灭六名邪祟会逼出古道深处的蚀甲邪将。首次击杀必掉当前职业可用的武器，拾取后在行囊中装备。首领倒下后拾取镇邪印，回城向姜尚复命。丹霞断潮君的潮环可以向内躲，也可以跑出外圈。朝歌镇门将的火线与延迟落点须分开躲，集中输出可以打断号令。
 
-Speak with Jiang Shang, take the ring and leave through the eastern portal. Six banishments reveal the general. The first kill guarantees a stronger sword. Equip it in the bag. The ring can hit once outward and once returning, with a five-second cooldown. Enemy warning circles mark their future strikes. Collect the general's seal, return through the camp portal and finish the commission.
+Choose a class, speak with Jiang Shang, and take the ring. Six banishments reveal the general, whose first defeat awards a weapon for your class. Collect the seal and return to Jiang Shang. At Danxia, move inside or outside the tide ring. At Chaoge, avoid the crossfire and delayed blasts separately, and concentrate damage to interrupt orders.
 
 | 操作 · Action | 键鼠 · Keyboard and mouse | 触屏 · Touch |
 |---|---|---|
@@ -25,6 +25,7 @@ Speak with Jiang Shang, take the ring and leave through the eastern portal. Six 
 | 接战 · Engage | 点击敌人追击与普攻 · click an enemy | 点敌人 · tap an enemy |
 | 攻击 · Attack | 空格或「攻击」· Space or Attack | 「攻击」· Attack |
 | 法宝 · Artifact | Q 或「乾坤圈」· Q or Universe Ring | 「乾坤圈」· Universe Ring |
+| 职业技能 · Class skill | X 或职业技能键 · X or the named skill | 「玄甲震阵」「缚雷符阵」或「追星穿云」|
 | 怒技 · Rage | R 或「怒技」· R or Rage | 「怒技」· Rage |
 | 回血 · Heal | 1 或「回春散」· 1 or Healing Powder | 「回春散」· Healing Powder |
 | 交谈、传送、拾取 · Interact and collect | 走近后点对应按钮 · use the nearby action | 对应按钮 · nearby action |
@@ -33,7 +34,9 @@ Speak with Jiang Shang, take the ring and leave through the eastern portal. Six 
 
 在行囊可更换武器、副手、护甲、战靴、戒印和主动法宝。乾坤圈五秒冷却，回风幡有三次近身脉冲与短暂护体，八秒冷却。造成伤害及受击累积怒气，满怒可用有短前摇的范围怒技。按 J 打开札记可切换追踪主任务或支线。
 
-药铺每十二文出售一份回春散，也可买三份装。铁匠卖兵器和护具，杂货商卖行装、戒环与法宝。回城恢复气血并至少补给到三份。力竭可返回西岐，保留已拾取装备和任务进度。存档位属于当前浏览器和站点。
+药铺每十二文出售一份回春散，8 级可买恢复 65 气血的回春丹。用药键优先选够用的较小剂量，缺口超过所有持有的规格时使用效果最强的一种。铁铺卖基础兵器和护具，杂货商卖基础战靴与戒环。三家店在 4、8、12 级逐级开放货品。稀有、史诗、传说装备来自战斗，部分装备是剧情固定奖励。铁铺在 3、7、11 级开放精锻、重锻和百炼，以同部位未装备的基础装备、甲片和铜钱合成带随机词条的装备。回城恢复气血并至少补给到三份回春散。力竭回城保留已拾装备与任务进度。
+
+Vendors unlock higher tiers of basic stock at levels 4, 8, and 12. Rare, epic, and legendary items drop in battle, with selected fixed story rewards. At levels 3, 7, and 11, the smith combines unequipped basic gear for the same slot, scrap and coins into gear with random bonuses. Returning to town heals you and tops up healing powder to at least three.
 
 暂停菜单可独立调整配乐和音效，或一键静音。城镇、古道和首领战使用各自的原创曲目。稀有装备穿戴后会发光，重击与乾坤圈命中带有短促震屏。浏览器启用减少动态效果时会关闭震屏。
 
@@ -52,15 +55,11 @@ The pause menu has separate music and effects controls and a global mute. Three 
 | `createSharedMaterial2D` | 受击闪光与法宝着色 · impact flashes and artifact tint | `src/view.mjs` |
 | `Scope`、纹理租约 · Scope and texture leases | 界面切换和场景图集的生命周期 · texture and view lifetime | `src/art/paint.mjs`, `src/view.mjs` |
 
-## 已验证 · Verified
+## 验收 · Verification
 
-25 项规则和存档测试通过。正常操作模拟走完两章、两条支线、三家买卖和两轮演武，验证旧存档护符迁移、法宝卸下保存、材料采集与主线奖励去重。引擎和设备验收记录见 [验收记录](QUALITY.md)。
+版本、设备、操作流程和数值验证记录见 [验收记录](QUALITY.md)。
 
-Twenty-five rules and persistence tests passed. A normal-action simulation completed both chapters, both side quests, transactions at the three stores and two repeat runs. Tests cover legacy gear and skill saves, resources and one-time rewards. See [Quality](QUALITY.md) for devices and render checks.
-
-14 项规则与存档测试通过。Windows PC（Edge）与三星 Fold7 横屏（Chrome）均使用 WebGL2，从新档正常玩到复命，并刷新网页续档，保留任务、装备和背包。完整操作和帧间隔见 [验收记录](QUALITY.md)。
-
-Fourteen rule and persistence tests passed. Windows PC (Edge) and a physical Galaxy Z Fold7 in landscape (Chrome) completed the quest from a fresh save on WebGL2 and restored their quest, gear and bag after reloading the page. See [Quality](QUALITY.md) for the route and frame cadence.
+See [Quality](QUALITY.md) for versioned device runs, gameplay routes, and balance checks.
 
 ## 已知问题 · Known issues
 
@@ -80,9 +79,9 @@ Click movement routes around solid rectangles and diagonal speed is normalized. 
 
 ## 未完成 · Unfinished
 
-当前故事推进到铜关两章，旧营可以重复挑战。人物多职业与铜关之后的剧情属于后续内容。
+故事目前以攻破朝歌外城结束。朝歌城内的剧情和跨设备存档尚未制作。
 
-The current story covers two chapters through Bronze Pass and a repeatable camp. Additional classes and later story chapters are future work.
+The current campaign ends at Chaoge's outer city. Its inner-city story and cross-device saves remain future work.
 
 ## 目录结构 · Layout
 

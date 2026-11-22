@@ -6,13 +6,13 @@ export const GAMES = [
   {
     id: 'fengshen', folder: 'FengshenChronicle', kind: '2d',
     scenes: [
-      { zh: '西岐城 · 姜尚授命', en: 'Xiqi · Jiang Shang’s commission' },
-      { zh: '西岐城 · 五部位换装', en: 'Xiqi · Equipped gear and artifact' },
-      { zh: '演武旧营 · 铜关卫盾战利品', en: 'Training camp · Vanguard shield loot' },
+      { zh: '丹霞渡 · 断潮君的空心潮环', en: 'Danxia Ford · The Tidebreaker’s ring' },
+      { zh: '西岐 · 玄甲、方士、游侠择业', en: 'Xiqi · Choose Vanguard, Ritualist, or Ranger' },
+      { zh: '朝歌外城 · 镇门将的十字火线', en: 'Chaoge outer city · The Marshal’s crossfire' },
     ],
     zh: '封神 · 西岐战纪', en: 'Fengshen Chronicle',
     genre: { zh: '单机动作角色扮演', en: 'Single-player action RPG' },
-    summary: { zh: '从西岐追查古道与铜关的异变，完成主支线、换装交易，在演武旧营反复迎战。', en: 'Investigate the trail and Bronze Pass, choose quest rewards, trade and equip gear, and fight repeatable camp battles.' },
+    summary: { zh: '操纵玄甲、方士或游侠，打过四章与多阶段首领，刷取战利品并精锻行装。', en: 'Fight four chapters and multi-phase bosses as a Vanguard, Ritualist, or Ranger. Find rare loot and forge better gear.' },
     features: [
       {
         title: { zh: '原生 2D 与 WebGL2', en: 'Native 2D and WebGL2' },
@@ -26,7 +26,7 @@ export const GAMES = [
       },
       {
         title: { zh: '动态图形与共享材质', en: 'Vector graphics and shared materials' },
-        description: { zh: '战斗落点用白鹭 Graphics 绘制，乾坤圈和命中反馈复用共享 2D 材质。', en: 'Egret Graphics draws telegraphs. Ring and hit effects reuse shared 2D materials.' },
+        description: { zh: '白鹭 Graphics 绘制潮环、交叉火线和安全区，乾坤圈和命中反馈复用共享 2D 材质。', en: 'Egret Graphics draws tide rings, intersecting fire lines and safe areas. Ring and hit effects reuse shared 2D materials.' },
         source: 'src/view.mjs',
       },
     ],
