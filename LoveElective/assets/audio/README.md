@@ -1,6 +1,16 @@
 # 《心动选修课》剧情与日常声音素材
 
-voice/manifest.json 收录 37 句繁体中文关键对白，其中白露特别篇 22 句，林夏泳池夜练、唐蜜睡衣小聚和白露泡汤后公共休息室各 5 句。编号与剧情节点保持一致。对白文本为本项目原创。语音使用 PrimeTTS v2.1 的 Xinran 台湾国语预设离线合成，以分句、停顿与语速调整表达。五位女性角色使用同一女性合成预设，林夏的节奏较明快，唐蜜稍轻快，白露较舒缓。这些预录文件为合成配音。
+voice/manifest.json 收录 37 句繁体中文关键对白，其中白露特别篇 22 句，林夏泳池夜练、唐蜜睡衣小聚和白露泡汤后公共休息室各 5 句。角色、台词和剧情编号保持一致。
+
+配音先为五位角色分别设计了原创合成声线，再以各自的试音固定声线，重新制作全部对白。按台湾国语日常对话安排重音、气口和停顿。
+
+| 角色 | 声音与表演 |
+| --- | --- |
+| 林夏 | 明亮爽快，邀约轻扬，说到安全和承诺时落得稳 |
+| 唐蜜 | 轻亮带笑，调侃后留半拍，认真说话时收住笑意 |
+| 白露 | 柔和偏低，犹豫、释然和道谢各有节奏 |
+| 沈清歌 | 平稳清楚，答应帮忙与说明界线时轻重分明 |
+| 叶知微 | 节拍利落，推理先说重点，笑意藏在末句 |
 
 四首场景配乐为本项目原创编曲及代码合成，制作时使用自定义琴音、拨弦、柔和铺底和短空间反射。源码在 music/compose.py。文件为 44.1 kHz 双声道 MP3，128 kbps，分别约 80、69、74、83 秒。编码保留延迟与尾部补偿，制作时解码校验了帧数和循环接缝。音乐与语音分别按剧情需要加载。
 
@@ -11,20 +21,15 @@ voice/manifest.json 收录 37 句繁体中文关键对白，其中白露特别�
 | bailu-zero-warm | 换装、观星和新的观测纪录，暖色钢琴和柔和拨弦 |
 | campus-social-day | 日常校园与公共休息室小聚，轻快钢琴、拨弦和柔和刷奏 |
 
-语音、音乐和音效由白鹭原生混音器的独立声道播放。对白播放时自动降低配乐，对白结束或被跳过后恢复。声音面板中的音量和静音设置会保存在当前浏览器。
+语音、音乐和音效由白鹭原生混音器的独立声道播放。配乐在对白开始时以 40 毫秒压低，待语音结束 120 毫秒后再用 360 毫秒恢复。下一句或重听会取消正在等待的恢复。声音面板中的音量和静音设置会保存在当前浏览器。
 
 常规校园默认播放 campus-social-day。网络未能提供该文件时，原有短合成曲继续作为备用。已经解码的音乐保留当前曲目与淡入曲目，旧曲退出后释放，避免多场景游玩时积累长音轨。
 
 ## 制作来源
 
-- 语音模型使用 [PrimeTTS v2.1](https://huggingface.co/Luigi/PrimeTTS/tree/main/v21_mbistft_16k)。其模型页声明 Apache-2.0，并列出 Xinran 为台湾国语女性合成预设。
-- 既有本机制作套件取自 [PrismVoice-TW f2ce751](https://huggingface.co/PrismLive/PrismVoice-TW/tree/f2ce751a6bd50794c7df4c29d3a49cec4b781b9c)。模型与词典只在制作时使用。
-- 注音词典源自 [McBopomofo](https://github.com/openvanilla/McBopomofo)，MIT 许可，版权声明保存在 voice/LICENSE-McBopomofo.txt。
-- 模型 SHA-256 为 0cf64ad010a9b92201222533900ece31562a0181e7a8e435e5de83b3d72b4bdf。词典 SHA-256 为 0b70bde59e385b0387d733fdc095424962171eb6c24ec3197f038a3eda077a6d。
-- 制作环境使用 Python、NumPy、ONNX Runtime 和 LAME。音乐生成不使用外部录音、乐曲或采样素材。模型文件、Python 依赖和 WAV 制作母带保留在制作环境。
+- 原创试音使用 [Qwen3-TTS 1.7B VoiceDesign](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-1.7B-VoiceDesign)，并以 [Qwen3-TTS 0.6B Base](https://huggingface.co/Qwen/Qwen3-TTS-12Hz-0.6B-Base) 复用各角色的合成参考音色。两者模型页均声明 Apache-2.0。
+- 制作时使用本机 Python、PyTorch 与 FFmpeg。对白成品为 24 kHz 单声道 MP3。游戏发布包含 MP3，不需要在玩家设备安装语音模型。
 
 ## Audio production
 
-The 37 key lines include 22 for the White Dew episode and 15 for three optional campus social scenes. They are original dialogue synthesized offline using the Taiwanese Mandarin Xinran preset from PrimeTTS v2.1. Clause timing, speaking rate and dynamics shape the delivery. The five women use this female synthetic preset with delivery variations. Four original scene scores are composed and synthesized in code, with the reproducible score in music/compose.py. The Egret mixer plays music, voice and effects on independent buses and lowers music during dialogue.
-
-PrimeTTS declares Apache-2.0. The authoring lexicon is derived from MIT-licensed McBopomofo. The game distributes the rendered MP3 clips and original composition source.
+The 37 key lines include 22 for the White Dew episode and 15 for three optional campus social scenes. Five original synthetic voice profiles were designed with Taiwanese Mandarin delivery in mind and reused for the corresponding characters. Timing, emphasis and dynamics follow the dialogue. Qwen3-TTS VoiceDesign and Base are used for local audio production, and both model cards declare Apache-2.0. The game distributes 24 kHz mono MP3 dialogue, four original scene scores and the music composition source.
