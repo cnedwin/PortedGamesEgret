@@ -123,9 +123,9 @@ On the night of the Star Festival you may confess to any senior at 55 affection 
 
 ## 美术与画面 · Art direction
 
-封面、九位角色的剧情立绘、校园地图、场景、前景装饰和商品图采用为本 Demo 生成的插画。对白使用角色的默认造型插画。换装预览将独立绘制的角色头部与衣服、配饰分层组合，染色和换发型也能即时显示。场景把背景、人物和前景放在不同深度，保留昼夜色调与视差。
+封面、九位角色的立绘、校园地图、场景、前景装饰和商品图采用为本 Demo 生成的插画。对白使用完整立绘。七位学姐的日常装与约会装各有独立插画，泳池练习、睡衣聚会、浴场茶室和观星各有自己的活动立绘。活动图的服装染色只影响布料，保留原有脸部、发色和光影。自由叠穿时，对白选用最接近的完整造型插画，逐件搭配和即时染色可在衣橱查看。场景以分层视差和昼夜光线呈现。
 
-The cover, nine character portraits, campus map, locations, foreground props, and catalogue art were generated for this demo. Dialogue uses the illustrated default looks. The dress-up system layers illustrated heads with clothing and accessories and updates dyes and hairstyles live. Background, characters, and foreground sit on different depth planes with parallax and time-of-day lighting.
+The cover, nine character portraits, campus map, locations, foreground props, and catalogue art were generated for this demo. Dialogue uses full illustrations, with separate casual and date looks for all seven seniors and activity portraits for the pool, pyjama gathering, tea lounge, and stargazing. Activity fabric takes dye without affecting the face or hair. Dialogue picks the closest illustrated silhouette for mixed outfits, and the wardrobe shows each individual piece and dye live. The scene uses layered parallax and time-of-day lighting.
 
 手机使用横屏可完整观看舞台式界面。
 

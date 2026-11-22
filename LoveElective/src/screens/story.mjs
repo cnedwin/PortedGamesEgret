@@ -1,7 +1,6 @@
 // Plays a story script (see src/story/chapters.mjs for the step format):
 // backgrounds, a senior on screen, the dialogue box with text that writes
 // itself out, choices, and the effects of those choices on the save.
-import { hasStoryPortrait } from '../art/character-art.mjs';
 import { W } from '../engine/stage.mjs';
 import { THEME, FONT, SERIF, wrapText } from '../engine/ui.mjs';
 import { rgba, rrect, poly } from '../art/draw.mjs';
@@ -261,7 +260,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       } else if (op === 'th') {
         await say(L(['我', 'Me']), THEME.sky, `（${L([a, b])}）`, { color: THEME.soft, italic: game.lang !== 'zh' });
       } else if (op === 'pf') {
-        if (!skipping && shownActor !== 'professor' && hasStoryPortrait({ id: 'professor' })) {
+        if (!skipping && shownActor !== 'professor') {
           shownActor = 'professor';
           await world.showActor({ id: 'professor' }, { view: 'bust', x: W / 2 });
         }
