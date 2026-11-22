@@ -1,5 +1,6 @@
 import { Bitmap, Sprite, copyImageData2DPixels, createAssetRef, createAssetType, createEngineForProfile, createImageData2D, createTexture, isTexture } from '@egret/engine';
 import { createBrowserKeyboardInput } from '@egret/engine/web/keyboard';
+import { createBrowserGamepadInput } from '@egret/engine/web/gamepad';
 import { createTextRasterCache } from '@egret/engine/text';
 import { createCanvasTextRasterProvider } from '@egret/engine/web/text';
 import { createSharedWebGL2Host } from '@egret/engine/webgl2';
@@ -2097,7 +2098,7 @@ async function openMap(game, destination) {
     dirty = true;
   }, { signal: scope.signal });
   engine.stage.on(keyboard.events.cancel, () => { held = undefined; dirty = true; }, { signal: scope.signal });
-  attachGamepadInput(canvas, { keyboard, signal: listeners.signal, getMode() {
+  attachGamepadInput(canvas, { keyboard, createInput: createBrowserGamepadInput, signal: listeners.signal, getMode() {
     if (closing) return undefined;
     if (canvas.dataset.trainer === 'team' && menu.active) return 'team';
     if (battle && battle.model.state.result === null && !canvas.dataset.battlePrompt) return 'battle';

@@ -108,10 +108,13 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 | `@egret/engine/text` `createTextField`、`createTextRasterCache` | 对白、战斗伤害数字 · dialogue and battle damage numbers | `web/opening-dialogue.mjs`、`web/battle-view.mjs` |
 | `@egret/engine/web/text` `createCanvasTextRasterProvider` | 用浏览器字体栅格化文字 · rasterizing text with the browser's fonts | `web/main.mjs` |
 | `@egret/engine/web/keyboard` `createBrowserKeyboardInput` | 大地图和战斗的键盘输入 · keyboard input on the map and in battle | `web/main.mjs` |
+| `@egret/engine/web/gamepad` `createBrowserGamepadInput` | 浏览器手柄采样，接入 JY 的行走、菜单和战斗按键 · browser controller sampling feeding JY's movement, menu and battle bindings | `web/main.mjs`、`web/gamepad-input.mjs` |
+| `Texture3D(canvas, { flipY: true })` | 直接上传大地图地标和船尾浪花的 Canvas 贴图 · direct canvas uploads for map markers and the boat wake | `web/jyx2/scene/native-world-canvas-texture.mjs` |
 | `Bitmap`、`NineSliceBitmap`、`createSharedMaterial2D` | 立绘、对白框和战斗界面 · portraits, the dialogue frame and the battle interface | `web/opening-dialogue.mjs`、`web/battle-view.mjs` |
 
 ## 已验证 · Verified
 
+- 引擎副本 `c1570b0`：59 项 Node 测试通过。Windows Edge 使用同一套原版数据完成 691 开场、692 练功战（战斗 48）与奖励读档；实际 WebGL2 大地图可切换远近、出海和返岸。 · On `c1570b0`, 59 Node tests pass. Windows Edge runs opening 691, training fight 692 (battle 48), rewards and reload from the same original data, plus World3D zoom, sailing and return to shore.
 - 2026-11-21 引擎副本升级到 `b5628eb` 后：59 项 Node 测试通过；无头 Chromium 下下载原版数据、开始新游戏、第一个 3D 房间画出并走动，无控制台错误，与升级前相同。 · After the engine update: 59 tests pass, and a new game starts and walks in the first 3D room with a clean console, as before.
 - 2026-11-21 在提交 `fc1dacb`、Node 22.23.4 下运行 `node --test test/*.test.mjs`：59 项全部通过（原版数据格式、导航、事件、招募、经典战斗、原版存档、手柄映射）。 · `node --test` at commit `fc1dacb` with Node 22.23.4: all 59 tests pass.
 - 2026-11-20 `node tools/quality.mjs JY` 在无头 Chromium + SwiftShader 下测了 16 个自动项，结果见 [QUALITY.md](QUALITY.md)。首屏一项量的是第一次下载并检查约 37.5 MB 原版数据的过程。 · The 16 automatic quality items in headless Chromium; the start-up item measured the first download and check of the original data.
@@ -151,6 +154,6 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 ## 引擎副本 · Engine copy
 
-引擎副本取自 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 提交 `b5628eb9997b67cf6163a388f5aa06f321f3833a`，由引擎仓库的 `tools/vendor-game.mjs` 复制，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
+引擎副本由 [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) 主线提交 `c1570b0878d1be8716d06320206f51a62f9e3f32` 通过上游的 `node tools/build.mjs` 构建。浏览器服务工作线程和本地服务按包的导出清单加载，见 [vendor/SOURCE.md](vendor/SOURCE.md)。
 
-The engine copy is from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) commit `b5628eb9997b67cf6163a388f5aa06f321f3833a`, copied by the engine's `tools/vendor-game.mjs`; see [vendor/SOURCE.md](vendor/SOURCE.md).
+The engine copy was built from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `c1570b0878d1be8716d06320206f51a62f9e3f32` using the upstream `node tools/build.mjs`. The service worker and local server load the package exports. See [vendor/SOURCE.md](vendor/SOURCE.md).

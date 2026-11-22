@@ -19,6 +19,8 @@ export interface PlayOptions {
     readonly parent?: HTMLElement;
     /** A canvas of the page to draw on, as it is placed there. Without it one is made and fitted. */
     readonly canvas?: HTMLCanvasElement;
+    /** Set false for a silent game or an application-owned mixer. Skips the built-in context and sound preparation. */
+    readonly audio?: boolean;
     /** Builds the game. Updates begin when it has returned, or when the promise it returns has resolved. */
     readonly setup?: (game: PlayGame) => void | Promise<void>;
     /** One step of the game, with the seconds since the step before. */

@@ -86,6 +86,18 @@ export { GpuParticles3D, createGpuParticles3D, type GpuParticlesOptions3D } from
 export { VolumetricFog3D, createVolumetricFog3D, type VolumetricFogOptions3D } from './VolumetricFog3D.js';
 export { createGeometryBuilder3D, linearColor3D, projectToViewport3D } from './GeometryBuilder3D.js';
 export type { GeometryBuilder3D, GeometryPart3D, ViewportPoint3D } from './GeometryBuilder3D.js';
+export { SdfShape3D, createSdfGeometry3D, sdfBox, sdfCapsule, sdfCone, sdfCylinder, sdfDisplace, sdfEllipsoid, sdfExtrude, sdfIntersect, sdfLathe, sdfMirror, sdfPattern, sdfRound, sdfShell, sdfSphere, sdfSubtract, sdfTorus, sdfUnion } from './Sdf3D.js';
+export type { SdfDisplaceOptions3D, SdfGroupOptions3D, SdfMeshOptions3D, SdfOptions3D, SdfPatternOptions3D } from './Sdf3D.js';
+export { simplifyGeometry3D } from './Simplify3D.js';
+export { exportGlb3D } from './Export3D.js';
+export { createSdfRig3D } from './Rig3D.js';
+export { createSdfLod3D } from './SdfLod3D.js';
+export { createSurfaceMaterial3D, surfaceShaderSources3D } from './SurfaceMaterial3D.js';
+export type { SurfaceKind3D, SurfaceMaterialOptions3D } from './SurfaceMaterial3D.js';
+export type { SdfLodOptions3D } from './SdfLod3D.js';
+export type { SdfBone3D, SdfPoseKey3D, SdfRig3D, SdfRigOptions3D } from './Rig3D.js';
+export type { GlbExportOptions3D } from './Export3D.js';
+export type { SimplifyOptions3D, SimplifyResult3D } from './Simplify3D.js';
 export { retargetAnimationClip3D } from './Retarget3D.js';
 export type { RetargetOptions3D } from './Retarget3D.js';
 //# sourceMappingURL=index.d.ts.map

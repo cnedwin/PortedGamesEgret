@@ -143,7 +143,7 @@ export interface BrowserGame {
     /**
      * Gives a display object a hit area at least `cssPixels` (44 unless given) square as the canvas is shown now, centred
      * on what it draws and never smaller than it, so a small icon is as easy to press as a finger needs. Call it again
-     * after the node, or the canvas, changes size. Returns the area, in the node's own units.
+     * after the node, its ancestors or the canvas change transform or size. Returns the area, in the node's own units.
      */
     padHitArea(node: DisplayObject, cssPixels?: number): {
         readonly x: number;
