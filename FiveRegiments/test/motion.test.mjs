@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { test } from 'node:test';
-import { createMotion, heavyFootwork, impactWeight, interpolateDirection, swingPhase } from '../src/view/motion.mjs';
+import { createMotion, heavyFootwork, impactWeight, interpolateDirection, skillTrailSegment, swingPhase, TIGER_SWORD } from '../src/view/motion.mjs';
 import { ORDER } from '../src/sim/regiments.mjs';
 
 const at = (p) => new URL('../' + p, import.meta.url);
@@ -88,4 +88,17 @@ test('long-axe footwork transfers weight across the stance and settles after con
   assert.ok(heavyFootwork(2, 'O')[2] > contact[2], 'overhead puts more weight through the knees');
   assert.equal(contact[0], -opposite[0]);
   assert.deepEqual(contact.slice(1), opposite.slice(1));
+});
+
+test('the Tiger Step blade reaches each contact on the existing strike tick', () => {
+  for (const [keys, expected] of [[TIGER_SWORD.spin, [0.3]], [TIGER_SWORD.chain, [0.18, 0.38, 0.58]]]) {
+    assert.deepEqual(keys.filter(([, , pose]) => pose === 1).map(([time]) => time), expected);
+    assert.ok(keys.every(([time], i) => i === 0 || time > keys[i - 1][0]));
+    assert.equal(keys[0][1], 'ready');
+    assert.equal(keys.at(-1)[1], 'ready');
+  }
+  assert.equal(skillTrailSegment({ kind: 'skill', id: 'spin', t: 0.1 }), null);
+  assert.equal(skillTrailSegment({ kind: 'skill', id: 'spin', t: 0.3 }), 0);
+  assert.deepEqual([0.18, 0.38, 0.58].map((t) => skillTrailSegment({ kind: 'skill', id: 'swing', t })), [1, 2, 3]);
+  for (const t of [0.28, 0.48]) assert.equal(skillTrailSegment({ kind: 'skill', id: 'swing', t }), null);
 });

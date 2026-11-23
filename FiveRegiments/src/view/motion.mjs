@@ -19,6 +19,25 @@ const SWING_TEMPO = {
   axe: [0.74, 0.55]
 };
 
+// Time, direction, and the weapon pose (load, contact, or follow-through).
+export const TIGER_SWORD = {
+  spin: [[0, 'ready'], [0.14, 'R', 0], [0.30, 'R', 1], [0.43, 'R', 2], [0.58, 'ready']],
+  chain: [[0, 'ready'], [0.09, 'R', 0], [0.18, 'R', 1], [0.23, 'R', 2], [0.30, 'L', 0],
+    [0.38, 'L', 1], [0.43, 'L', 2], [0.50, 'R', 0], [0.58, 'R', 1], [0.67, 'R', 2], [0.83, 'ready']]
+};
+const contactsOf = (keys) => keys.filter(([, , pose]) => pose === 1).map(([time]) => time);
+const spinContacts = contactsOf(TIGER_SWORD.spin);
+const chainContacts = contactsOf(TIGER_SWORD.chain);
+
+/** A short blade trail during each committed swing, without joining it to the next load. */
+export function skillTrailSegment(action) {
+  if (action?.kind !== 'skill') return null;
+  if (action.id === 'spin' && Math.abs(action.t - spinContacts[0]) >= 0.075) return null;
+  if (action.id !== 'swing') return 0;
+  const index = chainContacts.findIndex((time) => Math.abs(action.t - time) < 0.054);
+  return index < 0 ? null : index + 1;
+}
+
 /**
  * The four spans run from ready to loaded, contact, follow-through and back to ready.
  * Logical contact stays on strikeAt, including when a held swing releases.
