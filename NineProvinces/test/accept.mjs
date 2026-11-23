@@ -108,6 +108,11 @@ try {
   await until(page, () => window.egretGame.screen === 'battle', 10);
   await page.waitForTimeout(600);
   check(await state(page, () => window.egretGame.battle.phase === 'deploy' && document.querySelector('.bDeploy') !== null), 'the battle opens on deployment');
+  check(await state(page, () => {
+    const { battle, state } = window.egretGame;
+    const side = battle.battle.setup.factions.indexOf(state.player);
+    return battle.battle.units.filter(unit => unit.side === side).every(unit => !unit.autoTactic);
+  }), 'taking command leaves allied tactics in the player’s hands');
   await page.locator('.bSide.ours .ucard').first().press('Enter');
   check(await state(page, () => window.egretGame.battle.phase === 'deploy'), 'Enter on a focused unit card selects the unit without starting the battle');
   await page.click('.bDeploy .btn.main');
@@ -129,6 +134,10 @@ try {
       return rect.height >= 44 && rect.left >= bounds.left && rect.right <= bounds.right;
     });
   }), 'tactic buttons fit a scrollable vertical rail in short landscape');
+  check(await state(page, () => {
+    const center = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+    return Boolean(center && !center.closest('#battleHud .bCommand, #battleHud .bSide'));
+  }), 'the battleground center stays available beside the command rail in short landscape');
   await page.setViewportSize({ width: 1280, height: 720 });
   await state(page, () => window.egretGame.battle?.autoFinish());
   await until(page, () => window.egretGame.screen === 'play' && window.egretGame.app.dialogs.name === 'battleResult', 20);
