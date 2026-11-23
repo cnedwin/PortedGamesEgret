@@ -85,7 +85,7 @@ const assignments = {
   },
   '208': {
     caocao: 'xunyu,xunyou,chengyu,xuhuang,zhangliao,yujin,zhanghe,jiaxu,manchong,liuye,caopi,simayi,liucong,caimao,zhangyun,xushu',
-    liubei: 'guanyu,zhangfei,zhaoyun,zhugeliang,sunqian,jianyong,mizhu,mifang,liuqi',
+    liubei: 'guanyu,zhangfei,zhaoyun,zhugeliang,sunqian,jianyong,mizhu,mifang,liuqi,chendao,guanping,liufeng,yiji,zhoucang,huangyueying,zhugejun',
     sunjian: 'zhouyu,lusu,zhangzhao,zhanghong,taishici,huanggai,chengpu,handang,zhoutai,lvmeng,ganning,luxun,lingtong',
     liuyan: 'fazheng,zhangsong,mengda,wuyi,huangquan,dengzhi', mateng: 'machao,madai,pangde',
     free: 'huangzhong,weiyan,pangtong,jiangwan,feiyi,liaohua'
@@ -166,7 +166,10 @@ export function applyScenario(state, spec) {
       else if (original && groups[shifted[original]]) f = shifted[original];
       else if (year >= 200 && g.camp === 'W') f = 'caocao';
       else if (year >= 200 && g.camp === 'U') f = 'sunjian';
-      else if (year >= 208 && g.camp === 'S') f = 'liubei';
+      // A later Shu allegiance is not evidence of service at Xiakou in 208.
+      // Keep that one-town opening to its named followers; future Yi/Jing
+      // talent remains discoverable rather than drawing the entire court's pay.
+      else if (year >= 219 && g.camp === 'S') f = 'liubei';
     }
     if (f && f !== 'free' && groups[f]) {
       const cities = groups[f].cities;

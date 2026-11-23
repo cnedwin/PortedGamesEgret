@@ -8,6 +8,7 @@
 // hands. Each time the view moves, the part in sight is cut from the two and the names are written over it.
 import { COAST, ISLANDS, LAKES, PROVINCE_LABELS, RANGES, REGIONS, RIVERS } from '../data/geography.mjs';
 import { LINKS, MAP, NODES, PROVINCES, project } from '../data/map.mjs';
+import { territoryPixels } from './territory.mjs';
 
 export const SERIF = '"Noto Serif SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", "Noto Sans CJK SC", serif';
 export const KAI = '"KaiTi", "STKaiti", "Kaiti SC", "Noto Serif SC", "Noto Sans CJK SC", serif';
@@ -256,79 +257,11 @@ function peak(g, x, y, h, random) {
   g.stroke();
 }
 
-/** Which place each patch of land belongs to (nearest by distance), on a coarse grid; sea is -1. */
-export function landOwnersGrid(base, cell = 6) {
-  const cols = Math.ceil(MAP.width / cell),
-    rows = Math.ceil(MAP.height / cell);
-  const sample = document.createElement('canvas');
-  sample.width = cols;
-  sample.height = rows;
-  const sg = sample.getContext('2d');
-  sg.drawImage(base, 0, 0, cols, rows);
-  const px = sg.getImageData(0, 0, cols, rows).data;
-  const ids = Object.keys(NODES),
-    grid = new Int16Array(cols * rows).fill(-1);
-  const pts = ids.map((id) => NODES[id]);
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++) {
-      const k = (r * cols + c) * 4;
-      // Sea is blue-green: its blue is above its red.
-      if (px[k + 2] > px[k] + 6) continue;
-      const x = c * cell + cell / 2,
-        y = r * cell + cell / 2;
-      let best = -1,
-        bd = Infinity;
-      for (let i = 0; i < pts.length; i++) {
-        // Passes and ferries hold less ground than cities.
-        const w = pts[i].kind === 'city' ? 1 : 1.7;
-        const d = ((pts[i].x - x) ** 2 + (pts[i].y - y) ** 2) * w;
-        if (d < bd) (bd = d), (best = i);
-      }
-      if (bd < 170 * 170) grid[r * cols + c] = best;
-    }
-  return { grid, cols, rows, cell, ids };
-}
-
-/** Paint the powers' lands on a small canvas from who holds each place. */
-export function paintLands(lands, ownerOf, colourOf) {
-  const { grid, cols, rows, ids } = lands;
+/** Paint the same territorial parcels shared by the minimap and the 3D map. */
+export function paintLands(lands, owners, colourOf) {
+  const { cols, rows } = lands;
   const canvas = lands.canvas ?? (lands.canvas = Object.assign(document.createElement('canvas'), { width: cols, height: rows }));
-  const g = canvas.getContext('2d');
-  const image = g.createImageData(cols, rows),
-    px = image.data;
-  const owners = ids.map((id) => ownerOf(id));
-  const rgb = {};
-  for (const o of owners) if (o && !rgb[o]) rgb[o] = colourOf(o);
-  for (let i = 0; i < grid.length; i++) {
-    const n = grid[i];
-    if (n < 0) continue;
-    const o = owners[n];
-    if (!o) continue;
-    const c = rgb[o],
-      k = i * 4;
-    // A border: a neighbour belongs to someone else.
-    const col = i % cols,
-      row = (i / cols) | 0;
-    let edge = false;
-    for (const j of [i - 1, i + 1, i - cols, i + cols]) {
-      if (j < 0 || j >= grid.length || (j === i - 1 && col === 0) || (j === i + 1 && col === cols - 1)) continue;
-      const m = grid[j];
-      if (m >= 0 && owners[m] !== o) edge = true;
-    }
-    px[k] = c[0];
-    px[k + 1] = c[1];
-    px[k + 2] = c[2];
-    px[k + 3] = edge ? 170 : 62;
-    void row;
-  }
-  g.putImageData(image, 0, 0);
-  // Soften the stepped edges once, into a canvas twice the size.
-  const soft = lands.soft ?? (lands.soft = Object.assign(document.createElement('canvas'), { width: cols * 2, height: rows * 2 }));
-  const sg = soft.getContext('2d');
-  sg.clearRect(0, 0, soft.width, soft.height);
-  sg.filter = 'blur(1.2px)';
-  sg.imageSmoothingEnabled = true;
-  sg.drawImage(canvas, 0, 0, soft.width, soft.height);
-  sg.filter = 'none';
-  return soft;
+  const pixels = territoryPixels(lands, owners, colourOf);
+  canvas.getContext('2d').putImageData(new ImageData(pixels, cols, rows), 0, 0);
+  return canvas;
 }

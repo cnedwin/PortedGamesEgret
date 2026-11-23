@@ -3,7 +3,8 @@
 // The land: tiles loaded around the view (64 units square, a sample every unit), their heights and colours worked out
 // by sim/land.mjs; the ground material adds the fine grain of grass, earth and rock per pixel, then draws the thin lines
 // of the hex grid, the hex under the pointer and the chosen one, and the bounds of the battlefield during a battle.
-import { createCustomShader3D, createHeightField3D, createStandardMaterial3D, createTerrainStream3D } from '@egret/engine/world3d';
+import { createCustomShader3D, createHeightField3D, createStandardMaterial3D, createTerrainStream3D, Texture3D } from '@egret/engine/world3d';
+import { MAP, project } from '../data/map.mjs';
 import { HEX_H, HEX_R, HEX_W } from '../sim/hexgrid.mjs';
 import { landAt } from '../sim/land.mjs';
 
@@ -18,9 +19,16 @@ const PAL = {
   meadow: C(111, 136, 87),
   farm: C(155, 140, 101),
   steppe: C(150, 140, 84),
-  sand: C(200, 168, 110),
+  sand: C(218, 164, 91),
+  sandShade: C(150, 95, 51),
+  duneCrest: C(236, 187, 112),
   loess: C(168, 136, 92),
-  plateau: C(132, 116, 92),
+  plateau: C(69, 89, 114),
+  scree: C(122, 140, 157),
+  basin: C(65, 115, 74),
+  basinField: C(118, 143, 83),
+  plain: C(184, 161, 103),
+  plainField: C(157, 151, 96),
   rock: C(104, 96, 88),
   snow: C(236, 238, 242),
   forest: C(49, 76, 58),
@@ -37,6 +45,23 @@ const mix = (out, c, t) => {
 };
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
 const ROCK = C(104, 96, 88);
+const SICHUAN = project(105, 30.6);
+const NORTH_PLAIN = project(116.35, 35.4);
+const GUANZHONG = project(109.05, 34.45);
+
+function zone(x, z, centre, width, depth) {
+  const d = ((x - centre.x) / width) ** 2 + ((z - centre.y) / depth) ** 2;
+  return 1 - clamp01((d - 0.43) / 0.65);
+}
+
+/** The near patterns use world coordinates without changing relief or rules. */
+function fieldPattern(x, z) {
+  const lane = (x + z * 0.28) / 11;
+  const strip = (z - x * 0.1) / 6.5;
+  const value = (Math.floor(lane) * 17 + Math.floor(strip) * 13) & 7;
+  const furrow = Math.abs(strip - Math.floor(strip) - 0.5) > 0.42;
+  return value / 11 + (furrow ? 0.3 : 0);
+}
 
 /** The ground colour at a point, linear RGB, from what the land is there and how steep. */
 export function groundColour(s, slope, x, z, out) {
@@ -49,17 +74,36 @@ export function groundColour(s, slope, x, z, out) {
   const patch = (Math.sin(x * 0.11 + Math.sin(z * 0.07) * 2) + Math.sin(z * 0.13 + x * 0.03)) * 0.25 + 0.5;
   mix(out, patch > 0.55 ? PAL.meadow : PAL.farm, 0.25);
   if (s.steppe > 0) mix(out, PAL.steppe, s.steppe);
-  if (s.desert > 0) mix(out, PAL.sand, s.desert);
   // The loess country west of the Taihang and the plateaux.
   const loess = clamp01((1900 - x) / 500) * (1 - south) * 0.7;
   if (loess > 0) mix(out, PAL.loess, loess * (1 - s.desert));
-  if (s.plateau > 0) mix(out, PAL.plateau, s.plateau);
+  const lowland = 1 - clamp01(s.mountain / 7 + s.plateau);
+  const basin = zone(x, z, SICHUAN, 192, 166) * lowland;
+  const plain = Math.max(zone(x, z, NORTH_PLAIN, 410, 252), zone(x, z, GUANZHONG, 163, 76)) * lowland;
+  if (basin > 0) {
+    mix(out, PAL.basin, basin * 0.93);
+    mix(out, PAL.basinField, basin * (0.15 + 0.68 * fieldPattern(x, z)) * (1 - s.forest));
+  } else if (plain > 0) {
+    mix(out, PAL.plain, plain * 0.84);
+    mix(out, PAL.plainField, plain * fieldPattern(x, z) * 0.83);
+  }
+  if (s.plateau > 0) {
+    const plateau = s.plateau * (1 - s.desert);
+    mix(out, PAL.plateau, plateau);
+    const band = Math.sin(s.height * 1.3 + Math.sin(z * 0.047 + x * 0.026) * 1.2);
+    mix(out, PAL.scree, plateau * (0.13 + 0.23 * Math.max(0, band)));
+  }
+  if (s.desert > 0) {
+    mix(out, PAL.sand, s.desert);
+    const dune = Math.sin(x * 0.22 - z * 0.11 + Math.sin(z * 0.024) * 2 + Math.sin((x + z) * 0.013));
+    mix(out, dune > 0 ? PAL.duneCrest : PAL.sandShade, s.desert * 0.64 * Math.abs(dune));
+  }
   if (s.marsh > 0) mix(out, PAL.marsh, s.marsh * 0.8);
   if (s.forest > 0) mix(out, PAL.forest, s.forest * 0.9);
   // Mountains: bare rock on steep faces, snow on the heights.
   const rock = clamp01((slope - 0.18) * 3.2) * clamp01(s.mountain / 4 + s.plateau);
   if (rock > 0) mix(out, PAL.rock, rock);
-  const snow = clamp01((s.height - 24) / 6) * (1 - clamp01((slope - 0.5) * 3));
+  const snow = clamp01((s.height - 25) / 9) * (1 - clamp01((slope - 0.5) * 3)) * (1 - s.desert);
   if (snow > 0) mix(out, PAL.snow, snow);
   // Shores and river beds.
   if (s.water === 1 || s.shore < 2) mix(out, PAL.beach, clamp01(1 - s.shore / 2) * (s.water === 1 ? 0.4 : 0.8));
@@ -100,6 +144,31 @@ vec3 hexEdge(vec2 p) {
   float e = max(q.x, q.x * 0.5 + q.y * 0.8660254) - W * 0.5;
   return vec3(-e, best);
 }
+float changedDomain(vec4 a, vec4 b) {
+  return max(step(0.05, distance(a.rgb, b.rgb)), abs(step(0.01, a.a) - step(0.01, b.a)));
+}
+float domainFrontier(vec2 atlas, vec2 px) {
+  ivec2 last = textureSize(uEmissiveMap, 0) - 1;
+  vec2 grid = atlas * vec2(last + 1);
+  ivec2 cell = ivec2(grid);
+  vec2 around = fract(grid);
+  ivec2 direction = ivec2(step(vec2(0.5), around) * 2.0 - 1.0);
+  vec2 edge = min(around, 1.0 - around);
+  vec2 width = clamp(px * 0.71, vec2(0.036), vec2(0.23));
+  vec2 falloff = 1.0 - smoothstep(width * 0.35, width * 1.65, edge);
+  if (max(falloff.x, falloff.y) <= 0.0) return 0.0;
+  vec4 current = texelFetch(uEmissiveMap, cell, 0);
+  float line = 0.0;
+  if (falloff.x > 0.0) {
+    vec4 across = texelFetch(uEmissiveMap, clamp(cell + ivec2(direction.x, 0), ivec2(0), last), 0);
+    line = falloff.x * changedDomain(current, across);
+  }
+  if (falloff.y > 0.0) {
+    vec4 across = texelFetch(uEmissiveMap, clamp(cell + ivec2(0, direction.y), ivec2(0), last), 0);
+    line = max(line, falloff.y * changedDomain(current, across));
+  }
+  return line;
+}
 vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
   vec2 p = worldPosition.xz;
   float pixel = max(length(dFdx(p)), length(dFdy(p)));
@@ -111,15 +180,20 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
   vec3 c = color.rgb * (0.8 + g3 * 0.26 + (g4 - 0.5) * 0.25) * (1.0 + ((g1 - 0.5) * 0.22 + (g2 - 0.5) * 0.18 * fine) * mix(0.6, 1.0, level));
   // Tufts on flat lowland.
   float tuft = smoothstep(0.72, 0.9, gNoise(p * 6.5 - 3.0)) * fine * level;
-  c *= 1.0 - tuft * 0.18;
+  c *= 1.0 - tuft * 0.13;
   // Date-driven seasons occupy the three unused ground uniforms. No tile rebuild.
   float vegetation = smoothstep(-0.025, 0.08, color.g - color.r * 0.82);
   c = mix(c, c * vec3(1.35, 0.89, 0.65), uCustom[3].y * vegetation * 0.72);
   c *= mix(vec3(1.0), vec3(0.93, 1.09, 0.98), uCustom[3].w * vegetation * 0.48);
   float north = 1.0 - smoothstep(1050.0, 2050.0, p.y);
-  float snow = uCustom[3].z * clamp(north * 0.78 + smoothstep(10.0, 27.0, worldPosition.y) * 0.7, 0.0, 0.92);
+  float warm = smoothstep(0.12, 0.46, c.r - c.b);
+  float snow = uCustom[3].z * clamp(north * 0.32 + smoothstep(12.0, 31.0, worldPosition.y) * 0.55, 0.0, 0.82);
+  snow *= 1.0 - warm * 0.73;
   float snowPatch = smoothstep(0.15, 0.7, g3) * smoothstep(0.55, 0.93, normal.y);
   c = mix(c, vec3(0.72, 0.78, 0.77), snow * snowPatch * step(0.35, worldPosition.y));
+  // Cold raised ground retains a slate midtone and exposes its rocky folds.
+  float upland = smoothstep(0.025, 0.19, c.b - c.r) * smoothstep(10.0, 18.5, worldPosition.y);
+  c *= mix(vec3(1.0), vec3(0.65, 0.73, 0.89), upland * (0.53 + 0.32 * (1.0 - level)));
   // The hex grid: thin pale lines, faded out when far.
   vec3 hx = hexEdge(p);
   float width = 0.025 + pixel * 0.3;
@@ -147,6 +221,23 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
     float ring = 1.0 - smoothstep(0.08, 0.22, hx.x);
     c = mix(c, vec3(1.0, 0.86, 0.45), ring * 0.85);
   }
+  // The engine binds the atlas through the emissive sampler. The material
+  // emits no light. Read in realm coordinates, independently of the tile UV.
+  if (uCustom[0].w > 0.0 && uCustom[3].x < 0.5) {
+    vec2 atlas = p / vec2(${MAP.width.toFixed(1)}, ${MAP.height.toFixed(1)});
+    vec2 territoryPixel = fwidth(atlas) * vec2(textureSize(uEmissiveMap, 0));
+    if (all(greaterThanEqual(atlas, vec2(0.0))) && all(lessThan(atlas, vec2(1.0)))) {
+      vec4 domain = texture(uEmissiveMap, atlas);
+      float light = clamp(dot(c, vec3(0.299, 0.587, 0.114)), 0.0, 1.1);
+      vec3 ink = domain.rgb * (0.9 + light * 0.55) + vec3(light * 0.09);
+      float held = smoothstep(0.06, 0.34, domain.a);
+      float rim = smoothstep(0.53, 0.72, domain.a);
+      c = mix(c, ink, held * 0.37 * uCustom[0].w);
+      // At the frontier, draw a narrow line in screen pixels instead of a broad band.
+      float border = domain.a > 0.54 ? domainFrontier(atlas, territoryPixel) : 0.0;
+      c *= 1.0 - (rim * 0.11 + border * 0.43) * uCustom[0].w;
+    }
+  }
   return vec4(c, color.a);
 }`;
 
@@ -156,7 +247,10 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
  */
 export function createLand(scene, { quality = 'medium', onTile } = {}) {
   const material = createStandardMaterial3D({ vertexColors: true, roughness: 0.92, metallic: 0 });
-  material.shader = createCustomShader3D({ key: 'nine-ground', glsl: GROUND_GLSL });
+  const atlas = new Texture3D({ width: 1, height: 1, data: new Uint8Array(4) },
+    { wrapS: 'clamp', wrapT: 'clamp', mipmaps: false });
+  material.emissiveMap = atlas;
+  material.shader = createCustomShader3D({ key: 'nine-ground-domains', glsl: GROUND_GLSL });
   const u = material.shader.uniforms;
   u.set([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
   // Each tile's colours are worked out with its heights, in one pass over the land, and read back as its chunks are built.
@@ -222,6 +316,12 @@ export function createLand(scene, { quality = 'medium', onTile } = {}) {
   return {
     stream,
     material,
+    setTerritory(source) {
+      atlas.setSource(source);
+    },
+    setTerritoryOpacity(opacity) {
+      u[3] = opacity;
+    },
     /** Update palette only: streamed geometry and simulation terrain stay unchanged. */
     setSeason(season) {
       u[13] = season.autumn;

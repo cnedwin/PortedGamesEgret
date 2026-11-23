@@ -10,6 +10,8 @@ import { createGame, power } from '../sim/world.mjs';
 import { SCENARIOS, scenarioOf } from '../sim/scenarios.mjs';
 import { normalizeRoster } from '../custom-officers.mjs';
 import { showOfficerRoster } from './officers.mjs';
+import { customFactionOptions, validateCustomFaction } from '../sim/custom-faction.mjs';
+import { freshFounding, reconcileFounding, foundingFields, foundingSubmission, foundingErrorText } from './founding.mjs';
 import { nm, num, t } from '../i18n.mjs';
 import { generalName, placeName } from '../view/names.mjs';
 import { $, button, choice, clear, face, h, seal } from './dom.mjs';
@@ -51,12 +53,23 @@ export function showSetup(app, pickedBranch = null) {
   app.wake();
   app.map.setDrift(null);
   app.pickFaction = (id) => {
+    if (pick.mode === 'custom') return;
     if ((pick.scenario === '184' && BRANCHES[pick.branch].faction) || !demo.factions[id]?.alive) return;
     pick.faction = id;
     render();
     focus();
   };
-  const pick = { scenario: '184', branch: BRANCHES[pickedBranch] ? pickedBranch : 'caocao', faction: null, lifespan: 'history', command: true, difficulty: 'normal' };
+  app.pickCustomTown = id => {
+    if (pick.mode !== 'custom') return false;
+    if (!customFactionOptions(demo, app.officerRoster?.() ?? []).towns.some(town => town.id === id)) return false;
+    founding.town = id;
+    render();
+    focus();
+    return true;
+  };
+  const pick = { scenario: '184', mode: 'historical', branch: BRANCHES[pickedBranch] ? pickedBranch : 'caocao', faction: null, lifespan: 'history', command: true, difficulty: 'normal' };
+  const founding = freshFounding();
+  let refreshStart = () => {};
   let demo = app.demoState;
   if (demo?.scenario && demo.scenario !== '184') demo = createGame({seed:184});
   app.demoState = demo;
@@ -75,7 +88,8 @@ export function showSetup(app, pickedBranch = null) {
     const previousScroll = box.querySelector('.setupBody')?.scrollTop ?? 0;
     const focused = box.contains(document.activeElement) && document.activeElement.dataset.setupKey;
     const spec = scenarioOf(pick.scenario);
-    const fixed = pick.scenario === '184' ? BRANCHES[pick.branch].faction : null;
+    const customMode = pick.mode === 'custom';
+    const fixed = !customMode && pick.scenario === '184' ? BRANCHES[pick.branch].faction : null;
     if (fixed) pick.faction = fixed;
     pick.faction ??= 'caocao';
     clear(box);
@@ -86,7 +100,27 @@ export function showSetup(app, pickedBranch = null) {
     const chosen = demo.factions[pick.faction];
     const chosenName = chosen.name ?? FACTIONS[pick.faction];
     const roster = normalizeRoster(app.officerRoster?.() ?? []);
+    if (customMode) reconcileFounding(demo, roster, founding);
     const p = power(demo, pick.faction);
+    const customStatus = h('p.foundingStatus', { role: 'status' });
+    const start = button(t('start'), () => {
+      if (customMode) {
+        const result = validateCustomFaction(demo, foundingSubmission(founding), roster);
+        if (!result.ok) { customStatus.textContent = foundingErrorText(result.errors); return; }
+        app.newGame({ ...pick, branch: 'free', officers: normalizeRoster(app.officerRoster?.() ?? []), customFaction: result.config });
+      } else app.newGame({ ...pick, officers: normalizeRoster(app.officerRoster?.() ?? []).filter(g => selected.has(g.id)) });
+    }, { kind: 'main' });
+    start.dataset.setupKey = 'confirm-start';
+    refreshStart = () => {
+      if (!customMode) return;
+      const result = validateCustomFaction(demo, foundingSubmission(founding), roster);
+      start.disabled = !result.ok;
+      if (result.ok) {
+        const town = result.options.towns.find(item => item.id === result.config.town);
+        const ruler = result.options.officers.find(item => item.ref === result.config.ruler);
+        customStatus.textContent = [nm(town), nm(ruler), pair(['同行 ', 'Companions: ']) + result.config.companions.length].join(' · ');
+      } else customStatus.textContent = foundingErrorText(result.errors);
+    };
     box.append(
       h(
         'section.setupPanel',
@@ -98,8 +132,14 @@ export function showSetup(app, pickedBranch = null) {
             type: 'button', dataset: { setupKey: 'scenario-' + s.id }, 'aria-pressed': s.id === pick.scenario ? 'true' : 'false', onclick: () => chooseScenario(s.id)
           }, h('b', nm(s)), h('small', pair(s.about))))),
           h('p.note', pair(['地图、人才和盟约为该时点的策略快照；之后由原有规则自由推演。', 'Territory, officers and pacts form a strategic snapshot. Existing rules determine what follows.'])),
-          pick.scenario === '184' ? h('h3', t('chooseBranch')) : null,
-          pick.scenario === '184' ? h(
+          h('h3', pair(['出身', 'Your beginning'])),
+          choice([['historical', pair(['历史势力', 'Historical faction'])], ['custom', pair(['自建势力', 'Found a faction'])]], pick.mode, mode => {
+            pick.mode = mode;
+            render();
+            focus();
+          }, { setupKey: 'mode' }),
+          pick.scenario === '184' && !customMode ? h('h3', t('chooseBranch')) : null,
+          pick.scenario === '184' && !customMode ? h(
             'div.branches',
             Object.entries(BRANCHES).map(([id, br]) =>
               h(
@@ -109,7 +149,11 @@ export function showSetup(app, pickedBranch = null) {
                 h('small', pair(br.about))
               )
             )
-          ) : h('p.note', pair(['此年代使用自由历史局，不追补184年演义。', 'This era is a free campaign; the 184 story is not replayed.'])),
+          ) : customMode ? null : h('p.note', pair(['此年代使用自由历史局，不追补184年演义。', 'This era is a free campaign; the 184 story is not replayed.'])),
+          customMode ? foundingFields(app, demo, roster, founding, rerender => {
+            if (rerender) { render(); focus(); }
+            else refreshStart();
+          }, () => showOfficerRoster(app, () => { app.screen = 'setup'; render(); focus(); })) : h('div.historicalStart',
           h('h3', t('chooseFaction')),
           fixed
             ? h('p.note', t('lockedBranch', { faction: nm(FACTIONS[fixed]) }))
@@ -138,20 +182,24 @@ export function showSetup(app, pickedBranch = null) {
             h('span', h('b', nm(g)), h('small', g.age+' · '+pair(g.service==='player'?['仕官所选势力','Serve your chosen faction']:['在野登场','Begin unattached']))))))
             : h('p.dim.small', pair(['名册尚为空，可在这里登录人物。', 'Your roster is empty. Register an officer here.'])),
           button(pair(['管理武将名册', 'Manage officer roster']), () => showOfficerRoster(app, () => {app.screen='setup';render();focus();})),
+          ),
           h('h3', t('chooseRules')),
           pick.scenario !== '184' ? h('p.dim.small', pair(['年轻武将的阅历、年长武将的体能有温和修正；智略与内政不会随高龄一刀切下降。', 'Younger officers have modest experience adjustments; older officers lose some physical strength, not their strategic or administrative expertise.'])) : null,
           h('div.setting', h('span', t('lifespan')), choice([['history', t('lifeHistory')], ['fiction', t('lifeFiction')]], pick.lifespan, (v) => ((pick.lifespan = v), render()), { setupKey: 'lifespan' })),
           h('div.setting', h('span', t('command')), choice([['on', t('commandOn')], ['off', t('commandOff')]], pick.command ? 'on' : 'off', (v) => ((pick.command = v === 'on'), render()), { setupKey: 'command' })),
           h('div.setting', h('span', t('difficulty')), choice([['easy', t('easy')], ['normal', t('normal')], ['hard', t('hard')]], pick.difficulty, (v) => ((pick.difficulty = v), render()), { setupKey: 'difficulty' })),
+          customMode ? customStatus : null,
         ),
-        h('footer', button(t('back'), () => typeof app.toTitle === 'function' ? app.toTitle() : showTitle(app)), button(t('start'), () => app.newGame({ ...pick, officers: normalizeRoster(app.officerRoster?.()??[]).filter(g=>selected.has(g.id)) }), { kind: 'main' }))
+        h('footer', button(t('back'), () => typeof app.toTitle === 'function' ? app.toTitle() : showTitle(app)), start)
       )
     );
     box.querySelector('.setupBody').scrollTop = previousScroll;
+    refreshStart();
     if (focused) box.querySelector(`[data-setup-key="${CSS.escape(focused)}"]`)?.focus({ preventScroll: true });
   }
   function focus() {
-    const n = NODES[demo.factions[pick.faction].capital];
+    const n = NODES[pick.mode === 'custom' ? founding.town : demo.factions[pick.faction].capital];
+    if (!n) return;
     app.map?.focus(n.id, 90);
   }
   render();

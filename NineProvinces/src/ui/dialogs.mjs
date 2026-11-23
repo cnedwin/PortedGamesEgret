@@ -710,11 +710,15 @@ const BUILD = {
   saves(app, args, again) {
     const slots = SLOTS.map((slot) => {
       const sum = app.slotSummary(slot);
+      // A slot's banner belongs to that saved campaign, never to whichever
+      // different custom 'player' faction happens to be open behind the menu.
+      const savedFaction = sum && (sum.name ? { id: sum.faction, name: sum.name, colour: sum.colour, flag: sum.flag }
+        : FACTIONS[sum.faction] ?? { id: sum.faction, name: { zh: '自建势力', en: 'Custom banner' }, colour: sum.colour ?? 0x85643f, flag: sum.flag ?? '义' });
       return h(
         'div.slot',
         h('b', slot === 'auto' ? t('autosave') : t('slot', { n: slot })),
         sum
-          ? h('span', seal(app.state?.factions[sum.faction] ?? FACTIONS[sum.faction], 's'), ' ', factionName(null, sum.faction), ' · ', dayWords(sum.day), ' · ', t('factionCities', { n: sum.cities }))
+          ? h('span', seal(savedFaction, 's'), ' ', nm(savedFaction.name ?? savedFaction), ' · ', dayWords(sum.day), ' · ', t('factionCities', { n: sum.cities }))
           : h('span.dim', t('empty')),
         h('div.row', app.state && slot !== 'auto' ? button(t('saveHere'), () => app.act('saveSlot', slot), { small: true }) : null, sum ? button(t('loadThis'), () => app.loadSlot(slot), { small: true, kind: 'main' }) : null)
       );

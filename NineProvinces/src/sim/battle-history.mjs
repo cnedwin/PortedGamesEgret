@@ -10,7 +10,7 @@ export function createBattleRecorder(b,{interval=1,maxFrames=901}={}) {
     for(;seen<b.events.length;seen++)if(events.length<6000)events.push(copy(b.events[seen]));
     const changed=nextPhase!==phase;phase=nextPhase;
     if(!force&&!changed&&b.time<last+cadence-1e-7)return;
-    const frame={time:+b.time.toFixed(3),phase,units:b.units.map(u=>({id:u.id,pos:u.pos,troops:Math.round(u.troops),morale:Math.round(Math.max(0,u.morale)),rage:Math.round(u.rage),formation:u.formation,order:u.order,target:u.target?.id??null,routed:u.routed,gone:u.gone,status:{...u.status},end:u.end??null})),terrain:b.tiles.flatMap((tile,at)=>tile===initialTiles[at]?[]:[[at,tile]]),fire:Object.keys(b.fire).map(Number),gate:b.gate?{hp:Math.round(b.gate.hp),open:b.gate.open}:null,depot:b.depot?{hp:Math.round(b.depot.hp),burnt:b.depot.burnt}:null,keepHeld:+b.keepHeld.toFixed(2),over:b.over?{...b.over}:null};
+    const frame={time:+b.time.toFixed(3),phase,units:b.units.map(u=>({id:u.id,pos:u.pos,troops:Math.round(u.troops),morale:Math.round(Math.max(0,u.morale)),rage:Math.round(u.rage),formation:u.formation,order:u.order,target:u.target?.id??null,goal:u.goal,path:u.path.slice(),hits:u.record?.hits??0,lastAttack:u.lastAttack?{...u.lastAttack}:null,routed:u.routed,gone:u.gone,status:{...u.status},end:u.end??null})),terrain:b.tiles.flatMap((tile,at)=>tile===initialTiles[at]?[]:[[at,tile]]),fire:Object.keys(b.fire).map(Number),gate:b.gate?{hp:Math.round(b.gate.hp),open:b.gate.open}:null,depot:b.depot?{hp:Math.round(b.depot.hp),burnt:b.depot.burnt}:null,keepHeld:+b.keepHeld.toFixed(2),over:b.over?{...b.over}:null};
     const previous=frames.at(-1);
     if(previous&&previous.time===frame.time&&previous.phase===frame.phase)frames[frames.length-1]=frame;
     else frames.push(frame);

@@ -34,7 +34,14 @@ try {
   await page.evaluate(() => localStorage.clear());
   await page.reload();
   await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
-  await page.waitForTimeout(1500);
+  // Wait for the title's streamed terrain to settle, including on software WebGL.
+  await until(page, async () => {
+    const { land: { stream }, app: { renderer } } = window.egretGame.app.map;
+    const count = stream.tiles.length, frame = renderer.info.frame;
+    if (!count || stream.pendingCount) return false;
+    for (let i = 0; i < 3; i++) await new Promise(requestAnimationFrame);
+    return stream.tiles.length === count && !stream.pendingCount && renderer.info.frame >= frame + 2;
+  }, 30);
   const title = await matchBaseline(page, GAME, 'title');
   check(title.written || title.passed, `the title looks as its baseline (${(title.share * 100).toFixed(2)}% differs)`);
   check(await state(page, () => document.activeElement?.textContent === '新的征程'), 'the new campaign button holds the focus on the title');

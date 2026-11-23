@@ -76,7 +76,14 @@ export function openSlot(storage, slot, onProblem = () => {}) {
 
 /** What a slot shows before it is opened: the power, the date, the cities held. */
 export function summarize(game, cities) {
-  return { faction: game.player, day: game.day, cities, savedAt: new Date().toISOString() };
+  const faction = game.factions[game.player];
+  return {
+    faction: game.player,
+    day: game.day,
+    cities,
+    savedAt: new Date().toISOString(),
+    ...(faction ? { name: faction.name ? { ...faction.name } : null, colour: faction.colour, flag: faction.flag } : {})
+  };
 }
 
 /** Write a game into a slot. Returns whether the browser kept it. */

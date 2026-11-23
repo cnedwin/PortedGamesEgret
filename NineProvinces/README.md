@@ -24,12 +24,15 @@ runs on to 280.
 - 标题、天下图、战斗分别使用原创配乐。设置中可以独立调整配乐和音效音量，也可以分别静音。
 - 战场点选部队后可看部署位置、攻击范围和战法落点。兵刃、箭雨、冲击、火攻和辅助战法各有演出，并跟随实际战斗事件。
 - 地图拉远时保留城郭轮廓和陆路骨架，降低林木、城池和水面的细节密度。拉近可以看见门楼、街巷、河岸和桥。148 条陆路依据行军拓扑铺设，水路和海路用各自的表现。
+- 四川盆地、华北平原、青藏高原东缘和西北荒漠有各自的地表色谱、田纹和坡面细节，拉远时可见地貌名。长安与洛阳拥有各自的宫城轮廓，重要港城有江防、船坞、仓市或帆船。武威和敦煌路旁设有烽燧，成都河岸有木堰。
+- 点顶栏「疆域」可显示或隐藏势力底色和边界，城池易手后同步更新。小地图与大地图使用同一份疆域分区。
 
 - All 566 preset officers have matching avatars and dossier art with Japanese and Korean anime-inspired linework and cel shading. Dedicated illustrations cover 63 officers, including all 34 original starting rulers. The others draw on 24 archetypes, with treatments based on role, camp and traits. Avatars and larger figures load on demand.
 - The calendar changes the seasons. Native World3D draws the tree canopy, reeds, water, city buildings, passes and military equipment. Flocks and river sailboats are ambient details and stop moving when reduced motion is enabled.
 - The title, realm and battlefield have separate original scores. Music and effects have independent volume and mute controls.
 - Select a unit to see deployment hexes, attack reach and tactic targets. Melee, volleys, charges, fire and support effects follow actual battle events.
 - The distant view simplifies city walls, trees and water while retaining the route network. Zoom in for gatehouses, streets, banks and bridges. The 148 roads follow land links in the marching network, with distinct treatment for water routes.
+- Basin farmland, the North China Plain, the plateau and the northwestern desert use distinct palettes and surface patterns. The two capitals and major ports have their own silhouettes. Use **Domains** on the top bar to reveal political colours and borders.
 
 ## 玩法与操作 · How to play
 
@@ -38,7 +41,8 @@ runs on to 280.
 Choose a starting year, faction and rules under New campaign. The six tales begin in 184. The 190, 200, 208 and 219 starts supply their own territories, rulers, rosters, pacts and opening abilities. Each later start plays forward as a free campaign. The strategic snapshots adapt the historical record to the game map.
 
 - **登录新武将**在首页登记姓名、出场年龄、形象、五项能力和初始身份。每局单独勾选本局的人物，已有存档保留当时的人物副本。 · **Register officers** on the title screen, then check whom to include in each new game. Each campaign keeps its own copies.
-- **演武沙盘**在首页打开。配置双方各 1–4 部的兵种、兵力、阵型和地形，布阵后可暂停、单步、移动、进攻和施放战法。 · **Tactical sandbox** is available on the title screen, with up to four units per side and actual orders, tactics, and single-step play.
+- **自建势力**在「新的征程」里选择起家城，请一位已登录或符合该年代条件的史实武将担任主公，最多带三位同伴。200 年和 219 年的史实开局没有空城，自建势力模式会标明可选的架空据点。 · **Found a faction** under New campaign. Choose a base, appoint a registered or eligible historical officer as ruler, and bring up to three companions. The 200 and 219 starts label alternate-history sites because their historical maps start fully occupied.
+- **演武沙盘**在首页打开。可直接挑战鹤翼拒骑、林丘破阵、破关夺营、江上火攻，也可为双方各配置 1–4 支部队。战桌显示阵形、地形与进攻路线，指挥时可暂停、步进，并在确认前预览战法范围。 · Open **Battle sandbox** on the title screen for four ready-made encounters or a custom battle with up to four units per side. Read formations, terrain and orders on the battle board, pause or single-step the fight, and preview a tactic's area before committing.
 - 亲自指挥或在战前主动委任后，可从结算进入战斗详报和回放。回放读取本场实际快照、军令和事件，支持拖动时间轴和变速。本场回放在结果页退出后结束。 · Commanded battles and explicit delegation offer a report and replay on the results screen. The current battle uses recorded states, orders, and events, with a seek bar and playback speeds.
 - 战役顶栏提供暂停和五档速度。 · The campaign clock can be paused or set to one of five speeds.
 
@@ -57,12 +61,15 @@ Choose a starting year, faction and rules under New campaign. The six tales begi
 | 缩放（拉近时镜头放低） · Zoom (the camera lowers as it nears) | + / - | 滚轮、双指 · wheel, two fingers |
 | 暂停、速度 · Pause, speed | 空格，1–5（战场上 1–3） · Space, 1–5 (1–3 on the field) | 顶栏按钮 · the top bar |
 | 选城、军团、部队 · Choose a place, army or unit | Tab，Enter | 点按 · tap |
+| 回到上次选中的己方城镇或都城 · Return to your last selected city or capital | H | 顶栏「归城」 · Return in the top bar |
 | 行军目的地、部队移动或进攻 · March, move or attack | — | 选中后点地图或格子 · tap the map or a hex after choosing |
 | 关对话框、取消 · Close, cancel | Esc | 「关闭」· Close |
 
 设置里可以关音效、关配乐、减弱动画（系统设置了「减少动态效果」时自动减弱，标题页的镜头也不再漂移）和切换语言；地址加 `?quality=low|medium|high` 可指定画质（默认按设备自动选：软件渲染和触屏为低，内存小的为中）。三个存档位加一个每月自动存档，也能导出成文件再导入。 · The settings turn off the sound or the music, reduce motion (reduced already when the system asks, and then the title's camera holds still) and switch the language; `?quality=low|medium|high` in the address sets the picture quality (chosen by the device otherwise: low for software rendering and touch, medium for little memory). There are three slots and a monthly autosave, and a game can be exported to a file and imported again.
 
 ## 数值与节奏 · Numbers and pace
+
+五个年代的开局推演、推荐自建起点与复跑方法见 [BALANCE.md](BALANCE.md)。 · See [BALANCE.md](BALANCE.md) for opening simulations, suggested starting towns and how to reproduce them.
 
 规则全在 `src/sim/`（不碰页面和引擎，可在 Node 里跑；天下的地形 `land.mjs` 和六角格 `hexgrid.mjs` 也在这里，所以战斗和画面看的是同一片地），数据在 `src/data/`。`node tools/balance.mjs [种子] [演义]` 让三十四路诸侯全由电脑执掌，从 184 年推到 280 年，每十年记一笔。玩家参与的战斗打在天下图的格子上；电脑之间、看不见的战斗用按地点山水生成的战场，采用本版战斗规则。下表是种子 7、曹魏演义的一次推演：
 
@@ -112,7 +119,7 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs` 共 51 项通过，覆盖规则、存档、文字、引擎副本和全名册的头像与立绘配对。 · All 51 Node tests pass. They cover the rules, saves, text, engine copy and both images for every officer ID.
+- `node --test test/*.test.mjs` 共 77 项通过，覆盖剧本开局、沙盘、城港地标、疆域、存档、文字、引擎副本和武将图像。 · All 77 Node tests pass. They cover scenario starts, the sandbox, landmark cities and ports, domains, saves, text, the engine copy and officer art.
 - `node test/accept.mjs` 在无头浏览器的 SwiftShader 模式通过 31 项。覆盖中英文标题、音量保留、刘备立绘、桃园结义、平原出军、南皮布阵交战、结算、存读档和竖屏布局。 · All 31 acceptance checks pass in headless SwiftShader, including the volume setting, Liu Bei's illustration, the Peach Garden Oath, the battle at Nanpi and the save/load walk.
 - Windows Edge 跑到南皮攻城，实测布阵、四倍速和手动释放「武圣」。同机位中画质下，洛阳地图的 96 帧样本 p95 从 4.3 ms 到 8.3 ms。 · Windows Edge reached the siege at Nanpi and confirmed deployment, 4× speed and a manually targeted Wusheng hit. At Luoyang, the 96-frame same-camera medium-quality p95 rose from 4.3 ms to 8.3 ms.
 - 三星 Galaxy Z Fold7 真机复测横竖屏、立绘、换城、出征、布阵和开战。中画质地图与战场短样本的 p95 为 16.6–16.7 ms，每个场景 72 个帧间隔。 · Galaxy Z Fold7 device testing covered both orientations, portraits, switching cities, marching, deployment and starting a battle. Medium-quality map and battle frame intervals measured 16.6–16.7 ms p95 over 72 intervals per scene.
@@ -130,7 +137,7 @@ tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"
 - 电脑之间的战斗不在地图格子上打（见「数值与节奏」）；在地图上打时城小，守城弓手集中，强攻比以前难。 · The computer's own battles are not fought on the map's hexes (see Numbers and pace); on the map a town is small and its archers close together, so an assault is harder than it was.
 - 新音频已测解码、换曲、独立音量和削波。扬声器听感待验。 · The new audio was checked for decoding, transitions, independent volume and clipping. Speaker listening is pending.
 - 连环计等少数史实事件要求的人物若先在战斗中阵亡或被俘，事件就会错过。 · A few events of history, such as the chain stratagem, are missed when the men they need have already fallen or been taken in battle.
-- 平衡只靠电脑对电脑的百年推演调过，没有真人玩满一局的记录。 · The balance was tuned only by the computer playing itself for a century; no person has played a whole game.
+- 数值参考百年推演与五年代开局诊断。真人验收覆盖关键流程，完整战役仍待真人通关验证。 · Balance is informed by a century simulation and opening tests across five eras. Human tests cover key flows; full campaign completion remains unverified.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-23，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 233.3 ms over 25 frames）。
 
 ## 已解决 · Solved

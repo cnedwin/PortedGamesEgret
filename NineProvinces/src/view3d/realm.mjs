@@ -7,7 +7,8 @@
 import { createFatLine3D, createRingGeometry3D, createStandardMaterial3D, linearColor3D, Mesh3D, projectToViewport3D } from '@egret/engine/world3d';
 import { createScreenMarkers3D } from '@egret/engine/webgl2/world3d';
 import { FACTIONS, LATER } from '../data/factions.mjs';
-import { NODES } from '../data/map.mjs';
+import { NODES, project } from '../data/map.mjs';
+import { nm } from '../i18n.mjs';
 import { hexAt, hexCenter } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS } from '../sim/land.mjs';
 import { speedOf } from '../sim/military.mjs';
@@ -22,6 +23,13 @@ import { createAmbient } from './ambient.mjs';
 import { seasonOf } from './seasons.mjs';
 
 export const FAR = 300;
+const RELIEF_LABELS = [
+  { zh: '四川盆地', en: 'Sichuan Basin', lon: 104.85, lat: 30.76 },
+  { zh: '华北平原', en: 'North China Plain', lon: 115.2, lat: 35.15 },
+  { zh: '关中平原', en: 'Guanzhong Plain', lon: 108.3, lat: 34.6 },
+  { zh: '青藏高原东缘', en: 'Eastern Tibetan Plateau', lon: 99.45, lat: 35.65 },
+  { zh: '西北荒漠', en: 'Northwest Desert', lon: 97.15, lat: 41 }
+];
 
 /** The colour of a power, as a number, or grey for nobody. */
 export function factionColour(state, id) {
@@ -38,6 +46,12 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
   const { app, scene, camera, rig } = stage;
   const flora = createFlora(scene, { quality: app.quality });
   const land = createLand(scene, { quality: app.quality, onTile: flora.onTile });
+  let territoryVisible = false, territorySource = null, territoryDirty = false;
+  function refreshTerritory() {
+    if (!territoryVisible || !territoryDirty || !territorySource) return;
+    land.setTerritory(territorySource);
+    territoryDirty = false;
+  }
   rig.setGround((x, z) => Math.max(0, land.heightAt(x, z)));
   const waters = createWaters(scene, { quality: app.quality });
   const ambient = createAmbient(scene, { quality: app.quality });
@@ -50,6 +64,21 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
   const places = createPlaces(scene, { quality: app.quality, colourOf: ownerColour });
   const troops = createTroops(scene, { quality: app.quality });
   const markers = createScreenMarkers3D({ container: plates, camera });
+  let hudHeight = 0;
+  const topbar = document.querySelector('#topbar');
+  if (topbar) {
+    new ResizeObserver(([entry]) => {
+      hudHeight = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+    }).observe(topbar);
+  }
+  const relief = RELIEF_LABELS.map(label => {
+    const at = project(label.lon, label.lat);
+    const element = document.createElement('span');
+    element.className = 'reliefPlate';
+    element.textContent = nm(label);
+    const marker = markers.add(element, { target: [at.x, land.heightAt(at.x, at.y) + 2, at.y], maxDistance: 560 });
+    return { label, element, marker };
+  });
 
   // ——— Name plates ———
   const nodePlates = new Map(),
@@ -360,6 +389,10 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     paintRoute();
     // Plates: the small ones give way when the view is far.
     const d = rig.view.d;
+    const tint = 0.58 + Math.min(1, Math.max(0, (d - 48) / 120)) * 0.55;
+    land.setTerritoryOpacity(territoryVisible && !mode ? tint : 0);
+    const showRelief = visible && !mode && d >= 145;
+    plates.classList.toggle('relief-labels', showRelief);
     for (const [id, p] of nodePlates) {
       const hide = !visible || (p.kind !== 'city' && d > 150) || (p.kind === 'city' && p.size <= 2 && d > 230);
       if (p.element.hidden !== hide) p.element.hidden = hide;
@@ -367,12 +400,20 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     }
     plates.classList.toggle('far', d > 170);
     markers.update();
+    if (showRelief) for (const { element, marker } of relief) {
+      if (element.hidden) continue;
+      // Reserve the full label height and a gap below the HUD. Only shift nearby labels.
+      const drop = Math.max(0, Math.ceil(hudHeight + 36 - marker.point.y));
+      if (drop > 56) element.hidden = true;
+      else element.style.setProperty('--relief-drop', drop + 'px');
+    }
     if (mode) {
       const m = mode.hexes();
       land.setHexes(m.hover, m.chosen, m.grid);
     } else {
       const hx = hovered?.ground ? hexAt(hovered.ground.x, hovered.ground.z) : null;
-      land.setHexes(hx && d < 120 ? hexCenter(hx[0], hx[1]) : null, null, d < 140 ? 1 : 0);
+      const grid = 0.56 * Math.min(1, Math.max(0, (138 - d) / 64));
+      land.setHexes(hx && d < 120 ? hexCenter(hx[0], hx[1]) : null, null, grid);
     }
   }
   function paintRoute() {
@@ -415,6 +456,15 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     get landscape() {
       return { season: { ...season }, ambient: { ...ambient.counts }, lod: { places: { ...places.stats }, flora: { ...flora.stats }, water: { ...waters.stats }, roads: { ...roads.stats } } };
     },
+    setTerritorySource(source) {
+      territorySource = source;
+      territoryDirty = true;
+      refreshTerritory();
+    },
+    setTerritoryVisible(value) {
+      territoryVisible = Boolean(value);
+      refreshTerritory();
+    },
     setReducedMotion(value) {
       reducedMotion = Boolean(value);
     },
@@ -440,6 +490,7 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
       places.recolour();
     },
     redraw() {
+      for (const { label, element } of relief) element.textContent = nm(label);
       for (const [id, p] of nodePlates) plateFor.node(id, p.element, true);
       for (const [id, a] of armyAnchor) plateFor.army(id, a.element, true);
     },

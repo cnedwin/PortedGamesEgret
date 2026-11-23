@@ -17,6 +17,7 @@ import { monthlyDiplomacy, startingRelations } from './diplomacy.mjs';
 import { marchArmies } from './military.mjs';
 import { addRosterOfficers, registerCustom, yearlyNewBlood } from './newblood.mjs';
 import { applyScenario, scenarioOf } from './scenarios.mjs';
+import { foundCustomFaction } from './custom-faction.mjs';
 import { comeOfAge, monthlyPeople, settleCaptives, yearlyPeople } from './people.mjs';
 import { checkStory } from './story.mjs';
 
@@ -35,7 +36,7 @@ export function caps(nodeId) {
 export const peopleCap = (nodeId) => Math.round(NODES[nodeId].people * 1.8 + 40000);
 
 /** A new game: the realm of 184, the player's faction, the chosen story branch and the rules asked for. */
-export function createGame({ seed = 1, faction = 'caocao', branch = 'free', lifespan = 'history', command = true, difficulty = 'normal', scenario = '184', officers = [] } = {}) {
+export function createGame({ seed = 1, faction = 'caocao', branch = 'free', lifespan = 'history', command = true, difficulty = 'normal', scenario = '184', officers = [], customFaction = null } = {}) {
   const start = scenarioOf(scenario);
   const state = {
     version: VERSION,
@@ -107,6 +108,12 @@ export function createGame({ seed = 1, faction = 'caocao', branch = 'free', life
   // Generals of age in 184 stand where their faction's seat is, or at home; the rest wait to come of age.
   for (const g of Object.values(GENERALS)) {
     const s = { status: 'unborn', faction: null, at: null, loyalty: 0, exp: {}, treasures: [], died: deathYear(state, g) };
+    // A fictional lifespan must not erase a historically living founder that
+    // the 184 setup just offered. Keep this floor confined to custom starts;
+    // the normal historical/fictional campaign path remains unchanged.
+    if (customFaction && lifespan === 'fiction' && start.year === 184 && g.born + 15 <= 184 && g.died >= 184) {
+      s.died = Math.max(s.died, 187);
+    }
     state.generals[g.id] = s;
     if (g.born + 15 > 184 || s.died < 184) continue;
     if (g.start?.faction && state.factions[g.start.faction]) {
@@ -132,7 +139,8 @@ export function createGame({ seed = 1, faction = 'caocao', branch = 'free', life
   // A removed historical house cannot be selected through a stale URL or an
   // old title fixture; use a valid surviving power rather than a broken state.
   if (state.player !== null && !state.factions[state.player]?.alive) state.player = 'caocao';
-  addRosterOfficers(state, officers);
+  if (customFaction) foundCustomFaction(state, customFaction, officers);
+  else addRosterOfficers(state, officers);
   for (const id in state.nodes) appointGovernor(state, id);
   // Harder computer rulers start richer.
   const more = { easy: 0.8, normal: 1, hard: 1.3 }[difficulty] ?? 1;
