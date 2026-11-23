@@ -13,6 +13,7 @@ export const MATRIX = {
   "MechanismCity",
   "NezhaSea",
   "NightWardens",
+  "NineProvinces",
   "OperaDrums",
   "PeachCreek",
   "Rally",
@@ -45,7 +46,7 @@ export const MATRIX = {
     },
     {
      "game": "JY",
-     "file": "JY/web/battle-view.mjs"
+     "file": "JY/web/main.mjs"
     },
     {
      "game": "LanternShadows",
@@ -65,7 +66,11 @@ export const MATRIX = {
     },
     {
      "game": "NightWardens",
-     "file": "NightWardens/src/art/atlas.mjs"
+     "file": "NightWardens/src/screens.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view/battleview.mjs"
     },
     {
      "game": "PeachCreek",
@@ -111,7 +116,7 @@ export const MATRIX = {
    "games": [
     {
      "game": "JY",
-     "file": "JY/web/battle-view.mjs"
+     "file": "JY/web/opening-dialogue.mjs"
     }
    ]
   },
@@ -214,7 +219,7 @@ export const MATRIX = {
     },
     {
      "game": "JY",
-     "file": "JY/web/jyx2/home3d/native-exit-effect.mjs"
+     "file": "JY/web/jyx2/scene/world3d-renderer.mjs"
     },
     {
      "game": "Rally",
@@ -279,7 +284,12 @@ export const MATRIX = {
    "id": "@egret/engine/web/pointer",
    "kind": "entry",
    "label": "@egret/engine/web/pointer",
-   "games": []
+   "games": [
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/stage.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/ui",
@@ -331,6 +341,10 @@ export const MATRIX = {
     {
      "game": "JY",
      "file": "JY/web/main.mjs"
+    },
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/stage.mjs"
     }
    ]
   },
@@ -362,7 +376,12 @@ export const MATRIX = {
    "id": "@egret/engine/web/hover",
    "kind": "entry",
    "label": "@egret/engine/web/hover",
-   "games": []
+   "games": [
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/stage.mjs"
+    }
+   ]
   },
   {
    "id": "@egret/engine/input/gamepad",
@@ -380,6 +399,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/web/gamepad",
    "games": [
+    {
+     "game": "JY",
+     "file": "JY/web/main.mjs"
+    },
     {
      "game": "LanternShadows",
      "file": "LanternShadows/src/input.mjs"
@@ -406,6 +429,10 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/play/level.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view/mapview.mjs"
     }
    ]
   },
@@ -440,6 +467,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/view/field.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view/battleview.mjs"
     }
    ]
   },
@@ -520,7 +551,11 @@ export const MATRIX = {
     },
     {
      "game": "NightWardens",
-     "file": "NightWardens/src/audio/sound.mjs"
+     "file": "NightWardens/tools/balance.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/saves.mjs"
     },
     {
      "game": "OperaDrums",
@@ -532,7 +567,7 @@ export const MATRIX = {
     },
     {
      "game": "SnowTemple",
-     "file": "SnowTemple/src/saves.mjs"
+     "file": "SnowTemple/tools/balance.mjs"
     },
     {
      "game": "TaiwanMahjong",
@@ -568,6 +603,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/saves.mjs"
     },
     {
      "game": "OperaDrums",
@@ -623,6 +662,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/main.mjs"
     }
    ]
   },
@@ -649,7 +692,7 @@ export const MATRIX = {
     },
     {
      "game": "TaiwanMahjong",
-     "file": "TaiwanMahjong/src/main.mjs"
+     "file": "TaiwanMahjong/src/sound.mjs"
     }
    ]
   },
@@ -670,8 +713,16 @@ export const MATRIX = {
    "label": "@egret/engine/web/audio",
    "games": [
     {
+     "game": "JY",
+     "file": "JY/web/wav-effects.mjs"
+    },
+    {
      "game": "LanternShadows",
      "file": "LanternShadows/src/sound.mjs"
+    },
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/audio.mjs"
     },
     {
      "game": "MechanismCity",
@@ -680,6 +731,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/audio/sound.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/audio/sound.mjs"
     },
     {
      "game": "OperaDrums",
@@ -692,6 +747,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/ui/semantics",
    "games": [
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/ui-semantics.mjs"
+    },
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
@@ -711,6 +770,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/web/semantics",
    "games": [
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/ui-semantics.mjs"
+    },
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/main.mjs"
@@ -769,6 +832,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/view/field.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view/battleview.mjs"
     }
    ]
   },
@@ -834,7 +901,12 @@ export const MATRIX = {
    "id": "multi-touch",
    "kind": "api",
    "label": "多点触控 · Multi-touch (multi-touch)",
-   "games": []
+   "games": [
+    {
+     "game": "LoveElective",
+     "file": "LoveElective/src/engine/stage.mjs"
+    }
+   ]
   }
  ]
 };

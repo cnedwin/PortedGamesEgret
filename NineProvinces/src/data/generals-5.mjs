@@ -1,0 +1,80 @@
+// 武将（五）：北方诸雄（公孙瓒、刘虞、公孙度、张杨）、中原诸侯（王匡、张邈、刘岱、鲍信、陈王）、塞外诸部，以及在野的
+// 名士、隐士、医者与奇人。
+// Generals, part five: the northern lords (Gongsun Zan, Liu Yu, Gongsun Du, Zhang Yang), the lords of the plains (Wang
+// Kuang, Zhang Miao, Liu Dai, Bao Xin, the Prince of Chen), the frontier tribes, and the scholars, recluses,
+// physicians and wonder-workers who serve no one yet.
+export default `
+gongsunzan 公孙瓒 Gongsun_Zan 150 199 liaoxi 84 82 56 48 66 baima,qijiang,jiaoao,xungen H gongsunzan
+gongsunyue 公孙越 Gongsun_Yue 155 192 liaoxi 60 64 40 40 46 baima H gongsunzan
+gongsunfan 公孙范 Gongsun_Fan 156 199 liaoxi 60 62 44 42 46 baima H gongsunzan
+yangang2 严纲 Yan_Gang 155 191 liaoxi 66 70 40 30 40 baima H gongsunzan
+tiankai 田楷 Tian_Kai 155 199 liaoxi 64 62 50 50 50 zuozhan H gongsunzan
+shanjing 单经 Shan_Jing 158 199 liaoxi 60 62 40 40 40 zuozhan H gongsunzan
+guanjing 关靖 Guan_Jing 150 199 liaoxi 30 20 66 62 40 jiaozha H gongsunzan
+gongsunxu 公孙续 Gongsun_Xu 175 199 liaoxi 54 58 40 40 46 baima H >gongsunzan
+zoudan 邹丹 Zou_Dan 158 195 beiping 58 62 34 30 34 zuozhan H gongsunzan
+tianyu 田豫 Tian_Yu 171 252 ji 84 70 76 74 70 xungen,beixia,qinglian W -
+liuyu 刘虞 Liu_Yu 140 193 xiapi 40 24 70 86 92 huangzu,renzheng,kuanhou H liuyu
+xianyufu 鲜于辅 Xianyu_Fu 160 230 ji 70 64 54 56 60 xungen W liuyu
+xianyuyin 鲜于银 Xianyu_Yin 160 210 ji 60 62 40 40 44 zuozhan H liuyu
+yanrou 阎柔 Yan_Rou 165 230 ji 72 70 56 56 64 beixia,waijiao W liuyu
+qizhou 齐周 Qi_Zhou 155 210 ji 54 56 44 46 44 zuozhan H liuyu
+weiyou 魏攸 Wei_You 150 193 ji 26 22 66 70 60 zhonglie H liuyu
+tianchou 田畴 Tian_Chou 169 214 beiping 60 50 76 72 72 gaojie,zhonglie,kanyu W -
+gongsundu 公孙度 Gongsun_Du 140 204 liaodong 76 66 66 70 70 yexin,beixia,anmin H gongsundu
+gongsunkang 公孙康 Gongsun_Kang 165 221 liaodong 70 62 60 64 60 jiangmen H >gongsundu
+gongsungong 公孙恭 Gongsun_Gong 170 238 liaodong 34 30 40 50 40 ruoqi H >gongsundu
+liuyi 柳毅 Liu_Yi 155 205 liaodong 60 60 50 50 46 zuozhan H gongsundu
+yangyi2 阳仪 Yang_Yi 155 205 liaodong 58 58 50 50 46 zuozhan H gongsundu
+gongsunyuan 公孙渊 Gongsun_Yuan 195 238 liaodong 66 64 60 50 40 yexin,jiaoao H ^gongsunkang
+beiyan 卑衍 Bei_Yan 195 238 liaodong 62 64 40 40 40 zuozhan H ^gongsunkang
+zhangyang 张杨 Zhang_Yang 155 198 yunzhong 66 66 50 56 70 kuanhou,beixia H zhangyang
+yangchou 杨丑 Yang_Chou 160 198 shangdang 50 58 30 28 30 yexin H zhangyang
+mujinsu 穆顺 Mu_Shun 160 190 shangdang 46 64 20 18 24 zuozhan H zhangyang
+wangkuang 王匡 Wang_Kuang 145 191 taishan 60 56 50 54 60 haoxia,qiangnu H wangkuang
+fangyue 方悦 Fang_Yue 160 190 henei 54 66 30 26 30 zuozhan H wangkuang
+zhangmiao 张邈 Zhang_Miao 145 195 chenliu 60 50 56 60 76 haoxia,mingshi H zhangmiao
+zhangchao 张超 Zhang_Chao 150 195 chenliu 56 50 50 56 60 haoxia H zhangmiao
+weizi 卫兹 Wei_Zi 150 190 chenliu 54 50 56 64 66 haoshuang H zhangmiao
+zanghong 臧洪 Zang_Hong 160 196 guangling 70 60 70 70 80 zhonglie,xinxin H zhangmiao
+liudai 刘岱 Liu_Dai 145 192 donglai 54 46 56 62 66 huangzu H liudai
+wangyu2 王彧 Wang_Yu 150 195 changyi 50 50 50 56 50 zuozhan H liudai
+baoxin 鲍信 Bao_Xin 152 192 taishan 70 66 66 64 72 shiren,zhongyi H baoxin
+baotao 鲍韬 Bao_Tao 155 190 taishan 56 62 36 32 40 zuozhan H baoxin
+yingshao 应劭 Ying_Shao 140 204 runan 46 30 74 80 66 jingxue,shoucheng H baoxin
+liuchong 刘宠 Liu_Chong 140 197 chen 70 60 56 60 76 huangzu,qiangnu,shanshe H liuchong
+luojun 骆俊 Luo_Jun 155 197 kuaiji 40 30 64 76 70 anmin H liuchong
+chengong 陈宫 Chen_Gong 155 199 puyang 72 40 90 76 66 gangli,moce,zhonglie X -
+yangfeng2 杨奉 Yang_Feng 160 197 hedong 62 64 40 36 44 yexin H -
+hanxian 韩暹 Han_Xian 160 197 hedong 58 62 30 26 34 baoxing H -
+yuefu 於夫罗 Yufuluo 150 195 yunzhong 70 72 40 36 50 xiongnu,beixia N -
+huchuquan 呼厨泉 Huchuquan 160 230 yunzhong 64 64 40 40 50 xiongnu N -
+liubao 刘豹 Liu_Bao 180 260 yunzhong 66 66 50 46 54 xiongnu N ^yuefu
+tadun 蹋顿 Tadun 165 207 liaoxi 78 80 44 36 60 beixia,qijiang N -
+qiuliju 丘力居 Qiuliju 145 194 liaoxi 66 66 40 40 56 beixia N -
+louban 楼班 Louban 180 207 liaoxi 54 60 30 30 40 beixia N ^qiuliju
+kebineng 轲比能 Kebineng 175 235 dai 80 80 56 50 70 beixia,qishe N -
+budugen 步度根 Budugen 175 233 dai 64 70 40 36 50 beixia N -
+zulang 祖郎 Zu_Lang 160 220 danyang 64 74 34 30 44 shanyue N -
+feizhan 费栈 Fei_Zhan 165 225 danyang 60 66 30 26 40 shanyue N -
+simahui 司马徽 Sima_Hui 155 208 xiangyang 20 10 92 70 86 shiren,yinshi,mingshi H -
+pangdegong 庞德公 Pang_Degong 150 220 xiangyang 18 10 90 66 82 yinshi,shiren H -
+huangchengyan 黄承彦 Huang_Chengyan 150 220 xiangyang 18 10 86 60 70 yinshi,keji H -
+cuizhouping 崔州平 Cui_Zhouping 172 230 xindu 30 20 82 70 70 yinshi H -
+shitao 石韬 Shi_Tao 172 240 xuchang 40 30 72 72 60 youxia W -
+mengjian 孟建 Meng_Jian 172 240 runan 40 30 70 74 60 qianxun W -
+zhugejun 诸葛均 Zhuge_Jun 186 240 xiangyang 30 24 66 66 60 yinshi S ^zhugeliang
+huatuo 华佗 Hua_Tuo 145 208 qiao 10 20 70 40 76 huajia,yishu,changshou H -
+zhangzhongjing 张机 Zhang_Ji 150 219 wan 10 16 74 60 70 yishu,changshou H -
+jiping 吉平 Ji_Ping 150 200 luoyang 10 14 60 40 60 yishu,zhonglie H -
+zuoci 左慈 Zuo_Ci 155 260 lujiang 30 30 96 40 80 xianshu,yaoshu,yinshi H -
+yuji 于吉 Yu_Ji 140 200 kuaiji 20 14 90 40 92 xianshu,taiping H -
+guanlu 管辂 Guan_Lu 209 256 pingyuan 10 10 90 40 70 tianwen,yinshi W -
+diaochan 貂蝉 Diaochan 172 220 luoyang 20 26 80 40 98 qingguo,lijian,qinyi X han
+caiyan 蔡琰 Cai_Yan 178 249 chenliu 10 10 86 70 80 cainv,qinyi,shicai W ^caiyong
+zhangchunhua 张春华 Zhang_Chunhua 189 247 henei 40 40 76 60 70 jinguo,lengjing J -
+daqiao 大乔 Da_Qiao 180 220 lujiang 10 10 66 50 94 qingguo,qinyi U -
+xiaoqiao 小乔 Xiao_Qiao 182 220 lujiang 10 10 70 50 94 qingguo,qinyi U -
+majun 马钧 Ma_Jun 200 265 fufeng 30 20 82 60 40 keji,jiyi,gongjiang W -
+puyuan 蒲元 Pu_Yuan 190 250 chengdu 20 30 70 50 40 jiyi,gongjiang S -
+`;
