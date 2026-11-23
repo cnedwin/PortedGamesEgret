@@ -4,7 +4,7 @@ html,
 body {
   margin: 0;
   height: 100%;
-  background: #1a0e08;
+  background: #161310;
   overflow: hidden;
   overscroll-behavior: none;
   touch-action: none;
@@ -14,30 +14,40 @@ body {
 }
 #frame {
   position: fixed;
-  inset: 0;
-  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  inset: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
   display: grid;
   place-items: center;
 }
-#stage,
 #back {
   grid-area: 1 / 1;
   display: block;
 }
 #stage {
+  /* Egret's contain fit writes the centring offsets. Keep the stage out of the grid's flow
+     so it is not centred a second time when the viewport has letterboxing. */
+  position: absolute;
+  left: 0;
+  top: 0;
+  display: block;
   outline: none;
   touch-action: none;
   background: transparent;
 }
-/* Under the engine's canvas: the painter's desk (rosewood with a soft lamp from above) and whatever a screen paints there
+/* Under the engine's canvas: the painter's desk under a warm pool of light, and whatever a screen paints there
    once — the frame of the tray, the scroll on its mount, the title. The engine clears to transparent and draws only what
    moves, so none of this costs anything per frame. */
 #back {
   pointer-events: none;
   background:
-    radial-gradient(70% 45% at 50% 0%, rgba(255, 214, 150, 0.16), rgba(255, 214, 150, 0)),
-    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.07) 0 3px, rgba(255, 255, 255, 0.015) 3px 7px, rgba(0, 0, 0, 0.04) 7px 13px),
-    linear-gradient(#2a160c 0%, #3a1f12 55%, #24130a 100%);
+    radial-gradient(86% 75% at 42% 8%, rgba(179, 123, 72, 0.28), transparent 88%),
+    linear-gradient(116deg, #272019 0%, #30251e 50%, #1c1916 100%);
+  box-shadow: inset 0 0 0 1px #ad865039, inset 0 0 75px #08060479;
+}
+#frame[data-screen="title"] #back {
+  background:
+    radial-gradient(60% 76% at 30% 30%, #af754039, transparent 93%),
+    radial-gradient(82% 72% at 80% 96%, #29372db5, transparent 92%),
+    linear-gradient(136deg, #30241a 0%, #27231e 63%, #1b1d17 100%);
 }
 /* The drifting sand behind the title: two layers of the same tile slid down at two speeds (src/screens.mjs). */
 #rain {

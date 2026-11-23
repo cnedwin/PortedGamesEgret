@@ -183,6 +183,19 @@ try {
   await page.reload();
   await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
   check((await page.evaluate(() => window.egretGame.app.notice)) !== null, 'a broken save is started again, and the title says so');
+  // Real phones and resized desktops letterbox the stage. The static art and live controls share one origin.
+  for (const viewport of [{ width: 1280, height: 540 }, { width: 540, height: 820 }]) {
+    await page.setViewportSize(viewport);
+    const stageWidth = viewport.width > viewport.height ? 960 : 540;
+    await page.waitForFunction((width) => window.egretGame?.ready && window.egretGame.app.stage.width === width, stageWidth);
+    await page.waitForTimeout(120);
+    const error = await page.evaluate(() => {
+      const art = document.querySelector('#back').getBoundingClientRect(),
+        game = document.querySelector('#stage').getBoundingClientRect();
+      return Math.max(...['x', 'y', 'width', 'height'].map((side) => Math.abs(art[side] - game[side])));
+    });
+    check(error < 1, `the art and live stage are aligned at ${viewport.width}×${viewport.height} (max error ${error.toFixed(2)} CSS px)`);
+  }
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {

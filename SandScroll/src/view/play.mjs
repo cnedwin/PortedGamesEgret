@@ -336,14 +336,43 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     announceTime = 2.2;
   };
 
+  const guideBox = L.tall ? { x: b.x + 8, y: b.y + 8, w: b.w - 16, h: 55 } : { x: 22, y: 325, w: 276, h: 77 };
+  const guide = root.addChild(scope.use(new DisplayObjectContainer()));
+  const guideBacking = guide.addChild(scope.use(new Sprite()));
+  guideBacking.graphics.lineStyle(1, GOLD, 0.65).beginFill(INKWOOD, 0.92)
+    .drawRoundRect(guideBox.x, guideBox.y, guideBox.w, guideBox.h, 8, 8).endFill();
+  const guideLabel = await kit.label(guide, ' ', {
+    x: guideBox.x + 6, y: guideBox.y + 7, width: guideBox.w - 12, align: 'center',
+    size: 15, color: 0xffe5aa, weight: 600, lineHeight: 20
+  });
+  const walls = field.addChild(scope.use(new Sprite()));
+  for (const x of [3, b.w - 6]) {
+    walls.graphics.beginFill(GOLD, 0.75).drawRect(x, b.h - 50, 3, 44).endFill();
+  }
+  let guideKey;
+  let firstClear = game.bestChain > 0;
+  let firstClearFeedback = 0;
+  function refreshGuide() {
+    const key = game.over ? '' : firstClearFeedback > 0 ? 'playGuideDone' : firstClear ? '' :
+      game.pieces > 0 ? 'playGuideConnect' : L.tall ? 'playGuideTall' : 'playGuideWide';
+    if (key === guideKey) return;
+    guideKey = key;
+    guide.visible = Boolean(key);
+    walls.visible = key === 'playGuideConnect';
+    if (key) void guideLabel.set(hooks.words(key));
+  }
+  refreshGuide();
+
   // ——— The firecracker: a button lights one, a tap on the sand (or F) sets it off. ———
   let armed = false;
+  const crackerText = () => hooks.words(L.tall ? 'crackerShort' : 'cracker', { n: game.crackers });
   const crackerButton = await kit.button({
     x: L.cracker.x,
     y: L.cracker.y,
     width: L.cracker.w,
     height: L.cracker.h,
-    text: hooks.words('cracker', { n: game.crackers }),
+    text: crackerText(),
+    name: hooks.words('cracker', { n: game.crackers }),
     small: true,
     container: root,
     onActivate: () => arm(!armed)
@@ -351,7 +380,7 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   let shownCrackers = game.crackers;
   function arm(on) {
     armed = on && game.crackers > 0 && !game.over;
-    void crackerButton.setText(armed ? hooks.words('crackerAim') : hooks.words('cracker', { n: game.crackers }));
+    void crackerButton.setText(armed ? hooks.words('crackerAim') : crackerText());
     crackerButton.setEnabled(game.crackers > 0);
     drawAim(null);
   }
@@ -384,25 +413,28 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   // ——— Holding, dragging and dropping. ———
   const hold = { slot: null, session: null, startX: 0, startY: 0, moved: false, column: 0, keys: false };
   let pending = null;
+  let paused = false;
   const columnAt = (globalX, piece) => {
     const w = (Math.max(...piece.blocks.map(([x]) => x)) + 1) * BOARD.block;
     return clampColumn((globalX - b.x) / S - w / 2, w);
   };
   function release(slot, column) {
-    if (game.over) return;
+    if (paused || game.over) return;
     if (game.falling) pending = { slot, column };
     else if (dropPiece(game, slot, column)) app.sound.play('drop', { volume: 0.7 });
   }
   function turn(slot) {
-    if (turnPiece(game, slot)) {
+    if (!paused && turnPiece(game, slot)) {
       app.sound.play('turn');
       void refreshSlot(slots[slot]);
     }
   }
-  const dishTop = T.vertical ? Infinity : T.y - 6,
-    dishLeft = T.vertical ? T.x - 6 : Infinity;
+  const overSand = ({ globalX: x, globalY: y }) =>
+    x >= b.x - 12 && x <= b.x + b.w + 12 && y >= b.y - 12 && y <= b.y + b.h + 12;
+  const clearHold = () => Object.assign(hold, { slot: null, session: null, moved: false, over: false });
   kit.own({
     dispose: app.game.pointer.observe(({ kind, contact, target }) => {
+      if (paused) return;
       if (kind === 'begin' && armed && target === aim) {
         boom((contact.globalX - b.x) / S, (contact.globalY - b.y) / S);
         return;
@@ -410,19 +442,22 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       if (kind === 'begin' && hold.session === null) {
         const slot = slots.find((s) => s.plate === target);
         if (!slot || game.over) return;
-        Object.assign(hold, { slot: slot.k, session: contact.session.id, startX: contact.globalX, startY: contact.globalY, moved: false, keys: false });
+        Object.assign(hold, { slot: slot.k, session: contact.session.id, startX: contact.globalX, startY: contact.globalY, moved: false, over: false });
         hold.column = columnAt(contact.globalX, game.tray[slot.k]);
         app.sound.play('pick', { volume: 0.6 });
       } else if (contact.session.id === hold.session) {
         if (kind === 'move') {
           if (!hold.moved && Math.hypot(contact.globalX - hold.startX, contact.globalY - hold.startY) > 12) hold.moved = true;
-          if (hold.moved) hold.column = columnAt(contact.globalX, game.tray[hold.slot]);
+          if (hold.moved) {
+            hold.over = overSand(contact);
+            hold.column = columnAt(contact.globalX, game.tray[hold.slot]);
+          }
         } else if (kind === 'end') {
-          const over = T.vertical ? contact.globalX < dishLeft : contact.globalY < dishTop;
-          if (!hold.moved) turn(hold.slot);
-          else if (over) release(hold.slot, hold.column);
-          Object.assign(hold, { slot: null, session: null, moved: false });
-        } else if (kind === 'cancel') Object.assign(hold, { slot: null, session: null, moved: false });
+          const dragged = hold.moved || Math.hypot(contact.globalX - hold.startX, contact.globalY - hold.startY) > 12;
+          if (!dragged) turn(hold.slot);
+          else if (overSand(contact)) release(hold.slot, columnAt(contact.globalX, game.tray[hold.slot]));
+          clearHold();
+        } else if (kind === 'cancel') clearHold();
       }
     })
   });
@@ -431,26 +466,30 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   const keys = { slot: 0, column: (BOARD.cols - 40) / 2, active: false };
   const controls = {
     choose(slot) {
-      if (slot > 2) return;
+      if (paused || slot < 0 || slot > 2) return;
       keys.slot = slot;
       keys.active = true;
       app.sound.play('pick', { volume: 0.5 });
     },
     move(direction, seconds) {
+      if (paused) return;
       keys.active = true;
       keys.column += direction * 150 * seconds;
     },
     turn() {
+      if (paused) return;
       keys.active = true;
       turn(keys.slot);
     },
     cracker() {
+      if (paused) return;
       // F: set off a firecracker over the chosen column, a little under the sand's surface there.
       const x = Math.max(0, Math.min(BOARD.cols - 1, Math.round(keys.column + 20)));
       armed = game.crackers > 0;
       boom(x, Math.min(BOARD.rows - 1, surfaceAt(game, x) + CRACKER.radius * 0.6));
     },
     drop() {
+      if (paused) return;
       keys.active = true;
       const piece = game.tray[keys.slot],
         w = (Math.max(...piece.blocks.map(([x]) => x)) + 1) * BOARD.block;
@@ -495,6 +534,10 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       // A big run or a chain shakes the tray a little.
       if (e.chain >= 2 || e.size > 6000) shake = Math.max(shake, 0.18 + 0.06 * Math.min(4, e.chain));
     } else if (e.kind === 'clear') {
+      if (!firstClear) {
+        firstClear = true;
+        firstClearFeedback = 2.4;
+      }
       const emitter = bursts[e.pigment];
       if (emitter && !app.reducedMotion) {
         emitter.x = BOARD.cols / 2;
@@ -554,18 +597,20 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     await refreshSlot(slot);
   }
 
-  let pulse = 0,
-    paused = false;
+  let pulse = 0;
   return {
     controls,
     hold,
-    setPaused: (on) => (paused = on),
+    setPaused(on) {
+      paused = on;
+      if (on) clearHold();
+    },
     get paused() {
       return paused;
     },
     update(seconds) {
       if (!paused) step(game, seconds);
-      if (pending && !game.falling && !game.over) {
+      if (!paused && pending && !game.falling && !game.over) {
         if (dropPiece(game, pending.slot, pending.column)) app.sound.play('drop', { volume: 0.7 });
         pending = null;
       }
@@ -610,7 +655,8 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       } else falling.visible = false;
 
       // The shadow and the shaft of the piece being placed.
-      const placing = hold.slot !== null && hold.moved ? { slot: hold.slot, column: hold.column } : keys.active && !game.over ? { slot: keys.slot, column: null } : null;
+      const placing = hold.slot !== null ? (hold.over ? { slot: hold.slot, column: hold.column } : null) :
+        keys.active && !game.over ? { slot: keys.slot, column: null } : null;
       const sg = shaft.graphics;
       if (!placing && shaft.drawn) {
         sg.clear();
@@ -685,6 +731,8 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
         pointsLabel.display.y = b.y + b.h * 0.3 + 44 - (1.1 - Math.max(0, chainTime)) * 20;
       }
       refreshWords();
+      if (!paused) firstClearFeedback = Math.max(0, firstClearFeedback - seconds);
+      refreshGuide();
 
       // Sparks in flight to the scroll.
       for (let k = flyers.length - 1; k >= 0; k--) {

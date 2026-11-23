@@ -8,13 +8,19 @@ import { createSaveStore } from '@egret/engine/kit';
 export const SAVE_KEY = 'sand-scroll';
 
 /** What someone who has never played has. `language` starts from the page's language. */
-export const freshSave = (language = 'zh') => ({ best: 0, bestEndless: 0, plays: 0, finished: [], unpainted: [], settings: { language, sound: true, reducedMotion: false } });
+export const freshSave = (language = 'zh') => ({ best: 0, bestEndless: 0, plays: 0, finished: [], unpainted: [], daily: null, settings: { language, sound: true, reducedMotion: false } });
 
 /** A save from before a field existed gets the field's fresh value, so old saves keep working. */
 export function fillSave(data) {
   data.bestEndless ??= 0;
   data.unpainted ??= [];
+  data.daily ??= null;
   return data;
+}
+
+function validDailyRecord(record) {
+  return record == null || (typeof record.day === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(record.day) &&
+    Number.isInteger(record.score) && record.score >= 0 && typeof record.finished === 'boolean');
 }
 
 /**
@@ -38,6 +44,7 @@ export function openSave(storage, language = 'zh', onProblem = () => {}) {
       data.finished.every((id) => typeof id === 'string') &&
       (data.bestEndless === undefined || (Number.isInteger(data.bestEndless) && data.bestEndless >= 0)) &&
       (data.unpainted === undefined || (Array.isArray(data.unpainted) && data.unpainted.every((id) => typeof id === 'string'))) &&
+      validDailyRecord(data.daily) &&
       typeof data.settings === 'object' &&
       data.settings !== null &&
       (data.settings.language === 'zh' || data.settings.language === 'en')
@@ -56,6 +63,17 @@ export function recordRound(data, { score, scroll, won, endless = false }) {
     best = score > data[key];
   if (best) data[key] = score;
   return best;
+}
+
+/** A daily run keeps its own best and completion stamp, without advancing a normal campaign. */
+export function recordDailyRound(data, { day, score, won }) {
+  const previous = data.daily;
+  // A finished round can be from yesterday if the player kept it open overnight.
+  if (previous && previous.day > day) return false;
+  const sameDay = previous?.day === day;
+  const priorScore = sameDay ? previous.score : 0;
+  data.daily = { day, score: Math.max(score, priorScore), finished: won || (sameDay && previous.finished) };
+  return score > priorScore;
 }
 
 /** A painting of the unpaint mode collected to the last grain. */
