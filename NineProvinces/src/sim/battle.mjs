@@ -15,6 +15,7 @@ import { TACTICS } from '../data/tactics.mjs';
 import { generalEffect, stat, techEffect } from './core.mjs';
 import { HEX_W, hexCenter } from './hexgrid.mjs';
 import { FOOTPRINTS, footprintCell, hexKind } from './land.mjs';
+import { aptitudeFactor, mobility } from './aptitude.mjs';
 
 export const FIELD = { cols: 22, rows: 14 };
 /** Seconds of battle time before the sun sets (the defenders then win). */
@@ -262,7 +263,10 @@ function profile(state, u) {
   generic.sort((a, b) => b.power - a.power);
   for (const t of generic) if (tactics.length < 4 && (t.mind ? true : war >= 40 + t.power)) tactics.push(t.id);
   if (!tactics.length && generic.length) tactics.push(generic[generic.length - 1].id);
-  return { lead: Math.max(lead, help * 0.5), war, int, fx, tactics };
+  // Aptitude for the arm and the general's mobility (a captain fights as a plain B and moves at an ordinary pace).
+  const apt = g ? aptitudeFactor(g, UNITS[u.unit].group) : 1;
+  const mob = g ? mobility(g) : 45;
+  return { lead: Math.max(lead, help * 0.5), war, int, fx, tactics, apt, mob };
 }
 
 /** A new battle from its setup. `state` is the game, to read generals' abilities and inventions (null in tests). */
@@ -510,7 +514,7 @@ function weaponBonus(attacker, defender) {
 
 function classBonus(u) {
   const g = UNITS[u.kind].group;
-  return 1 + ((g === 'cav' ? u.fx.cav : g === 'bow' ? u.fx.bow : g === 'inf' ? u.fx.inf : g === 'navy' ? u.fx.navy : 0) + (u.afloat ? u.fx.navy * 0.5 : 0)) / 100;
+  return (1 + ((g === 'cav' ? u.fx.cav : g === 'bow' ? u.fx.bow : g === 'inf' ? u.fx.inf : g === 'navy' ? u.fx.navy : 0) + (u.afloat ? u.fx.navy * 0.5 : 0)) / 100) * (u.apt ?? 1);
 }
 
 function attackPower(b, u) {
@@ -896,7 +900,7 @@ export function stepBattle(b, dt, playerSide = -1) {
     if (u.path.length) {
       const kind = UNITS[u.kind],
         f = FORMATIONS[u.formation];
-      u.step += dt * kind.spd * (1 + f.spd) * (1 + (u.fx.spd + buff(u, 'spd') * 100) / 100) * (u.routed ? 1.2 : 1) * (u.status.fear > 0 ? 0.8 : 1);
+      u.step += dt * kind.spd * (1 + f.spd) * (1 + (u.fx.spd + buff(u, 'spd') * 100) / 100) * (0.97 + (u.mob ?? 45) / 1500) * (u.routed ? 1.2 : 1) * (u.status.fear > 0 ? 0.8 : 1);
       const next = u.path[0];
       const cost = moveCost(b, u, next);
       if (cost === Infinity || b.units.some((o) => o !== u && !o.gone && o.pos === next)) {

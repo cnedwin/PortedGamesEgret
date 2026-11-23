@@ -28,11 +28,17 @@ function paintTitle() {
   [...'九州烽烟'].forEach((ch, i) => {
     const x = c.width / 2,
       y = size * 0.55 + i * size * 1.02;
-    g.shadowColor = 'rgba(239, 230, 207, 0.95)';
-    g.shadowBlur = 22;
-    g.fillStyle = '#2a231b';
+    // Gilt characters with a dark halo, so they read over the realm behind them.
+    g.shadowColor = 'rgba(8, 6, 4, 0.95)';
+    g.shadowBlur = 26;
+    const gold = g.createLinearGradient(0, y - size / 2, 0, y + size / 2);
+    gold.addColorStop(0, '#fff1c4');
+    gold.addColorStop(0.55, '#e2bd6c');
+    gold.addColorStop(1, '#a9803a');
+    g.fillStyle = gold;
     g.fillText(ch, x, y);
-    g.shadowBlur = 5;
+    g.shadowBlur = 4;
+    g.shadowColor = 'rgba(8, 6, 4, 1)';
     g.fillText(ch, x, y);
   });
   // The seal: a square of vermilion with the character for beacon fires cut in white.

@@ -460,9 +460,16 @@ function fieldOf(state, place, attackers) {
     az /= l;
   }
   const [cc, rc] = hexAt(cx, cz);
-  let r0 = rc - 7;
+  let c0 = cc - 11,
+    r0 = rc - 7;
+  // The whole of the walls must lie on the field, a hex in from its edges.
+  if (place.node) {
+    const f = FOOTPRINTS[place.node];
+    c0 = Math.max(f.kc - (21 - f.a - 2), Math.min(f.kc - f.a - 2, c0));
+    r0 = Math.max(f.kr - (13 - f.b - 1), Math.min(f.kr - f.b - 1, r0));
+  }
   if (r0 & 1) r0 -= 1;
-  return { grid: { c0: cc - 11, r0 }, axis: [ax, az] };
+  return { grid: { c0, r0 }, axis: [ax, az] };
 }
 
 /** Set out a battle. The player's own go to the inbox to be commanded or entrusted; the rest are fought at once. */

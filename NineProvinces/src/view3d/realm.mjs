@@ -287,12 +287,19 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
   // ——— The frame ———
   let time = 0,
     frac = 0,
-    visible = true;
+    visible = true,
+    drift = null;
   const extra = new Set();
   function frame(seconds) {
     const dt = Math.min(seconds, 0.1);
     time += dt;
     tick?.(dt);
+    // On the title the view drifts slowly over the land.
+    if (drift) {
+      rig.view.tx += dt * drift.speed;
+      rig.view.tz += Math.sin(time * 0.05) * dt * drift.speed * 0.3;
+      if (rig.view.tx > drift.to) rig.view.tx = drift.from;
+    }
     rig.update(dt);
     const reach = Math.min(290, rig.view.d * 1.5 + 100);
     land.update(rig.view.x, rig.view.z, reach);
@@ -429,6 +436,10 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     },
     setVisible(on) {
       visible = on;
+    },
+    /** A slow drift of the view from x `from` to `to` (map units), or null to stop. */
+    setDrift(d) {
+      drift = d;
     },
     /** Lay a mode over the realm (a battle), or take it away with null. */
     setMode(m) {

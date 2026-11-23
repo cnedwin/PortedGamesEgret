@@ -568,7 +568,8 @@ export function hexKind(c, r) {
   const { x, z } = hexCenter(c, r);
   const s = landAt(x, z, KIND_SCRATCH);
   if (s.water === 1 || s.water === 2) return 'water';
-  if (s.water === 3) return s.river < 0.6 ? 'water' : 'river';
+  // Where a road meets a river there is a bridge or a ford.
+  if (s.water === 3) return s.road < 1.6 ? 'river' : s.river < 0.6 ? 'water' : 'river';
   if (s.river < 1.25) return 'river';
   if (s.mountain > 9 || s.plateau > 0.6) return 'mountain';
   if (s.mountain > 3.2 || s.hilly > 0.55) return 'hill';

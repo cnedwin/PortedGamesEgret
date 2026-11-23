@@ -2795,3 +2795,395 @@ input.find,
 .brush.sig {
   font-size: 60px;
 }
+
+/* ——— A general: a framed portrait, six abilities, aptitude badges ——— */
+.portraitFrame {
+  position: relative;
+  flex: none;
+  padding: 4px;
+  background: linear-gradient(#3a3122, #1b160f);
+  border: 1px solid rgba(214, 180, 106, 0.6);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(0, 0, 0, 0.7);
+}
+.portraitFrame .face {
+  width: 150px;
+  height: auto;
+  border-radius: 0;
+  box-shadow: none;
+}
+.portraitFrame .banner {
+  position: absolute;
+  right: -8px;
+  top: -8px;
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  background: var(--c);
+  color: #fff;
+  font: 700 18px var(--kai);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.7), inset 0 0 0 1.5px rgba(255, 250, 235, 0.45), 0 3px 6px rgba(0, 0, 0, 0.5);
+}
+.abilities {
+  display: grid;
+  gap: 8px;
+  margin: 10px 0 4px;
+}
+.statBars.six {
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px 14px;
+  margin: 0;
+}
+.sb b {
+  color: #fff6e0;
+}
+.bar.lead i {
+  background: linear-gradient(90deg, #3b6a92, #7fb0dc);
+}
+.bar.war i {
+  background: linear-gradient(90deg, #8e2f25, #e0705c);
+}
+.bar.int i {
+  background: linear-gradient(90deg, #5a4c9a, #a596e6);
+}
+.bar.pol i {
+  background: linear-gradient(90deg, #2f7a58, #78c896);
+}
+.bar.cha i {
+  background: linear-gradient(90deg, #a07a2a, #f0cd72);
+}
+.bar.mob i {
+  background: linear-gradient(90deg, #2c7c86, #74d0d8);
+}
+.apt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.apt .k {
+  font-size: 12px;
+  color: var(--muted);
+  margin-right: 2px;
+}
+.ag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px 2px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.ag i {
+  font-style: normal;
+  font-size: 12.5px;
+  color: var(--text);
+}
+.ag b {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font: 800 13px/1 var(--sans);
+  border-radius: 2px;
+}
+.ag .gS {
+  background: linear-gradient(#ffe7a0, #d39a2c);
+  color: #3a2300;
+  box-shadow: 0 0 8px rgba(255, 200, 90, 0.6);
+}
+.ag .gA {
+  background: linear-gradient(#cfe0ff, #6f95d8);
+  color: #0f1e3a;
+}
+.ag .gB {
+  background: linear-gradient(#c9d9c0, #7f9a72);
+  color: #182412;
+}
+.ag .gC {
+  background: #4a4f57;
+  color: #c8cdd3;
+}
+/* A newcomer of the tale: his portrait large beside the words. */
+.sheet.recruit {
+  width: min(900px, 100%);
+}
+.recruitBody {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+.recruitArt {
+  position: relative;
+  padding: 6px;
+  background: radial-gradient(80% 70% at 50% 30%, rgba(214, 180, 106, 0.22), rgba(0, 0, 0, 0) 70%), linear-gradient(#262019, #120f0b);
+  border: 1px solid rgba(214, 180, 106, 0.55);
+}
+.recruitArt .face {
+  width: 100%;
+  height: auto;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+}
+.recruitName {
+  margin: 6px 4px 2px;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.recruitName b {
+  font: 700 26px var(--kai);
+  color: var(--gilt-2);
+  letter-spacing: 0.1em;
+}
+.recruitName small {
+  color: var(--muted);
+}
+@media (max-width: 760px) {
+  .recruitBody {
+    grid-template-columns: 1fr;
+  }
+  .recruitArt {
+    max-width: 220px;
+    margin: 0 auto;
+  }
+  .statBars.six {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+/* ——— Trees: inventions and the tale ——— */
+.sheet.techSheet {
+  width: min(1180px, 100%);
+}
+.treeScroll {
+  overflow: auto;
+  max-height: min(66vh, 640px);
+  border: 1px solid rgba(214, 180, 106, 0.22);
+  background:
+    repeating-linear-gradient(90deg, rgba(214, 180, 106, 0.05) 0 1px, transparent 1px 28px),
+    repeating-linear-gradient(0deg, rgba(214, 180, 106, 0.05) 0 1px, transparent 1px 28px),
+    radial-gradient(120% 90% at 20% 10%, #23282f, #12151a);
+  touch-action: pan-x pan-y;
+}
+.tree {
+  position: relative;
+}
+.treeLines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.treeLines path {
+  fill: none;
+  stroke: rgba(160, 170, 182, 0.35);
+  stroke-width: 2;
+}
+.treeLines path.lit {
+  stroke: rgba(241, 215, 146, 0.8);
+  filter: drop-shadow(0 0 3px rgba(241, 215, 146, 0.6));
+}
+.wayHead {
+  position: absolute;
+  left: 228px;
+  font: 700 14px var(--kai);
+  letter-spacing: 0.3em;
+  color: var(--gilt);
+  padding: 2px 12px;
+  border-left: 3px solid var(--gilt);
+  background: linear-gradient(90deg, rgba(214, 180, 106, 0.15), transparent);
+}
+.wayHead.ba {
+  border-left-color: var(--red-2);
+}
+.wayHead.wang {
+  border-left-color: var(--leaf);
+}
+.tnode {
+  position: absolute;
+  width: 196px;
+  height: 54px;
+  display: grid;
+  grid-template-columns: 46px 1fr auto;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px 0 4px;
+  text-align: left;
+  cursor: pointer;
+  color: var(--text);
+  background: linear-gradient(90deg, rgba(36, 43, 54, 0.96), rgba(22, 27, 34, 0.96));
+  border: 1px solid rgba(214, 180, 106, 0.3);
+  border-radius: 27px 3px 3px 27px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.5);
+}
+.tnode:hover:not(:disabled) {
+  border-color: var(--edge-strong);
+  box-shadow: 0 0 12px rgba(217, 182, 107, 0.35);
+}
+.tnode .medal {
+  width: 46px;
+  height: 46px;
+  display: block;
+}
+.tnode .tbody {
+  display: grid;
+  min-width: 0;
+}
+.tnode b {
+  font: 700 13.5px var(--sans);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tnode small {
+  font-size: 10.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.tnode .tbar {
+  height: 3px;
+  margin-top: 2px;
+  background: rgba(255, 255, 255, 0.08);
+}
+.tnode .tbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #a98538, #f1d792);
+}
+.tnode .tcost {
+  font: 600 11px var(--sans);
+  color: var(--gilt);
+}
+.tnode.done {
+  background: linear-gradient(90deg, rgba(40, 64, 50, 0.96), rgba(22, 34, 27, 0.96));
+  border-color: rgba(124, 197, 150, 0.55);
+}
+.tnode.done .tcost {
+  color: var(--leaf);
+}
+.tnode.now {
+  border-color: var(--gilt-2);
+  box-shadow: 0 0 0 1px var(--gilt), 0 0 16px rgba(241, 215, 146, 0.45);
+}
+.tnode.shut {
+  opacity: 0.5;
+  cursor: default;
+}
+.tnode:disabled {
+  cursor: default;
+}
+.treeScroll.tale {
+  max-height: min(64vh, 620px);
+}
+.snode {
+  position: absolute;
+  width: 120px;
+  display: grid;
+  justify-items: center;
+  gap: 2px;
+  text-align: center;
+}
+.snode .medal {
+  width: 80px;
+  height: 80px;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.6));
+}
+.snode b {
+  font: 700 13px var(--kai);
+  padding: 1px 8px;
+  background: rgba(10, 12, 16, 0.8);
+  border: 1px solid rgba(214, 180, 106, 0.3);
+  white-space: nowrap;
+}
+.snode small {
+  font-size: 10.5px;
+  color: var(--muted);
+}
+.snode.done b {
+  color: var(--gilt-2);
+  border-color: var(--gilt);
+  background: linear-gradient(rgba(60, 46, 18, 0.9), rgba(30, 22, 8, 0.9));
+}
+.snode.done .medal {
+  filter: drop-shadow(0 0 8px rgba(241, 215, 146, 0.55));
+}
+.snode.missed {
+  opacity: 0.6;
+}
+
+/* ——— The minimap ——— */
+#minimap {
+  position: absolute;
+  right: 12px;
+  top: 62px;
+  padding: 3px;
+  background: linear-gradient(var(--panel-top), var(--panel-bottom));
+  border: 1px solid var(--edge);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.55);
+}
+#minimap canvas {
+  display: block;
+  width: 232px;
+  height: auto;
+  cursor: crosshair;
+  touch-action: none;
+}
+#frame[data-screen='battle'] #minimap {
+  display: none;
+}
+@media (max-width: 760px), (max-height: 520px) {
+  #minimap {
+    display: none;
+  }
+}
+
+/* ——— Phones and short screens, after the war-room look so its sizes give way ——— */
+@media (max-width: 760px), (max-height: 520px) and (max-width: 1000px) {
+  #side {
+    left: 0;
+    right: 0;
+    top: auto;
+    bottom: 0;
+    width: auto;
+    max-height: 56%;
+    border-radius: 8px 8px 0 0;
+    padding-bottom: max(16px, env(safe-area-inset-bottom));
+  }
+  #log {
+    display: none;
+  }
+  .bSide.ours {
+    left: 0;
+    width: 100%;
+  }
+  .bSide.theirs {
+    display: none;
+  }
+  .res .r {
+    padding: 2px 6px;
+    font-size: 12.5px;
+  }
+  .statBars.six {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .bio {
+    flex-direction: column;
+    align-items: center;
+  }
+  .portraitFrame .face {
+    width: 120px;
+  }
+  .brush {
+    font-size: 32px;
+  }
+  .brush.sig {
+    font-size: 40px;
+  }
+  .sheet.techSheet .treeScroll {
+    max-height: 60vh;
+  }
+}

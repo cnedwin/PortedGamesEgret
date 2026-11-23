@@ -24,6 +24,7 @@ import { $, h } from './ui/dom.mjs';
 import { createHud, SPEEDS, tipFor } from './ui/hud.mjs';
 import { eventOf, logLine } from './ui/text.mjs';
 import { startBattle } from './ui/battleui.mjs';
+import { createMinimap } from './ui/minimap.mjs';
 import { createPlates } from './ui/plates.mjs';
 import { showSetup, showTitle } from './ui/title.mjs';
 import { createRealmView } from './view3d/realm.mjs';
@@ -214,6 +215,13 @@ async function boot() {
   app.sound = await createSound(app.map.app.scope, { sound: app.settings.sound, music: app.settings.music });
   app.hud = createHud(app);
   app.dialogs = createDialogs(app);
+  app.minimap = createMinimap(app, $('#hud'));
+  // Who holds what changes the minimap's colours; the plates and flags follow the state each frame.
+  const refreshLands = app.map.refreshLands;
+  app.map.refreshLands = () => {
+    refreshLands();
+    app.minimap.refresh();
+  };
   bindKeys();
   app.map.start();
 }
@@ -325,9 +333,10 @@ function tick(dt) {
   } else acc = Math.min(acc, 0.99);
   if (app.map) app.map.setDayShare(app.paused || app.dialogOpen ? 0 : acc);
   sinceHud += dt;
-  if (sinceHud > 0.2 && app.screen === 'play') {
+  if (sinceHud > 0.2 && (app.screen === 'play' || app.screen === 'battle')) {
     sinceHud = 0;
-    app.hud.refresh();
+    if (app.screen === 'play') app.hud.refresh();
+    app.minimap?.draw();
   }
 }
 
@@ -626,6 +635,7 @@ function newGame(pick) {
 }
 function play(state) {
   wake();
+  app.map.setDrift(null);
   registerCustom(state);
   app.state = state;
   app.tales = [];
@@ -655,7 +665,8 @@ function toTitle() {
   app.select(null);
   app.map.setVisible(true);
   app.map.refreshLands(true);
-  app.map.jumpTo('luoyang', 150);
+  app.map.jumpTo('luoyang', 95);
+  app.map.setDrift({ speed: 2.2, from: NODES.luoyang.x - 160, to: NODES.luoyang.x + 260 });
   showTitle(app);
   app.sound.theme('realm');
 }
@@ -697,6 +708,10 @@ window.egretGame = {
   nodeAt(id) {
     const n = NODES[id];
     return app.map.pagePoint(n.x, n.y);
+  },
+  /** Bring a place into the middle of the view at once (for tests and the console). */
+  look(id, d = 70) {
+    app.map.jumpTo(id, d);
   },
   get frames() {
     return app.frames ?? 0;
