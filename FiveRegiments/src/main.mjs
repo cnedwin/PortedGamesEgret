@@ -335,11 +335,13 @@ async function main() {
     input.capture(false);
     input.clear();
     hud.show(false);
+    touch.show(false);
     screens.pause({
       onResume: () => {
         paused = false;
         screens.hide();
         hud.show(true);
+        touch.show(coarse);
         if (!coarse) input.capture(true);
       },
       onSettings: () => openSettings(() => ((paused = false), pause())),

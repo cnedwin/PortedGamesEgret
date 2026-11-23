@@ -48,6 +48,18 @@ try {
   assert.deepEqual(actual.guard, [true, 'O'], 'A quick guard survives the tick');
   assert.ok(actual.cleared, 'A short tap does not stick into the next tick');
   assert.deepEqual(actual.lines, ['L', 'R', 'O', 'T'], 'The four raw mouse directions select four distinct lines');
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.evaluate(() => window.testInput.capture(false));
+  await page.waitForFunction(() => !document.pointerLockElement);
+  await page.evaluate(() => {
+    const canvas = document.querySelector('canvas');
+    canvas.requestPointerLock = () => Promise.reject(new DOMException('Pointer lock rejected for this document', 'WrongDocumentError'));
+    window.testInput.capture(true);
+  });
+  await page.locator('canvas').click();
+  await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)));
+  assert.deepEqual(errors, [], 'A refused pointer lock keeps click-to-fight fallback without an uncaught error');
   console.log('Pointer lock, single mouse motion and between-tick inputs verified.');
 } finally {
   await browser.close();
