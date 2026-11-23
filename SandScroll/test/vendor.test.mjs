@@ -24,7 +24,9 @@ test('every engine entry the game imports is in the copy', async () => {
     await read('../' + imports[entry]);
   }
   // The rules stay free of the engine and the page, so they run in Node as they are.
-  const rules = await read('../src/sim/sand.mjs');
-  assert.ok(!/\b(document|window|localStorage)\b/.test(rules.replace(/\/\/.*$/gm, '')));
-  assert.ok(!/from '@egret/.test(rules));
+  for (const file of ['../src/sim/sand.mjs', '../src/sim/unpaint.mjs']) {
+    const rules = await read(file);
+    assert.ok(!/\b(document|window|localStorage)\b/.test(rules.replace(/\/\/.*$/gm, '')), file);
+    assert.ok(!/from '@egret/.test(rules), file);
+  }
 });

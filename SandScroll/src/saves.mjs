@@ -8,7 +8,14 @@ import { createSaveStore } from '@egret/engine/kit';
 export const SAVE_KEY = 'sand-scroll';
 
 /** What someone who has never played has. `language` starts from the page's language. */
-export const freshSave = (language = 'zh') => ({ best: 0, plays: 0, finished: [], settings: { language, sound: true, reducedMotion: false } });
+export const freshSave = (language = 'zh') => ({ best: 0, bestEndless: 0, plays: 0, finished: [], unpainted: [], settings: { language, sound: true, reducedMotion: false } });
+
+/** A save from before a field existed gets the field's fresh value, so old saves keep working. */
+export function fillSave(data) {
+  data.bestEndless ??= 0;
+  data.unpainted ??= [];
+  return data;
+}
 
 /**
  * Open the save in `storage`: the page's (`browserSaveStorage()`), or one in memory for tests. `onProblem` hears of a
@@ -29,17 +36,31 @@ export function openSave(storage, language = 'zh', onProblem = () => {}) {
       Number.isInteger(data.plays) &&
       Array.isArray(data.finished) &&
       data.finished.every((id) => typeof id === 'string') &&
+      (data.bestEndless === undefined || (Number.isInteger(data.bestEndless) && data.bestEndless >= 0)) &&
+      (data.unpainted === undefined || (Array.isArray(data.unpainted) && data.unpainted.every((id) => typeof id === 'string'))) &&
       typeof data.settings === 'object' &&
       data.settings !== null &&
       (data.settings.language === 'zh' || data.settings.language === 'en')
   });
 }
 
-/** A round ended with `score`, on scroll `scroll`, finished or not. Returns whether the score is a new best. */
-export function recordRound(data, { score, scroll, won }) {
+/**
+ * A round ended with `score`, on scroll `scroll`, finished or not; on the endless tray its best is kept apart.
+ * Returns whether the score is a new best.
+ */
+export function recordRound(data, { score, scroll, won, endless = false }) {
+  fillSave(data);
   data.plays++;
   if (won && !data.finished.includes(scroll)) data.finished.push(scroll);
-  const best = score > data.best;
-  if (best) data.best = score;
+  const key = endless ? 'bestEndless' : 'best',
+    best = score > data[key];
+  if (best) data[key] = score;
   return best;
+}
+
+/** A painting of the unpaint mode collected to the last grain. */
+export function recordUnpaint(data, id) {
+  fillSave(data);
+  data.plays++;
+  if (!data.unpainted.includes(id)) data.unpainted.push(id);
 }

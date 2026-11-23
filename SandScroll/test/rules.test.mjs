@@ -174,3 +174,70 @@ test('laying each colour in flat strips across the tray finishes the painting', 
   }
   assert.ok(won >= 2, `${won} of 3 finished`);
 });
+
+test('a firecracker blows away a circle of sand, one is used, and more are earned with the score', async () => {
+  const { CRACKER, fireCracker } = await import('../src/sim/sand.mjs');
+  const game = createGame(4);
+  for (let y = rows - 80; y < rows; y++) for (let x = 0; x < cols; x++) game.color[y * cols + x] = 1 + ((x >> 5) % 2);
+  game.grains = 80 * cols;
+  assert.equal(game.crackers, CRACKER.start);
+  const removed = fireCracker(game, 100, rows - 40);
+  assert.ok(removed > 3000 && removed < Math.PI * CRACKER.radius ** 2 + 200, `${removed} grains`);
+  assert.equal(game.color[(rows - 40) * cols + 100], 0);
+  assert.equal(game.crackers, CRACKER.start - 1);
+  assert.equal(fireCracker(game, 50, rows - 10), -1, 'none left');
+  assert.equal(game.cleared, 0, 'blown sand paints nothing');
+  // A run worth enough points brings one back.
+  for (let x = 0; x < cols; x++) for (let y = 0; y < 110; y++) game.color[(rows - 1 - y) * cols + x] = 3;
+  game.unsettled = true;
+  run(game, 0.2);
+  assert.ok(game.score >= CRACKER.every && game.crackers >= 1, `score ${game.score}, crackers ${game.crackers}`);
+});
+
+test('the endless tray takes in new pigments with the score and rolls on to the next painting', async () => {
+  const { ENDLESS } = await import('../src/sim/sand.mjs');
+  const game = createGame(6, ENDLESS);
+  assert.deepEqual(game.pigments, [1, 2, 5]);
+  game.score = 95000;
+  for (let x = 0; x < cols; x++) game.color[(rows - 1) * cols + x] = 2;
+  game.unsettled = true;
+  run(game, 0.2);
+  assert.deepEqual(game.pigments, [1, 2, 5, 3, 4]);
+  game.cleared = game.level.target + 10;
+  run(game, 0.1);
+  assert.equal(game.paintings, 1);
+  assert.equal(game.painting, 'autumn');
+  assert.ok(progress(game) < 0.01);
+  assert.equal(game.over, false, 'the endless tray is never won');
+});
+
+test('every scroll can be finished by laying flat bands, and each takes longer than the one before', () => {
+  const times = [];
+  for (const level of [0, 1, 2]) {
+    const game = createGame(2, level),
+      at = {};
+    let wait = 0;
+    while (!game.over && game.time < 900) {
+      wait -= 1 / 60;
+      if (!game.falling && wait <= 0) {
+        let slot = 0;
+        for (let k = 0; k < 3; k++) if ((at[game.tray[k].pigment] ?? 0) > (at[game.tray[slot].pigment] ?? 0)) slot = k;
+        for (let t = 0; t < 4; t++) {
+          const g = pieceGrains(game.tray[slot]);
+          if (g.w >= g.h) break;
+          turnPiece(game, slot);
+        }
+        const piece = game.tray[slot],
+          w = pieceGrains(piece).w,
+          x = Math.min(at[piece.pigment] ?? 0, cols - w);
+        dropPiece(game, slot, x);
+        at[piece.pigment] = x + w >= cols ? 0 : x + w;
+        wait = 2;
+      }
+      step(game, 1 / 60);
+    }
+    assert.equal(game.won, true, `scroll ${level}`);
+    times.push(game.time);
+  }
+  assert.ok(times[0] < times[1] && times[1] < times[2], times.join(' < '));
+});

@@ -562,13 +562,13 @@ export const GAMES = [
   {
     id: 'sand', folder: 'SandScroll', kind: '2d',
     scenes: [
-      { zh: "一条石绿从左墙连到右墙，正从左往右亮起；手卷已染到一半", en: "A run of malachite reaches wall to wall and lights up from the left; the scroll is half coloured" },
-      { zh: "卷首 · 一卷青绿山水和飘落的颜料沙", en: "The title · A blue-and-green landscape and drifting pigment" },
-      { zh: "画成 · 《春山图》染满了颜色", en: "Finished · The spring hills in full colour" },
+      { zh: "作画 · 《秋山图》一条石青正从左往右亮起，五色沙层层堆叠", en: "Paint · On the autumn scroll a run of azurite lights up, five pigments in layers" },
+      { zh: "拆画 · 画就是一盘沙，传送带上的沙桶收走头顶同色的沙", en: "Unpaint · The painting is sand; buckets on the belt collect the colour above them" },
+      { zh: "卷首 · 作画、拆画、无尽沙盘三种玩法", en: "The title · Paint, unpaint and the endless tray" },
     ],
     zh: "沙画江山", en: "Sand Scroll",
     genre: { zh: "沙画消除", en: "Sand puzzle" },
-    summary: { zh: "积木落下化成数千粒颜料沙，同一种颜色从左墙连到右墙就整片消掉，消掉的沙飞进手卷，把一卷白描的春山一点点染成青绿山水。", en: "Pieces fall and break into thousands of grains of pigment; one colour reaching from wall to wall clears as a whole, and the cleared sand flies into a handscroll, colouring an ink drawing of spring hills bit by bit." },
+    summary: { zh: "三种玩法：作画——积木化沙，同色从左墙连到右墙就消，消掉的沙把三卷白描山水染成青绿；无尽沙盘——颜料越来越多；拆画——画本身是一盘沙，用传送带上的沙桶一层层收走。", en: "Three ways to play: paint, where pieces break into sand and a colour from wall to wall clears, colouring three ink landscapes; the endless tray, with more pigments as you go; and unpaint, where the painting is sand collected by buckets riding a belt." },
     features: [
       {
         title: { zh: "一粒沙一个像素", en: "One grain, one pixel" },
@@ -584,6 +584,11 @@ export const GAMES = [
         title: { zh: "沙会塌、不会流", en: "Sand that slumps but does not run" },
         description: { zh: "规则不碰页面也不碰引擎：每粒沙只能往两边滑十次左右，所以沙在落点附近塌开；往前看一步的机器人和规则测试证明平铺横带能画成、全堆一处必输。", en: "The rules touch neither page nor engine: each grain slides only about ten times, so sand slumps where it lands; a one-move-ahead robot and the rules tests show flat bands finish the scroll and heaping in one place loses." },
         source: 'src/sim/sand.mjs',
+      },
+      {
+        title: { zh: "从山水里取样的拆画", en: "Pictures to unpaint, sampled from the landscapes" },
+        description: { zh: "拆画的画从代码画的山水里截一段，不画绢底，按透明度决定哪里有沙、按颜料取最近色；桶按沙从底下露出来的先后发进各列，每一幅都由替身玩家验证能拆完。", en: "An unpaint picture is cut from the painted landscape drawn without its silk: opacity says where sand is and the nearest pigment its colour; buckets are dealt in the order their sand reaches the bottom, and a stand-in has finished every picture." },
+        source: 'src/sim/unpaint.mjs',
       },
       {
         title: { zh: "拨弦一样的消除声", en: "Clears that sound like plucked strings" },

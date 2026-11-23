@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import '../vendor/node-register.mjs';
 
-const { SAVE_KEY, freshSave, openSave, recordRound } = await import('../src/saves.mjs');
+const { SAVE_KEY, fillSave, freshSave, openSave, recordRound, recordUnpaint } = await import('../src/saves.mjs');
 
 function memory(initial = {}, { refuse = false } = {}) {
   const items = new Map(Object.entries(initial));
@@ -81,4 +81,24 @@ test('a storage that refuses to write does not stop the game', () => {
   );
   assert.equal(save.data.settings.sound, false);
   assert.ok(problems.includes('write-failed'));
+});
+
+test('the endless tray keeps its own best, and a finished unpaint picture is kept once', () => {
+  const data = freshSave();
+  assert.equal(recordRound(data, { score: 50000, scroll: 'endless', won: false, endless: true }), true);
+  assert.equal(data.bestEndless, 50000);
+  assert.equal(data.best, 0);
+  recordUnpaint(data, 'peak');
+  recordUnpaint(data, 'peak');
+  assert.deepEqual(data.unpainted, ['peak']);
+  assert.equal(data.plays, 3);
+});
+
+test('a save from before the endless tray and unpainting opens, and gets the new fields', () => {
+  const old = { version: 1, savedAt: '', data: { best: 900, plays: 2, finished: ['spring'], settings: { language: 'zh', sound: true, reducedMotion: false } } };
+  const save = openSave(memory({ [SAVE_KEY]: JSON.stringify(old) }));
+  assert.equal(save.data.best, 900);
+  save.update((data) => void fillSave(data));
+  assert.equal(save.data.bestEndless, 0);
+  assert.deepEqual(save.data.unpainted, []);
 });
