@@ -59,9 +59,9 @@ export function techEffect(state, factionId, key) {
 export function stat(state, id, key) {
   const g = GENERALS[id],
     s = state.generals[id];
-  let v = g.stats[key] + (s?.exp?.[key] ?? 0);
+  let v = g.stats[key] + (s?.statAdjust?.[key] ?? 0) + (s?.exp?.[key] ?? 0);
   for (const tr of s?.treasures ?? []) if (TREASURES[tr]?.ability === key) v += TREASURES[tr].amount;
-  return Math.min(120, v);
+  return Math.max(0, Math.min(120, v));
 }
 
 // Officers the tale keeps for the player's own events (Xun Yu coming to Cao Cao, the cottage of Zhuge Liang): the

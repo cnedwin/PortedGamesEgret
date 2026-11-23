@@ -1,5 +1,11 @@
 # 品质验收 · Quality — 九州烽烟 · Nine Provinces Ablaze
 
+**历史基线 · Historical baseline**
+
+本页记录 3D 天下图初版的软件渲染数据。新版立绘、场景配乐和地图远近景的实测记录见 [README](README.md#已验证--verified)。
+
+This page records the first 3D realm build in software rendering. See the README for the later artwork, soundtrack, and map verification.
+
 按 [QUALITY-CHECKLIST.md](../docs/QUALITY-CHECKLIST.md) 验收。自动项由 `node tools/quality.mjs NineProvinces` 测量并写入本文件；人工和真机项没有跑过的写「未运行」。
 
 Checked against QUALITY-CHECKLIST.md. The automatic items were measured by `node tools/quality.mjs NineProvinces`, which writes

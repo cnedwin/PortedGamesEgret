@@ -40,21 +40,23 @@ try {
   check(await state(page, () => document.activeElement?.textContent === '新的征程'), 'the new campaign button holds the focus on the title');
 
   // Settings: the sound off, kept in the save; Escape closes.
-  await page.click('.titleMenu nav .btn:nth-child(3)');
+  await page.locator('.titleMenu nav').getByRole('button', { name: '设置', exact: true }).click();
   await page.waitForTimeout(400);
   const settings = await matchBaseline(page, GAME, 'settings');
   check(settings.written || settings.passed, `the settings look as their baseline (${(settings.share * 100).toFixed(2)}% differs)`);
+  await page.getByRole('slider', { name: '配乐音量' }).press('Home');
+  check(await state(page, () => JSON.parse(localStorage.getItem('nine-provinces')).data.settings.musicVolume === 0), 'the keyboard can change and persist music volume independently');
   await page.click('.setting:nth-of-type(2) .choice button:nth-child(2)');
   check(await state(page, () => JSON.parse(localStorage.getItem('nine-provinces')).data.settings.sound === false), 'turning the sound off is kept in the save');
   await page.keyboard.press('Escape');
   check(await state(page, () => document.querySelector('#modal').hidden), 'Escape closes the settings');
 
   // English and back.
-  await page.click('.titleMenu nav .btn:nth-child(4)');
+  await page.locator('.titleMenu nav').getByRole('button', { name: 'English', exact: true }).click();
   await page.waitForTimeout(200);
   const english = await state(page, () => [document.documentElement.lang, [...document.querySelectorAll('.titleMenu .btn')].map((b) => b.textContent).join('|')]);
   check(english[0] === 'en' && /New campaign/.test(english[1]) && !/[\u3400-\u9fff]/.test(english[1].replace('中文', '')), `the title reads in English: ${english[1]}`);
-  await page.click('.titleMenu nav .btn:nth-child(4)');
+  await page.locator('.titleMenu nav').getByRole('button', { name: '中文', exact: true }).click();
   await page.waitForTimeout(200);
 
   // A new campaign as Liu Bei; the peach garden unrolls.
@@ -62,6 +64,8 @@ try {
   await page.waitForTimeout(300);
   await page.click('.branch:nth-child(2)');
   check(await state(page, () => document.querySelector('.chosen b')?.textContent === '刘备'), "Liu Bei's tale is played as Liu Bei");
+  await page.locator('.chosen .face').evaluate((image) => image.decode());
+  check(await state(page, () => document.querySelector('.chosen .face')?.src.endsWith('/panel/liubei.webp')), 'campaign setup loads the assigned Liu Bei illustration');
   await page.click('.setupPanel footer .btn.main');
   await until(page, () => window.egretGame.screen === 'play' && window.egretGame.app.dialogs.name === 'story', 10);
   check(await state(page, () => document.querySelector('#sheet h2').textContent === '桃园结义' && document.querySelector('#sheet').classList.contains('scroll')), 'the oath of the peach garden unrolls as a scroll');
@@ -96,6 +100,8 @@ try {
   await until(page, () => window.egretGame.screen === 'battle', 10);
   await page.waitForTimeout(600);
   check(await state(page, () => window.egretGame.battle.phase === 'deploy' && document.querySelector('.bDeploy') !== null), 'the battle opens on deployment');
+  await page.locator('.bSide.ours .ucard').first().press('Enter');
+  check(await state(page, () => window.egretGame.battle.phase === 'deploy'), 'Enter on a focused unit card selects the unit without starting the battle');
   await page.click('.bDeploy .btn.main');
   await page.click('.bSide.ours .ucard');
   await page.waitForTimeout(1500);
@@ -105,9 +111,30 @@ try {
   check(fought.time > 3 && fought.cards >= 2 && fought.tactics >= 1, `the battle runs at four times speed with unit cards and tactics (${JSON.stringify(fought)})`);
   const field = await matchBaseline(page, GAME, 'battle', { limit: 0.35 });
   check(field.written || field.passed, `the battlefield looks much as its baseline (${(field.share * 100).toFixed(2)}% differs)`);
+  await page.setViewportSize({ width: 873, height: 325 });
+  check(await state(page, () => {
+    const rail = document.querySelector('.bSide.ours');
+    const bounds = rail.getBoundingClientRect();
+    const tactics = [...rail.querySelectorAll('.ucard.on .tac')];
+    return getComputedStyle(rail).flexDirection === 'column' && tactics.length >= 4 && tactics.every((button) => {
+      const rect = button.getBoundingClientRect();
+      return rect.height >= 44 && rect.left >= bounds.left && rect.right <= bounds.right;
+    });
+  }), 'tactic buttons fit a scrollable vertical rail in short landscape');
+  await page.setViewportSize({ width: 1280, height: 720 });
   await state(page, () => window.egretGame.battle?.autoFinish());
   await until(page, () => window.egretGame.screen === 'play' && window.egretGame.app.dialogs.name === 'battleResult', 20);
   check(true, 'the battle ends with its outcome');
+  const originalResultState = await state(page, () => JSON.stringify(window.egretGame.state));
+  await page.getByRole('button', { name: '回放战斗' }).click();
+  await until(page, () => !!window.egretGame.app.lab);
+  const timeline = page.getByRole('slider', { name: '回放时间' });
+  await timeline.press('End');
+  check(await timeline.evaluate(node => node.valueAsNumber > 0 && node.value === node.max), 'the replay timeline seeks to the recorded end');
+  await page.keyboard.press('Escape');
+  await until(page, () => !window.egretGame.app.lab);
+  check(await state(page, (saved) => window.egretGame.app.dialogs.name === 'battleResult' &&
+    JSON.stringify(window.egretGame.state) === saved, originalResultState), 'playing and closing the battle replay leaves the campaign unchanged');
   await page.click('.dlgFoot .btn.main');
 
   // A save in slot one, read back after a reload.
@@ -118,7 +145,7 @@ try {
   await page.reload();
   await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
   check(await state(page, () => document.querySelector('.titleMenu .btn.main')?.textContent === '继续'), 'after a reload the title offers to continue');
-  await page.click('.titleMenu nav .btn:nth-child(3)');
+  await page.locator('.titleMenu nav').getByRole('button', { name: '读取', exact: true }).click();
   await page.click('.slot:nth-child(2) .btn.main');
   await until(page, () => window.egretGame.screen === 'play', 10);
   check(await state(page, (d) => window.egretGame.state.day === d && window.egretGame.state.player === 'liubei', day), 'slot one comes back on the same day');
@@ -142,6 +169,13 @@ try {
   });
   check(sheet.shown && sheet.bottom === 844 && sheet.width === 390, `on a phone the details rise from the bottom (${JSON.stringify(sheet)})`);
   check(await phone.evaluate(() => window.egretGame.app.stageSize.height > window.egretGame.app.stageSize.width), 'the stage stands upright on a phone');
+  await phone.setViewportSize({ width: 873, height: 325 });
+  await until(phone, () => innerWidth > innerHeight);
+  check(await state(phone, () => {
+    const details = document.querySelector('#side');
+    const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+    return !details.hidden && details.getBoundingClientRect().right < innerWidth / 2 && !details.contains(hit);
+  }), 'sideways phone details leave the centre of the map tappable');
 
   // A broken autosave is set aside, and the title says so.
   await page.addInitScript(() => localStorage.setItem('nine-provinces.auto', '{broken'));

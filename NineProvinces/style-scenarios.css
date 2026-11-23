@@ -1,0 +1,43 @@
+/* Shared lacquer-and-bronze treatment for era selection and officer registration. */
+.scenarioGrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+.scenarioCard { min-width: 0; padding: 10px; text-align: left; background: #202e30; border: 1px solid #7e7358; border-radius: 3px; color: #efe2c8; font: inherit; }
+.scenarioCard b, .scenarioCard small { display: block; }
+.scenarioCard b { color: #f0d49c; margin-bottom: 5px; }
+.scenarioCard small { line-height: 1.45; font-size: 12px; }
+.scenarioCard[aria-pressed="true"] { background: linear-gradient(130deg,#536452,#2d4242); border-color: #e2bc7a; box-shadow: inset 3px 0 #d3ad6d; }
+.rosterPick { display: grid; gap: 5px; }
+.rosterPickRow { display: flex; gap: 10px; align-items: center; min-height: 48px; padding: 7px 10px; border: 1px solid #85745266; background: #15262a66; }
+.rosterPickRow input { width: 22px; height: 22px; accent-color: #b57447; flex-shrink: 0; }
+.rosterPickRow small { display: block; color: #c5cebd; }
+.officerPanel { width: min(650px,calc(100% - 32px)); }
+.officerPanel .setupBody { padding-top: 13px; }
+.registeredOfficers { display: grid; gap: 5px; }
+.registeredOfficer { display: flex; gap: 10px; align-items: center; min-height: 68px; padding: 6px; background: #17252999; border: 1px solid #9d87654d; }
+.registeredOfficer img { width: 45px; height: 60px; object-fit: cover; }
+.registeredOfficer > div { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.registeredOfficer small { display: block; color: #c9cfbe; }
+.officerForm { display: grid; gap: 12px; padding-bottom: 10px; }
+.officerIdentity { display: grid; grid-template-columns: minmax(105px,30%) minmax(0,1fr); gap: 13px; }
+.officerIdentity > div { display: grid; gap: 8px; }
+.officerPreview { display: block; align-self: start; width: 100%; height: auto; aspect-ratio: 3/4; object-fit: cover; border: 1px solid #ae956d; }
+.officerField { display: grid; gap: 4px; min-width: 0; }
+.officerField > span { font-size: 12px; color: #d3c7ac; }
+.officerField input, .officerField select { box-sizing: border-box; width: 100%; min-width: 0; min-height: 42px; padding: 6px 9px; font: inherit; color: #f2e5ca; background: #152328; border: 1px solid #a38c625f; border-radius: 3px; }
+.officerField select { max-width: 100%; }
+.officerPortraits { margin: 0; min-width: 0; border: 1px solid #a38c625f; display: grid; grid-template-columns: repeat(8,minmax(0,1fr)); gap: 5px; padding: 8px; }
+.officerPortraits legend { color: #d3c7ac; font-size: 12px; padding: 0 5px; }
+.officerPortrait { min-width: 0; padding: 2px; background: #19262a; border: 1px solid #8a7a5c; border-radius: 2px; }
+.officerPortrait img { display: block; width: 100%; height: auto; aspect-ratio: 3/4; object-fit: cover; }
+.officerPortrait[aria-pressed="true"] { border-color: #f4d193; box-shadow: 0 0 0 2px #b88648; }
+.officerAbilities { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 7px; }
+.officerBudget { color: #d3c7ac; text-align: right; font-variant-numeric: tabular-nums; }
+.officerBudget.over, .rosterMessage { color: #f2b1a0; }
+.rosterMessage.good { color: #d4dbb0; }
+.rosterMessage:empty { display: none; }
+@media(max-width: 600px) {
+  .officerPanel { width: calc(100% - 18px); }
+  .officerIdentity { grid-template-columns: minmax(90px,30%) minmax(0,1fr); gap: 10px; }
+  .officerPortraits { grid-template-columns: repeat(6,minmax(0,1fr)); }
+  .officerAbilities { grid-template-columns: repeat(3,minmax(0,1fr)); }
+  .scenarioCard { padding: 8px; }
+}

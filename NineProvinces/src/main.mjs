@@ -10,8 +10,8 @@ import { browserSaveStorage } from '@egret/engine/web/kit';
 import { NODES } from './data/map.mjs';
 import { createSound } from './audio/sound.mjs';
 import { getLanguage, setLanguage, t } from './i18n.mjs';
-import { exportText, importText, openSettings, openSlot, SLOTS, writeSlot } from './saves.mjs';
-import { autoBattle } from './sim/battle.mjs';
+import { exportText, importText, openOfficerRoster, openSettings, openSlot, SLOTS, writeSlot } from './saves.mjs';
+import { recordedAutoBattle } from './sim/battle-history.mjs';
 import { dateOf } from './sim/core.mjs';
 import { answerEnvoy, breakTreaty, demandSurrender, gift, propose, askAttack } from './sim/diplomacy.mjs';
 import { disband, finishBattle, muster, nearestFriendly, order, route } from './sim/military.mjs';
@@ -40,6 +40,7 @@ const problems = [];
 const storage = browserSaveStorage();
 const settingsStore = openSettings(storage, navigator.language?.startsWith('zh') ? 'zh' : 'en', (p) => problems.push(p.kind));
 const slots = Object.fromEntries(SLOTS.map((slot) => [slot, openSlot(storage, slot, (p) => problems.push(p.kind))]));
+const officerRoster = openOfficerRoster(storage, (problem) => problems.push(problem.kind));
 setLanguage(params.get('lang') ?? settingsStore.data.settings.language);
 document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
 
@@ -69,6 +70,7 @@ const app = {
   hud: null,
   dialogs: null,
   battle: null,
+  lab: null,
   atlas: null,
   dot: null,
   sel: null,
@@ -82,6 +84,10 @@ const app = {
   rulerSet: new Set(),
   tales: [],
   language: () => getLanguage(),
+  officerRoster: () => officerRoster.read(),
+  saveOfficerRoster: list => officerRoster.write(list),
+  openSandbox: () => openBattleLab(),
+  openBattleReplay: tape => openBattleLab(tape),
   /** Whether to keep motion down: the setting, or the system's own preference. */
   calm: () => Boolean(app.settings.reducedMotion) || matchMedia('(prefers-reduced-motion: reduce)').matches,
   rulers() {
@@ -118,7 +124,12 @@ const app = {
     if (kept === false) app.hud?.toast(t('saveRefused'), 'bad');
     if (key === 'sound') app.sound.setSound(value);
     if (key === 'music') app.sound.setMusic(value);
-    if (key === 'reducedMotion') frame.classList.toggle('calm', value);
+    if (key === 'musicVolume') app.sound.setVolumes?.({ music: value });
+    if (key === 'effectsVolume') app.sound.setVolumes?.({ effects: value });
+    if (key === 'reducedMotion') {
+      frame.classList.toggle('calm', value);
+      app.map?.setReducedMotion?.(app.calm());
+    }
   },
   setLanguage(language) {
     setLanguage(language);
@@ -178,6 +189,44 @@ const app = {
   }
 };
 
+let labLoading = false;
+async function openBattleLab(tape = null) {
+  if (app.lab || labLoading) return;
+  labLoading = true;
+  const screen = app.screen;
+  const state = app.state;
+  const returnFocus = document.activeElement;
+  const background = ['#stageHost', '#title', '#hud', '#modal'].map(selector => $(selector));
+  function close() {
+    const active = app.lab;
+    if (!active) return;
+    app.lab = null;
+    active.controller.destroy();
+    for (const node of background) node.inert = false;
+    app.map.setVisible(true);
+    app.sound.theme(screen === 'title' ? 'title' : 'realm');
+    if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+  }
+  try {
+    const { openBattleSandbox, openBattleReplay } = await import('./ui/battle-lab.mjs');
+    if (screen !== app.screen || state !== app.state || (tape && app.dialogs.name !== 'battleResult')) return;
+    const options = { onExit: close };
+    const controller = tape ? openBattleReplay(app, tape, { ...options, tab: 'replay' }) : openBattleSandbox(app, options);
+    app.lab = { controller, close };
+    for (const node of background) node.inert = true;
+    app.map.setVisible(false);
+    app.sound.theme('battle');
+  } catch (error) {
+    console.error(error);
+    if (app.screen === 'title') {
+      app.notice = t('battleLabFailed');
+      showTitle(app);
+    } else app.hud.toast(t('battleLabFailed'), 'bad');
+  } finally {
+    labLoading = false;
+  }
+}
+
 // ——— Booting the engine and the views ———
 async function boot() {
   const tall = innerHeight > innerWidth * 1.05;
@@ -212,7 +261,8 @@ async function boot() {
     }
   });
   app.quality = app.map.app.quality;
-  app.sound = await createSound(app.map.app.scope, { sound: app.settings.sound, music: app.settings.music });
+  app.map.setReducedMotion?.(app.calm());
+  app.sound = await createSound(app.map.app.scope, app.settings);
   app.hud = createHud(app);
   app.dialogs = createDialogs(app);
   app.minimap = createMinimap(app, $('#hud'));
@@ -291,6 +341,7 @@ function bindKeys() {
   window.addEventListener(
     'keydown',
     (e) => {
+      if (app.lab) return;
       if (e.target instanceof HTMLInputElement && e.target.type !== 'range') return;
       if (e.altKey || e.ctrlKey || e.metaKey) return;
       if (app.battle && !app.dialogOpen) {
@@ -327,6 +378,7 @@ let acc = 0,
   sinceHud = 0;
 function tick(dt) {
   app.frames = (app.frames ?? 0) + 1;
+  if (app.lab) return;
   if (app.battle) {
     app.battle.update(dt);
     return;
@@ -600,12 +652,12 @@ function act(kind, ...args) {
       break;
     case 'entrust': {
       const setup = args[0];
-      const result = autoBattle(setup, s);
+      const { result, tape, report } = recordedAutoBattle(setup, s);
       app.dialogs.close(true);
       app.sound.play(result.winner === setup.factions.indexOf(P) ? 'win' : 'lose');
       finishBattle(s, setup, result);
       app.map.refreshLands(true);
-      app.dialogs.open('battleResult', { setup, result });
+      app.dialogs.open('battleResult', { setup, result, tape, report });
       break;
     }
     case 'saveSlot':
@@ -636,7 +688,7 @@ function loadSlot(slot) {
 
 // ——— Screens ———
 function newGame(pick) {
-  const state = createGame({ seed: Number(params.get('seed') ?? Date.now() % 1000000), faction: pick.faction, branch: pick.branch, lifespan: pick.lifespan, command: pick.command, difficulty: pick.difficulty });
+  const state = createGame({ ...pick, seed: Number(params.get('seed') ?? Date.now() % 1000000) });
   play(state);
   // Events of the player's tale that open the game unroll at once.
   for (const l of state.log.slice().reverse()) {
@@ -668,9 +720,11 @@ function play(state) {
   setTimeout(nextInbox, 300);
 }
 function toTitle() {
+  app.lab?.close();
   app.dialogs.close(true);
   if (app.battle) app.battle = null;
   app.state = null;
+  if (app.demoState?.scenario !== '184') app.demoState = createGame({ seed: 184 });
   app.screen = 'title';
   frame.dataset.screen = 'title';
   $('#hud').hidden = true;
@@ -681,7 +735,7 @@ function toTitle() {
   // The view drifts slowly over the land, unless motion is to be kept down.
   app.map.setDrift(app.calm() ? null : { speed: 2.2, from: NODES.luoyang.x - 160, to: NODES.luoyang.x + 260 });
   showTitle(app);
-  app.sound.theme('realm');
+  app.sound.theme('title');
 }
 /** Kept for callers from before the realm was 3D: the 3D view always draws. */
 function wake() {}
@@ -691,7 +745,8 @@ document.title = t('title') + (getLanguage() === 'zh' ? ' · Nine Provinces Abla
 $('#loading')?.remove();
 frame.classList.toggle('calm', Boolean(app.settings.reducedMotion));
 if (params.get('slot') && slots[params.get('slot')]?.data.game) loadSlot(params.get('slot'));
-else if (params.get('faction')) newGame({ faction: params.get('faction'), branch: params.get('branch') ?? 'free', lifespan: 'history', command: params.get('command') !== 'off', difficulty: 'normal' });
+else if (params.get('faction')) newGame({ faction: params.get('faction'), scenario: params.get('scenario') ?? '184',
+  branch: params.get('branch') ?? 'free', lifespan: 'history', command: params.get('command') !== 'off', difficulty: 'normal' });
 else {
   toTitle();
   if (params.get('screen') === 'setup') {

@@ -16,6 +16,7 @@ import { persuadeChance } from '../sim/people.mjs';
 import { caps, income, recruit, researchRate, upkeep, workQuote, power } from '../sim/world.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
+import { seasonOf } from '../view3d/seasons.mjs';
 import { $, bar, button, clear, colourOf, face, h, seal, stat } from './dom.mjs';
 import { dayWords, logLine, pair } from './text.mjs';
 
@@ -66,7 +67,7 @@ export function createHud(app) {
     redraw(top, (node) => {
       node.append(
         keyed('realm', h('button.realm', { type: 'button', onclick: () => app.open('realm'), title: t('menuFaction') }, seal(f, 'l'), h('span.realmName', factionName(s, s.player)))),
-        h('div.date', { 'aria-live': 'off' }, dayWords(s.day)),
+        h('div.date', { 'aria-live': 'off' }, h('span', dayWords(s.day)), h('small.season', t('season_' + seasonOf(s.day).name))),
         h(
           'div.res',
           h('span.r', { title: t('coin') + ' · ' + t('income') + ' ' + sign(m.coin) }, h('b', t('coin')), num(f.coin), h('small', { className: m.coin < 0 ? 'neg' : '' }, sign(m.coin))),

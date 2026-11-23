@@ -17,9 +17,30 @@ runs on to 280.
 
 [在线试玩 · Play online](https://cnedwin.github.io/PortedGamesEgret/NineProvinces/)
 
+## 美术与声音 · Art and sound
+
+- 566 位预设武将的头像和档案立绘统一使用日韩二次元线稿与块面上色。63 位拥有专属绘制，包含 34 路初始势力的主公。其余武将按身份、阵营和个人特征，从 24 套角色原型制作差异化版本。头像与立绘分别按需要加载。
+- 天下随游戏日历换季。林冠、芦苇、水面、城池木构、关隘和军队装备由原生 World3D 绘制。鸟群与沿河航行的帆船属于环境演出。「减少动态效果」会冻结环境运动。
+- 标题、天下图、战斗分别使用原创配乐。设置中可以独立调整配乐和音效音量，也可以分别静音。
+- 战场点选部队后可看部署位置、攻击范围和战法落点。兵刃、箭雨、冲击、火攻和辅助战法各有演出，并跟随实际战斗事件。
+- 地图拉远时保留城郭轮廓和陆路骨架，降低林木、城池和水面的细节密度。拉近可以看见门楼、街巷、河岸和桥。148 条陆路依据行军拓扑铺设，水路和海路用各自的表现。
+
+- All 566 preset officers have matching avatars and dossier art with Japanese and Korean anime-inspired linework and cel shading. Dedicated illustrations cover 63 officers, including all 34 original starting rulers. The others draw on 24 archetypes, with treatments based on role, camp and traits. Avatars and larger figures load on demand.
+- The calendar changes the seasons. Native World3D draws the tree canopy, reeds, water, city buildings, passes and military equipment. Flocks and river sailboats are ambient details and stop moving when reduced motion is enabled.
+- The title, realm and battlefield have separate original scores. Music and effects have independent volume and mute controls.
+- Select a unit to see deployment hexes, attack reach and tactic targets. Melee, volleys, charges, fire and support effects follow actual battle events.
+- The distant view simplifies city walls, trees and water while retaining the route network. Zoom in for gatehouses, streets, banks and bridges. The 148 roads follow land links in the marching network, with distinct treatment for water routes.
+
 ## 玩法与操作 · How to play
 
-标题页选「新的征程」：先选演义（五条史实演义各自固定势力，「自由书写」可选任何一路诸侯），再定规则——寿命按史实或虚构、战斗亲自指挥或全部委任、难度。开局后时间自动流逝，顶栏可暂停和调五档速度（每秒半天到八天）。 · On the title choose New campaign: first a tale (the five tales of history each come with their power; Write Your Own lets you take any lord), then the rules — lifespans as in history or made up, battles under your command or left to your officers, and the difficulty. Time then runs on its own; the top bar pauses it and sets five speeds (half a day to eight days a second).
+从「新的征程」选择年代、势力和规则。184 年可选原有六条演义。190 年关东讨董、200 年官渡风云、208 年赤壁前夜和 219 年汉中争雄使用各自的城属、君主、人才、盟约和开局属性，从该时点开始自由推演。年代背景参考《三国志》，城池边界和部分人才归属按游戏地图归纳。 [武帝纪](https://zh.wikisource.org/wiki/三國志/卷01) · [关羽传所在卷](https://zh.wikisource.org/wiki/三國志/卷36)
+
+Choose a starting year, faction and rules under New campaign. The six tales begin in 184. The 190, 200, 208 and 219 starts supply their own territories, rulers, rosters, pacts and opening abilities. Each later start plays forward as a free campaign. The strategic snapshots adapt the historical record to the game map.
+
+- **登录新武将**在首页登记姓名、出场年龄、形象、五项能力和初始身份。每局单独勾选本局的人物，已有存档保留当时的人物副本。 · **Register officers** on the title screen, then check whom to include in each new game. Each campaign keeps its own copies.
+- **演武沙盘**在首页打开。配置双方各 1–4 部的兵种、兵力、阵型和地形，布阵后可暂停、单步、移动、进攻和施放战法。 · **Tactical sandbox** is available on the title screen, with up to four units per side and actual orders, tactics, and single-step play.
+- 亲自指挥或在战前主动委任后，可从结算进入战斗详报和回放。回放读取本场实际快照、军令和事件，支持拖动时间轴和变速。本场回放在结果页退出后结束。 · Commanded battles and explicit delegation offer a report and replay on the results screen. The current battle uses recorded states, orders, and events, with a seek bar and playback speeds.
+- 战役顶栏提供暂停和五档速度。 · The campaign clock can be paused or set to one of five speeds.
 
 - **天下**：3D 的六角格山河，格宽约三个地图单位，地形、江河、湖泊、海岸、山脉、高原、沙漠、草原和树林都由同一套地理数据算出。七十六城有城墙、角楼、城门楼、街巷民居和官署大殿，关隘是横在路上的关墙，渡口有码头和船；城头的旗帜和名牌按城主着色，被围的城名牌泛红。军团是一队小兵加主将的圆形头像牌，沿道路行军。右上角的小地图显示各家疆域和镜头所见，点一下飞过去。 · **The realm**: a 3D land of hexes about three map units across, its ground, rivers, lakes, coast, ranges, plateau, desert, steppe and woods all worked out from one set of geographic data. The seventy-six cities have walls, corner towers, gate towers, streets of houses and a hall of office; passes are walls across the road, and ferries have piers and boats; banners and name plates take the holder's colour, and a besieged city's plate glows red. Armies are columns of soldiers under a round plate with the commander's face, marching along the roads. The minimap at the top right shows each power's land and what the camera sees; tap it to fly there.
 - **内政**：每城有人口、民心、治安、守军和训练，四项营建（农田、市场、城墙、官署）各有上限。每月一号结算钱粮，八月秋收；税率轻重影响民心。征兵每月以人口的二十分之一为限，会降低民心和训练。太守由政治和统率最高的武将担任，影响营建、产出与征兵。 · **Running the realm**: each city has people, support, order, a garrison and its training, and four works (fields, markets, walls, offices) up to their limits. Coin and grain come in on the first of each month, with the harvest in the eighth; taxes trade coin for support. Conscription is limited to a twentieth of the people each month and lowers support and training. The best administrator posted there governs, and raises works, income and recruits.
@@ -43,29 +64,29 @@ runs on to 280.
 
 ## 数值与节奏 · Numbers and pace
 
-规则全在 `src/sim/`（不碰页面和引擎，可在 Node 里跑；天下的地形 `land.mjs` 和六角格 `hexgrid.mjs` 也在这里，所以战斗和画面看的是同一片地），数据在 `src/data/`。`node tools/balance.mjs [种子] [演义]` 让三十四路诸侯全由电脑执掌，从 184 年推到 280 年，每十年记一笔。玩家参与的战斗打在天下图的格子上；电脑之间、看不见的战斗用按地点山水生成的战场，节奏和以前一致。下表是种子 7、曹魏演义的一次推演：
+规则全在 `src/sim/`（不碰页面和引擎，可在 Node 里跑；天下的地形 `land.mjs` 和六角格 `hexgrid.mjs` 也在这里，所以战斗和画面看的是同一片地），数据在 `src/data/`。`node tools/balance.mjs [种子] [演义]` 让三十四路诸侯全由电脑执掌，从 184 年推到 280 年，每十年记一笔。玩家参与的战斗打在天下图的格子上；电脑之间、看不见的战斗用按地点山水生成的战场，采用本版战斗规则。下表是种子 7、曹魏演义的一次推演：
 
 The rules live in `src/sim/` (free of the page and the engine, so they run in Node; the land of `land.mjs` and the hexes
 of `hexgrid.mjs` are there too, so battles and the picture read the same ground), the data in `src/data/`.
 `node tools/balance.mjs [seed] [tale]` puts all thirty-four lords in the computer's hands and runs from 184 to 280,
 with a line every ten years. Battles of the player are fought on the hexes of the realm; the computer's among
-themselves, unseen, on ground made from the place's lie of the land, which keeps the old pace. One run, seed 7,
+themselves, unseen, on ground made from the place's lie of the land, with the current combat rules. One run, seed 7,
 Cao Cao's tale:
 
 | 年 · Year | 势力 · Powers | 最大的三家（城） · The three greatest (cities) | 史实事件 · Events |
 | --- | --- | --- | --- |
 | 184 | 34 | 汉室 3、刘焉 3、刘表 3 | — |
-| 190 | 19 | 董卓 19、刘焉 9、袁绍 8 | turbansFall, eunuchs, dongEnters, lvbuTurns, c_chenliu, coalition |
-| 200 | 8 | 袁绍 29、董卓 12、刘焉 10 | moveCapital |
-| 210 | 7 | 袁绍 34、袁术 11、刘焉 11 | — |
-| 220 | 5 | 袁绍 37、刘焉 24、袁术 7 | — |
-| 230 | 5 | 袁绍 38、刘焉 26、严白虎 5 | — |
-| 240 | 3 | 袁绍 46、刘焉 27、袁术 2 | — |
-| 250 | 3 | 袁绍 44、刘焉 25、袁术 6 | — |
-| 260 | 3 | 袁绍 44、刘焉 25、袁术 6 | — |
-| 270 | 3 | 袁绍 44、刘焉 25、袁术 6 | — |
-| 280 | 3 | 袁绍 44、刘焉 25、袁术 6 | — |
-tally {"siegeWon":386,"ratio":9511.089951404658,"taken":464,"takenNeutral":61,"fieldWon":221,"fieldLost":447,"siegeLost":831}
+| 190 | 17 | 董卓 17、刘焉 9、黑山军 7 | turbansFall, eunuchs, dongEnters, lvbuTurns, c_chenliu, coalition |
+| 200 | 11 | 吕布 19、袁绍 15、刘焉 11 | moveCapital, chain, c_qingzhou |
+| 210 | 9 | 吕布 24、袁绍 10、士燮 10 | — |
+| 220 | 9 | 吕布 23、曹操 12、刘虞 10 | — |
+| 230 | 9 | 吕布 19、刘虞 12、袁绍 11 | — |
+| 240 | 9 | 吕布 16、袁绍 14、刘虞 11 | — |
+| 250 | 9 | 吕布 16、袁绍 14、刘虞 11 | — |
+| 260 | 9 | 吕布 17、刘虞 15、曹操 11 | — |
+| 270 | 9 | 吕布 19、刘虞 10、士燮 10 | — |
+| 280 | 9 | 吕布 19、刘虞 14、士燮 10 | — |
+tally {"siegeWon":580,"ratio":12790.834146808944,"taken":692,"takenNeutral":55,"fieldWon":394,"fieldLost":556,"siegeLost":1056}
 
 开局各城钱粮按势力大小给，电脑在难度「难」时多三成。电脑在开局前三百天（易 540 天、难 120 天）不打玩家；在史实演义里，汉室、丁原、董卓等要在剧情里出场的势力在各自的事件之前不被电脑吞并。百年推演一天约 2 毫秒（Node）。 · Each power starts with coin and grain by its size, and the computer's with a third more on hard. The computer leaves the player be for the first three hundred days (540 on easy, 120 on hard); in the tales of history the powers the story needs — the court, Ding Yuan, Dong Zhuo and others — are not swallowed by the computer before their events. A century takes about 2 ms a day in Node.
 
@@ -85,27 +106,29 @@ tally {"siegeWon":386,"ratio":9511.089951404658,"taken":464,"takenNeutral":61,"f
 | `createParticleEmitter3D` | 战场上着火的格子冒火冒烟，战法和城门被破时迸火星与尘土 · fire and smoke on burning hexes, sparks and dust when a tactic is unleashed or the gate breaks | `src/view3d/battle3d.mjs` |
 | `createFatLine3D`、`createRingGeometry3D` | 选目的地时贴地的行军路线；选中的城、军团和部队脚下的光环 · the march line on the ground while choosing a destination; the ring under the chosen place, army or unit | `src/view3d/realm.mjs`, `src/view3d/battle3d.mjs` |
 | 半球光、平行光（级联阴影）、渐变天空、线性雾、后期 · hemisphere and directional light (cascaded shadows), gradient sky, linear fog, post | 日光随镜头移动让阴影罩住所见；雾随拉远而推远 · the sun follows the view so its shadows cover what is seen; the haze moves out as the camera draws back | `src/view3d/stage.mjs` |
-| `createBrowserAudio` + 混音器（`@egret/engine/web/audio`） | 音效和配乐两条总线；天下与战场两段无缝循环的配乐交叉淡入淡出；同一音效限三个声部 · two buses for effects and music; the realm's and the field's seamless themes crossfade; at most three voices of one effect | `src/audio/sound.mjs` |
-| `encodeWav`（`@egret/engine/kit`） | 十七个音效和两段配乐都在代码里合成后编码 · seventeen effects and two themes made in code and encoded | `src/audio/sound.mjs` |
+| `createBrowserAudio` + 混音器（`@egret/engine/web/audio`） | 音效和配乐两条总线，三首场景配乐按需解码并交叉淡入淡出 · separate effects and music buses, three on-demand scores with crossfades | `src/audio/sound.mjs` |
+| `encodeWav`（`@egret/engine/kit`） | 19 类短音效由代码合成，多种命中声带变体 · 19 synthesized cue types, with variations for repeated impacts | `src/audio/synthesis.mjs` |
 | `createSaveStore` + `browserSaveStorage`（`@egret/engine/kit`、`web/kit`） | 设置一处、三个存档位和自动存档各一处：有版本号，坏档另放一边，浏览器拒绝写入时提示 · settings in one place, three slots and the autosave each in their own: versioned, a broken save set aside, a refusing browser told | `src/saves.mjs`, `src/main.mjs` |
 
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs`：28 项全过——规则 15 项（天下图连通、数据互相对得上、同一种子同一段历史、钱粮征兵营建、科技与两路互斥、出征行军围城取城、回城驻守、战场相克与冲车破门与赤壁火攻与关羽的「武圣」、外交与使者、寻访登用招贤令、俘虏的处置、演义抉择、开局宽限、新人出仕、一统天下的结局）、存档 7 项、文字 4 项、引擎副本 2 项（含 `src/sim/` 全部模块不碰页面和引擎）。 · All 28 Node tests pass: 15 for the rules, 7 for saves, 4 for words, 2 for the engine copy (including that every module of `src/sim/` stays free of the page and the engine).
-- `node test/accept.mjs`：无头 Chromium（SwiftShader 软件渲染）里 24 项全过——标题、设置和战场与截图基线一致；音效开关存进设置；标题切英文；新征程选季汉春秋，桃园结义的画轴展开；在 3D 天下里点平原城、出征、点南皮，军团上路围城；攻城时亲自指挥：布阵、开战、四倍速、选中部队（镜头跟着它），仗打在南皮城下的格子上，打完看到战果；存进存档位一，刷新后从标题读回同一天；游戏里切英文；手机竖屏下城池详情从底部升起、舞台竖排；坏掉的自动存档另放一边并在标题提示；控制台无错误。 · In headless Chromium with software rendering, all 24 checks of the walk pass, the battle fought on the hexes below Nanpi, with a clean console.
-- `node tools/quality.mjs NineProvinces`：除 F1 外的自动项全部达标，见 [QUALITY.md](QUALITY.md)。 · Every automatic quality item but F1 passes; see QUALITY.md.
+- `node --test test/*.test.mjs` 共 51 项通过，覆盖规则、存档、文字、引擎副本和全名册的头像与立绘配对。 · All 51 Node tests pass. They cover the rules, saves, text, engine copy and both images for every officer ID.
+- `node test/accept.mjs` 在无头浏览器的 SwiftShader 模式通过 31 项。覆盖中英文标题、音量保留、刘备立绘、桃园结义、平原出军、南皮布阵交战、结算、存读档和竖屏布局。 · All 31 acceptance checks pass in headless SwiftShader, including the volume setting, Liu Bei's illustration, the Peach Garden Oath, the battle at Nanpi and the save/load walk.
+- Windows Edge 跑到南皮攻城，实测布阵、四倍速和手动释放「武圣」。同机位中画质下，洛阳地图的 96 帧样本 p95 从 4.3 ms 到 8.3 ms。 · Windows Edge reached the siege at Nanpi and confirmed deployment, 4× speed and a manually targeted Wusheng hit. At Luoyang, the 96-frame same-camera medium-quality p95 rose from 4.3 ms to 8.3 ms.
+- 三星 Galaxy Z Fold7 真机复测横竖屏、立绘、换城、出征、布阵和开战。中画质地图与战场短样本的 p95 为 16.6–16.7 ms，每个场景 72 个帧间隔。 · Galaxy Z Fold7 device testing covered both orientations, portraits, switching cities, marching, deployment and starting a battle. Medium-quality map and battle frame intervals measured 16.6–16.7 ms p95 over 72 intervals per scene.
+- 上一轮软件渲染的验收见 [QUALITY.md](QUALITY.md)。 · The previous software-rendered quality pass is recorded in QUALITY.md.
 - `node tools/balance.mjs`：上面「数值与节奏」的表就是它的输出。 · The table above is its output.
 - 截图核对过：标题（中英）、开局、天下图与城池详情、小地图、出征、布阵、城下攻战（战法大字、伤害数字、箭雨）、三顾茅庐的来投画面、武将详情（六维与适性）、科技树、演义树、设置，以及手机竖屏的天下图和城池详情。 · Screenshots checked: the title in both languages, setup, the realm and a city's details, the minimap, mustering, deployment, an assault below the walls (tactics written large, losses, volleys), the newcomer of the thrice-visited cottage, an officer's sheet with six abilities and aptitudes, the trees of inventions and of the tale, the settings, and on a phone held upright the realm and a city's details.
 - 地形在 Node 里算一个采样点约 1.3 微秒，一块地（65×65）约 6 毫秒。 · The land takes about 1.3 µs a sample in Node, about 6 ms a tile of 65 × 65.
 
 ## 已知问题 · Known issues
 
-- 只在软件渲染（SwiftShader）下跑过：低画质下标题约 230–280 ms 一帧（p95），主要花在逐像素的地面着色上；有显卡的电脑和手机实机未运行，中、高画质的阴影、泛光和水面折射也只在软件渲染下看过截图。 · Run only under software rendering (SwiftShader): at low quality the title takes about 230–280 ms a frame (p95), mostly the per-pixel shading of the ground; machines with a GPU and real phones were not run, and the shadows, bloom and refracting water of medium and high quality were seen only as screenshots under software rendering.
+- 上一轮 SwiftShader 标题帧时间 p95 为 233.3 ms，主要开销在地面着色。它适用于软件渲染环境。 · The previous SwiftShader title run measured 233.3 ms p95, mostly ground shading. This measurement is specific to software rendering.
 - 地块在主线程上生成，快速拖过大片地图时每帧最多生成两块（各约 6 ms），会有轻微卡顿。 · Tiles of land are made on the main thread, at most two a frame (about 6 ms each), so a fast drag across the map can stutter slightly.
 - 城的模型只在镜头靠近时才搭建，第一次飞到远处时城会在一两帧后出现。 · A city's model is built when the camera first comes near, so on a first flight far away it appears a frame or two late.
 - 江河按史料粗略的经纬度画成，和城的相对位置与实际地理有出入；碰到城墙的河段会绕开城池。 · Rivers follow rough longitudes and latitudes, so where they run relative to the cities is not exact; a river that met the walls bows round the city.
 - 电脑之间的战斗不在地图格子上打（见「数值与节奏」）；在地图上打时城小，守城弓手集中，强攻比以前难。 · The computer's own battles are not fought on the map's hexes (see Numbers and pace); on the map a town is small and its archers close together, so an assault is harder than it was.
-- 只在无头环境里听过合成的波形，没有用扬声器听过。 · The synthesized sound was checked as waveforms only, never through a speaker.
+- 新音频已测解码、换曲、独立音量和削波。扬声器听感待验。 · The new audio was checked for decoding, transitions, independent volume and clipping. Speaker listening is pending.
 - 连环计等少数史实事件要求的人物若先在战斗中阵亡或被俘，事件就会错过。 · A few events of history, such as the chain stratagem, are missed when the men they need have already fallen or been taken in battle.
 - 平衡只靠电脑对电脑的百年推演调过，没有真人玩满一局的记录。 · The balance was tuned only by the computer playing itself for a century; no person has played a whole game.
 - 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-23，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 233.3 ms over 25 frames）。
@@ -124,12 +147,10 @@ tally {"siegeWon":386,"ratio":9511.089951404658,"taken":464,"takenNeutral":61,"f
 
 ## 未完成 · Unfinished
 
-- 只有 184 年一个剧本，没有 190、200、208 等后期开局。 · Only the scenario of 184; none starting in 190, 200 or 208.
 - 没有武将单挑和舌战，特性里的「单挑」效果暂时只影响战斗攻击。 · No duels or debates; the duel effect of traits counts only in battle for now.
 - 没有官职、爵位和婚姻；武将忠诚只随赏赐、俘虏和君主更替变化。 · No offices, titles or marriages; loyalty moves only with gifts, captivity and a change of lord.
-- 天下没有天气、昼夜和季节变化；战场的夜战只有乌巢一场。 · No weather, day and night or seasons on the realm; the only night battle is Wuchao.
+- 天下图有四季，天气和昼夜尚未接入。乌巢使用独立的夜战表现。 · The realm has four seasons. Weather and a day-night cycle are pending. Wuchao has a dedicated night battle presentation.
 - 兵模是固定姿势的小件，靠整体起伏与前冲表现动作，没有骨骼动画。 · Soldiers are rigid figures that move as a whole, bobbing and lunging, with no skeletal animation.
-- 武将五百六十六位，其余靠每年生成的新人补足；没有自建武将。 · Five hundred and sixty-six officers, the rest made up by new men each year; no officers of your own making.
 
 ## 目录结构 · Layout
 

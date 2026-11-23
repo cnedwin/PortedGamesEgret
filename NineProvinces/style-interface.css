@@ -1,0 +1,314 @@
+/* Lacquer, silk and bronze frame the live battlefield and the painted officers. */
+:root {
+  --lacquer: #161d20;
+  --lacquer-edge: #364748;
+  --silk-letter: #f1e5cd;
+  --bronze-line: rgba(218, 182, 117, .34);
+}
+
+#title.title:not(.setup) {
+  background: linear-gradient(90deg, #101819 0%, rgba(16, 24, 25, .96) 21%, rgba(16, 24, 25, .64) 37%, transparent 68%),
+    linear-gradient(0deg, rgba(12, 16, 19, .6), transparent 30%);
+}
+.title:not(.setup) .titleMenu {
+  left: clamp(28px, 6vw, 104px);
+  top: 50%;
+  bottom: auto;
+  transform: translateY(-50%);
+  width: min(396px, 40vw);
+  padding-block: 24px 18px;
+  border-block: 1px solid var(--bronze-line);
+}
+.campaignMark {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+.campaignMark h1 {
+  margin: 0;
+  color: #f4d698;
+  font: 800 clamp(38px, 5.2vw, 88px)/1.05 var(--kai);
+  letter-spacing: .045em;
+  text-wrap: balance;
+  text-shadow: 0 3px 1px rgba(12, 16, 17, .72), 0 6px 28px #111819;
+}
+html[lang="en"] .campaignMark h1 {
+  font-size: clamp(37px, 4.45vw, 65px);
+  letter-spacing: -.025em;
+}
+.beaconSeal {
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  width: 45px;
+  height: 45px;
+  transform: rotate(-4deg);
+  color: #fff1c9;
+  font: 800 27px var(--kai);
+  border: 1px solid #d39568;
+  background: linear-gradient(145deg, #b75444, #743329);
+  box-shadow: inset 0 0 0 3px #743329, inset 0 0 0 4px rgba(255, 231, 174, .62);
+}
+.titleMenu .subtitle {
+  color: #e7dbbf;
+  max-width: 34ch;
+  margin: 0 0 24px;
+}
+.titleMenu nav {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.titleMenu nav .btn {
+  min-width: 0;
+  min-height: 48px;
+  text-align: center;
+  padding: 10px 15px;
+  background: linear-gradient(145deg, #2a383a, #202827);
+  border: 1px solid var(--bronze-line);
+  border-radius: 3px;
+  color: var(--silk-letter);
+  letter-spacing: .035em;
+}
+.titleMenu nav .btn:first-child {
+  grid-column: 1 / -1;
+  font-size: 18px;
+}
+.titleMenu nav .btn:last-child:nth-child(even) {
+  grid-column: 1 / -1;
+}
+.titleMenu nav .btn.main {
+  background: linear-gradient(125deg, #a3483c, #67362d);
+  border-color: #d3986b;
+  box-shadow: inset 0 0 0 3px rgba(248, 208, 153, .12);
+}
+.titleMenu nav .btn:hover {
+  filter: brightness(1.16);
+}
+.titleMenu .demo {
+  margin: 16px 0 0;
+  color: #e0d4ba;
+  opacity: 1;
+}
+
+.setupPanel {
+  width: min(550px, calc(100% - 32px));
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  padding: 0;
+  overflow: hidden;
+  color: var(--silk-letter);
+  background: linear-gradient(160deg, #293739, #1a2224 54%);
+  border: 1px solid #947957;
+  box-shadow: 0 24px 72px #090e12ab;
+}
+.setupPanel > header {
+  padding: 19px 22px 15px;
+  border-bottom: 1px solid var(--bronze-line);
+  background: linear-gradient(100deg, #273638, #1b2426);
+}
+.setupPanel > header h2 { color: #efd397; }
+.setupPanel .setupBody {
+  min-width: 0;
+  overflow: auto;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  padding: 4px 21px 17px;
+}
+.setupBody h3 {
+  margin: 17px 0 8px;
+  padding-left: 10px;
+  border-left: 3px solid #b89664;
+  color: #ebce95;
+}
+.setupBody .branch,
+.setupBody .fac {
+  min-height: 46px;
+  color: var(--silk-letter);
+  border-color: rgba(218, 182, 117, .22);
+}
+.setupBody .branch[aria-pressed="true"],
+.setupBody .fac[aria-pressed="true"] {
+  border-color: #d3b075;
+  background: linear-gradient(130deg, #526356, #344745);
+  box-shadow: inset 3px 0 #d3b075;
+}
+.setupPanel .chosen {
+  display: grid;
+  grid-template-columns: minmax(76px, 24%) 1fr;
+  gap: 14px;
+  position: relative;
+  padding: 10px 14px 10px 10px;
+  background: linear-gradient(112deg, #263935, #212829 76%);
+  border: 1px solid var(--bronze-line);
+}
+.setupPanel .chosen .face {
+  grid-row: 1;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  object-position: center 21%;
+}
+.setupPanel .chosen .seal {
+  position: absolute;
+  left: 11px;
+  bottom: 9px;
+  z-index: 1;
+}
+.setupPanel > footer {
+  padding: 10px 20px;
+  margin: 0;
+  border-top: 1px solid var(--bronze-line);
+  background: #1c2627;
+  z-index: 1;
+}
+.setupPanel > footer .btn { min-height: 44px; }
+
+#topbar {
+  background: linear-gradient(110deg, #202d30f5, #172023f2 62%);
+  border-bottom-color: #987b54;
+}
+#topbar .res {
+  gap: 3px;
+  scrollbar-width: thin;
+}
+#topbar .res .r {
+  border-bottom: 1px solid rgba(215, 183, 119, .21);
+}
+#topbar .date {
+  display: grid;
+  align-content: center;
+  line-height: 1.18;
+  color: #edd19e;
+}
+#topbar .season { color: #c4d4c3; font: 700 11px/1.4 var(--sans); }
+#side, #sheet, #log {
+  border-color: rgba(204, 168, 108, .57);
+}
+.plate.place {
+  background-color: #172629;
+  border-color: rgba(209, 184, 132, .62);
+}
+.generalHero {
+  display: grid;
+  grid-template-columns: minmax(136px, 40%) 1fr;
+  align-items: center;
+  gap: clamp(12px, 3vw, 26px);
+  position: relative;
+  min-width: 0;
+  padding: 13px;
+  border: 1px solid #9d8765;
+  border-radius: 4px;
+  background: radial-gradient(ellipse at 5% 75%, rgba(87, 115, 100, .44), transparent 61%),
+    linear-gradient(145deg, #263734, #172125);
+  box-shadow: inset 0 0 0 3px rgba(222, 186, 132, .11);
+}
+.generalHero .portraitFrame { min-width: 0; padding: 3px; }
+.generalHero .portraitFrame .face {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+}
+.generalHero .seal { position: absolute; right: -4px; bottom: 4px; }
+.generalDossier { min-width: 0; overflow-wrap: anywhere; }
+.generalDossier .names b { color: #f7dcaa; font-size: clamp(24px, 4vw, 38px); }
+.generalDossier .names small { display: block; margin-left: 0; }
+.generalDossier .names { padding-bottom: 10px; border-bottom: 1px solid var(--bronze-line); }
+.rosterEmpty { padding: 18px 12px; text-align: center; color: var(--muted); }
+.volumeSetting {
+  display: grid;
+  grid-template-columns: minmax(95px, auto) minmax(85px, 1fr) 44px;
+  gap: 12px;
+  min-height: 44px;
+}
+.volumeSetting .range { margin: 0; width: 100%; min-height: 40px; }
+.volumeSetting output { color: #e9d5ad; text-align: right; font-variant-numeric: tabular-nums; }
+.battleReport { margin-block: 14px; padding: 0 11px 7px; border: 1px solid var(--bronze-line); }
+.battleReport > summary { min-height: 44px; padding: 11px 0; color: #efcd91; font-weight: 700; cursor: pointer; }
+.reportWing { margin-bottom: 12px; }
+.reportStats { display: flex; flex-wrap: wrap; gap: 5px; }
+.reportTrait { display: grid; min-width: 58px; padding: 4px 8px; border: 1px solid var(--bronze-line); }
+.reportTrait span, .reportUnits small, .reportStrength span { display: block; font-size: 12px; color: var(--muted); }
+.reportTrait b, .reportStrength b { font-variant-numeric: tabular-nums; color: #e7cf9d; }
+.reportUnits { list-style: none; padding: 0; margin-block: 7px 0; }
+.reportUnits li { display: flex; align-items: center; justify-content: space-between; gap: 7px; padding: 6px 2px; border-bottom: 1px solid var(--bronze-line); }
+.reportStrength { text-align: right; }
+
+@media (max-width: 760px) {
+  #title.title:not(.setup) {
+    background: linear-gradient(0deg, #101819 5%, rgba(16, 24, 25, .98) 29%, rgba(16, 24, 25, .72) 51%, rgba(16, 24, 25, .06) 83%);
+  }
+  .title:not(.setup) .titleMenu {
+    left: max(18px, env(safe-area-inset-left));
+    bottom: max(18px, env(safe-area-inset-bottom));
+    top: auto;
+    width: min(420px, calc(100vw - 36px));
+    transform: none;
+    padding-block: 15px 12px;
+  }
+  .campaignMark { margin-bottom: 10px; }
+  .campaignMark h1 { font-size: clamp(37px, 11vw, 61px); }
+  .titleMenu .subtitle { margin-bottom: 14px; }
+  .setupPanel {
+    top: max(9px, env(safe-area-inset-top));
+    bottom: max(9px, env(safe-area-inset-bottom));
+    left: max(9px, env(safe-area-inset-left));
+    width: min(550px, calc(100% - 18px));
+  }
+  .setupPanel > header { padding: 12px 15px 9px; }
+  .setupPanel .setupBody { padding: 3px 13px 11px; }
+  .setupPanel > footer { padding: 8px 13px; }
+  .generalHero { grid-template-columns: minmax(90px, 41%) 1fr; padding: 8px; }
+}
+@media (max-height: 510px) and (min-width: 550px) {
+  .title:not(.setup) .titleMenu {
+    left: max(18px, env(safe-area-inset-left));
+    top: 50%; bottom: auto; width: min(360px, 48vw); transform: translateY(-50%);
+    padding-block: 9px;
+  }
+  .campaignMark h1, html[lang="en"] .campaignMark h1 { font-size: clamp(31px, 5vw, 52px); }
+  .campaignMark { margin-bottom: 7px; }
+  .titleMenu .subtitle { margin-bottom: 12px; }
+  .titleMenu .demo { margin-top: 9px; }
+  .titleMenu nav .btn { min-height: 40px; padding: 6px 10px; }
+}
+
+/* Leave the map centre tappable when a phone is held sideways. */
+@media (orientation: landscape) and (max-height: 520px) and (min-width: 620px) and (max-width: 1000px) {
+  #topbar {
+    display: grid;
+    grid-template-columns: max-content max-content minmax(0, 1fr) max-content;
+    gap: 3px 9px;
+    padding-inline: max(8px, env(safe-area-inset-left)) max(8px, env(safe-area-inset-right));
+  }
+  #topbar .res {
+    order: 0;
+    width: auto;
+    overflow-x: auto;
+    touch-action: pan-x;
+  }
+  #topbar .menu {
+    grid-column: 1 / -1;
+    width: auto;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    touch-action: pan-x;
+  }
+  #topbar .menuBtn { min-height: 35px; white-space: nowrap; }
+  #topbar .pausedMark { left: auto; right: 12px; transform: none; }
+  #side {
+    top: max(94px, calc(88px + env(safe-area-inset-top)));
+    left: max(8px, env(safe-area-inset-left));
+    right: auto;
+    bottom: max(8px, env(safe-area-inset-bottom));
+    width: min(307px, 38vw);
+    max-height: none;
+    border-radius: 4px;
+  }
+  #side .x { min-width: 44px; min-height: 44px; }
+}

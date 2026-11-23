@@ -60,19 +60,21 @@ for (const line of UNIT_ROWS.trim().split('\n')) {
 
 /** How much a weapon kind hurts another beyond the ordinary: the triangle, and what shields and walls do. */
 export const COUNTER = 1.35;
+/** Horse already has the speed/armour to close on bows; its weapon bonus is smaller than the foot triangle. */
+export const HORSE_BOW_COUNTER = 1.25;
 
 /**
  * Formations: what they change. atk, def, spd as multipliers minus one; front: extra defence facing the enemy;
  * flank: extra damage when striking from the side; group: which class may take it.
  */
 const FORMATION_ROWS = `
-fishscale 鱼鳞 Fish_Scales 0.10 0.00 0.00 0.10 0.00 inf
+fishscale 鱼鳞 Fish_Scales 0.10 0.00 -0.08 0.10 0.00 inf
 arrowhead 锋矢 Arrowhead 0.20 -0.10 0.10 0.00 0.10 cav
 craneswing 鹤翼 Crane's_Wings 0.05 0.05 -0.05 0.00 0.20 any
 square 方圆 Square 0.00 0.25 -0.30 0.20 0.00 any
-geese 雁行 Wild_Geese 0.10 0.00 0.00 0.00 0.00 bow
-longsnake 长蛇 Long_Snake 0.00 0.00 0.25 0.00 0.00 any
-crescent 偃月 Crescent 0.15 0.05 0.00 0.05 0.05 cav
+geese 雁行 Wild_Geese 0.10 -0.12 -0.05 0.00 0.00 bow
+longsnake 长蛇 Long_Snake -0.10 -0.15 0.25 0.00 0.00 any
+crescent 偃月 Crescent 0.15 0.05 -0.12 0.05 0.05 cav
 yoke 衡轭 Yoke 0.00 0.15 -0.10 0.10 0.05 inf
 `;
 
@@ -80,6 +82,15 @@ export const FORMATIONS = {};
 for (const line of FORMATION_ROWS.trim().split('\n')) {
   const [id, zh, en, atk, def, spd, front, flank, group] = line.trim().split(/\s+/);
   FORMATIONS[id] = { id, zh, en: en.replace(/_/g, ' '), atk: +atk, def: +def, spd: +spd, front: +front, flank: +flank, group };
+}
+
+/** Shared by campaign deployment, sandbox configuration and authoritative orders. */
+export function formationAllowed(kind, formation) {
+  const u=UNITS[kind],f=FORMATIONS[formation];
+  return Boolean(u&&f&&(f.group==='any'||f.group===u.group||(u.group==='navy'&&f.group==='inf')));
+}
+export function defaultFormation(kind) {
+  return UNITS[kind]?.group==='cav'?'arrowhead':UNITS[kind]?.group==='bow'?'geese':UNITS[kind]?.group==='inf'?'fishscale':'square';
 }
 
 /** Ground on the battlefield: move cost, defence for who stands on it, and who it suits. */

@@ -14,16 +14,16 @@ const lin = (v) => (v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4
 /** sRGB 0..255 triple to linear. */
 const C = (r, g, b) => [lin(r / 255), lin(g / 255), lin(b / 255)];
 const PAL = {
-  grass: C(96, 124, 52),
-  meadow: C(112, 138, 58),
-  farm: C(158, 140, 82),
+  grass: C(83, 115, 78),
+  meadow: C(111, 136, 87),
+  farm: C(155, 140, 101),
   steppe: C(150, 140, 84),
   sand: C(200, 168, 110),
   loess: C(168, 136, 92),
   plateau: C(132, 116, 92),
   rock: C(104, 96, 88),
   snow: C(236, 238, 242),
-  forest: C(52, 74, 38),
+  forest: C(49, 76, 58),
   beach: C(196, 178, 134),
   marsh: C(96, 112, 74),
   bed: C(88, 96, 84),
@@ -112,6 +112,14 @@ vec4 customFragment(vec4 color, vec3 worldPosition, vec3 normal, vec2 uv) {
   // Tufts on flat lowland.
   float tuft = smoothstep(0.72, 0.9, gNoise(p * 6.5 - 3.0)) * fine * level;
   c *= 1.0 - tuft * 0.18;
+  // Date-driven seasons occupy the three unused ground uniforms. No tile rebuild.
+  float vegetation = smoothstep(-0.025, 0.08, color.g - color.r * 0.82);
+  c = mix(c, c * vec3(1.35, 0.89, 0.65), uCustom[3].y * vegetation * 0.72);
+  c *= mix(vec3(1.0), vec3(0.93, 1.09, 0.98), uCustom[3].w * vegetation * 0.48);
+  float north = 1.0 - smoothstep(1050.0, 2050.0, p.y);
+  float snow = uCustom[3].z * clamp(north * 0.78 + smoothstep(10.0, 27.0, worldPosition.y) * 0.7, 0.0, 0.92);
+  float snowPatch = smoothstep(0.15, 0.7, g3) * smoothstep(0.55, 0.93, normal.y);
+  c = mix(c, vec3(0.72, 0.78, 0.77), snow * snowPatch * step(0.35, worldPosition.y));
   // The hex grid: thin pale lines, faded out when far.
   vec3 hx = hexEdge(p);
   float width = 0.025 + pixel * 0.3;
@@ -214,6 +222,12 @@ export function createLand(scene, { quality = 'medium', onTile } = {}) {
   return {
     stream,
     material,
+    /** Update palette only: streamed geometry and simulation terrain stay unchanged. */
+    setSeason(season) {
+      u[13] = season.autumn;
+      u[14] = season.winter;
+      u[15] = season.spring;
+    },
     /** Ground height from loaded tiles, or worked out where none is loaded. */
     heightAt: (x, z) => stream.heightAt(x, z) ?? landAt(x, z, sample).height,
     update(x, z, reach) {

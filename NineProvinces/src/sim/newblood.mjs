@@ -7,6 +7,7 @@
 import { GENERALS } from '../data/generals.mjs';
 import { NODES } from '../data/map.mjs';
 import { dateOf, forgetGeneralIds, random, serving } from './core.mjs';
+import { normalizeRoster } from '../custom-officers.mjs';
 
 // Surnames and given-name characters, each with its pinyin.
 const SURNAMES =
@@ -28,7 +29,37 @@ const cap = (s) => s[0].toUpperCase() + s.slice(1);
 export function registerCustom(state) {
   // Those of another game are taken out first.
   for (const id of Object.keys(GENERALS)) if (GENERALS[id].made) delete GENERALS[id];
-  for (const g of state.custom ?? []) GENERALS[g.id] = g;
+  for (const g of state.custom ?? []) {
+    // Legacy generated officers use n..., player-authored ones use u.... A
+    // loaded custom entry must never replace a historical or prototype key.
+    if (g?.made && /^(?:n|u)[0-9a-z]+$/.test(g.id) && !GENERALS[g.id]) GENERALS[g.id] = g;
+  }
+  forgetGeneralIds(state);
+}
+
+/** Copy a selected title roster into this new campaign; never mutate the roster. */
+export function addRosterOfficers(state, input) {
+  const year = dateOf(state.day).year, made = [];
+  for (const entry of normalizeRoster(input)) {
+    let id = entry.id;
+    if (state.generals[id] || GENERALS[id]) {
+      let serial = 1;
+      while (state.generals['u' + serial.toString(36)] || GENERALS['u' + serial.toString(36)]) serial++;
+      id = 'u' + serial.toString(36);
+    }
+    const faction = entry.service === 'player' ? state.player : null;
+    const at = state.factions[state.player].capital;
+    const born = year - entry.age;
+    const g = { id, zh: entry.zh, en: entry.en, born, died: born + 78, home: at,
+      stats: { ...entry.stats }, traits: entry.trait ? [entry.trait] : [], camp: state.factions[state.player].camp,
+      female: entry.female, portrait: entry.portrait, start: null, made: true, userCreated: true, rosterId: entry.id };
+    (state.custom ??= []).push(g); GENERALS[id] = g;
+    state.generals[id] = { status: faction ? 'serving' : 'free', faction, at, loyalty: faction ? 88 : 0,
+      exp: {}, treasures: [], died: g.died, known: true };
+    made.push(id);
+  }
+  forgetGeneralIds(state);
+  return made;
 }
 
 /** Make one new general, of age this year, at a place: serving a faction, or unattached. */
@@ -40,7 +71,8 @@ export function newGeneral(state, at, faction = null) {
     b = GIV[Math.floor(random(state) * GIV.length)];
   const zh = s.zh + a.zh + (two && b.zh !== a.zh ? b.zh : '');
   const en = cap(s.py) + ' ' + cap(a.py) + (two && b.zh !== a.zh ? b.py : '');
-  const id = 'n' + (state.nextId++).toString(36);
+  let id;
+  do { id = 'n' + (state.nextId++).toString(36); } while (state.generals[id] || GENERALS[id]);
   // One strength, the rest middling.
   const stats = { lead: 0, war: 0, int: 0, pol: 0, cha: 0 };
   const keys = Object.keys(stats),
