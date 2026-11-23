@@ -9,6 +9,7 @@ import { EVENTS } from './data/events.mjs';
 import { PERKS, ACHIEVEMENTS } from './data/memories.mjs';
 import { BAILU_ZERO_STAGES, freshBailuZero } from './data/bailu-zero.mjs';
 import { SOCIAL_SCENES, SOCIAL_IDS, freshSocialStories, freshSocialStory } from './data/social-stories.mjs';
+import { freshFirstEvening, offerFirstEvening } from './first-evening.mjs';
 
 export const SAVE_VERSION = 1;
 const clone = value => JSON.parse(JSON.stringify(value));
@@ -71,6 +72,7 @@ export function newGame(options = {}) {
     eventDay: 0,
     bailuZero: freshBailuZero(),
     socialStories:freshSocialStories(),
+    firstEvening: freshFirstEvening(),
   };
   const perk = PERKS.find(x => x.id === options.perk);
   if (perk) {
@@ -242,6 +244,7 @@ export function chat(s, girl, approach) {
     (w?.kind === 'chat' && w.approach === approach) || (w?.kind === 'style' && (outfitStyles(s.hero.wear)[w.style] ?? 0) >= WISH_STYLE)
       ? grantWish(s)
       : 0;
+  offerFirstEvening(s);
   return { gain, zone, pull: g.pull, wish };
 }
 
@@ -261,6 +264,7 @@ export function give(s, girl, item) {
   g.giftDay = s.day;
   g.pull = clamp(g.pull + 4, -50, 50);
   s.counters.gift = (s.counters.gift ?? 0) + 1;
+  offerFirstEvening(s);
   if (CLOTHES[item]) {
     // Clothes join her wardrobe; she likes them more when they are her style.
     const fits = Object.keys(CLOTHES[item].styles).some(tag => HEROINES[girl].likes.includes(tag));
@@ -304,6 +308,7 @@ export function date(s, girl, spotId) {
   const w = wishFor(s, girl);
   const wish = w?.kind === 'date' && w.spot === spotId ? grantWish(s) : 0;
   advance(s);
+  offerFirstEvening(s);
   return { gain, zone, jealous, spot, wish };
 }
 
@@ -405,6 +410,7 @@ export function act(s, placeId, actId, focus = 'ok') {
   if (a.work) s.counters.work = (s.counters.work ?? 0) + 1;
   if (result.focus === 'perfect') s.counters.perfect = (s.counters.perfect ?? 0) + 1;
   if (!a.free) advance(s);
+  offerFirstEvening(s);
   return result;
 }
 
@@ -431,6 +437,7 @@ export function buy(s, shopId, id) {
     s.hero.hairs[id] = true;
     s.hero.hair.bangs = id;
   } else s.bag[id] = (s.bag[id] ?? 0) + 1; // gifts, supplies and clothes meant as presents
+  offerFirstEvening(s);
   return true;
 }
 
