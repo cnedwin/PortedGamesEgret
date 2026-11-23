@@ -562,13 +562,13 @@ export const GAMES = [
   {
     id: 'sand', folder: 'SandScroll', kind: '2d',
     scenes: [
-      { zh: "作画 · 《秋山图》一条石青正从左往右亮起，五色沙层层堆叠", en: "Paint · On the autumn scroll a run of azurite lights up, five pigments in layers" },
-      { zh: "拆画 · 画就是一盘沙，传送带上的沙桶收走头顶同色的沙", en: "Unpaint · The painting is sand; buckets on the belt collect the colour above them" },
-      { zh: "卷首 · 作画、拆画、无尽沙盘三种玩法", en: "The title · Paint, unpaint and the endless tray" },
+      { zh: "作画 · 同色沙连通两壁，消掉的颜料为手卷上色", en: "Paint · Connect matching sand from wall to wall to colour the scroll" },
+      { zh: "拆画 · 看盘底露出的颜色，挑沙桶上带收沙", en: "Unpaint · Match a bucket to an exposed pigment and collect sand along the belt" },
+      { zh: "卷首 · 作画、拆画、无尽沙盘与今日试笔", en: "Title · Paint, Unpaint, Endless Tray and Daily Scroll" },
     ],
     zh: "沙画江山", en: "Sand Scroll",
     genre: { zh: "沙画消除", en: "Sand puzzle" },
-    summary: { zh: "三种玩法：作画——积木化沙，同色从左墙连到右墙就消，消掉的沙把三卷白描山水染成青绿；无尽沙盘——颜料越来越多；拆画——画本身是一盘沙，用传送带上的沙桶一层层收走。", en: "Three ways to play: paint, where pieces break into sand and a colour from wall to wall clears, colouring three ink landscapes; the endless tray, with more pigments as you go; and unpaint, where the painting is sand collected by buckets riding a belt." },
+    summary: { zh: "铺开彩沙，为三卷白描山水上色。也可用传送带上的沙桶逐层拆画，在无尽沙盘挑战更多颜料，或在今日试笔里用当天固定的盘面和积木刷新个人最高分。", en: "Spread coloured sand to paint three ink landscapes. Collect the pigments one layer at a time in Unpaint, take on more colours in the Endless Tray, or try for a personal best on the Daily Scroll's fixed board and piece sequence." },
     features: [
       {
         title: { zh: "一粒沙一个像素", en: "One grain, one pixel" },
@@ -576,13 +576,13 @@ export const GAMES = [
         source: 'src/view/board.mjs',
       },
       {
-        title: { zh: "引擎只画会动的东西", en: "The engine draws only what moves" },
-        description: { zh: "透明的引擎画布下垫一张页面画布：紫檀框、碟子、手卷和装裱只在变化时画一次，引擎每帧只画沙、积木、粒子和按钮，软件渲染下的帧时间因此减半。", en: "A page canvas lies under the clear engine canvas: the frame, the dishes and the scroll are painted there only when they change, and the engine draws only sand, pieces, particles and buttons, halving software-drawn frame times." },
+        title: { zh: "静态布景与动态沙盘分层", en: "Separate layers for scenery and live sand" },
+        description: { zh: "沙框、碟子和装裱画在透明白鹭画布下方的独立画布上，只有变化时才重绘。白鹭绘制沙粒、积木、粒子和按钮，静态菜单空闲时暂停帧循环。", en: "The frame, dishes and scroll mount sit on a canvas behind the transparent Egret stage and redraw only when they change. Egret draws the sand, pieces, particles and controls. The frame loop rests when static menus are idle." },
         source: 'src/main.mjs',
       },
       {
-        title: { zh: "沙会塌、不会流", en: "Sand that slumps but does not run" },
-        description: { zh: "规则不碰页面也不碰引擎：每粒沙只能往两边滑十次左右，所以沙在落点附近塌开；往前看一步的机器人和规则测试证明平铺横带能画成、全堆一处必输。", en: "The rules touch neither page nor engine: each grain slides only about ten times, so sand slumps where it lands; a one-move-ahead robot and the rules tests show flat bands finish the scroll and heaping in one place loses." },
+        title: { zh: "独立模拟沙粒沉降", en: "Sand simulation independent of rendering" },
+        description: { zh: "沙粒下落、侧滑和同色连通由模拟层计算。相同种子和操作会得到相同结果，可在 Node 中复跑平铺、堆高和消除。", en: "The simulation handles falling, sideways movement, and connections between grains of the same colour. The same seed and inputs produce the same result, so spreading, stacking and clearing can be replayed in Node." },
         source: 'src/sim/sand.mjs',
       },
       {
@@ -591,8 +591,8 @@ export const GAMES = [
         source: 'src/sim/unpaint.mjs',
       },
       {
-        title: { zh: "拨弦一样的消除声", en: "Clears that sound like plucked strings" },
-        description: { zh: "消除声用 Karplus-Strong 算出拨弦，连消时沿五声音阶往上走；沙声是滤过的噪声加颗粒，背景是二十四秒无缝循环的拨弦小曲，都经 encodeWav 交给引擎混音器。", en: "Clears are plucked strings computed by Karplus-Strong, climbing the pentatonic scale through a chain; sand is filtered noise with grains, and a plucked tune loops seamlessly behind, all handed to the engine's mixer through encodeWav." },
+        title: { zh: "合成配乐与操作反馈", en: "Synthesized music and gameplay cues" },
+        description: { zh: "作画、无尽和拆画各用一段拨弦与竹笛配乐。落沙、连消、收沙和合桶有独立音效，经 encodeWav 交给白鹭混音器，由音乐和音效总线分别控制。", en: "Paint, Endless Tray and Unpaint each have a plucked-string and bamboo flute theme. Sand drops, chains, collection and bucket merges have distinct cues. Audio reaches the Egret mixer through encodeWav and plays through separate music and effects buses." },
         source: 'src/audio/sound.mjs',
       },
     ],
