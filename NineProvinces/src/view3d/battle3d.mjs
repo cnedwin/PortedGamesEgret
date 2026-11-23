@@ -22,7 +22,7 @@ import {
 import { UNITS } from '../data/battle.mjs';
 import { TACTICS } from '../data/tactics.mjs';
 import { nm } from '../i18n.mjs';
-import { distance, neighbours, ring as hexRing } from '../sim/battle.mjs';
+import { distance, neighbours, ring as hexRing, tacticPreview } from '../sim/battle.mjs';
 import { HEX_W, hexCenter } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS } from '../sim/land.mjs';
 import { generalName } from '../view/names.mjs';
@@ -103,6 +103,20 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   };
   const rangeCells = makeCells(0x84aeb2, .55), targetCells = makeCells(0xe8bb61, .9), dangerCells = makeCells(0xcb6650, .8, true);
   rangeCells.name='battle-range';targetCells.name='battle-order';dangerCells.name='battle-area-preview';
+  const lineGeometry=createBoxGeometry3D({width:.075,height:.045,depth:1});
+  const makeOrderLines=colour=>{
+    const mesh=new InstancedMesh3D(lineGeometry,createStandardMaterial3D({color:colour,emissive:colour,emissiveIntensity:.8,roughness:1,depthTest:false,depthWrite:false}),n);
+    mesh.count=0;mesh.pickable=false;mesh.frustumCulled=false;scene.addChild(mesh);own.push(mesh);return mesh;
+  };
+  const routeLines=makeOrderLines(0x9bd5cf),attackLine=makeOrderLines(0xe38462);
+  routeLines.name='battle-route-lines';attackLine.name='battle-target-line';
+  const lineMatrix=new Float32Array(16),lineRotation=[0,0,0,1];
+  function orderSegment(mesh,index,from,to){
+    const a=pos[from],c=pos[to];if(!a||!c||index>=n)return index;
+    const length=Math.hypot(c.x-a.x,c.z-a.z);if(length<.001)return index;
+    quatFromEuler(lineRotation,0,Math.atan2(c.x-a.x,c.z-a.z),0);
+    mat4Compose(lineMatrix,[(a.x+c.x)/2,Math.max(a.y,c.y)+.25,(a.z+c.z)/2],lineRotation,[1,1,length]);mesh.setMatrixAt(index,lineMatrix);return index+1;
+  }
   let viewPhase = 'deploy', armedTactic = null, previewKey = '';
   const previewMatrix = new Float32Array(16);
   function putCells(mesh, cells) {
@@ -126,22 +140,28 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   }
   function refreshPreview() {
     const u = selected !== null ? b.units[selected] : null;
-    const key = [viewPhase, selected, u?.pos, armedTactic?.tactic, hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
+    const key = [viewPhase, selected, u?.pos,u?.order,u?.goal,u?.path?.join(','),u?.target?.id, armedTactic?.tactic,armedTactic?.target, hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
     if (key === previewKey) return;previewKey = key;
     rangeCells.count = targetCells.count = dangerCells.count = 0;
+    routeLines.count=attackLine.count=0;
     for(const plate of unitPlates)plate.el.classList.remove('targetable');
-    if (!u || u.gone || u.pos < 0 || u.side !== side) return;
+    if (!u || u.gone || u.pos < 0 || u.side !== side||viewPhase==='result') return;
     if (viewPhase === 'deploy') {
       putCells(rangeCells, pos.flatMap((_, i) => canDeploy?.(u, i) ? [i] : []));
       return;
     }
     const tc = armedTactic ? TACTICS[armedTactic.tactic] : null;
-    const reach = tc ? (tc.mind ? 5 : Math.max(2, UNITS[u.kind].range + 1)) : UNITS[u.kind].range;
+    const reach = tc ? tacticPreview(b,u,tc.id).reach : UNITS[u.kind].range;
     putCells(rangeCells, hexRing(u.pos, reach));
-    if (!tc) { if (goalHex >= 0) putCells(targetCells, [goalHex]);return; }
-    const target = b.units.find(o => !o.gone && o.pos === hoverHex && o.side !== u.side);
-    for(const o of b.units)if(!o.gone&&o.side!==u.side&&o.pos>=0&&distance(o.pos,u.pos)<=reach)unitPlates[o.id].el.classList.add('targetable');
-    if (target && distance(target.pos, u.pos) <= reach) putCells(dangerCells, tacticCells(u, tc, target.pos));
+    if (!tc) {
+      let previous=u.pos,count=0;for(const at of u.path??[]){count=orderSegment(routeLines,count,previous,at);previous=at;}routeLines.count=count;
+      const foe=u.order==='attack'&&u.target&&!u.target.gone?u.target:null;
+      if(foe)attackLine.count=orderSegment(attackLine,0,u.pos,foe.pos);
+      const goal=foe?.pos??u.goal;if(goal!==null)putCells(targetCells,[goal]);return;
+    }
+    const target=armedTactic.target!=null?b.units[armedTactic.target]:b.units.find(o=>!o.gone&&o.pos===hoverHex&&o.side!==u.side);
+    for(const o of b.units)if(o.side!==u.side&&tacticPreview(b,u,tc.id,o).valid)unitPlates[o.id].el.classList.add('targetable');
+    const preview=tacticPreview(b,u,tc.id,target);if(preview.valid)putCells(dangerCells,preview.hexes);
   }
   let gateMesh = null;
   if (b.gate) {
@@ -524,6 +544,11 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       rig.glideTo(pos[i].x, pos[i].z, Math.min(rig.view.td, 45), 0.6);
       const u = b.units.findIndex((o) => !o.gone && o.pos === i);
       follow = u >= 0 ? u : null;
+    },
+    overview(){
+      follow=null;const rect=realm.canvasRect(),aspect=Math.max(.45,rect.width/Math.max(1,rect.height));
+      const extent=Math.max((maxX-minX)/aspect,maxZ-minZ),d=Math.max(78,Math.min(170,extent*1.65));
+      rig.glideTo(centre.x,centre.z,d,isCalm()?0:.6);
     },
     destroy() {
       stop();

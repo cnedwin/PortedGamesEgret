@@ -10,11 +10,22 @@ import {h,button,clear} from './dom.mjs';
 import {createLabShell,words as w,unitName,phaseName,formationInfo,stamp} from './battle-lab-shell.mjs';
 import {createBattleBoard} from './battle-board.mjs';
 import {boardPoint,hexPoints} from './battle-board-layout.mjs';
+import {tacticPresentation,battleOutcomeReason} from './battle-copy.mjs';
+import {createTempoMilestones,inspectTempoMilestones,beginTacticAim,selectTacticTarget,restoreTacticPause} from './battle-tempo.mjs';
 
 const clone=v=>JSON.parse(JSON.stringify(v));
 const HELP=['atk','def','spd','heal','rally','rage'];
 const OFFICERS=['guanyu','huangzhong','zhangfei','xiahoudun','xiahouyuan','zhangliao','caoren','lidian','zhouyu','huanggai','caocao'];
 const orderName=id=>w({auto:'自动接敌',move:'向指定格移动',attack:'追击目标',hold:'坚守阵地'}[id]??id,{auto:'Engage automatically',move:'Moving to hex',attack:'Pursuing target',hold:'Holding position'}[id]??id);
+const orderPhase=phase=>{
+ const labels={received:['已受令','Accepted'],executing:['执行中','Executing'],done:['已完成','Completed'],failed:['未执行','Failed']};
+ return w(...labels[phase]);
+};
+const tacticWhy=reason=>{
+ const reasons={rage:['怒气未满','Not enough rage'],stun:['部队被定身','Unit is stunned'],unavailable:['部队已无法行动','Unit cannot act'],
+  target:['请点选有效敌军','Choose a valid enemy'],range:['目标超出战法范围','Target is out of range'],unknown:['部队不会这项战法','Unit does not know this tactic']};
+ return w(...(reasons[reason]??reasons.target));
+};
 const tagNames={counter:['克制','Counter'],countered:['被克制','Countered'],shield:['盾防箭矢','Shield vs arrows'],brace:['枪阵拒骑','Spears brace horse'],height:['高地','High ground'],flank:['夹击','Flank'],charge:['冲锋','Charge'],cavalryTerrain:['骑兵地形修正','Cavalry terrain']};
 
 function selectField(label,values,current,onChange){
@@ -37,9 +48,12 @@ function thumbnail(id){
 export function createBattlePlayground(app,{onExit,openReplay}){
  const ui=createLabShell(w('演武沙盘','Tactical sandbox'),onExit);
  let config=clone(DEFAULT_SANDBOX),b=null,record=null,phase='config',paused=true,speed=1,selected=0;
- let armed=null,aimTarget=null,hoverTarget=null,resumeAfterAim=false;
- let board=null,toolbar=null,panel=null,clock=null,situation=null,child=null,tape=null;
- let accumulator=0,refresh=0,lastImpact=-Infinity,readyNotice=0;
+ let aim=null,hoverTarget=null;
+ let board=null,toolbar=null,panel=null,clock=null,child=null,tape=null;
+ let objective=null,situationDetail=null,tempoToggle=null,tempoBadge=null,tempoOfferButton=null,toolbarKey='';
+ let accumulator=0,refresh=0,lastImpact=-Infinity;
+ let milestones=createTempoMilestones(),autoPause=true,pauseReason=null,milestoneOffer=null,focusOffer=null;
+ const orders=new Map();
  let holdingControl=false,pendingControls=false,releaseTimer=0;
  const controlPointers=new Set();
  const notify=text=>{ui.notice.textContent=text;};
@@ -59,7 +73,7 @@ export function createBattlePlayground(app,{onExit,openReplay}){
  ui.onDestroy(()=>{clearTimeout(releaseTimer);window.removeEventListener('pointerup',releaseControl,true);window.removeEventListener('pointercancel',releaseControl,true);window.removeEventListener('blur',blurControls);child?.destroy();board?.destroy();});
 
  function configuration(){
-  board?.destroy();board=null;b=null;phase='config';armed=null;
+  board?.destroy();board=null;b=null;phase='config';aim=null;
   ui.host.dataset.labPhase='config';ui.heading.textContent=w('演武沙盘','Tactical sandbox');clear(ui.body);
   const intro=h('div.labEncounterIntro',h('span.labSeal',w('演','WAR')),h('div',h('h3',w('从一场真正的交锋开始','Choose your next encounter')),h('p',w('选好战局，亲手布阵。每道军令、每次施策都能在战后回看。','Choose a scenario and deploy your army. Every order and tactic can be reviewed afterwards.'))));
   const encounters=h('div.labEncounters');
@@ -100,14 +114,32 @@ export function createBattlePlayground(app,{onExit,openReplay}){
 
  function create(){
   try{b=createSandboxBattle(config);}catch(e){notify(w('配置无效：','Invalid setup: ')+e.message);return;}
-  board?.destroy();record=createBattleRecorder(b);phase='deploy';paused=true;selected=0;armed=null;aimTarget=null;hoverTarget=null;tape=null;accumulator=0;readyNotice=0;
-  if(config.encounter)for(const u of b.units)if(u.side===0){command(b,u.id,'autoTactic',false);record.action('autoTactic',{unit:u.id,arg:false});}
+  board?.destroy();record=createBattleRecorder(b);phase='deploy';paused=true;selected=0;aim=null;hoverTarget=null;tape=null;
+  accumulator=0;refresh=0;lastImpact=-Infinity;
+  milestones=createTempoMilestones(b);autoPause=true;pauseReason=null;milestoneOffer=null;focusOffer=null;orders.clear();
+  for(const u of b.units)if(u.side===0){command(b,u.id,'autoTactic',false);record.action('autoTactic',{unit:u.id,arg:false});}
   record.capture(phase,{force:true});ui.host.dataset.labPhase=phase;
   ui.heading.textContent=ENCOUNTERS[config.encounter]?w('演武 · ','Practice · ')+nm(ENCOUNTERS[config.encounter]):w('自由演武','Custom battle');
-  clear(ui.body);toolbar=h('div.labBattleTools');clock=h('output.labClock');situation=h('div.labSituation');
+  clear(ui.body);toolbar=h('div.labBattleTools');clock=h('output.labClock');toolbarKey='';
+  objective=h('strong');situationDetail=h('span');
+  tempoToggle=button(w('关键时刻暂停','Pause at milestones'),()=>{
+   if(phase==='result')return;
+   autoPause=!autoPause;
+   notify(autoPause?w('关键时刻暂停已开启。','Milestone pauses enabled.'):w('关键时刻暂停已关闭。','Milestone pauses disabled.'));
+   render(true);
+  });
+  tempoToggle.classList.add('labTempoToggle');tempoToggle.dataset.lab='tempo-pause';
+  tempoBadge=h('small',{'aria-hidden':'true'});tempoToggle.append(tempoBadge);
+  tempoOfferButton=button('',()=>{
+   if(!milestoneOffer)return;
+   const {unitId,tacticId}=milestoneOffer;
+   milestoneOffer=null;focusOffer=tacticId;tapUnit(unitId);
+  });
+  tempoOfferButton.classList.add('labTempoOffer');tempoOfferButton.dataset.lab='tempo-opportunity';
+  const situation=h('div.labSituation',objective,situationDetail,tempoOfferButton,tempoToggle);
   const layout=h('div.labBattleLayout'),field=h('div.labFieldArea');panel=h('aside.labUnitPanel',{'aria-label':w('部队指挥','Unit commands')});layout.append(field,panel);
   ui.body.append(toolbar,clock,situation,layout);
-  board=createBattleBoard(field,b.tiles,tapHex,tapUnit,{onHover:id=>{if(armed&&hoverTarget!==id){hoverTarget=id;render(false);}}});
+  board=createBattleBoard(field,b.tiles,tapHex,tapUnit,{onHover:id=>{if(aim&&hoverTarget!==id){hoverTarget=id;render(false);}}});
   field.append(h('p.labBoardLegend',w('青格可部署 · 金格为射程 · 虚线为实际行军路线 · 红线为追击目标。1–4选军，空格暂停。','Cyan: deployment · Gold: range · Dashed line: actual path · Red: attack target. 1–4 select units, Space pauses.')));
   notify(w('点选蓝军，再点青格布阵。也可以调整阵型；准备好后鸣鼓开战。','Select blue, then a cyan hex to deploy. Adjust formations, then begin.'));render(true);
  }
@@ -115,57 +147,141 @@ export function createBattlePlayground(app,{onExit,openReplay}){
  function issue(what,arg){
   if(!b||phase==='result')return;
   const u=b.units[selected];
-  if(!u||u.side!==0||!command(b,u.id,what,arg)){notify(w('这条军令当前不可执行','This order cannot be issued now'));return;}
-  record.action(what,{unit:u.id,arg:arg??null});record.capture(phase,{force:true});armed=null;aimTarget=null;
-  notify(unitName(u)+' · '+(what==='formation'?nm(FORMATIONS[arg]):what==='autoTactic'?w('自动战法','Auto tactics')+' '+(arg?w('开启','on'):w('关闭','off')):orderName(what)));
+  if(!u||u.side!==0)return;
+  if(!command(b,u.id,what,arg)){
+   const reason=u.gone||u.routed?w('部队已无法行动','Unit cannot act'):
+    what==='move'?w('这块地形无法通行，可另选位置。','This terrain cannot be entered. Choose another hex.'):
+    what==='attack'?w('目标已不可攻击，可另选敌军。','The target can no longer be attacked. Choose another enemy.'):w('当前无法下达这道军令','This command is unavailable');
+   showOrder(u,'failed',reason);render(true);return;
+  }
+  clearAim(true);
+  record.action(what,{unit:u.id,arg:arg??null});record.capture(phase,{force:true});
+  if(what==='autoTactic')notify(unitName(u)+' · '+(arg?w('已允许自动施策','Auto tactics enabled'):w('已切回手动施策','Manual tactics enabled')));
+  else if(what==='formation')showOrder(u,'done',nm(FORMATIONS[arg]));
+  else showOrder(u,'received',orderName(what)+(what==='attack'?' · '+unitName(b.units[arg]):''),{what,arg});
   render(true);
  }
+ function showOrder(u,state,detail,pending=null){
+  orders.set(u.id,{state,detail,pending});
+  if(selected===u.id)notify(unitName(u)+' · '+orderPhase(state)+' · '+detail);
+ }
+ function observeOrders(){
+  for(const [id,entry] of orders){
+   if(!entry.pending)continue;
+   const u=b.units[id],{what,arg}=entry.pending;
+   if(u.gone||u.routed){showOrder(u,'failed',w('部队已无法执行，可以选择其他部队。','Unit cannot act. You can select another unit.'));continue;}
+   if(what==='move'&&u.pos===arg){showOrder(u,'done',w('已到达指定格','Reached the destination'));continue;}
+   if(what==='attack'&&b.units[arg].gone){showOrder(u,'done',w('目标已离场','The target has left the field'));continue;}
+   if(what==='hold'||what==='auto'){showOrder(u,'done',orderName(what));continue;}
+   const blocked=what==='move'&&!u.path.length;
+   const detail=blocked?w('等待路线，可改派军令','Waiting for a route. You can change the order.'):
+    orderName(what)+(what==='attack'?' · '+unitName(b.units[arg]):'');
+   const state=blocked?'received':'executing';
+   if(entry.state!==state||entry.detail!==detail)orders.set(id,{...entry,state,detail});
+  }
+ }
  function clearAim(resume){
-  if(!armed)return;record.action('cancelAim',{unit:selected});armed=null;aimTarget=null;hoverTarget=null;
-  if(resume&&resumeAfterAim)paused=false;resumeAfterAim=false;
+  if(!aim)return;
+  record.action('cancelAim',{unit:aim.unit});
+  if(resume)paused=restoreTacticPause(aim,paused);
+  aim=null;hoverTarget=null;
  }
  function cancelAim(){clearAim(true);notify(w('已取消施策','Tactic cancelled'));render(true);}
  function togglePause(){
-  const next=!paused;clearAim(false);paused=next;record.action(paused?'pause':'resume');render(true);
+  const next=!paused;clearAim(false);paused=next;pauseReason=null;record.action(paused?'pause':'resume');
+  if(!paused)milestoneOffer=null;
+  notify(paused?w('已暂停，可下达军令。','Paused. You can issue orders.'):w('战斗继续，部队执行当前军令。','Battle resumed. Units follow their current orders.'));
+  render(true);
  }
  function tapUnit(id){
   const u=b?.units[id];if(!u)return;
-  if(armed&&u.side!==0){aimTarget=id;record.action('aim',{unit:selected,tactic:armed,target:id});notify(w('已选目标，查看覆盖范围后确认施策。','Target selected. Review the area, then confirm the tactic.'));render(true);return;}
-  if(u.side===0){if(armed)cancelAim();selected=id;record.action('select',{unit:id});render(true);}
+  if(aim&&u.side!==0){
+   aim=selectTacticTarget(aim,id);record.action('aim',{unit:aim.unit,tactic:aim.tactic,target:id});
+   const preview=tacticPreview(b,b.units[aim.unit],aim.tactic,u);
+   notify(preview.valid?w('已选目标，查看覆盖范围后确认施策。','Target selected. Review the area, then confirm the tactic.'):
+    tacticWhy(preview.reason)+w('。可另选敌军或取消施策。','. Choose another enemy or cancel the tactic.'));
+   render(true);return;
+  }
+  if(u.side===0){if(aim)cancelAim();selected=id;record.action('select',{unit:id});render(true);}
   else if(phase==='fight')issue('attack',id);
  }
  function tapHex(at){
   if(!b)return;const there=b.units.find(u=>!u.gone&&u.pos===at);if(there)return tapUnit(there.id);
-  if(armed){notify(w('请选择敌军目标，或取消施策。','Choose an enemy target, or cancel.'));return;}
+  if(aim){notify(w('请选择敌军目标，或取消施策。','Choose an enemy target, or cancel.'));return;}
   if(phase==='deploy'){
-   if(deployBattleUnit(b,selected,at)){record.action('deploy',{unit:selected,hex:at});record.capture(phase,{force:true});notify(w('布阵完成','Deployment updated'));}
-   else notify(w('只能在己方可用的青色空格部署','Deploy on a free cyan hex in your own area'));
+   const u=b.units[selected];
+   if(deployBattleUnit(b,selected,at)){record.action('deploy',{unit:selected,hex:at});record.capture(phase,{force:true});showOrder(u,'done',w('布阵完成','Deployment updated'));}
+   else showOrder(u,'failed',w('只能在己方可用的青色空格部署','Deploy on a free cyan hex in your own area'));
    render(true);
   }else if(phase==='fight')issue('move',at);
  }
  function arm(id){
   if(HELP.includes(TACTICS[id].kind)){cast(id,null);return;}
-  if(!armed)resumeAfterAim=!paused;
-  paused=true;armed=id;aimTarget=null;hoverTarget=null;
+  aim=beginTacticAim(aim,{unit:selected,tactic:id},paused);
+  paused=true;hoverTarget=null;
   record.action('aim',{unit:selected,tactic:id,target:null});notify(w('已暂缓战斗。选择敌军，预览范围，再确认施策。','Battle held. Choose an enemy, inspect the area, then confirm.'));render(true);
  }
  function cast(id,target){
   const u=b.units[selected];
-  if(!useTactic(b,u,id,target==null?null:b.units[target])){notify(w('怒气不足，或目标不在战法范围内','Insufficient rage, or target outside tactic range'));render(true);return;}
-  record.action('tactic',{unit:u.id,tactic:id,target});record.capture(phase,{force:true});armed=null;aimTarget=null;hoverTarget=null;
-  if(resumeAfterAim)paused=false;resumeAfterAim=false;notify(nm(TACTICS[id])+w(' 已施展',' used'));render(true);
+  if(phase!=='fight'||!u)return;
+  const preview=tacticPreview(b,u,id,target),before=b.events.length;
+  if(!preview.valid||!useTactic(b,u,id,target==null?null:b.units[target])){
+   showOrder(u,'failed',tacticWhy(preview.reason));render(true);return;
+  }
+  const resisted=b.events.slice(before).some(event=>event.kind==='tacticFailed'&&event.unit===u.id&&event.tactic===id);
+  record.action('tactic',{unit:u.id,tactic:id,target});record.capture(phase,{force:true});
+  paused=restoreTacticPause(aim,paused);aim=null;hoverTarget=null;
+  if(milestoneOffer?.unitId===u.id)milestoneOffer=null;
+  showOrder(u,resisted?'failed':'done',nm(TACTICS[id])+(resisted?w('被识破，可改下军令',' was resisted. You can issue another order.'):w('已施展',' resolved')));
+  render(true);
  }
- function begin(){phase='fight';paused=false;record.action('begin');record.capture(phase,{force:true});app.sound?.play('horn');notify(w('接敌后留意怒气，点亮的战法可以手动施展。','Watch rage as the armies meet; lit tactics can be used manually.'));render(true);}
+ function begin(){
+  if(phase!=='deploy')return;
+  phase='fight';paused=false;pauseReason=null;
+  record.action('begin');record.capture(phase,{force:true});app.sound?.play('horn');
+  notify(w('部队已推进。可点空格移动、点敌军进攻。','Units are advancing. Tap a hex to move, or an enemy to attack.'));
+  render(true);
+ }
  function finish(){
-  phase='result';paused=true;armed=null;record.action('result',{...b.over});record.capture(phase,{force:true});tape=record.finish();
-  app.sound?.play(b.over.winner?'lose':'win');notify((b.over.winner?w('红军获胜','Red army wins'):w('蓝军获胜','Blue army wins'))+' · '+t('why_'+b.over.why));render(true);
+  phase='result';paused=true;aim=null;pauseReason=null;milestoneOffer=null;record.action('result',{...b.over});record.capture(phase,{force:true});tape=record.finish();
+  app.sound?.play(b.over.winner?'lose':'win');notify((b.over.winner?w('红军获胜','Red army wins'):w('蓝军获胜','Blue army wins'))+' · '+battleOutcomeReason(b.over,0,getLanguage()));render(true);
+ }
+ function stepPractice(){
+  stepBattle(b,.1,0);
+  observeOrders();
+  record.capture(phase);
+  const cue=inspectTempoMilestones(b,0,milestones);
+  milestones=cue.next;
+  return autoPause&&cue.reasons.length?cue:null;
+ }
+ function announceMilestone(reasons,opportunity,stop,contactKind){
+  const prompts=[];
+  if(reasons.includes('contact'))prompts.push(contactKind==='gate'?w('城门交战','Assault at the gate'):
+   contactKind==='depot'?w('粮仓遭攻','Depot under attack'):w('初次接敌','First contact'));
+  if(reasons.includes('tactic')&&opportunity){
+   const unit=b.units[opportunity.unitId],tactic=TACTICS[opportunity.tacticId];
+   prompts.push(w('战法可施展','Tactic available')+' · '+unitName(unit)+' · '+nm(tactic));
+   milestoneOffer=opportunity;
+  }
+  if(stop){
+   paused=true;accumulator=0;pauseReason=reasons.join('+');
+   record.action('pause',{source:'milestone',reason:pauseReason});record.capture(phase,{force:true});
+  }
+  notify(prompts.join(' · ')+w('。可下令或继续战斗。','. Issue an order or continue the battle.'));
  }
  function advance(seconds){
-  clearAim(false);
+  clearAim(false);pauseReason=null;milestoneOffer=null;
   if(phase==='deploy'){phase='fight';record.action('begin');record.capture(phase,{force:true});}
   if(phase!=='fight')return;
-  for(let i=0;i<Math.round(seconds/.1)&&!b.over;i++){stepBattle(b,.1,0);record.capture(phase);}
-  if(b.over)finish();else{notify(w('已单步推进。战斗保持暂停，可以继续下令。','Advanced one step. The battle is paused and ready for orders.'));render(true);}
+  const reasons=[];let opportunity=null,contactKind=null;
+  for(let i=0;i<Math.round(seconds/.1)&&!b.over;i++){
+   const cue=stepPractice();
+   if(cue){reasons.push(...cue.reasons);opportunity=cue.opportunity??opportunity;contactKind=cue.contactKind??contactKind;}
+  }
+  if(b.over){finish();return;}
+  if(reasons.length)announceMilestone(reasons,opportunity,false,contactKind);
+  else notify(w('已单步推进。战斗保持暂停，可以继续下令。','Advanced one step. The battle is paused and ready for orders.'));
+  render(true);
  }
  function playback(){
   if(!b)return;clearAim(false);tape=record.finish();paused=true;
@@ -179,9 +295,10 @@ export function createBattlePlayground(app,{onExit,openReplay}){
 
  function renderPanel(){
   const u=b.units[selected],active=u&&!u.gone&&!u.routed,foes=b.units.filter(o=>o.side!==0&&!o.gone);
+  const {tactic:armed,target:aimTarget}=aim??{};
   const forecastOpen=panel.querySelector('.labForecast')?.open??false,scrollTop=panel.scrollTop;
   clear(panel).append(h('div.labRoster',b.units.filter(o=>o.side===0).map((o,i)=>{
-   const x=button(h('span',h('b',String(i+1)),unitName(o),h('small',num(o.troops))),()=>{if(armed)cancelAim();selected=o.id;record.action('select',{unit:o.id});render(true);},{kind:selected===o.id?'on':''});
+   const x=button(h('span',h('b',String(i+1)),unitName(o),h('small',num(o.troops))),()=>tapUnit(o.id),{kind:selected===o.id?'on':''});
    x.dataset.lab='unit-'+o.id;return x;
   })));
   if(!u)return;
@@ -190,23 +307,34 @@ export function createBattlePlayground(app,{onExit,openReplay}){
    h('div',h('h4',unitName(u)+' · '+nm(UNITS[u.kind])),h('p',num(u.troops)+' / '+num(u.start)+' · '+w('士气 ','Morale ')+Math.round(Math.max(0,u.morale)))),
    h('strong'+(u.rage>=100?'.ready':''),w('怒气 ','Rage ')+Math.floor(u.rage)+'/100')
   ));
+  const latest=orders.get(u.id);
+  if(latest)panel.append(h('p.labOrderFeedback',{dataset:{state:latest.state}},h('b',orderPhase(latest.state)),h('span',latest.detail)));
+  const setOrder=(text,what,arg,on)=>{
+   const x=button(text,()=>issue(what,arg),{kind:on?'on':''});
+   x.dataset.lab='order-'+what;
+   x.setAttribute('aria-pressed',String(on));
+   return x;
+  };
+  const automation=active&&phase!=='result'?setOrder(w('自动施策：','Auto tactics: ')+(u.autoTactic?w('开','on'):w('关','off')),'autoTactic',!u.autoTactic,u.autoTactic):null;
   if(phase==='deploy'){
-   panel.append(selectField(w('阵型','Formation'),Object.values(FORMATIONS).filter(f=>formationAllowed(u.kind,f.id)).map(f=>[f.id,nm(f)]),u.formation,value=>issue('formation',value)),h('p.labFormation',formationInfo(FORMATIONS[u.formation])));
-  }else panel.append(h('p.labCurrentOrder',orderName(u.order)+(u.target?' → '+unitName(u.target):'')));
+   panel.append(selectField(w('阵型','Formation'),Object.values(FORMATIONS).filter(f=>formationAllowed(u.kind,f.id)).map(f=>[f.id,nm(f)]),u.formation,value=>issue('formation',value)),h('p.labFormation',formationInfo(FORMATIONS[u.formation])),h('div.labOrders',automation));
+  }else if(!latest)panel.append(h('p.labCurrentOrder',orderName(u.order)+(u.target?' → '+unitName(u.target):'')));
   if(phase==='fight'&&active){
-   const setOrder=(text,what,arg,on)=>{const x=button(text,()=>issue(what,arg),{kind:on?'on':''});x.dataset.lab='order-'+what;return x;};
-   panel.append(h('div.labOrders',setOrder(w('坚守','Hold'),'hold',null,u.order==='hold'),setOrder(w('自动指挥','Auto orders'),'auto',null,u.order==='auto'),setOrder(w('自动战法：','Auto tactics: ')+(u.autoTactic?w('开','on'):w('关','off')),'autoTactic',!u.autoTactic,u.autoTactic)));
+   panel.append(h('div.labOrders',setOrder(w('坚守','Hold'),'hold',null,u.order==='hold'),setOrder(w('自动接敌','Auto engage'),'auto',null,u.order==='auto'),automation));
    panel.append(h('div.labTactics',u.tactics.map(id=>{
-    const tc=TACTICS[id],ready=u.rage>=100&&!(u.status.stun>0),x=button(h('span',nm(tc),h('small',HELP.includes(tc.kind)?w('支援','Support'):w('选择目标','Aim'))),()=>arm(id),{why:ready?null:u.status.stun>0?w('定身中','Stunned'):w('怒气满100后可施展','Requires 100 rage'),kind:armed===id?'on':''});x.dataset.lab='tactic-'+id;return x;
+    const tc=TACTICS[id],ready=u.rage>=100&&!(u.status.stun>0),spec=tacticPresentation(tc,tacticPreview(b,u,id).reach,{language:getLanguage()});
+    const why=ready?null:u.status.stun>0?w('定身中','Stunned'):w('怒气满100后可施展','Requires 100 rage');
+    const x=button(h('span',nm(tc),h('small.labTacticEffect',spec.effect),h('small.labTacticTarget',spec.target),h('small.labTacticCost',spec.cost)),()=>arm(id),{why,kind:armed===id?'on':''});
+    x.title=spec.detail+(why?' · '+why:'');x.dataset.lab='tactic-'+id;return x;
    })));
    if(armed){
     const preview=tacticPreview(b,u,armed,aimTarget==null?null:b.units[aimTarget]);
-    const confirm=button(w('确认施策','Confirm tactic'),()=>cast(armed,aimTarget),{kind:'main',why:preview.valid?null:preview.reason==='range'?w('目标超出战法范围','Outside tactic range'):w('先选择敌军目标','Choose a target first')});confirm.dataset.lab='confirm-tactic';
-    panel.append(h('div.labAimConfirm',h('strong',nm(TACTICS[armed])),h('p',aimTarget==null?w('选择下方目标，或点战场上的敌军。','Choose a target below, or on the battlefield.'):unitName(b.units[aimTarget])+' · '+w('覆盖 ','Covers ')+preview.targets.length+w(' 部敌军',' enemy units')),confirm,button(w('取消施策','Cancel tactic'),cancelAim)));
+    const confirm=button(w('确认施策','Confirm tactic'),()=>cast(armed,aimTarget),{kind:'main',why:preview.valid?null:tacticWhy(preview.reason)});confirm.dataset.lab='confirm-tactic';
+    panel.append(h('div.labAimConfirm',h('strong',nm(TACTICS[armed])),h('p.labTacticExplanation',tacticPresentation(TACTICS[armed],preview.reach,{language:getLanguage()}).detail),h('p',aimTarget==null?w('选择下方目标，或点战场上的敌军。','Choose a target below, or on the battlefield.'):unitName(b.units[aimTarget])+' · '+w('覆盖 ','Covers ')+preview.targets.length+w(' 部敌军',' enemy units')),confirm,button(w('取消施策','Cancel tactic'),cancelAim)));
    }
    panel.append(h('div.labEnemyTargets',h('small',armed?w('施策目标','TACTIC TARGETS'):w('进攻目标','ATTACK TARGETS')),foes.map(o=>{
-    const preview=armed?tacticPreview(b,u,armed,o):null,inRange=preview?.reason!=='range';
-    const x=button(h('span',unitName(o),h('small',num(o.troops)+' · '+w('距离 ','Range ')+distance(u.pos,o.pos))),()=>tapUnit(o.id),{kind:aimTarget===o.id?'on':'',why:armed&&!inRange?w('超出战法范围','Outside tactic range'):null});x.dataset.lab='target-'+o.id;return x;
+    const preview=armed?tacticPreview(b,u,armed,o):null;
+    const x=button(h('span',unitName(o),h('small',num(o.troops)+' · '+w('距离 ','Range ')+distance(u.pos,o.pos))),()=>tapUnit(o.id),{kind:aimTarget===o.id?'on':'',why:preview&&!preview.valid?tacticWhy(preview.reason):null});x.dataset.lab='target-'+o.id;return x;
    })));
   }
   panel.append(h('details.labForecast',h('summary',w('阵型与对阵预估','Formation & matchup forecast')),h('p',nm(FORMATIONS[u.formation])+' · '+formationInfo(FORMATIONS[u.formation])),h('p.labReportNote',w('以下为当前状态下的一次普通命中，不含暴击；须在射程内才能命中。','One ordinary hit at current strength/terrain, before criticals. Attacks require range.')),foes.map(o=>{const p=combatPreview(b,u,o);return h('p.labMatchup',unitName(o)+' · '+p.weaponMultiplier.toFixed(2)+'× · '+p.minLoss+'–'+p.maxLoss+'\n'+p.tags.map(tag=>w(...(tagNames[tag]??[tag,tag]))).join(' / '));})));
@@ -215,6 +343,7 @@ export function createBattlePlayground(app,{onExit,openReplay}){
 
  function render(force=false){
   if(!b||phase==='config')return;
+  const {tactic:armed,target:aimTarget}=aim??{};
   const u=b.units[selected],preview=armed?tacticPreview(b,u,armed,b.units[aimTarget??hoverTarget]):null,reach=preview?.reach??UNITS[u.kind].range;
   ui.host.dataset.labPhase=phase;ui.host.classList.toggle('labAiming',!!armed);
   board.draw(b.units,{selected,time:b.time,naval:b.setup.kind==='naval',events:b.events,calm:app.calm?.(),nameOf:unitName,onFeedback:feedback,
@@ -225,25 +354,61 @@ export function createBattlePlayground(app,{onExit,openReplay}){
   if(!force)return;
   if(holdingControl){pendingControls=true;return;}
   const focused=document.activeElement?.dataset?.lab;
-  clear(toolbar).append(...[
-   phase==='deploy'?button(w('鸣鼓开战','Begin battle'),begin,{kind:'main'}):phase==='fight'?button(paused?w('继续战斗','Resume battle'):w('暂停战斗','Pause battle'),togglePause):null,
-   phase!=='result'?button(w('步进 1 秒','Step 1 second'),()=>{paused=true;record.action('step',{seconds:1});advance(1);}):null,
-   ...[1,2,4].map(v=>button(v+'×',()=>{speed=v;record.action('speed',{speed:v});render(true);},{kind:speed===v?'on':''})),
-   button(w('战报 / 回放','Report / replay'),playback),phase==='result'?button(w('再战此局','Play again'),create,{kind:'main'}):null,
-   button(w('换一场演武','Choose encounter'),()=>{child?.destroy();child=null;configuration();})
-  ].filter(Boolean));
-  const encounter=ENCOUNTERS[config.encounter],goal=encounter?w(...encounter.objective):b.setup.kind==='siege'?w('攻破城门、占营10秒，或击退守军','Breach and hold the keep for 10s, or break the garrison'):w('击退红军；日落前结束战斗','Break the red army before sunset');
-  const ready=b.units.filter(u=>u.side===0&&!u.gone&&!u.routed&&u.rage>=100).length;
-  clear(situation).append(h('strong',phase==='result'?(b.over.winner?w('红军获胜','RED VICTORY'):w('蓝军获胜','BLUE VICTORY')):w('目标 · ','OBJECTIVE · ')+goal),
-   h('span',phase==='result'?t('why_'+b.over.why):b.gate?w('城门 ','Gate ')+Math.max(0,Math.round(b.gate.hp))+' · '+w('占营 ','Keep ')+b.keepHeld.toFixed(1)+'/10s':ready?w(ready+' 部战法已就绪',ready+' tactics ready'):w('前军接敌，后军支援','Screen the front; support from behind')));
-  if(ready>readyNotice&&phase==='fight'&&!armed)notify(w('战法已就绪：点选亮起的战法，再选择目标。','A tactic is ready: choose the lit tactic, then a target.'));readyNotice=ready;
+  renderToolbar();
+  renderSituation();
   renderPanel();
-  if(focused)ui.host.querySelector(`[data-lab="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
+  if(focusOffer){
+   const tactic=panel.querySelector(`[data-lab="tactic-${CSS.escape(focusOffer)}"]`);
+   if(tactic){
+    panel.scrollTop+=tactic.getBoundingClientRect().top-panel.getBoundingClientRect().top-6;
+    tactic.focus({preventScroll:true});
+   }
+   focusOffer=null;
+  }else if(focused)ui.host.querySelector(`[data-lab="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});
+ }
+
+ function renderToolbar(){
+  const key=[phase,paused,speed].join('/');
+  if(toolbarKey===key)return;
+  toolbarKey=key;
+  const control=(name,action,id,kind='')=>{
+   const node=button(name,action,{kind});node.dataset.lab=id;return node;
+  };
+  clear(toolbar).append(...[
+   phase==='deploy'?control(w('鸣鼓开战','Begin battle'),begin,'battle-toggle','main'):
+    phase==='fight'?control(paused?w('继续战斗','Resume battle'):w('暂停战斗','Pause battle'),togglePause,'battle-toggle'):null,
+   phase!=='result'?control(w('步进 1 秒','Step 1 second'),()=>{paused=true;record.action('step',{seconds:1});advance(1);},'step'):null,
+   ...[1,2,4].map(v=>control(v+'×',()=>{speed=v;record.action('speed',{speed:v});render(true);},'speed-'+v,speed===v?'on':'')),
+   control(w('战报 / 回放','Report / replay'),playback,'replay'),
+   phase==='result'?control(w('再战此局','Play again'),create,'rematch','main'):null,
+   control(w('换一场演武','Choose encounter'),()=>{child?.destroy();child=null;configuration();},'encounters')
+  ].filter(Boolean));
+ }
+
+ function renderSituation(){
+  const over=phase==='result',encounter=ENCOUNTERS[config.encounter];
+  const goal=encounter?w(...encounter.objective):b.setup.kind==='siege'?w('攻破城门、占营10秒，或击退守军','Breach and hold the keep for 10s, or break the garrison'):
+   w('日落前击退红军','Break the red army before sunset');
+  objective.textContent=over?(b.over.winner?w('红军获胜','RED VICTORY'):w('蓝军获胜','BLUE VICTORY')):w('目标 · ','OBJECTIVE · ')+goal;
+  situationDetail.hidden=!over&&!b.gate;
+  if(over)situationDetail.textContent=battleOutcomeReason(b.over,0,getLanguage());
+  else if(b.gate)situationDetail.textContent=w('城门 ','Gate ')+Math.max(0,Math.round(b.gate.hp))+' · '+w('占营 ','Keep ')+b.keepHeld.toFixed(1)+'/10s';
+  let available=false;
+  if(paused&&milestoneOffer&&!aim&&!over){
+   const {unitId,tacticId,targetId}=milestoneOffer,offered=b.units[unitId];
+   available=tacticPreview(b,offered,tacticId,targetId).valid;
+   if(available){const who=unitName(offered);tempoOfferButton.textContent=w('查看'+who+'战法','Show tactics for '+who);}
+  }
+  tempoOfferButton.hidden=!available;
+  tempoToggle.hidden=over;
+  tempoToggle.classList.toggle('on',autoPause);
+  tempoToggle.setAttribute('aria-pressed',String(autoPause));
+  tempoBadge.textContent=autoPause?w('开','On'):w('关','Off');
  }
 
  ui.setKey((code,event)=>{
   if(child)return false;
-  if(code==='Escape'&&armed){cancelAim();return true;}
+  if(code==='Escape'&&aim){cancelAim();return true;}
   if(['INPUT','SELECT','BUTTON'].includes(event?.target?.tagName))return false;
   if(code==='Space'&&phase==='fight'){togglePause();return true;}
   if(code==='Enter'&&phase==='deploy'){begin();return true;}
@@ -255,11 +420,16 @@ export function createBattlePlayground(app,{onExit,openReplay}){
   if(child)return;board?.tick(dt);
   if(!b||phase!=='fight'||paused)return;
   accumulator+=dt*speed;
-  for(let steps=0;accumulator>=.1&&steps<10&&!b.over;steps++){stepBattle(b,.1,0);record.capture(phase);accumulator-=.1;}
+  for(let steps=0;accumulator>=.1&&steps<10&&!b.over;steps++){
+   accumulator-=.1;
+   const cue=stepPractice();
+   if(cue){announceMilestone(cue.reasons,cue.opportunity,true,cue.contactKind);render(true);return;}
+  }
   if(b.over){finish();return;}
   refresh+=dt;if(refresh>=.2){refresh=0;render(true);}
  });
- return {destroy:ui.destroy,key:ui.key,inspect:()=>({kind:'sandbox',phase,paused,speed,selected,armed,aimTarget,config:clone(config),visual:board?.inspect()??null,
+ return {destroy:ui.destroy,key:ui.key,inspect:()=>({kind:'sandbox',phase,paused,speed,selected,armed:aim?.tactic??null,aimTarget:aim?.target??null,
+  autoPause,pauseReason,milestones:{...milestones},config:clone(config),visual:board?.inspect()??null,
   battle:b?{time:b.time,over:b.over,units:b.units.map(u=>({id:u.id,general:u.general,kind:u.kind,side:u.side,pos:u.pos,troops:u.troops,rage:u.rage,formation:u.formation,order:u.order,autoTactic:u.autoTactic})),events:clone(b.events)}:null,
   child:child?.inspect()??null,tape:tape?clone(tape):null})};
 }

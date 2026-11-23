@@ -9,6 +9,7 @@ import { GENERALS } from '../data/generals.mjs';
 import { NODES } from '../data/map.mjs';
 import { UNITS } from '../data/battle.mjs';
 import { dateOf } from '../sim/core.mjs';
+import { activeTreaty } from '../sim/military.mjs';
 import { EVENTS } from '../sim/story.mjs';
 import { dateWords, getLanguage, nm, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
@@ -47,6 +48,12 @@ export const ageOf = (state, id) => dateOf(state.day).year - GENERALS[id].born;
 export function dayWords(day) {
   const { year, month } = dateOf(day);
   return dateWords(year, month);
+}
+
+export function treatyAt(state, faction, nodeId) {
+  const treaty = activeTreaty(state, faction, state.nodes[nodeId]?.owner);
+  if (!treaty) return null;
+  return t('treaty_' + treaty.kind, { date: dayWords(treaty.until) });
 }
 
 const FACTION_KEYS = new Set(['faction', 'enemy', 'winner', 'loser', 'to', 'from']);

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import '../vendor/node-register.mjs';
 
-const { OFFICERS_KEY, SAVE_KEY, SLOTS, freshSettings, openOfficerRoster, openSettings, openSlot, writeSlot, exportText, importText, gameLooksRight } = await import('../src/saves.mjs');
+const { OFFICERS_KEY, SAVE_KEY, SLOTS, freshSettings, openOfficerRoster, openSettings, openSlot, writeSlot, exportText, importText, importSaveText, gameLooksRight } = await import('../src/saves.mjs');
 const W = await import('../src/sim/world.mjs');
 const { registerCustom } = await import('../src/sim/newblood.mjs');
 const { GENERALS } = await import('../src/data/generals.mjs');
@@ -115,4 +115,20 @@ test('an exported save imports again; other files do not', () => {
   assert.deepEqual(back, JSON.parse(JSON.stringify(s)));
   assert.equal(importText('{"kind":"other","game":{}}'), null);
   assert.equal(importText('nonsense'), null);
+});
+
+test('optional view metadata survives slots and files while old files remain compatible', () => {
+  const storage = memory();
+  const game = W.createGame({ seed: 39 });
+  const view = { paused: false, speed: 1, selection: { node: game.factions[game.player].capital }, camera: { x: 30, z: 40, d: 60 } };
+  assert.equal(writeSlot(openSlot(storage, '1'), game, 1, view), true);
+  const slot = openSlot(storage, '1').data;
+  assert.equal(slot.summary.scenario, '184');
+  assert.equal(slot.view.paused, false);
+  assert.deepEqual(slot.view.camera, view.camera);
+  assert.equal(importSaveText(exportText(game, view)).view.paused, false);
+  assert.deepEqual(importText(exportText(game, view)), JSON.parse(JSON.stringify(game)));
+  assert.equal(importSaveText(exportText(game)).view, null);
+  view.camera.x = 999;
+  assert.equal(slot.view.camera.x, 30);
 });

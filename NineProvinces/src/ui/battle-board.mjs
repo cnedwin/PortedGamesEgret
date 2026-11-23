@@ -4,7 +4,7 @@ import {TACTICS} from '../data/tactics.mjs';
 import {distance} from '../sim/battle.mjs';
 import {getLanguage,nm,num} from '../i18n.mjs';
 import {h,button} from './dom.mjs';
-import {BOARD,boardPoint,terrainLift,hexPoints,formationSlots} from './battle-board-layout.mjs';
+import {BOARD,boardPoint,terrainLift,hexPoints,formationSlots,boardRenderWidth} from './battle-board-layout.mjs';
 const NS='http://www.w3.org/2000/svg',w=(a,b)=>getLanguage()==='en'?b:a;
 let serial=0;
 function svg(tag,props={},text){const e=document.createElementNS(NS,tag);for(const[k,v]of Object.entries(props))e.setAttribute(k,v);if(text!=null)e.textContent=text;return e;}
@@ -47,13 +47,19 @@ export function createBattleBoard(parent,initialTiles,onHex,onUnit,{onHover}={})
  }
  let fit=true;
  function size(){
-  const width=Math.max(280,viewport.clientWidth-12),height=Math.max(200,viewport.clientHeight);
   root.classList.toggle('tableOverview',fit);
-  root.style.width=(fit?Math.min(width,height*BOARD.width/BOARD.height):Math.max(width,BOARD.width)*zoom)+'px';
+  root.style.width=boardRenderWidth(viewport.clientWidth,viewport.clientHeight,{fit,zoom})+'px';
   root.style.minWidth='0';
   root.style.margin='auto';
  }
- function focusSelected(){const s=states.get(selected);if(!s)return;fit=false;zoom=Math.max(1,zoom);size();requestAnimationFrame(()=>s.g.scrollIntoView({block:'nearest',inline:'center',behavior:'auto'}));}
+ function focusSelected(){
+  const s=states.get(selected);if(!s)return;fit=false;zoom=Math.max(1,zoom);size();
+  requestAnimationFrame(()=>{
+   if(destroyed)return;
+   const unit=s.g.getBoundingClientRect(),field=viewport.getBoundingClientRect();
+   viewport.scrollBy({left:unit.left+unit.width/2-field.left-field.width/2,top:unit.top+unit.height/2-field.top-field.height/2,behavior:'auto'});
+  });
+ }
  tools.append(button(w('全景','Overview'),()=>{fit=true;size();}),button('＋',()=>{fit=false;zoom=Math.min(1.8,zoom+.25);size();}),button('−',()=>{fit=false;zoom=Math.max(.75,zoom-.25);size();}),button(w('定位所选','Find selected'),focusSelected));
  const resize=new ResizeObserver(size);resize.observe(viewport);size();
  function addEffect(kind,from,to,text=null,colour='#ffe4a0'){

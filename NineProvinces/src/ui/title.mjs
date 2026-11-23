@@ -103,6 +103,8 @@ export function showSetup(app, pickedBranch = null) {
     if (customMode) reconcileFounding(demo, roster, founding);
     const p = power(demo, pick.faction);
     const customStatus = h('p.foundingStatus', { role: 'status' });
+    const headerSummary = h('div.setupSummary', { 'aria-live': 'polite' });
+    const footerSummary = h('div.setupSummary');
     const start = button(t('start'), () => {
       if (customMode) {
         const result = validateCustomFaction(demo, foundingSubmission(founding), roster);
@@ -112,20 +114,27 @@ export function showSetup(app, pickedBranch = null) {
     }, { kind: 'main' });
     start.dataset.setupKey = 'confirm-start';
     refreshStart = () => {
-      if (!customMode) return;
-      const result = validateCustomFaction(demo, foundingSubmission(founding), roster);
-      start.disabled = !result.ok;
-      if (result.ok) {
+      let summary;
+      if (customMode) {
+        const result = validateCustomFaction(demo, foundingSubmission(founding), roster);
+        start.disabled = !result.ok;
         const town = result.options.towns.find(item => item.id === result.config.town);
         const ruler = result.options.officers.find(item => item.ref === result.config.ruler);
-        customStatus.textContent = [nm(town), nm(ruler), pair(['同行 ', 'Companions: ']) + result.config.companions.length].join(' · ');
-      } else customStatus.textContent = foundingErrorText(result.errors);
+        const companions = result.config.companions.map(ref => result.options.officers.find(item => item.ref === ref)).filter(Boolean);
+        summary = [pair(['起家城：', 'Town: ']) + (town ? nm(town) : '—'), pair(['主公：', 'Ruler: ']) + (ruler ? nm(ruler) : '—'),
+          pair(['同行：', 'Companions: ']) + (companions.length ? companions.map(nm).join(' / ') : pair(['无', 'None']))].join(' · ');
+        customStatus.textContent = result.ok ? '' : foundingErrorText(result.errors);
+        customStatus.hidden = result.ok;
+      } else summary = [placeName(chosen.capital), generalName(chosen.ruler), nm(chosenName)].join(' · ');
+      const rules = [nm(spec), t(pick.lifespan === 'history' ? 'lifeHistory' : 'lifeFiction'),
+        t(pick.command ? 'commandOn' : 'commandOff'), t(pick.difficulty === 'easy' ? 'easy' : pick.difficulty === 'hard' ? 'hard' : 'normal')].join(' · ');
+      for (const host of [headerSummary, footerSummary]) host.replaceChildren(h('span', summary), h('small', rules));
     };
     box.append(
       h(
         'section.setupPanel',
         { role: 'dialog', 'aria-label': t('newGame') },
-        h('header', h('h2', t('newGame')), h('p.dim', nm(spec))),
+        h('header', h('h2', t('newGame')), h('p.dim', nm(spec)), headerSummary),
         h('div.setupBody',
           h('h3', pair(['选择年代', 'Starting year'])),
           h('div.scenarioGrid', Object.values(SCENARIOS).map(s => h('button.scenarioCard', {
@@ -190,7 +199,7 @@ export function showSetup(app, pickedBranch = null) {
           h('div.setting', h('span', t('difficulty')), choice([['easy', t('easy')], ['normal', t('normal')], ['hard', t('hard')]], pick.difficulty, (v) => ((pick.difficulty = v), render()), { setupKey: 'difficulty' })),
           customMode ? customStatus : null,
         ),
-        h('footer', button(t('back'), () => typeof app.toTitle === 'function' ? app.toTitle() : showTitle(app)), start)
+        h('footer', button(t('back'), () => typeof app.toTitle === 'function' ? app.toTitle() : showTitle(app)), footerSummary, start)
       )
     );
     box.querySelector('.setupBody').scrollTop = previousScroll;

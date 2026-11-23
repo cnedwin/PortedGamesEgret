@@ -36,6 +36,9 @@
 #battleHud .uVitals .ready, #battleHud .uVitals .ready b { color:#945727; }
 #battleHud .tactics { gap:5px; margin-top:9px; }
 #battleHud .tac { min-height:36px; padding:5px 7px; font-size:13px; background:#fcf5e5; border-color:#a38c61; border-radius:2px; }
+#battleHud .tac .tacName,#battleHud .tac small { display:block; }
+#battleHud .tac .tacEffect { font:10px/1.35 var(--song); margin-top:3px; white-space:normal; }
+#battleHud .tac .tacCost { font:9px/1.35 var(--song); margin-top:3px; }
 #battleHud .tac:not(:disabled) { background:linear-gradient(#f8dca1,#caa15d); color:#392812; box-shadow:0 0 0 1px #cda75588,0 2px 5px #62451f33; }
 #battleHud .tac[aria-pressed='true'] { background:#823d2d; color:#fff3db; border-color:#ffe0a0; }
 #battleHud .tac:disabled { color:#65583f; }
@@ -144,13 +147,13 @@
  #plates.battle .plate.unit .atroops { font-size:10px; }
  #plates.battle .plate.unit .ring { width:22px; height:28px; }
 }
-@media (max-height:500px) and (min-width:701px) {
- #battleHud .bTop { min-height:66px; }
+@media (orientation:landscape) and (max-height:500px) and (min-width:560px) {
+ #battleHud .bTop { min-height:66px; display:flex; flex-wrap:nowrap; align-items:center; }
  #battleHud .bPhase { display:none; }
  #battleHud .bSide { top:76px; bottom:8px; }
- #battleHud .bSide.ours { width:178px; max-height:none; flex-direction:column; overflow-x:hidden; overflow-y:auto; touch-action:pan-y; }
- #battleHud .bSide.ours .bSideTitle { flex:none; }
- #battleHud .bSide.ours .ucard { flex:0 0 auto; width:100%; min-width:0; max-width:none; box-sizing:border-box; }
+ #battleHud .bSide.ours { left:6px; right:auto; width:178px; height:auto; max-height:none; flex-direction:column; overflow-x:hidden; overflow-y:auto; touch-action:pan-y; }
+ #battleHud .bSide.ours .bSideTitle { flex:none; display:flex; }
+ #battleHud .bSide.ours .ucard { flex:0 0 auto; width:100%; min-width:0; max-width:none; box-sizing:border-box; overflow-y:visible; }
  #battleHud .bSide.ours .tactics { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
  #battleHud .bSide.ours .tac { min-width:0; min-height:44px; padding:6px 3px; }
  #battleHud .bSide.ours .ucard:not(.on) .tactics, #battleHud[data-phase='deploy'] .bSide.ours .tactics { display:none; }
@@ -170,4 +173,114 @@
 }
 @media (prefers-reduced-motion:reduce) {
  #battleHud *, #battleFx * { animation:none!important; transition:none!important; }
+}
+
+/* A short command cycle, without covering the field with another modal. */
+#battleHud .bViewTools { display:flex; gap:4px; flex:none; }
+#battleHud .bViewTools .btn { min-width:44px; min-height:44px; padding:4px 8px; font-size:11px; }
+#battleHud .bOrderFeedback,#battleHud .bTempoCue { margin:6px 0; padding:5px 8px; border-left:2px solid #a9d7bd; color:#dfedcb; background:#142d2c; font-size:11px; line-height:1.4; }
+#battleHud .bOrderFeedback.bad { color:#ffe2bf; border-color:#e7a17c; background:#4a3028; }
+#battleHud .bTempoCue { border-color:#efd18a; color:#ffe4a3; background:#453b29; }
+#battleHud .bTempoOptions { display:flex; gap:6px 12px; justify-content:space-between; align-items:center; margin-top:6px; }
+#battleHud .bTempoOptions label { display:flex; align-items:center; gap:6px; min-height:44px; font-size:11px; color:#d9d6b4; cursor:pointer; }
+#battleHud .bTempoOptions input { width:18px; height:18px; accent-color:#d1b477; }
+#battleHud .bTempoOptions small { color:#c3cbb6; font-size:10px; }
+#battleHud .bTempoOptions .btn { min-height:44px; font-size:11px; padding:5px 8px; }
+#battleHud .bAimControls { margin-top:7px; }
+#battleHud .bAimControls p { margin:5px 0; font-size:11px; color:#f4dfb6; }
+#battleHud .bAimTargets { display:flex; gap:5px; overflow:auto; padding-bottom:4px; }
+#battleHud .bAimTargets .btn { min-height:44px; flex:none; font-size:11px; padding:6px 9px; }
+#battleHud .bAimActions { display:flex; gap:7px; margin-top:5px; }
+#battleHud .bAimActions .btn { flex:1; min-height:44px; }
+#battleHud .bOutcomeHold { position:absolute; left:50%; top:25%; transform:translateX(-50%); width:min(390px,calc(100vw - 40px)); padding:17px 22px; border:1px solid #ddc184; background:#172b30ed; color:#f7e5bc; text-align:center; pointer-events:auto; box-shadow:0 8px 36px #0008; }
+#battleHud .bOutcomeHold h2 { font:700 36px var(--kai); margin:8px 0; color:#f7d58b; }
+#battleHud .bOutcomeHold p { margin:8px 0 14px; }
+#battleHud .bOutcomeHold small { display:block; margin:7px 0; font-size:11px; }
+#battleHud .bOutcomeHold .btn { min-height:44px; }
+@media(max-width:700px) {
+ #battleHud .bCommand { padding:8px 10px; max-height:calc(100dvh - 420px); overflow:auto; }
+ #battleHud .bCommandHeading { gap:7px; }
+ #battleHud .bViewTools .btn { padding:4px 6px; }
+ #battleHud .bTempoOptions { flex-wrap:wrap; gap:0 8px; }
+ #battleHud .bTempoOptions small { display:none; }
+ #battleHud .bCommand .bFormationInfo,#battleHud .bCommand .bMatchupInfo { display:none; }
+ #battleHud .bCommand.aiming { max-height:calc(100dvh - 400px); }
+ #battleHud .bOrderFeedback,#battleHud .bTempoCue { font-size:10px; }
+ #battleHud .bAimActions { position:sticky; bottom:-8px; padding:5px 0; background:#302d27; z-index:1; }
+ #battleHud .bOutcomeHold { top:31%; }
+}
+@media(orientation:landscape) and (max-height:500px) and (min-width:560px) {
+ #battleHud .bCommand { max-height:calc(100dvh - 106px); overflow:auto; bottom:8px; padding:6px 8px; }
+ #battleHud[data-phase='deploy'] .bCommand { bottom:114px; max-height:calc(100dvh - 190px); }
+ #battleHud .bCommandHeading strong { font-size:14px; }
+ #battleHud .bViewTools .btn { min-height:44px; padding:4px; }
+ #battleHud .bCommand .bFormationInfo,#battleHud .bCommand .bMatchupInfo { display:none; }
+ #battleHud .bTempoOptions { flex-wrap:wrap; gap:0 5px; }
+ #battleHud .bTempoOptions small { display:none; }
+ #battleHud .bTempoCue,#battleHud .bOrderFeedback { padding:4px 6px; margin:4px 0; font-size:10px; }
+ #battleHud .bOrderRow .btn { min-height:44px; padding:4px 7px; }
+ #battleHud .bAimActions { position:sticky; bottom:-6px; padding:4px 0; background:#302d27; z-index:1; }
+ #battleHud .bOutcomeHold { top:24%; padding:7px 14px; }
+ #battleHud .bOutcomeHold h2 { font-size:25px; margin:4px 0; }
+}
+
+/* Phone landscape: leave the centre for the field, keep commands in one scrollable right rail. */
+@media(orientation:landscape) and (min-width:560px) and (max-width:1100px) and (max-height:500px) {
+ #battleHud { --command-rail:clamp(242px,30vw,280px); --army-rail:178px; --field-left:190px; --battle-toolbar-top:76px; }
+ #battleHud .bSide.ours { top:var(--battle-toolbar-top); width:var(--army-rail); }
+ #battleHud .bCommand,
+ #battleHud .bCommand.aiming,
+ #battleHud[data-phase='deploy'] .bCommand {
+  left:auto; right:6px; top:var(--battle-toolbar-top); bottom:8px; width:var(--command-rail);
+  max-height:none; transform:none; overflow-x:hidden; overflow-y:auto;
+  overscroll-behavior:contain; touch-action:pan-y; scrollbar-width:thin; padding:6px 8px;
+ }
+ #battleHud .bCommandHeading { position:sticky; top:-6px; min-height:52px; padding:4px 0; gap:6px; background:#1c3034; z-index:3; }
+ #battleHud .bCommandHeading .bCommandSeal,#battleHud .bCommandHeading small { display:none; }
+ #battleHud .bCommandHeading strong { font-size:13px; line-height:1.25; }
+ #battleHud .bCommand .bViewTools { flex:none; gap:3px; }
+ #battleHud .bOrderRow { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:4px; }
+ #battleHud .bOrderRow .btn { min-width:44px; min-height:44px; padding:4px 3px; font-size:10px; }
+ #battleHud .bSide.theirs {
+  display:flex; flex-direction:row; left:var(--field-left); right:calc(var(--command-rail) + 14px);
+  top:var(--battle-toolbar-top); bottom:auto; width:auto; height:66px; padding:3px; gap:5px;
+  overflow-x:auto; overflow-y:hidden; touch-action:pan-x; scrollbar-width:thin;
+ }
+ #battleHud .bSide.theirs .bSideTitle { display:none; }
+ #battleHud .bSide.theirs .ucard { flex:0 0 auto; width:155px; min-width:155px; min-height:54px; padding:5px; }
+ #battleHud .bSide.theirs .uh { grid-template-columns:24px minmax(0,1fr) auto; gap:5px; min-height:40px; }
+ #battleHud .bSide.theirs .face { width:22px; height:28px; }
+ #battleHud .bSide.theirs .un { font-size:13px; }
+ #battleHud .bSide.theirs .un small { font-size:9px; margin-top:1px; }
+ #battleHud .bSide.theirs .ut { font-size:13px; }
+ #battleHud .bSide.theirs .ub,#battleHud .bSide.theirs .uVitals,#battleHud .bSide.theirs .marks { display:none; }
+ #battleHud .bFeed { left:var(--field-left); bottom:4px; width:calc(100vw - var(--command-rail) - var(--field-left) - 20px); }
+ #battleHud .bFeed p:nth-child(n+2) { display:none; }
+ #battleHud .bHelp { display:none; }
+ #battleHud[data-phase='deploy'] .bCommand { bottom:80px; }
+ #battleHud .bDeploy { left:auto; right:6px; bottom:8px; width:var(--command-rail); max-height:64px; transform:none; padding:8px; overflow:auto; }
+ #battleHud .bDeploy h3,#battleHud .bDeploy p { display:none; }
+ #battleHud .bDeploy .row { flex-wrap:nowrap; gap:5px; }
+ #battleHud .bDeploy .btn { min-width:44px; min-height:44px; padding:5px 8px; font-size:11px; }
+}
+
+/* The same rails below 701px: replace the portrait header/roster, without another command layout. */
+@media(orientation:landscape) and (min-width:560px) and (max-width:700px) and (max-height:500px) {
+ #battleHud { --army-rail:138px; --field-left:150px; --battle-toolbar-top:88px; }
+ #battleHud .bTop {
+  display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto auto;
+  grid-template-rows:32px 32px; gap:4px 6px; height:78px; min-height:78px; padding:5px 6px;
+ }
+ #battleHud .bTitle { grid-column:1; grid-row:1; min-width:0; }
+ #battleHud .bTitle b { font-size:16px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+ #battleHud .bTitle small { display:none; }
+ #battleHud .bTime { grid-column:2; grid-row:1; display:flex; align-items:center; gap:6px; }
+ #battleHud .bTop .bObj { grid-row:2; grid-column:auto; min-width:0; grid-template-columns:auto minmax(34px,1fr); gap:4px; font-size:10px; }
+ #battleHud .clock { grid-column:3; grid-row:1/span 2; }
+ #battleHud .bTop>.btn.danger { grid-column:4; grid-row:1/span 2; margin:0; padding:4px 6px; }
+ #battleHud .bSide.ours .uh { grid-template-columns:22px minmax(0,1fr) auto; gap:4px; }
+ #battleHud .bSide.ours .face { width:22px; height:28px; }
+ #battleHud .bSide.ours .un { font-size:13px; }
+ #battleHud .bSide.ours .un small { font-size:9px; margin-top:2px; }
+ #battleHud .bSide.ours .ut { font-size:13px; }
 }

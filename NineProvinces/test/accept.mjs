@@ -84,6 +84,7 @@ try {
   await tapPlace(page, 'pingyuan');
   await page.waitForTimeout(400);
   check(await state(page, () => !document.querySelector('#side').hidden && document.querySelector('#side h2').textContent === '平原'), 'tapping Pingyuan opens its details');
+  await page.locator('#side').getByRole('tab', { name: '政令' }).click({ timeout: 2000 });
   await page.click('#side .btn.main');
   await page.waitForTimeout(300);
   check(await state(page, () => window.egretGame.app.dialogs.name === 'muster' && document.querySelectorAll('.officer').length >= 3), 'the muster dialog lists the officers at Pingyuan');
@@ -107,6 +108,11 @@ try {
   await until(page, () => window.egretGame.screen === 'battle', 10);
   await page.waitForTimeout(600);
   check(await state(page, () => window.egretGame.battle.phase === 'deploy' && document.querySelector('.bDeploy') !== null), 'the battle opens on deployment');
+  check(await state(page, () => {
+    const { battle, state } = window.egretGame;
+    const side = battle.battle.setup.factions.indexOf(state.player);
+    return battle.battle.units.filter(unit => unit.side === side).every(unit => !unit.autoTactic);
+  }), 'taking command leaves allied tactics in the player’s hands');
   await page.locator('.bSide.ours .ucard').first().press('Enter');
   check(await state(page, () => window.egretGame.battle.phase === 'deploy'), 'Enter on a focused unit card selects the unit without starting the battle');
   await page.click('.bDeploy .btn.main');
@@ -128,6 +134,24 @@ try {
       return rect.height >= 44 && rect.left >= bounds.left && rect.right <= bounds.right;
     });
   }), 'tactic buttons fit a scrollable vertical rail in short landscape');
+  check(await state(page, () => {
+    const center = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+    return Boolean(center && !center.closest('#battleHud .bCommand, #battleHud .bSide'));
+  }), 'the battleground center stays available beside the command rail in short landscape');
+  for (const [width, height] of [[667, 375], [640, 360], [568, 320]]) {
+    await page.setViewportSize({ width, height });
+    const usable = await state(page, () => {
+      const command = document.querySelector('#battleHud .bCommand');
+      const overview = command.querySelector('.bViewTools button:last-child');
+      const field = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+      const panel = command.getBoundingClientRect();
+      const control = overview.getBoundingClientRect();
+      const hit = document.elementFromPoint(control.x + control.width / 2, control.y + control.height / 2);
+      return panel.height >= 132 && panel.right <= innerWidth && control.height >= 44 && overview.contains(hit)
+        && field && !field.closest('#battleHud .bCommand, #battleHud .bSide');
+    });
+    check(usable, `the command rail and battleground remain usable at ${width}×${height}`);
+  }
   await page.setViewportSize({ width: 1280, height: 720 });
   await state(page, () => window.egretGame.battle?.autoFinish());
   await until(page, () => window.egretGame.screen === 'play' && window.egretGame.app.dialogs.name === 'battleResult', 20);
@@ -176,6 +200,30 @@ try {
   });
   check(sheet.shown && sheet.bottom === 844 && sheet.width === 390, `on a phone the details rise from the bottom (${JSON.stringify(sheet)})`);
   check(await phone.evaluate(() => window.egretGame.app.stageSize.height > window.egretGame.app.stageSize.width), 'the stage stands upright on a phone');
+  const city = phone.locator('#side');
+  const overview = city.getByRole('tab', { name: '概况' });
+  check(await overview.getAttribute('aria-selected') === 'true', 'owned city opens in its compact overview');
+  check(await state(phone, () => document.querySelector('#side').offsetHeight < innerHeight * .4), 'phone city overview leaves most of the map unobstructed');
+  await overview.press('ArrowRight');
+  check(await city.getByRole('tab', { name: '营建' }).getAttribute('aria-selected') === 'true', 'arrow key selects the adjacent city section');
+  await city.getByRole('tab', { name: '政令' }).tap();
+  check(await city.getByRole('button', { name: '寻访' }).isVisible(), 'city orders are directly reachable from the fixed tabs');
+
+  const speed = phone.locator('#campaignSpeed');
+  check(await speed.evaluate(node => node.offsetWidth >= 44 && node.offsetHeight >= 44), 'phone speed selector has a readable touch target');
+  await speed.selectOption('4');
+  check(await state(phone, () => window.egretGame.app.speed === 4), 'the speed selector keeps the existing speed setting');
+  check(await state(phone, () => {
+    const original = document.querySelector('#campaignSpeed');
+    window.egretGame.app.hud.refresh(true);
+    return original === document.querySelector('#campaignSpeed');
+  }), 'a HUD refresh keeps the native speed picker attached');
+  const domains = phone.locator('#territoryMapBtn');
+  await domains.tap();
+  check(await domains.getAttribute('aria-pressed') === 'true' && await phone.locator('#territoryLegend').isVisible(), 'turning on the political map reveals its legend');
+  await domains.tap();
+  check(await domains.getAttribute('aria-pressed') === 'false' && !await phone.locator('#territoryLegend').count(), 'turning off the political map hides its legend');
+
   await phone.setViewportSize({ width: 873, height: 325 });
   await until(phone, () => innerWidth > innerHeight);
   check(await state(phone, () => {
@@ -183,6 +231,13 @@ try {
     const hit = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
     return !details.hidden && details.getBoundingClientRect().right < innerWidth / 2 && !details.contains(hit);
   }), 'sideways phone details leave the centre of the map tappable');
+  check(await state(phone, () => {
+    const root = document.querySelector('#side');
+    const body = root.querySelector('.placeBody'), close = root.querySelector('button.x');
+    body.scrollTop = body.scrollHeight;
+    const box = close.getBoundingClientRect();
+    return box.width >= 44 && box.height >= 44 && close.contains(document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2));
+  }), 'sideways phone city close stays in reach while the contents scroll');
 
   // A broken autosave is set aside, and the title says so.
   await page.addInitScript(() => localStorage.setItem('nine-provinces.auto', '{broken'));

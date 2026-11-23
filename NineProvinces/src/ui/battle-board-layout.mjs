@@ -1,5 +1,10 @@
 // Render-only dimensions. Simulation positions remain odd-row 22×14 hexes.
 export const BOARD={width:800,height:470,cols:22,rows:14};
+/** Fit both measured dimensions. Small landscape fields must be allowed below 200px tall. */
+export function boardRenderWidth(width,height,{fit=true,zoom=1}={}){
+ const availableWidth=Math.max(1,width-12),availableHeight=Math.max(1,height-2);
+ return fit?Math.min(availableWidth,availableHeight*BOARD.width/BOARD.height):Math.max(availableWidth,BOARD.width)*zoom;
+}
 export const boardPoint=at=>({x:36+(at%22)*33+(Math.floor(at/22)%2)*16.5,y:42+Math.floor(at/22)*28.58});
 export const terrainLift=tile=>tile==='wall'?10:tile==='gate'?8:tile==='mountain'?13:tile==='hill'?5:0;
 export const hexPoints=(x,y)=>Array.from({length:6},(_,i)=>{const a=(i*60-30)*Math.PI/180;return (x+19.05*Math.cos(a)).toFixed(2)+','+(y+19.05*Math.sin(a)).toFixed(2);}).join(' ');

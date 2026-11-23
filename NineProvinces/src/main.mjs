@@ -10,7 +10,8 @@ import { browserSaveStorage } from '@egret/engine/web/kit';
 import { NODES } from './data/map.mjs';
 import { createSound } from './audio/sound.mjs';
 import { getLanguage, setLanguage, t } from './i18n.mjs';
-import { exportText, importText, openOfficerRoster, openSettings, openSlot, SLOTS, writeSlot } from './saves.mjs';
+import { exportText, importSaveText, openOfficerRoster, openSettings, openSlot, SLOTS, writeSlot } from './saves.mjs';
+import { captureCampaignView, createProgressCheckpoint, restoreCampaignView } from './save-view.mjs';
 import { recordedAutoBattle } from './sim/battle-history.mjs';
 import { dateOf } from './sim/core.mjs';
 import { answerEnvoy, breakTreaty, demandSurrender, gift, propose, askAttack } from './sim/diplomacy.mjs';
@@ -22,11 +23,13 @@ import { advance, createGame, power, recruit, startWork, study, transfer } from 
 import { createDialogs } from './ui/dialogs.mjs';
 import { $, h } from './ui/dom.mjs';
 import { createHud, SPEEDS, tipFor } from './ui/hud.mjs';
-import { eventOf, logLine } from './ui/text.mjs';
+import { eventOf, logLine, treatyAt } from './ui/text.mjs';
 import { startBattle } from './ui/battleui.mjs';
 import { createMinimap } from './ui/minimap.mjs';
 import { createPlates } from './ui/plates.mjs';
 import { showSetup, showTitle } from './ui/title.mjs';
+import { renderFirstMonth } from './ui/player-flow.mjs';
+import { captureCampaignBattle, campaignBattleAftermath } from './ui/campaign-battle.mjs';
 import { createRealmView } from './view3d/realm.mjs';
 import { homeCity } from './view/home-city.mjs';
 import { factionName, generalName, placeName } from './view/names.mjs';
@@ -42,6 +45,7 @@ const storage = browserSaveStorage();
 const settingsStore = openSettings(storage, navigator.language?.startsWith('zh') ? 'zh' : 'en', (p) => problems.push(p.kind));
 const slots = Object.fromEntries(SLOTS.map((slot) => [slot, openSlot(storage, slot, (p) => problems.push(p.kind))]));
 const officerRoster = openOfficerRoster(storage, (problem) => problems.push(problem.kind));
+const progress = createProgressCheckpoint();
 setLanguage(params.get('lang') ?? settingsStore.data.settings.language);
 document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
 
@@ -76,6 +80,7 @@ const app = {
   dot: null,
   sel: null,
   lastOwnedCity: null,
+  firstMonth: null,
   mode: null,
   paused: true,
   speed: Math.max(0, Math.min(4, settingsStore.data.settings.speed ?? 2)),
@@ -125,6 +130,7 @@ const app = {
   setPaused(v) {
     app.paused = v;
     app.hud?.refresh();
+    renderFirstMonth(app);
   },
   setSpeed(i) {
     app.speed = i;
@@ -160,6 +166,7 @@ const app = {
     if (app.screen === 'title') showTitle(app);
     if (app.dialogs?.name) app.dialogs.render();
     app.hud?.refresh(true);
+    if (app.state) renderFirstMonth(app);
   },
   slotSummary(slot) {
     return slots[slot].data.summary;
@@ -174,7 +181,7 @@ const app = {
     app.dialogs.close(true);
   },
   exportFile() {
-    const blob = new Blob([exportText(app.state)], { type: 'application/json' });
+    const blob = new Blob([exportText(app.state, captureCampaignView(app))], { type: 'application/json' });
     const a = h('a', { href: URL.createObjectURL(blob), download: `nine-provinces-${dateOf(app.state.day).year}.json` });
     document.body.append(a);
     a.click();
@@ -182,12 +189,16 @@ const app = {
     setTimeout(() => URL.revokeObjectURL(a.href), 2000);
   },
   async importFile(file) {
-    const game = importText(await file.text());
-    if (!game) return app.hud.toast(t('importBad'), 'bad');
-    app.dialogs.close(true);
-    play(game);
+    const saved = importSaveText(await file.text());
+    if (!saved) return app.hud.toast(t('importBad'), 'bad');
+    const proceed = () => { app.dialogs.close(true); play(saved.game, saved.view); };
+    if (progress.changed(app.state)) app.open('confirmProgress', { reason: 'leave', backToSaves: true, proceed });
+    else proceed();
   },
   startBattle(setup) {
+    if (!app.state || app.battle || app.screen !== 'play') return;
+    if (app.lastCampaignBattle?.state === app.state && app.lastCampaignBattle.id === setup.id) return;
+    app.campaignBattle = { state: app.state, id: setup.id, before: captureCampaignBattle(app.state, setup) };
     app.dialogs.close(true);
     app.screen = 'battle';
     app.map.setTerritoryVisible(false);
@@ -195,15 +206,48 @@ const app = {
     app.battle = startBattle(app, setup);
   },
   endBattle(done) {
+    if (!app.state || !done?.setup || !done.result) return;
+    if (app.lastCampaignBattle?.state === app.state && app.lastCampaignBattle.id === done.setup.id) return;
+    const before = app.campaignBattle?.state === app.state && app.campaignBattle.id === done.setup.id
+      ? app.campaignBattle.before : null;
+    const aftermath = campaignBattleAftermath(app.state, done.setup, done.result, before);
+    app.lastCampaignBattle = { state: app.state, id: done.setup.id, aftermath };
+    app.campaignBattle = null;
     app.battle = null;
+    app.paused = true;
     app.screen = 'play';
     frame.dataset.screen = 'play';
     app.map.setVisible(true);
     app.map.setTerritoryVisible(app.settings.territoryMap);
     app.map.refreshLands(true);
+    app.rulerSet = new Set(Object.values(app.state.factions).map(faction => faction.ruler));
+    app.minimap?.refresh();
+    app.minimap?.draw();
     app.sound.theme('realm');
-    app.dialogs.open('battleResult', done);
+    app.dialogs.open('battleResult', { ...done, aftermath });
     app.hud.refresh(true);
+  },
+  returnFromBattle(done) {
+    const settled = app.lastCampaignBattle;
+    if (!settled || settled.state !== app.state || settled.id !== done.setup.id) return;
+    app.paused = true;
+    app.setMode(null);
+    app.map.showRoute(null);
+    // Apply the strategic destination after the result is confirmed. The 3D
+    // battlefield may finish its own camera glide while this sheet is open.
+    const target = settled.aftermath.returnView;
+    app.select(target.selection);
+    if (target.camera) app.map.rig.jumpTo(target.camera.x, target.camera.z, target.camera.d);
+    app.dialogs.close(true);
+    app.hud.refresh(true);
+    renderFirstMonth(app);
+    // Losing the final town may settle the campaign during finishBattle. Do
+    // not require an extra running world day to reveal an existing ending.
+    if (app.state.over && !app.endingShown) {
+      app.endingShown = true;
+      app.sound.play(app.state.over.kind === 'fallen' ? 'gong' : 'win');
+      app.dialogs.open('ending');
+    }
   },
   afterDialog() {
     app.hud?.refresh(true);
@@ -335,7 +379,9 @@ function tapNode(id) {
     const r = order(app.state, armyId, id);
     if (r.ok) {
       app.sound.play('march');
-      app.hud.toast(r.days ? t('marchOrdered', { place: placeName(id), days: r.days }) : t('marchLater', { place: placeName(id) }));
+      const ordered = r.days ? t('marchOrdered', { place: placeName(id), days: r.days }) : t('marchLater', { place: placeName(id) });
+      const treaty = treatyAt(app.state, app.state.player, id);
+      app.hud.toast(treaty ? ordered + ' · ' + t('marchTreatyNotice', { treaty }) : ordered);
       app.mode = null;
       app.map.showRoute(null);
       app.select({ army: armyId });
@@ -426,6 +472,7 @@ function tick(dt) {
   if (sinceHud > 0.2 && (app.screen === 'play' || app.screen === 'battle')) {
     sinceHud = 0;
     if (app.screen === 'play') app.hud.refresh();
+    if (app.screen === 'play') renderFirstMonth(app);
     app.minimap?.draw();
   }
 }
@@ -548,7 +595,7 @@ function act(kind, ...args) {
       say(r, r.ok ? t('recruited', { n: r.got }) : null, 'drum');
       break;
     case 'muster': {
-      r = muster(s, P, args[0], args[1]);
+      r = muster(s, P, args[0], { ...args[1], attack: Boolean(args[1].target) });
       if (say(r, null, 'march')) {
         app.dialogs.close(true);
         app.select({ army: r.army });
@@ -679,18 +726,17 @@ function act(kind, ...args) {
       break;
     case 'entrust': {
       const setup = args[0];
+      if (app.lastCampaignBattle?.state === s && app.lastCampaignBattle.id === setup.id) break;
+      app.campaignBattle = { state: s, id: setup.id, before: captureCampaignBattle(s, setup) };
       const { result, tape, report } = recordedAutoBattle(setup, s);
       app.dialogs.close(true);
       app.sound.play(result.winner === setup.factions.indexOf(P) ? 'win' : 'lose');
       finishBattle(s, setup, result);
-      app.map.refreshLands(true);
-      app.dialogs.open('battleResult', { setup, result, tape, report });
+      app.endBattle({ setup, result, tape, report });
       break;
     }
     case 'saveSlot':
-      if (writeSlot(slots[args[0]], s, power(s, P).cities)) app.hud.toast(t('saved'));
-      else app.hud.toast(t('saveRefused'), 'bad');
-      app.sound.play('seal');
+      saveSlot(args[0]);
       break;
   }
   if (app.dialogs.name && !['story', 'battle', 'battleResult', 'ending'].includes(app.dialogs.name)) app.dialogs.render();
@@ -701,22 +747,43 @@ function act(kind, ...args) {
 // ——— Saves ———
 function autosave() {
   if (!app.state || app.state.over) return;
-  if (!writeSlot(slots.auto, app.state, power(app.state, app.state.player).cities)) {
+  if (!writeSlot(slots.auto, app.state, power(app.state, app.state.player).cities, captureCampaignView(app))) {
     if (!app.saveWarned) app.hud.toast(t('saveRefused'), 'bad');
     app.saveWarned = true;
-  }
+  } else progress.saved(app.state);
 }
-function loadSlot(slot) {
-  const game = slots[slot].data.game;
+function saveSlot(slot, confirmed = false) {
+  if (!app.state || slot === 'auto' || !slots[slot]) return;
+  const previous = slots[slot].data.game;
+  if (!confirmed && previous && JSON.stringify(previous) !== JSON.stringify(app.state)) {
+    app.open('confirmProgress', { reason: 'overwrite', slot, backToSaves: true, proceed: () => saveSlot(slot, true) });
+    return;
+  }
+  if (writeSlot(slots[slot], app.state, power(app.state, app.state.player).cities, captureCampaignView(app))) {
+    progress.saved(app.state);
+    app.hud.toast(t('saved'));
+  } else app.hud.toast(t('saveRefused'), 'bad');
+  app.sound.play('seal');
+  if (confirmed) app.open('saves');
+}
+function loadSlot(slot, confirmed = false) {
+  const saved = slots[slot]?.data;
+  const game = saved?.game;
   if (!game) return;
+  if (!confirmed && progress.changed(app.state)) {
+    app.open('confirmProgress', { reason: 'leave', backToSaves: true, proceed: () => loadSlot(slot, true) });
+    return;
+  }
   app.dialogs.close(true);
-  play(JSON.parse(JSON.stringify(game)));
+  // Loading itself never writes the autosave. The next ordinary monthly save
+  // only happens if the restored running/paused state allows time to advance.
+  play(JSON.parse(JSON.stringify(game)), saved.view);
 }
 
 // ——— Screens ———
 function newGame(pick) {
   const state = createGame({ ...pick, seed: Number(params.get('seed') ?? Date.now() % 1000000) });
-  play(state);
+  play(state, { paused: true, firstMonth: { day: state.day, dismissed: false } });
   // Events of the player's tale that open the game unroll at once.
   for (const l of state.log.slice().reverse()) {
     const e = l.key === 'logStory' && eventOf(l.values.event);
@@ -724,12 +791,14 @@ function newGame(pick) {
   }
   autosave();
 }
-function play(state) {
+function play(state, savedView = null) {
+  const resume = restoreCampaignView(state, savedView);
   wake();
   app.map.setDrift(null);
   registerCustom(state);
   app.state = state;
-  app.lastOwnedCity = null;
+  app.lastOwnedCity = resume.lastOwnedCity;
+  app.firstMonth = resume.firstMonth;
   app.tales = [];
   app.rulerSet = new Set(Object.values(state.factions).map((f) => f.ruler));
   app.endingShown = Boolean(state.over);
@@ -738,25 +807,37 @@ function play(state) {
   frame.dataset.screen = 'play';
   $('#title').hidden = true;
   $('#hud').hidden = false;
-  app.select(null);
+  app.select(resume.selection);
   app.mode = null;
+  app.map.showRoute(null);
   app.map.refreshLands(true);
   // Saved campaigns can reuse the same city, army and custom faction IDs with different names and banners.
   app.map.redraw();
   app.map.setTerritoryVisible(app.settings.territoryMap);
-  app.map.jumpTo(state.factions[state.player].capital, app.stageSize.width < app.stageSize.height ? 48 : 52);
-  app.paused = false;
+  if (resume.camera) app.map.rig.jumpTo(resume.camera.x, resume.camera.z, resume.camera.d);
+  else app.map.jumpTo(resume.lastOwnedCity ?? state.factions[state.player].capital, app.stageSize.width < app.stageSize.height ? 48 : 52);
+  app.paused = resume.paused;
+  if (resume.speed !== null) app.speed = resume.speed;
+  progress.saved(state);
   app.hud.refresh(true);
+  renderFirstMonth(app);
   app.sound.theme('realm');
   setTimeout(nextInbox, 300);
 }
-function toTitle() {
+function toTitle(confirmed = false) {
+  if (!confirmed && app.state && !app.state.over && progress.changed(app.state)) {
+    app.open('confirmProgress', { reason: 'leave', proceed: () => toTitle(true) });
+    return;
+  }
   app.lab?.close();
   app.dialogs.close(true);
   if (app.battle) app.battle = null;
   app.state = null;
+  app.firstMonth = null;
+  progress.clear();
   if (app.demoState?.scenario !== '184') app.demoState = createGame({ seed: 184 });
   app.screen = 'title';
+  renderFirstMonth(app);
   frame.dataset.screen = 'title';
   $('#hud').hidden = true;
   app.select(null);
