@@ -282,7 +282,8 @@ export function createBattle(setup, state = null) {
     fire: {},
     wind: setup.special === 'chibi' ? 0 : Math.floor(random() * 6),
     time: 0,
-    limit: setup.special === 'wuchao' ? 200 : LIMIT,
+    // On the realm's ground the attackers start further out, so an assault there is given a longer day.
+    limit: setup.special === 'wuchao' ? 200 : setup.grid && setup.kind === 'siege' ? LIMIT * 1.3 : LIMIT,
     night: setup.special === 'wuchao',
     keepHeld: 0,
     along: field.along,
@@ -729,13 +730,28 @@ function think(b, u) {
   }
   // When the enemy is through the walls, the defenders turn to the keep: archers on the walls keep shooting while they can.
   if (u.side === 1 && b.keep !== null && u.order === 'auto') {
-    const threat = b.units.filter((o) => alive(o) && o.side === 0 && !o.routed && distance(o.pos, b.keep) <= 4).sort((x, y) => distance(x.pos, b.keep) - distance(y.pos, b.keep))[0];
+    // On the realm's ground the town is small, so the threat is whoever is inside the walls, not merely near the keep.
+    const within = (o) => (b.world ? ['town', 'gate', 'wall'].includes(b.tiles[o.pos]) : true) && distance(o.pos, b.keep) <= 4;
+    const threat = b.units.filter((o) => alive(o) && o.side === 0 && !o.routed && within(o)).sort((x, y) => distance(x.pos, b.keep) - distance(y.pos, b.keep))[0];
     const reach = UNITS[u.kind].range;
     if (threat && !(u.onWall && reach > 1 && distance(u.pos, threat.pos) <= reach)) {
       u.target = threat;
       u.path = distance(u.pos, threat.pos) > reach ? findPath(b, u, threat.pos, reach) : [];
       return;
     }
+  }
+  // While the gate holds, the garrison of a walled town stays within its walls and meets only what comes over them.
+  if (u.side === 1 && b.gate && !b.gate.open && b.world && u.order === 'auto' && ['town', 'wall', 'gate'].includes(b.tiles[u.pos])) {
+    const inside = (o) => ['town', 'wall', 'gate'].includes(b.tiles[o.pos]);
+    const foe = b.units.filter((o) => alive(o) && o.side === 0 && !o.routed && inside(o)).sort((x, y) => distance(x.pos, u.pos) - distance(y.pos, u.pos))[0];
+    if (foe) {
+      u.target = foe;
+      u.path = distance(u.pos, foe.pos) > UNITS[u.kind].range ? findPath(b, u, foe.pos, UNITS[u.kind].range) : [];
+    } else {
+      u.target = nearestFoe(b, u, UNITS[u.kind].range);
+      u.path = [];
+    }
+    return;
   }
   // Defenders on the walls stay there; the keep is held.
   if (u.side === 1 && (u.onWall || (b.keep !== null && u.pos === b.keep)) && u.order === 'auto') {

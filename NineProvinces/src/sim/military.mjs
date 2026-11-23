@@ -444,7 +444,7 @@ function fieldOf(state, place, attackers) {
     ax /= l;
     az /= l;
     // Shift the field toward the attackers so the walls stand at its far end.
-    const shift = 14 * Math.abs(ax) + 8.5 * Math.abs(az);
+    const shift = 11 * Math.abs(ax) + 7 * Math.abs(az);
     cx = f.x - ax * shift;
     cz = f.z - az * shift;
   } else {
@@ -472,6 +472,12 @@ function fieldOf(state, place, attackers) {
   return { grid: { c0, r0 }, axis: [ax, az] };
 }
 
+function involvesPlayer(state, attackers, defenders, garrison) {
+  const sides = [...attackers, ...defenders].map((id) => state.armies[id]?.faction);
+  if (garrison) sides.push(state.nodes[garrison].owner);
+  return sides.includes(state.player);
+}
+
 /** Set out a battle. The player's own go to the inbox to be commanded or entrusted; the rest are fought at once. */
 export function battle(state, { kind, place, attackers, defenders, garrison = null, special = null }) {
   const nodeId = place.node ?? null;
@@ -483,7 +489,9 @@ export function battle(state, { kind, place, attackers, defenders, garrison = nu
     seed: Math.floor(random(state) * 2 ** 31),
     wall: nodeId ? state.nodes[nodeId].wall : 0,
     terrain: terrainOf(place),
-    ...fieldOf(state, place, attackers),
+    // The player's battles are fought on the realm's own ground, where he can watch them; the computer's among
+    // themselves, decided at once and out of sight, on ground made from the place's lie of the land.
+    ...(involvesPlayer(state, attackers, defenders, garrison) ? fieldOf(state, place, attackers) : {}),
     units: [...sideUnits(state, attackers, null, 0), ...sideUnits(state, defenders, garrison, 1)],
     factions: [state.armies[attackers[0]]?.faction ?? null, garrison ? state.nodes[garrison].owner : state.armies[defenders[0]]?.faction ?? null]
   };

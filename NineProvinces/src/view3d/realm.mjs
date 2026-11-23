@@ -247,6 +247,7 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     }
     if (!p.moved && Math.hypot(e.clientX - p.sx, e.clientY - p.sy) < 6) return;
     p.moved = true;
+    mode?.release?.();
     const from = groundAt(p.x, p.y),
       to = groundAt(e.clientX, e.clientY);
     p.x = e.clientX;

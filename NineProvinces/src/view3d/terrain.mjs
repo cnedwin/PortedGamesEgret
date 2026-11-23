@@ -36,6 +36,7 @@ const mix = (out, c, t) => {
   out[2] += (c[2] - out[2]) * t;
 };
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
+const ROCK = C(104, 96, 88);
 
 /** The ground colour at a point, linear RGB, from what the land is there and how steep. */
 export function groundColour(s, slope, x, z, out) {
@@ -150,38 +151,55 @@ export function createLand(scene, { quality = 'medium', onTile } = {}) {
   material.shader = createCustomShader3D({ key: 'nine-ground', glsl: GROUND_GLSL });
   const u = material.shader.uniforms;
   u.set([0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
-  const centres = new WeakMap();
+  // Each tile's colours are worked out with its heights, in one pass over the land, and read back as its chunks are built.
+  const colours = new WeakMap();
   const sample = {},
     colour = [0, 0, 0];
   const stream = createTerrainStream3D({
     tileSize: TILE,
     viewDistance: quality === 'low' ? 200 : 280,
-    loadsPerUpdate: 3,
+    loadsPerUpdate: 2,
     material,
     terrain: {
       chunkCells: 32,
       levels: 3,
-      lodDistance: quality === 'low' ? 70 : 110,
+      lodDistance: quality === 'low' ? 45 : 110,
       skirtDepth: 1.5,
       colorAt(height, slope, x, z, out) {
-        // `this` is the tile's terrain: its field tells which tile, and so where the sample is on the map.
-        const c = centres.get(this.field) ?? [0, 0];
-        const wx = x + c[0],
-          wz = z + c[1];
-        landAt(wx, wz, sample);
-        groundColour(sample, slope, wx, wz, colour);
-        out[0] = colour[0];
-        out[1] = colour[1];
-        out[2] = colour[2];
+        // `this` is the tile's terrain: its field finds the tile's colours, worked out when its heights were.
+        const tile = colours.get(this.field);
+        if (!tile) return;
+        const c = Math.round(x + TILE / 2),
+          r = Math.round(z + TILE / 2);
+        const i = r * COLUMNS + c,
+          k = i * 3;
+        // Steep faces turn to rock, which only the drawn slope knows.
+        const rock = Math.min(1, Math.max(0, (slope - 0.2) * 3.2)) * (tile[COLUMNS * COLUMNS * 3 + i] ?? 0);
+        out[0] = tile[k] + (ROCK[0] - tile[k]) * rock;
+        out[1] = tile[k + 1] + (ROCK[1] - tile[k + 1]) * rock;
+        out[2] = tile[k + 2] + (ROCK[2] - tile[k + 2]) * rock;
       }
     },
     load(tx, tz) {
-      const heights = new Float32Array(COLUMNS * COLUMNS);
+      const n = COLUMNS * COLUMNS;
+      const heights = new Float32Array(n),
+        tint = new Float32Array(n * 4);
       const x0 = tx * TILE,
         z0 = tz * TILE;
-      for (let r = 0; r < COLUMNS; r++) for (let c = 0; c < COLUMNS; c++) heights[r * COLUMNS + c] = landAt(x0 + c, z0 + r, sample).height;
+      for (let r = 0; r < COLUMNS; r++)
+        for (let c = 0; c < COLUMNS; c++) {
+          const i = r * COLUMNS + c;
+          landAt(x0 + c, z0 + r, sample);
+          heights[i] = sample.height;
+          groundColour(sample, 0, x0 + c, z0 + r, colour);
+          tint[i * 3] = colour[0];
+          tint[i * 3 + 1] = colour[1];
+          tint[i * 3 + 2] = colour[2];
+          // How much this ground would turn to rock when steep: mountains and plateau, not lowland.
+          tint[n * 3 + i] = Math.min(1, sample.mountain / 4 + sample.plateau) * (1 - Math.min(1, Math.max(0, (sample.height - 24) / 6)) * 0.3);
+        }
       const field = createHeightField3D({ columns: COLUMNS, rows: COLUMNS, width: TILE, depth: TILE, heights });
-      centres.set(field, [x0 + TILE / 2, z0 + TILE / 2]);
+      colours.set(field, tint);
       return field;
     },
     onLoad(tile) {

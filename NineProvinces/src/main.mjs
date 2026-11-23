@@ -224,6 +224,18 @@ async function boot() {
   };
   bindKeys();
   app.map.start();
+  // Hidden, the world stops drawing and time stands still; shown again, both go on.
+  // The engine's clock is paused too, so the first frame back does not count the time away (ENGINE-NOTES 7).
+  document.addEventListener('visibilitychange', () => {
+    const { engine } = app.map.app;
+    if (document.hidden) {
+      app.map.app.stop();
+      engine.clock.pause();
+    } else {
+      engine.clock.resume();
+      app.map.app.start();
+    }
+  });
 }
 
 function tapArmy(id) {
@@ -666,7 +678,8 @@ function toTitle() {
   app.map.setVisible(true);
   app.map.refreshLands(true);
   app.map.jumpTo('luoyang', 95);
-  app.map.setDrift({ speed: 2.2, from: NODES.luoyang.x - 160, to: NODES.luoyang.x + 260 });
+  // The view drifts slowly over the land, unless motion is to be kept down.
+  app.map.setDrift(app.calm() ? null : { speed: 2.2, from: NODES.luoyang.x - 160, to: NODES.luoyang.x + 260 });
   showTitle(app);
   app.sound.theme('realm');
 }

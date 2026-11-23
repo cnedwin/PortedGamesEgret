@@ -2125,12 +2125,8 @@ body {
   box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
   border-radius: 3px;
 }
-#side,
-.sheet,
-.setupPanel,
-.bDeploy {
+.sheet {
   position: relative;
-  background-image: linear-gradient(var(--panel-top), var(--panel-bottom)), linear-gradient(transparent, transparent);
 }
 #side::before,
 .sheet::before,
@@ -3186,4 +3182,20 @@ input.find,
   .sheet.techSheet .treeScroll {
     max-height: 60vh;
   }
+}
+.setupPanel .chosen {
+  background: linear-gradient(90deg, rgba(214, 180, 106, 0.16), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(214, 180, 106, 0.45);
+  color: var(--text);
+}
+.setupPanel .chosen small,
+.setupPanel .chosen .dim,
+.setupPanel .chosen p {
+  color: var(--muted);
+}
+.factions .fac,
+.factions button {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  border-color: rgba(214, 180, 106, 0.22);
 }

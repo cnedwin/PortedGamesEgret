@@ -7,6 +7,19 @@ import { InstancedMesh3D, createConeGeometry3D, createCylinderGeometry3D, create
 import { landAt, noise } from '../sim/land.mjs';
 import { TILE } from './terrain.mjs';
 
+/** The plain trees of low quality: a cone or a ball on a stick. */
+function plainPine() {
+  const b = createGeometryBuilder3D();
+  b.add(createCylinderGeometry3D({ radiusTop: 0.06, radiusBottom: 0.08, height: 0.5, radialSegments: 4 }), { position: [0, 0.25, 0], color: 0x4a3626 });
+  b.add(createConeGeometry3D({ radius: 0.6, height: 1.5, radialSegments: 6 }), { position: [0, 1.15, 0], color: 0x33502f });
+  return b.build();
+}
+function plainBroadleaf() {
+  const b = createGeometryBuilder3D();
+  b.add(createCylinderGeometry3D({ radiusTop: 0.06, radiusBottom: 0.09, height: 0.6, radialSegments: 4 }), { position: [0, 0.3, 0], color: 0x4d3a28 });
+  b.add(createIcosahedronGeometry3D({ radius: 0.6, detail: 0 }), { position: [0, 1.0, 0], scale: [1, 0.9, 1], color: 0x4a6a32 });
+  return b.build();
+}
 function pine() {
   const b = createGeometryBuilder3D();
   b.add(createCylinderGeometry3D({ radiusTop: 0.05, radiusBottom: 0.08, height: 0.5, radialSegments: 5 }), { position: [0, 0.25, 0], color: 0x4a3626 });
@@ -26,10 +39,10 @@ function broadleaf() {
 
 /** Woods on the tiles of `land`. Returns `onTile(tile, loaded)` for the stream to call. */
 export function createFlora(scene, { quality = 'medium' } = {}) {
-  const kinds = [pine(), broadleaf()];
+  const kinds = quality === 'low' ? [plainPine(), plainBroadleaf()] : [pine(), broadleaf()];
   const material = createStandardMaterial3D({ vertexColors: true, roughness: 0.9, metallic: 0, flatShading: true });
-  const spacing = quality === 'low' ? 1.6 : quality === 'medium' ? 1.15 : 1.0;
-  const reach = quality === 'low' ? 95 : quality === 'medium' ? 170 : 220;
+  const spacing = quality === 'low' ? 1.9 : quality === 'medium' ? 1.15 : 1.0;
+  const reach = quality === 'low' ? 85 : quality === 'medium' ? 170 : 220;
   const byTile = new Map();
   const sample = {},
     m = new Float32Array(16),

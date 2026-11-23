@@ -3,7 +3,8 @@
 // Every part of the interface is put together from these.
 import { GENERALS } from '../data/generals.mjs';
 import { portrait } from '../view/portrait.mjs';
-import { nm } from '../i18n.mjs';
+import { FACTIONS, LATER } from '../data/factions.mjs';
+import { getLanguage, nm } from '../i18n.mjs';
 
 export const $ = (s, root = document) => root.querySelector(s);
 export const $$ = (s, root = document) => [...root.querySelectorAll(s)];
@@ -56,8 +57,15 @@ export function bar(share, kind = '', label = null) {
 
 const hex = (c) => '#' + c.toString(16).padStart(6, '0');
 /** A seal: a power's flag character in a square of its colour. */
+/** The mark on a power's seal: its banner character, or in English the first letter of its name. */
+export function markOf(f) {
+  if (!f) return '—';
+  if (getLanguage() !== 'en') return f.flag ?? '—';
+  const name = f.name?.en ?? FACTIONS[f.id]?.en ?? LATER[f.id]?.en ?? f.en ?? '';
+  return (name.replace(/^The /, '')[0] ?? '—').toUpperCase();
+}
 export function seal(f, size = 'm') {
-  return h(`span.seal.${size}`, { style: { '--c': hex(f?.colour ?? 0x8a7d66) }, 'aria-hidden': 'true' }, f?.flag ?? '—');
+  return h(`span.seal.${size}`, { style: { '--c': hex(f?.colour ?? 0x8a7d66) }, 'aria-hidden': 'true' }, markOf(f));
 }
 export const colourOf = (f) => hex(f?.colour ?? 0x8a7d66);
 

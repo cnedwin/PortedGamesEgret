@@ -69,7 +69,15 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   for (const p of pos) (minX = Math.min(minX, p.x)), (minZ = Math.min(minZ, p.z)), (maxX = Math.max(maxX, p.x)), (maxZ = Math.max(maxZ, p.z));
   const centre = { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2 };
   land.setField([minX - HEX_W / 2, minZ - HEX_W / 2, maxX + HEX_W / 2, maxZ + HEX_W / 2]);
-  rig.glideTo(centre.x, centre.z, 42, 1.4);
+  // Look between the two sides where they will meet: the gate, or the middle of the defenders, and the attackers' line.
+  const meanOf = (side) => {
+    const list = b.units.filter((u) => u.side === side && u.pos >= 0).map((u) => pos[u.pos]);
+    if (!list.length) return centre;
+    return { x: list.reduce((a, p) => a + p.x, 0) / list.length, z: list.reduce((a, p) => a + p.z, 0) / list.length };
+  };
+  const front = b.gate ? pos[b.gate.at] : meanOf(1),
+    them = meanOf(0);
+  rig.glideTo(front.x * 0.8 + them.x * 0.2, front.z * 0.8 + them.z * 0.2 + 3, 40, 1.4);
   const cols = colours.map((c) => linearColor3D(c));
 
   // ——— Selection ring and the gate ———
@@ -189,7 +197,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   };
   let hoverHex = -1,
     selected = null,
-    goalHex = -1;
+    goalHex = -1,
+    follow = null;
   realm.setMode({
     hides: (a) => Boolean(a.inBattle),
     pick(g) {
@@ -205,6 +214,10 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       const sel = selected !== null ? b.units[selected] : null;
       const chosen = goalHex >= 0 ? pos[goalHex] : sel && sel.pos >= 0 ? pos[sel.pos] : null;
       return { hover: hoverHex >= 0 ? pos[hoverHex] : null, chosen, grid: 1 };
+    },
+    /** The player moved the view by hand: stop following a unit. */
+    release() {
+      follow = null;
     },
     tap(hit) {
       if (!hit) return;
@@ -352,6 +365,15 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       f.el.style.transform = `translate(${p.x.toFixed(1)}px, ${p.y.toFixed(1)}px) translate(-50%, -50%)` + (f.brush ? ` scale(${(1 + Math.min(0.25, f.age * 0.6)).toFixed(3)})` : '');
       f.el.style.opacity = fade.toFixed(2);
     }
+    // The view keeps a unit it was asked to look at in the middle, until the player moves it.
+    if (follow !== null) {
+      const fu = b.units[follow];
+      if (fu.gone || fu.pos < 0) follow = null;
+      else {
+        rig.view.tx = shown[follow].x;
+        rig.view.tz = shown[follow].z + 2;
+      }
+    }
     // The ring under the chosen unit.
     const su = selected !== null ? b.units[selected] : null;
     ring.visible = Boolean(su && !su.gone && su.pos >= 0);
@@ -401,7 +423,10 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       goalHex = hexIndex;
     },
     lookAtHex(i) {
-      if (i >= 0) rig.glideTo(pos[i].x, pos[i].z, Math.min(rig.view.td, 45), 0.6);
+      if (i < 0) return;
+      rig.glideTo(pos[i].x, pos[i].z, Math.min(rig.view.td, 45), 0.6);
+      const u = b.units.findIndex((o) => !o.gone && o.pos === i);
+      follow = u >= 0 ? u : null;
     },
     destroy() {
       stop();

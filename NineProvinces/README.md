@@ -96,6 +96,7 @@ tally {"siegeLost":1525,"ratio":11851.415617673,"siegeWon":828,"taken":936,"take
 - 只在无头环境里听过合成的波形，没有用扬声器听过。 · The synthesized sound was checked as waveforms only, never through a speaker.
 - 连环计等少数史实事件要求的人物若先在战斗中阵亡或被俘，事件就会错过。 · A few events of history, such as the chain stratagem, are missed when the men they need have already fallen or been taken in battle.
 - 平衡只靠电脑对电脑的百年推演调过，没有真人玩满一局的记录。 · The balance was tuned only by the computer playing itself for a century; no person has played a whole game.
+- 品质验收未达标 · Quality items failing（[QUALITY.md](QUALITY.md)，2026-11-23，无头 Chromium + SwiftShader · headless, software rendering）：F1 桌面帧时间 p95 ≤ 16.7 ms（p95 283.3 ms over 23 frames）。
 
 ## 已解决 · Solved
 

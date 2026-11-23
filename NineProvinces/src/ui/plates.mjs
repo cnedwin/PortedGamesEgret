@@ -9,7 +9,7 @@ import { troopCap } from '../sim/military.mjs';
 import { factionColour } from '../view3d/realm.mjs';
 import { generalName, placeName } from '../view/names.mjs';
 import { portrait } from '../view/portrait.mjs';
-import { h } from './dom.mjs';
+import { h, markOf } from './dom.mjs';
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 const fmt = (n) => (getLanguage() === 'en' ? Math.round(n).toLocaleString('en') : Math.round(n).toLocaleString('zh-CN'));
@@ -17,7 +17,6 @@ const fmt = (n) => (getLanguage() === 'en' ? Math.round(n).toLocaleString('en') 
 /** Plate makers for the realm view; `app` gives the state, the choice and what to do on a tap. */
 export function createPlates(app) {
   const keys = new WeakMap();
-  const flagOf = (s, owner) => s?.factions[owner]?.flag ?? '';
   return {
     node(id, element, force = false) {
       const n = NODES[id];
@@ -41,7 +40,7 @@ export function createPlates(app) {
       if (!force && keys.get(element) === key) return element;
       keys.set(element, key);
       const [seal, name, bar] = element.children;
-      seal.textContent = owner ? flagOf(s, owner) : '·';
+      seal.textContent = owner ? markOf({ ...s.factions[owner], id: owner }) : '·';
       seal.style.setProperty('--c', owner ? hex(factionColour(s, owner)) : '#6b6760');
       name.textContent = placeName(id);
       if (bar) bar.firstChild.style.width = Math.round(share * 100) + '%';
