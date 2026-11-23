@@ -8,6 +8,7 @@
 // the engine's canvas.
 import { DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createParticleEmitter } from '@egret/engine/particles';
+import { createActionControl, createControlKeys } from '@egret/engine/ui';
 import { BOARD, PIGMENTS } from '../sim/sand.mjs';
 import { BELT, collectedShare, placeAt, stepUnpaint, tapLane } from '../sim/unpaint.mjs';
 import { createBoardView } from './board.mjs';
@@ -16,16 +17,27 @@ import { paintScroll } from './scroll.mjs';
 const hex = ([r, g, b], k = 1) => (Math.min(255, Math.round(r * k)) << 16) | (Math.min(255, Math.round(g * k)) << 8) | Math.min(255, Math.round(b * k));
 const css = (colour, alpha = 1) => `rgba(${(colour >> 16) & 255}, ${(colour >> 8) & 255}, ${colour & 255}, ${alpha})`;
 const GOLD = 0xe2b866;
+const IVORY = 0xf3e3c0;
 
 /** Where everything goes on a tall or a wide stage. */
 export function unpaintLayout(width, height) {
   const { cols, rows } = BOARD;
   if (height > width) {
     const S = 2;
-    return { tall: true, S, board: { x: (width - cols * S) / 2, y: 66, w: cols * S, h: rows * S }, belt: 696, back: 748, lanes: { x: 20, y: 790, w: width - 40, h: 160 }, title: { x: 24, y: 18 }, share: { x: width - 120, y: 22 } };
+    return { tall: true, S, board: { x: (width - cols * S) / 2, y: 66, w: cols * S, h: rows * S }, belt: 696, back: 748, lanes: { x: 20, y: 820, w: width - 40, h: 130 }, hud: { x: 20, y: 762, w: width - 40 }, share: { x: width - 120, y: 22 } };
   }
   const S = 1.45;
-  return { tall: false, S, board: { x: 40, y: 14, w: cols * S, h: rows * S }, belt: 14 + rows * S + 16, back: 14 + rows * S + 46, lanes: { x: 40 + cols * S + 50, y: 120, w: width - (40 + cols * S + 50) - 30, h: 380 }, title: { x: 40 + cols * S + 50, y: 24 }, share: { x: width - 30, y: 70 } };
+  const side = 40 + cols * S + 50,
+    panel = width - side - 30;
+  return { tall: false, S, board: { x: 40, y: 14, w: cols * S, h: rows * S }, belt: 14 + rows * S + 16, back: 14 + rows * S + 46, lanes: { x: side, y: 163, w: panel, h: 344 }, hud: { x: side, y: 96, w: panel }, share: { x: width - 30, y: 70 } };
+}
+
+/** The belt can only extract grains that are on the literal bottom row. */
+export function exposedPigments(color) {
+  const bottom = (BOARD.rows - 1) * BOARD.cols;
+  let mask = 0;
+  for (let x = 0; x < BOARD.cols; x++) if (color[bottom + x]) mask |= 1 << color[bottom + x];
+  return mask;
 }
 
 /** A bucket: a pail of rosewood with a gold rim, its paint filled to `share`. Big buckets are wider. */
@@ -183,43 +195,137 @@ export async function createUnpaintView(app, scope, root, kit, game, hooks) {
   };
 
   // The lanes: the front bucket of each can be tapped; two more wait behind it, smaller.
-  const n = game.level.lanes,
-    lw = L.lanes.w / n;
-  const lanes = game.lanes.map((queue, k) => {
+  const lw = L.lanes.w / game.level.lanes;
+  let paused = false, endedSent = false;
+  const beltWords = await kit.label(root, ' ', { x: L.hud.x + 10, y: L.hud.y + 3, size: 15, color: IVORY, weight: 600 });
+  await kit.label(root, hooks.words('unpExposed'), { x: L.hud.x + L.hud.w * 0.48, y: L.hud.y + 3, size: 15, color: IVORY });
+  const guidance = await kit.label(root, ' ', { x: L.hud.x, y: L.hud.y + 27, width: L.hud.w, align: 'center', size: 15, color: GOLD, weight: 600 });
+  const meters = root.addChild(scope.use(new Sprite()));
+  const keyboard = app.game.keyboard;
+  const lanes = await Promise.all(game.lanes.map(async (_queue, k) => {
     const holder = laneLayer.addChild(scope.use(new DisplayObjectContainer()));
     holder.x = L.lanes.x + k * lw + lw / 2;
     holder.y = L.lanes.y;
     const hit = holder.addChild(scope.use(new Sprite()));
     hit.touchEnabled = true;
-    hit.hitArea = { x: -lw / 2 + 4, y: 0, width: lw - 8, height: L.lanes.h };
+    hit.hitArea = { x: -lw / 2, y: 0, width: lw, height: L.lanes.h };
+    const ring = holder.addChild(scope.use(new Sprite()));
     const front = holder.addChild(scope.use(new Sprite())),
       second = holder.addChild(scope.use(new Sprite())),
       third = holder.addChild(scope.use(new Sprite()));
-    front.y = L.tall ? 40 : 60;
-    second.y = L.tall ? 96 : 150;
-    third.y = L.tall ? 136 : 220;
-    return { hit, front, second, third, look: '' };
-  });
+    front.y = L.tall ? 70 : 83;
+    second.y = L.tall ? 94 : 166;
+    third.y = L.tall ? 114 : 225;
+    const [caption, advice] = await Promise.all([
+      kit.label(holder, ' ', { x: -lw / 2, y: 5, width: lw, align: 'center', size: 13, color: IVORY, weight: 700 }),
+      kit.label(holder, ' ', { x: -lw / 2, y: 22, width: lw, align: 'center', size: 12, color: GOLD })
+    ]);
+    const id = `unpaint-lane-${k + 1}`;
+    const lane = { front, second, third, caption, advice, look: '', status: '', name: '', enabled: true, focused: false };
+    function paintRing() {
+      const g = ring.graphics;
+      g.clear();
+      if (lane.status === 'match' || lane.status === 'merge' || action.pressed || lane.focused) {
+        const strong = action.pressed || lane.focused;
+        g.lineStyle(strong ? 3 : 2, strong ? 0xfff0bc : lane.status === 'merge' ? 0xf0a86d : GOLD, 1)
+          .drawRoundRect(-lw / 2 + 4, 1, lw - 8, L.lanes.h - 2, 12, 12).lineStyle(0);
+      }
+    }
+    const input = app.game.pointer;
+    // The pointer stays captured by its first lane. Releasing outside that lane cancels the choice.
+    kit.own(hit.on(input.events.end, (event) => {
+      const { globalX, globalY } = event.payload;
+      if (globalX < holder.x - lw / 2 || globalX >= holder.x + lw / 2
+        || globalY < holder.y || globalY >= holder.y + L.lanes.h) event.stopImmediatePropagation();
+    }));
+    const action = kit.own(createActionControl({ input, target: hit, onActivate: () => tap(k), onPressChange: paintRing }));
+    const registration = keyboard ? kit.own(keyboard.registerTarget({ id, target: hit })) : undefined;
+    if (keyboard) kit.own(createControlKeys({ keyboard, target: hit, kind: 'action', control: action }));
+    if (app.semantics) kit.own(app.semantics.add({
+      id,
+      role: 'button',
+      onActivate() { if (action.enabled) { action.press(); action.release(); } },
+      onFocus: () => keyboard?.focus(id, { visible: true }),
+      describe: () => {
+        // A transparent pointer target has no painted bounds. Describe the same full lane hit area.
+        const corner = hit.localToGlobal(-lw / 2, 0);
+        return {
+          name: lane.name, bounds: { x: corner.x, y: corner.y, width: lw, height: L.lanes.h },
+          disabled: !lane.enabled, focused: keyboard?.getSnapshot().focusedId === id, hidden: !holder.parent
+        };
+      }
+    }));
+    return Object.assign(lane, { action, registration, paintRing, id });
+  }));
   const count = await kit.label(root, '', { x: L.share.x, y: L.share.y, size: 17, color: GOLD, align: 'right' });
   let shownShare = -1;
+  let bottomMask = exposedPigments(game.color), lastMeter, lastGuidance;
   function paintLanes() {
-    game.lanes.forEach((queue, k) => {
+    const occupied = game.belt.filter(Boolean),
+      full = occupied.length === game.belt.length,
+      focus = keyboard?.getSnapshot(),
+      matchingBelt = occupied.some((bucket) => bottomMask & (1 << bucket.pigment));
+    let hasMatch = false, hasMerge = false;
+    for (const [k, queue] of game.lanes.entries()) {
       const lane = lanes[k],
-        look = queue
-          .slice(0, 3)
-          .map((q) => q.id)
-          .join(',') + (game.belt.includes(null) ? '' : '!');
-      if (lane.look === look) return;
+        pigment = queue[0]?.pigment,
+        matches = Boolean(pigment && (bottomMask & (1 << pigment))),
+        merges = Boolean(pigment && occupied.filter((bucket) => bucket.pigment === pigment).length === 2),
+        active = Boolean(pigment) && !full && !paused && !game.over,
+        status = !active ? '' : merges ? 'merge' : matches ? 'match' : '';
+      hasMatch ||= matches;
+      hasMerge ||= merges;
+      const focused = focus?.focusVisible && focus.focusedId === lane.id;
+      const look = `${queue.slice(0, 3).map((bucket) => bucket.id).join(',')}:${status}:${active}:${focused}`;
+      if (lane.look === look) continue;
       lane.look = look;
-      const full = !game.belt.includes(null);
+      lane.status = status;
+      lane.focused = focused;
+      const name = pigment ? hooks.words('pigment' + pigment) : hooks.words('unpEmpty');
+      const action = status ? hooks.words(status === 'merge' ? 'unpMerge' : 'unpMatch') : '';
+      lane.name = [hooks.words('unpLane', { index: k + 1 }), name, action].filter(Boolean).join(' · ');
+      void lane.caption.set(`${k + 1} · ${name}`);
+      void lane.advice.set(action || ' ');
+      lane.advice.display.visible = Boolean(action);
+      lane.caption.display.alpha = pigment ? 1 : 0.56;
+      if (lane.enabled !== active) {
+        lane.enabled = active;
+        lane.action.setEnabled(active);
+        lane.registration?.update?.({ disabled: !active });
+      }
+      lane.paintRing();
       [lane.front, lane.second, lane.third].forEach((sprite, d) => {
         const bucket = queue[d];
         sprite.visible = Boolean(bucket);
         if (!bucket) return;
-        const k = d === 0 ? (L.tall ? 1.25 : 1.5) : d === 1 ? 0.85 : 0.65;
+        const k = d === 0 ? (L.tall ? 1.08 : 1.5) : d === 1 ? 0.85 : 0.65;
         drawBucket(sprite.graphics, Math.min(lw * 0.62, bw * k * 1.3), bh * k, bucket.pigment, 0, { dim: d > 0 || full });
       });
-    });
+    }
+    const key = `${game.belt.map((bucket) => bucket?.pigment ?? 0).join(',')}:${bottomMask}`;
+    if (key !== lastMeter) {
+      lastMeter = key;
+      void beltWords.set(hooks.words('unpBelt', { used: occupied.length, total: game.belt.length }));
+      const g = meters.graphics;
+      g.clear();
+      for (const [place, bucket] of game.belt.entries()) {
+        const x = L.hud.x + 94 + place * 21, y = L.hud.y + 13;
+        g.lineStyle(1, GOLD, 0.68).beginFill(bucket ? hex(PIGMENTS[bucket.pigment].rgb) : 0x3a2418)
+          .drawCircle(x, y, 6).endFill().lineStyle(0);
+      }
+      let x = L.hud.x + L.hud.w * 0.75;
+      for (let pigment = 1; pigment < PIGMENTS.length; pigment++) if (bottomMask & (1 << pigment)) {
+        g.lineStyle(1, IVORY, 0.65).beginFill(hex(PIGMENTS[pigment].rgb))
+          .drawRoundRect(x, L.hud.y + 7, 13, 13, 3, 3).endFill().lineStyle(0);
+        x += 18;
+      }
+    }
+    const message = full ? (matchingBelt || !bottomMask ? 'unpFull' : 'unpStuck') :
+      hasMerge ? 'unpMergeReady' : hasMatch ? 'unpReady' : 'unpWait';
+    if (message !== lastGuidance) {
+      lastGuidance = message;
+      void guidance.set(hooks.words(message));
+    }
   }
   function paintBelt() {
     game.belt.forEach((bucket, place) => {
@@ -245,21 +351,16 @@ export async function createUnpaintView(app, scope, root, kit, game, hooks) {
   paintBelt();
 
   function tap(lane) {
+    if (paused || game.over) return;
     if (tapLane(game, lane)) app.sound.play('pick', { volume: 0.7 });
     else app.sound.play('turn', { rate: 0.6 });
   }
-  kit.own({
-    dispose: app.game.pointer.observe(({ kind, target }) => {
-      if (kind !== 'begin' || game.over) return;
-      const lane = lanes.findIndex((l) => l.hit === target);
-      if (lane >= 0) tap(lane);
-    })
-  });
 
-  let paused = false,
-    endedSent = false;
   return {
-    setPaused: (on) => (paused = on),
+    setPaused(on) {
+      paused = on;
+      paintLanes();
+    },
     get paused() {
       return paused;
     },
@@ -269,17 +370,18 @@ export async function createUnpaintView(app, scope, root, kit, game, hooks) {
       const events = game.events;
       game.events = [];
       const rows = game.dirtyTop <= game.dirtyBottom ? [game.dirtyTop, game.dirtyBottom] : null;
+      if (rows?.[1] === BOARD.rows - 1) bottomMask = exposedPigments(game.color);
       game.dirtyTop = BOARD.rows;
       game.dirtyBottom = -1;
       board.update(rows);
       for (const e of events) {
-        if (e.kind === 'board') app.sound.play('drop', { volume: 0.4, rate: 1.3 });
+        if (e.kind === 'board') app.sound.play('collect', { volume: 0.64 });
         else if (e.kind === 'merge') {
-          app.sound.play('shine', { rate: 1.12 });
+          app.sound.play('merge', { volume: 0.87 });
           app.vibrate?.(25);
         } else if (e.kind === 'full') {
           const at = beltPoint(placeAt(game, e.place));
-          app.sound.play('shine', { rate: e.big ? 0.84 : 1, volume: 0.8 });
+          app.sound.play('bucket', { rate: e.big ? 0.9 : 1, volume: 0.8 });
           if (!app.reducedMotion) {
             sparkle.x = at.x;
             sparkle.y = at.y;

@@ -46,3 +46,16 @@ this file; items by hand or on a device are marked not run until someone runs th
 
 - A1m、S4：由本目录的 `test/accept.mjs` 在无头 Chromium 里覆盖——只用键盘走完标题、设置、一局和结算，存档改坏后标题显示提示并重新开始。没有由人另做，也没有用真读屏。 · Covered by this folder's acceptance script in headless Chromium: the whole path by keyboard, and the notice after a broken save. Not done again by a person, nor with a real screen reader.
 - T1、F2、E4、I2：未运行 · not run.
+
+## UI、声音与「今日试笔」复测 · UI, audio and Daily Scroll retest
+
+上述表格保留早期软件渲染基线。以下为本地候选版实测。 · The table above is the earlier software-rendered baseline. The results below are from the local candidate.
+
+| 环境 · Environment | 实测 · Observed |
+|---|---|
+| Windows PC、Edge 158、WebGPU | 鼠标拖放三块完成首次消除，4,800 分，画卷进度 10%。验证拖出取消、暂停及恢复、拆画上桶、进入今日试笔。同段作画 1,050 个浏览器帧间隔，p95 4.3 ms，最大 29.1 ms。 · Three mouse drops cleared the first run for 4,800 points and 10% painted. Also verified cancelled drags, pause and resume, boarding buckets and entering Daily Scroll. During the paint sample, 1,050 browser frame intervals had a 4.3 ms p95 and a 29.1 ms maximum. |
+| Samsung Galaxy Z Fold7、Android 17、Chrome 157、WebGPU | 横屏以自动触控完成落沙、触点取消、暂停恢复、点沙桶上带和收沙。修复前底图与沙盘相差约 74 CSS px，修复后小于 0.02 CSS px。拆画短样本 89 个浏览器帧间隔，p95 16.6 ms，最大 16.7 ms。 · On the actual phone, injected touch covered placement, cancellation, pause and resume, boarding a bucket and collecting sand. The art-to-stage horizontal offset fell from about 74 CSS px to under 0.02 CSS px. The short Unpaint sample had 89 browser frame intervals, 16.6 ms p95 and a 16.7 ms maximum. |
+| Edge 浏览器数字音频 · Edge digital audio | 作画、拆画和桶音效有输出，暂停、静音和回到卷首后归零，继续和解除静音后恢复。另测三段循环接点、音效并发上限和迟到音轨清理。 · Paint, Unpaint and bucket cues produced output. Pause, mute and return to title reached silence. Resume and unmute restored output. Loop seams, the voice limit and late track cancellation were checked separately. |
+| Node 26、Chromium + SwiftShader | 35 项单测和 23 项浏览器验收。每日模式另测时区一致、暂停重开、结算重试及旧档兼容。 · 35 unit tests and 23 browser checks. Daily Scroll was also checked for identical starts across time zones, restart, replay and compatibility with existing saves. |
+
+Fold7 另用 14 次有效落块完成一局「今日试笔」的失败结算，确认独立记录写入。PC 竖屏使用触屏模拟，Fold7 触控由测试工具在实体设备上派发。帧间隔来自浏览器 rAF。真机扬声器听感、手机竖屏和全关卡通关未覆盖。 · On the Fold7, 14 valid drops took a Daily Scroll run to its loss screen and saved a separate record. Portrait was checked using desktop touch emulation. Fold7 input was dispatched on the physical device. Intervals are from browser rAF. Speaker listening, phone portrait and a full campaign completion are pending.

@@ -17,6 +17,13 @@ export const INK = 0x140b06,
   PAPER = 0xf3ead6;
 const GOLD = AMBER,
   LACQUER = RED;
+const BUTTON_TONES = {
+  cinnabar: { top: 0x973e31, bottom: 0x64291f, edge: 0xf2c57c },
+  jade: { top: 0x315e50, bottom: 0x213d32, edge: 0x8ab9a1 },
+  indigo: { top: 0x3d5062, bottom: 0x283543, edge: 0x9ab8cd },
+  gold: { top: 0x655032, bottom: 0x46351f, edge: 0xe4bc7c },
+  ink: { top: 0x342d28, bottom: 0x211b17, edge: 0xcbac7d }
+};
 
 export const FONT = '"Noto Serif SC", "Noto Serif CJK SC", "Source Han Serif SC", "Songti SC", "STSong", "SimSun", serif';
 export const SANS = '"Noto Sans SC", "Noto Sans CJK SC", "PingFang SC", "Microsoft YaHei", "Source Han Sans SC", sans-serif';
@@ -71,7 +78,10 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
    * A lacquered button with words on it. `onActivate` runs on a press that is released on it, on Space or
    * Enter while it holds the focus, and when assistive technology activates it.
    */
-  async function button({ x, y, width = 160, height = 48, text, sub, onActivate, name = text, primary = false, container = parent, small = false, disabledAlpha = 0.45 }) {
+  async function button({
+    x, y, width = 160, height = 48, text, sub, onActivate, name = text, primary = false,
+    tone = primary ? 'cinnabar' : 'ink', leading = 0, align = 'center', container = parent, small = false, disabledAlpha = 0.60
+  }) {
     const id = `${prefix}-button-${++serial}`;
     const root = container.addChild(scope.use(new DisplayObjectContainer())),
       ring = root.addChild(scope.use(new Sprite())),
@@ -80,8 +90,17 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
     root.y = y;
     face.touchEnabled = true;
     face.hitArea = { x: 0, y: 0, width, height };
-    const words = await label(root, text, { x: 0, y: (sub ? height * 0.1 : (height - (small ? 18 : 22) * 1.25) / 2), size: small ? 18 : 22, align: 'center', width, color: primary ? 0xfff2d6 : 0xf0e4c8, weight: 600 });
-    const under = sub ? await label(root, sub, { x: 0, y: height * 0.62, size: 12, align: 'center', width, color: 0xc8bba0, family: SANS }) : null;
+    const palette = BUTTON_TONES[tone],
+      labelX = leading + (align === 'left' ? 18 : 0),
+      labelWidth = width - labelX,
+      titleSize = small ? 18 : 22,
+      titleY = sub ? height * 0.14 : (height - titleSize * 1.25) / 2,
+      subY = height * 0.59;
+    const words = await label(root, text, { x: labelX, y: titleY, size: titleSize, align, width: labelWidth, color: 0xfff2da, weight: 700 });
+    const under = sub ? await label(root, sub, { x: labelX, y: subY, size: 13, align, width: labelWidth, color: 0xe7d5ba, family: SANS }) : null;
+    const arrow = align === 'left'
+      ? await label(root, '›', { x: width - 18, y: (height - 30) / 2, size: 23, align: 'right', color: palette.edge, family: SANS })
+      : null;
     const state = { enabled: true };
     const action = own(createActionControl({ input, target: face, onActivate: () => {
         sound?.play('tap');
@@ -93,19 +112,19 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
         g = face.graphics,
         focused = focusShown() && focusId() === id;
       g.clear();
-      g.lineStyle(2, INK, 1);
-      const top = primary ? 0xc0442e : 0x5a3622,
-        bottom = primary ? 0x6e2016 : 0x2a170e;
-      g.beginLinearGradientFill(0, 0, 0, height, stops([0, pressed ? bottom : top], [1, pressed ? top : bottom]))
-        .drawRoundRect(0, pressed ? 2 : 0, width, height, 10, 10)
+      const inset = pressed ? 2 : 0;
+      g.lineStyle(0).beginFill(0x090807, 0.45).drawRoundRect(leading, 3, width - leading, height, 10, 10).endFill();
+      g.lineStyle(1, palette.edge, state.enabled ? 0.65 : 0.35);
+      g.beginLinearGradientFill(0, 0, 0, height, stops([0, pressed ? palette.bottom : palette.top], [1, pressed ? palette.top : palette.bottom]))
+        .drawRoundRect(leading, inset, width - leading, height, 10, 10)
         .endFill();
-      g.lineStyle(1.5, state.enabled ? GOLD : 0x6a6050, state.enabled ? (primary ? 0.85 : 0.48) : 0.5);
-      g.drawRoundRect(4, (pressed ? 2 : 0) + 4, width - 8, height - 8, 7, 7);
-      g.lineStyle(0);
+      g.lineStyle(0).beginFill(palette.edge, 0.32).drawRect(leading + 12, inset + 2, width - leading - 24, 1).endFill();
       ring.graphics.clear();
       if (focused) ring.graphics.lineStyle(3, 0xffe08a, 1).drawRoundRect(-4, -4, width + 8, height + 8, 14, 14).lineStyle(0);
       root.alpha = state.enabled ? 1 : disabledAlpha;
-      words.display.y = (sub ? height * 0.1 : (height - (small ? 18 : 22) * 1.25) / 2) + (pressed ? 2 : 0);
+      words.display.y = titleY + inset;
+      if (under) under.display.y = subY + inset;
+      if (arrow) arrow.display.visible = state.enabled;
     }
     painters.push(paint);
     paint();
