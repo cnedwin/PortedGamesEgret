@@ -2,16 +2,17 @@
 
 ## 简介 · Introduction
 
-沙画江山是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的沙画消除游戏 Demo，有三种玩法。
+沙画江山是基于[新白鹭引擎 Egret Rebuild](https://github.com/cnedwin/Egret_rebuild)独立开发的沙画消除游戏 Demo。
 
 - **作画**：拖动托盘里的积木到沙盘上方松手，积木落下化成数千粒颜料沙，在落点附近塌开、流开。同一种颜色的沙从左墙连到右墙，整片从左往右亮起、消掉，上面的沙塌下来，可能接着连消。消掉的沙飞进上方的手卷，把白描的山水一点点染上颜色。三卷：《春山图》三色、《秋山图》加朱砂四色、《雪山图》加蛤粉，画成一卷开下一卷。
 - **无尽沙盘**：没有终点，分数越高颜料越多（三万分加朱砂、九万分加藤黄），三卷画一卷接一卷地染。
 - **拆画**：画本身就是一盘沙。下面几列排队的沙桶，点一列最前面那只，它就上传送带，传送带经过哪里，它就收走头顶同色的沙；三只同色的桶合成一只大桶。传送带位子有限，收齐整幅画过关，堵住了就输。六幅画都截自三卷山水。
+- **今日试笔**：每天 UTC 00:00 换题。当天所有玩家使用同一卷、同一积木序列，重开仍是同一道题。个人最高分和完成状态记录在此浏览器。
 
 分数每满两万得一个爆竹，点燃后炸开一圈沙，快顶到虚线时用来解围。
 
 Sand Scroll is a sand puzzle demo made on its own with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild), the
-new Egret engine, with three ways to play.
+new Egret engine.
 
 - **Paint**: drag a piece from the dish over the tray and let go; it falls and breaks into thousands of grains of
   pigment that slump and flow where they land. One colour reaching from the left wall to the right lights up and is
@@ -23,6 +24,7 @@ new Egret engine, with three ways to play.
 - **Unpaint**: the painting itself is the sand. Tap the front bucket of a lane and it rides a belt under the tray,
   drawing the sand of its colour straight above it; three buckets of a colour merge into a big one. The belt has few
   places: collect the whole picture to finish, jam it and lose. Six pictures, each cut from the three landscapes.
+- **Daily scroll**: a new puzzle at 00:00 UTC. Everyone plays the same scroll and piece sequence for the day, including on a retry. Your best and completion are saved in this browser.
 
 Every 20,000 points earn a firecracker, which blows away a circle of sand when sand is close to the line.
 
@@ -30,7 +32,7 @@ Every 20,000 points earn a firecracker, which blows away a circle of sand when s
 
 ## 玩法与操作 · How to play
 
-**作画与无尽沙盘 · Paint and the endless tray**
+**作画、无尽沙盘与今日试笔 · Paint, the endless tray and the daily scroll**
 
 - 托盘里总有三块积木，用掉一块马上补一块；积木由二十粒见方的小块拼成，有九种形状。 · The dish always holds three pieces, refilled as one is used, in nine shapes of blocks twenty grains square.
 - 积木落到沙上就化成沙：每粒往下落，下面有沙就往左下或右下滑，每粒最多滑二十六次就压实，所以沙会流开，但不会一路流到两边。 · A piece breaks into sand where it lands; each grain falls, and slides down to a side when blocked, at most twenty-six times before it packs, so sand flows out but does not run to both walls.
@@ -41,6 +43,7 @@ Every 20,000 points earn a firecracker, which blows away a circle of sand when s
 
 - 每种颜料的桶加起来正好装下画里这种颜料的沙。桶只从沙盘最底下一行、自己头顶左右两粒的范围里收沙；底下的沙被收走，上面的一粒粒落下来。 · The buckets of each pigment hold exactly that pigment's sand. A bucket draws only from the bottom row, within two grains of where it is; the sand above falls down grain by grain.
 - 传送带满了、而且整整绕一圈都没有桶收到沙，就算堵住。还露不出来的颜色先别放上去；凑齐三只同色的桶可以腾出位子。 · A full belt on which no bucket draws for a whole trip round is jammed. Hold back colours not yet showing at the bottom; three of a colour free places.
+- 盘底色样显示现在能收哪些颜色，带位指示显示传送带用了几格。沙桶上的提示会标出能收沙或能凑成大桶的选择。 · The swatches show which pigments are exposed, the belt meter shows the occupied spaces, and the lane labels mark good matches and possible merges.
 - 每一幅的桶都是固定发好的，替身玩家验证过能拆完（见下方平衡表）。 · Each picture's buckets are dealt the same way every time, and the stand-in has finished each one (see the balance table).
 
 | | 键盘 · Keyboard | 鼠标 · Mouse | 触屏 · Touch | 手柄 · Gamepad |
@@ -59,7 +62,7 @@ Every 20,000 points earn a firecracker, which blows away a circle of sand when s
 
 - 每一粒沙就是贴图上的一个像素：颜色 = 颜料本色 × 自己的深浅，上面空着的受光、亮一点，越往沙堆里越暗（数头顶压着几粒沙的环境光遮蔽），少数最亮的像晶体一样闪。 · Each grain is one pixel: its pigment times its own shade, lighter where nothing lies above, darker deeper in a heap, a few glinting like crystal.
 - 三卷山水全部在 `src/view/scroll.mjs` 里用 Canvas 画出，各有自己的山色、草木（桃花、枫树、积雪）和题字。白描版和设色版用同一串随机数画，线条一一对上。拆画的画从同一幅画里截一段，不画绢底，按透明度决定哪里有沙，按这一关的颜料取最近色，亮度变成每粒的深浅；沙底下垫的是同一块绢，沙收走后露出绢来。 · The three landscapes are painted in code, each with its own hill colours, plants (peach blossom, maples, snow) and title. An unpaint picture is cut from the same painting drawn without its silk: its opacity says where there is sand, the nearest of the level's pigments gives each grain its colour and its brightness the shade; the same silk lies under the sand and shows as the sand goes.
-- 声音全部合成（`src/audio/sound.mjs`）：沙声是滤过的噪声加颗粒；消除是 Karplus-Strong 拨弦，连消时按五声音阶往上走；爆竹是一声闷响加噼啪；背景是二十四秒无缝循环的拨弦小曲。 · All sound is synthesized: sand is filtered noise with grains, a clear a Karplus-Strong pluck climbing the pentatonic scale through a chain, a firecracker a thump with crackle, and a plucked tune loops behind.
+- 配乐和音效均在游戏内合成（`src/audio/sound.mjs`）。作画、无尽和拆画各有独立的五声调式配乐，结合拨弦与竹笛音色。落沙、连消、爆竹、收沙、合桶和满桶各有提示音。配乐按需分批生成，暂停时保留播放进度。 · The game synthesizes its audio. Paint, Endless and Unpaint have separate pentatonic loops with plucked strings and bamboo-flute tones. Drops, clears, fireworks, collection, merges and full buckets get distinct cues. Music is generated in small batches on demand and resumes at its saved position after a pause.
 - 规则在 `src/sim/sand.mjs` 和 `src/sim/unpaint.mjs`，不碰页面也不碰引擎。`tools/balance.mjs` 是往前看一步的作画机器人，`tools/unpaint-bot.mjs` 是拆画的替身玩家（谨慎程度可调）。 · The rules are in `src/sim/sand.mjs` and `src/sim/unpaint.mjs`, free of page and engine. `tools/balance.mjs` is a one-move-ahead painting robot and `tools/unpaint-bot.mjs` a stand-in for unpainting with adjustable care.
 
 平衡（2026 年 11 月在 Node 里跑）· Balance (run in Node in November 2026)：
@@ -92,18 +95,16 @@ Every 20,000 points earn a firecracker, which blows away a circle of sand when s
 
 ## 已验证 · Verified
 
-- `node --test test/*.test.mjs`（Node 22）：32 项全过——作画规则 14 项（同种子同结果、转向、积木化沙粒数不差、沙只在落点附近流开、连通两墙才消、连消、警戒线判负、画成、同一处放必输、平铺横带能画成、爆竹炸开一圈并随分数补充、无尽沙盘加颜料和换画、三卷都能画成且一卷比一卷长）、拆画规则 6 项（桶的容量正好等于沙、同一关发同样的桶、只上最前面一只且传送带满了不能再上、三只合成、替身拆完、堵住判负）、存档 8 项、文字 2 项、引擎副本 2 项。 · 32 pass: 14 on painting, 6 on unpainting, 8 on the save, 2 on the words, 2 on the engine copy.
-- `node test/accept.mjs`（无头 Chromium + SwiftShader，960×540）：21 项全过，包括拖放、转向、键盘、消除计分、爆竹、暂停、存档、无尽沙盘加颜料换画、拆画点列上桶并拆完存档，以及卷首、设置、选卷、作画、拆画五张截图基线。 · 21 pass in headless Chromium with SwiftShader, among them drag and drop, keys, clears, the firecracker, pause, the save, the endless tray, unpainting to the end, and five screenshot baselines.
+- `node --test test/*.test.mjs`：35 项通过，覆盖原有规则、存档、双语和引擎副本检查，以及每日题目和独立纪录。 · 35 tests pass, covering the original rules, saves, localization, engine files and the daily seed and record.
+- `node test/accept.mjs`：23 项通过，包括拖放、旋转、消除计分、爆竹、暂停、存档、无尽、拆画、五张截图基线，以及非 16:9 窗口下的底图和画布对齐。 · 23 Edge/Chromium checks with SwiftShader, including input, scoring, pause, saves, Endless, Unpaint, five visual baselines and stage alignment in letterboxed windows.
 - 上面平衡表里的各种打法都实际跑过。 · Every way of playing in the balance table was run.
 - 竖屏 540×960 与横屏 960×540 的卷首、选卷、作画、拆画、暂停、结算画面都截图看过。 · All screens were looked at in screenshots, tall and wide.
 - 品质验收见 [QUALITY.md](QUALITY.md)。 · Quality results are in QUALITY.md.
 
 ## 已知问题 · Known issues
 
-- 软件渲染（无头 Chromium + SwiftShader，两核）下，沙在动时作画画面的帧时间中位数竖屏约 20 ms、横屏约 23 ms（p95 25–31 ms），没到 16.7 ms；游戏脚本只占 0.6–1.2 ms。卷首、选卷这类静止画面在没有操作时让帧循环休息，卷首 F1 为 16.7 ms 达标。有显卡的电脑和手机上没有测过。 · Under software rendering on two cores, a round with sand moving draws at about 20 ms a frame tall and 23 ms wide (median; p95 25–31 ms), short of 16.7 ms; the game's script is 0.6–1.2 ms of it. Still screens such as the title let the frame loop rest when nothing is touched, and the title's F1 passes at 16.7 ms. Not measured with a graphics card or on a phone.
-- WebGPU 后端只在有可用适配器时才会选上；无头环境没有适配器，所以实际跑过的都是 WebGL2。 · The WebGPU backend is chosen only where an adapter is available; the headless browser has none, so everything run here was WebGL2.
-- 触屏拖放只用鼠标事件验证过，没有在真机上用手指试过。 · Dragging was checked with the mouse only, not with a finger on a real phone.
-- 声音没有用扬声器试听过，只确认了合成和解码不出错。 · The sound was not listened to on speakers; only its making and decoding were checked.
+- 既往软件渲染（无头 Chromium + SwiftShader，两核）在活动沙盘录得约 20–23 ms 帧时间中位数，详见验收记录。真机数据按设备、后端和场景记录。 · Earlier software-rendered gameplay had a median frame time of about 20–23 ms. Device results in the quality log specify the backend and scenario.
+- 声音合成、浏览器数字输出、暂停与静音已验证，扬声器听感待试听。 · Synthesis, browser audio output, pause and mute have been checked. Speaker listening is pending.
 - 拆画的画是在浏览器里从 Canvas 画取样得来的；替身验证用的是无头 Chromium 画出的画，其他浏览器的抗锯齿略有不同，每种颜料的粒数会差一点，但桶的容量按当场取样的结果分，所以总能装下，只是难度可能略有出入。 · Unpaint pictures are sampled from a Canvas painting in the browser; the stand-in was checked on pictures drawn by headless Chromium. Other browsers anti-alias a little differently, so counts shift slightly; buckets are sized from the picture sampled at the time, so they always add up, though difficulty may differ a little.
 - 拆画时沙柱一列列往下沉，画面会被拉出竖向的条纹，这是流沙的样子，但画的形状不再完全保持。 · As columns sink in unpainting the picture streaks vertically: the look of running sand, at the cost of the picture's exact shape.
 - 卷首和标题用楷体系列字体，系统没有楷体时退回宋体或黑体。 · Titles ask for a Kai typeface and fall back to a serif or sans one where the system has none.

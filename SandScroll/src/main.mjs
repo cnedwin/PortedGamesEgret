@@ -135,6 +135,8 @@ async function show(name, next) {
   screen = null;
   old?.dispose();
   backdrop.set(null);
+  if (name !== 'play' && name !== 'unpaint') app.sound.stopMusic?.();
+  app.sound.setPaused?.(false);
   app.screenName = name;
   options = next;
   screen = await SCREENS[name](app, next);
