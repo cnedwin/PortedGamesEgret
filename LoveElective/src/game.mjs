@@ -14,6 +14,7 @@ import { SLOTS_OF_DAY, WEEKDAYS, DAYS_IN_TERM, DATE_SPOTS } from './data/places.
 import { GIFTS, STYLES } from './data/items.mjs';
 import * as sim from './sim.mjs';
 import { firstEveningStatus, takeFirstEveningNotice } from './first-evening.mjs';
+import { createMemoryScenes } from './memory-scenes.mjs';
 
 const SAVE_KEY = 'love-elective-save-v1';
 const PREFS_KEY = 'love-elective-prefs-v1';
@@ -74,6 +75,7 @@ export async function createGame(canvas, options) {
   };
   game.load = () => {
     game.state = sim.deserialize(readStorage(SAVE_KEY) ?? '');
+    game.memoryScenes.importCompleted(game.state);
     return !!game.state;
   };
   // Each replay loads a fresh copy of the bookmark, which survives the end of a term.
@@ -90,6 +92,8 @@ export async function createGame(canvas, options) {
   // ---- memories kept between terms: endings, achievements and perks
   game.memories = sim.readMemories(readStorage(MEMORIES_KEY) ?? '');
   game.saveMemories = () => writeStorage(MEMORIES_KEY, JSON.stringify(game.memories));
+  game.memoryScenes = createMemoryScenes(readStorage, writeStorage);
+  game.importMemoryScenes = () => game.memoryScenes.importCompleted(sim.deserialize(readStorage(SAVE_KEY) ?? ''));
 
   /** Today's wish in a few words, e.g. "想要：热可可". */
   game.wishText = w => {
