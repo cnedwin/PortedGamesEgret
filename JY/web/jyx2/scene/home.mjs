@@ -6,7 +6,14 @@ const sceneArt = new Map([
   [70, { filename: 'home.json', replaces: homeReplaces }],
 ]);
 
-export const nativeHomeSource = { sceneId: 70, assetDirectory: '/jyx2/home3d/', manifest: 'scene.json' };
+export const nativeHomeSource = {
+  sceneId: 70, assetDirectory: '/jyx2/home3d/', manifest: 'scene.json',
+  actorDirectory: '/jyx2/home3d-actors/', modelIds: ['0', 'doll'],
+};
+export const homeExitTextures = {
+  beam: new URL('../home3d/exit-lightbeam.png', import.meta.url).href,
+  rays: new URL('../home3d/exit-rays.png', import.meta.url).href,
+};
 
 export async function readNativeSceneSpec({ sceneId, assetDirectory, manifest }) {
   const response = await fetch(assetDirectory + manifest);

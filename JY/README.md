@@ -159,7 +159,7 @@ PC 上悬停可预览移动路线，单击执行；武学和暗器选好目标�
 
 The engine copy was built from [Egret_rebuild](https://github.com/cnedwin/Egret_rebuild) main commit `c1570b0878d1be8716d06320206f51a62f9e3f32` using the upstream `node tools/build.mjs`. The service worker and local server load the package exports. See [vendor/SOURCE.md](vendor/SOURCE.md).
 
-引擎副本或游戏入口的静态导入变更后，在 `JY/` 下重新生成托管版的模块预载清单。 · Regenerate the hosted startup preload list after updating the engine copy or the static entry imports.
+引擎副本、标题入口或小蝦米居渲染器的静态导入变更后，在 `JY/` 下重新生成托管版的模块预载清单。 · Regenerate the hosted title and Home scene module hints after updating the engine copy or either entry's static imports.
 
 ```sh
 node --experimental-vm-modules tools/generate-startup-preloads.mjs
