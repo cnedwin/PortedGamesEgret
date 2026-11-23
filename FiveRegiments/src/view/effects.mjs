@@ -38,7 +38,10 @@ function spriteTexture(kind = 'dot') {
 
 const TRAIL = 10;
 
-/** A blade's sweep: the last few base and tip places joined into a fading ribbon. */
+/**
+ * A blade's sweep: the last few places of the outer part of the blade joined into a ribbon, bright at the edge and
+ * gone toward the hilt, fading in a fifth of a second.
+ */
 function createSweep(scene) {
   const positions = new Float32Array(TRAIL * 2 * 3);
   const colors = new Float32Array(TRAIL * 2 * 3);
@@ -63,7 +66,7 @@ function createSweep(scene) {
       points.unshift({ base, tip, strength, tint });
       if (points.length > TRAIL) points.pop();
     },
-    update() {
+    update(dt) {
       const pos = geometry.getAttribute('position').data,
         col = geometry.getAttribute('color').data;
       for (let i = 0; i < TRAIL; i++) {
@@ -74,13 +77,14 @@ function createSweep(scene) {
         pos.set(b, i * 6);
         pos.set(t, i * 6 + 3);
         const tint = p?.tint ?? [1, 1, 1];
-        col.set([tint[0] * k * 0.05, tint[1] * k * 0.05, tint[2] * k * 0.05], i * 6);
-        col.set([tint[0] * k, tint[1] * k, tint[2] * k], i * 6 + 3);
+        col.set([0, 0, 0], i * 6);
+        col.set([tint[0] * k * 0.42, tint[1] * k * 0.42, tint[2] * k * 0.42], i * 6 + 3);
       }
       geometry.getAttribute('position').touch();
       geometry.getAttribute('color').touch();
-      // Fade the oldest points out each frame.
-      for (const p of points) p.strength *= 0.8;
+      // Fade every point by the time gone (a fifth each sixtieth of a second).
+      const fade = Math.exp(-13.4 * dt);
+      for (const p of points) p.strength *= fade;
       while (points.length && points.at(-1).strength < 0.02) points.pop();
     }
   };
@@ -305,7 +309,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         webs.delete(c);
       }
     }
-    for (const s of sweeps.values()) s.update();
+    for (const s of sweeps.values()) s.update(dt);
   };
 
   const flames = emitter({ capacity: 260, lifetime: [0.4, 0.9], speed: [0.6, 1.6], direction: [0, 1, 0], spread: 0.35, gravity: [0, 1.2, 0], drag: 1.5, startSize: 0.34, endSize: 0.08, startColor: 0xffe2a0, endColor: 0xd03010, startOpacity: 0.9, endOpacity: 0, blending: 'additive', shape: 'sphere', radius: 0.22 });

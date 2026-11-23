@@ -18,7 +18,7 @@ export const TICK = 1 / 60;
 export const BODY = 0.42;
 export const DEFLECT = 0.2;
 const GUARD_FRONT = (78 * Math.PI) / 180;
-const KICK = { wind: 0.24, recover: 0.34, reach: 1.3, arc: 0.95, damage: 26, cost: 14 };
+const KICK = { wind: 0.24, recover: 0.34, reach: 1.45, arc: 0.95, damage: 26, cost: 14 };
 const STEP = { time: 0.34, distance: 2.7, safe: 0.17, cost: 20 };
 const HOLD = 0.85;
 const GRAVITY = 9.8;
@@ -122,6 +122,7 @@ export function createFight({ hero, foes, place = { radius: 12, posts: [] }, see
     game.men.push(enlist(game, { ...spec, health: (spec.health ?? 1) * health, at: spec.at ?? [spread, -4.5], face: 0 }, 'foe', i));
   });
   game.hero = heroMan;
+  heroMan.lone = foes.length > 1;
   return game;
 }
 
@@ -145,7 +146,7 @@ function speedOf(man) {
 }
 
 function damageMultiplier(game, man, line) {
-  let k = 1;
+  let k = man.lone ? 1.2 : 1;
   if (man.talents.has('valour')) k *= 1.12;
   if (man.talents.has('lastStand')) k *= 1 + 0.3 * (1 - man.hp / man.maxHp);
   if (man.talents.has('oneThrust') && line === 'T') k *= 1.15;
@@ -158,7 +159,8 @@ function damageMultiplier(game, man, line) {
 }
 
 function takenMultiplier(man) {
-  let k = 1;
+  // Alone against two, a man fights above himself.
+  let k = man.lone ? 0.7 : 1;
   for (const d of man.dr) k *= 1 - d.k;
   if (man.talents.has('cicada') && man.afterStep > 0) k *= 0.65;
   if (man.talents.has('ironHorse') && (man.sprinting || man.act?.charging)) k *= 0.8;
@@ -816,7 +818,8 @@ function runBow(game, man, input, dt) {
       man.draw = null;
       man.act = { kind: 'recover', t: 0, time: 0.22 };
     }
-  } else if (input.attack && !man.prev.attack && canAct(man) && man.st > 4) {
+  } else if (input.attack && canAct(man) && man.st > 4) {
+    // A press held through a stagger or a recovery draws as soon as he is free (the shot itself goes on the release).
     man.draw = { t: 0 };
     emit(game, 'draw', { who: man.id });
   }
@@ -1036,7 +1039,11 @@ function groundEffects(game, dt) {
     for (const man of game.men) {
       if (!man.alive || man.side === cloud.side) continue;
       if (Math.hypot(man.x - cloud.x, man.z - cloud.z) > cloud.radius) continue;
-      if (cloud.kind === 'mist') poison(game, man, SKILLS.mist.dps, SKILLS.mist.last);
+      // A cloud poisons each man once; after that he carries it out with him.
+      if (cloud.kind === 'mist' && !(cloud.caught ??= []).includes(man.id)) {
+        cloud.caught.push(man.id);
+        poison(game, man, SKILLS.mist.dps, SKILLS.mist.last);
+      }
       if (cloud.kind === 'web' && !man.slow.some((s) => s.web)) man.slow.push({ k: SKILLS.web.slow, t: 0.25, web: true });
       else if (cloud.kind === 'web') man.slow.find((s) => s.web).t = 0.25;
     }

@@ -44,7 +44,7 @@ export const REGIMENTS = {
     weapon: 'jian',
     health: 1000,
     speed: 3.5,
-    blows: blade(78, { wind: 0.3, recover: 0.3, reach: 1.95, arc: 54, cost: 10, thrust: { k: 1.05, reach: 0.4 } }),
+    blows: blade(84, { wind: 0.3, recover: 0.3, reach: 1.95, arc: 54, cost: 10, thrust: { k: 1.05, reach: 0.4 } }),
     crit: { chance: 0.2, power: 1.6 },
     guardCost: 0.5,
     skills: ['swing', 'spin', 'mist'],
@@ -71,13 +71,13 @@ export const REGIMENTS = {
     arms: { zh: '长枪', en: 'Long spear' },
     way: { zh: '一枪之距，冲锋突刺，压住乱跑的人。', en: 'A spear’s length away; charges, thrusts, and pins down a man who runs.' },
     weapon: 'spear',
-    health: 1000,
+    health: 950,
     speed: 3.2,
     blows: {
       L: { damage: 80, wind: 0.5, recover: 0.52, reach: 2.65, arc: deg(60), cost: 14 },
       R: { damage: 80, wind: 0.5, recover: 0.52, reach: 2.65, arc: deg(60), cost: 14 },
       O: { damage: 94, wind: 0.56, recover: 0.52, reach: 2.8, arc: deg(20), cost: 16 },
-      T: { damage: 92, wind: 0.44, recover: 0.46, reach: 3.1, arc: deg(12), cost: 12 }
+      T: { damage: 88, wind: 0.46, recover: 0.48, reach: 3.05, arc: deg(12), cost: 12 }
     },
     guardCost: 0.45,
     skills: ['flowers', 'boar', 'drop'],
@@ -90,7 +90,7 @@ export const REGIMENTS = {
     way: { zh: '拉开距离放箭，被贴身就后撤、下网。', en: 'Keeps his distance and shoots; caught close, he steps back and throws a web.' },
     weapon: 'bow',
     offhand: 'knife',
-    health: 900,
+    health: 880,
     speed: 3.35,
     // The knife, for when a man gets inside the bow.
     blows: blade(58, { wind: 0.3, recover: 0.36, reach: 1.55, arc: 50, cost: 9 }),

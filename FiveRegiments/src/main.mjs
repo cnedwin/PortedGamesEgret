@@ -2,13 +2,13 @@
 // four places, then two at once before the palace. Third-person cold-steel duels on the engine's World3D.
 //
 // Address options, for looking at one thing at a time:
-//   ?backend=webgl2 | webgpu   the renderer (WebGPU is used where the browser has it)
+//   ?backend=webgl2 | webgpu   the renderer (WebGL2 by default; WebGPU on request where the browser has it)
 //   ?quality=low | medium | high
 //   ?duel=yulin,tiger[,archer]&place=bamboo   straight into a free duel, the first named is you
 //   ?auto            a brain plays for you (for checks)   ?seed=7  fixed dice   ?debug  the readout
+//   ?fixed           each frame drawn is one tick of the world (slow-motion captures on slow machines)
 import { Scene3D, createPerspectiveCamera3D, loadGltf3D, projectToViewport3D } from '@egret/engine/world3d';
 import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
-import { createSaveStore } from '@egret/engine/kit';
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { createFight, facing, step, TICK } from './sim/fight.mjs';
 import { createBrain, createBrains } from './sim/brain.mjs';
@@ -18,6 +18,7 @@ import { createInput } from './input.mjs';
 import { createHud, createTouchControls } from './hud.mjs';
 import { createScreens, placeName } from './screens.mjs';
 import { createSound } from './audio.mjs';
+import { MARKS, openSave, recordRun, settingsOf } from './saves.mjs';
 import { setLanguage, getLanguage, t, say } from './i18n.mjs';
 import { loadMotion } from './view/motion.mjs';
 import { createFigure } from './view/figure.mjs';
@@ -42,25 +43,26 @@ function fail(cause) {
 }
 
 // ---- the save: settings and the best mark of each regiment ------------------------------------------------------
-const SETTINGS = { quality: 'auto', control: 'directional', assist: false, blood: true, sound: true, invertY: false, sensitivity: 1, language: null };
-const save = createSaveStore({
-  key: 'five-regiments',
-  version: 1,
-  storage: browserSaveStorage(),
-  defaults: () => ({ settings: { ...SETTINGS }, marks: {}, plays: 0 }),
-  validate: (d) => Boolean(d) && typeof d === 'object' && typeof d.settings === 'object' && typeof d.marks === 'object'
-});
-const settings = { ...SETTINGS, ...save.data.settings };
+// A save that could not be read starts again (the old text kept aside); one that cannot be written is said on the title.
+const saveProblems = new Set();
+const save = openSave(browserSaveStorage(), (problem) => saveProblems.add(problem.kind));
+const settings = settingsOf(save.data);
 setLanguage(params.get('lang') ?? settings.language ?? (navigator.language?.startsWith('zh') ? 'zh' : 'en'));
-document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
+/** The page's own words follow the language: its lang, its title and the name a screen reader gives the canvas. */
+function showLanguage() {
+  document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
+  document.title = getLanguage() === 'zh' ? `${t('title')} · Five Regiments` : t('title');
+  canvas.setAttribute('aria-label', t('canvasLabel'));
+}
+showLanguage();
 const keep = () => save.update((d) => void (d.settings = { ...settings, language: getLanguage() }));
 
+const fixedStep = params.has('fixed');
 const HEIGHT = { yulin: 1.8, tiger: 1.77, vanguard: 1.88, plume: 1.8, archer: 1.76 };
-const MARKS = ['jia', 'yi', 'bing', 'ding'];
 
 async function main() {
   const coarse = matchMedia('(pointer: coarse)').matches;
-  const backend = params.get('backend') ?? (navigator.gpu ? 'webgpu' : 'webgl2');
+  const backend = params.get('backend') === 'webgpu' && navigator.gpu ? 'webgpu' : 'webgl2';
   const app = await createWorld3DApp(canvas, {
     backend,
     quality: params.get('quality') ?? (settings.quality === 'auto' ? 'auto' : settings.quality),
@@ -81,7 +83,7 @@ async function main() {
   const screens = createScreens(ui, {
     onLanguage: () => {
       setLanguage(getLanguage() === 'zh' ? 'en' : 'zh');
-      document.documentElement.lang = getLanguage() === 'zh' ? 'zh-CN' : 'en';
+      showLanguage();
       keep();
       redraw?.();
     }
@@ -97,7 +99,11 @@ async function main() {
       locked = !locked;
     }
   });
-  const touch = createTouchControls(ui, input);
+  const touch = createTouchControls(ui, input, {
+    onPause: () => {
+      if (mode === 'fight' && !over) pause();
+    }
+  });
   let sound = null;
   const startSound = async () => {
     if (sound) return;
@@ -199,7 +205,8 @@ async function main() {
       .map(([r, m]) => `${say(REGIMENTS[r].name)} ${t('marks')[MARKS.indexOf(m)]}`)
       .join(' · ');
     redraw = title;
-    screens.title({ onRoad: choose, onFree: free, onSettings: () => openSettings(title), best: marks ? `${t('best')}：${marks}` : '' });
+    const note = saveProblems.has('write-failed') ? t('saveRefused') : saveProblems.size ? t('saveReset') : '';
+    screens.title({ onRoad: choose, onFree: free, onSettings: () => openSettings(title), best: marks ? `${t('best')}：${marks}` : '', note });
   }
 
   function choose() {
@@ -295,6 +302,7 @@ async function main() {
   function clearFight() {
     for (const f of figures.values()) f.dispose();
     figures.clear();
+    tips.clear();
     fx.clear();
     game = null;
   }
@@ -351,11 +359,7 @@ async function main() {
       run.scores.push(stats.score);
       if (last && !run.free) {
         runMark = grade(run.scores);
-        save.update((d) => {
-          const was = d.marks[run.regiment];
-          if (!was || MARKS.indexOf(runMark) < MARKS.indexOf(was)) d.marks[run.regiment] = runMark;
-          d.plays++;
-        });
+        save.update((d) => void recordRun(d, run.regiment, runMark));
       }
     }
     input.capture(false);
@@ -509,6 +513,7 @@ async function main() {
     }
   }
 
+  const tips = new Map();
   function fightFrame(dt) {
     if (!game || paused) return;
     if (slowFor > 0) slowFor -= dt;
@@ -540,25 +545,35 @@ async function main() {
     for (const m of game.men) {
       const f = figures.get(m.id);
       f.update(m, game, dt * k);
-      // Sweeps behind blades that are moving fast.
-      const act = m.act;
-      const sweeping = (act?.kind === 'swing' && act.struck && act.t - act.strikeAt < 0.14) || (act?.kind === 'swing' && !act.struck && act.t > act.wind * 0.7) || (act?.kind === 'skill' && act.t > 0.1);
-      if (sweeping) {
-        const b = f.blade();
-        if (b) fx.sweep(m.id).push(b[0], b[1], 1, m.side === 'hero' ? [1, 0.95, 0.85] : [1, 0.75, 0.6]);
+      // A sweep behind the outer half of a blade, only while a blow or a skill moves its point fast.
+      const act = m.act,
+        b = f.blade(),
+        was = tips.get(m.id);
+      tips.set(m.id, b?.[1] ?? null);
+      const step = dt * k;
+      if (b && was && step > 0 && (act?.kind === 'swing' || act?.kind === 'skill')) {
+        const speed = Math.hypot(b[1][0] - was[0], b[1][1] - was[1], b[1][2] - was[2]) / step;
+        if (speed > 5.5) {
+          const mid = b[0].map((v, i) => v + (b[1][i] - v) * 0.6);
+          fx.sweep(m.id).push(mid, b[1], Math.min(1, (speed - 5.5) / 6), m.side === 'hero' ? [1, 0.95, 0.85] : [1, 0.75, 0.6]);
+        }
       }
     }
     fx.update(dt * k, game);
     const yaw = cam.update(dt, { hero: game.hero, yaw: input.state.yaw, pitch: input.state.pitch, target, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0 });
     if (target) input.setYaw(yaw);
     hud.update(dt, game, { line: input.state.line, threat, guard: game.hero.guard, locked: !!target });
+    touch.cool(game.hero);
+    hud.hint(!coarse && !autoBrain && input.state.wantLock && !input.state.pointerLocked && !over ? t('clickToFight') : null);
   }
 
   // ---- one frame -----------------------------------------------------------------------------------------------
   app.show(scene, camera, {
     onUpdate(dt) {
       status.frames++;
-      dt = Math.min(dt, 0.1);
+      // `?fixed` (for captures on slow machines): every frame drawn moves the world on by one tick, so motion and
+      // blade trails look as they do at full speed.
+      dt = fixedStep ? TICK : Math.min(dt, 0.1);
       clock += dt;
       stage?.update(dt);
       fx.tickWeather(dt);
@@ -613,6 +628,13 @@ async function main() {
       return game.over;
     }
   };
+  // Hidden mid-fight (another tab, a phone call): held keys are let go and the fight waits on the pause page. The
+  // engine's audio suspends itself while the page is hidden.
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'hidden') return;
+    input.clear();
+    if (mode === 'fight' && !over && !autoBrain) pause();
+  });
   document.querySelector('#boot')?.classList.add('done');
 
   const duel = params.get('duel');

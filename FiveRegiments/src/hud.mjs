@@ -148,7 +148,7 @@ export function createHud(root, { touch = false } = {}) {
  * Touch controls: a stick on the left, looking on the right, and buttons. A swipe on Strike chooses the line.
  * They write into `input.state.touch` and the input's presses.
  */
-export function createTouchControls(root, input) {
+export function createTouchControls(root, input, { onPause = () => {} } = {}) {
   const pad = el('div', 'touch', root);
   pad.hidden = true;
   const stick = el('div', 'stick', pad, '<i></i>');
@@ -164,8 +164,20 @@ export function createTouchControls(root, input) {
     kick = make('kick', 'kick'),
     step = make('step', 'step'),
     s0 = make('s0', 'skills'),
-    s1 = make('s1', 'skills');
+    s1 = make('s1', 'skills'),
+    swap = make('swap', 'swap');
+  const pause = el('button', 'tb halt', pad, t('paused'));
+  pause.type = 'button';
+  pause.setAttribute('aria-label', t('paused'));
   const st = input.state;
+  // Keep a finger's moves on the control it pressed; a pointer the browser no longer counts as down cannot be held.
+  const capture = (target, e) => {
+    try {
+      target.setPointerCapture(e.pointerId);
+    } catch {
+      /* the press goes on without the capture */
+    }
+  };
   let stickId = null,
     stickAt = [0, 0],
     lookId = null,
@@ -174,7 +186,7 @@ export function createTouchControls(root, input) {
   stick.addEventListener('pointerdown', (e) => {
     stickId = e.pointerId;
     stickAt = [e.clientX, e.clientY];
-    stick.setPointerCapture(e.pointerId);
+    capture(stick, e);
     st.lastDevice = 'touch';
   });
   stick.addEventListener('pointermove', (e) => {
@@ -196,7 +208,7 @@ export function createTouchControls(root, input) {
   look.addEventListener('pointerdown', (e) => {
     lookId = e.pointerId;
     lookAt = [e.clientX, e.clientY];
-    look.setPointerCapture(e.pointerId);
+    capture(look, e);
   });
   look.addEventListener('pointermove', (e) => {
     if (e.pointerId !== lookId) return;
@@ -205,22 +217,46 @@ export function createTouchControls(root, input) {
     lookAt = [e.clientX, e.clientY];
   });
   look.addEventListener('pointerup', () => (lookId = null));
+  // Strike: a swipe on the button sets the line and the lift strikes; a press held still is a held blow (a heavy
+  // cut, or the draw of the bow) let go on the lift.
+  let holdTimer = 0,
+    holding = false;
   attack.addEventListener('pointerdown', (e) => {
     swipe = [e.clientX, e.clientY];
-    attack.setPointerCapture(e.pointerId);
+    capture(attack, e);
     st.lastDevice = 'touch';
+    holding = false;
+    clearTimeout(holdTimer);
+    holdTimer = setTimeout(() => {
+      if (!swipe) return;
+      holding = true;
+      st.touch.attack = true;
+    }, 200);
   });
   attack.addEventListener('pointermove', (e) => {
-    if (!swipe) return;
+    if (!swipe || holding) return;
     const dx = e.clientX - swipe[0],
       dy = e.clientY - swipe[1];
-    if (Math.hypot(dx, dy) > 22) st.line = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : dy < 0 ? 'O' : 'T';
+    if (Math.hypot(dx, dy) > 22) {
+      clearTimeout(holdTimer);
+      st.line = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : dy < 0 ? 'O' : 'T';
+      st.swiped = true;
+    }
   });
-  attack.addEventListener('pointerup', () => {
+  const lift = () => {
+    if (!swipe) return;
     swipe = null;
+    clearTimeout(holdTimer);
+    if (holding) {
+      holding = false;
+      st.touch.attack = false;
+      return;
+    }
     st.touch.attack = true;
     setTimeout(() => (st.touch.attack = false), 60);
-  });
+  };
+  attack.addEventListener('pointerup', lift);
+  attack.addEventListener('pointercancel', lift);
   guard.addEventListener('pointerdown', () => (st.touch.guard = true));
   guard.addEventListener('pointerup', () => (st.touch.guard = false));
   guard.addEventListener('pointercancel', () => (st.touch.guard = false));
@@ -228,13 +264,31 @@ export function createTouchControls(root, input) {
   step.addEventListener('pointerdown', () => (st.once.step = true));
   s0.addEventListener('pointerdown', () => (st.once.skill0 = true));
   s1.addEventListener('pointerdown', () => (st.once.skill1 = true));
+  swap.addEventListener('pointerdown', () => (st.once.swap = true));
+  pause.addEventListener('click', () => onPause('touch'));
   return {
     show(on, hero) {
       pad.hidden = !on;
+      // The keyboard's key row gives way to the buttons on a touch screen.
+      root.classList.toggle('touching', on);
       if (hero) {
-        s0.textContent = say(SKILLS[hero.skills[0]].name);
-        s1.textContent = say(SKILLS[hero.skills[1]].name);
+        swap.hidden = hero.regiment !== 'archer';
+        [s0, s1].forEach((b, i) => {
+          const name = el('span');
+          name.textContent = say(SKILLS[hero.skills[i]].name);
+          b.replaceChildren(b.querySelector('i') ?? el('i'), name);
+        });
       }
+    },
+    /** The skills' waits, shown as a shade going round each skill button. */
+    cool(hero) {
+      if (pad.hidden) return;
+      [s0, s1].forEach((b, i) => {
+        const wait = hero.cool[i] ?? 0,
+          whole = SKILLS[hero.skills[i]].cool;
+        b.style.setProperty('--k', String(Math.max(0, wait / whole)));
+        b.classList.toggle('wait', wait > 0);
+      });
     }
   };
 }

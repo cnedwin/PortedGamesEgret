@@ -138,7 +138,14 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
         if (man.draw) {
           const ready = man.r.bow.draw * (man.talents.has('pearls') ? 0.75 : 1) * (0.9 + 0.2 * brain.level);
           input.attack = man.draw.t < ready;
-        } else input.attack = d > 2.2 && !cornered && man.st > 15 && rng() < 0.2;
+        } else {
+          // Between arrows he breathes and looks; with a friend at the man already, he waits longer.
+          const friendClose = game.men.some((m) => m.alive && m.side === man.side && m !== man && Math.hypot(m.x - target.x, m.z - target.z) < 2.6);
+          if (game.time >= (brain.nextShot ?? 0) && d > 2.2 && !cornered && man.st > 15) {
+            input.attack = true;
+            brain.nextShot = game.time + (friendClose ? 2.6 + rng() * 2 : 0.5 + rng() * 0.9) * (1.2 - brain.level * 0.4);
+          }
+        }
       }
     }
 

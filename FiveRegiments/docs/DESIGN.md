@@ -61,7 +61,7 @@ Pick one of five regiments and fight the other four one at a time — on the cou
 - **体力**：出手、冲刺、闪步、被挡下都耗体力；体力见底时举不住兵器，被一碰就破防。站着不动回得最快。
 - **闪步**：空格，向移动方向短跨一步，起步一瞬不吃伤害。
 - **锁定**：Tab 或鼠标中键锁住对手，镜头跟着他；不锁时自由转镜头。
-- 弓：左键按住拉弓、松开放箭，右键贴肩瞄准；拉得越满越准越疼，拉太久会抖。
+- 弓：左键按住拉弓、松开放箭，箭朝准星飞；拉得越满越准越疼，满弓拉太久会抖。弓在手上时右键不举挡，被贴身时按 R 换短刀（再按换回弓）。
 
 - **The line of the cut**: whichever way the mouse last moved before the blow is where it comes from — left, right, overhead or a thrust; the four edges of the crosshair show the current line. Settings offer a "classic" mode in which the line turns left, right, overhead and thrust in order.
 - **Guarding**: hold the right button to raise the weapon against the line the crosshair shows. Only the right line holds fully; a wrong one takes half. A shield covers the whole front except from above. Catch a blow in the first moment of raising the guard and it is a **deflection**: no stamina spent, and the attacker staggers.
@@ -70,7 +70,7 @@ Pick one of five regiments and fight the other four one at a time — on the cou
 - **Stamina**: blows, sprinting, stepping and being guarded against all cost stamina; with none left a guard cannot be held and breaks at a touch. Standing still brings it back fastest.
 - **Step**: Space, a short step the way he is moving, untouchable for an instant at the start.
 - **Lock**: Tab or the middle button holds the camera on the foe; unlocked, the camera turns freely.
-- The bow: hold the left button to draw and let go to loose; the right button brings the aim over the shoulder. A fuller draw flies truer and hurts more; held too long it shakes.
+- The bow: hold the left button to draw and let go to loose; the arrow flies at the crosshair. A fuller draw flies truer and hurts more; held long at full draw it shakes. With the bow out the right button raises no guard; caught close, R changes to the short knife (and back).
 
 ## 一局怎么走 · How a run goes
 
@@ -93,23 +93,23 @@ Pick one of five regiments and fight the other four one at a time — on the cou
 | 场景 · Place | 时间 · Light | 要点 · What makes it |
 |---|---|---|
 | 县城校场 · County drill ground | 正午 · noon | 夯土城墙、木城门楼、旗、兵器架、草靶 · rammed-earth walls, timber gate tower, banners, weapon racks, straw targets |
-| 桃林溪畔 · Peach grove by the stream | 午后 · afternoon | 桃树、落花、小溪、石桥 · peach trees, falling petals, a stream, a stone bridge |
-| 竹林古道 · Bamboo path | 薄雾 · mist | 竹海、石阶、雾里透光 · bamboo, stone steps, light through mist |
-| 雪原关隘 · Snowy pass | 阴天飘雪 · overcast, snowing | 木栅、烽火台、雪地脚印 · palisade, beacon tower, footprints in snow |
-| 王城宫前 · Before the palace | 黄昏 · dusk | 宫门、台阶、火盆、长旗 · palace gate, steps, braziers, long banners |
+| 桃林溪畔 · Peach grove by the stream | 午后 · afternoon | 桃树、落花、石桥、山石 · peach trees, falling petals, a stone bridge, boulders |
+| 竹林古道 · Bamboo path | 薄雾 · mist | 竹海、石板路、亭子、雾里透光 · bamboo, a flagstone path, a pavilion, light through mist |
+| 雪原关隘 · Snowy pass | 阴天飘雪 · overcast, snowing | 木栅、烽火台、雪松、积雪的山石 · palisade, beacon tower, pines, snow-capped rocks |
+| 王城宫前 · Before the palace | 黄昏 · dusk | 宫门、石狮、铜鼎、火盆、长旗 · palace gate, stone lions, a bronze cauldron, braziers, long banners |
 
 ## 画面 · The picture
 
-- 3D 渲染：引擎的 world3d（WebGL 2；有 WebGPU 时用 WebGPU）。基于物理的材质、太阳阴影、环境光遮蔽、泛光、ACES 色调映射、高度雾、每个场景单独调色。
+- 3D 渲染：引擎的 world3d（默认 WebGL 2，地址加 `?backend=webgpu` 用 WebGPU）。基于物理的材质、太阳阴影、环境光遮蔽、泛光、ACES 色调映射、高度雾、每个场景单独调色。
 - 地面、墙、木、瓦等用 CC0 扫描材质（Poly Haven），天空用 CC0 HDRI 做环境光。
 - 人物、兵器、城门楼等用 Tripo 生成后减面、压缩，分高中低三档；人物用标准人形骨架绑定。
-- 动作：走、跑、侧移、后退、挥砍、格挡、踢等来自 CMU 动作捕捉库（可再分发），再叠加按兵器写的手臂姿态、瞄准偏移和受击反应。
+- 动作：站、走、跑、侧移、后退来自 CMU 动作捕捉库，离线重定向到每个人物的骨架；挥砍、格挡、踢、拉弓和各个技能是按兵器写的姿态，用双臂反向动力学（IK）把手送到兵器该在的位置，再叠加腰身扭转、受击和倒地。
 - 刀光拖尾、火花、尘土、落花、飘雪、血雾（可关）。
 
-- 3D through the engine's world3d (WebGL 2, or WebGPU where present): physically based materials, sun shadows, ambient occlusion, bloom, ACES tone mapping, height fog and a grade of its own for each place.
+- 3D through the engine's world3d (WebGL 2 by default, WebGPU with `?backend=webgpu`): physically based materials, sun shadows, ambient occlusion, bloom, ACES tone mapping, height fog and a grade of its own for each place.
 - Ground, walls, timber and tiles from CC0 scanned materials (Poly Haven); CC0 HDRI skies for ambient light.
 - Men, weapons and the larger buildings generated with Tripo, then reduced and compressed in high, medium and low sets; the men are rigged to a standard humanoid skeleton.
-- Motion: walking, running, side steps, backing off, cuts, guards and kicks come from the CMU motion-capture library (free to redistribute), with arm poses written per weapon, aim offsets and hit reactions laid over them.
+- Motion: standing, walking, running, side steps and backing off come from the CMU motion-capture library, retargeted offline onto each man's skeleton; cuts, guards, kicks, the draw of the bow and every skill are poses written per weapon, the hands carried to the weapon by two-bone inverse kinematics, with the twist of the body, hits taken and falls laid over them.
 - Blade trails, sparks, dust, petals, snow and a mist of blood (can be turned off).
 
 ## 对手 · The opponents

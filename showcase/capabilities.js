@@ -5,6 +5,7 @@ export const MATRIX = {
   "CanalWatch",
   "FengshenChronicle",
   "FivePhases",
+  "FiveRegiments",
   "FPS",
   "jelly-pandas",
   "JY",
@@ -176,6 +177,10 @@ export const MATRIX = {
    "label": "@egret/engine/world3d",
    "games": [
     {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/main.mjs"
+    },
+    {
      "game": "FPS",
      "file": "FPS/src/asset-models.mjs"
     },
@@ -253,6 +258,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/webgpu/world3d",
    "games": [
+    {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/main.mjs"
+    },
     {
      "game": "FPS",
      "file": "FPS/src/main.mjs"
@@ -401,6 +410,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/input/gamepad",
    "games": [
+    {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/input.mjs"
+    },
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
@@ -551,6 +564,10 @@ export const MATRIX = {
      "file": "CanalWatch/src/i18n.mjs"
     },
     {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/audio.mjs"
+    },
+    {
      "game": "MechanismCity",
      "file": "MechanismCity/src/audio/sound.mjs"
     },
@@ -600,6 +617,10 @@ export const MATRIX = {
     {
      "game": "CanalWatch",
      "file": "CanalWatch/src/main.mjs"
+    },
+    {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/saves.mjs"
     },
     {
      "game": "FPS",
@@ -729,6 +750,10 @@ export const MATRIX = {
    "kind": "entry",
    "label": "@egret/engine/web/audio",
    "games": [
+    {
+     "game": "FiveRegiments",
+     "file": "FiveRegiments/src/audio.mjs"
+    },
     {
      "game": "JY",
      "file": "JY/web/wav-effects.mjs"

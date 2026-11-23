@@ -4,6 +4,7 @@
 
 export const WORDS = {
   title: { zh: '五营争锋', en: 'Five Regiments' },
+  canvasLabel: { zh: '五营争锋：第三人称冷兵器对决', en: 'Five Regiments: a third-person cold-steel duel' },
   tagline: { zh: '选一营上阵，单挑另外四营，最后以一敌二。', en: 'Take one regiment into the field, beat the other four one by one, then two at once.' },
   road: { zh: '征途', en: 'The road' },
   free: { zh: '自由对决', en: 'Free duel' },
@@ -91,6 +92,7 @@ export const WORDS = {
   broken: { zh: '破防', en: 'Guard broken' },
   noGl: { zh: '这个浏览器打不开本游戏需要的 WebGL 2。请换一台较新的电脑或手机再试。', en: 'This browser cannot open the WebGL 2 the game needs. Please try a newer computer or phone.' },
   error: { zh: '出了点问题，画面停了。请重新载入。', en: 'Something went wrong and the picture stopped. Please reload.' },
+  saveReset: { zh: '原来的存档读不出来，已经重新开始；旧存档另存在浏览器里没有删。', en: 'The old save could not be read, so a fresh one was started; the old one is kept aside in the browser.' },
   saveRefused: { zh: '浏览器没有让游戏存档（可能是隐私模式），本次成绩不会保留。', en: 'The browser did not let the game save (perhaps a private window); results will not be kept.' },
   saveReset: { zh: '存档读不懂，已重新开始；旧存档另存了一份。', en: 'The save could not be read and was started again; the old one was kept aside.' }
 };

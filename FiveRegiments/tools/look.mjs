@@ -37,7 +37,7 @@ asset.scene.traverse((n) => {
     n.receiveShadow = true;
   }
 });
-const motion = await loadMotion(new URL(`../assets/motion/${params.get('motion') ?? 'full'}`, import.meta.url));
+const motion = await loadMotion(new URL(`../assets/motion/${params.get('motion') ?? who}`, import.meta.url));
 const animator = createAnimator(asset.scene, motion, { height: Number(params.get('height') ?? 1.78) });
 holder.setScale(animator.scale, animator.scale, animator.scale);
 holder.setRotation(0, animator.turn + Number(params.get('yaw') ?? 0), 0);

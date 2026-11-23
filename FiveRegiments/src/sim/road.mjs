@@ -14,7 +14,7 @@ export function planRoad(regiment) {
   const stages = others.map((foe, i) => ({ index: i, place: PLACES[i], foes: [foe], level: [0.3, 0.42, 0.54, 0.64][i] }));
   // The last fight: two at once, one who closes in and one who keeps away when there is a bow among them.
   const pair = others.includes('archer') ? [others.filter((r) => r !== 'archer').at(-1), 'archer'] : [others.at(-1), others.at(-2)];
-  stages.push({ index: 4, place: 'palace', foes: pair, level: 0.5, double: true, health: 0.8 });
+  stages.push({ index: 4, place: 'palace', foes: pair, level: 0.42, double: true, health: 0.7 });
   return stages;
 }
 

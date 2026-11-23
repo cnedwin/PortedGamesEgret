@@ -597,4 +597,37 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'regiments', folder: 'FiveRegiments', kind: '3d',
+    scenes: [
+      { zh: "王城宫前 · 黄昏火盆边以一敌二：虎步对银翎卫与远处的武射史", en: "Before the palace · One against two at dusk: the Tiger Step against the Silver Plume, the Archer at range" },
+      { zh: "竹林古道 · 薄雾里银翎卫挺枪逼近武射史", en: "Bamboo path · The Silver Plume closes on the Archer through the mist" },
+      { zh: "卷首 · 五营列阵县城校场", en: "Title · The five regiments drawn up on the county drill ground" },
+    ],
+    zh: "五营争锋", en: "Five Regiments",
+    genre: { zh: "第三人称冷兵器对决", en: "Third-person cold-steel duels" },
+    summary: { zh: "从羽林卫、虎步、陷阵营、银翎卫、武射史里选一营，带两个技能、四个天赋，在校场、桃林、竹林、雪原单挑另外四营，最后在王城宫前以一敌二。鼠标划向定刀路，右键同向格挡，弹刀、踢腿破防、蓄力重击，体力管着每一刀。", en: "Choose one of five regiments — shield and sabre, sword, horse-cutter, spear or bow — with two skills and four talents, beat the other four on a drill ground, in a peach grove, a bamboo grove and a snowy pass, then two at once before the palace. The mouse sets the line of the cut, the right button guards it; deflect, kick a guard open, wind up heavy blows, and mind your stamina." },
+    features: [
+      {
+        title: { zh: "骨骼人物、动作捕捉与反向动力学", en: "Rigged men, motion capture and inverse kinematics" },
+        description: { zh: "五个生成的骨骼人物由 loadGltf3D 载入，站走跑和侧移是重定向过的动作捕捉，按速度混合；出刀、格挡和二十个技能是按兵器写的姿态，用两骨反向动力学让双手握住兵器，再叠加腰身扭转、受击和倒地。", en: "Five generated, rigged men are loaded with loadGltf3D; standing, walking, running and side steps are retargeted motion capture blended by speed, while blows, guards and twenty skills are poses written for each weapon, the hands brought onto it by two-bone IK, with the twist of the body, hits and falls laid over them." },
+        source: 'src/view/figure.mjs',
+      },
+      {
+        title: { zh: "五个场景的光与天气", en: "Light and weather for five places" },
+        description: { zh: "每个场景一张天空全景图经 createCubeTextureFromEquirect3D 做背景和环境光，扫描材质铺地，太阳级联阴影、指数雾，后处理里的泛光、环境光遮蔽、暗角和调色各有一套，落花、飘雪、薄雾和火星用 GPU 粒子。", en: "Each place's sky panorama becomes its background and image-based light through createCubeTextureFromEquirect3D, over scanned ground materials, with cascaded sun shadows, exponential fog, a grade of bloom, ambient occlusion and vignette of its own, and GPU particles for petals, snow, mist and embers." },
+        source: 'src/view/stage.mjs',
+      },
+      {
+        title: { zh: "刀路、格挡与读刀的电脑", en: "Lines, guards and a computer that reads them" },
+        description: { zh: "规则层按每秒六十次的固定步长算四路刀路、格挡、弹刀、踢、闪步、体力、技能、天赋与箭；电脑对手有反应时间，会读刀路、假动作、踢盾，一打二时用一个令牌轮流压上。同一种子同一结果，平衡在 Node 里让电脑对打来调。", en: "The rules run at a fixed sixty ticks a second: four lines, guards, deflections, kicks, steps, stamina, skills, talents and arrows. The computer's men have a reaction time, read your line, feint and kick shields, and take turns with a token when two fight you. One seed gives one result, and the balance is set by the computer fighting itself in Node." },
+        source: 'src/sim/fight.mjs',
+      },
+      {
+        title: { zh: "刀光、火花与动态几何", en: "Blade trails, sparks and live geometry" },
+        description: { zh: "刀光拖尾每帧改写一条动态几何的顶点，剑气、蛛网和落地冲击波用环形几何与无光照材质，火花、血雾、尘土和毒雾用粒子发射器，命中时一盏点光一闪。", en: "Blade trails rewrite the vertices of a live geometry each frame; the flying cut, the web and the ring of a slam use ring geometry and unlit materials; sparks, blood, dust and poison come from particle emitters, and a point light flashes on a hit." },
+        source: 'src/view/effects.mjs',
+      },
+    ],
+  },
 ];

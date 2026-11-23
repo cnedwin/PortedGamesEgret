@@ -25,7 +25,7 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 #boot b { font: 700 56px/1 var(--serif); letter-spacing: 0.18em; color: var(--paper); }
 #boot span { font: 15px var(--serif); letter-spacing: 0.4em; color: var(--bronze); }
 #boot i { display: block; width: 160px; height: 2px; margin: 18px auto 0; background: linear-gradient(90deg, transparent, var(--bronze), transparent); animation: boot 1.6s ease-in-out infinite; }
-#boot.done { opacity: 0; pointer-events: none; }
+#boot.done { opacity: 0; pointer-events: none; visibility: hidden; transition: opacity 0.8s, visibility 0s 0.8s; }
 @keyframes boot { 50% { opacity: 0.3; } }
 
 /* ---- pages ---------------------------------------------------------------------------------------------------- */
@@ -48,7 +48,9 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .title .menu { display: flex; flex-direction: column; gap: 10px; width: 220px; }
 .title .menu button { text-align: left; font: 18px var(--serif); letter-spacing: 0.12em; padding: 12px 20px; }
 .title .best { color: var(--bronze); font: 14px var(--serif); margin: 0; }
+.title .note { color: var(--paper); font: 13px var(--sans); margin: 0; max-width: 32em; line-height: 1.6; opacity: 0.85; }
 .title .howto, .pause .howto { margin-top: auto; color: var(--dim); font-size: 12.5px; line-height: 1.7; max-width: 36em; }
+.title .howto { max-width: 27em; text-shadow: 0 1px 6px rgba(0, 0, 0, 0.85); }
 .title .lang { left: 44px; right: auto; top: auto; bottom: 28px; position: static; align-self: flex-start; }
 
 .choose { right: 0; top: 0; bottom: 0; width: min(440px, 100%); padding: 40px 32px 24px; background: linear-gradient(270deg, rgba(10, 7, 6, 0.9), rgba(10, 7, 6, 0.6) 75%, transparent); display: flex; flex-direction: column; gap: 14px; }
@@ -173,6 +175,13 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .touch .buttons { pointer-events: auto; position: absolute; right: 20px; bottom: 110px; display: grid; grid-template-columns: repeat(3, 70px); gap: 10px; }
 .touch .tb { width: 70px; height: 70px; border-radius: 50%; font: 15px var(--serif); color: var(--paper); background: rgba(20, 12, 10, 0.6); border: 1px solid rgba(201, 164, 100, 0.55); touch-action: none; }
 .touch .tb.attack { grid-column: 3; grid-row: 2 / span 2; width: 70px; height: 150px; border-radius: 35px; background: rgba(143, 29, 23, 0.6); }
+.touch .tb[hidden] { display: none; }
+.touch .tb.halt { pointer-events: auto; position: absolute; left: 16px; top: 16px; width: 52px; height: 52px; padding: 0; font-size: 13px; white-space: nowrap; }
+.touch .tb.s0, .touch .tb.s1 { position: relative; overflow: hidden; font-size: 13px; line-height: 1.2; padding: 0 6px; }
+.touch .tb.s0 i, .touch .tb.s1 i { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(0, 0, 0, 0.7) calc(var(--k, 0) * 360deg), transparent 0); pointer-events: none; }
+.touch .tb.s0 span, .touch .tb.s1 span { position: relative; }
+.touch .tb.wait { color: var(--dim); }
+.touching .hud-skills { display: none; }
 
 @media (max-width: 760px) {
   .title { padding: 32px 20px; width: 100%; }

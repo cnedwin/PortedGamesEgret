@@ -5,6 +5,8 @@
 // held on the same line. In the classic scheme the blows take the lines in turn and the guard turns itself to the
 // blow coming. The camera turns with the mouse in both.
 
+import { createGamepadInput } from '@egret/engine/input/gamepad';
+
 export const DEFAULT_KEYS = {
   up: 'KeyW',
   down: 'KeyS',
@@ -29,6 +31,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     pitch: 0.12,
     line: 'R',
     lineAt: 0,
+    swiped: false,
     attack: false,
     guard: false,
     once: { kick: false, step: false, swap: false, skill0: false, skill1: false },
@@ -58,7 +61,9 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   const onMove = (e) => {
     if (!state.pointerLocked) return;
     state.lastDevice = 'mouse';
-    look(e.movementX, e.movementY);
+    // Some browsers report a jump when the pointer is first held; one event never turns more than this.
+    const cap = 120;
+    look(Math.max(-cap, Math.min(cap, e.movementX)), Math.max(-cap, Math.min(cap, e.movementY)));
   };
   const onDown = (e) => {
     if (!state.pointerLocked) {
@@ -115,17 +120,25 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   addEventListener('blur', onBlur);
 
   // ---- gamepad -----------------------------------------------------------------------------------------------
-  let padPrev = {};
+  // The browser's pads are read once a tick into the engine's gamepad input, which keeps the standard layout's names
+  // and takes the dead zone off the sticks (pads in another layout are not read).
+  const pads = createGamepadInput({ deadZone: 0.18, maxPads: 1 });
+  const unit = (v, least) => Math.max(least, Math.min(1, Number.isFinite(v) ? v : 0));
+  let padPrev = {},
+    padClock = 0;
   function readPad(dt) {
-    const pad = [...(navigator.getGamepads?.() ?? [])].find((p) => p && p.connected);
-    if (!pad) return null;
-    const dz = (v) => (Math.abs(v) < 0.18 ? 0 : v);
-    const b = (i) => !!pad.buttons[i]?.pressed;
-    const now = { a: b(0), b: b(1), x: b(2), y: b(3), lb: b(4), rb: b(5), lt: (pad.buttons[6]?.value ?? 0) > 0.3, rt: (pad.buttons[7]?.value ?? 0) > 0.3, start: b(9), r3: b(11) };
-    const lx = dz(pad.axes[0] ?? 0),
-      ly = dz(pad.axes[1] ?? 0),
-      rx = dz(pad.axes[2] ?? 0),
-      ry = dz(pad.axes[3] ?? 0);
+    const found = [...(navigator.getGamepads?.() ?? [])].filter((p) => p && p.connected).slice(0, 1);
+    padClock += dt * 1000;
+    pads.sample(
+      found.map((p) => ({ index: p.index, id: p.id, mapping: p.mapping, buttons: [...p.buttons].slice(0, 64).map((b) => ({ pressed: !!b.pressed, value: unit(b.value, 0) })), axes: [...p.axes].slice(0, 16).map((v) => unit(v, -1)) })),
+      padClock
+    );
+    const pad = pads.pads[0];
+    if (!pad?.standard) return null;
+    const b = (name) => pad.pressed(name);
+    const now = { a: b('a'), b: b('b'), x: b('x'), y: b('y'), lb: b('l1'), rb: b('r1'), lt: pad.value('l2') > 0.3, rt: pad.value('r2') > 0.3, start: b('start'), r3: b('r3') };
+    const { x: lx, y: ly } = pad.stick('left'),
+      { x: rx, y: ry } = pad.stick('right');
     if (lx || ly || rx || ry || Object.values(now).some(Boolean)) state.lastDevice = 'pad';
     state.yaw -= rx * dt * 2.6 * (settings.sensitivity ?? 1);
     state.pitch = Math.max(-0.35, Math.min(0.75, state.pitch + ry * dt * 1.6));
@@ -139,7 +152,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     if (pressed('rb')) state.once.skill1 = true;
     if (pressed('a')) state.once.swap = true;
     padPrev = now;
-    return { move: [lx, ly], attack: now.rt, guard: now.lt, sprint: b(10) };
+    return { move: [lx, ly], attack: now.rt, guard: now.lt, sprint: b('l3') };
   }
 
   /**
@@ -165,8 +178,13 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     let line = state.line;
     if (classic && threat && guard) line = threat;
     if (classic && attack && !state.attackWas) {
-      line = LINE_ORDER[state.classicIndex++ % 4];
-      state.line = line;
+      // A swipe on the touch strike button names the line; otherwise the lines come in turn.
+      if (state.swiped) line = state.line;
+      else {
+        line = LINE_ORDER[state.classicIndex++ % 4];
+        state.line = line;
+      }
+      state.swiped = false;
     }
     if (!classic && settings.assist && threat && guard) line = threat;
     state.attackWas = attack;
@@ -206,6 +224,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       for (const k of Object.keys(state.once)) state.once[k] = false;
     },
     dispose() {
+      pads.dispose();
       canvas.removeEventListener('mousemove', onMove);
       removeEventListener('mousemove', onMove);
       canvas.removeEventListener('mousedown', onDown);

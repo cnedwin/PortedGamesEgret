@@ -1,10 +1,11 @@
-// 浏览器验收：在无头 Chromium 里打开游戏，走一遍固定流程——标题、设置（关声音、切语言）、开始、走动、收齐光点、
-// 结算、回标题——断言每一步，比对标题和设置两张截图基线，最后断言没有控制台错误。
-// `node test/accept.mjs` 跑一遍；`--update` 重写基线。
-// Browser acceptance: opens the game in headless Chromium and walks a fixed path — title, settings (sound off,
-// language switched), start, walk, gather every light, the round's end, back to the title — checking each step,
-// comparing the title and settings with their screenshot baselines, and finally that the console stayed clean.
-// `node test/accept.mjs` runs it; `--update` writes the baselines again.
+// 浏览器验收：在无头 Chromium 里走一遍——卷首、选营（键盘切换）、配技能、阵前、开打、让替身打完、结算、回卷首；
+// 再直接进一场以一敌二打完；设置里关血雾并存档；切英文；全程不许有控制台错误或缺文件；最后卷首、选营和一场对决
+// 与截图基线比对。`node test/accept.mjs` 跑一遍（软件渲染，画面慢，但流程完整），`--update` 重写基线。
+// Browser acceptance in headless Chromium: the title, choosing a regiment with the keys, fitting skills, the card
+// before the fight, the fight played out by a stand-in, the result, back to the title; then a one-against-two fight
+// straight from the address, played out; turning blood off in settings and keeping it; switching to English; and no
+// console error or missing file anywhere; then the title, the choice and a duel against their screenshot baselines.
+// `node test/accept.mjs` runs it (software rendering: slow, but complete); `--update` writes the baselines again.
 import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { ROOT, launch, matchBaseline, openPage, report, serve, until } from '../../tools/lib/browser.mjs';
@@ -15,68 +16,91 @@ const server = await serve(),
   browser = await launch(),
   checks = [],
   check = (ok, words) => checks.push([Boolean(ok), words]);
+const mode = (page) => page.evaluate(() => window.egretGame?.mode);
+const text = (page, sel) => page.evaluate((s) => document.querySelector(s)?.textContent ?? '', sel);
 let page;
 try {
-  page = await openPage(browser, `${server.url}${path}/?seed=1&lang=zh`, { width: 960, height: 540 });
+  page = await openPage(browser, `${server.url}${path}/?seed=3&lang=zh&quality=low`, { width: 1024, height: 600 });
   await page.evaluate(() => localStorage.clear());
   await page.reload();
-  await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
-  await page.waitForTimeout(800);
-  const title = await matchBaseline(page, GAME, 'title');
-  check(title.written || title.passed, `title looks as its baseline (${(title.share * 100).toFixed(2)}% differs)`);
+  await until(page, () => window.egretGame?.mode === 'title' && document.querySelector('.page.title'), 120);
+  check((await text(page, '.page.title h1')) === '五营争锋', 'the title is up, in Chinese');
 
-  // Settings: the first control holds the focus; Space turns the sound off, which is saved.
-  await page.keyboard.press('ArrowDown');
-  await page.evaluate(() => window.egretGame.app.go('settings'));
-  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'settings');
-  await page.waitForTimeout(500);
-  const settings = await matchBaseline(page, GAME, 'settings');
-  check(settings.written || settings.passed, `settings look as their baseline (${(settings.share * 100).toFixed(2)}% differs)`);
-  await page.keyboard.press('Space');
-  await page.waitForTimeout(300);
-  check((await page.evaluate(() => window.egretGame.app.save.data.settings.sound)) === false, 'Space on the focused switch turns the sound off and saves it');
-  await page.evaluate(() => window.egretGame.app.switchLanguage('en'));
-  await until(page, () => window.egretGame.ready);
-  check((await page.evaluate(() => document.documentElement.lang)) === 'en', 'switching to English changes the page language');
-  const names = await page.evaluate(() => [...document.querySelectorAll('[role=button], button')].map((node) => node.getAttribute('aria-label') || node.textContent).join('|'));
-  check(/Done/.test(names) && !/[\u3400-\u9fff]/.test(names.replace('中文', '')), `buttons read in English: ${names}`);
-
-  // Play: Enter on the title starts; holding the right arrow walks right.
-  await page.evaluate(() => window.egretGame.app.go('title'));
-  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'title');
+  // The road: choose with the keys, fit, go.
+  await page.click('[data-act=road]');
+  await until(page, () => document.querySelector('.page.choose'));
+  await page.keyboard.press('ArrowRight');
+  await page.waitForTimeout(200);
+  check((await text(page, '.regiment h3')) === '虎步', 'the right arrow turns to the Tiger Step');
   await page.keyboard.press('Enter');
-  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'play');
-  const before = await page.evaluate(() => window.egretGame.app.world.hero.x);
-  await page.keyboard.down('ArrowRight');
-  await page.waitForTimeout(1200);
-  await page.keyboard.up('ArrowRight');
-  const after = await page.evaluate(() => window.egretGame.app.world.hero.x);
-  check(after > before + 20, `the right arrow walks the character right (${before.toFixed(0)} → ${after.toFixed(0)})`);
+  await until(page, () => document.querySelector('.page.loadout'));
+  check((await page.evaluate(() => document.querySelectorAll('.loadout .skills .card.on').length)) === 2, 'two skills are taken by default');
+  await page.click('.loadout .talents .card:not(.on)');
+  check((await page.evaluate(() => document.querySelectorAll('.loadout .talents .card.on').length)) === 4, 'taking another talent keeps four');
+  await page.keyboard.press('Enter');
+  await until(page, () => document.querySelector('.page.card-stage'));
+  check(/县城校场/.test(await text(page, '.card-stage h2')), 'the first fight is on the county drill ground');
+  await page.keyboard.press('Enter');
+  await until(page, () => window.egretGame.mode === 'fight', 180);
+  const men = await page.evaluate(() => window.egretGame.game.men.map((m) => m.regiment));
+  check(men[0] === 'tiger' && men.length === 2, `the fight is on: ${men.join(' against ')}`);
+  check(await page.evaluate(() => !document.querySelector('.hud').hidden && document.querySelectorAll('.hud-skill').length >= 4), 'the HUD shows the two skills, the kick and the step');
+  const over = await page.evaluate(() => window.egretGame.run(240));
+  check(over === 'won' || over === 'lost', `a stand-in plays it out: ${over}`);
+  await until(page, () => window.egretGame.mode === 'result' && document.querySelector('.page.result'), 60);
+  const head = await text(page, '.page.result h2');
+  check(head === '胜' || head === '败', `the result reads ${head}`);
+  await page.click('.page.result [data-act=title]');
+  await until(page, () => window.egretGame.mode === 'title' && document.querySelector('.page.title'), 120);
+  check(true, 'back to the title');
 
-  // Gather every light: the character is set beside each in turn, as a quick player would walk there.
-  const count = await page.evaluate(() => window.egretGame.app.world.lights.length);
-  for (let i = 0; i < count; i++) {
-    await page.evaluate((index) => {
-      const world = window.egretGame.app.world,
-        light = world.lights[index];
-      world.hero.x = light.x;
-      world.hero.y = light.y;
-    }, i);
-    await page.waitForTimeout(150);
-  }
-  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'end');
-  const best = await page.evaluate(() => JSON.parse(localStorage.getItem('five-regiments')).data.best);
-  check(typeof best === 'number' && best > 0, `the round's time is saved as the best (${best} s)`);
+  // Settings: blood off, kept in the save.
+  await page.click('[data-act=settings]');
+  await until(page, () => document.querySelector('.page.settings'));
+  await page.click('[data-arg="blood:false"]');
+  await page.waitForTimeout(200);
+  const saved = await page.evaluate(() => JSON.parse(localStorage.getItem('five-regiments')).data.settings.blood);
+  check(saved === false, 'blood off is kept in the save');
   await page.keyboard.press('Escape');
-  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'title');
-  check(true, 'Escape goes back to the title');
 
-  // A broken save: the game starts again and says so, without an error.
-  await page.evaluate(() => localStorage.setItem('five-regiments', '{broken'));
-  page.problems.length = 0;
-  await page.reload();
-  await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
-  check((await page.evaluate(() => window.egretGame.app.notice)) !== null, 'a broken save is started again, and the title says so');
+  // English.
+  await until(page, () => document.querySelector('.page.title'));
+  await page.click('.page.title [data-act=lang]');
+  await page.waitForTimeout(300);
+  check((await text(page, '.page.title h1')) === 'Five Regiments' && (await page.evaluate(() => document.documentElement.lang)) === 'en', 'switching to English redraws the title');
+
+  // Two at once, straight from the address.
+  await page.goto(`${server.url}${path}/?seed=5&lang=zh&quality=low&duel=vanguard,plume,archer&place=palace`);
+  await until(page, () => window.egretGame?.mode === 'fight', 180);
+  check((await page.evaluate(() => document.querySelectorAll('.hud-foe').length)) === 2, 'two foes along the top');
+  const two = await page.evaluate(() => window.egretGame.run(300));
+  check(two === 'won' || two === 'lost', `one against two plays out: ${two}`);
+  await until(page, () => window.egretGame.mode === 'result', 60);
+  check(true, 'and ends on a result');
+
+  // Baselines. With `?fixed` every frame drawn is one tick of the world, so waiting for a count of frames fixes the
+  // picture (to a tick or two). `--update` writes them again.
+  const frames = async (n) => {
+    const from = await page.evaluate(() => window.egretGame.status.frames);
+    await page.waitForFunction((at) => window.egretGame.status.frames >= at, from + n, { timeout: 240000, polling: 50 });
+  };
+  const looks = async (name, words) => {
+    const seen = await matchBaseline(page, GAME, name);
+    check(seen.written || seen.passed, `${words} (${seen.written ? 'baseline written' : `${(seen.share * 100).toFixed(2)}% differs`})`);
+  };
+  await page.goto(`${server.url}${path}/?seed=3&lang=zh&quality=low&fixed`);
+  await until(page, () => window.egretGame?.mode === 'title' && document.querySelector('.page.title'), 120);
+  await frames(40);
+  await looks('title', 'the title and the five on the drill ground look as their baseline');
+  await page.click('[data-act=road]');
+  await until(page, () => document.querySelector('.page.choose'));
+  await frames(60);
+  await looks('choose', 'choosing a regiment looks as its baseline');
+  await page.goto(`${server.url}${path}/?seed=4&lang=zh&quality=low&fixed&auto&duel=plume,vanguard&place=bamboo`);
+  await until(page, () => window.egretGame?.mode === 'fight', 180);
+  await page.addStyleTag({ content: '.hud-banner { display: none !important; }' });
+  await frames(150);
+  await looks('fight', 'a duel on the bamboo path looks as its baseline');
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {

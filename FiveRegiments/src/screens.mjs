@@ -59,7 +59,7 @@ export function createScreens(root, { onLanguage }) {
       return current;
     },
 
-    title({ onRoad, onFree, onSettings, best }) {
+    title({ onRoad, onFree, onSettings, best, note = '' }) {
       const page = node(`<section class="page title">
         <header><h1>${t('title')}</h1><p>${t('tagline')}</p></header>
         <nav class="menu">
@@ -68,6 +68,7 @@ export function createScreens(root, { onLanguage }) {
           <button type="button" data-act="settings">${t('settings')}</button>
         </nav>
         ${best ? `<p class="best">${best}</p>` : ''}
+        ${note ? `<p class="note" role="status">${note}</p>` : ''}
         <p class="howto">${t('controlsText')}</p>
         ${langButton()}
       </section>`);
