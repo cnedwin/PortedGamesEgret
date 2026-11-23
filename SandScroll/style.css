@@ -1,0 +1,78 @@
+/* 页面只是一块填满窗口的舞台：不滚动、不被下拉刷新或双击缩放打断。
+   The page is one stage filling the window: no scrolling, no pull-to-refresh, no double-tap zoom. */
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #1a0e08;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+#frame {
+  position: fixed;
+  inset: 0;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  display: grid;
+  place-items: center;
+}
+#stage,
+#back {
+  grid-area: 1 / 1;
+  display: block;
+}
+#stage {
+  outline: none;
+  touch-action: none;
+  background: transparent;
+}
+/* Under the engine's canvas: the painter's desk (rosewood with a soft lamp from above) and whatever a screen paints there
+   once — the frame of the tray, the scroll on its mount, the title. The engine clears to transparent and draws only what
+   moves, so none of this costs anything per frame. */
+#back {
+  pointer-events: none;
+  background:
+    radial-gradient(70% 45% at 50% 0%, rgba(255, 214, 150, 0.16), rgba(255, 214, 150, 0)),
+    repeating-linear-gradient(92deg, rgba(0, 0, 0, 0.07) 0 3px, rgba(255, 255, 255, 0.015) 3px 7px, rgba(0, 0, 0, 0.04) 7px 13px),
+    linear-gradient(#2a160c 0%, #3a1f12 55%, #24130a 100%);
+}
+/* The drifting sand behind the title: two layers of the same tile slid down at two speeds (src/screens.mjs). */
+#rain {
+  grid-area: 1 / 1;
+  overflow: hidden;
+  pointer-events: none;
+}
+#rain i {
+  display: block;
+  position: absolute;
+  width: 100%;
+  height: 200%;
+  background-repeat: repeat;
+  animation: sand-fall linear infinite;
+  will-change: transform;
+}
+#rain {
+  position: relative;
+}
+@keyframes sand-fall {
+  from {
+    transform: translateY(-50%);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+#loading {
+  color: #f3ead6;
+  font: 500 16px/1.4 "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  opacity: 0.8;
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
