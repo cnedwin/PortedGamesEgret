@@ -32,6 +32,38 @@ test('a light blow lands and hurts; a held blow lands harder', () => {
   assert.ok(b.f.maxHp - b.f.hp > light * 1.3, 'heavy blow is harder');
 });
 
+test('all four lines cue the release near contact and keep their matching guards', () => {
+  for (const line of ['L', 'R', 'O', 'T']) {
+    const { game, f } = pair('tiger', 'vanguard');
+    Object.assign(f, { guard: true, guardLine: facing(line), guardAt: -5 });
+    const events = run(game, (i) => ({
+      hero: { attack: i === 0, line },
+      foe0: { guard: true, line: facing(line) }
+    }), 1);
+    const start = events.find((e) => e.type === 'swing');
+    const [release, extra] = events.filter((e) => e.type === 'swingRelease');
+    const block = events.find((e) => e.type === 'block');
+    assert.ok(release && !extra && block, line);
+    assert.equal(release.line, line);
+    assert.ok(release.time > start.time && block.time - release.time >= 0 && block.time - release.time <= 2 * TICK + 1e-6, line);
+    assert.equal(f.hp, f.maxHp, line);
+  }
+});
+
+test('a held attack cues once on release, and a feint never cues a release', () => {
+  const held = pair('vanguard', 'tiger');
+  const events = run(held.game, (i) => ({ hero: { attack: i < 45, line: 'R' } }), 1.5);
+  const release = events.filter((e) => e.type === 'swingRelease');
+  const hit = events.find((e) => e.type === 'hit');
+  assert.equal(release.length, 1);
+  assert.ok(release[0].heavy > 0 && hit.time === release[0].time);
+
+  const cancelled = pair('tiger', 'vanguard');
+  const feint = run(cancelled.game, (i) => ({ hero: { attack: i === 0, guard: i === 3, line: 'R' } }), 1);
+  assert.ok(feint.some((e) => e.type === 'feint'));
+  assert.ok(!feint.some((e) => e.type === 'swingRelease' || e.type === 'hit'));
+});
+
 test('only the right line holds a guard; a wrong line lets half through', () => {
   const right = pair('tiger', 'vanguard');
   // The hero cuts from his right (R); it arrives on the foe's left, so the foe guards L.

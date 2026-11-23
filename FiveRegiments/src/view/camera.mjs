@@ -12,7 +12,7 @@ export function createCameraRig(camera) {
     shakeT: 0,
     distance: 3.3,
     up: 0,
-    fovKick: 0
+    contact: [0, 0, 0]
   };
   /**
    * Follow `hero` with heading `yaw` and elevation `pitch`. `target` is the locked foe or null; `place` has posts.
@@ -23,6 +23,8 @@ export function createCameraRig(camera) {
       const want = Math.atan2(target.x - hero.x, target.z - hero.z);
       yaw += wrap(want - yaw) * (1 - Math.exp(-dt * 7));
     }
+    const contactDecay = Math.exp(-dt * 22);
+    for (let i = 0; i < rig.contact.length; i++) rig.contact[i] *= contactDecay;
     // On horseback the camera rides higher and further back.
     rig.up += ((mounted ? 0.85 : 0) - rig.up) * (1 - Math.exp(-dt * 4));
     // The first-person view (V): at his eyes, looking where the mouse looks; it gives way to the shoulder view when he
@@ -35,7 +37,7 @@ export function createCameraRig(camera) {
         rig.look[i] = at[i] + fwd[i] * 4;
       }
       rig.shake = Math.max(0, rig.shake - dt * 2.4);
-      camera.setPosition(rig.at[0], rig.at[1], rig.at[2]);
+      camera.setPosition(rig.at[0] + rig.contact[0] * 0.45, rig.at[1] + rig.contact[1] * 0.45, rig.at[2] + rig.contact[2] * 0.45);
       camera.lookAt(rig.look[0], rig.look[1], rig.look[2]);
       return yaw;
     }
@@ -70,13 +72,18 @@ export function createCameraRig(camera) {
     const s = rig.shake * rig.shake * 0.09;
     const jx = Math.sin(rig.shakeT * 61) * s,
       jy = Math.sin(rig.shakeT * 47 + 1) * s;
-    camera.setPosition(rig.at[0] + jx, rig.at[1] + jy, rig.at[2]);
+    camera.setPosition(rig.at[0] + jx + rig.contact[0], rig.at[1] + jy + rig.contact[1], rig.at[2] + rig.contact[2]);
     camera.lookAt(rig.look[0], rig.look[1] + jy * 0.5, rig.look[2]);
-    rig.fovKick += (0 - rig.fovKick) * (1 - Math.exp(-dt * 8));
     return yaw;
   };
-  rig.kick = (amount = 0.5) => {
+  rig.kick = (amount = 0.5, bearing) => {
     rig.shake = Math.min(1, rig.shake + amount);
+    if (Number.isFinite(bearing)) {
+      const push = Math.min(1, amount) * 0.085;
+      rig.contact[0] = Math.sin(bearing) * push;
+      rig.contact[1] = -push * 0.2;
+      rig.contact[2] = Math.cos(bearing) * push;
+    }
   };
   /** A camera somewhere fixed, for the title and between fights. */
   rig.frame = (dt, from, to, rate = 2) => {
@@ -91,6 +98,7 @@ export function createCameraRig(camera) {
   rig.snap = (from, to) => {
     rig.at = [...from];
     rig.look = [...to];
+    rig.contact.fill(0);
     camera.setPosition(...from);
     camera.lookAt(...to);
   };

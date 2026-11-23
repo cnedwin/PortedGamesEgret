@@ -1090,6 +1090,12 @@ function runBowSkill(game, man, act, s, dt, at) {
   }
 }
 
+function cueSwingRelease(game, man, act, heavy = 0) {
+  if (act.releaseAnnounced) return;
+  act.releaseAnnounced = true;
+  emit(game, 'swingRelease', { who: man.id, line: act.line, heavy });
+}
+
 function runSwing(game, man, act, input, dt) {
   const holding = input.attack;
   if (act.t < act.wind) {
@@ -1100,6 +1106,8 @@ function runSwing(game, man, act, input, dt) {
       emit(game, 'feint', { who: man.id });
       return;
     }
+    // Play the cutting air in the last two ticks of a committed tap, past the feint window.
+    if (!holding && act.t >= act.wind * 0.75 && act.t >= act.wind - 2 * TICK) cueSwingRelease(game, man, act);
     return;
   }
   if (!act.struck) {
@@ -1116,6 +1124,7 @@ function runSwing(game, man, act, input, dt) {
     const heavy = act.held > 0.15 ? Math.min(1, act.held / HOLD) : 0;
     spend(man, act.blow.cost * (1 + heavy * 0.6));
     act.heavy = heavy;
+    cueSwingRelease(game, man, act, heavy);
     strike(game, man, {
       line: act.line,
       damage: act.blow.damage,

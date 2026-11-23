@@ -5,6 +5,61 @@
 // A pose is a Float32Array of bones × 4 quaternion values followed by 3 hip values. Poses are sampled from clips,
 // blended, laid over one another for some bones only, and finally written to the skeleton.
 
+import { add, cross, dot, len, lerp3, mul, sub, unit } from './rig.mjs';
+
+const clamp01 = (value) => Math.max(0, Math.min(1, value));
+const smooth = (t) => t * t * (3 - 2 * t);
+const SWING_TEMPO = {
+  knife: [0.55, 0.29],
+  jian: [0.61, 0.36],
+  sabre: [0.65, 0.44],
+  spear: [0.67, 0.4],
+  ji: [0.7, 0.46],
+  zhanma: [0.72, 0.51],
+  axe: [0.74, 0.55]
+};
+
+/**
+ * The four spans run from ready to loaded, contact, follow-through and back to ready.
+ * Logical contact stays on strikeAt, including when a held swing releases.
+ */
+export function swingPhase(action, weapon, attackHeld) {
+  const [load, follow] = SWING_TEMPO[weapon] ?? SWING_TEMPO.sabre;
+  if (!action.struck) {
+    const wind = clamp01(action.t / action.wind);
+    if (wind < load) return smooth(wind / load);
+    if (action.held > 0 || attackHeld && !action.quick) return 1;
+    const sweep = clamp01((wind - load) / (1 - load));
+    return 1 + 0.96 * sweep * sweep;
+  }
+  const recovery = clamp01((action.t - action.strikeAt) / action.recover);
+  if (recovery < follow) return 2 + (1 - (1 - recovery / follow) ** 2);
+  return 3 + smooth((recovery - follow) / (1 - follow));
+}
+
+/** Follow a great circle so a near half-turn never collapses or flips at its midpoint. */
+export function interpolateDirection(from, to, t) {
+  const a = unit(from), b = unit(to);
+  if (t <= 0) return a;
+  if (t >= 1) return b;
+  const cosine = Math.max(-1, Math.min(1, dot(a, b)));
+  if (cosine > 0.9995) return unit(lerp3(a, b, t));
+  const projected = sub(b, mul(a, cosine));
+  const crossAxis = Math.abs(a[1]) < 0.85 ? [0, 1, 0] : [1, 0, 0];
+  const tangent = unit(len(projected) > 1e-5 ? projected : cross(crossAxis, a));
+  const angle = Math.acos(cosine) * t;
+  return add(mul(a, Math.cos(angle)), mul(tangent, Math.sin(angle)));
+}
+
+/** Quick compression followed by a slower, non-oscillating release. */
+export function impactWeight(age, heavy) {
+  const power = clamp01(heavy);
+  const peak = 0.042 + power * 0.014;
+  const settle = 0.21 + power * 0.15;
+  const amount = age < peak ? smooth(clamp01(age / peak)) : 1 - smooth(clamp01((age - peak) / (settle - peak)));
+  return amount * (0.45 + power * 0.55);
+}
+
 export async function loadMotion(prefix) {
   const base = String(prefix);
   const [index, bin] = await Promise.all([

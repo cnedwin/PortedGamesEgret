@@ -414,8 +414,9 @@ async function main() {
   }
 
   // ---- one tick of the fight --------------------------------------------------------------------------------
+  const fighter = (id) => game?.men.find((m) => m.id === id);
   const chestOf = (id) => {
-    const m = game?.men.find((x) => x.id === id);
+    const m = fighter(id);
     return m ? [m.x, (m.mounted ? 2.15 : 1.3) + (m.act?.air ?? 0), m.z] : [0, 1.3, 0];
   };
   function threatLine() {
@@ -447,21 +448,33 @@ async function main() {
 
   function onEvent(e) {
     const heroId = game.hero.id;
-    fx.event(e, chestOf, (id) => figures.get(id)?.blade());
+    const defender = fighter(e.who),
+      attacker = fighter(e.by);
+    const bearing = attacker && defender && attacker !== defender
+      ? Math.atan2(defender.x - attacker.x, defender.z - attacker.z)
+      : undefined;
     switch (e.type) {
-      case 'swing':
-        play(game.men.find((m) => m.id === e.who)?.regiment === 'vanguard' ? 'heavy' : 'swing', { volume: 0.7, rate: 0.9 + Math.random() * 0.2 });
+      case 'swingRelease': {
+        const longWeapon = defender?.regiment === 'vanguard' || defender?.regiment === 'plume';
+        play(longWeapon || e.heavy > 0.5 ? 'heavy' : 'swing', {
+          volume: e.line === 'T' ? 0.46 : 0.65,
+          rate: e.line === 'T' ? 1.24 : 0.92 + Math.random() * 0.16
+        });
         break;
+      }
       case 'block':
+        figures.get(e.who)?.struck(e.heavy ?? 0, bearing, 'block');
         if (e.arrow) play('shield', { volume: 0.8 });
-        else play(game.men.find((m) => m.id === e.who)?.r.offhand === 'shield' ? 'shield' : 'clash', { rate: 0.9 + Math.random() * 0.2 });
-        if (e.who === heroId) cam.kick(0.15);
+        else play(defender?.r.offhand === 'shield' ? 'shield' : 'clash', { rate: 0.9 + Math.random() * 0.2 });
+        if (e.who === heroId) cam.kick(0.16, bearing);
         break;
       case 'deflect':
+        figures.get(e.who)?.struck(0, bearing, 'deflect');
         play('deflect');
         slow = 0.3;
         slowFor = 0.18;
         if (e.who === heroId) {
+          cam.kick(0.18, bearing);
           tally.deflects++;
           hud.toast(t('deflected'), 'good');
         }
@@ -475,13 +488,16 @@ async function main() {
         break;
       case 'hit': {
         if (e.quiet) break;
-        figures.get(e.who)?.struck(e.heavy ?? 0);
-        play(e.arrow ? 'arrowHit' : e.crit || e.heavy ? 'crit' : 'hit', { volume: 0.9 });
-        if (e.who === heroId) cam.kick(e.heavy ? 0.6 : 0.35);
+        const heavy = (e.heavy ?? 0) > 0.5 || e.broke;
+        figures.get(e.who)?.struck(e.heavy ?? 0, bearing);
+        const cue = e.kick ? 'kick' : e.arrow ? 'arrowHit' : e.crit ? 'crit' : heavy ? 'heavyHit'
+          : defender?.r.armour === 'heavy' ? 'armourHit' : 'hit';
+        play(cue, { volume: 0.9 });
+        if (e.who === heroId) cam.kick(heavy ? 0.52 : 0.28, bearing);
         else if (e.by === heroId) {
           slow = 0.12;
           slowFor = e.heavy ? 0.07 : 0.04;
-          cam.kick(e.heavy ? 0.3 : 0.12);
+          cam.kick(heavy ? 0.30 : 0.16, bearing);
         }
         const p = projectToViewport3D(camera, chestOf(e.who), canvas.clientWidth, canvas.clientHeight);
         if (p.onScreen) hud.number([p.x, p.y], e.damage, (e.who === heroId ? 'bad' : '') + (e.crit ? ' crit' : ''));
@@ -595,6 +611,7 @@ async function main() {
     carry += dt * k;
     const threat = threatLine();
     const target = lockTarget();
+    const events = [];
     while (carry >= TICK) {
       carry -= TICK;
       const inputs = {};
@@ -604,7 +621,10 @@ async function main() {
         const aim = target && game.hero.regiment === 'archer' ? null : undefined;
         inputs.hero = input.sample(TICK, { threat, aim, bow: game.hero.regiment === 'archer' && !game.hero.knife });
       }
-      for (const e of step(game, inputs)) onEvent(e);
+      for (const e of step(game, inputs)) {
+        onEvent(e);
+        events.push(e);
+      }
       if (game.over && !over) {
         over = game.over;
         overTime = 0;
@@ -624,13 +644,24 @@ async function main() {
         was = tips.get(m.id);
       tips.set(m.id, b?.[1] ?? null);
       const step = dt * k;
-      if (b && was && step > 0 && (act?.kind === 'swing' || act?.kind === 'skill')) {
+      const cutting = act?.kind === 'swing' && (act.struck
+        ? act.t - act.strikeAt < 0.12
+        : !act.held && act.t >= act.wind - 0.07);
+      if (b && was && step > 0 && (cutting || act?.kind === 'skill')) {
         const speed = Math.hypot(b[1][0] - was[0], b[1][1] - was[1], b[1][2] - was[2]) / step;
         if (speed > 5.5) {
-          const mid = b[0].map((v, i) => v + (b[1][i] - v) * 0.6);
-          fx.sweep(m.id).push(mid, b[1], Math.min(1, (speed - 5.5) / 6), m.side === 'hero' ? [1, 0.95, 0.85] : [1, 0.75, 0.6]);
+          const edge = b[0].map((v, i) => v + (b[1][i] - v) * 0.76);
+          fx.sweep(m.id).push(edge, b[1], Math.min(0.7, (speed - 5.5) / 8), m.side === 'hero' ? [1, 0.95, 0.85] : [1, 0.75, 0.6]);
         }
       }
+    }
+    // Contact effects sample this frame's drawn weapon, after the combat pose and hit reaction have been applied.
+    for (const e of events) {
+      const defender = fighter(e.who);
+      fx.event(e, chestOf, (id) => figures.get(id)?.blade(), {
+        shield: defender?.r.offhand === 'shield',
+        armoured: defender?.r.armour === 'heavy'
+      });
     }
     fx.update(dt * k, game);
     const yaw = cam.update(dt, { hero: game.hero, yaw: input.state.yaw, pitch: input.state.pitch, target, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.() });
