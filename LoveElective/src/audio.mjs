@@ -14,6 +14,7 @@ const RATE = 32000;
 const hz = semitone => 220 * 2 ** (semitone / 12);
 const SCENE_MUSIC = new Set(['bailu-zero-night', 'bailu-zero-mystery', 'bailu-zero-warm', 'campus-social-day']);
 const SETTINGS_KEY = 'love-elective-audio-v1';
+const VOICE_CUE = /^(bailu-zero-(0[1-9]|1[0-9]|2[0-2])|social-(pool|pajama|lounge)-0[1-5])$/;
 const DIALOGUE_MUSIC_LEVEL = 0.23;
 // Keep the music ramp ahead of short consonant onsets in the recorded dialogue.
 const DIALOGUE_MUSIC_ATTACK = 0.008;
@@ -256,10 +257,15 @@ export function createAudio() {
     currentVoice = undefined;
     recoverMusicAfterVoice();
   };
+  // Share the in-flight decode with playback without starting a voice or ducking music.
+  audio.prefetchVoice = id => {
+    if (!host || disposed || audio.muted || preferences.voice.muted || !VOICE_CUE.test(id)) return;
+    void loadFile('voice', id).catch(() => { /* An optional prefetch can fail before playback requests the line. */ });
+  };
   /** Resolves on playback start; dialogue advance never waits for speech to end. */
   audio.voice = async id => {
     audio.stopVoice();
-    if (!/^(bailu-zero-(0[1-9]|1[0-9]|2[0-2])|social-(pool|pajama|lounge)-0[1-5])$/.test(id)) return null;
+    if (!VOICE_CUE.test(id)) return null;
     lastVoice = id;
     const token = voiceRequest;
     try {
