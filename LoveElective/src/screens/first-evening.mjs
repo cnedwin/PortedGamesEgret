@@ -18,10 +18,13 @@ export async function openFirstEvening(game) {
   await game.world.setScene(FIRST_EVENING.place, light);
   await game.fadeIn(0.25);
   try {
-    const result = await playScript(game, FIRST_EVENING_SCRIPT, { girl: FIRST_EVENING.girl, checkpoint, light });
+    const result = await playScript(game, FIRST_EVENING_SCRIPT, {
+      girl: FIRST_EVENING.girl, checkpoint, light, reader: game.memoryScenes.track('linxia-first-evening'),
+    });
     if (result.completed && finishFirstEvening(s)) {
       // The meeting introduces her without advancing any of her regular chapters.
       sim.finishChapter(s, FIRST_EVENING.girl, 0);
+      game.memoryScenes.unlock('linxia-first-evening', s);
       game.toast(game.L(['第一次邀约完成', 'First meeting complete']), 'good');
     }
     game.save();

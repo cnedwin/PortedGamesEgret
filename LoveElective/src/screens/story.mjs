@@ -20,14 +20,40 @@ const REVEAL_SPEED = 1150;
  * Resolves when the script has finished and the dialogue box is gone.
  */
 export async function playScript(game, script, { girl = null, keepActor = false, light, checkpoint = null,
-  outfit = null, prefetchOpeningVoice = false, exitLabel = null } = {}) {
+  outfit = null, prefetchOpeningVoice = false, exitLabel = null, reader = null } = {}) {
   const { stage, ui, world, L } = game;
   const lightNow = () => light ?? (game.state ? SLOTS_OF_DAY[game.state.slot].light : 'day');
   let skipping = false, cancelled = false, nextVoice = null;
+  let activeReadLine = null, controlHeld = false, keyboardSkipping = false, buttonSkipping = false;
   const canExit = Boolean(checkpoint || exitLabel);
   const saveCheckpoint=()=>{if(checkpoint)game.save();};
   const pause=()=>{cancelled=true;game.audio.stopVoice?.();advance?.();};
-  const skip=()=>{skipping=true;game.audio.stopVoice?.();};
+  const stopReadSkip = () => { skipping = false; keyboardSkipping = false; buttonSkipping = false; };
+  const skip = (source = 'button') => {
+    if (reader) {
+      // Marking a newly revealed line does not make this same visit skippable.
+      if (!activeReadLine?.readAtEntry) { stopReadSkip(); return false; }
+      if (source === 'keyboard') keyboardSkipping = true;
+      else buttonSkipping = true;
+    }
+    skipping = true;
+    game.audio.stopVoice?.();
+    return true;
+  };
+  const pressControl = event => {
+    if (!reader) { skip(); return; }
+    if (controlHeld || event?.repeat) return;
+    controlHeld = true;
+    if (skip('keyboard')) advance?.();
+  };
+  function reading(key, pair) {
+    if (!reader) return null;
+    const line = { key: String(key), text: JSON.stringify(pair), readAtEntry: false, marked: false };
+    try { line.readAtEntry = Boolean(reader.has?.(line.key, line.text)); } catch { /* Protect unread text if tracking is unavailable. */ }
+    activeReadLine = line;
+    if (!line.readAtEntry) stopReadSkip();
+    return line;
+  }
   const actorSpec = (who, expression) => {
     const spec = game.spec(who, expression);
     return who === girl && outfit ? { ...spec, wear: outfit.lead.wear } : spec;
@@ -50,9 +76,9 @@ export async function playScript(game, script, { girl = null, keepActor = false,
     shownActor = null;
   box.blank = () => advance?.();
   ui.background = () => advance?.();
-  ui.keys = key => {
+  ui.keys = (key, event) => {
     if (key === ' ' || key === 'Enter') advance?.();
-    if (key === 'Control') skip();
+    if (key === 'Control') pressControl(event);
     if (key === 'Escape' && canExit) pause();
   };
   box.node.alpha = 0;
@@ -72,10 +98,9 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         g.fill(rrect(34, 8, 3, 32, 2));
         p.text(name, 34 + w / 2, 9, { size: 22, weight: 750, family: SERIF, color: THEME.light, align: 'center' });
       }
-      p.button(BOX.w - 122, 36, 96, 38, L(['跳过', 'Skip']), () => {
-        skip();
-        advance?.();
-      }, { kind: 'plain', size: 15 });
+      p.button(BOX.w - 122, 36, 96, 38, L(reader ? ['快进已读', 'Skip read'] : ['跳过', 'Skip']), () => {
+        if (skip()) advance?.();
+      }, { kind: 'plain', size: 15, disabled: Boolean(reader && !activeReadLine?.readAtEntry) });
       if (canExit) p.button(BOX.w-250,36,118,38,L(exitLabel ?? ['稍後繼續','Resume later']),pause,{kind:'plain',size:14});
       if (checkpoint && voiced) p.button(BOX.w-364,36,104,38,L(['重聽','Replay voice']),()=>game.audio.replayVoice?.(),{kind:'plain',size:14});
       g.fillStyle = accent;
@@ -87,7 +112,14 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   async function say(name, color, text, style = {}) {
     if (cancelled) return;
     game.audio.stopVoice?.();
-    game.storyStatus={id:checkpoint?.id??null,cursor:checkpoint?.cursor??null,speaker:name,text,choices:[],paused:false};
+    const readLine = style.reading;
+    const markRead = () => {
+      if (!reader || !readLine || readLine.marked || cancelled || document.hidden) return;
+      readLine.marked = true;
+      try { reader.mark?.(readLine.key, readLine.text); } catch { /* Reading still works without persistent tracking. */ }
+    };
+    game.storyStatus={id:checkpoint?.id??null,cursor:checkpoint?.cursor??null,speaker:name,text,choices:[],paused:false,
+      ...(reader ? { readerKey: readLine?.key ?? null, readAtEntry: Boolean(readLine?.readAtEntry) } : {})};
     const voiced = Boolean(nextVoice && !skipping);
     if (voiced) Promise.resolve(game.audio.voice?.(nextVoice)).catch(()=>{});
     nextVoice=null;
@@ -116,25 +148,32 @@ export async function playScript(game, script, { girl = null, keepActor = false,
     doing.clipRect = { x: 0, y: 0, width: 1, height: 1 };
     await Promise.all([textA.show(canvas, canvas.res, key), textB.show(canvas, canvas.res, key)]);
     if (cancelled) return;
+    let revealed = false;
     if (skipping) {
       done.clipRect = { x: 0, y: 0, width: TEXT.w + 20, height: lines.length * lineH + 8 };
+      markRead();
       await stage.wait(0.03);
-      return;
+      if (!reader || skipping || cancelled) return;
+      // Releasing Control during the short skip delay keeps this line visible.
+      revealed = true;
     }
     if (style.upcomingVoice) game.audio.prefetchVoice?.(style.upcomingVoice);
 
     await new Promise(resolve => {
-      let line = 0,
+      let line = revealed ? lines.length : 0,
         x = 0,
-        finished = false;
+        finished = revealed;
       const end = () => {
         stop();
         game.audio.stopVoice?.();
         advance = null;
+        activeReadLine = null;
         resolve();
       };
       const stop = stage.onTick(dt => {
+        if (reader && document.hidden) return;
         if (finished) {
+          markRead();
           if (skipping) end();
           return;
         }
@@ -148,6 +187,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
           finished = true;
           doing.clipRect = { x: 0, y: 0, width: 1, height: 1 };
           done.clipRect = { x: 0, y: 0, width: TEXT.w + 20, height: lines.length * lineH + 8 };
+          markRead();
         } else doing.clipRect = { x: 0, y: line * lineH + 4, width: Math.max(1, x), height: lineH };
       });
       // The first tap finishes writing the line; the next one moves on.
@@ -166,7 +206,8 @@ export async function playScript(game, script, { girl = null, keepActor = false,
 
   /** Offer choices in the middle of the screen; resolves with the chosen option. */
   function pick(options) {
-    skipping = false;
+    if (reader) { stopReadSkip(); activeReadLine = null; }
+    else skipping = false;
     return new Promise(resolve => {
       // The senior steps aside so the choices do not cover her face.
       const actorX = world.actor?.x,
@@ -178,13 +219,14 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         panel = ui.panel({ x: px, y: (470 - h) / 2 + 30, w: pw, h, res: 1.25, modal: true, title: L(['劇情選擇','Story choices']) });
       ui.keys = key => {
         if(key==='Escape'&&canExit){cancelled=true;choose(null);return;}
+        if (reader && key === 'Control') { controlHeld = true; return; }
         const n = Number(key);
         if (n >= 1 && n <= options.length) choose(options[n - 1]);
       };
       function choose(option) {
-        ui.keys = k => {
+        ui.keys = (k, event) => {
           if (k === ' ' || k === 'Enter') advance?.();
-          if (k === 'Control') skip();
+          if (k === 'Control') pressControl(event);
           if (k === 'Escape' && canExit) pause();
         };
         panel.close();
@@ -232,13 +274,15 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         }
       }else if(op==='social-outfit-note'){
         const status=sim.socialStatus(game.state,a),lead=game.state.girls[status.lead];
-        const leadNames=sim.pieces(lead.wear).map(piece=>CLOTHES[piece.id]).filter(Boolean).map(item=>L(item.name)).join(' · ');
-        const heroNames=sim.pieces(game.state.hero.wear).map(piece=>CLOTHES[piece.id]).filter(Boolean).map(item=>L(item.name)).join(' · ');
-        await say(null,THEME.soft,L([`她選的穿搭：${leadNames}。`,`Her chosen outfit: ${leadNames}.`]));
-        await say(null,THEME.soft,L([`你選的穿搭：${heroNames}。`,`Your chosen outfit: ${heroNames}.`]));
+        const names = (wear, language) => sim.pieces(wear).map(piece=>CLOTHES[piece.id]).filter(Boolean).map(item=>item.name[language]).join(' · ');
+        const leadText = [`她選的穿搭：${names(lead.wear,0)}。`,`Her chosen outfit: ${names(lead.wear,1)}.`];
+        const heroText = [`你選的穿搭：${names(game.state.hero.wear,0)}。`,`Your chosen outfit: ${names(game.state.hero.wear,1)}.`];
+        await say(null,THEME.soft,L(leadText),{reading:reading(key+'.lead',leadText)});
+        await say(null,THEME.soft,L(heroText),{reading:reading(key+'.hero',heroText)});
       }else if(op==='outfit-note'){
         const wear=game.state.girls.bailu.wear,outer=CLOTHES[wear.outer?.id];
-        await say(null,THEME.soft,outer?L([`她把你們選的${outer.name[0]}披上，留住了剛才調好的配色。`,`She puts on the ${outer.name[1]}, keeping the colours you chose together.`]):L(['她保留了自己喜歡的造型，另外把一條備用圍巾放進袋子。','She keeps the look she likes and packs a spare scarf.']));
+        const text=outer?[`她把你們選的${outer.name[0]}披上，留住了剛才調好的配色。`,`She puts on the ${outer.name[1]}, keeping the colours you chose together.`]:['她保留了自己喜歡的造型，另外把一條備用圍巾放進袋子。','She keeps the look she likes and packs a spare scarf.'];
+        await say(null,THEME.soft,L(text),{reading:reading(key,text)});
       }else if (op === 'bg') {
         if (shownActor === 'professor') {
           shownActor = null;
@@ -260,17 +304,18 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       } else if (op === 'n') {
         const upcoming = steps[index + 1];
         const upcomingVoice = prefetchOpeningVoice && upcoming?.[0] === 'voice' ? upcoming[1] : undefined;
-        await say(null, THEME.soft, L([a, b]), { color: THEME.soft, upcomingVoice });
+        await say(null, THEME.soft, L([a, b]), { color: THEME.soft, upcomingVoice, reading:reading(key,[a,b]) });
       } else if (op === 'me') {
-        await say(L(['我', 'Me']), THEME.sky, L([a, b]));
+        await say(L(['我', 'Me']), THEME.sky, L([a, b]), {reading:reading(key,[a,b])});
       } else if (op === 'th') {
-        await say(L(['我', 'Me']), THEME.sky, `（${L([a, b])}）`, { color: THEME.soft, italic: game.lang !== 'zh' });
+        await say(L(['我', 'Me']), THEME.sky, `（${L([a, b])}）`, { color: THEME.soft, italic: game.lang !== 'zh', reading:reading(key,[a,b]) });
       } else if (op === 'pf') {
+        const readLine = reading(key,[a,b]);
         if (!skipping && shownActor !== 'professor') {
           shownActor = 'professor';
           await world.showActor({ id: 'professor' }, { view: 'bust', x: W / 2 });
         }
-        await say(L(['温教授', 'Professor Wen']), '#8a6fd0', L([a, b]));
+        await say(L(['温教授', 'Professor Wen']), '#8a6fd0', L([a, b]), {reading:readLine});
       } else if (op === 'pick') {
         game.audio.stopVoice?.();
         game.storyStatus={id:checkpoint?.id??null,cursor:key,choices:a.map(o=>L(o.t)),text:'',paused:false};
@@ -297,14 +342,38 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         if (option.then) await run(option.then,key+'.choice'+a.indexOf(option)+'.');
       } else if (HEROINES[op]) {
         // A senior speaks: update her expression first.
+        const readLine = reading(key,[b,c]);
         if (shownActor === op || world.actor) await world.showActor(actorSpec(op, a), { view: 'bust', x: world.actor?.x ?? W / 2 });
-        await say(L(HEROINES[op].name), HEROINES[op].color, L([b, c]));
+        await say(L(HEROINES[op].name), HEROINES[op].color, L([b, c]), {reading:readLine});
       }
       if(checkpoint&&!cancelled){checkpoint.done[key]=true;saveCheckpoint();}
     }
   }
 
-  await run(script);
+  // Stage input intentionally filters repeated keydown. Reader mode listens
+  // for release only during this script; legacy Skip keeps its original latch.
+  const releaseControl = event => {
+    if (event.key !== 'Control') return;
+    controlHeld = false;
+    keyboardSkipping = false;
+    skipping = buttonSkipping;
+  };
+  const releaseReadSkip = () => { controlHeld = false; stopReadSkip(); };
+  const hiddenReadSkip = () => { if (document.hidden) releaseReadSkip(); };
+  if (reader) {
+    globalThis.addEventListener?.('keyup', releaseControl);
+    globalThis.addEventListener?.('blur', releaseReadSkip);
+    document.addEventListener?.('visibilitychange', hiddenReadSkip);
+  }
+  try {
+    await run(script);
+  } finally {
+    if (reader) {
+      globalThis.removeEventListener?.('keyup', releaseControl);
+      globalThis.removeEventListener?.('blur', releaseReadSkip);
+      document.removeEventListener?.('visibilitychange', hiddenReadSkip);
+    }
+  }
   game.audio.stopVoice?.();
   game.storyStatus={id:checkpoint?.id??null,paused:cancelled,choices:[]};
   advance = null;

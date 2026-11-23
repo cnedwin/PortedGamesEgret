@@ -12,6 +12,7 @@ import { PLACES, PLACE_IDS, SLOTS_OF_DAY, DATE_SPOTS } from '../data/places.mjs'
 import { GIFTS, CLOTHES } from '../data/items.mjs';
 import { CHAPTERS_SCRIPT, linxiaChapterOneAfterMeeting } from '../story/chapters.mjs';
 import { bailuMainChapter } from '../story/bailu-zero.mjs';
+import { qinggeFestivalRoute } from '../story/qingge-festival.mjs';
 import { CHAT_LINES, GIFT_LINES, DATE_LINES, JEALOUS_LINES } from '../story/lines.mjs';
 import * as sim from '../sim.mjs';
 import { playScript } from './story.mjs';
@@ -239,11 +240,15 @@ async function placeScreen(game, placeId) {
       if (girl === 'linxia' && chapter === 1 && firstEveningStatus(s)?.phase === 'completed') {
         script = linxiaChapterOneAfterMeeting();
       }
-      if (girl === 'qingge') {
-        if (chapter === 3) game.saveQinggeBranch();
-        if (chapter === 4) script = qinggeChapterFour(s);
+      let reader;
+      if (girl === 'qingge' && chapter === 3) {
+        game.saveQinggeBranch();
+        reader = game.memoryScenes.track('qingge-budget');
+      } else if (girl === 'qingge' && chapter === 4) {
+        script = qinggeChapterFour(s);
+        reader = game.memoryScenes.track(`qingge-preparation-${qinggeFestivalRoute(s)}`);
       }
-      await playScript(game, script, { girl });
+      await playScript(game, script, { girl, reader });
       sim.finishChapter(s, girl, chapter);
       game.save();
       game.toast(`${L(HEROINES[girl].name)} · ${L(['故事第 ', 'Story chapter '])}${chapter}${L([' 章 完成', ' complete'])}`, 'good');

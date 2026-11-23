@@ -115,6 +115,10 @@ Money from work buys clothes, presents and supplies (energy drinks and books tha
 
 "Memories" on the title screen keeps what carries over between terms: fifteen endings (two for each senior and one for going alone), eighteen achievements, and the ten perks they unlock. From the second term on, a new term can begin with one perk, such as every stat +4, seeing the distance she likes from your first talk, ten more energy each morning, or ¥600 more to start with. When a term ends, the endings, achievements and perks it unlocked are listed.
 
+打开回忆册即可进入「名场面回看」。清歌的两条星空祭尾声分别解锁，预算会书签可以用来试另一种回答。完成白露特别篇或林夏首约后，也能从头回看。点「快进已读」会在新对白和选择处停下。退出回看并关闭回忆册后，点「继续学期」即可接着玩当前学期。
+
+Open Memories to replay scenes you have unlocked. Qingge's two festival epilogues unlock separately. Use the budget meeting bookmark to try the other answer. Completing Bai Lu's interlude or Lin Xia's first meeting lets you replay it from the start. Skip read pauses for unread lines and choices. Exit the replay and close Memories to resume your current term.
+
 ### 结局 · Endings
 
 星空祭之夜可以向好感达到 55 的学姐告白。读完她的全部四章且好感达到 88，会进入她的恋爱结局；否则是“未完待续”。也可以谁都不说。每位学姐各有两种结局，另有一个独自的结局。
