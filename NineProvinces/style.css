@@ -66,6 +66,10 @@ input {
   background: #7a6e52;
 }
 #stageHost canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   display: block;
   outline: none;
   touch-action: none;
@@ -1919,4 +1923,875 @@ h3 small {
     animation: none !important;
     transition: none !important;
   }
+}
+
+/* ——— Plates over the 3D realm ——— */
+#plates {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.plate {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: auto;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  font: 600 12px/1.2 "Noto Sans SC", "PingFang SC", "Microsoft YaHei", "Noto Sans CJK SC", sans-serif;
+  color: #f2ede2;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.9);
+}
+.plate.place {
+  translate: -50% -100%;
+  padding: 2px 8px 2px 2px;
+  background: linear-gradient(rgba(22, 26, 32, 0.86), rgba(14, 17, 22, 0.86));
+  border: 1px solid rgba(214, 196, 150, 0.35);
+  border-radius: 2px;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.45);
+}
+.plate .seal {
+  display: grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  background: var(--c, #6b6760);
+  color: #fff;
+  font: 700 13px/1 var(--kai);
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 0 1px rgba(0, 0, 0, 0.5);
+}
+.plate .pname {
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+.plate .pbar {
+  position: absolute;
+  left: 26px;
+  right: 6px;
+  bottom: 2px;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.plate .pbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #c8a656, #f0d58a);
+}
+.plate.place.pass,
+.plate.place.port {
+  opacity: 0.9;
+  font-size: 11px;
+}
+.plate.place.pass .seal,
+.plate.place.port .seal {
+  width: 16px;
+  height: 16px;
+  font-size: 11px;
+}
+.plate.place.capital .pname::after {
+  content: " ◆";
+  color: #e8c66a;
+  font-size: 9px;
+}
+.plate.place.siege {
+  border-color: rgba(230, 80, 60, 0.9);
+  animation: siegePulse 1.2s ease-in-out infinite;
+}
+@keyframes siegePulse {
+  50% {
+    box-shadow: 0 0 10px rgba(230, 70, 50, 0.8);
+  }
+}
+.plate.chosen {
+  border-color: #f0d070;
+  box-shadow: 0 0 0 1px #f0d070, 0 0 12px rgba(240, 208, 112, 0.6);
+}
+.plate.army {
+  translate: -22px -50%;
+  gap: 4px;
+}
+.plate.army .ring {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  padding: 2px;
+  background: var(--c, #888);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  flex: none;
+}
+.plate.army.mine .ring {
+  background: conic-gradient(#f3d98c, #b8913e, #f3d98c, #b8913e, #f3d98c);
+}
+.plate.army .face {
+  display: block;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 18%;
+  background: #2a2a2a;
+}
+.plate.army .ainfo {
+  display: grid;
+  gap: 1px;
+  min-width: 64px;
+  padding: 2px 6px 3px;
+  background: linear-gradient(90deg, rgba(20, 24, 30, 0.88), rgba(20, 24, 30, 0.6));
+  border-left: 2px solid var(--c, #888);
+}
+.plate.army .aname {
+  font-size: 12px;
+}
+.plate.army .atroops {
+  font: 600 11px/1 "DIN Alternate", "Roboto Condensed", "Arial Narrow", sans-serif;
+  color: #9fc6ff;
+}
+.plate.army .pbar {
+  position: static;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.plate.army .pbar i {
+  background: linear-gradient(90deg, #3f78c8, #7fb4ff);
+}
+#plates.far .plate.army .ainfo {
+  display: none;
+}
+#plates.far .plate.army .ring {
+  width: 28px;
+  height: 28px;
+}
+#plates.far .plate.army .face {
+  width: 24px;
+  height: 24px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════
+   The war-room look, laid over everything above: dark lacquered panels edged in bronze over the 3D realm, light
+   lettering, gold for what matters, cinnabar for danger and command. The rules above keep the layout; these give the
+   look. 军帐之色：铜边黑漆的面板浮在 3D 天下之上，浅色文字，金色标要紧处，朱红标危急与号令。上面的规则管布局，
+   这里管样子。
+   ═══════════════════════════════════════════════════════════════════════════════════════════════════════════════ */
+:root {
+  --panel-top: rgba(30, 36, 46, 0.95);
+  --panel-bottom: rgba(15, 19, 26, 0.96);
+  --edge: rgba(196, 160, 92, 0.42);
+  --edge-strong: rgba(222, 186, 112, 0.8);
+  --text: #ebe5d6;
+  --muted: #98a1ab;
+  --gilt: #d9b66b;
+  --gilt-2: #f1d792;
+  --red: #c4463a;
+  --red-2: #e0604e;
+  --sky: #8fbaf0;
+  --leaf: #7cc596;
+  --sans: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Source Han Sans SC", "Noto Sans CJK SC", sans-serif;
+  --silk: #ebe5d6;
+  --ink: #ebe5d6;
+  --ink-2: #98a1ab;
+  color-scheme: dark;
+}
+html,
+body {
+  background: #1a1f24;
+  font: 14px/1.5 var(--sans);
+  color: var(--text);
+}
+#loading {
+  background: radial-gradient(60% 60% at 50% 45%, #232a33, #0e1116);
+  color: var(--gilt);
+  letter-spacing: 0.2em;
+}
+
+/* Panels share one frame: lacquer, a bronze hairline, and bright corner brackets. */
+#side,
+.sheet,
+.setupPanel,
+.bDeploy,
+.ucard,
+#log,
+#tip,
+.toast,
+.bFeed p,
+.bHelp {
+  background: linear-gradient(var(--panel-top), var(--panel-bottom));
+  border: 1px solid var(--edge);
+  color: var(--text);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05), inset 0 0 0 1px rgba(0, 0, 0, 0.6);
+  border-radius: 3px;
+}
+#side,
+.sheet,
+.setupPanel,
+.bDeploy {
+  position: relative;
+  background-image: linear-gradient(var(--panel-top), var(--panel-bottom)), linear-gradient(transparent, transparent);
+}
+#side::before,
+.sheet::before,
+.setupPanel::before,
+.bDeploy::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  pointer-events: none;
+  border-radius: 2px;
+  background:
+    linear-gradient(var(--edge-strong), var(--edge-strong)) left top / 14px 1px no-repeat,
+    linear-gradient(var(--edge-strong), var(--edge-strong)) left top / 1px 14px no-repeat,
+    linear-gradient(var(--edge-strong), var(--edge-strong)) right top / 14px 1px no-repeat,
+    linear-gradient(var(--edge-strong), var(--edge-strong)) right top / 1px 14px no-repeat,
+    linear-gradient(var(--edge-strong), var(--edge-strong)) left bottom / 14px 1px no-repeat,
+    linear-gradient(var(--edge-strong), var(--edge-strong)) left bottom / 1px 14px no-repeat,
+    linear-gradient(var(--edge-strong), var(--edge-strong)) right bottom / 14px 1px no-repeat,
+    linear-gradient(var(--edge-strong), var(--edge-strong)) right bottom / 1px 14px no-repeat;
+}
+.sheet.scroll::before,
+.sheet.scroll::after {
+  content: '';
+}
+
+/* Buttons: dark bars with a bronze hairline; the main one is cinnabar; a chosen one glows gold. */
+.btn {
+  background: linear-gradient(#323b47, #1f252e);
+  border: 1px solid rgba(214, 180, 106, 0.38);
+  color: var(--text);
+  border-radius: 2px;
+  font-weight: 600;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.07), 0 1px 2px rgba(0, 0, 0, 0.5);
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+}
+.btn:hover:not(:disabled) {
+  background: linear-gradient(#3b4553, #262d37);
+  border-color: var(--edge-strong);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 0 10px rgba(217, 182, 107, 0.25);
+}
+.btn.main {
+  background: linear-gradient(#a33a2e, #6e1f18);
+  border-color: rgba(241, 215, 146, 0.7);
+  color: #fff6e4;
+}
+.btn.main:hover:not(:disabled) {
+  background: linear-gradient(#b8463a, #7e271f);
+}
+.btn.danger {
+  background: linear-gradient(#3a2422, #261716);
+  color: #f0a59a;
+  border-color: rgba(224, 96, 78, 0.6);
+}
+.btn.on {
+  background: linear-gradient(#6b5a30, #3f3418);
+  border-color: var(--gilt);
+  color: var(--gilt-2);
+}
+:focus-visible {
+  outline: 2px solid var(--gilt-2);
+}
+.seal {
+  color: #fffaf0;
+  border-radius: 2px;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 250, 235, 0.45), 0 0 0 1px rgba(0, 0, 0, 0.7), 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+.bar {
+  background: rgba(255, 255, 255, 0.09);
+  border-radius: 1px;
+  height: 5px;
+}
+.bar i {
+  border-radius: 1px;
+  background: #8a939e;
+}
+.bar.good i {
+  background: linear-gradient(90deg, #3f8f62, #7cc596);
+}
+.bar.bad i {
+  background: linear-gradient(90deg, #8e2a20, #e0604e);
+}
+.bar.gold i {
+  background: linear-gradient(90deg, #a98538, #f1d792);
+}
+.bar.stone i {
+  background: linear-gradient(90deg, #6d7480, #aab2bc);
+}
+.bar.blue i {
+  background: linear-gradient(90deg, #345f9e, #8fbaf0);
+}
+.bar.rage i {
+  background: linear-gradient(90deg, #8a4a22, #e0904a);
+}
+.face {
+  background: #2a2f36;
+  box-shadow: 0 0 0 1px rgba(214, 180, 106, 0.45), 0 2px 4px rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+}
+.dim,
+.stat .k,
+.sub,
+.note small,
+.chip small,
+.unitCard small,
+.tech small,
+.branch small,
+.tr .nm small,
+.tr.thead,
+.officerHead,
+.officer .cap,
+.sb .k,
+.tier .tn,
+.chron p,
+#log time,
+.chron time,
+.bu small,
+.un small,
+.names small,
+.power .pw small,
+.power .rg small,
+h3 small {
+  color: var(--muted);
+}
+.stat .v {
+  color: var(--text);
+}
+h3 {
+  font: 700 14px var(--sans);
+  letter-spacing: 0.08em;
+  color: var(--gilt);
+  border-bottom: 1px solid rgba(214, 180, 106, 0.28);
+}
+.hint,
+.status {
+  color: var(--sky);
+}
+.neg {
+  color: var(--red-2);
+}
+.tabs {
+  border-bottom-color: rgba(214, 180, 106, 0.3);
+}
+.tab {
+  color: var(--muted);
+}
+.tab[aria-selected='true'] {
+  color: var(--gilt-2);
+  border-bottom-color: var(--gilt);
+}
+.choice {
+  border-color: rgba(214, 180, 106, 0.38);
+  border-radius: 2px;
+}
+.choice button {
+  background: #1d232b;
+  color: var(--text);
+  border-right-color: rgba(214, 180, 106, 0.2);
+}
+.choice button[aria-checked='true'] {
+  background: linear-gradient(#6b5a30, #3f3418);
+  color: var(--gilt-2);
+}
+input.find,
+.find {
+  background: #12161c;
+  color: var(--text);
+  border-color: rgba(214, 180, 106, 0.38);
+}
+.range {
+  accent-color: var(--gilt);
+}
+
+/* ——— The top bar: a strip of black lacquer with a bronze rule ——— */
+#topbar {
+  background: linear-gradient(rgba(18, 22, 29, 0.97), rgba(12, 15, 20, 0.92));
+  border-bottom: 1px solid rgba(214, 180, 106, 0.55);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.5), inset 0 -3px 0 rgba(0, 0, 0, 0.4);
+  min-height: 50px;
+  color: var(--text);
+}
+#topbar::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 3px;
+  background: linear-gradient(90deg, transparent, rgba(214, 180, 106, 0.35) 20%, rgba(214, 180, 106, 0.35) 80%, transparent);
+  pointer-events: none;
+}
+#topbar button {
+  color: var(--text);
+}
+.realmName {
+  font: 700 18px var(--kai);
+  color: #fff6e0;
+}
+.date {
+  font: 600 15px var(--kai);
+  color: var(--gilt-2);
+}
+.res {
+  gap: 4px;
+}
+.res .r {
+  gap: 5px;
+  padding: 3px 9px 3px 7px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  font: 600 14px var(--sans);
+  color: #f4efe2;
+}
+.res b {
+  font: 600 11.5px var(--sans);
+  color: var(--gilt);
+}
+.res small {
+  color: var(--leaf);
+}
+.res small.neg {
+  color: var(--red-2);
+}
+.study {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(214, 180, 106, 0.35);
+  border-radius: 2px;
+}
+.clock .pause {
+  border-color: rgba(214, 180, 106, 0.5);
+  background: #1b2028;
+  border-radius: 2px;
+}
+.clock .pause[aria-pressed='true'] {
+  background: linear-gradient(#a33a2e, #6e1f18);
+}
+.clock .spd i {
+  background: rgba(235, 229, 214, 0.25);
+}
+.menuBtn {
+  font: 600 14px var(--sans);
+  letter-spacing: 0.06em;
+  padding: 6px 10px;
+  border-radius: 2px;
+  border: 1px solid transparent;
+}
+.menuBtn:hover {
+  background: rgba(214, 180, 106, 0.12);
+  border-color: rgba(214, 180, 106, 0.35);
+}
+.pausedMark {
+  background: linear-gradient(#a33a2e, #6e1f18);
+  border: 1px solid rgba(241, 215, 146, 0.6);
+  font: 600 13px var(--sans);
+  letter-spacing: 0.2em;
+  border-radius: 2px;
+}
+
+/* ——— The side panel, the chronicle, notes ——— */
+#side {
+  top: 64px;
+  width: 340px;
+  padding: 14px 16px 16px;
+}
+.sideHead h2 {
+  font: 700 24px/1.15 var(--kai);
+  color: #fff6e0;
+  letter-spacing: 0.06em;
+}
+.x {
+  color: var(--muted);
+}
+.x:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--text);
+}
+.alarm {
+  background: linear-gradient(90deg, rgba(196, 70, 58, 0.9), rgba(196, 70, 58, 0.35));
+  border-left: 3px solid var(--red-2);
+}
+.work .wl {
+  color: var(--muted);
+}
+.work .wd {
+  color: var(--sky);
+}
+.chip {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(214, 180, 106, 0.25);
+  border-radius: 2px;
+  color: var(--text);
+}
+.chip:hover {
+  background: rgba(214, 180, 106, 0.12);
+}
+.chip .busy {
+  color: var(--sky);
+}
+#log {
+  width: 340px;
+  font-size: 12.5px;
+  background: linear-gradient(rgba(20, 24, 31, 0.88), rgba(14, 17, 22, 0.9));
+}
+#log h3 {
+  font-size: 12px;
+}
+#log li {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+.link {
+  color: var(--gilt-2);
+}
+.toast {
+  border-left: 3px solid var(--gilt);
+  font-size: 14px;
+}
+.toast.bad {
+  border-left-color: var(--red-2);
+}
+.toast.good {
+  border-left-color: var(--leaf);
+}
+.toast.tale {
+  color: var(--gilt-2);
+}
+#tip {
+  border-color: var(--edge-strong);
+}
+#tip b {
+  color: var(--gilt-2);
+}
+#tip .hint {
+  color: var(--sky);
+}
+
+/* ——— Dialogs ——— */
+#modal {
+  background: radial-gradient(80% 80% at 50% 50%, rgba(6, 8, 12, 0.35), rgba(6, 8, 12, 0.72));
+}
+.sheet {
+  animation: rise 0.2s ease-out;
+}
+.dlgHead {
+  border-bottom: 1px solid rgba(214, 180, 106, 0.22);
+  padding-bottom: 10px;
+  margin-bottom: 8px;
+  background: linear-gradient(90deg, rgba(214, 180, 106, 0.08), transparent 60%);
+}
+.dlgHead h2 {
+  font: 700 22px var(--kai);
+  color: #fff6e0;
+  letter-spacing: 0.08em;
+}
+.dlgFoot {
+  border-top-color: rgba(214, 180, 106, 0.22);
+}
+.officer,
+.unitCard,
+.branch,
+.tech,
+.slot {
+  background: rgba(255, 255, 255, 0.035);
+  border-color: rgba(214, 180, 106, 0.2);
+  color: var(--text);
+  border-radius: 2px;
+}
+.officer:hover,
+.unitCard:hover:not(:disabled),
+.branch:hover,
+.tech:hover:not(:disabled) {
+  background: rgba(214, 180, 106, 0.09);
+}
+.officer[aria-pressed='true'],
+.unitCard[aria-pressed='true'],
+.branch[aria-pressed='true'] {
+  background: linear-gradient(90deg, rgba(214, 180, 106, 0.2), rgba(214, 180, 106, 0.05));
+  border-color: var(--gilt);
+  box-shadow: inset 3px 0 0 var(--gilt);
+}
+.officer .on em {
+  color: var(--red-2);
+}
+.tr {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+  color: var(--text);
+}
+.tr:hover {
+  background: rgba(214, 180, 106, 0.08);
+}
+.tr.thead {
+  border-bottom-color: rgba(214, 180, 106, 0.3);
+}
+.th[aria-pressed='true'] {
+  color: var(--gilt-2);
+}
+.power {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+.power .treaty.on {
+  color: var(--leaf);
+}
+.tech.done {
+  background: linear-gradient(90deg, rgba(124, 197, 150, 0.18), rgba(124, 197, 150, 0.04));
+  border-color: rgba(124, 197, 150, 0.6);
+}
+.tech.now {
+  background: linear-gradient(90deg, rgba(217, 182, 107, 0.25), rgba(217, 182, 107, 0.05));
+  border-color: var(--gilt);
+  box-shadow: inset 3px 0 0 var(--gilt);
+}
+.chron li {
+  border-bottom-color: rgba(255, 255, 255, 0.06);
+}
+.slot {
+  border-bottom-color: rgba(255, 255, 255, 0.07);
+}
+.sides .vs {
+  color: var(--red-2);
+}
+.stamp {
+  color: var(--red-2);
+  border-color: var(--red-2);
+  text-shadow: 0 0 18px rgba(224, 96, 78, 0.45);
+}
+.result.lost .stamp {
+  color: #8a939e;
+  border-color: #8a939e;
+}
+.when {
+  color: var(--red-2);
+}
+.sig {
+  background: var(--red);
+}
+/* The tale unrolls as a scroll of dark silk on gilt rollers. */
+.sheet.scroll {
+  background: linear-gradient(90deg, rgba(0, 0, 0, 0.25), transparent 7%, transparent 93%, rgba(0, 0, 0, 0.25)), linear-gradient(#262019, #17130f);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), inset 0 0 0 10px #1d1813, inset 0 0 0 11px rgba(217, 182, 107, 0.45);
+  color: #efe4c8;
+}
+.sheet.scroll::before,
+.sheet.scroll::after {
+  background: linear-gradient(#b08a3e, #5e4419 55%, #a07b34);
+  inset: auto -14px;
+  height: 16px;
+}
+.sheet.scroll::before {
+  top: -10px;
+}
+.sheet.scroll::after {
+  bottom: -10px;
+}
+.sheet.scroll .dlgHead {
+  background: none;
+  border-bottom: 0;
+}
+.sheet.scroll .dlgHead h2 {
+  color: var(--gilt-2);
+}
+.tale {
+  color: #efe4c8;
+}
+
+/* ——— Title and setup: the menu on a dark band at the left, the realm alive behind ——— */
+#title {
+  background: linear-gradient(90deg, rgba(8, 10, 14, 0.82) 0%, rgba(8, 10, 14, 0.55) 34%, rgba(8, 10, 14, 0) 62%), linear-gradient(0deg, rgba(8, 10, 14, 0.55), transparent 30%);
+}
+.titleMenu .btn {
+  font: 700 16px var(--sans);
+  letter-spacing: 0.12em;
+  min-width: 15em;
+  padding: 11px 20px;
+  background: linear-gradient(90deg, rgba(30, 36, 46, 0.92), rgba(30, 36, 46, 0.55));
+  border: 1px solid rgba(214, 180, 106, 0.35);
+  border-left: 3px solid rgba(214, 180, 106, 0.7);
+}
+.titleMenu .btn.main {
+  background: linear-gradient(90deg, rgba(163, 58, 46, 0.95), rgba(110, 31, 24, 0.7));
+  border-left-color: var(--gilt-2);
+}
+.subtitle {
+  color: #efe4c8;
+}
+.title.setup {
+  background: linear-gradient(90deg, rgba(8, 10, 14, 0.7), rgba(8, 10, 14, 0) 55%);
+}
+
+/* ——— The battle on the map ——— */
+.bTop {
+  background: linear-gradient(rgba(18, 22, 29, 0.95), rgba(12, 15, 20, 0.88));
+  border-bottom: 1px solid rgba(214, 180, 106, 0.55);
+  color: var(--text);
+}
+.bTop .clock .spd {
+  border-color: rgba(214, 180, 106, 0.4);
+  color: var(--text);
+  background: #1b2028;
+}
+.bTop .clock .spd[aria-pressed='true'] {
+  background: linear-gradient(#e0c27a, #a98538);
+  color: #1a1408;
+}
+.bSide.ours {
+  width: 262px;
+}
+.bSide.theirs {
+  width: 210px;
+}
+.ucard {
+  padding: 6px 8px;
+  background: linear-gradient(rgba(28, 34, 44, 0.9), rgba(15, 19, 26, 0.9));
+}
+.ucard.ours {
+  border-left: 3px solid var(--sky);
+}
+.ucard.theirs {
+  background: linear-gradient(rgba(40, 26, 26, 0.88), rgba(22, 15, 15, 0.9));
+  border-left: 3px solid var(--red-2);
+}
+.ucard.on {
+  border-color: var(--gilt);
+  box-shadow: 0 0 0 1px var(--gilt), 0 0 14px rgba(217, 182, 107, 0.35);
+}
+.tac {
+  background: #1d232b;
+  color: var(--muted);
+  border-color: rgba(214, 180, 106, 0.25);
+  font: 600 12px var(--sans);
+}
+.tac.sig {
+  color: #f0a59a;
+  border-color: rgba(224, 96, 78, 0.6);
+}
+.tac:not(:disabled) {
+  background: linear-gradient(#f3d38a, #c98d2e);
+  color: #2a1a06;
+  box-shadow: 0 0 8px rgba(255, 180, 70, 0.7);
+}
+.tac[aria-pressed='true'] {
+  background: linear-gradient(#c4463a, #7e271f);
+  color: #fff6e4;
+}
+.bHelp {
+  font-size: 12.5px;
+  color: var(--muted);
+}
+.bFeed p {
+  font-size: 13px;
+}
+.plate.unit {
+  translate: -22px -50%;
+  gap: 4px;
+}
+.plate.unit .ring {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  padding: 2px;
+  background: var(--c, #888);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6), inset 0 0 0 1px rgba(255, 255, 255, 0.3);
+  flex: none;
+}
+.plate.unit .face {
+  display: block;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  object-fit: cover;
+  object-position: 50% 18%;
+}
+.plate.unit .face.blank {
+  display: grid;
+  place-items: center;
+  font: 700 14px var(--kai);
+  color: #fff;
+  background: #2a2f36;
+}
+.plate.unit .ainfo {
+  display: grid;
+  gap: 1px;
+  min-width: 58px;
+  padding: 2px 6px 3px;
+  background: linear-gradient(90deg, rgba(20, 24, 30, 0.88), rgba(20, 24, 30, 0.55));
+  border-left: 2px solid var(--c, #888);
+}
+.plate.unit .aname {
+  font-size: 11.5px;
+}
+.plate.unit .atroops {
+  font: 600 11px/1 var(--sans);
+  color: var(--sky);
+}
+.plate.unit:not(.mine) .atroops {
+  color: #f3a093;
+}
+.plate.unit .pbar,
+.plate.unit .rbar {
+  position: static;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.12);
+}
+.plate.unit .pbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #3f78c8, #7fb4ff);
+}
+.plate.unit:not(.mine) .pbar i {
+  background: linear-gradient(90deg, #a8392c, #f07a62);
+}
+.plate.unit .rbar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #a06a22, #f3c55e);
+}
+.plate.unit.full .ring {
+  box-shadow: 0 0 0 2px #f3c55e, 0 0 12px rgba(243, 197, 94, 0.9);
+}
+.plate.unit.routed {
+  opacity: 0.55;
+}
+.plate.unit.chosen .ring {
+  box-shadow: 0 0 0 2px #fff2b8, 0 0 14px rgba(255, 230, 150, 0.9);
+}
+#plates.battle .plate.place,
+#plates.battle .plate.army {
+  display: none;
+}
+#battleFx {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.floater {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font: 800 17px/1 var(--sans);
+  color: #ffd25e;
+  text-shadow: 0 0 3px #000, 0 2px 2px #000, 0 0 10px rgba(0, 0, 0, 0.6);
+  white-space: nowrap;
+  will-change: transform, opacity;
+}
+.floater.hurt {
+  color: #ff7a63;
+}
+.brush {
+  position: absolute;
+  left: 0;
+  top: 0;
+  font: 900 46px/1 var(--kai);
+  letter-spacing: 0.12em;
+  color: #fff7e2;
+  white-space: nowrap;
+  -webkit-text-stroke: 1px rgba(40, 10, 0, 0.6);
+  text-shadow: 0 0 18px rgba(255, 140, 50, 0.95), 0 0 4px rgba(150, 30, 10, 1), 0 3px 0 rgba(60, 20, 10, 0.9);
+  will-change: transform, opacity;
+}
+.brush.theirs {
+  text-shadow: 0 0 18px rgba(90, 140, 255, 0.95), 0 0 4px rgba(20, 30, 90, 1), 0 3px 0 rgba(10, 15, 40, 0.9);
+}
+.brush.sig {
+  font-size: 60px;
 }

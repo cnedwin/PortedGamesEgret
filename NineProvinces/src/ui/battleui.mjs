@@ -1,19 +1,18 @@
-// 亲自指挥的战斗：先布阵（每支部队的阵型，可在己方阵地内换位置），再开战。顶上是日落前的时间、风向、城门或粮仓的
-// 耐久、暂停与快慢、撤退；左边是己方各部的牌子（兵力、士气、怒气、异常、战法按钮、坚守与自动），右边是敌军。
-// 点己方部队选中，再点格子移动、点敌军进攻；怒气满时点战法，或交给自动。大将放出专属战法时，名号在画面中央亮一下。
-// A battle under the player's command: first deployment (each unit's formation, and its place within its own ground),
-// then the fighting. At the top, the time to sunset, the wind, the strength of the gate or the granary, pause and
-// speed, and retreat; on the left a card for each of our units (troops, morale, rage, ailments, tactic buttons, hold
-// and auto), on the right the enemy. Tap one of ours to choose it, then a hex to move or an enemy to attack; tap a
-// tactic when rage is full, or leave it to auto. When a general unleashes his own signature tactic, its name lights up
-// in the middle of the field.
+// 亲自指挥的战斗，就在天下图上打：先布阵（每支部队的阵型，可在己方阵地内换位置），再开战。顶上是日落前的时间、
+// 风向、城门或粮仓的耐久、暂停与快慢、撤退；左边是己方各部的牌子（兵力、士气、怒气、异常、战法按钮、坚守与自动），
+// 右边是敌军。点己方部队选中，再点格子移动、点敌军进攻；怒气满时点战法，或交给自动。
+// A battle under the player's command, fought on the realm's own map: first deployment (each unit's formation, and its
+// place within its own ground), then the fighting. At the top, the time to sunset, the wind, the strength of the gate
+// or the granary, pause and speed, and retreat; on the left a card for each of our units (troops, morale, rage,
+// ailments, tactic buttons, hold and auto), on the right the enemy. Tap one of ours to choose it, then a hex to move or
+// an enemy to attack; tap a tactic when rage is full, or leave it to auto.
 import { FORMATIONS, TERRAIN, UNITS } from '../data/battle.mjs';
 import { TACTICS } from '../data/tactics.mjs';
-import { colOf, command, createBattle, FIELD, outcome, stepBattle, useTactic } from '../sim/battle.mjs';
+import { command, createBattle, outcome, stepBattle, useTactic } from '../sim/battle.mjs';
 import { finishBattle } from '../sim/military.mjs';
 import { nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
-import { createBattleView } from '../view/battleview.mjs';
+import { createBattle3D } from '../view3d/battle3d.mjs';
 import { $, bar, button, clear, face, h, seal } from './dom.mjs';
 import { tacticText } from './text.mjs';
 
@@ -37,16 +36,12 @@ export function startBattle(app, setup) {
     feed = [],
     shownKey = '',
     ended = false;
-  const view = createBattleView({
-    game: app.game,
-    canvas: app.canvas,
-    back: app.back,
-    width: app.stageSize.width,
-    height: app.stageSize.height,
-    battle: b,
+  const view = createBattle3D(app.map, b, {
     colours,
-    atlas: app.atlas,
-    dot: app.dot,
+    side,
+    fx,
+    plates: $('#plates'),
+    rulers: app.rulers(),
     on: {
       tapUnit(i) {
         const u = b.units[i];
@@ -74,12 +69,10 @@ export function startBattle(app, setup) {
           }
         } else {
           command(b, selected, 'move', hex);
+          view.goal(hex);
           app.sound.play('tap');
         }
         draw(true);
-      },
-      hover(i) {
-        app.hoverUnit = i;
       },
       event(ev) {
         const u = b.units[ev.unit];
@@ -100,16 +93,19 @@ export function startBattle(app, setup) {
       }
     }
   });
-  view.update(0);
 
   function isHelp(id) {
     return ['atk', 'def', 'spd', 'heal', 'rally', 'rage'].includes(TACTICS[id].kind);
   }
   function canDeploy(u, hex) {
     if (b.units.some((o) => o !== u && !o.gone && o.pos === hex)) return false;
-    const tile = b.tiles[hex],
-      c = colOf(hex);
-    if (u.side === 0 ? c > 5 : c < FIELD.cols - 7) return false;
+    const tile = b.tiles[hex];
+    // Each side forms up within five hexes of its own end of the field; defenders of walls within them.
+    let lo = Infinity,
+      hi = -Infinity;
+    for (const v of b.along) (lo = Math.min(lo, v)), (hi = Math.max(hi, v));
+    const town = tile === 'town' || tile === 'wall';
+    if (u.side === 0 ? b.along[hex] > lo + 5 || town : setup.kind === 'siege' ? !town : b.along[hex] < hi - 5) return false;
     if (tile === 'gate') return false;
     if (tile === 'wall') return u.side === 1 && UNITS[u.kind].range > 1;
     const water = TERRAIN[tile].water;
@@ -272,22 +268,10 @@ export function startBattle(app, setup) {
     clear(hud);
     clear(fx);
     app.endBattle({ setup, result });
+    if (setup.place.node) app.map.focus(setup.place.node, 70);
   }
 
   draw(true);
-  // The field fits between the cards on either side (or above them on a phone).
-  const k = app.stageSize.width / app.canvas.getBoundingClientRect().width;
-  const box = (sel) => hud.querySelector(sel)?.getBoundingClientRect();
-  const ours = box('.bSide.ours'),
-    theirs = box('.bSide.theirs'),
-    topBar = box('.bTop');
-  const below = ours && ours.top > innerHeight * 0.4;
-  view.frame({
-    left: !below && ours ? (ours.right + 6) * k : 0,
-    right: !below && theirs && theirs.width ? (innerWidth - theirs.left + 6) * k : 0,
-    top: (topBar?.bottom ?? 60) * k + 4,
-    bottom: below ? (innerHeight - ours.top) * k : 70 * k
-  });
   app.sound.theme('battle');
   return {
     update(dt) {
@@ -309,7 +293,6 @@ export function startBattle(app, setup) {
         }
         if (b.over) return end(b.over);
       }
-      view.update(dt);
       draw();
     },
     key(code) {
@@ -326,8 +309,8 @@ export function startBattle(app, setup) {
       else return false;
       return true;
     },
-    zoomBy: (f) => view.zoomBy(f),
-    panBy: (x, y) => view.panBy(x, y),
+    zoomBy: (f) => app.map.zoomBy(f),
+    panBy: (x, y) => app.map.panBy(x, y),
     get battle() {
       return b;
     },
