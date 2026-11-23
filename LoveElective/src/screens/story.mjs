@@ -19,12 +19,13 @@ const REVEAL_SPEED = 1150;
  * Play `script`. `girl` is the senior the choices affect.
  * Resolves when the script has finished and the dialogue box is gone.
  */
-export async function playScript(game, script, { girl = null, keepActor = false, light, checkpoint = null, outfit = null } = {}) {
+export async function playScript(game, script, { girl = null, keepActor = false, light, checkpoint = null, outfit = null, prefetchOpeningVoice = false } = {}) {
   const { stage, ui, world, L } = game;
   const lightNow = () => light ?? (game.state ? SLOTS_OF_DAY[game.state.slot].light : 'day');
   let skipping = false, cancelled = false, nextVoice = null;
   const saveCheckpoint=()=>{if(checkpoint)game.save();};
   const pause=()=>{cancelled=true;game.audio.stopVoice?.();advance?.();};
+  const skip=()=>{skipping=true;game.audio.stopVoice?.();};
   const actorSpec = (who, expression) => {
     const spec = game.spec(who, expression);
     return who === girl && outfit ? { ...spec, wear: outfit.lead.wear } : spec;
@@ -49,7 +50,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   ui.background = () => advance?.();
   ui.keys = key => {
     if (key === ' ' || key === 'Enter') advance?.();
-    if (key === 'Control') skipping = true;
+    if (key === 'Control') skip();
     if (key === 'Escape' && checkpoint) pause();
   };
   box.node.alpha = 0;
@@ -70,8 +71,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         p.text(name, 34 + w / 2, 9, { size: 22, weight: 750, family: SERIF, color: THEME.light, align: 'center' });
       }
       p.button(BOX.w - 122, 36, 96, 38, L(['跳过', 'Skip']), () => {
-        skipping = true;
-        game.audio.stopVoice?.();
+        skip();
         advance?.();
       }, { kind: 'plain', size: 15 });
       if(checkpoint){
@@ -85,6 +85,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
 
   /** Show one line of text and wait for a tap. */
   async function say(name, color, text, style = {}) {
+    if (cancelled) return;
     game.audio.stopVoice?.();
     game.storyStatus={id:checkpoint?.id??null,cursor:checkpoint?.cursor??null,speaker:name,text,choices:[],paused:false};
     const voiced = Boolean(nextVoice && !skipping);
@@ -114,11 +115,13 @@ export async function playScript(game, script, { girl = null, keepActor = false,
     done.clipRect = { x: 0, y: 0, width: 1, height: 1 };
     doing.clipRect = { x: 0, y: 0, width: 1, height: 1 };
     await Promise.all([textA.show(canvas, canvas.res, key), textB.show(canvas, canvas.res, key)]);
+    if (cancelled) return;
     if (skipping) {
       done.clipRect = { x: 0, y: 0, width: TEXT.w + 20, height: lines.length * lineH + 8 };
       await stage.wait(0.03);
       return;
     }
+    if (style.upcomingVoice) game.audio.prefetchVoice?.(style.upcomingVoice);
 
     await new Promise(resolve => {
       let line = 0,
@@ -126,6 +129,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         finished = false;
       const end = () => {
         stop();
+        game.audio.stopVoice?.();
         advance = null;
         resolve();
       };
@@ -180,7 +184,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       function choose(option) {
         ui.keys = k => {
           if (k === ' ' || k === 'Enter') advance?.();
-          if (k === 'Control') skipping = true;
+          if (k === 'Control') skip();
           if (k === 'Escape' && checkpoint) pause();
         };
         panel.close();
@@ -254,7 +258,9 @@ export async function playScript(game, script, { girl = null, keepActor = false,
           await stage.wait(a === 'heart' ? 0.7 : 0.35);
         }
       } else if (op === 'n') {
-        await say(null, THEME.soft, L([a, b]), { color: THEME.soft });
+        const upcoming = steps[index + 1];
+        const upcomingVoice = prefetchOpeningVoice && upcoming?.[0] === 'voice' ? upcoming[1] : undefined;
+        await say(null, THEME.soft, L([a, b]), { color: THEME.soft, upcomingVoice });
       } else if (op === 'me') {
         await say(L(['我', 'Me']), THEME.sky, L([a, b]));
       } else if (op === 'th') {
