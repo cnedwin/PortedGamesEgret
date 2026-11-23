@@ -4,7 +4,6 @@
 import {
   Mesh3D,
   Texture3D,
-  Object3D,
   createGeometry3D,
   createParticleEmitter3D,
   createGpuParticles3D,
@@ -37,6 +36,31 @@ function spriteTexture(kind = 'dot') {
 }
 
 const TRAIL = 10;
+const UP = [0, 1, 0];
+
+/** Place the effect at the near side of the defender, with a small correction from a nearby blade. */
+function contact(e, body, from, blade, depth) {
+  const dx = body[0] - from[0],
+    dz = body[2] - from[2],
+    d = Math.hypot(dx, dz) || 1,
+    x = dx / d,
+    z = dz / d;
+  const point = [body[0] - x * depth, body[1] + (e.kick ? -0.32 : e.line === 'O' ? 0.18 : 0), body[2] - z * depth];
+  if (blade) {
+    const [base, tip] = blade;
+    const ray = tip.map((v, i) => v - base[i]);
+    const lengthSquared = ray.reduce((sum, v) => sum + v * v, 0);
+    if (lengthSquared > 1e-6) {
+      const t = ray.reduce((sum, v, i) => sum + v * (point[i] - base[i]), 0) / lengthSquared;
+      const close = ray.map((v, i) => base[i] + v * Math.max(0, Math.min(1, t)));
+      // The logical sweep can reach while the animated sword tip is far away. Keep those sparks at the body.
+      if (Math.hypot(...close.map((v, i) => v - point[i])) < 0.6)
+        for (let i = 0; i < point.length; i++) point[i] += (close[i] - point[i]) * 0.48;
+    }
+  }
+  const side = e.line === 'L' ? -1 : e.line === 'R' ? 1 : 0;
+  return { point, away: [x + side * z * 0.65, 0.24, z - side * x * 0.65], back: [-x + side * z * 0.65, 0.4, -z - side * x * 0.65] };
+}
 
 /**
  * A blade's sweep: the last few places of the outer part of the blade joined into a ribbon, bright at the edge and
@@ -58,6 +82,7 @@ function createSweep(scene) {
   mesh.frustumCulled = false;
   mesh.castShadow = false;
   mesh.renderOrder = 5;
+  mesh.visible = false;
   scene.addChild(mesh);
   const points = [];
   return {
@@ -66,7 +91,13 @@ function createSweep(scene) {
       points.unshift({ base, tip, strength, tint });
       if (points.length > TRAIL) points.pop();
     },
+    clear() {
+      points.length = 0;
+      mesh.visible = false;
+    },
     update(dt) {
+      mesh.visible = points.length > 1;
+      if (!points.length) return;
       const pos = geometry.getAttribute('position').data,
         col = geometry.getAttribute('color').data;
       for (let i = 0; i < TRAIL; i++) {
@@ -101,14 +132,17 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     return e;
   };
   const sparks = emitter({ capacity: 260, lifetime: [0.18, 0.5], speed: [3, 9], spread: Math.PI, gravity: [0, -9, 0], drag: 1.2, startSize: 0.05, endSize: 0.01, startColor: 0xfff2c8, endColor: 0xff7a20, startOpacity: 1, endOpacity: 0, blending: 'additive', shape: 'sphere', radius: 0.04 });
+  const parry = emitter({ capacity: 96, lifetime: [0.09, 0.29], speed: [4, 8], spread: 0.8, gravity: [0, -9, 0], drag: 2.8, startSize: 0.065, endSize: 0.009, startColor: 0xf3faff, endColor: 0x98c6ff, startOpacity: 1, endOpacity: 0, blending: 'additive', shape: 'sphere', radius: 0.025 });
+  const impact = emitter({ capacity: 64, lifetime: [0.05, 0.16], speed: [0.55, 2.3], spread: 0.7, gravity: [0, -4, 0], drag: 4.8, startSize: 0.085, endSize: 0.025, startColor: 0xf5d4a2, endColor: 0xa88866, startOpacity: 0.8, endOpacity: 0, blending: 'normal', shape: 'sphere', radius: 0.047 });
   const red = emitter({ capacity: 220, lifetime: [0.3, 0.8], speed: [1, 3.6], spread: 1.1, gravity: [0, -7, 0], drag: 1.6, startSize: 0.07, endSize: 0.16, startColor: 0x7a0a06, endColor: 0x3a0503, startOpacity: 0.9, endOpacity: 0, shape: 'sphere', radius: 0.08 });
   const dust = emitter({ capacity: 200, lifetime: [0.6, 1.4], speed: [0.4, 1.4], spread: 1.3, direction: [0, 1, 0], gravity: [0, 0.3, 0], drag: 2.4, startSize: 0.2, endSize: 0.9, startColor: 0xb8a58a, endColor: 0xd8c8b0, startOpacity: 0.35, endOpacity: 0, shape: 'sphere', radius: 0.3 });
   const glow = emitter({ capacity: 160, lifetime: [0.25, 0.6], speed: [0.5, 2.5], spread: Math.PI, gravity: [0, 1.5, 0], drag: 2, startSize: 0.14, endSize: 0.02, startColor: 0xfff0b0, endColor: 0xffa040, startOpacity: 0.9, endOpacity: 0, blending: 'additive', shape: 'sphere', radius: 0.2 });
   const venom = emitter({ capacity: 260, lifetime: [1.2, 2.2], speed: [0.2, 0.7], spread: Math.PI, gravity: [0, 0.25, 0], drag: 1.2, startSize: 0.5, endSize: 1.4, startColor: 0x6a9a2a, endColor: 0x2c4a10, startOpacity: 0.32, endOpacity: 0, shape: 'sphere', radius: 1.6 });
   const fire = emitter({ capacity: 160, lifetime: [0.3, 0.8], speed: [2, 6], spread: Math.PI, gravity: [0, 3, 0], drag: 2.2, startSize: 0.5, endSize: 1.2, startColor: 0xffd890, endColor: 0x802010, startOpacity: 0.9, endOpacity: 0, blending: 'additive', shape: 'sphere', radius: 0.4 });
+  const fightEmitters = [sparks, parry, impact, red, dust, glow, venom, fire];
   const burst = (e, at, n, dir) => {
     e.setPosition(at[0], at[1], at[2]);
-    if (dir) e.direction = dir;
+    e.direction.set(dir ?? UP);
     e.burst(Math.max(1, Math.round(n * particles)));
   };
 
@@ -164,30 +198,41 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
   };
 
   /** Answer one event of the fight. `where(id)` gives a man's chest place. */
-  fx.event = (e, where, bladeOf) => {
+  fx.event = (e, where, bladeOf, { shield = false, armoured = false } = {}) => {
     const at = where(e.who);
     switch (e.type) {
       case 'block':
       case 'deflect': {
+        const blade = e.arrow ? null : bladeOf(e.by);
+        const { point, back } = contact(e, at, where(e.by), blade, shield ? 0.43 : 0.34);
+        if (e.type === 'deflect') {
+          burst(parry, point, 24, back);
+          burst(glow, point, 4, back);
+        } else if (shield) {
+          burst(impact, point, e.arrow ? 3 : 6, back);
+          burst(sparks, point, e.arrow ? 4 : 8, back);
+        } else {
+          burst(sparks, point, e.arrow ? 6 : e.heavy ? 17 : 12, back);
+        }
         if (e.arrow) {
-          burst(sparks, at, 10);
           break;
         }
-        const blade = bladeOf(e.by);
-        const p = blade ? blade[1].map((v, i) => (v + at[i]) / 2) : at;
-        burst(sparks, p, e.type === 'deflect' ? 48 : 22);
-        if (e.type === 'deflect') burst(glow, p, 10);
-        flash.setPosition(p[0], p[1], p[2]);
-        flash.intensity = e.type === 'deflect' ? 9 : 4;
-        flashLife = 0.12;
+        flash.setPosition(point[0], point[1], point[2]);
+        flash.intensity = e.type === 'deflect' ? 5.6 : shield ? 1.5 : 2.8;
+        flashLife = 0.095;
         break;
       }
-      case 'hit':
-        if (e.quiet) break;
-        if (fx.blood && !e.poison) burst(red, at, e.heavy || e.crit ? 26 : 12);
-        if (e.crit) burst(sparks, at, 8);
+      case 'hit': {
+        if (e.quiet || e.poison) break;
+        const strong = e.heavy > 0.5 || e.crit || e.broke;
+        const blade = e.arrow || e.kick || !e.line ? null : bladeOf(e.by);
+        const { point, away, back } = contact(e, at, e.by ? where(e.by) : at, blade, 0.23);
+        burst(impact, point, strong ? 8 : e.arrow ? 3 : 5, away);
+        if (e.glance || armoured || e.crit) burst(sparks, point, e.glance ? 9 : strong ? 8 : 4, back);
+        if (fx.blood && !e.kick && !e.glance) burst(red, point, strong ? 16 : e.arrow ? 4 : 8, away);
         if (e.kick) burst(dust, [at[0], 0.2, at[2]], 6);
         break;
+      }
       case 'break':
         burst(sparks, at, 30);
         burst(glow, at, 12);
@@ -234,7 +279,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
 
   /** Each frame: fly the arrows, place webs, run the emitters. */
   fx.update = (dt, game) => {
-    for (const e of [sparks, red, dust, glow, venom, fire]) e.update(dt);
+    for (const e of fightEmitters) e.update(dt);
     if (flashLife > 0) {
       flashLife -= dt;
       flash.intensity *= Math.exp(-dt * 18);
@@ -327,7 +372,15 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     arrows.clear();
     for (const [, m] of webs) m.removeFromParent();
     webs.clear();
-    for (const e of [sparks, red, dust, glow, venom, fire]) e.reset?.();
+    for (const e of fightEmitters) e.reset();
+    for (const s of sweeps.values()) s.clear();
+    for (const r of rings) {
+      r.mesh.removeFromParent();
+      r.mat.dispose();
+    }
+    rings.length = 0;
+    flashLife = 0;
+    flash.intensity = 0;
   };
 
   /** Weather: petals, snow, motes, embers — a slow field of particles around the camera. */

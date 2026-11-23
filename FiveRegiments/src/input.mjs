@@ -44,6 +44,8 @@ const LINE_ORDER = ['R', 'L', 'O', 'T'];
 
 export function createInput(canvas, { settings, onPause = () => {}, onLock = () => {} } = {}) {
   const down = new Set();
+  let pressedAttackLine = null,
+    pressedGuardLine = null;
   const state = {
     yaw: 0,
     pitch: 0.12,
@@ -98,8 +100,14 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       return;
     }
     state.lastDevice = 'mouse';
-    if (e.button === 0) state.attack = true;
-    if (e.button === 2) state.guard = true;
+    if (e.button === 0) {
+      if (!state.attack) pressedAttackLine = state.line;
+      state.attack = true;
+    }
+    if (e.button === 2) {
+      if (!state.guard) pressedGuardLine = state.line;
+      state.guard = true;
+    }
     if (e.button === 1) onLock();
     e.preventDefault();
   };
@@ -107,10 +115,15 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     if (e.button === 0) state.attack = false;
     if (e.button === 2) state.guard = false;
   };
+  function clearMouse() {
+    state.attack = state.guard = state.attackWas = false;
+    pressedAttackLine = pressedGuardLine = null;
+    state.moved[0] = state.moved[1] = 0;
+  }
   const onLockChange = () => {
     state.pointerLocked = document.pointerLockElement === canvas;
     if (!state.pointerLocked) {
-      state.attack = state.guard = false;
+      clearMouse();
       if (state.wantLock) onPause('unlocked');
     }
   };
@@ -167,10 +180,10 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   };
   const onBlur = () => {
     down.clear();
-    state.attack = state.guard = false;
+    clearMouse();
   };
 
-  canvas.addEventListener('mousemove', onMove);
+  // Pointer-locked moves already bubble from the canvas to the window.
   addEventListener('mousemove', onMove);
   canvas.addEventListener('mousedown', onDown);
   addEventListener('mouseup', onUp);
@@ -240,15 +253,18 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const fwd = [Math.sin(fy), Math.cos(fy)],
       right = [-Math.cos(fy), Math.sin(fy)];
     const move = [right[0] * mx - fwd[0] * my, right[1] * mx - fwd[1] * my];
-    let attack = state.attack || !!pad?.attack || state.touch.attack || !!state.padLine;
+    let attack = state.attack || pressedAttackLine !== null || !!pad?.attack || state.touch.attack || !!state.padLine;
     // Continuous attack (B): a held button strikes again as each blow ends, instead of winding up a heavy one.
     if (state.combo && attack && !bow) {
       state.comboBeat = (state.comboBeat + dt) % 0.2;
       attack = state.comboBeat < 0.1;
     } else state.comboBeat = 0;
-    const guard = state.guard || !!pad?.guard || state.touch.guard;
+    const guard = state.guard || pressedGuardLine !== null || !!pad?.guard || state.touch.guard;
     const classic = settings.control === 'classic' || state.lastDevice === 'touch';
     let line = state.line;
+    // Retain a mouse tap and its line when down/up arrive between two simulation ticks.
+    if (attack && !state.attack && pressedAttackLine) line = pressedAttackLine;
+    else if (guard && !state.guard && pressedGuardLine) line = pressedGuardLine;
     if (classic && threat && guard) line = threat;
     if (state.padLine) line = state.padLine;
     else if (classic && attack && !state.attackWas) {
@@ -284,6 +300,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     // Presses last one tick; the fight sees them as pressed on that tick only.
     for (const k of Object.keys(state.once)) state.once[k] = false;
     state.arm = null;
+    pressedAttackLine = pressedGuardLine = null;
     return input;
   }
 
@@ -301,12 +318,11 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     },
     clear() {
       down.clear();
-      state.attack = state.guard = false;
+      clearMouse();
       for (const k of Object.keys(state.once)) state.once[k] = false;
     },
     dispose() {
       pads.dispose();
-      canvas.removeEventListener('mousemove', onMove);
       removeEventListener('mousemove', onMove);
       canvas.removeEventListener('mousedown', onDown);
       removeEventListener('mouseup', onUp);

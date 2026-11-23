@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { test } from 'node:test';
-import { createMotion } from '../src/view/motion.mjs';
+import { createMotion, impactWeight, interpolateDirection, swingPhase } from '../src/view/motion.mjs';
 import { ORDER } from '../src/sim/regiments.mjs';
 
 const at = (p) => new URL('../' + p, import.meta.url);
@@ -47,4 +47,34 @@ test('the props, skies and materials the places use are all here', async () => {
   for (const p of props) for (const set of ['high', 'mid', 'low']) assert.ok(existsSync(at(`assets/props/${p}-${set}.glb`)), `${p}-${set}`);
   for (const [, sky] of stage.matchAll(/sky: '(\w+)'/g)) assert.ok(existsSync(at(`assets/skies/${sky}.jpg`)), sky);
   for (const [, m] of stage.matchAll(/(?:material: |scanned\()'(\w+)'/g)) for (const k of ['diff', 'nor', 'arm']) assert.ok(existsSync(at(`assets/materials/${m}_${k}.jpg`)), `${m}_${k}`);
+});
+
+test('a held attack stays in anticipation until contact, with a weapon-specific follow-through', () => {
+  const swing = { t: 0.32, wind: 0.4, held: 0, struck: false, recover: 0.23 };
+  const firstHold = { ...swing, t: 0.4, held: 0.01 };
+  assert.equal(swingPhase(swing, 'axe', true), 1);
+  assert.equal(swingPhase(firstHold, 'axe', true), 1);
+  const contact = { ...swing, t: 0.4, struck: true, strikeAt: 0.4 };
+  assert.equal(swingPhase(contact, 'axe'), 2);
+  const follow = { ...contact, t: 0.4 + swing.recover * 0.45 };
+  assert.ok(swingPhase(follow, 'axe') < 3, 'the heavy blade is still following through');
+  assert.ok(swingPhase(follow, 'jian') > 3, 'the light blade has started to recover');
+  assert.ok(Math.abs(swingPhase({ ...contact, t: 0.4 + swing.recover }, 'axe') - 4) < 1e-9);
+});
+
+test('a reversing blade direction stays normalised across the midpoint', () => {
+  const first = [0, 0, -1];
+  const last = [0, 0, 1];
+  const path = [0, 0.24, 0.49, 0.5, 0.51, 0.76, 1].map((time) => interpolateDirection(first, last, time));
+  assert.deepEqual(path[0], first);
+  assert.deepEqual(path.at(-1), last);
+  for (const value of path) assert.ok(Math.abs(Math.hypot(...value) - 1) < 1e-9);
+  assert.ok(path[2].reduce((sum, n, i) => sum + n * path[4][i], 0) > 0.99);
+});
+
+test('a visual impact builds quickly, then settles instead of oscillating', () => {
+  assert.equal(impactWeight(0, 0), 0);
+  assert.ok(impactWeight(0.055, 1) > impactWeight(0.055, 0));
+  assert.ok(impactWeight(0.1, 0) > impactWeight(0.2, 0));
+  assert.equal(impactWeight(0.4, 0), 0);
 });
