@@ -524,9 +524,9 @@ export const GAMES = [
   {
     id: 'nine', folder: 'NineProvinces', kind: '3d',
     scenes: [
-      { zh: "天下图 · 关羽军出平原，河流、林木与城池都是立体的", en: "The realm · Guan Yu's army leaves Pingyuan past rivers, woods and walled cities in 3D" },
-      { zh: "南皮之战 · 战场就是天下图上那片地，攻方直取城门", en: "The siege of Nanpi · The field is that stretch of the realm, the attackers making for the gate" },
-      { zh: "三顾茅庐 · 新武将的大立绘、六项能力与兵种适性", en: "Three visits to the cottage · A newcomer's large portrait, six abilities and aptitude for each arm" },
+      { zh: "天下图 · 洛阳城墙、河道渡桥与连接各城的道路", en: "The realm · Luoyang's walls, river crossings and roads linking the cities" },
+      { zh: "南皮之战 · 关羽率枪兵攻城，战场上实时显示城门耐久", en: "The siege of Nanpi · Guan Yu leads his spearmen to the gate as its remaining strength updates live" },
+      { zh: "演武沙盘 · 鹤翼拒骑，黄忠选择百步穿杨的施策目标", en: "Tactical sandbox · In Crane Wing Defense, Huang Zhong selects a target for his Hundred-Pace Shot" },
     ],
     zh: "九州烽烟", en: "Nine Provinces Ablaze",
     genre: { zh: "三国即时大战略", en: "Three Kingdoms real-time grand strategy" },
