@@ -138,6 +138,20 @@ try {
     const center = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
     return Boolean(center && !center.closest('#battleHud .bCommand, #battleHud .bSide'));
   }), 'the battleground center stays available beside the command rail in short landscape');
+  for (const [width, height] of [[667, 375], [640, 360], [568, 320]]) {
+    await page.setViewportSize({ width, height });
+    const usable = await state(page, () => {
+      const command = document.querySelector('#battleHud .bCommand');
+      const overview = command.querySelector('.bViewTools button:last-child');
+      const field = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
+      const panel = command.getBoundingClientRect();
+      const control = overview.getBoundingClientRect();
+      const hit = document.elementFromPoint(control.x + control.width / 2, control.y + control.height / 2);
+      return panel.height >= 132 && panel.right <= innerWidth && control.height >= 44 && overview.contains(hit)
+        && field && !field.closest('#battleHud .bCommand, #battleHud .bSide');
+    });
+    check(usable, `the command rail and battleground remain usable at ${width}×${height}`);
+  }
   await page.setViewportSize({ width: 1280, height: 720 });
   await state(page, () => window.egretGame.battle?.autoFinish());
   await until(page, () => window.egretGame.screen === 'play' && window.egretGame.app.dialogs.name === 'battleResult', 20);
