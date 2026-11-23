@@ -340,3 +340,51 @@
   }
  }
 }
+
+/* The optional milestone stop is separate from manual speed and pause controls. */
+.battleLab .labSituation > strong { min-width: 0; }
+.battleLab .labSituation :is(.labTempoToggle, .labTempoOffer) {
+ flex: none;
+ min-height: 44px;
+ padding: 3px 8px;
+ display: inline-flex;
+ align-items: center;
+ gap: 5px;
+ font-size: 11px;
+ white-space: nowrap;
+}
+.battleLab .labSituation .labTempoToggle { margin-inline-start: auto; }
+.battleLab .labSituation .labTempoOffer { border-color: #e5bf78; }
+.battleLab .labTempoToggle small {
+ padding: 2px 4px;
+ border: 1px solid #a987526b;
+ border-radius: 3px;
+ font-size: 10px;
+ line-height: 1.2;
+}
+.battleLab .labOrderFeedback {
+ display: flex;
+ align-items: baseline;
+ gap: 5px;
+ padding: 5px 7px;
+ margin: 0 0 6px;
+ border: 1px solid #af915966;
+ border-radius: 4px;
+ background: #16282a;
+ color: #eee3c8;
+ font-size: 11px;
+ line-height: 1.4;
+}
+.battleLab .labOrderFeedback b { flex: none; color: #e7c781; }
+.battleLab .labOrderFeedback[data-state='executing'] b,
+.battleLab .labOrderFeedback[data-state='done'] b { color: #b0d2a6; }
+.battleLab .labOrderFeedback[data-state='failed'] b { color: #f1aa92; }
+@media (max-width: 550px) {
+ .battleLab .labSituation:has(.labTempoToggle:not([hidden])) {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: center;
+ }
+ .battleLab .labSituation:has(.labTempoToggle:not([hidden])) > strong { flex: 1; }
+ .battleLab .labSituation:has(.labTempoToggle:not([hidden])) > span { order: 2; width: 100%; }
+}

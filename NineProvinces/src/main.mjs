@@ -29,6 +29,7 @@ import { createMinimap } from './ui/minimap.mjs';
 import { createPlates } from './ui/plates.mjs';
 import { showSetup, showTitle } from './ui/title.mjs';
 import { renderFirstMonth } from './ui/player-flow.mjs';
+import { captureCampaignBattle, campaignBattleAftermath } from './ui/campaign-battle.mjs';
 import { createRealmView } from './view3d/realm.mjs';
 import { homeCity } from './view/home-city.mjs';
 import { factionName, generalName, placeName } from './view/names.mjs';
@@ -195,6 +196,9 @@ const app = {
     else proceed();
   },
   startBattle(setup) {
+    if (!app.state || app.battle || app.screen !== 'play') return;
+    if (app.lastCampaignBattle?.state === app.state && app.lastCampaignBattle.id === setup.id) return;
+    app.campaignBattle = { state: app.state, id: setup.id, before: captureCampaignBattle(app.state, setup) };
     app.dialogs.close(true);
     app.screen = 'battle';
     app.map.setTerritoryVisible(false);
@@ -202,15 +206,48 @@ const app = {
     app.battle = startBattle(app, setup);
   },
   endBattle(done) {
+    if (!app.state || !done?.setup || !done.result) return;
+    if (app.lastCampaignBattle?.state === app.state && app.lastCampaignBattle.id === done.setup.id) return;
+    const before = app.campaignBattle?.state === app.state && app.campaignBattle.id === done.setup.id
+      ? app.campaignBattle.before : null;
+    const aftermath = campaignBattleAftermath(app.state, done.setup, done.result, before);
+    app.lastCampaignBattle = { state: app.state, id: done.setup.id, aftermath };
+    app.campaignBattle = null;
     app.battle = null;
+    app.paused = true;
     app.screen = 'play';
     frame.dataset.screen = 'play';
     app.map.setVisible(true);
     app.map.setTerritoryVisible(app.settings.territoryMap);
     app.map.refreshLands(true);
+    app.rulerSet = new Set(Object.values(app.state.factions).map(faction => faction.ruler));
+    app.minimap?.refresh();
+    app.minimap?.draw();
     app.sound.theme('realm');
-    app.dialogs.open('battleResult', done);
+    app.dialogs.open('battleResult', { ...done, aftermath });
     app.hud.refresh(true);
+  },
+  returnFromBattle(done) {
+    const settled = app.lastCampaignBattle;
+    if (!settled || settled.state !== app.state || settled.id !== done.setup.id) return;
+    app.paused = true;
+    app.setMode(null);
+    app.map.showRoute(null);
+    // Apply the strategic destination after the result is confirmed. The 3D
+    // battlefield may finish its own camera glide while this sheet is open.
+    const target = settled.aftermath.returnView;
+    app.select(target.selection);
+    if (target.camera) app.map.rig.jumpTo(target.camera.x, target.camera.z, target.camera.d);
+    app.dialogs.close(true);
+    app.hud.refresh(true);
+    renderFirstMonth(app);
+    // Losing the final town may settle the campaign during finishBattle. Do
+    // not require an extra running world day to reveal an existing ending.
+    if (app.state.over && !app.endingShown) {
+      app.endingShown = true;
+      app.sound.play(app.state.over.kind === 'fallen' ? 'gong' : 'win');
+      app.dialogs.open('ending');
+    }
   },
   afterDialog() {
     app.hud?.refresh(true);
@@ -689,12 +726,13 @@ function act(kind, ...args) {
       break;
     case 'entrust': {
       const setup = args[0];
+      if (app.lastCampaignBattle?.state === s && app.lastCampaignBattle.id === setup.id) break;
+      app.campaignBattle = { state: s, id: setup.id, before: captureCampaignBattle(s, setup) };
       const { result, tape, report } = recordedAutoBattle(setup, s);
       app.dialogs.close(true);
       app.sound.play(result.winner === setup.factions.indexOf(P) ? 'win' : 'lose');
       finishBattle(s, setup, result);
-      app.map.refreshLands(true);
-      app.dialogs.open('battleResult', { setup, result, tape, report });
+      app.endBattle({ setup, result, tape, report });
       break;
     }
     case 'saveSlot':

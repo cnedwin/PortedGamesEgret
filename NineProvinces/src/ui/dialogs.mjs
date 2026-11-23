@@ -28,6 +28,7 @@ import { ageOf, dayWords, eventOf, logLine, pair, tacticText, techText, traitTex
 import { SLOTS } from '../saves.mjs';
 import { SCENARIOS } from '../sim/scenarios.mjs';
 import { progressPrompt } from './player-flow.mjs';
+import { campaignBattleBriefing } from './campaign-battle.mjs';
 import {battleOutcomeReason} from './battle-copy.mjs';
 
 const STATS = ['lead', 'war', 'int', 'pol', 'cha'];
@@ -876,6 +877,7 @@ const BUILD = {
     const s = app.state,
       setup = args.setup;
     const mineSide = setup.factions.indexOf(s.player);
+    const briefing = campaignBattleBriefing(setup, s.player);
     const side = (k) =>
       h(
         'div.side',
@@ -890,7 +892,14 @@ const BUILD = {
       title: t('battleAt', { place }),
       className: 'wide battleAsk',
       blocking: true,
-      body: [h('p.note', kind + ' · ' + t('battleAsk', { a: factionName(s, setup.factions[0]), b: setup.factions[1] ? factionName(s, setup.factions[1]) : t('noOwner') })), h('div.sides', side(0), h('span.vs', '⚔'), side(1)), mineSide < 0 ? null : h('p.dim.small', t('battleChoiceHelp'))],
+      body: [h('p.note', kind + ' · ' + t('battleAsk', { a: factionName(s, setup.factions[0]), b: setup.factions[1] ? factionName(s, setup.factions[1]) : t('noOwner') })),
+        mineSide >= 0 ? h('section.campaignBriefing',
+          h('h3', pair(['本战目标', 'Battle objective'])), h('p', pair(briefing.objective)),
+          h('div.grid', stat(pair(['我方出战', 'Our force']), num(briefing.ours.troops) + pair([' 人 · ', ' troops · ']) + briefing.ours.units + pair([' 部', ' units'])),
+            stat(pair(['敌方出战', 'Enemy force']), num(briefing.enemy.troops) + pair([' 人 · ', ' troops · ']) + briefing.enemy.units + pair([' 部', ' units']))),
+          h('p.campaignBriefingRhythm', pair(['亲自指挥：先在暂停中部署，再开战。基础作战自动执行，战法默认由你施展，可逐部交还自动；交战中可随时暂停下令。', 'Command personally: deploy while paused, then begin. Ordinary combat remains automatic; tactics are manual unless delegated for a unit. Pause at any time to issue orders.'])),
+          h('p.small.dim', pair(['委任：直接交给将领完成本战，结算后可观看实际记录。两种方式都在战后暂停大地图，等你查看局势。', 'Entrust: your officers finish this battle immediately; its actual recording is available afterwards. Both paths return to a paused campaign for review.']))) : null,
+        h('div.sides', side(0), h('span.vs', '⚔'), side(1)), mineSide < 0 ? null : h('p.dim.small', t('battleChoiceHelp'))],
       actions: [button(t('battleEntrust'), () => app.act('entrust', setup)), button(t('battleCommand'), () => app.startBattle(setup), { kind: 'main' })]
     };
   },
@@ -907,6 +916,12 @@ const BUILD = {
       for (const [g, fate] of Object.entries(result.units[i].fates ?? {})) if (fate === 'killed') fates.push(t('fateKilled', { name: generalName(g) }));
       else if (fate === 'captured') fates.push(t('fateCaptured', { name: generalName(g) }));
     });
+    const pending = args.aftermath && (args.aftermath.pending.battles || args.aftermath.pending.captives);
+    const returnButton = button(args.aftermath
+      ? pair(args.aftermath.ending ? ['查看战役结局', 'View campaign ending'] : pending ? ['处理后续（地图已暂停）', 'Continue decisions (campaign paused)'] : ['返回大地图（已暂停）', 'Return to paused campaign'])
+      : t('ok'), () => args.aftermath && typeof app.returnFromBattle === 'function'
+        ? app.returnFromBattle(args) : app.dialogs.close(true), { kind: 'main' });
+    returnButton.dataset.k = 'campaign-return';
     return {
       title: won ? t('victory') : t('defeat'),
       className: 'result ' + (won ? 'won' : 'lost'),
@@ -915,12 +930,14 @@ const BUILD = {
         h('div.stamp', won ? t('stampWon') : t('stampLost')),
         h('p.note', battleOutcomeReason(result,mine>=0?mine:null,getLanguage()) + ' · ' + t('secondsN', { n: result.seconds })),
         h('div.grid', stat(t('ourLosses'), num(losses[Math.max(0, mine)])), stat(t('theirLosses'), num(losses[1 - Math.max(0, mine)]))),
+        h('p.dim.small', pair(['上方是战场减员，含伤兵；回归、驻军分配与撤退均已按原规则结算。', 'Losses above include wounded troops. Recovery, garrison allocation and retreat have already been settled by the campaign rules.'])),
+        args.aftermath ? campaignAftermathPanel(app, args.aftermath) : null,
         report?.units?.length ? battleReport(s, setup, report, mine) : null,
         fates.length ? h('ul.fates', fates.map((x) => h('li', x))) : null
       ],
       actions: [
         args.tape ? button(t('battleReplay'), () => app.openBattleReplay(args.tape)) : null,
-        button(t('ok'), () => app.dialogs.close(true), { kind: 'main' })
+        returnButton
       ]
     };
   },
@@ -938,6 +955,39 @@ const BUILD = {
     };
   }
 };
+
+function campaignAftermathPanel(app, aftermath) {
+  const s = app.state;
+  const place = aftermath.place;
+  const owner = place?.owner ? factionName(s, place.owner) : t('noOwner');
+  const placeLabel = place && (place.changed
+    ? place.owner === s.player ? pair(['城池已占领：', 'Captured: ']) : pair(['城池易主：', 'Control changed: '])
+    : pair(['战场归属：', 'Battlefield control: ']));
+  const disposition = army => {
+    if (army.disposition === 'dissolved') return pair(['军团已撤编，地图上已无该军团。', 'This army has been dissolved and is no longer on the map.']);
+    if (army.disposition === 'besieging') return pair(['继续围攻 ', 'Continuing the siege of ']) + placeName(army.besieging);
+    if (army.disposition === 'withdrawing') return pair(['正撤向 ', 'Withdrawing towards ']) + (army.target ? placeName(army.target) : pair(['友方据点', 'friendly territory']));
+    if (army.disposition === 'marching') return pair(['继续行军至 ', 'Marching towards ']) + (army.target ? placeName(army.target) : pair(['既定目标', 'its ordered destination']));
+    return pair(['驻于 ', 'Stationed at ']) + (army.at ? placeName(army.at) : pair(['战场附近', 'the battlefield']));
+  };
+  return h('section.campaignAftermath',
+    h('h3', pair(['战后局势', 'Campaign aftermath'])),
+    place ? h('p.campaignControl', placeLabel, h('b', placeName(place.id)), ' · ', owner,
+      h('small', pair(['现驻军 ', 'Current garrison: ']) + num(place.garrison))) : null,
+    aftermath.won && place?.owner !== s.player && aftermath.armies.some(army => army.disposition === 'besieging')
+      ? h('p.campaignNext', pair(['赢下了这场交战，城池尚未易主；主军仍在围城。', 'The engagement was won, but the town has not changed hands. Your army is continuing the siege.'])) : null,
+    aftermath.armies.length ? h('ul.campaignSurvivors', aftermath.armies.map(army => h('li',
+      h('div', h('b', army.commander ? generalName(army.commander) : t('captain')), h('span', disposition(army))),
+      army.disposition === 'dissolved' ? null : h('small', pair(['地图现兵力 ', 'Current army: ']) + num(army.troops) +
+        pair([' · 战场余部 ', ' · Battlefield survivors: ']) + num(army.fieldRemaining)))))
+      : h('p.small', pair(['本战由驻军参战；城中现有驻军见上。', 'Your garrison fought this battle; its current strength is shown above.'])),
+    aftermath.fameDelta ? h('p.small', t('fame') + ' ' + (aftermath.fameDelta > 0 ? '+' : '') + num(aftermath.fameDelta)) : null,
+    aftermath.pending.battles || aftermath.pending.captives ? h('p.campaignNext', pair(['待处理：', 'Pending decisions: ']) +
+      [aftermath.pending.battles ? aftermath.pending.battles + pair([' 场交战', ' battles']) : null,
+        aftermath.pending.captives ? aftermath.pending.captives + pair([' 项俘虏处置', ' captive decisions']) : null].filter(Boolean).join(' · ')) : null,
+    h('p.note', pair(['确认后回到暂停的大地图，并选中战场城池或存活主军；确认下一步后再继续推演。', 'Return to the paused map with the battlefield town or a surviving army selected. Review your next move before resuming time.']))
+  );
+}
 
 function formationNote(f) {
   const part = (k, v) => (v ? `${t(k)} ${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%` : null);

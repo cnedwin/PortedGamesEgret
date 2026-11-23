@@ -515,6 +515,28 @@ function findPath(b, u, goal, stopShort = 0) {
   return path;
 }
 
+const hasRam = (b) => b.units.some((u) => u.side === 0 && alive(u) && !u.routed && UNITS[u.kind].special === 'gate');
+const canBatterGate = (kind, ram) => kind.special === 'gate' || (kind.group === 'inf' && !ram);
+
+function approachGate(b, unit) {
+  unit.atGate = distance(unit.pos, b.gate.at) <= 1;
+  return unit.atGate ? [] : findPath(b, unit, b.gate.at, 1);
+}
+
+function attackPath(b, unit, target) {
+  const kind = UNITS[unit.kind];
+  unit.atGate = false;
+  if (distance(unit.pos, target.pos) <= kind.range) return [];
+  const path = findPath(b, unit, target.pos, kind.range);
+  // A direct order can name a defender behind a closed wall. Approach the
+  // gate with the same eligible troops as the existing automatic siege.
+  if (!path.length && b.gate && !b.gate.open && unit.side === 0 &&
+      ['town', 'wall', 'gate'].includes(b.tiles[target.pos]) && canBatterGate(kind, hasRam(b))) {
+    return approachGate(b, unit);
+  }
+  return path;
+}
+
 // ——— Fighting ———
 const alive = (u) => !u.gone && u.troops > 0;
 const buff = (u, key) => u.buffs.reduce((s, x) => s + (x.key === key ? x.v : 0), 0) / 100;
@@ -830,18 +852,10 @@ function think(b, u) {
   // Siege: rams go for the gate; the rest wait for it, climb with towers, or shoot at the walls.
   if (b.gate && u.side === 0 && !b.gate.open) {
     const kind = UNITS[u.kind];
-    const rams = b.units.some((o) => o.side === 0 && alive(o) && !o.routed && UNITS[o.kind].special === 'gate');
-    if (kind.special === 'gate' || (kind.group === 'inf' && !rams)) {
-      // Rams batter the gate; without rams the foot try it themselves.
-      const target = b.gate.at;
-      if (distance(u.pos, target) <= 1) {
-        u.target = null;
-        u.path = [];
-        u.atGate = true;
-        return;
-      }
-      u.atGate = false;
-      u.path = findPath(b, u, target, 1);
+    const rams = hasRam(b);
+    if (canBatterGate(kind, rams)) {
+      u.path = approachGate(b, u);
+      if (u.atGate) u.target = null;
       return;
     }
     if (kind.special === 'overwall') {
@@ -1047,9 +1061,7 @@ function playerThink(b, u) {
     } else u.path = findPath(b, u, u.goal);
   }
   if (u.order === 'attack' && u.target && alive(u.target)) {
-    const range = UNITS[u.kind].range;
-    const d = distance(u.pos, u.target.pos);
-    u.path = d > range ? findPath(b, u, u.target.pos, range) : [];
+    u.path = attackPath(b, u, u.target);
   } else if (u.order === 'attack') {
     u.order = 'auto';
   }
@@ -1066,18 +1078,23 @@ export function command(b, unitId, what, arg) {
   if(what==='formation'&&!formationAllowed(u.kind,arg))return false;
   if(!['move','attack','hold','auto','autoTactic','formation'].includes(what))return false;
   if (what === 'move') {
+    const path = findPath(b, u, arg);
+    if (!path.length && u.pos !== arg) return false;
     u.goal = arg;
     u.order = 'move';
     u.target = null;
-    u.path = findPath(b, u, arg);
+    u.atGate = false;
+    u.path = path;
   } else if (what === 'attack') {
     u.target = b.units[arg];
     u.goal = null;
     u.order = 'attack';
+    u.path = attackPath(b, u, u.target);
   } else if (what === 'hold') {
     u.order = 'hold';
     u.goal = null;
     u.path = [];
+    u.atGate = false;
   } else if (what === 'auto') {
     u.order = 'auto';
     u.goal = null;

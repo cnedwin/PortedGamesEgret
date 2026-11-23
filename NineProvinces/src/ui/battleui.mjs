@@ -8,14 +8,15 @@
 // an enemy to attack; tap a tactic when rage is full, or leave it to auto.
 import { FORMATIONS, TERRAIN, UNITS, formationAllowed } from '../data/battle.mjs';
 import { TACTICS } from '../data/tactics.mjs';
-import { command as simCommand, createBattle, outcome, stepBattle, useTactic, tacticPreview, combatPreview, canDeployBattle, deployBattleUnit } from '../sim/battle.mjs';
+import { command as simCommand, createBattle, outcome, stepBattle, useTactic, tacticPreview, combatPreview, canDeployBattle, deployBattleUnit, distance } from '../sim/battle.mjs';
 import { createBattleRecorder } from '../sim/battle-history.mjs';
 import { finishBattle } from '../sim/military.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
 import { createBattle3D } from '../view3d/battle3d.mjs';
 import { $, bar, button, clear, face, h, seal } from './dom.mjs';
-import {tacticPresentation} from './battle-copy.mjs';
+import {tacticPresentation,battleOutcomeReason} from './battle-copy.mjs';
+import {createTempoMilestones,inspectTempoMilestones,beginTacticAim,selectTacticTarget,restoreTacticPause} from './battle-tempo.mjs';
 
 const SPEEDS = [1, 2, 4];
 const WIND = ['→', '↘', '↙', '←', '↖', '↗'];
@@ -41,6 +42,15 @@ export function startBattle(app, setup) {
     feed = [],
     shownKey = '',
     ended = false;
+  let ending=null,executionLeft=null,milestones=createTempoMilestones(b),milestonePauses=true,tempoNotice='',commandNotice='',commandBad=false;
+  let heldControl=false,pendingHud=false,releaseTimer=0;
+  const pointers=new Set();
+  const holdHud=event=>{if(event.target.closest('button,input,select')){clearTimeout(releaseTimer);pointers.add(event.pointerId);heldControl=true;}};
+  const releaseHud=event=>{pointers.delete(event.pointerId);clearTimeout(releaseTimer);releaseTimer=setTimeout(()=>{if(pointers.size||ended)return;heldControl=false;if(pendingHud){pendingHud=false;draw(true);}},0);};
+  const blurHud=()=>{pointers.clear();releaseHud({pointerId:null});};
+  hud.addEventListener('pointerdown',holdHud,true);window.addEventListener('pointerup',releaseHud,true);window.addEventListener('pointercancel',releaseHud,true);window.addEventListener('blur',blurHud);
+  // Manual command retains ordinary movement/attacks; only the player's tactics are delegated explicitly.
+  for(const u of b.units)if(u.side===side){simCommand(b,u.id,'autoTactic',false);record.action('autoTactic',{unit:u.id,arg:false});}
   const view = createBattle3D(app.map, b, {
     colours,
     side,
@@ -51,22 +61,16 @@ export function startBattle(app, setup) {
     canDeploy,
     on: {
       tapUnit(i) {
-        const u = b.units[i];
-        if (u.side === side) {
-          if (armed && armed.unit !== i && isHelp(armed.tactic)) return fire(armed.unit, armed.tactic, null);
-          select(i);
-        } else if (armed) fire(armed.unit, armed.tactic, i);
-        else if (selected !== null && phase === 'fight') {
-          if(issue(selected, 'attack', i)){view.goal(u.pos);app.sound.play('tap');}
-        }
-        draw(true);
+        activateUnit(i);
       },
       tapHex(hex) {
+        if(ending||ended)return;
         if (hex < 0) return;
         const u = selected !== null ? b.units[selected] : null;
         const there = b.units.findIndex((o) => !o.gone && o.pos === hex);
         if (there >= 0) return this.tapUnit(there);
         if (!u || u.gone || u.routed) return;
+        if(armed){commandNotice=words('请选择敌军目标，或取消施策','Choose an enemy target, or cancel the tactic');commandBad=true;draw(true);return;}
         if (phase === 'deploy') {
           if (deployBattleUnit(b,u.id,hex)) {
             record.action('deploy',{unit:u.id,hex});record.capture('deploy',{force:true});
@@ -104,19 +108,43 @@ export function startBattle(app, setup) {
     return canDeployBattle(b,u,hex);
   }
   function select(i) {
+    clearAim(true);
     selected = i;
-    armed = null;
+    commandNotice='';commandBad=false;
     view.select(i);
     record.action('select',{unit:i});
     app.sound.play('tap');
   }
+  function activateUnit(i){
+    if(ending||ended)return;const u=b.units[i];if(!u)return;
+    if(u.side===side)select(i);
+    else if(armed)chooseTarget(i);
+    else if(selected!==null&&phase==='fight'&&issue(selected,'attack',i)){view.goal(u.pos);app.sound.play('tap');}
+    draw(true);
+  }
   function fire(unit, tactic, target) {
     const u = b.units[unit];
+    const eventStart=b.events.length;
     const ok = useTactic(b, u, tactic, target === null ? null : b.units[target]);
-    if(ok){record.action('tactic',{unit,tactic,target});record.capture(phase,{force:true});}
-    armed = null;
-    if (!ok) app.hud.toast(t('tacticNoTarget'));
+    if(ok){const failed=b.events.slice(eventStart).some(event=>event.kind==='tacticFailed'&&event.unit===unit&&event.tactic===tactic);record.action('tactic',{unit,tactic,target});record.capture(phase,{force:true});paused=restoreTacticPause(armed,paused);armed=null;milestones={...milestones,tactic:true};tempoNotice='';commandNotice=nm(TACTICS[tactic])+(failed?words(' · 谋略被识破',' · Scheme resisted'):words(' 已施展',' used'));commandBad=failed;}
+    else {commandNotice=t('tacticNoTarget');commandBad=true;app.hud.toast(t('tacticNoTarget'));}
     draw(true);
+  }
+  function clearAim(restore){
+    if(!armed)return;if(restore)paused=restoreTacticPause(armed,paused);
+    record.action('cancelAim',{unit:armed.unit,tactic:armed.tactic});armed=null;
+  }
+  function cancelAim(){clearAim(true);tempoNotice='';commandNotice=words('已取消施策','Tactic cancelled');commandBad=false;draw(true);}
+  function armTactic(unit,id){
+    if(isHelp(id))return fire(unit,id,null);
+    armed=beginTacticAim(armed,{unit,tactic:id},paused);selected=unit;paused=true;acc=0;
+    view.select(unit);record.action('aim',{unit,tactic:id,target:null});
+    tempoNotice=words('已暂停 · 选择目标并确认施策','Paused · Choose a target, then confirm');commandNotice='';draw(true);
+  }
+  function chooseTarget(id){
+    armed=selectTacticTarget(armed,id);record.action('aim',{unit:armed.unit,tactic:armed.tactic,target:id});
+    const preview=tacticPreview(b,b.units[armed.unit],armed.tactic,b.units[id]);
+    commandNotice=preview.valid?words('目标有效 · 覆盖','Valid target · Covers ')+preview.targets.length+words('部敌军',' enemy units'):words('目标超出范围或不可用','Target is out of reach or unavailable');commandBad=!preview.valid;draw(true);
   }
   function say(text, kind) {
     feed.unshift({ text, kind, at: b.time });
@@ -133,8 +161,26 @@ export function startBattle(app, setup) {
     const el=button(label,()=>{issue(u.id,what,arg);draw(true);},{kind:active?'on':''});
     el.dataset.k='order-'+u.id+'-'+what;el.setAttribute('aria-pressed',String(Boolean(active)));return el;
   }
-  function issue(unit,what,arg) {const ok=simCommand(b,unit,what,arg);if(ok){record.action(what,{unit,arg:arg??null});record.capture(phase,{force:true});}return ok;}
+  function issue(unit,what,arg) {
+    const ok=simCommand(b,unit,what,arg),u=b.units[unit];
+    if(ok){record.action(what,{unit,arg:arg??null});record.capture(phase,{force:true});commandBad=false;
+      const order=what==='attack'?words('追击 ','Pursue ')+unitName(b.units[arg]):what==='move'?words('移动至指定位置','Move to the chosen position'):what==='hold'?words('坚守','Hold'):what==='autoTactic'?(arg?words('战法交给部下','Delegate tactics'):words('战法由你施展','Use tactics manually')):what==='formation'?nm(FORMATIONS[arg]):words('自动作战','Automatic combat');
+      commandNotice=unitName(u)+words(' 已受令：',' accepted: ')+order;
+    }else{commandBad=true;commandNotice=what==='move'?words('无法抵达所选位置，请更换道路或目标','Cannot reach that position. Choose another route or target'):words('当前无法执行该军令','That order is unavailable now');app.hud.toast(commandNotice);}
+    return ok;
+  }
   function setSpeed(i){speed=i;record.action('speed',{speed:SPEEDS[i]});draw(true);}
+  function keyButton(key,label,action,options){const el=button(label,action,options);el.dataset.k=key;return el;}
+  function orderStatus(u){
+    if(!u||u.gone)return words('选择己方部队下达军令','Select your unit to issue an order');
+    if(u.routed)return words('部队正在溃退，暂不能受令','This unit is routing and cannot accept orders');
+    const waiting=paused?words(' · 暂停待执行',' · Waiting while paused'):'';
+    if(u.atGate&&b.gate&&!b.gate.open)return words('正在破门，随后追击','Breaking the gate, then pursuing')+waiting;
+    if(u.order==='attack'&&u.target&&!u.target.gone)return (u.path.length?words('行军追击：','Marching toward: '):words('接敌攻击：','Engaging: '))+unitName(u.target)+waiting;
+    if(u.order==='move')return (u.goal!==null?words('正在向指定位置移动','Moving to the ordered position'):words('已抵达，等待新令','Arrived; ready for another order'))+waiting;
+    if(u.order==='hold')return words('坚守阵地，自动反击射程内敌军','Holding; attacks enemies within reach')+waiting;
+    return words('自动寻敌与基础作战','Automatic movement and ordinary attacks')+waiting;
+  }
   const signed=n=>(n>=0?'+':'')+Math.round(n*100)+'%';
   function formationText(f){return words('攻','ATK ')+signed(f.atk)+' · '+words('守','DEF ')+signed(f.def)+' · '+words('速','SPD ')+signed(f.spd)+(f.front?' · '+words('正面','Front ')+signed(f.front):'')+(f.flank?' · '+words('夹击','Flank ')+signed(f.flank):'');}
 
@@ -160,12 +206,7 @@ export function startBattle(app, setup) {
                 dataset: { k: 'tac' + u.id + id },
                 onclick: (e) => {
                   e.stopPropagation();
-                  if (isHelp(id) || tc.shape === 'self' || tc.shape === 'all') return fire(u.id, id, null);
-                  armed = { unit: u.id, tactic: id };
-                  selected = u.id;
-                  view.select(u.id);
-                  app.hud.toast(t('tacticPick'));
-                  draw(true);
+                  armTactic(u.id,id);
                 }
               },
               h('span.tacName',nm(tc)),h('small.tacEffect',explanation.effect),h('small.tacCost',explanation.cost)
@@ -181,11 +222,9 @@ export function startBattle(app, setup) {
         tabIndex: 0,
         role: 'group',
         'aria-label': unitName(u)+' · '+armName(u)+' · '+num(u.troops)+' '+t('troops'),
-        onkeydown: e => {if(e.target===e.currentTarget&&e.key==='Enter'){e.preventDefault();e.stopPropagation();if(mine)select(u.id);if(u.pos>=0)view.lookAtHex(u.pos);draw(true);}},
+        onkeydown: e => {if(e.target===e.currentTarget&&e.key==='Enter'){e.preventDefault();e.stopPropagation();activateUnit(u.id);}},
         onclick: () => {
-          if (u.side === side) select(u.id);
-          if (u.pos >= 0) view.lookAtHex(u.pos);
-          draw(true);
+          activateUnit(u.id);
         }
       },
       h('div.uh', u.general ? face(u.general, 30, app.rulers()) : h('span.face.blank'), h('span.un', unitName(u), h('small', armName(u) + (mine ? ' · ' + nm(FORMATIONS[u.formation]) : ''))), h('b.ut', u.gone ? (u.end === 'fled' ? t('fled') : t('destroyed')) : num(u.troops))),
@@ -213,7 +252,9 @@ export function startBattle(app, setup) {
   }
 
   function draw(force = false) {
-    const key = JSON.stringify([phase, paused, speed, selected, armed, Math.floor(b.time), b.units.map((u) => [Math.round(u.troops / 50), Math.round(u.morale / 4), Math.floor(u.rage / 10), u.order, u.autoTactic, u.formation, Object.keys(u.status).join(), u.gone, u.routed]), Math.round(b.gate?.hp ?? 0), Math.round(b.depot?.hp ?? 0), Math.round(b.keepHeld), feed.length && feed[0].at]);
+    if(heldControl){pendingHud=true;return;}
+    if(ending){renderEnding();return;}
+    const key = JSON.stringify([phase, paused, speed, selected, armed,commandNotice,tempoNotice,milestonePauses,Math.ceil(executionLeft??-1), Math.floor(b.time), b.units.map((u) => [Math.round(u.troops / 50), Math.round(u.morale / 4), Math.floor(u.rage / 10), u.order, u.autoTactic, u.formation, Object.keys(u.status).join(), u.gone, u.routed]), Math.round(b.gate?.hp ?? 0), Math.round(b.depot?.hp ?? 0), Math.round(b.keepHeld), feed.length && feed[0].at]);
     if (!force && key === shownKey) return;
     shownKey = key;
     const focused = document.activeElement?.dataset?.k && hud.contains(document.activeElement) ? document.activeElement.dataset.k : null;
@@ -224,11 +265,12 @@ export function startBattle(app, setup) {
     const chosen = selected !== null ? b.units[selected] : null;
     const active = chosen && !chosen.gone && chosen.side===side;
     const readyCount = b.units.filter(u=>u.side===side&&!u.gone&&!u.routed&&u.rage>=100).length;
-    const commandText = armed ? nm(TACTICS[armed.tactic])+' · '+tacticPresentation(TACTICS[armed.tactic],tacticPreview(b,b.units[armed.unit],armed.tactic).reach,{language:getLanguage()}).detail : phase==='deploy' ? words('青色格可部署；点部队切换阵型。','Cyan hexes are valid deployment. Select a unit to change its formation.') : chosen?.order==='attack'&&chosen.target ? words('正在进攻：','Attacking: ')+unitName(chosen.target) : t('battleHelp');
+    const aimPreview=armed?tacticPreview(b,b.units[armed.unit],armed.tactic,armed.target==null?null:b.units[armed.target]):null;
+    const commandText = armed ? nm(TACTICS[armed.tactic])+' · '+tacticPresentation(TACTICS[armed.tactic],aimPreview.reach,{language:getLanguage()}).detail : phase==='deploy' ? words('基础作战照旧；战法由你施展，也可交还自动。','Ordinary combat continues automatically. Use tactics yourself, or delegate them.') : orderStatus(chosen);
     clear(hud).append(
       h(
         'header.bTop',
-        h('div.bTitle', h('span.bPhase',phase==='deploy'?words('部署 · 战鼓未鸣','DEPLOYMENT'):paused?words('暂停 · 运筹帷幄','TACTICAL PAUSE'):words('交战 · 将令已下','BATTLE IN PROGRESS')),h('b', t('battleAt', { place })), h('small', factionName(s, setup.factions[0]) + ' ⚔ ' + (setup.factions[1] ? factionName(s, setup.factions[1]) : t('noOwner')))),
+        h('div.bTitle', h('span.bPhase',phase==='deploy'?words('部署 · 战鼓未鸣','DEPLOYMENT'):paused?words('暂停 · 运筹帷幄','TACTICAL PAUSE'):executionLeft!==null?words('观察执行 · 余','OBSERVE · ')+Math.ceil(executionLeft)+words('秒','s'):words('交战 · 将令已下','BATTLE IN PROGRESS')),h('b', t('battleAt', { place })), h('small', factionName(s, setup.factions[0]) + ' ⚔ ' + (setup.factions[1] ? factionName(s, setup.factions[1]) : t('noOwner')))),
         h('div.bTime', h('span', t('sunset') + ' ' + Math.floor(left / 60) + ':' + String(Math.floor(left % 60)).padStart(2, '0')), bar(left / b.limit, 'gold'), h('span.wind', { title: t('windLabel') }, t('windLabel') + ' ' + WIND[b.wind % 6])),
         b.gate ? h('div.bObj', h('span', t('gate')), bar(Math.max(0, b.gate.hp) / (1500 + setup.wall * 60), 'stone'), h('small', b.gate.open ? t('gateOpen') : num(b.gate.hp))) : null,
         b.depot ? h('div.bObj', h('span', t('depot')), bar(Math.max(0, b.depot.hp) / 1000, 'fire'), h('small', b.depot.burnt ? t('depotBurnt') : num(b.depot.hp))) : null,
@@ -246,15 +288,24 @@ export function startBattle(app, setup) {
       h('aside.bSide.theirs',{'aria-label':words('敌方部队','Enemy army')},h('div.bSideTitle',words('敌军','OPPOSITION'),h('small',b.units.filter(u=>u.side!==side&&!u.gone).length+' '+words('部','units'))),b.units.filter((u) => u.side !== side).map(card)),
       h('section.bCommand'+(armed?'.aiming':''),{'aria-label':words('战场指挥','Battlefield command')},
         h('div.bCommandHeading',h('span.bCommandSeal',phase==='deploy'?words('阵','Ⅰ'):words('令','Ⅱ')),h('div',h('small',armed?words('选择战法目标','CHOOSE A TACTIC TARGET'):words('当前指挥','BATTLEFIELD COMMAND')),h('strong',active?unitName(chosen)+' · '+armName(chosen):words('点选己方部队','Select one of your units'))),
-          armed?button(words('取消战法','Cancel tactic'),()=>{armed=null;draw(true);},{small:true}):phase==='fight'?h('span.bReady',readyCount?words(readyCount+' 部可施战法',readyCount+' tactics ready'):words('怒气满时可施战法','Tactics unlock at full rage')):null),
+          h('div.bViewTools',keyButton('locate',words('定位','Locate'),()=>{if(active)view.lookAtHex(chosen.pos);},{small:true,why:active?null:words('先选择己方部队','Select your unit first')}),keyButton('overview',words('俯视','Overview'),()=>view.overview(),{small:true}))),
+        tempoNotice?h('p.bTempoCue',{role:'status'},tempoNotice):null,
         h('p.bCommandHint',commandText),
-        active?h('p.bFormationInfo',nm(FORMATIONS[chosen.formation])+' · '+formationText(FORMATIONS[chosen.formation])):null,
+        commandNotice?h('p.bOrderFeedback'+(commandBad?'.bad':''),{role:'status'},commandNotice):null,
+        active&&!armed?h('p.bFormationInfo',nm(FORMATIONS[chosen.formation])+' · '+formationText(FORMATIONS[chosen.formation])):null,
         active&&chosen.target&&!chosen.target.gone?(()=>{const p=combatPreview(b,chosen,chosen.target);return p?h('p.bMatchupInfo',words('兵种修正','Weapon match ')+p.weaponMultiplier.toFixed(2)+'× · '+words('射程内普通命中约','Ordinary hit in reach: ')+p.minLoss+'–'+p.maxLoss+words(' 人（不含暴击）',' troops (before criticals)')):null;})():null,
-        phase==='fight'&&active&&!chosen.routed?h('div.bOrderRow',
-          orderButton(chosen,'hold',t('hold'),chosen.order==='hold'),
-          orderButton(chosen,'auto',t('auto'),chosen.order==='auto'),
-          orderButton(chosen,'autoTactic',t('autoTactic'),chosen.autoTactic,!chosen.autoTactic),
-          button(words('镜头跟随','Follow unit'),()=>view.lookAtHex(chosen.pos))):null),
+        armed?h('div.bAimControls',
+          h('p#battleAimSummary',armed.target==null?words('选择敌军目标，查看覆盖后确认。','Choose an enemy target, review the area, then confirm.'):unitName(b.units[armed.target])+' · '+words('覆盖 ','Covers ')+aimPreview.targets.length+words(' 部敌军',' enemy units')),
+          h('div.bAimTargets',b.units.filter(u=>u.side!==side&&!u.gone).map(u=>keyButton('target-'+u.id,unitName(u)+' · '+distance(b.units[armed.unit].pos,u.pos)+words('格',' hexes'),()=>chooseTarget(u.id),{kind:armed.target===u.id?'on':'',why:tacticPreview(b,b.units[armed.unit],armed.tactic,u).reason==='range'?words('超出战法范围','Outside tactic reach'):null,small:true}))),
+          h('div.bAimActions',keyButton('confirm-tactic',words('确认施策','Confirm tactic'),()=>fire(armed.unit,armed.tactic,armed.target),{kind:'main',why:aimPreview.valid?null:words('先选择有效目标','Choose a valid target first')}),keyButton('cancel-tactic',words('取消施策','Cancel tactic'),cancelAim)))
+        :phase==='fight'?h('div.bOrderRow',
+          active&&!chosen.routed?orderButton(chosen,'hold',t('hold'),chosen.order==='hold'):null,
+          active&&!chosen.routed?orderButton(chosen,'auto',t('auto'),chosen.order==='auto'):null,
+          active&&!chosen.routed?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):null,
+          keyButton('execute',paused?words('继续执行','Continue'):words('暂停','Pause'),()=>setPaused(!paused),{kind:paused?'main':''}),
+          paused?keyButton('observe',words('推进3秒','Observe 3s'),observeThree,{title:words('按当前速度执行3秒战场时间，然后暂停；可随时再停。','Run 3 battle seconds at the current speed, then pause. You may pause sooner.')}):null):null,
+        !armed?h('div.bTempoOptions',h('label',h('input',{type:'checkbox',checked:milestonePauses,dataset:{k:'milestones'},onchange:e=>{milestonePauses=e.target.checked;draw(true);}}),words('关键时刻暂停','Pause at milestones')),
+          phase==='deploy'&&active?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):phase==='fight'?h('small',readyCount?words(readyCount+' 部战法可施展',readyCount+' units can use tactics'):words('部队基础作战持续执行','Ordinary combat remains automatic')):null):null),
       h('div.bFeed', { 'aria-live': 'polite' }, feed.map((f) => h(`p.${f.kind}`, f.text))),
       phase === 'deploy'
         ? h('div.bDeploy', h('h3', t('deploy')), h('p', t('deployHelp')), h('div.row', button(t('battleEntrust'), () => autoFinish()), button(t('fight'), () => begin(), { kind: 'main' })))
@@ -264,9 +315,23 @@ export function startBattle(app, setup) {
   }
 
   function setPaused(v) {
+    clearAim(false);executionLeft=null;acc=0;tempoNotice='';
     paused = v;
     record.action(v?'pause':'resume');
     draw(true);
+  }
+  function observeThree(){
+    if(phase!=='fight'||!paused||armed)return;
+    executionLeft=3;paused=false;acc=0;tempoNotice=words('执行3秒战场时间后暂停','Observing 3 battle seconds, then pausing');record.action('resume',{seconds:3,observe:true});draw(true);
+  }
+  function inspectMilestones(){
+    const cue=inspectTempoMilestones(b,side,milestones);milestones=cue.next;
+    if(!milestonePauses||!cue.reasons.length)return false;
+    paused=true;executionLeft=null;acc=0;
+    const contact=cue.contactKind==='gate'?(side===0?words('攻城开始','Siege contact'):words('城门遭攻','Gate under attack')):cue.contactKind==='depot'?words('粮仓受袭','Depot under attack'):words('初次接敌','First contact');
+    tempoNotice=(cue.reasons.includes('contact')?contact:'')+(cue.reasons.length>1?' · ':'')+(cue.reasons.includes('tactic')?words('战法可施展','Tactic available'):'')+words(' · 已暂停，本场不再重复提示',' · Paused; this prompt occurs once per battle');
+    if(cue.opportunity){selected=cue.opportunity.unitId;view.select(selected);}
+    record.action('pause',{reason:cue.reasons.join('+')});draw(true);return true;
   }
   function begin() {
     phase = 'fight';
@@ -278,26 +343,37 @@ export function startBattle(app, setup) {
   /** Let the officers fight it from here, at once. */
   function autoFinish() {
     phase = 'fight';
+    for(const u of b.units)if(u.side===side){simCommand(b,u.id,'autoTactic',true);record.action('autoTactic',{unit:u.id,arg:true});}
     record.action('entrust');record.capture(phase,{force:true});
     for (let i = 0; i < 2400 && !b.over; i++){stepBattle(b, 0.25, -1);record.capture(phase);}
     if (!b.over) b.over = { winner: 1, why: 'sunset' };
     end(b.over);
   }
   function end(over) {
-    if (ended) return;
-    ended = true;
+    if (ended||ending) return;
     b.over = over;
     const result = outcome(b);
     record.action('result',{winner:over.winner,why:over.why});
     const tape=record.finish(),report=tape.report;
     const won = result.winner === side;
     app.sound.play(won ? 'win' : 'lose');
+    phase='result';paused=true;armed=null;executionLeft=null;view.select(null);view.preview(phase,null);
+    ending={result,tape,report,left:app.calm()?0.65:1.6};renderEnding();
+  }
+  function renderEnding(){
+    if(!ending)return;
+    hud.dataset.phase='result';
+    clear(hud).append(h('section.bOutcomeHold',{'aria-label':words('战斗结束','Battle ended')},h('small',words('战局已定','THE BATTLE IS DECIDED')),h('h2',ending.result.winner===side?t('victory'):t('defeat')),h('p',battleOutcomeReason(ending.result,side,getLanguage())),keyButton('finish-result',words('查看战果','View results'),completeEnding,{kind:'main'}),h('small',words('片刻后进入战果 · 可立即跳过','Results follow shortly · Skip at any time'))));
+  }
+  function completeEnding(){
+    if(ended||!ending)return;
+    ended=true;const {result,tape,report}=ending;ending=null;
+    clearTimeout(releaseTimer);hud.removeEventListener('pointerdown',holdHud,true);window.removeEventListener('pointerup',releaseHud,true);window.removeEventListener('pointercancel',releaseHud,true);window.removeEventListener('blur',blurHud);
     finishBattle(s, setup, result);
     view.destroy();
     clear(hud);
     clear(fx);
     app.endBattle({ setup, result, tape, report });
-    if (setup.place.node) app.map.focus(setup.place.node, 70);
   }
 
   selected=b.units.find(u=>u.side===side&&!u.gone)?.id??null;
@@ -307,6 +383,7 @@ export function startBattle(app, setup) {
   return {
     update(dt) {
       if (ended) return;
+      if(ending){ending.left-=dt;if(ending.left<=0)completeEnding();return;}
       if (phase === 'fight' && !paused) {
         acc += dt * SPEEDS[speed];
         let before = 0;
@@ -315,6 +392,9 @@ export function startBattle(app, setup) {
           stepBattle(b, 0.1, side);
           record.capture(phase);
           acc -= 0.1;
+          if(executionLeft!==null)executionLeft-=0.1;
+          if(!b.over&&inspectMilestones())break;
+          if(executionLeft!==null&&executionLeft<=1e-6){executionLeft=null;paused=true;acc=0;tempoNotice=words('观察执行已完成 · 已暂停，可继续下令','Observation complete · Paused and ready for orders');record.action('pause',{reason:'observe'});break;}
         }
         let after = 0;
         for (const u of b.units) after += u.troops;
@@ -328,6 +408,7 @@ export function startBattle(app, setup) {
       draw();
     },
     key(code) {
+      if(ending){if(['Enter','Space','Escape'].includes(code)){completeEnding();return true;}return false;}
       // The global listener runs in capture: focused controls own their native
       // Enter/Space action, so a selection must not also start/pause the battle.
       // A group card uses Enter only; Space keeps the battle pause shortcut.
@@ -337,7 +418,7 @@ export function startBattle(app, setup) {
       else if (/^Digit[1-3]$/.test(code) && phase === 'fight') {
         setSpeed(+code.slice(5)-1);
       } else if (code === 'Escape') {
-        armed = null;
+        if(armed){cancelAim();return true;}
         selected = null;
         view.select(null);
         draw(true);
@@ -356,6 +437,7 @@ export function startBattle(app, setup) {
     get phase() {
       return phase;
     },
+    get tempo(){return {paused,speed:SPEEDS[speed],armed:armed?{...armed}:null,milestonePauses,milestones:{...milestones},executionLeft,ending:!!ending,commandNotice};},
     begin,
     autoFinish,
     select,

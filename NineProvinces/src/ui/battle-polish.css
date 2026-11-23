@@ -174,3 +174,52 @@
 @media (prefers-reduced-motion:reduce) {
  #battleHud *, #battleFx * { animation:none!important; transition:none!important; }
 }
+
+/* A short command cycle, without covering the field with another modal. */
+#battleHud .bViewTools { display:flex; gap:4px; flex:none; }
+#battleHud .bViewTools .btn { min-width:44px; min-height:44px; padding:4px 8px; font-size:11px; }
+#battleHud .bOrderFeedback,#battleHud .bTempoCue { margin:6px 0; padding:5px 8px; border-left:2px solid #a9d7bd; color:#dfedcb; background:#142d2c; font-size:11px; line-height:1.4; }
+#battleHud .bOrderFeedback.bad { color:#ffe2bf; border-color:#e7a17c; background:#4a3028; }
+#battleHud .bTempoCue { border-color:#efd18a; color:#ffe4a3; background:#453b29; }
+#battleHud .bTempoOptions { display:flex; gap:6px 12px; justify-content:space-between; align-items:center; margin-top:6px; }
+#battleHud .bTempoOptions label { display:flex; align-items:center; gap:6px; min-height:44px; font-size:11px; color:#d9d6b4; cursor:pointer; }
+#battleHud .bTempoOptions input { width:18px; height:18px; accent-color:#d1b477; }
+#battleHud .bTempoOptions small { color:#c3cbb6; font-size:10px; }
+#battleHud .bTempoOptions .btn { min-height:44px; font-size:11px; padding:5px 8px; }
+#battleHud .bAimControls { margin-top:7px; }
+#battleHud .bAimControls p { margin:5px 0; font-size:11px; color:#f4dfb6; }
+#battleHud .bAimTargets { display:flex; gap:5px; overflow:auto; padding-bottom:4px; }
+#battleHud .bAimTargets .btn { min-height:44px; flex:none; font-size:11px; padding:6px 9px; }
+#battleHud .bAimActions { display:flex; gap:7px; margin-top:5px; }
+#battleHud .bAimActions .btn { flex:1; min-height:44px; }
+#battleHud .bOutcomeHold { position:absolute; left:50%; top:25%; transform:translateX(-50%); width:min(390px,calc(100vw - 40px)); padding:17px 22px; border:1px solid #ddc184; background:#172b30ed; color:#f7e5bc; text-align:center; pointer-events:auto; box-shadow:0 8px 36px #0008; }
+#battleHud .bOutcomeHold h2 { font:700 36px var(--kai); margin:8px 0; color:#f7d58b; }
+#battleHud .bOutcomeHold p { margin:8px 0 14px; }
+#battleHud .bOutcomeHold small { display:block; margin:7px 0; font-size:11px; }
+#battleHud .bOutcomeHold .btn { min-height:44px; }
+@media(max-width:700px) {
+ #battleHud .bCommand { padding:8px 10px; max-height:calc(100dvh - 420px); overflow:auto; }
+ #battleHud .bCommandHeading { gap:7px; }
+ #battleHud .bViewTools .btn { padding:4px 6px; }
+ #battleHud .bTempoOptions { flex-wrap:wrap; gap:0 8px; }
+ #battleHud .bTempoOptions small { display:none; }
+ #battleHud .bCommand .bFormationInfo,#battleHud .bCommand .bMatchupInfo { display:none; }
+ #battleHud .bCommand.aiming { max-height:calc(100dvh - 400px); }
+ #battleHud .bOrderFeedback,#battleHud .bTempoCue { font-size:10px; }
+ #battleHud .bAimActions { position:sticky; bottom:-8px; padding:5px 0; background:#302d27; z-index:1; }
+ #battleHud .bOutcomeHold { top:31%; }
+}
+@media(max-height:500px) and (min-width:701px) {
+ #battleHud .bCommand { max-height:calc(100dvh - 106px); overflow:auto; bottom:8px; padding:6px 8px; }
+ #battleHud[data-phase='deploy'] .bCommand { bottom:114px; max-height:calc(100dvh - 190px); }
+ #battleHud .bCommandHeading strong { font-size:14px; }
+ #battleHud .bViewTools .btn { min-height:44px; padding:4px; }
+ #battleHud .bCommand .bFormationInfo,#battleHud .bCommand .bMatchupInfo { display:none; }
+ #battleHud .bTempoOptions { flex-wrap:wrap; gap:0 5px; }
+ #battleHud .bTempoOptions small { display:none; }
+ #battleHud .bTempoCue,#battleHud .bOrderFeedback { padding:4px 6px; margin:4px 0; font-size:10px; }
+ #battleHud .bOrderRow .btn { min-height:44px; padding:4px 7px; }
+ #battleHud .bAimActions { position:sticky; bottom:-6px; padding:4px 0; background:#302d27; z-index:1; }
+ #battleHud .bOutcomeHold { top:24%; padding:7px 14px; }
+ #battleHud .bOutcomeHold h2 { font-size:25px; margin:4px 0; }
+}
