@@ -189,7 +189,7 @@ try {
   // A phone held upright.
   phone = await openPage(browser, `${server.url}${path}/?seed=2&lang=zh&faction=caocao&branch=free`, { width: 390, height: 844, touch: true });
   await until(phone, () => window.egretGame?.ready && window.egretGame.screen === 'play');
-  await phone.evaluate(() => window.egretGame.app.setPaused(true));
+  await phone.getByRole('button', { name: '收起首月建议' }).tap();
   await phone.waitForTimeout(600);
   const qiao = await phone.evaluate(() => window.egretGame.nodeAt('qiao'));
   await phone.touchscreen.tap(qiao.x, qiao.y);
@@ -211,13 +211,33 @@ try {
 
   const speed = phone.locator('#campaignSpeed');
   check(await speed.evaluate(node => node.offsetWidth >= 44 && node.offsetHeight >= 44), 'phone speed selector has a readable touch target');
+  const campaignClock = () => state(phone, () => ({
+    speed: window.egretGame.app.speed,
+    paused: window.egretGame.app.paused,
+    day: window.egretGame.state.day,
+  }));
+  const beforeSpeed = await campaignClock();
+  const pausedDay = beforeSpeed.day;
   await speed.selectOption('4');
-  check(await state(phone, () => window.egretGame.app.speed === 4), 'the speed selector keeps the existing speed setting');
+  await phone.waitForTimeout(320);
+  const afterSpeed = await campaignClock();
+  check(beforeSpeed.paused && afterSpeed.speed === 4 && afterSpeed.paused && afterSpeed.day === pausedDay,
+    'changing the campaign speed keeps a paused day paused (' + JSON.stringify({ beforeSpeed, afterSpeed }) + ')');
+  await city.getByRole('tab', { name: '政令' }).press('Digit2');
+  const afterShortcut = await campaignClock();
+  check(afterShortcut.speed === 1 && afterShortcut.paused && afterShortcut.day === pausedDay,
+    'the campaign speed shortcut also preserves pause (' + JSON.stringify(afterShortcut) + ')');
   check(await state(phone, () => {
     const original = document.querySelector('#campaignSpeed');
     window.egretGame.app.hud.refresh(true);
     return original === document.querySelector('#campaignSpeed');
   }), 'a HUD refresh keeps the native speed picker attached');
+  const pause = phone.locator('#topbar .pause');
+  await pause.tap();
+  await speed.selectOption('4');
+  await phone.waitForFunction((day) => !window.egretGame.app.paused && window.egretGame.state.day > day, pausedDay, { timeout: 5000 });
+  check(await state(phone, () => window.egretGame.app.speed === 4 && !window.egretGame.app.paused), 'continuing advances time at the selected speed');
+  await pause.tap();
   const domains = phone.locator('#territoryMapBtn');
   await domains.tap();
   check(await domains.getAttribute('aria-pressed') === 'true' && await phone.locator('#territoryLegend').isVisible(), 'turning on the political map reveals its legend');

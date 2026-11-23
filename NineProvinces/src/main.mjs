@@ -134,7 +134,6 @@ const app = {
   },
   setSpeed(i) {
     app.speed = i;
-    app.paused = false;
     app.setSetting('speed', i);
     app.hud?.refresh();
   },

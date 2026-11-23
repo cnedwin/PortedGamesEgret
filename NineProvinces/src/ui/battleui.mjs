@@ -14,7 +14,8 @@ import { finishBattle } from '../sim/military.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
 import { createBattle3D } from '../view3d/battle3d.mjs';
-import { $, bar, button, clear, face, h, seal } from './dom.mjs';
+import { $, bar, clear, face, seal } from './dom.mjs';
+import {hudElement as h, hudButton as button, updateBattleHud} from './battle-hud.mjs';
 import {tacticPresentation,battleOutcomeReason} from './battle-copy.mjs';
 import {createTempoMilestones,inspectTempoMilestones,beginTacticAim,selectTacticTarget,restoreTacticPause} from './battle-tempo.mjs';
 
@@ -235,9 +236,9 @@ export function startBattle(app, setup) {
       mine && phase === 'fight' && !u.gone && !u.routed
         ? h(
             'div.uo',
-            button(t('hold'), (e) => (e.stopPropagation(), issue(u.id, u.order === 'hold' ? 'auto' : 'hold'), draw(true)), { small: true, kind: u.order === 'hold' ? 'on' : '' }),
-            button(t('auto'), (e) => (e.stopPropagation(), issue(u.id, 'auto'), draw(true)), { small: true, kind: u.order === 'auto' ? 'on' : '' }),
-            button(t('autoTactic'), (e) => (e.stopPropagation(), issue(u.id, 'autoTactic', !u.autoTactic), draw(true)), { small: true, kind: u.autoTactic ? 'on' : '' })
+            keyButton('card-order-'+u.id+'-hold',t('hold'), (e) => (e.stopPropagation(), issue(u.id, u.order === 'hold' ? 'auto' : 'hold'), draw(true)), { small: true, kind: u.order === 'hold' ? 'on' : '' }),
+            keyButton('card-order-'+u.id+'-auto',t('auto'), (e) => (e.stopPropagation(), issue(u.id, 'auto'), draw(true)), { small: true, kind: u.order === 'auto' ? 'on' : '' }),
+            keyButton('card-order-'+u.id+'-autoTactic',t('autoTactic'), (e) => (e.stopPropagation(), issue(u.id, 'autoTactic', !u.autoTactic), draw(true)), { small: true, kind: u.autoTactic ? 'on' : '' })
           )
         : null,
       mine && phase === 'deploy'
@@ -245,7 +246,7 @@ export function startBattle(app, setup) {
             'div.uo',
             Object.values(FORMATIONS)
               .filter((f) => formationAllowed(u.kind,f.id))
-              .map((f) => button(nm(f), (e) => (e.stopPropagation(), issue(u.id, 'formation', f.id), draw(true)), { small: true, title:formationText(f),kind: u.formation === f.id ? 'on' : '' }))
+              .map((f) => keyButton('formation-'+u.id+'-'+f.id,nm(f), (e) => (e.stopPropagation(), issue(u.id, 'formation', f.id), draw(true)), { small: true, title:formationText(f),kind: u.formation === f.id ? 'on' : '' }))
           )
         : null
     );
@@ -257,7 +258,6 @@ export function startBattle(app, setup) {
     const key = JSON.stringify([phase, paused, speed, selected, armed,commandNotice,tempoNotice,milestonePauses,Math.ceil(executionLeft??-1), Math.floor(b.time), b.units.map((u) => [Math.round(u.troops / 50), Math.round(u.morale / 4), Math.floor(u.rage / 10), u.order, u.autoTactic, u.formation, Object.keys(u.status).join(), u.gone, u.routed]), Math.round(b.gate?.hp ?? 0), Math.round(b.depot?.hp ?? 0), Math.round(b.keepHeld), feed.length && feed[0].at]);
     if (!force && key === shownKey) return;
     shownKey = key;
-    const focused = document.activeElement?.dataset?.k && hud.contains(document.activeElement) ? document.activeElement.dataset.k : null;
     const place = setup.place.node ? placeName(setup.place.node) : placeName(setup.place.link[0]);
     const left = Math.max(0, b.limit - b.time);
     view.preview(phase, armed);
@@ -267,7 +267,7 @@ export function startBattle(app, setup) {
     const readyCount = b.units.filter(u=>u.side===side&&!u.gone&&!u.routed&&u.rage>=100).length;
     const aimPreview=armed?tacticPreview(b,b.units[armed.unit],armed.tactic,armed.target==null?null:b.units[armed.target]):null;
     const commandText = armed ? nm(TACTICS[armed.tactic])+' · '+tacticPresentation(TACTICS[armed.tactic],aimPreview.reach,{language:getLanguage()}).detail : phase==='deploy' ? words('基础作战照旧；战法由你施展，也可交还自动。','Ordinary combat continues automatically. Use tactics yourself, or delegate them.') : orderStatus(chosen);
-    clear(hud).append(
+    updateBattleHud(hud,
       h(
         'header.bTop',
         h('div.bTitle', h('span.bPhase',phase==='deploy'?words('部署 · 战鼓未鸣','DEPLOYMENT'):paused?words('暂停 · 运筹帷幄','TACTICAL PAUSE'):executionLeft!==null?words('观察执行 · 余','OBSERVE · ')+Math.ceil(executionLeft)+words('秒','s'):words('交战 · 将令已下','BATTLE IN PROGRESS')),h('b', t('battleAt', { place })), h('small', factionName(s, setup.factions[0]) + ' ⚔ ' + (setup.factions[1] ? factionName(s, setup.factions[1]) : t('noOwner')))),
@@ -282,7 +282,7 @@ export function startBattle(app, setup) {
               SPEEDS.map((v, i) => h('button.spd', { type: 'button', 'aria-pressed': speed === i ? 'true' : 'false', dataset: { k: 'bs' + i }, title: v + '×', onclick: () => setSpeed(i) }, v + '×'))
             )
           : null,
-        phase === 'fight' ? button(t('retreat'), () => end({ winner: 1 - side, why: 'retreat' }), { kind: 'danger', small: true }) : null
+        phase === 'fight' ? keyButton('retreat',t('retreat'), () => end({ winner: 1 - side, why: 'retreat' }), { kind: 'danger', small: true }) : null
       ),
       h('aside.bSide.ours',{'aria-label':words('己方部队','Your army')},h('div.bSideTitle',words('我军','YOUR ARMY'),h('small',b.units.filter(u=>u.side===side&&!u.gone).length+' '+words('部','units'))),b.units.filter((u) => u.side === side).map(card)),
       h('aside.bSide.theirs',{'aria-label':words('敌方部队','Enemy army')},h('div.bSideTitle',words('敌军','OPPOSITION'),h('small',b.units.filter(u=>u.side!==side&&!u.gone).length+' '+words('部','units'))),b.units.filter((u) => u.side !== side).map(card)),
@@ -308,10 +308,9 @@ export function startBattle(app, setup) {
           phase==='deploy'&&active?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):phase==='fight'?h('small',readyCount?words(readyCount+' 部战法可施展',readyCount+' units can use tactics'):words('部队基础作战持续执行','Ordinary combat remains automatic')):null):null),
       h('div.bFeed', { 'aria-live': 'polite' }, feed.map((f) => h(`p.${f.kind}`, f.text))),
       phase === 'deploy'
-        ? h('div.bDeploy', h('h3', t('deploy')), h('p', t('deployHelp')), h('div.row', button(t('battleEntrust'), () => autoFinish()), button(t('fight'), () => begin(), { kind: 'main' })))
+        ? h('div.bDeploy', h('h3', t('deploy')), h('p', t('deployHelp')), h('div.row', keyButton('entrust',t('battleEntrust'), () => autoFinish()), keyButton('begin',t('fight'), () => begin(), { kind: 'main' })))
         : h('p.bHelp',armed?t('tacticPick'):paused?words('已暂停 · 空格继续 · 可继续下达指令','Paused · Space to resume · Orders remain available'):words('空格 暂停  /  1–3 倍速  /  Esc 取消选择','Space pause  /  1–3 speed  /  Esc clear selection'))
     );
-    if (focused) hud.querySelector(`[data-k="${CSS.escape(focused)}"]`)?.focus({ preventScroll: true });
   }
 
   function setPaused(v) {
