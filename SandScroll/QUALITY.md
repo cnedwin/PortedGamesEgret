@@ -59,3 +59,10 @@ this file; items by hand or on a device are marked not run until someone runs th
 | Node 26、Chromium + SwiftShader | 35 项单测和 23 项浏览器验收。每日模式另测时区一致、暂停重开、结算重试及旧档兼容。 · 35 unit tests and 23 browser checks. Daily Scroll was also checked for identical starts across time zones, restart, replay and compatibility with existing saves. |
 
 Fold7 另用 14 次有效落块完成一局「今日试笔」的失败结算，确认独立记录写入。PC 竖屏使用触屏模拟，Fold7 触控由测试工具在实体设备上派发。帧间隔来自浏览器 rAF。真机扬声器听感、手机竖屏和全关卡通关未覆盖。 · On the Fold7, 14 valid drops took a Daily Scroll run to its loss screen and saved a separate record. Portrait was checked using desktop touch emulation. Fold7 input was dispatched on the physical device. Intervals are from browser rAF. Speaker listening, phone portrait and a full campaign completion are pending.
+
+## 连续落块与转屏复测 · Rapid placement and rotation retest
+
+- Windows PC、Edge 158、WebGPU。键盘连续投放三块，首块仍在空中时暂停并将窗口从横屏切到竖屏。计时和首块位置保持，继续后三块按顺序落下。拆画也验证了上桶后暂停、调整窗口方向并继续。 · In headed Edge, keyboard input queued three drops. Resizing a paused round preserved its clock and first piece. All three landed after resuming. Unpaint kept an active bucket across the same pause and resize sequence.
+- Galaxy Z Fold7、Android 17、Chrome 157、WebGPU。用自动触控连续落块并暂停，从 873 × 325 CSS px 横屏实机转为 411 × 813 竖屏。同一局的计时及空中积木位置保持不动，继续后依次落在第 12、74、126 列。重复拖放没有覆盖等待中的积木。暂停和爆竹的横屏触控高度约 45.8 CSS px，近边缘点按生效。 · Injected touches and native rotation on the Fold7 preserved the same round, clock and falling piece. The three drops landed at columns 12, 74 and 126. The extra gesture left the queue intact. Landscape action buttons had roughly 45.8 CSS px of hit height and responded to taps near their edges.
+- Fold7 作画短样本共 89 个浏览器帧间隔，p95 16.6 ms，最大 16.7 ms。 · A short Fold7 Paint sample of 89 browser frame intervals had a 16.6 ms p95 and a 16.7 ms maximum.
+- 浏览器另用作画与拆画的已完成状态验证了结算前暂停、切换方向及继续。切换后保留原局和剩余倒计时。数字音频在暂停期间为零，重建音频设备后点继续会从曲目开头播放。 · A browser fixture finished both modes and paused and reoriented the game before the result was shown. The round and countdown persisted. Digital output stayed silent during pause. Music restarts on resume if reorientation rebuilt the audio device.

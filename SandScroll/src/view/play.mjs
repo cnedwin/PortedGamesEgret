@@ -9,6 +9,7 @@
 import { Bitmap, DisplayObjectContainer, Sprite, animate } from '@egret/engine';
 import { createParticleEmitter } from '@egret/engine/particles';
 import { BOARD, CRACKER, DANGER_GRACE, PIGMENTS, clampColumn, dropPiece, fireCracker, progress, step, surfaceAt, takeChanges, turnPiece } from '../sim/sand.mjs';
+import { LANDSCAPE_TOUCH_BUTTON_HEIGHT } from '../ui/kit.mjs';
 import { createBoardView, piecePixels } from './board.mjs';
 import { createScrollPainter, mountScroll } from './scroll.mjs';
 
@@ -17,9 +18,12 @@ const GOLD = 0xe2b866,
   ROSEWOOD = 0x3a1f12,
   INKWOOD = 0x1a0d07;
 const NOTES = [0, 2, 4, 7, 9, 12, 14, 16]; // a pentatonic climb for chains
+const MAX_QUEUED = 2;
+// A round survives a view rebuild during rotation. Keep only its accepted drops for that same lifetime.
+const roundPlacements = new WeakMap();
 
 /** Where everything goes on a tall or a wide stage. */
-export function playLayout(width, height) {
+export function playLayout(width, height, touch = false) {
   const { cols, rows } = BOARD;
   if (height > width) {
     const scale = 2,
@@ -34,12 +38,14 @@ export function playLayout(width, height) {
       share: { x: width - 124, y: 158 },
       cracker: { x: 178, y: 150, w: 116, h: 40 },
       tray: { x: 14, y: 820, w: width - 28, h: 128, vertical: false },
-      pause: { x: width - 64, y: 150, w: 44, h: 40 }
+      pause: { x: width - 108, y: 150, width: 88, height: 44 }
     };
   }
   const scale = 1.6,
     w = cols * scale,
-    h = rows * scale;
+    h = rows * scale,
+    buttonHeight = touch ? LANDSCAPE_TOUCH_BUTTON_HEIGHT : 44,
+    buttonY = height - 26 - buttonHeight;
   return {
     tall: false,
     scale,
@@ -47,9 +53,9 @@ export function playLayout(width, height) {
     scroll: { x: 22, y: 64, w: 276, h: 69 },
     score: { x: 24, y: 160 },
     share: { x: 298, y: 160 },
-    cracker: { x: 162, y: 470, w: 136, h: 44 },
+    cracker: { x: 162, y: buttonY, w: 136, h: buttonHeight },
     tray: { x: Math.round((width + w) / 2) + 28, y: 40, w: width - Math.round((width + w) / 2) - 50, h: h, vertical: true },
-    pause: { x: 22, y: 470, w: 120, h: 44 }
+    pause: { x: 22, y: buttonY, width: 128, height: buttonHeight }
   };
 }
 
@@ -142,7 +148,7 @@ function dotPixels(size = 12) {
  */
 export async function createPlayView(app, scope, root, kit, game, hooks) {
   const { width, height } = app.stage,
-    L = playLayout(width, height),
+    L = playLayout(width, height, app.touch),
     b = L.board,
     S = L.scale,
     T = L.tray,
@@ -150,6 +156,9 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     slotH = T.vertical ? Math.floor(T.h / 3) : T.h,
     trayScale = Math.min(1.5, (Math.min(slotW, slotH) - 30) / (BOARD.block * 4)),
     textures = (w, h, px) => app.game.textureFromPixels(w, h, px);
+  const queued = roundPlacements.get(game) ?? [];
+  roundPlacements.set(game, queued);
+  let paused = false;
 
   // ——— What never moves: the scroll on its mount, the frame of the tray and the dishes. The page paints them under the
   // engine's canvas (app.backdrop), again only when the scroll takes more colour or a dish is chosen. ———
@@ -176,6 +185,7 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   const shaft = field.addChild(scope.use(new Sprite()));
   const board = await createBoardView(scope, field, game, textures, { scale: S });
   scope.use(board);
+  const queueTargets = field.addChild(scope.use(new Sprite()));
   const danger = field.addChild(scope.use(new Sprite()));
   const fx = field.addChild(scope.use(new DisplayObjectContainer()));
   const air = field.addChild(scope.use(new DisplayObjectContainer()));
@@ -294,11 +304,13 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     plate.touchEnabled = true;
     plate.hitArea = { x: 0, y: 0, width: slotW, height: slotH };
     const art = holder.addChild(scope.use(new DisplayObjectContainer()));
-    return { k, holder, plate, art, bitmap: null, key: '' };
+    const reservation = holder.addChild(scope.use(new Sprite()));
+    reservation.visible = false;
+    return { k, holder, plate, art, reservation, bitmap: null, key: '' };
   });
   function paintSlot(slot, { chosen = false, lifted = false } = {}) {
     // The dish is on the page; only the piece dims here while it is lifted out.
-    slot.art.alpha = lifted ? 0.3 : 1;
+    slot.art.alpha = slot.reservation.visible || lifted ? 0.3 : 1;
     const look = chosen ? 'chosen' : '';
     if (looks[slot.k] !== look) {
       looks[slot.k] = look;
@@ -379,9 +391,9 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   });
   let shownCrackers = game.crackers;
   function arm(on) {
-    armed = on && game.crackers > 0 && !game.over;
+    armed = on && !paused && game.crackers > 0 && !game.over;
     void crackerButton.setText(armed ? hooks.words('crackerAim') : crackerText());
-    crackerButton.setEnabled(game.crackers > 0);
+    crackerButton.setEnabled(!paused && game.crackers > 0);
     drawAim(null);
   }
   function drawAim(at) {
@@ -412,18 +424,60 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
 
   // ——— Holding, dragging and dropping. ———
   const hold = { slot: null, session: null, startX: 0, startY: 0, moved: false, column: 0, keys: false };
-  let pending = null;
-  let paused = false;
+  const widthOf = (piece) => (Math.max(...piece.blocks.map(([x]) => x)) + 1) * BOARD.block;
   const columnAt = (globalX, piece) => {
-    const w = (Math.max(...piece.blocks.map(([x]) => x)) + 1) * BOARD.block;
+    const w = widthOf(piece);
     return clampColumn((globalX - b.x) / S - w / 2, w);
   };
+  const isReserved = (slot) => queued.some((drop) => drop.slot === slot);
+  const rejectDrop = (key) => {
+    announce(hooks.words(key));
+    app.sound.play('warn', { volume: 0.35 });
+  };
+  const drop = (slot, column) => {
+    if (dropPiece(game, slot, column)) app.sound.play('drop', { volume: 0.7 });
+  };
+  function drawQueueTargets() {
+    const g = queueTargets.graphics;
+    g.clear();
+    for (const [index, { column, width, tint }] of queued.entries()) {
+      const x = column * S;
+      const surface = surfaceAt(game, column + Math.floor(width / 2));
+      const y = Math.max(12, surface * S - 9 - index * 11);
+      g.beginFill(INKWOOD, 0.9).drawRect(x, y - 3, width * S, 9).endFill();
+      g.beginFill(tint, 1).drawRect(x, y, width * S, 3);
+      for (let dot = 0; dot <= index; dot++) g.drawCircle(x + 8 + dot * 10, y - 7, 3);
+      g.endFill();
+    }
+  }
+  function drawReservations() {
+    for (const slot of slots) {
+      slot.reservation.visible = false;
+      slot.reservation.graphics.clear();
+    }
+    for (const [index, { slot, tint }] of queued.entries()) {
+      const marker = slots[slot].reservation;
+      marker.visible = true;
+      marker.graphics.beginFill(INKWOOD, 0.9).drawRoundRect(10, 10, 23 + index * 10, 18, 8, 8).endFill();
+      marker.graphics.beginFill(tint);
+      for (let dot = 0; dot <= index; dot++) marker.graphics.drawCircle(21 + dot * 10, 19, 3.5);
+      marker.graphics.endFill();
+    }
+    drawQueueTargets();
+  }
   function release(slot, column) {
     if (paused || game.over) return;
-    if (game.falling) pending = { slot, column };
-    else if (dropPiece(game, slot, column)) app.sound.play('drop', { volume: 0.7 });
+    if (isReserved(slot)) return rejectDrop('placementReserved');
+    if (!game.falling && !queued.length) return drop(slot, column);
+    if (queued.length >= MAX_QUEUED) return rejectDrop('placementFull');
+    const piece = game.tray[slot];
+    queued.push({ slot, column, width: widthOf(piece), tint: hex(PIGMENTS[piece.pigment].rgb, 1.6) });
+    drawReservations();
+    announce(hooks.words('placementQueued', { count: queued.length }));
+    app.sound.play('turn', { volume: 0.42, rate: 1.35 });
   }
   function turn(slot) {
+    if (isReserved(slot)) return rejectDrop('placementReserved');
     if (!paused && turnPiece(game, slot)) {
       app.sound.play('turn');
       void refreshSlot(slots[slot]);
@@ -442,6 +496,7 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       if (kind === 'begin' && hold.session === null) {
         const slot = slots.find((s) => s.plate === target);
         if (!slot || game.over) return;
+        if (isReserved(slot.k)) return rejectDrop('placementReserved');
         Object.assign(hold, { slot: slot.k, session: contact.session.id, startX: contact.globalX, startY: contact.globalY, moved: false, over: false });
         hold.column = columnAt(contact.globalX, game.tray[slot.k]);
         app.sound.play('pick', { volume: 0.6 });
@@ -468,11 +523,15 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     choose(slot) {
       if (paused || slot < 0 || slot > 2) return;
       keys.slot = slot;
+      if (isReserved(slot)) {
+        keys.active = false;
+        return rejectDrop('placementReserved');
+      }
       keys.active = true;
       app.sound.play('pick', { volume: 0.5 });
     },
     move(direction, seconds) {
-      if (paused) return;
+      if (paused || isReserved(keys.slot)) return;
       keys.active = true;
       keys.column += direction * 150 * seconds;
     },
@@ -490,10 +549,9 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     },
     drop() {
       if (paused) return;
-      keys.active = true;
-      const piece = game.tray[keys.slot],
-        w = (Math.max(...piece.blocks.map(([x]) => x)) + 1) * BOARD.block;
+      const w = widthOf(game.tray[keys.slot]);
       release(keys.slot, clampColumn(keys.column, w));
+      keys.active = !isReserved(keys.slot);
     }
   };
 
@@ -592,6 +650,7 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   let shake = 0,
     nextPainting = 0;
 
+  drawReservations();
   for (const slot of slots) {
     paintSlot(slot);
     await refreshSlot(slot);
@@ -599,23 +658,33 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
 
   let pulse = 0;
   return {
+    pauseBounds: L.pause,
     controls,
     hold,
     setPaused(on) {
       paused = on;
-      if (on) clearHold();
+      if (on) {
+        clearHold();
+        keys.active = false;
+      }
+      arm(false);
     },
     get paused() {
       return paused;
     },
     update(seconds) {
       if (!paused) step(game, seconds);
-      if (!paused && pending && !game.falling && !game.over) {
-        if (dropPiece(game, pending.slot, pending.column)) app.sound.play('drop', { volume: 0.7 });
-        pending = null;
+      if (game.over && queued.length) {
+        queued.length = 0;
+        drawReservations();
+      } else if (!paused && queued.length && !game.falling) {
+        const next = queued.shift();
+        drop(next.slot, next.column);
+        drawReservations();
       }
       const { events, rows } = takeChanges(game);
       board.update(rows);
+      if (rows && queued.length) drawQueueTargets();
       for (const e of events) handle(e);
       if (game.crackers !== shownCrackers) {
         shownCrackers = game.crackers;
@@ -656,7 +725,7 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
 
       // The shadow and the shaft of the piece being placed.
       const placing = hold.slot !== null ? (hold.over ? { slot: hold.slot, column: hold.column } : null) :
-        keys.active && !game.over ? { slot: keys.slot, column: null } : null;
+        keys.active && !game.over && !isReserved(keys.slot) ? { slot: keys.slot, column: null } : null;
       const sg = shaft.graphics;
       if (!placing && shaft.drawn) {
         sg.clear();
@@ -664,7 +733,7 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       }
       if (placing) {
         const piece = game.tray[placing.slot],
-          w = (Math.max(...piece.blocks.map(([x]) => x)) + 1) * BOARD.block,
+          w = widthOf(piece),
           h = (Math.max(...piece.blocks.map(([, y]) => y)) + 1) * BOARD.block;
         if (placing.column === null) placing.column = keys.column = clampColumn(keys.column, w);
         void show(ghost, 'ghost', piece);

@@ -8,6 +8,9 @@
 import { DisplayObjectContainer, Sprite } from '@egret/engine';
 import { createActionControl, createControlKeys, createRangeControl, createSelectionGroup, createToggleControl } from '@egret/engine/ui';
 import { semanticBoundsOf } from '@egret/engine/ui/semantics';
+
+// In a compact landscape viewport the stage is scaled to about 60%, so 76 units give a 45 px target.
+export const LANDSCAPE_TOUCH_BUTTON_HEIGHT = 76;
 /** The palette of a painter's desk: rosewood, gold leaf, cinnabar for the main button, malachite for what is on, paper. */
 export const INK = 0x140b06,
   NIGHT = 0x2a1810,
@@ -136,7 +139,7 @@ export function createScreenKit(game, scope, { semantics, sound, parent = game.s
           role: 'button',
           onActivate: () => action.enabled && (action.press(), action.release()),
           onFocus: () => keyboard?.focus(id, { visible: true }),
-          describe: () => ({ name, bounds: semanticBoundsOf(face), disabled: !state.enabled, focused: focusId() === id, hidden: !root.visible || !root.parent })
+          describe: () => ({ name, bounds: semanticBoundsOf(face), disabled: !state.enabled, focused: focusId() === id, hidden: !root.visible || !root.parent?.visible })
         })
       );
     return {

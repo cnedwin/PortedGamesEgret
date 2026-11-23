@@ -136,7 +136,7 @@ async function show(name, next) {
   old?.dispose();
   backdrop.set(null);
   if (name !== 'play' && name !== 'unpaint') app.sound.stopMusic?.();
-  app.sound.setPaused?.(false);
+  app.sound.setPaused?.(next.paused === true);
   app.screenName = name;
   options = next;
   screen = await SCREENS[name](app, next);
@@ -219,15 +219,17 @@ let rebuilding = null;
 window.addEventListener('resize', () => {
   clearTimeout(rebuilding);
   rebuilding = setTimeout(() => {
-    const tall = frameHost.clientHeight > frameHost.clientWidth;
-    if (tall === app.stage.height > app.stage.width) return;
     going = going.then(async () => {
+      const tall = frameHost.clientHeight > frameHost.clientWidth;
+      if (tall === (app.stage.height > app.stage.width)) return;
+      const paused = screen?.paused === true;
+      const settlement = screen?.settlement;
       screen?.dispose();
       screen = null;
       await app.game.dispose();
       await boot();
-      // The same screen on the new stage; a round in play goes on where it was.
-      await show(app.screenName, { ...options, resume: true });
+      // The view can be new even while the current round and its pause state stay put.
+      await show(app.screenName, { ...options, resume: true, paused, settlement });
     });
   }, 250);
 });
