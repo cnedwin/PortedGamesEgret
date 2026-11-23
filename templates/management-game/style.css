@@ -1,0 +1,61 @@
+* { box-sizing: border-box; }
+:root {
+  color-scheme: dark;
+  --paper: #fff0cc;
+  --gold: #e3ad59;
+  --ink: #20352e;
+  --serif: Georgia, "Songti SC", "Noto Serif CJK SC", "SimSun", serif;
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+}
+body { margin: 0; min-height: 100svh; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; background: #1b2925; }
+#village { position: relative; isolation: isolate; width: min(100%, 177.77svh, 1440px); background: var(--ink); color: var(--paper); }
+.world-window { width: 100%; aspect-ratio: 16 / 9; position: relative; overflow: hidden; }
+.map { position: absolute; width: 100%; aspect-ratio: 16 / 9; top: 50%; left: 50%; transform: translate(-50%, -50%); }
+#surface, #sites { position: absolute; inset: 0; }
+#surface canvas { image-rendering: pixelated; }
+#sites { pointer-events: none; }
+button { font: inherit; cursor: pointer; touch-action: manipulation; color: inherit; }
+button:focus-visible { outline: 3px solid #fff6c7; outline-offset: 4px; box-shadow: 0 0 0 5px #314138; }
+[hidden] { display: none !important; }
+.hud { pointer-events: none; position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: flex-start; gap: 12px; justify-content: space-between; padding: clamp(10px, 2.4vw, 30px); background: linear-gradient(#172820b3, transparent); }
+.place { text-shadow: 0 2px 5px #142921; }
+#chapter { font-size: clamp(10px, 1.1vw, 14px); letter-spacing: .13em; color: #fff3cf; }
+h1, h2, p { margin: 0; }
+h1 { font: 600 clamp(20px, 3.6vw, 44px)/1.23 var(--serif); }
+.supplies { display: flex; align-items: center; gap: 12px; font-size: clamp(11px, 1.4vw, 16px); background: #23382fe8; padding: 7px 12px; border-bottom: 2px solid #a68a52; }
+.supplies > span { white-space: nowrap; }
+.log, .people { color: var(--gold); }
+.supplies b { font-variant-numeric: tabular-nums; font-size: 1.1em; }
+.plot { position: absolute; transform: translate(-50%, -75%); background: transparent; border: 0; min-width: 48px; min-height: 48px; padding: 0; pointer-events: auto; display: grid; place-content: center; }
+.plot .marker { color: #fff0bf; font: bold 22px/1 var(--serif); display: grid; place-content: center; width: 29px; height: 29px; background: #415742; border: 2px solid #ffe2a0; box-shadow: 0 3px 0 #59402b; }
+.plot[aria-pressed="true"] .marker { background: #91472b; }
+.plot .name { background: #26382ee8; color: #fff4d6; padding: 2px 5px; font-size: 11px; white-space: nowrap; }
+.plot:hover .marker { background: #7a5f37; }
+.journal { position: absolute; bottom: 0; left: 0; right: 0; display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; padding: clamp(12px, 2.8vw, 32px); background: linear-gradient(transparent, #172c22ec 65%); }
+#message { padding: 6px 0; text-shadow: 0 1px 3px #11271a; }
+h2 { font: 600 clamp(18px, 2.4vw, 33px)/1.2 var(--serif); }
+#hint { line-height: 1.45; font-size: clamp(12px, 1.5vw, 17px); color: #f3e1b7; margin-top: 5px; }
+.actions, .options { display: flex; gap: 7px; }
+.actions button, .options button { min-height: 40px; border: 1px solid #c8ac73; background: #20372eee; padding: 6px 14px; }
+button.primary { background: #ffe3aa; border-color: #f5cd83; color: #3c2b19; font-weight: 700; }
+.options { position: absolute; right: 2%; top: clamp(50px, 7vw, 84px); }
+.options button { min-height: 36px; font-size: 12px; padding: 5px 9px; }
+@media (max-aspect-ratio: 4/5) {
+  #village { width: 100%; padding: max(12px, env(safe-area-inset-top)) 0 max(14px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+  .hud { position: static; order: 0; align-items: center; padding: 6px 14px 14px; background: none; }
+  .place { min-width: 0; }
+  .world-window { order: 1; aspect-ratio: 1.15; }
+  .map { width: 156%; }
+  .journal { position: static; order: 2; min-height: 114px; flex-wrap: wrap; align-items: center; background: none; padding: 10px 16px; }
+  .options { position: static; order: 3; padding: 0 16px; }
+  .options button { min-height: 44px; }
+}
+@media (max-height: 410px) and (orientation: landscape) {
+  .hud, .journal { padding: 5px 10px; }
+  .options { top: 43px; }
+}
+@media (max-width: 500px) and (max-aspect-ratio: 4/5) {
+  .world-window { aspect-ratio: 1.30; }
+  .map { width: 137%; }
+  .plot { transform: translate(-50%, -130%); }
+}

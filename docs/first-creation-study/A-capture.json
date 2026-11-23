@@ -1,0 +1,78 @@
+{
+  "browser": "157.0.8103.6",
+  "angle": "SwiftShader",
+  "viewport": [
+    960,
+    540
+  ],
+  "scale": 1,
+  "locale": "zh-CN",
+  "motion": "no-preference",
+  "start": "navigation request from a fresh blank page",
+  "frames": 400,
+  "fps": 20,
+  "seconds": 20,
+  "actions": [
+    {
+      "at": 4,
+      "type": "click",
+      "x": 539,
+      "y": 485,
+      "cue": "Visible 取木料 badge on the bank; instructions list 3 wood and 2 reeds.",
+      "actualStartMs": 4003,
+      "status": "dispatched"
+    },
+    {
+      "at": 8,
+      "type": "click",
+      "x": 391,
+      "y": 521,
+      "cue": "Visible 割芦苇 badge beside the bank.",
+      "actualStartMs": 8000,
+      "status": "dispatched"
+    },
+    {
+      "at": 12,
+      "type": "click",
+      "x": 473,
+      "y": 416,
+      "cue": "After gathering resources, a visible 搭船棚 label appears on the outlined riverside site.",
+      "actualStartMs": 12003,
+      "status": "dispatched"
+    },
+    {
+      "at": 16,
+      "type": "click",
+      "x": 423,
+      "y": 446,
+      "cue": "A visible 请上船 badge appears by the completed shelter and pier; the journal names the waiting passenger.",
+      "actualStartMs": 16006,
+      "status": "dispatched"
+    }
+  ],
+  "observations": [
+    {
+      "nearSeconds": 3,
+      "file": "A-opening.png",
+      "visibleSemantics": "- main:\n  - strong: 雾汀渡\n  - text: 江南渡口经营小记\n  - button \"声音关闭\"\n  - button \"渡口指南\"\n  - region \"开渡第一日\":\n    - paragraph: 第一章 · 初到雾汀\n    - heading \"开渡第一日\" [level=1]\n    - paragraph: 晨雾将散，先给摆渡人搭一座船棚。\n    - text: 木料1 芦苇0 铜钱0\n  - region \"雾汀渡实景\":\n    - text: 南岸 · 雾汀渡\n    - button \"取木料\"\n    - button \"割芦苇\"\n    - text: 码头待修 已渡客人 0 / 1\n  - complementary \"渡口手记\":\n    - heading \"渡口手记\" [level=2]\n    - text: 0 / 3\n    - list:\n      - listitem: 备齐材料\n      - listitem: 搭起船棚\n      - listitem: 迎客过河\n    - strong: 备齐船棚用料\n    - paragraph: 搭棚要用木料 3 份、芦苇 2 份。\n    - button \"取木料 ＋2\"\n    - button \"割芦苇 ＋2\"\n    - button \"搭起船棚\" [disabled]\n    - paragraph: 按 1 取木 · 按 2 割苇\n  - strong: 开渡札记\n  - status: 摆渡人已系好乌篷船，正等岸上的船棚开工。"
+    },
+    {
+      "nearSeconds": 7,
+      "visibleSemantics": "- main:\n  - strong: 雾汀渡\n  - text: 江南渡口经营小记\n  - button \"声音关闭\"\n  - button \"渡口指南\"\n  - region \"开渡第一日\":\n    - paragraph: 第一章 · 初到雾汀\n    - heading \"开渡第一日\" [level=1]\n    - paragraph: 晨雾将散，先给摆渡人搭一座船棚。\n    - text: 木料3 芦苇0 铜钱0\n  - region \"雾汀渡实景\":\n    - text: 南岸 · 雾汀渡\n    - button \"割芦苇\"\n    - text: 码头待修 已渡客人 0 / 1\n  - complementary \"渡口手记\":\n    - heading \"渡口手记\" [level=2]\n    - text: 0 / 3\n    - list:\n      - listitem: 备齐材料\n      - listitem: 搭起船棚\n      - listitem: 迎客过河\n    - strong: 备齐船棚用料\n    - paragraph: 搭棚要用木料 3 份、芦苇 2 份。\n    - button \"木料已取\" [disabled]\n    - button \"割芦苇 ＋2\"\n    - button \"搭起船棚\" [disabled]\n    - paragraph: 按 1 取木 · 按 2 割苇\n  - strong: 开渡札记\n  - status: 从岸边取来两份木料。"
+    },
+    {
+      "nearSeconds": 11,
+      "visibleSemantics": "- main:\n  - strong: 雾汀渡\n  - text: 江南渡口经营小记\n  - button \"声音关闭\"\n  - button \"渡口指南\"\n  - region \"开渡第一日\":\n    - paragraph: 第一章 · 初到雾汀\n    - heading \"开渡第一日\" [level=1]\n    - paragraph: 晨雾将散，先给摆渡人搭一座船棚。\n    - text: 木料3 芦苇2 铜钱0\n  - region \"雾汀渡实景\":\n    - text: 南岸 · 雾汀渡\n    - button \"搭船棚\"\n    - text: 码头待修 已渡客人 0 / 1\n  - complementary \"渡口手记\":\n    - heading \"渡口手记\" [level=2]\n    - text: 1 / 3\n    - list:\n      - listitem: 备齐材料\n      - listitem: 搭起船棚\n      - listitem: 迎客过河\n    - strong: 材料已经备齐\n    - paragraph: 码头边的地基已经划好，可以搭棚了。\n    - button \"木料已取\" [disabled]\n    - button \"芦苇已割\" [disabled]\n    - button \"搭起船棚\"\n    - paragraph: 按 E 执行当前操作\n  - strong: 开渡札记\n  - status: 从水边割来两束芦苇。"
+    },
+    {
+      "nearSeconds": 15,
+      "visibleSemantics": "- main:\n  - strong: 雾汀渡\n  - text: 江南渡口经营小记\n  - button \"声音关闭\"\n  - button \"渡口指南\"\n  - region \"开渡第一日\":\n    - paragraph: 第一章 · 初到雾汀\n    - heading \"开渡第一日\" [level=1]\n    - paragraph: 晨雾将散，先给摆渡人搭一座船棚。\n    - text: 木料0 芦苇0 铜钱0\n  - region \"雾汀渡实景\":\n    - text: 南岸 · 雾汀渡\n    - button \"请上船\"\n    - text: 船棚已落成 已渡客人 0 / 1\n  - complementary \"渡口手记\":\n    - heading \"渡口手记\" [level=2]\n    - text: 2 / 3\n    - list:\n      - listitem: 备齐材料\n      - listitem: 搭起船棚\n      - listitem: 迎客过河\n    - strong: 沈阿婆在等船\n    - paragraph: 她提着一篮青菜，要到对岸的白墙村赶早市。\n    - button \"迎客上船\"\n    - paragraph: 按 E 执行当前操作\n  - strong: 开渡札记\n  - status: 船棚已经搭好，沈阿婆在码头等候。"
+    },
+    {
+      "nearSeconds": 19,
+      "file": "A-result.png",
+      "visibleSemantics": "- main:\n  - strong: 雾汀渡\n  - text: 江南渡口经营小记\n  - button \"声音关闭\"\n  - button \"渡口指南\"\n  - region \"开渡第一日\":\n    - paragraph: 第一章 · 初到雾汀\n    - heading \"开渡第一日\" [level=1]\n    - paragraph: 晨雾将散，先给摆渡人搭一座船棚。\n    - text: 木料0 芦苇0 铜钱0\n  - region \"雾汀渡实景\": 南岸 · 雾汀渡 乌篷船待发 已渡客人 0 / 1\n  - complementary \"渡口手记\":\n    - heading \"渡口手记\" [level=2]\n    - text: 2 / 3\n    - list:\n      - listitem: 备齐材料\n      - listitem: 搭起船棚\n      - listitem: 迎客过河\n    - strong: 客人已坐稳\n    - paragraph: 沈阿婆坐在船篷下，沿水路送她去对岸。\n    - button \"撑船过河\"\n    - paragraph: 按 E 执行当前操作\n  - strong: 开渡札记\n  - status: 沈阿婆已登船，等着开渡。"
+    }
+  ],
+  "errors": []
+}

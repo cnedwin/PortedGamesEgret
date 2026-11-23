@@ -4,6 +4,10 @@
 
 A collection of browser game demos built with [Egret Rebuild](https://github.com/cnedwin/Egret_rebuild). Each game lives in its own directory and can be run and maintained independently. [Visit the showcase](https://cnedwin.github.io/PortedGamesEgret/)
 
+Start a management game by placing the first house in a riverside village. [Play the starter](https://cnedwin.github.io/PortedGamesEgret/templates/management-game/) · [Create your own](docs/en/management-first-playable.md) · [Compare two unpolished drafts](docs/en/management-first-draft-study.md)
+
+经营游戏可从河畔村落的第一栋房子起步。[试玩样板](https://cnedwin.github.io/PortedGamesEgret/templates/management-game/) · [中文创作指引](docs/Cns/management-first-playable.md) · [两份首稿对照](docs/Cns/management-first-draft-study.md)
+
 ## Fengshen Chronicle · 封神 · 西岐战纪
 
 以《封神演义》为灵感的原生白鹭 2D 网页动作 RPG。选玄甲、方士或游侠，从西岐查明岐山古道、铜关与丹霞渡的异变，攻入朝歌外城。三家商铺随等级开放基础行装，稀有战利品来自战斗，铁铺能用旧装备合成带随机词条的精锻装。支持键鼠、触屏和浏览器本地存档。[在线试玩](https://cnedwin.github.io/PortedGamesEgret/FengshenChronicle/) · [操作说明](FengshenChronicle/README.md)
