@@ -6,7 +6,7 @@ import { Mesh3D, Object3D, createCylinderGeometry3D, createStandardMaterial3D } 
 import { ARMS, createWeapon } from './weapons.mjs';
 import { add, axisAngle, basis, cross, dot, len, lerp3, mul, qinv, qmul, qrot, slerp, sub, unit } from './rig.mjs';
 import { createRig } from './rig.mjs';
-import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, swingPhase } from './motion.mjs';
+import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, swingPhase, TIGER_SWORD } from './motion.mjs';
 
 const ease = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const easeOut = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : 1 - (1 - t) ** 3);
@@ -246,6 +246,16 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   function skillPose(man, act) {
     const t = act.t;
     const k = (a, b) => clamp((t - a) / (b - a), 0, 1);
+    const swordPose = (keys) => {
+      const poseAt = ([, line, which]) => line === 'ready' ? style.ready : style[line][which];
+      for (let i = 1; i < keys.length; i++) {
+        const next = keys[i], previous = keys[i - 1];
+        if (t > next[0]) continue;
+        const amount = k(previous[0], next[0]);
+        return mixPose(poseAt(previous), poseAt(next), next[2] === 1 ? easeIn(amount) : ease(amount));
+      }
+      return style.ready;
+    };
     function stroke(line, load, contact, follow, ready, lean = 0) {
       const keys = style[line];
       const phase = t < load ? easeOut(k(0, load))
@@ -261,13 +271,14 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
         return { pose: sweep(style.R, k(0.05, 0.5)), blend: 60, spin: k(0.1, 0.5) * Math.PI * 2 };
       case 'moon':
         return stroke('L', 0.095, 0.18, 0.34, 0.49);
-      case 'swing': {
-        const times = [0.18, 0.38, 0.58];
-        for (let i = 0; i < 3; i++) if (t < times[i] + 0.1) return { pose: sweep(style[i % 2 ? 'L' : 'R'], clamp((t - (times[i] - 0.14)) / 0.24, 0, 1)), blend: 60 };
-        return { pose: style.ready, blend: 12 };
+      case 'swing':
+        return { pose: swordPose(TIGER_SWORD.chain), blend: 60 };
+      case 'spin': {
+        const turn = -0.2 * ease(k(0.03, 0.14)) + (Math.PI * 2 + 0.2) * easeOut(k(0.14, 0.43));
+        const pose = { ...swordPose(TIGER_SWORD.spin) };
+        pose.d += 0.04 * Math.sin(Math.PI * k(0, 0.56));
+        return { pose, blend: 60, spin: turn };
       }
-      case 'spin':
-        return { pose: sweep(style.R, k(0.05, 0.4)), blend: 50, spin: k(0.08, 0.42) * Math.PI * 2 };
       case 'whirl':
         return { pose: mixPose(style.R[1], style.L[1], 0.5), blend: 30, spin: k(0.2, 1.85) * Math.PI * 2 * 5 };
       case 'wave':

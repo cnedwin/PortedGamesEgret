@@ -20,7 +20,7 @@ import { createScreens, placeName } from './screens.mjs';
 import { createSound } from './audio.mjs';
 import { MARKS, openSave, recordRun, settingsOf } from './saves.mjs';
 import { setLanguage, getLanguage, t, say } from './i18n.mjs';
-import { loadMotion } from './view/motion.mjs';
+import { loadMotion, skillTrailSegment } from './view/motion.mjs';
 import { createFigure } from './view/figure.mjs';
 import { createHorse } from './view/horse.mjs';
 import { createEffects } from './view/effects.mjs';
@@ -649,11 +649,14 @@ async function main() {
       const cutting = act?.kind === 'swing' && (act.struck
         ? act.t - act.strikeAt < 0.12
         : !act.held && act.t >= act.wind - 0.07);
-      if (b && was && step > 0 && (cutting || act?.kind === 'skill')) {
+      const segment = skillTrailSegment(act);
+      if (b && was && step > 0 && (cutting || segment !== null)) {
         const speed = Math.hypot(b[1][0] - was[0], b[1][1] - was[1], b[1][2] - was[2]) / step;
         if (speed > 5.5) {
           const edge = b[0].map((v, i) => v + (b[1][i] - v) * 0.76);
-          fx.sweep(m.id).push(edge, b[1], Math.min(0.7, (speed - 5.5) / 8), m.side === 'hero' ? [1, 0.95, 0.85] : [1, 0.75, 0.6]);
+          // Adjacent cuts use different ribbons so a fading cut cannot bridge to the next one.
+          const ribbon = segment > 0 ? m.id + ':' + segment : m.id;
+          fx.sweep(ribbon).push(edge, b[1], Math.min(0.7, (speed - 5.5) / 8), m.side === 'hero' ? [1, 0.95, 0.85] : [1, 0.75, 0.6]);
         }
       }
     }
