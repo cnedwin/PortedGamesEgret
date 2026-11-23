@@ -1,7 +1,7 @@
 // The pages between fights, drawn over the 3D picture: the title, choosing a regiment (the five stand on the field
 // behind), fitting skills and talents, the card before each fight, the result after it, pause, settings and the free
 // duel. Every page works with keys (arrows, Enter, Esc), the mouse and touch.
-import { ORDER, REGIMENTS, SKILLS, TALENTS, loadout } from './sim/regiments.mjs';
+import { ARTS, ORDER, REGIMENTS, SKILLS, TALENTS, loadout } from './sim/regiments.mjs';
 import { PLACES } from './sim/road.mjs';
 import { t, say, getLanguage } from './i18n.mjs';
 
@@ -116,25 +116,29 @@ export function createScreens(root, { onLanguage }) {
       });
     },
 
-    /** Two skills, four talents. */
+    /** Two skills, up to four talents; the weapon art shown beside them. */
     loadout({ regiment, chosen, onDone, onBack }) {
       const r = REGIMENTS[regiment];
       let pick = loadout(regiment, chosen);
       const page = node(`<section class="page loadout">
         <h2>${say(r.name)} · ${t('loadout')}</h2><p class="hint">${t('loadoutHint')}</p>
+        ${[['X', r.art, ''], ['Z', r.offArt, ''], ['X', r.mountedArt, t('mountedArt')]]
+          .filter(([, id]) => ARTS[id])
+          .map(([key, id, note]) => `<p class="hint art-line"><kbd>${key}</kbd> ${note || t('art')} · <b>${say(ARTS[id].name)}</b>${t('paren', { w: say(ARTS[id].weapon) })}${say(ARTS[id].text)} ${t('artCost', { s: ARTS[id].cool, r: ARTS[id].rage })}</p>`)
+          .join('')}
         <div class="cols"><div><h3>${t('skills')} <small class="n-s"></small></h3><div class="cards skills"></div></div>
         <div><h3>${t('talents')} <small class="n-t"></small></h3><div class="cards talents"></div></div></div>
         <footer><button type="button" data-act="back">${t('back')}</button><button type="button" class="go" data-act="done" autofocus>${t('begin')}</button></footer>
       </section>`);
       const draw = () => {
         page.querySelector('.skills').innerHTML = r.skills
-          .map((id) => `<button type="button" class="card ${pick.skills.includes(id) ? 'on' : ''}" data-act="skill" data-arg="${id}"><b>${say(SKILLS[id].name)}</b><span>${say(SKILLS[id].text)}</span><small>${t('cool', { s: SKILLS[id].cool })}</small>${pick.skills.includes(id) ? `<kbd>${pick.skills.indexOf(id) ? 'E' : 'Q'}</kbd>` : ''}</button>`)
+          .map((id) => `<button type="button" class="card ${pick.skills.includes(id) ? 'on' : ''}" data-act="skill" data-arg="${id}"><b>${say(SKILLS[id].name)}</b><span>${say(SKILLS[id].text)}</span><small>${t('cool', { s: SKILLS[id].cool })}</small>${pick.skills.includes(id) ? `<kbd>${pick.skills.indexOf(id) ? 'T' : 'R'}</kbd>` : ''}</button>`)
           .join('');
-        page.querySelector('.talents').innerHTML = r.talents
-          .map((id) => `<button type="button" class="card ${pick.talents.includes(id) ? 'on' : ''}" data-act="talent" data-arg="${id}"><b>${say(TALENTS[id].name)}</b><span>${say(TALENTS[id].text)}</span></button>`)
-          .join('');
+        page.querySelector('.talents').innerHTML = r.talents.length
+          ? r.talents.map((id) => `<button type="button" class="card ${pick.talents.includes(id) ? 'on' : ''}" data-act="talent" data-arg="${id}"><b>${say(TALENTS[id].name)}</b><span>${say(TALENTS[id].text)}</span></button>`).join('')
+          : `<p class="hint">${t('noTalents')}</p>`;
         page.querySelector('.n-s').textContent = t('picked', { n: pick.skills.length, max: 2 });
-        page.querySelector('.n-t').textContent = t('picked', { n: pick.talents.length, max: 4 });
+        page.querySelector('.n-t').textContent = r.talents.length ? t('picked', { n: pick.talents.length, max: Math.min(4, r.talents.length) }) : '';
       };
       const toggle = (list, id, max) => {
         const at = list.indexOf(id);

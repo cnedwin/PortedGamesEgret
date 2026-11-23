@@ -21,6 +21,6 @@ for (const [set, { tris, tex }] of Object.entries(SETS)) {
   const tmp = `${outDir}/${name}-${set}.tmp.glb`;
   await io.write(tmp, doc);
   const ratio = Math.min(1, tris / total).toFixed(5);
-  execFileSync('npx', ['gltfpack', '-i', tmp, '-o', `${outDir}/${name}-${set}.glb`, '-si', ratio, '-sa', '-c', '-kn'], { stdio: 'inherit' });
+  execFileSync('npx', ['gltfpack', '-i', tmp, '-o', `${outDir}/${name}-${set}.glb`, '-si', ratio, '-c', '-kn'], { stdio: 'inherit' });
   execFileSync('rm', [tmp]);
 }

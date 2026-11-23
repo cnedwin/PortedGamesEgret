@@ -22,6 +22,7 @@ import { MARKS, openSave, recordRun, settingsOf } from './saves.mjs';
 import { setLanguage, getLanguage, t, say } from './i18n.mjs';
 import { loadMotion } from './view/motion.mjs';
 import { createFigure } from './view/figure.mjs';
+import { createHorse } from './view/horse.mjs';
 import { createEffects } from './view/effects.mjs';
 import { createCameraRig } from './view/camera.mjs';
 import { applyLook, buildPlace } from './view/stage.mjs';
@@ -58,6 +59,7 @@ showLanguage();
 const keep = () => save.update((d) => void (d.settings = { ...settings, language: getLanguage() }));
 
 const fixedStep = params.has('fixed');
+let holdAt = null;
 const HEIGHT = { yulin: 1.8, tiger: 1.77, vanguard: 1.88, plume: 1.8, archer: 1.76 };
 
 async function main() {
@@ -135,8 +137,24 @@ async function main() {
   }
   async function figureFor(man, which) {
     motions[man.regiment] ??= loadMotion(new URL(`../assets/motion/${man.regiment}`, import.meta.url));
-    const [b, motion] = await Promise.all([body(man.regiment, which), motions[man.regiment]]);
-    return createFigure({ regiment: man.regiment, body: b, motion: await motion, world: scene, height: HEIGHT[man.regiment] });
+    const [b, motion, horseBody] = await Promise.all([body(man.regiment, which), motions[man.regiment], man.horse ? body('horse', which) : null]);
+    const fig = createFigure({ regiment: man.regiment, body: b, motion: await motion, world: scene, height: HEIGHT[man.regiment] });
+    if (!horseBody) return fig;
+    // A rider and his horse: the horse moves first, then he sits where its saddle is.
+    const horse = createHorse({ body: horseBody, world: scene });
+    return {
+      ...fig,
+      horse,
+      update(m, g, dt) {
+        horse.update(m.horse, dt, { rearing: m.mounted && m.stunKind === 'rear' && m.stun > 0 });
+        fig.update(m, g, dt, { seat: horse.seat() });
+      },
+      dispose() {
+        fig.dispose();
+        horse.dispose();
+        horseBody.dispose();
+      }
+    };
   }
 
   // ---- places ----------------------------------------------------------------------------------------------
@@ -162,6 +180,8 @@ async function main() {
       m.x = (i - 2) * 1.9;
       m.z = 0.5 - Math.abs(i - 2) * 0.35;
       m.face = 0;
+      // The rider stands his horse a pace back from the line.
+      if (m.horse) Object.assign(m.horse, { x: m.x, z: m.z - 0.6, face: 0 }), (m.z -= 0.6);
     });
     const figs = await Promise.all(g.men.map((m) => figureFor(m, quality === 'high' ? 'mid' : 'low')));
     lineup = { game: g, figs, focus: null };
@@ -284,7 +304,9 @@ async function main() {
     over = null;
     overTime = 0;
     paused = false;
-    locked = !!st.double ? false : true;
+    // No lock-on by default, as the keys' layout has none; the middle button holds the camera on a foe. On a touch
+    // screen a single foe is held from the start.
+    locked = coarse && !st.double;
     tally = { deflects: 0, broken: 0 };
     input.setYaw(game.hero.face);
     cam.snap([game.hero.x, 2.2, game.hero.z + 3.5], [0, 1.4, 0]);
@@ -394,7 +416,7 @@ async function main() {
   // ---- one tick of the fight --------------------------------------------------------------------------------
   const chestOf = (id) => {
     const m = game?.men.find((x) => x.id === id);
-    return m ? [m.x, 1.3 + (m.act?.air ?? 0), m.z] : [0, 1.3, 0];
+    return m ? [m.x, (m.mounted ? 2.15 : 1.3) + (m.act?.air ?? 0), m.z] : [0, 1.3, 0];
   };
   function threatLine() {
     const hero = game.hero;
@@ -468,6 +490,57 @@ async function main() {
       case 'kick':
         play('step', { volume: 0.6 });
         break;
+      // The horse and the saddle.
+      case 'horseHit': {
+        const p = projectToViewport3D(camera, chestOf(e.who).map((v, i) => (i === 1 ? 1.2 : v)), canvas.clientWidth, canvas.clientHeight);
+        if (p.onScreen) hud.number([p.x, p.y], e.damage, 'horse');
+        break;
+      }
+      case 'horseDown':
+        play('fall', { rate: 0.7 });
+        break;
+      case 'thrown':
+        play('fall');
+        if (e.who === heroId) hud.toast(t('thrown'), 'bad'), cam.kick(0.7);
+        break;
+      case 'mount':
+      case 'dismount':
+        play('step', { volume: 0.7, rate: 0.8 });
+        break;
+      case 'lance':
+        play('heavy', { rate: 0.85 });
+        break;
+      case 'onFoot':
+        if (e.who === heroId) hud.toast(t('needFoot'), 'bad');
+        break;
+      case 'noRage':
+        if (e.who === heroId) hud.toast(t('needRage'), 'bad');
+        break;
+      case 'needHorse':
+        if (e.who === heroId) hud.toast(t('needHorse'), 'bad');
+        break;
+      case 'needRun':
+        if (e.who === heroId) hud.toast(t('needRun'), 'bad');
+        break;
+      case 'refund':
+        if (e.who === heroId) hud.toast(t('refund'), 'good');
+        break;
+      case 'noArt':
+        if (e.who === heroId) hud.toast(t('noArt'), 'bad');
+        break;
+      case 'daze':
+        play('shield', { rate: 0.7 });
+        if (e.who === heroId) hud.toast(t('dazed'), 'bad'), cam.kick(0.5);
+        break;
+      case 'noHorse':
+        if (e.who === heroId) hud.toast(e.dead ? t('horseDead') : t('horseFar'), 'bad');
+        break;
+      case 'call':
+        play('draw', { rate: 1.6, volume: 0.5 });
+        break;
+      case 'dressing':
+        play('draw', { rate: 0.6, volume: 0.5 });
+        break;
       case 'evade':
       case 'step':
         play('step', { volume: 0.5 });
@@ -529,7 +602,7 @@ async function main() {
       if (autoBrain) inputs.hero = autoBrain.think(game, TICK);
       else {
         const aim = target && game.hero.regiment === 'archer' ? null : undefined;
-        inputs.hero = input.sample(TICK, { threat, aim });
+        inputs.hero = input.sample(TICK, { threat, aim, bow: game.hero.regiment === 'archer' && !game.hero.knife });
       }
       for (const e of step(game, inputs)) onEvent(e);
       if (game.over && !over) {
@@ -560,9 +633,15 @@ async function main() {
       }
     }
     fx.update(dt * k, game);
-    const yaw = cam.update(dt, { hero: game.hero, yaw: input.state.yaw, pitch: input.state.pitch, target, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0 });
+    const yaw = cam.update(dt, { hero: game.hero, yaw: input.state.yaw, pitch: input.state.pitch, target, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.() });
     if (target) input.setYaw(yaw);
-    hud.update(dt, game, { line: input.state.line, threat, guard: game.hero.guard, locked: !!target });
+    const w = canvas.clientWidth,
+      h = canvas.clientHeight;
+    const project = (point) => {
+      const p = projectToViewport3D(camera, point, w, h);
+      return p.inFront && p.x > -80 && p.x < w + 80 && p.y > -80 && p.y < h + 80 ? [p.x, p.y] : null;
+    };
+    hud.update(dt, game, { line: input.state.line, threat, guard: game.hero.guard, locked: !!target, project, yaw: input.state.yaw, input: input.state });
     touch.cool(game.hero);
     hud.hint(!coarse && !autoBrain && input.state.wantLock && !input.state.pointerLocked && !over ? t('clickToFight') : null);
   }
@@ -574,6 +653,8 @@ async function main() {
       // `?fixed` (for captures on slow machines): every frame drawn moves the world on by one tick, so motion and
       // blade trails look as they do at full speed.
       dt = fixedStep ? TICK : Math.min(dt, 0.1);
+      // Held for a capture: the picture goes on drawing while the fight stands still at the time asked for.
+      if (holdAt !== null && game && game.time >= holdAt) dt = 0;
       clock += dt;
       stage?.update(dt);
       fx.tickWeather(dt);
@@ -594,7 +675,8 @@ async function main() {
             cam.frame(dt, [Math.sin(a) * 2.5, 2.1, 7.6 + Math.cos(a) * 0.6], [0, 1.25, 0], 1.5);
           } else {
             const m = lineup.game.men[f];
-            cam.frame(dt, [m.x + 0.9, 1.65, m.z + 3.0], [m.x, 1.2, m.z], 3);
+            if (m.mounted) cam.frame(dt, [m.x + 1.4, 2.4, m.z + 4.6], [m.x, 1.75, m.z], 3);
+            else cam.frame(dt, [m.x + 0.9, 1.65, m.z + 3.0], [m.x, 1.2, m.z], 3);
           }
         }
       }
@@ -616,6 +698,10 @@ async function main() {
       return lineup;
     },
     backend: app.backend,
+    /** Stand the fight still once it reaches `seconds` (for screenshot baselines); null lets it go on. */
+    holdAt(seconds) {
+      holdAt = seconds;
+    },
     /** Play the fight on by `seconds` at once with brains on both sides (for checks). */
     run(seconds) {
       if (!game) return false;

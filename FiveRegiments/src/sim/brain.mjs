@@ -5,8 +5,13 @@
 // A brain sees a blow only after its reaction time has passed since the other man began it, and then guards the
 // right line with the chance its level gives. Two brains on the same side share a turn to press in, so that two
 // against one come in one after the other, the second circling or shooting meanwhile.
+//
+// A rider fights in passes: he rides at a point just beside his man, sweeps the ji at the side he is on, rides on,
+// wheels round and comes again; with his rage full he couches the ji and passes with his man on the horse's right,
+// where the couched point is. When his horse is nearly spent he gets down and fights on foot. A man on foot
+// sidesteps a charge and keeps close to a rider, inside the sweep.
 
-import { REGIMENTS, SKILLS } from './regiments.mjs';
+import { ARTS, REGIMENTS, SKILLS } from './regiments.mjs';
 import { BODY, aimAt, enemiesOf, facing } from './fight.mjs';
 
 const HABITS = {
@@ -49,8 +54,12 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
       if (dist(man, target) <= reach) return { line: act.line, act, soon: act.wind - act.t };
     }
     if (act.kind === 'kick' && act.t >= brain.react * 0.8 && dist(man, target) < 1.8) return { kick: true, act };
+    if (act.kind === 'lance' && act.t >= brain.react * 0.6 && dist(man, target) < 9) {
+      const off = Math.abs(wrap(bearing(target, man) - target.horse.face));
+      if (off < 1.2) return { lance: true, act };
+    }
     if (act.kind === 'skill' && act.t >= brain.react && dist(man, target) < 3.6 && !['shout', 'mist', 'web', 'gale', 'fan', 'blast', 'backStep'].includes(act.id))
-      return { line: act.id === 'flowers' || act.id === 'boar' || act.id === 'bull' ? 'T' : act.id === 'down' || act.id === 'leap' || act.id === 'drop' ? 'O' : 'R', act, skill: act.id };
+      return { line: ['flowers', 'boar', 'bull', 'charge'].includes(act.id) ? 'T' : ['down', 'leap', 'drop'].includes(act.id) ? 'O' : 'R', act, skill: act.id };
     return null;
   }
 
@@ -62,27 +71,30 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
         s = SKILLS[id];
       if (man.st < s.cost * 0.6) continue;
       const others = enemiesOf(game, man).filter((t) => dist(man, t) < 2.6).length;
-      const open = target.stun > 0 || target.act?.kind === 'recover' || (target.act?.kind === 'swing' && target.act.struck);
+      const open = target.stun > 0 || target.daze > 0 || target.act?.kind === 'recover' || (target.act?.kind === 'swing' && target.act.struck);
       const chance = 0.35 + 0.5 * brain.level;
       let want = false;
       switch (id) {
+        case 'charge': want = d > 3 && d < 6.5; break;
         case 'counter': want = threat?.line && !threat.kick && d < 3; break;
-        case 'bull': want = d > 3.5 && d < 7.5 && !target.guard; break;
+        case 'bull': want = d > 3.5 && d < 7.5 && (target.mounted || !target.guard || rng() < 0.3); break;
         case 'turning': want = others >= 2 || (d < 2.3 && open); break;
         case 'moon': want = d < 2.7 && (open || !target.guard); break;
         case 'swing': want = d < 2.0 && (open || !target.guard); break;
-        case 'spin': want = d > 1.6 && d < 3.8 && rng() < 0.4; break;
+        case 'spin': want = d < 2.3 && (others >= 2 || open || !target.guard); break;
         case 'mist': want = d < 3.6; break;
         case 'whirl': want = d < 2.4 && (others >= 2 || !target.guard); break;
         case 'wave': want = d > 4.5 && d < 12; break;
         case 'down': want = d < 2.6 && (open || target.st < 35); break;
         case 'leap': want = d > 3.6 && d < 7; break;
         case 'shout': want = man.hp < man.maxHp * 0.7; break;
+        case 'stepCut': want = d > 2.0 && d < 4.4 && (open || !target.guard); break;
         case 'flowers': want = d > 1.8 && d < 3.3 && !target.guard; break;
         case 'boar': want = d > 3.8 && d < 8; break;
         case 'drop': want = d > 1.5 && d < 4.4 && (target.moving > 1.6 || open); break;
         case 'gale': want = d > 6; break;
-        case 'fan': want = d > 3 && d < 9; break;
+        // The spread hits hardest close in.
+        case 'fan': want = d < 9; break;
         case 'backStep': want = d < 3.2; break;
         case 'blast': want = d > 4.5 && d < 16; break;
         case 'web': want = d < 7.5 && target.moving > 1.2 && !target.slow.length; break;
@@ -92,8 +104,79 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     return -1;
   }
 
+  /** Which weapon art (X `main` or Z `off`) is worth it now, if any. */
+  function chooseArt(game, target, d) {
+    const open = target.stun > 0 || target.daze > 0 || target.act?.kind === 'recover';
+    for (const [which, id] of [['main', man.r.art], ['off', man.r.offArt]]) {
+      const a = ARTS[id];
+      if (!a || a.mounted || (man.artCool[id] ?? 0) > 0 || man.rage < a.rage) continue;
+      let want = false;
+      switch (id) {
+        case 'finisher': want = d < 2.6 && (open || target.hp < target.maxHp * 0.3 || !target.guard); break;
+        case 'shieldSlam': want = d < 1.9; break;
+        case 'axeSmash':
+        case 'poleAxeSmash': want = d < a.reach + 0.3 && (open || !target.guard); break;
+        case 'volley': want = d > 3.5 && !man.draw; break;
+      }
+      if (want && rng() < (0.35 + 0.5 * brain.level) * 0.1) return which;
+    }
+    return null;
+  }
+
+  /** Steering a horse at a point: where to put the stick. */
+  function steer(at) {
+    const dx = at[0] - man.x,
+      dz = at[1] - man.z,
+      l = Math.hypot(dx, dz) || 1;
+    return [dx / l, dz / l];
+  }
+
+  /** A rider's feet and blows: passes at his man, the couched charge, and getting down when the horse is spent. */
+  function ride(game, dt, input, target, d, toward) {
+    const h = man.horse;
+    if (h.hp < h.maxHp * 0.3 && (!man.act || man.act.kind === 'recover') && d > 4) {
+      input.mount = !man.prev.mount;
+      return;
+    }
+    const pass = (brain.pass ??= { phase: 'in', t: 0, side: rng() < 0.5 ? 1 : -1, out: 1.2 });
+    pass.t += dt;
+    const off = wrap(toward - h.face);
+    // With the ji couched (or rage full to couch it), pass with him on the right, where the point is.
+    const couching = man.act?.kind === 'lance' || (ARTS[man.r.mountedArt] && (man.artCool[man.r.mountedArt] ?? 0) <= 0);
+    if (couching && pass.phase === 'in') pass.side = 1;
+    if (pass.phase === 'in' && (d < 1.9 || (Math.abs(off) > 1.5 && d < 6) || pass.t > 9)) Object.assign(pass, { phase: 'out', t: 0, out: 1.0 + rng() * 0.9 });
+    else if (pass.phase === 'out' && pass.t > pass.out && (d > 7 || pass.t > pass.out + 2.5)) Object.assign(pass, { phase: 'in', t: 0, side: rng() < 0.6 ? -pass.side : pass.side });
+    let at;
+    if (pass.phase === 'in') {
+      // A point beside him, so the ji passes over him and the horse does not run into him.
+      const lateral = (couching ? 1.7 : Math.min(1.6, d * 0.25)) * pass.side;
+      at = [target.x + Math.cos(toward) * lateral, target.z - Math.sin(toward) * lateral];
+    } else at = [man.x + Math.sin(h.face) * 6, man.z + Math.cos(h.face) * 6];
+    // Wheel away from the edge of the field.
+    const r = Math.hypot(man.x, man.z),
+      room = game.place.radius - 4;
+    if (r > room) at = [at[0] - (man.x / r) * 8, at[1] - (man.z / r) * 8];
+    input.move = steer(at);
+    input.sprint = h.st > 18 && ((pass.phase === 'in' && d > 4) || (pass.phase === 'out' && pass.t < 0.5));
+    input.face = toward;
+    // The couched ji (X), when his rage is full and he is lined up and moving.
+    if (couching && !man.act && pass.phase === 'in' && d > 4.5 && d < 15 && Math.abs(off) < 0.45 && h.speed > ARTS[man.r.mountedArt].run && rng() < 0.06 + 0.1 * brain.level) {
+      input.art = !man.prev.art;
+      return;
+    }
+    if (man.act?.kind === 'lance') return;
+    // A sweep at the side he is on, as he comes by.
+    const reach = man.r.mounted.L.reach + (target.body ?? BODY);
+    if ((!man.act || man.act.kind === 'recover') && man.stun <= 0 && !input.guard && d < reach * 0.95 && man.st > 14 && rng() < 0.25 + 0.3 * brain.level) {
+      const side = wrap(toward - man.face);
+      input.line = Math.abs(side) < 0.35 ? (rng() < 0.5 ? 'T' : 'O') : side > 0 ? 'L' : 'R';
+      input.attack = true;
+      brain.swingHold = rng() < 0.3 ? 0.3 : 0;
+    }
+  }
+
   function think(game, dt) {
-    const input = { move: [0, 0], face: man.face, sprint: false, attack: false, guard: false, kick: false, step: false, skill: -1, line: man.line, swap: false };
+    const input = { move: [0, 0], face: man.face, sprint: false, attack: false, guard: false, kick: false, step: false, skill: -1, art: false, line: man.line, swap: false, mount: false };
     if (!man.alive) return input;
     const foes = enemiesOf(game, man);
     if (!foes.length) return input;
@@ -101,6 +184,9 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     let target = foes.find((t) => t.id === brain.target);
     const nearest = foes.reduce((a, b) => (dist(man, a) <= dist(man, b) ? a : b));
     if (!target || dist(man, nearest) < dist(man, target) - 2) target = nearest;
+    // While a rider is out on his pass, go for the bowman instead.
+    const bowman = foes.find((t) => t.regiment === 'archer' && !t.knife);
+    if (target.mounted && bowman && dist(man, target) > 5 && dist(man, bowman) < 16 && !man.mounted) target = bowman;
     brain.target = target.id;
     const d = dist(man, target);
     const toward = bearing(man, target);
@@ -122,6 +208,8 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     // Against a longer weapon, get inside it rather than trade at its length.
     if (!bow && target.regiment !== 'archer') range = Math.min(range, HABITS[target.regiment].range - 0.5);
     if (!holding) range = 4.8;
+    // Against a rider, keep inside the sweep of his ji, close to the horse.
+    if (target.mounted && !bow) range = 1.6;
     if (bow && man.knife) range = 1.4;
 
     // ---- the archer: keep away and shoot; draw the knife only when cornered --------------------------
@@ -136,14 +224,17 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
         input.aim = { yaw: aim.yaw + (rng() - 0.5) * err, pitch: aim.pitch + (rng() - 0.5) * err * 0.4 };
         input.face = aim.yaw;
         if (man.draw) {
-          const ready = man.r.bow.draw * (man.talents.has('pearls') ? 0.75 : 1) * (0.9 + 0.2 * brain.level);
+          const ready = man.r.bow.draw * (0.9 + 0.2 * brain.level);
           input.attack = man.draw.t < ready;
         } else {
           // Between arrows he breathes and looks; with a friend at the man already, he waits longer.
-          const friendClose = game.men.some((m) => m.alive && m.side === man.side && m !== man && Math.hypot(m.x - target.x, m.z - target.z) < 2.6);
+          // With a friend in the fight he shoots less often (a man alone against two must have a chance), less again
+          // when the friend is at the man already.
+          const friends = game.men.filter((m) => m.alive && m.side === man.side && m !== man);
+          const friendClose = friends.some((m) => Math.hypot(m.x - target.x, m.z - target.z) < 2.6);
           if (game.time >= (brain.nextShot ?? 0) && d > 2.2 && !cornered && man.st > 15) {
             input.attack = true;
-            brain.nextShot = game.time + (friendClose ? 2.6 + rng() * 2 : 0.5 + rng() * 0.9) * (1.2 - brain.level * 0.4);
+            brain.nextShot = game.time + (friendClose ? 2.6 + rng() * 2 : friends.length ? 1.6 + rng() * 1.4 : 0.5 + rng() * 0.9) * (1.2 - brain.level * 0.4);
           }
         }
       }
@@ -157,19 +248,34 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
         const rolled = rng();
         brain.answer = 'guard';
         if (threat.kick) brain.answer = rng() < 0.35 * brain.level ? 'step' : 'none';
+        else if (threat.lance) brain.answer = rng() < 0.45 + 0.45 * brain.level ? 'step' : 'guard';
         else if (rolled < habit.step * 0.35 * (0.5 + brain.level)) brain.answer = 'step';
         else if (rolled > Math.min(0.97, brain.read * habit.guard + 0.05)) brain.answer = 'wrong';
         if (target.act?.held > 0.2 && rng() < 0.4) brain.answer = 'step';
-        brain.guardLine = brain.answer === 'wrong' ? ['L', 'R', 'O', 'T'].filter((l) => l !== facing(threat.line))[Math.floor(rng() * 3)] : facing(threat.line);
+        brain.guardLine = threat.lance ? 'T' : brain.answer === 'wrong' ? ['L', 'R', 'O', 'T'].filter((l) => l !== facing(threat.line))[Math.floor(rng() * 3)] : facing(threat.line);
       }
       if (brain.answer === 'guard' || brain.answer === 'wrong') {
         input.guard = true;
         input.line = brain.guardLine;
         brain.guardUntil = game.time + 0.35;
       } else if (brain.answer === 'step') {
-        input.step = !man.prev.step;
-        const away = wrap(toward + Math.PI + (rng() < 0.5 ? 0.9 : -0.9));
+        // Out of the way of a charge sideways; back and aside from a blow.
+        const wait = threat.lance && dist(man, target) > 4.5;
+        input.step = !wait && !man.prev.step;
+        const away = threat.lance ? wrap(toward + Math.PI / 2 * (brain.side || 1)) : wrap(toward + Math.PI + (rng() < 0.5 ? 0.9 : -0.9));
         input.move = [Math.sin(away), Math.cos(away)];
+      }
+    } else if (threat && bow && target.mounted) {
+      // A bow cannot guard a horseman's sweep: once in a while, step aside from it.
+      if (brain.seen !== threat.act) {
+        brain.seen = threat.act;
+        brain.answer = rng() < 0.3 + 0.45 * brain.level ? 'step' : 'none';
+      }
+      if (brain.answer === 'step' && man.st > 12) {
+        input.step = !man.prev.step;
+        const away = wrap(toward + (Math.PI / 2) * (brain.side || 1));
+        input.move = [Math.sin(away), Math.cos(away)];
+        brain.answer = 'none';
       }
     } else if (game.time < brain.guardUntil) {
       input.guard = true;
@@ -182,6 +288,15 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
       input.line = 'T';
     }
 
+    // Dazed, he cannot guard: get out of reach until it passes.
+    if (man.daze > 0 && !man.mounted) {
+      input.guard = false;
+      const away = wrap(toward + Math.PI + 0.7 * brain.side);
+      input.move = [Math.sin(away), Math.cos(away)];
+      input.sprint = man.st > 10;
+      return input;
+    }
+
     // ---- punishing an opening, after a guard or a deflection ----------------------------------------------
     for (const e of game.events) {
       if ((e.type === 'block' || e.type === 'deflect') && e.who === man.id) brain.punish = 0.45;
@@ -191,11 +306,16 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
 
     // ---- skills --------------------------------------------------------------------------------------------
     const free = !man.act || man.act.kind === 'recover';
-    if (free && man.stun <= 0 && !man.draw) {
+    if (free && man.stun <= 0 && !man.draw && !man.mounted) {
       const slot = chooseSkill(game, target, d, threat);
       if (slot >= 0 && (holding || bow)) {
         input.skill = slot;
         input.guard = false;
+      } else if (holding || bow) {
+        const which = chooseArt(game, target, d);
+        if (which === 'main' && !man.prev.art) input.art = true;
+        if (which === 'off' && !man.prev.offArt) input.offArt = true;
+        if (which) input.guard = false;
       }
     }
 
@@ -203,15 +323,27 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     const habit = HABITS[man.regiment];
     const swing = man.act?.kind === 'swing' ? man.act : null;
     const melee = !bow || man.knife;
+    if (man.mounted && !swing) {
+      ride(game, dt, input, target, d, toward);
+      return input;
+    }
+    if (man.mounted && swing) {
+      ride(game, dt, input, target, d, toward);
+      if (!swing.struck) input.attack = swing.t < swing.wind || swing.held < brain.swingHold;
+      input.skill = -1;
+      return input;
+    }
     if (melee && swing) {
       // Holding for a heavy blow, or letting go; a feint now and then.
       if (!swing.struck && swing.t < swing.wind * 0.6 && brain.feintAt === swing && !input.guard) {
         if (swing.t > swing.wind * 0.35) input.guard = true;
       } else if (!swing.struck) input.attack = swing.t < swing.wind || swing.held < brain.swingHold;
     } else if (melee && free && man.stun <= 0 && input.skill < 0 && !input.guard && !input.step && holding) {
-      const reach = man.r.blows.T.reach + BODY;
-      const inReach = d < reach * 0.98;
-      const keen = brain.punish > 0 || target.stun > 0 || target.act?.kind === 'recover';
+      const reach = man.r.blows.T.reach + (target.body ?? BODY);
+      // A rider closes fast: strike where he will be when the blade comes down.
+      const closing = target.mounted ? Math.max(0, -((target.x - man.x) * target.vx + (target.z - man.z) * target.vz) / Math.max(d, 0.1)) : 0;
+      const inReach = d - closing * man.r.blows.R.wind < reach * 0.98;
+      const keen = brain.punish > 0 || target.stun > 0 || target.daze > 0 || target.act?.kind === 'recover' || target.mounted;
       const appetite = (keen ? 0.5 : 0.06 + 0.1 * habit.press) * (man.st > 22 ? 1 : 0.15);
       if (inReach && rng() < appetite) {
         // Pick a line he is not guarding, if the guard is read.
@@ -261,6 +393,12 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
           input.move = [Math.cos(toward) * brain.side, -Math.sin(toward) * brain.side];
         }
       } else brain.dodged = false;
+      // Against a rider: no running after a horse; stand, let him come, and get off his line when he comes fast.
+      if (target.mounted) {
+        ahead = d > 5 ? 0.25 : d < 2 ? -0.3 : 0;
+        strafe *= 0.4;
+        if (target.horse.speed > 4 && d < 9 && Math.abs(wrap(bearing(target, man) - target.horse.face)) < 0.5) strafe = brain.side;
+      }
       const dir = [Math.sin(toward) * ahead + Math.cos(toward) * strafe, Math.cos(toward) * ahead - Math.sin(toward) * strafe];
       // Stay off the edge of the field.
       const r = Math.hypot(man.x, man.z),
@@ -271,7 +409,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
       }
       const len = Math.hypot(dir[0], dir[1]);
       if (len > 0.05 && !(input.move[0] || input.move[1])) input.move = [dir[0] / Math.max(1, len), dir[1] / Math.max(1, len)];
-      input.sprint = (gap > 4.5 || (target.regiment === 'archer' && !target.knife && gap > 0.3)) && man.st > 8 && !bow && !input.guard;
+      input.sprint = (gap > 4.5 || (target.regiment === 'archer' && !target.knife && gap > 0.3)) && man.st > 8 && !bow && !input.guard && !target.mounted;
     }
     return input;
   }
