@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, viewport-fit=cover, user-scalable=no">
+  <title>沙画江山 · Sand Scroll</title>
+  <meta name="description" content="基于新白鹭引擎的沙画消除游戏：积木落下化成沙，同色的沙从左连到右就消除，颜色染进一卷青绿山水。A sand puzzle built on the new Egret engine: pieces break into sand, a colour reaching wall to wall clears, and the colour goes into a landscape scroll.">
+  <meta name="theme-color" content="#1a0e08">
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="style.css">
+  <!-- The engine is a copy inside this folder (vendor/SOURCE.md); this map is vendor/importmap.json, pasted in. -->
+  <script type="importmap">
+{
+  "imports": {
+    "@egret/contracts": "./vendor/contracts/dist/index.js",
+    "@egret/runtime": "./vendor/runtime/dist/index.js",
+    "@egret/contracts/resources": "./vendor/contracts/dist/resources/index.js",
+    "@egret/engine": "./vendor/engine/dist/index.js",
+    "@egret/runtime/ui": "./vendor/runtime/dist/ui/index.js",
+    "@egret/engine/ui": "./vendor/engine/dist/ui/index.js",
+    "@egret/engine/ui/semantics": "./vendor/engine/dist/semantics.js",
+    "@egret/engine/web/semantics": "./vendor/engine/dist/web/semantics.js",
+    "@egret/engine/kit": "./vendor/engine/dist/kit.js",
+    "@egret/engine/web/kit": "./vendor/engine/dist/web/kit.js",
+    "@egret/runtime/text": "./vendor/runtime/dist/text/index.js",
+    "@egret/engine/text": "./vendor/engine/dist/text.js",
+    "@egret/runtime/input": "./vendor/runtime/dist/input/index.js",
+    "#egret-pointer-input": "./vendor/engine/dist/pointerInput.js",
+    "#egret-keyboard-input": "./vendor/engine/dist/keyboardInput.js",
+    "robust-predicates": "./vendor/robust-predicates/index.js",
+    "#egret-textured-frame-state": "./vendor/engine/dist/internal/texturedFrameState.js",
+    "@egret/engine/input/hover": "./vendor/engine/dist/hover.js",
+    "@egret/engine/web/game": "./vendor/engine/dist/web/game.js",
+    "@egret/engine/audio": "./vendor/engine/dist/audio.js",
+    "@egret/engine/web/audio": "./vendor/engine/dist/web/audio.js",
+    "@egret/engine/web/text": "./vendor/engine/dist/web/text.js",
+    "@egret/engine/particles": "./vendor/engine/dist/particles.js",
+    "@egret/engine/webgpu": "./vendor/engine/dist/web/webgpu.js",
+    "@egret/engine/webgl2": "./vendor/engine/dist/web/webgl2.js",
+    "@egret/engine/web/pointer": "./vendor/engine/dist/web/pointer.js"
+  }
+}
+  </script>
+</head>
+<body>
+  <main id="frame">
+    <p id="loading">载入中 · Loading</p>
+  </main>
+  <noscript>这个游戏需要 JavaScript · This game needs JavaScript.</noscript>
+  <script type="module" src="src/main.mjs"></script>
+</body>
+</html>

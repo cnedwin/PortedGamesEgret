@@ -17,6 +17,7 @@ export const MATRIX = {
   "OperaDrums",
   "PeachCreek",
   "Rally",
+  "SandScroll",
   "SnowTemple",
   "TaiwanMahjong",
   "TeaHorseRoad",
@@ -75,6 +76,10 @@ export const MATRIX = {
     {
      "game": "Rally",
      "file": "Rally/src/main.mjs"
+    },
+    {
+     "game": "SandScroll",
+     "file": "SandScroll/src/screens.mjs"
     },
     {
      "game": "SnowTemple",
@@ -184,7 +189,7 @@ export const MATRIX = {
     },
     {
      "game": "NineProvinces",
-     "file": "NineProvinces/src/view3d/battle3d.mjs"
+     "file": "NineProvinces/src/view3d/ambient.mjs"
     },
     {
      "game": "Rally",
@@ -307,6 +312,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/screens.mjs"
+    },
+    {
+     "game": "SandScroll",
+     "file": "SandScroll/src/ui/kit.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -467,6 +476,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/view/field.mjs"
+    },
+    {
+     "game": "SandScroll",
+     "file": "SandScroll/src/view/play.mjs"
     }
    ]
   },
@@ -562,6 +575,10 @@ export const MATRIX = {
      "file": "PeachCreek/src/i18n.mjs"
     },
     {
+     "game": "SandScroll",
+     "file": "SandScroll/src/main.mjs"
+    },
+    {
      "game": "SnowTemple",
      "file": "SnowTemple/tools/balance.mjs"
     },
@@ -617,6 +634,10 @@ export const MATRIX = {
      "file": "Rally/src/main.mjs"
     },
     {
+     "game": "SandScroll",
+     "file": "SandScroll/src/main.mjs"
+    },
+    {
      "game": "SnowTemple",
      "file": "SnowTemple/src/main.mjs"
     },
@@ -658,6 +679,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "SandScroll",
+     "file": "SandScroll/src/main.mjs"
     }
    ]
   },
@@ -731,6 +756,10 @@ export const MATRIX = {
     {
      "game": "OperaDrums",
      "file": "OperaDrums/src/audio/sound.mjs"
+    },
+    {
+     "game": "SandScroll",
+     "file": "SandScroll/src/audio/sound.mjs"
     }
    ]
   },
@@ -750,6 +779,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "SandScroll",
+     "file": "SandScroll/src/main.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -773,6 +806,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
+    },
+    {
+     "game": "SandScroll",
+     "file": "SandScroll/src/main.mjs"
     },
     {
      "game": "TeaHorseRoad",
@@ -824,6 +861,10 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/view/field.mjs"
+    },
+    {
+     "game": "SandScroll",
+     "file": "SandScroll/src/view/play.mjs"
     }
    ]
   },

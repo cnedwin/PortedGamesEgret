@@ -559,4 +559,37 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'sand', folder: 'SandScroll', kind: '2d',
+    scenes: [
+      { zh: "一条石绿从左墙连到右墙，正从左往右亮起；手卷已染到一半", en: "A run of malachite reaches wall to wall and lights up from the left; the scroll is half coloured" },
+      { zh: "卷首 · 一卷青绿山水和飘落的颜料沙", en: "The title · A blue-and-green landscape and drifting pigment" },
+      { zh: "画成 · 《春山图》染满了颜色", en: "Finished · The spring hills in full colour" },
+    ],
+    zh: "沙画江山", en: "Sand Scroll",
+    genre: { zh: "沙画消除", en: "Sand puzzle" },
+    summary: { zh: "积木落下化成数千粒颜料沙，同一种颜色从左墙连到右墙就整片消掉，消掉的沙飞进手卷，把一卷白描的春山一点点染成青绿山水。", en: "Pieces fall and break into thousands of grains of pigment; one colour reaching from wall to wall clears as a whole, and the cleared sand flies into a handscroll, colouring an ink drawing of spring hills bit by bit." },
+    features: [
+      {
+        title: { zh: "一粒沙一个像素", en: "One grain, one pixel" },
+        description: { zh: "两百乘三百粒的沙盘切成十五条贴图，每帧只把有沙动了的几条用 textureFromPixels 重新上传；每粒按颜料、深浅、受光和压在上面的沙着色，放大两倍仍颗颗分明。", en: "A tray of 200 by 300 grains is cut into fifteen strip textures, and each frame only the strips whose sand moved are sent again with textureFromPixels; each grain is shaded by its pigment, its shade, the light and the sand above it, and stays sharp at twice its size." },
+        source: 'src/view/board.mjs',
+      },
+      {
+        title: { zh: "引擎只画会动的东西", en: "The engine draws only what moves" },
+        description: { zh: "透明的引擎画布下垫一张页面画布：紫檀框、碟子、手卷和装裱只在变化时画一次，引擎每帧只画沙、积木、粒子和按钮，软件渲染下的帧时间因此减半。", en: "A page canvas lies under the clear engine canvas: the frame, the dishes and the scroll are painted there only when they change, and the engine draws only sand, pieces, particles and buttons, halving software-drawn frame times." },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: "沙会塌、不会流", en: "Sand that slumps but does not run" },
+        description: { zh: "规则不碰页面也不碰引擎：每粒沙只能往两边滑十次左右，所以沙在落点附近塌开；往前看一步的机器人和规则测试证明平铺横带能画成、全堆一处必输。", en: "The rules touch neither page nor engine: each grain slides only about ten times, so sand slumps where it lands; a one-move-ahead robot and the rules tests show flat bands finish the scroll and heaping in one place loses." },
+        source: 'src/sim/sand.mjs',
+      },
+      {
+        title: { zh: "拨弦一样的消除声", en: "Clears that sound like plucked strings" },
+        description: { zh: "消除声用 Karplus-Strong 算出拨弦，连消时沿五声音阶往上走；沙声是滤过的噪声加颗粒，背景是二十四秒无缝循环的拨弦小曲，都经 encodeWav 交给引擎混音器。", en: "Clears are plucked strings computed by Karplus-Strong, climbing the pentatonic scale through a chain; sand is filtered noise with grains, and a plucked tune loops seamlessly behind, all handed to the engine's mixer through encodeWav." },
+        source: 'src/audio/sound.mjs',
+      },
+    ],
+  },
 ];
