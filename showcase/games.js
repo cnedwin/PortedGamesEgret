@@ -521,4 +521,37 @@ export const GAMES = [
       },
     ],
   },
+  {
+    id: 'nine', folder: 'NineProvinces', kind: '2d',
+    scenes: [
+      { zh: "天下图 · 七十六城与三十四路诸侯，夏侯惇军向陈国进发", en: "The realm · Seventy-six cities and thirty-four lords, Xiahou Dun marching on Chen" },
+      { zh: "赤壁之战 · 六角战场上的专属战法与火攻", en: "The Red Cliffs · A signature tactic and fire on the hex field" },
+      { zh: "武将 · 五项能力、特性、专属战法与宝物", en: "An officer · Five abilities, traits, signature tactics and treasures" },
+    ],
+    zh: "九州烽烟", en: "Nine Provinces Ablaze",
+    genre: { zh: "三国即时大战略", en: "Three Kingdoms real-time grand strategy" },
+    summary: { zh: "从中平元年黄巾起事到太康元年：执掌三十四路诸侯之一，经营城池、招揽五百多位武将、研究科技、合纵连横；军团按天行军，交兵时在六角格即时战场上亲自指挥，六条演义各有剧情与抉择。", en: "From the Yellow Turbans in 184 to the Jin in 280: lead one of thirty-four lords, run cities, win over five hundred officers, study inventions and make alliances; armies march day by day, and battles are commanded in real time on a field of hexes, with six tales of events and choices." },
+    features: [
+      {
+        title: { zh: "两张画布对齐的天下图", en: "A realm on two canvases kept together" },
+        description: { zh: "山川、疆域、地名和旗号画在网页画布上，军团、光圈和行军路线由引擎画；两者都跟着 2D 相机，用 screenToWorld / worldToScreen 对齐，远景时改用半尺寸底图。", en: "Land, borders, names and banners are painted on a page canvas while the engine draws armies, rings and routes; both follow the 2D camera, kept together through screenToWorld and worldToScreen, with a half-size map far out." },
+        source: 'src/view/mapview.mjs',
+      },
+      {
+        title: { zh: "粒子的火与战法", en: "Fire and tactics in particles" },
+        description: { zh: "着火的格子由粒子发射器冒火（加色混合），战法放出时迸火星、部队重创时扬尘；每场战斗一个作用域，打完一起释放。", en: "Burning hexes flame from particle emitters (additive), tactics throw sparks and heavy blows raise dust; each battle has its own scope, let go when it ends." },
+        source: 'src/view/battleview.mjs',
+      },
+      {
+        title: { zh: "悬停、点按与一张字符图集", en: "Hover, taps and one sheet of characters" },
+        description: { zh: "引擎的悬停输入给城和军团显示提示、预览行军路线；所有旗帜上的字从一张共用的字符图集按区域取，避开每帧的图片页数上限。", en: "The engine's hover input gives notes for places and armies and previews routes; every banner's character is cut from one shared atlas, keeping under the frame's limit of image pages." },
+        source: 'src/main.mjs',
+      },
+      {
+        title: { zh: "代码合成的声音与两段配乐", en: "Sound and two themes made in code" },
+        description: { zh: "十七个音效和天下、战场两段无缝循环的配乐都在代码里合成，经 encodeWav 交给引擎混音器，playMusic 在两段之间交叉淡入淡出。", en: "Seventeen effects and the seamless themes of the realm and the field are made in code, handed to the engine's mixer through encodeWav, and playMusic crossfades between the two." },
+        source: 'src/audio/sound.mjs',
+      },
+    ],
+  },
 ];
