@@ -17,6 +17,7 @@ import * as sim from './sim.mjs';
 const SAVE_KEY = 'love-elective-save-v1';
 const PREFS_KEY = 'love-elective-prefs-v1';
 const MEMORIES_KEY = 'love-elective-memories-v1';
+const QINGGE_BRANCH_KEY = 'love-elective-qingge-branch-v1';
 
 function readStorage(key) {
   try {
@@ -74,6 +75,12 @@ export async function createGame(canvas, options) {
     game.state = sim.deserialize(readStorage(SAVE_KEY) ?? '');
     return !!game.state;
   };
+  // Each replay loads a fresh copy of the bookmark, which survives the end of a term.
+  game.saveQinggeBranch = () => writeStorage(QINGGE_BRANCH_KEY, sim.serialize(game.state));
+  game.readQinggeBranch = () => {
+    const snapshot = sim.deserialize(readStorage(QINGGE_BRANCH_KEY) ?? '');
+    return snapshot?.girls.qingge?.chapter === 2 && !snapshot.finale ? snapshot : null;
+  };
   /** Start a term, with one of the perks earned in earlier terms if one was chosen. */
   game.newGame = perk => {
     game.state = sim.newGame({ perk });
@@ -99,8 +106,7 @@ export async function createGame(canvas, options) {
 
   // ---- characters
   /** The description the character painter needs for the hero or a senior, as currently dressed. */
-  game.spec = (who, expr = 'normal') => {
-    const s = game.state;
+  game.spec = (who, expr = 'normal', s = game.state) => {
     if (who === 'hero') return { ...HERO.look, id: who, hair: s?.hero.hair ?? HERO.look.hair, wear: s?.hero.wear ?? HERO.wear, expr };
     return { ...HEROINES[who].look, id: who, wear: s?.girls[who].wear ?? HEROINES[who].outfits.uniform, expr };
   };
