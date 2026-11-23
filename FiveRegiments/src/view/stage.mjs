@@ -30,7 +30,7 @@ export const PLACE_LOOK = {
     exposure: 1.0,
     grade: { saturation: 1.05, contrast: 1.06, brightness: 1.0, vignette: 0.32 },
     weather: 'dust',
-    radius: 12
+    radius: 18
   },
   peach: {
     sky: 'kloppenheim_06_puresky',
@@ -42,7 +42,7 @@ export const PLACE_LOOK = {
     exposure: 1.0,
     grade: { saturation: 1.1, contrast: 1.04, brightness: 1.02, vignette: 0.34 },
     weather: 'petals',
-    radius: 12
+    radius: 18
   },
   bamboo: {
     sky: 'kloofendal_misty_morning_puresky',
@@ -54,7 +54,7 @@ export const PLACE_LOOK = {
     exposure: 1.05,
     grade: { saturation: 0.92, contrast: 1.02, brightness: 1.02, vignette: 0.36 },
     weather: 'motes',
-    radius: 11.5
+    radius: 17.5
   },
   snow: {
     sky: 'snow_field_2_puresky',
@@ -66,7 +66,7 @@ export const PLACE_LOOK = {
     exposure: 0.95,
     grade: { saturation: 0.9, contrast: 1.05, brightness: 1.0, vignette: 0.38 },
     weather: 'snow',
-    radius: 12
+    radius: 18
   },
   palace: {
     sky: 'qwantani_dusk_2_puresky',
@@ -78,7 +78,7 @@ export const PLACE_LOOK = {
     exposure: 1.0,
     grade: { saturation: 1.08, contrast: 1.1, brightness: 0.96, vignette: 0.42 },
     weather: 'embers',
-    radius: 12.5
+    radius: 18
   }
 };
 
@@ -98,51 +98,113 @@ const ring = (prop, n, radius, height, { start = 0, jitter = 0, turnIn = true, s
   return out;
 };
 
+// Along a ring, each set across it (tangent): for a model that runs along its X axis `along` is 0, along Z it is π/2.
+const across = (prop, n, radius, height, { start = 0, width, along = 0, skip = () => false, inward = false } = {}) => {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = start + (i / n) * Math.PI * 2;
+    if (skip(a)) continue;
+    out.push({ prop, x: Math.sin(a) * radius, z: Math.cos(a) * radius, turn: a + along + (inward ? Math.PI : 0), height, width });
+  }
+  return out;
+};
+const near = (a, b, within) => Math.abs(Math.atan2(Math.sin(a - b), Math.cos(a - b))) < within;
+
+// The fields are 18 m across the middle: room for a horse to come round. What stands inside them is something the
+// fight must go round (`post`); the rest stands about them.
 const LAYOUT = {
+  // A frontier camp: crenellated rammed-earth walls round it, the gate tower at one end and a stockade gate at the
+  // other, tents, arrow towers, fires, a stable, carts and stores, racks of arms, a drum and straw men.
   county: () => [
-    { prop: 'gate', x: 0, z: -27, turn: 0, height: 15, width: 26 },
-    { prop: 'drum', x: -10.5, z: -9.5, turn: 0.8, height: 2.4, post: 0.9 },
-    { prop: 'dummy', x: 7.5, z: 5, turn: 2.2, height: 1.9, post: 0.35 },
-    { prop: 'dummy', x: -6.5, z: 6.5, turn: -1.2, height: 1.9, post: 0.35 },
-    ...ring('rack', 6, 14.2, 2.4, { start: 0.5, spread: 0.8, seed: 3 }),
-    ...ring('banner', 10, 17, 7.5, { start: 0.2, seed: 5 }),
-    ...ring('fence', 14, 15.6, 1.4, { start: 0.1, skip: [6, 7], seed: 9 })
+    { prop: 'gate', x: 0, z: -31, turn: 0, height: 15, width: 26 },
+    ...across('wall', 16, 31, 6, { width: 12.4, skip: (a) => near(a, Math.PI, 0.45) || near(a, 0, 0.3) }),
+    { prop: 'gatehouse', x: 0, z: 30.5, turn: Math.PI / 2, height: 9, width: 13 },
+    { prop: 'tent', x: -15, z: -18.5, turn: 0.7, height: 3.6, width: 6 },
+    { prop: 'tent', x: 15.5, z: -18, turn: -0.7, height: 3.6, width: 6 },
+    { prop: 'tent', x: -19, z: 14, turn: 2.2, height: 3.4, width: 5.5 },
+    { prop: 'tent', x: 18, z: 16, turn: -2.3, height: 3.4, width: 5.5 },
+    { prop: 'watchtower', x: -24, z: -16, turn: 0.4, height: 10 },
+    { prop: 'watchtower', x: 24, z: -15, turn: -0.4, height: 10 },
+    { prop: 'watchtower', x: -9, z: 26, turn: 0, height: 9.5 },
+    { prop: 'watchtower', x: 9, z: 26, turn: 0, height: 9.5 },
+    { prop: 'campfire', x: -20.5, z: -2, turn: 0.3, height: 1.7, fire: 0.45 },
+    { prop: 'campfire', x: 20.5, z: 1, turn: 1.1, height: 1.7, fire: 0.45 },
+    { prop: 'stable', x: -24, z: 4, turn: Math.PI / 2, height: 4.4, width: 8 },
+    { prop: 'haycart', x: 22, z: 8.5, turn: 2.6, height: 2.4 },
+    { prop: 'supplies', x: 21, z: -8.5, turn: -1.2, height: 2.2 },
+    { prop: 'supplies', x: -21.5, z: -9, turn: 1.4, height: 2 },
+    { prop: 'drum', x: -12, z: -21, turn: 0.6, height: 2.4 },
+    { prop: 'dummy', x: 6, z: -20.5, turn: 3.1, height: 1.9 },
+    { prop: 'dummy', x: -5, z: -20.8, turn: 3.0, height: 1.9 },
+    { prop: 'juma', x: -6.5, z: 23.5, turn: Math.PI / 2, height: 1.5, width: 4.6 },
+    { prop: 'juma', x: 6.5, z: 23.5, turn: Math.PI / 2, height: 1.5, width: 4.6 },
+    { prop: 'juma', x: -7.5, z: -25, turn: Math.PI / 2, height: 1.5, width: 4.6 },
+    { prop: 'juma', x: 7.5, z: -25, turn: Math.PI / 2, height: 1.5, width: 4.6 },
+    ...ring('rack', 6, 20.5, 2.4, { start: 0.75, spread: 0.6, seed: 3 }),
+    ...ring('banner', 12, 22.5, 7.5, { start: 0.2, seed: 5 })
   ],
+  // A hamlet in the peach grove: thatched houses, a fence, a cart, the stone bridge over the stream.
   peach: () => [
-    { prop: 'bridge', x: 2, z: 19, turn: 0, height: 2.6, width: 9 },
-    { prop: 'peach', x: 6.8, z: -5.5, turn: 1, height: 5.5, post: 0.45 },
-    { prop: 'peach2', x: -7.2, z: 4, turn: 2, height: 4.2, post: 0.35 },
-    ...ring('peach', 9, 16, 6.5, { jitter: 4, turnIn: false, seed: 11 }),
-    ...ring('peach2', 8, 21, 5, { start: 0.4, jitter: 5, turnIn: false, seed: 13 }),
-    ...ring('boulder', 5, 13.5, 1.3, { start: 0.9, jitter: 1.5, turnIn: false, seed: 17 })
+    { prop: 'bridge', x: 2, z: 26, turn: 0, height: 2.6, width: 9 },
+    { prop: 'peach', x: 9.5, z: -7.5, turn: 1, height: 5.5, post: 0.45 },
+    { prop: 'peach2', x: -9.5, z: 6, turn: 2, height: 4.2, post: 0.35 },
+    { prop: 'hut', x: -23, z: -7, turn: 1.4, height: 4.6 },
+    { prop: 'hut', x: 22.5, z: -13, turn: -1.1, height: 4.4 },
+    { prop: 'hut', x: -17, z: 19.5, turn: 2.4, height: 4.2 },
+    { prop: 'haycart', x: 17, z: 17.5, turn: -2.2, height: 2.4 },
+    { prop: 'stable', x: 24, z: 6, turn: -Math.PI / 2, height: 4, width: 7 },
+    ...across('fence', 10, 26.5, 1.4, { start: 0.6, along: Math.PI / 2, skip: (a) => near(a, 0, 0.5) }),
+    ...ring('peach', 10, 21.5, 6.5, { jitter: 4, turnIn: false, seed: 11 }),
+    ...ring('peach2', 9, 29, 5, { start: 0.4, jitter: 5, turnIn: false, seed: 13 }),
+    ...ring('boulder', 5, 19.5, 1.3, { start: 0.9, jitter: 1.5, turnIn: false, seed: 17 })
   ],
+  // The old path through the bamboo: a pavilion, a hermit's hut, rocks.
   bamboo: () => [
-    { prop: 'pavilion', x: -15, z: -10, turn: 0.9, height: 6.5 },
-    { prop: 'bamboo', x: 5.5, z: 6.5, turn: 0, height: 9, post: 0.7 },
-    { prop: 'bamboo', x: -6, z: -4, turn: 2, height: 10, post: 0.7 },
-    { prop: 'boulder', x: 0.5, z: -8, turn: 1, height: 1.2, post: 0.9 },
-    ...ring('bamboo', 18, 15, 11, { jitter: 3, turnIn: false, seed: 19 }),
-    ...ring('bamboo', 22, 22, 13, { start: 0.15, jitter: 5, turnIn: false, seed: 23 }),
-    ...ring('boulder', 6, 13, 1.4, { start: 0.3, jitter: 1, turnIn: false, seed: 29 })
+    { prop: 'pavilion', x: -21, z: -12, turn: 0.9, height: 6.5 },
+    { prop: 'hut', x: 21, z: -15, turn: -0.8, height: 4.2 },
+    { prop: 'bamboo', x: 7.5, z: 8.5, turn: 0, height: 9, post: 0.7 },
+    { prop: 'bamboo', x: -8.5, z: -5.5, turn: 2, height: 10, post: 0.7 },
+    { prop: 'boulder', x: 1, z: -11, turn: 1, height: 1.2, post: 0.9 },
+    ...ring('bamboo', 22, 21, 11, { jitter: 3, turnIn: false, seed: 19 }),
+    ...ring('bamboo', 26, 28, 13, { start: 0.15, jitter: 5, turnIn: false, seed: 23 }),
+    ...ring('boulder', 6, 19, 1.4, { start: 0.3, jitter: 1, turnIn: false, seed: 29 })
   ],
+  // A fort in the pass: its wall and stockade gate, the beacon, arrow towers, a trebuchet and bed crossbows behind
+  // cheval-de-frise, tents in the snow.
   snow: () => [
-    { prop: 'beacon', x: -14, z: -18, turn: 0.6, height: 10 },
-    { prop: 'snowrock', x: 6.5, z: -4.5, turn: 0.3, height: 1.6, post: 1.0 },
-    { prop: 'snowrock', x: -5, z: 6, turn: 2.1, height: 1.3, post: 0.8 },
-    ...ring('palisade', 16, 17, 3.2, { start: 0.1, skip: [0, 8], seed: 31 }),
-    ...ring('pine', 14, 25, 12, { jitter: 6, turnIn: false, seed: 37 }),
-    ...ring('snowrock', 5, 13.5, 1.8, { start: 1.2, jitter: 1, turnIn: false, seed: 41 })
+    { prop: 'gatehouse', x: 0, z: -27, turn: Math.PI / 2, height: 9.5, width: 13 },
+    ...[-31, -19, 19, 31].map((x) => ({ prop: 'wall', x, z: -27.5, turn: 0, height: 6, width: 12.2 })),
+    { prop: 'beacon', x: -23, z: -18, turn: 0.6, height: 10 },
+    { prop: 'watchtower', x: 22, z: -19, turn: -0.5, height: 10 },
+    { prop: 'watchtower', x: -25, z: 13, turn: 0.9, height: 9.5 },
+    { prop: 'trebuchet', x: 23, z: 12, turn: Math.PI, height: 9 },
+    { prop: 'ballista', x: -19.5, z: 6, turn: Math.PI * 0.9, height: 2.6, width: 5 },
+    { prop: 'ballista', x: 19.5, z: -6, turn: Math.PI * 1.1, height: 2.6, width: 5 },
+    { prop: 'juma', x: -9, z: -21.5, turn: Math.PI / 2, height: 1.5, width: 4.6 },
+    { prop: 'juma', x: 9, z: -21.5, turn: Math.PI / 2, height: 1.5, width: 4.6 },
+    { prop: 'juma', x: 0, z: 21.5, turn: Math.PI / 2, height: 1.5, width: 4.6 },
+    { prop: 'tent', x: -20, z: 19, turn: 2.4, height: 3.4, width: 5.5 },
+    { prop: 'tent', x: 19, z: 21, turn: -2.4, height: 3.4, width: 5.5 },
+    { prop: 'snowrock', x: 9, z: -6, turn: 0.3, height: 1.6, post: 1.0 },
+    { prop: 'snowrock', x: -7.5, z: 8, turn: 2.1, height: 1.3, post: 0.8 },
+    ...across('palisade', 14, 25, 3.2, { start: 0.1, along: Math.PI / 2, skip: (a) => near(a, Math.PI, 0.9) || near(a, 0, 0.25) }),
+    ...ring('pine', 14, 33, 12, { jitter: 6, turnIn: false, seed: 37 }),
+    ...ring('snowrock', 5, 20, 1.8, { start: 1.2, jitter: 1, turnIn: false, seed: 41 })
   ],
+  // Before the palace at dusk: the hall on its terrace, stone lions, the cauldron, braziers on the square, banners,
+  // bed crossbows at the foot of the steps.
   palace: () => [
-    { prop: 'palace', x: 0, z: -30, turn: 0, height: 19, width: 34 },
-    { prop: 'lion', x: -7, z: -15, turn: 0, height: 2.6 },
-    { prop: 'lion', x: 7, z: -15, turn: 0, height: 2.6 },
-    { prop: 'ding', x: 0, z: 15, turn: Math.PI, height: 2.2 },
-    { prop: 'brazier', x: 8.5, z: 6, turn: 0, height: 1.5, post: 0.6, fire: true },
-    { prop: 'brazier', x: -8.5, z: 6, turn: 0, height: 1.5, post: 0.6, fire: true },
-    { prop: 'brazier', x: 8.5, z: -7, turn: 0, height: 1.5, post: 0.6, fire: true },
-    { prop: 'brazier', x: -8.5, z: -7, turn: 0, height: 1.5, post: 0.6, fire: true },
-    ...ring('banner', 8, 16, 8.5, { start: 0.39, seed: 43 })
+    { prop: 'palace', x: 0, z: -34, turn: 0, height: 19, width: 34 },
+    { prop: 'lion', x: -8, z: -20, turn: 0, height: 2.6 },
+    { prop: 'lion', x: 8, z: -20, turn: 0, height: 2.6 },
+    { prop: 'ballista', x: -15, z: -21, turn: 0.3, height: 2.6, width: 5 },
+    { prop: 'ballista', x: 15, z: -21, turn: -0.3, height: 2.6, width: 5 },
+    { prop: 'ding', x: 0, z: 20, turn: Math.PI, height: 2.2 },
+    { prop: 'brazier', x: 10, z: 7.5, turn: 0, height: 1.5, post: 0.6, fire: 1.9 },
+    { prop: 'brazier', x: -10, z: 7.5, turn: 0, height: 1.5, post: 0.6, fire: 1.9 },
+    { prop: 'brazier', x: 10, z: -8.5, turn: 0, height: 1.5, post: 0.6, fire: 1.9 },
+    { prop: 'brazier', x: -10, z: -8.5, turn: 0, height: 1.5, post: 0.6, fire: 1.9 },
+    ...ring('banner', 10, 21.5, 8.5, { start: 0.31, seed: 43 })
   ]
 };
 
@@ -288,26 +350,26 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
     holder.setRotation(0, item.turn ?? 0, 0);
     root.addChild(holder);
     if (item.fire) {
-      const light = createPointLight3D({ color: 0xff9a48, intensity: 6, range: 9 });
-      light.setPosition(item.x, item.height + 0.4, item.z);
+      // `fire` is the height of the flames above the ground.
+      const light = createPointLight3D({ color: 0xff9a48, intensity: 6, range: 10 });
+      light.setPosition(item.x, item.fire + 0.3, item.z);
       root.addChild(light);
-      fires.push({ light, x: item.x, y: item.height + 0.3, z: item.z, phase: Math.random() * 10 });
+      fires.push({ light, x: item.x, y: item.fire, z: item.z, phase: Math.random() * 10 });
     }
   }
 
-  // Walls of rammed earth round the county ground, red walls by the palace.
-  if (name === 'county' || name === 'palace') {
-    const wall = await scanned(name === 'county' ? 'clay_plaster' : 'red_plaster_weathered', 0.25);
+  // Red walls round the palace square (the camp's walls are models).
+  if (name === 'palace') {
+    const wall = await scanned('red_plaster_weathered', 0.25);
     const cap = await scanned('grey_roof_tiles', 0.5);
-    const segments = name === 'county' ? 18 : 14;
-    const radius = name === 'county' ? 24 : 22;
+    const segments = 16;
+    const radius = 27;
     for (let i = 0; i < segments; i++) {
       const a = (i / segments) * Math.PI * 2;
-      if (name === 'county' && Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.55) continue;
-      if (name === 'palace' && Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.8) continue;
+      if (Math.abs(Math.atan2(Math.sin(a - Math.PI), Math.cos(a - Math.PI))) < 0.7) continue;
       const len = 2 * radius * Math.tan(Math.PI / segments) + 0.2;
-      const height = name === 'county' ? 5.5 : 6.5;
-      const geo = createBoxGeometry3D({ width: len, height, depth: name === 'county' ? 2.6 : 1.4 });
+      const height = 6.5;
+      const geo = createBoxGeometry3D({ width: len, height, depth: 1.4 });
       scaleUv(geo, len, height);
       const seg = new Mesh3D(geo, wall);
       seg.setPosition(Math.sin(a) * radius, height / 2, Math.cos(a) * radius);

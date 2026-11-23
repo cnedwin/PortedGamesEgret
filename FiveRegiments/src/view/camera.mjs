@@ -11,23 +11,40 @@ export function createCameraRig(camera) {
     shake: 0,
     shakeT: 0,
     distance: 3.3,
+    up: 0,
     fovKick: 0
   };
   /**
    * Follow `hero` with heading `yaw` and elevation `pitch`. `target` is the locked foe or null; `place` has posts.
    * Returns the yaw the camera settled on (locking turns it).
    */
-  rig.update = (dt, { hero, yaw, pitch, target, place, guard = false, dead = false, finish = 0 }) => {
+  rig.update = (dt, { hero, yaw, pitch, target, place, guard = false, dead = false, finish = 0, mounted = false, view = 'third', zoom = 1, eye = null }) => {
     if (target) {
       const want = Math.atan2(target.x - hero.x, target.z - hero.z);
       yaw += wrap(want - yaw) * (1 - Math.exp(-dt * 7));
     }
-    const dist = (dead ? 5 : guard ? 3.4 : 3.9) + finish * 1.2;
+    // On horseback the camera rides higher and further back.
+    rig.up += ((mounted ? 0.85 : 0) - rig.up) * (1 - Math.exp(-dt * 4));
+    // The first-person view (V): at his eyes, looking where the mouse looks; it gives way to the shoulder view when he
+    // falls or the fight ends.
+    if (view === 'first' && eye && !dead && !finish) {
+      const fwd = [Math.sin(yaw) * Math.cos(pitch * 0.9), -Math.sin(pitch * 0.9) + 0.02, Math.cos(yaw) * Math.cos(pitch * 0.9)];
+      const at = [eye[0] + fwd[0] * 0.14, eye[1], eye[2] + fwd[2] * 0.14];
+      for (let i = 0; i < 3; i++) {
+        rig.at[i] = at[i];
+        rig.look[i] = at[i] + fwd[i] * 4;
+      }
+      rig.shake = Math.max(0, rig.shake - dt * 2.4);
+      camera.setPosition(rig.at[0], rig.at[1], rig.at[2]);
+      camera.lookAt(rig.look[0], rig.look[1], rig.look[2]);
+      return yaw;
+    }
+    const dist = ((dead ? 5 : guard ? 3.4 : 3.9) + finish * 1.2 + rig.up * 1.4) * zoom;
     rig.distance += (dist - rig.distance) * (1 - Math.exp(-dt * 5));
     const fwd = [Math.sin(yaw), Math.cos(yaw)];
     const right = [-Math.cos(yaw), Math.sin(yaw)];
     const shoulder = 0.78;
-    const height = 1.65 + Math.sin(pitch) * rig.distance;
+    const height = 1.65 + rig.up + Math.sin(pitch) * rig.distance;
     let cx = hero.x - fwd[0] * Math.cos(pitch) * rig.distance + right[0] * shoulder,
       cz = hero.z - fwd[1] * Math.cos(pitch) * rig.distance + right[1] * shoulder;
     // Keep out of posts: pull in along the line to the shoulder.
@@ -42,7 +59,7 @@ export function createCameraRig(camera) {
       }
     }
     const want = [cx, Math.max(0.4, height), cz];
-    const lookAt = [hero.x + fwd[0] * 4 + right[0] * shoulder * 0.5, 1.3 - Math.sin(pitch) * 1.4, hero.z + fwd[1] * 4 + right[1] * shoulder * 0.5];
+    const lookAt = [hero.x + fwd[0] * 4 + right[0] * shoulder * 0.5, 1.3 + rig.up * 0.7 - Math.sin(pitch) * 1.4, hero.z + fwd[1] * 4 + right[1] * shoulder * 0.5];
     const k = 1 - Math.exp(-dt * 16);
     for (let i = 0; i < 3; i++) {
       rig.at[i] += (want[i] - rig.at[i]) * k;

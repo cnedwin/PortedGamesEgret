@@ -1,9 +1,16 @@
 // The player's hands: keys, the mouse (held inside the page while fighting), a gamepad and the touch controls, read
 // into the one input the fight takes each tick (see sim/fight.mjs).
 //
-// The line of a blow is the way the mouse last moved: right, left, up (overhead) or down (a thrust). The guard is
-// held on the same line. In the classic scheme the blows take the lines in turn and the guard turns itself to the
-// blow coming. The camera turns with the mouse in both.
+// The line of a blow is the way the mouse last moved: right, left, up (overhead) or down (a thrust); the keypad gives
+// a line and strikes on it at once (8 up, 2 down, 4 left, 6 right, the corners to their sides). The guard is held on
+// the same line. In the classic scheme the blows take the lines in turn and the guard turns itself to the blow coming.
+// The camera turns with the mouse in both.
+//
+// The keys are the sandbox-war PC layout: WASD, left Shift to sprint, Space to jump, F to kick, X for the main-hand weapon
+// art and Z for the off-hand one (the shield's), R and T for the two profession skills, B for single or continuous
+// attack, 1 to 0 for the bar (weapons, bandages), E to get on
+// or off the horse, U to call it, V for the view, the wheel for nearer or further, Tab to hide the panels, Ctrl+H for
+// the key hints, Esc for the menu. The middle button locks the camera on a foe.
 
 import { createGamepadInput } from '@egret/engine/input/gamepad';
 
@@ -15,12 +22,23 @@ export const DEFAULT_KEYS = {
   sprint: 'ShiftLeft',
   step: 'Space',
   kick: 'KeyF',
-  skill0: 'KeyQ',
-  skill1: 'KeyE',
-  swap: 'KeyR',
-  lock: 'Tab',
+  skill0: 'KeyR',
+  skill1: 'KeyT',
+  art: 'KeyX',
+  offArt: 'KeyZ',
+  combo: 'KeyB',
+  mount: 'KeyE',
+  call: 'KeyU',
+  view: 'KeyV',
+  autorun: 'Equal',
+  hide: 'Tab',
   pause: 'Escape'
 };
+
+/** The bar along the bottom: 1 and 2 take up a weapon, 3 is a wound dressing. */
+const SLOT_KEYS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', 'Digit7', 'Digit8', 'Digit9', 'Digit0'];
+/** The keypad's lines: up overhead, down a thrust, the sides and corners to their own side. */
+const PAD_LINES = { Numpad8: 'O', Numpad2: 'T', Numpad4: 'L', Numpad6: 'R', Numpad7: 'L', Numpad1: 'L', Numpad9: 'R', Numpad3: 'R' };
 
 const LINE_ORDER = ['R', 'L', 'O', 'T'];
 
@@ -34,7 +52,16 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     swiped: false,
     attack: false,
     guard: false,
-    once: { kick: false, step: false, swap: false, skill0: false, skill1: false },
+    once: { kick: false, step: false, swap: false, skill0: false, skill1: false, art: false, offArt: false, mount: false, call: false, heal: false },
+    arm: null,
+    combo: false,
+    comboBeat: 0,
+    padLine: null,
+    view: 'third',
+    zoom: 1,
+    hidePanels: false,
+    keyHints: true,
+    autorun: false,
     classicIndex: 0,
     moved: [0, 0],
     touch: { move: [0, 0], attack: false, guard: false },
@@ -87,20 +114,55 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       if (state.wantLock) onPause('unlocked');
     }
   };
-  const onWheel = (e) => e.preventDefault();
+  const onWheel = (e) => {
+    e.preventDefault();
+    state.zoom = Math.max(0.55, Math.min(1.7, state.zoom * (e.deltaY > 0 ? 1.08 : 1 / 1.08)));
+  };
 
   // ---- keys --------------------------------------------------------------------------------------------------
   const onKey = (e) => {
     const k = keys();
+    const press = e.type === 'keydown';
+    // Ctrl+H: the key hints.
+    if (press && e.ctrlKey && e.code === 'KeyH') {
+      state.keyHints = !state.keyHints;
+      e.preventDefault();
+      return;
+    }
+    // The bar: 1 and 2 are weapons, 3 a wound dressing.
+    const slot = SLOT_KEYS.indexOf(e.code);
+    if (slot >= 0) {
+      if (press && !e.repeat && !e.ctrlKey) {
+        if (slot <= 1) state.arm = slot;
+        if (slot === 2) state.once.heal = true;
+        state.lastDevice = 'keys';
+      }
+      return;
+    }
+    // The keypad strikes on its line while held.
+    if (PAD_LINES[e.code]) {
+      if (press) {
+        state.padLine = PAD_LINES[e.code];
+        state.line = state.padLine;
+      } else if (state.padLine === PAD_LINES[e.code]) state.padLine = null;
+      e.preventDefault();
+      return;
+    }
     const name = Object.keys(k).find((n) => k[n] === e.code) ?? (e.code === 'ShiftRight' ? 'sprint' : e.code === 'ArrowUp' ? 'up' : e.code === 'ArrowDown' ? 'down' : e.code === 'ArrowLeft' ? 'left' : e.code === 'ArrowRight' ? 'right' : null);
     if (!name) return;
-    if (e.type === 'keydown') {
+    if (press) {
       if (name === 'pause') return onPause('key');
-      if (name === 'lock' && !e.repeat) onLock();
-      if (['kick', 'step', 'swap', 'skill0', 'skill1'].includes(name) && !e.repeat) state.once[name] = true;
+      if (!e.repeat) {
+        if (name === 'combo') state.combo = !state.combo;
+        if (name === 'view') state.view = state.view === 'third' ? 'first' : 'third';
+        if (name === 'hide') state.hidePanels = !state.hidePanels;
+        if (name === 'autorun') state.autorun = !state.autorun;
+        if (['kick', 'step', 'swap', 'skill0', 'skill1', 'art', 'offArt', 'mount', 'call'].includes(name)) state.once[name] = true;
+      }
+      if ((name === 'up' || name === 'down') && state.autorun) state.autorun = false;
       down.add(name);
       state.lastDevice = 'keys';
-      if (name === 'lock' || name === 'step') e.preventDefault();
+      if (name === 'hide' || name === 'step') e.preventDefault();
     } else down.delete(name);
   };
   const onBlur = () => {
@@ -136,7 +198,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const pad = pads.pads[0];
     if (!pad?.standard) return null;
     const b = (name) => pad.pressed(name);
-    const now = { a: b('a'), b: b('b'), x: b('x'), y: b('y'), lb: b('l1'), rb: b('r1'), lt: pad.value('l2') > 0.3, rt: pad.value('r2') > 0.3, start: b('start'), r3: b('r3') };
+    const now = { a: b('a'), b: b('b'), x: b('x'), y: b('y'), lb: b('l1'), rb: b('r1'), lt: pad.value('l2') > 0.3, rt: pad.value('r2') > 0.3, start: b('start'), r3: b('r3'), up: b('up'), down: b('down'), left: b('left'), right: b('right') };
     const { x: lx, y: ly } = pad.stick('left'),
       { x: rx, y: ry } = pad.stick('right');
     if (lx || ly || rx || ry || Object.values(now).some(Boolean)) state.lastDevice = 'pad';
@@ -145,12 +207,17 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     if (Math.hypot(rx, ry) > 0.55 && !now.rt) state.line = Math.abs(rx) > Math.abs(ry) ? (rx > 0 ? 'R' : 'L') : ry < 0 ? 'O' : 'T';
     const pressed = (k) => now[k] && !padPrev[k];
     if (pressed('start')) onPause('pad');
-    if (pressed('y') || pressed('r3')) onLock();
+    if (pressed('r3')) onLock();
+    if (pressed('y')) state.once.art = true;
+    if (pressed('right')) state.once.offArt = true;
     if (pressed('x')) state.once.kick = true;
     if (pressed('b')) state.once.step = true;
     if (pressed('lb')) state.once.skill0 = true;
     if (pressed('rb')) state.once.skill1 = true;
     if (pressed('a')) state.once.swap = true;
+    if (pressed('up')) state.once.mount = true;
+    if (pressed('down')) state.once.heal = true;
+    if (pressed('left')) state.once.call = true;
     padPrev = now;
     return { move: [lx, ly], attack: now.rt, guard: now.lt, sprint: b('l3') };
   }
@@ -159,10 +226,11 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
    * One tick's input for the fight. `camYaw` is the camera's heading; movement is taken relative to it. `threat`
    * is the line of the nearest blow coming, for the classic guard.
    */
-  function sample(dt, { threat = null, aim = null } = {}) {
+  function sample(dt, { threat = null, aim = null, bow = false } = {}) {
     const pad = readPad(dt);
     let mx = (down.has('right') ? 1 : 0) - (down.has('left') ? 1 : 0),
       my = (down.has('down') ? 1 : 0) - (down.has('up') ? 1 : 0);
+    if (state.autorun && !my) my = -1;
     if (pad && (pad.move[0] || pad.move[1])) [mx, my] = pad.move;
     if (state.touch.move[0] || state.touch.move[1]) [mx, my] = state.touch.move;
     const l = Math.hypot(mx, my);
@@ -172,12 +240,18 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const fwd = [Math.sin(fy), Math.cos(fy)],
       right = [-Math.cos(fy), Math.sin(fy)];
     const move = [right[0] * mx - fwd[0] * my, right[1] * mx - fwd[1] * my];
-    const attack = state.attack || !!pad?.attack || state.touch.attack;
+    let attack = state.attack || !!pad?.attack || state.touch.attack || !!state.padLine;
+    // Continuous attack (B): a held button strikes again as each blow ends, instead of winding up a heavy one.
+    if (state.combo && attack && !bow) {
+      state.comboBeat = (state.comboBeat + dt) % 0.2;
+      attack = state.comboBeat < 0.1;
+    } else state.comboBeat = 0;
     const guard = state.guard || !!pad?.guard || state.touch.guard;
     const classic = settings.control === 'classic' || state.lastDevice === 'touch';
     let line = state.line;
     if (classic && threat && guard) line = threat;
-    if (classic && attack && !state.attackWas) {
+    if (state.padLine) line = state.padLine;
+    else if (classic && attack && !state.attackWas) {
       // A swipe on the touch strike button names the line; otherwise the lines come in turn.
       if (state.swiped) line = state.line;
       else {
@@ -198,11 +272,18 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       step: state.once.step,
       swap: state.once.swap,
       skill: state.once.skill0 ? 0 : state.once.skill1 ? 1 : -1,
+      art: state.once.art,
+      offArt: state.once.offArt,
+      mount: state.once.mount,
+      call: state.once.call,
+      heal: state.once.heal,
+      arm: state.arm,
       line,
       aim: aim ?? { yaw: state.yaw, pitch: -state.pitch * 0.6 + 0.05 }
     };
     // Presses last one tick; the fight sees them as pressed on that tick only.
     for (const k of Object.keys(state.once)) state.once[k] = false;
+    state.arm = null;
     return input;
   }
 

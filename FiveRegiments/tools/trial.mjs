@@ -11,8 +11,11 @@ const level = Number(args.find((a) => /^0?\.\d+$/.test(a)) ?? 0.6);
 const pairArg = args.includes('--pair') ? args[args.indexOf('--pair') + 1] : null;
 const two = args.includes('--two');
 
+/** The fields are about this wide now, room for a horse to come round. */
+export const FIELD = 18;
+
 export function bout(hero, foes, seed, { heroLevel = level, foeLevel = level, limit = 180, health = 1 } = {}) {
-  const game = createFight({ hero: { regiment: hero }, foes: foes.map((regiment) => ({ regiment })), seed, health });
+  const game = createFight({ hero: { regiment: hero }, foes: foes.map((regiment) => ({ regiment })), seed, health, place: { radius: FIELD, posts: [] } });
   const brains = createBrains(game, { level: foeLevel, hero: true, heroLevel });
   const tally = {};
   while (!game.over && game.time < limit) {

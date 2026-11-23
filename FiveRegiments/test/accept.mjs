@@ -35,8 +35,13 @@ try {
   await page.keyboard.press('Enter');
   await until(page, () => document.querySelector('.page.loadout'));
   check((await page.evaluate(() => document.querySelectorAll('.loadout .skills .card.on').length)) === 2, 'two skills are taken by default');
+  const talents = () => page.evaluate(() => document.querySelectorAll('.loadout .talents .card.on').length);
+  check((await talents()) === 2, 'the Tiger Step’s two published talents are taken by default');
+  await page.click('.loadout .talents .card.on');
+  check((await talents()) === 1, 'a talent can be taken off');
   await page.click('.loadout .talents .card:not(.on)');
-  check((await page.evaluate(() => document.querySelectorAll('.loadout .talents .card.on').length)) === 4, 'taking another talent keeps four');
+  check((await talents()) === 2, 'and put back');
+  check((await page.evaluate(() => document.querySelectorAll('.loadout .art-line').length)) === 1, 'the weapon art is shown with the skills');
   await page.keyboard.press('Enter');
   await until(page, () => document.querySelector('.page.card-stage'));
   check(/县城校场/.test(await text(page, '.card-stage h2')), 'the first fight is on the county drill ground');
@@ -44,7 +49,7 @@ try {
   await until(page, () => window.egretGame.mode === 'fight', 180);
   const men = await page.evaluate(() => window.egretGame.game.men.map((m) => m.regiment));
   check(men[0] === 'tiger' && men.length === 2, `the fight is on: ${men.join(' against ')}`);
-  check(await page.evaluate(() => !document.querySelector('.hud').hidden && document.querySelectorAll('.hud-skill').length >= 4), 'the HUD shows the two skills, the kick and the step');
+  check(await page.evaluate(() => !document.querySelector('.hud').hidden && document.querySelectorAll('.hud-skill').length === 3 && document.querySelectorAll('.hud-bar .slot').length === 10 && !!document.querySelector('.hud-compass')), 'the HUD shows the compass, the bar of ten, the R and T skills and the X art');
   const over = await page.evaluate(() => window.egretGame.run(240));
   check(over === 'won' || over === 'lost', `a stand-in plays it out: ${over}`);
   await until(page, () => window.egretGame.mode === 'result' && document.querySelector('.page.result'), 60);
@@ -72,7 +77,7 @@ try {
   // Two at once, straight from the address.
   await page.goto(`${server.url}${path}/?seed=5&lang=zh&quality=low&duel=vanguard,plume,archer&place=palace`);
   await until(page, () => window.egretGame?.mode === 'fight', 180);
-  check((await page.evaluate(() => document.querySelectorAll('.hud-foe').length)) === 2, 'two foes along the top');
+  check((await page.evaluate(() => document.querySelectorAll('.hud-plates .plate').length)) === 2, 'a nameplate over each of the two foes');
   const two = await page.evaluate(() => window.egretGame.run(300));
   check(two === 'won' || two === 'lost', `one against two plays out: ${two}`);
   await until(page, () => window.egretGame.mode === 'result', 60);
@@ -99,7 +104,10 @@ try {
   await page.goto(`${server.url}${path}/?seed=4&lang=zh&quality=low&fixed&auto&duel=plume,vanguard&place=bamboo`);
   await until(page, () => window.egretGame?.mode === 'fight', 180);
   await page.addStyleTag({ content: '.hud-banner { display: none !important; }' });
-  await frames(150);
+  // Stand the fight still at an exact moment, so the picture does not depend on how fast frames came.
+  await page.evaluate(() => window.egretGame.holdAt(2.5));
+  await page.waitForFunction(() => window.egretGame.game.time >= 2.5, null, { timeout: 240000, polling: 50 });
+  await frames(30);
   await looks('fight', 'a duel on the bamboo path looks as its baseline');
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);

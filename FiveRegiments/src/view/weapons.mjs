@@ -1,5 +1,5 @@
 // The five regiments' arms, made in code: ring-pommel sabre and round shield, Han sword, two-handed horse-cutter,
-// long spear with a red tassel, horn bow and arrows, and a short knife.
+// fangtian ji with its crescents and red tassel, horn bow and arrows, and a short knife.
 //
 // Every weapon is built in its own frame: the main hand's grip at the origin, the blade or the spearhead along +Y,
 // the cutting edge facing +Z. `grips` gives where a second hand goes. Parts are gathered per material, so a
@@ -217,6 +217,42 @@ const BUILD = {
     kit.blade('steel', { y0: 0.126, y1: 1.12, width: (t) => 0.056 + 0.008 * Math.sin(t * Math.PI), thick: 0.009, tip: 0.1, curve: (t) => 0.035 * t * t, colour: 0xc9cdd2 });
     return { length: 1.12, second: [0, -0.33, 0] };
   },
+  axe(kit) {
+    // A two-handed long axe: a long haft, the main hand high on it and the other low, a broad crescent head with its
+    // edge forward (+Z), a short spike behind and a point on top.
+    kit.lathe('wood', [[0.019, -0.86], [0.021, -0.4], [0.02, 0.2], [0.018, 0.62]], { segments: 10, colour: 0x4a2c1a });
+    grip(kit, -0.62, 0.1, 0.022, 0x2b1a10);
+    kit.lathe('bronze', [[0, -0.92], [0.026, -0.91], [0.028, -0.88], [0.021, -0.86]], { colour: 0x9f7a3e });
+    // The socket the head is fitted on.
+    kit.lathe('darkSteel', [[0.02, 0.36], [0.029, 0.38], [0.029, 0.66], [0.022, 0.68]], { segments: 12, colour: 0x4e4c49 });
+    // The head: quads from the socket out to a curved edge, both faces, the edge bright.
+    const inner = [],
+      outer = [];
+    for (let i = 0; i <= 14; i++) {
+      const t = i / 14;
+      const a = -0.95 + t * 1.9;
+      inner.push([0, 0.42 + t * 0.2, 0.028]);
+      outer.push([0, 0.52 + Math.sin(a) * 0.23, 0.07 + Math.cos(a) * 0.2]);
+    }
+    for (let i = 0; i < 14; i++) {
+      for (const side of [1, -1]) {
+        const off = (pt, k) => [pt[0] + side * (0.009 - k * 0.006), pt[1], pt[2]];
+        const q = [off(inner[i], 0), off(outer[i], 1), off(outer[i + 1], 1), off(inner[i + 1], 0)];
+        kit.face('steel', side > 0 ? q : [...q].reverse(), 0xc9cdd2);
+      }
+      // The edge between the two faces.
+      kit.face('steel', [[0.003, ...outer[i].slice(1)], [-0.003, ...outer[i].slice(1)], [-0.003, ...outer[i + 1].slice(1)], [0.003, ...outer[i + 1].slice(1)]], 0xf0f2f4);
+    }
+    // A spike behind and a point on top.
+    const tipBack = [0, 0.53, -0.15];
+    const root = [[0.009, 0.49, -0.026], [0.009, 0.57, -0.026], [-0.009, 0.57, -0.026], [-0.009, 0.49, -0.026]];
+    for (let k = 0; k < 4; k++) {
+      kit.face('darkSteel', [root[k], root[(k + 1) % 4], tipBack], 0x5d5b58);
+      kit.face('darkSteel', [tipBack, root[(k + 1) % 4], root[k]], 0x5d5b58);
+    }
+    kit.blade('steel', { y0: 0.66, y1: 0.86, width: (t) => 0.03 - 0.01 * t, thick: 0.008, double: true, tip: 0.5 });
+    return { length: 0.86, second: [0, -0.45, 0] };
+  },
   spear(kit) {
     // The shaft runs from the butt (−1.05) through the main hand (0) to the head; the other hand rides forward on it.
     kit.lathe('lacquer', [[0.017, -1.02], [0.018, -0.5], [0.017, 0.4], [0.016, 1.38]], { segments: 10, colour: 0x7a1d16 });
@@ -232,6 +268,41 @@ const BUILD = {
     }
     kit.blade('steel', { y0: 1.45, y1: 1.78, width: (t) => 0.035 + 0.035 * Math.sin(Math.min(1, t * 1.4) * Math.PI * 0.85), thick: 0.008, double: true, tip: 0.35 });
     return { length: 1.78, second: [0, 0.55, 0] };
+  },
+  ji(kit) {
+    // The fangtian ji: a long lacquered shaft, a spear point, and a crescent blade on each side below it, with a
+    // red horsehair tassel. Butt at −1.25, the main hand at 0, the other hand forward on the shaft.
+    kit.lathe('lacquer', [[0.018, -1.22], [0.019, -0.6], [0.018, 0.5], [0.017, 1.5]], { segments: 10, colour: 0x6e1a14 });
+    kit.lathe('bronze', [[0, -1.3], [0.021, -1.29], [0.023, -1.22], [0.018, -1.2]], { colour: 0xa07a40 });
+    for (const y of [-0.06, 0.05, 0.44, 0.57]) kit.lathe('leather', [[0.0195, y], [0.0205, y + 0.006], [0.0205, y + 0.05], [0.0195, y + 0.056]], { segments: 10, colour: 0x24170f });
+    // The socket, a collar, and the crossbar the crescents hang from.
+    kit.lathe('bronze', [[0.018, 1.48], [0.024, 1.5], [0.024, 1.6], [0.019, 1.64]], { segments: 12, colour: 0xb08a4a });
+    kit.box('darkSteel', [-0.006, 1.62, -0.11], [0.006, 1.66, 0.11], 0x5d5b58);
+    for (let i = 0; i < 18; i++) {
+      const a = (i / 18) * Math.PI * 2;
+      const pts = [];
+      for (let k = 0; k <= 4; k++) pts.push([Math.cos(a) * (0.02 + k * 0.014), 1.5 - k * 0.05, Math.sin(a) * (0.02 + k * 0.014)]);
+      kit.tube('cloth', pts, [0.008, 0.009, 0.008, 0.006, 0.002], { segments: 4, colour: 0xb0201a });
+    }
+    // The two crescents, one on each side (along ±Z, the edges of a swing), their horns curling up and down.
+    for (const side of [1, -1]) {
+      const outer = [],
+        inner = [];
+      for (let i = 0; i <= 14; i++) {
+        const t = i / 14;
+        const a = -1.25 + t * 2.5;
+        outer.push([0, 1.66 + Math.sin(a) * 0.17, side * (0.11 + Math.cos(a) * 0.1)]);
+        inner.push([0, 1.66 + Math.sin(a) * 0.12, side * (0.11 + Math.cos(a) * 0.045)]);
+      }
+      for (let i = 0; i < 14; i++) {
+        const q = [inner[i], outer[i], outer[i + 1], inner[i + 1]];
+        kit.face('steel', side > 0 ? q : [...q].reverse(), 0xd9dde2);
+        kit.face('steel', (side > 0 ? [...q].reverse() : q).map(([x, y, z]) => [x + 0.004 * side, y, z]), 0xd9dde2);
+      }
+    }
+    // The point, long and leaf-shaped.
+    kit.blade('steel', { y0: 1.64, y1: 2.06, width: (t) => 0.034 + 0.03 * Math.sin(Math.min(1, t * 1.5) * Math.PI * 0.85), thick: 0.008, double: true, tip: 0.4 });
+    return { length: 2.06, second: [0, 0.6, 0] };
   },
   knife(kit) {
     grip(kit, -0.07, 0.07, 0.013);
@@ -307,7 +378,7 @@ export function createWeapon(kind) {
 export const ARMS = {
   yulin: { main: 'sabre', off: 'shield' },
   tiger: { main: 'jian' },
-  vanguard: { main: 'zhanma', two: true },
-  plume: { main: 'spear', two: true },
+  vanguard: { main: 'axe', two: true },
+  plume: { main: 'ji', two: true },
   archer: { main: 'knife', bow: 'bow' }
 };
