@@ -15,7 +15,8 @@ import { thinkAll } from './ai.mjs';
 import { clamp, dateOf, DAYS_IN_MONTH, dayOf, END_YEAR, generalEffect, note, random, serving, stat, techEffect } from './core.mjs';
 import { monthlyDiplomacy, startingRelations } from './diplomacy.mjs';
 import { marchArmies } from './military.mjs';
-import { registerCustom, yearlyNewBlood } from './newblood.mjs';
+import { addRosterOfficers, registerCustom, yearlyNewBlood } from './newblood.mjs';
+import { applyScenario, scenarioOf } from './scenarios.mjs';
 import { comeOfAge, monthlyPeople, settleCaptives, yearlyPeople } from './people.mjs';
 import { checkStory } from './story.mjs';
 
@@ -34,12 +35,15 @@ export function caps(nodeId) {
 export const peopleCap = (nodeId) => Math.round(NODES[nodeId].people * 1.8 + 40000);
 
 /** A new game: the realm of 184, the player's faction, the chosen story branch and the rules asked for. */
-export function createGame({ seed = 1, faction = 'caocao', branch = 'free', lifespan = 'history', command = true, difficulty = 'normal' } = {}) {
+export function createGame({ seed = 1, faction = 'caocao', branch = 'free', lifespan = 'history', command = true, difficulty = 'normal', scenario = '184', officers = [] } = {}) {
+  const start = scenarioOf(scenario);
   const state = {
     version: VERSION,
     seed,
     rng: seed >>> 0,
-    day: dayOf(184, 2, 1),
+    day: dayOf(start.year, start.month, 1),
+    startedDay: dayOf(start.year, start.month, 1),
+    scenario: start.id,
     player: faction,
     branch,
     options: { lifespan, command, difficulty },
@@ -114,20 +118,30 @@ export function createGame({ seed = 1, faction = 'caocao', branch = 'free', life
     state.generals[f.ruler].loyalty = 100;
     state.generals[f.ruler].at = f.capital;
   }
-  for (const t of Object.values(TREASURES)) if (t.holder?.general && state.generals[t.holder.general]) state.generals[t.holder.general].treasures.push(t.id);
-  state.hiddenTreasures = Object.values(TREASURES)
-    .filter((t) => t.holder?.city)
-    .map((t) => ({ id: t.id, at: t.holder.city }));
-  for (const id in state.nodes) appointGovernor(state, id);
   startingRelations(state);
+  applyScenario(state, start);
+  for (const t of Object.values(TREASURES)) if (t.holder?.general && state.generals[t.holder.general]) {
+    const holder = state.generals[t.holder.general];
+    // Equipment of a man already gone before this snapshot is not resurrected
+    // on his corpse. It re-enters the ordinary search pool at his home city.
+    if (holder.status !== 'dead') holder.treasures.push(t.id);
+  }
+  state.hiddenTreasures = Object.values(TREASURES)
+    .filter((t) => t.holder?.city || (start.year > 184 && state.generals[t.holder?.general]?.status === 'dead'))
+    .map((t) => ({ id: t.id, at: t.holder.city ?? GENERALS[t.holder.general].home }));
+  // A removed historical house cannot be selected through a stale URL or an
+  // old title fixture; use a valid surviving power rather than a broken state.
+  if (state.player !== null && !state.factions[state.player]?.alive) state.player = 'caocao';
+  addRosterOfficers(state, officers);
+  for (const id in state.nodes) appointGovernor(state, id);
   // Harder computer rulers start richer.
   const more = { easy: 0.8, normal: 1, hard: 1.3 }[difficulty] ?? 1;
   for (const f of Object.values(state.factions))
-    if (f.id !== faction) {
+    if (f.id !== state.player) {
       f.coin = Math.round(f.coin * more);
       f.grain = Math.round(f.grain * more);
     }
-  note(state, 'logStart', { faction: faction });
+  note(state, 'logStart', { faction: state.player });
   checkStory(state);
   return state;
 }

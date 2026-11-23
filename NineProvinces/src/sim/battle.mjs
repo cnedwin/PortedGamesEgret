@@ -9,7 +9,7 @@
 // (damage, confusion, fear, stuns, fire, strengthening, healing); fire spreads with the wind; a unit whose morale is gone
 // flees. The attackers win by breaking every enemy or holding the keep of a town; the defenders by lasting till sunset
 // or driving them off. The computer commands both sides; the player orders only his own. One seed, one outcome.
-import { COUNTER, FORMATIONS, TERRAIN, UNITS } from '../data/battle.mjs';
+import { COUNTER, HORSE_BOW_COUNTER, FORMATIONS, TERRAIN, UNITS, formationAllowed, defaultFormation } from '../data/battle.mjs';
 import { GENERALS } from '../data/generals.mjs';
 import { TACTICS } from '../data/tactics.mjs';
 import { generalEffect, stat, techEffect } from './core.mjs';
@@ -306,7 +306,7 @@ export function createBattle(setup, state = null) {
       general: u.general,
       deputies: u.deputies ?? [],
       kind: u.unit,
-      formation: u.formation in FORMATIONS ? u.formation : 'fishscale',
+      formation: formationAllowed(u.unit,u.formation) ? u.formation : defaultFormation(u.unit),
       troops: u.troops,
       start: u.troops,
       morale: Math.min(100, u.morale + p.fx.morale),
@@ -325,6 +325,7 @@ export function createBattle(setup, state = null) {
       routed: false,
       gone: false,
       kills: 0,
+      record: {damage:0,taken:0,healing:0,hits:0,counterHits:0,flankHits:0,charges:0,tactics:0},
       onWall: false,
       afloat: naval,
       ...p
@@ -431,6 +432,23 @@ function canStand(b, u, at) {
   return true;
 }
 
+/** The identical legal deployment area for campaign and laboratory. */
+export function canDeployBattle(b,u,at) {
+  if(!u||u.gone||!Number.isInteger(at)||at<0||at>=b.tiles.length||b.units.some(o=>o!==u&&!o.gone&&o.pos===at))return false;
+  const tile=b.tiles[at];let lo=Infinity,hi=-Infinity;
+  for(const v of b.along){lo=Math.min(lo,v);hi=Math.max(hi,v);}
+  const town=tile==='town'||tile==='wall';
+  if(u.side===0?b.along[at]>lo+5||town:b.setup.kind==='siege'?!town:b.along[at]<hi-5)return false;
+  if(tile==='gate')return false;
+  if(tile==='wall')return u.side===1&&UNITS[u.kind].range>1;
+  const navy=UNITS[u.kind].group==='navy'||u.afloat;
+  return TERRAIN[tile].water?navy||tile==='ship':!navy||tile==='river';
+}
+export function deployBattleUnit(b,id,at) {
+  const u=b.units[id];if(b.time>0||!canDeployBattle(b,u,at))return false;
+  u.pos=at;u.onWall=b.tiles[at]==='wall';return true;
+}
+
 function moveCost(b, u, at) {
   const tile = b.tiles[at];
   if (tile === 'wall') return u.side === 1 ? 1.5 : u.climbing === at ? 3 : Infinity;
@@ -505,12 +523,32 @@ function weaponBonus(attacker, defender) {
   const a = UNITS[attacker.kind],
     d = UNITS[defender.kind];
   let m = 1;
-  if (a.beats && a.beats === d.weapon) m *= COUNTER;
+  if (a.beats && a.beats === d.weapon) m *= a.weapon==='cav'&&d.weapon==='bow'?HORSE_BOW_COUNTER:COUNTER;
   if (d.beats && d.beats === a.weapon) m /= 1.15;
   if (d.special === 'shield' && a.range > 1) m *= 0.75;
   if (d.special === 'brace' && a.group === 'cav') m *= 0.85;
   if (a.special === 'pierce' && d.group === 'cav') m *= 1.1;
   return m;
+}
+
+/** A non-random explanation of one ordinary blow. Inspecting never advances the RNG. */
+export function combatPreview(b,a,d) {
+  if(!a||!d||a.pos<0||d.pos<0)return null;
+  const height=TERRAIN[b.tiles[a.pos]].high&&!TERRAIN[b.tiles[d.pos]].high?1.15:1;
+  const flank=flanked(b,d)?1+.15+FORMATIONS[a.formation].flank:1;
+  const hide=TERRAIN[b.tiles[a.pos]].hide||TERRAIN[b.tiles[a.pos]].high?1+a.fx.ambush/100:1;
+  const ranged=distance(a.pos,d.pos)>1;
+  const charge=!ranged&&a.charging?1+.25+a.fx.charge/100:1;
+  const weaponMultiplier=weaponBonus(a,d);
+  const base=Math.pow(a.troops,.72)*.42*(attackPower(b,a)/defencePower(b,d,a.pos))*weaponMultiplier*height*flank*hide*charge*(ranged?.8:1);
+  const tags=[];
+  if(UNITS[a.kind].beats===UNITS[d.kind].weapon)tags.push('counter');
+  if(UNITS[d.kind].beats===UNITS[a.kind].weapon)tags.push('countered');
+  if(UNITS[d.kind].special==='shield'&&UNITS[a.kind].range>1)tags.push('shield');
+  if(UNITS[d.kind].special==='brace'&&UNITS[a.kind].group==='cav')tags.push('brace');
+  if(height>1)tags.push('height');if(flank>1)tags.push('flank');if(charge>1)tags.push('charge');
+  if(UNITS[a.kind].group==='cav'&&TERRAIN[b.tiles[a.pos]].cav)tags.push('cavalryTerrain');
+  return {minLoss:Math.round(base*.85),maxLoss:Math.round(base*1.15),weaponMultiplier,attack:attackPower(b,a),defence:defencePower(b,d,a.pos),tags,range:UNITS[a.kind].range,distance:distance(a.pos,d.pos),criticalChance:Math.min(1,.05+a.fx.crit/100)};
 }
 
 function classBonus(u) {
@@ -523,7 +561,8 @@ function attackPower(b, u) {
     f = FORMATIONS[u.formation];
   const fear = u.status.fear > 0 ? 0.7 : 1;
   const morale = 0.55 + u.morale / 220;
-  return t.atk * (0.55 + u.lead / 300 + u.war / 260) * (1 + u.fx.atk / 100 + buff(u, 'atk')) * (1 + f.atk) * classBonus(u) * morale * (0.75 + u.training / 400) * fear;
+  const cavalryGround=t.group==='cav'&&!u.afloat?1+(TERRAIN[b.tiles[u.pos]].cav??0):1;
+  return t.atk * (0.55 + u.lead / 300 + u.war / 260) * (1 + u.fx.atk / 100 + buff(u, 'atk')) * (1 + f.atk) * classBonus(u) * morale * (0.75 + u.training / 400) * fear * cavalryGround;
 }
 
 function defencePower(b, u, from) {
@@ -547,6 +586,9 @@ function blow(b, a, d, scale = 1) {
   const crit = b.random() < 0.05 + a.fx.crit / 100 ? 1.5 : 1;
   const swing = 0.85 + b.random() * 0.3;
   const strength = Math.pow(a.troops, 0.72) * 0.42;
+  if(a.record){a.record.hits++;if(UNITS[a.kind].beats===UNITS[d.kind].weapon)a.record.counterHits++;if(flank>1)a.record.flankHits++;if(charge>1)a.record.charges++;}
+  // Momentum is spent on first contact; it returns only after another actual movement into contact.
+  if(!ranged){a.charging=false;a.chargeSteps=0;}
   return Math.round(strength * (attackPower(b, a) / defencePower(b, d, a.pos)) * weaponBonus(a, d) * height * flank * hide * charge * crit * swing * scale * (ranged ? 0.8 : 1));
 }
 
@@ -559,10 +601,12 @@ function hurt(b, d, loss, by) {
   loss = Math.min(d.troops, Math.max(0, loss));
   d.troops -= loss;
   if (by) {
+    if(by.record)by.record.damage+=loss;
     by.kills += loss;
     by.rage = Math.min(100, by.rage + (4 + loss / 120) * (1 + by.fx.rage / 100));
     by.morale = Math.min(100, by.morale + loss / Math.max(400, by.troops) * 4);
   }
+  if(d.record)d.record.taken+=loss;
   d.rage = Math.min(100, d.rage + (2 + loss / 200) * (1 + d.fx.rage / 100));
   // Morale falls with losses as a share of the unit.
   d.morale -= (loss / Math.max(1, d.start)) * 90 * (1 - d.fx.resist / 200);
@@ -639,11 +683,15 @@ export function useTactic(b, u, tacticId, targetUnit = null) {
     }
   }
   u.rage = 0;
+  if(u.record)u.record.tactics++;
   const power = (t.power / 10) * (1 + (u.fx.tactic + (t.kind === 'burn' ? u.fx.fire : 0)) / 100) * (t.mind ? 0.6 + u.int / 120 : 0.6 + u.war / 140);
   b.events.push({ t: b.time, kind: 'tactic', unit: u.id, tactic: tacticId, target: foe?.id ?? null });
   if (helping) {
     for (const o of tacticTargets(b, u, t)) {
-      if (t.kind === 'heal') o.troops = Math.min(o.start, o.troops + Math.round(o.start * (t.power / 100) * (0.6 + u.int / 200)));
+      if (t.kind === 'heal') {
+        const was=o.troops;o.troops=Math.min(o.start,o.troops+Math.round(o.start*(t.power/100)*(.6+u.int/200)));
+        if(u.record)u.record.healing+=o.troops-was;
+      }
       else if (t.kind === 'rally') {
         o.morale = Math.min(100, o.morale + t.power);
         o.status = {};
@@ -925,9 +973,10 @@ export function stepBattle(b, dt, playerSide = -1) {
       } else if (u.step >= cost) {
         u.step -= cost;
         u.pos = next;
+        u.chargeSteps=(u.chargeSteps??0)+1;
         u.path.shift();
         u.onWall = b.tiles[next] === 'wall';
-        u.charging = UNITS[u.kind].group === 'cav' && u.path.length === 0;
+        u.charging = UNITS[u.kind].group === 'cav' && u.path.length === 0 && u.chargeSteps>=2;
       }
     } else u.step = 0;
     // Fighting.
@@ -999,6 +1048,10 @@ function playerThink(b, u) {
 export function command(b, unitId, what, arg) {
   const u = b.units[unitId];
   if (!u || !alive(u) || u.routed) return false;
+  if(what==='move'&&(!Number.isInteger(arg)||arg<0||arg>=b.tiles.length||!canStand(b,u,arg)))return false;
+  if(what==='attack'&&(!b.units[arg]||!alive(b.units[arg])||b.units[arg].side===u.side))return false;
+  if(what==='formation'&&!formationAllowed(u.kind,arg))return false;
+  if(!['move','attack','hold','auto','autoTactic','formation'].includes(what))return false;
   if (what === 'move') {
     u.goal = arg;
     u.order = 'move';
@@ -1055,7 +1108,14 @@ export function outcome(b) {
     }
     return { troops: Math.round(u.troops), morale: Math.round(Math.max(0, u.morale)), fates };
   });
-  return { winner: w, why: b.over.why, units, gateTaken: Boolean(b.gate?.open) || b.over.why === 'keep', depot: b.depot?.burnt ?? false, seconds: Math.round(b.time) };
+  return { winner: w, why: b.over.why, units, gateTaken: Boolean(b.gate?.open) || b.over.why === 'keep', depot: b.depot?.burnt ?? false, seconds: Math.round(b.time), report:battleReport(b) };
+}
+
+/** Pure detailed statistics. Losses are net troops lost; damage includes subsequently healed casualties. */
+export function battleReport(b) {
+  const units=b.units.map(u=>({id:u.id,side:u.side,general:u.general,kind:u.kind,formation:u.formation,start:Math.round(u.start),remaining:Math.round(u.troops),losses:Math.round(u.start-u.troops),morale:Math.round(Math.max(0,u.morale)),end:u.end??(u.routed?'routed':'standing'),...u.record}));
+  const sides=[0,1].map(side=>{const us=units.filter(u=>u.side===side),sum=k=>Math.round(us.reduce((a,u)=>a+(u[k]??0),0));return {side,start:sum('start'),remaining:sum('remaining'),losses:sum('losses'),damage:sum('damage'),taken:sum('taken'),healing:sum('healing'),counterHits:sum('counterHits'),flankHits:sum('flankHits'),charges:sum('charges'),tactics:sum('tactics')};});
+  return {version:1,seconds:Math.round(b.time),winner:b.over?.winner??null,why:b.over?.why??null,units,sides,events:b.events.map(e=>({...e}))};
 }
 
 /** Fight a battle with the computer on both sides, at once. */

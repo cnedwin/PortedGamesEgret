@@ -7,17 +7,21 @@ import { Mesh3D, createGeometry3D, createStandardMaterial3D, createWater3D, crea
 import { MAP } from '../data/map.mjs';
 import { LAKE_SHAPES, RIVER_LINES } from '../sim/land.mjs';
 
-function ribbon(line) {
-  const n = line.points.length,
+function ribbon(line, stride = 1) {
+  const samples = [];
+  for (let i = 0; i < line.points.length - 1; i += stride) samples.push(i);
+  samples.push(line.points.length - 1);
+  const n = samples.length,
     positions = new Float32Array(n * 2 * 3),
     normals = new Float32Array(n * 2 * 3),
     uvs = new Float32Array(n * 2 * 2),
     indices = [];
   let along = 0;
   for (let i = 0; i < n; i++) {
-    const p = line.points[i],
-      a = line.points[Math.max(0, i - 1)],
-      b = line.points[Math.min(n - 1, i + 1)];
+    const source = samples[i];
+    const p = line.points[source],
+      a = line.points[samples[Math.max(0, i - 1)]],
+      b = line.points[samples[Math.min(n - 1, i + 1)]];
     if (i > 0) along += Math.hypot(p[0] - a[0], p[1] - a[1]);
     let tx = b[0] - a[0],
       tz = b[1] - a[1];
@@ -25,8 +29,8 @@ function ribbon(line) {
     tx /= len;
     tz /= len;
     // A little wider than the bed, so the edges lie under the banks; narrow at the source.
-    const w = (line.half + 0.9) * Math.min(1, 0.35 + i / 12);
-    const y = line.levels[i] + 0.02;
+    const w = (line.half + 0.9) * Math.min(1, 0.35 + source / 12);
+    const y = line.levels[source] + 0.02;
     for (let s = 0; s < 2; s++) {
       const k = i * 2 + s,
         sign = s ? 1 : -1;
@@ -67,8 +71,10 @@ function sheet(lake) {
 /** The seas, rivers and lakes. Returns `update(seconds)`. */
 export function createWaters(scene, { quality = 'medium' } = {}) {
   const fancy = quality !== 'low';
-  const SEA = 0x2f6f86,
-    RIVER = 0x4f7d78;
+  const SEA = 0x376b76,
+    RIVER = 0x527d72;
+  const simpleSea = createStandardMaterial3D({ color: 0x355e6a, roughness: 0.35, metallic: 0 });
+  const simpleRiver = createStandardMaterial3D({ color: 0x48776d, roughness: 0.35, metallic: 0 });
   let sea, riverMaterial;
   if (fancy) {
     sea = createWater3D({
@@ -95,31 +101,52 @@ export function createWaters(scene, { quality = 'medium' } = {}) {
       normals: new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]),
       indices: [0, 2, 1, 1, 2, 3]
     });
-    sea = new Mesh3D(geometry, createStandardMaterial3D({ color: 0x1f5468, roughness: 0.35, metallic: 0 }));
-    riverMaterial = createStandardMaterial3D({ color: 0x325f63, roughness: 0.35, metallic: 0 });
+    sea = new Mesh3D(geometry, simpleSea);
+    riverMaterial = simpleRiver;
   }
   if (fancy) sea.setPosition(MAP.width / 2, 0, MAP.height / 2);
   sea.receiveShadow = true;
   scene.addChild(sea);
+  const detailedSeaGeometry = sea.geometry, detailedSeaMaterial = sea.material;
+  const halfW = (MAP.width + 2400) / 2, halfD = (MAP.height + 2400) / 2;
+  const proxySeaGeometry = fancy ? createGeometry3D({ positions: new Float32Array([-halfW, 0, -halfD, halfW, 0, -halfD, -halfW, 0, halfD, halfW, 0, halfD]), normals: new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]), indices: [0, 2, 1, 1, 2, 3] }) : detailedSeaGeometry;
+  let detailed = true;
+  const stats = { detail: fancy ? 'near' : 'simple', triangles: 0, switches: 0 };
   const meshes = [];
   for (const line of RIVER_LINES) {
     const mesh = new Mesh3D(ribbon(line), riverMaterial);
     mesh.receiveShadow = true;
     scene.addChild(mesh);
-    meshes.push(mesh);
+    meshes.push({ mesh, detailedGeometry: mesh.geometry, proxyGeometry: ribbon(line, 4) });
   }
   for (const lake of LAKE_SHAPES) {
     const mesh = new Mesh3D(sheet(lake), riverMaterial);
     mesh.receiveShadow = true;
     scene.addChild(mesh);
-    meshes.push(mesh);
+    meshes.push({ mesh, detailedGeometry: mesh.geometry, proxyGeometry: mesh.geometry });
   }
   return {
     sea,
-    update(seconds) {
-      if (!fancy) return;
-      sea.update(seconds);
-      riverMaterial.shader.uniforms[0] += seconds;
+    stats,
+    update(seconds, zoom = 70, forceDetail = false) {
+      const near = forceDetail || zoom < (detailed ? 156 : 126);
+      if (near !== detailed) {
+        detailed = near;
+        stats.switches++;
+        sea.geometry = near ? detailedSeaGeometry : proxySeaGeometry;
+        sea.material = near ? detailedSeaMaterial : simpleSea;
+        for (const item of meshes) {
+          item.mesh.geometry = near ? item.detailedGeometry : item.proxyGeometry;
+          item.mesh.material = near ? riverMaterial : simpleRiver;
+        }
+      }
+      stats.detail = fancy ? (near ? 'near' : 'far') : (near ? 'simple-near' : 'simple-far');
+      stats.triangles = sea.geometry.drawCount / 3;
+      for (const { mesh } of meshes) stats.triangles += mesh.geometry.drawCount / 3;
+      if (fancy) {
+        sea.update(seconds);
+        riverMaterial.shader.uniforms[0] += seconds;
+      }
     }
   };
 }

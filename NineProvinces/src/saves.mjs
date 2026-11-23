@@ -5,8 +5,10 @@
 // refused write never throwing. A whole game can also be exported to a file and imported again.
 import { createSaveStore } from '@egret/engine/kit';
 import { VERSION } from './sim/world.mjs';
+import { normalizeRoster } from './custom-officers.mjs';
 
 export const SAVE_KEY = 'nine-provinces';
+export const OFFICERS_KEY = 'nine-provinces.officers';
 export const SLOTS = ['auto', '1', '2', '3'];
 
 export const freshSettings = (language = 'zh') => ({ settings: { language, sound: true, music: true, reducedMotion: false, speed: 2 } });
@@ -21,6 +23,28 @@ export function openSettings(storage, language = 'zh', onProblem = () => {}) {
     onProblem,
     validate: (data) => Boolean(data?.settings) && (data.settings.language === 'zh' || data.settings.language === 'en') && typeof data.settings.sound === 'boolean'
   });
+}
+
+/** The registration list is shared by new campaigns; each campaign takes a copy. */
+export function openOfficerRoster(storage, onProblem) {
+  const store = createSaveStore({
+    key: OFFICERS_KEY,
+    version: 1,
+    defaults: () => ({ officers: [] }),
+    storage,
+    onProblem,
+    validate: data => Array.isArray(data?.officers)
+  });
+  let officers = normalizeRoster(store.data.officers);
+  return {
+    read: () => normalizeRoster(officers),
+    write(list) {
+      const next = normalizeRoster(list);
+      if (!store.save({ officers: next })) return false;
+      officers = next;
+      return true;
+    }
+  };
 }
 
 /** Whether something looks like a game this build can carry on with. */

@@ -18,7 +18,7 @@ import {
 import { UNITS } from '../data/battle.mjs';
 
 const SKIN = 0xc49a74,
-  IRON = 0x4c4f55,
+  IRON = 0x4f5c5b,
   LEATHER = 0x5a3e2a,
   WOOD = 0x6b4a2e,
   HORSE = [0x6d4a32, 0x3b2b22, 0x8a6a4a],
@@ -38,6 +38,15 @@ function footman(arm) {
   plain.add(box(0.2, 0.09, 0.13), { position: [0, 0.37, 0], color: IRON });
   plain.add(ball(0.06), { position: [0, 0.49, 0], color: SKIN });
   plain.add(createConeGeometry3D({ radius: 0.075, height: 0.09, radialSegments: 6 }), { position: [0, 0.56, 0], color: IRON });
+  // Lamellar apron, bronze belt, shoulder guards and cheek plates read at close command distance.
+  plain.add(box(0.18, 0.025, 0.145), { position: [0, 0.305, 0], color: 0x9c8654 });
+  for (const side of [-1, 1]) {
+    plain.add(box(0.075, 0.06, 0.16), { position: [side * 0.105, 0.385, 0], rotation: [0, 0, side * 0.15], color: IRON });
+    plain.add(cyl(0.025, 0.022, 0.12, 4), { position: [side * 0.12, 0.32, 0.04], rotation: [-0.3, 0, side * 0.12], color: LEATHER });
+    plain.add(box(0.025, 0.055, 0.07), { position: [side * 0.055, 0.48, 0.01], color: IRON });
+  }
+  for (let i = -1; i <= 1; i++) plain.add(box(0.042, 0.11, 0.025), { position: [i * 0.052, 0.25, 0.073], rotation: [-0.12, 0, 0], color: i % 2 ? 0x65716b : IRON });
+  plain.add(box(0.11, 0.016, 0.04), { position: [0, 0.52, 0.055], color: 0x9c956e });
   if (arm === 'spear' || arm === 'halberd') {
     plain.add(cyl(0.012, 0.012, 0.95, 4), { position: [0.11, 0.42, 0.06], rotation: [0.12, 0, 0], color: WOOD });
     plain.add(createConeGeometry3D({ radius: 0.025, height: 0.1, radialSegments: 4 }), { position: [0.11, 0.93, 0.12], rotation: [0.12, 0, 0], color: IRON });
@@ -46,9 +55,14 @@ function footman(arm) {
     plain.add(box(0.2, 0.26, 0.03), { position: [-0.1, 0.3, 0.09], rotation: [0, -0.3, 0], color: WOOD });
     coat.add(box(0.1, 0.1, 0.01), { position: [-0.1, 0.32, 0.112], rotation: [0, -0.3, 0], color: WHITE });
     plain.add(box(0.02, 0.24, 0.02), { position: [0.12, 0.38, 0.08], rotation: [0.6, 0, 0], color: 0xb8bcc2 });
+    plain.add(cyl(0.026, 0.026, 0.025, 6), { position: [-0.105, 0.32, 0.13], rotation: [Math.PI / 2, 0, 0], color: 0xa59360 });
+    plain.add(box(0.09, 0.018, 0.035), { position: [0.12, 0.31, 0.035], color: 0xa59360 });
   } else if (arm === 'bow') {
     plain.add(cyl(0.01, 0.01, 0.55, 4), { position: [-0.11, 0.38, 0.05], rotation: [0, 0, 0.15], color: WOOD });
     plain.add(box(0.06, 0.18, 0.06), { position: [0.05, 0.34, -0.09], color: LEATHER });
+    plain.add(cyl(0.003, 0.003, 0.5, 3), { position: [-0.075, 0.38, 0.065], color: 0xbba985 });
+    for (const side of [-1, 1]) plain.add(box(0.014, 0.16, 0.025), { position: [-0.1, 0.38 + side * 0.18, 0.05], rotation: [0, 0, side * 0.27], color: 0x987b48 });
+    plain.add(cyl(0.005, 0.005, 0.2, 3), { position: [0.05, 0.47, -0.09], color: 0xc4b895 });
   }
   return { plain: plain.build(), coat: coat.build() };
 }
@@ -60,6 +74,14 @@ function horseman(arm) {
   plain.add(box(0.16, 0.18, 0.5), { position: [0, 0.36, 0], color: hide });
   plain.add(box(0.1, 0.22, 0.14), { position: [0, 0.48, 0.28], rotation: [0.6, 0, 0], color: hide });
   plain.add(box(0.08, 0.08, 0.16), { position: [0, 0.56, 0.38], rotation: [0.2, 0, 0], color: hide });
+  plain.add(box(0.045, 0.19, 0.1), { position: [0, 0.51, 0.24], rotation: [0.6, 0, 0], color: 0x292e29 });
+  for (const side of [-1, 1]) {
+    plain.add(createConeGeometry3D({ radius: 0.023, height: 0.1, radialSegments: 4 }), { position: [side * 0.039, 0.63, 0.33], rotation: [-0.2, 0, side * -0.2], color: hide });
+    plain.add(box(0.015, 0.035, 0.16), { position: [side * 0.048, 0.565, 0.38], color: 0xbaa172 });
+    plain.add(box(0.027, 0.16, 0.14), { position: [side * 0.115, 0.38, -0.05], color: LEATHER });
+    plain.add(box(0.035, 0.15, 0.035), { position: [side * 0.08, 0.5, -0.015], color: IRON });
+  }
+  plain.add(box(0.22, 0.055, 0.17), { position: [0, 0.5, -0.04], color: 0x5a402b });
   for (const [x, z] of [
     [-0.06, 0.18],
     [0.06, 0.18],

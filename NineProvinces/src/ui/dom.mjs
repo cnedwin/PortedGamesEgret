@@ -72,7 +72,9 @@ export const colourOf = (f) => hex(f?.colour ?? 0x8a7d66);
 /** A general's portrait as an image. */
 export function face(id, size = 48, rulers = null) {
   const g = GENERALS[id];
-  return h('img.face', { src: portrait(id, size, rulers), width: size, height: Math.round(size * 1.25), alt: g ? nm(g) : '', loading: 'lazy', draggable: false });
+  const figure = size >= 72;
+  return h('img.face', { src: portrait(id, size, rulers), width: size, height: Math.round(size * (figure ? 4 / 3 : 1.25)),
+    alt: g ? nm(g) : '', loading: figure ? 'eager' : 'lazy', decoding: 'async', draggable: false });
 }
 
 /** A labelled value: small label above, value below. */
@@ -88,10 +90,12 @@ export function tabs(list, current, on) {
 }
 
 /** A choice of a few values, as joined buttons. */
-export function choice(list, current, on, { why = {} } = {}) {
+export function choice(list, current, on, { why = {}, setupKey } = {}) {
   return h(
     'div.choice',
     { role: 'radiogroup' },
-    list.map(([id, label]) => h('button', { type: 'button', role: 'radio', 'aria-checked': id === current ? 'true' : 'false', disabled: Boolean(why[id]), title: why[id] ?? undefined, onclick: () => on(id) }, label))
+    list.map(([id, label]) => h('button', { type: 'button', role: 'radio', 'aria-checked': id === current ? 'true' : 'false',
+      dataset: setupKey ? { setupKey: setupKey + '-' + id } : undefined,
+      disabled: Boolean(why[id]), title: why[id] ?? undefined, onclick: () => on(id) }, label))
   );
 }

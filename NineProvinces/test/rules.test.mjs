@@ -35,6 +35,13 @@ const run = (s, days, { watch = false } = {}) => {
   return s;
 };
 
+test('explicit observer games leave all factions to the computer in every era', () => {
+  for (const scenario of ['184', '190', '200', '208', '219']) {
+    const state = W.createGame({ seed: 7, faction: null, scenario, command: false });
+    assert.equal(state.player, null, scenario);
+  }
+});
+
 test('the map: 76 cities, 11 passes, 34 ferries, every place reachable from every other', () => {
   assert.equal(CITIES.length, 76);
   assert.equal(PASSES.length, 11);
@@ -221,7 +228,10 @@ test("the tale: Cao Cao's branch asks him at the coalition and at Xun Yu's comin
   s.nodes.qiao.troops = 80000;
   s.nodes.qiao.wall = 70;
   const asked = [];
+  let heJinReached189 = false;
   for (let d = 0; d < 360 * 8 && !asked.includes('c_xunyu'); d++) {
+    if (s.day === dayOf(189, 1) - 1)
+      heJinReached189 = ['serving', 'free', 'captive'].includes(s.generals.hejin.status) && s.factions.han.alive;
     if (!W.advance(s)) {
       const m = s.inbox.find((x) => x.blocks) ?? s.inbox[0];
       assert.ok(m, `stopped with nothing to decide (${JSON.stringify(s.over)})`);
@@ -235,10 +245,20 @@ test("the tale: Cao Cao's branch asks him at the coalition and at Xun Yu's comin
     }
   }
   assert.ok(asked.includes('coalition') && asked.includes('c_xunyu'), asked.join());
-  // The history around him went as told: the eunuchs, Dong Zhuo in the capital.
-  for (const id of ['eunuchs', 'dongEnters', 'c_chenliu']) assert.ok(s.fired[id] > 0, id);
+  for (const id of ['dongEnters', 'c_chenliu']) assert.ok(s.fired[id] > 0, id);
+  // In a living campaign the palace coup can be pre-empted by an earlier death.
+  if (heJinReached189) assert.ok(s.fired.eunuchs > 0, 'the coup plays while He Jin is alive');
+  else assert.equal(s.fired.eunuchs, 'missed');
   assert.equal(s.generals.xunyu.faction, 'caocao');
   assert.equal(Object.keys(S.BRANCHES).length, 6);
+});
+
+test('the Ten Attendants incident plays when the Han court and He Jin survive to 189', () => {
+  const state = W.createGame({ seed: 10, faction: 'caocao', branch: 'caocao' });
+  state.day = dayOf(189, 1);
+  S.checkStory(state);
+  assert.equal(state.fired.eunuchs, state.day);
+  assert.equal(state.generals.hejin.status, 'dead');
 });
 
 test('the computer leaves a new lord be in his first months', () => {

@@ -25,13 +25,13 @@ import { ADJACENT, NODES } from '../data/map.mjs';
 import { HEX_H, HEX_W } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS, landAt, noise } from '../sim/land.mjs';
 
-const STONE = 0x7d776e,
-  STONE_DARK = 0x635e57,
-  STONE_TOP = 0x6e6961,
+const STONE = 0x8a8070,
+  STONE_DARK = 0x69685b,
+  STONE_TOP = 0xa19882,
   ARCH = 0x231d19,
   PLASTER = 0xd6ccb8,
-  TIMBER = 0x7a2d22,
-  ROOF = 0x3b4350,
+  TIMBER = 0x744237,
+  ROOF = 0x3f5555,
   ROOF_HOUSE = [0x4b4c4e, 0x55524e, 0x45474b, 0x5b5650],
   HOUSE_WALL = [0xa89a82, 0x968a74, 0xb3a68e, 0x8c8170],
   PLANK = 0x6b5038,
@@ -158,12 +158,24 @@ function pavilion(b, at, w, d, h, { tiers = 1, roof = ROOF, body = PLASTER, rot 
   const posts = Math.max(2, Math.round(w / 0.55));
   for (let i = 0; i <= posts; i++)
     for (const s of [-1, 1]) b.add(UNIT.post, { position: place(-w / 2 + (w * i) / posts, h / 2, s * (d / 2 + 0.03)), scale: [0.09, h, 0.09], color: TIMBER });
+  // Han timber galleries: lintel, bracket ends, dark lattice doors and stone stair.
+  for (const side of [-1, 1]) {
+    b.add(UNIT.box, { position: place(0, h - 0.06, side * (d / 2 + 0.09)), scale: [w + 0.18, 0.12, 0.14], rotation: [0, rotY, 0], color: 0x9b6c48 });
+    for (let i = 0; i <= posts; i++) b.add(UNIT.box, { position: place(-w / 2 + (w * i) / posts, h - 0.02, side * (d / 2 + 0.16)), scale: [0.2, 0.08, 0.36], rotation: [0, rotY, 0], color: TIMBER });
+  }
+  b.add(UNIT.box, { position: place(0, h * 0.44, d / 2 + 0.035), scale: [w * 0.3, h * 0.72, 0.045], rotation: [0, rotY, 0], color: 0x382e27 });
+  for (const side of [-1, 1]) {
+    b.add(UNIT.box, { position: place(w * 0.31 * side, h * 0.55, d / 2 + 0.05), scale: [w * 0.19, h * 0.38, 0.04], rotation: [0, rotY, 0], color: 0x554e3c });
+    for (let i = 0; i < 3; i++) b.add(UNIT.box, { position: place(w * 0.31 * side + (i - 1) * w * 0.046, h * 0.55, d / 2 + 0.08), scale: [0.025, h * 0.38, 0.035], rotation: [0, rotY, 0], color: 0xaa9065 });
+  }
+  b.stone.add(UNIT.box, { position: place(0, 0.04, d / 2 + 0.18), scale: [w * 0.5, 0.08, 0.45], rotation: [0, rotY, 0], color: STONE_TOP });
   let top = y + h;
   let rw = w + 0.75,
     rd = d + 0.75;
   for (let tier = 0; tier < tiers; tier++) {
     const rh = rd * 0.42;
     b.roof.add(hipRoof(rw, rd, rh), { position: [x, top, z], rotation: [0, rotY, 0], color: roof });
+    b.roof.add(UNIT.box, { position: [x, top + rh + 0.03, z], rotation: [0, rotY, 0], scale: [Math.max(0.2, rw - rd * 0.9), 0.08, 0.12], color: 0x748071 });
     if (tier < tiers - 1) {
       // A short storey between the eaves.
       const sw = w * 0.72,
@@ -251,6 +263,13 @@ function walledCity(f, level, seed, flags) {
   pavilion(b, [f.x, y0 + 0.32, f.z], hallW, hallD, big ? 0.95 : 0.75, { tiers: big ? 2 : 1, body: TIMBER });
   if (big)
     for (const s of [-1, 1]) pavilion(b, [f.x + s * (hallW / 2 + 1.25), y0, f.z + 0.4], 1.5, 1.0, 0.55, { rot: Math.PI / 2, body: PLASTER });
+  // A pair of stone que markers and bronze ritual vessels frame the administrative court.
+  for (const side of [-1, 1]) {
+    const px = f.x + side * (hallW * 0.46), pz = f.z + hallD * 0.8;
+    b.stone.add(UNIT.box, { position: [px, y0 + 0.34, pz], scale: [0.24, 0.68, 0.24], color: STONE_TOP });
+    b.roof.add(gableRoof(0.4, 0.36, 0.16), { position: [px, y0 + 0.68, pz], color: ROOF });
+    b.add(UNIT.post, { position: [px * 0.25 + f.x * 0.75, y0 + 0.23, f.z + hallD * 0.68], scale: [0.24, 0.35, 0.24], color: 0x66705a });
+  }
   // Houses in rows, leaving the streets and the hall clear.
   const keepX = hallW / 2 + (big ? 2.4 : 0.9),
     keepZ = hallD / 2 + 0.9;
@@ -269,6 +288,12 @@ function walledCity(f, level, seed, flags) {
         pz = f.z + z;
       b.add(UNIT.box, { position: [px, y0 + h / 2, pz], scale: [w, h, d], color: pick(HOUSE_WALL, rnd(k + 1.3)) });
       b.roof.add(gableRoof(w + 0.16, d + 0.22, 0.3), { position: [px, y0 + h, pz], color: pick(ROOF_HOUSE, rnd(k + 1.7)) });
+      b.add(UNIT.box, { position: [px, y0 + h * 0.35, pz + d / 2 + 0.015], scale: [w * 0.21, h * 0.7, 0.025], color: 0x514735 });
+      // A few market cloths and urns, merged into the existing body batch.
+      if (v > 0.82) {
+        b.add(UNIT.box, { position: [px + w * 0.15, y0 + h * 0.76, pz + d * 0.8], rotation: [0.17, 0, 0], scale: [w * 0.9, 0.045, d * 0.55], color: k % 2 ? 0x9a7655 : 0x59786c });
+        b.add(UNIT.post, { position: [px - w * 0.25, y0 + h * 0.34, pz + d], scale: [0.035, h * 0.7, 0.035], color: PLANK_DARK });
+      }
     }
   return b;
 }
@@ -315,6 +340,15 @@ function passFort(f, level, seed, flags) {
   b.stone.add(UNIT.box, { position: [f.x, y0 + WH / 2 - 0.3, f.z], scale: [3.2, WH + 1.2, T + 0.8], rotation: [0, rot, 0], color: STONE_DARK });
   b.add(UNIT.box, { position: [f.x, y0 + 0.5, f.z], scale: [1.0, 1.1, T + 0.9], rotation: [0, rot, 0], color: ARCH });
   pavilion(b, [f.x, y0 + WH + 0.3, f.z], 2.4, 1.2, 0.8, { tiers: 2, rot });
+  // Timber braces and a defended approach distinguish a mountain pass from a small town.
+  for (const side of [-1, 1]) {
+    for (let i = 0; i < 3; i++) {
+      const distance = side * (3 + i * 1.7);
+      b.add(UNIT.post, { position: [f.x + Math.cos(rot) * distance, y0 + 0.62, f.z - Math.sin(rot) * distance + 0.65], rotation: [0.28, rot, 0], scale: [0.12, 1.55, 0.12], color: PLANK_DARK });
+    }
+    const x = f.x + Math.cos(rot) * side * 2.3, z = f.z - Math.sin(rot) * side * 2.3;
+    b.add(createConeGeometry3D({ radius: 0.21, height: 0.25, radialSegments: 6 }), { position: [x, y0 + WH + 0.16, z], rotation: [Math.PI, 0, 0], color: 0x777853 });
+  }
   flags.push([f.x + Math.cos(rot) * 1.9, y0 + WH + 0.3, f.z - Math.sin(rot) * 1.9], [f.x - Math.cos(rot) * 1.9, y0 + WH + 0.3, f.z + Math.sin(rot) * 1.9]);
   void seed;
   return b;
@@ -413,6 +447,10 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
   const roofMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 0.7, metallic: 0 });
   roofMaterial.shader = createCustomShader3D({ key: 'nine-roof', glsl: ROOF_GLSL });
   const built = new Map();
+  const levels = new Map();
+  const proxyMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 0.94, metallic: 0, flatShading: true });
+  const stats = { detailed: 0, proxy: 0, hidden: 0, triangles: 0, cachedDetails: 0 };
+  const enterDetail = quality === 'low' ? 90 : 125;
   const flagSpots = [];
   const flagCapacity = 1600;
   const flags = new InstancedMesh3D(flagShape(), createStandardMaterial3D({ vertexColors: true, roughness: 0.8, metallic: 0 }), flagCapacity);
@@ -423,7 +461,7 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
   scene.addChild(flags);
   const m = new Float32Array(16),
     q = [0, 0, 0, 1];
-  function build(f) {
+  function buildDetail(f) {
     const node = NODES[f.id];
     const level = (f.level ?? landAt(f.x, f.z, {}).height) + 0.02;
     const spots = [];
@@ -454,6 +492,46 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
       paint(i, f.id);
     }
     built.set(f.id, mesh);
+    return mesh;
+  }
+  function makeProxy(f) {
+    const b = createGeometryBuilder3D();
+    const y = (f.level ?? landAt(f.x, f.z, {}).height) + 0.02;
+    if (f.kind === 'city') {
+      const hx = (f.a - 0.25) * HEX_W, hz = f.b * HEX_H;
+      const wh = f.a >= 3 ? 1.45 : 1.15;
+      for (const side of [-1, 1]) {
+        b.add(UNIT.box, { position: [f.x, y + wh / 2, f.z + side * hz], scale: [hx * 2, wh, 0.85], color: STONE });
+        b.add(UNIT.box, { position: [f.x + side * hx, y + wh / 2, f.z], scale: [0.85, wh, hz * 2], color: STONE });
+        for (const end of [-1, 1]) b.add(hipRoof(1.75, 1.75, 0.5), { position: [f.x + side * hx, y + wh + 0.65, f.z + end * hz], color: ROOF });
+        for (const end of [-1, 1]) {
+          b.add(UNIT.box, { position: [f.x + side * hx * 0.52, y + 0.25, f.z + end * hz * 0.5], scale: [hx * 0.73, 0.5, hz * 0.58], color: 0x9d9178 });
+          b.add(gableRoof(hx * 0.76, hz * 0.62, 0.35), { position: [f.x + side * hx * 0.52, y + 0.5, f.z + end * hz * 0.5], color: ROOF_HOUSE[1] });
+        }
+      }
+      b.add(UNIT.box, { position: [f.x, y + 0.6, f.z], scale: [3, 1.2, 2], color: TIMBER });
+      b.add(hipRoof(4, 3, 1.2), { position: [f.x, y + 1.2, f.z], color: ROOF });
+    } else if (f.kind === 'pass') {
+      const adjacent = (ADJACENT[f.id] ?? []).map((edge) => NODES[edge.to]);
+      const a = adjacent[0] ?? { x: f.x - 1, y: f.z };
+      const other = adjacent[1] ?? { x: f.x, y: f.z };
+      const rotation = Math.atan2(other.x - a.x, other.y - a.y);
+      b.add(UNIT.box, { position: [f.x, y + 0.85, f.z], rotation: [0, rotation, 0], scale: [21, 1.7, 1.1], color: STONE });
+      for (const side of [-1, 0, 1]) {
+        const x = f.x + Math.cos(rotation) * side * 10.4, z = f.z - Math.sin(rotation) * side * 10.4;
+        b.add(UNIT.box, { position: [x, y + 2, z], scale: [1.5, 1.25, 1.5], color: TIMBER });
+        b.add(hipRoof(2.2, 2.2, 0.8), { position: [x, y + 2.65, z], color: ROOF });
+      }
+    } else {
+      b.add(UNIT.box, { position: [f.x, y + 0.35, f.z], scale: [2.4, 0.7, 1.5], color: PLANK });
+      b.add(gableRoof(2.8, 1.8, 0.6), { position: [f.x, y + 0.7, f.z], color: ROOF });
+    }
+    const mesh = new Mesh3D(b.build(), proxyMaterial);
+    mesh.userData = { place: f.id, lod: 'proxy' };
+    mesh.receiveShadow = true;
+    mesh.castShadow = false;
+    scene.addChild(mesh);
+    return mesh;
   }
   function paint(i, id) {
     const c = colourOf(id);
@@ -462,15 +540,42 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
   }
   return {
     meshes: built,
+    stats,
     /** Build the places within `reach` of (x, z). */
-    update(x, z, reach) {
-      let made = 0;
+    update(x, z, reach, zoom = 70, forceDetail = false) {
+      let made = 0, detailed = 0;
+      stats.detailed = stats.proxy = stats.hidden = stats.triangles = 0;
       for (const f of Object.values(FOOTPRINTS)) {
-        if (built.has(f.id)) continue;
-        if (Math.abs(f.x - x) > reach || Math.abs(f.z - z) > reach) continue;
-        build(f);
-        if (++made >= 3) break;
+        // LOD is measured from immutable place anchors, never from whichever mesh is currently visible.
+        const distance = Math.hypot(f.x - x, f.z - z);
+        const inRange = distance < reach + Math.hypot(f.halfX, f.halfZ);
+        let record = levels.get(f.id);
+        if (!record && inRange && made < 3) {
+          record = { proxy: makeProxy(f), detail: null, near: false };
+          levels.set(f.id, record);
+          made++;
+        }
+        if (!record) continue;
+        const metric = Math.hypot(distance, zoom);
+        const near = forceDetail || metric < enterDetail + (record.near ? 24 : 0);
+        if (near && inRange && !record.detail && detailed < 1) {
+          record.detail = buildDetail(f);
+          detailed++;
+        }
+        record.near = near;
+        const showDetail = inRange && near && Boolean(record.detail);
+        record.proxy.visible = inRange && !showDetail;
+        for (const mesh of record.detail ?? []) mesh.visible = showDetail;
+        if (showDetail) {
+          stats.detailed++;
+          for (const mesh of record.detail) stats.triangles += mesh.geometry.drawCount / 3;
+        } else if (inRange) {
+          stats.proxy++;
+          stats.triangles += record.proxy.geometry.drawCount / 3;
+        } else stats.hidden++;
       }
+      stats.cachedDetails = built.size;
+      flags.visible = forceDetail || zoom < enterDetail + 24;
     },
     recolour() {
       for (const s of flagSpots) paint(s.i, s.place);

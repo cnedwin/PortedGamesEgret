@@ -244,7 +244,7 @@ const KEPT = [
 ];
 function spared(state, owner) {
   if (owner === null) return false;
-  if (owner === state.player) return state.day < 30 + (GRACE[state.options?.difficulty] ?? 300);
+  if (owner === state.player) return state.day < (state.startedDay ?? 30) + (GRACE[state.options?.difficulty] ?? 300);
   if (state.branch === 'free') return false;
   return KEPT.some((k) => k.owner === owner && (k.branch === 'history' || k.branch === state.branch) && state.day < dayOf(...k.until) && !(k.done && state.fired[k.done]));
 }

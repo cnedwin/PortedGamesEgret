@@ -18,6 +18,8 @@ import { createStage } from './stage.mjs';
 import { createLand } from './terrain.mjs';
 import { createTroops, figureOf } from './troops.mjs';
 import { createWaters } from './water.mjs';
+import { createAmbient } from './ambient.mjs';
+import { seasonOf } from './seasons.mjs';
 
 export const FAR = 300;
 
@@ -38,7 +40,8 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
   const land = createLand(scene, { quality: app.quality, onTile: flora.onTile });
   rig.setGround((x, z) => Math.max(0, land.heightAt(x, z)));
   const waters = createWaters(scene, { quality: app.quality });
-  createRoads(scene);
+  const ambient = createAmbient(scene, { quality: app.quality });
+  const roads = createRoads(scene);
   const ownerColour = (id) => {
     const s = getState();
     const owner = s?.nodes[id]?.owner;
@@ -290,6 +293,8 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     frac = 0,
     visible = true,
     drift = null;
+  let season = seasonOf(0), seasonDay = -1;
+  let reducedMotion = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
   const extra = new Set();
   function frame(seconds) {
     const dt = Math.min(seconds, 0.1);
@@ -302,11 +307,33 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
       if (rig.view.tx > drift.to) rig.view.tx = drift.from;
     }
     rig.update(dt);
+    const s = getState();
+    const day = Math.floor(s?.day ?? 0);
+    if (day !== seasonDay) {
+      seasonDay = day;
+      season = seasonOf(day);
+      land.setSeason(season);
+      flora.setSeason(season);
+      // The stage exposes its existing light/haze arrays; tint them without new lights or sky textures.
+      if (stage.haze) {
+        stage.haze[0] = 0.56 + season.winter * 0.1 + season.autumn * 0.06;
+        stage.haze[1] = 0.62 + season.winter * 0.06 + season.autumn * 0.015;
+        stage.haze[2] = 0.66 + season.winter * 0.06 - season.autumn * 0.04;
+      }
+      if (stage.sun) {
+        stage.sun.color[0] = 1 - season.winter * 0.08;
+        stage.sun.color[1] = 0.94 - season.autumn * 0.025;
+        stage.sun.color[2] = 0.84 + season.winter * 0.12 - season.autumn * 0.07;
+      }
+    }
     const reach = Math.min(290, rig.view.d * 1.5 + 100);
     land.update(rig.view.x, rig.view.z, reach);
-    places.update(rig.view.x, rig.view.z, reach);
-    waters.update(dt);
-    const s = getState();
+    const battleDetail = Boolean(mode);
+    flora.update(rig.view, battleDetail);
+    places.update(rig.view.x, rig.view.z, reach, rig.view.d, battleDetail);
+    waters.update(dt, rig.view.d, battleDetail);
+    roads.update(rig.view.d, battleDetail, rig.view);
+    ambient.update(dt, rig.view, reducedMotion);
     troops.begin();
     layArmies(visible ? s : null, frac, dt, time);
     for (const fn of extra) fn(dt, time);
@@ -384,6 +411,13 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
     places,
     markers,
     stage,
+    /** Decorative state, suitable for read-only acceptance probes. */
+    get landscape() {
+      return { season: { ...season }, ambient: { ...ambient.counts }, lod: { places: { ...places.stats }, flora: { ...flora.stats }, water: { ...waters.stats }, roads: { ...roads.stats } } };
+    },
+    setReducedMotion(value) {
+      reducedMotion = Boolean(value);
+    },
     /** Extra work each frame, such as a battle laid over the realm. */
     onFrame(fn) {
       extra.add(fn);

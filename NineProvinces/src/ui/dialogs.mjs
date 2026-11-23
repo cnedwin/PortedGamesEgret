@@ -377,23 +377,24 @@ const BUILD = {
     const store = s.factions[s.player].store ?? [];
     const body = [
       h(
-        'div.bio',
-        h('div.portraitFrame', face(id, 150, app.rulers()), f ? h('span.banner', { style: { '--c': '#' + f.colour.toString(16).padStart(6, '0') } }, f.flag) : null),
+        'div.bio.generalHero',
+        h('div.portraitFrame', face(id, 220, app.rulers()), f ? seal(f, 'l') : null),
         h(
-          'div',
+          'div.generalDossier',
           h('p.names', h('b', nm(g)), getLanguage() === 'zh' ? h('small', g.en) : null),
           h('p', t('status_' + gs.status), f ? ' · ' + factionName(s, gs.faction) : '', gs.status === 'captive' ? ' · ' + t('heldBy', { faction: factionName(s, gs.captor) }) : ''),
           h('p', t('age') + ' ' + (gs.status === 'unborn' ? '—' : ageOf(s, id)), ' · ', t('location') + ' ' + where),
           gs.status === 'serving' ? h('p', t('loyalty') + ' ', h('b', Math.round(gs.loyalty)), bar(gs.loyalty / 100, gs.loyalty < 50 ? 'bad' : 'good')) : null,
-          h('p.dim.small', t('lifeYears', { born: g.born, died: gs.status === 'dead' ? (gs.deathDay !== undefined ? dateOf(gs.deathDay).year : g.died) : s.options.lifespan === 'fiction' ? '?' : g.died }))
+          h('p.dim.small', g.userCreated && gs.status !== 'dead' ? t('birthYear', { born: g.born })
+            : t('lifeYears', { born: g.born, died: gs.status === 'dead' ? (gs.deathDay !== undefined ? dateOf(gs.deathDay).year : g.died) : s.options.lifespan === 'fiction' ? '?' : g.died }))
         )
       ),
       abilityCard(app, id),
-      h('h3', t('traits')),
-      h(
+      g.traits.length ? h('h3', t('traits')) : null,
+      g.traits.length ? h(
         'ul.traits',
         g.traits.map((tr) => h('li', h('b', nm(TRAITS[tr])), h('span', traitText(tr))))
-      ),
+      ) : null,
       h('h3', t('tactics')),
       h(
         'ul.traits',
@@ -457,7 +458,8 @@ const BUILD = {
             args.tab,
             (id) => ((args.tab = id), (args.page = 0), again())
           ),
-          h('input.find', { type: 'search', placeholder: t('findName'), value: args.find, 'aria-label': t('findName'), onchange: (e) => ((args.find = e.target.value.trim()), (args.page = 0), again()) })
+          h('input.find', { type: 'search', placeholder: t('findName'), value: args.find, 'aria-label': t('findName'), onchange: (e) => ((args.find = e.target.value.trim()), (args.page = 0), again()) }),
+          args.find ? button(t('resetSearch'), () => ((args.find = ''), (args.page = 0), again()), { small: true }) : null
         ),
         h(
           'div.table',
@@ -475,7 +477,8 @@ const BUILD = {
               h('span.n', ageOf(s, g)),
               h('span.loc', gs.at ? (s.nodes[gs.at] ? placeName(gs.at) : t('inArmyOf')) : '—')
             );
-          })
+          }),
+          shown.length ? null : h('p.rosterEmpty', t('rosterEmpty'))
         ),
         pages > 1 ? h('div.pager', button('‹', () => (args.page--, again()), { small: true, why: args.page ? null : ' ' }), h('span', `${args.page + 1} / ${pages}`), button('›', () => (args.page++, again()), { small: true, why: args.page < pages - 1 ? null : ' ' })) : null,
         h('p.dim.small', t('rosterCount', { n: list.length }))
@@ -734,6 +737,20 @@ const BUILD = {
       String(st[key]),
       (v) => (app.setSetting(key, v === 'true'), again())
     );
+    const volume = (key, bus, fallback) => {
+      const level = Number.isFinite(st[key]) ? Math.min(100, Math.max(0, Math.round(st[key] * 100))) : fallback;
+      const text = h('output', level + '%');
+      return h('label.setting.volumeSetting', h('span', t(key)),
+        h('input.range', { type: 'range', min: '0', max: '100', value: level, 'aria-label': t(key),
+          oninput: ({ target }) => {
+            text.value = target.value + '%';
+            app.sound.setVolumes?.({ [bus]: target.valueAsNumber / 100 });
+          },
+          onchange: ({ target }) => app.setSetting(key, target.valueAsNumber / 100)
+        }),
+        text
+      );
+    };
     return {
       title: t('settings'),
       body: [
@@ -741,6 +758,8 @@ const BUILD = {
         h('div.setting', h('span', t('sound')), onOff('sound')),
         h('div.setting', h('span', t('music')), onOff('music')),
         h('div.setting', h('span', t('reducedMotion')), onOff('reducedMotion')),
+        volume('musicVolume', 'music', 55),
+        volume('effectsVolume', 'effects', 80),
         h('p.dim.small', t('keysHelp')),
         app.state ? h('div.row', button(t('toTitle'), () => app.toTitle(), { kind: 'danger', small: true })) : null,
         h('p.dim.small', t('demo'))
@@ -839,6 +858,7 @@ const BUILD = {
   battleResult(app, args) {
     const s = app.state,
       { setup, result } = args;
+    const report = args.report ?? result.report;
     const mine = setup.factions.indexOf(s.player);
     const won = result.winner === mine;
     const losses = [0, 1].map((k) => setup.units.reduce((x, u, i) => (u.side === k ? x + u.troops - result.units[i].troops : x), 0));
@@ -855,9 +875,13 @@ const BUILD = {
         h('div.stamp', won ? t('stampWon') : t('stampLost')),
         h('p.note', t('why_' + result.why) + ' · ' + t('secondsN', { n: result.seconds })),
         h('div.grid', stat(t('ourLosses'), num(losses[Math.max(0, mine)])), stat(t('theirLosses'), num(losses[1 - Math.max(0, mine)]))),
+        report?.units?.length ? battleReport(s, setup, report, mine) : null,
         fates.length ? h('ul.fates', fates.map((x) => h('li', x))) : null
       ],
-      actions: [button(t('ok'), () => app.dialogs.close(true), { kind: 'main' })]
+      actions: [
+        args.tape ? button(t('battleReplay'), () => app.openBattleReplay(args.tape)) : null,
+        button(t('ok'), () => app.dialogs.close(true), { kind: 'main' })
+      ]
     };
   },
 
@@ -878,6 +902,28 @@ const BUILD = {
 function formationNote(f) {
   const part = (k, v) => (v ? `${t(k)} ${v > 0 ? '+' : '−'}${Math.round(Math.abs(v) * 100)}%` : null);
   return [part('atkShort', f.atk), part('defShort', f.def), part('spdShort', f.spd), part('frontShort', f.front), part('flankShort', f.flank)].filter(Boolean).join(' · ') || '—';
+}
+
+function battleReport(state, setup, report, mine) {
+  const value = (label, number) => h('span.reportTrait', h('span', t(label)), h('b', num(number)));
+  return h('details.battleReport', { open: true },
+    h('summary', t('battleReport')),
+    [mine === 1 ? 1 : 0, mine === 1 ? 0 : 1].map(side => {
+      const totals = report.sides.find(row => row.side === side);
+      if (!totals) return null;
+      const faction = setup.factions[side];
+      return h('section.reportWing',
+        h('h3', faction ? factionName(state, faction) : t('noOwner')),
+        h('div.reportStats', value('reportDamage', totals.damage), value('reportHeal', totals.healing),
+          value('reportCounter', totals.counterHits), value('reportFlank', totals.flankHits), value('reportTactics', totals.tactics)),
+        h('ol.reportUnits', report.units.filter(row => row.side === side).map(row => h('li',
+          h('div', h('strong', row.general ? generalName(row.general) : t('captain')),
+            h('small', [UNITS[row.kind] && nm(UNITS[row.kind]), FORMATIONS[row.formation] && nm(FORMATIONS[row.formation])].filter(Boolean).join(' · '))),
+          h('div.reportStrength', h('span', t('reportSurvived')), h('b', num(row.start) + ' → ' + num(row.remaining)))
+        )))
+      );
+    })
+  );
 }
 const keyedRow = (...nodes) => h('div.row', ...nodes);
 

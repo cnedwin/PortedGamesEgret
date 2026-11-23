@@ -22,7 +22,7 @@ import {
 import { UNITS } from '../data/battle.mjs';
 import { TACTICS } from '../data/tactics.mjs';
 import { nm } from '../i18n.mjs';
-import { distance } from '../sim/battle.mjs';
+import { distance, neighbours, ring as hexRing } from '../sim/battle.mjs';
 import { HEX_W, hexCenter } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS } from '../sim/land.mjs';
 import { generalName } from '../view/names.mjs';
@@ -48,8 +48,11 @@ function softDot() {
  * Lay battle `b` over `realm`. `colours` are the two sides' colours, `side` the player's side (or -1), `fx` the page
  * layer for numbers and calligraphy, `plates` the page layer for unit plates, `on` hears taps on units and hexes.
  */
-export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on }) {
+export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on, calm, canDeploy }) {
   const { scene, land, troops, camera, rig } = realm;
+  realm.select?.({});
+  const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
+  const isCalm = () => Boolean(calm?.() || reduced?.matches);
   const n = b.tiles.length;
   // Where each hex is on the map, and the height a soldier stands at there.
   const place = b.setup.place?.node ? FOOTPRINTS[b.setup.place.node] : null;
@@ -77,7 +80,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   };
   const front = b.gate ? pos[b.gate.at] : meanOf(1),
     them = meanOf(0);
-  rig.glideTo(front.x * 0.8 + them.x * 0.2, front.z * 0.8 + them.z * 0.2 + 3, 40, 1.4);
+  const openingDistance = Math.max(48, Math.min(72, Math.hypot(front.x-them.x,front.z-them.z)*1.35));
+  rig.glideTo((front.x+them.x)/2, (front.z+them.z)/2+2, openingDistance, 1.2);
   const cols = colours.map((c) => linearColor3D(c));
 
   // ——— Selection ring and the gate ———
@@ -89,6 +93,56 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   ring.pickable = false;
   scene.addChild(ring);
   const own = [ring];
+  const flat = [0, 0, 0, 1];
+  quatFromEuler(flat, -Math.PI / 2, 0, 0);
+  const cellGeometry = createRingGeometry3D({ innerRadius: 1.53, outerRadius: 1.64, thetaSegments: 6, thetaStart: Math.PI / 6 });
+  const makeCells = (colour, opacity, through = false) => {
+    const material = createStandardMaterial3D({ color: colour, emissive: colour, emissiveIntensity: .9, opacity, roughness: 1, depthWrite: false, depthTest: !through, side: 'double' });
+    const mesh = new InstancedMesh3D(cellGeometry, material, n);
+    mesh.count = 0; mesh.pickable = false; mesh.frustumCulled = false;scene.addChild(mesh);own.push(mesh);return mesh;
+  };
+  const rangeCells = makeCells(0x84aeb2, .55), targetCells = makeCells(0xe8bb61, .9), dangerCells = makeCells(0xcb6650, .8, true);
+  rangeCells.name='battle-range';targetCells.name='battle-order';dangerCells.name='battle-area-preview';
+  let viewPhase = 'deploy', armedTactic = null, previewKey = '';
+  const previewMatrix = new Float32Array(16);
+  function putCells(mesh, cells) {
+    let count = 0;
+    for (const i of cells) {
+      const p = pos[i];if (!p || count >= n) continue;
+      mat4Compose(previewMatrix, [p.x, p.y + .14, p.z], flat, [1, 1, 1]);mesh.setMatrixAt(count++, previewMatrix);
+    }
+    mesh.count = count;
+  }
+  // Match the simulation's target footprint, including its three-hex line order.
+  function tacticCells(u, tc, centre) {
+    if (tc.shape === 'ring1' || tc.shape === 'ring2') return hexRing(centre, tc.shape === 'ring1' ? 1 : 2);
+    if (tc.shape === 'line') {
+      const cells = [centre];let at = centre;
+      for (let k = 0; k < 2; k++) { const next = neighbours(at).slice().sort((x, y) => distance(y, u.pos) - distance(x, u.pos))[0];if (next === undefined) break;cells.push(next);at = next; }
+      return cells;
+    }
+    if (tc.shape === 'one') return [centre];
+    return b.units.filter(o => !o.gone && o.pos >= 0 && o.side !== u.side).map(o => o.pos);
+  }
+  function refreshPreview() {
+    const u = selected !== null ? b.units[selected] : null;
+    const key = [viewPhase, selected, u?.pos, armedTactic?.tactic, hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
+    if (key === previewKey) return;previewKey = key;
+    rangeCells.count = targetCells.count = dangerCells.count = 0;
+    for(const plate of unitPlates)plate.el.classList.remove('targetable');
+    if (!u || u.gone || u.pos < 0 || u.side !== side) return;
+    if (viewPhase === 'deploy') {
+      putCells(rangeCells, pos.flatMap((_, i) => canDeploy?.(u, i) ? [i] : []));
+      return;
+    }
+    const tc = armedTactic ? TACTICS[armedTactic.tactic] : null;
+    const reach = tc ? (tc.mind ? 5 : Math.max(2, UNITS[u.kind].range + 1)) : UNITS[u.kind].range;
+    putCells(rangeCells, hexRing(u.pos, reach));
+    if (!tc) { if (goalHex >= 0) putCells(targetCells, [goalHex]);return; }
+    const target = b.units.find(o => !o.gone && o.pos === hoverHex && o.side !== u.side);
+    for(const o of b.units)if(!o.gone&&o.side!==u.side&&o.pos>=0&&distance(o.pos,u.pos)<=reach)unitPlates[o.id].el.classList.add('targetable');
+    if (target && distance(target.pos, u.pos) <= reach) putCells(dangerCells, tacticCells(u, tc, target.pos));
+  }
   let gateMesh = null;
   if (b.gate) {
     const g = pos[b.gate.at];
@@ -115,23 +169,48 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       e.pickable = false;
       scene.addChild(e);
     }
+    flame.name='battle-fire';smoke.name='battle-smoke';
     fires.set(i, { flame, smoke });
   }
   const bursts = [];
   function burst(i, colour, count = 28) {
     const p = pos[i];
-    const e = createParticleEmitter3D({ capacity: count, rate: 0, lifetime: [0.4, 0.9], speed: [1.2, 3], direction: [0, 1, 0], spread: 1.1, gravity: [0, -3, 0], drag: 1.2, startSize: 0.35, endSize: 0.05, startColor: colour, endColor: colour, startOpacity: 1, endOpacity: 0, shape: 'sphere', radius: 0.5, map: dot, blending: 'additive' });
+    if (!p) return;
+    let item = bursts.find(o => o.life <= 0);
+    if (!item) {
+      if (bursts.length >= (isCalm() ? 6 : 12)) return;
+      const e = createParticleEmitter3D({ capacity: 64, rate: 0, lifetime: [.18, .55], speed: [1.1, 3.6], direction: [0, 1, 0], spread: 1.1, gravity: [0, -5, 0], drag: 1.2, startSize: .17, endSize: .025, startOpacity: .95, endOpacity: 0, shape: 'sphere', radius: .4, map: dot, blending: 'additive' });
+      e.name='battle-sparks';
+      e.pickable = false;scene.addChild(e);item = {e, life: 0};bursts.push(item);
+    }
+    const e = item.e;e.reset();e.visible = true;e.startColor.set(colour);e.endColor.set(colour);
     e.setPosition(p.x, p.y + 0.5, p.z);
-    e.pickable = false;
-    e.burst(count);
-    scene.addChild(e);
-    bursts.push({ e, life: 1.2 });
+    e.burst(Math.min(64, isCalm() ? Math.ceil(count * .45) : count));item.life = .75;
+  }
+  const pulseGeometry = {
+    arc: createRingGeometry3D({ innerRadius: .68, outerRadius: 1, thetaSegments: 28, thetaLength: Math.PI * 1.15 }),
+    wave: createRingGeometry3D({ innerRadius: .91, outerRadius: 1, thetaSegments: 48 }),
+    ward: createRingGeometry3D({ innerRadius: .86, outerRadius: 1, thetaSegments: 6, thetaStart: Math.PI / 6 })
+  };
+  const pulses = [];
+  function pulse(i, colour = 0xe8c37c, kind = 'wave', strength = 1, heading = 0) {
+    const p = pos[i];if (!p) return;
+    let item = pulses.find(o => o.life <= 0 && o.kind === kind);
+    if(!item){item=pulses.find(o=>o.life<=0);if(item){item.kind=kind;item.mesh.geometry=pulseGeometry[kind];item.mesh.name='battle-impact-'+kind;}}
+    if (!item) {
+      if (pulses.length >= 18) return;
+      const material = createStandardMaterial3D({color: colour, emissive: colour, emissiveIntensity: 1.15, opacity: .8, depthWrite: false, side:'double', roughness:1});
+      const mesh = new Mesh3D(pulseGeometry[kind], material);mesh.pickable = false;scene.addChild(mesh);item = {mesh, material, kind, life:0};pulses.push(item);
+      mesh.name='battle-impact-'+kind;
+    }
+    item.material.setColor(colour);item.material.setEmissive(colour);item.life = item.duration = isCalm() ? .28 : kind === 'ward' ? .8 : .48;item.p = p;item.strength = strength;item.heading = heading;item.mesh.visible = true;
   }
 
   // ——— Arrows ———
   const arrowCap = 600;
   const arrows = new InstancedMesh3D(createBoxGeometry3D({ width: 0.025, height: 0.025, depth: 0.42 }), createStandardMaterial3D({ color: 0x3a2a1c, roughness: 0.8, metallic: 0 }), arrowCap);
   arrows.count = 0;
+  arrows.name='battle-arrows';
   arrows.frustumCulled = false;
   arrows.pickable = false;
   scene.addChild(arrows);
@@ -142,11 +221,12 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   // ——— Units as drawn ———
   const shown = b.units.map((u) => {
     const p = pos[u.pos] ?? centre;
-    return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0 };
+    return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0, cd:u.cd, hit:0, hitWait:0, colour:new Float32Array(3) };
   });
   const unitPlates = b.units.map((u, i) => {
     const el = document.createElement('div');
     el.className = 'plate unit' + (u.side === side ? ' mine' : '');
+    el.tabIndex = 0;el.setAttribute('role','button');el.setAttribute('aria-label',(u.general ? generalName(u.general) : nm(UNITS[u.kind])) + ' · ' + nm(UNITS[u.kind]));
     el.innerHTML = '<span class="ring"><img class="face" alt=""></span><span class="ainfo"><b class="aname"></b><span class="atroops"></span><span class="pbar"><i></i></span><span class="rbar"><i></i></span></span>';
     el.firstChild.style.setProperty('--c', hex(colours[u.side]));
     const img = el.querySelector('img');
@@ -157,6 +237,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       e.stopPropagation();
       on.tapUnit(i);
     });
+    el.addEventListener('pointerenter',()=>{hoverHex=u.pos;});
+    el.addEventListener('keydown', e => {if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();on.tapUnit(i);}});
     plates.append(el);
     const anchor = [0, 0, 0];
     const marker = realm.markers.add(el, { target: anchor, maxDistance: 400 });
@@ -167,13 +249,14 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   // ——— Floating numbers and calligraphy ———
   const floaters = [];
   function floatText(x, y, z, text, kind) {
+    if (floaters.length >= 36) return;
     const el = document.createElement('div');
     el.className = 'floater ' + kind;
     el.textContent = text;
     fx.append(el);
     floaters.push({ el, x, y, z, age: 0, life: kind === 'tactic' ? 1.8 : 1.15 });
   }
-  function showTactic(u, tacticId) {
+  function showTactic(u, tacticId, targetId) {
     const tc = TACTICS[tacticId];
     const s = shown[u.id];
     const el = document.createElement('div');
@@ -181,8 +264,11 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     el.textContent = nm(tc);
     fx.append(el);
     floaters.push({ el, x: s.x, y: s.y + 2.2, z: s.z, age: 0, life: 1.9, brush: true });
-    const target = tc.kind === 'burn' ? [1, 0.5, 0.15] : u.side === side ? [0.95, 0.85, 0.4] : [0.95, 0.35, 0.3];
-    burst(u.pos, target, 40);
+    const helping = ['atk','def','spd','heal','rally','rage'].includes(tc.kind);
+    const colour = tc.kind === 'burn' ? 0xe58237 : tc.kind === 'heal' || tc.kind === 'rally' ? 0x88c8ad : tc.kind === 'confuse' || tc.kind === 'fear' ? 0xb6a0cf : 0xe6c078;
+    const affected = helping ? b.units.filter(o => !o.gone && o.pos >= 0 && o.side === u.side && (tc.shape==='all'||tc.shape==='self'&&o===u||tc.shape==='allies'&&distance(u.pos,o.pos)<=3)).map(o=>o.pos) : tacticCells(u, tc, b.units[targetId]?.pos ?? u.pos);
+    pulse(u.pos, colour, 'ward', 1.5);
+    for(const at of affected.slice(0,12)) {pulse(at, colour, helping ? 'ward' : tc.kind==='dmg' ? 'arc' : 'wave', tc.general ? 2.1 : 1.4, s.heading);if(!helping)burst(at,tc.kind==='burn'?[1,.52,.12]:[.95,.8,.5],18);}
   }
 
   // ——— Picking ———
@@ -226,18 +312,21 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     }
   });
 
-  let time = 0;
+  let time = 0, lastBattleTime = b.time;
   const m = new Float32Array(16),
     q = [0, 0, 0, 1];
   const stop = realm.onFrame((dt) => {
     time += dt;
+    const advanced = b.time > lastBattleTime;lastBattleTime = b.time;
     // Events since the last frame.
     for (; seenEvents < b.events.length; seenEvents++) {
       const ev = b.events[seenEvents];
-      if (ev.kind === 'tactic') showTactic(b.units[ev.unit], ev.tactic);
+      if (ev.kind === 'tactic') showTactic(b.units[ev.unit], ev.tactic, ev.target);
+      if (ev.kind === 'rout') { const u=b.units[ev.unit];if(u?.pos>=0){floatText(shown[u.id].x,shown[u.id].y+2,shown[u.id].z,nm(UNITS[u.kind]),'rout');pulse(u.pos,0xa88e78,'wave',1.7);} }
       if (ev.kind === 'gateOpen' && gateMesh) {
         gateMesh.setRotation(Math.PI / 2.2, gateMesh.rotation?.[1] ?? 0, 0);
         burst(b.gate.at, [0.8, 0.7, 0.5], 50);
+        pulse(b.gate.at,0xe8c37c,'wave',3);
       }
       on.event?.(ev);
     }
@@ -256,15 +345,9 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       f.flame.update(dt);
       f.smoke.update(dt);
     }
-    for (const i of Object.keys(b.fire)) if (b.fire[i] && !fires.has(+i)) fireAt(+i);
-    for (let k = bursts.length - 1; k >= 0; k--) {
-      bursts[k].life -= dt;
-      bursts[k].e.update(dt);
-      if (bursts[k].life <= 0) {
-        scene.removeChild(bursts[k].e);
-        bursts.splice(k, 1);
-      }
-    }
+    for (const i of Object.keys(b.fire)) if (b.fire[i] && !fires.has(+i) && fires.size < (isCalm()?10:20)) fireAt(+i);
+    for (const item of bursts) if(item.life>0){item.life-=dt;item.e.update(dt);if(item.life<=0)item.e.visible=false;}
+    for(const item of pulses) if(item.life>0){item.life-=dt;const a=1-Math.max(0,item.life)/item.duration,scale=item.strength*(.45+a*.9);item.mesh.setScale(scale);item.mesh.setPosition(item.p.x,item.p.y+.2+(item.kind==='ward'?a*.6:0),item.p.z);item.mesh.setRotation(item.kind==='arc'?-Math.PI*.3:-Math.PI/2,item.kind==='arc'?item.heading:0,item.kind==='arc'?-a*.5:0);item.material.opacity=(1-a)*.75;item.mesh.visible=item.life>0;}
     // Units.
     b.units.forEach((u, i) => {
       const s = shown[i],
@@ -280,7 +363,12 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       s.x += dx * k;
       s.z += dz * k;
       s.y += (p.y - s.y) * k;
-      const foe = u.target !== null && u.target !== undefined ? b.units[u.target] : null;
+      // The simulation holds a unit object, while some callers may still use an id.
+      let foe = typeof u.target === 'number' ? b.units[u.target] : u.target;
+      const attackTick = advanced && !u.routed && u.cd > s.cd + .05;s.cd = u.cd;
+      if(attackTick && (!foe || foe.gone || distance(u.pos,foe.pos)>UNITS[u.kind].range)) {
+        foe=null;let best=Infinity;for(const o of b.units)if(!o.gone&&o.troops>0&&o.pos>=0&&o.side!==u.side){const d=distance(u.pos,o.pos);if(d<=UNITS[u.kind].range&&d<best){best=d;foe=o;}}
+      }
       let face = s.heading;
       if (Math.hypot(dx, dz) > 0.2) face = Math.atan2(dx, dz);
       else if (foe && foe.pos >= 0) face = Math.atan2(pos[foe.pos].x - s.x, pos[foe.pos].z - s.z);
@@ -291,9 +379,12 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       // Losses show as rising numbers, gathered over a moment.
       if (u.troops < s.troops - 0.5) {
         s.loss += s.troops - u.troops;
+        s.hit = .22;
+        if(s.hitWait<=0){pulse(u.pos,0xe7c494,'arc',.8,s.heading+Math.PI/2);burst(u.pos,[.95,.83,.6],8);s.hitWait=.35;}
         s.troops = u.troops;
       } else s.troops = u.troops;
       s.lossAt += dt;
+      s.hit=Math.max(0,s.hit-dt);s.hitWait=Math.max(0,s.hitWait-dt);
       if (s.loss >= 1 && s.lossAt > 0.35) {
         floatText(s.x + (Math.random() - 0.5) * 0.8, s.y + 1.4, s.z, '-' + Math.round(s.loss), u.side === side ? 'hurt' : 'hit');
         s.loss = 0;
@@ -301,15 +392,15 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       }
       // In melee: a lunge toward the foe and back.
       const melee = foe && foe.pos >= 0 && !foe.gone && distance(u.pos, foe.pos) <= 1;
-      s.lunge = melee ? Math.max(0, Math.sin(time * 6 + i)) * 0.35 : s.lunge * 0.9;
+      if(attackTick&&melee)s.lunge=.45;else s.lunge*=Math.exp(-dt*10);
       drawUnit(u, s, i);
       // Volleys from bows at their target.
-      if (foe && UNITS[u.kind].range > 1 && foe.pos >= 0 && distance(u.pos, foe.pos) <= UNITS[u.kind].range && !u.routed) {
+      if (attackTick && foe && UNITS[u.kind].range > 1 && foe.pos >= 0 && distance(u.pos, foe.pos) <= UNITS[u.kind].range && !u.routed) {
         const last = volleyAt.get(i) ?? -9;
-        if (time - last > 1.3) {
+        if (time - last > .15 && flights.length < arrowCap - 7) {
           volleyAt.set(i, time);
           const f = pos[foe.pos];
-          for (let a = 0; a < 7; a++) flights.push({ fx: s.x + (Math.random() - 0.5), fy: s.y + 0.5, fz: s.z + (Math.random() - 0.5), tx: f.x + (Math.random() - 0.5) * 1.4, ty: f.y + 0.2, tz: f.z + (Math.random() - 0.5) * 1.4, t: -a * 0.05, dur: 0.75 });
+          for (let a = 0; a < (isCalm()?3:7); a++) flights.push({ fx: s.x + (Math.random() - 0.5), fy: s.y + 0.65, fz: s.z + (Math.random() - 0.5), tx: f.x + (Math.random() - 0.5) * 1.4, ty: f.y + 0.2, tz: f.z + (Math.random() - 0.5) * 1.4, t: -a * 0.022, dur: 0.42 });
         }
       }
       // The plate.
@@ -326,6 +417,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
         plate.el.querySelector('.rbar i').style.width = Math.min(100, Math.round(u.rage)) + '%';
         plate.el.classList.toggle('routed', u.routed);
         plate.el.classList.toggle('chosen', selected === i);
+        plate.el.setAttribute('aria-pressed',String(selected===i));
         plate.el.classList.toggle('full', u.rage >= 100);
       }
     });
@@ -376,18 +468,22 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     }
     // The ring under the chosen unit.
     const su = selected !== null ? b.units[selected] : null;
+    refreshPreview();
     ring.visible = Boolean(su && !su.gone && su.pos >= 0);
     if (ring.visible) {
       const s = shown[selected];
       ring.setPosition(s.x, s.y + 0.08, s.z);
-      ringMaterial.emissiveIntensity = 1.2 + Math.sin(time * 5) * 0.4;
+      ringMaterial.emissiveIntensity = isCalm()?1.1:1.15+Math.sin(time*3)*.18;
     }
   });
   let seenEvents = b.events.length;
 
   function drawUnit(u, s, i) {
     const kind = figureOf(u.kind);
-    const colour = cols[u.side];
+    const baseColour = cols[u.side];
+    const flash = isCalm()?0:Math.min(.35,s.hit*1.6);
+    for(let c=0;c<3;c++)s.colour[c]=baseColour[c]*(1-flash)+flash;
+    const colour = s.colour;
     const S = 1.75;
     const count = Math.max(1, Math.min(kind === 'boat' ? 2 : kind === 'horse' || kind === 'horsebow' ? 6 : 9, Math.ceil(u.troops / (kind === 'boat' ? 2500 : 700))));
     const per = kind === 'boat' ? 2 : 3;
@@ -409,12 +505,13 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
         z = s.z - lx * sin + lz * cos + lungeZ * (k % 2 ? 1 : 0.6);
       const ground = b.tiles[u.pos] === 'wall' || u.onWall ? s.y : Math.max(0, land.heightAt(x, z));
       const bob = Math.abs(Math.sin(time * (u.routed ? 11 : 7) + k * 1.7 + i)) * (u.path?.length || u.routed ? 0.05 : 0.012);
-      troops.add(kind, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + bob, z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, 0, S);
+      troops.add(kind, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + (isCalm()?0:bob), z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, -s.lunge*.3+(isCalm()?0:s.hit*.6), S);
     }
     if (u.general) troops.add('standard', s.x - cos * 0.2 - sin * 0.9, s.y, s.z + sin * 0.2 - cos * 0.9, s.heading, colour, 0, S * 0.9);
   }
 
   return {
+    preview(phase, armed) { viewPhase=phase;armedTactic=armed; },
     select(i) {
       selected = i;
       goalHex = -1;
@@ -444,6 +541,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
         scene.removeChild(f.smoke);
       }
       for (const x of bursts) scene.removeChild(x.e);
+      for (const p of pulses) scene.removeChild(p.mesh);
     }
   };
 }

@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import '../vendor/node-register.mjs';
 
-const { SAVE_KEY, SLOTS, freshSettings, openSettings, openSlot, writeSlot, exportText, importText, gameLooksRight } = await import('../src/saves.mjs');
+const { OFFICERS_KEY, SAVE_KEY, SLOTS, freshSettings, openOfficerRoster, openSettings, openSlot, writeSlot, exportText, importText, gameLooksRight } = await import('../src/saves.mjs');
 const W = await import('../src/sim/world.mjs');
 const { registerCustom } = await import('../src/sim/newblood.mjs');
 const { GENERALS } = await import('../src/data/generals.mjs');
@@ -41,6 +41,20 @@ test('fresh settings speak the page language; a change is kept', () => {
   assert.equal(again.data.settings.sound, false);
   assert.equal(again.data.settings.language, 'zh');
   assert.ok(storage.items.has(SAVE_KEY));
+});
+
+test('registered officers have their own durable roster and a refused write leaves the last list readable', () => {
+  const storage = memory();
+  const roster = openOfficerRoster(storage);
+  const officer = { id: 'u1', zh: '卫青霜', en: 'Wei Qingshuang', age: 25, female: true, portrait: 18,
+    service: 'player', stats: { lead: 72, war: 65, int: 69, pol: 70, cha: 71 }, trait: 'bingfa' };
+  assert.equal(roster.write([officer]), true);
+  assert.deepEqual(openOfficerRoster(storage).read(), [officer]);
+  assert.ok(storage.items.has(OFFICERS_KEY));
+  assert.equal(storage.items.size, 1);
+  storage.setItem = () => { throw new Error('quota'); };
+  assert.equal(roster.write([]), false);
+  assert.deepEqual(roster.read(), [officer]);
 });
 
 test('a game written into a slot comes back the same, and goes on as the unsaved one does', () => {
