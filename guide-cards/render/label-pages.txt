@@ -1,0 +1,46 @@
+---
+id: label-pages
+title: Many words on screen: labels are a page each, so paint or atlas them
+applies: [engine, web]
+triggers: [createLabel, textureFromCanvas, FRAME_IMAGE_BUDGET, "64 pages", "too many labels", "place names", "map labels", "glyph atlas", "text atlas", sourceRect, "banner text", "地名太多", "文字标签", "每帧图片", "字符图集"]
+local: [label, labels, names, atlas, glyph, banner]
+evidence:
+  - { repo: cnedwin/PortedGamesEgret, path: NineProvinces/src/view/mapview.mjs, line: 21, commit: de9e10b2592b35548c85c1f6368db1508564def1, pin: 9d801beb0667dac833a57ae20a09b552e862b275 }
+  - { repo: cnedwin/PortedGamesEgret, path: NineProvinces/src/main.mjs, line: 210, commit: de9e10b2592b35548c85c1f6368db1508564def1, pin: 9d801beb0667dac833a57ae20a09b552e862b275 }
+  - { repo: cnedwin/PortedGamesEgret, path: NineProvinces/ENGINE-NOTES.md, line: 8, commit: de9e10b2592b35548c85c1f6368db1508564def1, pin: 9d801beb0667dac833a57ae20a09b552e862b275 }
+engine: 9d801beb0667dac833a57ae20a09b552e862b275
+---
+
+# Many words on screen: labels are a page each, so paint or atlas them
+
+At engine `9d801be` each `game.createLabel` from `createBrowserGame` rasterizes into a texture page of its own, and a frame takes at most 64 pages (and 4,096 regions). A map with a hundred place names fails its first frame with `FRAME_IMAGE_BUDGET`.
+
+Words that never move with a sprite: paint them on a page canvas under a clear engine canvas, at a steady size on screen. Words on things that move (banners, unit flags): draw every character once into one canvas, lease it once, and cut each one out with `sourceRect`.
+
+```js
+// One sheet for every flag and surname, made at start and shared by every view.
+const cell = 64, cols = 16, chars = [...new Set(flags.concat(surnames))];
+const sheet = Object.assign(document.createElement('canvas'), { width: cell * cols, height: cell * Math.ceil(chars.length / cols) });
+const g = sheet.getContext('2d');
+g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+const at = {};
+chars.forEach((ch, i) => {
+  const x = (i % cols) * cell, y = Math.floor(i / cols) * cell;
+  g.font = `700 ${ch.length > 1 ? 29 : 46}px KaiTi, serif`;   // two-character surnames smaller
+  g.fillText(ch, x + cell / 2, y + cell / 2 + 2);
+  at[ch] = { x, y, width: cell, height: cell };
+});
+const lease = await game.textureFromCanvas(sheet);
+
+const flag = banner.addChild(scope.use(new Bitmap(lease)));
+flag.sourceRect = at['曹'];
+flag.scaleX = flag.scaleY = 26 / cell;   // white glyph on a coloured rectangle drawn behind it
+```
+
+Rules:
+
+- Count pages before choosing labels: one per label, 64 a frame. A few dozen live labels (a HUD, a score) are fine; a map's worth is not.
+- Lease the sheet once. `textureFromCanvas` has no `scope` option at `9d801be`, so a sheet made per battle stays until the game ends; make one with every character a game can need (all surnames, every flag) and share it.
+- Paint the glyphs white and tint by what is behind them, so one sheet serves every colour.
+
+Learnt from Nine Provinces Ablaze (ENGINE-NOTES 1 and 3): 121 place names went to the page canvas, and every army and unit banner reads from one sheet of about 250 characters.
