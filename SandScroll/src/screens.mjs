@@ -4,7 +4,7 @@
 // scope and let go as a whole when it is left; every word comes from t(), and the layout follows the stage's width and
 // height, so it fits both a wide and a tall stage.
 import { DisplayObjectContainer, Sprite } from '@egret/engine';
-import { AMBER, PAPER, SANS, createScreenKit } from './ui/kit.mjs';
+import { AMBER, LANDSCAPE_TOUCH_BUTTON_HEIGHT, PAPER, SANS, createScreenKit } from './ui/kit.mjs';
 import { ENDLESS, LEVELS, PIGMENTS, createGame, createRandom, progress } from './sim/sand.mjs';
 import { UNPAINT_LEVELS, collectedShare, createUnpaint } from './sim/unpaint.mjs';
 import { createUnpaintView } from './view/unpaintview.mjs';
@@ -130,9 +130,9 @@ export async function titleScreen(app) {
   });
   const buttonWidth = tall ? width - 96 : 322,
     bx = tall ? 48 : width - 364,
-    big = tall ? 78 : 70,
-    // At least 44 CSS pixels on a phone, where the stage is drawn at about three quarters of its size.
-    small = 60;
+    compact = app.touch && !tall,
+    big = compact ? LANDSCAPE_TOUCH_BUTTON_HEIGHT : tall ? 78 : 70,
+    small = compact ? LANDSCAPE_TOUCH_BUTTON_HEIGHT : 60;
   let y = tall ? 412 : 57;
   const choices = { x: bx, width: buttonWidth, height: big, align: 'left' };
   const paint = await kit.button({ ...choices, y, text: t('modePaint'), sub: t('modePaintSub'), primary: true, onActivate: () => app.go('pick', { mode: 'paint' }) });
@@ -248,17 +248,17 @@ export async function pickScreen(app, { mode = 'paint' } = {}) {
 }
 
 /** Painting: one round on a scroll, or on the endless tray. */
-export async function playScreen(app, { level = 0, resume = false, daily } = {}) {
+export async function playScreen(app, { level = 0, resume = false, paused = false, daily, settlement } = {}) {
   const s = begin(app, 'play'),
     { width, height } = app.stage,
     { kit, root, scope } = s;
   const tall = height > width;
   // A new round, or after the screen was turned, the round that was in play.
-  const game = resume && app.round && !app.round.over
+  const game = resume && app.round && (!app.round.over || settlement)
     ? app.round
     : (app.round = createGame(daily?.seed ?? app.seed + app.rounds++, daily?.level ?? level));
   const endless = Boolean(game.level.endless);
-  let ended = null;
+  let ended = settlement ?? null;
   const view = await createPlayView(app, scope, root, kit, game, {
     words: t,
     locale: locale(),
@@ -276,15 +276,15 @@ export async function playScreen(app, { level = 0, resume = false, daily } = {})
   });
   void app.sound.music?.(endless ? 'endless' : 'classic');
   const pause = pauseCard(app, kit, scope, root, {
-    setPaused: view.setPaused,
+    setPaused(on) {
+      view.setPaused(on);
+      pauseButton.setEnabled(!on);
+    },
     onRestart: () => app.go('play', { level: game.levelIndex, daily })
   });
   // The pause, as a button on the screen and on Esc.
-  await kit.button({
-    x: tall ? width - 108 : 22,
-    y: tall ? 150 : height - 70,
-    width: tall ? 88 : 128,
-    height: 44,
+  const pauseButton = await kit.button({
+    ...view.pauseBounds,
     text: t('pause'),
     small: true,
     onActivate: () => pause(true)
@@ -300,15 +300,18 @@ export async function playScreen(app, { level = 0, resume = false, daily } = {})
   } else {
     if (!app.touch) await kit.label(root, t('keys').replaceAll(' · ', '\n'), { x: 24, y: 205, size: 14, color: 0xc5b293, family: SANS, lineHeight: 19 });
   }
+  if (paused) await pause(true);
   return {
     ...s,
     // The keys play the round; the pause button is reached with Tab.
     focusFirst: () => {},
     escape: () => pause(!view.paused),
+    get paused() { return view.paused; },
+    get settlement() { return ended; },
     keys: view.controls,
     update(seconds) {
       view.update(seconds);
-      if (ended && (ended.wait -= seconds) <= 0) {
+      if (ended && !view.paused && (ended.wait -= seconds) <= 0) {
         const result = { ...ended, level: game.levelIndex, painting: game.painting, paintings: game.paintings, score: game.score, share: progress(game), time: game.time, pieces: game.pieces, chain: game.bestChain, daily };
         ended = null;
         void app.go('end', result);
@@ -320,10 +323,14 @@ export async function playScreen(app, { level = 0, resume = false, daily } = {})
 /** The pause card over a round: resume, start over, back to the title. Made when first wanted. */
 function pauseCard(app, kit, scope, root, { setPaused, onRestart }) {
   const { width, height } = app.stage;
+  const keyboard = app.game.keyboard;
   let card,
     pending,
+    priorFocus,
     shown = false;
   const show = async (on) => {
+    if (shown === on) return;
+    if (on) priorFocus = keyboard?.getSnapshot();
     shown = on;
     setPaused(on);
     app.sound.setPaused?.(on);
@@ -332,6 +339,7 @@ function pauseCard(app, kit, scope, root, { setPaused, onRestart }) {
     card.layer.visible = shown;
     for (const control of card.controls) control.setEnabled(shown);
     if (shown) card.controls[0].focus(false);
+    else if (priorFocus?.focusedId) keyboard.focus(priorFocus.focusedId, { visible: priorFocus.focusVisible });
   };
   async function build() {
     const layer = root.addChild(scope.use(new DisplayObjectContainer()));
@@ -339,29 +347,48 @@ function pauseCard(app, kit, scope, root, { setPaused, onRestart }) {
     shade.graphics.beginFill(0x0a0604, 0.72).drawRect(0, 0, width, height).endFill();
     shade.touchEnabled = true;
     shade.hitArea = { x: 0, y: 0, width, height };
-    const pw = Math.min(420, width - 60),
+    const compact = app.touch && width > height,
+      panelHeight = compact ? 364 : 330,
+      buttonHeight = compact ? LANDSCAPE_TOUCH_BUTTON_HEIGHT : 56,
+      buttonStep = compact ? buttonHeight + 10 : 72,
+      pw = Math.min(420, width - 60),
       px = (width - pw) / 2,
-      py = height / 2 - 165;
-    kit.panel({ x: px, y: py, width: pw, height: 330, container: layer });
+      py = (height - panelHeight) / 2,
+      buttonY = py + (compact ? 81 : 92);
+    kit.panel({ x: px, y: py, width: pw, height: panelHeight, container: layer });
     await kit.label(layer, t('paused'), { x: px, y: py + 28, size: 30, weight: 700, color: 0xf1d79a, family: KAI, align: 'center', width: pw });
-    const button = { x: px + 36, width: pw - 72, height: 56, container: layer };
-    const resume = await kit.button({ ...button, y: py + 92, text: t('resume'), primary: true, onActivate: () => show(false) });
-    const restart = await kit.button({ ...button, y: py + 164, text: t('restart'), onActivate: onRestart });
-    const title = await kit.button({ ...button, y: py + 236, text: t('toTitle'), onActivate: () => app.go('title') });
-    return { layer, controls: [resume, restart, title] };
+    const button = { x: px + 36, width: pw - 72, height: buttonHeight, container: layer };
+    const resume = await kit.button({ ...button, y: buttonY, text: t('resume'), primary: true, onActivate: () => show(false) });
+    const restart = await kit.button({ ...button, y: buttonY + buttonStep, text: t('restart'), onActivate: onRestart });
+    const title = await kit.button({ ...button, y: buttonY + buttonStep * 2, text: t('toTitle'), onActivate: () => app.go('title') });
+    const controls = [resume, restart, title];
+    if (keyboard) {
+      const remove = layer.on(keyboard.events.keyDown, (event) => {
+        const { key, targetId, shiftKey, altKey, ctrlKey, metaKey } = event.payload;
+        if (key !== 'Tab' || altKey || ctrlKey || metaKey) return;
+        const current = controls.findIndex((control) => control.id === targetId);
+        const next = (current + (shiftKey ? -1 : 1) + controls.length) % controls.length;
+        event.preventDefault();
+        controls[next].focus(true);
+      });
+      kit.own({ dispose: remove });
+    }
+    return { layer, controls };
   }
   return show;
 }
 
 /** Unpainting: one picture of sand to collect in buckets. */
-export async function unpaintScreen(app, { level = 0, resume = false } = {}) {
+export async function unpaintScreen(app, { level = 0, resume = false, paused = false, settlement } = {}) {
   const s = begin(app, 'unpaint'),
     { width, height } = app.stage,
     { kit, root, scope } = s;
   const tall = height > width;
-  const game = resume && app.round?.mode === 'unpaint' && !app.round.over && app.round.levelIndex === level ? app.round : (app.round = createUnpaint(app.seed + app.rounds++, level, unpaintPicture(level)));
+  const game = resume && app.round?.mode === 'unpaint' && app.round.levelIndex === level && (!app.round.over || settlement)
+    ? app.round
+    : (app.round = createUnpaint(app.seed + app.rounds++, level, unpaintPicture(level)));
   const id = game.level.id;
-  let ended = null;
+  let ended = settlement ?? null;
   const view = await createUnpaintView(app, scope, root, kit, game, {
     words: t,
     ended(won) {
@@ -373,16 +400,25 @@ export async function unpaintScreen(app, { level = 0, resume = false } = {}) {
   });
   void app.sound.music?.('unpaint');
   await kit.label(root, t('modeUnpaint') + ' · ' + t('unpaint_' + id), { x: tall ? 24 : 380, y: tall ? 20 : 30, size: tall ? 18 : 22, weight: 700, color: 0xf1d79a, family: SANS });
-  const pause = pauseCard(app, kit, scope, root, { setPaused: view.setPaused, onRestart: () => app.go('unpaint', { level }) });
-  await kit.button({ x: tall ? width - 108 : width - 150, y: tall ? 11 : 16, width: tall ? 88 : 120, height: 44, text: t('pause'), small: true, onActivate: () => pause(true) });
+  const pause = pauseCard(app, kit, scope, root, {
+    setPaused(on) {
+      view.setPaused(on);
+      pauseButton.setEnabled(!on);
+    },
+    onRestart: () => app.go('unpaint', { level })
+  });
+  const pauseButton = await kit.button({ ...view.pauseBounds, text: t('pause'), small: true, onActivate: () => pause(true) });
+  if (paused) await pause(true);
   return {
     ...s,
     focusFirst: () => {},
     escape: () => pause(!view.paused),
+    get paused() { return view.paused; },
+    get settlement() { return ended; },
     keys: { choose: (lane) => view.tap(lane), move() {}, turn() {}, drop() {}, cracker() {} },
     update(seconds) {
       view.update(seconds);
-      if (ended && (ended.wait -= seconds) <= 0) {
+      if (ended && !view.paused && (ended.wait -= seconds) <= 0) {
         const result = { mode: 'unpaint', level, won: ended.won, saved: ended.saved, time: game.time, taps: game.taps, share: collectedShare(game) };
         ended = null;
         void app.go('end', result);
