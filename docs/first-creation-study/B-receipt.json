@@ -1,0 +1,50 @@
+{
+  "arm": "B",
+  "round": "1",
+  "budget": 24000,
+  "withinBudget": false,
+  "model": "gpt-6.2-sol",
+  "effort": "medium",
+  "elapsedSeconds": 275.457,
+  "usage": {
+    "input_tokens": 22711,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 13560,
+    "reasoning_output_tokens": 1197
+  },
+  "editBytes": 31019,
+  "responseBytes": 32348,
+  "responseSHA256": "cd301725a7ebf35a645a03a1f8797d5d14dc0180857d2a8c48bb65cf38234130",
+  "changedFiles": [
+    "index.html",
+    "style.css",
+    "src/sim/world.mjs",
+    "src/saves.mjs",
+    "src/scenery.mjs",
+    "src/main.mjs"
+  ],
+  "vendorDigest": "02ddd11cb497618949abcfad28ead1694794a8654355ab2937ebd038dccfa360",
+  "treeSHA256": "0c8b9d566e85df21aa9a39e94b27af96ee531e2bfd0572b273530fe3e5181497",
+  "fileCount": 242,
+  "input": {
+    "arm": "B",
+    "starter": "management-game",
+    "contextBytes": 35091,
+    "promptBytes": 36046,
+    "promptSha256": "b4cbcd82a09af70fc42f5eaaf68829386f267a60080bb30fb3415c0d0f03bb9e",
+    "files": [
+      "index.html",
+      "style.css",
+      "README.md",
+      "src/i18n.mjs",
+      "src/main.mjs",
+      "src/saves.mjs",
+      "src/sim/world.mjs",
+      "AUTHORING.zh-CN.md"
+    ],
+    "engine": "91f350b1fc1062a46a4b8e789ed4e01a4cdebbed"
+  },
+  "archiveSHA256": "4d7e881a3731ac5e5832773f590cc139686a6ccda339453a09c42a474ad7d3b0",
+  "videoSHA256": "8b46e067eb18f91756aa2375e29e793802a197d1325ec2ad6cb238e380957828"
+}

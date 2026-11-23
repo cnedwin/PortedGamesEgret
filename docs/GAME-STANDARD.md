@@ -88,6 +88,14 @@ never edits its engine copy by hand, and writes the engine's faults into ENGINE-
 
 ## 5. 从模板开始 · Starting from the template
 
+经营游戏可从“落下第一栋房子”起步。默认模板仍提供通用标题、设置与游走样例。
+
+For a management game, start with placing the first house. The default starter retains its general menu and movement example.
+
+    npm run create -- MyVillage --template management --title "溪边小镇 · Riverside Town"
+
+[Play the opening](https://cnedwin.github.io/PortedGamesEgret/templates/management-game/) · [Authoring guide](en/management-first-playable.md) · [中文创作指引](Cns/management-first-playable.md)
+
 ```sh
 npm run create -- MyGame --title "我的游戏 · My Game"
 # 或 · or

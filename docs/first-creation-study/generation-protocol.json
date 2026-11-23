@@ -1,0 +1,18 @@
+{
+  "prompt": "做一个叫《雾汀渡》的江南渡口经营小游戏，让玩家给摆渡人搭起第一座船棚，接上第一位等船的客人。",
+  "model": "gpt-6.2-sol",
+  "effort": "medium",
+  "seconds": 480,
+  "maxChangeBytes": 24000,
+  "maxContextBytes": 120000,
+  "architecture": "single response, file replacements in JSON, no model tools or run-time feedback; same Egret runtime closure, same controls and engine quick reference; each arm varies only the authoring starter, its images and instructions",
+  "rubric": [
+    "first game action visibly understandable",
+    "plot selection and preview",
+    "observed house appears and persists",
+    "first passenger served or arrives",
+    "no claim about human comprehension without participants"
+  ],
+  "engine": "91f350b1fc1062a46a4b8e789ed4e01a4cdebbed",
+  "baseline": "d82e0abc18ba7ec8352bbedab48f587f8f63e05d"
+}
