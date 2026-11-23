@@ -69,10 +69,6 @@ export const MATRIX = {
      "file": "NightWardens/src/screens.mjs"
     },
     {
-     "game": "NineProvinces",
-     "file": "NineProvinces/src/view/battleview.mjs"
-    },
-    {
      "game": "PeachCreek",
      "file": "PeachCreek/src/view.mjs"
     },
@@ -187,6 +183,10 @@ export const MATRIX = {
      "file": "JY/web/jyx2/home3d/native-exit-effect.mjs"
     },
     {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/battle3d.mjs"
+    },
+    {
      "game": "Rally",
      "file": "Rally/src/grandstand.mjs"
     },
@@ -220,6 +220,10 @@ export const MATRIX = {
     {
      "game": "JY",
      "file": "JY/web/jyx2/scene/world3d-renderer.mjs"
+    },
+    {
+     "game": "NineProvinces",
+     "file": "NineProvinces/src/view3d/stage.mjs"
     },
     {
      "game": "Rally",
@@ -429,10 +433,6 @@ export const MATRIX = {
     {
      "game": "MechanismCity",
      "file": "MechanismCity/src/play/level.mjs"
-    },
-    {
-     "game": "NineProvinces",
-     "file": "NineProvinces/src/view/mapview.mjs"
     }
    ]
   },
@@ -467,10 +467,6 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/view/field.mjs"
-    },
-    {
-     "game": "NineProvinces",
-     "file": "NineProvinces/src/view/battleview.mjs"
     }
    ]
   },
@@ -662,10 +658,6 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/main.mjs"
-    },
-    {
-     "game": "NineProvinces",
-     "file": "NineProvinces/src/main.mjs"
     }
    ]
   },
@@ -832,10 +824,6 @@ export const MATRIX = {
     {
      "game": "NightWardens",
      "file": "NightWardens/src/view/field.mjs"
-    },
-    {
-     "game": "NineProvinces",
-     "file": "NineProvinces/src/view/battleview.mjs"
     }
    ]
   },

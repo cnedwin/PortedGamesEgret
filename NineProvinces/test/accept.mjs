@@ -21,8 +21,11 @@ const server = await serve(),
   check = (ok, words) => checks.push([Boolean(ok), words]);
 const state = (page, fn, arg) => page.evaluate(fn, arg);
 const tapPlace = async (page, id) => {
+  // The realm is large: bring the place into view first, then tap the ground beside its walls.
+  await state(page, (place) => window.egretGame.look(place), id);
+  await page.waitForTimeout(400);
   const p = await state(page, (place) => window.egretGame.nodeAt(place), id);
-  await page.mouse.click(p.x, p.y);
+  await page.mouse.click(p.x, p.y + 12);
 };
 let page,
   phone;

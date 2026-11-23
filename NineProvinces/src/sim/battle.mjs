@@ -13,6 +13,9 @@ import { COUNTER, FORMATIONS, TERRAIN, UNITS } from '../data/battle.mjs';
 import { GENERALS } from '../data/generals.mjs';
 import { TACTICS } from '../data/tactics.mjs';
 import { generalEffect, stat, techEffect } from './core.mjs';
+import { HEX_W, hexCenter } from './hexgrid.mjs';
+import { FOOTPRINTS, footprintCell, hexKind } from './land.mjs';
+import { aptitudeFactor, mobility } from './aptitude.mjs';
 
 export const FIELD = { cols: 22, rows: 14 };
 /** Seconds of battle time before the sun sets (the defenders then win). */
@@ -90,7 +93,75 @@ function rng(seed) {
 }
 
 // ——— Making the field ———
+/**
+ * The field from the realm itself: each hex takes the ground of the realm hex under it, the walls of the place are the
+ * walls of the battle, and the gate is the one facing the attackers. `along` and `across` measure every hex in hex widths
+ * along the attackers' way and across it, so deployment, flight and the facing of blows follow the way they came.
+ */
+function worldField(setup, random) {
+  const { c0, r0 } = setup.grid;
+  const [ax, az] = setup.axis ?? [1, 0];
+  const n = FIELD.cols * FIELD.rows,
+    tiles = new Array(n),
+    along = new Float32Array(n),
+    across = new Float32Array(n),
+    world = new Array(n);
+  const mid = hexCenter(c0 + 11, r0 + 7);
+  const here = setup.place?.node ? FOOTPRINTS[setup.place.node] : null;
+  const walled = setup.kind === 'siege' && here && here.kind !== 'port';
+  const walls = [];
+  let keep = null;
+  for (let i = 0; i < n; i++) {
+    const wc = c0 + colOf(i),
+      wr = r0 + rowOf(i);
+    const p = hexCenter(wc, wr);
+    world[i] = [wc, wr];
+    along[i] = ((p.x - mid.x) * ax + (p.z - mid.z) * az) / HEX_W;
+    across[i] = ((p.x - mid.x) * -az + (p.z - mid.z) * ax) / HEX_W;
+    const cell = here ? footprintCell(here, wc, wr) : null;
+    if (cell) {
+      if (cell === 'keep') keep = i;
+      if (cell === 'wall' && walled) {
+        tiles[i] = 'wall';
+        walls.push(i);
+      } else tiles[i] = 'town';
+      continue;
+    }
+    const kind = hexKind(wc, wr);
+    tiles[i] = kind === 'wall' ? 'town' : kind;
+  }
+  // The gate: the wall hex nearest the point of the walls straight toward the attackers.
+  let gate = null;
+  if (walled && walls.length) {
+    const k = keep ?? walls[0];
+    let best = Infinity;
+    for (const w of walls) {
+      const score = (along[w] - along[k]) * 3 + Math.abs(across[w] - across[k]) * 2;
+      if (score < best) (best = score), (gate = w);
+    }
+    tiles[gate] = 'gate';
+  }
+  // The walls that face the attackers, for engines and climbers.
+  const frontWalls = walls.filter((w) => w !== gate && keep !== null && along[w] < along[keep] - 0.4);
+  if (setup.special === 'chibi') {
+    // The great fleet lies chained on the defenders' side of the river.
+    for (let i = 0; i < n; i++) if (tiles[i] === 'water' && along[i] > 1.5 && random() < 0.7) tiles[i] = 'ship';
+  }
+  let depot = null;
+  if (setup.special === 'wuchao') {
+    let best = -Infinity;
+    for (let i = 0; i < n; i++) {
+      if (TERRAIN[tiles[i]].water || tiles[i] === 'mountain') continue;
+      const score = along[i] - Math.abs(across[i]) * 0.6;
+      if (score > best && along[i] < 7) (best = score), (depot = i);
+    }
+    if (depot !== null) for (const i of ring(depot, 1)) if (!TERRAIN[tiles[i]].water) tiles[i] = 'camp';
+  }
+  return { tiles, gate, keep: walled || here ? keep : null, depot, along, across, frontWalls, world };
+}
+
 function makeField(setup, random) {
+  if (setup.grid) return worldField(setup, random);
   const { cols, rows } = FIELD,
     tiles = new Array(cols * rows).fill('plain');
   const t = setup.terrain;
@@ -164,7 +235,10 @@ function makeField(setup, random) {
     depot = idx(cols - 4, Math.floor(rows / 2));
     for (const i of ring(depot, 1)) tiles[i] = 'camp';
   }
-  return { tiles, gate, keep, depot };
+  const along = Float32Array.from(tiles, (_, i) => colOf(i) - (cols - 1) / 2),
+    across = Float32Array.from(tiles, (_, i) => rowOf(i) - (rows - 1) / 2);
+  const frontWalls = tiles.map((tile, i) => (tile === 'wall' && colOf(i) === cols - 7 ? i : -1)).filter((i) => i >= 0 && i !== gate);
+  return { tiles, gate, keep, depot, along, across, frontWalls, world: null };
 }
 
 // ——— Units ———
@@ -189,7 +263,10 @@ function profile(state, u) {
   generic.sort((a, b) => b.power - a.power);
   for (const t of generic) if (tactics.length < 4 && (t.mind ? true : war >= 40 + t.power)) tactics.push(t.id);
   if (!tactics.length && generic.length) tactics.push(generic[generic.length - 1].id);
-  return { lead: Math.max(lead, help * 0.5), war, int, fx, tactics };
+  // Aptitude for the arm and the general's mobility (a captain fights as a plain B and moves at an ordinary pace).
+  const apt = g ? aptitudeFactor(g, UNITS[u.unit].group) : 1;
+  const mob = g ? mobility(g) : 45;
+  return { lead: Math.max(lead, help * 0.5), war, int, fx, tactics, apt, mob };
 }
 
 /** A new battle from its setup. `state` is the game, to read generals' abilities and inventions (null in tests). */
@@ -205,9 +282,14 @@ export function createBattle(setup, state = null) {
     fire: {},
     wind: setup.special === 'chibi' ? 0 : Math.floor(random() * 6),
     time: 0,
-    limit: setup.special === 'wuchao' ? 200 : LIMIT,
+    // On the realm's ground the attackers start further out, so an assault there is given a longer day.
+    limit: setup.special === 'wuchao' ? 200 : setup.grid && setup.kind === 'siege' ? LIMIT * 1.3 : LIMIT,
     night: setup.special === 'wuchao',
     keepHeld: 0,
+    along: field.along,
+    across: field.across,
+    frontWalls: field.frontWalls,
+    world: field.world,
     units: [],
     events: [],
     over: null,
@@ -250,7 +332,21 @@ export function createBattle(setup, state = null) {
     b.units.push(unit);
     deploy[u.side].push(unit);
   });
-  // Deploy: attackers on the left columns, defenders on the right (inside the walls when there are walls).
+  if (setup.grid) deployByWay(b, setup, deploy);
+  else deployByColumns(b, setup, deploy);
+  // Where routed units leave the field: the edge hexes toward their own side.
+  b.exits = [[], []];
+  const border = [];
+  for (let i = 0; i < b.tiles.length; i++) if (colOf(i) === 0 || colOf(i) === FIELD.cols - 1 || rowOf(i) === 0 || rowOf(i) === FIELD.rows - 1) border.push(i);
+  const sorted = border.slice().sort((x, y) => b.along[x] - b.along[y]);
+  const third = Math.ceil(sorted.length / 3);
+  b.exits[0] = setup.grid ? sorted.slice(0, third) : border.filter((i) => colOf(i) === 0);
+  b.exits[1] = setup.grid ? sorted.slice(-third) : border.filter((i) => colOf(i) === FIELD.cols - 1);
+  return b;
+}
+
+/** Deployment on a made-up field: attackers on the left columns, defenders on the right (inside any walls). */
+function deployByColumns(b, setup, deploy) {
   for (const side of [0, 1]) {
     const list = deploy[side];
     const cols = side === 0 ? [1, 2, 3, 0] : setup.kind === 'siege' ? [FIELD.cols - 7, FIELD.cols - 5, FIELD.cols - 4, FIELD.cols - 3] : [FIELD.cols - 2, FIELD.cols - 3, FIELD.cols - 4, FIELD.cols - 1];
@@ -275,7 +371,53 @@ export function createBattle(setup, state = null) {
       k++;
     }
   }
-  return b;
+}
+
+/**
+ * Deployment on the realm's ground: each side forms up at its own end of the way the attackers came, spread across it
+ * five abreast, later units behind; defenders of walls put their bows on the walls that face the enemy and the rest in
+ * the town behind the gate.
+ */
+function deployByWay(b, setup, deploy) {
+  const taken = new Set();
+  const n = b.tiles.length;
+  let lo = Infinity,
+    hi = -Infinity;
+  for (let i = 0; i < n; i++) (lo = Math.min(lo, b.along[i])), (hi = Math.max(hi, b.along[i]));
+  const town = (i) => b.tiles[i] === 'town' || b.tiles[i] === 'wall' || b.tiles[i] === 'gate';
+  for (const side of [0, 1]) {
+    deploy[side].forEach((unit, k) => {
+      const want = [0, 1, -1, 2, -2][k % 5] * 2.2,
+        rank = Math.floor(k / 5);
+      const ranged = UNITS[unit.kind].range > 1;
+      let best = -1,
+        bestScore = Infinity;
+      for (let i = 0; i < n; i++) {
+        if (taken.has(i)) continue;
+        const tile = b.tiles[i];
+        let score;
+        if (setup.kind === 'siege' && side === 1 && b.keep !== null) {
+          if (tile === 'gate' || !town(i)) continue;
+          if (tile === 'wall') {
+            if (!ranged || !b.frontWalls.includes(i)) continue;
+            score = Math.abs(b.across[i] - want) * 0.5;
+          } else score = 3 + Math.abs(b.along[i] - b.along[b.gate?.at ?? b.keep]) + Math.abs(b.across[i] - want) * 0.5;
+        } else {
+          if (!canStand(b, unit, i)) continue;
+          if (setup.kind === 'siege' && town(i)) continue;
+          const depth = side === 0 ? b.along[i] - lo : hi - b.along[i];
+          score = Math.abs(depth - 1 - rank * 1.6) + Math.abs(b.across[i] - want) * 0.7;
+        }
+        if (score < bestScore) (bestScore = score), (best = i);
+      }
+      if (best < 0)
+        for (let i = 0; i < n && best < 0; i++) if (!taken.has(i) && canStand(b, unit, i)) best = i;
+      if (best < 0) return;
+      taken.add(best);
+      unit.pos = best;
+      unit.onWall = b.tiles[best] === 'wall';
+    });
+  }
 }
 
 /** Whether a unit may stand on a hex. */
@@ -373,7 +515,7 @@ function weaponBonus(attacker, defender) {
 
 function classBonus(u) {
   const g = UNITS[u.kind].group;
-  return 1 + ((g === 'cav' ? u.fx.cav : g === 'bow' ? u.fx.bow : g === 'inf' ? u.fx.inf : g === 'navy' ? u.fx.navy : 0) + (u.afloat ? u.fx.navy * 0.5 : 0)) / 100;
+  return (1 + ((g === 'cav' ? u.fx.cav : g === 'bow' ? u.fx.bow : g === 'inf' ? u.fx.inf : g === 'navy' ? u.fx.navy : 0) + (u.afloat ? u.fx.navy * 0.5 : 0)) / 100) * (u.apt ?? 1);
 }
 
 function attackPower(b, u) {
@@ -390,7 +532,7 @@ function defencePower(b, u, from) {
     tile = TERRAIN[b.tiles[u.pos]];
   let ground = 1 + tile.def;
   if (u.onWall || b.tiles[u.pos] === 'gate') ground += u.fx.wall / 100 + 0.2;
-  const facing = from !== undefined && Math.abs(colOf(from) - colOf(u.pos)) >= Math.abs(rowOf(from) - rowOf(u.pos)) ? 1 + f.front : 1;
+  const facing = from !== undefined && Math.abs(b.along[from] - b.along[u.pos]) >= Math.abs(b.across[from] - b.across[u.pos]) ? 1 + f.front : 1;
   const tengjia = t.special === 'fireweak' ? 1.2 : 1;
   return t.def * (0.55 + u.lead / 260 + u.int / 500) * (1 + u.fx.def / 100 + buff(u, 'def')) * (1 + f.def) * ground * facing * classBonus(u) * tengjia * (u.routed ? 0.5 : 1);
 }
@@ -547,14 +689,20 @@ function bestFoeFor(b, u, t) {
 /** The computer's choice for one unit: whom to fight, where to go, and whether to unleash its tactic. */
 function think(b, u) {
   if (u.routed) {
-    // Flee to the own edge of the field.
-    const edge = u.side === 0 ? 0 : FIELD.cols - 1;
-    if (colOf(u.pos) === edge) {
+    // Flee off the field at the own side's edge.
+    const exits = b.exits[u.side];
+    if (exits.includes(u.pos)) {
       u.gone = true;
       u.end = 'fled';
       return;
     }
-    u.path = findPath(b, u, idx(edge, rowOf(u.pos)));
+    let goal = exits[0],
+      near = Infinity;
+    for (const e of exits) {
+      const d = distance(u.pos, e) + (moveCost(b, u, e) === Infinity ? 99 : 0);
+      if (d < near) (near = d), (goal = e);
+    }
+    u.path = findPath(b, u, goal);
     return;
   }
   if (u.status.confuse > 0) {
@@ -582,13 +730,28 @@ function think(b, u) {
   }
   // When the enemy is through the walls, the defenders turn to the keep: archers on the walls keep shooting while they can.
   if (u.side === 1 && b.keep !== null && u.order === 'auto') {
-    const threat = b.units.filter((o) => alive(o) && o.side === 0 && !o.routed && distance(o.pos, b.keep) <= 4).sort((x, y) => distance(x.pos, b.keep) - distance(y.pos, b.keep))[0];
+    // On the realm's ground the town is small, so the threat is whoever is inside the walls, not merely near the keep.
+    const within = (o) => (b.world ? ['town', 'gate', 'wall'].includes(b.tiles[o.pos]) : true) && distance(o.pos, b.keep) <= 4;
+    const threat = b.units.filter((o) => alive(o) && o.side === 0 && !o.routed && within(o)).sort((x, y) => distance(x.pos, b.keep) - distance(y.pos, b.keep))[0];
     const reach = UNITS[u.kind].range;
     if (threat && !(u.onWall && reach > 1 && distance(u.pos, threat.pos) <= reach)) {
       u.target = threat;
       u.path = distance(u.pos, threat.pos) > reach ? findPath(b, u, threat.pos, reach) : [];
       return;
     }
+  }
+  // While the gate holds, the garrison of a walled town stays within its walls and meets only what comes over them.
+  if (u.side === 1 && b.gate && !b.gate.open && b.world && u.order === 'auto' && ['town', 'wall', 'gate'].includes(b.tiles[u.pos])) {
+    const inside = (o) => ['town', 'wall', 'gate'].includes(b.tiles[o.pos]);
+    const foe = b.units.filter((o) => alive(o) && o.side === 0 && !o.routed && inside(o)).sort((x, y) => distance(x.pos, u.pos) - distance(y.pos, u.pos))[0];
+    if (foe) {
+      u.target = foe;
+      u.path = distance(u.pos, foe.pos) > UNITS[u.kind].range ? findPath(b, u, foe.pos, UNITS[u.kind].range) : [];
+    } else {
+      u.target = nearestFoe(b, u, UNITS[u.kind].range);
+      u.path = [];
+    }
+    return;
   }
   // Defenders on the walls stay there; the keep is held.
   if (u.side === 1 && (u.onWall || (b.keep !== null && u.pos === b.keep)) && u.order === 'auto') {
@@ -625,7 +788,7 @@ function think(b, u) {
     }
     if (kind.special === 'overwall') {
       // Siege towers go up to the wall; the foot beside them climb.
-      const walls = b.tiles.map((tile, i) => (tile === 'wall' && colOf(i) === FIELD.cols - 7 ? i : -1)).filter((i) => i >= 0 && i !== b.gate.at);
+      const walls = b.frontWalls.slice();
       const wall = walls.sort((x, y) => distance(x, u.pos) - distance(y, u.pos))[0];
       if (distance(u.pos, wall) <= 1) {
         u.climbing = wall;
@@ -753,7 +916,7 @@ export function stepBattle(b, dt, playerSide = -1) {
     if (u.path.length) {
       const kind = UNITS[u.kind],
         f = FORMATIONS[u.formation];
-      u.step += dt * kind.spd * (1 + f.spd) * (1 + (u.fx.spd + buff(u, 'spd') * 100) / 100) * (u.routed ? 1.2 : 1) * (u.status.fear > 0 ? 0.8 : 1);
+      u.step += dt * kind.spd * (1 + f.spd) * (1 + (u.fx.spd + buff(u, 'spd') * 100) / 100) * (0.97 + (u.mob ?? 45) / 1500) * (u.routed ? 1.2 : 1) * (u.status.fear > 0 ? 0.8 : 1);
       const next = u.path[0];
       const cost = moveCost(b, u, next);
       if (cost === Infinity || b.units.some((o) => o !== u && !o.gone && o.pos === next)) {

@@ -16,11 +16,14 @@ import { dateOf, serving, stat as statOf } from '../sim/core.mjs';
 import { regard } from '../sim/diplomacy.mjs';
 import { allied, troopCap, unitAllowed } from '../sim/military.mjs';
 import { persuadeChance } from '../sim/people.mjs';
+import { ARMS, aptitudes, mobility } from '../sim/aptitude.mjs';
 import { choicesOf } from '../sim/story.mjs';
 import { income, power, researchRate, upkeep, canStudy } from '../sim/world.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
 import { $, bar, button, choice, clear, face, h, seal, stat, tabs } from './dom.mjs';
+import { emblem } from '../view/emblem.mjs';
+import { EVENTS } from '../sim/story.mjs';
 import { ageOf, dayWords, eventOf, logLine, pair, tacticText, techText, traitText, treasureText } from './text.mjs';
 import { SLOTS } from '../saves.mjs';
 
@@ -104,6 +107,69 @@ function officerRow(app, id, { selected = false, mark = null, onclick, extra = n
   );
 }
 const statHead = () => h('div.officerHead', h('span'), h('span'), h('span.os', STATS.map((k) => h('span', t(k).slice(0, getLanguage() === 'en' ? 3 : 1)))));
+
+/** A general's six abilities as bars, and his aptitude for the five arms as lettered badges. */
+export function abilityCard(app, id) {
+  const s = app.state ?? app.demoState;
+  const rows = STATS.map((k) => {
+    const v = Math.round(statOf(s, id, k));
+    return h('div.sb', h('span.k', t(k)), bar(v / 120, k), h('b', v));
+  });
+  const m = mobility(id);
+  rows.push(h('div.sb', { title: t('mobilityNote') }, h('span.k', t('mob')), bar(m / 120, 'mob'), h('b', m)));
+  const apt = aptitudes(id);
+  return h(
+    'div.abilities',
+    h('div.statBars.six', rows),
+    h('div.apt', { title: t('aptitudeNote') }, h('span.k', t('aptitude')), ARMS.map((a) => h('span.ag', h('i', t('arm_' + a)), h('b.g' + apt[a], apt[a]))))
+  );
+}
+
+/**
+ * The tree of the player's tale: every event of his branch in order of its date, five to a row, joined in the order
+ * they come; those that happened shine, those let slip are struck through, those to come are grey. A note on each tells
+ * its window of years.
+ */
+function taleTree(app) {
+  const s = app.state;
+  const list = EVENTS.filter((e) => e.branch === s.branch).sort((a, b) => a.at[0] - b.at[0] || a.at[1] - b.at[1]);
+  if (!list.length) return h('p.dim', t('noTale'));
+  const per = 5,
+    W = 150,
+    H = 132,
+    X0 = 20,
+    Y0 = 16;
+  const pos = list.map((e, i) => {
+    const row = Math.floor(i / per),
+      col = row % 2 ? per - 1 - (i % per) : i % per;
+    return { x: X0 + col * W, y: Y0 + row * H };
+  });
+  const lines = [];
+  for (let i = 1; i < list.length; i++) {
+    const a = pos[i - 1],
+      b = pos[i];
+    const lit = typeof s.fired[list[i - 1].id] === 'number' && typeof s.fired[list[i].id] === 'number';
+    lines.push(`<path d="M${a.x + 40} ${a.y + 40} ${a.y === b.y ? 'H' + (b.x + 40) : 'V' + (b.y + 40)}" class="${lit ? 'lit' : ''}"/>`);
+  }
+  const svg = h('div.treeLines');
+  const height = Y0 + Math.ceil(list.length / per) * H;
+  svg.innerHTML = `<svg width="${X0 + per * W}" height="${height}" xmlns="http://www.w3.org/2000/svg">${lines.join('')}</svg>`;
+  const hue = { caocao: '#3a5ca8', liubei: '#3f8f4a', sunjian: '#a8443a', dongzhuo: '#5a4a8a', yuanshao: '#a07a2a', free: '#7a6a4a' }[s.branch] ?? '#7a6a4a';
+  const nodes = list.map((e, i) => {
+    const fired = s.fired[e.id];
+    const state = typeof fired === 'number' ? 'done' : fired === 'missed' ? 'missed' : 'pending';
+    const title = pair(e.title);
+    const window = t('taleWindow', { from: e.at[0], month: e.at[1], until: e.until ?? '—' });
+    return h(
+      `div.snode.${state}`,
+      { style: { left: pos[i].x + 'px', top: pos[i].y + 'px' }, title: title + '\n' + window + (state === 'done' ? '\n' + pair(e.text) : '') },
+      h('img.medal', { src: emblem(title.slice(0, 1), hue, state === 'done' ? 'done' : state, 64), alt: '' }),
+      h('b', title),
+      h('small', state === 'done' ? dayWords(fired) : state === 'missed' ? t('taleMissed') : window)
+    );
+  });
+  return h('div.treeScroll.tale', h('div.tree', { style: { width: X0 + per * W + 'px', height: height + 'px' } }, svg, nodes));
+}
 
 function whyText(r) {
   return r?.why ? t('why_' + r.why) : null;
@@ -312,7 +378,7 @@ const BUILD = {
     const body = [
       h(
         'div.bio',
-        face(id, 120, app.rulers()),
+        h('div.portraitFrame', face(id, 150, app.rulers()), f ? h('span.banner', { style: { '--c': '#' + f.colour.toString(16).padStart(6, '0') } }, f.flag) : null),
         h(
           'div',
           h('p.names', h('b', nm(g)), getLanguage() === 'zh' ? h('small', g.en) : null),
@@ -322,10 +388,7 @@ const BUILD = {
           h('p.dim.small', t('lifeYears', { born: g.born, died: gs.status === 'dead' ? (gs.deathDay !== undefined ? dateOf(gs.deathDay).year : g.died) : s.options.lifespan === 'fiction' ? '?' : g.died }))
         )
       ),
-      h(
-        'div.statBars',
-        STATS.map((k) => h('div.sb', h('span.k', t(k)), bar(statOf(s, id, k) / 120, k), h('b', Math.round(statOf(s, id, k)))))
-      ),
+      abilityCard(app, id),
       h('h3', t('traits')),
       h(
         'ul.traits',
@@ -467,40 +530,75 @@ const BUILD = {
       f = s.factions[s.player];
     const rate = researchRate(s, s.player);
     const cur = f.research.current;
-    const col = (way, label) =>
-      h(
-        'section.way',
-        h('h3', label),
-        [1, 2, 3, 4, 5].map((tier) => {
-          const list = Object.values(TECHS).filter((x) => x.way === way && x.tier === tier);
-          if (!list.length) return null;
-          return h(
-            'div.tier',
-            h('span.tn', t('tierN', { n: tier })),
-            list.map((x) => {
-              const done = f.techs.includes(x.id),
-                can = canStudy(s, s.player, x.id);
-              const state = done ? 'done' : cur === x.id ? 'now' : can ? 'open' : 'shut';
-              const needs = x.needs.filter((n) => !f.techs.includes(n)).map((n) => nm(TECHS[n]));
-              const why = done ? null : can ? null : needs.length ? t('needTech', { tech: needs.join(getLanguage() === 'en' ? ', ' : '、') }) : t('wayShut');
-              return h(
-                `button.tech.${state}`,
-                { type: 'button', disabled: !can || cur === x.id, title: why ?? techText(x.id), onclick: () => app.act('study', x.id) },
-                h('b', nm(x)),
-                h('small', techText(x.id)),
-                h('small.tc', done ? t('done') : cur === x.id ? Math.floor((f.research.points / x.cost) * 100) + '%' : t('pointsN', { n: x.cost }))
-              );
-            })
-          );
-        })
+    // The tree: foundations in the first column, then five tiers; dominance above, benevolence below. Lines run from
+    // each invention to the ones it opens.
+    const W = 214,
+      H = 64,
+      X0 = 14,
+      Y0 = 34;
+    const place = {};
+    const bands = [
+      ['ba', 0],
+      ['wang', 0]
+    ];
+    let y = Y0;
+    const heads = [];
+    for (const band of bands) {
+      const way = band[0];
+      band[1] = y;
+      heads.push(h('span.wayHead.' + way, { style: { top: y - 26 + 'px' } }, t(way === 'ba' ? 'wayBa' : 'wayWang')));
+      let rows = 0;
+      for (let tier = 1; tier <= 5; tier++) {
+        const list = Object.values(TECHS).filter((x) => x.way === way && x.tier === tier);
+        list.forEach((x, i) => (place[x.id] = { x: X0 + tier * W, y: y + i * H }));
+        rows = Math.max(rows, list.length);
+      }
+      y += rows * H + 44;
+    }
+    const base = Object.values(TECHS).filter((x) => x.way === 'base');
+    const mid = (bands[1][1] + Y0) / 2 + H * 0.5;
+    base.forEach((x, i) => (place[x.id] = { x: X0, y: mid + (i - (base.length - 1) / 2) * H * 1.2 }));
+    const height = y;
+    const hue = { base: '#6a6f78', ba: '#8e2f25', wang: '#2f7a58' };
+    const lines = [];
+    for (const x of Object.values(TECHS))
+      for (const n of x.needs) {
+        const a = place[n],
+          b = place[x.id];
+        if (!a || !b) continue;
+        const x1 = a.x + 190,
+          y1 = a.y + 26,
+          x2 = b.x,
+          y2 = b.y + 26,
+          mx = (x1 + x2) / 2;
+        const lit = f.techs.includes(n);
+        lines.push(`<path d="M${x1} ${y1} H${mx} V${y2} H${x2}" class="${lit ? 'lit' : ''}"/>`);
+      }
+    const svg = h('div.treeLines');
+    svg.innerHTML = `<svg width="${X0 + 6 * W}" height="${height}" xmlns="http://www.w3.org/2000/svg">${lines.join('')}</svg>`;
+    const nodes = Object.values(TECHS).map((x) => {
+      const done = f.techs.includes(x.id),
+        can = canStudy(s, s.player, x.id);
+      const state = done ? 'done' : cur === x.id ? 'now' : can ? 'open' : 'shut';
+      const needs = x.needs.filter((n) => !f.techs.includes(n)).map((n) => nm(TECHS[n]));
+      const why = done ? null : can ? null : needs.length ? t('needTech', { tech: needs.join(getLanguage() === 'en' ? ', ' : '、') }) : t('wayShut');
+      const p = place[x.id];
+      const pct = cur === x.id ? Math.min(1, f.research.points / x.cost) : done ? 1 : 0;
+      return h(
+        `button.tnode.${state}`,
+        { type: 'button', style: { left: p.x + 'px', top: p.y + 'px' }, disabled: !can || cur === x.id, title: (why ? why + ' — ' : '') + techText(x.id), onclick: () => app.act('study', x.id) },
+        h('img.medal', { src: emblem(nm(x).slice(0, 1), hue[x.way], state === 'done' ? 'done' : state === 'now' ? 'now' : state === 'open' ? 'open' : 'shut', 44), alt: '' }),
+        h('span.tbody', h('b', nm(x)), h('small', techText(x.id)), h('span.tbar', h('i', { style: { width: Math.round(pct * 100) + '%' } }))),
+        h('span.tcost', done ? '✓' : cur === x.id ? Math.floor(pct * 100) + '%' : x.cost)
       );
+    });
     return {
       title: t('menuTech'),
-      className: 'wide',
+      className: 'wide techSheet',
       body: [
         h('p.note', cur ? t('studying', { tech: nm(TECHS[cur]), p: Math.floor((f.research.points / TECHS[cur].cost) * 100) }) : t('studyNone'), ' · ', t('perMonth', { n: Math.round(rate) }), f.way ? ' · ' + t('wayChosen', { way: t(f.way === 'ba' ? 'wayBa' : 'wayWang') }) : ''),
         h('p.dim.small', t('wayNote')),
-        h('div.ways', col('base', t('wayBase')), col('ba', t('wayBa')), col('wang', t('wayWang')))
+        h('div.treeScroll', h('div.tree', { style: { width: X0 + 6 * W + 'px', height: height + 'px' } }, svg, heads, h('span.wayHead.base', { style: { top: mid - 30 + 'px', left: X0 + 'px' } }, t('wayBase')), nodes))
       ],
       actions: [button(t('close'), () => app.dialogs.close())]
     };
@@ -579,12 +677,15 @@ const BUILD = {
         tabs(
           [
             ['log', t('chronicleLog')],
-            ['tale', t('chronicleTale')]
+            ['tale', t('chronicleTale')],
+            ['tree', t('chronicleTree')]
           ],
           args.tab,
           (id) => ((args.tab = id), again())
         ),
-        args.tab === 'log'
+        args.tab === 'tree'
+          ? taleTree(app)
+          : args.tab === 'log'
           ? h(
               'ol.chron',
               s.log.map((l) => h('li', h('time', dayWords(l.day)), logLine(s, l)))
@@ -653,6 +754,20 @@ const BUILD = {
       e = eventOf(args.event);
     if (!e) return null;
     const options = args.told ? [] : choicesOf(s, e.id);
+    if (e.face && GENERALS[e.face])
+      return {
+        title: pair(e.title),
+        className: 'recruit wide',
+        blocking: true,
+        body: [
+          h(
+            'div.recruitBody',
+            h('div.recruitArt', face(e.face, 260, app.rulers()), h('p.recruitName', h('b', nm(GENERALS[e.face])), h('small', NODES[GENERALS[e.face].home] ? placeName(GENERALS[e.face].home) : ''))),
+            h('div.recruitText', h('p.when', dayWords(s.day)), h('p.tale', pair(e.text)), abilityCard(app, e.face))
+          )
+        ],
+        actions: args.told ? [button(t('next'), () => app.act('told'), { kind: 'main' })] : options.map((c, i) => button(pair(c.label), () => app.act('story', e.id, i), { kind: i === 0 ? 'main' : '' }))
+      };
     return {
       title: pair(e.title),
       className: 'scroll',
@@ -688,7 +803,7 @@ const BUILD = {
     return {
       title: t('captiveTitle', { name: generalName(id) }),
       blocking: true,
-      body: [h('div.bio', face(id, 100, app.rulers()), h('div', h('p.tale', t('captiveText', { name: generalName(id) })), h('div.statBars', STATS.map((k) => h('div.sb', h('span.k', t(k)), bar(statOf(s, id, k) / 120, k), h('b', Math.round(statOf(s, id, k)))))), h('p.note', t('persuadeBy', { name: generalName(best), p: Math.round(persuadeChance(s, s.player, best, id) * 100) }))))],
+      body: [h('div.bio', h('div.portraitFrame', face(id, 140, app.rulers())), h('div', h('p.tale', t('captiveText', { name: generalName(id) })), abilityCard(app, id), h('p.note', t('persuadeBy', { name: generalName(best), p: Math.round(persuadeChance(s, s.player, best, id) * 100) }))))],
       actions: [
         button(t('execute'), () => app.act('execute', id, true), { kind: 'danger' }),
         button(t('release'), () => app.act('release', id, true)),

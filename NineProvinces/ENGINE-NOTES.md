@@ -1,9 +1,11 @@
 # 引擎笔记 · Engine notes
 
-做这款游戏时遇到的新白鹭引擎（提交 `9d801be`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。五条都是本作新遇到的。
+做这款游戏时遇到的新白鹭引擎（提交 `9d801be`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md) 第 3 节。前五条是第一版（平面天下图、`createBrowserGame`）遇到的，第六到第八条是改用 World3D 之后遇到的；八条都是本作新遇到的。现在的版本已不再用到前五条涉及的接口，记录留着供引擎参考。
 
 The faults in the new Egret engine (commit `9d801be`) met while making this game, and suggestions, written as in part 3
-of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). All five are new here.
+of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). The first five were met by the first version (a flat realm on
+`createBrowserGame`), the sixth to the eighth after the move to World3D; all eight are new here. The game no longer
+uses the interfaces of the first five; they are kept for the engine's sake.
 
 ### 1. 每个文字标签占一页图片，一百多个地名超出每帧 64 页 · Each label is a page of its own, and a hundred place names pass the 64 pages a frame — 未解决 / open
 
@@ -39,3 +41,25 @@ of [docs/GAME-STANDARD.md](../docs/GAME-STANDARD.md). All five are new here.
 - 绕过办法：软件渲染时像素比降到 0.75；标题改成静止画面，地图停稳后 `game.loop.stop()`，开局或进入开局设置时再 `start()`（`src/main.mjs` 的 `toTitle` 与 `wake`），标题的 p95 降到 16.7 ms。 · Workaround: three-quarter pixels under software rendering; the title is a still picture, with `game.loop.stop()` once the map has settled and `start()` again for the game or its setup; the title's p95 is 16.7 ms now.
 - 建议：舞台没有变化（没有显示对象、纹理、相机改动）时跳过渲染和提交，或给帧循环一个"按需渲染"的模式。 · Suggestion: skip rendering and presenting when the stage has not changed (no display object, texture or camera touched), or give the frame loop a render-on-demand mode.
 - 状态：未解决。 · Status: open.
+
+### 6. 地形流的 `colorAt` 只给地块内的坐标，不知道是哪一块 · The terrain stream's `colorAt` is given coordinates within a tile, and no way to tell which tile — 未解决 / open
+
+- 现象：`createTerrainStream3D` 的 `terrain.colorAt(height, slope, x, z, out)` 对所有地块是同一个函数，`x`、`z` 是地块高度场内以中心为原点的坐标；地块的颜色要按天下的位置算（江河、沙漠、林地），函数里却拿不到地块的位置。 · What happens: `terrain.colorAt(height, slope, x, z, out)` of `createTerrainStream3D` is one function for every tile, and `x` and `z` are coordinates in the tile's own field, centred on it; the colours depend on where on the realm the tile is (rivers, desert, woods), but the function cannot learn the tile's place.
+- 绕过办法：在 `load` 里算高度时一并算出这块的颜色，按高度场对象存进 `WeakMap`；`colorAt` 用普通函数写，靠调用时的 `this`（地块的 `Terrain3D`）取 `this.field` 查表（`src/view3d/terrain.mjs`）。这依赖引擎以 `this.#colorAt(...)` 的方式调用，属于未写进文档的行为。 · Workaround: the tile's colours are worked out with its heights in `load` and kept in a `WeakMap` by field; `colorAt` is a plain function and reads `this.field` from the `Terrain3D` it is called on. This leans on the engine calling it as `this.#colorAt(...)`, which is not documented.
+- 建议：给 `colorAt` 加一个参数传地块（或地块原点的世界坐标），或者让流的 `terrain` 选项也能是 `(x, z, field) => TerrainOptions3D` 的函数，和 `material` 一样。 · Suggestion: pass the tile (or its world origin) to `colorAt`, or let the stream's `terrain` option be a function `(x, z, field) => TerrainOptions3D`, as `material` already may be.
+- 状态：未解决。 · Status: open.
+
+### 7. `app.stop()` 之后隔一阵再 `app.start()`，第一帧抛 `CLOCK_DELTA_LIMIT` · After `app.stop()`, `app.start()` a while later throws `CLOCK_DELTA_LIMIT` on its first frame — 未解决 / open
+
+- 现象：页面隐藏时调用 `createWorld3DApp` 返回的 `app.stop()`，显示时再 `app.start()`，控制台报 `EgretError: CLOCK_DELTA_LIMIT`，循环停住。新起的 `startWorld3DLoop` 第一帧 `previous` 是空的，不做"间隔太长就重新锚定"的判断，直接把离上次很远的时间交给 `engine.advanceTime`。 · What happens: calling `app.stop()` of `createWorld3DApp` when the page is hidden and `app.start()` when it is shown logs `EgretError: CLOCK_DELTA_LIMIT` and the loop stops. The new `startWorld3DLoop` has no `previous` on its first frame, so it skips its re-anchoring for a long gap and hands `engine.advanceTime` a time far from the last.
+- 绕过办法：隐藏时 `app.stop()` 后 `engine.clock.pause()`，显示时先 `engine.clock.resume()` 再 `app.start()`（`src/main.mjs`）。 · Workaround: `engine.clock.pause()` after `app.stop()` when hidden, and `engine.clock.resume()` before `app.start()` when shown.
+- 建议：`app.start()` 时先让时钟丢掉旧锚点（`pause()` 再 `resume()`），或让循环第一帧也做重新锚定。 · Suggestion: have `app.start()` drop the clock's old anchor (`pause()` then `resume()`), or let the loop's first frame re-anchor too.
+- 状态：未解决。 · Status: open.
+
+### 8. 地形流视距稍大就抛 `WORLD3D_BUDGET` · The terrain stream throws `WORLD3D_BUDGET` for a view distance a little too large — 未解决 / open
+
+- 现象：`stream.viewDistance` 设得大一些（64 单位的地块、视距 380 左右），`update` 时保留范围超过 256 块，抛 `WORLD3D_BUDGET: terrain stream tile range`，整个帧回调中断。保留范围是视距的 1.25 倍加四分之一块，文档写了上限，但离抛错还差多少要自己算。 · What happens: with a larger `stream.viewDistance` (tiles of 64 units, a view distance near 380), the retained range in `update` passes 256 tiles and it throws `WORLD3D_BUDGET: terrain stream tile range`, stopping the frame's callback. The range is 1.25 times the view distance plus a quarter tile; the limit is documented, but how close one is to it must be worked out by hand.
+- 绕过办法：视距随镜头远近变化，但夹在 290 以内（`src/view3d/terrain.mjs`）。 · Workaround: the view distance follows the camera but is clamped to 290.
+- 建议：超出时把视距夹到上限并给一次警告，或提供 `maxViewDistance` 只读值。 · Suggestion: clamp the view distance to the limit with one warning, or expose a read-only `maxViewDistance`.
+- 状态：未解决。 · Status: open.
+

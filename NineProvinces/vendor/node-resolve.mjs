@@ -5,6 +5,11 @@ export const MAP = {
   "@egret/runtime": "./runtime/dist/index.js",
   "@egret/contracts/resources": "./contracts/dist/resources/index.js",
   "@egret/engine": "./engine/dist/index.js",
+  "@egret/engine/kit": "./engine/dist/kit.js",
+  "@egret/engine/web/kit": "./engine/dist/web/kit.js",
+  "@egret/engine/audio": "./engine/dist/audio.js",
+  "@egret/engine/web/audio": "./engine/dist/web/audio.js",
+  "@egret/engine/world3d": "./engine/dist/rendering/world3d/index.js",
   "@egret/runtime/text": "./runtime/dist/text/index.js",
   "@egret/engine/text": "./engine/dist/text.js",
   "@egret/runtime/input": "./runtime/dist/input/index.js",
@@ -13,15 +18,8 @@ export const MAP = {
   "robust-predicates": "./robust-predicates/index.js",
   "#egret-textured-frame-state": "./engine/dist/internal/texturedFrameState.js",
   "@egret/engine/input/hover": "./engine/dist/hover.js",
-  "@egret/engine/web/game": "./engine/dist/web/game.js",
-  "@egret/engine/camera": "./engine/dist/camera.js",
-  "@egret/engine/web/hover": "./engine/dist/web/hover.js",
-  "@egret/engine/web/pointer": "./engine/dist/web/pointer.js",
-  "@egret/engine/kit": "./engine/dist/kit.js",
-  "@egret/engine/web/kit": "./engine/dist/web/kit.js",
-  "@egret/engine/particles": "./engine/dist/particles.js",
-  "@egret/engine/audio": "./engine/dist/audio.js",
-  "@egret/engine/web/audio": "./engine/dist/web/audio.js"
+  "@egret/engine/input/gamepad": "./engine/dist/gamepad.js",
+  "@egret/engine/webgl2/world3d": "./engine/dist/web/world3d/index.js"
 };
 export function resolve(specifier, context, next) {
   const file = MAP[specifier];

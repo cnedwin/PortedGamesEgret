@@ -12,7 +12,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 
 | 能力 · Capability | 游戏数 · Games | CanalWatch | FengshenChronicle | FivePhases | FPS | jelly-pandas | JY | LanternShadows | LoveElective | MechanismCity | NezhaSea | NightWardens | NineProvinces | OperaDrums | PeachCreek | Rally | SnowTemple | TaiwanMahjong | TeaHorseRoad | Wulin |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| `@egret/engine` | 17 |  | [✔](FengshenChronicle/src/view.mjs) | [✔](FivePhases/src/main.mjs) | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/main.mjs) | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/stage.mjs) | [✔](MechanismCity/src/art/illustrations.mjs) | [✔](NezhaSea/src/actor-art.mjs) | [✔](NightWardens/src/screens.mjs) | [✔](NineProvinces/src/view/battleview.mjs) |  | [✔](PeachCreek/src/view.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TaiwanMahjong/src/view.mjs) | [✔](TeaHorseRoad/src/ui/card.mjs) | [✔](Wulin/src/view/stage.mjs) |
+| `@egret/engine` | 16 |  | [✔](FengshenChronicle/src/view.mjs) | [✔](FivePhases/src/main.mjs) | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/main.mjs) | [✔](LanternShadows/src/main.mjs) | [✔](LoveElective/src/engine/stage.mjs) | [✔](MechanismCity/src/art/illustrations.mjs) | [✔](NezhaSea/src/actor-art.mjs) | [✔](NightWardens/src/screens.mjs) |  |  | [✔](PeachCreek/src/view.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TaiwanMahjong/src/view.mjs) | [✔](TeaHorseRoad/src/ui/card.mjs) | [✔](Wulin/src/view/stage.mjs) |
 | `@egret/engine/webgpu` | 1 |  |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/text` | 1 |  |  |  |  |  | [✔](JY/web/opening-dialogue.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/layout` | 1 |  |  |  |  |  |  |  |  |  |  | [✔](NightWardens/src/screens.mjs) |  |  |  |  |  |  |  |  |
@@ -20,8 +20,8 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/image` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/text` | 1 |  |  |  |  |  | [✔](JY/web/main.mjs) |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/webgl2` | 2 |  |  |  |  |  | [✔](JY/web/main.mjs) |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/world3d` | 7 |  |  |  | [✔](FPS/src/asset-models.mjs) | [✔](jelly-pandas/src/island.mjs) | [✔](JY/web/jyx2/home3d/native-exit-effect.mjs) |  |  |  |  |  |  |  |  | [✔](Rally/src/grandstand.mjs) | [✔](SnowTemple/src/main.mjs) |  | [✔](TeaHorseRoad/src/art/font.mjs) | [✔](Wulin/src/view/arena-effects.mjs) |
-| `@egret/engine/webgl2/world3d` | 7 |  |  |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/jyx2/scene/world3d-renderer.mjs) |  |  |  |  |  |  |  |  | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) |  | [✔](TeaHorseRoad/src/audio/soundscape.mjs) | [✔](Wulin/src/view/stage.mjs) |
+| `@egret/engine/world3d` | 8 |  |  |  | [✔](FPS/src/asset-models.mjs) | [✔](jelly-pandas/src/island.mjs) | [✔](JY/web/jyx2/home3d/native-exit-effect.mjs) |  |  |  |  |  | [✔](NineProvinces/src/view3d/battle3d.mjs) |  |  | [✔](Rally/src/grandstand.mjs) | [✔](SnowTemple/src/main.mjs) |  | [✔](TeaHorseRoad/src/art/font.mjs) | [✔](Wulin/src/view/arena-effects.mjs) |
+| `@egret/engine/webgl2/world3d` | 8 |  |  |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) | [✔](JY/web/jyx2/scene/world3d-renderer.mjs) |  |  |  |  |  | [✔](NineProvinces/src/view3d/stage.mjs) |  |  | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) |  | [✔](TeaHorseRoad/src/audio/soundscape.mjs) | [✔](Wulin/src/view/stage.mjs) |
 | `@egret/engine/webgpu/world3d` | 4 |  |  |  | [✔](FPS/src/main.mjs) | [✔](jelly-pandas/src/main.mjs) |  |  |  |  |  |  |  |  |  | [✔](Rally/src/main.mjs) |  |  |  | [✔](Wulin/src/view/stage.mjs) |
 | `@egret/engine/resources` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/resources` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -39,9 +39,9 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/hover` | 1 |  |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/input/gamepad` | 1 |  |  |  |  |  |  |  |  |  |  | [✔](NightWardens/src/main.mjs) |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/gamepad` | 4 |  |  |  |  |  | [✔](JY/web/main.mjs) | [✔](LanternShadows/src/input.mjs) |  |  |  | [✔](NightWardens/src/main.mjs) |  |  |  |  |  |  | [✔](TeaHorseRoad/src/play/input.mjs) |  |
-| `@egret/engine/camera` | 3 |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  | [✔](NineProvinces/src/view/mapview.mjs) |  |  |  |  |  |  |  |
+| `@egret/engine/camera` | 2 |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/tilemap` | 2 |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  |  |  |  |  |  |  |  |  |  |
-| `@egret/engine/particles` | 4 |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  | [✔](NightWardens/src/view/field.mjs) | [✔](NineProvinces/src/view/battleview.mjs) |  |  |  |  |  |  |  |
+| `@egret/engine/particles` | 3 |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  | [✔](NightWardens/src/view/field.mjs) |  |  |  |  |  |  |  |  |
 | `@egret/engine/physics2d` | 1 |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/sim/sim.mjs) |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/bitmapfont` | 2 |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/main.mjs) |  |  |  |  |  |  |  |  | [✔](TeaHorseRoad/src/main.mjs) |  |
 | `@egret/engine/video` | 0 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |  |
@@ -49,7 +49,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 | `@egret/engine/web/loop` | 1 |  |  |  |  |  |  |  | [✔](LoveElective/src/engine/stage.mjs) |  |  |  |  |  |  |  |  |  |  |  |
 | `@egret/engine/kit` | 10 | [✔](CanalWatch/src/i18n.mjs) |  |  |  |  |  |  |  | [✔](MechanismCity/src/audio/sound.mjs) | [✔](NezhaSea/src/i18n.mjs) | [✔](NightWardens/tools/balance.mjs) | [✔](NineProvinces/src/saves.mjs) | [✔](OperaDrums/src/audio/sound.mjs) | [✔](PeachCreek/src/i18n.mjs) |  | [✔](SnowTemple/tools/balance.mjs) | [✔](TaiwanMahjong/src/i18n.mjs) | [✔](TeaHorseRoad/src/play/input.mjs) |  |
 | `@egret/engine/web/kit` | 13 | [✔](CanalWatch/src/main.mjs) |  |  | [✔](FPS/src/main.mjs) |  |  |  |  | [✔](MechanismCity/src/main.mjs) | [✔](NezhaSea/src/main.mjs) | [✔](NightWardens/src/main.mjs) | [✔](NineProvinces/src/saves.mjs) | [✔](OperaDrums/src/main.mjs) | [✔](PeachCreek/src/main.mjs) | [✔](Rally/src/main.mjs) | [✔](SnowTemple/src/main.mjs) | [✔](TaiwanMahjong/src/main.mjs) | [✔](TeaHorseRoad/src/main.mjs) | [✔](Wulin/src/main.mjs) |
-| `@egret/engine/web/game` | 6 |  | [✔](FengshenChronicle/src/main.mjs) | [✔](FivePhases/src/main.mjs) |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/main.mjs) |  | [✔](NightWardens/src/main.mjs) | [✔](NineProvinces/src/main.mjs) |  |  |  |  |  |  |  |
+| `@egret/engine/web/game` | 5 |  | [✔](FengshenChronicle/src/main.mjs) | [✔](FivePhases/src/main.mjs) |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/main.mjs) |  | [✔](NightWardens/src/main.mjs) |  |  |  |  |  |  |  |  |
 | `@egret/engine/play` | 5 | [✔](CanalWatch/src/main.mjs) |  |  |  |  |  |  |  |  | [✔](NezhaSea/src/main.mjs) |  |  | [✔](OperaDrums/src/main.mjs) | [✔](PeachCreek/src/main.mjs) |  |  | [✔](TaiwanMahjong/src/sound.mjs) |  |  |
 | `@egret/engine/audio` | 1 |  |  |  |  |  |  |  |  |  |  | [✔](NightWardens/src/audio/sound.mjs) |  |  |  |  |  |  |  |  |
 | `@egret/engine/web/audio` | 7 |  |  |  |  |  | [✔](JY/web/wav-effects.mjs) | [✔](LanternShadows/src/sound.mjs) | [✔](LoveElective/src/audio.mjs) | [✔](MechanismCity/src/audio/sound.mjs) |  | [✔](NightWardens/src/audio/sound.mjs) | [✔](NineProvinces/src/audio/sound.mjs) | [✔](OperaDrums/src/audio/sound.mjs) |  |  |  |  |  |  |
@@ -63,7 +63,7 @@ used or not; only each game's own code is read, not `vendor/`, tests or tools. T
 
 | 能力 · Capability | 游戏数 · Games | CanalWatch | FengshenChronicle | FivePhases | FPS | jelly-pandas | JY | LanternShadows | LoveElective | MechanismCity | NezhaSea | NightWardens | NineProvinces | OperaDrums | PeachCreek | Rally | SnowTemple | TaiwanMahjong | TeaHorseRoad | Wulin |
 |---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
-| 粒子发射器 · Particle emitter (`createParticleEmitter`) | 4 |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  | [✔](NightWardens/src/view/field.mjs) | [✔](NineProvinces/src/view/battleview.mjs) |  |  |  |  |  |  |  |
+| 粒子发射器 · Particle emitter (`createParticleEmitter`) | 3 |  |  |  |  |  |  | [✔](LanternShadows/src/main.mjs) |  | [✔](MechanismCity/src/play/level.mjs) |  | [✔](NightWardens/src/view/field.mjs) |  |  |  |  |  |  |  |  |
 | 2D 物理关节 · 2D physics joints (`addJoint`) | 1 |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/sim/sim.mjs) |  |  |  |  |  |  |  |  |  |  |
 | 托管界面根节点 · Managed UI root (`createUiRoot`) | 2 |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/ui/settings.mjs) |  |  |  |  |  |  |  |  | [✔](TeaHorseRoad/src/ui/card.mjs) |  |
 | 网页视频 · Browser video (`createBrowserVideo`) | 2 |  |  |  |  |  |  |  |  | [✔](MechanismCity/src/screens.mjs) |  |  |  |  |  |  |  |  | [✔](TeaHorseRoad/src/ui/screens.mjs) |  |

@@ -15,16 +15,19 @@ test("the page's import map is the one the engine copy came with", async () => {
 test('every engine entry the game imports is in the copy', async () => {
   const { imports } = JSON.parse(await read('../vendor/importmap.json')),
     asked = new Set();
-  for (const folder of ['../src/', '../src/ui/', '../src/view/', '../src/sim/', '../src/audio/', '../src/data/'])
+  for (const folder of ['../src/', '../src/ui/', '../src/view/', '../src/view3d/', '../src/sim/', '../src/audio/', '../src/data/'])
     for (const name of await readdir(new URL(folder, import.meta.url)))
       if (name.endsWith('.mjs')) for (const [, entry] of (await read(folder + name)).matchAll(/from '(@egret\/[^']+)'/g)) asked.add(entry);
-  assert.ok(asked.size >= 6, `only ${asked.size} entries`);
+  assert.ok(asked.size >= 5, `only ${asked.size} entries`);
   for (const entry of asked) {
     assert.ok(imports[entry], `${entry} is not in vendor/importmap.json`);
     await read('../' + imports[entry]);
   }
-  // The rules stay free of the engine and the page, so they run in Node as they are.
-  const rules = await read('../src/sim/world.mjs');
-  assert.ok(!/\b(document|window|localStorage)\b/.test(rules.replace(/\/\/.*$/gm, '')));
-  assert.ok(!/from '@egret/.test(rules));
+  // The rules, the land and the hexes stay free of the engine and the page, so they run in Node as they are.
+  for (const name of await readdir(new URL('../src/sim/', import.meta.url))) {
+    if (!name.endsWith('.mjs')) continue;
+    const rules = await read('../src/sim/' + name);
+    assert.ok(!/\b(document|window|localStorage)\b/.test(rules.replace(/\/\/.*$/gm, '')), name);
+    assert.ok(!/from '@egret/.test(rules), name);
+  }
 });

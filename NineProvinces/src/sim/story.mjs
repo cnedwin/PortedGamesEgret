@@ -227,6 +227,7 @@ export const EVENTS = [
   {
     id: 'c_xunyu',
     branch: 'caocao',
+    face: 'xunyu',
     at: [191, 3],
     until: 196,
     when: (s) => live(s, 'caocao') && s.generals.xunyu?.status === 'free',
@@ -385,6 +386,7 @@ export const EVENTS = [
   {
     id: 'l_cottage',
     branch: 'liubei',
+    face: 'zhugeliang',
     at: [207, 1],
     until: 214,
     when: (s) => live(s, 'liubei') && alive(s, 'zhugeliang') && s.generals.zhugeliang.status === 'free' && Object.keys(s.nodes).some((id) => s.nodes[id].owner === 'liubei' && NODES[id].prov === 'jing'),

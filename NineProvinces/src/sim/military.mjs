@@ -9,6 +9,9 @@ import { ADJACENT, NODES } from '../data/map.mjs';
 import { autoBattle } from './battle.mjs';
 import { clamp, generalEffect, note, random, serving, stat, techEffect } from './core.mjs';
 import { capture, die } from './people.mjs';
+import { hexAt } from './hexgrid.mjs';
+import { FOOTPRINTS } from './land.mjs';
+import { along, routeLine } from './ways.mjs';
 
 /** Whether two factions fight: anyone not allied or at truce; the unowned are everyone's enemy. */
 export function hostile(state, a, b) {
@@ -424,6 +427,57 @@ function bestDefender(state, factionId, general) {
   return stat(state, general, 'int') > stat(state, general, 'war') ? 'archer' : 'spear';
 }
 
+/**
+ * Where on the realm a battle is fought: the twenty-two by fourteen hexes laid over the place, the walls toward the far
+ * end and the attackers' end toward where they came from; or over the point of the road where two armies meet. `axis`
+ * is the attackers' way in, as a unit vector in map units.
+ */
+function fieldOf(state, place, attackers) {
+  const lead = state.armies[attackers[0]];
+  let cx, cz, ax, az;
+  if (place.node) {
+    const f = FOOTPRINTS[place.node];
+    const from = NODES[lead?.cameFrom] ?? NODES[lead?.home];
+    ax = from && from.id !== place.node ? f.x - from.x : 0.5;
+    az = from && from.id !== place.node ? f.z - from.y : -0.85;
+    const l = Math.hypot(ax, az) || 1;
+    ax /= l;
+    az /= l;
+    // Shift the field toward the attackers so the walls stand at its far end.
+    const shift = 11 * Math.abs(ax) + 7 * Math.abs(az);
+    cx = f.x - ax * shift;
+    cz = f.z - az * shift;
+  } else {
+    const [a, b] = place.link;
+    const link = lead?.link;
+    const p = along(routeLine(a, b), link ? link.done / link.length : 0.5);
+    cx = p.x;
+    cz = p.z;
+    ax = NODES[b].x - NODES[a].x;
+    az = NODES[b].y - NODES[a].y;
+    const l = Math.hypot(ax, az) || 1;
+    ax /= l;
+    az /= l;
+  }
+  const [cc, rc] = hexAt(cx, cz);
+  let c0 = cc - 11,
+    r0 = rc - 7;
+  // The whole of the walls must lie on the field, a hex in from its edges.
+  if (place.node) {
+    const f = FOOTPRINTS[place.node];
+    c0 = Math.max(f.kc - (21 - f.a - 2), Math.min(f.kc - f.a - 2, c0));
+    r0 = Math.max(f.kr - (13 - f.b - 1), Math.min(f.kr - f.b - 1, r0));
+  }
+  if (r0 & 1) r0 -= 1;
+  return { grid: { c0, r0 }, axis: [ax, az] };
+}
+
+function involvesPlayer(state, attackers, defenders, garrison) {
+  const sides = [...attackers, ...defenders].map((id) => state.armies[id]?.faction);
+  if (garrison) sides.push(state.nodes[garrison].owner);
+  return sides.includes(state.player);
+}
+
 /** Set out a battle. The player's own go to the inbox to be commanded or entrusted; the rest are fought at once. */
 export function battle(state, { kind, place, attackers, defenders, garrison = null, special = null }) {
   const nodeId = place.node ?? null;
@@ -435,6 +489,9 @@ export function battle(state, { kind, place, attackers, defenders, garrison = nu
     seed: Math.floor(random(state) * 2 ** 31),
     wall: nodeId ? state.nodes[nodeId].wall : 0,
     terrain: terrainOf(place),
+    // The player's battles are fought on the realm's own ground, where he can watch them; the computer's among
+    // themselves, decided at once and out of sight, on ground made from the place's lie of the land.
+    ...(involvesPlayer(state, attackers, defenders, garrison) ? fieldOf(state, place, attackers) : {}),
     units: [...sideUnits(state, attackers, null, 0), ...sideUnits(state, defenders, garrison, 1)],
     factions: [state.armies[attackers[0]]?.faction ?? null, garrison ? state.nodes[garrison].owner : state.armies[defenders[0]]?.faction ?? null]
   };

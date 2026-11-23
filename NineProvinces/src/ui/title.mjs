@@ -1,8 +1,8 @@
-// 标题与开局：背后是中平元年的天下图（三十四路诸侯的疆域），慢慢移动；右边竖排着题名。新的征程分三步：选演义、
-// 选势力（选中时地图移到它的治所）、定规则（寿命、战斗是否亲自指挥、难度）。
-// The title and the start: behind, the map of the realm in 184 (the lands of thirty-four lords), drifting slowly; on
-// the right the title, written top to bottom. A new campaign takes three steps: the tale, the power (the map moves to
-// its seat as it is chosen), and the rules (lifespans, whether to command battles, difficulty).
+// 标题与开局：背后是中平元年的 3D 天下，镜头缓缓掠过洛阳一带；右边竖排着金色的题名。新的征程分三步：选演义、
+// 选势力（选中时镜头飞到它的治所）、定规则（寿命、战斗是否亲自指挥、难度）。
+// The title and the start: behind, the 3D realm in 184, the camera gliding slowly over the land round Luoyang; on the
+// right the title in gold, written top to bottom. A new campaign takes three steps: the tale, the power (the camera
+// flies to its seat as it is chosen), and the rules (lifespans, whether to command battles, difficulty).
 import { FACTIONS } from '../data/factions.mjs';
 import { NODES } from '../data/map.mjs';
 import { BRANCHES } from '../sim/story.mjs';
@@ -28,11 +28,17 @@ function paintTitle() {
   [...'九州烽烟'].forEach((ch, i) => {
     const x = c.width / 2,
       y = size * 0.55 + i * size * 1.02;
-    g.shadowColor = 'rgba(239, 230, 207, 0.95)';
-    g.shadowBlur = 22;
-    g.fillStyle = '#2a231b';
+    // Gilt characters with a dark halo, so they read over the realm behind them.
+    g.shadowColor = 'rgba(8, 6, 4, 0.95)';
+    g.shadowBlur = 26;
+    const gold = g.createLinearGradient(0, y - size / 2, 0, y + size / 2);
+    gold.addColorStop(0, '#fff1c4');
+    gold.addColorStop(0.55, '#e2bd6c');
+    gold.addColorStop(1, '#a9803a');
+    g.fillStyle = gold;
     g.fillText(ch, x, y);
-    g.shadowBlur = 5;
+    g.shadowBlur = 4;
+    g.shadowColor = 'rgba(8, 6, 4, 1)';
     g.fillText(ch, x, y);
   });
   // The seal: a square of vermilion with the character for beacon fires cut in white.
@@ -82,6 +88,7 @@ export function showSetup(app, pickedBranch = null) {
   const box = $('#title');
   app.screen = 'setup';
   app.wake();
+  app.map.setDrift(null);
   app.pickFaction = (id) => {
     if (BRANCHES[pick.branch].faction || !FACTIONS[id]) return;
     pick.faction = id;
@@ -149,7 +156,7 @@ export function showSetup(app, pickedBranch = null) {
   }
   function focus() {
     const n = NODES[FACTIONS[pick.faction].seat];
-    app.map?.focus(n.id, 0.9);
+    app.map?.focus(n.id, 90);
   }
   render();
   focus();

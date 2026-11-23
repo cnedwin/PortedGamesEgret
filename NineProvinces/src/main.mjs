@@ -1,35 +1,33 @@
-// 页面入口：设置与语言、引擎（透明的画布叠在网页画布上；软件渲染时降到四分之三分辨率）、天下图与战场两种画面、
-// 声音、界面；时间按所选的快慢一天天推进（暂停、每秒半天到八天），每月一号自动存档；收件箱里的演义、交战、使者和
-// 俘虏一件件拿出来让玩家定夺。拖动平移、滚轮或双指缩放、空格暂停、1–5 调速度、方向键移动、+/- 缩放、Esc 关闭。
-// The page's entry: settings and language, the engine (a clear canvas over the page canvas; three-quarter resolution
-// under software rendering), the two views (the realm and the battlefield), sound and the interface; time moves on day
-// by day at the chosen speed (paused, or half a day to eight days a second), with an autosave on the first of each
-// month; the tale, battles, envoys and captives come out of the inbox one at a time for the player to decide. Drag to
-// pan, the wheel or two fingers to zoom, Space to pause, 1–5 for speed, arrows to move, +/- to zoom, Esc to close.
-import { createBrowserGame } from '@egret/engine/web/game';
+// 页面入口：设置与语言、3D 天下（地形、城池、军团和名牌；战斗就在这张图上打）、声音、界面；时间按所选的快慢一天天
+// 推进（暂停、每秒半天到八天），每月一号自动存档；收件箱里的演义、交战、使者和俘虏一件件拿出来让玩家定夺。拖动平移、
+// 滚轮或双指缩放、空格暂停、1–5 调速度、方向键移动、+/- 缩放、Esc 关闭。
+// The page's entry: settings and language, the 3D realm (land, cities, armies and name plates; battles are fought on
+// this same map), sound and the interface; time moves on day by day at the chosen speed (paused, or half a day to eight
+// days a second), with an autosave on the first of each month; the tale, battles, envoys and captives come out of the
+// inbox one at a time for the player to decide. Drag to pan, the wheel or two fingers to zoom, Space to pause, 1–5 for
+// speed, arrows to move, +/- to zoom, Esc to close.
 import { browserSaveStorage } from '@egret/engine/web/kit';
-import { FACTIONS, LATER } from './data/factions.mjs';
-import { GENERALS } from './data/generals.mjs';
 import { NODES } from './data/map.mjs';
 import { createSound } from './audio/sound.mjs';
 import { getLanguage, setLanguage, t } from './i18n.mjs';
 import { exportText, importText, openSettings, openSlot, SLOTS, writeSlot } from './saves.mjs';
 import { autoBattle } from './sim/battle.mjs';
-import { dateOf, surname } from './sim/core.mjs';
+import { dateOf } from './sim/core.mjs';
 import { answerEnvoy, breakTreaty, demandSurrender, gift, propose, askAttack } from './sim/diplomacy.mjs';
 import { disband, finishBattle, muster, nearestFriendly, order, route } from './sim/military.mjs';
 import { registerCustom } from './sim/newblood.mjs';
 import { die, giveTreasure, issueTalentOrder, moveGeneral, persuade, release, searchCity } from './sim/people.mjs';
 import { answerStory } from './sim/story.mjs';
 import { advance, createGame, power, recruit, startWork, study, transfer } from './sim/world.mjs';
-import { startBattle } from './ui/battleui.mjs';
 import { createDialogs } from './ui/dialogs.mjs';
 import { $, h } from './ui/dom.mjs';
 import { createHud, SPEEDS, tipFor } from './ui/hud.mjs';
 import { eventOf, logLine } from './ui/text.mjs';
+import { startBattle } from './ui/battleui.mjs';
+import { createMinimap } from './ui/minimap.mjs';
+import { createPlates } from './ui/plates.mjs';
 import { showSetup, showTitle } from './ui/title.mjs';
-import { dotTexture } from './view/battleview.mjs';
-import { bannerAtlas, createMapView } from './view/mapview.mjs';
+import { createRealmView } from './view3d/realm.mjs';
 import { factionName, generalName, placeName } from './view/names.mjs';
 import { TREASURES } from './data/treasures.mjs';
 import { nm } from './i18n.mjs';
@@ -162,7 +160,6 @@ const app = {
     app.dialogs.close(true);
     app.screen = 'battle';
     frame.dataset.screen = 'battle';
-    app.map.setVisible(false);
     app.battle = startBattle(app, setup);
   },
   endBattle(done) {
@@ -186,63 +183,73 @@ async function boot() {
   const tall = innerHeight > innerWidth * 1.05;
   app.stageSize = tall ? { width: 900, height: 1600 } : { width: 1600, height: 900 };
   const canvas = h('canvas#stage', { tabIndex: -1 });
-  $('#stageHost').replaceChildren(canvas);
-  app.game = await createBrowserGame({
-    canvas,
-    width: app.stageSize.width,
-    height: app.stageSize.height,
-    backend: params.get('backend') ?? 'auto',
-    pixelRatio: app.software ? 0.75 : Math.min(2, devicePixelRatio || 1),
-    fit: 'cover',
-    fitTo: $('#stageHost'),
-    clearColor: 0x000000,
-    clearAlpha: 0,
-    hover: true,
-    autoStart: false,
-    update: (seconds) => tick(Math.min(seconds, 0.1))
-  });
-  // One sheet of characters for every banner on the map and the field: the powers' flags and every surname.
-  const chars = new Set(['汉', '晋', '魏', '蜀', '吴', '吕', '叛', '兵']);
-  for (const f of [...Object.values(FACTIONS), ...Object.values(LATER)]) chars.add(f.flag);
-  for (const id of Object.keys(GENERALS)) chars.add(surname(id));
-  for (const c of '王李张刘陈杨赵黄周吴徐孙胡朱高林何郭马罗梁宋郑谢韩唐冯于董程曹袁邓许傅沈彭吕苏卢蒋蔡贾丁魏薛阎潘杜夏钟田任姜范方石姚廖邹金陆郝孔崔毛秦史顾侯孟段雷尹文庞臧鲍满桓羊蒯阚虞骆甘凌全步') chars.add(c);
-  for (const c of ['诸葛', '司马', '夏侯', '公孙']) chars.add(c);
-  app.atlas = await bannerAtlas(app.game, [...chars]);
-  app.dot = await dotTexture(app.game);
-  app.sound = await createSound(app.game.scope, { sound: app.settings.sound, music: app.settings.music });
+  const plates = h('div#plates');
+  $('#stageHost').replaceChildren(canvas, plates);
   app.demoState = createGame({ seed: 184, faction: 'caocao', branch: 'free' });
   app.canvas = canvas;
-  app.map = await createMapView({
-    game: app.game,
+  app.tapNode = tapNode;
+  app.tapArmy = tapArmy;
+  app.map = await createRealmView({
     canvas,
-    back: app.back,
-    width: app.stageSize.width,
-    height: app.stageSize.height,
-    atlas: app.atlas,
+    plates,
     getState: () => app.state ?? app.demoState,
+    plateFor: createPlates(app),
+    quality: params.get('quality') ?? (app.settings.quality && app.settings.quality !== 'auto' ? app.settings.quality : undefined),
+    tick: (seconds) => tick(seconds),
+    onError: (cause) => console.error(cause),
     on: {
       tapNode,
-      tapArmy(id) {
-        if (app.screen !== 'play') return;
-        const a = app.state.armies[id];
-        if (app.mode?.kind === 'march' && a && a.faction !== app.state.player) return tapNode(a.link ? a.link.to : a.at);
-        app.sound.play('tap');
-        app.select({ army: id });
-      },
+      tapArmy,
+      tapGround: (hit) => app.battle?.tapGround?.(hit),
       hover(info) {
         app.hoverInfo = info;
         hoverChanged();
+      },
+      move(e) {
+        mouse = { x: e.clientX, y: e.clientY };
+        if (app.hoverInfo) app.hud.showTip(tipFor(app, app.hoverInfo), mouse.x, mouse.y);
       }
     }
   });
+  app.quality = app.map.app.quality;
+  app.sound = await createSound(app.map.app.scope, { sound: app.settings.sound, music: app.settings.music });
   app.hud = createHud(app);
   app.dialogs = createDialogs(app);
-  bindInput(canvas);
-  app.game.loop.start();
+  app.minimap = createMinimap(app, $('#hud'));
+  // Who holds what changes the minimap's colours; the plates and flags follow the state each frame.
+  const refreshLands = app.map.refreshLands;
+  app.map.refreshLands = () => {
+    refreshLands();
+    app.minimap.refresh();
+  };
+  bindKeys();
+  app.map.start();
+  // Hidden, the world stops drawing and time stands still; shown again, both go on.
+  // The engine's clock is paused too, so the first frame back does not count the time away (ENGINE-NOTES 7).
+  document.addEventListener('visibilitychange', () => {
+    const { engine } = app.map.app;
+    if (document.hidden) {
+      app.map.app.stop();
+      engine.clock.pause();
+    } else {
+      engine.clock.resume();
+      app.map.app.start();
+    }
+  });
+}
+
+function tapArmy(id) {
+  if (app.battle) return app.battle.tapArmy?.(id);
+  if (app.screen !== 'play') return;
+  const a = app.state.armies[id];
+  if (app.mode?.kind === 'march' && a && a.faction !== app.state.player) return tapNode(a.link ? a.link.to : a.at);
+  app.sound.play('tap');
+  app.select({ army: id });
 }
 
 // ——— Taps on the map ———
 function tapNode(id) {
+  if (app.battle) return app.battle.tapNode?.(id);
   // On the setup screen a tap on a place picks the power that holds it.
   if (app.screen === 'setup') {
     const owner = app.demoState.nodes[id].owner;
@@ -279,59 +286,8 @@ function hoverChanged() {
   }
 }
 
-// ——— Input: dragging, the wheel, two fingers, keys ———
-function bindInput(canvas) {
-  const pointers = new Map();
-  let pinch = null;
-  const view = () => (app.battle ? app.battle : app.map);
-  const unitsPerPx = () => app.stageSize.width / canvas.getBoundingClientRect().width;
-  canvas.addEventListener('pointerdown', (e) => {
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, moved: false });
-    if (pointers.size === 2) {
-      const [a, b] = [...pointers.values()];
-      pinch = Math.hypot(a.x - b.x, a.y - b.y);
-    }
-  });
-  canvas.addEventListener('pointermove', (e) => {
-    mouse = { x: e.clientX, y: e.clientY };
-    const p = pointers.get(e.pointerId);
-    if (!p) {
-      if (app.hoverInfo) app.hud.showTip(tipFor(app, app.hoverInfo), mouse.x, mouse.y);
-      return;
-    }
-    const dx = e.clientX - p.x,
-      dy = e.clientY - p.y;
-    if (pointers.size === 2 && pinch) {
-      p.x = e.clientX;
-      p.y = e.clientY;
-      const [a, b] = [...pointers.values()];
-      const d = Math.hypot(a.x - b.x, a.y - b.y);
-      view()?.zoomBy(d / pinch);
-      pinch = d;
-      return;
-    }
-    if (!p.moved && Math.hypot(dx, dy) < 6) return;
-    p.moved = true;
-    p.x = e.clientX;
-    p.y = e.clientY;
-    const k = unitsPerPx();
-    view()?.panBy(-dx * k, -dy * k);
-  });
-  const up = (e) => {
-    pointers.delete(e.pointerId);
-    if (pointers.size < 2) pinch = null;
-  };
-  canvas.addEventListener('pointerup', up);
-  canvas.addEventListener('pointercancel', up);
-  canvas.addEventListener('pointerleave', () => app.hud.showTip(null));
-  canvas.addEventListener(
-    'wheel',
-    (e) => {
-      e.preventDefault();
-      view()?.zoomBy(e.deltaY > 0 ? 1 / 1.15 : 1.15);
-    },
-    { passive: false }
-  );
+// ——— Keys (dragging, the wheel and two fingers belong to the realm view) ———
+function bindKeys() {
   window.addEventListener(
     'keydown',
     (e) => {
@@ -350,12 +306,12 @@ function bindInput(canvas) {
       if (app.dialogOpen) return;
       const pan = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1], KeyA: [-1, 0], KeyD: [1, 0], KeyW: [0, -1], KeyS: [0, 1] }[e.code];
       if (pan) {
-        view()?.panBy(pan[0] * 120, pan[1] * 120);
+        app.map.panBy(pan[0] * 140, pan[1] * 140);
         e.preventDefault();
         return;
       }
-      if (e.key === '+' || e.key === '=') return view()?.zoomBy(1.2);
-      if (e.key === '-' || e.key === '_') return view()?.zoomBy(1 / 1.2);
+      if (e.key === '+' || e.key === '=') return app.map.zoomBy(1.25);
+      if (e.key === '-' || e.key === '_') return app.map.zoomBy(1 / 1.25);
       if (app.screen !== 'play') return;
       if (e.code === 'Space' && !(e.target instanceof HTMLButtonElement)) {
         e.preventDefault();
@@ -370,6 +326,7 @@ function bindInput(canvas) {
 let acc = 0,
   sinceHud = 0;
 function tick(dt) {
+  app.frames = (app.frames ?? 0) + 1;
   if (app.battle) {
     app.battle.update(dt);
     return;
@@ -386,11 +343,12 @@ function tick(dt) {
       }
     }
   } else acc = Math.min(acc, 0.99);
-  if (app.map) app.map.update(dt, app.paused || app.dialogOpen ? 0 : acc);
+  if (app.map) app.map.setDayShare(app.paused || app.dialogOpen ? 0 : acc);
   sinceHud += dt;
-  if (sinceHud > 0.2 && app.screen === 'play') {
+  if (sinceHud > 0.2 && (app.screen === 'play' || app.screen === 'battle')) {
     sinceHud = 0;
-    app.hud.refresh();
+    if (app.screen === 'play') app.hud.refresh();
+    app.minimap?.draw();
   }
 }
 
@@ -689,6 +647,7 @@ function newGame(pick) {
 }
 function play(state) {
   wake();
+  app.map.setDrift(null);
   registerCustom(state);
   app.state = state;
   app.tales = [];
@@ -702,7 +661,7 @@ function play(state) {
   app.select(null);
   app.mode = null;
   app.map.refreshLands(true);
-  app.map.focus(state.factions[state.player].capital, app.stageSize.width < app.stageSize.height ? 1.25 : 0.85);
+  app.map.jumpTo(state.factions[state.player].capital, app.stageSize.width < app.stageSize.height ? 48 : 52);
   app.paused = false;
   app.hud.refresh(true);
   app.sound.theme('realm');
@@ -718,21 +677,14 @@ function toTitle() {
   app.select(null);
   app.map.setVisible(true);
   app.map.refreshLands(true);
-  app.map.overview(Math.max(0.42, app.stageSize.height / 2600));
+  app.map.jumpTo('luoyang', 95);
+  // The view drifts slowly over the land, unless motion is to be kept down.
+  app.map.setDrift(app.calm() ? null : { speed: 2.2, from: NODES.luoyang.x - 160, to: NODES.luoyang.x + 260 });
   showTitle(app);
   app.sound.theme('realm');
-  // The title is a still picture: once the map has settled the engine stops drawing, and starts again with the game.
-  clearTimeout(app.resting);
-  app.resting = setTimeout(() => {
-    if (app.screen !== 'title') return;
-    app.game.loop.stop();
-  }, 1200);
 }
-/** Make sure the engine draws (after the still title). */
-function wake() {
-  clearTimeout(app.resting);
-  if (app.game && app.game.loop.state !== 'running') app.game.loop.start();
-}
+/** Kept for callers from before the realm was 3D: the 3D view always draws. */
+function wake() {}
 
 await boot();
 document.title = t('title') + (getLanguage() === 'zh' ? ' · Nine Provinces Ablaze' : ' · 九州烽烟');
@@ -769,6 +721,13 @@ window.egretGame = {
   nodeAt(id) {
     const n = NODES[id];
     return app.map.pagePoint(n.x, n.y);
+  },
+  /** Bring a place into the middle of the view at once (for tests and the console). */
+  look(id, d = 70) {
+    app.map.jumpTo(id, d);
+  },
+  get frames() {
+    return app.frames ?? 0;
   },
   get battle() {
     return app.battle;
