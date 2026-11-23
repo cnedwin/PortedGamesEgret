@@ -1,0 +1,8 @@
+[
+ {"name":"idle","file":"140_06-idle.glb","from":536,"to":666,"loop":true},
+ {"name":"walk","file":"02_01-walk.glb","from":60,"to":124,"loop":true},
+ {"name":"run","file":"16_35-run-jog.glb","from":18,"to":66,"loop":true},
+ {"name":"back","file":"111_01-walk-backwards.glb","from":52,"to":130,"loop":true},
+ {"name":"sideA","file":"113_18-walk-sideways.glb","from":252,"to":328,"loop":true},
+ {"name":"sideB","file":"113_18-walk-sideways.glb","from":252,"to":328,"loop":true,"mirror":true}
+]
