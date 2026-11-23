@@ -37,6 +37,18 @@ export function swingPhase(action, weapon, attackHeld) {
   return 3 + smooth((recovery - follow) / (1 - follow));
 }
 
+/** Body-space lateral transfer, fore/aft transfer and knee compression for the long axe. */
+export function heavyFootwork(phase, line) {
+  if (phase <= 0 || phase >= 4) return [0, 0, 0];
+  const side = line === 'L' || line === 'T' ? -1 : 1;
+  const overhead = line === 'O';
+  const keys = [[0, 0, 0], [-0.09, -0.05, 0.034], [0.1, 0.1, overhead ? 0.092 : 0.064],
+    [0.068, 0.078, overhead ? 0.074 : 0.046], [0, 0, 0]];
+  const from = Math.floor(phase);
+  const [across, forward, dip] = lerp3(keys[from], keys[from + 1], smooth(phase - from));
+  return [across * side, forward, dip];
+}
+
 /** Follow a great circle so a near half-turn never collapses or flips at its midpoint. */
 export function interpolateDirection(from, to, t) {
   const a = unit(from), b = unit(to);

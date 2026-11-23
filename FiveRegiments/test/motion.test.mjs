@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { test } from 'node:test';
-import { createMotion, impactWeight, interpolateDirection, swingPhase } from '../src/view/motion.mjs';
+import { createMotion, heavyFootwork, impactWeight, interpolateDirection, swingPhase } from '../src/view/motion.mjs';
 import { ORDER } from '../src/sim/regiments.mjs';
 
 const at = (p) => new URL('../' + p, import.meta.url);
@@ -77,4 +77,15 @@ test('a visual impact builds quickly, then settles instead of oscillating', () =
   assert.ok(impactWeight(0.055, 1) > impactWeight(0.055, 0));
   assert.ok(impactWeight(0.1, 0) > impactWeight(0.2, 0));
   assert.equal(impactWeight(0.4, 0), 0);
+});
+
+test('long-axe footwork transfers weight across the stance and settles after contact', () => {
+  assert.deepEqual(heavyFootwork(0, 'R'), [0, 0, 0]);
+  assert.deepEqual(heavyFootwork(4, 'R'), [0, 0, 0]);
+  const load = heavyFootwork(1, 'R'), contact = heavyFootwork(2, 'R'), opposite = heavyFootwork(2, 'L');
+  assert.ok(load[0] < 0 && load[1] < 0, 'gather over the rear foot');
+  assert.ok(contact[0] > 0 && contact[1] > 0 && contact[2] > load[2], 'transfer and settle at contact');
+  assert.ok(heavyFootwork(2, 'O')[2] > contact[2], 'overhead puts more weight through the knees');
+  assert.equal(contact[0], -opposite[0]);
+  assert.deepEqual(contact.slice(1), opposite.slice(1));
 });

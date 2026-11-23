@@ -51,7 +51,6 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     pitch: 0.12,
     line: 'R',
     lineAt: 0,
-    swiped: false,
     attack: false,
     guard: false,
     once: { kick: false, step: false, swap: false, skill0: false, skill1: false, art: false, offArt: false, mount: false, call: false, heal: false },
@@ -66,7 +65,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     autorun: false,
     classicIndex: 0,
     moved: [0, 0],
-    touch: { move: [0, 0], attack: false, guard: false },
+    touch: { move: [0, 0], attack: false, guard: false, tapAttack: false, tapGuard: false, strikeLine: null },
     pad: null,
     pointerLocked: false,
     lastDevice: 'keys'
@@ -94,9 +93,16 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const cap = 120;
     look(Math.max(-cap, Math.min(cap, e.movementX)), Math.max(-cap, Math.min(cap, e.movementY)));
   };
+  function tryPointerLock() {
+    if (!state.wantLock || !document.hasFocus() || document.pointerLockElement === canvas
+      || navigator.userActivation?.isActive === false) return;
+    // An async scene load or a browser focus change can invalidate the request.
+    // Leave the click-to-fight hint visible so the player can try again.
+    canvas.requestPointerLock?.()?.catch?.(() => {});
+  }
   const onDown = (e) => {
     if (!state.pointerLocked) {
-      if (state.wantLock) canvas.requestPointerLock?.();
+      tryPointerLock();
       return;
     }
     state.lastDevice = 'mouse';
@@ -122,6 +128,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   }
   const onLockChange = () => {
     state.pointerLocked = document.pointerLockElement === canvas;
+    if (state.pointerLocked && !state.wantLock) document.exitPointerLock();
     if (!state.pointerLocked) {
       clearMouse();
       if (state.wantLock) onPause('unlocked');
@@ -253,13 +260,13 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const fwd = [Math.sin(fy), Math.cos(fy)],
       right = [-Math.cos(fy), Math.sin(fy)];
     const move = [right[0] * mx - fwd[0] * my, right[1] * mx - fwd[1] * my];
-    let attack = state.attack || pressedAttackLine !== null || !!pad?.attack || state.touch.attack || !!state.padLine;
+    let attack = state.attack || pressedAttackLine !== null || !!pad?.attack || state.touch.attack || state.touch.tapAttack || !!state.padLine;
     // Continuous attack (B): a held button strikes again as each blow ends, instead of winding up a heavy one.
     if (state.combo && attack && !bow) {
       state.comboBeat = (state.comboBeat + dt) % 0.2;
       attack = state.comboBeat < 0.1;
     } else state.comboBeat = 0;
-    const guard = state.guard || pressedGuardLine !== null || !!pad?.guard || state.touch.guard;
+    const guard = state.guard || pressedGuardLine !== null || !!pad?.guard || state.touch.guard || state.touch.tapGuard;
     const classic = settings.control === 'classic' || state.lastDevice === 'touch';
     let line = state.line;
     // Retain a mouse tap and its line when down/up arrive between two simulation ticks.
@@ -269,12 +276,11 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     if (state.padLine) line = state.padLine;
     else if (classic && attack && !state.attackWas) {
       // A swipe on the touch strike button names the line; otherwise the lines come in turn.
-      if (state.swiped) line = state.line;
+      if (state.touch.tapAttack && state.touch.strikeLine) line = state.line = state.touch.strikeLine;
       else {
         line = LINE_ORDER[state.classicIndex++ % 4];
         state.line = line;
       }
-      state.swiped = false;
     }
     if (!classic && settings.assist && threat && guard) line = threat;
     state.attackWas = attack;
@@ -300,6 +306,8 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     // Presses last one tick; the fight sees them as pressed on that tick only.
     for (const k of Object.keys(state.once)) state.once[k] = false;
     state.arm = null;
+    state.touch.tapAttack = state.touch.tapGuard = false;
+    state.touch.strikeLine = null;
     pressedAttackLine = pressedGuardLine = null;
     return input;
   }
@@ -310,7 +318,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     /** Hold the mouse inside the page (on a click) while fighting. */
     capture(on) {
       state.wantLock = on;
-      if (on) canvas.requestPointerLock?.();
+      if (on) tryPointerLock();
       else if (document.pointerLockElement === canvas) document.exitPointerLock?.();
     },
     setYaw(y) {

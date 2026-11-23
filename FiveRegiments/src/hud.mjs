@@ -301,6 +301,9 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
   pause.type = 'button';
   pause.setAttribute('aria-label', t('paused'));
   const st = input.state;
+  const release = (target, id) => {
+    if (id !== null && target.hasPointerCapture(id)) target.releasePointerCapture(id);
+  };
   // Keep a finger's moves on the control it pressed; a pointer the browser no longer counts as down cannot be held.
   const capture = (target, e) => {
     try {
@@ -313,8 +316,24 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     stickAt = [0, 0],
     lookId = null,
     lookAt = [0, 0],
-    swipe = null;
+    attackId = null,
+    guardId = null,
+    attackAt = [0, 0],
+    strikeLine = null;
+  function resetStick() {
+    const id = stickId;
+    stickId = null;
+    st.touch.move = [0, 0];
+    stick.querySelector('i').style.transform = '';
+    release(stick, id);
+  }
+  function resetLook() {
+    const id = lookId;
+    lookId = null;
+    release(look, id);
+  }
   stick.addEventListener('pointerdown', (e) => {
+    if (stickId !== null) return;
     stickId = e.pointerId;
     stickAt = [e.clientX, e.clientY];
     capture(stick, e);
@@ -330,16 +349,17 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
   });
   const endStick = (e) => {
     if (e.pointerId !== stickId) return;
-    stickId = null;
-    st.touch.move = [0, 0];
-    stick.querySelector('i').style.transform = '';
+    resetStick();
   };
   stick.addEventListener('pointerup', endStick);
   stick.addEventListener('pointercancel', endStick);
+  stick.addEventListener('lostpointercapture', endStick);
   look.addEventListener('pointerdown', (e) => {
+    if (lookId !== null) return;
     lookId = e.pointerId;
     lookAt = [e.clientX, e.clientY];
     capture(look, e);
+    st.lastDevice = 'touch';
   });
   look.addEventListener('pointermove', (e) => {
     if (e.pointerId !== lookId) return;
@@ -347,50 +367,76 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     st.pitch = Math.max(-0.35, Math.min(0.75, st.pitch + (e.clientY - lookAt[1]) * 0.004));
     lookAt = [e.clientX, e.clientY];
   });
-  look.addEventListener('pointerup', () => (lookId = null));
+  const endLook = (e) => {
+    if (e.pointerId === lookId) resetLook();
+  };
+  look.addEventListener('pointerup', endLook);
+  look.addEventListener('pointercancel', endLook);
+  look.addEventListener('lostpointercapture', endLook);
   // Strike: a swipe on the button sets the line and the lift strikes; a press held still is a held blow (a heavy
   // cut, or the draw of the bow) let go on the lift.
   let holdTimer = 0,
     holding = false;
+  function resetAttack() {
+    const id = attackId;
+    attackId = null;
+    strikeLine = null;
+    clearTimeout(holdTimer);
+    holding = st.touch.attack = false;
+    release(attack, id);
+  }
   attack.addEventListener('pointerdown', (e) => {
-    swipe = [e.clientX, e.clientY];
+    if (attackId !== null) return;
+    attackId = e.pointerId;
+    attackAt = [e.clientX, e.clientY];
     capture(attack, e);
     st.lastDevice = 'touch';
-    holding = false;
-    clearTimeout(holdTimer);
     holdTimer = setTimeout(() => {
-      if (!swipe) return;
       holding = true;
       st.touch.attack = true;
     }, 200);
   });
   attack.addEventListener('pointermove', (e) => {
-    if (!swipe || holding) return;
-    const dx = e.clientX - swipe[0],
-      dy = e.clientY - swipe[1];
+    if (e.pointerId !== attackId || holding) return;
+    const dx = e.clientX - attackAt[0],
+      dy = e.clientY - attackAt[1];
     if (Math.hypot(dx, dy) > 22) {
       clearTimeout(holdTimer);
-      st.line = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : dy < 0 ? 'O' : 'T';
-      st.swiped = true;
+      strikeLine = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : dy < 0 ? 'O' : 'T';
     }
   });
-  const lift = () => {
-    if (!swipe) return;
-    swipe = null;
-    clearTimeout(holdTimer);
-    if (holding) {
-      holding = false;
-      st.touch.attack = false;
-      return;
+  const endAttack = (e) => {
+    if (e.pointerId !== attackId) return;
+    if (e.type === 'pointerup' && !holding) {
+      st.touch.tapAttack = true;
+      st.touch.strikeLine = strikeLine;
     }
-    st.touch.attack = true;
-    setTimeout(() => (st.touch.attack = false), 60);
+    resetAttack();
   };
-  attack.addEventListener('pointerup', lift);
-  attack.addEventListener('pointercancel', lift);
-  guard.addEventListener('pointerdown', () => (st.touch.guard = true));
-  guard.addEventListener('pointerup', () => (st.touch.guard = false));
-  guard.addEventListener('pointercancel', () => (st.touch.guard = false));
+  attack.addEventListener('pointerup', endAttack);
+  attack.addEventListener('pointercancel', endAttack);
+  attack.addEventListener('lostpointercapture', endAttack);
+  function resetGuard() {
+    const id = guardId;
+    guardId = null;
+    st.touch.guard = false;
+    release(guard, id);
+  }
+  const endGuard = (e) => {
+    if (e.pointerId !== guardId) return;
+    if (e.type !== 'pointerup') st.touch.tapGuard = false;
+    resetGuard();
+  };
+  guard.addEventListener('pointerdown', (e) => {
+    if (guardId !== null) return;
+    guardId = e.pointerId;
+    capture(guard, e);
+    st.lastDevice = 'touch';
+    st.touch.guard = st.touch.tapGuard = true;
+  });
+  guard.addEventListener('pointerup', endGuard);
+  guard.addEventListener('pointercancel', endGuard);
+  guard.addEventListener('lostpointercapture', endGuard);
   kick.addEventListener('pointerdown', () => (st.once.kick = true));
   step.addEventListener('pointerdown', () => (st.once.step = true));
   s0.addEventListener('pointerdown', () => (st.once.skill0 = true));
@@ -403,6 +449,14 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
   pause.addEventListener('click', () => onPause('touch'));
   return {
     show(on, hero) {
+      if (!on) {
+        resetStick();
+        resetLook();
+        resetAttack();
+        resetGuard();
+        st.touch.tapAttack = st.touch.tapGuard = false;
+        st.touch.strikeLine = null;
+      }
       pad.hidden = !on;
       // The keyboard's key row gives way to the buttons on a touch screen.
       root.classList.toggle('touching', on);
