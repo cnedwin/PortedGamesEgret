@@ -1,0 +1,45 @@
+---
+id: label-wrap
+title: Wrapping a label to a width by hand
+applies: [engine, web]
+triggers: [createLabel, wrap, "word wrap", "line break", maxWidth, "long text", "help text", "text overflows", "换行", "自动换行", "长文字", "文字溢出", "说明文字"]
+local: [wrap, lineHeight]
+evidence:
+  - { repo: cnedwin/PortedGamesEgret, path: SandScroll/src/screens.mjs, line: 25, commit: b218a4b0746d0108e7a0b0cd5aa8a639d7d1bd4b, pin: 450bb9eb62fec9d3032b35766817844adc6eba33 }
+  - { repo: cnedwin/PortedGamesEgret, path: SandScroll/ENGINE-NOTES.md, line: 43, commit: b218a4b0746d0108e7a0b0cd5aa8a639d7d1bd4b, pin: 450bb9eb62fec9d3032b35766817844adc6eba33 }
+engine: 450bb9eb62fec9d3032b35766817844adc6eba33
+---
+
+# Wrapping a label to a width by hand
+
+`game.createLabel` breaks lines only at `\n` and has no width option; `@egret/engine/paragraph` wraps properly but needs its own font resources and provider. For a few lines of help or a hint, insert the breaks yourself and give the label a `lineHeight`.
+
+```js
+function wrap(text, width, size, chinese) {
+  const lines = [];
+  let line = '';
+  if (chinese) {
+    const per = Math.max(4, Math.floor(width / size));          // CJK: about one em a character
+    for (const ch of text) {
+      if (line.length >= per && !'，。、；：！？）」'.includes(ch)) { lines.push(line); line = ''; }
+      line += ch;                                                // closing marks never start a line
+    }
+  } else {
+    const per = Math.max(8, Math.floor(width / (size * 0.52))); // Latin: about half an em a letter
+    for (const word of text.split(' '))
+      if (line && (line + ' ' + word).length > per) { lines.push(line); line = word; }
+      else line = line ? line + ' ' + word : word;
+  }
+  if (line) lines.push(line);
+  return lines.join('\n');
+}
+await game.createLabel({ text: wrap(help, 400, 15, zh), fontSize: 15, lineHeight: 23 });
+```
+
+Rules:
+
+- Wrap again whenever the language or the layout width changes; the estimate is per font size.
+- Count the lines (`text.split('\n').length * lineHeight`) to place what comes below, so buttons never cover the text.
+- Leave a little room: the estimate is not a measurement. The quality check I3 (no English cut off at 390 px) catches misses.
+
+Learnt from Sand Scroll (ENGINE-NOTES 6).

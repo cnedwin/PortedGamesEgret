@@ -37,6 +37,8 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | [play-shape-nodes](render/play-shape-nodes.txt) | PeachCreek | ENGINE-NOTES 5（`game.rect` 和 `game.circle` 以中心定位、颜色画死，会变的形状用 sprite 重画 graphics）；提交 `3c3a780` | 草稿，未提交引擎；在引擎 `b5628eb` 的临时副本里过了 `tests/guide.test.mjs`，中英文检索都能找到 · draft, not sent; passed the engine's guide tests in a scratch copy and is found by English and Chinese questions |
 | [label-pages](render/label-pages.txt) | NineProvinces | ENGINE-NOTES 1、3（每个文字标签一页、一帧最多 64 页；`textureFromCanvas` 没有 `scope`，开局做一张共用的字符图集）；提交 `de9e10b` | 草稿，未提交引擎；在引擎 `9d801be` 的临时副本里过了 `tests/guide.test.mjs`（索引放在 Performance 一节末尾，索引已贴着 1500 token 的上限），中英文检索都能找到 · draft, not sent; passed the engine's guide tests in a scratch copy (indexed at the end of Performance, the index being at its budget) and is found by English and Chinese questions |
 | [camera-page-layer](render/camera-page-layer.txt) | NineProvinces | ENGINE-NOTES 2、4（网页画布上的地图跟着 2D 相机：保留画布、`screenToWorld` 换算、远景半尺寸底图；缩放越界会抛错，要自己夹住）；提交 `de9e10b` | 同上 · the same |
+| [pixel-strips](render/pixel-strips.txt) | SandScroll | ENGINE-NOTES 3、4（2D 贴图不能局部更新，沙盘切成条只重传变了的；换上新租约后再放旧的，仍挂着的贴图被放掉会让下一帧报 `ASSET_LEASE_RELEASED`）；提交 `b218a4b` | 草稿，未提交引擎 · draft, not sent |
+| [label-wrap](render/label-wrap.txt) | SandScroll | ENGINE-NOTES 6（`createLabel` 没有宽度选项，按字号估算插入换行）；提交 `b218a4b` | 同上 · the same |
 
 ## 给已有卡片加证据 · Evidence for existing cards
 
@@ -71,6 +73,10 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | synthesized-audio | NineProvinces | `NineProvinces/src/audio/sound.mjs:53`：拨弦用 Karplus–Strong 算出，两段配乐在循环处回绕混音做到无缝，`playMusic` 在天下与战场之间交叉淡入淡出 · plucked strings by Karplus–Strong, themes mixed round their loop point, `playMusic` crossfading | 草稿，未提交引擎 · draft, not sent |
 | balance-from-runs | NineProvinces | `NineProvinces/tools/balance.mjs`：三十四路诸侯全由电脑执掌，从 184 年推到 280 年，每十年记势力数和最大的三家 · all thirty-four lords run by the computer for a century, a line every ten years | 草稿，未提交引擎 · draft, not sent |
 | sim-view-split | NineProvinces | `NineProvinces/test/rules.test.mjs:70`：同种子两局不同，查出战场缓存的邻格列表被排序改动（`src/sim/battle.mjs:469`） · a same-seed test caught a cached neighbour list sorted in place | 草稿，未提交引擎 · draft, not sent |
+| still-background（本仓库草稿 · a draft here） | SandScroll | `SandScroll/src/main.mjs:82`、ENGINE-NOTES 7：`createBrowserGame` 的透明画布下垫页面画布，框、碟子、手卷只在变化时画；全屏贴图反而更慢（p95 33.4 → 66.7 ms） · a page canvas under `createBrowserGame`; one full-screen texture was slower | 草稿 · draft |
+| frame-loop-backpressure | SandScroll | `SandScroll/src/view/play.mjs:420`、ENGINE-NOTES 2：给粒子 `burst` 传小数抛 `PARTICLE_OPTIONS_INVALID`，帧循环随之停下 · a fractional `burst` throws and the loop stops | 草稿 · draft |
+| balance-from-runs | SandScroll | `SandScroll/tools/balance.mjs`：往前看一步的机器人在沙盘副本上试每个放法；规则测试另有"平铺横带能画成""同一处必输"两种对照 · a one-move-ahead robot, with two control strategies in the rules test | 草稿 · draft |
+| synthesized-audio | SandScroll | `SandScroll/src/audio/sound.mjs:43`：Karplus–Strong 拨弦按五声音阶升调表示连消，沙声是滤过的噪声加颗粒 · plucked strings climbing the pentatonic scale for chains, sand as filtered noise with grains | 草稿 · draft |
 
 ## 每个游戏 · By game
 
@@ -88,6 +94,7 @@ then run `node --test tests/guide.test.mjs` and `node tools/egret-guide.mjs "<qu
 | TaiwanMahjong | 6（2 张新卡，4 条证据） | 都是草稿，还没提交引擎 · all drafts, not yet sent to the engine |
 | PeachCreek | 4（1 张新卡，3 条证据） | 都是草稿，还没提交引擎；ENGINE-NOTES 6（`burst` 用世界坐标）并进了 play-resolution 的证据 · all drafts; item 6 went in as evidence for play-resolution |
 | NineProvinces | 6（2 张新卡，4 条证据） | 都是草稿，还没提交引擎；两张新卡一起加进引擎索引时要压缩索引里的说明（单独检查时放在 Performance 一节末尾） · all drafts, not yet sent; added together they need the index lines kept short |
+| SandScroll | 6（2 张新卡，4 条证据） | 都是草稿，还没提交引擎；两张卡放进引擎 `guide/cards/render/` 后 `tests/guide.test.mjs` 只剩索引超出 token 上限（1507）一项，提交时要压缩索引行 · drafts; in the engine's guide only the index's token budget failed (1,507), so its lines need shortening when sent |
 | FPS、jelly-pandas、Wulin、LanternShadows、LoveElective | 0 | 没有 ENGINE-NOTES 内容，也没有新的引擎相关修复提交；它们的经验已被引擎现有卡片引用（FPS 14 张、jelly-pandas 12 张、Wulin 5 张、LanternShadows 4 张、LoveElective 1 张） · no notes and no new engine-related fixes; already cited by the engine's cards |
 | still-background（本仓库草稿 · a draft here） | NightWardens | `NightWardens/src/screens.mjs:55`、ENGINE-NOTES 2：路面是一张图，放在画布下面单独的 `#road` 上（画在 WebGL 画布元素自己的 CSS 背景图在无头 Chromium 里不显示），最忙时 p50 从 66.6 ms 降到 33.3 ms · the road picture on its own `#road` under the canvas (a background picture on the WebGL canvas element itself was not drawn), the busiest frame from p50 66.6 to 33.3 ms | 草稿 · draft |
 | sprite-swarm（本仓库草稿 · a draft here） | NightWardens | `NightWardens/src/view/field.mjs:383`：同一图集的位图对象池，十几个邪祟加二十支符箭在 SwiftShader 下 p50 16.7 ms；每个邪祟多一张影子位图时是 33.3 ms，位图的个数就是代价 · pooled Bitmaps of one atlas at p50 16.7 ms with a dozen haunts and twenty bolts; a shadow bitmap per haunt made it 33.3 ms | 草稿 · draft |
