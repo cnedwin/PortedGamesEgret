@@ -108,6 +108,7 @@ export const SOUNDS = {
   land: () => noise(0.55, (t) => Math.min(1, t * 200) * Math.exp(-t * 7), { smooth: 0.55, gain: 0.45, grains: 0.012, seed: 11 }),
   shine: () => mix(1.6, [[pluck(C5, 1.6, { gain: 0.45, seed: 21 })], [pluck(C5 * 2, 1.2, { gain: 0.12, seed: 22 }), 0.01]]),
   clear: () => mix(0.9, [[noise(0.9, (t, s) => Math.min(1, t * 8) * Math.exp(-t * 4), { smooth: 0.75, gain: 0.45, grains: 0.02, seed: 13 })], [tone(90, 0.4, { decay: 10, gain: 0.35 })]]),
+  boom: () => mix(1.2, [[noise(0.12, (t) => Math.exp(-t * 30), { smooth: 0.1, gain: 0.7, seed: 51 })], [tone(62, 0.6, { decay: 7, partials: [[1, 1], [1.5, 0.4]], gain: 0.55 })], [noise(1.1, (t) => Math.exp(-t * 3) * 0.6, { smooth: 0.4, gain: 0.35, grains: 0.03, seed: 52 }), 0.08]]),
   warn: () => mix(0.5, [[tone(98, 0.45, { decay: 9, partials: [[1, 1], [1.5, 0.3]], gain: 0.5 })], [noise(0.12, (t) => Math.exp(-t * 40), { smooth: 0.8, gain: 0.3 })]]),
   won: () => mix(2.6, [0, 2, 4, 7, 9, 12].map((s, k) => [pluck(scale(s), 2, { gain: 0.4, seed: 30 + k }), k * 0.14])),
   lost: () => mix(1.8, [[pluck(scale(-5), 1.6, { gain: 0.45, seed: 41 })], [pluck(scale(-8), 1.6, { gain: 0.45, seed: 42 }), 0.35]])

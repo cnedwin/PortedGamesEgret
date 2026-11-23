@@ -39,10 +39,33 @@ export const SHAPES = Object.freeze({
   B: [[0, 0], [1, 0], [2, 0]]
 });
 
-/** The scrolls. Each names its pigments, the grains it takes to finish, and its painting. */
+const ALL_SHAPES = Object.freeze(['I', 'O', 'T', 'L', 'J', 'S', 'Z', 'V', 'B']);
+
+/**
+ * The scrolls. Each names its painting, its pigments and the grains it takes to finish. The endless tray starts with
+ * three pigments, takes in another at each `unlock` score, and rolls on from one painting to the next.
+ */
 export const LEVELS = Object.freeze([
-  Object.freeze({ id: 'spring', pigments: [1, 2, 5], target: 48000, shapes: ['I', 'O', 'T', 'L', 'J', 'S', 'Z', 'V', 'B'] })
+  Object.freeze({ id: 'spring', painting: 'spring', pigments: [1, 2, 5], target: 48000, shapes: ALL_SHAPES }),
+  Object.freeze({ id: 'autumn', painting: 'autumn', pigments: [1, 2, 5, 3], target: 60000, shapes: ALL_SHAPES }),
+  Object.freeze({ id: 'snow', painting: 'snow', pigments: [1, 2, 6, 3], target: 72000, shapes: ALL_SHAPES }),
+  Object.freeze({
+    id: 'endless',
+    endless: true,
+    paintings: ['spring', 'autumn', 'snow'],
+    pigments: [1, 2, 5],
+    unlock: [
+      [30000, 3],
+      [90000, 4]
+    ],
+    target: 48000,
+    shapes: ALL_SHAPES
+  })
 ]);
+export const ENDLESS = LEVELS.findIndex((level) => level.endless);
+
+/** Firecrackers: one at the start, one more for every `every` points, three at most; each clears a circle of sand. */
+export const CRACKER = Object.freeze({ start: 1, every: 20000, most: 3, radius: 34 });
 
 // Timing: the sand moves in fixed ticks, whatever the frame rate.
 export const TICK = 1 / 240;
@@ -53,8 +76,12 @@ export const FLASH = 0.6; // seconds a clearing run shines before it goes
 const CHAIN_WINDOW = 2.5; // seconds after one clear in which the next counts as a chain
 export const DANGER_GRACE = 2.5; // seconds of sand over the line before the round is lost
 const CHECK_EVERY = 6; // ticks between looks for a run from wall to wall
-const LAND_ENERGY = 10; // sideways slides a grain of a breaking piece has
-const FALL_ENERGY = 4; // the least a grain has after falling straight down a row
+/**
+ * How sand flows. A grain of a breaking piece has `land` sideways slides; each row it falls straight down gives it
+ * `gain` more, up to `cap`, and at least `fall`: sand poured from high runs further, as it does on a real heap. The
+ * balance tools change these to try other sands.
+ */
+export const FLOW = { land: 26, fall: 4, gain: 0, cap: 26 };
 
 /** A seeded random number generator (mulberry32): the same seed gives the same numbers. */
 export function createRandom(seed) {
@@ -84,7 +111,7 @@ export function turnBlocks(blocks, turns = 1) {
 function makePiece(game) {
   const { level, rng } = game;
   const shape = level.shapes[Math.floor(rng() * level.shapes.length)];
-  const pigment = level.pigments[Math.floor(rng() * level.pigments.length)];
+  const pigment = game.pigments[Math.floor(rng() * game.pigments.length)];
   return { id: ++game.serial, shape, pigment, turns: 0, blocks: turnBlocks(SHAPES[shape], 0), toneSeed: Math.floor(rng() * 1e9) };
 }
 
@@ -125,6 +152,12 @@ export function createGame(seed, levelIndex = 0) {
     noise: (seed * 2654435761) >>> 0 || 7,
     level: LEVELS[levelIndex],
     levelIndex,
+    // The pigments pieces come in now (the endless tray adds more as the score grows), and the painting under way.
+    pigments: [...LEVELS[levelIndex].pigments],
+    painting: LEVELS[levelIndex].painting ?? LEVELS[levelIndex].paintings[0],
+    paintings: 0,
+    crackers: CRACKER.start,
+    nextCracker: CRACKER.every,
     serial: 0,
     color: new Uint8Array(cells),
     tone: new Uint8Array(cells),
@@ -237,7 +270,7 @@ function land(game) {
       const i = gy * cols + gx;
       game.color[i] = f.piece.pigment;
       game.tone[i] = tone[k];
-      game.energy[i] = LAND_ENERGY;
+      game.energy[i] = FLOW.land;
       game.grains++;
       wake(game, gy);
       mark(game, gy);
@@ -285,7 +318,7 @@ function settle(game) {
         left = energy[i];
       if (!color[below]) {
         to = below;
-        if (left < FALL_ENERGY) left = FALL_ENERGY;
+        left = Math.min(FLOW.cap, Math.max(FLOW.fall, left + FLOW.gain));
       } else if (left) {
         const l = x > 0 && !color[below - 1],
           r = x < cols - 1 && !color[below + 1];
@@ -382,6 +415,7 @@ function findRuns(game) {
     game.sinceClear = 0;
     const points = Math.round(run.size * (1 + 0.5 * (game.chain - 1)));
     game.score += points;
+    reward(game);
     game.events.push({ kind: 'shine', pigment: run.pigment, size: run.size, chain: game.chain, points, minY, maxY, cx: run.cx, cy: run.cy });
     mark(game, minY);
     mark(game, maxY);
@@ -414,8 +448,60 @@ function overLine(game) {
   return false;
 }
 
-/** The share of the painting done, from 0 to 1. */
-export const progress = (game) => Math.min(1, game.cleared / game.level.target);
+/** The share of the painting under way that is done, from 0 to 1. The endless tray starts each new painting at 0. */
+export const progress = (game) => Math.min(1, (game.cleared - game.paintings * game.level.target) / game.level.target);
+
+/** What the score has earned: firecrackers, and on the endless tray new pigments. */
+function reward(game) {
+  while (game.score >= game.nextCracker) {
+    game.nextCracker += CRACKER.every;
+    if (game.crackers < CRACKER.most) {
+      game.crackers++;
+      game.events.push({ kind: 'cracker', crackers: game.crackers });
+    }
+  }
+  for (const [score, pigment] of game.level.unlock ?? [])
+    if (game.score >= score && !game.pigments.includes(pigment)) {
+      game.pigments.push(pigment);
+      game.events.push({ kind: 'pigment', pigment });
+    }
+}
+
+/**
+ * Set off a firecracker at grain (x, y): every grain within the radius that is not shining is blown away, and the
+ * sand above falls in. Blown sand scores nothing and paints nothing. Returns the grains blown away, or -1 when there
+ * is no firecracker or the round is over.
+ */
+export function fireCracker(game, x, y) {
+  if (game.over || game.crackers <= 0) return -1;
+  const { cols, rows } = BOARD,
+    r = CRACKER.radius,
+    { color, frozen } = game;
+  let removed = 0;
+  for (let gy = Math.max(0, Math.floor(y - r)); gy <= Math.min(rows - 1, Math.ceil(y + r)); gy++)
+    for (let gx = Math.max(0, Math.floor(x - r)); gx <= Math.min(cols - 1, Math.ceil(x + r)); gx++) {
+      const i = gy * cols + gx;
+      if (!color[i] || frozen[i] || (gx - x) ** 2 + (gy - y) ** 2 > r * r) continue;
+      color[i] = 0;
+      removed++;
+      wake(game, gy);
+    }
+  game.crackers--;
+  game.grains -= removed;
+  mark(game, Math.max(0, Math.floor(y - r)));
+  mark(game, Math.min(rows - 1, Math.ceil(y + r)));
+  game.unsettled = true;
+  game.events.push({ kind: 'boom', x, y, removed });
+  return removed;
+}
+
+/** The row of the highest grain in column `x`, or the floor's row when it is empty. */
+export function surfaceAt(game, x) {
+  const { cols, rows } = BOARD;
+  let y = 0;
+  while (y < rows && !game.color[y * cols + x]) y++;
+  return y;
+}
 
 /** Move the round on by `seconds`. What happened is added to `game.events` for the view. */
 export function step(game, seconds) {
@@ -441,7 +527,18 @@ export function step(game, seconds) {
   // Sand over the line: a little while is forgiven, as a fresh piece settles; too long ends the round.
   if (overLine(game)) game.danger += seconds;
   else game.danger = Math.max(0, game.danger - seconds * 2);
-  if (!game.won && game.cleared >= game.level.target && !game.clearing.length) {
+  if (game.level.endless) {
+    // The endless tray: each finished painting is put away and the next begins.
+    while (game.cleared >= (game.paintings + 1) * game.level.target) {
+      game.paintings++;
+      game.painting = game.level.paintings[game.paintings % game.level.paintings.length];
+      game.events.push({ kind: 'painted', paintings: game.paintings, painting: game.painting });
+    }
+    if (game.danger >= DANGER_GRACE) {
+      game.over = true;
+      game.events.push({ kind: 'lost' });
+    }
+  } else if (!game.won && game.cleared >= game.level.target && !game.clearing.length) {
     game.won = game.over = true;
     game.events.push({ kind: 'won' });
   } else if (game.danger >= DANGER_GRACE) {

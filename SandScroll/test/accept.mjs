@@ -50,9 +50,13 @@ try {
   check(/Done/.test(names) && !/[\u3400-\u9fff]/.test(names.replace('中文', '')), `buttons read in English: ${names}`);
   await page.evaluate(() => window.egretGame.app.switchLanguage('zh'));
 
-  // Play: Enter on the title starts a round.
+  // Play: Enter on the title opens the scrolls, and Enter on the first open scroll starts a round.
   await page.evaluate(() => window.egretGame.app.go('title'));
   await until(page, () => window.egretGame.ready && window.egretGame.screen === 'title');
+  await page.keyboard.press('Enter');
+  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'pick');
+  const pick = await matchBaseline(page, GAME, 'pick');
+  check(pick.written || pick.passed, `the scrolls to choose look as their baseline (${(pick.share * 100).toFixed(2)}% differs)`);
   await page.keyboard.press('Enter');
   await until(page, () => window.egretGame.ready && window.egretGame.screen === 'play');
   await page.waitForTimeout(500);
@@ -101,6 +105,13 @@ try {
   const cleared = await round(page);
   check(cleared.cleared >= 200 && cleared.score >= 200, `a run from wall to wall clears and scores (${cleared.cleared} grains, ${cleared.score} points)`);
 
+  // F sets off a firecracker over the chosen column: sand is blown away and the firecracker is used.
+  const beforeBoom = await page.evaluate(() => ({ grains: window.egretGame.app.round.grains, crackers: window.egretGame.app.round.crackers }));
+  await page.keyboard.press('KeyF');
+  await page.waitForTimeout(300);
+  const afterBoom = await page.evaluate(() => ({ grains: window.egretGame.app.round.grains, crackers: window.egretGame.app.round.crackers }));
+  check(afterBoom.crackers === beforeBoom.crackers - 1 && afterBoom.grains < beforeBoom.grains, `F sets off a firecracker (${beforeBoom.grains} → ${afterBoom.grains} grains)`);
+
   // Esc pauses; the round stands still; Esc again goes on.
   await page.keyboard.press('Escape');
   await page.waitForTimeout(200);
@@ -123,6 +134,48 @@ try {
   await page.keyboard.press('Escape');
   await until(page, () => window.egretGame.ready && window.egretGame.screen === 'title');
   check(true, 'Escape goes back to the title');
+
+  // The endless tray: enough score brings in cinnabar, and the round goes on past a finished painting.
+  await page.evaluate(() => window.egretGame.app.go('play', { level: 3 }));
+  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'play');
+  await page.evaluate(() => {
+    const g = window.egretGame.app.round;
+    g.score = 31000;
+    g.cleared = g.level.target + 5;
+    for (let x = 0; x < 200; x++) g.color[299 * 200 + x] = 2;
+    g.unsettled = true;
+  });
+  await page.waitForTimeout(1500);
+  const endless = await page.evaluate(() => ({ pigments: window.egretGame.app.round.pigments.length, paintings: window.egretGame.app.round.paintings, over: window.egretGame.app.round.over }));
+  check(endless.pigments === 4 && endless.paintings === 1 && !endless.over, `the endless tray adds a pigment and rolls on to the next painting (${JSON.stringify(endless)})`);
+
+  // Unpainting: the picture opens as sand; a click on a lane puts its bucket on the belt; collected to the last grain,
+  // the picture is finished and saved.
+  await page.evaluate(() => window.egretGame.app.go('unpaint', { level: 0 }));
+  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'unpaint');
+  await page.waitForTimeout(600);
+  const unpaint = await matchBaseline(page, GAME, 'unpaint');
+  check(unpaint.written || unpaint.passed, `the unpaint picture looks as its baseline (${(unpaint.share * 100).toFixed(2)}% differs)`);
+  await page.mouse.click(470, 200);
+  await page.waitForTimeout(300);
+  check((await page.evaluate(() => window.egretGame.app.round.belt.filter(Boolean).length)) === 1, 'a click on a lane puts its front bucket on the belt');
+  await page.evaluate(async () => {
+    const { chooseLane } = await import('./tools/unpaint-bot.mjs');
+    const { stepUnpaint, tapLane } = await import('./src/sim/unpaint.mjs');
+    const g = window.egretGame.app.round;
+    let wait = 0;
+    while (!g.over && g.time < 400) {
+      wait -= 1 / 60;
+      if (wait <= 0) {
+        const lane = chooseLane(g, 1);
+        if (lane >= 0 && tapLane(g, lane)) wait = 0.6;
+      }
+      stepUnpaint(g, 1 / 60);
+    }
+  });
+  await until(page, () => window.egretGame.ready && window.egretGame.screen === 'end');
+  const unpainted = await page.evaluate(() => JSON.parse(localStorage.getItem('sand-scroll')).data.unpainted);
+  check(unpainted.includes('peak'), `the finished picture is saved (${unpainted.join(', ')})`);
 
   // A broken save: the game starts again and says so, without an error.
   await page.evaluate(() => localStorage.setItem('sand-scroll', '{broken'));

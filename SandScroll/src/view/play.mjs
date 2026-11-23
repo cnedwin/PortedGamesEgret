@@ -8,7 +8,7 @@
 // it. Cleared sand flies to the scroll as sparks, and the scroll's colour spreads further to the right.
 import { Bitmap, DisplayObjectContainer, Sprite, animate } from '@egret/engine';
 import { createParticleEmitter } from '@egret/engine/particles';
-import { BOARD, DANGER_GRACE, PIGMENTS, clampColumn, dropPiece, progress, step, takeChanges, turnPiece } from '../sim/sand.mjs';
+import { BOARD, CRACKER, DANGER_GRACE, PIGMENTS, clampColumn, dropPiece, fireCracker, progress, step, surfaceAt, takeChanges, turnPiece } from '../sim/sand.mjs';
 import { createBoardView, piecePixels } from './board.mjs';
 import { createScrollPainter, mountScroll } from './scroll.mjs';
 
@@ -32,6 +32,7 @@ export function playLayout(width, height) {
       scroll: { x: 30, y: 20, w: width - 60, h: Math.round((width - 60) / 4) },
       score: { x: 30, y: 158 },
       share: { x: width - 124, y: 158 },
+      cracker: { x: 178, y: 150, w: 116, h: 40 },
       tray: { x: 14, y: 820, w: width - 28, h: 128, vertical: false },
       pause: { x: width - 64, y: 150, w: 44, h: 40 }
     };
@@ -46,6 +47,7 @@ export function playLayout(width, height) {
     scroll: { x: 22, y: 64, w: 276, h: 69 },
     score: { x: 24, y: 160 },
     share: { x: 298, y: 160 },
+    cracker: { x: 162, y: 470, w: 136, h: 44 },
     tray: { x: Math.round((width + w) / 2) + 28, y: 40, w: width - Math.round((width + w) / 2) - 50, h: h, vertical: true },
     pause: { x: 22, y: 470, w: 120, h: 44 }
   };
@@ -151,9 +153,9 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
 
   // ——— What never moves: the scroll on its mount, the frame of the tray and the dishes. The page paints them under the
   // engine's canvas (app.backdrop), again only when the scroll takes more colour or a dish is chosen. ———
-  const painter = createScrollPainter(game.level.id, { width: 960, height: 240 });
-  painter.paint(0);
-  let shownShare = 0,
+  let painter = createScrollPainter(game.painting, { width: 960, height: 240 });
+  painter.paint(progress(game));
+  let shownShare = progress(game),
     sinceScroll = 0;
   const looks = ['', '', ''];
   app.backdrop.set((g) => {
@@ -177,16 +179,20 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   const danger = field.addChild(scope.use(new Sprite()));
   const fx = field.addChild(scope.use(new DisplayObjectContainer()));
   const air = field.addChild(scope.use(new DisplayObjectContainer()));
+  // A tap on the sand while a firecracker is lit sets it off there; the ring shows where.
+  const aim = field.addChild(scope.use(new Sprite()));
+  aim.touchEnabled = true;
+  aim.hitArea = { x: 0, y: 0, width: b.w, height: b.h };
 
   // ——— Sparks: one emitter a pigment for the dust of a landing and the burst of a run. ———
   const dot = await textures(12, 12, dotPixels(12));
   const bursts = {};
-  for (const pigment of game.level.pigments) {
+  for (let pigment = 1; pigment < PIGMENTS.length; pigment++) {
     const rgb = PIGMENTS[pigment].rgb;
     const emitter = scope.use(
       createParticleEmitter({
         texture: dot,
-        maxParticles: 600,
+        maxParticles: 500,
         rate: 0,
         lifetime: [0.45, 1.0],
         speed: [40, 190],
@@ -209,6 +215,31 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     fx.addChild(emitter.display);
     bursts[pigment] = emitter;
   }
+  // The firecracker's sparks: gold to red, out in every direction from the blast.
+  const sparks = scope.use(
+    createParticleEmitter({
+      texture: dot,
+      maxParticles: 400,
+      rate: 0,
+      lifetime: [0.35, 0.9],
+      speed: [80, 320],
+      angle: [0, 360],
+      gravity: { x: 0, y: 260 },
+      drag: 1.2,
+      size: 6,
+      startScale: [0.6, 1.3],
+      endScale: 0.1,
+      startColor: 0xfff0b0,
+      endColor: 0xd8402a,
+      startAlpha: 1,
+      endAlpha: 0,
+      shape: { kind: 'circle', radius: CRACKER.radius * 0.5 },
+      blendMode: 'add',
+      seed: 91
+    })
+  );
+  fx.addChild(sparks.display);
+  bursts.sparks = sparks;
   fx.scaleX = fx.scaleY = S;
 
   // ——— The pieces: in the dish, in the air and as a shadow over the sand. ———
@@ -296,7 +327,45 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   const chainLabel = await kit.label(root, ' ', { x: b.x, y: b.y + b.h * 0.3, size: 34, weight: 800, color: 0xfff0c8, align: 'center', width: b.w });
   const pointsLabel = await kit.label(root, ' ', { x: b.x, y: b.y + b.h * 0.3 + 44, size: 22, weight: 700, color: GOLD, align: 'center', width: b.w });
   const warnLabel = await kit.label(root, ' ', { x: b.x, y: b.y + BOARD.danger * S + 8, size: 18, weight: 700, color: 0xff8a6a, align: 'center', width: b.w });
-  chainLabel.display.alpha = pointsLabel.display.alpha = warnLabel.display.alpha = 0;
+  const announceLabel = await kit.label(root, ' ', { x: b.x, y: b.y + b.h * 0.16, size: 26, weight: 700, color: 0xf1d79a, align: 'center', width: b.w });
+  chainLabel.display.alpha = pointsLabel.display.alpha = warnLabel.display.alpha = announceLabel.display.alpha = 0;
+  let announceTime = 0;
+  const announce = (words) => {
+    void announceLabel.set(words);
+    announceLabel.display.alpha = 1;
+    announceTime = 2.2;
+  };
+
+  // ——— The firecracker: a button lights one, a tap on the sand (or F) sets it off. ———
+  let armed = false;
+  const crackerButton = await kit.button({
+    x: L.cracker.x,
+    y: L.cracker.y,
+    width: L.cracker.w,
+    height: L.cracker.h,
+    text: hooks.words('cracker', { n: game.crackers }),
+    small: true,
+    container: root,
+    onActivate: () => arm(!armed)
+  });
+  let shownCrackers = game.crackers;
+  function arm(on) {
+    armed = on && game.crackers > 0 && !game.over;
+    void crackerButton.setText(armed ? hooks.words('crackerAim') : hooks.words('cracker', { n: game.crackers }));
+    crackerButton.setEnabled(game.crackers > 0);
+    drawAim(null);
+  }
+  function drawAim(at) {
+    const g = aim.graphics;
+    g.clear();
+    if (!armed) return;
+    g.lineStyle(2, 0xff9a5a, 0.9).drawRect(1, 1, b.w - 2, b.h - 2).lineStyle(0);
+    if (at) g.lineStyle(2, 0xffd08a, 0.95).drawCircle(at.x * S, at.y * S, CRACKER.radius * S).lineStyle(0);
+  }
+  function boom(x, y) {
+    if (fireCracker(game, x, y) >= 0) arm(false);
+  }
+  arm(false);
   let shownScore = -1,
     shownPercent = -1;
   const refreshWords = () => {
@@ -334,6 +403,10 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     dishLeft = T.vertical ? T.x - 6 : Infinity;
   kit.own({
     dispose: app.game.pointer.observe(({ kind, contact, target }) => {
+      if (kind === 'begin' && armed && target === aim) {
+        boom((contact.globalX - b.x) / S, (contact.globalY - b.y) / S);
+        return;
+      }
       if (kind === 'begin' && hold.session === null) {
         const slot = slots.find((s) => s.plate === target);
         if (!slot || game.over) return;
@@ -358,6 +431,7 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
   const keys = { slot: 0, column: (BOARD.cols - 40) / 2, active: false };
   const controls = {
     choose(slot) {
+      if (slot > 2) return;
       keys.slot = slot;
       keys.active = true;
       app.sound.play('pick', { volume: 0.5 });
@@ -369,6 +443,12 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
     turn() {
       keys.active = true;
       turn(keys.slot);
+    },
+    cracker() {
+      // F: set off a firecracker over the chosen column, a little under the sand's surface there.
+      const x = Math.max(0, Math.min(BOARD.cols - 1, Math.round(keys.column + 20)));
+      armed = game.crackers > 0;
+      boom(x, Math.min(BOARD.rows - 1, surfaceAt(game, x) + CRACKER.radius * 0.6));
     },
     drop() {
       keys.active = true;
@@ -412,6 +492,8 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       pointsLabel.display.alpha = 1;
       chainTime = Math.max(chainTime, 1.1);
       app.vibrate?.(30);
+      // A big run or a chain shakes the tray a little.
+      if (e.chain >= 2 || e.size > 6000) shake = Math.max(shake, 0.18 + 0.06 * Math.min(4, e.chain));
     } else if (e.kind === 'clear') {
       const emitter = bursts[e.pigment];
       if (emitter && !app.reducedMotion) {
@@ -422,10 +504,50 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       app.sound.play('clear', { volume: 0.8 });
       const colour = hex(PIGMENTS[e.pigment].rgb, 1.3);
       if (!app.reducedMotion) for (let k = 0; k < 7; k++) sparkToScroll(b.x + (BOARD.cols * (0.15 + k * 0.12)) * S, b.y + e.cy * S, colour);
-    } else if (e.kind === 'won' || e.kind === 'lost') {
-      hooks.ended(e.kind === 'won');
+    } else if (e.kind === 'boom') {
+      if (!app.reducedMotion) {
+        sparks.x = e.x;
+        sparks.y = e.y;
+        sparks.burst(160);
+      }
+      app.sound.play('boom');
+      shake = 0.5;
+      app.vibrate?.(60);
+    } else if (e.kind === 'cracker') {
+      announce(hooks.words('crackerGot'));
+      app.sound.play('turn', { rate: 1.5 });
+    } else if (e.kind === 'pigment') {
+      announce(hooks.words('newPigment', { name: hooks.words('pigment' + e.pigment) }));
+      app.sound.play('shine', { rate: 0.75 });
+    } else if (e.kind === 'painted') {
+      // The endless tray: the finished painting is shown whole a moment, then the next one starts as ink.
+      announce(hooks.words('paintedOne', { name: hooks.words('scroll_' + game.level.paintings[(e.paintings - 1) % game.level.paintings.length]) }));
+      app.sound.play('won', { volume: 0.7 });
+      celebrate();
+      painter.paint(1);
+      app.backdrop.repaint();
+      nextPainting = 1.6;
+    } else if (e.kind === 'won') {
+      celebrate();
+      hooks.ended(true);
+    } else if (e.kind === 'lost') {
+      hooks.ended(false);
     }
   }
+  /** Sand of every pigment bursting up over the whole tray. */
+  function celebrate() {
+    shake = Math.max(shake, 0.35);
+    if (app.reducedMotion) return;
+    for (const pigment of game.pigments)
+      for (let k = 0; k < 4; k++) {
+        const emitter = bursts[pigment];
+        emitter.x = BOARD.cols * (0.15 + k * 0.23);
+        emitter.y = BOARD.rows * 0.7;
+        emitter.burst(50);
+      }
+  }
+  let shake = 0,
+    nextPainting = 0;
 
   for (const slot of slots) {
     paintSlot(slot);
@@ -450,6 +572,30 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       const { events, rows } = takeChanges(game);
       board.update(rows);
       for (const e of events) handle(e);
+      if (game.crackers !== shownCrackers) {
+        shownCrackers = game.crackers;
+        arm(armed && game.crackers > 0);
+      }
+      // The shake: a few stage units, dying away; none when motion is reduced.
+      if (shake > 0) {
+        shake = Math.max(0, shake - seconds);
+        const k = app.reducedMotion ? 0 : shake * 14;
+        field.x = b.x + (Math.random() - 0.5) * k;
+        field.y = b.y + (Math.random() - 0.5) * k;
+      } else if (field.x !== b.x || field.y !== b.y) {
+        field.x = b.x;
+        field.y = b.y;
+      }
+      if (announceTime > 0) {
+        announceTime -= seconds;
+        announceLabel.display.alpha = Math.min(1, announceTime / 0.5);
+      }
+      if (nextPainting > 0 && (nextPainting -= seconds) <= 0) {
+        painter = createScrollPainter(game.painting, { width: 960, height: 240 });
+        shownShare = 0;
+        painter.paint(progress(game));
+        app.backdrop.repaint();
+      }
       if (events.some((e) => e.kind === 'drop' || e.kind === 'land')) {
         forget();
         for (const slot of slots) void refreshSlot(slot);
@@ -559,7 +705,7 @@ export async function createPlayView(app, scope, root, kit, game, hooks) {
       // The scroll takes its colour a little at a time.
       const share = progress(game);
       sinceScroll += seconds;
-      if (shownShare < share && sinceScroll > 0.12) {
+      if (nextPainting <= 0 && shownShare < share && sinceScroll > 0.12) {
         sinceScroll = 0;
         shownShare = Math.min(share, shownShare + Math.max(0.004, (share - shownShare) * 0.35));
         if (painter.paint(shownShare)) app.backdrop.repaint();

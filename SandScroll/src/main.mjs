@@ -10,17 +10,19 @@ import { bindBrowserInputActions, browserSaveStorage } from '@egret/engine/web/k
 import { createBrowserSemantics } from '@egret/engine/web/semantics';
 import { createSound } from './audio/sound.mjs';
 import { getLanguage, setLanguage, t } from './i18n.mjs';
-import { openSave } from './saves.mjs';
+import { fillSave, openSave } from './saves.mjs';
 import { settled } from './sim/sand.mjs';
-import { endScreen, playScreen, settingsScreen, titleScreen } from './screens.mjs';
+import { endScreen, pickScreen, playScreen, settingsScreen, titleScreen, unpaintScreen } from './screens.mjs';
 
 const params = new URLSearchParams(location.search),
   frameHost = document.querySelector('#frame'),
-  SCREENS = { title: titleScreen, play: playScreen, end: endScreen, settings: settingsScreen };
+  SCREENS = { title: titleScreen, pick: pickScreen, play: playScreen, unpaint: unpaintScreen, end: endScreen, settings: settingsScreen };
 
 // The save: what an unreadable save or a refusing browser means is said on the title.
 const problems = [];
 const save = openSave(browserSaveStorage(), navigator.language?.startsWith('zh') ? 'zh' : 'en', (problem) => problems.push(problem.kind));
+// Saves from before the endless tray and the unpaint mode get their new fields.
+if (save.data.bestEndless === undefined || !save.data.unpainted) save.update((data) => void fillSave(data));
 const settings = save.data.settings;
 setLanguage(params.get('lang') ?? settings.language);
 
@@ -29,9 +31,12 @@ const actions = createInputActions({
   move: { kind: 'axis', negative: ['Key:KeyA', 'Key:ArrowLeft', 'Pad:left'], positive: ['Key:KeyD', 'Key:ArrowRight', 'Pad:right'] },
   turn: { bindings: ['Key:ArrowUp', 'Key:KeyW', 'Key:KeyQ', 'Pad:y'] },
   drop: { bindings: ['Key:Space', 'Key:ArrowDown', 'Key:KeyS', 'Pad:a'] },
-  slot1: { bindings: ['Key:Digit1', 'Pad:lb'] },
+  cracker: { bindings: ['Key:KeyF', 'Pad:l2'] },
+  slot1: { bindings: ['Key:Digit1', 'Pad:l1'] },
   slot2: { bindings: ['Key:Digit2', 'Pad:x'] },
-  slot3: { bindings: ['Key:Digit3', 'Pad:rb'] },
+  slot3: { bindings: ['Key:Digit3', 'Pad:r1'] },
+  slot4: { bindings: ['Key:Digit4'] },
+  slot5: { bindings: ['Key:Digit5'] },
   confirm: { bindings: ['Key:Enter', 'Pad:start'] },
   back: { bindings: ['Key:Escape', 'Pad:b'] }
 });
@@ -112,7 +117,20 @@ let screen = null,
   browserActions = null,
   options = {};
 
+// Screens with nothing moving (the title, the choosers, the end, the settings) let the engine's frame loop rest a
+// moment after the last touch or key; any touch, key or wheel wakes it. A software-drawn page then costs nothing
+// while it waits.
+const STILL = new Set(['title', 'pick', 'end', 'settings']);
+let resting = null;
+function wake() {
+  clearTimeout(resting);
+  if (app.game && (app.game.loop.state === 'idle' || app.game.loop.state === 'failed')) app.game.loop.start();
+  if (STILL.has(app.screenName)) resting = setTimeout(() => STILL.has(app.screenName) && app.game.loop.stop(), 1500);
+}
+for (const kind of ['pointerdown', 'pointermove', 'keydown', 'wheel', 'focusin']) window.addEventListener(kind, wake, { capture: true, passive: true });
+
 async function show(name, next) {
+  wake();
   const old = screen;
   screen = null;
   old?.dispose();
@@ -123,6 +141,7 @@ async function show(name, next) {
   frameHost.dataset.screen = name;
   app.semantics.publish();
   screen.focusFirst?.();
+  wake();
 }
 
 /** Make the view for the screen's current shape: a new canvas, a new game, the same app and save. */
@@ -169,11 +188,12 @@ function frame(seconds) {
   // The round's keys: pick a piece, move it, turn it, drop it.
   const keys = screen?.keys;
   if (keys) {
-    ['slot1', 'slot2', 'slot3'].forEach((name, slot) => actions.justPressed(name) && keys.choose(slot));
+    ['slot1', 'slot2', 'slot3', 'slot4', 'slot5'].forEach((name, slot) => actions.justPressed(name) && keys.choose(slot));
     const move = actions.value('move');
     if (move) keys.move(move, seconds);
     if (actions.justPressed('turn')) keys.turn();
     if (actions.justPressed('drop')) keys.drop();
+    if (actions.justPressed('cracker')) keys.cracker?.();
   }
   screen?.update?.(seconds);
   // Parts are painted again only when the keyboard focus moves or shows.

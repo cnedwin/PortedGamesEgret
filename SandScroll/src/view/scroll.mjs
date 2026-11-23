@@ -80,6 +80,17 @@ function massOutline(rng, x0, x1, foot, peak, peaks = 3) {
   return pts;
 }
 
+/**
+ * The three paintings: their title, the seeds of their drawing, the colours of their hills from the peaks down, the
+ * wash under the ridges, and what grows on the lower slopes.
+ */
+export const PAINTINGS = Object.freeze({
+  spring: { title: ['春', '山', '圖'], draw: 911, silk: 2024, flora: 'blossom', wash: 'rgba(18, 58, 110, 0.35)', stops: [[0, 'rgba(30, 84, 158, 0.96)'], [0.28, 'rgba(40, 118, 150, 0.94)'], [0.55, 'rgba(56, 146, 108, 0.92)'], [0.85, 'rgba(132, 140, 80, 0.86)'], [1, 'rgba(178, 120, 66, 0.82)']] },
+  autumn: { title: ['秋', '山', '圖'], draw: 512, silk: 33, flora: 'maple', wash: 'rgba(90, 40, 20, 0.35)', stops: [[0, 'rgba(46, 92, 140, 0.95)'], [0.3, 'rgba(112, 130, 96, 0.92)'], [0.55, 'rgba(190, 128, 60, 0.9)'], [0.82, 'rgba(184, 82, 46, 0.88)'], [1, 'rgba(138, 70, 40, 0.84)']] },
+  snow: { title: ['雪', '山', '圖'], draw: 77, silk: 5, flora: 'snow', wash: 'rgba(60, 80, 110, 0.3)', stops: [[0, 'rgba(246, 244, 238, 0.98)'], [0.3, 'rgba(206, 216, 226, 0.95)'], [0.55, 'rgba(140, 168, 190, 0.92)'], [0.82, 'rgba(78, 116, 112, 0.9)'], [1, 'rgba(70, 82, 92, 0.86)']] }
+});
+let season = PAINTINGS.spring;
+
 function fillMass(g, pts, foot, colour, top) {
   // The mass ends where its outline meets the ground: no straight sides below the foot.
   g.beginPath();
@@ -88,18 +99,14 @@ function fillMass(g, pts, foot, colour, top) {
   g.closePath();
   if (colour) {
     const grad = g.createLinearGradient(0, top, 0, foot);
-    grad.addColorStop(0, 'rgba(30, 84, 158, 0.96)');
-    grad.addColorStop(0.28, 'rgba(40, 118, 150, 0.94)');
-    grad.addColorStop(0.55, 'rgba(56, 146, 108, 0.92)');
-    grad.addColorStop(0.85, 'rgba(132, 140, 80, 0.86)');
-    grad.addColorStop(1, 'rgba(178, 120, 66, 0.82)');
+    for (const [at, rgba] of season.stops) grad.addColorStop(at, rgba);
     g.fillStyle = grad;
     g.fill();
     // A darker wash just under the ridge gives the mass its roundness.
     g.save();
     g.clip();
     g.lineJoin = 'round';
-    g.strokeStyle = 'rgba(18, 58, 110, 0.35)';
+    g.strokeStyle = season.wash;
     g.lineWidth = 14;
     g.filter = 'blur(5px)';
     g.beginPath();
@@ -178,6 +185,37 @@ function blossom(g, x, y, s, colour, rng) {
     g.beginPath();
     g.arc(x + (rng() - 0.5) * 18 * s, y - 14 * s + (rng() - 0.5) * 10 * s, 1.1 + rng() * 1.3, 0, Math.PI * 2);
     g.fill();
+  }
+}
+
+/** A maple: a bent trunk and clusters of red and orange leaves. */
+function maple(g, x, y, s, colour, rng) {
+  g.strokeStyle = INK + '0.75)';
+  g.lineWidth = 1.2 * s;
+  g.beginPath();
+  g.moveTo(x, y);
+  g.quadraticCurveTo(x - 4 * s, y - 10 * s, x + 2 * s, y - 20 * s);
+  g.stroke();
+  for (let k = 0; k < 30; k++) {
+    g.fillStyle = colour ? `rgba(${196 + rng() * 40}, ${60 + rng() * 70}, ${30 + rng() * 20}, 0.88)` : INK + '0.18)';
+    g.beginPath();
+    g.arc(x + (rng() - 0.5) * 20 * s, y - 18 * s + (rng() - 0.5) * 12 * s, 1.2 + rng() * 1.6, 0, Math.PI * 2);
+    g.fill();
+  }
+}
+
+/** Snow on a slope: a few white drifts with a grey shadow under them. */
+function drifts(g, x, y, s, colour, rng) {
+  for (let k = 0; k < 5; k++) {
+    const dx = (rng() - 0.5) * 30 * s,
+      w = (8 + rng() * 10) * s;
+    g.fillStyle = colour ? 'rgba(250, 250, 246, 0.9)' : 'rgba(250, 246, 236, 0.7)';
+    g.beginPath();
+    g.ellipse(x + dx, y - rng() * 6, w, 2.5 * s, 0, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = INK + '0.2)';
+    g.lineWidth = 0.6;
+    g.stroke();
   }
 }
 
@@ -273,20 +311,30 @@ function seal(g, x, y, s, words) {
   if (words[3]) g.fillText(words[3], x + s * 0.28, y + s * 0.72);
 }
 
-/** Paint scroll `id` in full colour (`colour` true) or as the bare ink drawing. Returns a canvas. */
-export function paintScroll(id = 'spring', colour = true, { width = PAINTING.width, height = PAINTING.height } = {}) {
+/**
+ * Paint scroll `id` in full colour (`colour` true) or as the ink drawing. `bare` leaves out the silk; `silkOnly` paints
+ * nothing else. Returns a canvas.
+ */
+export function paintScroll(id = 'spring', colour = true, { width = PAINTING.width, height = PAINTING.height, bare = false, silkOnly = false } = {}) {
   const c = canvas(width, height),
     g = c.getContext('2d'),
     w = width,
     h = height,
-    rng = createRandom(id === 'spring' ? 2024 : 7),
+    look = (season = PAINTINGS[id] ?? PAINTINGS.spring),
+    rng = createRandom(look.silk),
     // The drawing itself uses its own stream, so the ink and the colour versions match line for line.
-    draw = createRandom(911);
+    draw = createRandom(look.draw);
   g.save();
   g.scale(w / PAINTING.width, h / PAINTING.height);
   const W = PAINTING.width,
     H = PAINTING.height;
-  silk(g, W, H, rng);
+  // Bare: no silk under it, so the clear pixels show where nothing is painted (the unpaint mode's sand).
+  if (!bare) silk(g, W, H, rng);
+  // Silk only: the bare cloth, under a picture of sand.
+  if (silkOnly) {
+    g.restore();
+    return c;
+  }
   if (!colour) {
     g.fillStyle = 'rgba(240, 230, 205, 0.35)';
     g.fillRect(0, 0, W, H);
@@ -331,7 +379,23 @@ export function paintScroll(id = 'spring', colour = true, { width = PAINTING.wid
       const p = pts[8 + Math.floor(draw() * (pts.length - 16))];
       pine(g, p[0], p[1] + 6 + draw() * 10, 0.7 + draw() * 0.4, colour, draw);
     }
-  for (let k = 0; k < 7; k++) blossom(g, 40 + draw() * 880, 196 + draw() * 14, 0.8 + draw() * 0.4, colour, draw);
+  const flora = { blossom, maple, snow: drifts }[look.flora];
+  for (let k = 0; k < 7; k++) {
+    // Snow lies on the slopes; blossom and maples grow along the foot of the hills.
+    const ridge = ridges[k % ridges.length],
+      p = ridge[10 + Math.floor(draw() * (ridge.length - 20))],
+      [x, y] = look.flora === 'snow' ? [p[0], p[1] + 14 + draw() * 16] : [40 + draw() * 880, 196 + draw() * 14];
+    flora(g, x, y, 0.8 + draw() * 0.4, colour, draw);
+  }
+  // Falling snow over the snow scroll.
+  if (look.flora === 'snow' && colour) {
+    g.fillStyle = 'rgba(255, 255, 255, 0.85)';
+    for (let k = 0; k < 220; k++) {
+      g.beginPath();
+      g.arc(draw() * W, draw() * H * 0.8, 0.6 + draw() * 1.2, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
   // The pavilion stands on a shoulder of the third mass, a little below its ridge.
   const shoulder = ridges[2].reduce((a, b) => (Math.abs(b[0] - 540) < Math.abs(a[0] - 540) ? b : a));
   pavilion(g, shoulder[0], shoulder[1] + 16, colour);
@@ -343,7 +407,7 @@ export function paintScroll(id = 'spring', colour = true, { width = PAINTING.wid
   g.font = `400 20px ${KAI}`;
   g.textAlign = 'center';
   g.textBaseline = 'top';
-  ['春', '山', '圖'].forEach((ch, k) => g.fillText(ch, 924, 22 + k * 22));
+  look.title.forEach((ch, k) => g.fillText(ch, 924, 22 + k * 22));
   seal(g, 906, 96, 34, colour ? ['沙', '畫', '江', '山'] : ['沙', '畫', '江', '山']);
   g.restore();
   return c;
