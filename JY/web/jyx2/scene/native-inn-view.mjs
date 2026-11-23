@@ -6,6 +6,7 @@ import {
 import { loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
 import { createWorldRenderer } from './world3d-renderer.mjs';
 import { cloneNativeSceneActor } from './native-scene-actor.mjs';
+import { readNativeSceneSpec } from './home.mjs';
 
 const actorsDirectory = '/jyx2/inn3d-actors/';
 const headings = [Math.PI, Math.PI / 2, -Math.PI / 2, 0];
@@ -182,19 +183,9 @@ export function createNativeInnView(viewport, overlay, options) {
   });
 }
 
-async function readNativeSceneSpec({ sceneId, assetDirectory, manifest }) {
-  const response = await fetch(assetDirectory + manifest);
-  if (!response.ok) throw Error(`Could not load 3D scene ${sceneId}.`);
-  const spec = await response.json();
-  if (spec.scene !== sceneId || !/^[a-z0-9_.-]+\.glb$/i.test(spec.asset) || !spec.camera?.offset) {
-    throw Error(`Invalid 3D scene manifest for ${sceneId}.`);
-  }
-  return spec;
-}
-
-export async function loadNativeSceneAssets(config) {
+export async function loadNativeSceneAssets(config, sceneSpec) {
   const { sceneId, assetDirectory, actorDirectory = actorsDirectory, modelIds, createExitEffect } = config;
-  const spec = readNativeSceneSpec(config);
+  const spec = sceneSpec ?? readNativeSceneSpec(config);
   const exit = createExitEffect && spec.then(async data => {
     try { return await createExitEffect({ spec: data, transform: sceneMatrix(data.layout) }); }
     catch (error) { console.warn(`Scene ${sceneId} exit effect could not load`, error); }

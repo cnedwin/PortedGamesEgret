@@ -29,7 +29,7 @@ import { createWorldNavigation } from './jyx2/ui/world-navigation.mjs';
 import { createDialogueJournal } from './jyx2/ui/dialogue-journal.mjs';
 import { findTilePath, screenToTile } from './kys-navigation.mjs';
 import { createSceneAtmosphere } from './scene-atmosphere.mjs';
-import { hasJyx2Scene, loadJyx2Scene } from './jyx2/scene/home.mjs';
+import { hasJyx2Scene, loadJyx2Scene, nativeHomeSource, readNativeSceneSpec } from './jyx2/scene/home.mjs';
 import { loadActorArt } from './jyx2/actors/actor-art.mjs';
 import { nativeBattleName } from './jyx2/scene/native-battle-fields.mjs';
 
@@ -114,6 +114,27 @@ const nativeSceneViews = new Map([
 const isWorldWater = id => id === 419 || id >= 179 && id <= 181 || id >= 253 && id <= 335 || id >= 508 && id <= 511;
 const fits = (map, x, y) => x >= 0 && y >= 0 && x < map.width && y < map.height;
 const samePoint = (point, x, y) => point?.[0] === x && point?.[1] === y;
+
+async function prepareHomeView() {
+  const preload = document.createElement('link');
+  const spec = readNativeSceneSpec(nativeHomeSource).then(data => {
+    // Let the browser fetch the environment during the dynamic renderer imports.
+    if (preload.relList.supports('preload')) {
+      preload.rel = 'preload';
+      preload.as = 'fetch';
+      preload.crossOrigin = 'anonymous';
+      preload.href = nativeHomeSource.assetDirectory + data.asset;
+      document.head.appendChild(preload);
+    }
+    return data;
+  });
+  try {
+    const [module] = await Promise.all([import('./jyx2/scene/native-home-view.mjs'), spec]);
+    return await module.prepareNativeHomeView(spec);
+  } finally {
+    void spec.then(() => preload.remove(), () => {});
+  }
+}
 
 async function json(path) {
   const response = await fetch(path);
@@ -362,7 +383,7 @@ async function start() {
   let preparedHome;
   if (visualStyle === 'jyx2' && destination.id === homeScene && settings.get('home') !== '2d') {
     // The player has selected a save or a new game. The GLBs can load alongside original data.
-    preparedHome = import('./jyx2/scene/native-home-view.mjs').then(module => module.prepareNativeHomeView());
+    preparedHome = prepareHomeView();
     void preparedHome.catch(() => {}); // openMap reports a load failure when it selects the fallback.
   }
   function takePreparedHome() {
