@@ -29,7 +29,7 @@ import { createWorldNavigation } from './jyx2/ui/world-navigation.mjs';
 import { createDialogueJournal } from './jyx2/ui/dialogue-journal.mjs';
 import { findTilePath, screenToTile } from './kys-navigation.mjs';
 import { createSceneAtmosphere } from './scene-atmosphere.mjs';
-import { hasJyx2Scene, loadJyx2Scene } from './jyx2/scene/home.mjs';
+import { hasJyx2Scene, loadJyx2Scene, nativeHomeSource, readNativeSceneSpec } from './jyx2/scene/home.mjs';
 import { loadActorArt } from './jyx2/actors/actor-art.mjs';
 import { nativeBattleName } from './jyx2/scene/native-battle-fields.mjs';
 
@@ -114,6 +114,27 @@ const nativeSceneViews = new Map([
 const isWorldWater = id => id === 419 || id >= 179 && id <= 181 || id >= 253 && id <= 335 || id >= 508 && id <= 511;
 const fits = (map, x, y) => x >= 0 && y >= 0 && x < map.width && y < map.height;
 const samePoint = (point, x, y) => point?.[0] === x && point?.[1] === y;
+
+async function prepareHomeView() {
+  const preload = document.createElement('link');
+  const spec = readNativeSceneSpec(nativeHomeSource).then(data => {
+    // Let the browser fetch the environment during the dynamic renderer imports.
+    if (preload.relList.supports('preload')) {
+      preload.rel = 'preload';
+      preload.as = 'fetch';
+      preload.crossOrigin = 'anonymous';
+      preload.href = nativeHomeSource.assetDirectory + data.asset;
+      document.head.appendChild(preload);
+    }
+    return data;
+  });
+  try {
+    const [module] = await Promise.all([import('./jyx2/scene/native-home-view.mjs'), spec]);
+    return await module.prepareNativeHomeView(spec);
+  } finally {
+    void spec.then(() => preload.remove(), () => {});
+  }
+}
 
 async function json(path) {
   const response = await fetch(path);
@@ -358,23 +379,40 @@ async function start() {
   const visualStyle = ['jyx2', 'classic', 'enhanced'].includes(requestedStyle) ? requestedStyle : preferences.visual;
   document.body.dataset.visual = visualStyle === 'classic' ? 'classic' : 'enhanced';
   document.body.dataset.art = visualStyle;
-  const catalog = await loadCatalog();
-  const game = {
-    initial, baseline, autoSave, save, catalog, visualStyle, sound: preferences.sound,
-    programs: new Map(), sceneStates: new Map(), openingDone: save?.openingDone ?? false,
-    mainX: save?.mainX ?? initial.base.mainX, mainY: save?.mainY ?? initial.base.mainY,
-    inventory: new Map(save?.inventory ?? baseline.inventory),
-    roleState: save?.roleState ?? [],
-    party: save?.party ?? baseline.party,
-    scenePatches: new Map(save?.scenePatches ?? []),
-  };
-  catalog.eventIds = new Set(catalog.eventIds);
-  catalog.headIds = new Set(catalog.headIds);
-  catalog.leaveEvents = new Map(catalog.leaveEvents);
-  showSave(game, save ? 'restored' : 'idle');
-  canvas.dataset.recruit = game.scenePatches.has(recruitScene) ? 'restored' : 'idle';
-  if (game.openingDone) canvas.dataset.opening = 'complete';
-  await openMap(game, save?.location ?? baseline.location);
+  const destination = save?.location ?? baseline.location;
+  let preparedHome;
+  if (visualStyle === 'jyx2' && destination.id === homeScene && settings.get('home') !== '2d') {
+    // The player has selected a save or a new game. The GLBs can load alongside original data.
+    preparedHome = prepareHomeView();
+    void preparedHome.catch(() => {}); // openMap reports a load failure when it selects the fallback.
+  }
+  function takePreparedHome() {
+    const pending = preparedHome;
+    preparedHome = undefined;
+    return pending;
+  }
+  try {
+    const catalog = await loadCatalog();
+    const game = {
+      initial, baseline, autoSave, save, catalog, visualStyle, sound: preferences.sound,
+      programs: new Map(), sceneStates: new Map(), openingDone: save?.openingDone ?? false,
+      mainX: save?.mainX ?? initial.base.mainX, mainY: save?.mainY ?? initial.base.mainY,
+      inventory: new Map(save?.inventory ?? baseline.inventory),
+      roleState: save?.roleState ?? [],
+      party: save?.party ?? baseline.party,
+      scenePatches: new Map(save?.scenePatches ?? []),
+    };
+    catalog.eventIds = new Set(catalog.eventIds);
+    catalog.headIds = new Set(catalog.headIds);
+    catalog.leaveEvents = new Map(catalog.leaveEvents);
+    showSave(game, save ? 'restored' : 'idle');
+    canvas.dataset.recruit = game.scenePatches.has(recruitScene) ? 'restored' : 'idle';
+    if (game.openingDone) canvas.dataset.opening = 'complete';
+    await openMap(game, destination, takePreparedHome);
+  } finally {
+    // An original-data failure can stop startup before the 3D view takes ownership.
+    void preparedHome?.then(home => home.dispose(), () => {});
+  }
 }
 
 async function sceneFor(game, id) {
@@ -397,7 +435,7 @@ function showSave(game, phase) {
   });
 }
 
-async function openMap(game, destination) {
+async function openMap(game, destination, takePreparedHome) {
   const { initial, catalog } = game;
   const isWorld = destination.id === 'world';
   const groupName = isWorld ? 'mmap' : 'smap';
@@ -405,7 +443,18 @@ async function openMap(game, destination) {
   notice.hidden = false;
   notice.textContent = '正在读取原作地图与贴图…';
   menuToggle.disabled = true;
-  const scene = isWorld ? (game.world ??= unpackMap(await json('/api/world'))) : await sceneFor(game, destination.id);
+  const sceneRequest = isWorld
+    ? game.world ?? json('/api/world').then(unpackMap)
+    : sceneFor(game, destination.id);
+  const availableRequest = isWorld
+    ? game.worldArt ?? json('/api/art/mmap').then(ids => new Set(ids))
+    : game.submapArt ?? json('/api/art/smap').then(ids => new Set(ids));
+  const [scene, available, scenes] = await Promise.all([sceneRequest, availableRequest, game.scenes ?? json('/api/scenes')]);
+  game.scenes = scenes;
+  if (isWorld) {
+    game.world = scene;
+    game.worldArt = available;
+  } else game.submapArt = available;
   const width = initial.config?.renderWidth ?? 640;
   const height = initial.config?.renderHeight ?? 360;
   const scale = initial.config?.tileScale ?? 1;
@@ -416,9 +465,6 @@ async function openMap(game, destination) {
   const wantsMap3d = game.visualStyle === 'jyx2' && viewSettings.get(viewKey) !== '2d';
   const loadNativeView = nativeSceneViews.get(isWorld ? 'world' : scene.id) ?? loadNativeSubmapView;
   const project = (x, y) => [(x - y) * 18 * scale, (x + y) * 9 * scale];
-  const available = isWorld ? (game.worldArt ??= new Set(await json('/api/art/mmap')))
-    : (game.submapArt ??= new Set(await json('/api/art/smap')));
-  const scenes = game.scenes ??= await json('/api/scenes');
   let map = isWorld ? worldObjects(scene, destination, project, available) : mapObjects(scene, scale, project);
   const opening = !isWorld && initial.config.useScript && scene.events.some(event => event.event3 === openingEventId)
     ? (game.opening ??= await loadOpening()) : undefined;
@@ -690,6 +736,7 @@ async function openMap(game, destination) {
       hint.textContent = `${touchExploration.matches ? '點畫面或按繼續' : '點擊畫面 / Enter 繼續'} · ${page}/${pages}`;
     },
   });
+  if (opening && !game.openingDone && game.visualStyle === 'jyx2') void dialogue.prepareSkin();
 
   const indexOf = (x, y) => x + y * scene.width;
   const eventAt = (x, y) => scene.events?.[scene.layers.eventIndex[indexOf(x, y)]];
@@ -2219,8 +2266,9 @@ async function openMap(game, destination) {
     notice.textContent = `正在載入${isWorld ? '江湖大地图' : scene.name}的 3D 場景…`;
     try {
       const viewport = canvas.parentElement;
-      const createNativeView = await loadNativeView();
       const options = isWorld ? { world: scene, places: scenes, canEnter } : { map: scene, textures, width, height, scale };
+      const prepared = await takePreparedHome?.();
+      const createNativeView = prepared?.create ?? await loadNativeView();
       map3dView = await createNativeView(viewport, canvas, options);
       if (closing) { map3dView.dispose(); return; }
       ground.visible = objects.visible = false;

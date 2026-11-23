@@ -6,6 +6,7 @@ import {
 import { loadGltfFromUrl3D } from '@egret/engine/webgl2/world3d';
 import { createWorldRenderer } from './world3d-renderer.mjs';
 import { cloneNativeSceneActor } from './native-scene-actor.mjs';
+import { readNativeSceneSpec } from './home.mjs';
 
 const actorsDirectory = '/jyx2/inn3d-actors/';
 const headings = [Math.PI, Math.PI / 2, -Math.PI / 2, 0];
@@ -182,28 +183,39 @@ export function createNativeInnView(viewport, overlay, options) {
   });
 }
 
-export async function createNativeSceneView(viewport, overlay, { width = 640, height = 360 } = {}, {
-  sceneId, classKey, assetDirectory, manifest, actorDirectory = actorsDirectory, modelIds,
-  terrainEdge, requireInstancing, actorTints, prepareProps, createExitEffect, resolveActor,
-}) {
-  const response = await fetch(assetDirectory + manifest);
-  if (!response.ok) throw Error(`Could not load 3D scene ${sceneId}.`);
-  const spec = await response.json();
-  if (spec.scene !== sceneId || !/^[a-z0-9_.-]+\.glb$/i.test(spec.asset) || !spec.camera?.offset) {
-    throw Error(`Invalid 3D scene manifest for ${sceneId}.`);
-  }
-
-  const loaded = await Promise.allSettled([
-    loadGltfFromUrl3D(assetDirectory + spec.asset),
+export async function loadNativeSceneAssets(config, sceneSpec) {
+  const { sceneId, assetDirectory, actorDirectory = actorsDirectory, modelIds, createExitEffect } = config;
+  const spec = sceneSpec ?? readNativeSceneSpec(config);
+  const exit = createExitEffect && spec.then(async data => {
+    try { return await createExitEffect({ spec: data, transform: sceneMatrix(data.layout) }); }
+    catch (error) { console.warn(`Scene ${sceneId} exit effect could not load`, error); }
+  }, () => undefined);
+  const requests = Promise.allSettled([
+    spec.then(({ asset }) => loadGltfFromUrl3D(assetDirectory + asset)),
     ...modelIds.map(id => loadGltfFromUrl3D(actorDirectory + id + '.glb')),
   ]);
+  const [loaded, exitEffect] = await Promise.all([requests, exit]);
   const assets = loaded.filter(row => row.status === 'fulfilled').map(row => row.value);
   const failure = loaded.find(row => row.status === 'rejected');
   if (failure) {
+    exitEffect?.dispose();
     for (const asset of assets) asset.dispose();
     throw failure.reason;
   }
   const [environment, ...models] = assets;
+  const dispose = () => {
+    if (!assets.length) return;
+    exitEffect?.dispose();
+    for (const asset of assets.splice(0)) asset.dispose();
+  };
+  return { spec: await spec, environment, models, exitEffect, dispose };
+}
+
+export async function createNativeSceneView(viewport, overlay, { width = 640, height = 360 } = {}, config, prepared) {
+  const { sceneId, classKey, modelIds, terrainEdge, requireInstancing, actorTints,
+    prepareProps, resolveActor } = config;
+  const assets = prepared ?? await loadNativeSceneAssets(config);
+  const { spec, environment, models, exitEffect } = assets;
   const templates = new Map(modelIds.map((id, i) => [id, models[i]]));
   const canvas = document.createElement('canvas');
   canvas.className = `scene3d-canvas ${classKey}-canvas native-world3d-canvas`;
@@ -260,7 +272,7 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
   const actors = new Map();
   const tints = new Map();
   const exitAnchor = spec.anchors?.exit?.position;
-  let renderer, wind, interactiveProps, exitEffect, previousSize, previousAspect;
+  let renderer, wind, interactiveProps, previousSize, previousAspect;
   let drawn = false, visible = true, disposed = false, lost = false;
   let lastDraw;
 
@@ -458,10 +470,9 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
     renderer?.dispose();
     wind?.dispose();
     interactiveProps?.dispose?.();
-    exitEffect?.dispose();
     for (const variants of tints.values()) for (const material of variants.values()) material.dispose();
     terrainExtension?.geometry.dispose();
-    for (const asset of assets) asset.dispose();
+    assets.dispose();
     canvas.remove();
     viewport.classList.remove('scene3d-active', `${classKey}-active`);
   }
@@ -472,14 +483,7 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
       onContextLost() { lost = true; }, onContextRestored() { lost = false; } });
     interactiveProps = prepareProps?.(environment, spec);
     canvas.dataset.interactiveProps = String(interactiveProps?.slots.length ?? 0);
-    if (createExitEffect) {
-      try {
-        exitEffect = await createExitEffect({ spec, transform });
-        if (exitEffect) scene.addChild(exitEffect.node);
-      } catch (error) {
-        console.warn(`Scene ${sceneId} exit effect could not load`, error);
-      }
-    }
+    if (exitEffect) scene.addChild(exitEffect.node);
     const exitGroundCenter = exitEffect?.groundCenter ?? (exitAnchor && [exitAnchor[0], exitAnchor[2]]);
     if (exitGroundCenter) canvas.dataset.exitGroundCenter = exitGroundCenter.join(',');
     canvas.dataset.exitEffect = String(Boolean(exitEffect));
