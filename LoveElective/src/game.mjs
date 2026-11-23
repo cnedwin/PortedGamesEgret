@@ -13,6 +13,8 @@ import { HEROINES, HERO } from './data/cast.mjs';
 import { SLOTS_OF_DAY, WEEKDAYS, DAYS_IN_TERM, DATE_SPOTS } from './data/places.mjs';
 import { GIFTS, STYLES } from './data/items.mjs';
 import * as sim from './sim.mjs';
+import { firstEveningStatus, takeFirstEveningNotice } from './first-evening.mjs';
+import { createMemoryScenes } from './memory-scenes.mjs';
 
 const SAVE_KEY = 'love-elective-save-v1';
 const PREFS_KEY = 'love-elective-prefs-v1';
@@ -73,6 +75,7 @@ export async function createGame(canvas, options) {
   };
   game.load = () => {
     game.state = sim.deserialize(readStorage(SAVE_KEY) ?? '');
+    game.memoryScenes.importCompleted(game.state);
     return !!game.state;
   };
   // Each replay loads a fresh copy of the bookmark, which survives the end of a term.
@@ -89,6 +92,8 @@ export async function createGame(canvas, options) {
   // ---- memories kept between terms: endings, achievements and perks
   game.memories = sim.readMemories(readStorage(MEMORIES_KEY) ?? '');
   game.saveMemories = () => writeStorage(MEMORIES_KEY, JSON.stringify(game.memories));
+  game.memoryScenes = createMemoryScenes(readStorage, writeStorage);
+  game.importMemoryScenes = () => game.memoryScenes.importCompleted(sim.deserialize(readStorage(SAVE_KEY) ?? ''));
 
   /** Today's wish in a few words, e.g. "想要：热可可". */
   game.wishText = w => {
@@ -187,6 +192,7 @@ export async function createGame(canvas, options) {
     const s = game.state,
       c = sim.clock(s),
       L = game.L;
+    const newMessage = firstEveningStatus(s)?.read === false;
     hud ??= ui.panel({ x: 0, y: 0, w: W, h: 76, res: 1.25 });
     if (onPhone !== undefined) hud.onPhone = onPhone;
     hud.paint(p => {
@@ -213,12 +219,17 @@ export async function createGame(canvas, options) {
       p.text('¥', 650, 23, { size: 21, weight: 800, color: '#f5c68e', family: SERIF });
       p.text(String(s.money), 677, 23, { size: 20, weight: 800, color });
       if (hud.onPhone) {
-        p.button(W - 178, 12, 156, 52, L(['手机', 'Phone']), hud.onPhone, { kind: 'primary', size: 19 });
+        p.button(W - 178, 12, 156, 52, L(newMessage ? ['手机 · 新消息', 'Phone · New message'] : ['手机', 'Phone']),
+          hud.onPhone, { kind: 'primary', size: newMessage ? 15 : 19 });
         g.fillStyle = '#f1bbac';
         g.fill(poly([[W - 48, 33], [W - 44, 38], [W - 48, 43], [W - 52, 38]]));
       }
     });
     hud.node.visible = true;
+    if (takeFirstEveningNotice(s)) {
+      game.toast(L(['林夏发来一条新消息', 'A new message from Lin Xia']), 'good');
+      game.save();
+    }
   };
   game.hideHud = () => {
     if (hud) hud.node.visible = false;

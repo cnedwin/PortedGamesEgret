@@ -6,6 +6,7 @@ import { THEME, SERIF } from '../engine/ui.mjs';
 import { rgba, ellipse } from '../art/draw.mjs';
 import { HEROINES, HEROINE_IDS } from '../data/cast.mjs';
 import { ACHIEVEMENTS, PERKS } from '../data/memories.mjs';
+import { MEMORY_SCENES } from '../memory-scenes.mjs';
 import * as sim from '../sim.mjs';
 
 /** Every ending in album order: two for each senior, then the one for going alone. */
@@ -89,20 +90,39 @@ export function openAlbum(game, tab = 'endings') {
       },
       branches(p) {
         const snapshot = game.readQinggeBranch();
-        p.card(32, 122, PW - 64, 310, { r: 20, fill: '#fff8ef', stroke: '#e4ccd9', shadow: 0.18 });
-        game.avatar(p, 'qingge', 60, 152, 118);
-        p.text(L(['星空祭筹备', 'Preparing the Star Festival']), 206, 150, { size: 28, weight: 800, family: SERIF });
-        p.text(L(['沈清歌 · 第三章预算会', 'Shen Qingge · Chapter 3 budget meeting']), 206, 199, { size: 17, color: THEME.soft });
+        p.text(L(['回看使用独立进度。快进只略过已读对白，遇到新对白或选择会停下。',
+          'Replays are separate from your term. Fast-forward pauses for unread lines and choices.']),
+        32, 104, { size: 17, color: THEME.soft });
+        MEMORY_SCENES.forEach((scene, index) => {
+          const x = 32 + index % 2 * 536;
+          const y = 144 + Math.floor(index / 2) * 168;
+          const open = game.memoryScenes.read(scene.id);
+          const color = HEROINES[scene.girl].color;
+          p.card(x, y, 520, 152, { r: 19, fill: open ? '#fff8ef' : '#f0e8ee', stroke: '#e4ccd9', shadow: 0.1 });
+          game.avatar(p, scene.girl, x + 19, y + 20, 90);
+          p.text(L(scene.name), x + 129, y + 15, { size: 24, weight: 800, family: SERIF, maxW: 363 });
+          p.text(L(scene.detail), x + 129, y + 52, { size: 16, color: THEME.soft, maxW: 361 });
+          if (open) {
+            p.button(x + 125, y + 83, 366, 52, L(scene.open), () => finish(scene.id),
+              { color, kind: 'primary', size: 17 });
+          } else {
+            p.text(L(['完成对应剧情后解锁', 'Complete this story to unlock']), x + 129, y + 96,
+              { size: 16, color: THEME.soft, maxW: 344 });
+          }
+        });
+        p.card(32, 482, PW - 64, 120, { r: 19, fill: '#fff8ef', stroke: '#e4ccd9', shadow: 0.1 });
+        p.text(L(['星空祭筹备 · 预算会书签', 'Star Festival · Budget meeting bookmark']),
+          53, 500, { size: 22, weight: 800, family: SERIF });
         if (snapshot) {
-          p.text(L([`已保存第 ${snapshot.day} 天的会前进度。回看中的选择不会改动当前学期。`,
-            `A bookmark from day ${snapshot.day}. Choices made in replay stay separate from your current term.`]),
-          206, 251, { size: 18, color: THEME.ink, maxW: 770, lineH: 29 });
-          p.button(206, 326, 346, 58, L(['从预算会前回看', 'Review from the budget meeting']), () => finish('qingge-festival'),
-            { kind: 'primary', size: 19 });
+          p.text(L([`第 ${snapshot.day} 天的书签。可以试另一种回答，解锁对应尾声。`,
+            `Day ${snapshot.day}. Try a different answer to unlock the other epilogue.`]),
+          53, 539, { size: 16, color: THEME.soft, maxW: 604 });
+          p.button(692, 516, 370, 55, L(['从预算会前回看', 'Review from the budget meeting']), () => finish('qingge-festival'),
+            { kind: 'primary', size: 17 });
         } else {
-          p.text(L(['在图书馆开启清歌第三章时，会自动保存预算会前的分支进度。',
+          p.text(L(['在图书馆开启清歌第三章时，会自动保存预算会前进度。',
             'Start Qingge’s third chapter at the library to bookmark the moment before the budget meeting.']),
-          206, 251, { size: 18, color: THEME.ink, maxW: 770, lineH: 29 });
+          53, 539, { size: 16, color: THEME.soft, maxW: 990 });
         }
       },
     };
@@ -122,7 +142,7 @@ export function openAlbum(game, tab = 'endings') {
         ['endings', ['结局', 'Endings']],
         ['achievements', ['成就', 'Achievements']],
         ['perks', ['开学天赋', 'Perks']],
-        ['branches', ['分支回看', 'Branch replay']],
+        ['branches', ['名场面回看', 'Scene replays']],
       ].forEach(([id, label], i) =>
         p.segment(422 + i * 139, 24, 130, 44, L(label), view.tab === id, () => {
           view.tab = id;

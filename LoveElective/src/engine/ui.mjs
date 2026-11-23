@@ -141,7 +141,8 @@ export class Painter {
   /** Register a tappable rectangle; tap(x, y) receives where inside it the tap landed. */
   hit(x, y, w, h, tap, { hover = true, r = 12, label, role = 'button', selected, disabled = false } = {}) {
     const hit = { x, y, w, h, tap, hover, r, disabled };
-    if (!disabled && tap) this.panel.hits.push(hit);
+    // Keep disabled controls in hit testing so a tap cannot fall through to panel.blank.
+    if (tap) this.panel.hits.push(hit);
     this.panel.controls.push({
       hit, role, selected, disabled,
       label: label ?? describePaintedHit(this.panel.words, hit, this.g.fillStyle),
@@ -315,7 +316,7 @@ export function createUI(stage, layer) {
 
   ui.setHover = found => {
     ui.hovered = found;
-    if (!found?.hit?.hover) {
+    if (!found?.hit?.hover || found.hit.disabled) {
       glow.alpha = 0;
       return;
     }
@@ -334,7 +335,7 @@ export function createUI(stage, layer) {
     if (ui.locked || e?.pointerType === 'touch') return;
     const found = find(x, y);
     if (found?.hit !== ui.hovered?.hit) ui.setHover(found);
-    stage.canvasElement.style.cursor = found?.hit ? 'pointer' : 'default';
+    stage.canvasElement.style.cursor = found?.hit && !found.hit.disabled ? 'pointer' : 'default';
   });
   stage.on('down', (x, y) => {
     if (ui.locked) return;
@@ -349,7 +350,7 @@ export function createUI(stage, layer) {
     ui.setHover(e?.pointerType === 'touch' ? null : found);
     if (x < 0) return;
     if (pressed?.hit) {
-      if (found?.hit === pressed.hit) {
+      if (found?.hit === pressed.hit && !pressed.hit.disabled) {
         ui.accessibility.pointerFocus(pressed.panel, pressed.hit);
         glow.alpha = 0;
         ui.onTap?.();
