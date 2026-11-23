@@ -15,7 +15,8 @@ const hz = semitone => 220 * 2 ** (semitone / 12);
 const SCENE_MUSIC = new Set(['bailu-zero-night', 'bailu-zero-mystery', 'bailu-zero-warm', 'campus-social-day']);
 const SETTINGS_KEY = 'love-elective-audio-v1';
 const DIALOGUE_MUSIC_LEVEL = 0.23;
-const DIALOGUE_MUSIC_ATTACK = 0.04;
+// Keep the music ramp ahead of short consonant onsets in the recorded dialogue.
+const DIALOGUE_MUSIC_ATTACK = 0.008;
 const DIALOGUE_MUSIC_HOLD_MS = 120;
 const DIALOGUE_MUSIC_RELEASE = 0.36;
 
