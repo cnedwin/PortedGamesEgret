@@ -129,10 +129,18 @@ export function createPlayTouch(game, port) {
                 }
             return owned;
         },
-        reset() {
-            for (const control of controls)
-                if (control.owner !== undefined && !control.node.isDisposed)
+        cancel() {
+            // A window can lose focus before the browser sends the last pointer event.
+            for (const control of controls) {
+                if (control.owner === undefined)
+                    continue;
+                control.owner = undefined;
+                if (!control.node.isDisposed)
                     control.release();
+            }
+        },
+        reset() {
+            touch.cancel();
             controls = [];
         }
     };

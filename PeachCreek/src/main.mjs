@@ -1273,34 +1273,27 @@ $('#startButton').addEventListener('click', openSlotPicker);
 $('#closeSaveSlots').addEventListener('click', closeSlotPicker);
 
 // ——— Keys ———
-// play takes Tab, Space and the arrows on the window for its own keys; this game reads none of play's keys, so every
-// key is caught first and kept from play (ENGINE-NOTES 1).
-addEventListener(
-  'keydown',
-  (event) => {
-    event.stopPropagation();
-    if (!$('#saveSlots').hidden) {
-      if (event.key === 'Escape') closeSlotPicker();
-      else if (event.key === 'Tab') {
-        const buttons = $$('#saveSlots button');
-        const end = event.shiftKey ? buttons[0] : buttons.at(-1);
-        if (document.activeElement === end) {
-          event.preventDefault();
-          (event.shiftKey ? buttons.at(-1) : buttons[0]).focus();
-        }
+document.addEventListener('keydown', (event) => {
+  if (!$('#saveSlots').hidden) {
+    if (event.key === 'Escape') closeSlotPicker();
+    else if (event.key === 'Tab') {
+      const buttons = $$('#saveSlots button');
+      const end = event.shiftKey ? buttons[0] : buttons.at(-1);
+      if (document.activeElement === end) {
+        event.preventDefault();
+        (event.shiftKey ? buttons.at(-1) : buttons[0]).focus();
       }
-      return;
     }
-    if (event.key !== 'Escape') {
-      if (hits.contains(document.activeElement)) panKey(event);
-      return;
-    }
-    if (!$('#settings').hidden) return $('#settings .closeButton').click();
-    if (!$('#away').hidden) return $('#awayOk').click();
-    if (app.sheet) return closeSheet();
-  },
-  true
-);
+    return;
+  }
+  if (event.key !== 'Escape') {
+    if (hits.contains(document.activeElement)) panKey(event);
+    return;
+  }
+  if (!$('#settings').hidden) return $('#settings .closeButton').click();
+  if (!$('#away').hidden) return $('#awayOk').click();
+  if (app.sheet) return closeSheet();
+});
 
 // ——— Start ———
 async function boot() {
@@ -1310,8 +1303,6 @@ async function boot() {
     update: (seconds) => { if (app.screen === 'play') app.view.update(Math.min(0.1, seconds)); },
     onError: (error) => console.error(error)
   });
-  // The holder play makes under a clear canvas is black; the map shows through (ENGINE-NOTES 2).
-  if (game.canvas.parentElement) game.canvas.parentElement.style.background = 'transparent';
   game.reducedMotion = preferences.data.reducedMotion || matchMedia('(prefers-reduced-motion: reduce)').matches;
   app.game = game;
   app.view = createView(game);
