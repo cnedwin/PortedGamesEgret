@@ -10,6 +10,7 @@ import {h,button,clear} from './dom.mjs';
 import {createLabShell,words as w,unitName,phaseName,formationInfo,stamp} from './battle-lab-shell.mjs';
 import {createBattleBoard} from './battle-board.mjs';
 import {boardPoint,hexPoints} from './battle-board-layout.mjs';
+import {tacticPresentation,battleOutcomeReason} from './battle-copy.mjs';
 
 const clone=v=>JSON.parse(JSON.stringify(v));
 const HELP=['atk','def','spd','heal','rally','rage'];
@@ -158,7 +159,7 @@ export function createBattlePlayground(app,{onExit,openReplay}){
  function begin(){phase='fight';paused=false;record.action('begin');record.capture(phase,{force:true});app.sound?.play('horn');notify(w('接敌后留意怒气，点亮的战法可以手动施展。','Watch rage as the armies meet; lit tactics can be used manually.'));render(true);}
  function finish(){
   phase='result';paused=true;armed=null;record.action('result',{...b.over});record.capture(phase,{force:true});tape=record.finish();
-  app.sound?.play(b.over.winner?'lose':'win');notify((b.over.winner?w('红军获胜','Red army wins'):w('蓝军获胜','Blue army wins'))+' · '+t('why_'+b.over.why));render(true);
+  app.sound?.play(b.over.winner?'lose':'win');notify((b.over.winner?w('红军获胜','Red army wins'):w('蓝军获胜','Blue army wins'))+' · '+battleOutcomeReason(b.over,0,getLanguage()));render(true);
  }
  function advance(seconds){
   clearAim(false);
@@ -197,12 +198,15 @@ export function createBattlePlayground(app,{onExit,openReplay}){
    const setOrder=(text,what,arg,on)=>{const x=button(text,()=>issue(what,arg),{kind:on?'on':''});x.dataset.lab='order-'+what;return x;};
    panel.append(h('div.labOrders',setOrder(w('坚守','Hold'),'hold',null,u.order==='hold'),setOrder(w('自动指挥','Auto orders'),'auto',null,u.order==='auto'),setOrder(w('自动战法：','Auto tactics: ')+(u.autoTactic?w('开','on'):w('关','off')),'autoTactic',!u.autoTactic,u.autoTactic)));
    panel.append(h('div.labTactics',u.tactics.map(id=>{
-    const tc=TACTICS[id],ready=u.rage>=100&&!(u.status.stun>0),x=button(h('span',nm(tc),h('small',HELP.includes(tc.kind)?w('支援','Support'):w('选择目标','Aim'))),()=>arm(id),{why:ready?null:u.status.stun>0?w('定身中','Stunned'):w('怒气满100后可施展','Requires 100 rage'),kind:armed===id?'on':''});x.dataset.lab='tactic-'+id;return x;
+    const tc=TACTICS[id],ready=u.rage>=100&&!(u.status.stun>0),spec=tacticPresentation(tc,tacticPreview(b,u,id).reach,{language:getLanguage()});
+    const why=ready?null:u.status.stun>0?w('定身中','Stunned'):w('怒气满100后可施展','Requires 100 rage');
+    const x=button(h('span',nm(tc),h('small.labTacticEffect',spec.effect),h('small.labTacticTarget',spec.target),h('small.labTacticCost',spec.cost)),()=>arm(id),{why,kind:armed===id?'on':''});
+    x.title=spec.detail+(why?' · '+why:'');x.dataset.lab='tactic-'+id;return x;
    })));
    if(armed){
     const preview=tacticPreview(b,u,armed,aimTarget==null?null:b.units[aimTarget]);
     const confirm=button(w('确认施策','Confirm tactic'),()=>cast(armed,aimTarget),{kind:'main',why:preview.valid?null:preview.reason==='range'?w('目标超出战法范围','Outside tactic range'):w('先选择敌军目标','Choose a target first')});confirm.dataset.lab='confirm-tactic';
-    panel.append(h('div.labAimConfirm',h('strong',nm(TACTICS[armed])),h('p',aimTarget==null?w('选择下方目标，或点战场上的敌军。','Choose a target below, or on the battlefield.'):unitName(b.units[aimTarget])+' · '+w('覆盖 ','Covers ')+preview.targets.length+w(' 部敌军',' enemy units')),confirm,button(w('取消施策','Cancel tactic'),cancelAim)));
+    panel.append(h('div.labAimConfirm',h('strong',nm(TACTICS[armed])),h('p.labTacticExplanation',tacticPresentation(TACTICS[armed],preview.reach,{language:getLanguage()}).detail),h('p',aimTarget==null?w('选择下方目标，或点战场上的敌军。','Choose a target below, or on the battlefield.'):unitName(b.units[aimTarget])+' · '+w('覆盖 ','Covers ')+preview.targets.length+w(' 部敌军',' enemy units')),confirm,button(w('取消施策','Cancel tactic'),cancelAim)));
    }
    panel.append(h('div.labEnemyTargets',h('small',armed?w('施策目标','TACTIC TARGETS'):w('进攻目标','ATTACK TARGETS')),foes.map(o=>{
     const preview=armed?tacticPreview(b,u,armed,o):null,inRange=preview?.reason!=='range';
@@ -229,13 +233,13 @@ export function createBattlePlayground(app,{onExit,openReplay}){
    phase==='deploy'?button(w('鸣鼓开战','Begin battle'),begin,{kind:'main'}):phase==='fight'?button(paused?w('继续战斗','Resume battle'):w('暂停战斗','Pause battle'),togglePause):null,
    phase!=='result'?button(w('步进 1 秒','Step 1 second'),()=>{paused=true;record.action('step',{seconds:1});advance(1);}):null,
    ...[1,2,4].map(v=>button(v+'×',()=>{speed=v;record.action('speed',{speed:v});render(true);},{kind:speed===v?'on':''})),
-   button(w('战报 / 回放','Report / replay'),playback),phase==='result'?button(w('再战此局','Play again'),create,{kind:'main'}):null,
+   (()=>{const x=button(w('战报 / 回放','Report / replay'),playback);x.dataset.lab='replay';return x;})(),phase==='result'?button(w('再战此局','Play again'),create,{kind:'main'}):null,
    button(w('换一场演武','Choose encounter'),()=>{child?.destroy();child=null;configuration();})
   ].filter(Boolean));
   const encounter=ENCOUNTERS[config.encounter],goal=encounter?w(...encounter.objective):b.setup.kind==='siege'?w('攻破城门、占营10秒，或击退守军','Breach and hold the keep for 10s, or break the garrison'):w('击退红军；日落前结束战斗','Break the red army before sunset');
   const ready=b.units.filter(u=>u.side===0&&!u.gone&&!u.routed&&u.rage>=100).length;
   clear(situation).append(h('strong',phase==='result'?(b.over.winner?w('红军获胜','RED VICTORY'):w('蓝军获胜','BLUE VICTORY')):w('目标 · ','OBJECTIVE · ')+goal),
-   h('span',phase==='result'?t('why_'+b.over.why):b.gate?w('城门 ','Gate ')+Math.max(0,Math.round(b.gate.hp))+' · '+w('占营 ','Keep ')+b.keepHeld.toFixed(1)+'/10s':ready?w(ready+' 部战法已就绪',ready+' tactics ready'):w('前军接敌，后军支援','Screen the front; support from behind')));
+   h('span',phase==='result'?battleOutcomeReason(b.over,0,getLanguage()):b.gate?w('城门 ','Gate ')+Math.max(0,Math.round(b.gate.hp))+' · '+w('占营 ','Keep ')+b.keepHeld.toFixed(1)+'/10s':ready?w(ready+' 部战法已就绪',ready+' tactics ready'):w('前军接敌，后军支援','Screen the front; support from behind')));
   if(ready>readyNotice&&phase==='fight'&&!armed)notify(w('战法已就绪：点选亮起的战法，再选择目标。','A tactic is ready: choose the lit tactic, then a target.'));readyNotice=ready;
   renderPanel();
   if(focused)ui.host.querySelector(`[data-lab="${CSS.escape(focused)}"]`)?.focus({preventScroll:true});

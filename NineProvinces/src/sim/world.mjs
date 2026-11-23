@@ -192,14 +192,20 @@ function workSpeed(state, nodeId, kind) {
   return ((best + Math.min(help, 40)) / 60) * bonus;
 }
 
-/** What a work of a kind costs at a place now, and how many days it takes. */
+/** Cost, time and the result of one level under current city conditions. */
 export function workQuote(state, nodeId, kind) {
   const node = state.nodes[nodeId],
     level = node[kind],
     size = NODES[nodeId].size;
   const coin = Math.round(120 + level * 14 + size * 30);
   const days = Math.max(6, Math.round(24 / workSpeed(state, nodeId, kind)));
-  return { coin, days, full: level >= caps(nodeId)[kind] };
+  const full = level >= caps(nodeId)[kind];
+  const nextLevel = full ? level : level + 1;
+  const resource = kind === 'farm' ? 'grain' : kind === 'market' ? 'coin' : null;
+  const gain = resource && !full
+    ? income(state, nodeId, { ...node, [kind]: nextLevel })[resource] - income(state, nodeId)[resource]
+    : 0;
+  return { coin, days, full, nextLevel, gain };
 }
 
 /** Start raising one of a place's works by a level. */
@@ -280,7 +286,7 @@ export function study(state, factionId, techId) {
 const TAX = { low: { coin: 0.7, support: 1.2 }, normal: { coin: 1, support: 0 }, high: { coin: 1.35, support: -2 } };
 
 /** Income of a place in a month (before upkeep): coin and grain. */
-export function income(state, nodeId) {
+export function income(state, nodeId, levels = state.nodes[nodeId]) {
   const node = state.nodes[nodeId],
     owner = node.owner,
     tax = TAX[state.factions[owner]?.tax ?? 'normal'];
@@ -290,8 +296,8 @@ export function income(state, nodeId) {
   const order = 0.5 + node.order / 200,
     people = Math.sqrt(node.people / 300000);
   return {
-    coin: Math.round((node.market * 14 * people + node.people / 3000) * order * tax.coin * trade),
-    grain: Math.round(node.farm * 20 * people * order * farm)
+    coin: Math.round((levels.market * 14 * people + node.people / 3000) * order * tax.coin * trade),
+    grain: Math.round(levels.farm * 20 * people * order * farm)
   };
 }
 

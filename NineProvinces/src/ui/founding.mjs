@@ -6,6 +6,14 @@ import { pair } from './text.mjs';
 
 export const foundingSubmission = config => ({ ...config, companions: config.companions.filter(Boolean) });
 
+const searchKey = value => String(value ?? '').normalize('NFKC').toLocaleLowerCase().replace(/[\s'’\-·]/g, '');
+/** Retain the current choice while filtering; no synthetic choice is made. */
+export function filterFoundingOfficers(officers, query = '', current = '', excluded = []) {
+  const needle = searchKey(query);
+  const taken = new Set(excluded);
+  return officers.filter(g => !taken.has(g.ref) && (g.ref === current || !needle || [g.zh, g.en, g.id].some(value => searchKey(value).includes(needle))));
+}
+
 export function freshFounding() {
   return { zh: '新义军', en: '', flag: '义', colour: BANNER_COLOURS[0], town: '', ruler: '', companions: [], search: '' };
 }
@@ -68,6 +76,7 @@ export function foundingFields(app, state, roster, config, change, register) {
     h('p.dim.small', pair(['列表按本年代筛选：未成年、已故、现任君主与不在场人物不参与。离开原势力的武将和宝物只转移一次，不会复制。', 'The list excludes the underage, deceased, active rulers and unavailable officers. Leaving officers and their equipment transfer once, without duplication.'])),
     field(pair(['搜索主公与同行姓名', 'Find a ruler or companion by name']), h('input', {
       name: 'founding-search', type: 'search', value: config.search ?? '', autocomplete: 'off',
+      dataset: { setupKey: 'founding-search' },
       placeholder: pair(['输入中文名、英文名或拼音', 'Chinese name, English name or pinyin']),
       oninput: ({ target }) => { config.search = target.value; updateFilter(); }
     })),
@@ -89,18 +98,16 @@ export function foundingFields(app, state, roster, config, change, register) {
     h('p.note', pair(['起家提供6000以上守军、6500钱和初始粮秣。离任人员会退出原任职，与原势力略有嫌隙；开局宽限规则保持一致。', 'Start with at least 6,000 troops, 6,500 coin and grain. Departing officers leave their former posts, mildly straining relations. The normal starting grace applies.']))
   );
   function updateFilter() {
-    const query = (config.search ?? '').trim().toLocaleLowerCase();
-    const matches = g => !query || [g.zh, g.en, g.id].some(value => String(value).toLocaleLowerCase().includes(query));
     const controls = [root.querySelector('[name="founding-ruler"]'), ...Array.from({ length: 3 }, (_, i) => root.querySelector('[name="founding-companion-' + i + '"]'))];
     controls.forEach((select, index) => {
       const current = index === 0 ? config.ruler : config.companions[index - 1] ?? '';
       const taken = new Set(index === 0 ? [] : [config.ruler, ...config.companions.filter((_, i) => i !== index - 1)]);
-      const rows = options.officers.filter(g => !taken.has(g.ref) && (g.ref === current || matches(g)));
+      const rows = filterFoundingOfficers(options.officers, config.search, current, taken);
       select.replaceChildren(...(index === 0 ? [] : [h('option', { value: '' }, pair(['不携带', 'None']))]), ...rows.map(g => h('option', { value: g.ref }, labelOfficer(g))));
       select.value = current;
     });
-    const count = options.officers.filter(matches).length;
-    root.querySelector('.foundingSearchCount').textContent = pair(['匹配 ', 'Matches: ']) + count + pair([' 人；当前选择始终保留。', ' officers. Current selections stay available.']);
+    const count = filterFoundingOfficers(options.officers, config.search).length;
+    root.querySelector('.foundingSearchCount').textContent = pair(['匹配 ', 'Matches: ']) + count + pair([' 人；当前选择始终保留，清空搜索可浏览全部。', ' officers. Current choices stay available; clear search to see everyone.']);
   }
   updateFilter();
   return root;

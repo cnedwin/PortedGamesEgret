@@ -157,6 +157,9 @@
 .battleLab .labCurrentOrder { color:#d8c18c; font-size:11px; }
 .battleLab .labTactics .btn>span { display:flex; flex-direction:column; gap:3px; }
 .battleLab .labTactics small { font-weight:400; font-size:9px; }
+.battleLab .labTactics .labTacticEffect { color:inherit; font-size:10px; line-height:1.4; }
+.battleLab .labTactics .labTacticCost { font-size:9px; line-height:1.4; }
+.battleLab .labTactics .btn:disabled { opacity:1; color:#cbc5b1; }
 .battleLab .labAimConfirm { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0; padding:10px; background:#51412c; border:1px solid #e6c485; }
 .battleLab .labAimConfirm>strong,.battleLab .labAimConfirm>p { width:100%; margin:0; }
 .battleLab .labAimConfirm .btn { flex:1; }
@@ -171,10 +174,56 @@
 @media(min-width:1100px) and (min-height:650px) {
  .battleLab[data-lab-phase='deploy'] .labBody,.battleLab[data-lab-phase='fight'] .labBody,.battleLab[data-lab-phase='result'] .labBody { display:flex; flex-direction:column; overflow:hidden; }
  .battleLab .labBattleLayout { flex:1; min-height:0; grid-template-columns:minmax(0,1fr) 300px; }
+ .battleLab .labBattleLayout { grid-template-rows:minmax(0,1fr); align-items:stretch; overflow:hidden; }
  .battleLab .labUnitPanel { max-height:100%; overflow:auto; }
  .battleLab .labFieldArea { min-height:0; display:flex; flex-direction:column; }
  .battleLab .labMapStage { flex:1; min-height:0; display:flex; flex-direction:column; }
  .battleLab .labMapStage .labBoardScroll { flex:1; min-height:0; }
+}
+
+/* A fixed-height field breaks the SVG's intrinsic-height feedback loop. Zoom scrolls the field, not its clock. */
+.battleLab .labNotice:empty { display:none; }
+.battleLab .labMapStage .labBoardScroll { align-content:center; }
+.battleLab[data-lab-tab='replay'] .labBody { display:flex; flex-direction:column; overflow:hidden; }
+.battleLab[data-lab-tab='replay'] .labTabs { flex:none; }
+.battleLab[data-lab-tab='replay'] .labReplayContent {
+ display:grid;
+ grid-template-columns:minmax(0,1fr) clamp(200px,24vw,300px);
+ grid-template-rows:auto 44px minmax(0,1fr) auto;
+ gap:8px 14px;
+ flex:1;
+ min-height:0;
+}
+.battleLab[data-lab-tab='replay'] .labReplayControls { grid-column:1/-1; margin:0; }
+.battleLab[data-lab-tab='replay'] input[type='range'] { grid-column:1/-1; margin:0; }
+.battleLab[data-lab-tab='replay'] .labMapStage { display:flex; flex-direction:column; min-height:0; }
+.battleLab[data-lab-tab='replay'] .labMapStage .labBoardScroll { flex:1; min-height:0; max-height:none; }
+.battleLab[data-lab-tab='replay'] .labReplayOrders { margin:0; min-height:0; overflow:auto; }
+.battleLab[data-lab-tab='replay'] .labReplayContent>.labReportNote { grid-column:1/-1; margin:0; }
+@media(max-width:850px) and (orientation:portrait) {
+ .battleLab[data-lab-tab='replay'] .labBody { display:block; overflow:auto; }
+ .battleLab[data-lab-tab='replay'] .labReplayContent { display:flex; flex-direction:column; }
+ .battleLab[data-lab-tab='replay'] .labMapStage { height:42dvh; flex:none; }
+ .battleLab[data-lab-tab='replay'] .labReplayOrders { max-height:180px; flex:none; }
+ .battleLab[data-lab-tab='replay'] .labReplayControls { position:sticky; top:-10px; background:#14282a; padding:4px 0; z-index:4; }
+}
+@media(orientation:landscape) and (min-width:600px) and (max-height:520px) {
+ .battleLab[data-lab-tab='replay'] .labHeader { padding:3px 9px; }
+ .battleLab[data-lab-tab='replay'] .labHeader small { display:none; }
+ .battleLab[data-lab-tab='replay'] h2 { font-size:20px; margin:0; }
+ .battleLab[data-lab-tab='replay'] .labBody { padding:4px 9px; }
+ .battleLab[data-lab-tab='replay'] .labTabs { margin-bottom:4px; padding-bottom:4px; }
+ .battleLab[data-lab-tab='replay'] .labReplayContent { grid-template-columns:minmax(0,1fr) clamp(172px,27vw,250px); gap:2px 6px; }
+ .battleLab[data-lab-tab='replay'] .labReplayControls { flex-wrap:nowrap; gap:4px; }
+ .battleLab[data-lab-tab='replay'] .labReplayControls .btn { padding:4px 8px; flex:none; }
+ .battleLab[data-lab-tab='replay'] .labReplayControls output { font-size:10px; }
+ .battleLab[data-lab-tab='replay'] .labMapStage { display:grid; grid-template-columns:minmax(0,1fr) 96px; }
+ .battleLab[data-lab-tab='replay'] .labMapTools { grid-column:2; grid-row:1; display:grid; grid-template-columns:1fr 1fr; align-content:start; padding:2px; overflow:auto; }
+ .battleLab[data-lab-tab='replay'] .labMapTools .btn { margin:0; min-height:44px; padding:4px; }
+ .battleLab[data-lab-tab='replay'] .labMapTools .btn:first-child,.battleLab[data-lab-tab='replay'] .labMapTools .btn:last-child { grid-column:1/-1; }
+ .battleLab[data-lab-tab='replay'] .labMapStage .labBoardScroll { grid-column:1; grid-row:1; }
+ .battleLab[data-lab-tab='replay'] .labReplayOrders { padding:6px 8px; }
+ .battleLab[data-lab-tab='replay'] .labReplayContent>.labReportNote { display:none; }
 }
 @media(max-width:1000px) { .battleLab .labEncounters { grid-template-columns:repeat(2,minmax(0,1fr)); }.battleLab .labEncounterCard p { min-height:66px; }.battleLab .labMapTools .btn { min-height:44px; }.battleLab .labEncounterIntro h3 { font-size:20px; } }
 @media(max-width:850px) {

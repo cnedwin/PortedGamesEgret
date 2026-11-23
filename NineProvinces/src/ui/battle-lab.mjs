@@ -10,6 +10,7 @@ import { createSandboxSetup, SANDBOX_MAPS, DEFAULT_SANDBOX } from '../sim/battle
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { generalName } from '../view/names.mjs';
 import { h, button, clear } from './dom.mjs';
+import {battleActionLabel,battleOutcomeReason,hexPositionLabel} from './battle-copy.mjs';
 
 const w=(zh,en)=>getLanguage()==='en'?en:zh;
 const clone=v=>JSON.parse(JSON.stringify(v));
@@ -30,27 +31,28 @@ function eventText(e,identities){
  if(e.kind==='tactic'||e.kind==='tacticFailed')return who(e.unit)+' · '+nm(TACTICS[e.tactic])+(e.kind==='tacticFailed'?w('（被识破）',' (resisted)'):e.target!=null?' → '+who(e.target):'');
  if(e.kind==='rout')return who(e.unit)+w(' 溃退',' routed');
  if(e.kind==='gateOpen')return w('城门攻破','Gate breached');if(e.kind==='depotBurnt')return w('粮仓焚毁','Depot burned');
- const action={select:['选军','Select'],deploy:['部署','Deploy'],formation:['变阵','Formation'],move:['移动','Move'],attack:['进攻','Attack'],hold:['坚守','Hold'],auto:['自动指挥','Auto orders'],autoTactic:['自动战法','Auto tactics'],tactic:['战法','Tactic'],pause:['暂停','Pause'],resume:['继续','Resume'],begin:['开战','Begin'],entrust:['全军委任','Entrust'],speed:['倍速','Speed'],step:['步进','Step'],result:['结算','Result']};
- const label=action[e.kind]??[e.kind,e.kind];return w(...label)+(e.unit!=null?' · '+who(e.unit):'')+(e.kind==='formation'?' · '+nm(FORMATIONS[e.formation??e.arg]):e.kind==='attack'?' → '+who(e.arg):e.kind==='move'||e.kind==='deploy'?' · '+w('格','hex ')+(e.hex??e.arg):e.kind==='speed'?' · '+e.speed+'×':e.kind==='autoTactic'?' · '+(e.arg?w('开','on'):w('关','off')):'');
+ const detail=e.kind==='formation'?' · '+nm(FORMATIONS[e.formation??e.arg]):e.kind==='attack'?' → '+who(e.arg):e.kind==='move'||e.kind==='deploy'?' · '+hexPositionLabel(e.hex??e.arg,getLanguage()):e.kind==='speed'?' · '+e.speed+'×':e.kind==='autoTactic'?' · '+(e.arg?w('开','on'):w('关','off')):e.kind==='aim'?' · '+nm(TACTICS[e.tactic])+(e.target!=null?' → '+who(e.target):''):'';
+ return battleActionLabel(e,getLanguage())+(e.unit!=null?' · '+who(e.unit):'')+detail;
 }
 
-export function battleReportContent(report,identities=[]){
+export function battleReportContent(report,identities=[],playerSide=null){
  if(!report)return h('p',w('没有可显示的战报','No battle report available'));
  const sides=h('div.labTotals',report.sides.map(side=>h('section',h('h3',side.side?w('红军','RED ARMY'):w('蓝军','BLUE ARMY')),h('strong',num(side.remaining)+' / '+num(side.start)),h('p',w('净减员 ','Net losses ')+num(side.losses)+' · '+w('治疗 ','Restored ')+num(side.healing)),h('p',w('克制命中 ','Counter hits ')+side.counterHits+' · '+w('夹击 ','Flanks ')+side.flankHits+' · '+w('战法 ','Tactics ')+side.tactics))));
  const headers=[w('部队 / 阵型','Unit / Formation'),w('起始 → 剩余','Start → Remain'),w('实际杀伤','Damage'),w('承伤 / 治疗','Taken / Healing'),w('克制 / 夹击 / 战法','Counter / Flank / Tactic')];
  const table=h('div.labTableScroll',h('table.labReportTable',h('thead',h('tr',headers.map(x=>h('th',{'scope':'col'},x)))),h('tbody',report.units.map(u=>h('tr',h('th',{'scope':'row'},unitName(u)+' · '+nm(FORMATIONS[u.formation])),h('td',num(u.start)+' → '+num(u.remaining)),h('td',num(Math.round(u.damage))),h('td',num(Math.round(u.taken))+' / '+num(Math.round(u.healing))),h('td',u.counterHits+' / '+u.flankHits+' / '+u.tactics))))));
  const chronology=[...(report.events??[]).map(e=>({...e,time:e.t,source:'event'})),...(report.actions??[]).filter(e=>e.kind!=='select').map(e=>({...e,source:'action'}))].sort((a,b)=>a.time-b.time);
- return h('div.labReport',h('p.labReportIntro',w('战斗时长 ','Duration ')+stamp(report.seconds)+' · '+(report.winner==null?w('尚未结束','In progress'):(report.winner?w('红军','Red army'):w('蓝军','Blue army'))+' · '+t('why_'+report.why))),sides,table,h('p.labReportNote',w('杀伤包含随后被救治的损伤，净减员只计算战前与战后兵力差。反击与战法均计入实际贡献。','Damage includes casualties later restored by healing. Net losses compare initial and final troops. Retaliation and tactics count toward actual contributions.')),h('h3',w('军令与战局纪要','Orders & battle chronology')),h('ol.labChronology',chronology.length?chronology.map(e=>h('li',h('time',stamp(e.time)),h('span',{'className':e.source==='action'?'playerOrder':''},(e.source==='action'?w('军令 · ','Order · '):'')+eventText(e,identities)))):h('li',w('尚无军令或关键战况','No orders or key events yet'))));
+ return h('div.labReport',h('p.labReportIntro',w('战斗时长 ','Duration ')+stamp(report.seconds)+' · '+(report.winner==null?w('尚未结束','In progress'):(report.winner?w('红军获胜','Red army wins'):w('蓝军获胜','Blue army wins'))+' · '+battleOutcomeReason(report,playerSide,getLanguage()))),sides,table,h('p.labReportNote',w('杀伤包含随后被救治的损伤，净减员只计算战前与战后兵力差。反击与战法均计入实际贡献。','Damage includes casualties later restored by healing. Net losses compare initial and final troops. Retaliation and tactics count toward actual contributions.')),h('h3',w('军令与战局纪要','Orders & battle chronology')),h('ol.labChronology',chronology.length?chronology.map(e=>h('li',h('time',stamp(e.time)),h('span',{'className':e.source==='action'?'playerOrder':''},(e.source==='action'?w('军令 · ','Order · '):'')+eventText(e,identities)))):h('li',w('尚无军令或关键战况','No orders or key events yet'))));
 }
 
-export function openBattleReplay(app,tape,{onExit,tab='report'}={}) {
+export function openBattleReplay(app,tape,{onExit,tab='report',playerSide=null}={}) {
  if(!tape?.frames?.length)throw new Error('Replay has no recorded frames');
  const ui=shell(w('战斗详报与回放','Battle report & replay'),onExit),tabs=h('nav.labTabs'),content=h('div.labReplayContent');ui.body.append(tabs,content);
+ const inferredSide=tape.setup.factions?.indexOf(app.state?.player);if(playerSide===null&&inferredSide>=0)playerSide=inferredSide;
  let cursor=0,playing=false,speed=1,board=null,clock=null,slider=null,orders=null,lastKey='';
  ui.onDestroy(()=>board?.destroy());
  const total=tape.frames.at(-1).time;
- function change(next){board?.destroy();board=null;tab=next;playing=false;clear(tabs).append(button(w('战斗详报','Detailed report'),()=>change('report'),{kind:tab==='report'?'main':''}),button(w('战场回放','Battle replay'),()=>change('replay'),{kind:tab==='replay'?'main':''}));clear(content);
-  if(tab==='report'){content.append(battleReportContent(tape.report,tape.units));return;}
+ function change(next){board?.destroy();board=null;tab=next;ui.host.dataset.labTab=tab;playing=false;clear(tabs).append(button(w('战斗详报','Detailed report'),()=>change('report'),{kind:tab==='report'?'main':''}),button(w('战场回放','Battle replay'),()=>change('replay'),{kind:tab==='replay'?'main':''}));clear(content);
+  if(tab==='report'){content.append(battleReportContent(tape.report,tape.units,playerSide));return;}
   const controls=h('div.labReplayControls');clock=h('output');slider=h('input',{type:'range',min:0,max:Math.max(.001,total),step:.001,value:cursor,'aria-label':w('回放时间','Replay time'),oninput:e=>{cursor=+e.target.value;playing=false;render(true);}});
   const toggle=button(w('播放 / 暂停','Play / pause'),()=>{playing=!playing;if(cursor>=total)cursor=0;render(true);});toggle.dataset.lab='play';
   controls.append(toggle,button(w('回到开场','Opening'),()=>{cursor=0;playing=false;render(true);}),...[1,2,4].map(v=>button(v+'×',()=>{speed=v;render(true);})),clock);content.append(controls,slider);board=makeBoard(content,tape.field.tiles);orders=h('div.labReplayOrders',{'aria-live':'polite'});content.append(orders,h('p.labReportNote',w('每秒记录真实战况，可拖动时间轴；蓝/红为双方，金圈为部队位置。此处不会推进或改写战役存档。','Actual battle snapshots, sampled about once per second; seek with the timeline. Blue/red identify the sides. Replays never advance or overwrite the campaign.')));lastKey='';render(true);
@@ -64,5 +66,5 @@ export function openBattleReplay(app,tape,{onExit,tab='report'}={}) {
 }
 
 export function openBattleSandbox(app,options={}) {
- return createBattlePlayground(app,{...options,openReplay:(tape,opts)=>openBattleReplay(app,tape,opts)});
+ return createBattlePlayground(app,{...options,openReplay:(tape,opts)=>openBattleReplay(app,tape,{playerSide:0,...opts})});
 }

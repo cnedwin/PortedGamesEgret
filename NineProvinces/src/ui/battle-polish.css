@@ -36,6 +36,9 @@
 #battleHud .uVitals .ready, #battleHud .uVitals .ready b { color:#945727; }
 #battleHud .tactics { gap:5px; margin-top:9px; }
 #battleHud .tac { min-height:36px; padding:5px 7px; font-size:13px; background:#fcf5e5; border-color:#a38c61; border-radius:2px; }
+#battleHud .tac .tacName,#battleHud .tac small { display:block; }
+#battleHud .tac .tacEffect { font:10px/1.35 var(--song); margin-top:3px; white-space:normal; }
+#battleHud .tac .tacCost { font:9px/1.35 var(--song); margin-top:3px; }
 #battleHud .tac:not(:disabled) { background:linear-gradient(#f8dca1,#caa15d); color:#392812; box-shadow:0 0 0 1px #cda75588,0 2px 5px #62451f33; }
 #battleHud .tac[aria-pressed='true'] { background:#823d2d; color:#fff3db; border-color:#ffe0a0; }
 #battleHud .tac:disabled { color:#65583f; }

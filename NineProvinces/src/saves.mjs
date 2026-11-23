@@ -6,6 +6,7 @@
 import { createSaveStore } from '@egret/engine/kit';
 import { VERSION } from './sim/world.mjs';
 import { normalizeRoster } from './custom-officers.mjs';
+import { restoreCampaignView } from './save-view.mjs';
 
 export const SAVE_KEY = 'nine-provinces';
 export const OFFICERS_KEY = 'nine-provinces.officers';
@@ -79,6 +80,7 @@ export function summarize(game, cities) {
   const faction = game.factions[game.player];
   return {
     faction: game.player,
+    scenario: game.scenario ?? '184',
     day: game.day,
     cities,
     savedAt: new Date().toISOString(),
@@ -87,23 +89,26 @@ export function summarize(game, cities) {
 }
 
 /** Write a game into a slot. Returns whether the browser kept it. */
-export function writeSlot(store, game, cities) {
+export function writeSlot(store, game, cities, view = null) {
   const copy = JSON.parse(JSON.stringify(game));
   return (
     store.update((data) => {
       data.game = copy;
       data.summary = summarize(game, cities);
+      data.view = view ? restoreCampaignView(game, view) : null;
     }) !== false
   );
 }
 
 /** A save as a file's text, and back. */
-export const exportText = (game) => JSON.stringify({ kind: 'nine-provinces-save', game });
-export function importText(text) {
+export const exportText = (game, view = null) => JSON.stringify({ kind: 'nine-provinces-save', game, ...(view ? { view: restoreCampaignView(game, view) } : {}) });
+export function importSaveText(text) {
   try {
     const data = JSON.parse(text);
-    return data?.kind === 'nine-provinces-save' && gameLooksRight(data.game) ? data.game : null;
+    return data?.kind === 'nine-provinces-save' && gameLooksRight(data.game)
+      ? { game: data.game, view: data.view ? restoreCampaignView(data.game, data.view) : null } : null;
   } catch {
     return null;
   }
 }
+export const importText = text => importSaveText(text)?.game ?? null;

@@ -14,7 +14,7 @@ import { TREASURES } from '../data/treasures.mjs';
 import { FACTIONS } from '../data/factions.mjs';
 import { dateOf, serving, stat as statOf } from '../sim/core.mjs';
 import { regard } from '../sim/diplomacy.mjs';
-import { allied, troopCap, unitAllowed } from '../sim/military.mjs';
+import { allied, hostile, troopCap, unitAllowed } from '../sim/military.mjs';
 import { persuadeChance } from '../sim/people.mjs';
 import { ARMS, aptitudes, mobility } from '../sim/aptitude.mjs';
 import { choicesOf } from '../sim/story.mjs';
@@ -24,8 +24,11 @@ import { factionName, generalName, placeName } from '../view/names.mjs';
 import { $, bar, button, choice, clear, face, h, seal, stat, tabs } from './dom.mjs';
 import { emblem } from '../view/emblem.mjs';
 import { EVENTS } from '../sim/story.mjs';
-import { ageOf, dayWords, eventOf, logLine, pair, tacticText, techText, traitText, treasureText } from './text.mjs';
+import { ageOf, dayWords, eventOf, logLine, pair, tacticText, techText, traitText, treasureText, treatyAt } from './text.mjs';
 import { SLOTS } from '../saves.mjs';
+import { SCENARIOS } from '../sim/scenarios.mjs';
+import { progressPrompt } from './player-flow.mjs';
+import {battleOutcomeReason} from './battle-copy.mjs';
 
 const STATS = ['lead', 'war', 'int', 'pol', 'cha'];
 const formationFits = (f, unit) => f.group === 'any' || f.group === UNITS[unit].group || (UNITS[unit].group === 'navy' && f.group === 'inf');
@@ -182,6 +185,14 @@ const BUILD = {
       from = args.from,
       node = s.nodes[from];
     if (!node || node.owner !== s.player) return null;
+    const treaty = args.target && treatyAt(s, s.player, args.target);
+    const protectedTarget = args.target && !hostile(s, s.player, s.nodes[args.target]?.owner);
+    if (protectedTarget) {
+      return {
+        title: t('musterTitle', { place: placeName(from) }),
+        body: [h('p.note', treaty ? t('protectedCity', { treaty }) : t('why_protectedTarget'))]
+      };
+    }
     const here = serving(s, s.player, from).filter((g) => !(s.generals[g].busyUntil > s.day));
     if (!args.commander || !here.includes(args.commander)) {
       args.commander = here.slice().sort((a, b) => statOf(s, b, 'lead') + statOf(s, b, 'war') - statOf(s, a, 'lead') - statOf(s, a, 'war'))[0];
@@ -294,10 +305,15 @@ const BUILD = {
     const purpose = args.purpose;
     let list;
     if (purpose === 'persuade') list = serving(s, s.player).filter((g) => g !== args.target && !(s.generals[g].busyUntil > s.day));
-    else list = serving(s, s.player, args.at);
+    else if (purpose === 'bring') {
+      list = serving(s, s.player).filter((g) => {
+        const { at, busyUntil } = s.generals[g];
+        return at !== args.at && s.nodes[at]?.owner === s.player && !(busyUntil > s.day);
+      });
+    } else list = serving(s, s.player, args.at);
     const score = (g) => (purpose === 'persuade' ? persuadeChance(s, s.player, g, args.target) : purpose === 'search' ? statOf(s, g, 'int') + statOf(s, g, 'cha') : statOf(s, g, 'pol'));
     list.sort((a, b) => score(b) - score(a));
-    const titles = { search: t('searchTitle', { place: placeName(args.at) }), move: t('moveTitle'), persuade: t('persuadeTitle', { name: generalName(args.target) }) };
+    const titles = { search: t('searchTitle', { place: placeName(args.at) }), move: t('moveTitle'), bring: t('bringOfficerTitle', { place: placeName(args.at) }), persuade: t('persuadeTitle', { name: generalName(args.target) }) };
     const body = [statHead()];
     if (purpose === 'move' && args.picked) {
       const ours = Object.keys(s.nodes)
@@ -315,13 +331,16 @@ const BUILD = {
         list.length
           ? list.map((g) => {
               const busy = s.generals[g].busyUntil > s.day;
-              const extra = purpose === 'persuade' ? h('span.cap', Math.round(score(g) * 100) + '%') : busy ? h('span.cap', t('busy')) : null;
+              const extra = purpose === 'bring'
+                ? h('span.cap', t('bringOfficerFrom', { place: placeName(s.generals[g].at) }))
+                : purpose === 'persuade' ? h('span.cap', Math.round(score(g) * 100) + '%') : busy ? h('span.cap', t('busy')) : null;
               return officerRow(app, g, {
                 disabled: busy && purpose !== 'move',
                 extra,
                 onclick: () => {
                   if (purpose === 'search') app.act('search', g, args.at);
                   else if (purpose === 'persuade') app.act('persuade', g, args.target);
+                  else if (purpose === 'bring') app.act('moveGeneral', g, args.at);
                   else {
                     args.picked = g;
                     again();
@@ -329,7 +348,7 @@ const BUILD = {
                 }
               });
             })
-          : h('p.dim', t('why_generals'))
+          : h('p.dim', t(purpose === 'bring' ? 'bringOfficerEmpty' : 'why_generals'))
       )
     );
     return { title: titles[purpose], body, actions: [button(t('cancel'), () => app.dialogs.close())] };
@@ -707,9 +726,25 @@ const BUILD = {
     };
   },
 
+  confirmProgress(app, args) {
+    const prompt = progressPrompt(args.reason);
+    const cancel = () => args.backToSaves ? app.open('saves') : app.dialogs.close();
+    return {
+      title: prompt.title,
+      className: 'progressConfirm',
+      body: [h('p.tale', prompt.text), args.slot ? h('p.note', t('slot', { n: args.slot })) : null],
+      actions: [button(t('cancel'), cancel),
+        args.reason !== 'overwrite' && app.state ? button(pair(['先去存档', 'Save first']), () => app.open('saves')) : null,
+        button(prompt.action, () => { app.dialogs.close(true); args.proceed(); }, { kind: 'main' })]
+    };
+  },
+
   saves(app, args, again) {
     const slots = SLOTS.map((slot) => {
       const sum = app.slotSummary(slot);
+      const savedAt = sum?.savedAt ? new Date(sum.savedAt) : null;
+      const details = [sum?.scenario && SCENARIOS[sum.scenario] ? nm(SCENARIOS[sum.scenario]) : null,
+        savedAt && Number.isFinite(savedAt.getTime()) ? pair(['保存于 ', 'Saved ']) + savedAt.toLocaleString(getLanguage() === 'zh' ? 'zh-CN' : 'en-GB', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : null].filter(Boolean);
       // A slot's banner belongs to that saved campaign, never to whichever
       // different custom 'player' faction happens to be open behind the menu.
       const savedFaction = sum && (sum.name ? { id: sum.faction, name: sum.name, colour: sum.colour, flag: sum.flag }
@@ -720,6 +755,7 @@ const BUILD = {
         sum
           ? h('span', seal(savedFaction, 's'), ' ', nm(savedFaction.name ?? savedFaction), ' · ', dayWords(sum.day), ' · ', t('factionCities', { n: sum.cities }))
           : h('span.dim', t('empty')),
+        details.length ? h('small.saveDetails', details.join(' · ')) : null,
         h('div.row', app.state && slot !== 'auto' ? button(t('saveHere'), () => app.act('saveSlot', slot), { small: true }) : null, sum ? button(t('loadThis'), () => app.loadSlot(slot), { small: true, kind: 'main' }) : null)
       );
     });
@@ -877,7 +913,7 @@ const BUILD = {
       blocking: true,
       body: [
         h('div.stamp', won ? t('stampWon') : t('stampLost')),
-        h('p.note', t('why_' + result.why) + ' · ' + t('secondsN', { n: result.seconds })),
+        h('p.note', battleOutcomeReason(result,mine>=0?mine:null,getLanguage()) + ' · ' + t('secondsN', { n: result.seconds })),
         h('div.grid', stat(t('ourLosses'), num(losses[Math.max(0, mine)])), stat(t('theirLosses'), num(losses[1 - Math.max(0, mine)]))),
         report?.units?.length ? battleReport(s, setup, report, mine) : null,
         fates.length ? h('ul.fates', fates.map((x) => h('li', x))) : null

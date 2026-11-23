@@ -13,14 +13,17 @@ import { hexAt } from './hexgrid.mjs';
 import { FOOTPRINTS } from './land.mjs';
 import { along, routeLine } from './ways.mjs';
 
+export function activeTreaty(state, a, b) {
+  const treaty = state.factions[a]?.treaties[b];
+  return treaty?.until > state.day ? treaty : null;
+}
+
 /** Whether two factions fight: anyone not allied or at truce; the unowned are everyone's enemy. */
 export function hostile(state, a, b) {
   if (a === b) return false;
-  if (!a || !b) return true;
-  const t = state.factions[a]?.treaties[b];
-  return !(t && t.until > state.day);
+  return !activeTreaty(state, a, b);
 }
-export const allied = (state, a, b) => a !== b && state.factions[a]?.treaties[b]?.kind === 'ally' && state.factions[a].treaties[b].until > state.day;
+export const allied = (state, a, b) => a !== b && activeTreaty(state, a, b)?.kind === 'ally';
 
 /** Kilometres-a-day of an army, as map units a day, on a kind of link. */
 export function speedOf(state, army, kind) {
@@ -77,10 +80,14 @@ export function troopCap(state, id) {
 }
 
 /** Gather an army at a place from its garrison and the generals there. */
-export function muster(state, factionId, nodeId, { commander, deputies = [], troops, unit = 'spear', formation = 'fishscale', target = null }) {
+export function muster(state, factionId, nodeId, { commander, deputies = [], troops, unit = 'spear', formation = 'fishscale', target = null, attack = false }) {
   const node = state.nodes[nodeId],
     f = state.factions[factionId];
   if (node.owner !== factionId) return { why: 'notOurs' };
+  if (attack) {
+    if (!state.nodes[target]) return { why: 'noWay' };
+    if (!hostile(state, factionId, state.nodes[target].owner)) return { why: 'protectedTarget' };
+  }
   const here = serving(state, factionId, nodeId);
   const team = [commander, ...deputies].filter(Boolean);
   if (!team.length || !team.every((id) => here.includes(id) && !(state.generals[id].busyUntil > state.day))) return { why: 'generals' };
@@ -234,6 +241,7 @@ function meetOnTheRoad(state, a) {
 function arrive(state, a) {
   const at = a.link.to;
   const back = a.link.from;
+  const atDestination = at === a.target && a.path.length === 1;
   a.link = null;
   a.at = at;
   a.path.shift();
@@ -246,6 +254,9 @@ function arrive(state, a) {
   }
   if (!hostile(state, a.faction, node.owner)) {
     if (!a.path.length) a.target = null;
+    if (atDestination && a.faction === state.player && node.owner !== a.faction) {
+      note(state, 'logTreatyArrival', { faction: a.faction, general: a.commander, place: at });
+    }
     return;
   }
   // A hostile place: stop and take it, or fight for it.

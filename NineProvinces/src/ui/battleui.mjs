@@ -8,14 +8,14 @@
 // an enemy to attack; tap a tactic when rage is full, or leave it to auto.
 import { FORMATIONS, TERRAIN, UNITS, formationAllowed } from '../data/battle.mjs';
 import { TACTICS } from '../data/tactics.mjs';
-import { command as simCommand, createBattle, outcome, stepBattle, useTactic, combatPreview, canDeployBattle, deployBattleUnit } from '../sim/battle.mjs';
+import { command as simCommand, createBattle, outcome, stepBattle, useTactic, tacticPreview, combatPreview, canDeployBattle, deployBattleUnit } from '../sim/battle.mjs';
 import { createBattleRecorder } from '../sim/battle-history.mjs';
 import { finishBattle } from '../sim/military.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
 import { createBattle3D } from '../view3d/battle3d.mjs';
 import { $, bar, button, clear, face, h, seal } from './dom.mjs';
-import { tacticText } from './text.mjs';
+import {tacticPresentation} from './battle-copy.mjs';
 
 const SPEEDS = [1, 2, 4];
 const WIND = ['→', '↘', '↙', '←', '↖', '↗'];
@@ -147,6 +147,7 @@ export function startBattle(app, setup) {
           'div.tactics',
           u.tactics.map((id) => {
             const tc = TACTICS[id];
+            const explanation=tacticPresentation(tc,tacticPreview(b,u,id).reach,{language:getLanguage()});
             const ready = u.rage >= 100 && !u.routed && !u.gone && phase === 'fight' && !(u.status.stun > 0);
             return h(
               'button.tac',
@@ -155,7 +156,7 @@ export function startBattle(app, setup) {
                 disabled: !ready,
                 'aria-pressed': armed?.unit === u.id && armed.tactic === id ? 'true' : 'false',
                 className: tc.general ? 'tac sig' : 'tac',
-                title: nm(tc) + ' — ' + tacticText(id) + (!ready ? ' · '+(phase==='deploy'?words('开战后可用','Available after deployment'):u.routed?t('routed'):u.status.stun>0?t('st_stun'):t('rage')+' '+Math.floor(u.rage)+'/100') : ''),
+                title: nm(tc) + ' — ' + explanation.detail + (!ready ? ' · '+(phase==='deploy'?words('开战后可用','Available after deployment'):u.routed?t('routed'):u.status.stun>0?t('st_stun'):t('rage')+' '+Math.floor(u.rage)+'/100') : ''),
                 dataset: { k: 'tac' + u.id + id },
                 onclick: (e) => {
                   e.stopPropagation();
@@ -167,7 +168,7 @@ export function startBattle(app, setup) {
                   draw(true);
                 }
               },
-              nm(tc)
+              h('span.tacName',nm(tc)),h('small.tacEffect',explanation.effect),h('small.tacCost',explanation.cost)
             );
           })
         )
@@ -223,7 +224,7 @@ export function startBattle(app, setup) {
     const chosen = selected !== null ? b.units[selected] : null;
     const active = chosen && !chosen.gone && chosen.side===side;
     const readyCount = b.units.filter(u=>u.side===side&&!u.gone&&!u.routed&&u.rage>=100).length;
-    const commandText = armed ? nm(TACTICS[armed.tactic])+' · '+tacticText(armed.tactic) : phase==='deploy' ? words('青色格可部署；点部队切换阵型。','Cyan hexes are valid deployment. Select a unit to change its formation.') : chosen?.order==='attack'&&chosen.target ? words('正在进攻：','Attacking: ')+unitName(chosen.target) : t('battleHelp');
+    const commandText = armed ? nm(TACTICS[armed.tactic])+' · '+tacticPresentation(TACTICS[armed.tactic],tacticPreview(b,b.units[armed.unit],armed.tactic).reach,{language:getLanguage()}).detail : phase==='deploy' ? words('青色格可部署；点部队切换阵型。','Cyan hexes are valid deployment. Select a unit to change its formation.') : chosen?.order==='attack'&&chosen.target ? words('正在进攻：','Attacking: ')+unitName(chosen.target) : t('battleHelp');
     clear(hud).append(
       h(
         'header.bTop',

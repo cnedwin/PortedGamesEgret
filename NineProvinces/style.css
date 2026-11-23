@@ -584,6 +584,24 @@ h3 small {
   font-size: 12px;
   color: var(--azure);
 }
+.work-entry .work {
+  margin-bottom: 2px;
+}
+.work-preview {
+  color: var(--muted, #c1ad93);
+  font-size: 0.76rem;
+  line-height: 1.35;
+  margin: 0 0 8px;
+}
+.work-preview small,
+.attack-source small {
+  display: block;
+  color: var(--muted, #c1ad93);
+}
+#side .order-explanation {
+  border-inline-start: 2px solid var(--gold);
+  padding-inline-start: 8px;
+}
 .chips {
   display: flex;
   flex-wrap: wrap;
