@@ -19,10 +19,12 @@ const REVEAL_SPEED = 1150;
  * Play `script`. `girl` is the senior the choices affect.
  * Resolves when the script has finished and the dialogue box is gone.
  */
-export async function playScript(game, script, { girl = null, keepActor = false, light, checkpoint = null, outfit = null, prefetchOpeningVoice = false } = {}) {
+export async function playScript(game, script, { girl = null, keepActor = false, light, checkpoint = null,
+  outfit = null, prefetchOpeningVoice = false, exitLabel = null } = {}) {
   const { stage, ui, world, L } = game;
   const lightNow = () => light ?? (game.state ? SLOTS_OF_DAY[game.state.slot].light : 'day');
   let skipping = false, cancelled = false, nextVoice = null;
+  const canExit = Boolean(checkpoint || exitLabel);
   const saveCheckpoint=()=>{if(checkpoint)game.save();};
   const pause=()=>{cancelled=true;game.audio.stopVoice?.();advance?.();};
   const skip=()=>{skipping=true;game.audio.stopVoice?.();};
@@ -51,7 +53,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
   ui.keys = key => {
     if (key === ' ' || key === 'Enter') advance?.();
     if (key === 'Control') skip();
-    if (key === 'Escape' && checkpoint) pause();
+    if (key === 'Escape' && canExit) pause();
   };
   box.node.alpha = 0;
   stage.tween(box.node, { alpha: 1 }, 0.25);
@@ -74,10 +76,8 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         skip();
         advance?.();
       }, { kind: 'plain', size: 15 });
-      if(checkpoint){
-        p.button(BOX.w-250,36,118,38,L(['稍後繼續','Resume later']),pause,{kind:'plain',size:14});
-        if (voiced) p.button(BOX.w-364,36,104,38,L(['重聽','Replay voice']),()=>game.audio.replayVoice?.(),{kind:'plain',size:14});
-      }
+      if (canExit) p.button(BOX.w-250,36,118,38,L(exitLabel ?? ['稍後繼續','Resume later']),pause,{kind:'plain',size:14});
+      if (checkpoint && voiced) p.button(BOX.w-364,36,104,38,L(['重聽','Replay voice']),()=>game.audio.replayVoice?.(),{kind:'plain',size:14});
       g.fillStyle = accent;
       g.fill(poly([[BOX.w - 64, BOX.h - 42], [BOX.w - 47, BOX.h - 42], [BOX.w - 55.5, BOX.h - 30]]));
     });
@@ -174,10 +174,10 @@ export async function playScript(game, script, { girl = null, keepActor = false,
       if (beside) world.moveActor(300);
       const pw = beside ? 700 : 900,
         px = beside ? 540 : 190;
-      const h = options.length * 78 + (checkpoint?74:20),
+      const h = options.length * 78 + (canExit?74:20),
         panel = ui.panel({ x: px, y: (470 - h) / 2 + 30, w: pw, h, res: 1.25, modal: true, title: L(['劇情選擇','Story choices']) });
       ui.keys = key => {
-        if(key==='Escape'&&checkpoint){cancelled=true;choose(null);return;}
+        if(key==='Escape'&&canExit){cancelled=true;choose(null);return;}
         const n = Number(key);
         if (n >= 1 && n <= options.length) choose(options[n - 1]);
       };
@@ -185,7 +185,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
         ui.keys = k => {
           if (k === ' ' || k === 'Enter') advance?.();
           if (k === 'Control') skip();
-          if (k === 'Escape' && checkpoint) pause();
+          if (k === 'Escape' && canExit) pause();
         };
         panel.close();
         if (beside) world.moveActor(actorX);
@@ -199,7 +199,7 @@ export async function playScript(game, script, { girl = null, keepActor = false,
           const size = p.measure(L(o.t), 21, 600) > pw - 90 ? 16 : 21;
           p.text(L(o.t), 62, y + (size === 21 ? 17 : 12), { size, weight: 600, maxW: pw - 90, lineH: 20 });
           p.hit(0, y, pw, 62, () => choose(o), { r: 12, label: L(o.t) });
-          if(checkpoint&&i===options.length-1)p.button(pw-212,h-52,196,40,L(['保存並稍後繼續','Save and resume later']),()=>{cancelled=true;choose(null);},{size:14});
+          if(canExit&&i===options.length-1)p.button(pw-212,h-52,196,40,L(exitLabel ?? ['保存並稍後繼續','Save and resume later']),()=>{cancelled=true;choose(null);},{size:14});
         }),
       );
       panel.node.alpha = 0;

@@ -1,24 +1,24 @@
 # 引擎笔记 · Engine notes
 
-做这款游戏时遇到的新白鹭引擎（提交 `b5628eb`）的缺陷与建议，格式见 [docs/GAME-STANDARD.md](../../docs/GAME-STANDARD.md) 第 3 节。前几条与之前的游戏相同，只写本作怎么绕过；第 5、6 条是本作新发现的。
+最初记录使用的引擎提交为 `b5628eb`。当前副本见 [vendor/SOURCE.md](vendor/SOURCE.md)，反馈格式见 [游戏规范](../docs/GAME-STANDARD.md)。
 
-The faults in the new Egret engine (commit `b5628eb`) met while making this game, and suggestions, written as in part
-3 of [docs/GAME-STANDARD.md](../../docs/GAME-STANDARD.md). The first items are the same as in earlier games and say only
-how this game works round them; items 5 and 6 are new here.
+The original observations used engine revision `b5628eb`. The [source record](vendor/SOURCE.md) identifies the engine shipped now. See the [game standard](../docs/GAME-STANDARD.md) for the feedback format.
 
-### 1. `play` 让页面按钮上的 Tab 和 Space 失灵 · `play` takes Tab and Space from the page's buttons — 未解决 / open
+### 1. 页面控件的键盘焦点 · Keyboard focus on page controls — 已解决 / resolved
 
-- 现象：与 [CanalWatch 的 ENGINE-NOTES 第 1 条](../CanalWatch/ENGINE-NOTES.md)相同。本作的地图上每块地、每处资源点都是页面上的透明按钮，单子和标签页也都是页面按钮。 · What happens: as CanalWatch's item 1; every plot and resource point on the map is a clear page button, and so are the sheets and tabs.
-- 绕过办法：本作不读 `play` 的按键，所以在 `window` 的捕获阶段接住所有按键、停止传播，Esc 自己处理（`src/main.mjs` 的「Keys」一节）。 · Workaround: the game reads none of play's keys, so every key is caught in the capture phase and stopped; Escape is handled there.
-- 建议：同 CanalWatch 第 1 条。 · Suggestion: as there.
-- 状态：未解决。 · Status: open.
+原来地图地块、存档和设置上的 HTML 按钮会被引擎拦截 Tab 和 Space。现在嵌入的 `play` 会把按键留给已聚焦的页面控件。本作已移除窗口捕获阶段的拦截，保留存档弹窗的焦点循环、Escape 与地图平移。只负责绘图的舞台标为 `inert`，Tab 可直接在游戏的实际控件间移动。
 
-### 2. `play({ parent, transparent: true })` 的画布盒子是黑的 · A black holder under a clear canvas — 未解决 / open
+Previously the engine intercepted Tab and Space on the native buttons for map plots, save slots and settings. Embedded `play` now leaves keyboard input with the focused page control. The game dropped its window capture guard and keeps its save-dialog focus loop, Escape handling and map panning. The display-only stage is `inert`, so Tab moves between the controls players use.
 
-- 现象：与 [TaiwanMahjong 第 2 条](../TaiwanMahjong/ENGINE-NOTES.md)相同。本作的县城画在引擎画布下面的页面画布上，盒子一黑就全看不见。 · What happens: as TaiwanMahjong's item 2; the county is painted on a page canvas under the engine's, and a black holder hides it all.
-- 绕过办法：启动后把画布的父元素背景设成透明（`src/main.mjs` 的 `boot`）。 · Workaround: the canvas's parent is set transparent after start.
-- 建议：同 TaiwanMahjong 第 2 条。 · Suggestion: as there.
-- 状态：未解决。 · Status: open.
+### 2. 透明画布下的县城底图 · The painted county beneath a transparent canvas — 已解决 / resolved
+
+原来画布容器的黑色背景会盖住县城底图。本作使用 `play({ parent, transparent: true })` 显示下方的底图，启动代码已移除修改容器背景的步骤。
+
+Previously the black wrapper obscured the county map beneath the engine canvas. With `play({ parent, transparent: true })`, the terrain shows through. Startup no longer patches the wrapper background.
+
+在 Windows 的无头 Chrome 157 中，Tab 与 Shift+Tab 可在「赴任」和「设置」之间往返；Space 打开设置一次，Escape 返回，Enter 打开存档槽并进入县城。方向键平移地图后，将焦点移到设置并松键，再回地图即可继续操作。以隐藏引擎层时的底图为对照，同一画面中 13,990 个受黑底影响的采样点有 13,957 个与底图相符（每个 RGB 通道容差 2）。游戏原有的标题及设置截图基线均通过。
+
+In headless Chrome 157 on Windows, Tab and Shift+Tab moved between Take Office and Settings. Space opened Settings once, Escape returned, and Enter opened the slots and entered the county. The map still responded after panning with an arrow, moving focus to Settings, releasing the key and returning. Of 13,990 sample points sensitive to an opaque black wrapper, 13,957 matched the underlying map with the engine layer hidden (RGB tolerance 2 per channel). The existing title and settings screenshot baselines passed.
 
 ### 3. `play` 的画布像素只看 `width`，不能降分辨率 · `play`'s canvas follows its width alone, with no lower resolution — 未解决 / open
 

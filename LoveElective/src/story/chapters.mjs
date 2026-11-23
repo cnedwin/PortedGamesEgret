@@ -134,14 +134,17 @@ export const CHAPTERS_SCRIPT = {
               ['qingge', 'surprise', '“……”', '"..."'],
               ['qingge', 'smile', '“很少有人敢当面这么说。”', '"Few people dare say that to my face."'],
               ['qingge', 'smile', '“明天把你的算法给我看。我不保证采纳。”', '"Show me your numbers tomorrow. I promise nothing."'],
+              ['qingge', 'normal', '你不確定的地方也標出來。這次，我們一起問清楚。', 'Mark the parts you are unsure about, too. This time, we will ask the questions together.'],
             ],
           },
           {
             t: ['“没有问题，是他们不懂。”', '"Nothing. They just don\'t get it."'],
-            fx: { aff: 2, pull: 6 },
+            fx: { aff: 2, pull: 6, flag: 'qingge_reassure' },
             then: [
               ['qingge', 'sad', '“……是吗。谢谢你的安慰。”', '"...I see. Thank you for the comfort."'],
               ['th', '她笑了一下，但没有看你的眼睛。', "She smiles, but doesn't meet your eyes."],
+              ['qingge', 'normal', '先陪我坐一下，好嗎？等我能把話說完，再請你當最難應付的那個社團代表。', 'Could you sit with me for a moment? Once I can get the words out, you can play the club representative with the hardest questions.'],
+              ['me', '好。我會先聽你說完。', 'All right. I will hear you out first.'],
             ],
           },
         ],

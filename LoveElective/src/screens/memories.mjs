@@ -17,18 +17,19 @@ const achievementName = id => ACHIEVEMENTS.find(a => a.id === id)?.name;
 export const endingCount = m => `${ENDING_KEYS.filter(k => m.endings[k]).length} / ${ENDING_KEYS.length}`;
 
 /** The album: endings, achievements and perks. Resolves when it is closed. */
-export function openAlbum(game) {
+export function openAlbum(game, tab = 'endings') {
   const { ui, stage, L } = game,
     m = game.memories;
   return new Promise(resolve => {
     const PW = 1120,
       PH = 650;
     const panel = ui.panel({ x: (W - PW) / 2, y: 36, w: PW, h: PH, res: 1.2, modal: true });
-    const view = { tab: 'endings' };
-    const close = () => {
+    const view = { tab };
+    const finish = result => {
       panel.close();
-      resolve();
+      resolve(result);
     };
+    const close = () => finish(null);
     panel.dismiss = close;
     const repaint = () => panel.paint(paint);
 
@@ -86,6 +87,24 @@ export function openAlbum(game) {
             p.text(`${L(['解锁条件', 'Unlocked by'])}: ${L(achievementName(perk.needs))}`, x + 22, y + 58, { size: 12, color: THEME.faint });
         });
       },
+      branches(p) {
+        const snapshot = game.readQinggeBranch();
+        p.card(32, 122, PW - 64, 310, { r: 20, fill: '#fff8ef', stroke: '#e4ccd9', shadow: 0.18 });
+        game.avatar(p, 'qingge', 60, 152, 118);
+        p.text(L(['星空祭筹备', 'Preparing the Star Festival']), 206, 150, { size: 28, weight: 800, family: SERIF });
+        p.text(L(['沈清歌 · 第三章预算会', 'Shen Qingge · Chapter 3 budget meeting']), 206, 199, { size: 17, color: THEME.soft });
+        if (snapshot) {
+          p.text(L([`已保存第 ${snapshot.day} 天的会前进度。回看中的选择不会改动当前学期。`,
+            `A bookmark from day ${snapshot.day}. Choices made in replay stay separate from your current term.`]),
+          206, 251, { size: 18, color: THEME.ink, maxW: 770, lineH: 29 });
+          p.button(206, 326, 346, 58, L(['从预算会前回看', 'Review from the budget meeting']), () => finish('qingge-festival'),
+            { kind: 'primary', size: 19 });
+        } else {
+          p.text(L(['在图书馆开启清歌第三章时，会自动保存预算会前的分支进度。',
+            'Start Qingge’s third chapter at the library to bookmark the moment before the budget meeting.']),
+          206, 251, { size: 18, color: THEME.ink, maxW: 770, lineH: 29 });
+        }
+      },
     };
 
     function paint(p) {
@@ -103,8 +122,9 @@ export function openAlbum(game) {
         ['endings', ['结局', 'Endings']],
         ['achievements', ['成就', 'Achievements']],
         ['perks', ['开学天赋', 'Perks']],
+        ['branches', ['分支回看', 'Branch replay']],
       ].forEach(([id, label], i) =>
-        p.segment(560 + i * 142, 24, 132, 44, L(label), view.tab === id, () => {
+        p.segment(422 + i * 139, 24, 130, 44, L(label), view.tab === id, () => {
           view.tab = id;
           repaint();
         }, { size: 16 }),

@@ -39,6 +39,20 @@ try {
   const title = await matchBaseline(page, GAME, 'title');
   check(title.written || title.passed, `title looks as its baseline (${(title.share * 100).toFixed(2)}% differs)`);
   check((await page.evaluate(() => document.activeElement?.id)) === 'startButton', 'the start button holds the focus on the title');
+  await page.evaluate(() => {
+    window.titleTabReachedButton = false;
+    document.querySelector('#startButton').addEventListener('keydown', (event) => {
+      window.titleTabReachedButton = event.key === 'Tab';
+    }, { once: true });
+  });
+  await page.keyboard.press('Tab');
+  check(await state(page, () => window.titleTabReachedButton && document.activeElement?.id === 'titleSettings'),
+    'Tab reaches the native start button and moves focus to settings');
+  await page.keyboard.press('Shift+Tab');
+  check(await state(page, () => document.activeElement?.id === 'startButton'),
+    'Shift+Tab returns focus to the start button');
+  check(await state(page, () => getComputedStyle(window.peach.game.canvas.parentElement).backgroundColor === 'rgba(0, 0, 0, 0)'),
+    'the transparent engine layer leaves the county map visible underneath');
 
   // Settings: the first switch holds the focus; Space turns the sound off and it is saved.
   await page.click('#titleSettings');
