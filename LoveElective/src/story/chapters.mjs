@@ -11,6 +11,23 @@
 //   [girl, expression, 中文, English]  she speaks
 //   ['fx', 'heart' | 'shake' | 'flash']
 //   ['pick', [{ t: [中文, English], fx: { aff, pull, flag }, then: [steps] }, ...]]
+const LINXIA_FIRST_GREETING = [
+  ['linxia', 'joy', '“抱歉抱歉！没撞到吧？新面孔——大一的？”', '"Sorry, sorry! Didn\'t hit you, did I? New face. First year?"'],
+  ['linxia', 'smile', '“我是林夏，田径社的。来，跟我跑一圈，输的人请喝运动饮料！”', '"I\'m Lin Xia, track team. Come on, one lap. Loser buys the sports drinks!"'],
+];
+const LINXIA_RETURNING_GREETING = [
+  ['linxia', 'joy', '「抱歉，沒撞到吧？欸，是在櫻花道幫我計時的你！」', '"Sorry, did I bump into you? Hey, my timekeeper from the cherry-tree walk!"'],
+  ['linxia', 'smile', '「上回你在終點等我，今天換我等你。來跑一圈，輸的人請喝運動飲料！」',
+    '"You waited at the finish last time. Today I’ll wait for you. One lap? Loser buys the sports drinks!"'],
+];
+
+export function linxiaChapterOneAfterMeeting() {
+  return CHAPTERS_SCRIPT.linxia[1].map(step => {
+    const greeting = LINXIA_FIRST_GREETING.indexOf(step);
+    return greeting < 0 ? step : LINXIA_RETURNING_GREETING[greeting];
+  });
+}
+
 export const CHAPTERS_SCRIPT = {
   qingge: {
     1: [
@@ -202,13 +219,7 @@ export const CHAPTERS_SCRIPT = {
       ['n', '你刚走到跑道边，一阵风就擦着肩膀冲了过去。', "You've barely reached the track when a gust of wind tears past your shoulder."],
       ['fx', 'shake'],
       ['in', 'linxia', 'joy'],
-      ['linxia', 'joy', '“抱歉抱歉！没撞到吧？新面孔——大一的？”', '"Sorry, sorry! Didn\'t hit you, did I? New face. First year?"'],
-      [
-        'linxia',
-        'smile',
-        '“我是林夏，田径社的。来，跟我跑一圈，输的人请喝运动饮料！”',
-        '"I\'m Lin Xia, track team. Come on, one lap. Loser buys the sports drinks!"',
-      ],
+      ...LINXIA_FIRST_GREETING,
       [
         'pick',
         [

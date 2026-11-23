@@ -11,6 +11,7 @@ import { GIFTS, SUPPLIES, CLOTHES, STYLES } from '../data/items.mjs';
 import * as sim from '../sim.mjs';
 import { BAILU_ZERO_TITLE, BAILU_ZERO_CLUES } from '../data/bailu-zero.mjs';
 import { SOCIAL_IDS } from '../data/social-stories.mjs';
+import { FIRST_EVENING, firstEveningStatus, firstEveningTime, firstEveningAction, markFirstEveningRead } from '../first-evening.mjs';
 
 const TABS = [
   ['girls', ['学姐', 'Seniors']],
@@ -24,11 +25,20 @@ const TABS = [
 const QUESTS_PER_PAGE = 5;
 
 /** Open the phone on a tab. Resolves with 'quit' if the player returns to the title, otherwise undefined. */
-export function openPhone(game, tab = 'girls') {
+export function openPhone(game, tab) {
   const { ui, stage, L } = game,
     s = game.state;
+  const message = firstEveningStatus(s);
+  const readMessage = () => {
+    if (markFirstEveningRead(s)) {
+      game.save();
+      game.showHud();
+    }
+  };
   return new Promise(resolve => {
-    const view = { tab, page: 0, confirm: false };
+    const initialTab = tab ?? (message?.read === false ? 'messages' : 'girls');
+    const view = { tab: initialTab === 'messages' && !message ? 'girls' : initialTab, page: 0, confirm: false };
+    if (view.tab === 'messages') readMessage();
     const panel = ui.panel({ x: 150, y: 80, w: 980, h: 620, res: 1.2, modal: true, title: L(['遊戲手機','In-game phone']) });
     const close = result => {
       panel.close();
@@ -47,6 +57,25 @@ export function openPhone(game, tab = 'girls') {
     }
 
     const pages = {
+      messages(p) {
+        p.card(26, 94, 928, 415, { r: 20, fill: '#fff6ee', stroke: '#e5cad0', shadow: .15 });
+        game.avatar(p, FIRST_EVENING.girl, 52, 118, 74);
+        p.text(L(FIRST_EVENING.title), 150, 121, { size: 26, weight: 800, color: THEME.ink });
+        p.text(L(firstEveningTime(message)), 150, 166, { size: 15, color: THEME.soft });
+        p.card(150, 210, 770, 130, { r: 16, fill: '#f4e9f1', stroke: '#e4cedd' });
+        p.text(L(FIRST_EVENING.message), 172, 230, { size: 21, color: THEME.ink, maxW: 725, lineH: 31 });
+        p.text(L(FIRST_EVENING.venue), 54, 371, { size: 20, weight: 750, color: THEME.violet });
+        p.text(L(FIRST_EVENING.task), 54, 411, { size: 17, color: THEME.soft });
+        const action = firstEveningAction(message);
+        if (action) {
+          p.button(657, 409, 263, 54, L(action), () => close('first-evening'), { kind: 'primary', size: 17 });
+          if (message.phase === 'upcoming') {
+            p.text(L(['也可以照常活动，傍晚再从地图赴约。', 'You can keep exploring and meet from the map in the evening.']),
+              54, 452, { size: 14, color: THEME.soft, maxW: 575 });
+          }
+        } else p.text(L(message.phase === 'completed' ? ['已赴约', 'Meeting complete'] : ['约定时间已过', 'The meeting time has passed']),
+          912, 432, { size: 17, weight: 700, color: THEME.soft, align: 'right' });
+      },
       social(p){
         SOCIAL_IDS.forEach((id,i)=>{
           const status=sim.socialStatus(s,id),q=s.socialStories[id],y=96+i*150;
@@ -376,17 +405,19 @@ export function openPhone(game, tab = 'girls') {
 
     function paint(p) {
       p.sheet(0, 0, 980, 612, { accent: THEME.violet });
-      TABS.forEach(([id, label], i) => {
-        const x = 26 + i * 114;
-        p.segment(x, 26, 104, 46, L(label), view.tab === id, () => {
+      const tabs = message ? [...TABS, ['messages', ['消息', 'Messages']]] : TABS;
+      tabs.forEach(([id, label], i) => {
+        const x = 26 + i * (message ? 102 : 114);
+        p.segment(x, 26, message ? 92 : 104, 46, L(label), view.tab === id, () => {
           view.tab = id;
+          if (id === 'messages') readMessage();
           view.page = 0;
           view.confirm = false;
           repaint();
         }, { size: 16 });
       });
       const ready = sim.visibleQuests(s).filter(x => x.state === 'ready').length;
-      if (ready) p.chip(String(ready), 26 + 114 + 88, 20, { color: THEME.rose, size: 12, h: 20, padX: 7 });
+      if (ready) p.chip(String(ready), 26 + (message ? 102 + 76 : 114 + 88), 20, { color: THEME.rose, size: 12, h: 20, padX: 7 });
       p.button(858, 28, 96, 42, L(['关闭', 'Close']), () => close(), { kind: 'dark', size: 16 });
       pages[view.tab](p);
     }
