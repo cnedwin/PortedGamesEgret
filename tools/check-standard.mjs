@@ -11,11 +11,16 @@
 //
 //   node tools/check-standard.mjs [folder ...] [--strict] [--fix] [--write] [--json]
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const TEMPLATE = 'templates/egret-game';
+export const MANAGEMENT_TEMPLATE = 'templates/management-game';
+const templates = [TEMPLATE, MANAGEMENT_TEMPLATE];
+
+// The gallery preview shares an engine copy. Scaffolds always carry their own.
+export const vendorFolder = folder => folder === MANAGEMENT_TEMPLATE ? '../../PeachCreek/vendor' : './vendor';
 
 /** The nine sections, in order: the heading the standard gives, and what an existing heading's English part may say. */
 export const SECTIONS = [
@@ -40,7 +45,7 @@ export function gameFolders(root = ROOT) {
     .filter((entry) => entry.isDirectory() && !entry.name.startsWith('.') && existsSync(join(root, entry.name, 'index.html')) && existsSync(join(root, entry.name, 'vendor')))
     .map((entry) => entry.name)
     .sort((a, b) => a.localeCompare(b));
-  if (existsSync(join(root, TEMPLATE))) folders.push(TEMPLATE);
+  for (const template of templates) if (existsSync(join(root, template))) folders.push(template);
   return folders;
 }
 
@@ -50,7 +55,7 @@ const read = (file) => (existsSync(file) ? readFileSync(file, 'utf8') : null);
 export function sectionsOf(text) {
   const out = [];
   let current = null;
-  text.split('\n').forEach((line, i) => {
+  text.split(/\r?\n/).forEach((line, i) => {
     const heading = /^##\s+(.*)$/.exec(line);
     if (heading) {
       current = { heading: heading[1].trim(), english: heading[1].split(' · ').pop().trim(), body: [], line: i + 1 };
@@ -68,7 +73,7 @@ export function sectionKey(section) {
 
 /** The engine commit recorded in vendor/SOURCE.md. */
 export function engineCommit(folder, root = ROOT) {
-  return /[0-9a-f]{40}/.exec(read(join(root, folder, 'vendor', 'SOURCE.md')) ?? '')?.[0] ?? null;
+  return /[0-9a-f]{40}/.exec(read(join(root, folder, vendorFolder(folder), 'SOURCE.md')) ?? '')?.[0] ?? null;
 }
 
 /** Check one folder; returns its rows of `[item, ok, note]` and, with `fix`, what it changed. */
@@ -147,7 +152,7 @@ export function checkGame(folder, { root = ROOT, fix = false } = {}) {
   const commit = engineCommit(folder, root);
   row('vendor/SOURCE.md with the engine commit', commit, commit?.slice(0, 7));
   const page = read(join(dir, 'index.html')),
-    map = read(join(dir, 'vendor', 'importmap.json'));
+    map = read(join(dir, vendorFolder(folder), 'importmap.json'));
   if (page && map && page.includes('type="importmap"')) {
     const pasted = /<script type="importmap">([\s\S]*?)<\/script>/.exec(page)?.[1];
     let same = false;
@@ -156,7 +161,7 @@ export function checkGame(folder, { root = ROOT, fix = false } = {}) {
       // cache tag, say).
       const want = JSON.parse(map).imports,
         have = JSON.parse(pasted).imports;
-      same = Object.entries(want).every(([name, file]) => have[name] === file);
+      same = Object.entries(want).every(([name, file]) => have[name] === file.replace('./vendor/', vendorFolder(folder) + '/'));
     } catch {
       same = false;
     }
@@ -222,7 +227,7 @@ export function fixReadme(folder, text, root = ROOT) {
       present.add('intro');
     }
   }
-  const source = read(join(root, folder, 'vendor', 'SOURCE.md')) ?? '',
+  const source = read(join(root, folder, vendorFolder(folder), 'SOURCE.md')) ?? '',
     commit = engineCommit(folder, root),
     entries = /Entries: (.*?)\. Only/.exec(source)?.[1] ?? '';
   for (const standard of SECTIONS) {
@@ -262,7 +267,7 @@ export function reportMarkdown(results) {
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2),
     flags = new Set(args.filter((arg) => arg.startsWith('--'))),
-    named = args.filter((arg) => !arg.startsWith('--')).map((arg) => arg.replace(/\/$/, ''));
+    named = args.filter((arg) => !arg.startsWith('--')).map(arg => relative(ROOT, resolve(ROOT, arg)).split(sep).join('/'));
   const folders = named.length ? named : gameFolders();
   const results = folders.map((folder) => checkGame(folder, { fix: flags.has('--fix') }));
   if (flags.has('--json')) console.log(JSON.stringify(results, null, 2));
@@ -275,7 +280,7 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     }
   if (flags.has('--write')) writeFileSync(join(ROOT, 'docs', 'STANDARD-STATUS.md'), reportMarkdown(results));
   // The template must meet the standard in full; the games must too under --strict.
-  const failing = results.filter((r) => !r.passed && (flags.has('--strict') || r.folder === TEMPLATE));
+  const failing = results.filter((r) => !r.passed && (flags.has('--strict') || templates.includes(r.folder)));
   if (failing.length) {
     console.error(`\n${failing.map((r) => r.folder).join(', ')}: not up to the standard`);
     process.exitCode = 1;

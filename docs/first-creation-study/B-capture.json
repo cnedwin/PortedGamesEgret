@@ -1,0 +1,76 @@
+{
+  "browser": "157.0.8103.6",
+  "angle": "SwiftShader",
+  "viewport": [
+    960,
+    540
+  ],
+  "scale": 1,
+  "locale": "zh-CN",
+  "motion": "no-preference",
+  "start": "navigation request from a fresh blank page",
+  "frames": 400,
+  "fps": 20,
+  "seconds": 20,
+  "actions": [
+    {
+      "at": 4,
+      "type": "click",
+      "x": 159,
+      "y": 330,
+      "cue": "The journal asks for a shore site. The leftmost named marker reads 柳荫.",
+      "actualStartMs": 4003,
+      "status": "dispatched"
+    },
+    {
+      "at": 8,
+      "type": "click",
+      "x": 746,
+      "y": 325,
+      "cue": "A house-frame preview appears at 柳荫. The journal offers 动工 · 8 木料.",
+      "actualStartMs": 8002,
+      "status": "dispatched"
+    },
+    {
+      "at": 12,
+      "type": "click",
+      "x": 371,
+      "y": 389,
+      "cue": "The chosen lot now shows a finished shelter. 接客开船 is visible beside the passenger and pier.",
+      "actualStartMs": 12002,
+      "status": "dispatched"
+    },
+    {
+      "at": 16,
+      "type": "wait",
+      "cue": "The passenger is aboard. The journal says the boat is crossing; there is no next action to advance it.",
+      "actualStartMs": 15999,
+      "status": "observed"
+    }
+  ],
+  "observations": [
+    {
+      "nearSeconds": 3,
+      "file": "B-opening.png",
+      "visibleSemantics": "- main \"雾汀渡\":\n  - paragraph: 柳汀 · 初春\n  - heading \"雾汀渡\" [level=1]\n  - text: 木料 12 船资 0 已渡客人 0\n  - region \"渡口地图\":\n    - group \"船棚用地\":\n      - button \"预览柳荫船棚\": 柳荫\n      - button \"预览石阶船棚\": 石阶\n      - button \"预览芦湾船棚\": 芦湾\n    - button \"等船客人\" [disabled]\n    - text: 渡船系在南岸\n    - button \"声音：开\" [pressed]\n  - complementary \"渡口手记\":\n    - text: 渡口手记 0 / 3\n    - heading \"给摆渡人搭座船棚\" [level=2]\n    - paragraph: 船已靠岸，客人也到了。点选岸边的一处用地，先给摆渡人搭一座船棚。\n    - list \"开渡进度\":\n      - listitem: 挑一处用地\n      - listitem: 搭好船棚\n      - listitem: 送客过河\n  - text: 点击或轻触地图上的标记操作。也可用 Tab 选中，回车确认，Esc 取消。"
+    },
+    {
+      "nearSeconds": 7,
+      "visibleSemantics": "- main \"雾汀渡\":\n  - paragraph: 柳汀 · 初春\n  - heading \"雾汀渡\" [level=1]\n  - text: 木料 12 船资 0 已渡客人 0\n  - region \"渡口地图\":\n    - group \"船棚用地\":\n      - button \"预览柳荫船棚\" [pressed]: 柳荫\n      - button \"预览石阶船棚\": 石阶\n      - button \"预览芦湾船棚\": 芦湾\n    - button \"等船客人\" [disabled]\n    - text: 渡船系在南岸\n    - button \"声音：开\" [pressed]\n  - complementary \"渡口手记\":\n    - text: 渡口手记 1 / 3\n    - heading \"在柳荫搭棚\" [level=2]\n    - paragraph: 柳荫遮住了上岸的小路。用 8 份木料。可以改选，也可以取消。\n    - button \"动工 · 8 木料\"\n    - button \"取消\"\n    - list \"开渡进度\":\n      - listitem: 挑一处用地\n      - listitem: 搭好船棚\n      - listitem: 送客过河\n  - text: 点击或轻触地图上的标记操作。也可用 Tab 选中，回车确认，Esc 取消。"
+    },
+    {
+      "nearSeconds": 11,
+      "visibleSemantics": "- main \"雾汀渡\":\n  - paragraph: 柳汀 · 初春\n  - heading \"雾汀渡\" [level=1]\n  - text: 木料 4 船资 0 已渡客人 0\n  - region \"渡口地图\":\n    - button \"接客开船\"\n    - text: 渡船系在南岸\n    - button \"声音：开\" [pressed]\n  - complementary \"渡口手记\":\n    - text: 渡口手记 2 / 3\n    - heading \"接第一位客人\" [level=2]\n    - paragraph: 船棚已在柳荫搭好。客人在南岸木埠等船，要去对岸的村子。\n    - button \"接客开船\"\n    - list \"开渡进度\":\n      - listitem: 挑一处用地\n      - listitem: 搭好船棚\n      - listitem: 送客过河\n  - text: 点击或轻触地图上的标记操作。也可用 Tab 选中，回车确认，Esc 取消。"
+    },
+    {
+      "nearSeconds": 15,
+      "visibleSemantics": "- main \"雾汀渡\":\n  - paragraph: 柳汀 · 初春\n  - heading \"雾汀渡\" [level=1]\n  - text: 木料 4 船资 0 已渡客人 0\n  - region \"渡口地图\":\n    - text: 渡船正在横渡\n    - button \"声音：开\" [pressed]\n  - complementary \"渡口手记\":\n    - text: 渡口手记 2 / 3\n    - heading \"船过春水\" [level=2]\n    - paragraph: 摆渡人接客上船，正划向北岸的石埠。\n    - list \"开渡进度\":\n      - listitem: 挑一处用地\n      - listitem: 搭好船棚\n      - listitem: 送客过河\n  - text: 点击或轻触地图上的标记操作。也可用 Tab 选中，回车确认，Esc 取消。"
+    },
+    {
+      "nearSeconds": 19,
+      "file": "B-result.png",
+      "visibleSemantics": "- main \"雾汀渡\":\n  - paragraph: 柳汀 · 初春\n  - heading \"雾汀渡\" [level=1]\n  - text: 木料 4 船资 3 已渡客人 1\n  - region \"渡口地图\":\n    - text: 渡船已到北岸\n    - button \"声音：开\" [pressed]\n  - complementary \"渡口手记\":\n    - text: 渡口手记 3 / 3\n    - heading \"第一趟，平安到岸\" [level=2]\n    - paragraph: 客人已经走上北岸，付了 3 枚铜钱。柳荫的船棚也有了第一道灯火。\n    - button \"重开渡口\"\n    - list \"开渡进度\":\n      - listitem: 挑一处用地\n      - listitem: 搭好船棚\n      - listitem: 送客过河\n  - text: 点击或轻触地图上的标记操作。也可用 Tab 选中，回车确认，Esc 取消。"
+    }
+  ],
+  "errors": []
+}

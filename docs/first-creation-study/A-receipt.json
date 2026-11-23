@@ -1,0 +1,50 @@
+{
+  "arm": "A",
+  "round": "1",
+  "budget": 24000,
+  "withinBudget": false,
+  "model": "gpt-6.2-sol",
+  "effort": "medium",
+  "elapsedSeconds": 279.791,
+  "usage": {
+    "input_tokens": 35566,
+    "cached_input_tokens": 0,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 13776,
+    "reasoning_output_tokens": 1482
+  },
+  "editBytes": 30213,
+  "responseBytes": 31200,
+  "responseSHA256": "b5680a2043b2299fd184dd7f535eb87aa1691f3c33bc425a18d9f93a187e03e4",
+  "changedFiles": [
+    "index.html",
+    "style.css",
+    "src/main.mjs",
+    "src/ferry-art.mjs"
+  ],
+  "vendorDigest": "02ddd11cb497618949abcfad28ead1694794a8654355ab2937ebd038dccfa360",
+  "treeSHA256": "73459b64acdd7b291f4cdebcab9aa699d3147790a05fa4fa5e3d05935539225b",
+  "fileCount": 237,
+  "input": {
+    "arm": "A",
+    "starter": "egret-game",
+    "contextBytes": 66355,
+    "promptBytes": 67310,
+    "promptSha256": "b5aaaedbfc4315dc6aaa5a58df272a1ef37b0cccf817c78aa906e4a174a6298f",
+    "files": [
+      "index.html",
+      "style.css",
+      "README.md",
+      "src/audio/sound.mjs",
+      "src/i18n.mjs",
+      "src/main.mjs",
+      "src/saves.mjs",
+      "src/screens.mjs",
+      "src/sim/world.mjs",
+      "src/ui/kit.mjs"
+    ],
+    "engine": "91f350b1fc1062a46a4b8e789ed4e01a4cdebbed"
+  },
+  "archiveSHA256": "f5c2758cbe663e3ef44a5b6ee590c4085966abf3f64eb9b0b52c53c3a2cd4d69",
+  "videoSHA256": "dac808ad5756137149042cfe2c80b35700818b44f957ef45394b94567d8de8d1"
+}
