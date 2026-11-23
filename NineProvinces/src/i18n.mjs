@@ -443,6 +443,12 @@ export const WORDS = {
   feedRout: { zh: '{name}部溃逃', en: "{name}'s men break and run" },
   feedGate: { zh: '城门被攻破！', en: 'The gate is broken!' },
   feedDepot: { zh: '粮仓起火！', en: 'The granary is burning!' },
+  returnHome: { zh: '归城', en: 'Return' },
+  returnHomeTitle: { zh: '回到{place}', en: 'Return to {place}' },
+  returnHomeNone: { zh: '本方已无据点', en: 'You hold no settlements' },
+  territoryMap: { zh: '疆域', en: 'Domains' },
+  territoryShow: { zh: '显示势力底色和边界', en: 'Show faction colours and borders' },
+  territoryHide: { zh: '隐藏势力底色和边界', en: 'Hide faction colours and borders' },
   months: { zh: '正月 二月 三月 四月 五月 六月 七月 八月 九月 十月 冬月 腊月', en: 'January February March April May June July August September October November December' }
 };
 

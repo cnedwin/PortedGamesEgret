@@ -24,6 +24,7 @@ import {
 import { ADJACENT, NODES } from '../data/map.mjs';
 import { HEX_H, HEX_W } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS, landAt, noise } from '../sim/land.mjs';
+import { cityIdentity, landmarkLayout, reservedForLandmark, buildCityLandmarks, buildCityHarbour, buildOutlyingLandmarks } from './city-landmarks.mjs';
 
 const STONE = 0x8a8070,
   STONE_DARK = 0x69685b,
@@ -189,10 +190,13 @@ function pavilion(b, at, w, d, h, { tiers = 1, roof = ROOF, body = PLASTER, rot 
   }
   return top;
 }
+const LANDMARK_KIT={UNIT,pavilion,hipRoof,gableRoof};
+const tint=(colour,factor)=>Math.min(255,Math.round((colour>>16&255)*factor))*65536+Math.min(255,Math.round((colour>>8&255)*factor))*256+Math.min(255,Math.round((colour&255)*factor));
 
 // ——— A walled city ———
 function walledCity(f, level, seed, flags) {
   const b = builders();
+  const style=cityIdentity(f.id),layout=landmarkLayout(f),wallDark=tint(style.wall,.8),wallLight=tint(style.wall,1.14);
   const rnd = (k) => noise(seed * 0.37 + k * 1.618, k * 0.71 - seed * 0.13, 401);
   const hx = (f.a - 0.25) * HEX_W,
     hz = f.b * HEX_H;
@@ -206,8 +210,8 @@ function walledCity(f, level, seed, flags) {
       rot = Math.atan2(-(z2 - z1), x2 - x1);
     const mx = (x1 + x2) / 2,
       mz = (z1 + z2) / 2;
-    b.stone.add(UNIT.box, { position: [mx, y0 + WH / 2 - 0.3, mz], scale: [len, WH + 0.6, T + 0.15], rotation: [0, rot, 0], color: STONE });
-    b.stone.add(UNIT.box, { position: [mx, y0 + WH + 0.02, mz], scale: [len, 0.06, T - 0.2], rotation: [0, rot, 0], color: STONE_TOP });
+    b.stone.add(UNIT.box, { position: [mx, y0 + WH / 2 - 0.3, mz], scale: [len, WH + 0.6, T + 0.15], rotation: [0, rot, 0], color: style.wall });
+    b.stone.add(UNIT.box, { position: [mx, y0 + WH + 0.02, mz], scale: [len, 0.06, T - 0.2], rotation: [0, rot, 0], color: wallLight });
     // Battlements along the outer edge.
     const n = Math.floor(len / 0.5);
     const ox = Math.sin(rot) * (T / 2 - 0.08),
@@ -216,7 +220,7 @@ function walledCity(f, level, seed, flags) {
       const t = (i + 0.5) / n;
       const px = x1 + (x2 - x1) * t,
         pz = z1 + (z2 - z1) * t;
-      for (const s of [1, -0.85]) b.stone.add(UNIT.box, { position: [px + ox * s, y0 + WH + 0.14, pz + oz * s], scale: [0.26, 0.24, 0.14], rotation: [0, rot, 0], color: s > 0 ? STONE_DARK : STONE_TOP });
+      for (const s of [1, -0.85]) b.stone.add(UNIT.box, { position: [px + ox * s, y0 + WH + 0.14, pz + oz * s], scale: [0.26, 0.24, 0.14], rotation: [0, rot, 0], color: s > 0 ? wallDark : wallLight });
     }
   };
   const corners = [
@@ -239,37 +243,42 @@ function walledCity(f, level, seed, flags) {
     const rot = Math.atan2(-uz, ux);
     const gx = f.x + mx,
       gz = f.z + mz;
-    b.stone.add(UNIT.box, { position: [gx, y0 + WH / 2 - 0.3, gz], scale: [gate * 2 + 0.4, WH + 0.6, T + 0.55], rotation: [0, rot, 0], color: STONE_DARK });
+    b.stone.add(UNIT.box, { position: [gx, y0 + WH / 2 - 0.3, gz], scale: [gate * 2 + 0.4, WH + 0.6, T + 0.55], rotation: [0, rot, 0], color: wallDark });
     b.add(UNIT.box, { position: [gx, y0 + 0.42, gz], scale: [0.85, 0.95, T + 0.6], rotation: [0, rot, 0], color: ARCH });
-    const top = pavilion(b, [gx, y0 + WH, gz], gate * 1.55, 0.95, 0.62, { tiers: f.a >= 3 ? 2 : 1, rot });
+    const top = pavilion(b, [gx, y0 + WH, gz], gate * 1.55, 0.95, 0.62, { tiers: f.a >= 3 ? 2 : 1, rot,roof:style.roof,body:style.plaster });
     flags.push([gx + Math.sin(rot) * 0.2 - Math.cos(rot) * 1.4, y0 + WH, gz + Math.cos(rot) * 0.2 + Math.sin(rot) * 1.4], [gx + Math.cos(rot) * 1.4, y0 + WH, gz - Math.sin(rot) * 1.4]);
     void top;
   }
   // Corner towers.
   for (const [cx, cz] of corners) {
-    b.stone.add(UNIT.box, { position: [f.x + cx, y0 + (WH + 0.3) / 2 - 0.3, f.z + cz], scale: [1.55, WH + 0.9, 1.55], color: STONE });
-    pavilion(b, [f.x + cx, y0 + WH + 0.3, f.z + cz], 0.95, 0.95, 0.5, { rot: 0 });
+    b.stone.add(UNIT.box, { position: [f.x + cx, y0 + (WH + 0.3) / 2 - 0.3, f.z + cz], scale: [1.55, WH + 0.9, 1.55], color: style.wall });
+    pavilion(b, [f.x + cx, y0 + WH + 0.3, f.z + cz], 0.95, 0.95, 0.5, { rot: 0,roof:style.roof,body:style.plaster });
     flags.push([f.x + cx * 1.02, y0 + WH + 0.3, f.z + cz * 1.02]);
   }
   // Inside: paving along the two main streets, the hall of office, and blocks of houses.
   const ix = hx - T / 2 - 0.15,
     iz = hz - T / 2 - 0.15;
-  b.add(UNIT.box, { position: [f.x, y0 + 0.02, f.z], scale: [ix * 2, 0.04, 0.95], color: PAVING });
-  b.add(UNIT.box, { position: [f.x, y0 + 0.02, f.z], scale: [0.95, 0.04, iz * 2], color: PAVING });
+  b.add(UNIT.box, { position: [f.x, y0 + 0.02, f.z], scale: [ix * 2, 0.04, 0.95], color: style.paving });
+  b.add(UNIT.box, { position: [f.x, y0 + 0.02, f.z], scale: [0.95, 0.04, iz * 2], color: style.paving });
   const big = f.a >= 3;
   const hallW = big ? 3.6 : 2.4,
     hallD = big ? 2.2 : 1.6;
-  b.stone.add(UNIT.box, { position: [f.x, y0 + 0.16, f.z], scale: [hallW + 1.2, 0.32, hallD + 1.1], color: STONE });
+  if(!layout.length){
+  b.stone.add(UNIT.box, { position: [f.x, y0 + 0.16, f.z], scale: [hallW + 1.2, 0.32, hallD + 1.1], color: style.wall });
   pavilion(b, [f.x, y0 + 0.32, f.z], hallW, hallD, big ? 0.95 : 0.75, { tiers: big ? 2 : 1, body: TIMBER });
   if (big)
     for (const s of [-1, 1]) pavilion(b, [f.x + s * (hallW / 2 + 1.25), y0, f.z + 0.4], 1.5, 1.0, 0.55, { rot: Math.PI / 2, body: PLASTER });
   // A pair of stone que markers and bronze ritual vessels frame the administrative court.
   for (const side of [-1, 1]) {
     const px = f.x + side * (hallW * 0.46), pz = f.z + hallD * 0.8;
-    b.stone.add(UNIT.box, { position: [px, y0 + 0.34, pz], scale: [0.24, 0.68, 0.24], color: STONE_TOP });
+    b.stone.add(UNIT.box, { position: [px, y0 + 0.34, pz], scale: [0.24, 0.68, 0.24], color: wallLight });
     b.roof.add(gableRoof(0.4, 0.36, 0.16), { position: [px, y0 + 0.68, pz], color: ROOF });
     b.add(UNIT.post, { position: [px * 0.25 + f.x * 0.75, y0 + 0.23, f.z + hallD * 0.68], scale: [0.24, 0.35, 0.24], color: 0x66705a });
   }
+  }
+  b.identity=buildCityLandmarks(b,f,y0,LANDMARK_KIT);
+  if(style.harbour)b.harbour=buildCityHarbour(b,f,LANDMARK_KIT,{flags});
+  b.outlying=buildOutlyingLandmarks(b,f,LANDMARK_KIT,{flags});
   // Houses in rows, leaving the streets and the hall clear.
   const keepX = hallW / 2 + (big ? 2.4 : 0.9),
     keepZ = hallD / 2 + 0.9;
@@ -279,6 +288,7 @@ function walledCity(f, level, seed, flags) {
       k++;
       if (Math.abs(z) < 0.95 || Math.abs(x) < 0.95) continue;
       if (Math.abs(x) < keepX && Math.abs(z) < keepZ) continue;
+      if(reservedForLandmark(layout,x,z,.65))continue;
       const v = rnd(k);
       if (v < 0.12) continue;
       const w = 0.8 + rnd(k + 0.5) * 0.35,
@@ -286,8 +296,8 @@ function walledCity(f, level, seed, flags) {
         h = 0.36 + rnd(k + 0.9) * 0.22;
       const px = f.x + x + (rnd(k + 1.1) - 0.5) * 0.18,
         pz = f.z + z;
-      b.add(UNIT.box, { position: [px, y0 + h / 2, pz], scale: [w, h, d], color: pick(HOUSE_WALL, rnd(k + 1.3)) });
-      b.roof.add(gableRoof(w + 0.16, d + 0.22, 0.3), { position: [px, y0 + h, pz], color: pick(ROOF_HOUSE, rnd(k + 1.7)) });
+      b.add(UNIT.box, { position: [px, y0 + h / 2, pz], scale: [w, h, d], color: pick(style.houseWalls, rnd(k + 1.3)) });
+      b.roof.add(gableRoof(w + 0.16, d + 0.22, 0.3), { position: [px, y0 + h, pz], color: pick(style.houseRoofs, rnd(k + 1.7)) });
       b.add(UNIT.box, { position: [px, y0 + h * 0.35, pz + d / 2 + 0.015], scale: [w * 0.21, h * 0.7, 0.025], color: 0x514735 });
       // A few market cloths and urns, merged into the existing body batch.
       if (v > 0.82) {
@@ -391,31 +401,8 @@ function harbour(f, level, seed, flags) {
     const [px, pz] = back(1.8, 0);
     return [px, y0, pz];
   })()], 1.1, 0.8, 0.5, { rot });
-  // The pier, out over the water on posts.
-  const len = 6;
-  for (let i = 0; i <= len * 2; i++) {
-    const d = i * 0.5;
-    const px = f.x + wx * d,
-      pz = f.z + wz * d;
-    landAt(px, pz, s);
-    const y = Math.max(level - 0.2, (s.water ? s.level : s.height) + 0.25);
-    b.add(UNIT.box, { position: [px, y, pz], scale: [0.95, 0.07, 0.52], rotation: [0, rot + Math.PI / 2, 0], color: i % 2 ? PLANK : PLANK_DARK });
-    if (i % 2 === 0) for (const sd of [-1, 1]) b.add(UNIT.post, { position: [px + Math.cos(rot) * sd * 0.42, y - 0.5, pz - Math.sin(rot) * sd * 0.42], scale: [0.07, 1.0, 0.07], color: PLANK_DARK });
-  }
-  // Boats moored beside it.
-  for (const [d, side] of [
-    [3, 1.3],
-    [5, -1.3],
-    [6.5, 1.4]
-  ]) {
-    const px = f.x + wx * d + Math.cos(rot) * side,
-      pz = f.z + wz * d - Math.sin(rot) * side;
-    landAt(px, pz, s);
-    const y = (s.water ? s.level : s.height) + 0.08;
-    b.add(UNIT.box, { position: [px, y, pz], scale: [0.6, 0.22, 2.0], rotation: [0, rot, 0], color: PLANK_DARK });
-    b.add(UNIT.box, { position: [px, y + 0.2, pz - wz * 0.2], scale: [0.45, 0.2, 0.8], rotation: [0, rot, 0], color: 0x8a7556 });
-    b.add(UNIT.post, { position: [px, y + 0.8, pz], scale: [0.05, 1.4, 0.05], color: PLANK_DARK });
-  }
+  b.identity={identity:cityIdentity(f.id).id,landmarks:[]};
+  b.harbour=buildCityHarbour(b,f,LANDMARK_KIT,{flags});
   flags.push([f.x - wx * 0.6, y0, f.z - wz * 0.6]);
   void seed;
   return b;
@@ -477,7 +464,7 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
       const mesh = new Mesh3D(builder.build(), mat);
       mesh.castShadow = quality !== 'low';
       mesh.receiveShadow = true;
-      mesh.userData = { place: f.id };
+      mesh.userData = { place: f.id,cityIdentity:parts.identity?.identity??cityIdentity(f.id).id,landmarks:parts.identity?.landmarks??[],harbour:parts.harbour??null,outlying:parts.outlying??[] };
       scene.addChild(mesh);
       group.push(mesh);
     }
@@ -497,6 +484,7 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
   function makeProxy(f) {
     const b = createGeometryBuilder3D();
     const y = (f.level ?? landAt(f.x, f.z, {}).height) + 0.02;
+    const style=cityIdentity(f.id);let harbour=null,outlying=[];
     if (f.kind === 'city') {
       const hx = (f.a - 0.25) * HEX_W, hz = f.b * HEX_H;
       const wh = f.a >= 3 ? 1.45 : 1.15;
@@ -504,13 +492,18 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
         b.add(UNIT.box, { position: [f.x, y + wh / 2, f.z + side * hz], scale: [hx * 2, wh, 0.85], color: STONE });
         b.add(UNIT.box, { position: [f.x + side * hx, y + wh / 2, f.z], scale: [0.85, wh, hz * 2], color: STONE });
         for (const end of [-1, 1]) b.add(hipRoof(1.75, 1.75, 0.5), { position: [f.x + side * hx, y + wh + 0.65, f.z + end * hz], color: ROOF });
-        for (const end of [-1, 1]) {
+        if(!style.palace)for (const end of [-1, 1]) {
           b.add(UNIT.box, { position: [f.x + side * hx * 0.52, y + 0.25, f.z + end * hz * 0.5], scale: [hx * 0.73, 0.5, hz * 0.58], color: 0x9d9178 });
           b.add(gableRoof(hx * 0.76, hz * 0.62, 0.35), { position: [f.x + side * hx * 0.52, y + 0.5, f.z + end * hz * 0.5], color: ROOF_HOUSE[1] });
         }
       }
-      b.add(UNIT.box, { position: [f.x, y + 0.6, f.z], scale: [3, 1.2, 2], color: TIMBER });
-      b.add(hipRoof(4, 3, 1.2), { position: [f.x, y + 1.2, f.z], color: ROOF });
+      if(style.palace)buildCityLandmarks({stone:b,roof:b,body:b},f,y,LANDMARK_KIT,{coarse:true});
+      else{
+       b.add(UNIT.box, { position: [f.x, y + 0.6, f.z], scale: [3, 1.2, 2], color: TIMBER });
+       b.add(hipRoof(4, 3, 1.2), { position: [f.x, y + 1.2, f.z], color: style.roof });
+      }
+      if(style.harbour)harbour=buildCityHarbour({stone:b,roof:b,body:b},f,LANDMARK_KIT,{coarse:true});
+      outlying=buildOutlyingLandmarks({stone:b,roof:b,body:b},f,LANDMARK_KIT,{coarse:true});
     } else if (f.kind === 'pass') {
       const adjacent = (ADJACENT[f.id] ?? []).map((edge) => NODES[edge.to]);
       const a = adjacent[0] ?? { x: f.x - 1, y: f.z };
@@ -525,9 +518,10 @@ export function createPlaces(scene, { quality = 'medium', colourOf }) {
     } else {
       b.add(UNIT.box, { position: [f.x, y + 0.35, f.z], scale: [2.4, 0.7, 1.5], color: PLANK });
       b.add(gableRoof(2.8, 1.8, 0.6), { position: [f.x, y + 0.7, f.z], color: ROOF });
+      harbour=buildCityHarbour({stone:b,roof:b,body:b},f,LANDMARK_KIT,{coarse:true});
     }
     const mesh = new Mesh3D(b.build(), proxyMaterial);
-    mesh.userData = { place: f.id, lod: 'proxy' };
+    mesh.userData = { place: f.id, lod: 'proxy',cityIdentity:style.id,landmarks:style.landmarks.slice(),harbour,outlying };
     mesh.receiveShadow = true;
     mesh.castShadow = false;
     scene.addChild(mesh);

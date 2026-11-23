@@ -1,11 +1,11 @@
 // 页面入口：设置与语言、3D 天下（地形、城池、军团和名牌；战斗就在这张图上打）、声音、界面；时间按所选的快慢一天天
 // 推进（暂停、每秒半天到八天），每月一号自动存档；收件箱里的演义、交战、使者和俘虏一件件拿出来让玩家定夺。拖动平移、
-// 滚轮或双指缩放、空格暂停、1–5 调速度、方向键移动、+/- 缩放、Esc 关闭。
+// 滚轮或双指缩放、空格暂停、1–5 调速度、方向键移动、+/- 缩放、H 归城、Esc 关闭。
 // The page's entry: settings and language, the 3D realm (land, cities, armies and name plates; battles are fought on
 // this same map), sound and the interface; time moves on day by day at the chosen speed (paused, or half a day to eight
 // days a second), with an autosave on the first of each month; the tale, battles, envoys and captives come out of the
 // inbox one at a time for the player to decide. Drag to pan, the wheel or two fingers to zoom, Space to pause, 1–5 for
-// speed, arrows to move, +/- to zoom, Esc to close.
+// speed, arrows to move, +/- to zoom, H to return to town, Esc to close.
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { NODES } from './data/map.mjs';
 import { createSound } from './audio/sound.mjs';
@@ -28,6 +28,7 @@ import { createMinimap } from './ui/minimap.mjs';
 import { createPlates } from './ui/plates.mjs';
 import { showSetup, showTitle } from './ui/title.mjs';
 import { createRealmView } from './view3d/realm.mjs';
+import { homeCity } from './view/home-city.mjs';
 import { factionName, generalName, placeName } from './view/names.mjs';
 import { TREASURES } from './data/treasures.mjs';
 import { nm } from './i18n.mjs';
@@ -74,6 +75,7 @@ const app = {
   atlas: null,
   dot: null,
   sel: null,
+  lastOwnedCity: null,
   mode: null,
   paused: true,
   speed: Math.max(0, Math.min(4, settingsStore.data.settings.speed ?? 2)),
@@ -94,8 +96,22 @@ const app = {
     return app.rulerSet;
   },
   open: (name, args) => app.dialogs.open(name, args),
+  homeCity: () => homeCity(app.state, app.lastOwnedCity),
+  goHome() {
+    if (app.screen !== 'play' || app.dialogOpen || app.lab) return;
+    const city = app.homeCity();
+    if (!city) return;
+    app.map.showRoute(null);
+    app.hud.showTip(null);
+    app.map.jumpTo(city, app.stageSize.width < app.stageSize.height ? 48 : 52);
+    app.select({ node: city });
+    app.sound.play('tap');
+  },
   select(sel) {
     app.sel = sel && (sel.node || sel.army) ? sel : null;
+    if (app.state && NODES[sel?.node]?.kind === 'city' && app.state.nodes[sel.node]?.owner === app.state.player) {
+      app.lastOwnedCity = sel.node;
+    }
     if (!sel?.army || app.mode?.army !== sel.army) app.mode = null;
     app.map?.select(app.sel ?? {});
     app.hud?.refresh();
@@ -126,6 +142,10 @@ const app = {
     if (key === 'music') app.sound.setMusic(value);
     if (key === 'musicVolume') app.sound.setVolumes?.({ music: value });
     if (key === 'effectsVolume') app.sound.setVolumes?.({ effects: value });
+    if (key === 'territoryMap') {
+      app.map?.setTerritoryVisible(app.screen === 'play' && value);
+      app.hud?.refresh();
+    }
     if (key === 'reducedMotion') {
       frame.classList.toggle('calm', value);
       app.map?.setReducedMotion?.(app.calm());
@@ -170,6 +190,7 @@ const app = {
   startBattle(setup) {
     app.dialogs.close(true);
     app.screen = 'battle';
+    app.map.setTerritoryVisible(false);
     frame.dataset.screen = 'battle';
     app.battle = startBattle(app, setup);
   },
@@ -178,6 +199,7 @@ const app = {
     app.screen = 'play';
     frame.dataset.screen = 'play';
     app.map.setVisible(true);
+    app.map.setTerritoryVisible(app.settings.territoryMap);
     app.map.refreshLands(true);
     app.sound.theme('realm');
     app.dialogs.open('battleResult', done);
@@ -300,8 +322,9 @@ function tapArmy(id) {
 // ——— Taps on the map ———
 function tapNode(id) {
   if (app.battle) return app.battle.tapNode?.(id);
-  // On the setup screen a tap on a place picks the power that holds it.
+  // On setup, a tap chooses a founding city or the power that already holds it.
   if (app.screen === 'setup') {
+    if (app.pickCustomTown?.(id)) return;
     const owner = app.demoState.nodes[id].owner;
     if (owner) app.pickFaction?.(owner);
     return;
@@ -364,7 +387,10 @@ function bindKeys() {
       if (e.key === '+' || e.key === '=') return app.map.zoomBy(1.25);
       if (e.key === '-' || e.key === '_') return app.map.zoomBy(1 / 1.25);
       if (app.screen !== 'play') return;
-      if (e.code === 'Space' && !(e.target instanceof HTMLButtonElement)) {
+      if (e.code === 'KeyH') {
+        e.preventDefault();
+        if (!e.repeat) app.goHome();
+      } else if (e.code === 'Space' && !(e.target instanceof HTMLButtonElement)) {
         e.preventDefault();
         app.setPaused(!app.paused);
       } else if (/^Digit[1-5]$/.test(e.code)) app.setSpeed(+e.code.slice(5) - 1);
@@ -426,6 +452,7 @@ function day() {
     app.rulerSet = new Set(Object.values(s.factions).map((f) => f.ruler));
   }
   newsSince(logBefore);
+  app.minimap.refresh();
   if (s.over && !app.endingShown) {
     app.endingShown = true;
     app.setPaused(true);
@@ -702,6 +729,7 @@ function play(state) {
   app.map.setDrift(null);
   registerCustom(state);
   app.state = state;
+  app.lastOwnedCity = null;
   app.tales = [];
   app.rulerSet = new Set(Object.values(state.factions).map((f) => f.ruler));
   app.endingShown = Boolean(state.over);
@@ -713,6 +741,9 @@ function play(state) {
   app.select(null);
   app.mode = null;
   app.map.refreshLands(true);
+  // Saved campaigns can reuse the same city, army and custom faction IDs with different names and banners.
+  app.map.redraw();
+  app.map.setTerritoryVisible(app.settings.territoryMap);
   app.map.jumpTo(state.factions[state.player].capital, app.stageSize.width < app.stageSize.height ? 48 : 52);
   app.paused = false;
   app.hud.refresh(true);
@@ -730,6 +761,7 @@ function toTitle() {
   $('#hud').hidden = true;
   app.select(null);
   app.map.setVisible(true);
+  app.map.setTerritoryVisible(false);
   app.map.refreshLands(true);
   app.map.jumpTo('luoyang', 95);
   // The view drifts slowly over the land, unless motion is to be kept down.

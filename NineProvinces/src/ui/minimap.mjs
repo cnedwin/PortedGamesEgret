@@ -1,10 +1,11 @@
-// 小地图：右上角一幅缩小的天下全图——山川底图、各势力的疆域、本方都城的金点、眼下镜头看到的范围。点一下或拖动，
+// 小地图：右上角一幅缩小的天下全图——山川底图、各势力的疆域、归城目标的金点、眼下镜头看到的范围。点一下或拖动，
 // 镜头就飞到那里。
 // The minimap: a small picture of the whole realm in the top right — the painted land, each power's territory, a gold
-// dot at the player's capital, and the part the camera sees now. A tap or a drag flies the camera there.
+// dot at the return destination, and the part the camera sees now. A tap or a drag flies the camera there.
 import { MAP, NODES } from '../data/map.mjs';
 import { factionColour } from '../view3d/realm.mjs';
-import { landOwnersGrid, paintBase, paintLands } from '../view/mapart.mjs';
+import { paintBase, paintLands } from '../view/mapart.mjs';
+import { buildTerritoryGrid } from '../view/territory.mjs';
 import { h } from './dom.mjs';
 
 const W = 232;
@@ -13,45 +14,41 @@ const H = Math.round((W * MAP.height) / MAP.width);
 export function createMinimap(app, host) {
   const scale = (W * 2) / MAP.width;
   const base = paintBase(scale);
-  // Who holds each patch: worked out once on a coarse grid of the painted land.
-  const bigBase = paintBase(0.25);
-  const sample = document.createElement('canvas');
-  sample.width = MAP.width;
-  sample.height = MAP.height;
-  sample.getContext('2d').drawImage(bigBase, 0, 0, MAP.width, MAP.height);
-  const lands = landOwnersGrid(sample, 12);
   const canvas = h('canvas.minimap', { width: W * 2, height: H * 2, role: 'img', 'aria-label': 'map' });
   const box = h('div#minimap', canvas);
   host.append(box);
   const g = canvas.getContext('2d');
-  let landLayer = null;
+  let lands, landLayer, ownerKey;
   function refresh() {
     const s = app.state ?? app.demoState;
     if (!s) return;
-    const rgb = (o) => {
-      const c = factionColour(s, o);
-      return [(c >> 16) & 255, (c >> 8) & 255, c & 255];
-    };
-    landLayer = paintLands(lands, (id) => s.nodes[id]?.owner ?? null, rgb);
+    lands ??= buildTerritoryGrid();
+    const colour = owner => factionColour(s, owner);
+    const owners = lands.ids.map(id => s.nodes[id]?.owner ?? null);
+    const key = owners.map(owner => owner ? owner + ':' + colour(owner) : '').join('|');
+    if (key === ownerKey) return;
+    ownerKey = key;
+    landLayer = paintLands(lands, owners, colour);
+    app.map.setTerritorySource(landLayer);
   }
   function draw() {
     const s = app.state ?? app.demoState;
     g.clearRect(0, 0, canvas.width, canvas.height);
     g.drawImage(base, 0, 0, canvas.width, canvas.height);
     if (landLayer) {
-      g.globalAlpha = 0.85;
+      g.globalAlpha = 0.82;
       g.drawImage(landLayer, 0, 0, canvas.width, canvas.height);
       g.globalAlpha = 1;
     }
     const k = canvas.width / MAP.width;
     if (s?.player) {
-      const cap = NODES[s.factions[s.player]?.capital];
-      if (cap) {
+      const home = NODES[app.homeCity()];
+      if (home) {
         g.fillStyle = '#f1d792';
         g.strokeStyle = '#2a1a06';
         g.lineWidth = 2;
         g.beginPath();
-        g.arc(cap.x * k, cap.y * k, 5, 0, Math.PI * 2);
+        g.arc(home.x * k, home.y * k, 5, 0, Math.PI * 2);
         g.fill();
         g.stroke();
       }

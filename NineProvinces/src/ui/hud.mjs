@@ -60,13 +60,16 @@ export function createHud(app) {
     const m = monthly(s, s.player),
       p = power(s, s.player);
     const r = f.research;
-    const key = [s.day, f.coin, Math.round(f.grain), m.coin, m.grain, m.troops, p.cities, f.fame, r.current, Math.floor(r.points), app.paused, app.speed, f.name?.zh, f.flag, app.dialogOpen].join('|');
+    const home = app.homeCity();
+    const homeLabel = home ? t('returnHomeTitle', { place: placeName(home) }) : t('returnHomeNone');
+    const territory = Boolean(app.settings.territoryMap);
+    const key = [s.day, f.coin, Math.round(f.grain), m.coin, m.grain, m.troops, p.cities, f.fame, r.current, Math.floor(r.points), app.paused, app.speed, f.name?.zh, f.flag, app.dialogOpen, home, territory].join('|');
     if (key === lastTop) return;
     lastTop = key;
     const sign = (n) => (n >= 0 ? '+' : '−') + num(Math.abs(n));
     redraw(top, (node) => {
       node.append(
-        keyed('realm', h('button.realm', { type: 'button', onclick: () => app.open('realm'), title: t('menuFaction') }, seal(f, 'l'), h('span.realmName', factionName(s, s.player)))),
+        keyed('realm', h('button.realm', { type: 'button', onclick: () => app.open('realm'), title: t('menuFaction') + ' · ' + factionName(s, s.player) }, seal(f, 'l'), h('span.realmName', factionName(s, s.player)))),
         h('div.date', { 'aria-live': 'off' }, h('span', dayWords(s.day)), h('small.season', t('season_' + seasonOf(s.day).name))),
         h(
           'div.res',
@@ -92,6 +95,20 @@ export function createHud(app) {
         ),
         h(
           'nav.menu',
+          keyed('home', h('button.menuBtn#homeCityBtn', {
+            type: 'button',
+            disabled: !home,
+            'aria-label': home ? t('returnHome') + ' · ' + placeName(home) : t('returnHome'),
+            'aria-keyshortcuts': 'H',
+            title: home ? homeLabel + ' (H)' : homeLabel,
+            onclick: app.goHome
+          }, t('returnHome'), home && h('small', placeName(home)))),
+          keyed('territory', h('button.menuBtn#territoryMapBtn', {
+            type: 'button',
+            'aria-pressed': String(territory),
+            title: t(territory ? 'territoryHide' : 'territoryShow'),
+            onclick: () => app.setSetting('territoryMap', !territory)
+          }, t('territoryMap'))),
           [
             ['generals', t('menuGenerals')],
             ['diplomacy', t('menuDiplomacy')],

@@ -462,6 +462,11 @@ const lakeBuckets = makeBuckets();
   }
 }
 
+/** The land mask for district colours; rivers render separately above the terrain. */
+export function isTerritoryLand(x, z) {
+  return coastDistance(x, z) >= 0 && !(lakeBuckets[cellIndex(x, z)] ?? []).some(lake => pointInPoly(lake.poly, x, z));
+}
+
 // ——— The whole land at a point ———
 /**
  * Everything about the land at a map point, written into `out` (and returned): `height`, `water` (0 none, 1 sea,

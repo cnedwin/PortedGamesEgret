@@ -663,6 +663,16 @@ function struck(b, u, t, centre) {
 
 const tacticReach = (u, t) => (t.mind ? 5 : Math.max(2, UNITS[u.kind].range + 1));
 
+/** Pure targeting preview, using the exact same shapes and reach as useTactic. */
+export function tacticPreview(b,u,id,target=null) {
+  const t=TACTICS[id];if(!u||!t||!u.tactics.includes(id))return {valid:false,reason:'unknown',reach:0,hexes:[],targets:[]};
+  const helping=['atk','def','spd','heal','rally','rage'].includes(t.kind),reach=tacticReach(u,t);
+  const foe=typeof target==='number'?b.units[target]:target;
+  const area=helping?{hexes:tacticTargets(b,u,t).map(o=>o.pos),foes:tacticTargets(b,u,t)}:foe&&alive(foe)&&foe.side!==u.side?struck(b,u,t,foe.pos):{hexes:[],foes:[]};
+  const reason=!alive(u)||u.routed?'unavailable':u.status.stun>0?'stun':u.rage<100?'rage':!helping&&(!foe||!alive(foe)||foe.side===u.side)?'target':!helping&&distance(u.pos,foe.pos)>reach?'range':null;
+  return {valid:reason===null,reason,reach,helping,hexes:area.hexes,targets:area.foes.map(o=>o.id)};
+}
+
 /** Unleash a tactic: on a target unit for those that strike, on allies for those that help. */
 export function useTactic(b, u, tacticId, targetUnit = null) {
   if (!alive(u) || u.routed || u.rage < 100 || !u.tactics.includes(tacticId) || u.status.stun > 0) return false;
@@ -1009,10 +1019,13 @@ export function stepBattle(b, dt, playerSide = -1) {
     if (!foe) continue;
     // Shooting from a wall needs no line; at night archers see less.
     const scale = b.night && range > 1 ? 0.7 : 1;
+    u.lastAttack={time:b.time,target:foe.id,kind:'normal'};
     hurt(b, foe, blow(b, u, foe, scale), u);
     // A blow in reach is answered.
-    if (alive(foe) && !foe.routed && distance(u.pos, foe.pos) <= UNITS[foe.kind].range && distance(u.pos, foe.pos) === 1)
+    if (alive(foe) && !foe.routed && distance(u.pos, foe.pos) <= UNITS[foe.kind].range && distance(u.pos, foe.pos) === 1) {
+      foe.lastAttack={time:b.time,target:u.id,kind:'retaliation'};
       hurt(b, u, blow(b, foe, u, 0.45 * (1 + foe.fx.counter / 100)), foe);
+    }
   }
   // Holding the keep of a town.
   if (b.keep !== null) {
