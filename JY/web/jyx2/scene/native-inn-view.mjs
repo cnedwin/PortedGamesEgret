@@ -1,5 +1,5 @@
 import {
-  InstancedMesh3D, Mesh3D, Object3D, Raycaster3D, Scene3D,
+  InstancedMesh3D, Mesh3D, Object3D, Raycaster3D, RenderList3D, Scene3D,
   createAmbientLight3D, createCustomShader3D, createDirectionalLight3D, createGeometry3D, createPerspectiveCamera3D,
   mat4Compose, mat4Invert, mat4Multiply, vec3TransformDirection, vec3TransformMat4,
 } from '@egret/engine/world3d';
@@ -213,7 +213,7 @@ export async function loadNativeSceneAssets(config, sceneSpec) {
 
 export async function createNativeSceneView(viewport, overlay, { width = 640, height = 360 } = {}, config, prepared) {
   const { sceneId, classKey, modelIds, terrainEdge, requireInstancing, actorTints,
-    prepareProps, resolveActor } = config;
+    prepareProps, resolveActor, prepareFirstFrame: warmFirstFrame } = config;
   const assets = prepared ?? await loadNativeSceneAssets(config);
   const { spec, environment, models, exitEffect } = assets;
   const templates = new Map(modelIds.map((id, i) => [id, models[i]]));
@@ -394,12 +394,9 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
     mat4Compose(matrix(), [0, 0, 0], follow.rotation, unitScale).subarray(8, 11), transform);
   const dialogueYaw = dialogueForward && Math.atan2(dialogueForward[0], dialogueForward[2]);
 
-  function update({ x, y, direction, moving, hidden, people = [], props, elapsedMs, opacity = 1, cameraFocus, stageEvent, heroAnimation }) {
-    if (!visible || lost || disposed) return;
+  function applyFrame({ x, y, direction, moving, hidden, people = [], props, elapsedMs, opacity = 1, cameraFocus, stageEvent, heroAnimation }, delta) {
     resize();
     canvas.style.opacity = opacity;
-    const delta = lastDraw === undefined ? 0 : Math.min(.1, Math.max(0, (elapsedMs - lastDraw) / 1000));
-    lastDraw = elapsedMs;
     const openedSlots = interactiveProps?.update(props ?? []);
     canvas.dataset.openedProps = Array.isArray(openedSlots) ? openedSlots.join(',') : '';
     for (const record of actors.values()) record.root.visible = false;
@@ -416,6 +413,44 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
     camera.setPosition(fx + offset[0], groundHeight(fx, fy) + lookHeight + offset[1], fy + offset[2]);
     exitEffect?.update(elapsedMs, camera);
     wind?.update(elapsedMs);
+  }
+
+  async function prepareFirstFrame(frame) {
+    if (!renderer.context.getExtension('KHR_parallel_shader_compile')) return;
+    // Match the first draw's actual actor poses, camera, and auto-instanced batches.
+    applyFrame(frame, 0);
+    const list = new RenderList3D();
+    list.autoInstanceThreshold = renderer.autoInstancing ? list.autoInstanceThreshold : 0;
+    list.tiledLights = renderer.tiledLights;
+    list.build(scene, camera);
+    const receiveShadows = renderer.shadowsEnabled && list.shadowCasters.length > 0
+      && list.directionalLights.some(light => light.castShadow);
+    const color = { fog: Boolean(scene.fog), environment: Boolean(scene.environment), receiveShadows };
+    const programs = [...list.opaque, ...list.transparent].map(({ mesh, material }) => ({ mesh, material, ...color }));
+    if (receiveShadows) for (const mesh of list.shadowCasters) {
+      if (mesh.geometry.topology !== 'triangles') continue;
+      const groups = mesh.geometry.groups;
+      const materials = Array.isArray(mesh.material) && groups.length
+        ? groups.map(group => mesh.materialAt(group.materialIndex)) : [mesh.materialAt(0)];
+      for (const material of materials) if (material.visible && !material.isDisposed && !material.billboard) {
+        programs.push({ mesh, material, pass: 'shadow' });
+      }
+    }
+    // The engine submits unique links together and waits using its completion query.
+    try { await renderer.preparePrograms(programs); }
+    catch (error) {
+      if (disposed) return;
+      if (renderer.isContextLost) throw error;
+      console.warn(`Scene ${sceneId} program preparation did not complete`, error);
+    }
+  }
+
+  function update(frame) {
+    if (!visible || lost || disposed) return;
+    const { elapsedMs } = frame;
+    const delta = lastDraw === undefined ? 0 : Math.min(.1, Math.max(0, (elapsedMs - lastDraw) / 1000));
+    lastDraw = elapsedMs;
+    applyFrame(frame, delta);
     renderer.render(scene, camera);
     drawn = true;
     const active = [...actors.entries()].filter(([, record]) => record.root.visible);
@@ -500,5 +535,9 @@ export async function createNativeSceneView(viewport, overlay, { width = 640, he
     dispose();
     throw error;
   }
-  return { update, pick, propSlots: interactiveProps?.slots ?? [], dispose, setVisible(value) { visible = value; canvas.hidden = !value; } };
+  return {
+    update, pick, propSlots: interactiveProps?.slots ?? [], dispose,
+    prepareFirstFrame: warmFirstFrame ? prepareFirstFrame : undefined,
+    setVisible(value) { visible = value; canvas.hidden = !value; },
+  };
 }

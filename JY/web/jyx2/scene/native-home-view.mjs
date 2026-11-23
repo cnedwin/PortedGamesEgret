@@ -61,7 +61,7 @@ function prepareProps(environment, spec) {
 
 const homeView = {
   ...nativeHomeSource, classKey: 'home3d',
-  terrainEdge: false, requireInstancing: true,
+  terrainEdge: false, requireInstancing: true, prepareFirstFrame: true,
   resolveActor, prepareProps, createExitEffect: createNativeHomeExit,
 };
 

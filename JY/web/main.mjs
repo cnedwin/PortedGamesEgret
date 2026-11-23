@@ -1744,6 +1744,7 @@ async function openMap(game, destination, takePreparedHome) {
   }
 
   function clickToWalk(event) {
+    if (canvas.dataset.phase !== 'ready') return;
     canvas.focus({ preventScroll: true });
     if (event.button !== 0 || closing || battle || eventEnded) return;
     if (openingActive || trainerActive || recruitActive || eventActive || worldMenuActive) {
@@ -1923,6 +1924,22 @@ async function openMap(game, destination, takePreparedHome) {
     });
   }
 
+  function nativeMapFrame(tileX, tileY, elapsedMs, flags = {}) {
+    const people = sceneActors.flatMap(person => {
+      const event = displayedEvents[person.slot];
+      if (!event || event.currentPic <= 0) return [];
+      return [{ ...person, x: event.x, y: event.y, animation: openingPoses.get(person.slot), interactive: event.event1 > 0 }];
+    });
+    const props = map3dView.propSlots.flatMap(slot => displayedEvents[slot] ? [{ slot, ...displayedEvents[slot] }] : []);
+    return {
+      x: tileX, y: tileY, direction: facing, hidden: hiddenPlayer, people, props, opacity: root.alpha, elapsedMs,
+      cameraFocus: cameraOverride, stageEvent: openingActive ? openingEventId : recruitActive ? Number(canvas.dataset.eventId) : undefined,
+      heroAnimation: openingPoses.get(-1), sceneEvents: displayedEvents, animationTick,
+      animateEvents: !openingActive && !trainerActive && !recruitActive && !eventActive,
+      heroPicture: forcedPlayerPicture, ...flags,
+    };
+  }
+
   function render(now) {
     if (buildingGpuGround || restoringGpuGround) return;
     if (!isWorld && now - lastAnimation >= 200 && scene.events.some(animates)) {
@@ -1997,22 +2014,13 @@ async function openMap(game, destination, takePreparedHome) {
     const sailing = isWorld && isWorldWater(pictureId(scene.layers.earth[indexOf(x, y)]));
     const walking = Boolean(move) || now - lastWalk < 100;
     if (map3dView) {
-      const people = sceneActors.flatMap(person => {
-        const event = displayedEvents[person.slot];
-        if (!event || event.currentPic <= 0) return [];
-        return [{ ...person, x: event.x, y: event.y, animation: openingPoses.get(person.slot), interactive: event.event1 > 0 }];
-      });
       try {
         const refresh = pendingScene3d && map3dView.setScene;
         if (refresh) map3dView.setScene(pendingScene3d);
         pendingScene3d = undefined;
-        const stageEvent = openingActive ? openingEventId : recruitActive ? Number(canvas.dataset.eventId) : undefined;
-        const props = map3dView.propSlots.flatMap(slot => displayedEvents[slot] ? [{ slot, ...displayedEvents[slot] }] : []);
-        const updated = map3dView.update({ x: tx, y: ty, direction: facing, moving: walking, hidden: hiddenPlayer,
-          people, props, opacity: root.alpha, elapsedMs: now, cameraFocus: cameraOverride,
-          stageEvent, heroAnimation: openingPoses.get(-1), sailing, sceneEvents: displayedEvents,
-          animationTick, animateEvents: !openingActive && !trainerActive && !recruitActive && !eventActive,
-          heroPicture: forcedPlayerPicture, force: Boolean(refresh || frameWaiters.length) });
+        const updated = map3dView.update(nativeMapFrame(tx, ty, now, {
+          moving: walking, sailing, force: Boolean(refresh || frameWaiters.length),
+        }));
         // Project against the camera used for the displayed World3D frame.
         if (updated) drawWorldRoute(tx, ty);
         if (dirty && host.getStatus().pendingFrames === 0) submitFrame();
@@ -2131,7 +2139,7 @@ async function openMap(game, destination, takePreparedHome) {
   }
 
   function pressGameKey(code, repeat, consume = () => {}) {
-    if (journal.open) return;
+    if (canvas.dataset.phase !== 'ready' || journal.open) return;
     if (!battle && !trainerActive && !eventActive) startMapMusic();
     if (openingActive) {
       if (moves.has(code) || ['Enter', 'Space', 'Escape'].includes(code)) consume();
@@ -2291,9 +2299,16 @@ async function openMap(game, destination, takePreparedHome) {
       const createNativeView = prepared?.create ?? await loadNativeView();
       map3dView = await createNativeView(viewport, canvas, options);
       if (closing) { map3dView.dispose(); return; }
+      if (map3dView.prepareFirstFrame) {
+        await map3dView.prepareFirstFrame(nativeMapFrame(x, y, performance.now()));
+        if (closing) return;
+      }
       ground.visible = objects.visible = false;
       if (atmosphere) atmosphere.light.visible = false;
     } catch (error) {
+      if (closing) return;
+      map3dView?.dispose();
+      map3dView = undefined;
       console.warn(`${isWorld ? '江湖大地图' : scene.name} 3D 素材無法載入，沿用原作畫面`, error);
     }
   }
