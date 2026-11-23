@@ -20,6 +20,7 @@ import { openShop } from './shop.mjs';
 import { openWardrobe } from './wardrobe.mjs';
 import { openBailuZero } from './bailu-zero.mjs';
 import { openSocialStory } from './social-stories.mjs';
+import { qinggeChapterFour } from './qingge-festival.mjs';
 import { SOCIAL_IDS } from '../data/social-stories.mjs';
 import { BAILU_ZERO_TITLE } from '../data/bailu-zero.mjs';
 
@@ -210,7 +211,13 @@ async function placeScreen(game, placeId) {
       const chapter = sim.chapterAt(s, girl, placeId);
       if (!chapter) continue;
       game.hideHud();
-      await playScript(game, (girl==='bailu'&&bailuMainChapter(s,chapter))||CHAPTERS_SCRIPT[girl][chapter], { girl });
+      let script = CHAPTERS_SCRIPT[girl][chapter];
+      if (girl === 'bailu') script = bailuMainChapter(s, chapter) || script;
+      if (girl === 'qingge') {
+        if (chapter === 3) game.saveQinggeBranch();
+        if (chapter === 4) script = qinggeChapterFour(s);
+      }
+      await playScript(game, script, { girl });
       sim.finishChapter(s, girl, chapter);
       game.save();
       game.toast(`${L(HEROINES[girl].name)} · ${L(['故事第 ', 'Story chapter '])}${chapter}${L([' 章 完成', ' complete'])}`, 'good');

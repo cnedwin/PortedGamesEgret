@@ -6,6 +6,7 @@ import { playScript } from './screens/story.mjs';
 import { campus } from './screens/campus.mjs';
 import { finale } from './screens/finale.mjs';
 import { openAlbum, pickPerk } from './screens/memories.mjs';
+import { replayQinggeFestival } from './screens/qingge-festival.mjs';
 import { PROLOGUE } from './story/scenes.mjs';
 import { preloadCharacterArt } from './art/character-art.mjs';
 
@@ -57,7 +58,11 @@ async function start() {
     const choice = await titleScreen(game);
     if (choice === 'album') {
       await game.fadeIn(0.3);
-      await openAlbum(game);
+      let albumTab = 'endings';
+      while (await openAlbum(game, albumTab) === 'qingge-festival') {
+        await replayQinggeFestival(game);
+        albumTab = 'branches';
+      }
       continue;
     }
     if (choice === 'continue' && game.load()) {

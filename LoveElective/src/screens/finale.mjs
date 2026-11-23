@@ -4,6 +4,7 @@ import { W } from '../engine/stage.mjs';
 import { THEME, SERIF } from '../engine/ui.mjs';
 import { HEROINES, HEROINE_IDS, LEVELS, STATS } from '../data/cast.mjs';
 import { FINALE_INTRO, ENDINGS, ENDING_SOLO } from '../story/scenes.mjs';
+import { qinggeFestivalEpilogue } from '../story/qingge-festival.mjs';
 import * as sim from '../sim.mjs';
 import { playScript } from './story.mjs';
 import { showUnlocks } from './memories.mjs';
@@ -20,6 +21,10 @@ export async function finale(game) {
   if (girl) {
     result = sim.confess(s, girl);
     await playScript(game, ENDINGS[girl][result], { girl, light: 'night', keepActor: true });
+    if (girl === 'qingge') {
+      const epilogue = qinggeFestivalEpilogue(s);
+      if (epilogue.length) await playScript(game, epilogue, { girl, light: 'night', keepActor: true });
+    }
   } else {
     await playScript(game, ENDING_SOLO, { light: 'night' });
   }
