@@ -3,6 +3,7 @@ import {
   mat4Compose, mat4Invert, mat4Multiply, quatNormalize, transformGeometry3D,
 } from '@egret/engine/world3d';
 import { loadTexture3D } from '@egret/engine/webgl2/world3d';
+import { homeExitTextures } from '../scene/home.mjs';
 
 // The original beam spans a rotated Unity box. Sample its two masks along each camera ray.
 const fragment = `
@@ -43,9 +44,9 @@ export async function createNativeHomeExit({ transform }) {
   if (!mat4Invert(inverse, box)) throw Error('Invalid Home exit beam transform.');
 
   const results = await Promise.allSettled([
-    loadTexture3D(new URL('./exit-lightbeam.png', import.meta.url).href,
+    loadTexture3D(homeExitTextures.beam,
       { colorSpace: 'linear', wrapS: 'clamp', wrapT: 'clamp' }),
-    loadTexture3D(new URL('./exit-rays.png', import.meta.url).href,
+    loadTexture3D(homeExitTextures.rays,
       { colorSpace: 'linear', wrapS: 'repeat', wrapT: 'repeat' }),
   ]);
   const failure = results.find(result => result.status === 'rejected');

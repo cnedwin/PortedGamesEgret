@@ -61,7 +61,7 @@ function prepareProps(environment, spec) {
 
 const homeView = {
   ...nativeHomeSource, classKey: 'home3d',
-  actorDirectory: '/jyx2/home3d-actors/', modelIds: ['0', 'doll'], terrainEdge: false, requireInstancing: true,
+  terrainEdge: false, requireInstancing: true,
   resolveActor, prepareProps, createExitEffect: createNativeHomeExit,
 };
 

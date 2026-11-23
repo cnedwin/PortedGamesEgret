@@ -29,7 +29,7 @@ import { createWorldNavigation } from './jyx2/ui/world-navigation.mjs';
 import { createDialogueJournal } from './jyx2/ui/dialogue-journal.mjs';
 import { findTilePath, screenToTile } from './kys-navigation.mjs';
 import { createSceneAtmosphere } from './scene-atmosphere.mjs';
-import { hasJyx2Scene, loadJyx2Scene, nativeHomeSource, readNativeSceneSpec } from './jyx2/scene/home.mjs';
+import { hasJyx2Scene, homeExitTextures, loadJyx2Scene, nativeHomeSource, readNativeSceneSpec } from './jyx2/scene/home.mjs';
 import { loadActorArt } from './jyx2/actors/actor-art.mjs';
 import { nativeBattleName } from './jyx2/scene/native-battle-fields.mjs';
 
@@ -116,15 +116,33 @@ const fits = (map, x, y) => x >= 0 && y >= 0 && x < map.width && y < map.height;
 const samePoint = (point, x, y) => point?.[0] === x && point?.[1] === y;
 
 async function prepareHomeView() {
-  const preload = document.createElement('link');
+  const hints = [];
+  const { assetDirectory, actorDirectory, modelIds } = nativeHomeSource;
+  const playPath = new URL('./', import.meta.url);
+  const root = new URL('../', playPath);
+  const supportsFetchPreload = document.createElement('link').relList.supports('preload');
+
+  function hint(url, rel) {
+    const link = document.createElement('link');
+    link.rel = rel;
+    link.href = url;
+    if (rel === 'preload') {
+      link.as = 'fetch';
+      link.crossOrigin = 'anonymous';
+    }
+    hints.push(document.head.appendChild(link));
+  }
+
+  // These URLs are the same resources consumed by the model and exit-effect loaders.
+  if (supportsFetchPreload) {
+    for (const id of modelIds) hint(actorDirectory + id + '.glb', 'preload');
+    for (const url of Object.values(homeExitTextures)) hint(url, 'preload');
+  }
   const spec = readNativeSceneSpec(nativeHomeSource).then(data => {
-    // Let the browser fetch the environment during the dynamic renderer imports.
-    if (preload.relList.supports('preload')) {
-      preload.rel = 'preload';
-      preload.as = 'fetch';
-      preload.crossOrigin = 'anonymous';
-      preload.href = nativeHomeSource.assetDirectory + data.asset;
-      document.head.appendChild(preload);
+    if (supportsFetchPreload) hint(assetDirectory + data.asset, 'preload');
+    // Only the hosted /play shell uses these generated virtual module paths.
+    if (playPath.pathname.endsWith('/play/') && Array.isArray(data.modulePreloads)) {
+      for (const path of data.modulePreloads) hint(new URL(path, root).href, 'modulepreload');
     }
     return data;
   });
@@ -132,8 +150,10 @@ async function prepareHomeView() {
     const [module] = await Promise.all([import('./jyx2/scene/native-home-view.mjs'), spec]);
     return await module.prepareNativeHomeView(spec);
   } finally {
-    void spec.then(() => preload.remove(), () => {});
+    void spec.then(removeHints, removeHints);
   }
+
+  function removeHints() { for (const link of hints) link.remove(); }
 }
 
 async function json(path) {
