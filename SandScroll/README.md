@@ -36,6 +36,7 @@ Every 20,000 points earn a firecracker, which blows away a circle of sand when s
 
 - 托盘里总有三块积木，用掉一块马上补一块；积木由二十粒见方的小块拼成，有九种形状。 · The dish always holds three pieces, refilled as one is used, in nine shapes of blocks twenty grains square.
 - 积木落到沙上就化成沙：每粒往下落，下面有沙就往左下或右下滑，每粒最多滑二十六次就压实，所以沙会流开，但不会一路流到两边。 · A piece breaks into sand where it lands; each grain falls, and slides down to a side when blocked, at most twenty-six times before it packs, so sand flows out but does not run to both walls.
+- 当前积木下落时，可以再放两块等待。托盘和沙盘上的同色圆点标出等待顺序及落点。暂停后转屏仍保持暂停，继续时按原顺序落下。 · Up to two pieces can wait while one falls. Matching marks on the tray and board show the order and destinations. If you turn the phone while paused, the accepted moves wait for you to resume.
 - 同色的沙从左墙连到右墙（八个方向相邻都算连着）就整片消掉；两秒半内再消一片算连消，每多一级多得一半的分，大连消会震屏。 · A colour connected from wall to wall clears; another within two and a half seconds is a chain worth half again more for each step, and big chains shake the tray.
 - 沙在虚线上方停留超过两秒半就输。好的打法是把每种颜色平铺成横带；全堆在一处很快就会顶到虚线。 · Sand over the dashed line for two and a half seconds loses. Lay each colour in flat bands; heaping in one place soon reaches the line.
 
@@ -96,7 +97,8 @@ Every 20,000 points earn a firecracker, which blows away a circle of sand when s
 ## 已验证 · Verified
 
 - `node --test test/*.test.mjs`：35 项通过，覆盖原有规则、存档、双语和引擎副本检查，以及每日题目和独立纪录。 · 35 tests pass, covering the original rules, saves, localization, engine files and the daily seed and record.
-- `node test/accept.mjs`：23 项通过，包括拖放、旋转、消除计分、爆竹、暂停、存档、无尽、拆画、五张截图基线，以及非 16:9 窗口下的底图和画布对齐。 · 23 Edge/Chromium checks with SwiftShader, including input, scoring, pause, saves, Endless, Unpaint, five visual baselines and stage alignment in letterboxed windows.
+- `node test/accept.mjs`：28 项通过，覆盖原有玩法、存档、五张截图基线，另测窄横屏触控区和边缘点按。 · 28 Edge/Chromium checks with SwiftShader, covering gameplay, saves, five visual baselines and the bounds and edges of touch controls in compact landscape.
+- `node test/placement-accept.mjs` 与 `node test/pause-resize.mjs`：复测快速落块的顺序、方向与落点，以及转屏后的暂停、音频和继续操作。 · Verify rapid placement order, orientation and columns, as well as pause, audio and resume across viewport changes.
 - 上面平衡表里的各种打法都实际跑过。 · Every way of playing in the balance table was run.
 - 竖屏 540×960 与横屏 960×540 的卷首、选卷、作画、拆画、暂停、结算画面都截图看过。 · All screens were looked at in screenshots, tall and wide.
 - 品质验收见 [QUALITY.md](QUALITY.md)。 · Quality results are in QUALITY.md.

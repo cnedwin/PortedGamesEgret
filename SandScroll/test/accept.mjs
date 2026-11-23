@@ -24,7 +24,7 @@ const round = (page) => page.evaluate(() => {
 });
 // Wait until nothing falls or slides, so a picture of the tray is the same every run.
 const still = (page) => until(page, () => window.egretGame.isSettled());
-let page;
+let page, compactPage;
 try {
   page = await openPage(browser, `${server.url}${path}/?seed=1&lang=zh`, { width: 960, height: 540 });
   await page.evaluate(() => localStorage.clear());
@@ -196,10 +196,35 @@ try {
     });
     check(error < 1, `the art and live stage are aligned at ${viewport.width}×${viewport.height} (max error ${error.toFixed(2)} CSS px)`);
   }
+
+  compactPage = await openPage(browser, `${server.url}${path}/?seed=1&lang=zh`, { width: 873, height: 325, touch: true });
+  const bounds = async (name) => {
+    const button = compactPage.getByRole('button', { name, exact: true });
+    await button.waitFor({ state: 'attached' });
+    return button.boundingBox();
+  };
+  const touchTarget = ({ width, height }) => Math.min(width, height) >= 44;
+  check(touchTarget(await bounds('设置')) && touchTarget(await bounds('切换到英文')), 'compact landscape title controls are at least 44 CSS px');
+  await compactPage.evaluate(() => window.egretGame.app.go('play'));
+  const cracker = await bounds('爆竹 ×1'),
+    pause = await bounds('暂停');
+  check(touchTarget(cracker) && touchTarget(pause) && pause.x + pause.width < cracker.x, 'compact landscape game controls are at least 44 CSS px and do not overlap');
+  await compactPage.touchscreen.tap(pause.x + pause.width / 2, pause.y + 5);
+  const resume = await bounds('继续');
+  check(touchTarget(resume), 'a tap near the top of Pause opens a touch-sized modal');
+  await compactPage.touchscreen.tap(resume.x + resume.width / 2, resume.y + resume.height - 5);
+  const resumedAt = await compactPage.evaluate(() => window.egretGame.app.round.ticks);
+  await compactPage.waitForFunction((ticks) => window.egretGame.app.round.ticks > ticks, resumedAt);
+  await compactPage.getByRole('button', { name: '继续', exact: true }).waitFor({ state: 'hidden' });
+  check(true, 'the lower edge of Resume restores play');
+
+  await compactPage.evaluate(() => window.egretGame.app.go('unpaint'));
+  const unpaintPause = await bounds('暂停');
+  check(touchTarget(unpaintPause), 'compact landscape Unpaint pause is at least 44 CSS px');
 } catch (error) {
   check(false, `the walk stopped: ${error.message.split('\n')[0]}`);
 } finally {
-  const problems = page?.problems ?? [];
+  const problems = [...(page?.problems ?? []), ...(compactPage?.problems ?? [])];
   await browser.close();
   await server.close();
   report('SandScroll acceptance (headless Chromium, SwiftShader)', checks, problems);

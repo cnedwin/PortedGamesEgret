@@ -11,6 +11,7 @@ import { createParticleEmitter } from '@egret/engine/particles';
 import { createActionControl, createControlKeys } from '@egret/engine/ui';
 import { BOARD, PIGMENTS } from '../sim/sand.mjs';
 import { BELT, collectedShare, placeAt, stepUnpaint, tapLane } from '../sim/unpaint.mjs';
+import { LANDSCAPE_TOUCH_BUTTON_HEIGHT } from '../ui/kit.mjs';
 import { createBoardView } from './board.mjs';
 import { paintScroll } from './scroll.mjs';
 
@@ -20,16 +21,25 @@ const GOLD = 0xe2b866;
 const IVORY = 0xf3e3c0;
 
 /** Where everything goes on a tall or a wide stage. */
-export function unpaintLayout(width, height) {
+export function unpaintLayout(width, height, touch = false) {
   const { cols, rows } = BOARD;
   if (height > width) {
     const S = 2;
-    return { tall: true, S, board: { x: (width - cols * S) / 2, y: 66, w: cols * S, h: rows * S }, belt: 696, back: 748, lanes: { x: 20, y: 820, w: width - 40, h: 130 }, hud: { x: 20, y: 762, w: width - 40 }, share: { x: width - 120, y: 22 } };
+    return {
+      tall: true, S, board: { x: (width - cols * S) / 2, y: 66, w: cols * S, h: rows * S }, belt: 696, back: 748,
+      lanes: { x: 20, y: 820, w: width - 40, h: 130 }, hud: { x: 20, y: 762, w: width - 40 }, share: { x: width - 120, y: 22 },
+      pause: { x: width - 108, y: 11, width: 88, height: 44 }
+    };
   }
   const S = 1.45;
   const side = 40 + cols * S + 50,
     panel = width - side - 30;
-  return { tall: false, S, board: { x: 40, y: 14, w: cols * S, h: rows * S }, belt: 14 + rows * S + 16, back: 14 + rows * S + 46, lanes: { x: side, y: 163, w: panel, h: 344 }, hud: { x: side, y: 96, w: panel }, share: { x: width - 30, y: 70 } };
+  return {
+    tall: false, S, board: { x: 40, y: 14, w: cols * S, h: rows * S }, belt: 14 + rows * S + 16, back: 14 + rows * S + 46,
+    lanes: { x: side, y: 163, w: panel, h: 344 }, hud: { x: side, y: 96, w: panel },
+    share: { x: width - (touch ? 166 : 30), y: 70 },
+    pause: { x: width - 150, y: 16, width: 120, height: touch ? LANDSCAPE_TOUCH_BUTTON_HEIGHT : 44 }
+  };
 }
 
 /** The belt can only extract grains that are on the literal bottom row. */
@@ -126,7 +136,7 @@ export function paintUnpaintBack(g, L, lanes, silk) {
  */
 export async function createUnpaintView(app, scope, root, kit, game, hooks) {
   const { width, height } = app.stage,
-    L = unpaintLayout(width, height),
+    L = unpaintLayout(width, height, app.touch),
     b = L.board,
     S = L.S,
     textures = (w, h, px) => app.game.textureFromPixels(w, h, px);
@@ -357,6 +367,7 @@ export async function createUnpaintView(app, scope, root, kit, game, hooks) {
   }
 
   return {
+    pauseBounds: L.pause,
     setPaused(on) {
       paused = on;
       paintLanes();
