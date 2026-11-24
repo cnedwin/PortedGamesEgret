@@ -10,6 +10,7 @@ import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, retu
 import { createFooting } from './footing.mjs';
 import { bowReleasePose } from './bow-release.mjs';
 import { ARTS, SKILLS } from '../sim/regiments.mjs';
+import { telegraphPoseTime } from '../sim/combat-tells.mjs';
 
 const ease = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const easeOut = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : 1 - (1 - t) ** 3);
@@ -410,11 +411,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       pose.f += heft * (-0.08 * gather + 0.075 * carry);
       return { pose, blend: 60, phase, line: act.line };
     }
-    if (act?.kind === 'skill') return skillPose(man, act, contactTime ?? act.t) ?? { pose, blend };
+    if (act?.kind === 'skill') return skillPose(man, act, contactTime ?? telegraphPoseTime(act)) ?? { pose, blend };
     if (act?.kind === 'lance') {
       // Lower the point past the horse's right shoulder, then lift it clear as the rider recovers.
       const { wind, last, recover, hitRecover } = ARTS.couch;
-      const loaded = easeOut(act.t / wind);
+      const loaded = easeOut(telegraphPoseTime(act) / wind);
       const settle = act.metAt === undefined ? ease((act.t - wind - last) / recover) : ease((act.t - act.metAt) / hitRecover);
       const couch = P([-0.24, -0.3, 0.12], [-0.85, -0.05, 0.52], { t: -0.3, n: 0.1 });
       const check = act.metAt === undefined ? 0 : Math.sin(Math.PI * settle) * 0.09;
@@ -678,8 +679,9 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
     state.lastAct = act;
     state.spinBrace = Math.max(0, state.spinBrace - dt);
-    const entering = blend >= 60 && state.entryPose && act?.t < 0.09;
-    const next = entering ? mixPose(state.entryPose, want, ease(act.t / 0.09)) : want;
+    const poseTime = telegraphPoseTime(act);
+    const entering = blend >= 60 && state.entryPose && act && poseTime < 0.09;
+    const next = entering ? mixPose(state.entryPose, want, ease(poseTime / 0.09)) : want;
     const k = 1 - Math.exp(-dt * blend);
     state.pose = mixPose(state.pose, next, blend >= 60 ? 1 : k);
     const p = state.pose;
@@ -788,7 +790,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
 
     // ---- the kick ---------------------------------------------------------------------------------------------
     if (man.act?.kind === 'kick') {
-      const t = man.act.t;
+      const t = telegraphPoseTime(man.act);
       const lift = t < 0.24 ? easeOut(t / 0.24) : t < 0.34 ? 1 : 1 - ease((t - 0.34) / 0.24);
       const extend = t < 0.18 ? 0 : t < 0.3 ? easeOut((t - 0.18) / 0.12) : 1 - ease((t - 0.3) / 0.2);
       rig.bend('thigh_r', 0, -1.55 * lift);

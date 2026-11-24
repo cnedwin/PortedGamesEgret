@@ -4,7 +4,7 @@
 // couched ji), and that any two regiments fight to a finish.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFight, facing, spinGuardWindow, step, TICK, DEFLECT } from '../src/sim/fight.mjs';
+import { createFight, facing, recoveryGuardWindow, spinGuardWindow, step, TICK, DEFLECT } from '../src/sim/fight.mjs';
 import { createBrains } from '../src/sim/brain.mjs';
 import { ARTS, DAMAGE, ORDER, REGIMENTS, SKILLS, TALENTS, loadout, playerLoadout } from '../src/sim/regiments.mjs';
 
@@ -87,6 +87,34 @@ test('a late combo tap keeps its line through the entire original recovery', () 
   assert.equal(next?.line, 'L');
   assert.ok(Math.abs(next.time - finishedAt - TICK) < 1e-9);
   assert.equal(h.act.wind, h.act.blow.wind);
+});
+
+test('a fresh guard cancels normal follow-through, clears a buffered swing and leaves the next move available', () => {
+  const { game, h, f } = meleeRecovery();
+  const previous = h.act;
+  const cancelInput = { guard: true, skillGuardCancel: true, line: 'R' };
+  step(game, { hero: cancelInput });
+  assert.equal(h.act, previous, 'the contact has a minimum follow-through');
+  while (h.act.t - h.act.strikeAt < h.act.recover * 0.64) {
+    const held = step(game, { hero: cancelInput });
+    assert.equal(h.act, previous, 'holding a guard early cannot cancel later');
+    assert.ok(held.every(e => e.type !== 'recoveryCancel'));
+  }
+  step(game, { hero: { ...pcMelee({ attack: true, meleeDown: true, meleeLine: 'O' }), recoveryHandoff: true } });
+  assert.equal(h.queuedSwing?.line, 'O');
+  const health = f.hp;
+  const events = step(game, { hero: cancelInput });
+  assert.ok(events.some(e => e.type === 'recoveryCancel' && e.from === 'swing' && e.line === 'R'));
+  assert.equal(h.act, null);
+  assert.equal(h.queuedSwing, null);
+  assert.equal(h.guardLine, 'R');
+  assert.equal(h.guardAt, game.time);
+  assert.equal(f.hp, health, 'the old strike never lands again');
+  step(game, { hero: pcMelee({ meleeUp: true, meleeLine: 'O' }) });
+  assert.equal(h.act, null, 'old mouse release does not attack after the cancel');
+  step(game, { hero: { attack: true, line: 'L' } });
+  assert.equal(h.act?.line, 'L');
+  assert.equal(h.act?.wind, h.r.blows.L.wind, 'a new strike keeps its full wind-up');
 });
 
 test('an early recovery tap does not chain', () => {
@@ -359,6 +387,65 @@ function waitForSpin(duel, at) {
   assert.equal(duel.h.act?.id, 'spin');
 }
 
+test('a multi-hit skill keeps all three releases before a fresh post-skill guard can cancel', () => {
+  const { game, h, f } = pair('tiger', 'yulin', { hero: { skills: ['swing', 'spin'] } });
+  f.z = h.z - 5;
+  const seen = step(game, { hero: { skill: 0 } });
+  while (h.act.t < 0.43) seen.push(...step(game, {}));
+  seen.push(...step(game, { hero: { guard: true, skillGuardCancel: true } }));
+  assert.equal(h.act?.id, 'swing');
+  while (h.act.t < 0.76) seen.push(...step(game, { hero: { guard: true, skillGuardCancel: true } }));
+  assert.deepEqual(seen.filter(e => e.type === 'skillBeat').map(e => e.part), [0, 1, 2]);
+  assert.ok(!h.guard && !seen.some(e => e.type === 'recoveryCancel'));
+  step(game, {});
+  const remaining = h.cool[0];
+  const events = step(game, { hero: { guard: true, skillGuardCancel: true, skill: 1, line: 'T' } });
+  assert.ok(events.some(e => e.type === 'recoveryCancel' && e.from === 'skill' && e.id === 'swing'));
+  assert.equal(h.act, null, 'guard beats a same-tick attempt to chain');
+  assert.equal(h.guardLine, 'T');
+  assert.ok(Math.abs(h.cool[0] - (remaining - TICK)) < 1e-12);
+  assert.equal(h.cool[1], 0);
+  step(game, {});
+  step(game, { hero: { skill: 1 } });
+  assert.equal(h.act?.id, 'spin');
+});
+
+test('a drop cannot be guard-cancelled in the air but can settle into guard after landing', () => {
+  const { game, h, f } = pair('plume', 'yulin', { hero: { mounted: false, skills: ['drop', 'boar'] } });
+  f.z = h.z - 5;
+  step(game, { hero: { skill: 0 } });
+  while (h.act.t < 0.32) step(game, {});
+  assert.ok(h.act.air > 0.4);
+  const air = step(game, { hero: { guard: true, skillGuardCancel: true } });
+  assert.equal(h.act?.id, 'drop');
+  assert.ok(air.every(e => e.type !== 'recoveryCancel'));
+  const releases = [];
+  while (h.act.t < 0.73) releases.push(...step(game, {}));
+  assert.equal(releases.filter(e => e.type === 'slam' && e.skill === 'drop').length, 1);
+  const guard = step(game, { hero: { guard: true, skillGuardCancel: true } });
+  assert.ok(guard.some(e => e.type === 'recoveryCancel' && e.id === 'drop'));
+  assert.ok(h.guard);
+});
+
+test('guard after a skill release leaves its projectile live and respects guard restrictions', () => {
+  const { game, h, f } = pair('vanguard', 'yulin', { hero: { skills: ['wave', 'down'] } });
+  f.z = h.z - 9;
+  step(game, { hero: { skill: 0 } });
+  while (h.act && !recoveryGuardWindow(h)) step(game, {});
+  assert.equal(h.act?.id, 'wave');
+  assert.ok(recoveryGuardWindow(h));
+  for (const unavailable of [{ alive: false }, { stun: TICK }, { daze: TICK }, { st: 0 }, { regiment: 'archer', knife: false }]) {
+    assert.ok(!recoveryGuardWindow({ ...h, ...unavailable }));
+  }
+  const [wave] = game.shots;
+  assert.equal(wave?.kind, 'wave');
+  step(game, { hero: { guard: true, skillGuardCancel: true } });
+  assert.equal(h.act, null);
+  assert.equal(game.shots[0], wave);
+  run(game, {}, 0.6);
+  assert.ok(f.hp < f.maxHp, 'the launched wave still reaches its target');
+});
+
 test('Tiger Step keeps its contact and natural recovery when guard is untouched', () => {
   const duel = tigerSpin();
   while (duel.h.act) duel.events.push(...step(duel.game, {}));
@@ -422,17 +509,19 @@ test('Tiger Step can deflect on the guard tick then start the normal three-hit S
   [0.18, 0.38, 0.58].forEach((at, i) => assert.ok(Math.abs(hits[i].time - cast.time - at) < TICK));
 });
 
-test('Tiger Step cancellation is opt-in for the player and stays specific to Spin', () => {
+test('recovery cancellation requires the player opt-in flag and gives no advantage to an AI fighter', () => {
   const passive = tigerSpin();
   waitForSpin(passive, 0.45);
   step(passive.game, { hero: { guard: true } });
   assert.equal(passive.h.act?.id, 'spin');
 
-  const swing = pair('tiger', 'yulin');
-  step(swing.game, { hero: { skill: 1 } });
-  run(swing.game, {}, 0.76);
-  step(swing.game, { hero: { guard: true, skillGuardCancel: true } });
-  assert.equal(swing.h.act?.id, 'swing');
+  const opponent = pair('yulin', 'tiger', { foe: { skills: ['spin', 'swing'] } });
+  step(opponent.game, { foe0: { skill: 0 } });
+  run(opponent.game, {}, 0.45);
+  assert.ok(recoveryGuardWindow(opponent.f));
+  const events = step(opponent.game, { foe0: { guard: true, skillGuardCancel: true } });
+  assert.equal(opponent.f.act?.id, 'spin');
+  assert.ok(!events.some(e => e.type === 'recoveryCancel' || e.type === 'skillCancel'));
 });
 
 function spearDuel(distance, mounted = false) {

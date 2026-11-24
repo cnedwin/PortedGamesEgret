@@ -5,7 +5,7 @@
 // (Ctrl+H); the cross in the middle that shows the line of his blow and of the blow coming; the words of the moment,
 // and numbers where blows land. Tab hides it all but the cross.
 import { ARTS, REGIMENTS, SKILLS } from './sim/regiments.mjs';
-import { spinGuardWindow } from './sim/fight.mjs';
+import { recoveryGuardWindow } from './sim/fight.mjs';
 import { t, say } from './i18n.mjs';
 
 const el = (tag, cls, parent, html) => {
@@ -16,6 +16,7 @@ const el = (tag, cls, parent, html) => {
   return e;
 };
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
+const GUARD_ARROW = { R: '→', L: '←', O: '↑', T: '↓' };
 
 // The cross: four blades round a point, one per line as seen on screen (right, left, top for overhead, bottom for a
 // thrust).
@@ -54,6 +55,9 @@ export function createHud(root, { touch = false } = {}) {
   const strip = compass.querySelector('.strip');
   const plates = el('div', 'hud-plates', hud);
   const cross = el('div', 'hud-cross', hud, CROSS);
+  const tell = el('div', 'hud-tell', cross);
+  const cover = el('div', 'hud-cover', cross);
+  tell.hidden = cover.hidden = true;
   const me = el('div', 'hud-me', hud);
   const meName = el('div', 'hud-name', me);
   const meHp = el('div', 'bar hp', me, '<i></i><b></b><em></em>');
@@ -139,10 +143,10 @@ export function createHud(root, { touch = false } = {}) {
 
   let meShown = 0;
   /**
-   * `preparedLine` is the PC player's committed direction while the mouse is held. `threat` is the incoming blow's
-   * guard line. `project(point)` gives a point's place on the screen (or null behind the camera).
+   * `preparedLine` is the PC player's committed direction while the mouse is held. `incoming` is the enemy wind-up
+   * that can reach him soon. `project(point)` gives a point's place on the screen, or null behind the camera.
    */
-  function update(dt, game, { line, preparedLine, threat, guard, locked, project, yaw = 0, input = {} }) {
+  function update(dt, game, { line, preparedLine, incoming, guard, locked, project, yaw = 0, input = {} }) {
     const hero = game.hero;
     hud.classList.toggle('bare', !!input.hidePanels);
     meShown = meShown ? meShown + (hero.hp - meShown) * (1 - Math.exp(-dt * 3)) : hero.hp;
@@ -237,15 +241,37 @@ export function createHud(root, { touch = false } = {}) {
         keys.dataset.html = html;
       }
     }
+    const bowOut = hero.regiment === 'archer' && !hero.knife;
+    const guardLine = bowOut ? null : incoming?.line;
+    const guardWindow = recoveryGuardWindow(hero);
     for (const [l, p] of Object.entries(lines)) {
       p.classList.toggle('on', l === (preparedLine ?? line));
-      p.classList.toggle('threat', l === threat);
+      p.classList.toggle('threat', l === guardLine);
+    }
+    tell.hidden = !incoming;
+    if (incoming) {
+      // The opening card yields to a live attack cue on short mobile viewports.
+      if (bannerTimer > 0 && banner.classList.contains('start')) {
+        banner.hidden = true;
+        bannerTimer = 0;
+      }
+      const skill = SKILLS[incoming.id] ?? ARTS[incoming.id];
+      const action = guardLine ? t('guard') + ' ' + GUARD_ARROW[guardLine] : t('evade');
+      const name = skill ? say(skill.name) : incoming.kind === 'kick' ? t('kick') : '';
+      const message = name ? action + ' · ' + name : action;
+      if (tell.textContent !== message) tell.textContent = message;
+      tell.classList.toggle('urgent', incoming.progress >= 0.68);
+    }
+    cover.hidden = !guardWindow;
+    if (guardWindow) {
+      const message = t(hero.prev?.guard ? 'guardRecoveryRetry' : 'guardRecovery');
+      if (cover.textContent !== message) cover.textContent = message;
     }
     for (const p of preparations) p.classList.toggle('show', p.dataset.prep === preparedLine);
     cross.classList.toggle('guard', !!guard);
-    cross.classList.toggle('guard-window', spinGuardWindow(hero));
+    cross.classList.toggle('guard-window', guardWindow);
     cross.classList.toggle('locked', !!locked);
-    cross.classList.toggle('bow', hero.regiment === 'archer' && !hero.knife);
+    cross.classList.toggle('bow', bowOut);
     cross.style.setProperty('--draw', hero.draw ? Math.min(1, hero.draw.t / hero.r.bow.draw).toFixed(2) : '0');
     if (bannerTimer > 0 && (bannerTimer -= dt) <= 0) banner.classList.remove('show');
     if (toastTimer > 0 && (toastTimer -= dt) <= 0) toast.classList.remove('show');
@@ -265,6 +291,7 @@ export function createHud(root, { touch = false } = {}) {
     banner(text, sub = '', seconds = 2.2, kind = '') {
       banner.innerHTML = `<b>${text}</b>${sub ? `<span>${sub}</span>` : ''}`;
       banner.className = 'hud-banner show ' + kind;
+      banner.hidden = false;
       bannerTimer = seconds;
     },
     toast(text, kind = '') {
@@ -496,7 +523,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     /** The skills' waits, shown as a shade going round each skill button. */
     cool(hero) {
       if (pad.hidden) return;
-      guard.classList.toggle('guard-window', spinGuardWindow(hero));
+      guard.classList.toggle('guard-window', recoveryGuardWindow(hero));
       if (hero.horse) mount.textContent = hero.mounted ? t('getDown') : t('mountUp');
       heal.classList.toggle('wait', hero.dressings <= 0);
       [s0, s1].forEach((b, i) => {

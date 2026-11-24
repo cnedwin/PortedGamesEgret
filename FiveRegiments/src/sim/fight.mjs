@@ -19,13 +19,14 @@
 // right, so to guard it he holds his guard on R (`facing(line)`). Overhead and thrust meet themselves.
 // The PC primary melee gesture sends `meleeRelease` with `meleeDown`, `meleeUp` and `meleeCancel` edges.
 // Human controls set `recoveryHandoff` to carry a fresh command across the tick that completes a swing.
-// Player controls can set `skillGuardCancel` to enable a fresh guard press during Spin's follow-through.
+// Player controls can set `skillGuardCancel` to take over a settled attack or skill recovery with a fresh guard.
 // An overlapping touch guard and attack can supply a separate `guardLine` for the ordinary guard.
 // Mounted player controls use `reins: { throttle, turn }`. The brain still steers toward its world-space move.
 //
 // Headings: 0 looks along +z, and a man's right hand is at heading − π/2.
 
 import { ARMOUR, ARTS, CRIT, DAMAGE, RAGE, REGIMENTS, SKILLS, TALENTS, loadout, rageOf } from './regiments.mjs';
+import { CHARGED_RELEASE, facing, OPPONENT_WIND, opponentSkillLead } from './combat-tells.mjs';
 
 export const TICK = 1 / 60;
 export const BODY = 0.42;
@@ -43,14 +44,31 @@ export const LONE = { dealt: 1.5, taken: 0.5 };
 const HOLD = 0.85;
 const PC_PREP_FRACTION = 0.72;
 const SPIN_GUARD_AT = 0.43;
+const SKILL_GUARD_DELAY = 0.12;
 const GRAVITY = 9.8;
 
-export const facing = (line) => (line === 'L' ? 'R' : line === 'R' ? 'L' : line);
+export { facing };
 
 /** Whether a Spin is far enough through its follow-through for a fresh player guard. */
 export function spinGuardWindow(man) {
   return Boolean(man?.alive && man.stun <= 0 && man.daze <= 0 && man.st > 0 &&
     man.act?.kind === 'skill' && man.act.id === 'spin' && man.act.t >= SPIN_GUARD_AT);
+}
+
+/** Whether a fresh player guard can take over this action's follow-through. */
+export function recoveryGuardWindow(man) {
+  const act = man?.act;
+  if (!act || !man.alive || man.stun > 0 || man.daze > 0 || man.st <= 0 || act.air > 0 ||
+    (man.regiment === 'archer' && !man.knife)) return false;
+  if (act.kind === 'swing') return act.struck && act.t - act.strikeAt >= Math.max(0.09, act.recover * 0.35);
+  if (act.kind === 'lance') {
+    const last = act.met ? act.metAt : ARTS.couch.wind + ARTS.couch.last;
+    return man.mounted && act.t >= last + SKILL_GUARD_DELAY;
+  }
+  if (act.kind !== 'skill') return false;
+  if (act.id === 'spin') return spinGuardWindow(man);
+  if (act.id === 'counter') return act.t >= (act.answeredAt ?? SKILLS.counter.hold) + SKILL_GUARD_DELAY;
+  return act.recoveryAt !== undefined && act.t >= act.recoveryAt;
 }
 
 export function createRandom(seed = 1) {
@@ -643,12 +661,13 @@ function announceSwing(game, man, act) {
   emit(game, 'swing', { who: man.id, line: act.line });
 }
 
-function startSwing(game, man, line, { releaseOnly, released }) {
+function startSwing(game, man, line, { releaseOnly, released, readableAttack }) {
   const blow = blowsOf(man)[line];
   if (!blow) return;
   if (man.st < 4) return;
   const reach = blow.reach;
-  const act = { kind: 'swing', line, t: 0, wind: blow.wind, held: 0, struck: false, blow, reach, recover: blow.recover };
+  const wind = readableAttack ? Math.max(OPPONENT_WIND, blow.wind) : blow.wind;
+  const act = { kind: 'swing', line, t: 0, wind, held: 0, struck: false, blow, reach, recover: blow.recover, readableAttack };
   if (releaseOnly) {
     act.releaseOnly = true;
     act.awaitingRelease = !released;
@@ -908,6 +927,7 @@ function runSkill(game, man, act, dt) {
   const at = (time) => act.t - dt < time && act.t >= time;
   // Presentation reads the same ticks as the strike, including when the blade finds no target.
   const beat = (part = 0) => emit(game, 'skillBeat', { who: man.id, id: act.id, part });
+  const settle = () => { act.recoveryAt = act.t + SKILL_GUARD_DELAY; };
   const dash = (speed) => {
     man.vx = fwd[0] * speed;
     man.vz = fwd[1] * speed;
@@ -924,6 +944,7 @@ function runSkill(game, man, act, dt) {
     emit(game, 'slam', { who: man.id, at: [man.x + fwd[0] * ahead, man.z + fwd[1] * ahead], radius, skill: spec.skill });
     if (!hit.length) emit(game, 'whiff', { who: man.id, skill: spec.skill });
     for (const t of hit) resolve(game, man, t, spec);
+    settle();
   };
   switch (act.id) {
     // ---- Imperial Guard ----
@@ -940,6 +961,7 @@ function runSkill(game, man, act, dt) {
       if (at(run + 0.06)) {
         beat();
         strike(game, man, { line: 'T', damage: base * s.damage, reach: 2.2, arc: 0.3, skill: 'charge', stun: 0.45, push: 0.8 });
+        settle();
       }
       if (act.t > run + 0.5) man.act = null;
       break;
@@ -970,6 +992,7 @@ function runSkill(game, man, act, dt) {
           }
         }
       }
+      if (at(s.wind + s.run)) settle();
       if (elapsed > s.run + s.recover) man.act = null;
       break;
     }
@@ -977,6 +1000,7 @@ function runSkill(game, man, act, dt) {
       if (at(0.28)) {
         beat();
         strike(game, man, { line: 'R', damage: base * s.damage, reach: s.reach, arc: Math.PI, all: true, skill: 'turning', push: 0.8 });
+        settle();
       }
       if (act.t > 0.7) man.act = null;
       break;
@@ -985,6 +1009,7 @@ function runSkill(game, man, act, dt) {
       if (at(0.18)) {
         beat();
         strike(game, man, { line: 'L', damage: base * s.damage * (1 + s.extra * act.fresh), reach: s.reach, arc: (100 * Math.PI) / 180, all: true, skill: 'moon', push: 0.9 });
+        settle();
       }
       if (act.t > 0.5) man.act = null;
       break;
@@ -994,6 +1019,7 @@ function runSkill(game, man, act, dt) {
         if (at(time)) {
           beat(k);
           strike(game, man, { line: k % 2 ? 'L' : 'R', damage: base * s.damage, reach: s.reach, arc: 0.95, skill: 'swing', stun: 0.28 });
+          if (k + 1 === s.hits) settle();
         }
       }
       if (act.t > 0.92) man.act = null;
@@ -1010,6 +1036,7 @@ function runSkill(game, man, act, dt) {
       if (at(0.32)) {
         game.clouds.push({ kind: 'mist', x: man.x + fwd[0] * 2.2, z: man.z + fwd[1] * 2.2, radius: s.radius, t: s.cloud, side: man.side, by: man.id });
         emit(game, 'mist', { at: [man.x + fwd[0] * 2.2, man.z + fwd[1] * 2.2], radius: s.radius });
+        settle();
       }
       if (act.t > 0.6) man.act = null;
       break;
@@ -1025,6 +1052,7 @@ function runSkill(game, man, act, dt) {
       if (at(0.38)) {
         game.shots.push({ kind: 'wave', by: man.id, side: man.side, x: man.x + fwd[0], y: 0.9, z: man.z + fwd[1], vx: fwd[0] * s.speed, vy: 0, vz: fwd[1] * s.speed, from: [man.x, man.z], damage: base * s.damage, life: s.range / s.speed, hit: [] });
         emit(game, 'loose', { who: man.id, kind: 'wave', skill: 'wave', yaw: man.face });
+        settle();
       }
       if (act.t > 0.75) man.act = null;
       break;
@@ -1033,6 +1061,7 @@ function runSkill(game, man, act, dt) {
         if (at(0.25 + k * 0.3)) {
           beat(k);
           strike(game, man, { line: k % 2 ? 'L' : 'R', damage: base * s.damage, reach: s.reach, arc: Math.PI, all: true, skill: 'whirl', stun: 0.22 });
+          if (k + 1 === s.hits) settle();
         }
       }
       if (act.t > 0.25 + s.hits * 0.3 + 0.2) man.act = null;
@@ -1053,6 +1082,7 @@ function runSkill(game, man, act, dt) {
       if (at(0.5)) {
         man.shout = { t: s.last, next: s.every };
         emit(game, 'shout', { who: man.id });
+        settle();
       }
       if (act.t > 0.9) man.act = null;
       break;
@@ -1084,6 +1114,7 @@ function runSkill(game, man, act, dt) {
         beat();
         const thrust = man.r.blows.T;
         strike(game, man, { line: 'T', damage: thrust.damage * s.damage, reach: s.reach, arc: thrust.arc, skill: 'returnSpear' });
+        settle();
       }
       if (act.t > s.duration) man.act = null;
       break;
@@ -1095,6 +1126,7 @@ function runSkill(game, man, act, dt) {
       if (at(run + 0.12)) {
         beat();
         strike(game, man, { line: 'R', damage: base * s.damage, reach: s.reach, arc: (70 * Math.PI) / 180, all: true, skill: 'stepCut', stun: 0.45, push: 0.9 });
+        settle();
       }
       if (act.t > run + 0.6) man.act = null;
       break;
@@ -1104,6 +1136,7 @@ function runSkill(game, man, act, dt) {
         if (at(0.16 + k * 0.17)) {
           beat(k);
           strike(game, man, { line: 'T', damage: man.r.blows.T.damage * s.damage, reach: s.reach, arc: 0.26, skill: 'flowers', stun: 0.2, push: 0.2 });
+          if (k + 1 === s.hits) settle();
         }
       }
       if (act.t > 0.16 + s.hits * 0.17 + 0.25) man.act = null;
@@ -1128,6 +1161,7 @@ function runSkill(game, man, act, dt) {
         beat(1);
         dash(5);
         strike(game, man, { line: 'T', damage: man.r.blows.T.damage * s.damage[1], reach: 3.3, arc: 0.24, skill: 'boar', stun: 0.6, push: 1.6 });
+        settle();
       }
       if (act.t > run + 0.6) man.act = null;
       break;
@@ -1161,6 +1195,7 @@ function runSkill(game, man, act, dt) {
       if (at(0.28)) {
         beat();
         strike(game, man, { line: 'T', damage: man.r.blows.T.damage * a.damage, reach: a.reach, arc: 0.35, skill: 'finisher', stun: 0.5, push: 0.8 });
+        settle();
       }
       if (act.t > 0.7) man.act = null;
       break;
@@ -1177,6 +1212,7 @@ function runSkill(game, man, act, dt) {
           if (hit.alive && !hit.mounted) stagger(hit, 1.2, 'down', [fwd[0] * 1.4, fwd[1] * 1.4]);
           else if (hit.alive) stagger(hit, 0.5, 'rear');
         }
+        settle();
       }
       if (act.t > 0.6) man.act = null;
       break;
@@ -1188,6 +1224,7 @@ function runSkill(game, man, act, dt) {
       if (at(0.55)) {
         beat();
         strike(game, man, { line: 'R', damage: man.r.blows.R.damage * a.damage, reach: a.reach, arc: (75 * Math.PI) / 180, all: true, skill: act.id, stun: 0.6, push: 1.2 });
+        settle();
       }
       if (act.t > 1.05) man.act = null;
       break;
@@ -1304,9 +1341,17 @@ function runSwing(game, man, act, input, dt) {
     return;
   }
   if (!act.struck) {
-    if (holding && act.held < HOLD && !act.quick) {
+    if (act.driveAt === undefined && holding && act.held < HOLD && !act.quick) {
       chargeSwing(game, man, act, dt);
       return;
+    }
+    if (act.readableAttack && act.held > 0) {
+      // A held NPC blow travels from the loaded pose before it can strike.
+      if (act.driveAt === undefined) {
+        act.driveAt = act.t;
+        cueSwingRelease(game, man, act, swingCharge(act));
+      }
+      if (act.t - act.driveAt + 1e-7 < CHARGED_RELEASE) return;
     }
     act.struck = true;
     act.strikeAt = act.t;
@@ -1459,9 +1504,14 @@ function stepMan(game, man, input, dt) {
     const dazed = man.daze > 0;
     const wantsGuard = input.guard && !bowOut && man.st > 0 && !dazed;
     const guardLine = input.guardLine ?? man.line;
-    const guardCancelsSpin = input.skillGuardCancel && man === game.hero && !man.guard && pressed('guard') && spinGuardWindow(man);
-    if (wantsGuard && !man.guard && (!man.act || man.act.kind === 'recover' || guardCancelsSpin)) {
-      if (guardCancelsSpin) emit(game, 'skillCancel', { who: man.id, id: 'spin', into: 'guard', elapsed: man.act.t });
+    const cancelRecovery = wantsGuard && input.skillGuardCancel && man === game.hero && pressed('guard') && recoveryGuardWindow(man);
+    if (cancelRecovery) {
+      const act = man.act;
+      const event = { who: man.id, id: act.id, into: 'guard', elapsed: act.t };
+      if (act.id === 'spin') emit(game, 'skillCancel', event);
+      else emit(game, 'recoveryCancel', { ...event, from: act.kind, line: guardLine });
+      raiseGuard(game, man, guardLine);
+    } else if (wantsGuard && !man.guard && (!man.act || man.act.kind === 'recover')) {
       raiseGuard(game, man, guardLine);
     } else if (!wantsGuard && man.guard && man.act?.id !== 'counter') man.guard = false;
     if (man.guard) {
@@ -1470,7 +1520,7 @@ function stepMan(game, man, input, dt) {
     }
 
     // ---- starting something ------------------------------------------------------------------------------
-    const free = !guardCancelsSpin && (!man.act || man.act.kind === 'recover');
+    const free = !cancelRecovery && (!man.act || man.act.kind === 'recover');
     const chain = wantsGuard ? null : queuedSwing;
     if (pressed('heal') && free && !man.draw && man.dressings > 0 && man.hp < man.maxHp) {
       man.act = { kind: 'mend', t: 0 };
@@ -1487,13 +1537,22 @@ function stepMan(game, man, input, dt) {
       const releaseOnly = chain ? chain.releaseOnly : input.meleeRelease;
       startSwing(game, man, chain?.line ?? meleeLine(man, input), {
         releaseOnly,
-        released: chain?.released || (input.meleeRelease && input.meleeUp)
+        released: chain?.released || (input.meleeRelease && input.meleeUp),
+        readableAttack: input.readableAttack
       });
     }
 
     // ---- what is under way --------------------------------------------------------------------------------
     const act = man.act;
-    if (act) {
+    if (act?.t === 0 && act.lead === undefined && input.readableAttack) {
+      const lead = act.kind === 'skill' ? opponentSkillLead(act.id)
+        : act.kind === 'kick' ? OPPONENT_WIND - KICK.wind
+          : act.kind === 'lance' ? OPPONENT_WIND - ARTS.couch.wind : 0;
+      if (lead > 0) act.lead = act.leadTotal = lead;
+    }
+    if (act?.lead > 1e-7) {
+      act.lead = Math.max(0, act.lead - dt);
+    } else if (act) {
       act.t += dt;
       act.moving = false;
       if (act.kind === 'swing') {

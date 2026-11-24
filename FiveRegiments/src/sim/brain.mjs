@@ -176,7 +176,8 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
   }
 
   function think(game, dt) {
-    const input = { move: [0, 0], face: man.face, sprint: false, attack: false, guard: false, kick: false, step: false, skill: -1, art: false, line: man.line, swap: false, mount: false };
+    const input = { move: [0, 0], face: man.face, sprint: false, attack: false, guard: false, kick: false, step: false,
+      skill: -1, art: false, line: man.line, swap: false, mount: false, readableAttack: man.side === 'foe' };
     if (!man.alive) return input;
     const foes = enemiesOf(game, man);
     if (!foes.length) return input;
@@ -329,7 +330,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     }
     if (man.mounted && swing) {
       ride(game, dt, input, target, d, toward);
-      if (!swing.struck) input.attack = swing.t < swing.wind || swing.held < brain.swingHold;
+      if (!swing.struck) input.attack = swing.held < brain.swingHold;
       input.skill = -1;
       return input;
     }
@@ -337,7 +338,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
       // Holding for a heavy blow, or letting go; a feint now and then.
       if (!swing.struck && swing.t < swing.wind * 0.6 && brain.feintAt === swing && !input.guard) {
         if (swing.t > swing.wind * 0.35) input.guard = true;
-      } else if (!swing.struck) input.attack = swing.t < swing.wind || swing.held < brain.swingHold;
+      } else if (!swing.struck) input.attack = swing.held < brain.swingHold;
     } else if (melee && free && man.stun <= 0 && input.skill < 0 && !input.guard && !input.step && holding) {
       const reach = man.r.blows.T.reach + (target.body ?? BODY);
       // A rider closes fast: strike where he will be when the blade comes down.
