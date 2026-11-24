@@ -338,6 +338,8 @@ export const WORDS = {
   logAnswered: { zh: '{general}应招贤令而来。', en: '{general} answered the order for talent.' },
   logCaptured: { zh: '{general}被{faction}俘获。', en: '{general} was taken by {faction}.' },
   logTaken: { zh: '{faction}攻占{place}。', en: '{faction} took {place}.' },
+  logSiegeWaitStarted: { zh: '{place}城下暂缓进攻，等候援军。', en: 'The assault on {place} was delayed for reinforcements.' },
+  logSiegeWaitEnded: { zh: '{place}城下结束等援。', en: 'The wait outside {place} ended.' },
   logBattleWon: { zh: '{place}一战，我军击退{enemy}。', en: 'At {place} we beat {enemy}.' },
   logBattleLost: { zh: '{place}一战，我军败于{enemy}。', en: 'At {place} we were beaten by {enemy}.' },
   logAlly: { zh: '与{faction}结盟。', en: 'Allied with {faction}.' },

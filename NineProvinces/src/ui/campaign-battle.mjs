@@ -2,6 +2,12 @@
 // belong to an open result screen, never to simulation saves or replay tapes.
 import { NODES } from '../data/map.mjs';
 import { along, routeLine } from '../sim/ways.mjs';
+import { hostile } from '../sim/military.mjs';
+
+export function campaignBattlePresentation(state, setup) {
+  if (setup.kind !== 'siege' || setup.place.node !== 'nanpi' || setup.factions[0] !== state.player) return setup;
+  return { ...setup, presentation: 'nanpi-sunset' };
+}
 
 export function campaignBattleBriefing(setup, player) {
   const side = setup.factions.indexOf(player);
@@ -47,6 +53,16 @@ function armyPoint(army) {
   return at ? { x: at.x, z: at.y, d: 70 } : null;
 }
 
+/** Follow the retreat produced by settlement, including a road retreat. */
+function actualRetreat(state, player, id) {
+  const army = state.armies[id];
+  const target = army?.target ?? army?.path?.at(-1);
+  if (!army || !target || army.inBattle || !hostile(state, player, army.faction)) return null;
+  const camera = armyPoint(army);
+  if (!camera || (!army.link && (target === army.at || !army.path?.length))) return null;
+  return { id, commander: army.commander, target, camera };
+}
+
 /** Describe already-settled facts. This must never call finishBattle itself. */
 export function campaignBattleAftermath(state, setup, result, before = null) {
   const player = state.player;
@@ -87,8 +103,12 @@ export function campaignBattleAftermath(state, setup, result, before = null) {
     returnView = { selection: fallback ? { node: fallback } : null, camera: at ? { x: at.x, z: at.y, d: 70 } : null };
   } else returnView = { selection: { army: survivor.id }, camera: survivor.camera };
   const fame = state.factions[player]?.fame;
+  const retreatingEnemies = result.winner === side && setup.place.node === 'nanpi'
+    ? [...new Set(setup.units.filter(u => u.side !== side && u.army).map(u => u.army))]
+      .map(id => actualRetreat(state, player, id)).filter(Boolean)
+    : [];
   return {
-    id: setup.id, side, won: result.winner === side, armies, place, returnView,
+    id: setup.id, side, won: result.winner === side, armies, place, returnView, retreatingEnemies,
     ending: state.over ? { ...state.over } : null,
     fieldRemaining: ours.reduce((sum, { index }) => sum + (result.units[index]?.troops ?? 0), 0),
     fameDelta: Number.isFinite(before?.fame) && Number.isFinite(fame) ? fame - before.fame : null,
@@ -97,4 +117,27 @@ export function campaignBattleAftermath(state, setup, result, before = null) {
       captives: state.inbox.filter(m => m.kind === 'captive').length
     }
   };
+}
+
+/** Map destinations for review buttons. They never issue an order. */
+export function campaignAftermathView(state, aftermath, action) {
+  if (!action || aftermath.place?.id !== 'nanpi') return aftermath.returnView;
+  if (action.kind === 'inspect-town' && NODES[action.node] &&
+    (action.node === aftermath.place.id || !aftermath.won && state.nodes[action.node]?.owner === state.player)) {
+    const node = NODES[action.node];
+    return { selection: { node: node.id }, camera: {x: node.x, z: node.y, d: 70} };
+  }
+  if (action.kind === 'inspect-enemy-retreat' && aftermath.retreatingEnemies?.some(e => e.id === action.army)) {
+    const retreat = actualRetreat(state, state.player, action.army);
+    if (retreat) return { selection: { army: retreat.id }, camera: retreat.camera };
+  }
+  if (['inspect-army','inspect-retreat','inspect-garrison'].includes(action.kind)
+    && aftermath.armies.some(a => a.id === action.army)) {
+    const army = state.armies[action.army];
+    const eligible = action.kind !== 'inspect-garrison' ||
+      army?.at === aftermath.place.id && !army.link && !army.inBattle && state.nodes[army.at]?.owner === state.player;
+    const camera = eligible && army?.faction === state.player ? armyPoint(army) : null;
+    if (camera) return { selection: { army: army.id }, camera };
+  }
+  return aftermath.returnView;
 }

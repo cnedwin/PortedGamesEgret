@@ -12,6 +12,7 @@ import { capture, die } from './people.mjs';
 import { hexAt } from './hexgrid.mjs';
 import { FOOTPRINTS } from './land.mjs';
 import { along, routeLine } from './ways.mjs';
+import { COUNCIL_NODE, councilSnapshot, councilArmy, arrivedArmies, incomingArmies, supportArrival, siegeWaitModel } from './siege-council.mjs';
 
 export function activeTreaty(state, a, b) {
   const treaty = state.factions[a]?.treaties[b];
@@ -24,6 +25,92 @@ export function hostile(state, a, b) {
   return !activeTreaty(state, a, b);
 }
 export const allied = (state, a, b) => a !== b && activeTreaty(state, a, b)?.kind === 'ally';
+
+const councilServices = { speedOf, route, allied };
+
+/** A read-only view over the current, actual player siege snapshot at Nanpi. */
+export function siegeCouncil(state, setup) {
+  const current = councilSnapshot(state, setup);
+  if (!current) return null;
+  const arrived = arrivedArmies(state, state.player).map(army => councilArmy(state, army));
+  return {
+    setupId: current.id, nodeId: COUNCIL_NODE, day: state.day, arrived,
+    incoming: incomingArmies(state, state.player, councilServices),
+    total: {
+      troops: arrived.reduce((sum, army) => sum + army.troops, 0),
+      grain: arrived.reduce((sum, army) => sum + army.grain, 0)
+    },
+    waiting: activeSiegeWait(state)
+  };
+}
+
+export const activeSiegeWait = (state, nodeId = COUNCIL_NODE) => siegeWaitModel(state, councilServices, nodeId);
+
+/** Release only this frozen council, then let the real calendar bring every chosen army. */
+export function waitForSiegeReinforcement(state, setup, armyIds) {
+  const current = councilSnapshot(state, setup);
+  if (!current || state.siegeCouncilWaits?.[COUNCIL_NODE]) return { ok: false, reason: 'staleCouncil' };
+  if (!hostile(state, state.player, state.nodes[COUNCIL_NODE].owner)) return { ok: false, reason: 'protectedTarget' };
+  const ids = [...new Set(Array.isArray(armyIds) ? armyIds : [armyIds])];
+  if (!ids.length) return { ok: false, reason: 'supportGone' };
+  const rows = ids.map(id => supportArrival(state, state.armies[id], state.player, councilServices));
+  const unavailable = rows.find(row => !row.reachable || row.arrived);
+  if (unavailable) return { ok: false, reason: unavailable.reason ?? 'supportArrived' };
+  const attackerIds = [...new Set(current.units.filter(unit => unit.side === 0 && unit.army).map(unit => unit.army))];
+  const arrivedIds = arrivedArmies(state, state.player).map(army => army.id);
+  if (!attackerIds.some(id => arrivedIds.includes(id))) return { ok: false, reason: 'besiegersGone' };
+  const etaDays = Math.max(...rows.map(row => row.etaDays));
+  const plan = {
+    id: 'wait:' + current.id, setupId: current.id, nodeId: COUNCIL_NODE,
+    faction: state.player, defenderFaction: current.factions[1],
+    armyIds: ids, attackerIds, startedDay: state.day, etaDays
+  };
+  (state.siegeCouncilWaits ??= {})[COUNCIL_NODE] = plan;
+  state.inbox = state.inbox.filter(message => message.setup?.id !== current.id);
+  for (const unit of current.units) {
+    const army = state.armies[unit.army];
+    if (army?.inBattle === current.id) army.inBattle = null;
+  }
+  note(state, 'logSiegeWaitStarted', { place: COUNCIL_NODE });
+  return { ok: true, planId: plan.id, etaDays };
+}
+
+function finishSiegeWait(state, plan, reason) {
+  delete state.siegeCouncilWaits[COUNCIL_NODE];
+  note(state, 'logSiegeWaitEnded', { place: COUNCIL_NODE });
+  const besiegers = arrivedArmies(state, plan.faction);
+  const queued = state.inbox.some(message => message.kind === 'battle' && message.setup?.place?.node === COUNCIL_NODE);
+  if (!queued && besiegers.length && hostile(state, plan.faction, state.nodes[COUNCIL_NODE].owner)) {
+    const lead = besiegers.find(army => !army.inBattle);
+    if (lead) {
+      const setup = assault(state, lead);
+      if (setup) setup.council = { reason, waitedDays: state.day - plan.startedDay, armyIds: plan.armyIds.slice() };
+    }
+  }
+}
+
+export function cancelSiegeWait(state, nodeId = COUNCIL_NODE) {
+  const plan = nodeId === COUNCIL_NODE ? state.siegeCouncilWaits?.[nodeId] : null;
+  if (!plan) return false;
+  finishSiegeWait(state, plan, 'cancelled');
+  return true;
+}
+
+function resolveSiegeWait(state) {
+  const plan = state.siegeCouncilWaits?.[COUNCIL_NODE];
+  if (!plan) return;
+  if (!Array.isArray(plan.armyIds) || !plan.armyIds.length) {
+    finishSiegeWait(state, { ...plan, armyIds: [] }, 'invalidPlan');
+    return;
+  }
+  let reason = null;
+  if (state.nodes[COUNCIL_NODE].owner !== plan.defenderFaction) reason = 'targetChanged';
+  else if (!hostile(state, plan.faction, state.nodes[COUNCIL_NODE].owner)) reason = 'protectedTarget';
+  const rows = plan.armyIds.map(id => supportArrival(state, state.armies[id], plan.faction, councilServices));
+  reason ??= rows.find(row => !row.reachable)?.reason ?? null;
+  if (!arrivedArmies(state, plan.faction).length) reason ??= 'besiegersGone';
+  if (reason || rows.every(row => row.arrived)) finishSiegeWait(state, plan, reason ?? 'arrived');
+}
 
 /** Kilometres-a-day of an army, as map units a day, on a kind of link. */
 export function speedOf(state, army, kind) {
@@ -202,7 +289,8 @@ export function marchArmies(state) {
         a.morale = Math.min(100, a.morale + 1);
       }
       if (a.besieging) {
-        siegeDay(state, a);
+        // One Nanpi council already locks all its arrived armies in this same day.
+        if (!(a.besieging === COUNCIL_NODE && a.inBattle)) siegeDay(state, a);
         continue;
       }
       if (!a.path.length) continue;
@@ -217,6 +305,7 @@ export function marchArmies(state) {
       if (a.link.done >= a.link.length) arrive(state, a);
     }
   }
+  resolveSiegeWait(state);
 }
 
 function dissolve(state, a) {
@@ -305,7 +394,8 @@ function assault(state, a) {
     .filter((b) => b.at === at && !b.link && b.faction === node.owner)
     .map((b) => b.id);
   const walled = NODES[at].kind !== 'port' && node.wall > 5;
-  battle(state, { kind: walled ? 'siege' : 'field', place: { node: at }, attackers, defenders, garrison: at });
+  if (at === COUNCIL_NODE && state.siegeCouncilWaits?.[at]?.faction === a.faction) return null;
+  return battle(state, { kind: walled ? 'siege' : 'field', place: { node: at }, attackers, defenders, garrison: at });
 }
 
 /** Fall back to where the army came from (or the nearest friendly place). */
@@ -360,6 +450,14 @@ function take(state, a, at) {
   node.people = Math.round(node.people * 0.96);
   a.besieging = null;
   a.target = null;
+  if (at === COUNCIL_NODE) {
+    // All armies in the new owner's camp are already inside the captured town.
+    for (const army of Object.values(state.armies)) {
+      if (army.faction !== a.faction || army.at !== at || army.link || army.besieging !== at) continue;
+      army.besieging = null;
+      if (army.target === at && !army.path.length) army.target = null;
+    }
+  }
   if (a.faction === state.player) state.stats.citiesTaken++;
   if (a.faction === state.player || old === state.player) note(state, 'logTaken', { place: at, faction: a.faction, from: old });
   state.factions[a.faction].fame += NODES[at].kind === 'city' ? 6 + NODES[at].size * 2 : 2;

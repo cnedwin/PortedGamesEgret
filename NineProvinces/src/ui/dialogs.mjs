@@ -14,7 +14,7 @@ import { TREASURES } from '../data/treasures.mjs';
 import { FACTIONS } from '../data/factions.mjs';
 import { dateOf, serving, stat as statOf } from '../sim/core.mjs';
 import { regard } from '../sim/diplomacy.mjs';
-import { allied, hostile, troopCap, unitAllowed } from '../sim/military.mjs';
+import { allied, hostile, siegeCouncil, troopCap, unitAllowed } from '../sim/military.mjs';
 import { persuadeChance } from '../sim/people.mjs';
 import { ARMS, aptitudes, mobility } from '../sim/aptitude.mjs';
 import { choicesOf } from '../sim/story.mjs';
@@ -29,6 +29,7 @@ import { SLOTS } from '../saves.mjs';
 import { SCENARIOS } from '../sim/scenarios.mjs';
 import { progressPrompt } from './player-flow.mjs';
 import { campaignBattleBriefing } from './campaign-battle.mjs';
+import { siegeAftermathActions, siegeCouncilContent } from './siege-council.mjs';
 import {battleOutcomeReason} from './battle-copy.mjs';
 
 const STATS = ['lead', 'war', 'int', 'pol', 'cha'];
@@ -893,6 +894,8 @@ const BUILD = {
       setup = args.setup;
     const mineSide = setup.factions.indexOf(s.player);
     const briefing = campaignBattleBriefing(setup, s.player);
+    const council = siegeCouncil(s, setup);
+    const siege = council && siegeCouncilContent(app, setup, council, briefing);
     const side = (k) =>
       h(
         'div.side',
@@ -905,17 +908,18 @@ const BUILD = {
     const kind = setup.special ? t('special_' + setup.special) : t('battleKind_' + setup.kind);
     return {
       title: t('battleAt', { place }),
-      className: 'wide battleAsk',
+      className: 'wide battleAsk' + (siege ? ' siegeAsk' : ''),
       blocking: true,
-      body: [h('p.note', kind + ' · ' + t('battleAsk', { a: factionName(s, setup.factions[0]), b: setup.factions[1] ? factionName(s, setup.factions[1]) : t('noOwner') })),
-        mineSide >= 0 ? h('section.campaignBriefing',
+      body: [siege ? null : h('p.note', kind + ' · ' + t('battleAsk', { a: factionName(s, setup.factions[0]), b: setup.factions[1] ? factionName(s, setup.factions[1]) : t('noOwner') })),
+        siege?.panel ?? (mineSide >= 0 ? h('section.campaignBriefing',
           h('h3', pair(['本战目标', 'Battle objective'])), h('p', pair(briefing.objective)),
           h('div.grid', stat(pair(['我方出战', 'Our force']), num(briefing.ours.troops) + pair([' 人 · ', ' troops · ']) + briefing.ours.units + pair([' 部', ' units'])),
             stat(pair(['敌方出战', 'Enemy force']), num(briefing.enemy.troops) + pair([' 人 · ', ' troops · ']) + briefing.enemy.units + pair([' 部', ' units']))),
           h('p.campaignBriefingRhythm', pair(['亲自指挥：先在暂停中部署，再开战。基础作战自动执行，战法默认由你施展，可逐部交还自动；交战中可随时暂停下令。', 'Command personally: deploy while paused, then begin. Ordinary combat remains automatic; tactics are manual unless delegated for a unit. Pause at any time to issue orders.'])),
-          h('p.small.dim', pair(['委任：直接交给将领完成本战，结算后可观看实际记录。两种方式都在战后暂停大地图，等你查看局势。', 'Entrust: your officers finish this battle immediately; its actual recording is available afterwards. Both paths return to a paused campaign for review.']))) : null,
-        h('div.sides', side(0), h('span.vs', '⚔'), side(1)), mineSide < 0 ? null : h('p.dim.small', t('battleChoiceHelp'))],
-      actions: [button(t('battleEntrust'), () => app.act('entrust', setup)), button(t('battleCommand'), () => app.startBattle(setup), { kind: 'main' })]
+          h('p.small.dim', pair(['委任：直接交给将领完成本战，结算后可观看实际记录。两种方式都在战后暂停大地图，等你查看局势。', 'Entrust: your officers finish this battle immediately; its actual recording is available afterwards. Both paths return to a paused campaign for review.']))) : null),
+        siege ? h('section.siegeOpposition', side(1)) : h('div.sides', side(0), h('span.vs', '⚔'), side(1)),
+        mineSide < 0 || siege ? null : h('p.dim.small', t('battleChoiceHelp'))],
+      actions: siege?.actions ?? [button(t('battleEntrust'), () => app.act('entrust', setup)), button(t('battleCommand'), () => app.startBattle(setup), { kind: 'main' })]
     };
   },
 
@@ -946,7 +950,7 @@ const BUILD = {
         h('p.note', battleOutcomeReason(result,mine>=0?mine:null,getLanguage()) + ' · ' + t('secondsN', { n: result.seconds })),
         h('div.grid', stat(t('ourLosses'), num(losses[Math.max(0, mine)])), stat(t('theirLosses'), num(losses[1 - Math.max(0, mine)]))),
         h('p.dim.small', pair(['上方是战场减员，含伤兵；回归、驻军分配与撤退均已按原规则结算。', 'Losses above include wounded troops. Recovery, garrison allocation and retreat have already been settled by the campaign rules.'])),
-        args.aftermath ? campaignAftermathPanel(app, args.aftermath) : null,
+        args.aftermath ? campaignAftermathPanel(app, args.aftermath, siegeAftermathActions(app, args)) : null,
         report?.units?.length ? battleReport(s, setup, report, mine) : null,
         fates.length ? h('ul.fates', fates.map((x) => h('li', x))) : null
       ],
@@ -971,7 +975,7 @@ const BUILD = {
   }
 };
 
-function campaignAftermathPanel(app, aftermath) {
+function campaignAftermathPanel(app, aftermath, nextActions) {
   const s = app.state;
   const place = aftermath.place;
   const owner = place?.owner ? factionName(s, place.owner) : t('noOwner');
@@ -989,6 +993,7 @@ function campaignAftermathPanel(app, aftermath) {
     h('h3', pair(['战后局势', 'Campaign aftermath'])),
     place ? h('p.campaignControl', placeLabel, h('b', placeName(place.id)), ' · ', owner,
       h('small', pair(['现驻军 ', 'Current garrison: ']) + num(place.garrison))) : null,
+    nextActions,
     aftermath.won && place?.owner !== s.player && aftermath.armies.some(army => army.disposition === 'besieging')
       ? h('p.campaignNext', pair(['赢下了这场交战，城池尚未易主；主军仍在围城。', 'The engagement was won, but the town has not changed hands. Your army is continuing the siege.'])) : null,
     aftermath.armies.length ? h('ul.campaignSurvivors', aftermath.armies.map(army => h('li',

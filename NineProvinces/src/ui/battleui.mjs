@@ -27,6 +27,7 @@ const unitName = u => u.general ? generalName(u.general) : t('captain');
 
 export function startBattle(app, setup, { state: s = app.state, onTrialResult, onTrialExit } = {}) {
   const trial = Boolean(onTrialResult);
+  const nanpi = setup.presentation === 'nanpi-sunset';
   const b = createBattle(setup, s);
   const record = createBattleRecorder(b);
   const side = setup.factions.indexOf(s.player);
@@ -102,12 +103,12 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         } else if (ev.kind === 'depotBurnt') {
           app.sound.play('fire');
           say(t('feedDepot'), side === 0 ? 'good' : 'bad');
-        } else if (trial && ev.kind === 'structureHit' && ev.structure === 'gate') {
+        } else if (nanpi && ev.kind === 'structureHit' && ev.structure === 'gate') {
           app.sound.play('gateImpact');
         }
       },
       attack(ev) {
-        if (!trial) return;
+        if (!nanpi) return;
         const unit = b.units[ev.unit];
         app.sound.play(UNITS[unit.kind].group === 'bow' ? 'arrows' : 'clash', {volume: 0.5});
       }
@@ -147,7 +148,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     view.orderPreview?.(null);
   }
   function requestOrder(unit, kind, target) {
-    if (!trial) {
+    if (!nanpi) {
       if (issue(unit, kind, target)) {
         view.goal(kind === 'move' ? target : b.units[target].pos);
         app.sound.play('tap');
@@ -231,13 +232,20 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   }
   function setSpeed(i){speed=i;record.action('speed',{speed:SPEEDS[i]});draw(true);}
   function keyButton(key,label,action,options){const el=button(label,action,options);el.dataset.k=key;return el;}
-  function trialInstructions(unit) {
-    if (phase === 'deploy') return words('布阵后鸣鼓。让枪兵接应、弓兵压制、冲车撞门。', 'Deploy, then sound the drums. Screen with spears, suppress with bows, and drive the ram into the gate.');
-    if (!b.gate.open && unit?.kind === 'ram') return words('选「撞城门」查看路线并确认。', 'Choose “Ram the gate” to inspect and confirm the route.');
-    if (!b.gate.open) return words('先为冲车打开道路。点战场空格移动，点敌军预览进攻。', 'Clear the approach for the ram. Pick a hex to move or an enemy to preview an attack.');
+  function nanpiInstructions(unit) {
+    if (phase === 'deploy') return trial
+      ? words('布阵后鸣鼓。让枪兵接应、弓兵压制、冲车撞门。', 'Deploy, then sound the drums. Screen with spears, suppress with bows, and drive the ram into the gate.')
+      : words('调整已到场部队的位置，再鸣鼓开战。点选目标可以先看军令路线。', 'Deploy the armies that have arrived, then sound the drums. Select a target to preview its order.');
+    if (!b.gate?.open && unit?.kind === 'ram') return words('选「撞城门」查看路线并确认。', 'Choose “Ram the gate” to inspect and confirm the route.');
+    if (!b.gate?.open) {
+      const ram = b.units.some(army => army.side === side && army.kind === 'ram' && !army.gone && !army.routed);
+      return ram
+        ? words('有冲车时，由冲车破门。其他部队可移动接应，或进攻射程内的守军。', 'Use the ram to breach the gate. Other units can move up in support or attack defenders in reach.')
+        : words('可用步兵破门。点空地预览移动，点守军预览进攻路线。', 'Infantry can batter the gate. Select a hex to preview movement or a defender to preview an attack.');
+    }
     return words('城门已破。清理本营附近的守军，进驻并守满10秒。', 'The gate is open. Clear the defenders around the keep, then occupy it for 10 seconds.');
   }
-  function trialOrders(unit) {
+  function nanpiOrders(unit) {
     if (phase !== 'fight' || !unit || unit.gone || unit.routed) return null;
     const foes = b.units.filter(foe => foe.side !== side && !foe.gone && !foe.routed);
     const keeper = foes.find(foe => foe.pos === b.keep) ?? foes.find(foe => !foe.onWall) ?? foes[0];
@@ -257,7 +265,12 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     if (!pendingOrder) return null;
     const {plan} = pendingOrder;
     const distanceText = plan.path.length + words(' 格',' hexes');
-    const message = !plan.valid ? words('目前没有可用路线，请换一个目标。','No route is available. Choose another destination.')
+    const behindGate = plan.kind === 'attack' && !b.gate?.open && b.gate &&
+      ['town', 'wall', 'gate'].includes(b.tiles[b.units[plan.target]?.pos]);
+    const blocked = behindGate
+      ? words('目前无法进攻城内目标。可以等破门，或选其他目标。', 'This target is beyond reach. Breach the gate or choose another target.')
+      : words('目前没有可用路线，请换一个目标。', 'No route is available. Choose another destination.');
+    const message = !plan.valid ? blocked
       : plan.gate ? words('先沿标线破门，门开后再追击。','Follow the marked approach and breach the gate before pursuing.')
       : plan.kind === 'attack' ? words('进攻 ','Attack ')+unitName(b.units[plan.target])+' · '+distanceText
       : words('移动至标记地格','Move to the marked hex')+' · '+distanceText;
@@ -358,7 +371,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     const left = Math.max(0, b.limit - b.time);
     view.preview(phase, armed);
     hud.dataset.phase=phase;hud.classList.toggle('is-paused',paused&&phase==='fight');
-    hud.classList.toggle('is-nanpi-trial', trial);
+    hud.classList.toggle('is-nanpi-trial', nanpi);
     const chosen = selected !== null ? b.units[selected] : null;
     const active = chosen && !chosen.gone && chosen.side===side;
     const readyCount = b.units.filter(u=>u.side===side&&!u.gone&&!u.routed&&u.rage>=100).length;
@@ -372,7 +385,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         b.gate ? h('div.bObj', h('span', t('gate')), bar(Math.max(0, b.gate.hp) / (1500 + setup.wall * 60), 'stone'), h('small', b.gate.open ? t('gateOpen') : num(b.gate.hp))) : null,
         b.depot ? h('div.bObj', h('span', t('depot')), bar(Math.max(0, b.depot.hp) / 1000, 'fire'), h('small', b.depot.burnt ? t('depotBurnt') : num(b.depot.hp))) : null,
         b.keep !== null ? h('div.bObj', h('span', t('keepHold')), bar(b.keepHeld / 10, 'gold'),
-          trial && b.gate.open ? h('small',Math.min(10,Math.floor(b.keepHeld))+' / 10 '+words('秒','s')) : null) : null,
+          nanpi && b.gate?.open ? h('small',Math.min(10,Math.floor(b.keepHeld))+' / 10 '+words('秒','s')) : null) : null,
         phase === 'fight'
           ? h(
               'div.clock',
@@ -393,8 +406,8 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         commandNotice?h('p.bOrderFeedback'+(commandBad?'.bad':''),{role:'status'},commandNotice):null,
         active&&!armed?h('p.bFormationInfo',nm(FORMATIONS[chosen.formation])+' · '+formationText(FORMATIONS[chosen.formation])):null,
         active&&!armed&&!pendingOrder&&chosen.target&&!chosen.target.gone?(()=>{const p=combatPreview(b,chosen,chosen.target);return p?h('p.bMatchupInfo',words('兵种修正','Weapon match ')+p.weaponMultiplier.toFixed(2)+'× · '+words('射程内普通命中约','Ordinary hit in reach: ')+p.minLoss+'–'+p.maxLoss+words(' 人（不含暴击）',' troops (before criticals)')):null;})():null,
-        trial&&!armed&&!pendingOrder?h('p.bTrialGuide',trialInstructions(chosen)):null,
-        trial&&!armed&&!pendingOrder?trialOrders(chosen):null,
+        nanpi&&!armed&&!pendingOrder?h('p.bTrialGuide',nanpiInstructions(chosen)):null,
+        nanpi&&!armed&&!pendingOrder?nanpiOrders(chosen):null,
         orderConfirmation(),
         armed?h('div.bAimControls',
           h('p#battleAimSummary',armed.target==null?words('选择敌军目标，查看覆盖后确认。','Choose an enemy target, review the area, then confirm.'):unitName(b.units[armed.target])+' · '+words('覆盖 ','Covers ')+aimPreview.targets.length+words(' 部敌军',' enemy units')),
@@ -427,7 +440,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   }
   function inspectMilestones(){
     const cue=inspectTempoMilestones(b,side,milestones);milestones=cue.next;
-    if (trial && cue.reasons.includes('contact')) {
+    if (nanpi && cue.reasons.includes('contact')) {
       record.action('contact',{at:cue.contactKind==='gate'?b.gate?.at:undefined});
       record.capture(phase,{force:true});
     }
@@ -508,7 +521,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         while (acc >= 0.1 && !b.over) {
           const gateWasOpen = b.gate?.open;
           stepBattle(b, 0.1, side);
-          if (trial && b.keepHeld > 0 && !occupiedKeep) {
+          if (nanpi && b.keepHeld > 0 && !occupiedKeep) {
             occupiedKeep = true;
             record.action('occupy',{at:b.keep,unit:b.units.find(u=>u.side===side&&u.pos===b.keep&&!u.gone)?.id});
             record.capture(phase,{force:true});
@@ -516,7 +529,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
           record.capture(phase);
           acc -= 0.1;
           if(executionLeft!==null)executionLeft-=0.1;
-          if (trial && milestonePauses && !b.over && !gateWasOpen && b.gate.open) {
+          if (nanpi && milestonePauses && !b.over && !gateWasOpen && b.gate?.open) {
             paused = true;
             executionLeft = null;
             acc = 0;
@@ -531,7 +544,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         let after = 0;
         for (const u of b.units) after += u.troops;
         clash -= dt;
-        if (!trial && after < before - 20 && clash <= 0) {
+        if (!nanpi && after < before - 20 && clash <= 0) {
           app.sound.play(Math.random() < 0.3 ? 'arrows' : 'clash', { volume: 0.5 });
           clash = 0.8;
         }
