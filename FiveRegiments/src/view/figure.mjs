@@ -549,12 +549,18 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
 
     // Right arm: the weapon hand.
     const ordinary = act?.kind === 'swing';
-    const edge = ordinary && phase < 2.78 && CUT_EDGE[act.line];
+    // The long ji rolls back to its neutral grip as soon as the left cut has passed the target.
+    const resetJi = ordinary && arms.main === 'ji' && act.line === 'L';
+    const edgeEnd = resetJi ? 2.05 : 2.78;
+    const edge = ordinary && phase < edgeEnd && CUT_EDGE[act.line];
     const edgeHint = edge ? rig.dirToRig(edge) : null;
     const reachRange = ordinary ? SWING_ARM_RANGE : null;
     const elbow = ordinary && CUT_ELBOW[act.line];
-    const turnElbow = act?.line === 'O' ? ease((phase - 0.98) / 0.6) : ease(phase * 1.45);
-    const lead = turnElbow * (1 - ease((phase - 3) / 0.9));
+    // The shorter knife wind-up needs the elbow to guide the edge while the weapon is still rising.
+    const overheadLoad = arms.main === 'knife' ? 0.3 : 0.98;
+    const turnElbow = act?.line === 'O' ? ease((phase - overheadLoad) / 0.6) : ease(phase * 1.45);
+    const releaseElbow = resetJi ? ease((phase - 2.5) / 0.61) : ease((phase - 3) / 0.9);
+    const lead = turnElbow * (1 - releaseElbow);
     const poleR = along(elbow ? lerp3(REST_ELBOW, elbow, lead) : REST_ELBOW);
     if (bow) armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR);
     else rig.reachArm('r', place(p.r), poleR, along(p.b), 1, 0, edgeHint, state.primaryGrip, dt, reachRange);
