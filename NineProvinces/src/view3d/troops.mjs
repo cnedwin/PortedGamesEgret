@@ -42,14 +42,15 @@ function footman(arm) {
   plain.add(box(0.18, 0.025, 0.145), { position: [0, 0.305, 0], color: 0x9c8654 });
   for (const side of [-1, 1]) {
     plain.add(box(0.075, 0.06, 0.16), { position: [side * 0.105, 0.385, 0], rotation: [0, 0, side * 0.15], color: IRON });
-    plain.add(cyl(0.025, 0.022, 0.12, 4), { position: [side * 0.12, 0.32, 0.04], rotation: [-0.3, 0, side * 0.12], color: LEATHER });
+    plain.add(cyl(0.025, 0.022, 0.12, 4), { position: [side * 0.12, arm==='bow-loose'?0.39:0.32, arm==='spear-braced'?0.13:0.04], rotation: [arm==='spear-braced'?-1.1:arm==='bow-loose'?(side>0?1.3:-1.2):-0.3, 0, side * 0.12], color: LEATHER });
     plain.add(box(0.025, 0.055, 0.07), { position: [side * 0.055, 0.48, 0.01], color: IRON });
   }
   for (let i = -1; i <= 1; i++) plain.add(box(0.042, 0.11, 0.025), { position: [i * 0.052, 0.25, 0.073], rotation: [-0.12, 0, 0], color: i % 2 ? 0x65716b : IRON });
   plain.add(box(0.11, 0.016, 0.04), { position: [0, 0.52, 0.055], color: 0x9c956e });
-  if (arm === 'spear' || arm === 'halberd') {
-    plain.add(cyl(0.012, 0.012, 0.95, 4), { position: [0.11, 0.42, 0.06], rotation: [0.12, 0, 0], color: WOOD });
-    plain.add(createConeGeometry3D({ radius: 0.025, height: 0.1, radialSegments: 4 }), { position: [0.11, 0.93, 0.12], rotation: [0.12, 0, 0], color: IRON });
+  if (arm === 'spear' || arm === 'halberd' || arm === 'spear-braced') {
+    const pitch=arm==='spear-braced'?1.28:.12;
+    plain.add(cyl(0.012, 0.012, 0.95, 4), { position: [0.11, 0.42, 0.06], rotation: [pitch, 0, 0], color: WOOD });
+    plain.add(createConeGeometry3D({ radius: 0.025, height: 0.1, radialSegments: 4 }), { position: [0.11, 0.42+Math.cos(pitch)*.51, 0.06+Math.sin(pitch)*.51], rotation: [pitch, 0, 0], color: IRON });
     if (arm === 'halberd') plain.add(box(0.09, 0.03, 0.01), { position: [0.15, 0.86, 0.11], color: IRON });
   } else if (arm === 'sword') {
     plain.add(box(0.2, 0.26, 0.03), { position: [-0.1, 0.3, 0.09], rotation: [0, -0.3, 0], color: WOOD });
@@ -57,12 +58,13 @@ function footman(arm) {
     plain.add(box(0.02, 0.24, 0.02), { position: [0.12, 0.38, 0.08], rotation: [0.6, 0, 0], color: 0xb8bcc2 });
     plain.add(cyl(0.026, 0.026, 0.025, 6), { position: [-0.105, 0.32, 0.13], rotation: [Math.PI / 2, 0, 0], color: 0xa59360 });
     plain.add(box(0.09, 0.018, 0.035), { position: [0.12, 0.31, 0.035], color: 0xa59360 });
-  } else if (arm === 'bow') {
+  } else if (arm === 'bow' || arm === 'bow-loose') {
     plain.add(cyl(0.01, 0.01, 0.55, 4), { position: [-0.11, 0.38, 0.05], rotation: [0, 0, 0.15], color: WOOD });
     plain.add(box(0.06, 0.18, 0.06), { position: [0.05, 0.34, -0.09], color: LEATHER });
     plain.add(cyl(0.003, 0.003, 0.5, 3), { position: [-0.075, 0.38, 0.065], color: 0xbba985 });
     for (const side of [-1, 1]) plain.add(box(0.014, 0.16, 0.025), { position: [-0.1, 0.38 + side * 0.18, 0.05], rotation: [0, 0, side * 0.27], color: 0x987b48 });
     plain.add(cyl(0.005, 0.005, 0.2, 3), { position: [0.05, 0.47, -0.09], color: 0xc4b895 });
+    if(arm==='bow-loose')plain.add(cyl(.004,.004,.48,3),{position:[-.07,.44,.16],rotation:[Math.PI/2,0,0],color:0xd8c9a7});
   }
   return { plain: plain.build(), coat: coat.build() };
 }
@@ -105,10 +107,10 @@ function horseman(arm) {
 function engine(kind) {
   const plain = createGeometryBuilder3D(),
     coat = createGeometryBuilder3D();
-  if (kind === 'ram') {
+  if (kind === 'ram' || kind === 'ram-frame') {
     plain.add(box(0.5, 0.3, 0.9), { position: [0, 0.3, 0], color: WOOD });
     plain.add(box(0.56, 0.06, 0.95), { position: [0, 0.5, 0], rotation: [0, 0, 0.25], color: 0x4a3a2a });
-    plain.add(cyl(0.07, 0.07, 1.1, 6), { position: [0, 0.28, 0.25], rotation: [Math.PI / 2, 0, 0], color: 0x3b2a1c });
+    if(kind==='ram')plain.add(cyl(0.07, 0.07, 1.1, 6), { position: [0, 0.28, 0.25], rotation: [Math.PI / 2, 0, 0], color: 0x3b2a1c });
     for (const s of [-1, 1]) for (const z of [-0.3, 0.3]) plain.add(cyl(0.11, 0.11, 0.05, 8), { position: [s * 0.27, 0.11, z], rotation: [0, 0, Math.PI / 2], color: 0x2e241c });
     coat.add(box(0.3, 0.18, 0.02), { position: [0, 0.6, -0.4], color: WHITE });
   } else {
@@ -119,6 +121,13 @@ function engine(kind) {
     plain.add(cyl(0.01, 0.01, 0.4, 4), { position: [0.14, 1.45, 0], color: WOOD });
   }
   return { plain: plain.build(), coat: coat.build() };
+}
+function ramBeam() {
+  const plain=createGeometryBuilder3D(),coat=createGeometryBuilder3D();
+  plain.add(cyl(.07,.07,1.1,8),{position:[0,.28,.25],rotation:[Math.PI/2,0,0],color:WOOD});
+  plain.add(box(.18,.16,.14),{position:[0,.28,.8],color:IRON});
+  for(const z of[-.15,.42])coat.add(cyl(.078,.078,.035,8),{position:[0,.28,z],rotation:[Math.PI/2,0,0],color:0xc5ac72});
+  return {plain:plain.build(),coat:coat.build()};
 }
 /** A war boat with a sail in the side's colour. */
 function boat() {
@@ -160,12 +169,16 @@ export function figureOf(unit) {
 export function createTroops(scene, { quality = 'medium', capacity = 2400 } = {}) {
   const shapes = {
     spear: footman('spear'),
+    'spear-braced': footman('spear-braced'),
     halberd: footman('halberd'),
     sword: footman('sword'),
     bow: footman('bow'),
+    'bow-loose': footman('bow-loose'),
     horse: horseman('spear'),
     horsebow: horseman('bow'),
     ram: engine('ram'),
+    'ram-frame': engine('ram-frame'),
+    'ram-beam': ramBeam(),
     engine: engine('tower'),
     boat: boat(),
     standard: standard()
@@ -174,7 +187,7 @@ export function createTroops(scene, { quality = 'medium', capacity = 2400 } = {}
   const coatMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 0.85, metallic: 0 });
   const kinds = {};
   for (const [kind, shape] of Object.entries(shapes)) {
-    const cap = kind === 'ram' || kind === 'engine' || kind === 'boat' || kind === 'standard' ? Math.ceil(capacity / 6) : capacity;
+    const cap = kind.startsWith('ram') || kind === 'engine' || kind === 'boat' || kind === 'standard' ? Math.ceil(capacity / 6) : capacity;
     const plain = new InstancedMesh3D(shape.plain, plainMaterial, cap);
     const coat = new InstancedMesh3D(shape.coat, coatMaterial, cap);
     for (const mesh of [plain, coat]) {

@@ -443,7 +443,7 @@ function bestDefender(state, factionId, general) {
  * end and the attackers' end toward where they came from; or over the point of the road where two armies meet. `axis`
  * is the attackers' way in, as a unit vector in map units.
  */
-function fieldOf(state, place, attackers) {
+export function fieldOf(state, place, attackers) {
   const lead = state.armies[attackers[0]];
   let cx, cz, ax, az;
   if (place.node) {

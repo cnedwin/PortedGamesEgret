@@ -9,8 +9,10 @@
 import {
   InstancedMesh3D,
   Mesh3D,
+  Object3D,
   Texture3D,
   createBoxGeometry3D,
+  createGradientCubeTexture3D,
   createParticleEmitter3D,
   createRingGeometry3D,
   createStandardMaterial3D,
@@ -29,6 +31,7 @@ import { generalName } from '../view/names.mjs';
 import { portrait } from '../view/portrait.mjs';
 import { wallTop } from './cities.mjs';
 import { figureOf } from './troops.mjs';
+import {formationSlots, freshAttack, createSiegeLighting, battleCameraFrame} from './battle-staging.mjs';
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 
@@ -50,6 +53,9 @@ function softDot() {
  */
 export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on, calm, canDeploy }) {
   const { scene, land, troops, camera, rig } = realm;
+  const siegeSample = b.setup.presentation === 'nanpi-sunset';
+  const sunset = siegeSample ? createGradientCubeTexture3D([83,103,137],[224,160,96],[109,91,69],32) : null;
+  const lightLease = siegeSample ? createSiegeLighting(realm.stage,sunset) : null;
   realm.select?.({});
   const reduced = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)');
   const isCalm = () => Boolean(calm?.() || reduced?.matches);
@@ -71,6 +77,24 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     maxZ = -Infinity;
   for (const p of pos) (minX = Math.min(minX, p.x)), (minZ = Math.min(minZ, p.z)), (maxX = Math.max(maxX, p.x)), (maxZ = Math.max(maxZ, p.z));
   const centre = { x: (minX + maxX) / 2, z: (minZ + maxZ) / 2 };
+  let introFramed=false,lastOrderFrame='',framing=null;
+  function frameScene(indices, seconds=.6, entering=false) {
+    const points=indices.map(i=>pos[i]).filter(Boolean);if(!points.length)return;
+    const r=realm.canvasRect(),field={width:r.width,height:r.height,left:20,right:r.width-20,top:100,bottom:r.height-25};
+    for(const selector of['.bSide.ours','.bSide.theirs','.bCommand','.bDeploy']){
+      const panel=document.querySelector('#battleHud '+selector);if(!panel||!panel.getClientRects().length)continue;
+      const box=panel.getBoundingClientRect(),left=box.left-r.left,right=box.right-r.left,top=box.top-r.top;
+      if(box.width<r.width*.4&&left<r.width*.2)field.left=Math.max(field.left,right+12);
+      else if(box.width<r.width*.45&&right>r.width*.8)field.right=Math.min(field.right,left-12);
+      else if(top>r.height*.35)field.bottom=Math.min(field.bottom,top-12);
+    }
+    const target=battleCameraFrame(points,field);framing={...target,field,indices:indices.slice()};
+    follow=null;
+    // Enter close to the destination; flying from the title's distant capital
+    // leaves a nominally ready deployment looking at empty ground for a second.
+    if(entering)rig.jumpTo(target.x,target.z+4,target.distance*1.04);
+    rig.glideTo(target.x,target.z,target.distance,isCalm()?0:seconds);
+  }
   land.setField([minX - HEX_W / 2, minZ - HEX_W / 2, maxX + HEX_W / 2, maxZ + HEX_W / 2]);
   // Look between the two sides where they will meet: the gate, or the middle of the defenders, and the attackers' line.
   const meanOf = (side) => {
@@ -80,7 +104,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   };
   const front = b.gate ? pos[b.gate.at] : meanOf(1),
     them = meanOf(0);
-  const openingDistance = Math.max(48, Math.min(72, Math.hypot(front.x-them.x,front.z-them.z)*1.35));
+  const openingDistance = Math.max(siegeSample?44:48, Math.min(siegeSample?60:72, Math.hypot(front.x-them.x,front.z-them.z)*1.35));
   rig.glideTo((front.x+them.x)/2, (front.z+them.z)/2+2, openingDistance, 1.2);
   const cols = colours.map((c) => linearColor3D(c));
 
@@ -109,6 +133,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     mesh.count=0;mesh.pickable=false;mesh.frustumCulled=false;scene.addChild(mesh);own.push(mesh);return mesh;
   };
   const routeLines=makeOrderLines(0x9bd5cf),attackLine=makeOrderLines(0xe38462);
+  const previewLines=makeOrderLines(0xe8cb85),previewCells=makeCells(0xe8cb85,.95,true);
+  previewLines.name='battle-pending-route';previewCells.name='battle-pending-order';
   routeLines.name='battle-route-lines';attackLine.name='battle-target-line';
   const lineMatrix=new Float32Array(16),lineRotation=[0,0,0,1];
   function orderSegment(mesh,index,from,to){
@@ -117,7 +143,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     quatFromEuler(lineRotation,0,Math.atan2(c.x-a.x,c.z-a.z),0);
     mat4Compose(lineMatrix,[(a.x+c.x)/2,Math.max(a.y,c.y)+.25,(a.z+c.z)/2],lineRotation,[1,1,length]);mesh.setMatrixAt(index,lineMatrix);return index+1;
   }
-  let viewPhase = 'deploy', armedTactic = null, previewKey = '';
+  let viewPhase = 'deploy', armedTactic = null, previewKey = '', pendingOrder = null;
   const previewMatrix = new Float32Array(16);
   function putCells(mesh, cells) {
     let count = 0;
@@ -140,10 +166,11 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   }
   function refreshPreview() {
     const u = selected !== null ? b.units[selected] : null;
-    const key = [viewPhase, selected, u?.pos,u?.order,u?.goal,u?.path?.join(','),u?.target?.id, armedTactic?.tactic,armedTactic?.target, hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
+    const key = [viewPhase, selected, u?.pos,u?.order,u?.goal,u?.path?.join(','),u?.target?.id, armedTactic?.tactic,armedTactic?.target, pendingOrder?.unit,pendingOrder?.kind,pendingOrder?.hex,pendingOrder?.target,pendingOrder?.valid,pendingOrder?.path?.join(','), hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
     if (key === previewKey) return;previewKey = key;
     rangeCells.count = targetCells.count = dangerCells.count = 0;
     routeLines.count=attackLine.count=0;
+    previewLines.count=previewCells.count=0;
     for(const plate of unitPlates)plate.el.classList.remove('targetable');
     if (!u || u.gone || u.pos < 0 || u.side !== side||viewPhase==='result') return;
     if (viewPhase === 'deploy') {
@@ -153,6 +180,19 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     const tc = armedTactic ? TACTICS[armedTactic.tactic] : null;
     const reach = tc ? tacticPreview(b,u,tc.id).reach : UNITS[u.kind].range;
     putCells(rangeCells, hexRing(u.pos, reach));
+    if (pendingOrder && !tc) {
+      const ordered=b.units[pendingOrder.unit];
+      if(ordered&&!ordered.gone){
+        const colour=pendingOrder.valid?0xf0d391:0xcf765b;
+        previewLines.material.setColor(colour);previewLines.material.setEmissive(colour);previewCells.material.setColor(colour);previewCells.material.setEmissive(colour);
+        let previous=ordered.pos,count=0;
+        for(const at of pendingOrder.path??[]){count=orderSegment(previewLines,count,previous,at);previous=at;}
+        previewLines.count=count;
+        const destination=pendingOrder.gate?pendingOrder.hex:pendingOrder.kind==='attack'?b.units[pendingOrder.target]?.pos:pendingOrder.hex;
+        if(Number.isInteger(destination)&&destination>=0)putCells(previewCells,[destination]);
+      }
+      return;
+    }
     if (!tc) {
       let previous=u.pos,count=0;for(const at of u.path??[]){count=orderSegment(routeLines,count,previous,at);previous=at;}routeLines.count=count;
       const foe=u.order==='attack'&&u.target&&!u.target.gone?u.target:null;
@@ -163,17 +203,34 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     for(const o of b.units)if(o.side!==u.side&&tacticPreview(b,u,tc.id,o).valid)unitPlates[o.id].el.classList.add('targetable');
     const preview=tacticPreview(b,u,tc.id,target);if(preview.valid)putCells(dangerCells,preview.hexes);
   }
-  let gateMesh = null;
+  let gateMesh = null, gateYaw = 0, gateImpact = 0, gateFall = 0;
+  const gateLeaves=[];
   if (b.gate) {
     const g = pos[b.gate.at];
-    gateMesh = new Mesh3D(createBoxGeometry3D({ width: 0.95, height: 0.95, depth: 0.25 }), createStandardMaterial3D({ color: 0x5a3a22, roughness: 0.8, metallic: 0.1 }));
-    gateMesh.setPosition(g.x, (place?.level ?? g.y) + 0.47, g.z);
-    const k = place ? Math.atan2(g.x - place.x, g.z - place.z) : 0;
-    gateMesh.setRotation(0, k, 0);
+    gateYaw = place ? Math.atan2(g.x - place.x, g.z - place.z) : 0;
+    if(siegeSample){
+      gateMesh=new Object3D('group');gateMesh.name='battle-siege-gate';
+      const doorMaterial=createStandardMaterial3D({color:0x60402a,roughness:.85,metallic:.05});
+      const bandMaterial=createStandardMaterial3D({color:0x7d7964,roughness:.5,metallic:.6});
+      for(const side of[-1,1]){
+        const hinge=new Object3D('group');hinge.setPosition(side*.85,0,0);
+        const leaf=new Mesh3D(createBoxGeometry3D({width:.85,height:2.05,depth:.18}),doorMaterial);
+        leaf.setPosition(-side*.425,1.025,0);leaf.castShadow=true;hinge.addChild(leaf);
+        for(const y of[.35,1.1,1.8]){const band=new Mesh3D(createBoxGeometry3D({width:.85,height:.075,depth:.24}),bandMaterial);band.setPosition(-side*.425,y,0);hinge.addChild(band);}
+        gateMesh.addChild(hinge);gateLeaves.push(hinge);
+      }
+      gateMesh.setPosition(g.x,place?.level??g.y,g.z);
+    }else{
+      gateMesh = new Mesh3D(createBoxGeometry3D({ width: 0.95, height: 0.95, depth: 0.25 }), createStandardMaterial3D({ color: 0x5a3a22, roughness: 0.8, metallic: 0.1 }));
+      gateMesh.setPosition(g.x, (place?.level ?? g.y) + 0.47, g.z);
+    }
+    gateMesh.setRotation(0, gateYaw, 0);
     gateMesh.castShadow = true;
     scene.addChild(gateMesh);
     own.push(gateMesh);
   }
+  const keepRing=siegeSample&&b.keep!==null?new Mesh3D(createRingGeometry3D({innerRadius:1.25,outerRadius:1.4,thetaSegments:48}),createStandardMaterial3D({color:0xd4b16f,emissive:0xd4b16f,emissiveIntensity:.8,roughness:1,opacity:.65,depthWrite:false,side:'double'})):null;
+  if(keepRing){const p=pos[b.keep];keepRing.name='battle-keep-objective';keepRing.setPosition(p.x,p.y+.12,p.z);keepRing.setRotation(-Math.PI/2,0,0);keepRing.pickable=false;scene.addChild(keepRing);own.push(keepRing);}
 
   // ——— Fire and dust ———
   const dot = softDot();
@@ -241,7 +298,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   // ——— Units as drawn ———
   const shown = b.units.map((u) => {
     const p = pos[u.pos] ?? centre;
-    return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0, cd:u.cd, hit:0, hitWait:0, colour:new Float32Array(3) };
+    return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0, attackStamp:null, attackPose:0, siegePose:0, hit:0, hitWait:0, colour:new Float32Array(3), slots:[], slotsKey:'' };
   });
   const unitPlates = b.units.map((u, i) => {
     const el = document.createElement('div');
@@ -319,7 +376,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     hexes() {
       const sel = selected !== null ? b.units[selected] : null;
       const chosen = goalHex >= 0 ? pos[goalHex] : sel && sel.pos >= 0 ? pos[sel.pos] : null;
-      return { hover: hoverHex >= 0 ? pos[hoverHex] : null, chosen, grid: 1 };
+      return { hover: hoverHex >= 0 ? pos[hoverHex] : null, chosen, grid: siegeSample&&viewPhase==='fight'?0:1 };
     },
     /** The player moved the view by hand: stop following a unit. */
     release() {
@@ -332,24 +389,35 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     }
   });
 
-  let time = 0, lastBattleTime = b.time;
+  let time = 0;
   const m = new Float32Array(16),
     q = [0, 0, 0, 1];
   const stop = realm.onFrame((dt) => {
     time += dt;
-    const advanced = b.time > lastBattleTime;lastBattleTime = b.time;
+    if(siegeSample&&!introFramed){introFramed=true;frameScene([...b.units.map(u=>u.pos),b.gate?.at].filter(Number.isInteger),.7,true);}
+    lightLease?.update(centre,land.heightAt(centre.x,centre.z));
     // Events since the last frame.
     for (; seenEvents < b.events.length; seenEvents++) {
       const ev = b.events[seenEvents];
       if (ev.kind === 'tactic') showTactic(b.units[ev.unit], ev.tactic, ev.target);
       if (ev.kind === 'rout') { const u=b.units[ev.unit];if(u?.pos>=0){floatText(shown[u.id].x,shown[u.id].y+2,shown[u.id].z,nm(UNITS[u.kind]),'rout');pulse(u.pos,0xa88e78,'wave',1.7);} }
       if (ev.kind === 'gateOpen' && gateMesh) {
-        gateMesh.setRotation(Math.PI / 2.2, gateMesh.rotation?.[1] ?? 0, 0);
+        if(!siegeSample)gateMesh.setRotation(Math.PI / 2.2, gateYaw, 0);
         burst(b.gate.at, [0.8, 0.7, 0.5], 50);
         pulse(b.gate.at,0xe8c37c,'wave',3);
       }
+      if(ev.kind==='structureHit'&&ev.structure==='gate'&&siegeSample){
+        gateImpact=.3;const attacker=shown[ev.unit];if(attacker){attacker.siegePose=.42;attacker.attackPose=.42;}
+        burst(ev.at,[.78,.62,.38],16);pulse(ev.at,0xd7bd88,'wave',1.2);
+      }
       on.event?.(ev);
     }
+    if(gateMesh&&siegeSample){
+      gateImpact=Math.max(0,gateImpact-dt);
+      if(b.gate.open)gateFall=Math.min(1,gateFall+dt/(isCalm() ? .2 : .7));
+      for(const [index,leaf]of gateLeaves.entries())leaf.setRotation(-gateFall*Math.PI*.46,index?gateImpact*.12:-gateImpact*.12,0);
+    }
+    if(keepRing){keepRing.material.opacity=.5+Math.min(1,b.keepHeld/10)*.4;keepRing.material.setColor(b.keepHeld>0?0x9bd5cf:0xd4b16f);const p=pos[b.keep];troops.add('standard',p.x,p.y,p.z,0,cols[b.keepHeld>0?0:1],0,1.2);}
     // Fires.
     for (const [i, f] of fires) {
       if (!b.fire[i]) {
@@ -385,10 +453,9 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       s.y += (p.y - s.y) * k;
       // The simulation holds a unit object, while some callers may still use an id.
       let foe = typeof u.target === 'number' ? b.units[u.target] : u.target;
-      const attackTick = advanced && !u.routed && u.cd > s.cd + .05;s.cd = u.cd;
-      if(attackTick && (!foe || foe.gone || distance(u.pos,foe.pos)>UNITS[u.kind].range)) {
-        foe=null;let best=Infinity;for(const o of b.units)if(!o.gone&&o.troops>0&&o.pos>=0&&o.side!==u.side){const d=distance(u.pos,o.pos);if(d<=UNITS[u.kind].range&&d<best){best=d;foe=o;}}
-      }
+      const attack=freshAttack(u,s.attackStamp),attackTick=Boolean(attack);
+      if(attack){s.attackStamp=attack.stamp;s.attackPose=.38;foe=b.units[attack.target];on.attack?.({unit:attack.unit,target:attack.target,kind:attack.kind,t:attack.t});}
+      s.attackPose=Math.max(0,s.attackPose-dt);s.siegePose=Math.max(0,s.siegePose-dt);
       let face = s.heading;
       if (Math.hypot(dx, dz) > 0.2) face = Math.atan2(dx, dz);
       else if (foe && foe.pos >= 0) face = Math.atan2(pos[foe.pos].x - s.x, pos[foe.pos].z - s.z);
@@ -504,19 +571,22 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     const flash = isCalm()?0:Math.min(.35,s.hit*1.6);
     for(let c=0;c<3;c++)s.colour[c]=baseColour[c]*(1-flash)+flash;
     const colour = s.colour;
-    const S = 1.75;
-    const count = Math.max(1, Math.min(kind === 'boat' ? 2 : kind === 'horse' || kind === 'horsebow' ? 6 : 9, Math.ceil(u.troops / (kind === 'boat' ? 2500 : 700))));
+    const S = siegeSample&&kind==='ram'?2.05:1.75;
+    const engine=kind==='ram'||kind==='engine';
+    const cap=kind==='boat'?2:engine&&siegeSample?1:kind==='horse'||kind==='horsebow'?(siegeSample?10:6):siegeSample?16:9;
+    const count = Math.max(1, Math.min(cap, Math.ceil(u.troops / (kind === 'boat' ? 2500 : siegeSample&&!engine?350:700))));
     const per = kind === 'boat' ? 2 : 3;
     const gap = (kind === 'horse' || kind === 'horsebow' ? 0.5 : kind === 'boat' ? 0.75 : 0.4) * S;
     const sin = Math.sin(s.heading),
       cos = Math.cos(s.heading);
     const lungeX = sin * s.lunge,
       lungeZ = cos * s.lunge;
+    if(siegeSample&&s.slotsKey!==u.formation+':'+count){s.slots=formationSlots(u.formation,count);s.slotsKey=u.formation+':'+count;}
     for (let k = 0; k < count; k++) {
       const c = (k % per) - (per - 1) / 2,
         row = Math.floor(k / per);
-      let lx = c * gap + (row % 2) * gap * 0.3,
-        lz = (0.5 - row) * gap * 1.1;
+      let lx = siegeSample?s.slots[k][0]:c * gap + (row % 2) * gap * 0.3,
+        lz = siegeSample?s.slots[k][1]:(0.5 - row) * gap * 1.1;
       if (u.routed) {
         lx += Math.sin(i * 7 + k * 3.1) * 0.6;
         lz += Math.cos(i * 5 + k * 2.3) * 0.6;
@@ -525,13 +595,30 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
         z = s.z - lx * sin + lz * cos + lungeZ * (k % 2 ? 1 : 0.6);
       const ground = b.tiles[u.pos] === 'wall' || u.onWall ? s.y : Math.max(0, land.heightAt(x, z));
       const bob = Math.abs(Math.sin(time * (u.routed ? 11 : 7) + k * 1.7 + i)) * (u.path?.length || u.routed ? 0.05 : 0.012);
-      troops.add(kind, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + (isCalm()?0:bob), z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, -s.lunge*.3+(isCalm()?0:s.hit*.6), S);
+      if(siegeSample&&kind==='ram'){
+        troops.add('ram-frame',x,ground,z,s.heading,colour,0,S);
+        const stroke=isCalm()?0:Math.sin(Math.min(1,s.siegePose/.42)*Math.PI/2)*.36;
+        troops.add('ram-beam',x+sin*stroke,ground,z+cos*stroke,s.heading,colour,0,S);
+        for(const direction of[-1,1])for(const rank of[-1,1]){const cx=direction*.7,cz=rank*.65;troops.add('sword',x+cx*cos+cz*sin,ground,z-cx*sin+cz*cos,s.heading,colour,-stroke*.15,1.35);}
+      }else{
+        const braced=siegeSample&&kind==='spear'&&!u.routed&&(u.order==='hold'||s.attackPose>0);
+        const posed=braced?'spear-braced':siegeSample&&kind==='bow'&&s.attackPose>0?'bow-loose':kind;
+        troops.add(posed, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + (isCalm()?0:bob), z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, -s.lunge*.3+(isCalm()?0:s.hit*.6), S);
+      }
     }
     if (u.general) troops.add('standard', s.x - cos * 0.2 - sin * 0.9, s.y, s.z + sin * 0.2 - cos * 0.9, s.heading, colour, 0, S * 0.9);
   }
 
   return {
     preview(phase, armed) { viewPhase=phase;armedTactic=armed; },
+    orderPreview(preview) {
+      pendingOrder=preview?{...preview,path:preview.path?.slice()??[]}:null;previewKey='';
+      if(siegeSample&&preview){
+        const key=[preview.unit,preview.kind,preview.hex,preview.target,preview.path?.join(',')].join(':');
+        if(key!==lastOrderFrame){lastOrderFrame=key;const unit=b.units[preview.unit],destination=preview.gate?preview.hex:preview.kind==='attack'?b.units[preview.target]?.pos:preview.hex;frameScene([unit?.pos,...(preview.path??[]),destination].filter(Number.isInteger));}
+      }else lastOrderFrame='';
+    },
+    get framing(){return framing?{...framing,field:{...framing.field},indices:framing.indices.slice()}:null;},
     select(i) {
       selected = i;
       goalHex = -1;
@@ -546,6 +633,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       follow = u >= 0 ? u : null;
     },
     overview(){
+      if(siegeSample){frameScene([...b.units.filter(u=>!u.gone).map(u=>u.pos),b.gate?.at,b.keep].filter(Number.isInteger));return;}
       follow=null;const rect=realm.canvasRect(),aspect=Math.max(.45,rect.width/Math.max(1,rect.height));
       const extent=Math.max((maxX-minX)/aspect,maxZ-minZ),d=Math.max(78,Math.min(170,extent*1.65));
       rig.glideTo(centre.x,centre.z,d,isCalm()?0:.6);
@@ -567,6 +655,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       }
       for (const x of bursts) scene.removeChild(x.e);
       for (const p of pulses) scene.removeChild(p.mesh);
+      lightLease?.dispose();sunset?.dispose();
     }
   };
 }

@@ -176,6 +176,14 @@ try {
   await page.reload();
   await until(page, () => window.egretGame?.ready && window.egretGame.screen === 'title');
   check(await state(page, () => document.querySelector('.titleMenu .btn.main')?.textContent === '继续'), 'after a reload the title offers to continue');
+  const savedBeforeTrial = await state(page, () => localStorage.getItem('nine-provinces.1'));
+  await page.locator('.titleMenu .nanpi-entry').click();
+  await until(page, () => window.egretGame?.battle?.phase === 'deploy');
+  await page.getByRole('button', {name:'离开演武',exact:true}).click();
+  await until(page, () => window.egretGame.screen === 'title');
+  check(await state(page, saved => localStorage.getItem('nine-provinces.1') === saved &&
+    !window.egretGame.battle && document.activeElement?.classList.contains('nanpi-entry'), savedBeforeTrial),
+    'entering and leaving the Nanpi trial preserves the existing slot and restores focus to its title entry');
   await page.locator('.titleMenu nav').getByRole('button', { name: '读取', exact: true }).click();
   await page.click('.slot:nth-child(2) .btn.main');
   await until(page, () => window.egretGame.screen === 'play', 10);

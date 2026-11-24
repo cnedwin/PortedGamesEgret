@@ -118,6 +118,13 @@ export const SOUNDS = {
     return master(out, .34);
   },
   drum: () => master(skin(42), .43),
+  gateImpact: () => {
+    const out = blank(.52);
+    mix(out, skin(419), 0, .78);
+    mix(out, noise(.31, { seed: 420, gain: .26, decay: 13, low: .24, high: .018, attack: 900 }), .015);
+    mix(out, tone(84, .29, { decay: 15, gain: .20, partials: [[1, 1], [2.6, .33], [3.8, .12]], attack: 700 }), .028);
+    return master(out, .52);
+  },
   march: () => master(mix(mix(mix(blank(.78), skin(49)), skin(50, false), .19, .6), skin(51), .40, .78), .40),
   clash: (variant = 0) => {
     const out = blank(.34), f = 1080 + variant * 93;
@@ -185,6 +192,7 @@ export const CUE_PROFILE = {
   coin: { gap: 150, max: 2 }, build: { gap: 160, max: 2, variants: 3 },
   drum: { gap: 200, max: 2 }, march: { gap: 350, max: 1 },
   clash: { gap: 140, max: 2, variants: 3, impact: true }, arrows: { gap: 180, max: 2, variants: 3, impact: true },
+  gateImpact: { gap: 240, max: 1, impact: true },
   fire: { gap: 450, max: 1, variants: 2, impact: true },
   horn: { gap: 800, max: 1, duck: 900 }, gong: { gap: 1000, max: 1, duck: 1000 },
   seal: { gap: 180, max: 2 }, tactic: { gap: 240, max: 2, variants: 2, duck: 500 },

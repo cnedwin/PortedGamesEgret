@@ -208,10 +208,24 @@ const BUILD = {
     const most = args.commander ? Math.min(node.troops, Math.round(troopCap(s, args.commander) + args.deputies.reduce((x, d) => x + troopCap(s, d) * 0.25, 0))) : 0;
     args.troops = Math.max(0, Math.min(args.troops ?? most, most));
     const u = UNITS[args.unit];
-    const coin = Math.max(0, Math.round(((u.cost.coin - 100) * args.troops) / 1000)),
-      grain = Math.round((args.troops / 400) * 60);
     const f = s.factions[s.player];
-    const why = !args.commander ? t('why_generals') : args.troops < 500 ? t('why_troops') : f.coin < coin ? t('why_coin') : f.grain < grain * 0.5 ? t('why_grain') : null;
+    const troopCount = h('small');
+    const cost = h('p.cost');
+    const confirm = button(t('muster'), () => app.act('muster', from, {
+      commander: args.commander, deputies: args.deputies, troops: args.troops,
+      unit: args.unit, formation: args.formation, target: args.target ?? null
+    }), { kind: 'main' });
+    function updateTroopQuote() {
+      const troops = args.troops;
+      const coin = Math.max(0, Math.round(((u.cost.coin - 100) * troops) / 1000));
+      const grain = Math.round((troops / 400) * 60);
+      const why = !args.commander ? t('why_generals') : troops < 500 ? t('why_troops')
+        : f.coin < coin ? t('why_coin') : f.grain < grain * 0.5 ? t('why_grain') : null;
+      troopCount.textContent = ' ' + t('musterTroops', { n: num(troops), max: num(most) });
+      cost.textContent = t('musterCost', { coin: num(coin), grain: num(grain) });
+      confirm.disabled = Boolean(why);
+      confirm.title = why ?? '';
+    }
     const lockWhy = (id) => {
       const need = UNITS[id].need;
       if (UNITS[id].group === 'navy' && !naval) return t('why_water');
@@ -227,11 +241,12 @@ const BUILD = {
       step: 100,
       value: args.troops,
       'aria-label': t('troops'),
-      oninput: (e) => {
-        args.troops = +e.target.value;
-        again();
+      oninput: ({ currentTarget }) => {
+        args.troops = currentTarget.valueAsNumber;
+        updateTroopQuote();
       }
     });
+    updateTroopQuote();
     return {
       title: t('musterTitle', { place: placeName(from) }),
       className: 'wide',
@@ -266,7 +281,7 @@ const BUILD = {
           args.commander = d;
           again();
         }, { small: true, why: args.deputies.length ? null : t('why_none') })) : null,
-        h('h3', t('troops'), h('small', ' ' + t('musterTroops', { n: num(args.troops), max: num(most) }))),
+        h('h3', t('troops'), troopCount),
         slider,
         h('h3', t('unit')),
         h(
@@ -291,12 +306,12 @@ const BUILD = {
           (id) => ((args.formation = id), again())
         ),
         h('p.note', formationNote(FORMATIONS[args.formation])),
-        h('p.cost', t('musterCost', { coin: num(coin), grain: num(grain) })),
+        cost,
         args.target ? h('p.note', t('target') + '：' + placeName(args.target)) : h('p.hint', t('musterThenPick'))
       ],
       actions: [
         button(t('cancel'), () => app.dialogs.close()),
-        button(t('muster'), () => app.act('muster', from, { commander: args.commander, deputies: args.deputies, troops: args.troops, unit: args.unit, formation: args.formation, target: args.target ?? null }), { kind: 'main', why })
+        confirm
       ]
     };
   },
