@@ -17,7 +17,7 @@ import { createFlora } from './flora.mjs';
 import { createRoads, along, routeLine } from './routes.mjs';
 import { createStage } from './stage.mjs';
 import { createLand } from './terrain.mjs';
-import { createTroops, figureOf } from './troops.mjs';
+import { createTroops, figureOf, isSiegeFigure } from './troops.mjs';
 import { createWaters } from './water.mjs';
 import { createAmbient } from './ambient.mjs';
 import { seasonOf } from './seasons.mjs';
@@ -198,8 +198,9 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
   function drawArmy(a, v, s, time) {
     const colour = linear(factionColour(s, a.faction));
     const kind = figureOf(a.unit);
-    const n = Math.max(3, Math.min(12, Math.round(a.troops / 1100)));
-    const cols = kind === 'boat' ? 2 : n > 9 ? 4 : 3;
+    const engine = isSiegeFigure(kind);
+    const n = engine ? 1 : Math.max(3, Math.min(12, Math.round(a.troops / 1100)));
+    const cols = engine ? 1 : kind === 'boat' ? 2 : n > 9 ? 4 : 3;
     const S = 1.5;
     const gap = (kind === 'horse' || kind === 'horsebow' ? 0.5 : kind === 'boat' ? 1.1 : 0.36) * S;
     const sin = Math.sin(v.heading),
@@ -211,7 +212,7 @@ export async function createRealmView({ canvas, plates, getState, plateFor, on, 
         lz = -r * gap * 1.1;
       const x = v.x + lx * cos + lz * sin,
         z = v.z - lx * sin + lz * cos;
-      const bob = v.moving ? Math.abs(Math.sin(time * 7 + i * 1.3)) * 0.05 : 0;
+      const bob = v.moving && !engine ? Math.abs(Math.sin(time * 7 + i * 1.3)) * 0.05 : 0;
       const y = kind === 'boat' ? v.y + 0.02 : Math.max(0, land.heightAt(x, z));
       troops.add(kind, x, y + bob, z, v.heading, colour, 0, S);
     }

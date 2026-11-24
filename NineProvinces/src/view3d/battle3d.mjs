@@ -30,7 +30,7 @@ import { FOOTPRINTS } from '../sim/land.mjs';
 import { generalName } from '../view/names.mjs';
 import { portrait } from '../view/portrait.mjs';
 import { wallTop } from './cities.mjs';
-import { figureOf } from './troops.mjs';
+import { figureOf, isSiegeFigure } from './troops.mjs';
 import {formationSlots, freshAttack, createSiegeLighting, battleCameraFrame} from './battle-staging.mjs';
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
@@ -572,8 +572,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     for(let c=0;c<3;c++)s.colour[c]=baseColour[c]*(1-flash)+flash;
     const colour = s.colour;
     const S = siegeSample&&kind==='ram'?2.05:1.75;
-    const engine=kind==='ram'||kind==='engine';
-    const cap=kind==='boat'?2:engine&&siegeSample?1:kind==='horse'||kind==='horsebow'?(siegeSample?10:6):siegeSample?16:9;
+    const engine = isSiegeFigure(kind);
+    const cap=kind==='boat'?2:engine?1:kind==='horse'||kind==='horsebow'?(siegeSample?10:6):siegeSample?16:9;
     const count = Math.max(1, Math.min(cap, Math.ceil(u.troops / (kind === 'boat' ? 2500 : siegeSample&&!engine?350:700))));
     const per = kind === 'boat' ? 2 : 3;
     const gap = (kind === 'horse' || kind === 'horsebow' ? 0.5 : kind === 'boat' ? 0.75 : 0.4) * S;
@@ -585,8 +585,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     for (let k = 0; k < count; k++) {
       const c = (k % per) - (per - 1) / 2,
         row = Math.floor(k / per);
-      let lx = siegeSample?s.slots[k][0]:c * gap + (row % 2) * gap * 0.3,
-        lz = siegeSample?s.slots[k][1]:(0.5 - row) * gap * 1.1;
+      let lx = engine ? 0 : siegeSample?s.slots[k][0]:c * gap + (row % 2) * gap * 0.3,
+        lz = engine ? 0 : siegeSample?s.slots[k][1]:(0.5 - row) * gap * 1.1;
       if (u.routed) {
         lx += Math.sin(i * 7 + k * 3.1) * 0.6;
         lz += Math.cos(i * 5 + k * 2.3) * 0.6;
@@ -594,12 +594,16 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       const x = s.x + lx * cos + lz * sin + lungeX * (k % 2 ? 1 : 0.6),
         z = s.z - lx * sin + lz * cos + lungeZ * (k % 2 ? 1 : 0.6);
       const ground = b.tiles[u.pos] === 'wall' || u.onWall ? s.y : Math.max(0, land.heightAt(x, z));
-      const bob = Math.abs(Math.sin(time * (u.routed ? 11 : 7) + k * 1.7 + i)) * (u.path?.length || u.routed ? 0.05 : 0.012);
+      const bob = engine ? 0 : Math.abs(Math.sin(time * (u.routed ? 11 : 7) + k * 1.7 + i)) * (u.path?.length || u.routed ? 0.05 : 0.012);
       if(siegeSample&&kind==='ram'){
         troops.add('ram-frame',x,ground,z,s.heading,colour,0,S);
         const stroke=isCalm()?0:Math.sin(Math.min(1,s.siegePose/.42)*Math.PI/2)*.36;
         troops.add('ram-beam',x+sin*stroke,ground,z+cos*stroke,s.heading,colour,0,S);
-        for(const direction of[-1,1])for(const rank of[-1,1]){const cx=direction*.7,cz=rank*.65;troops.add('sword',x+cx*cos+cz*sin,ground,z-cx*sin+cz*cos,s.heading,colour,-stroke*.15,1.35);}
+        for (const direction of [-1, 1]) for (const rank of [-1, 1]) {
+          const cx = direction * S * .46, cz = rank * S * .32;
+          const crewX = x + cx * cos + cz * sin, crewZ = z - cx * sin + cz * cos;
+          troops.add('sword', crewX, Math.max(0, land.heightAt(crewX, crewZ)), crewZ, s.heading, colour, -stroke * .15, 1.35);
+        }
       }else{
         const braced=siegeSample&&kind==='spear'&&!u.routed&&(u.order==='hold'||s.attackPose>0);
         const posed=braced?'spear-braced':siegeSample&&kind==='bow'&&s.attackPose>0?'bow-loose':kind;

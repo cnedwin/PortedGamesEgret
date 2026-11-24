@@ -16,6 +16,8 @@ import {
   quatFromEuler
 } from '@egret/engine/world3d';
 import { UNITS } from '../data/battle.mjs';
+import { siegeRam, siegeRamBeam } from './siege-ram.mjs';
+import { siegeTower, catapult } from './siege-tall-equipment.mjs';
 
 const SKIN = 0xc49a74,
   IRON = 0x4f5c5b,
@@ -103,32 +105,6 @@ function horseman(arm) {
   }
   return { plain: plain.build(), coat: coat.build() };
 }
-/** A battering ram under its roof, or a siege tower or catapult. */
-function engine(kind) {
-  const plain = createGeometryBuilder3D(),
-    coat = createGeometryBuilder3D();
-  if (kind === 'ram' || kind === 'ram-frame') {
-    plain.add(box(0.5, 0.3, 0.9), { position: [0, 0.3, 0], color: WOOD });
-    plain.add(box(0.56, 0.06, 0.95), { position: [0, 0.5, 0], rotation: [0, 0, 0.25], color: 0x4a3a2a });
-    if(kind==='ram')plain.add(cyl(0.07, 0.07, 1.1, 6), { position: [0, 0.28, 0.25], rotation: [Math.PI / 2, 0, 0], color: 0x3b2a1c });
-    for (const s of [-1, 1]) for (const z of [-0.3, 0.3]) plain.add(cyl(0.11, 0.11, 0.05, 8), { position: [s * 0.27, 0.11, z], rotation: [0, 0, Math.PI / 2], color: 0x2e241c });
-    coat.add(box(0.3, 0.18, 0.02), { position: [0, 0.6, -0.4], color: WHITE });
-  } else {
-    plain.add(box(0.5, 1.2, 0.5), { position: [0, 0.65, 0], color: WOOD });
-    plain.add(box(0.56, 0.08, 0.56), { position: [0, 1.28, 0], color: 0x4a3a2a });
-    for (const s of [-1, 1]) for (const z of [-0.2, 0.2]) plain.add(cyl(0.1, 0.1, 0.05, 8), { position: [s * 0.27, 0.1, z], rotation: [0, 0, Math.PI / 2], color: 0x2e241c });
-    coat.add(box(0.28, 0.2, 0.02), { position: [0, 1.45, 0], color: WHITE });
-    plain.add(cyl(0.01, 0.01, 0.4, 4), { position: [0.14, 1.45, 0], color: WOOD });
-  }
-  return { plain: plain.build(), coat: coat.build() };
-}
-function ramBeam() {
-  const plain=createGeometryBuilder3D(),coat=createGeometryBuilder3D();
-  plain.add(cyl(.07,.07,1.1,8),{position:[0,.28,.25],rotation:[Math.PI/2,0,0],color:WOOD});
-  plain.add(box(.18,.16,.14),{position:[0,.28,.8],color:IRON});
-  for(const z of[-.15,.42])coat.add(cyl(.078,.078,.035,8),{position:[0,.28,z],rotation:[Math.PI/2,0,0],color:0xc5ac72});
-  return {plain:plain.build(),coat:coat.build()};
-}
 /** A war boat with a sail in the side's colour. */
 function boat() {
   const plain = createGeometryBuilder3D(),
@@ -157,16 +133,18 @@ export function figureOf(unit) {
   const u = UNITS[unit];
   if (!u) return 'spear';
   if (u.group === 'navy') return 'boat';
-  if (u.id === 'ram') return 'ram';
-  if (u.group === 'siege') return 'engine';
+  if (u.group === 'siege') return u.id;
   if (u.group === 'cav') return u.weapon === 'bow' ? 'horsebow' : 'horse';
   if (u.weapon === 'bow') return 'bow';
   if (u.weapon === 'sword') return 'sword';
   return u.weapon === 'halberd' ? 'halberd' : 'spear';
 }
 
+export const isSiegeFigure = figure => figure === 'ram' || figure === 'tower' || figure === 'catapult';
+
 /** The soldiers of the world, laid out each frame. */
 export function createTroops(scene, { quality = 'medium', capacity = 2400 } = {}) {
+  const detail = quality !== 'low';
   const shapes = {
     spear: footman('spear'),
     'spear-braced': footman('spear-braced'),
@@ -176,10 +154,11 @@ export function createTroops(scene, { quality = 'medium', capacity = 2400 } = {}
     'bow-loose': footman('bow-loose'),
     horse: horseman('spear'),
     horsebow: horseman('bow'),
-    ram: engine('ram'),
-    'ram-frame': engine('ram-frame'),
-    'ram-beam': ramBeam(),
-    engine: engine('tower'),
+    ram: siegeRam(detail, true),
+    'ram-frame': siegeRam(detail, false),
+    'ram-beam': siegeRamBeam(detail),
+    tower: siegeTower(detail),
+    catapult: catapult(detail),
     boat: boat(),
     standard: standard()
   };
@@ -187,7 +166,8 @@ export function createTroops(scene, { quality = 'medium', capacity = 2400 } = {}
   const coatMaterial = createStandardMaterial3D({ vertexColors: true, roughness: 0.85, metallic: 0 });
   const kinds = {};
   for (const [kind, shape] of Object.entries(shapes)) {
-    const cap = kind.startsWith('ram') || kind === 'engine' || kind === 'boat' || kind === 'standard' ? Math.ceil(capacity / 6) : capacity;
+    const cap = kind.startsWith('ram') || isSiegeFigure(kind) || kind === 'boat' || kind === 'standard'
+      ? Math.ceil(capacity / 6) : capacity;
     const plain = new InstancedMesh3D(shape.plain, plainMaterial, cap);
     const coat = new InstancedMesh3D(shape.coat, coatMaterial, cap);
     for (const mesh of [plain, coat]) {
