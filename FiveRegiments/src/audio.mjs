@@ -86,6 +86,33 @@ const contactNoise = (len, decay, brightness, gain, seed) => noise(len, (t) => M
   tone: () => brightness, gain, seed
 });
 
+/** Leave headroom before WAV encoding, with a short attack and click-free tail. */
+function contactMix(seconds, parts) {
+  const out = mix(seconds, parts);
+  let peak = 0;
+  for (let i = 0; i < out.length; i++) {
+    out[i] *= Math.min(1, i / (RATE * 0.0006), (out.length - 1 - i) / (RATE * 0.016));
+    peak = Math.max(peak, Math.abs(out[i]));
+  }
+  if (peak > 0.88) {
+    const headroom = 0.88 / peak;
+    for (let i = 0; i < out.length; i++) out[i] *= headroom;
+  }
+  return out;
+}
+
+function skillImpact(armour) {
+  const texture = armour
+    ? ring(0.27, 510, { partials: [1, 1.59, 2.83, 4.12], gain: 0.31, decay: 14, seed: 47 })
+    : tone(0.19, 680, 310, { decay: 19, gain: 0.28 });
+  return contactMix(0.34, [
+    [thud(78, 0.3, 0.56)],
+    [contactNoise(0.1, 37, armour ? 0.77 : 0.48, 0.45, 46)],
+    [texture, 0.006],
+    [contactNoise(0.115, 53, armour ? 0.65 : 0.34, 0.22, 48), 0.036]
+  ]);
+}
+
 export const SOUNDS = {
   swing: () => bladeAir(0.22, 0.038, 11, 0.56, 0.51),
   heavy: () => bladeAir(0.31, 0.054, 12, 0.32, 0.66),
@@ -93,16 +120,41 @@ export const SOUNDS = {
   bladeWave: () => mix(0.34, [[bladeAir(0.32, 0.027, 35, 0.73, 0.53)], [tone(0.24, 290, 105, { decay: 12, gain: 0.23 })]]),
   spearPlant: () => mix(0.18, [[tone(0.13, 493, 220, { decay: 22, gain: 0.43 })], [contactNoise(0.16, 25, 0.32, 0.45, 42)]]),
   spearThrust: () => mix(0.28, [[bladeAir(0.28, 0.024, 43, 0.66, 0.55)], [tone(0.21, 930, 435, { decay: 11, gain: 0.32 })]]),
-  clash: () => mix(0.38, [[ring(0.38, 730, { gain: 0.34, decay: 13, seed: 4 })], [contactNoise(0.09, 42, 0.83, 0.29, 5)]]),
-  deflect: () => mix(0.62, [[ring(0.62, 1240, { gain: 0.36, decay: 8, seed: 6 })], [ring(0.44, 1730, { gain: 0.14, decay: 10, seed: 9 }), 0.014], [contactNoise(0.06, 82, 0.94, 0.32, 8)]]),
-  shield: () => mix(0.34, [[thud(135, 0.3, 0.56)], [ring(0.29, 408, { gain: 0.15, decay: 20, seed: 10 })], [contactNoise(0.06, 54, 0.38, 0.22, 16)]]),
-  hit: () => mix(0.24, [[thud(91, 0.22, 0.51)], [contactNoise(0.14, 33, 0.35, 0.24, 13)]]),
-  armourHit: () => mix(0.31, [[thud(105, 0.25, 0.42)], [ring(0.3, 590, { gain: 0.20, decay: 16, seed: 29 })], [contactNoise(0.08, 39, 0.78, 0.25, 30)]]),
-  heavyHit: () => mix(0.43, [[thud(68, 0.43, 0.64)], [contactNoise(0.19, 23, 0.38, 0.24, 26)], [ring(0.3, 387, { gain: 0.11, decay: 17, seed: 27 }), 0.013]]),
+  clash: () => contactMix(0.25, [[ring(0.24, 732, { gain: 0.32, decay: 21, seed: 4 })], [contactNoise(0.08, 56, 0.87, 0.35, 5)]]),
+  deflect: () => contactMix(0.45, [
+    [ring(0.44, 1230, { partials: [1, 1.78, 2.9, 4.22], gain: 0.35, decay: 10, seed: 6 })],
+    [ring(0.33, 1770, { gain: 0.15, decay: 14, seed: 9 }), 0.023],
+    [contactNoise(0.045, 94, 0.92, 0.31, 8)]
+  ]),
+  shield: () => contactMix(0.26, [[thud(134, 0.22, 0.49)], [ring(0.23, 411, { gain: 0.19, decay: 24, seed: 10 })], [contactNoise(0.057, 62, 0.46, 0.32, 16)]]),
+  hit: () => contactMix(0.19, [
+    [thud(106, 0.17, 0.47)], [tone(0.10, 560, 260, { gain: 0.21, decay: 23 })],
+    [contactNoise(0.085, 55, 0.49, 0.38, 13)]
+  ]),
+  armourHit: () => contactMix(0.26, [
+    [thud(118, 0.18, 0.27)], [ring(0.25, 615, { partials: [1, 1.51, 2.41, 3.66], gain: 0.37, decay: 20, seed: 29 })],
+    [contactNoise(0.073, 61, 0.81, 0.35, 30)]
+  ]),
+  heavyHit: () => contactMix(0.31, [
+    [thud(79, 0.30, 0.62)], [tone(0.17, 476, 204, { gain: 0.29, decay: 20 })],
+    [contactNoise(0.13, 45, 0.53, 0.37, 26)]
+  ]),
+  skillHit: () => skillImpact(false),
+  skillArmourHit: () => skillImpact(true),
   horseRam: () => mix(0.34, [[thud(62, 0.33, 0.7)], [contactNoise(0.15, 39, 0.27, 0.36, 44)], [ring(0.21, 362, { gain: 0.13, decay: 24, seed: 45 }), 0.024]]),
-  crit: () => mix(0.51, [[thud(74, 0.47, 0.62)], [ring(0.49, 980, { gain: 0.20, decay: 13, seed: 14 })], [contactNoise(0.17, 28, 0.68, 0.26, 15)]]),
+  crit: () => contactMix(0.38, [
+    [thud(87, 0.3, 0.51)], [ring(0.34, 935, { gain: 0.26, decay: 16, seed: 14 })],
+    [ring(0.23, 1640, { gain: 0.13, decay: 24, seed: 32 }), 0.014],
+    [contactNoise(0.08, 59, 0.79, 0.4, 15)]
+  ]),
   kick: () => thud(70, 0.3, 0.8),
-  break: () => mix(0.9, [[ring(0.8, 410, { gain: 0.3, decay: 7, seed: 16 })], [thud(60, 0.5, 0.7)]]),
+  break: () => contactMix(0.33, [
+    [contactNoise(0.085, 56, 0.77, 0.56, 16)],
+    [tone(0.17, 428, 181, { gain: 0.30, decay: 20 })],
+    [thud(84, 0.25, 0.55), 0.009],
+    [contactNoise(0.11, 51, 0.58, 0.36, 49), 0.031],
+    [ring(0.21, 355, { gain: 0.16, decay: 21, seed: 50 }), 0.035]
+  ]),
   step: () => noise(0.25, (t, s) => Math.sin((Math.PI * t) / s), { tone: () => 0.25, gain: 0.3, seed: 17 }),
   draw: () => noise(0.7, (t, s) => (t / s) * Math.exp(-((t - s) ** 2)), { tone: (t) => 0.1 + t * 0.4, gain: 0.18, seed: 18 }),
   loose: () => mix(0.6, [[tone(0.5, 180, 120, { decay: 9, gain: 0.35 })], [swoosh(0.25, 19, 0.35), 0.02]]),

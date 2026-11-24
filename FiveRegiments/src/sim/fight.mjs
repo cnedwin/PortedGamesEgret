@@ -921,7 +921,7 @@ function runSkill(game, man, act, dt) {
   };
   const areaStrike = (ahead, radius, spec) => {
     const hit = around(ahead, radius);
-    emit(game, 'slam', { who: man.id, at: [man.x + fwd[0] * ahead, man.z + fwd[1] * ahead], radius });
+    emit(game, 'slam', { who: man.id, at: [man.x + fwd[0] * ahead, man.z + fwd[1] * ahead], radius, skill: spec.skill });
     if (!hit.length) emit(game, 'whiff', { who: man.id, skill: spec.skill });
     for (const t of hit) resolve(game, man, t, spec);
   };
@@ -974,7 +974,10 @@ function runSkill(game, man, act, dt) {
       break;
     }
     case 'turning':
-      if (at(0.28)) strike(game, man, { line: 'R', damage: base * s.damage, reach: s.reach, arc: Math.PI, all: true, skill: 'turning', push: 0.8 });
+      if (at(0.28)) {
+        beat();
+        strike(game, man, { line: 'R', damage: base * s.damage, reach: s.reach, arc: Math.PI, all: true, skill: 'turning', push: 0.8 });
+      }
       if (act.t > 0.7) man.act = null;
       break;
     case 'moon':
@@ -1027,7 +1030,10 @@ function runSkill(game, man, act, dt) {
       break;
     case 'whirl':
       for (let k = 0; k < s.hits; k++) {
-        if (at(0.25 + k * 0.3)) strike(game, man, { line: k % 2 ? 'L' : 'R', damage: base * s.damage, reach: s.reach, arc: Math.PI, all: true, skill: 'whirl', stun: 0.22 });
+        if (at(0.25 + k * 0.3)) {
+          beat(k);
+          strike(game, man, { line: k % 2 ? 'L' : 'R', damage: base * s.damage, reach: s.reach, arc: Math.PI, all: true, skill: 'whirl', stun: 0.22 });
+        }
       }
       if (act.t > 0.25 + s.hits * 0.3 + 0.2) man.act = null;
       break;
@@ -1086,13 +1092,19 @@ function runSkill(game, man, act, dt) {
       // A step in, then the cut.
       const run = 0.26;
       if (act.t < run) dash(s.step / run);
-      if (at(run + 0.12)) strike(game, man, { line: 'R', damage: base * s.damage, reach: s.reach, arc: (70 * Math.PI) / 180, all: true, skill: 'stepCut', stun: 0.45, push: 0.9 });
+      if (at(run + 0.12)) {
+        beat();
+        strike(game, man, { line: 'R', damage: base * s.damage, reach: s.reach, arc: (70 * Math.PI) / 180, all: true, skill: 'stepCut', stun: 0.45, push: 0.9 });
+      }
       if (act.t > run + 0.6) man.act = null;
       break;
     }
     case 'flowers':
       for (let k = 0; k < s.hits; k++) {
-        if (at(0.16 + k * 0.17)) strike(game, man, { line: 'T', damage: man.r.blows.T.damage * s.damage, reach: s.reach, arc: 0.26, skill: 'flowers', stun: 0.2, push: 0.2 });
+        if (at(0.16 + k * 0.17)) {
+          beat(k);
+          strike(game, man, { line: 'T', damage: man.r.blows.T.damage * s.damage, reach: s.reach, arc: 0.26, skill: 'flowers', stun: 0.2, push: 0.2 });
+        }
       }
       if (act.t > 0.16 + s.hits * 0.17 + 0.25) man.act = null;
       break;
@@ -1146,7 +1158,10 @@ function runSkill(game, man, act, dt) {
       const a = ARTS.finisher,
         run = 0.2;
       if (act.t < run) dash(2.2);
-      if (at(0.28)) strike(game, man, { line: 'T', damage: man.r.blows.T.damage * a.damage, reach: a.reach, arc: 0.35, skill: 'finisher', stun: 0.5, push: 0.8 });
+      if (at(0.28)) {
+        beat();
+        strike(game, man, { line: 'T', damage: man.r.blows.T.damage * a.damage, reach: a.reach, arc: 0.35, skill: 'finisher', stun: 0.5, push: 0.8 });
+      }
       if (act.t > 0.7) man.act = null;
       break;
     }
@@ -1154,6 +1169,7 @@ function runSkill(game, man, act, dt) {
       // The shield driven into the first man met: he goes down.
       const a = ARTS.shieldSlam;
       if (at(0.2)) {
+        beat();
         const hit = enemiesOf(game, man).filter((t) => inSweep(man, t, a.reach, 0.8)).sort((x, y) => dist(man, x) - dist(man, y))[0];
         if (!hit) emit(game, 'whiff', { who: man.id, skill: 'shieldSlam' });
         else {
@@ -1169,7 +1185,10 @@ function runSkill(game, man, act, dt) {
     case 'poleAxeSmash': {
       // One mighty swing across the front.
       const a = ARTS[act.id];
-      if (at(0.55)) strike(game, man, { line: 'R', damage: man.r.blows.R.damage * a.damage, reach: a.reach, arc: (75 * Math.PI) / 180, all: true, skill: act.id, stun: 0.6, push: 1.2 });
+      if (at(0.55)) {
+        beat();
+        strike(game, man, { line: 'R', damage: man.r.blows.R.damage * a.damage, reach: a.reach, arc: (75 * Math.PI) / 180, all: true, skill: act.id, stun: 0.6, push: 1.2 });
+      }
       if (act.t > 1.05) man.act = null;
       break;
     }

@@ -8,10 +8,10 @@ import {
   createParticleEmitter3D,
   createGpuParticles3D,
   createPointLight3D,
-  createRingGeometry3D,
   createUnlitMaterial3D
 } from '@egret/engine/world3d';
 import { createWeapon } from './weapons.mjs';
+import { SKILL_EFFECTS } from './effect-profiles.mjs';
 
 /** A soft round dot (and a petal) for particles, drawn once on a small canvas. */
 function spriteTexture(kind = 'dot') {
@@ -37,6 +37,105 @@ function spriteTexture(kind = 'dot') {
 
 const TRAIL = 10;
 const UP = [0, 1, 0];
+
+function arcs(sectors, inside, outside) {
+  const positions = [], indices = [];
+  for (const [from, to, steps] of sectors) {
+    for (let i = 0; i <= steps; i++) {
+      const a = from + (to - from) * i / steps;
+      const x = Math.sin(a), z = Math.cos(a);
+      const index = positions.length / 3;
+      positions.push(x * inside, 0, z * inside, x * outside, 0, z * outside);
+      if (i) indices.push(index - 2, index - 1, index, index - 1, index + 1, index);
+    }
+  }
+  return createGeometry3D({ positions, indices });
+}
+
+/** A curved leading edge with a hot core and tapered ends; the mesh follows the real wave projectile. */
+function bladeWaveGeometry() {
+  const positions = [], colors = [], indices = [];
+  const bands = [
+    { height: -1, tint: [0.13, 0.023, 0.004] },
+    { height: 0, tint: [1, 0.65, 0.23] },
+    { height: 0.45, tint: [1, 0.90, 0.71] },
+    { height: 1, tint: [0.28, 0.042, 0.004] }
+  ];
+  for (let i = 0; i <= 24; i++) {
+    const x = i / 12 - 1;
+    const taper = Math.sin(Math.PI * i / 24);
+    const y = 0.54 * taper - 0.12 + x * 0.22;
+    for (const { height, tint } of bands) {
+      positions.push(x * 1.52, y + height * 0.22 * taper, -x * x * 0.58 + height * 0.07);
+      for (const c of tint) colors.push(c * (0.1 + 0.9 * taper));
+    }
+    if (!i) continue;
+    for (let k = 0; k < bands.length - 1; k++) {
+      const j = (i - 1) * bands.length + k;
+      indices.push(j, j + 1, j + bands.length, j + 1, j + bands.length + 1, j + bands.length);
+    }
+  }
+  return createGeometry3D({ positions, colors, indices });
+}
+
+function createCuePool(scene, capacity) {
+  // All marks share these geometries. Tinted transparency keeps cues readable on pale ground.
+  const shapes = {
+    ring: arcs([[-Math.PI, Math.PI, 32]], 0.91, 1),
+    arc: arcs([[-1.16, 1.16, 16]], 0.91, 1),
+    split: arcs([[-2.1, -0.24, 12], [0.28, 1.74, 10]], 0.90, 1),
+    fan: arcs([[-0.58, 0.58, 12]], 0.88, 1),
+    thrust: createGeometry3D({
+      positions: [-0.16, 0, -0.48, -0.026, 0, 0.20, 0, 0, 1, 0.026, 0, 0.20, 0.16, 0, -0.48],
+      indices: [0, 1, 2, 2, 3, 4]
+    }),
+    glint: createGeometry3D({
+      positions: [-1, 0, 0, 0, -0.065, 0, 1, 0, 0, 0, 0.065, 0, 0, -0.55, 0, 0, 0.55, 0, -0.055, 0, 0, 0.055, 0, 0],
+      indices: [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 5, 7]
+    })
+  };
+  const slots = Array.from({ length: capacity }, () => {
+    const material = createUnlitMaterial3D({ blending: 'normal', depthWrite: false, side: 'double', fog: false, opacity: 0 });
+    const mesh = new Mesh3D(shapes.ring, material);
+    mesh.name = 'skill-cue';
+    mesh.castShadow = false;
+    mesh.visible = false;
+    mesh.renderOrder = 4;
+    scene.addChild(mesh);
+    return { mesh, material, remaining: 0 };
+  });
+  return {
+    show(shape, at, yaw, radius, tint, { time = 0.28, opacity = 0.56, growth = 0.38, initial = 0.65 } = {}) {
+      const slot = slots.reduce((lowest, item) => item.remaining < lowest.remaining ? item : lowest);
+      Object.assign(slot, { remaining: time, time, radius, opacity, growth, initial });
+      const { mesh, material } = slot;
+      mesh.geometry = shapes[shape];
+      mesh.setPosition(...at);
+      mesh.setRotation(0, yaw, 0);
+      mesh.setScale(radius * initial, radius * initial, radius * initial);
+      material.color.set(tint);
+      material.opacity = opacity;
+      mesh.visible = true;
+    },
+    update(dt) {
+      for (const slot of slots) {
+        if (slot.remaining <= 0) continue;
+        slot.remaining = Math.max(0, slot.remaining - dt);
+        slot.mesh.visible = slot.remaining > 0;
+        const fade = slot.remaining / slot.time;
+        const size = slot.radius * (slot.initial + slot.growth * (1 - fade ** 2));
+        slot.material.opacity = slot.opacity * fade ** 2;
+        slot.mesh.setScale(size, size, size);
+      }
+    },
+    clear() {
+      for (const slot of slots) {
+        slot.remaining = 0;
+        slot.mesh.visible = false;
+      }
+    }
+  };
+}
 
 /** Place the effect at the near side of the defender, with a small correction from a nearby blade. */
 function contact(e, body, from, blade, depth) {
@@ -88,6 +187,9 @@ function createSweep(scene) {
   return {
     mesh,
     push(base, tip, strength, tint) {
+      const previous = points[0]?.tip;
+      if (previous && Math.hypot(tip[0] - previous[0], tip[1] - previous[1], tip[2] - previous[2]) > 1.35)
+        points.length = 0;
       points.unshift({ base, tip, strength, tint });
       if (points.length > TRAIL) points.pop();
     },
@@ -114,7 +216,7 @@ function createSweep(scene) {
       geometry.getAttribute('position').touch();
       geometry.getAttribute('color').touch();
       // Fade every point by the time gone (a fifth each sixtieth of a second).
-      const fade = Math.exp(-13.4 * dt);
+      const fade = Math.exp(-20 * dt);
       for (const p of points) p.strength *= fade;
       while (points.length && points.at(-1).strength < 0.02) points.pop();
     }
@@ -123,10 +225,12 @@ function createSweep(scene) {
 
 export function createEffects(scene, { particles = 1, blood = true } = {}) {
   const fx = { blood };
+  const cues = createCuePool(scene, particles < 1 ? 8 : 14);
   const dot = spriteTexture('dot'),
     petal = spriteTexture('petal');
   const emitter = (options) => {
-    const e = createParticleEmitter3D({ space: 'world', rate: 0, map: dot, capacity: Math.round((options.capacity ?? 200) * particles), ...options });
+    const capacity = Math.max(1, Math.round((options.capacity ?? 200) * particles));
+    const e = createParticleEmitter3D({ space: 'world', rate: 0, map: dot, ...options, capacity });
     e.castShadow = false;
     scene.addChild(e);
     return e;
@@ -154,20 +258,30 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
   // Arrows: one model, cloned per shot.
   const arrowModel = createWeapon('arrow');
   const arrows = new Map();
-  const waveMat = createUnlitMaterial3D({ color: 0xbfe6ff, blending: 'additive', depthWrite: false, side: 'double', opacity: 0.85 });
-  const waveGeo = createRingGeometry3D({ innerRadius: 0.96, outerRadius: 1.13, thetaSegments: 24, thetaStart: Math.PI * 0.23, thetaLength: Math.PI * 0.54 });
-  const galeMat = createUnlitMaterial3D({ color: 0x9bdeff, blending: 'additive', depthWrite: false, side: 'double', opacity: 0.54 });
-  // Two crossed ribbons around the arrow's local +Y axis, shared by every gust arrow.
-  const galeGeo = createGeometry3D({
-    positions: [0, -1.4, 0, -0.1, 0.2, 0, 0, 0.66, 0, 0.1, 0.2, 0, 0, 0.2, -0.1, 0, 0.2, 0.1],
+  const waveMat = createUnlitMaterial3D({ vertexColors: true, blending: 'normal', depthWrite: false, side: 'double', opacity: 0.85 });
+  const waveGeo = bladeWaveGeometry();
+  // A shared, tapered wake around the actual arrow axis. Each kind changes width, length and hue.
+  const wakeGeo = createGeometry3D({
+    positions: [0, -1.58, 0, -0.10, -0.05, 0, 0, 0.35, 0, 0.10, -0.05, 0, 0, -0.05, -0.10, 0, -0.05, 0.10],
+    colors: [0.08, 0.08, 0.08, 1, 1, 1, 0.55, 0.55, 0.55, 1, 1, 1, 1, 1, 1, 1, 1, 1],
     indices: [0, 1, 2, 0, 2, 3, 0, 4, 2, 0, 2, 5]
   });
-  const ringGeo = createRingGeometry3D({ innerRadius: 0.92, outerRadius: 1, thetaSegments: 48 });
-  const rings = [];
+  const wakes = new Map();
+  for (const [id, width, length, opacity] of [
+    ['gale', 1.55, 1.45, 0.71], ['blast', 0.86, 0.72, 0.68], ['web', 0.54, 0.62, 0.44],
+    ['fan', 0.44, 0.66, 0.43], ['volley', 0.58, 0.83, 0.57], ['backStep', 0.6, 0.78, 0.48]
+  ]) {
+    if (id === 'fan' && particles < 1) continue;
+    wakes.set(id, {
+      width, length,
+      material: createUnlitMaterial3D({ color: SKILL_EFFECTS[id].tint, vertexColors: true,
+        blending: 'normal', depthWrite: false, side: 'double', opacity })
+    });
+  }
   const webMat = createUnlitMaterial3D({ color: 0xe8e6dc, opacity: 0.55, blending: 'normal', depthWrite: false, side: 'double' });
   const webs = new Map();
 
-  function webMesh(radius) {
+  function webGeometry() {
     // Spokes and rings of thin quads, lying on the ground.
     const pos = [],
       idx = [];
@@ -183,18 +297,19 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     };
     for (let s = 0; s < 12; s++) {
       const a = (s / 12) * Math.PI * 2;
-      quad([0, 0], [Math.cos(a) * radius, Math.sin(a) * radius], 0.012);
+      quad([0, 0], [Math.cos(a), Math.sin(a)], 0.0045);
     }
     for (let r = 1; r <= 5; r++) {
-      const rr = (r / 5) * radius;
+      const rr = r / 5;
       for (let s = 0; s < 12; s++) {
         const a = (s / 12) * Math.PI * 2,
           b = ((s + 1) / 12) * Math.PI * 2;
-        quad([Math.cos(a) * rr, Math.sin(a) * rr], [Math.cos(b) * rr * 0.97, Math.sin(b) * rr * 0.97], 0.01);
+        quad([Math.cos(a) * rr, Math.sin(a) * rr], [Math.cos(b) * rr, Math.sin(b) * rr], 0.0035);
       }
     }
-    return new Mesh3D(createGeometry3D({ positions: pos, indices: idx }), webMat);
+    return createGeometry3D({ positions: pos, indices: idx });
   }
+  const webGeo = webGeometry();
 
   const sweeps = new Map();
   fx.sweep = (id) => {
@@ -203,8 +318,24 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     return s;
   };
 
+  const floor = (at, y = 0.07) => [at[0], y, at[2]];
+  const ahead = (at, yaw, metres, height = at[1]) => [at[0] + Math.sin(yaw) * metres, height, at[2] + Math.cos(yaw) * metres];
+  function skillCue(id, at, yaw, blade, part, active) {
+    const profile = SKILL_EFFECTS[id];
+    const shape = active ? profile?.release : profile?.preparation;
+    if (!shape) return;
+    const onTip = shape === 'glint' || active && shape === 'thrust';
+    const place = onTip ? blade?.[1] ?? ahead(at, yaw, 0.55) : floor(at);
+    const radius = shape === 'thrust' ? (active ? 0.68 : 0.83)
+      : shape === 'glint' ? (active ? 0.38 : 0.32) : (active ? 1.22 : 0.78);
+    const angle = shape === 'split' && active ? yaw + part * 1.77 : yaw;
+    cues.show(shape, place, angle, radius, profile.tint,
+      active ? { time: 0.23, opacity: 0.84, initial: 0.8, growth: 0.25 }
+        : { time: 0.31, opacity: 0.70, initial: 0.90, growth: -0.33 });
+  }
+
   /** Answer one event of the fight. `where(id)` gives a man's chest place. */
-  fx.event = (e, where, bladeOf, { shield = false, armoured = false } = {}) => {
+  fx.event = (e, where, bladeOf, { shield = false, armoured = false, heading = 0 } = {}) => {
     const at = where(e.who);
     switch (e.type) {
       case 'block':
@@ -231,12 +362,16 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       case 'hit': {
         if (e.quiet || e.poison) break;
         const strong = e.heavy > 0.5 || e.crit || e.broke;
+        const special = SKILL_EFFECTS[e.skill];
         const blade = e.arrow || e.kick || !e.line ? null : bladeOf(e.by);
         const { point, away, back } = contact(e, at, e.by ? where(e.by) : at, blade, 0.23);
-        burst(impact, point, strong ? 8 : e.arrow ? 3 : 5, away);
-        if (e.glance || armoured || e.crit) burst(sparks, point, e.glance ? 9 : strong ? 8 : 4, back);
-        if (fx.blood && !e.kick && !e.glance) burst(red, point, strong ? 16 : e.arrow ? 4 : 8, away);
-        if (e.kick) burst(dust, [at[0], 0.2, at[2]], 6);
+        burst(impact, point, strong || special?.impact === 'blunt' ? 8 : e.arrow ? 3 : 5, away);
+        if (e.glance || armoured || e.crit || special?.impact === 'steel')
+          burst(sparks, point, e.glance ? 9 : strong ? 8 : 4, back);
+        if (fx.blood && !e.kick && !e.glance && special?.impact !== 'arcane')
+          burst(red, point, strong ? 16 : e.arrow ? 4 : 8, away);
+        if (e.kick || special?.impact === 'blunt') burst(dust, floor(at, 0.2), 6);
+        if (special?.impact === 'steel') cues.show('glint', point, heading, 0.28, special.tint, { time: 0.13, opacity: 0.92 });
         break;
       }
       case 'break':
@@ -257,65 +392,72 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         break;
       }
       case 'skillBeat':
-        if (e.id === 'spin' || e.id === 'charge' || e.id === 'moon' || e.id === 'boar') {
-          burst(dust, [at[0], 0.1, at[2]], e.id === 'boar' && e.part === 1 ? 10 : 6);
-        } else if (e.id === 'returnSpear') {
-          if (e.part < 0) burst(dust, [at[0], 0.09, at[2]], 7);
-          else {
-            const blade = bladeOf(e.who);
-            if (blade) {
-              const [grip, tip] = blade;
-              const delta = tip.map((v, i) => v - grip[i]);
-              const length = Math.hypot(...delta) || 1;
-              burst(glow, tip, 4, delta.map((v) => v / length));
-            }
-          }
+        if (e.part < 0) {
+          burst(dust, floor(at, 0.09), 7);
+          break;
         }
+        skillCue(e.id, at, heading, bladeOf(e.who), e.part ?? 0, true);
+        if (['spin', 'charge', 'moon', 'boar', 'stepCut', 'turning', 'shieldSlam'].includes(e.id))
+          burst(dust, floor(at, 0.1), e.id === 'boar' && e.part === 1 ? 9 : 5);
         break;
       case 'loose': {
-        if (e.skill !== 'fan' && e.skill !== 'gale' && e.skill !== 'wave') break;
-        const forward = [Math.sin(e.yaw), 0, Math.cos(e.yaw)];
-        const distance = e.skill === 'wave' ? 0.9 : 0.55;
-        const release = [at[0] + forward[0] * distance, at[1], at[2] + forward[2] * distance];
-        burst(glow, release, e.skill === 'gale' ? 9 : 4, forward);
+        const profile = SKILL_EFFECTS[e.skill];
+        if (!profile?.release) break;
+        const wave = e.skill === 'wave';
+        const origin = ahead(at, e.yaw, wave ? 0.9 : 0.67, wave ? 0.92 : 1.45);
+        cues.show(profile.release, origin, e.yaw, wave ? 0.96 : e.skill === 'fan' ? 0.67 : 0.48, profile.tint,
+          { time: wave ? 0.21 : 0.18, opacity: 0.88, initial: 0.95 });
+        if (e.skill === 'backStep') burst(dust, floor(at, 0.13), 7);
         break;
       }
       case 'slam': {
-        burst(dust, [e.at[0], 0.15, e.at[1]], 40);
-        ring([e.at[0], 0.06, e.at[1]], e.radius, [1, 0.8, 0.5]);
+        const at = [e.at[0], 0.075, e.at[1]];
+        const tint = SKILL_EFFECTS[e.skill]?.tint ?? SKILL_EFFECTS.down.tint;
+        cues.show(e.skill === 'down' ? 'split' : 'ring', at, heading, e.radius, tint,
+          { time: 0.44, opacity: 0.95, initial: 0.39, growth: 0.61 });
+        if (e.skill === 'drop') cues.show('split', floor(at, 0.09), heading + Math.PI, e.radius * 0.73, tint,
+          { time: 0.45, opacity: 0.64, initial: 0.55, growth: 0.43 });
+        burst(dust, floor(at, 0.15), e.skill === 'leap' ? 19 : 28);
+        burst(impact, floor(at, 0.28), 8);
         break;
       }
       case 'blast': {
-        burst(fire, [e.at[0], 0.7, e.at[1]], 40);
-        burst(sparks, [e.at[0], 0.8, e.at[1]], 40);
-        burst(dust, [e.at[0], 0.2, e.at[1]], 30);
-        flash.setPosition(e.at[0], 1.2, e.at[1]);
-        flash.intensity = 30;
-        flashLife = 0.3;
-        ring([e.at[0], 0.06, e.at[1]], e.radius, [1, 0.5, 0.2]);
+        const at = [e.at[0], 0.075, e.at[1]];
+        burst(fire, floor(at, 0.7), 32);
+        burst(sparks, floor(at, 0.8), 24);
+        burst(dust, floor(at, 0.2), 20);
+        flash.setPosition(...floor(at, 1.2));
+        flash.intensity = 13;
+        flashLife = 0.16;
+        cues.show('ring', at, 0, e.radius, SKILL_EFFECTS.blast.tint, { time: 0.4, opacity: 0.94, initial: 0.24, growth: 0.76 });
         break;
       }
-      case 'mist':
-        burst(venom, [e.at[0], 0.8, e.at[1]], 70);
+      case 'mist': {
+        const at = [e.at[0], 0.075, e.at[1]];
+        burst(venom, floor(at, 0.55), 43);
+        cues.show('split', at, 0, e.radius, SKILL_EFFECTS.mist.tint, { time: 0.54, opacity: 0.62, initial: 0.44, growth: 0.56 });
+        break;
+      }
+      case 'web':
+        cues.show('ring', [e.at[0], 0.07, e.at[1]], 0, e.radius, SKILL_EFFECTS.web.tint,
+          { time: 0.35, opacity: 0.71, initial: 0.58, growth: 0.42 });
         break;
       case 'shout':
-        burst(glow, at, 30);
-        ring([at[0], 0.06, at[2]], 2.2, [1, 0.7, 0.3]);
+        burst(glow, at, 13);
+        cues.show('ring', floor(at, 0.08), heading, 2.1, SKILL_EFFECTS.shout.tint, { time: 0.35, opacity: 0.89 });
+        cues.show('split', floor(at, 0.20), heading, 1.54, SKILL_EFFECTS.shout.tint, { time: 0.49, opacity: 0.69 });
         break;
       case 'skill':
-        burst(glow, at, 8);
+        skillCue(e.id, at, heading, bladeOf(e.who), 0, false);
+        break;
+      case 'lance':
+        skillCue('couch', at, heading, bladeOf(e.who), 0, false);
+        break;
+      case 'skillCancel':
+        if (e.id === 'spin') cues.show('arc', floor(at), heading, 0.84, SKILL_EFFECTS.counter.tint, { time: 0.19, opacity: 0.65 });
         break;
     }
   };
-
-  function ring(at, radius, tint) {
-    const mat = createUnlitMaterial3D({ color: tint, blending: 'additive', depthWrite: false, side: 'double', opacity: 1 });
-    const mesh = new Mesh3D(ringGeo, mat);
-    mesh.setPosition(at[0], at[1], at[2]);
-    mesh.setRotation(-Math.PI / 2, 0, 0);
-    scene.addChild(mesh);
-    rings.push({ mesh, mat, life: 0.5, radius });
-  }
 
   /** Each frame: fly the arrows, place webs, run the emitters. */
   fx.update = (dt, game) => {
@@ -324,18 +466,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       flashLife -= dt;
       flash.intensity *= Math.exp(-dt * 18);
     } else flash.intensity = 0;
-    for (const r of [...rings]) {
-      r.life -= dt;
-      const k = 1 - r.life / 0.5;
-      const s = r.radius * (0.4 + 0.6 * k);
-      r.mesh.setScale(s, s, s);
-      r.mat.opacity = Math.max(0, 1 - k);
-      if (r.life <= 0) {
-        r.mesh.removeFromParent();
-        r.mat.dispose();
-        rings.splice(rings.indexOf(r), 1);
-      }
-    }
+    cues.update(dt);
     const live = new Set();
     for (const shot of game?.shots ?? []) {
       live.add(shot);
@@ -344,15 +475,17 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         let view, wake;
         if (shot.kind === 'wave') {
           view = new Mesh3D(waveGeo, waveMat);
+          view.castShadow = false;
           view.renderOrder = 4;
         } else {
           view = arrowModel.node.clone();
-          if (shot.kind === 'gale') {
-            wake = new Mesh3D(galeGeo, galeMat);
+          const style = wakes.get(shot.skill ?? shot.kind);
+          if (style) {
+            wake = new Mesh3D(wakeGeo, style.material);
             wake.castShadow = false;
+            wake.setScale(style.width, style.length, style.width);
             view.addChild(wake);
           }
-          if (shot.kind === 'blast') burst(glow, [shot.x, shot.y, shot.z], 4);
         }
         scene.addChild(view);
         entry = { view, wake };
@@ -362,9 +495,8 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       if (wake) wake.visible = !shot.done;
       if (shot.kind === 'wave') {
         const yaw = Math.atan2(shot.vx, shot.vz);
-        view.setPosition(shot.x, 1.1, shot.z);
-        view.setScale(1.5, 0.72, 1);
-        view.setRotation(0, yaw, -1.06);
+        view.setPosition(shot.x, shot.y, shot.z);
+        view.setRotation(0, yaw, 0);
         view.visible = !shot.done;
         continue;
       }
@@ -379,7 +511,6 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         view.setQuaternion(ax[0] * s, 0, ax[2] * s, Math.cos(angle / 2));
         view.setPosition(shot.x, Math.max(0.02, shot.y), shot.z);
       }
-      if (shot.kind === 'blast' && !shot.done) burst(glow, [shot.x, shot.y, shot.z], 1);
       view.visible = !(shot.done && shot.stuck);
     }
     for (const [shot, { view }] of arrows) {
@@ -391,12 +522,18 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     const clouds = new Set(game?.clouds ?? []);
     for (const c of clouds) {
       if (c.kind === 'web' && !webs.has(c)) {
-        const m = webMesh(c.radius);
+        const m = new Mesh3D(webGeo, webMat);
+        m.castShadow = false;
         m.setPosition(c.x, 0, c.z);
+        m.setScale(c.radius, 1, c.radius);
         scene.addChild(m);
         webs.set(c, m);
       }
-      if (c.kind === 'mist' && Math.random() < dt * 14) burst(venom, [c.x, 0.7, c.z], 2);
+      if (c.kind === 'mist' && Math.random() < dt * 12) {
+        const angle = Math.random() * 2 * Math.PI;
+        const radius = Math.sqrt(Math.random()) * c.radius * 0.58;
+        burst(venom, [c.x + Math.cos(angle) * radius, 0.57, c.z + Math.sin(angle) * radius], 2);
+      }
     }
     for (const [c, m] of webs) {
       if (!clouds.has(c)) {
@@ -424,11 +561,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     webs.clear();
     for (const e of fightEmitters) e.reset();
     for (const s of sweeps.values()) s.clear();
-    for (const r of rings) {
-      r.mesh.removeFromParent();
-      r.mat.dispose();
-    }
-    rings.length = 0;
+    cues.clear();
     flashLife = 0;
     flash.intensity = 0;
   };

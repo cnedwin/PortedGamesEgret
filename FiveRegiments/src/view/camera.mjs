@@ -18,9 +18,9 @@ export function createCameraRig(camera) {
    * Follow `hero` with heading `yaw` and elevation `pitch`. `target` is the locked foe or null; `place` has posts.
    * Returns the yaw the camera settled on (locking turns it).
    */
-  rig.update = (dt, { hero, yaw, pitch, target, place, guard = false, dead = false, finish = 0, mounted = false, view = 'third', zoom = 1, eye = null }) => {
+  rig.update = (dt, { hero, yaw, pitch, target, targetYaw, place, guard = false, dead = false, finish = 0, mounted = false, view = 'third', zoom = 1, eye = null }) => {
     if (target) {
-      const want = Math.atan2(target.x - hero.x, target.z - hero.z);
+      const want = targetYaw ?? Math.atan2(target.x - hero.x, target.z - hero.z);
       yaw += wrap(want - yaw) * (1 - Math.exp(-dt * 7));
     }
     const contactDecay = Math.exp(-dt * 22);

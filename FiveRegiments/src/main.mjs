@@ -24,8 +24,11 @@ import { loadMotion, skillTrailSegment, swingTrailActive } from './view/motion.m
 import { createFigure } from './view/figure.mjs';
 import { createHorse } from './view/horse.mjs';
 import { createEffects } from './view/effects.mjs';
+import { skillSweepStyle } from './view/effect-profiles.mjs';
 import { ARMS } from './view/weapons.mjs';
 import { createCameraRig } from './view/camera.mjs';
+import { createMountedPresentation } from './view/mounted-presentation.mjs';
+import { createContactAccent } from './view/contact-accent.mjs';
 import { applyLook, buildPlace } from './view/stage.mjs';
 
 const params = new URLSearchParams(location.search);
@@ -79,6 +82,8 @@ async function main() {
   const camera = createPerspectiveCamera3D({ fov: 52, near: 0.08, far: 600 });
   scene.addChild(camera);
   const cam = createCameraRig(camera);
+  const mountedPresentation = createMountedPresentation(TICK);
+  const contactAccent = createContactAccent();
   const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood });
 
   const ui = document.querySelector('#ui');
@@ -147,9 +152,9 @@ async function main() {
     return {
       ...fig,
       horse,
-      update(m, g, dt) {
+      update(m, g, dt, options) {
         horse.update(m.horse, dt, { rearing: m.mounted && m.stunKind === 'rear' && m.stun > 0 });
-        fig.update(m, g, dt, { seat: horse.seat() });
+        fig.update(m, g, dt, { ...options, seat: horse.seat() });
       },
       dispose() {
         fig.dispose();
@@ -454,13 +459,14 @@ async function main() {
     return best;
   }
 
-  function onEvent(e) {
+  function onEvent(e, tickEvents) {
     const heroId = game.hero.id;
     const defender = fighter(e.who),
       attacker = fighter(e.by);
     const bearing = attacker && defender && attacker !== defender
       ? Math.atan2(defender.x - attacker.x, defender.z - attacker.z)
       : undefined;
+    const contactKick = (amount) => cam.kick(amount * (game.hero.mounted ? 0.65 : 1), bearing);
     switch (e.type) {
       case 'swingRelease': {
         const longWeapon = defender?.regiment === 'vanguard' || defender?.regiment === 'plume';
@@ -480,6 +486,14 @@ async function main() {
           case 'down': play('heavy', { volume: 0.71, rate: 0.81 }); break;
           case 'boar': play(e.part === 0 ? 'step' : 'heavy', { volume: 0.67, rate: e.part === 0 ? 0.84 : 1.39 }); break;
           case 'returnSpear': play(e.part < 0 ? 'spearPlant' : 'spearThrust', { volume: e.part < 0 ? 0.78 : 0.87 }); break;
+          case 'turning':
+          case 'stepCut': play('swing', { volume: 0.63, rate: 1.06 }); break;
+          case 'flowers':
+          case 'finisher': play('spearThrust', { volume: 0.49, rate: 1.24 }); break;
+          case 'shieldSlam':
+          case 'axeSmash':
+          case 'poleAxeSmash': play('heavy', { volume: 0.71, rate: 0.9 }); break;
+          case 'whirl': play('heavy', { volume: 0.59, rate: e.part % 2 ? 1.05 : 0.95 }); break;
         }
         break;
       }
@@ -494,9 +508,11 @@ async function main() {
         break;
       case 'block':
         figures.get(e.who)?.struck(e.heavy ?? 0, bearing, 'block');
-        if (e.arrow) play('shield', { volume: 0.8 });
-        else play(defender?.r.offhand === 'shield' ? 'shield' : 'clash', { rate: 0.9 + Math.random() * 0.2 });
-        if (e.who === heroId) cam.kick(0.16, bearing);
+        if (!tickEvents.some((next) => next.type === 'break' && next.by === e.by && next.who === e.who)) {
+          if (e.arrow) play('shield', { volume: 0.8 });
+          else play(defender?.r.offhand === 'shield' ? 'shield' : 'clash', { rate: 0.9 + Math.random() * 0.2 });
+          if (e.who === heroId || e.by === heroId) contactKick(0.17);
+        }
         break;
       case 'deflect':
         figures.get(e.who)?.struck(0, bearing, 'deflect');
@@ -504,7 +520,7 @@ async function main() {
         slow = 0.3;
         slowFor = 0.18;
         if (e.who === heroId) {
-          cam.kick(0.18, bearing);
+          contactKick(0.18);
           tally.deflects++;
           hud.toast(t('deflected'), 'good');
         }
@@ -512,6 +528,7 @@ async function main() {
       case 'break':
         play('break');
         if (e.by === heroId) {
+          contactKick(0.27);
           tally.broken++;
           hud.toast(t('broken'), 'good');
         } else if (e.who === heroId) hud.toast(t('broken'), 'bad');
@@ -519,18 +536,27 @@ async function main() {
       case 'hit': {
         if (e.quiet) break;
         const heavy = (e.heavy ?? 0) > 0.5 || e.broke;
-        figures.get(e.who)?.struck(e.broke ? Math.max(e.heavy ?? 0, 0.65) : e.heavy ?? 0, bearing);
+        const skillHit = e.skill && !e.arrow;
+        const armoured = defender?.r.armour === 'heavy';
+        const impact = Math.max(e.heavy ?? 0, e.broke ? 0.65 : skillHit ? 0.38 : e.crit ? 0.28 : 0);
+        figures.get(e.who)?.struck(impact, bearing);
         const cue = e.kick ? 'kick' : e.arrow ? 'arrowHit' : e.crit ? 'crit' : heavy ? 'heavyHit'
-          : defender?.r.armour === 'heavy' ? 'armourHit' : 'hit';
-        play(cue, { volume: 0.9 });
-        if (e.who === heroId) cam.kick(heavy ? 0.52 : 0.28, bearing);
+          : skillHit ? (armoured ? 'skillArmourHit' : 'skillHit') : armoured ? 'armourHit' : 'hit';
+        if (!e.broke) play(cue, { volume: 0.9 });
+        if (e.who === heroId) contactKick(heavy ? 0.52 : skillHit ? 0.36 : 0.28);
         else if (e.by === heroId) {
+          const close = attacker && defender && Math.hypot(defender.x - attacker.x, defender.z - attacker.z) < 3.35;
+          const action = attacker?.act;
+          if (close && !e.arrow && !e.broke && !e.glance &&
+            (action?.kind === 'swing' && action.struck || action?.kind === 'skill' && action.id === e.skill)) {
+            contactAccent.hold(attacker, heavy || skillHit ? 0.036 : 0.022);
+          }
           // Keep ordinary follow-up inputs on the normal clock. Heavy blows still have a brief accent.
           if (heavy) {
             slow = Math.min(slow, 0.72);
             slowFor = Math.max(slowFor, 0.018);
           }
-          cam.kick(heavy ? 0.30 : 0.16, bearing);
+          if (!e.broke) contactKick(heavy ? 0.30 : skillHit ? 0.25 : 0.18);
         }
         const p = projectToViewport3D(camera, chestOf(e.who), canvas.clientWidth, canvas.clientHeight);
         if (p.onScreen) hud.number([p.x, p.y], e.damage, (e.who === heroId ? 'bad' : '') + (e.crit ? ' crit' : ''));
@@ -666,8 +692,10 @@ async function main() {
         inputs.hero.skillGuardCancel = true;
         inputs.hero.recoveryHandoff = true;
       }
-      for (const e of step(game, inputs)) {
-        onEvent(e);
+      for (const man of game.men) mountedPresentation.capture(man);
+      const tickEvents = step(game, inputs);
+      for (const e of tickEvents) {
+        onEvent(e, tickEvents);
         events.push(e);
       }
       if (game.over && !over) {
@@ -680,27 +708,37 @@ async function main() {
       if (overTime > 2.4) return finish();
     }
     // Figures, effects, camera.
+    const fraction = carry / TICK;
+    let cameraHero = game.hero;
     for (const m of game.men) {
       const f = figures.get(m.id);
-      f.update(m, game, dt * k);
+      const shown = mountedPresentation.pose(m, fraction);
+      if (m === game.hero) cameraHero = shown;
+      const contactTime = contactAccent.sample(m, dt);
+      f.update(shown, game, dt * k, { contactTime });
       // A sweep behind the outer half of a blade, only while a blow or a skill moves its point fast.
       const act = m.act,
         b = f.blade(),
         was = tips.get(m.id);
-      tips.set(m.id, b ? { point: b[1], act } : null);
+      // A galloping saddle moves faster than the ribbon's threshold by itself.
+      // Use the held blade's movement in the rider's frame to measure an actual cut.
+      const tip = b && (shown.mounted ? f.holder.worldToLocal([0, 0, 0], b[1]) : b[1]);
+      tips.set(m.id, b ? { point: tip, act, mounted: m.mounted } : null);
       const step = dt * k;
-      const cutting = swingTrailActive(act, ARMS[m.regiment].main, m.prev?.attack);
-      const segment = skillTrailSegment(act);
+      const visualAct = contactTime === null || !shown.act ? shown.act : { ...shown.act, t: contactTime };
+      const cutting = swingTrailActive(visualAct, ARMS[m.regiment].main, m.prev?.attack);
+      const segment = skillTrailSegment(visualAct);
+      const trail = skillSweepStyle(act?.kind === 'skill' ? act.id : undefined, m.mounted);
       const meleeRibbon = m.id + ':melee';
       if (act?.kind === 'swing' && act.line !== 'T' && act !== was?.act) fx.sweep(meleeRibbon).clear();
-      if (b && was && step > 0 && ((cutting && act === was.act) || segment !== null)) {
+      if (b && was?.mounted === m.mounted && act === was.act && step > 0 && trail.strength > 0 && (cutting || segment !== null)) {
         const [x, y, z] = was.point;
-        const speed = Math.hypot(b[1][0] - x, b[1][1] - y, b[1][2] - z) / step;
+        const speed = Math.hypot(tip[0] - x, tip[1] - y, tip[2] - z) / step;
         if (speed > 5.5) {
-          const edge = b[0].map((v, i) => v + (b[1][i] - v) * 0.76);
+          const edge = b[0].map((v, i) => v + (b[1][i] - v) * trail.edge);
           // Adjacent cuts use different ribbons so a fading cut cannot bridge to the next one.
           const ribbon = cutting ? meleeRibbon : segment > 0 ? m.id + ':' + segment : m.id;
-          fx.sweep(ribbon).push(edge, b[1], Math.min(0.7, (speed - 5.5) / 8), m.side === 'hero' ? [1, 0.95, 0.85] : [1, 0.75, 0.6]);
+          fx.sweep(ribbon).push(edge, b[1], Math.min(1, (speed - 5.5) / 8) * trail.strength, trail.tint);
         }
       }
     }
@@ -709,11 +747,14 @@ async function main() {
       const defender = fighter(e.who);
       fx.event(e, chestOf, (id) => figures.get(id)?.blade(), {
         shield: defender?.r.offhand === 'shield',
-        armoured: defender?.r.armour === 'heavy'
+        armoured: defender?.r.armour === 'heavy',
+        heading: defender?.face
       });
     }
     fx.update(dt * k, game);
-    const yaw = cam.update(dt, { hero: game.hero, yaw: input.state.yaw, pitch: input.state.pitch, target, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.() });
+    // The picture eases between ticks, while aim assistance still uses combat positions.
+    const targetYaw = target ? Math.atan2(target.x - game.hero.x, target.z - game.hero.z) : undefined;
+    const yaw = cam.update(dt, { hero: cameraHero, yaw: input.state.yaw, pitch: input.state.pitch, target, targetYaw, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.() });
     if (target) input.setYaw(yaw);
     const w = canvas.clientWidth,
       h = canvas.clientHeight;
@@ -793,7 +834,8 @@ async function main() {
       for (let i = 0; i < seconds * 60 && !game.over; i++) {
         const inputs = { hero: autoBrain.think(game, TICK) };
         for (const [id, b] of Object.entries(brains)) inputs[id] = b.think(game, TICK);
-        for (const e of step(game, inputs)) onEvent(e);
+        const tickEvents = step(game, inputs);
+        for (const e of tickEvents) onEvent(e, tickEvents);
       }
       return game.over;
     }

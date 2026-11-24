@@ -29,12 +29,16 @@ export const TIGER_SWORD = {
 const contactsOf = (keys) => keys.filter(([, , pose]) => pose === 1).map(([time]) => time);
 const spinContacts = contactsOf(TIGER_SWORD.spin);
 const chainContacts = contactsOf(TIGER_SWORD.chain);
+const whirlContacts = Array.from({ length: SKILLS.whirl.hits }, (_, i) => 0.25 + i * 0.30);
 const returningSpear = SKILLS.returnSpear;
 const RETURN_SPEAR_BEATS = [0, returningSpear.stepTime * 0.58, returningSpear.turnTime - 0.07,
   returningSpear.release, returningSpear.release + 0.13, returningSpear.duration];
 const skillTrailWindows = {
   charge: [0.4, 0.55], moon: [0.11, 0.28], down: [0.63, 0.82], wave: [0.3, 0.46],
-  returnSpear: [returningSpear.release - 0.04, returningSpear.release + 0.056]
+  returnSpear: [returningSpear.release - 0.04, returningSpear.release + 0.056],
+  turning: [0.23, 0.38], stepCut: [0.32, 0.48], finisher: [0.23, 0.36],
+  axeSmash: [0.49, 0.64], poleAxeSmash: [0.49, 0.64],
+  leap: [0.49, 0.65], drop: [0.45, 0.60]
 };
 
 /** Ready, low carry, planted load, thrust contact, withdrawal, and ready again. */
@@ -59,9 +63,9 @@ export function skillTrailSegment(action) {
     if (action.firstHitAt !== undefined && action.t - action.firstHitAt < 0.072) return 1;
     return action.t >= 0.54 && action.t <= 0.7 ? 2 : null;
   }
-  if (action.id === 'spin' && Math.abs(action.t - spinContacts[0]) >= 0.075) return null;
-  if (action.id !== 'swing') return 0;
-  const index = chainContacts.findIndex((time) => Math.abs(action.t - time) < 0.054);
+  if (action.id === 'spin') return Math.abs(action.t - spinContacts[0]) < 0.075 ? 0 : null;
+  const contacts = action.id === 'swing' ? chainContacts : action.id === 'whirl' ? whirlContacts : [];
+  const index = contacts.findIndex((time) => Math.abs(action.t - time) < 0.054);
   return index < 0 ? null : index + 1;
 }
 
