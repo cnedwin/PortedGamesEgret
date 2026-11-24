@@ -15,7 +15,7 @@ import { incomingAttack } from './sim/combat-tells.mjs';
 import { createBrain, createBrains } from './sim/brain.mjs';
 import { ORDER, REGIMENTS, loadout, playerLoadout } from './sim/regiments.mjs';
 import { PLACES, grade, planRoad, stageScore } from './sim/road.mjs';
-import { planExpedition } from './sim/expedition.mjs';
+import { expeditionReady, planExpedition } from './sim/expedition.mjs';
 import { createInput } from './input.mjs';
 import { createHud, createTouchControls } from './hud.mjs';
 import { createScreens, placeName } from './screens.mjs';
@@ -24,6 +24,7 @@ import { MARKS, openSave, recordRun, settingsOf } from './saves.mjs';
 import { setLanguage, getLanguage, t, say } from './i18n.mjs';
 import { loadMotion, skillTrailSegment, swingTrailActive } from './view/motion.mjs';
 import { createFigure } from './view/figure.mjs';
+import { createFootSoldier } from './view/foot-soldier.mjs';
 import { createHorse } from './view/horse.mjs';
 import { createEffects } from './view/effects.mjs';
 import { skillSweepStyle } from './view/effect-profiles.mjs';
@@ -152,7 +153,9 @@ async function main() {
     motions[regiment] ??= loadMotion(new URL(`../assets/motion/${regiment}`, import.meta.url));
     return Promise.all([body(regiment, which), motions[regiment], REGIMENTS[regiment].horse ? body('horse', which) : null]);
   }
-  function figureFor(man, [b, motion, horseBody]) {
+  function figureFor(man, figureAssets) {
+    if (man.rank === 'troop') return createFootSoldier(man.regiment, scene);
+    const [b, motion, horseBody] = figureAssets;
     const fig = createFigure({ regiment: man.regiment, body: b, motion, world: scene, height: HEIGHT[man.regiment] });
     if (!horseBody) return fig;
     // A rider and his horse: the horse moves first, then he sits where its saddle is.
@@ -309,12 +312,13 @@ async function main() {
     screens.loading(`${t('loadingPlace')} · ${placeName(st.place)}`);
     dropLineup();
     clearFight();
-    const roster = [run.loadout.regiment, ...st.foes];
+    const foes = st.units ?? st.foes.map(regiment => loadout(regiment));
+    const roster = [run.loadout, ...foes];
     let progress = 0;
     const arrived = (message) => screens.progress(++progress / 2, message);
     const [, bodies] = await Promise.all([
       enter(st.place).then(() => arrived(`${t('loadingMen')} · ${placeName(st.place)}`)),
-      Promise.all(roster.map((regiment) => loadFigure(regiment))).then((loaded) => {
+      Promise.all(roster.map(unit => unit.rank === 'troop' ? null : loadFigure(unit.regiment))).then((loaded) => {
         arrived();
         return loaded;
       })
@@ -323,13 +327,20 @@ async function main() {
     const spawn = st.expedition && stage.place.spawn;
     game = createFight({
       hero: { ...run.loadout, turn: 14, at: spawn && [spawn.x, spawn.z] },
-      foes: st.foes.map((regiment) => ({ regiment, ...loadout(regiment) })),
+      foes,
       place: stage.place,
       seed,
       health: st.health ?? 1,
       exit: st.expedition ? stage.place.exit : null
     });
-    brains = createBrains(game, { level: st.level });
+    brains = st.expedition ? Object.fromEntries(game.men.slice(1).map(man => {
+      const brain = createBrain(man, { level: man.rank === 'troop' ? Math.min(0.42, st.level) : st.level, rng: game.rng });
+      let awake = false;
+      return [man.id, { think(g, dt) {
+        awake ||= expeditionReady(man, g.hero);
+        return awake ? brain.think(g, dt) : {};
+      } }];
+    })) : createBrains(game, { level: st.level });
     autoBrain = params.has('auto') ? createBrain(game.hero, { level: 0.7, rng: game.rng }) : null;
     const list = game.men.map((man, i) => figureFor(man, bodies[i]));
     figures = new Map(game.men.map((m, i) => [m.id, list[i]]));
@@ -520,7 +531,7 @@ async function main() {
         break;
       }
       case 'skillCancel':
-        figures.get(e.who)?.braceFromSpin();
+        figures.get(e.who)?.braceFromSpin?.();
         play('steelReady', { volume: 0.71 });
         if (e.who === heroId) hud.toast(t('spinGuard'), 'good');
         break;

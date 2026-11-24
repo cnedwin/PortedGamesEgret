@@ -89,16 +89,22 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 /** Bring a man onto the field. */
 function enlist(game, spec, side, index) {
   const load = loadout(spec.regiment, spec);
-  const r = REGIMENTS[load.regiment];
-  const talents = new Set(load.talents);
+  const rank = spec.rank ?? null;
+  const troop = rank === 'troop';
+  const base = REGIMENTS[load.regiment];
+  const r = troop ? { ...base, art: null, offArt: null, mountedArt: null } : base;
+  const talents = new Set(troop ? [] : load.talents);
   const health = Math.round(r.health * (spec.health ?? 1));
   const at = spec.at ?? [0, 0];
   const man = {
     id: side === 'hero' ? 'hero' : 'foe' + index,
     side,
     regiment: load.regiment,
+    rank,
+    power: spec.power ?? 1,
+    wakeZ: spec.wakeZ,
     r,
-    skills: load.skills,
+    skills: troop ? [] : load.skills,
     talents,
     x: at[0],
     z: at[1],
@@ -132,7 +138,7 @@ function enlist(game, spec, side, index) {
     daze: 0,
     knife: false,
     draw: null,
-    body: BODY,
+    body: troop ? 0.36 : BODY,
     dressings: DRESSING.count,
     horse: null,
     mounted: false,
@@ -147,7 +153,7 @@ function enlist(game, spec, side, index) {
     prev: {},
     stats: { blows: 0, hits: 0, deflects: 0, guards: 0, broken: 0, taken: 0, damage: 0 }
   };
-  if (r.horse) {
+  if (r.horse && !troop) {
     const hp = Math.round(r.horse.health * (spec.health ?? 1));
     man.horse = { hp, maxHp: hp, x: man.x, z: man.z, face: man.face, speed: 0, st: 100, alive: true, called: false, galloping: false, contacts: new Set() };
     if (spec.mounted !== false) setMounted(man, true);
@@ -224,7 +230,7 @@ function speedOf(man) {
 
 function damageMultiplier(game, man, target) {
   // Alone against two, a man fights above himself (this demo's setting for the finale).
-  let k = man.lone ? LONE.dealt : 1;
+  let k = (man.lone ? LONE.dealt : 1) * (man.power ?? 1);
   if (man.mounted && man.talents.has('centaur')) k *= 1 + TALENTS.centaur.more;
   if (target?.r.armour === 'heavy') {
     if (man.talents.has('heavyBane')) k *= 1 + TALENTS.heavyBane.more;
@@ -505,7 +511,7 @@ function loose(game, man, { yaw, pitch = 0.04, power = 1, damage, kind = 'arrow'
     vy: Math.sin(pitch) * v,
     vz: Math.cos(yaw) * Math.cos(pitch) * v,
     from: [man.x, man.z],
-    damage,
+    damage: damage * (man.power ?? 1),
     blast,
     web,
     // An arrow that goes on through men, taking those within `through` of its flight.
