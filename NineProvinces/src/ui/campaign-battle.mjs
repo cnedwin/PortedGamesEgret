@@ -30,7 +30,11 @@ export function campaignBattleBriefing(setup, player) {
   else objective = attack
     ? ['击溃敌军；若有本营标记，也可独占敌营10秒。日落前未取胜，守方获胜。', 'Break the enemy; where a keep is marked, holding it uncontested for 10 seconds also wins. Sunset favours the defenders.']
     : ['守至日落或击溃攻方；若有本营标记，须防止敌军独占10秒。', 'Hold until sunset or break the attackers; where a keep is marked, prevent 10 seconds of uncontested enemy occupation.'];
-  return { side, ours: total(side), enemy: total(side === 0 ? 1 : 0), objective };
+  const enemySide = side === 0 ? 1 : 0;
+  const roadColumns = k => new Set(setup.units.filter(u => u.side === k && u.army).map(u => u.army)).size;
+  const rendezvous = setup.kind === 'field' && setup.place.link
+    ? { ours: roadColumns(side), enemy: roadColumns(enemySide) } : null;
+  return { side, ours: total(side), enemy: total(enemySide), objective, rendezvous };
 }
 
 /** Capture before either manual fighting or explicit entrust; no RNG is read. */

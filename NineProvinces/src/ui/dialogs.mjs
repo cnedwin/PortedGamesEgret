@@ -894,6 +894,7 @@ const BUILD = {
       setup = args.setup;
     const mineSide = setup.factions.indexOf(s.player);
     const briefing = campaignBattleBriefing(setup, s.player);
+    const meeting = briefing.rendezvous;
     const council = siegeCouncil(s, setup);
     const siege = council && siegeCouncilContent(app, setup, council, briefing);
     const side = (k) =>
@@ -915,6 +916,11 @@ const BUILD = {
           h('h3', pair(['本战目标', 'Battle objective'])), h('p', pair(briefing.objective)),
           h('div.grid', stat(pair(['我方出战', 'Our force']), num(briefing.ours.troops) + pair([' 人 · ', ' troops · ']) + briefing.ours.units + pair([' 部', ' units'])),
             stat(pair(['敌方出战', 'Enemy force']), num(briefing.enemy.troops) + pair([' 人 · ', ' troops · ']) + briefing.enemy.units + pair([' 部', ' units']))),
+          meeting && Math.max(meeting.ours, meeting.enemy) > 1
+            ? h('p.note', pair([
+              '同路会师 · 我方 ' + meeting.ours + ' 支，敌方 ' + meeting.enemy + ' 支军团已到阵。',
+              'Columns met on the road · ' + meeting.ours + ' friendly and ' + meeting.enemy + ' enemy armies in contact.'
+            ])) : null,
           h('p.campaignBriefingRhythm', pair(['亲自指挥：先在暂停中部署，再开战。基础作战自动执行，战法默认由你施展，可逐部交还自动；交战中可随时暂停下令。', 'Command personally: deploy while paused, then begin. Ordinary combat remains automatic; tactics are manual unless delegated for a unit. Pause at any time to issue orders.'])),
           h('p.small.dim', pair(['委任：直接交给将领完成本战，结算后可观看实际记录。两种方式都在战后暂停大地图，等你查看局势。', 'Entrust: your officers finish this battle immediately; its actual recording is available afterwards. Both paths return to a paused campaign for review.']))) : null),
         siege ? h('section.siegeOpposition', side(1)) : h('div.sides', side(0), h('span.vs', '⚔'), side(1)),

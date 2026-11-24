@@ -9,7 +9,7 @@ import { ADJACENT, NODES } from '../data/map.mjs';
 import { autoBattle } from './battle.mjs';
 import { clamp, generalEffect, note, random, serving, stat, techEffect } from './core.mjs';
 import { capture, die } from './people.mjs';
-import { hexAt } from './hexgrid.mjs';
+import { HEX_W, hexAt } from './hexgrid.mjs';
 import { FOOTPRINTS } from './land.mjs';
 import { along, routeLine } from './ways.mjs';
 import { COUNCIL_NODE, councilSnapshot, councilArmy, arrivedArmies, incomingArmies, supportArrival, siegeWaitModel } from './siege-council.mjs';
@@ -262,8 +262,10 @@ export function disband(state, armyId) {
 
 /** The day's march of every army: moving, eating, meeting enemies and reaching places. */
 export function marchArmies(state) {
+  const foughtOnRoad = new Set();
+  const marchers = [];
   for (const a of Object.values(state.armies)) {
-    if (!state.armies[a.id]) continue;
+    if (a.link && a.inBattle) continue;
     // Eating: a day's grain for every four hundred; without it, morale and men drain away.
     const eat = (a.troops / 400) * (1 - ((a.commander ? generalEffect(state, a.commander, 'supply') : 0) + techEffect(state, a.faction, 'supply')) / 100);
     a.grain -= eat;
@@ -276,6 +278,11 @@ export function marchArmies(state) {
       dissolve(state, a);
       continue;
     }
+    marchers.push(a);
+  }
+  // All new participants have paid this day's upkeep before the first contact.
+  for (const a of marchers) {
+    if (!state.armies[a.id] || foughtOnRoad.has(a.id) || (a.link && a.inBattle)) continue;
     if (!a.link && state.nodes[a.at]) {
       // At a friendly place: take on grain and recover.
       if (state.nodes[a.at].owner === a.faction) {
@@ -300,8 +307,9 @@ export function marchArmies(state) {
       a.at = null;
     }
     if (a.link) {
+      const before = a.link.done;
       a.link.done += speedOf(state, a, a.link.kind);
-      if (meetOnTheRoad(state, a)) continue;
+      if (meetOnTheRoad(state, a, before, foughtOnRoad)) continue;
       if (a.link.done >= a.link.length) arrive(state, a);
     }
   }
@@ -314,16 +322,74 @@ function dissolve(state, a) {
   delete state.armies[a.id];
 }
 
-/** Two hostile armies on one road, coming towards each other, fight where they meet. */
-function meetOnTheRoad(state, a) {
-  for (const b of Object.values(state.armies)) {
-    if (b === a || !b.link || !hostile(state, a.faction, b.faction)) continue;
-    const same = b.link.from === a.link.to && b.link.to === a.link.from;
-    if (!same || a.link.done + b.link.done < a.link.length) continue;
-    battle(state, { kind: a.link.kind === 'land' ? 'field' : 'naval', place: { link: [a.link.from, a.link.to] }, attackers: [a.id], defenders: [b.id] });
-    return true;
+const ROAD_COLUMNS_PER_SIDE = 3;
+const ROAD_EPSILON = 1e-6;
+
+function foremost(a, b) {
+  // Army IDs count musters. The earlier muster has priority at the same point.
+  return b.link.done - a.link.done || Number(a.id.slice(1)) - Number(b.id.slice(1)) ||
+    (a.id < b.id ? -1 : Number(a.id > b.id));
+}
+
+/** Each reinforcement must already be within one battlefield hex of the contact line. */
+function roadSide(columns, lead, at) {
+  const { from, to } = lead.link;
+  return [lead.id, ...columns
+    .filter(a => a !== lead && a.faction === lead.faction && a.link.from === from && a.link.to === to &&
+      Math.abs(a.link.done - at) <= HEX_W + ROAD_EPSILON)
+    .sort(foremost)
+    .slice(0, ROAD_COLUMNS_PER_SIDE - 1)
+    .map(a => a.id)];
+}
+
+/** Only a pending field battle can hold the next column at its contact line. */
+function pendingRoadContact(state, army, before) {
+  const { from, to, length, done } = army.link;
+  let limit = Infinity;
+  for (const { kind, setup } of state.inbox) {
+    if (kind !== 'battle' || setup?.kind !== 'field' || !setup.place.link) continue;
+    const [start, end] = setup.place.link;
+    const forward = start === from && end === to;
+    if (!forward && !(start === to && end === from)) continue;
+    if (!setup.factions.some(faction => hostile(state, army.faction, faction))) continue;
+    const lead = state.armies[setup.units.find(unit => unit.side === 0)?.army];
+    if (lead?.inBattle !== setup.id || !lead.link) continue;
+    const contact = forward ? lead.link.done : length - lead.link.done;
+    if (contact >= before - ROAD_EPSILON && contact <= done + ROAD_EPSILON) limit = Math.min(limit, contact);
   }
-  return false;
+  return limit;
+}
+
+/** Opposing columns on the same road fight at their first point of contact. */
+function meetOnTheRoad(state, a, before, foughtOnRoad) {
+  const { from, to, kind, length, done } = a.link;
+  const columns = Object.values(state.armies).filter(b => b.link?.kind === kind && b.link?.length === length &&
+    ((b.link.from === from && b.link.to === to) || (b.link.from === to && b.link.to === from)) &&
+    !b.inBattle && !foughtOnRoad.has(b.id));
+  const opposing = columns.filter(b => b.link.from === to && b.link.to === from &&
+    hostile(state, a.faction, b.faction) && done + b.link.done >= length - ROAD_EPSILON);
+  const field = kind === 'land';
+  const b = field ? opposing.sort(foremost)[0] : opposing[0];
+  const reverseFront = b ? clamp(b.link.done, 0, length) : 0;
+  const front = b ? length - reverseFront : Infinity;
+  if (field) {
+    const waiting = pendingRoadContact(state, a, before);
+    if (Number.isFinite(waiting) && waiting <= front + ROAD_EPSILON) {
+      a.link.done = Math.max(before, waiting);
+      return true;
+    }
+  }
+  if (!b) return false;
+  let attackers = [a.id], defenders = [b.id];
+  if (field) {
+    // Stop only the remainder of today's move. Other columns keep their own positions.
+    a.link.done = Math.max(before, front);
+    attackers = roadSide(columns, a, front);
+    defenders = roadSide(columns, b, reverseFront);
+  }
+  for (const id of [...attackers, ...defenders]) foughtOnRoad.add(id);
+  battle(state, { kind: field ? 'field' : 'naval', place: { link: [from, to] }, attackers, defenders });
+  return true;
 }
 
 /** An army reaches the end of a road. */
@@ -701,6 +767,7 @@ export function finishBattle(state, setup, result) {
         a.link = { from: to, to: from, kind: a.link.kind, length, done: Math.max(0, length - done) };
         a.path = [from];
         a.target = from;
+        if (setup.kind === 'field' && setup.place.link) a.next = null;
       } else retreat(state, a);
       a.morale = Math.max(10, a.morale - 15);
     } else if (u.side === 0 && won === 0 && setup.place.node) {
