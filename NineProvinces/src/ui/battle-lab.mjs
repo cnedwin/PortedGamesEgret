@@ -55,8 +55,13 @@ export function replayMoments(tape,playerSide=null){
  }else if(tactic&&Number.isFinite(tactic.t)){
   moments.push({kind:'tactic',time:recordedTime(tactic.t),unit:tactic.unit,target:tactic.target,tactic:tactic.tactic,label:nm(TACTICS[tactic.tactic])});
  }
+ const crossing=events.find(event=>event.kind==='ferryEngaged');
+ if(crossing&&Number.isFinite(crossing.t))moments.push({kind:'crossing',time:recordedTime(crossing.t),hex:crossing.at,label:w('争夺渡口','Crossing contested')});
+ const pincers=events.filter(event=>event.kind==='flankContact');
+ const pincer=pincers.find(event=>event.side===playerSide)??pincers[0];
+ if(pincer&&Number.isFinite(pincer.t))moments.push({kind:'flank',time:recordedTime(pincer.t),unit:pincer.unit,target:pincer.target,hex:pincer.at,label:w('两翼夹击','Pincer attack')});
  const {winner,why}=last.over,unit=last.units?.find(unit=>!unit.gone&&!unit.routed&&tape.units.find(identity=>identity.id===unit.id)?.side===winner);
- const hex=why==='keep'?tape.field.keep:why==='depot'?tape.field.depot:unit?.pos;
+ const hex=why==='keep'||why==='crossingHeld'||why==='crossingTaken'?tape.field.keep:why==='depot'?tape.field.depot:unit?.pos;
  moments.push({kind:'result',time:last.time,unit:unit?.id,hex,label:w('胜负落定','Outcome'),
   detail:battleOutcomeReason(last.over,playerSide,getLanguage())});
  return moments.sort((a,b)=>a.time-b.time);
@@ -68,6 +73,8 @@ function eventText(e,identities){
  if(e.kind==='rout')return who(e.unit)+w(' 溃退',' routed');
  if(e.kind==='gateOpen')return w('城门攻破','Gate breached');if(e.kind==='depotBurnt')return w('粮仓焚毁','Depot burned');
  if(e.kind==='contact')return w('初次接敌','First contact');
+ if(e.kind==='ferryEngaged')return w('开始争夺渡口','The crossing is contested');
+ if(e.kind==='flankContact')return who(e.target)+w(' 遭两翼夹击',' caught in a pincer');
  if(e.kind==='occupy')return w('开始占营','Keep contested');
  if(e.kind==='structureHit')return who(e.unit)+' · '+(e.structure==='gate'?w('攻击城门','Struck the gate'):w('攻击粮仓','Struck the depot'))+' · −'+num(Math.round(e.amount));
  const detail=e.kind==='formation'?' · '+nm(FORMATIONS[e.formation??e.arg]):e.kind==='attack'?' → '+who(e.arg):e.kind==='move'||e.kind==='deploy'?' · '+hexPositionLabel(e.hex??e.arg,getLanguage()):e.kind==='speed'?' · '+e.speed+'×':e.kind==='autoTactic'?' · '+(e.arg?w('开','on'):w('关','off')):e.kind==='aim'?' · '+nm(TACTICS[e.tactic])+(e.target!=null?' → '+who(e.target):''):'';

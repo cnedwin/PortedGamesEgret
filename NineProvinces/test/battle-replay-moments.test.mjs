@@ -52,3 +52,17 @@ test('a successful player tactic is preferred over enemy casts and failed attemp
   assert.equal(replayFrameAt(tape, tactic.time).time, 11.5);
   assert.equal(result.time, 40);
 });
+
+test('the replay locates the recorded crossing and the player’s actual pincer', () => {
+  const tape = battleTape();
+  tape.events.push(
+    { kind: 'ferryEngaged', t: 6, at: 30 },
+    { kind: 'flankContact', t: 10, side: 0, unit: 0, target: 1, at: 14 },
+    { kind: 'flankContact', t: 11, side: 1, unit: 1, target: 0, at: 22 }
+  );
+  tape.frames.at(-1).over = { winner: 1, why: 'crossingHeld' };
+  const moments = replayMoments(tape, 1);
+  assert.equal(moments.find(m => m.kind === 'crossing').hex, 30);
+  assert.equal(moments.find(m => m.kind === 'flank').hex, 22);
+  assert.equal(moments.at(-1).hex, 30);
+});

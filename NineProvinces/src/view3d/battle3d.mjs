@@ -25,13 +25,18 @@ import { UNITS } from '../data/battle.mjs';
 import { TACTICS } from '../data/tactics.mjs';
 import { nm } from '../i18n.mjs';
 import { distance, neighbours, ring as hexRing, tacticPreview } from '../sim/battle.mjs';
+import { FERRY_HOLD_SECONDS } from '../sim/battle-ferry.mjs';
 import { HEX_W, hexCenter } from '../sim/hexgrid.mjs';
 import { FOOTPRINTS } from '../sim/land.mjs';
 import { generalName } from '../view/names.mjs';
 import { portrait } from '../view/portrait.mjs';
 import { wallTop } from './cities.mjs';
-import { figureOf } from './troops.mjs';
+import { figureOf, isSiegeFigure } from './troops.mjs';
 import {formationSlots, freshAttack, createSiegeLighting, battleCameraFrame} from './battle-staging.mjs';
+import { createBattlePlateLayout } from './battle-plate-layout.mjs';
+import { catapultStone, CATAPULT_ARM_PIVOT, CATAPULT_LOAD_POINT, TOWER_DECK_PIVOT, TOWER_DECK_PITCH } from './siege-tall-equipment.mjs';
+import { catapultPitch, siegeMount, CATAPULT_RELEASE_PITCH, CATAPULT_RELEASE_TIME, CATAPULT_RESET_TIME } from './siege-motion.mjs';
+import { createSiegeShots } from './siege-shots.mjs';
 
 const hex = (n) => '#' + n.toString(16).padStart(6, '0');
 
@@ -54,6 +59,7 @@ function softDot() {
 export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on, calm, canDeploy }) {
   const { scene, land, troops, camera, rig } = realm;
   const siegeSample = b.setup.presentation === 'nanpi-sunset';
+  const tacticalFormation = siegeSample || (b.setup.kind === 'field' && !b.setup.special);
   const sunset = siegeSample ? createGradientCubeTexture3D([83,103,137],[224,160,96],[109,91,69],32) : null;
   const lightLease = siegeSample ? createSiegeLighting(realm.stage,sunset) : null;
   realm.select?.({});
@@ -133,6 +139,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     mesh.count=0;mesh.pickable=false;mesh.frustumCulled=false;scene.addChild(mesh);own.push(mesh);return mesh;
   };
   const routeLines=makeOrderLines(0x9bd5cf),attackLine=makeOrderLines(0xe38462);
+  const flankOwn = makeOrderLines(0xebc972), flankFoe = makeOrderLines(0xe68065);
+  const flankCues = [null, null];
   const previewLines=makeOrderLines(0xe8cb85),previewCells=makeCells(0xe8cb85,.95,true);
   previewLines.name='battle-pending-route';previewCells.name='battle-pending-order';
   routeLines.name='battle-route-lines';attackLine.name='battle-target-line';
@@ -153,6 +161,34 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     }
     mesh.count = count;
   }
+
+  let commandPaths;
+  function drawCommandPlan(orders) {
+    if (orders.some(order => order.valid) && !commandPaths) {
+      const create = colour => ({ lines: makeOrderLines(colour), cells: makeCells(colour, .78, true) });
+      commandPaths = { move: create(0x88d4d6), attack: create(0xe8a27a) };
+      commandPaths.move.lines.name = 'battle-plan-moves';
+      commandPaths.attack.lines.name = 'battle-plan-attacks';
+    }
+    if (!commandPaths) return;
+    for (const [kind, { lines, cells }] of Object.entries(commandPaths)) {
+      let count = 0;
+      const destinations = new Set();
+      for (const order of orders) {
+        if (!order.valid || order.kind !== kind) continue;
+        let from = b.units[order.unit]?.pos;
+        if (from === undefined || from < 0) continue;
+        for (const at of order.path) {
+          count = orderSegment(lines, count, from, at);
+          from = at;
+        }
+        if (kind === 'attack') count = orderSegment(lines, count, from, order.hex);
+        destinations.add(order.hex);
+      }
+      lines.count = count;
+      putCells(cells, destinations);
+    }
+  }
   // Match the simulation's target footprint, including its three-hex line order.
   function tacticCells(u, tc, centre) {
     if (tc.shape === 'ring1' || tc.shape === 'ring2') return hexRing(centre, tc.shape === 'ring1' ? 1 : 2);
@@ -166,7 +202,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   }
   function refreshPreview() {
     const u = selected !== null ? b.units[selected] : null;
-    const key = [viewPhase, selected, u?.pos,u?.order,u?.goal,u?.path?.join(','),u?.target?.id, armedTactic?.tactic,armedTactic?.target, pendingOrder?.unit,pendingOrder?.kind,pendingOrder?.hex,pendingOrder?.target,pendingOrder?.valid,pendingOrder?.path?.join(','), hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
+    const key = [viewPhase, selected, u?.pos,u?.order,u?.goal,u?.path?.join(','),u?.target?.id,u?.intent,u?.intentAnchor, armedTactic?.tactic,armedTactic?.target, pendingOrder?.unit,pendingOrder?.kind,pendingOrder?.hex,pendingOrder?.target,pendingOrder?.valid,pendingOrder?.path?.join(','), hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
     if (key === previewKey) return;previewKey = key;
     rangeCells.count = targetCells.count = dangerCells.count = 0;
     routeLines.count=attackLine.count=0;
@@ -179,7 +215,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     }
     const tc = armedTactic ? TACTICS[armedTactic.tactic] : null;
     const reach = tc ? tacticPreview(b,u,tc.id).reach : UNITS[u.kind].range;
-    putCells(rangeCells, hexRing(u.pos, reach));
+    putCells(rangeCells, !tc && u.intent === 'guard' && Number.isInteger(u.intentAnchor)
+      ? hexRing(u.intentAnchor, 2) : hexRing(u.pos, reach));
     if (pendingOrder && !tc) {
       const ordered=b.units[pendingOrder.unit];
       if(ordered&&!ordered.gone){
@@ -229,8 +266,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     scene.addChild(gateMesh);
     own.push(gateMesh);
   }
-  const keepRing=siegeSample&&b.keep!==null?new Mesh3D(createRingGeometry3D({innerRadius:1.25,outerRadius:1.4,thetaSegments:48}),createStandardMaterial3D({color:0xd4b16f,emissive:0xd4b16f,emissiveIntensity:.8,roughness:1,opacity:.65,depthWrite:false,side:'double'})):null;
-  if(keepRing){const p=pos[b.keep];keepRing.name='battle-keep-objective';keepRing.setPosition(p.x,p.y+.12,p.z);keepRing.setRotation(-Math.PI/2,0,0);keepRing.pickable=false;scene.addChild(keepRing);own.push(keepRing);}
+  const keepRing=(siegeSample||b.ferry)&&b.keep!==null?new Mesh3D(createRingGeometry3D({innerRadius:1.25,outerRadius:1.4,thetaSegments:48}),createStandardMaterial3D({color:0xd4b16f,emissive:0xd4b16f,emissiveIntensity:.8,roughness:1,opacity:.65,depthWrite:false,side:'double'})):null;
+  if(keepRing){const p=pos[b.keep];keepRing.name=b.ferry?'battle-crossing-objective':'battle-keep-objective';keepRing.setPosition(p.x,p.y+.12,p.z);keepRing.setRotation(-Math.PI/2,0,0);keepRing.pickable=false;scene.addChild(keepRing);own.push(keepRing);}
 
   // ——— Fire and dust ———
   const dot = softDot();
@@ -294,11 +331,19 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   own.push(arrows);
   const flights = [];
   const volleyAt = new Map();
+  const shots = b.units.some(unit => unit.kind === 'catapult')
+    ? createSiegeShots(scene, catapultStone(false).plain, target => {
+        burst(target.at, [.68, .56, .4], 18);
+        pulse(target.at, 0xcab48e, 'wave', 1.5);
+        on.siegeImpact?.();
+      })
+    : null;
 
   // ——— Units as drawn ———
   const shown = b.units.map((u) => {
     const p = pos[u.pos] ?? centre;
-    return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0, attackStamp:null, attackPose:0, siegePose:0, hit:0, hitWait:0, colour:new Float32Array(3), slots:[], slotsKey:'' };
+    return { x: p.x, z: p.z, y: p.y ?? 0, heading: 0, troops: u.troops, loss: 0, lossAt: 0, lunge: 0, attackStamp:null, attackPose:0, siegePose:0, hit:0, hitWait:0, colour:new Float32Array(3), slots:[], slotsKey:'',
+      cell: u.pos, climbPose: 0, deck: 0, throwAge: CATAPULT_RESET_TIME, stoneTarget: null };
   });
   const unitPlates = b.units.map((u, i) => {
     const el = document.createElement('div');
@@ -322,6 +367,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     return { el, marker, anchor, key: '' };
   });
   plates.classList.add('battle');
+  const plateLayout = createBattlePlateLayout(plates, unitPlates);
 
   // ——— Floating numbers and calligraphy ———
   const floaters = [];
@@ -400,6 +446,15 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     for (; seenEvents < b.events.length; seenEvents++) {
       const ev = b.events[seenEvents];
       if (ev.kind === 'tactic') showTactic(b.units[ev.unit], ev.tactic, ev.target);
+      if (ev.kind === 'flankContact' && pos[ev.at]) {
+        const ours = ev.side === side;
+        const lines = ours ? flankOwn : flankFoe;
+        const at = pos[ev.at];
+        flankCues[ours ? 0 : 1] = time + 1.4;
+        lines.count = ev.approaches.reduce((count, from) => orderSegment(lines, count, from, ev.at), 0);
+        pulse(ev.at, ours ? 0xebc972 : 0xe68065, 'wave', 1.5);
+        floatText(at.x, at.y + 2, at.z, nm({ zh: '夹击', en: 'Pincer' }), 'hit');
+      }
       if (ev.kind === 'rout') { const u=b.units[ev.unit];if(u?.pos>=0){floatText(shown[u.id].x,shown[u.id].y+2,shown[u.id].z,nm(UNITS[u.kind]),'rout');pulse(u.pos,0xa88e78,'wave',1.7);} }
       if (ev.kind === 'gateOpen' && gateMesh) {
         if(!siegeSample)gateMesh.setRotation(Math.PI / 2.2, gateYaw, 0);
@@ -412,12 +467,21 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       }
       on.event?.(ev);
     }
+    if (flankCues[0] !== null && time >= flankCues[0]) { flankOwn.count = 0; flankCues[0] = null; }
+    if (flankCues[1] !== null && time >= flankCues[1]) { flankFoe.count = 0; flankCues[1] = null; }
     if(gateMesh&&siegeSample){
       gateImpact=Math.max(0,gateImpact-dt);
       if(b.gate.open)gateFall=Math.min(1,gateFall+dt/(isCalm() ? .2 : .7));
       for(const [index,leaf]of gateLeaves.entries())leaf.setRotation(-gateFall*Math.PI*.46,index?gateImpact*.12:-gateImpact*.12,0);
     }
-    if(keepRing){keepRing.material.opacity=.5+Math.min(1,b.keepHeld/10)*.4;keepRing.material.setColor(b.keepHeld>0?0x9bd5cf:0xd4b16f);const p=pos[b.keep];troops.add('standard',p.x,p.y,p.z,0,cols[b.keepHeld>0?0:1],0,1.2);}
+    if (keepRing) {
+      const attacking = b.keepHeld > 0;
+      const progress = attacking ? b.keepHeld / 10 : b.ferry ? b.ferry.secured / FERRY_HOLD_SECONDS : 0;
+      keepRing.material.opacity = .5 + Math.min(1, progress) * .4;
+      keepRing.material.setColor(attacking ? 0x9bd5cf : progress > 0 ? 0x8bb8d4 : 0xd4b16f);
+      const p = pos[b.keep];
+      troops.add('standard', p.x, p.y, p.z, 0, cols[attacking ? 0 : 1], 0, 1.2);
+    }
     // Fires.
     for (const [i, f] of fires) {
       if (!b.fire[i]) {
@@ -436,6 +500,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     for (const i of Object.keys(b.fire)) if (b.fire[i] && !fires.has(+i) && fires.size < (isCalm()?10:20)) fireAt(+i);
     for (const item of bursts) if(item.life>0){item.life-=dt;item.e.update(dt);if(item.life<=0)item.e.visible=false;}
     for(const item of pulses) if(item.life>0){item.life-=dt;const a=1-Math.max(0,item.life)/item.duration,scale=item.strength*(.45+a*.9);item.mesh.setScale(scale);item.mesh.setPosition(item.p.x,item.p.y+.2+(item.kind==='ward'?a*.6:0),item.p.z);item.mesh.setRotation(item.kind==='arc'?-Math.PI*.3:-Math.PI/2,item.kind==='arc'?item.heading:0,item.kind==='arc'?-a*.5:0);item.material.opacity=(1-a)*.75;item.mesh.visible=item.life>0;}
+    shots?.update(dt);
     // Units.
     b.units.forEach((u, i) => {
       const s = shown[i],
@@ -445,6 +510,21 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
         return;
       }
       const p = pos[u.pos];
+      s.throwAge = Math.min(CATAPULT_RESET_TIME, s.throwAge + dt);
+      s.climbPose = Math.max(0, s.climbPose - dt);
+      if (s.cell !== u.pos) {
+        if (viewPhase === 'fight' && u.side === 0 && u.onWall && u.climbing === u.pos && UNITS[u.kind].group === 'inf') {
+          s.climbPose = .55;
+          pulse(u.pos, 0xcbb17d, 'wave', 1.05);
+          floatText(p.x, p.y + 1.25, p.z, nm({ zh: '登墙', en: 'Wall scaled' }), 'hit');
+        }
+        s.cell = u.pos;
+      }
+      const wall = u.kind === 'tower' && !u.routed && Number.isInteger(u.climbing) &&
+        b.tiles[u.climbing] === 'wall' && distance(u.pos, u.climbing) <= 1 ? pos[u.climbing] : null;
+      if (u.kind === 'tower') {
+        s.deck = isCalm() ? Number(Boolean(wall)) : Math.max(0, Math.min(1, s.deck + (wall ? dt : -dt) / .28));
+      }
       const k = 1 - Math.exp(-dt * 5);
       const dx = p.x - s.x,
         dz = p.z - s.z;
@@ -454,10 +534,20 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       // The simulation holds a unit object, while some callers may still use an id.
       let foe = typeof u.target === 'number' ? b.units[u.target] : u.target;
       const attack=freshAttack(u,s.attackStamp),attackTick=Boolean(attack);
-      if(attack){s.attackStamp=attack.stamp;s.attackPose=.38;foe=b.units[attack.target];on.attack?.({unit:attack.unit,target:attack.target,kind:attack.kind,t:attack.t});}
+      if (attack) {
+        s.attackStamp = attack.stamp;
+        s.attackPose = .38;
+        foe = b.units[attack.target];
+        if (u.kind === 'catapult' && foe?.pos >= 0) {
+          s.throwAge = 0;
+          s.stoneTarget = foe.pos;
+        }
+        on.attack?.({ unit: attack.unit, target: attack.target, kind: attack.kind, t: attack.t });
+      }
       s.attackPose=Math.max(0,s.attackPose-dt);s.siegePose=Math.max(0,s.siegePose-dt);
       let face = s.heading;
-      if (Math.hypot(dx, dz) > 0.2) face = Math.atan2(dx, dz);
+      if (wall) face = Math.atan2(wall.x - s.x, wall.z - s.z);
+      else if (Math.hypot(dx, dz) > 0.2) face = Math.atan2(dx, dz);
       else if (foe && foe.pos >= 0) face = Math.atan2(pos[foe.pos].x - s.x, pos[foe.pos].z - s.z);
       if (u.routed) face += Math.PI;
       let dh = face - s.heading;
@@ -482,7 +572,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       if(attackTick&&melee)s.lunge=.45;else s.lunge*=Math.exp(-dt*10);
       drawUnit(u, s, i);
       // Volleys from bows at their target.
-      if (attackTick && foe && UNITS[u.kind].range > 1 && foe.pos >= 0 && distance(u.pos, foe.pos) <= UNITS[u.kind].range && !u.routed) {
+      if (attackTick && foe && u.kind !== 'catapult' && UNITS[u.kind].range > 1 && foe.pos >= 0 && distance(u.pos, foe.pos) <= UNITS[u.kind].range && !u.routed) {
         const last = volleyAt.get(i) ?? -9;
         if (time - last > .15 && flights.length < arrowCap - 7) {
           volleyAt.set(i, time);
@@ -562,6 +652,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       ring.setPosition(s.x, s.y + 0.08, s.z);
       ringMaterial.emissiveIntensity = isCalm()?1.1:1.15+Math.sin(time*3)*.18;
     }
+    plateLayout.update(b.units);
   });
   let seenEvents = b.events.length;
 
@@ -572,8 +663,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     for(let c=0;c<3;c++)s.colour[c]=baseColour[c]*(1-flash)+flash;
     const colour = s.colour;
     const S = siegeSample&&kind==='ram'?2.05:1.75;
-    const engine=kind==='ram'||kind==='engine';
-    const cap=kind==='boat'?2:engine&&siegeSample?1:kind==='horse'||kind==='horsebow'?(siegeSample?10:6):siegeSample?16:9;
+    const engine = isSiegeFigure(kind);
+    const cap=kind==='boat'?2:engine?1:kind==='horse'||kind==='horsebow'?(siegeSample?10:6):siegeSample?16:9;
     const count = Math.max(1, Math.min(cap, Math.ceil(u.troops / (kind === 'boat' ? 2500 : siegeSample&&!engine?350:700))));
     const per = kind === 'boat' ? 2 : 3;
     const gap = (kind === 'horse' || kind === 'horsebow' ? 0.5 : kind === 'boat' ? 0.75 : 0.4) * S;
@@ -581,12 +672,12 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       cos = Math.cos(s.heading);
     const lungeX = sin * s.lunge,
       lungeZ = cos * s.lunge;
-    if(siegeSample&&s.slotsKey!==u.formation+':'+count){s.slots=formationSlots(u.formation,count);s.slotsKey=u.formation+':'+count;}
+    if(tacticalFormation&&!engine&&s.slotsKey!==u.formation+':'+count){s.slots=formationSlots(u.formation,count);s.slotsKey=u.formation+':'+count;}
     for (let k = 0; k < count; k++) {
       const c = (k % per) - (per - 1) / 2,
         row = Math.floor(k / per);
-      let lx = siegeSample?s.slots[k][0]:c * gap + (row % 2) * gap * 0.3,
-        lz = siegeSample?s.slots[k][1]:(0.5 - row) * gap * 1.1;
+      let lx = engine ? 0 : tacticalFormation?s.slots[k][0]:c * gap + (row % 2) * gap * 0.3,
+        lz = engine ? 0 : tacticalFormation?s.slots[k][1]:(0.5 - row) * gap * 1.1;
       if (u.routed) {
         lx += Math.sin(i * 7 + k * 3.1) * 0.6;
         lz += Math.cos(i * 5 + k * 2.3) * 0.6;
@@ -594,16 +685,42 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       const x = s.x + lx * cos + lz * sin + lungeX * (k % 2 ? 1 : 0.6),
         z = s.z - lx * sin + lz * cos + lungeZ * (k % 2 ? 1 : 0.6);
       const ground = b.tiles[u.pos] === 'wall' || u.onWall ? s.y : Math.max(0, land.heightAt(x, z));
-      const bob = Math.abs(Math.sin(time * (u.routed ? 11 : 7) + k * 1.7 + i)) * (u.path?.length || u.routed ? 0.05 : 0.012);
+      const bob = engine ? 0 : Math.abs(Math.sin(time * (u.routed ? 11 : 7) + k * 1.7 + i)) * (u.path?.length || u.routed ? 0.05 : 0.012);
       if(siegeSample&&kind==='ram'){
         troops.add('ram-frame',x,ground,z,s.heading,colour,0,S);
         const stroke=isCalm()?0:Math.sin(Math.min(1,s.siegePose/.42)*Math.PI/2)*.36;
         troops.add('ram-beam',x+sin*stroke,ground,z+cos*stroke,s.heading,colour,0,S);
-        for(const direction of[-1,1])for(const rank of[-1,1]){const cx=direction*.7,cz=rank*.65;troops.add('sword',x+cx*cos+cz*sin,ground,z-cx*sin+cz*cos,s.heading,colour,-stroke*.15,1.35);}
-      }else{
-        const braced=siegeSample&&kind==='spear'&&!u.routed&&(u.order==='hold'||s.attackPose>0);
-        const posed=braced?'spear-braced':siegeSample&&kind==='bow'&&s.attackPose>0?'bow-loose':kind;
-        troops.add(posed, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + (isCalm()?0:bob), z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, -s.lunge*.3+(isCalm()?0:s.hit*.6), S);
+        for (const direction of [-1, 1]) for (const rank of [-1, 1]) {
+          const cx = direction * S * .46, cz = rank * S * .32;
+          const crewX = x + cx * cos + cz * sin, crewZ = z - cx * sin + cz * cos;
+          troops.add('sword', crewX, Math.max(0, land.heightAt(crewX, crewZ)), crewZ, s.heading, colour, -stroke * .15, 1.35);
+        }
+      } else if (kind === 'catapult') {
+        const quiet = isCalm();
+        const pitch = quiet ? 0 : catapultPitch(s.throwAge);
+        const pivot = siegeMount(x, ground, z, s.heading, S, CATAPULT_ARM_PIVOT);
+        troops.add('catapult-base', x, ground, z, s.heading, colour, 0, S);
+        troops.add('catapult-arm', ...pivot, s.heading, colour, pitch, S, true);
+        if (s.throwAge < CATAPULT_RELEASE_TIME || s.throwAge >= CATAPULT_RESET_TIME || quiet) {
+          const loaded = siegeMount(x, ground, z, s.heading, S, CATAPULT_ARM_PIVOT, CATAPULT_LOAD_POINT, pitch);
+          troops.add('catapult-load', ...loaded, s.heading, colour, pitch, S, true);
+        }
+        if (s.stoneTarget !== null) {
+          const release = siegeMount(x, ground, z, s.heading, S, CATAPULT_ARM_PIVOT, CATAPULT_LOAD_POINT, CATAPULT_RELEASE_PITCH);
+          shots?.launch(release, { ...pos[s.stoneTarget], at: s.stoneTarget }, CATAPULT_RELEASE_TIME, quiet);
+          s.stoneTarget = null;
+        }
+      } else if (kind === 'tower') {
+        troops.add(kind, x, ground, z, s.heading, colour, 0, S);
+        const pivot = siegeMount(x, ground, z, s.heading, S, TOWER_DECK_PIVOT);
+        const angle = TOWER_DECK_PITCH.idle + (TOWER_DECK_PITCH.deployed - TOWER_DECK_PITCH.idle) * s.deck;
+        troops.add('tower-board', ...pivot, s.heading, colour, angle, S, true);
+      } else {
+        const braced=tacticalFormation&&kind==='spear'&&!u.routed&&(u.order==='hold'||s.attackPose>0);
+        const posed=braced?'spear-braced':tacticalFormation&&kind==='bow'&&s.attackPose>0?'bow-loose':kind;
+        const climb = isCalm() ? 0 : Math.sin(Math.PI * s.climbPose / .55);
+        troops.add(posed, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + (isCalm()?0:bob) + climb * .16,
+          z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, -s.lunge * .3 + (isCalm() ? 0 : s.hit * .6) - climb * .22, S);
       }
     }
     if (u.general) troops.add('standard', s.x - cos * 0.2 - sin * 0.9, s.y, s.z + sin * 0.2 - cos * 0.9, s.heading, colour, 0, S * 0.9);
@@ -611,6 +728,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
 
   return {
     preview(phase, armed) { viewPhase=phase;armedTactic=armed; },
+    commandPlan: drawCommandPlan,
     orderPreview(preview) {
       pendingOrder=preview?{...preview,path:preview.path?.slice()??[]}:null;previewKey='';
       if(siegeSample&&preview){
@@ -640,6 +758,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     },
     destroy() {
       stop();
+      plateLayout.destroy();
+      shots?.destroy();
       realm.setMode(null);
       land.setField(null);
       plates.classList.remove('battle');

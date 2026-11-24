@@ -13,7 +13,7 @@ import { TECHS } from '../data/techs.mjs';
 import { serving, stat as statOf } from '../sim/core.mjs';
 import { disband, hostile, order, route, troopCap } from '../sim/military.mjs';
 import { persuadeChance } from '../sim/people.mjs';
-import { caps, income, recruit, researchRate, upkeep, workQuote, power } from '../sim/world.mjs';
+import { caps, governorRecruitment, income, recruit, researchRate, upkeep, workQuote, power } from '../sim/world.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
 import { seasonOf } from '../view3d/seasons.mjs';
@@ -248,6 +248,26 @@ export function createHud(app) {
         keyed('moveOfficer', button(t('moveOfficer'), () => app.open('pickOfficer', { at: id, purpose: 'move' }), { why: here.length ? null : t('why_generals') }))
       )
     );
+    if (n.kind === 'city') {
+      const delegation = governorRecruitment(s, id);
+      parts.push(h('section.governor-recruit',
+        h('h4', t('governorRecruitTitle')),
+        h('p.note', t('governorRecruitStatus', {
+          status: t('governorRecruit_' + delegation.status),
+          troops: num(node.troops), target: num(delegation.target)
+        })),
+        h('div.row.wrap', keyed('governor-recruit', button(
+          t(delegation.enabled ? 'governorRecruitStop' : 'governorRecruitStart'),
+          () => app.act('governorRecruit', id, !delegation.enabled),
+          { kind: delegation.enabled ? '' : 'main',
+            why: !delegation.enabled && delegation.why ? t('governorRecruit_' + delegation.why) : null }
+        ))),
+        delegation.enabled && delegation.status === 'waiting'
+          ? h('p.note.small', t('governorRecruitNext', { days: delegation.daysLeft })) : null,
+        delegation.lastGot > 0 ? h('p.note.small', t('governorRecruitLast', { n: num(delegation.lastGot) })) : null,
+        h('p.note.small', t('governorRecruitAbout', { grain: num(delegation.reserveGrain) }))
+      ));
+    }
     if (n.kind === 'city' && room < 100) parts.push(h('p.dim.small', t('levyNote')));
     if (!here.length) {
       parts.push(h('p.note.order-explanation', t('cityNoOfficers')));
@@ -388,6 +408,7 @@ export function createHud(app) {
         .map(link => link.to).filter(id => s.nodes[id].owner === s.player)
         .map(id => [id, s.nodes[id].troops, serving(s, s.player, id).filter(g => s.generals[g].busyUntil <= s.day)])];
       key = JSON.stringify([sel.node, section, n, context, faction.coin > 2000 ? 1 : faction.coin,
+        n?.governorRecruitment?.enabled ? governorRecruitment(s, sel.node) : null,
         Object.values(s.armies).filter(a => a.at === sel.node || a.besieging === sel.node).map(a => [a.id, a.troops]),
         serving(s, s.player, sel.node).map(g => [g, s.generals[g].busyUntil > s.day]),
         Object.keys(s.generals).filter(g => s.generals[g].at === sel.node).length, getLanguage()]);

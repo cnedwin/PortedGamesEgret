@@ -224,6 +224,11 @@ export function startWork(state, factionId, nodeId, kind) {
 }
 
 /** Raise troops at a city from its people: costs coin and support, and lowers training. */
+function recruitmentBonus(state, factionId, node) {
+  return 1 + (techEffect(state, factionId, 'recruit') +
+    (node.governor ? generalEffect(state, node.governor, 'recruit') : 0)) / 100;
+}
+
 export function recruit(state, factionId, nodeId, amount) {
   const node = state.nodes[nodeId],
     f = state.factions[factionId];
@@ -232,7 +237,7 @@ export function recruit(state, factionId, nodeId, amount) {
   const room = Math.max(0, Math.floor(node.people * 0.05) - (node.levied ?? 0)),
     asked = Math.max(0, Math.min(amount, room, Math.floor(f.coin / 0.12)));
   if (asked < 100) return { why: room < 100 ? 'people' : 'coin' };
-  const bonus = 1 + (techEffect(state, factionId, 'recruit') + (node.governor ? generalEffect(state, node.governor, 'recruit') : 0)) / 100;
+  const bonus = recruitmentBonus(state, factionId, node);
   const got = Math.round(asked * bonus);
   f.coin -= Math.round(asked * 0.12);
   node.people -= asked;
@@ -241,6 +246,117 @@ export function recruit(state, factionId, nodeId, amount) {
   node.troops += got;
   node.support = clamp(node.support - asked / Math.max(2000, node.people / 40), 0, 100);
   return { ok: true, got };
+}
+
+const GOVERNOR_RECRUIT = { target: 3000, batchMax: 500, interval: 5, reserveCoin: 600, support: 60, grainFloor: 1500 };
+
+function governorRecruitBlocker(state, nodeId) {
+  const node = state.nodes[nodeId];
+  if (!node || !node.owner || !state.factions[node.owner]?.alive) return 'notOurs';
+  if (NODES[nodeId]?.kind !== 'city') return 'notCity';
+  const official = state.generals[node.governor];
+  if (!official || official.status !== 'serving' || official.faction !== node.owner || official.at !== nodeId) return 'noGovernor';
+  if (official.busyUntil > state.day) return 'busy';
+  if (Object.values(state.armies).some(army => army.commander === node.governor || army.deputies?.includes(node.governor))) return 'busy';
+  if (node.siege || Object.values(state.armies).some(army => army.troops > 0 && army.besieging === nodeId)) return 'siege';
+  if (state.inbox.some(message => message.kind === 'battle' && (
+    message.setup?.place?.node === nodeId ||
+    message.setup?.units?.some(unit => unit.garrison === nodeId ||
+      (unit.army && state.armies[unit.army]?.at === nodeId))
+  )) || Object.values(state.armies).some(army => army.at === nodeId && army.inBattle)) return 'pendingBattle';
+  return null;
+}
+
+/** Read-only delegation state, with the very same recruit cost and bonuses. */
+export function governorRecruitment(state, nodeId) {
+  const node = state.nodes[nodeId], plan = node?.governorRecruitment;
+  const { target, batchMax, interval, reserveCoin } = GOVERNOR_RECRUIT;
+  const enabled = Boolean(plan?.enabled && plan.owner === node?.owner);
+  const why = governorRecruitBlocker(state, nodeId);
+  const nextDay = (plan?.lastDay ?? plan?.startedDay ?? state.day) + interval;
+  const view = {
+    enabled, available: !why, why, status: why ?? (enabled ? 'ready' : 'off'),
+    nextDay, daysLeft: Math.max(0, nextDay - state.day), target, batchMax,
+    reserveCoin, reserveGrain: GOVERNOR_RECRUIT.grainFloor,
+    lastGot: plan?.lastGot ?? 0, asked: 0, got: 0
+  };
+  if (!node || !state.factions[node.owner]) return view;
+  const faction = state.factions[node.owner];
+  const remaining = Math.max(0, target - node.troops);
+  const bonus = recruitmentBonus(state, node.owner, node);
+  const minimumAsked = Math.max(100, Math.ceil((100 - .499999) / bonus));
+  const minimum = Math.round(minimumAsked * bonus);
+  const room = Math.max(0, Math.floor(node.people * .05) - (node.levied ?? 0));
+  // Keep two months of upkeep after this batch, with a minimum reserve for a
+  // small realm. Recruiting itself still spends only the original coin cost.
+  view.reserveGrain = Math.max(GOVERNOR_RECRUIT.grainFloor,
+    Math.ceil((upkeep(state, node.owner).troops + Math.min(batchMax, remaining)) / 16) * 2);
+  let wanted = Math.min(batchMax, remaining);
+  if (remaining > wanted && remaining - wanted < minimum) wanted = remaining - minimum;
+  let asked = Math.max(0, Math.min(room, Math.floor((faction.coin - reserveCoin) / .12),
+    Math.floor((wanted + .499999) / bonus)));
+  // The original support cost uses the population after the levy. Find the
+  // largest affordable batch that leaves support at sixty, never weaken it.
+  let low = 0, high = asked;
+  while (low < high) {
+    const middle = Math.ceil((low + high) / 2);
+    const supportAfter = node.support - middle / Math.max(2000, (node.people - middle) / 40);
+    if (supportAfter >= GOVERNOR_RECRUIT.support) low = middle;
+    else high = middle - 1;
+  }
+  asked = low;
+  const status = remaining < minimum ? 'complete'
+    : node.support <= GOVERNOR_RECRUIT.support ? 'support'
+    : room < minimumAsked ? 'people'
+    : faction.coin < reserveCoin + Math.round(minimumAsked * .12) ? 'coin'
+    : faction.grain < view.reserveGrain ? 'grain'
+    : asked < minimumAsked ? 'support'
+    : state.day < nextDay ? 'waiting' : 'ready';
+  if (!why && enabled) view.status = status;
+  if (!why && asked >= minimumAsked && status === 'ready') {
+    view.asked = asked;
+    view.got = Math.round(asked * bonus);
+  }
+  return view;
+}
+
+/** Toggle a city duty; stopping cannot reset the five-day batch cooldown. */
+export function setGovernorRecruitment(state, factionId, nodeId, enabled) {
+  const node = state.nodes[nodeId];
+  if (!node || node.owner !== factionId) return { why: 'notOurs' };
+  if (NODES[nodeId]?.kind !== 'city') return { why: 'notCity' };
+  const existing = node.governorRecruitment;
+  if (!enabled) {
+    if (existing) existing.enabled = false;
+    return { ok: true };
+  }
+  const why = governorRecruitBlocker(state, nodeId);
+  if (why) return { why };
+  node.governorRecruitment = existing?.owner === factionId
+    ? { ...existing, enabled: true }
+    : { owner: factionId, enabled: true, startedDay: state.day, lastDay: state.day, lastGot: 0 };
+  return { ok: true };
+}
+
+/** Called by the calendar: no messages, popups, extra turns or invented troops. */
+export function processGovernorRecruitment(state) {
+  if (state.over) return;
+  for (const [nodeId, node] of Object.entries(state.nodes)) {
+    const plan = node.governorRecruitment;
+    if (!plan) continue;
+    if (node.owner !== plan.owner) {
+      delete node.governorRecruitment;
+      continue;
+    }
+    if (!plan.enabled) continue;
+    const view = governorRecruitment(state, nodeId);
+    if (view.status !== 'ready' || view.asked < 100) continue;
+    const result = recruit(state, plan.owner, nodeId, view.asked);
+    if (result.ok) {
+      plan.lastDay = state.day;
+      plan.lastGot = result.got;
+    }
+  }
 }
 
 /** Move soldiers from a place to a neighbouring one the faction holds (they march there in a few days). */
@@ -488,6 +604,7 @@ export function advance(state) {
     checkStory(state);
     checkEnd(state);
   }
+  processGovernorRecruitment(state);
   if (state.day % 5 === 0) thinkAll(state, (state.day / 5) % 2);
   return true;
 }

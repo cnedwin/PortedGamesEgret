@@ -34,6 +34,8 @@ export function battleOutcomeReason(result,playerSide=null,language='zh'){
  if(result?.why==='retreat'&&loser!==null)return relative(loser)+w('撤退',' withdrew');
  if(result?.why==='keep')return result.winner===playerSide?w('我军攻占敌营','Our army took the enemy keep'):playerSide!==null?w('本营失守','Our keep was taken'):w('守军本营被攻占','The defending army’s keep was taken');
  if(result?.why==='depot')return result.winner===playerSide?w('我军焚毁敌军粮仓','Our army burned the enemy depot'):playerSide!==null?w('我军粮仓被焚','Our depot was burned'):w('粮仓被焚','The depot was burned');
+ if(result?.why==='crossingHeld')return result.winner===playerSide?w('我军稳守渡口，击退攻方','Our army secured the crossing'):w('守军守住渡口','The defenders secured the crossing');
+ if(result?.why==='crossingTaken')return result.winner===playerSide?w('我军夺下渡口','Our army took the crossing'):w('渡口被攻方夺下','The attackers took the crossing');
  if(result?.why==='sunset')return w('日落收兵','Sunset ended the fighting');
  return w('战斗结束','Battle ended');
 }
@@ -43,6 +45,11 @@ export function hexPositionLabel(at,language='zh'){
 }
 
 export function battleActionLabel(action,language='zh'){
+ if(action.kind==='intent'){
+  if(action.arg==='guard')return words(language,'守住阵线','Guard line');
+  if(action.arg==='range')return words(language,'保持射距','Keep distance');
+  return words(language,'主动接敌','Engage');
+ }
  const labels={select:['选军','Select unit'],deploy:['部署','Deploy'],formation:['变阵','Change formation'],move:['移动','Move'],attack:['进攻','Attack'],hold:['坚守','Hold'],auto:['自动指挥','Auto orders'],autoTactic:['自动战法','Auto tactics'],tactic:['战法','Tactic'],cancelAim:['取消施策','Cancel tactic'],pause:['暂停','Pause'],resume:['继续','Resume'],begin:['开战','Begin'],entrust:['全军委任','Entrust army'],speed:['倍速','Speed'],step:['步进','Step'],result:['结算','Result']};
  const label=action.kind==='aim'?(action.target==null?['选择战法','Choose tactic']:['选择目标','Choose target']):labels[action.kind]??['军令','Order'];
  return label[language==='en'?1:0];

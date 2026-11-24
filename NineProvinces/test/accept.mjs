@@ -108,6 +108,7 @@ try {
   await until(page, () => window.egretGame.screen === 'battle', 10);
   await page.waitForTimeout(600);
   check(await state(page, () => window.egretGame.battle.phase === 'deploy' && document.querySelector('.bDeploy') !== null), 'the battle opens on deployment');
+  check(await state(page, () => window.egretGame.battle.battle.setup.presentation === 'nanpi-sunset'), 'the formal Nanpi campaign uses the sunset battlefield');
   check(await state(page, () => {
     const { battle, state } = window.egretGame;
     const side = battle.battle.setup.factions.indexOf(state.player);
@@ -122,7 +123,7 @@ try {
   await page.waitForTimeout(1500);
   const fought = await state(page, () => ({ time: window.egretGame.battle?.battle.time ?? 0, cards: document.querySelectorAll('.ucard').length, tactics: document.querySelectorAll('.bSide.ours .tac').length }));
   check(fought.time > 3 && fought.cards >= 2 && fought.tactics >= 1, `the battle runs at four times speed with unit cards and tactics (${JSON.stringify(fought)})`);
-  const field = await matchBaseline(page, GAME, 'battle', { limit: 0.35 });
+  const field = await matchBaseline(page, GAME, 'battle', { limit: 0.35, update: process.argv.includes('--update-battle') || process.argv.includes('--update') });
   check(field.written || field.passed, `the battlefield looks much as its baseline (${(field.share * 100).toFixed(2)}% differs)`);
   await page.setViewportSize({ width: 873, height: 325 });
   check(await state(page, () => {

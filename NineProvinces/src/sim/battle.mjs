@@ -16,6 +16,7 @@ import { generalEffect, stat, techEffect } from './core.mjs';
 import { HEX_W, hexCenter } from './hexgrid.mjs';
 import { FOOTPRINTS, footprintCell, hexKind } from './land.mjs';
 import { aptitudeFactor, mobility } from './aptitude.mjs';
+import { createFerryObjective, advanceFerryObjective, FERRY_HOLD_SECONDS } from './battle-ferry.mjs';
 
 export const FIELD = { cols: 22, rows: 14 };
 /** Seconds of battle time before the sun sets (the defenders then win). */
@@ -278,6 +279,7 @@ export function createBattle(setup, state = null) {
     tiles: field.tiles,
     gate: field.gate !== null ? { at: field.gate, hp: 1500 + setup.wall * 60, open: false } : null,
     keep: field.keep,
+    ferry: createFerryObjective(setup, field.keep),
     depot: field.depot !== null ? { at: field.depot, hp: 1000, burnt: false } : null,
     fire: {},
     wind: setup.special === 'chibi' ? 0 : Math.floor(random() * 6),
@@ -465,7 +467,7 @@ const pathDist = new Float64Array(HEXES),
   pathPrev = new Int16Array(HEXES),
   pathSeen = new Uint32Array(HEXES);
 let pathRun = 0;
-function findPath(b, u, goal, stopShort = 0) {
+function findPath(b, u, goal, stopShort = 0, boundary = null) {
   const occupied = new Set();
   for (const o of b.units) if (o !== u && !o.gone && o.pos >= 0) occupied.add(o.pos);
   pathRun++;
@@ -491,6 +493,7 @@ function findPath(b, u, goal, stopShort = 0) {
       break;
     }
     for (const n of neighbours(here)) {
+      if (boundary && distance(boundary.anchor, n) > boundary.radius) continue;
       if (occupied.has(n) && distance(n, goal) > stopShort) continue;
       const c = moveCost(b, u, n);
       if (c === Infinity) continue;
@@ -526,7 +529,9 @@ function approachGate(b, unit) {
 function planAttack(b, unit, target) {
   const kind = UNITS[unit.kind];
   if (distance(unit.pos, target.pos) <= kind.range) return { path: [], ready: true, gate: false, atGate: false };
-  const path = findPath(b, unit, target.pos, kind.range);
+  const boundary = tacticalIntent(b, unit) === 'guard'
+    ? { anchor: unit.intentAnchor, radius: GUARD_RADIUS } : null;
+  const path = findPath(b, unit, target.pos, kind.range, boundary);
   // A direct order can name a defender behind a closed wall. Approach the
   // gate with the same eligible troops as the existing automatic siege.
   if (!path.length && b.gate && !b.gate.open && unit.side === 0 &&
@@ -626,7 +631,20 @@ function defencePower(b, u, from) {
 /** Damage from one blow: soldiers lost by the defender. */
 function blow(b, a, d, scale = 1) {
   const height = TERRAIN[b.tiles[a.pos]].high && !TERRAIN[b.tiles[d.pos]].high ? 1.15 : 1;
-  const flank = flanked(b, d) ? 1 + 0.15 + FORMATIONS[a.formation].flank : 1;
+  const flanking = battleFlankers(b, d);
+  const isFlank = flanking.length === 2;
+  const flank = isFlank ? 1 + 0.15 + FORMATIONS[a.formation].flank : 1;
+  if (a.lastAttack?.time === b.time && a.lastAttack.target === d.id) {
+    a.lastAttack.flank = isFlank;
+    // One battlefield announcement per side, positioned at the actual hit.
+    if (isFlank && supportsIntents(b) && !b.flankCued?.[a.side]) {
+      (b.flankCued ??= [false, false])[a.side] = true;
+      b.events.push({
+        t: b.time, kind: 'flankContact', side: a.side, unit: a.id, target: d.id, at: d.pos,
+        approaches: flanking.map(id => b.units[id].pos)
+      });
+    }
+  }
   const hide = TERRAIN[b.tiles[a.pos]].hide || TERRAIN[b.tiles[a.pos]].high ? 1 + a.fx.ambush / 100 : 1;
   const ranged = distance(a.pos, d.pos) > 1;
   const charge = !ranged && a.charging ? 1 + 0.25 + a.fx.charge / 100 : 1;
@@ -639,9 +657,22 @@ function blow(b, a, d, scale = 1) {
   return Math.round(strength * (attackPower(b, a) / defencePower(b, d, a.pos)) * weaponBonus(a, d) * height * flank * hide * charge * crit * swing * scale * (ranged ? 0.8 : 1));
 }
 
-function flanked(b, u) {
+/** The first genuine pair of adjacent approaches, in stable unit order. */
+export function battleFlankers(b, u) {
+  if (!u || u.pos < 0) return [];
   const foes = b.units.filter((o) => alive(o) && o.side !== u.side && !o.routed && distance(o.pos, u.pos) === 1);
-  return foes.length >= 2;
+  // On the adjacent hex ring, distance two means approaches separated by 120°;
+  // neighbouring approaches (60°) are still pressure from the same side.
+  for (let a = 0; a < foes.length; a++) {
+    for (let c = a + 1; c < foes.length; c++) {
+      if (distance(foes[a].pos, foes[c].pos) >= 2) return [foes[a].id, foes[c].id];
+    }
+  }
+  return [];
+}
+
+function flanked(b, u) {
+  return battleFlankers(b, u).length === 2;
 }
 
 function hurt(b, d, loss, by) {
@@ -1005,7 +1036,8 @@ export function stepBattle(b, dt, playerSide = -1) {
     u.think = (u.think ?? b.random()) - dt;
     if (u.think <= 0) {
       u.think = 1;
-      if (u.side !== playerSide || u.routed || u.status.confuse > 0 || u.order === 'auto') think(b, u);
+      if (u.side !== playerSide || u.routed || u.status.confuse > 0 ||
+          (u.order === 'auto' && tacticalIntent(b, u) === 'direct')) think(b, u);
       else if (u.side === playerSide) playerThink(b, u);
     }
     if (u.status.stun > 0) continue;
@@ -1074,27 +1106,138 @@ export function stepBattle(b, dt, playerSide = -1) {
   if (b.keep !== null) {
     const holder = b.units.find((o) => alive(o) && o.pos === b.keep);
     const defenderNear = b.units.some((o) => alive(o) && o.side === 1 && !o.routed && distance(o.pos, b.keep) <= 1);
-    if (holder && holder.side === 0 && !defenderNear) b.keepHeld += dt;
+    if (holder && holder.side === 0 && !holder.routed && !defenderNear) b.keepHeld += dt;
+    else if (b.ferry) b.keepHeld = 0;
     else b.keepHeld = Math.max(0, b.keepHeld - dt);
   }
+  advanceFerryObjective(b, dt, distance);
   decide(b);
   return b;
 }
 
+const GUARD_RADIUS = 2;
+const INTENT_KINDS = ['direct', 'guard', 'range'];
+
+function supportsIntents(b) {
+  return b.setup?.kind === 'field' && !b.setup.special;
+}
+
+function tacticalIntent(b, u) {
+  if (!supportsIntents(b)) return 'direct';
+  if (u.intent === 'guard' && Number.isInteger(u.intentAnchor) &&
+      u.intentAnchor >= 0 && u.intentAnchor < b.tiles.length) return 'guard';
+  if (u.intent === 'range' && UNITS[u.kind].range > 1) return 'range';
+  return 'direct';
+}
+
+/** Optional per-battle intent fields: absent in old games means direct orders. */
+export function battleIntentOptions(b, unitId) {
+  const u = b.units[unitId];
+  const available = supportsIntents(b) && u && alive(u) && !u.routed && u.pos >= 0;
+  const active = u ? tacticalIntent(b, u) : 'direct';
+  return INTENT_KINDS.map(kind => ({
+    kind,
+    available: Boolean(available && (kind !== 'range' || UNITS[u.kind].range > 1)),
+    active: kind === active,
+    anchor: kind === 'guard' && active === 'guard' ? u.intentAnchor : null,
+    radius: kind === 'guard' ? GUARD_RADIUS : null
+  }));
+}
+
+function setIntent(b, u, intent) {
+  const option = battleIntentOptions(b, u.id).find(row => row.kind === intent);
+  if (!option?.available) return false;
+  u.intent = intent;
+  if (intent === 'direct') {
+    delete u.intentAnchor;
+    if (u.order === 'hold') {
+      u.order = 'auto';
+      u.target = null;
+      u.path = [];
+      u.think = 0;
+    }
+    return true;
+  }
+  u.goal = null;
+  u.path = [];
+  u.atGate = false;
+  if (intent === 'guard') {
+    u.intentAnchor = u.pos;
+    u.order = 'hold';
+    u.target = null;
+  } else {
+    delete u.intentAnchor;
+    // Retain an explicit living target; the intent supplies range management.
+    u.order = u.target && alive(u.target) && !u.target.routed ? 'attack' : 'auto';
+  }
+  return true;
+}
+
+function guardThink(b, u) {
+  const anchor = u.intentAnchor;
+  const inArea = target => target && alive(target) && !target.routed &&
+    target.side !== u.side && distance(anchor, target.pos) <= GUARD_RADIUS + UNITS[u.kind].range;
+  const candidates = b.units.filter(inArea).sort((a, c) =>
+    distance(u.pos, a.pos) - distance(u.pos, c.pos) || a.id - c.id);
+  if (inArea(u.target)) candidates.unshift(u.target);
+  for (const target of candidates) {
+    const plan = planAttack(b, u, target);
+    if (!plan.ready && !plan.path.length) continue;
+    u.target = target;
+    u.path = plan.path;
+    return;
+  }
+  u.target = null;
+  u.path = u.pos === anchor ? [] : findPath(b, u, anchor);
+}
+
+function rangeThink(b, u) {
+  const enemies = b.units.filter(o => alive(o) && !o.routed && o.side !== u.side);
+  const nearest = enemies.slice().sort((a, c) =>
+    distance(u.pos, a.pos) - distance(u.pos, c.pos) || a.id - c.id)[0];
+  const selected = u.target && alive(u.target) && !u.target.routed ? u.target : nearest;
+  u.target = selected ?? null;
+  if (!selected) { u.path = []; return; }
+  // An explicit hold remains planted. Attack/auto retain range management even
+  // after their selected target disappears, without changing the AI's defaults.
+  if (u.order === 'hold') { u.path = []; return; }
+  if (nearest && distance(u.pos, nearest.pos) <= 1) {
+    const occupied = new Set(b.units.filter(o => o !== u && !o.gone).map(o => o.pos));
+    const safety = hex => Math.min(...enemies.map(enemy => distance(hex, enemy.pos)));
+    const candidates = neighbours(u.pos).filter(hex => !occupied.has(hex) &&
+      moveCost(b, u, hex) < Infinity && safety(hex) > safety(u.pos));
+    candidates.sort((a, c) => safety(c) - safety(a) ||
+      Number(distance(a, selected.pos) > UNITS[u.kind].range) -
+      Number(distance(c, selected.pos) > UNITS[u.kind].range) ||
+      moveCost(b, u, a) - moveCost(b, u, c) || a - c);
+    u.path = candidates.length ? [candidates[0]] : [];
+    return;
+  }
+  u.path = distance(u.pos, selected.pos) > UNITS[u.kind].range
+    ? findPath(b, u, selected.pos, UNITS[u.kind].range) : [];
+}
+
 /** A player's unit with an order: move, hold, or strike its target. */
 function playerThink(b, u) {
+  const intent = tacticalIntent(b, u);
   if (u.goal !== null) {
     if (u.pos === u.goal) {
       u.goal = null;
       u.path = [];
+      if (intent === 'guard') u.intentAnchor = u.pos;
     } else u.path = findPath(b, u, u.goal);
   }
-  if (u.order === 'attack' && u.target && alive(u.target)) {
+  // Explicit relocation takes priority until the unit reaches the new line.
+  if (u.goal === null && intent === 'guard') {
+    guardThink(b, u);
+  } else if (u.goal === null && intent === 'range') {
+    rangeThink(b, u);
+  } else if (intent === 'direct' && u.order === 'attack' && u.target && alive(u.target)) {
     u.path = attackPath(b, u, u.target);
-  } else if (u.order === 'attack') {
+  } else if (intent === 'direct' && u.order === 'attack') {
     u.order = 'auto';
   }
-  if (u.order === 'hold' && u.goal === null) u.path = [];
+  if (intent === 'direct' && u.order === 'hold' && u.goal === null) u.path = [];
   if (u.autoTactic && u.rage >= 100) for (const t of u.tactics) if (useTactic(b, u, t)) break;
 }
 
@@ -1102,6 +1245,7 @@ function playerThink(b, u) {
 export function command(b, unitId, what, arg) {
   const u = b.units[unitId];
   if (!u || !alive(u) || u.routed) return false;
+  if (what === 'intent') return setIntent(b, u, arg);
   if(what==='move'&&(!Number.isInteger(arg)||arg<0||arg>=b.tiles.length||!canStand(b,u,arg)))return false;
   if(what==='attack'&&(!b.units[arg]||!alive(b.units[arg])||b.units[arg].side===u.side))return false;
   if(what==='formation'&&!formationAllowed(u.kind,arg))return false;
@@ -1115,6 +1259,10 @@ export function command(b, unitId, what, arg) {
     u.atGate = false;
     u.path = path;
   } else if (what === 'attack') {
+    if (tacticalIntent(b, u) === 'guard') {
+      const plan = planAttack(b, u, b.units[arg]);
+      if (!plan.ready && !plan.path.length) return false;
+    }
     u.target = b.units[arg];
     u.goal = null;
     u.order = 'attack';
@@ -1139,8 +1287,9 @@ function decide(b) {
     why = null;
   if (!standing(1)) (winner = 0), (why = 'broken');
   else if (!standing(0)) (winner = 1), (why = 'broken');
-  else if (b.keepHeld >= 10) (winner = 0), (why = 'keep');
+  else if (b.keepHeld >= 10) (winner = 0), (why = b.ferry ? 'crossingTaken' : 'keep');
   else if (b.depot?.burnt) (winner = 0), (why = 'depot');
+  else if ((b.ferry?.secured ?? 0) >= FERRY_HOLD_SECONDS - 1e-6) (winner = 1), (why = 'crossingHeld');
   else if (b.time >= b.limit) (winner = 1), (why = 'sunset');
   if (winner === null) return;
   b.over = { winner, why };
@@ -1167,7 +1316,7 @@ export function outcome(b) {
     }
     return { troops: Math.round(u.troops), morale: Math.round(Math.max(0, u.morale)), fates };
   });
-  return { winner: w, why: b.over.why, units, gateTaken: Boolean(b.gate?.open) || b.over.why === 'keep', depot: b.depot?.burnt ?? false, seconds: Math.round(b.time), report:battleReport(b) };
+  return { winner: w, why: b.over.why, units, gateTaken: Boolean(b.gate?.open) || b.over.why === 'keep' || b.over.why === 'crossingTaken', depot: b.depot?.burnt ?? false, seconds: Math.round(b.time), report:battleReport(b) };
 }
 
 /** Pure detailed statistics. Losses are net troops lost; damage includes subsequently healed casualties. */

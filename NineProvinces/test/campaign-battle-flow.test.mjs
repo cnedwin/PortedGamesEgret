@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { createGame } from '../src/sim/world.mjs';
 import { muster, finishBattle } from '../src/sim/military.mjs';
 import { along, routeLine } from '../src/sim/ways.mjs';
-import { campaignBattleBriefing, captureCampaignBattle, campaignBattleAftermath } from '../src/ui/campaign-battle.mjs';
+import { campaignBattleBriefing, captureCampaignBattle, campaignBattleAftermath, campaignAftermathView, campaignBattlePresentation } from '../src/ui/campaign-battle.mjs';
 
 function siege(troops = 4000) {
   const state = createGame({ seed: 31, faction: 'liubei', branch: 'free' });
@@ -45,6 +45,8 @@ test('after a real settlement, presentation reports the actual captured city, ga
   assert.equal(report.armies[0].fieldRemaining, 3000);
   assert.equal(report.armies[0].disposition, 'stationed');
   assert.deepEqual(report.returnView.selection, { node: 'nanpi' });
+  assert.deepEqual(campaignAftermathView(state, report, { kind: 'inspect-garrison', army: army.id }).selection, { army: army.id });
+  assert.deepEqual(campaignAftermathView(state, report, { kind: 'inspect-garrison', army: 'unrelated' }), report.returnView);
   assert.equal(state.stats.battlesWon, 1);
   assert.equal(JSON.stringify(state), after);
   assert.deepEqual(campaignBattleAftermath(state, setup, result, context), report);
@@ -62,8 +64,28 @@ test('defeat follows a surviving retreating army instead of leaving a stale batt
   assert.equal(report.armies[0].disposition, 'withdrawing');
   assert.equal(report.armies[0].target, 'pingyuan');
   assert.deepEqual(report.returnView.selection, { army: army.id });
+  assert.deepEqual(campaignAftermathView(state, report, { kind: 'inspect-town', node: 'pingyuan' }).selection, { node: 'pingyuan' });
   assert.equal(report.place.changed, false);
   assert.ok(Number.isFinite(report.returnView.camera.x));
+});
+
+test('taking Nanpi ends every friendly siege at once without spending another campaign day', () => {
+  const { state, setup, result, army } = siege();
+  const support = muster(state, state.player, 'pingyuan', { commander: 'zhangfei', troops: 1200 });
+  assert.equal(support.ok, true);
+  const reinforcement = state.armies[support.army];
+  Object.assign(reinforcement, { at: 'nanpi', target: 'nanpi', path: [], besieging: 'nanpi', inBattle: setup.id });
+  setup.units.splice(1, 0, { side: 0, army: reinforcement.id, general: 'zhangfei', deputies: [], troops: 1200 });
+  result.units.splice(1, 0, { troops: 1200, morale: 70, fates: {} });
+  const before = captureCampaignBattle(state, setup);
+  const day = state.day;
+  finishBattle(state, setup, result);
+  const report = campaignBattleAftermath(state, setup, result, before);
+  assert.equal(state.day, day);
+  assert.equal(state.nodes.nanpi.owner, state.player);
+  assert.equal(reinforcement.troops, 1200);
+  assert.deepEqual([army.besieging, reinforcement.besieging, reinforcement.target, reinforcement.inBattle], [null, null, null, null]);
+  assert.ok(report.armies.every(row => row.disposition === 'stationed'));
 });
 
 test('winning an engagement does not falsely report taking a city that is still being besieged', () => {
@@ -116,4 +138,14 @@ test('an already-settled campaign ending is exposed without advancing an extra w
   assert.deepEqual(report.ending, state.over);
   assert.notEqual(report.ending, state.over);
   assert.equal(JSON.stringify(state), before);
+});
+
+test('Nanpi presentation applies only to the player assault and does not change the battle snapshot', () => {
+  const { state, setup } = siege();
+  const before = JSON.stringify(setup);
+  assert.deepEqual(campaignBattlePresentation(state, setup), { ...setup, presentation: 'nanpi-sunset' });
+  assert.equal(JSON.stringify(setup), before);
+  assert.strictEqual(campaignBattlePresentation({ player: setup.factions[1] }, setup), setup);
+  const field = { ...setup, kind: 'field' };
+  assert.strictEqual(campaignBattlePresentation(state, field), field);
 });

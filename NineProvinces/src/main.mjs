@@ -16,11 +16,11 @@ import { recordedAutoBattle } from './sim/battle-history.mjs';
 import { createNanpiTrial } from './sim/nanpi-trial.mjs';
 import { dateOf } from './sim/core.mjs';
 import { answerEnvoy, breakTreaty, demandSurrender, gift, propose, askAttack } from './sim/diplomacy.mjs';
-import { disband, finishBattle, muster, nearestFriendly, order, route } from './sim/military.mjs';
+import { activeSiegeWait, cancelSiegeWait, disband, finishBattle, muster, nearestFriendly, order, route, waitForSiegeReinforcement } from './sim/military.mjs';
 import { registerCustom } from './sim/newblood.mjs';
 import { die, giveTreasure, issueTalentOrder, moveGeneral, persuade, release, searchCity } from './sim/people.mjs';
 import { answerStory } from './sim/story.mjs';
-import { advance, createGame, power, recruit, startWork, study, transfer } from './sim/world.mjs';
+import { advance, createGame, power, recruit, setGovernorRecruitment, startWork, study, transfer } from './sim/world.mjs';
 import { createDialogs } from './ui/dialogs.mjs';
 import { $, button, clear, h } from './ui/dom.mjs';
 import { createHud, SPEEDS, tipFor } from './ui/hud.mjs';
@@ -31,7 +31,8 @@ import { createMinimap } from './ui/minimap.mjs';
 import { createPlates } from './ui/plates.mjs';
 import { showSetup, showTitle } from './ui/title.mjs';
 import { renderFirstMonth } from './ui/player-flow.mjs';
-import { captureCampaignBattle, campaignBattleAftermath } from './ui/campaign-battle.mjs';
+import { campaignAftermathView, captureCampaignBattle, campaignBattleAftermath, campaignBattlePresentation } from './ui/campaign-battle.mjs';
+import { renderSiegeWait } from './ui/siege-council.mjs';
 import { createRealmView } from './view3d/realm.mjs';
 import { homeCity } from './view/home-city.mjs';
 import { factionName, generalName, placeName } from './view/names.mjs';
@@ -200,12 +201,32 @@ const app = {
   startBattle(setup) {
     if (!app.state || app.battle || app.screen !== 'play') return;
     if (app.lastCampaignBattle?.state === app.state && app.lastCampaignBattle.id === setup.id) return;
+    setup = campaignBattlePresentation(app.state, setup);
     app.campaignBattle = { state: app.state, id: setup.id, before: captureCampaignBattle(app.state, setup) };
     app.dialogs.close(true);
     app.screen = 'battle';
     app.map.setTerritoryVisible(false);
     frame.dataset.screen = 'battle';
     app.battle = startBattle(app, setup);
+  },
+  waitForSiegeSupport(setup, armyIds) {
+    if (!app.state || app.screen !== 'play' || app.battle || app.dialogs.name !== 'battle') return;
+    if (!waitForSiegeReinforcement(app.state, setup, armyIds).ok) {
+      app.hud.toast(pair(['援军或战况已有变化，请重新查看军议。', 'The reinforcements or battle have changed. Review the council again.']), 'bad');
+      app.dialogs.render();
+      return;
+    }
+    app.select({ node: setup.place.node });
+    app.dialogs.close(true);
+    app.setPaused(false);
+    renderSiegeWait(app, activeSiegeWait(app.state));
+  },
+  cancelSiegeSupport() {
+    if (!app.state || app.screen !== 'play' || app.dialogOpen) return;
+    if (!cancelSiegeWait(app.state)) return;
+    app.setPaused(true);
+    renderSiegeWait(app, activeSiegeWait(app.state));
+    nextInbox();
   },
   endBattle(done) {
     if (!app.state || !done?.setup || !done.result) return;
@@ -229,7 +250,7 @@ const app = {
     app.dialogs.open('battleResult', { ...done, aftermath });
     app.hud.refresh(true);
   },
-  returnFromBattle(done) {
+  returnFromBattle(done, action = null) {
     const settled = app.lastCampaignBattle;
     if (!settled || settled.state !== app.state || settled.id !== done.setup.id) return;
     app.paused = true;
@@ -237,7 +258,7 @@ const app = {
     app.map.showRoute(null);
     // Apply the strategic destination after the result is confirmed. The 3D
     // battlefield may finish its own camera glide while this sheet is open.
-    const target = settled.aftermath.returnView;
+    const target = campaignAftermathView(app.state, settled.aftermath, action);
     app.select(target.selection);
     if (target.camera) app.map.rig.jumpTo(target.camera.x, target.camera.z, target.camera.d);
     app.dialogs.close(true);
@@ -530,7 +551,10 @@ function tick(dt) {
   if (sinceHud > 0.2 && (app.screen === 'play' || app.screen === 'battle')) {
     sinceHud = 0;
     if (app.screen === 'play') app.hud.refresh();
-    if (app.screen === 'play') renderFirstMonth(app);
+    if (app.screen === 'play') {
+      renderFirstMonth(app);
+      renderSiegeWait(app, activeSiegeWait(app.state));
+    }
     app.minimap?.draw();
   }
 }
@@ -651,6 +675,10 @@ function act(kind, ...args) {
     case 'recruit':
       r = recruit(s, P, args[0], args[1]);
       say(r, r.ok ? t('recruited', { n: r.got }) : null, 'drum');
+      break;
+    case 'governorRecruit':
+      r = setGovernorRecruitment(s, P, args[0], args[1]);
+      say(r, t(args[1] ? 'governorRecruitStarted' : 'governorRecruitStopped'), 'seal');
       break;
     case 'muster': {
       r = muster(s, P, args[0], { ...args[1], attack: Boolean(args[1].target) });
@@ -783,7 +811,7 @@ function act(kind, ...args) {
       app.dialogs.close(true);
       break;
     case 'entrust': {
-      const setup = args[0];
+      const setup = campaignBattlePresentation(s, args[0]);
       if (app.lastCampaignBattle?.state === s && app.lastCampaignBattle.id === setup.id) break;
       app.campaignBattle = { state: s, id: setup.id, before: captureCampaignBattle(s, setup) };
       const { result, tape, report } = recordedAutoBattle(setup, s);
@@ -879,6 +907,7 @@ function play(state, savedView = null) {
   progress.saved(state);
   app.hud.refresh(true);
   renderFirstMonth(app);
+  renderSiegeWait(app, activeSiegeWait(state));
   app.sound.theme('realm');
   setTimeout(nextInbox, 300);
 }
@@ -896,6 +925,7 @@ function toTitle(confirmed = false) {
   if (app.demoState?.scenario !== '184') app.demoState = createGame({ seed: 184 });
   app.screen = 'title';
   renderFirstMonth(app);
+  renderSiegeWait(app, null);
   frame.dataset.screen = 'title';
   $('#hud').hidden = true;
   app.select(null);

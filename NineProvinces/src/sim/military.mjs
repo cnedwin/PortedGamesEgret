@@ -9,9 +9,10 @@ import { ADJACENT, NODES } from '../data/map.mjs';
 import { autoBattle } from './battle.mjs';
 import { clamp, generalEffect, note, random, serving, stat, techEffect } from './core.mjs';
 import { capture, die } from './people.mjs';
-import { hexAt } from './hexgrid.mjs';
+import { HEX_W, hexAt } from './hexgrid.mjs';
 import { FOOTPRINTS } from './land.mjs';
 import { along, routeLine } from './ways.mjs';
+import { COUNCIL_NODE, councilSnapshot, councilArmy, arrivedArmies, incomingArmies, supportArrival, siegeWaitModel } from './siege-council.mjs';
 
 export function activeTreaty(state, a, b) {
   const treaty = state.factions[a]?.treaties[b];
@@ -24,6 +25,92 @@ export function hostile(state, a, b) {
   return !activeTreaty(state, a, b);
 }
 export const allied = (state, a, b) => a !== b && activeTreaty(state, a, b)?.kind === 'ally';
+
+const councilServices = { speedOf, route, allied };
+
+/** A read-only view over the current, actual player siege snapshot at Nanpi. */
+export function siegeCouncil(state, setup) {
+  const current = councilSnapshot(state, setup);
+  if (!current) return null;
+  const arrived = arrivedArmies(state, state.player).map(army => councilArmy(state, army));
+  return {
+    setupId: current.id, nodeId: COUNCIL_NODE, day: state.day, arrived,
+    incoming: incomingArmies(state, state.player, councilServices),
+    total: {
+      troops: arrived.reduce((sum, army) => sum + army.troops, 0),
+      grain: arrived.reduce((sum, army) => sum + army.grain, 0)
+    },
+    waiting: activeSiegeWait(state)
+  };
+}
+
+export const activeSiegeWait = (state, nodeId = COUNCIL_NODE) => siegeWaitModel(state, councilServices, nodeId);
+
+/** Release only this frozen council, then let the real calendar bring every chosen army. */
+export function waitForSiegeReinforcement(state, setup, armyIds) {
+  const current = councilSnapshot(state, setup);
+  if (!current || state.siegeCouncilWaits?.[COUNCIL_NODE]) return { ok: false, reason: 'staleCouncil' };
+  if (!hostile(state, state.player, state.nodes[COUNCIL_NODE].owner)) return { ok: false, reason: 'protectedTarget' };
+  const ids = [...new Set(Array.isArray(armyIds) ? armyIds : [armyIds])];
+  if (!ids.length) return { ok: false, reason: 'supportGone' };
+  const rows = ids.map(id => supportArrival(state, state.armies[id], state.player, councilServices));
+  const unavailable = rows.find(row => !row.reachable || row.arrived);
+  if (unavailable) return { ok: false, reason: unavailable.reason ?? 'supportArrived' };
+  const attackerIds = [...new Set(current.units.filter(unit => unit.side === 0 && unit.army).map(unit => unit.army))];
+  const arrivedIds = arrivedArmies(state, state.player).map(army => army.id);
+  if (!attackerIds.some(id => arrivedIds.includes(id))) return { ok: false, reason: 'besiegersGone' };
+  const etaDays = Math.max(...rows.map(row => row.etaDays));
+  const plan = {
+    id: 'wait:' + current.id, setupId: current.id, nodeId: COUNCIL_NODE,
+    faction: state.player, defenderFaction: current.factions[1],
+    armyIds: ids, attackerIds, startedDay: state.day, etaDays
+  };
+  (state.siegeCouncilWaits ??= {})[COUNCIL_NODE] = plan;
+  state.inbox = state.inbox.filter(message => message.setup?.id !== current.id);
+  for (const unit of current.units) {
+    const army = state.armies[unit.army];
+    if (army?.inBattle === current.id) army.inBattle = null;
+  }
+  note(state, 'logSiegeWaitStarted', { place: COUNCIL_NODE });
+  return { ok: true, planId: plan.id, etaDays };
+}
+
+function finishSiegeWait(state, plan, reason) {
+  delete state.siegeCouncilWaits[COUNCIL_NODE];
+  note(state, 'logSiegeWaitEnded', { place: COUNCIL_NODE });
+  const besiegers = arrivedArmies(state, plan.faction);
+  const queued = state.inbox.some(message => message.kind === 'battle' && message.setup?.place?.node === COUNCIL_NODE);
+  if (!queued && besiegers.length && hostile(state, plan.faction, state.nodes[COUNCIL_NODE].owner)) {
+    const lead = besiegers.find(army => !army.inBattle);
+    if (lead) {
+      const setup = assault(state, lead);
+      if (setup) setup.council = { reason, waitedDays: state.day - plan.startedDay, armyIds: plan.armyIds.slice() };
+    }
+  }
+}
+
+export function cancelSiegeWait(state, nodeId = COUNCIL_NODE) {
+  const plan = nodeId === COUNCIL_NODE ? state.siegeCouncilWaits?.[nodeId] : null;
+  if (!plan) return false;
+  finishSiegeWait(state, plan, 'cancelled');
+  return true;
+}
+
+function resolveSiegeWait(state) {
+  const plan = state.siegeCouncilWaits?.[COUNCIL_NODE];
+  if (!plan) return;
+  if (!Array.isArray(plan.armyIds) || !plan.armyIds.length) {
+    finishSiegeWait(state, { ...plan, armyIds: [] }, 'invalidPlan');
+    return;
+  }
+  let reason = null;
+  if (state.nodes[COUNCIL_NODE].owner !== plan.defenderFaction) reason = 'targetChanged';
+  else if (!hostile(state, plan.faction, state.nodes[COUNCIL_NODE].owner)) reason = 'protectedTarget';
+  const rows = plan.armyIds.map(id => supportArrival(state, state.armies[id], plan.faction, councilServices));
+  reason ??= rows.find(row => !row.reachable)?.reason ?? null;
+  if (!arrivedArmies(state, plan.faction).length) reason ??= 'besiegersGone';
+  if (reason || rows.every(row => row.arrived)) finishSiegeWait(state, plan, reason ?? 'arrived');
+}
 
 /** Kilometres-a-day of an army, as map units a day, on a kind of link. */
 export function speedOf(state, army, kind) {
@@ -175,8 +262,10 @@ export function disband(state, armyId) {
 
 /** The day's march of every army: moving, eating, meeting enemies and reaching places. */
 export function marchArmies(state) {
+  const foughtOnRoad = new Set();
+  const marchers = [];
   for (const a of Object.values(state.armies)) {
-    if (!state.armies[a.id]) continue;
+    if (a.link && a.inBattle) continue;
     // Eating: a day's grain for every four hundred; without it, morale and men drain away.
     const eat = (a.troops / 400) * (1 - ((a.commander ? generalEffect(state, a.commander, 'supply') : 0) + techEffect(state, a.faction, 'supply')) / 100);
     a.grain -= eat;
@@ -189,6 +278,11 @@ export function marchArmies(state) {
       dissolve(state, a);
       continue;
     }
+    marchers.push(a);
+  }
+  // All new participants have paid this day's upkeep before the first contact.
+  for (const a of marchers) {
+    if (!state.armies[a.id] || foughtOnRoad.has(a.id) || (a.link && a.inBattle)) continue;
     if (!a.link && state.nodes[a.at]) {
       // At a friendly place: take on grain and recover.
       if (state.nodes[a.at].owner === a.faction) {
@@ -202,7 +296,8 @@ export function marchArmies(state) {
         a.morale = Math.min(100, a.morale + 1);
       }
       if (a.besieging) {
-        siegeDay(state, a);
+        // One Nanpi council already locks all its arrived armies in this same day.
+        if (!(a.besieging === COUNCIL_NODE && a.inBattle)) siegeDay(state, a);
         continue;
       }
       if (!a.path.length) continue;
@@ -212,11 +307,13 @@ export function marchArmies(state) {
       a.at = null;
     }
     if (a.link) {
+      const before = a.link.done;
       a.link.done += speedOf(state, a, a.link.kind);
-      if (meetOnTheRoad(state, a)) continue;
+      if (meetOnTheRoad(state, a, before, foughtOnRoad)) continue;
       if (a.link.done >= a.link.length) arrive(state, a);
     }
   }
+  resolveSiegeWait(state);
 }
 
 function dissolve(state, a) {
@@ -225,16 +322,74 @@ function dissolve(state, a) {
   delete state.armies[a.id];
 }
 
-/** Two hostile armies on one road, coming towards each other, fight where they meet. */
-function meetOnTheRoad(state, a) {
-  for (const b of Object.values(state.armies)) {
-    if (b === a || !b.link || !hostile(state, a.faction, b.faction)) continue;
-    const same = b.link.from === a.link.to && b.link.to === a.link.from;
-    if (!same || a.link.done + b.link.done < a.link.length) continue;
-    battle(state, { kind: a.link.kind === 'land' ? 'field' : 'naval', place: { link: [a.link.from, a.link.to] }, attackers: [a.id], defenders: [b.id] });
-    return true;
+const ROAD_COLUMNS_PER_SIDE = 3;
+const ROAD_EPSILON = 1e-6;
+
+function foremost(a, b) {
+  // Army IDs count musters. The earlier muster has priority at the same point.
+  return b.link.done - a.link.done || Number(a.id.slice(1)) - Number(b.id.slice(1)) ||
+    (a.id < b.id ? -1 : Number(a.id > b.id));
+}
+
+/** Each reinforcement must already be within one battlefield hex of the contact line. */
+function roadSide(columns, lead, at) {
+  const { from, to } = lead.link;
+  return [lead.id, ...columns
+    .filter(a => a !== lead && a.faction === lead.faction && a.link.from === from && a.link.to === to &&
+      Math.abs(a.link.done - at) <= HEX_W + ROAD_EPSILON)
+    .sort(foremost)
+    .slice(0, ROAD_COLUMNS_PER_SIDE - 1)
+    .map(a => a.id)];
+}
+
+/** Only a pending field battle can hold the next column at its contact line. */
+function pendingRoadContact(state, army, before) {
+  const { from, to, length, done } = army.link;
+  let limit = Infinity;
+  for (const { kind, setup } of state.inbox) {
+    if (kind !== 'battle' || setup?.kind !== 'field' || !setup.place.link) continue;
+    const [start, end] = setup.place.link;
+    const forward = start === from && end === to;
+    if (!forward && !(start === to && end === from)) continue;
+    if (!setup.factions.some(faction => hostile(state, army.faction, faction))) continue;
+    const lead = state.armies[setup.units.find(unit => unit.side === 0)?.army];
+    if (lead?.inBattle !== setup.id || !lead.link) continue;
+    const contact = forward ? lead.link.done : length - lead.link.done;
+    if (contact >= before - ROAD_EPSILON && contact <= done + ROAD_EPSILON) limit = Math.min(limit, contact);
   }
-  return false;
+  return limit;
+}
+
+/** Opposing columns on the same road fight at their first point of contact. */
+function meetOnTheRoad(state, a, before, foughtOnRoad) {
+  const { from, to, kind, length, done } = a.link;
+  const columns = Object.values(state.armies).filter(b => b.link?.kind === kind && b.link?.length === length &&
+    ((b.link.from === from && b.link.to === to) || (b.link.from === to && b.link.to === from)) &&
+    !b.inBattle && !foughtOnRoad.has(b.id));
+  const opposing = columns.filter(b => b.link.from === to && b.link.to === from &&
+    hostile(state, a.faction, b.faction) && done + b.link.done >= length - ROAD_EPSILON);
+  const field = kind === 'land';
+  const b = field ? opposing.sort(foremost)[0] : opposing[0];
+  const reverseFront = b ? clamp(b.link.done, 0, length) : 0;
+  const front = b ? length - reverseFront : Infinity;
+  if (field) {
+    const waiting = pendingRoadContact(state, a, before);
+    if (Number.isFinite(waiting) && waiting <= front + ROAD_EPSILON) {
+      a.link.done = Math.max(before, waiting);
+      return true;
+    }
+  }
+  if (!b) return false;
+  let attackers = [a.id], defenders = [b.id];
+  if (field) {
+    // Stop only the remainder of today's move. Other columns keep their own positions.
+    a.link.done = Math.max(before, front);
+    attackers = roadSide(columns, a, front);
+    defenders = roadSide(columns, b, reverseFront);
+  }
+  for (const id of [...attackers, ...defenders]) foughtOnRoad.add(id);
+  battle(state, { kind: field ? 'field' : 'naval', place: { link: [from, to] }, attackers, defenders });
+  return true;
 }
 
 /** An army reaches the end of a road. */
@@ -305,7 +460,8 @@ function assault(state, a) {
     .filter((b) => b.at === at && !b.link && b.faction === node.owner)
     .map((b) => b.id);
   const walled = NODES[at].kind !== 'port' && node.wall > 5;
-  battle(state, { kind: walled ? 'siege' : 'field', place: { node: at }, attackers, defenders, garrison: at });
+  if (at === COUNCIL_NODE && state.siegeCouncilWaits?.[at]?.faction === a.faction) return null;
+  return battle(state, { kind: walled ? 'siege' : 'field', place: { node: at }, attackers, defenders, garrison: at });
 }
 
 /** Fall back to where the army came from (or the nearest friendly place). */
@@ -360,6 +516,14 @@ function take(state, a, at) {
   node.people = Math.round(node.people * 0.96);
   a.besieging = null;
   a.target = null;
+  if (at === COUNCIL_NODE) {
+    // All armies in the new owner's camp are already inside the captured town.
+    for (const army of Object.values(state.armies)) {
+      if (army.faction !== a.faction || army.at !== at || army.link || army.besieging !== at) continue;
+      army.besieging = null;
+      if (army.target === at && !army.path.length) army.target = null;
+    }
+  }
   if (a.faction === state.player) state.stats.citiesTaken++;
   if (a.faction === state.player || old === state.player) note(state, 'logTaken', { place: at, faction: a.faction, from: old });
   state.factions[a.faction].fame += NODES[at].kind === 'city' ? 6 + NODES[at].size * 2 : 2;
@@ -603,6 +767,7 @@ export function finishBattle(state, setup, result) {
         a.link = { from: to, to: from, kind: a.link.kind, length, done: Math.max(0, length - done) };
         a.path = [from];
         a.target = from;
+        if (setup.kind === 'field' && setup.place.link) a.next = null;
       } else retreat(state, a);
       a.morale = Math.max(10, a.morale - 15);
     } else if (u.side === 0 && won === 0 && setup.place.node) {
