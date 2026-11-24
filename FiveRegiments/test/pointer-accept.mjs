@@ -95,6 +95,18 @@ try {
     const fromGuard = window.testInput.sample(1 / 60, { threat: 'L' });
     mouse('mouseup', { button: 0 });
     mouse('mouseup', { button: 2 });
+    window.testInput.clear();
+    const edge = () => {
+      const sample = window.testInput.sample(1 / 60);
+      return [sample.meleeLine, sample.meleeDown, sample.meleeUp];
+    };
+    mouse('mousemove', { movementX: 27 });
+    mouse('mousedown', { button: 0 });
+    edge();
+    mouse('mouseup', { button: 0 });
+    mouse('mousemove', { movementX: -29 });
+    tap(0);
+    const sameTick = [edge(), edge(), edge()];
     return { yaw, attack: [attack.attack, attack.line], guard: [guard.guard, guard.line], cleared: !next.attack && !next.guard, lines,
       short: [attack.meleeRelease, attack.meleeDown, attack.meleeUp],
       preparing: [preparing.meleeRelease, preparing.meleeDown, preparing.meleeUp, preparing.line],
@@ -102,7 +114,7 @@ try {
       released: [released.meleeRelease, released.meleeDown, released.meleeUp, released.line],
       after: [after.meleeRelease, after.meleeUp], canceled: [canceled.meleeCancel, canceled.meleeUp],
       bow: bow.meleeRelease, continuous: continuous.meleeRelease, afterIdle, separatedFine, sharpTurn, fineStroke,
-      fromGuard: [fromGuard.line, fromGuard.meleeLine, fromGuard.meleeDown] };
+      fromGuard: [fromGuard.line, fromGuard.meleeLine, fromGuard.meleeDown], sameTick };
   });
   assert.ok(Math.abs(actual.yaw - (-14 * 0.0022)) < 1e-6, 'A pointer event rotates the camera once');
   assert.deepEqual(actual.attack, [true, 'R'], 'A quick attack survives the tick with its original direction');
@@ -122,6 +134,8 @@ try {
   assert.equal(actual.sharpTurn, 'R', 'One clear horizontal stroke can replace the previous vertical stroke');
   assert.equal(actual.fineStroke, 'O', 'A deliberate movement made of small packets can choose an overhead cut');
   assert.deepEqual(actual.fromGuard, ['L', 'R', true], 'Guard assist and the sampled mouse attack keep separate directions');
+  assert.deepEqual(actual.sameTick, [['R', false, true], ['L', true, true], [undefined, false, false]],
+    'A later click sharing a tick with a prior release retains both edges and its own locked line');
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.evaluate(() => window.testInput.capture(false));

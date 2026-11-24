@@ -4,7 +4,7 @@
 // frame; it never changes the fight.
 import { Mesh3D, Object3D, createCylinderGeometry3D, createStandardMaterial3D } from '@egret/engine/world3d';
 import { ARMS, createWeapon } from './weapons.mjs';
-import { add, axisAngle, basis, cross, dot, len, lerp3, mul, qinv, qmul, qrot, slerp, sub, unit } from './rig.mjs';
+import { add, axisAngle, basis, cross, dot, fitLinkedWrist, len, lerp3, mul, qinv, qmul, qrot, slerp, sub, unit } from './rig.mjs';
 import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
@@ -577,7 +577,16 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const reachLimit = (rig.reach.l.upper + rig.reach.l.lower) * 0.985;
       // A locked second hand limits the first hand's travel before it moves the weapon out of reach.
       const shoulder = rig.world('upperarm_l').t;
-      for (let i = 0; i < (ordinary ? 2 : 1); i++) {
+      const linkJi = ordinary && arms.main === 'ji' && act.line === 'R';
+      if (linkJi && len(sub(wrist(), shoulder)) > reachLimit) {
+        const primary = rig.world('hand_r').t;
+        const support = add(primary, sub(shoulder, wrist()));
+        const total = rig.reach.r.upper + rig.reach.r.lower;
+        const goal = fitLinkedWrist(primary, rig.world('upperarm_r').t,
+          total * reachRange[0], total * reachRange[1], support, reachLimit);
+        rig.reachArm('r', goal, poleR, blade, 1, 0, edge, null, 0, reachRange);
+      }
+      for (let i = 0; i < (linkJi ? 0 : ordinary ? 2 : 1); i++) {
         const reachToGrip = sub(wrist(), shoulder);
         const distance = len(reachToGrip);
         if (distance <= reachLimit) break;

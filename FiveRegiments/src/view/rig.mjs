@@ -45,6 +45,34 @@ export function fromTo(a, b) {
   return qnorm([...cross(a, b), 1 + d]);
 }
 
+/** Keep the primary wrist in its bend range and the linked wrist in its reach radius. */
+export function fitLinkedWrist(target, shoulder, minReach, maxReach, support, supportReach) {
+  const delta = sub(target, support);
+  if (len(delta) <= supportReach) return target;
+  const first = add(support, mul(unit(delta), supportReach));
+  const fromShoulder = sub(first, shoulder);
+  const distance = len(fromShoulder);
+  const radius = Math.max(minReach, Math.min(maxReach, distance));
+  if (radius === distance) return first;
+
+  const between = sub(support, shoulder);
+  const separation = len(between);
+  const axis = unit(between);
+  const toFirst = distance > 1e-8 ? unit(fromShoulder) : axis;
+  const bounded = add(shoulder, mul(toFirst, radius));
+  if (len(sub(bounded, support)) <= supportReach || separation < 1e-8) return bounded;
+
+  // When both arms constrain the grip, the allowed wrists lie on their spheres' intersection.
+  const along = (radius ** 2 - supportReach ** 2 + separation ** 2) / (2 * separation);
+  if (Math.abs(along) > radius) return bounded;
+  const centre = add(shoulder, mul(axis, along));
+  const offset = sub(target, centre);
+  const radial = sub(offset, mul(axis, dot(offset, axis)));
+  const direction = len(radial) > 1e-8 ? unit(radial)
+    : unit(cross(axis, Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
+  return add(centre, mul(direction, Math.sqrt(Math.max(0, radius ** 2 - along ** 2))));
+}
+
 /** Carry the existing edge onto the new blade axis before turning it toward the forearm. */
 export function stabilizeBladeRoll(axis, lead, previous, maxTurn) {
   const projected = sub(lead, mul(axis, dot(lead, axis)));

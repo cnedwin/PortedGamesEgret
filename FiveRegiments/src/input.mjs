@@ -47,9 +47,8 @@ const MOUSE_STROKE_IDLE_MS = 90;
 export function createInput(canvas, { settings, onPause = () => {}, onLock = () => {} } = {}) {
   const down = new Set();
   let mouseStrokeAt = -Infinity;
+  const mouseAttacks = [];
   let heldMouseAttack = null,
-    pressedMouseAttack = null,
-    releasedMouseAttack = null,
     pressedGuardLine = null,
     canceledMouseAttack = false;
   const state = {
@@ -119,8 +118,8 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.lastDevice = 'mouse';
     if (e.button === 0) {
       if (!state.attack) {
-        heldMouseAttack = { line: state.line, release: !state.combo };
-        pressedMouseAttack = heldMouseAttack;
+        heldMouseAttack = { line: state.line, release: !state.combo, pressed: true, released: false };
+        mouseAttacks.push(heldMouseAttack);
       }
       state.attack = true;
     }
@@ -133,16 +132,19 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   };
   const onUp = (e) => {
     if (e.button === 0 && heldMouseAttack) {
-      releasedMouseAttack = heldMouseAttack;
+      heldMouseAttack.released = true;
+      // Before a tick, down/up belong to the same gesture. After down was consumed, queue only its release.
+      if (!heldMouseAttack.pressed) mouseAttacks.push(heldMouseAttack);
       heldMouseAttack = null;
       state.attack = false;
     }
     if (e.button === 2) state.guard = false;
   };
   function clearMouse() {
-    canceledMouseAttack ||= Boolean(heldMouseAttack?.release || pressedMouseAttack?.release || releasedMouseAttack?.release);
+    canceledMouseAttack ||= Boolean(heldMouseAttack?.release || mouseAttacks.some((gesture) => gesture.release));
     state.attack = state.guard = state.attackWas = false;
-    heldMouseAttack = pressedMouseAttack = releasedMouseAttack = null;
+    heldMouseAttack = null;
+    mouseAttacks.length = 0;
     pressedGuardLine = null;
     state.moved.fill(0);
     mouseStrokeAt = -Infinity;
@@ -281,9 +283,10 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const fwd = [Math.sin(fy), Math.cos(fy)],
       right = [-Math.cos(fy), Math.sin(fy)];
     const move = [right[0] * mx - fwd[0] * my, right[1] * mx - fwd[1] * my];
-    const mouseAttack = releasedMouseAttack ?? heldMouseAttack ?? pressedMouseAttack;
+    // Release and a new press can share a frame. Sample them in order with each gesture's locked line.
+    const mouseAttack = mouseAttacks.shift() ?? heldMouseAttack;
     const meleeRelease = Boolean(!bow && mouseAttack?.release);
-    let attack = state.attack || pressedMouseAttack !== null || !!pad?.attack || state.touch.attack || state.touch.tapAttack || !!state.padLine;
+    let attack = state.attack || !!mouseAttack?.pressed || !!pad?.attack || state.touch.attack || state.touch.tapAttack || !!state.padLine;
     // Continuous attack (B): a held button strikes again as each blow ends, instead of winding up a heavy one.
     if (state.combo && attack && !bow && !meleeRelease) {
       state.comboBeat = (state.comboBeat + dt) % 0.2;
@@ -293,7 +296,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const classic = settings.control === 'classic' || state.lastDevice === 'touch';
     let line = state.line;
     // Retain the mouse tap and its line when down/up arrive between two simulation ticks.
-    if (attack && !state.attack && pressedMouseAttack) line = pressedMouseAttack.line;
+    if (attack && !state.attack && mouseAttack?.pressed) line = mouseAttack.line;
     else if (guard && !state.guard && pressedGuardLine) line = pressedGuardLine;
     if (classic && threat && guard) line = threat;
     if (state.padLine) line = state.padLine;
@@ -315,8 +318,8 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       attack,
       meleeRelease,
       meleeLine: meleeRelease ? mouseAttack.line : undefined,
-      meleeDown: meleeRelease && pressedMouseAttack === mouseAttack,
-      meleeUp: meleeRelease && releasedMouseAttack === mouseAttack,
+      meleeDown: meleeRelease && mouseAttack.pressed,
+      meleeUp: meleeRelease && mouseAttack.released,
       meleeCancel: canceledMouseAttack,
       guard,
       kick: state.once.kick,
@@ -337,7 +340,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.arm = null;
     state.touch.tapAttack = state.touch.tapGuard = false;
     state.touch.strikeLine = null;
-    pressedMouseAttack = releasedMouseAttack = null;
+    if (mouseAttack) mouseAttack.pressed = mouseAttack.released = false;
     pressedGuardLine = null;
     canceledMouseAttack = false;
     return input;

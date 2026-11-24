@@ -110,6 +110,76 @@ test('a guard, a higher-priority action or a stagger consumes the queued combo',
 
 const pcMelee = (fields = {}) => ({ meleeRelease: true, line: 'R', ...fields });
 
+function finishRecoveryNextTick(duel, input = {}) {
+  const { game, h } = duel;
+  while (h.act.recover - (h.act.t - h.act.strikeAt) > TICK) {
+    step(game, { hero: input });
+    assert.ok(!h.guard, 'guard is still unavailable during active recovery');
+  }
+  assert.ok(h.act.t - h.act.strikeAt < h.act.recover);
+}
+
+test('a press on the tick crossing natural recovery keeps the normal wind', () => {
+  for (const mode of ['legacy', 'tap', 'hold']) {
+    const duel = meleeRecovery(), { game, h } = duel;
+    finishRecoveryNextTick(duel);
+    const press = mode === 'legacy' ? { attack: true, line: 'L' }
+      : pcMelee({ attack: true, meleeDown: true, meleeUp: mode === 'tap', meleeLine: 'L', line: 'O' });
+    assert.ok(!step(game, { hero: { ...press, recoveryHandoff: true } }).some((e) => e.type === 'swing'));
+    assert.equal(h.act, null);
+    const next = step(game, { hero: mode === 'hold' ? pcMelee({ attack: true, line: 'T' }) : {} });
+    assert.equal(h.act?.line, 'L', mode);
+    assert.equal(h.act.wind, h.act.blow.wind, mode);
+    assert.equal(Boolean(h.act.awaitingRelease), mode === 'hold');
+    if (mode !== 'hold') assert.equal(next.find((e) => e.type === 'swing')?.line, 'L');
+    else assert.equal(step(game, { hero: pcMelee({ meleeUp: true }) }).find((e) => e.type === 'swing')?.line, 'L');
+  }
+});
+
+test('held guard takes over on the natural recovery tick before the next fighter attacks', () => {
+  const duel = meleeRecovery(), { game, h, f } = duel;
+  const guard = { guard: true, recoveryHandoff: true, line: 'R' };
+  finishRecoveryNextTick(duel, guard);
+  const blow = f.r.blows.L;
+  Object.assign(f, { x: h.x, z: h.z - 1.4, face: 0, stun: 0, act: {
+    kind: 'swing', line: 'L', t: blow.wind - TICK * 0.5, wind: blow.wind, held: 0, struck: false, blow, reach: blow.reach, recover: blow.recover
+  } });
+  const hp = h.hp;
+  const events = step(game, { hero: { ...guard, attack: true } });
+  assert.equal(h.act, null);
+  assert.ok(h.guard);
+  assert.equal(h.guardAt, game.time);
+  assert.equal(h.guardLine, 'R');
+  assert.equal(h.hp, hp);
+  assert.ok(events.some((e) => e.type === 'deflect' && e.who === 'hero'));
+  assert.ok(!step(game, {}).some((e) => e.type === 'swing'), 'guard takes priority over a simultaneous attack at the edge');
+});
+
+test('the natural recovery tick still respects stamina and daze guard restrictions', () => {
+  for (const restriction of [{ st: 0 }, { daze: 0.5 }]) {
+    const duel = meleeRecovery();
+    finishRecoveryNextTick(duel);
+    Object.assign(duel.h, restriction);
+    step(duel.game, { hero: { guard: true, recoveryHandoff: true } });
+    assert.equal(duel.h.act, null);
+    assert.equal(duel.h.guard, false);
+  }
+});
+
+test('commands without the human handoff keep their previous recovery timing', () => {
+  const attack = meleeRecovery(), guard = meleeRecovery();
+  finishRecoveryNextTick(attack);
+  finishRecoveryNextTick(guard);
+  step(attack.game, { hero: { attack: true, line: 'L' } });
+  step(guard.game, { hero: { guard: true } });
+  assert.equal(attack.h.act, null);
+  assert.equal(attack.h.queuedSwing, null);
+  assert.equal(guard.h.act, null);
+  assert.equal(guard.h.guard, false);
+  step(guard.game, { hero: { guard: true } });
+  assert.ok(guard.h.guard);
+});
+
 test('PC melee waits at full charge and releases exactly once on the locked line', () => {
   const { game, h, f } = pair('tiger', 'yulin');
   const held = run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0, line: i === 0 ? 'R' : 'O' }) }), 3);
