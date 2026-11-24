@@ -286,6 +286,16 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
   .title .menu button { padding: 6px 8px; text-align: center; font-size: 14px; letter-spacing: 0.02em; }
   .title .lang { order: 1; }
   .title .howto { order: 2; margin: 0; }
+  .free, .settings, .pause, .result, .card-stage {
+    align-content: safe center;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-block: 12px;
+  }
+  .free h2 { font-size: 22px; }
+  .free .hint { margin-block: 4px; }
+  .free .row { gap: 8px; padding-block: 2px; }
+  .free footer { margin-top: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
