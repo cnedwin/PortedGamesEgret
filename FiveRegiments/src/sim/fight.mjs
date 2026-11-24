@@ -211,7 +211,8 @@ function speedOf(man) {
   const act = man.act;
   if (man.guard) speed *= man.r.offhand === 'shield' ? 0.8 : 0.5;
   if (act?.kind === 'swing') speed *= act.t < act.wind ? 0.62 : 0.4;
-  if (man.draw) speed *= 0.55;
+  // Keep some room for the archer to reposition at full draw while keeping a clear pursuit advantage.
+  if (man.draw) speed *= 0.6;
   if (act?.kind === 'skill') speed *= act.walk ?? 0.35;
   if (act?.kind === 'kick') speed *= 0.3;
   if (act?.kind === 'mend') speed *= 0.4;
