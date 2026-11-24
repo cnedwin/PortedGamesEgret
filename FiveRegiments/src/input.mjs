@@ -71,7 +71,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     autorun: false,
     classicIndex: 0,
     moved: [0, 0],
-    touch: { move: [0, 0], attack: false, guard: false, tapAttack: false, tapGuard: false, strikeLine: null, mounted: false },
+    touch: { move: [0, 0], attack: false, guard: false, tapAttack: false, tapGuard: false, strikeLine: null, mounted: false, bow: false },
     pad: null,
     pointerLocked: false,
     lastDevice: 'keys'
@@ -278,6 +278,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
    */
   function sample(dt, { threat = null, aim = null, bow = false, mounted = false } = {}) {
     state.touch.mounted = mounted;
+    state.touch.bow = bow;
     const pad = readPad(dt);
     let mx = (down.has('right') ? 1 : 0) - (down.has('left') ? 1 : 0),
       my = (down.has('down') ? 1 : 0) - (down.has('up') ? 1 : 0);
@@ -331,6 +332,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       attack,
       meleeRelease,
       meleeLine: meleeRelease ? gesture.line : undefined,
+      meleeAim: meleeRelease && gesture.aimChanged ? gesture.line : undefined,
       meleeDown: meleeRelease && gesture.pressed,
       meleeUp: meleeRelease && gesture.released,
       meleeCancel: canceledAttack,
@@ -354,7 +356,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.arm = null;
     state.touch.tapAttack = state.touch.tapGuard = false;
     state.touch.strikeLine = null;
-    if (gesture) gesture.pressed = gesture.released = false;
+    if (gesture) gesture.pressed = gesture.released = gesture.aimChanged = false;
     pressedGuardLine = null;
     canceledAttack = false;
     return input;
@@ -363,12 +365,17 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   return {
     state,
     sample,
-    beginMountedTouchAttack(line) {
-      if (!state.touch.mounted || heldMouseAttack || heldTouchAttack) return;
+    beginHeldTouchAttack(line) {
+      if (state.touch.bow || state.combo || heldMouseAttack || heldTouchAttack) return;
       state.line = line ?? LINE_ORDER[state.classicIndex++ % 4];
       heldTouchAttack = startGesture(state.line, true);
     },
-    endMountedTouchAttack(commit) {
+    aimHeldTouchAttack(line) {
+      if (!heldTouchAttack || line === heldTouchAttack.line) return;
+      state.line = heldTouchAttack.line = line;
+      heldTouchAttack.aimChanged = true;
+    },
+    endHeldTouchAttack(commit) {
       const gesture = heldTouchAttack;
       if (!gesture) return;
       heldTouchAttack = null;

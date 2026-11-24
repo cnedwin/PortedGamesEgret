@@ -519,6 +519,9 @@ async function main() {
       case 'recoveryCancel':
         if (e.who === heroId) play('steelReady', { volume: 0.58, rate: 0.92 });
         break;
+      case 'feint':
+        if (e.who === heroId) play('steelReady', { volume: 0.36, rate: 1.12 });
+        break;
       case 'skill':
         if (e.id === 'gale') play('draw', { volume: 0.75, rate: 1.55 });
         else if (e.id === 'fan') play('draw', { volume: 0.46, rate: 1.9 });

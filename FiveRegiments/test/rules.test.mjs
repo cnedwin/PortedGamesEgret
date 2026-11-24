@@ -295,11 +295,31 @@ test('a PC melee press keeps its own line when guard assist supplies the incomin
 test('guard cancels armed PC melee at full charge and stale release cannot attack', () => {
   const { game, h } = pair('tiger', 'yulin');
   run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0 }) }), 2);
-  const cancelled = step(game, { hero: pcMelee({ attack: true, guard: true }) });
+  const cancelled = step(game, { hero: pcMelee({ attack: true, guard: true, guardLine: 'O' }) });
   assert.ok(cancelled.some((e) => e.type === 'feint'));
-  const released = step(game, { hero: pcMelee({ meleeUp: true, guard: true }) });
   assert.ok(h.guard);
+  assert.equal(h.guardLine, 'O', 'the same guard press supplies its defensive line');
+  const released = step(game, { hero: pcMelee({ meleeUp: true }) });
+  assert.equal(h.guard, false, 'a short press does not keep guarding after release');
   assert.ok(!released.some((e) => e.type === 'swing' || e.type === 'hit'));
+});
+
+test('an armed touch drag chooses its new line without committing or keeping the old reach', () => {
+  const { game, h } = pair('tiger', 'yulin');
+  run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0 }) }), 0.7);
+  assert.equal(h.act.line, 'R');
+  const events = run(game, { hero: pcMelee({ attack: true, meleeAim: 'T' }) }, 1.6);
+  assert.equal(h.act.line, 'T');
+  assert.equal(h.act.blow, h.r.blows.T);
+  assert.equal(h.act.reach, h.r.blows.T.reach);
+  assert.equal(h.act.wind, h.r.blows.T.wind);
+  assert.equal(h.act.recover, h.r.blows.T.recover);
+  assert.ok(h.act.held >= 0.84 && h.act.awaitingRelease);
+  assert.equal(events.length, 0, 'changing the line does not play attack sounds or strike');
+  const released = step(game, { hero: pcMelee({ meleeUp: true }) });
+  assert.equal(released.find(e => e.type === 'swing')?.line, 'T');
+  const after = run(game, {}, 1);
+  assert.deepEqual(after.filter(e => e.type === 'swingRelease').map(e => e.line), ['T']);
 });
 
 test('explicit PC cancellation discards preparation and a new down can arm again', () => {
