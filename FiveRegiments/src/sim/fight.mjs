@@ -18,6 +18,7 @@
 // Lines are named from the striker's side: L is a cut that starts on his left. It arrives on the other man's
 // right, so to guard it he holds his guard on R (`facing(line)`). Overhead and thrust meet themselves.
 // The PC primary melee gesture sends `meleeRelease` with `meleeDown`, `meleeUp` and `meleeCancel` edges.
+// Player controls can set `skillGuardCancel` to enable a fresh guard press during Spin's follow-through.
 //
 // Headings: 0 looks along +z, and a man's right hand is at heading − π/2.
 
@@ -38,9 +39,16 @@ const THROWN = 1.6;
 export const LONE = { dealt: 1.5, taken: 0.5 };
 const HOLD = 0.85;
 const PC_PREP_FRACTION = 0.72;
+const SPIN_GUARD_AT = 0.43;
 const GRAVITY = 9.8;
 
 export const facing = (line) => (line === 'L' ? 'R' : line === 'R' ? 'L' : line);
+
+/** Whether a Spin is far enough through its follow-through for a fresh player guard. */
+export function spinGuardWindow(man) {
+  return Boolean(man?.alive && man.stun <= 0 && man.daze <= 0 && man.st > 0 &&
+    man.act?.kind === 'skill' && man.act.id === 'spin' && man.act.t >= SPIN_GUARD_AT);
+}
 
 export function createRandom(seed = 1) {
   let s = seed >>> 0 || 1;
@@ -452,7 +460,7 @@ function poison(game, man, total, time, by, catching = false) {
 
 // ---- arrows and things thrown ----------------------------------------------------------------------------
 
-function loose(game, man, { yaw, pitch = 0.04, power = 1, damage, kind = 'arrow', blast = 0, web = false, speed, through = 0, skill, fall = null, group = null }) {
+function loose(game, man, { yaw, pitch = 0.04, power = 1, damage, kind = 'arrow', blast = 0, web = false, speed, through = 0, skill, fall = null, group = null, announce = true }) {
   const v = (speed ?? man.r.bow?.speed ?? 40) * (0.62 + 0.38 * power);
   game.shots.push({
     kind,
@@ -477,7 +485,7 @@ function loose(game, man, { yaw, pitch = 0.04, power = 1, damage, kind = 'arrow'
     fall,
     life: 2.4
   });
-  emit(game, 'loose', { who: man.id, kind });
+  if (announce) emit(game, 'loose', { who: man.id, kind, skill, yaw });
 }
 
 /** The heading and lift that put an arrow on `target` (leading him a little). */
@@ -823,6 +831,8 @@ function runSkill(game, man, act, dt) {
   const base = man.r.blows.R.damage;
   const fwd = [Math.sin(man.face), Math.cos(man.face)];
   const at = (time) => act.t - dt < time && act.t >= time;
+  // Presentation reads the same ticks as the strike, including when the blade finds no target.
+  const beat = (part = 0) => emit(game, 'skillBeat', { who: man.id, id: act.id, part });
   const dash = (speed) => {
     man.vx = fwd[0] * speed;
     man.vz = fwd[1] * speed;
@@ -852,7 +862,10 @@ function runSkill(game, man, act, dt) {
         act.charging = true;
         if (target && dist(man, target) < 1.7) act.met = true;
       }
-      if (at(run + 0.06)) strike(game, man, { line: 'T', damage: base * s.damage, reach: 2.2, arc: 0.3, skill: 'charge', stun: 0.45, push: 0.8 });
+      if (at(run + 0.06)) {
+        beat();
+        strike(game, man, { line: 'T', damage: base * s.damage, reach: 2.2, arc: 0.3, skill: 'charge', stun: 0.45, push: 0.8 });
+      }
       if (act.t > run + 0.5) man.act = null;
       break;
     }
@@ -890,19 +903,28 @@ function runSkill(game, man, act, dt) {
       break;
     case 'moon':
       // Worth more the more stamina he had when he began it.
-      if (at(0.18)) strike(game, man, { line: 'L', damage: base * s.damage * (1 + s.extra * act.fresh), reach: s.reach, arc: (100 * Math.PI) / 180, all: true, skill: 'moon', push: 0.9 });
+      if (at(0.18)) {
+        beat();
+        strike(game, man, { line: 'L', damage: base * s.damage * (1 + s.extra * act.fresh), reach: s.reach, arc: (100 * Math.PI) / 180, all: true, skill: 'moon', push: 0.9 });
+      }
       if (act.t > 0.5) man.act = null;
       break;
     // ---- Tiger Step ----
     case 'swing':
       for (const [k, time] of [0.18, 0.38, 0.58].slice(0, s.hits).entries()) {
-        if (at(time)) strike(game, man, { line: k % 2 ? 'L' : 'R', damage: base * s.damage, reach: s.reach, arc: 0.95, skill: 'swing', stun: 0.28 });
+        if (at(time)) {
+          beat(k);
+          strike(game, man, { line: k % 2 ? 'L' : 'R', damage: base * s.damage, reach: s.reach, arc: 0.95, skill: 'swing', stun: 0.28 });
+        }
       }
       if (act.t > 0.92) man.act = null;
       break;
     case 'spin':
       // One whirl in place, the blade round at everyone near.
-      if (at(0.3)) strike(game, man, { line: 'R', damage: base * s.damage, reach: s.reach, arc: Math.PI, all: true, skill: 'spin', stun: 0.4, push: 0.6 });
+      if (at(0.3)) {
+        beat();
+        strike(game, man, { line: 'R', damage: base * s.damage, reach: s.reach, arc: Math.PI, all: true, skill: 'spin', stun: 0.4, push: 0.6 });
+      }
       if (act.t > 0.62) man.act = null;
       break;
     case 'mist':
@@ -914,13 +936,16 @@ function runSkill(game, man, act, dt) {
       break;
     // ---- Berserker Battalion ----
     case 'down':
-      if (at(0.72)) areaStrike(s.ahead, s.radius, { line: 'O', damage: base * s.damage, skill: 'down', guardCost: 2, stun: 0.7, push: 1.2 });
+      if (at(0.72)) {
+        beat();
+        areaStrike(s.ahead, s.radius, { line: 'O', damage: base * s.damage, skill: 'down', guardCost: 2, stun: 0.7, push: 1.2 });
+      }
       if (act.t > 1.3) man.act = null;
       break;
     case 'wave':
       if (at(0.38)) {
         game.shots.push({ kind: 'wave', by: man.id, side: man.side, x: man.x + fwd[0], y: 0.9, z: man.z + fwd[1], vx: fwd[0] * s.speed, vy: 0, vz: fwd[1] * s.speed, from: [man.x, man.z], damage: base * s.damage, life: s.range / s.speed, hit: [] });
-        emit(game, 'loose', { who: man.id, kind: 'wave' });
+        emit(game, 'loose', { who: man.id, kind: 'wave', skill: 'wave', yaw: man.face });
       }
       if (act.t > 0.75) man.act = null;
       break;
@@ -974,11 +999,14 @@ function runSkill(game, man, act, dt) {
           const hit = enemiesOf(game, man).find((t) => inSweep(man, t, 1.1, 0.6));
           if (hit) {
             act.met = true;
+            act.firstHitAt = act.t;
+            beat();
             resolve(game, man, hit, { line: 'T', damage: man.r.blows.T.damage * s.damage[0], skill: 'boar', stun: 0.35, push: 0.8 });
           }
         }
       }
       if (at(run + 0.18)) {
+        beat(1);
         dash(5);
         strike(game, man, { line: 'T', damage: man.r.blows.T.damage * s.damage[1], reach: 3.3, arc: 0.24, skill: 'boar', stun: 0.6, push: 1.6 });
       }
@@ -1073,7 +1101,7 @@ function runBowSkill(game, man, act, s, dt, at) {
       const a = aimed();
       const group = [];
       for (let k = 0; k < s.shots; k++)
-        loose(game, man, { yaw: a.yaw + (k / (s.shots - 1) - 0.5) * s.spread, pitch: a.pitch, power: 0.9, damage: bow.full, fall: { near: s.near, far: s.far, at: s.damage }, skill: 'fan', group });
+        loose(game, man, { yaw: a.yaw + (k / (s.shots - 1) - 0.5) * s.spread, pitch: a.pitch, power: 0.9, damage: bow.full, fall: { near: s.near, far: s.far, at: s.damage }, skill: 'fan', group, announce: k === Math.floor(s.shots / 2) });
     }
     if (act.t > 0.8) man.act = null;
   } else if (act.id === 'backStep') {
@@ -1288,7 +1316,9 @@ function stepMan(game, man, input, dt) {
     // Dazed (by a Bull Charge) he can neither attack nor defend.
     const dazed = man.daze > 0;
     const wantsGuard = input.guard && !bowOut && man.st > 0 && !dazed;
-    if (wantsGuard && !man.guard && (!man.act || man.act.kind === 'recover')) {
+    const guardCancelsSpin = input.skillGuardCancel && man === game.hero && !man.guard && pressed('guard') && spinGuardWindow(man);
+    if (wantsGuard && !man.guard && (!man.act || man.act.kind === 'recover' || guardCancelsSpin)) {
+      if (guardCancelsSpin) emit(game, 'skillCancel', { who: man.id, id: 'spin', into: 'guard', elapsed: man.act.t });
       man.guard = true;
       man.guardAt = game.time;
       man.act = null;
@@ -1299,7 +1329,7 @@ function stepMan(game, man, input, dt) {
     }
 
     // ---- starting something ------------------------------------------------------------------------------
-    const free = !man.act || man.act.kind === 'recover';
+    const free = !guardCancelsSpin && (!man.act || man.act.kind === 'recover');
     const chain = wantsGuard ? null : queuedSwing;
     if (pressed('heal') && free && !man.draw && man.dressings > 0 && man.hp < man.maxHp) {
       man.act = { kind: 'mend', t: 0 };

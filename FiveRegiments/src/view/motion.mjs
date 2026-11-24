@@ -28,10 +28,17 @@ export const TIGER_SWORD = {
 const contactsOf = (keys) => keys.filter(([, , pose]) => pose === 1).map(([time]) => time);
 const spinContacts = contactsOf(TIGER_SWORD.spin);
 const chainContacts = contactsOf(TIGER_SWORD.chain);
+const skillTrailWindows = { charge: [0.4, 0.55], moon: [0.11, 0.28], down: [0.63, 0.82], wave: [0.3, 0.46] };
 
 /** A short blade trail during each committed swing, without joining it to the next load. */
 export function skillTrailSegment(action) {
   if (action?.kind !== 'skill') return null;
+  const window = skillTrailWindows[action.id];
+  if (window) return action.t >= window[0] && action.t <= window[1] ? 0 : null;
+  if (action.id === 'boar') {
+    if (action.firstHitAt !== undefined && action.t - action.firstHitAt < 0.072) return 1;
+    return action.t >= 0.54 && action.t <= 0.7 ? 2 : null;
+  }
   if (action.id === 'spin' && Math.abs(action.t - spinContacts[0]) >= 0.075) return null;
   if (action.id !== 'swing') return 0;
   const index = chainContacts.findIndex((time) => Math.abs(action.t - time) < 0.054);

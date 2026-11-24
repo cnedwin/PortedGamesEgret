@@ -72,6 +72,7 @@ export const WORDS = {
   kick: { zh: '踢', en: 'Kick' },
   step: { zh: '跳', en: 'Jump' },
   guard: { zh: '格挡', en: 'Guard' },
+  spinGuard: { zh: '回旋接格挡', en: 'Spin into guard' },
   attack: { zh: '出手', en: 'Strike' },
   swap: { zh: '换刀', en: 'Knife' },
   controlsText: {
