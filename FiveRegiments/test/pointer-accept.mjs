@@ -148,7 +148,103 @@ try {
   await page.locator('canvas').click();
   await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 50)));
   assert.deepEqual(errors, [], 'A refused pointer lock keeps click-to-fight fallback without an uncaught error');
-  console.log('Pointer lock, single mouse motion and between-tick inputs verified.');
+  const captureFallback = await page.evaluate(() => {
+    const pending = window.testInput.waitingForPointer();
+    Object.defineProperty(navigator, 'getGamepads', { configurable: true, value: () => [{ connected: true, mapping: 'standard' }] });
+    const withPad = window.testInput.waitingForPointer();
+    delete navigator.getGamepads;
+    document.querySelector('canvas').requestPointerLock = undefined;
+    window.testInput.capture(true);
+    return [pending, withPad, window.testInput.waitingForPointer()];
+  });
+  assert.deepEqual(captureFallback, [true, false, false], 'A standard gamepad or unavailable Pointer Lock API bypasses the mouse gate');
+  await page.context().close();
+
+  // Exercise the combat loop and pause screen through the normal game entry point.
+  const battle = await browser.newPage({ viewport: { width: 800, height: 500 } });
+  const battleErrors = [];
+  battle.on('pageerror', error => battleErrors.push(error.message));
+  await battle.addInitScript(() => {
+    const request = HTMLCanvasElement.prototype.requestPointerLock;
+    window.testLock = { refused: 0, deny: true };
+    HTMLCanvasElement.prototype.requestPointerLock = function (...args) {
+      if (this.id === 'stage' && testLock.deny) {
+        testLock.refused++;
+        return Promise.reject(new DOMException('The browser declined pointer lock', 'NotAllowedError'));
+      }
+      return request.apply(this, args);
+    };
+  });
+  await battle.goto(server.url + 'FiveRegiments/?duel=archer,tiger&seed=24&quality=low');
+  await battle.waitForFunction(() => window.egretGame?.game?.hero?.regiment === 'archer', null, { timeout: 60000 });
+  const sample = () => battle.evaluate(() => {
+    const { game, status } = egretGame;
+    return { time: game.time, frame: status.frames, hp: game.hero.hp, locked: document.pointerLockElement?.id,
+      focus: document.hasFocus(), visibility: document.visibilityState,
+      draw: game.hero.draw?.t ?? null, shots: game.shots.filter(shot => shot.by === game.hero.id).length };
+  });
+  const resume = battle.locator('.page.pause [data-act="resume"]');
+  const waitFrames = frame => battle.waitForFunction(frame => egretGame.status.frames >= frame + 8, frame);
+  const captureMouse = async () => {
+    if (await resume.isVisible()) await resume.click();
+    if (!(await sample()).locked && !(await resume.isVisible())) await battle.mouse.click(400, 250);
+    await battle.waitForFunction(() => document.pointerLockElement?.id === 'stage');
+    await waitFrames((await sample()).frame);
+  };
+  await battle.mouse.click(400, 250);
+  await battle.waitForFunction(() => testLock.refused > 0);
+  const denied = await sample();
+  await waitFrames(denied.frame);
+  const afterDenial = await sample();
+
+  await battle.evaluate(() => { testLock.deny = false; });
+  await captureMouse();
+  await battle.mouse.down();
+  await battle.waitForFunction(() => egretGame.game.hero.draw?.t > 0.08);
+  const heldDraw = await sample();
+  await battle.evaluate(() => document.exitPointerLock());
+  await resume.waitFor();
+  await battle.mouse.up();
+  const paused = await sample();
+  await waitFrames(paused.frame);
+  const afterPause = await sample();
+  const refusedBefore = await battle.evaluate(() => {
+    testLock.deny = true;
+    return testLock.refused;
+  });
+  await resume.click();
+  if (await battle.evaluate(count => testLock.refused === count, refusedBefore)) await battle.mouse.click(400, 250);
+  await battle.waitForFunction(count => testLock.refused > count, refusedBefore);
+  const resumeDenied = await sample();
+  await waitFrames(resumeDenied.frame);
+  const afterResumeDenial = await sample();
+
+  await battle.evaluate(() => { testLock.deny = false; });
+  await captureMouse();
+  await battle.waitForFunction(time => egretGame.game.time > time + 0.10, paused.time);
+  const afterResume = await sample();
+
+  await battle.mouse.down();
+  await battle.waitForFunction(() => egretGame.game.hero.draw?.t > 0.08);
+  await battle.mouse.up();
+  await battle.waitForFunction(shots => egretGame.game.shots.filter(shot => shot.by === egretGame.game.hero.id).length === shots + 1, afterResume.shots);
+  const afterFreshShot = await sample();
+
+  console.log(JSON.stringify({ denied, afterDenial, heldDraw, paused, afterPause, resumeDenied, afterResumeDenial, afterResume, afterFreshShot }));
+  assert.deepEqual(battleErrors, []);
+  assert.equal(denied.locked, undefined);
+  for (const refused of [afterDenial, afterResumeDenial]) {
+    assert.equal(refused.locked, undefined);
+    assert.equal(refused.visibility, 'visible');
+    assert.equal(refused.focus, true);
+  }
+  assert.equal(afterPause.time, paused.time, 'native unlock pauses the clock');
+  assert.equal(afterResume.locked, 'stage', 'a fresh gesture resumes actual pointer lock');
+  assert.equal(afterDenial.hp, denied.hp, 'a refused pointer lock leaves the player safe');
+  assert.equal(afterResumeDenial.hp, paused.hp, 'a refused resume capture leaves the player safe');
+  assert.deepEqual([afterDenial.time, afterResumeDenial.time, afterResume.shots], [denied.time, paused.time, heldDraw.shots],
+    'refused pointer lock must hold the clock, and pausing a held bow must not turn into a shot');
+  console.log('Pointer lock, between-tick inputs and battle pause verified.');
 } finally {
   await browser.close();
   await server.close();

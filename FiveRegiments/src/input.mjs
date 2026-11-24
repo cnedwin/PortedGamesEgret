@@ -388,9 +388,14 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     },
     /** Hold the mouse inside the page (on a click) while fighting. */
     capture(on) {
-      state.wantLock = on;
-      if (on) tryPointerLock();
-      else if (document.pointerLockElement === canvas) document.exitPointerLock?.();
+      state.wantLock = on && typeof canvas.requestPointerLock === 'function';
+      if (state.wantLock) tryPointerLock();
+      else if (!on && document.pointerLockElement === canvas) document.exitPointerLock?.();
+    },
+    waitingForPointer() {
+      if (!state.wantLock || state.pointerLocked) return false;
+      // A standard pad can drive the fight even without a captured mouse.
+      return !Array.from(navigator.getGamepads?.() ?? []).some(pad => pad?.connected && pad.mapping === 'standard');
     },
     setYaw(y) {
       state.yaw = y;
