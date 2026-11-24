@@ -385,7 +385,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   const longAxe = arms.main === 'axe';
 
   /** The arm pose for this moment of his action, in shoulder-centred body space. */
-  function actionPose(man, dt) {
+  function actionPose(man, dt, contactTime) {
     const act = man.act;
     let pose = style.ready;
     let blend = 10; // how fast the arms follow (1/s); swings set the place exactly
@@ -397,7 +397,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       }
     }
     if (act?.kind === 'swing') {
-      const phase = swingPhase(act, arms.main, man.prev?.attack);
+      const visualAct = contactTime === null ? act : { ...act, t: contactTime };
+      const phase = swingPhase(visualAct, arms.main, man.prev?.attack);
       const keys = [style.ready, ...cuts[act.line], style.ready];
       const from = Math.min(3, Math.floor(phase));
       const pose = mixPose(keys[from], keys[from + 1], phase - from);
@@ -409,7 +410,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       pose.f += heft * (-0.08 * gather + 0.075 * carry);
       return { pose, blend: 60, phase, line: act.line };
     }
-    if (act?.kind === 'skill') return skillPose(man, act) ?? { pose, blend };
+    if (act?.kind === 'skill') return skillPose(man, act, contactTime ?? act.t) ?? { pose, blend };
     if (act?.kind === 'lance') {
       // Lower the point past the horse's right shoulder, then lift it clear as the rider recovers.
       const { wind, last, recover, hitRecover } = ARTS.couch;
@@ -426,8 +427,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     return { pose, blend };
   }
 
-  function skillPose(man, act) {
-    const t = act.t;
+  function skillPose(man, act, t) {
     const k = (a, b) => clamp((t - a) / (b - a), 0, 1);
     const pulse = (start, peak, hold, end) => ease(k(start, peak)) * (1 - ease(k(hold, end)));
     const swordPose = (keys) => {
@@ -607,7 +607,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
   }
 
-  function arrange(man, game, dt) {
+  function arrange(man, game, dt, contactTime) {
     // ---- locomotion ---------------------------------------------------------------------------------------
     const f = man.face;
     const vFwd = man.vx * Math.sin(f) + man.vz * Math.cos(f),
@@ -669,7 +669,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
 
     // ---- the upper body: twist, lean, arms ----------------------------------------------------------------
     const { pose: want, blend, spin = 0, lean = 0, shout = 0, throwLeft = 0, phase = 0, line, stance, shield = 0,
-      shieldDrive = 0 } = actionPose(man, dt);
+      shieldDrive = 0 } = actionPose(man, dt, contactTime);
     const act = man.act;
     if (state.lastAct !== act) {
       const fromSpinGuard = state.spinBrace > 0 && act?.kind === 'skill' && act.id === 'swing';
@@ -870,7 +870,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     held,
     rig,
     /** Follow the man for one frame. */
-    update(man, game, dt, { seat = null } = {}) {
+    update(man, game, dt, { seat = null, contactTime = null } = {}) {
       if (!man.alive) {
         if (state.fall === 0 && state.impactBearing === null) state.impactBearing = man.face + Math.PI;
         state.fall = Math.min(1, state.fall + dt * 1.6);
@@ -894,7 +894,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const lookBack = ease((Math.abs(aimFromHorse) - Math.PI / 2) / (Math.PI / 2));
       state.turnOnHorse = clamp(aimFromHorse, -1.25, 1.25) * (1 - lookBack) * ease(ride);
       let spin = 0, floorLift = 0;
-      if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt));
+      if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt, contactTime));
       const air = man.act?.air ?? 0;
       const fallTilt = 1.45 * ease((state.fall - 0.19) / 0.68) + 0.76 * ease(state.down);
       const landing = state.fall === 0 ? 0 : 0.045 * Math.sin(Math.PI * clamp((state.fall - 0.27) / 0.66, 0, 1));
