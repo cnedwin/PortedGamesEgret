@@ -14,10 +14,23 @@ const hook = registerHooks({
     return next(imports[name] ? new URL(imports[name], root).href : name, context);
   }
 });
-const [{ createAudioMixer }, { createSound, RATE }] = await Promise.all([
+const [{ createAudioMixer }, { createSound, RATE, SOUNDS }] = await Promise.all([
   import('@egret/engine/audio'), import('../src/audio.mjs')
 ]);
 hook.deregister();
+
+test('a bow release has a short attack and a much quieter tail', () => {
+  const sample = SOUNDS.bowLoose();
+  const rms = (from, to) => {
+    const section = sample.subarray(Math.round(from * RATE), Math.round(to * RATE));
+    return Math.sqrt(section.reduce((sum, value) => sum + value * value, 0) / section.length);
+  };
+  assert.ok(sample.length <= 0.2 * RATE);
+  assert.ok(rms(0, 0.012) > 0.07, 'the string is audible at release');
+  assert.ok(rms(0, 0.022) > rms(0.105, 0.127) * 3);
+  assert.ok(sample.every(value => Math.abs(value) <= 0.881));
+  assert.equal(sample.at(-1), 0);
+});
 
 function fixture({ defer = () => false } = {}) {
   const started = [], buses = [], decoded = [];

@@ -770,7 +770,9 @@ test('the archer can move a little more at full draw without sprinting or outrun
   assert.ok(Math.abs(sidestepping.hero.moving - sidestepping.hero.r.speed * 0.92 * 0.6) < 0.001);
   assert.ok(aiming.hero.moving < aiming.game.men[1].moving * 0.42);
   assert.equal(aiming.game.shots.length, 0, 'a full draw waits for release');
-  assert.equal(step(aiming.game, {}).filter(e => e.type === 'loose').length, 1);
+  const [shot, duplicate] = step(aiming.game, {}).filter(e => e.type === 'loose');
+  assert.equal(shot?.power, 1);
+  assert.equal(duplicate, undefined);
 });
 
 test('arrows fly, hit and can be stopped by a shield', () => {

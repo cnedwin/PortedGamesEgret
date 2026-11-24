@@ -12,13 +12,14 @@ export function createCameraRig(camera) {
     shakeT: 0,
     distance: 3.3,
     up: 0,
+    bowFrame: 0,
     contact: [0, 0, 0]
   };
   /**
    * Follow `hero` with heading `yaw` and elevation `pitch`. `target` is the locked foe or null; `place` has posts.
    * Returns the yaw the camera settled on (locking turns it).
    */
-  rig.update = (dt, { hero, yaw, pitch, target, targetYaw, place, guard = false, dead = false, finish = 0, mounted = false, view = 'third', zoom = 1, eye = null }) => {
+  rig.update = (dt, { hero, yaw, pitch, target, targetYaw, place, guard = false, dead = false, finish = 0, mounted = false, view = 'third', zoom = 1, eye = null, aimingBow = false }) => {
     if (target) {
       const want = targetYaw ?? Math.atan2(target.x - hero.x, target.z - hero.z);
       yaw += wrap(want - yaw) * (1 - Math.exp(-dt * 7));
@@ -27,6 +28,8 @@ export function createCameraRig(camera) {
     for (let i = 0; i < rig.contact.length; i++) rig.contact[i] *= contactDecay;
     // On horseback the camera rides higher and further back.
     rig.up += ((mounted ? 0.85 : 0) - rig.up) * (1 - Math.exp(-dt * 4));
+    const bowFrame = aimingBow && view === 'third' && !dead && !finish ? 1 : 0;
+    rig.bowFrame += (bowFrame - rig.bowFrame) * (1 - Math.exp(-dt * 7));
     // The first-person view (V): at his eyes, looking where the mouse looks; it gives way to the shoulder view when he
     // falls or the fight ends.
     if (view === 'first' && eye && !dead && !finish) {
@@ -41,14 +44,16 @@ export function createCameraRig(camera) {
       camera.lookAt(rig.look[0], rig.look[1], rig.look[2]);
       return yaw;
     }
-    const dist = ((dead ? 5 : guard ? 3.4 : 3.9) + finish * 1.2 + rig.up * 1.4) * zoom;
+    const dist = ((dead ? 5 : guard ? 3.4 : 3.9) + finish * 1.2 + rig.up * 1.4 - 0.34 * rig.bowFrame) * zoom;
     rig.distance += (dist - rig.distance) * (1 - Math.exp(-dt * 5));
     const fwd = [Math.sin(yaw), Math.cos(yaw)];
     const right = [-Math.cos(yaw), Math.sin(yaw)];
     const shoulder = 0.78;
-    const height = 1.65 + rig.up + Math.sin(pitch) * rig.distance;
-    let cx = hero.x - fwd[0] * Math.cos(pitch) * rig.distance + right[0] * shoulder,
-      cz = hero.z - fwd[1] * Math.cos(pitch) * rig.distance + right[1] * shoulder;
+    // Reveal the hands from the draw side while keeping the sight point fixed.
+    const drawSide = shoulder + 0.56 * rig.bowFrame;
+    const height = 1.65 + rig.up + Math.sin(pitch) * rig.distance + 0.09 * rig.bowFrame;
+    let cx = hero.x - fwd[0] * Math.cos(pitch) * rig.distance + right[0] * drawSide,
+      cz = hero.z - fwd[1] * Math.cos(pitch) * rig.distance + right[1] * drawSide;
     // Keep out of posts: pull in along the line to the shoulder.
     for (const post of place?.posts ?? []) {
       const dx = cx - post.x,
@@ -98,6 +103,7 @@ export function createCameraRig(camera) {
   rig.snap = (from, to) => {
     rig.at = [...from];
     rig.look = [...to];
+    rig.bowFrame = 0;
     rig.contact.fill(0);
     camera.setPosition(...from);
     camera.lookAt(...to);

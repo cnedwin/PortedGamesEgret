@@ -84,6 +84,7 @@ async function main() {
   const camera = createPerspectiveCamera3D({ fov: 52, near: 0.08, far: 600 });
   scene.addChild(camera);
   const cam = createCameraRig(camera);
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)');
   const mountedPresentation = createMountedPresentation(TICK);
   const mountedContact = createMountedContactPresentation();
   const contactAccent = createContactAccent();
@@ -656,10 +657,14 @@ async function main() {
         play('step', { volume: 0.5 });
         break;
       case 'draw':
-        play('draw', { volume: 0.7 });
+        play('bowDraw', { volume: e.who === heroId ? 0.7 : 0.5 });
         break;
       case 'loose':
-        play(({ wave: 'bladeWave', fan: 'fanLoose', gale: 'galeLoose' })[e.skill] ?? 'loose');
+        if (e.kind === 'arrow' && !e.skill) {
+          figures.get(e.who)?.releaseBow?.(e.power);
+          play('bowLoose', { volume: 0.62 + 0.30 * e.power, rate: 1.05 - 0.09 * e.power });
+          if (e.who === heroId && !reduceMotion.matches) cam.kick(0.08 + 0.12 * e.power, e.yaw + Math.PI);
+        } else play(({ wave: 'bladeWave', fan: 'fanLoose', gale: 'galeLoose' })[e.skill] ?? 'loose');
         break;
       case 'blast':
         play('blast');
@@ -777,10 +782,11 @@ async function main() {
         heading: defender?.face
       });
     }
-    fx.update(dt * k, game);
+    fx.update(dt * k, game, (id) => figures.get(id)?.takeBowLaunch?.());
     // The picture eases between ticks, while aim assistance still uses combat positions.
     const targetYaw = target ? Math.atan2(target.x - game.hero.x, target.z - game.hero.z) : undefined;
-    const yaw = cam.update(dt, { hero: cameraHero, yaw: input.state.yaw, pitch: input.state.pitch, target, targetYaw, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.() });
+    const yaw = cam.update(dt, { hero: cameraHero, yaw: input.state.yaw, pitch: input.state.pitch, target, targetYaw, place: stage.place, guard: game.hero.guard, dead: !game.hero.alive, finish: over ? Math.min(1, overTime) : 0, mounted: game.hero.mounted, view: input.state.view, zoom: input.state.zoom, eye: figures.get(game.hero.id)?.eye?.(),
+      aimingBow: Boolean(game.hero.draw) && !reduceMotion.matches });
     if (target) input.setYaw(yaw);
     const w = canvas.clientWidth,
       h = canvas.clientHeight;

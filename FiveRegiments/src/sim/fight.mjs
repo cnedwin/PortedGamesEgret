@@ -515,7 +515,7 @@ function loose(game, man, { yaw, pitch = 0.04, power = 1, damage, kind = 'arrow'
     fall,
     life: 2.4
   });
-  if (announce) emit(game, 'loose', { who: man.id, kind, skill, yaw });
+  if (announce) emit(game, 'loose', { who: man.id, kind, skill, yaw, power });
 }
 
 /** The heading and lift that put an arrow on `target` (leading him a little). */

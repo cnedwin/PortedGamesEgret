@@ -310,15 +310,16 @@ const BUILD = {
     kit.blade('steel', { y0: 0.08, y1: 0.36, width: (t) => 0.03, thick: 0.005, tip: 0.18 });
     return { length: 0.36 };
   },
-  bow(kit) {
+  bow(kit, pull = 0) {
     // Held at the middle: limbs along ±Y bending back (−Z) and recurving at the tips; the string is drawn apart.
     const limb = (sign) => {
       const pts = [],
         r = [];
       for (let i = 0; i <= 12; i++) {
         const t = i / 12;
-        const y = sign * (0.06 + t * 0.66);
-        const z = -0.13 * Math.sin(t * Math.PI * 0.78) + (t > 0.85 ? 0.09 * ((t - 0.85) / 0.15) ** 2 : 0);
+        const y = sign * (0.06 + t * 0.66 - 0.065 * pull * t * t);
+        const recurve = t > 0.78 ? 0.028 * ((t - 0.78) / 0.22) ** 2 : 0;
+        const z = -0.25 * Math.sin(t * Math.PI * 0.77) + recurve - 0.16 * pull * t * t;
         pts.push([0, y, z]);
         r.push(0.017 - t * 0.009);
       }
@@ -329,7 +330,7 @@ const BUILD = {
       bottom = limb(-1);
     grip(kit, -0.07, 0.07, 0.019, 0x6b3a1e);
     for (const p of [top, bottom]) kit.lathe('bronze', [[0, p[1] - 0.01], [0.011, p[1]], [0, p[1] + 0.012]], { segments: 6, colour: 0xc29a50, offset: [0, 0, p[2]] });
-    return { length: 0.8, nocks: [top, bottom] };
+    return { length: 0.8, nocks: [top, bottom], rest: [0.026, 0.099, 0.008] };
   },
   shield(kit) {
     // A round shield seen along +Z (its face), the arm behind it at the origin.
@@ -365,12 +366,44 @@ const BUILD = {
   }
 };
 
+function flexibleBow(node, info) {
+  const kit = createKit();
+  const drawn = BUILD.bow(kit, 1);
+  const target = kit.build(materials());
+  const limbs = node.children.flatMap((mesh, i) => {
+    if (mesh.name === 'leather') return [];
+    // The two poses share topology. Update the existing buffers and keep the handle fixed.
+    mesh.frustumCulled = false;
+    return ['position', 'normal'].map(name => {
+      const attribute = mesh.geometry.getAttribute(name);
+      attribute.dynamic = true;
+      const base = attribute.data.slice();
+      const end = target.children[i].geometry.getAttribute(name).data;
+      return { attribute, base, end };
+    });
+  });
+  const braced = info.nocks.map(point => [...point]);
+  let previous = 0;
+  return (pull) => {
+    if (Math.abs(pull - previous) < 0.002 && pull !== 0) return;
+    if (pull === previous) return;
+    previous = pull;
+    for (const { attribute, base, end } of limbs) {
+      for (let j = 0; j < base.length; j++) attribute.data[j] = base[j] + (end[j] - base[j]) * pull;
+      attribute.touch();
+    }
+    for (let i = 0; i < info.nocks.length; i++)
+      for (let k = 0; k < 3; k++) info.nocks[i][k] = braced[i][k] + (drawn.nocks[i][k] - braced[i][k]) * pull;
+  };
+}
+
 /** Make one weapon, with grip locations in model metres. A shield's face points along +Y. */
 export function createWeapon(kind) {
   const kit = createKit();
   const info = BUILD[kind](kit);
   const node = kit.build(materials());
   node.name = kind;
+  if (kind === 'bow') info.flex = flexibleBow(node, info);
   return { node, ...info };
 }
 

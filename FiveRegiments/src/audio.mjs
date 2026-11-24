@@ -163,7 +163,17 @@ export const SOUNDS = {
   ]),
   step: () => noise(0.25, (t, s) => Math.sin((Math.PI * t) / s), { tone: () => 0.25, gain: 0.3, seed: 17 }),
   draw: () => noise(0.7, (t, s) => (t / s) * Math.exp(-((t - s) ** 2)), { tone: (t) => 0.1 + t * 0.4, gain: 0.18, seed: 18 }),
+  bowDraw: () => contactMix(0.28, [
+    [noise(0.27, (t, s) => Math.sin(Math.PI * t / s) ** 1.3, { tone: (t) => 0.25 + t * 1.8, gain: 0.23, seed: 64 })],
+    [tone(0.16, 204, 264, { decay: 17, gain: 0.065 }), 0.065]
+  ]),
   loose: () => mix(0.6, [[tone(0.5, 180, 120, { decay: 9, gain: 0.35 })], [swoosh(0.25, 19, 0.35), 0.02]]),
+  bowLoose: () => contactMix(0.19, [
+    [pluck(327, 0.12, { gain: 0.53, damping: 0.955, seed: 65 })],
+    [contactNoise(0.045, 93, 0.78, 0.33, 66)],
+    [tone(0.084, 248, 151, { decay: 42, gain: 0.19 }), 0.002],
+    [bladeAir(0.13, 0.011, 67, 0.68, 0.30), 0.004]
+  ]),
   fanLoose: () => mix(0.24, [[pluck(244, 0.16, { gain: 0.27, damping: 0.966, seed: 36 })], [bladeAir(0.23, 0.025, 37, 0.69, 0.32), 0.008]]),
   galeLoose: () => mix(0.44, [[pluck(145, 0.18, { gain: 0.27, damping: 0.955, seed: 39 })], [bladeAir(0.41, 0.033, 38, 0.36, 0.45)], [tone(0.3, 184, 56, { decay: 10, gain: 0.24 })]]),
   arrowHit: () => mix(0.3, [[thud(150, 0.25, 0.5)], [noise(0.08, (t) => Math.exp(-t * 70), { tone: () => 0.7, gain: 0.3, seed: 20 })]]),
