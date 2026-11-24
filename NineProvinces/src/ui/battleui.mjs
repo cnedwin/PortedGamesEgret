@@ -8,7 +8,7 @@
 // an enemy to attack; tap a tactic when rage is full, or leave it to auto.
 import { FORMATIONS, TERRAIN, UNITS, formationAllowed } from '../data/battle.mjs';
 import { TACTICS } from '../data/tactics.mjs';
-import { command as simCommand, createBattle, outcome, stepBattle, useTactic, tacticPreview, combatPreview, canDeployBattle, deployBattleUnit, distance, previewBattleOrder } from '../sim/battle.mjs';
+import { command as simCommand, createBattle, outcome, stepBattle, useTactic, tacticPreview, combatPreview, canDeployBattle, deployBattleUnit, distance, previewBattleOrder, battleIntentOptions } from '../sim/battle.mjs';
 import { createBattleRecorder } from '../sim/battle-history.mjs';
 import { MAX_BATTLE_PLAN_ORDERS, previewBattleCommandPlan, commitBattleCommandPlan } from '../sim/battle-command-plan.mjs';
 import { finishBattle } from '../sim/military.mjs';
@@ -26,6 +26,8 @@ const WIND = ['→', '↘', '↙', '←', '↖', '↗'];
 const words = (zh, en) => getLanguage() === 'en' ? en : zh;
 const armName = u => nm(UNITS[u.kind]);
 const unitName = u => u.general ? generalName(u.general) : t('captain');
+const intentLabel = kind => kind === 'guard' ? words('守住阵线', 'Guard line')
+  : kind === 'range' ? words('保持射程', 'Keep range') : words('自由机动', 'Free movement');
 
 export function startBattle(app, setup, { state: s = app.state, onTrialResult, onTrialExit } = {}) {
   const trial = Boolean(onTrialResult);
@@ -329,7 +331,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   function issue(unit,what,arg) {
     const ok=simCommand(b,unit,what,arg),u=b.units[unit];
     if(ok){record.action(what,{unit,arg:arg??null});record.capture(phase,{force:true});commandBad=false;
-      const order=what==='attack'?words('追击 ','Pursue ')+unitName(b.units[arg]):what==='move'?words('移动至指定位置','Move to the chosen position'):what==='hold'?words('坚守','Hold'):what==='autoTactic'?(arg?words('战法交给部下','Delegate tactics'):words('战法由你施展','Use tactics manually')):what==='formation'?nm(FORMATIONS[arg]):words('自动作战','Automatic combat');
+      const order=what==='attack'?words('追击 ','Pursue ')+unitName(b.units[arg]):what==='move'?words('移动至指定位置','Move to the chosen position'):what==='hold'?words('坚守','Hold'):what==='autoTactic'?(arg?words('战法交给部下','Delegate tactics'):words('战法由你施展','Use tactics manually')):what==='formation'?nm(FORMATIONS[arg]):what==='intent'?intentLabel(arg):words('自动作战','Automatic combat');
       commandNotice=unitName(u)+words(' 已受令：',' accepted: ')+order;
     }else{commandBad=true;commandNotice=what==='move'?words('无法抵达所选位置，请更换道路或目标','Cannot reach that position. Choose another route or target'):words('当前无法执行该军令','That order is unavailable now');app.hud.toast(commandNotice);}
     return ok;
@@ -393,9 +395,19 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     if(u.order==='attack'&&u.target&&!u.target.gone)return (u.path.length?words('行军追击：','Marching toward: '):words('接敌攻击：','Engaging: '))+unitName(u.target)+waiting;
     if(u.order==='move')return (u.goal!==null?words('正在向指定位置移动','Moving to the ordered position'):words('已抵达，等待新令','Arrived; ready for another order'))+waiting;
     if(u.order==='hold')return words('坚守阵地，自动反击射程内敌军','Holding; attacks enemies within reach')+waiting;
+    if(u.intent==='guard')return words('守住蓝圈内的阵地','Guarding the area shown in blue')+waiting;
+    if(u.intent==='range')return words('射击接近的敌军，被贴身时尽量拉开','Firing at approaching units and trying to pull back from melee')+waiting;
     return words('自动寻敌与基础作战','Automatic movement and ordinary attacks')+waiting;
   }
   const signed=n=>(n>=0?'+':'')+Math.round(n*100)+'%';
+  function battleIntentControls(u) {
+    const options = battleIntentOptions(b, u.id);
+    return h('section.bIntent', {'aria-label':words('作战意图','Battle intent')},
+      h('p.bFormationInfo', words('作战意图','Battle intent') + ' · ' + intentLabel(u.intent)),
+      h('div.bOrderRow', options.filter(option => option.available).map(option =>
+        keyButton('intent-' + option.kind, intentLabel(option.kind), () => { issue(u.id, 'intent', option.kind); draw(true); },
+          {kind:option.active?'on':'',small:true}))));
+  }
   function formationText(f){return words('攻','ATK ')+signed(f.atk)+' · '+words('守','DEF ')+signed(f.def)+' · '+words('速','SPD ')+signed(f.spd)+(f.front?' · '+words('正面','Front ')+signed(f.front):'')+(f.flank?' · '+words('夹击','Flank ')+signed(f.flank):'');}
 
   // ——— The HUD ———
@@ -468,7 +480,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   function draw(force = false) {
     if(heldControl){pendingHud=true;return;}
     if(ending){renderEnding();return;}
-    const key = JSON.stringify([phase, paused, speed, selected, armed,commandNotice,tempoNotice,milestonePauses,Math.ceil(executionLeft??-1), Math.floor(b.time), b.units.map((u) => [Math.round(u.troops / 50), Math.round(u.morale / 4), Math.floor(u.rage / 10), u.order, u.autoTactic, u.formation, Object.keys(u.status).join(), u.gone, u.routed]), Math.round(b.gate?.hp ?? 0), Math.round(b.depot?.hp ?? 0), Math.round(b.keepHeld), feed.length && feed[0].at]);
+    const key = JSON.stringify([phase, paused, speed, selected, armed,commandNotice,tempoNotice,milestonePauses,Math.ceil(executionLeft??-1), Math.floor(b.time), b.units.map((u) => [Math.round(u.troops / 50), Math.round(u.morale / 4), Math.floor(u.rage / 10), u.order, u.autoTactic, u.formation, u.intent, u.intentAnchor, Object.keys(u.status).join(), u.gone, u.routed]), Math.round(b.gate?.hp ?? 0), Math.round(b.depot?.hp ?? 0), Math.round(b.keepHeld), feed.length && feed[0].at]);
     if (!force && key === shownKey) return;
     shownKey = key;
     const place = setup.place.node ? placeName(setup.place.node) : placeName(setup.place.link[0]);
@@ -509,6 +521,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         h('p.bCommandHint',commandText),
         commandNotice?h('p.bOrderFeedback'+(commandBad?'.bad':''),{role:'status'},commandNotice):null,
         active&&!armed?h('p.bFormationInfo',nm(FORMATIONS[chosen.formation])+' · '+formationText(FORMATIONS[chosen.formation])):null,
+        fieldCommand && phase==='fight' && active && !chosen.routed && !armed && !draft ? battleIntentControls(chosen) : null,
         active&&!armed&&!pendingOrder&&chosen.target&&!chosen.target.gone?(()=>{const p=combatPreview(b,chosen,chosen.target);return p?h('p.bMatchupInfo',words('兵种修正','Weapon match ')+p.weaponMultiplier.toFixed(2)+'× · '+words('射程内普通命中约','Ordinary hit in reach: ')+p.minLoss+'–'+p.maxLoss+words(' 人（不含暴击）',' troops (before criticals)')):null;})():null,
         nanpi&&!armed&&!pendingOrder?h('p.bTrialGuide',nanpiInstructions(chosen)):null,
         nanpi&&!armed&&!pendingOrder?nanpiOrders(chosen):null,

@@ -199,7 +199,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
   }
   function refreshPreview() {
     const u = selected !== null ? b.units[selected] : null;
-    const key = [viewPhase, selected, u?.pos,u?.order,u?.goal,u?.path?.join(','),u?.target?.id, armedTactic?.tactic,armedTactic?.target, pendingOrder?.unit,pendingOrder?.kind,pendingOrder?.hex,pendingOrder?.target,pendingOrder?.valid,pendingOrder?.path?.join(','), hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
+    const key = [viewPhase, selected, u?.pos,u?.order,u?.goal,u?.path?.join(','),u?.target?.id,u?.intent,u?.intentAnchor, armedTactic?.tactic,armedTactic?.target, pendingOrder?.unit,pendingOrder?.kind,pendingOrder?.hex,pendingOrder?.target,pendingOrder?.valid,pendingOrder?.path?.join(','), hoverHex, goalHex, b.units.map(o => o.gone ? -1 : o.pos).join(',')].join('|');
     if (key === previewKey) return;previewKey = key;
     rangeCells.count = targetCells.count = dangerCells.count = 0;
     routeLines.count=attackLine.count=0;
@@ -212,7 +212,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     }
     const tc = armedTactic ? TACTICS[armedTactic.tactic] : null;
     const reach = tc ? tacticPreview(b,u,tc.id).reach : UNITS[u.kind].range;
-    putCells(rangeCells, hexRing(u.pos, reach));
+    putCells(rangeCells, !tc && u.intent === 'guard' && Number.isInteger(u.intentAnchor)
+      ? hexRing(u.intentAnchor, 2) : hexRing(u.pos, reach));
     if (pendingOrder && !tc) {
       const ordered=b.units[pendingOrder.unit];
       if(ordered&&!ordered.gone){

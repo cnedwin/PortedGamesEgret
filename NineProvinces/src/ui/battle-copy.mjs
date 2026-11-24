@@ -43,6 +43,11 @@ export function hexPositionLabel(at,language='zh'){
 }
 
 export function battleActionLabel(action,language='zh'){
+ if(action.kind==='intent'){
+  if(action.arg==='guard')return words(language,'守住阵线','Guard line');
+  if(action.arg==='range')return words(language,'保持射距','Keep distance');
+  return words(language,'主动接敌','Engage');
+ }
  const labels={select:['选军','Select unit'],deploy:['部署','Deploy'],formation:['变阵','Change formation'],move:['移动','Move'],attack:['进攻','Attack'],hold:['坚守','Hold'],auto:['自动指挥','Auto orders'],autoTactic:['自动战法','Auto tactics'],tactic:['战法','Tactic'],cancelAim:['取消施策','Cancel tactic'],pause:['暂停','Pause'],resume:['继续','Resume'],begin:['开战','Begin'],entrust:['全军委任','Entrust army'],speed:['倍速','Speed'],step:['步进','Step'],result:['结算','Result']};
  const label=action.kind==='aim'?(action.target==null?['选择战法','Choose tactic']:['选择目标','Choose target']):labels[action.kind]??['军令','Order'];
  return label[language==='en'?1:0];
