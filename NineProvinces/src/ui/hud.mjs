@@ -13,13 +13,14 @@ import { TECHS } from '../data/techs.mjs';
 import { serving, stat as statOf } from '../sim/core.mjs';
 import { disband, hostile, order, route, troopCap } from '../sim/military.mjs';
 import { persuadeChance } from '../sim/people.mjs';
-import { caps, governorRecruitment, income, recruit, researchRate, upkeep, workQuote, power } from '../sim/world.mjs';
+import { caps, governorDuties, governorRecruitment, income, recruit, researchRate, upkeep, workQuote, power } from '../sim/world.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
 import { seasonOf } from '../view3d/seasons.mjs';
 import { $, bar, button, clear, colourOf, face, h, seal, stat } from './dom.mjs';
 import { dayWords, logLine, pair, treatyAt } from './text.mjs';
 import { CITY_OVERVIEW, cityContent, cityTabs, createCampaignTime, territoryLegend } from './campaign-controls.mjs';
+import { renderGovernorDuties } from './governor-duties.mjs';
 
 const SPEEDS = [0.5, 1, 2, 4, 8];
 export { SPEEDS };
@@ -149,7 +150,7 @@ export function createHud(app) {
   }
 
   // ——— The side panel ———
-  function nodePanel(s, id) {
+  function nodePanel(s, id, dutyViews) {
     const n = NODES[id],
       node = s.nodes[id],
       owner = node.owner ? s.factions[node.owner] : null,
@@ -229,7 +230,10 @@ export function createHud(app) {
             why && !building && !node.work && h('small', why))
         )
       );
-      if (building) parts.push(h('p.note.order-explanation', why));
+      if (building) {
+        parts.push(h('p.note.order-explanation', why,
+          node.work.governor ? h('strong.governorWorkSource', t('governorBuildSource', { name: generalName(node.work.governor) })) : null));
+      }
     }
     const works = parts.splice(0);
     parts.push(h('h3', t('orders')));
@@ -248,26 +252,7 @@ export function createHud(app) {
         keyed('moveOfficer', button(t('moveOfficer'), () => app.open('pickOfficer', { at: id, purpose: 'move' }), { why: here.length ? null : t('why_generals') }))
       )
     );
-    if (n.kind === 'city') {
-      const delegation = governorRecruitment(s, id);
-      parts.push(h('section.governor-recruit',
-        h('h4', t('governorRecruitTitle')),
-        h('p.note', t('governorRecruitStatus', {
-          status: t('governorRecruit_' + delegation.status),
-          troops: num(node.troops), target: num(delegation.target)
-        })),
-        h('div.row.wrap', keyed('governor-recruit', button(
-          t(delegation.enabled ? 'governorRecruitStop' : 'governorRecruitStart'),
-          () => app.act('governorRecruit', id, !delegation.enabled),
-          { kind: delegation.enabled ? '' : 'main',
-            why: !delegation.enabled && delegation.why ? t('governorRecruit_' + delegation.why) : null }
-        ))),
-        delegation.enabled && delegation.status === 'waiting'
-          ? h('p.note.small', t('governorRecruitNext', { days: delegation.daysLeft })) : null,
-        delegation.lastGot > 0 ? h('p.note.small', t('governorRecruitLast', { n: num(delegation.lastGot) })) : null,
-        h('p.note.small', t('governorRecruitAbout', { grain: num(delegation.reserveGrain) }))
-      ));
-    }
+    if (dutyViews) parts.push(renderGovernorDuties(app, id, node, dutyViews));
     if (n.kind === 'city' && room < 100) parts.push(h('p.dim.small', t('levyNote')));
     if (!here.length) {
       parts.push(h('p.note.order-explanation', t('cityNoOfficers')));
@@ -400,6 +385,8 @@ export function createHud(app) {
     if (!samePlace) citySection = CITY_OVERVIEW;
     lastPlace = place;
     const section = mine ? citySection : undefined;
+    const dutyViews = section === 'orders' && NODES[sel.node]?.kind === 'city'
+      ? { recruit: governorRecruitment(s, sel.node), duties: governorDuties(s, sel.node) } : null;
     // What the panel shows, as a key: redrawn only when it changes.
     let key;
     if (sel.node) {
@@ -408,7 +395,7 @@ export function createHud(app) {
         .map(link => link.to).filter(id => s.nodes[id].owner === s.player)
         .map(id => [id, s.nodes[id].troops, serving(s, s.player, id).filter(g => s.generals[g].busyUntil <= s.day)])];
       key = JSON.stringify([sel.node, section, n, context, faction.coin > 2000 ? 1 : faction.coin,
-        n?.governorRecruitment?.enabled ? governorRecruitment(s, sel.node) : null,
+        dutyViews,
         Object.values(s.armies).filter(a => a.at === sel.node || a.besieging === sel.node).map(a => [a.id, a.troops]),
         serving(s, s.player, sel.node).map(g => [g, s.generals[g].busyUntil > s.day]),
         Object.keys(s.generals).filter(g => s.generals[g].at === sel.node).length, getLanguage()]);
@@ -420,11 +407,14 @@ export function createHud(app) {
     lastSide = key;
     const oldBody = side.querySelector('.placeBody');
     const scroll = samePlace && side.dataset.citySection === section ? oldBody?.scrollTop ?? 0 : 0;
+    const dutyRulesOpen = samePlace && oldBody?.querySelector('.governorDutyRules')?.open;
     side.classList.toggle('placeDetail', Boolean(place));
     if (section) side.dataset.citySection = section;
     else delete side.dataset.citySection;
     side.hidden = false;
-    redraw(side, (node) => node.append(...(sel.node ? nodePanel(s, sel.node) : armyPanel(s, sel.army)).filter(Boolean)));
+    redraw(side, (node) => node.append(...(sel.node ? nodePanel(s, sel.node, dutyViews) : armyPanel(s, sel.army)).filter(Boolean)));
+    const dutyRules = dutyRulesOpen && side.querySelector('.governorDutyRules');
+    if (dutyRules) dutyRules.open = true;
     const body = side.querySelector('.placeBody');
     if (body) body.scrollTop = scroll;
   }

@@ -161,21 +161,61 @@ export function join(state, id, factionId, at) {
   if (factionId === state.player) state.stats.generalsRecruited++;
 }
 
+function citySearchSkill(state, factionId, searcher) {
+  return stat(state, searcher, 'int') * .5 + stat(state, searcher, 'cha') * .5 +
+    generalEffect(state, searcher, 'search') + techEffect(state, factionId, 'search');
+}
+
+function discoverLocalTalent(state, nodeId, skill) {
+  const found = [];
+  const probability = clamp(.35 + skill / 200, 0, 1);
+  for (const id in state.generals) {
+    const general = state.generals[id];
+    if (general.status === 'free' && general.at === nodeId && !general.known && random(state) < probability) {
+      general.known = true;
+      found.push(id);
+    }
+  }
+  return found;
+}
+
+function recordSearchService(official) {
+  (official.service ??= {}).int = (official.service.int ?? 0) + 1;
+}
+
+/** Pure displayed duration/probability, never a list of undiscovered people. */
+export function governorSearchQuote(state, factionId, searcher, nodeId) {
+  if (!state?.generals?.[searcher] || !GENERALS[searcher] ||
+      !state.factions?.[factionId] || !state.nodes?.[nodeId]) return { days: 12, chance: 0 };
+  const skill = citySearchSkill(state, factionId, searcher);
+  return {
+    days: clamp(Math.round(14 - skill / 10), 5, 12),
+    chance: clamp(.35 + skill / 200, 0, 1)
+  };
+}
+
+/** Resolve one matured delegated search; the calendar owns its pending job. */
+export function settleGovernorSearch(state, factionId, searcher, nodeId) {
+  const node = state.nodes[nodeId], official = state.generals[searcher];
+  if (!node || node.owner !== factionId) return { why: 'notOurs' };
+  if (NODES[nodeId]?.kind !== 'city') return { why: 'notCity' };
+  if (node.governor !== searcher) return { why: 'noGovernor' };
+  if (!official || !GENERALS[searcher] || official.status !== 'serving' ||
+      official.faction !== factionId || official.at !== nodeId) return { why: 'notHere' };
+  if (official.busyUntil > state.day) return { why: 'busy' };
+  const found = discoverLocalTalent(state, nodeId, citySearchSkill(state, factionId, searcher));
+  recordSearchService(official);
+  return { ok: true, found };
+}
+
 /** Search a city for unattached talent and hidden treasures. Takes the searcher's time; the result comes at once here. */
 export function searchCity(state, factionId, searcher, nodeId) {
   const s = state.generals[searcher];
   if (s.status !== 'serving' || s.faction !== factionId || s.at !== nodeId) return { why: 'notHere' };
   if (s.busyUntil > state.day) return { why: 'busy' };
   s.busyUntil = state.day + 10;
-  const found = [],
-    skill = stat(state, searcher, 'int') * 0.5 + stat(state, searcher, 'cha') * 0.5 + generalEffect(state, searcher, 'search') + techEffect(state, factionId, 'search');
-  for (const id in state.generals) {
-    const g = state.generals[id];
-    if (g.status === 'free' && g.at === nodeId && !g.known && random(state) < 0.35 + skill / 200) {
-      g.known = true;
-      found.push({ general: id });
-    }
-  }
+  const skill = citySearchSkill(state, factionId, searcher);
+  const found = discoverLocalTalent(state, nodeId, skill).map(general => ({ general }));
   const hidden = state.hiddenTreasures.filter((t) => t.at === nodeId);
   for (const t of hidden)
     if (random(state) < 0.12 + skill / 600) {
@@ -183,7 +223,7 @@ export function searchCity(state, factionId, searcher, nodeId) {
       (state.factions[factionId].store ??= []).push(t.id);
       found.push({ treasure: t.id });
     }
-  (s.service ??= {}).int = (s.service.int ?? 0) + 1;
+  recordSearchService(s);
   return { ok: true, found };
 }
 

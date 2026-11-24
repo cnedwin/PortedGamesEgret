@@ -457,6 +457,47 @@ html[lang="en"] .campaignMark h1 {
 #side.placeDetail .placeSection > :first-child { margin-top: 0; }
 #side.placeDetail .placeSection > :last-child { margin-bottom: 0; }
 
+#side.placeDetail .governor-duties {
+  margin: 12px 0; padding: 8px 9px 0; border: 1px solid #b9954c5c; border-left: 2px solid #d0ad65;
+  border-radius: 3px; background: #203331aa;
+}
+#side.placeDetail .governorDutyHead {
+  display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:3px 8px;
+}
+#side.placeDetail .governorDutyHead h4 { margin: 0; color: #f3d898; font: 700 15px/1.3 var(--kai); }
+#side.placeDetail .governorDutyHead span { color: #d4d7bd; font-size: 12px; }
+#side.placeDetail .governorDutyList { list-style: none; display:grid; gap:0; margin:6px 0 0; padding:0; }
+#side.placeDetail .governorDutyRow {
+  display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px; align-items:center;
+  border-top:1px solid #baab7152; padding:5px 0;
+}
+#side.placeDetail .governorDutyReadout { min-width:0; overflow-wrap:anywhere; }
+#side.placeDetail .governorDutyRow p { margin:0; font-size:12px; line-height:1.4; }
+#side.placeDetail .governorDutyStatus { color:#f0e7ce; font-weight:600; }
+#side.placeDetail .governorDutyMeta,
+#side.placeDetail .governorDutyLast { color:#d0d9c2; }
+#side.placeDetail .governorDutyToggle {
+  min-width:44px; min-height:44px; max-width:112px; padding:3px 7px;
+  color:#efe1bc; background:#233337; text-align:center; white-space:normal; font-size:12px; line-height:1.25;
+}
+#side.placeDetail .governorDutyToggle[aria-pressed='true'] {
+  background:#304b3d; border-color:#bdcba0; color:#f4efd3; box-shadow:inset 0 -3px #9dc38c;
+}
+#side.placeDetail .governorDutyRules { border-top:1px solid #baab7152; }
+#side.placeDetail .governorDutyRules summary {
+  box-sizing:border-box; min-height:44px; padding:11px 2px 7px; cursor:pointer;
+  color:#ebcf90; font-size:13px; line-height:1.4;
+}
+#side.placeDetail .governorDutyRules summary:focus-visible { outline:2px solid #efcc83; outline-offset:-2px; }
+#side.placeDetail .governorDutyRules p { margin:1px 0 7px; color:#d7d8c6; font-size:12px; line-height:1.5; }
+#side.placeDetail .governorWorkSource { display:block; margin-top:4px; color:#e4cd8d; font-size:12px; }
+@media (orientation:landscape) and (max-width:1000px) and (max-height:520px) {
+  #side.placeDetail .governorDutyList { grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px; }
+  #side.placeDetail .governorDutyRow { grid-template-columns:minmax(0,1fr); grid-template-rows:auto 1fr; align-items:start; gap:4px; }
+  #side.placeDetail .governorDutyToggle { order:-1; max-width:none; width:100%; padding-inline:3px; font-size:11px; }
+  #side.placeDetail .governorDutyRow p { font-size:11px; }
+}
+
 #hud .firstMonth { top: calc(var(--campaign-hud-bottom, 122px) + 8px); }
 #topbar .realmChevron { color: #e3c382; font-size: 13px; }
 
