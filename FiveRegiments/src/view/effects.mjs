@@ -522,7 +522,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
   };
 
   /** Each frame: fly the arrows, place webs, run the emitters. */
-  fx.update = (dt, game) => {
+  fx.update = (dt, game, bowLaunchOf) => {
     for (const e of fightEmitters) e.update(dt);
     if (flashLife > 0) {
       flashLife -= dt;
@@ -536,13 +536,24 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       live.add(shot);
       let entry = arrows.get(shot);
       if (!entry) {
-        let view, wake;
+        let view, wake, handoff;
         if (shot.kind === 'wave') {
           view = new Mesh3D(waveGeo, waveMat);
           view.castShadow = false;
           view.renderOrder = 4;
         } else {
           view = arrowModel.node.clone();
+          if (shot.kind === 'arrow' && !shot.skill) {
+            const launch = bowLaunchOf?.(shot.by);
+            if (launch && !shot.done) {
+              const offset = [launch.at[0] - shot.x, launch.at[1] - shot.y, launch.at[2] - shot.z];
+              const speed = Math.hypot(shot.vx, shot.vy, shot.vz);
+              const [dx, dy, dz] = launch.direction;
+              // Ignore stale views after a hitch or when the pose faces away from the shot.
+              if (Math.hypot(...offset) <= 0.95 && dx * shot.vx + dy * shot.vy + dz * shot.vz > speed * 0.6)
+                handoff = { offset, direction: launch.direction, age: 0 };
+            }
+          }
           const style = wakes.get(shot.skill ?? shot.kind);
           if (style) {
             wake = new Mesh3D(wakeGeo, style.material);
@@ -552,7 +563,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
           }
         }
         scene.addChild(view);
-        entry = { view, wake };
+        entry = { view, wake, handoff };
         arrows.set(shot, entry);
       }
       const { view, wake } = entry;
@@ -567,13 +578,27 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       if (!shot.done || !shot.stuck) {
         const sp = Math.hypot(shot.vx, shot.vy, shot.vz) || 1;
         const d = [shot.vx / sp, shot.vy / sp, shot.vz / sp];
+        const position = [shot.x, shot.y, shot.z];
+        if (entry.handoff && !shot.done) {
+          const { offset, direction, age } = entry.handoff;
+          const t = Math.min(1, age / 0.045);
+          const weight = 1 - t * t * (3 - 2 * t);
+          for (let i = 0; i < 3; i++) {
+            position[i] += offset[i] * weight;
+            d[i] += (direction[i] - d[i]) * weight;
+          }
+          const length = Math.hypot(...d);
+          for (let i = 0; i < 3; i++) d[i] /= length;
+          entry.handoff.age += dt;
+          if (t === 1) entry.handoff = null;
+        }
         // Arrow model points along +Y.
         const ax = [d[2], 0, -d[0]];
         const al = Math.hypot(ax[0], ax[2]);
         const angle = Math.acos(Math.max(-1, Math.min(1, d[1])));
         const s = Math.sin(angle / 2) / (al || 1);
         view.setQuaternion(ax[0] * s, 0, ax[2] * s, Math.cos(angle / 2));
-        view.setPosition(shot.x, Math.max(0.02, shot.y), shot.z);
+        view.setPosition(position[0], Math.max(0.02, position[1]), position[2]);
       }
       view.visible = !(shot.done && shot.stuck);
     }
