@@ -705,6 +705,32 @@ test('a Bull Charge leaves a man unable to attack or defend for 4 s (2 s if he g
   assert.equal(rider.f.mounted, false);
 });
 
+test('a single mount press after Bull Charge waits through the fall and remounts a living horse', () => {
+  const { game, h, f } = pair('plume', 'yulin', { foe: { skills: ['bull', 'charge'] } });
+  Object.assign(h, { x: 0, z: 3.5 });
+  Object.assign(h.horse, { x: h.x, z: h.z });
+  Object.assign(f, { x: 0, z: 0 });
+  const charge = run(game, (i) => ({ foe0: { skill: i === 0 ? 0 : -1 } }), 0.8);
+  assert.ok(charge.some((e) => e.type === 'thrown' && e.who === 'hero'));
+  assert.equal(h.stunKind, 'thrown');
+  assert.ok(h.horse.alive);
+  assert.ok(Math.hypot(h.horse.x - h.x, h.horse.z - h.z) <= h.r.horse.near);
+
+  const pressed = step(game, { hero: { mount: true } });
+  assert.ok(pressed.some((e) => e.type === 'mountOnRecovery' && e.who === 'hero'));
+  assert.equal(h.mounted, false);
+  assert.equal(h.act, null, 'mounting cannot begin while the rider is down');
+
+  const recovered = run(game, {}, 1.35);
+  assert.equal(recovered.filter((e) => e.type === 'mount').length, 1);
+  assert.equal(h.act?.kind, 'mount');
+  assert.ok(h.daze > 0, 'daze still lasts for its normal duration');
+  const finished = run(game, {}, 1.5);
+  assert.equal(finished.filter((e) => e.type === 'mounted' && e.who === 'hero').length, 1);
+  assert.ok(!finished.some((e) => e.type === 'dismount'));
+  assert.equal(h.mounted, true);
+});
+
 test('arrows fly, hit and can be stopped by a shield', () => {
   const g = createFight({ hero: { regiment: 'archer' }, foes: [{ regiment: 'tiger' }], seed: 2 });
   const [a, t] = g.men;
@@ -1076,6 +1102,11 @@ test('the couched ji takes a man off the horse’s right front, not one dead ahe
   assert.ok(ev.some((e) => e.type === 'horseDown') && ev.some((e) => e.type === 'thrown'));
   assert.equal(g.f.mounted, false);
   assert.equal(g.f.stunKind, 'thrown');
+  const rejected = step(g.game, { foe0: { mount: true } });
+  assert.ok(rejected.some((e) => e.type === 'noHorse' && e.who === 'foe0' && e.dead));
+  const recovery = run(g.game, {}, 2.5);
+  assert.ok(!recovery.some((e) => e.type === 'mount' || e.type === 'mounted'));
+  assert.equal(g.f.mounted, false);
 });
 
 test('the Cavalry and Centaur talents work only on horseback; Full Vigour above 85% health', () => {

@@ -170,7 +170,7 @@ export function createScreens(root, { onLanguage, coarse = false }) {
         <h2>${placeName(stage.place)}</h2>
         <p class="vs">${t('versus')} <b>${foes}</b></p>
         <button type="button" class="go" data-act="go" autofocus>${t('fight')}</button>
-        <p class="hint click">${t('clickToFight')}</p>
+        <p class="hint click">${t(coarse ? 'touchFightTip' : 'clickToFight')}</p>
       </section>`);
       wire(page, { go: onGo });
       show(page, (e) => {
@@ -294,9 +294,11 @@ export function createScreens(root, { onLanguage, coarse = false }) {
     loading(text) {
       show(node(`<section class="page loading"><p>${text}</p><div class="bar"><i></i></div></section>`));
     },
-    progress(k) {
-      const i = layer.querySelector('.loading .bar i');
-      if (i) i.style.width = Math.round(k * 100) + '%';
+    progress(k, text) {
+      const loading = layer.querySelector('.loading');
+      if (!loading) return;
+      if (text) loading.querySelector('p').textContent = text;
+      loading.querySelector('.bar i').style.width = Math.round(k * 100) + '%';
     },
     lang: getLanguage
   };

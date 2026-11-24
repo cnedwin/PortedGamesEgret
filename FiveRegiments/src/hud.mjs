@@ -6,7 +6,7 @@
 // and numbers where blows land. Tab hides it all but the cross.
 import { ARTS, REGIMENTS, SKILLS } from './sim/regiments.mjs';
 import { recoveryGuardWindow } from './sim/fight.mjs';
-import { t, say } from './i18n.mjs';
+import { t, say, getLanguage } from './i18n.mjs';
 
 const el = (tag, cls, parent, html) => {
   const e = document.createElement(tag);
@@ -79,6 +79,7 @@ export function createHud(root, { touch = false } = {}) {
     skillViews = [];
   let bannerTimer = 0,
     toastTimer = 0;
+  let modeKey = '';
   const lines = Object.fromEntries([...cross.querySelectorAll('[data-l]')].map((p) => [p.dataset.l, p]));
   const preparations = cross.querySelectorAll('[data-prep]');
 
@@ -226,7 +227,13 @@ export function createHud(root, { touch = false } = {}) {
       s.shade.textContent = wait > 0 ? Math.ceil(wait) : '';
     }
     // Modes and key hints.
-    modes.innerHTML = `<span><kbd>B</kbd>${input.combo ? t('combo') : t('single')}</span><span><kbd>V</kbd>${input.view === 'first' ? t('viewFirst') : t('viewThird')}</span>${locked ? `<span class="lock">${t('lock')}</span>` : ''}`;
+    if (!touch) {
+      const nextMode = `${input.combo}:${input.view}:${locked}:${getLanguage()}`;
+      if (modeKey !== nextMode) {
+        modeKey = nextMode;
+        modes.innerHTML = `<span><kbd>B</kbd>${input.combo ? t('combo') : t('single')}</span><span><kbd>V</kbd>${input.view === 'first' ? t('viewFirst') : t('viewThird')}</span>${locked ? `<span class="lock">${t('lock')}</span>` : ''}`;
+      }
+    }
     keys.hidden = !input.keyHints;
     if (!keys.hidden) {
       const movement = hero.mounted
@@ -308,8 +315,8 @@ export function createHud(root, { touch = false } = {}) {
       n.life = 0.9;
     },
     hint(text) {
-      hint.textContent = text ?? '';
-      hint.hidden = !text;
+      if (hint.textContent !== (text ?? '')) hint.textContent = text ?? '';
+      if (hint.hidden !== !text) hint.hidden = !text;
     },
     touch
   };
@@ -345,6 +352,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     heal = make('heal', 'dressing');
   const pause = el('button', 'tb halt', pad, t('paused'));
   let shownArt = null;
+  let mountAction = 'mount';
   pause.type = 'button';
   pause.setAttribute('aria-label', t('paused'));
   const st = input.state;
@@ -494,7 +502,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
   artBtn.addEventListener('pointerdown', () => (st.once.art = true));
   offBtn.addEventListener('pointerdown', () => (st.once.offArt = true));
   swap.addEventListener('pointerdown', () => (st.once.swap = true));
-  mount.addEventListener('pointerdown', () => (st.once.mount = true));
+  mount.addEventListener('pointerdown', () => (st.once[mountAction] = true));
   heal.addEventListener('pointerdown', () => (st.once.heal = true));
   pause.addEventListener('click', () => onPause('touch'));
   return {
@@ -527,7 +535,20 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     cool(hero) {
       if (pad.hidden) return;
       guard.classList.toggle('guard-window', recoveryGuardWindow(hero));
-      if (hero.horse) mount.textContent = hero.mounted ? t('getDown') : t('mountUp');
+      if (hero.horse) {
+        const dead = !hero.horse.alive;
+        const mounting = hero.act?.kind === 'mount';
+        const queued = hero.mountOnRecovery;
+        const distant = !hero.mounted && Math.hypot(hero.x - hero.horse.x, hero.z - hero.horse.z) > hero.r.horse.near;
+        const calling = distant && hero.horse.called;
+        mountAction = distant && !queued && !mounting ? 'call' : 'mount';
+        const label = t(dead ? 'mountLost' : mounting ? 'mounting' : queued ? 'mountQueued'
+          : hero.mounted ? 'getDown' : calling ? 'horseComing' : distant ? 'callHorseTouch' : 'mountUp');
+        if (mount.textContent !== label) mount.textContent = label;
+        const disabled = dead || mounting || queued || calling;
+        if (mount.disabled !== disabled) mount.disabled = disabled;
+        mount.classList.toggle('queued', queued);
+      }
       heal.classList.toggle('wait', hero.dressings <= 0);
       [s0, s1].forEach((b, i) => {
         const wait = hero.cool[i] ?? 0;

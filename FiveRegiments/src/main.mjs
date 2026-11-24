@@ -123,6 +123,7 @@ async function main() {
     removeEventListener('keydown', startSound);
     try {
       sound = await createSound(app.scope, { on: settings.sound });
+      sound.setPaused(paused);
       sound.music(mode === 'fight' ? 'drums' : 'air');
     } catch (e) {
       console.warn(e);
@@ -145,10 +146,12 @@ async function main() {
     const asset = await loadGltf3D(new Uint8Array(await bytes[key]), { decodeImage: decode });
     return { scene: asset.scene, dispose: () => asset.dispose() };
   }
-  async function figureFor(man, which) {
-    motions[man.regiment] ??= loadMotion(new URL(`../assets/motion/${man.regiment}`, import.meta.url));
-    const [b, motion, horseBody] = await Promise.all([body(man.regiment, which), motions[man.regiment], man.horse ? body('horse', which) : null]);
-    const fig = createFigure({ regiment: man.regiment, body: b, motion: await motion, world: scene, height: HEIGHT[man.regiment] });
+  function loadFigure(regiment, which) {
+    motions[regiment] ??= loadMotion(new URL(`../assets/motion/${regiment}`, import.meta.url));
+    return Promise.all([body(regiment, which), motions[regiment], REGIMENTS[regiment].horse ? body('horse', which) : null]);
+  }
+  function figureFor(man, [b, motion, horseBody]) {
+    const fig = createFigure({ regiment: man.regiment, body: b, motion, world: scene, height: HEIGHT[man.regiment] });
     if (!horseBody) return fig;
     // A rider and his horse: the horse moves first, then he sits where its saddle is.
     const horse = createHorse({ body: horseBody, world: scene });
@@ -172,8 +175,9 @@ async function main() {
     stageName = null;
   async function enter(name) {
     if (stageName === name) return stage;
+    const next = await buildPlace(scene, name, { renderer, quality });
     stage?.dispose();
-    stage = await buildPlace(scene, name, { renderer, quality });
+    stage = next;
     stageName = name;
     applyLook(renderer, stage.look, quality);
     fx.weather(stage.look.weather);
@@ -183,7 +187,6 @@ async function main() {
   // ---- the lineup on the title and the choice ----------------------------------------------------------------
   let lineup = null;
   async function showLineup() {
-    await enter('county');
     if (lineup) return lineup;
     const g = createFight({ hero: { regiment: ORDER[0] }, foes: ORDER.slice(1).map((regiment) => ({ regiment })) });
     g.men.forEach((m, i) => {
@@ -193,7 +196,11 @@ async function main() {
       // The rider stands his horse a pace back from the line.
       if (m.horse) Object.assign(m.horse, { x: m.x, z: m.z - 0.6, face: 0 }), (m.z -= 0.6);
     });
-    const figs = await Promise.all(g.men.map((m) => figureFor(m, quality === 'high' ? 'mid' : 'low')));
+    const [, bodies] = await Promise.all([
+      enter('county'),
+      Promise.all(g.men.map((m) => loadFigure(m.regiment, quality === 'high' ? 'mid' : 'low')))
+    ]);
+    const figs = g.men.map((man, i) => figureFor(man, bodies[i]));
     lineup = { game: g, figs, focus: null };
     cam.snap([0, 2.1, 8.2], [0, 1.25, 0]);
     return lineup;
@@ -228,6 +235,7 @@ async function main() {
     hud.show(false);
     touch.show(false);
     input.capture(false);
+    sound?.setPaused(false);
     sound?.music('air');
     screens.loading(t('loading'));
     await showLineup();
@@ -284,6 +292,7 @@ async function main() {
 
   function card() {
     mode = 'card';
+    sound?.music('air');
     const st = run.stages[run.at];
     redraw = card;
     screens.stageCard({ stage: st, total: run.stages.length, onGo: () => begin(st) });
@@ -295,9 +304,16 @@ async function main() {
     screens.loading(`${t('loadingPlace')} · ${placeName(st.place)}`);
     dropLineup();
     clearFight();
-    await enter(st.place);
-    screens.progress(0.5);
-    screens.loading(`${t('loadingMen')} · ${placeName(st.place)}`);
+    const roster = [run.loadout.regiment, ...st.foes];
+    let progress = 0;
+    const arrived = (message) => screens.progress(++progress / 2, message);
+    const [, bodies] = await Promise.all([
+      enter(st.place).then(() => arrived(`${t('loadingMen')} · ${placeName(st.place)}`)),
+      Promise.all(roster.map((regiment) => loadFigure(regiment))).then((loaded) => {
+        arrived();
+        return loaded;
+      })
+    ]);
     const seed = Number(params.get('seed') ?? Math.floor(Math.random() * 1e9));
     game = createFight({
       hero: { ...run.loadout, turn: 14 },
@@ -308,7 +324,7 @@ async function main() {
     });
     brains = createBrains(game, { level: st.level });
     autoBrain = params.has('auto') ? createBrain(game.hero, { level: 0.7, rng: game.rng }) : null;
-    const list = await Promise.all(game.men.map((m) => figureFor(m)));
+    const list = game.men.map((man, i) => figureFor(man, bodies[i]));
     figures = new Map(game.men.map((m, i) => [m.id, list[i]]));
     hud.setup(game);
     over = null;
@@ -336,12 +352,14 @@ async function main() {
     figures.clear();
     tips.clear();
     fx.clear();
+    sound?.clearEffects();
     game = null;
   }
 
   function pause() {
     if (paused) return;
     paused = true;
+    sound?.setPaused(true);
     input.capture(false);
     input.clear();
     if (game) {
@@ -353,6 +371,7 @@ async function main() {
     screens.pause({
       onResume: () => {
         paused = false;
+        sound?.setPaused(false);
         screens.hide();
         hud.show(true);
         touch.show(coarse);
@@ -405,6 +424,7 @@ async function main() {
     touch.show(false);
     mode = 'result';
     status.mode = 'result';
+    sound?.music('air');
     status.last = { won, score: stats.score, time: stats.time };
     redraw = null;
     screens.result({
@@ -590,6 +610,9 @@ async function main() {
       case 'mount':
       case 'dismount':
         play('step', { volume: 0.7, rate: 0.8 });
+        break;
+      case 'mountOnRecovery':
+        if (e.who === heroId) hud.toast(t('mountOnRecovery'), 'good');
         break;
       case 'lance':
         play('heavy', { rate: 0.85 });

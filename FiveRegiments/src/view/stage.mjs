@@ -307,10 +307,21 @@ async function prop(name, set) {
  */
 export async function buildPlace(scene, name, { renderer, quality = 'high' } = {}) {
   const look = PLACE_LOOK[name];
+  const layout = LAYOUT[name]();
+  const set = quality === 'low' ? 'low' : quality === 'medium' ? 'mid' : 'high';
+  const propNames = [...new Set(layout.map((item) => item.prop))];
+  // Terrain, props, sky and extra surfaces can load independently.
+  const [cube, ground, propEntries, palace, stone] = await Promise.all([
+    skyCube(look.sky, quality === 'low' ? 128 : 384),
+    scanned(look.ground.material, look.ground.repeat),
+    Promise.all(propNames.map(async (id) => [id, await prop(id, set)])),
+    name === 'palace' ? Promise.all([scanned('red_plaster_weathered', 0.25), scanned('grey_roof_tiles', 0.5)]) : null,
+    name === 'bamboo' ? scanned('stone_pathway_02', 0.4) : null
+  ]);
+  const props = new Map(propEntries);
   const root = new Object3D();
   root.name = 'place-' + name;
   scene.addChild(root);
-  const cube = await skyCube(look.sky, quality === 'low' ? 128 : 384);
   scene.background = cube;
   scene.environment = cube;
   scene.fog = { kind: 'exponential', color: look.fog.color, density: look.fog.density };
@@ -324,18 +335,12 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
   Object.assign(sun.shadow, { mapSize: quality === 'high' ? 2048 : 1024, extent: 18, near: 1, far: 120, cascades: quality === 'high' ? 2 : 1, cascadeDistance: 45, bias: 0.0006, normalBias: 0.02 });
   root.addChild(sun);
 
-  const ground = await scanned(look.ground.material, look.ground.repeat);
   root.addChild(groundPlane(1600, ground));
 
-  const set = quality === 'low' ? 'low' : quality === 'medium' ? 'mid' : 'high';
   const posts = [];
   const fires = [];
-  const layout = LAYOUT[name]();
-  await Promise.all(
-    [...new Set(layout.map((l) => l.prop))].map((p) => prop(p, set))
-  );
   for (const item of layout) {
-    const loaded = await prop(item.prop, set);
+    const loaded = props.get(item.prop);
     if (item.post) posts.push({ x: item.x, z: item.z, r: item.post });
     if (!loaded) continue;
     const { root: model, min, max } = loaded;
@@ -359,9 +364,8 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
   }
 
   // Red walls round the palace square (the camp's walls are models).
-  if (name === 'palace') {
-    const wall = await scanned('red_plaster_weathered', 0.25);
-    const cap = await scanned('grey_roof_tiles', 0.5);
+  if (palace) {
+    const [wall, cap] = palace;
     const segments = 16;
     const radius = 27;
     for (let i = 0; i < segments; i++) {
@@ -377,18 +381,15 @@ export async function buildPlace(scene, name, { renderer, quality = 'high' } = {
       seg.castShadow = true;
       seg.receiveShadow = true;
       root.addChild(seg);
-      if (name === 'palace') {
-        const top = new Mesh3D(createBoxGeometry3D({ width: len + 0.4, height: 0.5, depth: 2.2 }), cap);
-        top.setPosition(Math.sin(a) * radius, height + 0.25, Math.cos(a) * radius);
-        top.setRotation(0, a, 0);
-        top.castShadow = true;
-        root.addChild(top);
-      }
+      const top = new Mesh3D(createBoxGeometry3D({ width: len + 0.4, height: 0.5, depth: 2.2 }), cap);
+      top.setPosition(Math.sin(a) * radius, height + 0.25, Math.cos(a) * radius);
+      top.setRotation(0, a, 0);
+      top.castShadow = true;
+      root.addChild(top);
     }
   }
   // A stone path through the bamboo.
-  if (name === 'bamboo') {
-    const stone = await scanned('stone_pathway_02', 0.4);
+  if (stone) {
     const geometry = createPlaneGeometry3D({ width: 4.2, height: 70 });
     scaleUv(geometry, 4.2, 70);
     const path = new Mesh3D(geometry, stone);
