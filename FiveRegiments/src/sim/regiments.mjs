@@ -182,8 +182,9 @@ export const REGIMENTS = {
     guardCost: 37,
     art: 'poleAxeSmash',
     mountedArt: 'couch',
-    skills: ['stepCut', 'boar', 'flowers', 'drop'],
+    skills: ['returnSpear', 'stepCut', 'boar', 'flowers', 'drop'],
     talents: ['cavalry', 'centaur', 'equipped', 'vigour', 'armourBane'],
+    playerSkills: ['returnSpear', 'boar'],
     picks: { skills: ['stepCut', 'boar'], talents: ['cavalry', 'centaur', 'equipped', 'vigour'] }
   },
   archer: {
@@ -293,6 +294,9 @@ export const SKILLS = {
   shout: { owner: 'vanguard', name: { zh: '昂扬战吼', en: 'Spirited Battle Cry' }, cool: 25, cost: 10, last: 10, every: 2, mend: 0.05,
     text: { zh: '战吼：每 2 秒恢复已损失生命值的 5%。', en: 'A battle cry: 5% of lost health back every 2 s.' } },
   // Silver Wing Guard (on foot)
+  returnSpear: { owner: 'plume', name: { zh: '回马枪', en: 'Returning Spear' }, cool: 10, cost: 18, damage: 1.12, reach: 3.05,
+    sideDistance: 0.85, backDistance: 0.3, stepTime: 0.26, turnTime: 0.5, release: 0.55, duration: 0.92,
+    text: { zh: '下马后横撤转身，再刺出一枪，造成 112% 突刺伤害。闪身可被打断。', en: 'On foot, step aside and turn into a single thrust for 112% thrust damage. A hit can interrupt the step.' } },
   stepCut: { owner: 'plume', name: { zh: '上步挥砍', en: 'Forward Slash' }, cool: 10, cost: 20, damage: 2.44, step: 1.8, reach: 3.0,
     text: { zh: '上步挥砍，伤害 244%。', en: 'A step in and a cut for 244%.' } },
   boar: { owner: 'plume', name: { zh: '猪突猛进', en: 'Ferocious Charge' }, cool: 14, cost: stamina(155), damage: [0.75, 0.9], dash: 7,
@@ -337,16 +341,21 @@ export const TALENTS = {
 };
 
 /** The defaults for a regiment, or a checked copy of a chosen loadout (two skills, up to four talents of his own). */
-export function loadout(regiment, chosen = {}) {
+export function loadout(regiment, chosen = {}, { player = false } = {}) {
   const r = REGIMENTS[regiment];
   if (!r) throw Error('Unknown regiment: ' + regiment);
-  const skills = (chosen.skills ?? r.picks.skills).filter((id) => r.skills.includes(id));
+  const defaults = player && r.playerSkills ? r.playerSkills : r.picks.skills;
+  const skills = (chosen.skills ?? defaults).filter((id) => r.skills.includes(id));
   const talents = (chosen.talents ?? r.picks.talents).filter((id) => r.talents.includes(id));
   const unique = (list) => [...new Set(list)];
   const s = unique(skills).slice(0, 2),
     t = unique(talents).slice(0, 4);
-  for (const id of r.picks.skills) if (s.length < 2 && !s.includes(id)) s.push(id);
+  for (const id of defaults) if (s.length < 2 && !s.includes(id)) s.push(id);
   // Talents are as chosen (none is a choice too); with no choice given, the defaults.
   if (!chosen.talents) for (const id of r.picks.talents) if (t.length < 4 && !t.includes(id)) t.push(id);
   return { regiment, skills: s, talents: t };
+}
+
+export function playerLoadout(regiment, chosen) {
+  return loadout(regiment, chosen, { player: true });
 }

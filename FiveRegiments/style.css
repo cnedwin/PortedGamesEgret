@@ -242,6 +242,9 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .touch .tb.s0, .touch .tb.s1 { position: relative; overflow: hidden; font-size: 13px; line-height: 1.2; padding: 0 6px; }
 .touch .tb.s0 i, .touch .tb.s1 i { position: absolute; inset: 0; border-radius: 50%; background: conic-gradient(rgba(0, 0, 0, 0.7) calc(var(--k, 0) * 360deg), transparent 0); pointer-events: none; }
 .touch .tb.s0 span, .touch .tb.s1 span { position: relative; }
+.touch .tb .foot-only { display: none; }
+.touch .tb.needs-foot { color: var(--dim); border-style: dashed; }
+.touch .tb.needs-foot .foot-only { position: relative; display: block; margin-top: 2px; color: #ffe1a3; font: 10px var(--sans); }
 .touch .tb.wait { color: var(--dim); }
 .touch .tb.art.full { box-shadow: 0 0 10px 2px rgba(232, 96, 64, 0.75); border-color: rgba(232, 96, 64, 0.9); }
 .touching .hud-bar, .touching .hud-keys, .touching .hud-modes { display: none; }

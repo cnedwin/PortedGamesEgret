@@ -9,6 +9,7 @@
 - 鼠标往哪边划就从哪边砍：左劈、右劈、上劈、突刺；右键按同一方向格挡，刚举起的一瞬接住是「弹刀」。踢腿破防，按住左键蓄重击，体力管着每一刀。
 - 武器带战技，怒气满了按 X 放（羽林卫的盾牌战技按 Z）；R、T 放职业技能。
 - 银翎卫骑马作战：E 上马下马，U 召唤战马，马上以挥砍为主、也能刺，马跑起来按 X 架枪；职业技能要下马才能放。
+- 银翎卫玩家默认下马后按 R 或点「回马枪」侧撤踏定、转身送枪，按 T 或点「猪突猛进」向前冲刺。上步挥砍仍可在征途的配招界面装备。 · On foot, the Silver Wing Guard can sidestep and turn back with Returning Spear (R), or charge with Ferocious Charge (T). Forward Slash can still be equipped on the road.
 - 按键和界面按原作 PC 版的布局：顶上罗盘、对手头顶名牌、左下生命体力数值、底部 1–0 物品栏和技能、战技与怒气条。
 - 人物、战马、兵器和场景物件是 3D 模型，人物和战马骨骼绑定；人的站、走、跑、侧移、后退用动作捕捉数据，挥砍、格挡、技能是按兵器写的姿态加反向动力学，马的走、小跑、疾驰按落蹄顺序用代码驱动。
 - 五个场景各有天空、光照、雾和调色，有阴影、环境光遮蔽、泛光，以及落花、飘雪、竹林薄雾、宫前火星这些天气粒子。
@@ -98,7 +99,7 @@ both is the "double kill".
 | 羽林卫 · Imperial Guard | 环首刀（单手利刃）、盾 · sabre, shield | 重甲 · heavy | 18000 | 冲锋突刺、蛮牛冲击 | X 终结打击，Z 盾牌猛击 |
 | 虎步 · Tiger Step | 汉剑（单手利刃） · sword | 轻甲 · light | 12000 | 回旋击、挥砍 | X 终结打击 |
 | 陷阵营 · Berserker Battalion | 长斧（双手斧钺） · long axe | 重甲 · heavy | 20000 | 下劈、剑气斩 | X 斧钺猛击 |
-| 银翎卫 · Silver Wing Guard | 方天戟（长杆斧钺）、披甲战马 · fangtian ji, horse | 重甲 · heavy | 13000 | 上步挥砍、猪突猛进（下马） | 步战 X 斧钺猛击，马上 X 架枪 |
+| 银翎卫 · Silver Wing Guard | 方天戟（长杆斧钺）、披甲战马 · fangtian ji, horse | 重甲 · heavy | 13000 | 回马枪、猪突猛进（下马） | 步战 X 斧钺猛击，马上 X 架枪 |
 | 武射史 · Martial Archery Expert | 短弓、狩猎刀 · bow, knife | 轻甲 · light | 11000 | 扇形射击、飓风箭 | X 多重射击 |
 
 每营的全部技能（共二十一个）、天赋、战技、伤害公式和每个数的出处见 [docs/DESIGN.md](docs/DESIGN.md)。 · All the skills (twenty-one), talents, weapon arts, the damage formula and where every number comes from are in docs/DESIGN.md.
