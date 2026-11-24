@@ -26,7 +26,7 @@ try {
     const { input, touch } = window.testTouch;
     const fire = (button, type, pointerId = 1, clientX = 60, clientY = 80) =>
       document.querySelector(button).dispatchEvent(new PointerEvent(type, { bubbles: true, pointerType: 'touch', pointerId, clientX, clientY }));
-    const sample = () => input.sample(1 / 60, { threat: 'O' });
+    const sample = (threat = 'O') => input.sample(1 / 60, { threat });
     const attack = '.touch .attack', guard = '.touch .guard', stick = '.touch .stick';
 
     fire(attack, 'pointerdown');
@@ -49,6 +49,30 @@ try {
     const tapGuard = sample();
     const guardStuck = sample().guard;
 
+    function overhead() {
+      fire(attack, 'pointerdown');
+      fire(attack, 'pointermove', 1, 60, 41);
+      fire(attack, 'pointerup', 1, 60, 41);
+    }
+    fire(guard, 'pointerdown', 2);
+    overhead();
+    const overlap = sample('R');
+    sample('R');
+    fire(guard, 'pointerup', 2);
+    overhead();
+    const attackOnly = sample('R');
+    sample('R');
+
+    fire(attack, 'pointerdown');
+    fire(attack, 'pointermove', 1, 60, 116);
+    fire(attack, 'pointerup', 1, 60, 116);
+    sample();
+    sample();
+    fire(guard, 'pointerdown', 2);
+    fire(guard, 'pointerup', 2);
+    overhead();
+    const fallback = sample(null);
+
     fire(attack, 'pointerdown');
     fire(guard, 'pointerdown', 2);
     fire(stick, 'pointerdown', 3);
@@ -65,11 +89,16 @@ try {
     });
     return { canceled, secondFinger, swipe: [swipe.attack, swipe.line], repeated, visibleButtons,
       guard: [tapGuard.guard, tapGuard.line], guardStuck,
+      overlap: [overlap.attack, overlap.guard, overlap.line, overlap.guardLine],
+      attackOnly: [attackOnly.attack, attackOnly.guard, attackOnly.line, attackOnly.guardLine],
+      fallback: [fallback.attack, fallback.guard, fallback.line, fallback.guardLine],
       resumed: [resumed.attack, resumed.guard, Math.hypot(...resumed.move)] };
   });
   assert.deepEqual(actual, {
     canceled: false, secondFinger: false, swipe: [true, 'T'], repeated: false, visibleButtons: true,
-    guard: [true, 'O'], guardStuck: false, resumed: [false, false, 0]
+    guard: [true, 'O'], guardStuck: false, overlap: [true, true, 'O', 'R'],
+    attackOnly: [true, false, 'O', undefined], fallback: [true, true, 'O', 'T'],
+    resumed: [false, false, 0]
   });
   console.log('Touch cancellation, pointer ownership, quick guard, and pause/resume verified.');
 } finally {
