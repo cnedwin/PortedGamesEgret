@@ -76,8 +76,8 @@ export const WORDS = {
   attack: { zh: '出手', en: 'Strike' },
   swap: { zh: '换刀', en: 'Knife' },
   controlsText: {
-    zh: 'W A S D 移动 · 左 Shift 冲刺 · 空格 跳 · 挥鼠选刀路（右劈、左劈、上劈、下刺）· 左键按住架势、松开出招，按久蓄力 · 右键格挡，架势中按右键可收成假动作 · 小键盘 8 2 4 6 直接出招 · F 踢（破防）· X 战技、Z 盾牌战技（怒气满时）· R T 职业技能 · B 单击/连击 · 1 2 换兵器 · 3 绷带 · E 上马/下马 · U 召唤战马 · V 切换视角 · 滚轮 远近 · 中键 锁定 · Tab 隐藏界面 · Ctrl+H 按键提示 · Esc 菜单',
-    en: 'W A S D move · Left Shift sprint · Space jump · move the mouse to select a cut or thrust · hold the left button to ready and charge, release to strike · right button guards or feints from a readied strike · keypad 8 2 4 6 strikes directly · F kicks (breaks guard) · X weapon art and Z shield art (at full rage) · R and T profession skills · B single or continuous attack · 1 2 weapons · 3 bandage · E mount or dismount · U calls the horse · V changes the view · wheel zoom · middle button locks on · Tab hides the panels · Ctrl+H key hints · Esc menu'
+    zh: 'W A S D 移动 · 左 Shift 冲刺 · 空格 跳 · 鼠标左右划选起刀侧，上划下劈，下划突刺 · 左键按住架势、松开出招，按久蓄力 · 右键格挡，架势中按右键可收成假动作 · 小键盘 8 2 4 6 直接出招 · F 踢（破防）· X 战技、Z 盾牌战技（怒气满时）· R T 职业技能 · B 单击/连击 · 1 2 换兵器 · 3 绷带 · E 上马/下马 · U 召唤战马 · V 切换视角 · 滚轮 远近 · 中键 锁定 · Tab 隐藏界面 · Ctrl+H 按键提示 · Esc 菜单',
+    en: 'W A S D move · Left Shift sprint · Space jump · flick the mouse left or right to choose the starting side, up for overhead or down for thrust · hold the left button to ready and charge, release to strike · right button guards or feints from a readied strike · keypad 8 2 4 6 strikes directly · F kicks (breaks guard) · X weapon art and Z shield art (at full rage) · R and T profession skills · B single or continuous attack · 1 2 weapons · 3 bandage · E mount or dismount · U calls the horse · V changes the view · wheel zoom · middle button locks on · Tab hides the panels · Ctrl+H key hints · Esc menu'
   },
   compass: { zh: '北,东,南,西', en: 'N,E,S,W' },
   dressing: { zh: '绷带', en: 'Bandage' },

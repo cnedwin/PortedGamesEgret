@@ -41,9 +41,12 @@ const SLOT_KEYS = ['Digit1', 'Digit2', 'Digit3', 'Digit4', 'Digit5', 'Digit6', '
 const PAD_LINES = { Numpad8: 'O', Numpad2: 'T', Numpad4: 'L', Numpad6: 'R', Numpad7: 'L', Numpad1: 'L', Numpad9: 'R', Numpad3: 'R' };
 
 const LINE_ORDER = ['R', 'L', 'O', 'T'];
+const MOUSE_STROKE_PX = 9;
+const MOUSE_STROKE_IDLE_MS = 90;
 
 export function createInput(canvas, { settings, onPause = () => {}, onLock = () => {} } = {}) {
   const down = new Set();
+  let mouseStrokeAt = -Infinity;
   let heldMouseAttack = null,
     pressedMouseAttack = null,
     releasedMouseAttack = null,
@@ -77,16 +80,21 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
 
   // ---- mouse -------------------------------------------------------------------------------------------------
   const sens = () => 0.0022 * (settings.sensitivity ?? 1);
-  function look(dx, dy) {
+  function look(dx, dy, now) {
     state.yaw -= dx * sens();
     state.pitch = Math.max(-0.35, Math.min(0.75, state.pitch + dy * sens() * (settings.invertY ? -1 : 1)));
-    // The line follows the last clear stroke of the mouse.
-    state.moved[0] = state.moved[0] * 0.6 + dx;
-    state.moved[1] = state.moved[1] * 0.6 + dy;
-    const [mx, my] = state.moved;
-    if (Math.hypot(mx, my) > 9 && (!state.attack || heldMouseAttack?.release)) {
+    if (state.attack && !heldMouseAttack?.release) return;
+    // Choose a clear mouse report on its own, or accumulate nearby smaller reports into one stroke.
+    const moved = state.moved;
+    if (now - mouseStrokeAt > MOUSE_STROKE_IDLE_MS || Math.hypot(dx, dy) > MOUSE_STROKE_PX) moved.fill(0);
+    mouseStrokeAt = now;
+    moved[0] += dx;
+    moved[1] += dy;
+    const [mx, my] = moved;
+    if (Math.hypot(mx, my) > MOUSE_STROKE_PX) {
       state.line = Math.abs(mx) > Math.abs(my) * 0.9 ? (mx > 0 ? 'R' : 'L') : my < 0 ? 'O' : 'T';
-      state.lineAt = performance.now();
+      state.lineAt = now;
+      moved.fill(0);
     }
   }
   const onMove = (e) => {
@@ -94,7 +102,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.lastDevice = 'mouse';
     // Some browsers report a jump when the pointer is first held; one event never turns more than this.
     const cap = 120;
-    look(Math.max(-cap, Math.min(cap, e.movementX)), Math.max(-cap, Math.min(cap, e.movementY)));
+    look(Math.max(-cap, Math.min(cap, e.movementX)), Math.max(-cap, Math.min(cap, e.movementY)), e.timeStamp);
   };
   function tryPointerLock() {
     if (!state.wantLock || !document.hasFocus() || document.pointerLockElement === canvas
@@ -136,7 +144,8 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.attack = state.guard = state.attackWas = false;
     heldMouseAttack = pressedMouseAttack = releasedMouseAttack = null;
     pressedGuardLine = null;
-    state.moved[0] = state.moved[1] = 0;
+    state.moved.fill(0);
+    mouseStrokeAt = -Infinity;
   }
   const onLockChange = () => {
     state.pointerLocked = document.pointerLockElement === canvas;
@@ -305,6 +314,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       sprint: down.has('sprint') || !!pad?.sprint,
       attack,
       meleeRelease,
+      meleeLine: meleeRelease ? mouseAttack.line : undefined,
       meleeDown: meleeRelease && pressedMouseAttack === mouseAttack,
       meleeUp: meleeRelease && releasedMouseAttack === mouseAttack,
       meleeCancel: canceledMouseAttack,

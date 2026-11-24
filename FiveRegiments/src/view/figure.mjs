@@ -74,6 +74,41 @@ const AXE = {
   ]
 };
 const STYLE = { sabre: ONE, jian: ONE, knife: ONE, zhanma: TWO, axe: AXE, spear: SPEAR, ji: SPEAR };
+const CUT_EDGE = { R: [1, -0.12, 0], L: [-1, -0.12, 0], O: [0, -1, 0] };
+const CUT_ELBOW = { R: [-0.82, -0.55, -0.24], L: [0.68, -0.5, -0.2], O: [-0.36, 0.84, -0.22] };
+const REST_ELBOW = [-0.6, -0.8, -0.2];
+const SWING_ARM_RANGE = [0.39, 0.965];
+
+/** Ordinary attack keys put the tip in front on contact. Named skills keep their own poses. */
+function ordinaryCuts(arms) {
+  // Forward is in body space here; counter the authored chest turn when storing the blade axis.
+  const key = (hand, blade, body) => P(hand, qrot(axisAngle([0, 1, 0], -body.t), blade), body);
+  const pole = arms.main === 'ji' || arms.main === 'spear';
+  const reach = arms.two ? 0.39 : 0.44;
+  const side = pole ? 0.11 : 0.18;
+  return {
+    R: [
+      key([pole ? -0.275 : -0.34, 0.05, -0.055], [-0.82, 0.32, 0.46], { t: -0.31, n: -0.06 }),
+      key([-0.22, -0.08, reach], [side, -0.04, 1], { t: 0.17, n: 0.13, f: 0.07 }),
+      key([pole ? -0.1 : 0.025, -0.2, 0.26], [0.83, -0.2, 0.46], { t: 0.37, n: 0.12 })
+    ],
+    L: [
+      key([-0.055, 0.035, 0.14], [0.76, 0.38, 0.48], { t: 0.31, n: -0.04 }),
+      key([-0.135, -0.075, reach], [side, -0.045, 1], { t: -0.17, n: 0.15, f: 0.065 }),
+      key([-0.315, -0.23, 0.23], [-0.83, -0.25, 0.47], { t: -0.32, n: 0.12 })
+    ],
+    O: [
+      key([-0.22, 0.31, 0.025], [0.06, 0.91, -0.4], { t: -0.13, n: -0.1 }),
+      key([-0.185, 0.01, reach], [side, -0.34, 1], { t: 0.06, n: 0.2, d: 0.026, f: 0.045 }),
+      key([-0.22, -0.23, 0.29], [side, -0.59, 0.84], { t: 0.09, n: 0.22, d: 0.034 })
+    ],
+    T: [
+      key([-0.27, -0.24, -0.12], [0.1, 0.12, 1], { t: -0.23, n: -0.015 }),
+      key([pole ? -0.31 : -0.22, -0.16, reach + 0.03], [pole ? 0.15 : 0.21, 0.025, 1], { t: 0.07, n: 0.15, f: 0.105 }),
+      key([pole ? -0.31 : -0.25, -0.21, 0.26], [side, 0.045, 1], { t: 0.01, n: 0.07, f: 0.045 })
+    ]
+  };
+}
 
 function mixPose(a, b, t) {
   return {
@@ -149,12 +184,10 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const node = weapon.node;
     // Weapon +Y along the hand's grip axis, its edge (+Z) toward the knuckles; a shield's face (+Y) toward the knuckles.
     const along = hand.along,
-      fingers = hand.fingers,
-      across = cross(along, fingers);
+      fingers = hand.fingers;
     const q = mapping === 'shield' ? basis(along, fingers, cross(along, fingers)) : basis(cross(along, fingers), along, fingers);
-    void across;
     node.setQuaternion(q[0], q[1], q[2], q[3]);
-    const g = mapping === 'shield' ? add(hand.grip, mul(fingers, 0.03 / s)) : hand.grip;
+    const g = weapon.grip ? sub(hand.grip, qrot(q, mul(weapon.grip, 1 / s))) : hand.grip;
     node.setPosition(g[0], g[1], g[2]);
     node.setScale(1 / s, 1 / s, 1 / s);
     handNode.addChild(node);
@@ -214,6 +247,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     dismountLand: 0
   };
   const style = STYLE[arms.main] ?? ONE;
+  const cuts = ordinaryCuts(arms);
   const longAxe = arms.main === 'axe';
 
   /** The arm pose for this moment of his action, in shoulder-centred body space. */
@@ -230,7 +264,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
     if (act?.kind === 'swing') {
       const phase = swingPhase(act, arms.main, man.prev?.attack);
-      const keys = [style.ready, ...style[act.line], style.ready];
+      const keys = [style.ready, ...cuts[act.line], style.ready];
       const from = Math.min(3, Math.floor(phase));
       const pose = mixPose(keys[from], keys[from + 1], phase - from);
       // The front foot takes the load as the blade commits. Held attacks stay weighted on the back foot.
@@ -514,9 +548,16 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const along = (d) => rig.dirToRig(qrot(twistQ, d));
 
     // Right arm: the weapon hand.
-    const poleR = rig.dirToRig(qrot(twistQ, [-0.6, -0.8, -0.2]));
-    if (bow) armsForBow(man, dt, twistQ, place, along);
-    else rig.reachArm('r', place(p.r), poleR, along(p.b), 1, 0, null, state.primaryGrip, dt);
+    const ordinary = act?.kind === 'swing';
+    const edge = ordinary && phase < 2.78 && CUT_EDGE[act.line];
+    const edgeHint = edge ? rig.dirToRig(edge) : null;
+    const reachRange = ordinary ? SWING_ARM_RANGE : null;
+    const elbow = ordinary && CUT_ELBOW[act.line];
+    const turnElbow = act?.line === 'O' ? ease((phase - 0.98) / 0.6) : ease(phase * 1.45);
+    const lead = turnElbow * (1 - ease((phase - 3) / 0.9));
+    const poleR = along(elbow ? lerp3(REST_ELBOW, elbow, lead) : REST_ELBOW);
+    if (bow) armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR);
+    else rig.reachArm('r', place(p.r), poleR, along(p.b), 1, 0, edgeHint, state.primaryGrip, dt, reachRange);
     rig.closeHand('r', 1);
 
     // Left arm: on the same weapon (two-handed), the shield, or free.
@@ -528,12 +569,14 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const gripOffset = qrot(gripTurn, rig.hands.l.grip);
       const wrist = () => sub(weaponPoint(main, main.second), gripOffset);
       const reachLimit = (rig.reach.l.upper + rig.reach.l.lower) * 0.985;
-      const reachToGrip = sub(wrist(), rig.world('upperarm_l').t);
-      const distance = len(reachToGrip);
       // A locked second hand limits the first hand's travel before it moves the weapon out of reach.
-      if (distance > reachLimit) {
+      const shoulder = rig.world('upperarm_l').t;
+      for (let i = 0; i < (ordinary ? 2 : 1); i++) {
+        const reachToGrip = sub(wrist(), shoulder);
+        const distance = len(reachToGrip);
+        if (distance <= reachLimit) break;
         const correction = mul(reachToGrip, (reachLimit - distance) / distance);
-        rig.reachArm('r', add(rig.world('hand_r').t, correction), poleR, blade, 1, 0, edge);
+        rig.reachArm('r', add(rig.world('hand_r').t, correction), poleR, blade, 1, 0, edge, null, 0, reachRange);
       }
       rig.reachArm('l', wrist(), rig.dirToRig(qrot(twistQ, [0.7, -0.7, -0.1])), blade, 1, 0, face);
       rig.closeHand('l', 1);
@@ -577,7 +620,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     return { spin, floorLift };
   }
 
-  function armsForBow(man, dt, twistQ, place, along) {
+  function armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR) {
     const drawing = man.draw ? clamp(man.draw.t / man.r.bow.draw, 0, 1) : 0;
     const shooting = man.act?.kind === 'skill' && ['gale', 'fan', 'backStep', 'blast', 'web', 'volley'].includes(man.act.id);
     const aiming = Boolean(man.draw || shooting);
@@ -588,7 +631,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     if (man.knife) {
       main.node.visible = true;
       bow.node.visible = false;
-      rig.reachArm('r', place(state.pose.r), rig.dirToRig([-0.6, -0.8, -0.2]), along(state.pose.b));
+      rig.reachArm('r', place(state.pose.r), reachRange ? poleR : rig.dirToRig(REST_ELBOW), along(state.pose.b),
+        1, 0, edgeHint, reachRange ? state.primaryGrip : null, dt, reachRange);
       for (const st of strings) st.mesh.visible = false;
       nocked.node.visible = false;
       rig.reachArm('l', place([0.24, -0.42, 0.1]), rig.dirToRig([0.8, -0.6, -0.2]), null, 0.8);

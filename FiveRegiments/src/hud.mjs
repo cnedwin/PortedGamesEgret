@@ -24,10 +24,10 @@ const CROSS = `<svg viewBox="-60 -60 120 120" aria-hidden="true">
   <path data-l="L" d="M-18 -9 L-44 0 L-18 9 Z"/>
   <path data-l="O" d="M-9 -18 L0 -44 L9 -18 Z"/>
   <path data-l="T" d="M-9 18 L0 44 L9 18 Z"/>
-  <polyline data-prep="R" points="47,-8 56,0 47,8"/>
-  <polyline data-prep="L" points="-47,-8 -56,0 -47,8"/>
-  <polyline data-prep="O" points="-8,-47 0,-56 8,-47"/>
-  <polyline data-prep="T" points="-8,47 0,56 8,47"/>
+  <polyline data-prep="R" points="56,-8 47,0 56,8"/>
+  <polyline data-prep="L" points="-56,-8 -47,0 -56,8"/>
+  <polyline data-prep="O" points="-8,-56 0,-47 8,-56"/>
+  <polyline data-prep="T" points="-8,56 0,47 8,56"/>
   <circle r="2.2"/>
   <circle class="ring" r="30"/>
 </svg>`;

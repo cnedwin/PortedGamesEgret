@@ -20,10 +20,11 @@ import { createScreens, placeName } from './screens.mjs';
 import { createSound } from './audio.mjs';
 import { MARKS, openSave, recordRun, settingsOf } from './saves.mjs';
 import { setLanguage, getLanguage, t, say } from './i18n.mjs';
-import { loadMotion, skillTrailSegment } from './view/motion.mjs';
+import { loadMotion, skillTrailSegment, swingTrailActive } from './view/motion.mjs';
 import { createFigure } from './view/figure.mjs';
 import { createHorse } from './view/horse.mjs';
 import { createEffects } from './view/effects.mjs';
+import { ARMS } from './view/weapons.mjs';
 import { createCameraRig } from './view/camera.mjs';
 import { applyLook, buildPlace } from './view/stage.mjs';
 
@@ -674,18 +675,19 @@ async function main() {
       const act = m.act,
         b = f.blade(),
         was = tips.get(m.id);
-      tips.set(m.id, b?.[1] ?? null);
+      tips.set(m.id, b ? { point: b[1], act } : null);
       const step = dt * k;
-      const cutting = act?.kind === 'swing' && !act.awaitingRelease && (act.struck
-        ? act.t - act.strikeAt < 0.12
-        : (act.releaseOnly || !act.held) && act.t >= act.wind - 0.07);
+      const cutting = swingTrailActive(act, ARMS[m.regiment].main, m.prev?.attack);
       const segment = skillTrailSegment(act);
-      if (b && was && step > 0 && (cutting || segment !== null)) {
-        const speed = Math.hypot(b[1][0] - was[0], b[1][1] - was[1], b[1][2] - was[2]) / step;
+      const meleeRibbon = m.id + ':melee';
+      if (act?.kind === 'swing' && act.line !== 'T' && act !== was?.act) fx.sweep(meleeRibbon).clear();
+      if (b && was && step > 0 && ((cutting && act === was.act) || segment !== null)) {
+        const [x, y, z] = was.point;
+        const speed = Math.hypot(b[1][0] - x, b[1][1] - y, b[1][2] - z) / step;
         if (speed > 5.5) {
           const edge = b[0].map((v, i) => v + (b[1][i] - v) * 0.76);
           // Adjacent cuts use different ribbons so a fading cut cannot bridge to the next one.
-          const ribbon = segment > 0 ? m.id + ':' + segment : m.id;
+          const ribbon = cutting ? meleeRibbon : segment > 0 ? m.id + ':' + segment : m.id;
           fx.sweep(ribbon).push(edge, b[1], Math.min(0.7, (speed - 5.5) / 8), m.side === 'hero' ? [1, 0.95, 0.85] : [1, 0.75, 0.6]);
         }
       }
@@ -708,7 +710,9 @@ async function main() {
       return p.inFront && p.x > -80 && p.x < w + 80 && p.y > -80 && p.y < h + 80 ? [p.x, p.y] : null;
     };
     const heroAct = game.hero.act;
-    hud.update(dt, game, { line: input.state.line, preparedLine: heroAct?.awaitingRelease ? heroAct.line : undefined,
+    const trackingSwing = heroAct?.kind === 'swing' && (!heroAct.struck || heroAct.t - heroAct.strikeAt < 0.08);
+    const line = game.hero.guard ? game.hero.guardLine : trackingSwing ? heroAct.line : input.state.line;
+    hud.update(dt, game, { line, preparedLine: heroAct?.awaitingRelease ? heroAct.line : undefined,
       threat, guard: game.hero.guard, locked: !!target, project, yaw: input.state.yaw, input: input.state });
     touch.cool(game.hero);
     hud.hint(!coarse && !autoBrain && input.state.wantLock && !input.state.pointerLocked && !over ? t('clickToFight') : null);

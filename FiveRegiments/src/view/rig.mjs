@@ -62,6 +62,19 @@ export function stabilizeBladeRoll(axis, lead, previous, maxTurn) {
   const turn = Math.max(-bound, Math.min(bound, signed));
   return unit(qrot(axisAngle(axis, turn), carried));
 }
+
+/** Stay within a comfortable wrist bend while turning the edge into a cut. */
+function cutEdgeLead(axis, forearm, edge) {
+  const gripPlane = sub(forearm, mul(axis, dot(forearm, axis)));
+  if (len(gripPlane) < 0.22) return edge;
+  const cuttingPlane = sub(edge, mul(axis, dot(edge, axis)));
+  if (len(cuttingPlane) < 0.15) return gripPlane;
+  const neutral = unit(gripPlane), desired = unit(cuttingPlane);
+  const angle = Math.atan2(dot(cross(neutral, desired), axis), dot(neutral, desired));
+  const limit = Math.PI * 0.39;
+  return qrot(axisAngle(axis, Math.max(-limit, Math.min(limit, angle))), neutral);
+}
+
 /** The rotation whose columns are the given orthonormal axes. */
 export function basis(x, y, z) {
   const t = x[0] + y[1] + z[2];
@@ -197,7 +210,7 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
    * the hand so that a held blade points along `blade` with its edge leading along the forearm. `weight` blends
    * from the captured arm to the reached one. A primary melee grip remembers its edge to avoid singular rolls.
    */
-  function reachArm(s, target, pole, blade, weight = 1, roll = 0, face = null, grip = null, dt = 0) {
+  function reachArm(s, target, pole, blade, weight = 1, roll = 0, face = null, grip = null, dt = 0, reachRange = null) {
     if (weight <= 0) return;
     const up = 'upperarm_' + s,
       lo = 'lowerarm_' + s,
@@ -209,7 +222,10 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
     let toT = sub(target, S);
     let d = len(toT);
     const dir = unit(toT);
-    d = Math.max(Math.abs(L1 - L2) + 1e-4, Math.min(L1 + L2 - 1e-4, d));
+    const arm = L1 + L2;
+    const nearest = Math.max(Math.abs(L1 - L2) + 1e-4, arm * (reachRange?.[0] ?? 0));
+    const furthest = Math.min(arm - 1e-4, arm * (reachRange?.[1] ?? 1));
+    d = Math.max(nearest, Math.min(furthest, d));
     const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d);
     const h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
     let p = sub(pole, mul(dir, dot(pole, dir)));
@@ -229,7 +245,7 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
       const hand = hands[s];
       const forearm = unit(sub(world(hd).t, world(lo).t));
       const B = unit(blade);
-      const lead = face ? unit(face) : forearm;
+      const lead = face && grip && reachRange ? cutEdgeLead(B, forearm, unit(face)) : face ? unit(face) : forearm;
       let F = stabilizeBladeRoll(B, lead, grip, 9 * dt);
       if (grip) {
         grip.axis = B;

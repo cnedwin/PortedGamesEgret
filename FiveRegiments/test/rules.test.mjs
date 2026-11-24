@@ -143,6 +143,16 @@ test('a same-tick PC click respects the original wind and damage', () => {
   assert.deepEqual(current, previous);
 });
 
+test('a PC melee press keeps its own line when guard assist supplies the incoming line', () => {
+  const { game, h } = pair('tiger', 'yulin');
+  step(game, { hero: { guard: true, line: 'L' } });
+  assert.equal(h.guardLine, 'L');
+  step(game, { hero: pcMelee({ guard: true, line: 'L', meleeLine: 'R', attack: true, meleeDown: true }) });
+  assert.equal(h.act?.line, 'R');
+  const release = step(game, { hero: pcMelee({ line: 'O', meleeUp: true }) });
+  assert.equal(release.find(e => e.type === 'swing')?.line, 'R');
+});
+
 test('guard cancels armed PC melee at full charge and stale release cannot attack', () => {
   const { game, h } = pair('tiger', 'yulin');
   run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0 }) }), 2);
@@ -175,7 +185,7 @@ test('a PC combo remembers tap release and its accepted line across the recovery
   for (const releaseTick of [0, 1, 2]) {
     const { game, h } = meleeRecovery();
     while (h.act.t - h.act.strikeAt < h.act.recover * 0.65) step(game, {});
-    step(game, { hero: pcMelee({ attack: true, meleeDown: true, meleeUp: releaseTick === 0, line: 'L' }) });
+    step(game, { hero: pcMelee({ attack: true, meleeDown: true, meleeUp: releaseTick === 0, line: 'O', meleeLine: 'L' }) });
     const prepared = step(game, { hero: pcMelee({ attack: releaseTick === 2, meleeUp: releaseTick === 1, line: 'O' }) });
     assert.equal(h.act?.line, 'L');
     assert.equal(h.act.awaitingRelease, releaseTick === 2);

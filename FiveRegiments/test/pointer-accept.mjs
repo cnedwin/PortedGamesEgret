@@ -15,14 +15,15 @@ try {
     <script type="module">
       import { createInput } from './src/input.mjs';
       const canvas = document.querySelector('canvas');
-      const input = window.testInput = createInput(canvas, { settings: { control: 'direction', sensitivity: 1 } });
+      const settings = window.testInputSettings = { control: 'direction', sensitivity: 1 };
+      const input = window.testInput = createInput(canvas, { settings });
       canvas.addEventListener('click', () => input.capture(true), { once: true });
     </script>` }));
   await page.goto(url);
   await page.waitForFunction(() => window.testInput);
   await page.locator('canvas').click();
   await page.waitForFunction(() => window.testInput.state.pointerLocked);
-  const actual = await page.evaluate(() => {
+  const actual = await page.evaluate(async () => {
     const canvas = document.querySelector('canvas');
     const mouse = (type, detail) => canvas.dispatchEvent(new MouseEvent(type, { bubbles: true, ...detail }));
     const tap = (button) => { mouse('mousedown', { button }); mouse('mouseup', { button }); };
@@ -62,13 +63,46 @@ try {
     dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyB' }));
     tap(0);
     const continuous = window.testInput.sample(1 / 60);
+    dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyB' }));
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyB' }));
+    const activeLine = () => {
+      tap(0);
+      return window.testInput.sample(1 / 60).line;
+    };
+    window.testInput.clear();
+    mouse('mousemove', { movementX: -100 });
+    await new Promise((resolve) => setTimeout(resolve, 130));
+    mouse('mousemove', { movementX: 20 });
+    const afterIdle = activeLine();
+    mouse('mousemove', { movementY: -6 });
+    await new Promise((resolve) => setTimeout(resolve, 130));
+    mouse('mousemove', { movementY: -6 });
+    const separatedFine = activeLine();
+    window.testInput.clear();
+    mouse('mousemove', { movementY: -100 });
+    mouse('mousemove', { movementX: 24 });
+    const sharpTurn = activeLine();
+    window.testInput.clear();
+    mouse('mousemove', { movementX: 24 });
+    for (let i = 0; i < 12; i++) mouse('mousemove', { movementY: -2 });
+    const fineStroke = activeLine();
+    window.testInput.clear();
+    window.testInputSettings.assist = true;
+    mouse('mousemove', { movementX: 40 });
+    mouse('mousedown', { button: 2 });
+    window.testInput.sample(1 / 60, { threat: 'L' });
+    mouse('mousedown', { button: 0 });
+    const fromGuard = window.testInput.sample(1 / 60, { threat: 'L' });
+    mouse('mouseup', { button: 0 });
+    mouse('mouseup', { button: 2 });
     return { yaw, attack: [attack.attack, attack.line], guard: [guard.guard, guard.line], cleared: !next.attack && !next.guard, lines,
       short: [attack.meleeRelease, attack.meleeDown, attack.meleeUp],
       preparing: [preparing.meleeRelease, preparing.meleeDown, preparing.meleeUp, preparing.line],
       held: [held.meleeRelease, held.meleeDown, held.meleeUp, held.line],
       released: [released.meleeRelease, released.meleeDown, released.meleeUp, released.line],
       after: [after.meleeRelease, after.meleeUp], canceled: [canceled.meleeCancel, canceled.meleeUp],
-      bow: bow.meleeRelease, continuous: continuous.meleeRelease };
+      bow: bow.meleeRelease, continuous: continuous.meleeRelease, afterIdle, separatedFine, sharpTurn, fineStroke,
+      fromGuard: [fromGuard.line, fromGuard.meleeLine, fromGuard.meleeDown] };
   });
   assert.ok(Math.abs(actual.yaw - (-14 * 0.0022)) < 1e-6, 'A pointer event rotates the camera once');
   assert.deepEqual(actual.attack, [true, 'R'], 'A quick attack survives the tick with its original direction');
@@ -83,6 +117,11 @@ try {
   assert.deepEqual(actual.canceled, [true, false], 'Blur clears the gesture without treating it as a release');
   assert.equal(actual.bow, false, 'The bow keeps its existing input path');
   assert.equal(actual.continuous, false, 'Continuous attack keeps its existing input path');
+  assert.equal(actual.afterIdle, 'R', 'A fresh right stroke after a pause does not inherit the old left stroke');
+  assert.equal(actual.separatedFine, 'R', 'Small cursor adjustments separated by a pause do not turn into a strike direction');
+  assert.equal(actual.sharpTurn, 'R', 'One clear horizontal stroke can replace the previous vertical stroke');
+  assert.equal(actual.fineStroke, 'O', 'A deliberate movement made of small packets can choose an overhead cut');
+  assert.deepEqual(actual.fromGuard, ['L', 'R', true], 'Guard assist and the sampled mouse attack keep separate directions');
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.evaluate(() => window.testInput.capture(false));
