@@ -20,6 +20,7 @@
 // The PC primary melee gesture sends `meleeRelease` with `meleeDown`, `meleeUp` and `meleeCancel` edges.
 // Human controls set `recoveryHandoff` to carry a fresh command across the tick that completes a swing.
 // Player controls can set `skillGuardCancel` to enable a fresh guard press during Spin's follow-through.
+// An overlapping touch guard and attack can supply a separate `guardLine` for the ordinary guard.
 //
 // Headings: 0 looks along +z, and a man's right hand is at heading − π/2.
 
@@ -1270,10 +1271,10 @@ function runBow(game, man, input, dt) {
   }
 }
 
-function raiseGuard(game, man) {
+function raiseGuard(game, man, line) {
   man.guard = true;
   man.guardAt = game.time;
-  man.guardLine = man.line;
+  man.guardLine = line;
   man.act = null;
   man.queuedSwing = null;
 }
@@ -1365,14 +1366,15 @@ function stepMan(game, man, input, dt) {
     // Dazed (by a Bull Charge) he can neither attack nor defend.
     const dazed = man.daze > 0;
     const wantsGuard = input.guard && !bowOut && man.st > 0 && !dazed;
+    const guardLine = input.guardLine ?? man.line;
     const guardCancelsSpin = input.skillGuardCancel && man === game.hero && !man.guard && pressed('guard') && spinGuardWindow(man);
     if (wantsGuard && !man.guard && (!man.act || man.act.kind === 'recover' || guardCancelsSpin)) {
       if (guardCancelsSpin) emit(game, 'skillCancel', { who: man.id, id: 'spin', into: 'guard', elapsed: man.act.t });
-      raiseGuard(game, man);
+      raiseGuard(game, man, guardLine);
     } else if (!wantsGuard && man.guard && man.act?.id !== 'counter') man.guard = false;
     if (man.guard) {
-      if (man.guardLine !== man.line) man.guardAt = Math.max(man.guardAt, game.time - DEFLECT * 0.5);
-      man.guardLine = man.line;
+      if (man.guardLine !== guardLine) man.guardAt = Math.max(man.guardAt, game.time - DEFLECT * 0.5);
+      man.guardLine = guardLine;
     }
 
     // ---- starting something ------------------------------------------------------------------------------
@@ -1405,7 +1407,7 @@ function stepMan(game, man, input, dt) {
       act.moving = false;
       if (act.kind === 'swing') {
         const recovered = runSwing(game, man, act, input, dt);
-        if (recovered && input.recoveryHandoff && wantsGuard && !man.guard) raiseGuard(game, man);
+        if (recovered && input.recoveryHandoff && wantsGuard && !man.guard) raiseGuard(game, man, guardLine);
       } else if (act.kind === 'kick') {
         if (act.t - dt < KICK.wind && act.t >= KICK.wind) {
           const hit = enemiesOf(game, man).filter((t) => inSweep(man, t, KICK.reach, KICK.arc)).sort((a, b) => dist(man, a) - dist(man, b))[0];

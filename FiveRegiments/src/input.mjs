@@ -292,8 +292,11 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       state.comboBeat = (state.comboBeat + dt) % 0.2;
       attack = state.comboBeat < 0.1;
     } else state.comboBeat = 0;
-    const guard = state.guard || pressedGuardLine !== null || !!pad?.guard || state.touch.guard || state.touch.tapGuard;
+    const touchGuard = state.touch.guard || state.touch.tapGuard;
+    const guard = state.guard || pressedGuardLine !== null || !!pad?.guard || touchGuard;
     const classic = settings.control === 'classic' || state.lastDevice === 'touch';
+    // A swipe and a guard can share a sample. Read the defensive line before choosing the attack line.
+    const guardLine = touchGuard && attack ? ((classic || settings.assist) && threat ? threat : state.line) : undefined;
     let line = state.line;
     // Retain the mouse tap and its line when down/up arrive between two simulation ticks.
     if (attack && !state.attack && mouseAttack?.pressed) line = mouseAttack.line;
@@ -322,6 +325,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       meleeUp: meleeRelease && mouseAttack.released,
       meleeCancel: canceledMouseAttack,
       guard,
+      guardLine,
       kick: state.once.kick,
       step: state.once.step,
       swap: state.once.swap,

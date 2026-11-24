@@ -155,6 +155,39 @@ test('held guard takes over on the natural recovery tick before the next fighter
   assert.ok(!step(game, {}).some((e) => e.type === 'swing'), 'guard takes priority over a simultaneous attack at the edge');
 });
 
+test('a touch attack can keep its line separate from a raised or held guard', () => {
+  const { game, h } = pair('archer', 'yulin');
+  step(game, { hero: { arm: 1 } });
+  assert.ok(h.knife);
+  step(game, { hero: { guard: true, guardLine: 'R', line: 'O' } });
+  assert.equal(h.line, 'O');
+  assert.equal(h.guardLine, 'R');
+  step(game, { hero: { guard: true, guardLine: 'L', line: 'T' } });
+  assert.equal(h.line, 'T');
+  assert.equal(h.guardLine, 'L');
+  const attack = step(game, { hero: { attack: true, line: 'O' } });
+  assert.equal(attack.find(e => e.type === 'swing')?.line, 'O');
+  assert.equal(h.guard, false);
+});
+
+test('Archer knife guard keeps its assisted line when a swipe shares the recovery handoff', () => {
+  const duel = pair('archer', 'yulin'), { game, h, f } = duel;
+  step(game, { hero: { arm: 1 } });
+  step(game, { hero: { attack: true, line: 'O' } });
+  while (!h.act.struck) step(game, {});
+  finishRecoveryNextTick(duel, { guard: true, line: 'R', recoveryHandoff: true });
+  const blow = f.r.blows.L;
+  Object.assign(f, { x: h.x, z: h.z - 1.35, face: 0, stun: 0, act: {
+    kind: 'swing', line: 'L', t: blow.wind - TICK * 0.5, wind: blow.wind, held: 0, struck: false, blow, reach: blow.reach, recover: blow.recover
+  } });
+  const hp = h.hp;
+  const events = step(game, { hero: { attack: true, guard: true, line: 'O', guardLine: 'R', recoveryHandoff: true } });
+  assert.equal(h.guardLine, 'R');
+  assert.equal(h.hp, hp);
+  assert.ok(events.some((e) => e.type === 'deflect' && e.who === 'hero'));
+  assert.equal(h.queuedSwing, null);
+});
+
 test('the natural recovery tick still respects stamina and daze guard restrictions', () => {
   for (const restriction of [{ st: 0 }, { daze: 0.5 }]) {
     const duel = meleeRecovery();
