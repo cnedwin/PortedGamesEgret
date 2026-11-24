@@ -9,6 +9,7 @@ import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
 import { bowReleasePose } from './bow-release.mjs';
+import { ordinaryCuts } from './ordinary-poses.mjs';
 import { ARTS, SKILLS } from '../sim/regiments.mjs';
 import { telegraphPoseTime } from '../sim/combat-tells.mjs';
 
@@ -22,6 +23,17 @@ const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 // blade points. `t` twists the chest about the spine (+ to his left), `n` leans him forward, `d` drops the hips,
 // `f` moves them forward.
 const P = (r, b, extra = {}) => ({ r, b, t: 0, n: 0, d: 0, f: 0, ...extra });
+// Keep the held ji clear of the saddle on the right, then bring the head
+// across and down. Hand and shaft targets are first authored in rider space.
+function saddleCutKey(hand, direction, body, bodySpaceHand = true) {
+  const unwind = axisAngle([0, 1, 0], -body.t);
+  return P(bodySpaceHand ? qrot(unwind, hand) : hand, qrot(unwind, direction), body);
+}
+const SADDLE_RIGHT_CUT = [
+  saddleCutKey([-0.30, -0.065, 0.27], [-0.98, 0.16, 0.12], { t: -0.42, n: -0.05 }),
+  saddleCutKey([-0.22, -0.10, 0.39], [0.11, -0.22, 1], { t: 0.17, n: 0.16, f: 0.065 }),
+  saddleCutKey([0.015, -0.22, 0.28], [0.91, -0.26, 0.38], { t: 0.39, n: 0.14 })
+];
 const ONE = {
   ready: P([-0.2, -0.24, 0.32], [0.18, 0.72, 0.62], { t: 0.08 }),
   R: [P([-0.44, 0.16, -0.06], [-0.35, 0.72, -0.6], { t: -0.6, n: -0.05 }), P([-0.02, -0.06, 0.56], [0.78, 0.04, 0.62], { t: 0.18, n: 0.14, f: 0.08 }), P([0.3, -0.32, 0.32], [0.72, -0.38, -0.25], { t: 0.6, n: 0.12 })],
@@ -87,33 +99,25 @@ const SHIELD_GUARD = {
   L: [[0.19, -0.04, 0.4], [0.2, 0.05, 1]]
 };
 
-/** Ordinary attack keys put the tip in front on contact. Named skills keep their own poses. */
-function ordinaryCuts(arms) {
-  // Forward is in body space here; counter the authored chest turn when storing the blade axis.
-  const key = (hand, blade, body) => P(hand, qrot(axisAngle([0, 1, 0], -body.t), blade), body);
-  const pole = arms.main === 'ji' || arms.main === 'spear';
-  const reach = arms.two ? 0.39 : 0.44;
-  const side = pole ? 0.11 : 0.18;
+/** Left, high and thrust cuts retain their tested clearance from the horse. */
+function saddleCuts(foot) {
+  const key = (hand, blade, body) => saddleCutKey(hand, blade, body, false);
   return {
-    R: [
-      key([pole ? -0.275 : -0.34, 0.05, 0.16], [-0.82, 0.39, 0.36], { t: -0.31, n: -0.06 }),
-      key([-0.22, -0.08, reach], [side, -0.04, 1], { t: 0.17, n: 0.13, f: 0.07 }),
-      key([pole ? -0.1 : 0.025, -0.2, 0.26], [0.83, -0.2, 0.46], { t: 0.37, n: 0.12 })
-    ],
+    R: SADDLE_RIGHT_CUT,
     L: [
       key([-0.055, 0.035, 0.21], [0.76, 0.38, 0.48], { t: 0.31, n: -0.04 }),
-      key([-0.135, -0.075, reach], [side, -0.045, 1], { t: -0.17, n: 0.15, f: 0.065 }),
+      foot.L[1],
       key([-0.315, -0.23, 0.23], [-0.83, -0.25, 0.47], { t: -0.32, n: 0.12 })
     ],
     O: [
       key([-0.22, 0.31, 0.14], [0.06, 0.91, -0.4], { t: -0.13, n: -0.1 }),
-      key([-0.185, 0.01, reach], [side, -0.34, 1], { t: 0.06, n: 0.2, d: 0.026, f: 0.045 }),
-      key([-0.22, -0.23, 0.29], [side, -0.59, 0.84], { t: 0.09, n: 0.22, d: 0.034 })
+      foot.O[1],
+      key([-0.22, -0.23, 0.29], [0.11, -0.59, 0.84], { t: 0.09, n: 0.22, d: 0.034 })
     ],
     T: [
       key([-0.27, -0.24, 0.12], [0.1, 0.12, 1], { t: -0.23, n: -0.015 }),
-      key([pole ? -0.31 : -0.22, -0.16, reach + 0.03], [pole ? 0.15 : 0.21, 0.025, 1], { t: 0.07, n: 0.15, f: 0.105 }),
-      key([pole ? -0.31 : -0.25, -0.21, 0.26], [side, 0.045, 1], { t: 0.01, n: 0.07, f: 0.045 })
+      foot.T[1],
+      key([-0.31, -0.21, 0.26], [0.11, 0.045, 1], { t: 0.01, n: 0.07, f: 0.045 })
     ]
   };
 }
@@ -383,6 +387,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   };
   const style = STYLE[arms.main] ?? ONE;
   const cuts = ordinaryCuts(arms);
+  const mountedCuts = arms.main === 'ji' ? saddleCuts(cuts) : null;
   const longAxe = arms.main === 'axe';
 
   /** The arm pose for this moment of his action, in shoulder-centred body space. */
@@ -400,7 +405,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     if (act?.kind === 'swing') {
       const visualAct = contactTime === null ? act : { ...act, t: contactTime };
       const phase = swingPhase(visualAct, arms.main, man.prev?.attack);
-      const keys = [style.ready, ...cuts[act.line], style.ready];
+      const strikes = state.ride > 0 && mountedCuts ? mountedCuts : cuts;
+      const keys = [style.ready, ...strikes[act.line], style.ready];
       const from = Math.min(3, Math.floor(phase));
       const pose = mixPose(keys[from], keys[from + 1], phase - from);
       // The front foot takes the load as the blade commits. Held attacks stay weighted on the back foot.
@@ -709,7 +715,10 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     pelvis.setPosition(pel[0], pel[1], pel[2]);
     rig.forget();
 
-    const twist = p.t + state.turnOnHorse - sideways * 0.28;
+    const saddleCut = state.ride > 0 && arms.main === 'ji' && act?.kind === 'swing' && act.line === 'R';
+    // The horse leads the chamber. Blend back to the normal aim by the contact pose.
+    const aimWeight = saddleCut ? 1 - ease(phase) * (1 - ease(phase - 1)) : 1;
+    const twist = p.t + state.turnOnHorse * aimWeight - sideways * 0.28;
     const leanAll = p.n + lean + back * 0.42 - shout * 0.15 + 0.17 * buckle;
     const hipTwist = p.t * feet * 0.36;
     const shoulderTwist = twist - hipTwist;

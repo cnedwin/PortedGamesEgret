@@ -47,10 +47,11 @@ const MOUSE_STROKE_IDLE_MS = 90;
 export function createInput(canvas, { settings, onPause = () => {}, onLock = () => {} } = {}) {
   const down = new Set();
   let mouseStrokeAt = -Infinity;
-  const mouseAttacks = [];
+  const meleeGestures = [];
   let heldMouseAttack = null,
+    heldTouchAttack = null,
     pressedGuardLine = null,
-    canceledMouseAttack = false;
+    canceledAttack = false;
   const state = {
     yaw: 0,
     pitch: 0.12,
@@ -70,7 +71,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     autorun: false,
     classicIndex: 0,
     moved: [0, 0],
-    touch: { move: [0, 0], attack: false, guard: false, tapAttack: false, tapGuard: false, strikeLine: null },
+    touch: { move: [0, 0], attack: false, guard: false, tapAttack: false, tapGuard: false, strikeLine: null, mounted: false },
     pad: null,
     pointerLocked: false,
     lastDevice: 'keys'
@@ -110,17 +111,24 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     // Leave the click-to-fight hint visible so the player can try again.
     canvas.requestPointerLock?.()?.catch?.(() => {});
   }
+  function startGesture(line, release) {
+    const gesture = { line, release, pressed: true, released: false };
+    meleeGestures.push(gesture);
+    return gesture;
+  }
+  function releaseGesture(gesture) {
+    gesture.released = true;
+    // Before a tick, down/up belong to the same gesture. Otherwise queue its release.
+    if (!gesture.pressed) meleeGestures.push(gesture);
+  }
   const onDown = (e) => {
     if (!state.pointerLocked) {
       tryPointerLock();
       return;
     }
     state.lastDevice = 'mouse';
-    if (e.button === 0) {
-      if (!state.attack) {
-        heldMouseAttack = { line: state.line, release: !state.combo, pressed: true, released: false };
-        mouseAttacks.push(heldMouseAttack);
-      }
+    if (e.button === 0 && !heldTouchAttack) {
+      if (!state.attack) heldMouseAttack = startGesture(state.line, !state.combo);
       state.attack = true;
     }
     if (e.button === 2) {
@@ -132,19 +140,18 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   };
   const onUp = (e) => {
     if (e.button === 0 && heldMouseAttack) {
-      heldMouseAttack.released = true;
-      // Before a tick, down/up belong to the same gesture. After down was consumed, queue only its release.
-      if (!heldMouseAttack.pressed) mouseAttacks.push(heldMouseAttack);
+      releaseGesture(heldMouseAttack);
       heldMouseAttack = null;
       state.attack = false;
     }
     if (e.button === 2) state.guard = false;
   };
-  function clearMouse() {
-    canceledMouseAttack ||= Boolean(heldMouseAttack?.release || mouseAttacks.some((gesture) => gesture.release));
+  function clearCombatInput() {
+    canceledAttack ||= Boolean(heldMouseAttack?.release || heldTouchAttack || meleeGestures.some((gesture) => gesture.release));
+    if (heldTouchAttack) state.touch.attack = false;
     state.attack = state.guard = state.attackWas = false;
-    heldMouseAttack = null;
-    mouseAttacks.length = 0;
+    heldMouseAttack = heldTouchAttack = null;
+    meleeGestures.length = 0;
     pressedGuardLine = null;
     state.moved.fill(0);
     mouseStrokeAt = -Infinity;
@@ -153,7 +160,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.pointerLocked = document.pointerLockElement === canvas;
     if (state.pointerLocked && !state.wantLock) document.exitPointerLock();
     if (!state.pointerLocked) {
-      clearMouse();
+      clearCombatInput();
       if (state.wantLock) onPause('unlocked');
     }
   };
@@ -210,7 +217,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
   };
   const onBlur = () => {
     down.clear();
-    clearMouse();
+    clearCombatInput();
   };
 
   // Pointer-locked moves already bubble from the canvas to the window.
@@ -270,6 +277,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
    * forward, brake and turn directions even when the view or target lock turns away from the horse.
    */
   function sample(dt, { threat = null, aim = null, bow = false, mounted = false } = {}) {
+    state.touch.mounted = mounted;
     const pad = readPad(dt);
     let mx = (down.has('right') ? 1 : 0) - (down.has('left') ? 1 : 0),
       my = (down.has('down') ? 1 : 0) - (down.has('up') ? 1 : 0);
@@ -285,9 +293,9 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       right = [-Math.cos(fy), Math.sin(fy)];
     const move = [right[0] * mx - fwd[0] * my, right[1] * mx - fwd[1] * my];
     // Release and a new press can share a frame. Sample them in order with each gesture's locked line.
-    const mouseAttack = mouseAttacks.shift() ?? heldMouseAttack;
-    const meleeRelease = Boolean(!bow && mouseAttack?.release);
-    let attack = state.attack || !!mouseAttack?.pressed || !!pad?.attack || state.touch.attack || state.touch.tapAttack || !!state.padLine;
+    const gesture = meleeGestures.shift() ?? heldMouseAttack ?? heldTouchAttack;
+    const meleeRelease = Boolean(!bow && gesture?.release);
+    let attack = state.attack || !!gesture?.pressed || !!pad?.attack || state.touch.attack || state.touch.tapAttack || !!state.padLine;
     // Continuous attack (B): a held button strikes again as each blow ends, instead of winding up a heavy one.
     if (state.combo && attack && !bow && !meleeRelease) {
       state.comboBeat = (state.comboBeat + dt) % 0.2;
@@ -299,12 +307,12 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     // A swipe and a guard can share a sample. Read the defensive line before choosing the attack line.
     const guardLine = touchGuard && attack ? ((classic || settings.assist) && threat ? threat : state.line) : undefined;
     let line = state.line;
-    // Retain the mouse tap and its line when down/up arrive between two simulation ticks.
-    if (attack && !state.attack && mouseAttack?.pressed) line = mouseAttack.line;
+    // Retain the attack and its direction when both edges arrive between ticks.
+    if (attack && !state.attack && gesture?.pressed) line = gesture.line;
     else if (guard && !state.guard && pressedGuardLine) line = pressedGuardLine;
     if (classic && threat && guard) line = threat;
     if (state.padLine) line = state.padLine;
-    else if (meleeRelease && !guard) line = mouseAttack.line;
+    else if (meleeRelease && !guard) line = gesture.line;
     else if (classic && attack && !state.attackWas && !meleeRelease) {
       // A swipe on the touch strike button names the line; otherwise the lines come in turn.
       if (state.touch.tapAttack && state.touch.strikeLine) line = state.line = state.touch.strikeLine;
@@ -322,10 +330,10 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       sprint: down.has('sprint') || !!pad?.sprint || mounted && touchMoving && my <= -0.92,
       attack,
       meleeRelease,
-      meleeLine: meleeRelease ? mouseAttack.line : undefined,
-      meleeDown: meleeRelease && mouseAttack.pressed,
-      meleeUp: meleeRelease && mouseAttack.released,
-      meleeCancel: canceledMouseAttack,
+      meleeLine: meleeRelease ? gesture.line : undefined,
+      meleeDown: meleeRelease && gesture.pressed,
+      meleeUp: meleeRelease && gesture.released,
+      meleeCancel: canceledAttack,
       guard,
       guardLine,
       kick: state.once.kick,
@@ -346,15 +354,31 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.arm = null;
     state.touch.tapAttack = state.touch.tapGuard = false;
     state.touch.strikeLine = null;
-    if (mouseAttack) mouseAttack.pressed = mouseAttack.released = false;
+    if (gesture) gesture.pressed = gesture.released = false;
     pressedGuardLine = null;
-    canceledMouseAttack = false;
+    canceledAttack = false;
     return input;
   }
 
   return {
     state,
     sample,
+    beginMountedTouchAttack(line) {
+      if (!state.touch.mounted || heldMouseAttack || heldTouchAttack) return;
+      state.line = line ?? LINE_ORDER[state.classicIndex++ % 4];
+      heldTouchAttack = startGesture(state.line, true);
+    },
+    endMountedTouchAttack(commit) {
+      const gesture = heldTouchAttack;
+      if (!gesture) return;
+      heldTouchAttack = null;
+      if (commit) releaseGesture(gesture);
+      else {
+        const pending = meleeGestures.indexOf(gesture);
+        if (pending >= 0) meleeGestures.splice(pending, 1);
+        else canceledAttack = true;
+      }
+    },
     /** Hold the mouse inside the page (on a click) while fighting. */
     capture(on) {
       state.wantLock = on;
@@ -366,7 +390,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     },
     clear() {
       down.clear();
-      clearMouse();
+      clearCombatInput();
       for (const k of Object.keys(state.once)) state.once[k] = false;
     },
     dispose() {

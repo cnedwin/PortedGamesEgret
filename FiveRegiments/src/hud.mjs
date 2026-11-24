@@ -421,15 +421,17 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
   look.addEventListener('pointercancel', endLook);
   look.addEventListener('lostpointercapture', endLook);
   // Strike: a swipe on the button sets the line and the lift strikes; a press held still is a held blow (a heavy
-  // cut, or the draw of the bow) let go on the lift.
+  // cut, or the draw of the bow) let go on the lift. A rider can swipe and hold
+  // a direction, keeping the blade chambered until the same finger lifts.
   let holdTimer = 0,
     holding = false;
-  function resetAttack() {
+  function resetAttack(commit = false) {
     const id = attackId;
     attackId = null;
     strikeLine = null;
     clearTimeout(holdTimer);
     holding = st.touch.attack = false;
+    input.endMountedTouchAttack(commit);
     release(attack, id);
   }
   attack.addEventListener('pointerdown', (e) => {
@@ -441,6 +443,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     holdTimer = setTimeout(() => {
       holding = true;
       st.touch.attack = true;
+      input.beginMountedTouchAttack(strikeLine);
     }, 200);
   });
   attack.addEventListener('pointermove', (e) => {
@@ -448,7 +451,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     const dx = e.clientX - attackAt[0],
       dy = e.clientY - attackAt[1];
     if (Math.hypot(dx, dy) > 22) {
-      clearTimeout(holdTimer);
+      if (!st.touch.mounted) clearTimeout(holdTimer);
       strikeLine = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'R' : 'L') : dy < 0 ? 'O' : 'T';
     }
   });
@@ -458,7 +461,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
       st.touch.tapAttack = true;
       st.touch.strikeLine = strikeLine;
     }
-    resetAttack();
+    resetAttack(e.type === 'pointerup');
   };
   attack.addEventListener('pointerup', endAttack);
   attack.addEventListener('pointercancel', endAttack);
