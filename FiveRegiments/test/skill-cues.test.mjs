@@ -39,3 +39,32 @@ test('each default cast has a distinct pooled anticipation mark even in the phon
   }
   assert.equal(shapes.size, new Set([...defaults, 'stepCut']).size, 'each skill has its own readable silhouette');
 });
+
+test('release and confirmed hits use skill-specific cues without expanding the phone pool', () => {
+  const scene = new Scene3D();
+  const fx = createEffects(scene, { particles: 0.5 });
+  const nodeCount = scene.children.length;
+  const shapes = new Set();
+  const where = id => id === 'foe0' ? [2.3, 1.27, -0.7] : pose();
+  const cues = () => scene.children.filter(node => node.name === 'skill-cue' && node.visible);
+  for (const event of [
+    { type: 'skillBeat', id: 'charge' }, { type: 'skillBeat', id: 'spin' }, { type: 'skillBeat', id: 'swing', part: 1 },
+    { type: 'skillBeat', id: 'returnSpear' }, { type: 'skillBeat', id: 'boar', part: 1 },
+    { type: 'loose', skill: 'wave', yaw: 0 }, { type: 'loose', skill: 'fan', yaw: 0 }, { type: 'loose', skill: 'gale', yaw: 0 },
+    { type: 'slam', skill: 'down', at: [2.2, -0.8], radius: 2.8 }
+  ]) {
+    fx.event({ time: 0.55, who: 'hero', ...event }, where, blade);
+    assert.equal(cues().length, 1, event.id ?? event.skill);
+    shapes.add(cues()[0].geometry);
+    fx.clear();
+  }
+  assert.equal(shapes.size, 9, 'release silhouettes stay distinct');
+  fx.event({ type: 'whiff', skill: 'bull', who: 'hero', line: 'T' }, where, blade);
+  assert.equal(cues().length, 0, 'missing a body does not show a hit flash');
+  fx.event({ type: 'hit', skill: 'bull', who: 'foe0', by: 'hero', line: 'T', damage: 270 }, where, blade);
+  assert.equal(cues().length, 1);
+  assert.ok(Math.abs(cues()[0].position[1] - 1.27) < 0.25);
+  fx.update(0.45, null);
+  assert.equal(cues().length, 0);
+  assert.equal(scene.children.length, nodeCount);
+});

@@ -11,7 +11,7 @@ import {
   createUnlitMaterial3D
 } from '@egret/engine/world3d';
 import { createWeapon } from './weapons.mjs';
-import { SKILL_EFFECTS, SKILL_PREPARATION } from './effect-profiles.mjs';
+import { SKILL_CONTACT, SKILL_EFFECTS, SKILL_PREPARATION, SKILL_RELEASE } from './effect-profiles.mjs';
 import { mountedContactBody, mountedContactPoint } from './mounted-contact.mjs';
 
 /** A soft round dot (and a petal) for particles, drawn once on a small canvas. */
@@ -129,6 +129,22 @@ function createCuePool(scene, capacity) {
     fanFeathers: strokes(...[-0.59, -0.3, 0, 0.3, 0.59].map(x => [0.036, [x * 0.31, 0.19], [x * 0.76, 0.55], [x * 1.35, 1.04 - Math.abs(x) * 0.25]])),
     galeChannel: strokes([0.075, [0, 0.29], [0, 0.88], [0, 1.52]],
       [0.044, [-0.35, 0.42], [-0.17, 0.68], [0, 0.9], [0.17, 0.68], [0.35, 0.42]]),
+    sabreDrive: strokes([0.075, [-0.19, -0.34], [-0.13, 0.28], [0, 0.90]], [0.045, [0.20, -0.19], [0.17, 0.20], [0.10, 0.54]]),
+    bullBuckle: strokes([0.075, [-0.89, 0.32], [-0.42, 0.08], [0, 0], [0.42, 0.08], [0.89, 0.32]],
+      [0.037, [-0.65, 0.56], [0, 0.28], [0.65, 0.56]]),
+    spinEdge: strokes([0.080, ...sweepPoints(-2.52, 2.76, 1.00)], [0.044, ...sweepPoints(-1.95, 0.86, 0.77)]),
+    swordBeat: strokes([0.087, ...sweepPoints(-1.44, 0.83, 0.99)], [0.042, ...sweepPoints(-0.91, 0.46, 0.82)]),
+    spearDrive: strokes([0.054, [0, -0.39], [0, 0.14], [0, 1.14]],
+      [0.026, [-0.20, -0.08], [-0.08, 0.35], [0, 0.85]], [0.026, [0.20, -0.08], [0.08, 0.35], [0, 0.85]]),
+    boarDrive: strokes([0.118, [-0.39, -0.21], [0, 0.26], [0.39, -0.21]], [0.065, [-0.41, 0.23], [0, 0.89], [0.41, 0.23]]),
+    waveCast: strokes([0.103, ...sweepPoints(-1.48, 1.48, 1.00)], [0.043, ...sweepPoints(-0.97, 0.97, 0.74)]),
+    fanCast: strokes(...[-0.61, -0.29, 0.07, 0.31, 0.64].map(x => [0.034, [x * 0.04, -0.22], [x * 0.44, 0.17], [x, 0.76]])),
+    galeCast: strokes([0.061, [0, -0.41], [0, 0.22], [0, 1.15]], [0.041, [-0.38, 0.16], [0, 0.78], [0.38, 0.16]]),
+    axeImpact: strokes(...[-2.14, -1.05, -0.08, 0.81, 1.83, 2.78].map((a, i) => {
+      const length = i % 2 ? 1 : 0.8;
+      return [0.053, [0.09 * Math.sin(a), 0.09 * Math.cos(a)], [0.44 * Math.sin(a), 0.44 * Math.cos(a)],
+        [length * Math.sin(a + 0.27), length * Math.cos(a + 0.27)]];
+    })),
     thrust: createGeometry3D({
       positions: [-0.16, 0, -0.48, -0.026, 0, 0.20, 0, 0, 1, 0.026, 0, 0.20, 0.16, 0, -0.48],
       indices: [0, 1, 2, 2, 3, 4]
@@ -153,7 +169,7 @@ function createCuePool(scene, capacity) {
     return { mesh, material, strip, remaining: 0 };
   });
   const take = () => slots.reduce((lowest, item) => item.remaining < lowest.remaining ? item : lowest);
-  function show(slot, geometry, at, yaw, radius, tint, { time = 0.28, opacity = 0.56, growth = 0.38, initial = 0.65 } = {}) {
+  function show(slot, geometry, at, yaw, radius, tint, { time = 0.28, opacity = 0.56, growth = 0.38, initial = 0.65, pitch = 0 } = {}) {
     Object.assign(slot, { remaining: time, time, radius, opacity, growth, initial });
     const { mesh, material } = slot;
     const bridge = geometry === slot.strip;
@@ -161,7 +177,7 @@ function createCuePool(scene, capacity) {
     mesh.frustumCulled = !bridge;
     mesh.geometry = geometry;
     mesh.setPosition(...at);
-    mesh.setRotation(0, yaw, 0);
+    mesh.setRotation(pitch, yaw, 0);
     mesh.setScale(radius * initial, radius * initial, radius * initial);
     material.color.set(tint);
     material.opacity = opacity;
@@ -423,6 +439,15 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       cues.show(shape, floor(at), yaw, radius, profile.tint, { time, opacity: 0.81, initial: 0.86, growth: -0.16 });
       return;
     }
+    const release = active && SKILL_RELEASE[id];
+    if (release?.anchor) {
+      const edge = release.anchor === 'edge';
+      const origin = edge ? blade?.[1] ?? ahead(at, yaw, 0.55) : [at[0], 0.82, at[2]];
+      const angle = id === 'swing' ? yaw + (part % 2 ? 0.65 : -0.70) : yaw;
+      cues.show(release.shape, origin, angle, release.radius, profile.tint,
+        { time: release.time, opacity: 0.85, initial: 0.77, growth: 0.32, pitch: edge ? 0.20 : 0.04 });
+      return;
+    }
     const shape = active ? profile?.release : profile?.preparation;
     if (!shape) return;
     const onTip = shape === 'glint' || active && shape === 'thrust';
@@ -480,7 +505,13 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         if (fx.blood && !e.kick && !e.glance && special?.impact !== 'arcane')
           burst(red, point, strong ? 16 : e.arrow ? 4 : 8, away);
         if (e.kick || special?.impact === 'blunt') burst(dust, floor(at, 0.2), 6);
-        if (special?.impact === 'steel' || e.mountedImpact)
+        const accent = SKILL_CONTACT[e.skill];
+        if (accent && !e.graze && !e.broke) {
+          const angle = Math.atan2(away[0], away[2]);
+          cues.show(accent.shape, point, angle, accent.radius, special.tint,
+            { time: 0.16, opacity: 0.92, initial: 0.68, growth: 0.46, pitch: 0.48 });
+          if (e.skill === 'bull' || e.skill === 'boar') burst(dust, floor(point, 0.11), 6, away);
+        } else if (special?.impact === 'steel' || e.mountedImpact)
           cues.show('glint', point, heading, 0.28, special?.tint ?? [0.85, 0.93, 1], { time: 0.13, opacity: 0.92 });
         break;
       }
@@ -514,6 +545,13 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         const profile = SKILL_EFFECTS[e.skill];
         if (!profile?.release) break;
         const wave = e.skill === 'wave';
+        const release = SKILL_RELEASE[e.skill];
+        if (release) {
+          const origin = ahead(at, e.yaw, wave ? 0.74 : 0.58, release.height);
+          cues.show(release.shape, origin, e.yaw, release.radius, profile.tint,
+            { time: release.time, opacity: 0.88, initial: 0.83, growth: 0.23, pitch: wave ? 0.33 : 0.08 });
+          break;
+        }
         const origin = ahead(at, e.yaw, wave ? 0.9 : 0.67, wave ? 0.92 : 1.45);
         cues.show(profile.release, origin, e.yaw, wave ? 0.96 : e.skill === 'fan' ? 0.67 : 0.48, profile.tint,
           { time: wave ? 0.21 : 0.18, opacity: 0.88, initial: 0.95 });
@@ -523,7 +561,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       case 'slam': {
         const at = [e.at[0], 0.075, e.at[1]];
         const tint = SKILL_EFFECTS[e.skill]?.tint ?? SKILL_EFFECTS.down.tint;
-        cues.show(e.skill === 'down' ? 'split' : 'ring', at, heading, e.radius, tint,
+        cues.show(e.skill === 'down' ? 'axeImpact' : 'ring', at, heading, e.radius, tint,
           { time: 0.44, opacity: 0.95, initial: 0.39, growth: 0.61 });
         if (e.skill === 'drop') cues.show('split', floor(at, 0.09), heading + Math.PI, e.radius * 0.73, tint,
           { time: 0.45, opacity: 0.64, initial: 0.55, growth: 0.43 });
