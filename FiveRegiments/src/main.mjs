@@ -29,6 +29,7 @@ import { skillSweepStyle } from './view/effect-profiles.mjs';
 import { ARMS } from './view/weapons.mjs';
 import { createCameraRig } from './view/camera.mjs';
 import { createMountedPresentation } from './view/mounted-presentation.mjs';
+import { createMountedContactPresentation, mountedContactBody } from './view/mounted-contact.mjs';
 import { createContactAccent } from './view/contact-accent.mjs';
 import { applyLook, buildPlace } from './view/stage.mjs';
 
@@ -84,6 +85,7 @@ async function main() {
   scene.addChild(camera);
   const cam = createCameraRig(camera);
   const mountedPresentation = createMountedPresentation(TICK);
+  const mountedContact = createMountedContactPresentation();
   const contactAccent = createContactAccent();
   const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood });
 
@@ -450,14 +452,19 @@ async function main() {
     const heroId = game.hero.id;
     const defender = fighter(e.who),
       attacker = fighter(e.by);
-    const bearing = attacker && defender && attacker !== defender
+    const impact = e.mountedImpact;
+    const bearing = impact
+      ? Math.atan2(impact.at[0] - impact.from[0], impact.at[1] - impact.from[1])
+      : attacker && defender && attacker !== defender
       ? Math.atan2(defender.x - attacker.x, defender.z - attacker.z)
       : undefined;
+    if (impact) mountedContact.remember(attacker, e, e.type === 'hit' ? 0.23 : defender?.r.offhand === 'shield' ? 0.43 : 0.34);
     const contactKick = (amount) => cam.kick(amount * (game.hero.mounted ? 0.65 : 1), bearing);
     switch (e.type) {
       case 'swingRelease': {
         const longWeapon = defender?.regiment === 'vanguard' || defender?.regiment === 'plume';
-        play(longWeapon || e.heavy > 0.5 ? 'heavy' : 'swing', {
+        const mountedRight = defender?.mounted && e.line === 'R';
+        play(mountedRight ? 'mountedCut' : longWeapon || e.heavy > 0.5 ? 'heavy' : 'swing', {
           volume: e.line === 'T' ? 0.46 : 0.65,
           rate: e.line === 'T' ? 1.24 : 0.92 + Math.random() * 0.16
         });
@@ -525,11 +532,15 @@ async function main() {
         break;
       case 'hit': {
         if (e.quiet) break;
+        const p = projectToViewport3D(camera, impact ? mountedContactBody(impact) : chestOf(e.who), canvas.clientWidth, canvas.clientHeight);
+        if (p.onScreen) hud.number([p.x, p.y], e.damage, (e.who === heroId ? 'bad' : '') + (e.crit ? ' crit' : ''));
+        // A shield covering another line can concede chip damage and still make one contact.
+        if (e.graze && tickEvents.some((next) => next.type === 'block' && next.by === e.by && next.who === e.who && next.line === e.line)) break;
         const heavy = (e.heavy ?? 0) > 0.5 || e.broke;
         const skillHit = e.skill && !e.arrow;
         const armoured = defender?.r.armour === 'heavy';
-        const impact = Math.max(e.heavy ?? 0, e.broke ? 0.65 : skillHit ? 0.38 : e.crit ? 0.28 : 0);
-        figures.get(e.who)?.struck(impact, bearing);
+        const reaction = Math.max(e.heavy ?? 0, e.broke ? 0.65 : skillHit ? 0.38 : e.crit ? 0.28 : 0);
+        figures.get(e.who)?.struck(reaction, bearing);
         const cue = e.kick ? 'kick' : e.arrow ? 'arrowHit' : e.crit ? 'crit' : heavy ? 'heavyHit'
           : skillHit ? (armoured ? 'skillArmourHit' : 'skillHit') : armoured ? 'armourHit' : 'hit';
         if (!e.broke) play(cue, { volume: 0.9 });
@@ -548,8 +559,6 @@ async function main() {
           }
           if (!e.broke) contactKick(heavy ? 0.30 : skillHit ? 0.25 : 0.18);
         }
-        const p = projectToViewport3D(camera, chestOf(e.who), canvas.clientWidth, canvas.clientHeight);
-        if (p.onScreen) hud.number([p.x, p.y], e.damage, (e.who === heroId ? 'bad' : '') + (e.crit ? ' crit' : ''));
         break;
       }
       case 'kick':
@@ -704,8 +713,9 @@ async function main() {
       const f = figures.get(m.id);
       const shown = mountedPresentation.pose(m, fraction);
       if (m === game.hero) cameraHero = shown;
-      const contactTime = contactAccent.sample(m, dt);
-      f.update(shown, game, dt * k, { contactTime });
+      const cut = mountedContact.target(game, m);
+      const contactTime = cut?.time ?? contactAccent.sample(m, dt);
+      f.update(shown, game, dt * k, { contactTime, mountedContact: cut?.point });
       // A sweep behind the outer half of a blade, only while a blow or a skill moves its point fast.
       const act = m.act,
         b = f.blade(),

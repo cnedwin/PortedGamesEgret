@@ -352,7 +352,7 @@ function hurt(game, man, amount, by, info = {}) {
 }
 
 /** Whether `target` stands within `reach` of `man` and inside the swept half-angle `arc` of his heading. */
-function inSweep(man, target, reach, arc, face = man.face) {
+export function inSweep(man, target, reach, arc, face = man.face) {
   const d = dist(man, target),
     body = target.body ?? BODY;
   if (d - body > reach) return false;
@@ -379,6 +379,10 @@ export function strike(game, man, spec) {
 
 function resolve(game, man, target, spec) {
   const line = spec.line ?? 'R';
+  // Presentation uses the actual sweep coordinates, before any push or extra tick.
+  const contact = man.mounted && !spec.skill && man.act?.kind === 'swing' && line === 'R'
+    ? { mountedImpact: { from: [man.x, man.z], at: [target.x, target.z], mounted: target.mounted, air: target.act?.air ?? 0 } }
+    : {};
   let damage = spec.damage * damageMultiplier(game, man, target) * (1 + 0.6 * (spec.heavy ?? 0));
   // From the saddle a blow is worth more the faster the horse goes.
   if (man.mounted && man.horse) damage *= 1 + man.r.saddle.momentum * clamp(Math.abs(man.horse.speed) / man.r.horse.gallop, 0, 1);
@@ -393,7 +397,7 @@ function resolve(game, man, target, spec) {
     target.act.answered = true;
     target.act.t = SKILLS.counter.hold;
     target.act.answeredAt = target.act.t;
-    emit(game, 'deflect', { who: target.id, by: man.id, line, counter: true });
+    emit(game, 'deflect', { who: target.id, by: man.id, line, counter: true, ...contact });
     target.stats.deflects++;
     rouse(target, RAGE.deflected);
     const back = target.r.blows.R.damage * SKILLS.counter.damage * critical(game, target, man);
@@ -412,19 +416,19 @@ function resolve(game, man, target, spec) {
       // Caught in the first instant of the guard: the blow is turned aside and the striker reels.
       target.stats.deflects++;
       rouse(target, RAGE.deflected);
-      emit(game, 'deflect', { who: target.id, by: man.id, line });
+      emit(game, 'deflect', { who: target.id, by: man.id, line, ...contact });
       stagger(man, spec.heavy ? 0.85 : 0.65, 'reel');
       return;
     }
     // A shield taken on the wrong line still lets some of the blow through to the arm behind it.
-    if (!exact) hurt(game, target, toll(game, target, damage * 0.25, spec.kind ?? kindOf(line), partOf(line)).amount, man, { line, graze: true, skill: spec.skill });
+    if (!exact) hurt(game, target, toll(game, target, damage * 0.25, spec.kind ?? kindOf(line), partOf(line)).amount, man, { line, graze: true, skill: spec.skill, ...contact });
     if (!target.alive) return;
     // A guard spends stamina by the blow's weight, though no single blow takes more than two fifths of a full breath.
     const cost = Math.min(target.maxSt * 0.4, (damage / 1000) * target.r.guardCost * (exact ? 1 : 1.2) * (spec.guardCost ?? man.r.heft ?? 1));
     spend(target, cost);
     target.stats.guards++;
     rouse(target, RAGE.guarded);
-    emit(game, 'block', { who: target.id, by: man.id, line, heavy: spec.heavy ?? 0 });
+    emit(game, 'block', { who: target.id, by: man.id, line, heavy: spec.heavy ?? 0, ...contact });
     // Heightened Deterrence: a guarded blow costs the striker stamina (the official 8, in this game's stamina).
     if (target.talents.has('deterrence')) spend(man, TALENTS.deterrence.drain * 0.25);
     if (target.st <= 0) {
@@ -433,7 +437,7 @@ function resolve(game, man, target, spec) {
       rouse(man, RAGE.broke);
       emit(game, 'break', { who: target.id, by: man.id });
       stagger(target, 1.0, 'break');
-      hurt(game, target, toll(game, target, damage * 0.35, spec.kind ?? kindOf(line), partOf(line)).amount, man, { line, broke: true, skill: spec.skill });
+      hurt(game, target, toll(game, target, damage * 0.35, spec.kind ?? kindOf(line), partOf(line)).amount, man, { line, broke: true, skill: spec.skill, ...contact });
     } else {
       stagger(man, spec.heavy ? 0.12 : 0.22, 'recoil');
       if (spec.push) target.knock = [Math.sin(man.face) * spec.push * 0.4, Math.cos(man.face) * spec.push * 0.4];
@@ -449,7 +453,7 @@ function resolve(game, man, target, spec) {
   }
   const rode = target.mounted;
   const worn = toll(game, target, damage, spec.kind ?? kindOf(line), partOf(line));
-  const dealt = hurt(game, target, worn.amount, man, { line, crit, heavy: spec.heavy ?? 0, skill: spec.skill, glance: worn.deflected });
+  const dealt = hurt(game, target, worn.amount, man, { line, crit, heavy: spec.heavy ?? 0, skill: spec.skill, glance: worn.deflected, ...contact });
   man.stats.hits++;
   rouse(man, RAGE.landed);
   rouse(target, RAGE.taken);

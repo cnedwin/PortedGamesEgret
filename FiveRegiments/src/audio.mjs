@@ -116,6 +116,12 @@ function skillImpact(armour) {
 export const SOUNDS = {
   swing: () => bladeAir(0.22, 0.038, 11, 0.56, 0.51),
   heavy: () => bladeAir(0.31, 0.054, 12, 0.32, 0.66),
+  // Commit quickly from the saddle. Let the separate hit or guard carry the weight.
+  mountedCut: () => contactMix(0.14, [
+    [bladeAir(0.13, 0.012, 51, 0.52, 0.66)],
+    [bladeAir(0.096, 0.008, 52, 0.20, 0.25)],
+    [tone(0.075, 360, 146, { decay: 50, gain: 0.11 }), 0.002]
+  ]),
   steelReady: () => mix(0.13, [[contactNoise(0.09, 38, 0.67, 0.3, 33)], [ring(0.13, 516, { gain: 0.1, decay: 30, seed: 34 })]]),
   bladeWave: () => mix(0.34, [[bladeAir(0.32, 0.027, 35, 0.73, 0.53)], [tone(0.24, 290, 105, { decay: 12, gain: 0.23 })]]),
   spearPlant: () => mix(0.18, [[tone(0.13, 493, 220, { decay: 22, gain: 0.43 })], [contactNoise(0.16, 25, 0.32, 0.45, 42)]]),

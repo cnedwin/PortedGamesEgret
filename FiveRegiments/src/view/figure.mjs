@@ -614,7 +614,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
   }
 
-  function arrange(man, game, dt, contactTime) {
+  function arrange(man, game, dt, contactTime, mountedContact) {
     // ---- locomotion ---------------------------------------------------------------------------------------
     const f = man.face;
     const vFwd = man.vx * Math.sin(f) + man.vz * Math.cos(f),
@@ -764,7 +764,15 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const poleR = along(elbow ? lerp3(REST_ELBOW, elbow, lead) : REST_ELBOW);
     const bareCatch = offhand ? 0 : catchTravel;
     const guardHand = bareCatch > 0 ? add(p.r, [0.07 * Math.sin(relative) * bareCatch, -0.034 * bareCatch, -0.14 * bareCatch]) : p.r;
-    const mainTarget = place(guardHand), blade = along(p.b);
+    const mainTarget = place(guardHand);
+    let blade = along(p.b);
+    if (saddleCut && mountedContact && !act.awaitingRelease && phase > 1 && phase < 2.55) {
+      // Keep the full side load. Guide the working edge only as the committed cut reaches its target.
+      const follow = 1 - ease((phase - 2.05) / 0.5);
+      const weight = ease((phase - 1) / 0.88) * follow;
+      const toward = sub(mountedContact, mainTarget);
+      if (len(toward) > 0.1 / s) blade = interpolateDirection(blade, unit(toward), weight);
+    }
     const poleL = along([0.7, -0.7, -0.1]);
     const clearR = armClearance(space, 'r'), clearL = armClearance(space, 'l');
     const linked = arms.two && twoHandedPose(mainTarget, blade, edgeHint, poleR, poleL, space, dt);
@@ -881,7 +889,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     held,
     rig,
     /** Follow the man for one frame. */
-    update(man, game, dt, { seat = null, contactTime = null } = {}) {
+    update(man, game, dt, { seat = null, contactTime = null, mountedContact = null } = {}) {
       if (!man.alive) {
         if (state.fall === 0 && state.impactBearing === null) state.impactBearing = man.face + Math.PI;
         state.fall = Math.min(1, state.fall + dt * 1.6);
@@ -903,9 +911,15 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       // Let the torso face forward again when the view looks behind the horse.
       // The twist reaches the same neutral pose on both sides of the rear seam.
       const lookBack = ease((Math.abs(aimFromHorse) - Math.PI / 2) / (Math.PI / 2));
-      state.turnOnHorse = clamp(aimFromHorse, -1.25, 1.25) * (1 - lookBack) * ease(ride);
+      const saddleWeight = ease(ride);
+      state.turnOnHorse = clamp(aimFromHorse, -1.25, 1.25) * (1 - lookBack) * saddleWeight;
+      const saddleAt = ride > 0 ? [seat.at[0], seat.at[1] + 0.06 - hipY, seat.at[2]] : null;
+      const sway = ride > 0 ? -(seat.rear * 0.55 + seat.lean * 0.6) * saddleWeight - 0.12 * Math.sin(Math.PI * state.dismount) : 0;
+      const saddleRotation = ride === 1 ? qmul(axisAngle([0, 1, 0], horseYaw), axisAngle([1, 0, 0], sway)) : null;
+      const anchorInRig = mountedContact && saddleRotation
+        ? rig.toRig(qrot(qinv(saddleRotation), sub(mountedContact, saddleAt))) : null;
       let spin = 0, floorLift = 0;
-      if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt, contactTime));
+      if (state.fall < 1) ({ spin, floorLift } = arrange(man, game, dt, contactTime, anchorInRig));
       const air = man.act?.air ?? 0;
       const fallTilt = 1.45 * ease((state.fall - 0.19) / 0.68) + 0.76 * ease(state.down);
       const landing = state.fall === 0 ? 0 : 0.045 * Math.sin(Math.PI * clamp((state.fall - 0.27) / 0.66, 0, 1));
@@ -914,20 +928,16 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const footX = dismounting ? man.horse.x + Math.cos(horseYaw) : man.x;
       const footZ = dismounting ? man.horse.z - Math.sin(horseYaw) : man.z;
       let at = [footX, air + landing + floorLift, footZ];
-      let yaw = man.face + spin,
-        sway = 0;
+      let yaw = man.face + spin;
       if (ride > 0) {
         // Hips on the seat, facing the way the horse goes; his chest turns on its own (above). He sways with the horse.
-        const k = ease(ride);
-        const sat = [seat.at[0], seat.at[1] + 0.06 - hipY, seat.at[2]];
-        at = lerp3(at, sat, k);
-        yaw = horseYaw + wrap(man.face - horseYaw) * (1 - k);
-        sway = -(seat.rear * 0.55 + seat.lean * 0.6) * k - 0.12 * Math.sin(Math.PI * state.dismount);
+        at = lerp3(at, saddleAt, saddleWeight);
+        yaw = horseYaw + wrap(man.face - horseYaw) * (1 - saddleWeight);
       }
       holder.setPosition(at[0], at[1], at[2]);
       const tipAxis = [Math.cos(fallAngle), 0, -Math.sin(fallAngle)];
       const tilt = axisAngle(tipAxis, Math.min(1.45, fallTilt) * (1 - ride));
-      const q = qmul(qmul(axisAngle([0, 1, 0], yaw), axisAngle([1, 0, 0], sway)), tilt);
+      const q = saddleRotation ?? qmul(qmul(axisAngle([0, 1, 0], yaw), axisAngle([1, 0, 0], sway)), tilt);
       holder.setQuaternion(q[0], q[1], q[2], q[3]);
     },
     /** Where his eyes are, in the world (for the first-person view). */
