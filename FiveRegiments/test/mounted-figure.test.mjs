@@ -117,3 +117,42 @@ test('mounted right melee stays outboard while turning and rejoins the attack di
     dispose();
   }
 });
+
+test('Bull Charge carries the rendered rider from the saddle onto his side and back up', async () => {
+  const { figure, horse, dispose } = await mountedFixture();
+  try {
+    const game = createFight({ hero: { regiment: 'plume', at: [0, 3.5] },
+      foes: [{ regiment: 'yulin', skills: ['bull', 'charge'], at: [0, 0] }], seed: 3,
+      place: { radius: 20, posts: [] } });
+    const man = game.hero;
+    const point = name => Array.from(figure.rig.bone(name).localToWorld([0, 0, 0], [0, 0, 0]));
+    const tracked = ['head', 'pelvis', 'lowerarm_l', 'lowerarm_r', 'hand_l', 'hand_r', 'calf_l', 'calf_r', 'ball_l', 'ball_r'];
+    let previousHip, impact = -1, frame = 0, maxHipStep = 0, gotUp = false;
+    for (; frame < 150; frame++) {
+      const events = step(game, { hero: { mount: frame === 25 }, foe0: { skill: frame === 0 ? 0 : -1 } });
+      for (const e of events) {
+        if (e.type === 'thrown') impact = frame;
+        if (e.type === 'hit' && e.who === man.id) figure.struck(e.heavy ?? 0, 0);
+      }
+      horse.update(man.horse, TICK);
+      figure.update(man, game, TICK, { seat: horse.seat() });
+      const hip = point('pelvis');
+      if (impact >= 0) {
+        const age = (frame - impact) * TICK;
+        if (age < 0.4) maxHipStep = Math.max(maxHipStep, len(sub(hip, previousHip)));
+        if (age < 1.55) {
+          assert.equal(man.mounted, false);
+          assert.ok(tracked.every(name => point(name)[1] >= -0.02), 'the rendered joints clear the floor');
+        }
+        if (age > 0.48 && age < 0.95) assert.ok(point('head')[1] < 0.68, 'the rider has actually landed');
+        if (age > 1.5 && point('head')[1] > 1.35) gotUp = true;
+      }
+      previousHip = hip;
+    }
+    assert.ok(impact >= 0, 'actual Bull Charge knocked a living rider off his horse');
+    assert.ok(maxHipStep < 0.32, `the saddle-to-ground pose jumped ${maxHipStep.toFixed(3)}m in one frame`);
+    assert.ok(gotUp, 'the rider visibly gets up when he can move again');
+  } finally {
+    dispose();
+  }
+});

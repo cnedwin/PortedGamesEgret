@@ -19,10 +19,17 @@ const easeIn = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * t);
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
+const THROW_FLOOR = [
+  ['head', 0.13], ['spine_03', 0.13], ['pelvis', 0.11],
+  ['lowerarm_l', 0.055], ['lowerarm_r', 0.055], ['hand_l', 0.04], ['hand_r', 0.04],
+  ['calf_l', 0.065], ['calf_r', 0.065], ['ball_l', 0.028], ['ball_r', 0.028]
+];
+
 // Hand places, relative to the middle of the shoulders, in metres (+X his left, +Y up, +Z forward) and the way the
 // blade points. `t` twists the chest about the spine (+ to his left), `n` leans him forward, `d` drops the hips,
 // `f` moves them forward.
 const P = (r, b, extra = {}) => ({ r, b, t: 0, n: 0, d: 0, f: 0, ...extra });
+const THROWN_JI = P([-0.19, -0.16, 0.32], [0, 0.12, 1], { t: -0.1 });
 // Keep the held ji clear of the saddle on the right, then bring the head
 // across and down. Hand and shaft targets are first authored in rider space.
 function saddleCutKey(hand, direction, body, bodySpaceHand = true) {
@@ -382,6 +389,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     // On horseback: how far into the saddle (0 standing, 1 seated), and how far his chest turns from the horse.
     ride: 0,
     turnOnHorse: 0,
+    thrown: null,
     dismount: 0,
     dismountLand: 0
   };
@@ -395,6 +403,9 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const act = man.act;
     let pose = style.ready;
     let blend = 10; // how fast the arms follow (1/s); swings set the place exactly
+    if (state.thrown && arms.main === 'ji') {
+      return { pose: mixPose(style.ready, THROWN_JI, state.thrown.roll), blend: 26 };
+    }
     if (man.guard && style.guard) {
       pose = style.guard[man.guardLine] ?? style.ready;
       blend = longAxe ? 36 : 26;
@@ -626,7 +637,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const catchTravel = caught && man.guard ? impact : 0;
     const fallen = man.stun > 0 && (man.stunKind === 'down' || man.stunKind === 'thrown');
     const stunned = fallen || man.stun > 0 && (man.stunKind === 'flinch' || man.stunKind === 'break');
-    state.down += ((fallen ? 1 : 0) - state.down) * (1 - Math.exp(-dt * (fallen ? 18 : 7)));
+    const staggerWeight = state.thrown?.roll ?? Number(fallen);
+    state.down += (staggerWeight - state.down) * (1 - Math.exp(-dt * (staggerWeight > state.down ? 18 : 7)));
     const movement = clamp((speed - 0.15) / 0.5, 0, 1);
     const moving = movement * (1 - state.ride) * (man.alive && !stunned ? 1 : 0.16);
     const fwdW = Math.max(0, vFwd) / (speed || 1),
@@ -670,6 +682,12 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
         rig.bend('thigh_' + side, 0, 0, 0.5 * sign * k);
         rig.bend('calf_' + side, 0, 1.05 * k);
         rig.bend('foot_' + side, 0, -0.25 * k);
+      }
+      const thrown = state.thrown;
+      if (thrown) {
+        const tuck = ease(thrown.age / 0.075) * (1 - ease((thrown.age - 0.14) / 0.13));
+        rig.bend('thigh_' + thrown.inside, 0, -1.12 * tuck);
+        rig.bend('calf_' + thrown.inside, 0, 0.65 * tuck);
       }
       rig.forget();
     }
@@ -883,6 +901,38 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
   }
 
+  function updateThrow(man, dt) {
+    if (!man.alive || man.mounted || man.stun <= 0) state.thrown = null;
+    else if (!state.thrown && state.ride > 0 && man.stunKind === 'thrown') {
+      const away = [man.x - man.horse.x, 0, man.z - man.horse.z];
+      const yaw = man.horse.face;
+      const left = [Math.cos(yaw), 0, -Math.sin(yaw)];
+      state.thrown = { age: 0, from: Array.from(holder.position), yaw,
+        away: len(away) > 0.01 ? unit(away) : left, inside: dot(left, away) >= 0 ? 'r' : 'l' };
+    }
+    const thrown = state.thrown;
+    if (thrown) {
+      thrown.age += dt;
+      thrown.roll = ease((thrown.age - 0.07) / 0.26) * ease((man.stun - 0.035) / 0.45);
+    }
+    return thrown;
+  }
+
+  function throwPose(thrown, ground, yaw) {
+    const travel = ease((thrown.age - 0.015) / 0.265);
+    const turn = yaw + wrap(thrown.yaw - yaw) * (1 - travel);
+    const upright = axisAngle([0, 1, 0], turn);
+    const away = qrot(qinv(upright), thrown.away);
+    const rotation = qmul(upright, axisAngle([away[2], 0, -away[0]], 1.45 * thrown.roll));
+    const at = lerp3(thrown.from, ground, travel);
+    // The rider clears the saddle before the legs release, then rolls over the low shoulder.
+    const lift = Math.sin(Math.PI * travel) * 0.075;
+    const floor = THROW_FLOOR.reduce((height, [name, radius]) =>
+      Math.max(height, radius - qrot(rotation, rig.toBody(rig.world(name).t))[1]), 0);
+    at[1] = Math.max(at[1] + lift, floor);
+    return { at, rotation };
+  }
+
   const figure = {
     holder,
     regiment,
@@ -895,7 +945,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
         state.fall = Math.min(1, state.fall + dt * 1.6);
       }
       state.impactAge += dt;
-      // How far into the saddle: getting on and off take their time; thrown, he is out of it at once.
+      // Simulated occupancy changes immediately. The visible rider still has to leave the saddle.
+      const thrown = updateThrow(man, dt);
       const R = man.r?.horse;
       const dismounting = man.act?.kind === 'dismount' && R && seat;
       let ride = man.mounted ? 1 : 0;
@@ -904,6 +955,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       state.dismount = dismounting ? clamp(man.act.t / R.dismount, 0, 1) : 0;
       state.dismountLand *= Math.exp(-dt * 11);
       if (dismounting) ride = 1 - state.dismount;
+      if (thrown) ride = 1 - ease((thrown.age - 0.05) / 0.23);
       if (!seat || !man.alive) ride = 0;
       state.ride = ride;
       const horseYaw = man.horse?.face ?? man.face;
@@ -929,6 +981,12 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const footZ = dismounting ? man.horse.z - Math.sin(horseYaw) : man.z;
       let at = [footX, air + landing + floorLift, footZ];
       let yaw = man.face + spin;
+      if (thrown) {
+        const pose = throwPose(thrown, at, yaw);
+        holder.setPosition(...pose.at);
+        holder.setQuaternion(...pose.rotation);
+        return;
+      }
       if (ride > 0) {
         // Hips on the seat, facing the way the horse goes; his chest turns on its own (above). He sways with the horse.
         at = lerp3(at, saddleAt, saddleWeight);

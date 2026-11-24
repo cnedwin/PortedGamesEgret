@@ -105,6 +105,21 @@ try {
     window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', bubbles: true }));
     const mountedFight = () => createFight({ hero: { regiment: 'plume' }, foes: [{ regiment: 'tiger' }] });
     const rideFrame = (game) => step(game, { hero: input.sample(TICK, { mounted: true }) });
+    const footBattle = createFight({ hero: { regiment: 'tiger' }, foes: [{ regiment: 'yulin' }] });
+    const footFrame = () => step(footBattle, { hero: input.sample(TICK) });
+    footFrame();
+    fire(attack, 'pointerdown');
+    await new Promise((resolve) => setTimeout(resolve, 230));
+    footFrame();
+    const initial = footBattle.hero.act?.line;
+    const aimLine = initial === 'T' ? 'O' : 'T';
+    const aimY = aimLine === 'T' ? 119 : 41;
+    fire(attack, 'pointermove', 1, 60, aimY);
+    const footHeld = Array.from({ length: 135 }, footFrame).flat();
+    const footLoad = footBattle.hero.act;
+    const lateHold = [!!initial, footLoad?.line === aimLine, !!footLoad?.awaitingRelease && footLoad.held >= 0.84];
+    fire(attack, 'pointerup', 1, 60, aimY);
+    const footLift = Array.from({ length: 55 }, footFrame).flat();
     let battle = mountedFight();
     rideFrame(battle);
     fire(attack, 'pointerdown');
@@ -135,6 +150,8 @@ try {
         && bounds.left >= 0 && bounds.right <= innerWidth;
     });
     return { canceled, secondFinger, swipe: [swipe.attack, swipe.line], repeated, visibleButtons,
+      lateFootAim: [...lateHold, footHeld.filter(e => e.type === 'swingRelease').length,
+        footLift.filter(e => e.type === 'swingRelease' && e.line === aimLine).length],
       guard: [tapGuard.guard, tapGuard.line], guardStuck,
       overlap: [overlap.attack, overlap.guard, overlap.line, overlap.guardLine],
       attackOnly: [attackOnly.attack, attackOnly.guard, attackOnly.line, attackOnly.guardLine],
@@ -151,6 +168,7 @@ try {
   });
   assert.deepEqual(actual, {
     canceled: false, secondFinger: false, swipe: [true, 'T'], repeated: false, visibleButtons: true,
+    lateFootAim: [true, true, true, 0, 1],
     guard: [true, 'O'], guardStuck: false, overlap: [true, true, 'O', 'R'],
     attackOnly: [true, false, 'O', undefined], fallback: [true, true, 'O', 'T'],
     mounted: { canter: [0.56, 0, false], gallop: [1, 0, true], onFoot: false,

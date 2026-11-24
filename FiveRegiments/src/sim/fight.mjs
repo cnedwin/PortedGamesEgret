@@ -42,7 +42,7 @@ const THROWN = 1.6;
 // Alone against two (the finale), a man fights above himself: this demo's setting.
 export const LONE = { dealt: 1.5, taken: 0.5 };
 const HOLD = 0.85;
-const PC_PREP_FRACTION = 0.72;
+const RELEASE_PREP_FRACTION = 0.72;
 const SPIN_GUARD_AT = 0.43;
 const SKILL_GUARD_DELAY = 0.12;
 const GRAVITY = 9.8;
@@ -676,7 +676,7 @@ function startSwing(game, man, line, { releaseOnly, released, readableAttack }) 
   if (releaseOnly) {
     act.releaseOnly = true;
     act.awaitingRelease = !released;
-    act.prepCap = act.wind * PC_PREP_FRACTION;
+    act.prepCap = act.wind * RELEASE_PREP_FRACTION;
     act.prepareTime = 0;
     if (released) act.releaseAt = 0;
   }
@@ -1319,16 +1319,25 @@ function chargeSwing(game, man, act, dt) {
 
 const swingCharge = (act) => act.held > 0.15 ? Math.min(1, act.held / HOLD) : 0;
 
-function runSwing(game, man, act, input, dt) {
+function runSwing(game, man, act, input, dt, wantsGuard, guardLine) {
   const holding = input.attack && !act.releaseOnly;
-  // An armed PC gesture can be withdrawn any time before release. A committed blow keeps the normal feint window.
+  // A held gesture can be withdrawn any time before release. A committed blow keeps the normal feint window.
   if (input.guard && !man.prev.guard && (act.awaitingRelease || act.t < act.wind * 0.75)) {
     man.act = { kind: 'recover', t: 0, time: 0.12 };
     spend(man, 5);
     emit(game, 'feint', { who: man.id });
+    if (act.awaitingRelease && wantsGuard && man.st > 0) raiseGuard(game, man, guardLine);
     return;
   }
   if (act.awaitingRelease) {
+    const aimed = input.meleeAim;
+    const blow = aimed && aimed !== act.line && blowsOf(man)[aimed];
+    if (blow) {
+      const wind = act.readableAttack ? Math.max(OPPONENT_WIND, blow.wind) : blow.wind;
+      const prepCap = wind * RELEASE_PREP_FRACTION;
+      const t = Math.min(1, act.t / act.prepCap) * prepCap;
+      Object.assign(act, { line: aimed, blow, wind, prepCap, t, reach: blow.reach, recover: blow.recover });
+    }
     if (!input.meleeRelease || !input.meleeUp) {
       // Reserve the last part of the original wind for the blade's travel after release.
       act.t = Math.min(act.t, act.prepCap);
@@ -1381,7 +1390,10 @@ function runSwing(game, man, act, input, dt) {
   if (requested && !man.queuedSwing) {
     man.queuedSwing = { line: meleeLine(man, input), releaseOnly: input.meleeRelease, released: input.meleeUp };
   }
-  if (man.queuedSwing?.releaseOnly && input.meleeRelease && input.meleeUp) man.queuedSwing.released = true;
+  if (man.queuedSwing?.releaseOnly && input.meleeRelease) {
+    if (input.meleeAim) man.queuedSwing.line = input.meleeAim;
+    if (input.meleeUp) man.queuedSwing.released = true;
+  }
   if (recovered) man.act = null;
   return recovered;
 }
@@ -1572,7 +1584,7 @@ function stepMan(game, man, input, dt) {
       act.t += dt;
       act.moving = false;
       if (act.kind === 'swing') {
-        const recovered = runSwing(game, man, act, input, dt);
+        const recovered = runSwing(game, man, act, input, dt, wantsGuard, guardLine);
         if (recovered && input.recoveryHandoff && wantsGuard && !man.guard) raiseGuard(game, man, guardLine);
       } else if (act.kind === 'kick') {
         if (act.t - dt < KICK.wind && act.t >= KICK.wind) {
