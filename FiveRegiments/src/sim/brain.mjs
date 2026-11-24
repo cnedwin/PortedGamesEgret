@@ -14,6 +14,7 @@
 import { ARTS, REGIMENTS, SKILLS } from './regiments.mjs';
 import { BODY, TICK, aimAt, enemiesOf, facing, recoveryGuardWindow } from './fight.mjs';
 import { OPPONENT_WIND } from './combat-tells.mjs';
+import { mountedDetour, uphillRoute } from './terrain-navigation.mjs';
 
 const HABITS = {
   yulin: { range: 1.75, press: 0.7, guard: 1.1, kick: 0.5, heavy: 0.2, step: 0.15 },
@@ -152,6 +153,10 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
   /** A rider's feet and blows: passes at his man, the couched charge, and getting down when the horse is spent. */
   function ride(game, dt, input, target, d, toward) {
     const h = man.horse;
+    if ((target.floor ?? 0) > .7 && d < 11 && man.stun <= 0 && (!man.act || man.act.kind === 'recover')) {
+      input.mount = !man.prev.mount;
+      return;
+    }
     if (h.hp < h.maxHp * 0.3 && (!man.act || man.act.kind === 'recover') && d > 4) {
       input.mount = !man.prev.mount;
       return;
@@ -174,7 +179,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     const r = Math.hypot(man.x, man.z),
       room = game.place.radius - 4;
     if (r > room) at = [at[0] - (man.x / r) * 8, at[1] - (man.z / r) * 8];
-    input.move = steer(at);
+    input.move = steer(mountedDetour(game.place, man, at));
     const turn = wrap(Math.atan2(input.move[0], input.move[1]) - h.face);
     // Brake into a wheel. A movement vector aimed directly behind a slow horse requests reverse and never turns it.
     input.reins = { turn: Math.max(-1, Math.min(1, turn * 1.7)), throttle: Math.abs(turn) > 1.16 ? 0 : Math.abs(turn) > 0.72 ? 0.55 : 1 };
@@ -249,7 +254,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
 
     // Only try to get back into the saddle when there is time for the ordinary mount animation.
     const horse = man.horse;
-    if (brain.level >= 0.5 && horse?.alive && horse.hp > horse.maxHp * 0.42 && !man.mounted &&
+    if (brain.level >= 0.5 && horse?.alive && horse.hp > horse.maxHp * 0.42 && !man.mounted && (target.floor ?? 0) <= .7 &&
         !man.act && man.stun <= 0 && man.daze <= 0 && !threat && dist(man, nearest) > 6.5 && !foes.some(foe => foe.draw)) {
       if (dist(man, horse) <= man.r.horse.near) {
         input.mount = !man.prev.mount;
@@ -366,6 +371,15 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
       input.move = [Math.sin(away), Math.cos(away)];
       input.sprint = man.st > 10;
       return input;
+    }
+
+    if ((!bow || man.knife) && man.stun <= 0 && !input.step) {
+      const climb = uphillRoute(game.place, man, target);
+      if (climb) {
+        input.move = steer(climb);
+        input.sprint = !input.guard && man.st > 10 && d > 4;
+        return input;
+      }
     }
 
     // ---- skills --------------------------------------------------------------------------------------------
