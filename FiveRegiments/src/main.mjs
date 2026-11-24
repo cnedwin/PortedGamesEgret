@@ -468,7 +468,7 @@ async function main() {
   const fighter = (id) => game?.men.find((m) => m.id === id);
   const chestOf = (id) => {
     const m = fighter(id);
-    return m ? [m.x, (m.mounted ? 2.15 : 1.3) + (m.act?.air ?? 0), m.z] : [0, 1.3, 0];
+    return m ? [m.x, (m.floor ?? 0) + (m.mounted ? 2.15 : 1.3) + (m.act?.air ?? 0), m.z] : [0, 1.3, 0];
   };
   function lockTarget() {
     if (!locked) return null;
@@ -707,6 +707,9 @@ async function main() {
       case 'bossPhase':
         play('gong', { rate: 1.15 });
         hud.banner(t('expeditionBossPhase'), t(defender.titleKey), 1.25, 'start');
+        break;
+      case 'mantle':
+        if (e.who === heroId) hud.toast(t('expeditionMantle'), 'good');
         break;
       case 'expeditionBreath':
         hud.toast(t('expeditionBreath'));

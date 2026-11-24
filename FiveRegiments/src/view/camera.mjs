@@ -1,6 +1,7 @@
 // The camera over the player's right shoulder. It turns with the mouse; locked on, it swings to keep the foe in
 // view. It eases toward where it should be, kicks on heavy blows and pulls in a little while he guards, and it
 // does not pass through the posts of the field.
+import { floorAt } from '../sim/terrain.mjs';
 
 const wrap = (a) => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -51,7 +52,8 @@ export function createCameraRig(camera) {
     const shoulder = 0.78;
     // Reveal the hands from the draw side while keeping the sight point fixed.
     const drawSide = shoulder + 0.56 * rig.bowFrame;
-    const height = 1.65 + rig.up + Math.sin(pitch) * rig.distance + 0.09 * rig.bowFrame;
+    const floor = hero.floor ?? 0;
+    const height = floor + 1.65 + rig.up + Math.sin(pitch) * rig.distance + 0.09 * rig.bowFrame;
     let cx = hero.x - fwd[0] * Math.cos(pitch) * rig.distance + right[0] * drawSide,
       cz = hero.z - fwd[1] * Math.cos(pitch) * rig.distance + right[1] * drawSide;
     // Keep out of posts: pull in along the line to the shoulder.
@@ -65,8 +67,8 @@ export function createCameraRig(camera) {
         cz = post.z + (dz / d) * need;
       }
     }
-    const want = [cx, Math.max(0.4, height), cz];
-    const lookAt = [hero.x + fwd[0] * 4 + right[0] * shoulder * 0.5, 1.3 + rig.up * 0.7 - Math.sin(pitch) * 1.4, hero.z + fwd[1] * 4 + right[1] * shoulder * 0.5];
+    const want = [cx, Math.max(floorAt(place, cx, cz) + 0.4, height), cz];
+    const lookAt = [hero.x + fwd[0] * 4 + right[0] * shoulder * 0.5, floor + 1.3 + rig.up * 0.7 - Math.sin(pitch) * 1.4, hero.z + fwd[1] * 4 + right[1] * shoulder * 0.5];
     const k = 1 - Math.exp(-dt * 16);
     for (let i = 0; i < 3; i++) {
       rig.at[i] += (want[i] - rig.at[i]) * k;

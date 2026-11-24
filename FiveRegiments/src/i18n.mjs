@@ -16,6 +16,7 @@ export const WORDS = {
   expeditionWarden: { zh: '照夜镇将', en: 'Nightwatch Warden' },
   expeditionBossPhase: { zh: '守将换阵', en: 'The commander changes stance' },
   expeditionBreath: { zh: '击退守兵 · 恢复少量生命和体力', en: 'Sentry down · some health and stamina restored' },
+  expeditionMantle: { zh: '翻上矮台', en: 'Vaulted the ledge' },
   expeditionWon: { zh: '三关告捷', en: 'All passes cleared' },
   expeditionNext: { zh: '继续破关', en: 'Next pass' },
   placePass: { zh: '石门关', en: 'Stonegate Pass' },

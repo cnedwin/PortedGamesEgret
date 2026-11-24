@@ -417,6 +417,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     if (state.thrown && arms.main === 'ji') {
       return { pose: mixPose(style.ready, THROWN_JI, state.thrown.roll), blend: 26 };
     }
+    if (act?.kind === 'mantle') {
+      const load = Math.sin(Math.PI * clamp(act.t / act.duration, 0, 1));
+      const vault = P([-0.26, -0.19, 0.35], [0.22, 0.42, 0.71], { n: 0.23, f: 0.12, d: 0.04 });
+      return { pose: mixPose(style.ready, vault, load), blend: 28, throwLeft: load };
+    }
     if (man.guard && style.guard) {
       pose = style.guard[man.guardLine] ?? style.ready;
       blend = longAxe ? 36 : 26;
@@ -1039,7 +1044,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       // The fight places his feet one metre to the horse's left at the end of the dismount.
       const footX = dismounting ? man.horse.x + Math.cos(horseYaw) : man.x;
       const footZ = dismounting ? man.horse.z - Math.sin(horseYaw) : man.z;
-      let at = [footX, air + landing + floorLift, footZ];
+      let at = [footX, (man.floor ?? 0) + air + landing + floorLift, footZ];
       let yaw = man.face + spin;
       if (thrown) {
         const pose = throwPose(thrown, at, yaw);

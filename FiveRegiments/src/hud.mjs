@@ -185,7 +185,7 @@ export function createHud(root, { touch = false } = {}) {
         fill(v.hhp, v.man.horse.hp, v.man.horse.maxHp);
         v.hhp.hidden = !v.man.mounted;
       }
-      const at = project?.([v.man.x, v.man.mounted ? 3.05 : 2.15, v.man.z]);
+      const at = project?.([v.man.x, (v.man.floor ?? 0) + (v.man.mounted ? 3.05 : 2.15), v.man.z]);
       v.box.hidden = !at || !v.man.alive;
       if (at) v.box.style.transform = `translate(${at[0].toFixed(1)}px, ${at[1].toFixed(1)}px) translate(-50%, -100%)`;
       const bearing = Math.atan2(v.man.x - hero.x, v.man.z - hero.z);
