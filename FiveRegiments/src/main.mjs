@@ -371,7 +371,7 @@ async function main() {
     play('drum');
     hud.banner(run.series ? t('seriesRound', { n: run.at + 1 }) : st.double ? t('oneTwo') : t('fight'),
       st.expedition ? t('expeditionClimbTip') : placeName(st.place), 2.2, 'start');
-    if (!coarse && !params.has('auto')) input.capture(true);
+    if (!coarse && !autoBrain) input.capture(true);
   }
 
   function clearFight() {
@@ -392,6 +392,8 @@ async function main() {
     if (game) {
       game.hero.queuedSwing = null;
       if (game.hero.act?.awaitingRelease) game.hero.act = null;
+      // Losing input cancels a held draw. Releasing the mouse outside the game must not shoot on resume.
+      game.hero.draw = null;
     }
     hud.show(false);
     touch.show(false);
@@ -402,7 +404,7 @@ async function main() {
         screens.hide();
         hud.show(true);
         touch.show(coarse);
-        if (!coarse) input.capture(true);
+        if (!coarse && !autoBrain) input.capture(true);
       },
       onSettings: () => openSettings(() => ((paused = false), pause())),
       onLeave: () => {
@@ -747,9 +749,13 @@ async function main() {
   const tips = new Map();
   function fightFrame(dt) {
     if (!game || paused) return;
-    if (slowFor > 0) slowFor -= dt;
-    else slow += (1 - slow) * (1 - Math.exp(-dt * 10));
-    const k = over ? 0.35 : slow;
+    const waitingForPointer = !over && input.waitingForPointer();
+    if (!waitingForPointer) {
+      if (slowFor > 0) slowFor -= dt;
+      else slow += (1 - slow) * (1 - Math.exp(-dt * 10));
+    }
+    // A delayed or rejected lock should leave the picture available to click without advancing combat.
+    const k = waitingForPointer ? 0 : over ? 0.35 : slow;
     carry += dt * k;
     const target = lockTarget();
     const events = [];
@@ -849,7 +855,7 @@ async function main() {
     hud.update(dt, game, { line, preparedLine: heroAct?.awaitingRelease ? heroAct.line : undefined,
       incoming: incomingAttack(game), guard: game.hero.guard, locked: !!target, project, yaw: input.state.yaw, input: input.state });
     touch.cool(game.hero);
-    hud.hint(!coarse && !autoBrain && input.state.wantLock && !input.state.pointerLocked && !over ? t('clickToFight') : null);
+    hud.hint(waitingForPointer ? t('clickToFight') : null);
   }
 
   // ---- one frame -----------------------------------------------------------------------------------------------

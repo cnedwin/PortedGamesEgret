@@ -42,7 +42,7 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .page footer { display: flex; gap: 12px; justify-content: flex-end; margin-top: 18px; }
 .lang { position: absolute; top: 16px; right: 16px; }
 
-.title { left: 0; top: 0; bottom: 0; width: min(520px, 100%); padding: 56px 44px 28px; background: linear-gradient(90deg, rgba(10, 7, 6, 0.88), rgba(10, 7, 6, 0.55) 70%, transparent); display: flex; flex-direction: column; gap: 22px; }
+.title { left: 0; top: 0; bottom: 0; width: min(520px, 100%); padding: 56px 44px 28px; background: linear-gradient(90deg, rgba(10, 7, 6, 0.88), rgba(10, 7, 6, 0.55) 70%, transparent); display: flex; flex-direction: column; gap: 22px; overflow-y: auto; overscroll-behavior: contain; }
 .title h1 { font-size: clamp(44px, 7vw, 76px); letter-spacing: 0.16em; line-height: 1; text-shadow: 0 2px 18px rgba(0, 0, 0, 0.7); }
 .title header p { margin: 14px 0 0; color: var(--dim); font: 16px/1.6 var(--serif); max-width: 30em; }
 .title .menu { display: flex; flex-direction: column; gap: 10px; width: 220px; }
@@ -318,7 +318,7 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
   .touching .hud-name span { font-size: 11px; }
 }
 @media (max-height: 480px) {
-  .title { gap: 10px; padding: 16px max(16px, env(safe-area-inset-left)); overflow-y: auto; overscroll-behavior: contain; }
+  .title { gap: 10px; padding: 16px max(16px, env(safe-area-inset-left)); }
   .title h1 { font-size: clamp(30px, 8dvh, 42px); letter-spacing: 0.08em; }
   .title header p { margin-top: 6px; font-size: 13px; line-height: 1.4; }
   .title .menu { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; width: min(100%, 450px); }

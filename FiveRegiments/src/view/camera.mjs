@@ -25,6 +25,16 @@ export function createCameraRig(camera) {
       const want = targetYaw ?? Math.atan2(target.x - hero.x, target.z - hero.z);
       yaw += wrap(want - yaw) * (1 - Math.exp(-dt * 7));
     }
+    const gate = place?.exit;
+    const entry = place?.spawn;
+    if (dead && gate && entry && Math.hypot(hero.x - gate.x, hero.z - gate.z) <= gate.r + 1) {
+      // The normal pullback can put a defeat shot behind the gatehouse. Cut to the field side before framing the body.
+      const intoField = Math.atan2(entry.x - gate.x, entry.z - gate.z);
+      const x = Math.sin(intoField), z = Math.cos(intoField), floor = hero.floor ?? 0;
+      rig.snap([hero.x + x * 4.1 + z * 0.65, floor + 1.95, hero.z + z * 4.1 - x * 0.65],
+        [hero.x, floor + 0.58, hero.z]);
+      return yaw;
+    }
     const contactDecay = Math.exp(-dt * 22);
     for (let i = 0; i < rig.contact.length; i++) rig.contact[i] *= contactDecay;
     // On horseback the camera rides higher and further back.
