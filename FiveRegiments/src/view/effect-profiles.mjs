@@ -48,6 +48,21 @@ export const SKILL_EFFECTS = {
   volley: effect(JADE, 'glint', 'thrust', 'arrow')
 };
 
+// Readable below the weapon silhouette, with a shorter mark for the faster cast.
+export const SKILL_PREPARATION = {
+  charge: { shape: 'chargeLane', radius: 0.92, time: 0.47 },
+  bull: { shape: 'bullHorns', radius: 0.94, time: 0.30 },
+  spin: { shape: 'spinGather', radius: 1.02, time: 0.32 },
+  swing: { shape: 'swingBeats', radius: 1.02, time: 0.24 },
+  down: { shape: 'axePlant', radius: 1.07, time: 0.65 },
+  wave: { shape: 'waveFold', radius: 1.02, time: 0.35 },
+  returnSpear: { shape: 'returnPlant', radius: 0.94, time: 0.34 },
+  stepCut: { shape: 'sidePlant', radius: 0.94, time: 0.34 },
+  boar: { shape: 'boarStep', radius: 0.96, time: 0.31 },
+  fan: { shape: 'fanFeathers', radius: 0.92, time: 0.40 },
+  gale: { shape: 'galeChannel', radius: 1.02, time: 0.40 }
+};
+
 const ORDINARY_SWEEP = { tint: [1, 0.94, 0.83], edge: 0.83, strength: 0.78 };
 const MOUNTED_SWEEP = { tint: [0.85, 0.93, 1], edge: 0.94, strength: 0.46 };
 const NO_SWEEP = { tint: IVORY, edge: 1, strength: 0 };

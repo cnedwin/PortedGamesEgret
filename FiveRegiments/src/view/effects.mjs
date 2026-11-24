@@ -11,7 +11,7 @@ import {
   createUnlitMaterial3D
 } from '@egret/engine/world3d';
 import { createWeapon } from './weapons.mjs';
-import { SKILL_EFFECTS } from './effect-profiles.mjs';
+import { SKILL_EFFECTS, SKILL_PREPARATION } from './effect-profiles.mjs';
 import { mountedContactBody, mountedContactPoint } from './mounted-contact.mjs';
 
 /** A soft round dot (and a petal) for particles, drawn once on a small canvas. */
@@ -54,6 +54,31 @@ function arcs(sectors, inside, outside) {
   return createGeometry3D({ positions, indices });
 }
 
+/** Tapered strokes in the ground plane. A complete motif stays in one pooled draw. */
+function strokes(...paths) {
+  const positions = [], indices = [];
+  for (const [width, ...points] of paths) {
+    const first = positions.length / 3;
+    for (let i = 0; i < points.length; i++) {
+      const before = points[Math.max(i - 1, 0)], next = points[Math.min(i + 1, points.length - 1)];
+      const [x, z] = points[i];
+      const dx = next[0] - before[0], dz = next[1] - before[1];
+      const w = width * (i === 0 || i === points.length - 1 ? 0.20 : 1) / (Math.hypot(dx, dz) || 1);
+      positions.push(x - dz * w, 0, z + dx * w, x + dz * w, 0, z - dx * w);
+      if (i) {
+        const j = first + 2 * i;
+        indices.push(j - 2, j - 1, j, j - 1, j + 1, j);
+      }
+    }
+  }
+  return createGeometry3D({ positions, indices });
+}
+
+const sweepPoints = (from, to, radius) => Array.from({ length: 12 }, (_, i) => {
+  const a = from + (to - from) * i / 11;
+  return [Math.sin(a) * radius, Math.cos(a) * radius];
+});
+
 /** A curved leading edge with a hot core and tapered ends; the mesh follows the real wave projectile. */
 function bladeWaveGeometry() {
   const positions = [], colors = [], indices = [];
@@ -87,6 +112,23 @@ function createCuePool(scene, capacity) {
     arc: arcs([[-1.16, 1.16, 16]], 0.91, 1),
     split: arcs([[-2.1, -0.24, 12], [0.28, 1.74, 10]], 0.90, 1),
     fan: arcs([[-0.58, 0.58, 12]], 0.88, 1),
+    chargeLane: strokes([0.05, [-0.52, -0.15], [-0.45, 0.50], [0, 1.33], [0.45, 0.50], [0.52, -0.15]],
+      [0.043, [0, 0.12], [0, 0.61], [0, 1.13]]),
+    bullHorns: strokes([0.067, [-0.87, 0.81], [-0.65, 0.53], [0, 0.30], [0.65, 0.53], [0.87, 0.81]],
+      [0.059, [-0.43, 0.45], [-0.34, 0.95], [0, 1.18], [0.34, 0.95], [0.43, 0.45]]),
+    spinGather: strokes([0.051, ...sweepPoints(-2.62, 0.03, 0.83)], [0.064, ...sweepPoints(0.17, 2.79, 1.04)]),
+    swingBeats: strokes(...[-0.38, 0, 0.38].map((x, i) => [0.062, [x - 0.10, 0.29 - i * 0.11],
+      [x, 0.61 - i * 0.11], [x + 0.13, 0.88 - i * 0.11]])),
+    axePlant: strokes([0.082, [-0.86, 0.48], [-0.56, 0.27], [0, 0.21], [0.56, 0.27], [0.86, 0.48]],
+      [0.053, [-0.72, 0.73], [-0.37, 0.68], [-0.18, 1.09]], [0.053, [0.72, 0.73], [0.37, 0.68], [0.18, 1.09]]),
+    waveFold: strokes([0.079, ...sweepPoints(-1.22, 1.22, 0.82)], [0.045, ...sweepPoints(-0.73, 0.73, 0.63)]),
+    returnPlant: strokes([0.056, [-1.06, -0.45], [-0.72, -0.57], [-0.34, -0.28], [-0.37, 0.17]],
+      [0.05, [0.91, 0.20], [0.65, 0.52], [0.33, 0.84]]),
+    sidePlant: strokes([0.066, ...sweepPoints(0.32, 2.34, 0.91)], [0.050, [-0.46, -0.21], [-0.24, 0.24], [0.07, 0.56]]),
+    boarStep: strokes([0.071, [-0.64, 0.19], [0, 0.69], [0.64, 0.19]], [0.056, [-0.48, 0.62], [0, 1.16], [0.48, 0.62]]),
+    fanFeathers: strokes(...[-0.59, -0.3, 0, 0.3, 0.59].map(x => [0.036, [x * 0.31, 0.19], [x * 0.76, 0.55], [x * 1.35, 1.04 - Math.abs(x) * 0.25]])),
+    galeChannel: strokes([0.075, [0, 0.29], [0, 0.88], [0, 1.52]],
+      [0.044, [-0.35, 0.42], [-0.17, 0.68], [0, 0.9], [0.17, 0.68], [0.35, 0.42]]),
     thrust: createGeometry3D({
       positions: [-0.16, 0, -0.48, -0.026, 0, 0.20, 0, 0, 1, 0.026, 0, 0.20, 0.16, 0, -0.48],
       indices: [0, 1, 2, 2, 3, 4]
@@ -375,6 +417,12 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
   const ahead = (at, yaw, metres, height = at[1]) => [at[0] + Math.sin(yaw) * metres, height, at[2] + Math.cos(yaw) * metres];
   function skillCue(id, at, yaw, blade, part, active) {
     const profile = SKILL_EFFECTS[id];
+    const preparation = !active && SKILL_PREPARATION[id];
+    if (preparation) {
+      const { shape, radius, time } = preparation;
+      cues.show(shape, floor(at), yaw, radius, profile.tint, { time, opacity: 0.81, initial: 0.86, growth: -0.16 });
+      return;
+    }
     const shape = active ? profile?.release : profile?.preparation;
     if (!shape) return;
     const onTip = shape === 'glint' || active && shape === 'thrust';
