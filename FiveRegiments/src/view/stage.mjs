@@ -2,6 +2,8 @@
 // ground of scanned CC0 material, the generated buildings and props set round the field, the posts that stand in
 // it (and stop men and arrows), the weather, and its own grade of light.
 import {
+  Attribute3D,
+  Geometry3D,
   Mesh3D,
   Object3D,
   Texture3D,
@@ -419,6 +421,47 @@ async function prop(name, set) {
   return propCache.get(key);
 }
 
+const rockProjections = new WeakMap();
+
+/** Keep the scanned silhouette but replace the warped baked atlas on the expedition rocks. */
+function surfaceRock(model, material, scale) {
+  model.updateWorldMatrices(true);
+  const hillside = scale > 7;
+  const repeats = hillside ? 12 : 3.4;
+  model.traverse((mesh) => {
+    if (!(mesh instanceof Mesh3D)) return;
+    const source = mesh.geometry;
+    let versions = rockProjections.get(source);
+    if (!versions) rockProjections.set(source, versions = new Map());
+    let geometry = versions.get(repeats);
+    if (!geometry) {
+      const positions = source.getAttribute('position');
+      const uv = new Float32Array(source.vertexCount * 2);
+      const m = mesh.matrixWorld;
+      for (let i = 0; i < source.vertexCount; i++) {
+        const px = positions.data[i * 3], py = positions.data[i * 3 + 1], pz = positions.data[i * 3 + 2];
+        const x = m[0] * px + m[4] * py + m[8] * pz + m[12];
+        const y = m[1] * px + m[5] * py + m[9] * pz + m[13];
+        const z = m[2] * px + m[6] * py + m[10] * pz + m[14];
+        // The oblique projection is continuous across the imported triangles and has no wrap seam.
+        uv[i * 2] = (hillside ? x * .78 + z * .62 + y * .12 : x * -.58 + z * .81 + y * .10) * repeats;
+        uv[i * 2 + 1] = (hillside ? y * .87 + z * .43 - x * .34 : y * .93 - z * .18 - x * .14) * repeats;
+      }
+      geometry = new Geometry3D();
+      geometry.setAttribute('position', positions);
+      const normal = source.getAttribute('normal');
+      if (normal) geometry.setAttribute('normal', normal);
+      geometry.setAttribute('uv', new Attribute3D(uv, 2));
+      if (source.index) geometry.setIndex(source.index.data);
+      if (!normal) geometry.computeNormals();
+      geometry.computeTangents();
+      versions.set(repeats, geometry);
+    }
+    mesh.geometry = geometry;
+    mesh.material = material;
+  });
+}
+
 /** The renderer and combat simulation share one layout, including the marked expedition exit. */
 export function describePlace(name) {
   const look = PLACE_LOOK[name];
@@ -579,6 +622,7 @@ export async function buildPlace(scene, name, { quality = 'high' } = {}) {
     const h = max[1] - min[1] || 1;
     const k = item.width ? Math.min(item.height / h, item.width / Math.max(max[0] - min[0], max[2] - min[2])) : item.height / h;
     const inner = model.clone();
+    if (name === 'pass' && item.prop === 'boulder') surfaceRock(inner, platforms[1], item.height);
     inner.setPosition(-(min[0] + max[0]) / 2, -min[1], -(min[2] + max[2]) / 2);
     holder.addChild(inner);
     holder.setScale(k, k, k);
