@@ -41,13 +41,48 @@ try {
       tap(0);
       return window.testInput.sample(1 / 60).line;
     });
-    return { yaw, attack: [attack.attack, attack.line], guard: [guard.guard, guard.line], cleared: !next.attack && !next.guard, lines };
+    window.testInput.clear();
+    window.testInput.sample(1 / 60);
+    mouse('mousemove', { movementX: 35 });
+    mouse('mousedown', { button: 0 });
+    const preparing = window.testInput.sample(1 / 60);
+    mouse('mousemove', { movementY: -90 });
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyW' }));
+    const held = window.testInput.sample(1 / 60);
+    mouse('mouseup', { button: 0 });
+    const released = window.testInput.sample(1 / 60);
+    const after = window.testInput.sample(1 / 60);
+    mouse('mousedown', { button: 0 });
+    window.testInput.sample(1 / 60);
+    dispatchEvent(new Event('blur'));
+    mouse('mouseup', { button: 0 });
+    const canceled = window.testInput.sample(1 / 60);
+    tap(0);
+    const bow = window.testInput.sample(1 / 60, { bow: true });
+    dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyB' }));
+    tap(0);
+    const continuous = window.testInput.sample(1 / 60);
+    return { yaw, attack: [attack.attack, attack.line], guard: [guard.guard, guard.line], cleared: !next.attack && !next.guard, lines,
+      short: [attack.meleeRelease, attack.meleeDown, attack.meleeUp],
+      preparing: [preparing.meleeRelease, preparing.meleeDown, preparing.meleeUp, preparing.line],
+      held: [held.meleeRelease, held.meleeDown, held.meleeUp, held.line],
+      released: [released.meleeRelease, released.meleeDown, released.meleeUp, released.line],
+      after: [after.meleeRelease, after.meleeUp], canceled: [canceled.meleeCancel, canceled.meleeUp],
+      bow: bow.meleeRelease, continuous: continuous.meleeRelease };
   });
   assert.ok(Math.abs(actual.yaw - (-14 * 0.0022)) < 1e-6, 'A pointer event rotates the camera once');
   assert.deepEqual(actual.attack, [true, 'R'], 'A quick attack survives the tick with its original direction');
   assert.deepEqual(actual.guard, [true, 'O'], 'A quick guard survives the tick');
   assert.ok(actual.cleared, 'A short tap does not stick into the next tick');
   assert.deepEqual(actual.lines, ['L', 'R', 'O', 'T'], 'The four raw mouse directions select four distinct lines');
+  assert.deepEqual(actual.short, [true, true, true], 'A complete tap between ticks preserves both mouse edges');
+  assert.deepEqual(actual.preparing, [true, true, false, 'R']);
+  assert.deepEqual(actual.held, [true, false, false, 'R'], 'Camera movement and WASD do not replace the selected line');
+  assert.deepEqual(actual.released, [true, false, true, 'R']);
+  assert.deepEqual(actual.after, [false, false], 'A release can commit at most once');
+  assert.deepEqual(actual.canceled, [true, false], 'Blur clears the gesture without treating it as a release');
+  assert.equal(actual.bow, false, 'The bow keeps its existing input path');
+  assert.equal(actual.continuous, false, 'Continuous attack keeps its existing input path');
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await page.evaluate(() => window.testInput.capture(false));

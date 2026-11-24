@@ -5,6 +5,7 @@ import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { test } from 'node:test';
 import { createMotion, heavyFootwork, impactWeight, interpolateDirection, skillTrailSegment, swingPhase, TIGER_SWORD } from '../src/view/motion.mjs';
+import { dot, len, stabilizeBladeRoll } from '../src/view/rig.mjs';
 import { ORDER } from '../src/sim/regiments.mjs';
 
 const at = (p) => new URL('../' + p, import.meta.url);
@@ -62,6 +63,23 @@ test('a held attack stays in anticipation until contact, with a weapon-specific 
   assert.ok(Math.abs(swingPhase({ ...contact, t: 0.4 + swing.recover }, 'axe') - 4) < 1e-9);
 });
 
+test('a charged PC gesture transitions continuously from its locked load into a visible stroke', () => {
+  const wind = 0.4;
+  const prepCap = wind * 0.72;
+  const before = { wind, prepCap, releaseOnly: true, awaitingRelease: true, t: prepCap, held: 0.4 };
+  const released = { ...before, awaitingRelease: false };
+  for (const weapon of ['jian', 'axe']) {
+    assert.equal(swingPhase(before, weapon), 1);
+    assert.equal(swingPhase(released, weapon), 1);
+    const mid = swingPhase({ ...released, t: (prepCap + wind) / 2 }, weapon);
+    assert.ok(mid > 1 && mid < 1.8, 'the charged stroke moves before contact');
+    assert.ok(swingPhase({ ...released, t: wind - 0.001 }, weapon) > 1.9);
+    assert.equal(swingPhase({ ...released, struck: true, strikeAt: wind, t: wind, recover: 0.25 }, weapon), 2);
+    const early = { ...before, t: prepCap / 2, held: 0 };
+    assert.equal(swingPhase(early, weapon), swingPhase({ ...early, awaitingRelease: false }, weapon));
+  }
+});
+
 test('a reversing blade direction stays normalised across the midpoint', () => {
   const first = [0, 0, -1];
   const last = [0, 0, 1];
@@ -101,4 +119,17 @@ test('the Tiger Step blade reaches each contact on the existing strike tick', ()
   assert.equal(skillTrailSegment({ kind: 'skill', id: 'spin', t: 0.3 }), 0);
   assert.deepEqual([0.18, 0.38, 0.58].map((t) => skillTrailSegment({ kind: 'skill', id: 'swing', t })), [1, 2, 3]);
   for (const t of [0.28, 0.48]) assert.equal(skillTrailSegment({ kind: 'skill', id: 'swing', t }), null);
+});
+
+test('blade roll remains orthogonal and continuous when the forearm crosses the blade axis', () => {
+  const axis = [0, 1, 0], initial = stabilizeBladeRoll(axis, axis, null, 0.15);
+  assert.ok(Math.abs(len(initial) - 1) < 1e-8);
+  assert.ok(Math.abs(dot(axis, initial)) < 1e-8);
+  const old = { axis, edge: [1, 0, 0] };
+  assert.deepEqual(stabilizeBladeRoll(axis, axis, old, 0.15), old.edge);
+  const crossed = stabilizeBladeRoll(axis, [-1, 0, 0], old, 0.15);
+  assert.ok(dot(old.edge, crossed) >= Math.cos(0.15) - 1e-8);
+  assert.ok(Math.abs(dot(axis, crossed)) < 1e-8);
+  const turned = stabilizeBladeRoll([0, 0, 1], [0, 0, 1], old, 0.15);
+  assert.ok(Math.abs(dot([0, 0, 1], turned)) < 1e-8);
 });

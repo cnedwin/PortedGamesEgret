@@ -17,6 +17,7 @@
 //
 // Lines are named from the striker's side: L is a cut that starts on his left. It arrives on the other man's
 // right, so to guard it he holds his guard on R (`facing(line)`). Overhead and thrust meet themselves.
+// The PC primary melee gesture sends `meleeRelease` with `meleeDown`, `meleeUp` and `meleeCancel` edges.
 //
 // Headings: 0 looks along +z, and a man's right hand is at heading − π/2.
 
@@ -36,6 +37,7 @@ const THROWN = 1.6;
 // Alone against two (the finale), a man fights above himself: this demo's setting.
 export const LONE = { dealt: 1.5, taken: 0.5 };
 const HOLD = 0.85;
+const PC_PREP_FRACTION = 0.72;
 const GRAVITY = 9.8;
 
 export const facing = (line) => (line === 'L' ? 'R' : line === 'R' ? 'L' : line);
@@ -80,6 +82,7 @@ function enlist(game, spec, side, index) {
     maxSt: 100,
     rest: 0,
     line: 'R',
+    queuedSwing: null,
     guard: false,
     guardLine: 'R',
     guardAt: -9,
@@ -621,16 +624,27 @@ function arrowHit(game, shot, man) {
 
 const canAct = (man) => man.alive && man.stun <= 0 && !man.act;
 
-function startSwing(game, man, line, quick = false) {
+function announceSwing(game, man, act) {
+  man.stats.blows++;
+  emit(game, 'swing', { who: man.id, line: act.line });
+}
+
+function startSwing(game, man, line, { chained, releaseOnly, released }) {
   const blow = blowsOf(man)[line];
   if (!blow) return;
   if (man.st < 4) return;
   const reach = blow.reach;
-  man.act ={ kind: 'swing', line, t: 0, wind: blow.wind * (quick ? 0.55 : man.chain > 0 ? 0.85 : 1), held: 0, struck: false, blow, reach, recover: blow.recover };
-  man.chain = 0;
+  const act = { kind: 'swing', line, t: 0, wind: blow.wind * (chained ? 0.85 : 1), held: 0, struck: false, blow, reach, recover: blow.recover };
+  if (releaseOnly) {
+    act.releaseOnly = true;
+    act.awaitingRelease = !released;
+    act.prepCap = act.wind * PC_PREP_FRACTION;
+    act.prepareTime = 0;
+    if (released) act.releaseAt = 0;
+  }
+  man.act = act;
   man.guard = false;
-  man.stats.blows++;
-  emit(game, 'swing', { who: man.id, line });
+  if (!act.awaitingRelease) announceSwing(game, man, act);
 }
 
 function startKick(game, man) {
@@ -1096,32 +1110,52 @@ function cueSwingRelease(game, man, act, heavy = 0) {
   emit(game, 'swingRelease', { who: man.id, line: act.line, heavy });
 }
 
+const meleePressed = (man, input) => input.meleeRelease ? input.meleeDown && !input.meleeCancel : input.attack && !man.prev.attack;
+
+function chargeSwing(game, man, act, dt) {
+  act.held += dt;
+  if (act.held > 0.15 && !act.heavyAnnounced) {
+    act.heavyAnnounced = true;
+    emit(game, 'heavy', { who: man.id, line: act.line });
+  }
+}
+
+const swingCharge = (act) => act.held > 0.15 ? Math.min(1, act.held / HOLD) : 0;
+
 function runSwing(game, man, act, input, dt) {
-  const holding = input.attack;
-  if (act.t < act.wind) {
-    // A guard raised early in the wind-up takes the blow back: a feint.
-    if (input.guard && !man.prev.guard && act.t < act.wind * 0.75) {
-      man.act = { kind: 'recover', t: 0, time: 0.12 };
-      spend(man, 5);
-      emit(game, 'feint', { who: man.id });
+  const holding = input.attack && !act.releaseOnly;
+  // An armed PC gesture can be withdrawn any time before release. A committed blow keeps the normal feint window.
+  if (input.guard && !man.prev.guard && (act.awaitingRelease || act.t < act.wind * 0.75)) {
+    man.act = { kind: 'recover', t: 0, time: 0.12 };
+    spend(man, 5);
+    emit(game, 'feint', { who: man.id });
+    return;
+  }
+  if (act.awaitingRelease) {
+    if (!input.meleeRelease || !input.meleeUp) {
+      // Reserve the last part of the original wind for the blade's travel after release.
+      act.t = Math.min(act.t, act.prepCap);
+      act.prepareTime += dt;
+      if (act.prepareTime >= act.wind && act.held < HOLD) chargeSwing(game, man, act, Math.min(dt, HOLD - act.held));
       return;
     }
+    act.awaitingRelease = false;
+    act.releaseAt = act.t - dt;
+    announceSwing(game, man, act);
+  }
+  if (act.t < act.wind) {
     // Play the cutting air in the last two ticks of a committed tap, past the feint window.
-    if (!holding && act.t >= act.wind * 0.75 && act.t >= act.wind - 2 * TICK) cueSwingRelease(game, man, act);
+    if (!holding && act.t >= act.wind * 0.75 && act.t >= act.wind - 2 * TICK) cueSwingRelease(game, man, act, swingCharge(act));
     return;
   }
   if (!act.struck) {
     if (holding && act.held < HOLD && !act.quick) {
-      act.held += dt;
-      if (act.held > 0.15 && !act.heavyAnnounced) {
-        act.heavyAnnounced = true;
-        emit(game, 'heavy', { who: man.id, line: act.line });
-      }
+      chargeSwing(game, man, act, dt);
       return;
     }
     act.struck = true;
     act.strikeAt = act.t;
-    const heavy = act.held > 0.15 ? Math.min(1, act.held / HOLD) : 0;
+    const heavy = swingCharge(act);
     spend(man, act.blow.cost * (1 + heavy * 0.6));
     act.heavy = heavy;
     cueSwingRelease(game, man, act, heavy);
@@ -1136,8 +1170,8 @@ function runSwing(game, man, act, input, dt) {
     return;
   }
   if (act.t - act.strikeAt >= act.recover) man.act = null;
-  else if (act.t - act.strikeAt > act.recover * 0.55 && input.attack && !man.prev.attack) {
-    man.chain = 1;
+  else if (act.t - act.strikeAt > act.recover * 0.55 && meleePressed(man, input)) {
+    man.queuedSwing = { line: man.line, releaseOnly: input.meleeRelease, released: input.meleeUp };
     man.act = null;
   }
 }
@@ -1170,6 +1204,10 @@ function runBow(game, man, input, dt) {
 /** One tick for one man, with his input. */
 function stepMan(game, man, input, dt) {
   const pressed = (key) => input[key] && !man.prev[key];
+  // The combo press belongs only to this tick, including when another action takes priority.
+  const queuedSwing = input.meleeCancel && man.queuedSwing?.releaseOnly ? null : man.queuedSwing;
+  man.queuedSwing = null;
+  if (input.meleeCancel && man.act?.awaitingRelease) man.act = null;
   // ---- what wears off and what keeps working --------------------------------------------------------------
   man.cool = man.cool.map((c) => Math.max(0, c - dt));
   for (const id in man.artCool) man.artCool[id] = Math.max(0, man.artCool[id] - dt);
@@ -1262,6 +1300,7 @@ function stepMan(game, man, input, dt) {
 
     // ---- starting something ------------------------------------------------------------------------------
     const free = !man.act || man.act.kind === 'recover';
+    const chain = wantsGuard ? null : queuedSwing;
     if (pressed('heal') && free && !man.draw && man.dressings > 0 && man.hp < man.maxHp) {
       man.act = { kind: 'mend', t: 0 };
       man.guard = false;
@@ -1273,8 +1312,13 @@ function stepMan(game, man, input, dt) {
     else if (pressed('offArt') && free) startArt(game, man, 'off');
     else if (pressed('kick') && free && !man.draw) startKick(game, man);
     else if (bowOut) runBow(game, man, input, dt);
-    else if (input.attack && (!man.prev.attack || man.chain) && free) {
-      startSwing(game, man, man.line);
+    else if (free && (chain || meleePressed(man, input))) {
+      const releaseOnly = chain ? chain.releaseOnly : input.meleeRelease;
+      startSwing(game, man, chain?.line ?? man.line, {
+        chained: !!chain,
+        releaseOnly,
+        released: chain?.released || (input.meleeRelease && input.meleeUp)
+      });
     }
 
     // ---- what is under way --------------------------------------------------------------------------------

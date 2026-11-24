@@ -1,9 +1,9 @@
 // The player's hands: keys, the mouse (held inside the page while fighting), a gamepad and the touch controls, read
 // into the one input the fight takes each tick (see sim/fight.mjs).
 //
-// The line of a blow is the way the mouse last moved: right, left, up (overhead) or down (a thrust); the keypad gives
-// a line and strikes on it at once (8 up, 2 down, 4 left, 6 right, the corners to their sides). The guard is held on
-// the same line. In the classic scheme the blows take the lines in turn and the guard turns itself to the blow coming.
+// The line of a blow is the way the mouse last moved: right, left, up (overhead) or down (a thrust). A single
+// mouse melee attack locks that line on press and commits on release. The keypad gives a line and strikes on
+// it at once. In the classic scheme the alternate controls take the lines in turn and the guard follows the threat.
 // The camera turns with the mouse in both.
 //
 // The keys are the sandbox-war PC layout: WASD, left Shift to sprint, Space to jump, F to kick, X for the main-hand weapon
@@ -44,8 +44,11 @@ const LINE_ORDER = ['R', 'L', 'O', 'T'];
 
 export function createInput(canvas, { settings, onPause = () => {}, onLock = () => {} } = {}) {
   const down = new Set();
-  let pressedAttackLine = null,
-    pressedGuardLine = null;
+  let heldMouseAttack = null,
+    pressedMouseAttack = null,
+    releasedMouseAttack = null,
+    pressedGuardLine = null,
+    canceledMouseAttack = false;
   const state = {
     yaw: 0,
     pitch: 0.12,
@@ -81,7 +84,7 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.moved[0] = state.moved[0] * 0.6 + dx;
     state.moved[1] = state.moved[1] * 0.6 + dy;
     const [mx, my] = state.moved;
-    if (Math.hypot(mx, my) > 9 && !state.attack) {
+    if (Math.hypot(mx, my) > 9 && (!state.attack || heldMouseAttack?.release)) {
       state.line = Math.abs(mx) > Math.abs(my) * 0.9 ? (mx > 0 ? 'R' : 'L') : my < 0 ? 'O' : 'T';
       state.lineAt = performance.now();
     }
@@ -107,7 +110,10 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     }
     state.lastDevice = 'mouse';
     if (e.button === 0) {
-      if (!state.attack) pressedAttackLine = state.line;
+      if (!state.attack) {
+        heldMouseAttack = { line: state.line, release: !state.combo };
+        pressedMouseAttack = heldMouseAttack;
+      }
       state.attack = true;
     }
     if (e.button === 2) {
@@ -118,12 +124,18 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     e.preventDefault();
   };
   const onUp = (e) => {
-    if (e.button === 0) state.attack = false;
+    if (e.button === 0 && heldMouseAttack) {
+      releasedMouseAttack = heldMouseAttack;
+      heldMouseAttack = null;
+      state.attack = false;
+    }
     if (e.button === 2) state.guard = false;
   };
   function clearMouse() {
+    canceledMouseAttack ||= Boolean(heldMouseAttack?.release || pressedMouseAttack?.release || releasedMouseAttack?.release);
     state.attack = state.guard = state.attackWas = false;
-    pressedAttackLine = pressedGuardLine = null;
+    heldMouseAttack = pressedMouseAttack = releasedMouseAttack = null;
+    pressedGuardLine = null;
     state.moved[0] = state.moved[1] = 0;
   }
   const onLockChange = () => {
@@ -260,21 +272,24 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     const fwd = [Math.sin(fy), Math.cos(fy)],
       right = [-Math.cos(fy), Math.sin(fy)];
     const move = [right[0] * mx - fwd[0] * my, right[1] * mx - fwd[1] * my];
-    let attack = state.attack || pressedAttackLine !== null || !!pad?.attack || state.touch.attack || state.touch.tapAttack || !!state.padLine;
+    const mouseAttack = releasedMouseAttack ?? heldMouseAttack ?? pressedMouseAttack;
+    const meleeRelease = Boolean(!bow && mouseAttack?.release);
+    let attack = state.attack || pressedMouseAttack !== null || !!pad?.attack || state.touch.attack || state.touch.tapAttack || !!state.padLine;
     // Continuous attack (B): a held button strikes again as each blow ends, instead of winding up a heavy one.
-    if (state.combo && attack && !bow) {
+    if (state.combo && attack && !bow && !meleeRelease) {
       state.comboBeat = (state.comboBeat + dt) % 0.2;
       attack = state.comboBeat < 0.1;
     } else state.comboBeat = 0;
     const guard = state.guard || pressedGuardLine !== null || !!pad?.guard || state.touch.guard || state.touch.tapGuard;
     const classic = settings.control === 'classic' || state.lastDevice === 'touch';
     let line = state.line;
-    // Retain a mouse tap and its line when down/up arrive between two simulation ticks.
-    if (attack && !state.attack && pressedAttackLine) line = pressedAttackLine;
+    // Retain the mouse tap and its line when down/up arrive between two simulation ticks.
+    if (attack && !state.attack && pressedMouseAttack) line = pressedMouseAttack.line;
     else if (guard && !state.guard && pressedGuardLine) line = pressedGuardLine;
     if (classic && threat && guard) line = threat;
     if (state.padLine) line = state.padLine;
-    else if (classic && attack && !state.attackWas) {
+    else if (meleeRelease && !guard) line = mouseAttack.line;
+    else if (classic && attack && !state.attackWas && !meleeRelease) {
       // A swipe on the touch strike button names the line; otherwise the lines come in turn.
       if (state.touch.tapAttack && state.touch.strikeLine) line = state.line = state.touch.strikeLine;
       else {
@@ -289,6 +304,10 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
       face: state.yaw,
       sprint: down.has('sprint') || !!pad?.sprint,
       attack,
+      meleeRelease,
+      meleeDown: meleeRelease && pressedMouseAttack === mouseAttack,
+      meleeUp: meleeRelease && releasedMouseAttack === mouseAttack,
+      meleeCancel: canceledMouseAttack,
       guard,
       kick: state.once.kick,
       step: state.once.step,
@@ -308,7 +327,9 @@ export function createInput(canvas, { settings, onPause = () => {}, onLock = () 
     state.arm = null;
     state.touch.tapAttack = state.touch.tapGuard = false;
     state.touch.strikeLine = null;
-    pressedAttackLine = pressedGuardLine = null;
+    pressedMouseAttack = releasedMouseAttack = null;
+    pressedGuardLine = null;
+    canceledMouseAttack = false;
     return input;
   }
 

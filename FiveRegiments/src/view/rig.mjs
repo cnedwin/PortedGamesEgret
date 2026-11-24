@@ -44,6 +44,24 @@ export function fromTo(a, b) {
   if (d < -0.9999) return axisAngle(Math.abs(a[0]) < 0.9 ? cross(a, [1, 0, 0]) : cross(a, [0, 1, 0]), Math.PI);
   return qnorm([...cross(a, b), 1 + d]);
 }
+
+/** Carry the existing edge onto the new blade axis before turning it toward the forearm. */
+export function stabilizeBladeRoll(axis, lead, previous, maxTurn) {
+  const projected = sub(lead, mul(axis, dot(lead, axis)));
+  const confidence = len(projected);
+  const carried = previous?.edge ? qrot(fromTo(previous.axis, axis), previous.edge) : null;
+  if (confidence < 0.15) {
+    if (carried) return carried;
+    const fallback = Math.abs(axis[1]) < 0.85 ? [0, 1, 0] : [0, 0, 1];
+    return unit(sub(fallback, mul(axis, dot(fallback, axis))));
+  }
+  const preferred = unit(projected);
+  if (!carried) return preferred;
+  const signed = Math.atan2(dot(cross(carried, preferred), axis), dot(carried, preferred));
+  const bound = maxTurn * Math.min(1, (confidence - 0.15) / 0.25);
+  const turn = Math.max(-bound, Math.min(bound, signed));
+  return unit(qrot(axisAngle(axis, turn), carried));
+}
 /** The rotation whose columns are the given orthonormal axes. */
 export function basis(x, y, z) {
   const t = x[0] + y[1] + z[2];
@@ -177,9 +195,9 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
   /**
    * Reach the hand of side `s` to `target` (rig space), the elbow toward `pole` (a rig-space direction), and turn
    * the hand so that a held blade points along `blade` with its edge leading along the forearm. `weight` blends
-   * from the captured arm to the reached one.
+   * from the captured arm to the reached one. A primary melee grip remembers its edge to avoid singular rolls.
    */
-  function reachArm(s, target, pole, blade, weight = 1, roll = 0, face = null) {
+  function reachArm(s, target, pole, blade, weight = 1, roll = 0, face = null, grip = null, dt = 0) {
     if (weight <= 0) return;
     const up = 'upperarm_' + s,
       lo = 'lowerarm_' + s,
@@ -212,9 +230,11 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
       const forearm = unit(sub(world(hd).t, world(lo).t));
       const B = unit(blade);
       const lead = face ? unit(face) : forearm;
-      let F = sub(lead, mul(B, dot(lead, B)));
-      if (len(F) < 0.15) F = sub([0, 1, 0], mul(B, B[1]));
-      F = unit(F);
+      let F = stabilizeBladeRoll(B, lead, grip, 9 * dt);
+      if (grip) {
+        grip.axis = B;
+        grip.edge = F;
+      }
       if (roll) F = qrot(axisAngle(B, roll), F);
       // Hand frame: along → B, fingers → F.
       const local = basis(hand.along, hand.fingers, cross(hand.along, hand.fingers));

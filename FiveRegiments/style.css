@@ -199,6 +199,8 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .hud-cross path { fill: rgba(255, 255, 255, 0.16); stroke: rgba(0, 0, 0, 0.4); stroke-width: 1; transition: fill 0.08s; }
 .hud-cross path.on { fill: rgba(255, 244, 220, 0.9); }
 .hud-cross path.threat { fill: rgba(235, 60, 45, 0.95); filter: drop-shadow(0 0 6px rgba(235, 60, 45, 0.9)); }
+.hud-cross [data-prep] { fill: none; stroke: #ffd88d; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 2px #17110a); opacity: 0; transition: opacity 0.14s ease-out; }
+.hud-cross [data-prep].show { opacity: 1; transition-duration: 0.06s; }
 .hud-cross circle { fill: rgba(255, 255, 255, 0.85); }
 .hud-cross .ring { fill: none; stroke: rgba(201, 164, 100, 0); stroke-width: 2; }
 .hud-cross.guard .ring { stroke: rgba(201, 164, 100, 0.85); }

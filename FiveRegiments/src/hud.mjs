@@ -23,6 +23,10 @@ const CROSS = `<svg viewBox="-60 -60 120 120" aria-hidden="true">
   <path data-l="L" d="M-18 -9 L-44 0 L-18 9 Z"/>
   <path data-l="O" d="M-9 -18 L0 -44 L9 -18 Z"/>
   <path data-l="T" d="M-9 18 L0 44 L9 18 Z"/>
+  <polyline data-prep="R" points="47,-8 56,0 47,8"/>
+  <polyline data-prep="L" points="-47,-8 -56,0 -47,8"/>
+  <polyline data-prep="O" points="-8,-47 0,-56 8,-47"/>
+  <polyline data-prep="T" points="-8,47 0,56 8,47"/>
   <circle r="2.2"/>
   <circle class="ring" r="30"/>
 </svg>`;
@@ -68,7 +72,8 @@ export function createHud(root, { touch = false } = {}) {
     skillViews = [];
   let bannerTimer = 0,
     toastTimer = 0;
-  const lines = Object.fromEntries([...cross.querySelectorAll('path')].map((p) => [p.dataset.l, p]));
+  const lines = Object.fromEntries([...cross.querySelectorAll('[data-l]')].map((p) => [p.dataset.l, p]));
+  const preparations = cross.querySelectorAll('[data-prep]');
 
   // The compass: a strip of marks every fifteen degrees, the four quarters named, slid under a fixed needle.
   const names = t('compass').split(',');
@@ -131,10 +136,10 @@ export function createHud(root, { touch = false } = {}) {
 
   let meShown = 0;
   /**
-   * Each frame. `threat` is the line of the blow coming at him (as he must guard it), if any; `project(point)` gives a
-   * point's place on the screen (or null behind the camera); `yaw` is the camera's heading; `input` the input state.
+   * `preparedLine` is the PC player's committed direction while the mouse is held. `threat` is the incoming blow's
+   * guard line. `project(point)` gives a point's place on the screen (or null behind the camera).
    */
-  function update(dt, game, { line, threat, guard, locked, project, yaw = 0, input = {} }) {
+  function update(dt, game, { line, preparedLine, threat, guard, locked, project, yaw = 0, input = {} }) {
     const hero = game.hero;
     hud.classList.toggle('bare', !!input.hidePanels);
     meShown = meShown ? meShown + (hero.hp - meShown) * (1 - Math.exp(-dt * 3)) : hero.hp;
@@ -220,9 +225,10 @@ export function createHud(root, { touch = false } = {}) {
       }
     }
     for (const [l, p] of Object.entries(lines)) {
-      p.classList.toggle('on', l === line);
+      p.classList.toggle('on', l === (preparedLine ?? line));
       p.classList.toggle('threat', l === threat);
     }
+    for (const p of preparations) p.classList.toggle('show', p.dataset.prep === preparedLine);
     cross.classList.toggle('guard', !!guard);
     cross.classList.toggle('locked', !!locked);
     cross.classList.toggle('bow', hero.regiment === 'archer' && !hero.knife);

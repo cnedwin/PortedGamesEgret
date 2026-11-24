@@ -64,6 +64,137 @@ test('a held attack cues once on release, and a feint never cues a release', () 
   assert.ok(!feint.some((e) => e.type === 'swingRelease' || e.type === 'hit'));
 });
 
+function meleeRecovery() {
+  const duel = pair('tiger', 'yulin');
+  step(duel.game, { hero: { attack: true, line: 'R' } });
+  while (!duel.h.act.struck) step(duel.game, {});
+  return duel;
+}
+
+test('a one-tick combo tap keeps its line and starts at the next legal tick', () => {
+  const { game, h } = meleeRecovery();
+  while (h.act.t - h.act.strikeAt < h.act.recover * 0.65) step(game, {});
+  assert.ok(!step(game, { hero: { attack: true, line: 'L' } }).some((e) => e.type === 'swing'));
+  const acceptedAt = game.time;
+  const next = step(game, { hero: { line: 'T' } }).find((e) => e.type === 'swing');
+  assert.equal(next?.line, 'L');
+  assert.ok(Math.abs(next.time - acceptedAt - TICK) < 1e-9);
+  assert.equal(h.act.wind, h.act.blow.wind * 0.85);
+});
+
+test('an early recovery tap does not chain', () => {
+  const { game, h } = meleeRecovery();
+  const events = step(game, { hero: { attack: true, line: 'L' } });
+  while (h.act) events.push(...step(game, {}));
+  events.push(...step(game, {}));
+  assert.ok(!events.some((e) => e.type === 'swing'));
+});
+
+test('a guard, a higher-priority action or a stagger consumes the queued combo', () => {
+  for (const interrupt of ['guard', 'kick', 'stun']) {
+    const { game, h } = meleeRecovery();
+    while (h.act.t - h.act.strikeAt < h.act.recover * 0.65) step(game, {});
+    step(game, { hero: { attack: true, line: 'L' } });
+    const command = interrupt === 'stun' ? {} : { [interrupt]: true };
+    if (interrupt === 'stun') h.stun = 0.2;
+    const events = step(game, { hero: command });
+    if (interrupt === 'guard') assert.ok(h.guard);
+    if (interrupt === 'kick') assert.ok(events.some((e) => e.type === 'kick'));
+    events.push(...run(game, {}, 0.8));
+    assert.ok(!events.some((e) => e.type === 'swing'), interrupt);
+    const next = step(game, { hero: { attack: true, line: 'O' } }).find((e) => e.type === 'swing');
+    assert.equal(next?.line, 'O', interrupt);
+    assert.equal(h.act.wind, h.act.blow.wind, interrupt);
+  }
+});
+
+const pcMelee = (fields = {}) => ({ meleeRelease: true, line: 'R', ...fields });
+
+test('PC melee waits at full charge and releases exactly once on the locked line', () => {
+  const { game, h, f } = pair('tiger', 'yulin');
+  const held = run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0, line: i === 0 ? 'R' : 'O' }) }), 3);
+  assert.equal(h.act?.awaitingRelease, true);
+  assert.equal(h.act.line, 'R');
+  assert.equal(h.act.t, h.act.prepCap);
+  const wind = h.act.wind;
+  assert.equal(f.hp, f.maxHp);
+  assert.ok(!held.some((e) => ['swing', 'swingRelease', 'hit', 'whiff'].includes(e.type)));
+  const released = step(game, { hero: pcMelee({ meleeUp: true, line: 'T' }) });
+  assert.equal(h.act.awaitingRelease, false);
+  assert.ok(Math.abs(h.act.releaseAt - h.act.prepCap) < 1e-9);
+  assert.deepEqual(released.map((e) => e.type), ['swing']);
+  const after = run(game, { hero: pcMelee() }, 0.6);
+  assert.deepEqual(after.filter((e) => ['swing', 'swingRelease', 'hit'].includes(e.type)).map((e) => e.type), ['swingRelease', 'hit']);
+  const hit = after.find((e) => e.type === 'hit');
+  assert.ok(hit.time - released[0].time >= wind - h.r.blows.R.wind * 0.72 - TICK);
+  assert.equal(after.find((e) => e.type === 'swingRelease').heavy, 1);
+  assert.equal(hit.line, 'R');
+  assert.equal(hit.heavy, 1);
+  assert.equal(h.stats.blows, 1);
+  const normal = pair('tiger', 'yulin');
+  const normalHit = run(normal.game, { hero: { attack: true, line: 'R' } }, 1.6).find((e) => e.type === 'hit');
+  assert.equal(hit.damage, normalHit.damage);
+});
+
+test('a same-tick PC click respects the original wind and damage', () => {
+  const ordinary = pair('tiger', 'yulin'), desktop = pair('tiger', 'yulin');
+  const previous = run(ordinary.game, (i) => ({ hero: { attack: i === 0, line: 'R' } }), 1);
+  const current = run(desktop.game, (i) => ({ hero: pcMelee({ attack: i === 0, meleeDown: i === 0, meleeUp: i === 0 }) }), 1);
+  assert.deepEqual(current, previous);
+});
+
+test('guard cancels armed PC melee at full charge and stale release cannot attack', () => {
+  const { game, h } = pair('tiger', 'yulin');
+  run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0 }) }), 2);
+  const cancelled = step(game, { hero: pcMelee({ attack: true, guard: true }) });
+  assert.ok(cancelled.some((e) => e.type === 'feint'));
+  const released = step(game, { hero: pcMelee({ meleeUp: true, guard: true }) });
+  assert.ok(h.guard);
+  assert.ok(!released.some((e) => e.type === 'swing' || e.type === 'hit'));
+});
+
+test('explicit PC cancellation discards preparation and a new down can arm again', () => {
+  const { game, h } = pair('tiger', 'yulin');
+  step(game, { hero: pcMelee({ attack: true, meleeDown: true }) });
+  const cancelled = step(game, { hero: pcMelee({ attack: true, meleeUp: true, meleeCancel: true }) });
+  assert.equal(h.act, null);
+  assert.deepEqual(cancelled, []);
+  step(game, { hero: pcMelee({ attack: true, meleeDown: true, line: 'T' }) });
+  assert.equal(h.act?.awaitingRelease, true);
+  assert.equal(h.act.line, 'T');
+});
+
+test('released PC melee retains the ordinary early feint window', () => {
+  const { game } = pair('tiger', 'yulin');
+  const events = run(game, (i) => ({ hero: pcMelee({ attack: i === 0, meleeDown: i === 0, meleeUp: i === 0, guard: i === 3 }) }), 1);
+  assert.ok(events.some((e) => e.type === 'feint'));
+  assert.ok(!events.some((e) => e.type === 'swingRelease' || e.type === 'hit'));
+});
+
+test('a PC combo remembers tap release and its accepted line across the recovery tick', () => {
+  for (const releaseTick of [0, 1, 2]) {
+    const { game, h } = meleeRecovery();
+    while (h.act.t - h.act.strikeAt < h.act.recover * 0.65) step(game, {});
+    step(game, { hero: pcMelee({ attack: true, meleeDown: true, meleeUp: releaseTick === 0, line: 'L' }) });
+    const prepared = step(game, { hero: pcMelee({ attack: releaseTick === 2, meleeUp: releaseTick === 1, line: 'O' }) });
+    assert.equal(h.act?.line, 'L');
+    assert.equal(h.act.awaitingRelease, releaseTick === 2);
+    const release = step(game, { hero: pcMelee({ meleeUp: releaseTick === 2, line: 'T' }) });
+    const [swing, extra] = [...prepared, ...release].filter((e) => e.type === 'swing');
+    assert.equal(swing?.line, 'L');
+    assert.equal(extra, undefined);
+    assert.equal(h.act.wind, h.act.blow.wind * 0.85);
+  }
+});
+
+test('PC releasing a press rejected in early recovery cannot start a later swing', () => {
+  const { game, h } = meleeRecovery();
+  const held = run(game, (i) => ({ hero: pcMelee({ attack: true, meleeDown: i === 0 }) }), 0.8);
+  assert.equal(h.act, null);
+  const released = step(game, { hero: pcMelee({ meleeUp: true }) });
+  assert.ok(![...held, ...released].some((e) => e.type === 'swing'));
+});
+
 test('only the right line holds a guard; a wrong line lets half through', () => {
   const right = pair('tiger', 'vanguard');
   // The hero cuts from his right (R); it arrives on the foe's left, so the foe guards L.
