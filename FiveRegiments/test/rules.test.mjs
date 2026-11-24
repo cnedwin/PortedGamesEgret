@@ -22,6 +22,32 @@ const run = (game, inputs, seconds) => {
   return events;
 };
 
+test('a solo Imperial Guard reads a repeated fast cut without reading a new line or an expired pattern', () => {
+  function exchanges(lines, { pause = 0, level = 0.5 } = {}) {
+    const { game, h, f } = pair('tiger', 'yulin');
+    const brain = createBrains(game, { level, rng: () => 0.5 }).foe0;
+    const guard = () => {
+      const { guard, line, face } = brain.think(game, TICK);
+      return { guard, line, face };
+    };
+    return lines.map((line, index) => {
+      // Hold the fixture in range and feed only the brain's defensive decisions into combat.
+      Object.assign(h, { x: 0, z: 1.2, face: Math.PI });
+      Object.assign(f, { x: 0, z: -0.6, face: 0 });
+      if (index === 2 && pause) run(game, () => ({ foe0: guard() }), pause);
+      return run(game, i => ({
+        hero: { line, meleeLine: line, meleeRelease: true, meleeDown: i === 0, meleeUp: i === 1 },
+        foe0: guard()
+      }), 0.75).find(e => e.who === 'foe0' && e.by === 'hero' &&
+        (e.type === 'hit' || e.type === 'block' || e.type === 'deflect'))?.type;
+    });
+  }
+  assert.deepEqual(exchanges(['R', 'R', 'R']), ['hit', 'hit', 'deflect']);
+  assert.deepEqual(exchanges(['R', 'R', 'L']), ['hit', 'hit', 'hit']);
+  assert.deepEqual(exchanges(['R', 'R', 'R'], { pause: 2.1 }), ['hit', 'hit', 'hit']);
+  assert.deepEqual(exchanges(['R', 'R', 'R'], { level: 0.3 }), ['hit', 'hit', 'hit']);
+});
+
 test('a light blow lands and hurts; a held blow lands harder', () => {
   const a = pair('vanguard', 'tiger');
   run(a.game, (i) => ({ hero: { attack: i < 2, line: 'R' } }), 1);

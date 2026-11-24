@@ -399,7 +399,7 @@ function resolve(game, man, target, spec) {
     target.act.answered = true;
     target.act.t = SKILLS.counter.hold;
     target.act.answeredAt = target.act.t;
-    emit(game, 'deflect', { who: target.id, by: man.id, line, counter: true, ...contact });
+    emit(game, 'deflect', { who: target.id, by: man.id, line, skill: spec.skill, counter: true, ...contact });
     target.stats.deflects++;
     rouse(target, RAGE.deflected);
     const back = target.r.blows.R.damage * SKILLS.counter.damage * critical(game, target, man);
@@ -418,7 +418,7 @@ function resolve(game, man, target, spec) {
       // Caught in the first instant of the guard: the blow is turned aside and the striker reels.
       target.stats.deflects++;
       rouse(target, RAGE.deflected);
-      emit(game, 'deflect', { who: target.id, by: man.id, line, ...contact });
+      emit(game, 'deflect', { who: target.id, by: man.id, line, skill: spec.skill, ...contact });
       stagger(man, spec.heavy ? 0.85 : 0.65, 'reel');
       return;
     }
@@ -430,7 +430,7 @@ function resolve(game, man, target, spec) {
     spend(target, cost);
     target.stats.guards++;
     rouse(target, RAGE.guarded);
-    emit(game, 'block', { who: target.id, by: man.id, line, heavy: spec.heavy ?? 0, ...contact });
+    emit(game, 'block', { who: target.id, by: man.id, line, skill: spec.skill, heavy: spec.heavy ?? 0, ...contact });
     // Heightened Deterrence: a guarded blow costs the striker stamina (the official 8, in this game's stamina).
     if (target.talents.has('deterrence')) spend(man, TALENTS.deterrence.drain * 0.25);
     if (target.st <= 0) {
