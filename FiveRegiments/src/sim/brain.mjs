@@ -269,11 +269,12 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
       if (man.knife && d > 4.5) input.swap = true;
       if (!man.knife) {
         const closing = -Math.sin(toward) * target.vx - Math.cos(toward) * target.vz;
+        const gapClosing = closing + Math.sin(toward) * man.vx + Math.cos(toward) * man.vz;
         const retreat = man.skills.indexOf('backStep');
         const room = Math.hypot(man.x - Math.sin(toward) * 2, man.z - Math.cos(toward) * 2) < game.place.radius - 0.4;
         const open = recoveryGuardWindow(target);
         pressureStep = retreat >= 0 && man.cool[retreat] <= 0 && man.st >= SKILLS.backStep.cost && !man.draw &&
-          room && !open && target.stun <= 0 && target.daze <= 0 && d < 3.2 && (d < 1.65 || closing > 1);
+          room && !open && target.stun <= 0 && target.daze <= 0 && d < 2.8 && (d < 1.55 || gapClosing > 0.65);
         makeSpace = brain.level >= 0.5 && !man.draw && !cornered && d < 3.6 && man.st > 32 && closing > 2.4 && !open;
         const speed = man.r.bow.speed;
         const aim = aimAt(man, target, speed);

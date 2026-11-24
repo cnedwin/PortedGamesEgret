@@ -917,15 +917,30 @@ test('Archers default to Scatter Shot and Back Step, with Storm Arrow still sele
   assert.deepEqual(playerLoadout('archer', { skills: ['fan', 'gale'] }).skills, ['fan', 'gale']);
 });
 
-test('Normal Archers use Back Step against an approaching opponent and save it against retreat', () => {
-  for (const approaching of [true, false]) {
+test('the player can still use Back Step before an enemy is close', () => {
+  const { game, h, f } = pair('archer', 'tiger', { hero: playerLoadout('archer') });
+  f.z = h.z - 4;
+  const attack = step(game, { hero: { skill: 1 } });
+  assert.equal(attack.find(e => e.type === 'skill')?.id, 'backStep');
+  const release = run(game, {}, 0.28).find(e => e.type === 'loose' && e.who === h.id);
+  assert.equal(release?.skill, 'backStep');
+});
+
+test('Normal Archers save Back Step for imminent contact', () => {
+  for (const { gap, speed, archerSpeed = 0, skill } of [
+    { gap: 2.5, speed: -2.2, skill: 'backStep' },
+    { gap: 2.5, speed: 2.2, skill: 'fan' },
+    { gap: 2.5, speed: -2.2, archerSpeed: -2, skill: 'fan' },
+    { gap: 3, speed: -2.2, skill: 'fan' }
+  ]) {
     const { game, h, f } = pair('tiger', 'archer', { foe: loadout('archer') });
-    h.z = f.z + 2.8;
-    h.vz = approaching ? -2.2 : 2.2;
+    h.z = f.z + gap;
+    h.vz = speed;
+    f.vz = archerSpeed;
     const brain = createBrains(game, { level: 0.5, rng: () => 0.01 }).foe0;
     const order = brain.think(game, TICK);
-    assert.equal(f.skills[order.skill], approaching ? 'backStep' : 'fan');
-    if (approaching) {
+    assert.equal(f.skills[order.skill], skill);
+    if (skill === 'backStep') {
       const start = f.z;
       assert.equal(order.attack, false);
       step(game, { foe0: order });
