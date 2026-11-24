@@ -627,11 +627,46 @@ function spearDuel(distance, mounted = false) {
   return duel;
 }
 
-test('Silver Wing gets Returning Spear and Boar Rush by default only as a player', () => {
+test('Silver Wing gets Returning Spear and Boar Rush in both default loadouts', () => {
   assert.deepEqual(playerLoadout('plume').skills, ['returnSpear', 'boar']);
-  assert.deepEqual(loadout('plume').skills, ['stepCut', 'boar']);
+  assert.deepEqual(loadout('plume').skills, ['returnSpear', 'boar']);
   assert.deepEqual(playerLoadout('plume', { skills: ['stepCut', 'boar'] }).skills, ['stepCut', 'boar']);
   for (const regiment of ORDER.filter((id) => id !== 'plume')) assert.deepEqual(playerLoadout(regiment), loadout(regiment));
+});
+
+test('Normal Silver Wing uses Returning Spear to make room against a close pursuer', () => {
+  const { game, h, f } = pair('tiger', 'plume', { foe: { ...loadout('plume'), mounted: false } });
+  h.vz = -1.4;
+  const brain = createBrains(game, { level: 0.5, rng: () => 0.01 }).foe0;
+  const start = [f.x, f.z];
+  const orders = brain.think(game, TICK);
+  assert.equal(orders.skill, 0);
+  assert.equal(orders.mount, false);
+  assert.ok(step(game, { foe0: orders }).some(e => e.type === 'skill' && e.id === 'returnSpear'));
+  run(game, {}, SKILLS.returnSpear.stepTime);
+  assert.ok(Math.abs(f.x - start[0]) > 0.4 && f.z < start[1], 'the ordinary sidestep makes space');
+});
+
+test('Normal Silver Wing calls and remounts a healthy horse only when there is room', () => {
+  const { game, h, f } = pair('tiger', 'plume', { foe: { mounted: false } });
+  const brain = createBrains(game, { level: 0.5, rng: () => 0.1 }).foe0;
+  const orders = () => brain.think(game, TICK);
+  assert.deepEqual([orders().mount, orders().call], [false, undefined], 'enemy is too close');
+  h.z = f.z + 9;
+  f.horse.hp = Math.round(f.horse.maxHp * 0.25);
+  assert.ok(!orders().mount && !orders().call, 'a weakened horse stays out of the fight');
+  f.horse.hp = f.horse.maxHp;
+  f.daze = TICK * 3;
+  assert.ok(!orders().mount && !orders().call, 'does not start while dazed');
+  f.daze = 0;
+  f.horse.x = f.x + 4;
+
+  const events = [];
+  for (let i = 0; i < 300 && !f.mounted; i++) events.push(...step(game, { foe0: orders() }));
+  const remount = events.filter(e => ['call', 'mount', 'mounted'].includes(e.type) && e.who === f.id);
+  assert.deepEqual(remount.map(e => e.type), ['call', 'mount', 'mounted']);
+  assert.ok(Math.abs(remount[2].time - remount[1].time - (f.r.horse.mount - TICK)) < 2 * TICK);
+  assert.ok(f.mounted);
 });
 
 test('Returning Spear sidesteps before the pivot and lands a single directional thrust', () => {
@@ -802,6 +837,49 @@ test('a Bull Charge leaves a man unable to attack or defend for 4 s (2 s if he g
   assert.equal(rider.f.mounted, false);
 });
 
+test('only a timely exact deflect of Bull Charge keeps the rider mounted', () => {
+  for (const [line, fresh] of [['T', true], ['T', false], ['R', true], [null, false]]) {
+    const { game, h, f } = pair('yulin', 'plume', { hero: { skills: ['bull'] } });
+    f.z = h.z - 1.3;
+    Object.assign(f.horse, { x: f.x, z: f.z });
+    if (line) Object.assign(f, { guard: true, guardLine: line, guardAt: fresh ? 0 : -1 });
+
+    const contact = run(game, (i) => ({ hero: { skill: i === 0 ? 0 : -1 }, foe0: { guard: Boolean(line), line } }), 0.3);
+    const deflected = line === 'T' && fresh;
+    assert.equal(contact.some(e => e.type === 'deflect' && e.skill === 'bull'), deflected);
+    assert.equal(contact.some(e => e.type === 'thrown' && e.who === f.id), !deflected);
+    assert.equal(contact.some(e => e.type === 'daze' && e.who === f.id), !deflected);
+    assert.equal(f.mounted, deflected);
+    if (deflected) {
+      assert.equal(f.daze, 0);
+      assert.equal(f.hp, f.maxHp);
+      assert.equal(f.horse.hp, f.horse.maxHp);
+    } else if (line === 'T') {
+      assert.ok(contact.some(e => e.type === 'block' && e.skill === 'bull'));
+      assert.equal(f.hp, f.maxHp, 'ordinary exact guard still stops direct damage');
+    } else assert.ok(contact.some(e => e.type === 'hit' && e.skill === 'bull' && e.damage > 0));
+  }
+});
+
+test('a Normal mounted opponent can time a guard from the visible Bull Charge tell', () => {
+  const { game, h, f } = pair('yulin', 'plume', { hero: { skills: ['bull'] } });
+  const brain = createBrains(game, { level: 0.5, rng: () => 0.25 }).foe0;
+  step(game, { hero: { skill: 0, readableAttack: true } });
+  assert.ok(h.act.leadTotal > 0, 'the charge has a visible lead');
+
+  let firstGuard;
+  const events = [];
+  for (let frame = 0; frame < 34; frame++) {
+    const { guard, line, face } = brain.think(game, TICK);
+    if (guard) firstGuard ??= game.time;
+    events.push(...step(game, { foe0: { guard, line, face } }));
+  }
+  const deflect = events.find(e => e.type === 'deflect' && e.skill === 'bull' && e.who === f.id);
+  assert.ok(deflect, 'guards in front as the rush arrives');
+  assert.ok(firstGuard >= 0.28 && deflect.time - firstGuard <= DEFLECT);
+  assert.ok(f.mounted && f.daze === 0);
+});
+
 test('a single mount press after Bull Charge waits through the fall and remounts a living horse', () => {
   const { game, h, f } = pair('plume', 'yulin', { foe: { skills: ['bull', 'charge'] } });
   Object.assign(h, { x: 0, z: 3.5 });
@@ -850,6 +928,46 @@ test('the archer can move a little more at full draw without sprinting or outrun
   const [shot, duplicate] = step(aiming.game, {}).filter(e => e.type === 'loose');
   assert.equal(shot?.power, 1);
   assert.equal(duplicate, undefined);
+});
+
+test('Archers default to Scatter Shot and Back Step, with Storm Arrow still selectable', () => {
+  assert.deepEqual(loadout('archer').skills, ['fan', 'backStep']);
+  assert.deepEqual(playerLoadout('archer'), loadout('archer'));
+  assert.deepEqual(playerLoadout('archer', { skills: ['fan', 'gale'] }).skills, ['fan', 'gale']);
+});
+
+test('the player can still use Back Step before an enemy is close', () => {
+  const { game, h, f } = pair('archer', 'tiger', { hero: playerLoadout('archer') });
+  f.z = h.z - 4;
+  const attack = step(game, { hero: { skill: 1 } });
+  assert.equal(attack.find(e => e.type === 'skill')?.id, 'backStep');
+  const release = run(game, {}, 0.28).find(e => e.type === 'loose' && e.who === h.id);
+  assert.equal(release?.skill, 'backStep');
+});
+
+test('Normal Archers save Back Step for imminent contact', () => {
+  for (const { gap, speed, archerSpeed = 0, skill } of [
+    { gap: 2.5, speed: -2.2, skill: 'backStep' },
+    { gap: 2.5, speed: 2.2, skill: 'fan' },
+    { gap: 2.5, speed: -2.2, archerSpeed: -2, skill: 'fan' },
+    { gap: 3, speed: -2.2, skill: 'fan' }
+  ]) {
+    const { game, h, f } = pair('tiger', 'archer', { foe: loadout('archer') });
+    h.z = f.z + gap;
+    h.vz = speed;
+    f.vz = archerSpeed;
+    const brain = createBrains(game, { level: 0.5, rng: () => 0.01 }).foe0;
+    const order = brain.think(game, TICK);
+    assert.equal(f.skills[order.skill], skill);
+    if (skill === 'backStep') {
+      const start = f.z;
+      assert.equal(order.attack, false);
+      step(game, { foe0: order });
+      const shot = run(game, {}, 0.46).find(e => e.type === 'loose' && e.who === f.id);
+      assert.equal(shot?.skill, 'backStep');
+      assert.ok(f.z < start - 2);
+    }
+  }
 });
 
 test('arrows fly, hit and can be stopped by a shield', () => {

@@ -15,6 +15,9 @@ import { incomingAttack } from './sim/combat-tells.mjs';
 import { createBrain, createBrains } from './sim/brain.mjs';
 import { ORDER, REGIMENTS, loadout, playerLoadout } from './sim/regiments.mjs';
 import { PLACES, grade, planRoad, stageScore } from './sim/road.mjs';
+import { planExpedition } from './sim/expedition.mjs';
+import { floorAt } from './sim/terrain.mjs';
+import { planDuelSeries, recordDuelRound, seriesStanding } from './sim/duel-series.mjs';
 import { createInput } from './input.mjs';
 import { createHud, createTouchControls } from './hud.mjs';
 import { createScreens, placeName } from './screens.mjs';
@@ -23,6 +26,7 @@ import { MARKS, openSave, recordRun, settingsOf } from './saves.mjs';
 import { setLanguage, getLanguage, t, say } from './i18n.mjs';
 import { loadMotion, skillTrailSegment, swingTrailActive } from './view/motion.mjs';
 import { createFigure } from './view/figure.mjs';
+import { createFootSoldier } from './view/foot-soldier.mjs';
 import { createHorse } from './view/horse.mjs';
 import { createEffects } from './view/effects.mjs';
 import { skillSweepStyle } from './view/effect-profiles.mjs';
@@ -88,7 +92,9 @@ async function main() {
   const mountedPresentation = createMountedPresentation(TICK);
   const mountedContact = createMountedContactPresentation();
   const contactAccent = createContactAccent();
-  const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood });
+  let stage = null;
+  const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood,
+    groundAt: (x, z) => floorAt(stage?.place, x, z) });
 
   const ui = document.querySelector('#ui');
   const hud = createHud(ui, { touch: coarse });
@@ -151,8 +157,10 @@ async function main() {
     motions[regiment] ??= loadMotion(new URL(`../assets/motion/${regiment}`, import.meta.url));
     return Promise.all([body(regiment, which), motions[regiment], REGIMENTS[regiment].horse ? body('horse', which) : null]);
   }
-  function figureFor(man, [b, motion, horseBody]) {
-    const fig = createFigure({ regiment: man.regiment, body: b, motion, world: scene, height: HEIGHT[man.regiment] });
+  function figureFor(man, figureAssets) {
+    if (man.rank === 'troop') return createFootSoldier(man.regiment, scene);
+    const [b, motion, horseBody] = figureAssets;
+    const fig = createFigure({ regiment: man.regiment, body: b, motion, world: scene, height: HEIGHT[man.regiment] * (man.rank === 'boss' ? 1.08 : 1) });
     if (!horseBody) return fig;
     // A rider and his horse: the horse moves first, then he sits where its saddle is.
     const horse = createHorse({ body: horseBody, world: scene });
@@ -172,8 +180,7 @@ async function main() {
   }
 
   // ---- places ----------------------------------------------------------------------------------------------
-  let stage = null,
-    stageName = null;
+  let stageName = null;
   async function enter(name) {
     if (stageName === name) return stage;
     const next = await buildPlace(scene, name, { renderer, quality });
@@ -245,47 +252,58 @@ async function main() {
       .join(' · ');
     redraw = title;
     const note = saveProblems.has('write-failed') ? t('saveRefused') : saveProblems.size ? t('saveReset') : '';
-    screens.title({ onRoad: choose, onFree: free, onSettings: () => openSettings(title), best: marks ? `${t('best')}：${marks}` : '', note });
+    screens.title({ onRoad: () => choose(), onExpedition: () => choose(true), onFree: () => free(), onSeries: () => free(true),
+      onSettings: () => openSettings(title), best: marks ? `${t('best')}：${marks}` : '', note });
   }
 
-  function choose() {
+  let expeditionVeteran = false;
+  function choose(expedition = false) {
     mode = 'choose';
-    redraw = choose;
+    redraw = () => choose(expedition);
     screens.choose({
       selected: run?.regiment ?? 'yulin',
+      title: expedition ? t('expedition') : undefined,
+      veteran: expedition ? expeditionVeteran : null,
+      onDifficulty: value => { expeditionVeteran = value; },
       onLook: (r) => lineup && (lineup.focus = ORDER.indexOf(r)),
       onBack: () => {
         if (lineup) lineup.focus = null;
         title();
       },
-      onPick: (r) => fit(r)
+      onPick: (r) => fit(r, expedition)
     });
   }
 
-  function fit(regiment) {
+  function fit(regiment, expedition) {
     mode = 'loadout';
-    redraw = () => fit(regiment);
+    redraw = () => fit(regiment, expedition);
     screens.loadout({
       regiment,
       chosen: run?.regiment === regiment ? run.loadout : undefined,
-      onBack: choose,
+      onBack: () => choose(expedition),
       onDone: (picked) => {
-        run = { regiment, loadout: picked, stages: planRoad(regiment), at: 0, scores: [], stats: runStats() };
+        run = { regiment, loadout: picked, stages: expedition ? planExpedition({ veteran: expeditionVeteran }) : planRoad(regiment),
+          at: 0, scores: [], stats: runStats(), expedition };
         card();
       }
     });
   }
 
   const freeState = { me: 'yulin', foes: ['tiger'], place: 'county' };
-  function free() {
+  const seriesState = { me: 'yulin', foes: ['tiger'], place: 'county' };
+  function free(series = false) {
     mode = 'free';
-    redraw = free;
+    redraw = () => free(series);
     screens.free({
-      state: freeState,
+      state: series ? seriesState : freeState,
+      series,
       onLook: (r) => lineup && (lineup.focus = ORDER.indexOf(r)),
       onBack: title,
       onGo: (s) => {
-        run = { regiment: s.me, loadout: playerLoadout(s.me), stages: [{ index: 0, place: s.place, foes: [...s.foes], level: 0.5, double: s.foes.length > 1, health: s.foes.length > 1 ? 0.8 : 1 }], at: 0, scores: [], stats: runStats(), free: true };
+        const stages = series ? planDuelSeries(s.place, s.foes[0]) :
+          [{ index: 0, place: s.place, foes: [...s.foes], level: 0.5, double: s.foes.length > 1, health: s.foes.length > 1 ? 0.8 : 1 }];
+        run = { regiment: s.me, loadout: playerLoadout(s.me), stages, at: 0, scores: [], stats: runStats(), free: true,
+          series: series ? seriesStanding() : null };
         card();
       }
     });
@@ -296,7 +314,8 @@ async function main() {
     sound?.music('air');
     const st = run.stages[run.at];
     redraw = card;
-    screens.stageCard({ stage: st, total: run.stages.length, onGo: () => begin(st) });
+    screens.stageCard({ stage: st, total: run.stages.length, series: run.series,
+      onBack: run.series ? title : null, onGo: () => begin(st) });
   }
 
   async function begin(st) {
@@ -305,25 +324,31 @@ async function main() {
     screens.loading(`${t('loadingPlace')} · ${placeName(st.place)}`);
     dropLineup();
     clearFight();
-    const roster = [run.loadout.regiment, ...st.foes];
+    const foes = st.units ?? st.foes.map(regiment => loadout(regiment));
+    const roster = [run.loadout, ...foes];
     let progress = 0;
     const arrived = (message) => screens.progress(++progress / 2, message);
     const [, bodies] = await Promise.all([
       enter(st.place).then(() => arrived(`${t('loadingMen')} · ${placeName(st.place)}`)),
-      Promise.all(roster.map((regiment) => loadFigure(regiment))).then((loaded) => {
+      Promise.all(roster.map(unit => unit.rank === 'troop' ? null : loadFigure(unit.regiment))).then((loaded) => {
         arrived();
         return loaded;
       })
     ]);
     const seed = Number(params.get('seed') ?? Math.floor(Math.random() * 1e9));
+    const spawn = st.expedition && stage.place.spawn;
     game = createFight({
-      hero: { ...run.loadout, turn: 14 },
-      foes: st.foes.map((regiment) => ({ regiment, ...loadout(regiment) })),
+      hero: { ...run.loadout, turn: 14, at: spawn && [spawn.x, spawn.z] },
+      foes,
       place: stage.place,
       seed,
-      health: st.health ?? 1
+      health: st.health ?? 1,
+      exit: st.expedition ? stage.place.exit : null
     });
-    brains = createBrains(game, { level: st.level });
+    brains = st.expedition ? Object.fromEntries(game.men.slice(1).map(man => {
+      const level = man.rank === 'troop' ? Math.min(0.42, st.level) : st.level + 0.14;
+      return [man.id, createBrain(man, { level, rng: game.rng })];
+    })) : createBrains(game, { level: st.level });
     autoBrain = params.has('auto') ? createBrain(game.hero, { level: 0.7, rng: game.rng }) : null;
     const list = game.men.map((man, i) => figureFor(man, bodies[i]));
     figures = new Map(game.men.map((m, i) => [m.id, list[i]]));
@@ -336,7 +361,7 @@ async function main() {
     locked = coarse && !st.double;
     tally = { deflects: 0, broken: 0 };
     input.setYaw(game.hero.face);
-    cam.snap([game.hero.x, 2.2, game.hero.z + 3.5], [0, 1.4, 0]);
+    cam.snap([game.hero.x, 2.2, game.hero.z + 3.5], [game.hero.x, 1.4, game.hero.z]);
     screens.hide();
     hud.show(true);
     touch.show(coarse, game.hero);
@@ -344,7 +369,8 @@ async function main() {
     status.mode = 'fight';
     sound?.music('drums');
     play('drum');
-    hud.banner(st.double ? t('oneTwo') : t('fight'), placeName(st.place), 2.2, 'start');
+    hud.banner(run.series ? t('seriesRound', { n: run.at + 1 }) : st.double ? t('oneTwo') : t('fight'),
+      st.expedition ? t('expeditionClimbTip') : placeName(st.place), 2.2, 'start');
     if (!coarse && !params.has('auto')) input.capture(true);
   }
 
@@ -411,11 +437,12 @@ async function main() {
     const hero = game.hero;
     const stats = { time: game.time, deflects: tally.deflects, broken: tally.broken, taken: hero.stats.taken, healthLeft: hero.hp / hero.maxHp };
     stats.score = won ? stageScore(stats) : 0;
-    const last = run.at === run.stages.length - 1;
+    if (run.series) run.series = recordDuelRound(run.series, won);
+    const last = run.series ? run.series.finished : run.at === run.stages.length - 1;
     let runMark = null;
-    if (won) {
+    if (won && !run.series) {
       run.scores.push(stats.score);
-      if (last && !run.free) {
+      if (last && !run.free && !run.expedition) {
         runMark = grade(run.scores);
         save.update((d) => void recordRun(d, run.regiment, runMark));
       }
@@ -430,9 +457,11 @@ async function main() {
     redraw = null;
     screens.result({
       won,
+      expedition: run.expedition,
       double: st.double && won,
       stats,
       last,
+      series: run.series,
       runMark,
       onNext: () => {
         run.at++;
@@ -440,6 +469,10 @@ async function main() {
         card();
       },
       onRetry: () => {
+        if (run.series) {
+          run.at = 0;
+          run.series = seriesStanding();
+        }
         clearFight();
         card();
       },
@@ -454,7 +487,7 @@ async function main() {
   const fighter = (id) => game?.men.find((m) => m.id === id);
   const chestOf = (id) => {
     const m = fighter(id);
-    return m ? [m.x, (m.mounted ? 2.15 : 1.3) + (m.act?.air ?? 0), m.z] : [0, 1.3, 0];
+    return m ? [m.x, (m.floor ?? 0) + (m.mounted ? 2.15 : 1.3) + (m.act?.air ?? 0), m.z] : [0, 1.3, 0];
   };
   function lockTarget() {
     if (!locked) return null;
@@ -513,7 +546,7 @@ async function main() {
         break;
       }
       case 'skillCancel':
-        figures.get(e.who)?.braceFromSpin();
+        figures.get(e.who)?.braceFromSpin?.();
         play('steelReady', { volume: 0.71 });
         if (e.who === heroId) hud.toast(t('spinGuard'), 'good');
         break;
@@ -690,6 +723,16 @@ async function main() {
           if (!left && game.men.filter((m) => m.side === 'foe').length > 1) hud.banner(t('double'), '', 2.5, 'win');
         }
         break;
+      case 'bossPhase':
+        play('gong', { rate: 1.15 });
+        hud.banner(t('expeditionBossPhase'), t(defender.titleKey), 1.25, 'start');
+        break;
+      case 'mantle':
+        if (e.who === heroId) hud.toast(t('expeditionMantle'), 'good');
+        break;
+      case 'expeditionBreath':
+        hud.toast(t('expeditionBreath'));
+        break;
       case 'won':
         play('gong');
         hud.banner(e.double ? t('double') : t('won'), '', 2.6, 'win');
@@ -795,6 +838,12 @@ async function main() {
       return p.inFront && p.x > -80 && p.x < w + 80 && p.y > -80 && p.y < h + 80 ? [p.x, p.y] : null;
     };
     const heroAct = game.hero.act;
+    if (game.exit) {
+      const alive = game.men.filter(man => man.side === 'foe' && man.alive).length;
+      stage.setExitOpen?.(!alive);
+      hud.objective(alive ? t('expeditionEnemies', { n: alive })
+        : t('expeditionGate', { m: Math.ceil(Math.hypot(game.hero.x - game.exit.x, game.hero.z - game.exit.z)) }));
+    }
     const trackingSwing = heroAct?.kind === 'swing' && (!heroAct.struck || heroAct.t - heroAct.strikeAt < 0.08);
     const line = game.hero.guard ? game.hero.guardLine : trackingSwing ? heroAct.line : input.state.line;
     hud.update(dt, game, { line, preparedLine: heroAct?.awaitingRelease ? heroAct.line : undefined,

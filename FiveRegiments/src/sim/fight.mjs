@@ -27,6 +27,8 @@
 
 import { ARMOUR, ARTS, CRIT, DAMAGE, RAGE, REGIMENTS, SKILLS, TALENTS, loadout, rageOf } from './regiments.mjs';
 import { CHARGED_RELEASE, facing, OPPONENT_WIND, opponentSkillLead } from './combat-tells.mjs';
+import { atExpeditionGate, changeExpeditionPhase, expeditionReady } from './expedition.mjs';
+import { floorAt, mantlePose, mantleTarget, settleFooting } from './terrain.mjs';
 
 export const TICK = 1 / 60;
 export const BODY = 0.42;
@@ -88,19 +90,30 @@ const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 /** Bring a man onto the field. */
 function enlist(game, spec, side, index) {
   const load = loadout(spec.regiment, spec);
-  const r = REGIMENTS[load.regiment];
-  const talents = new Set(load.talents);
+  const rank = spec.rank ?? null;
+  const troop = rank === 'troop';
+  const base = REGIMENTS[load.regiment];
+  const r = troop ? { ...base, art: null, offArt: null, mountedArt: null } : base;
+  const talents = new Set(troop ? [] : load.talents);
   const health = Math.round(r.health * (spec.health ?? 1));
   const at = spec.at ?? [0, 0];
   const man = {
     id: side === 'hero' ? 'hero' : 'foe' + index,
     side,
     regiment: load.regiment,
+    rank,
+    power: spec.power ?? 1,
+    wakeZ: spec.wakeZ,
+    waiting: spec.wakeZ !== undefined,
+    titleKey: spec.titleKey,
+    phase: spec.phaseSkills ? 1 : 0,
+    phaseSkills: spec.phaseSkills,
     r,
-    skills: load.skills,
+    skills: troop ? [] : load.skills,
     talents,
     x: at[0],
     z: at[1],
+    floor: floorAt(game.place, at[0], at[1]),
     face: spec.face ?? 0,
     turn: spec.turn ?? 10,
     vx: 0,
@@ -131,7 +144,7 @@ function enlist(game, spec, side, index) {
     daze: 0,
     knife: false,
     draw: null,
-    body: BODY,
+    body: troop ? 0.36 : BODY,
     dressings: DRESSING.count,
     horse: null,
     mounted: false,
@@ -146,7 +159,7 @@ function enlist(game, spec, side, index) {
     prev: {},
     stats: { blows: 0, hits: 0, deflects: 0, guards: 0, broken: 0, taken: 0, damage: 0 }
   };
-  if (r.horse) {
+  if (r.horse && !troop) {
     const hp = Math.round(r.horse.health * (spec.health ?? 1));
     man.horse = { hp, maxHp: hp, x: man.x, z: man.z, face: man.face, speed: 0, st: 100, alive: true, called: false, galloping: false, contacts: new Set() };
     if (spec.mounted !== false) setMounted(man, true);
@@ -174,11 +187,12 @@ const blowsOf = (man) => (man.mounted ? man.r.mounted : man.r.blows);
  * A fight: `hero` and `foes` are loadouts ({ regiment, skills, talents }); `place` has the field's radius and its
  * posts ({ x, z, r }) that men and arrows cannot pass.
  */
-export function createFight({ hero, foes, place = { radius: 12, posts: [] }, seed = 1, health = 1 }) {
+export function createFight({ hero, foes, place = { radius: 12, posts: [] }, seed = 1, health = 1, exit = null }) {
   const game = {
     time: 0,
     rng: createRandom(seed),
     place,
+    exit,
     men: [],
     shots: [],
     clouds: [],
@@ -195,7 +209,7 @@ export function createFight({ hero, foes, place = { radius: 12, posts: [] }, see
     game.men.push(enlist(game, { ...spec, health: (spec.health ?? 1) * health, at: spec.at ?? [spread, -4.5], face: 0 }, 'foe', i));
   });
   game.hero = heroMan;
-  heroMan.lone = foes.length > 1;
+  heroMan.lone = !exit && foes.length > 1;
   return game;
 }
 
@@ -222,7 +236,7 @@ function speedOf(man) {
 
 function damageMultiplier(game, man, target) {
   // Alone against two, a man fights above himself (this demo's setting for the finale).
-  let k = man.lone ? LONE.dealt : 1;
+  let k = (man.lone ? LONE.dealt : 1) * (man.power ?? 1);
   if (man.mounted && man.talents.has('centaur')) k *= 1 + TALENTS.centaur.more;
   if (target?.r.armour === 'heavy') {
     if (man.talents.has('heavyBane')) k *= 1 + TALENTS.heavyBane.more;
@@ -300,6 +314,11 @@ function wound(game, man, amount, by, info = {}) {
     }
     game.downs.push({ id: man.id, time: game.time });
     emit(game, 'down', { who: man.id, by: by?.id });
+    if (game.exit && man.rank === 'troop' && by === game.hero && by.alive) {
+      by.st = Math.min(by.maxSt, by.st + 16);
+      by.hp = Math.min(by.maxHp, by.hp + Math.round(by.maxHp * 0.055));
+      emit(game, 'expeditionBreath', { who: by.id });
+    }
   }
   return amount;
 }
@@ -355,6 +374,7 @@ function hurt(game, man, amount, by, info = {}) {
 
 /** Whether `target` stands within `reach` of `man` and inside the swept half-angle `arc` of his heading. */
 export function inSweep(man, target, reach, arc, face = man.face) {
+  if (Math.abs((man.floor ?? 0) - (target.floor ?? 0)) > 0.86) return false;
   const d = dist(man, target),
     body = target.body ?? BODY;
   if (d - body > reach) return false;
@@ -405,7 +425,7 @@ function resolve(game, man, target, spec) {
     const back = target.r.blows.R.damage * SKILLS.counter.damage * critical(game, target, man);
     hurt(game, man, toll(game, man, back).amount, target, { line: 'R', skill: 'counter' });
     if (man.alive && !man.mounted) stagger(man, 0.45, 'flinch');
-    return;
+    return 'deflect';
   }
   const guarding = target.guard && front && !spec.unguardable && target.st > 0;
   const exact = guarding && target.guardLine === facing(line);
@@ -420,7 +440,7 @@ function resolve(game, man, target, spec) {
       rouse(target, RAGE.deflected);
       emit(game, 'deflect', { who: target.id, by: man.id, line, skill: spec.skill, ...contact });
       stagger(man, spec.heavy ? 0.85 : 0.65, 'reel');
-      return;
+      return 'deflect';
     }
     // A shield taken on the wrong line still lets some of the blow through to the arm behind it.
     if (!exact) hurt(game, target, toll(game, target, damage * 0.25, spec.kind ?? kindOf(line), partOf(line)).amount, man, { line, graze: true, skill: spec.skill, ...contact });
@@ -497,13 +517,13 @@ function loose(game, man, { yaw, pitch = 0.04, power = 1, damage, kind = 'arrow'
     by: man.id,
     side: man.side,
     x: man.x + Math.sin(yaw) * 0.6,
-    y: 1.45,
+    y: 1.45 + (man.floor ?? 0),
     z: man.z + Math.cos(yaw) * 0.6,
     vx: Math.sin(yaw) * Math.cos(pitch) * v,
     vy: Math.sin(pitch) * v,
     vz: Math.cos(yaw) * Math.cos(pitch) * v,
     from: [man.x, man.z],
-    damage,
+    damage: damage * (man.power ?? 1),
     blast,
     web,
     // An arrow that goes on through men, taking those within `through` of its flight.
@@ -526,7 +546,7 @@ export function aimAt(man, target, speed) {
     z = target.z + target.vz * t * 0.8;
   const flat = Math.hypot(x - man.x, z - man.z);
   const yaw = Math.atan2(x - man.x, z - man.z);
-  const pitch = Math.atan2(0.5 * GRAVITY * 0.5 * (flat / speed) ** 2 - 0.25, flat);
+  const pitch = Math.atan2(0.5 * GRAVITY * 0.5 * (flat / speed) ** 2 - 0.25 + (target.floor ?? 0) - (man.floor ?? 0), flat);
   return { yaw, pitch };
 }
 
@@ -570,12 +590,13 @@ function flyShots(game, dt) {
         len = dx * dx + dz * dz;
       const k = len > 0 ? clamp(-(ax * dx + az * dz) / len, 0, 1) : 0;
       const near = Math.hypot(ax + dx * k, az + dz * k);
-      if (near < man.body + shot.through && shot.y > 0 && shot.y < (man.mounted ? 2.75 : 1.95)) {
+      const height = shot.y - man.floor;
+      if (near < man.body + shot.through && height > 0 && height < (man.mounted ? 2.75 : 1.95)) {
         arrowHit(game, shot, man);
         if (!shot.through) break;
       }
     }
-    if (!shot.done && (shot.y <= 0 || shot.life <= 0 || Math.hypot(shot.x, shot.z) > game.place.radius + 6)) land(game, shot);
+    if (!shot.done && (shot.y <= floorAt(game.place, shot.x, shot.z) || shot.life <= 0 || Math.hypot(shot.x, shot.z) > game.place.radius + 6)) land(game, shot);
   }
   game.shots = game.shots.filter((s) => !s.done || s.keep > 0);
   for (const s of game.shots) if (s.done) s.keep -= dt;
@@ -584,7 +605,7 @@ function flyShots(game, dt) {
 function land(game, shot) {
   shot.done = true;
   shot.keep = 3;
-  shot.y = Math.max(0, shot.y);
+  shot.y = Math.max(floorAt(game.place, shot.x, shot.z), shot.y);
   emit(game, 'land', { kind: shot.kind, at: [shot.x, shot.y, shot.z] });
   burst(game, shot);
 }
@@ -621,7 +642,7 @@ function arrowHit(game, shot, man) {
     // A blast or web arrow on a man strikes him and bursts where he stands.
     shot.x = man.x;
     shot.z = man.z;
-    shot.y = 1;
+    shot.y = 1 + man.floor;
     emit(game, 'land', { kind: shot.kind, at: [shot.x, shot.y, shot.z], on: man.id });
     if (shot.web && shot.damage > 0) hurt(game, man, toll(game, man, shot.damage, 'thrust').amount, by, { skill: 'web', arrow: true });
     burst(game, shot);
@@ -636,7 +657,7 @@ function arrowHit(game, shot, man) {
     damage *= shot.fall.at[0] + (shot.fall.at[1] - shot.fall.at[0]) * k;
   }
   if (by) damage *= critical(game, by, man);
-  const part = shot.y > 1.6 ? 'head' : 'body';
+  const part = shot.y - man.floor > 1.6 ? 'head' : 'body';
   if (man.guard && man.st > 0) {
     const shield = man.r.shield;
     const arc = shield ? shield.arrowArc : (40 * Math.PI) / 180;
@@ -699,11 +720,13 @@ function startStep(game, man, input) {
   let [mx, mz] = input.move ?? [0, 0];
   if (Math.hypot(mx, mz) < 0.2) [mx, mz] = [-Math.sin(man.face), -Math.cos(man.face)];
   const len = Math.hypot(mx, mz);
-  man.act = { kind: 'step', t: 0, dx: mx / len, dz: mz / len };
+  const to = mantleTarget(game.place, man, mx / len, mz / len);
+  man.act = to ? { kind: 'mantle', t: 0, duration: 0.46, from: { x: man.x, z: man.z, floor: man.floor }, to }
+    : { kind: 'step', t: 0, dx: mx / len, dz: mz / len };
   man.guard = false;
   man.draw = null;
   spend(man, STEP.cost);
-  emit(game, 'step', { who: man.id });
+  emit(game, to ? 'mantleBegin' : 'step', { who: man.id });
 }
 
 function nearestFoe(game, man) {
@@ -943,7 +966,8 @@ function runSkill(game, man, act, dt) {
   const around = (ahead, radius) => {
     const cx = man.x + fwd[0] * ahead,
       cz = man.z + fwd[1] * ahead;
-    return enemiesOf(game, man).filter((t) => Math.hypot(t.x - cx, t.z - cz) <= radius + t.body);
+    return enemiesOf(game, man).filter((t) =>
+      Math.abs(man.floor - t.floor) <= 0.86 && Math.hypot(t.x - cx, t.z - cz) <= radius + t.body);
   };
   const areaStrike = (ahead, radius, spec) => {
     const hit = around(ahead, radius);
@@ -989,8 +1013,8 @@ function runSkill(game, man, act, dt) {
           act.metAt = act.t;
           const guarded = hit.guard;
           const rider = hit.mounted;
-          resolve(game, man, hit, { line: 'T', damage: base * s.damage, push: 1.2, stun: 0.3, skill: 'bull' });
-          if (hit.alive) {
+          const outcome = resolve(game, man, hit, { line: 'T', damage: base * s.damage, push: 1.2, stun: 0.3, skill: 'bull' });
+          if (hit.alive && outcome !== 'deflect') {
             if (rider) unhorse(game, hit, man);
             hit.daze = Math.max(hit.daze, guarded ? s.dazeGuarded : s.daze);
             hit.guard = false;
@@ -1607,6 +1631,14 @@ function stepMan(game, man, input, dt) {
           } else emit(game, 'whiff', { who: man.id, kick: true });
         }
         if (act.t >= KICK.wind + KICK.recover) man.act = null;
+      } else if (act.kind === 'mantle') {
+        Object.assign(man, mantlePose(act));
+        man.vx = man.vz = 0;
+        act.moving = true;
+        if (act.t >= act.duration) {
+          man.act = null;
+          emit(game, 'mantle', { who: man.id });
+        }
       } else if (act.kind === 'step') {
         // Space: a jump the way he is moving.
         const speed = STEP.distance / STEP.time;
@@ -1684,8 +1716,10 @@ function stepMan(game, man, input, dt) {
     man.vx *= 0.8;
     man.vz *= 0.8;
   }
+  const oldX = man.x, oldZ = man.z;
   man.x += man.vx * dt;
   man.z += man.vz * dt;
+  settleFooting(game.place, man, oldX, oldZ, dt);
   man.moving = Math.hypot(man.vx, man.vz);
   if (man.mounted) {
     man.horse.x = man.x;
@@ -1724,7 +1758,7 @@ function settle(game) {
     for (let j = i + 1; j < men.length; j++) {
       const a = men[i],
         b = men[j];
-      if (a.act?.through || b.act?.through) continue;
+      if (a.act?.through || b.act?.through || Math.abs(a.floor - b.floor) > 0.86) continue;
       const dx = b.x - a.x,
         dz = b.z - a.z,
         d = Math.hypot(dx, dz),
@@ -1802,7 +1836,7 @@ function groundEffects(game, dt) {
     if (shot.kind !== 'wave' || shot.done) continue;
     for (const man of game.men) {
       if (!man.alive || man.side === shot.side || shot.hit.includes(man.id)) continue;
-      if (Math.hypot(man.x - shot.x, man.z - shot.z) < 1.1) {
+      if (Math.abs(man.floor - floorAt(game.place, shot.x, shot.z)) < 0.86 && Math.hypot(man.x - shot.x, man.z - shot.z) < 1.1) {
         shot.hit.push(man.id);
         const by = game.men.find((m) => m.id === shot.by);
         const face = Math.atan2(-shot.vx, -shot.vz);
@@ -1824,13 +1858,19 @@ export function step(game, inputs, dt = TICK) {
   groundEffects(game, dt);
   if (origins) mountedContacts(game, origins, dt);
   settle(game);
+  if (game.exit) {
+    for (const man of game.men) {
+      if (man.waiting && expeditionReady(man, game.hero)) man.waiting = false;
+      if (changeExpeditionPhase(man)) emit(game, 'bossPhase', { who: man.id, phase: man.phase });
+    }
+  }
   if (!game.hero.alive) {
     game.over = 'lost';
     emit(game, 'lost', {});
-  } else if (!game.men.some((m) => m.side === 'foe' && m.alive)) {
+  } else if (!game.men.some((m) => m.side === 'foe' && m.alive) && (!game.exit || atExpeditionGate(game.hero, game.exit))) {
     game.over = 'won';
     const foes = game.men.filter((m) => m.side === 'foe');
-    const double = foes.length > 1;
+    const double = !game.exit && foes.length > 1;
     const close = double && game.downs.length >= 2 && game.downs.at(-1).time - game.downs.at(-2).time < 6;
     emit(game, 'won', { double, close });
   }
