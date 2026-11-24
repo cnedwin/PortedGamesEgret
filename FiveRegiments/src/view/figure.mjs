@@ -4,7 +4,7 @@
 // frame; it never changes the fight.
 import { Mesh3D, Object3D, createCylinderGeometry3D, createStandardMaterial3D } from '@egret/engine/world3d';
 import { ARMS, createWeapon } from './weapons.mjs';
-import { add, axisAngle, basis, cross, dot, fitLinkedWrist, len, lerp3, mul, qinv, qmul, qrot, slerp, sub, unit } from './rig.mjs';
+import { add, axisAngle, basis, cross, dot, fitLinkedGrip, gripRotation, len, lerp3, mul, qinv, qmul, qrot, stabilizeBladeRoll, sub, unit } from './rig.mjs';
 import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
@@ -95,22 +95,22 @@ function ordinaryCuts(arms) {
   const side = pole ? 0.11 : 0.18;
   return {
     R: [
-      key([pole ? -0.275 : -0.34, 0.05, -0.055], [-0.82, 0.32, 0.46], { t: -0.31, n: -0.06 }),
+      key([pole ? -0.275 : -0.34, 0.05, 0.16], [-0.82, 0.39, 0.36], { t: -0.31, n: -0.06 }),
       key([-0.22, -0.08, reach], [side, -0.04, 1], { t: 0.17, n: 0.13, f: 0.07 }),
       key([pole ? -0.1 : 0.025, -0.2, 0.26], [0.83, -0.2, 0.46], { t: 0.37, n: 0.12 })
     ],
     L: [
-      key([-0.055, 0.035, 0.14], [0.76, 0.38, 0.48], { t: 0.31, n: -0.04 }),
+      key([-0.055, 0.035, 0.21], [0.76, 0.38, 0.48], { t: 0.31, n: -0.04 }),
       key([-0.135, -0.075, reach], [side, -0.045, 1], { t: -0.17, n: 0.15, f: 0.065 }),
       key([-0.315, -0.23, 0.23], [-0.83, -0.25, 0.47], { t: -0.32, n: 0.12 })
     ],
     O: [
-      key([-0.22, 0.31, 0.025], [0.06, 0.91, -0.4], { t: -0.13, n: -0.1 }),
+      key([-0.22, 0.31, 0.14], [0.06, 0.91, -0.4], { t: -0.13, n: -0.1 }),
       key([-0.185, 0.01, reach], [side, -0.34, 1], { t: 0.06, n: 0.2, d: 0.026, f: 0.045 }),
       key([-0.22, -0.23, 0.29], [side, -0.59, 0.84], { t: 0.09, n: 0.22, d: 0.034 })
     ],
     T: [
-      key([-0.27, -0.24, -0.12], [0.1, 0.12, 1], { t: -0.23, n: -0.015 }),
+      key([-0.27, -0.24, 0.12], [0.1, 0.12, 1], { t: -0.23, n: -0.015 }),
       key([pole ? -0.31 : -0.22, -0.16, reach + 0.03], [pole ? 0.15 : 0.21, 0.025, 1], { t: 0.07, n: 0.15, f: 0.105 }),
       key([pole ? -0.31 : -0.25, -0.21, 0.26], [side, 0.045, 1], { t: 0.01, n: 0.07, f: 0.045 })
     ]
@@ -182,7 +182,6 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
 
   // ---- weapons in hand ------------------------------------------------------------------------------------
   const arms = ARMS[regiment];
-  const leftGripFrame = arms.two ? qinv(basis(rig.hands.l.along, rig.hands.l.fingers, cross(rig.hands.l.along, rig.hands.l.fingers))) : null;
   const held = {};
   function attach(kind, side, mapping = 'blade') {
     const weapon = createWeapon(kind);
@@ -220,9 +219,135 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const hw = rig.world('hand_' + w.side);
     return add(hw.t, qrot(hw.r, add(w.g, qrot(w.q, mul(local, 1 / s)))));
   }
-  function weaponDir(w, local) {
-    const hw = rig.world('hand_' + w.side);
-    return qrot(hw.r, qrot(w.q, local));
+  function armSpace() {
+    const right = rig.world('upperarm_r').t, left = rig.world('upperarm_l').t;
+    const centre = lerp3(right, left, 0.5);
+    const span = sub(left, right);
+    const across = unit(span);
+    const trunk = sub(centre, rig.world('pelvis').t);
+    const forward = unit(cross(across, trunk));
+    const up = cross(forward, across);
+    return { left, right, across, forward, up, centre, rise: dot(trunk, up), halfWidth: len(span) * 0.5 };
+  }
+
+  function armClearance(space, side) {
+    const outward = side === 'l' ? space.across : mul(space.across, -1);
+    const shoulderOut = unit(add(mul(outward, 0.70), mul(space.forward, 0.72)));
+    return { outward, side: dot(space.centre, outward) + space.halfWidth * 0.91,
+      forward: space.forward, front: dot(space.centre, space.forward) + 0.127 / s,
+      shoulderOut, shoulderSide: dot(space[side === 'l' ? 'left' : 'right'], shoulderOut) - 0.032 / s };
+  }
+
+  const armRadius = (side) => (rig.reach[side].upper + rig.reach[side].lower) * 0.98;
+
+  function frontWrist(goal, shoulder, side, space) {
+    const { forward, centre } = space;
+    const radius = armRadius(side);
+    const front = dot(centre, forward) + 0.14 / s;
+    return fitLinkedGrip(goal, shoulder, radius, shoulder, radius, forward, front) ?? goal;
+  }
+
+  // Keep the haft outside a padded chest where the arms can reach a clear pose.
+  // A separating plane constrains both ends while the same reach solve seats both hands.
+  function avoidTorso(wrist, palm, blade, space, project) {
+    const { across, up, forward, centre, rise, halfWidth } = space;
+    const torso = add(add(centre, mul(up, -0.46 * rise)), mul(forward, 0.01 / s));
+    const radius = [halfWidth * 0.82 + 0.022 / s, rise * 0.51 + 0.022 / s, 0.14 / s];
+    const axes = [across, up, forward];
+    const grip = sub(add(wrist, palm), torso);
+    const gripY = main.grip?.[1] ?? 0;
+    const origin = sub(grip, mul(blade, gripY / s));
+    const scaled = (v) => axes.map((a, i) => dot(v, a) / radius[i]);
+    const point = scaled(origin), direction = scaled(blade);
+    const nearest = clamp(-dot(point, direction) / dot(direction, direction), main.butt / s, main.length / s);
+    const radial = add(point, mul(direction, nearest));
+    if (dot(radial, radial) >= 1) return { wrist, normal: null };
+
+    const previous = state.shaftSide;
+    const natural = axes.reduce((sum, a, i) => add(sum, mul(a, radial[i] / radius[i])), [0, 0, 0]);
+    const guides = [forward, mul(across, -1), across, sub(forward, across), add(forward, across), up];
+    if (previous) guides.unshift(previous);
+    const normals = [natural, ...guides.map((a) => sub(a, mul(blade, dot(a, blade))))];
+    let best = { wrist, normal: null }, cost = Infinity;
+    for (const separation of normals) {
+      if (len(separation) < 1e-6) continue;
+      const normal = unit(separation);
+      const thickness = Math.hypot(...axes.map((a, i) => dot(a, normal) * radius[i]));
+      const shaftDepth = dot(blade, normal) / s;
+      const nearestEnd = Math.min(shaftDepth * (main.butt - gripY), shaftDepth * (main.length - gripY));
+      const corrected = project({ normal, bound: dot(sub(torso, palm), normal) + thickness - nearestEnd });
+      if (!corrected) continue;
+      const travel = len(sub(corrected, wrist)) + (previous ? (1 - dot(previous, normal)) * 0.045 / s : 0);
+      if (travel >= cost) continue;
+      best = { wrist: corrected, normal };
+      cost = travel;
+    }
+    return best;
+  }
+
+  // The weapon and both grips move together. The second wrist is derived from the actual grip
+  // offset, including palm orientation, before either arm is posed.
+  function twoHandedPose(goal, blade, edgeHint, rightPole, leftPole, space, dt) {
+    const { forward, centre, right, left, across } = space;
+    const rRadius = armRadius('r'), lRadius = armRadius('l');
+    const reachRange = [0, 0.98];
+    const front = dot(centre, forward) + 0.14 / s;
+    const middle = dot(centre, across);
+    const crossover = 0.09 / s;
+    const shaft = (main.second[1] - (main.grip?.[1] ?? 0)) / s;
+    const edge = stabilizeBladeRoll(blade, edgeHint ?? sub(goal, right), state.primaryGrip, 9 * dt);
+    let solution;
+
+    function fit(axis) {
+      const rolled = stabilizeBladeRoll(axis, edge, { axis: blade, edge }, 0);
+      const palmR = qrot(gripRotation(rig.hands.r, axis, rolled), rig.hands.r.grip);
+      const palmL = qrot(gripRotation(rig.hands.l, axis, mul(rolled, -1)), rig.hands.l.grip);
+      const offset = add(mul(axis, shaft), sub(palmR, palmL));
+      const clearance = front + Math.max(0, -dot(palmR, forward),
+        -dot(offset, forward), -dot(add(offset, palmL), forward));
+      // In a cross-body cut let the wrists pass each other in front, while sharing
+      // the travel so neither arm reaches all the way around the opposite shoulder.
+      const x = dot(goal, across);
+      const minX = middle - crossover - dot(offset, across);
+      const maxX = middle + crossover;
+      const balanced = minX <= maxX ? clamp(x, minX, maxX) : (minX + maxX) * 0.5;
+      const target = add(goal, mul(across, (balanced - x) * 0.72));
+      const support = sub(left, offset);
+      const project = (plane, aim = target) => fitLinkedGrip(aim, right, rRadius, support, lRadius, forward, clearance, plane);
+      const wrist = project(null);
+      if (!wrist) return false;
+      const shaftPose = avoidTorso(wrist, palmR, axis, space, project);
+      const requested = sub(shaftPose.wrist, wrist);
+      const move = sub(requested, state.shaftShift);
+      const maxStep = Math.min(dt, 1 / 30) * 2.3 / s;
+      const shift = len(move) > maxStep ? add(state.shaftShift, mul(unit(move), maxStep)) : requested;
+      // A change between the two sides of the body must not teleport the hands.
+      const smoothWrist = project(null, add(wrist, shift)) ?? wrist;
+      solution = { wrist: smoothWrist, shift, normal: shaftPose.normal, offset, axis, edge: rolled };
+      return true;
+    }
+
+    if (!fit(blade)) {
+      // Turn only as far toward the shoulder line as is needed for both hands to reach.
+      const neutral = mul(across, Math.sign(shaft));
+      if (fit(neutral)) {
+        let lo = 0, hi = 1;
+        for (let i = 0; i < 6; i++) {
+          const at = (lo + hi) * 0.5;
+          if (fit(interpolateDirection(blade, neutral, at))) hi = at;
+          else lo = at;
+        }
+      }
+    }
+    if (!solution) return false;
+    const { wrist, offset, axis, edge: axisEdge, normal, shift } = solution;
+    state.shaftShift = shift;
+    if (normal) state.shaftSide = normal;
+    state.primaryGrip.axis = axis;
+    state.primaryGrip.edge = axisEdge;
+    rig.reachArm('r', wrist, rightPole, axis, 1, 0, axisEdge, null, 0, reachRange, armClearance(space, 'r'));
+    rig.reachArm('l', add(wrist, offset), leftPole, axis, 1, 0, mul(axisEdge, -1), null, 0, reachRange, armClearance(space, 'l'));
+    return true;
   }
 
   const base = motion.pose(),
@@ -231,6 +356,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
   const state = {
     phase: 0,
     primaryGrip: { axis: null, edge: null },
+    shaftSide: null,
+    shaftShift: [0, 0, 0],
     pose: { ...ONE.ready },
     lpose: null,
     impactAge: Infinity,
@@ -603,7 +730,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
 
     // Body frame for the arms: the chest turned by the twist.
     const twistQ = axisAngle([0, 1, 0], twist);
-    const chestNow = rig.toBody(lerp3(rig.world('upperarm_r').t, rig.world('upperarm_l').t, 0.5));
+    const space = armSpace();
+    const chestNow = rig.toBody(space.centre);
     const place = (rel) => rig.toRig(add(chestNow, qrot(twistQ, mul(rel, reachK))));
     const along = (d) => rig.dirToRig(qrot(twistQ, d));
 
@@ -615,47 +743,32 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const edge = ordinary && phase < edgeEnd && CUT_EDGE[act.line];
     const edgeHint = edge ? rig.dirToRig(edge) : null;
     const reachRange = ordinary ? SWING_ARM_RANGE : null;
-    const elbow = ordinary && CUT_ELBOW[act.line];
-    // The shorter knife wind-up needs the elbow to guide the edge while the weapon is still rising.
-    const overheadLoad = arms.main === 'knife' ? 0.3 : 0.98;
-    const turnElbow = act?.line === 'O' ? ease((phase - overheadLoad) / 0.6) : ease(phase * 1.45);
+    const shortChop = ordinary && arms.main === 'knife' && act.line === 'O';
+    const elbow = ordinary && (shortChop ? [-0.67, 0.42, 0.14] : CUT_ELBOW[act.line]);
+    // Lead a short blade with a shallow outside elbow as the hand rises.
+    const overheadLoad = shortChop ? 0.49 : 0.98;
+    const turnElbow = act?.line === 'O' ? ease((phase - overheadLoad) / (shortChop ? 0.8 : 0.6)) : ease(phase * 1.45);
     const releaseElbow = resetJi ? ease((phase - 2.5) / 0.61) : ease((phase - 3) / 0.9);
     const lead = turnElbow * (1 - releaseElbow);
     const poleR = along(elbow ? lerp3(REST_ELBOW, elbow, lead) : REST_ELBOW);
     const bareCatch = offhand ? 0 : catchTravel;
     const guardHand = bareCatch > 0 ? add(p.r, [0.07 * Math.sin(relative) * bareCatch, -0.034 * bareCatch, -0.14 * bareCatch]) : p.r;
-    if (bow) armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR, guardHand);
-    else rig.reachArm('r', place(guardHand), poleR, along(p.b), 1, 0, edgeHint, state.primaryGrip, dt, reachRange);
+    const mainTarget = place(guardHand), blade = along(p.b);
+    const poleL = along([0.7, -0.7, -0.1]);
+    const clearR = armClearance(space, 'r'), clearL = armClearance(space, 'l');
+    const linked = arms.two && twoHandedPose(mainTarget, blade, edgeHint, poleR, poleL, space, dt);
+    if (bow) armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR, mainTarget, space, clearR);
+    else if (!linked) rig.reachArm('r', frontWrist(mainTarget, space.right, 'r', space), poleR,
+      blade, 1, 0, edgeHint, state.primaryGrip, dt, reachRange, clearR);
     rig.closeHand('r', 1);
 
     // Left arm: on the same weapon (two-handed), the shield, or free.
     if (arms.two) {
-      const blade = weaponDir(main, [0, 1, 0]);
-      const edge = weaponDir(main, [0, 0, 1]);
-      const face = mul(edge, -1);
-      const gripTurn = qmul(basis(blade, face, cross(blade, face)), leftGripFrame);
-      const gripOffset = qrot(gripTurn, rig.hands.l.grip);
-      const wrist = () => sub(weaponPoint(main, main.second), gripOffset);
-      const reachLimit = (rig.reach.l.upper + rig.reach.l.lower) * 0.985;
-      // A locked second hand limits the first hand's travel before it moves the weapon out of reach.
-      const shoulder = rig.world('upperarm_l').t;
-      const linkJi = ordinary && arms.main === 'ji' && act.line === 'R';
-      if (linkJi && len(sub(wrist(), shoulder)) > reachLimit) {
-        const primary = rig.world('hand_r').t;
-        const support = add(primary, sub(shoulder, wrist()));
-        const total = rig.reach.r.upper + rig.reach.r.lower;
-        const goal = fitLinkedWrist(primary, rig.world('upperarm_r').t,
-          total * reachRange[0], total * reachRange[1], support, reachLimit);
-        rig.reachArm('r', goal, poleR, blade, 1, 0, edge, null, 0, reachRange);
+      if (!linked) {
+        // A rig with an unusable grip must still keep its free arm outside its torso.
+        rig.reachArm('l', frontWrist(place([0.2, -0.2, 0.28]), space.left, 'l', space), poleL,
+          null, 1, 0, null, null, 0, null, clearL);
       }
-      for (let i = 0; i < (linkJi ? 0 : ordinary ? 2 : 1); i++) {
-        const reachToGrip = sub(wrist(), shoulder);
-        const distance = len(reachToGrip);
-        if (distance <= reachLimit) break;
-        const correction = mul(reachToGrip, (reachLimit - distance) / distance);
-        rig.reachArm('r', add(rig.world('hand_r').t, correction), poleR, blade, 1, 0, edge, null, 0, reachRange);
-      }
-      rig.reachArm('l', wrist(), rig.dirToRig(qrot(twistQ, [0.7, -0.7, -0.1])), blade, 1, 0, face);
       rig.closeHand('l', 1);
     } else if (offhand) {
       const guard = SHIELD_GUARD[man.guardLine] ?? SHIELD_GUARD.T;
@@ -664,7 +777,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       const press = add(spot, [0.06 * Math.sin(relative) * catchTravel, -0.065 * catchTravel, 0.18 * shieldDrive - 0.22 * catchTravel]);
       state.lpose = state.lpose ? lerp3(state.lpose, press, 1 - Math.exp(-dt * 30)) : press;
       // The shield's face along the knuckles: reach with the hand's grip axis upright and the fingers forward.
-      rig.reachArm('l', place(state.lpose), rig.dirToRig(qrot(twistQ, [0.8, -0.6, -0.1])), along([0, 1, 0]), 1, 0, along(face));
+      rig.reachArm('l', frontWrist(place(state.lpose), space.left, 'l', space), along([0.8, -0.6, -0.1]),
+        along([0, 1, 0]), 1, 0, along(face), null, 0, null, clearL);
       rig.closeHand('l', 1);
     } else if (!bow) {
       const free = throwLeft > 0 ? lerp3([0.12, -0.05, 0.2], [0.15, 0.05, 0.62], easeOut(throwLeft)) : shout > 0 ? [0.45, 0.08, 0.18] : regiment === 'tiger' ? [0.16, -0.12, 0.22] : [0.24, -0.42, 0.1];
@@ -697,7 +811,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     return { spin, floorLift };
   }
 
-  function armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR, guardHand) {
+  function armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR, mainTarget, space, clearance) {
     const drawing = man.draw ? clamp(man.draw.t / man.r.bow.draw, 0, 1) : 0;
     const shooting = man.act?.kind === 'skill' && ['gale', 'fan', 'backStep', 'blast', 'web', 'volley'].includes(man.act.id);
     const aiming = Boolean(man.draw || shooting);
@@ -708,8 +822,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     if (man.knife) {
       main.node.visible = true;
       bow.node.visible = false;
-      rig.reachArm('r', place(guardHand), reachRange ? poleR : rig.dirToRig(REST_ELBOW), along(state.pose.b),
-        1, 0, edgeHint, reachRange ? state.primaryGrip : null, dt, reachRange);
+      rig.reachArm('r', frontWrist(mainTarget, space.right, 'r', space), poleR, along(state.pose.b),
+        1, 0, edgeHint, state.primaryGrip, dt, reachRange, clearance);
       for (const st of strings) st.mesh.visible = false;
       nocked.node.visible = false;
       rig.reachArm('l', place([0.24, -0.42, 0.1]), rig.dirToRig([0.8, -0.6, -0.2]), null, 0.8);

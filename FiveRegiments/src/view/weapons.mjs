@@ -215,7 +215,7 @@ const BUILD = {
     kit.lathe('bronze', [[0, -0.56], [0.025, -0.55], [0.027, -0.53], [0.02, -0.52]], { colour: 0x9f7a3e });
     kit.lathe('darkSteel', [[0, 0.1], [0.05, 0.104], [0.052, 0.118], [0.022, 0.126], [0, 0.128]], { segments: 14, colour: 0x5d5b58, squash: [0.5, 1] });
     kit.blade('steel', { y0: 0.126, y1: 1.12, width: (t) => 0.056 + 0.008 * Math.sin(t * Math.PI), thick: 0.009, tip: 0.1, curve: (t) => 0.035 * t * t, colour: 0xc9cdd2 });
-    return { length: 1.12, second: [0, -0.33, 0] };
+    return { length: 1.12, butt: -0.56, second: [0, -0.33, 0] };
   },
   axe(kit) {
     // A two-handed long axe: a long haft, the main hand high on it and the other low, a broad crescent head with its
@@ -251,7 +251,7 @@ const BUILD = {
       kit.face('darkSteel', [tipBack, root[(k + 1) % 4], root[k]], 0x5d5b58);
     }
     kit.blade('steel', { y0: 0.66, y1: 0.86, width: (t) => 0.03 - 0.01 * t, thick: 0.008, double: true, tip: 0.5 });
-    return { length: 0.86, second: [0, -0.45, 0] };
+    return { length: 0.86, butt: -0.92, second: [0, -0.34, 0] };
   },
   spear(kit) {
     // The shaft runs from the butt (−1.05) through the main hand (0) to the head; the other hand rides forward on it.
@@ -267,7 +267,7 @@ const BUILD = {
       kit.tube('cloth', pts, [0.008, 0.009, 0.008, 0.006, 0.002], { segments: 4, colour: 0xb0201a });
     }
     kit.blade('steel', { y0: 1.45, y1: 1.78, width: (t) => 0.035 + 0.035 * Math.sin(Math.min(1, t * 1.4) * Math.PI * 0.85), thick: 0.008, double: true, tip: 0.35 });
-    return { length: 1.78, second: [0, 0.55, 0] };
+    return { length: 1.78, butt: -1.08, second: [0, 0.38, 0] };
   },
   ji(kit) {
     // The fangtian ji: a long lacquered shaft, a spear point, and a crescent blade on each side below it, with a
@@ -302,7 +302,7 @@ const BUILD = {
     }
     // The point, long and leaf-shaped.
     kit.blade('steel', { y0: 1.64, y1: 2.06, width: (t) => 0.034 + 0.03 * Math.sin(Math.min(1, t * 1.5) * Math.PI * 0.85), thick: 0.008, double: true, tip: 0.4 });
-    return { length: 2.06, second: [0, 0.6, 0] };
+    return { length: 2.06, butt: -1.30, second: [0, 0.30, 0] };
   },
   knife(kit) {
     grip(kit, -0.07, 0.07, 0.013);
