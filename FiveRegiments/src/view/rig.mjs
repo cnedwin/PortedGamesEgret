@@ -45,32 +45,153 @@ export function fromTo(a, b) {
   return qnorm([...cross(a, b), 1 + d]);
 }
 
-/** Keep the primary wrist in its bend range and the linked wrist in its reach radius. */
-export function fitLinkedWrist(target, shoulder, minReach, maxReach, support, supportReach) {
-  const delta = sub(target, support);
-  if (len(delta) <= supportReach) return target;
-  const first = add(support, mul(unit(delta), supportReach));
-  const fromShoulder = sub(first, shoulder);
-  const distance = len(fromShoulder);
-  const radius = Math.max(minReach, Math.min(maxReach, distance));
-  if (radius === distance) return first;
+const FIT_EPSILON = 1e-8;
+const offAxis = (point, axis) => sub(point, mul(axis, dot(point, axis)));
+const acrossAxis = (axis) => unit(cross(axis, Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
 
-  const between = sub(support, shoulder);
-  const separation = len(between);
-  const axis = unit(between);
-  const toFirst = distance > 1e-8 ? unit(fromShoulder) : axis;
-  const bounded = add(shoulder, mul(toFirst, radius));
-  if (len(sub(bounded, support)) <= supportReach || separation < 1e-8) return bounded;
+/** Project onto the intersection of two reach balls, or two disks sharing a plane. */
+function closestInReach(target, a, ra, b, rb, normal = null) {
+  const deltaA = sub(target, a), deltaB = sub(target, b);
+  const da = len(deltaA), db = len(deltaB);
+  if (da <= ra && db <= rb) return target;
+  if (da > ra) {
+    const onA = add(a, mul(deltaA, ra / da));
+    if (len(sub(onA, b)) <= rb + FIT_EPSILON) return onA;
+  }
+  if (db > rb) {
+    const onB = add(b, mul(deltaB, rb / db));
+    if (len(sub(onB, a)) <= ra + FIT_EPSILON) return onB;
+  }
 
-  // When both arms constrain the grip, the allowed wrists lie on their spheres' intersection.
-  const along = (radius ** 2 - supportReach ** 2 + separation ** 2) / (2 * separation);
-  if (Math.abs(along) > radius) return bounded;
-  const centre = add(shoulder, mul(axis, along));
-  const offset = sub(target, centre);
-  const radial = sub(offset, mul(axis, dot(offset, axis)));
-  const direction = len(radial) > 1e-8 ? unit(radial)
-    : unit(cross(axis, Math.abs(axis[1]) < 0.9 ? [0, 1, 0] : [1, 0, 0]));
-  return add(centre, mul(direction, Math.sqrt(Math.max(0, radius ** 2 - along ** 2))));
+  const separation = len(sub(b, a));
+  if (separation < FIT_EPSILON || separation > ra + rb + FIT_EPSILON) return null;
+  const axis = mul(sub(b, a), 1 / separation);
+  const along = (ra ** 2 - rb ** 2 + separation ** 2) / (2 * separation);
+  if (Math.abs(along) > ra + FIT_EPSILON) return null;
+  const centre = add(a, mul(axis, along));
+  const radial = offAxis(sub(target, centre), axis);
+  const direction = len(radial) > FIT_EPSILON ? unit(radial) : normal ? unit(cross(axis, normal)) : acrossAxis(axis);
+  return add(centre, mul(direction, Math.sqrt(Math.max(0, ra ** 2 - along ** 2))));
+}
+
+/** Slice both spheres at the plane and project to the intersecting disks. */
+function closestOnReachPlane(target, shoulder, radius, supportCentre, supportRadius, forward, front) {
+  const aDist = front - dot(shoulder, forward), bDist = front - dot(supportCentre, forward);
+  if (Math.abs(aDist) > radius + FIT_EPSILON || Math.abs(bDist) > supportRadius + FIT_EPSILON) return null;
+  const a = add(shoulder, mul(forward, aDist)), b = add(supportCentre, mul(forward, bDist));
+  const ra = Math.sqrt(Math.max(0, radius ** 2 - aDist ** 2)), rb = Math.sqrt(Math.max(0, supportRadius ** 2 - bDist ** 2));
+  const onPlane = add(target, mul(forward, front - dot(target, forward)));
+  return closestInReach(onPlane, a, ra, b, rb, forward);
+}
+
+/** Intersect the reach balls with the shared boundary line, then clamp along it. */
+function closestOnReachLine(target, a, ra, b, rb, origin, axis) {
+  function interval(centre, radius) {
+    const delta = sub(centre, origin);
+    const along = dot(delta, axis);
+    const distance = len(sub(delta, mul(axis, along)));
+    if (distance > radius + FIT_EPSILON) return null;
+    const half = Math.sqrt(Math.max(0, radius ** 2 - distance ** 2));
+    return [along - half, along + half];
+  }
+  const first = interval(a, ra), second = interval(b, rb);
+  if (!first || !second) return null;
+  const lo = Math.max(first[0], second[0]), hi = Math.min(first[1], second[1]);
+  if (lo > hi + FIT_EPSILON) return null;
+  const along = dot(sub(target, origin), axis);
+  return add(origin, mul(axis, Math.max(lo, Math.min(hi, along))));
+}
+
+/**
+ * Nearest primary wrist that keeps both wrists in reach and in the clearance halfspaces.
+ * The support centre already includes the negative offset between wrists. The plane
+ * normals are unit vectors. An optional second plane can also clear the weapon shaft.
+ */
+export function fitLinkedGrip(target, shoulder, radius, supportCentre, supportRadius, forward, front, second = null) {
+  let nearest = closestInReach(target, shoulder, radius, supportCentre, supportRadius);
+  if (nearest && dot(nearest, forward) < front - FIT_EPSILON) {
+    nearest = closestOnReachPlane(target, shoulder, radius, supportCentre, supportRadius, forward, front);
+  }
+  if (!nearest || !second || dot(nearest, second.normal) >= second.bound - FIT_EPSILON) return nearest;
+
+  const { normal, bound } = second;
+  const onSecond = closestOnReachPlane(target, shoulder, radius, supportCentre, supportRadius, normal, bound);
+  if (!onSecond || dot(onSecond, forward) >= front - FIT_EPSILON) return onSecond;
+
+  // Each single-plane solution violates the other limit, so both limits bind.
+  // Parallel limits either pass the checks above or have no shared boundary.
+  const line = cross(forward, normal);
+  const sin = len(line);
+  if (sin < FIT_EPSILON) return null;
+  const axis = mul(line, 1 / sin);
+  const towardFirst = cross(normal, axis);
+  const origin = add(onSecond, mul(towardFirst, (front - dot(onSecond, forward)) / sin));
+  return closestOnReachLine(target, shoulder, radius, supportCentre, supportRadius, origin, axis);
+}
+
+/** Pick the nearest elbow on its IK circle that shares the wrist's route past the torso. */
+export function fitElbowPole(preferred, axis, centre, radius, wrist, { forward, front, outward, side, shoulderOut, shoulderSide }) {
+  if (radius < FIT_EPSILON) return preferred;
+  const elbow = add(centre, mul(preferred, radius));
+  const wristFront = dot(wrist, forward) >= front - FIT_EPSILON;
+  const wristOut = dot(wrist, outward) >= side - FIT_EPSILON;
+  const clearsTorso = (p) => (wristFront && dot(p, forward) >= front - FIT_EPSILON)
+    || (wristOut && dot(p, outward) >= side - FIT_EPSILON);
+  if (clearsTorso(elbow) && (!shoulderOut || dot(elbow, shoulderOut) >= shoulderSide - FIT_EPSILON)) return preferred;
+
+  if (shoulderOut) {
+    let best = null;
+    let alignment = -Infinity;
+    function boundary(normal, bound) {
+      const projected = offAxis(normal, axis);
+      const projectedLength = len(projected);
+      if (projectedLength < FIT_EPSILON) return;
+      const fraction = (bound - dot(centre, normal)) / (radius * projectedLength);
+      if (Math.abs(fraction) > 1) return;
+      const projectedUnit = mul(projected, 1 / projectedLength);
+      const across = mul(unit(cross(axis, projectedUnit)), Math.sqrt(1 - fraction ** 2));
+      const fromCentre = mul(projectedUnit, fraction);
+      for (const pole of [add(fromCentre, across), sub(fromCentre, across)]) {
+        const point = add(centre, mul(pole, radius));
+        if (!clearsTorso(point) || dot(point, shoulderOut) < shoulderSide - FIT_EPSILON) continue;
+        const score = dot(pole, preferred);
+        if (score > alignment) {
+          alignment = score;
+          best = pole;
+        }
+      }
+    }
+
+    // These planes cut arcs from the elbow's circle. When the preferred location is
+    // outside their intersection, the closest valid elbow lies on an arc endpoint.
+    if (wristFront) boundary(forward, front);
+    if (wristOut) boundary(outward, side);
+    boundary(shoulderOut, shoulderSide);
+    if (best) return best;
+  }
+
+  if (clearsTorso(elbow)) return preferred;
+
+  function alongRoute(normal, bound) {
+    const projected = offAxis(normal, axis);
+    const projectedLength = len(projected);
+    if (projectedLength < FIT_EPSILON) return null;
+    const normalInCircle = mul(projected, 1 / projectedLength);
+    const threshold = (bound - dot(centre, normal)) / (radius * projectedLength);
+    if (threshold <= -1) return { pole: preferred, missing: 0 };
+    if (threshold >= 1) return { pole: normalInCircle, missing: (threshold - 1) * radius * projectedLength };
+    const tangent = offAxis(preferred, normalInCircle);
+    if (dot(preferred, normalInCircle) >= threshold) return { pole: preferred, missing: 0 };
+    const tangentDirection = len(tangent) > FIT_EPSILON ? unit(tangent) : unit(cross(axis, normalInCircle));
+    const pole = add(mul(normalInCircle, threshold), mul(tangentDirection, Math.sqrt(1 - threshold ** 2)));
+    return { pole, missing: 0 };
+  }
+
+  const a = wristFront ? alongRoute(forward, front) : null;
+  const b = wristOut ? alongRoute(outward, side) : null;
+  if (!a || !b) return (a ?? b)?.pole ?? preferred;
+  if (Math.abs(a.missing - b.missing) > FIT_EPSILON) return a.missing < b.missing ? a.pole : b.pole;
+  return dot(preferred, a.pole) >= dot(preferred, b.pole) ? a.pole : b.pole;
 }
 
 /** Carry the existing edge onto the new blade axis before turning it toward the forearm. */
@@ -122,6 +243,14 @@ export function basis(x, y, z) {
   }
   return qnorm(q);
 }
+
+/** Place the hand's grip axis along the blade and its fingers toward the edge. */
+export function gripRotation(hand, blade, edge) {
+  const local = basis(hand.along, hand.fingers, cross(hand.along, hand.fingers));
+  const want = basis(blade, edge, cross(blade, edge));
+  return qmul(want, qinv(local));
+}
+
 export function slerp(a, b, t) {
   let d = a[0] * b[0] + a[1] * b[1] + a[2] * b[2] + a[3] * b[3];
   let bb = b;
@@ -154,6 +283,7 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
 
   // World transforms are taken from the model's scene root down (rig space), whatever holds the model above it.
   const cache = new Map();
+  const elbowPoles = {};
   const IDENTITY = { r: [0, 0, 0, 1], t: [0, 0, 0] };
   function worldOf(node) {
     if (!node || node === sceneRoot) return IDENTITY;
@@ -238,7 +368,7 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
    * the hand so that a held blade points along `blade` with its edge leading along the forearm. `weight` blends
    * from the captured arm to the reached one. A primary melee grip remembers its edge to avoid singular rolls.
    */
-  function reachArm(s, target, pole, blade, weight = 1, roll = 0, face = null, grip = null, dt = 0, reachRange = null) {
+  function reachArm(s, target, pole, blade, weight = 1, roll = 0, face = null, grip = null, dt = 0, reachRange = null, clearance = null) {
     if (weight <= 0) return;
     const up = 'upperarm_' + s,
       lo = 'lowerarm_' + s,
@@ -247,20 +377,33 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
       E0 = world(lo).t,
       H0 = world(hd).t;
     const { upper: L1, lower: L2 } = reach[s];
-    let toT = sub(target, S);
+    const toT = sub(target, S);
     let d = len(toT);
-    const dir = unit(toT);
+    const dir = d > FIT_EPSILON ? mul(toT, 1 / d) : unit(sub(H0, S));
     const arm = L1 + L2;
     const nearest = Math.max(Math.abs(L1 - L2) + 1e-4, arm * (reachRange?.[0] ?? 0));
     const furthest = Math.min(arm - 1e-4, arm * (reachRange?.[1] ?? 1));
     d = Math.max(nearest, Math.min(furthest, d));
     const a = (L1 * L1 - L2 * L2 + d * d) / (2 * d);
     const h = Math.sqrt(Math.max(0, L1 * L1 - a * a));
-    let p = sub(pole, mul(dir, dot(pole, dir)));
-    if (len(p) < 1e-5) p = Math.abs(dir[1]) < 0.9 ? [0, -1, 0] : [0, 0, -1];
+    let p = offAxis(pole, dir);
+    if (len(p) < 1e-5) p = offAxis(Math.abs(dir[1]) < 0.9 ? [0, -1, 0] : [0, 0, -1], dir);
     p = unit(p);
-    const E = add(add(S, mul(dir, a)), mul(p, h));
+    const centre = add(S, mul(dir, a));
     const T = add(S, mul(dir, d));
+    if (clearance) {
+      p = fitElbowPole(p, dir, centre, h, T, clearance);
+      const prior = elbowPoles[s] && offAxis(elbowPoles[s], dir);
+      // Keep the same side of the bend arc when two valid elbows are far apart.
+      if (prior && len(prior) > 1e-5) {
+        const carried = unit(prior);
+        if (dot(carried, p) < 0.7) p = fitElbowPole(carried, dir, centre, h, T, clearance);
+      }
+      elbowPoles[s] = p;
+    } else {
+      elbowPoles[s] = null;
+    }
+    const E = add(centre, mul(p, h));
     const upR0 = world(up).r;
     const upR = qmul(fromTo(sub(E0, S), sub(E, S)), upR0);
     setWorld(up, weight >= 1 ? upR : slerp(upR0, upR, weight));
@@ -280,11 +423,8 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
         grip.edge = F;
       }
       if (roll) F = qrot(axisAngle(B, roll), F);
-      // Hand frame: along → B, fingers → F.
-      const local = basis(hand.along, hand.fingers, cross(hand.along, hand.fingers));
-      const want = basis(B, F, cross(B, F));
       const hr0 = world(hd).r;
-      const hr = qmul(want, qinv(local));
+      const hr = gripRotation(hand, B, F);
       setWorld(hd, weight >= 1 ? hr : slerp(hr0, hr, weight));
     }
   }
