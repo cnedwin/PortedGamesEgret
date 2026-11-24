@@ -59,11 +59,12 @@ export function createScreens(root, { onLanguage, coarse = false }) {
       return current;
     },
 
-    title({ onRoad, onFree, onSettings, best, note = '' }) {
+    title({ onRoad, onExpedition, onFree, onSettings, best, note = '' }) {
       const page = node(`<section class="page title">
         <header><h1>${t('title')}</h1><p>${t('tagline')}</p></header>
         <nav class="menu">
           <button type="button" data-act="road" autofocus>${t('road')}</button>
+          <button type="button" class="go" data-act="expedition">${t('expedition')}</button>
           <button type="button" data-act="free">${t('free')}</button>
           <button type="button" data-act="settings">${t('settings')}</button>
         </nav>
@@ -72,7 +73,7 @@ export function createScreens(root, { onLanguage, coarse = false }) {
         <p class="howto">${t(coarse ? 'touchText' : 'controlsText')}</p>
         ${langButton()}
       </section>`);
-      wire(page, { road: onRoad, free: onFree, settings: onSettings });
+      wire(page, { road: onRoad, expedition: onExpedition, free: onFree, settings: onSettings });
       show(page, (e) => {
         if (e.code === 'Enter') onRoad();
         else return false;
@@ -166,7 +167,7 @@ export function createScreens(root, { onLanguage, coarse = false }) {
     stageCard({ stage, total, onGo }) {
       const foes = stage.foes.map((f) => say(REGIMENTS[f].name)).join(` ${t('and')} `);
       const page = node(`<section class="page card-stage">
-        <p class="small">${stage.double ? t('finale') : t('stage', { n: stage.index + 1 })} / ${total}</p>
+        <p class="small">${stage.exit ? t('expeditionStage', { n: stage.index + 1 }) : stage.double ? t('finale') : t('stage', { n: stage.index + 1 })} / ${total}</p>
         <h2>${placeName(stage.place)}</h2>
         <p class="vs">${t('versus')} <b>${foes}</b></p>
         <button type="button" class="go" data-act="go" autofocus>${t('fight')}</button>
@@ -179,11 +180,11 @@ export function createScreens(root, { onLanguage, coarse = false }) {
       });
     },
 
-    result({ won, double, stats, last, onNext, onRetry, onTitle, runMark }) {
+    result({ won, double, stats, last, onNext, onRetry, onTitle, runMark, expedition = false }) {
       const mark = runMark ? t('marks')[['jia', 'yi', 'bing', 'ding'].indexOf(runMark)] : null;
       const page = node(`<section class="page result ${won ? 'won' : 'lost'}">
         <h2>${won ? (double ? t('double') : t('won')) : t('lost')}</h2>
-        ${last && won ? `<p class="small">${t('runDone')}</p>` : ''}
+        ${last && won ? `<p class="small">${t(expedition ? 'expeditionWon' : 'runDone')}</p>` : ''}
         ${mark ? `<p class="mark"><span>${t('mark')}</span><b>${mark}</b></p>` : ''}
         <dl>
           <div><dt>${t('time')}</dt><dd>${t('seconds', { s: stats.time.toFixed(1) })}</dd></div>
@@ -193,7 +194,7 @@ export function createScreens(root, { onLanguage, coarse = false }) {
           ${won ? `<div><dt>${t('score')}</dt><dd>${stats.score}</dd></div>` : ''}
         </dl>
         <footer>
-          ${won && !last ? `<button type="button" class="go" data-act="next" autofocus>${t('goOn')}</button>` : ''}
+          ${won && !last ? `<button type="button" class="go" data-act="next" autofocus>${t(expedition ? 'expeditionNext' : 'goOn')}</button>` : ''}
           ${!won ? `<button type="button" class="go" data-act="retry" autofocus>${t('retry')}</button>` : ''}
           <button type="button" data-act="title" ${won && last ? 'autofocus' : ''}>${t('toTitle')}</button>
         </footer>

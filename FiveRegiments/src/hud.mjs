@@ -74,6 +74,8 @@ export function createHud(root, { touch = false } = {}) {
   const toast = el('div', 'hud-toast', hud);
   const numbers = el('div', 'hud-numbers', hud);
   const hint = el('div', 'hud-hint', hud);
+  const objective = el('div', 'hud-objective', hud);
+  objective.hidden = true;
   let plateViews = [],
     slotViews = [],
     skillViews = [];
@@ -96,6 +98,8 @@ export function createHud(root, { touch = false } = {}) {
   const foeMarks = strip.querySelector('.foes');
 
   function setup(game) {
+    objective.hidden = true;
+    objective.textContent = '';
     const hero = game.hero;
     const r = REGIMENTS[hero.regiment];
     meName.innerHTML = `<b>${say(r.name)}</b><span>${say(r.arms)}</span>`;
@@ -292,6 +296,10 @@ export function createHud(root, { touch = false } = {}) {
     root: hud,
     setup,
     update,
+    objective(text) {
+      if (objective.textContent !== text) objective.textContent = text;
+      objective.hidden = !text;
+    },
     show(on) {
       hud.hidden = !on;
     },

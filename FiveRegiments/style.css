@@ -237,6 +237,7 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .hud-numbers .num.horse { font-size: 14px; color: #d8b07a; }
 @keyframes rise { to { transform: translate(-50%, -160%); opacity: 0; } }
 .hud-hint { position: absolute; left: 50%; bottom: 130px; transform: translateX(-50%); font: 13px var(--sans); color: var(--dim); }
+.hud-objective { position: absolute; top: 50px; left: 50%; transform: translateX(-50%); max-width: 88%; padding: 5px 13px; border-block-start: 1px solid var(--bronze); background: rgba(18, 12, 8, 0.77); color: var(--paper); font: 600 13px/1.3 var(--serif); white-space: nowrap; }
 
 #ui > .touch { position: absolute; inset: 0; pointer-events: none; }
 .touch[hidden] { display: none; }

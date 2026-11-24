@@ -27,6 +27,7 @@
 
 import { ARMOUR, ARTS, CRIT, DAMAGE, RAGE, REGIMENTS, SKILLS, TALENTS, loadout, rageOf } from './regiments.mjs';
 import { CHARGED_RELEASE, facing, OPPONENT_WIND, opponentSkillLead } from './combat-tells.mjs';
+import { atExpeditionGate } from './expedition.mjs';
 
 export const TICK = 1 / 60;
 export const BODY = 0.42;
@@ -174,11 +175,12 @@ const blowsOf = (man) => (man.mounted ? man.r.mounted : man.r.blows);
  * A fight: `hero` and `foes` are loadouts ({ regiment, skills, talents }); `place` has the field's radius and its
  * posts ({ x, z, r }) that men and arrows cannot pass.
  */
-export function createFight({ hero, foes, place = { radius: 12, posts: [] }, seed = 1, health = 1 }) {
+export function createFight({ hero, foes, place = { radius: 12, posts: [] }, seed = 1, health = 1, exit = null }) {
   const game = {
     time: 0,
     rng: createRandom(seed),
     place,
+    exit,
     men: [],
     shots: [],
     clouds: [],
@@ -195,7 +197,7 @@ export function createFight({ hero, foes, place = { radius: 12, posts: [] }, see
     game.men.push(enlist(game, { ...spec, health: (spec.health ?? 1) * health, at: spec.at ?? [spread, -4.5], face: 0 }, 'foe', i));
   });
   game.hero = heroMan;
-  heroMan.lone = foes.length > 1;
+  heroMan.lone = !exit && foes.length > 1;
   return game;
 }
 
@@ -1827,7 +1829,7 @@ export function step(game, inputs, dt = TICK) {
   if (!game.hero.alive) {
     game.over = 'lost';
     emit(game, 'lost', {});
-  } else if (!game.men.some((m) => m.side === 'foe' && m.alive)) {
+  } else if (!game.men.some((m) => m.side === 'foe' && m.alive) && (!game.exit || atExpeditionGate(game.hero, game.exit))) {
     game.over = 'won';
     const foes = game.men.filter((m) => m.side === 'foe');
     const double = foes.length > 1;

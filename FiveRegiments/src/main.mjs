@@ -15,6 +15,7 @@ import { incomingAttack } from './sim/combat-tells.mjs';
 import { createBrain, createBrains } from './sim/brain.mjs';
 import { ORDER, REGIMENTS, loadout, playerLoadout } from './sim/regiments.mjs';
 import { PLACES, grade, planRoad, stageScore } from './sim/road.mjs';
+import { planExpedition } from './sim/expedition.mjs';
 import { createInput } from './input.mjs';
 import { createHud, createTouchControls } from './hud.mjs';
 import { createScreens, placeName } from './screens.mjs';
@@ -245,32 +246,35 @@ async function main() {
       .join(' · ');
     redraw = title;
     const note = saveProblems.has('write-failed') ? t('saveRefused') : saveProblems.size ? t('saveReset') : '';
-    screens.title({ onRoad: choose, onFree: free, onSettings: () => openSettings(title), best: marks ? `${t('best')}：${marks}` : '', note });
+    screens.title({ onRoad: () => choose(), onExpedition: () => choose(true), onFree: free,
+      onSettings: () => openSettings(title), best: marks ? `${t('best')}：${marks}` : '', note });
   }
 
-  function choose() {
+  function choose(expedition = false) {
     mode = 'choose';
-    redraw = choose;
+    redraw = () => choose(expedition);
     screens.choose({
       selected: run?.regiment ?? 'yulin',
+      title: expedition ? t('expedition') : undefined,
       onLook: (r) => lineup && (lineup.focus = ORDER.indexOf(r)),
       onBack: () => {
         if (lineup) lineup.focus = null;
         title();
       },
-      onPick: (r) => fit(r)
+      onPick: (r) => fit(r, expedition)
     });
   }
 
-  function fit(regiment) {
+  function fit(regiment, expedition) {
     mode = 'loadout';
-    redraw = () => fit(regiment);
+    redraw = () => fit(regiment, expedition);
     screens.loadout({
       regiment,
       chosen: run?.regiment === regiment ? run.loadout : undefined,
-      onBack: choose,
+      onBack: () => choose(expedition),
       onDone: (picked) => {
-        run = { regiment, loadout: picked, stages: planRoad(regiment), at: 0, scores: [], stats: runStats() };
+        run = { regiment, loadout: picked, stages: expedition ? planExpedition() : planRoad(regiment),
+          at: 0, scores: [], stats: runStats(), expedition };
         card();
       }
     });
@@ -316,12 +320,14 @@ async function main() {
       })
     ]);
     const seed = Number(params.get('seed') ?? Math.floor(Math.random() * 1e9));
+    const spawn = st.spawn && (stage.place.spawn ?? st.spawn);
     game = createFight({
-      hero: { ...run.loadout, turn: 14 },
+      hero: { ...run.loadout, turn: 14, at: spawn && [spawn.x, spawn.z] },
       foes: st.foes.map((regiment) => ({ regiment, ...loadout(regiment) })),
       place: stage.place,
       seed,
-      health: st.health ?? 1
+      health: st.health ?? 1,
+      exit: st.exit && (stage.place.exit ?? st.exit)
     });
     brains = createBrains(game, { level: st.level });
     autoBrain = params.has('auto') ? createBrain(game.hero, { level: 0.7, rng: game.rng }) : null;
@@ -336,7 +342,7 @@ async function main() {
     locked = coarse && !st.double;
     tally = { deflects: 0, broken: 0 };
     input.setYaw(game.hero.face);
-    cam.snap([game.hero.x, 2.2, game.hero.z + 3.5], [0, 1.4, 0]);
+    cam.snap([game.hero.x, 2.2, game.hero.z + 3.5], [game.hero.x, 1.4, game.hero.z]);
     screens.hide();
     hud.show(true);
     touch.show(coarse, game.hero);
@@ -415,7 +421,7 @@ async function main() {
     let runMark = null;
     if (won) {
       run.scores.push(stats.score);
-      if (last && !run.free) {
+      if (last && !run.free && !run.expedition) {
         runMark = grade(run.scores);
         save.update((d) => void recordRun(d, run.regiment, runMark));
       }
@@ -430,6 +436,7 @@ async function main() {
     redraw = null;
     screens.result({
       won,
+      expedition: run.expedition,
       double: st.double && won,
       stats,
       last,
@@ -795,6 +802,12 @@ async function main() {
       return p.inFront && p.x > -80 && p.x < w + 80 && p.y > -80 && p.y < h + 80 ? [p.x, p.y] : null;
     };
     const heroAct = game.hero.act;
+    if (game.exit) {
+      const alive = game.men.filter(man => man.side === 'foe' && man.alive).length;
+      stage.setExitOpen?.(!alive);
+      hud.objective(alive ? t('expeditionEnemies', { n: alive })
+        : t('expeditionGate', { m: Math.ceil(Math.hypot(game.hero.x - game.exit.x, game.hero.z - game.exit.z)) }));
+    }
     const trackingSwing = heroAct?.kind === 'swing' && (!heroAct.struck || heroAct.t - heroAct.strikeAt < 0.08);
     const line = game.hero.guard ? game.hero.guardLine : trackingSwing ? heroAct.line : input.state.line;
     hud.update(dt, game, { line, preparedLine: heroAct?.awaitingRelease ? heroAct.line : undefined,
