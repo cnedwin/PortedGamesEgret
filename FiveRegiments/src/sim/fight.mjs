@@ -288,6 +288,7 @@ function stagger(man, time, kind = 'flinch', push = [0, 0]) {
   man.stunKind = kind;
   man.knock = [push[0], push[1]];
   man.act = null;
+  man.queuedSwing = null;
   man.draw = null;
   man.guard = false;
 }
@@ -371,6 +372,7 @@ function resolve(game, man, target, spec) {
     // The counter takes the blow on the guard and cuts back at once.
     target.act.answered = true;
     target.act.t = SKILLS.counter.hold;
+    target.act.answeredAt = target.act.t;
     emit(game, 'deflect', { who: target.id, by: man.id, line, counter: true });
     target.stats.deflects++;
     rouse(target, RAGE.deflected);
@@ -639,12 +641,12 @@ function announceSwing(game, man, act) {
   emit(game, 'swing', { who: man.id, line: act.line });
 }
 
-function startSwing(game, man, line, { chained, releaseOnly, released }) {
+function startSwing(game, man, line, { releaseOnly, released }) {
   const blow = blowsOf(man)[line];
   if (!blow) return;
   if (man.st < 4) return;
   const reach = blow.reach;
-  const act = { kind: 'swing', line, t: 0, wind: blow.wind * (chained ? 0.85 : 1), held: 0, struck: false, blow, reach, recover: blow.recover };
+  const act = { kind: 'swing', line, t: 0, wind: blow.wind, held: 0, struck: false, blow, reach, recover: blow.recover };
   if (releaseOnly) {
     act.releaseOnly = true;
     act.awaitingRelease = !released;
@@ -761,19 +763,23 @@ export const couchHeading = (man) => wrap((man.horse?.face ?? man.face) + ARTS.c
 function runLance(game, man, act) {
   const L = ARTS.couch,
     h = man.horse;
+  const activeEnd = L.wind + L.last;
+  const active = act.t >= L.wind && act.t < activeEnd;
   man.face = h.face;
-  act.charging = true;
-  if (!act.met) {
+  if (active && !act.met) {
     const hit = enemiesOf(game, man)
       .filter((t) => inSweep(man, t, L.reach, L.arc, couchHeading(man)))
       .sort((a, b) => dist(man, a) - dist(man, b))[0];
     if (hit) {
       act.met = true;
       resolve(game, man, hit, { line: 'T', damage: man.r.mounted.T.damage * L.damage, slam: true, guardCost: 2.5, stun: L.stun, push: 2.2, skill: 'couch', face: couchHeading(man) });
-      act.t = Math.max(act.t, L.last - 0.35);
+      act.t = Math.max(act.t, activeEnd - L.hitRecover);
+      act.metAt = act.t;
     }
   }
-  if (act.t >= L.last || !man.mounted) man.act = null;
+  act.charging = active && !act.met;
+  const end = act.met ? act.metAt + L.hitRecover : activeEnd + L.recover;
+  if (act.t >= end || !man.mounted) man.act = null;
 }
 
 /** Riding: the horse turns toward where he steers (wide at speed), gathers pace, gallops on its wind and reins back. */
@@ -883,13 +889,14 @@ function runSkill(game, man, act, dt) {
       break;
     case 'bull': {
       // A barging run; the first man met can neither attack nor defend for a while, and a rider comes off his horse.
-      const run = 0.62;
-      act.charging = act.t < run;
-      if (act.t < run && !act.met) {
-        dash(s.range / run);
+      const elapsed = act.t - s.wind;
+      act.charging = elapsed >= 0 && elapsed < s.run;
+      if (act.charging && !act.met) {
+        dash(s.range / s.run);
         const hit = enemiesOf(game, man).find((t) => inSweep(man, t, 1.05, 0.7));
         if (hit) {
           act.met = true;
+          act.metAt = act.t;
           const guarded = hit.guard;
           const rider = hit.mounted;
           resolve(game, man, hit, { line: 'T', damage: base * s.damage, push: 1.2, stun: 0.3, skill: 'bull' });
@@ -901,7 +908,7 @@ function runSkill(game, man, act, dt) {
           }
         }
       }
-      if (act.t > run + 0.35) man.act = null;
+      if (elapsed > s.run + s.recover) man.act = null;
       break;
     }
     case 'turning':
@@ -1239,10 +1246,12 @@ function runSwing(game, man, act, input, dt) {
   const elapsed = act.t - act.strikeAt;
   const recovered = elapsed >= act.recover;
   const requested = (!recovered || input.recoveryHandoff) && elapsed > act.recover * 0.55 && meleePressed(man, input);
-  if (requested) {
-    man.queuedSwing = { line: meleeLine(man, input), releaseOnly: input.meleeRelease, released: input.meleeUp, chained: !recovered };
+  // Keep one late command while the current blow settles through its entire recovery.
+  if (requested && !man.queuedSwing) {
+    man.queuedSwing = { line: meleeLine(man, input), releaseOnly: input.meleeRelease, released: input.meleeUp };
   }
-  if (recovered || requested) man.act = null;
+  if (man.queuedSwing?.releaseOnly && input.meleeRelease && input.meleeUp) man.queuedSwing.released = true;
+  if (recovered) man.act = null;
   return recovered;
 }
 
@@ -1282,9 +1291,11 @@ function raiseGuard(game, man, line) {
 /** One tick for one man, with his input. */
 function stepMan(game, man, input, dt) {
   const pressed = (key) => input[key] && !man.prev[key];
-  // The combo press belongs only to this tick, including when another action takes priority.
-  const queuedSwing = input.meleeCancel && man.queuedSwing?.releaseOnly ? null : man.queuedSwing;
-  man.queuedSwing = null;
+  if (man.stun > 0 || (input.meleeCancel && man.queuedSwing?.releaseOnly)) man.queuedSwing = null;
+  const recovering = man.act?.kind === 'swing' && man.act.struck;
+  const queuedSwing = recovering ? null : man.queuedSwing;
+  // The buffered command is consumed on the first free tick, including when another action wins priority.
+  if (!recovering) man.queuedSwing = null;
   if (input.meleeCancel && man.act?.awaitingRelease) man.act = null;
   // ---- what wears off and what keeps working --------------------------------------------------------------
   man.cool = man.cool.map((c) => Math.max(0, c - dt));
@@ -1394,7 +1405,6 @@ function stepMan(game, man, input, dt) {
     else if (free && (chain || meleePressed(man, input))) {
       const releaseOnly = chain ? chain.releaseOnly : input.meleeRelease;
       startSwing(game, man, chain?.line ?? meleeLine(man, input), {
-        chained: chain?.chained ?? false,
         releaseOnly,
         released: chain?.released || (input.meleeRelease && input.meleeUp)
       });

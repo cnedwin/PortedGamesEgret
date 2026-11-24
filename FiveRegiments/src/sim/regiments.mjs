@@ -250,7 +250,7 @@ export const ARTS = {
   couch: {
     name: { zh: '架枪', en: 'Couched Lance' }, weapon: { zh: '长杆/利刃', en: 'polearm blade' },
     mounted: true, damage: 1.25, cool: 9.6, rage: 0, refund: 5, run: 5.5,
-    last: 3.2, reach: 2.9, aim: deg(-60), arc: deg(18), stun: 1.1,
+    wind: 0.1, last: 3.2, recover: 0.2, hitRecover: 0.35, reach: 2.9, aim: deg(-60), arc: deg(18), stun: 1.1,
     text: { zh: '马上战技：骑乘战马、跑起来时可以架枪，对命中的敌人造成 125% 武器伤害；如果击杀敌人，立刻重置冷却，并返还 5 点怒气。', en: 'A mounted art: with the horse at a run he couches the ji; the man it meets takes 125% weapon damage, and a kill resets its cooldown and gives back 5 rage.' }
   }
 };
@@ -268,6 +268,7 @@ export const SKILLS = {
   charge: { owner: 'yulin', name: { zh: '冲锋突刺', en: 'Charge and Thrust' }, cool: 12, cost: 18, range: 6, damage: 1.5,
     text: { zh: '向前冲锋，冲到身前突刺。', en: 'A charge forward into a thrust.' } },
   bull: { owner: 'yulin', name: { zh: '蛮牛冲击', en: 'Bull Charge' }, cool: 15, cost: stamina(75), range: 8, damage: 1.0, daze: 4, dazeGuarded: 2,
+    wind: 0.1, run: 0.62, recover: 0.35,
     text: { zh: '冲撞：被撞中的人 4 秒内无法攻击和防御（格挡时更短）；撞中骑兵会使其落马。', en: 'A barging charge: the man struck can neither attack nor defend for 4 s (less if he was guarding); a rider struck is unhorsed.' } },
   counter: { owner: 'yulin', name: { zh: '格挡反击', en: 'Parry and Counter' }, cool: 12, cost: stamina(62), hold: 1.5, damage: 2.6,
     text: { zh: '格挡住攻击后立即反击，伤害 260%。', en: 'A blow caught on the guard is answered at once, for 260%.' } },

@@ -9,6 +9,7 @@ import { createRig } from './rig.mjs';
 import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
 import { bowReleasePose } from './bow-release.mjs';
+import { ARTS, SKILLS } from '../sim/regiments.mjs';
 
 const ease = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : t * t * (3 - 2 * t));
 const easeOut = (t) => (t <= 0 ? 0 : t >= 1 ? 1 : 1 - (1 - t) ** 3);
@@ -78,6 +79,12 @@ const CUT_EDGE = { R: [1, -0.12, 0], L: [-1, -0.12, 0], O: [0, -1, 0] };
 const CUT_ELBOW = { R: [-0.82, -0.55, -0.24], L: [0.68, -0.5, -0.2], O: [-0.36, 0.84, -0.22] };
 const REST_ELBOW = [-0.6, -0.8, -0.2];
 const SWING_ARM_RANGE = [0.39, 0.965];
+const SHIELD_GUARD = {
+  O: [[0.08, 0.27, 0.34], [0, 0.7, 0.7]],
+  R: [[-0.12, -0.02, 0.4], [-0.35, 0.05, 1]],
+  T: [[0.02, -0.15, 0.44], [0.02, -0.2, 1]],
+  L: [[0.19, -0.04, 0.4], [0.2, 0.05, 1]]
+};
 
 /** Ordinary attack keys put the tip in front on contact. Named skills keep their own poses. */
 function ordinaryCuts(arms) {
@@ -276,15 +283,20 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       return { pose, blend: 60, phase, line: act.line };
     }
     if (act?.kind === 'skill') return skillPose(man, act) ?? { pose, blend };
-    // The couched ji: held level under the arm, its point off the horse's head toward the right front.
-    if (act?.kind === 'lance') return { pose: P([-0.24, -0.3, 0.12], [-0.85, -0.05, 0.52], { t: -0.3, n: 0.1 }), blend: 12 };
+    if (act?.kind === 'lance') {
+      // Lower the point past the horse's right shoulder, then lift it clear as the rider recovers.
+      const { wind, last, recover, hitRecover } = ARTS.couch;
+      const loaded = easeOut(act.t / wind);
+      const settle = act.metAt === undefined ? ease((act.t - wind - last) / recover) : ease((act.t - act.metAt) / hitRecover);
+      const couch = P([-0.24, -0.3, 0.12], [-0.85, -0.05, 0.52], { t: -0.3, n: 0.1 });
+      const check = act.metAt === undefined ? 0 : Math.sin(Math.PI * settle) * 0.09;
+      const pose = mixPose(style.ready, couch, loaded * (1 - settle));
+      pose.n += check;
+      return { pose, blend: 60 };
+    }
     if (act?.kind === 'kick') return { pose: style.ready, blend: 14 };
     if (longAxe && act?.kind === 'recover') blend = Math.max(blend, 34);
     return { pose, blend };
-  }
-
-  function sweep(keys, k) {
-    return k < 0.5 ? mixPose(keys[0], keys[1], easeIn(k * 2)) : mixPose(keys[1], keys[2], easeOut((k - 0.5) * 2));
   }
 
   function skillPose(man, act) {
@@ -301,9 +313,9 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       }
       return style.ready;
     };
-    function stroke(line, load, contact, follow, ready, lean = 0) {
+    function stroke(line, load, contact, follow, ready, lean = 0, start = 0) {
       const keys = style[line];
-      const phase = t < load ? easeOut(k(0, load))
+      const phase = t < load ? easeOut(k(start, load))
         : t < contact ? 1 + easeIn(k(load, contact))
           : t < follow ? 2 + easeOut(k(contact, follow)) : 3 + ease(k(follow, ready));
       const poses = [style.ready, ...keys, style.ready];
@@ -312,8 +324,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       return { pose, blend: 60, phase, line, lean: lean * (k(load, contact) - k(follow, ready)) };
     }
     switch (act.id) {
-      case 'turning':
-        return { pose: sweep(style.R, k(0.05, 0.5)), blend: 60, spin: k(0.1, 0.5) * Math.PI * 2 };
+      case 'turning': {
+        const cut = stroke('R', 0.15, 0.28, 0.43, 0.67);
+        const plant = pulse(0.04, 0.14, 0.27, 0.43);
+        return { ...cut, spin: ease(k(0.12, 0.46)) * Math.PI * 2, stance: [-0.055 * plant, 0.025 * plant, 0.04 * plant] };
+      }
       case 'moon': {
         const cut = stroke('L', 0.095, 0.18, 0.34, 0.49);
         const turn = pulse(0.04, 0.18, 0.27, 0.48);
@@ -336,8 +351,15 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
         return { pose, blend: 60, spin: turn,
           stance: [0.055 * (settle - gather), 0.026 * (settle - gather), 0.028 * settle] };
       }
-      case 'whirl':
-        return { pose: mixPose(style.R[1], style.L[1], 0.5), blend: 30, spin: k(0.2, 1.85) * Math.PI * 2 * 5 };
+      case 'whirl': {
+        const count = SKILLS.whirl.hits;
+        const part = clamp(Math.floor((t - 0.38) / 0.3) + 1, 0, count - 1);
+        const contact = 0.25 + part * 0.3;
+        const cut = stroke(part % 2 === 0 ? 'R' : 'L', contact - 0.055, contact,
+          contact + 0.06, contact + (part === count - 1 ? 0.32 : 0.13), part ? 0.08 : 0, part ? contact - 0.17 : 0);
+        const turning = k(0.12, 0.12 + count * 0.3);
+        return { ...cut, spin: Math.PI * 2 * count * turning };
+      }
       case 'wave': {
         const swing = stroke('R', 0.26, 0.38, 0.54, 0.7);
         const carry = pulse(0.28, 0.43, 0.5, 0.68);
@@ -358,8 +380,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       case 'drop':
         return stroke('O', 0.39, 0.52, 0.74, 1);
       case 'flowers': {
-        const phase = ((t - 0.1) / 0.17) % 1;
-        return { pose: t < 0.1 ? style.T[0] : mixPose(style.T[0], style.T[1], Math.sin(Math.max(0, phase) * Math.PI)), blend: 60 };
+        const count = SKILLS.flowers.hits;
+        const part = clamp(Math.floor((t - 0.23) / 0.17) + 1, 0, count - 1);
+        const contact = 0.16 + part * 0.17;
+        return stroke('T', contact - 0.048, contact, contact + 0.033,
+          contact + (part === count - 1 ? 0.28 : 0.07), 0, part ? contact - 0.1 : 0);
       }
       case 'charge': {
         const thrust = stroke('T', 0.35, 0.48, 0.67, 0.9);
@@ -404,21 +429,52 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
         pose.n += 0.22 * travel + 0.16 * drive - 0.1 * brace;
         return { ...thrust, pose, stance: [-0.05 * travel + 0.065 * drive, 0.07 * drive, 0.037 * drive] };
       }
-      case 'bull':
-      case 'counter':
-        return { pose: style.guard.T, blend: 30, lean: act.id === 'bull' ? 0.3 : 0 };
+      case 'bull': {
+        const { wind, run } = SKILLS.bull;
+        const runEnd = wind + run;
+        const end = Math.min(runEnd, act.metAt ?? runEnd);
+        const load = ease(k(0, wind));
+        const settle = 1 - ease(k(end, end + 0.28));
+        const drive = act.metAt === undefined ? 0 : pulse(end - 0.02, end + 0.045, end + 0.065, end + 0.22);
+        return { pose: mixPose(style.ready, style.guard.T, 0.9 * load * settle), blend: 48,
+          lean: 0.22 * load * settle - 0.1 * drive, shield: load * settle, shieldDrive: drive };
+      }
+      case 'counter': {
+        if (act.answeredAt === undefined) {
+          const brace = pulse(0, 0.095, SKILLS.counter.hold, SKILLS.counter.hold + 0.24);
+          return { pose: mixPose(style.ready, style.guard[man.guardLine] ?? style.guard.T, brace), blend: 45, shield: brace };
+        }
+        const elapsed = t - act.answeredAt;
+        const strike = easeOut(elapsed / 0.055);
+        const settle = ease((elapsed - 0.06) / 0.19);
+        const direction = style.guard[man.guardLine] ?? style.guard.T;
+        const pose = mixPose(mixPose(direction, style.T[1], strike), style.ready, settle);
+        return { pose, blend: 52, shield: 1 - settle, shieldDrive: 0.65 * strike * (1 - settle) };
+      }
       // Weapon arts.
       case 'finisher':
         return stroke('T', 0.16, 0.28, 0.47, 0.67, 0.17);
-      case 'shieldSlam':
-        return { pose: style.guard.T, blend: 30, lean: 0.35 * k(0, 0.18) - 0.2 * k(0.3, 0.55) };
+      case 'shieldSlam': {
+        const brace = pulse(0, 0.115, 0.235, 0.55);
+        const drive = pulse(0.11, 0.2, 0.27, 0.5);
+        return { pose: mixPose(style.ready, style.guard.T, brace), blend: 48,
+          lean: 0.27 * drive, shield: brace, shieldDrive: drive };
+      }
       case 'axeSmash':
       case 'poleAxeSmash':
         return stroke('R', 0.4, 0.55, 0.81, 1.03, 0.16);
-      case 'shout':
-        return { pose: P([-0.42, 0.1, 0.18], [-0.2, 0.9, 0.3], { n: -0.2, t: 0.1 }), blend: 12, shout: k(0.2, 0.5) };
-      case 'mist':
-        return { pose: style.ready, blend: 12, throwLeft: k(0.1, 0.35) };
+      case 'shout': {
+        const breath = pulse(0.04, 0.42, 0.57, 0.87);
+        const roar = pulse(0.38, 0.5, 0.61, 0.84);
+        const raised = P([-0.42, 0.1, 0.18], [-0.2, 0.9, 0.3], { n: -0.2, t: 0.1 });
+        return { pose: mixPose(style.ready, raised, breath), blend: 30, shout: roar };
+      }
+      case 'mist': {
+        const cast = pulse(0.11, 0.32, 0.36, 0.59);
+        const gather = pulse(0, 0.16, 0.21, 0.53);
+        const pose = { ...style.ready, t: style.ready.t - 0.24 * gather + 0.18 * cast, n: 0.12 * cast };
+        return { pose, blend: 29, throwLeft: cast };
+      }
       default:
         return null;
     }
@@ -430,9 +486,12 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const vFwd = man.vx * Math.sin(f) + man.vz * Math.cos(f),
       vLeft = man.vx * Math.cos(f) - man.vz * Math.sin(f);
     const speed = Math.hypot(vFwd, vLeft);
-    const recoil = impactWeight(state.impactAge, state.impactPower) * (state.impactKind === 'hit' ? 1 : 0.37);
+    const impact = impactWeight(state.impactAge, state.impactPower, state.impactKind);
+    const caught = state.impactKind !== 'hit';
+    const recoil = impact * (caught ? 0.23 : 1);
+    const catchTravel = caught && man.guard ? impact : 0;
     const fallen = man.stun > 0 && (man.stunKind === 'down' || man.stunKind === 'thrown');
-    const stunned = fallen || man.stun > 0 && man.stunKind === 'flinch';
+    const stunned = fallen || man.stun > 0 && (man.stunKind === 'flinch' || man.stunKind === 'break');
     state.down += ((fallen ? 1 : 0) - state.down) * (1 - Math.exp(-dt * (fallen ? 18 : 7)));
     const movement = clamp((speed - 0.15) / 0.5, 0, 1);
     const moving = movement * (1 - state.ride) * (man.alive && !stunned ? 1 : 0.16);
@@ -482,12 +541,13 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
 
     // ---- the upper body: twist, lean, arms ----------------------------------------------------------------
-    const { pose: want, blend, spin = 0, lean = 0, shout = 0, throwLeft = 0, phase = 0, line, stance, shield = 0 } = actionPose(man, dt);
+    const { pose: want, blend, spin = 0, lean = 0, shout = 0, throwLeft = 0, phase = 0, line, stance, shield = 0,
+      shieldDrive = 0 } = actionPose(man, dt);
     const act = man.act;
     if (state.lastAct !== act) {
       const fromSpinGuard = state.spinBrace > 0 && act?.kind === 'skill' && act.id === 'swing';
       const returning = act?.kind === 'skill' && act.id === 'returnSpear';
-      state.entryPose = longAxe || fromSpinGuard || returning ? state.pose : null;
+      state.entryPose = longAxe || act?.kind === 'swing' || fromSpinGuard || returning ? state.pose : null;
     }
     state.lastAct = act;
     state.spinBrace = Math.max(0, state.spinBrace - dt);
@@ -520,7 +580,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     pelvis.setPosition(pel[0], pel[1], pel[2]);
     rig.forget();
 
-    const twist = p.t + state.turnOnHorse - sideways * 0.21;
+    const twist = p.t + state.turnOnHorse - sideways * 0.28;
     const leanAll = p.n + lean + back * 0.42 - shout * 0.15 + 0.17 * buckle;
     const hipTwist = p.t * feet * 0.36;
     const shoulderTwist = twist - hipTwist;
@@ -539,7 +599,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     rig.bend('spine_03', shoulderTwist * 0.35, leanAll * 0.35, -sideways * 0.18);
     rig.bend('spine_05', shoulderTwist * 0.3, leanAll * 0.25, -sideways * 0.08);
     // The head keeps looking ahead.
-    rig.bend('neck_01', -twist * 0.7, -leanAll * 0.6 - shout * 0.3);
+    rig.bend('neck_01', -twist * 0.7 - sideways * 0.16, -leanAll * 0.6 + back * 0.23 - shout * 0.3, -sideways * 0.11);
 
     // Body frame for the arms: the chest turned by the twist.
     const twistQ = axisAngle([0, 1, 0], twist);
@@ -562,8 +622,10 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const releaseElbow = resetJi ? ease((phase - 2.5) / 0.61) : ease((phase - 3) / 0.9);
     const lead = turnElbow * (1 - releaseElbow);
     const poleR = along(elbow ? lerp3(REST_ELBOW, elbow, lead) : REST_ELBOW);
-    if (bow) armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR);
-    else rig.reachArm('r', place(p.r), poleR, along(p.b), 1, 0, edgeHint, state.primaryGrip, dt, reachRange);
+    const bareCatch = offhand ? 0 : catchTravel;
+    const guardHand = bareCatch > 0 ? add(p.r, [0.07 * Math.sin(relative) * bareCatch, -0.034 * bareCatch, -0.14 * bareCatch]) : p.r;
+    if (bow) armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR, guardHand);
+    else rig.reachArm('r', place(guardHand), poleR, along(p.b), 1, 0, edgeHint, state.primaryGrip, dt, reachRange);
     rig.closeHand('r', 1);
 
     // Left arm: on the same weapon (two-handed), the shield, or free.
@@ -596,11 +658,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       rig.reachArm('l', wrist(), rig.dirToRig(qrot(twistQ, [0.7, -0.7, -0.1])), blade, 1, 0, face);
       rig.closeHand('l', 1);
     } else if (offhand) {
-      const up = man.guard || man.act?.id === 'counter' || man.act?.id === 'bull' || man.act?.id === 'shieldSlam';
-      const gl = man.guardLine;
-      const spot = !up ? lerp3([0.2, -0.2, 0.3], [0.13, 0.0, 0.48], shield) : gl === 'O' ? [0.08, 0.27, 0.34] : gl === 'R' ? [-0.12, -0.02, 0.4] : gl === 'T' ? [0.02, -0.15, 0.44] : [0.19, -0.04, 0.4];
-      const face = !up ? lerp3([0.3, 0.1, 1], [0.04, -0.18, 1], shield) : gl === 'O' ? [0, 0.7, 0.7] : gl === 'R' ? [-0.35, 0.05, 1] : gl === 'T' ? [0.02, -0.2, 1] : [0.2, 0.05, 1];
-      state.lpose = state.lpose ? lerp3(state.lpose, spot, 1 - Math.exp(-dt * 22)) : spot;
+      const guard = SHIELD_GUARD[man.guardLine] ?? SHIELD_GUARD.T;
+      const spot = man.guard ? guard[0] : lerp3([0.2, -0.2, 0.3], [0.13, 0.0, 0.48], shield);
+      const face = man.guard ? guard[1] : lerp3([0.3, 0.1, 1], [0.04, -0.18, 1], shield);
+      const press = add(spot, [0.06 * Math.sin(relative) * catchTravel, -0.065 * catchTravel, 0.18 * shieldDrive - 0.22 * catchTravel]);
+      state.lpose = state.lpose ? lerp3(state.lpose, press, 1 - Math.exp(-dt * 30)) : press;
       // The shield's face along the knuckles: reach with the hand's grip axis upright and the fingers forward.
       rig.reachArm('l', place(state.lpose), rig.dirToRig(qrot(twistQ, [0.8, -0.6, -0.1])), along([0, 1, 0]), 1, 0, along(face));
       rig.closeHand('l', 1);
@@ -635,7 +697,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     return { spin, floorLift };
   }
 
-  function armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR) {
+  function armsForBow(man, dt, twistQ, place, along, edgeHint, reachRange, poleR, guardHand) {
     const drawing = man.draw ? clamp(man.draw.t / man.r.bow.draw, 0, 1) : 0;
     const shooting = man.act?.kind === 'skill' && ['gale', 'fan', 'backStep', 'blast', 'web', 'volley'].includes(man.act.id);
     const aiming = Boolean(man.draw || shooting);
@@ -646,7 +708,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     if (man.knife) {
       main.node.visible = true;
       bow.node.visible = false;
-      rig.reachArm('r', place(state.pose.r), reachRange ? poleR : rig.dirToRig(REST_ELBOW), along(state.pose.b),
+      rig.reachArm('r', place(guardHand), reachRange ? poleR : rig.dirToRig(REST_ELBOW), along(state.pose.b),
         1, 0, edgeHint, reachRange ? state.primaryGrip : null, dt, reachRange);
       for (const st of strings) st.mesh.visible = false;
       nocked.node.visible = false;
