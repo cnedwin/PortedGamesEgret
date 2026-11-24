@@ -5,6 +5,7 @@
 // (Ctrl+H); the cross in the middle that shows the line of his blow and of the blow coming; the words of the moment,
 // and numbers where blows land. Tab hides it all but the cross.
 import { ARTS, REGIMENTS, SKILLS } from './sim/regiments.mjs';
+import { spinGuardWindow } from './sim/fight.mjs';
 import { t, say } from './i18n.mjs';
 
 const el = (tag, cls, parent, html) => {
@@ -230,6 +231,7 @@ export function createHud(root, { touch = false } = {}) {
     }
     for (const p of preparations) p.classList.toggle('show', p.dataset.prep === preparedLine);
     cross.classList.toggle('guard', !!guard);
+    cross.classList.toggle('guard-window', spinGuardWindow(hero));
     cross.classList.toggle('locked', !!locked);
     cross.classList.toggle('bow', hero.regiment === 'archer' && !hero.knife);
     cross.style.setProperty('--draw', hero.draw ? Math.min(1, hero.draw.t / hero.r.bow.draw).toFixed(2) : '0');
@@ -482,6 +484,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
     /** The skills' waits, shown as a shade going round each skill button. */
     cool(hero) {
       if (pad.hidden) return;
+      guard.classList.toggle('guard-window', spinGuardWindow(hero));
       if (hero.horse) mount.textContent = hero.mounted ? t('getDown') : t('mountUp');
       heal.classList.toggle('wait', hero.dressings <= 0);
       [s0, s1].forEach((b, i) => {

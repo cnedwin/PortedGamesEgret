@@ -204,6 +204,8 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .hud-cross circle { fill: rgba(255, 255, 255, 0.85); }
 .hud-cross .ring { fill: none; stroke: rgba(201, 164, 100, 0); stroke-width: 2; }
 .hud-cross.guard .ring { stroke: rgba(201, 164, 100, 0.85); }
+.hud-cross.guard-window .ring { stroke: #ffe1a3; stroke-dasharray: 4 3; }
+.touch .tb.guard-window { outline: 2px solid #ffe1a3; outline-offset: 2px; }
 .hud-cross.locked circle:not(.ring) { fill: var(--red-2); }
 .hud-cross.bow path { opacity: 0.25; }
 .hud-cross.bow .ring { stroke: rgba(255, 255, 255, 0.7); stroke-dasharray: calc(var(--draw) * 189) 189; transform: rotate(-90deg); }

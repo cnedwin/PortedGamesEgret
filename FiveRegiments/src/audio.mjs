@@ -89,6 +89,8 @@ const contactNoise = (len, decay, brightness, gain, seed) => noise(len, (t) => M
 export const SOUNDS = {
   swing: () => bladeAir(0.22, 0.038, 11, 0.56, 0.51),
   heavy: () => bladeAir(0.31, 0.054, 12, 0.32, 0.66),
+  steelReady: () => mix(0.13, [[contactNoise(0.09, 38, 0.67, 0.3, 33)], [ring(0.13, 516, { gain: 0.1, decay: 30, seed: 34 })]]),
+  bladeWave: () => mix(0.34, [[bladeAir(0.32, 0.027, 35, 0.73, 0.53)], [tone(0.24, 290, 105, { decay: 12, gain: 0.23 })]]),
   clash: () => mix(0.38, [[ring(0.38, 730, { gain: 0.34, decay: 13, seed: 4 })], [contactNoise(0.09, 42, 0.83, 0.29, 5)]]),
   deflect: () => mix(0.62, [[ring(0.62, 1240, { gain: 0.36, decay: 8, seed: 6 })], [ring(0.44, 1730, { gain: 0.14, decay: 10, seed: 9 }), 0.014], [contactNoise(0.06, 82, 0.94, 0.32, 8)]]),
   shield: () => mix(0.34, [[thud(135, 0.3, 0.56)], [ring(0.29, 408, { gain: 0.15, decay: 20, seed: 10 })], [contactNoise(0.06, 54, 0.38, 0.22, 16)]]),
@@ -101,6 +103,8 @@ export const SOUNDS = {
   step: () => noise(0.25, (t, s) => Math.sin((Math.PI * t) / s), { tone: () => 0.25, gain: 0.3, seed: 17 }),
   draw: () => noise(0.7, (t, s) => (t / s) * Math.exp(-((t - s) ** 2)), { tone: (t) => 0.1 + t * 0.4, gain: 0.18, seed: 18 }),
   loose: () => mix(0.6, [[tone(0.5, 180, 120, { decay: 9, gain: 0.35 })], [swoosh(0.25, 19, 0.35), 0.02]]),
+  fanLoose: () => mix(0.24, [[pluck(244, 0.16, { gain: 0.27, damping: 0.966, seed: 36 })], [bladeAir(0.23, 0.025, 37, 0.69, 0.32), 0.008]]),
+  galeLoose: () => mix(0.44, [[pluck(145, 0.18, { gain: 0.27, damping: 0.955, seed: 39 })], [bladeAir(0.41, 0.033, 38, 0.36, 0.45)], [tone(0.3, 184, 56, { decay: 10, gain: 0.24 })]]),
   arrowHit: () => mix(0.3, [[thud(150, 0.25, 0.5)], [noise(0.08, (t) => Math.exp(-t * 70), { tone: () => 0.7, gain: 0.3, seed: 20 })]]),
   blast: () => mix(1.6, [[tone(1.4, 90, 38, { decay: 3, gain: 0.8 })], [noise(1.5, (t) => Math.exp(-t * 3.5), { tone: (t) => 0.5 - t * 0.3, gain: 0.7, seed: 21 })]]),
   mist: () => noise(1.2, (t, s) => Math.sin((Math.PI * t) / s), { tone: () => 0.75, gain: 0.25, seed: 22 }),

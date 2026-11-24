@@ -4,7 +4,7 @@
 // couched ji), and that any two regiments fight to a finish.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { createFight, facing, step, TICK, DEFLECT } from '../src/sim/fight.mjs';
+import { createFight, facing, spinGuardWindow, step, TICK, DEFLECT } from '../src/sim/fight.mjs';
 import { createBrains } from '../src/sim/brain.mjs';
 import { ARTS, DAMAGE, ORDER, REGIMENTS, SKILLS, TALENTS, loadout } from '../src/sim/regiments.mjs';
 
@@ -195,6 +195,95 @@ test('PC releasing a press rejected in early recovery cannot start a later swing
   assert.ok(![...held, ...released].some((e) => e.type === 'swing'));
 });
 
+function tigerSpin(distance = 1.8) {
+  const duel = pair('tiger', 'yulin', { hero: { skills: ['spin', 'swing'] } });
+  duel.f.z = duel.h.z - distance;
+  const events = step(duel.game, { hero: { skill: 0 } });
+  assert.equal(events[0]?.id, 'spin');
+  return { ...duel, events };
+}
+
+function waitForSpin(duel, at) {
+  while (duel.h.act?.id === 'spin' && duel.h.act.t < at) duel.events.push(...step(duel.game, {}));
+  assert.equal(duel.h.act?.id, 'spin');
+}
+
+test('Tiger Step keeps its contact and natural recovery when guard is untouched', () => {
+  const duel = tigerSpin();
+  while (duel.h.act) duel.events.push(...step(duel.game, {}));
+  const contacts = duel.events.filter((e) => e.type === 'hit' && e.skill === 'spin');
+  assert.equal(contacts.length, 1);
+  assert.ok(Math.abs(contacts[0].time - 0.3) < TICK);
+  assert.ok(duel.game.time > 0.62 && duel.game.time <= 0.62 + TICK);
+  assert.ok(!duel.h.guard && !duel.events.some((e) => e.type === 'skillCancel'));
+});
+
+test('Tiger Step does not buffer a guard held from before the follow-through', () => {
+  const duel = tigerSpin();
+  waitForSpin(duel, 0.34);
+  assert.ok(!spinGuardWindow(duel.h));
+  while (duel.h.act?.id === 'spin') {
+    const events = step(duel.game, { hero: { guard: true, skillGuardCancel: true, line: 'R' } });
+    assert.ok(!duel.h.guard && !events.some((e) => e.type === 'skillCancel'));
+  }
+  assert.ok(duel.game.time > 0.62);
+  step(duel.game, { hero: { guard: true, skillGuardCancel: true } });
+  assert.ok(duel.h.guard);
+});
+
+test('a fresh Tiger Step guard cancels after follow-through without changing the strike', () => {
+  const reference = tigerSpin(), duel = tigerSpin();
+  waitForSpin(reference, 0.43);
+  waitForSpin(duel, 0.43);
+  assert.ok(spinGuardWindow(duel.h));
+  for (const unavailable of [{ alive: false }, { stun: TICK }, { daze: TICK }, { st: 0 }]) {
+    assert.ok(!spinGuardWindow({ ...duel.h, ...unavailable }));
+  }
+  const elapsed = duel.h.act.t, before = duel.h.st;
+  const events = step(duel.game, { hero: { guard: true, skillGuardCancel: true, line: 'L', skill: 1 } });
+  const cancel = events.find((e) => e.type === 'skillCancel');
+  assert.deepEqual(cancel, { type: 'skillCancel', time: duel.game.time, who: 'hero', id: 'spin', into: 'guard', elapsed });
+  assert.equal(duel.h.act, null);
+  assert.equal(duel.h.guardLine, 'L');
+  assert.equal(duel.h.guardAt, duel.game.time);
+  assert.equal(duel.h.st, before);
+  assert.equal(duel.h.cool[1], 0);
+  assert.deepEqual(duel.events, reference.events);
+  assert.equal(duel.f.hp, reference.f.hp);
+});
+
+test('Tiger Step can deflect on the guard tick then start the normal three-hit Swing Slash', () => {
+  const duel = tigerSpin(4);
+  waitForSpin(duel, 0.43);
+  const blow = duel.f.r.blows.L;
+  duel.f.z = duel.h.z - 1.4;
+  duel.f.act = { kind: 'swing', line: 'L', t: blow.wind - TICK * 0.5, wind: blow.wind, held: 0, struck: false, blow, reach: blow.reach, recover: blow.recover };
+  const block = step(duel.game, { hero: { guard: true, skillGuardCancel: true, line: 'R' } });
+  assert.ok(block.some((e) => e.type === 'skillCancel') && block.some((e) => e.type === 'deflect' && e.who === 'hero'));
+  assert.equal(duel.h.hp, duel.h.maxHp);
+  const before = duel.h.st;
+  const cast = step(duel.game, { hero: { skill: 1 } }).find((e) => e.type === 'skill');
+  assert.equal(cast?.id, 'swing');
+  assert.equal(duel.h.cool[1], SKILLS.swing.cool);
+  assert.equal(before - duel.h.st, SKILLS.swing.cost);
+  const hits = run(duel.game, {}, 0.98).filter((e) => e.type === 'hit' && e.skill === 'swing');
+  assert.equal(hits.length, 3);
+  [0.18, 0.38, 0.58].forEach((at, i) => assert.ok(Math.abs(hits[i].time - cast.time - at) < TICK));
+});
+
+test('Tiger Step cancellation is opt-in for the player and stays specific to Spin', () => {
+  const passive = tigerSpin();
+  waitForSpin(passive, 0.45);
+  step(passive.game, { hero: { guard: true } });
+  assert.equal(passive.h.act?.id, 'spin');
+
+  const swing = pair('tiger', 'yulin');
+  step(swing.game, { hero: { skill: 1 } });
+  run(swing.game, {}, 0.76);
+  step(swing.game, { hero: { guard: true, skillGuardCancel: true } });
+  assert.equal(swing.h.act?.id, 'swing');
+});
+
 test('only the right line holds a guard; a wrong line lets half through', () => {
   const right = pair('tiger', 'vanguard');
   // The hero cuts from his right (R); it arrives on the foe's left, so the foe guards L.
@@ -358,6 +447,18 @@ test('every regiment skill runs to its end without fault, and talents are its ow
     assert.equal(picked.skills.length, 2);
     assert.equal(picked.talents.length, Math.min(4, r.talents.length));
   }
+});
+
+test('a fan volley keeps all five arrows and announces one release on their spawn tick', () => {
+  const { game, h, f } = pair('archer', 'tiger', { hero: { skills: ['fan', 'gale'] } });
+  f.z = -12;
+  step(game, { hero: { skill: 0 } });
+  let events;
+  do {
+    events = step(game, {});
+  } while (h.act?.id === 'fan' && !events.some((e) => e.type === 'loose'));
+  assert.deepEqual(events.filter((e) => e.type === 'loose').map((e) => e.skill), ['fan']);
+  assert.equal(game.shots.filter((shot) => shot.skill === 'fan').length, 5);
 });
 
 test('any two regiments fight to a finish, the same way twice from one seed', () => {

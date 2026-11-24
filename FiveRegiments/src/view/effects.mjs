@@ -155,7 +155,13 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
   const arrowModel = createWeapon('arrow');
   const arrows = new Map();
   const waveMat = createUnlitMaterial3D({ color: 0xbfe6ff, blending: 'additive', depthWrite: false, side: 'double', opacity: 0.85 });
-  const waveGeo = createRingGeometry3D({ innerRadius: 0.9, outerRadius: 1.25, thetaSegments: 24, thetaStart: Math.PI * 0.15, thetaLength: Math.PI * 0.7 });
+  const waveGeo = createRingGeometry3D({ innerRadius: 0.96, outerRadius: 1.13, thetaSegments: 24, thetaStart: Math.PI * 0.23, thetaLength: Math.PI * 0.54 });
+  const galeMat = createUnlitMaterial3D({ color: 0x9bdeff, blending: 'additive', depthWrite: false, side: 'double', opacity: 0.54 });
+  // Two crossed ribbons around the arrow's local +Y axis, shared by every gust arrow.
+  const galeGeo = createGeometry3D({
+    positions: [0, -1.4, 0, -0.1, 0.2, 0, 0, 0.66, 0, 0.1, 0.2, 0, 0, 0.2, -0.1, 0, 0.2, 0.1],
+    indices: [0, 1, 2, 0, 2, 3, 0, 4, 2, 0, 2, 5]
+  });
   const ringGeo = createRingGeometry3D({ innerRadius: 0.92, outerRadius: 1, thetaSegments: 48 });
   const rings = [];
   const webMat = createUnlitMaterial3D({ color: 0xe8e6dc, opacity: 0.55, blending: 'normal', depthWrite: false, side: 'double' });
@@ -240,6 +246,19 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       case 'step':
         burst(dust, [at[0], 0.1, at[2]], 5);
         break;
+      case 'skillBeat':
+        if (e.id === 'spin' || e.id === 'charge' || e.id === 'moon' || e.id === 'boar') {
+          burst(dust, [at[0], 0.1, at[2]], e.id === 'boar' && e.part === 1 ? 10 : 6);
+        }
+        break;
+      case 'loose': {
+        if (e.skill !== 'fan' && e.skill !== 'gale' && e.skill !== 'wave') break;
+        const forward = [Math.sin(e.yaw), 0, Math.cos(e.yaw)];
+        const distance = e.skill === 'wave' ? 0.9 : 0.55;
+        const release = [at[0] + forward[0] * distance, at[1], at[2] + forward[2] * distance];
+        burst(glow, release, e.skill === 'gale' ? 9 : 4, forward);
+        break;
+      }
       case 'slam': {
         burst(dust, [e.at[0], 0.15, e.at[1]], 40);
         ring([e.at[0], 0.06, e.at[1]], e.radius, [1, 0.8, 0.5]);
@@ -299,22 +318,32 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     const live = new Set();
     for (const shot of game?.shots ?? []) {
       live.add(shot);
-      let view = arrows.get(shot);
-      if (!view) {
+      let entry = arrows.get(shot);
+      if (!entry) {
+        let view, wake;
         if (shot.kind === 'wave') {
           view = new Mesh3D(waveGeo, waveMat);
           view.renderOrder = 4;
         } else {
           view = arrowModel.node.clone();
+          if (shot.kind === 'gale') {
+            wake = new Mesh3D(galeGeo, galeMat);
+            wake.castShadow = false;
+            view.addChild(wake);
+          }
           if (shot.kind === 'blast') burst(glow, [shot.x, shot.y, shot.z], 4);
         }
         scene.addChild(view);
-        arrows.set(shot, view);
+        entry = { view, wake };
+        arrows.set(shot, entry);
       }
+      const { view, wake } = entry;
+      if (wake) wake.visible = !shot.done;
       if (shot.kind === 'wave') {
         const yaw = Math.atan2(shot.vx, shot.vz);
-        view.setPosition(shot.x, 0.9, shot.z);
-        view.setRotation(0, yaw, 0);
+        view.setPosition(shot.x, 1.1, shot.z);
+        view.setScale(1.5, 0.72, 1);
+        view.setRotation(0, yaw, -1.06);
         view.visible = !shot.done;
         continue;
       }
@@ -332,7 +361,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       if (shot.kind === 'blast' && !shot.done) burst(glow, [shot.x, shot.y, shot.z], 1);
       view.visible = !(shot.done && shot.stuck);
     }
-    for (const [shot, view] of arrows) {
+    for (const [shot, { view }] of arrows) {
       if (!live.has(shot)) {
         view.removeFromParent();
         arrows.delete(shot);
@@ -368,7 +397,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
 
   /** Clear everything for a new fight. */
   fx.clear = () => {
-    for (const [, v] of arrows) v.removeFromParent();
+    for (const { view } of arrows.values()) view.removeFromParent();
     arrows.clear();
     for (const [, m] of webs) m.removeFromParent();
     webs.clear();

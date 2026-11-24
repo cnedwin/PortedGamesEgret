@@ -468,6 +468,27 @@ async function main() {
         });
         break;
       }
+      case 'skillBeat': {
+        // Wind and movement cues play even on a miss. Contact keeps its own hit or block sound.
+        switch (e.id) {
+          case 'spin': play('swing', { volume: 0.78, rate: 0.84 }); break;
+          case 'swing': play('swing', { volume: 0.69, rate: [0.98, 1.13, 0.87][e.part] }); break;
+          case 'charge': play('swing', { volume: 0.65, rate: 1.36 }); break;
+          case 'moon': play('heavy', { volume: 0.64, rate: 1.2 }); break;
+          case 'down': play('heavy', { volume: 0.71, rate: 0.81 }); break;
+          case 'boar': play(e.part === 0 ? 'step' : 'heavy', { volume: 0.67, rate: e.part === 0 ? 0.84 : 1.39 }); break;
+        }
+        break;
+      }
+      case 'skillCancel':
+        figures.get(e.who)?.braceFromSpin();
+        play('steelReady', { volume: 0.71 });
+        if (e.who === heroId) hud.toast(t('spinGuard'), 'good');
+        break;
+      case 'skill':
+        if (e.id === 'gale') play('draw', { volume: 0.75, rate: 1.55 });
+        else if (e.id === 'fan') play('draw', { volume: 0.46, rate: 1.9 });
+        break;
       case 'block':
         figures.get(e.who)?.struck(e.heavy ?? 0, bearing, 'block');
         if (e.arrow) play('shield', { volume: 0.8 });
@@ -574,7 +595,7 @@ async function main() {
         play('draw', { volume: 0.7 });
         break;
       case 'loose':
-        play(e.kind === 'wave' ? 'heavy' : 'loose');
+        play(({ wave: 'bladeWave', fan: 'fanLoose', gale: 'galeLoose' })[e.skill] ?? 'loose');
         break;
       case 'blast':
         play('blast');
@@ -629,6 +650,7 @@ async function main() {
       else {
         const aim = target && game.hero.regiment === 'archer' ? null : undefined;
         inputs.hero = input.sample(TICK, { threat, aim, bow: game.hero.regiment === 'archer' && !game.hero.knife });
+        inputs.hero.skillGuardCancel = true;
       }
       for (const e of step(game, inputs)) {
         onEvent(e);
@@ -655,7 +677,7 @@ async function main() {
       const step = dt * k;
       const cutting = act?.kind === 'swing' && !act.awaitingRelease && (act.struck
         ? act.t - act.strikeAt < 0.12
-        : !act.held && act.t >= act.wind - 0.07);
+        : (act.releaseOnly || !act.held) && act.t >= act.wind - 0.07);
       const segment = skillTrailSegment(act);
       if (b && was && step > 0 && (cutting || segment !== null)) {
         const speed = Math.hypot(b[1][0] - was[0], b[1][1] - was[1], b[1][2] - was[2]) / step;
