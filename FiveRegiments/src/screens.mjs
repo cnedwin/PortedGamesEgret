@@ -84,10 +84,14 @@ export function createScreens(root, { onLanguage, coarse = false }) {
     },
 
     /** Choose a regiment; `onLook(regiment)` turns the field to him. */
-    choose({ selected = 'yulin', onPick, onLook, onBack, title = t('chooseRegiment') }) {
+    choose({ selected = 'yulin', onPick, onLook, onBack, title = t('chooseRegiment'), veteran = null, onDifficulty }) {
       let i = ORDER.indexOf(selected);
       const page = node(`<section class="page choose">
         <h2>${title}</h2>
+        ${veteran === null ? '' : `<div class="route-level" role="group" aria-label="${t('expeditionDifficulty')}">
+          <button type="button" data-act="difficulty" data-arg="march" aria-pressed="${!veteran}">${t('expeditionMarch')}</button>
+          <button type="button" data-act="difficulty" data-arg="veteran" aria-pressed="${veteran}">${t('expeditionVeteran')}</button>
+        </div>`}
         <div class="tabs">${ORDER.map((r, k) => `<button type="button" data-act="look" data-arg="${k}">${say(REGIMENTS[r].name)}</button>`).join('')}</div>
         <article class="regiment"></article>
         <footer><button type="button" data-act="back">${t('back')}</button><button type="button" class="go" data-act="pick" autofocus>${t('next')}</button></footer>
@@ -104,6 +108,12 @@ export function createScreens(root, { onLanguage, coarse = false }) {
       };
       draw();
       wire(page, {
+        difficulty: (name) => {
+          onDifficulty?.(name === 'veteran');
+          page.querySelectorAll('.route-level button').forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.arg === name));
+          });
+        },
         look: (k) => {
           i = Number(k);
           draw();
@@ -170,7 +180,7 @@ export function createScreens(root, { onLanguage, coarse = false }) {
     stageCard({ stage, total, onGo }) {
       const foes = stage.foes.map((f) => say(REGIMENTS[f].name)).join(` ${t('and')} `);
       const page = node(`<section class="page card-stage">
-        <p class="small">${stage.expedition ? t('expeditionStage', { n: stage.index + 1 }) : stage.double ? t('finale') : t('stage', { n: stage.index + 1 })} / ${total}</p>
+        <p class="small">${stage.expedition ? t('expeditionStage', { n: stage.index + 1 }) : stage.double ? t('finale') : t('stage', { n: stage.index + 1 })} / ${total}${stage.expedition ? ' · ' + t(stage.veteran ? 'expeditionVeteran' : 'expeditionMarch') : ''}</p>
         <h2>${placeName(stage.place)}</h2>
         <p class="vs">${t('versus')} <b>${foes}</b></p>
         <button type="button" class="go" data-act="go" autofocus>${t('fight')}</button>

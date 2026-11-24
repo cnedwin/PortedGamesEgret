@@ -53,6 +53,12 @@ both is the "double kill".
 5. 结算：用时、剩余生命、弹刀、破防、被击中次数折成分数，按甲乙丙丁评等，每营记最好的一次。 · The tally: time, health left, deflections, guards broken and blows taken make the score, marked 甲 乙 丙 丁; the best of each regiment is kept.
 6. 自由对决：任选自己和一到两个对手、任选场景。 · Free duel: any regiment against one or two others, in any place.
 
+**破关行 · Expedition**
+
+选营、配招后沿石门关、赤旗粮仓、照夜内城逐关推进。守兵会随路线迎战，清敌后沿发亮的关门标记进入下一关。粮仓都尉和照夜镇将会在战中换招。初玩可选「行军」，熟悉格挡和走位后可选「死战」。步兵和弓手可沿坡登上高台，在矮墙边朝墙移动并按跳跃也能翻上。
+
+Choose a regiment and make your way through Stonegate Pass, Red Banner Depot and Nightwatch Citadel. Defeat the sentries, then follow the illuminated gate. Both commanders switch stances during the fight. Start with March or choose Veteran for the harder encounters. Foot fighters can use the ramps or vault low ledges by moving into them and jumping.
+
 **手感 · Handling**
 
 - 刀路：鼠标向右划选右侧起刀，向左划选左侧起刀，上划选下劈，下划选突刺。单击模式下，按住左键锁定起刀方向，准星上的金色箭头指示兵器挥入的方向。松开才挥出，蓄满也会继续等候。按住时可用右键收招。经典模式的格挡方向随来招。 · Flick the mouse to choose the side the weapon starts on. Flick up for an overhead cut or down for a thrust. In single-attack mode, hold the left button to lock the line. The gold chevron points into the cut. Release to strike, even at full charge. Right click to feint while readying. Classic guard follows the incoming blow.

@@ -16,6 +16,7 @@ import { createBrain, createBrains } from './sim/brain.mjs';
 import { ORDER, REGIMENTS, loadout, playerLoadout } from './sim/regiments.mjs';
 import { PLACES, grade, planRoad, stageScore } from './sim/road.mjs';
 import { planExpedition } from './sim/expedition.mjs';
+import { floorAt } from './sim/terrain.mjs';
 import { createInput } from './input.mjs';
 import { createHud, createTouchControls } from './hud.mjs';
 import { createScreens, placeName } from './screens.mjs';
@@ -90,7 +91,9 @@ async function main() {
   const mountedPresentation = createMountedPresentation(TICK);
   const mountedContact = createMountedContactPresentation();
   const contactAccent = createContactAccent();
-  const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood });
+  let stage = null;
+  const fx = createEffects(scene, { particles: quality === 'low' ? 0.5 : 1, blood: settings.blood,
+    groundAt: (x, z) => floorAt(stage?.place, x, z) });
 
   const ui = document.querySelector('#ui');
   const hud = createHud(ui, { touch: coarse });
@@ -176,8 +179,7 @@ async function main() {
   }
 
   // ---- places ----------------------------------------------------------------------------------------------
-  let stage = null,
-    stageName = null;
+  let stageName = null;
   async function enter(name) {
     if (stageName === name) return stage;
     const next = await buildPlace(scene, name, { renderer, quality });
@@ -253,12 +255,15 @@ async function main() {
       onSettings: () => openSettings(title), best: marks ? `${t('best')}：${marks}` : '', note });
   }
 
+  let expeditionVeteran = false;
   function choose(expedition = false) {
     mode = 'choose';
     redraw = () => choose(expedition);
     screens.choose({
       selected: run?.regiment ?? 'yulin',
       title: expedition ? t('expedition') : undefined,
+      veteran: expedition ? expeditionVeteran : null,
+      onDifficulty: value => { expeditionVeteran = value; },
       onLook: (r) => lineup && (lineup.focus = ORDER.indexOf(r)),
       onBack: () => {
         if (lineup) lineup.focus = null;
@@ -276,7 +281,7 @@ async function main() {
       chosen: run?.regiment === regiment ? run.loadout : undefined,
       onBack: () => choose(expedition),
       onDone: (picked) => {
-        run = { regiment, loadout: picked, stages: expedition ? planExpedition() : planRoad(regiment),
+        run = { regiment, loadout: picked, stages: expedition ? planExpedition({ veteran: expeditionVeteran }) : planRoad(regiment),
           at: 0, scores: [], stats: runStats(), expedition };
         card();
       }
@@ -357,7 +362,7 @@ async function main() {
     status.mode = 'fight';
     sound?.music('drums');
     play('drum');
-    hud.banner(st.double ? t('oneTwo') : t('fight'), placeName(st.place), 2.2, 'start');
+    hud.banner(st.double ? t('oneTwo') : t('fight'), st.expedition ? t('expeditionClimbTip') : placeName(st.place), 2.2, 'start');
     if (!coarse && !params.has('auto')) input.capture(true);
   }
 

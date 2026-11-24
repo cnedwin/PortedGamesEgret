@@ -11,6 +11,17 @@ test('the route has three successive fields and a fresh roster per run', () => {
   assert.ok(planExpedition()[0].foes.length);
 });
 
+test('march and veteran use the same route with different pressure and distinct boss profiles', () => {
+  const march = planExpedition();
+  const veteran = planExpedition({ veteran: true });
+  assert.deepEqual(veteran.map(stage => stage.place), march.map(stage => stage.place));
+  assert.ok(veteran.every((stage, index) => stage.level > march[index].level));
+  const normalBoss = march[2].units.find(unit => unit.rank === 'boss');
+  const hardBoss = veteran[2].units.find(unit => unit.rank === 'boss');
+  assert.ok(hardBoss.health > normalBoss.health && hardBoss.power > normalBoss.power);
+  assert.deepEqual(normalBoss.phaseSkills, hardBoss.phaseSkills);
+});
+
 test('an expedition exit needs a cleared field and the fighter inside the gate', () => {
   const exit = { x: 0, z: -9, r: 1 };
   const game = createFight({ hero: { regiment: 'tiger', at: [0, -9] }, foes: [{ regiment: 'yulin' }], exit });
@@ -46,7 +57,7 @@ test('the boss wakes at its post and changes stance once after finishing its att
   const game = createFight({ hero: { regiment: 'tiger' }, foes: [boss], exit });
   const warden = game.men[1];
   assert.equal(warden.waiting, true);
-  game.hero.z = -7;
+  game.hero.z = boss.wakeZ - 1;
   step(game, {});
   assert.equal(warden.waiting, false);
   game.hero.z = 7;

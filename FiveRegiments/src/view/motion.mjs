@@ -52,6 +52,7 @@ const signatureBodies = {
   returnSpear: { beats: [SKILLS.returnSpear.release], load: 0.024, absorb: 0.017, lean: 0.076 },
   boar: { beats: [0.60], load: 0.024, absorb: 0.023, lean: 0.093 },
   fan: { beats: [0.42], load: 0.010, absorb: 0.007, lean: -0.043 },
+  backStep: { beats: [0.26], load: 0.015, absorb: 0.006, lean: -0.074 },
   gale: { beats: [0.42], load: 0.015, absorb: 0.009, lean: -0.066 }
 };
 const neutralBody = [0, 0];

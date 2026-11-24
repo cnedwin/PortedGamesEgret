@@ -60,6 +60,7 @@ export const SKILL_PREPARATION = {
   stepCut: { shape: 'sidePlant', radius: 0.94, time: 0.34 },
   boar: { shape: 'boarStep', radius: 0.96, time: 0.31 },
   fan: { shape: 'fanFeathers', radius: 0.92, time: 0.40 },
+  backStep: { shape: 'retreatHeel', radius: 0.86, time: 0.26 },
   gale: { shape: 'galeChannel', radius: 1.02, time: 0.40 }
 };
 
@@ -71,6 +72,7 @@ export const SKILL_RELEASE = {
   boar: { shape: 'boarDrive', anchor: 'edge', radius: 0.79, time: 0.23 },
   wave: { shape: 'waveCast', radius: 1.06, time: 0.16, height: 0.91 },
   fan: { shape: 'fanCast', radius: 0.81, time: 0.17, height: 1.43 },
+  backStep: { shape: 'retreatCast', radius: 0.70, time: 0.18, height: 1.43 },
   gale: { shape: 'galeCast', radius: 0.85, time: 0.19, height: 1.43 }
 };
 

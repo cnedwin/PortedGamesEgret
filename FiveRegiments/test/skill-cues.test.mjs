@@ -54,6 +54,7 @@ test('release and confirmed hits use skill-specific cues without expanding the p
     { type: 'skillBeat', id: 'charge' }, { type: 'skillBeat', id: 'spin' }, { type: 'skillBeat', id: 'swing', part: 1 },
     { type: 'skillBeat', id: 'returnSpear' }, { type: 'skillBeat', id: 'boar', part: 1 },
     { type: 'loose', skill: 'wave', yaw: 0 }, { type: 'loose', skill: 'fan', yaw: 0 }, { type: 'loose', skill: 'gale', yaw: 0 },
+    { type: 'loose', skill: 'backStep', yaw: 0 },
     { type: 'slam', skill: 'down', at: [2.2, -0.8], radius: 2.8 }
   ]) {
     fx.event({ time: 0.55, who: 'hero', ...event }, where, blade);
@@ -61,7 +62,7 @@ test('release and confirmed hits use skill-specific cues without expanding the p
     shapes.add(cues()[0].geometry);
     fx.clear();
   }
-  assert.equal(shapes.size, 9, 'release silhouettes stay distinct');
+  assert.equal(shapes.size, 10, 'release silhouettes stay distinct');
   fx.event({ type: 'whiff', skill: 'bull', who: 'hero', line: 'T' }, where, blade);
   assert.equal(cues().length, 0, 'missing a body does not show a hit flash');
   fx.event({ type: 'hit', skill: 'bull', who: 'foe0', by: 'hero', line: 'T', damage: 270 }, where, blade);
