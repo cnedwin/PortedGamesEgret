@@ -138,6 +138,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     mesh.count=0;mesh.pickable=false;mesh.frustumCulled=false;scene.addChild(mesh);own.push(mesh);return mesh;
   };
   const routeLines=makeOrderLines(0x9bd5cf),attackLine=makeOrderLines(0xe38462);
+  const flankOwn = makeOrderLines(0xebc972), flankFoe = makeOrderLines(0xe68065);
+  const flankCues = [null, null];
   const previewLines=makeOrderLines(0xe8cb85),previewCells=makeCells(0xe8cb85,.95,true);
   previewLines.name='battle-pending-route';previewCells.name='battle-pending-order';
   routeLines.name='battle-route-lines';attackLine.name='battle-target-line';
@@ -443,6 +445,15 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
     for (; seenEvents < b.events.length; seenEvents++) {
       const ev = b.events[seenEvents];
       if (ev.kind === 'tactic') showTactic(b.units[ev.unit], ev.tactic, ev.target);
+      if (ev.kind === 'flankContact' && pos[ev.at]) {
+        const ours = ev.side === side;
+        const lines = ours ? flankOwn : flankFoe;
+        const at = pos[ev.at];
+        flankCues[ours ? 0 : 1] = time + 1.4;
+        lines.count = ev.approaches.reduce((count, from) => orderSegment(lines, count, from, ev.at), 0);
+        pulse(ev.at, ours ? 0xebc972 : 0xe68065, 'wave', 1.5);
+        floatText(at.x, at.y + 2, at.z, nm({ zh: '夹击', en: 'Pincer' }), 'hit');
+      }
       if (ev.kind === 'rout') { const u=b.units[ev.unit];if(u?.pos>=0){floatText(shown[u.id].x,shown[u.id].y+2,shown[u.id].z,nm(UNITS[u.kind]),'rout');pulse(u.pos,0xa88e78,'wave',1.7);} }
       if (ev.kind === 'gateOpen' && gateMesh) {
         if(!siegeSample)gateMesh.setRotation(Math.PI / 2.2, gateYaw, 0);
@@ -455,6 +466,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       }
       on.event?.(ev);
     }
+    if (flankCues[0] !== null && time >= flankCues[0]) { flankOwn.count = 0; flankCues[0] = null; }
+    if (flankCues[1] !== null && time >= flankCues[1]) { flankFoe.count = 0; flankCues[1] = null; }
     if(gateMesh&&siegeSample){
       gateImpact=Math.max(0,gateImpact-dt);
       if(b.gate.open)gateFall=Math.min(1,gateFall+dt/(isCalm() ? .2 : .7));

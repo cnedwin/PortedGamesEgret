@@ -929,28 +929,34 @@ const BUILD = {
     const report = args.report ?? result.report;
     const mine = setup.factions.indexOf(s.player);
     const won = result.winner === mine;
+    const aftermath = args.aftermath;
     const losses = [0, 1].map((k) => setup.units.reduce((x, u, i) => (u.side === k ? x + u.troops - result.units[i].troops : x), 0));
     const fates = [];
     setup.units.forEach((u, i) => {
       for (const [g, fate] of Object.entries(result.units[i].fates ?? {})) if (fate === 'killed') fates.push(t('fateKilled', { name: generalName(g) }));
       else if (fate === 'captured') fates.push(t('fateCaptured', { name: generalName(g) }));
     });
-    const pending = args.aftermath && (args.aftermath.pending.battles || args.aftermath.pending.captives);
-    const returnButton = button(args.aftermath
-      ? pair(args.aftermath.ending ? ['查看战役结局', 'View campaign ending'] : pending ? ['处理后续（地图已暂停）', 'Continue decisions (campaign paused)'] : ['返回大地图（已暂停）', 'Return to paused campaign'])
-      : t('ok'), () => args.aftermath && typeof app.returnFromBattle === 'function'
+    const pending = aftermath && (aftermath.pending.battles || aftermath.pending.captives);
+    const returnButton = button(aftermath
+      ? pair(aftermath.ending ? ['查看战役结局', 'View campaign ending'] : pending ? ['处理后续（地图已暂停）', 'Continue decisions (campaign paused)'] : ['返回大地图（已暂停）', 'Return to paused campaign'])
+      : t('ok'), () => aftermath && typeof app.returnFromBattle === 'function'
         ? app.returnFromBattle(args) : app.dialogs.close(true), { kind: 'main' });
     returnButton.dataset.k = 'campaign-return';
+    const stamp = h('div.stamp', won ? t('stampWon') : t('stampLost'));
+    const reason = h('p.note', battleOutcomeReason(result, mine >= 0 ? mine : null, getLanguage()) + ' · ' + t('secondsN', { n: result.seconds }));
+    const casualties = h(aftermath ? 'div.campaignResultLosses' : 'div.grid',
+      stat(t('ourLosses'), num(losses[Math.max(0, mine)])), stat(t('theirLosses'), num(losses[1 - Math.max(0, mine)])));
+    const overview = aftermath ? h('section.campaignResultSummary', { 'aria-label': pair(['战果一览', 'Battle outcome summary']) },
+      h('div.campaignResultLead', stamp, reason),
+      campaignResultControl(s, aftermath), casualties, siegeAftermathActions(app, args)) : [stamp, reason, casualties];
     return {
       title: won ? t('victory') : t('defeat'),
-      className: 'result ' + (won ? 'won' : 'lost'),
+      className: 'result ' + (won ? 'won' : 'lost') + (aftermath ? ' campaignResult' : ''),
       blocking: true,
       body: [
-        h('div.stamp', won ? t('stampWon') : t('stampLost')),
-        h('p.note', battleOutcomeReason(result,mine>=0?mine:null,getLanguage()) + ' · ' + t('secondsN', { n: result.seconds })),
-        h('div.grid', stat(t('ourLosses'), num(losses[Math.max(0, mine)])), stat(t('theirLosses'), num(losses[1 - Math.max(0, mine)]))),
+        overview,
         h('p.dim.small', pair(['上方是战场减员，含伤兵；回归、驻军分配与撤退均已按原规则结算。', 'Losses above include wounded troops. Recovery, garrison allocation and retreat have already been settled by the campaign rules.'])),
-        args.aftermath ? campaignAftermathPanel(app, args.aftermath, siegeAftermathActions(app, args)) : null,
+        aftermath ? campaignAftermathPanel(aftermath) : null,
         report?.units?.length ? battleReport(s, setup, report, mine) : null,
         fates.length ? h('ul.fates', fates.map((x) => h('li', x))) : null
       ],
@@ -975,13 +981,23 @@ const BUILD = {
   }
 };
 
-function campaignAftermathPanel(app, aftermath, nextActions) {
-  const s = app.state;
-  const place = aftermath.place;
-  const owner = place?.owner ? factionName(s, place.owner) : t('noOwner');
-  const placeLabel = place && (place.changed
-    ? place.owner === s.player ? pair(['城池已占领：', 'Captured: ']) : pair(['城池易主：', 'Control changed: '])
-    : pair(['战场归属：', 'Battlefield control: ']));
+function campaignResultControl(state, aftermath) {
+  const { place, won, armies } = aftermath;
+  if (!place) return null;
+  const owner = place.owner ? factionName(state, place.owner) : t('noOwner');
+  let label = pair(['战场归属', 'Battlefield control']);
+  if (place.changed && place.owner === state.player) label = pair(['城池已占领', 'Captured']);
+  else if (place.changed && place.beforeOwner === state.player) label = pair(['城池失守', 'Lost']);
+  else if (place.changed) label = pair(['城池易主', 'Control changed']);
+  else if (won && place.owner !== state.player && armies.some(army => army.disposition === 'besieging')) {
+    label = pair(['赢下交战，仍在围城', 'Engagement won · Siege continues']);
+  }
+  return h('div.campaignResultControl', h('strong', label),
+    h('span', h('b', placeName(place.id)), ' · ', owner),
+    h('small', pair(['现驻军 ', 'Current garrison: ']) + num(place.garrison)));
+}
+
+function campaignAftermathPanel(aftermath) {
   const disposition = army => {
     if (army.disposition === 'dissolved') return pair(['军团已撤编，地图上已无该军团。', 'This army has been dissolved and is no longer on the map.']);
     if (army.disposition === 'besieging') return pair(['继续围攻 ', 'Continuing the siege of ']) + placeName(army.besieging);
@@ -991,11 +1007,6 @@ function campaignAftermathPanel(app, aftermath, nextActions) {
   };
   return h('section.campaignAftermath',
     h('h3', pair(['战后局势', 'Campaign aftermath'])),
-    place ? h('p.campaignControl', placeLabel, h('b', placeName(place.id)), ' · ', owner,
-      h('small', pair(['现驻军 ', 'Current garrison: ']) + num(place.garrison))) : null,
-    nextActions,
-    aftermath.won && place?.owner !== s.player && aftermath.armies.some(army => army.disposition === 'besieging')
-      ? h('p.campaignNext', pair(['赢下了这场交战，城池尚未易主；主军仍在围城。', 'The engagement was won, but the town has not changed hands. Your army is continuing the siege.'])) : null,
     aftermath.armies.length ? h('ul.campaignSurvivors', aftermath.armies.map(army => h('li',
       h('div', h('b', army.commander ? generalName(army.commander) : t('captain')), h('span', disposition(army))),
       army.disposition === 'dissolved' ? null : h('small', pair(['地图现兵力 ', 'Current army: ']) + num(army.troops) +

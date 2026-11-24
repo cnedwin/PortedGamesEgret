@@ -629,9 +629,20 @@ function defencePower(b, u, from) {
 /** Damage from one blow: soldiers lost by the defender. */
 function blow(b, a, d, scale = 1) {
   const height = TERRAIN[b.tiles[a.pos]].high && !TERRAIN[b.tiles[d.pos]].high ? 1.15 : 1;
-  const isFlank = flanked(b, d);
+  const flanking = battleFlankers(b, d);
+  const isFlank = flanking.length === 2;
   const flank = isFlank ? 1 + 0.15 + FORMATIONS[a.formation].flank : 1;
-  if (a.lastAttack?.time === b.time && a.lastAttack.target === d.id) a.lastAttack.flank = isFlank;
+  if (a.lastAttack?.time === b.time && a.lastAttack.target === d.id) {
+    a.lastAttack.flank = isFlank;
+    // One battlefield announcement per side, positioned at the actual hit.
+    if (isFlank && supportsIntents(b) && !b.flankCued?.[a.side]) {
+      (b.flankCued ??= [false, false])[a.side] = true;
+      b.events.push({
+        t: b.time, kind: 'flankContact', side: a.side, unit: a.id, target: d.id, at: d.pos,
+        approaches: flanking.map(id => b.units[id].pos)
+      });
+    }
+  }
   const hide = TERRAIN[b.tiles[a.pos]].hide || TERRAIN[b.tiles[a.pos]].high ? 1 + a.fx.ambush / 100 : 1;
   const ranged = distance(a.pos, d.pos) > 1;
   const charge = !ranged && a.charging ? 1 + 0.25 + a.fx.charge / 100 : 1;

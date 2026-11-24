@@ -5,8 +5,6 @@
 .campaignBriefing .stat .v { font-size: 17px; }
 .campaignBriefingRhythm { color: #efe4c8; }
 .campaignAftermath { margin: 14px 0; }
-.campaignControl { color: #efdba8; line-height: 1.6; }
-.campaignControl small { display: block; color: #c5ceb9; }
 .campaignSurvivors { list-style: none; padding: 0; margin: 10px 0; display: grid; gap: 8px; }
 .campaignSurvivors li { padding: 8px 10px; background: #122b2b80; border: 1px solid #9b8b5e3d; }
 .campaignSurvivors li > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 12px; }
@@ -42,6 +40,41 @@
 .siegeAftermathActions h4 { margin: 0 0 6px; }
 .siegeAftermathActions p { margin: 5px 0 0; line-height: 1.45; }
 .siegeAftermathActions .btn, .siegeAsk .dlgFoot .btn { min-height: 44px; }
+
+.campaignResultSummary { display: grid; gap: 10px; padding: 4px 0 8px; }
+.campaignResultLead { display: flex; align-items: center; gap: 12px; }
+.campaignResultLead .stamp { flex: none; margin: 0 3px; padding: 3px 8px; font-size: 21px; }
+.campaignResultLead .note { margin: 0; line-height: 1.35; }
+.campaignResultControl {
+  display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 10px; row-gap: 2px; padding: 7px 9px;
+  border-left: 3px solid #c3a162; background: #263b35a3; color: #efe4c8; line-height: 1.45;
+}
+.campaignResultControl strong { color: #ffe5ab; }
+.campaignResultControl small { color: #c5ceb9; }
+.campaignResultLosses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.campaignResultLosses .stat {
+  display: flex; flex-wrap: wrap; gap: 2px 9px; align-items: baseline;
+  padding: 4px 8px; border-top: 1px solid #bfa56c70;
+}
+.campaignResultLosses .v { font-size: 17px; }
+.campaignResultSummary .siegeAftermathActions {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 4px 9px; margin: 0;
+  padding: 4px 0 0; border: 0; border-top: 1px solid #bfa56c70; background: none;
+}
+.campaignResultSummary .siegeAftermathActions h4 { margin: 0; }
+.campaignResultSummary .siegeAftermathActions p { flex-basis: 100%; margin: 0; }
+.campaignResultSummary .siegeAftermathActions .row { gap: 4px; }
+.campaignResult .dlgFoot .btn { min-height: 44px; }
+@media (orientation: landscape) and (max-height: 420px) {
+  .campaignResult .dlgHead { padding-block: 5px; margin-bottom: 4px; }
+  .campaignResult .dlgFoot { padding-block: 5px; }
+  .campaignResultSummary { gap: 5px; padding: 3px 0 5px; }
+  .campaignResultLead .stamp { font-size: 16px; }
+  .campaignResultLead .note { font-size: 12px; }
+  .campaignResultControl { padding-block: 4px; font-size: 13px; }
+  .campaignResultLosses .stat { padding-block: 2px; }
+  .campaignResultSummary .siegeAftermathActions .btn { padding: 4px 8px; font-size: 12px; }
+}
 .siegeWait { position: absolute; top: calc(var(--campaign-hud-bottom, 94px) + 42px); left: 50%; z-index: 8; transform: translateX(-50%); box-sizing: border-box; width: min(330px, calc(100% - 28px)); max-height: calc(100% - var(--campaign-hud-bottom, 94px) - 55px); overflow: auto; background: #1a302ff5; border: 1px solid #bca36d; border-radius: 4px; box-shadow: 0 8px 24px #06101572; pointer-events: auto; color: #fff1d3; }
 .siegeWait[hidden] { display: none; }
 .siegeWait summary { padding: 10px 12px; min-height: 44px; box-sizing: border-box; cursor: pointer; font: 700 13px/1.6 var(--song); }

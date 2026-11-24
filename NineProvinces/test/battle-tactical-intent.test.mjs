@@ -73,6 +73,15 @@ test('hit records and command-plan combat previews use the same directional flan
     assert.equal(attacker.record.flankHits, Number(expected));
     assert.equal(attacker.lastAttack.flank, expected);
     assert.equal(preview.tags.includes('flank'), expected);
+    const cues = b.events.filter(event => event.kind === 'flankContact');
+    assert.equal(cues.length, Number(expected));
+    if (expected) {
+      assert.deepEqual(cues[0].approaches, [attacker.pos, b.units[2].pos]);
+      assert.equal(cues[0].at, defender.pos);
+      attacker.cd = 0;
+      stepBattle(b, .1, 0);
+      assert.equal(b.events.filter(event => event.kind === 'flankContact').length, 1);
+    }
   }
 });
 

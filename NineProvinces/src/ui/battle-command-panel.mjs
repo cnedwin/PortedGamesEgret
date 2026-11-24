@@ -68,13 +68,13 @@ export function renderBattleCommandPanel({
         commandButton('stage-order', replacing ? pair(['替换军令', 'Replace order']) : pair(['加入军令', 'Queue order']), onQueue,
           { kind:'main', why:preview.valid ? null : battleCommandPlanReason(preview.reason ?? 'unavailable') }),
         commandButton('cancel-order', pair(['取消预览', 'Cancel preview']), onCancel))) : null,
-    plans.length ? h('div.bPlanQueue',
-      h('p.bPlanCount', { role:'status' }, pair(['待下达 ', 'Queued: ']) + num(plans.length) + pair([' 条军令', ' orders'])),
+    plans.length ? h('div.bPlanQueue' + (preview ? '.withPreview' : ''),
+      h('header.bPlanQueueHead',
+        h('p.bPlanCount', { role:'status' }, pair(['待下达 ', 'Queued: ']) + num(plans.length) + pair([' 条军令', ' orders'])),
+        h('div.bPlanButtons',
+          commandButton('advance-orders', pair(['确认并推进3秒', 'Confirm + run 3s']), onAdvance, { kind:'main', why }),
+          onContinue ? commandButton('dispatch-orders', pair(['确认并继续', 'Confirm + continue']), onContinue, { why }) : null)),
       cannotDispatch ? h('p.bPlanReason', { role:'status' }, cannotDispatch) : null,
-      h('div.bPlanButtons',
-        commandButton('advance-orders', pair(['确认并推进3秒', 'Confirm + run 3s']), onAdvance, { kind:'main', why }),
-        onContinue ? commandButton('dispatch-orders', pair(['确认并继续', 'Confirm + continue']), onContinue, { why }) : null),
-      h('p.bPlanHint.bPlanAdvanceHint', advanceHint || pair(['最多推进3秒，遇关键时刻可提前暂停。', 'Runs up to 3 seconds and may pause sooner at a milestone.'])),
       h('ul.bPlanList', plans.map(plan => {
         const unit = unitName(plan.unit);
         return h('li.bPlanItem', { dataset:{ k:'plan-' + plan.unit } },
@@ -82,5 +82,6 @@ export function renderBattleCommandPanel({
           commandButton('remove-order-' + plan.unit, pair(['移除', 'Remove']), () => onRemove(plan.unit),
             { accessible:pair(['移除 ', 'Remove order for ']) + unit }));
       })),
+      h('p.bPlanHint.bPlanAdvanceHint', advanceHint || pair(['最多推进3秒，遇关键时刻可提前暂停。', 'Runs up to 3 seconds and may pause sooner at a milestone.'])),
       summary ? h('p.bPlanHint', summary) : null) : null);
 }
