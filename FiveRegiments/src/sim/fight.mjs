@@ -405,7 +405,7 @@ function resolve(game, man, target, spec) {
     const back = target.r.blows.R.damage * SKILLS.counter.damage * critical(game, target, man);
     hurt(game, man, toll(game, man, back).amount, target, { line: 'R', skill: 'counter' });
     if (man.alive && !man.mounted) stagger(man, 0.45, 'flinch');
-    return;
+    return 'deflect';
   }
   const guarding = target.guard && front && !spec.unguardable && target.st > 0;
   const exact = guarding && target.guardLine === facing(line);
@@ -420,7 +420,7 @@ function resolve(game, man, target, spec) {
       rouse(target, RAGE.deflected);
       emit(game, 'deflect', { who: target.id, by: man.id, line, skill: spec.skill, ...contact });
       stagger(man, spec.heavy ? 0.85 : 0.65, 'reel');
-      return;
+      return 'deflect';
     }
     // A shield taken on the wrong line still lets some of the blow through to the arm behind it.
     if (!exact) hurt(game, target, toll(game, target, damage * 0.25, spec.kind ?? kindOf(line), partOf(line)).amount, man, { line, graze: true, skill: spec.skill, ...contact });
@@ -989,8 +989,8 @@ function runSkill(game, man, act, dt) {
           act.metAt = act.t;
           const guarded = hit.guard;
           const rider = hit.mounted;
-          resolve(game, man, hit, { line: 'T', damage: base * s.damage, push: 1.2, stun: 0.3, skill: 'bull' });
-          if (hit.alive) {
+          const outcome = resolve(game, man, hit, { line: 'T', damage: base * s.damage, push: 1.2, stun: 0.3, skill: 'bull' });
+          if (hit.alive && outcome !== 'deflect') {
             if (rider) unhorse(game, hit, man);
             hit.daze = Math.max(hit.daze, guarded ? s.dazeGuarded : s.daze);
             hit.guard = false;

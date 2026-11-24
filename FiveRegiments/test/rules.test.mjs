@@ -802,6 +802,30 @@ test('a Bull Charge leaves a man unable to attack or defend for 4 s (2 s if he g
   assert.equal(rider.f.mounted, false);
 });
 
+test('only a timely exact deflect of Bull Charge keeps the rider mounted', () => {
+  for (const [line, fresh] of [['T', true], ['T', false], ['R', true], [null, false]]) {
+    const { game, h, f } = pair('yulin', 'plume', { hero: { skills: ['bull'] } });
+    f.z = h.z - 1.3;
+    Object.assign(f.horse, { x: f.x, z: f.z });
+    if (line) Object.assign(f, { guard: true, guardLine: line, guardAt: fresh ? 0 : -1 });
+
+    const contact = run(game, (i) => ({ hero: { skill: i === 0 ? 0 : -1 }, foe0: { guard: Boolean(line), line } }), 0.3);
+    const deflected = line === 'T' && fresh;
+    assert.equal(contact.some(e => e.type === 'deflect' && e.skill === 'bull'), deflected);
+    assert.equal(contact.some(e => e.type === 'thrown' && e.who === f.id), !deflected);
+    assert.equal(contact.some(e => e.type === 'daze' && e.who === f.id), !deflected);
+    assert.equal(f.mounted, deflected);
+    if (deflected) {
+      assert.equal(f.daze, 0);
+      assert.equal(f.hp, f.maxHp);
+      assert.equal(f.horse.hp, f.horse.maxHp);
+    } else if (line === 'T') {
+      assert.ok(contact.some(e => e.type === 'block' && e.skill === 'bull'));
+      assert.equal(f.hp, f.maxHp, 'ordinary exact guard still stops direct damage');
+    } else assert.ok(contact.some(e => e.type === 'hit' && e.skill === 'bull' && e.damage > 0));
+  }
+});
+
 test('a single mount press after Bull Charge waits through the fall and remounts a living horse', () => {
   const { game, h, f } = pair('plume', 'yulin', { foe: { skills: ['bull', 'charge'] } });
   Object.assign(h, { x: 0, z: 3.5 });

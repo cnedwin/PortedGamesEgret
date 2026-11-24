@@ -271,7 +271,7 @@ export const SKILLS = {
     text: { zh: '向前冲锋，冲到身前突刺。', en: 'A charge forward into a thrust.' } },
   bull: { owner: 'yulin', name: { zh: '蛮牛冲击', en: 'Bull Charge' }, cool: 15, cost: stamina(75), range: 8, damage: 1.0, daze: 4, dazeGuarded: 2,
     wind: 0.1, run: 0.62, recover: 0.35,
-    text: { zh: '冲撞：被撞中的人 4 秒内无法攻击和防御（格挡时更短）；撞中骑兵会使其落马。', en: 'A barging charge: the man struck can neither attack nor defend for 4 s (less if he was guarding); a rider struck is unhorsed.' } },
+    text: { zh: '冲撞：命中后 4 秒内无法攻击和防御，普通格挡减为 2 秒。骑兵及时弹反可留在马上。', en: 'A charge that dazes for 4 s on hit or 2 s against an ordinary guard. A timed deflection lets a rider stay mounted.' } },
   counter: { owner: 'yulin', name: { zh: '格挡反击', en: 'Parry and Counter' }, cool: 12, cost: stamina(62), hold: 1.5, damage: 2.6,
     text: { zh: '格挡住攻击后立即反击，伤害 260%。', en: 'A blow caught on the guard is answered at once, for 260%.' } },
   turning: { owner: 'yulin', name: { zh: '回身斩', en: 'Spinning Slash' }, cool: 10, cost: 22, damage: 2.8, reach: 2.4,
