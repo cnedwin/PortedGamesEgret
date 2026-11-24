@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { createFight, facing, spinGuardWindow, step, TICK, DEFLECT } from '../src/sim/fight.mjs';
 import { createBrains } from '../src/sim/brain.mjs';
-import { ARTS, DAMAGE, ORDER, REGIMENTS, SKILLS, TALENTS, loadout } from '../src/sim/regiments.mjs';
+import { ARTS, DAMAGE, ORDER, REGIMENTS, SKILLS, TALENTS, loadout, playerLoadout } from '../src/sim/regiments.mjs';
 
 /** Two men a blade's length apart, facing each other. */
 function pair(a = 'yulin', b = 'tiger', extra = {}) {
@@ -282,6 +282,96 @@ test('Tiger Step cancellation is opt-in for the player and stays specific to Spi
   run(swing.game, {}, 0.76);
   step(swing.game, { hero: { guard: true, skillGuardCancel: true } });
   assert.equal(swing.h.act?.id, 'swing');
+});
+
+function spearDuel(distance, mounted = false) {
+  const duel = pair('plume', 'yulin', { hero: { mounted, skills: ['returnSpear', 'boar'] } });
+  duel.f.z = duel.h.z - distance;
+  return duel;
+}
+
+test('Silver Wing gets Returning Spear and Boar Rush by default only as a player', () => {
+  assert.deepEqual(playerLoadout('plume').skills, ['returnSpear', 'boar']);
+  assert.deepEqual(loadout('plume').skills, ['stepCut', 'boar']);
+  assert.deepEqual(playerLoadout('plume', { skills: ['stepCut', 'boar'] }).skills, ['stepCut', 'boar']);
+  for (const regiment of ORDER.filter((id) => id !== 'plume')) assert.deepEqual(playerLoadout(regiment), loadout(regiment));
+});
+
+test('Returning Spear sidesteps before the pivot and lands a single directional thrust', () => {
+  const { game, h, f } = spearDuel(2);
+  const [x, z, stamina] = [h.x, h.z, h.st];
+  const cast = step(game, { hero: { skill: 0 } });
+  assert.ok(cast.some((e) => e.type === 'skill' && e.id === 'returnSpear'));
+  assert.equal(h.st, stamina - 18);
+  assert.equal(h.cool[0], 10);
+  assert.equal(h.act?.stepSide, 1);
+  const sideStep = run(game, {}, 0.25);
+  assert.ok(h.x > x + 0.8 && h.z > z + 0.24);
+  assert.equal(f.hp, f.maxHp);
+  assert.ok(sideStep.some((e) => e.type === 'skillBeat' && e.id === 'returnSpear' && e.part === -1));
+  const turnAndHit = run(game, {}, 0.4);
+  const contacts = turnAndHit.filter((e) => e.type === 'hit');
+  assert.equal(contacts.length, 1);
+  const [hit] = contacts;
+  assert.equal(hit.skill, 'returnSpear');
+  assert.equal(hit.line, 'T');
+  assert.ok(Math.abs(hit.time - 0.55) < TICK);
+  assert.ok(turnAndHit.some((e) => e.type === 'skillBeat' && e.id === 'returnSpear' && e.part === 0 && e.time === hit.time));
+  assert.equal(f.maxHp - f.hp, hit.damage);
+  assert.equal(h.act?.id, 'returnSpear');
+  assert.ok(!run(game, {}, 0.3).some((e) => e.type === 'hit'));
+  assert.equal(h.act, null);
+});
+
+test('Returning Spear mirrors its step from cast input and thrusts toward the point read on cast', () => {
+  const { game, h, f } = spearDuel(2);
+  const x = h.x;
+  step(game, { hero: { skill: 0, move: [-1, 0] } });
+  assert.equal(h.act?.stepSide, -1);
+  Object.assign(f, { x: 1.35, z: -0.3 });
+  run(game, {}, 0.26);
+  assert.ok(h.x < x - 0.8);
+  const events = run(game, {}, 0.6);
+  assert.ok(events.some((e) => e.type === 'whiff' && e.skill === 'returnSpear'));
+  assert.equal(f.hp, f.maxHp);
+});
+
+test('Returning Spear uses ordinary thrust range and directional guard', () => {
+  const guarded = spearDuel(2);
+  Object.assign(guarded.f, { guard: true, guardAt: -5, guardLine: 'T' });
+  const blocked = run(guarded.game, (i) => ({ hero: { skill: i === 0 ? 0 : -1 }, foe0: { guard: true, line: 'T' } }), 1);
+  assert.ok(blocked.some((e) => e.type === 'block' && e.who === 'foe0' && e.line === 'T'));
+  assert.equal(guarded.f.hp, guarded.f.maxHp);
+
+  const far = spearDuel(6);
+  const whiff = run(far.game, (i) => ({ hero: { skill: i === 0 ? 0 : -1 } }), 1);
+  assert.ok(whiff.some((e) => e.type === 'whiff' && e.skill === 'returnSpear' && e.line === 'T'));
+  assert.equal(far.f.hp, far.f.maxHp);
+});
+
+test('Returning Spear can be interrupted by a hit during its sidestep', () => {
+  const { game, h, f } = spearDuel(1.2);
+  const cast = step(game, { hero: { skill: 0 } });
+  assert.ok(cast.some((e) => e.type === 'skill' && e.id === 'returnSpear'));
+  const blow = f.r.blows.O;
+  f.act = { kind: 'swing', line: 'O', t: blow.wind - TICK * 0.5, wind: blow.wind, held: 0, struck: false, blow, reach: blow.reach, recover: blow.recover };
+  const hit = step(game, {}).find((e) => e.type === 'hit' && e.who === 'hero');
+  assert.ok(hit?.damage > 0);
+  assert.equal(h.act, null);
+  assert.ok(!run(game, {}, 1).some((e) => e.type === 'hit' && e.skill === 'returnSpear'));
+});
+
+test('Returning Spear needs a fresh skill press on foot after dismount', () => {
+  const { game, h } = spearDuel(4, true);
+  assert.ok(step(game, { hero: { skill: 0 } }).some((e) => e.type === 'onFoot'));
+  assert.equal(h.cool[0], 0);
+  step(game, { hero: { mount: true } });
+  const waiting = run(game, { hero: { skill: 0 } }, 1);
+  assert.ok(waiting.some((e) => e.type === 'dismounted'));
+  assert.ok(!h.mounted && !waiting.some((e) => e.type === 'skill'));
+  step(game, {});
+  assert.ok(step(game, { hero: { skill: 0 } }).some((e) => e.type === 'skill' && e.id === 'returnSpear'));
+  assert.equal(h.skills[1], 'boar');
 });
 
 test('only the right line holds a guard; a wrong line lets half through', () => {

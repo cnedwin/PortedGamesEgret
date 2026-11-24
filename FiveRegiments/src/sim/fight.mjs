@@ -704,6 +704,11 @@ function startSkill(game, man, slot, input) {
   const target = nearestFoe(game, man);
   man.act = { kind: 'skill', id, t: 0, slot, hits: 0, fresh, aim: input.aim ?? (target ? { yaw: bearing(man, target), pitch: 0.03 } : { yaw: man.face, pitch: 0.03 }) };
   if (target && ['leap', 'drop', 'boar', 'bull', 'charge', 'stepCut'].includes(id)) man.face = bearing(man, target);
+  if (id === 'returnSpear') {
+    const [mx, mz] = input.move ?? [0, 0];
+    const rightward = -Math.cos(man.face) * mx + Math.sin(man.face) * mz;
+    Object.assign(man.act, { launchFace: man.face, stepSide: rightward < -0.15 ? -1 : 1, turnTarget: target ? [target.x, target.z] : null });
+  }
   if (id === 'flowers') man.act.walk = 1 - s.slow;
   if (id === 'whirl') man.act.walk = 0.5;
   if (id === 'shout' || id === 'mist' || id === 'counter') man.act.walk = 0.25;
@@ -975,6 +980,37 @@ function runSkill(game, man, act, dt) {
       if (act.t > 0.9) man.act = null;
       break;
     // ---- Silver Wing Guard, on foot ----
+    case 'returnSpear': {
+      const ease = (elapsed, duration) => {
+        const t = clamp(elapsed / duration, 0, 1);
+        return t * t * (3 - 2 * t);
+      };
+      if (act.t - dt < s.stepTime) {
+        const { launchFace, stepSide } = act;
+        const progress = ease(act.t, s.stepTime);
+        const pace = (progress - ease(act.t - dt, s.stepTime)) / dt;
+        man.vx = (-Math.cos(launchFace) * stepSide * s.sideDistance - Math.sin(launchFace) * s.backDistance) * pace;
+        man.vz = (Math.sin(launchFace) * stepSide * s.sideDistance - Math.cos(launchFace) * s.backDistance) * pace;
+        man.face = wrap(launchFace - stepSide * 0.24 * progress);
+        act.moving = true;
+        if (at(s.stepTime)) beat(-1);
+      } else {
+        // Turn toward the point read on cast, using the position the sidestep actually reached.
+        if (act.pivotFrom === undefined) {
+          act.pivotFrom = man.face;
+          act.pivotTo = act.turnTarget ? Math.atan2(act.turnTarget[0] - man.x, act.turnTarget[1] - man.z) : act.launchFace;
+        }
+        const progress = ease(act.t - s.stepTime, s.turnTime - s.stepTime);
+        man.face = wrap(act.pivotFrom + wrap(act.pivotTo - act.pivotFrom) * progress);
+      }
+      if (at(s.release)) {
+        beat();
+        const thrust = man.r.blows.T;
+        strike(game, man, { line: 'T', damage: thrust.damage * s.damage, reach: s.reach, arc: thrust.arc, skill: 'returnSpear' });
+      }
+      if (act.t > s.duration) man.act = null;
+      break;
+    }
     case 'stepCut': {
       // A step in, then the cut.
       const run = 0.26;
@@ -1469,6 +1505,7 @@ function stepMan(game, man, input, dt) {
     let rate = man.turn;
     if (act?.kind === 'swing') rate = act.struck ? 1.2 : act.t < act.wind ? 4 : 2;
     if (act?.kind === 'skill' && !['flowers', 'whirl', 'counter', 'gale'].includes(act.id)) rate = 1.5;
+    if (act?.kind === 'skill' && act.id === 'returnSpear') rate = 0;
     if (man.mounted) rate = act?.kind === 'swing' && act.struck ? 1.5 : 7;
     if (act?.kind === 'lance') rate = 0;
     const d = wrap(input.face - man.face);

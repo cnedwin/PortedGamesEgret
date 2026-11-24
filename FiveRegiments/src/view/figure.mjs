@@ -6,7 +6,7 @@ import { Mesh3D, Object3D, createCylinderGeometry3D, createStandardMaterial3D } 
 import { ARMS, createWeapon } from './weapons.mjs';
 import { add, axisAngle, basis, cross, dot, len, lerp3, mul, qinv, qmul, qrot, slerp, sub, unit } from './rig.mjs';
 import { createRig } from './rig.mjs';
-import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, swingPhase, TIGER_SWORD } from './motion.mjs';
+import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
 import { bowReleasePose } from './bow-release.mjs';
 
@@ -338,6 +338,27 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       }
       case 'stepCut':
         return stroke('R', 0.26, 0.38, 0.61, 0.84, 0.12);
+      case 'returnSpear': {
+        // The fight turns the whole character as his step lands. Layer the shaft and body load onto that turn.
+        const side = -(act.stepSide ?? 1);
+        const phase = returnSpearPhase(t);
+        const index = Math.min(4, Math.floor(phase));
+        const amount = phase - index;
+        const poses = [
+          style.ready,
+          P([-0.33, -0.3, -0.025], [0.09 + 0.06 * side, 0.22, 1], { t: 0.14 * side, n: -0.06 }),
+          P([-0.37, -0.27, -0.26], [0.085 + 0.06 * side, 0.09, 1], { t: -0.18 * side, n: -0.1 }),
+          P([-0.34, -0.16, 0.405], [0, 0.035, 1], { n: 0.21, d: 0.016, f: 0.17 }),
+          P([-0.34, -0.25, 0.075], [0.08 + 0.05 * side, 0.08, 1], { t: -0.1 * side, n: 0.02, f: 0.048 }),
+          style.ready
+        ];
+        const stances = [
+          [0, 0, 0], [0.065 * side, -0.045, 0.022], [0.035 * side, -0.058, 0.025],
+          [-0.055 * side, 0.065, 0.033], [-0.024 * side, 0.032, 0.024], [0, 0, 0]
+        ];
+        return { pose: mixPose(poses[index], poses[index + 1], amount), blend: 60,
+          stance: lerp3(stances[index], stances[index + 1], amount) };
+      }
       case 'boar': {
         const thrust = stroke('T', 0.46, 0.6, 0.83, 1);
         const travel = pulse(0, 0.12, 0.37, 0.47);
@@ -431,7 +452,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const act = man.act;
     if (state.lastAct !== act) {
       const fromSpinGuard = state.spinBrace > 0 && act?.kind === 'skill' && act.id === 'swing';
-      state.entryPose = longAxe || fromSpinGuard ? state.pose : null;
+      const returning = act?.kind === 'skill' && act.id === 'returnSpear';
+      state.entryPose = longAxe || fromSpinGuard || returning ? state.pose : null;
     }
     state.lastAct = act;
     state.spinBrace = Math.max(0, state.spinBrace - dt);

@@ -249,6 +249,17 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       case 'skillBeat':
         if (e.id === 'spin' || e.id === 'charge' || e.id === 'moon' || e.id === 'boar') {
           burst(dust, [at[0], 0.1, at[2]], e.id === 'boar' && e.part === 1 ? 10 : 6);
+        } else if (e.id === 'returnSpear') {
+          if (e.part < 0) burst(dust, [at[0], 0.09, at[2]], 7);
+          else {
+            const blade = bladeOf(e.who);
+            if (blade) {
+              const [grip, tip] = blade;
+              const delta = tip.map((v, i) => v - grip[i]);
+              const length = Math.hypot(...delta) || 1;
+              burst(glow, tip, 4, delta.map((v) => v / length));
+            }
+          }
         }
         break;
       case 'loose': {

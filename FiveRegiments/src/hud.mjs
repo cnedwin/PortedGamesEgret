@@ -476,7 +476,7 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
         [s0, s1].forEach((b, i) => {
           const name = el('span');
           name.textContent = say(SKILLS[hero.skills[i]].name);
-          b.replaceChildren(b.querySelector('i') ?? el('i'), name);
+          b.replaceChildren(b.querySelector('i') ?? el('i'), name, el('small', 'foot-only', null, t('footOnly')));
         });
         shownArt = null;
       }
@@ -491,6 +491,10 @@ export function createTouchControls(root, input, { onPause = () => {} } = {}) {
         const wait = hero.cool[i] ?? 0;
         b.style.setProperty('--k', String(Math.max(0, wait / SKILLS[hero.skills[i]].cool)));
         b.classList.toggle('wait', wait > 0);
+        if (b.classList.contains('needs-foot') !== hero.mounted) {
+          b.classList.toggle('needs-foot', hero.mounted);
+          b.setAttribute('aria-disabled', String(hero.mounted));
+        }
       });
       // X is the mounted art in the saddle; each art button lit when its rage is there and it is ready.
       const artId = hero.mounted ? hero.r.mountedArt : hero.r.art;

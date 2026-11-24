@@ -1,7 +1,7 @@
 // The pages between fights, drawn over the 3D picture: the title, choosing a regiment (the five stand on the field
 // behind), fitting skills and talents, the card before each fight, the result after it, pause, settings and the free
 // duel. Every page works with keys (arrows, Enter, Esc), the mouse and touch.
-import { ARTS, ORDER, REGIMENTS, SKILLS, TALENTS, loadout } from './sim/regiments.mjs';
+import { ARTS, ORDER, REGIMENTS, SKILLS, TALENTS, playerLoadout } from './sim/regiments.mjs';
 import { PLACES } from './sim/road.mjs';
 import { t, say, getLanguage } from './i18n.mjs';
 
@@ -119,7 +119,7 @@ export function createScreens(root, { onLanguage }) {
     /** Two skills, up to four talents; the weapon art shown beside them. */
     loadout({ regiment, chosen, onDone, onBack }) {
       const r = REGIMENTS[regiment];
-      let pick = loadout(regiment, chosen);
+      let pick = playerLoadout(regiment, chosen);
       const page = node(`<section class="page loadout">
         <h2>${say(r.name)} · ${t('loadout')}</h2><p class="hint">${t('loadoutHint')}</p>
         ${[['X', r.art, ''], ['Z', r.offArt, ''], ['X', r.mountedArt, t('mountedArt')]]
@@ -152,11 +152,11 @@ export function createScreens(root, { onLanguage }) {
       wire(page, {
         skill: (id) => (toggle(pick.skills, id, 2), draw()),
         talent: (id) => (toggle(pick.talents, id, 4), draw()),
-        done: () => onDone(loadout(regiment, pick)),
+        done: () => onDone(playerLoadout(regiment, pick)),
         back: onBack
       });
       show(page, (e) => {
-        if (e.code === 'Enter') onDone(loadout(regiment, pick));
+        if (e.code === 'Enter') onDone(playerLoadout(regiment, pick));
         else if (e.code === 'Escape') onBack();
         else return false;
       });

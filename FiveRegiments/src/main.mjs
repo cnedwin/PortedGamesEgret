@@ -12,7 +12,7 @@ import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
 import { browserSaveStorage } from '@egret/engine/web/kit';
 import { createFight, facing, step, TICK } from './sim/fight.mjs';
 import { createBrain, createBrains } from './sim/brain.mjs';
-import { ORDER, REGIMENTS, loadout } from './sim/regiments.mjs';
+import { ORDER, REGIMENTS, loadout, playerLoadout } from './sim/regiments.mjs';
 import { PLACES, grade, planRoad, stageScore } from './sim/road.mjs';
 import { createInput } from './input.mjs';
 import { createHud, createTouchControls } from './hud.mjs';
@@ -266,7 +266,7 @@ async function main() {
       onLook: (r) => lineup && (lineup.focus = ORDER.indexOf(r)),
       onBack: title,
       onGo: (s) => {
-        run = { regiment: s.me, loadout: loadout(s.me), stages: [{ index: 0, place: s.place, foes: [...s.foes], level: 0.5, double: s.foes.length > 1, health: s.foes.length > 1 ? 0.8 : 1 }], at: 0, scores: [], stats: runStats(), free: true };
+        run = { regiment: s.me, loadout: playerLoadout(s.me), stages: [{ index: 0, place: s.place, foes: [...s.foes], level: 0.5, double: s.foes.length > 1, health: s.foes.length > 1 ? 0.8 : 1 }], at: 0, scores: [], stats: runStats(), free: true };
         card();
       }
     });
@@ -477,6 +477,7 @@ async function main() {
           case 'moon': play('heavy', { volume: 0.64, rate: 1.2 }); break;
           case 'down': play('heavy', { volume: 0.71, rate: 0.81 }); break;
           case 'boar': play(e.part === 0 ? 'step' : 'heavy', { volume: 0.67, rate: e.part === 0 ? 0.84 : 1.39 }); break;
+          case 'returnSpear': play(e.part < 0 ? 'spearPlant' : 'spearThrust', { volume: e.part < 0 ? 0.78 : 0.87 }); break;
         }
         break;
       }
@@ -793,7 +794,7 @@ async function main() {
   const duel = params.get('duel');
   if (duel) {
     const [me, ...foes] = duel.split(',');
-    run = { regiment: me, loadout: loadout(me), stages: [{ index: 0, place: params.get('place') ?? 'county', foes, level: Number(params.get('level') ?? 0.5), double: foes.length > 1, health: foes.length > 1 ? 0.8 : 1 }], at: 0, scores: [], stats: runStats(), free: true };
+    run = { regiment: me, loadout: params.has('auto') ? loadout(me) : playerLoadout(me), stages: [{ index: 0, place: params.get('place') ?? 'county', foes, level: Number(params.get('level') ?? 0.5), double: foes.length > 1, health: foes.length > 1 ? 0.8 : 1 }], at: 0, scores: [], stats: runStats(), free: true };
     await begin(run.stages[0]);
   } else await title();
 }

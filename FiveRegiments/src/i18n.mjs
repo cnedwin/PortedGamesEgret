@@ -83,6 +83,7 @@ export const WORDS = {
   dressing: { zh: '绷带', en: 'Bandage' },
   lance: { zh: '架枪', en: 'Couched lance' },
   needFoot: { zh: '下马才能施展', en: 'Dismount to use' },
+  footOnly: { zh: '需下马', en: 'Dismount' },
   needHorse: { zh: '骑马才能用', en: 'Needs a horse' },
   needRage: { zh: '怒气未满', en: 'Rage not full' },
   rage: { zh: '怒气', en: 'Rage' },

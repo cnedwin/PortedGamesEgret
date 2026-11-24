@@ -6,6 +6,7 @@
 // blended, laid over one another for some bones only, and finally written to the skeleton.
 
 import { add, cross, dot, len, lerp3, mul, sub, unit } from './rig.mjs';
+import { SKILLS } from '../sim/regiments.mjs';
 
 const clamp01 = (value) => Math.max(0, Math.min(1, value));
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -28,7 +29,26 @@ export const TIGER_SWORD = {
 const contactsOf = (keys) => keys.filter(([, , pose]) => pose === 1).map(([time]) => time);
 const spinContacts = contactsOf(TIGER_SWORD.spin);
 const chainContacts = contactsOf(TIGER_SWORD.chain);
-const skillTrailWindows = { charge: [0.4, 0.55], moon: [0.11, 0.28], down: [0.63, 0.82], wave: [0.3, 0.46] };
+const returningSpear = SKILLS.returnSpear;
+const RETURN_SPEAR_BEATS = [0, returningSpear.stepTime * 0.58, returningSpear.turnTime - 0.07,
+  returningSpear.release, returningSpear.release + 0.13, returningSpear.duration];
+const skillTrailWindows = {
+  charge: [0.4, 0.55], moon: [0.11, 0.28], down: [0.63, 0.82], wave: [0.3, 0.46],
+  returnSpear: [returningSpear.release - 0.04, returningSpear.release + 0.056]
+};
+
+/** Ready, low carry, planted load, thrust contact, withdrawal, and ready again. */
+export function returnSpearPhase(t) {
+  for (let i = 1; i < RETURN_SPEAR_BEATS.length; i++) {
+    const next = RETURN_SPEAR_BEATS[i];
+    if (t > next) continue;
+    const begin = RETURN_SPEAR_BEATS[i - 1];
+    const k = clamp01((t - begin) / (next - begin));
+    const paced = i === 3 ? k * k : i === 4 ? 1 - (1 - k) ** 2 : smooth(k);
+    return i - 1 + paced;
+  }
+  return RETURN_SPEAR_BEATS.length - 1;
+}
 
 /** A short blade trail during each committed swing, without joining it to the next load. */
 export function skillTrailSegment(action) {
