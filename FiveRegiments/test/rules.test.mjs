@@ -861,6 +861,25 @@ test('only a timely exact deflect of Bull Charge keeps the rider mounted', () =>
   }
 });
 
+test('a Normal mounted opponent can time a guard from the visible Bull Charge tell', () => {
+  const { game, h, f } = pair('yulin', 'plume', { hero: { skills: ['bull'] } });
+  const brain = createBrains(game, { level: 0.5, rng: () => 0.25 }).foe0;
+  step(game, { hero: { skill: 0, readableAttack: true } });
+  assert.ok(h.act.leadTotal > 0, 'the charge has a visible lead');
+
+  let firstGuard;
+  const events = [];
+  for (let frame = 0; frame < 34; frame++) {
+    const { guard, line, face } = brain.think(game, TICK);
+    if (guard) firstGuard ??= game.time;
+    events.push(...step(game, { foe0: { guard, line, face } }));
+  }
+  const deflect = events.find(e => e.type === 'deflect' && e.skill === 'bull' && e.who === f.id);
+  assert.ok(deflect, 'guards in front as the rush arrives');
+  assert.ok(firstGuard >= 0.28 && deflect.time - firstGuard <= DEFLECT);
+  assert.ok(f.mounted && f.daze === 0);
+});
+
 test('a single mount press after Bull Charge waits through the fall and remounts a living horse', () => {
   const { game, h, f } = pair('plume', 'yulin', { foe: { skills: ['bull', 'charge'] } });
   Object.assign(h, { x: 0, z: 3.5 });

@@ -52,6 +52,17 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
   function threatFrom(game, target) {
     const act = target.act;
     if (!act) return null;
+    if (man.mounted && brain.level >= 0.5 && act.kind === 'skill' && act.id === 'bull') {
+      const bull = SKILLS.bull, toward = bearing(man, target);
+      // The rendered wind-up starts during the lead. Look for the rush late enough to deflect it.
+      const elapsed = act.t + (act.leadTotal ?? 0) - (act.lead ?? 0);
+      if (elapsed < Math.min(brain.react, 0.28) || act.met || act.t >= bull.wind + bull.run ||
+          Math.abs(wrap(toward - man.face)) > 1.3 || Math.abs(wrap(toward + Math.PI - target.face)) > 0.56) return null;
+      const approach = Math.sin(toward) * man.vx + Math.cos(toward) * man.vz;
+      const gap = Math.max(0, dist(man, target) - 1.05 - man.body);
+      const contact = (act.lead ?? 0) + Math.max(0, bull.wind - act.t) + gap / Math.max(1, bull.range / bull.run + approach);
+      return contact <= 0.16 ? { line: 'T', act, skill: 'bull' } : null;
+    }
     if (act.kind === 'swing' && !act.struck) {
       const reach = act.reach + BODY + 0.4;
       // After two contacts on the same line, a lone shield fighter can start his usual
@@ -186,7 +197,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     input.sprint = h.st > 18 && Math.abs(turn) < 0.78 && ((pass.phase === 'in' && d > 4) || (pass.phase === 'out' && pass.t < 0.5));
     input.face = toward;
     // The couched ji (X), when his rage is full and he is lined up and moving.
-    if (couching && !man.act && pass.phase === 'in' && d > 4.5 && d < 15 && Math.abs(off) < 0.45 && h.speed > ARTS[man.r.mountedArt].run && rng() < 0.06 + 0.1 * brain.level) {
+    if (couching && !input.guard && !man.act && pass.phase === 'in' && d > 4.5 && d < 15 && Math.abs(off) < 0.45 && h.speed > ARTS[man.r.mountedArt].run && rng() < 0.06 + 0.1 * brain.level) {
       input.art = !man.prev.art;
       return;
     }
