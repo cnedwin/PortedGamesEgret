@@ -10,6 +10,7 @@ import { FORMATIONS, TERRAIN, UNITS, formationAllowed } from '../data/battle.mjs
 import { TACTICS } from '../data/tactics.mjs';
 import { command as simCommand, createBattle, outcome, stepBattle, useTactic, tacticPreview, combatPreview, canDeployBattle, deployBattleUnit, distance, previewBattleOrder } from '../sim/battle.mjs';
 import { createBattleRecorder } from '../sim/battle-history.mjs';
+import { MAX_BATTLE_PLAN_ORDERS, previewBattleCommandPlan, commitBattleCommandPlan } from '../sim/battle-command-plan.mjs';
 import { finishBattle } from '../sim/military.mjs';
 import { getLanguage, nm, num, t } from '../i18n.mjs';
 import { factionName, generalName, placeName } from '../view/names.mjs';
@@ -18,6 +19,7 @@ import { $, bar, clear, face, seal } from './dom.mjs';
 import {hudElement as h, hudButton as button, updateBattleHud} from './battle-hud.mjs';
 import {tacticPresentation,battleOutcomeReason} from './battle-copy.mjs';
 import {createTempoMilestones,inspectTempoMilestones,beginTacticAim,selectTacticTarget,restoreTacticPause} from './battle-tempo.mjs';
+import { renderBattleCommandPanel, battleCommandPlanReason } from './battle-command-panel.mjs';
 
 const SPEEDS = [1, 2, 4];
 const WIND = ['→', '↘', '↙', '←', '↖', '↗'];
@@ -31,6 +33,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   const b = createBattle(setup, s);
   const record = createBattleRecorder(b);
   const side = setup.factions.indexOf(s.player);
+  const fieldCommand = !trial && setup.kind === 'field' && !setup.special && side >= 0;
   const colours = setup.factions.map((f, i) => (f ? s.factions[f].colour : i ? 0x8a7d66 : 0x6a5a4a));
   const hud = $('#battleHud');
   const fx = $('#battleFx');
@@ -46,6 +49,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     ended = false;
   let ending=null,executionLeft=null,milestones=createTempoMilestones(b),milestonePauses=true,tempoNotice='',commandNotice='',commandBad=false;
   let pendingOrder = null;
+  let draft = null, reviewedPlan = null, observedOrders = null;
   let occupiedKeep = false;
   let heldControl=false,pendingHud=false,releaseTimer=0;
   const pointers=new Set();
@@ -108,7 +112,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         }
       },
       attack(ev) {
-        if (!nanpi) return;
+        if (!nanpi && !fieldCommand) return;
         const unit = b.units[ev.unit];
         if (unit.kind === 'catapult') return;
         app.sound.play(UNITS[unit.kind].group === 'bow' ? 'arrows' : 'clash', {volume: 0.5});
@@ -152,14 +156,16 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     view.orderPreview?.(null);
   }
   function requestOrder(unit, kind, target) {
-    if (!nanpi) {
+    if (!nanpi && !draft) {
       if (issue(unit, kind, target)) {
         view.goal(kind === 'move' ? target : b.units[target].pos);
         app.sound.play('tap');
       }
       return;
     }
-    const plan = previewBattleOrder(b, unit, kind, target);
+    const plan = draft
+      ? previewBattleCommandPlan(b, side, [{ unit, kind, arg: target }]).orders[0]
+      : previewBattleOrder(b, unit, kind, target);
     if (!plan) return;
     const timing = pendingOrder?.timing ?? {paused, executionLeft, tempoNotice};
     pendingOrder = { plan, target, timing };
@@ -186,12 +192,106 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     clearOrder(true);
     draw(true);
   }
+
+  function refreshPlan() {
+    reviewedPlan = draft ? previewBattleCommandPlan(b, side, draft) : null;
+    view.commandPlan(reviewedPlan?.orders ?? []);
+  }
+
+  function changePlanMode(enabled) {
+    clearAim(true);
+    clearOrder(true);
+    draft = enabled ? [] : null;
+    refreshPlan();
+    if (enabled) {
+      paused = true;
+      acc = 0;
+      executionLeft = null;
+      observedOrders = null;
+      tempoNotice = '';
+    }
+    commandNotice = '';
+    commandBad = false;
+  }
+
+  function queueOrder() {
+    if (!draft || !pendingOrder?.plan.valid) return;
+    const { plan, target: arg } = pendingOrder;
+    if (!draft.some(order => order.unit === plan.unit) && draft.length >= MAX_BATTLE_PLAN_ORDERS) {
+      commandNotice = words('待发军令已满。先移除一条，或执行这一轮。', 'The plan is full. Remove an order or dispatch this group.');
+      commandBad = true;
+      draw(true);
+      return;
+    }
+    draft = [...draft.filter(order => order.unit !== plan.unit), { unit: plan.unit, kind: plan.kind, arg }];
+    clearOrder(true);
+    refreshPlan();
+    commandNotice = '';
+    commandBad = false;
+    draw(true);
+  }
+
+  function removeOrder(id) {
+    if (!draft) return;
+    draft = draft.filter(order => order.unit !== id);
+    refreshPlan();
+    draw(true);
+  }
+
+  function planSummary() {
+    const orders = reviewedPlan?.orders.filter(order => order.valid) ?? [];
+    const attacks = orders.filter(order => order.kind === 'attack');
+    const focus = attacks.find(order => attacks.some(other => other !== order && other.target === order.target));
+    if (focus) return words('集火 ', 'Focus fire: ') + unitName(b.units[focus.target]);
+    if (attacks.length && orders.some(order => order.kind === 'move')) {
+      return words('进攻与走位同时起令。到位后可继续下令。', 'Attack and reposition together. Give the next orders as units reach their positions.');
+    }
+    return '';
+  }
+
+  function finishAdvanceNote() {
+    if (!observedOrders) return '';
+    const arrived = observedOrders.filter(order => order.what === 'move' && b.units[order.unit]?.pos === order.arg).length;
+    const moved = observedOrders.filter(order => b.units[order.unit]?.pos !== order.from).length;
+    const hits = observedOrders.reduce((sum, order) => sum + Math.max(0, (b.units[order.unit]?.record?.hits ?? 0) - order.hits), 0);
+    observedOrders = null;
+    const details = [
+      moved ? words('前出 ', 'Advanced: ') + moved + words(' 部', '') : '',
+      arrived ? words('到位 ', 'In position: ') + arrived + words(' 部', '') : '',
+      hits ? words('命中 ', 'Hits: ') + hits : '',
+    ].filter(Boolean);
+    return details.length ? ' · ' + details.join(' · ') : '';
+  }
+
+  function dispatchPlan(observe) {
+    if (!draft?.length || pendingOrder || !paused) return;
+    const result = commitBattleCommandPlan(b, side, draft);
+    if (!result.ok) {
+      refreshPlan();
+      commandNotice = battleCommandPlanReason(result.reason) || words('军令无法执行，请重新选择。', 'Order unavailable. Review the plan again.');
+      commandBad = true;
+      draw(true);
+      return;
+    }
+    for (const action of result.actions) record.action(action.what, { unit: action.unit, arg: action.arg, coordinated: true });
+    record.capture(phase, { force: true });
+    changePlanMode(false);
+    observedOrders = observe ? result.actions.map(action => {
+      const unit = b.units[action.unit];
+      return { ...action, from: unit.pos, hits: unit.record?.hits ?? 0 };
+    }) : null;
+    commandNotice = result.actions.length + words(' 部已同时受令', ' units received orders together');
+    app.sound.play('horn', { volume: .5 });
+    if (observe) observeThree();
+    else setPaused(false);
+  }
   function fire(unit, tactic, target) {
     const u = b.units[unit];
     const eventStart=b.events.length;
     const ok = useTactic(b, u, tactic, target === null ? null : b.units[target]);
     if(ok){const failed=b.events.slice(eventStart).some(event=>event.kind==='tacticFailed'&&event.unit===unit&&event.tactic===tactic);record.action('tactic',{unit,tactic,target});record.capture(phase,{force:true});paused=restoreTacticPause(armed,paused);armed=null;milestones={...milestones,tactic:true};tempoNotice='';commandNotice=nm(TACTICS[tactic])+(failed?words(' · 谋略被识破',' · Scheme resisted'):words(' 已施展',' used'));commandBad=failed;}
     else {commandNotice=t('tacticNoTarget');commandBad=true;app.hud.toast(t('tacticNoTarget'));}
+    if (ok && draft) refreshPlan();
     draw(true);
   }
   function clearAim(restore){
@@ -346,7 +446,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
       h('div.uVitals',h('span',t('morale')+' ',h('b',Math.round(u.morale))),h('span'+(u.rage>=100?'.ready':''),t('rage')+' ',h('b',Math.floor(u.rage)+'/100'))),
       marks.length || u.routed ? h('div.marks', u.routed ? h('span.mark.rout', t('routed')) : null, marks) : null,
       tactics,
-      mine && phase === 'fight' && !u.gone && !u.routed
+      mine && phase === 'fight' && !u.gone && !u.routed && !draft
         ? h(
             'div.uo',
             keyButton('card-order-'+u.id+'-hold',t('hold'), (e) => (e.stopPropagation(), issue(u.id, u.order === 'hold' ? 'auto' : 'hold'), draw(true)), { small: true, kind: u.order === 'hold' ? 'on' : '' }),
@@ -412,12 +512,22 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
         active&&!armed&&!pendingOrder&&chosen.target&&!chosen.target.gone?(()=>{const p=combatPreview(b,chosen,chosen.target);return p?h('p.bMatchupInfo',words('兵种修正','Weapon match ')+p.weaponMultiplier.toFixed(2)+'× · '+words('射程内普通命中约','Ordinary hit in reach: ')+p.minLoss+'–'+p.maxLoss+words(' 人（不含暴击）',' troops (before criticals)')):null;})():null,
         nanpi&&!armed&&!pendingOrder?h('p.bTrialGuide',nanpiInstructions(chosen)):null,
         nanpi&&!armed&&!pendingOrder?nanpiOrders(chosen):null,
-        orderConfirmation(),
+        !draft ? orderConfirmation() : null,
+        fieldCommand && phase === 'fight' && !armed
+          ? h('div.row.bPlanToggle',
+            keyButton('plan-mode', draft ? words('退出拟令', 'Leave planning') : words('协同下令', 'Plan orders'),
+              () => { changePlanMode(!draft); draw(true); }, {kind: draft ? 'on' : 'main', small:true})) : null,
+        draft && !armed ? renderBattleCommandPanel({
+          preview: pendingOrder?.plan, plans: reviewedPlan?.orders, unitName: id => unitName(b.units[id]),
+          summary: planSummary(), reason: draft.length ? reviewedPlan?.reason : '',
+          onQueue: queueOrder, onCancel: cancelOrder, onRemove: removeOrder,
+          onAdvance: () => dispatchPlan(true), onContinue: () => dispatchPlan(false)
+        }) : null,
         armed?h('div.bAimControls',
           h('p#battleAimSummary',armed.target==null?words('选择敌军目标，查看覆盖后确认。','Choose an enemy target, review the area, then confirm.'):unitName(b.units[armed.target])+' · '+words('覆盖 ','Covers ')+aimPreview.targets.length+words(' 部敌军',' enemy units')),
           h('div.bAimTargets',b.units.filter(u=>u.side!==side&&!u.gone).map(u=>keyButton('target-'+u.id,unitName(u)+' · '+distance(b.units[armed.unit].pos,u.pos)+words('格',' hexes'),()=>chooseTarget(u.id),{kind:armed.target===u.id?'on':'',why:tacticPreview(b,b.units[armed.unit],armed.tactic,u).reason==='range'?words('超出战法范围','Outside tactic reach'):null,small:true}))),
           h('div.bAimActions',keyButton('confirm-tactic',words('确认施策','Confirm tactic'),()=>fire(armed.unit,armed.tactic,armed.target),{kind:'main',why:aimPreview.valid?null:words('先选择有效目标','Choose a valid target first')}),keyButton('cancel-tactic',words('取消施策','Cancel tactic'),cancelAim)))
-        :phase==='fight'?h('div.bOrderRow',
+        :phase==='fight'&&!draft?h('div.bOrderRow',
           active&&!chosen.routed?orderButton(chosen,'hold',t('hold'),chosen.order==='hold'):null,
           active&&!chosen.routed?orderButton(chosen,'auto',t('auto'),chosen.order==='auto'):null,
           active&&!chosen.routed?orderButton(chosen,'autoTactic',chosen.autoTactic?words('战法：自动','Tactics: auto'):words('战法：手动','Tactics: manual'),chosen.autoTactic,!chosen.autoTactic):null,
@@ -433,32 +543,43 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
   }
 
   function setPaused(v) {
+    if (!v && draft) {
+      if (draft.length || pendingOrder) {
+        commandNotice = words('先确认或退出拟令，再继续交战。', 'Dispatch the plan or leave planning before resuming.');
+        commandBad = true;
+        draw(true);
+        return;
+      }
+      changePlanMode(false);
+    }
     clearAim(false);clearOrder(false);executionLeft=null;acc=0;tempoNotice='';
+    observedOrders = null;
     paused = v;
     record.action(v?'pause':'resume');
     draw(true);
   }
   function observeThree(){
-    if(phase!=='fight'||!paused||armed||pendingOrder)return;
+    if(phase!=='fight'||!paused||armed||pendingOrder||draft)return;
     executionLeft=3;paused=false;acc=0;tempoNotice=words('执行3秒战场时间后暂停','Observing 3 battle seconds, then pausing');record.action('resume',{seconds:3,observe:true});draw(true);
   }
   function inspectMilestones(){
     const cue=inspectTempoMilestones(b,side,milestones);milestones=cue.next;
-    if (nanpi && cue.reasons.includes('contact')) {
+    if ((nanpi || fieldCommand) && cue.reasons.includes('contact')) {
       record.action('contact',{at:cue.contactKind==='gate'?b.gate?.at:undefined});
       record.capture(phase,{force:true});
     }
     if(!milestonePauses||!cue.reasons.length)return false;
     paused=true;executionLeft=null;acc=0;
     const contact=cue.contactKind==='gate'?(side===0?words('攻城开始','Siege contact'):words('城门遭攻','Gate under attack')):cue.contactKind==='depot'?words('粮仓受袭','Depot under attack'):words('初次接敌','First contact');
-    tempoNotice=(cue.reasons.includes('contact')?contact:'')+(cue.reasons.length>1?' · ':'')+(cue.reasons.includes('tactic')?words('战法可施展','Tactic available'):'')+words(' · 已暂停，本场不再重复提示',' · Paused; this prompt occurs once per battle');
+    tempoNotice=(cue.reasons.includes('contact')?contact:'')+(cue.reasons.length>1?' · ':'')+(cue.reasons.includes('tactic')?words('战法可施展','Tactic available'):'')+words(' · 已暂停，本场不再重复提示',' · Paused; this prompt occurs once per battle')+finishAdvanceNote();
     if(cue.opportunity){selected=cue.opportunity.unitId;view.select(selected);}
     record.action('pause',{reason:cue.reasons.join('+')});draw(true);return true;
   }
   function begin() {
     phase = 'fight';
-    paused = trial;
+    paused = trial || fieldCommand;
     if (trial) tempoNotice = words('战鼓已鸣 · 暂停中可先布置军令','Drums sounded · Give orders while paused');
+    else if (fieldCommand) tempoNotice = words('战鼓已鸣 · 可先协同下令，或直接继续','Drums sounded · Plan your opening orders or continue');
     record.action('begin');record.capture(phase,{force:true});
     app.sound.play('horn');
     draw(true);
@@ -543,12 +664,12 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
             break;
           }
           if(!b.over&&inspectMilestones())break;
-          if(executionLeft!==null&&executionLeft<=1e-6){executionLeft=null;paused=true;acc=0;tempoNotice=words('观察执行已完成 · 已暂停，可继续下令','Observation complete · Paused and ready for orders');record.action('pause',{reason:'observe'});break;}
+          if(executionLeft!==null&&executionLeft<=1e-6){executionLeft=null;paused=true;acc=0;tempoNotice=words('观察执行已完成 · 已暂停，可继续下令','Observation complete · Paused and ready for orders')+finishAdvanceNote();record.action('pause',{reason:'observe'});break;}
         }
         let after = 0;
         for (const u of b.units) after += u.troops;
         clash -= dt;
-        if (!nanpi && after < before - 20 && clash <= 0) {
+        if (!nanpi && !fieldCommand && after < before - 20 && clash <= 0) {
           app.sound.play(Math.random() < 0.3 ? 'arrows' : 'clash', { volume: 0.5 });
           clash = 0.8;
         }
@@ -569,6 +690,7 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
       } else if (code === 'Escape') {
         if(armed){cancelAim();return true;}
         if(pendingOrder){cancelOrder();return true;}
+        if(draft){changePlanMode(false);draw(true);return true;}
         selected = null;
         view.select(null);
         draw(true);

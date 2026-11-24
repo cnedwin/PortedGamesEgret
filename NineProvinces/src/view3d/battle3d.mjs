@@ -58,6 +58,7 @@ function softDot() {
 export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on, calm, canDeploy }) {
   const { scene, land, troops, camera, rig } = realm;
   const siegeSample = b.setup.presentation === 'nanpi-sunset';
+  const tacticalFormation = siegeSample || (b.setup.kind === 'field' && !b.setup.special);
   const sunset = siegeSample ? createGradientCubeTexture3D([83,103,137],[224,160,96],[109,91,69],32) : null;
   const lightLease = siegeSample ? createSiegeLighting(realm.stage,sunset) : null;
   realm.select?.({});
@@ -156,6 +157,34 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       mat4Compose(previewMatrix, [p.x, p.y + .14, p.z], flat, [1, 1, 1]);mesh.setMatrixAt(count++, previewMatrix);
     }
     mesh.count = count;
+  }
+
+  let commandPaths;
+  function drawCommandPlan(orders) {
+    if (orders.some(order => order.valid) && !commandPaths) {
+      const create = colour => ({ lines: makeOrderLines(colour), cells: makeCells(colour, .78, true) });
+      commandPaths = { move: create(0x88d4d6), attack: create(0xe8a27a) };
+      commandPaths.move.lines.name = 'battle-plan-moves';
+      commandPaths.attack.lines.name = 'battle-plan-attacks';
+    }
+    if (!commandPaths) return;
+    for (const [kind, { lines, cells }] of Object.entries(commandPaths)) {
+      let count = 0;
+      const destinations = new Set();
+      for (const order of orders) {
+        if (!order.valid || order.kind !== kind) continue;
+        let from = b.units[order.unit]?.pos;
+        if (from === undefined || from < 0) continue;
+        for (const at of order.path) {
+          count = orderSegment(lines, count, from, at);
+          from = at;
+        }
+        if (kind === 'attack') count = orderSegment(lines, count, from, order.hex);
+        destinations.add(order.hex);
+      }
+      lines.count = count;
+      putCells(cells, destinations);
+    }
   }
   // Match the simulation's target footprint, including its three-hex line order.
   function tacticCells(u, tc, centre) {
@@ -621,12 +650,12 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
       cos = Math.cos(s.heading);
     const lungeX = sin * s.lunge,
       lungeZ = cos * s.lunge;
-    if(siegeSample&&!engine&&s.slotsKey!==u.formation+':'+count){s.slots=formationSlots(u.formation,count);s.slotsKey=u.formation+':'+count;}
+    if(tacticalFormation&&!engine&&s.slotsKey!==u.formation+':'+count){s.slots=formationSlots(u.formation,count);s.slotsKey=u.formation+':'+count;}
     for (let k = 0; k < count; k++) {
       const c = (k % per) - (per - 1) / 2,
         row = Math.floor(k / per);
-      let lx = engine ? 0 : siegeSample?s.slots[k][0]:c * gap + (row % 2) * gap * 0.3,
-        lz = engine ? 0 : siegeSample?s.slots[k][1]:(0.5 - row) * gap * 1.1;
+      let lx = engine ? 0 : tacticalFormation?s.slots[k][0]:c * gap + (row % 2) * gap * 0.3,
+        lz = engine ? 0 : tacticalFormation?s.slots[k][1]:(0.5 - row) * gap * 1.1;
       if (u.routed) {
         lx += Math.sin(i * 7 + k * 3.1) * 0.6;
         lz += Math.cos(i * 5 + k * 2.3) * 0.6;
@@ -665,8 +694,8 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
         const angle = TOWER_DECK_PITCH.idle + (TOWER_DECK_PITCH.deployed - TOWER_DECK_PITCH.idle) * s.deck;
         troops.add('tower-board', ...pivot, s.heading, colour, angle, S, true);
       } else {
-        const braced=siegeSample&&kind==='spear'&&!u.routed&&(u.order==='hold'||s.attackPose>0);
-        const posed=braced?'spear-braced':siegeSample&&kind==='bow'&&s.attackPose>0?'bow-loose':kind;
+        const braced=tacticalFormation&&kind==='spear'&&!u.routed&&(u.order==='hold'||s.attackPose>0);
+        const posed=braced?'spear-braced':tacticalFormation&&kind==='bow'&&s.attackPose>0?'bow-loose':kind;
         const climb = isCalm() ? 0 : Math.sin(Math.PI * s.climbPose / .55);
         troops.add(posed, x, (kind === 'boat' ? Math.max(ground, s.y) : ground) + (isCalm()?0:bob) + climb * .16,
           z, s.heading + (u.routed ? Math.sin(k) * 0.6 : 0), colour, -s.lunge * .3 + (isCalm() ? 0 : s.hit * .6) - climb * .22, S);
@@ -677,6 +706,7 @@ export function createBattle3D(realm, b, { colours, side, fx, plates, rulers, on
 
   return {
     preview(phase, armed) { viewPhase=phase;armedTactic=armed; },
+    commandPlan: drawCommandPlan,
     orderPreview(preview) {
       pendingOrder=preview?{...preview,path:preview.path?.slice()??[]}:null;previewKey='';
       if(siegeSample&&preview){
