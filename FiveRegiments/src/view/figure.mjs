@@ -204,6 +204,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const along = hand.along,
       fingers = hand.fingers;
     const q = mapping === 'shield' ? basis(along, fingers, cross(along, fingers)) : basis(cross(along, fingers), along, fingers);
+    if (kind === 'jian') {
+      // This model's palm faces the opposite side of the generic rest-hand estimate.
+      // Seat the handle between the curled middle joints and the thumb, just below the guard.
+      hand.grip = add(hand.grip, qrot(q, mul([-0.025, 0, 0.030], 1 / s)));
+    }
     node.setQuaternion(q[0], q[1], q[2], q[3]);
     const g = weapon.grip ? sub(hand.grip, qrot(q, mul(weapon.grip, 1 / s))) : hand.grip;
     node.setPosition(g[0], g[1], g[2]);
@@ -804,7 +809,8 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     if (bow) armsForBow(man, dt, place, along, edgeHint, reachRange, poleR, mainTarget, space, clearR);
     else if (!linked) rig.reachArm('r', frontWrist(mainTarget, space.right, 'r', space), poleR,
       blade, 1, 0, edgeHint, state.primaryGrip, dt, reachRange, clearR);
-    if (!bow || man.knife) rig.closeHand('r', 1);
+    if (arms.main === 'jian') rig.closeHand('r', -1.2, 1, 0.1);
+    else if (!bow || man.knife) rig.closeHand('r', 1);
 
     // Left arm: on the same weapon (two-handed), the shield, or free.
     if (arms.two) {
@@ -824,10 +830,18 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       rig.reachArm('l', frontWrist(place(state.lpose), space.left, 'l', space), along([0.8, -0.6, -0.1]),
         along([0, 1, 0]), 1, 0, along(face), null, 0, null, clearL);
       rig.closeHand('l', 1);
+    } else if (arms.main === 'jian' && !throwLeft && !shout) {
+      // Keep the free hand low and outside the cut. It opens for balance as the sword sweeps across.
+      const balance = ordinary ? ease((phase - 0.55) / 1.4) * (1 - ease((phase - 2.85) / 1.1))
+        : act?.id === 'spin' ? Math.abs(Math.sin(spin * 0.5)) : 0;
+      const free = [0.29 + 0.105 * balance, -0.34 + 0.065 * Number(man.guard), 0.09 - 0.087 * balance];
+      state.lpose = state.lpose ? lerp3(state.lpose, free, 1 - Math.exp(-dt * 21)) : free;
+      rig.reachArm('l', place(state.lpose), along([0.78, -0.53, -0.18]), null, 0.9);
+      rig.closeHand('l', -0.24 + 0.16 * balance, 1, 0.08);
     } else if (!bow) {
-      const free = throwLeft > 0 ? lerp3([0.12, -0.05, 0.2], [0.15, 0.05, 0.62], easeOut(throwLeft)) : shout > 0 ? [0.45, 0.08, 0.18] : regiment === 'tiger' ? [0.16, -0.12, 0.22] : [0.24, -0.42, 0.1];
-      rig.reachArm('l', place(free), rig.dirToRig([0.8, -0.6, -0.2]), regiment === 'tiger' && !throwLeft ? along([0.2, 0.8, 0.4]) : null, 0.85);
-      rig.closeHand('l', regiment === 'tiger' && !throwLeft ? 0.55 : 0.4);
+      const free = throwLeft > 0 ? lerp3([0.12, -0.05, 0.2], [0.15, 0.05, 0.62], easeOut(throwLeft)) : shout > 0 ? [0.45, 0.08, 0.18] : [0.24, -0.42, 0.1];
+      rig.reachArm('l', place(free), rig.dirToRig([0.8, -0.6, -0.2]), null, 0.85);
+      rig.closeHand('l', 0.4);
     }
 
     // ---- the kick ---------------------------------------------------------------------------------------------

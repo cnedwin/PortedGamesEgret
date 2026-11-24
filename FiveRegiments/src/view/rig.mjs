@@ -355,12 +355,12 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
   forget();
 
   /** Close a hand round a grip: `amount` 0 open … 1 a fist. */
-  function closeHand(s, amount = 1, spread = 1) {
+  function closeHand(s, amount = 1, spread = 1, thumb = amount) {
     for (const c of hands[s].curl) {
       const angle = amount * (c.k === 1 ? 1.25 : c.k === 2 ? 1.45 : 1.0) * spread;
       setLocal(c.name, qmul(c.rest, axisAngle(c.axis, angle)));
     }
-    for (const [k, n] of hands[s].thumb.entries()) setLocal(n, qmul(restLocal[n], axisAngle([0, 0, 1], amount * (k ? 0.35 : 0.15))));
+    for (const [k, n] of hands[s].thumb.entries()) setLocal(n, qmul(restLocal[n], axisAngle([0, 0, 1], thumb * (k ? 0.35 : 0.15))));
   }
 
   /**

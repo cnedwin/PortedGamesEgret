@@ -116,3 +116,52 @@ test('long axe and halberd skills keep both hands in front and on the same weapo
     }
   }
 });
+
+test('Tiger Step wraps the four fingers and thumb around the jian handle', async () => {
+  const figure = await lowFigure('tiger');
+  const game = createFight({ hero: { regiment: 'tiger' }, foes: [{ regiment: 'yulin' }] });
+  const man = game.hero;
+  const { rig, held } = figure;
+  const world = (node, local = [0, 0, 0]) => node.localToWorld([0, 0, 0], local);
+  const at = name => world(rig.bone(name));
+  function checkPose(label) {
+    const handle = world(held.jian.node);
+    const axis = unit(sub(world(held.jian.node, [0, 1, 0]), handle));
+    for (const finger of ['index', 'middle', 'ring', 'pinky', 'thumb']) {
+      const distal = sub(at(finger + '_03_r'), handle);
+      const radial = len(cross(distal, axis));
+      assert.ok(radial >= 0.014 && radial < 0.045, `${label} ${finger} is ${radial.toFixed(3)}m from the handle center`);
+      assert.ok(Math.abs(dot(distal, axis)) < 0.09, `${label} ${finger} crosses the guard or pommel`);
+    }
+    assert.ok(len(sub(at('hand_l'), handle)) > 0.19, `${label} free hand crowds the weapon hand`);
+  }
+  try {
+    for (let i = 0; i < 30; i++) figure.update(man, game, dt);
+    checkPose('ready');
+    for (const line of ['R', 'L', 'O', 'T']) {
+      man.guard = true;
+      man.guardLine = line;
+      for (let i = 0; i < 20; i++) figure.update(man, game, dt);
+      checkPose('guard ' + line);
+      man.guard = false;
+      const blow = man.r.blows[line];
+      const act = man.act = { kind: 'swing', line, t: 0, wind: blow.wind, strikeAt: blow.wind,
+        recover: blow.recover, held: 0, struck: false, blow, reach: blow.reach };
+      for (let time = 0; time < act.wind + act.recover; time += dt) {
+        act.t = time;
+        act.struck = time >= act.wind;
+        figure.update(man, game, dt);
+        checkPose('cut ' + line);
+      }
+      man.act = null;
+    }
+    man.act = { kind: 'skill', id: 'spin', t: 0 };
+    for (let time = 0; time <= 0.5; time += dt) {
+      man.act.t = time;
+      figure.update(man, game, dt);
+      checkPose('spin');
+    }
+  } finally {
+    figure.dispose();
+  }
+});
