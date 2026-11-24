@@ -7,6 +7,7 @@
 
 import { add, cross, dot, len, lerp3, mul, sub, unit } from './rig.mjs';
 import { SKILLS } from '../sim/regiments.mjs';
+import { CHARGED_RELEASE } from '../sim/combat-tells.mjs';
 
 const clamp01 = (value) => Math.max(0, Math.min(1, value));
 const smooth = (t) => t * t * (3 - 2 * t);
@@ -76,6 +77,10 @@ export function skillTrailSegment(action) {
 export function swingPhase(action, weapon, attackHeld) {
   const [naturalLoad, follow] = SWING_TEMPO[weapon] ?? SWING_TEMPO.sabre;
   if (!action.struck) {
+    if (action.driveAt !== undefined) {
+      const drive = clamp01((action.t - action.driveAt) / CHARGED_RELEASE);
+      return 1 + drive * (0.18 + 0.82 * drive);
+    }
     const wind = clamp01(action.t / action.wind);
     // The PC gesture reserves part of its wind-up for the committed stroke, even at full charge.
     const load = action.releaseOnly && action.prepCap > 0 ? action.prepCap / action.wind : naturalLoad;

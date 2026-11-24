@@ -10,7 +10,8 @@
 import { Scene3D, createPerspectiveCamera3D, loadGltf3D, projectToViewport3D } from '@egret/engine/world3d';
 import { createWorld3DApp } from '@egret/engine/webgpu/world3d';
 import { browserSaveStorage } from '@egret/engine/web/kit';
-import { createFight, facing, step, TICK } from './sim/fight.mjs';
+import { createFight, step, TICK } from './sim/fight.mjs';
+import { incomingAttack } from './sim/combat-tells.mjs';
 import { createBrain, createBrains } from './sim/brain.mjs';
 import { ORDER, REGIMENTS, loadout, playerLoadout } from './sim/regiments.mjs';
 import { PLACES, grade, planRoad, stageScore } from './sim/road.mjs';
@@ -432,20 +433,6 @@ async function main() {
     const m = fighter(id);
     return m ? [m.x, (m.mounted ? 2.15 : 1.3) + (m.act?.air ?? 0), m.z] : [0, 1.3, 0];
   };
-  function threatLine() {
-    const hero = game.hero;
-    let best = null,
-      bd = Infinity;
-    for (const m of game.men) {
-      if (m.side === 'hero' || !m.alive) continue;
-      const a = m.act;
-      if (a?.kind === 'swing' && !a.struck) {
-        const d = Math.hypot(m.x - hero.x, m.z - hero.z);
-        if (d < a.reach + 1.2 && d < bd) [best, bd] = [facing(a.line), d];
-      }
-    }
-    return best;
-  }
   function lockTarget() {
     if (!locked) return null;
     const hero = game.hero;
@@ -501,6 +488,9 @@ async function main() {
         figures.get(e.who)?.braceFromSpin();
         play('steelReady', { volume: 0.71 });
         if (e.who === heroId) hud.toast(t('spinGuard'), 'good');
+        break;
+      case 'recoveryCancel':
+        if (e.who === heroId) play('steelReady', { volume: 0.58, rate: 0.92 });
         break;
       case 'skill':
         if (e.id === 'gale') play('draw', { volume: 0.75, rate: 1.55 });
@@ -678,7 +668,6 @@ async function main() {
     else slow += (1 - slow) * (1 - Math.exp(-dt * 10));
     const k = over ? 0.35 : slow;
     carry += dt * k;
-    const threat = threatLine();
     const target = lockTarget();
     const events = [];
     while (carry >= TICK) {
@@ -688,6 +677,7 @@ async function main() {
       if (autoBrain) inputs.hero = autoBrain.think(game, TICK);
       else {
         const aim = target && game.hero.regiment === 'archer' ? null : undefined;
+        const threat = incomingAttack(game)?.line;
         inputs.hero = input.sample(TICK, { threat, aim, bow: game.hero.regiment === 'archer' && !game.hero.knife, mounted: game.hero.mounted });
         inputs.hero.skillGuardCancel = true;
         inputs.hero.recoveryHandoff = true;
@@ -766,7 +756,7 @@ async function main() {
     const trackingSwing = heroAct?.kind === 'swing' && (!heroAct.struck || heroAct.t - heroAct.strikeAt < 0.08);
     const line = game.hero.guard ? game.hero.guardLine : trackingSwing ? heroAct.line : input.state.line;
     hud.update(dt, game, { line, preparedLine: heroAct?.awaitingRelease ? heroAct.line : undefined,
-      threat, guard: game.hero.guard, locked: !!target, project, yaw: input.state.yaw, input: input.state });
+      incoming: incomingAttack(game), guard: game.hero.guard, locked: !!target, project, yaw: input.state.yaw, input: input.state });
     touch.cool(game.hero);
     hud.hint(!coarse && !autoBrain && input.state.wantLock && !input.state.pointerLocked && !over ? t('clickToFight') : null);
   }
