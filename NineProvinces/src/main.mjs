@@ -20,7 +20,7 @@ import { activeSiegeWait, cancelSiegeWait, disband, finishBattle, muster, neares
 import { registerCustom } from './sim/newblood.mjs';
 import { die, giveTreasure, issueTalentOrder, moveGeneral, persuade, release, searchCity } from './sim/people.mjs';
 import { answerStory } from './sim/story.mjs';
-import { advance, createGame, power, recruit, startWork, study, transfer } from './sim/world.mjs';
+import { advance, createGame, power, recruit, setGovernorRecruitment, startWork, study, transfer } from './sim/world.mjs';
 import { createDialogs } from './ui/dialogs.mjs';
 import { $, button, clear, h } from './ui/dom.mjs';
 import { createHud, SPEEDS, tipFor } from './ui/hud.mjs';
@@ -675,6 +675,10 @@ function act(kind, ...args) {
     case 'recruit':
       r = recruit(s, P, args[0], args[1]);
       say(r, r.ok ? t('recruited', { n: r.got }) : null, 'drum');
+      break;
+    case 'governorRecruit':
+      r = setGovernorRecruitment(s, P, args[0], args[1]);
+      say(r, t(args[1] ? 'governorRecruitStarted' : 'governorRecruitStopped'), 'seal');
       break;
     case 'muster': {
       r = muster(s, P, args[0], { ...args[1], attack: Boolean(args[1].target) });
