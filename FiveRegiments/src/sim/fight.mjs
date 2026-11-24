@@ -1870,7 +1870,7 @@ export function step(game, inputs, dt = TICK) {
   } else if (!game.men.some((m) => m.side === 'foe' && m.alive) && (!game.exit || atExpeditionGate(game.hero, game.exit))) {
     game.over = 'won';
     const foes = game.men.filter((m) => m.side === 'foe');
-    const double = foes.length > 1;
+    const double = !game.exit && foes.length > 1;
     const close = double && game.downs.length >= 2 && game.downs.at(-1).time - game.downs.at(-2).time < 6;
     emit(game, 'won', { double, close });
   }

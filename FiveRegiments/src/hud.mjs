@@ -96,8 +96,11 @@ export function createHud(root, { touch = false } = {}) {
   }
   strip.innerHTML = marks.join('') + '<div class="foes"></div>';
   const foeMarks = strip.querySelector('.foes');
+  const exitMark = el('i', 'route-gate', strip);
+  exitMark.hidden = true;
 
   function setup(game) {
+    exitMark.hidden = true;
     objective.hidden = true;
     objective.textContent = '';
     const hero = game.hero;
@@ -176,6 +179,11 @@ export function createHud(root, { touch = false } = {}) {
     // (heading + 360) × 2 pixels along the strip, whose left end is under the middle of the compass.
     const camHeading = ((((-yaw * 180) / Math.PI) % 360) + 360) % 360;
     strip.style.transform = `translateX(${(-(camHeading + 360) * 2).toFixed(1)}px)`;
+    exitMark.hidden = !game.exit || plateViews.some(view => view.man.alive);
+    if (!exitMark.hidden) {
+      const bearing = Math.atan2(game.exit.x - hero.x, game.exit.z - hero.z);
+      exitMark.style.left = ((camHeading + 360 - wrap(bearing - yaw) * 180 / Math.PI) * 2).toFixed(1) + 'px';
+    }
     // Nameplates over the foes, and their marks on the compass.
     const fm = foeMarks.children;
     plateViews.forEach((v, i) => {
@@ -186,14 +194,14 @@ export function createHud(root, { touch = false } = {}) {
         v.hhp.hidden = !v.man.mounted;
       }
       const at = project?.([v.man.x, (v.man.floor ?? 0) + (v.man.mounted ? 3.05 : 2.15), v.man.z]);
-      v.box.hidden = !at || !v.man.alive;
+      v.box.hidden = !at || !v.man.alive || v.man.waiting;
       if (at) v.box.style.transform = `translate(${at[0].toFixed(1)}px, ${at[1].toFixed(1)}px) translate(-50%, -100%)`;
       const bearing = Math.atan2(v.man.x - hero.x, v.man.z - hero.z);
       const off = wrap(bearing - yaw);
       if (fm[i]) {
         // The mark at his heading, on the copy of the strip nearest the camera's.
         fm[i].style.left = ((camHeading + 360 - (off * 180) / Math.PI) * 2).toFixed(1) + 'px';
-        fm[i].hidden = !v.man.alive;
+        fm[i].hidden = !v.man.alive || v.man.waiting;
         fm[i].classList.toggle('behind', Math.abs(off) > Math.PI / 2);
       }
     });
