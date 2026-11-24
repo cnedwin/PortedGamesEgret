@@ -38,3 +38,26 @@ test('regiment sentries wake along the road and keep the light infantry loadout'
   assert.equal(expeditionReady(guard, game.hero), true);
   assert.equal(createFight({ hero: { regiment: 'plume' }, foes: [] }).hero.mounted, true);
 });
+
+test('the boss wakes at its post and changes stance once after finishing its attack', () => {
+  const stage = planExpedition()[2];
+  const boss = stage.units.find(unit => unit.rank === 'boss');
+  const exit = { x: 0, z: -18, r: 2 };
+  const game = createFight({ hero: { regiment: 'tiger' }, foes: [boss], exit });
+  const warden = game.men[1];
+  assert.equal(warden.waiting, true);
+  game.hero.z = -7;
+  step(game, {});
+  assert.equal(warden.waiting, false);
+  game.hero.z = 7;
+  step(game, {});
+  assert.equal(warden.waiting, false, 'an alerted boss does not forget a retreating player');
+  warden.hp = Math.round(warden.maxHp * 0.5);
+  warden.act = { kind: 'recover', time: 0.5, t: 0 };
+  assert.equal(step(game, {}).some(event => event.type === 'bossPhase'), false);
+  warden.act = null;
+  assert.equal(step(game, {}).filter(event => event.type === 'bossPhase').length, 1);
+  assert.deepEqual(warden.skills, boss.phaseSkills);
+  assert.ok(warden.cool.every(time => time > 0.8));
+  assert.equal(step(game, {}).some(event => event.type === 'bossPhase'), false);
+});

@@ -15,7 +15,7 @@ import { incomingAttack } from './sim/combat-tells.mjs';
 import { createBrain, createBrains } from './sim/brain.mjs';
 import { ORDER, REGIMENTS, loadout, playerLoadout } from './sim/regiments.mjs';
 import { PLACES, grade, planRoad, stageScore } from './sim/road.mjs';
-import { expeditionReady, planExpedition } from './sim/expedition.mjs';
+import { planExpedition } from './sim/expedition.mjs';
 import { createInput } from './input.mjs';
 import { createHud, createTouchControls } from './hud.mjs';
 import { createScreens, placeName } from './screens.mjs';
@@ -156,7 +156,7 @@ async function main() {
   function figureFor(man, figureAssets) {
     if (man.rank === 'troop') return createFootSoldier(man.regiment, scene);
     const [b, motion, horseBody] = figureAssets;
-    const fig = createFigure({ regiment: man.regiment, body: b, motion, world: scene, height: HEIGHT[man.regiment] });
+    const fig = createFigure({ regiment: man.regiment, body: b, motion, world: scene, height: HEIGHT[man.regiment] * (man.rank === 'boss' ? 1.08 : 1) });
     if (!horseBody) return fig;
     // A rider and his horse: the horse moves first, then he sits where its saddle is.
     const horse = createHorse({ body: horseBody, world: scene });
@@ -334,12 +334,8 @@ async function main() {
       exit: st.expedition ? stage.place.exit : null
     });
     brains = st.expedition ? Object.fromEntries(game.men.slice(1).map(man => {
-      const brain = createBrain(man, { level: man.rank === 'troop' ? Math.min(0.42, st.level) : st.level, rng: game.rng });
-      let awake = false;
-      return [man.id, { think(g, dt) {
-        awake ||= expeditionReady(man, g.hero);
-        return awake ? brain.think(g, dt) : {};
-      } }];
+      const level = man.rank === 'troop' ? Math.min(0.42, st.level) : st.level + 0.14;
+      return [man.id, createBrain(man, { level, rng: game.rng })];
     })) : createBrains(game, { level: st.level });
     autoBrain = params.has('auto') ? createBrain(game.hero, { level: 0.7, rng: game.rng }) : null;
     const list = game.men.map((man, i) => figureFor(man, bodies[i]));
@@ -707,6 +703,13 @@ async function main() {
           const left = game.men.filter((m) => m.side === 'foe' && m.alive).length;
           if (!left && game.men.filter((m) => m.side === 'foe').length > 1) hud.banner(t('double'), '', 2.5, 'win');
         }
+        break;
+      case 'bossPhase':
+        play('gong', { rate: 1.15 });
+        hud.banner(t('expeditionBossPhase'), t(defender.titleKey), 1.25, 'start');
+        break;
+      case 'expeditionBreath':
+        hud.toast(t('expeditionBreath'));
         break;
       case 'won':
         play('gong');

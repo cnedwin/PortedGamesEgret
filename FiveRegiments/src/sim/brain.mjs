@@ -204,7 +204,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
   function think(game, dt) {
     const input = { move: [0, 0], face: man.face, sprint: false, attack: false, guard: false, kick: false, step: false,
       skill: -1, art: false, line: man.line, swap: false, mount: false, readableAttack: man.side === 'foe' };
-    if (!man.alive) return input;
+    if (!man.alive || man.waiting) return input;
     const foes = enemiesOf(game, man);
     if (!foes.length) return input;
     // The nearest, though a brain keeps to its man unless another comes much closer.
@@ -230,7 +230,7 @@ export function createBrain(man, { level = 0.5, rng = Math.random } = {}) {
     const threat = threatFrom(game, target);
 
     // Shared turns: on a side with two, only the one holding the turn presses in; the other circles.
-    const allies = game.men.filter((m) => m.alive && m.side === man.side && m !== man && m.regiment !== 'archer');
+    const allies = game.men.filter((m) => m.alive && !m.waiting && m.side === man.side && m !== man && m.regiment !== 'archer');
     if (allies.length && !bow) {
       if (!game.token || !game.men.find((m) => m.id === game.token && m.alive) || game.time - game.tokenTime > 5 + rng() * 2.5) {
         const pool = [man, ...allies];

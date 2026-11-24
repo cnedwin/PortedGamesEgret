@@ -27,7 +27,7 @@
 
 import { ARMOUR, ARTS, CRIT, DAMAGE, RAGE, REGIMENTS, SKILLS, TALENTS, loadout, rageOf } from './regiments.mjs';
 import { CHARGED_RELEASE, facing, OPPONENT_WIND, opponentSkillLead } from './combat-tells.mjs';
-import { atExpeditionGate } from './expedition.mjs';
+import { atExpeditionGate, changeExpeditionPhase, expeditionReady } from './expedition.mjs';
 
 export const TICK = 1 / 60;
 export const BODY = 0.42;
@@ -103,6 +103,10 @@ function enlist(game, spec, side, index) {
     rank,
     power: spec.power ?? 1,
     wakeZ: spec.wakeZ,
+    waiting: spec.wakeZ !== undefined,
+    titleKey: spec.titleKey,
+    phase: spec.phaseSkills ? 1 : 0,
+    phaseSkills: spec.phaseSkills,
     r,
     skills: troop ? [] : load.skills,
     talents,
@@ -308,6 +312,11 @@ function wound(game, man, amount, by, info = {}) {
     }
     game.downs.push({ id: man.id, time: game.time });
     emit(game, 'down', { who: man.id, by: by?.id });
+    if (game.exit && man.rank === 'troop' && by === game.hero && by.alive) {
+      by.st = Math.min(by.maxSt, by.st + 16);
+      by.hp = Math.min(by.maxHp, by.hp + Math.round(by.maxHp * 0.055));
+      emit(game, 'expeditionBreath', { who: by.id });
+    }
   }
   return amount;
 }
@@ -1832,6 +1841,12 @@ export function step(game, inputs, dt = TICK) {
   groundEffects(game, dt);
   if (origins) mountedContacts(game, origins, dt);
   settle(game);
+  if (game.exit) {
+    for (const man of game.men) {
+      if (man.waiting && expeditionReady(man, game.hero)) man.waiting = false;
+      if (changeExpeditionPhase(man)) emit(game, 'bossPhase', { who: man.id, phase: man.phase });
+    }
+  }
   if (!game.hero.alive) {
     game.over = 'lost';
     emit(game, 'lost', {});

@@ -109,8 +109,8 @@ export function createHud(root, { touch = false } = {}) {
     plateViews = game.men
       .filter((m) => m.side === 'foe')
       .map((m) => {
-        const name = say(REGIMENTS[m.regiment].name);
-        const box = el('div', 'plate', plates, `<b>${m.rank === 'troop' ? t('expeditionTroop', { name }) : name}</b>`);
+        const name = m.titleKey ? t(m.titleKey) : say(REGIMENTS[m.regiment].name);
+        const box = el('div', m.rank === 'boss' ? 'plate boss' : 'plate', plates, `<b>${m.rank === 'troop' ? t('expeditionTroop', { name }) : name}</b>`);
         const hp = el('div', 'bar hp', box, '<i></i><b></b>');
         const hhp = m.horse ? el('div', 'bar hhp', box, '<i></i>') : null;
         return { man: m, box, hp, hhp, shown: m.hp };
