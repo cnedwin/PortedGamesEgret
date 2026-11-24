@@ -55,7 +55,7 @@ both is the "double kill".
 
 **手感 · Handling**
 
-- 刀路：鼠标最后一下往哪边划，就选哪一向。单击模式下，按住左键锁定刀路和架势，准星外侧显示该方向。松开才挥出，蓄满也会继续等候。按住时可用右键收招。经典模式的格挡方向随来招。 · Flick the mouse to pick a line. In single-attack mode, hold the left button to lock in the line and ready the weapon. The crosshair highlights the held direction. Release to strike, even at full charge. Right click to feint while readying. Classic guard follows the incoming blow.
+- 刀路：鼠标向右划选右侧起刀，向左划选左侧起刀，上划选下劈，下划选突刺。单击模式下，按住左键锁定起刀方向，准星上的金色箭头指示兵器挥入的方向。松开才挥出，蓄满也会继续等候。按住时可用右键收招。经典模式的格挡方向随来招。 · Flick the mouse to choose the side the weapon starts on. Flick up for an overhead cut or down for a thrust. In single-attack mode, hold the left button to lock the line. The gold chevron points into the cut. Release to strike, even at full charge. Right click to feint while readying. Classic guard follows the incoming blow.
 - 格挡：按住右键。方向对上才挡得住；挡偏了只卸一半（盾牌挡偏了漏两成半，且更耗体力）。刚举起的 0.2 秒内接住是弹刀：不耗体力，对方踉跄。双手兵器蓄满的重劈弹不开。 · Guard: hold the right button. Only the right line holds; a wrong one takes half (a shield on a wrong line lets a quarter through and tires him more). Caught in the first 0.2 s it is a deflection. A fully wound two-handed cut cannot be deflected.
 - 「格挡辅助」（默认开）：按住右键时自动对准最近的来刀；关掉后全靠自己读刀。 · Guard assist (on by default) turns a held guard to the blow coming; turned off, the reading is all his.
 - 虎步回旋击挥过后，准星的虚线环或手机格挡键的亮边提示可接格挡。此时新按右键或触屏格挡，松开后可接已装备的挥砍。 · After Tiger Step's Spin, the dashed reticle ring or outlined touch button signals a fresh guard press. Release guard to follow with Triple Cut if equipped.

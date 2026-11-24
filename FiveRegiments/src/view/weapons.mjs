@@ -348,7 +348,7 @@ const BUILD = {
     // A grip bar across the back.
     kit.box('wood', [-0.09, -0.035, -0.014], [0.09, -0.005, 0.014], 0x4a2c1a);
     void face;
-    return { length: 0.4 };
+    return { length: 0.4, grip: [0, -0.02, 0] };
   },
   arrow(kit) {
     kit.lathe('wood', [[0.004, -0.72], [0.0045, 0], [0.004, 0.02]], { segments: 5, colour: 0x9c7b52 });
@@ -365,7 +365,7 @@ const BUILD = {
   }
 };
 
-/** Make one weapon: { node, length, second, nocks }. Shields have their face along +Y (turned when worn). */
+/** Make one weapon, with grip locations in model metres. A shield's face points along +Y. */
 export function createWeapon(kind) {
   const kit = createKit();
   const info = BUILD[kind](kit);

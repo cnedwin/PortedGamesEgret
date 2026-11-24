@@ -78,11 +78,18 @@ export function swingPhase(action, weapon, attackHeld) {
     if (wind < load) return smooth(wind / load);
     if (action.awaitingRelease || !action.releaseOnly && (action.held > 0 || attackHeld && !action.quick)) return 1;
     const sweep = clamp01((wind - load) / (1 - load));
-    return 1 + 0.96 * sweep * sweep;
+    return 1 + sweep * (0.18 + 0.82 * sweep);
   }
   const recovery = clamp01((action.t - action.strikeAt) / action.recover);
   if (recovery < follow) return 2 + (1 - (1 - recovery / follow) ** 2);
   return 3 + smooth((recovery - follow) / (1 - follow));
+}
+
+/** Only the driven part of a cut leaves a ribbon. A straight thrust reads through its tip and contact. */
+export function swingTrailActive(action, weapon, attackHeld) {
+  if (action?.kind !== 'swing' || action.line === 'T' || action.awaitingRelease) return false;
+  const phase = swingPhase(action, weapon, attackHeld);
+  return phase >= 1.1 && phase <= 2.78;
 }
 
 /** Body-space lateral transfer, fore/aft transfer and knee compression for the long axe. */

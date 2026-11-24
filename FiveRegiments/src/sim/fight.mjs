@@ -1175,6 +1175,7 @@ function cueSwingRelease(game, man, act, heavy = 0) {
 }
 
 const meleePressed = (man, input) => input.meleeRelease ? input.meleeDown && !input.meleeCancel : input.attack && !man.prev.attack;
+const meleeLine = (man, input) => input.meleeRelease ? input.meleeLine ?? man.line : man.line;
 
 function chargeSwing(game, man, act, dt) {
   act.held += dt;
@@ -1235,7 +1236,7 @@ function runSwing(game, man, act, input, dt) {
   }
   if (act.t - act.strikeAt >= act.recover) man.act = null;
   else if (act.t - act.strikeAt > act.recover * 0.55 && meleePressed(man, input)) {
-    man.queuedSwing = { line: man.line, releaseOnly: input.meleeRelease, released: input.meleeUp };
+    man.queuedSwing = { line: meleeLine(man, input), releaseOnly: input.meleeRelease, released: input.meleeUp };
     man.act = null;
   }
 }
@@ -1380,7 +1381,7 @@ function stepMan(game, man, input, dt) {
     else if (bowOut) runBow(game, man, input, dt);
     else if (free && (chain || meleePressed(man, input))) {
       const releaseOnly = chain ? chain.releaseOnly : input.meleeRelease;
-      startSwing(game, man, chain?.line ?? man.line, {
+      startSwing(game, man, chain?.line ?? meleeLine(man, input), {
         chained: !!chain,
         releaseOnly,
         released: chain?.released || (input.meleeRelease && input.meleeUp)

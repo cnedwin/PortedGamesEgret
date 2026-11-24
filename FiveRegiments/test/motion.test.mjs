@@ -4,7 +4,7 @@
 import assert from 'node:assert/strict';
 import { readFileSync, existsSync } from 'node:fs';
 import { test } from 'node:test';
-import { createMotion, heavyFootwork, impactWeight, interpolateDirection, skillTrailSegment, swingPhase, TIGER_SWORD } from '../src/view/motion.mjs';
+import { createMotion, heavyFootwork, impactWeight, interpolateDirection, skillTrailSegment, swingPhase, swingTrailActive, TIGER_SWORD } from '../src/view/motion.mjs';
 import { dot, len, stabilizeBladeRoll } from '../src/view/rig.mjs';
 import { ORDER } from '../src/sim/regiments.mjs';
 
@@ -78,6 +78,16 @@ test('a charged PC gesture transitions continuously from its locked load into a 
     const early = { ...before, t: prepCap / 2, held: 0 };
     assert.equal(swingPhase(early, weapon), swingPhase({ ...early, awaitingRelease: false }, weapon));
   }
+});
+
+test('a melee ribbon follows the committed cut and ends before the weapon resets', () => {
+  const swing = { kind: 'swing', line: 'R', wind: 0.4, t: 0.39, prepCap: 0.29, releaseOnly: true };
+  assert.equal(swingTrailActive({ ...swing, awaitingRelease: true, t: 0.29 }, 'jian'), false);
+  assert.equal(swingTrailActive(swing, 'jian'), true);
+  const contact = { ...swing, t: 0.4, strikeAt: 0.4, struck: true, recover: 0.3 };
+  assert.equal(swingTrailActive(contact, 'jian'), true);
+  assert.equal(swingTrailActive({ ...contact, line: 'T' }, 'jian'), false);
+  assert.equal(swingTrailActive({ ...contact, t: 0.64 }, 'jian'), false);
 });
 
 test('a reversing blade direction stays normalised across the midpoint', () => {
