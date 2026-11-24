@@ -38,6 +38,7 @@ function spriteTexture(kind = 'dot') {
 
 const TRAIL = 10;
 const UP = [0, 1, 0];
+const EDGE_STEPS = 8;
 
 function arcs(sectors, inside, outside) {
   const positions = [], indices = [];
@@ -80,7 +81,7 @@ function bladeWaveGeometry() {
 }
 
 function createCuePool(scene, capacity) {
-  // All marks share these geometries. Tinted transparency keeps cues readable on pale ground.
+  // Regular marks share geometry. A blade extension uses the slot's own short dynamic strip.
   const shapes = {
     ring: arcs([[-Math.PI, Math.PI, 32]], 0.91, 1),
     arc: arcs([[-1.16, 1.16, 16]], 0.91, 1),
@@ -95,6 +96,8 @@ function createCuePool(scene, capacity) {
       indices: [0, 1, 2, 0, 2, 3, 4, 6, 5, 4, 5, 7]
     })
   };
+  const stripIndices = [];
+  for (let i = 0; i < EDGE_STEPS * 2; i += 2) stripIndices.push(i, i + 1, i + 2, i + 1, i + 3, i + 2);
   const slots = Array.from({ length: capacity }, () => {
     const material = createUnlitMaterial3D({ blending: 'normal', depthWrite: false, side: 'double', fog: false, opacity: 0 });
     const mesh = new Mesh3D(shapes.ring, material);
@@ -103,20 +106,62 @@ function createCuePool(scene, capacity) {
     mesh.visible = false;
     mesh.renderOrder = 4;
     scene.addChild(mesh);
-    return { mesh, material, remaining: 0 };
+    const strip = createGeometry3D({ positions: new Float32Array((EDGE_STEPS + 1) * 6), indices: stripIndices });
+    strip.getAttribute('position').dynamic = true;
+    return { mesh, material, strip, remaining: 0 };
   });
+  const take = () => slots.reduce((lowest, item) => item.remaining < lowest.remaining ? item : lowest);
+  function show(slot, geometry, at, yaw, radius, tint, { time = 0.28, opacity = 0.56, growth = 0.38, initial = 0.65 } = {}) {
+    Object.assign(slot, { remaining: time, time, radius, opacity, growth, initial });
+    const { mesh, material } = slot;
+    const bridge = geometry === slot.strip;
+    mesh.name = bridge ? 'mounted-edge-bridge' : 'skill-cue';
+    mesh.frustumCulled = !bridge;
+    mesh.geometry = geometry;
+    mesh.setPosition(...at);
+    mesh.setRotation(0, yaw, 0);
+    mesh.setScale(radius * initial, radius * initial, radius * initial);
+    material.color.set(tint);
+    material.opacity = opacity;
+    mesh.visible = true;
+  }
   return {
-    show(shape, at, yaw, radius, tint, { time = 0.28, opacity = 0.56, growth = 0.38, initial = 0.65 } = {}) {
-      const slot = slots.reduce((lowest, item) => item.remaining < lowest.remaining ? item : lowest);
-      Object.assign(slot, { remaining: time, time, radius, opacity, growth, initial });
-      const { mesh, material } = slot;
-      mesh.geometry = shapes[shape];
-      mesh.setPosition(...at);
-      mesh.setRotation(0, yaw, 0);
-      mesh.setScale(radius * initial, radius * initial, radius * initial);
-      material.color.set(tint);
-      material.opacity = opacity;
-      mesh.visible = true;
+    show(shape, at, yaw, radius, tint, options) {
+      show(take(), shapes[shape], at, yaw, radius, tint, options);
+    },
+    bridge(blade, end) {
+      const [base, tip] = blade;
+      const axis = tip.map((value, i) => value - base[i]);
+      const lengthSq = axis.reduce((total, value) => total + value * value, 0);
+      if (lengthSq < 1e-8) return;
+      // Start on the working edge. Very close hits already read through the regular contact glint.
+      const projection = axis.reduce((total, value, i) => total + value * (end[i] - base[i]), 0) / lengthSq;
+      const reach = Math.max(0.5, Math.min(1, projection));
+      const from = base.map((value, i) => value + axis[i] * reach);
+      const [dx, dy, dz] = end.map((value, i) => value - from[i]);
+      const gap = Math.hypot(dx, dy, dz);
+      if (!(gap >= 0.46 && gap <= 1.6)) return;
+
+      const slot = take();
+      const position = slot.strip.getAttribute('position');
+      const horizontal = Math.hypot(dx, dz);
+      const sideX = horizontal > 1e-6 ? dz / horizontal : 1;
+      const sideZ = horizontal > 1e-6 ? -dx / horizontal : 0;
+      const curvature = Math.min(0.22, gap * 0.20);
+      for (let i = 0; i <= EDGE_STEPS; i++) {
+        const t = i / EDGE_STEPS;
+        const bend = 2 * t * (1 - t);
+        const x = from[0] + dx * t + sideX * bend * curvature;
+        const y = from[1] + dy * t + bend * 0.10;
+        const z = from[2] + dz * t + sideZ * bend * curvature;
+        const width = 0.046 * Math.sin(Math.PI * t) ** 0.75;
+        position.data.set([
+          x - sideX * width * 0.45, y - width * 0.89, z - sideZ * width * 0.45,
+          x + sideX * width * 0.45, y + width * 0.89, z + sideZ * width * 0.45
+        ], i * 6);
+      }
+      position.touch();
+      show(slot, slot.strip, [0, 0, 0], 0, 1, [0.79, 0.88, 1], { time: 0.13, opacity: 0.87, growth: 0, initial: 1 });
     },
     update(dt) {
       for (const slot of slots) {
@@ -233,6 +278,7 @@ function createSweep(scene) {
 export function createEffects(scene, { particles = 1, blood = true } = {}) {
   const fx = { blood };
   const cues = createCuePool(scene, particles < 1 ? 8 : 14);
+  const mountedEdges = new Map();
   const dot = spriteTexture('dot'),
     petal = spriteTexture('petal');
   const emitter = (options) => {
@@ -372,6 +418,14 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
         const special = SKILL_EFFECTS[e.skill];
         const blade = e.arrow || e.kick || !e.line ? null : bladeOf(e.by);
         const { point, away, back } = contact(e, at, e.by ? where(e.by) : at, blade, 0.23);
+        if (e.mountedImpact && e.line === 'R' && blade && !e.graze && !e.broke) {
+          // A sweep can hit several targets. One extension follows the closest contact on that beat.
+          const { at: [x, z], from: [rx, rz] } = e.mountedImpact;
+          const rangeSq = (x - rx) ** 2 + (z - rz) ** 2;
+          const previous = mountedEdges.get(e.by);
+          if (!previous || e.time > previous.time || (e.time === previous.time && rangeSq < previous.rangeSq))
+            mountedEdges.set(e.by, { time: e.time, rangeSq, blade, point });
+        }
         burst(impact, point, strong || special?.impact === 'blunt' ? 8 : e.arrow ? 3 : 5, away);
         if (e.glance || armoured || e.crit || special?.impact === 'steel')
           burst(sparks, point, e.glance ? 9 : strong ? 8 : 4, back);
@@ -475,6 +529,8 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
       flash.intensity *= Math.exp(-dt * 18);
     } else flash.intensity = 0;
     cues.update(dt);
+    for (const { blade, point } of mountedEdges.values()) cues.bridge(blade, point);
+    mountedEdges.clear();
     const live = new Set();
     for (const shot of game?.shots ?? []) {
       live.add(shot);
@@ -570,6 +626,7 @@ export function createEffects(scene, { particles = 1, blood = true } = {}) {
     for (const e of fightEmitters) e.reset();
     for (const s of sweeps.values()) s.clear();
     cues.clear();
+    mountedEdges.clear();
     flashLife = 0;
     flash.intensity = 0;
   };
