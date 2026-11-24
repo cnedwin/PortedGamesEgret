@@ -5,7 +5,10 @@ import { ARTS, ORDER, REGIMENTS, SKILLS, TALENTS, playerLoadout } from './sim/re
 import { PLACES } from './sim/road.mjs';
 import { t, say, getLanguage } from './i18n.mjs';
 
-const PLACE_WORD = { county: 'placeCounty', peach: 'placePeach', bamboo: 'placeBamboo', snow: 'placeSnow', palace: 'placePalace' };
+const PLACE_WORD = {
+  county: 'placeCounty', peach: 'placePeach', bamboo: 'placeBamboo', snow: 'placeSnow', palace: 'placePalace',
+  pass: 'placePass', depot: 'placeDepot', citadel: 'placeCitadel'
+};
 export const placeName = (p) => t(PLACE_WORD[p]);
 
 function node(html) {
@@ -13,6 +16,8 @@ function node(html) {
   box.innerHTML = html.trim();
   return box.firstElementChild;
 }
+
+const hasButtonFocus = (event) => Boolean(event.target?.closest?.('button'));
 
 export function createScreens(root, { onLanguage, coarse = false }) {
   const layer = document.createElement('div');
@@ -59,12 +64,14 @@ export function createScreens(root, { onLanguage, coarse = false }) {
       return current;
     },
 
-    title({ onRoad, onFree, onSettings, best, note = '' }) {
+    title({ onRoad, onExpedition, onFree, onSeries, onSettings, best, note = '' }) {
       const page = node(`<section class="page title">
         <header><h1>${t('title')}</h1><p>${t('tagline')}</p></header>
         <nav class="menu">
           <button type="button" data-act="road" autofocus>${t('road')}</button>
+          <button type="button" class="go" data-act="expedition">${t('expedition')}</button>
           <button type="button" data-act="free">${t('free')}</button>
+          <button type="button" data-act="series">${t('duelSeries')}</button>
           <button type="button" data-act="settings">${t('settings')}</button>
         </nav>
         ${best ? `<p class="best">${best}</p>` : ''}
@@ -72,18 +79,22 @@ export function createScreens(root, { onLanguage, coarse = false }) {
         <p class="howto">${t(coarse ? 'touchText' : 'controlsText')}</p>
         ${langButton()}
       </section>`);
-      wire(page, { road: onRoad, free: onFree, settings: onSettings });
+      wire(page, { road: onRoad, expedition: onExpedition, free: onFree, series: onSeries, settings: onSettings });
       show(page, (e) => {
-        if (e.code === 'Enter') onRoad();
+        if (e.code === 'Enter' && !hasButtonFocus(e)) onRoad();
         else return false;
       });
     },
 
     /** Choose a regiment; `onLook(regiment)` turns the field to him. */
-    choose({ selected = 'yulin', onPick, onLook, onBack, title = t('chooseRegiment') }) {
+    choose({ selected = 'yulin', onPick, onLook, onBack, title = t('chooseRegiment'), veteran = null, onDifficulty }) {
       let i = ORDER.indexOf(selected);
       const page = node(`<section class="page choose">
         <h2>${title}</h2>
+        ${veteran === null ? '' : `<div class="route-level" role="group" aria-label="${t('expeditionDifficulty')}">
+          <button type="button" data-act="difficulty" data-arg="march" aria-pressed="${!veteran}">${t('expeditionMarch')}</button>
+          <button type="button" data-act="difficulty" data-arg="veteran" aria-pressed="${veteran}">${t('expeditionVeteran')}</button>
+        </div>`}
         <div class="tabs">${ORDER.map((r, k) => `<button type="button" data-act="look" data-arg="${k}">${say(REGIMENTS[r].name)}</button>`).join('')}</div>
         <article class="regiment"></article>
         <footer><button type="button" data-act="back">${t('back')}</button><button type="button" class="go" data-act="pick" autofocus>${t('next')}</button></footer>
@@ -100,6 +111,12 @@ export function createScreens(root, { onLanguage, coarse = false }) {
       };
       draw();
       wire(page, {
+        difficulty: (name) => {
+          onDifficulty?.(name === 'veteran');
+          page.querySelectorAll('.route-level button').forEach(button => {
+            button.setAttribute('aria-pressed', String(button.dataset.arg === name));
+          });
+        },
         look: (k) => {
           i = Number(k);
           draw();
@@ -163,44 +180,53 @@ export function createScreens(root, { onLanguage, coarse = false }) {
     },
 
     /** The card before a fight. */
-    stageCard({ stage, total, onGo }) {
+    stageCard({ stage, total, series, onBack, onGo }) {
       const foes = stage.foes.map((f) => say(REGIMENTS[f].name)).join(` ${t('and')} `);
+      const round = series ? t('seriesRound', { n: stage.index + 1 }) : stage.expedition ? t('expeditionStage', { n: stage.index + 1 }) : stage.double ? t('finale') : t('stage', { n: stage.index + 1 });
       const page = node(`<section class="page card-stage">
-        <p class="small">${stage.double ? t('finale') : t('stage', { n: stage.index + 1 })} / ${total}</p>
+        <p class="small">${round} / ${total}${stage.expedition ? ' · ' + t(stage.veteran ? 'expeditionVeteran' : 'expeditionMarch') : ''}</p>
         <h2>${placeName(stage.place)}</h2>
         <p class="vs">${t('versus')} <b>${foes}</b></p>
+        ${series ? `<p class="small">${t('seriesStanding', series)}</p>` : ''}
         <button type="button" class="go" data-act="go" autofocus>${t('fight')}</button>
         <p class="hint click">${t(coarse ? 'touchFightTip' : 'clickToFight')}</p>
+        ${onBack ? `<button type="button" data-act="back">${t('toTitle')}</button>` : ''}
       </section>`);
-      wire(page, { go: onGo });
+      wire(page, { go: onGo, back: onBack });
       show(page, (e) => {
-        if (e.code === 'Enter' || e.code === 'Space') onGo();
+        if (e.code === 'Escape' && onBack) onBack();
+        else if ((e.code === 'Enter' || e.code === 'Space') && !(series && hasButtonFocus(e))) onGo();
         else return false;
       });
     },
 
-    result({ won, double, stats, last, onNext, onRetry, onTitle, runMark }) {
+    result({ won, double, stats, last, onNext, onRetry, onTitle, runMark, expedition = false, series }) {
       const mark = runMark ? t('marks')[['jia', 'yi', 'bing', 'ding'].indexOf(runMark)] : null;
+      const canAdvance = series ? !series.finished : won && !last;
+      const canRetry = series ? series.finished : !won;
+      const seriesStatus = series?.finished ? t(series.wins === 2 ? 'seriesWon' : 'seriesLost')
+        : series ? t('seriesRound', { n: series.wins + series.losses }) : '';
       const page = node(`<section class="page result ${won ? 'won' : 'lost'}">
         <h2>${won ? (double ? t('double') : t('won')) : t('lost')}</h2>
-        ${last && won ? `<p class="small">${t('runDone')}</p>` : ''}
+        ${series ? `<p class="small">${seriesStatus} · ${t('seriesStanding', series)}</p>`
+          : last && won ? `<p class="small">${t(expedition ? 'expeditionWon' : 'runDone')}</p>` : ''}
         ${mark ? `<p class="mark"><span>${t('mark')}</span><b>${mark}</b></p>` : ''}
         <dl>
           <div><dt>${t('time')}</dt><dd>${t('seconds', { s: stats.time.toFixed(1) })}</dd></div>
           <div><dt>${t('deflects')}</dt><dd>${stats.deflects}</dd></div>
           <div><dt>${t('breaks')}</dt><dd>${stats.broken}</dd></div>
           <div><dt>${t('taken')}</dt><dd>${stats.taken}</dd></div>
-          ${won ? `<div><dt>${t('score')}</dt><dd>${stats.score}</dd></div>` : ''}
+          ${won && !series ? `<div><dt>${t('score')}</dt><dd>${stats.score}</dd></div>` : ''}
         </dl>
         <footer>
-          ${won && !last ? `<button type="button" class="go" data-act="next" autofocus>${t('goOn')}</button>` : ''}
-          ${!won ? `<button type="button" class="go" data-act="retry" autofocus>${t('retry')}</button>` : ''}
-          <button type="button" data-act="title" ${won && last ? 'autofocus' : ''}>${t('toTitle')}</button>
+          ${canAdvance ? `<button type="button" class="go" data-act="next" autofocus>${t(series ? 'seriesNext' : expedition ? 'expeditionNext' : 'goOn')}</button>` : ''}
+          ${canRetry ? `<button type="button" class="go" data-act="retry" autofocus>${t(series ? 'seriesRematch' : 'retry')}</button>` : ''}
+          <button type="button" data-act="title" ${!canAdvance && !canRetry ? 'autofocus' : ''}>${t('toTitle')}</button>
         </footer>
       </section>`);
       wire(page, { next: onNext, retry: onRetry, title: onTitle });
       show(page, (e) => {
-        if (e.code === 'Enter') (won && !last ? onNext : !won ? onRetry : onTitle)();
+        if (e.code === 'Enter' && !(series && hasButtonFocus(e))) (canAdvance ? onNext : canRetry ? onRetry : onTitle)();
         else if (e.code === 'Escape') onTitle();
         else return false;
       });
@@ -248,18 +274,20 @@ export function createScreens(root, { onLanguage, coarse = false }) {
       });
     },
 
-    free({ state, onGo, onBack, onLook }) {
+    free({ state, series, onGo, onBack, onLook }) {
       const page = node(`<section class="page free">
-        <h2>${t('free')}</h2><p class="hint">${t('freeHint')}</p>
+        <h2>${t(series ? 'duelSeries' : 'free')}</h2><p class="hint">${t(series ? 'seriesHint' : 'freeHint')}</p>
         <div class="row"><span>${t('you')}</span><div class="seg" data-k="me"></div></div>
         <div class="row"><span>${t('foes')}</span><div class="seg" data-k="foes"></div></div>
-        <div class="row"><span>${t('place')}</span><div class="seg" data-k="place"></div></div>
+        <div class="row"><span>${t(series ? 'seriesPlace' : 'place')}</span><div class="seg" data-k="place"></div></div>
         <footer><button type="button" data-act="back">${t('back')}</button><button type="button" class="go" data-act="go" autofocus>${t('begin')}</button></footer>
       </section>`);
-      const draw = () => {
-        page.querySelector('[data-k=me]').innerHTML = ORDER.map((r) => `<button type="button" data-act="me" data-arg="${r}" class="${state.me === r ? 'on' : ''}">${say(REGIMENTS[r].name)}</button>`).join('');
-        page.querySelector('[data-k=foes]').innerHTML = ORDER.filter((r) => r !== state.me).map((r) => `<button type="button" data-act="foe" data-arg="${r}" class="${state.foes.includes(r) ? 'on' : ''}">${say(REGIMENTS[r].name)}</button>`).join('');
-        page.querySelector('[data-k=place]').innerHTML = PLACES.map((p) => `<button type="button" data-act="place" data-arg="${p}" class="${state.place === p ? 'on' : ''}">${placeName(p)}</button>`).join('');
+      const choice = (act, id, text, selected) => `<button type="button" data-act="${act}" data-arg="${id}" class="${selected ? 'on' : ''}" aria-pressed="${selected}">${text}</button>`;
+      const draw = (act, id) => {
+        page.querySelector('[data-k=me]').innerHTML = ORDER.map((r) => choice('me', r, say(REGIMENTS[r].name), state.me === r)).join('');
+        page.querySelector('[data-k=foes]').innerHTML = ORDER.filter((r) => r !== state.me).map((r) => choice('foe', r, say(REGIMENTS[r].name), state.foes.includes(r))).join('');
+        page.querySelector('[data-k=place]').innerHTML = PLACES.map((p) => choice('place', p, placeName(p), state.place === p)).join('');
+        if (series && act) page.querySelector(`[data-act="${act}"][data-arg="${id}"]`)?.focus({ preventScroll: true });
         onLook?.(state.me);
       };
       draw();
@@ -268,24 +296,28 @@ export function createScreens(root, { onLanguage, coarse = false }) {
           state.me = r;
           state.foes = state.foes.filter((f) => f !== r);
           if (!state.foes.length) state.foes = [ORDER.find((x) => x !== r)];
-          draw();
+          draw('me', r);
         },
         foe: (r) => {
-          const at = state.foes.indexOf(r);
-          if (at >= 0) {
-            if (state.foes.length > 1) state.foes.splice(at, 1);
+          if (series) {
+            state.foes = [r];
           } else {
-            if (state.foes.length >= 2) state.foes.shift();
-            state.foes.push(r);
+            const at = state.foes.indexOf(r);
+            if (at >= 0) {
+              if (state.foes.length > 1) state.foes.splice(at, 1);
+            } else {
+              if (state.foes.length >= 2) state.foes.shift();
+              state.foes.push(r);
+            }
           }
-          draw();
+          draw('foe', r);
         },
-        place: (p) => ((state.place = p), draw()),
+        place: (p) => ((state.place = p), draw('place', p)),
         go: () => onGo(state),
         back: onBack
       });
       show(page, (e) => {
-        if (e.code === 'Enter') onGo(state);
+        if (e.code === 'Enter' && !(series && hasButtonFocus(e))) onGo(state);
         else if (e.code === 'Escape') onBack();
         else return false;
       });

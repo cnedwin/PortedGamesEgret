@@ -6,7 +6,7 @@ import { Mesh3D, Object3D, createCylinderGeometry3D, createStandardMaterial3D } 
 import { ARMS, createWeapon } from './weapons.mjs';
 import { add, axisAngle, basis, cross, dot, fitLinkedGrip, gripRotation, len, lerp3, mul, qinv, qmul, qrot, stabilizeBladeRoll, sub, unit } from './rig.mjs';
 import { createRig } from './rig.mjs';
-import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, swingPhase, TIGER_SWORD } from './motion.mjs';
+import { createAnimator, heavyFootwork, impactWeight, interpolateDirection, returnSpearPhase, signatureBodyWeight, swingPhase, TIGER_SWORD } from './motion.mjs';
 import { createFooting } from './footing.mjs';
 import { bowLoosePose, bowReleasePose } from './bow-release.mjs';
 import { ordinaryCuts } from './ordinary-poses.mjs';
@@ -392,6 +392,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     entryPose: null,
     spinBrace: 0,
     footing: [0, 0, 0],
+    skillBodyWeight: [0, 0],
     drawBlend: 0,
     bowPull: 0,
     wasDrawing: false,
@@ -416,6 +417,11 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     let blend = 10; // how fast the arms follow (1/s); swings set the place exactly
     if (state.thrown && arms.main === 'ji') {
       return { pose: mixPose(style.ready, THROWN_JI, state.thrown.roll), blend: 26 };
+    }
+    if (act?.kind === 'mantle') {
+      const load = Math.sin(Math.PI * clamp(act.t / act.duration, 0, 1));
+      const vault = P([-0.26, -0.19, 0.35], [0.22, 0.42, 0.71], { n: 0.23, f: 0.12, d: 0.04 });
+      return { pose: mixPose(style.ready, vault, load), blend: 28, throwLeft: load };
     }
     if (man.guard && style.guard) {
       pose = style.guard[man.guardLine] ?? style.ready;
@@ -737,8 +743,13 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const footing = stance ?? (longAxe ? heavyFootwork(phase, line) : [0, 0, 0]);
     state.footing = lerp3(state.footing, footing, 1 - Math.exp(-dt * 27));
     const [across, forward, settle] = state.footing;
+    const [loadDrop, settleLean] = signatureBodyWeight(act, poseTime);
+    const bodyEase = 1 - Math.exp(-dt * 36);
+    state.skillBodyWeight[0] += (loadDrop - state.skillBodyWeight[0]) * bodyEase;
+    state.skillBodyWeight[1] += (settleLean - state.skillBodyWeight[1]) * bodyEase;
+    const [skillCompression, skillLean] = state.skillBodyWeight;
     const dismountSink = ease((state.dismount - 0.72) / 0.28) + state.dismountLand;
-    const dip = p.d * stride + feet * (settle + 0.048 * dismountSink + 0.042 * recoil + 0.12 * buckle + 0.13 * state.down);
+    const dip = p.d * stride + feet * (settle + skillCompression + 0.048 * dismountSink + 0.042 * recoil + 0.12 * buckle + 0.13 * state.down);
     const shift = mul(rig.dirToRig([(across + sideways * 0.045) * feet, -dip, p.f * 0.6 * stride + (forward + back * 0.065) * feet]), 1 / s);
     const pel = add(hp, qrot(qinv(parentR), shift));
     pelvis.setPosition(pel[0], pel[1], pel[2]);
@@ -749,12 +760,12 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     const aimWeight = saddleCut ? 1 - ease(phase) * (1 - ease(phase - 1)) : 1;
     const bowTurn = bow && !man.knife ? -0.46 * state.drawBlend : 0;
     const twist = p.t + bowTurn + state.turnOnHorse * aimWeight - sideways * 0.28;
-    const leanAll = p.n + lean + back * 0.42 - shout * 0.15 + 0.17 * buckle;
+    const leanAll = p.n + lean + skillLean * (1 - state.ride) + back * 0.42 - shout * 0.15 + 0.17 * buckle;
     const hipTwist = p.t * feet * 0.36;
     const shoulderTwist = twist - hipTwist;
     rig.bend('pelvis', hipTwist, 0, -sideways * 0.08 * feet);
     if (feet > 0.05 && man.act?.kind !== 'kick') {
-      const brace = feet * (p.d * 2 + Math.abs(p.f) * 0.33 + 0.18 * dismountSink + 0.19 * recoil + 0.56 * buckle + 0.5 * state.down);
+      const brace = feet * (p.d * 2 + skillCompression * 3.7 + Math.abs(p.f) * 0.33 + 0.18 * dismountSink + 0.19 * recoil + 0.56 * buckle + 0.5 * state.down);
       for (const [side, sign] of [['l', 1], ['r', -1]]) {
         const planted = Math.max(0, across * sign) * feet;
         const knee = brace + settle * feet * 1.25 + planted;
@@ -1039,7 +1050,7 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
       // The fight places his feet one metre to the horse's left at the end of the dismount.
       const footX = dismounting ? man.horse.x + Math.cos(horseYaw) : man.x;
       const footZ = dismounting ? man.horse.z - Math.sin(horseYaw) : man.z;
-      let at = [footX, air + landing + floorLift, footZ];
+      let at = [footX, (man.floor ?? 0) + air + landing + floorLift, footZ];
       let yaw = man.face + spin;
       if (thrown) {
         const pose = throwPose(thrown, at, yaw);
