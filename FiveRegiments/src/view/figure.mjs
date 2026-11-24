@@ -805,6 +805,10 @@ export function createFigure({ regiment, body, motion, world, height = 1.8 }) {
     }
     const poleL = along([0.7, -0.7, -0.1]);
     const clearR = armClearance(space, 'r'), clearL = armClearance(space, 'l');
+    if (ordinary && arms.main === 'jian' && act.line === 'L' && act.struck && phase > 2.8) {
+      // After the edge leaves the cut, let the hand turn back with the rising sword instead of dragging the old roll.
+      clearR.wristReturnRate = 9 + 18 * ease((phase - 2.8) / 0.58);
+    }
     const linked = arms.two && twoHandedPose(mainTarget, blade, edgeHint, poleR, poleL, space, dt);
     if (bow) armsForBow(man, dt, place, along, edgeHint, reachRange, poleR, mainTarget, space, clearR);
     else if (!linked) rig.reachArm('r', frontWrist(mainTarget, space.right, 'r', space), poleR,

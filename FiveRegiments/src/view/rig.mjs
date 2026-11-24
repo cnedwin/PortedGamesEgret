@@ -417,7 +417,7 @@ export function createRig(nodes, { scale, turn, root: sceneRoot }) {
       const forearm = unit(sub(world(hd).t, world(lo).t));
       const B = unit(blade);
       const lead = face && grip && reachRange ? cutEdgeLead(B, forearm, unit(face)) : face ? unit(face) : forearm;
-      let F = stabilizeBladeRoll(B, lead, grip, 9 * dt);
+      let F = stabilizeBladeRoll(B, lead, grip, (clearance?.wristReturnRate ?? 9) * dt);
       if (grip) {
         grip.axis = B;
         grip.edge = F;
