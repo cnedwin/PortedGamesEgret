@@ -21,6 +21,7 @@
 // Human controls set `recoveryHandoff` to carry a fresh command across the tick that completes a swing.
 // Player controls can set `skillGuardCancel` to enable a fresh guard press during Spin's follow-through.
 // An overlapping touch guard and attack can supply a separate `guardLine` for the ordinary guard.
+// Mounted player controls use `reins: { throttle, turn }`. The brain still steers toward its world-space move.
 //
 // Headings: 0 looks along +z, and a man's right hand is at heading − π/2.
 
@@ -128,7 +129,7 @@ function enlist(game, spec, side, index) {
   };
   if (r.horse) {
     const hp = Math.round(r.horse.health * (spec.health ?? 1));
-    man.horse = { hp, maxHp: hp, x: man.x, z: man.z, face: man.face, speed: 0, st: 100, alive: true, called: false, galloping: false };
+    man.horse = { hp, maxHp: hp, x: man.x, z: man.z, face: man.face, speed: 0, st: 100, alive: true, called: false, galloping: false, contacts: new Set() };
     if (spec.mounted !== false) setMounted(man, true);
   }
   return man;
@@ -144,6 +145,7 @@ function rouse(man, amount) {
 function setMounted(man, on) {
   man.mounted = on;
   man.body = on ? man.r.horse.body : BODY;
+  man.horse.contacts.clear();
 }
 
 /** The blows he has now: the saddle's on horseback. */
@@ -732,7 +734,7 @@ function startArt(game, man, which = 'main') {
   }
   if ((man.artCool[id] ?? 0) > 0) return;
   // The couched lance wants the horse at a run.
-  if (a.mounted && Math.abs(man.horse?.speed ?? 0) < a.run) {
+  if (a.mounted && (man.horse?.speed ?? 0) < a.run) {
     emit(game, 'needRun', { who: man.id });
     return;
   }
@@ -764,9 +766,9 @@ function runLance(game, man, act) {
   const L = ARTS.couch,
     h = man.horse;
   const activeEnd = L.wind + L.last;
-  const active = act.t >= L.wind && act.t < activeEnd;
+  const advancing = h.speed > 0 && act.t >= L.wind && act.t < activeEnd;
   man.face = h.face;
-  if (active && !act.met) {
+  if (advancing && !act.met) {
     const hit = enemiesOf(game, man)
       .filter((t) => inSweep(man, t, L.reach, L.arc, couchHeading(man)))
       .sort((a, b) => dist(man, a) - dist(man, b))[0];
@@ -777,7 +779,7 @@ function runLance(game, man, act) {
       act.metAt = act.t;
     }
   }
-  act.charging = active && !act.met;
+  act.charging = advancing && !act.met;
   const end = act.met ? act.metAt + L.hitRecover : activeEnd + L.recover;
   if (act.t >= end || !man.mounted) man.act = null;
 }
@@ -789,15 +791,24 @@ function ride(game, man, input, dt) {
   const [mx, mz] = input.move ?? [0, 0];
   const want = Math.min(1, Math.hypot(mx, mz));
   const busy = man.stun > 0 || man.act?.kind === 'dismount';
+  const turnRate = R.turn.slow + (R.turn.fast - R.turn.slow) * clamp(Math.abs(h.speed) / R.gallop, 0, 1);
   let target = 0;
-  if (!busy && want > 0.1) {
+  if (!busy && input.reins) {
+    const throttle = clamp(input.reins.throttle ?? 0, -1, 1);
+    const turn = clamp(input.reins.turn ?? 0, -1, 1);
+    h.face = wrap(h.face + turn * turnRate * dt);
+    // Opposing input works as a brake until the horse is at rest.
+    if (throttle < -0.1 && h.speed <= 0) target = R.reverse * throttle;
+    else if (throttle > 0.1 && h.speed >= 0) {
+      target = input.sprint && h.st > 4 ? R.gallop : Math.max(R.walk, R.canter * throttle);
+    }
+  } else if (!busy && want > 0.1) {
     const off = wrap(Math.atan2(mx, mz) - h.face);
-    if (Math.abs(off) > 2.6 && h.speed < 1.2) target = -1.3 * want;
+    if (Math.abs(off) > 2.6 && h.speed < 1.2) target = -R.reverse * want;
     else {
       const gallop = input.sprint && h.st > 4 && Math.abs(off) < 1.3;
       target = gallop ? R.gallop : Math.max(R.walk, R.canter * want);
-      const rate = R.turn.slow + (R.turn.fast - R.turn.slow) * clamp(Math.abs(h.speed) / R.gallop, 0, 1);
-      h.face = wrap(h.face + clamp(off, -rate * dt, rate * dt));
+      h.face = wrap(h.face + clamp(off, -turnRate * dt, turnRate * dt));
     }
   }
   for (const s of man.slow) target *= 1 - s.k;
@@ -809,6 +820,57 @@ function ride(game, man, input, dt) {
   man.vx = Math.sin(h.face) * h.speed;
   man.vz = Math.cos(h.face) * h.speed;
   man.sprinting = h.galloping;
+}
+
+/** First contact between two bodies along their relative trajectory before separation runs. */
+function sweptContact(dx, dz, vx, vz, radius) {
+  const c = dx * dx + dz * dz - radius * radius;
+  if (c <= 1e-8) return 0;
+  const a = vx * vx + vz * vz, b = dx * vx + dz * vz;
+  if (a < 1e-8 || b >= 0) return null;
+  const discriminant = b * b - a * c;
+  if (discriminant < 0) return null;
+  const start = (-b - Math.sqrt(discriminant)) / a;
+  return start <= 1 ? start : null;
+}
+
+/** A clean running pass can bowl over one enemy on foot without dealing damage. */
+function mountedContacts(game, origins, dt) {
+  for (const [i, man] of game.men.entries()) {
+    const start = origins[i], h = man.horse;
+    if (!start.mounted || !man.mounted || !man.alive) continue;
+    const ram = man.r.horse.ram;
+    const mx = man.x - start.x, mz = man.z - start.z;
+    const moving = Math.hypot(mx, mz) > 1e-4;
+    const ready = moving && h.speed >= ram.speed && !start.busy && !man.act && man.stun <= 0;
+    const fx = Math.sin(h.face), fz = Math.cos(h.face);
+    let first = null;
+    for (const [j, target] of game.men.entries()) {
+      if (target.side === man.side) continue;
+      const from = origins[j], need = man.body + target.body;
+      const dx = from.x - start.x, dz = from.z - start.z;
+      if (h.contacts.has(target.id)) {
+        if (target.alive && Math.hypot(dx, dz) <= need + ram.reset) continue;
+        h.contacts.delete(target.id);
+      }
+      if (!target.alive || target.mounted || from.mounted || target.act?.through || from.through) continue;
+      const vx = target.x - from.x - mx, vz = target.z - from.z - mz;
+      if (Math.abs(dx) > need + Math.abs(vx) || Math.abs(dz) > need + Math.abs(vz)) continue;
+      const at = sweptContact(dx, dz, vx, vz, need);
+      if (at === null) continue;
+      h.contacts.add(target.id);
+      if (!ready || target.stun > 0 || (target.act?.air ?? 0) > 0.15 || (first && first.at <= at)) continue;
+      const nx = dx + vx * at, nz = dz + vz * at, length = Math.hypot(nx, nz);
+      if (length < 1e-4 || fx * nx + fz * nz < ram.front * length) continue;
+      if (-(vx * nx + vz * nz) < ram.closing * length * dt) continue;
+      first = { target, at, nx: nx / length, nz: nz / length };
+    }
+    if (!first) continue;
+    const { target, at, nx, nz } = first;
+    stagger(target, ram.stun, 'down', [nx * ram.push, nz * ram.push]);
+    emit(game, 'horseRam', { who: target.id, by: man.id, speed: h.speed,
+      at: [start.x + mx * at + nx * man.body, start.z + mz * at + nz * man.body] });
+  }
 }
 
 /** A horse without its rider stands, or comes when he calls. */
@@ -1648,9 +1710,12 @@ export function step(game, inputs, dt = TICK) {
   game.events = [];
   if (game.over) return game.events;
   game.time += dt;
+  const origins = game.men.some((m) => m.alive && m.mounted)
+    ? game.men.map((m) => ({ x: m.x, z: m.z, mounted: m.mounted, busy: m.stun > 0 || Boolean(m.act), through: m.act?.through })) : null;
   for (const man of game.men) stepMan(game, man, inputs[man.id] ?? {}, dt);
   flyShots(game, dt);
   groundEffects(game, dt);
+  if (origins) mountedContacts(game, origins, dt);
   settle(game);
   if (!game.hero.alive) {
     game.over = 'lost';

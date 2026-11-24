@@ -152,6 +152,7 @@ export const REGIMENTS = {
       walk: 2.4,
       canter: 6.2,
       gallop: 9.2,
+      reverse: 1.3,
       accel: 4.4,
       brake: 7,
       turn: { slow: 2.8, fast: 1.3 },
@@ -161,6 +162,7 @@ export const REGIMENTS = {
       call: 7,
       gallopCost: 10,
       body: 0.95,
+      ram: { speed: 7.2, front: 0.65, closing: 2.5, stun: 0.65, push: 1.1, reset: 0.32 },
       // Blows land on man or horse where they meet; with no bodies to hit here, a blow on a rider is split evenly.
       share: 0.5
     },

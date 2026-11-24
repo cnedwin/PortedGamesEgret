@@ -59,6 +59,8 @@ export function createHud(root, { touch = false } = {}) {
   const meHp = el('div', 'bar hp', me, '<i></i><b></b><em></em>');
   const meSt = el('div', 'bar st', me, '<i></i><em></em>');
   const horseBox = el('div', 'hud-horse', me, `<span>${t('horse')}</span><div class="bar hhp"><i></i><em></em></div><div class="bar hst"><i></i></div>`);
+  const horsePace = el('small', 'horse-pace', horseBox);
+  horsePace.hidden = true;
   const bar = el('div', 'hud-bar', hud);
   const slots = el('div', 'slots', bar);
   const skills = el('div', 'hud-skills', bar);
@@ -152,6 +154,13 @@ export function createHud(root, { touch = false } = {}) {
       horseBox.querySelector('.hst i').style.width = hero.horse.st.toFixed(1) + '%';
       horseBox.classList.toggle('off', !hero.mounted);
       horseBox.classList.toggle('dead', !hero.horse.alive);
+      const pace = !hero.mounted || !hero.horse.alive ? ''
+        : hero.horse.speed < -0.12 ? 'horseReverse' : hero.horse.galloping ? 'horseGallop' : '';
+      if (horsePace.dataset.pace !== pace) {
+        horsePace.dataset.pace = pace;
+        horsePace.textContent = pace ? t(pace) : '';
+        horsePace.hidden = !pace;
+      }
     }
     // The compass turns with the camera: north is heading 0 (+Z), east to its right; a heading in degrees sits at
     // (heading + 360) × 2 pixels along the strip, whose left end is under the middle of the compass.
@@ -204,7 +213,7 @@ export function createHud(root, { touch = false } = {}) {
         const k = item.rage > 0 ? Math.min(1, hero.rage / item.rage) : 1;
         s.rage.style.width = (k * 100).toFixed(1) + '%';
         s.v.classList.toggle('full', k >= 1 && wait <= 0);
-        if (item.mounted && Math.abs(hero.horse?.speed ?? 0) < item.run) note = t('needRun');
+        if (item.mounted && (hero.horse?.speed ?? 0) < item.run) note = t('needRun');
       } else if (hero.mounted) note = t('needFoot');
       s.note.textContent = note;
       s.v.classList.toggle('wait', wait > 0);
@@ -216,7 +225,10 @@ export function createHud(root, { touch = false } = {}) {
     modes.innerHTML = `<span><kbd>B</kbd>${input.combo ? t('combo') : t('single')}</span><span><kbd>V</kbd>${input.view === 'first' ? t('viewFirst') : t('viewThird')}</span>${locked ? `<span class="lock">${t('lock')}</span>` : ''}`;
     keys.hidden = !input.keyHints;
     if (!keys.hidden) {
-      const rows = [['X', t('art')], ...(ARTS[hero.r.offArt] ? [['Z', t('artShield')]] : []), ['R T', t('skills')], ['F', t('kick')], ['␣', t('jump')], ['Shift', t('sprint')], ['1 2', t('weapons')], ['3', t('dressing')]];
+      const movement = hero.mounted
+        ? [['W S', t('horseRein')], ['A D', t('horseSteer')], ['Shift', t('horseGallop')]]
+        : [['F', t('kick')], ['␣', t('jump')], ['Shift', t('sprint')]];
+      const rows = [['X', t('art')], ...(ARTS[hero.r.offArt] ? [['Z', t('artShield')]] : []), ['R T', t('skills')], ...movement, ['1 2', t('weapons')], ['3', t('dressing')]];
       if (hero.horse) rows.unshift(['E', hero.mounted ? t('getDown') : t('mountUp')], ['U', t('callHorse')]);
       rows.push(['Tab', t('hidePanels')], ['Esc', t('menu')]);
       const html = `<b>${t('keysTitle')} <small>Ctrl+H</small></b>` + rows.map(([k, w]) => `<span><kbd>${k}</kbd>${w}</span>`).join('');

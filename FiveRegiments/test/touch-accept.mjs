@@ -82,6 +82,26 @@ try {
     await new Promise((resolve) => setTimeout(resolve, 225));
     touch.show(true);
     const resumed = sample();
+    const reins = () => {
+      const next = input.sample(1 / 60, { mounted: true });
+      return [next.reins?.throttle, next.reins?.turn, next.sprint];
+    };
+    input.setYaw(Math.PI);
+    fire(stick, 'pointerdown', 3);
+    fire(stick, 'pointermove', 3, 60, 52);
+    const canter = reins();
+    fire(stick, 'pointermove', 3, 60, 25);
+    const gallop = reins();
+    const onFoot = sample().sprint;
+    fire(stick, 'pointermove', 3, 60, 135);
+    const back = reins();
+    fire(stick, 'pointermove', 3, 115, 80);
+    const turn = reins();
+    fire(stick, 'pointercancel', 3);
+    const neutral = reins();
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyS', bubbles: true }));
+    const keyBack = reins();
+    window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyS', bubbles: true }));
     const visibleButtons = [...document.querySelectorAll('.touch button:not([hidden])')].every((button) => {
       const bounds = button.getBoundingClientRect();
       return bounds.width >= 44 && bounds.height >= 44 && bounds.top >= 0 && bounds.bottom <= innerHeight
@@ -92,15 +112,18 @@ try {
       overlap: [overlap.attack, overlap.guard, overlap.line, overlap.guardLine],
       attackOnly: [attackOnly.attack, attackOnly.guard, attackOnly.line, attackOnly.guardLine],
       fallback: [fallback.attack, fallback.guard, fallback.line, fallback.guardLine],
+      mounted: { canter, gallop, onFoot, back, turn, neutral, keyBack },
       resumed: [resumed.attack, resumed.guard, Math.hypot(...resumed.move)] };
   });
   assert.deepEqual(actual, {
     canceled: false, secondFinger: false, swipe: [true, 'T'], repeated: false, visibleButtons: true,
     guard: [true, 'O'], guardStuck: false, overlap: [true, true, 'O', 'R'],
     attackOnly: [true, false, 'O', undefined], fallback: [true, true, 'O', 'T'],
+    mounted: { canter: [0.56, 0, false], gallop: [1, 0, true], onFoot: false,
+      back: [-1, 0, false], turn: [0, -1, false], neutral: [0, 0, false], keyBack: [-1, 0, false] },
     resumed: [false, false, 0]
   });
-  console.log('Touch cancellation, pointer ownership, quick guard, and pause/resume verified.');
+  console.log('Touch cancellation, pointer ownership, quick guard, pause/resume, and mounted reins verified.');
 } finally {
   await browser.close();
   await server.close();

@@ -84,6 +84,7 @@ async function main() {
   const ui = document.querySelector('#ui');
   const hud = createHud(ui, { touch: coarse });
   const screens = createScreens(ui, {
+    coarse,
     onLanguage: () => {
       setLanguage(getLanguage() === 'zh' ? 'en' : 'zh');
       showLanguage();
@@ -539,6 +540,16 @@ async function main() {
         play('step', { volume: 0.6 });
         break;
       // The horse and the saddle.
+      case 'horseRam':
+        play('horseRam', { volume: 0.86 });
+        if (e.who === heroId) {
+          cam.kick(0.38, bearing);
+          hud.toast(t('horseRamTaken'), 'bad');
+        } else if (e.by === heroId) {
+          cam.kick(0.19, bearing);
+          hud.toast(t('horseRamHit'), 'good');
+        }
+        break;
       case 'horseHit': {
         const p = projectToViewport3D(camera, chestOf(e.who).map((v, i) => (i === 1 ? 1.2 : v)), canvas.clientWidth, canvas.clientHeight);
         if (p.onScreen) hud.number([p.x, p.y], e.damage, 'horse');
@@ -651,7 +662,7 @@ async function main() {
       if (autoBrain) inputs.hero = autoBrain.think(game, TICK);
       else {
         const aim = target && game.hero.regiment === 'archer' ? null : undefined;
-        inputs.hero = input.sample(TICK, { threat, aim, bow: game.hero.regiment === 'archer' && !game.hero.knife });
+        inputs.hero = input.sample(TICK, { threat, aim, bow: game.hero.regiment === 'archer' && !game.hero.knife, mounted: game.hero.mounted });
         inputs.hero.skillGuardCancel = true;
         inputs.hero.recoveryHandoff = true;
       }

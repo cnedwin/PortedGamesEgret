@@ -99,6 +99,7 @@ export const SOUNDS = {
   hit: () => mix(0.24, [[thud(91, 0.22, 0.51)], [contactNoise(0.14, 33, 0.35, 0.24, 13)]]),
   armourHit: () => mix(0.31, [[thud(105, 0.25, 0.42)], [ring(0.3, 590, { gain: 0.20, decay: 16, seed: 29 })], [contactNoise(0.08, 39, 0.78, 0.25, 30)]]),
   heavyHit: () => mix(0.43, [[thud(68, 0.43, 0.64)], [contactNoise(0.19, 23, 0.38, 0.24, 26)], [ring(0.3, 387, { gain: 0.11, decay: 17, seed: 27 }), 0.013]]),
+  horseRam: () => mix(0.34, [[thud(62, 0.33, 0.7)], [contactNoise(0.15, 39, 0.27, 0.36, 44)], [ring(0.21, 362, { gain: 0.13, decay: 24, seed: 45 }), 0.024]]),
   crit: () => mix(0.51, [[thud(74, 0.47, 0.62)], [ring(0.49, 980, { gain: 0.20, decay: 13, seed: 14 })], [contactNoise(0.17, 28, 0.68, 0.26, 15)]]),
   kick: () => thud(70, 0.3, 0.8),
   break: () => mix(0.9, [[ring(0.8, 410, { gain: 0.3, decay: 7, seed: 16 })], [thud(60, 0.5, 0.7)]]),
