@@ -523,18 +523,43 @@ function approachGate(b, unit) {
   return unit.atGate ? [] : findPath(b, unit, b.gate.at, 1);
 }
 
-function attackPath(b, unit, target) {
+function planAttack(b, unit, target) {
   const kind = UNITS[unit.kind];
-  unit.atGate = false;
-  if (distance(unit.pos, target.pos) <= kind.range) return [];
+  if (distance(unit.pos, target.pos) <= kind.range) return { path: [], ready: true, gate: false, atGate: false };
   const path = findPath(b, unit, target.pos, kind.range);
   // A direct order can name a defender behind a closed wall. Approach the
   // gate with the same eligible troops as the existing automatic siege.
   if (!path.length && b.gate && !b.gate.open && unit.side === 0 &&
       ['town', 'wall', 'gate'].includes(b.tiles[target.pos]) && canBatterGate(kind, hasRam(b))) {
-    return approachGate(b, unit);
+    const atGate = distance(unit.pos, b.gate.at) <= 1;
+    return { path: atGate ? [] : findPath(b, unit, b.gate.at, 1), ready: false, gate: true, atGate };
   }
-  return path;
+  return { path, ready: false, gate: false, atGate: false };
+}
+
+function attackPath(b, unit, target) {
+  const plan = planAttack(b, unit, target);
+  unit.atGate = plan.atGate;
+  return plan.path;
+}
+
+/** Read the same route a manual order would use, without giving the order or advancing the battle. */
+export function previewBattleOrder(b, unitId, kind, arg) {
+  const u = b.units[unitId];
+  if (!u || !alive(u) || u.routed) return null;
+  if (kind === 'move') {
+    if (!Number.isInteger(arg) || arg < 0 || arg >= b.tiles.length) return null;
+    const path = canStand(b, u, arg) ? findPath(b, u, arg) : [];
+    return { unit: unitId, kind, hex: arg, path, valid: path.length > 0 || u.pos === arg };
+  }
+  if (kind === 'attack') {
+    const target = b.units[arg];
+    if (!target || !alive(target) || target.side === u.side) return null;
+    const plan = planAttack(b, u, target);
+    return { unit: unitId, kind, target: arg, hex: plan.gate ? b.gate.at : target.pos, path: plan.path,
+      valid: plan.ready || plan.atGate || plan.path.length > 0, gate: plan.gate };
+  }
+  return null;
 }
 
 // ——— Fighting ———
@@ -1012,6 +1037,10 @@ export function stepBattle(b, dt, playerSide = -1) {
       const kind = UNITS[u.kind];
       const hit = (kind.special === 'gate' ? 30 : 2) * Math.pow(u.troops, 0.5) * 0.1 * (1 + u.fx.siege / 100);
       b.gate.hp -= hit;
+      if (b.setup.presentation === 'nanpi-sunset') {
+        b.events.push({ t: b.time, kind: 'structureHit', structure: 'gate', at: b.gate.at,
+          unit: u.id, amount: hit, hp: Math.max(0, b.gate.hp) });
+      }
       if (b.gate.hp <= 0) {
         b.gate.open = true;
         b.tiles[b.gate.at] = 'road';

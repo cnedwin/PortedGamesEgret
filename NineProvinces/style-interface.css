@@ -86,6 +86,24 @@ html[lang="en"] .campaignMark h1 {
 .titleMenu nav .btn:hover {
   filter: brightness(1.16);
 }
+.titleMenu .nanpi-entry {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  margin-top: 10px;
+  padding-inline: 15px;
+  color: #ffebb8;
+  border: 1px solid #b68150;
+  background: linear-gradient(105deg, #633c2a, #382b26 65%, #251f20);
+  font: 700 19px var(--kai);
+}
+.titleMenu .nanpi-entry small {
+  color: #e6ce97;
+  font: 600 11px var(--song);
+}
 .titleMenu .demo {
   margin: 16px 0 0;
   color: #e0d4ba;

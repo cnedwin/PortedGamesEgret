@@ -40,6 +40,8 @@ export function showTitle(app) {
         button(t('settings'), () => app.open('settings')),
         button(t('language'), () => app.setLanguage(app.language() === 'zh' ? 'en' : 'zh'))
       ),
+      typeof app.openNanpi === 'function' ? h('button.btn.nanpi-entry', {type:'button',onclick:app.openNanpi},
+        h('span',pair(['夕照南皮','Nanpi at sunset'])), h('small',pair(['3D 攻城演武','3D siege trial']))) : null,
       app.notice ? h('p.notice', app.notice) : null,
       h('p.demo', t('demo'))
     )

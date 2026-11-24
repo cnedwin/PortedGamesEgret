@@ -49,11 +49,12 @@ export function createBattlePlayground(app,{onExit,openReplay}){
  const ui=createLabShell(w('演武沙盘','Tactical sandbox'),onExit);
  let config=clone(DEFAULT_SANDBOX),b=null,record=null,phase='config',paused=true,speed=1,selected=0;
  let aim=null,hoverTarget=null;
- let board=null,toolbar=null,panel=null,clock=null,child=null,tape=null;
+ let board=null,toolbar=null,panel=null,quickTargets=null,quickHeading=null,clock=null,child=null,tape=null;
  let objective=null,situationDetail=null,tempoToggle=null,tempoBadge=null,tempoOfferButton=null,toolbarKey='';
  let accumulator=0,refresh=0,lastImpact=-Infinity;
  let milestones=createTempoMilestones(),autoPause=true,pauseReason=null,milestoneOffer=null,focusOffer=null;
  const orders=new Map();
+ const quickButtons=new Map();
  let holdingControl=false,pendingControls=false,releaseTimer=0;
  const controlPointers=new Set();
  const notify=text=>{ui.notice.textContent=text;};
@@ -137,7 +138,12 @@ export function createBattlePlayground(app,{onExit,openReplay}){
   });
   tempoOfferButton.classList.add('labTempoOffer');tempoOfferButton.dataset.lab='tempo-opportunity';
   const situation=h('div.labSituation',objective,situationDetail,tempoOfferButton,tempoToggle);
-  const layout=h('div.labBattleLayout'),field=h('div.labFieldArea');panel=h('aside.labUnitPanel',{'aria-label':w('部队指挥','Unit commands')});layout.append(field,panel);
+  const layout=h('div.labBattleLayout'),field=h('div.labFieldArea');
+  panel=h('aside.labUnitPanel',{'aria-label':w('部队指挥','Unit commands')});
+  quickHeading=h('small',{'aria-hidden':'true'});
+  quickTargets=h('div.labQuickTargets',{role:'group',hidden:true},quickHeading);
+  quickButtons.clear();
+  layout.append(field,h('div.labCommandDock',quickTargets,panel));
   ui.body.append(toolbar,clock,situation,layout);
   board=createBattleBoard(field,b.tiles,tapHex,tapUnit,{onHover:id=>{if(aim&&hoverTarget!==id){hoverTarget=id;render(false);}}});
   field.append(h('p.labBoardLegend',w('青格可部署 · 金格为射程 · 虚线为实际行军路线 · 红线为追击目标。1–4选军，空格暂停。','Cyan: deployment · Gold: range · Dashed line: actual path · Red: attack target. 1–4 select units, Space pauses.')));
@@ -341,6 +347,46 @@ export function createBattlePlayground(app,{onExit,openReplay}){
   panel.querySelector('.labForecast').open=forecastOpen;panel.scrollTop=scrollTop;
  }
 
+ function renderQuickTargets(){
+  const u=b.units[selected];
+  const targets=phase==='fight'&&u&&!u.gone&&!u.routed
+   ?b.units.filter(enemy=>enemy.side!==u.side&&!enemy.gone&&!enemy.routed&&enemy.pos>=0)
+    .map(enemy=>({enemy,range:distance(u.pos,enemy.pos)}))
+    .filter(({enemy})=>!aim||tacticPreview(b,u,aim.tactic,enemy).valid)
+    .sort((a,b)=>a.range-b.range||a.enemy.id-b.enemy.id)
+    .slice(0,2)
+   :[];
+  const mode=aim?w('施策目标','Tactic targets'):w('就近进攻','Attack nearby');
+  const chosen=aim?aim.target:u?.order==='attack'?u.target?.id:null;
+  for(const [id,shortcut]of quickButtons)if(!targets.some(({enemy})=>enemy.id===id)){
+   shortcut.node.remove();quickButtons.delete(id);
+  }
+  quickTargets.hidden=!targets.length;
+  if(quickHeading.textContent!==mode){
+   quickHeading.textContent=mode;
+   quickTargets.setAttribute('aria-label',mode);
+  }
+  for(const {enemy,range}of targets){
+   const name=unitName(enemy),distanceLabel=w(range+'格',range+' hexes');
+   const label=aim?w('预览'+name,'Preview '+name):w('追击'+name,'Pursue '+name);
+   let shortcut=quickButtons.get(enemy.id);
+   if(!shortcut){
+    const distanceMark=h('small');
+    const node=button(h('span',name,distanceMark),()=>tapUnit(enemy.id));
+    node.dataset.lab='quick-target-'+enemy.id;
+    shortcut={node,distanceMark};
+    quickButtons.set(enemy.id,shortcut);
+    quickTargets.append(node);
+   }
+   const {node,distanceMark}=shortcut;
+   if(distanceMark.textContent!==distanceLabel)distanceMark.textContent=distanceLabel;
+   node.title=label;
+   node.classList.toggle('on',chosen===enemy.id);
+   node.setAttribute('aria-label',label+' · '+distanceLabel);
+   node.setAttribute('aria-pressed',String(chosen===enemy.id));
+  }
+ }
+
  function render(force=false){
   if(!b||phase==='config')return;
   const {tactic:armed,target:aimTarget}=aim??{};
@@ -356,6 +402,7 @@ export function createBattlePlayground(app,{onExit,openReplay}){
   const focused=document.activeElement?.dataset?.lab;
   renderToolbar();
   renderSituation();
+  renderQuickTargets();
   renderPanel();
   if(focusOffer){
    const tactic=panel.querySelector(`[data-lab="tactic-${CSS.escape(focusOffer)}"]`);

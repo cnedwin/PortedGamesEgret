@@ -13,6 +13,7 @@ import { getLanguage, setLanguage, t } from './i18n.mjs';
 import { exportText, importSaveText, openOfficerRoster, openSettings, openSlot, SLOTS, writeSlot } from './saves.mjs';
 import { captureCampaignView, createProgressCheckpoint, restoreCampaignView } from './save-view.mjs';
 import { recordedAutoBattle } from './sim/battle-history.mjs';
+import { createNanpiTrial } from './sim/nanpi-trial.mjs';
 import { dateOf } from './sim/core.mjs';
 import { answerEnvoy, breakTreaty, demandSurrender, gift, propose, askAttack } from './sim/diplomacy.mjs';
 import { disband, finishBattle, muster, nearestFriendly, order, route } from './sim/military.mjs';
@@ -21,10 +22,11 @@ import { die, giveTreasure, issueTalentOrder, moveGeneral, persuade, release, se
 import { answerStory } from './sim/story.mjs';
 import { advance, createGame, power, recruit, startWork, study, transfer } from './sim/world.mjs';
 import { createDialogs } from './ui/dialogs.mjs';
-import { $, h } from './ui/dom.mjs';
+import { $, button, clear, h } from './ui/dom.mjs';
 import { createHud, SPEEDS, tipFor } from './ui/hud.mjs';
-import { eventOf, logLine, treatyAt } from './ui/text.mjs';
+import { eventOf, logLine, pair, treatyAt } from './ui/text.mjs';
 import { startBattle } from './ui/battleui.mjs';
+import { battleOutcomeReason } from './ui/battle-copy.mjs';
 import { createMinimap } from './ui/minimap.mjs';
 import { createPlates } from './ui/plates.mjs';
 import { showSetup, showTitle } from './ui/title.mjs';
@@ -94,6 +96,7 @@ const app = {
   officerRoster: () => officerRoster.read(),
   saveOfficerRoster: list => officerRoster.write(list),
   openSandbox: () => openBattleLab(),
+  openNanpi: () => openNanpiTrial(),
   openBattleReplay: tape => openBattleLab(tape),
   /** Whether to keep motion down: the setting, or the system's own preference. */
   calm: () => Boolean(app.settings.reducedMotion) || matchMedia('(prefers-reduced-motion: reduce)').matches,
@@ -134,7 +137,6 @@ const app = {
   },
   setSpeed(i) {
     app.speed = i;
-    app.paused = false;
     app.setSetting('speed', i);
     app.hud?.refresh();
   },
@@ -256,13 +258,68 @@ const app = {
 };
 
 let labLoading = false;
+let nanpiResult = null;
+function openNanpiTrial() {
+  if (app.lab || app.battle || labLoading || (app.screen !== 'title' && !nanpiResult)) return;
+  const { state, setup } = createNanpiTrial();
+  const title = $('#title');
+  nanpiResult = null;
+  app.dialogs.close(true);
+  title.hidden = true;
+  app.screen = 'battle';
+  frame.dataset.screen = 'battle';
+  app.map.setDrift(null);
+  app.map.setTerritoryVisible(false);
+  app.battle = startBattle(app, setup, {
+    state,
+    onTrialExit: leaveNanpi,
+    onTrialResult: showNanpiResult,
+  });
+  $('#battleHud [data-k="begin"]')?.focus({ preventScroll: true });
+}
+
+function leaveNanpi() {
+  nanpiResult = null;
+  app.battle = null;
+  clear($('#battleHud'));
+  toTitle(true);
+  $('#title .nanpi-entry')?.focus({ preventScroll: true });
+}
+
+function showNanpiResult(done) {
+  app.battle = null;
+  nanpiResult = done;
+  const times = done.tape.events;
+  const breach = times.find(e => e.kind === 'gateOpen');
+  const hold = done.tape.frames.at(-1).keepHeld;
+  const ours = done.report.sides[0];
+  const display = value => Math.round(value).toLocaleString(getLanguage() === 'zh' ? 'zh-CN' : 'en');
+  const hud = clear($('#battleHud'));
+  hud.append(h('section.bOutcomeHold.bTrialResult', { 'aria-label': pair(['夕照南皮战果','Nanpi trial results']) },
+    h('small', pair(['夕照南皮 · 演武战果','NANPI AT SUNSET · TRIAL RESULTS'])),
+    h('h2', done.result.winner === 0 ? t('victory') : t('defeat')),
+    h('p', battleOutcomeReason(done.result, 0, getLanguage())),
+    h('dl',
+      h('div', h('dt',pair(['破门用时','Gate breached at'])), h('dd',breach ? display(breach.t) + pair([' 秒',' s']) : pair(['未破门','Gate held']))),
+      h('div', h('dt',pair(['本营控制','Keep held'])), h('dd',Math.min(10, hold).toFixed(1)+' / 10 '+pair(['秒','s']))),
+      h('div', h('dt',pair(['我军余部','Your survivors'])), h('dd',display(ours.remaining))),
+      h('div', h('dt',pair(['我军减员','Your losses'])), h('dd',display(ours.losses)))),
+    h('div.bTrialActions',
+      button(pair(['关键时刻回放','Replay key moments']), () => openBattleLab(done.tape), {kind:'main'}),
+      button(pair(['再战南皮','Try Nanpi again']), openNanpiTrial),
+      button(pair(['回到标题','Return to title']), leaveNanpi)),
+    h('small', pair(['独立演武 · 不写入战役存档','Standalone trial · Campaign saves are unaffected']))));
+  hud.querySelector('.bTrialActions .btn.main')?.focus({ preventScroll: true });
+}
+
 async function openBattleLab(tape = null) {
   if (app.lab || labLoading) return;
   labLoading = true;
   const screen = app.screen;
   const state = app.state;
+  const trial = nanpiResult?.tape === tape && tape !== null;
   const returnFocus = document.activeElement;
-  const background = ['#stageHost', '#title', '#hud', '#modal'].map(selector => $(selector));
+  const background = ['#stageHost', '#title', '#hud', '#modal', '#battleHud'].map(selector => $(selector));
   function close() {
     const active = app.lab;
     if (!active) return;
@@ -270,14 +327,15 @@ async function openBattleLab(tape = null) {
     active.controller.destroy();
     for (const node of background) node.inert = false;
     app.map.setVisible(true);
-    app.sound.theme(screen === 'title' ? 'title' : 'realm');
+    app.sound.theme(trial ? 'battle' : screen === 'title' ? 'title' : 'realm');
     if (returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
   }
   try {
     const { openBattleSandbox, openBattleReplay } = await import('./ui/battle-lab.mjs');
-    if (screen !== app.screen || state !== app.state || (tape && app.dialogs.name !== 'battleResult')) return;
+    if (screen !== app.screen || state !== app.state ||
+      (trial ? nanpiResult?.tape !== tape : tape && app.dialogs.name !== 'battleResult')) return;
     const options = { onExit: close };
-    const controller = tape ? openBattleReplay(app, tape, { ...options, tab: 'replay' }) : openBattleSandbox(app, options);
+    const controller = tape ? openBattleReplay(app, tape, { ...options, tab: 'replay', ...(trial ? {playerSide: 0} : {}) }) : openBattleSandbox(app, options);
     app.lab = { controller, close };
     for (const node of background) node.inert = true;
     app.map.setVisible(false);
