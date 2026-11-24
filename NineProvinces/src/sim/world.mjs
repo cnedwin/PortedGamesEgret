@@ -14,11 +14,11 @@ import { TREASURES } from '../data/treasures.mjs';
 import { thinkAll } from './ai.mjs';
 import { clamp, dateOf, DAYS_IN_MONTH, dayOf, END_YEAR, generalEffect, note, random, serving, stat, techEffect } from './core.mjs';
 import { monthlyDiplomacy, startingRelations } from './diplomacy.mjs';
-import { marchArmies } from './military.mjs';
+import { hostile, marchArmies } from './military.mjs';
 import { addRosterOfficers, registerCustom, yearlyNewBlood } from './newblood.mjs';
 import { applyScenario, scenarioOf } from './scenarios.mjs';
 import { foundCustomFaction } from './custom-faction.mjs';
-import { comeOfAge, monthlyPeople, settleCaptives, yearlyPeople } from './people.mjs';
+import { comeOfAge, governorSearchQuote, monthlyPeople, settleCaptives, settleGovernorSearch, yearlyPeople } from './people.mjs';
 import { checkStory } from './story.mjs';
 
 export const VERSION = 1;
@@ -193,12 +193,14 @@ function workSpeed(state, nodeId, kind) {
 }
 
 /** Cost, time and the result of one level under current city conditions. */
-export function workQuote(state, nodeId, kind) {
+export function workQuote(state, nodeId, kind, { supervised = false } = {}) {
   const node = state.nodes[nodeId],
     level = node[kind],
     size = NODES[nodeId].size;
   const coin = Math.round(120 + level * 14 + size * 30);
-  const days = Math.max(6, Math.round(24 / workSpeed(state, nodeId, kind)));
+  const governor = supervised && node.governor;
+  const supervision = governor ? 1 + stat(state, governor, kind === 'wall' ? 'lead' : 'pol') / 250 : 1;
+  const days = Math.max(6, Math.round(24 / (workSpeed(state, nodeId, kind) * supervision)));
   const full = level >= caps(nodeId)[kind];
   const nextLevel = full ? level : level + 1;
   const resource = kind === 'farm' ? 'grain' : kind === 'market' ? 'coin' : null;
@@ -209,17 +211,18 @@ export function workQuote(state, nodeId, kind) {
 }
 
 /** Start raising one of a place's works by a level. */
-export function startWork(state, factionId, nodeId, kind) {
+export function startWork(state, factionId, nodeId, kind, { supervised = false } = {}) {
   const node = state.nodes[nodeId],
     f = state.factions[factionId];
   if (node.owner !== factionId) return { why: 'notOurs' };
   if (node.work) return { why: 'busy' };
   if (!['farm', 'market', 'wall', 'office'].includes(kind)) return { why: 'kind' };
-  const q = workQuote(state, nodeId, kind);
+  const q = workQuote(state, nodeId, kind, { supervised });
   if (q.full) return { why: 'full' };
   if (f.coin < q.coin) return { why: 'coin' };
   f.coin -= q.coin;
   node.work = { kind, left: q.days, of: q.days };
+  if (supervised) node.work.governor = node.governor;
   return { ok: true };
 }
 
@@ -250,7 +253,7 @@ export function recruit(state, factionId, nodeId, amount) {
 
 const GOVERNOR_RECRUIT = { target: 3000, batchMax: 500, interval: 5, reserveCoin: 600, support: 60, grainFloor: 1500 };
 
-function governorRecruitBlocker(state, nodeId) {
+function governorDutyBlocker(state, nodeId) {
   const node = state.nodes[nodeId];
   if (!node || !node.owner || !state.factions[node.owner]?.alive) return 'notOurs';
   if (NODES[nodeId]?.kind !== 'city') return 'notCity';
@@ -272,7 +275,7 @@ export function governorRecruitment(state, nodeId) {
   const node = state.nodes[nodeId], plan = node?.governorRecruitment;
   const { target, batchMax, interval, reserveCoin } = GOVERNOR_RECRUIT;
   const enabled = Boolean(plan?.enabled && plan.owner === node?.owner);
-  const why = governorRecruitBlocker(state, nodeId);
+  const why = governorDutyBlocker(state, nodeId);
   const nextDay = (plan?.lastDay ?? plan?.startedDay ?? state.day) + interval;
   const view = {
     enabled, available: !why, why, status: why ?? (enabled ? 'ready' : 'off'),
@@ -330,7 +333,7 @@ export function setGovernorRecruitment(state, factionId, nodeId, enabled) {
     if (existing) existing.enabled = false;
     return { ok: true };
   }
-  const why = governorRecruitBlocker(state, nodeId);
+  const why = governorDutyBlocker(state, nodeId);
   if (why) return { why };
   node.governorRecruitment = existing?.owner === factionId
     ? { ...existing, enabled: true }
@@ -355,6 +358,133 @@ export function processGovernorRecruitment(state) {
     if (result.ok) {
       plan.lastDay = state.day;
       plan.lastGot = result.got;
+    }
+  }
+}
+
+const GOVERNOR_DUTY_INTERVAL = { build: 12, search: 20 };
+
+function provinceWorkChoice(state, id, node, reserveCoin, military) {
+  const faction = state.factions[node.owner], limits = caps(id), size = NODES[id].size;
+  const frontier = ADJACENT[id].some(({ to }) => hostile(state, node.owner, state.nodes[to].owner));
+  const foodShort = faction.grain < Math.max(1500, military.grain * 2);
+  const rank = {
+    farm: foodShort ? -2 : node.farm / limits.farm,
+    market: faction.coin < reserveCoin * 2 ? -1 : node.market / limits.market,
+    wall: frontier && node.wall < 18 + size * 2 ? -1.5 : node.wall / limits.wall + .5,
+    office: node.office / limits.office + .25
+  };
+  const choices = Object.keys(rank).filter(kind => node[kind] < limits[kind])
+    .sort((a, b) => rank[a] - rank[b])
+    .map(kind => ({ kind, ...workQuote(state, id, kind, { supervised: true }) }));
+  const affordable = choices.find(work => faction.coin - work.coin >= reserveCoin);
+  return { choice: affordable ?? choices[0], affordable: Boolean(affordable) };
+}
+
+const dutyDaysLeft = (state, plan) => Math.max(0, (plan?.nextDay ?? state.day) - state.day);
+
+function governorBuildView(state, id, node, plan, why) {
+  const military = node?.owner ? upkeep(state, node.owner) : { coin: 0, grain: 0 };
+  const reserveCoin = Math.max(600, military.coin);
+  const { choice, affordable } = state.factions[node?.owner] && NODES[id]?.kind === 'city'
+    ? provinceWorkChoice(state, id, node, reserveCoin, military) : {};
+  const daysLeft = dutyDaysLeft(state, plan);
+  const enabled = Boolean(plan?.enabled);
+  let status = why ?? 'off';
+  if (node?.work) status = 'working';
+  else if (!why && enabled) {
+    if (!choice) status = 'complete';
+    else if (!affordable) status = 'coin';
+    else status = daysLeft ? 'waiting' : 'ready';
+  }
+  return { enabled, status, why, daysLeft, reserveCoin, kind: node?.work?.kind ?? choice?.kind,
+    days: node?.work?.left ?? choice?.days, coin: choice?.coin, last: plan?.last };
+}
+
+function governorSearchView(state, id, node, plan, why) {
+  const { chance, days } = governorSearchQuote(state, node?.owner, node?.governor, id);
+  const job = plan?.job?.governor === node?.governor ? plan?.job : null;
+  const enabled = Boolean(plan?.enabled);
+  const daysLeft = job ? Math.max(0, job.dueDay - state.day) : dutyDaysLeft(state, plan);
+  const status = job && (!why || why === 'busy') ? 'searching'
+    : why ?? (!enabled ? 'off' : daysLeft ? 'waiting' : 'ready');
+  return { enabled, status, why, daysLeft, days, chance, last: plan?.last };
+}
+
+/** City orders are opt-in. Legacy recruitment keeps its own stored schedule. */
+export function governorDuties(state, id) {
+  const node = state.nodes[id], plan = node?.governorDuties;
+  const ours = plan?.owner === node?.owner ? plan : null;
+  const why = governorDutyBlocker(state, id);
+  return { governor: node?.governor ?? null,
+    build: governorBuildView(state, id, node, ours?.build, why),
+    search: governorSearchView(state, id, node, ours?.search, why) };
+}
+
+export function setGovernorDuty(state, faction, id, kind, enabled) {
+  const node = state.nodes[id];
+  if (!node || node.owner !== faction) return { why: 'notOurs' };
+  if (NODES[id]?.kind !== 'city') return { why: 'notCity' };
+  if (kind !== 'build' && kind !== 'search') return { why: 'kind' };
+  const plan = node.governorDuties?.owner === faction ? node.governorDuties : { owner: faction };
+  if (enabled) {
+    const why = governorDutyBlocker(state, id);
+    if (why) return { why };
+    node.governorDuties = plan;
+    plan[kind] ??= { nextDay: state.day + 1 };
+  }
+  if (plan[kind]) plan[kind].enabled = Boolean(enabled);
+  return { ok: true };
+}
+
+function completeGovernorSearch(state, id, node, search) {
+  const result = settleGovernorSearch(state, node.owner, search.job.governor, id);
+  if (!result.ok) return;
+  delete search.job;
+  search.last = { day: state.day, found: result.found };
+  if (result.found.length && node.owner === state.player) {
+    note(state, 'logGovernorFind', { place: id, n: result.found.length, faction: node.owner });
+  }
+}
+
+export function processGovernorDuties(state) {
+  if (state.over) return;
+  for (const [id, node] of Object.entries(state.nodes)) {
+    const plan = node.governorDuties;
+    if (!plan) continue;
+    if (plan.owner !== node.owner) {
+      delete node.governorDuties;
+      continue;
+    }
+    const { build, search } = plan;
+    if (!build?.enabled && !search?.enabled && !search?.job) continue;
+    const why = governorDutyBlocker(state, id);
+    if (search?.job && (search.job.governor !== node.governor || why === 'noGovernor')) {
+      delete search.job;
+    }
+    if (why) continue;
+    if (search?.job) {
+      if (state.day >= search.job.dueDay) completeGovernorSearch(state, id, node, search);
+      continue;
+    }
+    // No new assignment on the day the governor has already handled city business.
+    const recruitment = node.governorRecruitment;
+    if ((recruitment?.owner === node.owner && recruitment.lastGot && recruitment.lastDay === state.day) ||
+        build?.last?.day === state.day || search?.last?.day === state.day) continue;
+    if (build?.enabled && !node.work && state.day >= build.nextDay) {
+      const work = governorBuildView(state, id, node, build, null);
+      if (work.status === 'ready' && startWork(state, node.owner, id, work.kind, { supervised: true }).ok) {
+        build.last = { day: state.day, kind: work.kind, days: work.days };
+        build.nextDay = state.day + GOVERNOR_DUTY_INTERVAL.build;
+        continue;
+      }
+    }
+    if (search?.enabled && state.day >= search.nextDay) {
+      const { days } = governorSearchQuote(state, node.owner, node.governor, id);
+      const dueDay = state.day + days;
+      search.job = { governor: node.governor, dueDay };
+      search.nextDay = state.day + GOVERNOR_DUTY_INTERVAL.search;
+      state.generals[node.governor].busyUntil = dueDay;
     }
   }
 }
@@ -605,6 +735,7 @@ export function advance(state) {
     checkEnd(state);
   }
   processGovernorRecruitment(state);
+  processGovernorDuties(state);
   if (state.day % 5 === 0) thinkAll(state, (state.day / 5) % 2);
   return true;
 }
