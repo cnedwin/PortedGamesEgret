@@ -135,6 +135,7 @@ function enlist(game, spec, side, index) {
     dressings: DRESSING.count,
     horse: null,
     mounted: false,
+    mountOnRecovery: false,
     // Each weapon art's wait, by id; his rage, and how much his bar holds (as much as his dearest art).
     artCool: {},
     rage: 0,
@@ -1471,13 +1472,24 @@ function stepMan(game, man, input, dt) {
   // ---- the line he has chosen, and his guard --------------------------------------------------------------
   if (input.line) man.line = input.line;
   if (input.aim) man.aim = input.aim;
+  const mountPressed = pressed('mount');
   if (man.stun > 0) {
+    if (mountPressed && man.stunKind === 'thrown' && man.horse && !man.mountOnRecovery) {
+      const h = man.horse;
+      if (h.alive && dist(h, man) <= man.r.horse.near) {
+        // Keep one press through the fall. Mounting still needs a living horse in reach on recovery.
+        man.mountOnRecovery = true;
+        emit(game, 'mountOnRecovery', { who: man.id });
+      } else emit(game, 'noHorse', { who: man.id, dead: !h.alive });
+    }
     man.stun -= dt;
     man.vx = man.knock[0] * 3;
     man.vz = man.knock[1] * 3;
     man.knock = [man.knock[0] * 0.9, man.knock[1] * 0.9];
     if (man.stun <= 0) man.stunKind = null;
   } else {
+    const mountRequested = mountPressed || man.mountOnRecovery;
+    man.mountOnRecovery = false;
     // The archer's weapons: R changes over, 1 and 2 take up the bow or the knife.
     const knifeWanted = pressed('swap') ? !man.knife : input.arm === 0 || input.arm === 1 ? input.arm === 1 : man.knife;
     if (man.regiment === 'archer' && knifeWanted !== man.knife && canAct(man)) {
@@ -1486,13 +1498,13 @@ function stepMan(game, man, input, dt) {
       emit(game, 'swap', { who: man.id, knife: man.knife });
     }
     // The horse: E gets on or off, U calls it over.
-    if (man.horse && pressed('mount') && (!man.act || man.act.kind === 'recover') && !man.draw) {
+    if (man.horse && mountRequested && (!man.act || man.act.kind === 'recover') && !man.draw) {
       const h = man.horse;
       if (man.mounted) {
         man.act = { kind: 'dismount', t: 0 };
         man.guard = false;
         emit(game, 'dismount', { who: man.id });
-      } else if (h.alive && Math.hypot(h.x - man.x, h.z - man.z) <= man.r.horse.near) {
+      } else if (h.alive && dist(h, man) <= man.r.horse.near) {
         man.act = { kind: 'mount', t: 0 };
         man.guard = false;
         h.called = false;

@@ -255,6 +255,8 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
 .touch .tb.needs-foot { color: var(--dim); border-style: dashed; }
 .touch .tb.needs-foot .foot-only { position: relative; display: block; margin-top: 2px; color: #ffe1a3; font: 10px var(--sans); }
 .touch .tb.wait { color: var(--dim); }
+.touch .tb.mount:disabled { color: var(--dim); border-style: dashed; }
+.touch .tb.mount.queued { color: #ffe1a3; }
 .touch .tb.art.full { box-shadow: 0 0 10px 2px rgba(232, 96, 64, 0.75); border-color: rgba(232, 96, 64, 0.9); }
 .touching .hud-bar, .touching .hud-keys, .touching .hud-modes { display: none; }
 
@@ -287,6 +289,17 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
   .slot { width: 40px; height: 40px; }
   .hud-keys { display: none; }
 }
+@media (max-width: 480px) and (min-height: 481px) {
+  .touch { --button: clamp(46px, 13vw, 58px); --gap: 6px; }
+  .touch .buttons {
+    right: max(12px, env(safe-area-inset-right)); bottom: max(34px, env(safe-area-inset-bottom));
+    grid-template-columns: repeat(3, var(--button)); gap: var(--gap);
+  }
+  .touch .tb:not(.halt) { width: var(--button); height: var(--button); font-size: 12px; }
+  .touch .tb.attack { height: calc(2 * var(--button) + var(--gap)); }
+  .touch .stick { left: max(14px, env(safe-area-inset-left)); bottom: 48px; width: 104px; height: 104px; }
+  .touch .stick i { width: 42px; height: 42px; margin: -21px; }
+}
 @media (max-height: 480px) {
   .title { gap: 10px; padding: 16px max(16px, env(safe-area-inset-left)); overflow-y: auto; overscroll-behavior: contain; }
   .title h1 { font-size: clamp(30px, 8dvh, 42px); letter-spacing: 0.08em; }
@@ -305,6 +318,11 @@ html, body { margin: 0; height: 100%; background: var(--ink); color: var(--paper
   .free .hint { margin-block: 4px; }
   .free .row { gap: 8px; padding-block: 2px; }
   .free footer { margin-top: 6px; }
+  .card-stage { gap: 6px; }
+  .card-stage h2 { font-size: clamp(26px, 11dvh, 42px); line-height: 1.15; }
+  .card-stage p { margin: 3px 0; }
+  .card-stage .vs, .card-stage .vs b { font-size: clamp(16px, 5.5dvh, 23px); }
+  .card-stage .go { margin-top: 6px; padding-block: 6px; }
 }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }

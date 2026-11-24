@@ -216,40 +216,112 @@ function air() {
   return out;
 }
 
-export async function createSound(scope, { on = true } = {}) {
+const TRACKS = { air, drums };
+const MUSIC_LEVEL = 0.38;
+const TRACK_FADE = 0.42;
+const EFFECT_DEADLINE_MS = 120;
+const nextAudioTask = () => new Promise(resolve => setTimeout(resolve, 0));
+
+export function createSound(scope, { on = true } = {}) {
   const audio = scope.use(
     createBrowserAudio({
       buses: [
-        { name: 'effects', volume: 0.9 },
-        { name: 'music', volume: 0.38 }
+        { name: 'effects', volume: 0.9, muted: !on },
+        { name: 'music', volume: MUSIC_LEVEL, muted: !on }
       ],
       limiter: true
     })
   );
   const mixer = audio.mixer;
-  const sounds = {};
-  await Promise.all(Object.entries(SOUNDS).map(async ([name, make]) => (sounds[name] = scope.use(await mixer.decode(encodeWav([make()], RATE))))));
-  const tunes = {};
-  let playing = null,
-    playingName = null;
-  const setOn = (value) => {
-    mixer.bus('effects').setMuted(!value);
-    mixer.bus('music').setMuted(!value);
-  };
-  setOn(on);
+  const effectsBus = mixer.bus('effects');
+  const musicBus = mixer.bus('music');
+  const sounds = new Map(), tunes = new Map(), waiting = new Map();
+  let paused = false, enabled = on, generation = 0;
+  let synthesis = Promise.resolve(), choice;
+  const open = () => mixer.state !== 'closed';
+
+  function prepare(cache, name, make) {
+    const previous = cache.get(name);
+    if (previous) return previous;
+    const entry = { buffer: null, ready: null };
+    cache.set(name, entry);
+    // The WAV encoding is synchronous. Give the browser a turn between cues, even during a tune change.
+    const wav = synthesis.then(nextAudioTask).then(() => open() ? encodeWav([make()], RATE) : null);
+    synthesis = wav.then(() => {}, () => {});
+    entry.ready = wav.then(bytes => bytes && open() ? mixer.decode(bytes) : null).then(buffer => {
+      entry.buffer = buffer;
+      return buffer;
+    }).catch(error => {
+      cache.delete(name);
+      if (open()) console.warn('Unable to prepare game audio', name, error);
+      return null;
+    });
+    return entry;
+  }
+
+  // Prepare the opening cue first, then let each remaining effect decode in the background.
+  async function warmEffects() {
+    const order = ['drum', ...Object.keys(SOUNDS).filter(name => name !== 'drum')];
+    for (const name of order) {
+      if (!open()) break;
+      await prepare(sounds, name, SOUNDS[name]).ready;
+    }
+  }
+  void warmEffects();
+
+  function clearEffects() {
+    generation++;
+    waiting.clear();
+    if (open()) mixer.stopAll({ bus: 'effects', fade: 0.045 });
+  }
+
   return {
     play(name, { volume = 1, rate = 1 } = {}) {
-      if (sounds[name]) mixer.play(sounds[name], { bus: 'effects', volume, rate, maxInstances: 5 });
+      if (!enabled || paused || !open() || !Object.hasOwn(SOUNDS, name)) return;
+      const entry = prepare(sounds, name, SOUNDS[name]);
+      const options = { bus: 'effects', volume, rate, maxInstances: 5 };
+      if (entry.buffer) {
+        mixer.play(entry.buffer, options);
+        return;
+      }
+      if (waiting.has(name)) return;
+      const request = generation;
+      const requestedAt = performance.now();
+      waiting.set(name, request);
+      void entry.ready.then(buffer => {
+        if (waiting.get(name) !== request) return;
+        waiting.delete(name);
+        if (buffer && open() && performance.now() - requestedAt <= EFFECT_DEADLINE_MS) mixer.play(buffer, options);
+      });
     },
-    async music(name) {
-      if (playingName === name) return;
-      playing?.stop?.();
-      playing = null;
-      playingName = name;
-      if (!name) return;
-      tunes[name] ??= scope.use(await mixer.decode(encodeWav([name === 'drums' ? drums() : air()], RATE)));
-      if (playingName === name) playing = mixer.play(tunes[name], { bus: 'music', loop: true, volume: name === 'drums' ? 0.8 : 1 });
+    music(name) {
+      if (!open() || name && !Object.hasOwn(TRACKS, name)) return;
+      if (choice && choice.name === name) return choice.ready;
+      const request = choice = { name, ready: null };
+      if (!name) {
+        mixer.stopMusic({ fade: TRACK_FADE });
+        return;
+      }
+      request.ready = prepare(tunes, name, TRACKS[name]).ready.then(buffer => {
+        if (choice !== request || !open()) return;
+        if (buffer) mixer.playMusic(buffer, { loop: true, volume: name === 'drums' ? 0.8 : 1, fade: TRACK_FADE });
+        else choice = undefined;
+      });
+      return request.ready;
     },
-    setOn
+    setPaused(value) {
+      if (paused === value) return;
+      paused = value;
+      if (value) clearEffects();
+      musicBus.setVolume(MUSIC_LEVEL * (value ? 0.45 : 1), { fade: 0.22 });
+    },
+    setOn(value) {
+      if (enabled === value) return;
+      enabled = value;
+      if (!value) clearEffects();
+      effectsBus.setMuted(!value);
+      musicBus.setMuted(!value);
+    },
+    clearEffects
   };
 }
