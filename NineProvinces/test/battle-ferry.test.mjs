@@ -63,6 +63,13 @@ test('a port attacker still takes the crossing, and an ordinary town has no hold
   b.units[1].pos = atDistance(b, 3);
   run(b, 9);
   assert.equal(b.over, null);
+  b.units[1].pos = atDistance(b, 1);
+  run(b, 1);
+  assert.equal(b.keepHeld, 0);
+  assert.equal(b.over, null);
+  b.units[1].pos = atDistance(b, 3);
+  run(b, 9);
+  assert.equal(b.over, null);
   run(b, 1);
   assert.deepEqual(b.over, { winner: 0, why: 'crossingTaken' });
   assert(outcome(b).gateTaken);

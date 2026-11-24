@@ -138,6 +138,20 @@ test('guard preview and command both reject a chase outside its defended area', 
   assert.equal(JSON.stringify(u), before);
 });
 
+test('engage releases a stationed unit from guard or hold, while keeping an explicit move', () => {
+  const b = field(), u = b.units[0];
+  assert.equal(command(b, 0, 'intent', 'guard'), true);
+  assert.equal(u.order, 'hold');
+  assert.equal(command(b, 0, 'intent', 'direct'), true);
+  assert.equal(u.order, 'auto');
+  assert.equal(u.intentAnchor, undefined);
+  const goal = neighbours(u.pos).find(hex => b.tiles[hex] === 'plain');
+  assert.equal(command(b, 0, 'move', goal), true);
+  assert.equal(command(b, 0, 'intent', 'direct'), true);
+  assert.equal(u.goal, goal);
+  assert.equal(u.order, 'move');
+});
+
 test('guard intent actively meets a nearby threat without requiring a second attack order', () => {
   const b = field(), u = b.units[0];
   u.pos = idx(8, 7); b.units[1].pos = idx(10, 7); b.units[2].pos = idx(2, 2);

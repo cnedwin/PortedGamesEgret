@@ -1106,7 +1106,8 @@ export function stepBattle(b, dt, playerSide = -1) {
   if (b.keep !== null) {
     const holder = b.units.find((o) => alive(o) && o.pos === b.keep);
     const defenderNear = b.units.some((o) => alive(o) && o.side === 1 && !o.routed && distance(o.pos, b.keep) <= 1);
-    if (holder && holder.side === 0 && !defenderNear) b.keepHeld += dt;
+    if (holder && holder.side === 0 && !holder.routed && !defenderNear) b.keepHeld += dt;
+    else if (b.ferry) b.keepHeld = 0;
     else b.keepHeld = Math.max(0, b.keepHeld - dt);
   }
   advanceFerryObjective(b, dt, distance);
@@ -1149,6 +1150,12 @@ function setIntent(b, u, intent) {
   u.intent = intent;
   if (intent === 'direct') {
     delete u.intentAnchor;
+    if (u.order === 'hold') {
+      u.order = 'auto';
+      u.target = null;
+      u.path = [];
+      u.think = 0;
+    }
     return true;
   }
   u.goal = null;

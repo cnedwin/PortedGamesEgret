@@ -401,11 +401,12 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     if(u.routed)return words('部队正在溃退，暂不能受令','This unit is routing and cannot accept orders');
     const waiting=paused?words(' · 暂停待执行',' · Waiting while paused'):'';
     if(u.atGate&&b.gate&&!b.gate.open)return words('正在破门，随后追击','Breaking the gate, then pursuing')+waiting;
+    if(u.order==='move'&&u.goal!==null)return words('正在向指定位置移动','Moving to the ordered position')+waiting;
+    if(u.intent==='guard')return words('守住蓝圈内的阵地，就近迎敌','Guarding the blue zone and intercepting nearby enemies')+waiting;
+    if(u.intent==='range'&&u.order!=='hold')return words('射击接近的敌军，被贴身时尽量拉开','Firing at approaching units and trying to pull back from melee')+waiting;
     if(u.order==='attack'&&u.target&&!u.target.gone)return (u.path.length?words('行军追击：','Marching toward: '):words('接敌攻击：','Engaging: '))+unitName(u.target)+waiting;
-    if(u.order==='move')return (u.goal!==null?words('正在向指定位置移动','Moving to the ordered position'):words('已抵达，等待新令','Arrived; ready for another order'))+waiting;
+    if(u.order==='move')return words('已抵达，等待新令','Arrived; ready for another order')+waiting;
     if(u.order==='hold')return words('坚守阵地，自动反击射程内敌军','Holding; attacks enemies within reach')+waiting;
-    if(u.intent==='guard')return words('守住蓝圈内的阵地','Guarding the area shown in blue')+waiting;
-    if(u.intent==='range')return words('射击接近的敌军，被贴身时尽量拉开','Firing at approaching units and trying to pull back from melee')+waiting;
     return words('自动寻敌与基础作战','Automatic movement and ordinary attacks')+waiting;
   }
   const signed=n=>(n>=0?'+':'')+Math.round(n*100)+'%';
@@ -413,9 +414,12 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     const options = battleIntentOptions(b, u.id);
     return h('section.bIntent', {'aria-label':words('作战意图','Battle intent')},
       h('p.bFormationInfo', words('作战意图','Battle intent') + ' · ' + intentLabel(u.intent)),
-      h('div.bOrderRow', options.filter(option => option.available).map(option =>
-        keyButton('intent-' + option.kind, intentLabel(option.kind), () => { issue(u.id, 'intent', option.kind); draw(true); },
-          {kind:option.active?'on':'',small:true}))));
+      h('div.bOrderRow', options.filter(option => option.available).map(option => {
+        const control = keyButton('intent-' + option.kind, intentLabel(option.kind),
+          () => { issue(u.id, 'intent', option.kind); draw(true); }, {kind:option.active?'on':'',small:true});
+        control.setAttribute('aria-pressed', String(option.active));
+        return control;
+      })));
   }
   function formationText(f){return words('攻','ATK ')+signed(f.atk)+' · '+words('守','DEF ')+signed(f.def)+' · '+words('速','SPD ')+signed(f.spd)+(f.front?' · '+words('正面','Front ')+signed(f.front):'')+(f.flank?' · '+words('夹击','Flank ')+signed(f.flank):'');}
 
@@ -423,11 +427,11 @@ export function startBattle(app, setup, { state: s = app.state, onTrialResult, o
     const securing = b.keepHeld === 0;
     const needed = securing ? FERRY_HOLD_SECONDS : 10;
     const held = securing ? b.ferry.secured : b.keepHeld;
-    const label = securing ? words('守方稳守','Defence') : words('攻方占领','Capture');
+    const label = securing ? words('守','Hold') : words('攻','Take');
     return h('div.bObj.bCrossing', h('span', words('渡口','Crossing')),
       bar(held / needed, securing ? 'blue' : 'gold'),
       h('small', b.ferry.engaged ? label + ' ' + Math.min(needed, Math.floor(held)) + '/' + needed + words('秒','s')
-        : words('待攻方接近','Awaiting contact')));
+        : words('待接敌','Await contact')));
   }
 
   // ——— The HUD ———

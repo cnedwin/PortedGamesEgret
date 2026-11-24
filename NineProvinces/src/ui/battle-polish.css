@@ -129,6 +129,7 @@
  #battleHud .bTime .wind { font-size:10px; }
  #battleHud .bObj { min-width:88px; grid-template-columns:auto 38px; font-size:10px; }
  #battleHud .bObj small { display:none; }
+ #battleHud .bObj.bCrossing small { display:block; grid-column:1/-1; line-height:1.1; }
  #battleHud .clock { grid-column:1; }
  #battleHud .clock button { min-height:44px; min-width:44px; }
  #battleHud .bTop>.btn.danger { min-height:44px; min-width:44px; margin-left:auto; font-size:11px; }
