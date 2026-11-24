@@ -18,6 +18,7 @@
 // Lines are named from the striker's side: L is a cut that starts on his left. It arrives on the other man's
 // right, so to guard it he holds his guard on R (`facing(line)`). Overhead and thrust meet themselves.
 // The PC primary melee gesture sends `meleeRelease` with `meleeDown`, `meleeUp` and `meleeCancel` edges.
+// Human controls set `recoveryHandoff` to carry a fresh command across the tick that completes a swing.
 // Player controls can set `skillGuardCancel` to enable a fresh guard press during Spin's follow-through.
 //
 // Headings: 0 looks along +z, and a man's right hand is at heading − π/2.
@@ -1234,11 +1235,14 @@ function runSwing(game, man, act, input, dt) {
     });
     return;
   }
-  if (act.t - act.strikeAt >= act.recover) man.act = null;
-  else if (act.t - act.strikeAt > act.recover * 0.55 && meleePressed(man, input)) {
-    man.queuedSwing = { line: meleeLine(man, input), releaseOnly: input.meleeRelease, released: input.meleeUp };
-    man.act = null;
+  const elapsed = act.t - act.strikeAt;
+  const recovered = elapsed >= act.recover;
+  const requested = (!recovered || input.recoveryHandoff) && elapsed > act.recover * 0.55 && meleePressed(man, input);
+  if (requested) {
+    man.queuedSwing = { line: meleeLine(man, input), releaseOnly: input.meleeRelease, released: input.meleeUp, chained: !recovered };
   }
+  if (recovered || requested) man.act = null;
+  return recovered;
 }
 
 function runBow(game, man, input, dt) {
@@ -1264,6 +1268,14 @@ function runBow(game, man, input, dt) {
     man.draw = { t: 0 };
     emit(game, 'draw', { who: man.id });
   }
+}
+
+function raiseGuard(game, man) {
+  man.guard = true;
+  man.guardAt = game.time;
+  man.guardLine = man.line;
+  man.act = null;
+  man.queuedSwing = null;
 }
 
 /** One tick for one man, with his input. */
@@ -1356,9 +1368,7 @@ function stepMan(game, man, input, dt) {
     const guardCancelsSpin = input.skillGuardCancel && man === game.hero && !man.guard && pressed('guard') && spinGuardWindow(man);
     if (wantsGuard && !man.guard && (!man.act || man.act.kind === 'recover' || guardCancelsSpin)) {
       if (guardCancelsSpin) emit(game, 'skillCancel', { who: man.id, id: 'spin', into: 'guard', elapsed: man.act.t });
-      man.guard = true;
-      man.guardAt = game.time;
-      man.act = null;
+      raiseGuard(game, man);
     } else if (!wantsGuard && man.guard && man.act?.id !== 'counter') man.guard = false;
     if (man.guard) {
       if (man.guardLine !== man.line) man.guardAt = Math.max(man.guardAt, game.time - DEFLECT * 0.5);
@@ -1382,7 +1392,7 @@ function stepMan(game, man, input, dt) {
     else if (free && (chain || meleePressed(man, input))) {
       const releaseOnly = chain ? chain.releaseOnly : input.meleeRelease;
       startSwing(game, man, chain?.line ?? meleeLine(man, input), {
-        chained: !!chain,
+        chained: chain?.chained ?? false,
         releaseOnly,
         released: chain?.released || (input.meleeRelease && input.meleeUp)
       });
@@ -1393,8 +1403,10 @@ function stepMan(game, man, input, dt) {
     if (act) {
       act.t += dt;
       act.moving = false;
-      if (act.kind === 'swing') runSwing(game, man, act, input, dt);
-      else if (act.kind === 'kick') {
+      if (act.kind === 'swing') {
+        const recovered = runSwing(game, man, act, input, dt);
+        if (recovered && input.recoveryHandoff && wantsGuard && !man.guard) raiseGuard(game, man);
+      } else if (act.kind === 'kick') {
         if (act.t - dt < KICK.wind && act.t >= KICK.wind) {
           const hit = enemiesOf(game, man).filter((t) => inSweep(man, t, KICK.reach, KICK.arc)).sort((a, b) => dist(man, a) - dist(man, b))[0];
           if (hit) {

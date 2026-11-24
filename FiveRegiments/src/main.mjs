@@ -653,6 +653,7 @@ async function main() {
         const aim = target && game.hero.regiment === 'archer' ? null : undefined;
         inputs.hero = input.sample(TICK, { threat, aim, bow: game.hero.regiment === 'archer' && !game.hero.knife });
         inputs.hero.skillGuardCancel = true;
+        inputs.hero.recoveryHandoff = true;
       }
       for (const e of step(game, inputs)) {
         onEvent(e);
